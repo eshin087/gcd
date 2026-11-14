@@ -3409,7 +3409,8 @@ async function scenarioHeroHand() {
   const where = () => `${p.state}${clipOf() ? ' ' + clipOf() : ''} t ${(p.atk?.def ? p.atk.t : A.t).toFixed(2)}`;
   const segOf = () => (p.state === 'attack' && p.atk?.def?.kind === 'slam' ? 'slam' : p.state === 'heavy' ? 'cleave' : p.state === 'charge' || p.state === 'block' ? p.state : null);
   let qOk = false, turn = 0, turnAt = '', bad = 0, badAt = '', pen = -1, penAt = '', frames = 0, notOne = 0, notOneAt = '';
-  let fistFar = 0, fistFarAt = '', fistN = 0, lkN = 0, lkGap = 0, lkGapAt = '', lockN = 0, lockMin = Infinity, lockMinAt = '';
+  let fistFar = 0, fistFarAt = '', fistFar2 = 0, fistFar2At = '', fistN = 0, fing2 = 0, fing2At = '';
+  let lkN = 0, lkGap = 0, lkGapAt = '', lockN = 0, lockMin = Infinity, lockMinAt = '';
   const flips = {}; // segment → the most grip swaps in one of its occurrences
   let seg = null, segFlips = 0, gripWas = false;
   // the looks: the IK end (chest local) at the coil (t = W), contact (W + 0.45 A) and the finish (W + A),
@@ -3441,14 +3442,18 @@ async function scenarioHeroHand() {
         }
       }
     }
-    // (H5) one hand shown; the fist only on its place; few swaps per heavy blow, charge, block
+    // (H5) one hand shown; the fist only on its place (fully two-handed, a fist already shown holds
+    // to OFF_SNAP[2]); never the sword fingers on the hilt; few swaps per heavy blow, charge, block
     const shown = +H.open.visible + +H.fingers.visible + +H.grip.visible;
     if (shown !== 1) { notOne++; notOneAt ||= where(); }
+    const two2 = A.cur[P.twoHand] >= 0.95;
     if (H.grip.visible) {
       fistN++;
       const g = offGap();
-      if (g > fistFar) { fistFar = g; fistFarAt = where(); }
+      if (!two2 && g > fistFar) { fistFar = g; fistFarAt = where(); }
+      if (two2 && g > fistFar2) { fistFar2 = g; fistFar2At = where(); }
     }
+    if (two2 && H.fingers.visible) { fing2++; fing2At ||= where(); }
     const sg = segOf();
     if (sg !== seg) {
       seg = sg;
@@ -3543,7 +3548,8 @@ async function scenarioHeroHand() {
   assert(turn <= 40, `the wrist turns at most ${turn.toFixed(0)}° on the forearm in a frame (≤ 40°; ${turnAt}; ${frames} frames)`);
   assert(bad === 0, `the wrist stays in its range (radial ${(WRIST_L.rad * DEG).toFixed(0)}° … ulnar ${(WRIST_L.uln * DEG).toFixed(0)}°, twist ±${(WRIST_L.sup * DEG).toFixed(0)}°, flex ${(WRIST_L.flex * DEG).toFixed(0)}° … ${(WRIST_L.ext * DEG).toFixed(0)}°, ± 3°): ${bad} frames out${badAt ? ` (${badAt})` : ''}`);
   assert(pen <= 0.015, `one-handed, the sword fingers and the palm sink at most ${(pen * 100).toFixed(1)} cm into his torso, hips, head or sword forearm (≤ 1.5 cm; ${penAt})`);
-  assert(notOne === 0 && fistN > 0 && fistFar <= OFF_SNAP[1] + 1e-3, `one free hand shows at a time (${notOne} frames not${notOneAt ? `: ${notOneAt}` : ''}), and the fist only on the grip: ≤ ${(fistFar * 100).toFixed(1)} cm from its place (≤ ${OFF_SNAP[1] * 100} cm; ${fistN} frames${fistFarAt ? `, ${fistFarAt}` : ''})`);
+  assert(notOne === 0 && fistN > 0 && fistFar <= OFF_SNAP[1] + 1e-3 && fistFar2 <= OFF_SNAP[2] + 1e-3, `one free hand shows at a time (${notOne} frames not${notOneAt ? `: ${notOneAt}` : ''}), and the fist only on the grip: ≤ ${(fistFar * 100).toFixed(1)} cm from its place (≤ ${OFF_SNAP[1] * 100} cm; ${fistN} frames${fistFarAt ? `, ${fistFarAt}` : ''}), fully two-handed ≤ ${(fistFar2 * 100).toFixed(1)} cm (≤ ${OFF_SNAP[2] * 100} cm${fistFar2At ? `, ${fistFar2At}` : ''})`);
+  assert(fing2 === 0, `never the sword fingers while fully two-handed (twoHand ≥ 0.95): ${fing2} frames${fing2At ? ` (${fing2At})` : ''}`);
   assert(['slam', 'cleave', 'charge', 'block'].every((k) => k in flips) && Object.values(flips).every((n) => n <= 2), `the fist shows and goes at most once per slam, cleave, charge and block (${Object.entries(flips).map(([k, n]) => `${k} ${n}`).join(', ')} swaps)`);
   assert(lkN > 0 && lkGap <= 0.08, `on the sword wrist (${lkN} frames) the free hand is within ${(lkGap * 100).toFixed(1)} cm of it (≤ 8 cm; ${lkGapAt})`);
   {
@@ -3555,6 +3561,37 @@ async function scenarioHeroHand() {
     assert(order.length - EXEMPT.size >= 10 && !late.length, `at contact the free hand is ≥ 45 % of the way from its coil to its finish in every look (${late.map((c) => `${c} ${(looks[c].prog * 100).toFixed(0)} %`).join(', ') || 'all'})`);
   }
   assert(lockN > 0 && lockMin >= 0.33, `on the grip the free elbow keeps a bend: ≥ ${(lockMin * DEG).toFixed(0)}° (≥ 19°: it locked straight in the cleave; ${lockN} frames, ${lockMinAt})`);
+
+  // (H5b) the plunge and the execution: both fists on the hilt from the hang to the ride, the free
+  // arm 4-6 cm short of it at the hang's apex; one hand shown, never the sword fingers on the hilt,
+  // the fist held (≤ OFF_SNAP[2]) and at most one grab and one let-go each (the fist popped off at
+  // the apex and the sword fingers showed: fist, fingers, fist in 5 frames)
+  {
+    let started = 0, n = 0, one = 0, fing = 0, fingAt = '', far = 0, farAt = '', worst = 0, phases = new Set();
+    for (const exec of [false, true]) {
+      started += +!!p.debug.plunge(exec);
+      let swaps = 0, was = H.grip.visible;
+      go(3.5, () => {
+        if (p.state !== 'plunge') return;
+        n++;
+        phases.add(p.pl.phase);
+        const at = `${exec ? 'execution' : 'plunge'} phase ${p.pl.phase}`;
+        if (+H.open.visible + +H.fingers.visible + +H.grip.visible !== 1) one++;
+        if (A.cur[P.twoHand] > 0.95 && H.fingers.visible) { fing++; fingAt ||= at; }
+        if (H.grip.visible) {
+          const g = offGap();
+          if (g > far) { far = g; farAt = at; }
+        }
+        if (H.grip.visible !== was) swaps++;
+        was = H.grip.visible;
+      });
+      worst = Math.max(worst, swaps);
+      p.debug.teleport(d.position.x + 14, d.position.z + 14);
+      go(0.5);
+    }
+    assert(started === 2 && n > 150 && [1, 2, 3, 4].every((ph) => phases.has(ph)) && one === 0 && fing === 0 && far <= OFF_SNAP[2] + 1e-3 && worst <= 2,
+      `the plunge and the execution (${started} of 2 started, ${n} frames, phases ${[...phases].join('')}): one hand at a time (${one} frames not), never the sword fingers on the hilt (${fing} frames${fingAt ? `, ${fingAt}` : ''}), the fist ≤ ${(far * 100).toFixed(1)} cm from its place (≤ ${OFF_SNAP[2] * 100} cm${farAt ? `, ${farAt}` : ''}), ≤ ${worst} swaps each (≤ 2)`);
+  }
 
   // (H10) the drink: the flask hangs on the forearm, so the hand opens and the wrist goes rigid
   {

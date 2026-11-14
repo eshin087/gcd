@@ -600,7 +600,8 @@ Shrouded set's bare hands do; the Wanderer's arms return no `offHand`). For a du
 `grip` while the pose's `twoHand` > 0.6 and `open` otherwise. For the hero (`HeroAnimator` with
 `opts.freeHand`) `grip` shows only once the hand is THERE: `twoHand` > 0.6 and `anim.gripGap` (the IK
 end to its place on the grip, chest local, model metres) under `OFF_SNAP[0]` 3.5 cm, kept until it
-passes `OFF_SNAP[1]` 5 cm; off the grip `fingers` shows while the pose's `hs` > 0.6 (kept to 0.4),
+passes `OFF_SNAP[1]` 5 cm (`OFF_SNAP[2]` 8 cm while `twoHand` ≥ 0.95: a free arm that cannot quite
+reach the hilt, the plunge's raised fists, keeps its fist); off the grip `fingers` shows while the pose's `hs` > 0.6 (kept to 0.4),
 else `open` (`anim.handFX { fingers, fist }`). **The free hand** (the hero only, `opts.freeHand`):
 `_wristL` turns `arms.L.wrist` so the fingers point along the pose's `lD` and the palm faces `lN`
 (body axes; each vector's LENGTH is its weight: 0 = the hand rigid on the forearm, today's look),
@@ -676,8 +677,8 @@ vec3 body axes, length = weight; `P.hs` 59; `P.lk` 60; the pose has `N` = 61 cha
 a duelist's scratch poses are sized from it) are read only with `opts.freeHand`: `guard()` writes
 the hero's rest (sword fingers low by the left hip, pointing ahead and down) and `reset()` / the NaN
 fallback zero them for every other animator; `locoGuard` carries them in `GUARD_CH`. A hit, a fall,
-the drink and the lean on the pommel open the hand and make the wrist rigid (`freeLimp`); the charge
-and the block open it to the grip (`hs` 0).
+the drink and the lean on the pommel open the hand and make the wrist rigid (`freeLimp`); the
+charge, the block and the plunge (`plBase`) open it to the grip (`hs` 0).
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, not locked on, with no
 guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never

@@ -1663,9 +1663,12 @@ const SCR_GUARD = new Float32Array(N);
 const GUARD_CH = [P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.lH, P.lH + 1, P.lH + 2, P.lP, P.lP + 1, P.lP + 2, P.swF, P.swF + 1, P.swF + 2, P.spX, P.spY, P.spZ, P.hdX, P.hdY, P.pelvY, P.twoHand, P.offAt,
   P.lD, P.lD + 1, P.lD + 2, P.lN, P.lN + 1, P.lN + 2, P.hs, P.lk];
 
-/** The shared airborne base: every channel the plunge poses read, upright, arms down. */
+/** The shared airborne base: every channel the plunge poses read, upright, arms down; the free
+ *  hand open (the hang, the dive and the ride hold the hilt in both fists: off it, an open hand
+ *  reaching for it, never the sword fingers). */
 function plBase(p, A) {
   guard(p, A);
+  p[P.hs] = 0;
   p[P.bodyX] = 0;
   p[P.bodyZ] = 0;
   p[P.yaw] = 0;
@@ -2262,8 +2265,10 @@ const WRIST_HZ = 120; // the wrist spring's sub-steps per second (at least: ≤ 
 // lie along it, and the sword hand's speed (m/s) over which they let go as it whips away
 const LK_WRIST = 0.07, LK_OFF = [0.045, 0.025], LK_ALONG = 0.5, LK_LETGO = [4, 8];
 // the free fist shows on the grip within [0] of its place (m) and goes back past [1] (it used to be
-// drawn 9-21 cm off the wrist while the hand was still on its way)
-export const OFF_SNAP = [0.035, 0.05];
+// drawn 9-21 cm off the wrist while the hand was still on its way); fully two-handed (twoHand ≥
+// 0.95) a fist already shown stays until [2]: a free arm that cannot quite reach the hilt (the
+// plunge's raised fists stop 4-6 cm short) keeps its fist instead of flickering to an open hand
+export const OFF_SNAP = [0.035, 0.05, 0.08];
 // × the arm's length: the free elbow on the grip keeps ≥ 23° of bend (the cleave locked it at 176°)
 const LOCK_REACH = 0.98;
 const _hG = new THREE.Vector3(), _hd = new THREE.Vector3(), _hn = new THREE.Vector3(), _hy = new THREE.Vector3(), _hp = new THREE.Vector3();
@@ -3069,10 +3074,11 @@ export class HeroAnimator {
     if (r.offHand?.open && r.offHand.grip) {
       if (this.freeHand) {
         // the free hand closes round the grip once it is there (within OFF_SNAP of its place, with
-        // hysteresis), never while it is still on its way; off the grip it shows the sword fingers or
-        // the open hand by the pose's shape (hs, with hysteresis)
+        // hysteresis, wider while fully two-handed), never while it is still on its way; off the grip
+        // it shows the sword fingers or the open hand by the pose's shape (hs, with hysteresis)
         const H = this.handFX, fg = r.offHand.fingers ?? null, hs = fin(p[P.hs]);
-        H.fist = two > 0.6 && this.gripGap < (H.fist ? OFF_SNAP[1] : OFF_SNAP[0]) && !(p[P.offAt] > 0.04); // (a palm braced on the blade stays open)
+        const snap = !H.fist ? OFF_SNAP[0] : two >= 0.95 ? OFF_SNAP[2] : OFF_SNAP[1];
+        H.fist = two > 0.6 && this.gripGap < snap && !(p[P.offAt] > 0.04); // (a palm braced on the blade stays open)
         H.fingers = hs > 0.6 || (H.fingers && hs > 0.4);
         r.offHand.grip.visible = H.fist;
         r.offHand.open.visible = !H.fist && !(H.fingers && fg);
