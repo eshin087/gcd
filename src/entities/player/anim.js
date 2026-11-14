@@ -1132,7 +1132,7 @@ const HOME_WAY = { d: -3, ok: false }; // dirLerp memory: the recovery's way hom
  *  of skate every light): once stretched past `drag` its TOE drags after the body (A.footDrag), and
  *  just after the front foot has taken the weight it takes ONE lifted follow step (跟步) up onto the
  *  stance line (A.follow; not with `follow` false: a whirl that hops round its turn). While a held
- *  light waits at the coil the stepping toe rests on the grass (A.coilHold: an empty stance, 虚步).
+ *  light waits at the coil the stepping foot rests on the grass (A.coilHold: an empty stance, 虚步).
  *  (Session 25, owner: "his legs and feet do the same thing every hit".) */
 function lungeFeet(p, A, t0, t1, drag, plant, follow = true) {
   const t = A.t, E = A.entry, tr = A.trav;
@@ -1175,7 +1175,7 @@ function lungeFeet(p, A, t0, t1, drag, plant, follow = true) {
   }
   // (a foot that passes the other swings round it, not through its ankle)
   const pass = Math.sin(Math.PI * u) * clamp(Math.abs(tz - lz) / 0.5, 0, 1);
-  const ch = clamp(fin(A.coilHold, 0), 0, 1); // a held light at the coil: the toe rests mid-step
+  const ch = clamp(fin(A.coilHold, 0), 0, 1); // a held light at the coil: the foot rests mid-step
   p[sI] = fx + sg * 0.04 * pass;
   p[sI + 1] = Math.max(ANK, lerp(E[sE + 1], ANK, e)) + (0.07 + 0.06 * clamp(Math.abs(tz - lz) / 0.6, 0, 1)) * Math.sin(Math.PI * u) * (1 - ch) + COIL_HOLD.toeY * ch;
   p[sI + 2] = fz;
@@ -1265,9 +1265,11 @@ const HOLD_REACH = 0.97; // × the leg's length: the farthest the holding foot s
 // the front foot), lifted `lift` m; only when the foot is dragged more than `min` m; a dragging
 // foot's sole is down to `toe`, its heel settling back at `heel` (1/s) once it stops
 const FOLLOW = { at: 0.02, dur: 0.09, back: 0.4, gap: 0.45, lift: 0.045, min: 0.03, toe: 0.35, heel: 30 };
-// a held light at the coil: how fast the stepping toe settles (1/s), where it rests (m above the
-// ankle's height) and its sole (footFlat: the toe down, the heel up)
-const COIL_HOLD = { rate: 25, toeY: 0.03, flat: 0.35 };
+// a held light at the coil: how fast the stepping foot settles (1/s), where its ankle rests (m above
+// its standing height) and its sole (footFlat). Set down level, the sole on the grass: the rig pitches
+// a foot only between level and square to the shin, which stands upright mid-step, so the "toe down,
+// heel up" sole (0.35, the ankle 3 cm up) came out level and hovered 4 cm above the grass
+const COIL_HOLD = { rate: 25, toeY: -0.005, flat: 1 };
 /** A dash (the cleave's, the execution thrust's: 2.2-3.6 m of root travel in ~0.25 s) as TWO bounding steps instead of a
  *  front foot skidding the whole way: the rear (right) foot pushes off and swings through to land
  *  under the body mid-dash; the front (left) foot leaves the grass just before it lands (a short
@@ -2672,7 +2674,7 @@ export class HeroAnimator {
     this.stepL = true; // the foot that steps in an attack (play(): the one further back)
     this.leadK = 1; // swingPose: the hips' lead (0 while a held light waits at the coil)
     this.bite = { rec: null, at: -1, dir: new Float32Array(3) }; // attackPose: the hit the bite is for, the blade it bit with
-    this.coilHold = 0; // lungeFeet: 1 while a held light waits at the coil (the stepping toe rests)
+    this.coilHold = 0; // lungeFeet: 1 while a held light waits at the coil (the stepping foot rests)
     // lungeFeet: the holding foot's follow step (on: −1 undecided, 0 none, 1 stepping; from x, z;
     // its window t0..t1 of the attack's clock)
     this.follow = { on: -1, x: 0, z: 0, t0: 0, t1: 0 };

@@ -649,7 +649,8 @@ a drag over a few frames, `anim.toeK`), and just after the front foot takes the 
 it is down if the foot is being dragged already) a foot dragged > 3 cm takes ONE lifted follow step
 up onto the stance line (`anim.follow { on, x, z, t0, t1 }`, `FOLLOW`); the clip drives the feet itself (`C.chFeet` in
 `A.pathCh`: the cross-fade slid them while the root still drifted out of a roll). While a held
-light waits at the coil the stepping toe rests on the grass (`anim.coilHold`, `COIL_HOLD`). `turn`
+light waits at the coil the stepping foot is set down on the grass, without weight (`anim.coilHold`,
+`COIL_HOLD`). `turn`
 pivots the feet on their balls where they stand (`pivotYaw`: their yaw turns, the heels lift);
 the way home steps the foot that stepped (the left for a dash or the thrust); or `dashFeet` with
 `feet: 'dash'` (`dashW: true` starts the dash at the windup's end; its landing times follow the

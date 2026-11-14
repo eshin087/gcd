@@ -3769,6 +3769,20 @@ async function scenarioHeroWeight() {
   const go = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); each?.(); } };
   go(0.5);
   const DEG = 180 / Math.PI;
+  // a boot's lowest point above the grass (m): its foot ellipsoid (model.js BODY.foot), sampled
+  const { BODY: HB } = await imp('src/entities/player/model.js');
+  const soleOf = (foot) => {
+    const Fo = HB.foot, q = new THREE.Vector3();
+    let m = Infinity;
+    for (let a = 0; a < 24; a++) {
+      for (let b = 1; b < 12; b++) {
+        const th = (a / 24) * Math.PI * 2, ph = (b / 12) * Math.PI;
+        q.set(Fo.c[0] + Fo.r[0] * Math.sin(ph) * Math.cos(th), Fo.c[1] + Fo.r[1] * Math.cos(ph), Fo.c[2] + Fo.r[2] * Math.sin(ph) * Math.sin(th)).applyMatrix4(foot.matrixWorld);
+        m = Math.min(m, q.y);
+      }
+    }
+    return m - p.position.y;
+  };
   const L10 = ['fallingCut', 'drawCut', 'risingSlash', 'risingBackhand', 'flatBackhand', 'fallingBackhand', 'lowSweep', 'lunge', 'risingThrust', 'rollCut'];
   const wrapA = (x) => Math.atan2(Math.sin(x), Math.cos(x));
   const inv = new THREE.Matrix4(), invB = new THREE.Matrix4(), invP = new THREE.Matrix4(), v = new THREE.Vector3(), w = new THREE.Vector3();
@@ -4198,7 +4212,7 @@ async function scenarioHeroWeight() {
     A.forceVariant = 0;
     const hold = [];
     input.press(0);
-    for (let i = 0, n = Math.round(0.25 / DT); i < n; i++) { G.tick(DT); hold.push({ F: record(), hip: A.cur[P.pelvY], ank: A.cur[(A.stepL ? P.lF : P.rF) + 1] }); }
+    for (let i = 0, n = Math.round(0.25 / DT); i < n; i++) { G.tick(DT); hold.push({ F: record(), hip: A.cur[P.pelvY], ank: A.cur[(A.stepL ? P.lF : P.rF) + 1], sole: soleOf(A.stepL ? r.legs.L.foot : r.legs.R.foot) }); }
     input.up(0);
     const after = [];
     for (let i = 0; i < 40; i++) {
@@ -4220,11 +4234,14 @@ async function scenarioHeroWeight() {
     assert(k0 > 0 && hold.every((h) => h.F.pending) && first <= 5 && settle && lastStep <= 1 && off <= 0.05,
       `a held light's hips settle back to the coil without a snap: at most ${first.toFixed(1)}° a frame (≤ 5°), each step no bigger than the one before, still by the hold's end (${lastStep.toFixed(2)}° ≤ 1°), within 0.05 rad of the coil key's turn (${off.toFixed(3)})`);
     assert(after.length >= 5 && snap <= 25 && arm < 60, `released from the coil, the cut fires without a snap: the hips ≤ 25° a frame (${snap.toFixed(1)}°), no arm segment ≥ 60° a frame (${arm.toFixed(0)}°)`);
-    // … and the stepping foot, caught mid-step at the coil, rests its toe on the grass (it hung up to
-    // 0.21 m above it for as long as the button was held): never rising once at the coil
+    // … and the stepping foot, caught mid-step at the coil, is set down on the grass (it hung up to
+    // 0.21 m above it for as long as the button was held, then 4 cm with a "toe down" sole the rig
+    // drew level): never rising once at the coil, its sole (the boot's lowest point) on the grass ± 1 cm
+    // by the hold's end
     const atCoil = hold.slice(k0), rise = Math.max(...atCoil.slice(1).map((h, i) => h.ank - atCoil[i].ank)), endAnk = hold[hold.length - 1].ank - HD.ankle;
-    out(`   held coil: the stepping ankle ${(endAnk * 100).toFixed(1)} cm above its rest at the hold's end (rising at most ${(rise * 1000).toFixed(1)} mm a frame at the coil)`);
-    assert(endAnk <= 0.045 && rise <= 0.002, `a held light's stepping toe rests on the grass: the ankle ${(endAnk * 100).toFixed(1)} cm up at the hold's end (≤ 4.5), never rising at the coil (${(rise * 1000).toFixed(1)} mm ≤ 2)`);
+    const sole = hold[hold.length - 1].sole;
+    out(`   held coil: the stepping ankle ${(endAnk * 100).toFixed(1)} cm above its rest at the hold's end, its sole ${(sole * 100).toFixed(1)} cm above the grass (rising at most ${(rise * 1000).toFixed(1)} mm a frame at the coil)`);
+    assert(endAnk <= 0.045 && rise <= 0.002 && Math.abs(sole) <= 0.01, `a held light's stepping foot rests on the grass: its sole ${(sole * 100).toFixed(1)} cm above it at the hold's end (± 1), the ankle ${(endAnk * 100).toFixed(1)} cm up (≤ 4.5), never rising at the coil (${(rise * 1000).toFixed(1)} mm ≤ 2)`);
   }
 
   // (W5) the bite: 2.5 m from the wyrm, every landed blow (player:hitDragon, unguarded, atk.hitAt
