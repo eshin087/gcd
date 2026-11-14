@@ -386,7 +386,7 @@ export class GamepadControls {
     on('player:block', () => this.rumble(R.block));
     on('player:parry', (d) => this.rumble(d.perfect && !d.light ? R.perfectParry : d.light ? R.block : R.parry));
     on('player:perfectDodge', () => this.rumble(R.perfectDodge));
-    on('player:hitDragon', (d) => d.heavy && this.rumble(R.hitHeavy));
+    on('player:hitDragon', (d) => !d.guarded && this.rumble(d.heavy ? R.hitHeavy : R.hitLight));
   }
 
   /** Play [duration ms, strong, weak] on the active pad; silently nothing where unsupported. */

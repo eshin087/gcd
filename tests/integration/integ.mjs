@@ -1008,6 +1008,8 @@ async function scenarioReach() {
       ev = e;
       for (const h of d.hurtSpheres) gap = Math.min(gap, Math.hypot(e.point.x - h.x, e.point.y - h.y, e.point.z - h.z) - h.r);
     };
+    const sounds = [], play0 = game.audio.play;
+    game.audio.play = function (name, o) { if (ev && !sounds.done) sounds.push([name, o]); return play0.call(this, name, o); };
     p.anim.forceVariant = 0;
     input.click(0);
     for (let i = 0; i < 60 && !ev; i++) {
@@ -1015,14 +1017,18 @@ async function scenarioReach() {
       if (ev) {
         stop = game.hitstopTimer;
         punchZ = game.cameraRig.punchZ;
+        sounds.done = true;
       }
     }
+    game.audio.play = play0;
     p.anim.forceVariant = null;
     G.watch = null;
     out(`   the wyrm's cut: ${ev ? `${ev.kind}/${ev.weight}, the point ${gap.toFixed(2)} m off the nearest hurt sphere's surface, freeze ${stop.toFixed(3)} s, punch ${punchZ.toFixed(2)} m` : 'no hit'}`);
     assert(!!ev && gap <= 0.15, `a landed cut on the wyrm is drawn on its body: ${gap.toFixed(2)} m off the nearest hurt sphere's surface (≤ 0.15)`);
     assert(!!ev && ev.weight === 'light' && ev.combo === 1 && stop >= 0.055 - 1e-6, `it freezes the frame ${stop.toFixed(3)} s (≥ 0.055) and reports its weight (${ev?.weight}, combo ${ev?.combo})`);
     assert(punchZ > 0, `a landed light punches the camera in (${punchZ.toFixed(2)} m)`);
+    const hitS = sounds.filter(([n]) => n === 'hit'), cutS = sounds.filter(([n]) => n === 'cut');
+    assert(hitS.length === 1 && hitS[0][1].body === 'scale' && cutS.length === 1 && cutS[0][1].weight === 'light', `it sounds as a cut on scales: ${sounds.map(([n, o]) => `${n}${o?.body ? '/' + o.body : ''}${o?.weight ? '/' + o.weight : ''}`).join(', ') || 'nothing'}`);
   }
   assert(rows.every((r) => r[4].slamEv === 1), 'the slam meets the ground once per swing (player:slam)');
   assert(rows.every((r) => r[4].hit?.heavy === true && r[5].hit?.heavy === true && r.slice(0, 4).every((t) => t.hit?.heavy === false)), 'the slam and the cleave hit heavy, the four light hits do not');

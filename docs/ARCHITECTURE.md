@@ -1301,6 +1301,13 @@ Every sound is procedural (no samples). 2026-11-09 additions:
 - `sfx.js`: `parry {tell, chain}` (each deflect in a chain rings 2 semitones higher, up to 8 steps,
   with a bell 'ting' from the 2nd), `plungeDive {exec}` (on `player:plunge`), `plungeHit {exec}` (on
   `player:plungeHit`; a `player:hitDragon` of kind 'plunge' plays no ordinary hit sound).
+- A landed cut (`player:hitDragon`, not guarded: a guarded strike plays only its clash on
+  `dragon:guard`): `hit {heavy, crit, part, damage, body}` (body 'cloth' against a duelist: a muffled
+  slap, no scaly clack; its metallic ring only on a crit) and the blade's own layer `cut {weight,
+  combo, crit, alt}` (a slice through a falling band and a steel ring per weight, `CUT_SND`; a
+  semitone up each hit of the chain, the finisher a step down, `CUT_STEP`; alt detunes alternate
+  cuts; its noise offset from its own stream: `Voice.noise(kind, t0, t1, rate, off)` takes an
+  optional 0..1 offset instead of Math.random).
 - `audio/fire.js` (`FIRE_SFX`, `subscribeFire(on, engine)`): `dragon:spell` → skyStrafe `skyRoar`,
   diveBomb `diveScream`, meteorRain `meteorCast`, eruptions `rumble`, flameRing / flameWall
   `flameIgnite`, nova `novaCharge`; `dragon:hazard` → meteor fall `meteorFall`, hit `meteorHit`,
@@ -1452,7 +1459,7 @@ the press that makes the pad active counts. Inactive (keyboard / mouse / touch u
 pad hold is released. A pad unplugged while active in a play state pauses the game.
 `gamepadconnected` / `gamepaddisconnected` log a system line. **Rumble** (`CONFIG.gamepad.rumble`)
 on `player:hurt`, `player:guardBreak`, `player:block`, `player:parry` (perfect stronger, a bullet
-lighter), `player:perfectDodge`, `player:hitDragon` (heavy only); only while active.
+lighter), `player:perfectDodge`, `player:hitDragon` (not guarded: `hitHeavy`, else `hitLight`); only while active.
 
 ### Touch controls — `src/ui/touch.js` exports `class TouchControls`
 ```
