@@ -593,7 +593,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     ghostChains: [
       [head, chest, spine, pelvis],
       [arms.R.upper, arms.R.fore],
-      [arms.L.upper, arms.L.fore, arms.L.wrist],
+      [arms.L.upper, arms.L.fore], // (as the sword arm's: the Starless Lord's blink shares the chains)
       [legs.R.thigh, legs.R.shin, legs.R.foot],
       [legs.L.thigh, legs.L.shin, legs.L.foot],
     ],
