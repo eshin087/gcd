@@ -3771,7 +3771,7 @@ async function scenarioHeroWeight() {
   const DEG = 180 / Math.PI;
   const L10 = ['fallingCut', 'drawCut', 'risingSlash', 'risingBackhand', 'flatBackhand', 'fallingBackhand', 'lowSweep', 'lunge', 'risingThrust', 'rollCut'];
   const wrapA = (x) => Math.atan2(Math.sin(x), Math.cos(x));
-  const inv = new THREE.Matrix4(), invB = new THREE.Matrix4(), v = new THREE.Vector3(), w = new THREE.Vector3();
+  const inv = new THREE.Matrix4(), invB = new THREE.Matrix4(), invP = new THREE.Matrix4(), v = new THREE.Vector3(), w = new THREE.Vector3();
   // a joint's facing (its local +z) in the root's frame, as a yaw
   const yawIn = (J) => { v.setFromMatrixPosition(J.matrixWorld).applyMatrix4(inv); w.set(0, 0, 1).applyMatrix4(J.matrixWorld).applyMatrix4(inv).sub(v); return Math.atan2(w.x, w.z); };
   const clipOf = () => { const a = p.atk, def = a?.def; if (!def || (p.state !== 'attack' && p.state !== 'heavy')) return null; return (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? null; };
@@ -3799,6 +3799,15 @@ async function scenarioHeroWeight() {
       const e2 = new THREE.Vector3(0, -HD.foreArm, 0).applyMatrix4(arm.fore.matrixWorld).applyMatrix4(invB);
       F.arms.push(e1.clone().sub(e0).normalize(), e2.sub(e1).normalize());
     }
+    // the thighs and shins in the pelvis's frame (a leg turning with the hips does not count)
+    invP.copy(r.pelvis.matrixWorld).invert();
+    F.legs = [];
+    for (const L of [r.legs.R, r.legs.L]) {
+      const k0 = new THREE.Vector3().setFromMatrixPosition(L.thigh.matrixWorld).applyMatrix4(invP);
+      const k1 = new THREE.Vector3().setFromMatrixPosition(L.shin.matrixWorld).applyMatrix4(invP);
+      const k2 = new THREE.Vector3().setFromMatrixPosition(L.foot.matrixWorld).applyMatrix4(invP);
+      F.legs.push(k1.clone().sub(k0).normalize(), k2.sub(k1).normalize());
+    }
     // steps from the frame before (hitstop frames are flagged: a freeze frame's tiny dt fakes speeds)
     const P0 = prevF;
     F.real = F.dt >= 0.005;
@@ -3806,6 +3815,7 @@ async function scenarioHeroWeight() {
     F.dCh = P0 ? wrapA(F.ch - P0.ch) : 0;
     F.dHand = P0 ? F.hand.distanceTo(P0.hand) : 0;
     F.arm = P0 ? Math.max(...F.arms.map((u, k) => Math.acos(clamp(u.dot(P0.arms[k]), -1, 1)) * DEG)) : 0;
+    F.leg = P0 ? Math.max(...F.legs.map((u, k) => Math.acos(clamp(u.dot(P0.legs[k]), -1, 1)) * DEG)) : 0;
     prevF = F;
     return F;
   };
@@ -4097,10 +4107,27 @@ async function scenarioHeroWeight() {
       const W = S.def.windup, Ac = S.def.active;
       const win = S.frames.filter((F) => F.t >= W - 0.1 - 1e-6 && F.t <= W + Ac + 1e-6);
       const air = win.filter((F) => F.cur[P.rF + 1] > ANKH + 0.02 && F.cur[P.lF + 1] > ANKH + 0.02).length / Math.max(1, win.length);
-      return { clip: S.clip, sl: slideOf(S), air };
+      // … with no pop: through the turn and its settle (from W − 0.1 to 0.1 s past it) each leg's
+      // thigh and shin turn ≤ 30° a frame in the pelvis's frame, the feet stay ≥ 0.3 m apart (never
+      // scissoring through the middle) and their spread changes ≤ 12 cm a frame, and no foot moves
+      // more than 40 cm a frame (a straight-line blend from the grass to the turned stance spot sent
+      // the front foot to the rear spot in two frames: 40-48° a frame, 0.31 → 0.84 m apart in one)
+      let leg = 0, sep = Infinity, dSep = 0, step = 0;
+      const sepOf = (F) => Math.hypot(F.feet[0].x - F.feet[1].x, F.feet[0].z - F.feet[1].z);
+      for (let i = 1; i < S.frames.length; i++) {
+        const F = S.frames[i], F0 = S.frames[i - 1];
+        if (!F.real || F.t < W - 0.1 - 1e-6 || F.t > W + Ac + 0.1 + 1e-6) continue;
+        leg = Math.max(leg, F.leg);
+        sep = Math.min(sep, sepOf(F));
+        dSep = Math.max(dSep, Math.abs(sepOf(F) - sepOf(F0)));
+        step = Math.max(step, ...[0, 1].map((k) => Math.hypot(F.feet[k].x - F0.feet[k].x, F.feet[k].z - F0.feet[k].z)));
+      }
+      return { clip: S.clip, sl: slideOf(S), air, leg, sep, dSep, step };
     });
-    out(`   whirls: ${rows.map((R) => `${R.clip} slide ${R.sl.map((x) => x.toFixed(3)).join('/')} m, both feet up ${(R.air * 100).toFixed(0)} % of the turn`).join(' · ')}`);
+    out(`   whirls: ${rows.map((R) => `${R.clip} slide ${R.sl.map((x) => x.toFixed(3)).join('/')} m, both feet up ${(R.air * 100).toFixed(0)} % of the turn, legs ≤ ${R.leg.toFixed(0)}° a frame, feet ≥ ${R.sep.toFixed(2)} m apart (± ≤ ${(R.dSep * 100).toFixed(0)} cm a frame), a foot ≤ ${(R.step * 100).toFixed(0)} cm a frame`).join(' · ')}`);
     assert(rows.length >= 2 && rows.every((R) => Math.max(...R.sl) <= 0.08 && R.air >= 0.4), `the whirls hop round: a bearing foot slides ≤ 8 cm (${rows.map((R) => Math.max(...R.sl).toFixed(3)).join(', ')} m), both feet off the grass ≥ 40 % of the turn (${rows.map((R) => (R.air * 100).toFixed(0)).join(', ')} %)`);
+    assert(rows.length >= 2 && rows.every((R) => R.leg <= 30 && R.sep >= 0.3 && R.dSep <= 0.12 && R.step <= 0.4),
+      `… without a pop: the legs turn ≤ 30° a frame in the pelvis's frame (${rows.map((R) => R.leg.toFixed(0)).join(', ')}°), the feet ≥ 0.3 m apart (${rows.map((R) => R.sep.toFixed(2)).join(', ')}) changing ≤ 12 cm a frame (${rows.map((R) => (R.dSep * 100).toFixed(0)).join(', ')}), a foot ≤ 40 cm a frame (${rows.map((R) => (R.step * 100).toFixed(0)).join(', ')})`);
     // (W8) … and its momentum carries past the full turn and settles: the turn no longer stops dead
     // in a frame (its 2nd frame after the cut turns ≥ 0.35 of its last one), and it is home by 0.2 s
     // (a single whirl: hits 1 and 2, then the whirl and nothing after it)

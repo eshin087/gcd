@@ -21,9 +21,10 @@ import { DIM } from './model.js';
 //                   while it can hit. Options: `spin` (±1: the whole body turns once through the
 //                   active frames, − = to his right), `turn` (rad, + = to his left: a partial body
 //                   pivot through the cut that turns back in the recovery; the feet turn on their
-//                   balls), `spinFeet` ('hop': a spin's feet leave the grass through the fast part of
-//                   the turn and land on the stance spots; 'carry', the default: they are carried
-//                   round with it in two quick pivot steps), `hop` (m: a skip off the
+//                   balls), `spinFeet` ('hop': a spin's feet leave the grass from where they stand
+//                   through the fast part of the turn, are carried round with the body, each round
+//                   its own side to its stance spot, and land on it; 'carry', the default: they are
+//                   carried round with it in two quick pivot steps), `hop` (m: a skip off the
 //                   ground through the windup into the cut; `tuck`: how far the feet lift with it,
 //                   × the hop, over 1 = the knees draw up), `feet: 'dash'` (bounding steps for a
 //                   long root travel instead of one lunge step; `dashW`: the dash starts at the

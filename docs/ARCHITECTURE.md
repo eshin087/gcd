@@ -685,9 +685,12 @@ the hips run ahead of the turn and the chest trails it (`SPIN_LEAD`), and its mo
 ~14° past the full turn before he settles back (`SPIN_OV`, a damped spring let go at the turn's last
 speed; the feet pivot on their balls). The anim block's `spinFeet` picks the feet: `'carry'` (the
 default: the stance spots carried round the root in two quick pivot steps) or `'hop'` (the whirls:
-both feet leave their spots by `SPIN_HOP.up` of the turn, are carried round in the air and land on
-the stance spots lungeFeet left in `anim.spots` by `SPIN_HOP.down`, planted from there; no follow
-step; the hips rise `SPIN_HOP.rise`).
+each foot leaves the grass from where lungeFeet has it over `SPIN_HOP.up` of the turn and is
+carried round with the body, moving across it round its own side from the spot it left (`anim.hop
+{ set, yaw, a, r }`: caught as the feet lift) to the stance spot lungeFeet left in `anim.spots`,
+drawn in to `SPIN_HOP.tuck` × the stance's spread at the top; over `SPIN_HOP.down` it runs on round
+with the turn onto that spot, planted from there. Blended in angle and radius about the root, never
+in straight lines through the middle; no follow step; the hips rise `SPIN_HOP.rise`).
 **Attack variants** (ADR-055): a `LIGHT` def may carry `variants` (more `anim` blocks for the same
 hit: same timing, damage, reach and lunge). `HeroAnimator.play('attack')` calls `_pickVariant()`:
 `anim` or one of `variants` at random with the animator's own noise, never the same one twice in a

@@ -1049,19 +1049,47 @@ function spinTurn(p, A, dir, t, W, Ac, mode = 'carry') {
       p[i + 1] += 0.07 * Math.max(0, Math.sin(Math.PI * clamp(k ? u * 2 - 1 : u * 2, 0, 1)));
     }
   } else {
-    // airborne weight; the lift (over the whole flight) and the landing (the stance spots, held
-    // root-relative until then and planted from there)
-    const air = smoothstep(H.up[0], H.up[1], u) * (1 - smoothstep(H.down[0], H.down[1], u));
+    // each foot leaves the grass from where it really stands (lungeFeet's foot: planted, or mid-step)
+    // and is carried round WITH the body: its angle about the root grows with the turn while it moves
+    // across the body, round its own side, from the spot it left (A.hop: caught as it lifts, in the
+    // turned body's frame) to its stance spot (A.spots), drawn in at the top of the flight; landing,
+    // it runs on round with the turn onto its spot, planted from there. Blended in angle and radius
+    // about the root: a straight-line blend from the grass to the turned spot cut through the middle
+    // (a foot jumped 26 cm in a frame, the legs scissored and turned 40-48° a frame)
+    const up = smoothstep(H.up[0], H.up[1], u), dn = smoothstep(H.down[0], H.down[1], u);
     const fl = Math.sin(Math.PI * clamp((u - H.up[0]) / (H.down[1] - H.up[0]), 0, 1));
-    const mL = A.mark(3, t0 + H.down[1] * (t1 - t0));
-    for (let k = 0; k < 2; k++) {
+    const g = smoothstep(H.up[0], H.down[0], u); // across the body: the spot it left → its stance spot
+    const yawF = yaw + dn * (dir * TAU - yaw); // how far round the feet are carried (on to the full turn as they land)
+    const mL = A.mark(3, t0 + H.down[1] * (t1 - t0)), Hf = A.hop;
+    if (!Hf.set && u >= H.up[0]) {
+      Hf.set = true;
+      Hf.yaw = yaw;
+      for (let k = 0; k < 2; k++) {
+        const i = k ? P.lF : P.rF;
+        Hf.a[k] = Math.atan2(fin(p[i], 0), fin(p[i + 2], 0));
+        Hf.r[k] = Math.hypot(fin(p[i], 0), fin(p[i + 2], 0));
+      }
+    }
+    for (let k = 0; Hf.set && k < 2; k++) {
       const i = k ? P.lF : P.rF, front = k ? stepL : !stepL;
       const sx = front ? S[2] : S[0], sz = front ? S[3] : S[1];
-      // (the first half leaves from where lungeFeet has the foot; the second lands on its spot)
-      const bx = u < 0.5 ? p[i] : sx - (tr.x - mL.x), bz = u < 0.5 ? p[i + 2] : sz - (tr.z - mL.z), by = u < 0.5 ? p[i + 1] : ANK;
-      p[i] = lerp(bx, sx * c + sz * s, air);
-      p[i + 2] = lerp(bz, sz * c - sx * s, air);
-      p[i + 1] = Math.max(ANK, lerp(by, ANK, air)) + H.lift * fl;
+      if (u >= H.down[1]) {
+        // landed: planted on its stance spot
+        p[i] = sx - (tr.x - mL.x);
+        p[i + 1] = ANK;
+        p[i + 2] = sz - (tr.z - mL.z);
+        continue;
+      }
+      const bx = p[i], bz = p[i + 2], by = p[i + 1], aB = Math.atan2(bx, bz);
+      // in the air: the angle (the spot it left in the body's frame, on round its own side to the
+      // stance spot's, + the turn) and the radius (tucked in at the top)
+      const aS = Math.atan2(sx, sz), a0 = Hf.a[k] - Hf.yaw, across = wrapAngle(aS - a0);
+      const rAir = lerp(Hf.r[k], Math.hypot(sx, sz), g) * (1 - (1 - H.tuck) * fl);
+      // (from the grass: the angle still to go is unwrapped through the turn, not wrapped)
+      const ang = aB + up * (yawF - Hf.yaw + g * across + wrapAngle(Hf.a[k] - aB)), rad = lerp(Math.hypot(bx, bz), rAir, up);
+      p[i] = rad * Math.sin(ang);
+      p[i + 2] = rad * Math.cos(ang);
+      p[i + 1] = Math.max(ANK, lerp(by, ANK, up)) + H.lift * fl;
     }
     p[P.bodyY] += H.rise * fl;
   }
@@ -1084,8 +1112,9 @@ const SPIN_SPOT = 0.6; // rad: how far the head turns back toward the target (an
 const SPIN_OV = { tau: 0.033, len: 0.2 }; // the whirl's overshoot: its spring's time constant (peak ~14° at 2 frames), how long it runs (s)
 const SPIN_LEAD = [0.22, 0.12]; // rad (× sin over the turn): the hips run ahead of the whirl, the chest trails it
 // the whirl's hop ('hop' feet): the feet leave the grass over u ∈ up, land over u ∈ down (u: the
-// turn's own phase), lifted `lift` m at the top, the hips risen `rise` m
-const SPIN_HOP = { up: [0.22, 0.34], down: [0.62, 0.8], lift: 0.09, rise: 0.05 };
+// turn's own phase; landing late, the turn left to take on the balls of the feet is ~16°), lifted
+// `lift` m at the top, drawn in to `tuck` × their stance's spread there, the hips risen `rise` m
+const SPIN_HOP = { up: [0.08, 0.32], down: [0.7, 0.95], lift: 0.09, tuck: 0.65, rise: 0.05 };
 
 const FOOT_CH = [P.rF, P.rF + 1, P.rF + 2, P.lF, P.lF + 1, P.lF + 2, P.rFy, P.lFy];
 const FOOT_KEEP = new Float32Array(FOOT_CH.length);
@@ -2641,6 +2670,9 @@ export class HeroAnimator {
     // its window t0..t1 of the attack's clock)
     this.follow = { on: -1, x: 0, z: 0, t0: 0, t1: 0 };
     this.spots = new Float32Array(4); // lungeFeet → spinTurn: the rear spot x, z; the front spot x, z (model)
+    // spinTurn ('hop'): caught as the feet lift (set): the turn then (yaw) and each foot's angle and
+    // radius about the root (a, r: right, left; model)
+    this.hop = { set: false, yaw: 0, a: new Float32Array(2), r: new Float32Array(2) };
     this.plantAt = { x: 0, z: 0, ok: false }; // lungeFeet: the front spot the stepping foot planted on
     this.holdOff = { x: 0, z: 0 }; // lungeFeet: how far the holding foot has been dragged (model)
     this.footDrag = 0; // lungeFeet (tests read it): bit 1 = the right toe drags, 2 = the left
@@ -2713,6 +2745,7 @@ export class HeroAnimator {
     this.footDrag = 0;
     this.plantAt.ok = false;
     this.holdOff.x = this.holdOff.z = 0;
+    this.hop.set = false;
     this.from.set(this.cur);
     for (const i of ANGLES) this.from[i] = wrapAngle(this.from[i]); // a finished roll is 2π ≡ 0
     // how far round the body stood as this clip began (a whirl cut short): the reactions unwind it
@@ -2770,6 +2803,7 @@ export class HeroAnimator {
     this.footDrag = 0;
     this.plantAt.ok = false;
     this.holdOff.x = this.holdOff.z = 0;
+    this.hop.set = false;
     Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '' });
     this.visYaw = fin(this.player.yaw);
     this.cycOn = false;
