@@ -112,7 +112,7 @@ The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 
 | Handle | From | Shape |
 | --- | --- | --- |
 | `coat` | `waist` | array of panels `{ anchor, segs: [upper, lower], def, strips, len: [upper, lower], r0 }` (below) |
-| `streamers` | any | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm?, wrap?, inMax? }` (below) |
+| `streamers` | any | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm?, wrap?, inMax?, floor? }` (below) |
 | `offHand` | `arms` | `{ open, grip }`: the free hand open on the left forearm, and the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint); the animator shows one or the other with `twoHand`. Build it with `buildFreeHand(ctx)` (`hands.js`) |
 | `gem` | `weapon` | an Object3D on the weapon whose world position is where the gem glows |
 | `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`) |
@@ -176,7 +176,8 @@ any item:
   ribbon or a scarf off the back that must not swing into him; negative = always at least that far
   out; not applied while he lies down); `wrap` is the radius the sheet curves round at its root
   (the tests model the sheet with it); `floor: true` keeps its ends over the grass while he rolls or
-  falls (a head ribbon: the forward roll puts his crown at the grass). Any slot may return streamers.
+  falls (a head ribbon: the forward roll puts his crown at the grass; a lagging end is eased back
+  out, never snapped). Any slot may return streamers.
   The root may hang on any joint (the cloak drapes one sheet over each upper arm). Give `w` (the
   widths [root, seam, hem]) so the animator can keep the sheet off the blade (ADR-048: spheres along
   the steel), and `arm` (1 / 2 for a sheet on the right / left upper arm). The arms do not push the

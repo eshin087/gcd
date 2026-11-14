@@ -537,7 +537,7 @@ segments (the lower one is two meshes: `coat` above, the lavender torn zone `hem
 cloak, five sheets on the chest and the upper arms (a narrow cape, ADR-073), `SHROUD_SHEETS` in `gear/shroud.js`, ADR-043;
 or the Wanderer's torn cape, four sheets behind the right shoulder, `CAPE_SHEETS`, ADR-037; any
 slot's item may return them (a head ribbon, a sleeve wing, a sash tail); each record
-`{ segs, len, out, lag?, max?, w?, arm?, wrap?, inMax? }`, `out` = its own outward flare, `lag` = how much
+`{ segs, len, out, lag?, max?, w?, arm?, wrap?, inMax?, floor? }`, `out` = its own outward flare, `lag` = how much
 it trails the motion (default 1 = a light ribbon, the cloak 0.5), `max` = how far it may swing from
 hanging (rad; default 2.6, the cloak 1.45), `w` = its widths [root, seam, hem] (default 0.3 m
 across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest), `wrap` = the
@@ -546,8 +546,9 @@ radius the sheet curves round at its root (read by the tests' sheet model, not b
 always at least that far out; default its `max`; not applied lying, ADR-083) so a head ribbon or a
 scarf off the back never swings into the body, `floor` = while he rolls or falls (not lying: there
 `_layFlat` rules) the segments' ends stay `STREAM_FLOOR` (2 cm) over the grass: the target swings to
-the nearest angle that clears it and a lagging spring is snapped to it (a head ribbon in the forward
-roll, where his crown meets the grass; default off, today's cloak and every boss's cape go without)).
+the nearest angle that clears it and a lagging spring is eased out toward the least swing that clears
+it, at most `STREAM_PUSH` (6 rad/s, so it never pops) (a head ribbon in the forward roll, where his
+crown meets the grass; default off, today's cloak and every boss's cape go without)).
 **Cloth vs steel**
 (ADR-048): every frame `_colliders` places spheres along the blade (`COL_BLADE`; the arm lists
 `COL_FORE` / `COL_UPPER` are empty: holding the sheets out round the arms widened his back), and

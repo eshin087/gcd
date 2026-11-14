@@ -2152,6 +2152,9 @@ const STREAM_A = 2.6, STREAM_B = 1.3;
 // a streamer with `floor` (a head ribbon, a long scarf) keeps its segments' ends this high (m, world)
 // while he rolls or falls: the forward roll puts his crown at the grass
 const STREAM_FLOOR = 0.02;
+// … and the grass pushes a lagging end back out at most this fast (rad/s; ~0.1 rad a frame at 60 fps,
+// the springs' own largest steps: a full snap to the target popped the Warden ribbon 0.44 rad mid-roll)
+const STREAM_PUSH = 6;
 // soft reach: where the arm's reach starts to give / the most it opens, as fractions of its length
 // (0.955: the elbow keeps ~35° at a full stretch)
 const ARM_SOFT = [0.78, 0.955];
@@ -3640,8 +3643,9 @@ export class HeroAnimator {
         // how far a segment may swing IN toward its wearer (rad, + = in; the streamer's `inMax` [root,
         // tip]: a head ribbon, a scarf off the back, a sleeve wing off the arm; a negative value keeps
         // it at least that far OUT). Default its max. Not lying (ADR-083: there gravity rules it)
-        const im = lying ? mA : (S.inMax?.[s] ?? mA);
-        const hi = Math.min(COL_BND[1], im), lo = Math.min(COL_BND[0], hi);
+        // (no `inMax`: the bound as it was, exactly; COL_BND is float32, so min(…, mA) would move it)
+        const im = lying ? undefined : S.inMax?.[s];
+        const hi = im === undefined ? COL_BND[1] : Math.min(COL_BND[1], im), lo = im === undefined ? COL_BND[0] : Math.min(COL_BND[0], hi);
         let tA = Math.min(Math.max(clamp(Math.atan2(-_v.z, -_v.y), -mA, mA), lo), hi);
         // lying on the ground (knocked down, dead) a sheet obeys gravity (ADR-083): "wrapped along
         // the body" stood a sleeve's sheet up in the air with an upper arm that pointed up
@@ -3668,10 +3672,21 @@ export class HeroAnimator {
           c.x = lo;
           if (c.vx < 0) c.vx = 0;
         }
-        // the grass is rigid: a lagging spring never carries the end under it (the target clears it)
-        if (fl && this._floorY(c.x, S.len[s] * ws) < STREAM_FLOOR && this._floorY(tA, S.len[s] * ws) > this._floorY(c.x, S.len[s] * ws)) {
-          c.x = tA;
-          c.vx = 0;
+        // the grass pushes a lagging end back out (the target clears it): toward the least swing that
+        // clears it, at most STREAM_PUSH rad/s, so the cloth is eased off the grass, never popped
+        if (fl) {
+          const L = S.len[s] * ws, y = this._floorY(c.x, L);
+          if (y < STREAM_FLOOR && this._floorY(tA, L) > y) {
+            let a = c.x, b = tA;
+            for (let k = 0; k < 8; k++) {
+              const mid = 0.5 * (a + b);
+              if (this._floorY(mid, L) >= STREAM_FLOOR) b = mid;
+              else a = mid;
+            }
+            const push = clamp(b - c.x, -STREAM_PUSH * dt, STREAM_PUSH * dt);
+            c.x += push;
+            if (c.vx * push < 0) c.vx = 0; // no swing left driving it back into the grass
+          }
         }
         c.z = clamp(c.z, -STREAM_B, STREAM_B);
         j.rotation.set(c.x, 0, c.z);
