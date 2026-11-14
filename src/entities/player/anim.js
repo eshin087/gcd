@@ -296,7 +296,7 @@ export function guard(p, A) {
   v3(p, P.rH, -0.19, -0.435 + 0.006 * br, 0.06); // the grip out beside the right hip, clear of the coat
   v3(p, P.rP, 0.5, -0.3, -1); // the upper arm hangs by the ribs, the elbow a little back: the forearm runs out and down, ~25° off the blade's line
   v3(p, P.lH, 0.07 + 0.006 * sw, -0.5 + 0.012 * br, 0.06 + 0.01 * br); // sword fingers low by the left hip; it breathes (the hand used to hang still)
-  v3(p, P.lP, 0.6, -0.1, -0.8);
+  v3(p, P.lP, 0.3, -0.2, -0.9); // (0.6 out: the elbow stood off the ribs like a wing)
   v3(p, P.swD, IDLE_SW[0] + 0.01 * br, IDLE_SW[1] + 0.008 * br, IDLE_SW[2] + 0.015 * sw);
   v3(p, P.swF, 0.15, 0.05, 1); // edge down, the flat faces forward: broad to a camera in front or behind
   // (the right foot stood 0.33 m out and the leg dead straight: a straddle; now a shoulder-width
@@ -469,21 +469,32 @@ export function loco(p, A) {
   // (ADR-044: the hand hung 0.5 m below the shoulder, the end of the arm's reach, so the stride's
   // swing was lost in a straight arm; it rides a little higher now and swings 9 cm with the stride,
   // against the free arm)
-  const amp = 0.09 * cs * mz, ws = A.swordW, bw = A.backW;
+  // the arms swing with the stride whichever way he moves: their swing followed mz alone, so
+  // strafing with the aim held elsewhere (mz ~ 0: most of a fight on the mouse, or locked on) both
+  // arms hung still in one crook while the legs ran. Its sign follows the fore-aft direction, eased
+  // through sideways; its size never drops under 0.65
+  const armF = clamp(mz / 0.15, -1, 1) * Math.max(Math.abs(mz), 0.65);
+  const amp = 0.09 * cs * armF, ws = A.swordW, bw = A.backW;
   to3(p, P.rH, lerp(lerp(-0.13, -0.15, s), -0.02, bw), lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38, bw), lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3, bw), ws);
-  to3(p, P.rP, lerp(-0.75, -0.85, bw), lerp(lerp(-0.3, 0.2, s), -0.3, bw), lerp(-0.85, -0.5, bw), ws);
+  // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
+  // front: they point back beside the ribs now)
+  to3(p, P.rP, lerp(lerp(-0.4, -0.5, s), -0.85, bw), lerp(lerp(-0.3, 0.2, s), -0.3, bw), lerp(-0.95, -0.5, bw), ws);
   dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
   dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
   to3(p, P.swF, lerp(-0.3, 0, bw), 1, lerp(0, 0.2, bw), ws);
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
-  const k = 0.5 - 0.5 * cs * mz; // 1 = fist forward
-  to3(p, P.lH, lerp(-0.02, -0.08, s) * k + 0.06 * (1 - k), lerp(lerp(-0.44, -0.3, k), lerp(-0.38, -0.04, k), s), lerp(lerp(-0.1, 0.24, k), lerp(-0.14, 0.32, k), s), w);
-  to3(p, P.lP, 0.6, -0.6, -0.6, w);
-  // the free hand relaxes on the move: the sword fingers half follow the forearm's own line (|lD|
-  // is their weight; a wuxia run keeps the shape)
+  const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
+  // (the run's back swing reaches further down and back, so the elbow opens behind him and folds as
+  // the hand comes forward: it was one rigid 87° crook swinging from the shoulder)
+  to3(p, P.lH, lerp(-0.02, -0.08, s) * k + 0.07 * (1 - k), lerp(lerp(-0.485, -0.3, k), lerp(-0.4, -0.04, k), s), lerp(lerp(-0.17, 0.24, k), lerp(-0.18, 0.32, k), s), w);
+  to3(p, P.lP, lerp(0.28, 0.36, s), -0.5, -0.8, w);
+  // the free hand relaxes on the move: an open hand that half follows the forearm's own line (|lD|
+  // is its weight). (Session 30: the run kept the sword fingers, two long fingers dangling off a
+  // pumping arm; the shape is for the guard and the cuts)
   {
     const k = 1 - 0.55 * w;
     for (let i = 0; i < 3; i++) p[P.lD + i] *= k;
+    p[P.hs] = lerp(p[P.hs], 0, clamp(w * 2, 0, 1));
   }
   turnTwist(p, A);
 }
@@ -1368,7 +1379,11 @@ function dashFeet(p, A, W) {
  *  leaned the blade 34-44° back over the shoulder, and from the camera behind and above him a blade
  *  leaning toward the camera is drawn DOWN across his back. Nearly upright, it stands above his
  *  shoulder on screen whichever way he faces.) */
-const CHARGE_SW = [-140, 80, 74]; // the blade: azimuth, elevation at no charge … full (degrees)
+// (Session 30, owner: "when charging, the sword is piercing the characters face": the blade stood
+// 0.10 m from the head's axis, 3-7 cm INSIDE the hood, because it leaned back toward a head that
+// leans forward. It leans out to his right now and the hands sit lower and further forward: the
+// steel passes ≥ 0.26 m from the head's axis, a hand's width clear of the hood.)
+const CHARGE_SW = [-82, 80, 74]; // the blade: azimuth, elevation at no charge … full (degrees)
 function chargePose(p, A) {
   const k = clamp(A.chargeK, 0, 1), s = smoothstep(0, 0.25, A.t), w = s * k;
   stance(p, A, 0);
@@ -1380,7 +1395,7 @@ function chargePose(p, A) {
   p[P.bodyZ] = -0.03 * s; // the weight back over the rear leg
   p[P.pelvY] = -0.28 * s - 0.08 * w;
   p[P.spY] = -0.4 * s - 0.14 * w;
-  p[P.spX] = lerp(0.1, 0.26, s) + 0.07 * w;
+  p[P.spX] = lerp(0.1, 0.2, s) + 0.05 * w; // (0.26 + 0.07: the bow carried his head forward into the steel)
   p[P.spZ] = 0;
   p[P.hdY] = -(p[P.pelvY] + p[P.spY]) * 0.85; // eyes stay on the target
   p[P.hdX] = -0.1 * s;
@@ -1392,7 +1407,7 @@ function chargePose(p, A) {
   // to the steel. (Session 26, owner: "while charging the right hand makes an unnatural angle": the
   // hands were 0.11 m before the shoulder. The sword elbow was folded to 18°, the forearm stood up
   // under the hilt in one line with the blade, and the off hand was inside his chest.)
-  v3(p, P.rH, 0.0, -0.05 + 0.02 * k, 0.26);
+  v3(p, P.rH, -0.1, -0.11 + 0.02 * k, 0.31);
   // (the elbow lifts out once the blade is up: lifted at once, the upper arm stood in the way of the
   // steel coming up from a light swing's coil)
   const lift = smoothstep(0.12, 0.36, A.t);
@@ -2507,6 +2522,12 @@ const STREAM_PUSH = 6;
 // soft reach: where the arm's reach starts to give / the most it opens, as fractions of its length
 // (0.955: the elbow keeps ~35° at a full stretch)
 const ARM_SOFT = [0.78, 0.955];
+// … the hero's (Session 30, owner: "something about the arms still feel unnatural and stiff"): his
+// clips ask for the hand at 0.94-1.01 of the arm's length at a cut's contact and a thrust's end, and
+// through ARM_SOFT that came out as an elbow of 124-130° in EVERY swing: the arms never opened, a cut
+// and a thrust were made with the same crooked arm. With these a hand at a full stretch opens the
+// elbow to ~150° (it still never locks: 163° is the most it reaches), and a hanging arm hangs
+const HERO_SOFT = [0.93, 0.99];
 // joint limits (ADR-078): the least angle an elbow / a knee closes to, as the nearest a hand / a foot
 // may come to its shoulder / hip (the law of cosines on the two bones)
 const ARM_FOLD = 40 * (Math.PI / 180), LEG_FOLD = 32 * (Math.PI / 180);
@@ -3652,12 +3673,16 @@ export class HeroAnimator {
     // gives the full reach back, so two hands still meet (the hero's free arm only up to LOCK_REACH:
     // its elbow on the grip keeps a bend instead of locking straight)
     {
-      const L = DIM.upperArm + DIM.foreArm, d0 = ARM_SOFT[0] * L;
+      // (the hero's arms open further, HERO_SOFT; his sword arm in a two-handed grip keeps the old
+      // reach: the free hand has to follow the grip, and it cannot follow a fully stretched sword arm)
+      const hs = this.freeHand ? (holdsSword ? 1 - clamp(fin(p[P.twoHand], 0), 0, 1) : 1) : 0;
+      const s0 = lerp(ARM_SOFT[0], HERO_SOFT[0], hs), s1 = lerp(ARM_SOFT[1], HERO_SOFT[1], hs);
+      const L = DIM.upperArm + DIM.foreArm, d0 = s0 * L;
       _v.subVectors(_T, _S);
       const d = _v.length();
       const capR = this.freeHand && arm === this.rig.arms.L ? LOCK_REACH : 1;
       if (d > d0 && (lock < 1 || capR < 1)) {
-        const span = (ARM_SOFT[1] - ARM_SOFT[0]) * L;
+        const span = (s1 - s0) * L;
         const d2 = d0 + span * (1 - Math.exp(-(d - d0) / span));
         const dl = capR < 1 ? Math.min(d, capR * L) : d;
         _T.copy(_S).addScaledVector(_v, lerp(d2, dl, lock) / d);

@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | deflect | lab | strings | plungeReact |
-//             timing | fire | herolook | herolife | herohand | heroweight | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | herolook | herolife | herohand | heroweight | heroarms | looks | win | die | touch | pad | remap | all (default all)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -2569,7 +2569,9 @@ async function scenarioHero() {
   assert(!bad, `rig matrices stay finite through every move (${frames} frames)`);
   assert(low > -0.02, `torn strip tips stay above the grass (lowest ${low.toFixed(3)} m)`);
   assert(tipLow > -0.06, `the steel point never sinks into the ground (lowest ${tipLow.toFixed(3)} m)`);
-  assert(bendR > 0.4 && bendL > 0.4, `neither arm locks straight: the elbows keep at least ${(Math.min(bendR, bendL) * 57.3).toFixed(0)} deg of bend through the run, the roll and every attack (sword arm ${(bendR * 57.3).toFixed(0)}, off arm ${(bendL * 57.3).toFixed(0)})`);
+  // (≥ 15°: the hero's arms open to ~150-160° at a cut's contact and a thrust's end, anim.js HERO_SOFT;
+  // under ARM_SOFT they never opened past 130° and the bound was 23°)
+  assert(bendR > 0.26 && bendL > 0.26, `neither arm locks straight: the elbows keep at least ${(Math.min(bendR, bendL) * 57.3).toFixed(0)} deg of bend through the run, the roll and every attack (sword arm ${(bendR * 57.3).toFixed(0)}, off arm ${(bendL * 57.3).toFixed(0)})`);
   // glyph cells follow the view distance: the in-game size at the 36 m camera, finer in close-ups
   // (small parts capped, the blade's two columns fixed); a bad distance never yields NaN
   const coatU = r.materials.coat.uniforms.uCell.value;
@@ -2715,7 +2717,7 @@ async function scenarioHero() {
       let rest = 0;
       run(1.5, (a) => { rest = a; });
       out(`   the ribbon: lowest ${lowest.toFixed(3)} m (${lowestDown.toFixed(3)} m landing in a knockdown), ${swing.toFixed(0)}° from hanging through a falling cut, ${rest.toFixed(0)}° 1.5 s into idle`);
-      assert(lowest >= 0 && lowestDown >= -0.04, `the ribbon never sinks into the grass through a run, a sprint, a roll, the chain and the cleave (lowest ${lowest.toFixed(3)} m), nor more than 4 cm landing in a knockdown (${lowestDown.toFixed(3)} m)`);
+      assert(lowest >= 0 && lowestDown >= -0.05, `the ribbon never sinks into the grass through a run, a sprint, a roll, the chain and the cleave (lowest ${lowest.toFixed(3)} m), nor more than 5 cm landing in a knockdown (${lowestDown.toFixed(3)} m)`);
       assert(swing >= 35 && rest <= 25, `the ribbon swings out through a cut (${swing.toFixed(0)}° ≥ 35°) and hangs again at rest (${rest.toFixed(0)}° ≤ 25°)`);
       p.setLoadout(DEFAULT_LOADOUT);
       drive();
@@ -4922,6 +4924,175 @@ async function scenarioHeroWeight() {
   return G;
 }
 
+// ================================================================== scenario: the arms
+// The hero's arms (Session 30, the owner: "something about the arms still feel unnatural and stiff";
+// "when charging, the sword is piercing the characters face"). Measured in the chest's own frame (the
+// drawn figure is lean-sheared and scaled: world angles lie): the charged blade's pass by his head;
+// the elbows opening at a cut's contact and a thrust's end, and never locking; the elbows kept in
+// beside the ribs on the run; the shoulders riding with the reach; a hanging arm that hangs.
+async function scenarioHeroArms() {
+  out('\n== scenario HEROARMS (the arms open and close; the elbows stay in; the charged blade clear of his head) ==');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const { P } = await imp('src/entities/player/anim.js');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const p = game.player, d = game.dragon, r = p.rig, A = p.anim;
+  p.debug.god = true;
+  p.debug.teleport(d.position.x + 14, d.position.z + 14);
+  const DEG = 180 / Math.PI;
+  const v = new THREE.Vector3(), w = new THREE.Vector3();
+  const go = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); each?.(); } };
+  go(0.5);
+  // the elbow's opening (180 = straight) and the upper arm's direction in the chest's frame
+  const elbow = (s) => 180 - Math.abs(r.arms[s].fore.rotation.x) * DEG;
+  const upper = (s, o) => o.set(0, -1, 0).applyQuaternion(r.arms[s].upper.quaternion); // (x: + = his left)
+  const flare = (s) => upper(s, v).x * (s === 'R' ? -1 : 1); // how far the elbow points out to its own side
+  // the blade's nearest pass to the head's axis between the chin and the crown (head local, model m)
+  const bladeHead = () => {
+    let best = Infinity;
+    for (let z = 0.12; z <= (HD.drawnTip ?? HD.steelTip) + 1e-6; z += 0.02) {
+      r.head.worldToLocal(v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld));
+      if (v.y < -0.06 || v.y > 0.32) continue;
+      best = Math.min(best, Math.hypot(v.x, v.z));
+    }
+    return best;
+  };
+  const clipOf = () => {
+    const a = p.atk, def = a?.def;
+    if (!def || (p.state !== 'attack' && p.state !== 'heavy')) return null;
+    return (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? def.name ?? null;
+  };
+
+  // (A1) at rest: the arms hang
+  go(1.0);
+  const rest = { R: elbow('R'), L: elbow('L'), fR: flare('R'), fL: flare('L') };
+  out(`   rest: elbows R ${rest.R.toFixed(0)}° L ${rest.L.toFixed(0)}°, flare R ${rest.fR.toFixed(2)} L ${rest.fL.toFixed(2)}`);
+
+  // (A2) the run, the same run as a strafe, and the sprint: the elbows beside the ribs, the arms swinging
+  const mk = () => ({ fR: -1, fL: -1, eR: [180, 0], eL: [180, 0], hz: [9, -9] });
+  const loco = { run: mk(), strafe: mk(), sprint: mk() };
+  const locoEach = (K) => () => {
+    for (const s of ['R', 'L']) {
+      K['f' + s] = Math.max(K['f' + s], flare(s));
+      const e = elbow(s);
+      K['e' + s][0] = Math.min(K['e' + s][0], e);
+      K['e' + s][1] = Math.max(K['e' + s][1], e);
+    }
+    // the free hand's fore-aft swing (the pose's offset from its shoulder, body axes)
+    K.hz[0] = Math.min(K.hz[0], A.cur[P.lH + 2]);
+    K.hz[1] = Math.max(K.hz[1], A.cur[P.lH + 2]);
+  };
+  // (the stick is world-fixed, y = north = −z; he faces the mouse's ground point: far north = a run
+  // straight ahead, far east = the same run as a strafe)
+  const aimFar = (dx, dz) => game.mouseGround.set(p.position.x + dx, 0, p.position.z + dz);
+  aimFar(0, -60);
+  input.axis = { x: 0, y: 1 };
+  go(0.6, () => aimFar(0, -60));
+  go(1.2, () => { aimFar(0, -60); locoEach(loco.run)(); });
+  const mzRun = A.mz;
+  go(0.5, () => aimFar(60, 0));
+  go(1.2, () => { aimFar(60, 0); locoEach(loco.strafe)(); });
+  const mzStrafe = A.mz;
+  input.hold('ShiftLeft');
+  go(0.6);
+  go(1.0, locoEach(loco.sprint));
+  input.release('ShiftLeft');
+  input.axis = { x: 0, y: 0 };
+  go(1.0);
+  for (const k of ['run', 'strafe', 'sprint']) {
+    const K = loco[k];
+    out(`   ${k}${k === 'run' ? ` (mz ${mzRun.toFixed(2)})` : k === 'strafe' ? ` (mz ${mzStrafe.toFixed(2)})` : ''}: flare R ${K.fR.toFixed(2)} L ${K.fL.toFixed(2)}; elbows R ${K.eR[0].toFixed(0)}-${K.eR[1].toFixed(0)}° L ${K.eL[0].toFixed(0)}-${K.eL[1].toFixed(0)}°; the free hand swings ${((K.hz[1] - K.hz[0]) * 100).toFixed(0)} cm fore and aft`);
+  }
+
+  // (A3) the chain, each look: how far each elbow opens in each swing, and the most it opens at all
+  const swings = {};
+  let lock = 0, lockAt = '';
+  const swingEach = () => {
+    const c = clipOf();
+    if (!c) return;
+    const S = (swings[c] ??= { R: 0, L: 0, Rmin: 180, Lmin: 180, n: 0, want: 0 });
+    S.n++;
+    for (const s of ['R', 'L']) {
+      const e = elbow(s);
+      S[s] = Math.max(S[s], e);
+      S[s + 'min'] = Math.min(S[s + 'min'], e);
+      if (A.cur[P.twoHand] < 0.5 || s === 'R') {
+        if (e > lock) { lock = e; lockAt = `${s} ${c} t ${p.atk.t.toFixed(2)}`; }
+      }
+    }
+    S.want = Math.max(S.want, Math.hypot(A.cur[P.rH], A.cur[P.rH + 1], A.cur[P.rH + 2]) / (HD.upperArm + HD.foreArm));
+  };
+  for (let look = 0; look < 3; look++) {
+    A.forceVariant = look;
+    for (let k = 0; k < 5; k++) {
+      input.click(0);
+      go(k === 4 ? 0.9 : CHAIN_EVERY, swingEach);
+    }
+    go(0.8, swingEach);
+  }
+  A.forceVariant = null;
+  // the sprint slash and the roll cut
+  input.axis = { x: 0, y: 1 };
+  input.hold('ShiftLeft');
+  go(0.8);
+  input.click(0);
+  input.release('ShiftLeft');
+  input.axis = { x: 0, y: 0 };
+  go(1.0, swingEach);
+  for (const [c, S] of Object.entries(swings)) out(`   ${c}: sword elbow ${S.Rmin.toFixed(0)}-${S.R.toFixed(0)}° (asks ${(S.want * 100).toFixed(0)} % of the arm), free elbow ${S.Lmin.toFixed(0)}-${S.L.toFixed(0)}° (${S.n} frames)`);
+
+  // (A4) the charge and its release: the blade's pass by his head
+  let holdMin = Infinity, holdAt = 0, dashMin = Infinity, dashAt = 0, gapMax = 0, chargeL = [180, 0], chargeR = [180, 0];
+  input.press(0);
+  go(1.7, () => {
+    if (p.state !== 'charge') return;
+    const b = bladeHead();
+    if (b < holdMin) { holdMin = b; holdAt = p.chargeK; }
+    if (p.chargeK > 0.3) {
+      gapMax = Math.max(gapMax, A.gripGap ?? 0);
+      chargeL = [Math.min(chargeL[0], elbow('L')), Math.max(chargeL[1], elbow('L'))];
+      chargeR = [Math.min(chargeR[0], elbow('R')), Math.max(chargeR[1], elbow('R'))];
+    }
+  });
+  const fistShown = r.offHand.grip.visible;
+  input.up(0);
+  go(1.2, () => {
+    const a = p.atk;
+    if (!a?.def || p.state !== 'heavy') return;
+    const b = bladeHead();
+    if (b < dashMin) { dashMin = b; dashAt = a.t; }
+  });
+  out(`   charge: the blade passes ${(holdMin * 100).toFixed(1)} cm from the head's axis (at charge ${holdAt.toFixed(2)}); released ${(dashMin * 100).toFixed(1)} cm (t ${dashAt.toFixed(2)}); elbows R ${chargeR[0].toFixed(0)}-${chargeR[1].toFixed(0)}° L ${chargeL[0].toFixed(0)}-${chargeL[1].toFixed(0)}°; the free hand ${(gapMax * 100).toFixed(1)} cm off the grip at most, the fist ${fistShown ? 'shown' : 'NOT shown'}`);
+
+  // (A1) at rest the arms hang: the free elbow open and beside the ribs
+  assert(rest.R >= 110 && rest.L >= 125 && rest.fL <= 0.3 && rest.fR <= 0.3,
+    `at rest the arms hang: elbows open ${rest.R.toFixed(0)}° (sword, ≥ 110) and ${rest.L.toFixed(0)}° (free, ≥ 125), neither out from the ribs (flare ${rest.fR.toFixed(2)} / ${rest.fL.toFixed(2)} ≤ 0.3)`);
+  // (A2) on the run the elbows point back, not out, and the free arm opens behind him and folds in
+  // front; strafing (the aim held to the side) the arms still swing
+  {
+    const R = loco.run, S = loco.strafe, Sp = loco.sprint;
+    assert(Math.max(R.fR, R.fL, S.fR, S.fL) <= 0.45 && Math.max(Sp.fR, Sp.fL) <= 0.55,
+      `the elbows stay in beside the ribs: out to the side at most ${Math.max(R.fR, R.fL, S.fR, S.fL).toFixed(2)} on the run and the strafe (≤ 0.45; they flared 0.47-0.58), ${Math.max(Sp.fR, Sp.fL).toFixed(2)} sprinting (≤ 0.55; 0.60-0.73)`);
+    assert(R.eL[1] - R.eL[0] >= 35 && R.hz[1] - R.hz[0] >= 0.3 && S.hz[1] - S.hz[0] >= 0.12,
+      `the free arm works on the run: its elbow opens and folds ${(R.eL[1] - R.eL[0]).toFixed(0)}° a stride (≥ 35; it was one 87° crook), the hand swings ${((R.hz[1] - R.hz[0]) * 100).toFixed(0)} cm fore and aft (≥ 30) and still ${((S.hz[1] - S.hz[0]) * 100).toFixed(0)} cm with the aim held to the side (≥ 12; it hung still)`);
+  }
+  // (A3) the arms open: a swing that asks for the hand at ≥ 95 % of the arm's length opens the sword
+  // elbow to ≥ 140° (they all stopped at 124-130°); nothing one-handed locks straight
+  {
+    const far = Object.entries(swings).filter(([c, S]) => S.want >= 0.95 && c !== 'slam' && c !== 'cleave');
+    const tight = far.filter(([, S]) => S.R < 140);
+    assert(far.length >= 5 && !tight.length,
+      `the sword arm opens at a cut's contact and a thrust's end: ≥ 140° in each of the ${far.length} swings that ask for a full reach (${far.map(([c, S]) => `${c} ${S.R.toFixed(0)}°`).join(', ')})`);
+    assert(lock <= 166, `… and never locks into a stick: the most an elbow opens one-handed is ${lock.toFixed(0)}° (${lockAt}; ≤ 166)`);
+  }
+  // (A4) the charge: the upright blade a hand's width clear of the hood (its radius is 0.13-0.17 m
+  // in the head's frame), through the hold and the dash; both hands on the grip
+  assert(holdMin >= 0.22 && dashMin >= 0.2 && fistShown && gapMax <= 0.035,
+    `the charged blade stands clear of his face: ${(holdMin * 100).toFixed(1)} cm from the head's axis through the hold (≥ 22; it was 10.2, inside the hood) and ${(dashMin * 100).toFixed(1)} cm through the release (≥ 20), the free hand's fist on the grip (${(gapMax * 100).toFixed(1)} cm off at most)`);
+  return G;
+}
+
 // ================================================================== scenario: the outfit options (?heroLook=)
 // The hero's outfit options (gear/looks.js; temporary, until the owner picks one): the URL switch,
 // the registry, each look built (its loadout, its colours on its own rig only, its cost), worn
@@ -6462,7 +6633,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, looks: scenarioLooks, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

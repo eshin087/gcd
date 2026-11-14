@@ -98,7 +98,10 @@ export const FH = {
   chest: { l: [-0.1, -0.22, 0.26], lp: [0.6, -0.75, -0.2], ld: [22, 55], pn: [-1, 0, 0], lk: 0 }, // tucked before the left chest, the fingers up (arms in)
   wrist: { l: [-0.1, -0.25, 0.3], lp: [0.5, -0.85, -0.1], ld: [-60, -20], pn: [0, -1, 0], lk: 1 }, // 合: on the sword wrist (give `l` per clip)
   highWing: { l: [0.3, -0.02, -0.2], lp: [0.35, -0.8, -0.45], ld: [130, 25], pn: [-0.5, -1, 0.2], lk: 0 }, // drawn back-left at shoulder height (a bow draw)
-  wing: { l: [0.46, -0.06, -0.1], lp: [0.1, -0.6, -0.8], ld: [95, 5], pn: [0, -1, 0], lk: 0 }, // 展: level, out to his left
+  // (Session 30: it was LEVEL at shoulder height, [0.46, -0.06, -0.1]: with the whirl's and the flat
+  // backhand's finish he stood like a scarecrow, one arm straight out. The hand sits a hand's width
+  // under the shoulder now and the elbow hangs: a line that slopes away from the blade)
+  wing: { l: [0.44, -0.17, -0.12], lp: [0.2, -0.75, -0.65], ld: [100, -8], pn: [0, -1, 0], lk: 0 }, // 展: out to his left, sloping down from the shoulder
   wingLo: { l: [0.4, -0.3, -0.14], lp: [0.3, -0.45, -0.85], ld: [110, -35], pn: [0, -1, 0], lk: 0 }, // low, out to his left
   tail: { l: [0.22, -0.38, -0.22], lp: [0.75, -0.3, -0.6], ld: [170, -58], pn: [-1, 0, 0], lk: 0 }, // behind the hip, the fingers back and down
   high: { l: [0.2, 0.3, -0.1], lp: [0.85, -0.3, 0.4], ld: [-10, 75], pn: [0.2, 0, 1], lk: 0 }, // RARE (the low sweep only): beside the head, never over the crown
@@ -183,7 +186,7 @@ export const SWINGS = {
       { u: 1.25, h: [0.28, -0.1, 0.34], a: [100, 2] },
       { u: 1.5, h: [0.1, -0.08, 0.46], a: [32, 2], by: -0.21, bz: 0.08, bx: 0.01, hip: -0.06, sy: 0.04, sx: 0.22, l: [0.4, -0.08, 0.02], lp: [0.15, -0.65, -0.75], ld: [95, 5], pn: [0, -1, 0], lk: 0 },
       { u: 1.75, h: [-0.16, -0.05, 0.42], a: [-34, 6] },
-      { u: 2.0, h: [-0.3, -0.02, 0.26], a: [-94, 12], by: -0.19, bz: 0.11, bx: 0.05, hip: -0.38, sy: -0.38, sx: 0.12, fh: 'wing', l: [0.48, -0.05, -0.12] },
+      { u: 2.0, h: [-0.3, -0.02, 0.26], a: [-94, 12], by: -0.19, bz: 0.11, bx: 0.05, hip: -0.38, sy: -0.38, sx: 0.12, fh: 'wing', l: [0.45, -0.16, -0.13] },
       { u: 2.15, by: -0.2, bz: 0.12, bx: 0.06, hip: -0.49, sy: -0.5, sx: 0.14 },
       { u: 2.4, h: [-0.32, 0.0, 0.1], a: [-138, 16], by: -0.16, bz: 0.08, bx: 0.04, hip: -0.45, sy: -0.47, sx: 0.09, fh: 'wing' },
     ],
@@ -217,7 +220,7 @@ export const SWINGS = {
       { u: 0.5, by: -0.2, sx: 0.2 },
       { u: 1.0, h: [-0.34, -0.05, 0.0], a: [-128, 12], by: -0.16, hip: -0.16, sy: -0.24, sx: 0.14, fh: 'chest', bx: -0.04 },
       { u: 1.5, h: [-0.4, -0.06, 0.14], a: [-100, 4], by: -0.2, hip: -0.1, sy: -0.12, sx: 0.22, fh: 'chest', l: [-0.06, -0.24, 0.24] },
-      { u: 2.0, h: [-0.36, -0.1, 0.26], a: [-62, -6], by: -0.24, bz: 0.06, hip: -0.12, sy: -0.2, sx: 0.26, fh: 'wing', l: [0.48, -0.04, -0.08], bx: 0.05 },
+      { u: 2.0, h: [-0.36, -0.1, 0.26], a: [-62, -6], by: -0.24, bz: 0.06, hip: -0.12, sy: -0.2, sx: 0.26, fh: 'wing', l: [0.45, -0.16, -0.1], bx: 0.05 },
       { u: 2.35, h: [-0.34, -0.18, 0.1], a: [-115, -16], by: -0.2, bz: 0.05, hip: -0.32, sy: -0.4, sx: 0.2, fh: 'wing' },
     ],
   },
@@ -335,8 +338,11 @@ export const SWINGS = {
     lead: [0.033, 0], // (a chest lead put his head 2.1-2.2 cm into the upright blade: HEROLOOK)
     fold: 0, // (the bite's chest fold and head nod put his head 2.5 cm into it at a close contact)
     keys: [
-      { u: 0.9, h: [-0.03, 0.02, 0.24], a: [-145, 74], two: 1, lp: [0.7, -0.6, 0.3], by: -0.26, bz: 0.05, hip: -0.34, sy: -0.5, sx: 0.4, hs: 0 },
-      { u: 1.4, h: [-0.07, 0.1, 0.18], a: [-148, 50], two: 1, by: -0.23, bz: 0.06, hip: -0.32, sy: -0.52, sx: 0.44, hs: 0 },
+      // (Session 30: the coil's blade and the wind back over the shoulder passed 10-14 cm from the head's
+      // axis, inside the hood: the hands stay out to his right and the blade winds back OUT over the
+      // shoulder, not in beside the ear)
+      { u: 0.9, h: [-0.1, -0.08, 0.3], a: [-84, 74], two: 1, lp: [0.7, -0.6, 0.3], by: -0.26, bz: 0.05, hip: -0.34, sy: -0.5, sx: 0.34, hs: 0 },
+      { u: 1.4, h: [-0.2, 0.02, 0.2], a: [-122, 50], two: 1, by: -0.23, bz: 0.06, hip: -0.32, sy: -0.52, sx: 0.38, hs: 0 },
       { u: 1.55, h: [0.05, 0.1, 0.28], a: [-110, 40] },
       { u: 1.7, h: [0.14, -0.03, 0.44], a: [-38, 16], by: -0.26, hip: 0.1, sy: 0.0, sx: 0.4 },
       { u: 1.86, h: [0.24, -0.24, 0.4], a: [28, -18] },

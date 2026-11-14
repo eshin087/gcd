@@ -474,12 +474,16 @@ export function gripFist(k = 1) {
   for (let i = 0; i < 4; i++) {
     const z = (-0.034 + i * 0.0235) * k + 0.006;
     // the index finger (nearest the guard) is the thickest roll, the little finger the thinnest
-    const r = (0.036 + 0.0025 * i) * k;
-    fingers.push(sub(ellipsoidGeometry(r * 1.12, r * 0.94, 0.0135 * k, { widthSegs: 12, heightSegs: 5 }).translate(0, 0, z), i & 1));
+    const r = (0.034 + 0.002 * i) * k;
+    // (each roll is nearly as deep along the grip as the rolls are apart, so they close into ONE fist
+    // with a shallow groove between the fingers: at 0.0135 the grooves cut half way to the grip and the
+    // fist read up close as a stack of discs, "the right hand looks very disfigured")
+    fingers.push(sub(ellipsoidGeometry(r * 1.1, r * 0.92, 0.0225 * k, { widthSegs: 12, heightSegs: 6 }).translate(0, 0, z), i & 1));
   }
-  const thumb = sub(place(ellipsoidGeometry(0.0135 * k, 0.012 * k, 0.034 * k, { widthSegs: 8, heightSegs: 5 }), 0.012 * k, 0.034 * k, 0.03 * k + 0.006, 0.18, 0, 0), 1);
-  // the knuckle ridge: a raised strip across the four rolls on the +X edge side
-  const ridge = boxGeometry(0.012 * k, 0.03 * k, 0.088 * k, 0.04 * k, 0, 0.006);
+  const thumb = sub(place(ellipsoidGeometry(0.013 * k, 0.012 * k, 0.034 * k, { widthSegs: 8, heightSegs: 5 }), 0.012 * k, 0.033 * k, 0.026 * k + 0.006, 0.18, 0, 0), 1);
+  // the back of the hand: a low rounded ridge along the knuckles on the +X edge side (it was a flat
+  // plank standing off the rolls)
+  const ridge = ellipsoidGeometry(0.012 * k, 0.027 * k, 0.046 * k, { widthSegs: 8, heightSegs: 6 }).translate(0.031 * k, 0, 0.006);
   return { fingers: mergeGeometries(fingers), thumb, ridge };
 }
 
