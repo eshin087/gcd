@@ -55,7 +55,7 @@ export const LIGHT = [
     // diagonal down across the front → low past the left hip
     name: 'fallingCut', kind: 'light', combo: 1, damage: 30, poise: 12, heavy: false,
     windup: 0.11, active: 0.12, recovery: 0.24, chain: 0.3, lunge: 0.55, reach: 2.2,
-    hitstop: 0.05, shake: 0.12,
+    hitstop: 0.055, shake: 0.12, contact: 'light', punch: 0.35, kick: 0.08,
     anim: { kind: 'clip', clip: 'fallingCut' }, // high right → low left
     variants: [
       { kind: 'clip', clip: 'drawCut', turn: 0.3 }, // low and flat from the right hip, pivoting into it
@@ -67,7 +67,7 @@ export const LIGHT = [
     // to high right
     name: 'risingCut', kind: 'light', combo: 2, damage: 32, poise: 12, heavy: false,
     windup: 0.11, active: 0.12, recovery: 0.24, chain: 0.3, lunge: 0.55, reach: 2.2,
-    hitstop: 0.05, shake: 0.12,
+    hitstop: 0.055, shake: 0.12, contact: 'light', punch: 0.35, kick: 0.08,
     anim: { kind: 'clip', clip: 'risingBackhand' }, // low left → high right
     variants: [
       { kind: 'clip', clip: 'flatBackhand', turn: -0.4 }, // level at chest height, pivoting round with it
@@ -79,7 +79,7 @@ export const LIGHT = [
     // out level; the blade crosses the front two thirds of the way round, inside the active frames
     name: 'whirl', kind: 'light', combo: 3, damage: 36, poise: 16, heavy: false,
     windup: 0.13, active: 0.15, recovery: 0.26, chain: 0.3, lunge: 0.7, reach: 2.2,
-    hitstop: 0.06, shake: 0.16,
+    hitstop: 0.065, shake: 0.16, contact: 'sweep', punch: 0.45, kick: 0.1,
     anim: { kind: 'clip', clip: 'whirl', spin: -1 },
     variants: [
       { kind: 'clip', clip: 'risingWhirl', spin: -1 }, // the same turn out of a crouch, the blade spiralling up
@@ -91,7 +91,7 @@ export const LIGHT = [
     // the rear heel to the point
     name: 'stab', kind: 'light', combo: 4, damage: 30, poise: 14, heavy: false,
     windup: 0.11, active: 0.1, recovery: 0.24, chain: 0.3, lunge: 0.8, reach: 2.3,
-    hitstop: 0.055, shake: 0.14,
+    hitstop: 0.07, shake: 0.14, contact: 'point', punch: 0.6, kick: 0.1,
     anim: { kind: 'clip', clip: 'lunge' },
     variants: [
       { kind: 'clip', clip: 'risingThrust' }, // out of a crouch, the point driving up into the target
@@ -103,7 +103,7 @@ export const LIGHT = [
     // (`chain`: a mashed button no longer cuts the landing off as the blade meets the ground; the
     // blow's damage is up from 58 to pay for the beat it holds)
     windup: 0.28, active: 0.13, recovery: 0.42, chain: 0.3, lunge: 0.75, reach: 2.1,
-    hitstop: 0.11, shake: 0.42,
+    hitstop: 0.12, shake: 0.42, contact: 'slam', punch: 1.6, kick: 0.2,
     up: 1.0, // reach band above the blade: lower than the sweeps' so the raise can't tag the neck overhead
     shards: { radius: 1.7, height: 3.2 }, // ground burst at the impact point (hits if the blade missed)
     // a clip like the lights (swings.js `slam`): a gather at the right hip, a leap as the blade
@@ -121,7 +121,7 @@ export const LIGHT = [
 export const SPRINT_ATK = {
   name: 'sprintSlash', kind: 'light', combo: 1, damage: 40, poise: 18, heavy: false,
   windup: 0.11, active: 0.13, recovery: 0.32, chain: 0.25, lunge: 0, travel: 2.4, keepYaw: true, reach: 2.3,
-  hitstop: 0.07, shake: 0.2,
+  hitstop: 0.07, shake: 0.2, contact: 'sweep', punch: 0.5, kick: 0.1,
   anim: { kind: 'clip', clip: 'sprintSlash', feet: 'dash' },
 };
 
@@ -130,7 +130,7 @@ export const SPRINT_ATK = {
 export const ROLL_ATK = {
   name: 'rollCut', kind: 'light', combo: 1, damage: 34, poise: 14, heavy: false,
   windup: 0.1, active: 0.11, recovery: 0.26, chain: 0.3, lunge: 0.9, reach: 2.2,
-  hitstop: 0.06, shake: 0.14,
+  hitstop: 0.06, shake: 0.14, contact: 'light', punch: 0.4, kick: 0.08,
   anim: { kind: 'clip', clip: 'rollCut' },
 };
 
@@ -146,7 +146,7 @@ export const CLEAVE = {
   damage: [70, 110], poise: [30, 50], // lerped by charge (see chargeStats)
   travel: [2.2, 3.6],
   windup: 0.08, active: 0.24, recovery: 0.45, lunge: 0, reach: 2.3,
-  hitstop: 0.15, shake: 0.45,
+  hitstop: 0.15, shake: 0.45, contact: 'cleave', punch: [1.2, 2.0], kick: [0.14, 0.24], // (the freeze × 1 + 0.3 × charge: player.js)
   anim: { kind: 'clip', clip: 'cleave', feet: 'dash', dashW: true },
 };
 
@@ -157,7 +157,9 @@ export const THRUST = {
   damage: [70, 110], poise: [30, 50],
   travel: [2.2, 3.6],
   windup: 0.07, active: 0.2, recovery: 0.45, lunge: 0, reach: 2.3,
-  hitstop: 0.1, shake: 0.3,
+  hitstop: 0.1, shake: 0.3, contact: 'execute',
+  // the execution's own impact (player.js _executeHit): a long freeze, a heavy shake, a deep punch
+  exec: { hitstop: 0.16, shake: 0.5, punch: 2.0, kick: 0.24 },
   anim: { kind: 'thrust' },
 };
 
@@ -184,6 +186,19 @@ export const REACH = {
   tipExt: 0.4,
   assist: { range: 4.8, arc: 0.8, max: 1.3 },
 };
+
+/**
+ * The weight of a landed cut (player.js _applyHit). Per attack def:
+ *   hitstop  s the frame freezes (× crit.stop on a crit; the cleave × 1 + 0.3 × charge)
+ *   shake    camera trauma (× crit.shake)
+ *   punch    m the camera jumps closer (+ crit.punch): a number, or [k0, k1] lerped by the charge
+ *   kick     m the picture is thrown along the cut (× crit.kick; game.kick): the same forms
+ *   contact  the look of the cut drawn at the contact (combat/cutFx.js CUT_LOOK.tier)
+ * Against a duelist his own hit stun (TUNING.hitStun.light.stop) is the longer freeze of a light.
+ */
+export const HIT_FEEL = { crit: { stop: 1.4, shake: 1.3, punch: 0.6, kick: 1.35 } };
+/** A HIT_FEEL value: a number, or [k0, k1] lerped by `k` (the charge 0..1); 0 when it is neither. */
+export const feel = (v, k = 0) => (Array.isArray(v) ? lerp(v[0], v[1], clamp(Number.isFinite(k) ? k : 0, 0, 1)) : Number.isFinite(v) ? v : 0);
 
 /** Charge fraction 0..1 and the charged attack's damage / poise / travel for a hold of `holdT`
  *  seconds (`def`: CLEAVE, or THRUST for the execution). */

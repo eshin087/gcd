@@ -254,6 +254,17 @@ export class Duelist {
       dz = p ? this.position.z - p.z : 1;
     }
     const l = Math.hypot(dx, dz) || 1;
+    // his spray flies along the cut (o.cut: the blade's ground-plane travel at the contact), the
+    // shove along the blow (o.dir)
+    let sx = fin(o.cut?.x, NaN), sz = fin(o.cut?.z, NaN);
+    if (!Number.isFinite(sx + sz) || sx * sx + sz * sz < 1e-6) {
+      sx = dx / l;
+      sz = dz / l;
+    } else {
+      const sl = Math.hypot(sx, sz);
+      sx /= sl;
+      sz /= sl;
+    }
     // hit stun: a freeze-frame, his chest and head snapped back (poses.js jolt), a shove along the
     // blow; it never cancels a windup (only footwork and his recovery: brain.onStruck)
     const HS = this.T.hitStun, hs = heavy || crushed ? HS.heavy : HS.light;
@@ -262,7 +273,7 @@ export class Duelist {
     if (this.mode !== 'broken' && this.position.y < 0.2) this.moveBy((dx / l) * hs.push, (dz / l) * hs.push);
     const pt = o.point;
     if (pt && Number.isFinite(pt.x + pt.y + pt.z)) {
-      this.fx.hitSpark(pt.x, pt.y, pt.z, dx / l, dz / l, heavy || crit);
+      this.fx.hitSpark(pt.x, pt.y, pt.z, sx, sz, heavy || crit);
       this._lastHurtPt.set(pt.x, pt.y, pt.z);
     }
     this.emit('dragon:hurt', { damage: dmg, part, hp: this.hp, crit });
@@ -891,6 +902,14 @@ export class Duelist {
       this._tipPrev.copy(this._tip);
       this._hiltPrev.copy(this._hilt);
     }
+  }
+
+  /** Upright gameplay point → where it is drawn (the lean, drawScale, the lean's drawn-only offset):
+   *  Player.leanPoint's twin. The hero's cut is drawn where his drawn blade meets this drawn body. */
+  drawnPoint(v) {
+    const L = this.lean, p = this.position, k = L?.k || 0, S = this.drawScale;
+    const x = (v.x - p.x) * S, y = (v.y - p.y) * S, z = (v.z - p.z) * S;
+    return v.set(p.x + x + k * (L?.dx || 0) * y + (L?.ox || 0), p.y + y, p.z + z + k * (L?.dz || 0) * y + (L?.oz || 0));
   }
 
   /** Where a beat's glint pops: the blade's tip (or at his feet for a ring). */

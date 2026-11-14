@@ -994,6 +994,33 @@ async function scenarioReach() {
     out(`   variants: ${n} trials (each variant at contact, 2 and 3.5 m), misses: ${misses.join(', ') || 'none'}`);
     assert(n >= 24 && !misses.length, `every attack variant connects from the front at contact, 2 m and 3.5 m (${n} trials${misses.length ? '; missed ' + misses.join(', ') : ''})`);
   }
+  // the cut is drawn on the wyrm: a landed light's point on a hurt sphere's surface (the wyrm is drawn
+  // as it is hit: no drawnPoint), its freeze, its camera punch
+  {
+    fresh();
+    stand(1);
+    let ev = null, stop = 0, gap = Infinity, punchZ = 0;
+    // (measured as the hit is dealt: the wyrm's own update moves its spheres later in the frame)
+    G.watch = (n, e) => {
+      if (n !== 'player:hitDragon' || e.guarded || ev) return;
+      ev = e;
+      for (const h of d.hurtSpheres) gap = Math.min(gap, Math.hypot(e.point.x - h.x, e.point.y - h.y, e.point.z - h.z) - h.r);
+    };
+    p.anim.forceVariant = 0;
+    input.click(0);
+    for (let i = 0; i < 60 && !ev; i++) {
+      G.tick(DT);
+      if (ev) {
+        stop = game.hitstopTimer;
+        punchZ = game.cameraRig.punchZ;
+      }
+    }
+    p.anim.forceVariant = null;
+    G.watch = null;
+    out(`   the wyrm's cut: ${ev ? `${ev.kind}/${ev.weight}, the point ${gap.toFixed(2)} m off the nearest hurt sphere's surface, freeze ${stop.toFixed(3)} s, punch ${punchZ.toFixed(2)} m` : 'no hit'}`);
+    assert(!!ev && gap <= 0.15, `a landed cut on the wyrm is drawn on its body: ${gap.toFixed(2)} m off the nearest hurt sphere's surface (≤ 0.15)`);
+    assert(!!ev && ev.weight === 'light' && ev.combo === 1 && stop >= 0.055 - 1e-6, `it freezes the frame ${stop.toFixed(3)} s (≥ 0.055) and reports its weight (${ev?.weight}, combo ${ev?.combo})`);
+  }
   assert(rows.every((r) => r[4].slamEv === 1), 'the slam meets the ground once per swing (player:slam)');
   assert(rows.every((r) => r[4].hit?.heavy === true && r[5].hit?.heavy === true && r.slice(0, 4).every((t) => t.hit?.heavy === false)), 'the slam and the cleave hit heavy, the four light hits do not');
   return G;
@@ -2810,6 +2837,101 @@ async function scenarioHeroLife() {
     }
     const thrusts = Object.entries(SWINGS).filter(([, C]) => C.line === 'point').map(([n, C]) => [n, Math.max(...C.keys.filter((k) => k.u > 1.5 && k.u <= 2.001).map((k) => k.a[1]))]);
     assert(thrusts.length >= 2 && thrusts.every(([, el]) => el >= 30), `the thrusts drive upward: the point ≥ 30° above level at full reach (${thrusts.map(([n, el]) => `${n} ${el}°`).join(', ')})`);
+  }
+
+  // (1e1) a cut that lands (combat/cutFx.js, fx.contact): a tapered line across the body along the
+  // cut, thin sparks thrown along it, one small two-frame core, budgets per tier, the LOW preset, the
+  // degenerate inputs, its own random stream, the 'fan' look
+  {
+    const { CUT_LOOK, CUT_LAST, setCutStyle } = await imp('src/combat/cutFx.js');
+    const { axes, screenAngle } = await imp('src/combat/clashFx.js');
+    const fxa = p.fx.add, spawn0 = fxa.spawn, made = [], lights = [];
+    const lp = game.lights, ladd0 = lp.add;
+    const q0 = game.settings.quality, rand0 = Math.random;
+    let draws = 0;
+    fxa.spawn = (o) => { made.push(o); };
+    lp.add = (o) => { lights.push(o); return null; };
+    Math.random = () => { draws++; return rand0(); };
+    const F = { x: 0, y: 1.2, z: 0 };
+    const C = { x: 0, y: 1.2, z: 0, f: 0.3, cx: 1, cy: -0.3, cz: 0, gx: 1, gz: 0, ex: 0.2, ey: 0.1, ez: 1 };
+    const AX = axes(game);
+    const scr = (o) => { const dx = o.x - F.x, dy = o.y - F.y, dz = o.z - F.z; return [dx * AX.rx + dy * AX.ry + dz * AX.rz, dx * AX.ux + dy * AX.uy + dz * AX.uz]; };
+    const angOf = (o) => Math.atan2(o.vx * AX.ux + o.vy * AX.uy + o.vz * AX.uz, o.vx * AX.rx + o.vy * AX.ry + o.vz * AX.rz);
+    const adiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); };
+    const NUM = ['x', 'y', 'z', 'vx', 'vy', 'vz', 'life', 'size', 'sizeEnd', 'rot', 'stretch', 'alpha', 'alphaEnd', 'gravity', 'drag'];
+    const finiteSpawn = (o) => NUM.every((k) => o[k] === undefined || Number.isFinite(o[k]));
+    const shot = (tier, crit, k = 0, c = C) => {
+      made.length = 0;
+      lights.length = 0;
+      const n = p.fx.contact(F, tier, c, crit, k);
+      return { n, made: made.slice(), lights: lights.slice(), last: { ...CUT_LAST } };
+    };
+    const BUDGET = { light: 20, sweep: 24, point: 24, slam: 62, cleave: 72, execute: 66 };
+    const bad = [], rows = [];
+    try {
+      game.settings.quality = 2;
+      setCutStyle('gash');
+      for (const [tier, k] of [['light', 0], ['sweep', 0], ['point', 0], ['slam', 0], ['cleave', 0], ['cleave', 1], ['execute', 0]]) {
+        for (const crit of [false, true]) {
+          const T = CUT_LOOK.tier[tier], r = shot(tier, crit, k), L = r.last, m = r.made, tag = `${tier}${k ? ' k1' : ''}${crit ? ' crit' : ''}`;
+          const len = T.len + (T.lenK ?? 0) * k;
+          const ca0 = screenAngle(AX, C.cx, C.cy, C.cz), ea = screenAngle(AX, C.ex, C.ey, C.ez);
+          const ca = tier === 'point' || tier === 'execute' ? ea : ca0;
+          if (m.some((o) => typeof o.glyph !== 'string' || o.glyph.length !== 1 || !"|*·'`.-".includes(o.glyph) || /[A-Za-z0-9+]/.test(o.glyph))) bad.push(`${tag}: a glyph outside |*·'\`.-`);
+          const stars = m.filter((o) => o.glyph === '*');
+          if (stars.length !== 1 || !(stars[0].size <= 0.3 && stars[0].life <= 0.05)) bad.push(`${tag}: ${stars.length} cores (size ${stars[0]?.size}, life ${stars[0]?.life})`);
+          const second = T.lines > 1 ? Math.max(2, T.n - CUT_LOOK.line2.less) : 0;
+          const first = L.slash - second;
+          if (first < T.n - 2) bad.push(`${tag}: ${first} strokes in the line (≥ ${T.n - 2})`);
+          const slash = m.slice(0, L.slash);
+          slash.forEach((o, i) => {
+            const [sx, sy] = scr(o);
+            const along = sx * Math.cos(ca) + sy * Math.sin(ca), across = -sx * Math.sin(ca) + sy * Math.cos(ca);
+            const two = i >= first;
+            if (Math.abs(across) > (two ? 0.14 : 0.06)) bad.push(`${tag}: stroke ${i} ${across.toFixed(3)} m off the line`);
+            const dr = ((((o.rot - (ca - Math.PI / 2)) % Math.PI) + Math.PI) % Math.PI);
+            if (Math.min(dr, Math.PI - dr) > 0.05) bad.push(`${tag}: stroke ${i} turned ${dr.toFixed(2)} rad off the line`);
+            if (along > len * T.ahead + 0.12 || -along > len * (1 - T.ahead) + 0.12) bad.push(`${tag}: stroke ${i} ${along.toFixed(2)} m along the line (len ${len})`);
+          });
+          const sparks = m.slice(L.slash + L.tick, L.slash + L.tick + L.sparks);
+          const onCut = sparks.filter((o) => adiff(angOf(o), ca) <= T.fan + 0.1).length;
+          if (!(onCut >= (2 / 3) * sparks.length) || !sparks.length) bad.push(`${tag}: ${onCut} of ${sparks.length} sparks along the cut`);
+          const cap = BUDGET[tier] + (crit ? 12 : 0);
+          if (!(L.total <= cap) || L.total !== m.length) bad.push(`${tag}: ${L.total} spawns (cap ${cap}; captured ${m.length})`);
+          if (r.lights.length !== 1 || !(r.lights[0].intensity <= 2.5)) bad.push(`${tag}: ${r.lights.length} lights (intensity ${r.lights[0]?.intensity})`);
+          // the LOW preset: fewer sparks, motes and ring strokes; the line, the tick and the core kept
+          game.settings.quality = 0;
+          const lo = shot(tier, crit, k).last;
+          game.settings.quality = 2;
+          if (!(lo.sparks + lo.motes + lo.ring <= Math.ceil(0.7 * (L.sparks + L.motes + L.ring))) || lo.tick !== L.tick || lo.core !== L.core || lo.slash < T.n - 2 + second) bad.push(`${tag}: LOW ${lo.sparks}+${lo.motes}+${lo.ring} of ${L.sparks}+${L.motes}+${L.ring}, slash ${lo.slash}, tick ${lo.tick}/${L.tick}`);
+          if (!crit) rows.push(`${tag} ${L.total}`);
+        }
+      }
+      // degenerate inputs never throw, never feed NaN, still draw a line
+      for (const [nm, c] of [['no contact', null], ['no travel', { ...C, cx: 0, cy: 0, cz: 0 }], ['no edge', { ...C, ex: 0, ey: 0, ez: 0 }], ['NaN travel', { ...C, cx: NaN }]]) {
+        let threw = false, r = null;
+        try { r = shot('light', false, 0, c); } catch { threw = true; }
+        if (threw || !r || !r.made.every(finiteSpawn) || !(r.last.slash >= 1)) bad.push(`${nm}: ${threw ? 'threw' : `slash ${r?.last.slash}, finite ${r?.made.every(finiteSpawn)}`}`);
+      }
+      // its own stream advances: two identical cuts throw different sparks
+      const s1 = shot('light', false), s2 = shot('light', false);
+      const ang = (r) => r.made.slice(r.last.slash + r.last.tick, r.last.slash + r.last.tick + r.last.sparks).map((o) => angOf(o).toFixed(4)).join();
+      if (ang(s1) === ang(s2)) bad.push('two identical cuts threw the same sparks');
+      // the 'fan' look: no line and no tick, more sparks
+      const gash = shot('slam', false).last;
+      setCutStyle('fan');
+      const fan = shot('slam', false).last;
+      if (!(fan.slash === 0 && fan.tick === 0 && fan.sparks >= 1.5 * gash.sparks)) bad.push(`fan: slash ${fan.slash}, tick ${fan.tick}, sparks ${fan.sparks} vs ${gash.sparks}`);
+    } finally {
+      setCutStyle('gash');
+      fxa.spawn = spawn0;
+      lp.add = ladd0;
+      game.settings.quality = q0;
+      Math.random = rand0;
+    }
+    out(`   cut: spawns per tier ${rows.join(' · ')}`);
+    assert(!bad.length, `a landed cut is a line along the cut, sparks along it, one small core, within budget, LOW, degenerate inputs, the fan look (${bad.slice(0, 6).join('; ') || 'all'})`);
+    assert(draws === 0, `a landed cut never touches the AI's random stream (${draws} Math.random draws)`);
   }
 
   // (1c) the pace (Session 26, owner: "speed up the attack speed ... its too slow"): mashing the

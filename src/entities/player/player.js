@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { CONFIG } from '../../core/config.js';
-import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep } from '../../core/math.js';
+import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from '../../core/math.js';
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, tellDefaults, facingDelta } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, LEAN, PLAYER_SCALE, BLADE_BASE } from './model.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
-import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx } from './fx.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
+import { CUT_LOOK } from '../../combat/cutFx.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -190,6 +191,14 @@ export class Player {
     this._v2 = new THREE.Vector3();
     this._lock = new THREE.Vector3();
     this._hit = { sphere: null, x: 0, y: 0, z: 0 };
+    // the drawn contact of the last landed cut (_contactPoint): the point (x, y, z), where it lies
+    // along the hit segment (f), the blade's travel there (cx, cy, cz; world, last frame → this one),
+    // its ground-plane direction (gx, gz, unit) and the blade's own direction (ex, ey, ez, unit)
+    this._cut = { x: 0, y: 0, z: 0, f: 0, cx: 0, cy: 0, cz: 0, gx: 0, gz: 1, ex: 0, ey: 0, ez: 1 };
+    this._cA = new THREE.Vector3();
+    this._cB = new THREE.Vector3();
+    this._cS = new THREE.Vector3();
+    this._cP = new THREE.Vector3();
     this._tip = new THREE.Vector3();
     this._tipPrev = new THREE.Vector3();
     this._gem = new THREE.Vector3();
@@ -1730,13 +1739,20 @@ export class Player {
     } catch (err) {
       console.error('[player] onExecute failed', err);
     }
-    const pt = d.lockPoint?.(this._v) ?? this._v.set(d.position.x, 1.2, d.position.z);
-    const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) };
-    if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: pt.x, y: pt.y, z: pt.z }, heavy: true, crit: true, kind: 'execute' });
+    // the drawn contact (the blade run into his drawn body), else his lock point
+    const C = this._contactPoint(d, 'thrust', this._cut) ? this._cut : null;
+    const pt = C ?? d.lockPoint?.(this._v) ?? this._v.set(d.position.x, 1.2, d.position.z);
+    if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: pt.x, y: pt.y, z: pt.z }, heavy: true, crit: true, kind: 'execute', combo: 1, weight: 'execute' });
     this._emit('player:plungeHit', { damage: dealt, execution: true });
-    this._hitstop(0.16);
-    this.game.shake?.(0.5);
-    this.fx.sparks(pt.x, pt.y, pt.z, dir.x, dir.z, true, true);
+    a.hitAt = a.t;
+    a.cutDir = this._cutDir(C, a.cutDir);
+    const X = THRUST.exec;
+    this._hitstop(X.hitstop);
+    this.game.shake?.(X.shake);
+    this.game.punch?.(X.punch);
+    if (C) this.game.kick?.(C.cx, C.cy, C.cz, X.kick);
+    else this.game.kick?.(Math.sin(this.yaw), 0, Math.cos(this.yaw), X.kick);
+    this.fx.contact(pt, 'execute', C, true, 1);
   }
 
   /**
@@ -2092,6 +2108,9 @@ export class Player {
     const light = def.kind === 'light';
     this.atk = {
       def, t: 0, hit: false, prevT: 0, gust: false, impact: false, flared: false, lunge: null, travel: fin(def.travel, 0),
+      // hitAt: the attack clock at the contact (-1 none); cutDir: the blade's unit travel there ({x, y, z},
+      // world) or null; glintZ: how far up the edge the glint has run (fx.edgeGlint)
+      hitAt: -1, cutDir: null, glintZ: null,
       pending: light && this.lmb.held, // still held: may become a charge (the swing waits at the coil)
       damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0,
     };
@@ -2162,6 +2181,7 @@ export class Player {
     this.atk = {
       def, t: 0, hit: false, prevT: 0, gust: false, impact: false, flared: false, pending: false,
       lunge: 0, travel: st.travel, damage: st.damage, poise: st.poise, charge: st.k,
+      hitAt: -1, cutDir: null, glintZ: null, // (as _startAttack)
     };
     this.releaseK = st.k;
     this.chargeK = 0;
@@ -2542,17 +2562,19 @@ export class Player {
       const crit = this.critTimer > 0;
       // any overlap of this frame with the active window counts (robust to long frames)
       if (t >= W && prevT <= end + 0.04) {
+        // the hit first: a cut that lands this frame draws its contact, not the arc's glint
+        if (!a.hit && prevT <= end) this._tryHit(a);
         this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
-        // edge runs just past the steel's point (fx.arcAt), not at the end of the reach
-        if (!a.glint && d.kind !== 'thrust' && t >= W + d.active * (d.kind === 'cleave' ? 0.82 : 0.6)) {
+        // edge runs just past the steel's point (fx.arcAt), not at the end of the reach. A landed
+        // cut's core is the beat's one star: a whiff keeps the glint
+        if (!a.hit && !a.glint && d.kind !== 'thrust' && t >= W + d.active * (d.kind === 'cleave' ? 0.82 : 0.6)) {
           a.glint = true;
           const f = this.fx.arcAt(d.kind);
           this._tip.lerpVectors(sw.a, sw.b, f);
           this._tipPrev.lerpVectors(sw.pa, sw.pb, f);
           this.fx.arcGlint(this._tip.x, this._tip.y, this._tip.z, this._tip.x - this._tipPrev.x, this._tip.y - this._tipPrev.y, this._tip.z - this._tipPrev.z, !!d.heavy, crit);
         }
-        if (!a.hit && prevT <= end) this._tryHit(a);
         // the sweep's snap flares the coat tails (cosmetic: the animator's own noise, not the RNG)
         if (d.kind === 'light' && !a.flared) {
           a.flared = true;
@@ -2629,7 +2651,8 @@ export class Player {
     if (!dr || typeof dr.takeHit !== 'function' || dr.state === 'dead' || dr.state === 'dying') return;
     const spheres = dr.hurtSpheres;
     if (!Array.isArray(spheres) || !spheres.length) return;
-    if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit);
+    // (viaShards: the blade is in the ground, the shards are the contact: no drawn cut)
+    if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit, true);
   }
 
   _tryHit(a) {
@@ -2647,8 +2670,13 @@ export class Player {
     this._applyHit(a, h);
   }
 
-  /** Deal one swing's damage at contact h {sphere, x, y, z}. */
-  _applyHit(a, h) {
+  /**
+   * Deal one swing's damage at contact h {sphere, x, y, z} (the upright gameplay point the hit test
+   * found). The cut is DRAWN where the drawn blade meets the drawn body (_contactPoint): the FX, his
+   * spray and the damage number go there, and the camera is thrown along the cut. `viaShards`: the
+   * slam's ground burst hit (the blade is in the ground: no drawn cut).
+   */
+  _applyHit(a, h, viaShards = false) {
     const dr = this.game.dragon;
     a.hit = true; // one hit per swing
 
@@ -2656,25 +2684,126 @@ export class Player {
     const part = typeof h.sphere.part === 'string' ? h.sphere.part : 'body';
     const crit = this.critTimer > 0;
     const damage = a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
-    const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) };
-    const point = { x: h.x, y: h.y, z: h.z };
+    const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) }; // the facing: the shove
+    const C = !viaShards && this._contactPoint(dr, d.kind, this._cut) ? this._cut : null;
+    const point = C ? { x: C.x, y: C.y, z: C.z } : { x: h.x, y: h.y, z: h.z };
+    const cut = C ? { x: C.gx, z: C.gz } : null; // the blade's ground-plane travel: his spray
     let dealt = damage;
     try {
-      const r = dr.takeHit({ damage, part, point, dir, poise: a.poise, heavy, crit, swing: true });
+      const r = dr.takeHit({ damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true });
       if (Number.isFinite(r)) dealt = r;
     } catch (err) {
       console.error('[player] dragon.takeHit failed', err);
     }
     // (this.atk may be gone: a deflect or a trade clash bounced him)
     const guarded = (!!a.guarded || !!a.traded) && dealt === 0;
-    this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded });
+    this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded, combo: d.combo ?? 1, weight: d.contact ?? (heavy ? 'slam' : 'light') });
     // turned by a guard: the guard draws the clash and sets its own freeze; no cut, no sparks of his
     if (guarded) return;
-    this._hitstop(d.hitstop * (crit ? 1.4 : 1) * (d.kind === 'cleave' ? 1 + 0.3 * a.charge : 1));
-    this.game.shake?.(d.shake * (crit ? 1.3 : 1));
-    if (heavy || crit) this.game.punch?.(heavy ? 1.6 : 1.0);
-    this.fx.sparks(h.x, h.y, h.z, dir.x, dir.z, heavy, crit);
-    if (d.kind === 'cleave') this.fx.cleaveImpact(h.x, h.y, h.z, dir.x, dir.z, a.charge, crit);
+    // the contact, for the animator and other areas: when (the attack clock) and which way the blade went
+    a.hitAt = a.t;
+    a.cutDir = this._cutDir(C, a.cutDir);
+    const HF = HIT_FEEL.crit, k = fin(a.charge, 0);
+    this._hitstop(fin(d.hitstop, 0.05) * (crit ? HF.stop : 1) * (d.kind === 'cleave' ? 1 + 0.3 * k : 1));
+    this.game.shake?.(fin(d.shake, 0) * (crit ? HF.shake : 1));
+    const pm = feel(d.punch, k) + (crit ? HF.punch : 0);
+    if (pm > 0) this.game.punch?.(pm);
+    const km = feel(d.kick, k) * (crit ? HF.kick : 1);
+    if (km > 0 && C) this.game.kick?.(C.cx, C.cy, C.cz, km);
+    if (!viaShards) this.fx.contact(point, d.contact ?? 'light', C, crit || dr.broken === true, k);
+    if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);
+  }
+
+  /** The unit world travel of the blade at contact C (into `out`, reused), or null without one. */
+  _cutDir(C, out) {
+    const l = C ? Math.hypot(C.cx, C.cy, C.cz) : 0;
+    if (!(l > 1e-6) || !Number.isFinite(l)) return null;
+    const o = out ?? { x: 0, y: 0, z: 0 };
+    o.x = C.cx / l;
+    o.y = C.cy / l;
+    o.z = C.cz / l;
+    return o;
+  }
+
+  /**
+   * Where a landed cut is DRAWN (→ out; false when there is no drawn body or no blade): the hit test
+   * runs on the upright gameplay bodies (unleaned, unscaled), so its point floats 13-65 px off the
+   * drawn blade and the drawn body at the game camera. Here the drawn blade's stretch from
+   * CUT_LOOK.from to the arc's edge (fx.arcAt) is met with the boss's DRAWN hurt spheres
+   * (dr.drawnPoint, × dr.drawScale; identity without one, the wyrm): the nearest sphere to that
+   * stretch; the contact is on the blade, moved CUT_LOOK.toBody of the way onto its surface (and at
+   * most CUT_LOOK.offMax off it; on the blade where it is inside). Fills out { x, y, z, f (along the
+   * hit segment), cx, cy, cz (the blade's travel there since last frame, less the hero's own), gx, gz
+   * (its unit ground-plane direction; the facing if it has none), ex, ey, ez (the blade's unit
+   * direction) }. No allocation.
+   */
+  _contactPoint(dr, kind, out) {
+    const sw = this.sweep, H = dr?.hurtSpheres;
+    if (!sw.valid || !Array.isArray(H) || !H.length) return false;
+    const f0 = CUT_LOOK.from, f1 = this.fx.arcAt(kind);
+    const A = this._cA.lerpVectors(sw.a, sw.b, f0), B = this._cB.lerpVectors(sw.a, sw.b, f1);
+    const abx = B.x - A.x, aby = B.y - A.y, abz = B.z - A.z, l2 = abx * abx + aby * aby + abz * abz;
+    if (!(l2 > 1e-8)) return false;
+    const toDrawn = typeof dr.drawnPoint === 'function', sc = toDrawn ? fin(dr.drawScale, 1) : 1;
+    const S = this._cS;
+    let best = Infinity, bu = 0, px = 0, py = 0, pz = 0, sx = 0, sy = 0, sz = 0, br = 0, bd = 0;
+    for (let i = 0; i < H.length; i++) {
+      const q = H[i];
+      if (!q || !(q.r > 0)) continue;
+      S.set(q.x, q.y, q.z);
+      if (toDrawn) dr.drawnPoint(S);
+      if (!Number.isFinite(S.x + S.y + S.z)) continue;
+      const r = q.r * sc;
+      const u = clamp(((S.x - A.x) * abx + (S.y - A.y) * aby + (S.z - A.z) * abz) / l2, 0, 1);
+      const qx = A.x + abx * u, qy = A.y + aby * u, qz = A.z + abz * u;
+      const dd = Math.hypot(qx - S.x, qy - S.y, qz - S.z), g = dd - r;
+      if (g < best) {
+        best = g;
+        bu = u;
+        px = qx;
+        py = qy;
+        pz = qz;
+        sx = S.x;
+        sy = S.y;
+        sz = S.z;
+        br = r;
+        bd = dd;
+      }
+    }
+    if (best === Infinity) return false;
+    const P = this._cP.set(px, py, pz);
+    if (best > 0 && bd > 1e-6) {
+      // the sphere's surface point nearest the blade, and toBody of the way there from the blade (at
+      // most offMax off the surface: a wide gap is the reach band's, the cut lands on the body)
+      const k = br / bd, T = Math.max(CUT_LOOK.toBody, 1 - CUT_LOOK.offMax / best);
+      P.x += (sx + (px - sx) * k - px) * T;
+      P.y += (sy + (py - sy) * k - py) * T;
+      P.z += (sz + (pz - sz) * k - pz) * T;
+    }
+    out.x = P.x;
+    out.y = P.y;
+    out.z = P.z;
+    out.f = f0 + bu * (f1 - f0);
+    // the blade's travel at f since last frame (pa / pb: _combat commits after the hit), less the
+    // root's own (the cleave's dash would tilt the cut forward)
+    const cur = this._cA.lerpVectors(sw.a, sw.b, out.f), prev = this._cB.lerpVectors(sw.pa, sw.pb, out.f);
+    const gdt = fin(this.game.dt, 0);
+    out.cx = cur.x - prev.x - fin(this.groundVel.x, 0) * gdt;
+    out.cy = cur.y - prev.y;
+    out.cz = cur.z - prev.z - fin(this.groundVel.z, 0) * gdt;
+    const gl = Math.hypot(out.cx, out.cz);
+    if (gl > 1e-4) {
+      out.gx = out.cx / gl;
+      out.gz = out.cz / gl;
+    } else {
+      out.gx = Math.sin(this.yaw);
+      out.gz = Math.cos(this.yaw);
+    }
+    const ex = sw.b.x - sw.a.x, ey = sw.b.y - sw.a.y, ez = sw.b.z - sw.a.z, el = Math.hypot(ex, ey, ez) || 1;
+    out.ex = ex / el;
+    out.ey = ey / el;
+    out.ez = ez / el;
+    return Number.isFinite(out.x + out.y + out.z + out.f + out.cx + out.cy + out.cz + out.gx + out.gz + out.ex + out.ey + out.ez);
   }
 
   // ------------------------------------------------------------------ fx / visuals

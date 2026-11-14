@@ -5,6 +5,7 @@ import { injectLabStyle } from './labStyle.js';
 import { HitboxOverlay } from './hitboxOverlay.js';
 import { TimingTrainer, tellName } from './timingTrainer.js';
 import { ModelViewer, VIEW_ANGLES, VIEW_LOOKS } from './modelView.js';
+import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -788,6 +789,24 @@ export class Lab {
       setText(this.ui.atkSpeedVal, `x${v.toFixed(2)}`);
     });
     this.ui.atkSpeedVal = el('span', 'lab-val', 'x1.00', sp);
+    // the look of a landed cut (combat/cutFx.js; the owner's pick): the slash line, or a fan of sparks
+    const cut = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'cut', cut).title = 'the look of a landed cut (combat/cutFx.js)';
+    const cutGrid = el('div', 'lab-grid', null, cut);
+    cutGrid.style.flex = '1';
+    this.ui.cutBtns = ['gash', 'fan'].map((s) => {
+      const b = button(cutGrid, s, () => {
+        setCutStyle(s);
+        this._syncCutBtns();
+      });
+      b.title = s === 'gash' ? 'a tapered slash line across the body, along the cut' : 'no line: a wider fan of sparks along the cut';
+      return { s, el: b };
+    });
+    this._syncCutBtns();
+  }
+
+  _syncCutBtns() {
+    for (const { s, el: b } of this.ui.cutBtns ?? []) setClass(b, 'on', cutStyle() === s);
   }
 
   _buildTime(root) {
@@ -1117,6 +1136,7 @@ export class Lab {
     if (pd?.god) flags.push('god');
     if (pd?.infiniteFlasks) flags.push('inf flasks');
     if (finite(pd?.attackSpeed, 1) !== 1) flags.push(`atk x${finite(pd.attackSpeed, 1).toFixed(2)}`);
+    if (cutStyle() !== 'gash') flags.push(`cut ${cutStyle()}`);
     const ts = finite(g.debugTimeScale, 1);
     if (ts !== 1) flags.push(ts === 0 ? 'FROZEN' : `x${ts}`);
     if (this.loop.on) flags.push(`loop ${this.selected}`);

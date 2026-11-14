@@ -432,6 +432,18 @@ ground speed of the gait and the foot planner's world spots. The animator runs w
 (plain upright 1.85 m body, so IK and ground clamps work in metres); the drawn transform is applied
 after it. FX read the drawn joints; the sword sweep's hit test, `getChestPos()` (the dragon's aim)
 and the hurt cylinder use the upright body (`SwordSweep(sword, unlean)`).
+**The drawn contact** (`_contactPoint(dr, kind, out)`): the hit test runs on the upright
+gameplay bodies, so its point floats off both drawn figures; a landed cut is DRAWN where the drawn
+blade (`CUT_LOOK.from` … `fx.arcAt(kind)` of the hit segment) meets the boss's drawn hurt spheres
+(`dr.drawnPoint`, radius × `dr.drawScale`). `player._cut` holds it: the point, f along the hit
+segment, the blade's travel there (`cx, cy, cz`; unit ground-plane `gx, gz`) and its direction
+(`ex, ey, ez`). That point goes to `takeHit` (with `cut: {x: gx, z: gz}`), to `player:hitDragon`
+and to `fx.contact`; `game.kick` throws the camera along the travel. Each attack def's `contact`
+(the cutFx tier), `hitstop`, `shake`, `punch` and `kick` (a number or [k0, k1] lerped by the charge;
+`combat.js` `HIT_FEEL` holds the crit factors, `feel(v, k)` reads one; `THRUST.exec` the execution's)
+set the weight of the cut. `atk.hitAt` (the attack clock at the contact, -1 none) and `atk.cutDir`
+({x, y, z} unit world travel of the blade there, or null) are set before the freeze starts, for the
+animator and other areas. The slam's ground-shard hit draws no cut (the shards are its contact).
 Deals damage via `game.dragon.takeHit(...)` using `game.dragon.hurtSpheres`, tested through a
 vertical reach band (`REACH` in `player/combat.js`: a sphere overlapping the blade's swept wall
 extended `up` m above / `down` m below it counts, so the giant wyrm's chest is in reach from the
@@ -696,7 +708,15 @@ A VEIL of four faint rows runs close inside it (a thin crescent; the numbers are
 `ARC_LOOK`). Its strength follows how far the blade TURNED this frame, so a blade only carried
 along (a dash) leaves none (`gate: false` for the plunge's dive). `arcGlint(x, y, z, dx, dy, dz,
 heavy, crit)`: a small star and sparks on the arc's edge, once a swing as the cut comes through
-(`player.js` `_combat`). New: `skid(dt, slot, x, z, dx, dz, sp,
+(`player.js` `_combat`), only on a whiff (a landed cut's core is the beat's one star).
+`contact(p, tier, C, crit, k)`: a cut that LANDS, drawn at p (the drawn contact) by
+`combat/cutFx.js` `cutBurst(game, x, y, z, o)` (o = { tier, cut, edge, hilt, crit, power, low }):
+a tapered slash line across the body along the cut's screen direction (a second line and a tick
+along the blade on heavy blows, a cross on a crit), thin sparks thrown along the cut, falling motes,
+a 0.22-0.3 m two-frame core, a ring on heavy blows, one small light; per-tier numbers in the exported
+`CUT_LOOK`, the last burst's counts in `CUT_LAST`, the look switch `setCutStyle('gash' | 'fan')` /
+`cutStyle()` (the Lab's 'cut' row; `?cutfx=fan`). `cleaveImpact(..., bare)`: bare = the fan only
+(contact draws the ring and the light). `sparks()` stays for the plunge. New: `skid(dt, slot, x, z, dx, dz, sp,
 k)` (dust and torn grass off a sliding contact; `slot` 0 / 1 keeps a rate accumulator each) and
 `scrape(dt, x, y, z, dx, dz, sp)` (cold sparks off the dragging point). 2026-11-09: `parry(x, y, z,
 blue, chain = 1, dx = 0, dz = 0)` (the clash grows with the deflect chain, crossed streaks from the
@@ -774,8 +794,13 @@ crashing: boolean                       // true while a plunge stops a flight: t
 isTargetable(): boolean                 // false while sleeping/dying/dead
 lockPoint(out): Vector3                  // chest/neck base, for lock-on + camera
 startIntro()                            // wake → rise → roar; emits 'dragon:introDone' when the fight starts
-takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, poise, heavy, crit, exact, posture }): number
+takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, cut:{x,z}, poise, heavy, crit, exact, posture }): number
                                         // returns the damage dealt (before the gate clamp); adds posture.
+                                        // point = where the cut is DRAWN (the hero's drawn blade on the
+                                        // boss's drawn body, Player._contactPoint): FX and the damage
+                                        // number only, never gameplay. cut (optional): the unit
+                                        // ground-plane travel of the blade at the contact: the hit
+                                        // spray flies along it (absent: along dir / the flinch)
                                         // Phase gate: with the AI on, damage stops at the next phase's
                                         // threshold until its transition starts (no skipping a phase).
                                         // exact: the damage is final (no part / broken multipliers); posture:
@@ -1477,7 +1502,10 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   comma: ui/bossName.js), `state` (`sleeping|waking|combat|staggered|airborne|dying|dead`), `hp,
   maxHp, phase, phaseAt, nextPhaseHp, posture, maxPosture, broken`, `hurtSpheres`, `bodyCircles`,
   `position, yaw, object3d, batch`, `isTargetable()`, `lockPoint(out)`, `startIntro()`, `takeHit(o)`,
-  `onParried(info)`, `reset()`, `update(dt)`, `debug` (the Lab's generic shape). A plunge target adds
+  `onParried(info)`, `reset()`, `update(dt)`, `debug` (the Lab's generic shape). Optional
+  `drawnPoint(v)` (+ `drawScale`): maps an upright gameplay point (a hurt sphere's centre) to where it
+  is drawn (the lean, the drawn size, a drawn-only offset), in place; the hero's landed cut is drawn
+  where his drawn blade meets those drawn spheres (absent: identity, the wyrm). A plunge target adds
   `plungePoint` / `onPlunge` (the wyrm); a **duelist** (`kind: 'duelist'`) instead offers
   `onExecute({ damage })` and `execRange` (the execution thrust, Player below) and gets no creature
   voice (audio.js gates roars, pain and recoil yelps on `kind`). A boss with **several health bars**
@@ -1655,8 +1683,10 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'slam'|'cleave'|'thrust', combo, charge}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; cleave = the charge's release, thrust = the execution against a duelist),
   `player:charge {t}` (charge start; t = seconds to full charge), `player:slam {x, z}` (the slam meets the ground: shard burst),
-  `player:hitDragon {damage, part, point, heavy, crit, kind, guarded}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
-  head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0), `player:hurt {damage, kind, hp}`,
+  `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
+  head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn;
+  combo = the chain hit 1-5 (1 outside the chain); weight = the cut's look and sound tier, the attack's contact:
+  light, sweep, point, slam, cleave or execute; the plunge's has neither), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
   `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last}` (last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within

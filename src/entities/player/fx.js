@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { DIM } from './model.js';
 import { CLASH, clashBurst } from '../../combat/clashFx.js';
+import { cutBurst } from '../../combat/cutFx.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
 // cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
@@ -427,13 +428,38 @@ export class PlayerFx {
   }
 
   /**
+   * A cut that lands (combat/cutFx.js) at p (the drawn contact): `tier` = the attack's `contact`
+   * (combat.js), C = player._cut (the blade's travel and direction there) or null (the cut's line
+   * then falls back across the blade), crit, k = the charge. Returns the spawn count.
+   */
+  contact(p, tier, C, crit = false, k = 0) {
+    if (!p || !this.add) return 0;
+    const o = this._co ?? (this._co = { tier, cut: { x: 0, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 0 }, hilt: null, crit, power: 0, low: false });
+    o.tier = tier;
+    o.crit = !!crit;
+    o.power = k;
+    o.low = this.game.settings?.quality === 0;
+    if (C) {
+      o.cut.x = C.cx; o.cut.y = C.cy; o.cut.z = C.cz;
+      o.edge.x = C.ex; o.edge.y = C.ey; o.edge.z = C.ez;
+    } else {
+      o.cut.x = o.cut.y = o.cut.z = NaN;
+      o.edge.x = o.edge.y = o.edge.z = NaN;
+    }
+    const sw = this.rig?.sword;
+    o.hilt = sw?.matrixWorld ? (this._hiltV ?? (this._hiltV = new THREE.Vector3())).set(0, 0, DIM.guard).applyMatrix4(sw.matrixWorld) : null;
+    return cutBurst(this.game, p.x, p.y, p.z, o);
+  }
+
+  /**
    * The charged cleave bites: a ring bursting out of the contact in the camera's plane, a fan of long
    * cyan-white streaks thrown on along the cut's way (dx, dz), and a cold flash of light; k = charge.
+   * `bare`: the fan only (a landed cut's contact() draws the ring and the light).
    */
-  cleaveImpact(x, y, z, dx, dz, k = 0, crit = false) {
+  cleaveImpact(x, y, z, dx, dz, k = 0, crit = false, bare = false) {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
-    this.shockwave(x, y, z, k > 0.5);
+    if (!bare) this.shockwave(x, y, z, k > 0.5);
     const c0 = crit ? COL.crit : COL.trailCore, c1 = crit ? COL.critEnd : COL.trailEnd;
     const base = Math.atan2(dz, dx), n = 10 + Math.round(8 * k);
     for (let i = 0; i < n; i++) {
@@ -445,7 +471,7 @@ export class PlayerFx {
         color: c0, colorEnd: c1, alpha: 1, alphaEnd: 0, drag: 3.5,
       });
     }
-    this._light({ x, y, z, color: crit ? [0.6, 0.8, 1.3] : [0.55, 0.85, 1.25], intensity: 4 + 2 * k, radius: 7, life: 0.2, fade: 0.18 });
+    if (!bare) this._light({ x, y, z, color: crit ? [0.6, 0.8, 1.3] : [0.55, 0.85, 1.25], intensity: 4 + 2 * k, radius: 7, life: 0.2, fade: 0.18 });
   }
 
   /** Charged heavy's release: a short ground gust ring of dust and glints around the feet. */
