@@ -301,6 +301,8 @@ const DT = 1 / 60;
 const CHAIN_EVERY = 0.36;
 const cls = (c) => ui.find((e) => e.classList?.contains(c));
 const aimAt = (G) => { const d = G.game.dragon; G.game.mouseGround.set(d.position.x, 0, d.position.z); };
+// the move stick pushed toward the wyrm (the stick is world-fixed: x = east, y = north = −z)
+const toward = (G) => { const d = G.game.dragon, p = G.game.player, x = d.position.x - p.position.x, z = d.position.z - p.position.z, l = Math.hypot(x, z) || 1; return { x: x / l, y: -z / l }; };
 
 // ---- defender: answers tells like a player would (timed from combat:tell, re-timed by combat:flash)
 //   blue / normal → tap RMB 0.12 s before impact (parry) · red → Space 0.1 s before impact (Ghostep)
@@ -3335,9 +3337,12 @@ async function scenarioHeroLook() {
     go(0.8);
   }
   // … and again 2.5 m from the wyrm, landing: the edge's bite (anim.js BITE) holds the blade where
-  // it bit and folds the body into the blow through every freeze
+  // it bit and folds the body into the blow through every freeze. Then the heavier bites: the
+  // charged cleave (its upright two-handed blade stands before his face) landing from 2.0-3.6 m, and
+  // the sprint slash run in from 7-8 m
   let landed = 0;
-  G.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded) landed++; };
+  const kinds = {};
+  G.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded) { landed++; const k = p.atk?.def?.name ?? e.kind; kinds[k] = (kinds[k] ?? 0) + 1; } };
   for (let look = 0; look < 3; look++) {
     p.anim.forceVariant = look;
     place(G, 2.5);
@@ -3350,12 +3355,37 @@ async function scenarioHeroLook() {
     }
     go(0.8);
   }
-  G.watch = null;
   p.anim.forceVariant = null;
+  const chainLanded = landed;
+  for (let rep = 0; rep < 3; rep++) {
+    place(G, 2.0 + rep * 0.8);
+    d.hp = d.maxHp;
+    d.posture = 0;
+    go(0.4);
+    input.press(0);
+    go(0.6 + rep * 0.4);
+    input.up(0);
+    go(1.4);
+  }
+  for (let rep = 0; rep < 2; rep++) {
+    place(G, 7 + rep);
+    d.hp = d.maxHp;
+    d.posture = 0;
+    go(0.3);
+    input.axis = toward(G); // (the stick is world-fixed: y = north)
+    input.hold('ShiftLeft');
+    aimAt(G);
+    go(0.5);
+    input.click(0);
+    input.release('ShiftLeft');
+    input.axis = { x: 0, y: 0 };
+    go(1.2);
+  }
+  G.watch = null;
   p.debug.teleport(d.position.x + 14, d.position.z + 14);
   go(0.3);
-  out(`   near the wyrm: ${landed} landed hits through the chain`);
-  assert(landed >= 10, `the chain swung 2.5 m from the wyrm lands (${landed} hits; ≥ 10)`);
+  out(`   near the wyrm: ${chainLanded} landed hits through the chain; then ${JSON.stringify(kinds)}`);
+  assert(chainLanded >= 10 && (kinds.cleave ?? 0) >= 2 && (kinds.sprintSlash ?? 0) >= 1, `the chain swung 2.5 m from the wyrm lands (${chainLanded} hits; ≥ 10), and so do the charged cleave (${kinds.cleave ?? 0}; ≥ 2) and the sprint slash (${kinds.sprintSlash ?? 0}; ≥ 1)`);
   // the sprint slash and the roll cut
   input.axis = { x: 0, y: 1 };
   input.hold('ShiftLeft');
@@ -4168,6 +4198,32 @@ async function scenarioHeroWeight() {
       run(0.8);
     }
     A.forceVariant = null;
+    // the heavier bites: the charged cleave (1.5) landing from 2.0-3.6 m, the sprint slash (1.1) run
+    // in from 7-8 m
+    for (let rep = 0; rep < 3; rep++) {
+      place(G, 2.0 + rep * 0.8);
+      d.hp = d.maxHp;
+      d.posture = 0;
+      run(0.4);
+      input.press(0);
+      run(0.6 + rep * 0.4);
+      input.up(0);
+      run(1.4);
+    }
+    for (let rep = 0; rep < 2; rep++) {
+      place(G, 7 + rep);
+      d.hp = d.maxHp;
+      d.posture = 0;
+      run(0.3);
+      input.axis = toward(G); // (the stick is world-fixed: y = north)
+      input.hold('ShiftLeft');
+      aimAt(G);
+      run(0.5);
+      input.click(0);
+      input.release('ShiftLeft');
+      input.axis = { x: 0, y: 0 };
+      run(1.2);
+    }
     G.watch = null;
     const rows = [];
     for (let i = 1; i < seq.length - 6; i++) {
@@ -4186,7 +4242,8 @@ async function scenarioHeroWeight() {
     }
     out(`   bite: ${rows.length} landed hits; the hips drop ${Math.min(...rows.map((R) => R.drop * 100)).toFixed(1)}-${Math.max(...rows.map((R) => R.drop * 100)).toFixed(1)} cm into the first freeze frame, the tip moves ≤ ${Math.max(...rows.map((R) => R.move * 100)).toFixed(1)} cm (≥ ${Math.min(...rows.map((R) => R.along * 100)).toFixed(1)} cm along the cut); after it ≤ ${Math.max(...rows.map((R) => R.after * 100)).toFixed(0)} cm a frame, the arms ≤ ${Math.max(...rows.map((R) => R.arm)).toFixed(0)}° a frame`);
     out(`         ${rows.map((R) => `${R.clip} ${(R.drop * 100).toFixed(1)}/${(R.move * 100).toFixed(0)}/${(R.after * 100).toFixed(0)}`).join(' · ')}`);
-    assert(rows.length >= 10 && rows.every((R) => R.freeze), `the chain lands ${rows.length} blows 2.5 m from the wyrm (≥ 10), each followed by a freeze frame`);
+    const nOf = (c) => rows.filter((R) => R.clip === c).length;
+    assert(rows.length >= 13 && nOf('cleave') >= 2 && nOf('sprintSlash') >= 1 && rows.every((R) => R.freeze), `the chain lands ${rows.length - nOf('cleave') - nOf('sprintSlash')} blows 2.5 m from the wyrm, the cleave ${nOf('cleave')} (≥ 2), the sprint slash ${nOf('sprintSlash')} (≥ 1), each followed by a freeze frame`);
     assert(rows.every((R) => R.drop >= 0.035 && R.move <= 0.2 && R.along >= -0.04),
       `the edge bites: into the first freeze frame the hips drop ≥ 3.5 cm (${Math.min(...rows.map((R) => R.drop * 100)).toFixed(1)}), the tip holds within 20 cm (${Math.max(...rows.map((R) => R.move * 100)).toFixed(1)}) and is never pulled back > 4 cm against the cut (${Math.min(...rows.map((R) => R.along * 100)).toFixed(1)})`);
     assert(rows.every((R) => R.after <= 1.3 && R.arm < 60), `then it tears on through: the tip ≤ 1.3 m a frame over the next 4 frames (${Math.max(...rows.map((R) => R.after)).toFixed(2)}), no arm segment ≥ 60° a frame (${Math.max(...rows.map((R) => R.arm)).toFixed(0)}°)`);

@@ -786,8 +786,10 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
 - **The bite** (`attackPose`, clips only): from a landed hit (`atk.hitAt`) the edge catches in what
   it cut: the blade holds where the contact frame drew it (`anim.bite { rec, at, dir }`, keyed on the
   record and the time), the grip pulls in along it, the hips drop, the chest folds and the head
-  nods (`BITE`, × the def's `bite`, combat.js), full through the hit-pause (whose frozen clock keeps
-  `t − hitAt` ≈ 0) and let go over `BITE.dur` (0.08 s) of the attack's clock after it. **Inertia**:
+  nods (`BITE`, × the def's `bite`, combat.js; the fold and the nod also × the clip's `fold`,
+  swings.js: the cleave's upright two-handed blade stands before his face, 0), full through the
+  hit-pause (whose frozen clock keeps `t − hitAt` ≈ 0) and let go over `BITE.dur` (0.08 s) of the
+  attack's clock after it. **Inertia**:
   outside a dash, the chest pitches against the root's acceleration (`ATK_INERTIA` × `anim.leanF`,
   the loco's lean spring): behind the hips on the push-off, over the planted foot on the brake.
 - Internal animator state worth knowing: `pathCh` (channels a windup path drives this frame, copied

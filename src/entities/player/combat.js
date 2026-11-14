@@ -45,7 +45,8 @@ import { DIM } from './model.js';
 // `bite` = how hard the edge catches in what it cuts (× anim.js BITE, default 1; a clip's landed,
 // unguarded hit only): through the hit-pause the hips drop, the chest folds into the blow, the head
 // nods, the grip pulls in and the blade holds where it bit, then tears on through. The heavier the
-// blow the deeper (the slam 1.3, the sprint slash 1.1, the cleave 1.5); the thrust has none.
+// blow the deeper (the slam 1.3, the sprint slash 1.1, the cleave 1.5: its clip folds neither the
+// chest nor the head into it, swings.js `fold`); the thrust has none.
 //
 // Pace (Session 26, owner: "speed up the attack speed ... its too slow right now"): a light is a
 // short gather, a QUICK cut and a held finish: windup 0.11 s, active 0.12 s, and the next light may

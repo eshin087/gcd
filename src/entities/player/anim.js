@@ -673,6 +673,7 @@ function swingClip(name) {
       flat: Array.isArray(def.flat) ? def.flat : SW_UP,
       rF: def.rF ?? null, lF: def.lF ?? null, step: def.step ?? null, drag: def.drag ?? 0.22, home: def.home ?? SW_HOME,
       lead: Array.isArray(def.lead) ? def.lead : SW_LEAD, fy: Array.isArray(def.fy) ? def.fy : null,
+      fold: Number.isFinite(def.fold) ? def.fold : 1, // × the bite's chest fold and head nod (attackPose)
       hipCoil: keys.find((k) => k.hip != null && k.u >= 0.9 && k.u <= 1.0)?.hip ?? null, // the hips' turn at the coil
     };
     // (with lungeFeet the feet are its own too: it starts them from where they stood, A.entry, and
@@ -965,9 +966,11 @@ function attackPose(p, A) {
       const w = Math.min(1, BITE.drag * b);
       for (let c = 0; c < 3; c++) p[P.swD + c] += (H.dir[c] - p[P.swD + c]) * w;
       for (let c = 0; c < 3; c++) p[P.rH + c] -= H.dir[c] * BITE.grip * b;
+      // (the clip's `fold`: a blade held upright before the face takes no fold and no nod)
+      const fold = clamp(fin(swingClip(k.clip)?.fold, 1), 0, 1);
       p[P.bodyY] -= BITE.sink * b;
-      p[P.spX] += BITE.lean * b;
-      p[P.hdX] += BITE.nod * b;
+      p[P.spX] += BITE.lean * b * fold;
+      p[P.hdX] += BITE.nod * b * fold;
     }
   }
 }

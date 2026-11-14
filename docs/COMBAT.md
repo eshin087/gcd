@@ -539,7 +539,10 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   holds where it bit, the grip pulls in along it, the hips drop ~4.5 cm, the chest folds into the
   blow and the head nods; then the blade tears on through over 0.08 s of the swing's clock (it is
   never pulled back past the frame that hit). Per weight (combat.js `bite`): the lights 1, the
-  sprint slash 1.1, the slam 1.3, the cleave 1.5 (its hips drop ~7 cm); a guarded strike never bites.
+  sprint slash 1.1, the slam 1.3, the cleave 1.5 (its hips drop ~7 cm, but its chest does not fold
+  and its head does not nod: the two-handed blade stands upright before his face, and a close
+  contact held it 2.5 cm into his head through the longest freeze; swings.js `fold` 0); a guarded
+  strike never bites.
 
 **Moves** (`moves.js`; N normal, B blue, R red; P1 windup s (damage); LOCK = a perfect parry locks
 the blades, MIKIRI = perilous; hits test a zone from his root through their active frames: sector

@@ -44,7 +44,9 @@
 //   chest run (anim.js swingPose: the hips' and chest's keys are played that much earlier);
 //   `fy` [frontYaw, rearYaw] (rad, for a left-front stance, mirrored when the right foot steps): the
 //   stance's foot yaws; `drag` (default 0.22: m the holding foot may stretch past the stance's rear
-//   spot before its toe drags after the body).
+//   spot before its toe drags after the body); `fold` (0..1, default 1: × the chest's fold and the
+//   head's nod in the bite after a landed hit, anim.js BITE: 0 for a blade held upright before the
+//   face, which they would put his head into).
 //
 // Authoring notes: a cut reads as powered by the body when the hips lead (their turn is ahead of the
 // chest's at mid-cut), the hand is furthest from the shoulder as the blade crosses his front, and the
@@ -320,6 +322,7 @@ export const SWINGS = {
     line: 'right',
     home: 0.55,
     lead: [0.033, 0], // (a chest lead put his head 2.1-2.2 cm into the upright blade: HEROLOOK)
+    fold: 0, // (the bite's chest fold and head nod put his head 2.5 cm into it at a close contact)
     keys: [
       { u: 0.9, h: [-0.03, 0.02, 0.24], a: [-145, 74], two: 1, lp: [0.7, -0.6, 0.3], by: -0.26, bz: 0.05, hip: -0.34, sy: -0.5, sx: 0.4, hs: 0 },
       { u: 1.4, h: [-0.07, 0.1, 0.18], a: [-148, 50], two: 1, by: -0.23, bz: 0.06, hip: -0.32, sy: -0.52, sx: 0.44, hs: 0 },
