@@ -2672,7 +2672,7 @@ async function scenarioHero() {
       out(`   sword looks: ${rows.join(' · ')}`);
       assert(!bad.length, `the sword looks build to the drawn point with no arrowhead, the pommel where it was, the blade's aGUV, the ribbon's own streamer, and animate (${bad.join('; ') || 'all'})`);
       // the ribbon: never under the grass (a run, a sprint, a roll, the chain, the cleave; the landing
-      // of a knockdown within 4 cm: the cloak's own sheets go 16 cm under there, the springs lag the
+      // of a knockdown within 5 cm (the hero's longer reach, anim.js HERO_SOFT, carries the hilt ~1 cm lower there): the cloak's own sheets go 16 cm under there, the springs lag the
       // fall); it swings out through a cut and hangs again at rest. Its angle is measured on the
       // upright body (unleaned): drawn, the whole figure leans ~29° toward the camera
       p.setLoadout({ ...DEFAULT_LOADOUT, weapon: 'moon.ribbon' });
@@ -4939,10 +4939,13 @@ async function scenarioHeroArms() {
   fightSetup(G);
   const p = game.player, d = game.dragon, r = p.rig, A = p.anim;
   p.debug.god = true;
-  p.debug.teleport(d.position.x + 14, d.position.z + 14);
+  // (open ground: 3.5 s of running north from here meets no stone of the harness's ring and stays
+  // 12 m from the wyrm. From wyrm + (14, 14) the run slid round a stone, and the "strafe" was that slide)
+  const LANE = [-10, 13];
+  p.debug.teleport(LANE[0], LANE[1]);
   const DEG = 180 / Math.PI;
   const v = new THREE.Vector3(), w = new THREE.Vector3();
-  const go = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); each?.(); } };
+  const go = (s, each, before) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { before?.(); G.tick(DT); each?.(); } };
   go(0.5);
   // the elbow's opening (180 = straight) and the upper arm's direction in the chest's frame
   const elbow = (s) => 180 - Math.abs(r.arms[s].fore.rotation.x) * DEG;
@@ -4970,7 +4973,7 @@ async function scenarioHeroArms() {
   out(`   rest: elbows R ${rest.R.toFixed(0)}° L ${rest.L.toFixed(0)}°, flare R ${rest.fR.toFixed(2)} L ${rest.fL.toFixed(2)}`);
 
   // (A2) the run, the same run as a strafe, and the sprint: the elbows beside the ribs, the arms swinging
-  const mk = () => ({ fR: -1, fL: -1, eR: [180, 0], eL: [180, 0], hz: [9, -9] });
+  const mk = () => ({ fR: -1, fL: -1, eR: [180, 0], eL: [180, 0], hz: [9, -9], mz: [9, -9], x: [9e9, -9e9] });
   const loco = { run: mk(), strafe: mk(), sprint: mk() };
   const locoEach = (K) => () => {
     for (const s of ['R', 'L']) {
@@ -4979,30 +4982,35 @@ async function scenarioHeroArms() {
       K['e' + s][0] = Math.min(K['e' + s][0], e);
       K['e' + s][1] = Math.max(K['e' + s][1], e);
     }
-    // the free hand's fore-aft swing (the pose's offset from its shoulder, body axes)
+    // the free hand's fore-aft swing (the POSE's offset from its shoulder, body axes: its target)
     K.hz[0] = Math.min(K.hz[0], A.cur[P.lH + 2]);
     K.hz[1] = Math.max(K.hz[1], A.cur[P.lH + 2]);
+    K.mz[0] = Math.min(K.mz[0], A.mz);
+    K.mz[1] = Math.max(K.mz[1], A.mz);
+    K.x[0] = Math.min(K.x[0], p.position.x);
+    K.x[1] = Math.max(K.x[1], p.position.x);
   };
-  // (the stick is world-fixed, y = north = −z; he faces the mouse's ground point: far north = a run
-  // straight ahead, far east = the same run as a strafe)
-  const aimFar = (dx, dz) => game.mouseGround.set(p.position.x + dx, 0, p.position.z + dz);
-  aimFar(0, -60);
+  // (the stick is world-fixed, y = north = −z; he faces the mouse's ground point, set BEFORE each
+  // tick: far north = a run straight ahead, far east = the same run as a pure strafe)
+  const aimFar = (dx, dz) => () => game.mouseGround.set(p.position.x + dx, 0, p.position.z + dz);
   input.axis = { x: 0, y: 1 };
-  go(0.6, () => aimFar(0, -60));
-  go(1.2, () => { aimFar(0, -60); locoEach(loco.run)(); });
-  const mzRun = A.mz;
-  go(0.5, () => aimFar(60, 0));
-  go(1.2, () => { aimFar(60, 0); locoEach(loco.strafe)(); });
-  const mzStrafe = A.mz;
+  go(0.6, null, aimFar(0, -60));
+  go(1.2, locoEach(loco.run), aimFar(0, -60));
+  p.debug.teleport(LANE[0], LANE[1]);
+  go(0.8, null, aimFar(60, 0));
+  go(1.2, locoEach(loco.strafe), aimFar(60, 0));
+  p.debug.teleport(LANE[0], LANE[1]);
   input.hold('ShiftLeft');
   go(0.6);
   go(1.0, locoEach(loco.sprint));
   input.release('ShiftLeft');
   input.axis = { x: 0, y: 0 };
   go(1.0);
+  p.debug.teleport(LANE[0], LANE[1]);
+  go(0.3);
   for (const k of ['run', 'strafe', 'sprint']) {
     const K = loco[k];
-    out(`   ${k}${k === 'run' ? ` (mz ${mzRun.toFixed(2)})` : k === 'strafe' ? ` (mz ${mzStrafe.toFixed(2)})` : ''}: flare R ${K.fR.toFixed(2)} L ${K.fL.toFixed(2)}; elbows R ${K.eR[0].toFixed(0)}-${K.eR[1].toFixed(0)}° L ${K.eL[0].toFixed(0)}-${K.eL[1].toFixed(0)}°; the free hand swings ${((K.hz[1] - K.hz[0]) * 100).toFixed(0)} cm fore and aft`);
+    out(`   ${k} (mz ${K.mz[0].toFixed(2)}…${K.mz[1].toFixed(2)}, x drift ${(K.x[1] - K.x[0]).toFixed(2)} m): flare R ${K.fR.toFixed(2)} L ${K.fL.toFixed(2)}; elbows R ${K.eR[0].toFixed(0)}-${K.eR[1].toFixed(0)}° L ${K.eL[0].toFixed(0)}-${K.eL[1].toFixed(0)}°; the free hand's target swings ${((K.hz[1] - K.hz[0]) * 100).toFixed(0)} cm fore and aft`);
   }
 
   // (A3) the chain, each look: how far each elbow opens in each swing, and the most it opens at all
@@ -5043,10 +5051,11 @@ async function scenarioHeroArms() {
   for (const [c, S] of Object.entries(swings)) out(`   ${c}: sword elbow ${S.Rmin.toFixed(0)}-${S.R.toFixed(0)}° (asks ${(S.want * 100).toFixed(0)} % of the arm), free elbow ${S.Lmin.toFixed(0)}-${S.L.toFixed(0)}° (${S.n} frames)`);
 
   // (A4) the charge and its release: the blade's pass by his head
-  let holdMin = Infinity, holdAt = 0, dashMin = Infinity, dashAt = 0, gapMax = 0, chargeL = [180, 0], chargeR = [180, 0];
+  let holdMin = Infinity, holdAt = 0, dashMin = Infinity, dashAt = 0, gapMax = 0, chargeL = [180, 0], chargeR = [180, 0], holdN = 0, dashN = 0;
   input.press(0);
   go(1.7, () => {
     if (p.state !== 'charge') return;
+    holdN++;
     const b = bladeHead();
     if (b < holdMin) { holdMin = b; holdAt = p.chargeK; }
     if (p.chargeK > 0.3) {
@@ -5060,6 +5069,7 @@ async function scenarioHeroArms() {
   go(1.2, () => {
     const a = p.atk;
     if (!a?.def || p.state !== 'heavy') return;
+    dashN++;
     const b = bladeHead();
     if (b < dashMin) { dashMin = b; dashAt = a.t; }
   });
@@ -5069,13 +5079,16 @@ async function scenarioHeroArms() {
   assert(rest.R >= 110 && rest.L >= 125 && rest.fL <= 0.3 && rest.fR <= 0.3,
     `at rest the arms hang: elbows open ${rest.R.toFixed(0)}° (sword, ≥ 110) and ${rest.L.toFixed(0)}° (free, ≥ 125), neither out from the ribs (flare ${rest.fR.toFixed(2)} / ${rest.fL.toFixed(2)} ≤ 0.3)`);
   // (A2) on the run the elbows point back, not out, and the free arm opens behind him and folds in
-  // front; strafing (the aim held to the side) the arms still swing
+  // front; in a PURE strafe (the aim held square to the run: |mz| < 0.1, no sideways drift) the arms
+  // still swing
   {
     const R = loco.run, S = loco.strafe, Sp = loco.sprint;
     assert(Math.max(R.fR, R.fL, S.fR, S.fL) <= 0.45 && Math.max(Sp.fR, Sp.fL) <= 0.55,
       `the elbows stay in beside the ribs: out to the side at most ${Math.max(R.fR, R.fL, S.fR, S.fL).toFixed(2)} on the run and the strafe (≤ 0.45; they flared 0.47-0.58), ${Math.max(Sp.fR, Sp.fL).toFixed(2)} sprinting (≤ 0.55; 0.60-0.73)`);
-    assert(R.eL[1] - R.eL[0] >= 35 && R.hz[1] - R.hz[0] >= 0.3 && S.hz[1] - S.hz[0] >= 0.12,
-      `the free arm works on the run: its elbow opens and folds ${(R.eL[1] - R.eL[0]).toFixed(0)}° a stride (≥ 35; it was one 87° crook), the hand swings ${((R.hz[1] - R.hz[0]) * 100).toFixed(0)} cm fore and aft (≥ 30) and still ${((S.hz[1] - S.hz[0]) * 100).toFixed(0)} cm with the aim held to the side (≥ 12; it hung still)`);
+    assert(R.mz[0] > 0.95 && R.eL[1] - R.eL[0] >= 35 && R.hz[1] - R.hz[0] >= 0.3,
+      `the free arm works on the run: its elbow opens and folds ${(R.eL[1] - R.eL[0]).toFixed(0)}° a stride (≥ 35; it was one 87° crook) and the hand's target swings ${((R.hz[1] - R.hz[0]) * 100).toFixed(0)} cm fore and aft (≥ 30)`);
+    assert(Math.max(Math.abs(S.mz[0]), Math.abs(S.mz[1])) < 0.1 && S.x[1] - S.x[0] < 0.3 && S.hz[1] - S.hz[0] >= 0.12 && S.eL[1] - S.eL[0] >= 15,
+      `… and in a pure strafe (the aim square to the run: mz ${S.mz[0].toFixed(2)}…${S.mz[1].toFixed(2)}, ${(S.x[1] - S.x[0]).toFixed(2)} m of sideways drift): the hand's target still swings ${((S.hz[1] - S.hz[0]) * 100).toFixed(0)} cm (≥ 12; it hung still, 0 cm) and the elbow works ${(S.eL[1] - S.eL[0]).toFixed(0)}° (≥ 15)`);
   }
   // (A3) the arms open: a swing that asks for the hand at ≥ 95 % of the arm's length opens the sword
   // elbow to ≥ 140° (they all stopped at 124-130°); nothing one-handed locks straight
@@ -5084,12 +5097,13 @@ async function scenarioHeroArms() {
     const tight = far.filter(([, S]) => S.R < 140);
     assert(far.length >= 5 && !tight.length,
       `the sword arm opens at a cut's contact and a thrust's end: ≥ 140° in each of the ${far.length} swings that ask for a full reach (${far.map(([c, S]) => `${c} ${S.R.toFixed(0)}°`).join(', ')})`);
+    // (a guard on HERO_SOFT's ceiling: 0.99 of the arm is 164°)
     assert(lock <= 166, `… and never locks into a stick: the most an elbow opens one-handed is ${lock.toFixed(0)}° (${lockAt}; ≤ 166)`);
   }
   // (A4) the charge: the upright blade a hand's width clear of the hood (its radius is 0.13-0.17 m
   // in the head's frame), through the hold and the dash; both hands on the grip
-  assert(holdMin >= 0.22 && dashMin >= 0.2 && fistShown && gapMax <= 0.035,
-    `the charged blade stands clear of his face: ${(holdMin * 100).toFixed(1)} cm from the head's axis through the hold (≥ 22; it was 10.2, inside the hood) and ${(dashMin * 100).toFixed(1)} cm through the release (≥ 20), the free hand's fist on the grip (${(gapMax * 100).toFixed(1)} cm off at most)`);
+  assert(holdN >= 60 && dashN >= 30 && Number.isFinite(holdMin) && Number.isFinite(dashMin) && holdMin >= 0.22 && dashMin >= 0.2 && fistShown && gapMax <= 0.035,
+    `the charged blade stands clear of his face: ${(holdMin * 100).toFixed(1)} cm from the head's axis through the hold (≥ 22; it was 10.2, inside the hood) and ${(dashMin * 100).toFixed(1)} cm through the release (≥ 20; ${holdN} + ${dashN} frames measured), the free hand's fist on the grip (${(gapMax * 100).toFixed(1)} cm off at most)`);
   return G;
 }
 
@@ -5207,9 +5221,9 @@ async function scenarioLooks() {
       const strips = r.coat.reduce((s, C) => s + C.strips.length, 0);
       if (!isNew) n0 = src.length;
       out(`   ${id}: ${src.length} meshes, ${tris} triangles, ${mats} materials, ${p.batch.meshes.length} batches, ${r.streamers.length} streamers, ${r.coat.length} panels, ${strips} strips`);
-      // (26.6k: today's look with the sword fingers drew ~26.3k triangles)
-      assert(src.length <= n0 && tris <= 26600 && mats <= 21 && p.batch.meshes.length <= 21 && r.streamers.length <= 6 && r.coat.length <= 6 && strips <= 12,
-        `${id}: costs no more than today (${src.length} meshes of ${n0}, ${tris} triangles ≤ 26600, ${mats} materials and ${p.batch.meshes.length} draws ≤ 21)`);
+      // (27k: today's look with the sword fingers and the closed fists draws ~26.6k triangles)
+      assert(src.length <= n0 && tris <= 27000 && mats <= 21 && p.batch.meshes.length <= 21 && r.streamers.length <= 6 && r.coat.length <= 6 && strips <= 12,
+        `${id}: costs no more than today (${src.length} meshes of ${n0}, ${tris} triangles ≤ 27000, ${mats} materials and ${p.batch.meshes.length} draws ≤ 21)`);
       const keys = Object.keys(r.offHand ?? {}).filter((k) => r.offHand[k]).sort().join();
       if (!isNew) offKeys0 = keys;
       const fist = r.sword.children.some((o) => o.isMesh && o.userData.slot === 'arms');

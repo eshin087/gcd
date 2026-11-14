@@ -310,7 +310,7 @@ export const SWINGS = {
    *  upright plane leaned 24°, and the hands covered half a metre in one frame of the blow.) */
   slam: {
     line: 'down',
-    home: 0.55,
+    home: 0.385,
     step: [0.45, 1.5],
     drag: 0.25,
     keys: [
@@ -334,7 +334,7 @@ export const SWINGS = {
    *  on behind him and snaps into sword fingers pointing at the foe, and he holds that finish. */
   cleave: {
     line: 'right',
-    home: 0.55,
+    home: 0.385,
     lead: [0.033, 0], // (a chest lead put his head 2.1-2.2 cm into the upright blade: HEROLOOK)
     fold: 0, // (the bite's chest fold and head nod put his head 2.5 cm into it at a close contact)
     keys: [
@@ -342,7 +342,9 @@ export const SWINGS = {
       // axis, inside the hood: the hands stay out to his right and the blade winds back OUT over the
       // shoulder, not in beside the ear)
       { u: 0.9, h: [-0.1, -0.08, 0.3], a: [-84, 74], two: 1, lp: [0.7, -0.6, 0.3], by: -0.26, bz: 0.05, hip: -0.34, sy: -0.5, sx: 0.34, hs: 0 },
-      { u: 1.4, h: [-0.2, 0.02, 0.2], a: [-122, 50], two: 1, by: -0.23, bz: 0.06, hip: -0.32, sy: -0.52, sx: 0.38, hs: 0 },
+      // (u 1.3, not 1.4: the hand has four frames to come across to the cut's first key; at 1.4 it went
+      // 21 cm out and 11 cm back in one frame, a hitch in the release)
+      { u: 1.3, h: [-0.17, 0.02, 0.22], a: [-122, 50], two: 1, by: -0.23, bz: 0.06, hip: -0.32, sy: -0.52, sx: 0.38, hs: 0 },
       { u: 1.55, h: [0.05, 0.1, 0.28], a: [-110, 40] },
       { u: 1.7, h: [0.14, -0.03, 0.44], a: [-38, 16], by: -0.26, hip: 0.1, sy: 0.0, sx: 0.4 },
       { u: 1.86, h: [0.24, -0.24, 0.4], a: [28, -18] },

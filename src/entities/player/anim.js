@@ -296,7 +296,10 @@ export function guard(p, A) {
   v3(p, P.rH, -0.19, -0.435 + 0.006 * br, 0.06); // the grip out beside the right hip, clear of the coat
   v3(p, P.rP, 0.5, -0.3, -1); // the upper arm hangs by the ribs, the elbow a little back: the forearm runs out and down, ~25° off the blade's line
   v3(p, P.lH, 0.07 + 0.006 * sw, -0.5 + 0.012 * br, 0.06 + 0.01 * br); // sword fingers low by the left hip; it breathes (the hand used to hang still)
-  v3(p, P.lP, 0.3, -0.2, -0.9); // (0.6 out: the elbow stood off the ribs like a wing)
+  // (the hero's free elbow hangs by the ribs: 0.6 out it stood off them like a wing. A duelist's
+  // footwork reads this pose too and keeps its own)
+  if (A.freeHand) v3(p, P.lP, 0.36, -0.2, -0.9);
+  else v3(p, P.lP, 0.6, -0.1, -0.8);
   v3(p, P.swD, IDLE_SW[0] + 0.01 * br, IDLE_SW[1] + 0.008 * br, IDLE_SW[2] + 0.015 * sw);
   v3(p, P.swF, 0.15, 0.05, 1); // edge down, the flat faces forward: broad to a camera in front or behind
   // (the right foot stood 0.33 m out and the leg dead straight: a straddle; now a shoulder-width
@@ -469,13 +472,19 @@ export function loco(p, A) {
   // (ADR-044: the hand hung 0.5 m below the shoulder, the end of the arm's reach, so the stride's
   // swing was lost in a straight arm; it rides a little higher now and swings 9 cm with the stride,
   // against the free arm)
-  // the arms swing with the stride whichever way he moves: their swing followed mz alone, so
+  // the hero's arms swing with the stride whichever way he moves: their swing followed mz alone, so
   // strafing with the aim held elsewhere (mz ~ 0: most of a fight on the mouse, or locked on) both
-  // arms hung still in one crook while the legs ran. Its sign follows the fore-aft direction, eased
-  // through sideways; its size never drops under 0.65
-  const armF = clamp(mz / 0.15, -1, 1) * Math.max(Math.abs(mz), 0.65);
+  // arms hung still in one crook while the legs ran. Its SIGN is the fore-aft direction he last
+  // moved in, latched through sideways and eased over ~0.1 s (A.armSign, update(): a sign taken
+  // from mz itself went through zero in a pure strafe, and flipped the hand 20 cm in one frame as
+  // the direction swung past sideways); its size never drops under 0.65. A duelist's footwork
+  // reads this pose too and keeps the old swing
+  const hero = A.freeHand === true;
+  const armF = hero ? fin(A.armSign, 1) * Math.max(Math.abs(mz), 0.65) : mz;
   const amp = 0.09 * cs * armF, ws = A.swordW, bw = A.backW;
-  to3(p, P.rH, lerp(lerp(-0.13, -0.15, s), -0.02, bw), lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38, bw), lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3, bw), ws);
+  // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
+  // beside a free arm that pumps; it rides the stride now)
+  to3(p, P.rH, lerp(lerp(-0.13, -0.15, s), -0.02, bw), lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), ws);
   // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
   // front: they point back beside the ribs now)
   to3(p, P.rP, lerp(lerp(-0.4, -0.5, s), -0.85, bw), lerp(lerp(-0.3, 0.2, s), -0.3, bw), lerp(-0.95, -0.5, bw), ws);
@@ -486,8 +495,15 @@ export function loco(p, A) {
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (the run's back swing reaches further down and back, so the elbow opens behind him and folds as
   // the hand comes forward: it was one rigid 87° crook swinging from the shoulder)
-  to3(p, P.lH, lerp(-0.02, -0.08, s) * k + 0.07 * (1 - k), lerp(lerp(-0.485, -0.3, k), lerp(-0.4, -0.04, k), s), lerp(lerp(-0.17, 0.24, k), lerp(-0.18, 0.32, k), s), w);
-  to3(p, P.lP, lerp(0.28, 0.36, s), -0.5, -0.8, w);
+  if (hero) {
+    to3(p, P.lH, lerp(0.0, -0.06, s) * k + 0.07 * (1 - k), lerp(lerp(-0.485, -0.3, k), lerp(-0.4, -0.04, k), s), lerp(lerp(-0.17, 0.24, k), lerp(-0.18, 0.32, k), s), w);
+    to3(p, P.lP, lerp(0.36, 0.42, s), -0.5, -0.8, w);
+  } else {
+    // (a duelist's run: as it was. Tucked in like the hero's, the Ash Disciple's sleeve ran 2-8 cm
+    // into his ribs and his hand crossed behind his back)
+    to3(p, P.lH, lerp(-0.02, -0.08, s) * k + 0.06 * (1 - k), lerp(lerp(-0.44, -0.3, k), lerp(-0.38, -0.04, k), s), lerp(lerp(-0.1, 0.24, k), lerp(-0.14, 0.32, k), s), w);
+    to3(p, P.lP, 0.6, -0.6, -0.6, w);
+  }
   // the free hand relaxes on the move: an open hand that half follows the forearm's own line (|lD|
   // is its weight). (Session 30: the run kept the sword fingers, two long fingers dangling off a
   // pumping arm; the shape is for the guard and the cuts)
@@ -603,7 +619,9 @@ const SW_VEC = { h: P.rH, l: P.lH, rp: P.rP, lp: P.lP, f: P.swF, pn: P.lN };
 const SW_DEG = Math.PI / 180;
 const SW_ENTRY = 1.3; // the entry's tangent (× the straight rate): he leaves the last pose at speed
 const SW_COIL = 0.35; // the blade's rate into the coil (× the straight rate) as it gets there
-const SW_HOME = 0.3; // the fraction of a recovery after which he starts back to the ready stance (a clip's `home`)
+// (0.21, and the slam's and the cleave's 0.385: with 0.3 / 0.55 and a smoothstep both arms whipped
+// home at 6-7 m/s and stopped dead on one frame, a freeze - snap - freeze after every swing)
+const SW_HOME = 0.21; // the fraction of a recovery after which he starts back to the ready stance (a clip's `home`)
 const SW_CLEAR = 0.24; // m: the sword hand's way to a coil stays this far from the spine (it bulges forward)
 const SW_FLAT = [1.2, 3.2]; // rad per phase of blade turn: below, the keyed flat; above, the swing's plane
 const SW_LEAD = [0.033, 0.017]; // s: how far ahead of the hand the hips / the chest run (a clip's `lead`)
@@ -927,14 +945,15 @@ function attackPose(p, A) {
   // then, so the follow-through runs into the way home without a stop (it was held to 0.5 of the
   // recovery, past the last key: the blade stood still for two frames and then snapped home in 0.12 s,
   // as fast as the cut)
-  const home = k.kind === 'clip' ? swingClip(k.clip)?.home ?? SW_HOME : 0.45;
+  const home = k.kind === 'clip' ? swingClip(k.clip)?.home ?? SW_HOME : 0.315;
   if (rec > home) {
     // back toward the ready stance: the rear foot stays planted, the foot that stepped draws back
     // home in a recovery step (the foot planner settles the rest), and the sword hand comes round in
     // FRONT of the chest (a straight blend of the shoulder offsets ran it through the torso)
     for (let j = 0; j < FOOT_CH.length; j++) FOOT_KEEP[j] = p[FOOT_CH[j]];
     guard(SCRATCH, A);
-    const b = smoothstep(home, 1, rec);
+    // (smootherstep: no speed and no acceleration left as the hands arrive)
+    const hx = clamp((rec - home) / Math.max(1e-6, 1 - home), 0, 1), b = hx * hx * hx * (hx * (6 * hx - 15) + 10);
     // a finish over his LEFT shoulder (light 1) comes home round the FRONT: the ready blade now
     // lies out to his right, and the short way there from the left-back runs behind his head and
     // through the sword arm's shoulder
@@ -1457,6 +1476,19 @@ function blockPose(p, A) {
   v3(p, P.lP, 0.5, -0.85, 0.0);
   p[P.twoHand] = 1;
   p[P.hs] = 0; // the fist on the grip (ADR-073's cross ward), open on the way there
+  // the guard breathes, and rides the stride when he walks in it: every channel above the hips was
+  // a constant, so standing or walking the whole figure above the feet moved as one rigid piece
+  // (0.0 cm of anything, measured). The elbows stay within 2°: still a firm guard
+  {
+    const br = Math.sin(A.time * (TAU / IDLE_LOOP)), mw = A.moveW;
+    const cs = Math.cos(TAU * A.phase), st = Math.cos(TAU * 2 * (A.phase - A.gait.beta * 0.5));
+    p[P.bodyY] += 0.006 * br - 0.02 * st * mw;
+    p[P.spX] += 0.012 * br;
+    p[P.pelvY] -= 0.07 * cs * mw;
+    p[P.spY] += 0.05 * cs * mw;
+    p[P.rH + 1] += 0.008 * br + 0.012 * st * mw;
+    p[P.rH + 2] += 0.004 * br;
+  }
   // a tap of the guard (a parry attempt) keeps the feet where they are; held, the stance settles
   // into the block's after ~0.2 s (each tap used to cost two settle steps in and two out again)
   const E = A.entry, fw = smoothstep(0.16, 0.4, A.t), BF = BLOCK_FEET;
@@ -2644,6 +2676,8 @@ export class HeroAnimator {
     this.phase = 0;
     this.mx = 0;
     this.mz = 1;
+    this.armDir = 1; // the arms' swing: the fore-aft sign he last moved in, and its eased value (loco armF)
+    this.armSign = 1;
     this.mh = 0; // move direction angle (model space): mx = sin, mz = cos
     this.def = null;
     this.chargeK = 0;
@@ -2824,6 +2858,8 @@ export class HeroAnimator {
     this.phase = 0;
     this.mx = 0;
     this.mz = 1;
+    this.armDir = 1; // the arms' swing: the fore-aft sign he last moved in, and its eased value (loco armF)
+    this.armSign = 1;
     this.mh = 0;
     this.def = null;
     this.chargeK = 0;
@@ -2971,6 +3007,9 @@ export class HeroAnimator {
       }
     }
     this.moveW = damp(this.moveW, clamp(sp / 3, 0, 1), 10, dt);
+    // the arms' swing keeps the fore-aft sign he last moved in through a sideways move (loco armF)
+    if (sp > 0.2 && Math.abs(this.mz) > 0.15) this.armDir = this.mz > 0 ? 1 : -1;
+    this.armSign = damp(fin(this.armSign, 1), fin(this.armDir, 1), 12, dt);
     if (sp > 0.2) this.backW = damp(this.backW, 1 - smoothstep(-0.75, -0.15, this.mz), 6, dt);
     this.sprintW = damp(this.sprintW, pl.state === 'sprint' ? 1 : 0, 6, dt);
     this.swordW = damp(this.swordW, this.moveW, 7, dt);
