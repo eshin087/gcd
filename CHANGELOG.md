@@ -19,7 +19,9 @@ Twenty-two pieces of work since 0.4.0:
   fighters on a hit is gone.
   His arms open now: a cut and a thrust reach out with the elbow nearly straight instead of every
   swing being made with the same crooked arm; on the run the elbows stay in beside the ribs, the free
-  arm swings from the elbow, and the arms keep swinging when he strafes. The charged blade stands out
+  arm swings from the elbow, and the arms keep swinging when he strafes. The guard breathes and
+  rides his steps instead of standing rigid, and a swing's arms come home softly instead of
+  stopping dead. The charged blade stands out
   to his right, clear of his hood (it crossed his face). The sword hand's fist is a closed hand with
   finger grooves (up close it was a stack of discs), on the bosses too.
   Kept for later use (today's look and sword are the default): three outfits, `?heroLook=robe`,

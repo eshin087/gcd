@@ -71,6 +71,20 @@ away from the face. somethign about the arms still feel unnatural and stiff".
   sloped down from the shoulder.
 - **Tests:** a new HEROARMS scenario (rest, run, strafe, sprint, every swing's opening, the lock
   bound, the charged blade's clearance). HERO's "never locks" bound is 15° (was 23°).
+- **An independent review of round 2** (three reviewers, headless probes against the parent
+  commit) confirmed the gains (frozen-elbow stretches 55 → 17 over one script; the charge 6.8 →
+  26.1 cm by their probe) and found: the arms still froze in an exactly sideways strafe, and
+  HEROARMS' strafe check passed only because he slid round a stone of the harness; a fast
+  direction flip threw the free hand 20 cm in one frame; the Ash Disciple's running arm had changed
+  with the hero's (his sleeve into his ribs); the cleave's new wind-back key made a hitch. Fixed:
+  the swing's sign is latched and eased (a pure strafe swings 27 cm; a flick moves the hand 7.4 cm
+  a frame, the parent's 8.2), the hero's loco numbers are gated on `A.freeHand` (the Disciple is
+  bit-identical again), the key moved to u 1.3, the scenario runs in a clear lane and asserts the
+  strafe is one. Also from their ranked list of what still read stiff: the guard breathes and rides
+  the walk; the way home from a swing starts earlier and lands softly; the sword arm rides the
+  stride backing away. LOOKS' budget is 27k triangles (the new fist is 624, was 460).
+- Left from the review: coming up from a held light's coil into the charge the blade still turns
+  52° in one frame (87° before this session); the roll's exit opens the free elbow to 155-160°.
 - Found on the way: the owner's gamepad drives any visible page, the filming page too (its
   `navigator.getGamepads` has to be stubbed while they play).
 

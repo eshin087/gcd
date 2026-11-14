@@ -683,9 +683,11 @@ wrist goes rigid. `LOCK_REACH` (0.98 × the arm's length) keeps the free elbow �
 `_arm` compresses a far hand target with `HERO_SOFT` [0.93, 0.99] instead of `ARM_SOFT` [0.78, 0.955]
 (every other animator's), so his elbows open to ~145-160° at a cut's contact and a thrust's end and
 never lock (163° at most); his sword arm blends back to `ARM_SOFT` by the pose's `twoHand`, so the
-free hand can follow the grip. `loco()` swings the arms by `armF` (the fore-aft move direction's
-sign, eased through sideways, never under 0.65 in size: they swing in a strafe too) and opens the
-free hand on the move (`hs` → 0). **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
+free hand can follow the grip. `loco()` swings the hero's arms by `armF` = `anim.armSign` × max(|mz|,
+0.65): `armSign` is the fore-aft direction he last moved in (`anim.armDir`, latched while |mz| >
+0.15) eased at 12/s in `update()`, so they swing in a pure strafe and do not jump as the direction
+flips; it opens the free hand on the move (`hs` → 0). `loco()` and `guard()` also feed the
+duelists' footwork: the hero's free-arm numbers in them are gated on `A.freeHand`. **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
 their looks, the sprint slash, the roll cut) and the charged cleave is a keyframed clip. An attack's
 `anim: { kind: 'clip', clip: '<name>' }` names a `SWINGS` entry: a list of keys over the attack's own
 phases (`u` 0–1 the windup, 1–2 the active frames, 2–3 the recovery, so a clip follows its def's

@@ -2113,14 +2113,21 @@ elbow in two backhands' recoveries (ADR-078) still stand.
   asks for a full reach and never lock (163° at most); the sword arm blends back to `ARM_SOFT` by
   `twoHand`, so the free hand can follow the grip (the slam's and the cleave's gaps are unchanged).
   (4) **The run:** elbow poles back beside the ribs (rest too), the free hand's back swing reaches
-  down and back so the elbow opens behind him and folds in front (56° a stride), `armF` keeps the
-  swing through a strafe, and the hand is open on the move. (5) **The free hand:** sword fingers
+  down and back so the elbow opens behind him and folds in front (56° a stride), and the hand is
+  open on the move. The swing's sign is the fore-aft direction he last moved in, latched through
+  sideways and eased (`anim.armSign`), so the arms swing in a pure strafe (27 cm; 0 before) and do
+  not jump when the direction flips. The sword arm rides the stride backing away too. (4b) **The
+  guard** breathes and rides the walk (it was rigid from the hips up); **the way home** from a
+  swing starts earlier and lands on a smootherstep (both arms whipped home at 6-7 m/s and stopped
+  dead on one frame). (5) **The free hand:** sword fingers
   1.15× (1.3× read as claws up close); the `wing` place slopes down from the shoulder (level, it made
   a scarecrow of the whirl's and the flat backhand's finish). (6) **The outfits and sword looks stay**
   as options behind their switches for later use; today's look and sword are the default (ADR-089's
   "temporary" no longer holds).
 - **Consequences:** ADR-044's "the elbow keeps ~35° at a full stretch" now holds for the duelists
   only; the hero keeps ≥ 15° (HERO asserts it; it was 23°). His sword hand reaches up to ~3 cm
-  further at a full stretch. `loco()` and `guard()` are shared with the duelists' walk: their elbows
-  come in beside the ribs too. HEROARMS guards the rest pose, the run, the strafe, the opening at
-  contact, the lock bound and the charged blade's clearance.
+  further at a full stretch. `loco()` and `guard()` are shared with the duelists' footwork, so the
+  hero's free-arm numbers there are gated on `A.freeHand`: the Ash Disciple's running arm is
+  bit-identical to before (tucked in like the hero's, his sleeve ran into his ribs). A swing's
+  finish is held ~30 % shorter before he comes home. HEROARMS guards the rest pose, the run, a pure
+  strafe, the opening at contact, the lock bound and the charged blade's clearance.
