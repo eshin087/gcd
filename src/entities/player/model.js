@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createSurfaceGlyphMaterial, FLAG } from '../../render/materials.js';
 import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
 import { DIM, BODY, REST, HAIR_CLUSTERS } from './heroDims.js';
-import { mergeGeometries, sub, partGeometry, orient, limb } from './heroGeo.js';
+import { mergeGeometries, sub, partGeometry, orient, limb, swordTip } from './heroGeo.js';
 import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
 
 // The Wanderer, "Shadow Swordsman" (owner concept sheets; build spec docs/art/hero.md; the lean
@@ -482,6 +482,11 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     const fore = joint(upper, 0, -DIM.upperArm, 0);
     arms[side < 0 ? 'R' : 'L'] = { upper, fore };
   }
+  // the free hand's wrist: the open hand and the sword fingers hang on it (anim.js _wristL; it stays
+  // at identity, the hand rigid on the forearm, for every duelist); `point` marks the sword fingers'
+  // tip (tests, FX)
+  arms.L.wrist = joint(arms.L.fore, 0, -(DIM.foreArm - 0.03), 0);
+  arms.L.point = joint(arms.L.wrist, ...swordTip(BODY.hand, BODY.fingerEx));
   // the sword hand's targets stay offsets from the round-2 shoulder (DIM.gripShoulder)
   arms.R.anchor = new THREE.Vector3(-DIM.gripShoulder[0], DIM.gripShoulder[1], DIM.gripShoulder[2]);
   const legs = {};
@@ -574,8 +579,9 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   const mats = Object.values(M);
   return {
     root, body, pelvis, spine, chest, head, hair, arms, legs, coat, streamers, sword, gem, pauldron, flask,
-    // { open, grip } | null: the free hand hanging open, and the same hand closed on the grip below
-    // the sword hand; the animator shows one or the other with `twoHand` (gear/README.md)
+    // { open, grip, fingers? } | null: the free hand open, the same hand closed on the grip below the
+    // sword hand, and (optional) the sword fingers; open and fingers hang on arms.L.wrist. The
+    // animator shows one of them (`twoHand` and the grip gap, `hs`; gear/README.md)
     offHand: handles.offHand,
     loadout: equipped,
     slots,
@@ -587,7 +593,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     ghostChains: [
       [head, chest, spine, pelvis],
       [arms.R.upper, arms.R.fore],
-      [arms.L.upper, arms.L.fore],
+      [arms.L.upper, arms.L.fore, arms.L.wrist],
       [legs.R.thigh, legs.R.shin, legs.R.foot],
       [legs.L.thigh, legs.L.shin, legs.L.foot],
     ],

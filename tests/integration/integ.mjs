@@ -2641,7 +2641,7 @@ async function scenarioHeroLife() {
       if ((p.state !== 'attack' && p.state !== 'heavy') || !def) return;
       if (a.t < def.windup || a.t > def.windup + def.active) return;
       const key = def.kind === 'light' ? `${def.name}#${A.atkVar}` : def.name;
-      const S = seen[key] ?? (seen[key] = { n: 0, light: def.kind === 'light', twoMin: 1, twoMax: 0, gap: 0, gapMin: Infinity, closed: true, open: true, reach: 0 });
+      const S = seen[key] ?? (seen[key] = { n: 0, light: def.kind === 'light', twoMin: 1, twoMax: 0, gap: 0, gapMin: Infinity, closed: true, free: true, sfN: 0, reach: 0 });
       S.n++;
       S.twoMin = Math.min(S.twoMin, A.cur[45]);
       S.twoMax = Math.max(S.twoMax, A.cur[45]);
@@ -2649,7 +2649,8 @@ async function scenarioHeroLife() {
       S.gap = Math.max(S.gap, g);
       S.gapMin = Math.min(S.gapMin, g);
       S.closed &&= !!r.offHand && r.offHand.grip.visible && !r.offHand.open.visible;
-      S.open &&= !!r.offHand && !r.offHand.grip.visible && r.offHand.open.visible;
+      S.free &&= !!r.offHand && !r.offHand.grip.visible && (r.offHand.open.visible || !!r.offHand.fingers?.visible);
+      if (r.offHand?.fingers?.visible) S.sfN++;
       S.reach = Math.max(S.reach, Math.hypot(A.cur[13], A.cur[14], A.cur[15])); // P.rH: the sword hand from its shoulder
     };
     const looks = Math.max(...LIGHT.map((L) => 1 + (L.variants?.length ?? 0)));
@@ -2683,8 +2684,12 @@ async function scenarioHeroLife() {
     out(`   two hands: ${heavies.map((n) => `${n} two ${seen[n].twoMin.toFixed(2)} gap ${(seen[n].gap * 100).toFixed(1)} cm`).join(' · ')}`);
     const want = [...LIGHT.filter((L) => L.kind === 'light').flatMap((L) => [L.anim, ...(L.variants ?? [])].map((_, i) => `${L.name}#${i}`)), 'sprintSlash#0', 'rollCut#0'];
     assert(want.every((n) => seen[n]?.n > 0), `every look of every light swing was probed in its active frames (${lights.length} looks; missing ${want.filter((n) => !seen[n]).join(', ') || 'none'})`);
-    assert(lights.every((n) => seen[n].twoMax < 0.05 && seen[n].open && seen[n].gapMin > 0.12),
-      `the chain is one-handed: the free hand off the grip (≥ 12 cm away) and open through every light swing (${lights.filter((n) => !(seen[n].twoMax < 0.05 && seen[n].open && seen[n].gapMin > 0.12)).join(', ') || 'all'})`);
+    // (the free hand holds sword fingers through the chain, anim.js hs; the backhands gather on the
+    // sword WRIST, ≥ 8 cm from the grip)
+    const oneHand = (n) => seen[n].twoMax < 0.05 && seen[n].free && seen[n].gapMin > 0.08 && seen[n].sfN >= 0.95 * seen[n].n;
+    out(`   sword fingers: ${lights.map((n) => `${n} ${((seen[n].sfN / seen[n].n) * 100).toFixed(0)} %`).join(' · ')}`);
+    assert(lights.every(oneHand),
+      `the chain is one-handed: the free hand off the grip (≥ 8 cm: the backhands gather on the sword wrist), holding sword fingers (≥ 95 % of active frames) through every light swing (${lights.filter((n) => !oneHand(n)).join(', ') || 'all'})`);
     assert(lights.every((n) => seen[n].reach > 0.4),
       `the sword arm opens through every cut: the hand ≥ 0.40 m from its shoulder at some active frame (shortest ${Math.min(...lights.map((n) => seen[n].reach)).toFixed(2)} m)`);
     assert(seen.slam?.n > 0 && seen.cleave?.n > 0 && heavies.every((n) => seen[n].twoMin > 0.95 && seen[n].gap < 0.035 && seen[n].closed),
@@ -2706,7 +2711,7 @@ async function scenarioHeroLife() {
       assert(pairs >= 12 && same === 0, `he walks through the chain: the lead foot changes with every hit (${same} of ${pairs} consecutive hits kept it)`);
     }
     go(1.2);
-    assert(!r.offHand.grip.visible && r.offHand.open.visible && A.cur[45] < 0.05, 'at rest the free hand hangs open');
+    assert(!r.offHand.grip.visible && !r.offHand.open.visible && r.offHand.fingers?.visible && A.cur[45] < 0.05 && A.cur[59] > 0.9, 'at rest the free hand holds sword fingers by the hip');
   }
 
   // (1b) no two swings in a row along the same line (swings.js `line`, anim.js _pickVariant): 40

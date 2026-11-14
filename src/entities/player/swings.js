@@ -18,6 +18,13 @@
 //   a   the blade's direction as [azimuth, elevation] in DEGREES: azimuth round the body (0 = ahead,
 //       + = his left, 180 = behind), elevation above level. Consecutive keys at most ~100° apart.
 //   l   the free hand, as an offset from the left shoulder
+//   ld  the free hand's fingers as [azimuth, elevation] in DEGREES (like `a`), × `lw` (0..1, default
+//       1: the length is the weight; 0 = the hand rigid on the forearm)
+//   pn  the way the free palm faces (a vector, length ≥ 0.6: its weight, like `ld`'s)
+//   hs  the free hand's shape: 0 open, 1 sword fingers (jian jue; the fist on the grip comes from
+//       `two` and the hand being there, never from `hs`)
+//   lk  0..1 the free hand resting on the sword wrist (the fingers along the sword forearm)
+//   fh  a free-hand place from FH below ('aim', 'chest', 'wing', ...): its fields, under the key's own
 //   by bx bz   the hips: sink (−) / across (+ = left) / forward
 //   hip sy     the hips' and the chest's turn (+ = to his left); the chest's is on top of the hips'
 //   sx sz      the chest's lean forward (+) and to his right (+)
@@ -51,6 +58,20 @@
 // The blade WHIPS: through the first half of a cut the hand runs ahead and the blade hangs back
 // (at mid-cut the hand is at full reach in front of him and the blade is still ~30° short of
 // pointing ahead), then it comes through and passes the hand as the cut ends.
+
+/** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
+ *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
+export const FH = {
+  aim: { l: [-0.02, 0, 0.4], lp: [0.35, -0.9, -0.1], ld: [-6, 10], pn: [-1, 0, 0], lk: 0 }, // 立剑指: at the foe, the thumb up, the elbow dropped
+  aimLo: { l: [0.06, -0.26, 0.36], lp: [0.45, -0.85, -0.2], ld: [-4, -12], pn: [0, -1, 0], lk: 0 }, // 平剑指: a low point, the palm down
+  chest: { l: [-0.1, -0.22, 0.26], lp: [0.6, -0.75, -0.2], ld: [22, 55], pn: [-1, 0, 0], lk: 0 }, // tucked before the left chest, the fingers up (arms in)
+  wrist: { l: [-0.1, -0.25, 0.3], lp: [0.5, -0.85, -0.1], ld: [-60, -20], pn: [0, -1, 0], lk: 1 }, // 合: on the sword wrist (give `l` per clip)
+  highWing: { l: [0.3, -0.02, -0.2], lp: [0.35, -0.8, -0.45], ld: [130, 25], pn: [-0.5, -1, 0.2], lk: 0 }, // drawn back-left at shoulder height (a bow draw)
+  wing: { l: [0.46, -0.06, -0.1], lp: [0.1, -0.6, -0.8], ld: [95, 5], pn: [0, -1, 0], lk: 0 }, // 展: level, out to his left
+  wingLo: { l: [0.4, -0.3, -0.14], lp: [0.3, -0.45, -0.85], ld: [110, -35], pn: [0, -1, 0], lk: 0 }, // low, out to his left
+  tail: { l: [0.22, -0.38, -0.22], lp: [0.75, -0.3, -0.6], ld: [170, -58], pn: [-1, 0, 0], lk: 0 }, // behind the hip, the fingers back and down
+  high: { l: [0.2, 0.3, -0.1], lp: [0.85, -0.3, 0.4], ld: [-10, 75], pn: [0.2, 0, 1], lk: 0 }, // RARE (the low sweep only): beside the head, never over the crown
+};
 
 export const SWINGS = {
   // ---- hit 1: right to left ------------------------------------------------------------------

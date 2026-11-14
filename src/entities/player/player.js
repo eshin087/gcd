@@ -238,7 +238,7 @@ export class Player {
       plunge: (execution = false) => this._debugPlunge(execution),
     };
 
-    this.anim = new HeroAnimator(this.rig, this);
+    this.anim = new HeroAnimator(this.rig, this, null, { freeHand: true });
     this.anim.onFootstep = (side, dust) => this._footstep(side, dust);
     this.fx = new PlayerFx(game, this.rig);
     // camera lean (model.js LEAN): visual only; hits and the dragon's aim use unleaned positions
@@ -598,7 +598,7 @@ export class Player {
     for (const m of old.mats) m.dispose();
     this.rig = rig;
     const onFootstep = this.anim.onFootstep;
-    this.anim = new HeroAnimator(rig, this);
+    this.anim = new HeroAnimator(rig, this, null, { freeHand: true });
     this.anim.onFootstep = onFootstep;
     this.fx.rig = rig;
     this.sweep.sword = rig.sword;

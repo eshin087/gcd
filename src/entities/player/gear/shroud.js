@@ -1,7 +1,7 @@
 import { ellipsoidGeometry } from '../../../render/glyphGeometry.js';
 import {
   shellGeometry, skirtSheet, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb,
-  gripFist, looseHand, sheetOffset, clumpGeometry, orientTo,
+  gripFist, looseHand, sheetOffset, clumpGeometry, orientTo, swordFingers,
 } from '../heroGeo.js';
 
 // The Shrouded set (owner reference 2026-11-11: a hooded swordsman in a huge tattered cloak, seen
@@ -160,7 +160,7 @@ function buildTunic({ spine, chest, M, BODY, REST, mesh }) {
  *  closed. The forearm stops short of the grip so the WRIST reads between the binding and the fist. */
 function buildArms({ arms, sword, M, DIM, BODY, mesh }) {
   const [ua0, ua1] = BODY.upperArm, [fa0, fa1] = BODY.foreArm, HK = BODY.hand;
-  let open = null, grip = null;
+  let open = null, grip = null, fingers = null;
   {
     const F = gripFist(HK);
     mesh(sword, mergeGeometries([F.fingers, F.thumb, F.ridge]), M.skin);
@@ -196,14 +196,22 @@ function buildArms({ arms, sword, M, DIM, BODY, mesh }) {
       mesh(fore, limb({ length: 0.05, r0: fa1 - 0.006, r1: fa1 - 0.004, radial: 8, rings: 2, capSegs: 1 }).translate(0, -DIM.foreArm + 0.075, 0), M.skin);
       // the free hand open (hanging, reaching, bracing), and the same hand closed round the grip
       // below the sword hand (on the sword joint, so it closes round the grip in every pose): the
-      // animator shows one or the other as the hand joins the grip (rig.offHand, anim.js twoHand)
-      open = mesh(fore, mergeGeometries([H.palm, H.fingers, H.tips, H.thumb]), M.skin);
+      // animator shows one or the other as the hand joins the grip (rig.offHand, anim.js twoHand).
+      // The open hand and the sword fingers (jian jue) hang on the free WRIST, which the animator
+      // turns (looseHand is fore-relative: shifted into wrist space); it shows the fingers by the
+      // pose's hand shape (anim.js hs)
+      const wj = arms.L.wrist ?? fore, wy = arms.L.wrist ? DIM.foreArm - 0.03 : 0;
+      open = mesh(wj, mergeGeometries([H.palm, H.fingers, H.tips, H.thumb]).translate(0, wy, 0), M.skin);
+      const SF = swordFingers(side, HK, BODY.fingerEx ?? 1.3);
+      fingers = mesh(wj, mergeGeometries([SF.palm, SF.fingers, SF.curled, SF.thumb]).translate(0, arms.L.wrist ? 0 : -(DIM.foreArm - 0.03), 0), M.skin);
+      fingers.visible = false;
       const F = gripFist(HK);
       grip = mesh(sword, mergeGeometries([F.fingers, F.thumb, F.ridge]).translate(0, 0, -DIM.offGrip), M.skin);
       grip.visible = false;
     }
   }
-  return { offHand: { open, grip }, keep: [open, grip] };
+  // (keep: the three are toggled, so the merge must leave them apart)
+  return { offHand: { open, grip, fingers }, keep: [open, grip, fingers] };
 }
 
 // ---------------------------------------------------------------- back: the tattered cloak

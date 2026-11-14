@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../../core/math.js';
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
-import { SWINGS } from './swings.js';
+import { SWINGS, FH } from './swings.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -33,8 +33,14 @@ export const P = {
   // with twoHand: how far UP the sword from the grip the off hand sits (m; 0 = on the grip under the
   // sword hand): a palm braced on the flat of the blade
   offAt: 52,
+  // the free hand: its fingers' direction and the way its palm faces (body axes; each vector's
+  // LENGTH is its weight: 0 = the hand rigid on the forearm, today's look and every duelist), its
+  // shape (0 open, 1 sword fingers) and how far it rests on the sword wrist (0..1). Read only for an
+  // animator built with opts.freeHand (the hero)
+  lD: 53, lN: 56, hs: 59, lk: 60,
 };
-const N = 53;
+/** The pose's channel count (a duelist's scratch poses are sized from it). */
+export const N = 61;
 const ENTRY_EASE = 0.85; // an easeOut cross-fade (attack entries) arrives at this fraction of its time
 const TURN_LAG_MAX = 1.4; // rad: how far the drawn heading may trail the gameplay yaw in a fast turn
 const TURN_K = 650; // stiffness (1/s²) of the critically damped spring the drawn heading follows
@@ -56,6 +62,23 @@ export const to3 = (p, i, x, y, z, t) => {
   p[i] += (x - p[i]) * t;
   p[i + 1] += (y - p[i + 1]) * t;
   p[i + 2] += (z - p[i + 2]) * t;
+};
+/** The free hand opens and braces on the grass by k: the fingers ahead, the palm down. */
+const palmBraced = (p, k) => {
+  if (!(k > 0)) return;
+  p[P.hs] += (0 - p[P.hs]) * Math.min(1, k);
+  to3(p, P.lD, LD_BRACE[0], LD_BRACE[1], LD_BRACE[2], Math.min(1, k));
+  to3(p, P.lN, 0, -1, 0, Math.min(1, k));
+};
+/** The free hand loses its shape and its wrist by k (hit, fall, heal): open, rigid on the forearm. */
+const freeLimp = (p, k) => {
+  if (!(k > 0)) return;
+  const s = 1 - Math.min(1, k);
+  p[P.hs] += (0 - p[P.hs]) * Math.min(1, k);
+  for (let i = 0; i < 3; i++) {
+    p[P.lD + i] *= s;
+    p[P.lN + i] *= s;
+  }
 };
 const setLen = (p, i, x, y, z, len) => {
   const l = Math.hypot(x, y, z) || 1;
@@ -222,7 +245,8 @@ function kv3(p, i, t, k) {
  *  straight beside the right hip, a little away from the body; the sword is held in a LOW READY at
  *  his right side: from the gauntlet forward, down and a little outward, clear of the coat skirt and
  *  outside the forward leg, the point a hand above the grass, the pommel standing up-back behind the
- *  fist. The free hand hangs relaxed at the left hip; the head is bowed a little, looking ahead.
+ *  fist. The free hand rests low by the left hip in sword fingers (jian jue), pointing ahead and
+ *  down; the head is bowed a little, looking ahead.
  *  Breathing + a slow weight sway; no steps.
  *  (ADR-036 laid the blade in a low diagonal ACROSS his front: it ran between the thighs and the
  *  front coat panels, so the cloth had nowhere to hang but through the steel (owner: "the fabric in
@@ -239,6 +263,18 @@ function kv3(p, i, t, k) {
 // the ribs, the forearm runs into the blade's line, and the steel stands out to his side, past
 // his silhouette and the cape, from every camera.)
 const IDLE_SW = [-0.6, -0.79, 0.12];
+// [azimuth, elevation] in degrees (body axes: az 0 ahead, + his left; el + up) → a unit vector: the
+// free hand's fingers (swings.js `ld`, the poses). Its own degree constant: REST_LD is built at
+// module load, before SW_DEG below exists
+const AZEL = Math.PI / 180;
+const unitAzEl = (az, el) => {
+  const a = az * AZEL, e = el * AZEL, c = Math.cos(e);
+  return [c * Math.sin(a), Math.sin(e), c * Math.cos(a)];
+};
+const REST_LD = unitAzEl(14, -50); // the rest's sword fingers: ahead and down, a "seated" jian rest
+const LD_BRACE = unitAzEl(0, -10); // a palm braced on the grass: the fingers ahead
+const LD_WARD = unitAzEl(-4, -12); // the backstep's warding low point
+const LD_FOE = unitAzEl(0, 0); // straight at the foe
 export function guard(p, A) {
   const ph = A.time * (TAU / IDLE_LOOP);
   const br = Math.sin(ph), sw = Math.sin(ph * 0.5 + 1.1); // breath, and a slower weight sway
@@ -259,7 +295,7 @@ export function guard(p, A) {
   p[P.hdZ] = 0.06 + 0.012 * sw;
   v3(p, P.rH, -0.19, -0.435 + 0.006 * br, 0.06); // the grip out beside the right hip, clear of the coat
   v3(p, P.rP, 0.5, -0.3, -1); // the upper arm hangs by the ribs, the elbow a little back: the forearm runs out and down, ~25° off the blade's line
-  v3(p, P.lH, 0.07, -0.51, 0.03); // the free arm hangs relaxed beside the left hip
+  v3(p, P.lH, 0.07 + 0.006 * sw, -0.5 + 0.012 * br, 0.06 + 0.01 * br); // sword fingers low by the left hip; it breathes (the hand used to hang still)
   v3(p, P.lP, 0.6, -0.1, -0.8);
   v3(p, P.swD, IDLE_SW[0] + 0.01 * br, IDLE_SW[1] + 0.008 * br, IDLE_SW[2] + 0.015 * sw);
   v3(p, P.swF, 0.15, 0.05, 1); // edge down, the flat faces forward: broad to a camera in front or behind
@@ -277,6 +313,13 @@ export function guard(p, A) {
   p[P.flask] = 0;
   p[P.twoHand] = 0;
   p[P.offAt] = 0;
+  // the free hand (read by the hero's animator only): sword fingers pointing ahead and down, the
+  // palm down and back; the fingers breathe with the chest
+  const RD = REST_LD;
+  v3(p, P.lD, RD[0], RD[1] + 0.05 * br, RD[2]);
+  v3(p, P.lN, -0.35, -0.6, -0.72);
+  p[P.hs] = 1;
+  p[P.lk] = 0;
 }
 
 /** One foot of the gait (model space). u = this foot's cycle phase: stance [0, β) sweeps the foot
@@ -436,6 +479,12 @@ export function loco(p, A) {
   const k = 0.5 - 0.5 * cs * mz; // 1 = fist forward
   to3(p, P.lH, lerp(-0.02, -0.08, s) * k + 0.06 * (1 - k), lerp(lerp(-0.44, -0.3, k), lerp(-0.38, -0.04, k), s), lerp(lerp(-0.1, 0.24, k), lerp(-0.14, 0.32, k), s), w);
   to3(p, P.lP, 0.6, -0.6, -0.6, w);
+  // the free hand relaxes on the move: the sword fingers half follow the forearm's own line (|lD|
+  // is their weight; a wuxia run keeps the shape)
+  {
+    const k = 1 - 0.55 * w;
+    for (let i = 0; i < 3; i++) p[P.lD + i] *= k;
+  }
   turnTwist(p, A);
 }
 /** Blend only the legs toward the walking gait (block / charge can move). */
@@ -488,6 +537,7 @@ function chargeStance(p, A, k, sink) {
   v3(p, P.swF, 0.4, 0.3, -0.3);
   p[P.twoHand] = smoothstep(0.1, 0.7, sink);
   v3(p, P.lP, 0.8, -0.4, -0.3);
+  p[P.hs] = 0; // an open hand to the grip
   v3(p, P.rF, -0.17, ANK, -0.5);
   v3(p, P.lF, 0.17, ANK, 0.45);
   v3(p, P.rK, -0.5, 0, 1);
@@ -536,8 +586,9 @@ function thrustPose(p, A, t, W, Ac) {
 const SW_SCAL = {
   bx: P.bodyX, by: P.bodyY, bz: P.bodyZ, hip: P.pelvY, hipX: P.pelvX, hipZ: P.pelvZ,
   sx: P.spX, sy: P.spY, sz: P.spZ, hx: P.hdX, hy: P.hdY, hz: P.hdZ, two: P.twoHand, offAt: P.offAt,
+  hs: P.hs, lk: P.lk,
 };
-const SW_VEC = { h: P.rH, l: P.lH, rp: P.rP, lp: P.lP, f: P.swF };
+const SW_VEC = { h: P.rH, l: P.lH, rp: P.rP, lp: P.lP, f: P.swF, pn: P.lN };
 const SW_DEG = Math.PI / 180;
 const SW_ENTRY = 1.3; // the entry's tangent (× the straight rate): he leaves the last pose at speed
 const SW_COIL = 0.35; // the blade's rate into the coil (× the straight rate) as it gets there
@@ -556,7 +607,8 @@ function swingClip(name) {
   const def = SWINGS[name];
   C = null;
   if (def && Array.isArray(def.keys)) {
-    const keys = def.keys.filter((k) => k && Number.isFinite(k.u) && k.u > 0).sort((a, b) => a.u - b.u);
+    // (a key's free-hand preset, swings.js FH `fh: 'aim'`, lies under the key's own fields)
+    const keys = def.keys.filter((k) => k && Number.isFinite(k.u) && k.u > 0).map((k) => (k.fh && FH[k.fh] ? { ...FH[k.fh], ...k } : k)).sort((a, b) => a.u - b.u);
     const track = (ch, n, get) => {
       const ks = keys.filter((k) => get(k) != null);
       if (!ks.length) return null;
@@ -578,6 +630,14 @@ function swingClip(name) {
     }
     for (const f in SW_VEC) {
       const T = track(SW_VEC[f], 3, (k) => k[f]);
+      if (T) {
+        tracks.push(T);
+        ch.push(T.ch, T.ch + 1, T.ch + 2);
+      }
+    }
+    // the free hand's fingers: [az, el] in degrees (body axes, like the blade's `a`) × `lw` (its weight)
+    {
+      const T = track(P.lD, 3, (k) => (Array.isArray(k.ld) ? unitAzEl(k.ld[0], k.ld[1]).map((v) => v * (k.lw ?? 1)) : null));
       if (T) {
         tracks.push(T);
         ch.push(T.ch, T.ch + 1, T.ch + 2);
@@ -1079,6 +1139,7 @@ function chargePose(p, A) {
   v3(p, P.swF, 0.8, 0.3, -0.5);
   p[P.twoHand] = smoothstep(0.1, 0.7, s);
   v3(p, P.lP, 0.8, -0.45, 0.35);
+  p[P.hs] = 0; // an open hand to the grip
   if (k >= 0.999) {
     const q = Math.sin(A.time * 47) * 0.012;
     p[P.bodyX] += q;
@@ -1117,6 +1178,7 @@ function blockPose(p, A) {
   v3(p, P.lH, -0.24, -0.2, 0.3);
   v3(p, P.lP, 0.5, -0.85, 0.0);
   p[P.twoHand] = 1;
+  p[P.hs] = 0; // the fist on the grip (ADR-073's cross ward), open on the way there
   // a tap of the guard (a parry attempt) keeps the feet where they are; held, the stance settles
   // into the block's after ~0.2 s (each tap used to cost two settle steps in and two out again)
   const E = A.entry, fw = smoothstep(0.16, 0.4, A.t), BF = BLOCK_FEET;
@@ -1160,6 +1222,7 @@ function ghostepPose(p, A) {
   v3(p, P.swF, 0, 1, 0);
   v3(p, P.lH, lerp(0.02, 0.05, low), lerp(-0.42, -0.65, low), lerp(0.2, 0.32, low));
   v3(p, P.lP, 0.7, -0.3, -0.5);
+  palmBraced(p, low);
   v3(p, P.rF, -0.2, ANK, -0.34);
   v3(p, P.lF, 0.18, ANK, 0.26);
   const rise = smoothstep(0.14, 0.32, t);
@@ -1182,6 +1245,7 @@ function guardBreakPose(p, A) {
   dirTo(p, P.swD, -0.3, 0.85, -0.35, k);
   to3(p, P.swF, 1, 0, 0, k);
   to3(p, P.lH, 0.35, -0.1, 0.05, k);
+  freeLimp(p, k);
   const st = smoothstep(0.1, 0.3, t);
   v3(p, P.lF, 0.14, ANK + 0.1 * Math.sin(Math.PI * st), 0.14 - 0.4 * st);
   p[P.rF + 2] -= 0.1 * st;
@@ -1339,6 +1403,9 @@ function backstepPose(p, A) {
   dirTo(p, P.swD, -0.15, -0.22, 1, raise);
   to3(p, P.rH, 0.02, -0.4, 0.22, raise);
   to3(p, P.lH, -0.04, -0.3, 0.3, raise);
+  // the free hand wards with a low point
+  to3(p, P.lD, LD_WARD[0], LD_WARD[1], LD_WARD[2], raise);
+  to3(p, P.lN, 0, -1, 0, raise);
 }
 
 /** Drink: legs keep walking (slowly), the free hand raises the flask, head tips back. */
@@ -1356,6 +1423,8 @@ function healPose(p, A) {
   p[P.hdX] = lerp(p[P.hdX], -0.5, drink);
   p[P.spX] = lerp(p[P.spX], -0.02, drink);
   p[P.hdY] = lerp(p[P.hdY], 0, raise);
+  // the flask hangs on the forearm: the hand opens round it and the wrist goes rigid while he drinks
+  freeLimp(p, raise);
   // the sword arm keeps what the legs are doing (the low ready guard standing, trailing walking):
   // swinging it forward-down for the drink only added two blade swings to a sip
   p[P.flask] = smoothstep(0.0, 0.1, t) * (1 - smoothstep(0.74, 0.85, t));
@@ -1389,6 +1458,7 @@ function staggerPose(p, A) {
   p[P.bodyX] += 0.07 * ks;
   to3(p, P.rH, -0.25, -0.3, 0.3 + 0.1 * Math.max(pz, 0), k);
   to3(p, P.lH, 0.3, -0.25, 0.25 + 0.1 * Math.max(pz, 0), k);
+  freeLimp(p, k);
   // the blow jolts the blade up and out from wherever the guard holds it (~40°): a fixed target
   // out to the right swung it ~110° across the legs and back with the low ready guard
   dirTo(p, P.swD, p[P.swD] - 0.45, p[P.swD + 1] + 0.5, p[P.swD + 2] + 0.25, k);
@@ -1430,6 +1500,7 @@ const KDP = {
 function knockdownAt(p, A, t, prone) {
   guard(p, A);
   carryYaw(p, A);
+  freeLimp(p, 1); // falling and lying: the free hand open and rigid (no fingertips into the grass)
   const K = prone ? KDP : KD;
   p[P.bodyX] = 0;
   p[P.pelvX] = 0;
@@ -1529,6 +1600,7 @@ function deathPose(p, A) {
   const t = A.t;
   guard(p, A);
   carryYaw(p, A);
+  freeLimp(p, 1); // the free hand open and rigid through the fall
   p[P.bodyX] = 0;
   p[P.pelvY] = 0;
   p[P.spY] = 0.05;
@@ -1588,7 +1660,8 @@ function deathPose(p, A) {
 const PLN = { VANISH: 0, HANG: 1, DIVE: 2, RIDE: 3, FLIP: 4, LAND: 5 }; // = player.js PL
 const PL_FLIP_PITCH = [0, 0, 0.1, 0.22, 0.2, -0.35, 0.52, -3.2, 0.8, -5.75, 0.94, -6.283185307179586, 1, -6.283185307179586];
 const SCR_GUARD = new Float32Array(N);
-const GUARD_CH = [P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.lH, P.lH + 1, P.lH + 2, P.lP, P.lP + 1, P.lP + 2, P.swF, P.swF + 1, P.swF + 2, P.spX, P.spY, P.spZ, P.hdX, P.hdY, P.pelvY, P.twoHand, P.offAt];
+const GUARD_CH = [P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.lH, P.lH + 1, P.lH + 2, P.lP, P.lP + 1, P.lP + 2, P.swF, P.swF + 1, P.swF + 2, P.spX, P.spY, P.spZ, P.hdX, P.hdY, P.pelvY, P.twoHand, P.offAt,
+  P.lD, P.lD + 1, P.lD + 2, P.lN, P.lN + 1, P.lN + 2, P.hs, P.lk];
 
 /** The shared airborne base: every channel the plunge poses read, upright, arms down. */
 function plBase(p, A) {
@@ -1707,6 +1780,7 @@ function plFlip(p, A, u) {
   p[P.twoHand] = 1 - rip;
   v3(p, P.lH, lerp(0.05, 0.3, open), lerp(-0.25, -0.12, open), lerp(0.3, 0.12, open));
   v3(p, P.lP, 0.8, -0.3, -0.4);
+  palmBraced(p, 1); // an open hand off the grip, reaching for the landing
   // the push off the head, the tuck (knees to the chest), then the legs reach for the ground
   v3(p, P.rF, -0.14, ANK + 0.25 * (1 - rip), -0.15);
   v3(p, P.lF, 0.14, ANK + 0.25 * (1 - rip), 0.12);
@@ -1731,6 +1805,7 @@ function plLand(p, A, u) {
   // free hand down on the grass ahead-left, the blade trailing low behind on his right
   to3(p, P.lH, 0.12, -0.55, 0.36, k);
   to3(p, P.lP, 0.7, -0.2, -0.6, k);
+  palmBraced(p, k);
   to3(p, P.rH, -0.36, -0.28, -0.12, k);
   dirTo(p, P.swD, -0.55, -0.42, -0.72, k);
   to3(p, P.swF, 0, 1, 0, k);
@@ -1812,6 +1887,7 @@ function deflectPose(p, A) {
   }
   to3(p, P.swF, 0, 0.3, 1, f);
   to3(p, P.lH, side > 0 ? 0.22 : 0.3, -0.32, side > 0 ? 0.02 : -0.05, f * (1 - h));
+  to3(p, P.lD, LD_FOE[0], LD_FOE[1], LD_FOE[2], f * (1 - h)); // the fingers at the foe
   p[P.spX] -= 0.05 * f;
   // the rock back: the chest gives with the blow, the weight onto the back foot
   const push = 1 - smoothstep(0.02, 0.22, t);
@@ -1867,6 +1943,7 @@ function bouncePose(p, A) {
   to3(p, P.rP, -0.9, -0.2, -0.3, k);
   dirTo(p, P.swD, -0.45, 0.8, -0.4, k);
   to3(p, P.lH, 0.28, -0.15, 0.3, k);
+  freeLimp(p, k);
   p[P.lF + 2] -= 0.16 * k;
 }
 
@@ -1920,6 +1997,7 @@ function fidgetStretch(p, A, u, e) {
   const roll = smoothstep(0.04, 0.12, u) * (1 - smoothstep(0.46, 0.54, u));
   const a = TAU * 1.5 * clamp((u - 0.08) / 0.42, 0, 1);
   to3(p, P.lH, 0.08 + 0.03 * Math.sin(a), -0.42 + 0.06 * (1 - Math.cos(a)), 0.02 - 0.05 * Math.sin(a), roll * e);
+  p[P.hs] += (0 - p[P.hs]) * roll * e; // the hand loosens as the shoulder rolls
   p[P.spZ] -= 0.05 * Math.sin(a) * roll * e;
   const arch = kf(u, [0.12, 0, 0.32, 1, 0.48, 1, 0.6, 0]);
   p[P.spX] -= 0.13 * arch * e;
@@ -1944,6 +2022,10 @@ function fidgetInspect(p, A, u, e) {
   const ll = Math.hypot(lx, ly, lz) || 1;
   to3(p, P.lH, p[P.rH] + (lx / ll) * d + LEFT_FROM_RIGHT, p[P.rH + 1] + (ly / ll) * d + 0.035, p[P.rH + 2] + (lz / ll) * d, wipe * e);
   to3(p, P.lP, 0.6, -0.7, -0.3, wipe * e);
+  // the sword fingers trace the flat: along the blade, the palm on the steel
+  p[P.hs] = 1;
+  to3(p, P.lD, p[P.swD], p[P.swD + 1], p[P.swD + 2], wipe * e);
+  to3(p, P.lN, -p[P.swF], -p[P.swF + 1], -p[P.swF + 2], wipe * e);
 }
 /** A wrist twirl at his side: the hand comes forward a little and the blade turns one full circle
  *  in the plane beside him (the point forward, up, back, down) and settles into the low hold. */
@@ -1980,6 +2062,7 @@ function fidgetLean(p, A, u, e) {
   to3(p, P.swF, 0, 0.1, 1, e);
   to3(p, P.lH, 0.08 + LEFT_FROM_RIGHT + 0.02, -0.18, 0.33, e);
   to3(p, P.lP, 0.75, -0.5, -0.35, e);
+  freeLimp(p, e); // the free hand open on the pommel
   p[P.spX] += (0.12 + br) * e;
   p[P.hdX] += 0.12 * e;
   p[P.bodyY] -= 0.02 * e;
@@ -2164,6 +2247,26 @@ const WRIST_CLEAR_COS = Math.cos(70 * (Math.PI / 180)); // … and, there, the l
 const ELBOW_RATE = 14; // rad/s: the most an elbow swings round its shoulder → hand line (~13° a frame)
 const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vector3(), _eC = new THREE.Vector3();
 const TWO_HAND_GRIP = DIM.offGrip; // m down the grip from the sword hand to the off hand (two-handed)
+// THE FREE HAND (the hero only: opts.freeHand). Its wrist's range (rad: radial / ulnar deviation,
+// pronation / supination from the IK's neutral, flexion / extension), its spring (ω, ζ for the
+// deviation and the flex; wT, zT the heavier twist), the most each turns in a frame (rad), and the
+// twist beyond which a target is taken as a flip through the far side (last frame's twist is kept)
+const D2R = Math.PI / 180;
+export const WRIST_L = {
+  rad: -20 * D2R, uln: 30 * D2R, pro: -85 * D2R, sup: 85 * D2R, flex: -70 * D2R, ext: 60 * D2R,
+  w: 42, z: 0.55, wT: 30, zT: 0.8, cap: 0.35, flipGuard: 150 * D2R,
+};
+// the fingers on the sword wrist (lk): how far up the sword forearm from its end the wrist is (m),
+// where the free palm rests on it (m toward the free shoulder, m up), how much the fingers turn to
+// lie along it, and the sword hand's speed (m/s) over which they let go as it whips away
+const LK_WRIST = 0.07, LK_OFF = [0.045, 0.025], LK_ALONG = 0.5, LK_LETGO = [4, 8];
+// the free fist shows on the grip within [0] of its place (m) and goes back past [1] (it used to be
+// drawn 9-21 cm off the wrist while the hand was still on its way)
+export const OFF_SNAP = [0.035, 0.05];
+// × the arm's length: the free elbow on the grip keeps ≥ 23° of bend (the cleave locked it at 176°)
+const LOCK_REACH = 0.98;
+const _hG = new THREE.Vector3(), _hd = new THREE.Vector3(), _hn = new THREE.Vector3(), _hy = new THREE.Vector3(), _hp = new THREE.Vector3();
+const _hz = new THREE.Vector3(), _hq1 = new THREE.Quaternion(), _hq2 = new THREE.Quaternion(), _hqs = new THREE.Quaternion();
 // the cloak in the charge's updraft: extra outward flare (tan) at full charge of a sheet on his
 // right, the sword side, where the drawn-back blade and arms are; [1] of it for one on his left.
 // Off (Session 14 follow-up, owner: "the back cape is too floaty now and makes the character look
@@ -2211,8 +2314,19 @@ export class HeroAnimator {
   /** player must expose: yaw, state, stateT, animT, atk ({def}), groundVel {x, z}, chargeK,
    *  releaseK, recoil (+ position, kb, lockOn, guardHold, updraft). `poses` (optional): extra clips for this
    *  instance, key → fn(pose, animator), merged over the hero's (a key it shares replaces the hero's
-   *  clip for this instance only: the Ash Disciple brings his own 'loco' and 'duel'). */
-  constructor(rig, player, poses = null) {
+   *  clip for this instance only: the Ash Disciple brings his own 'loco' and 'duel').
+   *  opts.freeHand (the hero only): the free hand's wrist (rig.arms.L.wrist) turned from the pose's
+   *  lD / lN, the sword fingers (lk: resting on the sword wrist; hs: their shape), the fist on the grip
+   *  shown only once the hand is there (OFF_SNAP), and the free elbow's lock reach (LOCK_REACH). Off,
+   *  the free-hand channels stay 0 and the hand rigid on the forearm (every duelist). */
+  constructor(rig, player, poses = null, opts = {}) {
+    // (before reset(): it poses the rig once)
+    this.freeHand = !!(opts?.freeHand && rig.arms?.L?.wrist);
+    this.wristL = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ok: false, clamped: false };
+    this.handFX = { fingers: false, fist: false };
+    this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
+    this.lkEff = 0;
+    this.gripGap = 1;
     this.rig = rig;
     this.player = player;
     this.poses = poses ? { ...POSES, ...poses } : POSES;
@@ -2403,6 +2517,10 @@ export class HeroAnimator {
     for (const F of this.feet) F.init = false;
     gaitParams(this.gait, 0, 0);
     guard(this.cur, this);
+    if (!this.freeHand) this.cur.fill(0, P.lD, N); // (guard() writes the hero's free hand: a duelist keeps 0)
+    this.wristL.ok = false;
+    this.lkState.ok = false;
+    this.handFX.fingers = this.handFX.fist = false;
     this.from.set(this.cur);
     this.target.set(this.cur);
     this.blendT = this.blendDur = 1;
@@ -2449,6 +2567,8 @@ export class HeroAnimator {
     for (const v of this.coatVel) v.set(0, 0, 0);
     for (const h of this.hairState) h.vel.set(0, 0, 0);
     for (const st of this.streamState) st.vel.set(0, 0, 0);
+    this.wristL.ok = false;
+    this.lkState.ok = false;
   }
 
   /** Throw the coat panels outward (Ghostep reappear, guard break, the slam's impact). `rnd` (0..1
@@ -2595,6 +2715,8 @@ export class HeroAnimator {
     for (let i = 0; i < N; i++) {
       if (!Number.isFinite(this.cur[i])) {
         guard(this.cur, this); // never let a bad frame poison the rig
+        if (!this.freeHand) this.cur.fill(0, P.lD, N);
+        this.wristL.ok = false;
         this.from.set(this.cur);
         this.blendT = this.blendDur;
         for (const F of this.feet) F.init = false;
@@ -2873,6 +2995,29 @@ export class HeroAnimator {
     this._arm(r.arms.R, this._handTarget(r.arms.R, p, P.rH), p, P.rP, true);
     // off hand: its own target, or (twoHand) down the grip below the sword hand
     this._handTarget(r.arms.L, p, P.lH);
+    let lk = 0;
+    if (this.freeHand) {
+      // the sword fingers on the sword wrist (lk): the right wrist (chest local) from the solved sword
+      // arm, the palm resting on its near side; as the sword hand whips away they let go
+      const R = r.arms.R, S = this.lkState;
+      _hG.set(0, -(DIM.foreArm - LK_WRIST), 0).applyQuaternion(R.fore.quaternion);
+      _hG.y -= DIM.upperArm;
+      _hG.applyQuaternion(R.upper.quaternion).add(R.upper.position);
+      _hp.subVectors(r.arms.L.upper.position, _hG);
+      const pl = _hp.length();
+      if (pl > 1e-4) _hG.addScaledVector(_hp, LK_OFF[0] / pl);
+      _hG.y += LK_OFF[1];
+      const dt = this.frameDt;
+      if (!S.ok) S.k = 1;
+      else if (dt > 0.003) S.k = 1 - smoothstep(LK_LETGO[0], LK_LETGO[1], _hG.distanceTo(S.prev) / dt);
+      if (!Number.isFinite(S.k)) S.k = 1;
+      S.prev.copy(_hG);
+      S.ok = Number.isFinite(_hG.x + _hG.y + _hG.z);
+      lk = clamp(fin(p[P.lk]), 0, 1) * S.k;
+      if (lk > 0.001 && S.ok) _T.lerp(_hG, lk);
+      else lk = 0;
+    }
+    this.lkEff = lk;
     const two = clamp(p[P.twoHand], 0, 1);
     if (two > 0.001) {
       _TL.copy(_T);
@@ -2885,6 +3030,10 @@ export class HeroAnimator {
       _T.copy(_TL).lerp(_G, two);
     }
     this._arm(r.arms.L, _T, p, P.lP, false, two);
+    // (before _wristLimit, which reuses _G) how far the free hand is from its place on the grip
+    // (chest local, model metres: the measure of the tests' offGap)
+    this.gripGap = two > 0.001 ? _end.distanceTo(_G) : 1;
+    if (this.freeHand) this._wristL(r, p, two, lk);
     // the pauldron rides on the shoulder, following part of the sword arm's swing
     r.pauldron.quaternion.slerpQuaternions(_qId, r.arms.R.upper.quaternion, PAULDRON_FOLLOW);
     this._leg(r.legs.R, p, P.rF, P.rK, P.rFy, P.rFf);
@@ -2917,10 +3066,22 @@ export class HeroAnimator {
     r.sword.quaternion.setFromRotationMatrix(_m4);
 
     if (r.offHand?.open && r.offHand.grip) {
-      // the free hand closes round the grip as it gets there
-      const on = two > 0.6 && !(p[P.offAt] > 0.04); // (a palm braced on the blade stays open)
-      r.offHand.open.visible = !on;
-      r.offHand.grip.visible = on;
+      if (this.freeHand) {
+        // the free hand closes round the grip once it is there (within OFF_SNAP of its place, with
+        // hysteresis), never while it is still on its way; off the grip it shows the sword fingers or
+        // the open hand by the pose's shape (hs, with hysteresis)
+        const H = this.handFX, fg = r.offHand.fingers ?? null, hs = fin(p[P.hs]);
+        H.fist = two > 0.6 && this.gripGap < (H.fist ? OFF_SNAP[1] : OFF_SNAP[0]) && !(p[P.offAt] > 0.04); // (a palm braced on the blade stays open)
+        H.fingers = hs > 0.6 || (H.fingers && hs > 0.4);
+        r.offHand.grip.visible = H.fist;
+        r.offHand.open.visible = !H.fist && !(H.fingers && fg);
+        if (fg) fg.visible = !H.fist && H.fingers;
+      } else {
+        // the free hand closes round the grip as it gets there
+        const on = two > 0.6 && !(p[P.offAt] > 0.04); // (a palm braced on the blade stays open)
+        r.offHand.open.visible = !on;
+        r.offHand.grip.visible = on;
+      }
     }
     const f = clamp(p[P.flask], 0, 1);
     r.flask.visible = f > 0.03;
@@ -2957,6 +3118,100 @@ export class HeroAnimator {
       }
     }
     _bz.copy(_v).multiplyScalar(WRIST_COS).addScaledVector(_w, WRIST_SIN).normalize();
+  }
+
+  /** The free hand's wrist (rig.arms.L.wrist; the hero only, opts.freeHand): the fingers toward
+   *  p[lD], the palm toward p[lN] (body axes; each vector's length is its weight: 0 = the forearm's
+   *  own line / its own roll), inside the wrist's range (WRIST_L), through a spring, so the fingers
+   *  snap into the point and the wrist sets last. On the sword wrist (lk) the fingers turn to lie
+   *  along the sword forearm, the palm down on it; on the grip (two) the hand belongs to the sword
+   *  joint and the wrist goes rigid. The twist about the forearm (pronation / supination) turns here
+   *  too: every forearm mesh is round. Writes this.wristL; allocates nothing, never throws. */
+  _wristL(r, p, two, lk) {
+    const W = r.arms.L.wrist;
+    if (!W) return;
+    const S = this.wristL, Lm = WRIST_L;
+    let dx = fin(p[P.lD]), dy = fin(p[P.lD + 1]), dz = fin(p[P.lD + 2]);
+    let nx = fin(p[P.lN]), ny = fin(p[P.lN + 1]), nz = fin(p[P.lN + 2]);
+    const off = 1 - smoothstep(0.6, 0.95, two); // on the grip the fist is the sword joint's
+    // body axes → the free forearm's local axes
+    _hq1.copy(r.arms.L.upper.quaternion).multiply(r.arms.L.fore.quaternion);
+    _hq2.copy(_hq1).invert().multiply(_qBC);
+    if (lk > 0.001) {
+      // on the sword wrist the fingers lie (part way: LK_ALONG) along the sword forearm (elbow →
+      // wrist, chest → body axes), the palm down on it
+      _hqs.copy(r.arms.R.upper.quaternion).multiply(r.arms.R.fore.quaternion);
+      _hy.set(0, -1, 0).applyQuaternion(_hqs);
+      _hqs.copy(_qBC).invert();
+      _hy.applyQuaternion(_hqs);
+      const dl = Math.max(0.6, Math.hypot(dx, dy, dz)), kd = LK_ALONG * lk;
+      dx += (_hy.x * dl - dx) * kd;
+      dy += (_hy.y * dl - dy) * kd;
+      dz += (_hy.z * dl - dz) * kd;
+      const nl = Math.max(0.6, Math.hypot(nx, ny, nz));
+      nx += (0 - nx) * lk;
+      ny += (-nl - ny) * lk;
+      nz += (0 - nz) * lk;
+    }
+    const wD = smoothstep(0, 0.6, Math.hypot(dx, dy, dz)) * off, wN = smoothstep(0, 0.6, Math.hypot(nx, ny, nz)) * off;
+    let clamped = false;
+    if (wD > 1e-3 || wN > 1e-3) {
+      // the fingers (the hand's −Y) in fore local, blended in from the forearm's own line by wD
+      _hd.set(dx, dy, dz).applyQuaternion(_hq2);
+      if (_hd.lengthSq() < 1e-8) _hd.set(0, -1, 0);
+      _hd.normalize().multiplyScalar(wD);
+      _hd.y -= 1 - wD;
+      if (_hd.lengthSq() < 1e-8) _hd.set(0, -1, 0);
+      _hd.normalize();
+      // the palm (the hand's −X): the swing's own (no twist), blended toward the wanted one by wN
+      _hqs.setFromUnitVectors(_hy.set(0, -1, 0), _hd);
+      _hz.set(-1, 0, 0).applyQuaternion(_hqs); // square to the fingers
+      _hp.copy(_hz);
+      _hn.set(nx, ny, nz).applyQuaternion(_hq2);
+      _hn.addScaledVector(_hd, -_hn.dot(_hd));
+      if (_hn.lengthSq() > 1e-6) _hp.lerp(_hn.normalize(), wN);
+      _hp.addScaledVector(_hd, -_hp.dot(_hd));
+      if (_hp.lengthSq() < 1e-8) _hp.copy(_hz);
+      _hp.normalize();
+      // the hand's basis: X = −palm, Y = −fingers, Z = X × Y → Euler YXZ (the joint's order):
+      // deviation about X, twist about Y, flex about Z
+      const Xx = -_hp.x, Xy = -_hp.y, Xz = -_hp.z, Yx = -_hd.x, Yy = -_hd.y, Yz = -_hd.z;
+      const Zx = Xy * Yz - Xz * Yy, Zy = Xz * Yx - Xx * Yz, Zz = Xx * Yy - Xy * Yx;
+      const rDev = Math.asin(clamp(-Zy, -1, 1)), rTw = Math.atan2(Zx, Zz), rFlex = Math.atan2(Xy, Yy);
+      S.tx = clamp(rDev, Lm.rad, Lm.uln);
+      S.tz = clamp(rFlex, Lm.flex, Lm.ext);
+      // a palm asked for nearly opposite the neutral would flip the clamped twist from one end of
+      // its range to the other: past flipGuard the last target stands
+      const flip = Math.abs(rTw) > Lm.flipGuard;
+      if (!flip) S.ty = clamp(rTw, Lm.pro, Lm.sup);
+      clamped = flip || S.tx !== rDev || S.ty !== rTw || S.tz !== rFlex;
+    } else {
+      S.tx = S.ty = S.tz = 0;
+    }
+    S.clamped = clamped;
+    if (!Number.isFinite(S.tx + S.ty + S.tz)) S.tx = S.ty = S.tz = 0;
+    // the spring (the scaled frame time: it freezes in a hit-stop)
+    const dt = Math.min(this.frameDt, 1 / 30);
+    if (!S.ok) {
+      S.x = S.tx;
+      S.y = S.ty;
+      S.z = S.tz;
+      S.vx = S.vy = S.vz = 0;
+      S.ok = true;
+    } else if (dt > 0) {
+      const w = Lm.w, z = Lm.z, wT = Lm.wT, zT = Lm.zT, cap = Lm.cap;
+      S.vx += (w * w * (S.tx - S.x) - 2 * z * w * S.vx) * dt;
+      S.vy += (wT * wT * (S.ty - S.y) - 2 * zT * wT * S.vy) * dt;
+      S.vz += (w * w * (S.tz - S.z) - 2 * z * w * S.vz) * dt;
+      S.x = clamp(S.x + clamp(S.vx * dt, -cap, cap), Lm.rad - 0.05, Lm.uln + 0.05);
+      S.y = clamp(S.y + clamp(S.vy * dt, -cap, cap), Lm.pro - 0.05, Lm.sup + 0.05);
+      S.z = clamp(S.z + clamp(S.vz * dt, -cap, cap), Lm.flex - 0.05, Lm.ext + 0.05);
+    }
+    if (!Number.isFinite(S.x + S.y + S.z + S.vx + S.vy + S.vz)) {
+      S.x = S.y = S.z = S.vx = S.vy = S.vz = 0;
+      S.ok = false;
+    }
+    W.rotation.set(S.x, S.y, S.z);
   }
 
   /** Keep the blade tip out of the ground: raise _bz's world pitch just enough. */
@@ -3063,15 +3318,18 @@ export class HeroAnimator {
     // soft reach (ADR-044): a target near or past the arm's length is reached with the elbow still
     // bent. The last fifth of the reach is compressed, so the arm never locks into a straight
     // stick, however far out a pose asks for the hand; `lock` 0..1 (the off hand on the grip)
-    // gives the full reach back, so two hands still meet
+    // gives the full reach back, so two hands still meet (the hero's free arm only up to LOCK_REACH:
+    // its elbow on the grip keeps a bend instead of locking straight)
     {
       const L = DIM.upperArm + DIM.foreArm, d0 = ARM_SOFT[0] * L;
       _v.subVectors(_T, _S);
       const d = _v.length();
-      if (d > d0 && lock < 1) {
+      const capR = this.freeHand && arm === this.rig.arms.L ? LOCK_REACH : 1;
+      if (d > d0 && (lock < 1 || capR < 1)) {
         const span = (ARM_SOFT[1] - ARM_SOFT[0]) * L;
         const d2 = d0 + span * (1 - Math.exp(-(d - d0) / span));
-        _T.copy(_S).addScaledVector(_v, lerp(d2, d, lock) / d);
+        const dl = capR < 1 ? Math.min(d, capR * L) : d;
+        _T.copy(_S).addScaledVector(_v, lerp(d2, dl, lock) / d);
       }
     }
     // … and it never folds flatter than ARM_FOLD at the elbow: a hand asked for nearer its shoulder

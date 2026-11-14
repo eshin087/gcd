@@ -320,6 +320,7 @@ export class StarlessLord extends Duelist {
     if (H?.open && f === 2) {
       H.open.visible = false;
       if (H.grip) H.grip.visible = false;
+      if (H.fingers) H.fingers.visible = false;
     }
   }
 

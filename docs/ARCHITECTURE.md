@@ -589,18 +589,38 @@ pauldron joint is the right shoulder only.
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a
 knuckle ridge round the grip, hung on the `sword` joint by the `arms` item so it closes round the
 grip in every pose (with no weapon it is a closed fist); the free hand is `looseHand` on the left
-forearm (palm, four curled fingers, thumb). An `arms` item may return `offHand: { open, grip }`
-(`rig.offHand`, else null): the free hand open on the forearm, and the same hand closed round the grip
-`DIM.offGrip` (0.08 m) below the sword hand on the `sword` joint; `apply()` shows `grip` while the
-pose's `twoHand` > 0.6 and `open` otherwise (the Shrouded set's bare hands do; the Wanderer's arms
-do not). **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
+forearm (palm, four curled fingers, thumb). The skeleton gives the free arm a WRIST:
+`rig.arms.L.wrist` (a joint on `arms.L.fore` at y −(`DIM.foreArm` − 0.03)) and `rig.arms.L.point`
+(on the wrist: the sword fingers' tip, `swordTip(BODY.hand, BODY.fingerEx)`; tests, FX). An `arms`
+item may return `offHand: { open, grip, fingers? }` (`rig.offHand`, else null; all three in `keep`):
+the free hand open, the same hand closed round the grip `DIM.offGrip` (0.08 m) below the sword hand
+on the `sword` joint, and (optional) the sword fingers (jian jue, `swordFingers`: index and middle
+straight, `BODY.fingerEx` 1.3 long); `open` and `fingers` hang on `arms.L.wrist` in wrist space (the
+Shrouded set's bare hands do; the Wanderer's arms return no `offHand`). For a duelist `apply()` shows
+`grip` while the pose's `twoHand` > 0.6 and `open` otherwise. For the hero (`HeroAnimator` with
+`opts.freeHand`) `grip` shows only once the hand is THERE: `twoHand` > 0.6 and `anim.gripGap` (the IK
+end to its place on the grip, chest local, model metres) under `OFF_SNAP[0]` 3.5 cm, kept until it
+passes `OFF_SNAP[1]` 5 cm; off the grip `fingers` shows while the pose's `hs` > 0.6 (kept to 0.4),
+else `open` (`anim.handFX { fingers, fist }`). **The free hand** (the hero only, `opts.freeHand`):
+`_wristL` turns `arms.L.wrist` so the fingers point along the pose's `lD` and the palm faces `lN`
+(body axes; each vector's LENGTH is its weight: 0 = the hand rigid on the forearm, today's look),
+clamped to `WRIST_L` (radial −20° / ulnar 30°, pronation −85° / supination 85°, flex −70° / extension
+60°) through a spring (`anim.wristL { x, y, z, vx, vy, vz, tx, ty, tz, ok, clamped }`: Euler YXZ =
+deviation, twist, flex). `lk` (0..1) pulls the IK end onto the sword wrist (the fingers along the
+sword forearm; `anim.lkEff`, let go as the sword hand passes 4-8 m/s); on the grip (`twoHand`) the
+wrist goes rigid. `LOCK_REACH` (0.98 × the arm's length) keeps the free elbow ≥ 23° bent on the grip
+(the soft reach for every other arm is unchanged). **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
 their looks, the sprint slash, the roll cut) and the charged cleave is a keyframed clip. An attack's
 `anim: { kind: 'clip', clip: '<name>' }` names a `SWINGS` entry: a list of keys over the attack's own
 phases (`u` 0–1 the windup, 1–2 the active frames, 2–3 the recovery, so a clip follows its def's
 timing; a held attack button freezes it at `u` = 1, the coil). A key holds the sword hand (`h`, an
 offset from the right shoulder), the blade's direction (`a`: [azimuth, elevation] in degrees), the
 free hand (`l`), the hips and the chest (`by bx bz hip sy sx sz`), the head, `two` / `offAt`, elbow
-poles and the flat's normal; a field missing from a key is interpolated (Catmull-Rom through the
+poles and the flat's normal; the free hand's fingers (`ld`: [azimuth, elevation] in degrees × `lw`,
+0..1, default 1), its palm (`pn`, a vector), its shape (`hs`: 0 open, 1 sword fingers) and its rest
+on the sword wrist (`lk` 0..1); `fh: '<name>'` lays a free-hand place from `FH` (swings.js: `aim`,
+`aimLo`, `chest`, `wrist`, `highWing`, `wing`, `wingLo`, `tail`, `high`, each `{ l, lp, ld, pn, lk }`)
+under the key's own fields. A field missing from a key is interpolated (Catmull-Rom through the
 keys that have it). `swingPose` (anim.js) plays it over the fighting stance: the attack's time maps
 to the phase through `swingPhase` (a monotone cubic through the three parts, so the rate does not
 kink where the cut ends); key 0 is the pose he was in (`A.from`), so a cut runs straight on out of
@@ -650,7 +670,13 @@ and side-on, the grip low outside the right hip, the blade slanting ~38° up acr
 the left shoulder, the flat to the enemy; `locoGuard` carries `twoHand` and `offAt` in `GUARD_CH`.
 Pose channel `offAt` (m): with `twoHand`, how far up the blade from the grip the off hand sits (0 =
 on the grip; above 0.04 the hand stays open: a palm braced on the flat; no clip uses it yet). At
-rest and on the move he carries the sword in one hand.
+rest and on the move he carries the sword in one hand. The free-hand channels (`P.lD` 53, `P.lN` 56:
+vec3 body axes, length = weight; `P.hs` 59; `P.lk` 60; the pose has `N` = 61 channels, exported, and
+a duelist's scratch poses are sized from it) are read only with `opts.freeHand`: `guard()` writes
+the hero's rest (sword fingers low by the left hip, pointing ahead and down) and `reset()` / the NaN
+fallback zero them for every other animator; `locoGuard` carries them in `GUARD_CH`. A hit, a fall,
+the drink and the lean on the pommel open the hand and make the wrist rigid (`freeLimp`); the charge
+and the block open it to the grip (`hs` 0).
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, not locked on, with no
 guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -1596,10 +1622,13 @@ capped 9 m/s) and every step-in, windup track and dash aims at where he will be 
 string whose next hit can't reach (`_reach`) ends there. Footwork circles only inside
 `TUNING.move.band`, runs beyond it, sprints past `sprintAt`; a hero in state 'heal' is punished (no
 breather, ground-covering moves × `TUNING.punish.weight`). Numbers: tuning.js.
-**HeroAnimator** (anim.js): `new HeroAnimator(rig, player, poses = null)` — `poses` merges extra clips
+**HeroAnimator** (anim.js): `new HeroAnimator(rig, player, poses = null, opts = {})` — `poses` merges extra clips
 over the hero's table for that instance (a key it shares replaces the hero's clip for that instance
 only; a key of its own that is not a walking clip gets no foot planning: the Starless Lord's
-`glide`). Exported for other pose tables: `P, v3, to3, dirLerp, kf, guard, loco, turnTwist`. A pilot
+`glide`). `opts.freeHand` (the player only, never a duelist): the free hand's wrist, the sword
+fingers, the gap-gated fist and the free elbow's `LOCK_REACH` (see Hands, above); `anim.freeHand`
+says which. Exported for other pose tables: `P, N, v3, to3, dirLerp, kf, guard, loco, turnTwist`
+(and, for the tests, `WRIST_L`, `OFF_SNAP`). A pilot
 may set `updraft` (0..1): a wind under its cloth outside the hero's charge (a duelist's casts).
 
 ### Starless Lord — `src/entities/enemies/starlessLord/lord.js` exports `class StarlessLord` (ADR-069)

@@ -34,7 +34,7 @@ gets the `base.*` item for it. Any other slot may be empty.
 | `head` | helmets, hoods, masks. Hair, face and neck are the body, not gear; an item with `hair: [...]` keeps only those pieces of the hair (`'cap'` and `HAIR_CLUSTERS` names), `hidesHair: true` none of it; `shadowsFace: true` puts the face and neck in the item's shadow (near-black, no eyes) | `head` | `shroud.hood` (keeps the cap, builds its own gold strands, shadows the face) |
 | `chest` | the torso from the hips' top (1.09 m) to the collar: shell, shirt, buttons, belts, baldric, lapels, collar, yoke, emblem | `spine`, `chest` | `shroud.tunic` |
 | `shoulders` | shoulder armour: the pauldron on its own joint, and any lames riding on the upper arms | `pauldron`, `arms.R.upper`, `arms.L.upper` | none (`wanderer.pauldron` in the Wanderer's set) |
-| `arms` | both arms from the shoulder joint to the hand: sleeves, deltoid caps, vambrace / bracer, gauntlet / glove (the hands), elbow and wrist points. The SWORD hand's fist (`gripFist`) hangs on the `sword` joint, the grip's own frame, so it closes round the grip in every pose; it belongs to this slot, not to `weapon` | `arms.{R,L}.{upper,fore}`, `sword` (the fist) | `shroud.arms` |
+| `arms` | both arms from the shoulder joint to the hand: sleeves, deltoid caps, vambrace / bracer, gauntlet / glove (the hands), elbow and wrist points. The SWORD hand's fist (`gripFist`) hangs on the `sword` joint, the grip's own frame, so it closes round the grip in every pose; it belongs to this slot, not to `weapon` | `arms.{R,L}.{upper,fore}`, `arms.L.wrist` (the free hand), `sword` (the fist) | `shroud.arms` |
 | `legs` | hips, thighs, shins, feet, and what is strapped to them: hip straps, knee straps, boots, greaves, knee guards | `pelvis`, `legs.{R,L}.{thigh,shin,foot}` | `wanderer.legs` |
 | `waist` | cloth hanging from the belt line: skirt panels, tassets | `pelvis` | `wanderer.skirt` |
 | `back` | cloaks and capes | `chest`, and `arms.{R,L}.upper` for sheets draped over an arm | `shroud.cloak` |
@@ -97,7 +97,7 @@ The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 
 | --- | --- | --- |
 | `coat` | `waist` | array of panels `{ anchor, segs: [upper, lower], def, strips, len: [upper, lower], r0 }` (below) |
 | `streamers` | `back` | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm? }` (below) |
-| `offHand` | `arms` | `{ open, grip }`: the free hand open on the left forearm, and the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint); the animator shows one or the other with `twoHand` |
+| `offHand` | `arms` | `{ open, grip, fingers? }`: the free hand open, the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint), and (optional) the sword fingers (`swordFingers`). Hang `open` and `fingers` on `arms.L.wrist` in wrist space (the hero's animator turns that joint) and put all three in `keep`; the animator shows one of them (`twoHand` and the hand's distance from the grip, the pose's `hs`) |
 | `gem` | `weapon` | an Object3D on the weapon whose world position is where the gem glows |
 | `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`) |
 | `keep` | any | meshes of yours that must not be merged (see "Merging") |
@@ -161,8 +161,12 @@ any item:
   wide from behind).
 - **The arms.** `_arm` compresses the last fifth of each arm's reach (ADR-044), so a hand target at
   full stretch is reached with the elbow bent ~35°: model sleeves and hands for a bent arm, and do
-  not rely on a pose locking the elbow. Every swing and the block are two-handed (ADR-046): the
-  free hand spends a lot of time on the grip, so return `offHand` if the item draws hands.
+  not rely on a pose locking the elbow. The heavy blows, the charge and the block are two-handed
+  (ADR-071): the free hand spends time on the grip, so return `offHand` if the item draws hands.
+  The free hand turns on its wrist (`arms.L.wrist`: sword fingers, a point, a palm braced on the
+  grass): hang the open hand and the sword fingers there, keep the forearm's own meshes on
+  `arms.L.fore` (a flask or a bracer stays on the forearm), and keep the left wrist clear of a
+  drape so the pale hand reads on its own.
 - **The weapon.** The animator's ground clamp and blade-in-body checks (`steelTip`, `forte`,
   `drawnTip`), the hit segment in `combat.js` (`bladeBase`, `bladeTip`) and the sword FX in `fx.js`
   (`forte`, `drawnTip`) read the sword's numbers from `DIM`. The weapon item carries a copy of

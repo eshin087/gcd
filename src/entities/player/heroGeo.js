@@ -481,6 +481,32 @@ export function gripFist(k = 1) {
 }
 
 /**
+ * SWORD FINGERS (jian jue), in WRIST space (origin at the wrist pivot, the hand down −Y, the palm
+ * toward the body: −X for the left hand, the thumb +Z): index and middle straight and pressed
+ * together, ring and little curled into the palm, the thumb across their nails. `ex` exaggerates
+ * the two straight fingers (length and √girth) so the point survives the glyph pass (BODY.fingerEx).
+ * `side` = +1 left arm / −1 right arm, `k` = size (BODY.hand).
+ * Returns { palm, fingers, curled, thumb } (fingers = the pair, tips included; the ink line splits
+ * the pair up close).
+ */
+export function swordFingers(side, k = 1, ex = 1.3) {
+  const inX = -side;
+  const palm = ellipsoidGeometry(0.023 * k, 0.045 * k, 0.04 * k, { widthSegs: 10, heightSegs: 6 }).translate(0, -0.036 * k, 0.002);
+  const L = 0.046 * k * ex, r = 0.0098 * k * Math.sqrt(ex);
+  const y0 = -0.074 * k; // the knuckles
+  const fingers = mergeGeometries([
+    sub(ellipsoidGeometry(r, L, r * 0.95, { widthSegs: 6, heightSegs: 6 }).translate(0, y0 - L, 0.011 * k), 0),
+    sub(ellipsoidGeometry(r, L * 1.05, r * 0.95, { widthSegs: 6, heightSegs: 6 }).translate(0, y0 - L * 1.05, -0.0085 * k), 1),
+  ]);
+  const curled = mergeGeometries([0, 1].map((i) => sub(place(ellipsoidGeometry(0.0095 * k, 0.017 * k, 0.0092 * k, { widthSegs: 6, heightSegs: 4 }), inX * 0.014 * k, y0 + 0.004 * k, (-0.026 - 0.016 * i) * k, 0, 0, inX * 1.5), i & 1)));
+  const thumb = sub(place(ellipsoidGeometry(0.011 * k, 0.026 * k, 0.0115 * k, { widthSegs: 6, heightSegs: 5 }), inX * 0.026 * k, -0.062 * k, -0.012 * k, -1.05, 0, inX * 0.35), 1);
+  return { palm, fingers, curled, thumb };
+}
+/** The sword fingers' fingertip (wrist space; swordFingers' middle finger's end): rig.arms.L.point,
+ *  for the tests and the FX. */
+export const swordTip = (k = 1, ex = 1.3) => [0, -0.074 * k - 2.1 * 0.046 * k * ex, 0.001];
+
+/**
  * The FREE hand: a loosely closed hand hanging off the end of a forearm (fore space: the arm runs
  * down −Y, the wrist at y = −len). The palm faces the body (the hand is thin across X), four
  * fingers hang side by side along Z and curl in toward the palm, the thumb lies in front (+Z).
