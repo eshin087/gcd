@@ -139,11 +139,12 @@ export const BLADE_BASE = [0.05, 0.1, 0.2];
  * Make `root` compose its matrix as T · lean · R · `scale` (the drawn size: HERO_SCALE, the player's
  * PLAYER_SCALE) while `lean.on` (drawing, FX, the sword sweep), or the plain T · R while it is off: the
  * animator runs with it off, so its IK, ground clamps and coat springs work on the upright 1.85 m
- * body in metres. Returns the live lean { k, dx, dz, on, scale }: the drawn body shifts by k · height
- * along the horizontal unit vector (dx, dz).
+ * body in metres. Returns the live lean { k, dx, dz, on, scale, ox, oz }: the drawn body shifts by k ·
+ * height along the horizontal unit vector (dx, dz), and by (ox, oz) m (a drawn-only offset: a struck
+ * duelist's shudder; 0 for the hero). Gameplay never sees either (it reads the body with `on` off).
  */
 export function installLean(root, scale = HERO_SCALE) {
-  const lean = { k: 0, dx: 0, dz: -1, on: true, scale };
+  const lean = { k: 0, dx: 0, dz: -1, on: true, scale, ox: 0, oz: 0 };
   root.updateMatrix = function updateLeanMatrix() {
     this.matrix.compose(this.position, this.quaternion, this.scale);
     if (lean.on) {
@@ -156,6 +157,8 @@ export function installLean(root, scale = HERO_SCALE) {
         e[c] += lean.k * lean.dx * y;
         e[c + 2] += lean.k * lean.dz * y;
       }
+      e[12] += lean.ox;
+      e[14] += lean.oz;
     }
     this.matrixWorldNeedsUpdate = true;
   };
@@ -358,7 +361,8 @@ export function createHeroMaterials(U) {
       inkAlt: [0.85, 1.0, 1.25], altChance: 0.2, lumScale: 3, glyphZoom: 0.72,
       gain: 0.9, rim: 0.3, outline: 0.35, inkGlow: 0.6, emissive: [0.7, 1.4, 2.5], glowMask: 1, seed: 1.9,
     }, { lockX: true }),
-    // the last 0.15 m (the taper to the point): the brightest steel
+    // the cutting-edge band (gear/wanderer.js: blade.edge, the whole edge and the point): the brightest
+    // steel. Its HERO_INK part 17 is rewritten every frame by player.js (the strike / contact flare)
     bladeTip: S({
       levels: ["^A", "A^", "AA"], cell: [0.045, 0.09], rowShift: 0, seamAxis: 'y', base: [0.14, 0.26, 0.42],
       levelInk: [[0.7, 0.92, 1.2], [0.9, 1.08, 1.32], [1.1, 1.22, 1.45]], ink: [1.1, 1.22, 1.45],

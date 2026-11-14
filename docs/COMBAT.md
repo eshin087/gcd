@@ -161,7 +161,7 @@ shown on the grip only once the hand is there (`OFF_SNAP`).
 | 5 — slam (finisher) | 5th tap | 0.28 / 0.13 / 0.42 s (0.83 s) | 66 | 18 | two-handed (ADR-076): he gathers (dips and coils right, the blade drawn down-back past the right hip), leaps as the blade sweeps up his right side and cocks over the shoulder, and brings it down in one diagonal across his front into the ground ahead and a little left, landing folded over the planted blade and holding it; a crystal-shard burst (r 1.7 m) at the point hits if the blade missed |
 | Sprint slash | LMB while sprinting (faster than a run) | 0.11 / 0.13 / 0.32 s | 40 | 7 | a bounding rising slash, low right → high left; carries 2.4 m along the RUN direction (it does not snap to the aim); counts as hit 1 (the next tap is the rising backhand) |
 | Roll cut | LMB out of a forward roll | 0.10 / 0.11 / 0.26 s | 34 | 6 | a low cut rising out of the crouch, right → left; counts as hit 1. A backstep (Space with no direction) starts the plain chain |
-| Cleave — charged | hold LMB ≥ 0.3 s, release | 0.08 / 0.24 / 0.45 s | 70–110 by charge (full at 1.2 s) | 12–20 | a deep stance coiled away from the target, both hands on the grip held out a forearm's length before the right shoulder, the sword elbow lifted out to the side and the off forearm across the chest (ADR-078), the blade standing nearly upright beside his head (moves at ×0.4; lightning crawls on the blade past half charge); the release dashes 2.2–3.6 m along the facing with the blade still cocked and carves one two-handed diagonal, high right to past the left hip, as the dash dies out (the blade crosses his front over the last 45 % of the active frames), sinking into a long low lunge that he holds, the free hand letting go and snapping into sword fingers at the foe while the blade trails low behind; a wide crescent that hangs in the air, and on a hit a 0.15–0.2 s freeze, a ring and a fan of streaks (ADR-072; it was a lunging thrust) |
+| Cleave — charged | hold LMB ≥ 0.3 s, release | 0.08 / 0.24 / 0.45 s | 70–110 by charge (full at 1.2 s) | 12–20 | a deep stance coiled away from the target, both hands on the grip held out a forearm's length before the right shoulder, the sword elbow lifted out to the side and the off forearm across the chest (ADR-078), the blade standing nearly upright beside his head (moves at ×0.4; lightning crawls on the blade past half charge); the release dashes 2.2–3.6 m along the facing with the blade still cocked and carves one two-handed diagonal, high right to past the left hip, as the dash dies out (the blade crosses his front over the last 45 % of the active frames), sinking into a long low lunge that he holds, the free hand letting go and snapping into sword fingers at the foe while the blade trails low behind; a wide crescent that hangs in the air (cooling to violet), and on a hit a 0.15–0.2 s freeze, a doubled slash line with a tick across it, a ring, a fan of streaks along the cut, a 0.14–0.24 m kick and a 1.2–2.0 m punch (ADR-072; it was a lunging thrust) |
 
 - **Variants** (ADR-055, ADR-071): hits 1–5 each have 2–3 looks, picked at random as the hit starts
   (never the same one twice in a row, and never along the line the swing before it cut, so two hits
@@ -543,6 +543,33 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   and its head does not nod: the two-handed blade stands upright before his face, and a close
   contact held it 2.5 cm into his head through the longest freeze; swings.js `fold` 0); a guarded
   strike never bites.
+- **A cut that lands** (the hero's, on any boss; 2026-11-14): drawn where the drawn blade meets the
+  drawn body (`player._contactPoint`; STYLE.md "A cut that lands"). Its weight is per attack
+  (`combat.js` data, crit factors in `HIT_FEEL`):
+
+  | Attack | contact | freeze (s) | shake | punch (m) | kick (m) |
+  |---|---|---|---|---|---|
+  | falling cut, backhand | light | 0.055 | 0.12 | 0.35 | 0.08 |
+  | whirl | sweep | 0.065 | 0.16 | 0.45 | 0.10 |
+  | lunge (stab) | point | 0.07 | 0.14 | 0.6 | 0.10 |
+  | slam | slam | 0.12 | 0.42 | 1.6 | 0.20 |
+  | sprint slash | sweep | 0.07 | 0.2 | 0.5 | 0.10 |
+  | roll cut | light | 0.06 | 0.14 | 0.4 | 0.08 |
+  | cleave | cleave | 0.15 x (1 + 0.3 x charge) | 0.45 | 1.2 - 2.0 | 0.14 - 0.24 |
+  | the execution | execute | 0.16 | 0.5 | 2.0 | 0.24 |
+
+  A crit: the freeze x1.4, the shake x1.3, the punch + 0.6, the kick x1.35. Against a duelist his
+  own hit stun (0.065 s for a light) is the longer freeze, so the lights' retune shows on the wyrm.
+  The **kick** throws the picture along the blade's travel on screen (a light about one 4 px cell at
+  36 m, the full cleave about 12 px) and springs back in ~0.25 s with one small overshoot, in real
+  time. Every landed cut **punches** (the lights too). The blade **flares** (x1.62 on a light's
+  contact frame, x1.95 heavy), held through the freeze. The **sound** is the body's hit (scales, or
+  cloth on a duelist) under the blade's own `cut` layer (a slice and a ring per weight, a semitone up
+  each hit of the chain); a guarded strike plays only its clash. The pad rumbles on every landed
+  cut. A struck duelist **shudders** through the freeze (drawn only; a sword cut's only). His shove
+  is instant, so the cut and his spray move with him: they sit on the body the freeze holds. A slam
+  that lands only through its ground shards draws no cut: no flare, no `cut` layer (the body's hit
+  only). A strike his guard turns gets none of it: the guard draws its own clash.
 
 **Moves** (`moves.js`; N normal, B blue, R red; P1 windup s (damage); LOCK = a perfect parry locks
 the blades, MIKIRI = perilous; hits test a zone from his root through their active frames: sector

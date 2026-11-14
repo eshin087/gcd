@@ -40,7 +40,7 @@ export const CLASH = Object.freeze({
 
 const AX = { rx: 1, ry: 0, rz: 0, ux: 0, uy: 0.53, uz: -0.85 };
 /** The rendering camera's right / up axes (the fixed 58° camera's when there is none yet). */
-function axes(game) {
+export function axes(game) {
   const Rg = game?.U?.uCamRight?.value, Up = game?.U?.uCamUp?.value;
   if (Rg && Up && Number.isFinite(Rg.x + Rg.y + Rg.z + Up.x + Up.y + Up.z) && Rg.x * Rg.x + Rg.y * Rg.y + Rg.z * Rg.z > 0.5) {
     AX.rx = Rg.x;
@@ -53,7 +53,7 @@ function axes(game) {
   return AX;
 }
 /** Screen angle (rad, from the camera's right toward its up) of a world direction; NaN if it has none. */
-function screenAngle(A, x, y, z) {
+export function screenAngle(A, x, y, z) {
   const sx = x * A.rx + y * A.ry + z * A.rz, sy = x * A.ux + y * A.uy + z * A.uz;
   return sx * sx + sy * sy > 1e-8 && Number.isFinite(sx + sy) ? Math.atan2(sy, sx) : NaN;
 }

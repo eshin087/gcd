@@ -97,6 +97,7 @@ export class AudioEngine {
     this._ducked = false;
     this._staggerAt = -10;
     this._hurtAt = -10;
+    this._cutN = 0; // landed cuts: the 'cut' layer alternates its detune
     this._painPending = false;
     // end-of-frame decisions (events of one blow can arrive in any order within a frame)
     this._staggerPending = false;
@@ -604,8 +605,16 @@ export class AudioEngine {
     on('player:slam', (d) => this.play('slam', { x: d.x, z: d.z }));
     on('player:charge', (d) => this.charge?.start(d));
     on('player:hitDragon', (d) => {
-      if (d.kind === 'plunge') return; // the plunge's own impact plays on player:plungeHit
-      this.play('hit', { heavy: d.heavy, crit: d.crit, part: d.part, damage: d.damage, x: d.point?.x, z: d.point?.z });
+      // the plunge's own impact plays on player:plungeHit; a guarded strike's clash plays on
+      // dragon:guard (a 'hit' here played over it)
+      if (d.kind === 'plunge' || d.guarded) return;
+      const x = d.point?.x, z = d.point?.z, beast = this.game.dragon?.kind !== 'duelist';
+      this.play('hit', { heavy: d.heavy, crit: d.crit, part: d.part, damage: d.damage, body: beast ? 'scale' : 'cloth', x, z });
+      // the blade's own layer on top: a slice and a ring, per weight, rising a semitone up the chain
+      // (not the slam's ground shards: the blade is in the ground, the shards hit)
+      if (d.shards) return;
+      this._cutN = (this._cutN + 1) | 0;
+      this.play('cut', { weight: d.weight ?? (d.heavy ? 'slam' : 'light'), combo: d.combo, crit: d.crit, alt: this._cutN & 1, x, z });
     });
     // the plunge: the dive's rush, then the blade into the skull
     on('player:plunge', (d) => this.play('plungeDive', { exec: !!d.execution }));

@@ -73,6 +73,7 @@ export const CONFIG = {
       perfectParry: [160, 0.7, 1],
       perfectDodge: [110, 0.15, 0.6],
       hitHeavy: [90, 0.45, 0.25],
+      hitLight: [40, 0, 0.3], // every landed light cut: a short weak buzz
     },
   },
 

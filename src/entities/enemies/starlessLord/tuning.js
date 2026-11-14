@@ -68,7 +68,7 @@ export const TUNING = {
   // duel framing (main.js): the camera eases in within his reach (as the Ash Disciple's)
   camera: { within: 6.5, fade: 4, zoom: -6 },
   flinch: { breakOff: 2, window: 1.6, hitStun: 0.22 },
-  hitStun: { light: { stop: 0.065, jolt: 0.6, push: 0.12 }, heavy: { stop: 0.1, jolt: 1, push: 0.3 }, critStop: 0.12, joltDecay: 5 },
+  hitStun: { light: { stop: 0.065, jolt: 0.6, push: 0.12, shudder: 0.045 }, heavy: { stop: 0.1, jolt: 1, push: 0.3, shudder: 0.07 }, critStop: 0.12, joltDecay: 5 }, // (shudder: the Ash Disciple's note)
   parts: { head: 1.3, body: 1, leg: 0.9 },
 
   // ---- the deathblow (a broken lord, player.js _tryExecution → onExecute)

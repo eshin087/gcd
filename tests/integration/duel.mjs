@@ -126,6 +126,8 @@ function build() {
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
     shake(a) { if (!Number.isFinite(a)) throw new Error('NaN shake'); this.cameraRig.addTrauma(a); },
+    punch(m) { if (!Number.isFinite(m)) throw new Error('NaN punch'); this.cameraRig.punch(m); },
+    kick(x, y, z, m) { if (!Number.isFinite(x + y + z + m)) throw new Error('NaN kick'); this.cameraRig.kick(x, y, z, m); },
   };
   const G = { game, input, counts: {}, watch: null, hits: [], payload: new Set() };
   const emit = game.events.emit.bind(game.events);
@@ -1294,6 +1296,192 @@ async function scenarioMoments() {
   return G;
 }
 
+// ================================================================== scenario: cutfx
+/** A cut that lands on the duelist (combat/cutFx.js; player._contactPoint): drawn where the drawn
+ *  blade meets his drawn body, his spray from there, the freeze, the kick and the punch, the blade's
+ *  flare, the sound, the budget, his shudder (drawn only); a guarded strike gets none of it. */
+async function scenarioCutFx() {
+  out('\n== scenario CUTFX (a landed cut: the drawn contact, the freeze, the kick, the flare, the sound, the shudder) ==');
+  const { CUT_LOOK, CUT_LAST } = await imp('src/combat/cutFx.js');
+  const { feel, HIT_FEEL } = await imp('src/entities/player/combat.js');
+  const G = build();
+  duel(G, { dist: 2 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, rig = game.cameraRig;
+  p.debug.god = true;
+  d.brain.guardUp = () => false;
+  d.brain.onStruck = () => {};
+  const BUDGET = { light: 20, sweep: 24, point: 24, slam: 62, cleave: 72, execute: 66 };
+  const PF = game.U.uHeroPartFill.value[17], PR = game.U.uHeroPartRim.value[17];
+  const v = new THREE.Vector3(), A = new THREE.Vector3(), B = new THREE.Vector3();
+  // at the moment of the hit (inside takeHit, before his shove): the point against his drawn body and
+  // the drawn blade; the gameplay point the hit test found (p._applyHit's h). After the tick (the
+  // frame the freeze holds: his shove, his jolt, his update) the cut drawn (the event's point) against
+  // the body he is drawn in then
+  let pend = null, sparkAt = null, spawns = 0, sounds = [];
+  const takeHit0 = d.takeHit.bind(d), applyHit0 = p._applyHit.bind(p), spark0 = d.fx.hitSpark.bind(d.fx), play0 = game.audio.play.bind(game.audio);
+  const fxa = game.fx.add, spawn0 = fxa.spawn;
+  let hGame = null;
+  p._applyHit = (a, h, via) => { hGame = { x: h.x, y: h.y, z: h.z }; return applyHit0(a, h, via); };
+  d.takeHit = (o) => {
+    if (o?.swing && o.point) {
+      let body = Infinity;
+      for (const s of d.hurtSpheres) { d.drawnPoint(v.set(s.x, s.y, s.z)); body = Math.min(body, v.distanceTo(o.point) - s.r * d.drawScale); }
+      const kind = p.atk?.def?.kind ?? 'light';
+      A.lerpVectors(p.sweep.a, p.sweep.b, CUT_LOOK.from);
+      B.lerpVectors(p.sweep.a, p.sweep.b, p.fx.arcAt(kind));
+      const ab = B.clone().sub(A), u = Math.min(1, Math.max(0, v.set(o.point.x, o.point.y, o.point.z).sub(A).dot(ab) / ab.lengthSq()));
+      const blade = A.clone().addScaledVector(ab, u).distanceTo(v.set(o.point.x, o.point.y, o.point.z));
+      pend = { point: { ...o.point }, body, blade, def: p.atk?.def, crit: !!o.crit, game: hGame };
+    }
+    return takeHit0(o);
+  };
+  d.fx.hitSpark = (x, y, z, ...rest) => { sparkAt = { x, y, z }; return spark0(x, y, z, ...rest); };
+  game.audio.play = (name, o) => { sounds.push([name, o]); return play0(name, o); };
+  fxa.spawn = (o) => { spawns++; return spawn0.call(fxa, o); };
+  const rows = [], bad = [];
+  let ev = null, heroLean = 0;
+  G.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded) ev = e; };
+  const t0 = game.time;
+  let tick = 0, follow = null;
+  while (game.time - t0 < 14 && (rows.length < 8 || !rows.some((r) => r.combo === 5) || follow)) {
+    if (tick++ % 3 === 0 && !follow) input.click(0);
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    ev = null;
+    sparkAt = null;
+    spawns = 0;
+    sounds = [];
+    const n0 = CUT_LAST.n;
+    G.tick(DT);
+    heroLean = Math.max(heroLean, Math.abs(p.lean.ox ?? 0) + Math.abs(p.lean.oz ?? 0));
+    if (follow) {
+      // the shudder: the next 3 ticks flicker side to side, then it stops once the freeze is over
+      const s = Math.abs(d.lean.ox) > Math.abs(d.lean.oz) ? d.lean.ox : d.lean.oz;
+      if (follow.n < 3) follow.signs.push(s);
+      follow.n++;
+      if (game.hitstopTimer <= 0) follow.after++;
+      if (follow.after >= 2) {
+        follow.row.shud = follow.signs.length === 3 && follow.signs.every((x, i) => x !== 0 && (i === 0 || Math.sign(x) !== Math.sign(follow.signs[i - 1])));
+        follow.row.still = d.lean.ox === 0 && d.lean.oz === 0;
+        follow = null;
+      }
+    }
+    if (!ev || !pend) continue;
+    const def = pend.def, tier = def?.contact ?? 'light', k = 0;
+    let body = Infinity;
+    for (const s of d.hurtSpheres) { d.drawnPoint(v.set(s.x, s.y, s.z)); body = Math.min(body, v.distanceTo(ev.point) - s.r * d.drawScale); }
+    const row = {
+      combo: ev.combo, tier, body, bodyHit: pend.body, blade: pend.blade,
+      spark: sparkAt ? Math.hypot(sparkAt.x - ev.point.x, sparkAt.y - ev.point.y, sparkAt.z - ev.point.z) : Infinity,
+      stop: game.hitstopTimer, want: Math.max(def.hitstop * (pend.crit ? HIT_FEEL.crit.stop : 1), TUNING.hitStun.light.stop),
+      kick: Math.hypot(rig.kickX, rig.kickY), kickWant: feel(def.kick, k), punch: rig.punchZ,
+      fill: PF.x, rim: PR.w, cuts: sounds.filter(([nm]) => nm === 'cut').length,
+      hits: sounds.filter(([nm, o]) => nm === 'hit' && o?.body === 'cloth').length, spawns, budget: BUDGET[tier] + 90,
+      drawn: CUT_LAST.n > n0, moved: pend.game ? Math.hypot(pend.game.x - ev.point.x, pend.game.y - ev.point.y, pend.game.z - ev.point.z) : NaN,
+    };
+    rows.push(row);
+    follow = { row, n: 0, after: game.hitstopTimer <= 0 ? 1 : 0, signs: [] };
+    pend = null;
+  }
+  const fmt = (r) => `${r.combo}/${r.tier} body ${r.body.toFixed(2)} (at the hit ${r.bodyHit.toFixed(2)}) blade ${r.blade.toFixed(2)} stop ${r.stop.toFixed(3)} kick ${r.kick.toFixed(3)} fill ${r.fill.toFixed(2)} spawns ${r.spawns}`;
+  out(`   ${rows.length} landed cuts: ${rows.slice(0, 6).map(fmt).join(' · ')}`);
+  out(`   the cut off his drawn body in the held frame (m): ${rows.map((r) => `${r.combo}/${r.tier} ${r.body.toFixed(2)}`).join(' · ')}`);
+  const moved = rows.map((r) => r.moved).filter(Number.isFinite).sort((a, b) => a - b);
+  out(`   the drawn contact sits a median ${(moved[moved.length >> 1] ?? NaN).toFixed(2)} m from the gameplay hit point (max ${(moved[moved.length - 1] ?? NaN).toFixed(2)})`);
+  const near = rows.filter((r) => r.body <= 0.15).length;
+  assert(rows.length >= 8 && rows.some((r) => r.combo === 5), `the chain lands ${rows.length} cuts on him, the slam among them`);
+  assert(near >= 0.9 * rows.length && rows.every((r) => r.body <= 0.3), `every cut is drawn on his drawn body in the frame the freeze holds (after his shove): ${near} of ${rows.length} within 0.15 m of a drawn hurt sphere's surface, all within 0.3 (worst ${Math.max(...rows.map((r) => r.body)).toFixed(2)}; at the hit ${Math.max(...rows.map((r) => r.bodyHit)).toFixed(2)})`);
+  assert(rows.every((r) => r.blade <= 0.3 && r.spark <= 1e-6 && r.drawn), `… found on the drawn blade (worst ${Math.max(...rows.map((r) => r.blade)).toFixed(2)} m off it); his spray starts at the cut (worst ${Math.max(...rows.map((r) => r.spark)).toExponential(1)})`);
+  assert(rows.every((r) => r.stop >= r.want - 1e-6), `each freezes the frame for its weight (${rows.map((r) => r.stop.toFixed(3)).join(', ')})`);
+  assert(rows.every((r) => r.kick >= 0.8 * r.kickWant && r.kickWant > 0 && r.punch > 0), `each throws the camera along the cut (${rows.map((r) => r.kick.toFixed(3)).join(', ')} m) and punches it in`);
+  assert(rows.every((r) => r.fill >= 1.5 && r.rim >= 1.25 * 1.7), `each flares the blade (fill ${Math.min(...rows.map((r) => r.fill)).toFixed(2)}+, rim ${Math.min(...rows.map((r) => r.rim)).toFixed(2)}+)`);
+  assert(rows.every((r) => r.cuts === 1 && r.hits === 1), `each sounds once as a cut on cloth (${rows.map((r) => `${r.hits}/${r.cuts}`).join(' ')})`);
+  assert(rows.every((r) => r.spawns <= r.budget), `each stays within its spawn budget (${rows.map((r) => `${r.spawns}/${r.budget}`).join(' ')})`);
+  assert(rows.every((r) => r.shud === true && r.still === true), `he shudders through each freeze, side to side, and is still after it (${rows.map((r) => `${r.shud ? 'y' : 'n'}${r.still ? '' : '!'}`).join(' ')})`);
+  assert(heroLean === 0, 'the hero never shudders (his lean has no offset)');
+  // the shudder is drawn only: the gameplay spheres (taken with the lean off) never move with it
+  {
+    settle(G);
+    d.lean.on = false;
+    d._gameplayPoints();
+    const before = d.hurtSpheres.map((s) => [s.x, s.y, s.z]);
+    d.lean.ox = 0.3;
+    d.lean.oz = -0.2;
+    d._gameplayPoints();
+    const shift = Math.max(...d.hurtSpheres.map((s, i) => Math.hypot(s.x - before[i][0], s.y - before[i][1], s.z - before[i][2])));
+    d.lean.ox = d.lean.oz = 0;
+    d.lean.on = true;
+    d.object3d.updateMatrixWorld(true);
+    assert(shift <= 1e-9, `the shudder never moves his gameplay body (${shift.toExponential(1)} m)`);
+  }
+  // drawnPoint IS his drawn transform (the cut's placement and the body checks above rest on it): an
+  // upright joint mapped by it lands on that joint as drawn (leaned, drawScale, a shudder's offset)
+  {
+    const r = d.rig, J = [r.head, r.chest, r.pelvis, r.legs.R.shin, r.legs.L.shin];
+    d.lean.on = false;
+    d.object3d.updateMatrixWorld(true);
+    const up = J.map((j) => j.getWorldPosition(new THREE.Vector3()));
+    d.lean.ox = 0.03;
+    d.lean.oz = -0.02;
+    d.lean.on = true;
+    d.object3d.updateMatrixWorld(true);
+    const err = Math.max(...J.map((j, i) => d.drawnPoint(up[i].clone()).distanceTo(j.getWorldPosition(new THREE.Vector3()))));
+    const leaned = d.lean.k > 0 && d.drawScale !== 1;
+    d.lean.ox = d.lean.oz = 0;
+    d.object3d.updateMatrixWorld(true);
+    assert(leaned && err <= 1e-6, `drawnPoint maps his upright joints onto the drawn ones (head, chest, pelvis, shins; lean k ${d.lean.k.toFixed(2)}, scale ${d.drawScale}, offset on: ${err.toExponential(1)} m)`);
+  }
+  // the shudder is a sword cut's (takeHit's swing; not a hit like the Lord's own returned bolt), and
+  // his blade's sweep trail pauses while it runs (its flicker between frames is no swing)
+  {
+    settle(G);
+    d._shud.t = 0;
+    d.takeHit({ damage: 1, exact: true, heavy: true, posture: 0, part: 'body', point: { x: d.position.x, y: 1.2, z: d.position.z } });
+    const bolt = d._shud.t;
+    settle(G);
+    const sweep0 = d.fx.sweep;
+    let swept = 0;
+    d.fx.sweep = () => { swept++; };
+    const act = { t: 1, beats: [{ feint: false, impact: 1, W: 0.3, end: 1.1, A: 0.2 }] }; // mid-strike: the trail's window
+    d._tipOk = true;
+    d.afterPose(DT, act);
+    const open = swept;
+    d._shud.t = 0.05;
+    const shaking = d.shuddering;
+    d.afterPose(DT, act);
+    const held = swept - open;
+    d._shud.t = 0;
+    d.fx.sweep = sweep0;
+    assert(bolt === 0 && open === 1 && shaking && held === 0, `a hit that is no sword cut does not shudder him (${bolt}); his sweep trail draws mid-strike (${open}) but pauses while he shudders (${held})`);
+  }
+  // a guarded strike: his guard draws the clash; no cut, no hit sound, no kick, only the strike's flare
+  {
+    delete d.brain.guardUp;
+    settle(G);
+    place(G, 1.8);
+    run(G, 0.6);
+    let gev = null, gs = null;
+    const n0 = CUT_LAST.n;
+    G.watch = (n, e) => { if (n === 'player:hitDragon' && e.guarded && !gev) gev = e; };
+    input.click(0);
+    for (let i = 0; i < 60 && !gev; i++) {
+      sounds = [];
+      const k0 = Math.hypot(rig.kickX, rig.kickY);
+      G.tick(DT);
+      if (gev) gs = { cut: sounds.filter(([nm]) => nm === 'cut').length, hit: sounds.filter(([nm]) => nm === 'hit').length, k0, k1: Math.hypot(rig.kickX, rig.kickY), fill: PF.x, n: CUT_LAST.n - n0 };
+    }
+    out(`   a guarded strike: ${gs ? `cut ${gs.cut}, hit ${gs.hit}, kick ${gs.k0.toFixed(4)} → ${gs.k1.toFixed(4)}, fill ${gs.fill.toFixed(2)}, cuts drawn ${gs.n}` : 'none'}`);
+    assert(!!gs && gs.cut === 0 && gs.hit === 0 && gs.n === 0 && gs.k1 <= gs.k0 + 1e-6 && gs.fill <= 1.25, 'a guarded strike draws no cut, plays no hit or cut, throws no kick, and flares the blade only by the strike\'s gain');
+  }
+  G.watch = null;
+  d.takeHit = takeHit0;
+  p._applyHit = applyHit0;
+  d.fx.hitSpark = spark0;
+  game.audio.play = play0;
+  fxa.spawn = spawn0;
+  return G;
+}
+
 // ================================================================== scenario: probe (opt-in)
 /** A mortal fencer that reads only a share of the tells (ABYSS_SKILL, default 0.85). Not a pass /
  *  fail check: it measures how dangerous he is. node duel.mjs . probe */
@@ -1313,7 +1501,7 @@ async function scenarioProbe() {
   return G;
 }
 
-const SCENARIOS = { probe: scenarioProbe, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin };
+const SCENARIOS = { probe: scenarioProbe, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

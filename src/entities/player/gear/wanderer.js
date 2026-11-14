@@ -501,7 +501,7 @@ function buildCape({ chest, M, mesh, joint }) {
  *  The geometry below is built from these; the animator, the hit segment and the FX still read
  *  DIM (heroDims.js), so a different weapon needs them to read the equipped item's `dims` first
  *  (gear/README.md: next steps). */
-const SWORD_DIMS = {
+export const SWORD_DIMS = {
   gripBack: HERO_DIM.gripBack, guard: HERO_DIM.guard, gem: HERO_DIM.gem, forte: HERO_DIM.forte,
   steelTip: HERO_DIM.steelTip, drawnTip: HERO_DIM.drawnTip, bladeBase: HERO_DIM.bladeBase, bladeTip: HERO_DIM.bladeTip,
 };
@@ -524,34 +524,50 @@ function buildSword({ sword, M, mesh, joint }) {
   }
   mesh(sword, limbGeometry({ length: 0.16, r0: 0.016, r1: 0.017, radial: 6, rings: 3 }), M.leather, 0, 0, -D.gripBack); // grip
   {
-    // gunmetal: the guard block, its quillons swept up toward the blade into hooked points (a
-    // crescent round the gem), a claw back toward the grip off each quillon root, a spur toward the
-    // pommel, the kite pommel
-    const gg = [
-      ellipsoidGeometry(0.034, 0.02, 0.022, { widthSegs: 10, heightSegs: 6 }).translate(0, 0, D.guard + 0.004),
-      kiteGeometry(0.022, 0.014, 0.05, { zNeg: 1.5 }).translate(0, 0, -0.135),
-      spike(0.04, 0.012, [0, 0, D.guard - 0.008], [0, 0, -1], [1, 0, 0], 0, 4, 0.6),
-    ];
-    for (const s of [-1, 1]) {
-      gg.push(spike(0.12, 0.018, [s * 0.026, 0, D.guard], [s, 0, 0.32], [0, 0, 1], 0.55, 5, 0.6));
-      gg.push(spike(0.032, 0.007, [s * 0.11, 0, D.guard + 0.048], [-s * 0.4, 0, 0.9], [0, 0, 1], 0.1, 4));
-      gg.push(spike(0.04, 0.01, [s * 0.04, 0, D.guard - 0.006], [s * 0.7, 0, -0.7], [0, 0, -1], 0.2, 4, 0.6));
-    }
-    mesh(sword, mergeGeometries(gg), M.armor);
-    // silver: ferrules, the pommel collar, the four-point star setting behind the gem
-    const sv = [
-      ring(0.02, 0.02, 0.008, 8).rotateX(Math.PI / 2).translate(0, 0, D.guard - 0.014),
-      ring(0.02, 0.02, 0.008, 8).rotateX(Math.PI / 2).translate(0, 0, -D.gripBack),
-      ring(0.019, 0.019, 0.007, 8).rotateX(Math.PI / 2).translate(0, 0, -0.095),
-      starGeometry(0.038, 0.054, 0.013, 0.027).translate(0, 0, D.gem),
-    ];
-    mesh(sword, mergeGeometries(sv), M.trim);
+    const H = swordHilt(D);
+    mesh(sword, mergeGeometries(H.armor), M.armor);
+    mesh(sword, mergeGeometries(H.trim), M.trim);
   }
   // the gem: a violet four-point star proud of both flats (its points along the blade and across
   // the quillons), on its silver setting; a marker joint for its glow sprite and glints
   mesh(sword, starGeometry(0.023, 0.033, 0.008, 0.031, 0.005), M.gem, 0, 0, D.gem);
   const gem = joint(sword, 0, 0, D.gem);
   return { gem };
+}
+
+/**
+ * The longsword's hilt as geometry lists (sword space): `armor` (gunmetal: the guard block, its
+ * quillons swept up toward the blade into hooked points round the gem, a claw back toward the grip
+ * off each quillon root, a spur toward the pommel, the kite pommel) and `trim` (silver: the ferrules,
+ * the pommel collar, the four-point star setting behind the gem). Options (the moon looks,
+ * gear/moonblade.js): `swept` false leaves the swept quillons and their hooks off (a guard of its
+ * own goes there), `gem` moves the star setting, `rim` adds a silver rim round the kite pommel,
+ * `ring` a small ring below it. With no options it is the longsword's own hilt, unchanged.
+ */
+export function swordHilt(D, { swept = true, gem = D.gem, rim = false, ring: pommelRing = false } = {}) {
+  const armor = [
+    ellipsoidGeometry(0.034, 0.02, 0.022, { widthSegs: 10, heightSegs: 6 }).translate(0, 0, D.guard + 0.004),
+    kiteGeometry(0.022, 0.014, 0.05, { zNeg: 1.5 }).translate(0, 0, -0.135),
+    spike(0.04, 0.012, [0, 0, D.guard - 0.008], [0, 0, -1], [1, 0, 0], 0, 4, 0.6),
+  ];
+  for (const s of [-1, 1]) {
+    if (swept) {
+      armor.push(spike(0.12, 0.018, [s * 0.026, 0, D.guard], [s, 0, 0.32], [0, 0, 1], 0.55, 5, 0.6));
+      armor.push(spike(0.032, 0.007, [s * 0.11, 0, D.guard + 0.048], [-s * 0.4, 0, 0.9], [0, 0, 1], 0.1, 4));
+    }
+    armor.push(spike(0.04, 0.01, [s * 0.04, 0, D.guard - 0.006], [s * 0.7, 0, -0.7], [0, 0, -1], 0.2, 4, 0.6));
+  }
+  const trim = [
+    ring(0.02, 0.02, 0.008, 8).rotateX(Math.PI / 2).translate(0, 0, D.guard - 0.014),
+    ring(0.02, 0.02, 0.008, 8).rotateX(Math.PI / 2).translate(0, 0, -D.gripBack),
+    ring(0.019, 0.019, 0.007, 8).rotateX(Math.PI / 2).translate(0, 0, -0.095),
+    starGeometry(0.038, 0.054, 0.013, 0.027).translate(0, 0, gem),
+  ];
+  // (the gunmetal kite is thicker in Y than the rim: only the rim's edge shows round it, ~3 mm; its
+  // point stops 4.5 mm past the kite's, the drawn sword's end)
+  if (rim) trim.push(kiteGeometry(0.025, 0.009, 0.053, { zNeg: 1.5 }).translate(0, 0, -0.135));
+  if (pommelRing) trim.push(ring(0.012, 0.012, 0.004, 8).rotateY(Math.PI / 2).translate(0, 0, -0.2));
+  return { armor, trim };
 }
 
 /** The set, one item per slot (no `head` item: he wears no helmet). gear/index.js registers these

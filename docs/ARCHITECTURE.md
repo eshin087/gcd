@@ -64,12 +64,13 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `renderer, scene, fxScene, camera, pipeline, U` | rendering. `U` = shared uniforms (`render/shaderLib.js`), including `U.uBoneTex` (the rigid batches' bone matrices, see Rigid batching below). `pipeline.setShadowSize(texels)` resizes the moon shadow map (`pipeline.shadowSize`; main.js `applyQuality` passes the preset's `shadow`) |
 | `events` | pub/sub: `on(name, fn)` → unsubscribe fn, `emit(name, data)` |
 | `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
-| `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame; with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
-| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool)` / `mobile`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default. `punch(m)`: the zoom punch (`game.punch`). `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance, negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
+| `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame (the ray from the camera without the kick's translation, `cameraRig.kickOff`); with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
+| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool)` / `mobile`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default. `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance, negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
 | `touch` | touch controls (`ui/touch.js`, below): `active`, `phone`, `portrait`, `autoAim`, `setActive(bool)`, `update(realDt)` |
 | `gamepad` | gamepad controls (`ui/gamepad.js`, below): `active`, `connected`, `layout` (`'xbox'`/`'ps'`), `autoAim`, `focus`, `label(token)`, `rumble([ms, strong, weak])`, `update(realDt)` |
 | `shake(a)` | camera trauma (0.15 light hit … 0.7 huge slam) |
-| `punch(m)` | a zoom punch: the camera jumps `m` metres closer and springs back in ~0.25 s (`cameraRig.punch`: stacks to 6 m, eased at 11/s, scaled for the phone's closer camera). A blade's clash (1.5 – 3.6), a guard (0.7 – 2.4), a heavy hit (1.6). Optional: callers use `game.punch?.()` |
+| `punch(m)` | a zoom punch: the camera jumps `m` metres closer and springs back in ~0.25 s (`cameraRig.punch`: stacks to 6 m, eased at 11/s, scaled for the phone's closer camera). A blade's clash (1.5 – 3.6), a guard (0.7 – 2.4), every landed cut (lights 0.35 – 0.6, the slam 1.6, the cleave 1.2 – 2.0, the execution 2.0; a crit + 0.6). Optional: callers use `game.punch?.()` |
+| `kick(x, y, z, m)` | a directional kick: the picture is thrown `m` metres (≤ 0.5; at the desktop distance, scaled for the phone like the punch) along world direction (x, y, z) as seen on screen and springs back with one ~12 % overshoot in ~0.25 s, in real time (it plays through a freeze). A landed cut throws it along the blade's travel (lights 0.08 ≈ 4 px at 36 m … the full cleave 0.24). Optional: callers use `game.kick?.()` |
 | `fxDt` | this frame's FX time step (see Frame order): particles and lights run on through a hit-stop |
 | `hitstop(sec, scale=0.04)` | brief time-scale dip measured in real seconds (also the perfect-dodge slow-mo, the plunge's included: `hitstop(0.6, 0.3)`) |
 | `debugTimeScale` | Lab multiplier on game time (1 = normal). Only the Lab writes it. |
@@ -176,7 +177,11 @@ Render helpers for creature modules:
   1 dotted (`dotted`), 2 unbroken (`solid`), + 4 when `open`: no dark channel or depth-step gap, the
   face), z `farLine` (share of inner-line light kept at the game camera: 0 a dark seam (cloth) … 1
   bright (armour, blade)), w `farFill` (fill gain there). Materials that share a `part` must share
-  these fields.
+  these fields. Part 17 = the player's blade (`HERO_INK.blade` / `bladeTip`, only gear/wanderer.js's
+  sword uses `M.blade` / `M.bladeTip`): `player.js` rewrites its fill .x, ink .w and rim .w every
+  frame (`TUNE.bladeFlare`: the strike and contact flare; absolute values, the `HERO_INK` base at
+  rest). Nothing else may use part 17 (a boss blade on `M.blade` would flare with the hero's: give it
+  a new part).
 - **The hero's letters and lines** (pass, hero branch):
   - Grid (ADR-036): `createPixelArtAtlas(hs)` (`glyphs.js`; hs = max(1, floor(H / 1080))) →
     `{ texture, count, cols }`: one row, the 3x3 micro-font `PIXEL_3X3` (29 marks) sorted sparse →
@@ -349,6 +354,10 @@ hitPush: { x, z }                      // the way the last blow drove him, in hi
 kdProne: boolean                       // the knockdown fell him on his FRONT (the blow came from behind; ADR-083)
 deadDown: boolean; downFrom: number    // killed in the knockdown, `downFrom` s into it: he dies where he lies (clip 'deadDown')
 critTimer: number                      // > 0 while the crit window is open (after a perfect dodge / the plunge's landing)
+bladeFlare: number                     // 0..0.75: the steel's flare at a landed cut (TUNE.bladeFlare.hit: 0.5, heavy / crit 0.75;
+                                       // not a slam's shards-only hit). Any area may raise it (Math.max), never lower it; it
+                                       // decays by 1 / TUNE.bladeFlare.fall per s of GAME time (held through the freeze) and
+                                       // drives part 17's fill / lines and the blade halo
 lockOn: boolean                        // toggled by Tab / middle mouse; facing tracks dragon.lockPoint
 get alive(): boolean
 isInvulnerable(): boolean              // roll i-frames, the whole plunge, Ghostep / plunge-landing i-frames, get-up, the blade lock, dead
@@ -426,12 +435,27 @@ Tab / MMB = lock-on. (E is flow's.)
 Drawn body vs gameplay body (ADR-017): the root draws the hero `player.drawScale` tall (model.js
 `PLAYER_SCALE` = 0.9 × `HERO_SCALE` = 1.08 since ADR-064; the Ash Disciple, on the same skeleton,
 is drawn at `HERO_SCALE` 1.2) and leaned away from the camera (`model.js` `LEAN`,
-`installLean(root, scale = HERO_SCALE)`; the returned lean carries its `scale`). The animator reads
+`installLean(root, scale = HERO_SCALE)`; the returned lean carries its `scale`, and `ox` / `oz`: a
+drawn-only offset in metres, 0 for the hero; a struck duelist's shudder). The animator reads
 the figure's scale as `anim.drawScale` (its owner's `drawScale`, else `HERO_SCALE`) for the drawn
 ground speed of the gait and the foot planner's world spots. The animator runs with `lean.on = false`
 (plain upright 1.85 m body, so IK and ground clamps work in metres); the drawn transform is applied
 after it. FX read the drawn joints; the sword sweep's hit test, `getChestPos()` (the dragon's aim)
 and the hurt cylinder use the upright body (`SwordSweep(sword, unlean)`).
+**The drawn contact** (`_contactPoint(dr, kind, out)`): the hit test runs on the upright
+gameplay bodies, so its point floats off both drawn figures; a landed cut is DRAWN where the drawn
+blade (`CUT_LOOK.from` … `fx.arcAt(kind)` of the hit segment) meets the boss's drawn hurt spheres
+(`dr.drawnPoint`, radius × `dr.drawScale`). `player._cut` holds it: the point, f along the hit
+segment, the blade's travel there (`cx, cy, cz`; unit ground-plane `gx, gz`) and its direction
+(`ex, ey, ez`). That point goes to `takeHit` (with `cut: {x: gx, z: gz}`); whatever `takeHit` moved
+the boss's root by (a duelist's shove is instant, and the freeze holds the frame he is drawn in
+after it) moves the point and `_cut` with him (≤ 1 m, else ignored); then it goes to
+`player:hitDragon` and to `fx.contact`; `game.kick` throws the camera along the travel. Each attack def's `contact`
+(the cutFx tier), `hitstop`, `shake`, `punch` and `kick` (a number or [k0, k1] lerped by the charge;
+`combat.js` `HIT_FEEL` holds the crit factors, `feel(v, k)` reads one; `THRUST.exec` the execution's)
+set the weight of the cut. `atk.hitAt` (the attack clock at the contact, -1 none) and `atk.cutDir`
+({x, y, z} unit world travel of the blade there, or null) are set before the freeze starts, for the
+animator and other areas. The slam's ground-shard hit draws no cut (the shards are its contact).
 Deals damage via `game.dragon.takeHit(...)` using `game.dragon.hurtSpheres`, tested through a
 vertical reach band (`REACH` in `player/combat.js`: a sphere overlapping the blade's swept wall
 extended `up` m above / `down` m below it counts, so the giant wyrm's chest is in reach from the
@@ -585,7 +609,14 @@ the ready stance), old geometries and materials are disposed, and the rig's rigi
 (`player.batch`, `render/rigidBatch.js`) are disposed and rebuilt, reusing their bone slots; an
 unknown id throws before anything changes. No event is emitted. Limits: the animator, `combat.js` and `fx.js` read the sword's
 numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values; the
-pauldron joint is the right shoulder only.
+pauldron joint is the right shoulder only. **The sword looks** (for the owner's pick, 2026-11-14;
+`gear/moonblade.js`): weapon items `moon.sheet`, `moon.ribbon`, `moon.crescent` (the longsword's
+`dims` and materials; `wanderer.js` exports `SWORD_DIMS` and `swordHilt(D, opts)`, the longsword's
+own hilt unchanged without options). `gear/index.js` exports `SWORD_PARAM` (today, sheet, ribbon,
+crescent → item id) and `swordFromUrl()`: the Player's constructor wears `?sword=`'s weapon over
+`DEFAULT_LOADOUT` (none, or no `location`: the default sword); the Lab's 'sword' row equips one. A
+weapon's own streamer (the ribbon) carries `weapon: true`. Temporary: after the pick the winner
+becomes `wanderer.sword` and the switch goes.
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a
 knuckle ridge round the grip, hung on the `sword` joint by the `arms` item so it closes round the
 grip in every pose (with no weapon it is a closed fist); the free hand is `looseHand` on the left
@@ -752,18 +783,42 @@ uniform, no allocation).
 FX helpers that changed shape: `PlayerFx.gemTick(dt, x, y, z, k, vx, vz, vy)` and
 `gemGlint(x, y, z, s, vx, vz, vy)` take the gem's own velocity (`player.gemVel`, measured from the
 gem joint each frame) so glints ride the hilt; `gemTick` also keeps an always-on 0.22–0.26 m violet
-glow point at the gem; `bladeHalo(dt, k, far)` grows its dots with distance and lays a short bright
-`|` streak 0.06–0.26 m past the drawn point. `trail(pa, pb, a, b, kind, crit, gate = true)`
+glow point at the gem; `bladeHalo(dt, k, far)` grows its dots with distance (beside both edges,
+`HALO_X` m off the blade's axis) and lays a short bright
+`|` streak 0.06–0.26 m past the drawn point. `trail(pa, pb, a, b, kind, crit, gate = true, bite = false)`
 sub-steps by the edge's travel (one per 0.11 m, up to 14) and slerps the blade round the hilt
 between frames, so a sweep reads as one curved arc. Since ADR-077 the arc hugs the STEEL: its EDGE
 is one fine line of overlapping `|` strokes laid along the path of a point just past the steel's
 point (`arcAt(kind)`: 0.64 of the hit segment, × 1.22 for the slam and the cleave; the steel
-ends at 0.44, the reach at 1), white-hot when drawn and cooling to indigo as it thins to nothing.
+ends at 0.44, the reach at 1), white-hot when drawn and cooling to indigo as it thins to nothing
+(the heavy blows, the thrusts and the plunge's dive cool to the gem's violet: the exported
+`ARC_TONE`; `bite`, the 0.06 s after a cut lands: the edge white-hot and 15 % thicker).
 A VEIL of four faint rows runs close inside it (a thin crescent; the numbers are the exported
 `ARC_LOOK`). Its strength follows how far the blade TURNED this frame, so a blade only carried
 along (a dash) leaves none (`gate: false` for the plunge's dive). `arcGlint(x, y, z, dx, dy, dz,
 heavy, crit)`: a small star and sparks on the arc's edge, once a swing as the cut comes through
-(`player.js` `_combat`). New: `skid(dt, slot, x, z, dx, dz, sp,
+(`player.js` `_combat`), only on a whiff (a landed cut's core is the beat's one star).
+`contact(p, tier, C, crit, k)`: a cut that LANDS, drawn at p (the drawn contact) by
+`combat/cutFx.js` `cutBurst(game, x, y, z, o)` (o = { tier, cut, edge, hilt, crit, power, low }):
+a tapered slash line across the body along the cut's screen direction (a second line and a tick
+along the blade on heavy blows, a cross on a crit), thin sparks thrown along the cut, falling motes,
+a 0.22-0.3 m two-frame core, a ring on heavy blows, one small light; per-tier numbers in the exported
+`CUT_LOOK`, the last burst's counts in `CUT_LAST`, the look switch `setCutStyle('gash' | 'fan')` /
+`cutStyle()` (the Lab's 'cut' row; `?cutfx=fan`). `cleaveImpact(..., bare)`: bare = the fan only
+(contact draws the ring and the light). `sparks()` stays for the plunge.
+`edgeGlint(sw, z0, z1, far, crit, realDt, ridge)`: a small cold '+' (and '|' strokes behind it)
+running up the LEADING edge of the steel from sword-space height z0 to z1 this frame (`leadSide(sw,
+e)`: the blade's mid travel against its X axis; the ridge under `EDGE_GLINT.ridge`, or always with
+`ridge`); `player.js` `_combat` drives it from `EDGE_GLINT.lead` s before the active frames to the
+arc's glint (`at`, `atCleave`; z eased up `EDGE_GLINT.z`), on the steel every frame (no velocity),
+stopped by a landed cut (`atk.glintZ` = how far it ran); never for the thrust kind. An attack def's
+`glint: 'ridge'` (the stab) runs it up the ridge. `edgeFlash(sw, zc, heavy, crit, ridge, hold)`: the
+contact's mark on the steel, `EDGE_GLINT.flash.n` '|' strokes along the leading edge from the
+contact's height up to the point (`player._edgeFlash`, after `contact`); no velocity, so it lives
+`hold` fx s (the frames the freeze holds: this frame at the full rate + the freeze at `fxLive` +
+one frame; clamped to `flash.lifeMin` … `life`, fading to `holdEnd` × alpha) and is gone as the
+blade swings on (no `hold`: `flash.life`). Exported: `EDGE_GLINT`,
+`hwAt(z)` (the drawn blade's half width), `leadSide(sw, e)`. New: `skid(dt, slot, x, z, dx, dz, sp,
 k)` (dust and torn grass off a sliding contact; `slot` 0 / 1 keeps a rate accumulator each) and
 `scrape(dt, x, y, z, dx, dz, sp)` (cold sparks off the dragging point). 2026-11-09: `parry(x, y, z,
 blue, chain = 1, dx = 0, dz = 0)` (the clash grows with the deflect chain, crossed streaks from the
@@ -862,8 +917,13 @@ crashing: boolean                       // true while a plunge stops a flight: t
 isTargetable(): boolean                 // false while sleeping/dying/dead
 lockPoint(out): Vector3                  // chest/neck base, for lock-on + camera
 startIntro()                            // wake → rise → roar; emits 'dragon:introDone' when the fight starts
-takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, poise, heavy, crit, exact, posture }): number
+takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, cut:{x,z}, poise, heavy, crit, exact, posture }): number
                                         // returns the damage dealt (before the gate clamp); adds posture.
+                                        // point = where the cut is DRAWN (the hero's drawn blade on the
+                                        // boss's drawn body, Player._contactPoint): FX and the damage
+                                        // number only, never gameplay. cut (optional): the unit
+                                        // ground-plane travel of the blade at the contact: the hit
+                                        // spray flies along it (absent: along dir / the flinch)
                                         // Phase gate: with the AI on, damage stops at the next phase's
                                         // threshold until its transition starts (no skipping a phase).
                                         // exact: the damage is final (no part / broken multipliers); posture:
@@ -1349,6 +1409,14 @@ Every sound is procedural (no samples). 2026-11-09 additions:
 - `sfx.js`: `parry {tell, chain}` (each deflect in a chain rings 2 semitones higher, up to 8 steps,
   with a bell 'ting' from the 2nd), `plungeDive {exec}` (on `player:plunge`), `plungeHit {exec}` (on
   `player:plungeHit`; a `player:hitDragon` of kind 'plunge' plays no ordinary hit sound).
+- A landed cut (`player:hitDragon`, not guarded: a guarded strike plays only its clash on
+  `dragon:guard`): `hit {heavy, crit, part, damage, body}` (body 'cloth' against a duelist: a muffled
+  slap, no scaly clack; its metallic ring only on a crit) and the blade's own layer `cut {weight,
+  combo, crit, alt}` (not for a `shards` hit: the slam's blade is in the ground) (a slice through a
+  falling band and a steel ring per weight, `CUT_SND`; a
+  semitone up each hit of the chain, the finisher a step down, `CUT_STEP`; alt detunes alternate
+  cuts; its noise offset from its own stream: `Voice.noise(kind, t0, t1, rate, off)` takes an
+  optional 0..1 offset instead of Math.random).
 - `audio/fire.js` (`FIRE_SFX`, `subscribeFire(on, engine)`): `dragon:spell` → skyStrafe `skyRoar`,
   diveBomb `diveScream`, meteorRain `meteorCast`, eruptions `rumble`, flameRing / flameWall
   `flameIgnite`, nova `novaCharge`; `dragon:hazard` → meteor fall `meteorFall`, hit `meteorHit`,
@@ -1500,7 +1568,7 @@ the press that makes the pad active counts. Inactive (keyboard / mouse / touch u
 pad hold is released. A pad unplugged while active in a play state pauses the game.
 `gamepadconnected` / `gamepaddisconnected` log a system line. **Rumble** (`CONFIG.gamepad.rumble`)
 on `player:hurt`, `player:guardBreak`, `player:block`, `player:parry` (perfect stronger, a bullet
-lighter), `player:perfectDodge`, `player:hitDragon` (heavy only); only while active.
+lighter), `player:perfectDodge`, `player:hitDragon` (not guarded: `hitHeavy`, else `hitLight`); only while active.
 
 ### Touch controls — `src/ui/touch.js` exports `class TouchControls`
 ```
@@ -1565,7 +1633,10 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   comma: ui/bossName.js), `state` (`sleeping|waking|combat|staggered|airborne|dying|dead`), `hp,
   maxHp, phase, phaseAt, nextPhaseHp, posture, maxPosture, broken`, `hurtSpheres`, `bodyCircles`,
   `position, yaw, object3d, batch`, `isTargetable()`, `lockPoint(out)`, `startIntro()`, `takeHit(o)`,
-  `onParried(info)`, `reset()`, `update(dt)`, `debug` (the Lab's generic shape). A plunge target adds
+  `onParried(info)`, `reset()`, `update(dt)`, `debug` (the Lab's generic shape). Optional
+  `drawnPoint(v)` (+ `drawScale`): maps an upright gameplay point (a hurt sphere's centre) to where it
+  is drawn (the lean, the drawn size, a drawn-only offset), in place; the hero's landed cut is drawn
+  where his drawn blade meets those drawn spheres (absent: identity, the wyrm). A plunge target adds
   `plungePoint` / `onPlunge` (the wyrm); a **duelist** (`kind: 'duelist'`) instead offers
   `onExecute({ damage })` and `execRange` (the execution thrust, Player below) and gets no creature
   voice (audio.js gates roars, pain and recoil yelps on `kind`). A boss with **several health bars**
@@ -1586,7 +1657,15 @@ a subclass with a few hooks.
   (extra meshes, before batching), `_makeFx()`, `_makeBrain()`, `_bladeMaterials(dt, M)`, `_onHpZero()`
   (default: he dies), `brainFrame(dt)`, `afterPose(dt, act)`, `onImpact(beat, sense, act)`,
   `onRelease(beat, sense, act)`, `onCast(beat, sense, act)`, `beatMotion(beat, u, sense, dt)`,
-  `onTransitionEnd(act)`, `clampTarget(point)`. `d.T` = `kit.TUNING`.
+  `onTransitionEnd(act)`, `clampTarget(point)`. `d.T` = `kit.TUNING`. `drawnPoint(v)`: an upright
+  gameplay point → where it is drawn (lean, `drawScale`, the lean's `ox` / `oz`). Hit stun
+  (`TUNING.hitStun.light / heavy`): `stop`, `jolt`, `push` and `shudder` (m: through the freeze his
+  drawn figure flickers ± this far along the cut, fading, in real time, through `lean.ox` / `oz`;
+  only for a sword cut, `takeHit`'s `swing`; `d.shudderK` 0 turns it off, the Lab's 'shudder'
+  toggle; `d.shuddering` is true while it runs, and the blades' sweep trails pause then: the
+  flicker is no swing). His hit spray flies along `takeHit`'s `cut` (the shove keeps `dir`) and
+  starts at `point` moved by his own shove (the shove is instant: the hero moves the drawn cut the
+  same way, so both sit on the body the freeze holds).
 - `brain.js` `class DuelBrain(d)`: the mind and timeline (modes sleep, intro, foot, act, react, broken,
   dying), all data from `d.kit`. Phases are generic: when a gate is hit it starts
   `kit.transitions[phase]` and emits `dragon:phase<n>`; `forcePhase(n)` for the Lab. Beats: a zone hit
@@ -1746,8 +1825,12 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'slam'|'cleave'|'thrust', combo, charge}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; cleave = the charge's release, thrust = the execution against a duelist),
   `player:charge {t}` (charge start; t = seconds to full charge), `player:slam {x, z}` (the slam meets the ground: shard burst),
-  `player:hitDragon {damage, part, point, heavy, crit, kind, guarded}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
-  head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0), `player:hurt {damage, kind, hp}`,
+  `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight, shards}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
+  head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn
+  (on a duelist: after his shove, where he is drawn in the held frame);
+  combo = the chain hit 1-5 (1 outside the chain); weight = the cut's look and sound tier, the attack's contact:
+  light, sweep, point, slam, cleave or execute; the plunge's has neither; shards = true when only the slam's ground
+  shards hit (the blade is in the ground: weight null, no cut drawn, no blade sound)), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
   `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last}` (last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within

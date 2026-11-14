@@ -104,6 +104,11 @@ export class Duelist {
     // his blade as the hero's parry meets it (hitPlayer → hit.blade): a hilt, b tip, v the tip's travel
     this._blade = { ax: 0, ay: 0, az: 0, bx: 0, by: 0, bz: 0, vx: 0, vy: 0, vz: 0 };
     this.jolt = 0; // the hit jolt 0..1 (TUNING.hitStun; the pilot's `recoil`, poses.js jolt)
+    // the shudder (TUNING.hitStun[*].shudder): through the freeze of a landed cut his drawn figure
+    // flickers ± amp m along the cut (x, z), fading over t0 s of real time; drawn only (lean.ox / oz).
+    // shudderK 0 turns it off (the Lab)
+    this._shud = { t: 0, t0: 1, amp: 0, x: 0, z: 0, s: 1, fresh: false };
+    this.shudderK = 1;
     this._tipOk = false;
     this._lastParry = -9;
     this._lastHurtPt = new THREE.Vector3();
@@ -176,7 +181,7 @@ export class Duelist {
   _bladeMaterials() {}
   /** After the pose (brain.afterPose): the blade's sweep trail through a strike, the stars of a break. */
   afterPose(dt, a) {
-    if (a && this._tipOk) {
+    if (a && this._tipOk && !this.shuddering) {
       for (const b of a.beats) {
         if (b.feint || a.t < b.impact - 0.32 * b.W - 0.02 || a.t > b.end + 0.6 * b.A + 0.05) continue;
         this.fx.sweep(this._hiltPrev, this._tipPrev, this._hilt, this._tip, false);
@@ -196,6 +201,11 @@ export class Duelist {
   }
   get bound() {
     return Math.min(CONFIG.world.dragonBound ?? this.T.bound, this.T.bound);
+  }
+  /** His drawn figure shudders this frame (a landed cut's freeze): its blade's travel between frames
+   *  is the flicker, not a swing, so the sweep trails pause (afterPose). */
+  get shuddering() {
+    return this._shud?.t > 0;
   }
   /** His guard is up (brain.guardUp): footwork, a ward, an early windup, a late recovery. */
   get guarding() {
@@ -254,16 +264,41 @@ export class Duelist {
       dz = p ? this.position.z - p.z : 1;
     }
     const l = Math.hypot(dx, dz) || 1;
+    // his spray flies along the cut (o.cut: the blade's ground-plane travel at the contact), the
+    // shove along the blow (o.dir)
+    let sx = fin(o.cut?.x, NaN), sz = fin(o.cut?.z, NaN);
+    if (!Number.isFinite(sx + sz) || sx * sx + sz * sz < 1e-6) {
+      sx = dx / l;
+      sz = dz / l;
+    } else {
+      const sl = Math.hypot(sx, sz);
+      sx /= sl;
+      sz /= sl;
+    }
     // hit stun: a freeze-frame, his chest and head snapped back (poses.js jolt), a shove along the
     // blow; it never cancels a windup (only footwork and his recovery: brain.onStruck)
     const HS = this.T.hitStun, hs = heavy || crushed ? HS.heavy : HS.light;
-    this.hitstop(crit ? Math.max(hs.stop, HS.critStop) : hs.stop, 0.03);
+    const stopUsed = crit ? Math.max(hs.stop, HS.critStop) : hs.stop;
+    this.hitstop(stopUsed, 0.03);
     this.jolt = Math.max(this.jolt, hs.jolt);
+    // (the shudder is a sword cut's: o.swing; not his own returned bolt)
+    const sa = o.swing ? fin(hs.shudder, 0) * fin(this.shudderK, 1) : 0, S = this._shud;
+    if (sa > 0 && stopUsed > 0) {
+      S.t0 = S.t = stopUsed;
+      S.amp = sa;
+      S.x = sx;
+      S.z = sz;
+      S.s = 1;
+      S.fresh = true; // the contact frame draws it at full strength: the countdown starts next frame
+    }
+    const px0 = this.position.x, pz0 = this.position.z;
     if (this.mode !== 'broken' && this.position.y < 0.2) this.moveBy((dx / l) * hs.push, (dz / l) * hs.push);
     const pt = o.point;
     if (pt && Number.isFinite(pt.x + pt.y + pt.z)) {
-      this.fx.hitSpark(pt.x, pt.y, pt.z, dx / l, dz / l, heavy || crit);
-      this._lastHurtPt.set(pt.x, pt.y, pt.z);
+      // (his spray starts on him where he is drawn after the shove: the cut moved with him)
+      const hx = pt.x + fin(this.position.x - px0, 0), hz = pt.z + fin(this.position.z - pz0, 0);
+      this.fx.hitSpark(hx, pt.y, hz, sx, sz, heavy || crit);
+      this._lastHurtPt.set(hx, pt.y, hz);
     }
     this.emit('dragon:hurt', { damage: dmg, part, hp: this.hp, crit });
     if (this.hp <= 0) {
@@ -577,6 +612,8 @@ export class Duelist {
     this.flash = 0;
     this.dissolve = 0;
     this.warn = 0;
+    this._shud.t = 0;
+    this.lean.ox = this.lean.oz = 0;
     this.object3d.visible = true;
     this.fx.reset();
     // (the animator first: its reset goes back to the walking clip, and the brain's then starts the
@@ -597,6 +634,7 @@ export class Duelist {
     this.flash = Math.max(0, this.flash - dt * 5);
     this._updatePosture(dt);
     this.brain.update(dt);
+    this._shudder();
     this._animate(dt);
     this.brain.afterPose(dt);
     this.fx.update(dt, this);
@@ -838,6 +876,20 @@ export class Duelist {
     this._drawnPoints();
   }
 
+  /** The shudder this frame (real time: it runs through the freeze): the drawn offset flips side every
+   *  frame and fades out; 0 when it has run out. Gameplay points never see it (lean.on is off then). */
+  _shudder() {
+    const S = this._shud, L = this.lean;
+    if (S.t > 0) {
+      if (S.fresh) S.fresh = false;
+      else S.t -= fin(this.game.realDt, 1 / 60);
+      S.s = -S.s;
+      const k = S.t > 0 ? S.t / S.t0 : 0, a = S.amp * S.s * k;
+      L.ox = fin(S.x * a, 0);
+      L.oz = fin(S.z * a, 0);
+    } else L.ox = L.oz = 0;
+  }
+
   _updateLean() {
     const L = this.lean, cam = this.game.camera;
     L.k = 0;
@@ -891,6 +943,14 @@ export class Duelist {
       this._tipPrev.copy(this._tip);
       this._hiltPrev.copy(this._hilt);
     }
+  }
+
+  /** Upright gameplay point → where it is drawn (the lean, drawScale, the lean's drawn-only offset):
+   *  Player.leanPoint's twin. The hero's cut is drawn where his drawn blade meets this drawn body. */
+  drawnPoint(v) {
+    const L = this.lean, p = this.position, k = L?.k || 0, S = this.drawScale;
+    const x = (v.x - p.x) * S, y = (v.y - p.y) * S, z = (v.z - p.z) * S;
+    return v.set(p.x + x + k * (L?.dx || 0) * y + (L?.ox || 0), p.y + y, p.z + z + k * (L?.dz || 0) * y + (L?.oz || 0));
   }
 
   /** Where a beat's glint pops: the blade's tip (or at his feet for a ring). */

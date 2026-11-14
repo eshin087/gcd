@@ -86,6 +86,11 @@ async function boot() {
     punch(m) {
       this.cameraRig.punch(m);
     },
+    /** A directional kick: the picture is thrown `m` metres along world direction (x, y, z) as seen
+     *  on screen and springs back (a landed cut). */
+    kick(x, y, z, m) {
+      this.cameraRig.kick(x, y, z, m);
+    },
   };
   pipeline.registerParticles(game.fx.alpha);
   pipeline.registerParticles(game.fx.add);
@@ -132,6 +137,10 @@ async function boot() {
   const updateMouseGround = () => {
     ndc.set(game.input.mouse.ndcX, game.input.mouse.ndcY);
     ray.setFromCamera(ndc, camera);
+    // (a landed cut's kick translates the camera and its look point: aim from the camera without it,
+    // so the facing does not wobble with the picture; cameraRig.kickOff)
+    const ko = game.cameraRig.kickOff;
+    if (ko && !game.viewOverride) ray.ray.origin.sub(ko);
     if (ray.ray.intersectPlane(groundPlane, tmp)) game.mouseGround.copy(tmp);
   };
 

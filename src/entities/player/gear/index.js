@@ -1,6 +1,7 @@
 import { WANDERER_ITEMS } from './wanderer.js';
 import { SHROUD_ITEMS } from './shroud.js';
 import { BASE_ITEMS, BASE_LOADOUT } from './base.js';
+import { MOON_ITEMS, SWORD_PARAM } from './moonblade.js';
 
 // The hero's equipment, as data. A LOADOUT maps each slot to the id of the item worn there (or
 // nothing); buildHero(U, loadout) in model.js builds the skeleton and the body, then lets each
@@ -28,7 +29,21 @@ export function getItem(id) {
   return typeof id === 'string' && Object.hasOwn(GEAR, id) ? GEAR[id] : null;
 }
 
-for (const item of [...WANDERER_ITEMS, ...SHROUD_ITEMS, ...BASE_ITEMS]) registerItem(item);
+for (const item of [...WANDERER_ITEMS, ...SHROUD_ITEMS, ...BASE_ITEMS, ...MOON_ITEMS]) registerItem(item);
+
+/** ?sword= (the owner's pick of the sword looks, gear/moonblade.js): value → weapon item id. */
+export { SWORD_PARAM };
+
+/** The weapon item the page's ?sword= asks for (today | sheet | ribbon | crescent), or null (none,
+ *  an unknown value, no location: the tests). */
+export function swordFromUrl() {
+  try {
+    const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('sword') : null;
+    return SWORD_PARAM[q] ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** What the hero wears today: the Shrouded set (gear/shroud.js, ADR-043: a hood, a wrap tunic,
  *  bound sleeves and the tattered cloak) over the Wanderer's boots, coat tails and sword. No
