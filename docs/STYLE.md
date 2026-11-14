@@ -270,6 +270,13 @@ Rules of thumb:
 - **Hands (ADR-041):** a gauntlet fist closed round the grip (finger rolls with ink lines between
   them, a bright knuckle ridge) and a loosely closed left glove with skin fingertips. The sword hand
   used to be one small ellipsoid hidden behind the guard.
+- **The free hand: sword fingers (jian jue).** The hero's free hand turns on its own wrist and holds
+  sword fingers (index and middle straight and pressed together, 1.3× long so the point survives
+  the glyph pass; ring and little curled, the thumb across them) at rest and through the chain; it
+  opens to take the grip, to brace on the grass, to drink, and when he is hit or falls. At the 36 m
+  game camera the hand is ~2 cells: it reads by WHERE it goes (one arm line through the body against
+  the blade), the pale one-cell point off the end of that line and the way the point aims; the finger
+  shape itself reads up close. A pale hand needs dark cloth round it: keep drapes off the left wrist.
 - **Profile (ADR-041):** the cloak's width belongs to the front and back views (the reference's wide
   A). From the side he is slim: the outer cape sheets turn to his right (`CAPE_SHEETS.ry`), the ones
   down his back hang close (`out` 0.24 / 0.2), the front coat panels hang nearly straight (`flare`
