@@ -644,9 +644,10 @@ round its coil and finish (swings.js header). Feet: `lungeFeet`: the foot that i
 stays planted where it stood, its heel peeling (it no longer settles sideways onto the stance line);
 once stretched `drag` m past the stance's rear spot, or past its leg's reach from the hips the clip
 keys (`HOLD_REACH` 0.97 × the leg), its TOE drags after the body and it stays where it was dragged
-to (`anim.holdOff`; `anim.footDrag`: bit 1 the right toe, 2 the left), and just after the front foot
-takes the weight a foot dragged > 3 cm takes ONE lifted follow step up onto the stance line
-(`anim.follow { on, x, z, t0, t1 }`, `FOLLOW`); the clip drives the feet itself (`C.chFeet` in
+to (`anim.holdOff`; `anim.footDrag`: bit 1 the right toe, 2 the left; its heel settles back after
+a drag over a few frames, `anim.toeK`), and just after the front foot takes the weight (as soon as
+it is down if the foot is being dragged already) a foot dragged > 3 cm takes ONE lifted follow step
+up onto the stance line (`anim.follow { on, x, z, t0, t1 }`, `FOLLOW`); the clip drives the feet itself (`C.chFeet` in
 `A.pathCh`: the cross-fade slid them while the root still drifted out of a roll). While a held
 light waits at the coil the stepping toe rests on the grass (`anim.coilHold`, `COIL_HOLD`). `turn`
 pivots the feet on their balls where they stand (`pivotYaw`: their yaw turns, the heels lift);

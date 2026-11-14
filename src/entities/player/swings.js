@@ -58,7 +58,11 @@
 // weight back, `bz` −0.02; `bx` −0.06 toward the trail foot; `by` +0.03, a rise, before a falling
 // cut, −0.04, a sink, before a rising one) and an OVERSHOOT key at u 2.1-2.15 (the hips and chest
 // 0.08-0.14 rad past the u = 2 key, 2 cm deeper); the last key settles back between the two. Never
-// key an overshoot on `h` / `a`: the blade's own follow-through is the hand's (the one-cut test). Each hit of the chain
+// key an overshoot on `h` / `a`: the blade's own follow-through is the hand's (the one-cut test).
+// Keep the hips low enough for the legs to reach planted feet: standing up onto a straight front leg
+// over a long bow, or rising and drawing back from a far front foot (the anticipation's rise), puts
+// the holding foot out of its leg's reach and its toe skates after the body (anim.js HOLD_REACH;
+// HEROWEIGHT bounds the toe drag at 12 cm a swing). Each hit of the chain
 // cuts in a different plane, and each starts on the side where the hit before it leaves the blade
 // (hit 1 ends on his left, hit 2 on his right), so the steel swings back the way a pendulum does.
 // The planes are DIAGONALS, never straight up and down: the blade crosses his front near chest
@@ -144,9 +148,10 @@ export const SWINGS = {
       { u: 1.25, h: [-0.01, -0.3, 0.26], a: [-102, -28] },
       { u: 1.5, h: [0.14, -0.12, 0.46], a: [-30, -6], by: -0.15, bz: 0.08, bx: 0.01, hip: 0.14, sy: 0.02, sx: 0.24, l: [0.16, -0.34, 0.06], lp: [0.6, -0.6, -0.4], ld: [100, -50], pn: [-1, 0, 0], lk: 0 },
       { u: 1.75, h: [0.3, 0.08, 0.38], a: [32, 22] },
-      { u: 2.0, h: [0.38, 0.2, 0.22], a: [72, 44], by: -0.04, bz: 0.11, bx: 0.05, hip: 0.34, sy: 0.38, sx: 0.02, sz: -0.05, fh: 'tail', l: [0.24, -0.42, -0.3] },
-      { u: 2.15, by: -0.02, bz: 0.12, bx: 0.06, hip: 0.44, sy: 0.5, sx: -0.05 },
-      { u: 2.4, h: [0.4, 0.26, 0.08], a: [124, 54], by: -0.04, bz: 0.08, bx: 0.04, hip: 0.41, sy: 0.45, sx: -0.03, fh: 'tail' },
+      // (the hips end at −0.08-0.1, not −0.02-0.04: higher, the rear toe skated 10 cm a frame)
+      { u: 2.0, h: [0.38, 0.2, 0.22], a: [72, 44], by: -0.1, bz: 0.11, bx: 0.05, hip: 0.34, sy: 0.38, sx: 0.02, sz: -0.05, fh: 'tail', l: [0.24, -0.42, -0.3] },
+      { u: 2.15, by: -0.08, bz: 0.12, bx: 0.06, hip: 0.44, sy: 0.5, sx: -0.05 },
+      { u: 2.4, h: [0.4, 0.26, 0.08], a: [124, 54], by: -0.08, bz: 0.08, bx: 0.04, hip: 0.41, sy: 0.45, sx: -0.03, fh: 'tail' },
     ],
   },
 
@@ -189,7 +194,9 @@ export const SWINGS = {
     line: 'left',
     lF: [0.15, 0.48], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
     keys: [
-      { u: 0.6, by: -0.05, bz: -0.08, bx: -0.06, hip: 0.42, sy: 0.51, sx: -0.06, l: [0.18, -0.3, 0.08] },
+      // (no rise before it, `by` at the coil's height: out of a long stance the rise and the weight
+      // drawn back took the front foot out of reach, and it skated 15 cm back through the windup)
+      { u: 0.6, by: -0.1, bz: -0.08, bx: -0.06, hip: 0.42, sy: 0.51, sx: -0.06, l: [0.18, -0.3, 0.08] },
       { u: 1.0, h: [0.32, 0.14, 0.1], a: [156, 44], by: -0.09, bz: -0.06, bx: -0.05, hip: 0.34, sy: 0.45, sx: 0.0, sz: -0.05, fh: 'chest', l: [-0.06, -0.2, 0.26], ld: [15, 55] },
       { u: 1.25, h: [0.24, 0.1, 0.32], a: [104, 34] },
       { u: 1.5, h: [0.1, -0.06, 0.46], a: [30, 12], by: -0.21, bz: 0.09, bx: 0.01, hip: -0.06, sy: 0.0, sx: 0.3, l: [0.22, -0.1, 0.12], lp: [0.4, -0.85, -0.3], ld: [60, 40], pn: [-0.4, -1, 0], lk: 0 },
@@ -280,9 +287,11 @@ export const SWINGS = {
       { u: 0.7, by: -0.36, bz: -0.1, bx: -0.05, hip: -0.42, sy: -0.52, sx: 0.36 },
       { u: 1.0, h: [-0.04, -0.34, -0.06], a: [4, 24], by: -0.33, bz: -0.08, hip: -0.34, sy: -0.46, sx: 0.3, l: [0.06, -0.42, 0.14], lp: [0.6, -0.3, -0.7], ld: [0, -20], pn: [0, -1, 0], lk: 0, bx: -0.04 },
       { u: 1.45, h: [0.07, -0.14, 0.26], a: [2, 34], by: -0.22, bz: 0.06, hip: -0.04, sy: -0.06, sx: 0.24, l: [0, -0.24, 0.32], lp: [0.4, -0.9, -0.1], ld: [0, 10], pn: [-0.6, -0.8, 0], lk: 0 },
-      { u: 1.9, h: [0.14, 0.18, 0.46], a: [0, 45], by: -0.07, bz: 0.15, hip: 0.24, sy: 0.32, sx: 0.12, fh: 'aim', l: [-0.02, -0.06, 0.42], ld: [-8, 30], pn: [-1, -0.3, 0], bx: 0.04 },
-      { u: 2.1, by: -0.05, bz: 0.16, bx: 0.04, hip: 0.27, sy: 0.36, sx: 0.08 },
-      { u: 2.45, h: [0.13, 0.14, 0.42], a: [0, 42], by: -0.09, bz: 0.11, hip: 0.22, sy: 0.3, sx: 0.12, fh: 'aim', l: [0, -0.08, 0.4], ld: [-8, 28], pn: [-1, -0.3, 0], bx: 0.03 },
+      // (it rises to −0.15, not −0.07: standing up over its 1 m bow put the rear foot out of reach,
+      // and its toe skated 14-23 cm in two frames)
+      { u: 1.9, h: [0.14, 0.18, 0.46], a: [0, 45], by: -0.15, bz: 0.15, hip: 0.24, sy: 0.32, sx: 0.12, fh: 'aim', l: [-0.02, -0.06, 0.42], ld: [-8, 30], pn: [-1, -0.3, 0], bx: 0.04 },
+      { u: 2.1, by: -0.17, bz: 0.16, bx: 0.04, hip: 0.27, sy: 0.36, sx: 0.08 },
+      { u: 2.45, h: [0.13, 0.14, 0.42], a: [0, 42], by: -0.15, bz: 0.11, hip: 0.22, sy: 0.3, sx: 0.12, fh: 'aim', l: [0, -0.08, 0.4], ld: [-8, 28], pn: [-1, -0.3, 0], bx: 0.03 },
     ],
   },
 
@@ -360,9 +369,10 @@ export const SWINGS = {
       { u: 1.3, h: [-0.01, -0.34, 0.25], a: [-104, -12] },
       { u: 1.5, h: [0.14, -0.28, 0.44], a: [-30, -6], by: -0.3, bz: 0.08, hip: 0.1, sy: 0.02, sx: 0.4, l: [0.18, -0.38, 0.04], lp: [0.6, -0.6, -0.4], ld: [100, -50], pn: [-1, 0, 0], lk: 0 },
       { u: 1.75, h: [0.3, -0.16, 0.36], a: [34, 8] },
-      { u: 2.0, h: [0.38, -0.05, 0.2], a: [82, 26], by: -0.17, bz: 0.1, hip: 0.34, sy: 0.38, sx: 0.2, fh: 'tail', l: [0.24, -0.42, -0.28], bx: 0.05 },
-      { u: 2.15, by: -0.12, bz: 0.1, bx: 0.06, hip: 0.42, sy: 0.5, sx: 0.12 },
-      { u: 2.4, h: [0.38, 0.05, 0.08], a: [130, 40], by: -0.12, hip: 0.39, sy: 0.45, sx: 0.14, fh: 'tail' },
+      // (the hips end at −0.16-0.22, not −0.12-0.17: higher, the rear toe skated 14 cm after the body)
+      { u: 2.0, h: [0.38, -0.05, 0.2], a: [82, 26], by: -0.22, bz: 0.1, hip: 0.34, sy: 0.38, sx: 0.2, fh: 'tail', l: [0.24, -0.42, -0.28], bx: 0.05 },
+      { u: 2.15, by: -0.18, bz: 0.1, bx: 0.06, hip: 0.42, sy: 0.5, sx: 0.12 },
+      { u: 2.4, h: [0.38, 0.05, 0.08], a: [130, 40], by: -0.16, hip: 0.39, sy: 0.45, sx: 0.14, fh: 'tail' },
     ],
   },
 };

@@ -4018,6 +4018,34 @@ async function scenarioHeroWeight() {
     const worst = rows.reduce((b, R) => (Math.max(...R.sl) > Math.max(...b.sl) ? R : b), rows[0]);
     out(`   planted slide (m, right/left): ${rows.map((R) => `${R.clip} ${R.sl[0].toFixed(3)}/${R.sl[1].toFixed(3)}`).join(' · ')}`);
     assert(rows.every((R) => Math.max(...R.sl) <= 0.06), `planted feet never skate: a bearing foot slides ≤ 6 cm over a light swing (worst ${worst.clip} ${Math.max(...worst.sl).toFixed(3)} m; the holding foot settled 8-12 cm sideways every light)`);
+    // … and the frames left out of that, a holding foot whose TOE drags after the body (A.footDrag:
+    // stretched past `drag`, or past its leg's reach of the hip), are a short toe drag, not a skate:
+    // ≤ 12 cm of it over a swing, its sole tipped onto the toe (footFlat ≤ 0.35, anim.js FOLLOW.toe)
+    // wherever it moves more than 2 cm in a frame (past the clip's cross-fade, 0.85 × the windup,
+    // which fades the sole in from the clip before).
+    // (The rising thrust's, the rising slash's and the roll cut's toes skated 14-23 cm in 1-2 frames
+    // before their follow step, the falling backhand's front foot 15 cm back as its hips rose)
+    const drags = lights.map((S) => {
+      const dr = [0, 0];
+      let flat = 0;
+      for (let i = 1; i < S.frames.length; i++) {
+        const F = S.frames[i], F0 = S.frames[i - 1];
+        for (let k = 0; k < 2; k++) {
+          // (the step into a dragged frame counts, and the one out of it back onto the grass: the
+          // planted-slide sum skips both. Not the one out into a lifted follow step)
+          const now = F.drag & (k ? 2 : 1), was = F0.drag & (k ? 2 : 1);
+          const down = F.cur[k ? P.lF + 1 : P.rF + 1] < ANKH + 0.008 && !(F.fo.on === 1 && F.t >= F.fo.t0 - 1e-6 && F.t <= F.fo.t1 + 1e-6);
+          if (!now && !(was && down)) continue;
+          const st = Math.hypot(F.feet[k].x - F0.feet[k].x, F.feet[k].z - F0.feet[k].z);
+          dr[k] += st;
+          if (now && st > 0.02 && F.t >= 0.85 * S.def.windup) flat = Math.max(flat, F.cur[k ? P.lFf : P.rFf]);
+        }
+      }
+      return { clip: S.clip, dr, flat };
+    });
+    const wd = drags.reduce((b, R) => (Math.max(...R.dr) > Math.max(...b.dr) ? R : b), drags[0]);
+    out(`   toe drag (m, right/left; the sole): ${drags.filter((R) => Math.max(...R.dr) > 0).map((R) => `${R.clip} ${R.dr[0].toFixed(3)}/${R.dr[1].toFixed(3)} (${R.flat.toFixed(2)})`).join(' · ') || 'none'}`);
+    assert(drags.every((R) => Math.max(...R.dr) <= 0.12 && R.flat <= 0.35 + 1e-6), `a dragged holding foot drags its toe, a short way: ≤ 12 cm over a light swing (worst ${wd.clip} ${Math.max(...wd.dr).toFixed(3)} m), the sole on the toe where it moves > 2 cm a frame (footFlat ≤ 0.35; ${Math.max(...drags.map((R) => R.flat)).toFixed(2)})`);
     const piv = [];
     for (const S of lights) {
       // (the look's own `turn`, combat.js)

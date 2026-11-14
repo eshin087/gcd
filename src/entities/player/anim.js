@@ -1193,15 +1193,18 @@ function lungeFeet(p, A, t0, t1, drag, plant, follow = true) {
     hz = lim;
     dragging = true;
   }
-  const Fo = A.follow, fT0 = t1 + FOLLOW.at, fT1 = fT0 + FOLLOW.dur, mF = A.mark(2, fT1);
-  if (Fo.on < 0 && t >= fT0) {
-    // decided once: a foot dragged after the body as the front one takes the weight follows it
-    Fo.on = follow && plant && Math.hypot(Ho.x, Ho.z) > FOLLOW.min ? 1 : 0;
+  const Fo = A.follow, dragged = Math.hypot(Ho.x, Ho.z) > FOLLOW.min;
+  if (Fo.on < 0 && (t >= t1 + FOLLOW.at || (t >= t1 && dragged))) {
+    // decided once: a foot dragged after the body as the front one takes the weight follows it, as
+    // soon as the front foot is down if it is being dragged already (its toe skated on 10-20 cm until
+    // the step began, as the root's push carried the body away from it)
+    Fo.on = follow && plant && dragged ? 1 : 0;
     Fo.x = hx;
     Fo.z = hz;
-    Fo.t0 = fT0;
-    Fo.t1 = fT1;
+    Fo.t0 = t;
+    Fo.t1 = t + FOLLOW.dur;
   }
+  const fT0 = Fo.on === 1 ? Fo.t0 : t1 + FOLLOW.at, fT1 = fT0 + FOLLOW.dur, mF = A.mark(2, fT1);
   if (Fo.on === 1) {
     // ONE lifted step up onto the stance line (never closer than FOLLOW.gap behind the front foot,
     // never back)
@@ -1238,7 +1241,10 @@ function lungeFeet(p, A, t0, t1, drag, plant, follow = true) {
       dragging = true;
     }
   }
-  if (dragging && Fo.on !== 1) hf = Math.min(hf, FOLLOW.toe); // stretched: the TOE drags after the body
+  // stretched: the TOE drags after the body. Onto the toe at once; the heel settles back down over a
+  // few frames after (it slapped down from the toe in one frame as a drag ended)
+  A.toeK = dragging && Fo.on !== 1 ? 1 : damp(fin(A.toeK, 0), 0, FOLLOW.heel, fin(A.frameDt, 0));
+  if (A.toeK > 1e-3) hf = lerp(hf, Math.min(hf, FOLLOW.toe), A.toeK);
   A.footDrag = dragging && Fo.on !== 1 ? (stepL ? 1 : 2) : 0; // (bit 1: the right toe drags, 2: the left)
   p[hI] = hx;
   p[hI + 1] = hy;
@@ -1254,10 +1260,11 @@ function lungeFeet(p, A, t0, t1, drag, plant, follow = true) {
 }
 const FOOT_GAP = 0.18; // m: the stepping foot lands at least this far to its own side of the holding one
 const HOLD_REACH = 0.97; // × the leg's length: the farthest the holding foot stays from its hip (else it drags)
-// the follow step: from `at` s after the plant, `dur` s long, onto the stance line `back` × drag
-// behind its spot (and ≥ `gap` m behind the front foot), lifted `lift` m; only when the foot is
-// dragged more than `min` m; a dragging foot's sole is down to `toe`
-const FOLLOW = { at: 0.02, dur: 0.09, back: 0.4, gap: 0.45, lift: 0.045, min: 0.03, toe: 0.35 };
+// the follow step: from `at` s after the plant (from the plant itself when the foot is being dragged
+// already), `dur` s long, onto the stance line `back` × drag behind its spot (and ≥ `gap` m behind
+// the front foot), lifted `lift` m; only when the foot is dragged more than `min` m; a dragging
+// foot's sole is down to `toe`, its heel settling back at `heel` (1/s) once it stops
+const FOLLOW = { at: 0.02, dur: 0.09, back: 0.4, gap: 0.45, lift: 0.045, min: 0.03, toe: 0.35, heel: 30 };
 // a held light at the coil: how fast the stepping toe settles (1/s), where it rests (m above the
 // ankle's height) and its sole (footFlat: the toe down, the heel up)
 const COIL_HOLD = { rate: 25, toeY: 0.03, flat: 0.35 };
@@ -2676,6 +2683,7 @@ export class HeroAnimator {
     this.plantAt = { x: 0, z: 0, ok: false }; // lungeFeet: the front spot the stepping foot planted on
     this.holdOff = { x: 0, z: 0 }; // lungeFeet: how far the holding foot has been dragged (model)
     this.footDrag = 0; // lungeFeet (tests read it): bit 1 = the right toe drags, 2 = the left
+    this.toeK = 0; // lungeFeet: the holding foot's sole on its toe (1 while it drags, settling back after)
     this.entry = new Float32Array([-0.25, ANK, 0.15, 0.13, ANK, -0.03, -0.4, 0.22]);
     this.leanF = 0; // acceleration lean (rad), a critically damped spring on the smoothed acceleration
     this.leanFV = 0;
@@ -2746,6 +2754,7 @@ export class HeroAnimator {
     this.plantAt.ok = false;
     this.holdOff.x = this.holdOff.z = 0;
     this.hop.set = false;
+    this.toeK = 0;
     this.from.set(this.cur);
     for (const i of ANGLES) this.from[i] = wrapAngle(this.from[i]); // a finished roll is 2π ≡ 0
     // how far round the body stood as this clip began (a whirl cut short): the reactions unwind it
@@ -2804,6 +2813,7 @@ export class HeroAnimator {
     this.plantAt.ok = false;
     this.holdOff.x = this.holdOff.z = 0;
     this.hop.set = false;
+    this.toeK = 0;
     Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '' });
     this.visYaw = fin(this.player.yaw);
     this.cycOn = false;
