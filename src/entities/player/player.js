@@ -47,6 +47,13 @@ export const TUNE = {
   pusherRoll: 1.3,
   pusherDown: 1.0,
   windupSteer: 9, // rad/s of steering allowed during attack windups
+  // a light's step in: a push-off and a brake (smoothstep) from `pre` s before the coil to `end` of
+  // the active frames, so ~90 % of it is done as the front foot plants (anim.js lungeFeet, 0.45 of
+  // the active frames) and the rest is a short skid. It was a constant-speed box to the end of the
+  // active frames, and a third of every lunge slid the body on past the planted foot. A held light
+  // released late starts its step at the release (`atk.relT`), at least `min` s long
+  lungeShape: { pre: 0.08, end: 0.7, min: 0.1 },
+  attackDamp: 30, // 1/s: in an attack the root's velocity follows `want` through this filter (_integrate)
   // a roll (and a guard) cancels a swing at ANY point: its windup, the cut itself, the recovery
   // (owner, 2026-11-14: "being able to animation cancel from a swing to a guard or dodge instantly").
   // A flask still waits for this fraction of the recovery
@@ -159,7 +166,10 @@ export class Player {
     this.want = { x: 0, z: 0 }; // desired movement this frame
     this.kb = { x: 0, z: 0 }; // knockback slide
     this.groundVel = { x: 0, z: 0 }; // actual displacement / dt (drives the gait)
-    this.atk = null; // { def, t, hit, prevT, pending, damage, poise, charge, gust, lunge, travel, impact }
+    // { def, t, hit, prevT, pending, damage, poise, charge, gust, lunge, travel, impact, relT, hitAt }
+    // (relT: the attack clock at a held light's release, 0 = never held; hitAt: at the landed,
+    // unguarded hit, −1 = none. anim.js reads both: the root's step, the bite)
+    this.atk = null;
     this.gemT = 0.6; // s to the next idle gem glint
     this.chargeK = 0; // 0..1 while charging (anim + glow)
     this.chargeFull = false;
@@ -2093,7 +2103,7 @@ export class Player {
     this.atk = {
       def, t: 0, hit: false, prevT: 0, gust: false, impact: false, flared: false, lunge: null, travel: fin(def.travel, 0),
       pending: light && this.lmb.held, // still held: may become a charge (the swing waits at the coil)
-      damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0,
+      damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0, relT: 0, hitAt: -1, svx: 0, svz: 0,
     };
     this.chargeK = 0;
     if (!def.keepYaw) this.yaw = this._aimYaw(this.yaw); // commit the swing direction
@@ -2161,7 +2171,7 @@ export class Player {
   _startHeavy(def, st) {
     this.atk = {
       def, t: 0, hit: false, prevT: 0, gust: false, impact: false, flared: false, pending: false,
-      lunge: 0, travel: st.travel, damage: st.damage, poise: st.poise, charge: st.k,
+      lunge: 0, travel: st.travel, damage: st.damage, poise: st.poise, charge: st.k, relT: 0, hitAt: -1,
     };
     this.releaseK = st.k;
     this.chargeK = 0;
@@ -2216,6 +2226,7 @@ export class Player {
     if (a.pending) {
       if (!this.lmb.held) {
         a.pending = false; // tap: the swing goes ahead
+        a.relT = a.t; // its step starts here (the root's step in; a late release compresses it)
         this._swingStarted(d, 0);
       } else if (this.lmb.t >= CHARGE.hold) {
         this._startCharge();
@@ -2232,7 +2243,7 @@ export class Player {
     if (t < W && !d.keepYaw) this.yaw = turnToward(this.yaw, this._aimYaw(this.yaw), TUNE.windupSteer * dt);
     // lunge forward through the strike (stretched by the step-in assist); a dashing heavy's root
     // travel (the cleave, the execution's thrust) is front-loaded through its active frames
-    let lv = 0;
+    let lv = 0, shaped = false;
     if (d.dash) {
       if (t >= W && t <= W + A) lv = (a.travel / A) * (1.5 - (t - W) / A);
     } else if (a.travel > 0) {
@@ -2241,14 +2252,28 @@ export class Player {
       const T = W + A;
       if (!a.pending && t <= T) lv = (a.travel / T) * (1.4 - (0.8 * t) / T);
     } else {
-      const l0 = W - 0.08, l1 = W + A;
-      if (!a.pending && t >= l0 && t <= l1) {
+      // (the exact share of the step this frame. Nothing while the button is still held: it may
+      // become a charge; a late release starts the step there and compresses it)
+      shaped = true;
+      const LS = TUNE.lungeShape, l0 = Math.max(W - LS.pre, fin(a.relT, 0)), l1 = Math.max(W + A * LS.end, l0 + LS.min);
+      if (!a.pending && t > l0 && t - dt < l1 && dt > 1e-6) {
         if (a.lunge === null) a.lunge = this._lungeFor(d);
-        lv = a.lunge / (l1 - l0);
+        lv = (a.lunge * (smoothstep(l0, l1, t) - smoothstep(l0, l1, t - dt))) / dt;
       }
     }
     this.want.x = Math.sin(this.yaw) * lv * sp;
     this.want.z = Math.cos(this.yaw) * lv * sp;
+    if (shaped && dt > 1e-6) {
+      // the root's velocity follows `want` through _integrate's filter (TUNE.attackDamp), which ran
+      // the step ~2 frames late (74 % of it by the plant, still 0.8-1.4 m/s past the cut): ask for
+      // what lands the filtered velocity ON the step's shape this frame (a.svx / a.svz: last frame's
+      // shaped velocity). Only the step is exact: older momentum (a run's) still dies out through it
+      const k = 1 - Math.exp(-TUNE.attackDamp * (dt / sp)), vx = this.want.x, vz = this.want.z;
+      this.want.x = (vx - fin(a.svx, 0) * (1 - k)) / k;
+      this.want.z = (vz - fin(a.svz, 0) * (1 - k)) / k;
+      a.svx = vx;
+      a.svz = vz;
+    }
 
     if (t >= W + A) {
       const r = (t - W - A) / R;
@@ -2414,7 +2439,7 @@ export class Player {
         break;
       case 'attack':
       case 'heavy':
-        lambda = 30;
+        lambda = TUNE.attackDamp;
         break;
       case 'stagger':
       case 'knockdown':
@@ -2670,6 +2695,7 @@ export class Player {
     this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded });
     // turned by a guard: the guard draws the clash and sets its own freeze; no cut, no sparks of his
     if (guarded) return;
+    a.hitAt = a.t; // the attack clock at contact (anim.js attackPose's bite; −1 = none)
     this._hitstop(d.hitstop * (crit ? 1.4 : 1) * (d.kind === 'cleave' ? 1 + 0.3 * a.charge : 1));
     this.game.shake?.(d.shake * (crit ? 1.3 : 1));
     if (heavy || crit) this.game.punch?.(heavy ? 1.6 : 1.0);

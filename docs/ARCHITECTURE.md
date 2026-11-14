@@ -645,7 +645,12 @@ things off the player: `hitPush` (the flinch gives that way), `kdProne` (the kno
 on-his-front variant) and `downFrom` (the `deadDown` clip: killed in the knockdown he dies where
 he lies); a reaction entered mid-turn unwinds the turn (`yaw0`, `carryYaw`), and while a lying
 clip plays (`LYING_KEYS`) the cloth sheets obey gravity (`_layFlat`). A light def's `chain` (0..1) is the fraction of
-its recovery after which the next light may start (`player.js` `_tickAttack`). Options on the
+its recovery after which the next light may start (`player.js` `_tickAttack`). A light's root step
+(its `lunge`, stretched by the step-in assist) is a push-off and a brake (`TUNE.lungeShape`
+`{ pre, end, min }`: a smoothstep from `pre` s before the coil to `end` of the active frames, so
+~90 % of it is done as the front foot plants), each frame moving exactly its share; nothing while a
+held light waits at the coil, and one released late steps from its release (`atk.relT`), over at
+least `min` s. Options on the
 anim block: `spin` (±1, a full turn through the active frames: `spinTurn`), `turn` (rad, a partial
 pivot from mid-strike through the follow-through, turning back late in the recovery: `pivotYaw`),
 `hop` (m, a skip off the ground from the windup into the strike; `tuck`: how far the feet lift
@@ -746,6 +751,10 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
   never `Math.random` (the sims seed it and the wyrm's AI rolls on it). The light sweeps kick 0.32 on
   their first active frame (`player.atk.flared`, a new flag on the attack record), the slam's impact
   0.6.
+- The attack record also carries `atk.relT` (the attack clock at a held light's release; 0 = never
+  held: the root's step in starts there) and `atk.hitAt` (the attack clock at a landed, unguarded
+  hit, set in `_applyHit` before the hit-stop starts; −1 = none: test `hitAt >= 0`, never
+  `Number.isFinite`).
 - Internal animator state worth knowing: `pathCh` (channels a windup path drives this frame, copied
   past the cross-fade), `updraft` 0..1 (the charge lifts the coat and hair), `dashStep` (bits: dash
   touchdowns taken), `marks` (4 per-clip ground marks), `feet` (the world-space foot planner),

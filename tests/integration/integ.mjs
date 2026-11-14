@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | deflect | lab | strings | plungeReact |
-//             timing | fire | herolook | win | die | touch | pad | remap | all (default all)
+//             timing | fire | herolook | herolife | herohand | heroweight | win | die | touch | pad | remap | all (default all)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -3698,6 +3698,78 @@ async function scenarioHeroHand() {
   return G;
 }
 
+// ================================================================== scenario: weight
+// The body behind the blade (the weight spec): the root's step pushes off and brakes as the front
+// foot plants. Measured far from the wyrm (no step-in assist) unless a part says otherwise.
+async function scenarioHeroWeight() {
+  out('\n== scenario HEROWEIGHT (the step pushes and brakes at the plant) ==');
+  const { LIGHT } = await imp('src/entities/player/combat.js');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const p = game.player, d = game.dragon, A = p.anim;
+  p.debug.god = true;
+  const far = () => { p.debug.teleport(d.position.x + 14, d.position.z + 14); p.yaw = 0; };
+  far();
+  const go = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); each?.(); } };
+  go(0.5);
+
+  // (W3) the root's step: a tap steps ~90 % of its lunge by the plant (0.45 of the active frames)
+  // and has all but stopped as the active frames end; the whole lunge, and no more. A light held
+  // past a click (released before the coil) steps all of it too (the box ran only once released:
+  // ~65 %)
+  {
+    // one attack of each LIGHT hit (forceVariant 0), from its first frame to its last: the root's
+    // travel at the plant, its speed on the first frame past the active frames, its total
+    const steps = [];
+    let S = null;
+    const track = () => {
+      const a = p.atk, def = a?.def;
+      if (p.state === 'attack' && def && (!S || S.def !== def)) {
+        if (S) steps.push(S);
+        S = { def, x: p.posWas.x, z: p.posWas.z, plant: null, after: null, total: 0 };
+      }
+      if (S && p.state === 'attack' && a?.def === S.def) {
+        const tr = Math.hypot(p.position.x - S.x, p.position.z - S.z), W = S.def.windup, Ac = S.def.active;
+        if (S.plant === null && a.t >= W + 0.45 * Ac) S.plant = tr;
+        if (S.after === null && a.t >= W + Ac) S.after = Math.hypot(p.position.x - p.posWas.x, p.position.z - p.posWas.z) / game.dt;
+        S.total = tr;
+      }
+      p.posWas.x = p.position.x;
+      p.posWas.z = p.position.z;
+    };
+    p.posWas = { x: p.position.x, z: p.position.z };
+    A.forceVariant = 0;
+    for (let k = 0; k < 4; k++) { input.click(0); go(CHAIN_EVERY, track); }
+    go(0.9, track);
+    if (S) steps.push(S);
+    S = null;
+    // a single tap from rest, again
+    far();
+    go(1.0, track);
+    input.click(0);
+    go(0.9, track);
+    if (S) steps.push(S);
+    S = null;
+    // held 0.10 s (past a click), released before the coil
+    far();
+    go(1.0, track);
+    input.press(0);
+    go(0.1, track);
+    input.up(0);
+    go(0.9, track);
+    const held = S;
+    S = null;
+    A.forceVariant = null;
+    delete p.posWas;
+    out(`   step: ${steps.map((s) => `${s.def.name} ${(s.plant / s.total * 100).toFixed(0)} % by the plant, ${s.after.toFixed(2)} m/s past the cut, ${s.total.toFixed(2)} of ${s.def.lunge} m`).join(' · ')}; held 0.1 s: ${held ? `${held.total.toFixed(2)} of ${held.def.lunge} m` : 'none'}`);
+    assert(steps.length >= 5 && steps.every((s) => s.plant >= 0.85 * s.total && s.after <= 0.6 && Math.abs(s.total - s.def.lunge) <= 0.03),
+      `a light's step pushes off and brakes at the plant: ≥ 85 % of it by 0.45 of the active frames (least ${Math.min(...steps.map((s) => s.plant / s.total * 100)).toFixed(0)} %), ≤ 0.6 m/s past the cut (most ${Math.max(...steps.map((s) => s.after)).toFixed(2)}), the whole lunge ± 3 cm`);
+    assert(held && held.total >= 0.97 * held.def.lunge, `a light held 0.1 s and released before the coil steps its whole lunge (${held ? held.total.toFixed(2) : '-'} of ${held?.def.lunge ?? '-'} m; ≥ 97 %)`);
+  }
+  return G;
+}
+
 // ================================================================== scenario: touch controls
 // The REAL core/input.js fed by the touch controls (src/ui/touch.js) through pointer events on
 // their DOM, exactly like a phone: tap / hold ATTACK, a timed BLOCK tap parries, DODGE rolls,
@@ -4735,7 +4807,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
