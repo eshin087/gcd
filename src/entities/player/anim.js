@@ -2256,6 +2256,7 @@ export const WRIST_L = {
   rad: -20 * D2R, uln: 30 * D2R, pro: -85 * D2R, sup: 85 * D2R, flex: -70 * D2R, ext: 60 * D2R,
   w: 42, z: 0.55, wT: 30, zT: 0.8, cap: 0.35, flipGuard: 150 * D2R,
 };
+const WRIST_HZ = 120; // the wrist spring's sub-steps per second (at least: ≤ 4 a frame, dt ≤ 1/30)
 // the fingers on the sword wrist (lk): how far up the sword forearm from its end the wrist is (m),
 // where the free palm rests on it (m toward the free shoulder, m up), how much the fingers turn to
 // lie along it, and the sword hand's speed (m/s) over which they let go as it whips away
@@ -3190,7 +3191,11 @@ export class HeroAnimator {
     }
     S.clamped = clamped;
     if (!Number.isFinite(S.tx + S.ty + S.tz)) S.tx = S.ty = S.tz = 0;
-    // the spring (the scaled frame time: it freezes in a hit-stop)
+    // the spring (the scaled frame time: it freezes in a hit-stop), sub-stepped at ≤ 1/120 s like
+    // the cloth and the hair: one semi-implicit step a frame is stable only while ω·dt < 1.18
+    // (ζ 0.55; the twist's < 0.96), so below ~35 fps the wrist flipped ~30° every frame at rest,
+    // held only by the step cap. The cap (the most it turns in a frame) and the range bound the
+    // frame's total
     const dt = Math.min(this.frameDt, 1 / 30);
     if (!S.ok) {
       S.x = S.tx;
@@ -3200,12 +3205,19 @@ export class HeroAnimator {
       S.ok = true;
     } else if (dt > 0) {
       const w = Lm.w, z = Lm.z, wT = Lm.wT, zT = Lm.zT, cap = Lm.cap;
-      S.vx += (w * w * (S.tx - S.x) - 2 * z * w * S.vx) * dt;
-      S.vy += (wT * wT * (S.ty - S.y) - 2 * zT * wT * S.vy) * dt;
-      S.vz += (w * w * (S.tz - S.z) - 2 * z * w * S.vz) * dt;
-      S.x = clamp(S.x + clamp(S.vx * dt, -cap, cap), Lm.rad - 0.05, Lm.uln + 0.05);
-      S.y = clamp(S.y + clamp(S.vy * dt, -cap, cap), Lm.pro - 0.05, Lm.sup + 0.05);
-      S.z = clamp(S.z + clamp(S.vz * dt, -cap, cap), Lm.flex - 0.05, Lm.ext + 0.05);
+      const n = Math.min(4, Math.max(1, Math.ceil(dt * WRIST_HZ - 1e-6))), h = dt / n;
+      const x0 = S.x, y0 = S.y, z0 = S.z;
+      for (let i = 0; i < n; i++) {
+        S.vx += (w * w * (S.tx - S.x) - 2 * z * w * S.vx) * h;
+        S.vy += (wT * wT * (S.ty - S.y) - 2 * zT * wT * S.vy) * h;
+        S.vz += (w * w * (S.tz - S.z) - 2 * z * w * S.vz) * h;
+        S.x += S.vx * h;
+        S.y += S.vy * h;
+        S.z += S.vz * h;
+      }
+      S.x = clamp(x0 + clamp(S.x - x0, -cap, cap), Lm.rad - 0.05, Lm.uln + 0.05);
+      S.y = clamp(y0 + clamp(S.y - y0, -cap, cap), Lm.pro - 0.05, Lm.sup + 0.05);
+      S.z = clamp(z0 + clamp(S.z - z0, -cap, cap), Lm.flex - 0.05, Lm.ext + 0.05);
     }
     if (!Number.isFinite(S.x + S.y + S.z + S.vx + S.vy + S.vz)) {
       S.x = S.y = S.z = S.vx = S.vy = S.vz = 0;

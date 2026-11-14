@@ -606,7 +606,8 @@ else `open` (`anim.handFX { fingers, fist }`). **The free hand** (the hero only,
 (body axes; each vector's LENGTH is its weight: 0 = the hand rigid on the forearm, today's look),
 clamped to `WRIST_L` (radial −20° / ulnar 30°, pronation −85° / supination 85°, flex −70° / extension
 60°) through a spring (`anim.wristL { x, y, z, vx, vy, vz, tx, ty, tz, ok, clamped }`: Euler YXZ =
-deviation, twist, flex). `lk` (0..1) pulls the IK end onto the sword wrist (the fingers along the
+deviation, twist, flex; sub-stepped at ≤ 1/120 s, so it is stable at any frame rate, the frame's
+turn capped at `WRIST_L.cap`). `lk` (0..1) pulls the IK end onto the sword wrist (the fingers along the
 sword forearm; `anim.lkEff`, let go as the sword hand passes 4-8 m/s); on the grip (`twoHand`) the
 wrist goes rigid. `LOCK_REACH` (0.98 × the arm's length) keeps the free elbow ≥ 23° bent on the grip
 (the soft reach for every other arm is unchanged). **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and

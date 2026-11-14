@@ -3595,6 +3595,51 @@ async function scenarioHeroHand() {
     const q = W.quaternion;
     assert(!once && ok && Number.isFinite(q.x + q.y + q.z + q.w) && A.wristL.ok, 'a NaN in the free hand\'s pose channels never reaches the rig (every matrix finite, the wrist spring running)');
   }
+  // (H14) at 30 fps (a phone; iOS Low Power Mode; the Lab's TIME x2 on a 60 Hz screen): the wrist
+  // settles at rest and never flips back and forth through a chain. One spring step a frame was
+  // unstable below ~35 fps: a period-2 flip of ~30° every frame at rest, held only by the step cap
+  {
+    const D30 = 1 / 30;
+    const go30 = (s, f) => { for (let i = 0, n = Math.round(s / D30); i < n; i++) { G.tick(D30); f?.(); } };
+    // the idle actions held off (one running finishes first: its end re-arms the wait)
+    const wait0 = A.fidget.wait;
+    for (let i = 0; i < 400 && A.fidget.k >= 0; i++) G.tick(D30);
+    A.fidget.wait = 1e9;
+    const err = new THREE.Vector3(), errWas = new THREE.Vector3(), tgt = new THREE.Vector3(), tgtWas = new THREE.Vector3();
+    let ok30 = false, rest = 0, restAt = '', chain = 0, chainAt = '', flips = 0, flipAt = '', frames30 = 0, idle = false;
+    const step = (mode) => () => {
+      const S = A.wristL;
+      const ft = ok30 ? 2 * Math.acos(Math.min(1, Math.abs(W.quaternion.dot(q0)))) * DEG : 0;
+      q0.copy(W.quaternion);
+      tgt.set(S.tx, S.ty, S.tz);
+      err.set(S.x, S.y, S.z).sub(tgt);
+      if (ok30 && mode === 'rest' && ft > rest) { rest = ft; restAt = where(); }
+      if (ok30 && mode !== 'rest') {
+        frames30++;
+        if (ft > chain) { chain = ft; chainAt = where(); }
+        // the spring's own flip (period 2): on one axis it sits > 5° past a steady target (moved
+        // < 2° this frame), then > 5° past it on the other side the next frame
+        for (const k of ['x', 'y', 'z']) {
+          if (err[k] * errWas[k] < 0 && Math.abs(err[k]) > 5 / DEG && Math.abs(errWas[k]) > 5 / DEG && Math.abs(tgt[k] - tgtWas[k]) < 2 / DEG) { flips++; flipAt ||= where(); break; }
+        }
+      }
+      errWas.copy(err);
+      tgtWas.copy(tgt);
+      ok30 = true;
+      idle ||= A.fidget.k >= 0;
+    };
+    go30(0.6, step('chain'));
+    go30(2.0, step('rest'));
+    const restBefore = rest, restBeforeAt = restAt;
+    rest = 0;
+    for (let k = 0; k < 5; k++) { input.click(0); go30(k === 4 ? 0.9 : CHAIN_EVERY, step('chain')); }
+    go30(1.5, step('chain'));
+    go30(1.5, step('rest'));
+    A.fidget.wait = wait0;
+    out(`   30 fps: the wrist at rest ≤ ${restBefore.toFixed(2)}° / ${rest.toFixed(2)}° a frame (before / after a chain); through the chain ≤ ${chain.toFixed(0)}° a frame (${chainAt}), ${flips} spring flips in ${frames30} frames${flipAt ? ` (first ${flipAt})` : ''}`);
+    assert(!idle && restBefore < 2 && rest < 2, `at 30 fps the wrist settles at rest: ≤ ${Math.max(restBefore, rest).toFixed(2)}° a frame (< 2°; ${restBefore >= rest ? restBeforeAt : restAt}; one spring step a frame flipped it ~30° every frame; no idle action ran: ${!idle})`);
+    assert(frames30 > 100 && chain <= 40 && flips === 0, `at 30 fps through a chain the wrist turns ≤ ${chain.toFixed(0)}° a frame (≤ 40°) and never flips back and forth across a steady target (${flips} frames in ${frames30}${flipAt ? `, ${flipAt}` : ''})`);
+  }
   // (H13) the seeded sims replay: the wrist draws on no random stream
   assert(!HeroAnimator.prototype._wristL.toString().includes('Math.random'), 'the free wrist uses no Math.random (the sims are seeded)');
   return G;
