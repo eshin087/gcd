@@ -8,6 +8,7 @@ import { buildHero, setHeroGlyphScale, installLean, LEAN, PLAYER_SCALE, BLADE_BA
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
+import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 
@@ -141,7 +142,9 @@ export class Player {
     /** His drawn size (model metres → world; model.js PLAYER_SCALE, ADR-064): the lean and the
      *  animator's foot planner read it. */
     this.drawScale = PLAYER_SCALE;
-    this.rig = buildHero(game.U);
+    // (?sword=: the owner's pick of the sword looks, gear/moonblade.js; the default sword without it)
+    const sword = swordFromUrl();
+    this.rig = buildHero(game.U, sword ? { ...DEFAULT_LOADOUT, weapon: sword } : DEFAULT_LOADOUT);
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
     this.radius = 0.45;

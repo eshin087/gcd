@@ -603,7 +603,14 @@ the ready stance), old geometries and materials are disposed, and the rig's rigi
 (`player.batch`, `render/rigidBatch.js`) are disposed and rebuilt, reusing their bone slots; an
 unknown id throws before anything changes. No event is emitted. Limits: the animator, `combat.js` and `fx.js` read the sword's
 numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values; the
-pauldron joint is the right shoulder only.
+pauldron joint is the right shoulder only. **The sword looks** (for the owner's pick, 2026-11-14;
+`gear/moonblade.js`): weapon items `moon.sheet`, `moon.ribbon`, `moon.crescent` (the longsword's
+`dims` and materials; `wanderer.js` exports `SWORD_DIMS` and `swordHilt(D, opts)`, the longsword's
+own hilt unchanged without options). `gear/index.js` exports `SWORD_PARAM` (today, sheet, ribbon,
+crescent → item id) and `swordFromUrl()`: the Player's constructor wears `?sword=`'s weapon over
+`DEFAULT_LOADOUT` (none, or no `location`: the default sword); the Lab's 'sword' row equips one. A
+weapon's own streamer (the ribbon) carries `weapon: true`. Temporary: after the pick the winner
+becomes `wanderer.sword` and the switch goes.
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a
 knuckle ridge round the grip, hung on the `sword` joint by the `arms` item so it closes round the
 grip in every pose (with no weapon it is a closed fist); the free hand is `looseHand` on the left
@@ -703,7 +710,8 @@ uniform, no allocation).
 FX helpers that changed shape: `PlayerFx.gemTick(dt, x, y, z, k, vx, vz, vy)` and
 `gemGlint(x, y, z, s, vx, vz, vy)` take the gem's own velocity (`player.gemVel`, measured from the
 gem joint each frame) so glints ride the hilt; `gemTick` also keeps an always-on 0.22–0.26 m violet
-glow point at the gem; `bladeHalo(dt, k, far)` grows its dots with distance and lays a short bright
+glow point at the gem; `bladeHalo(dt, k, far)` grows its dots with distance (beside both edges,
+`HALO_X` m off the blade's axis) and lays a short bright
 `|` streak 0.06–0.26 m past the drawn point. `trail(pa, pb, a, b, kind, crit, gate = true, bite = false)`
 sub-steps by the edge's travel (one per 0.11 m, up to 14) and slerps the blade round the hilt
 between frames, so a sweep reads as one curved arc. Since ADR-077 the arc hugs the STEEL: its EDGE

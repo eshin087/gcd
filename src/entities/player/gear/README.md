@@ -17,10 +17,11 @@ buildHero(U, {});                                         // the plain undersuit
 
 | File | What it holds |
 | --- | --- |
-| `index.js` | `SLOTS`, the `GEAR` registry, `registerItem`, `getItem`, `DEFAULT_LOADOUT`, `WANDERER_LOADOUT`, `BASE_LOADOUT`, `resolveLoadout` |
+| `index.js` | `SLOTS`, the `GEAR` registry, `registerItem`, `getItem`, `DEFAULT_LOADOUT`, `WANDERER_LOADOUT`, `BASE_LOADOUT`, `resolveLoadout`, `SWORD_PARAM` and `swordFromUrl()` (the `?sword=` pick, below) |
 | `shroud.js` | the Shrouded set (the default since ADR-043): hood, wrap tunic, bound sleeves, the tattered cloak (`SHROUD_SHEETS`: a narrow cape down his back and a drape on each arm, ADR-073). Built from `heroGeo.js` sheets only, no sculpted parts |
 | `wanderer.js` | the Wanderer's set, one item per slot, plus its data (`COAT_PANELS`, `CAPE_SHEETS`). Its legs, coat tails and sword are part of the default loadout |
 | `base.js` | the undersuit: fallback items for `chest`, `arms`, `legs` |
+| `moonblade.js` | the moon looks, for the owner's pick (2026-11-14): `moon.sheet` (the sheet's blade, built in code from a profile, `bladeGeometry(spec)`, on the longsword's swept guard with a silver rim round the pommel), `moon.ribbon` (the same with an unforked strip of the cloak's hem off the pommel: it echoes the Ash Disciple's tassel), `moon.crescent` (a silver crescent moon cradling the star gem in place of the swept quillons: it echoes the Starless Lord's crescents). `SWORD_LOOKS`, `SWORD_PARAM`, `MOON_ITEMS`. Each keeps the longsword's `dims` and its materials (part 17 flares). `?sword=today\|sheet\|ribbon\|crescent` (`swordFromUrl`, player.js) and the Lab's 'sword' row wear one. After the pick the winner becomes `wanderer.sword` (its build replaces `buildSword`) and the others, `SWORD_PARAM` and `swordFromUrl` go; a winner that is not today's also drops the `blade.*` parts from hero_parts.py / heroParts.js |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |
 
@@ -96,7 +97,7 @@ The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 
 | Handle | From | Shape |
 | --- | --- | --- |
 | `coat` | `waist` | array of panels `{ anchor, segs: [upper, lower], def, strips, len: [upper, lower], r0 }` (below) |
-| `streamers` | `back` | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm? }` (below) |
+| `streamers` | `back` (a weapon's own: `weapon`) | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm?, weapon? }` (below) |
 | `offHand` | `arms` | `{ open, grip }`: the free hand open on the left forearm, and the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint); the animator shows one or the other with `twoHand` |
 | `gem` | `weapon` | an Object3D on the weapon whose world position is where the gem glows |
 | `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`) |
@@ -154,6 +155,8 @@ any item:
   `−len[0]` below it; `out` is the resting outward flare; `lag` (default 1) scales how far the
   sheet trails the motion: 1 is a light ribbon that streams out level at a run, the cloak uses 0.5;
   `max` (default 2.6 rad) is how far a segment may swing from hanging, the cloak uses 1.45.
+  `weapon: true` marks a weapon's own streamer (the moon ribbon off the pommel): the tests count
+  the cloak's sheets without it.
   The root may hang on any joint (the cloak drapes one sheet over each upper arm). Give `w` (the
   widths [root, seam, hem]) so the animator can keep the sheet off the blade (ADR-048: spheres along
   the steel), and `arm` (1 / 2 for a sheet on the right / left upper arm). The arms do not push the

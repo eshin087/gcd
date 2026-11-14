@@ -6,6 +6,7 @@ import { HitboxOverlay } from './hitboxOverlay.js';
 import { TimingTrainer, tellName } from './timingTrainer.js';
 import { ModelViewer, VIEW_ANGLES, VIEW_LOOKS } from './modelView.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
+import { SWORD_PARAM } from '../entities/player/gear/index.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -809,6 +810,28 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.shudBtn.title = 'a struck duelist flickers along the cut through the freeze (on / off)';
+    // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
+    // cost, Lab only)
+    const swr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'sword', swr).title = "the sword looks for the owner's pick (?sword=)";
+    const swGrid = el('div', 'lab-grid', null, swr);
+    swGrid.style.flex = '1';
+    this.ui.swordBtns = Object.keys(SWORD_PARAM).map((k) => {
+      const b = button(swGrid, k, () => {
+        const p = this.game.player;
+        if (typeof p?.equip !== 'function') return this._status('n/a: player.equip()', 'warn');
+        try {
+          p.equip('weapon', SWORD_PARAM[k]);
+          this._status(`player.equip(weapon, ${SWORD_PARAM[k]})`, 'ok');
+        } catch (err) {
+          console.error('[lab] player.equip failed', err);
+          this._status(`error: player.equip: ${err?.message ?? err}`, 'err');
+        }
+        this._syncCutBtns();
+      });
+      b.title = `equip ${SWORD_PARAM[k]}`;
+      return { k, el: b };
+    });
     this._syncCutBtns();
   }
 
@@ -816,6 +839,8 @@ export class Lab {
     for (const { s, el: b } of this.ui.cutBtns ?? []) setClass(b, 'on', cutStyle() === s);
     const d = this.game.dragon;
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
+    const w = this.game.player?.loadout?.weapon;
+    for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
   }
 
   _buildTime(root) {

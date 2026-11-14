@@ -2462,7 +2462,7 @@ async function scenarioHero() {
       if (o.userData.slot === 'head' && (o.material === r.materials.hair || o.material === r.materials.hairTip)) strands++;
       if (o.material === r.materials.skin) skin++;
     });
-    assert(r.streamers?.length === 5 && r.streamers.every((S) => S.lag > 0 && S.lag < 1) && Object.keys(r.hair).length === 5 && built.length === 0 && strands >= 2 && skin === 0 && r.slots.head.length > 0,
+    assert(r.streamers?.filter((S) => !S.weapon).length === 5 && r.streamers.every((S) => S.lag > 0 && S.lag < 1) && Object.keys(r.hair).length === 5 && built.length === 0 && strands >= 2 && skin === 0 && r.slots.head.length > 0,
       `the cloak: ${r.streamers?.length} sheets on springs; under the hood ${built.length} body hair clusters, ${strands} gold strand meshes of the hood's own, ${skin} skin meshes on the head (the face in shadow)`);
   }
   // clear of the wyrm (AI off): run, sprint, roll, light / backhand / slam, charge + cleave
@@ -2589,18 +2589,111 @@ async function scenarioHero() {
     assert(threw && p.loadout.back === null, 'an unknown item id throws and changes nothing');
     p.setLoadout(DEFAULT_LOADOUT);
     drive();
-    assert(meshes() === n0 && p.rig.coat.length === 6 && p.rig.streamers.length === 5 && p.sweep.sword === p.rig.sword && finite(), `back in the default set: ${meshes()} meshes, 6 coat panels, 5 cloak sheets`);
+    assert(meshes() === n0 && p.rig.coat.length === 6 && p.rig.streamers.filter((S) => !S.weapon).length === 5 && p.sweep.sword === p.rig.sword && finite(), `back in the default set: ${meshes()} meshes, 6 coat panels, 5 cloak sheets`);
     // the outfit before ADR-043 is still a loadout: bare-headed (the hair is built again), the
     // pauldron, the half-cape
     const { WANDERER_LOADOUT } = await imp('src/entities/player/gear/index.js');
     p.setLoadout(WANDERER_LOADOUT);
     drive();
     const hair = Object.values(p.rig.hair).reduce((n, j) => n + j.children.filter((o) => o.isMesh).length, 0);
-    assert(p.rig.streamers.length === 4 && hair > 0 && p.rig.slots.shoulders.length > 0 && p.rig.slots.head.length === 0 && finite(),
+    assert(p.rig.streamers.filter((S) => !S.weapon).length === 4 && hair > 0 && p.rig.slots.shoulders.length > 0 && p.rig.slots.head.length === 0 && finite(),
       `the Wanderer's set still builds: 4 cape sheets, ${hair} hair meshes, the pauldron, no hood`);
     p.setLoadout(DEFAULT_LOADOUT);
     drive();
     assert(meshes() === n0 && finite(), `and back to the Shrouded set (${meshes()} meshes)`);
+    // the sword looks (gear/moonblade.js; the owner's pick behind ?sword= and the Lab): each is built
+    // to the drawn point from its profile (no arrowhead: the point's width never grows), its pommel
+    // ends where the longsword's does, its blade keeps aGUV = (x, z) (its glyph columns), the rig
+    // stays finite through the drive; only the ribbon has a streamer of its own
+    {
+      const { hwAt } = await imp('src/entities/player/fx.js');
+      const bad = [], rows = [];
+      for (const id of ['moon.sheet', 'moon.ribbon', 'moon.crescent']) {
+        p.setLoadout({ ...DEFAULT_LOADOUT, weapon: id });
+        const R = p.rig, M = R.materials;
+        let tipZ = -Infinity, pommelZ = Infinity, wide = 0, guv = 0;
+        const bins = new Map();
+        for (const o of R.slots.weapon) o.traverse((m) => {
+          if (!m.isMesh) return;
+          const P = m.geometry.attributes.position, U = m.geometry.attributes.aGUV;
+          if (m.parent === R.sword) for (let i = 0; i < P.count; i++) pommelZ = Math.min(pommelZ, P.getZ(i));
+          if (m.material !== M.blade && m.material !== M.bladeTip) return;
+          for (let i = 0; i < P.count; i++) {
+            const x = P.getX(i), z = P.getZ(i);
+            tipZ = Math.max(tipZ, z);
+            const b = Math.floor(z / 0.02);
+            bins.set(b, Math.max(bins.get(b) ?? 0, Math.abs(x)));
+            if (z > 0.32 && Math.abs(x) > 0.05) wide++;
+            if (!(Math.abs(U.getX(i) - x) < 1e-6 && Math.abs(U.getY(i) - z) < 1e-6)) guv++;
+          }
+        });
+        const band = (z0, z1) => Math.max(0, ...[...bins].filter(([b]) => b * 0.02 + 0.01 >= z0 && b * 0.02 + 0.01 <= z1).map(([, w]) => w));
+        const point = band(0.75, 0.93), shoulder = band(0.7, 0.75);
+        const own = R.streamers.filter((S) => S.weapon).length;
+        drive();
+        rows.push(`${id} point ${point.toFixed(3)} / ${shoulder.toFixed(3)}, pommel ${pommelZ.toFixed(3)}, ${own} streamer`);
+        if (Math.abs(tipZ - HERO_DIM.drawnTip) > 0.005) bad.push(`${id}: its steel ends at ${tipZ.toFixed(3)}`);
+        if (!(pommelZ >= -0.215 && pommelZ <= -0.18)) bad.push(`${id}: its pommel ends at ${pommelZ.toFixed(3)}`);
+        if (!(point <= shoulder + 0.002) || wide) bad.push(`${id}: an arrowhead (${point.toFixed(3)} past ${shoulder.toFixed(3)}; ${wide} vertices wider than 0.05)`);
+        if (guv) bad.push(`${id}: ${guv} blade vertices off aGUV = (x, z)`);
+        if (own !== (id === 'moon.ribbon' ? 1 : 0)) bad.push(`${id}: ${own} weapon streamers`);
+        if (!finite()) bad.push(`${id}: the rig went non-finite`);
+        if (!(hwAt(0.5) > 0)) bad.push('hwAt');
+      }
+      out(`   sword looks: ${rows.join(' · ')}`);
+      assert(!bad.length, `the sword looks build to the drawn point with no arrowhead, the pommel where it was, the blade's aGUV, the ribbon's own streamer, and animate (${bad.join('; ') || 'all'})`);
+      // the ribbon: never under the grass (a run, a sprint, a roll, the chain, the cleave; the landing
+      // of a knockdown within 4 cm: the cloak's own sheets go 16 cm under there, the springs lag the
+      // fall); it swings out through a cut and hangs again at rest. Its angle is measured on the
+      // upright body (unleaned): drawn, the whole figure leans ~29° toward the camera
+      p.setLoadout({ ...DEFAULT_LOADOUT, weapon: 'moon.ribbon' });
+      p.debug.teleport(d.position.x + 14, d.position.z + 14);
+      const S = p.rig.streamers.find((s) => s.weapon), w0 = new THREE.Vector3(), w1 = new THREE.Vector3();
+      let lowest = Infinity, lowestDown = Infinity, swing = 0;
+      const sample = () => {
+        S.segs[1].getWorldPosition(w0);
+        w1.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld);
+        if (p.state === 'knockdown') lowestDown = Math.min(lowestDown, w1.y);
+        else lowest = Math.min(lowest, w1.y);
+        p.unlean(w0);
+        p.unlean(w1);
+        const dx = w1.x - w0.x, dy = w1.y - w0.y, dz = w1.z - w0.z, l = Math.hypot(dx, dy, dz) || 1;
+        return Math.acos(Math.max(-1, Math.min(1, -dy / l))) * 57.3; // degrees from hanging
+      };
+      const run = (s, f) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); const a = sample(); f?.(a); } };
+      input.axis = { x: 0, y: 1 };
+      run(0.8);
+      input.hold('ShiftLeft');
+      run(0.8);
+      input.release('ShiftLeft');
+      input.tap('Space');
+      run(0.7);
+      input.axis = { x: 0, y: 0 };
+      run(0.6);
+      p.anim.forceVariant = 0;
+      input.click(0);
+      run(0.6, (a) => { const at = p.atk; if (at?.def?.name === 'fallingCut' && at.t >= at.def.windup && at.t <= at.def.windup + at.def.active) swing = Math.max(swing, a); });
+      p.anim.forceVariant = null;
+      for (let k = 1; k < 5; k++) { input.click(0); run(k === 4 ? 0.9 : CHAIN_EVERY); }
+      input.press(0);
+      run(1.4);
+      input.up(0);
+      run(1.0);
+      p.debug.god = false;
+      p.hp = p.maxHp;
+      p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'test', from: { x: p.position.x + Math.sin(p.yaw) * 3, z: p.position.z + Math.cos(p.yaw) * 3 }, knockback: 2, knockdown: true });
+      run(2.0);
+      p.debug.god = true;
+      p.hp = p.maxHp;
+      let rest = 0;
+      run(1.5, (a) => { rest = a; });
+      out(`   the ribbon: lowest ${lowest.toFixed(3)} m (${lowestDown.toFixed(3)} m landing in a knockdown), ${swing.toFixed(0)}° from hanging through a falling cut, ${rest.toFixed(0)}° 1.5 s into idle`);
+      assert(lowest >= 0 && lowestDown >= -0.04, `the ribbon never sinks into the grass through a run, a sprint, a roll, the chain and the cleave (lowest ${lowest.toFixed(3)} m), nor more than 4 cm landing in a knockdown (${lowestDown.toFixed(3)} m)`);
+      assert(swing >= 35 && rest <= 25, `the ribbon swings out through a cut (${swing.toFixed(0)}° ≥ 35°) and hangs again at rest (${rest.toFixed(0)}° ≤ 25°)`);
+      p.setLoadout(DEFAULT_LOADOUT);
+      drive();
+      assert(meshes() === n0 && finite() && p.rig.streamers.every((s) => !s.weapon), `back to the longsword (${meshes()} meshes)`);
+    }
   }
   return G;
 }

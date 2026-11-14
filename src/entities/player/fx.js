@@ -162,6 +162,10 @@ const alongRot = (dx, dy, dz) => {
   return Math.atan2(dy * UP_Y + dz * UP_Z, dx) - Math.PI / 2;
 };
 
+/** The blade halo's dots sit this far off the blade's axis (m, sword space): beside both edges of
+ *  the slimmer moon blades too (it was 0.06-0.12). */
+export const HALO_X = [0.055, 0.11];
+
 const SPRAY = new THREE.Vector3(); // parry(): the default spray (back toward the blow and up)
 // the parry shockwave's rings (shockwave): bright, but not so hot that bloom swallows the duel
 const RING = { white: [1.5, 1.55, 1.75], warm: [1.6, 1.3, 0.8], gold: [2.0, 1.45, 0.45] };
@@ -1042,7 +1046,7 @@ export class PlayerFx {
       this.haloAcc -= 1;
       const past = rnd() < 0.3;
       const zz = past ? tip + R(0.0, 0.1) : R(DIM.forte, tip);
-      const xx = past ? R(-0.02, 0.02) : (rnd() < 0.5 ? -1 : 1) * R(0.06, 0.12);
+      const xx = past ? R(-0.02, 0.02) : (rnd() < 0.5 ? -1 : 1) * R(HALO_X[0], HALO_X[1]);
       // sword space (xx, 0, zz) → world
       const x = e[0] * xx + e[8] * zz + e[12], y = e[1] * xx + e[9] * zz + e[13], z = e[2] * xx + e[10] * zz + e[14];
       if (!Number.isFinite(x + y + z) || y < 0.02) continue;
