@@ -57,6 +57,14 @@ const COL = {
 // this crescent and afterimages of the blade; the owner picked the crescent and the others went.)
 export const ARC_LOOK = { at: 0.64, edge: 0.11, life: [0.2, 0.27], veil: [[0.94, 0.3], [0.88, 0.2], [0.82, 0.12], [0.76, 0.06]], motes: 1 };
 const ARC_HEAVY = 1.22; // the slam's and the cleave's arc reaches this much further out
+/** The arc's colours (trail): the lights cool from white-hot to indigo; the heavy blows (the slam, the
+ *  cleave, the thrusts, the plunge's dive) to the gem's violet, so a heavy reads apart from a light
+ *  at a glance (the gem already burns brighter through them); a crit stays the crit's cold blue. */
+export const ARC_TONE = {
+  light: { core: COL.arcCore, veil: COL.arcVeil, end: COL.arcEnd },
+  heavy: { core: [1.9, 2.45, 3.1], veil: [0.42, 0.8, 2.3], end: [0.3, 0.07, 0.85] },
+  crit: { core: COL.crit, veil: COL.crit, end: COL.critEnd },
+};
 
 /**
  * The edge glint (edgeGlint): a small cold '+' running up the LEADING edge of the steel from the
@@ -222,12 +230,14 @@ export class PlayerFx {
    * so it swells and tapers with the cut and a blade merely carried along (a dash, a lunge) leaves
    * none. kind: 'light' | 'slam' | 'cleave' (both reach further and hang longer) | 'thrust' (the
    * edge only: thrustStreak draws the beam).
+   * The heavy blows cool to violet, not indigo (ARC_TONE). `bite`: the cut just landed (player.js, the
+   * first 0.06 s after the contact): the edge is drawn white-hot and a little thicker.
    * (Session 25: a line at the end of the reach with a four-row veil, in place of a slab of bright
    * strokes under a rim of letters. Session 26, owner: "make the sword trail effect look way cooler
    * and more subtle": that veil was still a glowing band half the reach wide, its edge was a row of
    * dashes, and it ran a metre past the steel.)
    */
-  trail(pa, pb, a, b, kind = 'light', crit = false, gate = true) {
+  trail(pa, pb, a, b, kind = 'light', crit = false, gate = true, bite = false) {
     const fx = this.add;
     if (!fx) return;
     const S = ARC_LOOK;
@@ -242,8 +252,8 @@ export class PlayerFx {
     // and a little of the next, so the line is unbroken at any speed
     const tipStep = Math.hypot(b.x - pb.x, b.y - pb.y, b.z - pb.z) * at;
     const nSub = Math.min(TRAIL_SUB_MAX, Math.max(2, Math.ceil(tipStep / TRAIL_SUB_LEN)));
-    const core = crit ? COL.crit : COL.arcCore, veil = crit ? COL.crit : COL.arcVeil;
-    const end = crit ? COL.critEnd : COL.arcEnd;
+    const T = crit ? ARC_TONE.crit : ARC_TONE[heavy || thrust ? 'heavy' : 'light'];
+    const core = T.core, veil = T.veil, end = T.end;
     const linger = cleave ? 1.7 : heavy ? 1.3 : 1;
     const rows = thrust ? TRAIL_NONE : S.veil;
     for (let s = 1; s <= nSub; s++) {
@@ -254,12 +264,12 @@ export class PlayerFx {
       let dx = ARC_P[0] - ARC_Q[0], dy = ARC_P[1] - ARC_Q[1], dz = ARC_P[2] - ARC_Q[2];
       let step = Math.hypot(dx, dy, dz);
       if (step > 0.01) {
-        const size = S.edge * (heavy ? 1.25 : 1) * (0.6 + 0.4 * turn);
+        const size = S.edge * (heavy ? 1.25 : 1) * (0.6 + 0.4 * turn) * (bite ? 1.15 : 1);
         fx.spawn({
           x: (ARC_P[0] + ARC_Q[0]) / 2, y: (ARC_P[1] + ARC_Q[1]) / 2, z: (ARC_P[2] + ARC_Q[2]) / 2,
           life: R(S.life[0], S.life[1]) * linger, size, sizeEnd: size * 0.15,
           glyph: '|', rot: alongRot(dx, dy, dz), stretch: Math.min(30, (step / size) * 1.7),
-          color: core, colorEnd: end, alpha: 0.45 + 0.55 * turn, alphaEnd: 0, drag: 2,
+          color: bite ? COL.arcGlint : core, colorEnd: end, alpha: bite ? 1 : 0.45 + 0.55 * turn, alphaEnd: 0, drag: 2,
         });
       }
       // the veil

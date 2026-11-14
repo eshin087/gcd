@@ -703,12 +703,14 @@ FX helpers that changed shape: `PlayerFx.gemTick(dt, x, y, z, k, vx, vz, vy)` an
 `gemGlint(x, y, z, s, vx, vz, vy)` take the gem's own velocity (`player.gemVel`, measured from the
 gem joint each frame) so glints ride the hilt; `gemTick` also keeps an always-on 0.22–0.26 m violet
 glow point at the gem; `bladeHalo(dt, k, far)` grows its dots with distance and lays a short bright
-`|` streak 0.06–0.26 m past the drawn point. `trail(pa, pb, a, b, kind, crit, gate = true)`
+`|` streak 0.06–0.26 m past the drawn point. `trail(pa, pb, a, b, kind, crit, gate = true, bite = false)`
 sub-steps by the edge's travel (one per 0.11 m, up to 14) and slerps the blade round the hilt
 between frames, so a sweep reads as one curved arc. Since ADR-077 the arc hugs the STEEL: its EDGE
 is one fine line of overlapping `|` strokes laid along the path of a point just past the steel's
 point (`arcAt(kind)`: 0.64 of the hit segment, × 1.22 for the slam and the cleave; the steel
-ends at 0.44, the reach at 1), white-hot when drawn and cooling to indigo as it thins to nothing.
+ends at 0.44, the reach at 1), white-hot when drawn and cooling to indigo as it thins to nothing
+(the heavy blows, the thrusts and the plunge's dive cool to the gem's violet: the exported
+`ARC_TONE`; `bite`, the 0.06 s after a cut lands: the edge white-hot and 15 % thicker).
 A VEIL of four faint rows runs close inside it (a thin crescent; the numbers are the exported
 `ARC_LOOK`). Its strength follows how far the blade TURNED this frame, so a blade only carried
 along (a dash) leaves none (`gate: false` for the plunge's dive). `arcGlint(x, y, z, dx, dy, dz,

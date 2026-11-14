@@ -2821,7 +2821,7 @@ async function scenarioHeroLife() {
   // inside the edge; no letter glyphs; a blade only carried along (the cleave's dash) leaves nothing.
   // And the thrusts rise (a level one, seen from the game camera, looked planted in the ground)
   {
-    const { ARC_LOOK } = await imp('src/entities/player/fx.js');
+    const { ARC_LOOK, ARC_TONE } = await imp('src/entities/player/fx.js');
     const { SWINGS } = await imp('src/entities/player/swings.js');
     const fxa = p.fx.add, spawn0 = fxa.spawn, made = [];
     fxa.spawn = (o) => { made.push(o); };
@@ -2841,6 +2841,17 @@ async function scenarioHeroLife() {
       assert(size <= 0.14 && far <= 1.9 * ARC_LOOK.at + 0.08 && far <= 1.3, `the arc is fine and hugs the steel: strokes at most 0.14 m, none further than 1.3 m from the hilt (the reach ends at 1.9 m; furthest ${far.toFixed(2)} m)`);
       assert(ARC_LOOK.veil.length >= 3 && faint < 0.2 && bright > 0.8, 'a bright edge with a faint veil inside it');
       assert(carried.length === 0, 'a blade carried along without turning leaves no arc');
+      // the tones (ARC_TONE): the lights' edge as it was, the heavy blows cooling to violet; the bite
+      const edge = (list) => list.filter((o) => o.glyph === '|' && o.color !== ARC_TONE.light.veil && o.color !== ARC_TONE.heavy.veil);
+      p.fx.trail(V3(0, 1, 0), V3(1.9, 1, 0), V3(0, 1, 0), V3(1.75, 1, 0.74), 'slam', false);
+      const slam = made.splice(0);
+      p.fx.trail(V3(0, 1, 0), V3(1.9, 1, 0), V3(0, 1, 0), V3(1.75, 1, 0.74), 'light', false, true, true);
+      const bite = made.splice(0);
+      const le = edge(turned), se = edge(slam), be = bite.filter((o) => o.glyph === '|');
+      const same = (c, ref) => Array.isArray(c) && c.length === 3 && c.every((v, i) => v === ref[i]);
+      assert(le.length > 0 && le.every((o) => o.color === ARC_TONE.light.core && same(o.colorEnd, [0.14, 0.1, 0.8])), `a light's arc is as it was: white-hot edge cooling to indigo (${le.length} strokes)`);
+      assert(se.length > 0 && se.every((o) => same(o.colorEnd, ARC_TONE.heavy.end)), `the slam's arc cools to the gem's violet (${se.length} strokes)`);
+      assert(be.length > 0 && Math.max(...be.map((o) => o.size)) <= 0.14 && !bite.some((o) => /[A-Za-z0-9+]/.test(o.glyph)), `the bite: a slightly thicker white edge, still at most 0.14 m, no letters (${Math.max(...be.map((o) => o.size)).toFixed(3)} m)`);
     } finally {
       fxa.spawn = spawn0;
     }

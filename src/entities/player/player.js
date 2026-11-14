@@ -2583,7 +2583,8 @@ export class Player {
       if (t >= W && prevT <= end + 0.04) {
         // the hit first: a cut that lands this frame draws its contact, not the arc's glint
         if (!a.hit && prevT <= end) this._tryHit(a);
-        this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit);
+        // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
+        this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
         // edge runs just past the steel's point (fx.arcAt), not at the end of the reach. A landed
         // cut's core is the beat's one star: a whiff keeps the glint
