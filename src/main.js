@@ -28,7 +28,7 @@ async function boot() {
   // module reads them
   const level = levelFromSearch(location.search);
   applyLevel(level);
-  // the hero's outfit option (`?heroLook=robe`; gear/looks.js, temporary until the owner picks one)
+  // the hero's outfit option (`?heroLook=robe`; gear/looks.js: kept for later use, today's look is the default)
   const heroLook = heroLookFromSearch(location.search);
 
   const canvas = document.getElementById('game');

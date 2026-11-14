@@ -3,11 +3,12 @@ import { MOON_LOADOUT, MOON_SHADED_LOADOUT, MOON_TINT } from './moon.js';
 import { SWALLOW_LOADOUT, SWALLOW_SHADED_LOADOUT, SWALLOW_TINT } from './swallow.js';
 import { WARDEN_LOADOUT, WARDEN_SHADED_LOADOUT, WARDEN_TINT } from './warden.js';
 
-// The hero's OUTFIT OPTIONS, a temporary switch (the ?lordLook= precedent, ADR log): each look is a
+// The hero's OUTFIT OPTIONS (ADR-089; kept for later use: the owner, 2026-11-14, "keep the new skins
+// for now to be used in the future", with today's look as the default): each look is a
 // loadout plus its colours (a tint on the rig's own materials, model.js tintHero). main.js reads
 // `?heroLook=<id>` into `game.heroLook`; the Player wears it, the Lab's OUTFIT row and
-// `game.pickHeroLook(id)` switch it live. Once the owner picks one, this file, the switch and the
-// losing looks go: the pick becomes DEFAULT_LOADOUT (+ its tint). Nothing in gear/ imports this file.
+// `game.pickHeroLook(id)` switch it live. If one is made the default later it becomes DEFAULT_LOADOUT
+// (+ its tint). Nothing in gear/ imports this file.
 // Each of the three new looks comes twice: its bare head with the face lit, and the same head with
 // the face in shadow (`<id>-shade`, named "<look> (shaded)": the head item's `shadowsFace` twin; `of`
 // = the lit look's id). At the game camera a lit face under gold hair can read as one gold mask (the

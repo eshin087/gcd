@@ -723,7 +723,7 @@ export class Lab {
   }
 
   /** OUTFIT: the hero's outfit options (game.heroLooks / game.pickHeroLook, main.js; `?heroLook=`;
-   *  temporary, until the owner picks one). Live: the rig is rebuilt, the pose restarts. */
+   *  kept for later use; today's look is the default). Live: the rig is rebuilt, the pose restarts. */
   _buildOutfit(root) {
     const looks = this.game.heroLooks;
     if (!Array.isArray(looks) || looks.length < 2) return;
