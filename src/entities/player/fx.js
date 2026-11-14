@@ -8,7 +8,11 @@ import { CLASH, clashBurst } from '../../combat/clashFx.js';
 // sparks, guard-break shards, Ghostep afterimage + streak, charge gather / ready glint, crit-window
 // motes. Every glyph used here is in the world atlas.
 
-const R = (a, b) => a + Math.random() * (b - a);
+// cosmetic noise from this module's own stream: the seeded sims replay the AI's Math.random, and an
+// arc stroke or a mote must never move it
+let fseed = 0x51ed270b;
+const rnd = () => (fseed = (Math.imul(fseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+const R = (a, b) => a + rnd() * (b - a);
 
 const COL = {
   trail: [0.4, 1.25, 2.3], trailEnd: [0.02, 0.14, 0.45], // icy cyan arcs
@@ -144,7 +148,7 @@ export class PlayerFx {
     const fx = this.alpha;
     if (!fx) return;
     for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2;
+      const a = rnd() * Math.PI * 2;
       const sp = R(0.6, 1.6) * power;
       fx.spawn({
         x: x + Math.cos(a) * 0.2, y: y + R(0, 0.1), z: z + Math.sin(a) * 0.2,
@@ -236,8 +240,8 @@ export class PlayerFx {
     const n = thrust ? 0 : S.motes + (heavy ? 1 : 0);
     const tx = b.x - pb.x, ty = b.y - pb.y, tz = b.z - pb.z, tl = Math.hypot(tx, ty, tz) || 1;
     for (let i = 0; i < n; i++) {
-      if (Math.random() > turn * 0.7) continue;
-      arcPoint(Math.random(), at * R(0.9, 1), ARC_P);
+      if (rnd() > turn * 0.7) continue;
+      arcPoint(rnd(), at * R(0.9, 1), ARC_P);
       const sp = R(0.5, 2);
       fx.spawn({
         x: ARC_P[0], y: ARC_P[1], z: ARC_P[2],
@@ -282,7 +286,7 @@ export class PlayerFx {
     const col = crit ? COL.crit : COL.trailCore;
     const n = Math.min(24, Math.max(1, Math.ceil(len / 0.1)));
     for (let i = 0; i < n; i++) {
-      const f = (i + Math.random()) / n;
+      const f = (i + rnd()) / n;
       const size = R(0.16, 0.2) * (1 + 0.2 * k);
       const x = from.x + dx * f, y = from.y + dy * f, z = from.z + dz * f;
       fx.spawn({
@@ -291,9 +295,9 @@ export class PlayerFx {
         life: R(0.3, 0.42) * (1 + 0.3 * k), size, sizeEnd: size * 0.6, stretch: 1.6,
         glyph: '-=', rot, color: col, colorEnd: COL.trailEnd, alpha: 0.95, alphaEnd: 0, drag: 2,
       });
-      if (Math.random() < 0.5) {
+      if (rnd() < 0.5) {
         const L = LATTICE * 0.75;
-        const side = Math.random() < 0.5 ? -1 : 1;
+        const side = rnd() < 0.5 ? -1 : 1;
         fx.spawn({
           x: Math.round(x / L) * L, y: Math.round((y + side * R(0.05, 0.1)) / L) * L, z: Math.round(z / L) * L,
           life: R(0.3, 0.45), size: 0.09, sizeEnd: 0.04,
@@ -353,7 +357,7 @@ export class PlayerFx {
     const fa = this.alpha;
     if (fa) {
       for (let i = 0; i < 8; i++) {
-        const a = Math.random() * Math.PI * 2, sp = R(0.8, 2.2);
+        const a = rnd() * Math.PI * 2, sp = R(0.8, 2.2);
         fa.spawn({
           x: x + Math.cos(a) * 0.15, y: 0.08, z: z + Math.sin(a) * 0.15,
           vx: Math.cos(a) * sp, vy: R(1.5, 3.2), vz: Math.sin(a) * sp,
@@ -697,7 +701,7 @@ export class PlayerFx {
     this.plAcc += dt * 60;
     while (this.plAcc >= 1) {
       this.plAcc -= 1;
-      const a = Math.random() * Math.PI * 2, r = R(0.6, 1.2);
+      const a = rnd() * Math.PI * 2, r = R(0.6, 1.2);
       const ex = Math.cos(a) * r, ey = R(-0.7, 0.9), ez = Math.sin(a) * r;
       const life = R(0.16, 0.26);
       fx.spawn({
@@ -733,7 +737,7 @@ export class PlayerFx {
     }
     // molten blood: hot embers thrown up out of the wound, falling back
     for (let i = 0; i < Math.round(26 * k); i++) {
-      const a = Math.random() * Math.PI * 2, sp = R(1.5, 6);
+      const a = rnd() * Math.PI * 2, sp = R(1.5, 6);
       fx.spawn({
         x, y: y + 0.1, z, vx: Math.cos(a) * sp * 0.6 + dx * 1.2, vy: R(3, 9), vz: Math.sin(a) * sp * 0.6 + dz * 1.2,
         life: R(0.4, 0.85), size: R(0.15, 0.3), sizeEnd: 0.05,
@@ -762,8 +766,8 @@ export class PlayerFx {
     this.plAcc += dt * 70 * k;
     while (this.plAcc >= 1) {
       this.plAcc -= 1;
-      const a = Math.random() * Math.PI * 2, sp = R(0.5, 2.5);
-      const cold = Math.random() < 0.25;
+      const a = rnd() * Math.PI * 2, sp = R(0.5, 2.5);
+      const cold = rnd() < 0.25;
       fx.spawn({
         x: x + R(-0.15, 0.15), y: y + R(0, 0.2), z: z + R(-0.15, 0.15),
         vx: Math.cos(a) * sp - dx * 0.8, vy: R(2, 6), vz: Math.sin(a) * sp - dz * 0.8,
@@ -828,7 +832,7 @@ export class PlayerFx {
       this.chargeAcc -= 1;
       const f = R(0.3, 1);
       const px = a.x + (b.x - a.x) * f, py = a.y + (b.y - a.y) * f, pz = a.z + (b.z - a.z) * f;
-      if (k > 0.45 && Math.random() < 0.35 + 0.4 * k) {
+      if (k > 0.45 && rnd() < 0.35 + 0.4 * k) {
         // a lightning stroke hugging the blade
         const g = R(0, 0.85);
         fx.spawn({
@@ -838,7 +842,7 @@ export class PlayerFx {
         });
         continue;
       }
-      const ang = Math.random() * Math.PI * 2, r = R(0.35, 0.8);
+      const ang = rnd() * Math.PI * 2, r = R(0.35, 0.8);
       const ox = Math.cos(ang) * r, oz = Math.sin(ang) * r, oy = R(-0.2, 0.5);
       const life = R(0.22, 0.34);
       fx.spawn({
@@ -905,9 +909,9 @@ export class PlayerFx {
     const L = 0.06;
     while (this.haloAcc >= 1) {
       this.haloAcc -= 1;
-      const past = Math.random() < 0.3;
+      const past = rnd() < 0.3;
       const zz = past ? tip + R(0.0, 0.1) : R(DIM.forte, tip);
-      const xx = past ? R(-0.02, 0.02) : (Math.random() < 0.5 ? -1 : 1) * R(0.06, 0.12);
+      const xx = past ? R(-0.02, 0.02) : (rnd() < 0.5 ? -1 : 1) * R(0.06, 0.12);
       // sword space (xx, 0, zz) → world
       const x = e[0] * xx + e[8] * zz + e[12], y = e[1] * xx + e[9] * zz + e[13], z = e[2] * xx + e[10] * zz + e[14];
       if (!Number.isFinite(x + y + z) || y < 0.02) continue;
@@ -985,7 +989,7 @@ export class PlayerFx {
     this.healAcc += dt * 34 * k;
     while (this.healAcc >= 1) {
       this.healAcc -= 1;
-      const a = Math.random() * Math.PI * 2, r = R(0.15, 0.45);
+      const a = rnd() * Math.PI * 2, r = R(0.15, 0.45);
       fx.spawn({
         x: x + Math.cos(a) * r, y: R(0.2, 1.5), z: z + Math.sin(a) * r,
         vx: 0, vy: R(0.6, 1.2), vz: 0,
@@ -1003,7 +1007,7 @@ export class PlayerFx {
     const pts = this.rig.fxPoints;
     while (this.flameAcc >= 1) {
       this.flameAcc -= 1;
-      const j = pts[(Math.random() * pts.length) | 0];
+      const j = pts[(rnd() * pts.length) | 0];
       j.getWorldPosition(this._v);
       fx.spawn({
         x: this._v.x + R(-0.12, 0.12), y: this._v.y + R(-0.08, 0.12), z: this._v.z + R(-0.12, 0.12),
@@ -1028,7 +1032,7 @@ export class PlayerFx {
     while (acc[slot] >= 1) {
       acc[slot] -= 1;
       const s = sp * R(0.15, 0.45), side = R(-0.9, 0.9);
-      const grass = Math.random() < 0.3;
+      const grass = rnd() < 0.3;
       fx.spawn({
         x: x + R(-0.08, 0.08), y: R(0.03, 0.12), z: z + R(-0.08, 0.08),
         vx: -dx * s - dz * side, vy: R(0.4, 1.5), vz: -dz * s + dx * side,

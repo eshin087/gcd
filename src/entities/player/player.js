@@ -2760,7 +2760,8 @@ export class Player {
       this.fx.gemTick(dt, this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + this.chargeK : 0.35, gv.x, gv.z, gv.y);
       this.gemT -= dt;
       if (this.gemT <= 0) {
-        this.gemT = charging ? 0.22 : TUNE.gemGlintEvery * (0.6 + 0.8 * Math.random());
+        // (the animator's own noise: a cosmetic timer must not move the AI's seeded Math.random)
+        this.gemT = charging ? 0.22 : TUNE.gemGlintEvery * (0.6 + 0.8 * this.anim.noise());
         // only while the hilt is steady: a glint left behind by a fast swing floats off the gem
         if (charging || LOCO.has(this.state)) this.fx.gemGlint(this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + 0.5 * this.chargeK : 0.45, gv.x, gv.z, gv.y);
       }

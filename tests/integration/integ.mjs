@@ -2763,6 +2763,24 @@ async function scenarioHeroLife() {
     assert(whip.length >= 8 && whip.every(([, v]) => v >= 20 && v <= 45), `the blade whips: at mid-cut it still hangs 20°-45° short of pointing ahead (${whip.filter(([, v]) => !(v >= 20 && v <= 45)).map(([n, v]) => `${n} ${v}°`).join(', ') || 'all'})`);
   }
 
+  // (1e0) cosmetic noise never touches the AI's stream: the sword FX (and the particle pools' glyph
+  // pick and flicker phase) draw from their own LCGs, so a swing cannot shift a seeded sim
+  {
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const rand0 = Math.random;
+    let draws = 0;
+    Math.random = () => { draws++; return rand0(); };
+    try {
+      p.fx.trail(V3(0, 1, 0), V3(1.9, 1, 0), V3(0, 1, 0), V3(1.75, 1, 0.74), 'light', false);
+      p.fx.arcGlint(0, 1, 0, 1, 0, 0);
+      p.fx.thrustStreak(V3(0, 1, 0), V3(2, 1, 0));
+      p.fx.bladeHalo(0.2, 1, 1);
+    } finally {
+      Math.random = rand0;
+    }
+    assert(draws === 0, `the hero's sword FX never touch the AI's random stream (${draws} Math.random draws)`);
+  }
+
   // (1e) the sword arc (fx.js trail, ADR-077): fine strokes that hug the steel, a faint veil close
   // inside the edge; no letter glyphs; a blade only carried along (the cleave's dash) leaves nothing.
   // And the thrusts rise (a level one, seen from the game camera, looked planted in the ground)
