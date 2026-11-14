@@ -726,8 +726,10 @@ export class Lab {
     const looks = this.game.heroLooks;
     if (!Array.isArray(looks) || looks.length < 2) return;
     const { body } = this._section(root, 'outfit', 'OUTFIT');
-    const grid = el('div', 'lab-grid c2', null, body);
-    this.ui.lookBtns = looks.map((L) => {
+    // two columns (each look beside its shaded-face twin, `looks.js` order), today's look across both
+    const grid = el('div', 'lab-grid', null, body);
+    if (grid.style) grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    this.ui.lookBtns = looks.map((L, i) => {
       const b = button(grid, L.name, () => {
         try {
           this.game.pickHeroLook?.(L.id);
@@ -740,6 +742,7 @@ export class Lab {
         this._mvSync?.();
       });
       b.title = `wear ${L.name} (?heroLook=${L.id}; the rig is rebuilt, the pose restarts)`;
+      if (i === 0 && b.style) b.style.gridColumn = '1 / -1';
       return { id: L.id, el: b };
     });
     this._syncOutfit();

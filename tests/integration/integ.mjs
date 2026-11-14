@@ -3384,7 +3384,7 @@ async function scenarioHeroLook() {
 async function scenarioLooks() {
   out('\n== scenario LOOKS (outfit options behind ?heroLook=: switch, registry, each look built and worn through the route, the Lab row) ==');
   const { HERO_LOOKS, LOOK_IDS, DEFAULT_LOOK, heroLookFromSearch, heroLookUrl } = await imp('src/entities/player/gear/looks.js');
-  const { DEFAULT_LOADOUT, BASE_LOADOUT, SLOTS, resolveLoadout } = await imp('src/entities/player/gear/index.js');
+  const { DEFAULT_LOADOUT, BASE_LOADOUT, SLOTS, resolveLoadout, getItem } = await imp('src/entities/player/gear/index.js');
   const { BODY, HERO_INK, sheetOffset, tintHero } = await imp('src/entities/player/model.js');
   const { SWALLOW_TINT } = await imp('src/entities/player/gear/swallow.js');
   const D = HERO_DIM;
@@ -3430,7 +3430,7 @@ async function scenarioLooks() {
     const f = heroLookFromSearch;
     const u1 = new URL(heroLookUrl('robe', 'http://x/?level=ash&lab'));
     const u2 = new URL(heroLookUrl('shroud', u1.toString()));
-    assert(f('?heroLook=robe') === 'robe' && f('?level=ash&heroLook=SWALLOW&lab') === 'swallow' && f('?herolook=warden') === 'warden'
+    assert(f('?heroLook=robe') === 'robe' && f('?level=ash&heroLook=SWALLOW&lab') === 'swallow' && f('?herolook=warden') === 'warden' && f('?heroLook=Warden-Shade') === 'warden-shade'
       && ['?heroLook=nope', '', undefined, '%%%'].every((s) => f(s) === DEFAULT_LOOK)
       && u1.searchParams.get('heroLook') === 'robe' && u1.searchParams.get('level') === 'ash' && u1.searchParams.has('lab') && !u2.searchParams.has('heroLook') && u2.searchParams.get('level') === 'ash',
       `?heroLook= picks an outfit (case-insensitive; unknown or absent: ${DEFAULT_LOOK}); heroLookUrl sets / clears it and keeps the other params`);
@@ -3446,6 +3446,12 @@ async function scenarioLooks() {
       if (L.id !== id) bad.push(`${id}: id`);
       try { resolveLoadout(L.loadout); } catch (e) { bad.push(`${id}: ${e.message}`); }
       if (L.loadout.weapon !== DEFAULT_LOADOUT.weapon) bad.push(`${id}: weapon ${L.loadout.weapon}`);
+      // a shaded-face twin: its lit look's loadout and colours, the head item's `shadowsFace` twin
+      if (L.of) {
+        const B = HERO_LOOKS[L.of], h = getItem(L.loadout.head), h0 = getItem(B?.loadout.head);
+        if (!B || B.of || L.id !== `${L.of}-shade` || L.tint !== B.tint || SLOTS.some((sl) => sl !== 'head' && L.loadout[sl] !== B.loadout[sl])
+          || !h?.shadowsFace || h0?.shadowsFace || h.build !== h0?.build || String(h.hair) !== String(h0?.hair)) bad.push(`${id}: not the shaded twin of ${L.of}`);
+      }
       for (const [name, t] of Object.entries(L.tint ?? {})) {
         if (!HERO_INK[name] || FORBID.has(name)) bad.push(`${id}: tint ${name}`);
         if (t.fill && !okN(t.fill, 3, 0, 1.2)) bad.push(`${id}: ${name}.fill`);
@@ -3455,12 +3461,12 @@ async function scenarioLooks() {
         for (const k of ['rim', 'sub', 'inkGlow', 'glowK']) if (t[k] != null && !Number.isFinite(t[k])) bad.push(`${id}: ${name}.${k}`);
       }
     }
-    assert(!bad.length && HERO_LOOKS.shroud.loadout === DEFAULT_LOADOUT && HERO_LOOKS.shroud.tint === null && LOOK_IDS.join() === 'shroud,robe,swallow,warden' && DEFAULT_LOOK === 'shroud',
+    assert(!bad.length && HERO_LOOKS.shroud.loadout === DEFAULT_LOADOUT && HERO_LOOKS.shroud.tint === null && LOOK_IDS.join() === 'shroud,robe,robe-shade,swallow,swallow-shade,warden,warden-shade' && DEFAULT_LOOK === 'shroud',
       `the outfit options: ${LOOK_IDS.map((id) => `${id} "${HERO_LOOKS[id].name}"`).join(', ')}; every loadout resolves and every tint is a cloth / metal part (${bad.join('; ') || 'ok'})`);
   }
 
   let n0 = 0, offKeys0 = '', cape0 = null;
-  const rates = {};
+  const rates = {}, headSlot = {};
   for (const id of LOOK_IDS) {
     const L = HERO_LOOKS[id], isNew = id !== DEFAULT_LOOK;
     const G = setup(id);
@@ -3486,6 +3492,25 @@ async function scenarioLooks() {
       if (!isNew) offKeys0 = keys;
       const fist = r.sword.children.some((o) => o.isMesh && o.userData.slot === 'arms');
       assert(keys === offKeys0 && keys.includes('open') && fist, `${id}: the free hand (${keys}) as today's, the sword hand's fist on the grip`);
+    }
+    // the face: lit (skin, the eyes) or, on a shaded twin, in shadow (the shirt's near-black, no eyes),
+    // the head item's own meshes the same either way. A twin's body is its lit look's: its route is
+    // not run again
+    {
+      let skin = 0, eye = 0, shade = 0, own = 0;
+      r.head.traverse((o) => {
+        if (!o.isMesh) return;
+        if (o.material === M.skin) skin++;
+        if (o.material === M.eye) eye++;
+        if (o.parent === r.head && !o.userData.slot && o.material === M.shirt) shade++;
+        if (o.userData.slot === 'head') own++;
+      });
+      headSlot[id] = own;
+      if (L.of) {
+        assert(skin === 0 && eye === 0 && shade > 0 && own === headSlot[L.of], `${id}: ${L.of}'s head with the face in shadow (${shade} face meshes in the shirt's black, ${skin} skin, ${eye} eyes; ${own} head-item meshes, as ${L.of}'s ${headSlot[L.of]})`);
+        continue;
+      }
+      if (isNew) assert(skin > 0 && eye > 0 && shade === 0, `${id}: the face lit (${skin} skin, ${eye} eye meshes)`);
     }
     // the cloth over the sword shoulder (today's mantle, the Warden's capelet: back-slot coat on the
     // chest) against the right upper arm, its top 15 % left out (the cloth lies over the joint)
@@ -3762,7 +3787,7 @@ async function scenarioLooks() {
     const robeOn = !!B('robe')?.el.classList.contains('on');
     B('swallow')?.el.dispatch('click');
     G.tick(DT);
-    assert(btns.length === 4 && robeOn && p.look === 'swallow' && p.loadout.head === 'swallow.tail' && B('swallow').el.classList.contains('on') && !B('robe').el.classList.contains('on'),
+    assert(btns.length === LOOK_IDS.length && robeOn && p.look === 'swallow' && p.loadout.head === 'swallow.tail' && B('swallow').el.classList.contains('on') && !B('robe').el.classList.contains('on'),
       `the Lab's OUTFIT row: ${btns.length} buttons; a click wears the Swallow (${p.look}, ${p.loadout.head}) and moves the highlight`);
     const fillIs = (c) => ['r', 'g', 'b'].every((k, i) => Math.abs(p.rig.materials.coat.uniforms.uArtFill.value[k] - c[i]) < 1e-6);
     p.setLoadout(p.loadout);

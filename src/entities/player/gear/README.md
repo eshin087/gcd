@@ -23,7 +23,7 @@ buildHero(U, {});                                         // the plain undersuit
 | `base.js` | the undersuit: fallback items for `chest`, `arms`, `legs` |
 | `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls (one hand for every outfit) |
 | `sheet.js` | `hangSheet(ctx, parent, d, mats)`: one cloth sheet or ribbon on the streamer springs, from data; `panelSkirt(ctx, PANELS, { seed })`: a skirt of coat panels on the pelvis |
-| `looks.js` | the outfit options (TEMPORARY, until the owner picks one): `HERO_LOOKS` (id → `{ id, name, loadout, tint }`), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
+| `looks.js` | the outfit options (TEMPORARY, until the owner picks one): `HERO_LOOKS` (id → `{ id, name, loadout, tint, of? }`; each new look also as `<id>-shade`, its face in shadow, `of` = the lit look), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
 | `moon.js`, `swallow.js`, `warden.js` | the three outfit options' items, loadouts (`MOON_LOADOUT`, ...) and colours (`MOON_TINT`, ...): the Moonlit Robe, the Swallow, the Moon Warden |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |
@@ -36,7 +36,9 @@ writes on ONE rig's material instances. A tint never names `skin`, `eye`, `blade
 or `flask`, and never touches the shared `U.*` (the per-part ink every rig on the page reads; the
 bosses build from `HERO_INK` too). To add one: a file here with its items (`<set>.<piece>` ids, built
 from `heroGeo.js`, `sheet.js` and `hands.js`), registered in `index.js`'s loop; a `HERO_LOOKS` entry
-in `looks.js`. `?heroLook=<id>` wears it, the Lab's OUTFIT row switches it live. Once the owner picks
+in `looks.js`. A look whose bare head may read as a "gold face" at the game camera also gets a
+shaded twin: a second head item with `shadowsFace: true` (same `build`), a `<id>-shade` entry with
+`of: '<id>'`. `?heroLook=<id>` wears it, the Lab's OUTFIT row switches it live. Once the owner picks
 one, `looks.js`, the switch and the losing options go and the pick becomes `DEFAULT_LOADOUT` (its
 tint applied beside it).
 

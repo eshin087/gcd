@@ -608,9 +608,11 @@ glowK? } }`), never the shared `U.*`. `player.setLoadout` puts the shared per-pa
 (`U.uHeroPartInk` / `uHeroPartFill` / `uHeroPartRim`, rewritten by every `buildHero`) back as it was
 after the build, also when the build throws: a boss's own part ink (the Starless Lord's red part 19)
 survives a hero rebuild. **Outfit options** (TEMPORARY, until the owner picks one; the `?lordLook=`
-precedent): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint }` (`shroud`
+precedent): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint, of? }` (`shroud`
 "Wanderer (today)" = `DEFAULT_LOADOUT`, no tint, the default; `robe` "Moonlit Robe", `swallow`
-"Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`), `LOOK_IDS`,
+"Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`; each of the
+three also as `<id>-shade`, "<look> (shaded)": the same loadout and tint with the head item's
+`shadowsFace` twin, `of` = the lit look's id, so the owner picks the face from renders), `LOOK_IDS`,
 `DEFAULT_LOOK`, `getLook(id)`, `heroLookFromSearch(search)`, `heroLookUrl(id, href)`. The Player wears
 `game.heroLook` (`player.look`; unknown or absent: the default) and tints its rig with the look's
 `tint`; `player.setLook(id)` wears another one live (its loadout with the equipped weapon kept, through

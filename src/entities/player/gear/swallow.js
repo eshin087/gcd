@@ -138,6 +138,8 @@ function buildScarf(ctx) {
 
 export const SWALLOW_ITEMS = [
   { id: 'swallow.tail', slot: 'head', name: 'High Tail', hair: ['cap'], build: buildTail },
+  // the same head with the face in shadow (R1, the "gold face": the owner's other option)
+  { id: 'swallow.tailShaded', slot: 'head', name: 'High Tail (face in shadow)', hair: ['cap'], shadowsFace: true, build: buildTail },
   { id: 'swallow.jacket', slot: 'chest', name: 'Short Jacket', build: buildJacket },
   { id: 'swallow.arms', slot: 'arms', name: 'Wrapped Forearms', build: buildArms },
   { id: 'swallow.tails', slot: 'waist', name: 'Swallow Tails', build: buildTails },
@@ -148,6 +150,8 @@ export const SWALLOW_LOADOUT = Object.freeze({
   head: 'swallow.tail', chest: 'swallow.jacket', shoulders: null, arms: 'swallow.arms',
   legs: 'wanderer.legs', waist: 'swallow.tails', back: 'swallow.scarf', weapon: 'wanderer.sword',
 });
+/** The Swallow with the face in shadow (the head item's `shadowsFace` twin). */
+export const SWALLOW_SHADED_LOADOUT = Object.freeze({ ...SWALLOW_LOADOUT, head: 'swallow.tailShaded' });
 
 /** Its colours (model.js tintHero, this rig only). The pale scarf must stay bright (mean ≥ 0.8): at
  *  the hem's own [0.32, 0.3, 0.44] a 0.1 m ribbon vanished in the ASCII at the game camera. */

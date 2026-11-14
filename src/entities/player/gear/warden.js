@@ -279,6 +279,8 @@ function buildMantle(ctx) {
 
 export const WARDEN_ITEMS = [
   { id: 'warden.band', slot: 'head', name: 'Crescent Headband', hair: ['cap'], build: buildBand },
+  // the same head with the face in shadow (R1, the "gold face": the owner's other option)
+  { id: 'warden.bandShaded', slot: 'head', name: 'Crescent Headband (face in shadow)', hair: ['cap'], shadowsFace: true, build: buildBand },
   { id: 'warden.cuirass', slot: 'chest', name: 'Lamellar Cuirass', build: buildCuirass },
   { id: 'warden.pauldron', slot: 'shoulders', name: 'Left Lamellar Pauldron', build: buildPauldron },
   { id: 'warden.arms', slot: 'arms', name: 'Splinted Vambrace', build: buildArms },
@@ -291,6 +293,8 @@ export const WARDEN_LOADOUT = Object.freeze({
   head: 'warden.band', chest: 'warden.cuirass', shoulders: 'warden.pauldron', arms: 'warden.arms',
   legs: 'warden.legs', waist: 'warden.skirt', back: 'warden.mantle', weapon: 'wanderer.sword',
 });
+/** The Moon Warden with the face in shadow (the head item's `shadowsFace` twin). */
+export const WARDEN_SHADED_LOADOUT = Object.freeze({ ...WARDEN_LOADOUT, head: 'warden.bandShaded' });
 
 /** Its colours (model.js tintHero, this rig only): indigo cloth, near-black under-robe and boots,
  *  slate-blue lamellae (`spike`, every other plate shaded), silver bevels and lacing, a brown belt,

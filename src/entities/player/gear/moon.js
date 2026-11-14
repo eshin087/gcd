@@ -143,6 +143,9 @@ const buildSkirt = (ctx) => panelSkirt(ctx, MOON_PANELS, { seed: 130 });
 
 export const MOON_ITEMS = [
   { id: 'moon.crown', slot: 'head', name: 'Silver Guan', hair: ['cap'], build: buildCrown },
+  // the same head with the face in shadow (`shadowsFace`, as the hood's): the owner's other option for
+  // R1, the "gold face" (at the game camera the lit face and the gold hair merge into one gold mask)
+  { id: 'moon.crownShaded', slot: 'head', name: 'Silver Guan (face in shadow)', hair: ['cap'], shadowsFace: true, build: buildCrown },
   { id: 'moon.robe', slot: 'chest', name: 'Moonlit Robe', build: buildRobe },
   { id: 'moon.sleeves', slot: 'arms', name: 'Bound and Flowing Sleeves', build: buildSleeves },
   { id: 'moon.skirt', slot: 'waist', name: 'High-Low Skirt', build: buildSkirt },
@@ -152,6 +155,8 @@ export const MOON_LOADOUT = Object.freeze({
   head: 'moon.crown', chest: 'moon.robe', shoulders: null, arms: 'moon.sleeves',
   legs: 'wanderer.legs', waist: 'moon.skirt', back: null, weapon: 'wanderer.sword',
 });
+/** The Moonlit Robe with the face in shadow (the head item's `shadowsFace` twin). */
+export const MOON_SHADED_LOADOUT = Object.freeze({ ...MOON_LOADOUT, head: 'moon.crownShaded' });
 
 /** Its colours (model.js tintHero, this rig only): moon-indigo cloth, a pale-violet lining, a
  *  moon-white hem band (raised for margin: thin pale cloth vanishes in the ASCII when dim), the violet
