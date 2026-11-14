@@ -3293,7 +3293,8 @@ export class HeroAnimator {
       const nx = Math.sin(D.az), nz = Math.cos(D.az); // outward
       const tx = Math.cos(D.az), tz = -Math.sin(D.az); // tangent (anchor +X)
       const flut = Math.min(1, Math.hypot(_v.x, _v.z) / 5);
-      const breeze = (BREEZE[i] ?? 0.03) + 0.1 * Math.sin(this.time * 2.618 + i * 1.3) * (0.5 + 0.5 * Math.sin(this.time * 0.9 + i));
+      // (a panel may carry its own idle breeze / flare, `breeze` / `idleFlare`; else the table's)
+      const breeze = (D.breeze ?? BREEZE[i] ?? 0.03) + 0.1 * Math.sin(this.time * 2.618 + i * 1.3) * (0.5 + 0.5 * Math.sin(this.time * 0.9 + i));
       const ap = C.anchor.position;
       // the steel in this panel's anchor frame, and which side of the panel it is on (latched while
       // any of it is over the panel, so the cloth never jumps through it): the sword hand under the
@@ -3332,7 +3333,7 @@ export class HeroAnimator {
       for (let s = 0; s < 2; s++) {
         const c = st[s];
         const lag = COAT_LAG[s] * (1 + COAT_LAG_V * vs);
-        const fl = (D.flap ? 0.05 : D.flare ?? COAT_FLARE) + (breeze + (IDLE_FLARE[i] ?? 0) * (s ? 0.7 : 1)) * still + Math.sin(this.time * 9 + i * 1.7 + s * 1.3) * 0.07 * flut + UPDRAFT_COAT * this.updraft * (s ? 1.3 : 1);
+        const fl = (D.flap ? 0.05 : D.flare ?? COAT_FLARE) + (breeze + (D.idleFlare ?? IDLE_FLARE[i] ?? 0) * (s ? 0.7 : 1)) * still + Math.sin(this.time * 9 + i * 1.7 + s * 1.3) * 0.07 * flut + UPDRAFT_COAT * this.updraft * (s ? 1.3 : 1);
         let hx = _g.x + nx * fl - _v.x * lag;
         let hy = _g.y - _v.y * lag * 0.5;
         let hz = _g.z + nz * fl - _v.z * lag;
@@ -3627,7 +3628,11 @@ export class HeroAnimator {
         }
         // the steel and the arms hold the sheet out (or in): the swing allowed, in [−mA, mA]
         this._sheetBound(S, st, s, c.x, mA);
-        const lo = COL_BND[0], hi = COL_BND[1];
+        // how far a segment may swing IN toward its wearer (rad, + = in; the streamer's `inMax` [root,
+        // tip]: a head ribbon, a scarf off the back, a sleeve wing off the arm; a negative value keeps
+        // it at least that far OUT). Default its max. Not lying (ADR-083: there gravity rules it)
+        const im = lying ? mA : (S.inMax?.[s] ?? mA);
+        const hi = Math.min(COL_BND[1], im), lo = Math.min(COL_BND[0], hi);
         let tA = Math.min(Math.max(clamp(Math.atan2(-_v.z, -_v.y), -mA, mA), lo), hi);
         // lying on the ground (knocked down, dead) a sheet obeys gravity (ADR-083): "wrapped along
         // the body" stood a sleeve's sheet up in the air with an upper arm that pointed up

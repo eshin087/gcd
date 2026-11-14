@@ -2569,11 +2569,33 @@ async function scenarioHero() {
   return G;
 }
 
+// Is the drawn blade (0.35 … 1.1 m along it) within 2 cm of a streamer's sheet? Each sheet hangs −Y
+// from its segment, `w` wide, curved round a radius `wrap` (+ 0.25 × the depth) at its root; records
+// without `w` or `wrap` are skipped. m, v: scratch (Matrix4, Vector3). HEROLIFE (3) and LOOKS (6)
+function sheetHit(r, m, v) {
+  let any = false;
+  for (const S of r.streamers) {
+    if (!S.w || S.wrap == null) continue;
+    for (let k = 0; k < 2; k++) {
+      m.copy(S.segs[k].matrixWorld).invert();
+      const L = S.len[k], R0 = k ? S.wrap + 0.25 * S.len[0] : S.wrap;
+      for (let i = 0; i <= 8; i++) {
+        v.set(0, 0, 0.35 + (0.75 * i) / 8).applyMatrix4(r.sword.matrixWorld).applyMatrix4(m);
+        const t = -v.y / L;
+        if (t < 0 || t > 1) continue;
+        const wd = S.w[k] + (S.w[k + 1] - S.w[k]) * t, R2 = R0 + 0.25 * t * L;
+        if (Math.abs(v.x) > wd / 2) continue;
+        if (Math.abs(v.z - (Math.cos(v.x / R2) - 1) * R2) < 0.02) any = true;
+      }
+    }
+  }
+  return any;
+}
+
 // ================================================================== scenario: two hands, the guard, the cloak, idle life
 async function scenarioHeroLife() {
   out('\n== scenario HEROLIFE (one hand through the chain, two on the heavy blows, the cross ward, the cloak vs the charged blade, idle actions) ==');
   const { DIM: HD } = await imp('src/entities/player/model.js');
-  const { SHROUD_SHEETS } = await imp('src/entities/player/gear/shroud.js');
   const G = build();
   const { game, input } = G;
   fightSetup(G);
@@ -2991,30 +3013,15 @@ async function scenarioHeroLife() {
     go(0.8);
   }
 
-  // (3) the charge: the drawn-back blade never passes through a cloak sheet (the streamer bound)
+  // (3) the charge: the drawn-back blade never passes through a cloak sheet (the streamer bound).
+  // Each sheet is modelled from its own record (len, w, and `wrap`, the root curve; records without
+  // w or wrap are skipped)
   {
     const m = new THREE.Matrix4();
     let frames = 0, hit = 0;
     const clip = () => {
       frames++;
-      let any = false;
-      r.streamers.forEach((S, si) => {
-        const D = SHROUD_SHEETS[si];
-        if (!D) return;
-        for (let k = 0; k < 2; k++) {
-          m.copy(S.segs[k].matrixWorld).invert();
-          const L = D.len[k], R0 = k ? D.wrap + 0.25 * D.len[0] : D.wrap;
-          for (let i = 0; i <= 8; i++) {
-            v.set(0, 0, 0.35 + (0.75 * i) / 8).applyMatrix4(r.sword.matrixWorld).applyMatrix4(m);
-            const t = -v.y / L;
-            if (t < 0 || t > 1) continue;
-            const wd = D.w[k] + (D.w[k + 1] - D.w[k]) * t, R2 = R0 + 0.25 * t * L;
-            if (Math.abs(v.x) > wd / 2) continue;
-            if (Math.abs(v.z - (Math.cos(v.x / R2) - 1) * R2) < 0.02) any = true;
-          }
-        }
-      });
-      if (any) hit++;
+      if (sheetHit(r, m, v)) hit++;
     };
     input.press(0);
     go(1.6, clip);

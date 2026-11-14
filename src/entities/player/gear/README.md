@@ -21,6 +21,8 @@ buildHero(U, {});                                         // the plain undersuit
 | `shroud.js` | the Shrouded set (the default since ADR-043): hood, wrap tunic, bound sleeves, the tattered cloak (`SHROUD_SHEETS`: a narrow cape down his back and a drape on each arm, ADR-073). Built from `heroGeo.js` sheets only, no sculpted parts |
 | `wanderer.js` | the Wanderer's set, one item per slot, plus its data (`COAT_PANELS`, `CAPE_SHEETS`). Its legs, coat tails and sword are part of the default loadout |
 | `base.js` | the undersuit: fallback items for `chest`, `arms`, `legs` |
+| `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls (one hand for every outfit) |
+| `sheet.js` | `hangSheet(ctx, parent, d, mats)`: one cloth sheet or ribbon on the streamer springs, from data; `panelSkirt(ctx, PANELS, { seed })`: a skirt of coat panels on the pelvis |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |
 
@@ -96,8 +98,8 @@ The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 
 | Handle | From | Shape |
 | --- | --- | --- |
 | `coat` | `waist` | array of panels `{ anchor, segs: [upper, lower], def, strips, len: [upper, lower], r0 }` (below) |
-| `streamers` | `back` | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm? }` (below) |
-| `offHand` | `arms` | `{ open, grip }`: the free hand open on the left forearm, and the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint); the animator shows one or the other with `twoHand` |
+| `streamers` | any | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm?, wrap?, inMax? }` (below) |
+| `offHand` | `arms` | `{ open, grip }`: the free hand open on the left forearm, and the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint); the animator shows one or the other with `twoHand`. Build it with `buildFreeHand(ctx)` (`hands.js`) |
 | `gem` | `weapon` | an Object3D on the weapon whose world position is where the gem glows |
 | `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`) |
 | `keep` | any | meshes of yours that must not be merged (see "Merging") |
@@ -146,14 +148,20 @@ any item:
 - **Coat panels** (`coat`). Each panel is `anchor` (a joint on the `pelvis`, yawed to `def.az`,
   local +Z outward) → `segs[0]` → `segs[1]` → `strips[k].joint`, exactly two segments.
   `def` needs `az`, `w: [top, join, hem]`, `len: [upper, lower]`, and may set `flare`, `skew`,
-  `flap`; `len` is the pair of spring lengths, `r0` the anchor's distance from the pelvis axis;
-  each strip is `{ joint, len, rest, phase }`. The idle breeze has per-panel values for the first
-  six panels (`IDLE_FLARE`); later ones get none. `COAT_PANELS` in `wanderer.js` is the worked
-  example.
+  `flap`, and its own idle stir `breeze` / `idleFlare` (else the tables'); `len` is the pair of
+  spring lengths, `r0` the anchor's distance from the pelvis axis; each strip is
+  `{ joint, len, rest, phase }`. The idle breeze has per-panel values for the first six panels
+  (`BREEZE` / `IDLE_FLARE`); later ones get none unless they set their own. `COAT_PANELS` in
+  `wanderer.js` is the worked example; `panelSkirt` (`sheet.js`) builds a skirt from such a table
+  (plus `hemFrom`: 0..1 down the lower sheet where the pale `hem` takes over).
 - **Streamers** (`streamers`). Two-segment springs: `segs[0]` at the root, `segs[1]` at
   `−len[0]` below it; `out` is the resting outward flare; `lag` (default 1) scales how far the
   sheet trails the motion: 1 is a light ribbon that streams out level at a run, the cloak uses 0.5;
-  `max` (default 2.6 rad) is how far a segment may swing from hanging, the cloak uses 1.45.
+  `max` (default 2.6 rad) is how far a segment may swing from hanging, the cloak uses 1.45;
+  `inMax` ([root, tip] rad, + = toward the wearer) caps how far each segment may swing IN (a head
+  ribbon or a scarf off the back that must not swing into him; negative = always at least that far
+  out; not applied while he lies down); `wrap` is the radius the sheet curves round at its root
+  (the tests model the sheet with it). Any slot may return streamers.
   The root may hang on any joint (the cloak drapes one sheet over each upper arm). Give `w` (the
   widths [root, seam, hem]) so the animator can keep the sheet off the blade (ADR-048: spheres along
   the steel), and `arm` (1 / 2 for a sheet on the right / left upper arm). The arms do not push the

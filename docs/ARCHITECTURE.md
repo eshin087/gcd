@@ -531,13 +531,19 @@ the hips at the anchor) and `len[1]` includes the slant.
 The animator (`player/anim.js`) drives: `coat` = 6 panels (`COAT_PANELS`, above), each two spring
 segments (the lower one is two meshes: `coat` above, the lavender torn zone `hem` over its last
 60 %) plus `strips` (12 torn strips, one spring each, kept above the grass; per-panel `BREEZE` /
-`IDLE_FLARE` follow the panel order); `streamers` (two-segment spring sheets: the Shrouded set's
+`IDLE_FLARE` follow the panel order, unless a panel carries its own `breeze?` / `idleFlare?`);
+`streamers` (two-segment spring sheets: the Shrouded set's
 cloak, five sheets on the chest and the upper arms (a narrow cape, ADR-073), `SHROUD_SHEETS` in `gear/shroud.js`, ADR-043;
-or the Wanderer's torn cape, four sheets behind the right shoulder, `CAPE_SHEETS`, ADR-037; each
-record `{ segs, len, out, lag?, max?, w?, arm? }`, `out` = its own outward flare, `lag` = how much
+or the Wanderer's torn cape, four sheets behind the right shoulder, `CAPE_SHEETS`, ADR-037; any
+slot's item may return them (a head ribbon, a sleeve wing, a sash tail); each record
+`{ segs, len, out, lag?, max?, w?, arm?, wrap?, inMax? }`, `out` = its own outward flare, `lag` = how much
 it trails the motion (default 1 = a light ribbon, the cloak 0.5), `max` = how far it may swing from
 hanging (rad; default 2.6, the cloak 1.45), `w` = its widths [root, seam, hem] (default 0.3 m
-across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest)). **Cloth vs steel**
+across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest), `wrap` = the
+radius the sheet curves round at its root (read by the tests' sheet model, not by the animator),
+`inMax` = [root, tip] how far each segment may swing IN toward its wearer (rad, + = in; negative =
+always at least that far out; default its `max`; not applied lying, ADR-083) so a head ribbon or a
+scarf off the back never swings into the body). **Cloth vs steel**
 (ADR-048): every frame `_colliders` places spheres along the blade (`COL_BLADE`; the arm lists
 `COL_FORE` / `COL_UPPER` are empty: holding the sheets out round the arms widened his back), and
 `_sheetBound` keeps each streamer segment on the side of each sphere it came in from
@@ -583,13 +589,23 @@ and `player.setLoadout(loadout)` swap gear at runtime: the rig is rebuilt under 
 (`object3d` and `position` stay the same objects), the animator is recreated (the pose restarts from
 the ready stance), old geometries and materials are disposed, and the rig's rigid batches
 (`player.batch`, `render/rigidBatch.js`) are disposed and rebuilt, reusing their bone slots; an
-unknown id throws before anything changes. No event is emitted. Limits: the animator, `combat.js` and `fx.js` read the sword's
-numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values; the
-pauldron joint is the right shoulder only.
+unknown id throws before anything changes. No event is emitted. Shared builders (`gear/`):
+`hands.js` `buildFreeHand(ctx, mat = M.skin)` is the free hand every `arms` item that draws hands
+calls (the skin wrist on the forearm, the open hand on `arms.L.wrist ?? arms.L.fore`, the grip hand
+on the `sword` joint; returns `{ offHand, keep }`); `sheet.js` `hangSheet(ctx, parent, d, mats)`
+builds one streamer sheet (or a ribbon) from data and returns its record, `panelSkirt(ctx, PANELS,
+{ seed })` a skirt of coat panels (returns `{ coat }`; a panel's `hemFrom` puts the pale `hem` over
+the end of its lower sheet). `heroGeo.js` `shellGeometry(rings, { arc: [a0, a1] })` builds one arc
+of a shell (rad: 0 = his front, + = his left). `model.js` `tintHero(M, tint)` recolours ONE rig's
+material instances (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, sub?, inkGlow?,
+glowK? } }`), never the shared `U.*`. Limits: the animator, `combat.js` and `fx.js` read the sword's
+numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values (unless
+a panel overrides it with `idleFlare`); the pauldron joint is the right shoulder only.
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a
 knuckle ridge round the grip, hung on the `sword` joint by the `arms` item so it closes round the
 grip in every pose (with no weapon it is a closed fist); the free hand is `looseHand` on the left
-forearm (palm, four curled fingers, thumb). An `arms` item may return `offHand: { open, grip }`
+forearm (palm, four curled fingers, thumb), built by `gear/hands.js` `buildFreeHand` for every outfit
+that draws hands. An `arms` item may return `offHand: { open, grip }`
 (`rig.offHand`, else null): the free hand open on the forearm, and the same hand closed round the grip
 `DIM.offGrip` (0.08 m) below the sword hand on the `sword` joint; `apply()` shows `grip` while the
 pose's `twoHand` > 0.6 and `open` otherwise (the Shrouded set's bare hands do; the Wanderer's arms

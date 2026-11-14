@@ -75,10 +75,11 @@ export function gridGeometry(cols, rows, fn, flip = false, skip = null) {
 /**
  * Lofted body shell around +Y through elliptical rings {y, rx, rz, cz, gap}: `gap` = half the
  * chord left open at the front (the open coat), 0 = closed except a hairline at the front.
- * `span` limits it to the front ±span rad instead (the shirt). aGUV: x = angle × 0.15 (columns line
- * up down the body, like the panel), y = height, so glyphs stand upright.
+ * `span` limits it to the front ±span rad instead (the shirt); `arc` [a0, a1] to that one arc (rad: 0 =
+ * his front, + = his left, +X; a plate open at the sides, a capelet over one shoulder). aGUV: x =
+ * angle × 0.15 (columns line up down the body, like the panel), y = height, so glyphs stand upright.
  */
-export function shellGeometry(rings, { sub = 2, cols = 24, span = 0 } = {}) {
+export function shellGeometry(rings, { sub = 2, cols = 24, span = 0, arc = null } = {}) {
   const rows = (rings.length - 1) * sub;
   return gridGeometry(cols, rows, (s, t, o) => {
     const f = t * (rings.length - 1);
@@ -88,7 +89,9 @@ export function shellGeometry(rings, { sub = 2, cols = 24, span = 0 } = {}) {
     const y = lerp(A.y, B.y, u), rx = lerp(A.rx, B.rx, u), rz = lerp(A.rz, B.rz, u);
     const cz = lerp(A.cz ?? 0, B.cz ?? 0, u), gap = lerp(A.gap ?? 0, B.gap ?? 0, u);
     let a;
-    if (span > 0) {
+    if (arc) {
+      a = lerp(arc[0], arc[1], s);
+    } else if (span > 0) {
       a = (s - 0.5) * 2 * span;
     } else {
       const a0 = Math.asin(Math.min(0.95, Math.max(0.004, gap) / rx));
