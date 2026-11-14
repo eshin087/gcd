@@ -79,6 +79,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
+| `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (TEMPORARY, until the owner picks one; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
 | `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks |
 | `settings` | `{ quality: 0..2, showFps: bool }`; `applyQuality()` re-applies. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
@@ -598,7 +599,18 @@ builds one streamer sheet (or a ribbon) from data and returns its record, `panel
 the end of its lower sheet). `heroGeo.js` `shellGeometry(rings, { arc: [a0, a1] })` builds one arc
 of a shell (rad: 0 = his front, + = his left). `model.js` `tintHero(M, tint)` recolours ONE rig's
 material instances (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, sub?, inkGlow?,
-glowK? } }`), never the shared `U.*`. Limits: the animator, `combat.js` and `fx.js` read the sword's
+glowK? } }`), never the shared `U.*`. `player.setLoadout` puts the shared per-part ink
+(`U.uHeroPartInk` / `uHeroPartFill` / `uHeroPartRim`, rewritten by every `buildHero`) back as it was
+after the build, also when the build throws: a boss's own part ink (the Starless Lord's red part 19)
+survives a hero rebuild. **Outfit options** (TEMPORARY, until the owner picks one; the `?lordLook=`
+precedent): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint }` (`shroud`
+"Wanderer (today)" = `DEFAULT_LOADOUT`, no tint, the default; `robe` "Moonlit Robe", `swallow`
+"Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`), `LOOK_IDS`,
+`DEFAULT_LOOK`, `getLook(id)`, `heroLookFromSearch(search)`, `heroLookUrl(id, href)`. The Player wears
+`game.heroLook` (`player.look`; unknown or absent: the default) and tints its rig with the look's
+`tint`; `player.setLook(id)` wears another one live (its loadout with the equipped weapon kept, through
+`setLoadout`; throws on an unknown id and changes nothing), and every later `setLoadout` keeps the
+look's tint. Nothing in `gear/` imports `looks.js`. Limits: the animator, `combat.js` and `fx.js` read the sword's
 numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values (unless
 a panel overrides it with `idleFlare`); the pauldron joint is the right shoulder only.
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a

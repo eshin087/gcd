@@ -12,6 +12,7 @@ import { GlyphParticles } from './render/particles.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
 import { LEVELS, levelFromSearch, applyLevel, levelUrl } from './levels/index.js';
+import { HERO_LOOKS, LOOK_IDS, heroLookFromSearch, heroLookUrl } from './entities/player/gear/looks.js';
 import { Hud } from './ui/hud.js';
 import { TouchControls } from './ui/touch.js';
 import { GamepadControls } from './ui/gamepad.js';
@@ -27,6 +28,8 @@ async function boot() {
   // module reads them
   const level = levelFromSearch(location.search);
   applyLevel(level);
+  // the hero's outfit option (`?heroLook=robe`; gear/looks.js, temporary until the owner picks one)
+  const heroLook = heroLookFromSearch(location.search);
 
   const canvas = document.getElementById('game');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -49,6 +52,19 @@ async function boot() {
     levels: LEVELS.map((L) => ({ id: L.id, name: L.name })),
     pickLevel(id) {
       location.assign(levelUrl(id, location.href));
+    },
+    heroLook,
+    // the outfit options (gear/looks.js; `?heroLook=`, kept by pickLevel): the Lab's OUTFIT row; live
+    // (the rig is rebuilt)
+    heroLooks: LOOK_IDS.map((id) => ({ id, name: HERO_LOOKS[id].name })),
+    pickHeroLook(id) {
+      this.player.setLook(id);
+      this.heroLook = this.player.look;
+      try {
+        history.replaceState(history.state, '', heroLookUrl(this.heroLook, location.href));
+      } catch {
+        /* no history */
+      }
     },
     renderer,
     scene,

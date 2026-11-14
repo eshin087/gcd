@@ -681,6 +681,7 @@ export class Lab {
       this.ui.status = el('div', 'lab-status', 'ready', root);
 
       this._buildLevel(root);
+      this._buildOutfit(root);
       this._buildFight(root);
       this._buildAbilities(root);
       this._buildPlayer(root);
@@ -717,6 +718,35 @@ export class Lab {
       b.title = L.id === cur ? 'the level loaded now' : `reload into ${L.name} (?level=${L.id})`;
       if (L.id === cur) b.classList?.add?.('on');
     }
+  }
+
+  /** OUTFIT: the hero's outfit options (game.heroLooks / game.pickHeroLook, main.js; `?heroLook=`;
+   *  temporary, until the owner picks one). Live: the rig is rebuilt, the pose restarts. */
+  _buildOutfit(root) {
+    const looks = this.game.heroLooks;
+    if (!Array.isArray(looks) || looks.length < 2) return;
+    const { body } = this._section(root, 'outfit', 'OUTFIT');
+    const grid = el('div', 'lab-grid c2', null, body);
+    this.ui.lookBtns = looks.map((L) => {
+      const b = button(grid, L.name, () => {
+        try {
+          this.game.pickHeroLook?.(L.id);
+          this._status(`outfit: ${L.name}`, 'ok');
+        } catch (err) {
+          this._status(`error: outfit ${L.id}: ${err?.message ?? err}`, 'err');
+          this._fail('outfit', err);
+        }
+        this._syncOutfit();
+        this._mvSync?.();
+      });
+      b.title = `wear ${L.name} (?heroLook=${L.id}; the rig is rebuilt, the pose restarts)`;
+      return { id: L.id, el: b };
+    });
+    this._syncOutfit();
+  }
+
+  _syncOutfit() {
+    for (const B of this.ui.lookBtns ?? []) B.el.classList?.toggle?.('on', B.id === this.game.player?.look);
   }
 
   _buildFight(root) {

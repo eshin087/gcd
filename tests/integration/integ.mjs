@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | deflect | lab | strings | plungeReact |
-//             timing | fire | herolook | win | die | touch | pad | remap | all (default all)
+//             timing | fire | herolook | herolife | win | die | touch | pad | remap | all (default all)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -189,6 +189,8 @@ function build(opts = {}) {
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
     shake(a) { if (!Number.isFinite(a)) throw new Error('NaN shake'); this.cameraRig.addTrauma(a); },
+    // the hero's outfit option (main.js reads `?heroLook=`; gear/looks.js): null = the default
+    heroLook: opts.heroLook ?? null,
   };
   const G = { game, input: game.input, canvas: canvasEl, evLog: [], counts: {}, counters, finalU, logTimes: [], hits: [], watch: null, defend: null };
   // event log + payload contract check (a wrapper, not a subscriber: it must not count as a consumer)
@@ -3175,6 +3177,125 @@ async function scenarioHeroLife() {
   return G;
 }
 
+// ================================================================== hero look helpers (HEROLOOK, LOOKS)
+// Signed depth (m, > 0 inside) of a joint-local point in an ellipsoid / a tapered capsule down −Y /
+// the torso shell (BODY.shell rings at world idle heights, in spine space; `grow`: every ring that
+// much bigger, an armour plate's offset)
+function heroShapes(BODY, D) {
+  const restSpine = D.pivot + 0.015 + D.pelvis[1] + D.spine[1];
+  const ell = (q, c, rr) => {
+    const k = Math.hypot((q.x - c[0]) / rr[0], (q.y - c[1]) / rr[1], (q.z - c[2]) / rr[2]);
+    return k > 1e-6 ? Math.hypot(q.x - c[0], q.y - c[1], q.z - c[2]) * (1 / k - 1) : 1;
+  };
+  const cap = (q, y0, len, r0, r1) => {
+    const t = clamp((y0 - q.y) / len, 0, 1);
+    return r0 + (r1 - r0) * t - Math.hypot(q.x, q.y - (y0 - t * len), q.z);
+  };
+  const shell = (q, grow = 0) => {
+    const R = BODY.shell, h = q.y + restSpine;
+    if (h < R[0].y || h > R[R.length - 1].y) return -1;
+    let k = 0;
+    while (k < R.length - 2 && R[k + 1].y < h) k++;
+    const A = R[k], B = R[k + 1], u = (h - A.y) / (B.y - A.y);
+    const rx = A.rx + (B.rx - A.rx) * u + grow, rz = A.rz + (B.rz - A.rz) * u + grow, cz = (A.cz ?? 0) + ((B.cz ?? 0) - (A.cz ?? 0)) * u;
+    const qq = Math.hypot(q.x / rx, (q.z - cz) / rz);
+    return qq > 1e-6 ? Math.hypot(q.x, q.z - cz) * (1 / qq - 1) : 1;
+  };
+  return { ell, cap, shell, restSpine };
+}
+
+// A coat segment's sheet hangs −Y from its joint, curved round the hips (radius r0 + 0.25 × depth):
+// the blade (0.16 m … `tip` along it) crosses it where its side of the sheet flips inside the
+// sheet's span. v, w: scratch Vector3s
+function coatCrossOf(r, tip, sheetOffset, v, w) {
+  for (const C of r.coat) {
+    const P = C.def;
+    if (P.flap) continue;
+    for (let s = 0; s < 2; s++) {
+      const len = P.len[s] + 0.02, Rt = C.r0 + (s ? 0.25 * P.len[0] : 0);
+      let pf = 0, pin = false;
+      for (let z = 0.16; z <= tip + 1e-6; z += 0.03) {
+        C.segs[s].worldToLocal(w.copy(v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld)));
+        const t = -w.y / len, R = Rt + 0.25 * clamp(t, 0, 1) * len;
+        const u = Math.asin(clamp(w.x / R, -1, 1)) * R;
+        const f = w.z - (Math.cos(u / R) - 1) * R;
+        const wt = P.w[s] + (P.w[s + 1] - P.w[s]) * clamp(t, 0, 1);
+        const inside = t >= 0 && t <= 1 && Math.abs(u - sheetOffset(wt, P.w[0], P.skew ?? 0)) <= 0.5 * wt;
+        if (inside && pin && Math.sign(f) !== Math.sign(pf)) return true;
+        pf = f;
+        pin = inside;
+      }
+    }
+  }
+  return false;
+}
+
+// HEROLOOK's drive: a run, a sprint, strafes and a backpedal, a stop, a roll, the chain with each
+// look of its hits, the sprint slash, the roll cut, the charged cleave and a block. `go(s)` steps the
+// sim; `mark(phase)` is called before each part ('run', 'sprint', 'strafe', 'roll', 'chain',
+// 'sprintSlash', 'rollCut', 'charge', 'release', 'block')
+function heroRoute(G, go, mark = () => {}) {
+  const { input } = G, p = G.game.player;
+  mark('run');
+  input.axis = { x: 0, y: 1 };
+  go(1.2);
+  mark('sprint');
+  input.hold('ShiftLeft');
+  go(1.0);
+  input.release('ShiftLeft');
+  mark('strafe');
+  for (const [x, y] of [[1, 0], [0, -1], [-1, 0], [0, 0]]) {
+    input.axis = { x, y };
+    go(1.0);
+  }
+  mark('roll');
+  input.axis = { x: 0, y: 1 };
+  go(0.3);
+  input.tap('Space');
+  go(0.9);
+  input.axis = { x: 0, y: 0 };
+  go(0.5);
+  // the chain, once with each look of its hits (combat.js `variants`: forced, clamped per hit)
+  mark('chain');
+  for (let look = 0; look < 3; look++) {
+    p.anim.forceVariant = look;
+    for (let k = 0; k < 5; k++) {
+      input.click(0);
+      go(k === 4 ? 0.9 : CHAIN_EVERY);
+    }
+    go(0.8);
+  }
+  p.anim.forceVariant = null;
+  // the sprint slash and the roll cut
+  mark('sprintSlash');
+  input.axis = { x: 0, y: 1 };
+  input.hold('ShiftLeft');
+  go(0.8);
+  input.click(0);
+  input.release('ShiftLeft');
+  input.axis = { x: 0, y: 0 };
+  go(1.0);
+  mark('rollCut');
+  input.axis = { x: 0, y: 1 };
+  go(0.3);
+  input.tap('Space');
+  go(0.35);
+  input.axis = { x: 0, y: 0 };
+  input.click(0);
+  go(1.0);
+  mark('charge');
+  input.press(0);
+  go(1.4);
+  mark('release');
+  input.up(0);
+  go(1.0);
+  mark('block');
+  input.press(2);
+  go(0.8);
+  input.up(2);
+  go(0.6);
+}
+
 // ================================================================== scenario: hero look (athletic build)
 // The athletic build (model.js BODY, ADR-040) and the steel kept out of his body and his coat. Through a run, a
 // sprint, strafes and a backpedal, stops, a roll, the light combo + slam (every look of every hit), the charged cleave and a
@@ -3200,27 +3321,7 @@ async function scenarioHeroLook() {
     `athletic build: chest ${chest.toFixed(2)} m over a ${waist.toFixed(2)} m waist, shoulders ±${D.shoulder[0]} m, upper arm r ${BODY.upperArm[0]}, thigh r ${BODY.thigh[0]}`);
   assert(r.mats.every((m) => m.defines?.SG_HERO_PULL === undefined && !m.uniforms.uArtPull), 'no hero material is drawn nearer the camera than it is (the blade is depth-tested)');
   const v = new THREE.Vector3(), w = new THREE.Vector3();
-  const restSpine = D.pivot + 0.015 + D.pelvis[1] + D.spine[1];
-  // signed depth (m, > 0 inside) of a joint-local point in an ellipsoid / a tapered capsule down −Y /
-  // the torso shell (BODY.shell rings at world idle heights)
-  const ell = (q, c, rr) => {
-    const k = Math.hypot((q.x - c[0]) / rr[0], (q.y - c[1]) / rr[1], (q.z - c[2]) / rr[2]);
-    return k > 1e-6 ? Math.hypot(q.x - c[0], q.y - c[1], q.z - c[2]) * (1 / k - 1) : 1;
-  };
-  const cap = (q, y0, len, r0, r1) => {
-    const t = clamp((y0 - q.y) / len, 0, 1);
-    return r0 + (r1 - r0) * t - Math.hypot(q.x, q.y - (y0 - t * len), q.z);
-  };
-  const shell = (q) => {
-    const R = BODY.shell, h = q.y + restSpine;
-    if (h < R[0].y || h > R[R.length - 1].y) return -1;
-    let k = 0;
-    while (k < R.length - 2 && R[k + 1].y < h) k++;
-    const A = R[k], B = R[k + 1], u = (h - A.y) / (B.y - A.y);
-    const rx = A.rx + (B.rx - A.rx) * u, rz = A.rz + (B.rz - A.rz) * u, cz = (A.cz ?? 0) + ((B.cz ?? 0) - (A.cz ?? 0)) * u;
-    const qq = Math.hypot(q.x / rx, (q.z - cz) / rz);
-    return qq > 1e-6 ? Math.hypot(q.x, q.z - cz) * (1 / qq - 1) : 1;
-  };
+  const { ell, cap, shell } = heroShapes(BODY, D);
   // (the sword arm's own forearm is left out: the blade's base sits in the gauntlet; the free
   // forearm only to the wrist: the free hand braces the flat in the block)
   const parts = [
@@ -3249,30 +3350,7 @@ async function scenarioHeroLook() {
       }
     }
   };
-  // a coat segment's sheet hangs −Y from its joint, curved round the hips (radius r0 + 0.25 × depth):
-  // the blade crosses it where its side of the sheet flips inside the sheet's span
-  const coatCross = () => {
-    for (const C of r.coat) {
-      const P = C.def;
-      if (P.flap) continue;
-      for (let s = 0; s < 2; s++) {
-        const len = P.len[s] + 0.02, Rt = C.r0 + (s ? 0.25 * P.len[0] : 0);
-        let pf = 0, pin = false;
-        for (let z = 0.16; z <= tip + 1e-6; z += 0.03) {
-          C.segs[s].worldToLocal(w.copy(v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld)));
-          const t = -w.y / len, R = Rt + 0.25 * clamp(t, 0, 1) * len;
-          const u = Math.asin(clamp(w.x / R, -1, 1)) * R;
-          const f = w.z - (Math.cos(u / R) - 1) * R;
-          const wt = P.w[s] + (P.w[s + 1] - P.w[s]) * clamp(t, 0, 1);
-          const inside = t >= 0 && t <= 1 && Math.abs(u - sheetOffset(wt, P.w[0], P.skew ?? 0)) <= 0.5 * wt;
-          if (inside && pin && Math.sign(f) !== Math.sign(pf)) return true;
-          pf = f;
-          pin = inside;
-        }
-      }
-    }
-    return false;
-  };
+  const coatCross = () => coatCrossOf(r, tip, sheetOffset, v, w);
   let frames = 0, cross = 0, locoFrames = 0, locoCross = 0;
   const LOCO = new Set(['idle', 'run', 'sprint']);
   const go = (s) => {
@@ -3288,54 +3366,7 @@ async function scenarioHeroLook() {
       }
     }
   };
-  input.axis = { x: 0, y: 1 };
-  go(1.2);
-  input.hold('ShiftLeft');
-  go(1.0);
-  input.release('ShiftLeft');
-  for (const [x, y] of [[1, 0], [0, -1], [-1, 0], [0, 0]]) {
-    input.axis = { x, y };
-    go(1.0);
-  }
-  input.axis = { x: 0, y: 1 };
-  go(0.3);
-  input.tap('Space');
-  go(0.9);
-  input.axis = { x: 0, y: 0 };
-  go(0.5);
-  // the chain, once with each look of its hits (combat.js `variants`: forced, clamped per hit)
-  for (let look = 0; look < 3; look++) {
-    p.anim.forceVariant = look;
-    for (let k = 0; k < 5; k++) {
-      input.click(0);
-      go(k === 4 ? 0.9 : CHAIN_EVERY);
-    }
-    go(0.8);
-  }
-  p.anim.forceVariant = null;
-  // the sprint slash and the roll cut
-  input.axis = { x: 0, y: 1 };
-  input.hold('ShiftLeft');
-  go(0.8);
-  input.click(0);
-  input.release('ShiftLeft');
-  input.axis = { x: 0, y: 0 };
-  go(1.0);
-  input.axis = { x: 0, y: 1 };
-  go(0.3);
-  input.tap('Space');
-  go(0.35);
-  input.axis = { x: 0, y: 0 };
-  input.click(0);
-  go(1.0);
-  input.press(0);
-  go(1.4);
-  input.up(0);
-  go(1.0);
-  input.press(2);
-  go(0.8);
-  input.up(2);
-  go(0.6);
+  heroRoute(G, go);
   assert(worst < 0.02, `the drawn blade never sinks > 2 cm into his body (${frames} frames; deepest ${(worst * 100).toFixed(1)} cm: ${worstAt})`);
   assert(locoCross <= Math.max(3, locoFrames * 0.05), `the blade passes through a coat panel on ${locoCross} of ${locoFrames} run / sprint / idle frames (≤ 5 %; ${cross} of ${frames} over every move)`);
   return G;

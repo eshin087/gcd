@@ -4,7 +4,8 @@ import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep } from '../..
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, tellDefaults, facingDelta } from '../../combat/rules.js';
-import { buildHero, setHeroGlyphScale, installLean, LEAN, PLAYER_SCALE, BLADE_BASE } from './model.js';
+import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE } from './model.js';
+import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx } from './fx.js';
@@ -126,6 +127,9 @@ const PLUNGE_RIDE_MAX = 40; // m/s: the rider eases through a jump of the head (
 const PLUNGE_HANG_TRACK = 7; // m/s: the hang point drifts after a moving head at most this fast
 // cross-fade (s) into each plunge phase's pose: the impact lands almost at once
 const PL_BLEND = [0.02, 0.03, 0.05, 0.025, 0.06, 0.05];
+// the shared per-part ink every rig on the page reads (model.js createHeroMaterials rewrites it on
+// every build; setLoadout puts it back)
+const PART_UNIFORMS = ['uHeroPartInk', 'uHeroPartFill', 'uHeroPartRim'];
 
 export class Player {
   constructor(game) {
@@ -134,7 +138,11 @@ export class Player {
     /** His drawn size (model metres → world; model.js PLAYER_SCALE, ADR-064): the lean and the
      *  animator's foot planner read it. */
     this.drawScale = PLAYER_SCALE;
-    this.rig = buildHero(game.U);
+    // the outfit (gear/looks.js; main.js reads `?heroLook=`): its loadout, and its colours on this
+    // rig's own materials
+    this.look = getLook(game.heroLook)?.id ?? DEFAULT_LOOK;
+    this.rig = buildHero(game.U, HERO_LOOKS[this.look].loadout);
+    tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
     this.radius = 0.45;
@@ -586,7 +594,17 @@ export class Player {
    * wrong slot, before anything is changed. Build-time cost (allocates): never call it per frame.
    */
   setLoadout(loadout) {
-    const rig = buildHero(this.game.U, loadout);
+    // a build rewrites the SHARED per-part ink for every rig on the page (model.js
+    // createHeroMaterials): put back what was there (a boss's own, e.g. the Lord's red part 19), even
+    // if the build throws
+    const U = this.game.U, saved = PART_UNIFORMS.map((k) => U[k]?.value?.map((v) => v.clone()) ?? null);
+    let rig;
+    try {
+      rig = buildHero(U, loadout);
+    } finally {
+      saved.forEach((a, i) => a && U[PART_UNIFORMS[i]].value.forEach((v, j) => a[j] && v.copy(a[j])));
+    }
+    tintHero(rig.materials, HERO_LOOKS[this.look]?.tint);
     const root = this.object3d, old = this.rig;
     this.batch?.dispose(); // the old rig's rigid batches (their bone slots are reused below)
     for (const c of [...root.children]) root.remove(c);
@@ -608,6 +626,21 @@ export class Player {
     this._updateMaterials(0);
     root.updateMatrixWorld(true);
     return rig.loadout;
+  }
+
+  /** Wear outfit option `id` (gear/looks.js): its loadout (the equipped weapon kept) and its colours.
+   *  Throws on an unknown id and changes nothing. Build-time cost (setLoadout). */
+  setLook(id) {
+    const L = getLook(id);
+    if (!L) throw new Error(`no hero look "${id}" (${LOOK_IDS.join(', ')})`);
+    const prev = this.look;
+    this.look = L.id;
+    try {
+      return this.setLoadout({ ...L.loadout, weapon: this.rig.loadout.weapon });
+    } catch (e) {
+      this.look = prev;
+      throw e;
+    }
   }
 
   restAtBonfire() {
