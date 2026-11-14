@@ -86,6 +86,11 @@ async function boot() {
     punch(m) {
       this.cameraRig.punch(m);
     },
+    /** A directional kick: the picture is thrown `m` metres along world direction (x, y, z) as seen
+     *  on screen and springs back (a landed cut). */
+    kick(x, y, z, m) {
+      this.cameraRig.kick(x, y, z, m);
+    },
   };
   pipeline.registerParticles(game.fx.alpha);
   pipeline.registerParticles(game.fx.add);

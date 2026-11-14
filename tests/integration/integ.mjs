@@ -189,6 +189,8 @@ function build(opts = {}) {
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
     shake(a) { if (!Number.isFinite(a)) throw new Error('NaN shake'); this.cameraRig.addTrauma(a); },
+    punch(m) { if (!Number.isFinite(m)) throw new Error('NaN punch'); this.cameraRig.punch(m); },
+    kick(x, y, z, m) { if (!Number.isFinite(x + y + z + m)) throw new Error('NaN kick'); this.cameraRig.kick(x, y, z, m); },
   };
   const G = { game, input: game.input, canvas: canvasEl, evLog: [], counts: {}, counters, finalU, logTimes: [], hits: [], watch: null, defend: null };
   // event log + payload contract check (a wrapper, not a subscriber: it must not count as a consumer)
@@ -1020,6 +1022,7 @@ async function scenarioReach() {
     out(`   the wyrm's cut: ${ev ? `${ev.kind}/${ev.weight}, the point ${gap.toFixed(2)} m off the nearest hurt sphere's surface, freeze ${stop.toFixed(3)} s, punch ${punchZ.toFixed(2)} m` : 'no hit'}`);
     assert(!!ev && gap <= 0.15, `a landed cut on the wyrm is drawn on its body: ${gap.toFixed(2)} m off the nearest hurt sphere's surface (≤ 0.15)`);
     assert(!!ev && ev.weight === 'light' && ev.combo === 1 && stop >= 0.055 - 1e-6, `it freezes the frame ${stop.toFixed(3)} s (≥ 0.055) and reports its weight (${ev?.weight}, combo ${ev?.combo})`);
+    assert(punchZ > 0, `a landed light punches the camera in (${punchZ.toFixed(2)} m)`);
   }
   assert(rows.every((r) => r[4].slamEv === 1), 'the slam meets the ground once per swing (player:slam)');
   assert(rows.every((r) => r[4].hit?.heavy === true && r[5].hit?.heavy === true && r.slice(0, 4).every((t) => t.hit?.heavy === false)), 'the slam and the cleave hit heavy, the four light hits do not');
@@ -3114,6 +3117,40 @@ async function scenarioHeroLife() {
     game.mouseGround.copy(aim0);
     d.hp = d.maxHp;
     go(1.0);
+  }
+
+  // (1e4) the camera kick (cameraRig.kick, game.kick): the kick's frame shows the whole throw, it
+  // springs back with one small overshoot, stacks to its cap, ignores bad input, snap() clears it, the
+  // phone's closer camera throws it less, and a blow going north moves the picture up
+  {
+    const origin = new THREE.Vector3(0, 0, 0);
+    const rig = new CameraRig(new THREE.PerspectiveCamera(32, 16 / 9, 1, 220));
+    rig.snap(origin);
+    const x0 = rig.camera.position.x;
+    rig.kick(1, 0, 0, 0.08);
+    rig.update(DT, origin);
+    const first = rig.camera.position.x - x0;
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < Math.round(0.3 / DT); i++) { rig.update(DT, origin); lo = Math.min(lo, rig.kickX); hi = Math.max(hi, rig.kickX); }
+    const settled = rig.kickX;
+    const k0 = [rig.kickX, rig.kickY, rig.kickVX, rig.kickVY].join();
+    rig.kick(NaN, 0, 0, 1); rig.kick(0, 0, 0, 1); rig.kick(1, 0, 0, 0); rig.kick(1, 0, 0, -1); rig.kick(1, 0, 0, NaN);
+    const ignored = [rig.kickX, rig.kickY, rig.kickVX, rig.kickVY].join() === k0;
+    for (let i = 0; i < 10; i++) rig.kick(1, 0, 0, 0.3);
+    const capped = Math.abs(rig.kickX);
+    rig.snap(origin);
+    const cleared = rig.kickX === 0 && rig.kickY === 0 && rig.kickVX === 0 && rig.kickVY === 0;
+    rig.setMobile(true);
+    rig.kick(1, 0, 0, 0.08);
+    const phone = rig.kickX;
+    rig.snap(origin);
+    rig.kick(0, 0, -1, 0.1);
+    const north = rig.kickY;
+    out(`   kick: the kick frame ${first.toFixed(4)} m, then ${lo.toFixed(4)} … ${hi.toFixed(4)}, ${settled.toFixed(5)} after 0.3 s; stacked ${capped.toFixed(2)}; phone ${phone.toFixed(4)}; a blow north ${north.toFixed(3)}`);
+    assert(Math.abs(first + 0.08) <= 1e-6, `the kick's frame shows the whole throw: the camera ${first.toFixed(4)} m (−0.08)`);
+    assert(Math.abs(settled) < 0.008 && lo >= -0.08 - 1e-9 && hi <= 0.2 * 0.08, `it springs back in 0.3 s (${settled.toFixed(5)}) with one small overshoot (${hi.toFixed(4)} ≤ 0.016)`);
+    assert(ignored && capped <= 0.5 + 1e-9 && cleared, `bad kicks do nothing, stacked kicks cap at 0.5 m (${capped.toFixed(2)}), snap() clears it`);
+    assert(Math.abs(phone + 0.08 * 20 / 36) <= 0.002 && north < 0, `the phone's camera throws it 20/36 as far (${phone.toFixed(4)}); a blow going north moves the picture up (kickY ${north.toFixed(3)} < 0)`);
   }
 
   // (1c) the pace (Session 26, owner: "speed up the attack speed ... its too slow"): mashing the
