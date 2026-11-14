@@ -53,14 +53,35 @@ head (the cleave's bite folds no chest or head now); the first hop whirl scissor
 foot is carried round from where it stands); a duelist's drawn cut floated off his body after his
 shove (moved with the shove); a slam's shards-only hit played the blade's cut.
 
+**Round 2, the owner on the preview (ADR-090):** "keep the new skins for now to be used in the
+future. we will use the current todays look for now as the default. the right hand looks very
+disfigured. when charging, the sword is piercing the characters face, make it have more distance
+away from the face. somethign about the arms still feel unnatural and stiff".
+- **The outfits and sword looks stay** behind `?heroLook=` / `?sword=` and the Lab rows as options
+  for later; today's look and sword are the default. Nothing is removed.
+- **The sword hand:** the fist was four thin discs and a plank (since ADR-041, on every rig): now
+  finger rolls that close into one hand with shallow grooves and a rounded back of the hand.
+- **The charge:** the blade stood 10 cm from the head's axis, inside the hood. The hands sit lower
+  and out to his right and the blade leans out: 25 cm through the hold, 21 cm through the release.
+- **The arms**, measured in the chest's frame: no swing opened an elbow past 124-130° (the soft
+  reach crumpled every full-reach key); both elbows flared out on the run; the free arm ran as one
+  87° crook; strafing, the arms did not swing at all. Now: 143-159° at contact (`HERO_SOFT`, hero
+  only, never locked), elbows back beside the ribs, the free arm opens and folds 56° a stride, the
+  arms swing in a strafe (`armF`), an open hand on the run, sword fingers 1.15×, the flung "wing"
+  sloped down from the shoulder.
+- **Tests:** a new HEROARMS scenario (rest, run, strafe, sprint, every swing's opening, the lock
+  bound, the charged blade's clearance). HERO's "never locks" bound is 15° (was 23°).
+- Found on the way: the owner's gamepad drives any visible page, the filming page too (its
+  `navigator.getGamepads` has to be stubbed while they play).
+
 **Verification:** `npm test` (integ incl. HEROHAND, HEROWEIGHT, LOOKS, CUTFX; DUEL; LORD) green after
 the merge; `npm run build` OK. Filmed in the pane: the chain (solid and the game camera), contact and
 follow-through stills, the hand close-up, the outfit and sword sheets, the cut's contact on the Ash
 Disciple, the whirl's hop against carry and the base.
 
 **Open / next:**
-- **The owner's picks:** an outfit (or today's) and its face (lit or shaded); a sword look; the whirl's
-  feet (`hop`, shipped, or `carry`). Then the losers, both switches and their Lab rows go.
+- The owner's look at round 2 on the preview (the arms, the charge, the fist); the whirl's feet
+  (`hop`, shipped, or `carry`) are still theirs to pick. The outfits and sword looks stay as options.
 - On the phone: the lunge is ~35 % longer on a short click (the shaped step), the kick's feel, fps.
 - The wrist sits on a limit for much of the falling backhand, the falling cut and the whirl (by
   design of the keys; tune in the Lab close-up if it reads stiff).

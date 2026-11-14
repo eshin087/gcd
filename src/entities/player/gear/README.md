@@ -24,12 +24,12 @@ buildHero(U, {});                                         // the plain undersuit
 | `moonblade.js` | the moon looks, for the owner's pick (2026-11-14): `moon.sheet` (the sheet's blade, built in code from a profile, `bladeGeometry(spec)`, on the longsword's swept guard with a silver rim round the pommel), `moon.ribbon` (the same with an unforked strip of the cloak's hem off the pommel: it echoes the Ash Disciple's tassel), `moon.crescent` (a silver crescent moon cradling the star gem in place of the swept quillons: it echoes the Starless Lord's crescents). `SWORD_LOOKS`, `SWORD_PARAM`, `MOONBLADE_ITEMS`. Each keeps the longsword's `dims` and its materials (part 17 flares). `?sword=today\|sheet\|ribbon\|crescent` (`swordFromUrl`, player.js) and the Lab's 'sword' row wear one. After the pick the winner becomes `wanderer.sword` (its build replaces `buildSword`) and the others, `SWORD_PARAM` and `swordFromUrl` go; a winner that is not today's also drops the `blade.*` parts from hero_parts.py / heroParts.js |
 | `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls (one hand for every outfit) |
 | `sheet.js` | `hangSheet(ctx, parent, d, mats)`: one cloth sheet or ribbon on the streamer springs, from data; `panelSkirt(ctx, PANELS, { seed })`: a skirt of coat panels on the pelvis |
-| `looks.js` | the outfit options (TEMPORARY, until the owner picks one): `HERO_LOOKS` (id → `{ id, name, loadout, tint, of? }`; each new look also as `<id>-shade`, its face in shadow, `of` = the lit look), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
+| `looks.js` | the outfit options (kept for later use: the owner, 2026-11-14, keeps today's look as the default): `HERO_LOOKS` (id → `{ id, name, loadout, tint, of? }`; each new look also as `<id>-shade`, its face in shadow, `of` = the lit look), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
 | `moon.js`, `swallow.js`, `warden.js` | the three outfit options' items, loadouts (`MOON_LOADOUT`, ...) and colours (`MOON_TINT`, ...): the Moonlit Robe, the Swallow, the Moon Warden |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |
 
-### Outfit options (temporary)
+### Outfit options (kept for later; today's look is the default)
 
 An outfit option is a loadout plus its colours: a `tint` (`{ <HERO_INK name>: { fill?, ink?,
 emissive?, spec?, rim?, sub?, inkGlow?, glowK? } }`) that `tintHero(rig.materials, tint)` (`model.js`)
@@ -188,9 +188,10 @@ any item:
   the steel), and `arm` (1 / 2 for a sheet on the right / left upper arm). The arms do not push the
   cloth: a cloak hangs over its wearer's arms (holding the sheets out round them made the figure
   wide from behind).
-- **The arms.** `_arm` compresses the last fifth of each arm's reach (ADR-044), so a hand target at
-  full stretch is reached with the elbow bent ~35°: model sleeves and hands for a bent arm, and do
-  not rely on a pose locking the elbow. The heavy blows, the charge and the block are two-handed
+- **The arms.** `_arm` compresses the last of each arm's reach (ADR-044), so a hand target at
+  full stretch is reached with the elbow still bent (~35° for a duelist; the hero's arms open
+  further, ~20-30°, ADR-090): model sleeves and hands for a bent arm, and do not rely on a pose
+  locking the elbow. The heavy blows, the charge and the block are two-handed
   (ADR-071): the free hand spends time on the grip, so return `offHand` if the item draws hands.
   The free hand turns on its wrist (`arms.L.wrist`: sword fingers, a point, a palm braced on the
   grass): hang the open hand and the sword fingers there, keep the forearm's own meshes on

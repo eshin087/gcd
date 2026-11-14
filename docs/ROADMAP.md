@@ -150,13 +150,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.29 — The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from (2026-11-14, `player/free-hand`, ADR-086 – ADR-089)
+## M1.29 — The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from (2026-11-14, `player/free-hand`, ADR-086 – ADR-090)
 - [x] A wrist for the free hand, stable at any frame rate; the sword-fingers hand; a choreography per cut; no fist pops; the free elbow bent on the grip (ADR-086)
 - [x] The shaped step; the hips and chest lead the cut; bow stances; the edge bites; planted feet pivot and follow; the whirl hops (ADR-087)
 - [x] A cut drawn where it lands: the slash line, sparks along the cut, the flare and glint, the kick, the punch, the cut sound, the shudder (ADR-088)
 - [x] Three outfits (and their faces in shadow) and three sword looks behind `?heroLook=` / `?sword=`, with sheets for the owner (ADR-089)
 - [x] Fixed: a hero rebuild wiped a boss's own part ink
-- [ ] The owner's picks: the outfit and its face, the sword, the whirl's feet (hop or carry); then remove the losers and both switches
+- [x] The owner's call on the looks: today's look and sword stay the default; the three outfits and three sword looks are kept behind their switches for later (ADR-090)
+- [x] After the first preview: a fist that reads as a hand; the charged blade clear of his hood; arms that open at contact, elbows in on the run, arms that swing in a strafe (ADR-090)
+- [ ] The owner's look at round 2; the whirl's feet (hop or carry)
 - [ ] Follow-ups:
   - [ ] On the phone: the longer lunge on a short click, the kick's feel, fps with the new effects
   - [ ] The wrist on its limit through the falling backhand, the falling cut and the whirl: tune the keys in the Lab close-up if it reads stiff

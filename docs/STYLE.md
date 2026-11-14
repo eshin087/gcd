@@ -289,9 +289,10 @@ Rules of thumb:
   them, a bright knuckle ridge) and a loosely closed left glove with skin fingertips. The sword hand
   used to be one small ellipsoid hidden behind the guard.
 - **The free hand: sword fingers (jian jue).** The hero's free hand turns on its own wrist and holds
-  sword fingers (index and middle straight and pressed together, 1.3× long so the point survives
-  the glyph pass; ring and little curled, the thumb across them) at rest and through the chain; it
-  opens to take the grip, to brace on the grass, to drink, and when he is hit or falls. At the 36 m
+  sword fingers (index and middle straight and pressed together, 1.15× long so the point survives
+  the glyph pass (1.3× read up close as two claws); ring and little curled, the thumb across them)
+  at rest and through the chain; it opens on the run, to take the grip, to brace on the grass, to
+  drink, and when he is hit or falls. At the 36 m
   game camera the hand is ~2 cells: it reads by WHERE it goes (one arm line through the body against
   the blade), the pale one-cell point off the end of that line and the way the point aims; the finger
   shape itself reads up close. A pale hand needs dark cloth round it: keep drapes off the left wrist.

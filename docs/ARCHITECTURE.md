@@ -80,7 +80,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
-| `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (TEMPORARY, until the owner picks one; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
+| `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
 | `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks |
 | `settings` | `{ quality: 0..2, showFps: bool }`; `applyQuality()` re-applies. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
@@ -632,8 +632,8 @@ material instances (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, s
 glowK? } }`), never the shared `U.*`. `player.setLoadout` puts the shared per-part ink
 (`U.uHeroPartInk` / `uHeroPartFill` / `uHeroPartRim`, rewritten by every `buildHero`) back as it was
 after the build, also when the build throws: a boss's own part ink (the Starless Lord's red part 19)
-survives a hero rebuild. **Outfit options** (TEMPORARY, until the owner picks one; the `?lordLook=`
-precedent): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint, of? }` (`shroud`
+survives a hero rebuild. **Outfit options** (kept for later use: the owner, 2026-11-14, keeps today's look as the default; a URL switch like the old
+`?lordLook=`): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint, of? }` (`shroud`
 "Wanderer (today)" = `DEFAULT_LOADOUT`, no tint, the default; `robe` "Moonlit Robe", `swallow`
 "Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`; each of the
 three also as `<id>-shade`, "<look> (shaded)": the same loadout and tint with the head item's
@@ -651,8 +651,8 @@ a panel overrides it with `idleFlare`); the pauldron joint is the right shoulder
 own hilt unchanged without options). `gear/index.js` exports `SWORD_PARAM` (today, sheet, ribbon,
 crescent → item id) and `swordFromUrl()`: the Player's constructor wears `?sword=`'s weapon over
 the outfit's loadout (none, or no `location`: the outfit's sword); the Lab's 'sword' row equips one. A
-weapon's own streamer (the ribbon) carries `weapon: true`. Temporary: after the pick the winner
-becomes `wanderer.sword` and the switch goes.
+weapon's own streamer (the ribbon) carries `weapon: true`. Kept as options like the outfits (the owner, 2026-11-14): today's sword is the
+default. If one is picked later it becomes `wanderer.sword` and the switch can go.
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a
 knuckle ridge round the grip, hung on the `sword` joint by the `arms` item so it closes round the
 grip in every pose (with no weapon it is a closed fist); the free hand is `looseHand` on the left
@@ -663,7 +663,7 @@ forearm (palm, four curled fingers, thumb), built with the sword fingers and the
 item may return `offHand: { open, grip, fingers? }` (`rig.offHand`, else null; all three in `keep`):
 the free hand open, the same hand closed round the grip `DIM.offGrip` (0.08 m) below the sword hand
 on the `sword` joint, and (optional) the sword fingers (jian jue, `swordFingers`: index and middle
-straight, `BODY.fingerEx` 1.3 long); `open` and `fingers` hang on `arms.L.wrist` in wrist space (the
+straight, `BODY.fingerEx` 1.15 long); `open` and `fingers` hang on `arms.L.wrist` in wrist space (the
 Shrouded set's bare hands do; the Wanderer's arms return no `offHand`). For a duelist `apply()` shows
 `grip` while the pose's `twoHand` > 0.6 and `open` otherwise. For the hero (`HeroAnimator` with
 `opts.freeHand`) `grip` shows only once the hand is THERE: `twoHand` > 0.6 and `anim.gripGap` (the IK
@@ -679,7 +679,13 @@ deviation, twist, flex; sub-stepped at ≤ 1/120 s, so it is stable at any frame
 turn capped at `WRIST_L.cap`). `lk` (0..1) pulls the IK end onto the sword wrist (the fingers along the
 sword forearm; `anim.lkEff`, let go as the sword hand passes 4-8 m/s); on the grip (`twoHand`) the
 wrist goes rigid. `LOCK_REACH` (0.98 × the arm's length) keeps the free elbow ≥ 23° bent on the grip
-(the soft reach for every other arm is unchanged). **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
+(the soft reach for every other arm is unchanged). **The hero's reach** (ADR-090, `opts.freeHand`):
+`_arm` compresses a far hand target with `HERO_SOFT` [0.93, 0.99] instead of `ARM_SOFT` [0.78, 0.955]
+(every other animator's), so his elbows open to ~145-160° at a cut's contact and a thrust's end and
+never lock (163° at most); his sword arm blends back to `ARM_SOFT` by the pose's `twoHand`, so the
+free hand can follow the grip. `loco()` swings the arms by `armF` (the fore-aft move direction's
+sign, eased through sideways, never under 0.65 in size: they swing in a strafe too) and opens the
+free hand on the move (`hs` → 0). **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
 their looks, the sprint slash, the roll cut) and the charged cleave is a keyframed clip. An attack's
 `anim: { kind: 'clip', clip: '<name>' }` names a `SWINGS` entry: a list of keys over the attack's own
 phases (`u` 0–1 the windup, 1–2 the active frames, 2–3 the recovery, so a clip follows its def's

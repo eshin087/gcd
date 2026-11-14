@@ -2082,8 +2082,45 @@ elbow in two backhands' recoveries (ADR-078) still stand.
   uniforms), `setLoadout` restores the shared part ink even when the build throws, cloth `inMax` (no
   swinging into the wearer) and `floor` (ends kept over the grass in a roll), shell arcs, data-built
   sheets (`gear/sheet.js`).
-- **Consequences:** temporary: after the picks the winners become the defaults, and the losers, both
+- **Consequences:** (superseded in part by ADR-090: the owner keeps all of them as options for later,
+  with today's look and sword as the default.) As first planned: after the picks the winners become the defaults, and the losers, both
   switches, their Lab rows and the CLAUDE.md line go (a non-default sword also drops the `blade.*`
   Blender parts). The tints recolour the hilt's trim and leather per outfit. LOOKS guards each look's
   cost (≤ today's meshes, ≤ 26.6k triangles, ≤ 21 draws), its cloth above the grass and its colours on
   its own rig.
+
+## ADR-090 — Arms that open and swing; the charged blade clear of his face; a fist that is a hand (2026-11-14)
+- **Context:** the owner on the preview of PR #29: "the right hand looks very disfigured", "when
+  charging, the sword is piercing the characters face", "something about the arms still feel
+  unnatural and stiff"; and the outfits: "keep the new skins for now to be used in the future. we
+  will use the current todays look for now as the default". Measured in the chest's own frame (the
+  drawn figure is sheared toward the camera and scaled: world angles lie): (1) the fist (`gripFist`,
+  every rig since ADR-041) was four thin discs with a plank across them: up close a spring, not a
+  hand. (2) In the charge the blade stood 0.10 m from the head's axis, 3-7 cm INSIDE the hood (the
+  hood's radius is 0.13-0.17 m): it leaned back toward a head that leans forward. (3) His clips ask
+  for the hand at 0.94-1.01 of the arm's length at a cut's contact and a thrust's end, and the soft
+  reach (ADR-044: `ARM_SOFT` [0.78, 0.955]) turned every one into an elbow of 124-130°: the arms
+  never opened. (4) On the run both elbows pointed 0.47-0.73 out to the side (arms akimbo from the
+  front) and the free arm was one rigid 87° crook; and the arms' swing followed the fore-aft move
+  direction alone, so strafing with the aim held elsewhere (most of a fight on the mouse, or locked
+  on) they hung still.
+- **Decision:** (1) **The fist:** finger rolls nearly as deep along the grip as they are apart (one
+  hand with shallow grooves) and a rounded back of the hand; for every rig. (2) **The charge:** the
+  hands lower and out to his right (`rH` −0.10, −0.11, 0.31), the blade leaning OUT (az −82°, not
+  back), less of a bow; the cleave's first keys match and wind back out over the shoulder. The blade
+  passes 25 cm from the head's axis through the hold and 21 cm through the release. (3) **The hero's
+  reach** (`HERO_SOFT` [0.93, 0.99], `opts.freeHand` only): the elbows open to 143-159° where a clip
+  asks for a full reach and never lock (163° at most); the sword arm blends back to `ARM_SOFT` by
+  `twoHand`, so the free hand can follow the grip (the slam's and the cleave's gaps are unchanged).
+  (4) **The run:** elbow poles back beside the ribs (rest too), the free hand's back swing reaches
+  down and back so the elbow opens behind him and folds in front (56° a stride), `armF` keeps the
+  swing through a strafe, and the hand is open on the move. (5) **The free hand:** sword fingers
+  1.15× (1.3× read as claws up close); the `wing` place slopes down from the shoulder (level, it made
+  a scarecrow of the whirl's and the flat backhand's finish). (6) **The outfits and sword looks stay**
+  as options behind their switches for later use; today's look and sword are the default (ADR-089's
+  "temporary" no longer holds).
+- **Consequences:** ADR-044's "the elbow keeps ~35° at a full stretch" now holds for the duelists
+  only; the hero keeps ≥ 15° (HERO asserts it; it was 23°). His sword hand reaches up to ~3 cm
+  further at a full stretch. `loco()` and `guard()` are shared with the duelists' walk: their elbows
+  come in beside the ribs too. HEROARMS guards the rest pose, the run, the strafe, the opening at
+  contact, the lock bound and the charged blade's clearance.
