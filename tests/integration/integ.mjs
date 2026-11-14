@@ -3425,7 +3425,8 @@ async function scenarioHeroHand() {
     if (ft > turn) { turn = ft; turnAt = where(); }
     q0.copy(W.quaternion);
     qOk = true;
-    // (H3) inside its range (± 3°)
+    // (H3) inside its range (± 3°): a regression guard on _wristL's own clamp (it bounds the spring
+    // at the range ± 0.05 rad, 2.9°), so it fails only if that clamp goes
     const e = W.rotation, m = 3 / DEG, L = WRIST_L;
     if (e.x < L.rad - m || e.x > L.uln + m || e.y < L.pro - m || e.y > L.sup + m || e.z < L.flex - m || e.z > L.ext + m) {
       bad++;
@@ -3617,20 +3618,35 @@ async function scenarioHeroHand() {
     const rg = Math.max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z);
     assert(rg >= 0.01 && A.fidget.k < 0 && H.fingers.visible, `at rest the sword fingers breathe with him: ${(rg * 100).toFixed(1)} cm through the 2.4 s idle loop (≥ 1 cm, chest frame)`);
   }
-  // (H12) a NaN in the free hand's channels never reaches the rig
+  // (H12) a NaN in the free hand's channels never reaches the rig. update() resets a non-finite pose
+  // to the guard before apply(), so the free hand's own guards are hit by calling apply() with a pose
+  // past that check (the channels NaN, on the grip and off it), then by a NaN in the spring's state
   {
-    const o = A.poses.loco;
-    let once = true;
-    A.poses.loco = (q, an) => { o(q, an); if (once) { q[P.lD] = NaN; once = false; } };
-    try {
-      go(3 * DT);
-    } finally {
-      A.poses.loco = o;
-    }
+    const finiteRig = () => {
+      let ok = true;
+      p.object3d.traverse((ob) => { for (const x of ob.matrixWorld.elements) if (!Number.isFinite(x)) ok = false; });
+      const q = W.quaternion, S = A.wristL;
+      return ok && Number.isFinite(q.x + q.y + q.z + q.w + S.x + S.y + S.z + S.vx + S.vy + S.vz) && Number.isFinite(A.lkEff + A.gripGap);
+    };
+    const q = new Float32Array(N);
     let ok = true;
-    p.object3d.traverse((ob) => { for (const x of ob.matrixWorld.elements) if (!Number.isFinite(x)) ok = false; });
-    const q = W.quaternion;
-    assert(!once && ok && Number.isFinite(q.x + q.y + q.z + q.w) && A.wristL.ok, 'a NaN in the free hand\'s pose channels never reaches the rig (every matrix finite, the wrist spring running)');
+    for (const two of [0, 1]) {
+      for (const ch of [P.lD, P.lD + 1, P.lN, P.lN + 2, P.hs, P.lk, -1]) {
+        q.set(A.cur);
+        q[P.twoHand] = two;
+        if (ch < 0) for (let i = P.lD; i < N; i++) q[i] = NaN; // every one of them
+        else q[ch] = NaN;
+        A.apply(q);
+        r.root.updateMatrixWorld(true);
+        ok &&= finiteRig() && (+H.open.visible + +H.fingers.visible + +H.grip.visible === 1);
+      }
+    }
+    A.wristL.vx = NaN;
+    A.wristL.y = Infinity;
+    go(DT);
+    const reset = finiteRig();
+    go(2 * DT);
+    assert(ok && reset && finiteRig() && A.wristL.ok, 'a NaN in the free hand\'s pose channels (lD, lN, hs, lk; one-handed and on the grip) or in its wrist spring never reaches the rig (every matrix finite, one hand shown, the spring running again)');
   }
   // (H14) at 30 fps (a phone; iOS Low Power Mode; the Lab's TIME x2 on a 60 Hz screen): the wrist
   // settles at rest and never flips back and forth through a chain. One spring step a frame was

@@ -675,10 +675,10 @@ on the grip; above 0.04 the hand stays open: a palm braced on the flat; no clip 
 rest and on the move he carries the sword in one hand. The free-hand channels (`P.lD` 53, `P.lN` 56:
 vec3 body axes, length = weight; `P.hs` 59; `P.lk` 60; the pose has `N` = 61 channels, exported, and
 a duelist's scratch poses are sized from it) are read only with `opts.freeHand`: `guard()` writes
-the hero's rest (sword fingers low by the left hip, pointing ahead and down) and `reset()` / the NaN
-fallback zero them for every other animator; `locoGuard` carries them in `GUARD_CH`. A hit, a fall,
-the drink and the lean on the pommel open the hand and make the wrist rigid (`freeLimp`); the
-charge, the block and the plunge (`plBase`) open it to the grip (`hs` 0).
+the hero's rest (sword fingers low by the left hip, pointing ahead and down), so every other
+animator carries the hero's values in them too and ignores them; `locoGuard` carries them in
+`GUARD_CH`. A hit, a fall, the drink and the lean on the pommel open the hand and make the wrist
+rigid (`freeLimp`); the charge, the block and the plunge (`plBase`) open it to the grip (`hs` 0).
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, not locked on, with no
 guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never

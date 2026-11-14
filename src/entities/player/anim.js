@@ -34,9 +34,9 @@ export const P = {
   // sword hand): a palm braced on the flat of the blade
   offAt: 52,
   // the free hand: its fingers' direction and the way its palm faces (body axes; each vector's
-  // LENGTH is its weight: 0 = the hand rigid on the forearm, today's look and every duelist), its
-  // shape (0 open, 1 sword fingers) and how far it rests on the sword wrist (0..1). Read only for an
-  // animator built with opts.freeHand (the hero)
+  // LENGTH is its weight: 0 = the hand rigid on the forearm, today's look), its shape (0 open, 1
+  // sword fingers) and how far it rests on the sword wrist (0..1). Read only for an animator built
+  // with opts.freeHand (the hero); every other animator ignores whatever they hold
   lD: 53, lN: 56, hs: 59, lk: 60,
 };
 /** The pose's channel count (a duelist's scratch poses are sized from it). */
@@ -2324,7 +2324,8 @@ export class HeroAnimator {
    *  opts.freeHand (the hero only): the free hand's wrist (rig.arms.L.wrist) turned from the pose's
    *  lD / lN, the sword fingers (lk: resting on the sword wrist; hs: their shape), the fist on the grip
    *  shown only once the hand is there (OFF_SNAP), and the free elbow's lock reach (LOCK_REACH). Off,
-   *  the free-hand channels stay 0 and the hand rigid on the forearm (every duelist). */
+   *  the free-hand channels are ignored (they may carry guard()'s rest for the hero) and the hand
+   *  stays rigid on the forearm (every duelist). */
   constructor(rig, player, poses = null, opts = {}) {
     // (before reset(): it poses the rig once)
     this.freeHand = !!(opts?.freeHand && rig.arms?.L?.wrist);
@@ -2522,8 +2523,7 @@ export class HeroAnimator {
     this._pv.init = false;
     for (const F of this.feet) F.init = false;
     gaitParams(this.gait, 0, 0);
-    guard(this.cur, this);
-    if (!this.freeHand) this.cur.fill(0, P.lD, N); // (guard() writes the hero's free hand: a duelist keeps 0)
+    guard(this.cur, this); // (with the hero's free hand: an animator without opts.freeHand ignores it)
     this.wristL.ok = false;
     this.lkState.ok = false;
     this.handFX.fingers = this.handFX.fist = false;
@@ -2721,7 +2721,6 @@ export class HeroAnimator {
     for (let i = 0; i < N; i++) {
       if (!Number.isFinite(this.cur[i])) {
         guard(this.cur, this); // never let a bad frame poison the rig
-        if (!this.freeHand) this.cur.fill(0, P.lD, N);
         this.wristL.ok = false;
         this.from.set(this.cur);
         this.blendT = this.blendDur;
