@@ -269,7 +269,9 @@ Rules of thumb:
     runs up the LEADING edge (the ridge for the stab's point-first drive) from the forte to the point,
     easing in, two or three `|` strokes behind it; on a whiff it reaches the point as the arc's glint
     pops. A landed cut stops it and marks the steel itself: four white `|` strokes along the leading
-    edge from the contact to the point (`edgeFlash`; no star: the cut's core is the beat's one).
+    edge from the contact to the point (`edgeFlash`; no star: the cut's core is the beat's one). It
+    lives the frames the freeze holds and is gone as the blade swings on (with no velocity, a longer
+    life left a bright bar for two frames where the blade had been).
   - **The arc's tone** (`ARC_TONE`): the lights' arc cools from white-hot to indigo; the slam, the
     cleave, the thrusts and the plunge's dive cool to the gem's violet. For 0.06 s after a cut lands
     the arc's edge bites: white-hot, opaque, 15 % thicker.

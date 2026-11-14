@@ -745,9 +745,12 @@ e)`: the blade's mid travel against its X axis; the ridge under `EDGE_GLINT.ridg
 `ridge`); `player.js` `_combat` drives it from `EDGE_GLINT.lead` s before the active frames to the
 arc's glint (`at`, `atCleave`; z eased up `EDGE_GLINT.z`), on the steel every frame (no velocity),
 stopped by a landed cut (`atk.glintZ` = how far it ran); never for the thrust kind. An attack def's
-`glint: 'ridge'` (the stab) runs it up the ridge. `edgeFlash(sw, zc, heavy, crit, ridge)`: the
+`glint: 'ridge'` (the stab) runs it up the ridge. `edgeFlash(sw, zc, heavy, crit, ridge, hold)`: the
 contact's mark on the steel, `EDGE_GLINT.flash.n` '|' strokes along the leading edge from the
-contact's height up to the point (`player._edgeFlash`, after `contact`). Exported: `EDGE_GLINT`,
+contact's height up to the point (`player._edgeFlash`, after `contact`); no velocity, so it lives
+`hold` fx s (the frames the freeze holds: this frame at the full rate + the freeze at `fxLive` +
+one frame; clamped to `flash.lifeMin` … `life`, fading to `holdEnd` × alpha) and is gone as the
+blade swings on (no `hold`: `flash.life`). Exported: `EDGE_GLINT`,
 `hwAt(z)` (the drawn blade's half width), `leadSide(sw, e)`. New: `skid(dt, slot, x, z, dx, dz, sp,
 k)` (dust and torn grass off a sliding contact; `slot` 0 / 1 keeps a rate accumulator each) and
 `scrape(dt, x, y, z, dx, dz, sp)` (cold sparks off the dragging point). 2026-11-09: `parry(x, y, z,

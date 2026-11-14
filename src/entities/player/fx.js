@@ -78,14 +78,17 @@ export const ARC_TONE = {
  *   ridge   the blade's travel must be at least this much across its flat (normalised) for an edge
  *           to lead; under it (a thrust along the blade) the glint runs up the ridge
  *   flash   edgeFlash: the contact's mark ON the steel, n '|' strokes laid along the leading edge
- *           from the contact up toward the point, `step` m apart (× heavy for a heavy blow or a crit)
+ *           from the contact up toward the point, `step` m apart (× heavy for a heavy blow or a crit).
+ *           It has no velocity: it lives the frames the freeze holds (the player passes them as
+ *           `hold`; at most `life`, at least `lifeMin` s of fx time), fading to `holdEnd` × alpha,
+ *           then is gone as the blade swings on (a longer life left a bar where the blade was)
  */
 export const EDGE_GLINT = {
   lead: 0.03, at: 0.6, atCleave: 0.82, z: [0.24, 0.9], ease: 2, step: 0.08, maxSub: 4,
   hw: [[0.2, 0.042], [0.79, 0.034], [0.93, 0]], inset: 0.9, ridge: 0.35,
   head: { glyph: '+', rot: 0.785, size: 0.07, sizeFar: 0.1 }, tail: { glyph: '|', size: 0.1, len: 0.16 },
   color: [2.6, 3.2, 4.2], colorEnd: [0.4, 1.1, 2.2], alpha: 0.9, tailAlpha: 0.55, life: [0.03, 0.08],
-  flash: { n: 4, step: 0.05, size: 0.12, stretch: 1.6, life: 0.1, alpha: 0.9, heavy: 1.25 },
+  flash: { n: 4, step: 0.05, size: 0.12, stretch: 1.6, life: 0.1, lifeMin: 0.03, holdEnd: 0.35, alpha: 0.9, heavy: 1.25 },
 };
 /** The drawn blade's half width at sword-space height z (EDGE_GLINT.hw). */
 export function hwAt(z) {
@@ -366,20 +369,23 @@ export class PlayerFx {
    * laid along the leading edge from zc (sword-space height of the contact) up toward the point (a
    * contact too near the point, or past it out in the arc, ends them at the point instead of stacking
    * them there). No star: the cut's core is the beat's one. Lives in fx time (held through the
-   * freeze). `ridge`: as edgeGlint.
+   * freeze): `hold` (fx s, optional) = the frames the freeze holds, so it is gone as the blade swings
+   * on (EDGE_GLINT.flash). `ridge`: as edgeGlint.
    */
-  edgeFlash(sw, zc, heavy = false, crit = false, ridge = false) {
+  edgeFlash(sw, zc, heavy = false, crit = false, ridge = false, hold = NaN) {
     const fx = this.add, s = this.rig?.sword;
     if (!fx || !s || !sw?.valid || !Number.isFinite(zc)) return;
     const G = EDGE_GLINT, F = G.flash, e = s.matrixWorld.elements, side = ridge ? 0 : leadSide(sw, e);
     const zl = Math.hypot(e[8], e[9], e[10]) || 1, rot = alongRot(e[8] / zl, e[9] / zl, e[10] / zl);
     const size = F.size * (heavy || crit ? F.heavy : 1);
+    const held = Number.isFinite(hold) && hold > 0, life = held ? Math.min(F.life, Math.max(F.lifeMin, hold)) : F.life;
+    const aEnd = held ? F.alpha * F.holdEnd : 0;
     const zTop = DIM.drawnTip - 0.02, z0 = Math.max(DIM.forte, Math.min(zc, zTop - (F.n - 1) * F.step));
     for (let i = 0; i < F.n; i++) {
       const z = Math.min(zTop, z0 + i * F.step), xx = side * G.inset * hwAt(z);
       const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], wz = e[2] * xx + e[10] * z + e[14];
       if (!Number.isFinite(x + y + wz)) continue;
-      fx.spawn({ x, y, z: wz, life: F.life, size, sizeEnd: size * 0.5, glyph: '|', rot, stretch: F.stretch, color: COL.arcGlint, colorEnd: COL.arcEnd, alpha: F.alpha, alphaEnd: 0 });
+      fx.spawn({ x, y, z: wz, life, size, sizeEnd: size * 0.5, glyph: '|', rot, stretch: F.stretch, color: COL.arcGlint, colorEnd: COL.arcEnd, alpha: F.alpha, alphaEnd: aEnd });
     }
   }
 

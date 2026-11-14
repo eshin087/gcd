@@ -3158,7 +3158,7 @@ async function scenarioHeroLife() {
       }
       if (inFlash) {
         r.sword.worldToLocal(lv.set(o.x, o.y, o.z));
-        flashes.push({ glyph: o.glyph, z: lv.z, t: game.time });
+        flashes.push({ glyph: o.glyph, z: lv.z, t: game.time, life: o.life });
       }
       return spawn0.call(fxa, o);
     };
@@ -3230,12 +3230,19 @@ async function scenarioHeroLife() {
       G.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded && hitT === null) hitT = game.time; };
       A.forceVariant = 0;
       input.click(0);
-      go(0.6);
+      let stopAt = null;
+      go(0.6, () => { if (hitT !== null && stopAt === null) stopAt = game.hitstopTimer; });
       A.forceVariant = null;
       G.watch = null;
       const late = glints.filter((g) => g.t >= hitT).length, inTick = flashes.filter((f) => f.t === hitT);
-      out(`   a landed light: ${glints.length} glint spawns before the contact, ${late} after; ${inTick.length} flash strokes on the steel (z ${inTick.map((f) => f.z.toFixed(2)).join(', ')})`);
+      // the flash has no velocity: it lives exactly the frames the freeze holds (main.js: the contact
+      // frame at the full rate, then whole frames at fxLive) and is gone as the blade swings on
+      let held = 0;
+      for (let h = stopAt ?? 0; h > 0; h -= DT) held++;
+      const ageLast = DT + held * DT * CONFIG.render.fxLive, life = inTick[0]?.life;
+      out(`   a landed light: ${glints.length} glint spawns before the contact, ${late} after; ${inTick.length} flash strokes on the steel (z ${inTick.map((f) => f.z.toFixed(2)).join(', ')}), living ${life?.toFixed(3)} fx s (the freeze ${stopAt?.toFixed(3)} s holds ${held} frames: ${ageLast.toFixed(3)} fx s old on its last)`);
       if (hitT === null || late || inTick.length !== 4 || flashes.length !== 4 || inTick.some((f) => f.glyph !== '|' || f.z < HERO_DIM.forte - 1e-3 || f.z > HERO_DIM.drawnTip + 1e-3)) bad.push(`landed: ${late} glints after the contact, ${inTick.length} of ${flashes.length} flash strokes in its frame`);
+      if (!(held >= 2 && inTick.every((f) => f.life > ageLast && f.life <= ageLast + DT))) bad.push(`the flash lives ${life} fx s: not the ${held} held frames (${ageLast.toFixed(3)} … ${(ageLast + DT).toFixed(3)})`);
     } finally {
       fxa.spawn = spawn0;
       p.fx.edgeGlint = eg0;

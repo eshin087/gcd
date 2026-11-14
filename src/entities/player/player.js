@@ -1773,7 +1773,11 @@ export class Player {
   _edgeFlash(C, heavy, crit, ridge = false) {
     if (!this.rig.loadout?.weapon) return;
     const z = clamp(DIM.bladeBase + C.f * (DIM.bladeTip + REACH.tipExt - DIM.bladeBase), DIM.forte, DIM.drawnTip - 0.02);
-    this.fx.edgeFlash(this.sweep, z, heavy, crit, ridge);
+    // the frames the freeze holds, in fx time (main.js: this frame at the full rate, the freeze at
+    // fxLive, whole frames: one more of margin): the mark is gone as the blade swings on
+    const g = this.game, rd = fin(g.realDt, 1 / 60), k = fin(g.timeScale, 1) * fin(g.debugTimeScale, 1);
+    const hold = (rd + (Math.max(0, fin(g.hitstopTimer, 0)) + rd) * fin(CONFIG.render?.fxLive, 0.6)) * k;
+    this.fx.edgeFlash(this.sweep, z, heavy, crit, ridge, hold);
   }
 
   /**
