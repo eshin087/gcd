@@ -802,11 +802,20 @@ export class Lab {
       b.title = s === 'gash' ? 'a tapered slash line across the body, along the cut' : 'no line: a wider fan of sparks along the cut';
       return { s, el: b };
     });
+    // a struck duelist's shudder through the freeze (drawn only; duelist.js shudderK)
+    this.ui.shudBtn = button(cutGrid, 'shudder', () => {
+      const d = this.game.dragon;
+      if (d && 'shudderK' in d) d.shudderK = d.shudderK > 0 ? 0 : 1;
+      this._syncCutBtns();
+    });
+    this.ui.shudBtn.title = 'a struck duelist flickers along the cut through the freeze (on / off)';
     this._syncCutBtns();
   }
 
   _syncCutBtns() {
     for (const { s, el: b } of this.ui.cutBtns ?? []) setClass(b, 'on', cutStyle() === s);
+    const d = this.game.dragon;
+    setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
   }
 
   _buildTime(root) {
@@ -1137,6 +1146,7 @@ export class Lab {
     if (pd?.infiniteFlasks) flags.push('inf flasks');
     if (finite(pd?.attackSpeed, 1) !== 1) flags.push(`atk x${finite(pd.attackSpeed, 1).toFixed(2)}`);
     if (cutStyle() !== 'gash') flags.push(`cut ${cutStyle()}`);
+    if (g.dragon && 'shudderK' in g.dragon && !(g.dragon.shudderK > 0)) flags.push('no shudder');
     const ts = finite(g.debugTimeScale, 1);
     if (ts !== 1) flags.push(ts === 0 ? 'FROZEN' : `x${ts}`);
     if (this.loop.on) flags.push(`loop ${this.selected}`);

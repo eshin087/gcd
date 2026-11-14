@@ -59,7 +59,9 @@ export const TUNING = {
   // hit stun (owner, 2026-11-12: "more impactful hit stun, not weightless"): every blow that lands on
   // him freezes the frame (`stop` s), jolts his chest and head back (`jolt` 0..1, poses.js) and shoves
   // him `push` m; it interrupts only footwork and his recovery (heavy: a stagger), never a windup
-  hitStun: { light: { stop: 0.065, jolt: 0.65, push: 0.14 }, heavy: { stop: 0.1, jolt: 1, push: 0.32 }, critStop: 0.12, joltDecay: 5 },
+  // `shudder` m: through the freeze his drawn figure flickers ± this far along the cut, fading (drawn
+  // only; duelist.js; the Lab's 'shudder' toggle)
+  hitStun: { light: { stop: 0.065, jolt: 0.65, push: 0.14, shudder: 0.045 }, heavy: { stop: 0.1, jolt: 1, push: 0.32, shudder: 0.07 }, critStop: 0.12, joltDecay: 5 },
   parts: { head: 1.3, body: 1, leg: 0.9 },
 
   // ---- the execution (a broken disciple, player.js _tryExecution → onExecute)

@@ -104,6 +104,11 @@ export class Duelist {
     // his blade as the hero's parry meets it (hitPlayer → hit.blade): a hilt, b tip, v the tip's travel
     this._blade = { ax: 0, ay: 0, az: 0, bx: 0, by: 0, bz: 0, vx: 0, vy: 0, vz: 0 };
     this.jolt = 0; // the hit jolt 0..1 (TUNING.hitStun; the pilot's `recoil`, poses.js jolt)
+    // the shudder (TUNING.hitStun[*].shudder): through the freeze of a landed cut his drawn figure
+    // flickers ± amp m along the cut (x, z), fading over t0 s of real time; drawn only (lean.ox / oz).
+    // shudderK 0 turns it off (the Lab)
+    this._shud = { t: 0, t0: 1, amp: 0, x: 0, z: 0, s: 1, fresh: false };
+    this.shudderK = 1;
     this._tipOk = false;
     this._lastParry = -9;
     this._lastHurtPt = new THREE.Vector3();
@@ -268,8 +273,18 @@ export class Duelist {
     // hit stun: a freeze-frame, his chest and head snapped back (poses.js jolt), a shove along the
     // blow; it never cancels a windup (only footwork and his recovery: brain.onStruck)
     const HS = this.T.hitStun, hs = heavy || crushed ? HS.heavy : HS.light;
-    this.hitstop(crit ? Math.max(hs.stop, HS.critStop) : hs.stop, 0.03);
+    const stopUsed = crit ? Math.max(hs.stop, HS.critStop) : hs.stop;
+    this.hitstop(stopUsed, 0.03);
     this.jolt = Math.max(this.jolt, hs.jolt);
+    const sa = fin(hs.shudder, 0) * fin(this.shudderK, 1), S = this._shud;
+    if (sa > 0 && stopUsed > 0) {
+      S.t0 = S.t = stopUsed;
+      S.amp = sa;
+      S.x = sx;
+      S.z = sz;
+      S.s = 1;
+      S.fresh = true; // the contact frame draws it at full strength: the countdown starts next frame
+    }
     if (this.mode !== 'broken' && this.position.y < 0.2) this.moveBy((dx / l) * hs.push, (dz / l) * hs.push);
     const pt = o.point;
     if (pt && Number.isFinite(pt.x + pt.y + pt.z)) {
@@ -588,6 +603,8 @@ export class Duelist {
     this.flash = 0;
     this.dissolve = 0;
     this.warn = 0;
+    this._shud.t = 0;
+    this.lean.ox = this.lean.oz = 0;
     this.object3d.visible = true;
     this.fx.reset();
     // (the animator first: its reset goes back to the walking clip, and the brain's then starts the
@@ -608,6 +625,7 @@ export class Duelist {
     this.flash = Math.max(0, this.flash - dt * 5);
     this._updatePosture(dt);
     this.brain.update(dt);
+    this._shudder();
     this._animate(dt);
     this.brain.afterPose(dt);
     this.fx.update(dt, this);
@@ -847,6 +865,20 @@ export class Duelist {
     this.lean.on = true;
     this.object3d.updateMatrixWorld(true);
     this._drawnPoints();
+  }
+
+  /** The shudder this frame (real time: it runs through the freeze): the drawn offset flips side every
+   *  frame and fades out; 0 when it has run out. Gameplay points never see it (lean.on is off then). */
+  _shudder() {
+    const S = this._shud, L = this.lean;
+    if (S.t > 0) {
+      if (S.fresh) S.fresh = false;
+      else S.t -= fin(this.game.realDt, 1 / 60);
+      S.s = -S.s;
+      const k = S.t > 0 ? S.t / S.t0 : 0, a = S.amp * S.s * k;
+      L.ox = fin(S.x * a, 0);
+      L.oz = fin(S.z * a, 0);
+    } else L.ox = L.oz = 0;
   }
 
   _updateLean() {

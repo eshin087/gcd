@@ -431,7 +431,8 @@ Tab / MMB = lock-on. (E is flow's.)
 Drawn body vs gameplay body (ADR-017): the root draws the hero `player.drawScale` tall (model.js
 `PLAYER_SCALE` = 0.9 × `HERO_SCALE` = 1.08 since ADR-064; the Ash Disciple, on the same skeleton,
 is drawn at `HERO_SCALE` 1.2) and leaned away from the camera (`model.js` `LEAN`,
-`installLean(root, scale = HERO_SCALE)`; the returned lean carries its `scale`). The animator reads
+`installLean(root, scale = HERO_SCALE)`; the returned lean carries its `scale`, and `ox` / `oz`: a
+drawn-only offset in metres, 0 for the hero; a struck duelist's shudder). The animator reads
 the figure's scale as `anim.drawScale` (its owner's `drawScale`, else `HERO_SCALE`) for the drawn
 ground speed of the gait and the foot planner's world spots. The animator runs with `lean.on = false`
 (plain upright 1.85 m body, so IK and ground clamps work in metres); the drawn transform is applied
@@ -1550,7 +1551,12 @@ a subclass with a few hooks.
   (extra meshes, before batching), `_makeFx()`, `_makeBrain()`, `_bladeMaterials(dt, M)`, `_onHpZero()`
   (default: he dies), `brainFrame(dt)`, `afterPose(dt, act)`, `onImpact(beat, sense, act)`,
   `onRelease(beat, sense, act)`, `onCast(beat, sense, act)`, `beatMotion(beat, u, sense, dt)`,
-  `onTransitionEnd(act)`, `clampTarget(point)`. `d.T` = `kit.TUNING`.
+  `onTransitionEnd(act)`, `clampTarget(point)`. `d.T` = `kit.TUNING`. `drawnPoint(v)`: an upright
+  gameplay point → where it is drawn (lean, `drawScale`, the lean's `ox` / `oz`). Hit stun
+  (`TUNING.hitStun.light / heavy`): `stop`, `jolt`, `push` and `shudder` (m: through the freeze his
+  drawn figure flickers ± this far along the cut, fading, in real time, through `lean.ox` / `oz`;
+  `d.shudderK` 0 turns it off, the Lab's 'shudder' toggle). His hit spray flies along `takeHit`'s
+  `cut` (the shove keeps `dir`).
 - `brain.js` `class DuelBrain(d)`: the mind and timeline (modes sleep, intro, foot, act, react, broken,
   dying), all data from `d.kit`. Phases are generic: when a gate is hit it starts
   `kit.transitions[phase]` and emits `dragon:phase<n>`; `forcePhase(n)` for the Lab. Beats: a zone hit
