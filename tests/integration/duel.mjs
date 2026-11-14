@@ -769,15 +769,36 @@ async function scenarioDeflect() {
 
 // ================================================================== scenario: ghostep
 async function scenarioGhostep() {
-  out('\n== scenario GHOSTEP (a perfect dodge blinks behind him: no plunge, his back open) ==');
+  out('\n== scenario GHOSTEP (a perfect dodge is answered by the flurry: an art through him that leaves the hero at his back; a streak adds flash cuts) ==');
   const G = build();
   duel(G, { dist: 5 });
   const { game, input } = G;
-  const d = game.dragon, p = game.player;
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry;
+  const behindOf = () => -((p.position.x - d.position.x) * Math.sin(d.yaw) + (p.position.z - d.position.z) * Math.cos(d.yaw));
+  /** Tick until the flurry is over: its blows, whether it stayed invulnerable and finite. */
+  const ride = (max = 6) => {
+    const tr = { hits: [], end: null, frames: 0, iframes: true, finite: true, maxY: 0 };
+    const w0 = G.watch;
+    G.watch = (n, e) => {
+      if (n === 'player:flurryHit') tr.hits.push({ ...e });
+      if (n === 'player:flurryEnd') tr.end = { ...e };
+    };
+    run(G, max, () => {
+      input.axis = { x: 0, y: 0 };
+      tr.frames++;
+      if (p.state === 'flurry' && !p.isInvulnerable()) tr.iframes = false;
+      if (![p.position.x, p.position.y, p.position.z].every(Number.isFinite)) tr.finite = false;
+      tr.maxY = Math.max(tr.maxY, p.position.y);
+    }, () => p.state !== 'flurry');
+    G.watch = w0;
+    return tr;
+  };
+  p.debug.flurryArt = 'passing';
   let flashT = null;
   G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'plumThrust') flashT = game.time; };
   d.debug.trigger('plumThrust');
   let rolled = false;
+  const hp00 = d.hp;
   run(G, 2, () => {
     input.axis = { x: 0, y: 0 };
     if (flashT !== null && !rolled && game.time >= flashT + TUNING.flashLead - 0.1) {
@@ -787,20 +808,49 @@ async function scenarioGhostep() {
     }
   }, () => (G.counts['player:ghostep'] ?? 0) > 0);
   G.watch = null;
-  const behind = -((p.position.x - d.position.x) * Math.sin(d.yaw) + (p.position.z - d.position.z) * Math.cos(d.yaw));
-  assert((G.counts['player:ghostep'] ?? 0) === 1 && p.state !== 'plunge', 'a perfect dodge of his thrust is the Ghostep (he offers no plunge)');
-  assert(Math.abs(behind - TUNING.ghostepBehind) < 0.5 && p.critTimer > 0, `the hero reappears ${behind.toFixed(2)} m behind him (his ghostepBehind ${TUNING.ghostepBehind}: within sword reach) with the crit window`);
+  assert((G.counts['player:ghostep'] ?? 0) === 1 && p.state === 'flurry' && p.streak === 1 && p.flurry.air === false, `a perfect dodge of his thrust starts the flurry on the ground: he offers no plunge (${p.state}, streak ${p.streak})`);
+  const t0 = ride();
+  const behind = behindOf();
+  out(`   one blow (${p.flurry.art}): ${t0.hits.length} hit · he lost ${hp00 - d.hp} · the hero ${behind.toFixed(2)} m behind him, y ${p.position.y}, ${p.state}, crit ${p.critTimer.toFixed(2)}`);
+  assert(t0.hits.length === 1 && t0.hits[0].last === true && hp00 - d.hp === F.last.damage, `the first of a streak is the art alone: ${hp00 - d.hp} damage (DEFENSE.flurry.last.damage ${F.last.damage}, past his guard)`);
+  assert(p.state === 'ghostep' && Math.abs(behind - TUNING.ghostepBehind) < 0.6 && p.critTimer > 0 && p.position.y === 0, `it leaves the hero ${behind.toFixed(2)} m behind him (his ghostepBehind ${TUNING.ghostepBehind}: within sword reach) with the crit window`);
+  assert(t0.iframes && t0.finite, 'invulnerable and finite throughout');
   // the back is open: his guard never covers it
   run(G, 0.2);
   d.brain.raiseT = 0;
   const hp0 = d.hp;
-  const back0 = -((p.position.x - d.position.x) * Math.sin(d.yaw) + (p.position.z - d.position.z) * Math.cos(d.yaw));
+  const back0 = behindOf();
   const trace = [];
   input.click(0);
-  // (the Ghostep's slow motion is still running: 0.9 s of real time is ~0.35 s of the swing's own)
+  // (he may still be in a freeze: 0.9 s of real time)
   run(G, 0.9, () => trace.push(`${p.state}${p.atk?.hit ? '!' : ''}`));
   if (process.env.ABYSS_TRACE) out('     trace', back0.toFixed(2), d.mode, d.brain.act?.name ?? '-', trace.filter((s, i, a) => s !== a[i - 1]).join(' '));
-  assert(d.hp < hp0, `a cut at his back after the Ghostep lands (hp ${hp0} → ${d.hp}; ${back0.toFixed(2)} m behind him, ${d.mode})`);
+  assert(d.hp < hp0, `a cut at his back after it lands (hp ${hp0} → ${d.hp}; ${back0.toFixed(2)} m behind him, ${d.mode})`);
+
+  // each of the arts against a foe on the ground, two blows: a flash cut through him, then the art
+  for (const art of ['passing', 'falling', 'rising']) {
+    settle(G);
+    place(G, 4.5);
+    run(G, 0.3);
+    const hpA = d.hp;
+    const ok = p.debug.flurry(2, art);
+    const tr = ride();
+    const b = behindOf(), want = F.cut.damage + F.last.damage;
+    out(`   ${art}: started ${ok} · blows ${tr.hits.length} · he lost ${hpA - d.hp} · max y ${tr.maxY.toFixed(1)} · ${(tr.frames * DT).toFixed(2)} s · ${b.toFixed(2)} m behind him · ${p.state}`);
+    assert(ok === true && p.flurry.art === art && tr.hits.length === 2 && tr.hits[1].last && hpA - d.hp === want && tr.end?.damage === want, `${art}: a flash cut and the art, ${hpA - d.hp} damage (${want})`);
+    assert(p.state !== 'flurry' && p.position.y === 0 && Math.abs(b - TUNING.ghostepBehind) < 0.75 && p.critTimer > 0 && tr.iframes && tr.finite, `${art}: the hero lands ${b.toFixed(2)} m behind him, the crit window open`);
+    assert((art === 'passing') === (tr.maxY < 0.05), `${art}: ${art === 'passing' ? 'run on the ground' : `through the air (${tr.maxY.toFixed(1)} m up)`}`);
+  }
+  // a streak of five: four cuts cross on him before the art
+  settle(G);
+  place(G, 4.5);
+  run(G, 0.3);
+  const hp5 = d.hp;
+  p.debug.flurry(5, 'passing');
+  const t5 = ride(8);
+  assert(t5.hits.length === 5 && hp5 - d.hp === 4 * F.cut.damage + F.last.damage && t5.end?.strikes === 5, `five blows: ${hp5 - d.hp} damage (${4 * F.cut.damage + F.last.damage}) in ${(t5.frames * DT).toFixed(2)} s`);
+  assert(p.state !== 'flurry' && p.position.y === 0 && p.flurry.nLines === 0 && !p.flurry.pending, 'it ends on the ground, nothing left hanging');
+  p.debug.flurryArt = null;
   return G;
 }
 

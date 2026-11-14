@@ -227,7 +227,8 @@ export class Duelist {
   }
 
   /**
-   * A hit from the player ({ damage, part, point, dir, poise, heavy, crit, exact, posture }). Strikes
+   * A hit from the player ({ damage, part, point, dir, poise, heavy, crit, exact, posture, flash }:
+   * `exact` = final damage past his guard, `flash` = the most the hurt flash may be). Strikes
    * into his front while his guard is up are deflected: no damage, guard posture, a clash (and a
    * counter becomes likelier); a heavy strike with this.T.guard.crushPoise posture crushes the guard
    * (it lands, and he staggers). Returns the damage dealt (0 = guarded or ignored).
@@ -256,7 +257,7 @@ export class Duelist {
     const dmg = o.exact ? Math.max(1, Math.round(raw)) : Math.max(1, Math.round(raw * P[part] * (broken ? this.T.posture.breakCritMult : 1)));
     const crit = !!o.crit || broken;
     this._applyDamage(dmg);
-    this.flash = Math.max(this.flash, heavy || crit ? 1 : 0.8);
+    this.flash = Math.max(this.flash, Math.min(heavy || crit ? 1 : 0.8, fin(o.flash, 1)));
     let dx = fin(o.dir?.x, NaN), dz = fin(o.dir?.z, NaN);
     if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
       const p = this.game.player?.position;

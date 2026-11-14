@@ -5,6 +5,63 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-14 — Session 31: the streak and the flurry (perfect dodges answered blow for blow)
+
+**Owner:** "lets have more different perfect dodge animations instead of the same one of just
+teleporting on top and stabbing the head or behind the enemy. add different types of teleport
+attacks. if the player keeps doing more succesful perfect dodges in a streak, make the attack also
+hit the # of attacks the player is on a streak ... make it epic anime with good visuals, animation,
+and impact". Branch `player/ghostep-flurry` from `main` (PR #29, the free hand, is open beside it and
+holds Session 30 and ADR-086 – 090: this is 31 and ADR-091).
+
+**Done:**
+- **The streak** (`player.streak`): perfect dodges in a row; a blow that hurts ends it (not a block,
+  a parry, a plain dodge or time). A STREAK row of pips under the HP bar, "GHOSTEP ×N" over the
+  hero, the longest streak in the victory record.
+- **The flurry** (`player/flurry.js`, state `flurry`, ADR-091): a perfect dodge is answered with as
+  many blows as the streak counts, 7 at most. Flash cuts (blink, cross the target, blink away, each
+  along a new line that then hangs on it) and then an art, on which the hanging cuts burst.
+- **Six arts:** the wyrm's Skyfall (the plunge, unchanged), Severing Line, Heaven Splitter; a
+  duelist's Passing Cut, Falling Leaf, Rising Moon. At random, never the same twice running.
+- **Time:** the world held at 7 % while he cuts, the hero, his pose and his cloth on real time.
+- **Look** (`player/flurryFx.js`): afterimages that pile up round the target, the hanging lines, a
+  crescent on every cut, the art's crescent or lens, the burst. **Sound:** a ring a whole tone
+  higher for every cut, the coil's rise, a run of rings as the cuts open. **HUD:** a cut counter
+  over the target, a banner that names the flurry with its damage. The camera leans in.
+- **Lab:** PLAYER → flurry x1 … x7 and an art picker (`player.debug.flurry`, `.flurryArt`,
+  `.streak`).
+- **Tests:** integ.mjs FLURRY (the streak, each of the wyrm's arts, the cap, a kill in the middle),
+  duel.mjs GHOSTEP rewritten (each of a duelist's arts, a flurry of five); RED and PLUNGE pin the
+  plunge's art and reset the streak.
+
+**Found on the way** (all on film, in the browser): the sword's own sweep trail drew a wide curl on
+every pass (the blade is carried a metre a frame): the flurry draws its cuts itself. Round the
+wyrm's head the hanging lines were inside the head and showed only where they left it: they are
+drawn 3.5 m toward the camera. A falling cut seen along its own plane was one fat white bar: its
+crescent is tipped toward the camera. Every first size of a star, a flash or a light bloomed into
+a white ball over the target: all cut down. A duelist's `takeHit` flashed him white for the whole
+hold (the world stands still, so the flash does too): `takeHit` takes a cap for it (`flash`).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server, as film strips at 60
+fps cropped round the target: flurries of 2, 3 and 4 on Shen Hui with each of his three arts, from
+the south and from the east; flurries of 2, 3 and 4 on the wyrm with each of its three; a flurry of
+five at the game camera with the HUD on (the STREAK row in a screenshot; the cut counter and the
+FIVEFOLD FLASH banner read from the page); one flurry in the phone preset (852 x 393, touch UI),
+where the camera's lean was far too close: it is scaled to the phone's camera now.
+
+**Not checked / open:** no human has played it, and it was not tried on a real phone (frame rate
+with seven lines hanging; the STREAK row on the small player frame; the scaled lean was not filmed
+again). The sounds were written and wired
+but not heard. The hero's poses in a pass were judged at the game camera, where he is small; not in
+close-up, and the vault's somersault only as a strip. The Starless Lord was not filmed (he shares
+the duelist's path, and his tests pass). Balance: a duelist's fight is shorter for a good dodger;
+nothing was re-tuned. A streak never runs out: to be judged in play.
+
+**Next:** the owner plays it; then pace (`DEFENSE.flurry.cut`), the cap, and whether a streak should
+run out.
+
+---
+
 ## 2026-11-14 — Session 30: the free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from
 
 **Owner:** "The character left hand pose and animation looks unnatural and weird during the attack

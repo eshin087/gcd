@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-two pieces of work since 0.4.0:
+Twenty-three pieces of work since 0.4.0:
 - **The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from**
   (2026-11-14, ADR-086 – ADR-090): the hero's free hand has a wrist now and forms **sword fingers**
   (two fingers out, the others folded under the thumb). It gathers at the sword wrist and is thrown
@@ -28,6 +28,21 @@ Twenty-two pieces of work since 0.4.0:
   `swallow` or `warden` (`-shade` puts the face in shadow), and three swords, `?sword=sheet`,
   `ribbon` or `crescent`; both are rows in the Lab.
   *Fixed:* rebuilding the hero's gear wiped a boss's own part colours (the Starless Lord's red line).
+- **The streak and the flurry** (2026-11-14, ADR-091): perfect dodges in a row are a **streak**
+  (pips under your HP bar, "GHOSTEP ×N" over your head), and it lasts until a blow hurts you. Every
+  perfect dodge is answered with as many blows as the streak counts, seven at most: **flash cuts**
+  first (you vanish, cross the boss along a new line every time and are gone again, each cut
+  leaving a line of light hanging on him) and then one of six **arts**, on which every hanging cut
+  bursts at once. Against the wyrm: Skyfall (the plunge, as it was), Severing Line (one level cut
+  across the head whose hit lands a beat later) and Heaven Splitter (a falling cleave through the
+  head to the ground). Against a duelist: Passing Cut, Falling Leaf and Rising Moon (a rising cut
+  and a somersault over him); all three leave you at his back. The art changes every time. While
+  you cut, the world stands nearly still and you move in real time. Each cut rings a tone higher
+  than the last, a counter runs over the boss, and a banner names the flurry (TWIN FLASH …
+  SEVENFOLD FLASH) with its damage. A flash cut deals 28, the last blow 90 on the wyrm and 60 on a
+  duelist. *Changed:* a perfect dodge of a duelist now deals damage by itself; the first perfect
+  dodge against the wyrm is the plunge one time in three. Lab: PLAYER → flurry x1 … x7 and an art
+  picker.
 - **The Starless Lord in black plate, and how he moves** (2026-11-14, ADR-084, ADR-085): he wears a
   harness of his own now: a deep hood over a faceplate with a slit of red light (the owner's pick of
   three heads), a cuirass with a ring of red light on the breastbone, a plate yoke and pauldrons,

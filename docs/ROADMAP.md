@@ -150,6 +150,20 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.30 — The streak and the flurry (2026-11-14, `player/ghostep-flurry`, ADR-091)
+- [x] A streak of perfect dodges (it ends when a blow hurts); pips, "GHOSTEP ×N", the victory record
+- [x] The flurry: N blows for a streak of N (7 at most): flash cuts whose lines hang, then an art
+- [x] Six arts: Skyfall (the plunge), Severing Line, Heaven Splitter; Passing Cut, Falling Leaf, Rising Moon
+- [x] The world held at 7 % while the hero cuts in real time; the camera leans in
+- [x] Its look (afterimages, hanging lines, crescents, the burst), its sounds, the cut counter and the banner
+- [x] Lab: flurry x1 … x7, an art picker; tests (integ FLURRY, duel GHOSTEP)
+- [ ] A human plays it, and on the phone; then pace, the cap, whether a streak should run out
+- [ ] Follow-ups:
+  - [ ] Hear the sounds (written, not heard)
+  - [ ] The hero's pass and vault poses in close-up
+  - [ ] Balance: a duelist's fight is shorter for a player who dodges well
+  - [ ] More arts (a whirl; one that uses the free hand); an art per equipped technique (ADR-059)
+
 ## M1.29 — The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from (2026-11-14, `player/free-hand`, ADR-086 – ADR-090)
 - [x] A wrist for the free hand, stable at any frame rate; the sword-fingers hand; a choreography per cut; no fist pops; the free elbow bent on the grip (ADR-086)
 - [x] The shaped step; the hips and chest lead the cut; bow stances; the edge bites; planted feet pivot and follow; the whirl hops (ADR-087)

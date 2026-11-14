@@ -2131,3 +2131,46 @@ elbow in two backhands' recoveries (ADR-078) still stand.
   bit-identical to before (tucked in like the hero's, his sleeve ran into his ribs). A swing's
   finish is held ~30 % shorter before he comes home. HEROARMS guards the rest pose, the run, a pure
   strafe, the opening at contact, the lock bound and the charged blade's clearance.
+
+## ADR-091 — A streak of perfect dodges is answered blow for blow: the flurry (2026-11-14)
+- **Context:** a perfect dodge had one answer for each kind of boss: the plunge onto the wyrm's head
+  (ADR-027), a blink behind a duelist (ADR-061). The owner: "more different perfect dodge animations
+  instead of the same one of just teleporting on top and stabbing the head or behind the enemy ...
+  if the player keeps doing more successful perfect dodges in a streak, make the attack also hit the
+  # of attacks the player is on a streak ... epic anime with good visuals, animation, and impact".
+- **Decision:** (1) **A streak.** Perfect dodges in a row count up; a blow that hurts ends it.
+  Blocks, parries, plain dodges and time do not: the rule a player can hold in his head is "do not
+  get hit". (2) **N blows for a streak of N** (7 at most): N − 1 **flash cuts** and one **art**
+  (`player/flurry.js`). A flash cut is one primitive for every target: blink to one side, cross the
+  target, blink away, each along a new line. The lines **hang** on the target and burst together on
+  the last blow, so the count is on the screen as a figure, not only as a number. (3) **Six arts**,
+  three for a head in the air and three for a foe on the ground, in three shapes (a level draw cut
+  whose hit lands late, a falling cleave, a rising cut and vault) plus the plunge, which stays as it
+  was and is now one art of the wyrm's three. One is picked at random with the animator's noise,
+  never the same twice running. (4) **The world is held, the hero is not:** a hit-stop at 7 %
+  re-armed every frame, while the flurry, the animator and the cloth step on real time. The boss
+  stands in his blow while the cuts land; a flurry of seven costs two seconds of the player's time
+  and a seventh of a second of the fight's. (5) **Fixed damage:** a flash cut 28, final; the last
+  blow the plunge's 90 against the wyrm and 60 against a duelist. The answer grows by a light
+  attack for every perfect dodge in the streak. (6) **It asks nothing new of a boss** but two
+  optional fields on `takeHit` it already had (`exact`) or ignores (`flash`).
+- **Rejected:** *A timer on the streak* (a combo meter that drains): the wyrm's transitions and
+  flights leave ten seconds without a blow to dodge, and a streak lost to a cutscene is not the
+  player's failure (`keepStreak` is there, at 0). *Ending the streak on a plain dodge or a block:*
+  it would punish the safe answer to a blow that cannot be perfect-dodged. *N plunges in a row:* the
+  plunge is 1.7 s of its own and its reaction cancels the wyrm's attack once; repeated it is neither
+  fast nor readable. *The slow-mo's own time scale for the hold* (`flow.cinematic`): it slows the
+  particles with the world, and the cuts' sparks must fly. *Blade trails off the sword's sweep
+  during a pass:* carried a metre a frame, the frame-to-frame arc is a wide curl unrelated to the
+  cut; the cut's crescent is drawn on purpose instead. *Damage that multiplies with the streak:* a
+  player who is never hit would end the fight in a few dodges.
+- **Consequences:** against a duelist a perfect dodge now deals damage by itself (60, past his
+  guard) where it only offered his back: his fight is a little shorter for a player who dodges
+  well; not re-tuned. The first perfect dodge of a streak against the wyrm is the plunge one time
+  in three. A streak never runs out, so a player who is not hit answers every perfect dodge with
+  seven blows (258 of the wyrm's 4500 HP). Round the wyrm's head the cuts are drawn 3.5 m toward
+  the camera (glyph particles are depth-tested, and a line through the head showed only where it
+  left it). The hero's body does pass through the target in a pass: it is a blink, and nothing
+  collides until the flurry ends. `player:perfectDodge` + `player:ghostep` still fire once per
+  perfect dodge, and the wyrm's last blow still emits `player:plunge` / `player:plungeHit`, so the
+  stats, the call-outs and the sounds that listened to them did not change.

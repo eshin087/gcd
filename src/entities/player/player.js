@@ -12,6 +12,7 @@ import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
+import { Flurry } from './flurry.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -20,6 +21,8 @@ import { CUT_LOOK } from '../../combat/cutFx.js';
 // slam (finisher, ground shards); LMB out of a sprint = the sprint slash, out of a forward roll = the
 // roll cut; hold LMB = crouched charge, release = lunging thrust. Swings hit giant targets through
 // a vertical reach band and step in toward a hurt surface ahead (REACH).
+// A perfect dodge is answered by the flurry (flurry.js, ADR-091): as many blows as the streak of
+// perfect dodges counts, flash cuts and then an art; the plunge below is the wyrm's first art.
 
 export const TUNE = {
   runSpeed: 4.6,
@@ -199,6 +202,10 @@ export class Player {
     this.blockStunT = 0;
     this.blockEvt = { t: -Infinity, attack: null, stream: false, acc: 0 };
     this.iframeT = 0; // Ghostep i-frames
+    // perfect dodges in a row (DEFENSE.flurry): the next one is answered with one blow more; a blow
+    // that hurts him ends it. streakT: s since the last one (DEFENSE.flurry.keepStreak)
+    this.streak = 0;
+    this.streakT = 0;
     this.slowmoPending = 0; // Ghostep slow-mo waiting for a harsher freeze to end (s)
     this.assist = { target: null, t: 0 };
     this.ghostFx = 0; // 1 → 0 after a Ghostep: dissolve-in + cold tint
@@ -276,11 +283,17 @@ export class Player {
       kill: () => this._debugKill(), // used by flow.debug.toState('dead') when present
       // Lab / captures: start the plunge on the dragon now (any range; also in the air)
       plunge: (execution = false) => this._debugPlunge(execution),
+      // the art the next flurries end on (flurry.js ARTS; null = one at random), the streak set by
+      // hand, and a flurry of `strikes` blows on the boss now (`art`: for this one only)
+      flurryArt: null,
+      streak: (n) => this._debugStreak(n),
+      flurry: (strikes = 3, art = null) => this._debugFlurry(strikes, art),
     };
 
     this.anim = new HeroAnimator(this.rig, this, null, { freeHand: true });
     this.anim.onFootstep = (side, dust) => this._footstep(side, dust);
     this.fx = new PlayerFx(game, this.rig);
+    this.flurry = new Flurry(this, TUNE);
     // camera lean (model.js LEAN): visual only; hits and the dragon's aim use unleaned positions
     this.lean = installLean(this.object3d, this.drawScale);
     this.sweep = new SwordSweep(this.rig.sword, (v) => this.unlean(v));
@@ -315,9 +328,14 @@ export class Player {
     return a.t >= a.def.windup && a.t <= a.def.windup + a.def.active + 0.04;
   }
 
+  /** What the animator's flurry clip reads (flurry.js `anim`). */
+  get flurryAnim() {
+    return this.flurry.anim;
+  }
+
   isInvulnerable() {
     if (!this.alive) return true;
-    if (this.state === 'plunge') return true; // the whole plunge (takeHit ignores hits in it)
+    if (this.state === 'plunge' || this.state === 'flurry') return true; // the whole move (takeHit ignores hits in it)
     if (this.state === 'lock') return true; // blades locked
     if (this.iframeT > 0) return true; // Ghostep / the plunge's landing
     if (this.state === 'roll') {
@@ -338,7 +356,7 @@ export class Player {
     if (!this.alive) return RESULT.IGNORED;
     const g = this.game;
     if (g.state === 'victory' || g.state === 'title') return RESULT.IGNORED;
-    if (this.state === 'plunge') return RESULT.IGNORED; // in the air / on the head: out of reach
+    if (this.state === 'plunge' || this.state === 'flurry') return RESULT.IGNORED; // in the air / on the head / between two blinks: out of reach
     if (this.state === 'lock') return RESULT.IGNORED; // blades locked: the push decides it
     const kind = typeof hit.kind === 'string' ? hit.kind : 'hit';
     const tell = hit.tell === TELL.BLUE || hit.tell === TELL.RED ? hit.tell : TELL.NORMAL;
@@ -420,6 +438,7 @@ export class Player {
         this._block(dmg, tell, attack, chip, nx, nz);
         return RESULT.BLOCKED;
       }
+      this._streakEnd();
       this._guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc);
       return RESULT.HIT;
     }
@@ -427,6 +446,7 @@ export class Player {
     // (g) plain hit
     const guarded = chip && this.chipGuard > 0;
     if (chip) this.chipGuard = TUNE.chipGuard;
+    this._streakEnd(); // hurt: the streak of perfect dodges is over
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
     this.flash = 1;
@@ -585,6 +605,9 @@ export class Player {
     this.ghostFx = 0;
     this.pl.att = null;
     this.pl.phase = PL.VANISH;
+    this.streak = 0;
+    this.streakT = 0;
+    this.flurry.clear();
     this.tradeT = -Infinity;
     this.deflect.n = 0;
     this.deflect.t = -Infinity;
@@ -699,6 +722,10 @@ export class Player {
     if (this.critTimer > 0) this.critTimer = Math.max(0, this.critTimer - dt);
     if (this.iframeT > 0) this.iframeT = Math.max(0, this.iframeT - dt);
     if (this.assist.t > 0) this.assist.t -= dt;
+    if (this.streak > 0 && DEFENSE.flurry.keepStreak > 0) {
+      this.streakT += dt;
+      if (this.streakT > DEFENSE.flurry.keepStreak) this._streakEnd();
+    }
     if (this.slowmoPending > 0 && !(fin(g.hitstopTimer) > 0)) this._slowmo(this.slowmoPending);
     this.recoil = Math.max(0, this.recoil - dt * 5);
     // between parries in rhythm the guard stays up (anim.js holds the block's arms and blade)
@@ -727,7 +754,8 @@ export class Player {
     this._updateLean();
     // the animator poses the plain upright body; the drawn one (lean, drawScale) is applied after
     this.lean.on = false;
-    this.anim.update(dt);
+    // (the flurry runs on real time while the world is held: so do his pose and his cloth)
+    this.anim.update(this.state === 'flurry' ? this.flurry.animDt : dt);
     this.lean.on = true;
     this.object3d.updateMatrixWorld(true);
     this._combat();
@@ -737,8 +765,9 @@ export class Player {
     const st = this.state;
     const r = st === 'roll' ? TUNE.pusherRoll : st === 'knockdown' || st === 'dead' || st === 'guardBreak' ? TUNE.pusherDown : TUNE.pusher;
     // (in the air the pusher's height lifts it off the grass: world.setPusher ignores y > 1.5)
-    g.world?.setPusher?.(0, this.position.x, st === 'plunge' ? fin(this.position.y) : 0, this.position.z, r);
+    g.world?.setPusher?.(0, this.position.x, st === 'plunge' || st === 'flurry' ? fin(this.position.y) : 0, this.position.z, r);
     if (st === 'plunge') this._plungeCamera();
+    else if (st === 'flurry') this.flurry.camera();
   }
 
   /** Ask the camera to keep the hero and the head on screen through the plunge (core/cameraRig). */
@@ -974,6 +1003,9 @@ export class Player {
         break;
       case 'plunge':
         this._tickPlunge(dt);
+        break;
+      case 'flurry':
+        this.flurry.tick(dt);
         break;
       case 'stagger':
         this.want.x = this.want.z = 0;
@@ -1432,17 +1464,34 @@ export class Player {
 
   // --- perfect dodge: the plunge / the Ghostep ------------------------------
   /**
-   * Perfect dodge reward. An attacker that offers the plunge (plungePoint / onPlunge: the wyrm):
-   * the plunge onto its head when in range and the hit allows it, otherwise slow-mo + crits where
-   * the hero dodged (no teleport). Any other attacker: the v0.2 Ghostep (a blink behind it).
+   * Perfect dodge reward. The streak counts up, and an attacker the flurry can reach is answered
+   * with that many blows (flurry.js: the wyrm's head in the plunge's range when the hit allows it,
+   * a foe with a body within the Ghostep's): flash cuts, then an art. The first perfect dodge of a
+   * streak is the art alone, and one of the wyrm's arts is the plunge. Out of its reach: the
+   * Ghostep, slow-mo + crits where the hero dodged (an attacker that offers no plunge: a blink
+   * behind it).
    */
   _perfectDodge(attacker, attack, tell, allowPlunge = true) {
-    if (this._plungeable(attacker)) {
-      if (allowPlunge && this._startPlunge(attacker, false, attack, tell)) return;
-      this._ghostep(attacker, attack, tell, false);
-      return;
-    }
-    this._ghostep(attacker, attack, tell, true);
+    const n = this._streakUp();
+    const kind = this.flurry.reach(attacker, allowPlunge);
+    if (kind && this.flurry.start(attacker, kind === 'air', n, attack, tell)) return;
+    this._ghostep(attacker, attack, tell, !this._plungeable(attacker));
+  }
+
+  /** A perfect dodge: the streak counts one more (DEFENSE.flurry). Returns the count. */
+  _streakUp() {
+    this.streak = Math.min(99, fin(this.streak) + 1);
+    this.streakT = 0;
+    this._emit('player:streak', { count: this.streak, lost: 0 });
+    return this.streak;
+  }
+
+  /** The streak is over (he was hurt, he died, it ran out). */
+  _streakEnd() {
+    const lost = this.streak;
+    if (!(lost > 0)) return;
+    this.streak = 0;
+    this._emit('player:streak', { count: 0, lost });
   }
 
   /** Ghostep: slow time, open the crit window; with `teleport`, blink behind the attacker (within
@@ -1495,7 +1544,7 @@ export class Player {
     this._slowmo(DEFENSE.ghostep.slowmoTime);
     g.shake?.(0.15);
     g.world?.setPusher?.(0, p.x, 0, p.z, TUNE.pusher);
-    this._emit('player:perfectDodge', { attack, tell });
+    this._emit('player:perfectDodge', { attack, tell, streak: this.streak });
     this._emit('player:ghostep', { x: p.x, z: p.z });
   }
 
@@ -1828,14 +1877,16 @@ export class Player {
 
   /**
    * Start the plunge on `att` (false: out of range / no head point). `exec` = the posture-break
-   * execution (starts at the hang, no slow-mo, no perfect-dodge events).
+   * execution (starts at the hang, no slow-mo, no perfect-dodge events). `chain` (the flurry, whose
+   * flash cuts led into it): { ox, oz } = where the hero dodged (the side he lands on); he is already
+   * gone from there, and the perfect dodge has been announced.
    */
-  _startPlunge(att, exec, attack = null, tell = TELL.NORMAL, anyRange = false) {
+  _startPlunge(att, exec, attack = null, tell = TELL.NORMAL, anyRange = false, chain = null) {
     const g = this.game, p = this.position, P = DEFENSE.plunge, pl = this.pl;
     if (!this._plungePoint(att, pl.pt)) return false;
-    const ox = p.x, oz = p.z;
+    const ox = chain ? fin(chain.ox, p.x) : p.x, oz = chain ? fin(chain.oz, p.z) : p.z;
     if (!anyRange && !(Math.hypot(pl.pt.x - ox, pl.pt.z - oz) <= (exec ? P.execRange : P.range))) return false;
-    const nSegs = this._sampleGhost(); // the afterimage left at the dodge spot
+    const nSegs = chain ? 0 : this._sampleGhost(); // the afterimage left at the dodge spot
     pl.att = att;
     pl.exec = !!exec;
     pl.ox = ox;
@@ -1865,13 +1916,16 @@ export class Player {
     this.anim.teleported();
     this.sweep.valid = false;
     this.anim.kickCoat(1, this.anim.noise);
-    this.fx.plungeBlink(this._ghostSegs, nSegs, ox, oz, p.x, p.y, p.z);
+    if (chain) this.flurry.fx.appear(p.x, p.y + 1, p.z, 0, 0, 0, 1, true);
+    else this.fx.plungeBlink(this._ghostSegs, nSegs, ox, oz, p.x, p.y, p.z);
     g.world?.setPusher?.(0, p.x, p.y, p.z, TUNE.pusher);
     if (!exec) {
       this._slowmo(DEFENSE.ghostep.slowmoTime);
       g.shake?.(0.15);
-      this._emit('player:perfectDodge', { attack, tell });
-      this._emit('player:ghostep', { x: p.x, z: p.z });
+      if (!chain) {
+        this._emit('player:perfectDodge', { attack, tell, streak: this.streak });
+        this._emit('player:ghostep', { x: p.x, z: p.z });
+      }
     }
     this._plungeAnimSync();
     return true;
@@ -2033,14 +2087,15 @@ export class Player {
     this.fx.plungeImpact(hp.x, hp.y, hp.z, pl.dx, pl.dz, exec);
     if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'head', point: { x: hp.x, y: hp.y, z: hp.z }, heavy: true, crit: exec, kind: 'plunge' });
     this._emit('player:plungeHit', { damage: dealt, execution: exec });
+    this.flurry.burst(dealt, hp); // the cuts a flurry left hanging open on this blow
   }
 
   /** Rip the blade out and spring off: a backflip arc to a clear landing in front of the head. */
-  _plungeFlip() {
+  _plungeFlip(rMin = undefined) {
     const P = DEFENSE.plunge, pl = this.pl, p = this.position;
     if (!Number.isFinite(p.y) || p.y < 0) p.y = 0;
     pl.from.copy(p);
-    this._plungeLanding(pl, pl.land);
+    this._plungeLanding(pl, pl.land, rMin);
     pl.flipDur = clamp(P.flip[0] + 0.035 * Math.max(0, p.y - 2), P.flip[0], P.flip[1]);
     // facing the head (his takeoff point) from the landing: the flip carries him backward
     const fx = p.x - pl.land.x, fz = p.z - pl.land.z;
@@ -2051,15 +2106,16 @@ export class Player {
   }
 
   /** A clear landing in front of the head along the spring-off direction (turned off the body if
-   *  it is in the way), clamped to the arena and resolved against the stones. */
-  _plungeLanding(pl, out) {
+   *  it is in the way), clamped to the arena and resolved against the stones. `rMin`: the nearest
+   *  to the head it may be (the flurry's drop-off lands beyond where he hangs). */
+  _plungeLanding(pl, out, rMin = DEFENSE.plunge.landMin) {
     const P = DEFENSE.plunge, g = this.game, pt = pl.pt;
     const circles = pl.att?.bodyCircles ?? g.dragon?.bodyCircles;
     const B = CONFIG.world.playerBound;
     const base = Math.atan2(pl.dx, pl.dz);
     for (const da of LAND_TURNS) {
       const a = base + da, sx = Math.sin(a), sz = Math.cos(a);
-      for (let r = P.landMin; r <= P.landMax + 1e-6; r += 0.75) {
+      for (let r = clamp(fin(rMin, P.landMin), P.landMin, P.landMax); r <= P.landMax + 1e-6; r += 0.75) {
         const x = pt.x + sx * r, z = pt.z + sz * r;
         if (Math.hypot(x, z) > B - 1) break; // farther only leaves the arena
         if (this._inBody(circles, x, z, this.radius + P.landClear)) continue;
@@ -2129,8 +2185,39 @@ export class Player {
   /** Lab / captures: plunge onto the dragon now, from anywhere (even onto a flying wyrm). */
   _debugPlunge(execution = false) {
     const d = this.game.dragon;
-    if (!this.alive || !this._plungeable(d) || this.state === 'plunge') return false;
+    if (!this.alive || !this._plungeable(d) || this.state === 'plunge' || this.state === 'flurry') return false;
     return this._startPlunge(d, !!execution, 'debug', TELL.RED, true);
+  }
+
+  /** Lab / tests: the streak of perfect dodges, set by hand. */
+  _debugStreak(n) {
+    n = clamp(Math.round(fin(Number(n), 0)), 0, 99);
+    if (n === this.streak) return n;
+    const lost = n ? 0 : this.streak;
+    this.streak = n;
+    this.streakT = 0;
+    this._emit('player:streak', { count: n, lost });
+    return n;
+  }
+
+  /** Lab / captures: a flurry of `strikes` blows on the boss now, as a perfect dodge at this streak
+   *  would start it (`art`: flurry.js ARTS, for this one only). False when it cannot reach it. */
+  _debugFlurry(strikes = 3, art = null) {
+    const d = this.game.dragon;
+    if (!this.alive || this.state === 'plunge' || this.state === 'flurry' || this.state === 'lock') return false;
+    const kind = this.flurry.reach(d, true);
+    if (!kind) return false;
+    const n = clamp(Math.round(fin(Number(strikes), 3)), 1, DEFENSE.flurry.max);
+    this._debugStreak(n);
+    const pin = this.debug.flurryArt;
+    if (typeof art === 'string') this.debug.flurryArt = art;
+    let ok = false;
+    try {
+      ok = this.flurry.start(d, kind === 'air', n, 'debug', TELL.RED);
+    } finally {
+      this.debug.flurryArt = pin;
+    }
+    return ok;
   }
 
   // --- roll --------------------------------------------------------------
@@ -2451,6 +2538,7 @@ export class Player {
     this.iframeT = 0;
     this.slowmoPending = 0;
     this.blockStunT = 0;
+    this._streakEnd();
     this._setLock(false);
     // killed on the ground (falling or lying in the knockdown): he dies where he lies
     const down = this.state === 'knockdown' && this.stateT < TUNE.knockdownDur - TUNE.getUpIframes + 0.1;
@@ -2502,8 +2590,9 @@ export class Player {
   _integrate(dt) {
     if (dt <= 0) return;
     const v = this.vel, w = this.want;
-    if (this.state === 'plunge' && this.pl.phase < PL.LAND) {
-      // in the air / on the head: _tickPlunge placed him (no body push-out, no ground clamp)
+    if ((this.state === 'plunge' && this.pl.phase < PL.LAND) || this.state === 'flurry') {
+      // in the air / on the head / cutting through his foe: the move's own tick placed him (no body
+      // push-out, no ground clamp)
       v.x = v.z = this.kb.x = this.kb.z = 0;
       this.groundVel.x = this.groundVel.z = 0;
       return;
@@ -2728,6 +2817,8 @@ export class Player {
         this._slamImpact(a);
       }
     } else if (this.state === 'plunge') this._plungeTrail(sw);
+    // (the flurry draws its own cuts, flurryFx.js: carried 1 m a frame, the blade's frame-to-frame
+    // arc is a wide curl that has nothing to do with the cut)
     sw.commit();
   }
 
@@ -2984,7 +3075,8 @@ export class Player {
     }
     // the plunge: cold motes gathering on him through the hang, embers spurting from the wound while
     // he rides the head
-    const hidden = this.state === 'plunge' && this.pl.phase === PL.VANISH;
+    const hidden = (this.state === 'plunge' && this.pl.phase === PL.VANISH) || (this.state === 'flurry' && this.flurry.hidden);
+    this.flurry.draw(dt); // the cuts it left hanging; the wake of a pass
     if (this.state === 'plunge' && dt > 0) {
       const pl = this.pl;
       if (pl.phase === PL.HANG) {
@@ -3042,16 +3134,18 @@ export class Player {
     }
     const far = smoothstep(10, 28, this.viewDist); // 0 in close-ups … 1 at the game camera
     this.flash = Math.max(0, this.flash - dt * 6);
-    const plunging = this.state === 'plunge';
-    this.ghostFx = Math.max(0, this.ghostFx - dt * (plunging ? TUNE.plungeFade : TUNE.ghostepFade));
+    const plunging = this.state === 'plunge', flurrying = this.state === 'flurry';
+    // (the flurry holds its cold cast for as long as it runs: its own clock is real time)
+    if (!flurrying) this.ghostFx = Math.max(0, this.ghostFx - dt * (plunging ? TUNE.plungeFade : TUNE.ghostepFade));
     const burnTarget = this.burnT > 0 ? 0.28 + 0.1 * Math.sin(this.time * 17) : 0;
     this.burnGlow = damp(this.burnGlow, burnTarget, 8, dt);
     // Ghostep / plunge reappear: cells resolve out of a cold dissolve, ink tinted blue-white (the
     // plunge's vanish: gone entirely until he reappears above the head)
     const gk = this.ghostFx;
-    const dissolve = plunging && this.pl.phase === PL.VANISH ? 1 : smoothstep(0.55, 1, gk) * 0.85;
+    const dissolve = (plunging && this.pl.phase === PL.VANISH) || (flurrying && this.flurry.hidden) ? 1 : smoothstep(0.55, 1, gk) * 0.85;
     // through the hang and the dive he keeps a cold cast: it parts him from the wyrm's grey scales
-    const tk = plunging && (this.pl.phase === PL.HANG || this.pl.phase === PL.DIVE) ? Math.max(gk, 0.4) : gk;
+    // (the flurry: a full cold cast, so the dark coat reads against the night between two blinks)
+    const tk = flurrying ? 1 : plunging && (this.pl.phase === PL.HANG || this.pl.phase === PL.DIVE) ? Math.max(gk, 0.4) : gk;
     const tr = 1 + tk * 0.8, tg = 1 + tk * 1.4, tb = 1 + tk * 2.6;
     for (const m of this.rig.mats) {
       const u = m.uniforms;
@@ -3086,6 +3180,11 @@ export class Player {
         ink = Math.max(ink, (1.2 + 1.4 * this.releaseK) * fade);
         glow = Math.max(glow, (1.0 + 0.6 * this.releaseK) * fade);
       }
+    } else if (flurrying) {
+      // the flurry: the blade blazes through every cut; an art's coil winds its light up
+      const k = clamp(this.flurry.glow, 0, 1);
+      ink = 1.5 + 1.3 * k + (k > 0.6 ? 0.25 * Math.sin(this.time * 40) : 0);
+      glow = 1.25 + 0.5 * k;
     } else if (plunging) {
       // the plunge: the blade blazes from the hang through the ride, cooling through the flip
       const ph = this.pl.phase;
@@ -3106,8 +3205,9 @@ export class Player {
       glow *= 0.4;
     }
     const bu = M.blade.uniforms, tu = M.bladeTip.uniforms;
-    bu.uInkGlow.value = dt > 0 ? damp(bu.uInkGlow.value, ink, 18, dt) : ink;
-    bu.uGlow.value = dt > 0 ? damp(bu.uGlow.value, glow, 14, dt) : glow;
+    const bdt = flurrying ? this.flurry.animDt : dt; // (the flurry's blade follows real time)
+    bu.uInkGlow.value = bdt > 0 ? damp(bu.uInkGlow.value, ink, 18, bdt) : dt > 0 ? bu.uInkGlow.value : ink;
+    bu.uGlow.value = bdt > 0 ? damp(bu.uGlow.value, glow, 14, bdt) : dt > 0 ? bu.uGlow.value : glow;
     tu.uInkGlow.value = bu.uInkGlow.value + 0.3; // the point stays the brightest steel
     tu.uGlow.value = bu.uGlow.value;
     // far away the chevrons grow to fill their cells, so the ~4 px blade reads as a solid cyan line
@@ -3136,7 +3236,7 @@ export class Player {
       this.bladeFlare = Math.max(0, this.bladeFlare - (Number.isFinite(dt) ? dt : 0) / F.fall);
     }
     // the violet gem breathes; burns brighter while charging and through heavy swings
-    const heavyNow = st === 'charge' || (plunging && this.pl.phase <= PL.RIDE) || (!!a && !!a.def?.heavy && (st === 'attack' || st === 'heavy'));
+    const heavyNow = st === 'charge' || flurrying || (plunging && this.pl.phase <= PL.RIDE) || (!!a && !!a.def?.heavy && (st === 'attack' || st === 'heavy'));
     const gemTarget = (heavyNow ? 1.6 : 0.8) + 0.25 * Math.sin(this.time * 2.1) + (st === 'charge' ? 0.8 * this.chargeK : 0);
     const gu = M.gem.uniforms;
     gu.uGlow.value = dt > 0 ? damp(gu.uGlow.value, gemTarget, 10, dt) : gemTarget;
@@ -3156,7 +3256,10 @@ export class Player {
     z = Number(z);
     if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
     const p = this.position;
-    if (this.state === 'plunge') this._toLoco(0.1); // a Lab teleport ends a plunge on the ground
+    if (this.state === 'plunge' || this.state === 'flurry') {
+      this.flurry.clear();
+      this._toLoco(0.1); // a Lab teleport ends a plunge / a flurry on the ground
+    }
     p.set(x, 0, z);
     this._collide();
     if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) p.set(x, 0, z);

@@ -728,6 +728,65 @@ export const SFX = {
     },
   },
 
+  /**
+   * player:flurryHit — a flash cut of the flurry: the blade through the air, a bite, and a ring that
+   * climbs a whole tone with every cut (opts.n, 1-based). On the cue bus: it stays crisp while the
+   * world is held and muffled round it.
+   */
+  flurryCut: {
+    prio: 6, rev: 0.3, gap: 0.03, bus: 'cue',
+    play(v, t, o) {
+      const n = clamp(num(o.n, 1), 1, 8), k = (n - 1) / 7;
+      const up = Math.pow(2, (2 * (n - 1)) / 12);
+      const bp = swish(v, t, 'white', 'bandpass', 2600, 1.4, [[0, 0], [0.012, 0.5], [0.07, 0.16], [0.11, 0]]);
+      glide(bp.frequency, t, 2600, 7200, 0.07);
+      burst(v, t + 0.012, 'white', 'highpass', 5200, 0.7, 0.28, 0.05, 0.001);
+      thump(v, t + 0.012, 170, 60, 0.07, 0.45, 0.1);
+      for (const [f, a, d] of [[1568, 0.15, 0.3], [2349, 0.09, 0.22], [3951, 0.05, 0.16]]) {
+        ping(v, t + 0.012, 'sine', f * up * rnd(0.995, 1.005), a * (0.8 + 0.4 * k), d);
+      }
+    },
+  },
+
+  /** player:flurryArt — the last blow's coil: a tone and a shimmer rising for opts.dur s, cut off
+   *  as he strikes. */
+  flurryCoil: {
+    prio: 6, rev: 0.4, gap: 0.2, bus: 'cue',
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 0.2), 0.1, 0.6);
+      const s = v.osc('sine', 440, t, t + D + 0.05);
+      glide(s.frequency, t, 440, 1760, D);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [D * 0.6, 0.06], [D, 0.13], [D + 0.02, 0]]);
+      s.connect(g).connect(v.out);
+      const n = v.noise('white', t, t + D + 0.03);
+      const hp = v.filter('highpass', 3000, 0.7);
+      glide(hp.frequency, t, 3000, 8000, D);
+      const ng = v.gain(0);
+      ng.gain.setValueAtTime(0.0001, t);
+      ng.gain.exponentialRampToValueAtTime(0.2, t + D);
+      ng.gain.linearRampToValueAtTime(0, t + D + 0.015);
+      n.connect(hp).connect(ng).connect(v.out);
+    },
+  },
+
+  /** player:flurryEnd — the hanging cuts open: one bright crack over a low thump, then a run of
+   *  glassy rings, one for each cut that hung (opts.n). */
+  flurryBurst: {
+    prio: 6, rev: 0.6, gap: 0.2, bus: 'cue',
+    play(v, t, o) {
+      const n = clamp(Math.round(num(o.n, 1)), 1, 7);
+      burst(v, t, 'white', 'highpass', 3800, 0.7, 0.45, 0.16, 0.001);
+      thump(v, t, 140, 38, 0.2, 0.85, 0.4);
+      const steps = [0, 3, 7, 10, 12, 15, 19];
+      for (let i = 0; i < n; i++) {
+        const f = 880 * Math.pow(2, steps[i] / 12) * rnd(0.995, 1.005), at = t + 0.012 + i * 0.03;
+        ping(v, at, 'sine', f, 0.1, 0.55);
+        ping(v, at, 'sine', f * 2.01, 0.035, 0.3);
+      }
+    },
+  },
+
   /** player:plunge — the dive off the apex: a cold air rush rising into a steel whistle. */
   plungeDive: {
     prio: 6, rev: 0.35, gap: 0.3,

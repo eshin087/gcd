@@ -2275,6 +2275,79 @@ function locoGuard(p, A) {
 }
 // ============================================================ end PLUNGE + DEFLECT (plunge agent)
 
+// ================================================================ FLURRY (player/flurry.js, ADR-091)
+// The flurry's clip follows player.flurryAnim { pose, clip, u, air, k }; the flurry re-enters it at
+// every blink with no cross-fade (he is THERE, already in the pose), and it runs on real time.
+//   'cut'     one of the hero's own swings (swings.js `clip`) at phase u: 1..2 its cut, past 2 the
+//             finish held. A flash cut, an art's strike
+//   'coil'    the iai's draw: the charge's deep crouch, the blade at the right hip, wound tighter
+//             as k goes 0..1
+//   'raise'   the split's: both fists on the grip, the blade cocked back over the right shoulder
+//   'crouch'  the vault's: low before the foe, the blade back by the right knee
+//   'flip'    the vault's somersault (u 0..1), forward over the foe (flurry.js turns him round)
+// `air`: off the ground. A pass lays him out along his heading with the legs trailing; a coil and
+// the split's fall draw the knees up.
+const FL_W = 0.1, FL_AC = 0.1, FL_R = 0.3; // the clock (s) a clip's phases are mapped onto
+const FL_K = { kind: 'clip', clip: 'drawCut' };
+
+/** Laid out in the air along his heading (k 0..1): the body pitched `lean` rad into it, the rear
+ *  leg trailing straight, the front knee drawn up. */
+function flAir(p, k, lean) {
+  p[P.pitch] += lean * k;
+  to3(p, P.rF, -0.13, 0.28, -0.56, k);
+  to3(p, P.lF, 0.14, 0.44, -0.06, k);
+  to3(p, P.rK, -0.2, -0.3, 1, k);
+  to3(p, P.lK, 0.2, 0.4, 1, k);
+  p[P.footFlat] = lerp(p[P.footFlat], 0.15, k);
+}
+
+function flurryPose(p, A) {
+  const S = A.player?.flurryAnim;
+  const pose = S?.pose ?? 'cut', u = fin(S?.u, 1), air = !!S?.air, k = clamp(fin(S?.k), 0, 1);
+  if (pose === 'flip') {
+    // the plunge's backflip, turned the other way: over the foe head first, the blade along his side
+    const f = 0.14 + 0.86 * clamp(u, 0, 1);
+    plFlip(p, A, f);
+    p[P.pitch] = -lin(f, PL_FLIP_PITCH);
+    return;
+  }
+  if (pose === 'coil') {
+    chargeStance(p, A, 1, 1);
+    p[P.bodyY] -= 0.04 * k;
+    p[P.spY] -= 0.12 * k;
+    p[P.hdY] = -(p[P.pelvY] + p[P.spY]) * 0.85;
+    if (air) {
+      plTuck(p, 0.85);
+      p[P.pitch] += 0.14;
+    }
+    return;
+  }
+  const hold = pose === 'raise' || pose === 'crouch';
+  FL_K.clip = pose === 'raise' ? 'slam' : pose === 'crouch' ? 'risingSlash' : S?.clip ?? 'drawCut';
+  swingPose(p, A, FL_K, phaseTime(hold ? 1 : clamp(u, 0, 3), FL_W, FL_AC, FL_R), FL_W, FL_AC, FL_R);
+  if (pose === 'crouch') {
+    // lower still, wound round to his right: the whole body is the spring
+    p[P.bodyY] -= 0.1 + 0.04 * k;
+    p[P.spX] += 0.1;
+    p[P.spY] -= 0.08 * k;
+  } else if (pose === 'raise') {
+    // arched back under the raised blade, rising a little as it winds
+    p[P.spX] -= 0.1 + 0.06 * k;
+    p[P.hdX] = 0.35; // eyes down on it
+  }
+  if (!air) return;
+  const a = clamp(u - 1, 0, 1);
+  if (pose === 'raise') {
+    plTuck(p, 0.85);
+    p[P.pitch] -= 0.1;
+  } else if (FL_K.clip === 'slam') {
+    // the split's fall: knees up, pitching into the blow, the legs opening for the ground
+    plTuck(p, 1 - smoothstep(0.62, 1, a));
+    p[P.pitch] += lerp(-0.1, 0.42, smoothstep(0, 0.7, a));
+  } else flAir(p, 1, 0.5);
+}
+// ================================================================ end FLURRY
+
 // ---------------------------------------------------------------- idle life
 // (Session 14, owner: "add some idle animations of the character doing random stuff while not
 // moving ... instead of him just being static all the time".) Standing still in the open (the loco
@@ -2407,6 +2480,7 @@ const POSES = {
   lock: lockPose,
   ghostep: ghostepPose,
   plunge: plungePose,
+  flurry: flurryPose,
   guardBreak: guardBreakPose,
   roll: rollPose,
   backstep: backstepPose,

@@ -35,17 +35,22 @@ each actor's `tuning`.
    soon as RMB was released, even when the guard was held between blows (ADR-032). A press that
    parries nothing needs the full re-arm again, so mashing still fails. Holding RMB after the press
    keeps blocking; between parries in rhythm the guard stays up (~0.3–0.6 s).
-5. **Perfect dodge** = a dodge started ≤ `perfectDodgeWindow` (0.2 s) before impact:
-   - against the wyrm, with its head within `DEFENSE.plunge.range` (30 m) → **the plunge** (below):
+5. **Perfect dodge** = a dodge started ≤ `perfectDodgeWindow` (0.2 s) before impact. Perfect
+   dodges in a row are a **streak**, and each is answered with as many blows as the streak counts
+   (*The streak and the flurry*, below):
+   - against the wyrm, with its head within `DEFENSE.plunge.range` (30 m) → **the flurry** round its
+     head; the first of a streak is one blow, an art, and one of the arts is **the plunge** (below):
      you appear above its head and drive the blade in (ADR-027);
    - out of range, or against a hit that forbids it (`plunge: false`: the fire spells' hazards —
      meteors, pillars, rings, walls; fire breathed or spat from the air, the burning pass's stream
      and the hover barrage's shells, does allow it: the hero lands on the flying wyrm, which crashes) →
      **slow-mo + crits in place**: time slows (×0.3 for 0.6 s) and for 1.6 s your hits crit (×1.8),
      with no teleport;
-   - against an attacker with no head to plunge into (future enemies) → the v0.2 **Ghostep**: a
-     blink 3.2 m behind it (within 12 m), the same slow-mo and crits. The blink behind the wyrm is
-     retired: players lost sight of themselves behind it.
+   - against a foe with a body to cut and no head to plunge into (a duelist, within 12 m) → **the
+     flurry** on the ground: it ends behind his back, the crit window open;
+   - against anything else → the v0.2 **Ghostep**: a blink 3.2 m behind it (within 12 m), the same
+     slow-mo and crits. The blink behind the wyrm is retired: players lost sight of themselves
+     behind it.
 
    A dodge outside the window is a normal i-frame dodge. A dodge with no direction held is a
    **backstep** (shorter i-frames 0.03–0.22 s). Streams (fire breath) only count as a perfect dodge
@@ -248,6 +253,56 @@ An EXECUTION call-out shows it. A plunge that lands during a transition roar (or
 deals its damage; a dying wyrm can't be plunged. Numbers: `DEFENSE.plunge` (`rules.js`),
 `TUNING.plunged` (dragon).
 
+## The streak and the flurry (2026-11-14, ADR-091)
+Owner: "more different perfect dodge animations instead of the same one ... if the player keeps doing
+more successful perfect dodges in a streak, make the attack also hit the # of attacks the player is
+on a streak ... epic anime". Numbers: `DEFENSE.flurry` (`rules.js`), the arts in
+`player/flurry.js` `ARTS`.
+
+**The streak** counts perfect dodges in a row (`player.streak`, the STREAK row of pips under the HP
+bar, "GHOSTEP ×N" over the hero). It ends when a blow **hurts** him (a plain hit, a guard break,
+death). A blocked or parried blow, a plain dodge, a burn's ticks and time leave it alone
+(`keepStreak: 0`; a number there would let it run out).
+
+**The flurry.** A perfect dodge that can reach its attacker (rule 5) is answered with N blows, N =
+the streak, 7 at most (`max`; the streak itself counts on):
+- **N − 1 flash cuts.** He vanishes (an afterimage where he stood), is on one side of the target, in
+  the cut already, crosses it in 0.1 s and is gone again. Each cut runs along a new line, so they
+  cross on the target like a star, and each leaves its line of light **hanging** there. A cut deals
+  28 damage (final: no part or break multiplier, past a duelist's guard) and 5 posture, freezes him
+  on the hit for 0.05 s, and rings a whole tone higher than the last. A long flurry speeds up (its
+  last cuts take 60 % of the time of its first). Round the wyrm's head the cuts fly at its height,
+  4.6 m to each side; through a duelist they run on the ground, 2.8 m to each side.
+- **The art**, the last blow, one of three for each kind of target, at random and never the same
+  twice running:
+
+  | Target | Art | What it is | Lands |
+  |---|---|---|---|
+  | the wyrm | **Skyfall** | the plunge itself (below) | the plunge's 90 + 40 posture |
+  | the wyrm | **Severing Line** | he hangs to one side of the head in a deep draw (0.22 s), crosses it in one level line (0.075 s) and holds the finish, his back to it (0.24 s): only then does the cut land; a backflip down | the same, through `onPlunge` |
+  | the wyrm | **Heaven Splitter** | he hangs 4.6 m above the far side of the head, the blade raised (0.2 s), and cleaves down through it to the ground on the side he came from (0.13 s) | the same |
+  | a duelist | **Passing Cut** | the same draw 3.1 m before him, through him, the finish held behind his back | 60 + 22 posture |
+  | a duelist | **Falling Leaf** | 3.9 m above his front, the blade raised, down through him to the ground behind | the same |
+  | a duelist | **Rising Moon** | crouched right before him, one rising cut, and over him in a somersault with a half turn (apex 2.5 m) | the same |
+
+  On the last blow every hanging cut **bursts** at once: the lines flare wide and throw sparks off
+  both sides, a run of rings sounds (one for each cut), and a banner names it (TWIN FLASH … SEVENFOLD
+  FLASH) with the art and the damage of the whole flurry.
+- **Time.** While he cuts, the world runs at 7 % of its speed (`world`) and the hero in real time:
+  the boss stands in his blow while the cuts land. Time comes back on the last blow, with its own
+  freeze (0.13 s) and shake. A flurry of two takes about 0.9 s, of seven about 2 s (the plunge as its
+  art: its own 1.6–1.9 s more, as ever).
+- He cannot be hit from the dodge to the landing. Against the wyrm he lands through the plunge's own
+  flip and landing; against a duelist 1.5 m behind his back in the Ghostep's reappear. The crit
+  window (2.2 s, ×1.8) opens either way, and against the wyrm the last blow is a plunge to it: the
+  `plunged` reaction, the crash out of the air.
+- The first perfect dodge of a streak is the art alone: against the wyrm that is the plunge one time
+  in three. Against a duelist it is new: his back used to be offered, now 60 damage is dealt on the
+  way there.
+- Damage of a whole flurry: 90 + 28 × (N − 1) against the wyrm (118 at two, 258 at seven; the wyrm
+  has 4500 HP), 60 + 28 × (N − 1) against a duelist (88 at two, 228 at seven; Shen Hui 3000, a
+  form of the Starless Lord 1400).
+
 ## Strings and the deflect chain (2026-11-09, ADR-026)
 **Strings** (`attacks.js` `makeString`, data in `tuning.js` `TUNING.attacks[name].hits`): an attack
 of N hits, each with its own kind (performance), tell, windup (+ an optional random `hold` that baits
@@ -422,7 +477,8 @@ deflected, its last recoils him). His own:
   out of a charge's line or a backstep from a blow already coming; from footwork, or breaking off the
   late half of a recovery.
 - **Openings:** the first half of his recoveries (0.45–0.8 s in all); the recoil (1.0 s) after his last hit is parried; the
-  Ghostep (a perfect dodge blinks the hero 1.5 m behind him; no plunge; his back is never guarded); the
+  flurry (a perfect dodge is answered with as many blows as the streak counts and leaves the hero
+  1.5 m behind him; no plunge; his back is never guarded: *The streak and the flurry*); the
   reeling and trampled reactions of the moments below; the posture break.
 - **Hit stun on him (ADR-063):** every blow that lands freezes the frame (light 0.065 s, heavy 0.1 s,
   a crit 0.12 s), snaps his chest and head back (a jolt layered on whatever he is doing) and shoves

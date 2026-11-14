@@ -386,7 +386,9 @@ export class GamepadControls {
     on('player:block', () => this.rumble(R.block));
     on('player:parry', (d) => this.rumble(d.perfect && !d.light ? R.perfectParry : d.light ? R.block : R.parry));
     on('player:perfectDodge', () => this.rumble(R.perfectDodge));
-    on('player:hitDragon', (d) => !d.guarded && this.rumble(d.heavy ? R.hitHeavy : R.hitLight));
+    // (a flurry's flash cut ticks on player:flurryHit: not here too)
+    on('player:hitDragon', (d) => !d.guarded && !(d.kind === 'flurry' && !d.heavy) && this.rumble(d.heavy ? R.hitHeavy : R.hitLight));
+    on('player:flurryHit', (d) => !d.last && this.rumble(R.block)); // a tick for every flash cut (the last blow is a heavy hit)
   }
 
   /** Play [duration ms, strong, weak] on the active pad; silently nothing where unsupported. */

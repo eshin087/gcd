@@ -154,6 +154,38 @@ const CSS = `
   from { text-shadow: 0 0 3px ${rgba(CYAN, 0.5)}; }
   to { text-shadow: 0 0 9px ${rgba(CYAN, 1)}, 0 0 2px #fff; }
 }
+/* the streak of perfect dodges: a pip for every blow the next flurry strikes, the count beside them */
+.ab-streak { margin-top: 2px; opacity: 0; transition: opacity 0.2s; }
+.ab-streak.on { opacity: 1; }
+.ab-streak .slbl { width: 46px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #cfe9ff; white-space: nowrap; }
+.ab-streak .spips { flex: 1; font-size: 9px; letter-spacing: 0.2em; white-space: nowrap; }
+.ab-streak .spips .full { color: ${CYAN}; text-shadow: 0 0 6px ${rgba(CYAN, 0.9)}; }
+.ab-streak .spips .empty { color: #3d4658; }
+.ab-streak.hot .spips .full { color: #ffe09a; text-shadow: 0 0 7px rgba(255, 196, 90, 0.95); }
+.ab-streak .sval {
+  width: 30px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  font-style: italic;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 8px ${rgba(CYAN, 0.95)};
+  transform-origin: 100% 50%;
+}
+.ab-streak.up .sval { animation: ab-streak-up 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.ab-streak.up .spips .full { animation: ab-crit-glow 0.4s ease-out; }
+.ab-streak.lost { animation: ab-streak-lost 0.7s ease-out; }
+@keyframes ab-streak-up {
+  0% { transform: scale(2.2); color: #fff; }
+  100% { transform: scale(1); }
+}
+@keyframes ab-streak-lost {
+  0% { opacity: 1; filter: grayscale(1) brightness(1.5); transform: translateX(-3px); }
+  15% { transform: translateX(3px); }
+  30% { transform: translateX(-2px); }
+  100% { opacity: 0; filter: grayscale(1); transform: none; }
+}
 
 /* ---------- minimap (top-right) ---------- */
 .ab-map {
@@ -393,6 +425,14 @@ const CSS = `
 .ab-num > .t { font-size: 12px; color: #f2e9d8; font-variant-numeric: tabular-nums; }
 .ab-num.k-heavy > .t { font-size: 14px; color: #ffd08a; }
 .ab-num.k-crit > .t { font-size: clamp(15px, 1.2vw, 19px); color: ${CYAN}; text-shadow: 0 0 9px ${rgba(CYAN, 0.95)}, 0 0 2px #000, 0 1px 2px #000; }
+/* a flurry's cut counter over its target */
+.ab-num.k-count > .t {
+  font-size: clamp(22px, 2vw, 34px);
+  font-style: italic;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 0 12px ${rgba(CYAN, 1)}, 0 0 26px ${rgba(CYAN, 0.6)}, 0 0 2px #000, 0 1px 3px #000;
+}
 
 /* ---------- small mid-screen banner (POSTURE BROKEN) ---------- */
 .ab-mini {

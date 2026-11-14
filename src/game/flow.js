@@ -174,6 +174,15 @@ export class GameFlow {
     };
     ev?.on('player:perfectDodge', ghostep);
     ev?.on('player:ghostep', ghostep);
+    // the flurry: the cold cast holds for as long as he cuts; every cut flickers the frame, the last
+    // blow flashes it
+    ev?.on('player:flurry', (d) => {
+      if (finite(d?.strikes) >= 2) this.grade.ghostPulse(finite(d?.dur, 0.6));
+    });
+    ev?.on('player:flurryHit', (d) => this.grade.flashPulse(d?.last ? 0.3 + Math.min(0.3, 0.05 * finite(d?.of)) : 0.14));
+    ev?.on('player:streak', (d) => {
+      this.stats.bestStreak = Math.max(this.stats.bestStreak, finite(d?.count));
+    });
 
     // Unlock audio inside the first real DOM gesture (autoplay policies), F3 must not open find.
     addEventListener('pointerdown', () => this._unlockAudio());

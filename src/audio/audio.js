@@ -331,6 +331,18 @@ export class AudioEngine {
     g.setTargetAtTime(1, now + h, 0.18);
   }
 
+  /** End the slow-mo muffle now (a flurry's last blow lands before its planned time is up). */
+  _slowOpen() {
+    if (!this.ctx || !this.slowLp || !this.slowGain) return;
+    const now = this.ctx.currentTime;
+    const f = this.slowLp.frequency;
+    holdAt(f, now);
+    f.setTargetAtTime(this._openHz, now, 0.03);
+    const g = this.slowGain.gain;
+    holdAt(g, now);
+    g.setTargetAtTime(1, now, 0.04);
+  }
+
   /** Brief music dip under the timing flash. */
   _dipMusic() {
     if (!this.ctx || !this.musicDip) return;
@@ -608,6 +620,11 @@ export class AudioEngine {
       // the plunge's own impact plays on player:plungeHit; a guarded strike's clash plays on
       // dragon:guard (a 'hit' here played over it)
       if (d.kind === 'plunge' || d.guarded) return;
+      if (d.kind === 'flurry') {
+        // a flash cut has its own sound (player:flurryHit); the last blow lands in the open
+        if (!d.heavy) return;
+        this._slowOpen();
+      }
       const x = d.point?.x, z = d.point?.z, beast = this.game.dragon?.kind !== 'duelist';
       this.play('hit', { heavy: d.heavy, crit: d.crit, part: d.part, damage: d.damage, body: beast ? 'scale' : 'cloth', x, z });
       // the blade's own layer on top: a slice and a ring, per weight, rising a semitone up the chain
@@ -618,7 +635,23 @@ export class AudioEngine {
     });
     // the plunge: the dive's rush, then the blade into the skull
     on('player:plunge', (d) => this.play('plungeDive', { exec: !!d.execution }));
-    on('player:plungeHit', (d) => this.play('plungeHit', { exec: !!d.execution }));
+    on('player:plungeHit', (d) => {
+      this._slowOpen(); // (a flurry's world-hold may still be muffling: the blow lands in the open)
+      this.play('plungeHit', { exec: !!d.execution });
+    });
+    // the flurry (player/flurry.js): the world is held and muffled for as long as he cuts; every
+    // flash cut rings a tone higher, the last blow's coil rises, the hanging cuts open in a run of rings
+    on('player:flurry', (d) => {
+      if (num(d.strikes, 1) >= 2) this._slowDuck(num(d.dur, 0.6));
+    });
+    on('player:flurryHit', (d) => {
+      if (!d.last) this.play('flurryCut', { n: num(d.n, 1) });
+    });
+    on('player:flurryArt', (d) => this.play('flurryCoil', { dur: num(d.dur, 0.2) }));
+    on('player:flurryEnd', (d) => {
+      this._slowOpen();
+      if (num(d.strikes, 1) >= 2) this.play('flurryBurst', { n: num(d.strikes, 2) - 1 });
+    });
     on('player:hurt', (d) => {
       // (a hit that interrupts a charge is caught by the charge hum's player-state poll)
       // burn DoT ticks (every 0.5 s) and the breath's contact ticks (every 0.15 s) would grunt
@@ -669,7 +702,7 @@ export class AudioEngine {
     });
     on('player:mikiri', () => this.play('parry', { tell: 'blue', chain: 5 }));
     // a deep gong under the slow motion (the blade lock's camera push-in has its own clash and no slow-mo)
-    on('game:cinematic', (e) => { if (e?.kind !== 'lock' && e?.kind !== 'perfectParry') this.play('gong'); });
+    on('game:cinematic', (e) => { if (e?.kind !== 'lock' && e?.kind !== 'perfectParry' && e?.kind !== 'flurry') this.play('gong'); });
     on('dragon:deflected', () => this.play('parry', { tell: 'blue', chain: 8 }));
     on('player:guardBreak', () => {
       this.charge?.stop(0.05);
