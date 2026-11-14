@@ -790,8 +790,9 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
   `Number.isFinite`). `anim.js` reads `pending` (the held coil: `anim.leadK`) and `hitAt` (the
   bite, below). Internal to `player.js`: `atk.shaped` (this frame's `want` is a light's shaped
   step) and `atk.svx` / `svz` (the step's velocity `_integrate` landed the root on last frame): the
-  step's filter pre-compensation (`TUNE.attackDamp`, above). A roll out of a swing starts at the
-  roll's own speed along it (`_startRoll` sets `want`), not the swing's step.
+  step's filter pre-compensation (`TUNE.attackDamp`, above). A roll's first frame (before
+  `_tickRoll` sets `want`) keeps only the part of the frame before's `want` along the roll
+  (`_startRoll`): out of a swing it no longer runs on along the swing's facing.
 - **The bite** (`attackPose`, clips only): from a landed hit (`atk.hitAt`) the edge catches in what
   it cut: the blade holds where the contact frame drew it (`anim.bite { rec, at, dir }`, keyed on the
   record and the time), the grip pulls in along it, the hips drop, the chest folds and the head

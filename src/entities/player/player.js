@@ -2072,12 +2072,13 @@ export class Player {
       this.yaw = Math.atan2(I.x, I.z); // roll toward the input
     }
     this.rollBack = back;
-    // its first frame already runs at the roll's own speed, along it (_tickRoll sets it from the next
-    // frame on: the frame before's `want` drove it, and out of a swing that was the swing's step along
-    // the old facing, 15-30 cm in one frame, forward even for a backstep)
-    const R = back ? TUNE.backstep : TUNE.roll, v0 = (R.dist / R.dur) * 1.4;
-    this.want.x = this.rollDir.x * v0;
-    this.want.z = this.rollDir.z * v0;
+    // its first frame carries on only what was already moving him its way (_tickRoll sets `want` from
+    // the next frame on: the frame before's drove this one, and out of a swing that was the swing's
+    // step along the old facing, 15-30 cm in one frame, forward even for a backstep). A run into a
+    // roll the same way, or a roll from standing, is unchanged
+    const along = Math.max(0, this.want.x * this.rollDir.x + this.want.z * this.rollDir.z);
+    this.want.x = this.rollDir.x * along;
+    this.want.z = this.rollDir.z * along;
     this.atk = null;
     this.chargeK = 0;
     this._enter('roll', back ? 'backstep' : 'roll', 0.05);
