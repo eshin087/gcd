@@ -736,16 +736,21 @@ async function scenarioBounds() {
   assert(outside === 0, `45 s of form 3 against a cornered hero: never off the floor (${outside} frames outside)`);
   assert(melee >= 3, `his blade reaches the corner (${melee} blows landed there)`);
   // every form, AI on, a hero who stands in the middle: no errors, no NaN (G.tick throws), the particle pool holds
-  let peak = 0;
+  // (and his free hand stays the duelists': rigid on the forearm, no wrist turn, no sword fingers;
+  // the hero's alone has them, anim.js opts.freeHand)
+  let peak = 0, wMin = 1, plain = true;
   for (let f = 1; f <= FORMS; f++) {
     const Gf = build();
     duel(Gf, { dist: 3, ai: true, form: f });
     Gf.game.player.debug.god = true;
-    run(Gf, 30);
+    const df = Gf.game.dragon;
+    run(Gf, 30, () => { wMin = Math.min(wMin, Math.abs(df.rig.arms.L.wrist.quaternion.w)); });
+    plain &&= df.anim.freeHand === false && df.rig.offHand?.fingers === undefined && Gf.game.player.anim.freeHand === true;
     peak = Math.max(peak, Gf.peakAdd);
     if (Gf.payload.size) assert(false, `form ${f}: finite event payloads (${[...Gf.payload].join(', ')})`);
   }
   assert(peak < 6500, `30 s of every form with the AI on: the additive particle pool peaks at ${peak} of 7000`);
+  assert(plain && wMin > 0.99999, `his free hand is a duelist's: no free-hand animator, no sword fingers, the wrist never turns (|w| ≥ ${wMin.toFixed(6)})`);
 }
 
 // ================================================================== scenario: flow

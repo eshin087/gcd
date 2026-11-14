@@ -2602,9 +2602,10 @@ async function scenarioHeroLife() {
     // the arms' steadiness: how far an upper arm or a forearm turns in one frame, in the body's own
     // frame, through a whole light swing (the elbows used to flip 50-135° in a frame); and which
     // foot leads as each hit of a chain ends
-    const inv = new THREE.Matrix4(), aNow = [0, 1, 2, 3].map(() => new THREE.Vector3()), aWas = [0, 1, 2, 3].map(() => new THREE.Vector3());
+    // (segment 4: the free HAND, its wrist → the sword fingers' tip, rig.arms.L.point)
+    const inv = new THREE.Matrix4(), aNow = [0, 1, 2, 3, 4].map(() => new THREE.Vector3()), aWas = [0, 1, 2, 3, 4].map(() => new THREE.Vector3());
     const e0 = new THREE.Vector3(), e1 = new THREE.Vector3();
-    const snap = {}, snapAt = {}, leads = [];
+    const snap = {}, snapAt = {}, snapH = {}, snapHAt = {}, leads = [];
     let armKey = null, leadDef = null;
     const arms = () => {
       const a = p.atk, def = a?.def;
@@ -2617,6 +2618,9 @@ async function scenarioHeroLife() {
         e0.set(0, -HD.foreArm, 0).applyMatrix4(arm.fore.matrixWorld).applyMatrix4(inv);
         aNow[k * 2 + 1].subVectors(e0, e1).normalize();
       });
+      e0.setFromMatrixPosition(r.arms.L.wrist.matrixWorld).applyMatrix4(inv);
+      e1.setFromMatrixPosition(r.arms.L.point.matrixWorld).applyMatrix4(inv);
+      aNow[4].subVectors(e1, e0).normalize();
       if (key && key === armKey) {
         for (let k = 0; k < 4; k++) {
           const turn = Math.acos(Math.min(1, Math.max(-1, aNow[k].dot(aWas[k])))) * 57.3;
@@ -2625,8 +2629,13 @@ async function scenarioHeroLife() {
             snapAt[key] = `${a.t < def.windup ? 'W' : a.t < def.windup + def.active ? 'A' : 'R'} ${a.t.toFixed(2)} ${['R upper', 'R fore', 'L upper', 'L fore'][k]}`;
           }
         }
+        const turnH = Math.acos(Math.min(1, Math.max(-1, aNow[4].dot(aWas[4])))) * 57.3;
+        if (turnH > (snapH[key] ?? 0)) {
+          snapH[key] = turnH;
+          snapHAt[key] = `${a.t < def.windup ? 'W' : a.t < def.windup + def.active ? 'A' : 'R'} ${a.t.toFixed(2)} L hand`;
+        }
       }
-      for (let k = 0; k < 4; k++) aWas[k].copy(aNow[k]);
+      for (let k = 0; k < 5; k++) aWas[k].copy(aNow[k]);
       armKey = key;
       // the lead foot, read once as the hit's active frames end (P.rF / P.lF z: 33 / 36)
       if (def && p.state === 'attack' && def !== leadDef && a.t >= def.windup + def.active) {
@@ -2700,6 +2709,9 @@ async function scenarioHeroLife() {
       // (a cut is 0.12 s, seven frames: the upper arm's throw into it is up to ~55° a frame. The flips
       // the elbow limiter stops were 50-135° a frame on swings half as fast)
       assert(Object.keys(snap).length >= 13 && worst[1] < 60, `no arm snaps: an upper arm or forearm turns at most ${worst[1].toFixed(0)}° in a frame (${worst[0]}; < 60°) through every light swing`);
+      const worstH = Object.entries(snapH).sort((x, y) => y[1] - x[1])[0] ?? ['none', 0];
+      out(`   free hand: ${Object.entries(snapH).map(([n, v]) => `${n} ${v.toFixed(0)}° (${snapHAt[n]})`).join(' · ')}`);
+      assert(Object.keys(snapH).length >= 13 && worstH[1] < 60, `the free hand turns at most ${worstH[1].toFixed(0)}° in a frame (${worstH[0]}; < 60°) through every light swing`);
       // he walks through the chain: the lead foot changes from each hit to the next (hits 1-5)
       let pairs = 0, same = 0;
       for (let i = 1; i < leads.length; i++) {
@@ -3173,6 +3185,31 @@ async function scenarioHeroLife() {
   return G;
 }
 
+// Signed depth (m, > 0 inside) of a joint-local point in an ellipsoid / a tapered capsule down −Y /
+// the torso shell (BODY.shell rings at world idle heights): HEROLOOK's and HEROHAND's body gauges
+function heroGauges(BODY, D) {
+  const restSpine = D.pivot + 0.015 + D.pelvis[1] + D.spine[1];
+  const ell = (q, c, rr) => {
+    const k = Math.hypot((q.x - c[0]) / rr[0], (q.y - c[1]) / rr[1], (q.z - c[2]) / rr[2]);
+    return k > 1e-6 ? Math.hypot(q.x - c[0], q.y - c[1], q.z - c[2]) * (1 / k - 1) : 1;
+  };
+  const cap = (q, y0, len, r0, r1) => {
+    const t = clamp((y0 - q.y) / len, 0, 1);
+    return r0 + (r1 - r0) * t - Math.hypot(q.x, q.y - (y0 - t * len), q.z);
+  };
+  const shell = (q) => {
+    const R = BODY.shell, h = q.y + restSpine;
+    if (h < R[0].y || h > R[R.length - 1].y) return -1;
+    let k = 0;
+    while (k < R.length - 2 && R[k + 1].y < h) k++;
+    const A = R[k], B = R[k + 1], u = (h - A.y) / (B.y - A.y);
+    const rx = A.rx + (B.rx - A.rx) * u, rz = A.rz + (B.rz - A.rz) * u, cz = (A.cz ?? 0) + ((B.cz ?? 0) - (A.cz ?? 0)) * u;
+    const qq = Math.hypot(q.x / rx, (q.z - cz) / rz);
+    return qq > 1e-6 ? Math.hypot(q.x, q.z - cz) * (1 / qq - 1) : 1;
+  };
+  return { ell, cap, shell };
+}
+
 // ================================================================== scenario: hero look (athletic build)
 // The athletic build (model.js BODY, ADR-040) and the steel kept out of his body and his coat. Through a run, a
 // sprint, strafes and a backpedal, stops, a roll, the light combo + slam (every look of every hit), the charged cleave and a
@@ -3198,27 +3235,7 @@ async function scenarioHeroLook() {
     `athletic build: chest ${chest.toFixed(2)} m over a ${waist.toFixed(2)} m waist, shoulders ±${D.shoulder[0]} m, upper arm r ${BODY.upperArm[0]}, thigh r ${BODY.thigh[0]}`);
   assert(r.mats.every((m) => m.defines?.SG_HERO_PULL === undefined && !m.uniforms.uArtPull), 'no hero material is drawn nearer the camera than it is (the blade is depth-tested)');
   const v = new THREE.Vector3(), w = new THREE.Vector3();
-  const restSpine = D.pivot + 0.015 + D.pelvis[1] + D.spine[1];
-  // signed depth (m, > 0 inside) of a joint-local point in an ellipsoid / a tapered capsule down −Y /
-  // the torso shell (BODY.shell rings at world idle heights)
-  const ell = (q, c, rr) => {
-    const k = Math.hypot((q.x - c[0]) / rr[0], (q.y - c[1]) / rr[1], (q.z - c[2]) / rr[2]);
-    return k > 1e-6 ? Math.hypot(q.x - c[0], q.y - c[1], q.z - c[2]) * (1 / k - 1) : 1;
-  };
-  const cap = (q, y0, len, r0, r1) => {
-    const t = clamp((y0 - q.y) / len, 0, 1);
-    return r0 + (r1 - r0) * t - Math.hypot(q.x, q.y - (y0 - t * len), q.z);
-  };
-  const shell = (q) => {
-    const R = BODY.shell, h = q.y + restSpine;
-    if (h < R[0].y || h > R[R.length - 1].y) return -1;
-    let k = 0;
-    while (k < R.length - 2 && R[k + 1].y < h) k++;
-    const A = R[k], B = R[k + 1], u = (h - A.y) / (B.y - A.y);
-    const rx = A.rx + (B.rx - A.rx) * u, rz = A.rz + (B.rz - A.rz) * u, cz = (A.cz ?? 0) + ((B.cz ?? 0) - (A.cz ?? 0)) * u;
-    const qq = Math.hypot(q.x / rx, (q.z - cz) / rz);
-    return qq > 1e-6 ? Math.hypot(q.x, q.z - cz) * (1 / qq - 1) : 1;
-  };
+  const { ell, cap, shell } = heroGauges(BODY, D);
   // (the sword arm's own forearm is left out: the blade's base sits in the gauntlet; the free
   // forearm only to the wrist: the free hand braces the flat in the block)
   const parts = [
@@ -3228,18 +3245,25 @@ async function scenarioHeroLook() {
     ['right upper arm', r.arms.R.upper, (q) => cap(q, 0, D.upperArm, BODY.upperArm[0], BODY.upperArm[1])],
     ['left upper arm', r.arms.L.upper, (q) => cap(q, 0, D.upperArm, BODY.upperArm[0], BODY.upperArm[1])],
     ['left forearm', r.arms.L.fore, (q) => cap(q, 0, D.foreArm - 0.06, BODY.foreArm[0], BODY.foreArm[1])],
+    // the free hand off the grip (wrist space: the palm and the sword fingers hang 0.20 m down it)
+    ['left hand', r.arms.L.wrist, (q) => cap(q, 0, 0.2, 0.035, 0.02)],
     ...['R', 'L'].flatMap((s) => [
       [`thigh ${s}`, r.legs[s].thigh, (q) => cap(q, 0, D.thigh, BODY.thigh[0], BODY.thigh[1])],
       [`shin ${s}`, r.legs[s].shin, (q) => cap(q, -0.02, D.shin - 0.04, BODY.shin[0], BODY.shin[1])],
     ]),
   ];
   const tip = D.drawnTip ?? D.steelTip;
-  let worst = -1, worstAt = '';
+  let worst = -1, worstAt = '', hand = -1, handAt = '';
   const bodyPen = () => {
     for (let z = 0.2; z <= tip + 1e-6; z += 0.05) {
       v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld);
       for (const [name, J, f] of parts) {
+        if (name === 'left hand' && (p.anim.cur[45] > 0.05 || !J)) continue; // (on the grip it holds the steel)
         const pen = f(J.worldToLocal(w.copy(v)));
+        if (name === 'left hand' && pen > hand) {
+          hand = pen;
+          handAt = `${p.state}${p.atk?.def ? ' ' + p.atk.def.kind + (p.atk.def.combo ?? '') : ''} t ${(p.atk?.t ?? p.stateT ?? 0).toFixed(2)}`;
+        }
         if (pen > worst) {
           worst = pen;
           worstAt = `${name}, ${p.state}${p.atk?.def ? ' ' + p.atk.def.kind + (p.atk.def.combo ?? '') : ''} t ${(p.atk?.t ?? p.stateT ?? 0).toFixed(2)}`;
@@ -3334,8 +3358,245 @@ async function scenarioHeroLook() {
   go(0.8);
   input.up(2);
   go(0.6);
-  assert(worst < 0.02, `the drawn blade never sinks > 2 cm into his body (${frames} frames; deepest ${(worst * 100).toFixed(1)} cm: ${worstAt})`);
+  assert(worst < 0.02, `the drawn blade never sinks > 2 cm into his body (${frames} frames; deepest ${(worst * 100).toFixed(1)} cm: ${worstAt}; into the free hand off the grip ${(hand * 100).toFixed(1)} cm: ${handAt})`);
   assert(locoCross <= Math.max(3, locoFrames * 0.05), `the blade passes through a coat panel on ${locoCross} of ${locoFrames} run / sprint / idle frames (≤ 5 %; ${cross} of ${frames} over every move)`);
+  return G;
+}
+
+// ================================================================== scenario: the free hand
+// The hero's free hand (sword fingers on a wrist of its own): the rig's contract; a wrist that turns
+// inside a human range without snapping; the fingers kept out of his own body; the fist shown only on
+// the grip; the fingers on the sword wrist where a clip rests them there; a choreography that is not
+// one template (the finishes spread round him, the hand most of the way there at contact); the free
+// elbow bent on the grip; the drink; the idle breath; a NaN in the pose; no Math.random in the wrist.
+async function scenarioHeroHand() {
+  out('\n== scenario HEROHAND (the free hand: the wrist, sword fingers, the fist on arrival, the choreography) ==');
+  const { DIM: HD, BODY } = await imp('src/entities/player/model.js');
+  const { P, N, WRIST_L, OFF_SNAP, HeroAnimator } = await imp('src/entities/player/anim.js');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const p = game.player, d = game.dragon, r = p.rig, A = p.anim, H = r.offHand, W = r.arms.L.wrist;
+  p.debug.god = true;
+  p.debug.teleport(d.position.x + 14, d.position.z + 14);
+  const go = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); each?.(); } };
+  go(0.5);
+  const DEG = 180 / Math.PI;
+
+  // (H1) the contract
+  assert(W?.parent === r.arms.L.fore && Math.abs(W.position.y + (HD.foreArm - 0.03)) < 1e-6 && Math.hypot(W.position.x, W.position.z) < 1e-9 && r.arms.L.point?.parent === W
+    && !!H?.fingers && H.fingers.parent === W && H.open.parent === W && H.grip.parent === r.sword
+    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && N === 61 && N <= 64 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
+    `the free hand's contract: arms.L.wrist on the forearm ${(HD.foreArm - 0.03).toFixed(2)} m down and arms.L.point on it; offHand { open, grip, fingers }, open and fingers on the wrist; channels lD 53, lN 56, hs 59, lk 60 (N ${N} ≤ 64); the hero's animator has the free hand`);
+
+  // every frame of the set: chest-local points (model metres: the drawn hero is lean-sheared and scaled)
+  const { ell, cap, shell } = heroGauges(BODY, HD);
+  const gauges = [
+    ['torso', r.spine, shell],
+    ['hips', r.pelvis, (q) => ell(q, BODY.hips.c, BODY.hips.r)],
+    ['head', r.head, (q) => ell(q, BODY.head.c, BODY.head.r.map((x) => x + 0.03))], // (+ the hood)
+    ['right forearm', r.arms.R.fore, (q) => cap(q, 0, HD.foreArm - 0.06, BODY.foreArm[0], BODY.foreArm[1])],
+  ];
+  const v = new THREE.Vector3(), w = new THREE.Vector3(), pt = new THREE.Vector3(), q0 = new THREE.Quaternion(), inv = new THREE.Matrix4();
+  const toChest = (J, x, y, z, o) => r.chest.worldToLocal(o.set(x, y, z).applyMatrix4(J.matrixWorld));
+  const handC = (o) => toChest(r.arms.L.fore, 0, -HD.foreArm, 0, o); // the IK end (in the palm), chest local
+  const offGap = () => handC(v).distanceTo(toChest(r.sword, 0, 0, -HD.offGrip, w));
+  const clipOf = () => {
+    const a = p.atk, def = a?.def;
+    if (!def || (p.state !== 'attack' && p.state !== 'heavy')) return null;
+    return (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? null;
+  };
+  const where = () => `${p.state}${clipOf() ? ' ' + clipOf() : ''} t ${(p.atk?.def ? p.atk.t : A.t).toFixed(2)}`;
+  const segOf = () => (p.state === 'attack' && p.atk?.def?.kind === 'slam' ? 'slam' : p.state === 'heavy' ? 'cleave' : p.state === 'charge' || p.state === 'block' ? p.state : null);
+  let qOk = false, turn = 0, turnAt = '', bad = 0, badAt = '', pen = -1, penAt = '', frames = 0, notOne = 0, notOneAt = '';
+  let fistFar = 0, fistFarAt = '', fistN = 0, lkN = 0, lkGap = 0, lkGapAt = '', lockN = 0, lockMin = Infinity, lockMinAt = '';
+  const flips = {}; // segment → the most grip swaps in one of its occurrences
+  let seg = null, segFlips = 0, gripWas = false;
+  // the looks: the IK end (chest local) at the coil (t = W), contact (W + 0.45 A) and the finish (W + A),
+  // the free arm's turn per frame (body frame), the tightest elbow and the frames the wrist was clamped
+  const looks = {}, order = [];
+  const dir = [0, 1].map(() => new THREE.Vector3()), dirWas = [0, 1].map(() => new THREE.Vector3());
+  let lastAtk = null, mk = {};
+  const each = () => {
+    frames++;
+    // (H2) the wrist's own turn on the forearm in one frame
+    const ft = qOk ? 2 * Math.acos(Math.min(1, Math.abs(W.quaternion.dot(q0)))) * DEG : 0;
+    if (ft > turn) { turn = ft; turnAt = where(); }
+    q0.copy(W.quaternion);
+    qOk = true;
+    // (H3) inside its range (± 3°)
+    const e = W.rotation, m = 3 / DEG, L = WRIST_L;
+    if (e.x < L.rad - m || e.x > L.uln + m || e.y < L.pro - m || e.y > L.sup + m || e.z < L.flex - m || e.z > L.ext + m) {
+      bad++;
+      badAt ||= `${where()}: dev ${(e.x * DEG).toFixed(0)}° twist ${(e.y * DEG).toFixed(0)}° flex ${(e.z * DEG).toFixed(0)}°`;
+    }
+    // (H4) one-handed: the fingertip and the palm out of his torso, hips, head (and hood) and sword forearm
+    if (A.cur[P.twoHand] < 0.05) {
+      for (const tip of [false, true]) {
+        if (tip) pt.setFromMatrixPosition(r.arms.L.point.matrixWorld);
+        else pt.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+        for (const [name, J, f] of gauges) {
+          const g = f(J.worldToLocal(w.copy(pt)));
+          if (g > pen) { pen = g; penAt = `${tip ? 'the fingertip' : 'the palm'} in the ${name}, ${where()}`; }
+        }
+      }
+    }
+    // (H5) one hand shown; the fist only on its place; few swaps per heavy blow, charge, block
+    const shown = +H.open.visible + +H.fingers.visible + +H.grip.visible;
+    if (shown !== 1) { notOne++; notOneAt ||= where(); }
+    if (H.grip.visible) {
+      fistN++;
+      const g = offGap();
+      if (g > fistFar) { fistFar = g; fistFarAt = where(); }
+    }
+    const sg = segOf();
+    if (sg !== seg) {
+      seg = sg;
+      segFlips = 0;
+    } else if (sg && H.grip.visible !== gripWas) {
+      segFlips++;
+      flips[sg] = Math.max(flips[sg] ?? 0, segFlips);
+    }
+    if (sg && !(sg in flips)) flips[sg] = 0;
+    gripWas = H.grip.visible;
+    // (H6) on the sword wrist
+    if (A.lkEff >= 0.9) {
+      lkN++;
+      const g = handC(v).distanceTo(toChest(r.arms.R.fore, 0, -(HD.foreArm - 0.07), 0, w));
+      if (g > lkGap) { lkGap = g; lkGapAt = where(); }
+    }
+    // (H9) the free elbow on the grip
+    if (A.cur[P.twoHand] > 0.5) {
+      lockN++;
+      const b = -r.arms.L.fore.rotation.x;
+      if (b < lockMin) { lockMin = b; lockMinAt = where(); }
+    }
+    // the looks
+    const clip = clipOf(), a = p.atk;
+    inv.copy(r.body.matrixWorld).invert();
+    v.setFromMatrixPosition(r.arms.L.upper.matrixWorld).applyMatrix4(inv);
+    w.setFromMatrixPosition(r.arms.L.fore.matrixWorld).applyMatrix4(inv);
+    dir[0].subVectors(w, v).normalize();
+    pt.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(inv);
+    dir[1].subVectors(pt, w).normalize();
+    const one = !!clip && clip !== 'slam' && clip !== 'cleave';
+    if (one) {
+      const S = looks[clip] ?? (looks[clip] = (order.push(clip), { up: 0, fore: 0, wrist: 0, elbow: 180, clamped: 0, n: 0, coil: null, hit: null, end: null, prog: 0 }));
+      if (a === lastAtk) {
+        S.up = Math.max(S.up, Math.acos(clamp(dir[0].dot(dirWas[0]), -1, 1)) * DEG);
+        S.fore = Math.max(S.fore, Math.acos(clamp(dir[1].dot(dirWas[1]), -1, 1)) * DEG);
+      } else mk = {};
+      S.n++;
+      S.wrist = Math.max(S.wrist, ft);
+      S.elbow = Math.min(S.elbow, 180 + r.arms.L.fore.rotation.x * DEG);
+      if (A.wristL.clamped) S.clamped++;
+      const def = a.def, t = a.t;
+      for (const [k, at] of [['coil', def.windup], ['hit', def.windup + def.active * 0.45], ['end', def.windup + def.active]]) {
+        if (!mk[k] && t >= at) {
+          mk[k] = true;
+          if (!S[k]) S[k] = handC(new THREE.Vector3());
+        }
+      }
+    }
+    for (let k = 0; k < 2; k++) dirWas[k].copy(dir[k]);
+    lastAtk = one ? a : null;
+  };
+  const eachLook = each;
+
+  // the set: three looks of a mashed chain, the sprint slash, the roll cut, the charge and the
+  // cleave, the block raised, held and lowered
+  for (let look = 0; look < 3; look++) {
+    A.forceVariant = look;
+    for (let k = 0; k < 5; k++) { input.click(0); go(k === 4 ? 0.9 : CHAIN_EVERY, eachLook); }
+    go(1.0, eachLook);
+  }
+  A.forceVariant = null;
+  input.axis = { x: 0, y: 1 };
+  input.hold('ShiftLeft');
+  go(0.9, eachLook);
+  input.click(0);
+  input.release('ShiftLeft');
+  input.axis = { x: 0, y: 0 };
+  go(0.9, eachLook);
+  input.axis = { x: 0, y: 1 };
+  go(0.3, eachLook);
+  input.tap('Space');
+  go(0.35, eachLook);
+  input.axis = { x: 0, y: 0 };
+  input.click(0);
+  go(0.9, eachLook);
+  input.press(0);
+  go(1.4, eachLook);
+  input.up(0);
+  go(1.2, eachLook);
+  input.press(2);
+  go(0.6, eachLook);
+  input.up(2);
+  go(0.6, eachLook);
+
+  for (const c of order) {
+    const S = looks[c];
+    const tot = S.coil && S.end ? S.end.distanceTo(S.coil) : 0;
+    S.prog = tot > 1e-3 && S.hit ? S.hit.distanceTo(S.coil) / tot : 0;
+    out(`   ${c}: upper/fore/wrist ${S.up.toFixed(0)}/${S.fore.toFixed(0)}/${S.wrist.toFixed(0)}°/f, elbow ≥ ${S.elbow.toFixed(0)}°, contact ${(S.prog * 100).toFixed(0)} %, finish chest ${S.end ? `(${S.end.x.toFixed(2)} ${S.end.y.toFixed(2)} ${S.end.z.toFixed(2)})` : '-'}, wrist clamped ${S.clamped} of ${S.n} f`);
+  }
+  assert(turn <= 40, `the wrist turns at most ${turn.toFixed(0)}° on the forearm in a frame (≤ 40°; ${turnAt}; ${frames} frames)`);
+  assert(bad === 0, `the wrist stays in its range (radial ${(WRIST_L.rad * DEG).toFixed(0)}° … ulnar ${(WRIST_L.uln * DEG).toFixed(0)}°, twist ±${(WRIST_L.sup * DEG).toFixed(0)}°, flex ${(WRIST_L.flex * DEG).toFixed(0)}° … ${(WRIST_L.ext * DEG).toFixed(0)}°, ± 3°): ${bad} frames out${badAt ? ` (${badAt})` : ''}`);
+  assert(pen <= 0.015, `one-handed, the sword fingers and the palm sink at most ${(pen * 100).toFixed(1)} cm into his torso, hips, head or sword forearm (≤ 1.5 cm; ${penAt})`);
+  assert(notOne === 0 && fistN > 0 && fistFar <= OFF_SNAP[1] + 1e-3, `one free hand shows at a time (${notOne} frames not${notOneAt ? `: ${notOneAt}` : ''}), and the fist only on the grip: ≤ ${(fistFar * 100).toFixed(1)} cm from its place (≤ ${OFF_SNAP[1] * 100} cm; ${fistN} frames${fistFarAt ? `, ${fistFarAt}` : ''})`);
+  assert(['slam', 'cleave', 'charge', 'block'].every((k) => k in flips) && Object.values(flips).every((n) => n <= 2), `the fist shows and goes at most once per slam, cleave, charge and block (${Object.entries(flips).map(([k, n]) => `${k} ${n}`).join(', ')} swaps)`);
+  assert(lkN > 0 && lkGap <= 0.08, `on the sword wrist (${lkN} frames) the free hand is within ${(lkGap * 100).toFixed(1)} cm of it (≤ 8 cm; ${lkGapAt})`);
+  {
+    const ends = order.map((c) => looks[c].end).filter(Boolean);
+    const span = (k) => Math.max(...ends.map((e) => e[k])) - Math.min(...ends.map((e) => e[k]));
+    assert(ends.length >= 13 && span('y') >= 0.4 && span('z') >= 0.4, `the finishes are not one template: across ${ends.length} looks the free hand ends ${span('y').toFixed(2)} m apart in height and ${span('z').toFixed(2)} m fore and aft (each ≥ 0.40, chest frame)`);
+    const EXEMPT = new Set(['whirl', 'risingWhirl', 'risingThrust']); // (by design: tucked through the turn; converging on the point)
+    const late = order.filter((c) => !EXEMPT.has(c) && !(looks[c].prog >= 0.45));
+    assert(order.length - EXEMPT.size >= 10 && !late.length, `at contact the free hand is ≥ 45 % of the way from its coil to its finish in every look (${late.map((c) => `${c} ${(looks[c].prog * 100).toFixed(0)} %`).join(', ') || 'all'})`);
+  }
+  assert(lockN > 0 && lockMin >= 0.33, `on the grip the free elbow keeps a bend: ≥ ${(lockMin * DEG).toFixed(0)}° (≥ 19°: it locked straight in the cleave; ${lockN} frames, ${lockMinAt})`);
+
+  // (H10) the drink: the flask hangs on the forearm, so the hand opens and the wrist goes rigid
+  {
+    let n = 0, worst = 0, opened = true;
+    go(0.6);
+    input.tap('KeyF');
+    go(1.1, () => {
+      if (p.state !== 'heal' || A.t < 0.32 || A.t > 0.62) return;
+      n++;
+      worst = Math.max(worst, 2 * Math.acos(Math.min(1, Math.abs(W.quaternion.w))) * DEG);
+      opened &&= !H.fingers.visible && H.open.visible;
+    });
+    assert(n > 10 && worst < 5 && opened, `drinking, the free hand is open and rigid on the forearm round the flask (wrist ≤ ${worst.toFixed(1)}°, < 5°; ${n} frames)`);
+  }
+  // (H11) the idle breath (the idle actions held off: the bare loop)
+  {
+    const lo = new THREE.Vector3(Infinity, Infinity, Infinity), hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+    const wait0 = A.fidget.wait;
+    A.fidget.wait = 1e9;
+    go(1.2);
+    go(2.4, () => { handC(v); lo.min(v); hi.max(v); });
+    A.fidget.wait = wait0;
+    const rg = Math.max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z);
+    assert(rg >= 0.01 && A.fidget.k < 0 && H.fingers.visible, `at rest the sword fingers breathe with him: ${(rg * 100).toFixed(1)} cm through the 2.4 s idle loop (≥ 1 cm, chest frame)`);
+  }
+  // (H12) a NaN in the free hand's channels never reaches the rig
+  {
+    const o = A.poses.loco;
+    let once = true;
+    A.poses.loco = (q, an) => { o(q, an); if (once) { q[P.lD] = NaN; once = false; } };
+    try {
+      go(3 * DT);
+    } finally {
+      A.poses.loco = o;
+    }
+    let ok = true;
+    p.object3d.traverse((ob) => { for (const x of ob.matrixWorld.elements) if (!Number.isFinite(x)) ok = false; });
+    const q = W.quaternion;
+    assert(!once && ok && Number.isFinite(q.x + q.y + q.z + q.w) && A.wristL.ok, 'a NaN in the free hand\'s pose channels never reaches the rig (every matrix finite, the wrist spring running)');
+  }
+  // (H13) the seeded sims replay: the wrist draws on no random stream
+  assert(!HeroAnimator.prototype._wristL.toString().includes('Math.random'), 'the free wrist uses no Math.random (the sims are seeded)');
   return G;
 }
 
@@ -4376,7 +4637,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

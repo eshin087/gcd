@@ -932,14 +932,19 @@ async function scenarioPressure() {
   // (1) a hero who stands his ground and answers every tell: every glint is a blow that reaches him
   //     (the reds the bot rolls across leave the zone by design: only the others count)
   G.defend = makeDefender(G);
-  let flashes = 0;
+  let flashes = 0, wMin = 1;
   const h0 = G.hits.length;
   G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon' && e.tell !== TELL.RED && e.attack !== 'ashCrescent' && !e.hazard) flashes++; };
   run(G, 40, (GG) => {
     input.axis = { x: 0, y: 0 };
     game.mouseGround.set(d.position.x, 0, d.position.z);
     GG.defend.act();
+    wMin = Math.min(wMin, Math.abs(d.rig.arms.L.wrist.quaternion.w));
   });
+  // (his free hand stays a duelist's: rigid on the forearm, no sword fingers; anim.js opts.freeHand
+  // is the hero's alone)
+  assert(d.anim.freeHand === false && d.rig.offHand?.fingers === undefined && p.anim.freeHand === true && wMin > 0.99999,
+    `through 40 s of his strings his free wrist never turns (|w| ≥ ${wMin.toFixed(6)}) and he has no sword fingers (the hero's free hand alone)`);
   G.watch = null;
   G.defend = null;
   const met = G.hits.slice(h0).filter((h) => h.attack !== 'ashCrescent' && h.tell !== TELL.RED).length;
