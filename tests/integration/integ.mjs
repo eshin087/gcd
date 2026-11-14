@@ -3334,7 +3334,28 @@ async function scenarioHeroLook() {
     }
     go(0.8);
   }
+  // … and again 2.5 m from the wyrm, landing: the edge's bite (anim.js BITE) holds the blade where
+  // it bit and folds the body into the blow through every freeze
+  let landed = 0;
+  G.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded) landed++; };
+  for (let look = 0; look < 3; look++) {
+    p.anim.forceVariant = look;
+    place(G, 2.5);
+    d.hp = d.maxHp;
+    d.posture = 0;
+    for (let k = 0; k < 5; k++) {
+      aimAt(G);
+      input.click(0);
+      go(k === 4 ? 0.9 : CHAIN_EVERY);
+    }
+    go(0.8);
+  }
+  G.watch = null;
   p.anim.forceVariant = null;
+  p.debug.teleport(d.position.x + 14, d.position.z + 14);
+  go(0.3);
+  out(`   near the wyrm: ${landed} landed hits through the chain`);
+  assert(landed >= 10, `the chain swung 2.5 m from the wyrm lands (${landed} hits; ≥ 10)`);
   // the sprint slash and the roll cut
   input.axis = { x: 0, y: 1 };
   input.hold('ShiftLeft');
@@ -3971,6 +3992,57 @@ async function scenarioHeroWeight() {
     assert(k0 > 0 && hold.every((h) => h.F.pending) && first <= 5 && settle && lastStep <= 1 && off <= 0.05,
       `a held light's hips settle back to the coil without a snap: at most ${first.toFixed(1)}° a frame (≤ 5°), each step no bigger than the one before, still by the hold's end (${lastStep.toFixed(2)}° ≤ 1°), within 0.05 rad of the coil key's turn (${off.toFixed(3)})`);
     assert(after.length >= 5 && snap <= 25 && arm < 60, `released from the coil, the cut fires without a snap: the hips ≤ 25° a frame (${snap.toFixed(1)}°), no arm segment ≥ 60° a frame (${arm.toFixed(0)}°)`);
+  }
+
+  // (W5) the bite: 2.5 m from the wyrm, every landed blow (player:hitDragon, unguarded, atk.hitAt
+  // set) holds its blade where it bit through the freeze while the hips drop into it, then tears
+  // on through (the blade dragged behind its arc, never pulled back past the frame that hit)
+  {
+    const seq = [];
+    let flag = false;
+    G.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded) flag = true; };
+    const step = () => {
+      G.tick(DT);
+      const F = record();
+      F.hit = flag && (p.atk?.hitAt ?? -1) >= 0;
+      F.finite = A.cur.every(Number.isFinite);
+      flag = false;
+      seq.push(F);
+    };
+    const run = (s) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) step(); };
+    for (let look = 0; look < 3; look++) {
+      A.forceVariant = look;
+      place(G, 2.5);
+      d.hp = d.maxHp;
+      d.posture = 0;
+      run(0.3);
+      for (let k = 0; k < 5; k++) { aimAt(G); input.click(0); run(k === 4 ? 1.2 : CHAIN_EVERY); }
+      run(0.8);
+    }
+    A.forceVariant = null;
+    G.watch = null;
+    const rows = [];
+    for (let i = 1; i < seq.length - 6; i++) {
+      const c = seq[i];
+      if (!c.hit) continue;
+      const f = seq[i + 1], b = seq[i - 1];
+      const cut = c.tip.clone().sub(b.tip), mv = f.tip.clone().sub(c.tip), cl = cut.length();
+      let after = 0, n = 0, arm = 0;
+      for (let j = i + 1; j < seq.length && n < 4; j++) {
+        arm = Math.max(arm, seq[j].arm);
+        if (!seq[j].real) continue;
+        after = Math.max(after, seq[j].tip.distanceTo(seq[j - 1].tip));
+        n++;
+      }
+      rows.push({ clip: c.clip, freeze: !f.real, drop: c.hipY - f.hipY, move: mv.length(), along: cl > 1e-4 ? mv.dot(cut) / cl : 0, after, arm });
+    }
+    out(`   bite: ${rows.length} landed hits; the hips drop ${Math.min(...rows.map((R) => R.drop * 100)).toFixed(1)}-${Math.max(...rows.map((R) => R.drop * 100)).toFixed(1)} cm into the first freeze frame, the tip moves ≤ ${Math.max(...rows.map((R) => R.move * 100)).toFixed(1)} cm (≥ ${Math.min(...rows.map((R) => R.along * 100)).toFixed(1)} cm along the cut); after it ≤ ${Math.max(...rows.map((R) => R.after * 100)).toFixed(0)} cm a frame, the arms ≤ ${Math.max(...rows.map((R) => R.arm)).toFixed(0)}° a frame`);
+    out(`         ${rows.map((R) => `${R.clip} ${(R.drop * 100).toFixed(1)}/${(R.move * 100).toFixed(0)}/${(R.after * 100).toFixed(0)}`).join(' · ')}`);
+    assert(rows.length >= 10 && rows.every((R) => R.freeze), `the chain lands ${rows.length} blows 2.5 m from the wyrm (≥ 10), each followed by a freeze frame`);
+    assert(rows.every((R) => R.drop >= 0.035 && R.move <= 0.2 && R.along >= -0.04),
+      `the edge bites: into the first freeze frame the hips drop ≥ 3.5 cm (${Math.min(...rows.map((R) => R.drop * 100)).toFixed(1)}), the tip holds within 20 cm (${Math.max(...rows.map((R) => R.move * 100)).toFixed(1)}) and is never pulled back > 4 cm against the cut (${Math.min(...rows.map((R) => R.along * 100)).toFixed(1)})`);
+    assert(rows.every((R) => R.after <= 1.3 && R.arm < 60), `then it tears on through: the tip ≤ 1.3 m a frame over the next 4 frames (${Math.max(...rows.map((R) => R.after)).toFixed(2)}), no arm segment ≥ 60° a frame (${Math.max(...rows.map((R) => R.arm)).toFixed(0)}°)`);
+    assert(seq.every((F) => F.finite), 'every pose through the bites is finite');
   }
   return G;
 }

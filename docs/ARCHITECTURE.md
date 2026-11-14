@@ -763,7 +763,15 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
 - The attack record also carries `atk.relT` (the attack clock at a held light's release; 0 = never
   held: the root's step in starts there) and `atk.hitAt` (the attack clock at a landed, unguarded
   hit, set in `_applyHit` before the hit-stop starts; −1 = none: test `hitAt >= 0`, never
-  `Number.isFinite`).
+  `Number.isFinite`). `anim.js` reads `pending` (the held coil: `anim.leadK`) and `hitAt` (the
+  bite, below).
+- **The bite** (`attackPose`, clips only): from a landed hit (`atk.hitAt`) the edge catches in what
+  it cut: the blade holds where the contact frame drew it (`anim.bite { rec, at, dir }`, keyed on the
+  record and the time), the grip pulls in along it, the hips drop, the chest folds and the head
+  nods (`BITE`, × the def's `bite`, combat.js), full through the hit-pause (whose frozen clock keeps
+  `t − hitAt` ≈ 0) and let go over `BITE.dur` (0.08 s) of the attack's clock after it. **Inertia**:
+  outside a dash, the chest pitches against the root's acceleration (`ATK_INERTIA` × `anim.leanF`,
+  the loco's lean spring): behind the hips on the push-off, over the planted foot on the brake.
 - Internal animator state worth knowing: `pathCh` (channels a windup path drives this frame, copied
   past the cross-fade), `updraft` 0..1 (the charge lifts the coat and hair), `dashStep` (bits: dash
   touchdowns taken), `marks` (4 per-clip ground marks), `feet` (the world-space foot planner),
@@ -773,7 +781,10 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
   the clip's own pose by windup − 1/30 s and hands its channels back; recovery shaping starts at
   windup + active + 0.035 s (the frame after the active window is still hit-tested); active-frame
   shaping only touches non-blade channels (free arm, feet, head, coat). The proof is a per-frame
-  compare of `sword.matrixWorld` and the hit points against the previous build.
+  compare of `sword.matrixWorld` and the hit points against the previous build. The rule has been
+  relaxed for the hero's own clips since ADR-031 / 071 / 076, and the weight work moves his active
+  frames again (the hips' lead, the root's step shape, the bite after contact): for those the REACH
+  table (every look connecting from contact out to 3.5 m) is the gate.
 - Blade directions blend by azimuth / elevation round the outside of the body (`dirLerp` /
   `dirTo`), a cross-fade keeps last frame's way round, and outside attacks the blade is pushed out of
   the leg capsules before the ground clamp (ADR-023). Since the broad build (ADR-031) the clearances

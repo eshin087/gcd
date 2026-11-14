@@ -408,9 +408,15 @@ async function scenarioGuard() {
   const hp0 = d.hp, post0 = d.posture;
   const c0 = G.counts['dragon:guard'] ?? 0;
   // a light swing into his front while he stands guard
+  // (a guarded strike never bites: the attack record's hitAt stays −1, anim.js BITE)
+  const guardedAt = [];
+  G.watch = (n, e) => { if (n === 'player:hitDragon' && e?.guarded) guardedAt.push(p.atk); };
   input.click(0);
-  run(G, 0.7);
+  let bit = false;
+  run(G, 0.7, () => { for (const a of guardedAt) if (a && a.hitAt >= 0) bit = true; });
+  G.watch = null;
   assert((G.counts['dragon:guard'] ?? 0) > c0 && d.hp === hp0 && d.posture > post0, `a light swing into his guard: dragon:guard, no damage (hp ${d.hp}), posture ${post0.toFixed(0)} → ${d.posture.toFixed(0)}`);
+  assert(guardedAt.filter(Boolean).length > 0 && !bit, `a guarded strike does not bite: the attack's hitAt stays −1 (${guardedAt.filter(Boolean).length} guarded hit(s) with the record; bit ${bit})`);
   // the same from behind lands
   settle(G);
   place(G, 1.6, Math.PI);

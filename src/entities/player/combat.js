@@ -39,6 +39,10 @@ import { DIM } from './model.js';
 // `chain` = the fraction of the recovery after which the next light may start: the cut carries
 // through before the next one winds up (it was 0: a mashed chain cut each swing off as its active
 // frames ended, 4 hits a second).
+// `bite` = how hard the edge catches in what it cuts (× anim.js BITE, default 1; a clip's landed,
+// unguarded hit only): through the hit-pause the hips drop, the chest folds into the blow, the head
+// nods, the grip pulls in and the blade holds where it bit, then tears on through. The heavier the
+// blow the deeper (the slam 1.3, the sprint slash 1.1, the cleave 1.5); the thrust has none.
 //
 // Pace (Session 26, owner: "speed up the attack speed ... its too slow right now"): a light is a
 // short gather, a QUICK cut and a held finish: windup 0.11 s, active 0.12 s, and the next light may
@@ -55,7 +59,7 @@ export const LIGHT = [
     // diagonal down across the front → low past the left hip
     name: 'fallingCut', kind: 'light', combo: 1, damage: 30, poise: 12, heavy: false,
     windup: 0.11, active: 0.12, recovery: 0.24, chain: 0.3, lunge: 0.55, reach: 2.2,
-    hitstop: 0.05, shake: 0.12,
+    hitstop: 0.05, shake: 0.12, bite: 1,
     anim: { kind: 'clip', clip: 'fallingCut' }, // high right → low left
     variants: [
       { kind: 'clip', clip: 'drawCut', turn: 0.3 }, // low and flat from the right hip, pivoting into it
@@ -67,7 +71,7 @@ export const LIGHT = [
     // to high right
     name: 'risingCut', kind: 'light', combo: 2, damage: 32, poise: 12, heavy: false,
     windup: 0.11, active: 0.12, recovery: 0.24, chain: 0.3, lunge: 0.55, reach: 2.2,
-    hitstop: 0.05, shake: 0.12,
+    hitstop: 0.05, shake: 0.12, bite: 1,
     anim: { kind: 'clip', clip: 'risingBackhand' }, // low left → high right
     variants: [
       { kind: 'clip', clip: 'flatBackhand', turn: -0.4 }, // level at chest height, pivoting round with it
@@ -79,7 +83,7 @@ export const LIGHT = [
     // out level; the blade crosses the front two thirds of the way round, inside the active frames
     name: 'whirl', kind: 'light', combo: 3, damage: 36, poise: 16, heavy: false,
     windup: 0.13, active: 0.15, recovery: 0.26, chain: 0.3, lunge: 0.7, reach: 2.2,
-    hitstop: 0.06, shake: 0.16,
+    hitstop: 0.06, shake: 0.16, bite: 1,
     anim: { kind: 'clip', clip: 'whirl', spin: -1 },
     variants: [
       { kind: 'clip', clip: 'risingWhirl', spin: -1 }, // the same turn out of a crouch, the blade spiralling up
@@ -91,7 +95,7 @@ export const LIGHT = [
     // the rear heel to the point
     name: 'stab', kind: 'light', combo: 4, damage: 30, poise: 14, heavy: false,
     windup: 0.11, active: 0.1, recovery: 0.24, chain: 0.3, lunge: 0.8, reach: 2.3,
-    hitstop: 0.055, shake: 0.14,
+    hitstop: 0.055, shake: 0.14, bite: 1,
     anim: { kind: 'clip', clip: 'lunge' },
     variants: [
       { kind: 'clip', clip: 'risingThrust' }, // out of a crouch, the point driving up into the target
@@ -103,7 +107,7 @@ export const LIGHT = [
     // (`chain`: a mashed button no longer cuts the landing off as the blade meets the ground; the
     // blow's damage is up from 58 to pay for the beat it holds)
     windup: 0.28, active: 0.13, recovery: 0.42, chain: 0.3, lunge: 0.75, reach: 2.1,
-    hitstop: 0.11, shake: 0.42,
+    hitstop: 0.11, shake: 0.42, bite: 1.3,
     up: 1.0, // reach band above the blade: lower than the sweeps' so the raise can't tag the neck overhead
     shards: { radius: 1.7, height: 3.2 }, // ground burst at the impact point (hits if the blade missed)
     // a clip like the lights (swings.js `slam`): a gather at the right hip, a leap as the blade
@@ -121,7 +125,7 @@ export const LIGHT = [
 export const SPRINT_ATK = {
   name: 'sprintSlash', kind: 'light', combo: 1, damage: 40, poise: 18, heavy: false,
   windup: 0.11, active: 0.13, recovery: 0.32, chain: 0.25, lunge: 0, travel: 2.4, keepYaw: true, reach: 2.3,
-  hitstop: 0.07, shake: 0.2,
+  hitstop: 0.07, shake: 0.2, bite: 1.1,
   anim: { kind: 'clip', clip: 'sprintSlash', feet: 'dash' },
 };
 
@@ -130,7 +134,7 @@ export const SPRINT_ATK = {
 export const ROLL_ATK = {
   name: 'rollCut', kind: 'light', combo: 1, damage: 34, poise: 14, heavy: false,
   windup: 0.1, active: 0.11, recovery: 0.26, chain: 0.3, lunge: 0.9, reach: 2.2,
-  hitstop: 0.06, shake: 0.14,
+  hitstop: 0.06, shake: 0.14, bite: 1,
   anim: { kind: 'clip', clip: 'rollCut' },
 };
 
@@ -146,7 +150,7 @@ export const CLEAVE = {
   damage: [70, 110], poise: [30, 50], // lerped by charge (see chargeStats)
   travel: [2.2, 3.6],
   windup: 0.08, active: 0.24, recovery: 0.45, lunge: 0, reach: 2.3,
-  hitstop: 0.15, shake: 0.45,
+  hitstop: 0.15, shake: 0.45, bite: 1.5, // (the bite's drag caps at 1: the blade holds where it bit)
   anim: { kind: 'clip', clip: 'cleave', feet: 'dash', dashW: true },
 };
 

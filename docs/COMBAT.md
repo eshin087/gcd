@@ -205,6 +205,10 @@ shown on the grip only once the hand is there (`OFF_SNAP`).
   counts when it overlaps the blade's swept wall extended `up` 2.6 m above (the slam: 1.0 m) and
   `down` 0.5 m below it; the hit segment runs 0.4 m past the steel (the edge wave). Swings **step
   in** toward a hurt surface within 4.8 m and 0.8 rad of the facing (lunge stretched by ≤ 1.3 m).
+  The step is a push-off and a brake (`TUNE.lungeShape`): ~90 % of it is done as the front foot
+  plants (0.45 of the active frames) and he stands still as the cut ends (it was an even glide to
+  the end of the active frames, the body sliding on past the planted foot); a light held past a
+  click and released before the coil steps all of it from the release.
   Result (`npm test` → scenario REACH): all five chain hits and the cleave connect from the front
   of an idle wyrm from contact out to 3.5 m from its chest surface.
 - **Chain pacing (ADR-041, ADR-071, ADR-075):** the five hits deal 194 damage in 2.76 s of full
@@ -531,6 +535,11 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   shake (0.3–0.6) on top of the hurt flash and the stagger.
 - **His blade** leaves a sweep trail through every strike, from the snap out of the cock through the
   follow-through: a crescent of strokes laid along each blade point's path, pale steel (ember in P2).
+- **His edge bites** (a landed, unguarded hit of a swing: `atk.hitAt`): through the freeze the blade
+  holds where it bit, the grip pulls in along it, the hips drop ~4.5 cm, the chest folds into the
+  blow and the head nods; then the blade tears on through over 0.08 s of the swing's clock (it is
+  never pulled back past the frame that hit). Per weight (combat.js `bite`): the lights 1, the
+  sprint slash 1.1, the slam 1.3, the cleave 1.5 (its hips drop ~7 cm); a guarded strike never bites.
 
 **Moves** (`moves.js`; N normal, B blue, R red; P1 windup s (damage); LOCK = a perfect parry locks
 the blades, MIKIRI = perilous; hits test a zone from his root through their active frames: sector

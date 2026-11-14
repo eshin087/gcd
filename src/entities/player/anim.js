@@ -931,7 +931,40 @@ function attackPose(p, A) {
     p[P.lF + 1] = lerp(p[P.lF + 1], ANK, u) + 0.07 * Math.sin(Math.PI * u);
     p[P.lFy] = lerp(p[P.lFy], SCRATCH[P.lFy], u);
   }
+  // inertia: the root's push-off leaves the chest behind the hips; its brake pitches it on over the
+  // planted foot (A.leanF: the smoothed root acceleration, the loco's lean spring, set in update()
+  // before the pose). Not on a dash: the cleave and the sprint slash key their own lean into it
+  if (k.feet !== 'dash' && k.kind !== 'thrust') p[P.spX] -= ATK_INERTIA * fin(A.leanF, 0);
+  // the BITE (atk.hitAt, set by player.js _applyHit on a landed, unguarded blow): the edge catches in
+  // what it cut. The hips drop, the chest folds into the blow, the head nods, the grip pulls in along
+  // the blade, and the blade holds where it bit. It is full through the hit-pause (the frozen clock
+  // keeps t − hitAt ≈ 0) and lets go over BITE.dur of the attack's clock after it: the blade drags
+  // behind its arc, then whips through to catch up. It is never pulled back past the frame that hit.
+  const at = A.player?.atk;
+  if (k.kind === 'clip' && at && at.def === d && fin(at.hitAt, -1) >= 0) {
+    const s = t - at.hitAt, b = clamp(fin(d.bite, 1), 0, 2) * (1 - smoothstep(0, BITE.dur, s)), H = A.bite;
+    if (H.rec !== at || H.at !== at.hitAt) {
+      // (keyed on the record AND the time: two swings can hit at the very same clock time, and the
+      // second one must not reuse the first one's blade)
+      H.rec = at;
+      H.at = at.hitAt;
+      for (let c = 0; c < 3; c++) H.dir[c] = fin(A.cur[P.swD + c], c === 2 ? 1 : 0); // the blade the contact frame drew
+    }
+    if (b > 1e-3) {
+      const w = Math.min(1, BITE.drag * b);
+      for (let c = 0; c < 3; c++) p[P.swD + c] += (H.dir[c] - p[P.swD + c]) * w;
+      for (let c = 0; c < 3; c++) p[P.rH + c] -= H.dir[c] * BITE.grip * b;
+      p[P.bodyY] -= BITE.sink * b;
+      p[P.spX] += BITE.lean * b;
+      p[P.hdX] += BITE.nod * b;
+    }
+  }
 }
+// the bite: its length (s of the attack's clock after the hit-pause), how much of the way back to
+// the blade that bit it holds (× bite), the grip's pull (m), the hips' drop (m), the chest's fold
+// and the head's nod (rad). × the def's `bite` (combat.js; default 1)
+const BITE = { dur: 0.08, drag: 0.6, grip: 0.03, sink: 0.045, lean: 0.1, nod: 0.08 };
+const ATK_INERTIA = 0.35; // × A.leanF (rad): the chest's pitch from the root's step in an attack
 /** Turn the whole pose `yaw` rad about the root (+ = to his left), the foot spots with it. */
 function pivotYaw(p, yaw) {
   if (Math.abs(yaw) < 1e-5) return;
@@ -2436,6 +2469,7 @@ export class HeroAnimator {
     this.dashStep = 0; // a dash's touchdowns already stepped (bits: rear, front)
     this.stepL = true; // the foot that steps in an attack (play(): the one further back)
     this.leadK = 1; // swingPose: the hips' lead (0 while a held light waits at the coil)
+    this.bite = { rec: null, at: -1, dir: new Float32Array(3) }; // attackPose: the hit the bite is for, the blade it bit with
     this.entry = new Float32Array([-0.25, ANK, 0.15, 0.13, ANK, -0.03, -0.4, 0.22]);
     this.leanF = 0; // acceleration lean (rad), a critically damped spring on the smoothed acceleration
     this.leanFV = 0;
@@ -2551,6 +2585,7 @@ export class HeroAnimator {
     this.updraft = 0;
     this.stepL = true;
     this.leadK = 1;
+    this.bite.rec = null;
     Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '' });
     this.visYaw = fin(this.player.yaw);
     this.cycOn = false;
