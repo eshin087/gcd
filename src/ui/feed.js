@@ -90,7 +90,10 @@ export class CombatFeed {
     const now = () => num(this.game.realTime);
 
     // player
-    on('player:hitDragon', (d) => this.hits.push({ damage: d.damage, part: d.part, crit: !!d.crit, heavy: !!d.heavy, kind: d.kind }));
+    on('player:hitDragon', (d) => {
+      if (d.kind === 'flurry' && !d.heavy) return; // a flurry's flash cuts are summed up in one line (player:flurryEnd)
+      this.hits.push({ damage: d.damage, part: d.part, crit: !!d.crit, heavy: !!d.heavy, kind: d.kind });
+    });
     on('player:hurt', (d) => {
       const dmg = Math.round(num(d.damage));
       if (dmg <= 0) return;
@@ -119,7 +122,17 @@ export class CombatFeed {
     on('player:perfectDodge', (d) => {
       this.perfectAt = now();
       const what = pick(DODGE_TEXT, attackName(d.attack), 'the attack');
-      log(`Ghostep: you slip past ${what}. Strike now!`, 'combat', 'ghostep', 0.8);
+      const n = Math.round(num(d.streak));
+      log(n >= 2 ? `Ghostep ×${n}: you slip past ${what}!` : `Ghostep: you slip past ${what}. Strike now!`, 'combat', 'ghostep', 0.8);
+    });
+    // a flurry of two blows or more, summed up once its last has landed; a streak that ends
+    on('player:flurryEnd', (d) => {
+      const n = Math.round(num(d.strikes));
+      if (n >= 2) log(`${d.label ? `${d.label}: ` : ''}${n} cuts, ${Math.round(num(d.damage))} damage.`, 'combat', 'flurry', 0.5);
+    });
+    on('player:streak', (d) => {
+      const lost = Math.round(num(d.lost));
+      if (lost >= 2) log(`Ghostep streak of ${lost} broken.`, 'warn', 'streak', 1);
     });
     on('player:ghostep', () => {
       // only when no perfectDodge announced it (the two normally arrive together)

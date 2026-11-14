@@ -24,6 +24,7 @@ export class RunStats {
     this.dodges = 0;
     this.parries = 0;
     this.perfectDodges = 0;
+    this.bestStreak = 0; // the longest run of perfect dodges without being hurt
     this.blocks = 0;
     this.guardBreaks = 0;
   }
@@ -40,6 +41,7 @@ export class RunStats {
       dodges: this.dodges,
       parries: this.parries,
       perfectDodges: this.perfectDodges,
+      bestStreak: this.bestStreak,
       blocks: this.blocks,
       guardBreaks: this.guardBreaks,
     };
@@ -56,6 +58,7 @@ export class RunStats {
       ['Hits landed', String(this.hits)],
       ['Parries', String(this.parries)],
       ['Ghosteps (perfect dodges)', String(this.perfectDodges)],
+      ['Longest Ghostep streak', String(this.bestStreak)],
       ['Blocks', String(this.blocks)],
       ['Dodges', String(this.dodges)],
     ];
