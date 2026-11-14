@@ -23,8 +23,22 @@ buildHero(U, {});                                         // the plain undersuit
 | `base.js` | the undersuit: fallback items for `chest`, `arms`, `legs` |
 | `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls (one hand for every outfit) |
 | `sheet.js` | `hangSheet(ctx, parent, d, mats)`: one cloth sheet or ribbon on the streamer springs, from data; `panelSkirt(ctx, PANELS, { seed })`: a skirt of coat panels on the pelvis |
+| `looks.js` | the outfit options (TEMPORARY, until the owner picks one): `HERO_LOOKS` (id → `{ id, name, loadout, tint }`), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
+| `moon.js`, `swallow.js`, `warden.js` | the three outfit options' items, loadouts (`MOON_LOADOUT`, ...) and colours (`MOON_TINT`, ...): the Moonlit Robe, the Swallow, the Moon Warden |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |
+
+### Outfit options (temporary)
+
+An outfit option is a loadout plus its colours: a `tint` (`{ <HERO_INK name>: { fill?, ink?,
+emissive?, spec?, rim?, sub?, inkGlow?, glowK? } }`) that `tintHero(rig.materials, tint)` (`model.js`)
+writes on ONE rig's material instances. A tint never names `skin`, `eye`, `blade`, `bladeTip`, `gem`
+or `flask`, and never touches the shared `U.*` (the per-part ink every rig on the page reads; the
+bosses build from `HERO_INK` too). To add one: a file here with its items (`<set>.<piece>` ids, built
+from `heroGeo.js`, `sheet.js` and `hands.js`), registered in `index.js`'s loop; a `HERO_LOOKS` entry
+in `looks.js`. `?heroLook=<id>` wears it, the Lab's OUTFIT row switches it live. Once the owner picks
+one, `looks.js`, the switch and the losing options go and the pick becomes `DEFAULT_LOADOUT` (its
+tint applied beside it).
 
 ## Slots
 
@@ -161,7 +175,8 @@ any item:
   `inMax` ([root, tip] rad, + = toward the wearer) caps how far each segment may swing IN (a head
   ribbon or a scarf off the back that must not swing into him; negative = always at least that far
   out; not applied while he lies down); `wrap` is the radius the sheet curves round at its root
-  (the tests model the sheet with it). Any slot may return streamers.
+  (the tests model the sheet with it); `floor: true` keeps its ends over the grass while he rolls or
+  falls (a head ribbon: the forward roll puts his crown at the grass). Any slot may return streamers.
   The root may hang on any joint (the cloak drapes one sheet over each upper arm). Give `w` (the
   widths [root, seam, hem]) so the animator can keep the sheet off the blade (ADR-048: spheres along
   the steel), and `arm` (1 / 2 for a sheet on the right / left upper arm). The arms do not push the

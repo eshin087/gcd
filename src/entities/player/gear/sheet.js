@@ -18,6 +18,7 @@ import { skirtSheet, tatterStrip, foldLines, ribbonCrease, lerp, sheetOffset, sh
  *   hemFrom? (1)   0..1 down the lower segment where `mats.hem` takes over from `mats.face`
  *   ribbon?        a narrow ribbon (tatterStrip) instead of a curved sheet; `fork` splits its tip;
  *                  `crease` = the drawn crease's phase (default seed × 0.7)
+ *   floor?         rolling or falling, its ends stay over the grass (anim.js; a head ribbon, a long scarf)
  *   seed           the folds' and the tears' seed
  * `mats` = { face, back | null, hem }: the outer face, the inner face (a BackSide material, or null
  * for a ribbon in a DoubleSide one), the pale hem. Returns the streamer record.
@@ -55,6 +56,7 @@ export function hangSheet({ joint, mesh }, parent, d, mats) {
   return {
     segs: [s0, s1], len: d.len, out: d.out, lag: d.lag ?? 0.5, max: d.max ?? 1.45, w: d.w, arm: d.arm ?? 0,
     wrap: d.ribbon ? 0.02 : d.wrap,
+    floor: !!d.floor,
     inMax: im == null ? undefined : typeof im === 'number' ? [im, im] : im,
   };
 }

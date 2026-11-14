@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | deflect | lab | strings | plungeReact |
-//             timing | fire | herolook | herolife | win | die | touch | pad | remap | all (default all)
+//             timing | fire | herolook | herolife | looks | win | die | touch | pad | remap | all (default all)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -3372,6 +3372,389 @@ async function scenarioHeroLook() {
   return G;
 }
 
+// ================================================================== scenario: the outfit options (?heroLook=)
+// The hero's outfit options (gear/looks.js; temporary, until the owner picks one): the URL switch,
+// the registry, each look built (its loadout, its colours on its own rig only, its cost), worn
+// through HEROLOOK's route (the rig finite; hems and cloth tips above the grass; the cloth out of the
+// body; the blade through the skirt and the sheets as rarely as today's; the free hand clear of the
+// cloth), each look's own shape, and the Lab's OUTFIT row / live switching with the shared-ink
+// restore. Today's look (`shroud`) runs the same route for comparison: its cloth numbers are printed,
+// not asserted (its cape sheets were never held out of the body, and the left-arm drape covers the
+// hand by design).
+async function scenarioLooks() {
+  out('\n== scenario LOOKS (outfit options behind ?heroLook=: switch, registry, each look built and worn through the route, the Lab row) ==');
+  const { HERO_LOOKS, LOOK_IDS, DEFAULT_LOOK, heroLookFromSearch, heroLookUrl } = await imp('src/entities/player/gear/looks.js');
+  const { DEFAULT_LOADOUT, BASE_LOADOUT, SLOTS, resolveLoadout } = await imp('src/entities/player/gear/index.js');
+  const { BODY, HERO_INK, sheetOffset, tintHero } = await imp('src/entities/player/model.js');
+  const { SWALLOW_TINT } = await imp('src/entities/player/gear/swallow.js');
+  const D = HERO_DIM;
+  const { ell, cap, shell, restSpine } = heroShapes(BODY, D);
+  const PART_U = ['uHeroPartInk', 'uHeroPartFill', 'uHeroPartRim'];
+  const snapU = (U) => PART_U.map((k) => U[k].value.map((x) => x.toArray().join()).join('|')).join('/');
+  const v = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Vector3(), m = new THREE.Matrix4();
+  const LYING = new Set(['knockdown', 'dead', 'deadDown']);
+  const rootOf = (S) => S.segs[0].parent?.parent ?? null; // the joint a streamer hangs on (its base's parent)
+  const under = (o, J) => { for (let x = o; x; x = x.parent) if (x === J) return true; return false; };
+  const sources = (root) => { const l = []; root.traverse((o) => { if (o.isMesh && !o.userData.rigidBatch) l.push(o); }); return l; };
+  const go = (G, s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); each?.(); } };
+  const setup = (id) => {
+    const G = build({ heroLook: id });
+    fightSetup(G);
+    const p = G.game.player, d = G.game.dragon;
+    p.debug.god = true;
+    p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    return G;
+  };
+  // a panel's hem points (s 0 … 1 across it) in root-local metres; the lowest
+  const hemLow = (p, C, n = 8) => {
+    const P = C.def, sk = P.skew ?? 0, sl = P.slant ?? 0, w2 = P.w[2];
+    const R = C.r0 + 0.25 * P.len[0] + 0.25 * P.len[1];
+    let lo = Infinity;
+    for (let k = 0; k <= n; k++) {
+      const s = k / n, a = ((s - 0.5) * w2 + sheetOffset(w2, P.w[0], sk)) / R;
+      v.set(Math.sin(a) * R, -(P.len[1] + 0.02 + sl * (sk < 0 ? 1 - s : s)), (Math.cos(a) - 1) * R).applyMatrix4(C.segs[1].matrixWorld);
+      lo = Math.min(lo, p.object3d.worldToLocal(v).y);
+    }
+    return lo;
+  };
+  // a streamer's root and tip, root-local metres (into a / b)
+  const ends = (p, S, a, b) => {
+    a.setFromMatrixPosition(S.segs[0].matrixWorld);
+    p.object3d.worldToLocal(a);
+    b.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld);
+    p.object3d.worldToLocal(b);
+  };
+
+  // (A) the URL switch
+  {
+    const f = heroLookFromSearch;
+    const u1 = new URL(heroLookUrl('robe', 'http://x/?level=ash&lab'));
+    const u2 = new URL(heroLookUrl('shroud', u1.toString()));
+    assert(f('?heroLook=robe') === 'robe' && f('?level=ash&heroLook=SWALLOW&lab') === 'swallow' && f('?herolook=warden') === 'warden'
+      && ['?heroLook=nope', '', undefined, '%%%'].every((s) => f(s) === DEFAULT_LOOK)
+      && u1.searchParams.get('heroLook') === 'robe' && u1.searchParams.get('level') === 'ash' && u1.searchParams.has('lab') && !u2.searchParams.has('heroLook') && u2.searchParams.get('level') === 'ash',
+      `?heroLook= picks an outfit (case-insensitive; unknown or absent: ${DEFAULT_LOOK}); heroLookUrl sets / clears it and keeps the other params`);
+  }
+  // (B) the registry and its data: every loadout resolves, every tint names a cloth / metal part (never
+  // the skin, the eyes, the blade, the gem or the flask) with sane numbers, the sword is the hero's
+  {
+    const FORBID = new Set(['skin', 'eye', 'blade', 'bladeTip', 'gem', 'flask']);
+    const okN = (a, n, lo, hi) => Array.isArray(a) && a.length === n && a.every((x) => Number.isFinite(x) && x >= lo && x <= hi);
+    const bad = [];
+    for (const id of LOOK_IDS) {
+      const L = HERO_LOOKS[id];
+      if (L.id !== id) bad.push(`${id}: id`);
+      try { resolveLoadout(L.loadout); } catch (e) { bad.push(`${id}: ${e.message}`); }
+      if (L.loadout.weapon !== DEFAULT_LOADOUT.weapon) bad.push(`${id}: weapon ${L.loadout.weapon}`);
+      for (const [name, t] of Object.entries(L.tint ?? {})) {
+        if (!HERO_INK[name] || FORBID.has(name)) bad.push(`${id}: tint ${name}`);
+        if (t.fill && !okN(t.fill, 3, 0, 1.2)) bad.push(`${id}: ${name}.fill`);
+        if (t.ink && !okN(t.ink, 3, 0, 2)) bad.push(`${id}: ${name}.ink`);
+        if (t.emissive && !okN(t.emissive, 3, 0, 4)) bad.push(`${id}: ${name}.emissive`);
+        if (t.spec && !okN(t.spec, 2, -1e9, 1e9)) bad.push(`${id}: ${name}.spec`);
+        for (const k of ['rim', 'sub', 'inkGlow', 'glowK']) if (t[k] != null && !Number.isFinite(t[k])) bad.push(`${id}: ${name}.${k}`);
+      }
+    }
+    assert(!bad.length && HERO_LOOKS.shroud.loadout === DEFAULT_LOADOUT && HERO_LOOKS.shroud.tint === null && LOOK_IDS.join() === 'shroud,robe,swallow,warden' && DEFAULT_LOOK === 'shroud',
+      `the outfit options: ${LOOK_IDS.map((id) => `${id} "${HERO_LOOKS[id].name}"`).join(', ')}; every loadout resolves and every tint is a cloth / metal part (${bad.join('; ') || 'ok'})`);
+  }
+
+  let n0 = 0, offKeys0 = '';
+  const rates = {};
+  for (const id of LOOK_IDS) {
+    const L = HERO_LOOKS[id], isNew = id !== DEFAULT_LOOK;
+    const G = setup(id);
+    const { game } = G, p = game.player, r = p.rig, M = r.materials;
+    // (C) built as asked: the look's loadout, its colours on this rig's own materials, no shared
+    // uniform written, its cost, the hands
+    {
+      const slotsOk = SLOTS.every((sl) => p.loadout[sl] === (L.loadout[sl] ?? BASE_LOADOUT[sl] ?? null));
+      const fillsOk = Object.entries(L.tint ?? {}).every(([name, t]) => !t.fill || ['r', 'g', 'b'].every((c, i) => Math.abs(M[name].uniforms.uArtFill.value[c] - t.fill[i]) < 1e-6));
+      const u0 = snapU(game.U);
+      tintHero(M, L.tint);
+      const sharedOk = snapU(game.U) === u0;
+      assert(p.look === id && slotsOk && fillsOk && sharedOk, `${id}: wears its loadout (${SLOTS.map((sl) => p.loadout[sl] ?? '-').join(', ')}), its colours on its own materials, and writes no shared part ink`);
+      const src = sources(p.object3d);
+      const tris = src.reduce((s, o) => s + (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3, 0);
+      const mats = new Set(src.map((o) => o.material)).size;
+      const strips = r.coat.reduce((s, C) => s + C.strips.length, 0);
+      if (!isNew) n0 = src.length;
+      out(`   ${id}: ${src.length} meshes, ${tris} triangles, ${mats} materials, ${p.batch.meshes.length} batches, ${r.streamers.length} streamers, ${r.coat.length} panels, ${strips} strips`);
+      assert(src.length <= n0 && tris <= 26000 && mats <= 21 && p.batch.meshes.length <= 21 && r.streamers.length <= 6 && r.coat.length <= 6 && strips <= 12,
+        `${id}: costs no more than today (${src.length} meshes of ${n0}, ${tris} triangles ≤ 26000, ${mats} materials and ${p.batch.meshes.length} draws ≤ 21)`);
+      const keys = Object.keys(r.offHand ?? {}).filter((k) => r.offHand[k]).sort().join();
+      if (!isNew) offKeys0 = keys;
+      const fist = r.sword.children.some((o) => o.isMesh && o.userData.slot === 'arms');
+      assert(keys === offKeys0 && keys.includes('open') && fist, `${id}: the free hand (${keys}) as today's, the sword hand's fist on the grip`);
+    }
+    // the look's own shape, standing (2 s idle)
+    go(G, 2);
+    const tails = r.coat.filter((C) => Math.abs(C.def.az) > 2.2), fronts = r.coat.filter((C) => Math.abs(C.def.az) < 1);
+    const strips = r.coat.reduce((s, C) => s + C.strips.length, 0);
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    let headSkin = 0, eyes = 0, headHair = 0, headTrim = 0;
+    r.head.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.material === M.skin) headSkin++;
+      if (o.material === M.eye) eyes++;
+      if (o.userData.slot === 'head' && (o.material === M.hair || o.material === M.hairTip)) headHair++;
+      if (o.userData.slot === 'head' && o.material === M.trim) headTrim++;
+    });
+    const bodyHair = Object.values(r.hair).filter((j) => j.children.some((o) => o.isMesh)).length;
+    const sprintEnds = (S) => {
+      ends(p, S, a, b);
+      return a.z - b.z;
+    };
+    const sprint = (fn) => {
+      G.input.axis = { x: 0, y: 1 };
+      G.input.hold('ShiftLeft');
+      go(G, 1.0);
+      const res = fn();
+      G.input.release('ShiftLeft');
+      G.input.axis = { x: 0, y: 0 };
+      go(G, 1.2);
+      return res;
+    };
+    if (id === 'robe') {
+      const lowF = Math.min(...fronts.map((C) => hemLow(p, C))), lowT = tails.map((C) => hemLow(p, C));
+      const onSpine = r.streamers.filter((S) => rootOf(S) === r.spine), onArmL = r.streamers.filter((S) => rootOf(S) === r.arms.L.upper);
+      out(`   robe: hems front ${lowF.toFixed(2)} m, back tails ${lowT.map((x) => x.toFixed(2)).join(' / ')} m`);
+      assert(r.coat.length === 6 && strips === 0 && fronts.length === 2 && lowF >= 0.5 && tails.length === 2 && lowT.every((x) => x >= 0.2 && x <= 0.4),
+        `robe: the high-low skirt: 6 panels, no strips, the front hems over the knee (lowest ${lowF.toFixed(2)} m ≥ 0.50), the back tails to the calf (${lowT.map((x) => x.toFixed(2)).join(' / ')} m in 0.20-0.40)`);
+      assert(r.streamers.length === 3 && onSpine.length === 2 && onArmL.length === 1 && !r.streamers.some((S) => under(rootOf(S), r.arms.R.upper))
+        && r.streamers.every((S) => S.lag > 0 && S.lag <= 1 && Array.isArray(S.inMax)) && onArmL[0].arm === 2 && !r.slots.back.length && !r.slots.shoulders.length,
+        `robe: two sash tails on the spine, one wing on the free upper arm (arm ${onArmL[0]?.arm}), nothing on the sword arm, every sheet with inMax; no back or shoulder item`);
+      assert(headSkin > 0 && eyes >= 1 && bodyHair === 0 && headHair >= 2 && headTrim >= 1, `robe: a bare, lit head (${headSkin} skin, ${eyes} eye meshes), its own gold locks (${headHair}), no body hair clusters, the silver guan`);
+    } else if (id === 'swallow') {
+      const lowF = Math.min(...fronts.map((C) => hemLow(p, C))), lowT = Math.min(...tails.map((C) => hemLow(p, C)));
+      const tail = r.streamers.find((S) => rootOf(S) === r.head), scarf = r.streamers.filter((S) => rootOf(S) === r.chest);
+      const longScarf = scarf.reduce((x, S) => (!x || S.len[0] + S.len[1] > x.len[0] + x.len[1] ? S : x), null);
+      ends(p, tail, a, b);
+      const hang = a.y - b.y;
+      const wraps = ['R', 'L'].every((s) => r.arms[s].fore.children.some((o) => o.isMesh && o.userData.slot === 'arms' && o.material === M.facing));
+      out(`   swallow: hems front ${lowF.toFixed(2)} m, tails ${lowT.toFixed(2)} m; the tail hangs ${hang.toFixed(2)} m`);
+      assert(r.coat.length === 4 && strips === 2 && lowF >= 0.85 && lowT >= 0.68 && lowT <= 0.85, `swallow: 4 panels, 2 strips, the front hems at ${lowF.toFixed(2)} m (≥ 0.85), the tails' lowest at ${lowT.toFixed(2)} m (0.68-0.85)`);
+      assert(r.streamers.length === 3 && tail && tail.lag === 0.75 && tail.inMax[0] < 0 && scarf.length === 2 && scarf.every((S) => Array.isArray(S.inMax)) && hang > 0.15,
+        `swallow: the high tail on the head (lag ${tail?.lag}, kept out: inMax ${tail?.inMax?.[0]}), hanging ${hang.toFixed(2)} m; two scarf tails on the chest`);
+      assert(bodyHair === 0 && headHair >= 2 && headSkin > 0 && !r.slots.shoulders.length && wraps, `swallow: its own locks (${headHair}), a lit face, no shoulder item, slate wraps on both forearms`);
+      const [dt, ds] = sprint(() => [sprintEnds(tail), sprintEnds(longScarf)]);
+      assert(dt > 0.12 && ds > 0.12, `swallow sprinting: the tail ${dt.toFixed(2)} m and the long scarf tail ${ds.toFixed(2)} m behind their roots (> 0.12)`);
+    } else if (id === 'warden') {
+      const lows = r.coat.map((C) => hemLow(p, C));
+      const rib = r.streamers.find((S) => rootOf(S) === r.head), man = r.streamers.find((S) => rootOf(S) === r.chest);
+      ends(p, rib, a, b);
+      const hang = a.y - b.y;
+      a.setFromMatrixPosition(man.segs[0].matrixWorld);
+      r.chest.worldToLocal(a);
+      const manX = a.x;
+      out(`   warden: hems ${lows.map((x) => x.toFixed(2)).join(' / ')} m; the ribbon hangs ${hang.toFixed(2)} m`);
+      assert(r.coat.length === 6 && strips === 0 && lows.every((x) => x >= 0.45), `warden: 6 panels, no strips, every hem ≥ 0.45 m (lowest ${Math.min(...lows).toFixed(2)})`);
+      assert(r.streamers.length === 2 && rib && rib.lag === 1 && rib.inMax[0] < 0 && rib.wrap === 0.02 && hang > 0.3 && man && manX < 0 && man.lag < 1,
+        `warden: the ribbon on the head (lag 1, kept out, hanging ${hang.toFixed(2)} m), the capelet's tail on the chest on his right (x ${manX.toFixed(2)})`);
+      // (3) the cuirass's plates, lacing, belt and straps clear of the hanging upper arms (full
+      // rings cut into them: the plates are arcs open at the sides)
+      let worstArm = -1, armAt = '';
+      const armInv = ['R', 'L'].map((s) => new THREE.Matrix4().copy(r.arms[s].upper.matrixWorld).invert());
+      for (const J of [r.spine, r.chest]) {
+        for (const o of J.children) {
+          if (!o.isMesh || o.userData.slot !== 'chest' || ![M.spike, M.bevel, M.leather].includes(o.material)) continue;
+          const pos = o.geometry.attributes.position;
+          for (let i = 0; i < pos.count; i++) {
+            v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+            armInv.forEach((inv, k) => {
+              const dep = cap(q.copy(v).applyMatrix4(inv), 0, D.upperArm, BODY.upperArm[0], BODY.upperArm[1]);
+              if (dep > worstArm) { worstArm = dep; armAt = `${Object.keys(M).find((n) => M[n] === o.material)} into the ${k ? 'left' : 'right'} arm ${(-q.y).toFixed(2)} m down it, ${p.object3d.worldToLocal(w.copy(v)).y.toFixed(2)} m up`; }
+            });
+          }
+        }
+      }
+      out(`   warden: the cuirass ${(worstArm * 100).toFixed(1)} cm into an upper arm at most (idle; ${armAt || 'none'})`);
+      assert(worstArm <= 0.012, `warden: the cuirass stays off the hanging arms (deepest ${(worstArm * 100).toFixed(1)} cm ≤ 1.2)`);
+      assert(r.slots.shoulders.length > 0 && r.slots.shoulders.every((o) => o.parent === r.arms.L.upper) && !r.pauldron.children.some((o) => o.userData.slot === 'shoulders')
+        && r.arms.L.fore.children.some((o) => o.isMesh && o.userData.slot === 'arms' && o.material === M.spike) && headSkin > 0 && p.loadout.legs === 'warden.legs',
+        'warden: the pauldron rides the free upper arm (none on the right shoulder joint), the splinted free forearm, a lit face, its own boots');
+      const ds = sprint(() => sprintEnds(rib));
+      assert(ds > 0.15, `warden sprinting: the ribbon streams ${ds.toFixed(2)} m behind its root (> 0.15)`);
+    }
+
+    // (D) the route (HEROLOOK's), then a death on the ground (the lying frames): per frame
+    let frames = 0, bad = 0, hemMin = Infinity, cornerMin = Infinity, tipLowFrames = 0, tipMin = Infinity, hemAt = '', cornerAt = '', tipAt = '', hemDeath = Infinity, tipDeath = Infinity;
+    let pen = 0, penFrames = 0, penAt = '', counted = 0, headWorst = -1, headAt = '';
+    let loco = 0, locoCross = 0, cross = 0, charge = 0, chargeHit = 0;
+    let hand = 0, handNear = 0, handMin = Infinity, handAt = '';
+    let phase = 'start', plate = -1, plateAt = '';
+    const parts = [
+      ['torso', r.spine, (x) => shell(x)],
+      ['hips', r.pelvis, (x) => ell(x, BODY.hips.c, BODY.hips.r)],
+      ['head', r.head, (x) => ell(x, BODY.head.c, BODY.head.r)],
+      ...['R', 'L'].flatMap((s) => [
+        [`thigh ${s}`, r.legs[s].thigh, (x) => cap(x, 0, D.thigh, BODY.thigh[0], BODY.thigh[1])],
+        [`shin ${s}`, r.legs[s].shin, (x) => cap(x, -0.02, D.shin - 0.04, BODY.shin[0], BODY.shin[1])],
+      ]),
+    ];
+    const inv = parts.map(() => new THREE.Matrix4());
+    const sInv = r.streamers.flatMap(() => [new THREE.Matrix4(), new THREE.Matrix4()]);
+    const headHung = r.streamers.map((S) => under(rootOf(S), r.head));
+    const penBy = r.streamers.map(() => 0), handBy = r.streamers.map(() => 0), penPh = {};
+    const tip = D.drawnTip ?? D.steelTip, palm = new THREE.Vector3();
+    const finiteRig = () => { let ok = true; p.object3d.traverse((o) => { const e = o.matrixWorld.elements; for (let i = 0; i < 16; i++) if (!Number.isFinite(e[i])) ok = false; }); return ok; };
+    const each = () => {
+      frames++;
+      const lying = LYING.has(p.anim.key);
+      if (!finiteRig()) bad++;
+      const where = () => `${phase}, ${p.state} (${p.anim.key}) t ${(p.atk?.t ?? p.stateT ?? 0).toFixed(2)}`;
+      // (the death's collapse is printed apart: every look's hem, today's included, digs in there)
+      if (p.state === 'dead') {
+        for (const C of r.coat) hemDeath = Math.min(hemDeath, hemLow2(C, 0), hemLow2(C, 1), hemLow2(C, 0.5));
+        for (const S of r.streamers) tipDeath = Math.min(tipDeath, v.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld).y);
+      } else {
+        // the animator keeps the hem's centre off the grass (anim.js _hemY); its corners tilt with the
+        // panel's sideways swing and the slant, by up to half its width: they get a looser bound
+        r.coat.forEach((C, ci) => {
+          const y = hemLow2(C, 0.5), yc = Math.min(hemLow2(C, 0), hemLow2(C, 1));
+          if (y < hemMin) { hemMin = y; hemAt = `panel ${ci}, ${where()}`; }
+          if (yc < cornerMin) { cornerMin = yc; cornerAt = `panel ${ci}, ${where()}`; }
+        });
+        let low = Infinity;
+        r.streamers.forEach((S, si) => { v.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld); if (v.y < low) low = v.y; if (v.y < tipMin) { tipMin = v.y; tipAt = `streamer ${si}, ${where()}`; } });
+        if (low < -0.02) tipLowFrames++;
+      }
+      if (lying) return;
+      // (4) the cloth's centre lines out of the body
+      counted++;
+      parts.forEach((P, k) => inv[k].copy(P[1].matrixWorld).invert());
+      let fpen = -1, fAt = '';
+      r.streamers.forEach((S, si) => {
+        let sp = -1;
+        for (let s = 0; s < 2; s++) {
+          for (const t of [0.25, 0.5, 0.75, 1]) {
+            w.set(0, -t * S.len[s], 0).applyMatrix4(S.segs[s].matrixWorld);
+            parts.forEach((P, k) => {
+              const dep = P[2](q.copy(w).applyMatrix4(inv[k]));
+              if (dep > sp) sp = dep;
+              if (dep > fpen) { fpen = dep; fAt = `${P[0]} (streamer ${si} seg ${s} t ${t}), ${phase}`; }
+              if (headHung[si] && k === 2 && dep > headWorst) { headWorst = dep; headAt = `streamer ${si} seg ${s} t ${t}, ${phase}`; }
+            });
+          }
+        }
+        if (sp > 0.02) { penBy[si]++; penPh[phase] = (penPh[phase] ?? 0) + 1; }
+      });
+      if (fpen > pen) { pen = fpen; penAt = fAt; }
+      if (fpen > 0.02) penFrames++;
+      // the drawn blade into the Warden's plates (the torso shell + 2.2 cm, rows 1.2-1.462 m)
+      if (id === 'warden') {
+        for (let z = 0.2; z <= tip + 1e-6; z += 0.05) {
+          q.set(0, 0, z).applyMatrix4(r.sword.matrixWorld).applyMatrix4(inv[0]);
+          const h = q.y + restSpine;
+          if (h < 1.2 || h > 1.462) continue;
+          const dep = shell(q, 0.022);
+          if (dep > plate) { plate = dep; plateAt = `${phase}, ${p.state} t ${(p.atk?.t ?? p.stateT ?? 0).toFixed(2)}`; }
+        }
+      }
+      // (5) the blade through the skirt, on the loco frames
+      const c = coatCrossOf(r, tip, sheetOffset, v, w);
+      if (c) cross++;
+      if (p.state === 'idle' || p.state === 'run' || p.state === 'sprint') { loco++; if (c) locoCross++; }
+      // (6) the blade against the sheets through the charge
+      if (phase === 'charge') { charge++; if (sheetHit(r, m, v)) chargeHit++; }
+      // (H) the free hand clear of every streamer sheet (not on the grip)
+      if (p.anim.cur[45] > 0.6 || !r.streamers.length) return;
+      hand++;
+      palm.set(0, -(D.foreArm - 0.03) - 0.034 * BODY.hand, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+      let dmin = Infinity;
+      r.streamers.forEach((S, si) => {
+        let sd = Infinity;
+        for (let s = 0; s < 2; s++) {
+          const I = sInv[si * 2 + s].copy(S.segs[s].matrixWorld).invert();
+          q.copy(palm).applyMatrix4(I);
+          const L = S.len[s], R0 = (S.wrap ?? 0.02) + (s ? 0.25 * S.len[0] : 0);
+          for (const t of [0.25, 0.5, 0.75, 1]) {
+            const wd = S.w ? S.w[s] + (S.w[s + 1] - S.w[s]) * t : 0.15, R = R0 + 0.25 * t * L;
+            for (const u of [-wd / 2, 0, wd / 2]) {
+              const dd = Math.hypot(q.x - Math.sin(u / R) * R, q.y + t * L, q.z - (Math.cos(u / R) - 1) * R);
+              if (dd < dmin) dmin = dd;
+              if (dd < sd) sd = dd;
+            }
+          }
+        }
+        if (sd < 0.06) handBy[si]++;
+      });
+      if (dmin < handMin) { handMin = dmin; handAt = `${phase}, ${p.state}`; }
+      if (dmin < 0.06) handNear++;
+    };
+    // a panel's hem point `s` (0 … 1 across it; 0.5 its centre), world y
+    const hemLow2 = (C, s) => {
+      const P = C.def, sk = P.skew ?? 0, sl = P.slant ?? 0, w2 = P.w[2];
+      const R = C.r0 + 0.25 * P.len[0] + 0.25 * P.len[1];
+      const ang = ((s - 0.5) * w2 + sheetOffset(w2, P.w[0], sk)) / R;
+      return v.set(Math.sin(ang) * R, -(P.len[1] + 0.02 + sl * (sk < 0 ? 1 - s : s)), (Math.cos(ang) - 1) * R).applyMatrix4(C.segs[1].matrixWorld).y;
+    };
+    const step = (s) => go(G, s, each);
+    heroRoute(G, step, (ph) => { phase = ph; });
+    phase = 'death';
+    p.debug.kill();
+    step(3);
+    const pct = (x, n) => `${((100 * x) / Math.max(1, n)).toFixed(1)} %`;
+    out(`   ${id} route: ${frames} frames; hems lowest ${hemMin.toFixed(3)} m (${hemAt}), their corners ${cornerMin.toFixed(3)} m (${cornerAt}); cloth tips lowest ${tipMin.toFixed(3)} m (${tipAt}; ${tipLowFrames} frames < -0.02); in the death's collapse: hems ${hemDeath.toFixed(3)} m, tips ${tipDeath.toFixed(3)} m`);
+    out(`   ${id} cloth in the body: deepest ${(pen * 100).toFixed(1)} cm (${penAt || 'none'}), ${penFrames} of ${counted} frames > 2 cm (${pct(penFrames, counted)}); head-hung in the head ${headWorst < 0 ? 'never' : `${(headWorst * 100).toFixed(1)} cm (${headAt})`}`);
+    out(`   ${id} steel: through the skirt on ${locoCross} of ${loco} loco frames (${cross} of ${counted} in all); by a sheet on ${chargeHit} of ${charge} charge frames; the free hand within 6 cm of a sheet on ${handNear} of ${hand} frames (${pct(handNear, hand)}; nearest ${Number.isFinite(handMin) ? (handMin * 100).toFixed(1) + ' cm, ' + handAt : 'n/a'})`);
+    out(`   ${id} per streamer: in the body ${penBy.join(' / ')} frames (${Object.entries(penPh).map(([k, x]) => `${k} ${x}`).join(', ')}); near the hand ${handBy.join(' / ')}`);
+    rates[id] = { pen: penFrames / Math.max(1, counted), loco: locoCross / Math.max(1, loco), hand: handNear / Math.max(1, hand) };
+    assert(bad === 0 && hemMin >= -0.02 && cornerMin >= -0.1 && tipLowFrames <= 6 && tipMin >= -0.1,
+      `${id} through the route and a death: the rig finite (${bad} bad frames); alive, the hems above the grass (centre ${hemMin.toFixed(3)} m ≥ -0.02, corners ${cornerMin.toFixed(3)} ≥ -0.10), cloth tips under it on ${tipLowFrames} frames (≤ 6; lowest ${tipMin.toFixed(3)} ≥ -0.10)`);
+    if (isNew) {
+      assert(penFrames <= 0.03 * counted && headWorst <= 0.01, `${id}: the cloth stays out of his body (${penFrames} of ${counted} frames > 2 cm, ≤ 3 %), a head-hung sheet out of his head (${(Math.max(0, headWorst) * 100).toFixed(1)} cm ≤ 1)`);
+      assert(locoCross <= Math.max(3, loco * 0.05) && chargeHit <= Math.max(2, charge * 0.05), `${id}: the blade through the skirt on ${locoCross} of ${loco} loco frames (≤ 5 %), by a sheet on ${chargeHit} of ${charge} charge frames (≤ 5 %)`);
+      assert(handNear <= 0.02 * hand, `${id}: the free hand clear of the cloth (within 6 cm of a sheet on ${handNear} of ${hand} frames, ≤ 2 %)`);
+    }
+    if (id === 'warden') {
+      out(`   warden: the drawn blade ${(plate * 100).toFixed(1)} cm into the cuirass's plates at most (${plateAt || 'never'})`);
+      assert(plate < 0.035, `warden: the drawn blade sinks at most ${(plate * 100).toFixed(1)} cm into the lamellar plates (< 3.5)`);
+    }
+  }
+  out(`   cloth-in-body / blade-through-skirt / hand-near rates: ${Object.entries(rates).map(([k, x]) => `${k} ${(x.pen * 100).toFixed(1)} / ${(x.loco * 100).toFixed(1)} / ${(x.hand * 100).toFixed(1)} %`).join(' · ')}`);
+
+  // (L) the Lab's OUTFIT row and live switching; a rebuild keeps the look's colours; a bad look or a
+  // bad loadout throws and changes nothing, the shared part ink included
+  const G = build({ heroLook: 'robe' });
+  {
+    const { game } = G, p = game.player;
+    game.heroLooks = LOOK_IDS.map((id) => ({ id, name: HERO_LOOKS[id].name }));
+    game.pickHeroLook = (id) => { game.player.setLook(id); game.heroLook = game.player.look; };
+    G.input.tap('F1');
+    G.tick(DT);
+    const btns = game.lab.ui.lookBtns ?? [];
+    const B = (id) => btns.find((x) => x.id === id);
+    const robeOn = !!B('robe')?.el.classList.contains('on');
+    B('swallow')?.el.dispatch('click');
+    G.tick(DT);
+    assert(btns.length === 4 && robeOn && p.look === 'swallow' && p.loadout.head === 'swallow.tail' && B('swallow').el.classList.contains('on') && !B('robe').el.classList.contains('on'),
+      `the Lab's OUTFIT row: ${btns.length} buttons; a click wears the Swallow (${p.look}, ${p.loadout.head}) and moves the highlight`);
+    const fillIs = (c) => ['r', 'g', 'b'].every((k, i) => Math.abs(p.rig.materials.coat.uniforms.uArtFill.value[k] - c[i]) < 1e-6);
+    p.setLoadout(p.loadout);
+    const keeps = fillIs(SWALLOW_TINT.coat.fill);
+    p.setLook('shroud');
+    const back = fillIs(HERO_INK.coat.fill) && SLOTS.every((sl) => p.loadout[sl] === (DEFAULT_LOADOUT[sl] ?? null));
+    p.equip('weapon', null);
+    p.setLook('warden');
+    const unarmed = p.loadout.weapon === null && p.loadout.chest === 'warden.cuirass';
+    assert(keeps && back && unarmed, 'a rebuild keeps the look\'s colours; back to today\'s look and its colours; a look change keeps the equipped weapon (none)');
+    // (a boss's own part ink on the page, as the Starless Lord's red part 19)
+    game.U.uHeroPartInk.value[19].set(1.7, 0.34, 0.24, 1.6);
+    const u0 = snapU(game.U), look0 = p.look, lo0 = JSON.stringify(p.loadout);
+    let t1 = false, t2 = false;
+    try { p.setLook('nope'); } catch { t1 = true; }
+    const same1 = p.look === look0 && JSON.stringify(p.loadout) === lo0 && snapU(game.U) === u0;
+    try { p.setLoadout({ ...p.loadout, back: 'no.such' }); } catch { t2 = true; }
+    p.setLook('robe');
+    p.setLook(look0);
+    const kept = snapU(game.U) === u0;
+    assert(t1 && t2 && same1 && kept && p.look === look0, 'an unknown look or item throws and changes nothing (the look, the loadout, the shared part ink); a look change keeps a boss rig\'s own part ink');
+    go(G, 0.5);
+  }
+  return G;
+}
+
 // ================================================================== scenario: touch controls
 // The REAL core/input.js fed by the touch controls (src/ui/touch.js) through pointer events on
 // their DOM, exactly like a phone: tap / hold ATTACK, a timed BLOCK tap parries, DODGE rolls,
@@ -4409,7 +4792,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

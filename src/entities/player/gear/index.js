@@ -1,5 +1,8 @@
 import { WANDERER_ITEMS } from './wanderer.js';
 import { SHROUD_ITEMS } from './shroud.js';
+import { MOON_ITEMS } from './moon.js';
+import { SWALLOW_ITEMS } from './swallow.js';
+import { WARDEN_ITEMS } from './warden.js';
 import { BASE_ITEMS, BASE_LOADOUT } from './base.js';
 
 // The hero's equipment, as data. A LOADOUT maps each slot to the id of the item worn there (or
@@ -28,7 +31,8 @@ export function getItem(id) {
   return typeof id === 'string' && Object.hasOwn(GEAR, id) ? GEAR[id] : null;
 }
 
-for (const item of [...WANDERER_ITEMS, ...SHROUD_ITEMS, ...BASE_ITEMS]) registerItem(item);
+// (the outfit options' items, moon / swallow / warden: gear/looks.js, until the owner picks one)
+for (const item of [...WANDERER_ITEMS, ...SHROUD_ITEMS, ...MOON_ITEMS, ...SWALLOW_ITEMS, ...WARDEN_ITEMS, ...BASE_ITEMS]) registerItem(item);
 
 /** What the hero wears today: the Shrouded set (gear/shroud.js, ADR-043: a hood, a wrap tunic,
  *  bound sleeves and the tattered cloak) over the Wanderer's boots, coat tails and sword. No

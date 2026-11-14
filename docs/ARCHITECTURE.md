@@ -544,7 +544,11 @@ across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest
 radius the sheet curves round at its root (read by the tests' sheet model, not by the animator),
 `inMax` = [root, tip] how far each segment may swing IN toward its wearer (rad, + = in; negative =
 always at least that far out; default its `max`; not applied lying, ADR-083) so a head ribbon or a
-scarf off the back never swings into the body). **Cloth vs steel**
+scarf off the back never swings into the body, `floor` = while he rolls or falls (not lying: there
+`_layFlat` rules) the segments' ends stay `STREAM_FLOOR` (2 cm) over the grass: the target swings to
+the nearest angle that clears it and a lagging spring is snapped to it (a head ribbon in the forward
+roll, where his crown meets the grass; default off, today's cloak and every boss's cape go without)).
+**Cloth vs steel**
 (ADR-048): every frame `_colliders` places spheres along the blade (`COL_BLADE`; the arm lists
 `COL_FORE` / `COL_UPPER` are empty: holding the sheets out round the arms widened his back), and
 `_sheetBound` keeps each streamer segment on the side of each sphere it came in from

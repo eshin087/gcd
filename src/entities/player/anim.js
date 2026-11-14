@@ -2149,6 +2149,9 @@ const STRIP_A = [-1.5, 0.8], STRIP_B = 0.8, STRIP_FLOOR = 0.03;
 // sleeve streamers: two-segment springs that stream back almost horizontally when running
 const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_OUT = 0.36;
 const STREAM_A = 2.6, STREAM_B = 1.3;
+// a streamer with `floor` (a head ribbon, a long scarf) keeps its segments' ends this high (m, world)
+// while he rolls or falls: the forward roll puts his crown at the grass
+const STREAM_FLOOR = 0.02;
 // soft reach: where the arm's reach starts to give / the most it opens, as fractions of its length
 // (0.955: the elbow keeps ~35° at a full stretch)
 const ARM_SOFT = [0.78, 0.955];
@@ -2189,6 +2192,7 @@ const COL_R = new Float32Array(COL_N);
 const COL_ARM = new Uint8Array(COL_N); // 0 the blade, 1 the right arm, 2 the left arm
 const COL_BND = new Float32Array(2); // _sheetBound's result: the least / most outward swing allowed
 const _so = new THREE.Vector3(), _cq = new THREE.Vector3(), _qS = new THREE.Quaternion();
+const _sf = new THREE.Vector3(), _cf = new THREE.Vector3(); // a `floor` streamer's segment root (world, drawn lengths)
 const PAULDRON_FOLLOW = 0.35; // how much of the sword arm's swing the shoulder armour follows
 // the charge's updraft (× A.updraft 0..1): extra outward flare of the coat panels and the
 // torn strips (rad), and an upward pull on the hair tips (m of tip displacement)
@@ -3612,6 +3616,11 @@ export class HeroAnimator {
       // the cloak stops near level, so a whirl or a lunge never stands a sheet up over his head)
       const mA = S.max ?? STREAM_A;
       _so.copy(_w); // this segment's root (world)
+      // `floor`: rolling or falling (not lying: _layFlat), the segments' ends stay over the grass. In
+      // drawn metres (the root's world scale: the hero is drawn larger than his model)
+      const fl = !!S.floor && tumble > 0 && !lying;
+      const ws = fl ? _cf.setFromMatrixColumn(j0.parent.matrixWorld, 1).length() : 1;
+      if (fl) _sf.copy(_w);
       for (let s = 0; s < 2; s++) {
         const c = st.segs[s], j = S.segs[s];
         const lag = STREAM_LAG[s] * lg * (1 + 0.08 * sp);
@@ -3637,6 +3646,7 @@ export class HeroAnimator {
         // lying on the ground (knocked down, dead) a sheet obeys gravity (ADR-083): "wrapped along
         // the body" stood a sleeve's sheet up in the air with an upper arm that pointed up
         if (lying) tA = this._layFlat(tA, S.len[s], mA);
+        else if (fl) tA = this._offFloor(tA, S.len[s] * ws, lo, hi);
         const tB = clamp(Math.asin(clamp(_v.x, -1, 1)), -STREAM_B, STREAM_B);
         const K = STREAM_K[s], Cd = STREAM_C[s];
         for (let n = 0; n < steps; n++) {
@@ -3658,13 +3668,45 @@ export class HeroAnimator {
           c.x = lo;
           if (c.vx < 0) c.vx = 0;
         }
+        // the grass is rigid: a lagging spring never carries the end under it (the target clears it)
+        if (fl && this._floorY(c.x, S.len[s] * ws) < STREAM_FLOOR && this._floorY(tA, S.len[s] * ws) > this._floorY(c.x, S.len[s] * ws)) {
+          c.x = tA;
+          c.vx = 0;
+        }
         c.z = clamp(c.z, -STREAM_B, STREAM_B);
         j.rotation.set(c.x, 0, c.z);
         _q0.multiply(_qs.setFromEuler(_eul.set(c.x, 0, c.z, 'YXZ')));
         _so.add(_cq.set(0, -S.len[s], 0).applyQuaternion(_q0)); // the next segment's root
+        if (fl) _sf.add(_cf.set(0, -S.len[s] * ws, 0).applyQuaternion(_q0));
       }
     }
     this.streamInit = true;
+  }
+
+  /** World height of the end of a `floor` streamer's segment `L` (drawn m) long swung `x`: its frame
+   *  before its own turn is _q0, its root _sf. */
+  _floorY(x, L) {
+    const yy = _cf.set(0, 1, 0).applyQuaternion(_q0).y, zy = _cf.set(0, 0, 1).applyQuaternion(_q0).y;
+    return _sf.y - L * (Math.cos(x) * yy + Math.sin(x) * zy);
+  }
+
+  /** A `floor` streamer's swing target off the grass: `a` if its end clears STREAM_FLOOR, else the
+   *  swing nearest `a` within [lo, hi] that clears it, failing that the one that puts the end highest. */
+  _offFloor(a, L, lo, hi) {
+    if (this._floorY(a, L) >= STREAM_FLOOR) return a;
+    let best = a, bd = Infinity, top = a, ty = -Infinity;
+    for (let i = 0; i <= 32; i++) {
+      const x = lo + ((hi - lo) * i) / 32, y = this._floorY(x, L);
+      if (y >= STREAM_FLOOR && Math.abs(x - a) < bd) {
+        bd = Math.abs(x - a);
+        best = x;
+      }
+      if (y > ty) {
+        ty = y;
+        top = x;
+      }
+    }
+    return bd < Infinity ? best : top;
   }
 
   /** Lying on the ground a sheet obeys gravity: the swing nearest `a` (within ±mA) whose far end is
