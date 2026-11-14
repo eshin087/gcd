@@ -1030,6 +1030,29 @@ async function scenarioReach() {
     const hitS = sounds.filter(([n]) => n === 'hit'), cutS = sounds.filter(([n]) => n === 'cut');
     assert(hitS.length === 1 && hitS[0][1].body === 'scale' && cutS.length === 1 && cutS[0][1].weight === 'light', `it sounds as a cut on scales: ${sounds.map(([n, o]) => `${n}${o?.body ? '/' + o.body : ''}${o?.weight ? '/' + o.weight : ''}`).join(', ') || 'nothing'}`);
   }
+  // a slam that lands only through its ground shards (the blade is in the ground): no cut drawn, the
+  // steel does not flare, the body's hit sounds without the blade's cut layer
+  {
+    const { LIGHT } = await imp('src/entities/player/combat.js');
+    const { CUT_LAST } = await imp('src/combat/cutFx.js');
+    fresh();
+    stand(1);
+    let ev = null;
+    const sounds = [], play0 = game.audio.play, n0 = CUT_LAST.n, c = chest();
+    game.audio.play = function (name, o) { sounds.push([name, o]); return play0.call(this, name, o); };
+    G.watch = (n, e) => { if (n === 'player:hitDragon' && !ev) ev = e; };
+    p.bladeFlare = 0;
+    try {
+      p._applyHit({ def: LIGHT[4], damage: 10, poise: 0, charge: 0, t: 0.5 }, { sphere: c, x: c.x, y: 0.5, z: c.z }, true);
+    } finally {
+      game.audio.play = play0;
+      G.watch = null;
+    }
+    const flare = p.bladeFlare, drawn = CUT_LAST.n - n0;
+    out(`   a shards-only slam hit: ${ev ? `weight ${ev.weight}, shards ${ev.shards}` : 'no event'}, flare ${flare}, cuts drawn ${drawn}, sounds ${sounds.map(([n]) => n).join(', ') || 'none'}`);
+    assert(!!ev && ev.shards === true && ev.weight === null && flare === 0 && drawn === 0 && sounds.filter(([n]) => n === 'hit').length === 1 && !sounds.some(([n]) => n === 'cut'), 'a slam landing only through its shards draws no cut, flares no steel and plays the body\'s hit without the blade\'s cut');
+    fresh();
+  }
   assert(rows.every((r) => r[4].slamEv === 1), 'the slam meets the ground once per swing (player:slam)');
   assert(rows.every((r) => r[4].hit?.heavy === true && r[5].hit?.heavy === true && r.slice(0, 4).every((t) => t.hit?.heavy === false)), 'the slam and the cleave hit heavy, the four light hits do not');
   return G;

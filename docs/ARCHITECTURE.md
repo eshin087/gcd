@@ -354,6 +354,10 @@ hitPush: { x, z }                      // the way the last blow drove him, in hi
 kdProne: boolean                       // the knockdown fell him on his FRONT (the blow came from behind; ADR-083)
 deadDown: boolean; downFrom: number    // killed in the knockdown, `downFrom` s into it: he dies where he lies (clip 'deadDown')
 critTimer: number                      // > 0 while the crit window is open (after a perfect dodge / the plunge's landing)
+bladeFlare: number                     // 0..0.75: the steel's flare at a landed cut (TUNE.bladeFlare.hit: 0.5, heavy / crit 0.75;
+                                       // not a slam's shards-only hit). Any area may raise it (Math.max), never lower it; it
+                                       // decays by 1 / TUNE.bladeFlare.fall per s of GAME time (held through the freeze) and
+                                       // drives part 17's fill / lines and the blade halo
 lockOn: boolean                        // toggled by Tab / middle mouse; facing tracks dragon.lockPoint
 get alive(): boolean
 isInvulnerable(): boolean              // roll i-frames, the whole plunge, Ghostep / plunge-landing i-frames, get-up, the blade lock, dead
@@ -1317,7 +1321,8 @@ Every sound is procedural (no samples). 2026-11-09 additions:
 - A landed cut (`player:hitDragon`, not guarded: a guarded strike plays only its clash on
   `dragon:guard`): `hit {heavy, crit, part, damage, body}` (body 'cloth' against a duelist: a muffled
   slap, no scaly clack; its metallic ring only on a crit) and the blade's own layer `cut {weight,
-  combo, crit, alt}` (a slice through a falling band and a steel ring per weight, `CUT_SND`; a
+  combo, crit, alt}` (not for a `shards` hit: the slam's blade is in the ground) (a slice through a
+  falling band and a steel ring per weight, `CUT_SND`; a
   semitone up each hit of the chain, the finisher a step down, `CUT_STEP`; alt detunes alternate
   cuts; its noise offset from its own stream: `Voice.noise(kind, t0, t1, rate, off)` takes an
   optional 0..1 offset instead of Math.random).
@@ -1724,11 +1729,12 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'slam'|'cleave'|'thrust', combo, charge}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; cleave = the charge's release, thrust = the execution against a duelist),
   `player:charge {t}` (charge start; t = seconds to full charge), `player:slam {x, z}` (the slam meets the ground: shard burst),
-  `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
+  `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight, shards}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
   head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn
   (on a duelist: after his shove, where he is drawn in the held frame);
   combo = the chain hit 1-5 (1 outside the chain); weight = the cut's look and sound tier, the attack's contact:
-  light, sweep, point, slam, cleave or execute; the plunge's has neither), `player:hurt {damage, kind, hp}`,
+  light, sweep, point, slam, cleave or execute; the plunge's has neither; shards = true when only the slam's ground
+  shards hit (the blade is in the ground: weight null, no cut drawn, no blade sound)), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
   `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last}` (last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within

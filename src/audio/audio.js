@@ -611,6 +611,8 @@ export class AudioEngine {
       const x = d.point?.x, z = d.point?.z, beast = this.game.dragon?.kind !== 'duelist';
       this.play('hit', { heavy: d.heavy, crit: d.crit, part: d.part, damage: d.damage, body: beast ? 'scale' : 'cloth', x, z });
       // the blade's own layer on top: a slice and a ring, per weight, rising a semitone up the chain
+      // (not the slam's ground shards: the blade is in the ground, the shards hit)
+      if (d.shards) return;
       this._cutN = (this._cutN + 1) | 0;
       this.play('cut', { weight: d.weight ?? (d.heavy ? 'slam' : 'light'), combo: d.combo, crit: d.crit, alt: this._cutN & 1, x, z });
     });

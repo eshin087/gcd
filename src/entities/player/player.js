@@ -2745,10 +2745,12 @@ export class Player {
     }
     // (this.atk may be gone: a deflect or a trade clash bounced him)
     const guarded = (!!a.guarded || !!a.traded) && dealt === 0;
-    this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded, combo: d.combo ?? 1, weight: d.contact ?? (heavy ? 'slam' : 'light') });
+    // (the slam's ground shards: the blade is in the ground, no cut: no cut weight, no blade sound)
+    this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded, combo: d.combo ?? 1, weight: viaShards ? null : d.contact ?? (heavy ? 'slam' : 'light'), shards: viaShards });
     // turned by a guard: the guard draws the clash and sets its own freeze; no cut, no sparks of his
     if (guarded) return;
-    this.bladeFlare = Math.max(this.bladeFlare, heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
+    // (the steel flares at its own contact: not when the shards hit and the blade is in the ground)
+    if (!viaShards) this.bladeFlare = Math.max(this.bladeFlare, heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
     // the contact, for the animator and other areas: when (the attack clock) and which way the blade went
     a.hitAt = a.t;
     a.cutDir = this._cutDir(C, a.cutDir);
