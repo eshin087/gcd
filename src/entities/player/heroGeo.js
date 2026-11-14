@@ -494,15 +494,20 @@ export function gripFist(k = 1) {
  */
 export function swordFingers(side, k = 1, ex = 1.3) {
   const inX = -side;
-  const palm = ellipsoidGeometry(0.023 * k, 0.045 * k, 0.04 * k, { widthSegs: 10, heightSegs: 6 }).translate(0, -0.036 * k, 0.002);
+  // (a flatter palm than the open hand's: an ellipsoid as thick as it is wide read as a ball)
+  const palm = ellipsoidGeometry(0.019 * k, 0.045 * k, 0.039 * k, { widthSegs: 10, heightSegs: 6 }).translate(0, -0.036 * k, 0.002);
   const L = 0.046 * k * ex, r = 0.0098 * k * Math.sqrt(ex);
   const y0 = -0.074 * k; // the knuckles
-  const fingers = mergeGeometries([
-    sub(ellipsoidGeometry(r, L, r * 0.95, { widthSegs: 6, heightSegs: 6 }).translate(0, y0 - L, 0.011 * k), 0),
-    sub(ellipsoidGeometry(r, L * 1.05, r * 0.95, { widthSegs: 6, heightSegs: 6 }).translate(0, y0 - L * 1.05, -0.0085 * k), 1),
-  ]);
-  const curled = mergeGeometries([0, 1].map((i) => sub(place(ellipsoidGeometry(0.0095 * k, 0.017 * k, 0.0092 * k, { widthSegs: 6, heightSegs: 4 }), inX * 0.014 * k, y0 + 0.004 * k, (-0.026 - 0.016 * i) * k, 0, 0, inX * 1.5), i & 1)));
-  const thumb = sub(place(ellipsoidGeometry(0.011 * k, 0.026 * k, 0.0115 * k, { widthSegs: 6, heightSegs: 5 }), inX * 0.026 * k, -0.062 * k, -0.012 * k, -1.05, 0, inX * 0.35), 1);
+  // the pair: two tapered capsules from just inside the knuckles, side by side and touching (centres
+  // 1.84 r apart: one blade of two fingers, not a V; two ellipsoids tapered apart at the tips and read
+  // as a peace sign), the middle a touch longer. Tips at y0 − 2 L and y0 − 2.1 L (swordTip)
+  const top = y0 + 0.3 * r, r1 = 0.8 * r;
+  const finger = (tip, z, id) => sub(limb({ length: top - tip - r1, r0: r, r1, radial: 8, rings: 3, capSegs: 2 }).translate(0, top, z), id);
+  const fingers = mergeGeometries([finger(y0 - 2 * L, 0.001 + 0.92 * r, 0), finger(y0 - 2.1 * L, 0.001 - 0.92 * r, 1)]);
+  // ring and little folded into the palm (on its face, tipped in), not knobs standing out of it
+  const curled = mergeGeometries([0, 1].map((i) => sub(place(ellipsoidGeometry(0.0085 * k, 0.015 * k, 0.0085 * k, { widthSegs: 6, heightSegs: 4 }), inX * 0.017 * k, y0 + 0.014 * k, (-0.012 - 0.0145 * i) * k, 0, 0, inX * 0.45), i & 1)));
+  // the thumb across their nails
+  const thumb = sub(place(ellipsoidGeometry(0.0105 * k, 0.026 * k, 0.011 * k, { widthSegs: 6, heightSegs: 5 }), inX * 0.027 * k, -0.064 * k, -0.014 * k, -1.2, 0, inX * 0.3), 1);
   return { palm, fingers, curled, thumb };
 }
 /** The sword fingers' fingertip (wrist space; swordFingers' middle finger's end): rig.arms.L.point,

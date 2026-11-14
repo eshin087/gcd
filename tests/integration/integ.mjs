@@ -5036,8 +5036,9 @@ async function scenarioLooks() {
       const strips = r.coat.reduce((s, C) => s + C.strips.length, 0);
       if (!isNew) n0 = src.length;
       out(`   ${id}: ${src.length} meshes, ${tris} triangles, ${mats} materials, ${p.batch.meshes.length} batches, ${r.streamers.length} streamers, ${r.coat.length} panels, ${strips} strips`);
-      assert(src.length <= n0 && tris <= 26000 && mats <= 21 && p.batch.meshes.length <= 21 && r.streamers.length <= 6 && r.coat.length <= 6 && strips <= 12,
-        `${id}: costs no more than today (${src.length} meshes of ${n0}, ${tris} triangles ≤ 26000, ${mats} materials and ${p.batch.meshes.length} draws ≤ 21)`);
+      // (26.6k: today's look with the sword fingers drew ~26.3k triangles)
+      assert(src.length <= n0 && tris <= 26600 && mats <= 21 && p.batch.meshes.length <= 21 && r.streamers.length <= 6 && r.coat.length <= 6 && strips <= 12,
+        `${id}: costs no more than today (${src.length} meshes of ${n0}, ${tris} triangles ≤ 26600, ${mats} materials and ${p.batch.meshes.length} draws ≤ 21)`);
       const keys = Object.keys(r.offHand ?? {}).filter((k) => r.offHand[k]).sort().join();
       if (!isNew) offKeys0 = keys;
       const fist = r.sword.children.some((o) => o.isMesh && o.userData.slot === 'arms');
