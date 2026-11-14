@@ -630,7 +630,16 @@ the last one; the blade turns from there to the first key (the coil, one key at 
 front and is still moving as it gets there (`swingDir`); elbow poles follow the hands
 (`swingPoles`), the head stays on the target, the flat turns into the plane the blade is swinging
 in; and the clip hands its channels to `update()` (`A.pathCh`), so the cross-fade leaves them
-alone. Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
+alone. **The body leads the blade:** the hips' channels (`bx by bz hip`) play `lead[0]` s and the
+chest's (`sx sy sz`) `lead[1]` s ahead of the hand (a clip's `lead`, default `SW_LEAD` [0.033,
+0.017]; the cleave [0.033, 0]), ramped in from 0.35 of the windup (0.6 when the entry's hips stand
+over 0.5 rad from the coil key's turn: they would whip round). While a held light waits at the coil
+the lead fades out (`anim.leadK`, 18/s, damped once a frame in `update()`) and runs ahead again on
+the release. `bx` is across toward the foot that steps (`anim.stepL`, set by `play()`: the foot
+further back along his facing; the keys are mirrored when it is the right one); a clip's `fy`
+[front, rear] gives the stance's foot yaws (rad, for a left-front stance, mirrored by
+`lungeFeet`). Every light clip keys a body-only anticipation (u 0.5-0.8) and overshoot (u 2.1-2.15)
+round its coil and finish (swings.js header). Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
 (so the lead foot alternates down a chain) while the other holds its spot, its heel peeling; or
 `dashFeet` with `feet: 'dash'` (`dashW: true` starts the dash at the windup's end). In `apply()`,
 `_elbow` limits how fast either elbow swings round its shoulder → hand line (`ELBOW_RATE`, 14 rad/s:

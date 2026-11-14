@@ -3700,19 +3700,94 @@ async function scenarioHeroHand() {
 
 // ================================================================== scenario: weight
 // The body behind the blade (the weight spec): the root's step pushes off and brakes as the front
-// foot plants. Measured far from the wyrm (no step-in assist) unless a part says otherwise.
+// foot plants; the hips lead the hand, the chest follows them. Measured far from the wyrm (no
+// step-in assist) unless a part says otherwise. Points in the root's frame are model metres (the
+// root's matrix carries the drawn scale and the camera lean: its inverse takes both out).
 async function scenarioHeroWeight() {
-  out('\n== scenario HEROWEIGHT (the step pushes and brakes at the plant) ==');
-  const { LIGHT } = await imp('src/entities/player/combat.js');
+  out('\n== scenario HEROWEIGHT (the step pushes and brakes at the plant; the hips lead the cut) ==');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { P } = await imp('src/entities/player/anim.js');
   const G = build();
   const { game, input } = G;
   fightSetup(G);
-  const p = game.player, d = game.dragon, A = p.anim;
+  const p = game.player, d = game.dragon, A = p.anim, r = p.rig, HD = HERO_DIM;
   p.debug.god = true;
-  const far = () => { p.debug.teleport(d.position.x + 14, d.position.z + 14); p.yaw = 0; };
+  // 20 m from the wyrm, facing it (the assist reaches 4.8 m; a chain walks ~4 m)
+  const far = () => { p.debug.teleport(d.position.x + 14, d.position.z + 14); p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z); aimAt(G); };
   far();
   const go = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); each?.(); } };
   go(0.5);
+  const DEG = 180 / Math.PI;
+  const L10 = ['fallingCut', 'drawCut', 'risingSlash', 'risingBackhand', 'flatBackhand', 'fallingBackhand', 'lowSweep', 'lunge', 'risingThrust', 'rollCut'];
+  const wrapA = (x) => Math.atan2(Math.sin(x), Math.cos(x));
+  const inv = new THREE.Matrix4(), invB = new THREE.Matrix4(), v = new THREE.Vector3(), w = new THREE.Vector3();
+  // a joint's facing (its local +z) in the root's frame, as a yaw
+  const yawIn = (J) => { v.setFromMatrixPosition(J.matrixWorld).applyMatrix4(inv); w.set(0, 0, 1).applyMatrix4(J.matrixWorld).applyMatrix4(inv).sub(v); return Math.atan2(w.x, w.z); };
+  const clipOf = () => { const a = p.atk, def = a?.def; if (!def || (p.state !== 'attack' && p.state !== 'heavy')) return null; return (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? null; };
+  // one frame of the hero (after a tick): the hips' and chest's turn, the sword hand and the tip,
+  // the hips' height, the four arm segments (body frame), the feet (world and pose), the attack clock
+  let prevF = null;
+  const frame = () => {
+    inv.copy(r.root.matrixWorld).invert();
+    invB.copy(r.body.matrixWorld).invert();
+    const a = p.atk;
+    const F = {
+      t: a?.t ?? 0, dt: game.dt, state: p.state, atk: a, pending: !!a?.pending, clip: clipOf(),
+      pel: yawIn(r.pelvis), ch: yawIn(r.chest),
+      hand: new THREE.Vector3(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld).applyMatrix4(inv),
+      tip: new THREE.Vector3(0, 0, 0.9).applyMatrix4(r.sword.matrixWorld).applyMatrix4(inv),
+      hipY: v.setFromMatrixPosition(r.pelvis.matrixWorld).applyMatrix4(inv).y,
+      arms: [],
+      feet: [r.legs.R.foot, r.legs.L.foot].map((f) => new THREE.Vector3().setFromMatrixPosition(f.matrixWorld)),
+      cur: A.cur.slice(), stepL: A.stepL,
+    };
+    for (const arm of [r.arms.R, r.arms.L]) {
+      const e0 = new THREE.Vector3().setFromMatrixPosition(arm.upper.matrixWorld).applyMatrix4(invB);
+      const e1 = new THREE.Vector3().setFromMatrixPosition(arm.fore.matrixWorld).applyMatrix4(invB);
+      const e2 = new THREE.Vector3(0, -HD.foreArm, 0).applyMatrix4(arm.fore.matrixWorld).applyMatrix4(invB);
+      F.arms.push(e1.clone().sub(e0).normalize(), e2.sub(e1).normalize());
+    }
+    // steps from the frame before (hitstop frames are flagged: a freeze frame's tiny dt fakes speeds)
+    const P0 = prevF;
+    F.real = F.dt >= 0.005;
+    F.dPel = P0 ? wrapA(F.pel - P0.pel) : 0;
+    F.dCh = P0 ? wrapA(F.ch - P0.ch) : 0;
+    F.dHand = P0 ? F.hand.distanceTo(P0.hand) : 0;
+    F.arm = P0 ? Math.max(...F.arms.map((u, k) => Math.acos(clamp(u.dot(P0.arms[k]), -1, 1)) * DEG)) : 0;
+    prevF = F;
+    return F;
+  };
+  // the swings sampled: { clip, def, atk, frames } per attack (its first frame: the one after the
+  // tick that started it; a held light only once released)
+  const swings = [];
+  let curS = null;
+  const record = () => {
+    const F = frame(), a = F.atk;
+    if (!F.clip || F.pending) { if (!a || (p.state !== 'attack' && p.state !== 'heavy')) curS = null; return F; }
+    if (!curS || curS.atk !== a) swings.push((curS = { clip: F.clip, def: a.def, atk: a, frames: [] }));
+    curS.frames.push(F);
+    return F;
+  };
+  const chains = () => {
+    for (let look = 0; look < 3; look++) {
+      far();
+      go(0.6, record);
+      A.forceVariant = look;
+      for (let k = 0; k < 5; k++) { input.click(0); go(k === 4 ? 0.9 : CHAIN_EVERY, record); }
+      go(0.6, record);
+    }
+    A.forceVariant = null;
+    // the roll cut
+    far();
+    go(0.6, record);
+    input.axis = { x: 0, y: 1 };
+    go(0.3, record);
+    input.tap('Space');
+    go(0.35, record);
+    input.axis = { x: 0, y: 0 };
+    input.click(0);
+    go(0.9, record);
+  };
 
   // (W3) the root's step: a tap steps ~90 % of its lunge by the plant (0.45 of the active frames)
   // and has all but stopped as the active frames end; the whole lunge, and no more. A light held
@@ -3766,6 +3841,136 @@ async function scenarioHeroWeight() {
     assert(steps.length >= 5 && steps.every((s) => s.plant >= 0.85 * s.total && s.after <= 0.6 && Math.abs(s.total - s.def.lunge) <= 0.03),
       `a light's step pushes off and brakes at the plant: ≥ 85 % of it by 0.45 of the active frames (least ${Math.min(...steps.map((s) => s.plant / s.total * 100)).toFixed(0)} %), ≤ 0.6 m/s past the cut (most ${Math.max(...steps.map((s) => s.after)).toFixed(2)}), the whole lunge ± 3 cm`);
     assert(held && held.total >= 0.97 * held.def.lunge, `a light held 0.1 s and released before the coil steps its whole lunge (${held ? held.total.toFixed(2) : '-'} of ${held?.def.lunge ?? '-'} m; ≥ 97 %)`);
+  }
+
+  // (W1) the clips' data: an anticipation key before the coil (the body only: hips and chest past
+  // the coil's turn, away from the cut) and an overshoot after the cut (the hips past the finish,
+  // settling back by the last key); the stances' foot yaws
+  {
+    const bad = [];
+    const has = (k, f) => k[f] != null;
+    const nohand = (k) => !has(k, 'h') && !has(k, 'a');
+    for (const name of [...L10, 'sprintSlash']) {
+      const C = SWINGS[name], ks = C.keys;
+      if (name !== 'sprintSlash') {
+        const coil = ks.find((k) => k.u >= 0.9 && k.u <= 1 && has(k, 'hip')), ant = ks.find((k) => k.u >= 0.5 && k.u <= 0.8 && has(k, 'hip') && nohand(k));
+        const toward = [...ks].filter((k) => k.u <= 2 && has(k, 'hip')).pop();
+        const sg = -Math.sign(toward.hip - coil.hip);
+        if (!ant || !(sg * (ant.hip - coil.hip) >= 0.06 - 1e-9) || !(sg * (ant.sy - coil.sy) >= 0.04 - 1e-9)) bad.push(`${name}: anticipation`);
+      }
+      const hA = [...ks].filter((k) => k.u <= 2 && has(k, 'hip')).pop().hip, os = ks.find((k) => k.u >= 2.05 && k.u <= 2.25 && has(k, 'hip') && nohand(k));
+      const lastHip = [...ks].filter((k) => has(k, 'hip')).pop().hip;
+      if (!os || !(Math.abs(os.hip) >= Math.abs(hA) + (C.line === 'point' ? 0.025 : 0.06) - 1e-9) || !(Math.abs(lastHip) < Math.abs(os.hip))) bad.push(`${name}: overshoot`);
+    }
+    for (const [name, C] of Object.entries(SWINGS)) {
+      if (!C.fy) continue;
+      if (!(C.fy.every((y) => Math.abs(y) <= 1)) || (C.lF && !(C.lF[1] > 0)) || (C.rF && !(C.rF[1] < 0))) bad.push(`${name}: stance`);
+    }
+    assert(!bad.length, `every light clip keys an anticipation (u 0.5-0.8, hips ≥ 0.06 and chest ≥ 0.04 rad past the coil, away from the cut) and an overshoot (u 2.05-2.25, the hips ≥ 0.06 rad past the finish, 0.025 for a thrust; the last key settles back), body-only; the foot yaws ≤ 1 rad, the front foot ahead and the rear behind (${bad.join(', ') || 'all'})`);
+  }
+
+  // the sampled set: three mashed chains (each look of each hit) and the roll cut
+  chains();
+  const lights = swings.filter((S) => L10.includes(S.clip));
+  const seenL = new Set(lights.map((S) => S.clip));
+  assert(L10.every((c) => seenL.has(c)), `the set swings every light look (${L10.filter((c) => !seenL.has(c)).join(', ') || 'all ten'})`);
+
+  // (W2) the kinetic chain: the hips' turn peaks before the sword hand's speed (a frame or more),
+  // the chest's no later than the hand's (they all peaked in the same frame: the body turned with the
+  // arm, not ahead of it)
+  {
+    const rows = [];
+    for (const S of lights) {
+      const W = S.def.windup, Ac = S.def.active;
+      let tP = 0, tC = 0, tH = 0, mP = -1, mC = -1, mH = -1;
+      for (const F of S.frames) {
+        if (!F.real || F.t < W - 0.05 || F.t > W + Ac) continue;
+        if (Math.abs(F.dPel) / F.dt > mP) { mP = Math.abs(F.dPel) / F.dt; tP = F.t; }
+        if (Math.abs(F.dCh) / F.dt > mC) { mC = Math.abs(F.dCh) / F.dt; tC = F.t; }
+        if (F.dHand / F.dt > mH) { mH = F.dHand / F.dt; tH = F.t; }
+      }
+      rows.push({ clip: S.clip, tP, tC, tH });
+    }
+    const lead = rows.filter((R) => R.tP <= R.tH - 0.016).length;
+    out(`   peaks (hips / chest / hand, s): ${rows.map((R) => `${R.clip} ${R.tP.toFixed(3)}/${R.tC.toFixed(3)}/${R.tH.toFixed(3)}`).join(' · ')}`);
+    assert(rows.length >= 10 && lead >= 0.9 * rows.length && rows.every((R) => R.tP <= R.tH && R.tC <= R.tH + 1e-6),
+      `the hips lead the cut: their turn peaks a frame or more before the sword hand's speed in ${lead} of ${rows.length} light swings (≥ 90 %), never after it, and the chest's no later than the hand's (${rows.filter((R) => !(R.tP <= R.tH && R.tC <= R.tH + 1e-6)).map((R) => R.clip).join(', ') || 'all'})`);
+  }
+
+  // (W4) the weight goes across: before the coil the hips sit over the trail foot, as the cut ends
+  // over the foot that stepped (`bx`, mirrored per swing by the stepping foot)
+  {
+    const rows = [];
+    for (const S of lights) {
+      const W = S.def.windup, Ac = S.def.active, side = S.frames[0].stepL ? 1 : -1;
+      const pre = S.frames.filter((F) => F.t >= W - 0.05 - 1e-6 && F.t <= W - 0.02 + 1e-6).map((F) => F.cur[P.bodyX] * side);
+      const post = S.frames.find((F) => F.t >= W + Ac - 1e-6);
+      rows.push({ clip: S.clip, pre: pre.length ? Math.max(...pre) : NaN, post: post ? post.cur[P.bodyX] * side : NaN });
+    }
+    out(`   weight across (m toward the stepping foot, before the coil / as the cut ends): ${rows.map((R) => `${R.clip} ${R.pre.toFixed(3)}/${R.post.toFixed(3)}`).join(' · ')}`);
+    assert(rows.every((R) => R.pre <= -0.03 && R.post >= 0.03), `the weight goes across: the hips ≥ 3 cm over the trail foot just before the coil, ≥ 3 cm over the foot that stepped as the cut ends (${rows.filter((R) => !(R.pre <= -0.03 && R.post >= 0.03)).map((R) => R.clip).join(', ') || 'all'})`);
+  }
+
+  // (W10) the bow stance: as the cut ends the feet stand long (the thrusts' a deep bow)
+  {
+    const want = { lunge: 0.84, risingThrust: 0.84, fallingCut: 0.7 }, rows = [];
+    for (const S of lights) {
+      if (!(S.clip in want)) continue;
+      const F = S.frames.find((G1) => G1.t >= S.def.windup + S.def.active - 1e-6);
+      rows.push({ clip: S.clip, len: Math.hypot(F.cur[P.lF] - F.cur[P.rF], F.cur[P.lF + 2] - F.cur[P.rF + 2]) });
+    }
+    out(`   stance as the cut ends: ${rows.map((R) => `${R.clip} ${R.len.toFixed(2)} m`).join(' · ')}`);
+    assert(rows.length >= 3 && rows.every((R) => R.len >= want[R.clip]), `the bow stance: the feet ≥ 0.84 m apart as a thrust ends, ≥ 0.70 m as the falling cut ends (${rows.map((R) => `${R.clip} ${R.len.toFixed(2)}`).join(', ')})`);
+  }
+
+  // (W11) no hip whip: through every light's windup and cut the hips turn ≤ 15° a frame (a lead
+  // ramped in early from an entry on the far side whipped them 15°+ a frame)
+  {
+    let worst = 0, at = '';
+    for (const S of lights) {
+      const W = S.def.windup, Ac = S.def.active;
+      for (const F of S.frames) {
+        if (!F.real || F.t > W + Ac) continue;
+        const s = Math.abs(F.dPel) * DEG;
+        if (s > worst) { worst = s; at = `${S.clip} t ${F.t.toFixed(3)}`; }
+      }
+    }
+    out(`   hips: at most ${worst.toFixed(1)}° a frame through a light's windup and cut (${at})`);
+    assert(worst <= 15, `no hip whip: the hips turn at most ${worst.toFixed(1)}° a frame through every light's windup and cut (≤ 15°; ${at})`);
+  }
+
+  // (W6) a held light waits at its coil (0.25 s: under CHARGE.hold): the hips, which reach it a
+  // lead ahead (~16° into the cut), settle back to the coil key's turn without a snap (each step no
+  // bigger than the one before; the first lead fade snapped them back ~12° in one frame) and hold
+  // still by the end; released, the cut fires without a snap
+  {
+    far();
+    go(0.8, record);
+    A.forceVariant = 0;
+    const hold = [];
+    input.press(0);
+    for (let i = 0, n = Math.round(0.25 / DT); i < n; i++) { G.tick(DT); hold.push({ F: record(), hip: A.cur[P.pelvY] }); }
+    input.up(0);
+    const after = [];
+    for (let i = 0; i < 40; i++) {
+      G.tick(DT);
+      const F = record();
+      if (F.atk?.def && F.t > F.atk.def.windup + F.atk.def.active) break;
+      after.push(F);
+    }
+    A.forceVariant = null;
+    const coilHip = SWINGS.fallingCut.keys.find((k) => k.u === 1).hip, W = hold[0].F.atk?.def?.windup ?? 0;
+    // the steps of the hips' turn (pose channel) from the frame before the coil to the hold's end
+    const k0 = hold.findIndex((h) => h.F.t >= W - 1e-6);
+    const steps = hold.slice(Math.max(1, k0)).map((h, i) => Math.abs(h.hip - hold[Math.max(1, k0) + i - 1].hip) * DEG);
+    // (steps[0] is the arrival: the cut's last frame before the coil, still a lead ahead)
+    const settle = steps.slice(2).every((s, i) => s <= steps[i + 1] + 1e-3);
+    const first = Math.max(...steps), lastStep = steps[steps.length - 1], off = Math.abs(hold[hold.length - 1].hip - coilHip);
+    const snap = Math.max(...after.map((F) => Math.abs(F.dPel) * DEG)), arm = Math.max(...after.map((F) => F.arm));
+    out(`   held coil: the hips step ${steps.map((s) => s.toFixed(1)).join(', ')}° a frame from the coil on, ${off.toFixed(3)} rad off the coil's (${coilHip}) at the end; released: ≤ ${snap.toFixed(1)}° a frame, the arms ≤ ${arm.toFixed(0)}°`);
+    assert(k0 > 0 && hold.every((h) => h.F.pending) && first <= 5 && settle && lastStep <= 1 && off <= 0.05,
+      `a held light's hips settle back to the coil without a snap: at most ${first.toFixed(1)}° a frame (≤ 5°), each step no bigger than the one before, still by the hold's end (${lastStep.toFixed(2)}° ≤ 1°), within 0.05 rad of the coil key's turn (${off.toFixed(3)})`);
+    assert(after.length >= 5 && snap <= 25 && arm < 60, `released from the coil, the cut fires without a snap: the hips ≤ 25° a frame (${snap.toFixed(1)}°), no arm segment ≥ 60° a frame (${arm.toFixed(0)}°)`);
   }
   return G;
 }

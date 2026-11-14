@@ -595,6 +595,12 @@ const SW_COIL = 0.35; // the blade's rate into the coil (× the straight rate) a
 const SW_HOME = 0.3; // the fraction of a recovery after which he starts back to the ready stance (a clip's `home`)
 const SW_CLEAR = 0.24; // m: the sword hand's way to a coil stays this far from the spine (it bulges forward)
 const SW_FLAT = [1.2, 3.2]; // rad per phase of blade turn: below, the keyed flat; above, the swing's plane
+const SW_LEAD = [0.033, 0.017]; // s: how far ahead of the hand the hips / the chest run (a clip's `lead`)
+const SW_LEAD_IN0 = [0.35, 0.6]; // the lead ramps in from this fraction of the windup (an entry from the far side: [1])
+const SW_LEAD_FAR = 0.5; // rad: an entry whose hips stand this far from the coil's counts as far
+const SW_LEAD_FADE = 18; // 1/s: a held light's hips settle back out of their lead (and run ahead again on release)
+const SW_HIPS = new Set([P.bodyX, P.bodyY, P.bodyZ, P.pelvY, P.pelvX, P.pelvZ]);
+const SW_CHEST = new Set([P.spX, P.spY, P.spZ]);
 const SW_CACHE = new Map();
 const SW_V = new Float32Array(6);
 const SW_UP = [0, 1, 0];
@@ -666,7 +672,13 @@ function swingClip(name) {
       autoR: has('h') && !has('rp'), autoL: has('l') && !has('lp'), autoHy: !has('hy'), autoHx: !has('hx'), keyedF: has('f'),
       flat: Array.isArray(def.flat) ? def.flat : SW_UP,
       rF: def.rF ?? null, lF: def.lF ?? null, step: def.step ?? null, drag: def.drag ?? 0.22, home: def.home ?? SW_HOME,
+      lead: Array.isArray(def.lead) ? def.lead : SW_LEAD, fy: Array.isArray(def.fy) ? def.fy : null,
+      hipCoil: keys.find((k) => k.hip != null && k.u >= 0.9 && k.u <= 1.0)?.hip ?? null, // the hips' turn at the coil
     };
+    for (const T of tracks) {
+      T.grp = SW_HIPS.has(T.ch) ? 1 : SW_CHEST.has(T.ch) ? 2 : 0; // run ahead of the hand: 1 the hips, 2 the chest
+      if (T.ch === P.bodyX) T.Vk = T.V.slice(); // the keyed values, mirrored per swing (swingPose)
+    }
   }
   SW_CACHE.set(name, C);
   return C;
@@ -796,9 +808,18 @@ function swingPose(p, A, k, t, W, Ac, R) {
   if (!C) return;
   const u = swingPhase(t, W, Ac, R);
   const F = A.from;
+  // the body runs AHEAD of the hand: the hips by lead[0] s, the chest by lead[1] (the kinetic chain:
+  // hips, then chest, then arm, then blade). It ramps in through the windup (later when the entry's
+  // hips stand on the far side: they would whip round). A held light's hips settle back (A.leadK)
+  const L = C.lead, far = C.hipCoil != null && Math.abs(wrapAngle(F[P.pelvY]) - C.hipCoil) > SW_LEAD_FAR;
+  const ramp = smoothstep(SW_LEAD_IN0[far ? 1 : 0] * W, W, t) * clamp(fin(A.leadK, 1), 0, 1);
+  const uH = ramp > 0 ? swingPhase(t + L[0] * ramp, W, Ac, R) : u, uC = ramp > 0 && L[1] > 0 ? swingPhase(t + L[1] * ramp, W, Ac, R) : u;
+  // `bx` is toward the foot that steps (+): mirrored when the right foot steps (the entry slot keeps its own)
+  const side = k.feet === 'dash' || A.stepL !== false ? 1 : -1;
   for (const T of C.tracks) {
     for (let c = 0; c < T.n; c++) T.V[c] = F[T.ch + c];
-    swingTrack(T, u, p, T.ch);
+    if (T.Vk) for (let i = 1; i < T.len; i++) T.V[i] = side * T.Vk[i];
+    swingTrack(T, T.grp === 1 ? uH : T.grp === 2 ? uC : u, p, T.ch);
   }
   const H = C.hand;
   if (H && u < H.U[1]) {
@@ -836,6 +857,11 @@ function swingPose(p, A, k, t, W, Ac, R) {
   if (C.lF) {
     p[P.lF] = C.lF[0];
     p[P.lF + 2] = C.lF[1] + 0.12 * lunge;
+  }
+  if (C.fy) {
+    // the stance's foot yaws [front, rear] (a left-front stance; lungeFeet mirrors them)
+    p[P.lFy] = C.fy[0];
+    p[P.rFy] = C.fy[1];
   }
   A.pathCh = C.ch;
 }
@@ -969,8 +995,8 @@ const HOME_WAY = { d: -3, ok: false }; // dirLerp memory: the recovery's way hom
  *  (Session 25, owner: "his legs and feet do the same thing every hit".) */
 function lungeFeet(p, A, t0, t1, drag, plant) {
   const t = A.t, E = A.entry, tr = A.trav;
-  // the stepping foot: the one further back along his facing (the left from the ready stance)
-  const stepL = E[5] <= E[2];
+  // the stepping foot: the one further back along his facing (the left from the ready stance; play())
+  const stepL = A.stepL !== false;
   const sI = stepL ? P.lF : P.rF, hI = stepL ? P.rF : P.lF; // stepping / holding foot
   const sY = stepL ? P.lFy : P.rFy, hY = stepL ? P.rFy : P.lFy, hF = stepL ? P.rFf : P.lFf;
   const sE = stepL ? 3 : 0, hE = stepL ? 0 : 3, sYE = stepL ? 7 : 6, hYE = stepL ? 6 : 7;
@@ -2317,7 +2343,7 @@ const BREEZE = [0.02, 0.025, 0.035, 0.035, 0.06, 0.05];
 const IDLE_FLARE = [0.01, 0.02, 0.07, 0.1, 0.09, 0.12];
 
 export class HeroAnimator {
-  /** player must expose: yaw, state, stateT, animT, atk ({def}), groundVel {x, z}, chargeK,
+  /** player must expose: yaw, state, stateT, animT, atk ({def, pending, relT, hitAt}), groundVel {x, z}, chargeK,
    *  releaseK, recoil (+ position, kb, lockOn, guardHold, updraft). `poses` (optional): extra clips for this
    *  instance, key → fn(pose, animator), merged over the hero's (a key it shares replaces the hero's
    *  clip for this instance only: the Ash Disciple brings his own 'loco' and 'duel').
@@ -2408,6 +2434,8 @@ export class HeroAnimator {
     this.trav = { x: 0, z: 0 };
     this.marks = [0, 1, 2, 3].map(() => ({ set: false, x: 0, z: 0 }));
     this.dashStep = 0; // a dash's touchdowns already stepped (bits: rear, front)
+    this.stepL = true; // the foot that steps in an attack (play(): the one further back)
+    this.leadK = 1; // swingPose: the hips' lead (0 while a held light waits at the coil)
     this.entry = new Float32Array([-0.25, ANK, 0.15, 0.13, ANK, -0.03, -0.4, 0.22]);
     this.leanF = 0; // acceleration lean (rad), a critically damped spring on the smoothed acceleration
     this.leanFV = 0;
@@ -2468,6 +2496,10 @@ export class HeroAnimator {
     E[5] = c0[P.lF + 2];
     E[6] = c0[P.rFy];
     E[7] = c0[P.lFy];
+    // the foot that steps in an attack: the one further back along his facing (lungeFeet; a clip's
+    // `bx` is toward it; the way home draws it back)
+    this.stepL = E[5] <= E[2];
+    this.leadK = 1;
     this.from.set(this.cur);
     for (const i of ANGLES) this.from[i] = wrapAngle(this.from[i]); // a finished roll is 2π ≡ 0
     // how far round the body stood as this clip began (a whirl cut short): the reactions unwind it
@@ -2517,6 +2549,8 @@ export class HeroAnimator {
     this.accF = this.accS = this.bank = this.turnV = this.strafeYaw = this.turnLag = this.visYawV = 0;
     this.leanF = this.leanFV = this.leanS = this.leanSV = 0;
     this.updraft = 0;
+    this.stepL = true;
+    this.leadK = 1;
     Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '' });
     this.visYaw = fin(this.player.yaw);
     this.cycOn = false;
@@ -2605,6 +2639,12 @@ export class HeroAnimator {
     this.def = pl.atk ? pl.atk.def : null;
     this.chargeK = fin(pl.chargeK);
     this.releaseK = fin(pl.releaseK);
+    {
+      // a held light waiting at its coil (player.js _tickAttack): the hips settle out of their lead
+      // (once a frame, here: the pose stays a pure function of the animator's state)
+      const at = pl.atk, held = this.key === 'attack' && !!at?.pending && this.t >= fin(at.def?.windup, Infinity) - 1e-4;
+      this.leadK = damp(fin(this.leadK, 1), held ? 0 : 1, SW_LEAD_FADE, dt);
+    }
     // a blocked blow drives the guard in over 2-3 frames (an impact, not a one-frame pop)
     const rc = clamp(fin(pl.recoil), 0, 1);
     this.recoil = rc > this.recoil ? Math.min(rc, this.recoil + dt * 24) : rc;
