@@ -59,6 +59,9 @@ export class CameraRig {
     // a directional kick (kick()): the camera's offset along the screen's right (kickX) and up (kickY)
     // axes (m) and their velocities, springing back to 0
     this.kickX = this.kickY = this.kickVX = this.kickVY = 0;
+    // the world translation the kick put on the camera this frame (0 without one): the mouse's ground
+    // point is taken from the camera without it (main.js), so aiming never wobbles with a landed cut
+    this.kickOff = new THREE.Vector3();
     this._cineFocus = new THREE.Vector3();
     // keep-in-view: this frame's subjects and the eased pan (fitX / fitZ, m) and zoom (fitZoom, m)
     this.fitX = 0;
@@ -199,14 +202,13 @@ export class CameraRig {
     // the kick: a translation along the screen's right / up axes (camera and look point together, so
     // the view direction, and with it the figures' lean, is unchanged). This frame's offset is drawn
     // before the spring steps: the kick's frame shows the whole throw
+    const K = this.kickOff;
+    K.set(0, 0, 0);
     if (this.kickX || this.kickY) {
       const cpi = Math.cos(this.pitch), spi = Math.sin(this.pitch);
-      this.camera.position.x += this.kickX;
-      this.camera.position.y += this.kickY * cpi;
-      this.camera.position.z -= this.kickY * spi;
-      this._look.x += this.kickX;
-      this._look.y += this.kickY * cpi;
-      this._look.z -= this.kickY * spi;
+      K.set(this.kickX, this.kickY * cpi, -this.kickY * spi);
+      this.camera.position.add(K);
+      this._look.add(K);
     }
     this.camera.lookAt(this._look);
     this.camera.updateMatrixWorld();

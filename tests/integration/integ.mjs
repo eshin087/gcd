@@ -3275,6 +3275,16 @@ async function scenarioHeroLife() {
     const rig = new CameraRig(new THREE.PerspectiveCamera(32, 16 / 9, 1, 220));
     rig.snap(origin);
     const x0 = rig.camera.position.x;
+    // (the same rig without the kick: kickOff is exactly the translation the kick put on the camera,
+    // which main.js takes off the mouse ray)
+    const still = new CameraRig(new THREE.PerspectiveCamera(32, 16 / 9, 1, 220));
+    still.snap(origin);
+    rig.kick(0.6, 0.3, -0.7, 0.08);
+    rig.update(DT, origin);
+    still.update(DT, origin);
+    const offErr = rig.camera.position.clone().sub(rig.kickOff).distanceTo(still.camera.position);
+    const offOk = offErr <= 1e-9 && rig.kickOff.length() > 0.05 && still.kickOff.length() === 0;
+    rig.snap(origin);
     rig.kick(1, 0, 0, 0.08);
     rig.update(DT, origin);
     const first = rig.camera.position.x - x0;
@@ -3299,6 +3309,7 @@ async function scenarioHeroLife() {
     assert(Math.abs(settled) < 0.008 && lo >= -0.08 - 1e-9 && hi <= 0.2 * 0.08, `it springs back in 0.3 s (${settled.toFixed(5)}) with one small overshoot (${hi.toFixed(4)} ≤ 0.016)`);
     assert(ignored && capped <= 0.5 + 1e-9 && cleared, `bad kicks do nothing, stacked kicks cap at 0.5 m (${capped.toFixed(2)}), snap() clears it`);
     assert(Math.abs(phone + 0.08 * 20 / 36) <= 0.002 && north < 0, `the phone's camera throws it 20/36 as far (${phone.toFixed(4)}); a blow going north moves the picture up (kickY ${north.toFixed(3)} < 0)`);
+    assert(offOk, `kickOff is the kick's translation of the camera (the mouse ray drops it: aim never wobbles with a cut; ${offErr.toExponential(1)} m off the camera without the kick)`);
   }
 
   // (1c) the pace (Session 26, owner: "speed up the attack speed ... its too slow"): mashing the
