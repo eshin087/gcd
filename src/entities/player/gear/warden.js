@@ -212,9 +212,9 @@ function buildLegs({ pelvis, legs, M, DIM, BODY, mesh }) {
   for (const side of [-1, 1]) {
     const { thigh, shin, foot } = legs[side < 0 ? 'R' : 'L'];
     mesh(thigh, limb({ length: DIM.thigh, r0: th0 + 0.004, r1: th1 + 0.006, bulge: thB + 0.004 }), M.pants);
-    // the boot's shaft and its leather cuff under the knee
+    // the boot's shaft and a slate cop over the knee (in brown leather it read as a bare knee)
     mesh(shin, sub(limb({ length: DIM.shin - 0.02, r0: sh0 + 0.01, r1: sh1 + 0.008, bulge: shB }), 1), M.shirt, 0, -0.02, 0);
-    mesh(shin, limb({ length: 0.045, r0: sh0 + 0.022, r1: sh0 + 0.018 }), M.leather, 0, -0.01, 0);
+    mesh(shin, limb({ length: 0.045, r0: sh0 + 0.022, r1: sh0 + 0.018 }), M.spike, 0, -0.01, 0);
     // three slate splints down the front-outer shin, a bevel over their tops, two leather bands
     const spl = [];
     for (let i = 0; i < 3; i++) spl.push(sub(arcPlate(-0.075, -0.3, sh0 + 0.022, sh1 + 0.02, side * 0.55 + (i - 1) * 0.42, 0.23, 2), i & 1));
@@ -291,7 +291,7 @@ export const WARDEN_TINT = {
   collarIn: { fill: [0.12, 0.3, 0.42], ink: [0.45, 0.85, 1.15], inkGlow: 0.35, glowK: 0.5 },
   hem: { fill: [0.55, 0.66, 0.82] },
   leather: { fill: [0.26, 0.17, 0.11] },
-  spike: { fill: [0.15, 0.19, 0.26], sub: 0.3, spec: [1.0, 18] },
+  spike: { fill: [0.2, 0.25, 0.34], sub: 0.3, spec: [1.0, 18] }, // (brighter than the first cut: dark at the game camera)
   bevel: { fill: [0.48, 0.55, 0.68] },
   facing: { fill: [0.2, 0.48, 0.64], ink: [0.5, 0.9, 1.2], inkGlow: 0.4, glowK: 0.6 },
 };
