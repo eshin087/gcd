@@ -461,7 +461,9 @@ the body.
   floated 13 - 65 px off both drawn figures (a median 1.06 m off on the Ash Disciple). The cut is
   drawn where the DRAWN blade (from `CUT_LOOK.from` to the arc's edge) meets the boss's DRAWN hurt
   spheres (`drawnPoint`), 70 % of the way from the blade onto the body and never more than 0.12 m
-  off its surface (the wyrm's reach band hits a chest 1 - 2 m above the drawn blade).
+  off its surface (the wyrm's reach band hits a chest 1 - 2 m above the drawn blade). A duelist is
+  shoved in the same tick (0.14 m, a heavy 0.32 m) and the freeze holds the frame he is drawn in
+  after it, so the cut (and his spray) moves with him: ≤ 0.09 m off his drawn body in that frame.
 - **One line, not a burst:** a tapered cold slash line LAID ACROSS THE BODY along the cut's screen
   direction through the contact (0.9 m for a light ... 1.6 - 1.9 m for the cleave; most of it ahead
   of the contact, along the cut), its far end breaking off in one or two dry-brush gaps. A heavy blow

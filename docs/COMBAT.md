@@ -551,8 +551,9 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   contact frame, x1.95 heavy), held through the freeze. The **sound** is the body's hit (scales, or
   cloth on a duelist) under the blade's own `cut` layer (a slice and a ring per weight, a semitone up
   each hit of the chain); a guarded strike plays only its clash. The pad rumbles on every landed
-  cut. A struck duelist **shudders** through the freeze (drawn only). A strike his guard turns gets
-  none of it: the guard draws its own clash.
+  cut. A struck duelist **shudders** through the freeze (drawn only). His shove is instant, so the
+  cut and his spray move with him: they sit on the body the freeze holds. A strike his guard turns
+  gets none of it: the guard draws its own clash.
 
 **Moves** (`moves.js`; N normal, B blue, R red; P1 windup s (damage); LOCK = a perfect parry locks
 the blades, MIKIRI = perilous; hits test a zone from his root through their active frames: sector

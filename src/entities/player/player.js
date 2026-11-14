@@ -2722,12 +2722,26 @@ export class Player {
     const C = !viaShards && this._contactPoint(dr, d.kind, this._cut) ? this._cut : null;
     const point = C ? { x: C.x, y: C.y, z: C.z } : { x: h.x, y: h.y, z: h.z };
     const cut = C ? { x: C.gx, z: C.gz } : null; // the blade's ground-plane travel: his spray
+    const dp = dr.position, x0 = fin(dp?.x, NaN), y0 = fin(dp?.y, NaN), z0 = fin(dp?.z, NaN);
     let dealt = damage;
     try {
       const r = dr.takeHit({ damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true });
       if (Number.isFinite(r)) dealt = r;
     } catch (err) {
       console.error('[player] dragon.takeHit failed', err);
+    }
+    // his shove: a duelist's takeHit moves him at once (TUNING.hitStun push), and the freeze holds the
+    // frame he is drawn in after it: the cut goes with his drawn body (his spray did the same)
+    const mx = fin(dp?.x, NaN) - x0, my = fin(dp?.y, NaN) - y0, mz = fin(dp?.z, NaN) - z0;
+    if (Number.isFinite(mx + my + mz) && mx * mx + my * my + mz * mz < 1) {
+      point.x += mx;
+      point.y += my;
+      point.z += mz;
+      if (C) {
+        C.x += mx;
+        C.y += my;
+        C.z += mz;
+      }
     }
     // (this.atk may be gone: a deflect or a trade clash bounced him)
     const guarded = (!!a.guarded || !!a.traded) && dealt === 0;

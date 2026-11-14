@@ -1304,7 +1304,9 @@ async function scenarioCutFx() {
   const PF = game.U.uHeroPartFill.value[17], PR = game.U.uHeroPartRim.value[17];
   const v = new THREE.Vector3(), A = new THREE.Vector3(), B = new THREE.Vector3();
   // at the moment of the hit (inside takeHit, before his shove): the point against his drawn body and
-  // the drawn blade; the gameplay point the hit test found (p._applyHit's h)
+  // the drawn blade; the gameplay point the hit test found (p._applyHit's h). After the tick (the
+  // frame the freeze holds: his shove, his jolt, his update) the cut drawn (the event's point) against
+  // the body he is drawn in then
   let pend = null, sparkAt = null, spawns = 0, sounds = [];
   const takeHit0 = d.takeHit.bind(d), applyHit0 = p._applyHit.bind(p), spark0 = d.fx.hitSpark.bind(d.fx), play0 = game.audio.play.bind(game.audio);
   const fxa = game.fx.add, spawn0 = fxa.spawn;
@@ -1355,8 +1357,10 @@ async function scenarioCutFx() {
     }
     if (!ev || !pend) continue;
     const def = pend.def, tier = def?.contact ?? 'light', k = 0;
+    let body = Infinity;
+    for (const s of d.hurtSpheres) { d.drawnPoint(v.set(s.x, s.y, s.z)); body = Math.min(body, v.distanceTo(ev.point) - s.r * d.drawScale); }
     const row = {
-      combo: ev.combo, tier, body: pend.body, blade: pend.blade,
+      combo: ev.combo, tier, body, bodyHit: pend.body, blade: pend.blade,
       spark: sparkAt ? Math.hypot(sparkAt.x - ev.point.x, sparkAt.y - ev.point.y, sparkAt.z - ev.point.z) : Infinity,
       stop: game.hitstopTimer, want: Math.max(def.hitstop * (pend.crit ? HIT_FEEL.crit.stop : 1), TUNING.hitStun.light.stop),
       kick: Math.hypot(rig.kickX, rig.kickY), kickWant: feel(def.kick, k), punch: rig.punchZ,
@@ -1368,14 +1372,15 @@ async function scenarioCutFx() {
     follow = { row, n: 0, after: game.hitstopTimer <= 0 ? 1 : 0, signs: [] };
     pend = null;
   }
-  const fmt = (r) => `${r.combo}/${r.tier} body ${r.body.toFixed(2)} blade ${r.blade.toFixed(2)} stop ${r.stop.toFixed(3)} kick ${r.kick.toFixed(3)} fill ${r.fill.toFixed(2)} spawns ${r.spawns}`;
+  const fmt = (r) => `${r.combo}/${r.tier} body ${r.body.toFixed(2)} (at the hit ${r.bodyHit.toFixed(2)}) blade ${r.blade.toFixed(2)} stop ${r.stop.toFixed(3)} kick ${r.kick.toFixed(3)} fill ${r.fill.toFixed(2)} spawns ${r.spawns}`;
   out(`   ${rows.length} landed cuts: ${rows.slice(0, 6).map(fmt).join(' · ')}`);
+  out(`   the cut off his drawn body in the held frame (m): ${rows.map((r) => `${r.combo}/${r.tier} ${r.body.toFixed(2)}`).join(' · ')}`);
   const moved = rows.map((r) => r.moved).filter(Number.isFinite).sort((a, b) => a - b);
   out(`   the drawn contact sits a median ${(moved[moved.length >> 1] ?? NaN).toFixed(2)} m from the gameplay hit point (max ${(moved[moved.length - 1] ?? NaN).toFixed(2)})`);
   const near = rows.filter((r) => r.body <= 0.15).length;
   assert(rows.length >= 8 && rows.some((r) => r.combo === 5), `the chain lands ${rows.length} cuts on him, the slam among them`);
-  assert(near >= 0.9 * rows.length && rows.every((r) => r.body <= 0.3), `every cut is drawn on his drawn body: ${near} of ${rows.length} within 0.15 m of a drawn hurt sphere's surface, all within 0.3 (worst ${Math.max(...rows.map((r) => r.body)).toFixed(2)})`);
-  assert(rows.every((r) => r.blade <= 0.3 && r.spark <= 1e-6 && r.drawn), `… and on the drawn blade (worst ${Math.max(...rows.map((r) => r.blade)).toFixed(2)} m off it); his spray starts there (worst ${Math.max(...rows.map((r) => r.spark)).toExponential(1)})`);
+  assert(near >= 0.9 * rows.length && rows.every((r) => r.body <= 0.3), `every cut is drawn on his drawn body in the frame the freeze holds (after his shove): ${near} of ${rows.length} within 0.15 m of a drawn hurt sphere's surface, all within 0.3 (worst ${Math.max(...rows.map((r) => r.body)).toFixed(2)}; at the hit ${Math.max(...rows.map((r) => r.bodyHit)).toFixed(2)})`);
+  assert(rows.every((r) => r.blade <= 0.3 && r.spark <= 1e-6 && r.drawn), `… found on the drawn blade (worst ${Math.max(...rows.map((r) => r.blade)).toFixed(2)} m off it); his spray starts at the cut (worst ${Math.max(...rows.map((r) => r.spark)).toExponential(1)})`);
   assert(rows.every((r) => r.stop >= r.want - 1e-6), `each freezes the frame for its weight (${rows.map((r) => r.stop.toFixed(3)).join(', ')})`);
   assert(rows.every((r) => r.kick >= 0.8 * r.kickWant && r.kickWant > 0 && r.punch > 0), `each throws the camera along the cut (${rows.map((r) => r.kick.toFixed(3)).join(', ')} m) and punches it in`);
   assert(rows.every((r) => r.fill >= 1.5 && r.rim >= 1.25 * 1.7), `each flares the blade (fill ${Math.min(...rows.map((r) => r.fill)).toFixed(2)}+, rim ${Math.min(...rows.map((r) => r.rim)).toFixed(2)}+)`);

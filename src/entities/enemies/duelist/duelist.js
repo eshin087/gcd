@@ -285,11 +285,14 @@ export class Duelist {
       S.s = 1;
       S.fresh = true; // the contact frame draws it at full strength: the countdown starts next frame
     }
+    const px0 = this.position.x, pz0 = this.position.z;
     if (this.mode !== 'broken' && this.position.y < 0.2) this.moveBy((dx / l) * hs.push, (dz / l) * hs.push);
     const pt = o.point;
     if (pt && Number.isFinite(pt.x + pt.y + pt.z)) {
-      this.fx.hitSpark(pt.x, pt.y, pt.z, sx, sz, heavy || crit);
-      this._lastHurtPt.set(pt.x, pt.y, pt.z);
+      // (his spray starts on him where he is drawn after the shove: the cut moved with him)
+      const hx = pt.x + fin(this.position.x - px0, 0), hz = pt.z + fin(this.position.z - pz0, 0);
+      this.fx.hitSpark(hx, pt.y, hz, sx, sz, heavy || crit);
+      this._lastHurtPt.set(hx, pt.y, hz);
     }
     this.emit('dragon:hurt', { damage: dmg, part, hp: this.hp, crit });
     if (this.hp <= 0) {

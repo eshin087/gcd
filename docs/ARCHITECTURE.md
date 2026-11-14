@@ -443,8 +443,10 @@ gameplay bodies, so its point floats off both drawn figures; a landed cut is DRA
 blade (`CUT_LOOK.from` … `fx.arcAt(kind)` of the hit segment) meets the boss's drawn hurt spheres
 (`dr.drawnPoint`, radius × `dr.drawScale`). `player._cut` holds it: the point, f along the hit
 segment, the blade's travel there (`cx, cy, cz`; unit ground-plane `gx, gz`) and its direction
-(`ex, ey, ez`). That point goes to `takeHit` (with `cut: {x: gx, z: gz}`), to `player:hitDragon`
-and to `fx.contact`; `game.kick` throws the camera along the travel. Each attack def's `contact`
+(`ex, ey, ez`). That point goes to `takeHit` (with `cut: {x: gx, z: gz}`); whatever `takeHit` moved
+the boss's root by (a duelist's shove is instant, and the freeze holds the frame he is drawn in
+after it) moves the point and `_cut` with him (≤ 1 m, else ignored); then it goes to
+`player:hitDragon` and to `fx.contact`; `game.kick` throws the camera along the travel. Each attack def's `contact`
 (the cutFx tier), `hitstop`, `shake`, `punch` and `kick` (a number or [k0, k1] lerped by the charge;
 `combat.js` `HIT_FEEL` holds the crit factors, `feel(v, k)` reads one; `THRUST.exec` the execution's)
 set the weight of the cut. `atk.hitAt` (the attack clock at the contact, -1 none) and `atk.cutDir`
@@ -1564,7 +1566,8 @@ a subclass with a few hooks.
   (`TUNING.hitStun.light / heavy`): `stop`, `jolt`, `push` and `shudder` (m: through the freeze his
   drawn figure flickers ± this far along the cut, fading, in real time, through `lean.ox` / `oz`;
   `d.shudderK` 0 turns it off, the Lab's 'shudder' toggle). His hit spray flies along `takeHit`'s
-  `cut` (the shove keeps `dir`).
+  `cut` (the shove keeps `dir`) and starts at `point` moved by his own shove (the shove is instant:
+  the hero moves the drawn cut the same way, so both sit on the body the freeze holds).
 - `brain.js` `class DuelBrain(d)`: the mind and timeline (modes sleep, intro, foot, act, react, broken,
   dying), all data from `d.kit`. Phases are generic: when a gate is hit it starts
   `kit.transitions[phase]` and emits `dragon:phase<n>`; `forcePhase(n)` for the Lab. Beats: a zone hit
@@ -1722,7 +1725,8 @@ Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'slam'|'cleave'|'thrust', combo, charge}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; cleave = the charge's release, thrust = the execution against a duelist),
   `player:charge {t}` (charge start; t = seconds to full charge), `player:slam {x, z}` (the slam meets the ground: shard burst),
   `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
-  head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn;
+  head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn
+  (on a duelist: after his shove, where he is drawn in the held frame);
   combo = the chain hit 1-5 (1 outside the chain); weight = the cut's look and sound tier, the attack's contact:
   light, sweep, point, slam, cleave or execute; the plunge's has neither), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
