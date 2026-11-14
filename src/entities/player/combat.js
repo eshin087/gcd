@@ -92,6 +92,7 @@ export const LIGHT = [
     name: 'stab', kind: 'light', combo: 4, damage: 30, poise: 14, heavy: false,
     windup: 0.11, active: 0.1, recovery: 0.24, chain: 0.3, lunge: 0.8, reach: 2.3,
     hitstop: 0.07, shake: 0.14, contact: 'point', punch: 0.6, kick: 0.1,
+    glint: 'ridge', // the edge glint and the contact's flash run up the ridge (fx.edgeGlint): a point-first drive
     anim: { kind: 'clip', clip: 'lunge' },
     variants: [
       { kind: 'clip', clip: 'risingThrust' }, // out of a crouch, the point driving up into the target

@@ -2995,6 +2995,127 @@ async function scenarioHeroLife() {
     assert(dead === 1, `a dead hero's blade is the base (${dead})`);
   }
 
+  // (1e3) the edge glint runs up the LEADING edge as a cut comes in (fx.edgeGlint, EDGE_GLINT): on the
+  // steel, rising to the point; on the ridge for a thrust; never at rest, at a run, at the coil or in
+  // the execution's thrust; a landed cut stops it and flashes the steel instead (fx.edgeFlash)
+  {
+    const { EDGE_GLINT, hwAt, leadSide } = await imp('src/entities/player/fx.js');
+    const { SWINGS } = await imp('src/entities/player/swings.js');
+    const { THRUST, CHARGE, chargeStats } = await imp('src/entities/player/combat.js');
+    const fxa = p.fx.add, spawn0 = fxa.spawn, eg0 = p.fx.edgeGlint, ef0 = p.fx.edgeFlash;
+    const aim0 = game.mouseGround.clone();
+    const lv = new THREE.Vector3();
+    let inGlint = null, inFlash = false;
+    const glints = [], flashes = [];
+    fxa.spawn = (o) => {
+      if (inGlint && o.color === EDGE_GLINT.color) {
+        r.sword.worldToLocal(lv.set(o.x, o.y, o.z));
+        glints.push({ ...inGlint, head: o.glyph === '+', x: lv.x, y: lv.y, z: lv.z, t: game.time });
+      }
+      if (inFlash) {
+        r.sword.worldToLocal(lv.set(o.x, o.y, o.z));
+        flashes.push({ glyph: o.glyph, z: lv.z, t: game.time });
+      }
+      return spawn0.call(fxa, o);
+    };
+    p.fx.edgeGlint = function (sw, ...rest) {
+      const a = p.atk;
+      inGlint = { atk: a, key: `${a?.def?.name}#${A.atkVar}`, line: SWINGS[A.atkAnim?.clip]?.line ?? null, side: leadSide(sw, r.sword.matrixWorld.elements) };
+      try { return eg0.call(this, sw, ...rest); } finally { inGlint = null; }
+    };
+    p.fx.edgeFlash = function (...args) { inFlash = true; try { return ef0.apply(this, args); } finally { inFlash = false; } };
+    const bad = [];
+    try {
+      // whiffs, 30 m from the wyrm: every look of every light hit, then the slam
+      p.debug.teleport(d.position.x + 30, d.position.z + 30);
+      game.mouseGround.set(p.position.x, 0, p.position.z - 5);
+      go(0.6);
+      for (let look = 0; look < 3; look++) {
+        A.forceVariant = look;
+        for (let k = 0; k < 5; k++) { input.click(0); go(k === 4 ? 0.9 : CHAIN_EVERY); }
+        go(0.8);
+      }
+      A.forceVariant = null;
+      const swings = new Map();
+      for (const g of glints) { if (!swings.has(g.atk)) swings.set(g.atk, []); swings.get(g.atk).push(g); }
+      let nCut = 0, nPoint = 0;
+      for (const list of swings.values()) {
+        const { key, line } = list[0];
+        const heads = list.filter((g) => g.head);
+        if (list.length < 4) bad.push(`${key}: ${list.length} glint spawns`);
+        if (list.some((g) => g.z < HERO_DIM.forte - 0.01 || g.z > HERO_DIM.drawnTip + 0.01 || Math.abs(g.y) > 0.02)) bad.push(`${key}: a glint off the steel`);
+        if (heads.some((g, i) => i && g.z < heads[i - 1].z - 1e-4)) bad.push(`${key}: the head ran back down`);
+        if (!(Math.max(...heads.map((g) => g.z)) >= 0.85 * HERO_DIM.drawnTip)) bad.push(`${key}: the head stopped at ${Math.max(...heads.map((g) => g.z)).toFixed(2)}`);
+        if (line === 'point') {
+          nPoint++;
+          if (list.some((g) => Math.abs(g.x) > 0.01)) bad.push(`${key}: a thrust's glint off the ridge`);
+        } else {
+          nCut++;
+          const onEdge = list.filter((g) => Math.abs(g.x) >= 0.6 * hwAt(g.z) && Math.sign(g.x) === g.side).length;
+          if (onEdge < 0.8 * list.length) bad.push(`${key}: ${onEdge} of ${list.length} on the leading edge`);
+        }
+      }
+      out(`   edge glint: ${swings.size} swings (${nCut} cuts, ${nPoint} thrusts), ${glints.length} spawns`);
+      if (!(nCut >= 10 && nPoint >= 2)) bad.push(`only ${nCut} cuts / ${nPoint} thrusts swung`);
+      // none at rest, at a run, at the coil or through the execution's thrust
+      glints.length = 0;
+      go(1.0);
+      input.axis = { x: 0, y: 1 };
+      go(1.0);
+      input.axis = { x: 0, y: 0 };
+      go(0.5);
+      input.press(0);
+      go(0.22);
+      const quiet = glints.length;
+      input.up(0);
+      go(1.0);
+      glints.length = 0;
+      p._startHeavy(THRUST, chargeStats(CHARGE.full, THRUST));
+      go(1.0);
+      if (quiet || glints.length) bad.push(`glints at rest / running / at the coil (${quiet}) or in the thrust (${glints.length})`);
+      // a landed light: the glint stops at the contact, four strokes flash on the steel in that frame
+      const fx0 = Math.sin(d.yaw), fz0 = Math.cos(d.yaw);
+      const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx0 + (h.z - d.position.z) * fz0 > (a.x - d.position.x) * fx0 + (a.z - d.position.z) * fz0 ? h : a));
+      p.debug.teleport(c.x + fx0 * (c.r + 1), c.z + fz0 * (c.r + 1));
+      p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+      aimAt(G);
+      go(0.5);
+      glints.length = 0;
+      flashes.length = 0;
+      let hitT = null;
+      G.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded && hitT === null) hitT = game.time; };
+      A.forceVariant = 0;
+      input.click(0);
+      go(0.6);
+      A.forceVariant = null;
+      G.watch = null;
+      const late = glints.filter((g) => g.t >= hitT).length, inTick = flashes.filter((f) => f.t === hitT);
+      out(`   a landed light: ${glints.length} glint spawns before the contact, ${late} after; ${inTick.length} flash strokes on the steel (z ${inTick.map((f) => f.z.toFixed(2)).join(', ')})`);
+      if (hitT === null || late || inTick.length !== 4 || flashes.length !== 4 || inTick.some((f) => f.glyph !== '|' || f.z < HERO_DIM.forte - 1e-3 || f.z > HERO_DIM.drawnTip + 1e-3)) bad.push(`landed: ${late} glints after the contact, ${inTick.length} of ${flashes.length} flash strokes in its frame`);
+    } finally {
+      fxa.spawn = spawn0;
+      p.fx.edgeGlint = eg0;
+      p.fx.edgeFlash = ef0;
+      A.forceVariant = null;
+    }
+    // neither draws from the AI's stream
+    const rand0 = Math.random;
+    let draws = 0;
+    Math.random = () => { draws++; return rand0(); };
+    try {
+      p.fx.edgeGlint(p.sweep, 0.24, 0.9, 1, false, DT);
+      p.fx.edgeFlash(p.sweep, 0.5, true, false);
+    } finally {
+      Math.random = rand0;
+    }
+    assert(!bad.length, `the edge glint runs up the leading edge to the point on every cut (the ridge on a thrust), never at rest, at a run, at the coil or in the execution's thrust; a landed cut flashes four strokes on the steel instead (${bad.slice(0, 5).join('; ') || 'all'})`);
+    assert(draws === 0, `the edge glint and the flash never touch the AI's random stream (${draws} draws)`);
+    p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    game.mouseGround.copy(aim0);
+    d.hp = d.maxHp;
+    go(1.0);
+  }
+
   // (1c) the pace (Session 26, owner: "speed up the attack speed ... its too slow"): mashing the
   // button, a light every ~0.3 s (it was 0.42 s; 0.25 s before Session 25). The next light still
   // waits for the cut to carry through (`chain` of the recovery)

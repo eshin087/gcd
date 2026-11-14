@@ -4,10 +4,10 @@ import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from 
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, tellDefaults, facingDelta } from '../../combat/rules.js';
-import { buildHero, setHeroGlyphScale, installLean, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK } from './model.js';
+import { buildHero, setHeroGlyphScale, installLean, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
-import { PlayerFx } from './fx.js';
+import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 
@@ -1762,6 +1762,15 @@ export class Player {
     if (C) this.game.kick?.(C.cx, C.cy, C.cz, X.kick);
     else this.game.kick?.(Math.sin(this.yaw), 0, Math.cos(this.yaw), X.kick);
     this.fx.contact(pt, 'execute', C, true, 1);
+    if (C) this._edgeFlash(C, true, true, true);
+  }
+
+  /** The contact's mark on the steel (fx.edgeFlash) at contact C's height along the blade (a contact
+   *  out in the arc, past the drawn steel, flashes at the point). */
+  _edgeFlash(C, heavy, crit, ridge = false) {
+    if (!this.rig.loadout?.weapon) return;
+    const z = clamp(DIM.bladeBase + C.f * (DIM.bladeTip + REACH.tipExt - DIM.bladeBase), DIM.forte, DIM.drawnTip - 0.02);
+    this.fx.edgeFlash(this.sweep, z, heavy, crit, ridge);
   }
 
   /**
@@ -2569,6 +2578,7 @@ export class Player {
       const prevT = a.prevT;
       a.prevT = t;
       const crit = this.critTimer > 0;
+      const armed = !!this.rig.loadout?.weapon;
       // any overlap of this frame with the active window counts (robust to long frames)
       if (t >= W && prevT <= end + 0.04) {
         // the hit first: a cut that lands this frame draws its contact, not the arc's glint
@@ -2588,6 +2598,17 @@ export class Player {
         if (d.kind === 'light' && !a.flared) {
           a.flared = true;
           this.anim.kickCoat(0.32, this.anim.noise);
+        }
+      }
+      // the edge glint runs up the leading edge as the cut comes in (fx.edgeGlint): from just before
+      // the active frames until the cut lands (after the hit test: never a second star on the contact
+      // frame) or reaches the arc's glint on a whiff. Not the execution's thrust
+      if (armed && !a.hit && d.kind !== 'thrust') {
+        const G = EDGE_GLINT, g0 = W - G.lead, g1 = W + d.active * (d.kind === 'cleave' ? G.atCleave : G.at);
+        if (t >= g0 && prevT <= g1) {
+          const u = clamp((t - g0) / (g1 - g0), 0, 1), z = lerp(G.z[0], G.z[1], u ** G.ease);
+          this.fx.edgeGlint(sw, a.glintZ ?? G.z[0], z, this.bladeFar, crit, fin(this.game.realDt, 1 / 60), d.glint === 'ridge');
+          a.glintZ = z;
         }
       }
       if (d.kind === 'cleave') {
@@ -2721,6 +2742,7 @@ export class Player {
     const km = feel(d.kick, k) * (crit ? HF.kick : 1);
     if (km > 0 && C) this.game.kick?.(C.cx, C.cy, C.cz, km);
     if (!viaShards) this.fx.contact(point, d.contact ?? 'light', C, crit || dr.broken === true, k);
+    if (C) this._edgeFlash(C, heavy, crit, d.glint === 'ridge');
     if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);
   }
 

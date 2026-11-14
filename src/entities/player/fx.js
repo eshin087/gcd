@@ -57,6 +57,50 @@ const COL = {
 // this crescent and afterimages of the blade; the owner picked the crescent and the others went.)
 export const ARC_LOOK = { at: 0.64, edge: 0.11, life: [0.2, 0.27], veil: [[0.94, 0.3], [0.88, 0.2], [0.82, 0.12], [0.76, 0.06]], motes: 1 };
 const ARC_HEAVY = 1.22; // the slam's and the cleave's arc reaches this much further out
+
+/**
+ * The edge glint (edgeGlint): a small cold '+' running up the LEADING edge of the steel from the
+ * forte toward the point as a cut comes in, its trail a few '|' strokes behind it; it starts `lead`
+ * s before the active frames and reaches the point at `at` of them (`atCleave` for the cleave), its
+ * height along the blade z[0] → z[1] (sword space, m) easing in (u^ease). Re-spawned on the steel
+ * every frame (no velocity): it rides the blade and is held through a freeze.
+ *   step / maxSub  m of the glint's travel per sub-step / at most this many a frame
+ *   hw      the drawn blade's half width along it: [[z, half width], ...] (piecewise linear)
+ *   inset   the glint sits at this share of the half width (on the edge's bevel, not past it)
+ *   ridge   the blade's travel must be at least this much across its flat (normalised) for an edge
+ *           to lead; under it (a thrust along the blade) the glint runs up the ridge
+ *   flash   edgeFlash: the contact's mark ON the steel, n '|' strokes laid along the leading edge
+ *           from the contact up toward the point, `step` m apart (× heavy for a heavy blow or a crit)
+ */
+export const EDGE_GLINT = {
+  lead: 0.03, at: 0.6, atCleave: 0.82, z: [0.24, 0.9], ease: 2, step: 0.08, maxSub: 4,
+  hw: [[0.2, 0.042], [0.79, 0.034], [0.93, 0]], inset: 0.9, ridge: 0.35,
+  head: { glyph: '+', rot: 0.785, size: 0.07, sizeFar: 0.1 }, tail: { glyph: '|', size: 0.1, len: 0.16 },
+  color: [2.6, 3.2, 4.2], colorEnd: [0.4, 1.1, 2.2], alpha: 0.9, tailAlpha: 0.55, life: [0.03, 0.08],
+  flash: { n: 4, step: 0.05, size: 0.12, stretch: 1.6, life: 0.1, alpha: 0.9, heavy: 1.25 },
+};
+/** The drawn blade's half width at sword-space height z (EDGE_GLINT.hw). */
+export function hwAt(z) {
+  const T = EDGE_GLINT.hw;
+  if (!(z > T[0][0])) return T[0][1];
+  for (let i = 1; i < T.length; i++) {
+    if (z <= T[i][0]) {
+      const [z0, w0] = T[i - 1], [z1, w1] = T[i];
+      return w0 + ((w1 - w0) * (z - z0)) / (z1 - z0);
+    }
+  }
+  return T[T.length - 1][1];
+}
+/** Which edge leads this frame (+1 the sword's +X edge, −1 the −X one, 0 neither: the blade moves
+ *  along itself): the blade's mid travel (sweep: last frame → this one) against its X axis (`e`: the
+ *  sword joint's matrixWorld elements). */
+export function leadSide(sw, e) {
+  const tx = (sw.a.x + sw.b.x - sw.pa.x - sw.pb.x) * 0.5, ty = (sw.a.y + sw.b.y - sw.pa.y - sw.pb.y) * 0.5, tz = (sw.a.z + sw.b.z - sw.pa.z - sw.pb.z) * 0.5;
+  const tl = Math.hypot(tx, ty, tz), xl = Math.hypot(e[0], e[1], e[2]);
+  if (!(tl > 1e-6) || !(xl > 1e-9)) return 0;
+  const c = (tx * e[0] + ty * e[1] + tz * e[2]) / (tl * xl);
+  return !Number.isFinite(c) || Math.abs(c) < EDGE_GLINT.ridge ? 0 : Math.sign(c);
+}
 const ARC_TURN = [0.03, 0.2]; // rad the blade turns in a frame: below, no arc; above, the full one
 const TRAIL_SUB_LEN = 0.11; // m of the edge's travel per trail sub-step (short: the line bends smoothly) …
 const TRAIL_SUB_MAX = 14; // … up to this many sub-steps a frame
@@ -271,6 +315,57 @@ export class PlayerFx {
         life: R(0.14, 0.26), size: R(0.07, 0.11), sizeEnd: 0.03, glyph: "·'", color: core, colorEnd: c1,
         alpha: 0.95, alphaEnd: 0, drag: 4, gravity: -2,
       });
+    }
+  }
+
+  /**
+   * The edge glint as a cut comes in (EDGE_GLINT; player.js _combat, from just before the active
+   * frames until it lands or reaches the point): this frame it runs from z0 to z1 (sword-space height
+   * along the blade) up the LEADING edge (leadSide; the ridge for a thrust), a '+' head at z1 and '|'
+   * strokes behind it. Spawned on the steel this frame, no velocity: it rides the blade and holds in
+   * a freeze. `far` 0..1 grows the head at the game camera; `realDt` sets its life (it lasts about a
+   * frame and a half); `ridge`: up the ridge whatever leads (a thrust's point-first drive: its coil's
+   * last flick into line led with an edge). No Math.random.
+   */
+  edgeGlint(sw, z0, z1, far = 1, crit = false, realDt = 1 / 60, ridge = false) {
+    const fx = this.add, s = this.rig?.sword;
+    if (!fx || !s || !sw?.valid || !Number.isFinite(z0 + z1)) return;
+    const G = EDGE_GLINT, e = s.matrixWorld.elements, side = ridge ? 0 : leadSide(sw, e);
+    const n = Math.max(1, Math.min(G.maxSub, Math.ceil(Math.abs(z1 - z0) / G.step)));
+    const life = Math.min(G.life[1], Math.max(G.life[0], 1.6 * (Number.isFinite(realDt) ? realDt : 1 / 60)));
+    const zl = Math.hypot(e[8], e[9], e[10]) || 1, rot = alongRot(e[8] / zl, e[9] / zl, e[10] / zl);
+    for (let i = 1; i <= n; i++) {
+      const z = z0 + ((z1 - z0) * i) / n, xx = side * G.inset * hwAt(z);
+      const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], wz = e[2] * xx + e[10] * z + e[14];
+      if (!Number.isFinite(x + y + wz) || y < 0.02) continue;
+      if (i === n) {
+        const size = G.head.size + G.head.sizeFar * (Number.isFinite(far) ? far : 1);
+        fx.spawn({ x, y, z: wz, life, size, sizeEnd: size * 0.6, glyph: '+', rot: G.head.rot, color: crit ? COL.ghostCore : G.color, colorEnd: G.colorEnd, alpha: G.alpha, alphaEnd: 0 });
+      } else {
+        fx.spawn({ x, y, z: wz, life, size: G.tail.size, sizeEnd: G.tail.size * 0.6, glyph: '|', rot, stretch: G.tail.len / G.tail.size, color: G.color, colorEnd: G.colorEnd, alpha: G.tailAlpha, alphaEnd: 0 });
+      }
+    }
+  }
+
+  /**
+   * The contact's mark ON the steel (player.js, a landed cut): EDGE_GLINT.flash.n white '|' strokes
+   * laid along the leading edge from zc (sword-space height of the contact) up toward the point (a
+   * contact too near the point, or past it out in the arc, ends them at the point instead of stacking
+   * them there). No star: the cut's core is the beat's one. Lives in fx time (held through the
+   * freeze). `ridge`: as edgeGlint.
+   */
+  edgeFlash(sw, zc, heavy = false, crit = false, ridge = false) {
+    const fx = this.add, s = this.rig?.sword;
+    if (!fx || !s || !sw?.valid || !Number.isFinite(zc)) return;
+    const G = EDGE_GLINT, F = G.flash, e = s.matrixWorld.elements, side = ridge ? 0 : leadSide(sw, e);
+    const zl = Math.hypot(e[8], e[9], e[10]) || 1, rot = alongRot(e[8] / zl, e[9] / zl, e[10] / zl);
+    const size = F.size * (heavy || crit ? F.heavy : 1);
+    const zTop = DIM.drawnTip - 0.02, z0 = Math.max(DIM.forte, Math.min(zc, zTop - (F.n - 1) * F.step));
+    for (let i = 0; i < F.n; i++) {
+      const z = Math.min(zTop, z0 + i * F.step), xx = side * G.inset * hwAt(z);
+      const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], wz = e[2] * xx + e[10] * z + e[14];
+      if (!Number.isFinite(x + y + wz)) continue;
+      fx.spawn({ x, y, z: wz, life: F.life, size, sizeEnd: size * 0.5, glyph: '|', rot, stretch: F.stretch, color: COL.arcGlint, colorEnd: COL.arcEnd, alpha: F.alpha, alphaEnd: 0 });
     }
   }
 

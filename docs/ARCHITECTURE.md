@@ -720,7 +720,17 @@ along the blade on heavy blows, a cross on a crit), thin sparks thrown along the
 a 0.22-0.3 m two-frame core, a ring on heavy blows, one small light; per-tier numbers in the exported
 `CUT_LOOK`, the last burst's counts in `CUT_LAST`, the look switch `setCutStyle('gash' | 'fan')` /
 `cutStyle()` (the Lab's 'cut' row; `?cutfx=fan`). `cleaveImpact(..., bare)`: bare = the fan only
-(contact draws the ring and the light). `sparks()` stays for the plunge. New: `skid(dt, slot, x, z, dx, dz, sp,
+(contact draws the ring and the light). `sparks()` stays for the plunge.
+`edgeGlint(sw, z0, z1, far, crit, realDt, ridge)`: a small cold '+' (and '|' strokes behind it)
+running up the LEADING edge of the steel from sword-space height z0 to z1 this frame (`leadSide(sw,
+e)`: the blade's mid travel against its X axis; the ridge under `EDGE_GLINT.ridge`, or always with
+`ridge`); `player.js` `_combat` drives it from `EDGE_GLINT.lead` s before the active frames to the
+arc's glint (`at`, `atCleave`; z eased up `EDGE_GLINT.z`), on the steel every frame (no velocity),
+stopped by a landed cut (`atk.glintZ` = how far it ran); never for the thrust kind. An attack def's
+`glint: 'ridge'` (the stab) runs it up the ridge. `edgeFlash(sw, zc, heavy, crit, ridge)`: the
+contact's mark on the steel, `EDGE_GLINT.flash.n` '|' strokes along the leading edge from the
+contact's height up to the point (`player._edgeFlash`, after `contact`). Exported: `EDGE_GLINT`,
+`hwAt(z)` (the drawn blade's half width), `leadSide(sw, e)`. New: `skid(dt, slot, x, z, dx, dz, sp,
 k)` (dust and torn grass off a sliding contact; `slot` 0 / 1 keeps a rate accumulator each) and
 `scrape(dt, x, y, z, dx, dz, sp)` (cold sparks off the dragging point). 2026-11-09: `parry(x, y, z,
 blue, chain = 1, dx = 0, dz = 0)` (the clash grows with the deflect chain, crossed streaks from the
