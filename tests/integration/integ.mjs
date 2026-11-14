@@ -3583,6 +3583,23 @@ async function scenarioLooks() {
       assert(bodyHair === 0 && headHair >= 2 && headSkin > 0 && !r.slots.shoulders.length && wraps, `swallow: its own locks (${headHair}), a lit face, no shoulder item, slate wraps on both forearms`);
       const [dt, ds] = sprint(() => [sprintEnds(tail), sprintEnds(longScarf)]);
       assert(dt > 0.12 && ds > 0.12, `swallow sprinting: the tail ${dt.toFixed(2)} m and the long scarf tail ${ds.toFixed(2)} m behind their roots (> 0.12)`);
+      // the tails' own idle stir: the animator reads a panel's `idleFlare` / `breeze` (else the table's,
+      // the side panels' values at these slots): a large idleFlare on this rig's tails flares them out
+      const tk = r.coat.map((C, k) => (Math.abs(C.def.az) > 2.2 ? k : -1)).filter((k) => k >= 0);
+      const meanX = (s) => {
+        let acc = 0, n = 0;
+        go(G, s, () => { for (const k of tk) { acc += p.anim.coatState[k][0].x; n++; } });
+        return acc / Math.max(1, n);
+      };
+      const own = tk.map((k) => r.coat[k].def.idleFlare), x0 = meanX(1), defs = tk.map((k) => r.coat[k].def);
+      tk.forEach((k) => { r.coat[k].def = { ...defs[tk.indexOf(k)], idleFlare: 0.6 }; });
+      go(G, 0.6);
+      const x1 = meanX(1);
+      tk.forEach((k, i) => { r.coat[k].def = defs[i]; });
+      go(G, 0.6);
+      out(`   swallow: the tails' idle swing ${x0.toFixed(3)} rad at their own idleFlare (${own.join(' / ')}), ${x1.toFixed(3)} rad at 0.6`);
+      assert(tk.length === 2 && own.every((x) => Number.isFinite(x)) && Math.abs(x1 - x0) > 0.15,
+        `swallow: the tails take their own idle flare (a panel idleFlare of 0.6 swings them ${(x1 - x0).toFixed(2)} rad from ${x0.toFixed(2)})`);
     } else if (id === 'warden') {
       const lows = r.coat.map((C) => hemLow(p, C));
       const rib = r.streamers.find((S) => rootOf(S) === r.head), man = r.streamers.find((S) => rootOf(S) === r.chest);
@@ -3627,6 +3644,9 @@ async function scenarioLooks() {
     let loco = 0, locoCross = 0, cross = 0, charge = 0, chargeHit = 0;
     let hand = 0, handNear = 0, handMin = Infinity, handAt = '';
     let phase = 'start', plate = -1, plateAt = '';
+    // lying still after the death's collapse (the body lands ~1.38 s after the kill: player.js _tickDead)
+    const DOWN_T = 1.6;
+    let downFrames = 0, hemDown = Infinity, cornerDown = Infinity, tipDown = Infinity;
     let capeWorst = -1, capeAt = '', capeDeep = 0;
     const parts = [
       ['torso', r.spine, (x) => shell(x)],
@@ -3648,10 +3668,17 @@ async function scenarioLooks() {
       const lying = LYING.has(p.anim.key);
       if (!finiteRig()) bad++;
       const where = () => `${phase}, ${p.state} (${p.anim.key}) t ${(p.atk?.t ?? p.stateT ?? 0).toFixed(2)}`;
-      // (the death's collapse is printed apart: every look's hem, today's included, digs in there)
+      // (the death's collapse is printed apart: every look's hem, today's included, digs in there.
+      // Once he lies still (DOWN_T after the kill) the ground rules hold again and are checked: the
+      // streamers' _layFlat (ADR-083) and the hem centre's floor, _hemY)
       if (p.state === 'dead') {
         for (const C of r.coat) hemDeath = Math.min(hemDeath, hemLow2(C, 0), hemLow2(C, 1), hemLow2(C, 0.5));
         for (const S of r.streamers) tipDeath = Math.min(tipDeath, v.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld).y);
+        if (lying && p.stateT >= DOWN_T) {
+          downFrames++;
+          for (const C of r.coat) { hemDown = Math.min(hemDown, hemLow2(C, 0.5)); cornerDown = Math.min(cornerDown, hemLow2(C, 0), hemLow2(C, 1)); }
+          for (const S of r.streamers) tipDown = Math.min(tipDown, v.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld).y);
+        }
       } else {
         // the animator keeps the hem's centre off the grass (anim.js _hemY); its corners tilt with the
         // panel's sideways swing and the slant, by up to half its width: they get a looser bound
@@ -3744,7 +3771,34 @@ async function scenarioLooks() {
     heroRoute(G, step, (ph) => { phase = ph; });
     phase = 'death';
     p.debug.kill();
-    step(3);
+    step(4);
+    // … and killed lying in a knockdown (the 'deadDown' clip: he dies where he lies), once the clip has
+    // settled (DD_T after the kill: before it, today's arm drape dips 17 cm into the grass, the robe's wing
+    // and a scarf tail 3-4 cm, as the body sinks under springs that lag; printed only)
+    const DD_T = 1.2;
+    let ddFrames = 0, hemDD = Infinity, tipDD = Infinity, tipSettle = Infinity;
+    {
+      game.flow.debug.toState('boss');
+      p.respawn(p.position.x, p.position.z);
+      go(G, 1.0);
+      p.debug.god = false;
+      const strike = (o) => {
+        p.hp = o.damage >= 999 ? 1 : p.maxHp;
+        p.takeHit({ damage: 20, tell: TELL.NORMAL, attack: 'test', from: { x: p.position.x + Math.sin(p.yaw) * 3, z: p.position.z + Math.cos(p.yaw) * 3 }, knockback: 2, ...o });
+      };
+      strike({ knockdown: true });
+      go(G, 0.55);
+      strike({ damage: 999, knockback: 1 });
+      go(G, 4, () => {
+        if (p.state !== 'dead' || !p.deadDown || !LYING.has(p.anim.key)) return;
+        let lo = Infinity;
+        for (const S of r.streamers) lo = Math.min(lo, v.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld).y);
+        if (p.stateT < DD_T) { tipSettle = Math.min(tipSettle, lo); return; }
+        ddFrames++;
+        tipDD = Math.min(tipDD, lo);
+        for (const C of r.coat) hemDD = Math.min(hemDD, hemLow2(C, 0.5));
+      });
+    }
     const pct = (x, n) => `${((100 * x) / Math.max(1, n)).toFixed(1)} %`;
     out(`   ${id} route: ${frames} frames; hems lowest ${hemMin.toFixed(3)} m (${hemAt}), their corners ${cornerMin.toFixed(3)} m (${cornerAt}); cloth tips lowest ${tipMin.toFixed(3)} m (${tipAt}; ${tipLowFrames} frames < -0.02); in the death's collapse: hems ${hemDeath.toFixed(3)} m, tips ${tipDeath.toFixed(3)} m`);
     out(`   ${id} cloth in the body: deepest ${(pen * 100).toFixed(1)} cm (${penAt || 'none'}), ${penFrames} of ${counted} frames > 2 cm (${pct(penFrames, counted)}); head-hung in the head ${headWorst < 0 ? 'never' : `${(headWorst * 100).toFixed(1)} cm (${headAt})`}`);
@@ -3753,6 +3807,12 @@ async function scenarioLooks() {
     rates[id] = { pen: penFrames / Math.max(1, counted), loco: locoCross / Math.max(1, loco), hand: handNear / Math.max(1, hand) };
     assert(bad === 0 && hemMin >= -0.02 && cornerMin >= -0.1 && tipLowFrames <= 6 && tipMin >= -0.1,
       `${id} through the route and a death: the rig finite (${bad} bad frames); alive, the hems above the grass (centre ${hemMin.toFixed(3)} m ≥ -0.02, corners ${cornerMin.toFixed(3)} ≥ -0.10), cloth tips under it on ${tipLowFrames} frames (≤ 6; lowest ${tipMin.toFixed(3)} ≥ -0.10)`);
+    // lying dead (after the standing death's collapse; killed in a knockdown): the streamers lie on the
+    // grass, not in it (_layFlat, ADR-083); the hem centre within 12 cm of it (today's long tails
+    // measure -0.093: _hemY's model lengths against drawn heights, a known gap); the corners printed
+    const f3 = (x) => (Number.isFinite(x) ? x.toFixed(3) : 'n/a');
+    assert(downFrames > 30 && tipDown >= -0.02 && hemDown >= -0.12 && ddFrames > 30 && tipDD >= -0.02 && hemDD >= -0.12,
+      `${id} lying dead (${downFrames} frames from ${DOWN_T} s after the kill; killed in a knockdown, ${ddFrames} frames from ${DD_T} s): cloth tips at ${f3(tipDown)} / ${f3(tipDD)} m (≥ -0.02; settling in the knockdown: ${f3(tipSettle)}), hem centres ${f3(hemDown)} / ${f3(hemDD)} m (≥ -0.12; corners ${f3(cornerDown)})`);
     if (isNew) {
       assert(penFrames <= 0.03 * counted && headWorst <= 0.01, `${id}: the cloth stays out of his body (${penFrames} of ${counted} frames > 2 cm, ≤ 3 %), a head-hung sheet out of his head (${(Math.max(0, headWorst) * 100).toFixed(1)} cm ≤ 1)`);
       assert(locoCross <= Math.max(3, loco * 0.05) && chargeHit <= Math.max(2, charge * 0.05), `${id}: the blade through the skirt on ${locoCross} of ${loco} loco frames (≤ 5 %), by a sheet on ${chargeHit} of ${charge} charge frames (≤ 5 %)`);
