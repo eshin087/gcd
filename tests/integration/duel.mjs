@@ -1398,6 +1398,23 @@ async function scenarioCutFx() {
     d.object3d.updateMatrixWorld(true);
     assert(shift <= 1e-9, `the shudder never moves his gameplay body (${shift.toExponential(1)} m)`);
   }
+  // drawnPoint IS his drawn transform (the cut's placement and the body checks above rest on it): an
+  // upright joint mapped by it lands on that joint as drawn (leaned, drawScale, a shudder's offset)
+  {
+    const r = d.rig, J = [r.head, r.chest, r.pelvis, r.legs.R.shin, r.legs.L.shin];
+    d.lean.on = false;
+    d.object3d.updateMatrixWorld(true);
+    const up = J.map((j) => j.getWorldPosition(new THREE.Vector3()));
+    d.lean.ox = 0.03;
+    d.lean.oz = -0.02;
+    d.lean.on = true;
+    d.object3d.updateMatrixWorld(true);
+    const err = Math.max(...J.map((j, i) => d.drawnPoint(up[i].clone()).distanceTo(j.getWorldPosition(new THREE.Vector3()))));
+    const leaned = d.lean.k > 0 && d.drawScale !== 1;
+    d.lean.ox = d.lean.oz = 0;
+    d.object3d.updateMatrixWorld(true);
+    assert(leaned && err <= 1e-6, `drawnPoint maps his upright joints onto the drawn ones (head, chest, pelvis, shins; lean k ${d.lean.k.toFixed(2)}, scale ${d.drawScale}, offset on: ${err.toExponential(1)} m)`);
+  }
   // a guarded strike: his guard draws the clash; no cut, no hit sound, no kick, only the strike's flare
   {
     delete d.brain.guardUp;
