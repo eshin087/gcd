@@ -5,7 +5,8 @@ import { axes, screenAngle, clashRing } from './clashFx.js';
 // gameplay point the hit test found). What makes it read as a cut at the game camera (a ~90 px hero):
 //   - a tapered cold SLASH line laid across the body along the cut's screen direction, through the
 //     contact (heavy blows: a second, fainter line beside it; its far end breaks off in dry-brush gaps);
-//   - a short TICK across it along the blade (heavy blows, a crit: the cross);
+//   - a short TICK across it along the blade (heavy blows, a crit: the cross; square across a
+//     puncture's line, which itself runs along the blade);
 //   - thin SPARKS thrown along the cut in the screen's plane, falling MOTES, a puff for a thrust;
 //   - one small two-frame CORE, an optional thin RING, one small pooled light.
 // Nothing is a big bright glyph: a 0.75-1.15 m '*' blot hid both figures through the freeze-frame.
@@ -55,6 +56,8 @@ const deepFreeze = (o) => {
  *   offMax   … but never more than this many metres off the surface (the wyrm: its reach band hits
  *            a chest 1-2 m above the drawn blade, and 30 % of that gap left the cut in the air)
  *   lowQ     sparks, motes (and the ring) × this on the LOW quality preset
+ *   crossMin the tick is laid along the blade, unless that is within this many radians of the line
+ *            on screen (a thrust's, the execution's line runs along the blade): then square across it
  * Per tier (combat.js `contact`):
  *   len (m, + lenK × charge), n strokes, size (m), life [s, fx-time], ahead (share of the line ahead
  *   of the contact, along the cut), lines (1 | 2), tick (m: the stroke across along the blade; 0
@@ -66,6 +69,7 @@ export const CUT_LOOK = deepFreeze({
   toBody: 0.7,
   offMax: 0.12,
   lowQ: 0.65,
+  crossMin: 0.5,
   pal: {
     cut: {
       slash: [1.25, 1.75, 2.3], hot: [2.3, 2.8, 3.3], end: [0.14, 0.1, 0.8],
@@ -174,18 +178,21 @@ export function cutBurst(game, x, y, z, o) {
         const ox = D[0] * L2.off, oy = D[1] * L2.off, oz = D[2] * L2.off;
         line(Math.max(2, T.n - L2.less), len * L2.len, ox, oy, oz, L2.alpha, L2.size, false);
       }
-      // ---- TICK: a short stroke across the line, along the blade (heavy blows; a crit's cross)
+      // ---- TICK: a short stroke across the line, along the blade (heavy blows; a crit's cross). When
+      // the line itself runs (nearly) along the blade (a thrust, the execution: ca = ea), square across it
       const lt = Math.max(T.tick, crit ? L.crit.tick : 0);
       if (lt > 0) {
         const N = L.crit.tickN;
-        dir(ea);
+        const dd = (((ea - ca) % Math.PI) + Math.PI) % Math.PI; // 0 … π: the two lines' angle, unsigned
+        const ta = Math.min(dd, Math.PI - dd) < L.crossMin ? ca + Math.PI / 2 : ea;
+        dir(ta);
         for (let i = 0; i < N; i++) {
           const u = i / (N - 1) - 0.5, au = Math.abs(2 * u); // −0.5 … 0.5; 0 at the centre, 1 at the ends
           const size = 0.12 * (1 - 0.4 * au);
           nTick += spawn({
             x: x + D[0] * u * lt, y: y + D[1] * u * lt, z: z + D[2] * u * lt,
             life: R(0.1, 0.12), size, sizeEnd: size * 0.5,
-            glyph: '|', rot: ea - Math.PI / 2, stretch: clamp((1.4 * (lt / (N - 1))) / (0.7 * size) - 1, 0.4, 6),
+            glyph: '|', rot: ta - Math.PI / 2, stretch: clamp((1.4 * (lt / (N - 1))) / (0.7 * size) - 1, 0.4, 6),
             color: P.hot, colorEnd: P.end, alpha: 1 - 0.6 * au, alphaEnd: 0,
           });
         }

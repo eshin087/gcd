@@ -3029,6 +3029,14 @@ async function scenarioHeroLife() {
             if (Math.min(dr, Math.PI - dr) > 0.05) bad.push(`${tag}: stroke ${i} turned ${dr.toFixed(2)} rad off the line`);
             if (along > len * T.ahead + 0.12 || -along > len * (1 - T.ahead) + 0.12) bad.push(`${tag}: stroke ${i} ${along.toFixed(2)} m along the line (len ${len})`);
           });
+          // the tick (heavy blows, a crit) crosses the line: along the blade, square across a puncture's
+          const tickWant = Math.max(T.tick, crit ? CUT_LOOK.crit.tick : 0) > 0;
+          const ticks = m.slice(L.slash, L.slash + L.tick);
+          if (tickWant !== ticks.length > 0) bad.push(`${tag}: ${ticks.length} tick strokes`);
+          ticks.forEach((o, i) => {
+            const dr = ((((o.rot - (ca - Math.PI / 2)) % Math.PI) + Math.PI) % Math.PI);
+            if (Math.min(dr, Math.PI - dr) < CUT_LOOK.crossMin - 1e-6) bad.push(`${tag}: tick stroke ${i} lies ${Math.min(dr, Math.PI - dr).toFixed(2)} rad off the line (no cross)`);
+          });
           const sparks = m.slice(L.slash + L.tick, L.slash + L.tick + L.sparks);
           const onCut = sparks.filter((o) => adiff(angOf(o), ca) <= T.fan + 0.1).length;
           if (!(onCut >= (2 / 3) * sparks.length) || !sparks.length) bad.push(`${tag}: ${onCut} of ${sparks.length} sparks along the cut`);
@@ -3066,7 +3074,7 @@ async function scenarioHeroLife() {
       Math.random = rand0;
     }
     out(`   cut: spawns per tier ${rows.join(' · ')}`);
-    assert(!bad.length, `a landed cut is a line along the cut, sparks along it, one small core, within budget, LOW, degenerate inputs, the fan look (${bad.slice(0, 6).join('; ') || 'all'})`);
+    assert(!bad.length, `a landed cut is a line along the cut, a tick across it (heavy, crit), sparks along it, one small core, within budget, LOW, degenerate inputs, the fan look (${bad.slice(0, 6).join('; ') || 'all'})`);
     assert(draws === 0, `a landed cut never touches the AI's random stream (${draws} Math.random draws)`);
   }
 

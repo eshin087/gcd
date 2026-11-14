@@ -469,7 +469,8 @@ the body.
   of the contact, along the cut), its far end breaking off in one or two dry-brush gaps. A heavy blow
   doubles it (a fainter second line on the hilt's side) and lays a short tick across it along the
   blade; a crit adds that tick as a cross. A thrust's line runs along the blade (a puncture), with a
-  small puff of points round the entry.
+  small puff of points round the entry; its tick (the execution's, a crit stab's) squares across the
+  line instead (`CUT_LOOK.crossMin`: whenever the blade is within 0.5 rad of the line on screen).
 - **Sparks along the cut:** 8 - 22 thin `|` streaks thrown in the screen's plane, three quarters
   inside +-0.45 - 0.6 rad of the cut, a quarter across it; 2 - 6 falling motes. His own spray (ash and
   embers) flies along the blade's travel too, not along the hero's facing.
