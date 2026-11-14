@@ -164,8 +164,10 @@ export class Dragon {
   }
 
   /**
-   * A hit from the player. Internal extras (the plunge, onPlunge): `exact` = `damage` is final (no part
-   * / broken multipliers), `posture` = add exactly this much posture instead of the weapon gain.
+   * A hit from the player. Internal extras (the plunge, onPlunge; the flurry's flash cuts): `exact` =
+   * `damage` is final (no part / broken multipliers), `posture` = add exactly this much posture
+   * instead of the weapon gain, `flash` = the most the hurt flash may be (a flurry's cuts land while
+   * the world is held: a full flash would stand on the whole wyrm for as long).
    */
   takeHit(o = {}) {
     if (this.state === 'dying' || this.state === 'dead') return 0;
@@ -184,7 +186,7 @@ export class Dragon {
     const gate = this.nextPhaseHp;
     if (gate > 0 && this.brain.aiEnabled && this.hp >= gate) hp = Math.max(gate, hp);
     this.hp = Math.max(0, hp);
-    this.flash = Math.max(this.flash, o.heavy || crit ? 1 : 0.8);
+    this.flash = Math.max(this.flash, Math.min(o.heavy || crit ? 1 : 0.8, Number.isFinite(o.flash) ? o.flash : 1));
 
     // flinch along the blow (fallback: away from the player)
     let dx = Number(o.dir?.x), dz = Number(o.dir?.z);

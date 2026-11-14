@@ -89,6 +89,32 @@ export const DEFENSE = Object.freeze({
     landMin: 4.5, landMax: 12, landClear: 0.8, // landing distance from the head; margin past the body
     impactStop: 0.13, impactShake: 0.6, execShake: 0.75, landIframes: 0.2,
   },
+  // --- the flurry (ADR-091): perfect dodges in a row are a STREAK; it ends when the hero is hurt
+  // (a blocked or parried blow, a plain dodge and a burn's ticks leave it alone). A perfect dodge
+  // that can reach its attacker (the wyrm's head in the plunge's range; a foe with a body to cut
+  // within the Ghostep's) answers with as many blows as the streak counts, `max` at most: all but the
+  // last are FLASH CUTS (he blinks to one side of the target, dashes through it and is gone again;
+  // each along a new line, so the cuts cross on it like a star and hang there), the last is an ART
+  // (player/flurry.js ARTS: the plunge is one of the wyrm's), on which the hanging cuts burst.
+  // While he cuts, the world runs at `world` of its speed and the hero on real time: every number
+  // in `cut` and in an art's beats is REAL seconds.
+  //   cut    one flash cut: hidden `blink`, the pass `dash` (it hits half way), frozen `stop` on the
+  //          hit, the finish held `hold`; the later cuts of a long flurry come faster (× down to
+  //          `rush`). `damage` is final (no part / break multiplier), `posture` added as is
+  //   reach  m to each side of the target a pass starts and ends (in the air round the wyrm's head /
+  //          on the ground round a foe)
+  //   turn   rad: each pass's line is turned this much from the far end of the last one's
+  //   last   the last blow against a foe without the plunge (the wyrm's is DEFENSE.plunge)
+  //   keepStreak  the streak survives this long (s) without a perfect dodge; 0 = until he is hurt
+  flurry: {
+    max: 7,
+    world: 0.07,
+    cut: { blink: 0.045, dash: 0.1, stop: 0.05, hold: 0.04, rush: 0.6, damage: 28, posture: 5 },
+    reach: { air: 4.6, ground: 2.8 },
+    turn: [0.55, 0.95],
+    last: { damage: 60, posture: 22 },
+    keepStreak: 0,
+  },
 });
 
 /** Attacker posture (enemy "break" meter, shown under the boss HP bar). */

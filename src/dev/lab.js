@@ -1,5 +1,6 @@
 import { CONFIG } from '../core/config.js';
 import { DEFENSE, TELL } from '../combat/rules.js';
+import { ARTS } from '../entities/player/flurry.js';
 import { el, setText, setClass, button, slider, section } from './labDom.js';
 import { injectLabStyle } from './labStyle.js';
 import { HitboxOverlay } from './hitboxOverlay.js';
@@ -788,6 +789,36 @@ export class Lab {
       setText(this.ui.atkSpeedVal, `x${v.toFixed(2)}`);
     });
     this.ui.atkSpeedVal = el('span', 'lab-val', 'x1.00', sp);
+    // the flurry (player/flurry.js): a perfect dodge's answer at a streak of N, started on the boss
+    // from where the hero stands; `art` pins the last blow's look (flurry.js ARTS) for the next ones
+    const fr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'flurry', fr).title = 'a perfect dodge at this streak, on the boss, now (player.debug.flurry(n))';
+    const fg = el('div', 'lab-grid c6', null, fr);
+    fg.style.flex = '1';
+    for (const n of [1, 2, 3, 4, 5, 7]) button(fg, `x${n}`, () => this._flurry(n)).title = `${n} blow${n > 1 ? 's' : ''}: ${n - 1} flash cut${n === 2 ? '' : 's'} and the art`;
+    const ar = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'art', ar).title = 'the last blow of the next flurries (player.debug.flurryArt); "any" = one at random, never the same twice';
+    const ag = el('div', 'lab-grid', null, ar);
+    ag.style.flex = '1';
+    const air = typeof this.game.dragon?.onPlunge === 'function';
+    const arts = Object.keys(ARTS).filter((k) => ARTS[k].air === air);
+    this.ui.artBtns = [null, ...arts].map((k) => ({ k, el: button(ag, k ? ARTS[k].label : 'any', () => this._flurryArt(k)) }));
+    const pinned = this.game.player?.debug?.flurryArt ?? null;
+    for (const b of this.ui.artBtns) setClass(b.el, 'on', b.k === pinned);
+  }
+
+  /** A flurry of `n` blows on the boss now (player.debug.flurry). */
+  _flurry(n) {
+    const r = this._call(this.game.player, 'player', 'flurry', [n], true);
+    this._status(r ? `flurry x${n}${this.game.player?.flurry?.art ? ` · ${ARTS[this.game.player.flurry.art]?.label}` : ''}` : 'flurry: out of reach (within 30 m of the wyrm\'s head / 12 m of a duelist, fight started)', r ? 'ok' : 'warn');
+  }
+
+  /** Pin the art the next flurries end on (null: one at random). */
+  _flurryArt(k, quiet = false) {
+    const pd = this.game.player?.debug;
+    if (pd) pd.flurryArt = k;
+    for (const b of this.ui.artBtns ?? []) setClass(b.el, 'on', b.k === k);
+    if (!quiet) this._status(`flurry art: ${k ? ARTS[k].label : 'any'}`, 'ok');
   }
 
   _buildTime(root) {

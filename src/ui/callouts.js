@@ -7,7 +7,9 @@ import { el, num } from './dom.js';
 // banner. Pooled DOM nodes, animated from update(realDt) on real time so they stay readable during
 // Ghostep slow-mo; only transform and opacity are written per frame, and only for live items.
 // Subscribes itself to combat:deflectChain { count } (a string's blows parried in a row) and
-// player:plungeHit { execution } (the hud wires the rest).
+// player:plungeHit { execution } (the hud wires the rest). The streak of perfect dodges: the
+// GHOSTEP call-out counts ("GHOSTEP ×4", bigger with every one), and a flurry's cuts count up in
+// one place over its target ("×3").
 
 const HEAD_UP = 3.0; // m above the player's feet (just over the name tag)
 const KINDS = {
@@ -35,6 +37,7 @@ const KINDS = {
   fullDeflect: { text: 'PERFECT DEFLECT', life: 1.5, rise: 32, pop: 1.7, cls: 'deflect', streak: true },
 };
 const NUM = { life: 0.95, rise: 34 };
+const COUNT = { life: 0.9, rise: 10 }; // a flurry's cut counter over its target
 const CALL_POOL = 6;
 const NUM_POOL = 12;
 const STACK_GAP = 0.32; // s: call-outs younger than this push a new one up
@@ -162,6 +165,40 @@ export class Callouts {
     it.span.textContent = `${k.text} ×${n}`;
     it.node.className = `ab-call on k-${k.cls}`;
     it.streak.style.display = 'none';
+    this._start(it);
+  }
+
+  /** GHOSTEP over the hero's head; from the second perfect dodge of a streak on it counts
+   *  ("GHOSTEP ×N") and pops bigger with every one. */
+  ghostep(streak) {
+    const n = Math.round(num(streak));
+    this.call('ghostep');
+    if (!(n >= 2)) return;
+    const it = this.calls.find((c) => c.active && c.kind === 'ghostep' && c.age === 0);
+    if (!it) return;
+    it.span.textContent = `${KINDS.ghostep.text} ×${n}`;
+    it.pop = Math.min(2.3, KINDS.ghostep.pop + 0.12 * (n - 1));
+    it.life = KINDS.ghostep.life + Math.min(0.5, 0.06 * n);
+  }
+
+  /** A flurry's cut `n` landed at world `point`: one counter over the target, counting up in place. */
+  count(n, point) {
+    const k = Math.round(num(n));
+    const x = num(point?.x, NaN), y = num(point?.y, NaN), z = num(point?.z, NaN);
+    if (!(k >= 1) || !Number.isFinite(x + y + z)) return;
+    const it = this.nums.find((c) => c.active && c.kind === 'count') ?? this._take(this.nums);
+    it.kind = 'count';
+    it.life = COUNT.life;
+    it.rise = COUNT.rise;
+    it.pop = Math.min(2.4, 1.5 + 0.12 * k);
+    it.lift = 0;
+    it.jx = 0;
+    it.head = false;
+    it.x = x;
+    it.y = y + 1.5;
+    it.z = z;
+    it.span.textContent = `×${k}`;
+    it.node.className = 'ab-num on k-count';
     this._start(it);
   }
 

@@ -16,12 +16,16 @@ import { TellEdges } from './tells.js';
 // HUD: Ansenjeo-style MMO overlay (player frame, minimap, tabbed log, name tags) plus the boss bar
 // (HP + posture), screen-edge cues (red flash on a dodge-only tell's timing cue, cyan Ghostep pulse;
 // the tells themselves are shown in the world, never as HUD text), call-outs (PARRY, GHOSTEP,
-// GUARD BROKEN, damage numbers), banners, title and pause screens. Pure DOM under #ui;
+// GUARD BROKEN, damage numbers), the streak of perfect dodges (a row of pips under the HP bar, the
+// flurry's cut counter over its target and the banner that names it), banners, title and pause
+// screens. Pure DOM under #ui;
 // update(realDt) only writes to the DOM when a shown value changes. Screen-grade uniforms are
 // driven by GameFlow (src/game/grade.js).
 
 const DMG_FADE = 1.6; // seconds after the last hit before the boss damage counter fades
 const GHOST_DEDUPE = 0.4; // s: 'player:perfectDodge' + 'player:ghostep' for the same blink
+// a flurry's name by its blows (player:flurryEnd; one blow has none: it is just its art)
+const FLURRY_NAMES = ['', '', 'TWIN FLASH', 'TRIPLE FLASH', 'FOURFOLD FLASH', 'FIVEFOLD FLASH', 'SIXFOLD FLASH', 'SEVENFOLD FLASH'];
 
 export class Hud {
   constructor(game) {
@@ -87,8 +91,19 @@ export class Hud {
     on('dragon:returned', (d) => this.calls.number(d.damage, d, { heavy: true }));
     on('player:block', () => this.calls.call('block'));
     on('player:guardBreak', () => this.calls.call('gbreak'));
-    on('player:perfectDodge', () => this._ghostep());
-    on('player:ghostep', () => this._ghostep());
+    on('player:perfectDodge', (d) => this._ghostep(d.streak));
+    on('player:ghostep', () => this._ghostep(this.game.player?.streak));
+    // the flurry: a count over the target for every cut that lands, and its name once the last has
+    on('player:flurryHit', (d) => {
+      if (num(d.of) >= 2) this.calls.count(d.n, this.game.player?.flurry?.T);
+    });
+    on('player:flurryEnd', (d) => {
+      const n = Math.round(num(d.strikes));
+      if (n >= 2) this.calls.banner(FLURRY_NAMES[n] ?? `${n}-FOLD FLASH`, `${d.label ? `${d.label} · ` : ''}${Math.round(num(d.damage))} damage`);
+    });
+    on('player:streak', (d) => {
+      if (num(d.lost) >= 2) flashClass(this.streakRow, 'lost');
+    });
     on('player:hitDragon', (d) => this.calls.number(d.damage, d.point, { crit: !!d.crit, heavy: !!d.heavy }));
 
     this._steps = [
@@ -123,6 +138,16 @@ export class Hud {
     el('span', 'clbl', `CRIT ×${DEFENSE.ghostep.critMult}`, this.critRow);
     const cb = el('div', 'ab-bar crit', null, this.critRow);
     this.critFill = el('div', 'fill', null, cb);
+
+    // the streak of perfect dodges (DEFENSE.flurry): a pip for every blow the next one is answered
+    // with; past the most a flurry strikes, only the count climbs
+    this.streakRow = el('div', 'ab-row ab-streak', null, pf);
+    el('span', 'slbl', 'STREAK', this.streakRow);
+    const sp = el('span', 'spips', null, this.streakRow);
+    this.streakFull = el('span', 'full', '', sp);
+    this.streakEmpty = el('span', 'empty', '', sp);
+    this.streakVal = el('span', 'sval', '', this.streakRow);
+    this._streak = 0;
 
     const foot = el('div', 'ab-pf-foot', null, pf);
     const fl = el('span', '', null, foot);
@@ -276,11 +301,11 @@ export class Hud {
     }
   }
 
-  _ghostep() {
+  _ghostep(streak) {
     const now = num(this.game.realTime);
     if (now - this._ghostAt < GHOST_DEDUPE) return;
     this._ghostAt = now;
-    this.calls.call('ghostep');
+    this.calls.ghostep(streak);
     this.tells.ghost(0.6);
   }
 
@@ -319,6 +344,22 @@ export class Hud {
       if (lock !== this._lock) {
         this._lock = lock;
         this.lockEl.classList.toggle('on', lock);
+      }
+
+      // the streak of perfect dodges
+      const st = Math.max(0, Math.round(num(p.streak, 0)));
+      if (st !== this._streak) {
+        const up = st > this._streak;
+        this._streak = st;
+        const max = DEFENSE.flurry.max, f2 = Math.min(st, max);
+        this.streakRow.classList.toggle('on', st > 0);
+        this.streakRow.classList.toggle('hot', st >= max);
+        if (st > 0) {
+          this.streakFull.textContent = '◆'.repeat(f2);
+          this.streakEmpty.textContent = '◇'.repeat(max - f2);
+          this.streakVal.textContent = `×${st}`;
+          if (up) flashClass(this.streakRow, 'up');
+        }
       }
 
       // crit window: the bar shrinks from the window length (or the longest seen) to zero
