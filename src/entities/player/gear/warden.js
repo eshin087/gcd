@@ -44,19 +44,22 @@ const WARDEN_LOCKS = {
   fringe: [[-0.03, 0.19, 0.098, -0.3, -1, 0.5, 0.045, 0.011, 0.25], [0.034, 0.19, 0.096, 0.35, -1, 0.45, 0.04, 0.011, 0.25]],
   sides: [[0.084, 0.19, 0.04, 0.3, -0.5, -0.8, 0.11, 0.015, 0.2], [0.09, 0.16, 0.0, 0.3, -0.7, -0.6, 0.09, 0.014, 0.2]],
 };
-/** One forked moon-silver ribbon from the band's knot (hangSheet; head space): the root ≈ 1.4 cm
- *  outside the head, kept at least 0.1 rad out (`inMax`) so it clears the occiput; off the grass in
- *  the forward roll, where his crown meets it (`floor`). */
-export const WARDEN_RIBBON = { at: [0, 0.198, -0.126], ry: Math.PI, ribbon: true, fork: true, w: [0.09, 0.09, 0.08], len: [0.24, 0.26], out: 0.42, lag: 1.0, max: 2.4, inMax: [-0.1, 0.15], floor: true, seed: 7 };
+/** One forked moon-silver ribbon from the band's knot (hangSheet; head space; 12 cm wide, so it reads
+ *  at the game camera): the root in the knot, just outside the head, kept at least 0.1 rad out
+ *  (`inMax`) so it clears the occiput; off the grass in the forward roll, where his crown meets it
+ *  (`floor`). */
+export const WARDEN_RIBBON = { at: [0, 0.198, -0.13], ry: Math.PI, ribbon: true, fork: true, w: [0.12, 0.12, 0.1], len: [0.24, 0.26], out: 0.42, lag: 1.0, max: 2.4, inMax: [-0.1, 0.15], floor: true, seed: 7 };
 function buildBand(ctx) {
   const { head, M, mesh } = ctx;
   buildHoodHair(head, M, mesh, WARDEN_LOCKS);
-  // the dark band round the head, 0.5-0.9 cm proud of the hair, and its knot behind
-  mesh(head, sub(bandGeometry(0.103, 0.11, 0.026, 24), 1), M.shirt, 0, 0.205, -0.008);
-  mesh(head, sub(ellipsoidGeometry(0.024, 0.018, 0.016, { widthSegs: 8, heightSegs: 5 }), 0), M.shirt, 0, 0.203, -0.122);
+  // the dark band round the head, a hand's width (5 cm: thinner, it was under one glyph cell at the
+  // game camera and his head read as the Robe's), tapering with the skull to stay ~1 cm proud of the
+  // hair, and its knot behind
+  mesh(head, sub(shellGeometry([{ y: 0.176, rx: 0.112, rz: 0.119, cz: -0.008 }, { y: 0.226, rx: 0.095, rz: 0.101, cz: -0.008 }], { sub: 1, cols: 24 }), 1), M.shirt);
+  mesh(head, sub(ellipsoidGeometry(0.032, 0.026, 0.02, { widthSegs: 8, heightSegs: 5 }), 0), M.shirt, 0, 0.2, -0.124);
   // the brow plaque: a silver disc and the cyan crescent on it
-  mesh(head, place(ring(0.017, 0.017, 0.004, 12), 0, 0.205, 0.104, Math.PI / 2, 0, 0), M.trim);
-  putCrescent(mesh, head, M, 0.011, 0, 0.205, 0.108);
+  mesh(head, place(ring(0.023, 0.023, 0.004, 12), 0, 0.2, 0.108, Math.PI / 2, 0, 0), M.trim);
+  putCrescent(mesh, head, M, 0.015, 0, 0.2, 0.112);
   return { streamers: [hangSheet(ctx, head, WARDEN_RIBBON, { face: M.hem, back: null, hem: M.hem })] };
 }
 
@@ -245,17 +248,27 @@ const buildSkirt = (ctx) => panelSkirt(ctx, WARDEN_PANELS, { seed: 70 });
  *  (hangSheet on the chest; one sheet: a second hung in the sword arm's path, and the arms do not
  *  push cloth). */
 export const WARDEN_MANTLE = { at: [-0.11, 0.15, -0.185], ry: Math.PI + 0.45, w: [0.17, 0.2, 0.22], len: [0.22, 0.22], out: 0.2, wrap: 0.2, lag: 0.45, max: 1.4, inMax: [0.2, 0.3], hemFrom: 0.7, seed: 7 };
+/** The capelet's shell (world idle heights; on the chest, rigid): from his right chest edge over the
+ *  right shoulder and down his right back to just past the spine (`arc`, rad: 0 = his front, + = his
+ *  left). It stands off the sword arm: flared at the lower edge (rx 0.30), which stops at 1.37 m, and
+ *  open at the front from −0.6 rad (closer, as the cloak's mantle, the hanging upper arm sank 4 cm into
+ *  it; LOOKS measures it against the right upper arm). Rigid on the chest, the top of a raised arm
+ *  still meets it, as it meets today's mantle. */
+export const WARDEN_CAPELET = {
+  rings: [
+    { y: 1.37, rx: 0.3, rz: 0.21, cz: -0.024 },
+    { y: 1.41, rx: 0.276, rz: 0.196, cz: -0.02 },
+    { y: 1.46, rx: 0.218, rz: 0.158, cz: -0.01 },
+    { y: 1.5, rx: 0.122, rz: 0.104, cz: 0.002 },
+  ],
+  arc: [-3.5, -0.6],
+};
 function buildMantle(ctx) {
   const { chest, M, REST, mesh } = ctx;
   const yCh = (h) => h - REST.chest;
-  // from his right chest edge over the right shoulder and down his right back to just past the spine;
   // the indigo coat outside, the self-lit cyan lining inside (collarIn: back faces)
-  const g = sub(shellGeometry([
-    { y: yCh(1.35), rx: 0.262, rz: 0.198, cz: -0.024 },
-    { y: yCh(1.4), rx: 0.252, rz: 0.188, cz: -0.02 },
-    { y: yCh(1.455), rx: 0.205, rz: 0.152, cz: -0.01 },
-    { y: yCh(1.5), rx: 0.122, rz: 0.104, cz: 0.002 },
-  ], { sub: 2, cols: 22, arc: [-3.5, -0.42] }), 1);
+  const C = WARDEN_CAPELET;
+  const g = sub(shellGeometry(C.rings.map((R) => ({ ...R, y: yCh(R.y) })), { sub: 2, cols: 22, arc: C.arc }), 1);
   mesh(chest, g, M.coat);
   mesh(chest, g, M.collarIn);
   // the clasp at the right collarbone: a silver disc and a crescent

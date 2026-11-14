@@ -28,15 +28,16 @@ const MOON_LOCKS = {
 function buildCrown({ head, M, mesh }) {
   buildHoodHair(head, M, mesh, MOON_LOCKS);
   // the topknot, half sunk in the crown
-  mesh(head, sub(ellipsoidGeometry(0.028, 0.028, 0.032, { widthSegs: 10, heightSegs: 6 }).translate(0, 0.258, -0.03), 1), M.hair);
-  // the guan: a small silver crown cupped round the knot, a pin through it along X
+  mesh(head, sub(ellipsoidGeometry(0.036, 0.034, 0.04, { widthSegs: 10, heightSegs: 6 }).translate(0, 0.258, -0.03), 1), M.hair);
+  // the guan: a silver crown cupped round the knot (≈ 9 × 12 cm: smaller, it was under one glyph cell
+  // at the game camera), a pin through it along X
   mesh(head, mergeGeometries([
     sub(shellGeometry([
-      { y: 0.258, rx: 0.03, rz: 0.038, cz: -0.03, gap: 0 },
-      { y: 0.284, rx: 0.033, rz: 0.042, cz: -0.03, gap: 0 },
-      { y: 0.3, rx: 0.02, rz: 0.028, cz: -0.03, gap: 0 },
+      { y: 0.258, rx: 0.042, rz: 0.053, cz: -0.03, gap: 0 },
+      { y: 0.294, rx: 0.046, rz: 0.059, cz: -0.03, gap: 0 },
+      { y: 0.316, rx: 0.028, rz: 0.039, cz: -0.03, gap: 0 },
     ], { sub: 1, cols: 12 }), 0),
-    sub(boxGeometry(0.12, 0.007, 0.007, 0, 0.276, -0.03), 1),
+    sub(boxGeometry(0.15, 0.009, 0.009, 0, 0.284, -0.03), 1),
   ]), M.trim);
 }
 

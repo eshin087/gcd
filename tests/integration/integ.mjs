@@ -3459,7 +3459,7 @@ async function scenarioLooks() {
       `the outfit options: ${LOOK_IDS.map((id) => `${id} "${HERO_LOOKS[id].name}"`).join(', ')}; every loadout resolves and every tint is a cloth / metal part (${bad.join('; ') || 'ok'})`);
   }
 
-  let n0 = 0, offKeys0 = '';
+  let n0 = 0, offKeys0 = '', cape0 = null;
   const rates = {};
   for (const id of LOOK_IDS) {
     const L = HERO_LOOKS[id], isNew = id !== DEFAULT_LOOK;
@@ -3487,8 +3487,27 @@ async function scenarioLooks() {
       const fist = r.sword.children.some((o) => o.isMesh && o.userData.slot === 'arms');
       assert(keys === offKeys0 && keys.includes('open') && fist, `${id}: the free hand (${keys}) as today's, the sword hand's fist on the grip`);
     }
+    // the cloth over the sword shoulder (today's mantle, the Warden's capelet: back-slot coat on the
+    // chest) against the right upper arm, its top 15 % left out (the cloth lies over the joint)
+    const shoulderCloth = r.chest.children.filter((o) => o.isMesh && o.userData.slot === 'back' && o.material === M.coat);
+    const armRInv = new THREE.Matrix4();
+    const capeDepth = () => {
+      armRInv.copy(r.arms.R.upper.matrixWorld).invert();
+      let fw = -1;
+      for (const o of shoulderCloth) {
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          q.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld).applyMatrix4(armRInv);
+          if (-q.y < 0.15 * D.upperArm) continue;
+          const dep = cap(q, 0, D.upperArm, BODY.upperArm[0], BODY.upperArm[1]);
+          if (dep > fw) fw = dep;
+        }
+      }
+      return fw;
+    };
     // the look's own shape, standing (2 s idle)
     go(G, 2);
+    const capeIdle = shoulderCloth.length ? capeDepth() : null;
     const tails = r.coat.filter((C) => Math.abs(C.def.az) > 2.2), fronts = r.coat.filter((C) => Math.abs(C.def.az) < 1);
     const strips = r.coat.reduce((s, C) => s + C.strips.length, 0);
     const a = new THREE.Vector3(), b = new THREE.Vector3();
@@ -3583,6 +3602,7 @@ async function scenarioLooks() {
     let loco = 0, locoCross = 0, cross = 0, charge = 0, chargeHit = 0;
     let hand = 0, handNear = 0, handMin = Infinity, handAt = '';
     let phase = 'start', plate = -1, plateAt = '';
+    let capeWorst = -1, capeAt = '', capeDeep = 0;
     const parts = [
       ['torso', r.spine, (x) => shell(x)],
       ['hips', r.pelvis, (x) => ell(x, BODY.hips.c, BODY.hips.r)],
@@ -3620,6 +3640,12 @@ async function scenarioLooks() {
         if (low < -0.02) tipLowFrames++;
       }
       if (lying) return;
+      // the cloth over the sword shoulder against the right upper arm
+      if (shoulderCloth.length) {
+        const fw = capeDepth();
+        if (fw > capeWorst) { capeWorst = fw; capeAt = where(); }
+        if (fw > 0.02) capeDeep++;
+      }
       // (4) the cloth's centre lines out of the body
       counted++;
       parts.forEach((P, k) => inv[k].copy(P[1].matrixWorld).invert());
@@ -3707,9 +3733,17 @@ async function scenarioLooks() {
       assert(locoCross <= Math.max(3, loco * 0.05) && chargeHit <= Math.max(2, charge * 0.05), `${id}: the blade through the skirt on ${locoCross} of ${loco} loco frames (≤ 5 %), by a sheet on ${chargeHit} of ${charge} charge frames (≤ 5 %)`);
       assert(handNear <= 0.02 * hand, `${id}: the free hand clear of the cloth (within 6 cm of a sheet on ${handNear} of ${hand} frames, ≤ 2 %)`);
     }
+    if (shoulderCloth.length) {
+      out(`   ${id}: the cloth over the sword shoulder in the right upper arm: ${(capeIdle * 100).toFixed(1)} cm standing, deepest ${(capeWorst * 100).toFixed(1)} cm (${capeAt}), ${capeDeep} of ${counted} frames > 2 cm`);
+      if (id === DEFAULT_LOOK) cape0 = { worst: capeWorst, deep: capeDeep };
+    }
     if (id === 'warden') {
       out(`   warden: the drawn blade ${(plate * 100).toFixed(1)} cm into the cuirass's plates at most (${plateAt || 'never'})`);
       assert(plate < 0.035, `warden: the drawn blade sinks at most ${(plate * 100).toFixed(1)} cm into the lamellar plates (< 3.5)`);
+      // the capelet off the sword arm: clear of the hanging arm, and through the route no deeper and no
+      // more often than today's mantle (rigid on the chest, the top of a raised arm meets either)
+      assert(shoulderCloth.length > 0 && capeIdle <= 0.012 && cape0 && capeDeep <= cape0.deep && capeWorst <= cape0.worst + 0.005,
+        `warden: the capelet off the sword arm (${(capeIdle * 100).toFixed(1)} cm into the hanging arm ≤ 1.2; > 2 cm on ${capeDeep} frames, today's mantle ${cape0?.deep}; deepest ${(capeWorst * 100).toFixed(1)} cm, today's ${((cape0?.worst ?? 0) * 100).toFixed(1)})`);
     }
   }
   out(`   cloth-in-body / blade-through-skirt / hand-near rates: ${Object.entries(rates).map(([k, x]) => `${k} ${(x.pen * 100).toFixed(1)} / ${(x.loco * 100).toFixed(1)} / ${(x.hand * 100).toFixed(1)} %`).join(' · ')}`);
