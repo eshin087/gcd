@@ -342,6 +342,24 @@ section), `player/fx.js` (the plunge).
   ring round the skull (an execution: bigger, gold-white); embers spurting round the buried blade
   while he rides; a gout of embers as he rips it out; a dust ring and a low cold ring where he lands.
   Its glyphs: `* ° | - ~ ^ ' · + x × A V . , : =`.
+- **The flurry** (`player/flurryFx.js`, ADR-091) is drawn in fine lines of cold light, like the
+  sword arc. A **flash cut** leaves the hero's afterimage where he vanished (they pile up round the
+  target: he is everywhere at once), a thin upright flash where he arrives, a wake of streaks along
+  the way he really moved, and on the hit a white stroke along the cut, a four-point star and a
+  **crescent** through the target in the cut's own plane (one bright edge, a faint body behind it,
+  pointed at both ends). Its line then **hangs**: a line of `|` strokes through the target, pointed
+  at both ends, with a faint veil and a glimmer running out along it, re-drawn every frame (one-frame
+  lives off `game.fxDt`). The last cuts of a long flurry spark gold. An art's coil draws strokes of
+  light in onto him and puts a small star on the blade. The last blow: a crescent (a falling or a
+  rising cut's plane is tipped 40° toward the camera: an upright plane along the view is one fat bar
+  up the screen), or for the level cut a lens of two shallow arcs opening on either side of the
+  line; shards, a ring; and every hanging line flares wide and throws sparks off both its sides.
+  The art's own line carries the gem's violet. Kept small on purpose: the stars (a big one blooms
+  into a white ball that hides the target) and the lights (never near the floor). Round the wyrm's
+  head every particle is moved 3.5 m toward the camera along its line of sight (`pull`): glyph
+  particles are depth-tested, and a cut through a head several metres thick would show only where it
+  leaves it. Through the flurry the hero keeps a full cold cast, so the dark coat reads against the
+  night. Glyphs: `| + * ° ' · A ^ V`.
 - **The deflect chain:** each parry in rhythm clashes bigger and brighter, with a crossed pair of
   sparking streaks from the second one.
 

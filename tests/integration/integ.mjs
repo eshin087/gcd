@@ -3,7 +3,7 @@
 // src/main.js (construction order, frame order, debugTimeScale in dt). World is a light mock built on
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
-//   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | deflect | lab | strings | plungeReact |
+//   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact |
 //             timing | fire | herolook | win | die | touch | pad | remap | all (default all)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map)
 import fs from 'node:fs';
@@ -73,7 +73,12 @@ const PAYLOAD = {
   'player:parry': { tell: 't', attack: 's', chain: 'n', perfect: 'b' },
   'player:guardBreak': { attack: 's' },
   'player:dodge': { kind: 's' },
-  'player:perfectDodge': { attack: 's', tell: 't' },
+  'player:perfectDodge': { attack: 's', tell: 't', streak: 'n' },
+  'player:streak': { count: 'n', lost: 'n' },
+  'player:flurry': { strikes: 'n', art: 's', air: 'b', dur: 'n' },
+  'player:flurryHit': { n: 'n', of: 'n', last: 'b', damage: 'n' },
+  'player:flurryArt': { art: 's', air: 'b', dur: 'n' },
+  'player:flurryEnd': { strikes: 'n', damage: 'n', art: 's', label: 's' },
   'player:ghostep': { x: 'n', z: 'n' },
   'player:plunge': { execution: 'b' },
   'player:plungeHit': { damage: 'n', execution: 'b' },
@@ -1057,7 +1062,10 @@ async function scenarioRed() {
   assert(rp.res === RESULT.HIT && evn(rp, 'player:parry') === 0, `red tail is not parryable (got ${rp.res})`);
   // perfect dodge: Space 0.1 s before impact → the plunge onto the wyrm's head (slow-mo at the
   // vanish), then the landing in front of the head with the crit window open (scenario PLUNGE
-  // covers the move itself)
+  // covers the move itself). The plunge is one of the flurry's arts (scenario FLURRY): pinned here,
+  // and each dodge the first of its streak (one blow)
+  p.debug.flurryArt = 'skyfall';
+  p.debug.streak(0);
   settle(G);
   place(G, 6);
   const pd = forceAttack(G, 'tail', { answer: 'dodge', settle: 1 });
@@ -1086,6 +1094,7 @@ async function scenarioRed() {
   out('   first hit after the plunge:', crit ? `damage ${crit.damage} part ${crit.part} crit ${crit.crit}` : 'none');
   assert(crit?.crit === true, 'next hit inside the crit window carries crit');
   // stomp: red AoE, perfect dodge as well
+  p.debug.streak(0);
   settle(G);
   place(G, 3.6);
   const st = forceAttack(G, 'stomp', { answer: 'dodge', settle: 1 });
@@ -1144,8 +1153,12 @@ async function scenarioPlunge() {
     return tr;
   };
   const since = (c0, n) => (G.counts[n] || 0) - (c0[n] || 0);
+  // (the plunge is one of the flurry's arts, scenario FLURRY: pinned here, and every perfect dodge
+  // below is the first of its streak: one blow)
+  p.debug.flurryArt = 'skyfall';
 
   // 1) a perfect dodge of the bite, in range → the plunge, one hit on the head, a landing in front
+  p.debug.streak(0);
   settle(G);
   place(G, 6);
   const origin = p.position.clone();
@@ -1291,6 +1304,7 @@ async function scenarioPlunge() {
   run(G, 0.3, { passive: true });
   place(G, 18);
   const hpF = d.hp, cF = { ...G.counts };
+  p.debug.streak(0);
   let airAtDodge = false;
   const hF0 = G.hits.length;
   const rF = forceAttack(G, 'skyStrafe', { answer: 'dodge', settle: 1, max: 7 });
@@ -1308,6 +1322,141 @@ async function scenarioPlunge() {
   assert(rF.res === RESULT.PERFECT && airAtDodge && plungedF, `a perfect dodge of the flying wyrm's fire stream → the plunge onto it in the air (${rF.res}, air ${airAtDodge}, ${plungedF})`);
   assert(since(cF, 'player:plungeHit') === 1 && since(cF, 'dragon:plunged') === 1 && hpF - d.hp === P.damage, `one head hit on the flying wyrm (${hpF - d.hp})`);
   assert(crashed && landedF && trF.finite && Number.isFinite(d.position.x + d.position.z), 'the flying wyrm crashes out of the air and fights on');
+  return G;
+}
+
+// ================================================================== scenario: the flurry (ADR-091, on the wyrm)
+// The streak of perfect dodges and what answers it (player/flurry.js): flash cuts round the head,
+// then an art; each of the wyrm's arts; the cap; a kill in the middle of one.
+async function scenarioFlurry() {
+  out('\n== scenario FLURRY (the streak; flash cuts then an art; each of the wyrm\'s arts; the cap; a kill mid-flurry) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry, P = DEFENSE.plunge;
+  const bound = CONFIG.world.playerBound;
+  const since = (c0, n) => (G.counts[n] || 0) - (c0[n] || 0);
+  const inBody = (x, z, r) => d.bodyCircles.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + r);
+  /** Tick until the flurry (and the plunge it may end in) is over: what it did. */
+  const ride = (max = 9) => {
+    const tr = { frames: 0, cutFrames: 0, gameT: 0, minScale: 1, iframes: true, finite: true, ignored: true, maxY: 0, hits: [], end: null, states: new Set() };
+    const w0 = G.watch;
+    G.watch = (n, e) => {
+      if (n === 'player:flurryHit') tr.hits.push({ ...e });
+      if (n === 'player:flurryEnd') tr.end = { ...e };
+    };
+    for (let i = 0; i < Math.round(max / DT) && (p.state === 'flurry' || p.state === 'plunge'); i++) {
+      aimAt(G);
+      const st = p.state, t0 = game.time;
+      G.tick(DT);
+      tr.frames++;
+      tr.states.add(st);
+      if (st === 'flurry') {
+        tr.cutFrames++;
+        tr.gameT += game.time - t0;
+        tr.minScale = Math.min(tr.minScale, game.hitstopScale);
+      }
+      if (p.state === 'flurry' || p.state === 'plunge') {
+        if (!p.isInvulnerable()) tr.iframes = false;
+        tr.maxY = Math.max(tr.maxY, p.position.y);
+      }
+      if (![p.position.x, p.position.y, p.position.z].every(Number.isFinite)) tr.finite = false;
+      if (i === 4) {
+        const hp = p.hp;
+        tr.ignored = p.takeHit({ damage: 40, tell: TELL.NORMAL, attack: 'bite', attacker: d, knockback: 3 }) === RESULT.IGNORED && p.hp === hp;
+      }
+    }
+    G.watch = w0;
+    tr.state = p.state;
+    return tr;
+  };
+  const ready = () => {
+    run(G, 2.5, { passive: true });
+    settle(G);
+    d.hp = d.maxHp;
+    place(G, 6);
+  };
+
+  // 1) the streak: the first perfect dodge is the art alone, the second adds a flash cut
+  ready();
+  p.debug.streak(0);
+  p.debug.flurryArt = 'skyfall';
+  const r1 = forceAttack(G, 'bite', { answer: 'dodge', settle: 1 });
+  assert(r1.res === RESULT.PERFECT && p.streak === 1 && p.state === 'plunge' && r1.ev['player:flurry'] === 1, `the first perfect dodge of a streak is one blow: the art alone (streak ${p.streak}, state ${p.state})`);
+  ride();
+  ready();
+  const hp2 = d.hp, c2 = { ...G.counts };
+  const r2 = forceAttack(G, 'bite', { answer: 'dodge', settle: 1 });
+  const flurrying = p.state === 'flurry';
+  const t2 = ride();
+  out(`   second perfect dodge: ${r2.res} → streak ${p.streak}, ${flurrying ? 'flurry' : p.state} · blows ${t2.hits.map((h) => `${h.n}/${h.of}${h.last ? '!' : ''}:${h.damage}`).join(' ')} · wyrm −${hp2 - d.hp} HP · ${t2.cutFrames} frames of cuts in ${t2.gameT.toFixed(3)} s of game time (world x${t2.minScale})`);
+  assert(r2.res === RESULT.PERFECT && p.streak === 2 && flurrying, `the second in a row is answered with two blows (streak ${p.streak}, ${flurrying})`);
+  assert(since(c2, 'player:perfectDodge') === 1 && since(c2, 'player:ghostep') === 1, 'one player:perfectDodge + player:ghostep for the whole flurry');
+  assert(t2.hits.length === 2 && t2.hits[0].last === false && t2.hits[1].last === true && t2.hits[0].damage === F.cut.damage, `a flash cut (${F.cut.damage}), then the last blow`);
+  assert(hp2 - d.hp === F.cut.damage + P.damage && t2.end?.strikes === 2 && t2.end?.damage === F.cut.damage + P.damage, `the wyrm took ${hp2 - d.hp} (cut ${F.cut.damage} + plunge ${P.damage}); player:flurryEnd says so`);
+  assert(t2.iframes && t2.ignored && t2.finite, 'invulnerable, hits ignored and finite throughout');
+  assert(t2.minScale <= F.world + 1e-9 && t2.gameT < t2.cutFrames * DT * 0.35, `the world is held while he cuts (x${t2.minScale}; ${t2.gameT.toFixed(3)} s of game time in ${(t2.cutFrames * DT).toFixed(2)} s)`);
+  assert(since(c2, 'player:plungeHit') === 1 && since(c2, 'dragon:plunged') === 1, 'the last blow lands on the head once (the wyrm\'s plunged reaction)');
+  assert(t2.state !== 'flurry' && t2.state !== 'plunge' && p.position.y === 0 && p.critTimer > 0, 'he lands, the crit window open');
+
+  // a hit that hurts ends the streak; a blocked one does not
+  settle(G);
+  place(G, 6);
+  p.debug.streak(3);
+  input.press(2);
+  run(G, 0.6, { passive: true }); // (held past the parry window: a block)
+  const rb = p.takeHit({ damage: 20, tell: TELL.NORMAL, attack: 'bite', attacker: d, knockback: 2 });
+  input.up(2);
+  assert(rb === RESULT.BLOCKED && p.streak === 3, `a blocked blow leaves the streak alone (${rb}, streak ${p.streak})`);
+  run(G, 0.5, { passive: true });
+  let lost = null;
+  G.watch = (n, e) => { if (n === 'player:streak') lost = e; };
+  const rh = p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'bite', attacker: d, knockback: 2 });
+  G.watch = null;
+  assert(rh === RESULT.HIT && p.streak === 0 && lost?.count === 0 && lost?.lost === 3, `a blow that hurts ends it (${rh}, streak ${p.streak}, event ${JSON.stringify(lost)})`);
+
+  // 2) each of the wyrm's arts, three blows
+  for (const art of ['skyfall', 'severing', 'heavensplit']) {
+    ready();
+    const hp0 = d.hp, c0 = { ...G.counts };
+    const ok = p.debug.flurry(3, art);
+    const tr = ride();
+    const want = 2 * F.cut.damage + P.damage;
+    out(`   ${art}: started ${ok} · ${tr.hits.length} blows · wyrm −${hp0 - d.hp} · max y ${tr.maxY.toFixed(1)} · ${(tr.frames * DT).toFixed(2)} s · landed ${p.position.x.toFixed(1)},${p.position.z.toFixed(1)} y ${p.position.y} · crit ${p.critTimer.toFixed(2)} · ${p.state}`);
+    assert(ok === true && tr.states.has('flurry') && p.flurry.art === art, `${art}: the flurry starts`);
+    assert(tr.hits.length === 3 && tr.hits.filter((h) => h.last).length === 1 && tr.hits[2].last, `${art}: two flash cuts and the last blow (${tr.hits.length})`);
+    assert(hp0 - d.hp === want && tr.end?.damage === want && tr.end?.art === art, `${art}: ${hp0 - d.hp} damage (${want})`);
+    assert(since(c0, 'player:plunge') === 1 && since(c0, 'player:plungeHit') === 1 && since(c0, 'dragon:plunged') === 1, `${art}: one blow on the head (the dive's rush, the impact, the wyrm's reaction)`);
+    assert(tr.iframes && tr.finite && tr.ignored, `${art}: invulnerable and finite throughout`);
+    assert(tr.state !== 'flurry' && tr.state !== 'plunge' && tr.frames * DT < 6, `${art}: it ends (${(tr.frames * DT).toFixed(2)} s)`);
+    assert(p.position.y === 0 && Math.hypot(p.position.x, p.position.z) <= bound && !inBody(p.position.x, p.position.z, p.radius - 0.05), `${art}: he lands on the ground, inside the arena, clear of the body`);
+    assert(p.critTimer > 0 && p.flurry.nLines === 0 && !p.flurry.on && !p.flurry.pending, `${art}: the crit window is open, nothing left hanging`);
+  }
+
+  // 3) the cap: a long streak strikes DEFENSE.flurry.max blows, the streak itself counts on
+  ready();
+  p.debug.flurryArt = 'severing';
+  p.debug.streak(F.max + 2);
+  const rc = forceAttack(G, 'bite', { answer: 'dodge', settle: 1 });
+  const tc = ride(12);
+  assert(rc.res === RESULT.PERFECT && p.streak === F.max + 3 && tc.hits.length === F.max && tc.end?.strikes === F.max, `a streak of ${p.streak} strikes ${tc.hits.length} blows (the most: ${F.max})`);
+  assert(tc.state !== 'flurry' && tc.state !== 'plunge' && p.position.y === 0, `the longest flurry ends on the ground (${(tc.frames * DT).toFixed(2)} s)`);
+
+  // 4) the arts vary: all of them come up, never the same twice running
+  p.debug.flurryArt = null;
+  const picks = [];
+  for (let i = 0; i < 12; i++) picks.push(p.flurry._pickArt(true));
+  assert(new Set(picks).size === 3 && picks.every((a, i) => i === 0 || a !== picks[i - 1]), `the last blow's art changes every time (${picks.join(' ')})`);
+
+  // 5) the wyrm dies under the cuts: the flurry ends where it is, he comes down
+  ready();
+  d.hp = F.cut.damage;
+  const okK = p.debug.flurry(4, 'severing');
+  const tk = ride(8);
+  out(`   a kill mid-flurry: started ${okK} · blows ${tk.hits.length} · wyrm ${d.state} hp ${d.hp} · hero ${p.state} y ${p.position.y}`);
+  assert(okK === true && d.hp === 0 && (d.state === 'dying' || d.state === 'dead'), 'the first cut kills it');
+  assert(tk.finite && tk.state !== 'flurry' && tk.state !== 'plunge' && p.position.y === 0 && p.flurry.nLines === 0, 'the flurry ends, the hero is back on the ground, nothing hangs');
+  p.debug.flurryArt = null;
   return G;
 }
 
@@ -4371,7 +4520,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

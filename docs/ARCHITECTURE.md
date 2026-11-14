@@ -439,15 +439,19 @@ front); swings step in toward a hurt surface ahead (`REACH.assist`); the slam's 
 if the blade missed. Pushes itself out of
 `game.dragon.bodyCircles` and resolves vs `game.world.resolve(pos, radius, CONFIG.world.playerBound)`.
 **Perfect dodge** (`takeHit` returns `RESULT.PERFECT`; `_perfectDodge(attacker, attack, tell,
-hit.plunge !== false)`), by attacker:
+hit.plunge !== false)`). The **streak** counts one more (`player.streak`, `player:streak`; it ends
+when a blow hurts him, `_streakEnd`), and by attacker:
 - it offers the plunge (`plungePoint(out)` + `onPlunge(o)`, and it is not sleeping / dying / dead),
   the hit allows it, and its head (`plungePoint`) is within `DEFENSE.plunge.range` (30 m, ground
-  distance) → **the plunge** (state `plunge`, below);
+  distance) → **the flurry** in the air round its head (state `flurry`, below); with a streak of one
+  and the plunge as its art, the plunge alone (state `plunge`);
 - it offers the plunge but is out of range or the hit says `plunge: false` → state `ghostep`
   without a teleport: the slow-mo and the crit window where the hero dodged;
-- it has no plunge API (a duelist) → the v0.2 **Ghostep**: a blink `attacker.ghostepBehind` (default
-  `DEFENSE.ghostep.distanceBehind` 3.2 m) behind it (only within `TUNE.ghostepMaxRange` 12 m), slow-mo,
-  crit window.
+- it has no plunge API but a body to cut (`takeHit`, a `position`: a duelist) within
+  `TUNE.ghostepMaxRange` 12 m → **the flurry** on the ground, which leaves the hero
+  `attacker.ghostepBehind` behind it;
+- anything else (no `takeHit`, or farther) → the v0.2 **Ghostep**: a blink `attacker.ghostepBehind`
+  (default `DEFENSE.ghostep.distanceBehind` 3.2 m) behind it within 12 m, slow-mo, crit window.
 The slow-mo is `game.hitstop(slowmoTime, slowmoScale)`; a harsher freeze already running defers it
 until it ends, and actors skip a short freeze while a longer, gentler slow-mo runs, so impact freezes
 never swallow it. `player:perfectDodge` + `player:ghostep` fire in every case (for the plunge, x / z =
@@ -466,6 +470,35 @@ skipped until the landing; if the head point disappears he springs off from wher
 he asks `cameraRig.keep` for himself and the head (`must`), plus the landing point during the flip.
 Events: `player:plunge {execution}` as the dive starts, `player:plungeHit {damage, execution}` and a
 `player:hitDragon` (kind 'plunge', part 'head', heavy, crit = execution) at the impact.
+**The flurry** (`player/flurry.js` `Flurry`, its particles `player/flurryFx.js`; numbers
+`DEFENSE.flurry`, the arts `ARTS`; rules in COMBAT.md "The streak and the flurry"; ADR-091):
+`flurry.reach(attacker, allowPlunge)` → 'air' | 'ground' | null, `flurry.start(attacker, air,
+strikes, attack, tell)`. `strikes` = the streak, at most `DEFENSE.flurry.max`. All but the last are
+flash cuts (phases `FP.BLINK` hidden → `DASH` from one side of the target point through it to the
+other, the hit half way → `HOLD`), each along a new line (turned from the far end of the last, clear
+of the lines already hanging and of the wyrm's neck); the last is an art (`COIL` → `STRIKE` →
+`AFTER`), picked at random with the animator's noise, never the same twice running
+(`player.debug.flurryArt` pins one). Kinds: `plunge` (the plunge itself: `_startPlunge(..., chain)`
+takes over in its own state), `iai`, `split`, `vault`. Target point: the head's middle
+(`plungePoint` − 0.55 m) in the air, the foe's chest over his `position` on the ground.
+Time: while state `flurry` runs, the world is held by `game.hitstop(0.05, DEFENSE.flurry.world)`
+re-armed every frame, and the flurry, the animator and the cloth step on `game.realDt` (×
+`debugTimeScale`; 0 while paused): `flurry.animDt`. A blow freezes the hero too (`flurry.freeze`).
+What it asks of an attacker: in the air the plunge API (the last blow is `onPlunge`, the cuts
+`takeHit({ part: 'head', exact, posture, flash })`); on the ground `takeHit` with `exact` (final
+damage, past a guard), `posture` and `flash`, and optionally `lockPoint`, `yaw`, `ghostepBehind`.
+He ends through the plunge's own FLIP / LAND in the air (`_plungeFlip(rMin)`, `_plungeLand`), or in
+state `ghostep` behind the foe on the ground; the crit window opens either way. The whole move is
+invulnerable (`takeHit` → `RESULT.IGNORED`), places him itself (no collision until it ends) and asks
+`cameraRig.keep` for him and the target; `flow.cinematic({ slowmo: 1, kind: 'flurry' })` leans the
+camera in. If the target dies or disappears he comes down where he is (`_bail`). The cuts hang as
+`flurry.lines` (drawn every frame from `_updateFx`) until the last blow lands: `flurry.burst`,
+called by the art or by the plunge's impact. Events: `player:flurry`, `player:flurryHit` per blow,
+`player:flurryArt` as the art's coil starts, `player:flurryEnd`; the air arts also emit
+`player:plunge` / `player:plungeHit`. The animator's clip `flurry` reads `player.flurryAnim`
+({ pose: 'cut' | 'coil' | 'raise' | 'crouch' | 'flip', clip, u, air, k }): a flash cut plays one of
+the hero's own swing clips through its active frames. Lab / tests: `player.debug.flurry(strikes,
+art)`, `.streak(n)`, `.flurryArt`.
 **Execution:** while `game.dragon.broken`, a light-attack press (from neutral or buffered from a
 recovery, `_tryExecution`) with the head within `DEFENSE.plunge.execRange` 9 m starts the same move
 at HANG with `execution: true` (`execDamage`, no slow-mo, no perfect-dodge events); the press is
@@ -774,12 +807,13 @@ crashing: boolean                       // true while a plunge stops a flight: t
 isTargetable(): boolean                 // false while sleeping/dying/dead
 lockPoint(out): Vector3                  // chest/neck base, for lock-on + camera
 startIntro()                            // wake → rise → roar; emits 'dragon:introDone' when the fight starts
-takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, poise, heavy, crit, exact, posture }): number
+takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, poise, heavy, crit, exact, posture, flash }): number
                                         // returns the damage dealt (before the gate clamp); adds posture.
                                         // Phase gate: with the AI on, damage stops at the next phase's
                                         // threshold until its transition starts (no skipping a phase).
                                         // exact: the damage is final (no part / broken multipliers); posture:
-                                        // add exactly this much instead of the weapon gain (onPlunge)
+                                        // add exactly this much instead of the weapon gain (onPlunge);
+                                        // flash: the most the hurt flash may be (the flurry's cuts)
 onParried({ attack, tell }): void       // the dragon calls this itself when player.takeHit returns 'parried'.
                                         // Deflect chain (contract 1): a string's non-final hit is only
                                         // deflected (posture + a 0.14 s visual knock-back, the string goes
@@ -1209,7 +1243,8 @@ their red ground rings already warn. Also renders parry / Ghostep / guard-break 
 Ghostep edge pulse (a plunge's perfect dodge included), the posture bar, and the crit-window cue.
 `ui/callouts.js` subscribes itself to `combat:deflectChain {count}` ("DEFLECT ×N" over the hero's
 head: one counter per string that counts up in place and absorbs the PARRY / DEFLECT pop of the same
-blow), `player:plungeHit {execution}` ("EXECUTION") and the duel's moments: `player:lock {phase}`
+blow; the GHOSTEP call-out counts the same way from the second perfect dodge of a streak,
+"GHOSTEP ×N"), `player:plungeHit {execution}` ("EXECUTION") and the duel's moments: `player:lock {phase}`
 ("BLADE LOCK" / "BREAKTHROUGH"), `player:mikiri` ("MIKIRI"), `dragon:deflected` ("PERFECT DEFLECT"),
 `dragon:guard` ("GUARDED", or "DEFLECTED" in red when `deflect`). The boss bar draws a thin tick at each
 phase gate (`dragon.phaseAt` after the first, read at construction: 66 % and 33 %) and takes the
@@ -1260,7 +1295,9 @@ toggleMute(); muted: boolean;  setVolume(0..1)
 Every sound is procedural (no samples). 2026-11-09 additions:
 - `sfx.js`: `parry {tell, chain}` (each deflect in a chain rings 2 semitones higher, up to 8 steps,
   with a bell 'ting' from the 2nd), `plungeDive {exec}` (on `player:plunge`), `plungeHit {exec}` (on
-  `player:plungeHit`; a `player:hitDragon` of kind 'plunge' plays no ordinary hit sound).
+  `player:plungeHit`; a `player:hitDragon` of kind 'plunge' plays no ordinary hit sound). The flurry:
+  `flurryCut {n}` per flash cut (a ring a whole tone higher each cut), `flurryCoil {dur}`, `flurryBurst {n}` as the
+  hanging cuts open (all on the cue bus: crisp while the held world is muffled, `_slowDuck` for its length).
 - `audio/fire.js` (`FIRE_SFX`, `subscribeFire(on, engine)`): `dragon:spell` → skyStrafe `skyRoar`,
   diveBomb `diveScream`, meteorRain `meteorCast`, eruptions `rumble`, flameRing / flameWall
   `flameIgnite`, nova `novaCharge`; `dragon:hazard` → meteor fall `meteorFall`, hit `meteorHit`,
@@ -1661,9 +1698,14 @@ Player → hud/audio/fx/flow:
   `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last}` (last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
-  `player:dodge {kind}` (an attack passed through i-frames), `player:perfectDodge {attack, tell}` (every perfect dodge:
-  plunge, in place or Ghostep; not on an execution),
-  `player:ghostep {x, z}` (with every perfect dodge; for the plunge x/z = the hang point above the head),
+  `player:dodge {kind}` (an attack passed through i-frames), `player:perfectDodge {attack, tell, streak}` (every perfect dodge:
+  flurry, plunge, in place or Ghostep; not on an execution; streak = perfect dodges in a row, this one included),
+  `player:ghostep {x, z}` (with every perfect dodge; for the plunge x/z = the hang point above the head, for a flurry where he dodged),
+  `player:streak {count, lost}` (the streak changed: counted up, or count 0 and how many were lost when a blow hurt him),
+  `player:flurry {strikes, art, air, dur}` (a perfect dodge is answered: blows in all, the art's name, in the air round a head or on
+  the ground, real seconds it takes, about), `player:flurryHit {n, of, last, damage}` (a blow of it landed; last = the art's),
+  `player:flurryArt {art, air, dur}` (the art's coil starts; not for the plunge), `player:flurryEnd {strikes, damage, art, label}`
+  (the last blow landed and the hanging cuts burst: the damage of all of them, the art's display name),
   `player:plunge {execution}` (the dive starts; also an execution), `player:plungeHit {damage, execution}` (the blade
   meets the head, once per plunge; damage = what onPlunge returned; also a `player:hitDragon` with kind 'plunge' when
   it dealt damage), `player:roll {backstep}`, `player:heal {amount, flasks}`, `player:noFlask`, `player:died`,
