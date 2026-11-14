@@ -670,7 +670,9 @@ its recovery after which the next light may start (`player.js` `_tickAttack`). A
 `{ pre, end, min }`: a smoothstep from `pre` s before the coil to `end` of the active frames, so
 ~90 % of it is done as the front foot plants), each frame moving exactly its share; nothing while a
 held light waits at the coil, and one released late steps from its release (`atk.relT`), over at
-least `min` s. Options on the
+least `min` s. In an attack the root's velocity follows `want` through a `TUNE.attackDamp` (30/s)
+filter (`_integrate`); for the shaped step it lands ON the shape each frame instead (only momentum
+carried in, a run's, dies out through the filter), so `want` stays the step's own speed. Options on the
 anim block: `spin` (±1, a full turn through the active frames: `spinTurn`), `turn` (rad, a partial
 pivot from mid-strike through the follow-through, turning back late in the recovery: `pivotYaw`),
 `hop` (m, a skip off the ground from the windup into the strike; `tuck`: how far the feet lift
@@ -785,7 +787,10 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
   held: the root's step in starts there) and `atk.hitAt` (the attack clock at a landed, unguarded
   hit, set in `_applyHit` before the hit-stop starts; −1 = none: test `hitAt >= 0`, never
   `Number.isFinite`). `anim.js` reads `pending` (the held coil: `anim.leadK`) and `hitAt` (the
-  bite, below).
+  bite, below). Internal to `player.js`: `atk.shaped` (this frame's `want` is a light's shaped
+  step) and `atk.svx` / `svz` (the step's velocity `_integrate` landed the root on last frame): the
+  step's filter pre-compensation (`TUNE.attackDamp`, above). A roll out of a swing starts at the
+  roll's own speed along it (`_startRoll` sets `want`), not the swing's step.
 - **The bite** (`attackPose`, clips only): from a landed hit (`atk.hitAt`) the edge catches in what
   it cut: the blade holds where the contact frame drew it (`anim.bite { rec, at, dir }`, keyed on the
   record and the time), the grip pulls in along it, the hips drop, the chest folds and the head

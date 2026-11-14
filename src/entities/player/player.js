@@ -166,9 +166,12 @@ export class Player {
     this.want = { x: 0, z: 0 }; // desired movement this frame
     this.kb = { x: 0, z: 0 }; // knockback slide
     this.groundVel = { x: 0, z: 0 }; // actual displacement / dt (drives the gait)
-    // { def, t, hit, prevT, pending, damage, poise, charge, gust, lunge, travel, impact, relT, hitAt }
+    // { def, t, hit, prevT, pending, damage, poise, charge, gust, lunge, travel, impact, relT, hitAt,
+    //   shaped, svx, svz }
     // (relT: the attack clock at a held light's release, 0 = never held; hitAt: at the landed,
-    // unguarded hit, −1 = none. anim.js reads both: the root's step, the bite)
+    // unguarded hit, −1 = none. anim.js reads both: the root's step, the bite. Internal: shaped =
+    // this frame's `want` is a light's shaped step, svx / svz = the step's velocity _integrate landed
+    // the root on last frame: the step's filter pre-compensation)
     this.atk = null;
     this.gemT = 0.6; // s to the next idle gem glint
     this.chargeK = 0; // 0..1 while charging (anim + glow)
@@ -2069,6 +2072,12 @@ export class Player {
       this.yaw = Math.atan2(I.x, I.z); // roll toward the input
     }
     this.rollBack = back;
+    // its first frame already runs at the roll's own speed, along it (_tickRoll sets it from the next
+    // frame on: the frame before's `want` drove it, and out of a swing that was the swing's step along
+    // the old facing, 15-30 cm in one frame, forward even for a backstep)
+    const R = back ? TUNE.backstep : TUNE.roll, v0 = (R.dist / R.dur) * 1.4;
+    this.want.x = this.rollDir.x * v0;
+    this.want.z = this.rollDir.z * v0;
     this.atk = null;
     this.chargeK = 0;
     this._enter('roll', back ? 'backstep' : 'roll', 0.05);
@@ -2103,7 +2112,7 @@ export class Player {
     this.atk = {
       def, t: 0, hit: false, prevT: 0, gust: false, impact: false, flared: false, lunge: null, travel: fin(def.travel, 0),
       pending: light && this.lmb.held, // still held: may become a charge (the swing waits at the coil)
-      damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0, relT: 0, hitAt: -1, svx: 0, svz: 0,
+      damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0, relT: 0, hitAt: -1, shaped: false, svx: 0, svz: 0,
     };
     this.chargeK = 0;
     if (!def.keepYaw) this.yaw = this._aimYaw(this.yaw); // commit the swing direction
@@ -2263,17 +2272,7 @@ export class Player {
     }
     this.want.x = Math.sin(this.yaw) * lv * sp;
     this.want.z = Math.cos(this.yaw) * lv * sp;
-    if (shaped && dt > 1e-6) {
-      // the root's velocity follows `want` through _integrate's filter (TUNE.attackDamp), which ran
-      // the step ~2 frames late (74 % of it by the plant, still 0.8-1.4 m/s past the cut): ask for
-      // what lands the filtered velocity ON the step's shape this frame (a.svx / a.svz: last frame's
-      // shaped velocity). Only the step is exact: older momentum (a run's) still dies out through it
-      const k = 1 - Math.exp(-TUNE.attackDamp * (dt / sp)), vx = this.want.x, vz = this.want.z;
-      this.want.x = (vx - fin(a.svx, 0) * (1 - k)) / k;
-      this.want.z = (vz - fin(a.svz, 0) * (1 - k)) / k;
-      a.svx = vx;
-      a.svz = vz;
-    }
+    a.shaped = shaped; // (_integrate lands the root's velocity on this step's shape)
 
     if (t >= W + A) {
       const r = (t - W - A) / R;
@@ -2438,9 +2437,24 @@ export class Player {
         lambda = 0;
         break;
       case 'attack':
-      case 'heavy':
+      case 'heavy': {
         lambda = TUNE.attackDamp;
+        const a = this.atk;
+        if (a?.shaped) {
+          // a light's shaped step (`want`): through the filter alone it ran ~2 frames late (74 % of it
+          // by the plant, still 0.8-1.4 m/s past the cut). The velocity lands ON the step's shape each
+          // frame, and only what it carries beyond the shape it had last frame (atk.svx / svz: a run's
+          // momentum into the swing) dies out through the filter. (`want` stays the step's own speed:
+          // a roll out of the swing starts from it)
+          const k = 1 - Math.exp(-lambda * dt);
+          v.x = w.x + (v.x - fin(a.svx, 0)) * (1 - k);
+          v.z = w.z + (v.z - fin(a.svz, 0)) * (1 - k);
+          a.svx = w.x;
+          a.svz = w.z;
+          lambda = 0;
+        }
         break;
+      }
       case 'stagger':
       case 'knockdown':
       case 'guardBreak':
