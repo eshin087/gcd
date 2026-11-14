@@ -2001,3 +2001,89 @@ elbow in two backhands' recoveries (ADR-078) still stand.
   bot 692 (was 740): about as hard, not re-tuned against a human. No sounds of their own for any of
   it yet. A flourish is the first half of its recovery only: past `guard.recoverOpen` (ADR-080) his
   guard is up again and he may ward or step out of the rest.
+
+## ADR-086 — The free hand: a wrist, sword fingers, a choreography for every cut (2026-11-14)
+- **Context:** the owner: the free hand "looks unnatural and weird during the attack animations",
+  "stiff, like a mannequin", and "the hand itself" is wrong; the style they chose is sword fingers.
+  Measured: the hand was rigid on the forearm (no wrist), swapped open/fist at `twoHand` 0.6 with a
+  9-21 cm pop, locked the off elbow at 152-176° on the grip, ping-ponged the elbow 47° ↔ 126° between
+  keys, and moved with no counterbalance to the blade.
+- **Decision:** (1) A **wrist joint** for the free arm (`arms.L.wrist`, `arms.L.point` at the
+  fingertip), turned only for the hero (`HeroAnimator` `opts.freeHand`; the duelists keep a rigid
+  hand) by a spring inside human limits (`WRIST_L`), sub-stepped at ≤ 1/120 s so it is stable at any
+  frame rate. (2) The **sword-fingers hand** (`heroGeo.swordFingers`): index and middle straight and
+  pressed together, ring and little folded into the palm under the thumb, 1.3× long (`BODY.fingerEx`)
+  so the point survives the glyph pass; shown by the pose's hand shape `hs`. (3) Four pose channels
+  (N 53 → 61): the fingers' direction `lD`, the palm's normal `lN`, `hs`, and `lk` (rest the hand on
+  the sword wrist). (4) **A choreography per cut** (swings.js `FH` places and keys): the hand gathers at
+  the sword wrist in the windup and is thrown opposite the cut through the follow-through; overhead
+  only rarely; authoring rules written into swings.js. (5) **The grip without pops:** the fist shows
+  only once the hand is within 3.5 cm of its place on the grip (kept to 5 cm, 8 cm in a fully
+  two-handed pose); `LOCK_REACH` 0.98 keeps the free elbow ≥ 23° bent on the grip. (6) One builder,
+  `gear/hands.js` `buildFreeHand`, for every outfit's arms (the sword fingers included).
+- **Consequences:** the duelists' animator carries the new channels but ignores them (their wrist is
+  identity every frame: DUEL and LORD check). The wrist sits on a limit through much of the falling
+  backhand, the falling cut and the whirl (the keys ask for more turn than a wrist has); tune those
+  keys in the Lab close-up if it reads stiff. HEROHAND (H1-H14, H5b) guards the contract: the turn
+  per frame, the limits, the fingers out of his body, the fist's distance, 30 fps stability.
+
+## ADR-087 — Weight and footwork: the body leads, the edge bites, the feet stay planted (2026-11-14)
+- **Context:** the owner asked for "weight and impact" and "footwork and body". On film the hips,
+  chest and hand peaked together (0.150 s), a light's step glided past its plant, planted feet skated
+  7-30 cm through turns, the whirl skated its planted foot about a metre, and a landed hit changed
+  nothing in the body.
+- **Decision:** (1) A light's **step is shaped** (`TUNE.lungeShape`: push off, brake at the plant),
+  with the root filter's lag pre-compensated inside `_integrate` (`atk.shaped`, `svx`, `svz`).
+  (2) **The body leads:** the hips by 0.033 s, the chest by 0.017 s (`anim.leadK`, faded at a held
+  coil); anticipation and overshoot keys (body only); bow stances on the thrusts and falling cuts.
+  (3) **The bite** (`atk.hitAt`, per-def `bite`): through the freeze the blade holds where it bit, the
+  grip pulls in along it, the hips drop, the chest folds and the head nods; then it tears through over
+  0.08 s of the swing's clock. The cleave bites hardest (1.5) but folds neither chest nor head
+  (swings.js `fold` 0: its upright blade stands before his face). A guarded strike never bites.
+  (4) **Planted feet** pivot on the balls of the feet, the rear foot holds, drags its toe when
+  stretched and follows in one step; the return to stance moves the foot that stepped. (5) **The
+  whirl hops** (`spinFeet: 'hop'`): each foot is carried round from where it stands, tucked in the
+  air, and the turn overshoots ~14° and settles.
+- **Consequences:** a short click now steps the whole lunge (~35 % further than before in real play:
+  a feel check on the phone). The hit segment's far end moves up to 46 cm (lights) and 62 cm (whirl)
+  against before; REACH is unchanged (38 ok). `carry` stays a code option for the whirl, for an A/B.
+  HEROWEIGHT (W1-W11) guards the lead, the bite, the plant, the drag and the hop.
+
+## ADR-088 — A cut that lands where it is drawn (2026-11-14)
+- **Context:** a landed cut's effects were spawned at the hit test's point, on the upright, unleaned,
+  unscaled gameplay bodies: at the game camera they sat 13-65 px off both the drawn blade and the drawn
+  body, and a big white star hid both fighters in the freeze.
+- **Decision:** (1) The **drawn contact** (`player._contactPoint`): the drawn blade's stretch met with
+  the boss's drawn hurt spheres (`drawnPoint`, `drawScale`), moved onto the body; on a duelist it moves
+  with his shove. (2) **The contact effect** per weight (`combat.js` `contact`: light, sweep, point,
+  slam, cleave, execute; `cutFx.js`): a slash line laid along the cut, a tick across it on a crit or a
+  puncture, sparks thrown along the blade's travel. (3) **The steel:** a flare at contact
+  (`player.bladeFlare`), a glint up the leading edge, a flash along it held through the freeze.
+  (4) **The camera:** a kick along the cut (`cameraRig.kick`, sprung back in ~0.25 s; the mouse ray
+  leaves it out) and a punch on every landed cut. (5) **Sound:** a `cut` layer (a slice and a ring
+  per weight) over the body's hit; none for a guarded strike or a slam's shards. (6) A struck duelist
+  **shudders** through the freeze (drawn only; a sword cut's only; his trail pauses). (7) Cosmetic FX
+  noise draws from its own random streams, so effects never shift the AI's seeded stream.
+- **Consequences:** the lights' freezes are a hair longer (0.055 s, was 0.05). The particle pool peaks
+  at ~396 through a mashed chain (the arc trail dominates, as before). CUTFX checks the drawn contact
+  within 0.15 m of the drawn body in the frame the freeze holds.
+
+## ADR-089 — Outfits and sword looks as options until the owner picks (2026-11-14)
+- **Context:** the owner wanted a new look and asked to be shown options. The hero must stay distinct
+  from the Ash Disciple (no douli, no red tassel) and keep the moonlit cyan/violet longsword.
+- **Decision:** (1) Three outfits behind `?heroLook=` (gear/looks.js `HERO_LOOKS`; the `?lordLook=`
+  precedent): the **Moonlit Robe** (a high-low robe, violet sash, silver guan), the **Swallow** (a short
+  jacket, swallow tails, a moon scarf, bare forearms), the **Moon Warden** (lamellar, a left pauldron
+  and capelet, a headband and ribbon); each also as `<id>-shade` with the face in shadow (the lit faces
+  read as a gold disc at the game camera). Today's look stays the default. (2) Three sword looks behind
+  `?sword=` (gear/moonblade.js): **sheet** (a clean leaf blade on the swept guard), **ribbon** (the same
+  with a strip of the cloak's hem off the pommel), **crescent** (a silver crescent cradling the star
+  gem). (3) Supporting engine: per-rig tints (`tintHero`: one rig's materials, never the shared
+  uniforms), `setLoadout` restores the shared part ink even when the build throws, cloth `inMax` (no
+  swinging into the wearer) and `floor` (ends kept over the grass in a roll), shell arcs, data-built
+  sheets (`gear/sheet.js`).
+- **Consequences:** temporary: after the picks the winners become the defaults, and the losers, both
+  switches, their Lab rows and the CLAUDE.md line go (a non-default sword also drops the `blade.*`
+  Blender parts). The tints recolour the hilt's trim and leather per outfit. LOOKS guards each look's
+  cost (≤ today's meshes, ≤ 26.6k triangles, ≤ 21 draws), its cloth above the grass and its colours on
+  its own rig.

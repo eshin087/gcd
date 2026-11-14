@@ -4,7 +4,23 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-one pieces of work since 0.4.0:
+Twenty-two pieces of work since 0.4.0:
+- **The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from**
+  (2026-11-14, ADR-086 – ADR-089): the hero's free hand has a wrist now and forms **sword fingers**
+  (two fingers out, the others folded under the thumb). It gathers at the sword wrist and is thrown
+  opposite each cut instead of hanging stiff off the forearm, and it no longer pops off the grip or
+  locks the elbow straight on two-handed blows. The body carries the cuts: a light's step pushes off
+  and brakes on the planted foot, the hips lead the cut, the thrusts and falling cuts sink into
+  deeper stances, and on a landed hit the edge **bites** (the blade holds where it struck through the
+  freeze, then tears on through). Planted feet pivot instead of skating, and the whirl hops round its
+  turn. A landed cut is drawn where the blade meets the body, with a slash line along the cut, sparks
+  thrown the way the blade travels, a flare and a glint on the steel, the camera kicked along the cut
+  and a new cut sound; the struck duelist shudders through the freeze. The white star that hid both
+  fighters on a hit is gone.
+  To pick from on the preview (today's look and sword stay the default): three outfits,
+  `?heroLook=robe`, `swallow` or `warden` (`-shade` puts the face in shadow), and three swords,
+  `?sword=sheet`, `ribbon` or `crescent`; both are rows in the Lab.
+  *Fixed:* rebuilding the hero's gear wiped a boss's own part colours (the Starless Lord's red line).
 - **The Starless Lord in black plate, and how he moves** (2026-11-14, ADR-084, ADR-085): he wears a
   harness of his own now: a deep hood over a faceplate with a slit of red light (the owner's pick of
   three heads), a cuirass with a ring of red light on the breastbone, a plate yoke and pauldrons,

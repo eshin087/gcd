@@ -150,6 +150,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.29 — The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from (2026-11-14, `player/free-hand`, ADR-086 – ADR-089)
+- [x] A wrist for the free hand, stable at any frame rate; the sword-fingers hand; a choreography per cut; no fist pops; the free elbow bent on the grip (ADR-086)
+- [x] The shaped step; the hips and chest lead the cut; bow stances; the edge bites; planted feet pivot and follow; the whirl hops (ADR-087)
+- [x] A cut drawn where it lands: the slash line, sparks along the cut, the flare and glint, the kick, the punch, the cut sound, the shudder (ADR-088)
+- [x] Three outfits (and their faces in shadow) and three sword looks behind `?heroLook=` / `?sword=`, with sheets for the owner (ADR-089)
+- [x] Fixed: a hero rebuild wiped a boss's own part ink
+- [ ] The owner's picks: the outfit and its face, the sword, the whirl's feet (hop or carry); then remove the losers and both switches
+- [ ] Follow-ups:
+  - [ ] On the phone: the longer lunge on a short click, the kick's feel, fps with the new effects
+  - [ ] The wrist on its limit through the falling backhand, the falling cut and the whirl: tune the keys in the Lab close-up if it reads stiff
+  - [ ] Hems, cloak tips and the arm drape under the grass in the death's collapse (`_hemY` checks only the hem's centre)
+  - [ ] A plate hit sound for the Starless Lord (he takes 'cloth')
+
 ## M1.28 — The Starless Lord: black plate, motion, three more spells (2026-11-14, `enemies/starless-lord-armour`, ADR-084, ADR-085)
 - [x] A harness of his own (hood and faceplate, cuirass, yoke and pauldrons, plate limbs, war-skirt, cape), drawn at 1.32
 - [x] Three heads rendered for the owner's pick (sallet, crown, hood): the owner picked the hood
@@ -199,7 +212,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Anatomy: joint limits in the solver (elbows, knees, the sword wrist, hands outside the chest); the charge held out from the body (ADR-078)
 - [ ] Follow-ups:
   - [ ] The owner's look at the preview: the pace (a number from the Lab's slider if it is still off)
-  - [ ] Anatomy not yet covered: the off hand's wrist in two-handed cuts, the free arm's elbow behind the back in two backhands' recoveries (hit reactions and the death fall: M1.27)
+  - [x] Anatomy not yet covered: the off hand's wrist in two-handed cuts (a wrist of its own and the fist on the grip only once it is there: M1.29), the free arm's elbow behind the back in two backhands' recoveries (the free-hand choreography: M1.29; hit reactions and the death fall: M1.27)
   - [ ] Ideas not built (the owner's pick): an afterimage on the sprint slash and the cleave's dash; a strafing guard-up stance while locked on; a second finisher (a spinning smash); a flick of the blade as a chain ends
   - [ ] The roll out of a swing and the guard's raise move the point 0.4–0.8 m in a frame (left: both must be instant)
 
