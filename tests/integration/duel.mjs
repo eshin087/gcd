@@ -1420,6 +1420,29 @@ async function scenarioCutFx() {
     d.object3d.updateMatrixWorld(true);
     assert(leaned && err <= 1e-6, `drawnPoint maps his upright joints onto the drawn ones (head, chest, pelvis, shins; lean k ${d.lean.k.toFixed(2)}, scale ${d.drawScale}, offset on: ${err.toExponential(1)} m)`);
   }
+  // the shudder is a sword cut's (takeHit's swing; not a hit like the Lord's own returned bolt), and
+  // his blade's sweep trail pauses while it runs (its flicker between frames is no swing)
+  {
+    settle(G);
+    d._shud.t = 0;
+    d.takeHit({ damage: 1, exact: true, heavy: true, posture: 0, part: 'body', point: { x: d.position.x, y: 1.2, z: d.position.z } });
+    const bolt = d._shud.t;
+    settle(G);
+    const sweep0 = d.fx.sweep;
+    let swept = 0;
+    d.fx.sweep = () => { swept++; };
+    const act = { t: 1, beats: [{ feint: false, impact: 1, W: 0.3, end: 1.1, A: 0.2 }] }; // mid-strike: the trail's window
+    d._tipOk = true;
+    d.afterPose(DT, act);
+    const open = swept;
+    d._shud.t = 0.05;
+    const shaking = d.shuddering;
+    d.afterPose(DT, act);
+    const held = swept - open;
+    d._shud.t = 0;
+    d.fx.sweep = sweep0;
+    assert(bolt === 0 && open === 1 && shaking && held === 0, `a hit that is no sword cut does not shudder him (${bolt}); his sweep trail draws mid-strike (${open}) but pauses while he shudders (${held})`);
+  }
   // a guarded strike: his guard draws the clash; no cut, no hit sound, no kick, only the strike's flare
   {
     delete d.brain.guardUp;

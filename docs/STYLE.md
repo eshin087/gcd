@@ -485,4 +485,6 @@ the body.
   or 'fan' (no line or tick: a wider fan of sparks, the nearest to the look before).
 - **The shudder:** through the freeze a struck duelist's drawn figure flickers +-0.045 m (a heavy
   0.07 m) side to side along the cut, fading: 2 - 3 px at 36 m, while the hero holds the frame. Drawn
-  only (`lean.ox / oz`); the Lab's 'shudder' toggle turns it off.
+  only (`lean.ox / oz`); the Lab's 'shudder' toggle turns it off. A sword cut's only (`takeHit`'s
+  `swing`: not the Lord's own returned bolt); his blade's sweep trail pauses while it runs (the
+  flicker would draw zig-zag strokes).

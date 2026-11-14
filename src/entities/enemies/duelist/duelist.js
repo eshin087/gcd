@@ -181,7 +181,7 @@ export class Duelist {
   _bladeMaterials() {}
   /** After the pose (brain.afterPose): the blade's sweep trail through a strike, the stars of a break. */
   afterPose(dt, a) {
-    if (a && this._tipOk) {
+    if (a && this._tipOk && !this.shuddering) {
       for (const b of a.beats) {
         if (b.feint || a.t < b.impact - 0.32 * b.W - 0.02 || a.t > b.end + 0.6 * b.A + 0.05) continue;
         this.fx.sweep(this._hiltPrev, this._tipPrev, this._hilt, this._tip, false);
@@ -201,6 +201,11 @@ export class Duelist {
   }
   get bound() {
     return Math.min(CONFIG.world.dragonBound ?? this.T.bound, this.T.bound);
+  }
+  /** His drawn figure shudders this frame (a landed cut's freeze): its blade's travel between frames
+   *  is the flicker, not a swing, so the sweep trails pause (afterPose). */
+  get shuddering() {
+    return this._shud?.t > 0;
   }
   /** His guard is up (brain.guardUp): footwork, a ward, an early windup, a late recovery. */
   get guarding() {
@@ -276,7 +281,8 @@ export class Duelist {
     const stopUsed = crit ? Math.max(hs.stop, HS.critStop) : hs.stop;
     this.hitstop(stopUsed, 0.03);
     this.jolt = Math.max(this.jolt, hs.jolt);
-    const sa = fin(hs.shudder, 0) * fin(this.shudderK, 1), S = this._shud;
+    // (the shudder is a sword cut's: o.swing; not his own returned bolt)
+    const sa = o.swing ? fin(hs.shudder, 0) * fin(this.shudderK, 1) : 0, S = this._shud;
     if (sa > 0 && stopUsed > 0) {
       S.t0 = S.t = stopUsed;
       S.amp = sa;

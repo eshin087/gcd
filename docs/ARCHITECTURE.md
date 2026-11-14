@@ -1570,9 +1570,11 @@ a subclass with a few hooks.
   gameplay point → where it is drawn (lean, `drawScale`, the lean's `ox` / `oz`). Hit stun
   (`TUNING.hitStun.light / heavy`): `stop`, `jolt`, `push` and `shudder` (m: through the freeze his
   drawn figure flickers ± this far along the cut, fading, in real time, through `lean.ox` / `oz`;
-  `d.shudderK` 0 turns it off, the Lab's 'shudder' toggle). His hit spray flies along `takeHit`'s
-  `cut` (the shove keeps `dir`) and starts at `point` moved by his own shove (the shove is instant:
-  the hero moves the drawn cut the same way, so both sit on the body the freeze holds).
+  only for a sword cut, `takeHit`'s `swing`; `d.shudderK` 0 turns it off, the Lab's 'shudder'
+  toggle; `d.shuddering` is true while it runs, and the blades' sweep trails pause then: the
+  flicker is no swing). His hit spray flies along `takeHit`'s `cut` (the shove keeps `dir`) and
+  starts at `point` moved by his own shove (the shove is instant: the hero moves the drawn cut the
+  same way, so both sit on the body the freeze holds).
 - `brain.js` `class DuelBrain(d)`: the mind and timeline (modes sleep, intro, foot, act, react, broken,
   dying), all data from `d.kit`. Phases are generic: when a gate is hit it starts
   `kit.transitions[phase]` and emits `dragon:phase<n>`; `forcePhase(n)` for the Lab. Beats: a zone hit
