@@ -675,6 +675,9 @@ function swingClip(name) {
       lead: Array.isArray(def.lead) ? def.lead : SW_LEAD, fy: Array.isArray(def.fy) ? def.fy : null,
       hipCoil: keys.find((k) => k.hip != null && k.u >= 0.9 && k.u <= 1.0)?.hip ?? null, // the hips' turn at the coil
     };
+    // (with lungeFeet the feet are its own too: it starts them from where they stood, A.entry, and
+    // the cross-fade slid them while the root still drifted, out of a roll)
+    C.chFeet = [...new Set([...C.ch, ...FOOT_CH])];
     for (const T of tracks) {
       T.grp = SW_HIPS.has(T.ch) ? 1 : SW_CHEST.has(T.ch) ? 2 : 0; // run ahead of the hand: 1 the hips, 2 the chest
       if (T.ch === P.bodyX) T.Vk = T.V.slice(); // the keyed values, mirrored per swing (swingPose)
@@ -884,7 +887,10 @@ function attackPose(p, A) {
   else if (k.feet === 'dash') dashFeet(p, A, k.dashW ? W : 0.04);
   else {
     const C = swingClip(k.clip), st = C?.step;
-    lungeFeet(p, A, st ? phaseTime(st[0], W, Ac, R) : 0.03, st ? phaseTime(st[1], W, Ac, R) : W + Ac * 0.45, C?.drag ?? 0.22, true);
+    // (a whirl that hops round its turn takes its own last step: no follow step)
+    const follow = !(k.spin && (k.spinFeet ?? 'carry') === 'hop');
+    lungeFeet(p, A, st ? phaseTime(st[0], W, Ac, R) : 0.03, st ? phaseTime(st[1], W, Ac, R) : W + Ac * 0.45, C?.drag ?? 0.22, true, follow);
+    if (C) A.pathCh = C.chFeet;
   }
   if (k.spin) spinTurn(p, k.spin, t, W, Ac);
   if (k.turn) {
@@ -911,9 +917,9 @@ function attackPose(p, A) {
   // as fast as the cut)
   const home = k.kind === 'clip' ? swingClip(k.clip)?.home ?? SW_HOME : 0.45;
   if (rec > home) {
-    // back toward the ready stance: the rear foot stays planted, the front foot draws back home in
-    // a recovery step (the foot planner settles the rest), and the sword hand comes round in FRONT
-    // of the chest (a straight blend of the shoulder offsets ran it through the torso)
+    // back toward the ready stance: the rear foot stays planted, the foot that stepped draws back
+    // home in a recovery step (the foot planner settles the rest), and the sword hand comes round in
+    // FRONT of the chest (a straight blend of the shoulder offsets ran it through the torso)
     for (let j = 0; j < FOOT_CH.length; j++) FOOT_KEEP[j] = p[FOOT_CH[j]];
     guard(SCRATCH, A);
     const b = smoothstep(home, 1, rec);
@@ -926,10 +932,15 @@ function attackPose(p, A) {
     for (let j = 0; j < FOOT_CH.length; j++) p[FOOT_CH[j]] = FOOT_KEEP[j];
     p[P.rH + 2] += 0.24 * Math.sin(Math.PI * b);
     const u = smoothstep(0.42, 0.9, rec); // home a beat before the blade crosses back in front of the legs
-    p[P.lF] = lerp(p[P.lF], SCRATCH[P.lF], u);
-    p[P.lF + 2] = lerp(p[P.lF + 2], SCRATCH[P.lF + 2], u);
-    p[P.lF + 1] = lerp(p[P.lF + 1], ANK, u) + 0.07 * Math.sin(Math.PI * u);
-    p[P.lFy] = lerp(p[P.lFy], SCRATCH[P.lFy], u);
+    // (the foot that STEPPED: it was always the left, so after a right-foot step the rear left foot
+    // stepped 13 cm forward while the right stayed out. A dash and the thrust land the left in front)
+    const sL = k.feet === 'dash' || k.kind === 'thrust' || A.stepL !== false, fI = sL ? P.lF : P.rF, fY = sL ? P.lFy : P.rFy;
+    // (it gets there while still lifted: landing, it no longer slides the last few centimetres)
+    const uh = Math.min(1, u / 0.9);
+    p[fI] = lerp(p[fI], SCRATCH[fI], uh);
+    p[fI + 2] = lerp(p[fI + 2], SCRATCH[fI + 2], uh);
+    p[fI + 1] = lerp(p[fI + 1], ANK, u) + 0.07 * Math.sin(Math.PI * u);
+    p[fY] = lerp(p[fY], SCRATCH[fY], uh);
   }
   // inertia: the root's push-off leaves the chest behind the hips; its brake pitches it on over the
   // planted foot (A.leanF: the smoothed root acceleration, the loco's lean spring, set in update()
@@ -965,18 +976,17 @@ function attackPose(p, A) {
 // and the head's nod (rad). × the def's `bite` (combat.js; default 1)
 const BITE = { dur: 0.08, drag: 0.6, grip: 0.03, sink: 0.045, lean: 0.1, nod: 0.08 };
 const ATK_INERTIA = 0.35; // × A.leanF (rad): the chest's pitch from the root's step in an attack
-/** Turn the whole pose `yaw` rad about the root (+ = to his left), the foot spots with it. */
+/** Turn the whole pose `yaw` rad about the root (+ = to his left). The feet are planted: they pivot
+ *  on their balls where they stand, the heels up as the turn grows. (Their spots used to turn round
+ *  the root with the body, and a planted foot slid 0.15-0.26 m.) */
 function pivotYaw(p, yaw) {
   if (Math.abs(yaw) < 1e-5) return;
   p[P.yaw] += yaw;
-  const c = Math.cos(yaw), s = Math.sin(yaw);
-  for (let k = 0; k < 2; k++) {
-    const i = k ? P.lF : P.rF, x = p[i], z = p[i + 2];
-    p[i] = x * c + z * s;
-    p[i + 2] = z * c - x * s;
-  }
   p[P.rFy] += yaw;
   p[P.lFy] += yaw;
+  const b = Math.min(1, Math.abs(yaw) / 0.3);
+  p[P.rFf] = Math.min(p[P.rFf], 1 - 0.4 * b);
+  p[P.lFf] = Math.min(p[P.lFf], 1 - 0.4 * b);
 }
 /** The whirl (combo hit 3, `anim.spin` ±1: − = he turns to his right): the whole body turns once
  *  about its axis from just before the active frames to their end, the feet carried round with it
@@ -1025,8 +1035,13 @@ const HOME_WAY = { d: -3, ok: false }; // dirLerp memory: the recovery's way hom
  *  same left-foot lunge each time. Uses the clip's entry feet and the root travel (A.entry, A.trav),
  *  so the swing starts from where the feet really are. `p` holds the stance (left foot forward) the
  *  clip wants: its spots are mirrored when the right foot is the one that steps.
+ *  The holding foot stays where it stood (it used to settle sideways onto the stance line: 8-12 cm
+ *  of skate every light): once stretched past `drag` its TOE drags after the body (A.footDrag), and
+ *  just after the front foot has taken the weight it takes ONE lifted follow step (跟步) up onto the
+ *  stance line (A.follow; not with `follow` false: a whirl that hops round its turn). While a held
+ *  light waits at the coil the stepping toe rests on the grass (A.coilHold: an empty stance, 虚步).
  *  (Session 25, owner: "his legs and feet do the same thing every hit".) */
-function lungeFeet(p, A, t0, t1, drag, plant) {
+function lungeFeet(p, A, t0, t1, drag, plant, follow = true) {
   const t = A.t, E = A.entry, tr = A.trav;
   // the stepping foot: the one further back along his facing (the left from the ready stance; play())
   const stepL = A.stepL !== false;
@@ -1037,21 +1052,26 @@ function lungeFeet(p, A, t0, t1, drag, plant) {
   const frontX = Math.abs(p[P.lF]), frontZ = p[P.lF + 2], rearX = Math.abs(p[P.rF]), rearZ = p[P.rF + 2];
   const frontYaw = stepL ? p[P.lFy] : -p[P.lFy], rearYaw = stepL ? p[P.rFy] : -p[P.rFy];
   const sg = stepL ? 1 : -1; // the stepping foot's side (+x = his left)
-  // holding foot: planted, dragged once stretched; settles sideways onto the stance line
-  const sx = -sg * rearX, sz = rearZ;
-  let hz = E[hE + 2] - tr.z;
-  if (hz < sz - drag) hz = sz - drag;
-  const side = smoothstep(t0, t1 + 0.15, t);
-  p[hI] = lerp(E[hE] - tr.x, sx, side);
-  p[hI + 1] = lerp(Math.max(ANK, E[hE + 1]), ANK, smoothstep(0, 0.05, t));
-  p[hI + 2] = lerp(hz, Math.max(hz, sz - drag), side);
-  p[hY] = lerp(E[hYE], rearYaw, side);
-  // its heel peels as the body passes over it and the hips turn (the toe pivots), settling after
-  p[hF] = lerp(1, 0.3, smoothstep(t0 + 0.3 * (t1 - t0), t1, t) * (1 - smoothstep(t1 + 0.12, t1 + 0.3, t)));
+  // the holding foot's stance spot (where a follow step takes it), the stretch at which it drags, and
+  // where it really stands: planted (model space, carried back by the root's travel)
+  const sx = -sg * rearX, sz = rearZ, lim = sz - drag, hx0 = E[hE] - tr.x, hzW = E[hE + 2] - tr.z;
   // stepping foot: held → the step → planted on its spot while the root carries on
   const m0 = A.mark(0, t0), m1 = A.mark(1, t1);
   const lx = E[sE] - (t < t0 ? tr.x : m0.x), lz = E[sE + 2] - (t < t0 ? tr.z : m0.z);
-  const tx = sg * frontX, tz = frontZ;
+  // (never across the holding foot, which no longer settles onto the stance line)
+  let tx = sg * frontX, tz = frontZ;
+  if (sg * (tx - hx0) < FOOT_GAP) tx = hx0 + sg * FOOT_GAP;
+  // (the spot it planted on: the stance's front spot creeps on with the cut, + 0.12 × lunge, and slid
+  // the planted foot ~7 cm on after it landed)
+  const Pl = A.plantAt;
+  if (plant && t > t1 && Pl.ok) {
+    tx = Pl.x;
+    tz = Pl.z;
+  } else {
+    Pl.x = tx;
+    Pl.z = tz;
+    Pl.ok = true;
+  }
   const u = clamp((t - t0) / Math.max(0.02, t1 - t0), 0, 1);
   const e = u * u * (3 - 2 * u);
   let fx = lerp(lx, tx, e), fz = lerp(lz, tz, e);
@@ -1062,12 +1082,92 @@ function lungeFeet(p, A, t0, t1, drag, plant) {
   }
   // (a foot that passes the other swings round it, not through its ankle)
   const pass = Math.sin(Math.PI * u) * clamp(Math.abs(tz - lz) / 0.5, 0, 1);
+  const ch = clamp(fin(A.coilHold, 0), 0, 1); // a held light at the coil: the toe rests mid-step
   p[sI] = fx + sg * 0.04 * pass;
-  p[sI + 1] = Math.max(ANK, lerp(E[sE + 1], ANK, e)) + (0.07 + 0.06 * clamp(Math.abs(tz - lz) / 0.6, 0, 1)) * Math.sin(Math.PI * u);
+  p[sI + 1] = Math.max(ANK, lerp(E[sE + 1], ANK, e)) + (0.07 + 0.06 * clamp(Math.abs(tz - lz) / 0.6, 0, 1)) * Math.sin(Math.PI * u) * (1 - ch) + COIL_HOLD.toeY * ch;
   p[sI + 2] = fz;
   p[sY] = lerp(E[sYE], frontYaw, e);
-  p[stepL ? P.lFf : P.rFf] = lerp(1, 0.45, Math.sin(Math.PI * u)); // toe-off, the sole level again to land
+  p[stepL ? P.lFf : P.rFf] = lerp(lerp(1, 0.45, Math.sin(Math.PI * u)), COIL_HOLD.flat, ch); // toe-off, the sole level again to land
+  // holding foot: planted where it stood (moved only by what it was dragged, A.holdOff); its heel
+  // peels as the body passes over it and the hips turn (the toe pivots), settling after
+  const Ho = A.holdOff;
+  let hx = hx0 + Ho.x, hz = hzW + Ho.z, hy = lerp(Math.max(ANK, E[hE + 1]), ANK, smoothstep(0, 0.05, t));
+  let hf = lerp(1, 0.3, smoothstep(t0 + 0.3 * (t1 - t0), t1, t) * (1 - smoothstep(t1 + 0.12, t1 + 0.3, t)));
+  let dragging = false;
+  if (hz < lim) {
+    // stretched `drag` past the stance's rear spot: dragged after the body
+    Ho.z += lim - hz;
+    hz = lim;
+    dragging = true;
+  }
+  const Fo = A.follow, fT0 = t1 + FOLLOW.at, fT1 = fT0 + FOLLOW.dur, mF = A.mark(2, fT1);
+  if (Fo.on < 0 && t >= fT0) {
+    // decided once: a foot dragged after the body as the front one takes the weight follows it
+    Fo.on = follow && plant && Math.hypot(Ho.x, Ho.z) > FOLLOW.min ? 1 : 0;
+    Fo.x = hx;
+    Fo.z = hz;
+    Fo.t0 = fT0;
+    Fo.t1 = fT1;
+  }
+  if (Fo.on === 1) {
+    // ONE lifted step up onto the stance line (never closer than FOLLOW.gap behind the front foot,
+    // never back)
+    const zT = Math.max(Fo.z, Math.min(sz - FOLLOW.back * drag, fz - FOLLOW.gap));
+    const v = clamp((t - fT0) / FOLLOW.dur, 0, 1), e2 = v * v * (3 - 2 * v);
+    hx = lerp(Fo.x, sx, e2);
+    hz = lerp(Fo.z, zT, e2);
+    if (t > fT1) {
+      // planted from its landing
+      hx -= tr.x - mF.x;
+      hz -= tr.z - mF.z;
+    }
+    hy = ANK + FOLLOW.lift * Math.sin(Math.PI * v);
+    hf = lerp(0.6, 1, e2);
+  }
+  {
+    // … and within the leg's reach of its hip (the hips this clip keys, turned with the pelvis): where
+    // they stand too high or too far over the front foot for it (a rising cut stands up onto a straight
+    // front leg), the IK lifted the planted foot 5-10 cm off the grass and slid it along. Its toe drags
+    // up after the hips instead, and stays where it was dragged to
+    const a = fin(p[P.yaw], 0) + fin(p[P.pelvY], 0), hs = -sg * DIM.hip[0];
+    const ax = fin(p[P.bodyX], 0) + hs * Math.cos(a), az = fin(p[P.bodyZ], 0) - hs * Math.sin(a);
+    const dy = DIM.pivot + DIM.pelvis[1] + DIM.hip[1] + fin(p[P.bodyY], 0) - hy;
+    const reach = HOLD_REACH * (DIM.thigh + DIM.shin), room = Math.sqrt(Math.max(0, reach * reach - dy * dy));
+    const dx = hx - ax, dz = hz - az, dh = Math.hypot(dx, dz);
+    if (dh > room + 1e-4 && dh > 1e-6) {
+      const k = room / dh, nx = ax + dx * k, nz = az + dz * k;
+      if (Fo.on !== 1) {
+        Ho.x += nx - hx;
+        Ho.z += nz - hz;
+      }
+      hx = nx;
+      hz = nz;
+      dragging = true;
+    }
+  }
+  if (dragging && Fo.on !== 1) hf = Math.min(hf, FOLLOW.toe); // stretched: the TOE drags after the body
+  A.footDrag = dragging && Fo.on !== 1 ? (stepL ? 1 : 2) : 0; // (bit 1: the right toe drags, 2: the left)
+  p[hI] = hx;
+  p[hI + 1] = hy;
+  p[hI + 2] = hz;
+  p[hF] = hf;
+  // (its yaw turns with the heel up, on the ball, not flat)
+  p[hY] = lerp(E[hYE], rearYaw, smoothstep(t0 + 0.3 * (t1 - t0), t1 + 0.15, t));
+  const S = A.spots;
+  S[0] = sx;
+  S[1] = sz;
+  S[2] = tx;
+  S[3] = tz;
 }
+const FOOT_GAP = 0.18; // m: the stepping foot lands at least this far to its own side of the holding one
+const HOLD_REACH = 0.97; // × the leg's length: the farthest the holding foot stays from its hip (else it drags)
+// the follow step: from `at` s after the plant, `dur` s long, onto the stance line `back` × drag
+// behind its spot (and ≥ `gap` m behind the front foot), lifted `lift` m; only when the foot is
+// dragged more than `min` m; a dragging foot's sole is down to `toe`
+const FOLLOW = { at: 0.02, dur: 0.09, back: 0.4, gap: 0.45, lift: 0.045, min: 0.03, toe: 0.35 };
+// a held light at the coil: how fast the stepping toe settles (1/s), where it rests (m above the
+// ankle's height) and its sole (footFlat: the toe down, the heel up)
+const COIL_HOLD = { rate: 25, toeY: 0.03, flat: 0.35 };
 /** A dash (the cleave's, the execution thrust's: 2.2-3.6 m of root travel in ~0.25 s) as TWO bounding steps instead of a
  *  front foot skidding the whole way: the rear (right) foot pushes off and swings through to land
  *  under the body mid-dash; the front (left) foot leaves the grass just before it lands (a short
@@ -1084,7 +1184,9 @@ const DASH = {
 };
 function dashFeet(p, A, W) {
   const t = A.t, E = A.entry, tr = A.trav;
-  const k = clamp(A.releaseK, 0, 1);
+  // (this attack's own charge: the stale releaseK, set only by a heavy, gave the sprint slash the last
+  // cleave's timing)
+  const k = clamp(fin(A.player?.atk?.charge, 0), 0, 1);
   const tR1 = lerp(DASH.rLand[0], DASH.rLand[1], k), tL0 = tR1 - DASH.lLift, tL1 = DASH.lLand;
   const m0 = A.mark(0, W), m1 = A.mark(1, tL0), m2 = A.mark(2, tR1), m3 = A.mark(3, tL1);
   // rear (right) foot
@@ -2470,6 +2572,14 @@ export class HeroAnimator {
     this.stepL = true; // the foot that steps in an attack (play(): the one further back)
     this.leadK = 1; // swingPose: the hips' lead (0 while a held light waits at the coil)
     this.bite = { rec: null, at: -1, dir: new Float32Array(3) }; // attackPose: the hit the bite is for, the blade it bit with
+    this.coilHold = 0; // lungeFeet: 1 while a held light waits at the coil (the stepping toe rests)
+    // lungeFeet: the holding foot's follow step (on: −1 undecided, 0 none, 1 stepping; from x, z;
+    // its window t0..t1 of the attack's clock)
+    this.follow = { on: -1, x: 0, z: 0, t0: 0, t1: 0 };
+    this.spots = new Float32Array(4); // lungeFeet → spinTurn: the rear spot x, z; the front spot x, z (model)
+    this.plantAt = { x: 0, z: 0, ok: false }; // lungeFeet: the front spot the stepping foot planted on
+    this.holdOff = { x: 0, z: 0 }; // lungeFeet: how far the holding foot has been dragged (model)
+    this.footDrag = 0; // lungeFeet (tests read it): bit 1 = the right toe drags, 2 = the left
     this.entry = new Float32Array([-0.25, ANK, 0.15, 0.13, ANK, -0.03, -0.4, 0.22]);
     this.leanF = 0; // acceleration lean (rad), a critically damped spring on the smoothed acceleration
     this.leanFV = 0;
@@ -2534,6 +2644,11 @@ export class HeroAnimator {
     // `bx` is toward it; the way home draws it back)
     this.stepL = E[5] <= E[2];
     this.leadK = 1;
+    this.coilHold = 0;
+    this.follow.on = -1;
+    this.footDrag = 0;
+    this.plantAt.ok = false;
+    this.holdOff.x = this.holdOff.z = 0;
     this.from.set(this.cur);
     for (const i of ANGLES) this.from[i] = wrapAngle(this.from[i]); // a finished roll is 2π ≡ 0
     // how far round the body stood as this clip began (a whirl cut short): the reactions unwind it
@@ -2586,6 +2701,11 @@ export class HeroAnimator {
     this.stepL = true;
     this.leadK = 1;
     this.bite.rec = null;
+    this.coilHold = 0;
+    this.follow.on = -1;
+    this.footDrag = 0;
+    this.plantAt.ok = false;
+    this.holdOff.x = this.holdOff.z = 0;
     Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '' });
     this.visYaw = fin(this.player.yaw);
     this.cycOn = false;
@@ -2675,10 +2795,12 @@ export class HeroAnimator {
     this.chargeK = fin(pl.chargeK);
     this.releaseK = fin(pl.releaseK);
     {
-      // a held light waiting at its coil (player.js _tickAttack): the hips settle out of their lead
-      // (once a frame, here: the pose stays a pure function of the animator's state)
+      // a held light waiting at its coil (player.js _tickAttack): the hips settle out of their lead,
+      // the stepping foot rests its toe (once a frame, here: the pose stays a pure function of the
+      // animator's state)
       const at = pl.atk, held = this.key === 'attack' && !!at?.pending && this.t >= fin(at.def?.windup, Infinity) - 1e-4;
       this.leadK = damp(fin(this.leadK, 1), held ? 0 : 1, SW_LEAD_FADE, dt);
+      this.coilHold = damp(fin(this.coilHold, 0), held ? 1 : 0, COIL_HOLD.rate, dt);
     }
     // a blocked blow drives the guard in over 2-3 frames (an impact, not a one-frame pop)
     const rc = clamp(fin(pl.recoil), 0, 1);

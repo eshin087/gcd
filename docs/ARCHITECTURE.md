@@ -640,8 +640,19 @@ further back along his facing; the keys are mirrored when it is the right one); 
 [front, rear] gives the stance's foot yaws (rad, for a left-front stance, mirrored by
 `lungeFeet`). Every light clip keys a body-only anticipation (u 0.5-0.8) and overshoot (u 2.1-2.15)
 round its coil and finish (swings.js header). Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
-(so the lead foot alternates down a chain) while the other holds its spot, its heel peeling; or
-`dashFeet` with `feet: 'dash'` (`dashW: true` starts the dash at the windup's end). In `apply()`,
+(so the lead foot alternates down a chain) and stays on the spot it planted on, while the other
+stays planted where it stood, its heel peeling (it no longer settles sideways onto the stance line);
+once stretched `drag` m past the stance's rear spot, or past its leg's reach from the hips the clip
+keys (`HOLD_REACH` 0.97 × the leg), its TOE drags after the body and it stays where it was dragged
+to (`anim.holdOff`; `anim.footDrag`: bit 1 the right toe, 2 the left), and just after the front foot
+takes the weight a foot dragged > 3 cm takes ONE lifted follow step up onto the stance line
+(`anim.follow { on, x, z, t0, t1 }`, `FOLLOW`); the clip drives the feet itself (`C.chFeet` in
+`A.pathCh`: the cross-fade slid them while the root still drifted out of a roll). While a held
+light waits at the coil the stepping toe rests on the grass (`anim.coilHold`, `COIL_HOLD`). `turn`
+pivots the feet on their balls where they stand (`pivotYaw`: their yaw turns, the heels lift);
+the way home steps the foot that stepped (the left for a dash or the thrust); or `dashFeet` with
+`feet: 'dash'` (`dashW: true` starts the dash at the windup's end; its landing times follow the
+attack's own `charge`). In `apply()`,
 `_elbow` limits how fast either elbow swings round its shoulder → hand line (`ELBOW_RATE`, 14 rad/s:
 the hand still reaches its target), for every clip. **Joint limits** (ADR-078), also in `apply()`
 and so for every pose and every cross-fade: `_arm` / `_leg` hold a hand / a foot at least

@@ -3761,6 +3761,7 @@ async function scenarioHeroWeight() {
       arms: [],
       feet: [r.legs.R.foot, r.legs.L.foot].map((f) => new THREE.Vector3().setFromMatrixPosition(f.matrixWorld)),
       cur: A.cur.slice(), stepL: A.stepL,
+      drag: A.footDrag, fo: { ...A.follow },
     };
     for (const arm of [r.arms.R, r.arms.L]) {
       const e0 = new THREE.Vector3().setFromMatrixPosition(arm.upper.matrixWorld).applyMatrix4(invB);
@@ -3808,6 +3809,15 @@ async function scenarioHeroWeight() {
     input.axis = { x: 0, y: 0 };
     input.click(0);
     go(0.9, record);
+    // single lights from rest, each look of hit 1
+    for (let look = 0; look < 3; look++) {
+      far();
+      go(1.0, record);
+      A.forceVariant = look;
+      input.click(0);
+      go(0.9, record);
+    }
+    A.forceVariant = null;
   };
 
   // (W3) the root's step: a tap steps ~90 % of its lunge by the plant (0.45 of the active frames)
@@ -3944,6 +3954,111 @@ async function scenarioHeroWeight() {
     assert(rows.length >= 3 && rows.every((R) => R.len >= want[R.clip]), `the bow stance: the feet ≥ 0.84 m apart as a thrust ends, ≥ 0.70 m as the falling cut ends (${rows.map((R) => `${R.clip} ${R.len.toFixed(2)}`).join(', ')})`);
   }
 
+  // (W7a/b) planted feet never skate: a foot bearing weight (on the grass, its toe not dragging, not
+  // in its follow step) slides ≤ 6 cm over a whole light swing; through the pivots (the draw cut,
+  // the flat backhand) ≤ 4 cm, the feet turning on their balls with the body
+  const ANKH = HD.ankle;
+  const slideOf = (S) => {
+    const sl = [0, 0];
+    for (let i = 1; i < S.frames.length; i++) {
+      const F = S.frames[i], F0 = S.frames[i - 1];
+      for (let k = 0; k < 2; k++) {
+        const bear = (G1) => {
+          const y = G1.cur[k ? P.lF + 1 : P.rF + 1], hold = G1.stepL ? 0 : 1; // the holding foot: the right when the left steps
+          const following = G1.fo.on === 1 && k === hold && G1.t >= G1.fo.t0 - 1e-6 && G1.t <= G1.fo.t1 + 1e-6;
+          return y < ANKH + 0.008 && !(G1.drag & (k ? 2 : 1)) && !following;
+        };
+        if (bear(F) && bear(F0)) sl[k] += Math.hypot(F.feet[k].x - F0.feet[k].x, F.feet[k].z - F0.feet[k].z);
+      }
+    }
+    return sl;
+  };
+  {
+    const rows = lights.map((S) => ({ clip: S.clip, sl: slideOf(S) }));
+    const worst = rows.reduce((b, R) => (Math.max(...R.sl) > Math.max(...b.sl) ? R : b), rows[0]);
+    out(`   planted slide (m, right/left): ${rows.map((R) => `${R.clip} ${R.sl[0].toFixed(3)}/${R.sl[1].toFixed(3)}`).join(' · ')}`);
+    assert(rows.every((R) => Math.max(...R.sl) <= 0.06), `planted feet never skate: a bearing foot slides ≤ 6 cm over a light swing (worst ${worst.clip} ${Math.max(...worst.sl).toFixed(3)} m; the holding foot settled 8-12 cm sideways every light)`);
+    const piv = [];
+    for (const S of lights) {
+      // (the look's own `turn`, combat.js)
+      const look = [S.def.anim, ...(S.def.variants ?? [])].find((an) => an.clip === S.clip);
+      if (!look?.turn) continue;
+      const W = S.def.windup, Ac = S.def.active, R = S.def.recovery;
+      const a0 = S.frames.find((F) => F.t >= W + 0.5 * Ac - 1e-6), a1 = S.frames.find((F) => F.t >= W + Ac + 0.3 * R - 1e-6);
+      const sl = slideOf(S), sg = Math.sign(look.turn);
+      const yaw = [P.rFy, P.lFy].map((c) => sg * (a1.cur[c] - a0.cur[c]));
+      piv.push({ clip: S.clip, turn: look.turn, sl, yaw, ok: Math.max(...sl) <= 0.04 && yaw.every((y) => y >= 0.5 * Math.abs(look.turn)) });
+    }
+    out(`   pivots: ${piv.map((R) => `${R.clip} (turn ${R.turn}) slide ${R.sl.map((x) => x.toFixed(3)).join('/')} m, feet turned ${R.yaw.map((y) => y.toFixed(2)).join('/')} rad`).join(' · ')}`);
+    assert(piv.length >= 2 && piv.every((R) => R.ok), `the pivots turn the feet on their balls: ≤ 4 cm of slide, each foot turned ≥ half the pivot (${piv.filter((R) => !R.ok).map((R) => R.clip).join(', ') || 'all'})`);
+  }
+
+  // (W7c) the way home moves the foot that STEPPED: after hit 2 (a right-foot step) the right foot
+  // draws back and the left stays down (the left always moved: the rear foot stepped 13 cm forward);
+  // after a single hit 1 (a left-foot step), the mirror
+  {
+    const home = (n) => {
+      far();
+      go(1.0, record);
+      A.forceVariant = 0;
+      const peak = [0, 0];
+      for (let h = 0; h < n; h++) {
+        input.click(0);
+        go(h === n - 1 ? 0.9 : CHAIN_EVERY, () => {
+          record();
+          const a = p.atk, def = a?.def;
+          if (p.state !== 'attack' || !def || def.combo !== n) return;
+          const rec = (a.t - def.windup - def.active) / def.recovery;
+          if (rec <= 0.3) return; // (SW_HOME: the way home starts there)
+          peak[0] = Math.max(peak[0], A.cur[P.rF + 1] - ANKH);
+          peak[1] = Math.max(peak[1], A.cur[P.lF + 1] - ANKH);
+        });
+      }
+      A.forceVariant = null;
+      return peak;
+    };
+    const two = home(2), one = home(1);
+    out(`   the way home: after hit 2 the right ankle lifts ${(two[0] * 100).toFixed(1)} cm, the left ${(two[1] * 100).toFixed(1)} cm; after a single hit 1 the right ${(one[0] * 100).toFixed(1)} cm, the left ${(one[1] * 100).toFixed(1)} cm`);
+    assert(two[0] >= 0.03 && two[1] <= 0.01 && one[1] >= 0.03 && one[0] <= 0.01, `the way home steps the foot that stepped: after hit 2 the right (${(two[0] * 100).toFixed(1)} cm up; the left ${(two[1] * 100).toFixed(1)}), after hit 1 the left (${(one[1] * 100).toFixed(1)} cm; the right ${(one[0] * 100).toFixed(1)})`);
+  }
+
+  // (W7d) the follow step: a stab stretched by the step-in assist (3.5 m from the wyrm) leaves the
+  // rear foot dragged behind; just after the front foot plants it takes one lifted step up after the
+  // body, and the stance stays a stance (not a split, not feet together)
+  {
+    far();
+    go(0.8, record);
+    A.forceVariant = 0;
+    for (let h = 0; h < 3; h++) { input.click(0); go(CHAIN_EVERY, record); }
+    // 3.5 m from the wyrm's front hurt surface (its chest sphere: REACH's own placement), facing it
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a0, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a0.x - d.position.x) * fx + (a0.z - d.position.z) * fz ? h : a0));
+    p.debug.teleport(c.x + fx * (c.r + 3.5), c.z + fz * (c.r + 3.5));
+    p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+    aimAt(G);
+    d.hp = d.maxHp;
+    d.posture = 0;
+    let stab = null, rose = 0, gap = [Infinity, 0], lunge = 0, on = -1;
+    input.click(0);
+    go(0.6, () => {
+      record();
+      const a = p.atk, def = a?.def;
+      if (p.state !== 'attack' || def?.combo !== 4) return;
+      stab = a;
+      on = Math.max(on, A.follow.on);
+      lunge = Math.max(lunge, Number.isFinite(a.lunge) ? a.lunge : 0);
+      const t1 = def.windup + 0.45 * def.active;
+      if (a.t > t1) rose = Math.max(rose, (A.stepL ? A.cur[P.rF + 1] : A.cur[P.lF + 1]) - ANKH);
+      if (a.t > t1 + 0.15) {
+        const g = Math.abs(A.cur[P.lF + 2] - A.cur[P.rF + 2]); // (front to rear, along his facing)
+        gap = [Math.min(gap[0], g), Math.max(gap[1], g)];
+      }
+    });
+    A.forceVariant = null;
+    out(`   follow step: the stab stepped ${lunge.toFixed(2)} m (assisted); follow ${on}, the rear ankle up ${(rose * 100).toFixed(1)} cm after the plant; the feet ${gap[0].toFixed(2)}-${gap[1].toFixed(2)} m apart front to rear after it`);
+    assert(!!stab && lunge > 0.9 && on === 1 && rose >= 0.02 && gap[0] >= 0.45 && gap[1] <= 1.1, `an assisted lunge's rear foot follows: one lifted step (follow ${on}, ${(rose * 100).toFixed(1)} cm up), the feet 0.45-1.1 m apart after it (${gap[0].toFixed(2)}-${gap[1].toFixed(2)})`);
+  }
+
   // (W11) no hip whip: through every light's windup and cut the hips turn ≤ 15° a frame (a lead
   // ramped in early from an entry on the far side whipped them 15°+ a frame)
   {
@@ -3970,7 +4085,7 @@ async function scenarioHeroWeight() {
     A.forceVariant = 0;
     const hold = [];
     input.press(0);
-    for (let i = 0, n = Math.round(0.25 / DT); i < n; i++) { G.tick(DT); hold.push({ F: record(), hip: A.cur[P.pelvY] }); }
+    for (let i = 0, n = Math.round(0.25 / DT); i < n; i++) { G.tick(DT); hold.push({ F: record(), hip: A.cur[P.pelvY], ank: A.cur[(A.stepL ? P.lF : P.rF) + 1] }); }
     input.up(0);
     const after = [];
     for (let i = 0; i < 40; i++) {
@@ -3992,6 +4107,11 @@ async function scenarioHeroWeight() {
     assert(k0 > 0 && hold.every((h) => h.F.pending) && first <= 5 && settle && lastStep <= 1 && off <= 0.05,
       `a held light's hips settle back to the coil without a snap: at most ${first.toFixed(1)}° a frame (≤ 5°), each step no bigger than the one before, still by the hold's end (${lastStep.toFixed(2)}° ≤ 1°), within 0.05 rad of the coil key's turn (${off.toFixed(3)})`);
     assert(after.length >= 5 && snap <= 25 && arm < 60, `released from the coil, the cut fires without a snap: the hips ≤ 25° a frame (${snap.toFixed(1)}°), no arm segment ≥ 60° a frame (${arm.toFixed(0)}°)`);
+    // … and the stepping foot, caught mid-step at the coil, rests its toe on the grass (it hung up to
+    // 0.21 m above it for as long as the button was held): never rising once at the coil
+    const atCoil = hold.slice(k0), rise = Math.max(...atCoil.slice(1).map((h, i) => h.ank - atCoil[i].ank)), endAnk = hold[hold.length - 1].ank - HD.ankle;
+    out(`   held coil: the stepping ankle ${(endAnk * 100).toFixed(1)} cm above its rest at the hold's end (rising at most ${(rise * 1000).toFixed(1)} mm a frame at the coil)`);
+    assert(endAnk <= 0.045 && rise <= 0.002, `a held light's stepping toe rests on the grass: the ankle ${(endAnk * 100).toFixed(1)} cm up at the hold's end (≤ 4.5), never rising at the coil (${(rise * 1000).toFixed(1)} mm ≤ 2)`);
   }
 
   // (W5) the bite: 2.5 m from the wyrm, every landed blow (player:hitDragon, unguarded, atk.hitAt
