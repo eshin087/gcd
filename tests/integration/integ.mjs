@@ -4059,6 +4059,34 @@ async function scenarioHeroWeight() {
     assert(!!stab && lunge > 0.9 && on === 1 && rose >= 0.02 && gap[0] >= 0.45 && gap[1] <= 1.1, `an assisted lunge's rear foot follows: one lifted step (follow ${on}, ${(rose * 100).toFixed(1)} cm up), the feet 0.45-1.1 m apart after it (${gap[0].toFixed(2)}-${gap[1].toFixed(2)})`);
   }
 
+  // (W7e) the whirls hop round their turn: the feet are off the grass through its fast part (they
+  // were carried round the root on the grass: a planted foot skated 1.2-1.4 m), and land planted
+  {
+    const whirls = swings.filter((S) => S.clip === 'whirl' || S.clip === 'risingWhirl');
+    const rows = whirls.map((S) => {
+      const W = S.def.windup, Ac = S.def.active;
+      const win = S.frames.filter((F) => F.t >= W - 0.1 - 1e-6 && F.t <= W + Ac + 1e-6);
+      const air = win.filter((F) => F.cur[P.rF + 1] > ANKH + 0.02 && F.cur[P.lF + 1] > ANKH + 0.02).length / Math.max(1, win.length);
+      return { clip: S.clip, sl: slideOf(S), air };
+    });
+    out(`   whirls: ${rows.map((R) => `${R.clip} slide ${R.sl.map((x) => x.toFixed(3)).join('/')} m, both feet up ${(R.air * 100).toFixed(0)} % of the turn`).join(' · ')}`);
+    assert(rows.length >= 2 && rows.every((R) => Math.max(...R.sl) <= 0.08 && R.air >= 0.4), `the whirls hop round: a bearing foot slides ≤ 8 cm (${rows.map((R) => Math.max(...R.sl).toFixed(3)).join(', ')} m), both feet off the grass ≥ 40 % of the turn (${rows.map((R) => (R.air * 100).toFixed(0)).join(', ')} %)`);
+    // (W8) … and its momentum carries past the full turn and settles: the turn no longer stops dead
+    // in a frame (its 2nd frame after the cut turns ≥ 0.35 of its last one), and it is home by 0.2 s
+    // (a single whirl: hits 1 and 2, then the whirl and nothing after it)
+    far();
+    go(0.8, record);
+    A.forceVariant = 0;
+    for (let h = 0; h < 3; h++) { input.click(0); go(h === 2 ? 1.0 : CHAIN_EVERY, record); }
+    A.forceVariant = null;
+    const S = swings.filter((S1) => S1.clip === 'whirl').pop(), W = S.def.windup, Ac = S.def.active;
+    const j = S.frames.findIndex((F) => F.t >= W + Ac - 1e-6) - 1;
+    const r = (k) => Math.abs(wrapA(S.frames[k].cur[P.yaw] - S.frames[k - 1].cur[P.yaw]));
+    const settle = Math.max(...S.frames.filter((F) => F.t >= W + Ac + 0.2 - 1e-6).map((F) => Math.abs(wrapA(F.cur[P.yaw])) * DEG));
+    out(`   the whirl's settle: ${(r(j) * DEG).toFixed(1)}° the last frame of the turn, then ${(r(j + 1) * DEG).toFixed(1)}°, ${(r(j + 2) * DEG).toFixed(1)}°; ≤ ${settle.toFixed(2)}° off from 0.2 s after it`);
+    assert(j > 0 && r(j + 2) >= 0.35 * r(j) && settle < 2, `the whirl carries past its turn and settles: the 2nd frame after turns ${(r(j + 2) / r(j) * 100).toFixed(0)} % of the last (≥ 35 %), home within 2° by 0.2 s (${settle.toFixed(2)}°)`);
+  }
+
   // (W11) no hip whip: through every light's windup and cut the hips turn ≤ 15° a frame (a lead
   // ramped in early from an entry on the far side whipped them 15°+ a frame)
   {

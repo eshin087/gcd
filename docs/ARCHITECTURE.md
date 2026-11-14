@@ -680,7 +680,14 @@ kind is `thrust` (the execution's lunge). **The way home:** from a clip's `home`
 `SW_HOME` 0.3 of the recovery; the slam and the cleave 0.55, they hold their finish) `attackPose`
 blends the pose toward the ready stance while the clip's last keys are still moving, so the
 follow-through runs into the return without a stop. `spinTurn` (the whirl) also drops and leans
-him into the turn and turns his head back toward the target, then ahead of the body (`SPIN_SPOT`).
+him into the turn and turns his head back toward the target, then ahead of the body (`SPIN_SPOT`);
+the hips run ahead of the turn and the chest trails it (`SPIN_LEAD`), and its momentum carries him
+~14° past the full turn before he settles back (`SPIN_OV`, a damped spring let go at the turn's last
+speed; the feet pivot on their balls). The anim block's `spinFeet` picks the feet: `'carry'` (the
+default: the stance spots carried round the root in two quick pivot steps) or `'hop'` (the whirls:
+both feet leave their spots by `SPIN_HOP.up` of the turn, are carried round in the air and land on
+the stance spots lungeFeet left in `anim.spots` by `SPIN_HOP.down`, planted from there; no follow
+step; the hips rise `SPIN_HOP.rise`).
 **Attack variants** (ADR-055): a `LIGHT` def may carry `variants` (more `anim` blocks for the same
 hit: same timing, damage, reach and lunge). `HeroAnimator.play('attack')` calls `_pickVariant()`:
 `anim` or one of `variants` at random with the animator's own noise, never the same one twice in a

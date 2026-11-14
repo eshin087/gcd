@@ -20,7 +20,10 @@ import { DIM } from './model.js';
 //                   and its blade crosses the front of the hero inside the active frames, exactly
 //                   while it can hit. Options: `spin` (±1: the whole body turns once through the
 //                   active frames, − = to his right), `turn` (rad, + = to his left: a partial body
-//                   pivot through the cut that turns back in the recovery), `hop` (m: a skip off the
+//                   pivot through the cut that turns back in the recovery; the feet turn on their
+//                   balls), `spinFeet` ('hop': a spin's feet leave the grass through the fast part of
+//                   the turn and land on the stance spots; 'carry', the default: they are carried
+//                   round with it in two quick pivot steps), `hop` (m: a skip off the
 //                   ground through the windup into the cut; `tuck`: how far the feet lift with it,
 //                   × the hop, over 1 = the knees draw up), `feet: 'dash'` (bounding steps for a
 //                   long root travel instead of one lunge step; `dashW`: the dash starts at the
@@ -84,9 +87,9 @@ export const LIGHT = [
     name: 'whirl', kind: 'light', combo: 3, damage: 36, poise: 16, heavy: false,
     windup: 0.13, active: 0.15, recovery: 0.26, chain: 0.3, lunge: 0.7, reach: 2.2,
     hitstop: 0.06, shake: 0.16, bite: 1,
-    anim: { kind: 'clip', clip: 'whirl', spin: -1 },
+    anim: { kind: 'clip', clip: 'whirl', spin: -1, spinFeet: 'hop' },
     variants: [
-      { kind: 'clip', clip: 'risingWhirl', spin: -1 }, // the same turn out of a crouch, the blade spiralling up
+      { kind: 'clip', clip: 'risingWhirl', spin: -1, spinFeet: 'hop' }, // the same turn out of a crouch, the blade spiralling up
       { kind: 'clip', clip: 'lowSweep' }, // no turn: a crouching sweep along the grass
     ],
   },

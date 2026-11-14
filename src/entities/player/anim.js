@@ -892,7 +892,7 @@ function attackPose(p, A) {
     lungeFeet(p, A, st ? phaseTime(st[0], W, Ac, R) : 0.03, st ? phaseTime(st[1], W, Ac, R) : W + Ac * 0.45, C?.drag ?? 0.22, true, follow);
     if (C) A.pathCh = C.chFeet;
   }
-  if (k.spin) spinTurn(p, k.spin, t, W, Ac);
+  if (k.spin) spinTurn(p, A, k.spin, t, W, Ac, k.spinFeet ?? 'carry');
   if (k.turn) {
     // a partial pivot carried through the follow-through (the feet turn with it), turning back late
     // in the recovery. It starts at mid-strike: turning the body while the blade is hit-tested moved
@@ -989,39 +989,100 @@ function pivotYaw(p, yaw) {
   p[P.lFf] = Math.min(p[P.lFf], 1 - 0.4 * b);
 }
 /** The whirl (combo hit 3, `anim.spin` ±1: − = he turns to his right): the whole body turns once
- *  about its axis from just before the active frames to their end, the feet carried round with it
- *  in two quick pivot steps (their stance spots turn with the body, each lifted in turn). The turn
- *  ends on exactly one revolution, written as 0, so nothing unwinds afterwards. */
-function spinTurn(p, dir, t, W, Ac) {
-  const t0 = W - 0.1, t1 = W + Ac;
-  if (t <= t0 || t >= t1) return;
+ *  about its axis from just before the active frames to their end. The turn ends on exactly one
+ *  revolution, written as 0, so nothing unwinds afterwards; its momentum carries him a little past
+ *  it and he settles back (SPIN_OV). The hips run ahead of the turn and the chest trails it
+ *  (SPIN_LEAD). The feet (`anim.spinFeet`, combat.js):
+ *    'carry' — carried round with the body in two quick pivot steps (their stance spots turn with
+ *              it, each lifted in turn: a planted foot skated 1.2-1.4 m round the root);
+ *    'hop'   — off the grass through the fast part of the turn: both feet leave their spots (from
+ *              lungeFeet: A.spots) by SPIN_HOP.up, are carried round in the air and land on the
+ *              stance spots by SPIN_HOP.down, planted from there; the rest of the turn is taken on
+ *              the balls of the feet. */
+function spinTurn(p, A, dir, t, W, Ac, mode = 'carry') {
+  const t0 = W - 0.1, t1 = W + Ac, hop = mode === 'hop';
+  if (t <= t0) return;
+  const H = SPIN_HOP, S = A.spots, tr = A.trav;
+  const stepL = A.stepL !== false;
+  if (t >= t1) {
+    if (hop) {
+      // landed: the feet stay on the stance spots they landed on (lungeFeet's holding foot would
+      // sit 0.6 m behind them after the whirl's step); the way home moves the one that stepped
+      const mL = A.mark(3, t0 + H.down[1] * (t1 - t0));
+      for (let k = 0; k < 2; k++) {
+        const i = k ? P.lF : P.rF, front = k ? stepL : !stepL;
+        p[i] = (front ? S[2] : S[0]) - (tr.x - mL.x);
+        p[i + 1] = ANK;
+        p[i + 2] = (front ? S[3] : S[1]) - (tr.z - mL.z);
+      }
+    }
+    // the turn's momentum carries him on past the full turn and he settles back (a critically damped
+    // spring let go at the turn's last speed: it stopped dead from ~20 rad/s in one frame). The feet
+    // pivot on their balls
+    const s = t - t1;
+    if (s < SPIN_OV.len) {
+      const v0 = (TAU * 0.8) / (t1 - t0); // e'(1) = 0.8
+      const y = dir * v0 * s * Math.exp(-s / SPIN_OV.tau) * (1 - smoothstep(SPIN_OV.len * 0.6, SPIN_OV.len, s));
+      p[P.yaw] += y;
+      p[P.rFy] += y;
+      p[P.lFy] += y;
+      p[P.hdY] = clamp(p[P.hdY] - y, -NECK_TURN, NECK_TURN); // the eyes stay on the target
+    }
+    return;
+  }
   const u = (t - t0) / (t1 - t0);
   // eased in, still fast at the end: the blade crosses the front at speed
   const e = u * u * (2.2 - 1.2 * u);
   const yaw = dir * TAU * e;
   p[P.yaw] += yaw;
   const c = Math.cos(yaw), s = Math.sin(yaw);
-  for (let k = 0; k < 2; k++) {
-    const i = k ? P.lF : P.rF, x = p[i], z = p[i + 2];
-    p[i] = x * c + z * s;
-    p[i + 2] = z * c - x * s;
-    // the right foot steps round first, then the left
-    p[i + 1] += 0.07 * Math.max(0, Math.sin(Math.PI * clamp(k ? u * 2 - 1 : u * 2, 0, 1)));
+  const w = Math.sin(Math.PI * u);
+  if (!hop) {
+    for (let k = 0; k < 2; k++) {
+      const i = k ? P.lF : P.rF, x = p[i], z = p[i + 2];
+      p[i] = x * c + z * s;
+      p[i + 2] = z * c - x * s;
+      // the right foot steps round first, then the left
+      p[i + 1] += 0.07 * Math.max(0, Math.sin(Math.PI * clamp(k ? u * 2 - 1 : u * 2, 0, 1)));
+    }
+  } else {
+    // airborne weight; the lift (over the whole flight) and the landing (the stance spots, held
+    // root-relative until then and planted from there)
+    const air = smoothstep(H.up[0], H.up[1], u) * (1 - smoothstep(H.down[0], H.down[1], u));
+    const fl = Math.sin(Math.PI * clamp((u - H.up[0]) / (H.down[1] - H.up[0]), 0, 1));
+    const mL = A.mark(3, t0 + H.down[1] * (t1 - t0));
+    for (let k = 0; k < 2; k++) {
+      const i = k ? P.lF : P.rF, front = k ? stepL : !stepL;
+      const sx = front ? S[2] : S[0], sz = front ? S[3] : S[1];
+      // (the first half leaves from where lungeFeet has the foot; the second lands on its spot)
+      const bx = u < 0.5 ? p[i] : sx - (tr.x - mL.x), bz = u < 0.5 ? p[i + 2] : sz - (tr.z - mL.z), by = u < 0.5 ? p[i + 1] : ANK;
+      p[i] = lerp(bx, sx * c + sz * s, air);
+      p[i + 2] = lerp(bz, sz * c - sx * s, air);
+      p[i + 1] = Math.max(ANK, lerp(by, ANK, air)) + H.lift * fl;
+    }
+    p[P.bodyY] += H.rise * fl;
   }
   p[P.rFy] += yaw;
   p[P.lFy] += yaw;
   p[P.rFf] = p[P.lFf] = 0.5; // on the balls of the feet through the turn
+  // the hips run ahead of the turn and the chest trails it (the turn is driven from the hips)
+  p[P.pelvY] += dir * SPIN_LEAD[0] * w;
+  p[P.spY] -= dir * SPIN_LEAD[1] * w;
   // he drops into the turn and leans to the inside of it (he stood bolt upright through it, turning
   // like a figure on a turntable), and his head SPOTS: it stays on the target while the body turns
   // away, comes round ahead of the body and finds the target again before the shoulders do
-  const w = Math.sin(Math.PI * u);
   p[P.bodyY] -= 0.07 * w;
   p[P.spZ] -= dir * 0.13 * w;
   p[P.spX] += 0.06 * w;
-  p[P.hdY] = clamp(p[P.hdY] - dir * SPIN_SPOT * Math.sin(TAU * e), -NECK_TURN, NECK_TURN);
+  p[P.hdY] = clamp(p[P.hdY] - dir * SPIN_SPOT * Math.sin(TAU * e) - dir * 0.1 * w, -NECK_TURN, NECK_TURN);
 }
 const NECK_TURN = 1.0; // rad: the most the head turns on the chest in a whirl (it reached 76°)
 const SPIN_SPOT = 0.6; // rad: how far the head turns back toward the target (and then ahead of the body) in a whirl
+const SPIN_OV = { tau: 0.033, len: 0.2 }; // the whirl's overshoot: its spring's time constant (peak ~14° at 2 frames), how long it runs (s)
+const SPIN_LEAD = [0.22, 0.12]; // rad (× sin over the turn): the hips run ahead of the whirl, the chest trails it
+// the whirl's hop ('hop' feet): the feet leave the grass over u ∈ up, land over u ∈ down (u: the
+// turn's own phase), lifted `lift` m at the top, the hips risen `rise` m
+const SPIN_HOP = { up: [0.22, 0.34], down: [0.62, 0.8], lift: 0.09, rise: 0.05 };
 
 const FOOT_CH = [P.rF, P.rF + 1, P.rF + 2, P.lF, P.lF + 1, P.lF + 2, P.rFy, P.lFy];
 const FOOT_KEEP = new Float32Array(FOOT_CH.length);
