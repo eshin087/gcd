@@ -4,7 +4,7 @@ import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from 
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, tellDefaults, facingDelta } from '../../combat/rules.js';
-import { buildHero, setHeroGlyphScale, installLean, LEAN, PLAYER_SCALE, BLADE_BASE } from './model.js';
+import { buildHero, setHeroGlyphScale, installLean, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK } from './model.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx } from './fx.js';
@@ -113,6 +113,12 @@ export const TUNE = {
   plungeFade: 7, // 1/s: the plunge's reappear above the head resolves faster (it hangs only briefly)
   rollCoatKick: 0.7, // the coat tails fly out as the dodge starts
   gemGlintEvery: 1.8, // s between idle glints of the violet gem (± 40 %)
+  // the blade flares where the game camera can see it (part 17's pass gains: at 36 m the blade is one
+  // 4 px cell, mostly silhouette line, and the art pass compresses its glow): × (1 + strike) through a
+  // strike's window ([light, heavy]), + hit ([light, heavy or crit]) on a landed cut, held through the
+  // freeze and cooling in `fall` s of game time; `line` = how much of the gain the ink and rim lines
+  // take; `halo` = how much the flare lifts the dot halo
+  bladeFlare: { strike: [0.12, 0.2], hit: [0.5, 0.75], fall: 0.12, line: 0.5, halo: 0.6 },
 };
 
 const CONTROL = new Set(['explore', 'bossIntro', 'boss']);
@@ -207,6 +213,7 @@ export class Player {
     this.glyphScale = 1; // hero glyph-cell scale from the view distance (model.js setHeroGlyphScale)
     this.viewDist = 36; // camera → hero distance (m), sampled each frame
     this.bladeFar = 1; // 0 close-up … 1 game camera: how much the blade self-lights
+    this.bladeFlare = 0; // 0..0.75: a landed cut's flare of the steel (TUNE.bladeFlare; any area may raise it)
     this._ghostSegs = new Float32Array(16 * 6);
     // the plunge (state 'plunge', DEFENSE.plunge): the attacker, the phase clock, the head point
     // this frame, the spring-off direction (dx, dz: from the head toward the landing side), the
@@ -560,6 +567,7 @@ export class Player {
     this.deflect.perfect = false;
     this.guardHold = 0;
     this.flash = 0;
+    this.bladeFlare = 0;
     this.burnGlow = 0;
     this.chipGuard = 0;
     this.dodgeN = -1;
@@ -1746,6 +1754,7 @@ export class Player {
     this._emit('player:plungeHit', { damage: dealt, execution: true });
     a.hitAt = a.t;
     a.cutDir = this._cutDir(C, a.cutDir);
+    this.bladeFlare = Math.max(this.bladeFlare, TUNE.bladeFlare.hit[1]);
     const X = THRUST.exec;
     this._hitstop(X.hitstop);
     this.game.shake?.(X.shake);
@@ -2700,6 +2709,7 @@ export class Player {
     this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded, combo: d.combo ?? 1, weight: d.contact ?? (heavy ? 'slam' : 'light') });
     // turned by a guard: the guard draws the clash and sets its own freeze; no cut, no sparks of his
     if (guarded) return;
+    this.bladeFlare = Math.max(this.bladeFlare, heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
     // the contact, for the animator and other areas: when (the attack clock) and which way the blade went
     a.hitAt = a.t;
     a.cutDir = this._cutDir(C, a.cutDir);
@@ -2870,7 +2880,7 @@ export class Player {
       // the blade's dot halo: dim at idle, brighter while it glows (strikes, charge, crit)
       if (this.alive && this.object3d.visible !== false && !hidden && armed) {
         const bu = this.rig.materials.blade.uniforms;
-        this.fx.bladeHalo(dt, clamp((bu.uInkGlow.value - 0.16) * 0.8, 0.25, 2), this.bladeFar);
+        this.fx.bladeHalo(dt, clamp((bu.uInkGlow.value - 0.16) * 0.8 + TUNE.bladeFlare.halo * this.bladeFlare, 0.25, 2), this.bladeFar);
       }
     }
     // the violet gem: an always-on glow point, idle glints, a fast flicker while charging. Every
@@ -2936,7 +2946,8 @@ export class Player {
     // wide and its seams are sub-pixel, so the flats self-light more with distance: the sword stays
     // the brightest thing on the hero there, while close-ups keep dark steel with glowing edges.
     // (lean reference match: 2.3 → 1.25 × far: the self-lit blade bloomed into a halo that hid his body)
-    let ink = 0.6 + 1.0 * far + 0.08 * Math.sin(this.time * 2.6), glow = 1.45 + 0.15 * Math.sin(this.time * 3.7);
+    const restInk = 0.6 + 1.0 * far;
+    let ink = restInk + 0.08 * Math.sin(this.time * 2.6), glow = 1.45 + 0.15 * Math.sin(this.time * 3.7);
     const a = this.atk, st = this.state;
     if (st === 'charge') {
       const k = this.chargeK;
@@ -2945,8 +2956,10 @@ export class Player {
     } else if (a && (st === 'attack' || st === 'heavy') && !a.pending) {
       const d = a.def, t = a.t;
       if (t >= d.windup - 0.06 && t <= d.windup + d.active + 0.12) {
-        ink = d.heavy ? 2.2 : 1.6;
-        glow = d.heavy ? 1.5 : 1.25;
+        // relative to rest: at the game camera the rest ink is already 1.6 and the rest glow 1.45 (a
+        // flat 1.6 / 1.25 left a light strike no brighter than the idle blade there, its seams dimmer)
+        ink = Math.max(d.heavy ? 2.2 : 1.6, restInk + (d.heavy ? 0.6 : 0.3));
+        glow = Math.max(1.45, d.heavy ? 1.6 : 1.5);
       }
       if (d.dash) {
         const fade = 1 - smoothstep(d.windup + d.active, d.windup + d.active + 0.3, t);
@@ -2982,6 +2995,26 @@ export class Player {
     // … and the dark steel between them lights up too (gaps are base × light)
     bu.uBase.value.setRGB(BLADE_BASE[0] + 0.2 * far, BLADE_BASE[1] + 0.36 * far, BLADE_BASE[2] + 0.5 * far);
     this.bladeFar = far;
+    {
+      // the flare where the game camera sees it: part 17's pass gains (the art pass compresses luma, so
+      // uInkGlow alone does not read at 36 m; the fill gain is linear past the far HDR cap, and the
+      // blade there is one 4 px cell of mostly silhouette line, so its ink AND rim lines flare too).
+      // Part 17 is only the hero's sword (gear/wanderer.js M.blade / M.bladeTip; HERO_INK.bladeTip
+      // writes it last). ABSOLUTE values every frame: another buildHero (the boss's, setLoadout) resets
+      // the shared arrays; at g = 1 this writes exactly the HERO_INK base
+      const F = TUNE.bladeFlare, B = HERO_INK.bladeTip, P = B.part;
+      const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.06 && a.t <= a.def.windup + a.def.active + 0.12;
+      const g = this.alive ? 1 + (inStrike ? (a.def.heavy ? F.strike[1] : F.strike[0]) : 0) + this.bladeFlare : 1;
+      if (Number.isFinite(g)) {
+        const U = this.game.U, lk = 1 + F.line * (g - 1), rl = B.rimLine ?? B.line;
+        const pf = U?.uHeroPartFill?.value?.[P], pi = U?.uHeroPartInk?.value?.[P], pr = U?.uHeroPartRim?.value?.[P];
+        if (pf) pf.x = (B.fillGain ?? 1) * g;
+        if (pi) pi.w = B.line[3] * lk;
+        if (pr) pr.w = rl[3] * lk;
+      }
+      // (after the write: the contact frame shows the full flare; game dt, so it holds through the freeze)
+      this.bladeFlare = Math.max(0, this.bladeFlare - (Number.isFinite(dt) ? dt : 0) / F.fall);
+    }
     // the violet gem breathes; burns brighter while charging and through heavy swings
     const heavyNow = st === 'charge' || (plunging && this.pl.phase <= PL.RIDE) || (!!a && !!a.def?.heavy && (st === 'attack' || st === 'heavy'));
     const gemTarget = (heavyNow ? 1.6 : 0.8) + 0.25 * Math.sin(this.time * 2.1) + (st === 'charge' ? 0.8 * this.chargeK : 0);

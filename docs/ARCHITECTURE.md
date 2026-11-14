@@ -176,7 +176,11 @@ Render helpers for creature modules:
   1 dotted (`dotted`), 2 unbroken (`solid`), + 4 when `open`: no dark channel or depth-step gap, the
   face), z `farLine` (share of inner-line light kept at the game camera: 0 a dark seam (cloth) … 1
   bright (armour, blade)), w `farFill` (fill gain there). Materials that share a `part` must share
-  these fields.
+  these fields. Part 17 = the player's blade (`HERO_INK.blade` / `bladeTip`, only gear/wanderer.js's
+  sword uses `M.blade` / `M.bladeTip`): `player.js` rewrites its fill .x, ink .w and rim .w every
+  frame (`TUNE.bladeFlare`: the strike and contact flare; absolute values, the `HERO_INK` base at
+  rest). Nothing else may use part 17 (a boss blade on `M.blade` would flare with the hero's: give it
+  a new part).
 - **The hero's letters and lines** (pass, hero branch):
   - Grid (ADR-036): `createPixelArtAtlas(hs)` (`glyphs.js`; hs = max(1, floor(H / 1080))) →
     `{ texture, count, cols }`: one row, the 3x3 micro-font `PIXEL_3X3` (29 marks) sorted sparse →

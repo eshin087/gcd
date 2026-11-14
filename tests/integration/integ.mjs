@@ -2934,6 +2934,67 @@ async function scenarioHeroLife() {
     assert(draws === 0, `a landed cut never touches the AI's random stream (${draws} Math.random draws)`);
   }
 
+  // (1e2) the blade flares where the game camera sees it (TUNE.bladeFlare: part 17's pass gains, the
+  // fill and both lines): exactly the base at rest, a landed cut's flare held through the freeze and
+  // gone 0.4 s later, the slam's stronger, a whiff only the strike's; the far strike ink above rest
+  {
+    const PF = game.U.uHeroPartFill.value[17], PR = game.U.uHeroPartRim.value[17], bu = r.materials.blade.uniforms;
+    const fx0 = Math.sin(d.yaw), fz0 = Math.cos(d.yaw);
+    const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx0 + (h.z - d.position.z) * fz0 > (a.x - d.position.x) * fx0 + (a.z - d.position.z) * fz0 ? h : a));
+    const front = () => { const c = chest(); p.debug.teleport(c.x + fx0 * (c.r + 1), c.z + fz0 * (c.r + 1)); p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z); aimAt(G); };
+    const aim0 = game.mouseGround.clone(); // (put back after: the blocks below swing at their own aim)
+    go(1.0);
+    const idle = [PF.x, PR.w];
+    // a landed light
+    front();
+    go(0.3);
+    let hitN = 0;
+    G.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded) hitN++; };
+    A.forceVariant = 0;
+    input.click(0);
+    let lit = null, held = null;
+    for (let i = 0; i < 60 && !hitN; i++) G.tick(DT);
+    if (hitN) {
+      lit = PF.x;
+      for (let i = 0; i < 3; i++) G.tick(DT);
+      held = PF.x;
+    }
+    go(0.4);
+    const cooled = PF.x;
+    // the slam (the fifth of a mashed chain, every hit landing)
+    go(0.8);
+    front();
+    let slamPeak = 0;
+    for (let k = 0; k < 5; k++) { d.hp = d.maxHp; input.click(0); go(k === 4 ? 0.9 : CHAIN_EVERY, () => { if (p.atk?.def?.kind === 'slam') slamPeak = Math.max(slamPeak, PF.x); }); }
+    // a whiff, 30 m from the wyrm: the strike's gain only; the far strike ink
+    go(1.0);
+    p.debug.teleport(d.position.x + 30, d.position.z + 30);
+    go(0.5);
+    let whiff = 0, farInk = 0;
+    input.click(0);
+    go(0.6, () => { whiff = Math.max(whiff, PF.x); const a = p.atk; if (a?.def && a.t >= a.def.windup && a.t <= a.def.windup + a.def.active + 0.12) farInk = Math.max(farInk, bu.uInkGlow.value); });
+    A.forceVariant = null;
+    G.watch = null;
+    out(`   blade flare: rest ${idle[0]} / ${idle[1]}, a landed light ${lit?.toFixed(2)} → ${held?.toFixed(2)} three frames on → ${cooled.toFixed(2)} 0.4 s later; the slam ${slamPeak.toFixed(2)}; a whiff ${whiff.toFixed(2)}; far strike ink ${farInk.toFixed(2)} at ${p.viewDist.toFixed(0)} m`);
+    assert(idle[0] === 1 && idle[1] === 1.7, `at rest the blade's part is exactly its HERO_INK base (fill ${idle[0]}, rim ${idle[1]})`);
+    assert(lit >= 1.5 && held >= 1.35 && cooled <= 1.02, `a landed cut flares the blade (fill ${lit?.toFixed(2)} ≥ 1.5), held through the freeze (${held?.toFixed(2)} ≥ 1.35), gone 0.4 s later (${cooled.toFixed(2)} ≤ 1.02)`);
+    assert(slamPeak >= 1.8 && whiff <= 1.15, `the slam flares further (${slamPeak.toFixed(2)} ≥ 1.8); a whiff only takes the strike's gain (${whiff.toFixed(2)} ≤ 1.15)`);
+    assert(p.viewDist >= 30 && farInk >= 1.85, `at the game camera (${p.viewDist.toFixed(0)} m) a light strike's ink rises above the rest ink (${farInk.toFixed(2)} ≥ 1.85; it was a flat 1.6)`);
+    // dead: the base again
+    p.debug.kill();
+    G.tick(DT);
+    const dead = PF.x;
+    game.flow.debug.toState('boss');
+    p.respawn(p.position.x, p.position.z);
+    p.debug.god = true;
+    p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    game.mouseGround.copy(aim0);
+    d.hp = d.maxHp;
+    d.posture = 0;
+    go(1.0);
+    assert(dead === 1, `a dead hero's blade is the base (${dead})`);
+  }
+
   // (1c) the pace (Session 26, owner: "speed up the attack speed ... its too slow"): mashing the
   // button, a light every ~0.3 s (it was 0.42 s; 0.25 s before Session 25). The next light still
   // waits for the cut to carry through (`chain` of the recovery)

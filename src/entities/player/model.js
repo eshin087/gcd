@@ -358,7 +358,8 @@ export function createHeroMaterials(U) {
       inkAlt: [0.85, 1.0, 1.25], altChance: 0.2, lumScale: 3, glyphZoom: 0.72,
       gain: 0.9, rim: 0.3, outline: 0.35, inkGlow: 0.6, emissive: [0.7, 1.4, 2.5], glowMask: 1, seed: 1.9,
     }, { lockX: true }),
-    // the last 0.15 m (the taper to the point): the brightest steel
+    // the cutting-edge band (gear/wanderer.js: blade.edge, the whole edge and the point): the brightest
+    // steel. Its HERO_INK part 17 is rewritten every frame by player.js (the strike / contact flare)
     bladeTip: S({
       levels: ["^A", "A^", "AA"], cell: [0.045, 0.09], rowShift: 0, seamAxis: 'y', base: [0.14, 0.26, 0.42],
       levelInk: [[0.7, 0.92, 1.2], [0.9, 1.08, 1.32], [1.1, 1.22, 1.45]], ink: [1.1, 1.22, 1.45],
