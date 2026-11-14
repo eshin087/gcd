@@ -199,6 +199,6 @@ function buildMoonblade({ sword, M, mesh, joint }, L) {
 }
 
 /** The three looks as weapon-slot items (gear/index.js registers them). */
-export const MOON_ITEMS = Object.entries({ sheet: 'Moonlit Longsword', ribbon: 'Moonlit Longsword, hem ribbon', crescent: 'Crescent Moonblade' }).map(([k, name]) => ({
+export const MOONBLADE_ITEMS = Object.entries({ sheet: 'Moonlit Longsword', ribbon: 'Moonlit Longsword, hem ribbon', crescent: 'Crescent Moonblade' }).map(([k, name]) => ({
   id: `moon.${k}`, slot: 'weapon', name, dims: SWORD_DIMS, build: (ctx) => buildMoonblade(ctx, SWORD_LOOKS[k]),
 }));

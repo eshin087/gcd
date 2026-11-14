@@ -80,6 +80,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
+| `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (TEMPORARY, until the owner picks one; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
 | `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks |
 | `settings` | `{ quality: 0..2, showFps: bool }`; `applyQuality()` re-applies. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
@@ -555,13 +556,24 @@ the hips at the anchor) and `len[1]` includes the slant.
 The animator (`player/anim.js`) drives: `coat` = 6 panels (`COAT_PANELS`, above), each two spring
 segments (the lower one is two meshes: `coat` above, the lavender torn zone `hem` over its last
 60 %) plus `strips` (12 torn strips, one spring each, kept above the grass; per-panel `BREEZE` /
-`IDLE_FLARE` follow the panel order); `streamers` (two-segment spring sheets: the Shrouded set's
+`IDLE_FLARE` follow the panel order, unless a panel carries its own `breeze?` / `idleFlare?`);
+`streamers` (two-segment spring sheets: the Shrouded set's
 cloak, five sheets on the chest and the upper arms (a narrow cape, ADR-073), `SHROUD_SHEETS` in `gear/shroud.js`, ADR-043;
-or the Wanderer's torn cape, four sheets behind the right shoulder, `CAPE_SHEETS`, ADR-037; each
-record `{ segs, len, out, lag?, max?, w?, arm? }`, `out` = its own outward flare, `lag` = how much
+or the Wanderer's torn cape, four sheets behind the right shoulder, `CAPE_SHEETS`, ADR-037; any
+slot's item may return them (a head ribbon, a sleeve wing, a sash tail); each record
+`{ segs, len, out, lag?, max?, w?, arm?, wrap?, inMax?, floor? }`, `out` = its own outward flare, `lag` = how much
 it trails the motion (default 1 = a light ribbon, the cloak 0.5), `max` = how far it may swing from
 hanging (rad; default 2.6, the cloak 1.45), `w` = its widths [root, seam, hem] (default 0.3 m
-across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest)). **Cloth vs steel**
+across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest), `wrap` = the
+radius the sheet curves round at its root (read by the tests' sheet model, not by the animator),
+`inMax` = [root, tip] how far each segment may swing IN toward its wearer (rad, + = in; negative =
+always at least that far out; default its `max`; not applied lying, ADR-083) so a head ribbon or a
+scarf off the back never swings into the body, `floor` = while he rolls or falls (not lying: there
+`_layFlat` rules) the segments' ends stay `STREAM_FLOOR` (2 cm) over the grass: the target swings to
+the nearest angle that clears it and a lagging spring is eased out toward the least swing that clears
+it, at most `STREAM_PUSH` (6 rad/s, so it never pops) (a head ribbon in the forward roll, where his
+crown meets the grass; default off, today's cloak and every boss's cape go without)).
+**Cloth vs steel**
 (ADR-048): every frame `_colliders` places spheres along the blade (`COL_BLADE`; the arm lists
 `COL_FORE` / `COL_UPPER` are empty: holding the sheets out round the arms widened his back), and
 `_sheetBound` keeps each streamer segment on the side of each sphere it came in from
@@ -607,20 +619,45 @@ and `player.setLoadout(loadout)` swap gear at runtime: the rig is rebuilt under 
 (`object3d` and `position` stay the same objects), the animator is recreated (the pose restarts from
 the ready stance), old geometries and materials are disposed, and the rig's rigid batches
 (`player.batch`, `render/rigidBatch.js`) are disposed and rebuilt, reusing their bone slots; an
-unknown id throws before anything changes. No event is emitted. Limits: the animator, `combat.js` and `fx.js` read the sword's
-numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values; the
-pauldron joint is the right shoulder only. **The sword looks** (for the owner's pick, 2026-11-14;
+unknown id throws before anything changes. No event is emitted. Shared builders (`gear/`):
+`hands.js` `buildFreeHand(ctx, mat = M.skin)` is the free hand every `arms` item that draws hands
+calls (the skin wrist on the forearm, the open hand and the sword fingers on `arms.L.wrist ??
+arms.L.fore`, the grip hand on the `sword` joint; returns `{ offHand, keep }`: every outfit gets the
+sword fingers); `sheet.js` `hangSheet(ctx, parent, d, mats)`
+builds one streamer sheet (or a ribbon) from data and returns its record, `panelSkirt(ctx, PANELS,
+{ seed })` a skirt of coat panels (returns `{ coat }`; a panel's `hemFrom` puts the pale `hem` over
+the end of its lower sheet). `heroGeo.js` `shellGeometry(rings, { arc: [a0, a1] })` builds one arc
+of a shell (rad: 0 = his front, + = his left). `model.js` `tintHero(M, tint)` recolours ONE rig's
+material instances (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, sub?, inkGlow?,
+glowK? } }`), never the shared `U.*`. `player.setLoadout` puts the shared per-part ink
+(`U.uHeroPartInk` / `uHeroPartFill` / `uHeroPartRim`, rewritten by every `buildHero`) back as it was
+after the build, also when the build throws: a boss's own part ink (the Starless Lord's red part 19)
+survives a hero rebuild. **Outfit options** (TEMPORARY, until the owner picks one; the `?lordLook=`
+precedent): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint, of? }` (`shroud`
+"Wanderer (today)" = `DEFAULT_LOADOUT`, no tint, the default; `robe` "Moonlit Robe", `swallow`
+"Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`; each of the
+three also as `<id>-shade`, "<look> (shaded)": the same loadout and tint with the head item's
+`shadowsFace` twin, `of` = the lit look's id, so the owner picks the face from renders), `LOOK_IDS`,
+`DEFAULT_LOOK`, `getLook(id)`, `heroLookFromSearch(search)`, `heroLookUrl(id, href)`. The Player wears
+`game.heroLook` (`player.look`; unknown or absent: the default) and tints its rig with the look's
+`tint`; `player.setLook(id)` wears another one live (its loadout with the equipped weapon kept, through
+`setLoadout`; throws on an unknown id and changes nothing), and every later `setLoadout` keeps the
+look's tint. Nothing in `gear/` imports `looks.js`. Limits: the animator, `combat.js` and `fx.js` read the sword's
+numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values (unless
+a panel overrides it with `idleFlare`); the pauldron joint is the right shoulder only.
+**The sword looks** (for the owner's pick, 2026-11-14;
 `gear/moonblade.js`): weapon items `moon.sheet`, `moon.ribbon`, `moon.crescent` (the longsword's
 `dims` and materials; `wanderer.js` exports `SWORD_DIMS` and `swordHilt(D, opts)`, the longsword's
 own hilt unchanged without options). `gear/index.js` exports `SWORD_PARAM` (today, sheet, ribbon,
 crescent → item id) and `swordFromUrl()`: the Player's constructor wears `?sword=`'s weapon over
-`DEFAULT_LOADOUT` (none, or no `location`: the default sword); the Lab's 'sword' row equips one. A
+the outfit's loadout (none, or no `location`: the outfit's sword); the Lab's 'sword' row equips one. A
 weapon's own streamer (the ribbon) carries `weapon: true`. Temporary: after the pick the winner
 becomes `wanderer.sword` and the switch goes.
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a
 knuckle ridge round the grip, hung on the `sword` joint by the `arms` item so it closes round the
 grip in every pose (with no weapon it is a closed fist); the free hand is `looseHand` on the left
-forearm (palm, four curled fingers, thumb). The skeleton gives the free arm a WRIST:
+forearm (palm, four curled fingers, thumb), built with the sword fingers and the grip hand by
+`gear/hands.js` `buildFreeHand` for every outfit that draws hands. The skeleton gives the free arm a WRIST:
 `rig.arms.L.wrist` (a joint on `arms.L.fore` at y −(`DIM.foreArm` − 0.03)) and `rig.arms.L.point`
 (on the wrist: the sword fingers' tip, `swordTip(BODY.hand, BODY.fingerEx)`; tests, FX). An `arms`
 item may return `offHand: { open, grip, fingers? }` (`rig.offHand`, else null; all three in `keep`):

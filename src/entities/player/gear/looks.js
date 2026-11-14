@@ -1,0 +1,51 @@
+import { DEFAULT_LOADOUT } from './index.js';
+import { MOON_LOADOUT, MOON_SHADED_LOADOUT, MOON_TINT } from './moon.js';
+import { SWALLOW_LOADOUT, SWALLOW_SHADED_LOADOUT, SWALLOW_TINT } from './swallow.js';
+import { WARDEN_LOADOUT, WARDEN_SHADED_LOADOUT, WARDEN_TINT } from './warden.js';
+
+// The hero's OUTFIT OPTIONS, a temporary switch (the ?lordLook= precedent, ADR log): each look is a
+// loadout plus its colours (a tint on the rig's own materials, model.js tintHero). main.js reads
+// `?heroLook=<id>` into `game.heroLook`; the Player wears it, the Lab's OUTFIT row and
+// `game.pickHeroLook(id)` switch it live. Once the owner picks one, this file, the switch and the
+// losing looks go: the pick becomes DEFAULT_LOADOUT (+ its tint). Nothing in gear/ imports this file.
+// Each of the three new looks comes twice: its bare head with the face lit, and the same head with
+// the face in shadow (`<id>-shade`, named "<look> (shaded)": the head item's `shadowsFace` twin; `of`
+// = the lit look's id). At the game camera a lit face under gold hair can read as one gold mask (the
+// owner's "gold face", Session 16), so the owner picks the face from renders, not from text.
+
+export const HERO_LOOKS = Object.freeze({
+  shroud: Object.freeze({ id: 'shroud', name: 'Wanderer (today)', loadout: DEFAULT_LOADOUT, tint: null }),
+  robe: Object.freeze({ id: 'robe', name: 'Moonlit Robe', loadout: MOON_LOADOUT, tint: MOON_TINT }),
+  'robe-shade': Object.freeze({ id: 'robe-shade', name: 'Robe (shaded)', loadout: MOON_SHADED_LOADOUT, tint: MOON_TINT, of: 'robe' }),
+  swallow: Object.freeze({ id: 'swallow', name: 'Swallow', loadout: SWALLOW_LOADOUT, tint: SWALLOW_TINT }),
+  'swallow-shade': Object.freeze({ id: 'swallow-shade', name: 'Swallow (shaded)', loadout: SWALLOW_SHADED_LOADOUT, tint: SWALLOW_TINT, of: 'swallow' }),
+  warden: Object.freeze({ id: 'warden', name: 'Moon Warden', loadout: WARDEN_LOADOUT, tint: WARDEN_TINT }),
+  'warden-shade': Object.freeze({ id: 'warden-shade', name: 'Warden (shaded)', loadout: WARDEN_SHADED_LOADOUT, tint: WARDEN_TINT, of: 'warden' }),
+});
+export const DEFAULT_LOOK = 'shroud';
+export const LOOK_IDS = Object.keys(HERO_LOOKS);
+
+/** The look registered under `id`, or null. */
+export const getLook = (id) => (typeof id === 'string' && Object.hasOwn(HERO_LOOKS, id) ? HERO_LOOKS[id] : null);
+
+/** The look a URL query asks for (`?heroLook=robe`, case-insensitive); the default when absent or unknown. */
+export function heroLookFromSearch(search) {
+  let id = null;
+  try {
+    const q = new URLSearchParams(search ?? '');
+    id = q.get('heroLook') ?? q.get('herolook');
+  } catch {
+    id = null;
+  }
+  const k = typeof id === 'string' ? id.trim().toLowerCase() : '';
+  return getLook(k) ? k : DEFAULT_LOOK;
+}
+
+/** `href` with `?heroLook=<id>` set (removed for the default); other params kept. */
+export function heroLookUrl(id, href) {
+  const u = new URL(href);
+  u.searchParams.delete('herolook');
+  if (id === DEFAULT_LOOK) u.searchParams.delete('heroLook');
+  else u.searchParams.set('heroLook', id);
+  return u.toString();
+}

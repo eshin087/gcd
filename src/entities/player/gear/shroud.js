@@ -1,8 +1,9 @@
 import { ellipsoidGeometry } from '../../../render/glyphGeometry.js';
 import {
   shellGeometry, skirtSheet, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb,
-  gripFist, looseHand, sheetOffset, clumpGeometry, orientTo, swordFingers,
+  gripFist, sheetOffset, clumpGeometry, orientTo,
 } from '../heroGeo.js';
+import { buildFreeHand } from './hands.js';
 
 // The Shrouded set (owner reference 2026-11-11: a hooded swordsman in a huge tattered cloak, seen
 // from behind, the sword low in his right hand, the cloak thrown wide to his left; ADR-043). The
@@ -110,7 +111,7 @@ const HOOD_HAIR = {
   fringe: [[-0.05, 0.225, 0.075, -0.25, -1, 0.55, 0.085, 0.013, 0.25], [-0.018, 0.23, 0.085, -0.08, -1, 0.6, 0.095, 0.014, 0.25], [0.018, 0.23, 0.085, 0.1, -1, 0.6, 0.09, 0.014, 0.25], [0.052, 0.225, 0.075, 0.3, -1, 0.5, 0.08, 0.013, 0.25]],
   sides: [[0.072, 0.2, 0.06, 0.12, -1, 0.15, 0.13, 0.015, 0.2], [0.08, 0.17, 0.035, 0.2, -1, 0.1, 0.12, 0.013, 0.2], [0.088, 0.07, 0.04, 0.35, -1, 0.35, 0.13, 0.014, 0.15]],
 };
-function buildHoodHair(head, M, mesh, H) {
+export function buildHoodHair(head, M, mesh, H) {
   const mass = [], tips = [];
   let k = 0;
   const lock = ([x, y, z, dx, dy, dz, L, w, curl], s) => {
@@ -158,9 +159,10 @@ function buildTunic({ spine, chest, M, BODY, REST, mesh }) {
 /** Cloth sleeves with a rounded shoulder and a soft elbow, forearms bound in leather strips, bare
  *  hands: the sword hand closed round the grip (on the `sword` joint), the free hand loosely
  *  closed. The forearm stops short of the grip so the WRIST reads between the binding and the fist. */
-function buildArms({ arms, sword, M, DIM, BODY, mesh }) {
+function buildArms(ctx) {
+  const { arms, sword, M, DIM, BODY, mesh } = ctx;
   const [ua0, ua1] = BODY.upperArm, [fa0, fa1] = BODY.foreArm, HK = BODY.hand;
-  let open = null, grip = null, fingers = null;
+  let hand = null;
   {
     const F = gripFist(HK);
     mesh(sword, mergeGeometries([F.fingers, F.thumb, F.ridge]), M.skin);
@@ -192,26 +194,13 @@ function buildArms({ arms, sword, M, DIM, BODY, mesh }) {
         ellipsoidGeometry(0.034 * HK, 0.04 * HK, 0.042 * HK, { widthSegs: 10, heightSegs: 6 }).translate(0, -DIM.foreArm + 0.022, 0.004),
       ]), M.skin);
     } else {
-      const H = looseHand(DIM.foreArm - 0.03, side, HK);
-      mesh(fore, limb({ length: 0.05, r0: fa1 - 0.006, r1: fa1 - 0.004, radial: 8, rings: 2, capSegs: 1 }).translate(0, -DIM.foreArm + 0.075, 0), M.skin);
       // the free hand open (hanging, reaching, bracing), and the same hand closed round the grip
-      // below the sword hand (on the sword joint, so it closes round the grip in every pose): the
-      // animator shows one or the other as the hand joins the grip (rig.offHand, anim.js twoHand).
-      // The open hand and the sword fingers (jian jue) hang on the free WRIST, which the animator
-      // turns (looseHand is fore-relative: shifted into wrist space); it shows the fingers by the
-      // pose's hand shape (anim.js hs)
-      const wj = arms.L.wrist ?? fore, wy = arms.L.wrist ? DIM.foreArm - 0.03 : 0;
-      open = mesh(wj, mergeGeometries([H.palm, H.fingers, H.tips, H.thumb]).translate(0, wy, 0), M.skin);
-      const SF = swordFingers(side, HK, BODY.fingerEx ?? 1.3);
-      fingers = mesh(wj, mergeGeometries([SF.palm, SF.fingers, SF.curled, SF.thumb]).translate(0, arms.L.wrist ? 0 : -(DIM.foreArm - 0.03), 0), M.skin);
-      fingers.visible = false;
-      const F = gripFist(HK);
-      grip = mesh(sword, mergeGeometries([F.fingers, F.thumb, F.ridge]).translate(0, 0, -DIM.offGrip), M.skin);
-      grip.visible = false;
+      // below the sword hand: the animator shows one or the other as the hand joins the grip
+      // (rig.offHand, anim.js twoHand). The one free-hand builder every arms item shares (hands.js)
+      hand = buildFreeHand(ctx);
     }
   }
-  // (keep: the three are toggled, so the merge must leave them apart)
-  return { offHand: { open, grip, fingers }, keep: [open, grip, fingers] };
+  return hand;
 }
 
 // ---------------------------------------------------------------- back: the tattered cloak
@@ -277,8 +266,8 @@ function buildCloak({ chest, arms, M, REST, mesh, joint }) {
       m.rotation.y = a;
     }
     // `w` (widths) and `arm` (1 / 2: hung on the right / left upper arm, which then does not push it)
-    // feed the animator's cloth-vs-steel bound
-    streamers.push({ segs: [s0, s1], len: d.len, out: d.out, lag: d.lag ?? SHROUD_LAG, max: SHROUD_MAX, w: d.w, arm: d.on === 'armR' ? 1 : d.on === 'armL' ? 2 : 0 });
+    // feed the animator's cloth-vs-steel bound; `wrap` (the root curve) is for the tests' sheet model
+    streamers.push({ segs: [s0, s1], len: d.len, out: d.out, lag: d.lag ?? SHROUD_LAG, max: SHROUD_MAX, w: d.w, arm: d.on === 'armR' ? 1 : d.on === 'armL' ? 2 : 0, wrap: d.wrap });
   });
   return { streamers };
 }

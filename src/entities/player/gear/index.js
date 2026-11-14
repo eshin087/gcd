@@ -1,7 +1,10 @@
 import { WANDERER_ITEMS } from './wanderer.js';
 import { SHROUD_ITEMS } from './shroud.js';
+import { MOON_ITEMS } from './moon.js';
+import { SWALLOW_ITEMS } from './swallow.js';
+import { WARDEN_ITEMS } from './warden.js';
 import { BASE_ITEMS, BASE_LOADOUT } from './base.js';
-import { MOON_ITEMS, SWORD_PARAM } from './moonblade.js';
+import { MOONBLADE_ITEMS, SWORD_PARAM } from './moonblade.js';
 
 // The hero's equipment, as data. A LOADOUT maps each slot to the id of the item worn there (or
 // nothing); buildHero(U, loadout) in model.js builds the skeleton and the body, then lets each
@@ -29,7 +32,9 @@ export function getItem(id) {
   return typeof id === 'string' && Object.hasOwn(GEAR, id) ? GEAR[id] : null;
 }
 
-for (const item of [...WANDERER_ITEMS, ...SHROUD_ITEMS, ...BASE_ITEMS, ...MOON_ITEMS]) registerItem(item);
+// (the outfit options' items, moon / swallow / warden: gear/looks.js, until the owner picks one; the
+// sword looks: gear/moonblade.js, until the owner picks one)
+for (const item of [...WANDERER_ITEMS, ...SHROUD_ITEMS, ...MOON_ITEMS, ...SWALLOW_ITEMS, ...WARDEN_ITEMS, ...BASE_ITEMS, ...MOONBLADE_ITEMS]) registerItem(item);
 
 /** ?sword= (the owner's pick of the sword looks, gear/moonblade.js): value → weapon item id. */
 export { SWORD_PARAM };

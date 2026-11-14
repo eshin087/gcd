@@ -393,6 +393,29 @@ export function createHeroMaterials(U) {
   return Object.fromEntries(Object.entries(specs).map(([name, s]) => [name, make(name, s.o, s.opts)]));
 }
 
+/**
+ * Recolour ONE rig's materials (`rig.materials`, by HERO_INK name): an outfit's own colours. Only
+ * that rig's material instances change (their per-instance art uniforms), never the shared U.* (the
+ * per-part ink every rig on the page reads). `tint` = { <HERO_INK name>: { fill?: [r, g, b], ink?,
+ * emissive?, spec?: [k, pow], rim?, sub?, inkGlow?, glowK? } }; null / a missing name is skipped.
+ * Build-time: call it once after buildHero (batches share the material objects, so a later tint shows).
+ */
+export function tintHero(M, tint) {
+  if (!M || !tint) return;
+  for (const name in tint) {
+    const t = tint[name], u = M[name]?.uniforms;
+    if (!t || !u) continue;
+    if (t.fill) u.uArtFill?.value.setRGB(t.fill[0], t.fill[1], t.fill[2]);
+    if (t.ink) u.uInk?.value.setRGB(t.ink[0], t.ink[1], t.ink[2]);
+    if (t.emissive) u.uEmissive?.value.setRGB(t.emissive[0], t.emissive[1], t.emissive[2]);
+    if (t.spec && u.uArtSpec) u.uArtSpec.value.set(t.spec[0], t.spec[1]);
+    if (t.rim != null && u.uArtRim) u.uArtRim.value = t.rim;
+    if (t.sub != null && u.uArtSub) u.uArtSub.value = t.sub;
+    if (t.inkGlow != null && u.uInkGlow) u.uInkGlow.value = t.inkGlow;
+    if (t.glowK != null && u.uArtGlowK) u.uArtGlowK.value = t.glowK;
+  }
+}
+
 /** Merge the static meshes hung directly on each joint that share a material AND an owner (one
  *  gear slot, or the body: userData.slot) into one mesh (their own transforms baked in). Meshes of
  *  different slots never merge, so each slot's meshes can be found and replaced on their own
