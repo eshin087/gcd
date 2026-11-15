@@ -214,9 +214,9 @@ export class LordTerrain {
     let tx = pp ? pp.x + fin(p.vel?.x) * T.lead : this.d.position.x + Math.sin(this.d.yaw) * 6;
     let tz = pp ? pp.z + fin(p.vel?.z) * T.lead : this.d.position.z + Math.cos(this.d.yaw) * 6;
     if (this.kind === 'rain' && h.slot > 0) {
-      // (the later ones bracket him: a step to either side of his way)
-      tx += this.d.fx.rand(-1.6, 1.6);
-      tz += this.d.fx.rand(-1.6, 1.6);
+      // (the later ones a little to either side of the aim)
+      tx += this.d.fx.rand(-T.spread, T.spread);
+      tz += this.d.fx.rand(-T.spread, T.spread);
     }
     const dist = Math.hypot(tx - h.px, tz - h.pz);
     const time = clamp(dist / T.per, T.flight[0], T.flight[1]);
