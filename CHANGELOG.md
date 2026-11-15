@@ -4,7 +4,38 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-six pieces of work since 0.4.0:
+Thirty-seven pieces of work since 0.4.0:
+- **The Cinder Wyrm uses the ground** (2026-11-15, ADR-110). *Added:* three moves that take what
+  stands in the clearing. **Uproot and hurl**: it bites into the nearest tree or boulder, tears it
+  out and throws it; the ground glows where it will land and follows you until the throw (red:
+  be out of the glow or roll through it). **Tail bat**: its back to a boulder, one lash of the
+  tail, and the boulder skims the ground at you along a glowing line (blue: parry it and you cut
+  it out of the air, or take it on the guard, step off the line, or stand behind a tree or a
+  standing stone, which stops it). **Firebrand** (from phase 2): a tree in its jaws, lit with a
+  breath and thrown burning; its wreck burns on for 3.4 s and the grass round it catches. The
+  wyrm only does these with a piece in reach, and what it throws is gone until the fight resets.
+  *Dev:* the three are in the Lab's ABILITIES and Training's BOSS MOVES.
+Thirty-eight pieces of work since 0.4.0:
+- **The Starless Lord uses the crater** (2026-11-15, ADR-109). *Added:* three moves on the pieces of
+  his level. **Void Hurl** (every form): a stone that hung in the air, or a shard torn out of the
+  floor, comes to hang beside him and is thrown; the place it lands is ringed in red as it leaves his
+  grip and glints just before. **Glass Rain** (forms 3 and 4): three at once, one after another.
+  **Crown Fall** (forms 2 to 4): when you stand beside something tall, he wrenches it down on you; the
+  strip it falls on is marked. All three are red: be out of the ring or the strip, or roll. Stagger
+  him in the windup and the stone drops. He only does them while there is a piece for them, and every
+  piece stands again when the fight resets. Torn Stone now leaves the floor cracked where it tore.
+  *Dev:* a TERRAIN category in Training for him.
+- **The Obsidian Throne is open** (2026-11-15, ADR-112). *Changed:* the Starless Lord's level is no
+  longer a walled hall. It is the crater where he fell: a round floor of cracked black plates round
+  the red seal, the star itself split open behind his seat, shards of its glass standing in the
+  floor, stones hanging in the air, a broken crown of slabs round the rim (low to the south, tall
+  behind him), and the forest outside thrown flat with every trunk pointing away. There are no
+  walls: nothing tall stands between the camera and the duel, and you can walk out between the
+  slabs (he keeps to the floor, a circle of 13.6 m round the seal). He wakes when you step over the
+  south lip onto the floor. The shards and the rim's slabs can be chipped, broken and felled and are
+  cover; the stones in the air only chip. *Fixed:* a duelist's flurry against a hero at the edge of
+  his floor: its blows came from spots he could not stand on and missed. *Removed:* the hall's walls,
+  door, pillars, braziers, stone wardens and great swords.
 - **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
   which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
   attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory

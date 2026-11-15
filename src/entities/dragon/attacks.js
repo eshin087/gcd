@@ -4,6 +4,7 @@ import { TELL } from '../../combat/rules.js';
 import { clamp, lerp, smoothstep, easeInOutSine, easeOutCubic, easeInCubic, turnToward, angleDiff } from '../../core/math.js';
 import { FIRE } from './fireAttacks.js';
 import { BULLET_HELL } from './bulletAttacks.js';
+import { TERRAIN_MOVES } from './terrainAttacks.js';
 
 /** Wing spread the actions return to (the mantled HALF sails, TUNING.rest). */
 const REST_SPREAD = TUNING.rest.spread;
@@ -2056,6 +2057,7 @@ export const ATTACKS = {
   tail, stomp, breath, fireball, charge, leap, roar, stormFlurry, cinderFlurry,
   ...FIRE, // fireAttacks.js: the short flights and the fire spells (contract 3)
   ...BULLET_HELL, // bulletAttacks.js: the bullet-hell patterns (ADR-039)
+  ...TERRAIN_MOVES, // terrainAttacks.js: it takes a tree or a boulder and uses it (ADR-110)
 };
 
 /** Parryable close-range swings (+ every string, `def.melee`): a parry on the last hit recoils. */

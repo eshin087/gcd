@@ -358,15 +358,21 @@ Render helpers for creature modules:
     times the px-per-metre there, wrapped to one cell).
 - **Landmarks** (`world/landmarks.js`): builders that return painted geometries in world space:
   `buildElderWyrm`, `buildCinderTree` (Cinderwood), `buildSectGate`, `buildCauldron`, `buildColossus`
-  (Ashfall), `buildWarden`, `buildGreatSword` (the Obsidian Throne), all `(rng, x, z, yaw, s, opts?)`.
+  (Ashfall), `buildWarden`, `buildGreatSword` (built for the Obsidian Throne's first hall; not placed
+  since ADR-112), all `(rng, x, z, yaw, s, opts?)`.
   `carved(parts)` converts painted parts to the carved attribute set for a set's `stones` mesh;
+  For the Obsidian Throne's crater (ADR-112): `buildFallenStar(rng, x, z)` (the split star behind the
+  seat and its crown of splinters), `buildSpike(rng, x, y, z, { h, w, d, tip, lean, yaw, roll, col,
+  lump })` (a tapering slab: the rim's plates, the crown), `starCleft(rng, x, z)` (inlay glyphs for
+  the set's glow batch), `facetCol(col, k)` (a `carve()` colour: one tone a facet), `STAR_GLASS`,
+  `STAR_COLLIDERS`. These are built with `carve()` attributes already and need no `carved()`.
   `landmarkPoint(x, z, yaw, s, lx, lz)` maps a builder's local point to the world;
   `ELDER_COLLIDERS` / `GATE_COLLIDERS` are `[lx, lz, r]` lists the set adds. Where they stand:
   `FOREST_LANDMARKS` (`forest.js`), `COURTYARD.greatGate / cauldron / guardians` (`courtyard.js`),
-  inline in `throneHall.js`. Trees and boulders in a landmark's footprint are built, then dropped, so
+  `THRONE.star` (`throneHall.js`). Trees and boulders in a landmark's footprint are built, then dropped, so
   the rest of a level's random layout does not move. Each set uses its own seeded rng for them.
 - `createCarvedGlyphMaterial(U, opts)` (`render/materials.js`) — **carved glyphs, for FLOORS only**
-  since ADR-100 (flagstones, paving, the hall's tiles; upright objects use prop art above). Glyph cells sit on a world-fixed lattice in
+  since ADR-100 (flagstones, paving, the crater's plates; upright objects use prop art above). Glyph cells sit on a world-fixed lattice in
   a plane facing the default camera (`viewPitch`), so they are upright, equal-sized and never
   re-pick as the camera moves; one glyph per cell, picked by light on flat facets, contour strokes on
   mid-lit flanks, world-fixed cracks and moss. Renders directly (alpha `FLAG.NONE`, the grid pass
@@ -652,7 +658,9 @@ counts up in `_guardClash` and is zeroed by a `takeHit` that deals damage (`_str
 marks its reaction `flurry`; as the deflect ends `brain.startStreak()` plays the kit's
 `streakMove(phase)` (default `streakFlurry`), a move with `streak: true` realised with `{ count }`
 (`realise.js`: its first beat, then the others in turn). A beat with `flit: { r }` puts him at
-another side of the hero as it starts (`duelist.flit`) and its hit carries `around: true`. `brain._act`
+another side of the hero as it starts (`duelist.flit`: the side he turns to, or the nearest one that
+is `standable(x, z)`: inside his bound and clear of colliders; the Lord's also on his floor; ADR-112)
+and its hit carries `around: true`. `brain._act`
 reports every blow's result to `duelist.onStreakBlow(a, b, r)` (`a.streak` = { need, got, failed }):
 parried or blocked counts (a perfect parry two) and takes one off `d.streak`; `got >= need` with
 none missed calls `_break()`. Lab / tests: `dragon.debug.streak(n)`, `.flurry(n)`.
@@ -1160,8 +1168,8 @@ hitstop(sec, scale)                     // game.hitstop that won't crush a runni
 reset()                                 // back to sleeping at the nest, full HP/posture, phase 1, FX/lights/hazards cleared
 update(dt)
 debug: {                                // used by the Lab (generic shape every future enemy implements)
-  abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (30: singles, strings, fire
-                                        // attacks, bullet patterns and 'roar', the transition shock ring)
+  abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (33: singles, strings, fire
+                                        // attacks, bullet patterns, terrain moves and 'roar', the transition shock ring)
   trigger(name): boolean,               // force an ability now (wakes/starts the fight if needed); false while busy
   setAI(enabled: boolean), aiEnabled: boolean,
   wake(), startFight(),                 // startFight skips the intro straight into combat (no-op if fighting)
@@ -1296,7 +1304,7 @@ model-left (+X) side. Gait contacts (`rig.gait.limbs`): footL, footR, handL, han
 walk (LH → LF → RH → RF) up to 5 m/s, diagonal trot to 8, bound above.
 Striking-part names for tells (`partPos`): 'snout', 'head', 'mouth', 'claw' (a front paw, `b.wi`),
 'forefeet' (front-paw midpoint; flashes at both paws; 'wrists' is the v0.3 alias), 'wing' (a wing's
-middle knuckle, `b.wi`: the wing buffet), 'tailTip', 'shell', default chest. The stomp's red ground ring is centred between the two forefeet's landing
+middle knuckle, `b.wi`: the wing buffet), 'tailTip', 'shell', 'piece' (the tree or boulder a terrain move holds or has thrown), default chest. The stomp's red ground ring is centred between the two forefeet's landing
 spots (root frame (±1.2, 0, 2.9) model units); the slam presses the paws there (dust + a heavy
 `dragon:step` at each), holds them for 0.3 of the recovery, then plants them and steps home.
 
@@ -1530,6 +1538,39 @@ No pattern spawns from the body or the wings. The wisps are roared from the mout
 initial headings fan out round the head). A P3 Cinder burst may queue an Ember torrent
 (`brain.queued`, `fanVolley.chain`). A string hit may carry `burst: { n, wait, stagger, speed }`
 (`cinderFlurry`'s overhead): embers scattered by its slam, rising out of a puff of flame.
+
+**Terrain moves** (ADR-110; `terrainAttacks.js` `TERRAIN_MOVES`, numbers `tuningTerrain.js`
+`TERRAIN_ATTACKS` + `TERRAIN`, spread into `ATTACKS` like `FIRE`; the same action shape): `hurl`
+(Uproot and hurl), `tailBat`, `fireBrand`. The pieces are the world's ("Destruction" below); the
+wyrm's side is `terrain.js`:
+- `jawsPiece(d, wood, out, any)` → the liftable piece (lift 1) that costs the least to reach (a turn
+  at `TERRAIN.jaws.turn`, a run at `fetchSpeed` to stand `stand` m from it, inside the bound, within
+  `fetchTime`), never one within `clear` m of the hero; `wood` = a tree only. `tailPiece(d, out, any)`
+  → a boulder in the tail's ring whose line to the hero is clear of the body, with the lash's travel
+  pointing the hero's way and the hero out of the lash's arc; it writes which way the pivot turns.
+  `any` (a forced move) relaxes the gates. Each move's `weight` is 0 when its picker finds nothing,
+  so the AI never starts one without a piece; `phases()` picks again, and with nothing at all the
+  action is one `search` phase (no beat, no blow).
+- `dragon.terrain` (`class Terrain`; `dragon.update` calls `terrain.update(dt)` after the bullets,
+  guarded; `reset()` drops a held piece and forgets what flies): `grab(piece, x, y, z)` (the jaws
+  there: `take`), `carry(dt, x, y, z, tilt, yaw)` every frame after the rig (the grip point at the
+  mouth; earth and litter fall from it), `blaze(dt, k)`, `drop()`, `lob(tx, tz, spec, attack, a, b,
+  burning)` → the flight time (`throwTo`; the blow at the hero is dealt in its `onLand`, red, `plunge:
+  false`; a burning piece also bursts, calls `world.ignite` and leaves a pyre: contact ticks like a
+  burning strip, put out by a phase change), `bat(piece, dx, dz, len, hitS, speed, spec, attack, a,
+  b)` (the piece stays HELD and is carried along its line here, so `world.destructibles.stop` can
+  end it at the first cover; it tests the hero as it passes, with the spec's tell, and is let go
+  with a 0.25 s `throwTo` where it ends), `mark(dt, x, z, r, k, hot)` / `lane(...)` (the landing
+  before the throw: `fx.heatDisc` / `heatBand`; in the air the shot draws its own), `stir(dt,
+  piece)`, `piecePos(out)`.
+- A thrown piece carries its action's beat: if the action ends or is cut short after the release,
+  `Terrain` sends the beat's flash (`dragon.flashTell`) `flashLead` before the piece arrives, once.
+  An action cut short BEFORE the release drops the piece and sends no flash.
+- Events: `dragon:spell {name}` at the throw / the kindling / the bat; `dragon:bite` at the bite;
+  `dragon:breathStart` / `dragon:breathEnd` round the kindling; `dragon:explosion` where a firebrand
+  lands; the world's own `world:impact` (`throw`, `crash`).
+- A tree is swung back over the shoulder before the whip (`cock` rad, the owner's pick) and leaves
+  the jaws upright: the world's flight starts every piece upright.
 
 **Melee FX hooks** (`DragonFx`, called by `attacks.js` through optional calls): `clawTrail(wi, toe,
 heavy)` (a claw's burning wake, every active frame of a claw / overhead hit) and `slamBurst(x, z, r)`
@@ -1989,7 +2030,7 @@ its WORLD section (Burn ahead, Fell on me, Blast ahead, Restore) too.
 | who | where | numbers |
 |---|---|---|
 | the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
-| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop; `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall / wheel igniting; `dragon.js` `_collide` (its body fells wood in its way); `bullets.js` (cover) | `TUNING.world` |
+| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop; `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall / wheel igniting; `terrain.js` (a thrown piece: `throwTo`'s blast; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_collide` (its body fells wood in its way); `bullets.js` (cover) | `TUNING.world` |
 | a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
 
 **Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with
@@ -2013,13 +2054,28 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   meshes), `scarInk [r, g, b]` (the colour of cracks in its floor), `ash: true` (atmosphere: falling ash flakes and a
   few embers instead of fireflies, mist and leaves) and `grass: { density(x, z) → 0..1 factor,
   height (×), ash 0..1 }` (world.js thins / shortens / greys the meadow; grass.js `uAsh`).
-  A set may also bring its own night and weather (ADR-070; the throne hall does):
+  A set may also bring its own night and weather (ADR-070; the Obsidian Throne's set does):
   - `sky: { moonColor, moonDir, ambient, fogColor, fogNear, fogFar }` (all optional): world.js writes
     it into the shared uniforms once, right after the set is built.
   - `ambience: { setup(game), update(dt, game), ... }`: atmosphere.js calls `setup` once (lights,
     its own particle batch: `game.pipeline.registerParticles`) and `update` every frame INSTEAD of
-    the fireflies / mist / leaves / ash (the bonfire's flames stay). The throne hall's also has
+    the fireflies / mist / leaves / ash (the bonfire's flames stay). The Obsidian Throne's also has
     `flare(k)`: its floor seal brightens and settles (the boss calls it; optional for callers).
+- **The Obsidian Throne's set** (`world/throneHall.js`: `createThroneHall`, layout `THRONE`; ADR-112;
+  the names are from the hall it replaced). An open crater: a disc of plates `THRONE.R` 15 m round the
+  seal (the origin), the dais from `daisZ`, the seat at `throne`, the fallen star at `star`, the south
+  lip at `entryZ`, the bonfire at `bonfire`. `THRONE.floor = { r, zN }` is where the boss may stand:
+  the level puts `r` into `world.dragonBound` (the duelist's circle; the Lord's `TUNING.bound` is the
+  same number) and `zN` into `world.bossFloor = { zN }` (the dais's line: `StarlessLord.clampTarget`
+  reads it; a level or stage without `bossFloor` has no such line). Its breakables: 'shard' (the
+  star's glass in the floor and on the rim), 'slab' (the rim's tall plates) and 'hover' (six stones
+  hanging in the air: no collider, `cover: false`, `hp: Infinity`: they only chip); all `lift: 2`.
+  A hanging stone's geometry is built ON THE FLOOR and its entry carries `hover` (m): the set's
+  ambience lifts the piece's `body` by it while the piece is INTACT, and whoever takes the stone
+  sets `body.position.y = 0` and carries it from `hover` up (a piece lands where its pivot meets the
+  ground: ADR-109).
+  Three rng streams: the layout (the picked render's sequence: add nothing to it), the rubble broken
+  pieces leave, and anything added later.
 - `text`: `arrive[]`, `stir`, `phase2`, `phase3`, `phase4` (null / absent: no banner), `victory`,
   `fallen`, `restReset`, `again`, `rise` (GameFlow `_text(key)`; Cinderwood's lines when the game has
   no level).
@@ -2184,9 +2240,19 @@ onExecute({ damage })          // the DEATHBLOW: the form ends ('dragon:plunged 
 endBreak()                     // a break nobody answered: posture.spared of the bar back, half the meter
 addPosture(n)                  // × lerp(posture.gainByHp) by the bar's missing fraction (hard to move on a
                                // full bar); regen × posture.regenByHp
-moveBy / clampTarget           // he keeps to the hall's floor: the rectangle TUNING.hall, not a circle
+moveBy / clampTarget(p, pad) / onFloor(x, z)
+                               // he keeps to the crater's floor: his circle round the seal (`bound`:
+                               // TUNING.bound = THRONE.floor.r) and south of the dais
+                               // (CONFIG.world.bossFloor.zN, the level's; absent on the lab stage)
 _glide(dt)                     // in footwork past TUNING.glide.on m/s: the animator's 'glide' clip, the root
                                // lifted TUNING.glide.hover m, a wake under him; a backstep / sidestep likewise
+weigh(name, def, w) / onActStart(A)
+                               // a move marked `terrain` (ADR-109): his AI gives it weight only while the
+                               // crater has a piece for it; it takes its pieces as it starts (false: none)
+terrain                        // LordTerrain (terrain.js): begin(A), onCast(b, s, a), frame(dt), drop(),
+                               // reset(), busy; the pieces held (`held`), the rings where thrown ones land
+                               // (`marks`), Crown Fall's pick (`fall`). Uses world.destructibles: take,
+                               // carry, throwTo (his blow in onLand), drop, topple
 debug.phase4(), debug.setForm(n), debug.form
 ```
 **His gear** (gear.js, ADR-084): `lord.*` items registered into the hero's gear registry: `lord.hood`
