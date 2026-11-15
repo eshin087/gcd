@@ -3,7 +3,7 @@
 // Events) wired like src/main.js for `?level=ash`; the world is a light mock on the real Colliders
 // with the courtyard's ring of pillars. A bot drives the input.
 // usage: node duel.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
-//   scenario: levels | data | timing | guard | clash | trade | deflect | ghostep | execute | phase | flow | win | all
+//   scenario: levels | data | timing | terrain | guard | clash | trade | deflect | ghostep | execute | phase | flow | win | all
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
@@ -18,10 +18,14 @@ const { CameraRig } = await imp('src/core/cameraRig.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
+const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { TELL, RESULT, DEFENSE, POSTURE } = await imp('src/combat/rules.js');
 const { LEVELS, DEFAULT_LEVEL, getLevel, levelFromSearch, applyLevel, levelUrl } = await imp('src/levels/index.js');
-const { COURTYARD } = await imp('src/world/courtyard.js');
+const { COURTYARD, createCourtyard } = await imp('src/world/courtyard.js');
+const { Scars } = await imp('src/world/scars.js');
+const { Destructibles, STATE } = await imp('src/world/destructibles.js');
+const { BREAK } = await imp('src/world/breakTuning.js');
 const { Player } = await imp('src/entities/player/player.js');
 const { AshDisciple } = await imp('src/entities/enemies/ashDisciple/disciple.js');
 const { MOVES, MOVE_NAMES, CLIP, realise } = await imp('src/entities/enemies/ashDisciple/moves.js');
@@ -55,7 +59,12 @@ const CATALOGUE = (() => {
 
 applyLevel(ASH);
 
-function build(seed = SEED) {
+/** `seed`: the AI's (a number), or { seed, real }. `real`: the courtyard's REAL set and its breakables
+ *  (world.destructibles, world.scars, world.impact, world.restore, wired as src/world/world.js does),
+ *  for the moves that use the terrain (ADR-111). Without it the world is the mock the older scenarios
+ *  were written on: no destructibles. */
+function build(opt = SEED) {
+  const seed = typeof opt === 'number' ? opt : opt?.seed ?? SEED, real = typeof opt === 'object' && !!opt?.real;
   resetWindow();
   Math.random = mulberry32(seed);
   ui.children.forEach((c) => (c.parentNode = null));
@@ -89,14 +98,15 @@ function build(seed = SEED) {
   // the courtyard's colliders: the ring of pillars, the gate, the lanterns (world/courtyard.js layout)
   const colliders = new Colliders();
   const P = COURTYARD.pillarAt;
-  for (let k = -3; k <= 3; k++) {
+  const set = real ? createCourtyard(U, colliders) : null;
+  for (let k = -3; k <= 3 && !set; k++) {
     const t = k * 5.2;
     colliders.add(t, -P, 0.62, 'stone');
     colliders.add(-P, t, 0.62, 'stone');
     colliders.add(P, t, 0.62, 'stone');
     if (Math.abs(t) > 5) colliders.add(t, P, 0.62, 'stone');
   }
-  for (const s of [-1, 1]) colliders.add(s * COURTYARD.gateX, COURTYARD.gateZ, 0.7, 'stone');
+  if (!set) for (const s of [-1, 1]) colliders.add(s * COURTYARD.gateX, COURTYARD.gateZ, 0.7, 'stone');
   const counters = { spawns: 0 };
   const world = {
     colliders, bonfire: { ...CONFIG.world.bonfire }, nest: { x: 0, z: -3 },
@@ -117,11 +127,22 @@ function build(seed = SEED) {
     };
     return p;
   };
+  // the fire field (render/fireField.js): the same NaN guard and spawn count as the glyph pools
+  const mkFire = () => {
+    const p = new FireField(U, { max: 6000 });
+    const spawn = p.spawn.bind(p);
+    p.spawn = (o) => {
+      for (const k of ['x', 'y', 'z', 'vx', 'vy', 'vz', 'life', 'size', 'sizeEnd', 'heat', 'heatEnd']) if (o[k] !== undefined && !Number.isFinite(o[k])) throw new Error(`NaN fire blob ${k}`);
+      counters.spawns++;
+      return spawn(o);
+    };
+    return p;
+  };
   const game = {
     THREE, CONFIG, level: ASH, levels: LEVELS.map((L) => ({ id: L.id, name: L.name })), pickLevel() {},
     renderer: null, scene, fxScene: new THREE.Scene(), camera, pipeline: { finalMat: { uniforms: { uHurt: { value: 0 }, uFade: { value: 0 }, uDesat: { value: 0 }, uWarm: { value: 0 }, uExposure: { value: 1 }, uBloom: { value: 1 } } } }, U,
     events: new Events(), input, cameraRig: new CameraRig(camera), lights: new LightPool(U),
-    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }) },
+    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }), fire: mkFire() },
     time: 0, realTime: 0, timeScale: 1, debugTimeScale: 1, hitstopTimer: 0, hitstopScale: 1,
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
@@ -139,6 +160,13 @@ function build(seed = SEED) {
     emit(n, d);
   };
   game.world = world;
+  if (set) {
+    world.scars = new Scars(game, set.scarInk);
+    world.destructibles = new Destructibles(game, world, set);
+    world.impact = (x, z, r, power, o) => world.destructibles.strike(x, z, r, power, o ?? { kind: 'blunt', by: 'world' });
+    world.restore = () => { world.scars.reset(); world.destructibles.reset(); };
+    world.update = (dt) => { world.destructibles.update(dt); world.scars.update(dt, game.time); };
+  }
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
   game.dragon = ASH.createBoss(game);
@@ -169,10 +197,12 @@ function build(seed = SEED) {
     game.flow.update(dt, realDt);
     game.player.update(dt);
     game.dragon.update(dt);
+    game.world.update(dt);
     game.cameraRig.update(realDt, game.player.position);
     game.lights.update(dt, game.player.position);
     game.fx.alpha.update(dt, game.time);
     game.fx.add.update(dt, game.time);
+    game.fx.fire.update(dt);
     game.hud.update(realDt);
     game.audio.update(realDt);
     game.input.endFrame();
@@ -335,7 +365,7 @@ async function scenarioData() {
         if (!A.beats.every((b) => b.feint ? !b.def.tell : true)) assert(false, `${tag}: feints carry no tell`);
         if (!(A.end > A.recoveryStart && A.clip.dur === A.end)) assert(false, `${tag}: clip spans the move`);
         for (const tr of A.clip.tracks) for (const v of tr.V) for (const x of [].concat(v)) if (!Number.isFinite(x)) assert(false, `${tag}: NaN key in ${tr.f}`);
-        for (const b of real) if (!b.def.release && !b.def.zone) assert(false, `${tag}: hit ${b.hit} has a zone`);
+        for (const b of real) if (!b.def.release && !b.def.cast && !b.def.zone) assert(false, `${tag}: hit ${b.hit} has a zone`);
         checked++;
       }
     }
@@ -368,6 +398,7 @@ async function scenarioTiming() {
   for (const name of MOVE_NAMES) {
     const def = MOVES[name];
     if (def.transition || def.counter) continue;
+    if (def.terrain) continue; // (a move of the courtyard needs its pieces: scenario TERRAIN, on the real set)
     if (def.phase > d.phase) {
       d.debug.phase2();
       run(G, 3.5, null, () => d.mode === 'foot');
@@ -1061,7 +1092,7 @@ async function scenarioStreak() {
 // (src/dev/training.js): each must play out (done, within its time) and show what it promises.
 async function scenarioTraining() {
   out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
-  const G = build();
+  const G = build({ real: true }); // (the real courtyard: the TERRAIN situations need its pieces)
   const { game } = G;
   duel(G, { dist: 4 });
   const T = game.lab.training;
@@ -1766,6 +1797,241 @@ async function scenarioCutFx() {
   return G;
 }
 
+// ================================================================== scenario: terrain (ADR-111)
+// The moves that use the courtyard, on the REAL set (build({ real: true })): each one's tell and
+// timing, the piece it uses and where that ends, that the hero is hit only where it is marked and has
+// the answer the tell promises, that none is chosen without a piece in reach, and that the fight's
+// reset puts every piece back.
+async function scenarioTerrain() {
+  out('\n== scenario TERRAIN (Severed Pillar, Flying Lantern, Three Tolls, Swallow\'s Return on the real courtyard) ==');
+  const G = build({ real: true });
+  const { game, input } = G;
+  duel(G, { dist: 4 });
+  const d = game.dragon, p = game.player, W = game.world.destructibles, TT = TUNING.terrain;
+  p.debug.god = true;
+  const piece = (kind, x, z) => W.list.filter((b) => b.kind === kind).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
+  /** Everything stands, he is free at (bx, bz), the hero at (hx, hz). */
+  const stage = (bx, bz, hx, hz) => {
+    game.world.restore();
+    d.debug.reset();
+    game.flow.debug.toState('boss');
+    d.debug.setAI(false);
+    run(G, 0.4);
+    settle(G);
+    d.position.set(bx, 0, bz);
+    d.yaw = Math.atan2(hx - bx, hz - bz);
+    p.debug.teleport(hx, hz);
+    p.yaw = Math.atan2(bx - hx, bz - hz);
+    p.debug.heal();
+    p.debug.god = true;
+    input.axis = { x: 0, y: 0 };
+    game.mouseGround.set(bx, 0, bz);
+    run(G, 0.1);
+  };
+  const weight = (name) => d.weigh(name, MOVES[name], 1, Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z));
+  /** Run move `name` to its end; returns what happened. `step(GG, ev)`: per frame, the hero's side. */
+  const play = (name, step = null, max = 9) => {
+    const ev = { tells: [], flashes: [], worldTells: [], worldFlashes: [], impacts: [], t0: game.time, top: 0, far: 0, ok: false };
+    G.watch = (n, e) => {
+      if (n === 'combat:tell') (e?.source === 'world' ? ev.worldTells : e?.attack === name ? ev.tells : []).push({ t: game.time, tell: e.tell, x: e.x, z: e.z });
+      if (n === 'combat:flash') (e?.source === 'world' ? ev.worldFlashes : e?.attack === name ? ev.flashes : []).push({ t: game.time, tell: e.tell, x: e.x, z: e.z });
+      if (n === 'world:impact') ev.impacts.push({ t: game.time, kind: e.kind, mat: e.mat, by: e.by, id: e.id });
+    };
+    const h0 = G.hits.length;
+    ev.ok = d.debug.trigger(name);
+    run(G, max, (GG) => {
+      ev.top = Math.max(ev.top, d.position.y);
+      ev.far = Math.max(ev.far, Math.hypot(d.position.x, d.position.z));
+      step?.(GG, ev);
+    }, () => d.mode === 'foot' && !d.terrain.busy && !W.active.some((b) => b.state === STATE.FALLING || b.state === STATE.FLYING));
+    G.watch = null;
+    ev.hits = G.hits.slice(h0);
+    return ev;
+  };
+  /** Each contact of `attack` against the nearest flash before it: the worst error (s) from flash + lead. */
+  const worst = (ev, attack, flashes = ev.flashes) => ev.hits.filter((h) => h.attack === attack).reduce((m, h) => {
+    const f = flashes.filter((x) => x.t <= h.t + 1e-6).pop();
+    return Math.max(m, f ? Math.abs(h.t - (f.t + TUNING.flashLead)) : Infinity);
+  }, 0);
+  const ms = (v) => (Number.isFinite(v) ? (v * 1000).toFixed(0) : '∞');
+  const parryOn = (ev, GG) => {
+    // the hero's side: a parry 0.12 s before each cued impact
+    for (const f of ev.flashes) if (!f.used && game.time >= f.t + TUNING.flashLead - 0.12 - DT) { f.used = true; GG.input.up(2); GG.input.click(2); }
+  };
+  const N0 = W.list.length;
+  assert(N0 >= 60 && W.standing === N0, `the real courtyard: ${N0} breakables, all standing`);
+  assert(['pillarFall', 'lanternKick', 'bellToll', 'swallowReturn'].every((n) => MOVES[n]?.terrain && d.debug.abilities().some((a) => a.name === n)), 'the four moves are in his abilities (the Lab, Training\'s BOSS MOVES)');
+
+  // ---------------------------------------------------------------- Severed Pillar
+  const west = piece('pillar', -15.6, 0);
+  stage(-6, 2, west.x + 3.2, west.z);
+  assert(west.topples && west.h > 4 && weight('pillarFall') > 0 && d.terrain.pick.fell === west, `Severed Pillar: the hero 3.2 m inside the west pillar (h ${west.h.toFixed(1)} m): his AI may pick it, for that pillar`);
+  let ev = play('pillarFall');
+  const back = Math.hypot(d.position.x - west.x, d.position.z - west.z);
+  assert(ev.ok && ev.tells.length === 1 && ev.tells[0].tell === TELL.NORMAL && ev.flashes.length === 1, `it tells white once and glints once (${ev.tells.length} tell, ${ev.flashes.length} flash)`);
+  assert(west.state === STATE.BROKEN && ev.impacts.some((e) => e.kind === 'topple' && e.id === west.id && e.by === 'boss') && ev.impacts.some((e) => e.kind === 'crash' && e.id === west.id), 'the pillar he cut fell (world:impact topple by the boss, then crash)');
+  assert(ev.far > west.x * -1 + 0.6 && ev.far < d.baseBound + TT.edge + 2, `he went behind it, ${(ev.far - d.baseBound).toFixed(1)} m past his bound (the bound stretches for the move)`);
+  assert(ev.worldTells.length === 1 && ev.worldTells[0].tell === TELL.RED && ev.worldFlashes.length === 1, 'the falling pillar tells red and flashes once (the world\'s: source world, hazard)');
+  let fall = ev.hits.filter((h) => h.attack === 'fallingDebris');
+  assert(fall.length === 1 && fall[0].tell === TELL.RED && fall[0].r === RESULT.HIT && Math.abs(fall[0].t - ev.worldFlashes[0].t - 0.3) < 0.06, `a hero who stays under it takes its one red blow, ${ms(fall[0]?.t - ev.worldFlashes[0]?.t)} ms after its flash`);
+  assert(ev.worldTells[0].t - ev.tells[0].t >= 0.55 && fall[0].t - ev.worldTells[0].t >= 0.7, `the cut lands ${(ev.worldTells[0].t - ev.tells[0].t).toFixed(2)} s after his tell, the pillar ${(fall[0].t - ev.worldTells[0].t).toFixed(2)} s after it starts to go (time to be gone)`);
+  assert(!ev.hits.some((h) => h.attack === 'pillarFall'), 'his cut itself does not reach a hero 3 m from the pillar');
+  // out of the strip: nothing
+  stage(-6, 2, west.x + 3.2, west.z);
+  ev = play('pillarFall', (GG, e) => {
+    if (e.worldTells.length && !e.moved) { e.moved = true; p.debug.teleport(p.position.x, p.position.z + 3.2); }
+  });
+  assert(west.state === STATE.BROKEN && !ev.hits.some((h) => h.r === RESULT.HIT), 'a hero who steps 3.2 m out of the marked strip is not hit');
+  // a roll through it (the red answer)
+  stage(-6, 2, west.x + 3.2, west.z);
+  ev = play('pillarFall', (GG, e) => {
+    if (e.worldFlashes.length && !e.rolled && game.time >= e.worldFlashes[0].t + 0.3 - 0.12) { e.rolled = true; p.debug.god = false; GG.input.axis = { x: 0, y: 1 }; GG.input.tap('Space'); }
+  });
+  input.axis = { x: 0, y: 0 };
+  assert(!ev.hits.some((h) => h.r === RESULT.HIT) && p.hp === p.maxHp, `a roll as it lands goes through it (${ev.hits.map((h) => h.r).join(', ') || 'no contact'})`);
+  // the cut is his: a hero hugging the pillar is in it, cued as any blow
+  stage(-6, 2, west.x + 1.15, west.z);
+  ev = play('pillarFall');
+  assert(ev.hits.some((h) => h.attack === 'pillarFall' && h.tell === TELL.NORMAL) && worst(ev, 'pillarFall') <= 0.085, `a hero who hugs the pillar is in the cut: its contact ${ms(worst(ev, 'pillarFall'))} ms off its flash + ${TUNING.flashLead} s`);
+  // back inside once it is over
+  for (const n of MOVE_NAMES) if (MOVES[n].terrain) d.brain.cooldowns[n] = 99; // (no second trip out)
+  p.debug.teleport(-6, 0);
+  d.debug.setAI(true);
+  run(G, 3.5);
+  d.debug.setAI(false);
+  settle(G);
+  assert(Math.hypot(d.position.x, d.position.z) <= d.baseBound + 0.15 && d.terrain.slack < 0.2, `afterwards he is back inside his bound (${Math.hypot(d.position.x, d.position.z).toFixed(1)} of ${d.baseBound} m)`);
+  // not chosen: the hero in the middle of the courtyard, under no pillar
+  stage(-6, 2, 0, 3);
+  assert(weight('pillarFall') === 0, 'with the hero in the middle of the courtyard (under no pillar) it is not chosen');
+
+  // ---------------------------------------------------------------- Flying Lantern
+  const lan = piece('lantern', 12.3, 12.3);
+  stage(8, 8, 0, 0);
+  assert(weight('lanternKick') > 0 && d.terrain.pick.kick === lan, 'Flying Lantern: 6 m from a stone lantern, the hero 17 m from it: his AI may pick it, for that lantern');
+  ev = play('lanternKick');
+  let hit = ev.hits.filter((h) => h.attack === 'lanternKick');
+  assert(ev.ok && ev.tells.length === 1 && ev.tells[0].tell === TELL.BLUE && ev.flashes.length === 1 && ev.flashes[0].tell === TELL.BLUE, 'it tells blue and glints once, on the flying lantern');
+  assert(lan.state === STATE.GONE && ev.impacts.some((e) => e.kind === 'throw' && e.id === lan.id) && ev.impacts.some((e) => e.kind === 'crash' && e.id === lan.id), 'the lantern left the ground, flew and burst (world:impact throw, then crash)');
+  assert(Math.hypot(lan.tx, lan.tz) < 0.4, `it came down where the hero stood (${Math.hypot(lan.tx, lan.tz).toFixed(2)} m off)`);
+  assert(hit.length === 1 && hit[0].r === RESULT.HIT && worst(ev, 'lanternKick') <= 0.085 && hit[0].t - ev.tells[0].t >= 1.0, `it strikes him once, ${ms(worst(ev, 'lanternKick'))} ms off its flash + ${TUNING.flashLead} s, ${(hit[0]?.t - ev.tells[0]?.t).toFixed(2)} s after the tell`);
+  // blue: a parry bursts it on the blade
+  stage(8, 8, 0, 0);
+  const post0 = d.posture;
+  ev = play('lanternKick', (GG, e) => parryOn(e, GG));
+  hit = ev.hits.filter((h) => h.attack === 'lanternKick');
+  assert(hit.length === 1 && hit[0].r === RESULT.PARRIED && d.posture >= post0 + TT.kick.parryPosture - 12, `parried, it bursts on the blade (result ${hit[0]?.r}); his posture takes the parry`);
+  // gone from under it: nothing
+  stage(8, 8, 0, 0);
+  ev = play('lanternKick', (GG, e) => {
+    if (e.flashes.length && !e.moved) { e.moved = true; p.debug.teleport(3.2, -3.2); }
+  });
+  assert(lan.state === STATE.GONE && !ev.hits.some((h) => h.attack === 'lanternKick'), 'a hero 4.5 m from where it lands is not hit');
+  // not chosen: nothing to kick in reach
+  stage(0, -1, 0, 5);
+  assert(weight('lanternKick') === 0, 'in the middle of the courtyard (no lantern or stump within 13 m) it is not chosen');
+
+  // ---------------------------------------------------------------- Three Tolls
+  const bell = piece('bell', -9, -10);
+  stage(-4, -5, 4, 4);
+  assert(weight('bellToll') > 0 && d.terrain.pick.toll === bell, 'Three Tolls: 7 m from the bell, the hero 20 m from it: his AI may pick it');
+  ev = play('bellToll');
+  hit = ev.hits.filter((h) => h.attack === 'bellToll');
+  assert(ev.ok && ev.tells.map((t) => t.tell).join() === [TELL.NORMAL, TELL.NORMAL, TELL.BLUE].join() && ev.flashes.length === 3, `three blows: white, white, blue; three glints (${ev.flashes.length})`);
+  assert(ev.impacts.filter((e) => e.kind === 'chip' && e.mat === 'metal' && e.id === bell.id).length === 3 && bell.state === STATE.INTACT, 'each blow rings the bronze (world:impact chip, metal); the bell stands');
+  assert(hit.length === 3 && hit.every((h) => h.r === RESULT.HIT) && worst(ev, 'bellToll') <= 0.085, `each ring strikes a hero who stands in its way once: 3 contacts, worst ${ms(worst(ev, 'bellToll'))} ms off its flash + ${TUNING.flashLead} s`);
+  assert(hit[1].t - hit[0].t >= TUNING.minHitGap && hit[2].t - hit[1].t >= TUNING.minHitGap, `the rings arrive ${(hit[1].t - hit[0].t).toFixed(2)} and ${(hit[2].t - hit[1].t).toFixed(2)} s apart (>= ${TUNING.minHitGap})`);
+  assert(Math.hypot(d.position.x - bell.x, d.position.z - bell.z) < bell.r + 1.4, 'he stood at the bell');
+  // parried in rhythm
+  stage(-4, -5, 4, 4);
+  ev = play('bellToll', (GG, e) => parryOn(e, GG));
+  hit = ev.hits.filter((h) => h.attack === 'bellToll');
+  assert(hit.length === 3 && hit.every((h) => h.r === RESULT.PARRIED), `parried in rhythm, all three are turned (${hit.map((h) => h.r).join(', ')})`);
+  // rolled through
+  stage(-4, -5, 4, 4);
+  ev = play('bellToll', (GG, e) => {
+    // (across the rings' way: a roll toward the bell would meet the next one sooner than a roll can follow a roll)
+    for (const f of e.flashes) if (!f.used && game.time >= f.t + TUNING.flashLead - 0.14) { f.used = true; p.debug.god = false; GG.input.axis = { x: 0.74, y: 0.67 }; GG.input.tap('Space'); }
+  });
+  input.axis = { x: 0, y: 0 };
+  hit = ev.hits.filter((h) => h.attack === 'bellToll');
+  assert(hit.length === 3 && !hit.some((h) => h.r === RESULT.HIT) && p.hp === p.maxHp, `a roll as each ring arrives goes through it (${hit.map((h) => h.r).join(', ')})`);
+  // at the bell: the rings are born past him
+  stage(-4, -5, bell.x + 2.6, bell.z + 2.2);
+  ev = play('bellToll');
+  assert(!ev.hits.some((h) => h.attack === 'bellToll'), 'a hero who stands at the bell is inside the rings: none strikes him (his way in)');
+  // not chosen
+  stage(-4, -5, 14, 16);
+  assert(weight('bellToll') === 0, `with the hero ${Math.hypot(14 - bell.x, 16 - bell.z).toFixed(0)} m from the bell it is not chosen`);
+  stage(9, 9, 6, 6);
+  assert(weight('bellToll') === 0, 'with him across the courtyard from the bell it is not chosen');
+
+  // ---------------------------------------------------------------- Swallow's Return
+  stage(-10.5, 0, -7.5, 0);
+  const hp0 = west.hp;
+  assert(west.state === STATE.INTACT && weight('swallowReturn') > 0 && d.terrain.pick.spring === west, 'Swallow\'s Return: the west pillar 5 m behind him: his AI may pick it, for that pillar');
+  d.posture = d.maxPosture * 0.5;
+  const wPressed = weight('swallowReturn');
+  d.posture = 0;
+  assert(Math.abs(wPressed - TT.spring.pressed) < 1e-6, `pressed (his posture half full) he wants it ${TT.spring.pressed} times as much`);
+  let perch = Infinity;
+  ev = play('swallowReturn', () => { if (d.position.y > 1.5) perch = Math.min(perch, Math.hypot(d.position.x - west.x, d.position.z - west.z)); });
+  hit = ev.hits.filter((h) => h.attack === 'swallowReturn');
+  assert(ev.ok && ev.tells.length === 1 && ev.tells[0].tell === TELL.BLUE && ev.flashes.length === 1, 'it tells blue and glints once');
+  assert(ev.top >= 1.8 && perch < 1.0 && west.hp < hp0 && ev.impacts.some((e) => e.kind === 'chip' && e.id === west.id && e.by === 'boss'), `he was ${ev.top.toFixed(1)} m up, on the pillar (${perch.toFixed(2)} m from its centre), and his feet chipped it`);
+  assert(hit.length === 1 && hit[0].r === RESULT.HIT && worst(ev, 'swallowReturn') <= 0.085, `the diving cut lands ${ms(worst(ev, 'swallowReturn'))} ms off its flash + ${TUNING.flashLead} s`);
+  assert(d.position.y === 0 && Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z) < 3.4, 'he ends on the ground, in reach of the hero');
+  // parried
+  stage(-10.5, 0, -7.5, 0);
+  ev = play('swallowReturn', (GG, e) => parryOn(e, GG));
+  hit = ev.hits.filter((h) => h.attack === 'swallowReturn');
+  assert(hit.length === 1 && hit[0].r === RESULT.PARRIED, 'parried, the dive is turned (he recoils, or the blades lock)');
+  // rolled aside after the dive is committed: it misses
+  stage(-10.5, 0, -7.5, 0);
+  ev = play('swallowReturn', (GG, e) => {
+    if (e.flashes.length && !e.moved && game.time >= e.flashes[0].t + 0.2) { e.moved = true; p.debug.teleport(p.position.x, p.position.z + 4.5); }
+  });
+  assert(!ev.hits.some((h) => h.attack === 'swallowReturn'), 'a hero gone 4.5 m aside once the dive is committed is not hit');
+  // not chosen
+  stage(0, 0, 0, 3);
+  assert(weight('swallowReturn') === 0, 'in the middle of the courtyard (no tall pillar within 10.5 m) it is not chosen');
+  stage(-10.5, 0, -13.5, 0);
+  assert(d.terrain.find('spring') !== west, 'a pillar on the hero\'s side of him is not his way out');
+
+  // ---------------------------------------------------------------- the reset; a world without pieces
+  stage(8, 8, 0, 0);
+  play('lanternKick');
+  stage(-6, 2, west.x + 3.2, west.z);
+  d.debug.trigger('pillarFall');
+  run(G, 0.9);
+  assert(W.standing < N0, `before the reset: ${N0 - W.standing} pieces down or going`);
+  game.world.restore();
+  d.debug.reset();
+  assert(W.standing === N0 && W.list.every((b) => b.state === STATE.INTACT && b.hp === b.hpMax && b.body.visible) && W.active.length === 0, 'the fight\'s reset puts every piece back');
+  assert(!d.terrain.busy && d.terrain.slack === 0 && !d.terrain.cur.act && d.bound === d.baseBound, 'and nothing of his is left in the air; his bound is the level\'s');
+  const M = build();
+  duel(M, { dist: 4 });
+  const dm = M.game.dragon;
+  assert(['pillarFall', 'lanternKick', 'bellToll', 'swallowReturn'].every((n) => dm.weigh(n, MOVES[n], 1, 4) === 0 && dm.debug.trigger(n) === false) && dm.mode === 'foot', 'in a world without pieces (the other scenarios\' mock) none is chosen and none starts');
+
+  // ---------------------------------------------------------------- a duel on the real set: they come up, they do not crowd out his strings
+  const F = build({ real: true });
+  duel(F, { dist: 4, ai: true });
+  F.defend = makeDefender(F);
+  const used = {};
+  let moves = 0;
+  F.watch = (n, e) => { if (n === 'dragon:windup' && e?.name) { moves++; if (MOVES[e.name]?.terrain) used[e.name] = (used[e.name] || 0) + 1; } };
+  const fd = F.game.dragon, fp = F.game.player;
+  fp.debug.god = true;
+  run(F, 150, (GG) => { fd.hp = Math.max(fd.hp, fd.maxHp * 0.6); fencer(GG); }, () => fd.state === 'dead');
+  F.watch = null;
+  const nT = Object.values(used).reduce((a, b) => a + b, 0);
+  out(`     150 s against the fencing bot: ${moves} moves, ${nT} of the courtyard ${JSON.stringify(used)}; ${F.game.world.destructibles.list.length - F.game.world.destructibles.standing} pieces down`);
+  assert(nT >= 2 && nT <= moves * 0.3, `they come up in a duel (${nT}) without crowding out his strings (${((nT / Math.max(1, moves)) * 100).toFixed(0)} % of ${moves} moves, <= 30 %)`);
+  assert(!F.payload.size, `no non-finite payload in his events (${[...F.payload].join(', ')})`);
+  return G;
+}
+
 // ================================================================== scenario: probe (opt-in)
 /** A mortal fencer that reads only a share of the tells (ABYSS_SKILL, default 0.85). Not a pass /
  *  fail check: it measures how dangerous he is. node duel.mjs . probe */
@@ -1985,7 +2251,7 @@ async function scenarioStrategy() {
   return last;
 }
 
-const SCENARIOS = { strategy: scenarioStrategy, probe: scenarioProbe, perfect: scenarioPerfect, telemetry: scenarioTelemetry, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
+const SCENARIOS = { strategy: scenarioStrategy, terrain: scenarioTerrain, probe: scenarioProbe, perfect: scenarioPerfect, telemetry: scenarioTelemetry, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

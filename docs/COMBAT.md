@@ -153,10 +153,10 @@ or a cut of your own gets it knocked open, and a parry or a hit between them res
 ```
        windup start (combat:tell)            timing cue (combat:flash), 0.35 s before impact
 red    body glows red, 0.1 ramping to 0.38   body spike 1.6, gone in 0.25 s
-       the ground heats up (AoE attacks)     red glyph burst + red light at the part
+       the ground heats up (AoE attacks)     a ragged red blaze + red light at the part
        audio: low brass sting                red screen-edge flash, ~0.25 s
-normal animation only (faint audio tick)     white glint + bright ting
-blue   animation only (blade 'shing')        white glint x1.5 (size, brightness)
+normal animation only (faint audio tick)     a white cross on the letter grid + bright ting
+blue   animation only (blade 'shing')        a white eight-point star 1.6x as big, with a ring
 hazard the ground heats up from its spawn     its edge shows, the heat flares, a warm light
        audio: a lighter hazard cue           no screen-edge flash
 ```
@@ -169,10 +169,19 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   attacker's side) — nothing during the windup. Numbers: `TELL_STYLE.red.warn` in `rules.js`. In a
   string every hit is its own beat: a red hit glows through its own windup only.
 - **Parryable (`normal`, `blue`) — the animation is the tell.** No colour coding during the windup
-  (audio: a faint tick, or a blade "shing" for `blue`). On the cue a brief **white glint** (star
-  core, four-point sparkle, a few short rays, a small white light) pops at the striking part with a
-  short bright "ting". `blue` (heavy, big-posture) gets a ~1.5× larger, brighter glint
-  (`TELL_STYLE.blue.glint`) and a richer ting — still white, never blue.
+  (audio: a faint tick, or a blade "shing" for `blue`). On the cue a brief **white cross** pops at
+  the striking part with a short bright "ting": one row of `-` (13 cells) through one column of `|`
+  (7 cells), white-hot digits where they meet, written on the letter grid (0.2 s; it opens at full
+  size on the cue frame and draws back into its heart). `blue` (heavy, big-posture) gets the same
+  cross 1.6x as big (21 x 11 cells) with diagonals, an **eight-point star**, and a thin ring of
+  strokes opening round it (0.28 s), and a richer ting — still white, never blue.
+- **One design for every boss (ADR-113).** The three cues are drawn by `DuelFx.tellFlash(tell, x, y,
+  z, k)` in the fire field (data: `TELL_GLINT`, `TELL_BLAZE` in `enemies/duelist/fx.js`); the wyrm
+  draws its own through the same code at 1.5x. The red cue is a ragged blaze of red letters thrown
+  out of the part (12 rays, no straight line in it: it must never be mistaken for the white cross),
+  with red sparks and a red light. A duelist's dodge-only AREA is a burning ring of red letters on
+  the floor through the windup, with an inner ring closing in; the wyrm's areas heat the ground as
+  before (ADR-052).
 - **Hazards warn on the ground, diegetically (ADR-052).** The ground they will hit heats up: a
   sparse fill of small ground glyphs and the scorch map's heat, dark ember at spawn, orange by
   half way, white-orange at impact, sparks rising near the end; a thin bright rim marks the exact
@@ -610,6 +619,28 @@ deflected, its last recoils him). His own:
   transition is **the Kindling**: he kneels, the blade kindles, a red shock ring (r 6 m, 10 damage,
   kb 6) at 1.75 s. Windups × [1, 0.92], recoveries × [0.9, 0.8]; four moves join in P2.
 
+### He uses the courtyard (2026-11-15, ADR-111)
+Four moves on the pieces of the set (*The world breaks*, below). His AI picks one only while a piece
+for it is in reach; with none, the move is simply not there. Each piece is spent for the fight (the
+bell aside), so they thin out as the duel goes on; the reset puts every piece back. To reach a piece
+he may leave his bound (12.5 m) by up to 9.5 m for the length of the move; after it the bound draws
+him back in at 5 m/s. Numbers: `ashDisciple/tuning.js` `TUNING.terrain`; code: `ashDisciple/terrain.js`.
+
+| Move | Tell | What happens | What it asks |
+|---|---|---|---|
+| **Severed Pillar** | white (his cut), then **red** (the pillar, the world's) | He crosses to behind the standing piece you are under (a pillar or the stele, 2.3 m or taller, you within its height + 0.5 m, he within 14 m of it) and cuts it through: windup 0.66 s, glint 0.3 s before the cut. It falls on you in 0.7 – 1.0 s (0.95 s for a 4.5 m pillar): the strip is marked from the moment it goes, its flash comes 0.3 s before it lands, 22 x its weight, unblockable, knocked down. | Be out of the strip (a walk does it), or roll as it lands. His cut (18) only reaches a hero who hugs the pillar: parry it. |
+| **Flying Lantern** | **blue**, cued on the piece | He is at a stone lantern, or a pillar's stump 0.9 – 2.3 m tall (within 13 m of him, you 4.5 – 26 m from it), and kicks it at where you will be 0.2 s on: windup 0.64 s, 0.62 – 0.95 s in the air. A ring of pale motes shows where it comes down; the glint pops on the piece 0.3 s before it lands. 22, knockback 2.4, within 1.5 m of the landing. | Parry on the glint: it bursts on the blade and costs him 14 posture. Or leave the ring. |
+| **Three Tolls** | white, white, **blue**, each cued on its ring | He leaps to the fallen bell (within 15 m of him, you within 23 m of it) and strikes it three times, 0.6 – 0.7 s apart. Each blow sends a ring of sound out at 12 m/s (it dies 26 m out); its glint pops on the ring 0.3 s before the front reaches you (your own run toward it counted in). 12, 12, 18. Sound is not stopped by cover. | Parry the three in rhythm (10 posture each), or roll through each (across their way: rolling toward the bell brings the next one sooner than a roll can follow a roll). Within about 4.6 m of the bell the rings are born past you: run in and cut his open back. |
+| **Swallow's Return** | **blue** | His way out when pressed (2.4 x as likely with his posture over 40 % or a blow landed in the last 2.2 s). From close (within 5.5 m), with a pillar 3.2 m or taller within 10.5 m behind him: he leaps back onto it (0.42 s), is on the stone for 0.13 s, and dives off it at you: windup 0.92 s in all, the glint as he leaves the stone, 0.3 s before the cut. 24; the dive follows you for its first half and covers up to 12.5 m. His feet chip the pillar (0.3): a worn one gives way. | Parry the dive (a perfect parry locks the blades), or step aside once he has left the stone. |
+
+Cooldowns 9 / 10 / 14 / 8 s; none is a counter, none changes in phase 2 beyond the shorter windups.
+In a 150 s duel against the fencing bot on the real courtyard (`duel.mjs` TERRAIN) he made 31 moves, 7
+of them these (3 Swallow's Returns, 2 Three Tolls, 1 Severed Pillar, 1 Flying Lantern): 23 %.
+Checked by `tests/integration/duel.mjs` TERRAIN (50 checks on the real set: each tell and timing, the
+piece used and where it ends, the hero hit only where it is marked, the answer each tell promises, no
+move without a piece in reach, the reset). **Not measured:** what they do to the fight's difficulty for
+a human, and the frame rate on a phone with three rings on screen.
+
 ### Pressure: how he closes (ADR-063)
 (owner: "it shouldn't be attacking if it's not near the player or able to hit them ... it should
 sprint and catch up ... instead of the player able to kite it out easily")
@@ -967,8 +998,46 @@ chip, stop nothing and block nobody: they are there for the Void to throw). It a
   metre of its trunk, then falls to embers and leaves a stump.
 - **The wyrm walks through wood**: a tree in its body's way goes down ahead of it. Stone turns it, as
   before.
-- **Lifting and throwing** (a boss tears a piece from the ground and hurls it) is in the world's API
-  (ARCHITECTURE.md "Destruction"); the bosses' moves that use it come in their own PRs.
+- **The bosses use it.** The Ash Disciple cuts the pillar you stand under down on you, kicks stone
+  lanterns at you, rings the bronze bell (rings of sound that cross the courtyard) and springs off
+  pillars: *The Ash Disciple* → *He uses the courtyard* (ADR-111). The wyrm tears up trees and
+  boulders and hurls them: *The wyrm uses the ground*, below (ADR-110). The Starless Lord lifts the
+  crater's pieces with the Void (ADR-109). The world's API for it: ARCHITECTURE.md "Destruction".
+
+### The wyrm uses the ground (2026-11-15, ADR-110)
+Three moves take what stands in the clearing. The wyrm only starts one with a piece in reach, a
+piece it throws is gone until the fight resets, and it never takes the tree you stand against.
+
+- **Uproot and hurl** (red, phase 1). It turns to the nearest tree or boulder (a short run if it
+  must), bites into it, tears it out, swings it back over its shoulder and whips it at you. The
+  landing glows (the ground heats up, ADR-052) from the moment the piece leaves the ground and
+  **follows you until the throw**; from the release it is fixed, and the piece is 0.85 – 1.2 s in the
+  air. One red blow in 3.4 m: be out of the glow when it lands, or roll through it (a perfect dodge
+  gives the slow-mo and crits in place, never a plunge: a thrown tree is no body to leap onto).
+  About 2.9 s from its tell to the blow. It turns its back on you for the tree: that is an opening,
+  and a stagger or a posture break while it holds the piece makes it drop it (no blow).
+- **Tail bat** (blue, phase 1). It pivots its back to a boulder, the tail cocked, and one lash sends
+  the boulder skimming along the ground at you. Its line glows through the pivot and is fixed when
+  the lash starts. **Parry it** (you cut it out of the air: blue posture damage, no recoil), take
+  it on the guard (it costs guard x 1.5), step 1.6 m off the line, or stand behind a tree or a
+  standing stone: cover stops it and pays for it (ADR-107). The tail itself strikes nothing in
+  this move; the AI does not pick it when you stand in the lash's arc.
+- **Firebrand** (red, from phase 2). A tree in the jaws (never a boulder), a breath up its trunk
+  for 0.8 s, then the hurl. Where it lands: the red blow (r 4.0, a burn), the grass and wood
+  within 4.8 m catch (the world's fire: it burns where it lands), and the tree's wreck burns on
+  for 3.4 s within 2.9 m (4 per 0.3 s, blockable, never while you roll; not on top of the grass
+  fire's own ticks). A new phase puts the wreck out, as it does the fire hazards.
+
+Fairness: each has one tell at its windup and one flash 0.35 s before the blow (the flash still
+comes if the action is cut short after the release: the piece carries it); the landing is marked
+before the throw is committed; nothing lands outside its mark. Checked by scenario TERRAIN of
+`tests/integration/integ.mjs` (56 checks on the real `Destructibles` over a hand-built set): the tell
+and its flash (the blow within 85 ms of flash + lead), the piece taken, flown and landed on its
+mark, no blow 0.4 m outside it, the roll, the parry, the guard, cover, a stagger mid-hold, nothing
+in reach (never picked; forced, it casts about and ends), the reset, Training, and a 150 s fight
+with the AI on (4 of 25 attacks were terrain moves). **Not measured:** how often they come up on
+the real clearing in a played fight (its pieces stand 14 – 28 m from the centre), the difficulty
+with them, the phone. On the lab stage (`?stage=lab`) nothing stands to be taken.
 
 Checked by `npm test` → `tests/integration/world.mjs`: SETS, CHIP, FELL, COVER, FIRE, THROW, RESET (87
 checks on the real forest and courtyard). **Not measured:** what breakables and grass fire do to the
@@ -1043,6 +1112,14 @@ re-arm 0.25 s (skipped right after a deflect), perfect-dodge window 0.2 s, slow-
 | Flame ring `flameRing` (2) | windup 1.1 · cast 0.25 · recovery until the ring has run (≥ 1.85) | 24, burn 2, kb 4 | from 3 m round the wyrm to 20 m at 10 m/s, band 2.2 m | [0, 1.4, 1.2] / 12 | ≤ 14 m |
 | Flame wall `flameWall` (3) | windup 1.2 · cast 0.3 · recovery until the sweep ends (≥ 3.15) | 28, burn 2, kb 5 | 40 m long × 2.4 m thick, springs up 4 m ahead, sweeps 30 m at 10 m/s | [0, 0, 1.6] / 14 | any |
 | Inferno nova `nova` (3) | charge 2.5 in every phase · blast 0.45 · recovery 1.6 | 70, knockdown, burn 3, kb 10; a perfect dodge may plunge | r 22 | [0, 0, 0.7] / 32 | also the P3 opener |
+
+**Terrain moves** (`tuningTerrain.js`, ADR-110; sizes in world metres; picked only with a piece in reach):
+
+| Ability (phase ≥) | Tell | P1 timing (s) | Damage | Size | Weight [P1, P2, P3] / cooldown | AI gate |
+|---|---|---|---|---|---|---|
+| Uproot and hurl `hurl` (1) | R | a run to the piece ≤ 1.7 (no tell yet) · bite 0.7 · lift 0.65 · aim 0.55 · whip 0.24 (released at 55 %) · flight 0.85–1.2 · recovery ≥ 1.4 | 30, knockdown, kb 5; a perfect dodge never plunges | r 3.4; on the world 1.2 | [3.2, 3.0, 2.6] / 15 | a tree or boulder within 21 m of it, not one you stand against; you 5–36 m away (× 0.7 under 9 m) |
+| Tail bat `tailBat` (1) | B | pivot 0.95 (≥ 0.8) · lash 0.36 (the tail meets the boulder ~0.21 in) · the boulder at 22–34 m/s · recovery 0.95 | 26, kb 5 | a line 1.15 m either side, 7 m past you; cover stops it (it takes 1.0) | [3.0, 3.0, 2.8] / 12 | a boulder 6–15.5 m from its root, 7–32 m from you, its line clear of the wyrm's body, you out of the lash's arc |
+| Firebrand `fireBrand` (2) | R | as the hurl, with 0.8 of kindling between the lift and the aim (bite 0.65 · lift 0.6 · aim 0.45) · flight 0.9–1.25 | 32, knockdown, burn 2, kb 5; the wreck 4 per 0.3 s for 3.4 s (blockable) | r 4.0; the wreck r 2.9; grass and wood catch within 4.8 m; on the world 1.4 | [0, 2.8, 3.0] / 19 | a tree (wood only), as the hurl |
 
 **AI pick shares at close range** (measured for v0.5, before the two new strings and the four bullet
 patterns joined the pool; not re-measured): P1 strings ~60 %, bite / stomp ~40 %; P2 strings ~39 %, fire and flights ~35 %, singles

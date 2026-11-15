@@ -2731,6 +2731,127 @@ the sizzle and the ember hiss.
   the stored table needs a desktop browser on the same origin. Burn deaths read "THE FLAMES".
   Blows dodged by walking out of reach are never "seen" (no hit was resolved).
 
+## ADR-111 — The Ash Disciple uses the courtyard: four moves on its pieces, chosen only with a piece in reach (2026-11-15)
+**Context.** The world breaks (ADR-107) and the owner asked for bosses that "use the terrain as a way
+for their defensive or offensive strategy" and "showcase the destructibility of the terrain in cool
+ascii manner". Shen Hui already chips and cuts down what his blade meets, and cover already stops his
+crescents; he did nothing with the set on purpose. He is bound to 12.5 m round the courtyard's centre:
+of its 72 pieces only the bell and the stele are inside his reach; the ring of pillars stands at
+15.6 m, the lanterns at 17.4 m.
+
+**Decision.**
+- Four moves, a spread of uses and of answers (COMBAT.md → "He uses the courtyard"): **Severed Pillar**
+  (a standing piece used as a weapon: he cuts the pillar the hero stands under and it falls on him;
+  the fall is the world's red hazard), **Flying Lantern** (a kicked piece: blue, cued on the piece in
+  the air, a parry bursts it), **Three Tolls** (the set's landmark: three blows on the bell, three rings
+  of sound to parry in rhythm or roll through), **Swallow's Return** (positional and defensive: pressed,
+  he leaps back onto a pillar and dives off it from another angle).
+- They are **moves in his system**: data in `moves.js` (`terrain: kind`), numbers in `TUNING.terrain`,
+  realised, told and cued like his others, in the Lab's ABILITIES and Training's BOSS MOVES. What only
+  they do is in `ashDisciple/terrain.js`.
+- **A move needs a piece.** His AI weighs such a move 0 while no piece for it is in reach (and the hero
+  is not placed for it), so it is simply not chosen; started by hand it goes for the nearest piece
+  however far, and with no piece at all it does not start. Two generic hooks in the duelist brain carry
+  this for any duelist: `weigh(name, def, w, dist)` and `onActStart(act, opts)`.
+- **His bound stretches for the move** (up to 9.5 m), and draws him back in after (5 m/s), instead of
+  a larger bound for the whole duel.
+- **Whose blow it is.** A piece he fells is the world's hazard (red, the strip marked, the world deals
+  it: one rule for everything that falls). A piece he sends and a ring he rings are his: each cues
+  itself `flashLead` before it reaches the hero, as his crescents do, and a ring that could not cue in
+  time (the hero stood at the bell) passes him by.
+- **Pieces are spent.** Four lanterns, a few stumps, each pillar once: the courtyard is used up as the
+  duel goes on, and the reset puts it back.
+- Tests run on the **real set**: `duel.mjs` `build({ real: true })` wires the real courtyard, `Scars` and
+  `Destructibles`; scenario TERRAIN (50 checks) and TRAINING use it. The other scenarios keep the mock.
+
+**Why.** A terrain move that can start without its piece would be a move thrown at air, and one that
+is always available would crowd out his strings: availability by reach makes the hero's position part
+of the fight (stand under a pillar and it can come down; stay in the middle and he has only the bell
+and the lanterns he can reach). Routing the pillar's fall through the world keeps one tell for every
+falling piece, whoever felled it. Blue on the lantern and white / white / blue on the rings give the
+parry player something to do with the terrain, and red on the pillar gives the dodge player one;
+"defensive play must not be punished" (owner): three of the four are answered from the guard.
+
+**Rejected.** A larger bound for the whole duel (the fight's footprint and every existing sim would
+move). Cutting pillars with sword qi from inside his bound (it reads as an Ash Crescent that missed).
+A red landing ring for the lantern (it can be parried, and a parryable blow gets no colour before its
+glint: the ring is pale). Standing on top of the bell (he would be out of the hero's reach for the
+whole move). Rings stopped by cover (sound; and it would make a pillar the answer to them). New
+`src/world` API (nothing was needed: `topple`, `take`, `carry`, `throwTo`, `strike` and `list` cover it).
+
+**Consequences.** The hero's position near the edge of the courtyard now matters. In a 150 s bot duel
+on the real set 7 of his 31 moves were these (23 %). The fight's difficulty with them is **not
+measured** against a human, and the bots of the other scenarios never meet them (their world has no
+pieces). The bell's toll is the world's generic metal `chip` sound: it has no toll of its own yet.
+How a ring of sound is drawn was the owner's pick of two filmed looks: "A: arc", one line of bronze
+strokes bulging outward (three thin ripples were turned down; the switch that held them is gone).
+Training stages each move (category TERRAIN) and puts the courtyard back first.
+## ADR-110 — The Cinder Wyrm uses the ground: three moves on the world's pieces, picked only with a piece in reach (2026-11-15)
+
+**Context.** The owner: "i want the bosses to also use the terrain as a way for their defensive or
+offensive strategy. like the dragon will pick up a tree or item on the ground and throw it at the
+player ... think of fun cool epic different terrain interactions". The world's side was there
+(ADR-107: `take`, `carry`, `throwTo`, `stop`, `nearest`, the pieces of a set); a thrown piece's blow at
+the hero is the thrower's. Asked of this session: the owner's own example, one move that shapes the
+field or defends, one that chains with fire.
+
+**Decision.**
+- **Three moves, each a different answer.** *Uproot and hurl* (red, P1): a tree or a boulder in the
+  jaws, thrown in an arc; leave the marked ground or roll. *Tail bat* (blue, P1): a boulder lashed
+  along the ground; parry it, guard it, step off its line or stand behind cover. *Firebrand* (red,
+  P2+): a tree lit in the jaws and thrown; its wreck and the grass round it burn on, so the landing
+  is denied for a few seconds. Numbers: `tuningTerrain.js`.
+- **A move exists only with a piece.** Each move's AI weight comes from a picker (`jawsPiece`,
+  `tailPiece` in `terrain.js`) that returns the piece it would use, or nothing: then the weight is 0.
+  Forced with nothing in reach (the Lab, Training on a bare stage) the action is a one-second
+  `search`: it casts about and snorts, with no tell and no blow.
+- **The wyrm goes to the piece.** The clearing's pieces stand 14 – 28 m from its centre, so the hurl
+  and the firebrand start with a `fetch` phase: a turn and a short run (at most 1.7 s) to stand 8.3 m
+  from the piece. The tell starts at the bite, not at the run: nothing can land yet.
+- **One module holds the piece** (`dragon.terrain`, `terrain.js`): in the jaws, in the air, its mark,
+  its blow, the burning wreck. The actions only pose the wyrm. A piece in the air outlives its
+  action: it carries the action's beat and sends the flash itself if the action is gone.
+- **Arcs are the world's flight; the skim is carried here.** A lobbed piece uses `throwTo` (its blow
+  dealt in `onLand`). A batted boulder must stop at the first cover and test the hero along its way,
+  which `throwTo` cannot do: it stays HELD and `terrain.js` carries it along its line every frame,
+  calls `stop` on each step, and lets it go with a 0.25 s `throwTo` where it ends.
+- **Released upright.** The world's flight starts a piece upright and turns it end over end about the
+  axis across its travel. `carry(tilt, yaw)` with the yaw of the throw is the same rotation, so a tree
+  swung back over the shoulder and whipped forward leaves the jaws at tilt 0 and goes on turning
+  without a jump. A tree held across the jaws would snap upright at the release, so it is not offered.
+- **The landing is marked as every footprint is** (ADR-052: the ground heats up), a disc for an arc
+  and a band for the skim, from before the throw is committed. A pale "dust" mark for pieces that are
+  not fire was built and filmed: on the night grass it could not be seen (the heat mark's glow is the
+  scorch map lighting the ground itself, not its glyphs), so it was dropped.
+- **Readable in the jaws.** Trees are drawn dark; in the jaws one was hard to tell from one standing
+  behind the wyrm. A held tree leans (standing trees never do), earth falls from its foot, and it
+  sheds leaves and bark along its length; the chosen piece sheds dust before it is taken.
+- **Weights on a par with its best picks** (3.0 – 3.2; the rending flurry is 3.0), held back by
+  cooldowns of 15 / 12 / 19 s, by the piece having to be in reach, and for the hurl by x 0.7 with the
+  hero closer than 9 m (it turns its back on him). In a 150 s bot fight on a field with a piece every
+  9 m, 4 of 25 attacks were terrain moves.
+
+**Why.** A move that cannot find a piece must not be chosen: a wyrm that walks to a tree that is not
+there reads as a bug. A blue projectile gives the defender (parry, guard) something to do with the
+terrain theme, beside two red blows; the owner's taste is that defensive play is not punished. Cover
+stopping the boulder makes the hero's use of the terrain and the wyrm's meet in one rule.
+
+**Rejected.** A piece conjured when none is in reach (a slab clawed out of the ground): the move
+would stop being about what stands in the level. The tail's own blow during the bat (two blows from
+one tell); the AI gate keeps the hero out of the lash's arc instead. A tree club swung through the
+hero (a fourth move): left for later. A flat spin for a thrown trunk: the world's flight has one
+rotation, and a new API (`burst(piece)` now, or a spin axis on `throwTo`) would be needed.
+
+**Consequences.** `ATTACKS` has 33 entries. The wyrm's suite builds real `Destructibles` on a
+hand-built set where a scenario asks for it (`build({ terrain })`: TERRAIN and LAB), and the LAB
+scenario restores the pieces before each ability. The lab stage (`world/trainingRoom.js`) lists no
+breakables, so the three moves only cast about there. How a tree is held was the owner's pick of two
+filmed looks: "A: over shoulder" (swung back, nearly lying along the wyrm, then whipped forward);
+held upright like a club was turned down, and the `?hold=` switch that held it is gone. **Not measured:** how
+often the moves come up on the real clearing in a played fight, what they do to the difficulty, the
+frame time, the phone on a device. The sounds are the existing ones (the bite, the world's tear and
+crash, the swipe whoosh, the breath loop, the explosion): `dragon:spell` carries the three names for
+sounds of their own.
 ## ADR-109 — The Starless Lord uses the crater: three moves on its pieces (2026-11-15)
 
 **Context.** The owner, of the level's rebuild (ADR-112) and the destruction system (ADR-107): "the 3rd
@@ -2873,3 +2994,76 @@ alternated (other sessions were loading the GPU, so only the ratio means anythin
 hall 0.85 and 0.89 at 1920 x 1080, 1.03 at 3840 x 2160, 0.92 and 1.01 at 852 x 393 on LOW. So: no
 slower, about a tenth cheaper at 1080p, no measurable difference at 4K or at phone size. **A phone
 was not measured.** The seal's flare, the intro and the reset are unchanged and tested.
+
+## ADR-113 — Effects in the dragon's letters: the fire field; text effects; landmarks where the camera looks (2026-11-15)
+
+**Context.** The owner, with the wyrm and the background objects in one look (ADR-093, ADR-100): "is
+there anything existing we should update? ... i want people to be stunned at the ascii style and
+amazed how text can make such detailed 3d objects that look great in animation and effect wise", and
+"all the spells, effects, etc need to look as realistic and cool as possible. for example, the dragon
+fire attacks look meh and use ascii art, animation better to make it look like real fire and more
+threatening and detailed". Every effect was a camera-facing glyph sprite of any size with glow on
+top (`fx.add` / `fx.alpha`): outside the 5x8 px digit grid everything else is printed in, so fire
+read as a line of blurry symbols. Shown a sheet (the breath as it was; the new fire calm; the new
+fire hot), the owner said "Do all 4 and create parallel subagents to work on each task" without
+choosing between the two new ones. The calm one is built: it is closer to the tone they chose for
+the wyrm, and the hot one loses its letters in the bloom (their objection to the large-letter wyrm,
+ADR-092).
+
+**Decision.**
+- **Fire is heat, printed.** `render/fireField.js` (`game.fx.fire`): emitters spawn soft blobs of
+  heat (metres across, a heat that adds up where blobs overlap). Blobs are drawn into a heat buffer
+  with ONE texel per art cell; a flame pass per cell makes the heat climb, lean and tear into tongues
+  with noise that scrolls upward; the print pass turns each cell into one letter of the wyrm's atlas:
+  red strokes at the rim, digits in the body, round bright digits in the heart, on a dark backing.
+  A dense stream therefore has a white-hot heart and a ragged cool rim without the emitter drawing
+  either. Looks are data (`render/firePalettes.js`).
+- **Four kinds share the buffer** (one channel each): `fire`; `void` (the Starless Lord's violet);
+  `steel` (crisp: no turbulence, and a thin line prints as the stroke character that runs along it:
+  bolts, cuts, glints, air rings); `smoke` (grey letters where no fire prints).
+- **Everything that burns is on it:** every fire of the wyrm, the bonfire, the braziers, the ground
+  fire and burning trees of ADR-107, the human bosses' spells, trails and rings. Small things that
+  fly on their own (embers, sparks, dust, debris) stay glyph particles, about one cell in size.
+- **One set of timing cues for every boss,** written on the letter grid: normal a white cross (one
+  row of `-` through one column of `|`), blue a larger eight-point star with a ring, red a ragged red
+  blaze. `DuelFx.tellFlash`; the wyrm draws its own through the same code at 1.5x.
+- **Ground warnings stay glyph specks** (ADR-052) and draw over the field: "this will burn" must not
+  look like "this burns".
+- **Text effects** (only a world made of letters can do them): heat haze (the letters of the wyrm and
+  of objects beside a flame re-roll on the fire's beat and warm); letting go (the dying wyrm comes
+  apart letter by letter, each letter falling before its cell empties; one rule shared by the
+  material and the pass, `render/letGo.js`); shed digits (a cut knocks a few of the wyrm's own cells
+  loose, `render/shedDigits.js`); the breath's charge fills from the belly to the maw.
+- **Landmarks stand where the duel's camera looks,** and are rebuilt as a few flat masses with gaps
+  of dark between them. Moved: the sect gate from the north to beyond the east pillars; the stone
+  swordsmen into the pillar ring; the cauldron onto the paving; the elder wyrm's skeleton to the east
+  rim. The Cinder Tree's wood is prop art (its leaves stay as they were). (The wardens were moved to
+  the hall's aisles in dark bronze; ADR-112 replaced the hall before this merged, so they are built
+  but not placed.)
+
+**Why.**
+- One buffer at cell resolution is what makes it one look and cheap: 256 x 90 texels at 720p. The
+  flame maths runs once per cell, not per pixel; the full-screen print pass reads one texel and
+  discards where nothing burns; the field skips its passes while it holds no blob.
+- Density, not drawing, makes fire: the emitters became shorter, and every fire agrees with every
+  other.
+- The owner's own words set the brightness: "way too flashy" (ADR-093). `hdr` is 0.6.
+
+**Turned down / not done.**
+- A hotter palette (option C of the sheet): not chosen by the owner; one number (`hdr`) if they want it.
+- The hero's effects (slash trails, parry sparks, `combat/clashFx.js`, `cutFx.js`): other open work
+  was changing those files. They are still glyph sprites.
+- The wyrm's blue and red wisp and orb bullets: their colours are combat signals and the field has no
+  such kind.
+- A crisp red kind (for the red cue, the red rings and the Lord's blade): the four channels of the
+  buffer are taken, so it needs a second target. Today red cues are fire at a low heat.
+
+**Consequences.**
+- `game.fx.fire` is part of the `game` context; the test harnesses carry one. An effect that burns
+  spawns blobs, never big glyph sprites.
+- Blobs lower than about 0.7 m fade into the ground (the soft depth test): ground fire is born that high.
+- Tongues always climb up the screen, whatever a thing's direction of flight.
+- The bonfire and the braziers keep the field's passes running all the time in their levels.
+- The Lord's spells changed colour (red to white steel and violet void); his blade stays red glyphs.
+- Not measured: a phone. Not checked: motion at real speed by eye, the Lord's intro shot without the
+  wardens beside the throne.

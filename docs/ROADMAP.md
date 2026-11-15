@@ -56,8 +56,25 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Wyrm letters: fine digits in 5x8 px cells at 720p, calm tone, grid anchored to it (ADR-092, ADR-093)
 - [x] Background objects in the dragon's look (prop art); the house style written down (ADR-100)
 - [x] Landmarks: big set pieces per level, in the same look (ADR-100)
-- [ ] A second pass on the landmarks at the game camera (the stone swordsmen read as a mass of digits;
-      the gate sits mostly off the top of the frame)
+- [x] A second pass on the landmarks at the game camera: rebuilt as a few flat masses, moved to where
+      the duel's camera looks (ADR-113)
+- [x] Effects in the dragon's letters: the fire field (fire, void, steel, smoke), every boss's fire and
+      spells on it, one set of timing cues, heat haze, letting go, shed digits (ADR-113)
+  - [ ] The owner's look at it: the calm palette was built without their pick (C, hotter, is one number);
+        the Lord's spells went from red to white and violet; the landmarks moved
+  - [ ] The phone: the look at 4x6 cells and the frame rate (the bonfire and the braziers keep the
+        field's passes running all the time)
+  - [ ] The hero's effects (slash trails, parry sparks, `combat/clashFx.js`, `cutFx.js`) on the field,
+        once the open work on those files has landed
+  - [ ] A crisp red kind (a second heat target): the red cue, the red rings, the Lord's blade; and a
+        blue-white kind if the wisps should join
+  - [ ] Fire that hugs the ground (a per-blob switch for the 0.9 m depth fade) and a per-kind tongue
+        height (bullets grow nine-cell tongues whatever their direction)
+  - [ ] The throne hall's landmarks: pillars cover the wardens' lower halves, the great swords are
+        small from the seal; the Lord's intro shot without the wardens beside the throne
+  - [ ] The eroding edge of the dying wyrm: a cell is black for ~0.3 s before the ground shows
+  - [ ] Headless checks for the text effects (the sims compile no shader): `uWyrmLetGo` follows
+        `dragon.dissolve`; `uGlowRise` through the breath's windup; `fx.shed` on a landed cut
 - [ ] The hero and the human bosses in the house style: only when the owner asks (ADR-100: "not touch")
 - [x] Hero as ink-line art: per-pixel lines, a dark figure + halo at the game camera, longer drawn
       blade with a depth pull (ADR-019 … ADR-022)
@@ -168,6 +185,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
 - [x] The owner's pick of the debris look: digits (chunks and shards turned down; the switch removed)
 - [x] The hero seen behind the wyrm (its own session, PR #41, ADR-106; merged)
+- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
+- [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
+- [x] The wyrm's terrain moves: Uproot and hurl, Tail bat, Firebrand (its own session and PR, ADR-110)
+  - [x] The owner's pick of how it holds a tree: over the shoulder (upright turned down; the switch removed)
+  - [ ] A played fight: how often the moves come up on the real clearing, and the phone
+  - [ ] The lab stage has no breakables: there the three moves find nothing to take
 - [x] The Obsidian Throne rebuilt open (ADR-112, Session 48): three open arenas rendered for the
       owner (Starfall, the Grave of Blades, the Broken Hall), "A Starfall" picked and built: a crater
       with no walls, the star as his throne, 36 breakables (shards, rim slabs, stones in the air)
@@ -181,13 +204,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Sounds of their own (the lift reuses the crash, the flight is silent)
   - [x] The hanging stones drift while they wait
 - [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
-- [ ] The Ash Disciple's terrain moves
+- [x] The Ash Disciple's terrain moves: Severed Pillar, Flying Lantern, Three Tolls, Swallow's Return
+      (its own session and PR, ADR-111)
 - [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire
 - Follow-ups:
   - [x] A broken piece leaves the minimap (it re-bakes when the colliders change)
   - [ ] The phone: the look and the frame rate with fire and debris on screen
   - [ ] Sounds of their own for fire catching and a tree burning (the sizzle and ember hiss are reused)
   - [ ] Training places the hero without checking what stands there
+  - [x] The owner's pick of the look of the bell's ring of sound: arc (the wave look turned down and removed)
+  - [ ] A toll sound of its own for the bell (the world's metal chip plays)
+  - [ ] The courtyard's ring builds two pillars on the same spot at three corners
 
 ## M1.37 — The hero seen through what covers him (2026-11-15, `claude/render-hero-seen-125813`, ADR-106)
 - [x] The covered parts of the hero print through the wyrm (and any object) as a cyan ink ghost

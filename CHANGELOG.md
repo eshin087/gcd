@@ -4,6 +4,45 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
+Forty pieces of work since 0.4.0:
+- **Fire, spells and effects made of the same small letters** (2026-11-15, ADR-113). *Changed:* fire
+  is no longer loose glowing symbols. Every fire of the Cinder Wyrm (the breath, fireballs and their
+  blasts, meteors, eruptions, the flame ring and wall, the burning pass, the nova, ember bullets, the
+  Scouring breath), the bonfire, the crater's vents, burning grass and burning trees is now one body of
+  small digits: a white-hot heart, an orange body, red tongues that climb and tear off, grey smoke.
+  The Ash Disciple's and the Starless Lord's effects are drawn the same way: lightning is a jagged
+  path of bright strokes in a violet sheath, crescents and blade trails are arcs of strokes, the
+  Void burns violet. The Lord's spells are white and violet now instead of red; his blade is still
+  red. *Changed:* one set of timing cues for all three bosses: a white cross for a blow you can
+  parry, a larger eight-point star with a ring for a heavy one, a ragged red blaze for one you must
+  dodge. Ground warnings are as before. *Added:* letters beside a flame boil in the heat; the dying
+  wyrm comes apart letter by letter; a cut knocks a few of its digits loose; the glow of a breath
+  rises from its belly to its maw before the fire comes. *Changed:* the landmarks are rebuilt to
+  read at a glance and stand where the fight's camera looks: the sect gate is beyond the east
+  pillars (it was to the north), the stone swordsmen stand in the pillar ring, the cauldron on the
+  paving, the elder wyrm's skeleton along Cinderwood's east rim. *Not changed:* the hero's own effects, and the wyrm's blue and red wisps.
+Thirty-seven pieces of work since 0.4.0:
+- **The Ash Disciple uses the courtyard** (2026-11-15, ADR-111). *Added:* four moves on the pieces of
+  the Ashfall Courtyard. **Severed Pillar:** he is suddenly behind the pillar you stand under and cuts
+  it through; it falls on you along a strip marked in red (walk out of it, or roll as it lands).
+  **Flying Lantern:** he kicks a stone lantern at you; a pale ring shows where it comes down and it
+  glints before it lands: parry it and it bursts on your blade, or leave the ring. **Three Tolls:** he
+  leaps to the fallen bell and strikes it three times; each blow sends a ring of sound across the
+  courtyard: parry the three in rhythm or roll through them, or run in, since close to the bell they
+  pass you by and his back is open. **Swallow's Return:** when you press him he leaps back onto a
+  pillar and dives off it at you from another side (parry the dive, or step aside). He only does these
+  with a piece in reach, and each lantern and pillar is used up for the fight. *Dev:* a TERRAIN
+  category in Training stages each one.
+- **The Cinder Wyrm uses the ground** (2026-11-15, ADR-110). *Added:* three moves that take what
+  stands in the clearing. **Uproot and hurl**: it bites into the nearest tree or boulder, tears it
+  out and throws it; the ground glows where it will land and follows you until the throw (red:
+  be out of the glow or roll through it). **Tail bat**: its back to a boulder, one lash of the
+  tail, and the boulder skims the ground at you along a glowing line (blue: parry it and you cut
+  it out of the air, or take it on the guard, step off the line, or stand behind a tree or a
+  standing stone, which stops it). **Firebrand** (from phase 2): a tree in its jaws, lit with a
+  breath and thrown burning; its wreck burns on for 3.4 s and the grass round it catches. The
+  wyrm only does these with a piece in reach, and what it throws is gone until the fight resets.
+  *Dev:* the three are in the Lab's ABILITIES and Training's BOSS MOVES.
 Thirty-eight pieces of work since 0.4.0:
 - **The Starless Lord uses the crater** (2026-11-15, ADR-109). *Added:* three moves on the pieces of
   his level. **Void Hurl** (every form): a stone that hung in the air, or a shard torn out of the

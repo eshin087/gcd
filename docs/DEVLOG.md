@@ -5,6 +5,165 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 50: effects in the dragon's letters (the fire field), text effects, landmarks second pass
+
+**Owner:** "is there anything existing we should update? ... i want people to be stunned at the ascii
+style and amazed how text can make such detailed 3d objects that look great in animation and effect
+wise", and "all the spells, effects, etc need to look as realistic and cool as possible. for example,
+the dragon fire attacks look meh". Sent a sheet: the breath as it was (A), a prototype of fire as one
+body of small digits, calm (B) and hot (C), and a list of four things to update. Answer: "Do all 4
+and create parallel subagents to work on each task". They did not choose between B and C: B is built
+(my pick: closer to the wyrm's calm tone; `hdr` in `firePalettes.js` is the one number for C).
+Branch `fx/real-fire`. (Numbers: open PRs hold ADR-108 – 111 and Sessions 45 – 47, so this is ADR-113
+/ Session 48; the Obsidian Throne's rebuild then merged first as ADR-112 / Session 48, so this is
+ADR-113 / Session 49.)
+
+**How it was run.** The lead built the core first (`render/fireField.js`, the breath on it, the test
+harnesses), because three of the four tasks stand on it, then four agents worked in parallel, each
+in its own worktree and branch with a file list of its own, filming on a headless Edge on the real
+GPU: the landmarks; the wyrm's fire; the human bosses' effects and the timing cues; the text effects.
+The four branches merged without a conflict. `main` had moved by four PRs meanwhile (ADR-101, 102,
+106, 107): merged in, four conflicts, both sides kept.
+
+**Done** (ADR-112):
+- **The fire field** (`game.fx.fire`): blobs of heat that add up in a buffer with one texel per
+  letter cell; a flame pass per cell; a print pass in the wyrm's letters. Kinds: fire, void, steel,
+  smoke. Looks in `render/firePalettes.js`.
+- **On it:** every fire of the wyrm (`dragon/fx.js`, `bulletFx.js`), the bonfire, scorched ground's
+  smoke, the braziers, and, after the merge of `main`, ADR-107's ground fire and burning trees; the
+  Ash Disciple's and the Starless Lord's effects (`duelist/fx.js`, `starlessLord/fx.js`).
+- **One set of timing cues** drawn by `DuelFx.tellFlash` for all three bosses (the wyrm at 1.5x).
+- **Text effects:** heat haze, letting go (`render/letGo.js`), shed digits (`render/shedDigits.js`),
+  the breath's charge rising from the belly.
+- **Landmarks rebuilt and moved** to where the duel's camera looks (see the ADR for the list).
+  The forest's new breakables (ADR-107) keep off the landmarks' footprints.
+
+**Checked.** `npm test` (integ, duel, lord, world, the glyph check) and `npm run build` pass on the
+branch with `main` merged in. On film (headless Edge, RTX 4090, 1280x720): every converted effect
+before and after (sheets by each agent), the three levels loading and every boss ability triggered
+once with no console error, the wyrm's death, the breath setting the grass alight, the wyrm's blue
+cue. No breakable overlaps a moved landmark's collider (checked in the page for the three levels).
+Frame cost against a clean copy of `main`, render + a 1 px read-back, medians, twice each:
+1080p 2.1 – 2.4 ms on both, calm and mid-breath; 2160p 3.2 ms calm on both, 3.5 against 3.2 – 3.3
+mid-breath. Equal within noise on that GPU.
+
+**Not checked.** A phone (look and frame rate); anything in motion at real speed by eye (stills and
+strips only); low frame rates; the Lord's intro camera now that the wardens left the throne; the
+haze beside the human bosses' new effects; the wyrm's red cue on film (the frame fell between
+tiles); 1080p / 1440p cell sizes for the text effects; a hero standing in front of the dissolving
+body. The sims compile no shader and build no `ShedDigits`: the text effects are covered by film only.
+
+**Known weak spots** (each agent's own list, in the ADR and the roadmap): fire cannot hug the ground
+(blobs under 0.7 m fade into it); tongues always climb up the screen; the flame wall is a band, not
+tall, from the steep camera; the bonfire and braziers are redder and dimmer than before; red cues
+and red rings are fire at a low heat, not a crisp red; the Lord's spells changed colour (red to white
+and violet); the throne hall's landmarks are the weakest; the dying wyrm's eroding edge has a black
+fringe; the throat tell is a modest gain.
+
+**Left out on purpose.** The hero's effects: PR #39 and the branch `player/sword-fx` were changing
+`player/fx.js` and `combat/*`. The wyrm's blue and red wisps and orbs: colour signals.
+
+**After the Obsidian Throne's rebuild merged (ADR-112).** The hall is gone: its wardens, great swords
+and braziers are no longer placed, so this session's moved bronze wardens and brazier flames are not
+in the game (the builders stay in `landmarks.js`). The crater's vents burn in the fire field instead.
+Not filmed: the new crater with the Lord's effects on the field.
+
+**Next.** The owner's look at the sheets and the preview (palette B or C, the Lord's colours, the
+moved landmarks); the phone; then the hero's effects and a crisp red kind.
+## 2026-11-15 — Session 47: the Ash Disciple uses the courtyard (four terrain moves)
+
+**Task** (from the session that built the destruction system, ADR-107): give Shen Hui moves that use
+the Ashfall Courtyard's pieces. Branch `claude/ash-terrain-moves-12f7d8`, cut from `world/destruction`
+and rebased onto `main` once PR #44 had merged. Numbers reserved for it: ADR-111, Session 47.
+
+**Found first:** he is bound to 12.5 m and only the bell and the stele stand inside that; the pillars
+ring the paving at 15.6 m, the lanterns at 17.4 m. So each move takes him out to its piece and his
+bound stretches for it (ADR-111).
+
+**Done** (ADR-111; COMBAT.md → "He uses the courtyard"):
+- `ashDisciple/terrain.js` (`TerrainMoves`): which piece, how he gets to it, what the piece does.
+  Four moves as data in `moves.js`, numbers in `TUNING.terrain`: Severed Pillar (white cut, the fall is
+  the world's red), Flying Lantern (blue, cued on the piece), Three Tolls (white, white, blue rings of
+  sound), Swallow's Return (blue, off a pillar; wanted 2.4 x as much when he is pressed).
+- Two generic hooks in `duelist/brain.js`: `weigh(name, def, w, dist)` in `_choose`, `onActStart(act)`
+  in `startAct`. Nothing else in the engine changed; no `src/world` file changed.
+- Training: a TERRAIN category (six situations that stage each move and put the courtyard back).
+- Tests: `duel.mjs` `build({ real: true })` (the real courtyard and its breakables), scenario TERRAIN
+  (50 checks), TRAINING on the real set (70 situations), DATA / TIMING know a `cast` and skip the
+  terrain moves on the mock.
+
+**Filmed** in headless Edge at 1280 x 720 at the game camera (a wrapper page stepping the game with
+`__tick`): one strip per move, and Three Tolls at 852 x 393 with the phone camera. Sent to the owner
+with one line per move on what it asks, and two looks for the ring of sound ("arc": one crisp line of
+strokes; "wave": three thin ripples). The owner picked **"A: arc"**; the wave look and the
+`TUNING.terrain.toll.look` switch that held it are removed. Nothing was said about the moves themselves.
+
+**Changed after the first film:** the kick drew the blade's sweep trail (it read as a cut: `noSweep`);
+the lantern's landing mark was a dark ring nobody could see on the night paving (now pale motes); the
+glide's streak was too bright.
+
+**Verified:** `duel.mjs` all, `lord.mjs` all, `world.mjs` all, `integ.mjs` all, the glyph check and the
+build (see the PR). **Not verified:** a human duel with them, a phone's frame rate with three rings on
+screen, the Lab panel by hand (the abilities list is read from `debug.abilities()`, which the tests
+check).
+
+**Open / next:**
+- The bell has no toll sound of its own (the world's metal `chip` plays): `src/audio`.
+- `courtyard.js` builds two pillars on the same spot at three corners of the ring (the loop adds
+  `[t, -P]` and `[P, t]` for the same corner): seen while listing the pieces, not touched (not this
+  session's file).
+- Phase 2 only shortens the windups; a kindled variant (a burning lantern, ember rings) would fit.
+- Training's BOSS MOVES trigger a terrain move from where he stands (the nearest piece however far);
+  the TERRAIN category is the staged version.
+
+---
+
+## 2026-11-15 — Session 46: the Cinder Wyrm uses the ground (three terrain moves)
+
+**Owner:** "the dragon will pick up a tree or item on the ground and throw it at the player ...
+think of fun cool epic different terrain interactions the bosses and players". One of the staged
+sessions after the destruction system (ADR-107). Branch `claude/dragon-terrain-moves-97933f`, cut
+from `world/destruction` and rebased onto `main` once PR #44 had merged.
+
+**Done** (ADR-110):
+- `tuningTerrain.js` (numbers), `terrain.js` (`dragon.terrain`: the piece in the jaws and in the air,
+  the mark, the blow, the burning wreck; the pickers `jawsPiece` / `tailPiece`), `terrainAttacks.js`
+  (`hurl`, `tailBat`, `fireBrand`), wired into `ATTACKS`, `TUNING.attacks`, `dragon.js` (update,
+  reset, the tell part `'piece'`).
+- Uproot and hurl (red, P1), Tail bat (blue, P1; cover stops the boulder), Firebrand (red, P2+; the
+  wreck burns 3.4 s). A move is picked only with a piece in reach; forced with none it casts about.
+- They are in the Lab's ABILITIES and Training's BOSS MOVES (both read `debug.abilities()`).
+- Tests: `integ.mjs` scenario TERRAIN (56 checks) on real `Destructibles` over a hand-built set
+  (`build({ terrain })`); LAB runs on a grid of pieces and restores them before each ability.
+
+**Shown to the owner:** a sheet of film strips (headless Edge, 1280 x 720, the game camera, lock on):
+the three moves with one line each on what they ask, the hurl at 852 x 393 (`?touch`), and one pick:
+how it holds a tree (A over the shoulder; B upright). **The owner picked "A: over shoulder"**: the
+upright hold and its temporary `?hold=` switch were removed.
+
+**Decided on the way:** the pale dust mark was dropped after filming (invisible on the night grass);
+the hold "across the jaws" is not offered (the world's flight would snap it upright at the release);
+the weights were raised from ~1.6 to ~3 after a bot fight picked a terrain move once in 25 attacks.
+
+**Verification:** scenarios TERRAIN, LAB and TRAINING pass after the rebase; the full `npm test` and
+`npm run build`: see the PR's check. Filmed: each move from the Lab trigger with the hero 16 – 20 m
+off, on the real forest.
+
+**Not checked / open:** a fight played by a human (how often the moves come up on the real clearing:
+its pieces stand 14 – 28 m out; the difficulty); the phone on a device (look, frame rate); frame time;
+the moves with the hero SOUTH of the wyrm at 18 m+, where the game camera cuts the wyrm's head off
+the top of the screen (the mark and the piece's flight are on screen, the bite is not); the lab
+stage has nothing to take; no sounds of their own.
+
+**For the world's side (not edited here):** `throwTo` starts every flight upright with one spin axis,
+and nothing bursts a held piece at once (`drop` and `throwTo` take at least 0.25 s): a `burst(piece)`
+and a start angle would allow a flat-spinning trunk and a boulder that stops dead on cover. The
+falling-tree strip is drawn in tell red on the ground, which ADR-052 ruled out for footprints.
+
+**Next:** a played fight on the PR's preview.
+
+---
+
 ## 2026-11-15 — Session 49: the Starless Lord uses the crater (three terrain moves)
 
 **Owner:** "the 3rd sith boss will use the force to pick up rubble or the pillars to throw as examples.
@@ -130,6 +289,8 @@ there); upright on a phone; nothing read back from a real play session yet. The 
 to read the stored table.
 
 **Next:** the owner plays; then tune from `__telemetry()`. The heavy button needs their answers.
+
+---
 
 ## 2026-11-15 — Session 44: the world breaks (breakables, ground fire, cover, marks)
 

@@ -10,6 +10,8 @@ import { createGlyphAtlas, loadFonts } from './render/glyphs.js';
 import { Pipeline } from './render/pipeline.js';
 import { LightPool } from './render/lights.js';
 import { GlyphParticles } from './render/particles.js';
+import { FireField } from './render/fireField.js';
+import { ShedDigits } from './render/shedDigits.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
 import { LEVELS, levelFromSearch, applyLevel, levelUrl, withStage } from './levels/index.js';
@@ -81,6 +83,8 @@ async function boot() {
     fx: {
       alpha: new GlyphParticles(U, { max: 3000, additive: false }),
       add: new GlyphParticles(U, { max: 7000, additive: true }),
+      // fire, void fire, sparks and smoke as one body of heat printed in small digits (ADR-113)
+      fire: new FireField(U, { max: 6000 }),
     },
     time: 0,
     realTime: 0,
@@ -112,6 +116,8 @@ async function boot() {
   };
   pipeline.registerParticles(game.fx.alpha);
   pipeline.registerParticles(game.fx.add);
+  pipeline.registerFire(game.fx.fire);
+  game.fx.shed = new ShedDigits(game); // a struck or dissolving body sheds its letters (shedDigits.js)
 
   game.world = new World(game);
   game.audio = new AudioEngine(game);
@@ -306,6 +312,8 @@ async function boot() {
     game.lights.update(fxDt, lightsAt ?? game.player.position);
     game.fx.alpha.update(fxDt, game.time);
     game.fx.add.update(fxDt, game.time);
+    game.fx.fire.update(fxDt);
+    game.fx.shed.update(fxDt);
   };
 
   const steps = { n: 1, dt: 0 };
