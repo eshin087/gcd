@@ -2508,6 +2508,18 @@ async function scenarioLab() {
     settle(G);
     game.world.restore(); // (the abilities before it broke what stood: the terrain moves need a piece)
     place(G, a.name === 'breath' || a.name === 'fireball' || a.name === 'charge' ? 11 : 6);
+    if (a.name === 'tailBat') {
+      // the tail bat needs a boulder in the tail's ring that is not at the hero's feet. Where the
+      // wyrm stands by now depends on every ability before it, so the hero is put where one is in
+      // reach (6 m in front of it he stood 1.7 m from the only boulder in the ring once the hero's
+      // stance changed the run: ADR-113), tried round the wyrm until the move's own search finds one
+      const { tailPiece } = await imp('src/entities/dragon/terrain.js');
+      for (const [dist, ang] of [[6, 0], [6, 0.9], [6, -0.9], [9, 0], [9, 1.6], [9, -1.6], [11, 0.9], [11, -0.9], [11, 2.4], [11, -2.4]]) {
+        place(G, dist, ang);
+        run(G, 0.3, { passive: true, god: true });
+        if (tailPiece(d, null, true)) break;
+      }
+    }
     const e0 = errors.length;
     // (Armageddon's meteors fall for ~12 s after the trigger: its window is longer; a background
     // hazard never spills into the next ability's count)
