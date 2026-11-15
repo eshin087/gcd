@@ -70,6 +70,10 @@ On the Ashfall level a **TERRAIN** category stages each of the Ash Disciple's co
 works (the hero under a pillar, a lantern or the bell in reach) on a courtyard put back whole (ADR-111);
 the same moves under BOSS MOVES start from where he stands and go for the nearest piece.
 
+On the Obsidian Throne a **TERRAIN** category stages each of the Starless Lord's moves on the
+crater's pieces where it works (ADR-109), on a crater put back whole; the same moves under BOSS MOVES
+start from where he stands and take what there is. Not on the lab stage: it has no pieces.
+
 ## Model viewer
 Renders the hero or the dragon from the angles of a character sheet, for comparing the models with
 concept art (the game camera is a fixed 58° top-down view). Console API (exact contract in

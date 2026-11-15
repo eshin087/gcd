@@ -849,8 +849,9 @@ hit stun are all as written above), with these differences.
   4 (Shen Hui: 0.42 s). The glint comes 0.26 s before every impact (his `flashLead`; Shen Hui's is
   0.3 s) and never before the blow ahead of it has landed. Breathers [0.14 – 0.4, 0.1 – 0.32, 0.08 –
   0.26, 0.05 – 0.18] s; he flows straight into another move [40, 50, 55, 65] % of the time.
-- **He keeps to the hall's floor** (a rectangle: between the walls, off the dais, inside the door), so
-  a hero backed into a corner or against the door is still in his reach. He walks inside striking
+- **He keeps to the crater's floor** (a circle of 13.6 m round the seal, and off the dais; the plates
+  end at 15 m and the rim's slabs stand beyond), so a hero backed against the rim is still in his
+  reach. The crater has no walls: the hero can leave it between the slabs. He walks inside striking
   range; outside it he **glides**: 6 m/s, and 9.2 m/s past 5.5 m (the hero sprints at 7.2), carried a
   hand's breadth over the floor with his cape streaming. He steps back and aside the same way.
 - Every blow × `damageScale` 1.1.
@@ -870,6 +871,17 @@ hit stun are all as written above), with these differences.
 | **The Rift** (forms 3, 4) | normal | 0.9 s: the staff raised and driven into the floor; three fissures of red light (five in form 4) race out in a fan at 13.5 m/s (16 each) | parry the one that comes for you (each cues itself), or step between them; roll |
 | **Dark Star** (forms 3, 4) | red | 0.9 s: a starless sun leaves his hand, drifts after you at 2.3 m/s for 1.7 s over a violet ring (r 3 m), then bursts (30, knockdown); he fights on meanwhile | be out of the ring when it bursts, or roll at its cue (it stops following you then) |
 | **Parting Light** (forms 2, 3, 4) | normal | a backflip 4 m away from you, and crescents of red light as he lands (2, 2, 3 by form) at 12 m/s | parry, roll, block costs guard |
+
+**He uses the crater** (ADR-109; `starlessLord/terrain.js`, numbers `TUNING.terrain`). Three moves on
+the pieces of his level, chosen only while there is a piece for them:
+| Move | Tell | What happens | Answer |
+|---|---|---|---|
+| **Void Hurl** (every form) | red | 1.2 s: a stone that hung in the air (when they are gone: the nearest shard, the big rim slabs last) comes out of its place and hangs beside him, then is thrown where you are going. The ring where it lands (2.3 m) is drawn as it leaves his grip, 0.7 – 1.05 s before it lands; the glint 0.26 s before (26, knockdown) | be out of the ring, or roll through the landing; stagger him in the windup and the stone drops where it hangs |
+| **Glass Rain** (forms 3, 4) | red | 1.4 s: three pieces gather round him and leave 0.55 s apart, the later ones a step to either side of your way (20 each, knockdown) | keep moving one way, or roll each as it glints |
+| **Crown Fall** (forms 2 – 4) | red | 0.85 s, only while you stand in the strip a tall piece would fall on: his hand closes on it and wrenches it down. The fall is the world's (below): its strip is marked red from the moment it goes, about 0.85 s for a 3.6 m shard (22 x the piece's weight, knockdown) | step out of the strip: sideways is shortest |
+
+The crater's pieces are finite: six stones in the air, then shards and slabs out of the floor; what he
+throws is gone until the fight resets. Torn Stone leaves the floor cracked where each stone was torn.
 
 Thrown things (the push, the crescents, the blade, the stones) cue themselves `flashLead` before they
 reach the hero; one that could only cue later than 0.2 s before contact fizzles, as the wyrm's
@@ -899,6 +911,9 @@ Shen Hui's; `a | b` = one of the two is drawn as the move starts; weights are pe
 | **Turning Mill** (3) | four N spins walking forward 0.52 · 0.34 · 0.34 · 0.34 (12 each) · B thrust 0.42 (21) | 1.5–6.5 · 7 |
 | Starfall (3, 4) | R 1.15 (30, knockdown): a leap (apex 3.8 m), the red ring follows you until 66 % of the windup | 4.2–14 · 9 |
 | Torn Stone (3, 4) | above | 5–15 · 10 |
+| Void Hurl (all) | R 1.2 (26, knockdown), above; needs a piece | 4.5–16 · 9 |
+| Glass Rain (3, 4) | R 1.4 (20 each, knockdown), above; needs two pieces | 4.5–16 · 13 |
+| Crown Fall (2, 3, 4) | R 0.85, the world's fall, above; needs a tall piece beside the hero | 2.5–18 · 10 |
 | Drawn Under (3) | R pull 0.8 · N spin 0.62 (16) · B overhead 0.42 (22) LOCK | 4.5–10.5 · 8 |
 | The Rift (3, 4) | N 0.9 (16 each), above | 3–14 · 9 |
 | Parting Light (2, 3, 4) | N 0.66 (14 each), above | 0–3 · 8 |
@@ -924,7 +939,7 @@ blows ≥ 0.34 s apart, each flash after the blow before it, a six-hit string th
 form, faster form by form), TIMING (53 move × form runs: every contact within 23 ms of its flash +
 0.26 s, every move's first hit lands), FORMS (the whole four-bar flow through the hero's own attack
 press), SPELLS (every answer in the table above, and the glide), BOUNDS (never off the floor; 32
-blows reach a cornered hero in 45 s), FLOW (the door, the throne intro, a death and the reset), WIN.
+blows reach a hero at the rim in 45 s), FLOW (the south lip, the throne intro, a death and the reset), WIN.
 **Difficulty (measured, seed 4242, god-mode fencing bots; 2026-11-14, with the moves above, the
 hero's faster chain of ADR-075, the guard of ADR-080 and the hit reactions of ADR-083):** a bot that
 answers every tell wins in 93 s with 67 parries (forms at 0 / 18 / 41 / 66 s); answering 85 % it takes
@@ -939,7 +954,9 @@ whole fight.
 What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood: the trees
 nearest the clearing, the dead trees, young pines and boulders inside it, and the stone circle. In
 Ashfall: the pillars, the lanterns, the stele, the near dead trees and boulders (the bronze bell only
-rings). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
+rings). In the Obsidian Throne's crater: the shards of the star's glass standing in the floor (cover,
+1.9 – 4.2 m), the tall slabs and shards of the rim, and six stones hanging in the air (these only
+chip, stop nothing and block nobody: they are there for the Void to throw). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
 
 - **Blows chip and break.** Every blow has a power. The hero: its damage / 110 (a quick cut 0.27, the
   slam 0.6, a full cleave 1.0). A duelist: damage / 40 (a cut 0.3, an overhead 0.6; red x 1.25). The
@@ -974,8 +991,44 @@ rings). It all stands again when the fight resets (a death, a rest at the bonfir
   before.
 - **The bosses use it.** The Ash Disciple cuts the pillar you stand under down on you, kicks stone
   lanterns at you, rings the bronze bell (rings of sound that cross the courtyard) and springs off
-  pillars: *The Ash Disciple* → *He uses the courtyard* (ADR-111). Lifting and throwing for the other
-  bosses is in the world's API (ARCHITECTURE.md "Destruction"); their moves come in their own PRs.
+  pillars: *The Ash Disciple* → *He uses the courtyard* (ADR-111). The wyrm tears up trees and
+  boulders and hurls them: *The wyrm uses the ground*, below (ADR-110). The Starless Lord lifts the
+  crater's pieces with the Void (ADR-109). The world's API for it: ARCHITECTURE.md "Destruction".
+
+### The wyrm uses the ground (2026-11-15, ADR-110)
+Three moves take what stands in the clearing. The wyrm only starts one with a piece in reach, a
+piece it throws is gone until the fight resets, and it never takes the tree you stand against.
+
+- **Uproot and hurl** (red, phase 1). It turns to the nearest tree or boulder (a short run if it
+  must), bites into it, tears it out, swings it back over its shoulder and whips it at you. The
+  landing glows (the ground heats up, ADR-052) from the moment the piece leaves the ground and
+  **follows you until the throw**; from the release it is fixed, and the piece is 0.85 – 1.2 s in the
+  air. One red blow in 3.4 m: be out of the glow when it lands, or roll through it (a perfect dodge
+  gives the slow-mo and crits in place, never a plunge: a thrown tree is no body to leap onto).
+  About 2.9 s from its tell to the blow. It turns its back on you for the tree: that is an opening,
+  and a stagger or a posture break while it holds the piece makes it drop it (no blow).
+- **Tail bat** (blue, phase 1). It pivots its back to a boulder, the tail cocked, and one lash sends
+  the boulder skimming along the ground at you. Its line glows through the pivot and is fixed when
+  the lash starts. **Parry it** (you cut it out of the air: blue posture damage, no recoil), take
+  it on the guard (it costs guard x 1.5), step 1.6 m off the line, or stand behind a tree or a
+  standing stone: cover stops it and pays for it (ADR-107). The tail itself strikes nothing in
+  this move; the AI does not pick it when you stand in the lash's arc.
+- **Firebrand** (red, from phase 2). A tree in the jaws (never a boulder), a breath up its trunk
+  for 0.8 s, then the hurl. Where it lands: the red blow (r 4.0, a burn), the grass and wood
+  within 4.8 m catch (the world's fire: it burns where it lands), and the tree's wreck burns on
+  for 3.4 s within 2.9 m (4 per 0.3 s, blockable, never while you roll; not on top of the grass
+  fire's own ticks). A new phase puts the wreck out, as it does the fire hazards.
+
+Fairness: each has one tell at its windup and one flash 0.35 s before the blow (the flash still
+comes if the action is cut short after the release: the piece carries it); the landing is marked
+before the throw is committed; nothing lands outside its mark. Checked by scenario TERRAIN of
+`tests/integration/integ.mjs` (56 checks on the real `Destructibles` over a hand-built set): the tell
+and its flash (the blow within 85 ms of flash + lead), the piece taken, flown and landed on its
+mark, no blow 0.4 m outside it, the roll, the parry, the guard, cover, a stagger mid-hold, nothing
+in reach (never picked; forced, it casts about and ends), the reset, Training, and a 150 s fight
+with the AI on (4 of 25 attacks were terrain moves). **Not measured:** how often they come up on
+the real clearing in a played fight (its pieces stand 14 – 28 m from the centre), the difficulty
+with them, the phone. On the lab stage (`?stage=lab`) nothing stands to be taken.
 
 Checked by `npm test` → `tests/integration/world.mjs`: SETS, CHIP, FELL, COVER, FIRE, THROW, RESET (87
 checks on the real forest and courtyard). **Not measured:** what breakables and grass fire do to the
@@ -1050,6 +1103,14 @@ re-arm 0.25 s (skipped right after a deflect), perfect-dodge window 0.2 s, slow-
 | Flame ring `flameRing` (2) | windup 1.1 · cast 0.25 · recovery until the ring has run (≥ 1.85) | 24, burn 2, kb 4 | from 3 m round the wyrm to 20 m at 10 m/s, band 2.2 m | [0, 1.4, 1.2] / 12 | ≤ 14 m |
 | Flame wall `flameWall` (3) | windup 1.2 · cast 0.3 · recovery until the sweep ends (≥ 3.15) | 28, burn 2, kb 5 | 40 m long × 2.4 m thick, springs up 4 m ahead, sweeps 30 m at 10 m/s | [0, 0, 1.6] / 14 | any |
 | Inferno nova `nova` (3) | charge 2.5 in every phase · blast 0.45 · recovery 1.6 | 70, knockdown, burn 3, kb 10; a perfect dodge may plunge | r 22 | [0, 0, 0.7] / 32 | also the P3 opener |
+
+**Terrain moves** (`tuningTerrain.js`, ADR-110; sizes in world metres; picked only with a piece in reach):
+
+| Ability (phase ≥) | Tell | P1 timing (s) | Damage | Size | Weight [P1, P2, P3] / cooldown | AI gate |
+|---|---|---|---|---|---|---|
+| Uproot and hurl `hurl` (1) | R | a run to the piece ≤ 1.7 (no tell yet) · bite 0.7 · lift 0.65 · aim 0.55 · whip 0.24 (released at 55 %) · flight 0.85–1.2 · recovery ≥ 1.4 | 30, knockdown, kb 5; a perfect dodge never plunges | r 3.4; on the world 1.2 | [3.2, 3.0, 2.6] / 15 | a tree or boulder within 21 m of it, not one you stand against; you 5–36 m away (× 0.7 under 9 m) |
+| Tail bat `tailBat` (1) | B | pivot 0.95 (≥ 0.8) · lash 0.36 (the tail meets the boulder ~0.21 in) · the boulder at 22–34 m/s · recovery 0.95 | 26, kb 5 | a line 1.15 m either side, 7 m past you; cover stops it (it takes 1.0) | [3.0, 3.0, 2.8] / 12 | a boulder 6–15.5 m from its root, 7–32 m from you, its line clear of the wyrm's body, you out of the lash's arc |
+| Firebrand `fireBrand` (2) | R | as the hurl, with 0.8 of kindling between the lift and the aim (bite 0.65 · lift 0.6 · aim 0.45) · flight 0.9–1.25 | 32, knockdown, burn 2, kb 5; the wreck 4 per 0.3 s for 3.4 s (blockable) | r 4.0; the wreck r 2.9; grass and wood catch within 4.8 m; on the world 1.4 | [0, 2.8, 3.0] / 19 | a tree (wood only), as the hurl |
 
 **AI pick shares at close range** (measured for v0.5, before the two new strings and the four bullet
 patterns joined the pool; not re-measured): P1 strings ~60 %, bite / stomp ~40 %; P2 strings ~39 %, fire and flights ~35 %, singles

@@ -2657,7 +2657,7 @@ defensive or offensive strategy". Asked, they chose: fire **burns where it lands
 spreads); the terrain is **a real tactic** for the hero (cover stops projectiles until it breaks, a
 piece felled onto a boss deals real damage); Cinderwood and Ashfall **keep their layouts and get
 things to break** brought into the fighting space; **staged PRs by separate sessions** (the hero seen
-behind the wyrm: ADR-106; the open Obsidian Throne: ADR-108; the bosses' terrain moves after).
+behind the wyrm: ADR-106; the open Obsidian Throne: ADR-112; the bosses' terrain moves after).
 
 **Decision.**
 - **A set lists what can break** (`breakables`) instead of merging it into its static meshes.
@@ -2705,7 +2705,7 @@ game camera, the fight on, measured in headless Edge against `main`: Cinderwood 
 (the run uses virtual time), nor a phone. How a broken piece comes apart was the owner's pick of three
 filmed looks: "A: digits", a shower of the characters it is drawn in (bigger lumps and long shards
 were turned down; the `?debris=` switch that held them is gone). The Obsidian Throne lists no breakables yet: its
-rebuild (ADR-108) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
+rebuild (ADR-112) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
 the sizzle and the ember hiss.
 
 ## ADR-108 — Every answered blow is logged per move; the death screen names the killing move (2026-11-15)
@@ -2786,3 +2786,200 @@ pieces). The bell's toll is the world's generic metal `chip` sound: it has no to
 How a ring of sound is drawn was the owner's pick of two filmed looks: "A: arc", one line of bronze
 strokes bulging outward (three thin ripples were turned down; the switch that held them is gone).
 Training stages each move (category TERRAIN) and puts the courtyard back first.
+## ADR-110 — The Cinder Wyrm uses the ground: three moves on the world's pieces, picked only with a piece in reach (2026-11-15)
+
+**Context.** The owner: "i want the bosses to also use the terrain as a way for their defensive or
+offensive strategy. like the dragon will pick up a tree or item on the ground and throw it at the
+player ... think of fun cool epic different terrain interactions". The world's side was there
+(ADR-107: `take`, `carry`, `throwTo`, `stop`, `nearest`, the pieces of a set); a thrown piece's blow at
+the hero is the thrower's. Asked of this session: the owner's own example, one move that shapes the
+field or defends, one that chains with fire.
+
+**Decision.**
+- **Three moves, each a different answer.** *Uproot and hurl* (red, P1): a tree or a boulder in the
+  jaws, thrown in an arc; leave the marked ground or roll. *Tail bat* (blue, P1): a boulder lashed
+  along the ground; parry it, guard it, step off its line or stand behind cover. *Firebrand* (red,
+  P2+): a tree lit in the jaws and thrown; its wreck and the grass round it burn on, so the landing
+  is denied for a few seconds. Numbers: `tuningTerrain.js`.
+- **A move exists only with a piece.** Each move's AI weight comes from a picker (`jawsPiece`,
+  `tailPiece` in `terrain.js`) that returns the piece it would use, or nothing: then the weight is 0.
+  Forced with nothing in reach (the Lab, Training on a bare stage) the action is a one-second
+  `search`: it casts about and snorts, with no tell and no blow.
+- **The wyrm goes to the piece.** The clearing's pieces stand 14 – 28 m from its centre, so the hurl
+  and the firebrand start with a `fetch` phase: a turn and a short run (at most 1.7 s) to stand 8.3 m
+  from the piece. The tell starts at the bite, not at the run: nothing can land yet.
+- **One module holds the piece** (`dragon.terrain`, `terrain.js`): in the jaws, in the air, its mark,
+  its blow, the burning wreck. The actions only pose the wyrm. A piece in the air outlives its
+  action: it carries the action's beat and sends the flash itself if the action is gone.
+- **Arcs are the world's flight; the skim is carried here.** A lobbed piece uses `throwTo` (its blow
+  dealt in `onLand`). A batted boulder must stop at the first cover and test the hero along its way,
+  which `throwTo` cannot do: it stays HELD and `terrain.js` carries it along its line every frame,
+  calls `stop` on each step, and lets it go with a 0.25 s `throwTo` where it ends.
+- **Released upright.** The world's flight starts a piece upright and turns it end over end about the
+  axis across its travel. `carry(tilt, yaw)` with the yaw of the throw is the same rotation, so a tree
+  swung back over the shoulder and whipped forward leaves the jaws at tilt 0 and goes on turning
+  without a jump. A tree held across the jaws would snap upright at the release, so it is not offered.
+- **The landing is marked as every footprint is** (ADR-052: the ground heats up), a disc for an arc
+  and a band for the skim, from before the throw is committed. A pale "dust" mark for pieces that are
+  not fire was built and filmed: on the night grass it could not be seen (the heat mark's glow is the
+  scorch map lighting the ground itself, not its glyphs), so it was dropped.
+- **Readable in the jaws.** Trees are drawn dark; in the jaws one was hard to tell from one standing
+  behind the wyrm. A held tree leans (standing trees never do), earth falls from its foot, and it
+  sheds leaves and bark along its length; the chosen piece sheds dust before it is taken.
+- **Weights on a par with its best picks** (3.0 – 3.2; the rending flurry is 3.0), held back by
+  cooldowns of 15 / 12 / 19 s, by the piece having to be in reach, and for the hurl by x 0.7 with the
+  hero closer than 9 m (it turns its back on him). In a 150 s bot fight on a field with a piece every
+  9 m, 4 of 25 attacks were terrain moves.
+
+**Why.** A move that cannot find a piece must not be chosen: a wyrm that walks to a tree that is not
+there reads as a bug. A blue projectile gives the defender (parry, guard) something to do with the
+terrain theme, beside two red blows; the owner's taste is that defensive play is not punished. Cover
+stopping the boulder makes the hero's use of the terrain and the wyrm's meet in one rule.
+
+**Rejected.** A piece conjured when none is in reach (a slab clawed out of the ground): the move
+would stop being about what stands in the level. The tail's own blow during the bat (two blows from
+one tell); the AI gate keeps the hero out of the lash's arc instead. A tree club swung through the
+hero (a fourth move): left for later. A flat spin for a thrown trunk: the world's flight has one
+rotation, and a new API (`burst(piece)` now, or a spin axis on `throwTo`) would be needed.
+
+**Consequences.** `ATTACKS` has 33 entries. The wyrm's suite builds real `Destructibles` on a
+hand-built set where a scenario asks for it (`build({ terrain })`: TERRAIN and LAB), and the LAB
+scenario restores the pieces before each ability. The lab stage (`world/trainingRoom.js`) lists no
+breakables, so the three moves only cast about there. How a tree is held was the owner's pick of two
+filmed looks: "A: over shoulder" (swung back, nearly lying along the wyrm, then whipped forward);
+held upright like a club was turned down, and the `?hold=` switch that held it is gone. **Not measured:** how
+often the moves come up on the real clearing in a played fight, what they do to the difficulty, the
+frame time, the phone on a device. The sounds are the existing ones (the bite, the world's tear and
+crash, the swipe whoosh, the breath loop, the explosion): `dragon:spell` carries the three names for
+sounds of their own.
+## ADR-109 — The Starless Lord uses the crater: three moves on its pieces (2026-11-15)
+
+**Context.** The owner, of the level's rebuild (ADR-112) and the destruction system (ADR-107): "the 3rd
+sith boss will use the force to pick up rubble or the pillars to throw as examples. think of fun cool
+epic different terrain interactions the bosses and players and to showcase the destructibility of the
+terrain in cool ascii manner." The crater lists 36 breakables (shards of the star's glass, the rim's
+slabs, six stones hanging in the air), all liftable by the Void (`lift: 2`). His blade beats, bolts,
+pull and grip already met the world (ADR-107); nothing of his yet TOOK a piece.
+
+**Decision.** Three moves, each one long windup and a cast (`moves.js`, marked `terrain: kind`; the
+numbers in `TUNING.terrain`; the pieces' side in `starlessLord/terrain.js`):
+- **Void Hurl** (every form; 1.2 s): one piece comes out of its place, crosses to hang beside him and
+  is thrown where the hero is going. A stone already in the air first, then the nearest shard, the big
+  rim slabs last. The ring where it lands is drawn from the moment it leaves his grip (0.7 – 1.05 s of
+  flight), the glint comes `flashLead` before it lands, and the blow there is his: red, 26, knockdown,
+  2.3 m. What the landing does to the pieces round it is the world's (`throwTo`).
+- **Glass Rain** (forms 3, 4; 1.4 s): up to three pieces at once, thrown 0.55 s apart, the later ones a
+  step to either side of the hero's way (20 each). The throws go on after the cast by themselves, as
+  the Starless Sky's marks do.
+- **Crown Fall** (forms 2 – 4; 0.85 s): only while the hero stands in the strip a tall piece would fall
+  on. His hand closes on it and wrenches it down (`topple(piece, dx, dz, 'boss')`): the fall, its red
+  tell, its marked strip and its blow are the world's (ADR-107), about 0.85 s for a 3.6 m shard.
+- **Chosen only with a piece for it** (`weigh` → 0 otherwise; the hooks `weigh` / `onActStart` are the
+  ones the Ash Disciple's terrain moves added to the duelist engine, ADR-111, copied line for line so
+  the two merge). Started by hand it takes what there is and cannot start with none: the lab stage and
+  the older tests' world mocks have no pieces.
+- **Cut short before the throw** (a stagger, a posture break, his death), what he holds drops where it
+  hangs and comes apart there: interrupting him costs him the stone.
+- **Torn Stone leaves the floor cracked** where each stone was torn out (a scar per stone).
+- **A hanging stone is built on the floor** and hung by its body's own offset (`def.hover`; the set's
+  ambience keeps it there while the piece is whole, his grip takes the offset off as it takes the
+  stone). A piece lands where its pivot meets the ground, so a stone whose geometry was built 4 m up
+  would have burst 4 m up.
+
+**Why.** Thrown pieces follow the rule every thrown thing of his follows (it cues itself where it will
+land), so the new moves need no new reading from the player: a long windup with a visible cause, a
+red ring, a glint. Crown Fall hands the tell to the world on purpose: the falling piece is the tell,
+and the destruction system already draws and deals it. Taking stones that are finite makes the crater
+change over a fight: the stones in the air go first, then his throws strip the hero's cover.
+
+**Rejected.** A piece thrown straight from where it stood (shorter, but off screen for a piece at the
+rim, and the hero has no cause to look at). Bringing the piece over his head (3.6 m up it was off the
+top of a phone's screen). A crush of the hero's cover as its own move (the grip already does it,
+ADR-107). Pieces that orbit him as a shield (it would stop the hero's blows: a new defensive rule,
+not a terrain move). Dealing the throw's blow from a called strike's timer: `onLand` is the moment
+the piece is seen to land.
+
+**Consequences.** His AI used the three moves 6 times in 39 moves in a 90 s bot fight in form 3; their
+effect on the fight's length and difficulty is **not measured**, and no human has played them. The
+crater runs out of stones in the air after six throws and can run low on shards in a long fight (36
+pieces, everything stands again on a reset). Training has a TERRAIN category for him (three staged
+situations, on a level with pieces only). `tests/integration/lord.mjs` builds the real crater with
+its breakables for the TERRAIN and TRAINING scenarios (`build(seed, true)`). The held piece's hang
+height and the ring's strength were set from film strips at 1280 x 720 and 852 x 393; the phone itself
+was not tried.
+
+## ADR-112 — The Obsidian Throne rebuilt open: Starfall, a crater with no walls (2026-11-15)
+
+**Context.** The Starless Lord's level was a walled hall 28.6 x 37 m (ADR-069): two rows of pillars, a
+door in the south wall, wardens and great swords in the side aisles. The owner: "i want you to redo
+the sith lord level as the levels in general should not be so confined like the sith lord level. i
+realized the walls are also adding a visibility issue so make it more open, cool interesting
+objects/structures/terrain etc that will make the gme look stunning in ascii theme and also for the
+player bosses to interact with." The camera has a fixed yaw and looks down at 58 degrees, so a wall
+or a pillar standing south of the fighters covers them, and the hall's south wall and pillar rows did.
+The work is one of the staged pieces of M1.38; the destruction system (ADR-107) was built beside it.
+
+**Decision.**
+- **Three open arenas were built far enough to render and shown on one sheet** (the fight at 1280 x
+  720, the walk up to the throne, the whole arena, the fight at 852 x 393), behind a temporary
+  `?arena=` switch: **A Starfall** (the crater where he fell, the star as his throne), **B the Grave
+  of Blades** (a plain of planted swords round a paved duelling ring, under one colossal blade), **C
+  the Broken Hall** (the old hall without roof or walls). The owner picked **A Starfall**. The switch
+  and the other two are gone; the final build was compared with the picked frames (0.07 – 0.21 % of
+  pixels differ: the particles).
+- **The crater** (`world/throneHall.js`, layout `THRONE`): a disc of fused plates 15 m in radius laid
+  in seven rings round the seal (the origin, unchanged), heaved and broken toward the rim; the dais
+  and seat 16 m north of the seal, in front of the cleft of the star itself (`landmarks.js`
+  `buildFallenStar`: two faceted halves, a crown of ten glass splinters up to 10 m); twelve clusters
+  of the star's glass standing in the floor (1.9 – 4.2 m); six stones hanging in the air; four
+  vents burning in the floor (the crater's lights); a rim of slabs and shards thrown up and outward
+  from 15.8 m, up to 7 m behind him and under 1.4 m in the south, with gaps all round and the south
+  left open; outside, 110 dead trees, those within 24 m of the rim lying flat with their tops away
+  from the crater. The bonfire stays due south (z 30), the path runs to the south lip (z 14.8), and
+  stepping onto the floor there (z < 14) wakes him.
+- **Open is three rules, each tested** (`lord.mjs` LEVEL): no wall (a walk east, west or south from
+  the seal leaves the crater), nothing tall on the near side (no breakable south of z 6 is over 3.2
+  m), the tall pieces north and on the flanks.
+- **Where he may stand is a circle, and the level says so.** The hall's rectangle (`TUNING.hall`) is
+  gone: `TUNING.bound` 13.6 m is the duelist engine's circle round the seal, and the dais's line is
+  the level's (`CONFIG.world.bossFloor.zN`, read by `StarlessLord.clampTarget`), so the lab stage,
+  which has no dais, has no such line.
+- **Everything free-standing is a breakable** (ADR-107's contract): 19 shards, 11 rim slabs, 6
+  hanging stones, all `lift: 2`. A hanging stone has no collider, gives no cover and only chips: it
+  is ammunition for the Void (ADR-109), not cover. The set returns an ember-red `scarInk`
+  ([1.4, 0.12, 0.075]: at 0.5 the cracks did not show on the black floor).
+- **A flurry's blow comes from a side he can stand on.** A duelist's flurry puts him at another side
+  of the hero for each blow (`duelist.flit`). Against a hero at the rim, half of those sides are off
+  his floor: he was put there, pushed back, and the blow whiffed (the Training suite caught it: four
+  flurry situations never ended). `Duelist.standable(x, z)` (inside his bound, clear of colliders;
+  the Lord's adds his floor) now picks the side he turns to or the nearest one he may take.
+- **The star is a landmark builder** (STYLE.md's rule for big set pieces), built with `carve()`
+  attributes directly; `buildSpike` and `facetCol` are shared from `landmarks.js`.
+
+**Why.** A crater answers both of the owner's complaints at once: nothing encloses it, and what
+stands in it is low on the camera's side. It is the place the Lord's story already named (he "fell
+out of the night sky"), and its pieces are what a lord who lifts things with his will would throw:
+shards, slabs, stones already in the air. A round floor suits the duelist engine, whose bound was
+always a circle; the rectangle was a patch for the hall. Rings of plates give the floor seams that
+follow the seal instead of a grid.
+
+**Rejected.** B (the owner's pick decided it; thin swords also print mostly as outline strokes, the
+least "made of characters" of the three) and C (still the most built, and its pillars stood inside
+the fighting space). Keeping the first hall's wardens and great swords in the crater: the picked
+render has none, and a pick is matched, not improved; their builders stay in `landmarks.js`.
+Animating the hanging stones in this change: the destruction system draws them, and a bob is its
+`carry`, which belongs with the moves that take them (ADR-109). Braziers: the vents light the
+crater and cannot be knocked over, so nothing here promises a fire the level has no fuel for.
+
+**Consequences.** The level's first hall no longer exists; `createThroneHall` and `throneHall.js`
+keep their names (levels, tests and the glyph check know them). Fights move differently: cover is
+thin and scattered, there is no corner to be backed into, and the hero can leave the crater (the
+Lord cannot). His tuning was not retuned for it and **no human has played it**. Fallen trunks have
+two collider circles each within 38 m. Cost against the hall, measured in headless Edge on an RTX
+4090 at the fight camera with the AI off: 352 k → 280 k triangles a frame (the hall's unseen grass
+out to 75 m was most of the level; the crater's stops at 54 m), 52 → 53 draw calls (the breakables'
+batch), 8 → 6 lights, 236 → 185 colliders. Render time, both levels in one page with renders
+alternated (other sessions were loading the GPU, so only the ratio means anything): Starfall /
+hall 0.85 and 0.89 at 1920 x 1080, 1.03 at 3840 x 2160, 0.92 and 1.01 at 852 x 393 on LOW. So: no
+slower, about a tenth cheaper at 1080p, no measurable difference at 4K or at phone size. **A phone
+was not measured.** The seal's flare, the intro and the reset are unchanged and tested.

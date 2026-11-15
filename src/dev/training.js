@@ -125,6 +125,24 @@ add('GETTING HIT', [
   { id: 'death', name: 'Death', boss: 'any', role: 'red', answer: 'none', god: false, hp: 1, desc: 'The killing blow and the fall (the next situation brings you back).', until: (T) => T.t > 3.5, expect: ['player:died'] },
 ]);
 
+// The Starless Lord's moves on the crater's pieces (ADR-109): each staged where it works, on a crater
+// put back whole. The same moves under BOSS MOVES start from where he stands and take what there is.
+const crater = (T, form, bx, bz, hx, hz, move) => {
+  T.game.world?.restore?.();
+  if (T.d.phase < form) T.d.debug.setForm?.(form); // (the move's first form, or the one he is in)
+  T.d.position.set(bx, 0, bz);
+  T.d.yaw = Math.atan2(hx - bx, hz - bz);
+  T.p.debug.teleport(hx, hz);
+  T.p.yaw = Math.atan2(bx - hx, bz - hz);
+  T.d.debug.trigger(move);
+};
+const craterDone = (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.terrain?.busy;
+add('TERRAIN', [
+  { id: 'lord-hurl', name: 'Void Hurl · under it', boss: 'lord', pieces: true, answer: 'none', desc: 'A stone that hung in the air comes to hang beside him and is thrown: the ring where it lands is drawn as it leaves his grip, the glint comes just before it lands. You stay, and it lands on you (red: no guard holds it; be out of the ring, or roll).', go: (T) => crater(T, 1, 0, -4, 0, 4.5, 'voidHurl'), until: craterDone, max: 9, expect: ['combat:flash', 'player:hurt'] },
+  { id: 'lord-rain', name: 'Glass Rain · three in a row', boss: 'lord', pieces: true, answer: 'none', desc: 'Three pieces gather round him and leave one after another, each for where you are going: a ring and a glint for each. You stay.', go: (T) => crater(T, 3, 0, -4, 0, 4.5, 'glassRain'), until: craterDone, max: 11, expect: ['combat:flash', 'player:hurt'] },
+  { id: 'lord-fall', name: 'Crown Fall · under the shard', boss: 'lord', pieces: true, answer: 'none', desc: 'You stand beside a tall shard. His hand closes on it and wrenches it down: the strip it falls on is marked red from the moment it goes. You stay, and it lands on you.', go: (T) => crater(T, 2, 2, -2, 8.6, 4.4, 'crownFall'), until: craterDone, max: 9, expect: ['combat:flash'] },
+]);
+
 add('BOSS STATES', [
   { id: 'stagger', name: 'Stagger', boss: 'any', desc: 'His stagger.', go: (T) => T.d.debug.stagger(), until: (T) => T.t > 1.2 && !T.moving(), expect: [] },
   { id: 'break', name: 'Posture break', boss: 'any', desc: 'His posture breaks: open to crits.', go: (T) => T.d.debug.postureBreak(), until: (T) => T.t > 3.6, expect: ['dragon:postureBreak'] },
