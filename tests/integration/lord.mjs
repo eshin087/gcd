@@ -362,7 +362,8 @@ async function scenarioLevel() {
   amb.setup(g);
   amb.flare(1);
   for (let i = 0; i < 30; i++) amb.update(DT, g);
-  assert(g.fx.add.count > 20 && g.lights.lights.length === 4, `the vents burn headless (${g.fx.add.count} particles, ${g.lights.lights.length} lights)`);
+  // (the vents' flames are heat in the fire field, the wisps and motes glyph particles)
+  assert(g.fx.fire.count > 5 && g.fx.add.count + g.fx.fire.count > 20 && g.lights.lights.length === 4, `the vents burn headless (${g.fx.fire.count} blobs, ${g.fx.add.count} particles, ${g.lights.lights.length} lights)`);
 
   const G = build();
   const d = G.game.dragon;
