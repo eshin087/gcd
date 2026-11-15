@@ -590,7 +590,7 @@ async function scenarioWin() {
   assert(c('player:plungeHit') >= 1 && c('player:plungeHit') <= c('player:plunge'), `perfect dodges plunged onto the head in a live fight (${c('player:plunge')} dives, ${c('player:plungeHit')} hits)`);
   assert((c('dragon:postureBreak') > 0) === sawBreak, `dragon:postureBreak ↔ dragon.broken (${c('dragon:postureBreak')} / ${sawBreak})`);
   // (at most once: in an ember storm a red fireball can land inside the parry tap the bot gave the
-  // normal one before it. Seeds 1-6 give 0 here and on the stance before ADR-108; the default seed's
+  // normal one before it. Seeds 1-6 give 0 here and on the stance before ADR-113; the default seed's
   // fight, which any change to the first frames of the hero's swings reshuffles, now meets that once)
   assert(c('player:guardBreak') <= 1, `the reacting bot guard-broke ${c('player:guardBreak')} time(s) (≤ 1: red tells are dodged, not blocked)`);
   assert(c('player:charge') === 0 && c('player:noStamina') === 0, 'no charge from taps, no stamina events');
@@ -3218,7 +3218,7 @@ async function scenarioHero() {
       let rest = 0;
       run(1.5, (a) => { rest = a; });
       out(`   the ribbon: lowest ${lowest.toFixed(3)} m (${lowestDown.toFixed(3)} m landing in a knockdown), ${swing.toFixed(0)}° from hanging through a falling cut, ${rest.toFixed(0)}° 1.5 s into idle`);
-      // (ADR-108: 10 cm, was 5. Knocked down out of the fencer's guard the hilt falls from 0.25 m
+      // (ADR-113: 10 cm, was 5. Knocked down out of the fencer's guard the hilt falls from 0.25 m
       // higher than it did out of the old low stance, and the ribbon's springs lag that much more)
       assert(lowest >= 0 && lowestDown >= -0.1, `the ribbon never sinks into the grass through a run, a sprint, a roll, the chain and the cleave (lowest ${lowest.toFixed(3)} m), nor more than 10 cm landing in a knockdown (${lowestDown.toFixed(3)} m)`);
       assert(swing >= 35 && rest <= 25, `the ribbon swings out through a cut (${swing.toFixed(0)}° ≥ 35°) and hangs again at rest (${rest.toFixed(0)}° ≤ 25°)`);
@@ -3406,7 +3406,7 @@ async function scenarioHeroLife() {
       assert(pairs >= 12 && same === 0, `he walks through the chain: the lead foot changes with every hit (${same} of ${pairs} consecutive hits kept it)`);
     }
     go(1.2);
-    assert(!r.offHand.grip.visible && r.offHand.open.visible && !r.offHand.fingers?.visible && A.cur[45] < 0.05 && A.cur[59] < 0.1, 'at rest the free hand lies open on the belt (ADR-108: it held sword fingers by the hip)');
+    assert(!r.offHand.grip.visible && r.offHand.open.visible && !r.offHand.fingers?.visible && A.cur[45] < 0.05 && A.cur[59] < 0.1, 'at rest the free hand lies open on the belt (ADR-113: it held sword fingers by the hip)');
   }
 
   // (1b) no two swings in a row along the same line (swings.js `line`, anim.js _pickVariant): 40
@@ -4077,7 +4077,7 @@ async function scenarioHeroLife() {
 
   // (4) idle life: standing still he does things (at least three different ones in 45 s: the picks are random, never the same twice running), every
   // frame finite and the point never in the ground; a step cuts the action within 0.25 s
-  // (ADR-108: at ease only. This scenario stands in a boss fight, where he keeps the fencer's guard:
+  // (ADR-113: at ease only. This scenario stands in a boss fight, where he keeps the fencer's guard:
   // the Lab's hook holds the at-ease stance for the count, then the fight's own rule is checked)
   {
     p.debug.fightStance = false;
@@ -4112,7 +4112,7 @@ async function scenarioHeroLife() {
     go(8);
     assert(A.fidget.count === c1, 'locked on, no idle action starts');
     p.lockOn = false;
-    // … nor in a boss fight without a lock (he stands in the guard: ADR-108)
+    // … nor in a boss fight without a lock (he stands in the guard: ADR-113)
     p.debug.fightStance = null;
     go(1.0);
     const c2 = A.fidget.count;
@@ -5479,7 +5479,7 @@ async function scenarioHeroArms() {
     return (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? def.name ?? null;
   };
 
-  // (A1) at rest (ADR-108, the owner's pick of three rendered stances): at ease the sword arm hangs
+  // (A1) at rest (ADR-113, the owner's pick of three rendered stances): at ease the sword arm hangs
   // loose, the elbow soft and beside the ribs, and the blade lies on the forearm's own line; in the
   // guard (this scenario stands in a boss fight) the arm is half extended, the elbow still in, the
   // blade still on the forearm's line. In both the free hand lies open on the belt, its elbow bent
@@ -5804,7 +5804,7 @@ async function scenarioLooks() {
       return fw;
     };
     // the look's own shape, standing (2 s idle), at ease: the hems' heights are a standing man's
-    // (ADR-108: in a boss fight he stands in the guard, the knees soft, 2.5 cm lower)
+    // (ADR-113: in a boss fight he stands in the guard, the knees soft, 2.5 cm lower)
     p.debug.fightStance = false;
     go(G, 2);
     const capeIdle = shoulderCloth.length ? capeDepth() : null;
@@ -7534,7 +7534,7 @@ async function scenarioSeen() {
 }
 
 // ================================================================== scenario: the two stances
-// ADR-108 (the owner's pick of three rendered stances): where the hero STANDS. At ease with nothing
+// ADR-113 (the owner's pick of three rendered stances): where the hero STANDS. At ease with nothing
 // to fight: the blade down the arm's own line, a hand on the belt; the fencer's guard once locked on
 // or in a boss fight. Checked: which stance the game picks; the sword wrist; the hand ON the waist
 // (not in it, not hovering off it); the blade broad to the game camera from every side (edge-on it

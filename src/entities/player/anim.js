@@ -279,9 +279,9 @@ const REST_LN = [-0.35, -0.6, -0.72]; // … their palm down and back
 const LD_BRACE = unitAzEl(0, -10); // a palm braced on the grass: the fingers ahead
 const LD_WARD = unitAzEl(-4, -12); // the backstep's warding low point
 const LD_FOE = unitAzEl(0, 0); // straight at the foe
-// the sword arm on the move in a fight (loco): the grip before the right ribs, the elbow down and
-// out, the blade ahead and level, a little out to the sword side (the fencer's guard, carried)
-// (the elbow back beside the ribs: out to the side, 0.52, it flared like the run's once did)
+// the sword arm on the move in a fight (loco): the grip before the right ribs, the elbow back
+// beside them (pointed out to the side it flared 0.52, as the run's once did), the blade ahead and
+// level, a little out to the sword side: the fencer's guard, carried
 const FIGHT_RUN = { h: [-0.09, -0.26, 0.33], p: [-0.22, -0.7, -0.68], d: unitAzEl(-11, 3) };
 export function guard(p, A) {
   const ph = A.time * (TAU / IDLE_LOOP);
@@ -334,7 +334,7 @@ export function guard(p, A) {
 }
 
 const SCR_FIGHT = new Float32Array(N);
-/** Where the hero STANDS (ADR-108, stances.js): at ease, or in the fencer's guard once a fight is
+/** Where the hero STANDS (ADR-113, stances.js): at ease, or in the fencer's guard once a fight is
  *  on, blended by A.fightW (HeroAnimator.update). The hero's animator only (A.freeHand): a
  *  duelist's footwork reads guard(), and guard() stays the base every other clip is written over.
  *  loco() blends the gait in over this, and an attack's recovery comes home to it. */
@@ -362,7 +362,7 @@ export function stand(p, A) {
 }
 
 /** The hero's blade (and, `arm`, the sword hand and its elbow) leaves where it was as this clip
- *  began over `dur` s, not inside the cross-fade's few frames. (ADR-108: a roll and a backstep are
+ *  began over `dur` s, not inside the cross-fade's few frames. (ADR-113: a roll and a backstep are
  *  written over guard()'s low blade and hand; entered from the fencer's guard, the cross-fade swung
  *  the steel 100° in three frames, up to 1.7 m a frame at the point, and dipped the hand 25 cm.
  *  Coming back to the guard out of a roll it rose 74 cm a frame: LOCO_SETTLE.) */
@@ -537,7 +537,7 @@ export function loco(p, A) {
   const armF = hero ? fin(A.armSign, 1) * Math.max(Math.abs(mz), 0.65) : mz;
   const amp = 0.09 * cs * armF, ws = A.swordW, bw = A.backW;
   // In a fight (A.fightW, the hero) he keeps his guard up on the move, the blade ahead of him and
-  // level, riding the stride; only a sprint trails it. (ADR-108: trailed, every start and stop
+  // level, riding the stride; only a sprint trails it. (ADR-113: trailed, every start and stop
   // swung the steel 140° between the fencer's guard and his back, 16-18 cm a frame at the point.)
   const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = FIGHT_RUN;
   // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal

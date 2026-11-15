@@ -1,4 +1,4 @@
-// The hero's two standing stances (ADR-108; the owner's pick of three rendered options, "A · At
+// The hero's two standing stances (ADR-113; the owner's pick of three rendered options, "A · At
 // ease"), and the life in them. anim.js stand() writes them over guard()'s ready stance for the
 // hero's animator only, blended by the animator's fightW:
 //
@@ -10,7 +10,7 @@
 //             sword side turned to the foe and stepped forward, the arm half extended with the
 //             blade straight off the forearm, its point on the foe; the free hand stays on the belt.
 //
-// Why (Session 45, the owner on the stance before it: "something about the current idle animation
+// Why (Session 49, the owner on the stance before it: "something about the current idle animation
 // is bothering me"; ticked: a stiff, bent sword wrist; arms that hang like a mannequin's; a statue):
 // the old ready stance held the blade 27° out of line with the forearm from an elbow tucked at the
 // ribs, both hands hung beside the hips at one height, and over a breath nothing travelled more
@@ -99,7 +99,7 @@ export function atEase(p, P, A) {
   p[P.hdY] = 0.14 + 0.16 * m.look; // the eyes wander over the field
   p[P.hdZ] = -0.03 - 0.01 * m.sw;
   // the sword arm: the upper arm hangs a little out and back, the elbow soft (~137°), and the
-  // forearm lies on the blade's own line (4° between them; the old stance: 27°)
+  // forearm lies on the blade's own line (about 6° between them; the old stance: 27°)
   set3(p, P.rH, -0.172 + 0.006 * m.tipB, -0.478 + 0.012 * m.brL, 0.04 + 0.01 * m.tipA);
   set3(p, P.rP, 0.55, -0.25, -0.8);
   // the blade: down and out to his front-right, the point a hand above the grass; it drifts in a
