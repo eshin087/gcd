@@ -22,8 +22,8 @@ export const BREAK = Object.freeze({
       burns: true,
     }),
     stone: Object.freeze({
-      hp: 1.7,
-      take: Object.freeze({ cut: 0.45, blunt: 1, blast: 1.15, fire: 0 }),
+      hp: 1.3,
+      take: Object.freeze({ cut: 0.7, blunt: 1, blast: 1.15, fire: 0 }),
       chips: '#%&o:.,', // chunks
       dust: '.:,',
       color: [0.3, 0.33, 0.42], // (kept low: debris in the stone's own dim hue, never a white flash)

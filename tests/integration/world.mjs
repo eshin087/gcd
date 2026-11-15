@@ -120,11 +120,12 @@ const S = {
     assert(n1 === 1 && s.state === STATE.INTACT && near(s.hp, hp0 - 0.3 * BREAK.mats.stone.take.cut, 1e-6), `a cut of 0.3 on a standing stone takes ${(0.3 * BREAK.mats.stone.take.cut).toFixed(3)} of its ${hp0.toFixed(2)} (it holds)`);
     assert(log.some((e) => e.n === 'world:impact' && e.kind === 'chip' && e.mat === 'stone' && e.by === 'player' && e.id === s.id), `world:impact { kind: 'chip', mat: 'stone', by: 'player' }`);
     assert(world.scars.count >= 1 && game.fx.alpha.count > 0, `it leaves a nick (${world.scars.count} mark(s)) and throws chips (${game.fx.alpha.count} glyphs)`);
-    assert(D.strike(s.x, s.z + s.r, 0.4, 0.3, { kind: BLOW.CUT, by: 'player', src }) === 0 && near(s.hp, hp0 - 0.135, 1e-6), 'the same swing strikes a piece once');
+    assert(D.strike(s.x, s.z + s.r, 0.4, 0.3, { kind: BLOW.CUT, by: 'player', src }) === 0 && near(s.hp, hp0 - 0.3 * BREAK.mats.stone.take.cut, 1e-6), 'the same swing strikes a piece once');
     const hp1 = s.hp;
     step(0.3);
-    D.strike(s.x, s.z + s.r, 0.4, 0.15, { kind: BLOW.CUT, by: 'player', src: D.swing() });
-    assert(s.hp === hp1, `a quick cut on stone (${(0.15 * 0.45).toFixed(3)} < the scratch ${BREAK.scratch}) only marks it`);
+    const light = (BREAK.scratch * 0.8) / BREAK.mats.stone.take.cut;
+    D.strike(s.x, s.z + s.r, 0.4, light, { kind: BLOW.CUT, by: 'player', src: D.swing() });
+    assert(s.hp === hp1, `a light touch on stone (${(light * BREAK.mats.stone.take.cut).toFixed(3)} < the scratch ${BREAK.scratch}) only marks it`);
     assert(D.strike(0, 0, 0.4, 5, { src: D.swing() }) === 0 && D.strike(NaN, 0, 1, 1) === 0 && D.sweep(0, 0, Infinity, 0, 1, 1) === 0, 'a blow on empty ground strikes nothing; a non-finite one is ignored');
     // height: a blow that passes over a low piece misses it
     const low = D.list.find((b) => b.kind === 'boulder' && b.h < 1.1);
