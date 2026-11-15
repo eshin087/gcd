@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../../core/math.js';
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
+import { CARRIES, DEFAULT_CARRY, RELAX, getCarry, carryScratch, carryInto } from './carry.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -38,9 +39,14 @@ export const P = {
   // sword fingers) and how far it rests on the sword wrist (0..1). Read only for an animator built
   // with opts.freeHand (the hero); every other animator ignores whatever they hold
   lD: 53, lN: 56, hs: 59, lk: 60,
+  // 0..1 a reverse grip's hold (carry.js `rev`, the hero's carries only): the sword wrist's limit
+  // (WRIST_BACK) is lifted so the blade can lie back along the forearm. guard() writes the carry's;
+  // every clip that re-poses the blade lets go of it (HeroAnimator.update: REV_KEEP), an attack over
+  // its windup
+  rev: 61,
 };
 /** The pose's channel count (a duelist's scratch poses are sized from it). */
-export const N = 61;
+export const N = 62;
 const ENTRY_EASE = 0.85; // an easeOut cross-fade (attack entries) arrives at this fraction of its time
 const TURN_LAG_MAX = 1.4; // rad: how far the drawn heading may trail the gameplay yaw in a fast turn
 const TURN_K = 650; // stiffness (1/s²) of the critically damped spring the drawn heading follows
@@ -323,6 +329,29 @@ export function guard(p, A) {
   v3(p, P.lN, -0.35, -0.6, -0.72);
   p[P.hs] = 1;
   p[P.lk] = 0;
+  p[P.rev] = 0;
+  // the hero's carry (carry.js; the duelists keep the numbers above)
+  if (A.freeHand && A.carryK) carryRest(p, A.carryK, br, sw);
+}
+
+/** The hero's carry at rest (carry.js, `A.carryK`: the ready hold blended into the carry he wears by
+ *  his relax): the sword arm, the blade, the reverse grip's hold and the free hand's own rest. The
+ *  ready hold (`hip`) writes exactly what guard() wrote above. */
+function carryRest(p, C, br, sw) {
+  const R = C.rest, h = R.h, hb = R.hBr, d = R.d, db = R.dBr, ds = R.dSw;
+  v3(p, P.rH, h[0] + hb[0] * br, h[1] + hb[1] * br, h[2] + hb[2] * br);
+  v3(p, P.rP, R.rp[0], R.rp[1], R.rp[2]);
+  v3(p, P.swD, d[0] + db[0] * br + ds[0] * sw, d[1] + db[1] * br + ds[1] * sw, d[2] + db[2] * br + ds[2] * sw);
+  v3(p, P.swF, R.f[0], R.f[1], R.f[2]);
+  p[P.rev] = C.rev;
+  const F = C.free, w = F.w;
+  if (w > 0) {
+    to3(p, P.lH, F.l[0], F.l[1] + 0.008 * br, F.l[2] + 0.006 * br, w);
+    to3(p, P.lP, F.lp[0], F.lp[1], F.lp[2], w);
+    const a = F.ld[0] * AZEL, e = (F.ld[1] + 2 * br) * AZEL, c = Math.cos(e);
+    to3(p, P.lD, c * Math.sin(a), Math.sin(e), c * Math.cos(a), w);
+    to3(p, P.lN, F.pn[0], F.pn[1], F.pn[2], w);
+  }
 }
 
 /** One foot of the gait (model space). u = this foot's cycle phase: stance [0, β) sweeps the foot
@@ -481,16 +510,28 @@ export function loco(p, A) {
   // reads this pose too and keeps the old swing
   const hero = A.freeHand === true;
   const armF = hero ? fin(A.armSign, 1) * Math.max(Math.abs(mz), 0.65) : mz;
-  const amp = 0.09 * cs * armF, ws = A.swordW, bw = A.backW;
-  // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
-  // beside a free arm that pumps; it rides the stride now)
-  to3(p, P.rH, lerp(lerp(-0.13, -0.15, s), -0.02, bw), lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), ws);
-  // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
-  // front: they point back beside the ribs now)
-  to3(p, P.rP, lerp(lerp(-0.4, -0.5, s), -0.85, bw), lerp(lerp(-0.3, 0.2, s), -0.3, bw), lerp(-0.95, -0.5, bw), ws);
-  dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
-  dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
-  to3(p, P.swF, lerp(-0.3, 0, bw), 1, lerp(0, 0.2, bw), ws);
+  const ws = A.swordW, bw = A.backW;
+  const C = hero ? A.carryK : null;
+  if (C) {
+    // the hero's carry on the move (carry.js: run / sprint / backpedal; `hip` is the numbers below)
+    const R = C.run, S = C.sprint, B = C.back, sg = C.swing, amp = sg[0] * cs * armF;
+    to3(p, P.rH, lerp(lerp(R.h[0], S.h[0], s), B.h[0], bw), lerp(lerp(R.h[1], S.h[1], s) + C.bob[0] * st, B.h[1] + C.bob[1] * st, bw), lerp(lerp(R.h[2] + amp, S.h[2] + amp * sg[1], s), B.h[2] + amp * sg[2], bw), ws);
+    to3(p, P.rP, lerp(lerp(R.rp[0], S.rp[0], s), B.rp[0], bw), lerp(lerp(R.rp[1], S.rp[1], s), B.rp[1], bw), lerp(lerp(R.rp[2], S.rp[2], s), B.rp[2], bw), ws);
+    dirLerp(SW_T, 0, lerp(R.d[0], S.d[0], s), lerp(R.d[1], S.d[1], s) - C.dBob * st * (1 - s), lerp(R.d[2], S.d[2], s), B.d[0], B.d[1], B.d[2], bw);
+    dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
+    to3(p, P.swF, lerp(lerp(R.f[0], S.f[0], s), B.f[0], bw), lerp(lerp(R.f[1], S.f[1], s), B.f[1], bw), lerp(lerp(R.f[2], S.f[2], s), B.f[2], bw), ws);
+  } else {
+    const amp = 0.09 * cs * armF;
+    // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
+    // beside a free arm that pumps; it rides the stride now)
+    to3(p, P.rH, lerp(lerp(-0.13, -0.15, s), -0.02, bw), lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), ws);
+    // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
+    // front: they point back beside the ribs now)
+    to3(p, P.rP, lerp(lerp(-0.4, -0.5, s), -0.85, bw), lerp(lerp(-0.3, 0.2, s), -0.3, bw), lerp(-0.95, -0.5, bw), ws);
+    dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
+    dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
+    to3(p, P.swF, lerp(-0.3, 0, bw), 1, lerp(0, 0.2, bw), ws);
+  }
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (the run's back swing reaches further down and back, so the elbow opens behind him and folds as
@@ -2421,7 +2462,8 @@ function fidgetTwirl(p, A, u, e) {
   const s = smoothstep(0.16, 0.84, u);
   if (s <= 0 || s >= 1) return;
   const c = Math.sqrt(1 - TWIRL_X * TWIRL_X);
-  const a = Math.atan2(IDLE_SW[2], -IDLE_SW[1]) + TAU * s;
+  const D = A.carryK ? A.carryK.rest.d : IDLE_SW; // (the hero's carry: the circle starts from its blade)
+  const a = Math.atan2(D[2], -D[1]) + TAU * s;
   dirTo(p, P.swD, TWIRL_X, -Math.cos(a) * c, Math.sin(a) * c, e);
   to3(p, P.swF, -1, 0, 0, e);
   p[P.hdY] -= 0.2 * e; // he watches it
@@ -2642,6 +2684,9 @@ const LEG_NEAR = Math.sqrt(DIM.thigh ** 2 + DIM.shin ** 2 - 2 * DIM.thigh * DIM.
 const TORSO_R = [0.15, 0.115]; // m: the ribs' half-width and half-depth round the chest's axis (a hand stays outside)
 const WRIST_BACK = 128 * (Math.PI / 180); // the most the blade folds back from the forearm's line (0 = in line with it, a point)
 const WRIST_COS = Math.cos(WRIST_BACK), WRIST_SIN = Math.sin(WRIST_BACK);
+// … and in a reverse grip's hold (pose channel `rev`: the hero's `back` carry) up to this: the
+// blade lies back along the forearm, out past the fist's little finger
+const WRIST_REV = 172 * (Math.PI / 180);
 const WRIST_CLEAR_COS = Math.cos(70 * (Math.PI / 180)); // … and, there, the least angle round the forearm between the steel and the upper arm
 const ELBOW_RATE = 14; // rad/s: the most an elbow swings round its shoulder → hand line (~13° a frame)
 const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vector3(), _eC = new THREE.Vector3();
@@ -2713,6 +2758,22 @@ const BREEZE = [0.02, 0.025, 0.035, 0.035, 0.06, 0.05];
 // panel, faded out by speed
 const IDLE_FLARE = [0.01, 0.02, 0.07, 0.1, 0.09, 0.12];
 
+// the carry (carry.js): the clips after which he stays on guard, relaxing into the carry only once
+// they end (RELAX); the clips whose blade IS the carry's (they keep the reverse grip's hold); the
+// cross-fade of a live switch (setCarry); the blend's way round for a blade direction
+const RELAX_RESET = new Set(['attack', 'charge', 'block', 'parry', 'bounce', 'lock', 'ghostep', 'plunge', 'flurry', 'guardBreak']);
+const REV_KEEP = new Set(['loco', 'heal']);
+const REV_FADE = 0.25;
+// a carry with `via` (carry.js): these clips, started from it, take the sword arm through the ready
+// hold on their cross-fade (the hub every clip's own transitions were tuned against)
+const VIA_KEYS = new Set(['block', 'charge']);
+const VIA_MIN = 0.14;
+const VIA_CH = [P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.swF, P.swF + 1, P.swF + 2];
+const SCR_VIA = new Float32Array(N);
+const CARRY_SWITCH = 0.4;
+const carryDir = (o, ax, ay, az, bx, by, bz, t) => dirLerp(o, 0, ax, ay, az, bx, by, bz, t);
+const READY_K = carryInto(carryScratch(), CARRIES.hip, 1, carryDir); // the ready hold, as a blended carry
+
 export class HeroAnimator {
   /** player must expose: yaw, state, stateT, animT, atk ({def, pending, relT, hitAt}), groundVel {x, z}, chargeK,
    *  releaseK, recoil (+ position, kb, lockOn, guardHold, updraft). `poses` (optional): extra clips for this
@@ -2726,6 +2787,16 @@ export class HeroAnimator {
   constructor(rig, player, poses = null, opts = {}) {
     // (before reset(): it poses the rig once)
     this.freeHand = !!(opts?.freeHand && rig.arms?.L?.wrist);
+    // the hero's carry (carry.js; opts.carry = its id, else the default): `carry` the one he wears,
+    // `carryK` the ready hold blended into it by `relax` (0 just after a fight action … 1 settled),
+    // which guard() and loco() read. A duelist has none (its footwork keeps anim.js's own numbers)
+    this.carry = this.freeHand ? getCarry(opts?.carry) ?? CARRIES[DEFAULT_CARRY] : null;
+    this.carryK = this.carry ? carryScratch() : null;
+    this.relax = 1;
+    this.relaxT = 1e3;
+    this.via = 0; // this cross-fade passes the sword arm through the ready hold (VIA_KEYS)
+    this.viaMem = [{ d: 0, ok: false }, { d: 0, ok: false }];
+    if (this.carry) carryInto(this.carryK, this.carry, 1, carryDir);
     this.wristL = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ok: false, clamped: false };
     this.handFX = { fingers: false, fist: false };
     this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
@@ -2911,12 +2982,30 @@ export class HeroAnimator {
       F[P.lF + 2] = W[6];
       F[P.lFy] = W[7];
     }
+    // (from a carry with `via`: the guard and the charge go round through the ready hold)
+    this.via = this.carry?.via && blend > 0 && VIA_KEYS.has(key) && this.relax > 0.05 ? 1 : 0;
+    this.viaMem[0].ok = this.viaMem[1].ok = false;
+    // (two arcs in the guard's 0.08 s turned the steel 80° a frame: the way round takes VIA_MIN s)
+    if (this.via) blend = Math.max(blend, VIA_MIN);
     this.key = key;
     if (key === 'attack') this._pickVariant();
     this.fadeMem.ok = false; // the new fade picks its own way round
     this.blendT = 0;
     this.blendDur = blend > 0 ? Math.max(1e-3, blend) : 0;
     this.easeOut = easeOut;
+  }
+
+  /** Wear carry `id` (carry.js; the hero only): unknown → the default. Live: standing he eases into
+   *  it over a cross-fade (no relax wait), anything else picks it up as it ends. Returns the id worn. */
+  setCarry(id) {
+    if (!this.freeHand) return null;
+    const C = getCarry(id) ?? CARRIES[DEFAULT_CARRY];
+    if (C === this.carry) return C.id;
+    this.carry = C;
+    this.carryK.of = null;
+    carryInto(this.carryK, C, this.relax, carryDir);
+    if (this.key === 'loco') this.play('loco', CARRY_SWITCH);
+    return C.id;
   }
 
   reset() {
@@ -2954,6 +3043,9 @@ export class HeroAnimator {
     this.holdOff.x = this.holdOff.z = 0;
     this.hop.set = false;
     this.toeK = 0;
+    this.relax = 1;
+    this.relaxT = 1e3;
+    if (this.carry) carryInto(this.carryK, this.carry, 1, carryDir);
     Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '' });
     this.visYaw = fin(this.player.yaw);
     this.cycOn = false;
@@ -3150,13 +3242,30 @@ export class HeroAnimator {
     }
     this.pathCh = null;
     this._idleLife(dt, sp);
+    if (this.carry) {
+      // the relax into the carry (carry.js RELAX): reset by a fight action, then a smootherstep
+      // from RELAX.delay s after it, over RELAX.dur s
+      this.relaxT = RELAX_RESET.has(this.key) ? 0 : fin(this.relaxT, 1e3) + dt;
+      const x = clamp((this.relaxT - RELAX.delay) / RELAX.dur, 0, 1);
+      this.relax = x * x * x * (x * (6 * x - 15) + 10);
+      carryInto(this.carryK, this.carry, this.relax, carryDir);
+    }
     this.poses[this.key](this.target, this);
+    if (this.freeHand && !REV_KEEP.has(this.key)) {
+      // a clip that re-poses the blade lets go of the reverse grip's hold as the blade turns out of
+      // it: an attack over its windup, anything else over REV_FADE s (dropped at once, the wrist's
+      // limit would fold a blade still lying back along the forearm 40° in a frame)
+      const T = this.key === 'attack' ? fin(this.def?.windup, REV_FADE) : REV_FADE;
+      this.target[P.rev] = fin(this.from[P.rev]) * (1 - smoothstep(0, Math.max(0.02, T), this.t));
+    }
     if (this.blendT < this.blendDur) {
       this.blendT += dt;
       const u = clamp(this.blendT / this.blendDur, 0, 1);
       // attack entries (easeOut) get there early and hold the coil, but start from rest: an
       // ease-out cubic jumped the blade a third of the way (~80° round the body) in its first frame
-      blend(this.cur, this.from, this.target, this.easeOut ? smoothstep(0, ENTRY_EASE, u) : u * u * (3 - 2 * u), this.fadeMem);
+      const e = this.easeOut ? smoothstep(0, ENTRY_EASE, u) : u * u * (3 - 2 * u);
+      blend(this.cur, this.from, this.target, e, this.fadeMem);
+      if (this.via > 0 && e < 1) this._viaReady(e);
       if (this.pathCh) {
         // a windup path (light 1's loop, the slam's raise) already starts from the entry pose: the
         // channels it drives are final
@@ -3181,6 +3290,21 @@ export class HeroAnimator {
     this._hair(dt);
     this._streamers(dt);
     this.rig.root.updateMatrixWorld(true);
+  }
+
+  /** The cross-fade's sword arm through the ready hold (a carry's `via`, VIA_KEYS): the first half
+   *  of the fade from the carry to the ready hold, the second from there to the clip's pose. */
+  _viaReady(e) {
+    const K = this.carryK;
+    this.carryK = READY_K;
+    guard(SCR_VIA, this);
+    this.carryK = K;
+    const lo = e < 0.5, t = lo ? e * 2 : e * 2 - 1, A = lo ? this.from : SCR_VIA, B = lo ? SCR_VIA : this.target, c = this.cur;
+    for (let j = 0; j < VIA_CH.length; j++) {
+      const i = VIA_CH[j];
+      c[i] = A[i] + (B[i] - A[i]) * t;
+    }
+    dirLerp(c, P.swD, A[P.swD], A[P.swD + 1], A[P.swD + 2], B[P.swD], B[P.swD + 1], B[P.swD + 2], t, this.viaMem[lo ? 0 : 1]);
   }
 
   /** The look of the attack starting now: its `anim` or one of its `variants` (combat.js), at
@@ -3505,7 +3629,7 @@ export class HeroAnimator {
       this._tipFloor(r);
       this._bladeClear(r, false);
     }
-    this._wristLimit(r);
+    this._wristLimit(r, this.freeHand ? clamp(fin(p[P.rev]), 0, 1) : 0);
     this._tipFloor(r);
     _by.set(p[P.swF], p[P.swF + 1], p[P.swF + 2]);
     _by.addScaledVector(_bz, -_by.dot(_bz));
@@ -3546,12 +3670,25 @@ export class HeroAnimator {
    *  forearm further than WRIST_BACK from the forearm's own line. A pose or a cross-fade that asks
    *  for more (the charge coming up from a low coil: the blade pointed straight back over the elbow
    *  for three frames, 170°) gets the blade at the limit, on the same side. */
-  _wristLimit(r) {
+  _wristLimit(r, rev = 0) {
     const A = r.arms.R;
     // the forearm's line, elbow → wrist, in body space (the arm hangs along -Y; chest → body)
     _v.set(0, -1, 0).applyQuaternion(_q1.copy(A.upper.quaternion).multiply(A.fore.quaternion)).applyQuaternion(_q2.copy(_qBC).invert());
     const c = clamp(_v.dot(_bz), -1, 1);
     if (c >= WRIST_COS) return;
+    if (rev > 1e-4) {
+      // a reverse grip's hold (pose channel `rev`, the hero's carries): the limit lifts toward
+      // WRIST_REV, the blade lying back along the forearm. Past it, it stops there (no upper-arm
+      // clearance: the carry keeps the steel off the arm itself)
+      const lim = WRIST_BACK + (WRIST_REV - WRIST_BACK) * Math.min(1, rev), cl = Math.cos(lim);
+      if (c >= cl) return;
+      _w.copy(_bz).addScaledVector(_v, -c);
+      if (_w.lengthSq() < 1e-6) _w.set(0, 1, 0).addScaledVector(_v, -_v.y);
+      if (_w.lengthSq() < 1e-6) return;
+      _w.normalize();
+      _bz.copy(_v).multiplyScalar(cl).addScaledVector(_w, Math.sin(lim)).normalize();
+      return;
+    }
     // the part of the blade's direction square to the forearm
     _w.copy(_bz).addScaledVector(_v, -c);
     if (_w.lengthSq() < 1e-6) _w.set(0, 1, 0).addScaledVector(_v, -_v.y);

@@ -6,6 +6,7 @@ import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, tellDefaults, facingDelta } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
+import { CARRY_IDS, DEFAULT_CARRY, getCarry } from './carry.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
@@ -160,6 +161,8 @@ export class Player {
     // rig's own materials. ?sword= (the owner's pick of the sword looks, gear/moonblade.js) swaps the
     // outfit's weapon
     this.look = getLook(game.heroLook)?.id ?? DEFAULT_LOOK;
+    // how he holds the sword when not attacking (carry.js; main.js reads `?carry=`)
+    this.carry = getCarry(game.heroCarry)?.id ?? DEFAULT_CARRY;
     const sword = swordFromUrl(), lo = HERO_LOOKS[this.look].loadout;
     this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo);
     tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
@@ -290,7 +293,7 @@ export class Player {
       flurry: (strikes = 3, art = null) => this._debugFlurry(strikes, art),
     };
 
-    this.anim = new HeroAnimator(this.rig, this, null, { freeHand: true });
+    this.anim = new HeroAnimator(this.rig, this, null, { freeHand: true, carry: this.carry });
     this.anim.onFootstep = (side, dust) => this._footstep(side, dust);
     this.fx = new PlayerFx(game, this.rig);
     this.flurry = new Flurry(this, TUNE);
@@ -672,7 +675,7 @@ export class Player {
     for (const m of old.mats) m.dispose();
     this.rig = rig;
     const onFootstep = this.anim.onFootstep;
-    this.anim = new HeroAnimator(rig, this, null, { freeHand: true });
+    this.anim = new HeroAnimator(rig, this, null, { freeHand: true, carry: this.carry });
     this.anim.onFootstep = onFootstep;
     this.fx.rig = rig;
     this.sweep.sword = rig.sword;
@@ -697,6 +700,16 @@ export class Player {
       this.look = prev;
       throw e;
     }
+  }
+
+  /** Hold the sword in carry `id` (carry.js: how he holds it when not attacking). Throws on an unknown
+   *  id and changes nothing. Live: no rebuild (the animator eases into it). */
+  setCarry(id) {
+    const C = getCarry(id);
+    if (!C) throw new Error(`no carry "${id}" (${CARRY_IDS.join(', ')})`);
+    this.carry = C.id;
+    this.anim.setCarry(C.id);
+    return C.id;
   }
 
   restAtBonfire() {

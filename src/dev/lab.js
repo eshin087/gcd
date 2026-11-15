@@ -866,6 +866,28 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // how he holds the sword when not attacking (player/carry.js; the owner's pick, ?carry=): live
+    const carries = this.game.heroCarries;
+    if (Array.isArray(carries) && carries.length > 1) {
+      const cr = el('div', 'lab-row', null, body);
+      el('span', 'lab-lbl', 'carry', cr).title = "how he holds the sword when not attacking, for the owner's pick (?carry=)";
+      const crGrid = el('div', 'lab-grid', null, cr);
+      crGrid.style.flex = '1';
+      this.ui.carryBtns = carries.map((C) => {
+        const b = button(crGrid, C.id, () => {
+          try {
+            this.game.pickHeroCarry?.(C.id);
+            this._status(`carry: ${C.name}`, 'ok');
+          } catch (err) {
+            this._status(`error: carry ${C.id}: ${err?.message ?? err}`, 'err');
+            this._fail('carry', err);
+          }
+          this._syncCutBtns();
+        });
+        b.title = `${C.name}: ${C.what} (?carry=${C.id})`;
+        return { id: C.id, el: b };
+      });
+    }
     // the flurry (player/flurry.js): a perfect dodge's answer at a streak of N, started on the boss
     // from where the hero stands; `art` pins the last blow's look (flurry.js ARTS) for the next ones
     const fr = el('div', 'lab-row', null, body);
@@ -891,6 +913,7 @@ export class Lab {
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
+    for (const { id, el: b } of this.ui.carryBtns ?? []) setClass(b, 'on', this.game.player?.carry === id);
   }
 
   /** A flurry of `n` blows on the boss now (player.debug.flurry). */

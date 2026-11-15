@@ -80,6 +80,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
+| `heroCarry`, `heroCarries`, `pickHeroCarry(id)` | how the hero holds the sword when he is not attacking (`player/carry.js`; the owner picks one from renders): the id main.js read from `?carry=` (the Player wears it), every carry as `{ id, name, what }` (the Lab's 'carry' row), and a live switch (`player.setCarry(id)`, no rebuild; the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default carry (`trail`) |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
 | `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks |
@@ -775,6 +776,8 @@ and so for every pose and every cross-fade: `_arm` / `_leg` hold a hand / a foot
 `ARM_NEAR` / `LEG_NEAR` from its shoulder / hip (an elbow never closes past 40°, a knee past 32°)
 and move a hand out of the ribs' outline (`TORSO_R`); `_wristLimit` keeps the blade within
 `WRIST_BACK` (128°) of the sword forearm's line. The off hand on the grip keeps the grip.
+(The hero's reverse-grip carry lifts that limit toward `WRIST_REV` (172°) by the pose channel `rev`,
+below; at the lifted limit there is no upper-arm clearance: the carry itself keeps the steel off the arm.)
 `_hingeFloor` (ADR-083) keeps a knee / an elbow above the grass (`KNEE_FLOOR`, `ELBOW_FLOOR`): one
 solved under it is swung round its limb's line up to it. **Hit reactions** (ADR-083) read three
 things off the player: `hitPush` (the flinch gives that way), `kdProne` (the knockdown clip's
@@ -826,7 +829,7 @@ the left shoulder, the flat to the enemy; `locoGuard` carries `twoHand` and `off
 Pose channel `offAt` (m): with `twoHand`, how far up the blade from the grip the off hand sits (0 =
 on the grip; above 0.04 the hand stays open: a palm braced on the flat; no clip uses it yet). At
 rest and on the move he carries the sword in one hand. The free-hand channels (`P.lD` 53, `P.lN` 56:
-vec3 body axes, length = weight; `P.hs` 59; `P.lk` 60; the pose has `N` = 61 channels, exported, and
+vec3 body axes, length = weight; `P.hs` 59; `P.lk` 60; `P.rev` 61, the carries' reverse grip, below; the pose has `N` = 62 channels, exported, and
 a duelist's scratch poses are sized from it) are read only with `opts.freeHand`: `guard()` writes
 the hero's rest (sword fingers low by the left hip, pointing ahead and down), so every other
 animator carries the hero's values in them too and ignores them; `locoGuard` carries them in
@@ -845,8 +848,36 @@ weight on the left leg, the right foot a shoulder's width out and forward with t
 upper arm hanging by the ribs with the elbow a little back, the grip beside the right hip and
 outside the coat, the blade (`IDLE_SW`) low at his right side: ~52° below level, 79° off his front,
 the EDGE down (the flat faces forward), the point just off the grass; the head bowed a little,
-looking ahead. An attack's recovery brings a blade that finished
-over his left shoulder home round the front (`HOME_WAY` in `attackPose`). Blade blending (`dirLerp`): besides the back-left rule (ADR-023), a near half-turn
+looking ahead. (That is the duelists' footwork and the hero's READY hold; the hero's own rest and
+loco sword arm come from his carry, below.) An attack's recovery brings a blade that finished
+over his left shoulder home round the front (`HOME_WAY` in `attackPose`).
+**The carries** (`player/carry.js`; 2026-11-15, the owner: "the way the character holds the sword
+when not attacking needs to be changed"): how the hero holds the sword at rest and on the move.
+`CARRIES` = id → `{ id, name, what, rev, via?, rest, run, sprint, back, swing, bob, dBob }` (body axes;
+`rest` = { h, hBr, rp, d, dBr, dSw, f, free? }: the sword hand's offset, its breath, the elbow's pole,
+the blade, its breath and sway, the flat, the free hand's own rest `{ l, lp, ld: [az, el] deg, pn }`;
+`run` / `sprint` / `back` (backpedal) = { h, rp, d, f? }); `CARRY_IDS` (`hip` today's hold, `trail` the
+default: the blade trailing back-down beside the right leg, `back` a reverse grip with the blade up
+behind the sword arm, `point` on guard with the point lowered toward the foe), `DEFAULT_CARRY`,
+`READY_CARRY` (= `hip`), `RELAX` `{ delay, dur }`, `getCarry(id)`, `carryFromSearch(search)`,
+`carryUrl(id, href)`, `carryScratch()`, `carryInto(out, carry, k, dir)`. The hero's animator
+(`opts.carry`: its id) holds `anim.carry` (the carry worn) and `anim.carryK` (the READY hold blended
+into it by `anim.relax`, 0..1, through `carryInto`; directions by `dirLerp`), which `guard()` (the
+rest: sword hand, elbow pole, blade, flat, `rev`, the free hand's own rest by its weight) and
+`loco()` (run / sprint / backpedal, the stride's swing and bob) read for the hero only (`A.freeHand`):
+with `hip` worn they write exactly anim.js's own numbers (the duelists'; HEROCARRY checks it to the
+bit). **The relax:** a fight action (`RELAX_RESET`: attack, charge, block, parry, bounce, lock,
+ghostep, plunge, flurry, guardBreak) resets `anim.relaxT`; `anim.relax` is a smootherstep of it over
+`RELAX.dur` from `RELAX.delay` s after the action, so every clip's way out (the way home, the guard's
+release) lands in the READY hold it was tuned against and he then eases into the carry; a roll, a
+drink and a flinch do not reset it. Pose channel `rev` (`P.rev` 61; `N` = 62): a reverse grip's hold
+(`carry.rev` × relax); every clip but `REV_KEEP` (loco, heal) lets go of it as the blade turns out of
+it (an attack over its windup, anything else over `REV_FADE` 0.25 s). A carry with `via` (`back`):
+the guard and the charge (`VIA_KEYS`) started from it take the sword arm through the READY hold on
+their cross-fade (`_viaReady`, at least `VIA_MIN` 0.14 s). `anim.setCarry(id)` (unknown: the
+default) eases into another carry live (a 0.4 s cross-fade standing). The Player: `player.carry`
+(main.js reads `?carry=` into `game.heroCarry`), `player.setCarry(id)` (throws on an unknown id and
+changes nothing); the Lab's 'carry' row (PLAYER section) calls `game.pickHeroCarry(id)`. Blade blending (`dirLerp`): besides the back-left rule (ADR-023), a near half-turn
 (`DIR_FLIP` 2.75 rad, below `DIR_FLIP_HIGH` 0.9 rad of elevation) goes round the front, never behind
 the shoulders (the light combo's finish → this idle).
 **Glyph scale** (`model.js` exports `setHeroGlyphScale(mats, dist) → k` and `GLYPH_SCALE`): every
