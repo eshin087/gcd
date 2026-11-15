@@ -4,7 +4,20 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty pieces of work since 0.4.0:
+Thirty-one pieces of work since 0.4.0:
+- **The world breaks** (2026-11-15, ADR-103). *Added:* trees, standing stones, boulders, pillars and
+  lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
+  as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
+  red blow (its landing strip is marked, roll or step out); one you fell onto a boss hurts it badly
+  and never hurts you. Anything 1.1 m or taller is cover: it stops the wyrm's bullets, a duelist's
+  crescents and torn stones, and takes the Void's bolt, pull or grip in your place, until it breaks.
+  Fire burns where it lands: grass under the wyrm's breath, fireballs, meteors, lava pillars, the
+  burning pass and the dive catches, burns about 4 seconds (5 HP every half second if you stand in
+  it), then is ash for the rest of the fight; a tree that catches burns about 7 seconds and falls to
+  embers. Fire never spreads. The wyrm walks through trees. Everything stands again when the fight
+  resets. *Changed:* Cinderwood has 7 dead trees, 4 young pines and 6 boulders inside the clearing.
+  *Dev:* a WORLD section in the Lab (Burn ahead, Fell on me, Blast ahead, Restore); a temporary
+  `?debris=digits|chunks|shards` switch while the look of the debris is being chosen.
 - **The boss's bar at the top; QUIT TO TITLE** (2026-11-15): the boss's name, HP and posture moved
   from the bottom of the screen to the top centre. The pause menu has **QUIT TO TITLE** (press it
   twice: the first press asks), and RESUME is laid out like the other items.

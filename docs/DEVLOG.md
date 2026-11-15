@@ -5,6 +5,60 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 42: the world breaks (breakables, ground fire, cover, marks)
+
+**Owner:** "i want all the bosses to be able to cause destruction to the background ... the dragon
+fire that hits the background (trees, grass) get on fire and are a temporarily hazard ... the
+humanoid bosses will chip and damage the structures and leave impact based on the power of the
+attack. the players can also do this as well. i want the bosses to also use the terrain ... you can
+also redo the backgrounds of the levels. i want you to redo the sith lord level ... ask me any
+questions". Branch `world/destruction` from `main`. (Sessions 40 and 41 and ADR-101, 102 and 105 are
+left to the two sessions started for the other pieces.)
+
+**Asked, answered:** fire burns where it lands (no spreading); the terrain is a real tactic for the
+hero (cover, pieces felled onto a boss); Cinderwood and Ashfall keep their layouts and get things to
+break; "staged PRs and separate agents doing parallel tasks".
+
+**Split:** two sessions were started on their own branches: the hero seen behind the wyrm (PR #41,
+ADR-101) and the open Obsidian Throne with the Lord's terrain moves (ADR-102, ADR-105; it was sent
+this API). This session built the system the rest stands on.
+
+**Done** (ADR-103):
+- `world/destructibles.js`, `fire.js`, `scars.js`, `breakTuning.js`; `world.impact / ignite / restore`;
+  `Colliders.remove / restore`; the two set materials can be rigid-batched.
+- Cinderwood lists 81 breakables (17 of them new, inside the clearing), Ashfall 72.
+- The hero's blade and slam, the wyrm's striking parts, slams, meteors, fire and body, the duelists'
+  zones, crescents, thrown stones and the Void's lines all hit the world; cover stops bullets,
+  crescents, torn stones and stands in for the hero against the bolt, the pull and the grip.
+- Sounds `chip` and `crash`; events world:impact and world:fire; the Lab's WORLD section (Burn ahead,
+  Fell on me, Blast ahead, Restore) and its Reset restores the world.
+- Tests: `tests/integration/world.mjs` (87 checks), added to `npm test`.
+
+**Rendered for the pick:** three ways a broken piece comes apart (digits, chunks, shards; a
+temporary `?debris=` switch) and the fire on grass and a tree. Sent as two sheets; no answer yet.
+
+**Verification:** `npm test` (five suites) and `npm run build` pass. Filmed in headless Edge at 1280 x 720
+on the dev server: a tree and grass set alight and burning out, a tree felled onto the hero (the red
+strip, the hit), a stone chipped then broken, the hero felling a dead tree with two charged cleaves,
+the wyrm's breath lighting the grass, and a 16 s fight with the AI on. Draw calls and triangles
+against `main`: ADR-103.
+
+**Found on the way:** `node_modules` in the main checkout was emptied while this session ran
+(reinstalled; cause not found, the parallel worktrees are the likely one). The Browser pane was
+hidden for the whole session and throttles timers: captures were made with headless Edge and a
+wrapper page instead. A debris glyph under ~0.4 m is a dot at the game camera, and debris in the
+material's lit colour bloomed white.
+
+**Not checked / open:** a fight played by a human; the difficulty with breakables and fire; the
+phone (look and frame rate); frame time; Ashfall and its duelist's blows in the browser (headless
+tests only); Training places the hero without a look at what
+stands there; the debris pick.
+
+**Next:** the owner's pick of the debris look, then the switch and the two other looks go; the PR;
+then the wyrm's and the Ash Disciple's terrain moves as their own sessions.
+
+---
+
 ## 2026-11-15 — Session 39: the boss's rows at the top; QUIT TO TITLE; RESUME like the other items
 
 **Owner:** "move the boss hp ui from bottom to top", then "also when you press esc in a level, give

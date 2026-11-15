@@ -851,6 +851,50 @@ Shen Hui's 85 % bot takes 7 – 8 hits. Target: 3 – 5 min for a player who kno
 played him yet, and the bots never use the blade lock or the mikiri and stand inside his reach the
 whole fight.
 
+## The world breaks (2026-11-15, ADR-103)
+What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood: the trees
+nearest the clearing, the dead trees, young pines and boulders inside it, and the stone circle. In
+Ashfall: the pillars, the lanterns, the stele, the near dead trees and boulders (the bronze bell only
+rings). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
+
+- **Blows chip and break.** Every blow has a power. The hero: its damage / 110 (a quick cut 0.27, the
+  slam 0.6, a full cleave 1.0). A duelist: damage / 40 (a cut 0.3, an overhead 0.6; red x 1.25). The
+  wyrm: 0.7 x the striking part's size (a claw 0.77, the charge 1.2), a stomp 1.0, the leap 1.7, a
+  meteor 1.5, the dive's crash 2.5. A piece has structure by material and size: a young pine ~0.9, a
+  dead tree ~1.6, a boulder ~1.6, a pillar 1.5 – 3, a standing stone ~3. A cut barely marks stone
+  (x 0.45; a blow worth under 0.1 only leaves a nick): the slam and the charged cleave are blunt blows
+  and bite it in full. Every blow leaves a mark as big as it was hard; a hard one cracks the floor.
+- **Tall pieces fall.** A piece 2.2 m or taller falls the way the blow drove it (the hero's: away
+  from him) in about a second, and lands on a strip as long as it is tall. **Under a piece a boss
+  felled, the hero takes one red blow** (22 x its weight 0.6 – 1.3, unblockable, knocked down): the
+  strip is marked in red from the moment the piece starts to go and its flash comes 0.3 s before it
+  lands. Roll through it or be out of the strip. **A piece the hero fells onto a boss deals 220 x
+  weight damage and 90 x weight posture**, and never hurts the hero: put the tree or the pillar
+  between you and him. What a falling piece lands on is struck too. Shorter pieces shatter where
+  they stand.
+- **Cover.** A piece 1.1 m or taller stops the wyrm's bullets (each takes 0.12 out of it, an orb
+  three times that), a duelist's crescents and torn stones, and stands for the hero against the
+  Void's lines: a bolt blasts the cover (1.5), the pull drags it down toward the Lord, the Crushing
+  Dark crushes it (3), and the hero behind it is not hit. The great red stone, the returning blade
+  and the wall of force go through and strike what they cross. Breath, rings, walls, the nova and
+  anything that comes down from the sky are not stopped. Cover is temporary: a standing stone stops
+  about 23 bullets.
+- **Fire burns where it lands.** Grass under the breath, a fireball, a meteor, a lava pillar, the
+  burning pass or the dive's crash catches. It burns 3.2 – 4.6 s, then it is ash and cannot burn
+  again: the field burns down as the fight goes on. Standing in it costs 5 HP every 0.55 s after the
+  first 0.45 s (blockable; never while rolling). It never spreads. Sweeping fire (the ring, the wall,
+  the wheel, the nova) lights wood only. A tree that catches burns about 7 s, burns the hero within a
+  metre of its trunk, then falls to embers and leaves a stump.
+- **The wyrm walks through wood**: a tree in its body's way goes down ahead of it. Stone turns it, as
+  before.
+- **Lifting and throwing** (a boss tears a piece from the ground and hurls it) is in the world's API
+  (ARCHITECTURE.md "Destruction"); the bosses' moves that use it come in their own PRs.
+
+Checked by `npm test` → `tests/integration/world.mjs`: SETS, CHIP, FELL, COVER, FIRE, THROW, RESET (87
+checks on the real forest and courtyard). **Not measured:** what breakables and grass fire do to the
+fights' difficulty. The bots of the other suites run on world mocks without them, and no human has
+played with them yet.
+
 ## Current numbers (v0.6 "bullet hell", 2026-11-09)
 Source of truth: `rules.js` (`DEFENSE`, `POSTURE`), `player.js` `TUNE`, `tuning.js`, `tuningFire.js`,
 `tuningBullets.js`.

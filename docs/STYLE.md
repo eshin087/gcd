@@ -54,6 +54,21 @@ the wyrm next to it, it is wrong, however good it looks alone.
 - Thin parts (a rib, a rail) are narrower than a letter: they print as outline strokes only.
 - Render a before / after sheet and let the owner pick before finishing.
 
+**How things break (ADR-103).** Destruction is drawn with the same means, never with new ones:
+- A breakable piece is the same geometry through the same two set materials (the screen grid for
+  trees, prop art for stone and metal), drawn from a rigid batch so it can fall, fly or vanish.
+- Debris, dust, flames, embers, the red strip under a falling piece and the marks a blow leaves are
+  **glyph particles** from the world atlas. No debris meshes, no decals, no textures.
+- Debris keeps the piece's own dim hue (`BREAK.mats`): a breaking stone must not flash white.
+  Saturated light stays for fire and for the red danger strip.
+- Fire on grass is flame glyphs over the scorch map's ember glow; burned grass is the scorch map's
+  ash. A danger marker is red strokes, never heat (heat means fire).
+- At the game camera a debris glyph must be at least ~0.4 m to read as a character (a 0.2 m glyph is
+  a dot).
+- **Open:** how a broken piece comes apart is the owner's pick between three rendered looks
+  (`?debris=digits|chunks|shards`; the sheet was sent on 2026-11-15). Until then the default is
+  "digits": it bursts into the characters it is drawn in.
+
 **Tried and turned down by the owner (do not propose again):** a typed lattice ground and a
 "terminal" post-process finish (2026-11-14: "scrap everything"); large bold symbols on the wyrm
 (ADR-092: "way too flashy ... too big"); carved glyphs filled to every cell on pillars and floors

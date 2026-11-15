@@ -1886,7 +1886,8 @@ spreads and nothing catches twice. The hero in it takes `FIRE.damage` every `FIR
 **`world.impact(x, z, r, power, o)`** = `destructibles.strike` + a floor scar and torn grass for a hard blow
 (`o.scar: false` skips it) + `ignite` when `o.fire` is set. **`world.ignite(x, z, r, k, grass = true)`** =
 `fire.ignite` (unless grass is false: sweeping fire lights wood only) + `destructibles.ignite`.
-**`world.restore()`** resets all three: flow calls it wherever it resets the scorch map; the Lab's Reset and
+`Colliders` has `remove(c)`, `restore(c)` and a `version` that counts every change of the set (the minimap
+re-bakes its layer on it, so a felled tree leaves the map). **`world.restore()`** resets all three: flow calls it wherever it resets the scorch map; the Lab's Reset and
 its WORLD section (Burn ahead, Fell on me, Blast ahead, Restore) too.
 
 **Who hits the world** (each through `?.`; one `src` per swing or action):
