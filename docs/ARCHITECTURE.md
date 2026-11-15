@@ -352,6 +352,10 @@ object3d: THREE.Object3D;  position: THREE.Vector3 (=== object3d.position);  yaw
 batch                                  // his rigid batches (render/rigidBatch.js batchRigid; empty with ?nobatch)
 name = 'Wanderer'
 hp, maxHp, flasks, maxFlasks: number   // (v0.2: NO stamina) TUNE: 160 HP, 5 flasks of +70 HP
+guard, maxGuard: number                // the guard meter (combat/rules.js GUARD, ADR-094): a blocked blow costs guard, not HP;
+                                       // refills by itself; at 0 on a blocked blow the guard is knocked open (state 'stagger'
+                                       // for GUARD.openDur with the guard break's pose, `player:guardOpen`); read by the HUD
+                                       // and the touch BLOCK tile
 state: string   // 'idle'|'run'|'sprint'|'roll'|'attack'|'charge'|'heavy'|'block'|'parry'|'ghostep'|'plunge'|'heal'|'stagger'|'guardBreak'|'knockdown'|'lock'|'mikiri'|'dead'
                 //  ('attack' = the light chain + the slam finisher, 'heavy' = the released charge's cleave (and the execution's thrust),
                 //   'ghostep' = a perfect dodge without the plunge, 'plunge' = the head-stab, contract 2,
@@ -1440,6 +1444,11 @@ stronger on the attacker's side) on a red `combat:flash`, dropped by a stagger /
 death / retry (`ui/tells.js`); flashes with `hazard: true` (meteors, chase pillars) are skipped,
 their red ground rings already warn. Also renders parry / Ghostep / guard-break call-outs, the cyan
 Ghostep edge pulse (a plunge's perfect dodge included), the posture bar, and the crit-window cue.
+The player frame carries the **guard meter** under the HP bar (`player.guard / maxGuard`, polled: a
+steel bar, warm under `GUARD.low`, a flash and "GUARD DOWN" on `player:guardOpen`). The **lock-on
+marker** (`ui/nameTags.js`, `LOCK_MARK`) is a hint, not a fixture: taking the lock shows a small
+dim diamond on the target (opacity 0.55) for 0.5 s, it fades over 2.4 s and stays gone until the
+lock is taken again (real seconds; the frame's "LOCKED ON" label and the touch LOCK button say the rest).
 `ui/callouts.js` subscribes itself to `combat:deflectChain {count}` ("DEFLECT ×N" over the hero's
 head: one counter per string that counts up in place and absorbs the PARRY / DEFLECT pop of the same
 blow; the GHOSTEP call-out counts the same way from the second perfect dodge of a streak,
@@ -1655,7 +1664,7 @@ change counts only after it is let go** (the title's A never rolls, the resuming
 the press that makes the pad active counts. Inactive (keyboard / mouse / touch used since): every
 pad hold is released. A pad unplugged while active in a play state pauses the game.
 `gamepadconnected` / `gamepaddisconnected` log a system line. **Rumble** (`CONFIG.gamepad.rumble`)
-on `player:hurt`, `player:guardBreak`, `player:block`, `player:parry` (perfect stronger, a bullet
+on `player:hurt`, `player:guardBreak`, `player:guardOpen`, `player:block`, `player:parry` (perfect stronger, a bullet
 lighter), `player:perfectDodge`, `player:hitDragon` (not guarded: `hitHeavy`, else `hitLight`); only while active.
 
 ### Touch controls — `src/ui/touch.js` exports `class TouchControls`
@@ -1673,13 +1682,26 @@ timings are the real device's):
 | control | feeds | behaviour |
 |---|---|---|
 | stick (left thumb, floats under the thumb in the left 42 % × lower 74 %) | `setVirtualAxis` | analog: dead zone 0.16, full run at 0.62 of the 52 px travel; ≥ 0.94 (rim) holds `@sprint` (off below 0.86) |
-| ATTACK | `@attack` | tap = light combo, hold ≥ 0.3 s = charge, release = the cleave; shows an ASCII charge meter `[###...]` |
-| BLOCK | `@block` | hold = block, tap just before impact = parry |
-| DODGE | `@dodge` | roll / perfect dodge |
-| FLASK · LOCK · PAUSE (glyph `\|\|`) | `@flask` · `@lockOn` · `@pause` | flask count, LOCK lit while locked on |
+| ATTACK (pad tile) | `@attack` | tap = light combo, hold ≥ 0.3 s = charge, release = the cleave; shows an ASCII charge meter `[###...]` |
+| BLOCK (pad tile) | `@block` | hold = block, tap just before impact = parry; a gauge along its foot is the guard meter |
+| DODGE (pad tile) | `@dodge` | roll / perfect dodge |
+| FLASK (rides with the pad) · LOCK · PAUSE (glyph `\|\|`, both top right) | `@flask` · `@lockOn` · `@pause` | flask count, LOCK lit while locked on |
 | the HUD prompt | `@<action>` from its `[@interact]` chip | rest at the bonfire / fight again |
 | a bare-screen tap on title / death | `Mouse0` | "press any key" |
 | two bare-screen fingers in play | `cameraRig.zoom` | pinch (distance × start / now) |
+
+**The pad** (ADR-095; `CONFIG.touch.pad`): ATTACK, BLOCK and DODGE are three tiles of one cluster
+that all share an edge with each other (ATTACK bottom right, BLOCK on top of it, DODGE down their
+left side), raised and inset from the corner. The pad is one pointer surface (`.tc-pad`; the tiles
+take no pointers themselves): a touch on it, or up to `reach` (26 px) outside the cluster, presses
+the nearest tile, and a thumb that **slides** onto another tile releases the first and presses the
+second without lifting (release edge first; it must leave its tile by `stick`, 10 px; a slide that
+wanders further than `reach` from every tile keeps what it holds). Each finger holds its own tile.
+The player places the cluster in the pause menu: PAD POSITION (low / mid / high: `pad.pos`) and
+PAD SIZE (small / medium / large: `pad.size`), kept in `localStorage` (`abyss.touchPad`); the
+controls show through the pause screen, inert, while they are stepped (`.tc-root.peek`). Screens
+taller than 560 px get everything × `pad.tall`. API: `padPos`, `padSize`, `cyclePad('pos' | 'size')`,
+`padPoint(id)` (the screen point at a tile's middle), `padGeo`.
 
 **Aim** (`game.mouseGround`, each frame in `explore` / `bossIntro` / `boss`): with the dragon
 targetable and within `CONFIG.touch.autoAimRange` (32 m) it is the dragon's lock point (attacks,
@@ -1923,6 +1945,8 @@ Player → hud/audio/fx/flow:
   `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last}` (last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
+  `player:guardOpen {attack}` (the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a
+  short stagger; ADR-094; HUD "GUARD DOWN", audio the guard break's crack, the pad rumbles),
   `player:dodge {kind}` (an attack passed through i-frames), `player:perfectDodge {attack, tell, streak}` (every perfect dodge:
   flurry, plunge, in place or Ghostep; not on an execution; streak = perfect dodges in a row, this one included),
   `player:ghostep {x, z}` (with every perfect dodge; for the plunge x/z = the hang point above the head, for a flurry where he dodged),

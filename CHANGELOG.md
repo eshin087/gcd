@@ -4,7 +4,22 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-four pieces of work since 0.4.0:
+Twenty-five pieces of work since 0.4.0:
+- **Phone controls you can hold, and a guard meter** (2026-11-14, ADR-094, ADR-095):
+  - **The right thumb's pad.** ATTACK, BLOCK and DODGE are now three large tiles that touch each
+    other, moved up and in from the corner. Slide your thumb from one onto another without lifting:
+    the first lets go and the second presses. A touch that lands a little off still counts for the
+    nearest tile. In the pause menu, PAD POSITION (low / mid / high) and PAD SIZE (small / medium /
+    large) move and size the cluster while you watch it; the choice is remembered. FLASK sits above
+    DODGE, LOCK moved up beside pause.
+  - **The guard meter.** A steel bar under your HP (and a gauge on the BLOCK tile). *Changed:* a
+    blocked blow now costs guard instead of HP (it used to let 20 % or 50 % of the damage through).
+    If the meter runs out on a blocked blow, that blow is still blocked but your guard is knocked
+    open for half a second (GUARD DOWN). It refills by itself in under two seconds whatever you are
+    doing, every parry gives a large piece back at once, and every hit you land gives a little.
+    Fire breath and bullets met on the guard chip HP as before and do not touch the meter.
+  - **The lock-on marker** is a small, dim diamond that shows when you lock on and fades away
+    within three seconds.
 - **The Cinder Wyrm in finer, steadier letters** (2026-11-14 – 15, ADR-092, ADR-093): the wyrm's
   digits are one size up at 720p (5x8 px cells, the owner's pick of three sizes) with the calm
   charcoal tone that shows every scale, and they now travel with it: the body no longer slides under

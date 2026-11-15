@@ -2244,3 +2244,74 @@ sizes (a browser font closes up into blots under ~10 px).
 font gives an exact 7.5x12. ADR-092's large-letter atlas and its glyph check are gone; the check now
 verifies every set letter has a bitmap in each font and the cell per screen height. The human bosses
 and the hero are unchanged (their letter size is still the owner's open pick).
+
+## ADR-094 — A guard meter that is not stamina (2026-11-14)
+
+**Context.** The owner: "add a guard meter and any parry will restore guard meter. I don't want this
+game to be annoying when the guard meter is empty so let it replenish quickly when not taking damage
+or attacking as I don't want to punish the player for playing defensive." Until now a held guard
+cost HP: a blocked blow let 20 % (normal) or 50 % (blue) of its damage through, and nothing else
+limited how long a guard could be held. Asked four questions, the owner picked: at empty the guard
+is knocked open (not a leak of damage, not the full guard break); no HP chip while there is guard
+left; attacking does not pause the refill; and hits that land restore guard as parries do.
+
+**Decision.** `GUARD` in `combat/rules.js`, `player.guard / maxGuard` (100).
+- A blocked blow costs guard (damage × 1, blue × 1.5, clamped 8 – 60) and no HP.
+- The blow that empties the meter is blocked, then knocks the guard open: `player:guardOpen`, the
+  state `stagger` for 0.55 s in the guard break's opening pose (the same clip, without its
+  knockdown), no damage.
+- Refill 60 / s from 0.8 s after the last blow blocked or taken (0.35 s after an opening), in every
+  state. A parry gives 28 / 45 (bullet 10, perfect + 20), a landed cut 4 / 10.
+- Contact streams and bullets (hits with no knockback) keep the old HP chip and do not touch it.
+- HUD: a thin steel bar under the HP bar with no number; on touch also a gauge on the BLOCK tile.
+
+**Why.** The meter has to make a held guard a decision without bringing stamina back (COMBAT rule
+1): so nothing the hero does spends it, only blows do, and the refill never waits on his own
+actions. Empty costs half a second, not HP and not a knockdown, which is the least a break can cost
+and still matter inside a string (the next cut, 0.4 s on, lands). Moving the cost of a block from
+HP to the meter is what makes the meter worth reading: with both, a block would be taxed twice.
+Parries and hits giving guard back reward the two things the game wants more of than turtling.
+Streams are left out because seven ticks a second would either empty the meter in a breath or need
+a second set of numbers.
+
+**Consequences.** A blocked blow no longer hurts at all, so a careful player takes less damage than
+before; the bosses were not re-tuned. `player:block` reports damage 0 for a blow (the chip is still
+reported for streams). The duelists' AI does not know the meter exists (it does not press harder on
+a low guard). The guard-open stagger reuses the guard break's pose: a pose of its own may read better.
+
+## ADR-095 — The right thumb's pad: three tiles that touch, slide between them, placed by the player; a lock marker that fades (2026-11-14)
+
+**Context.** The owner, playing on an iPhone: "the right side controls are too far bottom in the
+right corner so my right hand is uncomfortable since i have to hold it at the corner. Im having a
+hard time shuffling between attack dodge and block." ATTACK's middle was 66 px in and 68 px up from
+the corner (about 11 mm each way on the phone), and the three buttons stood apart with 20 – 30 px
+gaps, so every switch was a lift, a reach and an aimed landing. Also: "make the target lock icon be
+subtle and slowly fades away as i hate games that show the lock target icon". Of three ways to
+switch (slide between tiles, a flick for the dodge, both) the owner picked the slide.
+
+**Decision.**
+- ATTACK, BLOCK and DODGE are three rectangular tiles of one cluster, each sharing an edge with both
+  others (ATTACK 98 × 92 bottom right, BLOCK 98 × 62 on top of it, DODGE 70 × 116 down their left
+  side), with ATTACK's middle about 97 px in and 98 px up by default.
+- The cluster is one pointer surface. A touch on or near it presses the nearest tile; a thumb that
+  slides onto another tile releases the first and presses the second (a 10 px stick so a resting
+  thumb does not flicker across a border).
+- The layout is data (`CONFIG.touch.pad`) and the hit test reads the same numbers the tiles are
+  placed with. The player picks one of three positions and three sizes in the pause menu; the
+  choice is kept in `localStorage`.
+- FLASK rides with the cluster but is its own button a gap away (a slide must never drink). LOCK
+  moves to the top right beside pause: on touch the aim is automatic, so it is pressed rarely.
+- The lock-on marker is a small dim diamond that shows when the lock is taken and fades out in 3 s.
+
+**Why.** Three tiles that all touch make every switch one short move with no gap to cross and no
+third tile in the way (a 2 × 2 grid would put FLASK or ATTACK under a diagonal slide). Nearest-tile
+makes a slightly missed landing still count. Where a thumb rests differs by hand and by grip and a
+screenshot cannot settle it, so the default is a guess moved well out of the corner and the player
+has the last word, on the device. The slide's rules follow from the input layer: a release edge and
+a press edge are what a lift and a tap would have sent, so the player code needed no change (a
+guard press already cancels a swing, ADR-080).
+
+**Consequences.** Sliding off ATTACK while a charge is held releases the cleave (and the guard or
+roll then cancels it). A thumb resting on a border can still cross it by more than 10 px by
+accident; `pad.stick` is the knob. The marker gives no lasting sign of the lock in the world; the
+player frame's label and the LOCK button do. Not tried on a real phone by anyone but the owner.

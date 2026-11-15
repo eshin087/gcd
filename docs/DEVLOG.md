@@ -5,6 +5,41 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-14 — Session 34: the phone's right thumb, a lock marker that fades, the guard meter
+
+**Owner:** "Lets improve mobile ui / user experience. The right side controls are too far bottom in
+the right corner ... Im having a hard time shuffling between attack dodge and block. Think of a way
+to make it easy and intuitive to switch between the different options. Make the target lock icon be
+subtle and slowly fades away ... add a guard meter and any parry will restore guard meter ... let it
+replenish quickly ... I don't want to punish the player for playing defensive." Four questions
+first; the answers: slide between the buttons; at empty the guard is knocked open; no HP chip while
+there is guard; landing hits restore it too. Branch `ui/mobile-guard` from `main`. (Rebased over
+PR #32, which took Session 33 and ADR-093: this is 34 and ADR-094 / ADR-095.)
+
+**Done:**
+- **The pad** (ADR-095, `ui/touch.js`, `CONFIG.touch.pad`): ATTACK, BLOCK and DODGE are three
+  tiles that all touch, raised and inset from the corner; a touch near the cluster goes to the
+  nearest tile; a thumb slides from tile to tile without lifting. FLASK rides with it, LOCK moved
+  to the top right. Pause menu: PAD POSITION (low / mid / high) and PAD SIZE (small / medium /
+  large), kept in localStorage; the controls show through the pause screen while they are stepped.
+- **The lock-on marker** (`ui/nameTags.js` `LOCK_MARK`): a small dim diamond when the lock is taken,
+  gone after 3 s.
+- **The guard meter** (ADR-094, `GUARD` in `combat/rules.js`): a blocked blow costs guard and no
+  HP; empty knocks the guard open for 0.55 s (`player:guardOpen`, GUARD DOWN); it refills at 60 / s
+  in every state; parries and landed cuts give some back. A steel bar under the HP bar, a gauge on
+  the BLOCK tile.
+- **Tests:** integ.mjs GUARD (new: cost, the refill behind a held guard and in a swing, the
+  opening, parry and hit restore, streams, the HUD bar); TOUCH drives the tiles through the pad and
+  checks nearest-tile, the slide (ATTACK → BLOCK → DODGE on one finger), the stick, two fingers,
+  the BLOCK gauge, position and size; BLOCK now expects no HP loss.
+
+**Decisions:** ADR-094, ADR-095.
+
+**Not checked / open:** see the PR. Where the thumb really rests is the owner's to judge on the
+phone (that is what PAD POSITION is for). The bosses were not re-tuned for blocks that cost no HP.
+
+---
+
 ## 2026-11-15 — Session 33: the wyrm in fine digits again, one size up
 
 **Owner** (after PR #31 went live): "the dragon is way too flashy right now and the ascii text is too

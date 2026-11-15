@@ -22,7 +22,7 @@ const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
 const { Colliders } = await imp('src/world/colliders.js');
-const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE } = await imp('src/combat/rules.js');
+const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/combat/rules.js');
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
 const { DIM: HERO_DIM, setHeroGlyphScale } = await imp('src/entities/player/model.js');
 const { Dragon } = await imp('src/entities/dragon/dragon.js');
@@ -72,6 +72,7 @@ const PAYLOAD = {
   'player:block': { damage: 'n', tell: 't' },
   'player:parry': { tell: 't', attack: 's', chain: 'n', perfect: 'b' },
   'player:guardBreak': { attack: 's' },
+  'player:guardOpen': { attack: 's' },
   'player:dodge': { kind: 's' },
   'player:perfectDodge': { attack: 's', tell: 't', streak: 'n' },
   'player:streak': { count: 'n', lost: 'n' },
@@ -856,6 +857,107 @@ async function scenarioParry() {
   return G;
 }
 
+// ================================================================== scenario: the guard meter
+// GUARD (combat/rules.js, ADR-094): a blocked blow costs guard and no HP; the blow that empties the
+// meter is still blocked and knocks the guard open (a short stagger, no knockdown, no damage); it
+// refills by itself, also behind a held guard and in a swing; a parry and a cut that lands give
+// some back at once; a contact stream keeps its HP chip and leaves the meter alone.
+async function scenarioGuard() {
+  out('\n== scenario GUARD (the guard meter: a block costs guard, not HP; knocked open; the refill; parries and hits restore) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player;
+  const c = (n) => G.counts[n] || 0;
+  const guardUp = () => { settle(G); place(G, 6); p.guard = p.maxGuard; p.guardWait = 0; input.press(2); run(G, 0.6, { passive: true }); };
+  const blow = (damage, tell = TELL.NORMAL, extra = {}) => p.takeHit({ damage, tell, attack: 'bite', attacker: d, knockback: 2, ...extra });
+  assert(p.guard === GUARD.max && p.maxGuard === GUARD.max, `the meter starts full (${p.guard} / ${p.maxGuard})`);
+
+  // 1) a blocked blow: guard, not HP
+  guardUp();
+  const hp0 = p.hp;
+  const r1 = blow(20);
+  assert(r1 === RESULT.BLOCKED && p.hp === hp0, `a blocked blow takes no HP (${r1}, hp ${hp0} → ${p.hp})`);
+  assert(near(p.guard, GUARD.max - 20 * GUARD.cost.normal, 1e-6), `it costs its damage x ${GUARD.cost.normal} in guard (${p.guard})`);
+  const r2 = blow(20, TELL.BLUE);
+  assert(r2 === RESULT.BLOCKED && p.hp === hp0 && near(p.guard, GUARD.max - 20 * GUARD.cost.normal - 20 * GUARD.cost.blue, 1e-6), `a heavy (blue) blow costs x ${GUARD.cost.blue} (${p.guard})`);
+  const g2 = p.guard;
+  blow(1);
+  assert(near(g2 - p.guard, GUARD.costMin, 1e-6), `the smallest blow costs ${GUARD.costMin}`);
+  input.up(2);
+
+  // 2) the refill: nothing for regenDelay, then quickly; behind a held guard and in a swing too
+  guardUp();
+  blow(40);
+  const gHit = p.guard;
+  run(G, GUARD.regenDelay - 0.1, { passive: true });
+  assert(near(p.guard, gHit, 1e-6) && p.blocking, `no refill for ${GUARD.regenDelay} s after a blocked blow (${p.guard})`);
+  run(G, 0.4, { passive: true });
+  assert(p.guard > gHit + 10 && p.blocking, `then it refills behind the held guard (${gHit} → ${p.guard.toFixed(1)})`);
+  run(G, 1.5, { passive: true });
+  assert(p.guard === p.maxGuard, `and is full again within ${(GUARD.regenDelay + 1.9).toFixed(1)} s (${p.guard})`);
+  input.up(2);
+  settle(G);
+  place(G, 14);
+  p.guard = 10;
+  p.guardWait = 0;
+  p._buffer('light');
+  let swung = false;
+  for (let i = 0; i < 20; i++) { G.tick(DT); if (p.state === 'attack') swung = true; }
+  assert(swung && p.guard > 10 + GUARD.regenRate * 0.25, `a swing does not stop the refill (${p.guard.toFixed(1)})`);
+
+  // 3) the blow that empties the meter: blocked, the guard knocked open, no damage, no knockdown
+  guardUp();
+  p.guard = 12;
+  const hp3 = p.hp, o0 = c('player:guardOpen'), gb0 = c('player:guardBreak'), hu0 = c('player:hurt');
+  const r3 = blow(30);
+  assert(r3 === RESULT.BLOCKED && p.hp === hp3 && p.guard === 0, `the emptying blow is still blocked: no HP lost (${r3}, hp ${p.hp}, guard ${p.guard})`);
+  assert(c('player:guardOpen') === o0 + 1 && c('player:guardBreak') === gb0 && c('player:hurt') === hu0, 'player:guardOpen once; no guard break, no hurt');
+  assert(p.state === 'stagger' && !p.blocking, `the guard is knocked open: a stagger (${p.state})`);
+  const r3b = blow(10);
+  assert(r3b === RESULT.HIT && p.hp === hp3 - 10, `a blow in the opening lands (${r3b})`);
+  let openT = 0, down = false;
+  for (let i = 0; i < 120 && p.state === 'stagger'; i++) { G.tick(DT); openT += DT; }
+  for (let i = 0; i < 70; i++) { G.tick(DT); if (p.state === 'knockdown' || p.state === 'guardBreak') down = true; }
+  assert(!down && openT < GUARD.openDur + 0.5, `it ends by itself with no knockdown (${openT.toFixed(2)} s)`);
+  assert(p.blocking && p.guard > 20, `RMB still held: the guard is up again and the meter refilling (${p.state}, ${p.guard.toFixed(1)})`);
+  input.up(2);
+
+  // 4) a parry gives guard back at once; a perfect one more
+  settle(G);
+  place(G, 6);
+  p.guard = 20;
+  p.guardWait = 5;
+  const pa = forceAttack(G, 'bite', { answer: 'parry' });
+  assert(pa.res === RESULT.PARRIED && p.guard >= 20 + GUARD.parry.blue - 1e-6, `a parried bite gives ${GUARD.parry.blue} back at once (${p.guard.toFixed(1)})`);
+
+  // 5) a cut of his own that lands gives a little back
+  settle(G);
+  place(G, 3, Math.PI / 2);
+  p.guard = 20;
+  p.guardWait = 5;
+  const h0 = c('player:hitDragon');
+  p._buffer('light');
+  for (let i = 0; i < 60 && c('player:hitDragon') === h0; i++) G.tick(DT);
+  assert(c('player:hitDragon') > h0 && near(p.guard, 20 + GUARD.hit.light, 1e-6), `a light cut that lands gives ${GUARD.hit.light} back (${p.guard.toFixed(1)})`);
+
+  // 6) a contact stream (no knockback: the breath's ticks, a bullet) keeps its chip and leaves the meter alone
+  guardUp();
+  const hp6 = p.hp;
+  const r6 = p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'breath', attacker: d, knockback: 0 });
+  assert(r6 === RESULT.BLOCKED && near(hp6 - p.hp, 10 * (1 - DEFENSE.blockReduction.normal), 1e-6) && p.guard === p.maxGuard, `a blocked stream tick chips HP and costs no guard (hp −${(hp6 - p.hp).toFixed(1)}, guard ${p.guard})`);
+  input.up(2);
+
+  // 7) a rest and a respawn fill it; the HUD shows it
+  p.guard = 5;
+  game.hud.update(DT);
+  const bar = cls('guard');
+  assert(!!bar && bar.classList.contains('low'), 'the HUD has a guard bar, marked low under ' + GUARD.low);
+  p.respawn();
+  assert(p.guard === p.maxGuard, 'a respawn fills the meter');
+  return G;
+}
+
 // ================================================================== scenario: block (hold RMB)
 async function scenarioBlock() {
   out('\n== scenario BLOCK (hold RMB: normal swipe, blue bite; the charged cleave; RMB cancels a charge) ==');
@@ -866,19 +968,19 @@ async function scenarioBlock() {
   settle(G);
   place(G, 5.5, 0.5);
   const r = forceAttack(G, 'swipe', { hold: true });
-  const want = TUNING.attacks.swipe.damage * (TUNING.damageScale ?? 1) * (1 - DEFENSE.blockReduction.normal);
-  out(`   swipe: tell ${r.tell} result ${r.res} hp ${r.hp0} → ${r.hpAtHit} (expected -${want.toFixed(2)})`);
+  const want = 0; // (a blocked blow costs guard, not HP: GUARD, scenario GUARD)
+  out(`   swipe: tell ${r.tell} result ${r.res} hp ${r.hp0} → ${r.hpAtHit} (expected -${want.toFixed(2)}), guard ${p.guard.toFixed(1)}`);
   assert(r.tell === TELL.NORMAL, 'swipe announces a normal tell');
   assert(r.res === RESULT.BLOCKED, `held guard → 'blocked' (got ${r.res})`);
-  assert(near(r.hp0 - r.hpAtHit, want, 0.01), `blocked damage reduced by DEFENSE.blockReduction.normal (${(r.hp0 - r.hpAtHit).toFixed(2)})`);
+  assert(near(r.hp0 - r.hpAtHit, want, 0.01), `a blocked blow takes no HP (${(r.hp0 - r.hpAtHit).toFixed(2)})`);
   assert(evn(r, 'player:block') === 1 && evn(r, 'player:hurt') === 0, 'player:block emitted, no player:hurt');
   assert(evn(r, 'player:parry') === 0, 'holding block from before the windup is not a parry');
   settle(G);
   place(G, 6);
   const b = forceAttack(G, 'bite', { hold: true });
-  const wantB = TUNING.attacks.bite.damage * (TUNING.damageScale ?? 1) * (1 - DEFENSE.blockReduction.blue);
+  const wantB = 0;
   out(`   bite: result ${b.res} hp ${b.hp0} → ${b.hpAtHit} (expected -${wantB.toFixed(2)})`);
-  assert(b.res === RESULT.BLOCKED && near(b.hp0 - b.hpAtHit, wantB, 0.01), `blocked blue bite chips by DEFENSE.blockReduction.blue (${(b.hp0 - b.hpAtHit).toFixed(2)})`);
+  assert(b.res === RESULT.BLOCKED && near(b.hp0 - b.hpAtHit, wantB, 0.01), `a blocked blue bite takes no HP either (${(b.hp0 - b.hpAtHit).toFixed(2)})`);
   assert(p.blocking === true || p.state === 'block', 'guard still up after a blocked blue hit');
   // the charged cleave: hold LMB past the charge threshold, release (no stamina cost). From the flank:
   // the 25 % bigger wyrm's chest sits above sword height, so straight ahead only the head (when low) is in reach
@@ -5773,7 +5875,17 @@ async function scenarioTouch() {
   const { game, counts } = G;
   const input = game.input, t = game.touch, p = game.player, d = game.dragon, rig = game.cameraRig;
   const c = (n) => counts[n] || 0;
-  const touch = (type, target, id, x = 0, y = 0) => target.dispatch(type, { pointerType: 'touch', pointerId: id, clientX: x, clientY: y });
+  const touch = (type, target, id, x = 0, y = 0) => {
+    // a pad tile (ATTACK / BLOCK / DODGE) has no pointers of its own: the pad takes the touch at the tile's middle
+    const tile = target?.classList?.contains('tc-tile') ? ['attack', 'block', 'dodge'].find((n) => target.classList.contains(`tc-${n}`)) : null;
+    if (tile) {
+      const m = t.padPoint(tile);
+      target = cls('tc-pad');
+      x = m.x;
+      y = m.y;
+    }
+    target.dispatch(type, { pointerType: 'touch', pointerId: id, clientX: x, clientY: y });
+  };
   const frames = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { each?.(i); G.tick(DT); } };
   const rotateOn = () => !!document.body.find((e) => e.classList?.contains('tc-rotate'))?.classList.contains('on'); // overlay lives on <body>
   // desktop: nothing changes until a touch arrives
@@ -5863,6 +5975,77 @@ async function scenarioTouch() {
   touch('pointerup', blk, 15);
   frames(0.3);
   assert(guarded && p.state !== 'block', `BLOCK hold → block, release → guard down (${p.state})`);
+  // ---- the pad: three tiles that all touch; a touch goes to the nearest; a slide goes from tile to tile
+  {
+    settle(G); place(G, 12);
+    const pad = cls('tc-pad'), geo = t.padGeo, T = geo.tiles;
+    assert(!!pad && atk.classList.contains('tc-tile') && blk.classList.contains('tc-tile') && dge.classList.contains('tc-tile') && !flask.classList.contains('tc-tile'), 'ATTACK / BLOCK / DODGE are tiles of the pad; FLASK is its own button');
+    const touchSide = (a, b) => (a[2] === b[0] || b[2] === a[0]) ? Math.min(a[3], b[3]) - Math.max(a[1], b[1]) : (a[3] === b[1] || b[3] === a[1]) ? Math.min(a[2], b[2]) - Math.max(a[0], b[0]) : 0;
+    assert(touchSide(T.attack, T.block) >= 40 && touchSide(T.attack, T.dodge) >= 40 && touchSide(T.block, T.dodge) >= 30, `each tile shares an edge with both others (${touchSide(T.attack, T.block)} / ${touchSide(T.attack, T.dodge)} / ${touchSide(T.block, T.dodge)} px)`);
+    const A = t.padPoint('attack'), Bk = t.padPoint('block'), Dg = t.padPoint('dodge');
+    assert(innerWidth - A.x >= 80 && innerHeight - A.y >= 80, `ATTACK sits out of the corner (its middle ${(innerWidth - A.x).toFixed(0)} px in, ${(innerHeight - A.y).toFixed(0)} px up)`);
+    const P = (type, id, x, y) => pad.dispatch(type, { pointerType: 'touch', pointerId: id, clientX: x, clientY: y });
+    const held = (code) => input.down(code);
+    // a touch just outside the cluster goes to the nearest tile
+    P('pointerdown', 40, geo.cx + 14, A.y);
+    assert(held('@attack') && atk.classList.contains('on'), 'a touch 14 px off the edge of ATTACK presses ATTACK');
+    P('pointerup', 40, geo.cx + 14, A.y);
+    assert(!held('@attack') && !atk.classList.contains('on'), 'lifted: released');
+    frames(0.8);
+    // slide: ATTACK → BLOCK without lifting (the swing is cancelled into the guard)
+    P('pointerdown', 41, A.x, A.y);
+    frames(0.05);
+    const edge = geo.cy - T.attack[3]; // the screen y of the ATTACK / BLOCK border
+    P('pointermove', 41, A.x, edge - 6);
+    assert(held('@attack') && !held('@block'), 'a thumb 6 px over the border still holds ATTACK (it sticks)');
+    P('pointermove', 41, Bk.x, Bk.y);
+    assert(!held('@attack') && held('@block') && blk.classList.contains('on') && !atk.classList.contains('on'), 'slid onto BLOCK: ATTACK released, BLOCK pressed');
+    frames(0.3);
+    assert(p.state === 'block' && p.blocking, `the slide raised the guard (${p.state})`);
+    // BLOCK → DODGE, still the same finger
+    const ro = c('player:roll');
+    P('pointermove', 41, Dg.x, Dg.y);
+    assert(!held('@block') && held('@dodge'), 'slid onto DODGE: BLOCK released, DODGE pressed');
+    frames(0.1);
+    assert(c('player:roll') === ro + 1, 'the slide rolled');
+    // far off the pad the thumb keeps what it holds; lifting releases it
+    P('pointermove', 41, Dg.x - 200, Dg.y - 150);
+    assert(held('@dodge'), 'a slide far off the pad keeps the tile it holds');
+    P('pointerup', 41, 0, 0);
+    assert(!held('@dodge') && !held('@attack') && !held('@block') && t.padHeld.size === 0, 'lifted: everything released');
+    frames(0.9);
+    // two fingers, two tiles
+    P('pointerdown', 42, Bk.x, Bk.y);
+    P('pointerdown', 43, A.x, A.y);
+    assert(held('@block') && held('@attack'), 'two fingers hold two tiles');
+    P('pointerup', 42, Bk.x, Bk.y);
+    P('pointerup', 43, A.x, A.y);
+    frames(0.9);
+    // the BLOCK tile carries the guard meter
+    p.guard = p.maxGuard * 0.2;
+    p.guardWait = 5;
+    G.tick(DT);
+    assert(blk.classList.contains('low') && Number(blk.style.getPropertyValue?.('--tc-gd') ?? blk.style['--tc-gd']) < 0.3, 'BLOCK shows the guard meter, low under 30 %');
+    p.guard = p.maxGuard;
+    p.guardWait = 0;
+    // PAD POSITION / PAD SIZE: the player moves and sizes the cluster
+    const a0 = t.padPoint('attack'), w0 = T.attack[2] - T.attack[0];
+    assert(t.padPos === 'mid' && t.padSize === 'm', `the default placement (${t.padPos} / ${t.padSize})`);
+    const pos2 = t.cyclePad('pos'), a1 = t.padPoint('attack');
+    assert(pos2 === 'high' && a1.y < a0.y - 20 && a1.x < a0.x, `PAD POSITION mid → high: further up and in (${a0.x.toFixed(0)},${a0.y.toFixed(0)} → ${a1.x.toFixed(0)},${a1.y.toFixed(0)})`);
+    const pos3 = t.cyclePad('pos'), a2 = t.padPoint('attack');
+    assert(pos3 === 'low' && a2.y > a0.y + 10 && a2.x > a0.x, 'high → low: nearer the corner');
+    t.cyclePad('pos');
+    const s2 = t.cyclePad('size'), w1 = t.padGeo.tiles.attack[2] - t.padGeo.tiles.attack[0];
+    assert(s2 === 'l' && w1 > w0 * 1.1, `PAD SIZE m → l: larger tiles (${w0} → ${w1.toFixed(0)} px)`);
+    t.cyclePad('size');
+    t.cyclePad('size');
+    assert(t.padPos === 'mid' && t.padSize === 'm' && near(t.padPoint('attack').x, a0.x, 1e-6), 'cycled back to the default');
+    P('pointerdown', 44, t.padPoint('dodge').x, t.padPoint('dodge').y);
+    assert(held('@dodge'), 'the hit test follows the placement');
+    P('pointerup', 44, 0, 0);
+    frames(0.9);
+  }
   // stick: up = north, the rim = sprint; release stops
   settle(G); place(G, 14);
   const z0 = p.position.z;
@@ -6796,7 +6979,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
