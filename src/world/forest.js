@@ -497,8 +497,8 @@ export function buildBonfire(rng, x, z) {
 // ---------- assembly ----------
 /** Where the forest's landmarks stand (landmarks.js): world x, z, yaw, scale. */
 export const FOREST_LANDMARKS = {
-  elder: { x: -1, z: -31, yaw: 0.06, s: 1 },
-  tree: { x: -29.5, z: -5.5, yaw: 0.4, s: 1 },
+  elder: { x: 30.5, z: -6, yaw: -1.5, s: 1 },
+  tree: { x: -29.5, z: -5.5, yaw: 1.2, s: 1 },
 };
 
 export function createForest(U, colliders) {
@@ -524,7 +524,8 @@ export function createForest(U, colliders) {
     if (Math.hypot(x - LM.tree.x, z - LM.tree.z) < 8.5 + pad) return true;
     const e = LM.elder, c = Math.cos(e.yaw), s = Math.sin(e.yaw);
     const lx = (x - e.x) * c - (z - e.z) * s, lz = (x - e.x) * s + (z - e.z) * c;
-    return Math.abs(lx + 0.5) < 17 + pad && lz > -8 - pad && lz < 6.5 + pad;
+    // (well past the skull at +lx: a tree south of it would stand between it and the camera)
+    return lx > -17.5 - pad && lx < 24 + pad && lz > -8 - pad && lz < 6.5 + pad;
   };
   // spatial hash so the min-spacing test stays cheap with many trees
   const cellOf = (x, z) => `${Math.floor(x / 4)},${Math.floor(z / 4)}`;
@@ -620,7 +621,8 @@ export function createForest(U, colliders) {
   colliders.add(bf.x, bf.z, 0.75, 'bonfire');
   bare.push({ x: bf.x, z: bf.z, r: 1.6 });
 
-  // landmarks: the elder wyrm's skeleton along the north rim, the Cinder Tree on the west rim
+  // landmarks: the elder wyrm's skeleton along the east rim (head to the south: at the side of the
+  // frame it is seen side-on, ribs and all), the Cinder Tree on the west rim
   {
     const lr = mulberry32(CONFIG.seed + 977);
     const e = LM.elder, t = LM.tree;
@@ -630,7 +632,7 @@ export function createForest(U, colliders) {
       colliders.add(p.x, p.z, r * e.s, 'stone');
     }
     treeGeos.push(...buildCinderTree(lr, t.x, t.z, t.yaw, t.s));
-    colliders.add(t.x, t.z, 2.5 * t.s, 'trunk');
+    colliders.add(t.x, t.z, 3.0 * t.s, 'trunk');
     treeSpots.push({ x: t.x, z: t.z, r: 5 });
   }
 
