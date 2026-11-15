@@ -1,7 +1,9 @@
 import { TELL_STYLE } from '../combat/rules.js';
 
 // HUD stylesheet, injected from JS so the module owns its look (style.css stays foundation-only).
-// Ansenjeo-style MMO UI: tiny monospace text, thin 1px borders, translucent dark panels.
+// An ASCII overlay (ADR-098): monospace text drawn straight on the game. In play nothing has a
+// panel: the meters are rows of characters (ui/glyphBar.js), the big words block letters
+// (ui/blockText.js). Menus and the desktop log keep thin 1px borders and translucent dark panels.
 // Tell colours come from TELL_STYLE (src/combat/rules.js) so HUD, FX and the Lab agree.
 
 /** '#rrggbb' -> 'rgba(r, g, b, a)'. */
@@ -15,6 +17,8 @@ const BLUE = TELL_STYLE.blue.css;
 const RED = TELL_STYLE.red.css;
 const WHITE = TELL_STYLE.normal.css;
 const CYAN = '#7ff6ff';
+// text drawn on the game with no panel behind it: a dark halo keeps it readable over lit ground
+const SHADOW = '0 0 3px #000, 0 1px 2px #000';
 
 const CSS = `
 .ab-root {
@@ -27,7 +31,6 @@ const CSS = `
   --ab-line: rgba(207, 214, 230, 0.18);
   --ab-panel: rgba(6, 9, 14, 0.72);
   --ab-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
-  --ab-serif: 'Cinzel', 'Trajan Pro', Georgia, serif;
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -63,60 +66,59 @@ const CSS = `
   letter-spacing: 0;
 }
 
-/* ---------- bars ---------- */
-.ab-bar {
+/* ---------- text meters (ui/glyphBar.js): a run of fill, the piece just lost, the empty rest ---------- */
+.ab-gbar {
+  display: inline-block;
   position: relative;
-  flex: 1;
-  height: 6px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid var(--ab-line);
+  flex: none;
+  white-space: pre;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-shadow: ${SHADOW};
 }
-.ab-bar > .chunk,
-.ab-bar > .fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 100%;
-  transform-origin: 0 50%;
-  will-change: transform;
-}
-.ab-bar.hp > .fill { background: linear-gradient(180deg, #d4483c, #8a1912); }
-.ab-bar.hp > .chunk { background: rgba(255, 228, 210, 0.78); }
-.ab-bar.hp.low > .fill { animation: ab-pulse 0.9s ease-in-out infinite; }
-.ab-bar.flash { animation: ab-flash 0.55s ease-out; }
+.ab-gbar .e { color: rgba(150, 160, 182, 0.72); font-weight: 400; }
+/* a meter's ends: [ and ] (not the posture, which grows from its middle) */
+.ab-gbar:not(.post)::before { content: '['; color: #8f99ad; font-weight: 400; }
+.ab-gbar:not(.post)::after { content: ']'; color: #8f99ad; font-weight: 400; }
+.ab-gbar .tick { position: absolute; top: 0; font-style: normal; transform: translateX(-50%); color: #fff2e0; }
+.ab-gbar.hp .f { color: #e8584a; text-shadow: 0 0 7px rgba(232, 88, 74, 0.45), ${SHADOW}; }
+.ab-gbar.hp .c { color: #ffe1cf; }
+.ab-gbar.hp.low .f { animation: ab-pulse 0.9s ease-in-out infinite; }
+.ab-gbar.guard .f { color: #dfe7f5; }
+.ab-gbar.guard .c { color: #ffc078; }
+.ab-gbar.guard.low .f { color: #ff9a5a; }
+.ab-gbar.guard.open { animation: ab-guard-open 0.6s ease-out; }
+@keyframes ab-guard-open { 20% { filter: brightness(2.2) drop-shadow(0 0 6px #ff6a3d); } }
+.ab-gbar.crit .f { color: ${CYAN}; text-shadow: 0 0 7px ${rgba(CYAN, 0.8)}, ${SHADOW}; }
+.ab-gbar.boss .f { color: #d8463a; text-shadow: 0 0 8px rgba(216, 70, 58, 0.5), ${SHADOW}; }
+.ab-gbar.boss .c { color: #f0d29a; }
+.ab-boss.p2 .ab-gbar.boss .f { color: #ff9a45; text-shadow: 0 0 9px rgba(255, 138, 61, 0.6), ${SHADOW}; }
+.ab-boss.p3 .ab-gbar.boss .f { color: #fff0c4; text-shadow: 0 0 10px rgba(255, 210, 140, 0.75), ${SHADOW}; }
+.ab-gbar.post { font-size: 0.82em; }
+.ab-gbar.post .f { color: #e9cc7a; }
+.ab-gbar.post .e { color: rgba(216, 184, 106, 0.3); }
+.ab-gbar.post.hot .f { text-shadow: 0 0 7px rgba(255, 196, 90, 0.8), ${SHADOW}; }
+.ab-gbar.post.hit .f { color: #fff6dc; }
+.ab-gbar.post.break { animation: ab-post-break 0.7s ease-out; }
+.ab-boss.broken .ab-gbar.post .f { animation: ab-pulse 0.5s ease-in-out infinite; }
 @keyframes ab-pulse { 50% { filter: brightness(1.55); } }
-@keyframes ab-flash {
-  0%, 100% { border-color: var(--ab-line); box-shadow: none; }
-  25% { border-color: #ff8a3d; box-shadow: 0 0 7px rgba(255, 138, 61, 0.75); }
-}
+@keyframes ab-post-break { 0%, 100% { filter: none; } 25% { filter: brightness(2.4) drop-shadow(0 0 8px rgba(255, 196, 90, 0.9)); } }
 
-/* ---------- player frame (top-left) ---------- */
+/* ---------- the player's rows (top-left): no panel, text on the game ---------- */
 .ab-pf {
   position: absolute;
   left: 14px;
   top: 12px;
-  width: 252px;
-  padding: 7px 10px 7px;
+  font-size: 13px;
+  text-shadow: ${SHADOW};
   z-index: 2;
 }
-.ab-pf-head { display: flex; justify-content: space-between; align-items: baseline; }
-.ab-pf-name { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: #eef1f8; }
-.ab-pf-lv { font-size: 10px; color: var(--ab-dim); }
-.ab-pf-sub { font-size: 10px; color: var(--ab-dim); margin: 0 0 6px; }
-.ab-row { display: flex; align-items: center; gap: 6px; height: 14px; }
-.ab-row .lbl { width: 16px; font-size: 10px; color: var(--ab-dim); }
-.ab-row .val {
-  width: 64px;
-  text-align: right;
-  font-size: 10px;
-  color: var(--ab-ink);
-  font-variant-numeric: tabular-nums;
-}
-.ab-row .val.dim { color: var(--ab-dim); }
-.ab-pf-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; height: 15px; }
-.ab-pips { display: inline-block; letter-spacing: 0.14em; font-size: 11px; }
+.ab-row { display: flex; align-items: center; gap: 1ch; line-height: 1.3; }
+.ab-row .lbl { width: 2ch; font-weight: 700; color: #aab3c6; }
+.ab-row .val { width: 9ch; white-space: nowrap; color: var(--ab-ink); font-variant-numeric: tabular-nums; }
+.ab-pf-foot { display: flex; align-items: center; gap: 3ch; margin-top: 2px; }
+.ab-pips { display: inline-block; letter-spacing: 0.14em; font-size: 0.85em; }
 .ab-pips .full { color: var(--ab-gold); text-shadow: 0 0 6px rgba(216, 184, 106, 0.45); }
 .ab-pips .empty { color: #4a5263; }
 .ab-pips.flash { animation: ab-shake 0.4s ease-out; }
@@ -126,52 +128,26 @@ const CSS = `
   60% { transform: translateX(-1px); }
 }
 .ab-lock {
-  font-size: 10px;
   letter-spacing: 0.14em;
   color: var(--ab-ember);
   opacity: 0;
   transition: opacity 0.18s;
 }
 .ab-lock.on { opacity: 1; }
-/* the guard meter: a thin steel bar under the HP bar */
-.ab-guard { height: 9px; margin-top: 1px; }
-.ab-guard .lbl { font-size: 8px; letter-spacing: 0.04em; }
-.ab-guard::after { content: ''; width: 64px; flex: none; }
-.ab-bar.guard { height: 4px; border-color: rgba(190, 206, 232, 0.3); background: rgba(4, 7, 12, 0.7); }
-.ab-bar.guard > .fill { background: linear-gradient(180deg, #e3ebf8, #7f90ad); }
-.ab-bar.guard > .chunk { background: rgba(255, 196, 120, 0.8); }
-.ab-bar.guard.low > .fill { background: linear-gradient(180deg, #ffb27a, #b3501c); }
-.ab-bar.guard.open { animation: ab-guard-open 0.6s ease-out; }
-@keyframes ab-guard-open {
-  0%, 100% { border-color: rgba(190, 206, 232, 0.3); box-shadow: none; }
-  20% { border-color: #ff6a3d; box-shadow: 0 0 8px rgba(255, 106, 61, 0.85); }
-}
-/* crit window (after a Ghostep): hidden row that lights up cyan */
-.ab-crit { margin-top: 2px; opacity: 0; transition: opacity 0.12s; }
+/* crit window (after a Ghostep): a hidden row that lights up cyan */
+.ab-crit { opacity: 0; transition: opacity 0.12s; }
 .ab-crit.on { opacity: 1; }
-.ab-crit .clbl {
-  width: 64px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: ${CYAN};
-  white-space: nowrap;
-}
+.ab-crit .clbl { font-weight: 700; letter-spacing: 0.12em; color: ${CYAN}; white-space: nowrap; }
 .ab-crit.on .clbl { animation: ab-crit-glow 0.5s ease-in-out infinite alternate; }
-.ab-bar.crit { height: 4px; border-color: ${rgba(CYAN, 0.35)}; }
-.ab-bar.crit > .fill {
-  background: linear-gradient(90deg, ${rgba(CYAN, 0.55)}, ${CYAN});
-  box-shadow: 0 0 6px ${rgba(CYAN, 0.8)};
-}
 @keyframes ab-crit-glow {
   from { text-shadow: 0 0 3px ${rgba(CYAN, 0.5)}; }
   to { text-shadow: 0 0 9px ${rgba(CYAN, 1)}, 0 0 2px #fff; }
 }
 /* the streak of perfect dodges: a pip for every blow the next flurry strikes, the count beside them */
-.ab-streak { margin-top: 2px; opacity: 0; transition: opacity 0.2s; }
+.ab-streak { opacity: 0; transition: opacity 0.2s; }
 .ab-streak.on { opacity: 1; }
-.ab-streak .slbl { width: 46px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #cfe9ff; white-space: nowrap; }
-.ab-streak .spips { flex: 1; font-size: 9px; letter-spacing: 0.2em; white-space: nowrap; }
+.ab-streak .slbl { font-weight: 700; letter-spacing: 0.12em; color: #cfe9ff; white-space: nowrap; }
+.ab-streak .spips { flex: none; font-size: 0.85em; letter-spacing: 0.2em; white-space: nowrap; }
 .ab-streak .spips .full { color: ${CYAN}; text-shadow: 0 0 6px ${rgba(CYAN, 0.9)}; }
 .ab-streak .spips .empty { color: #3d4658; }
 .ab-streak.hot .spips .full { color: #ffe09a; text-shadow: 0 0 7px rgba(255, 196, 90, 0.95); }
@@ -203,16 +179,15 @@ const CSS = `
 /* ---------- minimap (top-right) ---------- */
 .ab-map {
   position: absolute;
-  right: 14px;
+  right: 12px;
   top: 12px;
-  width: 190px;
-  padding: 6px 9px 7px;
   text-align: center;
+  opacity: 0.6;
   z-index: 2;
 }
-.ab-map-zone { font-size: 10px; letter-spacing: 0.22em; color: #e6ebf5; margin-bottom: 5px; }
-.ab-map canvas { display: block; width: 170px; height: 170px; margin: 0 auto; }
-.ab-map-line { font-size: 10px; color: var(--ab-dim); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.ab-map-zone, .ab-map-line:not(.fps) { display: none; }
+.ab-map canvas { display: block; width: 72px; height: 72px; margin: 0 auto; }
+.ab-map-line { font-size: 9px; color: var(--ab-dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .ab-map-line.fps { color: #9fd18b; display: none; }
 .ab-map-line.fps.on { display: block; }
 
@@ -266,20 +241,20 @@ const CSS = `
   position: absolute;
   left: 50%;
   bottom: 46px;
-  width: min(44vw, calc(100vw - 700px));
-  min-width: 280px;
+  font-size: clamp(10px, 1.15vw, 15px);
+  text-align: center;
+  white-space: nowrap;
   transform: translateX(-50%);
   opacity: 0;
   transition: opacity 1.1s ease;
   z-index: 3;
 }
 .ab-boss.on { opacity: 1; }
-.ab-boss-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px; }
+.ab-boss-head { display: flex; justify-content: center; align-items: flex-end; gap: 2ch; margin-bottom: 1px; }
 .ab-boss-name {
-  font-family: var(--ab-serif);
-  font-weight: 500;
-  font-size: 13px;
-  letter-spacing: 0.22em;
+  font-weight: 700;
+  font-size: 0.86em;
+  letter-spacing: 0.3em;
   color: #ebe3d3;
   text-shadow: 0 1px 2px #000, 0 0 10px rgba(0, 0, 0, 0.9);
   white-space: nowrap;
@@ -331,7 +306,7 @@ const CSS = `
   100% { opacity: 0; transform: rotate(var(--a, 0deg)) scaleX(1) scaleY(0.15); }
 }
 .ab-boss-dmg {
-  font-size: 12px;
+  font-size: 0.86em;
   color: #f4e8d0;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 2px #000, 0 0 8px rgba(0, 0, 0, 0.9);
@@ -339,39 +314,9 @@ const CSS = `
   transition: opacity 0.5s ease;
 }
 .ab-boss-dmg.on { opacity: 1; transition: opacity 0.06s; }
-.ab-bar.boss { height: 7px; border-color: rgba(207, 214, 230, 0.26); background: rgba(12, 4, 4, 0.72); }
-.ab-bar.boss > .fill { background: linear-gradient(180deg, #c7362b, #75130e); }
-.ab-bar.boss > .chunk { background: rgba(238, 204, 150, 0.85); }
-.ab-boss.p2 .ab-bar.boss > .fill { background: linear-gradient(180deg, #ffa24f, #c2410c); }
-.ab-boss.p2 .ab-bar.boss { box-shadow: 0 0 9px rgba(255, 138, 61, 0.45); border-color: rgba(255, 138, 61, 0.45); }
-.ab-boss.p3 .ab-bar.boss > .fill { background: linear-gradient(180deg, #fff0c4, #ff8f2a); }
-.ab-boss.p3 .ab-bar.boss { box-shadow: 0 0 12px rgba(255, 210, 140, 0.55); border-color: rgba(255, 222, 170, 0.55); }
-.ab-bar.boss > .tick { position: absolute; top: 0; bottom: 0; width: 1px; margin-left: -1px; background: rgba(255, 236, 214, 0.6); pointer-events: none; }
 .ab-boss.p2 .ab-boss-name { color: #ffd2a4; }
-/* posture: thin gold bar under the HP bar, grows from the centre toward a break */
-.ab-boss-post { position: relative; display: flex; justify-content: center; margin-top: 3px; }
-.ab-bar.post {
-  flex: none;
-  width: 62%;
-  height: 4px;
-  border-color: rgba(216, 184, 106, 0.3);
-  background: rgba(10, 8, 2, 0.7);
-  transition: box-shadow 0.12s, border-color 0.12s;
-}
-.ab-bar.post > .fill {
-  transform-origin: 50% 50%;
-  transform: scaleX(0);
-  background: linear-gradient(180deg, #f3d98e, #a07a2a);
-  transition: filter 0.12s;
-}
-.ab-bar.post.hot { border-color: rgba(255, 214, 120, 0.6); box-shadow: 0 0 6px rgba(255, 196, 90, 0.45); }
-.ab-bar.post.hit > .fill { filter: brightness(1.8); }
-.ab-bar.post.break { animation: ab-post-break 0.7s ease-out; }
-@keyframes ab-post-break {
-  0% { box-shadow: 0 0 0 rgba(255, 220, 140, 0); }
-  15% { box-shadow: 0 0 16px rgba(255, 226, 150, 1); border-color: #fff3c9; }
-  100% { box-shadow: 0 0 0 rgba(255, 220, 140, 0); }
-}
+/* posture: a run of '=' under the HP meter that grows from its middle toward a break */
+.ab-boss-post { position: relative; display: flex; justify-content: center; margin-top: 1px; }
 .ab-broken {
   position: absolute;
   left: 50%;
@@ -388,7 +333,6 @@ const CSS = `
   transition: opacity 0.15s;
 }
 .ab-boss.broken .ab-broken { opacity: 1; animation: ab-pulse 0.5s ease-in-out infinite; }
-.ab-boss.broken .ab-bar.post > .fill { animation: ab-pulse 0.5s ease-in-out infinite; }
 
 /* ---------- interaction prompt ---------- */
 .ab-prompt {
@@ -505,8 +449,8 @@ const CSS = `
   display: flex;
   align-items: center;
   gap: 14px;
-  font-family: var(--ab-serif);
-  font-size: clamp(17px, 1.6vw, 26px);
+  font-weight: 700;
+  font-size: clamp(15px, 1.4vw, 23px);
   letter-spacing: 0.32em;
   padding-left: 0.32em;
   color: #ffe09a;
@@ -565,13 +509,20 @@ const CSS = `
   display: flex;
   align-items: center;
   gap: 22px;
-  font-family: var(--ab-serif);
-  font-weight: 500;
   white-space: nowrap;
-  letter-spacing: var(--ls, 0.3em);
   will-change: transform;
 }
-.ab-banner .txt .t { padding-left: var(--ls, 0.3em); }
+/* the big words are block letters built from characters (ui/blockText.js; ui/banner.js sizes them
+   to the screen); the plain text stays in the DOM, unseen */
+.ab-banner .txt .t { display: none; }
+.ab-banner .blk {
+  margin: 0;
+  font-family: 'Cascadia Mono', Consolas, Menlo, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: 0;
+  white-space: pre;
+}
 .ab-banner .sub {
   position: absolute;
   left: 0;
@@ -586,45 +537,30 @@ const CSS = `
 }
 .ab-banner .sub.blink { animation: ab-blink 1.8s ease-in-out infinite; }
 .ab-banner.k-death .txt {
-  --ls: 0.34em;
-  font-size: clamp(44px, 6.2vw, 96px);
   color: #b3261e;
   text-shadow: 0 0 26px rgba(130, 10, 6, 0.55);
 }
 .ab-banner.k-victory .txt {
-  --ls: 0.22em;
-  font-size: clamp(32px, 4.4vw, 68px);
   color: var(--ab-gold);
   text-shadow: 0 0 22px rgba(216, 184, 106, 0.35);
 }
 .ab-banner.k-bonfire .txt {
-  --ls: 0.42em;
-  font-size: clamp(30px, 3.6vw, 54px);
   color: #ffc27a;
   text-shadow: 0 0 20px rgba(255, 138, 61, 0.5);
 }
+/* a phase call comes in the middle of a fight: small, and above the fighters, not on them */
+.ab-banner.k-phase { top: 21%; }
+.ab-banner.k-phase .band { display: none; }
 .ab-banner.k-phase .txt {
-  --ls: 0.24em;
-  font-size: clamp(20px, 2.4vw, 34px);
   color: var(--ab-ember);
-  text-shadow: 0 0 18px rgba(255, 90, 20, 0.65);
+  text-shadow: 0 0 12px rgba(255, 90, 20, 0.6);
 }
 .ab-banner.k-area { top: 27%; }
 .ab-banner.k-area .band { display: none; }
 .ab-banner.k-area .txt {
-  --ls: 0.5em;
-  font-size: clamp(17px, 1.8vw, 27px);
   color: #ece5d6;
   text-shadow: 0 0 10px rgba(0, 0, 0, 0.9), 0 1px 2px #000;
 }
-.ab-banner.k-area .txt::before,
-.ab-banner.k-area .txt::after {
-  content: '';
-  width: 90px;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(236, 229, 214, 0), rgba(236, 229, 214, 0.75));
-}
-.ab-banner.k-area .txt::after { background: linear-gradient(270deg, rgba(236, 229, 214, 0), rgba(236, 229, 214, 0.75)); }
 .ab-banner.k-area .sub { margin-top: 26px; font-size: 11px; color: #9a9384; }
 
 /* ---------- victory record ---------- */
@@ -764,8 +700,8 @@ const CSS = `
 .ab-pause.on { display: flex; }
 .ab-pause-panel { width: 360px; padding: 18px 22px 16px; text-align: center; pointer-events: auto; }
 .ab-pause-title {
-  font-family: var(--ab-serif);
-  font-size: 22px;
+  font-weight: 700;
+  font-size: 19px;
   letter-spacing: 0.5em;
   padding-left: 0.5em;
   color: #ebe3d3;
@@ -833,10 +769,8 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
 /* phones in landscape (~360-430 px tall): scale the panels down, keep the thumbs' corners free */
 @media (max-height: 560px) {
   .ab-touch { font-size: 10px; }
-  .ab-touch .ab-pf { left: 8px; top: 6px; transform: scale(0.8); transform-origin: 0 0; }
-  .ab-touch .ab-boss { bottom: 10px; width: min(38vw, 380px); min-width: 0; }
-  .ab-touch .ab-boss-name { font-size: 10px; letter-spacing: 0.12em; overflow: hidden; text-overflow: ellipsis; }
-  .ab-touch .ab-boss-head { margin-bottom: 2px; }
+  .ab-touch .ab-pf { left: 8px; top: 6px; font-size: 10px; }
+  .ab-touch .ab-boss { bottom: 8px; font-size: 10px; }
   .ab-touch .ab-banner .band { height: 112px; }
   .ab-touch .ab-banner .sub { margin-top: 40px; font-size: 10px; }
   .ab-touch .ab-banner.k-area { top: 22%; }
@@ -862,35 +796,25 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
   .ab-touch .ab-sep { margin: 9px 0 8px; }
   .ab-touch .ab-ctrls { font-size: 10px; }
 }
-/* phones, either way up: the minimap is a small bare disc in the corner (no panel, no title, no
-   coordinates), see-through like the controls */
+/* phones, either way up: the minimap is smaller and fainter still */
 @media (max-height: 560px), (max-width: 560px) {
-  .ab-touch .ab-map { right: 6px; top: 6px; width: auto; padding: 0; background: none; border: 0; opacity: 0.72; }
-  .ab-touch .ab-map-zone, .ab-touch .ab-map-line:not(.fps) { display: none; }
-  .ab-touch .ab-map canvas { width: 70px; height: 70px; }
+  .ab-touch .ab-map { right: 6px; top: 6px; opacity: 0.5; }
+  .ab-touch .ab-map canvas { width: 40px; height: 40px; }
   .ab-touch .ab-map-line.fps { font-size: 8px; margin-top: 1px; }
 }
 /* a phone held upright (~360-430 px wide): the frame and the boss bar at the top, the prompt and
    the banners above the thumbs, the menus as wide as the screen */
 @media (max-width: 560px) and (orientation: portrait) {
   .ab-touch { font-size: 10px; }
-  .ab-touch .ab-pf { left: 6px; top: 6px; transform: scale(0.8); transform-origin: 0 0; }
-  .ab-touch .ab-boss { top: 112px; bottom: auto; width: 90vw; min-width: 0; }
-  .ab-touch .ab-boss-name { font-size: 10px; letter-spacing: 0.12em; overflow: hidden; text-overflow: ellipsis; }
-  .ab-touch .ab-boss-head { margin-bottom: 2px; }
+  .ab-touch .ab-pf { left: 6px; top: 6px; font-size: 10px; }
+  .ab-touch .ab-boss { top: 78px; bottom: auto; font-size: 10px; }
+  .ab-touch .ab-boss-name { letter-spacing: 0.16em; }
   .ab-touch .ab-prompt { bottom: 47%; }
   .ab-touch .ab-banner .band { height: 112px; }
   .ab-touch .ab-banner .sub { margin-top: 40px; font-size: 10px; }
   .ab-touch .ab-banner.k-area { top: 24%; }
   .ab-touch .ab-banner.k-area .sub { margin-top: 20px; }
   .ab-touch .ab-banner.k-victory { top: 18%; }
-  /* the big words fit the narrow screen */
-  .ab-touch .ab-banner.k-death .txt { font-size: 10vw; }
-  .ab-touch .ab-banner.k-victory .txt { font-size: 7vw; --ls: 0.14em; }
-  .ab-touch .ab-banner.k-bonfire .txt { font-size: 6.6vw; --ls: 0.26em; }
-  .ab-touch .ab-banner.k-phase .txt { font-size: 4.6vw; --ls: 0.16em; }
-  .ab-touch .ab-banner.k-area .txt { font-size: 3.8vw; --ls: 0.3em; gap: 10px; }
-  .ab-touch .ab-banner.k-area .txt::before, .ab-touch .ab-banner.k-area .txt::after { width: 24px; }
   .ab-touch .ab-banner .sub { white-space: normal; padding: 0 14px; line-height: 1.5; }
   .ab-touch .ab-stats { top: calc(18% + 44px); padding: 6px 12px 7px; max-width: 92vw; }
   .ab-touch .ab-stats .row { line-height: 15px; font-size: 10px; }

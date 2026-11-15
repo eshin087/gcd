@@ -2390,3 +2390,44 @@ not fit across it and the keep-in-view pan works harder; nothing was re-tuned fo
 controls can be lost against bright ground (a lit pillar behind the pad); the halo helps, and the
 rest opacity is one number in `ui/touchStyle.js`. A desktop window dragged taller than wide also
 gets the wider field of view. Not tried on a real phone.
+
+## ADR-098 — An ASCII HUD: meters made of characters, block-letter banners, no panels in play, a minimap that barely exists (2026-11-14)
+
+**Context.** The owner: "Make the minimap much smaller and opaque on mobile. Theres no need for
+mini map in general for this game so lets make it small overall on both desktop and mobile ...
+Also think of ways to improve the ui design and layout and to also incorporate the ascii art style
+as well to fit the ascii theme." The HUD was the MMO overlay of the art reference: a framed player
+panel with a name, "Lv 12" and a class line, smooth gradient bars, a serif book font for the boss's
+name and the banners. Nothing in it was made of characters except its labels. Asked first: the
+minimap tiny and faint ("opaque" meant see-through); the log, the name tags and the key hints
+stay, the name plate goes. Three HUD looks were then built and rendered in the game on desktop and
+phone (bare glyph lines; the same rows in boxes drawn with + - |; a roguelike status line along
+one edge), and three ways to draw the big words (block letters in the logo's letterforms; the same
+shapes in # only; spaced monospace capitals). The owner picked the bare lines and the logo-style
+blocks.
+
+**Decision.**
+- Every meter is text (`ui/glyphBar.js`): fill, the piece just lost, the empty rest, in brackets.
+  `ui/bars.js` (the scaled-div bars) is deleted.
+- In play nothing has a panel. The player's rows and the boss's are drawn on the game with a dark
+  halo. The name plate is removed.
+- The banners' words are block letters from one font table (`ui/blockText.js`), the title logo's
+  letterforms, fitted to the window's width and stacked on a narrow one. The boss's name, the mini
+  banner and the pause title are the game's monospace. The serif font leaves the HUD.
+- The minimap is a 72 px disc at 60 % (40 px at 50 % on phones) with no frame, title or
+  coordinates, on every device.
+- Menus and the desktop log keep their bordered panels.
+
+**Why.** A HUD of smooth bars and a book font sat on top of an ASCII game like a different
+program. Characters for the meters cost nothing in legibility (a row of 24 cells reads to about
+4 %, and the number is beside it) and make the overlay the same material as the world. Dropping
+the panels follows the touch controls of ADR-097: the fight is the picture and the HUD is written
+on it. The bare lines were the look that took the least screen on a phone; the frames spent it on
+borders and the status line crowded one edge. Block letters come from the logo so the game has
+one display face instead of two, and one table serves every banner.
+
+**Consequences.** A meter moves in steps of a cell, not smoothly: the boss's 48 cells are about
+2 % each. Text with no panel behind it depends on its halo over bright ground. The block letters
+have A – Z and a little punctuation: a banner with a digit or another mark loses that character.
+Tablets and the Obsidian Throne were not looked at. The owner picked from stills; the meters were
+not seen moving by anyone but me.

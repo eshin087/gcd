@@ -31,6 +31,8 @@ const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
 const SIZE = SCALE / 1.25;
 const { Hud } = await imp('src/ui/hud.js');
 const { TouchControls } = await imp('src/ui/touch.js');
+const { GlyphBar, GlyphPosture } = await imp('src/ui/glyphBar.js');
+const { blockLines, blockText } = await imp('src/ui/blockText.js');
 const { GamepadControls } = await imp('src/ui/gamepad.js');
 const { Input } = await imp('src/core/input.js');
 const { Bindings, installActions, ACTIONS } = await imp('src/core/bindings.js');
@@ -854,6 +856,83 @@ async function scenarioParry() {
   assert(cc.res === RESULT.PARRIED && evn(cc, 'dragon:parried') === 1, `normal-tell combo hit parried (got ${cc.res})`);
   assert(par?.hit === 0 && par?.last === false, `dragon:parried {hit 0, last false} for the combo's first hit (${JSON.stringify(par)})`);
   assert(evn(cc, 'combat:tell') === 3, `a parry on hit 1 deflects: the combo goes on (${evn(cc, 'combat:tell')} tells)`);
+  return G;
+}
+
+// ================================================================== scenario: the ASCII HUD
+// ADR-098: meters made of characters (ui/glyphBar.js), banners in block letters (ui/blockText.js),
+// no name plate, no panel round the minimap.
+async function scenarioAsciiHud() {
+  out('\n== scenario ASCIIHUD (text meters, the piece just lost, block-letter banners, no name plate) ==');
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const p = game.player, d = game.dragon, hud = game.hud;
+  const text = (b) => b.root.textContent;
+  // a meter: fill, the piece just lost, the empty rest; always `cells` characters
+  const B = new GlyphBar(document.createElement('div'), 't', { cells: 10, hold: 0.6, drain: 2.4 });
+  assert(text(B) === '##########', `a full meter is all fill ("${text(B)}")`);
+  B.set(0.5);
+  B.update(0);
+  assert(text(B) === '#####=====' && B.fillEl.textContent.length === 5 && B.chunkEl.textContent.length === 5, `half lost at once: the fill drops, the lost piece shows ("${text(B)}")`);
+  B.update(0.5);
+  assert(text(B) === '#####=====', 'the lost piece holds');
+  for (let i = 0; i < 120; i++) B.update(1 / 60);
+  assert(text(B) === '#####.....', `then drains ("${text(B)}")`);
+  B.snap(0.01);
+  assert(text(B) === '#.........', `anything left shows one cell ("${text(B)}")`);
+  B.snap(0);
+  assert(text(B) === '..........', 'nothing left: no cell');
+  B.snap(0.97);
+  assert(text(B) === '#########.', `only a full meter shows every cell ("${text(B)}")`);
+  B.set(1);
+  for (let i = 0; i < 120; i++) B.update(1 / 60);
+  assert(text(B) === '##########', 'a gain rises to full');
+  const guard = new GlyphBar(document.createElement('div'), 'g', { cells: 8, full: '=', lost: '-' });
+  guard.set(0.25);
+  guard.update(0);
+  assert(text(guard) === '==------', `a meter takes its own characters ("${text(guard)}")`);
+  const m = B.mark(0.5);
+  assert(m.textContent === '|' && /calc\(/.test(m.style.left), 'a mark sits over the meter, inside its brackets');
+  // posture grows from the middle
+  const P = new GlyphPosture(document.createElement('div'), { cells: 12 });
+  assert(text(P) === '------------', 'no posture: an empty row');
+  P.snap(0.5);
+  assert(text(P) === '---======---', `half posture: the middle half ("${text(P)}")`);
+  P.snap(1);
+  assert(text(P) === '============', 'full posture: the whole row');
+  // block letters: six rows, every letter as wide on each of them; ABYSS is the title logo
+  const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const ragged = [...abc, ',', '.', '-', "'", '!', ' '].filter((ch) => { const r = blockLines(ch); return r.length !== 6 || new Set(r.map((x) => x.length)).size !== 1 || r[0].length < 3; });
+  assert(!ragged.length, `every block letter is six rows of one width (${ragged.join('') || 'all'})`);
+  assert(blockLines('ABYSS')[0] === ' █████╗ ██████╗ ██╗   ██╗███████╗███████╗' && blockLines('abyss')[5] === '╚═╝  ╚═╝╚═════╝    ╚═╝   ╚══════╝╚══════╝', 'ABYSS in block letters is the title logo');
+  const one = blockText('ASHFALL COURTYARD', { maxCols: 400 }), two = blockText('ASHFALL COURTYARD', { maxCols: 90 });
+  assert(one.lines.length === 6 && two.lines.length === 13 && two.lines[6] === '' && two.cols <= 90 && two.lines.every((l) => l.length <= 90), `a long name stacks word by word on a narrow screen (${one.cols} cols → ${two.cols})`);
+  // the HUD's own meters
+  p.hp = p.maxHp * 0.5;
+  p.guard = p.maxGuard * 0.25;
+  p.guardWait = 99;
+  for (let i = 0; i < 60; i++) hud.update(DT);
+  assert(hud.hpBar instanceof GlyphBar && hud.guardBar instanceof GlyphBar && hud.bossBar instanceof GlyphBar && hud.postBar instanceof GlyphPosture, 'HP, guard, the boss and its posture are text meters');
+  assert(hud.hpBar.fillEl.textContent === '#'.repeat(12) && hud.guardBar.fillEl.textContent === '='.repeat(6) && hud.guardBar.root.classList.contains('low'), `they show the hero's HP and guard ("${text(hud.hpBar)}" / "${text(hud.guardBar)}")`);
+  const gates = (d.phaseAt ?? []).slice(1).filter((x) => x > 0 && x < 1).length;
+  assert(hud.bossBar.root.children.filter((e) => e.classList?.contains('tick')).length === gates, `the boss's meter marks its ${gates} phase gates`);
+  assert(!cls('ab-pf-name') && !cls('ab-pf-lv') && !cls('ab-bar'), 'no name plate, no scaled-div bars');
+  assert(cls('ab-pf') && !cls('ab-pf').classList.contains('ab-panel') && !cls('ab-map').classList.contains('ab-panel'), 'the player\'s rows and the minimap have no panel');
+  // a banner: block letters, the plain text kept
+  hud.banner('YOU DIED', 'death');
+  const rows = hud.bannerUi.block.textContent.split('\n');
+  assert(rows.length === 6 && rows[0] === blockLines('YOU DIED')[0] && hud.bannerUi.txtInner.textContent === 'YOU DIED', `a banner is drawn in block letters (${rows.length} rows of ${rows[0].length})`);
+  const w0 = globalThis.innerWidth;
+  globalThis.innerWidth = 390;
+  hud.banner('ASHFALL COURTYARD', 'area');
+  const narrow = hud.bannerUi.block.textContent.split('\n');
+  globalThis.innerWidth = w0;
+  hud.bannerUi.update(DT);
+  const wide = hud.bannerUi.block.textContent.split('\n');
+  assert(narrow.length === 13 && wide.length === 6, `it stacks on a narrow window and is laid out again when the window changes (${narrow.length} → ${wide.length} rows)`);
+  hud.clearBanner(true);
+  p.respawn();
   return G;
 }
 
@@ -7035,7 +7114,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

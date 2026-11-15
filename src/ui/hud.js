@@ -1,5 +1,5 @@
 import { DEFENSE, GUARD, POSTURE } from '../combat/rules.js';
-import { DelayedBar, PostureBar } from './bars.js';
+import { GlyphBar, GlyphPosture } from './glyphBar.js';
 import { Banner } from './banner.js';
 import { Callouts } from './callouts.js';
 import { el, fillKeyText, flashClass, num, relabelChips, safeDt, setChipSource } from './dom.js';
@@ -13,7 +13,10 @@ import { RemapPanel } from './remap.js';
 import { HelpPanel, PauseMenu, StatsPanel, TitleScreen } from './screens.js';
 import { TellEdges } from './tells.js';
 
-// HUD: Ansenjeo-style MMO overlay (player frame, minimap, tabbed log, name tags) plus the boss bar
+// HUD (ADR-098): an ASCII overlay drawn straight on the game, with no panels in play: the player's
+// rows (HP, guard, crit, streak, flasks) and the boss's name and bars are text meters
+// (ui/glyphBar.js), the big words are block letters (ui/blockText.js), the minimap a small faint
+// disc; plus the tabbed log (desktop), name tags and the boss bar
 // (HP + posture), screen-edge cues (red flash on a dodge-only tell's timing cue, cyan Ghostep pulse;
 // the tells themselves are shown in the world, never as HUD text), call-outs (PARRY, GHOSTEP,
 // GUARD BROKEN, damage numbers), the streak of perfect dodges (a row of pips under the HP bar, the
@@ -154,28 +157,24 @@ export class Hud {
 
   // ---------------------------------------------------------------- build
   _buildPlayerFrame() {
-    const pf = el('div', 'ab-pf ab-panel ab-play', null, this.root);
-    const head = el('div', 'ab-pf-head', null, pf);
-    this.nameEl = el('span', 'ab-pf-name', String(this.game.player?.name || 'Wanderer').toUpperCase(), head);
-    el('span', 'ab-pf-lv', 'Lv 12', head);
-    el('div', 'ab-pf-sub', 'Swordsman  ·  Tattered Shroud', pf);
-
+    // The player's rows (ADR-098): no panel, no name plate; every meter is a row of characters
+    // (ui/glyphBar.js) drawn straight on the game.
+    const pf = el('div', 'ab-pf ab-play', null, this.root);
     const hpRow = el('div', 'ab-row', null, pf);
     el('span', 'lbl', 'HP', hpRow);
-    this.hpBar = new DelayedBar(hpRow, 'hp', { hold: 0.6, drain: 2.4, rise: 6 });
+    this.hpBar = new GlyphBar(hpRow, 'hp', { cells: 24, hold: 0.6, drain: 2.4, rise: 6 });
     this.hpVal = el('span', 'val', '', hpRow);
 
-    // the guard meter (GUARD, ADR-095): steel under the HP bar; no number, it only has to be glanced at
+    // the guard meter (GUARD, ADR-095): steel '=' under the HP row; no number, it only has to be glanced at
     const gdRow = el('div', 'ab-row ab-guard', null, pf);
     el('span', 'lbl', 'GD', gdRow);
-    this.guardBar = new DelayedBar(gdRow, 'guard', { hold: 0.25, drain: 5, rise: 30, chunk: true });
+    this.guardBar = new GlyphBar(gdRow, 'guard', { cells: 24, hold: 0.25, drain: 5, rise: 30, full: '=', lost: '-' });
     this._gLow = null;
 
-    // crit window cue (after a Ghostep): glowing cyan label + a bar that shrinks to zero
+    // crit window cue (after a Ghostep): a glowing cyan label + a run of '>' that shrinks to nothing
     this.critRow = el('div', 'ab-row ab-crit', null, pf);
     el('span', 'clbl', `CRIT ×${DEFENSE.ghostep.critMult}`, this.critRow);
-    const cb = el('div', 'ab-bar crit', null, this.critRow);
-    this.critFill = el('div', 'fill', null, cb);
+    this.critBar = new GlyphBar(this.critRow, 'crit', { cells: 16, full: '>', lost: '>' });
 
     // the streak of perfect dodges (DEFENSE.flurry): a pip for every blow the next one is answered
     // with; past the most a flurry strikes, only the count climbs
@@ -192,14 +191,13 @@ export class Hud {
     this.pipsEl = el('span', 'ab-pips', null, fl);
     this.pipFull = el('span', 'full', '', this.pipsEl);
     this.pipEmpty = el('span', 'empty', '', this.pipsEl);
-    fillKeyText(el('span', '', null, fl), ' [@flask]');
+    fillKeyText(el('span', 'ab-nontouch', null, fl), ' [@flask]'); // (a phone has the FLASK button)
     this.lockEl = el('span', 'ab-lock', '◎ LOCKED ON', foot);
 
     this._hp = null;
     this._fl = null;
     this._lock = null;
     this._low = null;
-    this._name = null;
     this._critOn = false;
     this._critW = -1;
     this.critMax = DEFENSE.ghostep.critWindow;
@@ -220,15 +218,14 @@ export class Hud {
     }
     this.bossStreak = el('span', 'ab-boss-streak', '', head);
     this.bossDmg = el('span', 'ab-boss-dmg', '', head);
-    this.bossBar = new DelayedBar(this.bossEl, 'boss', { hold: 0.6, drain: 1.8, rise: 2.2 });
-    // the phase gates (dragon.phaseAt, e.g. 66 % / 33 %): thin ticks where the next phase starts
+    this.bossBar = new GlyphBar(el('div', 'ab-boss-bar', null, this.bossEl), 'boss', { cells: 48, hold: 0.6, drain: 1.8, rise: 2.2 });
+    // the phase gates (dragon.phaseAt, e.g. 66 % / 33 %): a '|' over the bar where the next phase starts
     const marks = this.game?.dragon?.phaseAt;
     for (const f of Array.isArray(marks) ? marks.slice(1) : []) {
-      if (!(f > 0 && f < 1)) continue;
-      el('div', 'tick', null, this.bossBar.root).style.left = `${(f * 100).toFixed(1)}%`;
+      if (f > 0 && f < 1) this.bossBar.mark(f);
     }
     const post = el('div', 'ab-boss-post', null, this.bossEl);
-    this.postBar = new PostureBar(post);
+    this.postBar = new GlyphPosture(post, { cells: 32 });
     this.brokenEl = el('span', 'ab-broken', 'BROKEN', post);
     this.bossOn = false;
     this.bossHpLast = 0;
@@ -351,11 +348,6 @@ export class Hud {
   _updatePlayer(dt) {
     const p = this.game.player;
     if (p) {
-      const name = String(p.name || 'Wanderer');
-      if (name !== this._name) {
-        this._name = name;
-        this.nameEl.textContent = name.toUpperCase();
-      }
       const maxHp = Math.max(1, num(p.maxHp, 1));
       const hp = Math.max(0, num(p.hp, maxHp));
       this.hpBar.set(hp / maxHp);
@@ -424,7 +416,7 @@ export class Hud {
         const w = Math.min(1, ct / Math.max(0.05, this.critMax));
         if (Math.abs(w - this._critW) > 0.004) {
           this._critW = w;
-          this.critFill.style.transform = `scaleX(${w.toFixed(3)})`;
+          this.critBar.snap(w);
         }
       }
     }
