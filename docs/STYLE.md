@@ -54,7 +54,23 @@ the wyrm next to it, it is wrong, however good it looks alone.
 - Thin parts (a rib, a rail) are narrower than a letter: they print as outline strokes only.
 - Render a before / after sheet and let the owner pick before finishing.
 
-**Tried and turned down by the owner (do not propose again):** a typed lattice ground and a
+**How things break (ADR-107).** Destruction is drawn with the same means, never with new ones:
+- A breakable piece is the same geometry through the same two set materials (the screen grid for
+  trees, prop art for stone and metal), drawn from a rigid batch so it can fall, fly or vanish.
+- Debris, dust, flames, embers, the red strip under a falling piece and the marks a blow leaves are
+  **glyph particles** from the world atlas. No debris meshes, no decals, no textures.
+- Debris keeps the piece's own dim hue (`BREAK.mats`): a breaking stone must not flash white.
+  Saturated light stays for fire and for the red danger strip.
+- Fire on grass is flame glyphs over the scorch map's ember glow; burned grass is the scorch map's
+  ash. A danger marker is red strokes, never heat (heat means fire).
+- At the game camera a debris glyph must be at least ~0.4 m to read as a character (a 0.2 m glyph is
+  a dot).
+- **A broken piece bursts into the characters it is drawn in** (the owner's pick of three filmed
+  looks, 2026-11-15): prop art's digits for stone and metal, a tree's round leaves and strokes for
+  wood. Bigger lumps (`# % & @`) and long thrown strokes were shown and turned down.
+
+**Tried and turned down by the owner (do not propose again):** debris as big lumps or as long
+shards (2026-11-15: digits were picked); a typed lattice ground and a
 "terminal" post-process finish (2026-11-14: "scrap everything"); large bold symbols on the wyrm
 (ADR-092: "way too flashy ... too big"); carved glyphs filled to every cell on pillars and floors
 (2026-11-15); one character grid over the whole frame in the manner of the owner's gcdAtlas project
@@ -432,6 +448,27 @@ each glyph smeared into solid bars.
 - **Not checked in motion** when this was built: the drift toward the screen edges, and the
   fade-near-player dither on a letter grid.
 
+### The hero seen through what covers him (2026-11-15, ADR-106)
+The owner: "while fighting the dragon the player disappears and cant see whats going on if its
+behind the dragon". The wyrm fills a third of the screen and the camera never turns, so a hero
+north of its body, under a wing, behind it while it rears or under it while it flies was simply
+gone.
+- **Now** the parts of him that something covers print through it as an **ink ghost**: his own
+  line art (the same silhouette, inner lines and fill letters, in his own cells) in the blade's
+  cyan, with a thin dark gap round it over the wyrm's letters. The parts of him in the open keep
+  their look; a hero half under a wing is half ghost.
+- **Only while covered.** Nothing lasts on screen: the ghost is exactly the covered pixels of
+  that frame, and in the open the frame is identical to the one without the pass.
+- **Cyan is his.** Neither the wyrm's fire nor a tell uses it (red glow: dodge; white glint:
+  parry), and the ghost darkens only his own figure and a 4 px gap, so a glowing chest behind
+  him still reads. Do not give an enemy, an effect or a tell this cyan.
+- **It acts on anything** that hides him and is drawn into the scene with depth: trees, pillars,
+  standing stones, landmarks, whatever is thrown or lifted later. Not on grass at his feet, and
+  not on a human boss (the duels are fought at arm's length and the boss's tells stay his own).
+- **Turned down** (built and shown beside it): a *window* (the letters over him thin out and he
+  keeps his own colours: it cut a dark hole into the wyrm's glow, and its letters flickered as
+  he moved) and a *rim only* (a cyan outline over the untouched letters: thin over bright ones).
+
 ### Fire, hazards and the plunge (2026-11-09)
 Every effect below is glyph particles (`fx.add`, additive HDR, for fire and light; `fx.alpha` for
 smoke and dust) using world-atlas glyphs only (`gi()` throws on others; `npm test`'s glyph check).
@@ -511,6 +548,17 @@ section), `player/fx.js` (the plunge).
   plane, two fans along the cut and against it, gone in a few frames) round a hard white core that
   lives two frames. The HUD adds a **screen cut**: a line of light across the whole frame on every
   cut, two crossing on the last blow, and the frame dips dark for a blink before it flashes.
+- **The afterimage and the blink** (2026-11-15, ADR-101; `player/fx.js` `_afterimage`, `blinkStream`,
+`blinkIn`). Every blink (the Ghostep, the plunge's vanish, each cut and art of a flurry, the
+riposte's return) leaves the hero behind as he stood, **printed in fine digits**: one character to
+a cell of a 0.13 m grid on the screen (his own coat's cell), in rows and columns, cold blue (a few
+brighter), where his body was (420 points of his own meshes, `player._sampleBody`). It falls apart
+from the feet up in 0.25–0.7 s. A character never lies on another: stacked, they bloom into a white
+blot. As he appears, a few dozen of its digits tear off and **fly to where he is now** (the eye is
+carried there), and more rush in onto him. (The owner's pick of three looks: "Digits", the figure
+alone, over an "Echo" of two fainter copies stepping off the way he left and a "Shatter" that burst
+it into its characters.) Against a duelist the flurry's flare, crescent, hanging cuts and burst are drawn at
+62 % (`FlurryFx.k`): at the wyrm's size they hid a man and the hero both.
 - **A duelist's flurry** (`duelist/fx.js` `flit`): between two blows a bright ember streak along the
   way he went, a tall flash where he stood, and where he stands a flash and a ring of sparks.
 - **The deflect chain:** each parry in rhythm clashes bigger and brighter, with a crossed pair of

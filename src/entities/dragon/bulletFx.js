@@ -408,6 +408,7 @@ export function wheelLive(fx, w, dt, omega, hx, hz) {
       const a = w.ang + w.offs[i];
       const r = w.r0 + Math.random() * span;
       sc?.burnCircle?.(w.x + Math.sin(a) * r, w.z + Math.cos(a) * r, w.width * 0.9, 0.2, 0.9);
+      fx.game.world?.ignite?.(w.x + Math.sin(a) * r, w.z + Math.cos(a) * r, w.width * 0.9, 1, false); // (wood only: it sweeps)
     }
   }
   w.lightT -= dt;

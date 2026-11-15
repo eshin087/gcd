@@ -5,6 +5,197 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 44: the world breaks (breakables, ground fire, cover, marks)
+
+**Owner:** "i want all the bosses to be able to cause destruction to the background ... the dragon
+fire that hits the background (trees, grass) get on fire and are a temporarily hazard ... the
+humanoid bosses will chip and damage the structures and leave impact based on the power of the
+attack. the players can also do this as well. i want the bosses to also use the terrain ... you can
+also redo the backgrounds of the levels. i want you to redo the sith lord level ... ask me any
+questions". Branch `world/destruction` from `main`. (Numbers: other PRs open at the same time took ADR-101 – 103 and Sessions 40 – 42, so this is
+ADR-107 / Session 44; the hero seen behind the wyrm is ADR-106 / Session 43, the open Obsidian Throne
+ADR-108 / Session 45 and the Lord's terrain moves ADR-109.)
+
+**Asked, answered:** fire burns where it lands (no spreading); the terrain is a real tactic for the
+hero (cover, pieces felled onto a boss); Cinderwood and Ashfall keep their layouts and get things to
+break; "staged PRs and separate agents doing parallel tasks".
+
+**Split:** two sessions were started on their own branches: the hero seen behind the wyrm (PR #41,
+ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-108, ADR-109; it was sent
+this API). This session built the system the rest stands on.
+
+**Done** (ADR-107):
+- `world/destructibles.js`, `fire.js`, `scars.js`, `breakTuning.js`; `world.impact / ignite / restore`;
+  `Colliders.remove / restore`; the two set materials can be rigid-batched.
+- Cinderwood lists 81 breakables (17 of them new, inside the clearing), Ashfall 72.
+- The hero's blade and slam, the wyrm's striking parts, slams, meteors, fire and body, the duelists'
+  zones, crescents, thrown stones and the Void's lines all hit the world; cover stops bullets,
+  crescents, torn stones and stands in for the hero against the bolt, the pull and the grip.
+- Sounds `chip` and `crash`; events world:impact and world:fire; the Lab's WORLD section (Burn ahead,
+  Fell on me, Blast ahead, Restore) and its Reset restores the world.
+- Tests: `tests/integration/world.mjs` (87 checks), added to `npm test`.
+
+**Rendered for the pick:** three ways a broken piece comes apart (digits, chunks, shards; a
+temporary `?debris=` switch) and the fire on grass and a tree, sent as two sheets. The owner picked
+**"A: digits"**; the switch and the two other looks are removed. Nothing was said about the fire.
+
+**Verification:** `npm test` (five suites) and `npm run build` pass. Filmed in headless Edge at 1280 x 720
+on the dev server: a tree and grass set alight and burning out, a tree felled onto the hero (the red
+strip, the hit), a stone chipped then broken, the hero felling a dead tree with two charged cleaves,
+the wyrm's breath lighting the grass, and a 16 s fight with the AI on. Draw calls and triangles
+against `main`: ADR-107.
+
+**Found on the way:** `node_modules` in the main checkout was emptied while this session ran
+(reinstalled; cause not found, the parallel worktrees are the likely one). The Browser pane was
+hidden for the whole session and throttles timers: captures were made with headless Edge and a
+wrapper page instead. A debris glyph under ~0.4 m is a dot at the game camera, and debris in the
+material's lit colour bloomed white.
+
+**Not checked / open:** a fight played by a human; the difficulty with breakables and fire; the
+phone (look and frame rate); frame time; Ashfall and its duelist's blows in the browser (headless
+tests only); Training places the hero without a look at what
+stands there.
+
+**Next:** the owner's review of PR #44; the wyrm's and the Ash Disciple's terrain moves and the open
+Obsidian Throne run as their own sessions (started; the throne waits on the owner's pick of an arena).
+
+---
+
+## 2026-11-15 — Session 43: the hero seen through the wyrm (an ink ghost in the blade's cyan)
+
+**Owner:** "i noticed while fighting the dragon the player disappears and cant see whats going on
+if its behind the dragon. think of a good way to still let the player be seen somehow for these
+situations." Branch `claude/render-hero-seen-125813` (PR #41), one of several sessions working in parallel
+(destructible terrain, the open Obsidian Throne). ADR-101 / Session 40, set aside for this, went to
+a PR that merged first; ADR-102 to ADR-105 and Sessions 41 / 42 belong to PRs open at the same
+time (the terrain and throne work of this group, and #42 / #43).
+
+**Reproduced** (dev server on its own port, the wyrm frozen in a pose, the hero placed round it):
+north of its body, under a wing, behind it while it rears for Armageddon, under it while it flies
+low; at 1280x720 and at a phone's 852x393 (`?touch`). In all four he is fully gone.
+
+**Options rendered for the pick** (a temporary `?seen=a|b|c` switch; the same frozen frame in every
+column; five situations on desktop, four on the phone, a film strip of him walking in under a wing,
+whole frames): A ink ghost, B window, C rim only. The owner picked **A**. A draft PR carried the
+switch so the three could be tried on the phone's preview.
+
+**Done** (ADR-106):
+- `pipeline.js`: `seenRT`, `setSeenThrough`, `_renderSeen` (the hero alone, the erasing quad, the
+  patch into the scene target), `_seenProbe` (the occlusion-query gate), the ASCII pass's `tSeen` /
+  `uSeen` / `uSeenInk` / `uSeenTone`, `seenHalo` over the wyrm's letters, one shared definition of
+  the hero's alpha window. `main.js`: one line. `config.js`: `CONFIG.render.seenThrough`, `?noseen`.
+- A human boss in front of him is never cover (he is drawn through the hero's materials); grass
+  at his feet never counts.
+- Tests: integ SEEN (51 checks, the real `Pipeline` on a recording renderer): when the pass runs
+  and when not, its box, what it tells the ASCII pass, the state it leaves (also when a draw
+  throws), its place in the frame, the probe (on from the first frame, off 20 frames after the
+  last yes, on while no answer comes, off for good when queries fail), `?noseen`.
+- Docs: ARCHITECTURE (the contract, the frame order), STYLE (the look; cyan is the hero's).
+
+**Numbers:** in the open the frame is pixel-identical with the pass on or off (0 of 921,600
+pixels differ); under a wing ~6,200 differ (the ghost and its glow, ~800 covered hero pixels).
+Frame cost, Edge headless on the RTX 4090, 1280x720, medians of 12 x 60 frames, one task a frame:
+in the open 5.24 → 5.22 ms (58 draw calls, 57 before); under a wing 3.85 → 4.37 ms; north of the
+body 3.82 → 4.10 ms (78 draw calls). Without the gate: +0.44 ms and 77 draw calls everywhere.
+
+**Verification:** `npm test`, `npm run build` (see the PR). Browser: the four situations and the
+open at 1280x720, a wing at 852x393, the Ashfall duel (unchanged with the boss in front of him).
+
+**Found on the way:** a `javascript_tool` call that runs too long is killed without its `finally`
+blocks: a per-frame flag my first version flipped on the hero's root stayed flipped and he was
+drawn at a stale place for the rest of the page load (the pass no longer touches that flag). An
+occlusion query's answer never arrives inside one task, so frames stepped with `__tick` would have
+switched the pass off: no answer for more than 3 frames counts as a yes.
+
+**Not checked / open:** a real phone (look, frame rate, Safari's occlusion queries: if they throw
+the pass runs every frame; if they never answer, too); the look in a played fight rather than
+posed frames and one strip; 1080p and 4K by eye; the Obsidian Throne (being rebuilt in another
+session). A cover closer than 0.6 m in front of him hides him without a ghost.
+
+**Next:** the owner's phone test on the preview; then the terrain work's thrown trees and lifted
+pillars should need nothing more than being drawn in the scene pass.
+
+---
+
+## 2026-11-15 — Session 41: the rewards ordered by risk: the flurry on red only, the flash counter, a perfect parry that pays
+
+**Owner:** "what updates, combat engine changes, etc can we do to make this game to be one of the most
+soulslike/onimusha/phantom blade genre type of game? i plan to sell this on steam", then, on the
+write-up: "yes measure and lets implement your suggestions". Branch `combat/reward-order`, own
+worktree (the main checkout held another session's work). Session 41 / ADR-102 / M1.35: PR #39, open
+beside it, holds 40, ADR-101 and M1.34.
+
+**Measured first** (the `strategy` scenario, new in all three suites, opt-in): three god-mode bots
+that differ only in how they answer a tell. The bot that only perfect-dodged beat every boss fastest
+with a third of the inputs. The table is in COMBAT.md "The reward order".
+
+**Done** (ADR-102):
+- **The flurry on red only.** A perfect dodge of a white or heavy blow counts in the streak and slows
+  time where the hero stands; no flurry, no plunge, no crit window, the string goes on.
+- **The flash counter.** A trade clash in the instant the cut became a cut goes through him: 70 damage,
+  60 posture, he reels, the crit window, FLASH COUNTER (`player:counter`, `attacker.onCounter`).
+- **A perfect parry pays:** × 1.5 posture and the counter cut (the next light twice as fast, a crit).
+- **Fixed:** a blow of a foe's flurry that reached nobody settled nothing (the flurry never ended).
+- **Tests:** duel GHOSTEP (white: in place; red: the flurry; the switch), TRADE (the flash counter),
+  PERFECT (new), integ RED (the bite's perfect dodge is no plunge); PLUNGE / FLURRY test the move
+  itself under `debug.flurryAny`; `strategy` in integ / duel / lord.
+
+**Found on the way:** a 1.2 s crit window on a white perfect dodge left the dodge bot the fastest on
+the wyrm (63 s): the window is 0. The Lord's training run failed on "block his flurry" once the
+random stream shifted: two of five blows fell short of a standing hero and nothing ended the flurry.
+
+**Verification:** `npm test`, `npm run build` (see the PR). The strategy runs before and after.
+
+**Not checked / open:** no human has played it. The flash counter and the in-place perfect dodge
+were not filmed. The wyrm cannot be flash-countered (its claws are not steel). One seed per bot on
+the wyrm before the change.
+
+**Next** (the owner's go-ahead covers them, each its own PR): a fixed-timestep simulation; per-move
+telemetry and the killing move on the death screen; a heavy button and chosen swings; HP-linked
+posture for every boss; then saves, a hub and ranks.
+## 2026-11-15 — Session 40: the flurry on a man, paced to be followed; an afterimage in digits
+
+**Owner:** "the animation looks great vs the dragon but against the humanoid bosses, the
+teleportation attacks are a bit hard to follow and doesnt seem fluid and buggy. lets also leave a
+cool after image that fades always in a stunning transition effect per teleport and use ascii for
+the effects where you can as well". Branch `player/flurry-duel-read`.
+
+**Measured first** (a probe that logs every frame of a flurry: positions, the camera, the boss's
+mode; the Training situations and `debug.flurry` on Shen Hui). What made it read as buggy: the hero
+froze on top of the duelist on every hit; a metre a frame, three readable frames a cut; the duelist
+shoved 0.32 m in a frame by every cut and left in his own attack's pose; after the last blow he
+staggered back into the hero; the camera jumped ~1.2 m a cut and ~5 m on the last; effects sized for
+the wyrm's head covered both men.
+
+**Done** (ADR-101):
+- `DEFENSE.flurry.ground`: the cuts against a duelist (hang, past his side, the strike before he is
+  abeam, a held finish, a short hanging line, effects at 62 %, a gentler camera). The Passing Cut
+  and the Falling Leaf pass his side too.
+- duelist `takeHit`: a flurry's cut flinches him in place (no shove, out of his move); the last blow
+  staggers him away from where the hero lands (`away`).
+- The afterimage: his own body printed in digits on a screen grid (`player._sampleBody`,
+  `PlayerFx._afterimage`), digits flying to where he reappears (`blinkStream`) and in onto him
+  (`blinkIn`). On every blink: Ghostep, plunge, flurry, riposte. Three looks were filmed for the
+  owner (digits / echo / shatter); the owner picked **digits** and the others were removed.
+- Tests (duel GHOSTEP): the cuts never nearer than the side offset, no step of his over 0.12 m in a
+  frame, he ends farther from the hero than he began and does not push him, the first cut throws him
+  out of his move, the afterimage has its points.
+
+**Numbers, before → after** (five blows, the Passing Cut, AI off): the duelist moved 1.97 → 0.13 m
+in all, 0.32 → 0.02 m at most in a frame; the camera's biggest step 4.62 → 2.78 m, its whole travel
+28.6 → 19.9 m; the flurry 105 → 131 frames. In the real situation (Training `pd5`): the hero pushed
+0.36 → 0 m after the last blow; the duelist ends 2.07 m from him (was walking into him).
+
+**Verification:** `npm test`, `npm run build` (see the PR). Browser: frame sheets before / after on
+Shen Hui, close-ups of the afterimage, the three looks (sent to the owner).
+
+**Not checked / open:** the Starless Lord and the wyrm only through their test suites (the wyrm's
+pacing is untouched; its blinks have the new afterimage); a phone.
+
+**Next:** the particle count of a long flurry on a phone.
+
+---
+
 ## 2026-11-15 — Session 39: the boss's rows at the top; QUIT TO TITLE; RESUME like the other items
 
 **Owner:** "move the boss hp ui from bottom to top", then "also when you press esc in a level, give

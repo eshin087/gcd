@@ -35,6 +35,9 @@ const DEG = Math.PI / 180;
 const V = () => new THREE.Vector3();
 const _a = V(), _b = V(), _c = V();
 
+/** A slam on the ground as a blow on the world (world.impact: breakables in its ring, a crack in the floor). */
+export const GROUND_BLOW = Object.freeze({ kind: 'blast', by: 'boss' });
+
 /** Sphere (x,y,z,r) vs the player's vertical cylinder (radius = player.radius, height 1.8). */
 export function sphereHitsPlayer(player, x, y, z, r) {
   const p = player?.position;
@@ -54,6 +57,15 @@ export function sweepHit(d, a, key, pos, r) {
   d.markHitbox?.(pos.x, pos.y, pos.z, r);
   const player = d.game.player;
   const dist = prev.distanceTo(pos);
+  // the striking part meets the world too (ADR-107): one blow per action per piece, along its travel
+  const W = d.game.world?.destructibles;
+  if (W?.strike) {
+    const o = (a.wblow ??= { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0, src: W.swing() });
+    o.dx = pos.x - prev.x;
+    o.dz = pos.z - prev.z;
+    o.y = pos.y;
+    W.strike(pos.x, pos.z, r, (TUNING.world?.melee ?? 0.7) * (r / S), o);
+  }
   const steps = Math.min(8, Math.max(1, Math.ceil(dist / (r * 0.5))));
   let hit = false;
   for (let i = 1; i <= steps && !hit; i++) {
@@ -615,6 +627,7 @@ function stompImpact(d, a, spec) {
   const g = d.game;
   g.shake?.(0.45);
   g.world?.gust?.(c.x, c.z, 1.4, 13 * S);
+  g.world?.impact?.(c.x, c.z, spec.radius, TUNING.world.stomp, GROUND_BLOW);
   d.fx.dustRing(c.x, c.z, 1.5 * S, 40, 1.1);
   d.markHitbox?.(c.x, 0, c.z, spec.radius);
   // the striking forefeet: a dust burst + a heavy step where each one landed
@@ -1105,6 +1118,7 @@ const leap = {
     d.position.z = a.target.z;
     d.emit('dragon:land', { x: a.target.x, z: a.target.z });
     g.world?.gust?.(a.target.x, a.target.z, 2.0, 22 * S);
+    g.world?.impact?.(a.target.x, a.target.z, T.leap.radius, TUNING.world.leap, GROUND_BLOW);
     g.shake?.(0.7);
     d.hitstop(0.08);
     d.fx.dustRing(a.target.x, a.target.z, 2.2 * S, 56, 1.6);
@@ -1841,6 +1855,7 @@ const HOP = {
     d.emit('dragon:land', { x: h.ring.x, z: h.ring.z });
     g.shake?.(0.5);
     g.world?.gust?.(h.ring.x, h.ring.z, 1.6, 14 * S);
+    g.world?.impact?.(h.ring.x, h.ring.z, h.spec.radius, TUNING.world.hop, GROUND_BLOW);
     d.fx.dustRing(h.ring.x, h.ring.z, 1.6 * S, 44, 1.2);
     d.markHitbox?.(h.ring.x, 0, h.ring.z, h.spec.radius);
     const p = g.player?.position;

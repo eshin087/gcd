@@ -75,9 +75,9 @@ const HALL_SET = (() => {
   return { set, circles: c.circles.map((k) => ({ ...k })) };
 })();
 
-function build() {
+function build(seed = SEED) {
   resetWindow();
-  Math.random = mulberry32(SEED);
+  Math.random = mulberry32(seed);
   ui.children.forEach((c) => (c.parentNode = null));
   ui.children.length = 0;
   const U = createSharedUniforms();
@@ -246,7 +246,9 @@ const settle = (G, max = 8) => run(G, max, null, () => G.game.dragon.mode === 'f
 const dist2 = (G) => Math.hypot(G.game.player.position.x - G.game.dragon.position.x, G.game.player.position.z - G.game.dragon.position.z);
 
 // ---- the defender bot: answers his tells from the flash (parry normal / blue, roll through red)
-function makeDefender(G, { skill = 1, early = 0.12 } = {}) {
+// style (the STRATEGY measurement): 'mixed' = the above; 'dodge' = a perfect dodge of every tell, never a
+// parry; 'parry' = parries, and a red blow rolled early (i-frames, outside the perfect window)
+function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed' } = {}) {
   const pend = [];
   const stats = { flashes: 0, parryTry: 0, dodgeTry: 0 };
   return {
@@ -263,8 +265,8 @@ function makeDefender(G, { skill = 1, early = 0.12 } = {}) {
       for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.4) pend.splice(i, 1);
       for (const e of pend) {
         const left = e.at - t - DT;
-        if (e.tell === TELL.RED) {
-          if (left <= 0.1) {
+        if (e.tell === TELL.RED || style === 'dodge') {
+          if (left <= (style === 'parry' ? 0.3 : 0.1)) {
             e.done = true;
             const d = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
             const dx = p.x - d.x, dz = p.z - d.z, l = Math.hypot(dx, dz) || 1;
@@ -832,7 +834,7 @@ async function scenarioTraining() {
     if (s.cat === 'BOSS MOVES' && !true) continue;
     T.run(s.id);
     let frames = 0;
-    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
+    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++;}
     const r = T.lastResult;
     const ok = T.ph === 'done' && r?.id === s.id && r.ok;
     if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
@@ -873,11 +875,40 @@ async function scenarioWin() {
   assert(T > 55 && T < 300, `the fight takes a bot that answers every tell ${T.toFixed(0)} s`);
 }
 
+// ================================================================== scenario: strategy (opt-in)
+/** Which defence wins? Three god-mode fencers that differ only in how they answer a tell. Not a
+ *  pass / fail check: node lord.mjs . strategy */
+async function scenarioStrategy() {
+  out('\n== scenario STRATEGY (mixed / parry-only / dodge-only, god mode) ==');
+  for (const style of ['mixed', 'parry', 'dodge']) {
+    for (const seed of [4242, 7]) {
+      const G = build(seed);
+      const { game } = G;
+      const d = game.dragon;
+      duel(G, { dist: 3, ai: true });
+      G.defend = makeDefender(G, { style });
+      const n = { perfect: 0, parries: 0 };
+      G.watch = (ev) => {
+        if (ev === 'player:perfectDodge') n.perfect++;
+        if (ev === 'player:parry') n.parries++;
+      };
+      const t0 = game.time;
+      const won = run(G, 420, () => fencer(G), () => d.mode === 'dead');
+      G.watch = null;
+      const taken = G.hits.filter((h) => h.r === RESULT.HIT);
+      out(`     ${style.padEnd(5)} seed ${String(seed).padEnd(4)} ${won ? 'WON ' : 'time'} ${(game.time - t0).toFixed(0).padStart(3)} s  form ${d.phase}  hits taken ${String(taken.length).padStart(2)} (${Math.round(taken.reduce((a, h) => a + (h.damage || 0), 0))} dmg)  parries ${String(n.parries).padStart(3)}  perfect dodges ${String(n.perfect).padStart(2)}`);
+      G.defend = null;
+    }
+  }
+}
+
 // ================================================================== run
 const S = {
   level: scenarioLevel, data: scenarioData, timing: scenarioTiming, forms: scenarioForms, spells: scenarioSpells,
   bounds: scenarioBounds, flow: scenarioFlow, win: scenarioWin, training: scenarioTraining,
 };
+const OPT_IN = { strategy: scenarioStrategy }; // run only when named
+if (OPT_IN[SCEN]) S[SCEN] = OPT_IN[SCEN];
 const list = SCEN === 'all' ? Object.keys(S) : [SCEN];
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }

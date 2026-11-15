@@ -56,9 +56,9 @@ const CATALOGUE = (() => {
 
 applyLevel(ASH);
 
-function build() {
+function build(seed = SEED) {
   resetWindow();
-  Math.random = mulberry32(SEED);
+  Math.random = mulberry32(seed);
   ui.children.forEach((c) => (c.parentNode = null));
   ui.children.length = 0;
   const U = createSharedUniforms();
@@ -236,7 +236,9 @@ function settle(G, max = 6) {
 }
 
 // ---- the defender bot: answers his tells from the flash (parry normal / blue, roll through red)
-function makeDefender(G, { skill = 1 } = {}) {
+// style (the STRATEGY measurement): 'mixed' = the above; 'dodge' = a perfect dodge of EVERY tell and
+// never a parry; 'parry' = parries, and a red blow rolled EARLY (i-frames, outside the perfect window)
+function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
   const pend = [];
   const stats = { flashes: 0, parryTry: 0, dodgeTry: 0 };
   return {
@@ -253,8 +255,8 @@ function makeDefender(G, { skill = 1 } = {}) {
       for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.4) pend.splice(i, 1);
       for (const e of pend) {
         const left = e.at - t - DT;
-        if (e.tell === TELL.RED) {
-          if (left <= 0.1) {
+        if (e.tell === TELL.RED || style === 'dodge') {
+          if (left <= (style === 'parry' ? 0.3 : 0.1)) {
             e.done = true;
             const d = g.dragon.position, p = g.player.position;
             const dx = p.x - d.x, dz = p.z - d.z, l = Math.hypot(dx, dz) || 1;
@@ -651,12 +653,12 @@ async function scenarioTrade() {
     return p.atk;
   };
   // (1) the rule, on the hero: a blade's blow that arrives in his cut meets it
-  let a = cutTo(0.15);
+  let a = cutTo(0.16);
   let seen = [];
   G.watch = (n, e) => { if (n === 'combat:clash') seen.push(e); };
   const hp0 = p.hp;
   let r = blow();
-  assert(a && r === RESULT.CLASHED && p.hp === hp0 && p.state === 'bounce' && seen.length === 1, `a blow in the hero's cut (${a?.t.toFixed(2)} s into a ${a?.def.windup} + ${a?.def.active} s swing): ${r}, no damage, his blade thrown back (${p.state}), combat:clash`);
+  assert(a && r === RESULT.CLASHED && p.hp === hp0 && p.state === 'bounce' && seen.length === 1 && !seen[0].counter, `a blow in the hero's cut (${a?.t.toFixed(2)} s into a ${a?.def.windup} + ${a?.def.active} s swing): ${r}, no damage, his blade thrown back (${p.state}), combat:clash`);
   assert(game.hitstopTimer >= 0.1, `the frame freezes on it (${game.hitstopTimer.toFixed(3)} s)`);
   // in the windup, in the recovery, from a red blow, from behind: no trade
   a = cutTo(0.03);
@@ -674,6 +676,27 @@ async function scenarioTrade() {
   a = cutTo(0.15);
   r = blow({ from: { x: p.position.x - Math.sin(p.yaw) * 2, z: p.position.z - Math.cos(p.yaw) * 2 }, attacker: { position: { x: p.position.x - Math.sin(p.yaw) * 2, z: p.position.z - Math.cos(p.yaw) * 2 } } });
   assert(r === RESULT.HIT, `nor one from behind him (${r})`);
+  // (1b) the flash counter (ADR-102): his blow arrives as the cut only just became a cut (at most
+  // DEFENSE.counter.window into its active frames). The cut is not thrown back: it goes through him
+  {
+    const K = DEFENSE.counter;
+    a = cutTo(a.def.windup);
+    place(G, 2.0);
+    p.atk = a;
+    const hpD0 = d.hp, post = d.posture, hpP = p.hp;
+    let cnt = null;
+    seen = [];
+    G.watch = (n, e) => { if (n === 'combat:clash') seen.push(e); if (n === 'player:counter') cnt = { ...e }; };
+    r = blow();
+    assert(a.t <= a.def.windup + K.window && r === RESULT.CLASHED && seen.length === 1 && seen[0].counter === true && cnt, `a blow that arrives ${(a.t - a.def.windup).toFixed(3)} s into the cut (window ${K.window}) is the flash counter (${r}, player:counter)`);
+    assert(p.hp === hpP && p.state === 'attack' && hpD0 - d.hp === K.damage && cnt?.damage === K.damage, `the hero is not thrown back (${p.state}) and the cut goes through him: ${hpD0 - d.hp} damage (${K.damage}, final)`);
+    assert(d.posture - post >= K.posture - 0.5 && d.mode === 'react' && d.brain.react?.kind === 'reeling' && p.critTimer >= DEFENSE.ghostep.critWindow - 1e-6, `he takes ${K.posture} posture (${post.toFixed(0)} -> ${d.posture.toFixed(0)}) and reels (${d.brain.react?.kind}); the crit window opens (${p.critTimer.toFixed(2)} s)`);
+    assert(game.hitstopTimer >= K.stop - 0.02 && p.streak >= 1, `the frame freezes on it (${game.hitstopTimer.toFixed(3)} s) and it counts in the streak (${p.streak})`);
+    G.watch = null;
+    run(G, 0.5);
+    assert(hpD0 - d.hp === K.damage, `the swing itself lands nothing more (${hpD0 - d.hp})`);
+    settle(G, 8);
+  }
   G.watch = null;
   p.debug.heal();
   // (2) in the duel: a cut timed into the first blow of a string
@@ -696,7 +719,7 @@ async function scenarioTrade() {
     return ev;
   };
   const post0 = d.posture, hpH = p.hp, hpD = d.hp;
-  let ev = tradeInto('swallow', 0.19);
+  let ev = tradeInto('swallow', 0.24);
   const striking = d.brain.act?.name;
   assert(ev.includes('clash') && !ev.includes('hurt') && !ev.includes('cut') && p.hp === hpH && d.hp === hpD, `a cut timed into the first blow of Swallow Flicks: the blades clash, neither is hurt (${ev.join(', ')})`);
   assert(Math.abs(d.posture - post0 - TUNING.posture.guard.light * TUNING.trade.posture) < 0.5, `it wears his posture by ${TUNING.posture.guard.light * TUNING.trade.posture} (${post0.toFixed(0)} → ${d.posture.toFixed(0)})`);
@@ -791,7 +814,8 @@ async function scenarioGhostep() {
   const behindOf = () => -((p.position.x - d.position.x) * Math.sin(d.yaw) + (p.position.z - d.position.z) * Math.cos(d.yaw));
   /** Tick until the flurry is over: its blows, whether it stayed invulnerable and finite. */
   const ride = (max = 6) => {
-    const tr = { hits: [], end: null, frames: 0, iframes: true, finite: true, maxY: 0 };
+    const tr = { hits: [], end: null, frames: 0, iframes: true, finite: true, maxY: 0, shove: 0, close: Infinity };
+    let bx = d.position.x, bz = d.position.z;
     const w0 = G.watch;
     G.watch = (n, e) => {
       if (n === 'player:flurryHit') tr.hits.push({ ...e });
@@ -803,32 +827,63 @@ async function scenarioGhostep() {
       if (p.state === 'flurry' && !p.isInvulnerable()) tr.iframes = false;
       if (![p.position.x, p.position.y, p.position.z].every(Number.isFinite)) tr.finite = false;
       tr.maxY = Math.max(tr.maxY, p.position.y);
+      // (ADR-101) how far he is thrown in one frame, and how near the hero comes to him in a flash cut
+      tr.shove = Math.max(tr.shove, Math.hypot(d.position.x - bx, d.position.z - bz));
+      bx = d.position.x;
+      bz = d.position.z;
+      const fl = p.flurry;
+      if (p.state === 'flurry' && !fl.hidden && fl.i < fl.cuts) tr.close = Math.min(tr.close, Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z));
     }, () => p.state !== 'flurry');
     G.watch = w0;
     return tr;
   };
   p.debug.flurryArt = 'passing';
-  let flashT = null;
-  G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'plumThrust') flashT = game.time; };
-  d.debug.trigger('plumThrust');
-  let rolled = false;
+  /** Trigger `mv` and roll (to the side) 0.1 s before its first impact: a perfect dodge. */
+  const dodge = (mv) => {
+    let flashT = null, rolled = false;
+    const n0 = G.counts['player:ghostep'] ?? 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === mv && flashT === null) flashT = game.time; };
+    d.debug.trigger(mv);
+    run(G, 2.5, () => {
+      input.axis = { x: 0, y: 0 };
+      if (flashT !== null && !rolled && game.time >= flashT + TUNING.flashLead - 0.1) {
+        rolled = true;
+        input.axis = { x: 1, y: 0 };
+        input.tap('Space');
+      }
+    }, () => (G.counts['player:ghostep'] ?? 0) > n0);
+    G.watch = null;
+    return (G.counts['player:ghostep'] ?? 0) - n0;
+  };
+  // (ADR-102) a WHITE blow can be parried: its perfect dodge is no flurry. The streak counts and
+  // time slows where he stands; no crit window, he is not hurt and his move goes on
   const hp00 = d.hp;
-  run(G, 2, () => {
-    input.axis = { x: 0, y: 0 };
-    if (flashT !== null && !rolled && game.time >= flashT + TUNING.flashLead - 0.1) {
-      rolled = true;
-      input.axis = { x: 1, y: 0 };
-      input.tap('Space');
-    }
-  }, () => (G.counts['player:ghostep'] ?? 0) > 0);
-  G.watch = null;
-  assert((G.counts['player:ghostep'] ?? 0) === 1 && p.state === 'flurry' && p.streak === 1 && p.flurry.air === false, `a perfect dodge of his thrust starts the flurry on the ground: he offers no plunge (${p.state}, streak ${p.streak})`);
+  let got = dodge('plumThrust');
+  const front = behindOf();
+  assert(got === 1 && p.state === 'ghostep' && p.streak === 1 && d.hp === hp00 && front < 0, `a perfect dodge of his thrust (a white blow) is no flurry: the streak counts, he is not hurt, the hero stays before him (${p.state}, streak ${p.streak}, ${(-front).toFixed(2)} m in front)`);
+  assert(p.critTimer <= DEFENSE.ghostep.critWindowWhite + 1e-6 && p.iframeT > 0, `no crit window for it (${p.critTimer.toFixed(2)} s; DEFENSE.ghostep.critWindowWhite ${DEFENSE.ghostep.critWindowWhite}); the dodge's i-frames hold`);
+  // a RED blow has no other answer: its perfect dodge is the flurry, as many blows as the streak
+  settle(G);
+  place(G, 2.2);
+  run(G, 0.3);
+  const hp01 = d.hp, st0 = p.streak;
+  got = dodge('lotus');
+  assert(got === 1 && p.state === 'flurry' && p.streak === st0 + 1 && p.flurry.air === false, `a perfect dodge of his sweep (a red blow) starts the flurry on the ground: he offers no plunge (${p.state}, streak ${p.streak})`);
   const t0 = ride();
   const behind = behindOf();
-  out(`   one blow (${p.flurry.art}): ${t0.hits.length} hit · he lost ${hp00 - d.hp} · the hero ${behind.toFixed(2)} m behind him, y ${p.position.y}, ${p.state}, crit ${p.critTimer.toFixed(2)}`);
-  assert(t0.hits.length === 1 && t0.hits[0].last === true && hp00 - d.hp === F.last.damage, `the first of a streak is the art alone: ${hp00 - d.hp} damage (DEFENSE.flurry.last.damage ${F.last.damage}, past his guard)`);
-  assert(p.state === 'ghostep' && Math.abs(behind - TUNING.ghostepBehind) < 0.6 && p.critTimer > 0 && p.position.y === 0, `it leaves the hero ${behind.toFixed(2)} m behind him (his ghostepBehind ${TUNING.ghostepBehind}: within sword reach) with the crit window`);
+  out(`   ${t0.hits.length} blows (${p.flurry.art}): he lost ${hp01 - d.hp} · the hero ${behind.toFixed(2)} m behind him, y ${p.position.y}, ${p.state}, crit ${p.critTimer.toFixed(2)}`);
+  assert(t0.hits.length === 2 && t0.hits[1].last === true && hp01 - d.hp === F.cut.damage + F.last.damage, `the streak of two is a flash cut and the art: ${hp01 - d.hp} damage (${F.cut.damage} + ${F.last.damage}, past his guard)`);
+  assert(p.state === 'ghostep' && Math.abs(behind - TUNING.ghostepBehind) < 0.6 && p.critTimer > DEFENSE.ghostep.critWindowWhite && p.position.y === 0, `it leaves the hero ${behind.toFixed(2)} m behind him (his ghostepBehind ${TUNING.ghostepBehind}: within sword reach) with the full crit window`);
   assert(t0.iframes && t0.finite, 'invulnerable and finite throughout');
+  // the old rule is one switch away (DEFENSE.flurry.on 'any'; the Lab's debug.flurryAny)
+  settle(G);
+  place(G, 5);
+  run(G, 0.3);
+  p.debug.flurryAny = true;
+  got = dodge('plumThrust');
+  assert(got === 1 && p.state === 'flurry', `with debug.flurryAny a white blow's perfect dodge is the flurry again (${p.state})`);
+  ride();
+  p.debug.flurryAny = false;
   // the back is open: his guard never covers it
   run(G, 0.2);
   d.brain.raiseT = 0;
@@ -864,6 +919,30 @@ async function scenarioGhostep() {
   const t5 = ride(8);
   assert(t5.hits.length === 5 && hp5 - d.hp === 4 * F.cut.damage + F.last.damage && t5.end?.strikes === 5, `five blows: ${hp5 - d.hp} damage (${4 * F.cut.damage + F.last.damage}) in ${(t5.frames * DT).toFixed(2)} s`);
   assert(p.state !== 'flurry' && p.position.y === 0 && p.flurry.nLines === 0 && !p.flurry.pending, 'it ends on the ground, nothing left hanging');
+  // ADR-101: a flurry on a man is paced to be followed. The cuts pass his side (never through his
+  // body), they do not throw him about, and the last blow sends him away from where the hero lands
+  const GR = F.ground;
+  out(`   the cuts: nearest ${t5.close.toFixed(2)} m to him (side ${GR.side}) · his biggest step in a frame ${t5.shove.toFixed(3)} m · afterimage of ${p.fx.bodyN} points`);
+  assert(t5.close > GR.side * 0.7, `a flash cut runs past his side: never nearer than ${t5.close.toFixed(2)} m (was 0: through his body)`);
+  assert(t5.shove < 0.12, `no blow of it throws him across the floor in a frame (${t5.shove.toFixed(3)} m; a shove of 0.32 m per cut read as him jumping about)`);
+  assert(p.fx.bodyN >= 100 && p.fx.body === p._ghostPts, `the afterimage is drawn from his own body: ${p.fx.bodyN} points sampled`);
+  const hx5 = p.position.x, hz5 = p.position.z, gap0 = Math.hypot(hx5 - d.position.x, hz5 - d.position.z);
+  run(G, 0.7, () => { input.axis = { x: 0, y: 0 }; });
+  const gap1 = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z), pushed = Math.hypot(p.position.x - hx5, p.position.z - hz5);
+  out(`   after it: ${gap0.toFixed(2)} m behind him → ${gap1.toFixed(2)} m · the hero moved ${pushed.toFixed(2)} m`);
+  assert(gap1 >= gap0 - 0.05 && pushed < 0.1, `he stumbles away from the hero, not into him (${gap0.toFixed(2)} → ${gap1.toFixed(2)} m, the hero pushed ${pushed.toFixed(2)} m)`);
+  // a cut flinches him out of whatever he was doing: he does not hang in his string's pose
+  settle(G);
+  place(G, 2.6);
+  run(G, 0.3);
+  d.debug.trigger(MOVES.plumThrust ? 'plumThrust' : Object.keys(MOVES)[0]);
+  run(G, 0.1);
+  const mode0 = d.mode;
+  p.debug.flurry(3, 'passing');
+  run(G, 2, null, () => p.flurry.i >= 1 || p.state !== 'flurry');
+  out(`   cut out of his own move: ${mode0} → ${d.mode}${d.brain.react ? ' (' + d.brain.react.kind + ')' : ''}`);
+  assert(mode0 === 'act' && d.mode === 'react', `the first cut throws him out of his move (${mode0} → ${d.mode})`);
+  ride(8);
   p.debug.flurryArt = null;
   return G;
 }
@@ -1719,9 +1798,104 @@ async function scenarioProbe() {
   return G;
 }
 
-const SCENARIOS = { probe: scenarioProbe, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
+// ================================================================== scenario: perfect (ADR-102)
+// A perfect parry of a blade's blow pays: more posture, and the counter cut (the first light after
+// it winds up twice as fast and crits).
+async function scenarioPerfect() {
+  out('\n== scenario PERFECT (a perfect parry: posture x POSTURE.perfect, and the counter cut) ==');
+  const G = build();
+  duel(G, { dist: 2.0 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, PP = DEFENSE.perfectParry;
+  run(G, 0.4);
+  /** Parry Plum Thrust with RMB pressed `lead` s before its impact. Returns the posture it dealt. */
+  const parryAt = (lead) => {
+    settle(G, 8);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    d.posture = 0;
+    let parry = null, flashT = null, pressed = false;
+    G.watch = (n, e) => {
+      if (n === 'combat:flash' && e?.attack === 'plumThrust' && flashT === null) flashT = game.time;
+      if (n === 'player:parry') parry = { ...e };
+    };
+    d.debug.trigger('plumThrust');
+    run(G, 2.5, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (flashT !== null && !pressed && game.time >= flashT + TUNING.flashLead - lead - DT) { pressed = true; input.up(2); input.click(2); }
+    }, () => !!parry);
+    G.watch = null;
+    return { parry, posture: d.posture };
+  };
+  const plain = parryAt(0.16);
+  assert(plain.parry && !plain.parry.perfect && Math.abs(plain.posture - POSTURE.parry.normal) < 0.5 && !(p.quickUntil > game.time), `a parry pressed 0.16 s early is a plain one: ${plain.posture.toFixed(0)} posture (${POSTURE.parry.normal}), no counter cut readied`);
+  const perf = parryAt(0.04);
+  assert(perf.parry?.perfect === true && Math.abs(perf.posture - POSTURE.parry.normal * POSTURE.perfect) < 0.5, `pressed 0.04 s before the blow it is perfect: ${perf.posture.toFixed(0)} posture (${POSTURE.parry.normal} x ${POSTURE.perfect})`);
+  assert(p.quickUntil > game.time && p.quickUntil <= game.time + PP.cutWindow + 1e-6, `... and the counter cut is ready for ${PP.cutWindow} s`);
+  // the counter cut: the next light winds up cutSpeed x as fast and crits
+  p.debug.noRiposte = true;
+  const timeLight = (quick) => {
+    settle(G, 8);
+    home(G);
+    place(G, 6);
+    run(G, 0.3);
+    p.critTimer = 0;
+    p.quickUntil = quick ? game.time + 0.5 : -Infinity;
+    input.click(0);
+    let t = 0, a = null;
+    run(G, 1, () => { if (p.atk && p.atk.t < p.atk.def.windup) t += DT; a = p.atk ?? a; }, () => p.atk && p.atk.t >= p.atk.def.windup);
+    return { t, a };
+  };
+  const slow = timeLight(false), fast = timeLight(true);
+  assert(!slow.a?.quick && fast.a?.quick === true && fast.a?.crit === true, `the first light after a perfect parry is the counter cut (quick ${fast.a?.quick}, crit ${fast.a?.crit}; a plain light: ${slow.a?.quick})`);
+  assert(fast.t <= slow.t * 0.7 && fast.t >= slow.t / PP.cutSpeed - 2 * DT, `it winds up in ${fast.t.toFixed(3)} s against ${slow.t.toFixed(3)} s (x ${PP.cutSpeed})`);
+  assert(!(p.quickUntil > game.time), 'one cut only: the next light is a plain one again');
+  p.debug.noRiposte = false;
+  return G;
+}
+
+// ================================================================== scenario: strategy (opt-in)
+/** Which defence wins? Three bots that differ only in how they answer a tell (makeDefender `style`),
+ *  each in god mode (how fast it kills, how often it is struck) and mortal at ABYSS_SKILL (does it
+ *  live). Not a pass / fail check: node duel.mjs . strategy */
+async function scenarioStrategy() {
+  const skill = Number(process.env.ABYSS_SKILL ?? 0.85);
+  out(`
+== scenario STRATEGY (mixed / parry-only / dodge-only; god mode, then mortal at ${Math.round(skill * 100)} %) ==`);
+  let last = null;
+  for (const style of ['mixed', 'parry', 'dodge']) {
+    for (const seed of [4242, 7, 99]) {
+      for (const mortal of [false, true]) {
+        const G = build(seed);
+        const { game } = G;
+        duel(G, { dist: 4, ai: true });
+        G.defend = makeDefender(G, { skill: mortal ? skill : 1, style });
+        const d = game.dragon, p = game.player;
+        const n = { parries: 0, perfect: 0, flurryDmg: 0, breaks: 0, dealt: 0 };
+        G.watch = (ev, e) => {
+          if (ev === 'player:parry') n.parries++;
+          if (ev === 'player:perfectDodge') n.perfect++;
+          if (ev === 'dragon:postureBreak') n.breaks++;
+          if (ev === 'dragon:hurt') n.dealt += e.damage;
+        };
+        const t0 = game.time;
+        run(G, 360, (GG) => fencer(GG, mortal), () => d.state === 'dead' || !p.alive || game.state === 'victory');
+        G.watch = null;
+        const taken = G.hits.filter((h) => h.r === RESULT.HIT);
+        const end = d.state === 'dead' || game.state === 'victory' ? 'WON ' : p.alive ? 'time' : 'DIED';
+        out(`     ${style.padEnd(5)} seed ${String(seed).padEnd(4)} ${mortal ? 'mortal' : 'god   '} ${end} ${(game.time - t0).toFixed(0).padStart(3)} s  his HP ${String(Math.round(Math.max(0, d.hp))).padStart(4)}  hits taken ${String(taken.length).padStart(2)} (${Math.round(taken.reduce((a, h) => a + (h.damage || 0), 0))} dmg)  parries ${String(n.parries).padStart(3)}  perfect dodges ${String(n.perfect).padStart(2)}  breaks ${n.breaks}`);
+        G.defend = null;
+        last = G;
+      }
+    }
+  }
+  return last;
+}
+
+const SCENARIOS = { strategy: scenarioStrategy, probe: scenarioProbe, perfect: scenarioPerfect, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
 const runs = [];
-const OPT_IN = new Set(['probe']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 

@@ -47,6 +47,7 @@ export class FlurryFx {
     this.cam = null;
     this.acc = 0;
     this.pull = 0; // m toward the camera (see above): the flurry sets it for its target
+    this.k = 1; // the size of a cut's flare, crescent and burst (1 the wyrm's head; DEFENSE.flurry.ground.fx a man)
     this._fx = null;
     this._px = { spawn: (o) => this._spawn(o) };
     this._q = [0, 0, 0];
@@ -103,10 +104,10 @@ export class FlurryFx {
 
   /** He is gone from (x, y, z): the afterimage of the pose he left (`segs`: PlayerFx._afterimage)
    *  and a pinch of motes falling in on the spot. `light`: between two cuts (fewer motes). */
-  vanish(segs, nSegs, x, y, z, light = false) {
+  vanish(segs, nSegs, x, y, z, light = false, dx = 0, dz = 0) {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
-    this.pfx?._afterimage?.(this._fx, segs, nSegs); // (where he stood: in the open, not pulled)
+    this.pfx?._afterimage?.(this._fx, segs, nSegs, { dx, dz }); // (where he stood: in the open, not pulled)
     const n = light ? 5 : 12;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + R(-0.3, 0.3), r = R(0.4, 0.8), ey = R(0.2, 1.6);
@@ -121,7 +122,7 @@ export class FlurryFx {
    *  hanging on the cut's line. */
   clone(segs, nSegs) {
     if (!this.add) return;
-    this.pfx?._afterimage?.(this._fx, segs, nSegs);
+    this.pfx?._afterimage?.(this._fx, segs, nSegs, { light: true });
   }
 
   /**
@@ -165,6 +166,7 @@ export class FlurryFx {
     const ux = C ? C[4] : 0, uy = C ? C[5] : UP_Y, uz = C ? C[6] : UP_Z;
     // the cut's heading on the screen
     const cx = dx * rx + dz * rz, cy = dx * ux + dz * uz, base = Math.atan2(cy, cx);
+    k *= this.k;
     const n = Math.round(30 * k);
     for (let i = 0; i < n; i++) {
       // two fans, along the cut and against it, a few strays all round
@@ -188,6 +190,9 @@ export class FlurryFx {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
     const k = n > 1 ? i / (n - 1) : 0, s = art ? 1.5 : 0.9 + 0.3 * k;
+    // the way he came: characters off the afterimage he left fly here, and more rush in onto him
+    this.pfx?.blinkStream?.(this._fx, x, y, z);
+    this.pfx?.blinkIn?.(this._fx, x, y, z);
     // (thin: a fat upright stroke blooms into a white pill that hides him as he arrives)
     fx.spawn({ x, y, z, life: 0.07, size: 0.11 * s, sizeEnd: 0.04, stretch: 16, glyph: '|', color: COL.hot, colorEnd: COL.ice, alpha: 0.85, alphaEnd: 0 });
     fx.spawn({ x, y: y + 0.2, z, life: 0.1, size: 0.42 * s, sizeEnd: 0.1, glyph: '+', rot: 0.785, color: COL.hot, colorEnd: COL.ice, alpha: 1, alphaEnd: 0 });
@@ -226,7 +231,7 @@ export class FlurryFx {
   cut(x, y, z, dx, dz, i = 0, n = 1) {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
-    const k = n > 1 ? i / (n - 1) : 0, s = 1 + 0.5 * k;
+    const k = n > 1 ? i / (n - 1) : 0, s = (1 + 0.5 * k) * this.k;
     const hot = k > 0.6, c0 = hot ? COL.gold : COL.spark, c1 = hot ? COL.goldEnd : COL.sparkEnd;
     const rot = this._rot(dx, 0, dz);
     // the stroke: bright for two frames, along the cut
@@ -235,8 +240,8 @@ export class FlurryFx {
     // the line and up or down a little (each cut the other way)
     const sg = i % 2 ? -1 : 1, tilt = (i % 3) * 0.3 - 0.3;
     const vx = -dz * sg * Math.cos(tilt), vy = Math.sin(tilt), vz = dx * sg * Math.cos(tilt);
-    const r = 2.3 + 0.5 * k;
-    this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.95, Math.PI / 2 - 0.95, 0.4 + 0.15 * k, 0.22, COL.hot, hot ? COL.gold : COL.ice);
+    const r = (2.3 + 0.5 * k) * this.k;
+    this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.95, Math.PI / 2 - 0.95, (0.4 + 0.15 * k) * this.k, 0.22, COL.hot, hot ? COL.gold : COL.ice, 0.1 * Math.sqrt(this.k));
     fx.spawn({ x, y, z, life: 0.09, size: 0.7 * s, sizeEnd: 0.15, glyph: '+', rot: rot + 0.785, color: COL.hot, colorEnd: c0, alpha: 1, alphaEnd: 0 });
     const m = 8 + Math.round(6 * k);
     for (let j = 0; j < m; j++) {
@@ -274,7 +279,7 @@ export class FlurryFx {
         const taper = Math.sqrt(Math.max(0.04, Math.sin(Math.PI * Math.min(1, at))));
         const glim = 0.72 + 0.28 * Math.sin(t * 26 - at * 9 + li * 2.1);
         const x = L.ax + dx * f, y = L.ay + dy * f, z = L.az + dz * f;
-        const size = (L.last ? 0.13 : 0.1) * taper;
+        const size = (L.last ? 0.13 : 0.1) * taper * Math.sqrt(this.k);
         fx.spawn({ x, y, z, life, size, sizeEnd: size, stretch: (seg / size) * 1.25, glyph: '|', rot, color: core, colorEnd: core, alpha: glim, alphaEnd: glim });
         const vs = size * 2.2;
         fx.spawn({ x, y, z, life, size: vs, sizeEnd: vs, stretch: (seg / vs) * 1.15, glyph: '|', rot, color: veil, colorEnd: veil, alpha: 0.16 * glim, alphaEnd: 0.16 * glim });
@@ -351,18 +356,19 @@ export class FlurryFx {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
     // (small cores: stacked with the burst's they bloom into a white blot over the target)
-    fx.spawn({ x, y, z, life: 0.08, size: 1.2, sizeEnd: 0.3, glyph: '*', color: COL.hot, colorEnd: COL.ice, alpha: 1, alphaEnd: 0, rot: R(0, 3) });
-    fx.spawn({ x, y, z, life: 0.28, size: 1.2, sizeEnd: 4.0, glyph: '°', color: COL.ice, colorEnd: COL.iceEnd, alpha: 0.55, alphaEnd: 0 });
+    const s = this.k;
+    fx.spawn({ x, y, z, life: 0.08, size: 1.2 * s, sizeEnd: 0.3, glyph: '*', color: COL.hot, colorEnd: COL.ice, alpha: 1, alphaEnd: 0, rot: R(0, 3) });
+    fx.spawn({ x, y, z, life: 0.28, size: 1.2 * s, sizeEnd: 4.0 * s, glyph: '°', color: COL.ice, colorEnd: COL.iceEnd, alpha: 0.55, alphaEnd: 0 });
     const px = -dz, pz = dx; // across the cut, in the ground plane
     // a falling / rising cut's plane is tipped 40° off upright, toward the side the camera sees more
     // of: an upright plane along the view is drawn as one fat bar up the screen
     const C = this.cam, side = C && px * C[0] + pz * C[2] < 0 ? -1 : 1;
     const ty = 0.77, tx = px * side * 0.64, tz = pz * side * 0.64;
-    if (kind === 'split') this._crescent(fx, x, y + 0.2, z, dx, 0, dz, tx, ty, tz, 2.7, 2.5, -0.75, 0.5, 0.34, COL.hot, COL.last, 0.13);
-    else if (kind === 'vault') this._crescent(fx, x - dx * 0.4, y - 0.3, z - dz * 0.4, dx, 0, dz, tx, ty, tz, 2.3, -0.9, 2.2, 0.45, 0.34, COL.hot, COL.last, 0.13);
+    if (kind === 'split') this._crescent(fx, x, y + 0.2, z, dx, 0, dz, tx, ty, tz, 2.7 * s, 2.5, -0.75, 0.5 * s, 0.34, COL.hot, COL.last, 0.13);
+    else if (kind === 'vault') this._crescent(fx, x - dx * 0.4, y - 0.3, z - dz * 0.4, dx, 0, dz, tx, ty, tz, 2.3 * s, -0.9, 2.2, 0.45 * s, 0.34, COL.hot, COL.last, 0.13);
     else {
       // the lens: two shallow arcs bowing apart on either side of the line
-      for (const sg of [-1, 1]) this._crescent(fx, x + px * sg * 5.2, y, z + pz * sg * 5.2, -px * sg, 0, -pz * sg, dx, 0, dz, 5.7, -0.62, 0.62, 0.5, 0.3, COL.hot, COL.last, 0.12);
+      for (const sg of [-1, 1]) this._crescent(fx, x + px * sg * 5.2 * s, y, z + pz * sg * 5.2 * s, -px * sg, 0, -pz * sg, dx, 0, dz, 5.7 * s, -0.62, 0.62, 0.5 * s, 0.3, COL.hot, COL.last, 0.12);
     }
     // shards fanned out of it, most along the cut
     for (let i = 0; i < 18; i++) {
@@ -403,7 +409,7 @@ export class FlurryFx {
         const f = (j + 0.5) / m, taper = Math.sqrt(Math.max(0.05, Math.sin(Math.PI * f)));
         const px = L.ax + dx * f, py = L.ay + dy * f, pz = L.az + dz * f;
         // the line flares: fat and white, thinning fast
-        const size = (L.last ? 0.3 : 0.22) * taper;
+        const size = (L.last ? 0.3 : 0.22) * taper * this.k;
         fx.spawn({ x: px, y: py, z: pz, life: R(0.13, 0.2), size, sizeEnd: size * 0.08, stretch: (seg / size) * 1.4, glyph: '|', rot, color: COL.hot, colorEnd: c0, alpha: 1, alphaEnd: 0 });
         // sparks off both sides, across the line
         for (const sg of [-1, 1]) {
@@ -418,7 +424,7 @@ export class FlurryFx {
       }
     }
     // where they cross: a star, brighter with every cut
-    fx.spawn({ x, y, z, life: 0.12, size: 1.0 + 0.8 * heat, sizeEnd: 0.3, glyph: '*', color: COL.hot, colorEnd: COL.gold, alpha: 1, alphaEnd: 0, rot: R(0, 3), spin: 2 });
+    fx.spawn({ x, y, z, life: 0.12, size: (1.0 + 0.8 * heat) * this.k, sizeEnd: 0.3, glyph: '*', color: COL.hot, colorEnd: COL.gold, alpha: 1, alphaEnd: 0, rot: R(0, 3), spin: 2 });
     this._light({ x, y, z, color: [0.9, 0.9, 1.4], intensity: 1.8 + 1.4 * heat, radius: 6, life: 0.2, fade: 0.16 });
   }
 }

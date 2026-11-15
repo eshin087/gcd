@@ -34,6 +34,8 @@ const KINDS = {
   deflected: { text: 'DEFLECTED', life: 0.9, rise: 20, pop: 1.5, cls: 'danger' },
   // two cuts met (combat:clash): neither landed
   trade: { text: 'CLASH', life: 1.0, rise: 24, pop: 1.6, cls: 'deflect' },
+  // ... and the flash counter (player:counter): the cut went through his blow and through him
+  counter: { text: 'FLASH COUNTER', life: 1.4, rise: 30, pop: 1.8, cls: 'deflect', streak: true },
   // the duel's moments (player:lock, player:mikiri, dragon:deflected)
   lock: { text: 'BLADE LOCK', life: 1.1, rise: 20, pop: 1.5, cls: 'deflect' },
   lockWon: { text: 'BREAKTHROUGH', life: 1.3, rise: 30, pop: 1.6, cls: 'deflect' },
@@ -102,7 +104,10 @@ export class Callouts {
       if (d?.execution) this.call(game.dragon?.lives ? 'deathblow' : 'exec');
     });
     game.events?.on?.('dragon:guard', (d) => this.call(d?.deflect ? 'deflected' : 'guard'));
-    game.events?.on?.('combat:clash', () => this.call('trade'));
+    game.events?.on?.('combat:clash', (d) => {
+      if (!d?.counter) this.call('trade');
+    });
+    game.events?.on?.('player:counter', () => this.call('counter'));
     game.events?.on?.('player:lock', (d) => {
       if (d?.phase === 'start') this.call('lock');
       else if (d?.phase === 'won') this.call('lockWon');

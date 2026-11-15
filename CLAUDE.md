@@ -25,7 +25,7 @@ Read this file first, every session.
 ```bash
 npm run dev      # http://localhost:5173 (zero-dependency static server, no build step)
 npm test         # headless integration sims (real game modules, mocked DOM/WebGL) + glyph check
-                 # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs)
+                 # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
 ```
@@ -57,6 +57,11 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in
   `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, glyph particles). No plain shaded
   meshes. Only glyphs in the world atlas may be passed to `gi()` / materials / particles — `npm test` checks.
+- **The world breaks (ADR-107).** Anything new that stands in a level and could be hit is listed in
+  its set's `breakables` (not merged into the static meshes), and anything new that hits (a blow, a
+  projectile, fire) calls the world: `world.impact`, `world.ignite`, `world.destructibles.strike /
+  sweep / stop`, guarded with `?.`. Its power goes in the fighter's tuning. See
+  `docs/ARCHITECTURE.md` → "Destruction" and `docs/COMBAT.md` → "The world breaks".
 - **Combat must be readable.** Every enemy attack declares a tell type (`normal` / `blue` parry /
   `red` perfect-dodge) and a windup long enough to react to. See `docs/COMBAT.md`.
 - **Never freeze the frame.** Per-frame code must not throw; `main.js` isolates module errors, but
@@ -89,7 +94,7 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 src/core       config, input, camera rig, math, rng, events
 src/render     glyph atlases, shared shader lib, materials, particles, lights, frame pipeline
 src/world      ground, grass, forest/stones/bones/bonfire, landmarks (the big set pieces), scorch map,
-               atmosphere, colliders
+               atmosphere, colliders, destruction (destructibles, fire, scars, breakTuning)
 src/combat     shared combat rules: hit resolution, guard/parry/dodge, attack tells
 src/entities   player/ (gear/ = equipment slot items)  dragon/  enemies/duelist/ (the engine human
                bosses share)  enemies/ashDisciple/  enemies/starlessLord/  (future: npcs/)

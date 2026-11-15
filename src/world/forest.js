@@ -494,7 +494,60 @@ export function buildBonfire(rng, x, z) {
   return parts;
 }
 
+// ---------- what is left when something breaks (world/destructibles.js: a breakable's `broken`) ----------
+/** A splintered stump (screen grid): what stands where a tree was felled or burned through. */
+export function buildStump(rng, x, z, s, col = BARK) {
+  const h = range(rng, 0.55, 1.05) * s;
+  const g = prep(new THREE.CylinderGeometry(0.24 * s, 0.42 * s, h, 7, 2));
+  g.translate(0, h / 2, 0);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > h * 0.9) p.setY(i, p.getY(i) - hash2(p.getX(i) * 9 + x, p.getZ(i) * 9 + z) * h * 0.45);
+  lumpy(g, 0.07 * s, 2, rng() * 9, new THREE.Vector3(0, h / 2, 0));
+  paint(g, { col: (px, py) => mul(col, 0.7 + 0.5 * hash2(px * 9 + x, py * 5 + z)), flag: FLAG.STONE, ao: (px, py) => 0.6 + 0.4 * (py / h) });
+  g.translate(x, 0, z);
+  return [g];
+}
+
+/** A jagged base and a few lumps (carved, for prop art): what is left of a broken stone or pillar. */
+export function buildRubble(rng, x, z, r, { col = STONE, h = 0.5 } = {}) {
+  const parts = [];
+  const base = prep(new THREE.CylinderGeometry(r * 0.7, r * 0.95, h, 6, 1));
+  base.translate(0, h / 2, 0);
+  const p = base.attributes.position;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > h * 0.9) p.setY(i, p.getY(i) - hash2(p.getX(i) * 11 + x, p.getZ(i) * 11 + z) * h * 0.7);
+  lumpy(base, 0.1, 2.2, rng() * 99, new THREE.Vector3(0, h / 2, 0));
+  parts.push(base);
+  const n = 2 + Math.floor(rng() * 3);
+  for (let i = 0; i < n; i++) {
+    const a = rng() * TAU, d = r * range(rng, 1.0, 1.9), s = r * range(rng, 0.28, 0.5);
+    const lump = prep(new THREE.IcosahedronGeometry(s, 0));
+    lumpy(lump, s * 0.4, 1.6 / s, rng() * 99);
+    lump.scale(1, 0.7, 1);
+    lump.translate(Math.cos(a) * d, s * 0.35, Math.sin(a) * d);
+    parts.push(lump);
+  }
+  const g = mergeGeometries(parts);
+  carve(g, {
+    col: (px, py, pz) => mul(col, 0.7 + 0.5 * fbm2(px * 2.1 + x, pz * 2.1 + py, 2)),
+    ao: (px, py) => 0.55 + 0.45 * Math.min(1, py / 0.6),
+  });
+  g.translate(x, 0, z);
+  return [g];
+}
+
+/** The top of a list of geometries (world y): a breakable's height. */
+export function geosHeight(geos) {
+  let h = 0;
+  for (const g of geos) {
+    g.computeBoundingBox();
+    h = Math.max(h, g.boundingBox.max.y);
+  }
+  return h;
+}
+
 // ---------- assembly ----------
+/** Trees this close to the clearing's centre are breakables (they can be felled, burned, thrown). */
+const BREAK_R = 36.5;
 /** Where the forest's landmarks stand (landmarks.js): world x, z, yaw, scale. */
 export const FOREST_LANDMARKS = {
   elder: { x: 30.5, z: -6, yaw: -1.5, s: 1 },
@@ -552,12 +605,23 @@ export function createForest(U, colliders) {
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key).push(t);
   }
+  // breakables (world/destructibles.js, ADR-107): what can be chipped, felled, burned and thrown is
+  // listed here instead of merged into the static meshes. Their stumps and rubble, and the things
+  // added inside the clearing, draw on a stream of their own: the layout's sequence stays as it was
+  const breakables = [];
+  const br = mulberry32(CONFIG.seed + 4177);
+  const treeBreakable = (t, g, c) => ({
+    kind: t.type === 'dead' ? 'deadTree' : 'tree', mat: 'wood', look: 'grid', x: t.x, z: t.z, r: 0.45 * t.s, h: geosHeight(g), geos: g,
+    colliders: c ? [c] : [], broken: { geos: buildStump(br, t.x, t.z, t.s), r: 0.38 * t.s }, leafy: t.type === 'dead' ? 0 : 0.6, lift: 1,
+  });
   for (const t of trees) {
     const g = t.type === 'pine' ? buildPine(rng, t.x, t.z, t.s) : t.type === 'dead' ? buildDeadTree(rng, t.x, t.z, t.s) : buildOak(rng, t.x, t.z, t.s);
     if (inLandmark(t.x, t.z)) continue;
-    treeGeos.push(...g);
     treeSpots.push({ x: t.x, z: t.z, r: t.type === 'pine' ? 2.2 * t.s : 3.0 * t.s });
-    if (Math.hypot(t.x, t.z) < 42) colliders.add(t.x, t.z, 0.45 * t.s, 'trunk');
+    const rad = Math.hypot(t.x, t.z);
+    const c = rad < 42 ? colliders.add(t.x, t.z, 0.45 * t.s, 'trunk') : null;
+    if (rad < BREAK_R) breakables.push(treeBreakable(t, g, c));
+    else treeGeos.push(...g);
   }
 
   // broken stone circle (gap to the south for the entrance)
@@ -572,17 +636,20 @@ export function createForest(U, colliders) {
     const h = broken ? range(rng, 1.4, 2.1) : range(rng, 2.8, 4.0);
     const w = range(rng, 1.1, 1.5), d = range(rng, 0.65, 0.9);
     const yaw = -a + Math.PI / 2 + range(rng, -0.2, 0.2);
-    stoneGeos.push(buildStandingStone(rng, x, z, { h, w, d, yaw, fallen, broken }));
+    const stone = buildStandingStone(rng, x, z, { h, w, d, yaw, fallen, broken });
     if (fallen) {
       // the toppled stone lies from its base (x, z) out to h along (sin yaw, cos yaw): centre the
       // colliders (and so the bare-earth stamp) on its body, not on its base
       const cx = x + Math.sin(yaw) * h * 0.5, cz = z + Math.cos(yaw) * h * 0.5;
-      colliders.add(cx, cz, 0.95, 'stone');
       const ax = Math.sin(yaw) * (h * 0.33), az = Math.cos(yaw) * (h * 0.33);
-      colliders.add(cx + ax, cz + az, 0.8, 'stone');
-      colliders.add(cx - ax, cz - az, 0.8, 'stone');
+      const cs = [colliders.add(cx, cz, 0.95, 'stone'), colliders.add(cx + ax, cz + az, 0.8, 'stone'), colliders.add(cx - ax, cz - az, 0.8, 'stone')];
+      breakables.push({ kind: 'stone', mat: 'stone', look: 'prop', x: cx, z: cz, r: h * 0.42, h: d + 0.1, geos: [stone], colliders: cs, topples: false, cover: false });
     } else {
-      colliders.add(x, z, Math.max(w, d) * 0.62, 'stone');
+      const r = Math.max(w, d) * 0.62;
+      breakables.push({
+        kind: 'stone', mat: 'stone', look: 'prop', x, z, r, h, geos: [stone], colliders: [colliders.add(x, z, r, 'stone')],
+        broken: { geos: buildRubble(br, x, z, r * 0.9, { h: range(br, 0.45, 0.8) }), r: r * 0.7 }, lift: 2,
+      });
     }
   }
 
@@ -596,8 +663,9 @@ export function createForest(U, colliders) {
     const size = edge ? range(rng, 0.9, 1.6) : range(rng, 0.7, 2.0);
     const boulder = buildBoulder(rng, x, z, size);
     if (inLandmark(x, z, -1.5)) continue;
-    stoneGeos.push(boulder);
-    if (r < 42) colliders.add(x, z, size * 0.85, 'boulder');
+    const c = r < 42 ? colliders.add(x, z, size * 0.85, 'boulder') : null;
+    if (r < BREAK_R) breakables.push({ kind: 'boulder', mat: 'stone', look: 'prop', x, z, r: size * 0.85, h: geosHeight([boulder]), geos: [boulder], colliders: c ? [c] : [], topples: false, lift: 1 });
+    else stoneGeos.push(boulder);
   }
 
   // flagstones around the centre (walkable)
@@ -620,6 +688,49 @@ export function createForest(U, colliders) {
   propGeos.push(...buildBonfire(rng, bf.x, bf.z));
   colliders.add(bf.x, bf.z, 0.75, 'bonfire');
   bare.push({ x: bf.x, z: bf.z, r: 1.6 });
+
+  // things to break inside the clearing (ADR-107: the fight uses its ground): dead trees, young
+  // pines and boulders in a loose belt, clear of the centre, the nest, the wyrm's bed, the way in
+  // from the bonfire and the stone circle
+  {
+    const bed = W.dragonSleep ?? { x: 3, z: -10 };
+    const taken = [];
+    const free = (x, z, pad) => {
+      const r = Math.hypot(x, z);
+      if (r < 12.5 || r > 28.2 || Math.abs(r - ringR) < 2.6) return false;
+      if (z > 12 && Math.abs(x) < 7.5) return false;
+      if (Math.hypot(x - nest.x, z - nest.z) < 6 || Math.hypot(x - bed.x, z - bed.z) < 8.5) return false;
+      if (inLandmark(x, z, 1)) return false; // (nothing to break stands on, or in front of, a landmark)
+      return !taken.some((t) => Math.hypot(t.x - x, t.z - z) < pad);
+    };
+    const place = (n, pad, make) => {
+      for (let i = 0, k = 0; i < 400 && k < n; i++) {
+        const a = br() * TAU, r = 12.5 + Math.sqrt(br()) * 15.7;
+        const x = Math.cos(a) * r, z = Math.sin(a) * r;
+        if (!free(x, z, pad)) continue;
+        taken.push({ x, z });
+        make(x, z);
+        k++;
+      }
+    };
+    place(7, 5.5, (x, z) => {
+      const t = { x, z, s: range(br, 0.8, 1.15), type: 'dead' };
+      const g = buildDeadTree(br, x, z, t.s);
+      treeSpots.push({ x, z, r: 1.6 * t.s });
+      breakables.push(treeBreakable(t, g, colliders.add(x, z, 0.42 * t.s, 'trunk')));
+    });
+    place(4, 6, (x, z) => {
+      const t = { x, z, s: range(br, 0.55, 0.72), type: 'pine' };
+      const g = buildPine(br, x, z, t.s);
+      treeSpots.push({ x, z, r: 2.0 * t.s });
+      breakables.push(treeBreakable(t, g, colliders.add(x, z, 0.4 * t.s, 'trunk')));
+    });
+    place(6, 4.5, (x, z) => {
+      const size = range(br, 0.8, 1.35);
+      const boulder = buildBoulder(br, x, z, size);
+      breakables.push({ kind: 'boulder', mat: 'stone', look: 'prop', x, z, r: size * 0.85, h: geosHeight([boulder]), geos: [boulder], colliders: [colliders.add(x, z, size * 0.85, 'boulder')], topples: false, lift: 1 });
+    });
+  }
 
   // landmarks: the elder wyrm's skeleton along the east rim (head to the south: at the side of the
   // frame it is seen side-on, ribs and all), the Cinder Tree on the west rim
@@ -655,5 +766,6 @@ export function createForest(U, colliders) {
   return {
     group, treeSpots, bare, slabs, nest, bonfire: { x: bf.x, z: bf.z },
     material: mat, stoneMaterial: stoneMat, slabMaterial: slabMat,
+    breakables,
   };
 }

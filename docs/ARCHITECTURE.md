@@ -46,7 +46,10 @@ scene.updateMatrixWorld()            once for both scene passes (scene.matrixWor
 → rigid bone sync                    every batched mesh's matrixWorld → U.uBoneTex (render/rigidBatch.js)
 → moon shadow map                    LAYER_CASTER with the depth material, then LAYER_CASTER_RIGID (one shadow
                                      mesh per batched actor) with the bone-reading depth material, same map
-→ world → sceneRT → ASCII pass → FX particles (fxScene) → bloom → final grade
+→ world → sceneRT
+→ the hero where something covers him   a probe, then (only while it finds cover) the hero alone → seenRT,
+                                     minus what the scene shows of him, the rest back into sceneRT (ADR-106)
+→ ASCII pass → FX particles (fxScene) → bloom → final grade
 ```
 World matrices are therefore final when `render` starts: anything that moves an object after the
 actors' updates must do so before `pipeline.render()` (a transform changed between the two scene
@@ -77,7 +80,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker})` → light (mutable `x,y,z`, `.set()`, `.kill()`) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
-| `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
+| `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
@@ -225,7 +228,54 @@ Render helpers for creature modules:
     `_updateAsciiCamera` from `U.uPlayerScreen` (radius `HERO_HALO_R` 2.1 m; strength fades in from
     0.4 × to 1 × `uHeroHaloShape.w` = 20 m view depth, so none in close-ups), and `uHeroHaloShape`
     (x / y tap radii 2 / 4 px × hs, z darkening 0.72). Two rings of 8 taps darken **world-grid**
-    pixels round him (grass, stones, trees, bonfire); the wyrm's letters are not darkened.
+    pixels round him (grass, stones, trees, bonfire); the wyrm's letters are not darkened, except
+    round the parts of him it covers (`seenHalo`, next item).
+- **The hero seen through what covers him** (ADR-106; `pipeline.js`). When something stands
+  between the camera and the hero (the wyrm's body or a wing, a tree, a pillar, a landmark), the
+  covered parts of him are printed through it: his own ink-line art in the blade's cyan, with a
+  thin dark gap round it. In the open nothing changes (the frame is pixel-identical).
+  - **API:** `pipeline.setSeenThrough(object3d | null)` names the object (main.js: the player's
+    `object3d`; a loadout rebuild keeps that root). `CONFIG.render.seenThrough` = `{ on, reach,
+    margin, bareMargin, probe, hold }`: `on` is read every frame (`false` when the page URL has
+    `?noseen`, read once in `core/config.js`: an A/B switch like `?nobatch`); `reach` 2.8 m is the
+    half-size of the box round his screen point (`U.uPlayerScreen`) that is drawn; `margin` 0.6 m
+    / `bareMargin` 1.5 m are how far in front of him a tagged / an untagged (alpha < 0.03) pixel
+    must be to count as cover; `probe` `[half-width, from, to]` m is the slab through his body the
+    gate tests; `hold` 20 frames the pass keeps running after the gate last found cover.
+  - **What counts as cover** needs nothing from the covering object's material: anything drawn
+    in the scene pass that writes depth, at least the margin in front of his surface. Never
+    cover: a pixel in the hero's alpha window (a human boss is built by `buildHero` and writes
+    it; the duels are unchanged), grass and ground within `bareMargin`, and anything in the FX
+    scene (glyph particles are composited after the ASCII pass and do not write the scene depth).
+    A new big object (a thrown tree, a lifted pillar, a wall) gets it for free; to keep a small
+    thing from ever triggering it, leave it untagged or keep it within the margin of him.
+  - **The pass** (`_renderSeen`, render step 2b, right after the world pass; no allocation; it
+    returns whether it ran): (1) the **gate** `_seenProbe`: one quad (`seenProbeMat`, no colour or
+    depth write, `GreaterDepth`) over the screen rect of the probe slab, at his centre line's
+    depth less `margin − 0.1`, inside an `ANY_SAMPLES_PASSED` occlusion query on the scene
+    target. Its answer is read on a later frame; a yes (or no answer for more than 3 frames: a
+    hidden tab, frames stepped in one task with `__tick`) keeps the pass on for `hold` frames.
+    Without usable queries (they throw, or the renderer has no GL context as in the headless
+    tests) `seenGate.off` is set and the pass runs every frame. (2) the object alone, with its
+    own materials, into `seenRT` (the size of the scene target, half-float + depth texture,
+    scissored to the box: outside it the target is stale and never read). (3) `seenMaskMat`: a
+    quad into `seenRT` whose depth is the scene's pushed back by the margin, `GreaterEqualDepth`,
+    writing alpha 0: it erases every pixel of him the scene shows. (4) `seenPatchMat`: what is
+    left goes into `sceneRT` over its cover (colour, part id, his own depth; `AlwaysDepth`), so
+    the ASCII pass draws him there like anywhere else. The scene target's depth at those pixels
+    is then the hero's (the FX particles' soft depth test sees him, not his cover).
+  - **The ASCII pass:** `tSeen` (= `seenRT`), `uSeen` (xy his screen uv, z the box's half-size in
+    px less 2, w 1 while the pass ran this frame, else 0 and `tSeen` is not read), `uSeenInk`
+    (0.3, 0.86, 1.0: the blade's cyan), `uSeenTone` (x silhouette line 1.15, y inner-line gain
+    1.6, z fill gain 1.2, both capped at 1.3; w the dark gap 0.85). At the end of the hero's
+    branch a pixel (or its cell centre) that `tSeen` marks takes `uSeenInk` × that brightness;
+    the wyrm's letters are multiplied by `1 − seenHalo(px)` (the halo's two rings looking for
+    `tSeen` pixels); over props and the world grid the existing halo finds the patched pixels.
+    `IS_HERO_GLSL` is the one definition of the hero's alpha window, shared by the ASCII pass and
+    both quads.
+  - **Cost** (Edge, RTX 4090, 1280x720, one task per frame): in the open one more draw call (the
+    probe: 57 → 58) and no measurable time; while covered 21 more (78: the hero's 18 material
+    batches, the probe, two quads) and 0.3–0.5 ms a frame.
 - **Leftovers** (declared, no longer effective): `U.uArtHeroKey` / `U.uArtHeroEdge` are still in
   `SURFACE_SHARED` and computed by the generic source, but the `SG_HERO_ART` fill replaces that
   colour on every hero material. `createArtAtlas` (`glyphs.js`) is no longer imported; the generic
@@ -367,6 +417,8 @@ Render helpers for creature modules:
   - `CONFIG.render.batch` (default `true`; `false` when the page URL has `?nobatch`, read once in
     `core/config.js`): with it off `batchRigid` returns an empty set and every mesh is drawn as
     before — an A/B switch for frame rate and image checks.
+  - `CONFIG.render.seenThrough.on` (`false` with `?noseen`): the same kind of switch for the hero
+    printed through his cover (see "The hero seen through what covers him" above).
 - `gi(ch)`, `gis(str)` (`render/glyphs.js`).
 - `game.pipeline.finalMat.uniforms` — `uHurt` (red edge 0..1), `uFade` (black 0..1), `uDesat` (0..1), `uWarm` (boss grade 0..1), `uExposure`, `uBloom`. **Owned by the HUD/flow module** (game/grade.js `ScreenGrade`: `hurtPulse`, `ghostPulse`, `dip`, `fadeTo`, `desatTo`, and `flashPulse(k)`: a white flash, `uExposure` × (1 + 0.9 k) over its base, gone in ~0.2 s; flow fires it on every `player:parry` of a blade).
 
@@ -420,6 +472,11 @@ onTrade(att, { tell, attack, last }): { heavy, crush } | null
                                        // cut stopped on his blade (_meetBlade, shared with the parry), the burst,
                                        // 'combat:clash', the bounce. crush (a cleave whose poise reaches the attacker's
                                        // TUNING.guard.crushPoise): no bounce, the cut carries on.
+                                       // The flash counter (ADR-102, DEFENSE.counter): in takeHit's half only, when the
+                                       // cut is at most counter.window s into its active frames and the attacker offers
+                                       // onCounter({ point, dir, attack }) -> damage dealt: no bounce, the attacker deals
+                                       // itself counter.damage (final) + counter.posture and reels, 'player:counter',
+                                       // the crit window opens. Returns { heavy, crush, counter }.
 onGuarded({ deflect, heavy, attacker })
                                        // a duelist's guard met the hero's strike (he calls it from takeHit). A plain
                                        // ward: the chain goes on. deflect: the blade is thrown back, state 'bounce'
@@ -1601,6 +1658,15 @@ Every sound is procedural (no samples). 2026-11-09 additions:
 - `dragon:phase3` replays the phase-2 sting and keeps 'boss2'; `dragon:plunged` → `dragonPain`
   (an execution: the `postureBreak` roar).
 
+**A flurry's blow on a duelist (ADR-101).** `takeHit({ ..., exact, reel, away })`: `reel` 1 (a flash
+cut) flinches him where he stands whatever he was doing (`brain.startReact('flinch')`, travel 0) and
+does not shove him; `reel` 2 (the last blow) staggers him and `away` ({ x, z }: where the hero is
+when the blow is over) picks the way he stumbles: away from that point. Any actor that takes the
+flurry's hits may ignore both. **The afterimage** (`PlayerFx._afterimage(fx, segs, n, { dx, dz,
+light })`, `blinkStream(fx, x, y, z)`, `blinkIn(fx, x, y, z)`) reads `PlayerFx.body` / `bodyN`:
+world points of the hero's body, written by `player._sampleGhost()` (which calls `_sampleBody()`)
+every time a pose is sampled.
+
 ### Lab — `src/dev/lab.js` exports `class Lab`
 ```
 constructor(game)          // hidden unless URL has ?lab or the user presses F1 / backquote / the LAB button
@@ -1811,6 +1877,98 @@ quality is still the default. Pointer Events with multi-touch (each control capt
 pointer); long-press menus, iOS gesture zoom and page panning are blocked while active (the Lab
 panel and the pause panel still scroll). Tuning: `CONFIG.touch`, sizes / look in `ui/touchStyle.js`.
 
+## Destruction (2026-11-14, ADR-107): the world breaks
+Files: `src/world/destructibles.js`, `fire.js`, `scars.js`, `breakTuning.js`. Every boss and the hero chip,
+break, fell and burn what stands in a level; cover stops projectiles until it gives way; a boss can lift
+a piece and throw it. The rules as the player meets them: COMBAT.md "The world breaks". Numbers:
+`world/breakTuning.js` (`BREAK`, `FIRE`, `SCAR`, `BLOW`).
+
+**POWER** is the one scale every blow is put on (0 a touch … 1 fells a tree): 0.12 a quick cut, 0.3 a
+duelist's cut, 0.5 a heavy cut, 0.8 a claw or the hero's charged cleave, 1.0 a tail / slam / thrown
+stone, 1.5 a meteor or a bolt of the Void, 2.5 the dive's crash. A piece loses power x its material's
+factor for that kind of blow (`BREAK.mats[mat].take[kind]`: a cut bites stone at 0.7, a blunt blow or a
+blast in full); below `BREAK.scratch` it only takes a mark.
+
+**A set's `breakables`** (built in the set builder; `forest.js` and `courtyard.js` are the examples). One entry:
+| field | what |
+|---|---|
+| `kind` | 'tree', 'deadTree', 'stone', 'boulder', 'pillar', 'lantern', 'stele', 'bell', … (free; boss AI and tests read it) |
+| `mat` | 'wood', 'stone', 'metal' or 'bone' (structure, what bites it, its debris and sound) |
+| `look` | 'grid' (geometries with `paint()` attributes: the screen grid, trees) or 'prop' (`carve()` attributes: prop art) |
+| `x, z, r, h` | its base (world), footprint radius, height (`geosHeight(geos)`) |
+| `geos` | its geometries in WORLD space, as the builders return them (the system moves them to the base) |
+| `colliders` | the `Colliders` circles it stands on (`colliders.add` returns them): taken out when it goes, put back on reset |
+| `broken` | `{ geos, look?, r? }` or absent: what is left standing (`buildStump`, `buildRubble` in forest.js); r = its own smaller collider |
+| `hp` | structure in POWER units (default: the material's x its size); `Infinity` = it only chips (the bronze bell) |
+| `topples` | it falls over when it breaks (default: h >= `BREAK.topple.minH` 2.2 m); otherwise it shatters where it stands |
+| `burns` | fire lights it (default: the material's; wood) |
+| `cover` | it stops projectiles (default: h >= `BREAK.cover.minH` 1.1 m) |
+| `lift` | 0 nobody can lift it, 1 a boss's body can (the wyrm: trees, boulders), 2 only the Void (stones, pillars, lanterns) |
+| `leafy` | 0..1 share of its debris that is leaves |
+
+A set draws its stumps, rubble and any breakables it adds from an rng stream of its own, so the rest of
+its layout does not move. Budget: each breakable is 1–2 bones of the rigid batch (1023 in all; the hero
+and a boss use ~320); the forest lists 81, the courtyard 72.
+
+**`world.destructibles`** (`class Destructibles`; `STATE` = INTACT 0, FALLING 1, BROKEN 2, HELD 3, FLYING 4, GONE 5):
+- `list` (every breakable: `{ id, kind, mat, x, z, r, h, hp, hpMax, state, weight, burn, lift, cover, topples, … }`),
+  `standing`, `active`, `root` (their group, under the set's), `batch`.
+- `strike(x, z, r, power, o)` → how many it struck: a blow or blast over a disc.
+  `sweep(ax, az, bx, bz, r, power, o)`: along a segment (a blade's edge, a dash, a wall of force).
+  `o = { kind, by, dx, dz, y, src, only }`: kind = `BLOW.CUT / BLUNT / BLAST / FIRE`; by = 'player', 'boss' or
+  'world'; dx, dz = the blow's way (a piece falls along it; default: out from the disc's centre, or along
+  the segment); y = its height (a blow above a low piece passes over); src = one id per swing from
+  `swing()` (a piece takes a blow once per id; without it, once per `BREAK.rehit` 0.18 s); only = just that
+  material ('wood': the wyrm's body).
+- `stop(ax, az, bx, bz, r, power, o)` → the piece or null: a projectile's step; the first cover on it takes
+  `power` and is returned (the caller ends its projectile). `coverAt(ax, az, bx, bz, r)` → the first cover
+  on a segment, no damage (`coverT` 0..1: where).
+- `ignite(x, z, r, k)` → wood in the disc catches (it burns `BREAK.burn.time` x k, then falls to embers and
+  its stump). `nearest(x, z, { maxDist, minDist, lift, kind, mat, from: { x, z, min } })` → the nearest intact
+  piece or null (lift: at most that class).
+- Lifting and throwing (a boss's move): `take(piece)` → true: it is HELD (no collider);
+  `carry(piece, x, y, z, tilt, yaw)` every frame while held; `throwTo(piece, tx, tz, { time, power, radius, by,
+  onLand(piece, x, z, radius) })` → it flies there end over end and bursts: a blast on the other pieces, a
+  scar, and `onLand` for the thrower's own blow at the hero (the move's tell is the thrower's: the world
+  deals nothing to the hero for a thrown piece); `drop(piece)`. `topple(piece, dx, dz, by)`: fell it that way.
+- `reset()`, `update(dt)` (world.js calls it).
+- A felled piece falls for `BREAK.topple.time` x sqrt(h / 5) s and lands on a strip h long: other pieces
+  under it are struck. Under a piece a boss (or the world) felled, the HERO takes one red blow
+  (`BREAK.topple.damage` x weight, unblockable, knockdown; i-frames dodge it; never a perfect dodge), with
+  combat:tell at the start, combat:flash 0.3 s before it lands and the strip marked in red glyphs. Under a
+  piece the HERO felled, the BOSS takes `boss.takeHit({ damage: BREAK.topple.bossDamage x weight, exact,
+  heavy, posture })` (tested against `boss.bodyCircles`), and the hero is never hit by his own.
+
+**`world.fire`** (`class GroundFire`, on the scorch map's grid): `ignite(x, z, r, k)` → cells lit (grass
+density >= `FIRE.minFuel`, not ash, not alight), `burning(x, z)` → s left, `touch(x, z, r)` (a burning piece
+burns the hero beside it), `count`, `reset()`. A cell burns `FIRE.life` s and is ash after: fire never
+spreads and nothing catches twice. The hero in it takes `FIRE.damage` every `FIRE.tick` s after
+`FIRE.grace` (blockable contact ticks, skipped while he rolls or is invulnerable, like a burning crater).
+
+**`world.scars`** (`class Scars`: glyphs that stay until the reset, one batch, the oldest go first at
+`SCAR.max`): `ground(x, z, power, dx, dz)` (a star of cracks; power >= `SCAR.ground.min`),
+`object(owner, x, y, z, power, M)`, `rubble(x, z, r, M, n, glyphs)`, `drop(owner)`, `reset()`, `count`.
+
+**`world.impact(x, z, r, power, o)`** = `destructibles.strike` + a floor scar and torn grass for a hard blow
+(`o.scar: false` skips it) + `ignite` when `o.fire` is set. **`world.ignite(x, z, r, k, grass = true)`** =
+`fire.ignite` (unless grass is false: sweeping fire lights wood only) + `destructibles.ignite`.
+`Colliders` has `remove(c)`, `restore(c)` and a `version` that counts every change of the set (the minimap
+re-bakes its layer on it, so a felled tree leaves the map). **`world.restore()`** resets all three: flow calls it wherever it resets the scorch map; the Lab's Reset and
+its WORLD section (Burn ahead, Fell on me, Blast ahead, Restore) too.
+
+**Who hits the world** (each through `?.`; one `src` per swing or action):
+| who | where | numbers |
+|---|---|---|
+| the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
+| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop; `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall / wheel igniting; `dragon.js` `_collide` (its body fells wood in its way); `bullets.js` (cover) | `TUNING.world` |
+| a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
+
+**Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with
+`rigidMatrix()`; built with `rigid: true` they are tagged for `batchRigid` (a set's static materials are
+not, so an actor's batch never picks them up). The breakables' two materials are twins of the set's (the
+prop twin takes the set's `uGain`): one draw call each however many pieces there are, plus one in the
+shadow pass. Debris, flames, the danger strip and the scars are glyph particles.
+
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
 `starless`), `DEFAULT_LEVEL`,
@@ -1821,7 +1979,9 @@ default), `applyLevel(level)` (merges `level.world` into `CONFIG.world`: main.js
 before building any module), `levelUrl(id, href)`. One level per page load; switching reloads.
 A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text }`.
 - `buildSet` returns createForest's shape (`group, treeSpots, bare, slabs, nest, bonfire, material,
-  stoneMaterial, slabMaterial`) plus, optionally, `ash: true` (atmosphere: falling ash flakes and a
+  stoneMaterial, slabMaterial`) plus, optionally, `breakables` (what can be chipped, felled, burned and
+  thrown: see Destruction above; a set lists those pieces there INSTEAD of merging them into its static
+  meshes), `scarInk [r, g, b]` (the colour of cracks in its floor), `ash: true` (atmosphere: falling ash flakes and a
   few embers instead of fireflies, mist and leaves) and `grass: { density(x, z) → 0..1 factor,
   height (×), ash 0..1 }` (world.js thins / shortens / greys the meadow; grass.js `uAsh`).
   A set may also bring its own night and weather (ADR-070; the throne hall does):
@@ -2059,7 +2219,9 @@ Player → hud/audio/fx/flow:
   `player:footstep {x, z, sprint}` (a planted foot's touchdown while moving, and a dash's
   two bounding steps), `player:lockOn {on}`,
   `player:lock {phase}` (the blade lock with a duelist: phase start / push / won / lost),
-  `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade)
+  `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade),
+  `player:counter {attack, damage}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
+  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER")
 Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash Disciple, emits the same
 `dragon:*` names, see "Levels and the boss slot") → hud/audio/flow:
 - `combat:tell {source:'dragon', attack, tell, impactIn, x, z}` (windup start, per hit, so once per hit of a
@@ -2067,8 +2229,9 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `combat:flash {source:'dragon', attack, tell, x, y, z, perilous}` (~0.35 s before impact — the **authoritative**
   timing cue: moving targets (charge, fireball) and hazard-dealt blows re-time it after the tell; perilous:
   a duelist's mikiri thrust, roll into it),
-  `combat:clash {heavy, crush, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
-  neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back; HUD "CLASH",
+  `combat:clash {heavy, crush, counter, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
+  neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back, counter = the
+  flash counter (it is followed by player:counter and the HUD shows that instead); HUD "CLASH",
   audio two steels ringing, a flicker of the frame),
   `combat:deflectChain {count}` (the attacker's count: the 2nd, 3rd ... parry in a row within one string;
   a hit that lands or is blocked resets it, dodges keep it; contract 1; the HUD shows "DEFLECT ×N")
@@ -2108,6 +2271,14 @@ Flow → hud/audio:
   fullDeflect / bladeLock / mikiri / execution / perfectParry (the hero's perfect parry of a blade: a short
   slow motion, no gong), or lock = the blade lock's camera push-in: no slow motion,
   audio plays no gong)
+World → audio (destruction, ADR-107; see "Destruction" above):
+- `world:impact {kind, mat, x, y, z, power, by, id}` (a blow on a breakable. kind: 'chip' = it held, 'break' = it
+  shattered where it stood, 'topple' = it starts to fall, 'crash' = it lands (or a thrown piece does), 'burn' = wood
+  catches, 'burnout' = it burned through, 'throw' = a boss tears it from the ground. mat: 'wood' / 'stone' / 'metal'
+  / 'bone'. power: on the POWER scale. by: 'player' / 'boss' / 'world'. id: its index in the breakables' list.
+  One reused payload: a subscriber must not keep it), `world:fire {x, z, radius, cells}` (grass catches)
+- A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
+  and hazard: true (be out from under it; audio plays the hazard cue)
 
 ## Ownership (parallel work)
 Foundation (read-only for module authors unless their brief says otherwise): `src/core/**`,

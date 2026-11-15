@@ -2507,3 +2507,178 @@ Chrome on an RTX 4090 in the throne hall (the heaviest view), median ms per fram
 10.5, this change 9.1 – 12.5 (equal within noise); 4K live 24.9, this change 32.1 (one noisy run).
 The pass reads 4 more samples per screen pixel; a phone was not measured. New colliders stand on the
 arena rims. Not checked: the look in motion, a fight played around the landmarks, the phone.
+
+## ADR-101 — The flurry on a man: paced to be followed; an afterimage printed in digits (2026-11-15)
+- **Context:** the owner, after watching every flurry in Training: "the animation looks great vs the
+  dragon but against the humanoid bosses, the teleportation attacks are a bit hard to follow and
+  doesnt seem fluid and buggy. lets also leave a cool after image that fades always in a stunning
+  transition effect per teleport and use ascii for the effects where you can as well". Measured
+  frame by frame on Shen Hui (five blows, the Passing Cut): the hero crossed him at about a metre a
+  frame and froze **on top of him** on every hit; he was in a pose worth reading for three frames a
+  cut; the duelist was **shoved 0.32 m in one frame by every cut**, from a new side each time, kept
+  his own attack's pose through the first cuts, and after the last blow **staggered back into the
+  hero** who had landed behind him (and pushed him 0.36 m); the camera jumped 0.9–1.3 m on every cut
+  and 4.6–5.3 m on the last; and the cuts' flares and 5.6 m hanging lines, sized for a head three
+  metres across, covered both men. The afterimage was sixteen bone strokes: a few bright sticks.
+- **Decision:** (1) **A second pacing for a target on the ground** (`DEFENSE.flurry.ground`; the
+  wyrm's is untouched): seen wound up where he appears, in past the foe's side, the strike just
+  before he is abeam, slowing into a held finish; a shorter line left on him; smaller effects; a
+  gentler camera. (2) **A flurry's blows do not shove a duelist**: each cut flinches him where he
+  stands and out of his move; the last staggers him away from where the hero ends (`away`).
+  (3) **The afterimage is the hero himself, printed**: points of his own meshes in the pose he was
+  last drawn in, one digit to a screen cell, falling apart from the feet up; on every blink some of
+  them fly to where he reappears and more rush in onto him. All of it glyph particles (no new
+  material, no draw call). Every blink uses it: the Ghostep, the plunge, the flurry, the riposte.
+  Three looks were built (digits / echo / shatter); the owner picked **digits**, the figure alone,
+  and the other two were removed with the Lab's button.
+- **Rejected:** *Slowing the wyrm's flurry too* (the owner: it looks great). *A true copy of the
+  hero's meshes as the ghost* (his art, exactly): a second set of bone slots in the rigid batch or
+  ~140 draw calls a ghost; the printed figure costs one batch of particles and reads as ASCII, which
+  is what was asked. *Keeping the shove but smoothing it:* the cuts are drawn crossing ON him, and a
+  target that drifts from under them is the thing that read as a bug.
+- **Consequences:** a flurry on a duelist is longer (five blows: 2.2 s, 1.75 s before; seven: about
+  2.6 s). A duelist is interrupted by the first cut instead of the last (he was staggered at the end
+  either way). An afterimage is up to ~390 particles for ~0.6 s; a seven-blow flurry peaks near
+  1700 particles (800 before; the additive batch holds 7000).
+
+## ADR-102 — The riskier the answer, the more it pays: the flurry on red only, the flash counter, a perfect parry that pays (2026-11-15)
+- **Context:** the owner asked what would make the combat stand with Sekiro, Phantom Blade Zero and
+  Onimusha, then: "yes measure and lets implement your suggestions". The suspicion: a perfect dodge
+  worked on every tell, had the parry's window (0.20 s against 0.22 s) and paid the most (the
+  flurry: damage, invulnerability, a stagger, the crit window, and the string over), while the
+  trade clash, the riskiest answer, earned no opening. Measured with three god-mode bots that
+  differ only in how they answer a tell (`strategy`, opt-in, in all three suites): the bot that only
+  dodged beat every boss fastest with a third of the inputs (Shen Hui 27 – 32 s against 38 – 45 s for
+  parries only; the wyrm 68 s against 149 s). Nobody had to learn a string.
+- **Decision:** order the rewards by risk (COMBAT.md "The reward order").
+  - The flurry (and the plunge) answer a perfect dodge of a **red** blow only (`DEFENSE.flurry.on`).
+    A perfect dodge of a white or heavy blow counts in the streak and gives the slow-mo where the
+    hero stands: no teleport, no damage, no crit window (`ghostep.critWindowWhite` 0), the string
+    goes on. The streak is built on white blows and cashed on a red one or by the riposte.
+  - **The flash counter** (`DEFENSE.counter`, Onimusha's Issen): a trade clash in the instant the
+    hero's cut became a cut (≤ 0.03 s into its active frames) is not thrown back: 70 final damage and
+    60 posture at once, the attacker reels (`attacker.onCounter`), the crit window opens,
+    `player:counter`.
+  - **A perfect parry** of a blow of the body or the blade deals × 1.5 posture (`POSTURE.perfect`)
+    and readies the counter cut (`DEFENSE.perfectParry`: the next light within 0.9 s winds up twice
+    as fast and crits).
+  - Found on the way: a blow of a foe's flurry that reached nobody settled nothing, so "block all
+    five and he breaks" could silently not happen. It now counts as answered when the hero stood
+    within its reach + 1.2 m, and fails the flurry when he left.
+- **Alternatives turned down:** a dodge cooldown or shrinking i-frames (the owner: defence must not
+  be punished; nothing here stops the player from dodging); a 1.2 s crit window on a white perfect
+  dodge (measured: the dodge bot still beat the wyrm fastest, in 63 s, on crits alone).
+- **Consequences:** after the change the dodge-only bot is the slowest on both duelists (Shen Hui
+  75 – 95 s, the Lord 152 – 161 s) and level with mixed play on the wyrm; mixed and parry-only times
+  did not move. A perfect dodge of a white blow against a duelist no longer puts the hero at his
+  back. The old rule is one switch away (`flurry.on: 'any'`, `player.debug.flurryAny`). Not done:
+  the wyrm's claws are not steel, so the flash counter is a duelist's only; no human has played it
+  (the counter's 0.06 s of press timing, the counter cut's feel); the Lab has no button for
+  `flurryAny`; the flash counter was not filmed.
+
+
+## ADR-106 — The hero prints through what covers him: an ink ghost in the blade's cyan (2026-11-15)
+- **Context:** the owner: "i noticed while fighting the dragon the player disappears and cant see
+  whats going on if its behind the dragon. think of a good way to still let the player be seen
+  somehow for these situations." The camera has a fixed yaw and the wyrm fills a third of the
+  screen: north of its body, under a wing, behind it while it rears (Armageddon), under it while it
+  flies low, the hero's letters were gone (reproduced at 1280x720 and at a phone's 852x393). The
+  scene is drawn once with a depth test, so where the wyrm is in front, nothing of the hero is
+  left for the ASCII pass to draw. The owner dislikes lasting overlays, does not want the wyrm or
+  the hero restyled, and picks looks from rendered options.
+- **Decision:** (1) **The mechanism:** after the world pass the hero is drawn once more, alone,
+  into a second target (`seenRT`, only the box round him); a quad erases every pixel of him the
+  scene already shows (a depth test against the scene pushed back by a margin: 0.6 m, 1.5 m for
+  untagged pixels so grass never counts, never for a pixel in the hero's own alpha window so a
+  human boss is never cover); what is left, the hero exactly where he is covered, goes back into
+  the scene target over its cover. It is depth based: nothing is asked of the covering object, so
+  trees, pillars, landmarks and whatever is thrown or lifted later get it for free. (2) **The
+  look:** three were built behind a temporary `?seen=a|b|c` switch and rendered on the same frozen
+  frames (five situations at desktop size, four at phone size, a film strip): *A, ink ghost* (his
+  own line art in the blade's cyan over a thin dark gap), *B, window* (the letters over him thin
+  out, he keeps his colours), *C, rim only* (a cyan outline, the letters untouched). The owner
+  picked **A**; the switch and the other two were removed. (3) **A gate:** the pass costs a second
+  draw of the hero (18 draw calls), so it runs only while a probe finds something in front of his
+  torso: one quad in an occlusion query, answered a frame or two later, held for 20 frames.
+- **Rejected:** *A window as the look* (B): it cut a hole into the wyrm's chest glow, which is a
+  tell, and its letters dropped in and out as he moved. *A rim only* (C): quiet, but a one-pixel
+  line is weak over bright letters. *A mark on the ground or an icon:* it says where he is, not
+  what he is doing, and the owner dislikes overlays. *Dithering the wyrm away near the player in
+  its material* (what trees and pillars do): it restyles the wyrm, needs every future big thing to
+  opt in, and a pixel dither turns to noise on a letter grid. *A stencil or a second depth-greater
+  draw of the hero in the scene pass:* his own far side would overwrite his near side; the second
+  target resolves his nearest surface first. *Reading the hero's art from two textures in the
+  ASCII pass:* it rewrites every tap of the hero's branch; patching the scene target leaves that
+  branch as it was. *Running the pass every frame:* +0.44 ms and +20 draw calls a frame on a
+  desktop whether he is covered or not, a third more draws on a phone where draw calls are the
+  frame. *Gating it by where the boss stands:* not general (props, landmarks, thrown things).
+- **Consequences:** a second render target the size of the scene's (half-float + depth; only the
+  box round the hero is ever written). One more draw call in the open (the probe), 21 more while
+  covered; measured in Edge on an RTX 4090 at 1280x720: nothing measurable in the open, 0.3–0.5 ms
+  a frame while covered. The ghost appears a frame or two after cover does (the query's answer)
+  and the pass stops 20 frames after it ends. Where the pass runs, the scene target's depth under
+  the ghost is the hero's, so particles between him and his cover show over him. Cyan is now the
+  hero's colour by rule (STYLE.md). A thing drawn in the FX scene never counts as cover; a cover
+  thinner than the margin in front of him (he presses against it) hides him without a ghost. Not
+  measured on a phone.
+## ADR-107 — The world breaks: breakables in a rigid batch, fire that burns where it lands, cover (2026-11-15)
+
+**Context.** The owner: "i want all the bosses to be able to cause destruction to the background. for
+example, the dragon fire that hits the background (trees, grass) get on fire and are a temporarily
+hazard until the grass/tree burns away so the player has to dodge those as well ... the humanoid
+bosses will chip and damage the structures and leave impact based on the power of the attack. the
+players can also do this as well. i want the bosses to also use the terrain as a way for their
+defensive or offensive strategy". Asked, they chose: fire **burns where it lands** (it never
+spreads); the terrain is **a real tactic** for the hero (cover stops projectiles until it breaks, a
+piece felled onto a boss deals real damage); Cinderwood and Ashfall **keep their layouts and get
+things to break** brought into the fighting space; **staged PRs by separate sessions** (the hero seen
+behind the wyrm: ADR-106; the open Obsidian Throne: ADR-108; the bosses' terrain moves after).
+
+**Decision.**
+- **A set lists what can break** (`breakables`) instead of merging it into its static meshes.
+  `world/destructibles.js` gives each piece a node of its own and draws them all through two rigid
+  batches (the hero's and the wyrm's mechanism, ADR-045): one draw call per material however many
+  pieces there are, each free to fall, fly or vanish. The two set materials place vertices with
+  `rigidMatrix()`; only twins built with `rigid: true` are batched.
+- **One POWER scale** for every blow (1 fells a tree), a structure per material and size, and a
+  factor per kind of blow, in `world/breakTuning.js`. Each fighter's numbers live in its own tuning
+  (`TUNING.world`, `DUEL_WORLD`; the hero's is its damage / 110).
+- **Tall pieces fall; short ones shatter.** A falling piece is the world's own hazard: red, a marked
+  strip, a flash 0.3 s before it lands. The hero is never hurt by a piece he felled; a boss under it is.
+- **Cover.** A piece 1.1 m or taller stops what is thrown along the ground, and pays for it. For a
+  line of the Void the cover answers in the hero's place.
+- **Fire** (`world/fire.js`) lives on the scorch map's grid: a cell with grass left catches, burns
+  3.2 – 4.6 s as blockable contact ticks, and is ash after. Sweeping fire lights wood only.
+- **Marks** (`world/scars.js`): glyphs that stay until the reset, in one batch.
+- **Lift and throw** are in the API (`take`, `carry`, `throwTo`, `nearest`); a thrown piece's blow at the
+  hero is the thrower's (its own tell), dealt in `onLand`.
+- **Everything is reset** with the fight (`world.restore()` beside every scorch reset).
+- Cinderwood: the 57 trees within 36.5 m, the stone circle and the edge boulders are breakables, and 7
+  dead trees, 4 young pines and 6 boulders stand inside the clearing (81 in all). Ashfall: its pillars,
+  lanterns, stele and bell, and the dead trees and boulders within 30 m (72).
+
+**Why.** Per-object meshes would have cost ~160 draw calls a level, twice (the world pass and the
+shadow pass); the rigid batch costs 3. A world-side API with one POWER scale lets a new boss or move
+hit the world with one call and no knowledge of what stands there. Fire on the scorch grid needs no
+new texture and no new shader: the grass and the ground already read that map. The fall of a piece a
+boss felled must follow the game's tell rule, so the world emits the tell itself.
+
+**Rejected.** Fire that creeps or spreads freely (offered; the owner chose the readable one). Per-piece
+shader state (a burn or damage uniform per object): the batch shares uniforms; the scorch map, a
+stump variant and glyph particles do the job. Physics debris as meshes (the look is glyphs). Cover
+against melee, breath and blasts (it would make standing behind a stone the answer to everything).
+Leaving a felled trunk lying as an obstacle (the hero would clip through it or be blocked by an
+invisible wall; it comes apart where it lands). Hooking fire to every `scorch.burnCircle` call (the
+hazards' warm-up heats the ground before anything lands).
+
+**Consequences.** Trees and boulders now stand inside the wyrm's clearing: sightlines and paths
+changed, and the wyrm fells what it walks through. The minimap re-bakes when the colliders change
+(`Colliders.version`). The fights' difficulty with breakables and grass fire is **not measured** (the other
+suites' bots run on world mocks; the new `world.mjs` checks the mechanics, not a fight). Cost at the
+game camera, the fight on, measured in headless Edge against `main`: Cinderwood 57 → 60 draw calls and
+1.025 M → 1.034 M triangles a frame; Ashfall 52 → 54 and 566 k → 574 k. Frame time was not measured
+(the run uses virtual time), nor a phone. How a broken piece comes apart was the owner's pick of three
+filmed looks: "A: digits", a shower of the characters it is drawn in (bigger lumps and long shards
+were turned down; the `?debris=` switch that held them is gone). The Obsidian Throne lists no breakables yet: its
+rebuild (ADR-108) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
+the sizzle and the ember hiss.
