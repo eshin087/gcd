@@ -320,7 +320,9 @@ const toward = (G) => { const d = G.game.dragon, p = G.game.player, x = d.positi
 //   blue / normal → tap RMB 0.12 s before impact (parry) · red → Space 0.1 s before impact (Ghostep)
 //   streams that cannot be parried (breath) → hold the guard through them
 //   act() returns true while an answer is due (the bot holds its swings)
-function makeDefender(G, { skill = 1 } = {}) {
+// style (the STRATEGY measurement): 'mixed' = the above; 'dodge' = a perfect dodge of every tell, never a
+// parry; 'parry' = parries, and a red blow rolled early (i-frames, outside the perfect window)
+function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
   const pend = [];
   const stats = { tells: 0, parryTry: 0, dodgeTry: 0, blockTry: 0 };
   const lead = TUNING.flashLead;
@@ -348,8 +350,8 @@ function makeDefender(G, { skill = 1 } = {}) {
         const left = e.at - t - DT;
         if (e.stream) {
           if (left <= 0.3) { e.done = true; blockUntil = t + 2.6; input.press(2); stats.blockTry++; }
-        } else if (e.tell === TELL.RED) {
-          if (left <= 0.1) {
+        } else if (e.tell === TELL.RED || style === 'dodge') {
+          if (left <= (style === 'parry' ? 0.3 : 0.1)) {
             e.done = true;
             const d = g.dragon.position, p = g.player.position;
             const dx = d.x - p.x, dz = d.z - p.z, l = Math.hypot(dx, dz) || 1;
@@ -642,6 +644,80 @@ async function scenarioProbe() {
   out(`   ${res} after ${(game.time - t0).toFixed(1)} s · wyrm hp ${d.hp}/${d.maxHp} (${Math.round((100 * d.hp) / d.maxHp)} %) phase ${d.phase} (P2 at ${phaseT[1].toFixed(0)} s, P3 at ${phaseT[2].toFixed(0)} s)`);
   out(`   hero: took ${hurt} dmg (worst ${worst}) · heals ${c('player:heal')} · parries ${c('player:parry')} · chains ${c('combat:deflectChain')} · perfect ${c('player:perfectDodge')} · plunges ${c('player:plungeHit')} · breaks ${c('dragon:postureBreak')} · hits ${c('player:hitDragon')}`);
   return G;
+}
+
+// ================================================================== scenario: timestep (ADR-103)
+// A rendered frame is simulated in steps no longer than about 1 / 60 s (core/timestep.js): the steps
+// these tests run. Input edges belong to the frame's first step.
+async function scenarioTimestep() {
+  out('\n== scenario TIMESTEP (a frame is cut into simulation steps of about 1 / 60 s; edges belong to the first) ==');
+  const { STEP, FRAME_MAX, simSteps, runFrame } = await imp('src/core/timestep.js');
+  const at = (dt) => simSteps(dt, { n: 0, dt: 0 });
+  const row = [1 / 240, 1 / 144, 1 / 120, 1 / 60, 0.0169, 1 / 50, 1 / 45, 1 / 30, 1 / 24, 1 / 20, 1 / 15, 1 / 10, 0.5].map((f) => ({ f, ...at(f) }));
+  out('   ' + row.map((r) => `${(1 / r.f).toFixed(0)} fps: ${r.n} x ${(r.dt * 1000).toFixed(1)} ms`).join(' | '));
+  const longest = (1 + STEP.slack) * STEP.max + 1e-9;
+  assert(row.every((r) => r.dt <= longest), `no step is longer than ${(longest * 1000).toFixed(1)} ms, at any frame rate`);
+  assert(row.every((r) => near(r.n * r.dt, Math.min(r.f, FRAME_MAX), 1e-9)), 'the steps of a frame add up to the frame (to FRAME_MAX for a frame longer than that)');
+  assert(at(1 / 60).n === 1 && at(0.0169).n === 1 && at(1 / 144).n === 1 && at(1 / 50).n === 1, 'a 60 Hz frame is one step, a hair late too; 144 Hz and 50 Hz are one step each');
+  assert(at(1 / 30).n === 2 && near(at(1 / 30).dt, 1 / 60, 1e-9) && at(1 / 20).n === 3 && near(at(1 / 20).dt, 1 / 60, 1e-9), `30 fps is two steps of 1 / 60 s and 20 fps three: the steps the tests run`);
+  assert(at(0.5).n === STEP.maxSteps && near(at(0.5).dt, STEP.max, 1e-9) && near(FRAME_MAX, STEP.max * STEP.maxSteps, 1e-12), `a frame longer than ${FRAME_MAX.toFixed(2)} s is simulated as that much (${STEP.maxSteps} steps): the game runs slow below ${(1 / FRAME_MAX).toFixed(0)} fps`);
+  assert(at(NaN).n === 1 && at(NaN).dt === 0 && at(-1).dt === 0 && at(0).n === 1, 'a broken frame time is one step of nothing');
+  // runFrame: the steps in order, the edges cleared once, after the first
+  const log = [];
+  const o = runFrame(1 / 20, (dt) => log.push(`sim ${(dt * 1000).toFixed(1)}`), () => log.push('edges'), { n: 0, dt: 0 });
+  assert(o.n === 3 && log.join(',') === 'sim 16.7,edges,sim 16.7,sim 16.7', `runFrame at 20 fps: ${log.join(', ')}`);
+  log.length = 0;
+  runFrame(1 / 20, (dt) => log.push(`sim ${(dt * 1000).toFixed(1)}`), () => log.push('edges'), { n: 0, dt: 0 }, true);
+  assert(log.join(',') === 'sim 50.0,edges', `one exact step when asked (window.__tick): ${log.join(', ')}`);
+  // in the game: a 30 fps frame split in two steps IS two 60 fps steps; a tap is seen once
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  settle(G);
+  const p = game.player;
+  const frame30 = () => runFrame(1 / 30, (dt) => G.tick(dt), null);
+  const t0 = game.time;
+  for (let i = 0; i < 30; i++) frame30();
+  assert(near(game.time - t0, 1, 1e-6), `30 frames at 30 fps are one second of game time (${(game.time - t0).toFixed(4)} s)`);
+  // a tap of lock-on in a two-step frame toggles it once (the second step sees no edge)
+  const lock0 = p.lockOn;
+  input.tap('Tab');
+  frame30();
+  assert(p.lockOn !== lock0, `a tap in a frame of two steps is one press (lock-on ${lock0} -> ${p.lockOn})`);
+  if (p.lockOn !== lock0) { input.tap('Tab'); frame30(); }
+  // the 0.08 s perfect-parry window, sampled: one step of 1 / 30 s sees it at most 3 times, two steps 5
+  const W = DEFENSE.perfectParryWindow;
+  const samples = (step) => Math.floor(W / step + 1e-9) + 1;
+  assert(samples(at(1 / 30).dt) >= 5 && samples(1 / 30) <= 3, `the ${W} s perfect-parry window is sampled ${samples(at(1 / 30).dt)} times at 30 fps (${samples(1 / 30)} in one step of 1 / 30 s)`);
+  return G;
+}
+
+// ================================================================== scenario: strategy (opt-in)
+// Which defence wins? Three god-mode bots that differ only in how they answer a tell (makeDefender
+// `style`). Not a pass / fail check: node tests/integration/integ.mjs . strategy
+async function scenarioStrategy() {
+  out('\n== scenario STRATEGY (mixed / parry-only / dodge-only, god mode) ==');
+  let last = null;
+  for (const style of ['mixed', 'parry', 'dodge']) {
+    const G = build();
+    const { game, input, counts } = G;
+    G.defend = makeDefender(G, { style });
+    run(G, 1.0);
+    input.tap('Space');
+    G.tick(DT);
+    run(G, 30, { god: true, attack: false }, () => game.state === 'bossIntro');
+    run(G, 20, { god: true, attack: false }, () => game.state === 'boss');
+    const t0 = game.time;
+    let hurt = 0, hurtN = 0;
+    G.watch = (n, e) => { if (n === 'player:hurt') { hurt += e?.damage ?? 0; hurtN++; } };
+    const won = run(G, 900, { god: true, defend: true }, () => game.state === 'victory');
+    G.watch = null;
+    const c = (n) => counts[n] || 0;
+    out(`   ${style.padEnd(5)} ${won ? 'WON ' : 'time'} ${(game.time - t0).toFixed(0).padStart(3)} s  hits taken ${String(hurtN).padStart(2)} (${Math.round(hurt)} dmg)  parries ${String(c('player:parry')).padStart(3)}  perfect dodges ${String(c('player:perfectDodge')).padStart(3)}  plunges ${c('player:plungeHit')}  breaks ${c('dragon:postureBreak')}`);
+    G.defend = null;
+    last = G;
+  }
+  return last;
 }
 
 // ================================================================== scenario: die + retry + pause + rest
@@ -1368,6 +1444,21 @@ async function scenarioRed() {
   G.tick(DT);
   out(`   slow-mo x${slow0} ${left0.toFixed(2)} s left → after the break x${game.hitstopScale} ${game.hitstopTimer.toFixed(2)} s`);
   assert(near(game.hitstopScale, DEFENSE.ghostep.slowmoScale, 1e-6), `Ghostep slow-mo survives the break freeze (x${game.hitstopScale})`);
+  // (ADR-102) a WHITE or heavy blow can be parried: its perfect dodge counts in the streak and gives
+  // the slow-mo where he stands, but no plunge, no flurry and no crit window
+  run(G, 4, { passive: true }, () => p.state !== 'plunge' && p.state !== 'flurry');
+  settle(G);
+  place(G, 6);
+  p.debug.streak(0);
+  {
+    p.critTimer = 0; // (the plunge above left its window open)
+    const hpW = d.hp, at = p.position.clone();
+    const wd = forceAttack(G, 'bite', { answer: 'dodge', settle: 1 });
+    const moved = Math.hypot(p.position.x - at.x, p.position.z - at.z);
+    assert(wd.res === RESULT.PERFECT && p.state === 'ghostep' && p.streak === 1 && p.position.y === 0, `a perfect dodge of the bite (a heavy blow that can be parried) is no plunge (${wd.res}, state ${p.state}, streak ${p.streak})`);
+    assert(d.hp === hpW && moved < 5 && p.critTimer <= DEFENSE.ghostep.critWindowWhite + 1e-6, `the wyrm is not hurt, the hero stays where he dodged (${moved.toFixed(1)} m), no crit window (${p.critTimer.toFixed(2)} s)`);
+    assert(evn(wd, 'player:perfectDodge') === 1 && evn(wd, 'player:ghostep') === 1 && !evn(wd, 'player:plunge') && !evn(wd, 'player:flurry'), 'player:perfectDodge + player:ghostep, no plunge, no flurry');
+  }
   return G;
 }
 
@@ -1418,6 +1509,7 @@ async function scenarioPlunge() {
   // (the plunge is one of the flurry's arts, scenario FLURRY: pinned here, and every perfect dodge
   // below is the first of its streak: one blow)
   p.debug.flurryArt = 'skyfall';
+  p.debug.flurryAny = true; // (the move itself is tested here, on a bite; which tells it answers: scenario RED)
 
   // 1) a perfect dodge of the bite, in range → the plunge, one hit on the head, a landing in front
   p.debug.streak(0);
@@ -1643,6 +1735,7 @@ async function scenarioFlurry() {
   ready();
   p.debug.streak(0);
   p.debug.flurryArt = 'skyfall';
+  p.debug.flurryAny = true; // (the move itself is tested here, on a bite; which tells it answers: scenario RED)
   const r1 = forceAttack(G, 'bite', { answer: 'dodge', settle: 1 });
   assert(r1.res === RESULT.PERFECT && p.streak === 1 && p.state === 'plunge' && r1.ev['player:flurry'] === 1, `the first perfect dodge of a streak is one blow: the art alone (streak ${p.streak}, state ${p.state})`);
   ride();
@@ -7632,9 +7725,9 @@ async function scenarioHeroStance() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
-const OPT_IN = new Set(['probe']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 

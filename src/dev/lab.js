@@ -426,6 +426,7 @@ export class Lab {
       if (r !== null && r !== false && this.target?.state === 'sleeping') return;
     }
     this._dragon('reset');
+    this.game.world?.restore?.(); // what broke and burned stands again
   }
 
   _toggleAI() {
@@ -695,6 +696,7 @@ export class Lab {
       this._buildFight(root);
       this._buildAbilities(root);
       this._buildPlayer(root);
+      this._buildWorld(root);
       this._buildTime(root);
       this._buildStates(root);
       this._buildView(root);
@@ -812,6 +814,45 @@ export class Lab {
       this._syncAbilities();
     }).title = 're-read dragon.debug.abilities()';
     el('div', 'lab-note', 'click = trigger + select for Loop · chip = tell (white / blue parry / red dodge)', body);
+  }
+
+  /** WORLD (ADR-107): try the destruction by hand: fire, a piece felled at the hero, a blast, the reset. */
+  _buildWorld(root) {
+    const { body } = this._section(root, 'world', 'WORLD');
+    const grid = el('div', 'lab-grid', null, body);
+    const w = () => this.game.world, p = () => this.game.player?.position;
+    const ahead = (d) => {
+      const yaw = this.game.player?.yaw ?? 0, at = p();
+      return at ? { x: at.x + Math.sin(yaw) * d, z: at.z + Math.cos(yaw) * d } : null;
+    };
+    button(grid, 'Burn ahead', () => {
+      const a = ahead(5);
+      const n = a ? w()?.ignite?.(a.x, a.z, 3.5, 1) : 0;
+      this._status(n ? `fire: ${n} cells / pieces alight 5 m ahead` : 'nothing to burn there (ash, bare ground, paving)', n ? 'ok' : '');
+    }).title = 'fire lands 5 m in front of the hero: grass and wood there catch';
+    button(grid, 'Fell on me', () => {
+      const D = w()?.destructibles, at = p();
+      let best = null, bd = 1e9;
+      for (const b of D?.list ?? []) {
+        const d = at ? Math.hypot(b.x - at.x, b.z - at.z) : 1e9;
+        if (b.state === 0 && b.topples && d < bd) {
+          best = b;
+          bd = d;
+        }
+      }
+      const ok = best && D.topple(best, at.x - best.x, at.z - best.z, 'boss');
+      this._status(ok ? `a ${best.kind} ${bd.toFixed(1)} m away falls toward the hero` : 'no tall piece standing', ok ? 'ok' : '');
+    }).title = 'the nearest tall piece falls toward the hero, as if a boss had felled it (red: be out from under it)';
+    button(grid, 'Blast ahead', () => {
+      const a = ahead(4);
+      const n = a ? w()?.impact?.(a.x, a.z, 3, 3, { kind: 'blast', by: 'boss' }) : 0;
+      this._status(`a blast 4 m ahead struck ${n ?? 0} piece(s)`, 'ok');
+    }).title = 'a hard blast 4 m in front of the hero: what stands there breaks, the floor cracks';
+    button(grid, 'Restore', () => {
+      w()?.scorch?.reset?.();
+      w()?.restore?.();
+      this._status('the world stands again', 'ok');
+    }).title = 'everything broken stands again, the fire is out, the marks are gone';
   }
 
   _buildPlayer(root) {

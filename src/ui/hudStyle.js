@@ -537,6 +537,25 @@ const CSS = `
   white-space: nowrap;
 }
 .ab-banner .sub.blink { animation: ab-blink 1.8s ease-in-out infinite; }
+/* the death screen's recap: the killing move, then what struck him; small lines under the hint */
+.ab-banner .recap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin-top: 88px;
+  display: none;
+  text-align: center;
+  font-family: 'Cascadia Mono', Consolas, Menlo, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+  font-size: 11px;
+  line-height: 17px;
+  letter-spacing: 0.08em;
+  color: #8f897e;
+  white-space: nowrap;
+  text-shadow: 0 0 6px #000, 0 0 2px #000;
+}
+.ab-banner .recap.on { display: block; }
+.ab-banner .recap .first { color: #d9a39d; letter-spacing: 0.22em; margin-bottom: 5px; }
 .ab-banner.k-death .txt {
   color: #b3261e;
   text-shadow: 0 0 26px rgba(130, 10, 6, 0.55);

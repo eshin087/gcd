@@ -278,6 +278,7 @@ export class Player {
     this.deflect = { n: 0, t: -Infinity, side: 1, perfect: false, high: 0, nx: 0, ny: 0, nz: 0, gap0: 0, gap: 0 };
     this._cp = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     this.tradeT = -Infinity; // when the last trade clash was (DEFENSE.trade.rearm)
+    this.quickUntil = -Infinity; // a light started before this is the counter cut (DEFENSE.perfectParry)
     this.guardHold = 0; // 0..1: the guard lingers between parries (anim.js)
     // hit reactions (anim.js; ADR-083)
     this.hitPush = { x: 0, z: -1 }; // the way the last blow drove him, in his own axes (z − = back, x + = his left)
@@ -306,6 +307,7 @@ export class Player {
       // hand, and a flurry of `strikes` blows on the boss now (`art`: for this one only)
       flurryArt: null,
       noRiposte: false, // true: a parried last blow is not answered with the riposte
+      flurryAny: false, // true: every perfect dodge is answered with the flurry (DEFENSE.flurry.on 'any')
       streak: (n) => this._debugStreak(n),
       flurry: (strikes = 3, art = null) => this._debugFlurry(strikes, art),
     };
@@ -373,6 +375,23 @@ export class Player {
    */
   takeHit(hit = {}) {
     hit = hit && typeof hit === 'object' ? hit : {};
+    const hp0 = this.hp, was = this.alive;
+    const r = this._takeHit(hit);
+    // every blow he answers is announced (the move telemetry, game/telemetry.js): what it was, how
+    // it was answered and what it cost. `stream`: a contact tick (breath, burning ground), not a blow
+    if (r !== RESULT.IGNORED && was) {
+      this._emit('combat:answer', {
+        attack: typeof hit.attack === 'string' && hit.attack ? hit.attack : String(hit.kind ?? 'blow'),
+        tell: hit.tell === TELL.BLUE || hit.tell === TELL.RED ? hit.tell : TELL.NORMAL,
+        result: r, damage: Math.max(0, fin(hp0) - fin(this.hp)), dead: !this.alive,
+        stream: !hit.bullet && !hit.steel && !(fin(hit.knockback, 0) > 0) && !hit.knockdown && fin(hit.damage, 0) <= 8,
+        perfect: r === RESULT.PARRIED && !!this.deflect?.perfect,
+      });
+    }
+    return r;
+  }
+
+  _takeHit(hit) {
     if (!this.alive) return RESULT.IGNORED;
     const g = this.game;
     if (g.state === 'victory' || g.state === 'title') return RESULT.IGNORED;
@@ -449,7 +468,7 @@ export class Player {
     }
     // (d2) the trade clash: a blade's blow that arrives in the hero's own cut meets it
     if (hit.steel && parryable && attacker && this._cutting() && this._inArc(DEFENSE.parryArc, hasFrom, fx, fz, hasAtk ? ap : null)) {
-      this._trade(attacker, { tell, attack, last: hit.last !== false });
+      this._trade(attacker, { tell, attack, last: hit.last !== false, late: true });
       return RESULT.CLASHED;
     }
     // (e) block / (f) guard break
@@ -634,6 +653,7 @@ export class Player {
     this.riposte.att = null;
     this.flurry.clear();
     this.tradeT = -Infinity;
+    this.quickUntil = -Infinity;
     this.deflect.n = 0;
     this.deflect.t = -Infinity;
     this.deflect.perfect = false;
@@ -1212,6 +1232,8 @@ export class Player {
     }
     // every parry gives guard back at once (GUARD.parry)
     this._guardGain((light ? GUARD.parryLight : GUARD.parry[tell] ?? GUARD.parry.normal) + (perfect ? GUARD.perfect : 0));
+    // a perfect parry of a blow (not a bullet) readies the counter cut (DEFENSE.perfectParry)
+    if (perfect && !light) this.quickUntil = this.time + DEFENSE.perfectParry.cutWindow;
     if (!light) {
       // a blade met counts in the streak; meeting a string's LAST blow (or a single one) answers
       // with the riposte once this parry's freeze is over (update)
@@ -1426,6 +1448,9 @@ export class Player {
     const g = this.game, a = this.atk, sw = this.sweep, D = this.deflect;
     const heavy = !!a?.def?.heavy;
     const crush = heavy && fin(a?.poise) >= fin(att?.T?.guard?.crushPoise, Infinity);
+    // the flash counter (DEFENSE.counter): his blow arrived as the cut only just became a cut
+    const K = DEFENSE.counter;
+    const counter = !!o.late && !crush && !!a && !a.hit && a.t <= a.def.windup + K.window && typeof att?.onCounter === 'function';
     if (a) a.traded = true;
     this.tradeT = this.time;
     this._streakUp(); // two cuts met: it counts in the streak
@@ -1439,8 +1464,8 @@ export class Player {
       }
     }
     let e1 = null, e2 = null;
-    if (crush) {
-      // the cleave keeps its line: his blade is held where it is nearest the hero's
+    if (crush || counter) {
+      // the cleave (the counter) keeps its line: his blade is held where it is nearest the hero's
       this.getChestPos(cv, true);
       let B = null;
       if (typeof att?.parryContact === 'function') {
@@ -1469,13 +1494,26 @@ export class Player {
       e1 = M.e1;
       e2 = M.e2;
     }
-    clashBurst(g, cv.x, Math.max(0.75, cv.y), cv.z, { pal: CLASH.trade, power: heavy ? 1.6 : 1.35, e1, e2, ring: 2 });
-    this._hitstop(TUNE.tradeStop * (heavy ? 1.2 : 1), 0.02);
-    g.shake?.(heavy ? 0.5 : 0.4);
-    g.punch?.(TUNE.tradePunch);
-    this._emit('combat:clash', { heavy, crush, x: cv.x, y: cv.y, z: cv.z });
-    if (!crush) this._bounce(att, TUNE.tradePush);
-    return { heavy, crush };
+    clashBurst(g, cv.x, Math.max(0.75, cv.y), cv.z, { pal: counter ? CLASH.perfect : CLASH.trade, power: counter ? 2 : heavy ? 1.6 : 1.35, e1, e2, ring: 2 });
+    this._hitstop(counter ? K.stop : TUNE.tradeStop * (heavy ? 1.2 : 1), 0.02);
+    g.shake?.(counter ? K.shake : heavy ? 0.5 : 0.4);
+    g.punch?.(counter ? K.punch : TUNE.tradePunch);
+    this._emit('combat:clash', { heavy, crush, counter, x: cv.x, y: cv.y, z: cv.z });
+    if (counter) {
+      // the cut is not thrown back: it goes through him. The damage is dealt here (final), so the
+      // swing itself lands nothing more; he reels and the crit window opens on him
+      a.hit = true;
+      let dealt = 0;
+      try {
+        dealt = fin(att.onCounter({ point: { x: cv.x, y: Math.max(0.75, cv.y), z: cv.z }, dir: { x: -nx, z: -nz }, attack: o.attack ?? null }), 0);
+      } catch (err) {
+        console.error('[player] attacker.onCounter failed', err);
+      }
+      this.critTimer = Math.max(fin(this.critTimer), DEFENSE.ghostep.critWindow);
+      this.bladeFlare = Math.max(this.bladeFlare, TUNE.bladeFlare.hit[1]);
+      this._emit('player:counter', { attack: o.attack ?? null, damage: dealt });
+    } else if (!crush) this._bounce(att, TUNE.tradePush);
+    return { heavy, crush, counter };
   }
 
   /** The attacker's side of a trade it resolved itself (the hero's cut connected just before its
@@ -1577,6 +1615,13 @@ export class Player {
    */
   _perfectDodge(attacker, attack, tell, allowPlunge = true) {
     const n = this._streakUp();
+    // (ADR-102) only a red blow is answered with the flurry: a white or heavy one can be parried, so
+    // its perfect dodge counts in the streak and gives the slow-mo where he stands (no crit window),
+    // and the string goes on
+    if (tell !== TELL.RED && DEFENSE.flurry.on === 'red' && !this.debug.flurryAny) {
+      this._ghostep(attacker, attack, tell, false, DEFENSE.ghostep.critWindowWhite);
+      return;
+    }
     const kind = this.flurry.reach(attacker, allowPlunge);
     if (kind && this.flurry.start(attacker, kind === 'air', n, attack, tell)) return;
     this._ghostep(attacker, attack, tell, !this._plungeable(attacker));
@@ -1600,7 +1645,7 @@ export class Player {
 
   /** Ghostep: slow time, open the crit window; with `teleport`, blink behind the attacker (within
    *  TUNE.ghostepMaxRange). */
-  _ghostep(attacker, attack, tell, teleport = true) {
+  _ghostep(attacker, attack, tell, teleport = true, crit = DEFENSE.ghostep.critWindow) {
     const g = this.game, p = this.position;
     const ox = p.x, oz = p.z;
     const nSegs = this._sampleGhost();
@@ -1633,7 +1678,7 @@ export class Player {
     this.chargeK = 0;
     this.buf.action = null;
     this.iframeT = TUNE.ghostepIframes;
-    this.critTimer = DEFENSE.ghostep.critWindow;
+    this.critTimer = Math.max(fin(this.critTimer), crit);
     this.assist.target = hasAtk ? attacker : null;
     this.assist.t = hasAtk ? TUNE.ghostepAssist : 0;
     this.ghostFx = 1;
@@ -2439,8 +2484,12 @@ export class Player {
   _startAttack(def) {
     if (!def) return false;
     const light = def.kind === 'light';
+    // the counter cut: the first light after a perfect parry winds up faster and crits
+    const quick = light && this.time <= fin(this.quickUntil, -Infinity);
+    this.quickUntil = -Infinity;
     this.atk = {
       def, t: 0, hit: false, prevT: 0, gust: false, impact: false, flared: false, lunge: null, travel: fin(def.travel, 0),
+      quick, crit: quick,
       // hitAt: the attack clock at the contact (-1 none); cutDir: the blade's unit travel there ({x, y, z},
       // world) or null; glintZ: how far up the edge the glint has run (fx.edgeGlint)
       hitAt: -1, cutDir: null, glintZ: null,
@@ -2553,7 +2602,9 @@ export class Player {
 
   /** The Lab's attack-speed multiplier (debug.attackSpeed), 1 in play. */
   _attackSpeed() {
-    return clamp(fin(this.debug.attackSpeed, 1), 0.25, 4);
+    const a = this.atk;
+    const quick = a?.quick && a.def && a.t < a.def.windup ? DEFENSE.perfectParry.cutSpeed : 1;
+    return clamp(fin(this.debug.attackSpeed, 1) * quick, 0.25, 4);
   }
 
   _tickAttack(dt) {
@@ -2914,12 +2965,14 @@ export class Player {
       const W = d.windup, end = W + d.active;
       const prevT = a.prevT;
       a.prevT = t;
-      const crit = this.critTimer > 0;
+      const crit = this.critTimer > 0 || !!a.crit;
       const armed = !!this.rig.loadout?.weapon;
       // any overlap of this frame with the active window counts (robust to long frames)
       if (t >= W && prevT <= end + 0.04) {
         // the hit first: a cut that lands this frame draws its contact, not the arc's glint
         if (!a.hit && prevT <= end) this._tryHit(a);
+        // the blade meets the world too (ADR-107): what it sweeps through is chipped, cut down, felled
+        if (prevT <= end) this._cutWorld(a, sw);
         // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
         this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
@@ -3015,6 +3068,9 @@ export class Player {
     g.world?.gust?.(x, z, 1.1, 4.5);
     g.shake?.(d.shake * 0.6);
     this._emit('player:slam', { x, z });
+    // the ground takes it: a crack where the point went in, and whatever stands in the shards' reach
+    const wb = this._worldBlowOf(a, true);
+    if (wb) g.world?.impact?.(x, z, fin(d.shards?.radius, 1.5), fin(a.damage, 60) / 110, wb);
     const S = d.shards;
     if (a.hit || !S) return;
     const dr = g.dragon;
@@ -3023,6 +3079,37 @@ export class Player {
     if (!Array.isArray(spheres) || !spheres.length) return;
     // (viaShards: the blade is in the ground, the shards are the contact: no drawn cut)
     if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit, true);
+  }
+
+  /** This swing as a blow on the world (world.destructibles: one id per swing, so a piece takes it once). */
+  _worldBlowOf(a, ground = false) {
+    const D = this.game.world?.destructibles;
+    if (!D?.swing) return null;
+    if (a.wsrc === undefined) a.wsrc = D.swing();
+    const o = (this._worldBlow ??= { kind: 'cut', by: 'player', dx: 0, dz: 0, y: 0, src: -1, scar: true });
+    o.kind = a.def.heavy ? 'blunt' : 'cut'; // a heavy cut bites stone; a quick one barely marks it
+    o.src = a.wsrc;
+    o.scar = ground;
+    return o;
+  }
+
+  /**
+   * The swing against the world's breakables (ADR-107): each piece the blade sweeps through takes one
+   * blow per swing, as hard as the cut (POWER = its damage / 110: a full cleave fells a tree). What
+   * falls, falls away from him: stand so the thing is between you and the foe.
+   */
+  _cutWorld(a, sw) {
+    const o = this._worldBlowOf(a);
+    if (!o) return;
+    const p = this.position;
+    o.dx = (sw.a.x + sw.b.x) * 0.5 - p.x;
+    o.dz = (sw.a.z + sw.b.z) * 0.5 - p.z;
+    o.y = Math.min(sw.a.y, sw.b.y) - 0.3;
+    const n = this.game.world.destructibles.sweep(sw.a.x, sw.a.z, sw.b.x, sw.b.z, REACH.radius, fin(a.damage, 30) / 110, o);
+    if (n > 0 && !a.wfelt) {
+      a.wfelt = true; // the hand feels it: one small jolt per swing
+      this.game.shake?.(a.def.heavy ? 0.12 : 0.05);
+    }
   }
 
   _tryHit(a) {
@@ -3052,7 +3139,7 @@ export class Player {
 
     const d = a.def, heavy = !!d.heavy;
     const part = typeof h.sphere.part === 'string' ? h.sphere.part : 'body';
-    const crit = this.critTimer > 0;
+    const crit = this.critTimer > 0 || !!a.crit;
     const damage = a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
     const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) }; // the facing: the shove
     const C = !viaShards && this._contactPoint(dr, d.kind, this._cut) ? this._cut : null;

@@ -18,12 +18,24 @@ the plunge, three phases, fire hazards, keep-in-view camera, and now the bullet 
 
 ## Frame order (src/main.js)
 ```
-wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt) → lab.update(realDt)
-→ flow.update(dt, realDt) → player.update(dt) → dragon.update(dt)
-→ lab.postUpdate() → camera (rig) → view override → shared uniforms → world.update(dt)
-→ lights.update → fx.update → hud.update(realDt) → audio.update(realDt) → render
+wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt)
+→ 1 – 6 simulation steps (core/timestep.js), each of stepDt real seconds:
+    clocks → lab.update(stepDt) → flow.update(dt, stepDt) → player.update(dt) → dragon.update(dt)
+    → world.update(dt) → lights.update → fx.update
+    (input.endFrame() after the FIRST step: the frame's presses and releases are seen once)
+→ lab.postUpdate() → camera (rig, realDt) → view override → shared uniforms
+→ hud.update(realDt) → audio.update(realDt) → render
 → lab.postRender()   (same task: the Lab model viewer's sheet reads the drawn frame back)
 ```
+**Simulation steps** (ADR-103, `core/timestep.js`): a frame of `realDt` s (at most `FRAME_MAX` 0.1 s) is
+simulated in `simSteps(realDt)` equal steps, none longer than `STEP.max` 1 / 60 s × (1 + `slack` 0.25)
+= 20.8 ms: one step at 50 Hz and above (as before), two steps of 1 / 60 s at 30 fps, three at 20 fps,
+six at most (below 10 fps the game runs slow). `runFrame(realDt, simulate, afterFirst, out, one)` runs
+them. So no machine simulates a longer step than the headless tests do (they step at 1 / 60 s), and a
+0.08 s perfect-parry window is sampled five times at 30 fps instead of three. Inside a step
+`game.realDt` is the STEP's real time; `game.frameDt` is the frame's and `game.simSteps` how many
+steps it took. `window.__tick(dt, frames)` runs one exact step of `dt` per frame (film strips);
+`window.__tick(dt, frames, true)` runs each as a rendered frame of `dt`, cut as the real loop cuts it.
 **View override** (`game.viewOverride`, Lab model viewer only): when it is
 `{ pos, target, focus? }` (Vector3-likes, world metres), main.js places the camera at `pos` looking
 at `target` right after the rig update, and the fog centre (`U.uFocus`), the light-pool selection
@@ -37,8 +49,9 @@ override is skipped for that frame (never throws, never feeds NaN).
 through a hit-stop, where it is `realDt × timeScale × debugTimeScale × max(hit-stop, CONFIG.render.fxLive
 0.6)`: a freeze-frame holds the fighters on the impact's pose while its sparks fly on (never faster
 than the game, never while the game stands still: a pause). Glyphs re-drawn every frame size their
-life from `game.fxDt ?? game.dt`. Input edges
-(`pressed`) are valid for exactly one frame. Construction order: world, audio, player, dragon, hud,
+life from `game.fxDt ?? game.dt` (one set is alive at each render however many steps a frame takes:
+a set dies in the step after it was drawn). Input edges
+(`pressed`) are valid for exactly one simulation step: the first of their frame. Construction order: world, audio, player, dragon, hud,
 gamepad, touch, flow, lab — constructors must not dereference modules built later.
 **`render`** = `pipeline.updateShadowCamera(focus)` then `pipeline.render()` (`render/pipeline.js`):
 ```
@@ -80,12 +93,13 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker})` → light (mutable `x,y,z`, `.set()`, `.kill()`) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
-| `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
+| `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
-| `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks |
+| `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks (`dt` / `realDt` / `fxDt`: of the running simulation step) |
+| `frameDt`, `simSteps` | the rendered frame's real time and the number of simulation steps it was cut into (Frame order) |
 | `settings` | `{ quality: 0..2, showFps: bool }`; `applyQuality()` re-applies. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
 
 Shared combat rules: `src/combat/rules.js` — `TELL`, `RESULT`, `TELL_STYLE`, `DEFENSE`, `POSTURE`,
@@ -472,6 +486,11 @@ onTrade(att, { tell, attack, last }): { heavy, crush } | null
                                        // cut stopped on his blade (_meetBlade, shared with the parry), the burst,
                                        // 'combat:clash', the bounce. crush (a cleave whose poise reaches the attacker's
                                        // TUNING.guard.crushPoise): no bounce, the cut carries on.
+                                       // The flash counter (ADR-102, DEFENSE.counter): in takeHit's half only, when the
+                                       // cut is at most counter.window s into its active frames and the attacker offers
+                                       // onCounter({ point, dir, attack }) -> damage dealt: no bounce, the attacker deals
+                                       // itself counter.damage (final) + counter.posture and reels, 'player:counter',
+                                       // the crit window opens. Returns { heavy, crush, counter }.
 onGuarded({ deflect, heavy, attacker })
                                        // a duelist's guard met the hero's strike (he calls it from takeHit). A plain
                                        // ward: the chain goes on. deflect: the blade is thrown back, state 'bounce'
@@ -1126,6 +1145,9 @@ onParried({ attack, tell }): void       // the dragon calls this itself when pla
                                         // deflected (posture + a 0.14 s visual knock-back, the string goes
                                         // on); its last hit / a single melee attack recoils. Emits
                                         // dragon:parried {attack, tell, hit, last} (+ combat:deflectChain)
+attackLabel(id): string | null          // a move's name for the player (the death screen, the move telemetry): its tuning
+                                        // label without the note in brackets; null for an id it does not know. Every boss
+                                        // offers it (a duelist: kit.MOVES[id].label)
 plungePoint(out): Vector3               // contract 2: the top of the head (rig.pt.head + 0.6 × SCALE up), valid in flight
 onPlunge({ damage, posture, point, execution }): number   // contract 2 (below): final damage to the head
                                         // (phase gate kept), posture, the 'plunged' reaction; emits
@@ -1521,6 +1543,9 @@ log(text, channel='system')          // channel: 'system'|'combat'|'warn'|'lore'
 showBossBar(name) / hideBossBar()    // boss HP + posture bar
 banner(text, kind, opts)             // kind: 'death'|'victory'|'area'|'bonfire'|'phase'
 bannerHint(text) / clearBanner(instant)   // sub-line under the current banner; flow uses both
+bannerRecap(lines | null)                 // small lines under the hint (the death screen: the killing move, then what
+                                          // struck him); the first is drawn brighter; cleared by a new banner and by
+                                          // clearBanner(true)
 showStats(rows)                      // victory / death run stats
 prompt(text|null)                    // interaction prompt, e.g. "[@interact] Rest at bonfire" (the chip shows the bound key)
 promptText                           // getter: the prompt shown now (raw "[@interact] ..." text) or null
@@ -1586,6 +1611,15 @@ phase gate (`dragon.phaseAt` after the first, read at construction: 66 % and 33 
 three colours.
 
 ### Flow — `src/game/flow.js` exports `class GameFlow`
+**Move telemetry** (ADR-108, `game/telemetry.js` `MoveLog`): `flow.moves` logs every `combat:answer` per boss move:
+`attempt` (a Map id → { seen, hit, blocked, parried, perfectParry, clashed, dodged, perfectDodge, damage, kills },
+counted in BLOWS; a contact stream is one blow per 1.5 s), `killedBy` ({ attack, tell }; 'burn' when no blow dealt
+the death), `worst(n)`, `commit('death' | 'victory')` (adds the attempt to the level's totals in localStorage
+`abyss.telemetry.v1`: { [level]: { attempts, deaths, wins, killedBy, moves } }), `reset()` on every respawn,
+`table(level, label)` and `totals()` / `clear()`. `flow.moveLabel(id)` names a move (the boss's `attackLabel`, else the
+id spelled out); `flow.deathRecap()` is the death screen's lines ("SLAIN BY …", then up to three moves with "n of m
+blows landed"), shown with `hud.bannerRecap`. The victory record gains "Struck most by". Console:
+`__telemetry()` (this level's table, the deadliest move first), `__telemetry('all')`, `__telemetry('clear')`.
 ```
 constructor(game);  update(dt, realDt)
 quitToTitle()              // the pause menu's QUIT TO TITLE: reload the level (game.pickLevel), which opens on the title;
@@ -1872,6 +1906,98 @@ quality is still the default. Pointer Events with multi-touch (each control capt
 pointer); long-press menus, iOS gesture zoom and page panning are blocked while active (the Lab
 panel and the pause panel still scroll). Tuning: `CONFIG.touch`, sizes / look in `ui/touchStyle.js`.
 
+## Destruction (2026-11-14, ADR-107): the world breaks
+Files: `src/world/destructibles.js`, `fire.js`, `scars.js`, `breakTuning.js`. Every boss and the hero chip,
+break, fell and burn what stands in a level; cover stops projectiles until it gives way; a boss can lift
+a piece and throw it. The rules as the player meets them: COMBAT.md "The world breaks". Numbers:
+`world/breakTuning.js` (`BREAK`, `FIRE`, `SCAR`, `BLOW`).
+
+**POWER** is the one scale every blow is put on (0 a touch … 1 fells a tree): 0.12 a quick cut, 0.3 a
+duelist's cut, 0.5 a heavy cut, 0.8 a claw or the hero's charged cleave, 1.0 a tail / slam / thrown
+stone, 1.5 a meteor or a bolt of the Void, 2.5 the dive's crash. A piece loses power x its material's
+factor for that kind of blow (`BREAK.mats[mat].take[kind]`: a cut bites stone at 0.7, a blunt blow or a
+blast in full); below `BREAK.scratch` it only takes a mark.
+
+**A set's `breakables`** (built in the set builder; `forest.js` and `courtyard.js` are the examples). One entry:
+| field | what |
+|---|---|
+| `kind` | 'tree', 'deadTree', 'stone', 'boulder', 'pillar', 'lantern', 'stele', 'bell', … (free; boss AI and tests read it) |
+| `mat` | 'wood', 'stone', 'metal' or 'bone' (structure, what bites it, its debris and sound) |
+| `look` | 'grid' (geometries with `paint()` attributes: the screen grid, trees) or 'prop' (`carve()` attributes: prop art) |
+| `x, z, r, h` | its base (world), footprint radius, height (`geosHeight(geos)`) |
+| `geos` | its geometries in WORLD space, as the builders return them (the system moves them to the base) |
+| `colliders` | the `Colliders` circles it stands on (`colliders.add` returns them): taken out when it goes, put back on reset |
+| `broken` | `{ geos, look?, r? }` or absent: what is left standing (`buildStump`, `buildRubble` in forest.js); r = its own smaller collider |
+| `hp` | structure in POWER units (default: the material's x its size); `Infinity` = it only chips (the bronze bell) |
+| `topples` | it falls over when it breaks (default: h >= `BREAK.topple.minH` 2.2 m); otherwise it shatters where it stands |
+| `burns` | fire lights it (default: the material's; wood) |
+| `cover` | it stops projectiles (default: h >= `BREAK.cover.minH` 1.1 m) |
+| `lift` | 0 nobody can lift it, 1 a boss's body can (the wyrm: trees, boulders), 2 only the Void (stones, pillars, lanterns) |
+| `leafy` | 0..1 share of its debris that is leaves |
+
+A set draws its stumps, rubble and any breakables it adds from an rng stream of its own, so the rest of
+its layout does not move. Budget: each breakable is 1–2 bones of the rigid batch (1023 in all; the hero
+and a boss use ~320); the forest lists 81, the courtyard 72.
+
+**`world.destructibles`** (`class Destructibles`; `STATE` = INTACT 0, FALLING 1, BROKEN 2, HELD 3, FLYING 4, GONE 5):
+- `list` (every breakable: `{ id, kind, mat, x, z, r, h, hp, hpMax, state, weight, burn, lift, cover, topples, … }`),
+  `standing`, `active`, `root` (their group, under the set's), `batch`.
+- `strike(x, z, r, power, o)` → how many it struck: a blow or blast over a disc.
+  `sweep(ax, az, bx, bz, r, power, o)`: along a segment (a blade's edge, a dash, a wall of force).
+  `o = { kind, by, dx, dz, y, src, only }`: kind = `BLOW.CUT / BLUNT / BLAST / FIRE`; by = 'player', 'boss' or
+  'world'; dx, dz = the blow's way (a piece falls along it; default: out from the disc's centre, or along
+  the segment); y = its height (a blow above a low piece passes over); src = one id per swing from
+  `swing()` (a piece takes a blow once per id; without it, once per `BREAK.rehit` 0.18 s); only = just that
+  material ('wood': the wyrm's body).
+- `stop(ax, az, bx, bz, r, power, o)` → the piece or null: a projectile's step; the first cover on it takes
+  `power` and is returned (the caller ends its projectile). `coverAt(ax, az, bx, bz, r)` → the first cover
+  on a segment, no damage (`coverT` 0..1: where).
+- `ignite(x, z, r, k)` → wood in the disc catches (it burns `BREAK.burn.time` x k, then falls to embers and
+  its stump). `nearest(x, z, { maxDist, minDist, lift, kind, mat, from: { x, z, min } })` → the nearest intact
+  piece or null (lift: at most that class).
+- Lifting and throwing (a boss's move): `take(piece)` → true: it is HELD (no collider);
+  `carry(piece, x, y, z, tilt, yaw)` every frame while held; `throwTo(piece, tx, tz, { time, power, radius, by,
+  onLand(piece, x, z, radius) })` → it flies there end over end and bursts: a blast on the other pieces, a
+  scar, and `onLand` for the thrower's own blow at the hero (the move's tell is the thrower's: the world
+  deals nothing to the hero for a thrown piece); `drop(piece)`. `topple(piece, dx, dz, by)`: fell it that way.
+- `reset()`, `update(dt)` (world.js calls it).
+- A felled piece falls for `BREAK.topple.time` x sqrt(h / 5) s and lands on a strip h long: other pieces
+  under it are struck. Under a piece a boss (or the world) felled, the HERO takes one red blow
+  (`BREAK.topple.damage` x weight, unblockable, knockdown; i-frames dodge it; never a perfect dodge), with
+  combat:tell at the start, combat:flash 0.3 s before it lands and the strip marked in red glyphs. Under a
+  piece the HERO felled, the BOSS takes `boss.takeHit({ damage: BREAK.topple.bossDamage x weight, exact,
+  heavy, posture })` (tested against `boss.bodyCircles`), and the hero is never hit by his own.
+
+**`world.fire`** (`class GroundFire`, on the scorch map's grid): `ignite(x, z, r, k)` → cells lit (grass
+density >= `FIRE.minFuel`, not ash, not alight), `burning(x, z)` → s left, `touch(x, z, r)` (a burning piece
+burns the hero beside it), `count`, `reset()`. A cell burns `FIRE.life` s and is ash after: fire never
+spreads and nothing catches twice. The hero in it takes `FIRE.damage` every `FIRE.tick` s after
+`FIRE.grace` (blockable contact ticks, skipped while he rolls or is invulnerable, like a burning crater).
+
+**`world.scars`** (`class Scars`: glyphs that stay until the reset, one batch, the oldest go first at
+`SCAR.max`): `ground(x, z, power, dx, dz)` (a star of cracks; power >= `SCAR.ground.min`),
+`object(owner, x, y, z, power, M)`, `rubble(x, z, r, M, n, glyphs)`, `drop(owner)`, `reset()`, `count`.
+
+**`world.impact(x, z, r, power, o)`** = `destructibles.strike` + a floor scar and torn grass for a hard blow
+(`o.scar: false` skips it) + `ignite` when `o.fire` is set. **`world.ignite(x, z, r, k, grass = true)`** =
+`fire.ignite` (unless grass is false: sweeping fire lights wood only) + `destructibles.ignite`.
+`Colliders` has `remove(c)`, `restore(c)` and a `version` that counts every change of the set (the minimap
+re-bakes its layer on it, so a felled tree leaves the map). **`world.restore()`** resets all three: flow calls it wherever it resets the scorch map; the Lab's Reset and
+its WORLD section (Burn ahead, Fell on me, Blast ahead, Restore) too.
+
+**Who hits the world** (each through `?.`; one `src` per swing or action):
+| who | where | numbers |
+|---|---|---|
+| the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
+| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop; `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall / wheel igniting; `dragon.js` `_collide` (its body fells wood in its way); `bullets.js` (cover) | `TUNING.world` |
+| a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
+
+**Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with
+`rigidMatrix()`; built with `rigid: true` they are tagged for `batchRigid` (a set's static materials are
+not, so an actor's batch never picks them up). The breakables' two materials are twins of the set's (the
+prop twin takes the set's `uGain`): one draw call each however many pieces there are, plus one in the
+shadow pass. Debris, flames, the danger strip and the scars are glyph particles.
+
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
 `starless`), `DEFAULT_LEVEL`,
@@ -1882,7 +2008,9 @@ default), `applyLevel(level)` (merges `level.world` into `CONFIG.world`: main.js
 before building any module), `levelUrl(id, href)`. One level per page load; switching reloads.
 A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text }`.
 - `buildSet` returns createForest's shape (`group, treeSpots, bare, slabs, nest, bonfire, material,
-  stoneMaterial, slabMaterial`) plus, optionally, `ash: true` (atmosphere: falling ash flakes and a
+  stoneMaterial, slabMaterial`) plus, optionally, `breakables` (what can be chipped, felled, burned and
+  thrown: see Destruction above; a set lists those pieces there INSTEAD of merging them into its static
+  meshes), `scarInk [r, g, b]` (the colour of cracks in its floor), `ash: true` (atmosphere: falling ash flakes and a
   few embers instead of fireflies, mist and leaves) and `grass: { density(x, z) → 0..1 factor,
   height (×), ash 0..1 }` (world.js thins / shortens / greys the meadow; grass.js `uAsh`).
   A set may also bring its own night and weather (ADR-070; the throne hall does):
@@ -2120,7 +2248,13 @@ Player → hud/audio/fx/flow:
   `player:footstep {x, z, sprint}` (a planted foot's touchdown while moving, and a dash's
   two bounding steps), `player:lockOn {on}`,
   `player:lock {phase}` (the blade lock with a duelist: phase start / push / won / lost),
-  `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade)
+  `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade),
+  `player:counter {attack, damage}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
+  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER"),
+  `combat:answer {attack, tell, result, damage, dead, stream, perfect}` (every blow the hero answers, from
+  the player's takeHit, whatever the answer: result = the RESULT it returned (never 'ignored'), damage = the HP it cost,
+  dead = it killed him, stream = a contact tick (breath, burning ground), perfect = a perfect parry; the move
+  telemetry reads it, ADR-108)
 Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash Disciple, emits the same
 `dragon:*` names, see "Levels and the boss slot") → hud/audio/flow:
 - `combat:tell {source:'dragon', attack, tell, impactIn, x, z}` (windup start, per hit, so once per hit of a
@@ -2128,8 +2262,9 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `combat:flash {source:'dragon', attack, tell, x, y, z, perilous}` (~0.35 s before impact — the **authoritative**
   timing cue: moving targets (charge, fireball) and hazard-dealt blows re-time it after the tell; perilous:
   a duelist's mikiri thrust, roll into it),
-  `combat:clash {heavy, crush, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
-  neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back; HUD "CLASH",
+  `combat:clash {heavy, crush, counter, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
+  neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back, counter = the
+  flash counter (it is followed by player:counter and the HUD shows that instead); HUD "CLASH",
   audio two steels ringing, a flicker of the frame),
   `combat:deflectChain {count}` (the attacker's count: the 2nd, 3rd ... parry in a row within one string;
   a hit that lands or is blocked resets it, dodges keep it; contract 1; the HUD shows "DEFLECT ×N")
@@ -2169,6 +2304,14 @@ Flow → hud/audio:
   fullDeflect / bladeLock / mikiri / execution / perfectParry (the hero's perfect parry of a blade: a short
   slow motion, no gong), or lock = the blade lock's camera push-in: no slow motion,
   audio plays no gong)
+World → audio (destruction, ADR-107; see "Destruction" above):
+- `world:impact {kind, mat, x, y, z, power, by, id}` (a blow on a breakable. kind: 'chip' = it held, 'break' = it
+  shattered where it stood, 'topple' = it starts to fall, 'crash' = it lands (or a thrown piece does), 'burn' = wood
+  catches, 'burnout' = it burned through, 'throw' = a boss tears it from the ground. mat: 'wood' / 'stone' / 'metal'
+  / 'bone'. power: on the POWER scale. by: 'player' / 'boss' / 'world'. id: its index in the breakables' list.
+  One reused payload: a subscriber must not keep it), `world:fire {x, z, radius, cells}` (grass catches)
+- A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
+  and hazard: true (be out from under it; audio plays the hazard cue)
 
 ## Ownership (parallel work)
 Foundation (read-only for module authors unless their brief says otherwise): `src/core/**`,

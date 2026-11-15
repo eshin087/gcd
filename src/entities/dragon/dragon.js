@@ -274,7 +274,14 @@ export class Dragon {
       if (last) this.brain.recoil();
       else this._startKnock(b, h);
     }
-    this.addPosture(POSTURE.parry[tell] ?? POSTURE.parry.normal);
+    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1));
+  }
+
+  /** A move's name for the player (the death screen, the telemetry): its tuning label without the
+   *  note in brackets ('Rending flurry (4 hits)' → 'Rending flurry'); null for an id it does not know. */
+  attackLabel(id) {
+    const l = TUNING.attacks?.[id]?.label;
+    return typeof l === 'string' && l ? l.replace(/\s*\(.*\)\s*$/, '') : null;
   }
 
   /** The hero's plunge rides this point: the top of the head (+0.6 x SCALE up), valid in flight. */
@@ -540,7 +547,19 @@ export class Dragon {
     if (this.state === 'airborne') {
       const d = Math.hypot(this.position.x, this.position.z);
       if (d > B) this.position.multiplyScalar(B / d);
-    } else this.game.world?.resolve?.(this.position, R, B + R);
+    } else {
+      // its body walks through wood (ADR-107): a tree in its way goes down ahead of it. Stone turns it
+      const W = this.game.world?.destructibles;
+      if (W?.strike && this.state !== 'sleeping') {
+        const o = (this._trample ??= { kind: 'blunt', by: 'boss', only: 'wood', dx: 0, dz: 0 });
+        o.dx = this.position.x - (this._lastX ?? this.position.x);
+        o.dz = this.position.z - (this._lastZ ?? this.position.z);
+        W.strike(this.position.x, this.position.z, R * 0.8, TUNING.world.trample, o);
+      }
+      this.game.world?.resolve?.(this.position, R, B + R);
+    }
+    this._lastX = this.position.x;
+    this._lastZ = this.position.z;
     this.position.y = 0;
   }
 

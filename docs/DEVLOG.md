@@ -5,6 +5,90 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 45: per-move telemetry; the death screen names the killing move
+
+**Owner:** "Yes, telemetry" (the genre review's third piece). Branch `game/move-telemetry`, stacked on
+`core/sim-step` (PR #43), own worktree. Session 45 / ADR-108: PR #41 and #44, open beside it, hold
+Sessions 43 / 44 and ADR-106 / 107.
+
+**Done** (ADR-108):
+- `player.takeHit` announces every blow it resolves: `combat:answer`.
+- `game/telemetry.js` `MoveLog`: a row per boss move (blows seen, hit, blocked, parried, clashed,
+  dodged, damage, kills) for the attempt; totals per level in localStorage; a contact stream is one
+  blow per 1.5 s.
+- The death screen: "SLAIN BY <MOVE>" and up to three moves with "n of m blows landed", small and
+  dim under the hint (`hud.bannerRecap`). The victory record: "Struck most by".
+- `boss.attackLabel(id)` on the wyrm and the duelists; `flow.moveLabel`, `flow.deathRecap`.
+- Console: `__telemetry()`, `__telemetry('all')`, `__telemetry('clear')`.
+- **Tests:** duel TELEMETRY (the table by itself with a fake storage; in the duel: a string taken, a
+  parry, a death, the recap in the banner, a new attempt after rising).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server on `?level=ash`: Swallow
+Flicks taken, then killed by Lotus Sweep: the death screen at 800 x 600 and at the phone's 852 x 393
+(`?touch`): three lines under the hint, clear of the banner, inside the screen.
+
+**Not checked / open:** the wyrm's and the Lord's labels only by the tests' lookups (no death filmed
+there); upright on a phone; nothing read back from a real play session yet. The phone has no way
+to read the stored table.
+
+**Next:** the owner plays; then tune from `__telemetry()`. The heavy button needs their answers.
+
+## 2026-11-15 — Session 44: the world breaks (breakables, ground fire, cover, marks)
+
+**Owner:** "i want all the bosses to be able to cause destruction to the background ... the dragon
+fire that hits the background (trees, grass) get on fire and are a temporarily hazard ... the
+humanoid bosses will chip and damage the structures and leave impact based on the power of the
+attack. the players can also do this as well. i want the bosses to also use the terrain ... you can
+also redo the backgrounds of the levels. i want you to redo the sith lord level ... ask me any
+questions". Branch `world/destruction` from `main`. (Numbers: other PRs open at the same time took ADR-101 – 103 and Sessions 40 – 42, so this is
+ADR-107 / Session 44; the hero seen behind the wyrm is ADR-106 / Session 43, the open Obsidian Throne
+ADR-108 / Session 45 and the Lord's terrain moves ADR-109.)
+
+**Asked, answered:** fire burns where it lands (no spreading); the terrain is a real tactic for the
+hero (cover, pieces felled onto a boss); Cinderwood and Ashfall keep their layouts and get things to
+break; "staged PRs and separate agents doing parallel tasks".
+
+**Split:** two sessions were started on their own branches: the hero seen behind the wyrm (PR #41,
+ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-108, ADR-109; it was sent
+this API). This session built the system the rest stands on.
+
+**Done** (ADR-107):
+- `world/destructibles.js`, `fire.js`, `scars.js`, `breakTuning.js`; `world.impact / ignite / restore`;
+  `Colliders.remove / restore`; the two set materials can be rigid-batched.
+- Cinderwood lists 81 breakables (17 of them new, inside the clearing), Ashfall 72.
+- The hero's blade and slam, the wyrm's striking parts, slams, meteors, fire and body, the duelists'
+  zones, crescents, thrown stones and the Void's lines all hit the world; cover stops bullets,
+  crescents, torn stones and stands in for the hero against the bolt, the pull and the grip.
+- Sounds `chip` and `crash`; events world:impact and world:fire; the Lab's WORLD section (Burn ahead,
+  Fell on me, Blast ahead, Restore) and its Reset restores the world.
+- Tests: `tests/integration/world.mjs` (87 checks), added to `npm test`.
+
+**Rendered for the pick:** three ways a broken piece comes apart (digits, chunks, shards; a
+temporary `?debris=` switch) and the fire on grass and a tree, sent as two sheets. The owner picked
+**"A: digits"**; the switch and the two other looks are removed. Nothing was said about the fire.
+
+**Verification:** `npm test` (five suites) and `npm run build` pass. Filmed in headless Edge at 1280 x 720
+on the dev server: a tree and grass set alight and burning out, a tree felled onto the hero (the red
+strip, the hit), a stone chipped then broken, the hero felling a dead tree with two charged cleaves,
+the wyrm's breath lighting the grass, and a 16 s fight with the AI on. Draw calls and triangles
+against `main`: ADR-107.
+
+**Found on the way:** `node_modules` in the main checkout was emptied while this session ran
+(reinstalled; cause not found, the parallel worktrees are the likely one). The Browser pane was
+hidden for the whole session and throttles timers: captures were made with headless Edge and a
+wrapper page instead. A debris glyph under ~0.4 m is a dot at the game camera, and debris in the
+material's lit colour bloomed white.
+
+**Not checked / open:** a fight played by a human; the difficulty with breakables and fire; the
+phone (look and frame rate); frame time; Ashfall and its duelist's blows in the browser (headless
+tests only); Training places the hero without a look at what
+stands there.
+
+**Next:** the owner's review of PR #44; the wyrm's and the Ash Disciple's terrain moves and the open
+Obsidian Throne run as their own sessions (started; the throne waits on the owner's pick of an arena).
+
+---
+
 ## 2026-11-15 — Session 43: the hero seen through the wyrm (an ink ghost in the blade's cyan)
 
 **Owner:** "i noticed while fighting the dragon the player disappears and cant see whats going on
@@ -59,8 +143,70 @@ session). A cover closer than 0.6 m in front of him hides him without a ghost.
 **Next:** the owner's phone test on the preview; then the terrain work's thrown trees and lifted
 pillars should need nothing more than being drawn in the scene pass.
 
+## 2026-11-15 — Session 42: a frame is simulated in steps of about 1 / 60 s
+
+**Owner:** "lets implement your suggestions" (the genre review; this is its second piece). Branch
+`core/sim-step`, stacked on `combat/reward-order` (PR #42), own worktree.
+
+**Done** (ADR-103):
+- `core/timestep.js`: `simSteps(realDt)` cuts a frame into equal steps none longer than 20.8 ms (one
+  at 50 Hz and above, two of 1 / 60 s at 30 fps, six at most); `runFrame` runs them and clears the
+  input's edges after the first.
+- `main.js`: the loop is `simulate(stepDt)` (clocks, Lab, flow, fighters, world, lights, particles)
+  one or more times, then the camera, the HUD, the audio and the render once. The frame clamp went
+  from 50 ms to 100 ms: the game runs slow under 10 fps, not under 20.
+- `window.__tick(dt, frames, asFrame)`: `asFrame` runs each as a rendered frame cut into steps.
+- **Tests:** integ TIMESTEP (the split at 240 – 2 fps, the longest step, runFrame's order, a second
+  at 30 fps, a tap in a two-step frame is one press, how often the 0.08 s window is sampled).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server on `?level=ash`,
+through the real loop's own tick (`__tick(1 / 30, n, true)`): two steps of 16.7 ms a frame, a second
+of real time in 30 frames, a tap of lock-on toggles once, a Plum Thrust parried at 30 fps frames.
+
+**Not checked / open:** the pane was hidden, so `requestAnimationFrame` itself never drove it: the
+loop was driven through `__tick`'s frame path. Nothing was run on a machine that is really slow, and
+the cost of two to six steps a frame was not measured. A press is still read once a frame.
+
+**Next:** per-move telemetry and the killing move on the death screen; a heavy button.
+
 ---
 
+## 2026-11-15 — Session 41: the rewards ordered by risk: the flurry on red only, the flash counter, a perfect parry that pays
+
+**Owner:** "what updates, combat engine changes, etc can we do to make this game to be one of the most
+soulslike/onimusha/phantom blade genre type of game? i plan to sell this on steam", then, on the
+write-up: "yes measure and lets implement your suggestions". Branch `combat/reward-order`, own
+worktree (the main checkout held another session's work). Session 41 / ADR-102 / M1.35: PR #39, open
+beside it, holds 40, ADR-101 and M1.34.
+
+**Measured first** (the `strategy` scenario, new in all three suites, opt-in): three god-mode bots
+that differ only in how they answer a tell. The bot that only perfect-dodged beat every boss fastest
+with a third of the inputs. The table is in COMBAT.md "The reward order".
+
+**Done** (ADR-102):
+- **The flurry on red only.** A perfect dodge of a white or heavy blow counts in the streak and slows
+  time where the hero stands; no flurry, no plunge, no crit window, the string goes on.
+- **The flash counter.** A trade clash in the instant the cut became a cut goes through him: 70 damage,
+  60 posture, he reels, the crit window, FLASH COUNTER (`player:counter`, `attacker.onCounter`).
+- **A perfect parry pays:** × 1.5 posture and the counter cut (the next light twice as fast, a crit).
+- **Fixed:** a blow of a foe's flurry that reached nobody settled nothing (the flurry never ended).
+- **Tests:** duel GHOSTEP (white: in place; red: the flurry; the switch), TRADE (the flash counter),
+  PERFECT (new), integ RED (the bite's perfect dodge is no plunge); PLUNGE / FLURRY test the move
+  itself under `debug.flurryAny`; `strategy` in integ / duel / lord.
+
+**Found on the way:** a 1.2 s crit window on a white perfect dodge left the dodge bot the fastest on
+the wyrm (63 s): the window is 0. The Lord's training run failed on "block his flurry" once the
+random stream shifted: two of five blows fell short of a standing hero and nothing ended the flurry.
+
+**Verification:** `npm test`, `npm run build` (see the PR). The strategy runs before and after.
+
+**Not checked / open:** no human has played it. The flash counter and the in-place perfect dodge
+were not filmed. The wyrm cannot be flash-countered (its claws are not steel). One seed per bot on
+the wyrm before the change.
+
+**Next** (the owner's go-ahead covers them, each its own PR): a fixed-timestep simulation; per-move
+telemetry and the killing move on the death screen; a heavy button and chosen swings; HP-linked
+posture for every boss; then saves, a hub and ranks.
 ## 2026-11-15 — Session 40: the flurry on a man, paced to be followed; an afterimage in digits
 
 **Owner:** "the animation looks great vs the dragon but against the humanoid bosses, the

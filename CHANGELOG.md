@@ -4,7 +4,27 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-two pieces of work since 0.4.0:
+Thirty-six pieces of work since 0.4.0:
+- **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
+  which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
+  attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory
+  record gains "Struck most by". *Added:* the game now keeps a table of what every boss move did
+  to you (blows seen, landed, blocked, parried, dodged, damage, deaths), added up over every
+  attempt in this browser; `__telemetry()` in the console prints it for the level, the deadliest
+  move first. Nothing leaves your machine.
+- **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
+  lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
+  as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
+  red blow (its landing strip is marked, roll or step out); one you fell onto a boss hurts it badly
+  and never hurts you. Anything 1.1 m or taller is cover: it stops the wyrm's bullets, a duelist's
+  crescents and torn stones, and takes the Void's bolt, pull or grip in your place, until it breaks.
+  Fire burns where it lands: grass under the wyrm's breath, fireballs, meteors, lava pillars, the
+  burning pass and the dive catches, burns about 4 seconds (5 HP every half second if you stand in
+  it), then is ash for the rest of the fight; a tree that catches burns about 7 seconds and falls to
+  embers. Fire never spreads. The wyrm walks through trees. Everything stands again when the fight
+  resets. *Changed:* Cinderwood has 7 dead trees, 4 young pines and 6 boulders inside the clearing.
+  A broken piece comes apart into the characters it is drawn in. *Dev:* a WORLD section in the Lab
+  (Burn ahead, Fell on me, Blast ahead, Restore).
 - **You can see yourself behind the dragon** (2026-11-15, ADR-106). *Fixed:* the hero vanished
   whenever the Cinder Wyrm stood between him and the camera: north of its body, under a wing,
   behind it while it rears, under it while it flies low. *Added:* the parts of him that are
@@ -13,6 +33,22 @@ Thirty-two pieces of work since 0.4.0:
   covered and only while he is; in the open he looks as before. It works through trees, pillars,
   standing stones and landmarks too. Duels are unchanged: a human boss in front of you is not
   drawn over. `?noseen` in the address turns it off (for comparing).
+- **The same fight at any frame rate** (2026-11-15, ADR-103): the game used to simulate each drawn
+  frame in one step of its real length, so on a machine at 30 frames a second a perfect parry's
+  0.08 s window was looked at only two or three times, and under 20 frames a second the game ran in
+  slow motion. *Changed:* a slow frame is now simulated in several short steps (two at 30 frames a
+  second, up to six), each about a sixtieth of a second: the step every automated test of the
+  combat runs. At 50 frames a second and above nothing changes. The game runs slow only under 10.
+- **The riskier the answer, the more it pays** (2026-11-15, ADR-102): measured with bots, a player
+  who only perfect-dodged beat every boss fastest and never had to learn a string. *Changed:* the
+  flurry (and the plunge) now answer a perfect dodge of a **red** blow only. A perfect dodge of a
+  white or heavy blow still dodges, counts in your streak and slows time where you stand, but his
+  string goes on: build the streak on white blows, cash it on a red one or with a parried last
+  blow. *Added:* the **flash counter**: attack at the last instant before a duelist's blow lands
+  and your cut goes through his and through him (70 damage, he reels, the crit window opens); a
+  moment too late and his blow lands. *Added:* a **perfect parry** now deals half again the
+  posture and makes your next light cut twice as fast and a crit. *Fixed:* a blow of a boss's own
+  flurry that fell short of you settled nothing, so blocking all of it did not always break him.
 - **The flurry reads against the human bosses, and every blink leaves an ASCII afterimage**
   (2026-11-15, ADR-101). *Changed:* against Shen Hui and the Starless Lord each flash cut now shows
   the hero wound up for a moment, runs past the boss's side instead of through him, and slows into a

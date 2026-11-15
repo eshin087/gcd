@@ -273,16 +273,18 @@ const HERO_ART_SHARED = ['uCamRight', 'uCamUp', 'uArtHeroLight', 'uArtHeroRim', 
  * aSway (float, 0 = rigid), aAO (float 0..1).
  * fadeNearPlayer: canopy/foreground occluders dither away around the player on screen.
  */
-export function createAsciiObjectMaterial(U, { fadeNearPlayer = false, side = THREE.FrontSide } = {}) {
-  return new THREE.ShaderMaterial({
+export function createAsciiObjectMaterial(U, { fadeNearPlayer = false, side = THREE.FrontSide, rigid = false } = {}) {
+  const mat = new THREE.ShaderMaterial({
     uniforms: {
       ...pickShared(U, SHARED),
       uPlayerScreen: U.uPlayerScreen,
       uResolution: U.uResolution,
       uFadeOn: { value: fadeNearPlayer ? 1 : 0 },
+      uBoneTex: U.uBoneTex ?? { value: null }, // rigid batches' bone matrices (RIGID_VERT_GLSL)
     },
     vertexShader: /* glsl */ `
       ${COMMON_GLSL}
+      ${RIGID_VERT_GLSL}
       attribute vec3 aCol;
       attribute float aFlag;
       attribute float aSway;
@@ -293,12 +295,13 @@ export function createAsciiObjectMaterial(U, { fadeNearPlayer = false, side = TH
       varying float vFlag;
       varying float vAO;
       void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
+        mat4 mm = rigidMatrix();
+        vec4 wp = mm * vec4(position, 1.0);
         float s = aSway;
         wp.x += (sin(uTime * 0.9 + wp.z * 0.15 + wp.x * 0.05) * 0.6 + sin(uTime * 2.1 + wp.x * 0.4) * 0.25) * 0.14 * s;
         wp.z += cos(uTime * 0.7 + wp.x * 0.13) * 0.08 * s;
         vW = wp.xyz;
-        vN = normalize(mat3(modelMatrix) * normal);
+        vN = normalize(mat3(mm) * normal);
         vCol = aCol;
         vFlag = aFlag;
         vAO = aAO;
@@ -336,6 +339,20 @@ export function createAsciiObjectMaterial(U, { fadeNearPlayer = false, side = TH
     side,
     blending: THREE.NoBlending,
   });
+  rigidCapable(mat, rigid);
+  return mat;
+}
+
+/**
+ * A world material whose vertex shader places each vertex with `rigidMatrix()`: a geometry without
+ * `aRigid` reads 0 = the mesh's own modelMatrix, so one program draws a set's merged static mesh and
+ * the batched breakables (world/destructibles.js). Only a material built with `rigid: true` is
+ * tagged for `batchRigid` (a set's static material must never be picked up by an actor's batch).
+ */
+function rigidCapable(mat, rigid) {
+  mat.defaultAttributeValues = { ...mat.defaultAttributeValues, aRigid: [0] };
+  mat.index0AttributeName = 'position'; // an attribute without an array never sits on location 0
+  if (rigid) mat.userData.rigid = true;
 }
 
 /**
@@ -1030,7 +1047,7 @@ const CARVED_LEVELS = 6;
  * strength, default 1), fadeNearPlayer (dither away in front of the player), side.
  */
 export function createPropArtMaterial(U, o = {}) {
-  return new THREE.ShaderMaterial({
+  const mat = new THREE.ShaderMaterial({
     uniforms: {
       ...pickShared(U, SHARED),
       uPlayerScreen: U.uPlayerScreen,
@@ -1041,8 +1058,10 @@ export function createPropArtMaterial(U, o = {}) {
       uGain: { value: o.gain ?? 1 },
       uKey: { value: o.key ?? 0.5 },
       uEdge: { value: o.edge ?? 1 },
+      uBoneTex: U.uBoneTex ?? { value: null }, // rigid batches' bone matrices (RIGID_VERT_GLSL)
     },
     vertexShader: /* glsl */ `
+      ${RIGID_VERT_GLSL}
       attribute vec3 aCol;
       attribute float aAO;
       attribute float aEdge;
@@ -1052,9 +1071,10 @@ export function createPropArtMaterial(U, o = {}) {
       varying float vAO;
       varying float vEdge;
       void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
+        mat4 mm = rigidMatrix();
+        vec4 wp = mm * vec4(position, 1.0);
         vW = wp.xyz;
-        vN = normalize(mat3(modelMatrix) * normal);
+        vN = normalize(mat3(mm) * normal);
         vCol = aCol;
         vAO = aAO;
         vEdge = aEdge;
@@ -1108,6 +1128,8 @@ export function createPropArtMaterial(U, o = {}) {
     side: o.side ?? THREE.DoubleSide,
     blending: THREE.NoBlending,
   });
+  rigidCapable(mat, o.rigid === true);
+  return mat;
 }
 
 /**

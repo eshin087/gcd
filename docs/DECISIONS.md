@@ -2541,6 +2541,66 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   either way). An afterimage is up to ~390 particles for ~0.6 s; a seven-blow flurry peaks near
   1700 particles (800 before; the additive batch holds 7000).
 
+## ADR-102 — The riskier the answer, the more it pays: the flurry on red only, the flash counter, a perfect parry that pays (2026-11-15)
+- **Context:** the owner asked what would make the combat stand with Sekiro, Phantom Blade Zero and
+  Onimusha, then: "yes measure and lets implement your suggestions". The suspicion: a perfect dodge
+  worked on every tell, had the parry's window (0.20 s against 0.22 s) and paid the most (the
+  flurry: damage, invulnerability, a stagger, the crit window, and the string over), while the
+  trade clash, the riskiest answer, earned no opening. Measured with three god-mode bots that
+  differ only in how they answer a tell (`strategy`, opt-in, in all three suites): the bot that only
+  dodged beat every boss fastest with a third of the inputs (Shen Hui 27 – 32 s against 38 – 45 s for
+  parries only; the wyrm 68 s against 149 s). Nobody had to learn a string.
+- **Decision:** order the rewards by risk (COMBAT.md "The reward order").
+  - The flurry (and the plunge) answer a perfect dodge of a **red** blow only (`DEFENSE.flurry.on`).
+    A perfect dodge of a white or heavy blow counts in the streak and gives the slow-mo where the
+    hero stands: no teleport, no damage, no crit window (`ghostep.critWindowWhite` 0), the string
+    goes on. The streak is built on white blows and cashed on a red one or by the riposte.
+  - **The flash counter** (`DEFENSE.counter`, Onimusha's Issen): a trade clash in the instant the
+    hero's cut became a cut (≤ 0.03 s into its active frames) is not thrown back: 70 final damage and
+    60 posture at once, the attacker reels (`attacker.onCounter`), the crit window opens,
+    `player:counter`.
+  - **A perfect parry** of a blow of the body or the blade deals × 1.5 posture (`POSTURE.perfect`)
+    and readies the counter cut (`DEFENSE.perfectParry`: the next light within 0.9 s winds up twice
+    as fast and crits).
+  - Found on the way: a blow of a foe's flurry that reached nobody settled nothing, so "block all
+    five and he breaks" could silently not happen. It now counts as answered when the hero stood
+    within its reach + 1.2 m, and fails the flurry when he left.
+- **Alternatives turned down:** a dodge cooldown or shrinking i-frames (the owner: defence must not
+  be punished; nothing here stops the player from dodging); a 1.2 s crit window on a white perfect
+  dodge (measured: the dodge bot still beat the wyrm fastest, in 63 s, on crits alone).
+- **Consequences:** after the change the dodge-only bot is the slowest on both duelists (Shen Hui
+  75 – 95 s, the Lord 152 – 161 s) and level with mixed play on the wyrm; mixed and parry-only times
+  did not move. A perfect dodge of a white blow against a duelist no longer puts the hero at his
+  back. The old rule is one switch away (`flurry.on: 'any'`, `player.debug.flurryAny`). Not done:
+  the wyrm's claws are not steel, so the flash counter is a duelist's only; no human has played it
+  (the counter's 0.06 s of press timing, the counter cut's feel); the Lab has no button for
+  `flurryAny`; the flash counter was not filmed.
+
+## ADR-103 — A frame is simulated in steps of about 1 / 60 s (2026-11-15)
+- **Context:** the genre review (the owner: "lets implement your suggestions"; the game is to be
+  sold on Steam, so it must play the same on any PC). main.js simulated every rendered frame in ONE
+  step of its real length, clamped at 50 ms: a machine at 30 fps took 33 ms steps, in which the
+  0.08 s perfect-parry window is sampled two or three times, an attack's 0.12 s active frames three
+  or four, and under 20 fps the game ran slow. Every headless test steps at exactly 1 / 60 s, so none
+  of that was ever tested.
+- **Decision:** `core/timestep.js`: a frame is cut into equal simulation steps none longer than
+  20.8 ms (1 / 60 s with a quarter of slack, so a 60 Hz frame a hair late and a 50 Hz display stay
+  one step). 30 fps runs two steps of 1 / 60 s, 20 fps three; six steps at most, so the game runs
+  slow only under 10 fps. The devices are read once a frame; the input's edges are cleared after the
+  first step; the camera, the HUD, the audio and the render run once a frame. `__tick` keeps its
+  exact single step (film strips) and gains `asFrame`.
+- **Alternatives turned down:** a fixed 120 Hz step with render interpolation (the standard answer,
+  and deterministic: but every transform of the hero, the wyrm's rig, the cloth and the particles
+  would need an interpolated copy, the tests would run at another step than the game or twice as
+  long, and at 60 Hz the simulation would cost twice as much: later, if replays are wanted); stepping
+  at 1 / 120 s without interpolation (judder on 144 Hz displays, and not the tests' step).
+- **Consequences:** at 50 Hz and above nothing changes (one step, as before). Below it the game
+  simulates the steps the tests run, at the cost of simulating twice (30 fps) to six times a frame:
+  a machine that is slow because of the SIMULATION (not the picture) gets slower still. Not measured.
+  Presses are still read once a frame: at 30 fps a press can be up to 33 ms old when the first step
+  sees it (event timestamps could place it in its step: not done). Not deterministic: a step's
+  length still follows the display above 50 Hz.
+
 
 ## ADR-106 — The hero prints through what covers him: an ink ghost in the blade's cyan (2026-11-15)
 - **Context:** the owner: "i noticed while fighting the dragon the player disappears and cant see
@@ -2586,3 +2646,88 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   hero's colour by rule (STYLE.md). A thing drawn in the FX scene never counts as cover; a cover
   thinner than the margin in front of him (he presses against it) hides him without a ghost. Not
   measured on a phone.
+## ADR-107 — The world breaks: breakables in a rigid batch, fire that burns where it lands, cover (2026-11-15)
+
+**Context.** The owner: "i want all the bosses to be able to cause destruction to the background. for
+example, the dragon fire that hits the background (trees, grass) get on fire and are a temporarily
+hazard until the grass/tree burns away so the player has to dodge those as well ... the humanoid
+bosses will chip and damage the structures and leave impact based on the power of the attack. the
+players can also do this as well. i want the bosses to also use the terrain as a way for their
+defensive or offensive strategy". Asked, they chose: fire **burns where it lands** (it never
+spreads); the terrain is **a real tactic** for the hero (cover stops projectiles until it breaks, a
+piece felled onto a boss deals real damage); Cinderwood and Ashfall **keep their layouts and get
+things to break** brought into the fighting space; **staged PRs by separate sessions** (the hero seen
+behind the wyrm: ADR-106; the open Obsidian Throne: ADR-108; the bosses' terrain moves after).
+
+**Decision.**
+- **A set lists what can break** (`breakables`) instead of merging it into its static meshes.
+  `world/destructibles.js` gives each piece a node of its own and draws them all through two rigid
+  batches (the hero's and the wyrm's mechanism, ADR-045): one draw call per material however many
+  pieces there are, each free to fall, fly or vanish. The two set materials place vertices with
+  `rigidMatrix()`; only twins built with `rigid: true` are batched.
+- **One POWER scale** for every blow (1 fells a tree), a structure per material and size, and a
+  factor per kind of blow, in `world/breakTuning.js`. Each fighter's numbers live in its own tuning
+  (`TUNING.world`, `DUEL_WORLD`; the hero's is its damage / 110).
+- **Tall pieces fall; short ones shatter.** A falling piece is the world's own hazard: red, a marked
+  strip, a flash 0.3 s before it lands. The hero is never hurt by a piece he felled; a boss under it is.
+- **Cover.** A piece 1.1 m or taller stops what is thrown along the ground, and pays for it. For a
+  line of the Void the cover answers in the hero's place.
+- **Fire** (`world/fire.js`) lives on the scorch map's grid: a cell with grass left catches, burns
+  3.2 – 4.6 s as blockable contact ticks, and is ash after. Sweeping fire lights wood only.
+- **Marks** (`world/scars.js`): glyphs that stay until the reset, in one batch.
+- **Lift and throw** are in the API (`take`, `carry`, `throwTo`, `nearest`); a thrown piece's blow at the
+  hero is the thrower's (its own tell), dealt in `onLand`.
+- **Everything is reset** with the fight (`world.restore()` beside every scorch reset).
+- Cinderwood: the 57 trees within 36.5 m, the stone circle and the edge boulders are breakables, and 7
+  dead trees, 4 young pines and 6 boulders stand inside the clearing (81 in all). Ashfall: its pillars,
+  lanterns, stele and bell, and the dead trees and boulders within 30 m (72).
+
+**Why.** Per-object meshes would have cost ~160 draw calls a level, twice (the world pass and the
+shadow pass); the rigid batch costs 3. A world-side API with one POWER scale lets a new boss or move
+hit the world with one call and no knowledge of what stands there. Fire on the scorch grid needs no
+new texture and no new shader: the grass and the ground already read that map. The fall of a piece a
+boss felled must follow the game's tell rule, so the world emits the tell itself.
+
+**Rejected.** Fire that creeps or spreads freely (offered; the owner chose the readable one). Per-piece
+shader state (a burn or damage uniform per object): the batch shares uniforms; the scorch map, a
+stump variant and glyph particles do the job. Physics debris as meshes (the look is glyphs). Cover
+against melee, breath and blasts (it would make standing behind a stone the answer to everything).
+Leaving a felled trunk lying as an obstacle (the hero would clip through it or be blocked by an
+invisible wall; it comes apart where it lands). Hooking fire to every `scorch.burnCircle` call (the
+hazards' warm-up heats the ground before anything lands).
+
+**Consequences.** Trees and boulders now stand inside the wyrm's clearing: sightlines and paths
+changed, and the wyrm fells what it walks through. The minimap re-bakes when the colliders change
+(`Colliders.version`). The fights' difficulty with breakables and grass fire is **not measured** (the other
+suites' bots run on world mocks; the new `world.mjs` checks the mechanics, not a fight). Cost at the
+game camera, the fight on, measured in headless Edge against `main`: Cinderwood 57 → 60 draw calls and
+1.025 M → 1.034 M triangles a frame; Ashfall 52 → 54 and 566 k → 574 k. Frame time was not measured
+(the run uses virtual time), nor a phone. How a broken piece comes apart was the owner's pick of three
+filmed looks: "A: digits", a shower of the characters it is drawn in (bigger lumps and long shards
+were turned down; the `?debris=` switch that held them is gone). The Obsidian Throne lists no breakables yet: its
+rebuild (ADR-108) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
+the sizzle and the ember hiss.
+
+## ADR-108 — Every answered blow is logged per move; the death screen names the killing move (2026-11-15)
+- **Context:** the genre review (the owner: "Yes, telemetry"). Every difficulty number so far comes
+  from bots that answer a cue in one frame, and every boss section of COMBAT.md ends on "no human
+  has played him yet". When the owner plays, nothing recorded WHICH move struck or killed them:
+  `RunStats` held totals only, and the hero's events did not all carry the attack.
+- **Decision:** `player.takeHit` announces every blow it resolves as `combat:answer { attack, tell,
+  result, damage, dead, stream, perfect }` (one place, whatever the answer). `game/telemetry.js`
+  `MoveLog` keeps a row per boss move, counted in blows, for the attempt, and adds each attempt to
+  totals per level in localStorage. The death screen shows the killing move and up to three moves
+  that struck the hero ("3 of 4 blows landed") under the hint, as small dim lines; the victory record
+  gains "Struck most by". `__telemetry()` in the console prints the level's table. Bosses name
+  their moves through `attackLabel(id)`. (ADR-104 / 105 are left to other open work: PR #41 and
+  #44 hold 106 and 107.)
+- **Alternatives turned down:** deriving it from the existing events (`player:hurt`, `player:block`
+  and `player:dodge` carry no attack); a panel with the whole table on the death screen (the owner
+  keeps the HUD bare: three lines, and the table stays in the console); sending it anywhere (it is
+  the player's own browser storage, nothing leaves the machine).
+- **Consequences:** a death teaches which move to learn, and a play session leaves numbers to tune
+  from (hit rate and kills per move). A string's blows are counted one by one, so "seen" is blows,
+  not casts. The phone has no console: there the recap and the record are all that shows; reading
+  the stored table needs a desktop browser on the same origin. Burn deaths read "THE FLAMES".
+  Blows dodged by walking out of reach are never "seen" (no hit was resolved).
+

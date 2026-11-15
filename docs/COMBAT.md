@@ -20,9 +20,9 @@ each actor's `tuning`.
 3. **Answers**
    | Tell | Block (hold RMB) | Parry (tap RMB just before impact) | Dodge (Space) |
    |---|---|---|---|
-   | `normal` — white glint | no damage, costs guard (damage × 1), small pushback | full negate, posture dmg; a string goes on | i-frames; perfect → plunge |
-   | `blue` — big white glint (heavy blow) | no damage, costs guard (damage × 1.5), big pushback | full negate, **big** posture dmg; a string goes on | i-frames; perfect → plunge |
-   | `red` — red glow + red flash | **fails** (full dmg, knockdown) | **fails** | **only answer**; perfect → plunge (a fire hazard: in place) |
+   | `normal` — white glint | no damage, costs guard (damage × 1), small pushback | full negate, posture dmg; a string goes on | i-frames; perfect → a streak pip and slow-mo where you stand |
+   | `blue` — big white glint (heavy blow) | no damage, costs guard (damage × 1.5), big pushback | full negate, **big** posture dmg; a string goes on | i-frames; perfect → a streak pip and slow-mo where you stand |
+   | `red` — red glow + red flash | **fails** (full dmg, knockdown) | **fails** | **only answer**; perfect → the flurry / the plunge (a fire hazard: in place) |
 
    A blocked contact stream (the fire breath's ticks, burning ground, a bullet) is no blow: it
    chips HP as before (−80 % / −50 %) and costs no guard.
@@ -32,15 +32,19 @@ each actor's `tuning`.
 4. **Parry** = RMB pressed ≤ `parryWindow` (0.22 s) before impact, attacker within the front arc.
    Pressed ≤ `perfectParryWindow` (0.08 s) before impact it is a **perfect parry**
    (`player:parry.perfect`): a perfectly parried bullet comes back as a damaging shot (ADR-051,
-   *Bullets* below); melee perfect parries change nothing yet.
+   *Bullets* below); a perfectly parried blow of the body or the blade deals × 1.5 posture and readies
+   the **counter cut** (the first light started within 0.9 s winds up twice as fast and crits; ADR-102).
    Mashing is prevented: RMB must be released `parryRearm` (0.25 s) before a new press counts —
    **except right after a successful parry**: a deflect re-arms at once, so the next press counts as
    soon as RMB was released, even when the guard was held between blows (ADR-032). A press that
    parries nothing needs the full re-arm again, so mashing still fails. Holding RMB after the press
    keeps blocking; between parries in rhythm the guard stays up (~0.3–0.6 s).
 5. **Perfect dodge** = a dodge started ≤ `perfectDodgeWindow` (0.2 s) before impact. Perfect
-   dodges in a row are a **streak**, and each is answered with as many blows as the streak counts
-   (*The streak and the flurry*, below):
+   dodges in a row are a **streak**. A perfect dodge of a **white or heavy blow** (one a parry
+   answers) counts in the streak and slows time (×0.3 for 0.6 s) where you stand: no flurry, no
+   plunge, no crit window, and his string goes on (ADR-102, *The reward order* below). A perfect dodge
+   of a **red** blow is answered with as many blows as the streak counts (*The streak and the
+   flurry*, below):
    - against the wyrm, with its head within `DEFENSE.plunge.range` (30 m) → **the flurry** round its
      head; the first of a streak is one blow, an art, and one of the arts is **the plunge** (below):
      you appear above its head and drive the blade in (ADR-027);
@@ -86,6 +90,42 @@ each actor's `tuning`.
     and hazards heat the ground they will hit until impact, the edge drawn in the last flashLead s;
     every hazard can be dodged with i-frames or by moving) · every projectile has a visible source
     (bullets leave the jaws, ADR-050).
+
+## The reward order (2026-11-15, ADR-102)
+The riskier the answer, the more it pays. From safest to riskiest:
+
+| Answer | Works on | What it pays |
+|---|---|---|
+| Block (hold) | white, heavy | nothing; costs guard |
+| Dodge | everything | nothing |
+| Perfect dodge | white, heavy | a streak pip, slow-mo where you stand; the string goes on |
+| Parry | white, heavy | posture (26 / 48), guard back, a streak pip; the last blow: his recoil and the riposte |
+| Perfect dodge | red | the flurry (the plunge on the wyrm): as many blows as the streak counts, the crit window |
+| Perfect parry (≤ 0.08 s) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
+| Flash counter (attack ≤ ~0.14 s before his blow) | a blade's white or heavy blow | 70 damage and 60 posture at once, he reels, the crit window; too late and his blow lands |
+
+So the streak is **built** on white blows (parries, perfect dodges, clashes) and **cashed** on a red
+blow (the flurry) or a parried last blow (the riposte).
+
+**Why (measured).** Until 2026-11-15 every perfect dodge was answered with the flurry. Three god-mode
+bots that differ only in how they answer a tell (`node tests/integration/<suite>.mjs . strategy`):
+*mixed* parries white and heavy blows and perfect-dodges red ones, *parry* does the same but rolls
+red blows early (no perfect dodge), *dodge* perfect-dodges everything and never parries. Seconds to
+win, before → after:
+
+| Boss (seeds) | mixed | parry | dodge |
+|---|---|---|---|
+| Shen Hui (4242 / 7 / 99) | 33 / 39 / 35 → the same | 38 / 40 / 45 → the same | 27 / 32 / 31 → 75 / 84 / 95 |
+| The Starless Lord (4242 / 7) | 57 / 63 → the same | 76 / 76 → 84 / 76 | 60 / 63 → 161 / 152 |
+| The wyrm (4242 / 7; seed 7 not run before) | 104 / – → 104 / 90 | 149 / – → 154 / 138 | 68 / – → 124 / 81 |
+
+Before, the bot that only dodged won fastest on every boss with a third of the inputs (8 – 12
+perfect dodges against 26 – 32 parries on Shen Hui): nobody had to learn a string. Now it is the
+slowest on both duelists and level with mixed play on the wyrm, whose red blows are many (the
+*parry* bot forgoes their plunges by construction). With a 1.2 s crit window on a white perfect
+dodge the dodge bot still beat the wyrm in 63 s on crits alone: that window is 0
+(`DEFENSE.ghostep.critWindowWhite`). Bots answer a cue in one frame: a human playtest is still owed.
+The old rule is one switch away: `DEFENSE.flurry.on: 'any'`, or `player.debug.flurryAny` in the console.
 
 ## The guard meter (2026-11-14, ADR-095)
 The hero has a guard meter of 100 (`GUARD` in `rules.js`; a thin steel bar under his HP bar, and a
@@ -290,7 +330,8 @@ bullet), a **trade clash** and a mikiri each count one (ADR-094; until then only
 ends when a blow **hurts** him (a plain hit, a guard break, death). A blocked blow, a plain dodge, a
 burn's ticks and time leave it alone (`keepStreak: 0`; a number there would let it run out).
 
-**The flurry.** A perfect dodge that can reach its attacker (rule 5) is answered with N blows, N =
+**The flurry.** A perfect dodge of a **red** blow (ADR-102: a white or heavy blow's only counts in the
+streak) that can reach its attacker (rule 5) is answered with N blows, N =
 the streak, 7 at most (`max`; the streak itself counts on):
 - **N − 1 flash cuts.** He vanishes (an afterimage where he stood), is on one side of the target, in
   the cut already, crosses it in 0.1 s and is gone again. Each cut runs along a new line, so they
@@ -624,6 +665,14 @@ Sekiro / Phantom Blade Zero beats, each read from his data (`moves.js` beat flag
   - **A full cleave wins it:** a charge whose posture reaches the guard's crush (48) is not thrown
     back: it beats his blow aside, staggers him and lands.
   - A cut that bit him more than 0.1 s before his blow lands is not a clash: both blows land, as before.
+  - **The flash counter** (ADR-102, `DEFENSE.counter`): his blow arrives when the hero's cut has only
+    just become a cut (at most 0.03 s into its active frames: an attack press about 0.08 – 0.14 s
+    before his blow lands; any later and it lands on the hero). The cut is **not** thrown back: it
+    beats his blow aside and goes through him. 70 damage (final, past any guard) and 60 posture at
+    once, he **reels** (1.45 s, wide open: his string is over, a cinematic moment), the crit window
+    (2.2 s) opens, a gold burst, a 0.16 s freeze, "FLASH COUNTER" (`player:counter`). The swing
+    itself lands nothing more. Only in the half the hero's press decides (his blow arriving in the
+    cut); a cut that connects before his blow is the plain clash.
 - **Mikiri (perilous thrust)** — a red thrust marked `mikiri` (Piercing Ash; the last hit of Hundred
   Petals) flashes `combat:flash` with `perilous: true`. A roll **into** it (the roll's direction
   against his facing, dot ≥ 0.55) whose impact comes within 0.3 s of the roll's start steps on the
@@ -863,6 +912,51 @@ hits / 325, 44 hits / 740.
 Shen Hui's 85 % bot takes 7 – 8 hits. Target: 3 – 5 min for a player who knows him. No human has
 played him yet, and the bots never use the blade lock or the mikiri and stand inside his reach the
 whole fight.
+
+## The world breaks (2026-11-15, ADR-107)
+What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood: the trees
+nearest the clearing, the dead trees, young pines and boulders inside it, and the stone circle. In
+Ashfall: the pillars, the lanterns, the stele, the near dead trees and boulders (the bronze bell only
+rings). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
+
+- **Blows chip and break.** Every blow has a power. The hero: its damage / 110 (a quick cut 0.27, the
+  slam 0.6, a full cleave 1.0). A duelist: damage / 40 (a cut 0.3, an overhead 0.6; red x 1.25). The
+  wyrm: 0.7 x the striking part's size (a claw 0.77, the charge 1.2), a stomp 1.0, the leap 1.7, a
+  meteor 1.5, the dive's crash 2.5. A piece has structure by material and size: a young pine ~0.9, a
+  dead tree ~1.6, a boulder ~1.3, a pillar 1 – 2.4 (the gate's 3.2), a standing stone ~2.3. A cut
+  bites stone less (x 0.7; a blow worth under 0.1 only leaves a nick): the slam and the charged cleave
+  are blunt blows and bite it in full. A duelist cuts a pillar down in about ten blows, three of his
+  heavy ones. Every blow leaves a mark as big as it was hard; a hard one cracks the floor.
+- **Tall pieces fall.** A piece 2.2 m or taller falls the way the blow drove it (the hero's: away
+  from him) in about a second, and lands on a strip as long as it is tall. **Under a piece a boss
+  felled, the hero takes one red blow** (22 x its weight 0.6 – 1.3, unblockable, knocked down): the
+  strip is marked in red from the moment the piece starts to go and its flash comes 0.3 s before it
+  lands. Roll through it or be out of the strip. **A piece the hero fells onto a boss deals 220 x
+  weight damage and 90 x weight posture**, and never hurts the hero: put the tree or the pillar
+  between you and him. What a falling piece lands on is struck too. Shorter pieces shatter where
+  they stand.
+- **Cover.** A piece 1.1 m or taller stops the wyrm's bullets (each takes 0.12 out of it, an orb
+  three times that), a duelist's crescents and torn stones, and stands for the hero against the
+  Void's lines: a bolt blasts the cover (1.5), the pull drags it down toward the Lord, the Crushing
+  Dark crushes it (3), and the hero behind it is not hit. The great red stone, the returning blade
+  and the wall of force go through and strike what they cross. Breath, rings, walls, the nova and
+  anything that comes down from the sky are not stopped. Cover is temporary: a standing stone stops
+  about 17 bullets.
+- **Fire burns where it lands.** Grass under the breath, a fireball, a meteor, a lava pillar, the
+  burning pass or the dive's crash catches. It burns 3.2 – 4.6 s, then it is ash and cannot burn
+  again: the field burns down as the fight goes on. Standing in it costs 5 HP every 0.55 s after the
+  first 0.45 s (blockable; never while rolling). It never spreads. Sweeping fire (the ring, the wall,
+  the wheel, the nova) lights wood only. A tree that catches burns about 7 s, burns the hero within a
+  metre of its trunk, then falls to embers and leaves a stump.
+- **The wyrm walks through wood**: a tree in its body's way goes down ahead of it. Stone turns it, as
+  before.
+- **Lifting and throwing** (a boss tears a piece from the ground and hurls it) is in the world's API
+  (ARCHITECTURE.md "Destruction"); the bosses' moves that use it come in their own PRs.
+
+Checked by `npm test` → `tests/integration/world.mjs`: SETS, CHIP, FELL, COVER, FIRE, THROW, RESET (87
+checks on the real forest and courtyard). **Not measured:** what breakables and grass fire do to the
+fights' difficulty. The bots of the other suites run on world mocks without them, and no human has
+played with them yet.
 
 ## Current numbers (v0.6 "bullet hell", 2026-11-09)
 Source of truth: `rules.js` (`DEFENSE`, `POSTURE`), `player.js` `TUNE`, `tuning.js`, `tuningFire.js`,
