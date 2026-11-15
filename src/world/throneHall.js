@@ -11,6 +11,7 @@ import {
   buildDeadTree, buildBoulder, buildFlagstone, buildBonfire,
 } from './forest.js';
 import { buildWarden, buildGreatSword, carved } from './landmarks.js';
+import { CONCEPTS, CONCEPT_LAYOUT, conceptFromSearch } from './throneConcepts.js'; // TEMPORARY: ?arena=a|b|c
 
 // The Obsidian Throne Hall (the Starless Lord's level; owner's pick "A" of three rendered arenas,
 // 2026-11-13). South to north (the player walks north, -z): the bonfire, a path of flagstones through
@@ -38,6 +39,7 @@ export const HALL = {
   pillarZ: [-15.5, -10, -4.5, 1, 6.5, 12],
   doorX: 3.1, // the door: |x| < doorX in the south wall
   bonfire: { x: 0, z: 31 },
+  ...(CONCEPT_LAYOUT[conceptFromSearch()] ?? {}), // TEMPORARY: a concept's own layout
 };
 
 const SIN_PITCH = Math.sin(CONFIG.camera.pitch);
@@ -97,6 +99,8 @@ const acc = (o, key, dt, rate, fn) => {
 };
 
 export function createThroneHall(U, colliders) {
+  const concept = conceptFromSearch(); // TEMPORARY
+  if (concept) return CONCEPTS[concept](U, colliders);
   const rng = mulberry32(CONFIG.seed + 211);
   const H = HALL, S = H.seal, T = H.throne, BF = H.bonfire;
   const stoneGeos = [], slabGeos = [], propGeos = [], treeGeos = [], slabs = [], bare = [], treeSpots = [];
