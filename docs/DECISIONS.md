@@ -2743,12 +2743,12 @@ pull and grip already met the world (ADR-107); nothing of his yet TOOK a piece.
 **Decision.** Three moves, each one long windup and a cast (`moves.js`, marked `terrain: kind`; the
 numbers in `TUNING.terrain`; the pieces' side in `starlessLord/terrain.js`):
 - **Void Hurl** (every form; 1.2 s): one piece comes out of its place, crosses to hang beside him and
-  is thrown where the hero is going. A stone already in the air first, then the nearest shard, the big
-  rim slabs last. The ring where it lands is drawn from the moment it leaves his grip (0.7 – 1.05 s of
-  flight), the glint comes `flashLead` before it lands, and the blow there is his: red, 26, knockdown,
-  2.3 m. What the landing does to the pieces round it is the world's (`throwTo`).
-- **Glass Rain** (forms 3, 4; 1.4 s): up to three pieces at once, thrown 0.55 s apart, the later ones a
-  step to either side of the hero's way (20 each). The throws go on after the cast by themselves, as
+  is thrown at the hero, 0.15 s ahead of him. A stone already in the air first, then the nearest
+  shard, the big rim slabs last. The ring where it lands is drawn from the moment it leaves his grip
+  (0.9 – 1.2 s of flight), the glint comes `flashLead` before it lands, and the blow there is his:
+  red, 26, knockdown, 2.1 m. What the landing does to the pieces round it is the world's (`throwTo`).
+- **Glass Rain** (forms 3, 4; 1.4 s): up to three pieces at once, thrown 0.55 s apart, the later ones up
+  to 1 m off the aim (20 each). The throws go on after the cast by themselves, as
   the Starless Sky's marks do.
 - **Crown Fall** (forms 2 – 4; 0.85 s): only while the hero stands in the strip a tall piece would fall
   on. His hand closes on it and wrenches it down (`topple(piece, dx, dz, 'boss')`): the fall, its red
@@ -2778,7 +2778,18 @@ ADR-107). Pieces that orbit him as a shield (it would stop the hero's blows: a n
 not a terrain move). Dealing the throw's blow from a called strike's timer: `onLand` is the moment
 the piece is seen to land.
 
-**Consequences.** His AI used the three moves 6 times in 39 moves in a 90 s bot fight in form 3; their
+**Tuned against answering bots** (the owner kept the moves after the film strips: "Keep and tune").
+Bots stood still, rolled at the glint, rolled as the ring appeared, ran out of the ring a quarter
+second after it appeared, and ran one way the whole time, at three distances. With the first numbers
+(flight 0.7 – 1.05 s, ring 2.3 m, aimed 0.4 s ahead, the rain's later throws up to 1.6 m off) only
+the rolls escaped: a hero could not run out of the ring in time (0.7 s at close range against 0.8 s
+needed), and one who kept running was hit because the throw led him into it. Now (flight 0.9 – 1.2 s,
+ring 2.1 m, 0.15 s ahead, 1 m off) every answer escapes every move and standing still is hit by each:
+`lord.mjs` TERRAIN asserts both. Crown Fall needed no change (stepping or rolling sideways out of
+the strip escapes it). A roll pressed with no direction is a backstep (0.22 s of i-frames, not 0.4):
+the glint alone is not enough with it.
+
+**Consequences.** His AI used the three moves 6 times in 39 moves in a 90 s bot fight in form 3 (2 in 40 after the tuning, on another draw of the dice); their
 effect on the fight's length and difficulty is **not measured**, and no human has played them. The
 crater runs out of stones in the air after six throws and can run low on shards in a long fight (36
 pieces, everything stands again on a reset). Training has a TERRAIN category for him (three staged

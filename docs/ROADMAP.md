@@ -176,8 +176,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The first hall's wardens and great swords are no longer placed (builders kept in landmarks.js)
 - [x] The Starless Lord's terrain moves (ADR-109, Session 49): Void Hurl, Glass Rain, Crown Fall on
       the crater's shards, slabs and hanging stones; Torn Stone scars the floor
-  - [ ] The owner's look at the film strips; tuning from a played fight (weights, the ring's lead)
-  - [ ] Sounds of their own (the lift, the throw); the hanging stones bob while they wait
+  - [x] The owner's look at the film strips ("Keep and tune"); tuned against answering bots
+  - [ ] A played fight: his weights for them, whether 0.9 s of flight is too generous
+  - [ ] Sounds of their own (the lift reuses the crash, the flight is silent)
+  - [x] The hanging stones drift while they wait
 - [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
 - [ ] The Ash Disciple's terrain moves
 - [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire

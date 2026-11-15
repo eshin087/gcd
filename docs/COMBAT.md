@@ -854,8 +854,8 @@ hit stun are all as written above), with these differences.
 the pieces of his level, chosen only while there is a piece for them:
 | Move | Tell | What happens | Answer |
 |---|---|---|---|
-| **Void Hurl** (every form) | red | 1.2 s: a stone that hung in the air (when they are gone: the nearest shard, the big rim slabs last) comes out of its place and hangs beside him, then is thrown where you are going. The ring where it lands (2.3 m) is drawn as it leaves his grip, 0.7 – 1.05 s before it lands; the glint 0.26 s before (26, knockdown) | be out of the ring, or roll through the landing; stagger him in the windup and the stone drops where it hangs |
-| **Glass Rain** (forms 3, 4) | red | 1.4 s: three pieces gather round him and leave 0.55 s apart, the later ones a step to either side of your way (20 each, knockdown) | keep moving one way, or roll each as it glints |
+| **Void Hurl** (every form) | red | 1.2 s: a stone that hung in the air (when they are gone: the nearest shard, the big rim slabs last) comes out of its place and hangs beside him, then is thrown at you (a little ahead if you are moving). The ring where it lands (2.1 m) is drawn as it leaves his grip, 0.9 – 1.2 s before it lands: time to run out of it; the glint 0.26 s before (26, knockdown) | run out of the ring, roll (as it appears or at the glint), or never stop moving; stagger him in the windup and the stone drops where it hangs |
+| **Glass Rain** (forms 3, 4) | red | 1.4 s: three pieces gather round him and leave 0.55 s apart, each at you, the later ones up to 1 m off (20 each, knockdown) | keep running one way, run out of each ring, or roll each as it glints |
 | **Crown Fall** (forms 2 – 4) | red | 0.85 s, only while you stand in the strip a tall piece would fall on: his hand closes on it and wrenches it down. The fall is the world's (below): its strip is marked red from the moment it goes, about 0.85 s for a 3.6 m shard (22 x the piece's weight, knockdown) | step out of the strip: sideways is shortest |
 
 The crater's pieces are finite: six stones in the air, then shards and slabs out of the floor; what he
