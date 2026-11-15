@@ -511,6 +511,17 @@ section), `player/fx.js` (the plunge).
   plane, two fans along the cut and against it, gone in a few frames) round a hard white core that
   lives two frames. The HUD adds a **screen cut**: a line of light across the whole frame on every
   cut, two crossing on the last blow, and the frame dips dark for a blink before it flashes.
+- **The afterimage and the blink** (2026-11-15, ADR-101; `player/fx.js` `_afterimage`, `blinkStream`,
+`blinkIn`). Every blink (the Ghostep, the plunge's vanish, each cut and art of a flurry, the
+riposte's return) leaves the hero behind as he stood, **printed in fine digits**: one character to
+a cell of a 0.13 m grid on the screen (his own coat's cell), in rows and columns, cold blue (a few
+brighter), where his body was (420 points of his own meshes, `player._sampleBody`). It falls apart
+from the feet up in 0.25–0.7 s. A character never lies on another: stacked, they bloom into a white
+blot. As he appears, a few dozen of its digits tear off and **fly to where he is now** (the eye is
+carried there), and more rush in onto him. (The owner's pick of three looks: "Digits", the figure
+alone, over an "Echo" of two fainter copies stepping off the way he left and a "Shatter" that burst
+it into its characters.) Against a duelist the flurry's flare, crescent, hanging cuts and burst are drawn at
+62 % (`FlurryFx.k`): at the wyrm's size they hid a man and the hero both.
 - **A duelist's flurry** (`duelist/fx.js` `flit`): between two blows a bright ember streak along the
   way he went, a tall flash where he stood, and where he stands a flash and a ring of sparks.
 - **The deflect chain:** each parry in rhythm clashes bigger and brighter, with a crossed pair of

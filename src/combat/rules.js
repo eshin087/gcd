@@ -118,6 +118,15 @@ export const DEFENSE = Object.freeze({
     // window. Only when the target is within this many metres (ground distance; the head / the foe)
     riposteRange: { air: 11, ground: 6 },
     reach: { air: 4.6, ground: 2.8 },
+    // against a foe who stands on the ground (a duelist: a man, not a head three metres across) the
+    // cuts are paced to be FOLLOWED and sized to him (ADR-101). Each cut: he is seen wound up where
+    // he appears (`hang` s), runs in past the foe's side (`side` m off the line through him, never
+    // through his body), strikes `hitPos` of the way along at `hitAt` of the dash, and slows into a
+    // finish held `hold` s. `reach`: how far out he appears and ends; `line`: half the length of the
+    // cut left hanging on the foe; `rush`: the pace of a long flurry's last cuts. The camera leans in
+    // `zoom` m and takes `kick` of the punch and `shake` of the shake the wyrm's cuts give it; `fx`
+    // scales the cut's flare, crescent and burst to a man's size.
+    ground: { reach: 2.3, side: 0.55, hang: 0.035, dash: 0.12, hitAt: 0.4, hitPos: 0.42, hold: 0.085, rush: 0.75, line: 1.9, zoom: -4, kick: 0.45, shake: 0.65, fx: 0.62 },
     turn: [0.55, 0.95],
     last: { damage: 60, posture: 22 },
     keepStreak: 0,
