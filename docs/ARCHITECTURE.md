@@ -761,7 +761,9 @@ the blade are at rest there (`T.jc`, the key at `u` 1: `swingTrack`'s `jz` / `kz
 it (out of a carry already behind the coil) they draw straight through; a clip's `apex: false` (the
 slam, the thrusts) passes it on the spline; `follow` [k, right, left] (the thrusts) turns the coil's
 blade k of the way toward where the blade comes from (`dir.Vc` the keyed coil); the hand's way to
-the coil bulges round his chest by sin² (no speed at either end); elbow poles follow the hands
+the coil bulges round his chest by sin² (no speed at either end); the elbow poles (`swingPoles`) and
+the flat come from the entry pose's over the windup (smoothstep of the phase), so a carry whose elbow
+stood elsewhere does not snap on the first frame; elbow poles follow the hands
 (`swingPoles`), the head stays on the target, the flat turns into the plane the blade is swinging
 in; and the clip hands its channels to `update()` (`A.pathCh`), so the cross-fade leaves them
 alone. **The body leads the blade:** the hips' channels (`bx by bz hip`) play `lead[0]` s and the
@@ -820,7 +822,7 @@ kind is `thrust` (the execution's lunge). **The way home:** from a clip's `home`
 forward round his chest). The hero's chain (`flow`): it starts only once the chain really ends,
 `anim.homeGo`, latched in `update()` when `rec` passes `home` with no light in the player's buffer
 (`player.buf.action`: with one pressed the next hit carries on out of the follow-through instead),
-and it is a settle of `SW_SETTLE` (0.5 s) that outlasts the recovery: `attackPose` writes how far it
+and it is a settle of `SW_SETTLE` (0.35 s) that outlasts the recovery: `attackPose` writes how far it
 has come (`anim.settleH`), and the `play('loco')` that ends the attack hands it to the carry's
 cross-fade (`anim.tail`, mode `'all'`, `_tailBlend`: the upper body and the blade finish the same
 smootherstep at the same pace, the bulge with it, the legs on the fade's own smoothstep). A roll, a
@@ -855,9 +857,10 @@ entries carry `line`; `anim.lastLine`; a chain's first hit follows nothing), so 
 are never in the same plane. The result is `anim.atkDef` / `anim.atkAnim` / `anim.atkVar` (0 =
 `anim`), and `attackPose` reads `atkAnim` for its def. `anim.forceVariant` (an index, or null) pins
 the pick (tests). The hero's chain OPENS (def `combo` 1) with a look its carry feeds: only the looks
-whose coil lies within `SW_PICK_NEAR` (0.6 rad) of the nearest coil to the blade as it stands
-(`SW_DIST`), then the rules above (a repeat only when nothing else is near): out of the low carry the
-draw cut or the rising slash, out of the cross guard the falling cut. The blade is still the hit test, so each look is swung at the wyrm in REACH.
+whose coil lies within `SW_PICK_NEAR` (0.3 m) of the nearest coil to the sword as it stands
+(`SW_DIST`, `swingWind`: the sword hand's way there plus the point's arc), then the rules above (a
+repeat only when nothing else is near): out of the low carry the draw cut or the rising slash, out
+of the cross guard, the shoulder rest or the blade raised before him the falling cut. The blade is still the hit test, so each look is swung at the wyrm in REACH.
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;

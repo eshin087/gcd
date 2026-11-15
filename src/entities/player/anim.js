@@ -645,8 +645,11 @@ const SW_HOME = 0.42; // the fraction of a recovery after which he starts back t
 // (the hero's light chain: the follow-through has run out by then, and the way home is a settle of
 // SW_SETTLE s that outlasts the recovery; the carry's cross-fade finishes it, HeroAnimator._tailBlend.
 // It was 0.21 and done by the recovery's end: the blade turned back at 6 m/s while the follow-through
-// still ran, and came home round his front at 32 m/s, a second cut)
-const SW_SETTLE = 0.5;
+// still ran, and came home round his front at 32 m/s, a second cut. 0.5 s left the blade still on his
+// left as the attack ended, and a click again then started a new chain whose falling / draw / rising
+// opener wound across his whole front at 47-58 m/s, faster than its cut: 0.35 s peaks at ~24 m/s on
+// the way home after a single hit, main's 31-44)
+const SW_SETTLE = 0.35;
 // The hero's sword arm (the hand, its elbow, the blade, its flat) when a roll, a step back, a block or
 // a drink cuts the way home, or the swing itself (HeroAnimator.tail, mode 'arm'): it carries on at the
 // speed it had and gets to the new clip's pose over a time its distance needs (the steel's path at
@@ -679,7 +682,7 @@ const SW_JOIN = 0.4;
 const SW_DRIFT = [0.5, 1.5]; // m/s at the point: an attack's entry velocity counts from here (play: a slower drift does not steer the windup)
 const SW_KEEP = [-0.1, 0.5]; // the cosine between the way into the coil and the cut: below, the blade rests there; above, it draws through (swingCoilKeep)
 const SW_BLADE = DIM.drawnTip ?? DIM.steelTip; // m: the drawn blade, grip to point
-const SW_PICK_NEAR = 0.6; // rad: a chain's first hit plays a look whose coil is within this of the nearest one's (_pickVariant)
+const SW_PICK_NEAR = 0.3; // m: a chain's first hit plays a look whose coil is within this of the nearest one's (_pickVariant, swingWind)
 const SW_BULGE = 0.24; // m: the sword hand comes home this far forward round his chest at mid-way
 const SW_CLEAR = 0.24; // m: the sword hand's way to a coil stays this far from the spine (it bulges forward)
 const SW_FLAT = [1.2, 3.2]; // rad per phase of blade turn: below, the keyed flat; above, the swing's plane
@@ -1138,6 +1141,18 @@ function swingPose(p, A, k, t, W, Ac, R) {
     }
   }
   swingPoles(p, C.autoR, C.autoL);
+  if (inert && (u < 1 || uB < 1)) {
+    // the hero's light / slam: the elbows' poles and the flat come from the entry pose's over the
+    // windup (the auto pole is a function of where the hand is, the flat the clip's: a carry whose
+    // elbow stood elsewhere snapped to it on the swing's first frame, and the wrist's limit, catching
+    // the blade on the turned forearm, jumped the point 6-10 m/s with the hand still)
+    const wR = smoothstep(0, 1, u), wL = smoothstep(0, 1, uB);
+    for (let c = 0; c < 3; c++) {
+      if (C.autoR) p[P.rP + c] = F[P.rP + c] + (p[P.rP + c] - F[P.rP + c]) * wR;
+      if (C.autoL) p[P.lP + c] = F[P.lP + c] + (p[P.lP + c] - F[P.lP + c]) * wL;
+      if (C.dir) p[P.swF + c] = F[P.swF + c] + (p[P.swF + c] - F[P.swF + c]) * wR;
+    }
+  }
   if (C.autoHy) p[P.hdY] = -(p[P.pelvY] + p[P.spY]) * 0.8; // the eyes stay on the target
   if (C.autoHx) p[P.hdX] = 0.02 - 0.55 * Math.max(0, p[P.spX] - 0.08);
   if (C.rF) {
@@ -3619,17 +3634,18 @@ export class HeroAnimator {
       const n = list.length + 1;
       if (Number.isInteger(this.forceVariant)) k = clamp(this.forceVariant, 0, n - 1);
       else {
-        // the hero's chain OPENS with a look the carry feeds: its coil within SW_PICK_NEAR of the
-        // nearest coil to the blade as it stands (a falling cut out of a low carry whipped the blade
-        // 2 m up behind his head in six frames, a second cut before the cut)
+        // the hero's chain OPENS with a look the carry feeds: its coil within SW_PICK_NEAR (m: the
+        // sword hand's way there plus the point's arc, swingWind) of the nearest coil to the sword as
+        // it stands (a falling cut out of a low carry whipped the blade 2 m up behind his head in six
+        // frames, a second cut before the cut; by the blade's angle alone the draw cut came up out of
+        // the shoulder rest, the hand 0.4 m from its coil, and the wrist's limit strobed the point)
         const D = SW_DIST;
         let lim = Infinity;
         if (this.freeHand && def.combo === 1 && n <= D.length) {
-          const c = this.cur, cl = Math.hypot(c[P.swD], c[P.swD + 1], c[P.swD + 2]) || 1;
           let lo = Infinity;
           for (let i = 0; i < n; i++) {
-            const an = i ? list[i - 1] : def.anim, C = an?.kind === 'clip' ? swingClip(an.clip) : null, V = C?.dir?.V;
-            D[i] = V ? Math.acos(clamp((c[P.swD] * V[3] + c[P.swD + 1] * V[4] + c[P.swD + 2] * V[5]) / cl, -1, 1)) : 0;
+            const an = i ? list[i - 1] : def.anim, C = an?.kind === 'clip' ? swingClip(an.clip) : null;
+            D[i] = C ? fin(swingWind(C, this.cur)) : 0;
             lo = Math.min(lo, D[i]);
           }
           lim = lo + SW_PICK_NEAR;
