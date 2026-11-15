@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
-import { TELL_STYLE } from '../../combat/rules.js';
+import { DuelFx } from '../enemies/duelist/fx.js';
 
 // Dragon FX. Everything that burns is heat in the fire field (render/fireField.js, ADR-101: blobs
 // that add up into one body of fire printed in the wyrm's small digits): the breath, the fireballs
@@ -15,13 +15,8 @@ import { TELL_STYLE } from '../../combat/rules.js';
 const S = SCALE;
 const EMBER = ".'`*";
 const DUST = ",.`:'";
-// atlas glyphs only (STYLE.md): alarm marks for the red flash; a star + line rays for the glint
-const RED_GLYPHS = '!#';
-const RED_CORE = '!';
-const GLINT_CORE = '*';
-const GLINT_RAY = '|';
-// four-point sparkle strokes (screen-space rotation of '|'): vertical, horizontal, two diagonals
-const SPARKLE_ROT = [0, Math.PI / 2, Math.PI / 4, -Math.PI / 4];
+// the timing cues' scale (DuelFx.tellFlash's k: 1 = a human's): the wyrm's are half again as big
+const TELL_K = 1.5;
 // parry sparks: hot white core, white + gold sparks (blue parries are bigger, not blue)
 const PARRY_WHITE = [3.4, 3.2, 2.8];
 const PARRY_GOLD = [3.4, 2.3, 0.75];
@@ -30,7 +25,6 @@ const PARRY_LIGHT = [1, 0.88, 0.62];
 const rand = (a, b) => a + Math.random() * (b - a);
 // scorch + ground flames along the breath: [distance from the mouth, radius] (v0.1 metres)
 const SCORCH_STEPS = [[4, 1.4], [6.5, 1.7], [9, 2.0], [11.5, 2.2]];
-const tellStyle = (tell) => TELL_STYLE[tell] ?? TELL_STYLE.normal;
 // fire hazards / spells / flight (dragon-fire): atlas glyphs and linear HDR colours
 const HZ_RISE = '^';
 const CLAW_STREAK = '-';
@@ -70,11 +64,6 @@ const hash01 = (a, b) => {
   const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
   return s - Math.floor(s);
 };
-/** Pooled-light colour (0..1) from an HDR tell colour. */
-function lightColor(c) {
-  const m = Math.max(c[0], c[1], c[2], 1e-3);
-  return [c[0] / m, c[1] / m, c[2] / m];
-}
 
 export class DragonFx {
   constructor(dragon) {
@@ -121,6 +110,9 @@ export class DragonFx {
     }));
     // fire hazards / spells (see the "fire" section): one reused spawn record + colour scratch
     this._r = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.1, size: 0.4, sizeEnd: 0.4, glyph: '*', color: null, colorEnd: null, alpha: 1, alphaEnd: 0, drag: 0, gravity: 0, spin: 0, rot: 0, flicker: 0, stretch: 0 };
+    // the timing cues (tellFlash): the one design every boss shares, drawn by the duelists' effects
+    // (a white cross / star written on the letter grid, a red blaze), at the wyrm's size
+    this.tells = new DuelFx(dragon);
     this._b = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, size: 1, sizeEnd: 1, heat: 0.5, heatEnd: 0.2, drag: 0, gravity: 0, kind: 0 }; // _blob's record
     this._c0 = [0, 0, 0];
     this._c1 = [0, 0, 0];
@@ -251,6 +243,7 @@ export class DragonFx {
   }
 
   reset() {
+    this.tells.reset();
     this.breathing = false;
     this.breathLights.length = 0;
     for (const l of this.lights) {
@@ -729,91 +722,12 @@ export class DragonFx {
   }
 
   /**
-   * Timing flash of a tell at the striking part (combat:flash). Red (dodge only): an alarm burst of
-   * red glyphs + a red light. Normal / blue (parryable): a white glint — see _glint.
+   * Timing flash of a tell at the striking part (combat:flash): the design every boss shares
+   * (DuelFx.tellFlash, COMBAT.md "Tell presentation"): normal a white cross written on the letter
+   * grid, blue a larger eight-point star with a ring, red a ragged red blaze.
    */
   tellFlash(tell, x, y, z) {
-    if (!Number.isFinite(x + y + z)) return;
-    if (tell === 'red') this._redFlash(x, y, z);
-    else this._glint(x, y, z, tellStyle(tell));
-  }
-
-  _redFlash(x, y, z) {
-    const c = TELL_STYLE.red.color;
-    // hard core mark
-    this._spawn(this.add, {
-      x, y, z, life: 0.3, size: 1.7 * S, sizeEnd: 0.4 * S, glyph: RED_CORE,
-      color: [c[0] * 1.6, c[1] * 1.6, c[2] * 1.6], colorEnd: c, alpha: 1, alphaEnd: 0,
-    });
-    const n = 18;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + rand(-0.15, 0.15);
-      const sp = rand(4, 9) * S;
-      this._spawn(this.add, {
-        x, y, z,
-        vx: Math.cos(a) * sp, vy: rand(-1.5, 3.5), vz: Math.sin(a) * sp,
-        life: rand(0.22, 0.4), size: rand(0.35, 0.55) * S, sizeEnd: 0.1, glyph: RED_GLYPHS,
-        color: c, colorEnd: [c[0] * 0.3, c[1] * 0.3, c[2] * 0.3], alpha: 1, alphaEnd: 0, drag: 4, flicker: 0.3,
-      });
-    }
-    this._light({ x, y: Math.max(0.8, y), z, color: lightColor(c), intensity: 4, radius: 6 * S, life: 0.3, fade: 0.25 });
-  }
-
-  /**
-   * White glint (parry timing): a star core, a four-point sparkle (long screen-aligned cross + short
-   * diagonals) and a few short rays shooting out in the screen plane, plus a small white light.
-   * `st.glint` scales size and brightness (blue = 1.5: a heavier blow, same white). Pulled toward
-   * the camera so the body doesn't swallow it.
-   */
-  _glint(x, y, z, st) {
-    const k = st.glint > 0 ? st.glint : 1;
-    const c = st.color;
-    const cam = this.game.camera?.position;
-    if (cam) {
-      const dx = cam.x - x, dy = cam.y - y, dz = cam.z - z;
-      const l = Math.hypot(dx, dy, dz);
-      if (l > 1e-3) {
-        const o = (0.7 * S) / l;
-        x += dx * o; y += dy * o; z += dz * o;
-      }
-    }
-    const add = this.add;
-    // star core
-    this._spawn(add, {
-      x, y, z, life: 0.26, size: 1.15 * S * k, sizeEnd: 0.25 * S * k, glyph: GLINT_CORE,
-      color: [c[0] * 1.6 * k, c[1] * 1.6 * k, c[2] * 1.6 * k], colorEnd: [c[0] * 0.5, c[1] * 0.5, c[2] * 0.5],
-      alpha: 1, alphaEnd: 0, rot: rand(0, 0.6), spin: 2.5,
-    });
-    // four-point sparkle: long vertical + horizontal strokes, shorter diagonals (rot is screen-space)
-    for (let i = 0; i < 4; i++) {
-      const long = i < 2;
-      const sz = (long ? 0.62 : 0.4) * S * k;
-      this._spawn(add, {
-        x, y, z, life: long ? 0.24 : 0.18, size: sz, sizeEnd: 0, glyph: GLINT_RAY,
-        rot: SPARKLE_ROT[i], stretch: long ? 2.6 : 1.4,
-        color: [c[0] * 1.3 * k, c[1] * 1.3 * k, c[2] * 1.3 * k], colorEnd: c, alpha: 1, alphaEnd: 0.2,
-      });
-    }
-    // a few short rays flying out in the screen plane, each stroke aligned with its direction
-    const U = this.game.U;
-    const R = U?.uCamRight?.value, Up = U?.uCamUp?.value;
-    const rx = R?.x ?? 1, ry = R?.y ?? 0, rz = R?.z ?? 0;
-    const ux = Up?.x ?? 0, uy = Up?.y ?? 1, uz = Up?.z ?? 0;
-    const n = k > 1 ? 8 : 6;
-    const a0 = rand(0, Math.PI * 2);
-    for (let i = 0; i < n; i++) {
-      const a = a0 + (i / n) * Math.PI * 2 + rand(-0.12, 0.12);
-      const ca = Math.cos(a), sa = Math.sin(a);
-      const sp = rand(6, 9) * S * k;
-      this._spawn(add, {
-        x, y, z,
-        vx: (rx * ca + ux * sa) * sp, vy: (ry * ca + uy * sa) * sp, vz: (rz * ca + uz * sa) * sp,
-        life: rand(0.16, 0.24), size: 0.3 * S * k, sizeEnd: 0.06 * S, glyph: GLINT_RAY,
-        rot: a - Math.PI / 2, stretch: 0.9,
-        color: [c[0] * k, c[1] * k, c[2] * k], colorEnd: [c[0] * 0.25, c[1] * 0.25, c[2] * 0.25], alpha: 1, alphaEnd: 0, drag: 7,
-      });
-    }
-    this._light({ x, y: Math.max(0.8, y), z, color: lightColor(c), intensity: 2.2 * k, radius: 4 * S * k, life: 0.22, fade: 0.2 });
+    this.tells.tellFlash(tell, x, y, z, TELL_K);
   }
 
   /** Impact cue for AoE tells (the zone's combat:flash): the heated ground flares (heatFlare). */
@@ -1925,6 +1839,7 @@ export class DragonFx {
   }
 
   update(dt) {
+    this.tells.updateGlints(dt);
     this._updateProjectiles(dt);
     this._updateBolts(dt);
     this._pruneLights();
