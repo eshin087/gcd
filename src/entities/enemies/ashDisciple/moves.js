@@ -291,14 +291,14 @@ export const MOVES = {
   },
 
   /**
-   * Hundred Petals: his answer to a streak of guards (duelist.js `streak`, DEFENSE.foeStreak): as
+   * Scattering Ash: his answer to a streak of guards (duelist.js `streak`, DEFENSE.foeStreak): as
    * many cuts as the streak counts. The first comes from where he stands; before each of the others
    * he is gone and at another side of the hero (`flit`), and a raised guard meets them from any side.
    * Parry or block them all and his posture breaks. Realised with { count } (realise.js): beat 0,
    * then the others in turn; triggered by hand it plays these four.
    */
   streakFlurry: {
-    label: 'Hundred Petals', phase: 1, weight: [0, 0], counter: true, streak: true, cooldown: 0, band: [0, 6], recovery: 0.75,
+    label: 'Scattering Ash', phase: 1, weight: [0, 0], counter: true, streak: true, cooldown: 0, band: [0, 6], recovery: 0.75,
     beats: [
       cut('diag', N, 0.62, 14, { track: 0.7 }),
       cut('flat', N, 0.48, 14, { flit: { r: 2.6 } }),

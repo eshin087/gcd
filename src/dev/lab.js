@@ -6,6 +6,8 @@ import { injectLabStyle } from './labStyle.js';
 import { HitboxOverlay } from './hitboxOverlay.js';
 import { TimingTrainer, tellName } from './timingTrainer.js';
 import { ModelViewer, VIEW_ANGLES, VIEW_LOOKS } from './modelView.js';
+import { Training } from './training.js';
+import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 
@@ -83,6 +85,9 @@ export class Lab {
     this.loop = { on: false, every: Math.min(8, Math.max(2, finite(this.prefs.loopEvery, 4))), t: 0, count: 0, prevAI: null };
     this.trainer = new TimingTrainer(game);
     this.viewer = new ModelViewer(game, this);
+    // Training (training.js): the catalogue of situations, one click each; its panel (trainingPanel.js)
+    this.training = new Training(game);
+    this.trainingPanel = new TrainingPanel(game, this);
     // model-view buttons' selection: mode 'view' (one angle) | 'spin' (turntable) | 'sheet' (every
     // angle in tiles); look = the hero's look-dev render (VIEW_LOOKS)
     this.mvPick = { target: 'hero', angle: 'front', dark: false, mode: 'view', look: 'ascii' };
@@ -287,6 +292,7 @@ export class Lab {
       this.viewer.pinAim(); // before the player reads game.mouseGround
       this.trainer.trackInput();
       if (this.loop.on) this._tickLoop();
+      this.training.update(rdt);
     } catch (err) {
       this._fail('tick', err);
     }
@@ -679,6 +685,7 @@ export class Lab {
 
       const head = el('div', 'lab-head', null, root);
       el('span', 'lab-title', 'LAB', head);
+      button(head, 'TRAINING', () => this.trainingPanel.toggle(), 'lab-trn').title = 'every situation, one click each (F4)';
       el('span', 'lab-hint', 'F1 / ` toggle · 1-9 abilities · [ ] time', head);
       button(head, '×', () => this.setOpen(false), 'lab-close').title = 'close the Lab (F1)';
       this.ui.status = el('div', 'lab-status', 'ready', root);

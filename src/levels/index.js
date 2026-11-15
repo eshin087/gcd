@@ -2,6 +2,7 @@ import { CONFIG } from '../core/config.js';
 import { CINDERWOOD } from './cinderwood.js';
 import { ASHFALL } from './ashfall.js';
 import { STARLESS } from './starless.js';
+import { createTrainingRoom, ROOM_WORLD, stageLook } from '../world/trainingRoom.js';
 
 // Levels (docs/specs/ash-disciple.md §1, ARCHITECTURE.md → Levels). One level is built per page
 // load; `?level=<id>` picks it and switching level reloads the page, so nothing is ever torn down.
@@ -33,6 +34,31 @@ export function levelFromSearch(search) {
     id = null;
   }
   return getLevel(id) ?? DEFAULT_LEVEL;
+}
+
+/**
+ * The level on the training room instead of its own set (`?stage=lab`, `&stageLook=grid|holo|void`;
+ * ADR-098): the same boss, the lab stage's floor and layout (world/trainingRoom.js). Any other URL
+ * returns `level` unchanged.
+ */
+export function withStage(level, search) {
+  let q = null;
+  try {
+    q = new URLSearchParams(search ?? '');
+  } catch {
+    q = null;
+  }
+  if (!level || q?.get('stage') !== 'lab') return level;
+  const look = stageLook(q.get('stageLook'));
+  return Object.freeze({
+    ...level,
+    name: 'Training Room',
+    sub: `${level.name} · ${look.label}`,
+    stage: 'lab',
+    stageLook: look.id,
+    world: ROOM_WORLD,
+    buildSet: (U, colliders) => createTrainingRoom(U, colliders, look.id),
+  });
 }
 
 /** Merge the level's world overrides into CONFIG.world (call once, before building any module). */
