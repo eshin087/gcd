@@ -28,6 +28,15 @@ export const RELEASES = [
       },
       {
         date: '2026-11-15',
+        title: 'A heavy attack, and five heavies to choose from',
+        notes: [
+          'A HEAVY button (right click, R2, a fourth tile on the phone): on its own a dashing two-handed thrust.',
+          "After the first to fourth light of the combo it is that point's own heavy: a rising cut that staggers, a spinning sweep, a guard-breaking falling cut, a bigger slam.",
+          'Hold HEAVY to charge the cleave, so a light attack comes out the instant you press it. Block moved to the middle click, lock-on to Tab.',
+        ],
+      },
+      {
+        date: '2026-11-15',
         title: 'The hero stands like a swordsman',
         notes: [
           'Exploring, he stands at ease: a hand on his belt, the blade carried down his arm.',
