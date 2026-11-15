@@ -24,6 +24,8 @@ export class Scorch {
     U.uScorchBounds.value.set(this.min, this.min, this.extent, 0);
     this.dirty = false;
     this.emberTimer = 0;
+    // a wisp of smoke off hot ground (a reused fire-field record: no per-spawn object)
+    this._smoke = { x: 0, y: 1.0, z: 0, vx: 0.2, vy: 0.8, vz: 0, life: 1.6, size: 1.0, sizeEnd: 2.4, heat: 0.25, heatEnd: 0, drag: 0.4, gravity: 0, kind: 'smoke' };
   }
 
   _idx(x, z) {
@@ -99,7 +101,7 @@ export class Scorch {
     }
 
     // drifting embers above hot ground
-    const fx = this.game.fx?.add;
+    const fx = this.game.fx?.add, fire = this.game.fx?.fire;
     if (fx && this.active.size) {
       this.emberTimer += dt * Math.min(60, this.active.size * 0.25);
       const arr = this.emberTimer >= 1 ? [...this.active] : null;
@@ -109,6 +111,17 @@ export class Scorch {
         const h = this.heat[i];
         if (h < 0.15) continue;
         const cx = i % this.size, cz = Math.floor(i / this.size);
+        // now and then a wisp of smoke off the hottest ground (grey letters in the fire field:
+        // it reads as burnt, never as fire that still hurts)
+        if (h > 0.5 && fire && Math.random() < 0.12) {
+          const s = this._smoke;
+          s.x = this.min + (cx + Math.random()) * this.cellSize;
+          s.z = this.min + (cz + Math.random()) * this.cellSize;
+          s.vy = 0.6 + Math.random() * 0.7;
+          s.life = 1.3 + Math.random() * 0.9;
+          s.heat = 0.2 + 0.14 * h;
+          fire.spawn(s);
+        }
         fx.spawn({
           x: this.min + (cx + Math.random()) * this.cellSize,
           y: 0.15,
