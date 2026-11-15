@@ -358,15 +358,21 @@ Render helpers for creature modules:
     times the px-per-metre there, wrapped to one cell).
 - **Landmarks** (`world/landmarks.js`): builders that return painted geometries in world space:
   `buildElderWyrm`, `buildCinderTree` (Cinderwood), `buildSectGate`, `buildCauldron`, `buildColossus`
-  (Ashfall), `buildWarden`, `buildGreatSword` (the Obsidian Throne), all `(rng, x, z, yaw, s, opts?)`.
+  (Ashfall), `buildWarden`, `buildGreatSword` (built for the Obsidian Throne's first hall; not placed
+  since ADR-112), all `(rng, x, z, yaw, s, opts?)`.
   `carved(parts)` converts painted parts to the carved attribute set for a set's `stones` mesh;
+  For the Obsidian Throne's crater (ADR-112): `buildFallenStar(rng, x, z)` (the split star behind the
+  seat and its crown of splinters), `buildSpike(rng, x, y, z, { h, w, d, tip, lean, yaw, roll, col,
+  lump })` (a tapering slab: the rim's plates, the crown), `starCleft(rng, x, z)` (inlay glyphs for
+  the set's glow batch), `facetCol(col, k)` (a `carve()` colour: one tone a facet), `STAR_GLASS`,
+  `STAR_COLLIDERS`. These are built with `carve()` attributes already and need no `carved()`.
   `landmarkPoint(x, z, yaw, s, lx, lz)` maps a builder's local point to the world;
   `ELDER_COLLIDERS` / `GATE_COLLIDERS` are `[lx, lz, r]` lists the set adds. Where they stand:
   `FOREST_LANDMARKS` (`forest.js`), `COURTYARD.greatGate / cauldron / guardians` (`courtyard.js`),
-  inline in `throneHall.js`. Trees and boulders in a landmark's footprint are built, then dropped, so
+  `THRONE.star` (`throneHall.js`). Trees and boulders in a landmark's footprint are built, then dropped, so
   the rest of a level's random layout does not move. Each set uses its own seeded rng for them.
 - `createCarvedGlyphMaterial(U, opts)` (`render/materials.js`) — **carved glyphs, for FLOORS only**
-  since ADR-100 (flagstones, paving, the hall's tiles; upright objects use prop art above). Glyph cells sit on a world-fixed lattice in
+  since ADR-100 (flagstones, paving, the crater's plates; upright objects use prop art above). Glyph cells sit on a world-fixed lattice in
   a plane facing the default camera (`viewPitch`), so they are upright, equal-sized and never
   re-pick as the camera moves; one glyph per cell, picked by light on flat facets, contour strokes on
   mid-lit flanks, world-fixed cracks and moss. Renders directly (alpha `FLAG.NONE`, the grid pass
@@ -652,7 +658,9 @@ counts up in `_guardClash` and is zeroed by a `takeHit` that deals damage (`_str
 marks its reaction `flurry`; as the deflect ends `brain.startStreak()` plays the kit's
 `streakMove(phase)` (default `streakFlurry`), a move with `streak: true` realised with `{ count }`
 (`realise.js`: its first beat, then the others in turn). A beat with `flit: { r }` puts him at
-another side of the hero as it starts (`duelist.flit`) and its hit carries `around: true`. `brain._act`
+another side of the hero as it starts (`duelist.flit`: the side he turns to, or the nearest one that
+is `standable(x, z)`: inside his bound and clear of colliders; the Lord's also on his floor; ADR-112)
+and its hit carries `around: true`. `brain._act`
 reports every blow's result to `duelist.onStreakBlow(a, b, r)` (`a.streak` = { need, got, failed }):
 parried or blocked counts (a perfect parry two) and takes one off `d.streak`; `got >= need` with
 none missed calls `_break()`. Lab / tests: `dragon.debug.streak(n)`, `.flurry(n)`.
@@ -2013,13 +2021,24 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   meshes), `scarInk [r, g, b]` (the colour of cracks in its floor), `ash: true` (atmosphere: falling ash flakes and a
   few embers instead of fireflies, mist and leaves) and `grass: { density(x, z) → 0..1 factor,
   height (×), ash 0..1 }` (world.js thins / shortens / greys the meadow; grass.js `uAsh`).
-  A set may also bring its own night and weather (ADR-070; the throne hall does):
+  A set may also bring its own night and weather (ADR-070; the Obsidian Throne's set does):
   - `sky: { moonColor, moonDir, ambient, fogColor, fogNear, fogFar }` (all optional): world.js writes
     it into the shared uniforms once, right after the set is built.
   - `ambience: { setup(game), update(dt, game), ... }`: atmosphere.js calls `setup` once (lights,
     its own particle batch: `game.pipeline.registerParticles`) and `update` every frame INSTEAD of
-    the fireflies / mist / leaves / ash (the bonfire's flames stay). The throne hall's also has
+    the fireflies / mist / leaves / ash (the bonfire's flames stay). The Obsidian Throne's also has
     `flare(k)`: its floor seal brightens and settles (the boss calls it; optional for callers).
+- **The Obsidian Throne's set** (`world/throneHall.js`: `createThroneHall`, layout `THRONE`; ADR-112;
+  the names are from the hall it replaced). An open crater: a disc of plates `THRONE.R` 15 m round the
+  seal (the origin), the dais from `daisZ`, the seat at `throne`, the fallen star at `star`, the south
+  lip at `entryZ`, the bonfire at `bonfire`. `THRONE.floor = { r, zN }` is where the boss may stand:
+  the level puts `r` into `world.dragonBound` (the duelist's circle; the Lord's `TUNING.bound` is the
+  same number) and `zN` into `world.bossFloor = { zN }` (the dais's line: `StarlessLord.clampTarget`
+  reads it; a level or stage without `bossFloor` has no such line). Its breakables: 'shard' (the
+  star's glass in the floor and on the rim), 'slab' (the rim's tall plates) and 'hover' (six stones
+  hanging in the air: no collider, `cover: false`, `hp: Infinity`: they only chip); all `lift: 2`.
+  Three rng streams: the layout (the picked render's sequence: add nothing to it), the rubble broken
+  pieces leave, and anything added later.
 - `text`: `arrive[]`, `stir`, `phase2`, `phase3`, `phase4` (null / absent: no banner), `victory`,
   `fallen`, `restReset`, `again`, `rise` (GameFlow `_text(key)`; Cinderwood's lines when the game has
   no level).
@@ -2184,7 +2203,10 @@ onExecute({ damage })          // the DEATHBLOW: the form ends ('dragon:plunged 
 endBreak()                     // a break nobody answered: posture.spared of the bar back, half the meter
 addPosture(n)                  // × lerp(posture.gainByHp) by the bar's missing fraction (hard to move on a
                                // full bar); regen × posture.regenByHp
-moveBy / clampTarget           // he keeps to the hall's floor: the rectangle TUNING.hall, not a circle
+moveBy / clampTarget(p, pad) / onFloor(x, z)
+                               // he keeps to the crater's floor: his circle round the seal (`bound`:
+                               // TUNING.bound = THRONE.floor.r) and south of the dais
+                               // (CONFIG.world.bossFloor.zN, the level's; absent on the lab stage)
 _glide(dt)                     // in footwork past TUNING.glide.on m/s: the animator's 'glide' clip, the root
                                // lifted TUNING.glide.hover m, a wake under him; a backstep / sidestep likewise
 debug.phase4(), debug.setForm(n), debug.form

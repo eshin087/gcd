@@ -827,8 +827,9 @@ hit stun are all as written above), with these differences.
   4 (Shen Hui: 0.42 s). The glint comes 0.26 s before every impact (his `flashLead`; Shen Hui's is
   0.3 s) and never before the blow ahead of it has landed. Breathers [0.14 – 0.4, 0.1 – 0.32, 0.08 –
   0.26, 0.05 – 0.18] s; he flows straight into another move [40, 50, 55, 65] % of the time.
-- **He keeps to the hall's floor** (a rectangle: between the walls, off the dais, inside the door), so
-  a hero backed into a corner or against the door is still in his reach. He walks inside striking
+- **He keeps to the crater's floor** (a circle of 13.6 m round the seal, and off the dais; the plates
+  end at 15 m and the rim's slabs stand beyond), so a hero backed against the rim is still in his
+  reach. The crater has no walls: the hero can leave it between the slabs. He walks inside striking
   range; outside it he **glides**: 6 m/s, and 9.2 m/s past 5.5 m (the hero sprints at 7.2), carried a
   hand's breadth over the floor with his cape streaming. He steps back and aside the same way.
 - Every blow × `damageScale` 1.1.
@@ -902,7 +903,7 @@ blows ≥ 0.34 s apart, each flash after the blow before it, a six-hit string th
 form, faster form by form), TIMING (53 move × form runs: every contact within 23 ms of its flash +
 0.26 s, every move's first hit lands), FORMS (the whole four-bar flow through the hero's own attack
 press), SPELLS (every answer in the table above, and the glide), BOUNDS (never off the floor; 32
-blows reach a cornered hero in 45 s), FLOW (the door, the throne intro, a death and the reset), WIN.
+blows reach a hero at the rim in 45 s), FLOW (the south lip, the throne intro, a death and the reset), WIN.
 **Difficulty (measured, seed 4242, god-mode fencing bots; 2026-11-14, with the moves above, the
 hero's faster chain of ADR-075, the guard of ADR-080 and the hit reactions of ADR-083):** a bot that
 answers every tell wins in 93 s with 67 parries (forms at 0 / 18 / 41 / 66 s); answering 85 % it takes
@@ -917,7 +918,9 @@ whole fight.
 What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood: the trees
 nearest the clearing, the dead trees, young pines and boulders inside it, and the stone circle. In
 Ashfall: the pillars, the lanterns, the stele, the near dead trees and boulders (the bronze bell only
-rings). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
+rings). In the Obsidian Throne's crater: the shards of the star's glass standing in the floor (cover,
+1.9 – 4.2 m), the tall slabs and shards of the rim, and six stones hanging in the air (these only
+chip, stop nothing and block nobody: they are there for the Void to throw). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
 
 - **Blows chip and break.** Every blow has a power. The hero: its damage / 110 (a quick cut 0.27, the
   slam 0.6, a full cleave 1.0). A duelist: damage / 40 (a cut 0.3, an overhead 0.6; red x 1.25). The
