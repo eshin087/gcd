@@ -33,6 +33,9 @@ import { buildSpike, buildFallenStar, starCleft, facetCol, STAR_GLASS, STAR_COLL
 // carved glyphs for the floor, the screen grid for trees and the bonfire, glyph particles for the
 // flames and the inlay.
 
+// a vent flame's reused fire-field record (no allocation per spawn)
+const ventBlob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.5, size: 0.8, sizeEnd: 0.25, heat: 0.5, heatEnd: 0, drag: 1.2, gravity: 0, kind: 'fire' };
+
 /** Layout numbers (world metres). The level's CONFIG.world overrides match these (levels/starless.js). */
 export const THRONE = {
   R: 15, // the crater's floor: a disc round the seal
@@ -406,7 +409,7 @@ export function createThroneHall(U, colliders) {
       if (st.flare > 0) st.flare = Math.max(0, st.flare - dt * 0.7);
       if (Math.abs(st.flare - st.shown) > 0.03 || (st.flare === 0 && st.shown !== 0)) fillGlow();
       glowSys?.update(dt, game.time);
-      const fx = game.fx?.add;
+      const fx = game.fx?.add, fire = game.fx?.fire;
       if (!fx) return;
       const D = game.world?.destructibles;
       for (const b of fires) {
@@ -426,6 +429,22 @@ export function createThroneHall(U, colliders) {
         }
         acc(b, 'fire', dt, vent ? 20 : 5, () => {
           const a = Math.random() * TAU, r = Math.random() * (vent ? 0.55 : b.r ?? 0.6), hot = Math.random();
+          if (vent && fire) {
+            // a vent's flame: heat in the fire field (render/fireField.js, ADR-113), cool blobs that
+            // sum to an orange body with red tongues (born 0.7 m up: lower, the depth fade eats them)
+            const q = ventBlob;
+            q.x = b.x + Math.cos(a) * r;
+            q.y = Math.max(0.7, b.y + 0.5 + Math.random() * 0.2);
+            q.z = b.z + Math.sin(a) * r;
+            q.vx = (Math.random() - 0.5) * 0.25;
+            q.vy = 0.6 + Math.random() * 0.8;
+            q.vz = (Math.random() - 0.5) * 0.25;
+            q.life = 0.4 + Math.random() * 0.5;
+            q.size = 0.7 + hot * 0.36;
+            q.heat = 0.46 + hot * 0.12;
+            fire.spawn(q);
+            return;
+          }
           fx.spawn({
             x: b.x + Math.cos(a) * r, y: b.y + Math.random() * 0.12, z: b.z + Math.sin(a) * r,
             vx: (Math.random() - 0.5) * 0.25, vy: vent ? 0.6 + Math.random() * 0.8 : 0.5 + Math.random() * 0.5, vz: (Math.random() - 0.5) * 0.25,

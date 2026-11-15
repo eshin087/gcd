@@ -56,8 +56,25 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Wyrm letters: fine digits in 5x8 px cells at 720p, calm tone, grid anchored to it (ADR-092, ADR-093)
 - [x] Background objects in the dragon's look (prop art); the house style written down (ADR-100)
 - [x] Landmarks: big set pieces per level, in the same look (ADR-100)
-- [ ] A second pass on the landmarks at the game camera (the stone swordsmen read as a mass of digits;
-      the gate sits mostly off the top of the frame)
+- [x] A second pass on the landmarks at the game camera: rebuilt as a few flat masses, moved to where
+      the duel's camera looks (ADR-113)
+- [x] Effects in the dragon's letters: the fire field (fire, void, steel, smoke), every boss's fire and
+      spells on it, one set of timing cues, heat haze, letting go, shed digits (ADR-113)
+  - [ ] The owner's look at it: the calm palette was built without their pick (C, hotter, is one number);
+        the Lord's spells went from red to white and violet; the landmarks moved
+  - [ ] The phone: the look at 4x6 cells and the frame rate (the bonfire and the braziers keep the
+        field's passes running all the time)
+  - [ ] The hero's effects (slash trails, parry sparks, `combat/clashFx.js`, `cutFx.js`) on the field,
+        once the open work on those files has landed
+  - [ ] A crisp red kind (a second heat target): the red cue, the red rings, the Lord's blade; and a
+        blue-white kind if the wisps should join
+  - [ ] Fire that hugs the ground (a per-blob switch for the 0.9 m depth fade) and a per-kind tongue
+        height (bullets grow nine-cell tongues whatever their direction)
+  - [ ] The throne hall's landmarks: pillars cover the wardens' lower halves, the great swords are
+        small from the seal; the Lord's intro shot without the wardens beside the throne
+  - [ ] The eroding edge of the dying wyrm: a cell is black for ~0.3 s before the ground shows
+  - [ ] Headless checks for the text effects (the sims compile no shader): `uWyrmLetGo` follows
+        `dragon.dissolve`; `uGlowRise` through the breath's windup; `fx.shed` on a landed cut
 - [ ] The hero and the human bosses in the house style: only when the owner asks (ADR-100: "not touch")
 - [x] Hero as ink-line art: per-pixel lines, a dark figure + halo at the game camera, longer drawn
       blade with a depth pull (ADR-019 … ADR-022)
@@ -162,7 +179,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.39 — The hero's stance: at ease, and a fencer's guard (2026-11-15, `player/idle-stance`, ADR-113)
+## M1.39 — The hero's stance: at ease, and a fencer's guard (2026-11-15, `player/idle-stance`, ADR-114)
 - [x] Three stances rendered for the owner's pick (A "At ease", B "Coiled", C "Hidden blade"); A picked
 - [x] At ease: the blade on the arm's own line, a hand on the belt; alive at the game camera
 - [x] A fencer's guard while locked on or in a boss fight, kept up on the move

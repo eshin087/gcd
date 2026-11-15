@@ -21,7 +21,7 @@ the plunge, three phases, fire hazards, keep-in-view camera, and now the bullet 
 wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt)
 → 1 – 6 simulation steps (core/timestep.js), each of stepDt real seconds:
     clocks → lab.update(stepDt) → flow.update(dt, stepDt) → player.update(dt) → dragon.update(dt)
-    → world.update(dt) → lights.update → fx.update
+    → world.update(dt) → lights.update → fx.update (alpha, add, fire, shed)
     (input.endFrame() after the FIRST step: the frame's presses and releases are seen once)
 → lab.postUpdate() → camera (rig, realDt) → view override → shared uniforms
 → hud.update(realDt) → audio.update(realDt) → render
@@ -62,7 +62,9 @@ scene.updateMatrixWorld()            once for both scene passes (scene.matrixWor
 → world → sceneRT
 → the hero where something covers him   a probe, then (only while it finds cover) the hero alone → seenRT,
                                      minus what the scene shows of him, the rest back into sceneRT (ADR-106)
-→ ASCII pass → FX particles (fxScene) → bloom → final grade
+→ the fire field                    heat blobs → a heat buffer → a flame texture, one texel per art cell
+                                     (render/fireField.js, ADR-113; skipped while it holds no blob)
+→ ASCII pass → FX pass (fxScene: the fire field's letters first, then the glyph particles) → bloom → final grade
 ```
 World matrices are therefore final when `render` starts: anything that moves an object after the
 actors' updates must do so before `pipeline.render()` (a transform changed between the two scene
@@ -356,10 +358,11 @@ Render helpers for creature modules:
     y inner depth step 0.012, z its gain 1.35), `uPropAnchor` (vec2 px, set per frame in
     `_updateAsciiCamera` from `U.uFocus`: the screen position of the focus minus its world offset
     times the px-per-metre there, wrapped to one cell).
-- **Landmarks** (`world/landmarks.js`): builders that return painted geometries in world space:
+- **Landmarks** (`world/landmarks.js`; second pass ADR-113): builders that return painted geometries in world space:
   `buildElderWyrm`, `buildCinderTree` (Cinderwood), `buildSectGate`, `buildCauldron`, `buildColossus`
-  (Ashfall), `buildWarden`, `buildGreatSword` (built for the Obsidian Throne's first hall; not placed
-  since ADR-112), all `(rng, x, z, yaw, s, opts?)`.
+  (Ashfall; opts `{ col, head, blade, tall, lo, hi }`), `buildWarden`, `buildGreatSword` (opts `{ lean,
+  tilt, col, steel, edge }`; built for the Obsidian Throne's first hall; not placed since ADR-113),
+  all `(rng, x, z, yaw, s, opts?)`.
   `carved(parts)` converts painted parts to the carved attribute set for a set's `stones` mesh;
   For the Obsidian Throne's crater (ADR-112): `buildFallenStar(rng, x, z)` (the split star behind the
   seat and its crown of splinters), `buildSpike(rng, x, y, z, { h, w, d, tip, lean, yaw, roll, col,
@@ -367,10 +370,56 @@ Render helpers for creature modules:
   the set's glow batch), `facetCol(col, k)` (a `carve()` colour: one tone a facet), `STAR_GLASS`,
   `STAR_COLLIDERS`. These are built with `carve()` attributes already and need no `carved()`.
   `landmarkPoint(x, z, yaw, s, lx, lz)` maps a builder's local point to the world;
-  `ELDER_COLLIDERS` / `GATE_COLLIDERS` are `[lx, lz, r]` lists the set adds. Where they stand:
-  `FOREST_LANDMARKS` (`forest.js`), `COURTYARD.greatGate / cauldron / guardians` (`courtyard.js`),
-  `THRONE.star` (`throneHall.js`). Trees and boulders in a landmark's footprint are built, then dropped, so
+  `ELDER_COLLIDERS`, `GATE_COLLIDERS`, `COLOSSUS_COLLIDERS`, `CAULDRON_COLLIDERS` are `[lx, lz, r]`
+  lists the set adds; `COLOSSUS_FALLEN_HEAD` and `GATE_FOOTPRINT` (the gate's own space: it stands
+  turned) describe what a set keeps clear. Where they stand: `FOREST_LANDMARKS` (`forest.js`: the
+  skeleton along the EAST rim, the tree on the west), `COURTYARD.greatGate / cauldron / guardians`
+  (`courtyard.js`: the gate beyond the east pillars, the swordsmen in the pillar ring, the cauldron
+  on the paving), `THRONE.star` (`throneHall.js`). They stand where the duel's camera looks: the east / west sides, turned to face it. Trees,
+  boulders and breakables in a landmark's footprint are built, then dropped (or never placed), so
   the rest of a level's random layout does not move. Each set uses its own seeded rng for them.
+- **The fire field** (`render/fireField.js` exports `class FireField`; `game.fx.fire`; ADR-113):
+  fire, void fire, sparks and smoke as one body of heat printed in the wyrm's small letters.
+  - `spawn({ x, y, z, vx, vy, vz, life, size, sizeEnd, heat, heatEnd, kind, drag, gravity })`: one
+    soft blob. `size` / `sizeEnd` metres across; `heat` / `heatEnd` what it adds at its centre
+    (overlaps ADD UP: ~0.4 a cool rim, ~1 the body, 2+ the white heart; default `heatEnd` 0.35 x
+    `heat`; the last sixth of its life it fades out); `kind` `'fire'` (default) | `'void'` |
+    `'steel'` | `'smoke'` or a `FIRE_KIND` number; `gravity` > 0 rises. NaN positions are dropped.
+    `clear()`, `update(dt)` (main.js, with `fxDt`), `count`, `max` (6000), `active`.
+  - Pipeline side: `init(type, depthTexture)`, `setSize(W, H, cell, art)`, `render(renderer, camera,
+    fs)` (blobs, soft depth-tested against the scene, into `heatRT`: r fire, g smoke, b void, a
+    steel, all x 0.4; then the flame pass into `flameRT`: r heat x 0.4, g smoke, b the letter's
+    roll, a (kind + (stroke + 1) / 8) / 4), `mesh` (the print quad, `renderOrder` -10 in the FX
+    scene), `cells` (the buffers' size). `Pipeline.registerFire(field)` wires it. The ASCII pass
+    has `tFlame` and `uFlame` (cells x, cells y, 1 while something burns): the heat haze reads them.
+  - Looks are data: `render/firePalettes.js` exports `FIRE_PALETTES` (`fire`, `void`, `steel`: five
+    colour stops, `hdr`, `fill`, `back`, `lick`, `erode`, `boil`, `warp`), `FIRE_SMOKE`, `FIRE_KIND`.
+  - Who spawns: `DragonFx` (`_blob`, `_wave`, `_fireBlast`), `BulletFx`, `DuelFx` / `LordFx` (`_blob`,
+    `_dot` and `_frame`: heat re-drawn every frame shows exactly one copy; `_line`; `_ink`: a line
+    written on the letter grid, one steel blob per cell it crosses), `Atmosphere` (the bonfire),
+    `Scorch`, the throne hall's braziers, `GroundFire`, `Destructibles` (a burning tree). All read
+    `game.fx?.fire` guarded. The test harnesses carry a `FireField` with the glyph pools' NaN guard.
+  - **Timing cues:** `DuelFx.tellFlash(tell, x, y, z, k = 1)` draws them for every boss (`k` = scale,
+    1 a human; `TELL_GLINT`, `TELL_BLAZE` are the data); `DragonFx.tellFlash` forwards to a `DuelFx`
+    it owns (`this.tells`, k 1.5) and ages its glints in `update`.
+- **Text effects** (ADR-113):
+  - *Heat haze*: ASCII pass uniforms `uHaze`, `uHazeRoll`, `uTime`; `hazeCell()` runs for wyrm and
+    prop cells only while `uFlame.z > 0.5` (six nearest reads of the flame texture, then).
+  - *Letting go* (`render/letGo.js`: `LET_GO`, `LET_GO_GLSL` with `letGoAt(cell)`, `letGoRow`,
+    `letGoUniforms(U)`): the dying wyrm's cells let go top row down, one rule in the wyrm's
+    materials (the dissolve discard) and in the pass (`letGoFall()`: the letter falling, `uLetGoInk`).
+    Shared uniforms, created lazily: `U.uWyrmGrid` (xy the art cell px, zw the wyrm's grid anchor px;
+    `Pipeline._updateWyrmGrid()` writes it at the TOP of `render()`, before the scene pass) and
+    `U.uWyrmLetGo` (x dissolve 0..1, y top row, z rows, w half width in cells; the dragon writes it).
+  - *Shed digits* (`render/shedDigits.js` exports `class ShedDigits`; `game.fx.shed`): its own small
+    instanced pool of single art cells, pixel-snapped. `burst(x, y, z, dx, dz, n, look)`,
+    `stream(dt, x, y, z, r, rate, look)`, `update(dt)`, `clear()`. It consumes `player:hitDragon`
+    (not guarded) for a boss with a `shed` look `{ ink, rim, ember, embers, rims, stream }` (the
+    wyrm: `SHED` in `dragon/model.js`; the human bosses have none).
+  - *The breath's charge rises*: wyrm materials have `uGlowRise` (the throat charge's share, formerly
+    inside `uGlow`), `U.uWyrmHeat` (xyz the front, w the rule's weight) and `U.uWyrmHeatFrom` (xyz the
+    origin, w the front's strength); data `HEAT_RISE` (`dragon.js`), `WYRM_HEAT` (`materials.js`).
+    Anything that reads a wyrm material's `uGlow` expecting the charge must add `uGlowRise`.
 - `createCarvedGlyphMaterial(U, opts)` (`render/materials.js`) — **carved glyphs, for FLOORS only**
   since ADR-100 (flagstones, paving, the crater's plates; upright objects use prop art above). Glyph cells sit on a world-fixed lattice in
   a plane facing the default camera (`viewPitch`), so they are upright, equal-sized and never
@@ -531,7 +580,7 @@ update(dt)
 debug: { god: boolean, infiniteFlasks: boolean, heal(), teleport(x, z), kill(),   // used by the Lab
          attackSpeed: number,          // × the attack clock (1 in play): every swing's windup, cut and recovery run this
                                        //   much faster, its step covering the same ground (the Lab's "atk" slider)
-         fightStance: boolean | null,  // the stance he stands in (ADR-108): true holds the fight stance, false at ease;
+         fightStance: boolean | null,  // the stance he stands in (ADR-114): true holds the fight stance, false at ease;
                                        //   null = the game decides (the Lab's "stance" row)
          plunge(execution = false) }   // Lab / captures: start the plunge on the dragon now (any range, in the air too)
 ```
@@ -969,7 +1018,7 @@ the hero's rest (sword fingers low by the left hip, pointing ahead and down), so
 animator carries the hero's values in them too and ignores them; `locoGuard` carries them in
 `GUARD_CH`. A hit, a fall, the drink and the lean on the pommel open the hand and make the wrist
 rigid (`freeLimp`); the charge, the block and the plunge (`plBase`) open it to the grip (`hs` 0).
-**The two stances** (ADR-113, `stances.js`): where the hero stands. `stand(pose, A)` (anim.js) is
+**The two stances** (ADR-114, `stances.js`): where the hero stands. `stand(pose, A)` (anim.js) is
 `guard()`'s ready stance, and for the hero's animator (`A.freeHand`) the stance written over it:
 `atEase` (the blade on the forearm's line down at his front-right, the free hand open on the belt)
 and `fencerGuard` (the sword side to the foe, the arm half extended, the point on the foe), blended

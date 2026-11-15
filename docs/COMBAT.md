@@ -153,10 +153,10 @@ or a cut of your own gets it knocked open, and a parry or a hit between them res
 ```
        windup start (combat:tell)            timing cue (combat:flash), 0.35 s before impact
 red    body glows red, 0.1 ramping to 0.38   body spike 1.6, gone in 0.25 s
-       the ground heats up (AoE attacks)     red glyph burst + red light at the part
+       the ground heats up (AoE attacks)     a ragged red blaze + red light at the part
        audio: low brass sting                red screen-edge flash, ~0.25 s
-normal animation only (faint audio tick)     white glint + bright ting
-blue   animation only (blade 'shing')        white glint x1.5 (size, brightness)
+normal animation only (faint audio tick)     a white cross on the letter grid + bright ting
+blue   animation only (blade 'shing')        a white eight-point star 1.6x as big, with a ring
 hazard the ground heats up from its spawn     its edge shows, the heat flares, a warm light
        audio: a lighter hazard cue           no screen-edge flash
 ```
@@ -169,10 +169,19 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   attacker's side) — nothing during the windup. Numbers: `TELL_STYLE.red.warn` in `rules.js`. In a
   string every hit is its own beat: a red hit glows through its own windup only.
 - **Parryable (`normal`, `blue`) — the animation is the tell.** No colour coding during the windup
-  (audio: a faint tick, or a blade "shing" for `blue`). On the cue a brief **white glint** (star
-  core, four-point sparkle, a few short rays, a small white light) pops at the striking part with a
-  short bright "ting". `blue` (heavy, big-posture) gets a ~1.5× larger, brighter glint
-  (`TELL_STYLE.blue.glint`) and a richer ting — still white, never blue.
+  (audio: a faint tick, or a blade "shing" for `blue`). On the cue a brief **white cross** pops at
+  the striking part with a short bright "ting": one row of `-` (13 cells) through one column of `|`
+  (7 cells), white-hot digits where they meet, written on the letter grid (0.2 s; it opens at full
+  size on the cue frame and draws back into its heart). `blue` (heavy, big-posture) gets the same
+  cross 1.6x as big (21 x 11 cells) with diagonals, an **eight-point star**, and a thin ring of
+  strokes opening round it (0.28 s), and a richer ting — still white, never blue.
+- **One design for every boss (ADR-113).** The three cues are drawn by `DuelFx.tellFlash(tell, x, y,
+  z, k)` in the fire field (data: `TELL_GLINT`, `TELL_BLAZE` in `enemies/duelist/fx.js`); the wyrm
+  draws its own through the same code at 1.5x. The red cue is a ragged blaze of red letters thrown
+  out of the part (12 rays, no straight line in it: it must never be mistaken for the white cross),
+  with red sparks and a red light. A duelist's dodge-only AREA is a burning ring of red letters on
+  the floor through the windup, with an inner ring closing in; the wyrm's areas heat the ground as
+  before (ADR-052).
 - **Hazards warn on the ground, diegetically (ADR-052).** The ground they will hit heats up: a
   sparse fill of small ground glyphs and the scorch map's heat, dark ember at spawn, orange by
   half way, white-orange at impact, sparks rising near the end; a thin bright rim marks the exact

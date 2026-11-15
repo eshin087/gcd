@@ -21,6 +21,7 @@ const { clamp, damp } = await imp('src/core/math.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
+const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Destructibles, STATE: PIECE } = await imp('src/world/destructibles.js');
 const { buildDeadTree, buildBoulder, buildStump, geosHeight } = await imp('src/world/forest.js');
@@ -225,6 +226,17 @@ function build(opts = {}) {
     };
     return p;
   };
+  // the fire field (render/fireField.js): the same NaN guard and spawn count as the glyph pools
+  const mkFire = () => {
+    const p = new FireField(U, { max: 6000 });
+    const spawn = p.spawn.bind(p);
+    p.spawn = (o) => {
+      for (const k of ['x', 'y', 'z', 'vx', 'vy', 'vz', 'life', 'size', 'sizeEnd', 'heat', 'heatEnd']) if (o[k] !== undefined && !Number.isFinite(o[k])) throw new Error(`NaN fire blob ${k}`);
+      counters.spawns++;
+      return spawn(o);
+    };
+    return p;
+  };
   // opts.realInput: the real core/input.js on a mock canvas (#game) — the touch scenario drives it
   // through the touch controls' pointer events instead of the mock above
   let canvasEl = null;
@@ -237,7 +249,7 @@ function build(opts = {}) {
     THREE, CONFIG, renderer: canvasEl ? { domElement: canvasEl } : null, scene, fxScene: new THREE.Scene(), camera,
     pipeline: { finalMat: { uniforms: finalU } }, U,
     events: new Events(), input: opts.realInput ? new Input(canvasEl) : input, cameraRig: new CameraRig(camera), lights: new LightPool(U),
-    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }) },
+    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }), fire: mkFire() },
     time: 0, realTime: 0, timeScale: 1, debugTimeScale: 1, hitstopTimer: 0, hitstopScale: 1,
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
@@ -338,6 +350,7 @@ function build(opts = {}) {
     game.lights.update(dt, game.player.position);
     game.fx.alpha.update(dt, game.time);
     game.fx.add.update(dt, game.time);
+    game.fx.fire.update(dt);
     safe('hud', () => game.hud.update(realDt));
     safe('audio', () => game.audio.update(realDt));
     safe('lab', () => game.lab.postRender?.()); // (main.js: after pipeline.render; nothing is drawn here)
@@ -636,7 +649,7 @@ async function scenarioWin() {
   assert(c('player:plungeHit') >= 1 && c('player:plungeHit') <= c('player:plunge'), `perfect dodges plunged onto the head in a live fight (${c('player:plunge')} dives, ${c('player:plungeHit')} hits)`);
   assert((c('dragon:postureBreak') > 0) === sawBreak, `dragon:postureBreak ↔ dragon.broken (${c('dragon:postureBreak')} / ${sawBreak})`);
   // (at most once: in an ember storm a red fireball can land inside the parry tap the bot gave the
-  // normal one before it. Seeds 1-6 give 0 here and on the stance before ADR-113; the default seed's
+  // normal one before it. Seeds 1-6 give 0 here and on the stance before ADR-114; the default seed's
   // fight, which any change to the first frames of the hero's swings reshuffles, now meets that once)
   assert(c('player:guardBreak') <= 1, `the reacting bot guard-broke ${c('player:guardBreak')} time(s) (≤ 1: red tells are dodged, not blocked)`);
   assert(c('player:charge') === 0 && c('player:noStamina') === 0, 'no charge from taps, no stamina events');
@@ -2512,7 +2525,7 @@ async function scenarioLab() {
       // the tail bat needs a boulder in the tail's ring that is not at the hero's feet. Where the
       // wyrm stands by now depends on every ability before it, so the hero is put where one is in
       // reach (6 m in front of it he stood 1.7 m from the only boulder in the ring once the hero's
-      // stance changed the run: ADR-113), tried round the wyrm until the move's own search finds one
+      // stance changed the run: ADR-114), tried round the wyrm until the move's own search finds one
       const { tailPiece } = await imp('src/entities/dragon/terrain.js');
       for (const [dist, ang] of [[6, 0], [6, 0.9], [6, -0.9], [9, 0], [9, 1.6], [9, -1.6], [11, 0.9], [11, -0.9], [11, 2.4], [11, -2.4]]) {
         place(G, dist, ang);
@@ -3277,7 +3290,7 @@ async function scenarioHero() {
       let rest = 0;
       run(1.5, (a) => { rest = a; });
       out(`   the ribbon: lowest ${lowest.toFixed(3)} m (${lowestDown.toFixed(3)} m landing in a knockdown), ${swing.toFixed(0)}° from hanging through a falling cut, ${rest.toFixed(0)}° 1.5 s into idle`);
-      // (ADR-113: 10 cm, was 5. Knocked down out of the fencer's guard the hilt falls from 0.25 m
+      // (ADR-114: 10 cm, was 5. Knocked down out of the fencer's guard the hilt falls from 0.25 m
       // higher than it did out of the old low stance, and the ribbon's springs lag that much more)
       assert(lowest >= 0 && lowestDown >= -0.1, `the ribbon never sinks into the grass through a run, a sprint, a roll, the chain and the cleave (lowest ${lowest.toFixed(3)} m), nor more than 10 cm landing in a knockdown (${lowestDown.toFixed(3)} m)`);
       assert(swing >= 35 && rest <= 25, `the ribbon swings out through a cut (${swing.toFixed(0)}° ≥ 35°) and hangs again at rest (${rest.toFixed(0)}° ≤ 25°)`);
@@ -3465,7 +3478,7 @@ async function scenarioHeroLife() {
       assert(pairs >= 12 && same === 0, `he walks through the chain: the lead foot changes with every hit (${same} of ${pairs} consecutive hits kept it)`);
     }
     go(1.2);
-    assert(!r.offHand.grip.visible && r.offHand.open.visible && !r.offHand.fingers?.visible && A.cur[45] < 0.05 && A.cur[59] < 0.1, 'at rest the free hand lies open on the belt (ADR-113: it held sword fingers by the hip)');
+    assert(!r.offHand.grip.visible && r.offHand.open.visible && !r.offHand.fingers?.visible && A.cur[45] < 0.05 && A.cur[59] < 0.1, 'at rest the free hand lies open on the belt (ADR-114: it held sword fingers by the hip)');
   }
 
   // (1b) no two swings in a row along the same line (swings.js `line`, anim.js _pickVariant): 40
@@ -4136,7 +4149,7 @@ async function scenarioHeroLife() {
 
   // (4) idle life: standing still he does things (at least three different ones in 45 s: the picks are random, never the same twice running), every
   // frame finite and the point never in the ground; a step cuts the action within 0.25 s
-  // (ADR-113: at ease only. This scenario stands in a boss fight, where he keeps the fencer's guard:
+  // (ADR-114: at ease only. This scenario stands in a boss fight, where he keeps the fencer's guard:
   // the Lab's hook holds the at-ease stance for the count, then the fight's own rule is checked)
   {
     p.debug.fightStance = false;
@@ -4171,7 +4184,7 @@ async function scenarioHeroLife() {
     go(8);
     assert(A.fidget.count === c1, 'locked on, no idle action starts');
     p.lockOn = false;
-    // … nor in a boss fight without a lock (he stands in the guard: ADR-113)
+    // … nor in a boss fight without a lock (he stands in the guard: ADR-114)
     p.debug.fightStance = null;
     go(1.0);
     const c2 = A.fidget.count;
@@ -5538,7 +5551,7 @@ async function scenarioHeroArms() {
     return (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? def.name ?? null;
   };
 
-  // (A1) at rest (ADR-113, the owner's pick of three rendered stances): at ease the sword arm hangs
+  // (A1) at rest (ADR-114, the owner's pick of three rendered stances): at ease the sword arm hangs
   // loose, the elbow soft and beside the ribs, and the blade lies on the forearm's own line; in the
   // guard (this scenario stands in a boss fight) the arm is half extended, the elbow still in, the
   // blade still on the forearm's line. In both the free hand lies open on the belt, its elbow bent
@@ -5863,7 +5876,7 @@ async function scenarioLooks() {
       return fw;
     };
     // the look's own shape, standing (2 s idle), at ease: the hems' heights are a standing man's
-    // (ADR-113: in a boss fight he stands in the guard, the knees soft, 2.5 cm lower)
+    // (ADR-114: in a boss fight he stands in the guard, the knees soft, 2.5 cm lower)
     p.debug.fightStance = false;
     go(G, 2);
     const capeIdle = shoulderCloth.length ? capeDepth() : null;
@@ -7593,7 +7606,7 @@ async function scenarioSeen() {
 }
 
 // ================================================================== scenario: the two stances
-// ADR-113 (the owner's pick of three rendered stances): where the hero STANDS. At ease with nothing
+// ADR-114 (the owner's pick of three rendered stances): where the hero STANDS. At ease with nothing
 // to fight: the blade down the arm's own line, a hand on the belt; the fencer's guard once locked on
 // or in a boss fight. Checked: which stance the game picks; the sword wrist; the hand ON the waist
 // (not in it, not hovering off it); the blade broad to the game camera from every side (edge-on it
@@ -8124,7 +8137,9 @@ async function scenarioTerrain() {
     const e0 = errors.length;
     let restored = 0;
     const dbg = {};
-    for (let i = 0; i < Math.round(150 / DT); i++) {
+    // (300 s: about 50 attacks. At 150 s there were about 25, and a count of 2 of them was a matter
+    // of the seed: 0 to 4 over four seeds, on this code and on the code before it)
+    for (let i = 0; i < Math.round(300 / DT); i++) {
       bot(G, { god: true, defend: true });
       if (process.env.ABYSS_TRACE2 && !d.brain.action && d.state === 'combat') { for (const n of ['hurl', 'tailBat', 'fireBrand']) { const w = attackWeight(ATTACKS[n], n, d, d.sense); dbg[n] = (dbg[n] || 0) + (w > 0 ? 1 : 0); dbg[n + 'cd'] = (dbg[n + 'cd'] || 0) + ((d.brain.cooldowns[n] ?? 0) > 0 ? 1 : 0); } dbg.idle = (dbg.idle || 0) + 1; dbg.dist = (dbg.dist || 0) + d.sense.dist; }
       G.tick(DT);
@@ -8141,7 +8156,7 @@ async function scenarioTerrain() {
     if (process.env.ABYSS_TRACE2) out('   ' + JSON.stringify(dbg) + ' ' + JSON.stringify(picks));
     const total = Object.values(picks).reduce((a, b) => a + b, 0);
     const mine = (picks.hurl || 0) + (picks.tailBat || 0) + (picks.fireBrand || 0);
-    out(`   150 s with the AI on: ${total} attacks, terrain moves ${mine} (hurl ${picks.hurl || 0}, tail bat ${picks.tailBat || 0}, firebrand ${picks.fireBrand || 0}); phase ${d.phase}; tells ${tells}, flashes ${flashes}`);
+    out(`   300 s with the AI on: ${total} attacks, terrain moves ${mine} (hurl ${picks.hurl || 0}, tail bat ${picks.tailBat || 0}, firebrand ${picks.fireBrand || 0}); phase ${d.phase}; tells ${tells}, flashes ${flashes}`);
     assert(mine >= 2 && mine <= total * 0.3, `a fight: the terrain moves come up (${mine} of ${total} attacks) and stay under 30 % of them`);
     assert(flashes <= tells && tells - flashes <= 2 && errors.length === e0, `a fight: their tells get their flashes (${flashes} of ${tells}; an interrupted one has none), no errors`);
     return G;

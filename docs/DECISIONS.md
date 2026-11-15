@@ -2984,7 +2984,80 @@ hall 0.85 and 0.89 at 1920 x 1080, 1.03 at 3840 x 2160, 0.92 and 1.01 at 852 x 3
 slower, about a tenth cheaper at 1080p, no measurable difference at 4K or at phone size. **A phone
 was not measured.** The seal's flare, the intro and the reset are unchanged and tested.
 
-## ADR-113 — Two stances: at ease, and a fencer's guard in a fight (2026-11-15)
+## ADR-113 — Effects in the dragon's letters: the fire field; text effects; landmarks where the camera looks (2026-11-15)
+
+**Context.** The owner, with the wyrm and the background objects in one look (ADR-093, ADR-100): "is
+there anything existing we should update? ... i want people to be stunned at the ascii style and
+amazed how text can make such detailed 3d objects that look great in animation and effect wise", and
+"all the spells, effects, etc need to look as realistic and cool as possible. for example, the dragon
+fire attacks look meh and use ascii art, animation better to make it look like real fire and more
+threatening and detailed". Every effect was a camera-facing glyph sprite of any size with glow on
+top (`fx.add` / `fx.alpha`): outside the 5x8 px digit grid everything else is printed in, so fire
+read as a line of blurry symbols. Shown a sheet (the breath as it was; the new fire calm; the new
+fire hot), the owner said "Do all 4 and create parallel subagents to work on each task" without
+choosing between the two new ones. The calm one is built: it is closer to the tone they chose for
+the wyrm, and the hot one loses its letters in the bloom (their objection to the large-letter wyrm,
+ADR-092).
+
+**Decision.**
+- **Fire is heat, printed.** `render/fireField.js` (`game.fx.fire`): emitters spawn soft blobs of
+  heat (metres across, a heat that adds up where blobs overlap). Blobs are drawn into a heat buffer
+  with ONE texel per art cell; a flame pass per cell makes the heat climb, lean and tear into tongues
+  with noise that scrolls upward; the print pass turns each cell into one letter of the wyrm's atlas:
+  red strokes at the rim, digits in the body, round bright digits in the heart, on a dark backing.
+  A dense stream therefore has a white-hot heart and a ragged cool rim without the emitter drawing
+  either. Looks are data (`render/firePalettes.js`).
+- **Four kinds share the buffer** (one channel each): `fire`; `void` (the Starless Lord's violet);
+  `steel` (crisp: no turbulence, and a thin line prints as the stroke character that runs along it:
+  bolts, cuts, glints, air rings); `smoke` (grey letters where no fire prints).
+- **Everything that burns is on it:** every fire of the wyrm, the bonfire, the braziers, the ground
+  fire and burning trees of ADR-107, the human bosses' spells, trails and rings. Small things that
+  fly on their own (embers, sparks, dust, debris) stay glyph particles, about one cell in size.
+- **One set of timing cues for every boss,** written on the letter grid: normal a white cross (one
+  row of `-` through one column of `|`), blue a larger eight-point star with a ring, red a ragged red
+  blaze. `DuelFx.tellFlash`; the wyrm draws its own through the same code at 1.5x.
+- **Ground warnings stay glyph specks** (ADR-052) and draw over the field: "this will burn" must not
+  look like "this burns".
+- **Text effects** (only a world made of letters can do them): heat haze (the letters of the wyrm and
+  of objects beside a flame re-roll on the fire's beat and warm); letting go (the dying wyrm comes
+  apart letter by letter, each letter falling before its cell empties; one rule shared by the
+  material and the pass, `render/letGo.js`); shed digits (a cut knocks a few of the wyrm's own cells
+  loose, `render/shedDigits.js`); the breath's charge fills from the belly to the maw.
+- **Landmarks stand where the duel's camera looks,** and are rebuilt as a few flat masses with gaps
+  of dark between them. Moved: the sect gate from the north to beyond the east pillars; the stone
+  swordsmen into the pillar ring; the cauldron onto the paving; the elder wyrm's skeleton to the east
+  rim. The Cinder Tree's wood is prop art (its leaves stay as they were). (The wardens were moved to
+  the hall's aisles in dark bronze; ADR-112 replaced the hall before this merged, so they are built
+  but not placed.)
+
+**Why.**
+- One buffer at cell resolution is what makes it one look and cheap: 256 x 90 texels at 720p. The
+  flame maths runs once per cell, not per pixel; the full-screen print pass reads one texel and
+  discards where nothing burns; the field skips its passes while it holds no blob.
+- Density, not drawing, makes fire: the emitters became shorter, and every fire agrees with every
+  other.
+- The owner's own words set the brightness: "way too flashy" (ADR-093). `hdr` is 0.6.
+
+**Turned down / not done.**
+- A hotter palette (option C of the sheet): not chosen by the owner; one number (`hdr`) if they want it.
+- The hero's effects (slash trails, parry sparks, `combat/clashFx.js`, `cutFx.js`): other open work
+  was changing those files. They are still glyph sprites.
+- The wyrm's blue and red wisp and orb bullets: their colours are combat signals and the field has no
+  such kind.
+- A crisp red kind (for the red cue, the red rings and the Lord's blade): the four channels of the
+  buffer are taken, so it needs a second target. Today red cues are fire at a low heat.
+
+**Consequences.**
+- `game.fx.fire` is part of the `game` context; the test harnesses carry one. An effect that burns
+  spawns blobs, never big glyph sprites.
+- Blobs lower than about 0.7 m fade into the ground (the soft depth test): ground fire is born that high.
+- Tongues always climb up the screen, whatever a thing's direction of flight.
+- The bonfire and the braziers keep the field's passes running all the time in their levels.
+- The Lord's spells changed colour (red to white steel and violet void); his blade stays red glyphs.
+- Not measured: a phone. Not checked: motion at real speed by eye, the Lord's intro shot without the
+  wardens beside the throne.
+
+## ADR-114 — Two stances: at ease, and a fencer's guard in a fight (2026-11-15)
 - **Context:** the owner: "review the current character posture, angle of the right hand sword
   when the character is not attacking. i want the characters hands to have some kind of cool
   looking idle motion/stance where it looks natural and cool. something about the current idle
