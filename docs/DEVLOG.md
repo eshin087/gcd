@@ -5,6 +5,38 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 54: recorded sound and music from OpenGameArt
+
+**Owner:** "Lets update all the sound effects and music to the game. Browse and pick the best cc0
+sounds from opengameart." Branch `audio/oga-samples` from `main`, own worktree. ADR-117 / Session 54 /
+M1.42 (PR #54 took ADR-116, Session 53 and M1.41 while this was open).
+
+**Done** (ADR-117):
+- Browsed OGA's CC0 listings (903 sound pages, top 1440 music pages, keyword searches), scraped 250
+  pages' files, licences and descriptions, downloaded ~470 MB of candidates to the scratchpad,
+  measured 1,664 clips and looked at spectrograms of the shortlists (no ears: measurement only).
+- `scripts/audio/build-samples.py`: recipes (layers cut, varispeed, filtered, faded, each started on
+  its own first sound) → 129 mono MP3s, 11 loudness-normalised tracks, 3 beds in `assets/audio/`.
+  Found by the spectrograms: punch layers opened with a swing (the body thud landed 70 - 220 ms late),
+  fixed with a per-layer onset threshold (`on=-8`).
+- `src/audio/sampleBank.js` (banks, cue resolvers, the score per level), `src/audio/samples.js`
+  (`SampleBank` load / pick / start, `SampleLoop` for music and beds); `audio.js` asks the bank first.
+- Levels: offline renders of every cue's recipe against its bank (in the browser, `OfflineAudioContext`);
+  gains set to match (footsteps and UI were 12 dB hot, the clashes and crashes 14 - 17 dB quiet).
+  Music measured on the bus: 6 dB under the synth score → `MUSIC_LEVEL` 2.
+- Licences: dropped Energy Drain (CC BY-SA file inside a CC0 page) and Gorilla Sounds (untraceable).
+- `scripts/build.mjs` copies `assets/` into `dist/`; `serve.mjs` serves MP3. Lab VIEW → "Recorded sound".
+
+**Verified:** integ SAMPLES (every manifest file exists; all 67 cues x 21 option sets play, 92 % from
+a recording; footsteps by floor; no repeat; `?sound=synth`; a track loops from its loop point; a
+failed track hands over to the synth; the bed). In the browser on all three levels: 129/129 loaded in
+~7 s, boss → boss2 track change, no new console errors (the only 404 is Vercel's analytics script).
+`npm test`, `npm run build`.
+
+**Open:** nobody has listened yet. The owner A/Bs in the Lab and on the Vercel preview (phone). Load
+time and memory on the iPhone. The cues still synth-only (hazard tell, flurry coil / burst, windups,
+meteor fall).
+
 ## 2026-11-15 — Session 53: WHAT'S NEW in the game; the phone camera in a duel's moment; a game of its own
 
 **Owner:** "On mobile theres a bug where after i lock onto the dragon target, the camera zooms in

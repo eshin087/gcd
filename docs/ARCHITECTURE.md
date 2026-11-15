@@ -1781,7 +1781,37 @@ play(name, opts)           // one-shot SFX by name (sfx.js SFX, then fire.js FIR
 setMusic(mode)             // 'none'|'ambient'|'boss'|'boss2'|'victory'|'death'
 toggleMute(); muted: boolean;  setVolume(0..1)
 ```
-Every sound is procedural (no samples). 2026-11-09 additions:
+**Recorded sounds and score (ADR-117).** Every cue keeps its synthesised recipe; `audio/samples.js`
+(`SampleBank`, `SampleLoop`) and the data in `audio/sampleBank.js` lay recorded CC0 sounds and music
+(OpenGameArt; `assets/audio/`, credits in `assets/audio/CREDITS.md`) over it:
+- `_build()` makes `engine.samples` (a `SampleBank`) and starts loading: every one-shot is fetched
+  and decoded (~130 short mono MP3s, `SFX_CONCURRENCY` at a time), and the level's tracks are
+  prefetched as compressed bytes. Nothing loads outside http(s) (a file:// build, the headless tests):
+  the game then sounds exactly as before.
+- `play(name, opts)`: after the alias and rate limit, `samples.resolve(name, opts)` asks the cue's
+  resolver in `CUES` (opts, engine → `{ bank, gain, rate, layer, extra }` or null). A loaded bank plays
+  one of its variants (never the same twice in a row, ±2.5 % detune) through the same Voice (pan,
+  distance, reverb send, bus, priority); `layer: true` plays the recipe as well (the tells, the flash,
+  the parry and the Ghostep keep their tuned shape under the recording); null, or a bank not loaded
+  yet, plays the recipe alone. The resolvers carry the opts the recipes used: the cut's semitone per
+  hit of the chain, the parry's rise per chain step, the roar's strength and pitch, the impact's
+  material and power, the footstep's floor (grass in Cinderwood, stone elsewhere). Their gains are
+  level-matched to the recipes (both rendered offline; the loudest 50 ms compared).
+- Music: `_setMusic(mode)` builds a `SampleLoop` from `samples.track(mode)` (the level's `MUSIC[id]`
+  ambient / boss / boss2, the shared victory / death) on the music bus, else the synthesised layer.
+  A `SampleLoop` has the MusicLayer contract (`fadeIn`, `fadeOut`, `schedule`, `dispose`, `kind`
+  'sample', `fading`, `deadAt`); it starts when its track has decoded, loops from `loopFrom` with an
+  `xfade` overlap, and if the track fails (`failed`) the engine swaps in the synth layer. boss ↔
+  boss2 crossfades between two tracks (the synth's shared beat grid only applies to the synth). At
+  most `MUSIC_KEEP` (3) tracks stay decoded. `setMusic('death')` tolls the gong and plays the death
+  track.
+- `engine.bed`: the level's ambience loop (`BEDS[id]`) on the ambient bus, under the synthesised
+  wind / crickets / bonfire, at 45 % while the fight is on.
+- `samples.enabled = false` (URL `?sound=synth`, or the Lab's VIEW → "Recorded sound") turns it all
+  off: every cue resolves to its recipe again. `scripts/build.mjs` copies `assets/` to
+  `dist/assets/`; `scripts/audio/build-samples.py` rebuilds `assets/audio/` from the source packs.
+
+2026-11-09 additions:
 - `sfx.js`: `parry {tell, chain}` (each deflect in a chain rings 2 semitones higher, up to 8 steps,
   with a bell 'ting' from the 2nd), `plungeDive {exec}` (on `player:plunge`), `plungeHit {exec}` (on
   `player:plungeHit`; a `player:hitDragon` of kind 'plunge' plays no ordinary hit sound). The flurry:

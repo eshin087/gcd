@@ -4,7 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty-six pieces of work since 0.4.0:
+Forty-seven pieces of work since 0.4.0:
+- **Recorded sound and music** (2026-11-15, ADR-117). *Added:* the game now sounds like recordings
+  instead of a synthesiser: real steel on steel for parries, blocks and clashes, swishes and cuts,
+  hits, footsteps on grass or stone, a roar, wings, fire and explosions, breaking wood and stone,
+  and UI clicks, 129 sounds in all, every one CC0 from OpenGameArt (credits in
+  `assets/audio/CREDITS.md`). Each level has its own music: a dark forest theme and an epic boss
+  battle for the Cinder Wyrm, a koto theme and a ninja theme for the Ash Disciple's courtyard, a dark
+  shrine and a choir for the Starless Lord, plus a victory fanfare and a short game-over theme, and a
+  bed of crickets, wind or a cold hall under each level. The old synthesised sounds remain the
+  fallback (before the files load, offline, or with `?sound=synth`), and the parry and attack tells
+  still carry them underneath. The Lab's VIEW section can switch between the two to compare.
 - **What's new in the menu; the phone camera stays back** (2026-11-15, ADR-116). *Added:* **WHAT'S
   NEW**, a button in the title screen's top-right corner and an item in the pause menu: every
   version and what changed in it, newest first, in short notes. A badge counts the entries you have

@@ -179,6 +179,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.42 — Recorded sound and music from OpenGameArt (2026-11-15, `audio/oga-samples`, ADR-117)
+- [x] OGA's CC0 catalogue browsed and measured; 129 sounds built from 49 pages, credits in `assets/audio/CREDITS.md`
+- [x] Every synth cue mapped: a recording, a recording over the recipe (tells, parry), or the recipe on purpose
+- [x] A score per level (ambient, boss, boss 2), a shared victory and death, an ambience bed per level
+- [x] Gains level-matched to the synth; the synth stays the fallback; `?sound=synth` and a Lab A/B switch
+- [ ] Follow-ups:
+  - [ ] The owner's ear on the picks (the Lab's "Recorded sound" A/B; swap a recipe in `build-samples.py`)
+  - [ ] On the phone: load time and memory with three decoded tracks
+  - [ ] Sounds of their own still missing: the hazard tell, the flurry's coil and burst, the windups, the meteor fall
+  - [ ] Seamless loop points checked by ear for the tracks that loop with a 2.5 s overlap
+
 ## M1.41 — WHAT'S NEW; the phone camera in a duel's moment; a game of its own (2026-11-15, `ui/changelog-own-identity`, ADR-116)
 - [x] WHAT'S NEW: every version's notes from the title (corner button) and the pause menu, with an unread badge
 - [x] `tests/changelogcheck.mjs`: every CHANGELOG headline has an in-game entry
@@ -269,7 +280,7 @@ The first of the changes from the genre review (owner: "lets implement your sugg
   - [ ] Save file, a hub at the bonfire, a boss order that starts on Shen Hui, ranks, difficulty tiers,
         a reduce-flashes option
   - [ ] The single boss slot as an actor list (before mobs or a duo fight)
-  - [ ] Designed sound for the core combat hits; a theme per boss
+  - [x] Designed sound for the core combat hits; a theme per boss (recorded CC0 sounds and a score per level, ADR-117)
 ## M1.34 — The flurry on a man; the afterimage (2026-11-15, `player/flurry-duel-read`, ADR-101)
 - [x] A pacing of its own against a duelist: wound up, past his side, a held finish
 - [x] A flurry's blows do not shove a duelist; the last staggers him away from the hero

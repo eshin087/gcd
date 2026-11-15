@@ -3207,3 +3207,42 @@ ADR-092).
   Keep history); a PR rebased after another one landed its headline fails `npm test` until it adds
   the entry. Not checked on an iPhone: whether the page zoom was what the owner saw, and the
   `touchend` guard on the device.
+
+## ADR-117 — Recorded CC0 sounds and music from OpenGameArt, over the synth (2026-11-15)
+- **Context:** every sound in the game was synthesised at runtime (ADR-era "procedural audio"), and
+  the roadmap still asked for "designed sound for the core combat hits; a theme per boss". The owner:
+  "update all the sound effects and music; browse and pick the best CC0 sounds from opengameart".
+- **Decision:** recorded sounds and a score, all CC0 from OpenGameArt, played over the existing
+  synth, which stays as the fallback. Picked from OGA's whole CC0 catalogue (903 sound pages, the top
+  1440 music pages by favourites, keyword searches for wuxia / koto / taiko), measured (length,
+  attack, decay, brightness, noise floor) and looked at as spectrograms, since the picker could not
+  listen: pro foley for steel on steel (StillNorthMedia's medieval weapon impacts, Jan Schupke's
+  sword clashes), the independent.nu hits, qubodup's swishes, troll and sandworm roars pitched down
+  for the wyrm, a three-beat wing flap. 129 one-shots in 72 banks are built by
+  `scripts/audio/build-samples.py`: cut, layered, varispeed-pitched, filtered, each layer started on
+  its own first sound, peak-normalised, MP3 (mono for sounds). A score per level: Cinderwood a dark
+  forest guitar theme, Juhani Junkala's Epic Boss Battle, an orchestral pursuit for phase 2; the
+  Ashfall Courtyard a slow oriental theme, a koto boss theme (its intro plays once), a ninja theme; the
+  Obsidian Throne a dark shrine loop, a choir piece, Battle Theme A; a short fanfare and "Death of a
+  Ninja" shared. An ambience bed per level. Cue → bank mapping, gains and the score are data in
+  `sampleBank.js`; the engine change is small (`play()` asks the bank first, `_setMusic` builds a
+  `SampleLoop`). Gains were level-matched to the synth recipes the owner had balanced (offline renders
+  of both, loudest 50 ms window; a layered sample 6 dB under its recipe; capped at 2.5), the music
+  raised 6 dB to the synth score's level on the bus.
+- **Kept synthesised:** the charge hum, the breath loop, the wind / crickets / bonfire ambience (the
+  beds add to it), and the cues with no fitting recording (the hazard tell, the flurry's coil and
+  burst, the windups, the meteor fall). The tells, the flash, the parry and the Ghostep play the
+  recipe under the recording (`layer`), so the readable timing cues keep their shape.
+- **Licences:** only CC0. A pack whose bundled licence file contradicted its CC0 listing (Energy
+  Drain: CC BY-SA inside) and recordings whose CC0 origin could not be traced (Gorilla Sounds,
+  partly from a site with its own terms) were dropped. `assets/audio/CREDITS.md` names every page.
+- **Alternatives turned down:** replacing the synth outright (nothing to fall back on offline or
+  before the load, and the tuned timing cues would be lost); OGG (iOS Safari decodes MP3 everywhere);
+  streaming the music through `<audio>` elements (iOS wants a gesture per element; decoded buffers
+  with a 3-track cap instead); one score for all levels.
+- **Consequences:** the build is the page plus `dist/assets/` (16 MB: 15 MB music, 1.4 MB sounds);
+  the one-shots arrive a few seconds after the first tap (the synth covers them meanwhile). A
+  file:// build is synth-only. The picks were made by measurement, not by ear: the owner A/Bs them in
+  the Lab (VIEW → "Recorded sound") and swaps a pick by editing a recipe and re-running the builder.
+  Every gain is a first pass.
+
