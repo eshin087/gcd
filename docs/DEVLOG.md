@@ -33,10 +33,34 @@ PR #32, which took Session 33 and ADR-093: this is 34 and ADR-094 / ADR-095.)
   checks nearest-tile, the slide (ATTACK → BLOCK → DODGE on one finger), the stick, two fingers,
   the BLOCK gauge, position and size; BLOCK now expects no HP loss.
 
-**Decisions:** ADR-094, ADR-095.
+**Second request, same session:** "Allow the game to be played in non landscape as well and adjust
+the ui to allow that. Make the joystick and right buttons to blend in with the game so the buttons
+aren't covering the game screen. The mini map is also covering a lot of the screen on mobile."
+- **Upright play** (ADR-096): the "rotate your phone" overlay and its pause are removed. The camera's
+  field of view opens in a window taller than wide (`fovFor`, 32° → ~64° on a phone), the upright
+  phone profile stands 1.2 × back and leads 1.5 m south; the stick's zone, the pad's three places
+  (`pad.posPortrait`) and the stick's rest follow; the HUD has an upright layout (frame and boss bar
+  on top, prompt and banners above the thumbs, the pause panel in the upper half, the title to the
+  screen's width).
+- **See-through controls:** no filled panels; hairline tiles, brackets and haloed glyphs at 62 %,
+  the stick at 40 % with no disc; full strength under a thumb.
+- **Minimap on phones:** a bare 70 px disc at 72 %, no panel, title or coordinates; LOCK and pause
+  beside it.
+- **Tests:** TOUCH's portrait block rewritten: no overlay and no pause, controls live, a held stick
+  let go when the phone turns, the camera profile and `fovFor`, the pad and the stick inside the
+  upright screen, a press at the portrait place, PAD POSITION upright, landscape restored.
 
-**Not checked / open:** see the PR. Where the thumb really rests is the owner's to judge on the
-phone (that is what PAD POSITION is for). The bosses were not re-tuned for blocks that cost no HP.
+**Found on the way:** the first lead of 3 m put the hero at a third of the screen's height with
+the boss pressed against the HUD: 1.5 m. Faint tiles vanished over a lit pillar: a dark halo on
+the glyphs and 62 % instead of 55 %. The pause panel covered the pad it is meant to show while
+PAD POSITION is stepped: upright it keeps to the upper half.
+
+**Decisions:** ADR-094, ADR-095, ADR-096.
+
+**Not checked / open:** see the PR. Nothing was tried on a real phone: where the thumb rests (PAD
+POSITION is for that), whether the faint controls are findable in a fight, the upright camera
+against the wyrm (the view is ~14 m wide; only the Ashfall Courtyard was looked at upright), iOS
+Safari's bars in portrait. The bosses were not re-tuned for blocks that cost no HP.
 
 ---
 

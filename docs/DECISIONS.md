@@ -2315,3 +2315,40 @@ guard press already cancels a swing, ADR-080).
 roll then cancels it). A thumb resting on a border can still cross it by more than 10 px by
 accident; `pad.stick` is the knob. The marker gives no lasting sign of the lock in the world; the
 player frame's label and the LOCK button do. Not tried on a real phone by anyone but the owner.
+
+## ADR-096 — Played upright too; controls drawn on the game, not over it; a minimap the size of a coin (2026-11-14)
+
+**Context.** The owner, after the pad of ADR-095: "Allow the game to be played in non landscape as
+well and adjust the ui to allow that. Make the joystick and right buttons to blend in with the game
+so the buttons aren't covering the game screen. The mini map is also covering a lot of the screen
+on mobile." Until now a phone held upright got a "rotate your phone" overlay and a pause. The
+controls were dark filled panels (46 – 72 % black) and the minimap a framed panel of 114 × 130 px
+with a title and coordinates, on a screen 393 px tall.
+
+**Decision.**
+- **Upright is a layout, not an error.** The overlay and its pause are gone. The stick's zone is the
+  lower left, the pad sits lower right (its three places from `pad.posPortrait`), the frame and the
+  boss bar go to the top, the menus take the screen's width.
+- **The camera opens instead of cropping.** With a fixed vertical field of view an upright phone
+  would see a strip 5 m wide. `fovFor(aspect)` keeps the view as wide as a square window's (the
+  vertical field of view goes from 32° to about 64° on a phone), and the upright phone profile
+  stands 1.2 × further back and looks 1.5 m south of the hero, so he stands a little above the
+  middle with the fight above him and the thumbs below.
+- **The controls have no fill.** Transparent tiles with a hairline border and corner brackets,
+  glyphs with a dark halo, at 62 % (the stick at 40 %, without its dark disc or its MOVE tag); the
+  "tap: parry" sub-label is gone. Under a thumb a control goes to full strength with its ember tint.
+- **The minimap on a phone** is a bare 70 px disc at 72 %: no panel, title or coordinates. LOCK and
+  pause sit beside it.
+
+**Why.** The arena is a ring with one boss in it: on a phone the minimap answers a question nobody
+asks in a fight, so it gets the least screen that still shows which way the boss is. Controls that
+are found by where the thumb already rests do not need to be read, only to be findable at a glance
+and to confirm a press, which outlines and a lit state do. Opening the field of view was chosen
+over pulling the camera back (the hero would be a few glyphs tall) and over letterboxing (wasted
+screen): the upright view shows as much width as the landscape one shows height.
+
+**Consequences.** Upright, the view is about 14 m wide against 25 m in landscape: the wyrm does
+not fit across it and the keep-in-view pan works harder; nothing was re-tuned for that. Faint
+controls can be lost against bright ground (a lit pillar behind the pad); the halo helps, and the
+rest opacity is one number in `ui/touchStyle.js`. A desktop window dragged taller than wide also
+gets the wider field of view. Not tried on a real phone.

@@ -16,7 +16,7 @@ const imp = (p) => import(pathToFileURL(`${ROOT}/${p}`).href);
 const THREE = await import(pathToFileURL(`${ROOT}/node_modules/three/build/three.module.js`).href);
 const { CONFIG } = await imp('src/core/config.js');
 const { Events } = await imp('src/core/events.js');
-const { CameraRig } = await imp('src/core/cameraRig.js');
+const { CameraRig, fovFor } = await imp('src/core/cameraRig.js');
 const { clamp, damp } = await imp('src/core/math.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
@@ -5865,7 +5865,7 @@ async function scenarioLooks() {
 // The REAL core/input.js fed by the touch controls (src/ui/touch.js) through pointer events on
 // their DOM, exactly like a phone: tap / hold ATTACK, a timed BLOCK tap parries, DODGE rolls,
 // the stick moves (rim = sprint), LOCK / FLASK / || pause, the prompt tap, auto-aim, the phone
-// camera + pinch, the title tap, synthetic mouse after a touch ignored, portrait overlay + pause.
+// camera + pinch, the title tap, synthetic mouse after a touch ignored, the game held upright (portrait).
 async function scenarioTouch() {
   out('\n== scenario TOUCH (virtual stick + buttons → real Input: tap / hold attack, parry, dodge, move) ==');
   const W0 = globalThis.innerWidth, H0 = globalThis.innerHeight;
@@ -5887,7 +5887,6 @@ async function scenarioTouch() {
     target.dispatch(type, { pointerType: 'touch', pointerId: id, clientX: x, clientY: y });
   };
   const frames = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { each?.(i); G.tick(DT); } };
-  const rotateOn = () => !!document.body.find((e) => e.classList?.contains('tc-rotate'))?.classList.contains('on'); // overlay lives on <body>
   // desktop: nothing changes until a touch arrives
   assert(t.active === false && !cls('tc-root') && !rig.mobile && rig.targetDistance === CONFIG.camera.distance, 'inert without a touch: no touch DOM, desktop camera');
   assert(typeof input.setVirtual === 'function' && typeof input.setVirtualAxis === 'function', 'real Input exposes the virtual-source API');
@@ -6109,17 +6108,39 @@ async function scenarioTouch() {
   touch('pointerup', zone, 23);
   frames(0.05);
   assert(!t.autoAim && game.mouseGround.x > p.position.x + 3 && Math.abs(game.mouseGround.z - p.position.z) < 0.5, 'no target: aim follows the stick (east)');
-  // portrait: rotate overlay, the game pauses, controls off
-  globalThis.innerWidth = 390;
-  globalThis.innerHeight = 844;
-  frames(0.1);
-  assert(t.portrait && rotateOn() && game.state === 'paused', `portrait → rotate overlay + paused (${game.state})`);
-  globalThis.innerWidth = 844;
-  globalThis.innerHeight = 390;
-  frames(0.1);
-  assert(!t.portrait && !rotateOn(), 'landscape again → overlay gone (pause menu waits)');
-  game.flow.resume();
-  frames(0.1);
+  // held upright (portrait): the game plays on, the controls move to the lower part of the screen, the camera opens
+  {
+    const st0 = game.state, dist0 = rig.defaultDistance;
+    touch('pointerdown', zone, 24, 150, 300); // a held stick is let go when the phone is turned
+    globalThis.innerWidth = 390;
+    globalThis.innerHeight = 844;
+    frames(0.1);
+    assert(t.portrait && t.phone && game.state === st0 && !document.body.find((e) => e.classList?.contains('tc-rotate')), `portrait: no rotate overlay, no pause (${game.state})`);
+    assert(!cls('tc-root').classList.contains('off') && t._live(), 'the controls stay live held upright');
+    assert(t.stick.id === null && !input.down('@sprint'), 'turning the phone lets go of every held control');
+    assert(rig.portrait && near(rig.defaultDistance, dist0 * CONFIG.camera.portraitDistance, 1e-6) && rig.lead === CONFIG.camera.portraitLead, `the phone camera stands further back and leads south (${rig.defaultDistance} m, lead ${rig.lead} m)`);
+    const fP = fovFor(390 / 844), fL = fovFor(844 / 390);
+    assert(fL === CONFIG.camera.fov && fP > 55 && fP <= CONFIG.camera.portraitMaxFov, `the view opens when the window is upright (${fL}° → ${fP.toFixed(1)}°)`);
+    const hf = 2 * Math.atan(Math.tan((fP * Math.PI) / 360) * (390 / 844)) * 180 / Math.PI;
+    assert(near(hf, CONFIG.camera.fov, 0.01), `and is as wide as a square window's (${hf.toFixed(2)}° across)`);
+    const A2 = t.padPoint('attack'), G2 = t.padGeo;
+    const left = G2.cx - Math.max(...Object.values(G2.tiles).map((r) => r[2]));
+    assert(A2.x > 195 && A2.x < 390 && A2.y > 844 * 0.55 && A2.y < 844 - 60 && left > 150, `the pad sits in the lower right of the upright screen (ATTACK at ${A2.x.toFixed(0)}, ${A2.y.toFixed(0)}; its left edge at ${left.toFixed(0)})`);
+    assert(t.stick.ox + 62 < left && t.stick.oy > 844 * 0.55, `the stick rests beside it, not under it (${t.stick.ox.toFixed(0)}, ${t.stick.oy.toFixed(0)})`);
+    const pad2 = cls('tc-pad');
+    pad2.dispatch('pointerdown', { pointerType: 'touch', pointerId: 25, clientX: A2.x, clientY: A2.y });
+    assert(input.down('@attack'), 'ATTACK pressed at its portrait place');
+    pad2.dispatch('pointerup', { pointerType: 'touch', pointerId: 25, clientX: A2.x, clientY: A2.y });
+    frames(0.6);
+    const hi = t.cyclePad('pos'), A3 = t.padPoint('attack');
+    assert(hi === 'high' && A3.y < A2.y - 40, `PAD POSITION works upright too (${A2.y.toFixed(0)} → ${A3.y.toFixed(0)})`);
+    t.cyclePad('pos');
+    t.cyclePad('pos');
+    globalThis.innerWidth = 844;
+    globalThis.innerHeight = 390;
+    frames(0.1);
+    assert(!t.portrait && !rig.portrait && rig.lead === 0 && near(rig.defaultDistance, dist0, 1e-6) && game.state === st0, 'landscape again: the landscape camera and layout back, still playing');
+  }
   // the Lab switch turns it all off again: desktop camera, quality and HUD back
   t.setActive(false);
   frames(0.05);

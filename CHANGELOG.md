@@ -20,6 +20,13 @@ Twenty-five pieces of work since 0.4.0:
     Fire breath and bullets met on the guard chip HP as before and do not touch the meter.
   - **The lock-on marker** is a small, dim diamond that shows when you lock on and fades away
     within three seconds.
+  - **Play upright** (ADR-096). Holding the phone in portrait no longer asks you to rotate it: the
+    game plays on with the stick lower left, the pad lower right, your frame and the boss bar on
+    top, and a wider view so the fight still fits the narrow screen.
+  - **Controls that stay out of the way.** The stick and the buttons lost their dark panels: faint
+    outlines and glyphs with the fight showing through them, lighting up only under your thumb.
+  - **A minimap the size of a coin** on phones: a small see-through disc in the corner, without its
+    frame, title and coordinates.
 - **The Cinder Wyrm in finer, steadier letters** (2026-11-14 – 15, ADR-092, ADR-093): the wyrm's
   digits are one size up at 720p (5x8 px cells, the owner's pick of three sizes) with the calm
   charcoal tone that shows every scale, and they now travel with it: the body no longer slides under

@@ -34,9 +34,9 @@ npm run build      # rebuilds dist/index.html
 | **E** | rest at bonfire |
 | **Esc** | pause · **H** help · **M** mute · **F1** Lab · **F2** quality · **F3** FPS · **wheel** zoom |
 
-### On a phone (touch, landscape)
+### On a phone (touch, held either way)
 Touch controls appear on touch devices (first touch, or `?touch` in the URL; `?touch=0` keeps them off).
-Portrait shows a "rotate your phone" screen and pauses.
+The game plays in landscape and upright; the pause menu moves and sizes the right-thumb pad.
 
 | | |
 |---|---|

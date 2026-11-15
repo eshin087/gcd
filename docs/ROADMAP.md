@@ -45,7 +45,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [~] Phone support: touch controls, phone camera, Lab toggle (released; needs a real-device check)
   - [x] The right thumb's pad: three tiles that touch, slide between them, placed and sized by the player (ADR-095)
   - [x] The guard meter: blocks cost guard, not HP; parries and hits restore it (ADR-094)
-  - [ ] Owner's verdict on the phone: the pad's default place and size, the slide's stick (10 px), the guard meter's numbers
+  - [x] Played upright (portrait) as well as in landscape; see-through controls; a 70 px minimap on phones (ADR-096)
+  - [ ] Owner's verdict on the phone: the pad's default place and size, the slide's stick (10 px), the guard meter's numbers,
+        how faint the controls are, the upright camera against the wyrm
 - [x] Owner approval; released as v0.4.0
 
 ## M1.6 — Reference match (2026-11-08, PR #4, `look/reference-match`)
