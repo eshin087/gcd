@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty pieces of work since 0.4.0:
+Forty-one pieces of work since 0.4.0:
+- **The hero stands like a swordsman** (2026-11-15, ADR-114). *Changed:* when he is not attacking he no
+  longer holds the sword out sideways with both hands hanging. Exploring, he stands at ease: one
+  hand on his belt, the blade carried down the line of his arm. Locked on, or anywhere in a boss
+  fight, he takes a fencer's guard with the point on the enemy, and keeps it up while he moves
+  (only a sprint trails the blade). He breathes, shifts his weight and looks around, and the
+  blade's point drifts: five times more movement than before, so it shows at the game camera. The
+  idle actions (the stretch, the twirl, ...) now play only at ease. *Fixed:* the sword wrist was
+  bent 27°; it is about 6° now. The Lab's PLAYER section can hold either stance (`stance`).
 - **Fire, spells and effects made of the same small letters** (2026-11-15, ADR-113). *Changed:* fire
   is no longer loose glowing symbols. Every fire of the Cinder Wyrm (the breath, fireballs and their
   blasts, meteors, eruptions, the flame ring and wall, the burning pass, the nova, ember bullets, the

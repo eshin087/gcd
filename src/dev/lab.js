@@ -760,6 +760,11 @@ export class Lab {
     this._syncOutfit();
   }
 
+  _syncStanceBtns() {
+    const v = this.game.player?.debug?.fightStance ?? null;
+    for (const B of this.ui.stanceBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
+  }
+
   _syncOutfit() {
     for (const B of this.ui.lookBtns ?? []) B.el.classList?.toggle?.('on', B.id === this.game.player?.look);
   }
@@ -872,6 +877,22 @@ export class Lab {
       setText(this.ui.atkSpeedVal, `x${v.toFixed(2)}`);
     });
     this.ui.atkSpeedVal = el('span', 'lab-val', 'x1.00', sp);
+    // the stance he stands in (stances.js; player.debug.fightStance): the game's choice (the fight
+    // stance while locked on or in a boss fight), or hold one of the two to look at it
+    const stc = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'stance', stc).title = 'the stance he stands in: at ease, or the guard he takes in a fight';
+    const stGrid = el('div', 'lab-grid', null, stc);
+    stGrid.style.flex = '1';
+    this.ui.stanceBtns = [['auto', null, 'the game decides: the fight stance while locked on or in a boss fight'], ['at ease', false, 'hold the at-ease stance'], ['fight', true, 'hold the fight stance']].map(([name, v, tip]) => {
+      const btn = button(stGrid, name, () => {
+        const pd = this.game.player?.debug;
+        if (pd) pd.fightStance = v;
+        this._syncStanceBtns();
+      });
+      btn.title = tip;
+      return { v, el: btn };
+    });
+    this._syncStanceBtns();
     // the look of a landed cut (combat/cutFx.js; the owner's pick): the slash line, or a fan of sparks
     const cut = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'cut', cut).title = 'the look of a landed cut (combat/cutFx.js)';
