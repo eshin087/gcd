@@ -33,6 +33,143 @@ the heavies by eye.
 
 **Next:** the owner's look at the sheet and the preview; then HP-linked posture for every boss.
 
+---
+
+## 2026-11-15 — Session 51: the hero's stance: at ease, and a fencer's guard in a fight
+
+**Owner:** "review the current character posture, angle of the right hand sword when the character
+is not attacking. i want the characters hands to have some kind of cool looking idle motion/stance
+where it looks natural and cool. something about the current idle animation is bothering me. ask me
+questions to help you and come up with 3 different variations for me to review and approve on a
+final one". Branch `player/idle-stance` from `main`, in its own worktree.
+
+**Measured first** (the stance as it shipped, filmed at the game camera from four sides and close
+up): the blade 52° down and 79° out from his front, 27° out of line with the forearm, from an elbow
+tucked at the ribs; both hands beside the hips at 0.95 and 0.92 m; over a 2.4 s breath the hands
+travelled 1-3 cm, under half a pixel at the game camera; no idle action ever while locked on.
+
+**Asked, answered:** what is off (ticked: the stiff bent wrist, arms that hang like a mannequin's,
+a statue; not ticked: "the sword sticks out sideways"); the three options to span three attitudes;
+two stances (exploring / locked on); "alive, not busy".
+
+**Rendered for the pick:** three styles behind a temporary `?idle=a|b|c` switch and a Lab row, each
+an explore pose, a fight pose and its motion: A "At ease" (a hand on the belt, the blade down the
+arm's line; a fencer's guard), B "Coiled" (both hands on the grip, low; a deep middle guard), C
+"Hidden blade" (the sword reversed behind the arm, a sword-finger seal; the fingers at the foe).
+Sent: one overview sheet, and per style a detail sheet and a 6 s loop (close up and at the game
+camera). The owner picked **A**, the motion "about right", and the fight stance for "lock-on or
+boss fight". B, C, the switch and the reversed grip's wrist range are gone.
+
+**Done** (ADR-114):
+- `stances.js`: `atEase` and `fencerGuard`, the free hand on the belt in both (`BELT`), the life in
+  them (`STAND_LIFE`). `anim.js stand()` writes them over `guard()` for the hero's animator only;
+  `loco()` and an attack's way home use it. `guard()` stays the base of every other clip and of a
+  duelist's footwork.
+- `HeroAnimator.fightW`: the guard while locked on or in `bossIntro` / `boss`; up in 0.38 s, down
+  over 0.88 s. Idle actions play at ease only.
+- A transition audit against `main` (13 transitions, the fastest frame of six points) found and
+  fixed: in a fight he now keeps the guard up on the move (trailed, the point swung 16-18 cm a frame
+  at every start and stop; 2.6-3.1 now, under the old stance's 4.6-11.4); a roll and a backstep
+  ease the sword arm out of the guard (the point moved 173 / 118 cm a frame inside the cross-fade;
+  46 / 22 now); the blade settles into the stance over 0.24 s on the way back.
+- Found at the game camera: two fight blades stood edge-on to the camera behind him and vanished
+  (the flat is up now), and pointed straight ahead they stood behind his own head (they point a
+  little out to the sword side).
+- Found by the tests: the fingertips of the hand on the belt 2.7-3.8 cm in the hip, and the palm
+  hovering 9 cm off the waist (it is 2.7-3.2 cm off it now and turns with each stance's chest); the
+  hips whipped 16.8° in a light's first frame out of the guard (half of the turn moved to the
+  waist); the guard's sword elbow 0.52 out to the side (0.23); the front foot did not turn with a
+  light's pivot (its toes are out like the swings' own stance).
+- The Lab: PLAYER → stance (auto / at ease / fight; `player.debug.fightStance`).
+- Tests: `herostance` (16 checks: the rule, the wrist, the hand on the waist, the flat to the
+  camera, the life, the transitions, `guard()` untouched for a duelist). Seven checks that
+  described the old stance rewritten (the free hand at rest, the arms at rest, the idle breath, the
+  idle actions' count, three outfits' hem heights). Two relaxed, with the reason beside them: the
+  ribbon landing in a knockdown (5 → 10 cm: the hilt falls from higher) and the fighting bot's
+  guard breaks (0 → at most 1: the default seed's fight is reshuffled; seeds 1-6 give 0 on both
+  stances).
+
+**Verification:** `npm test` (integ, duel, lord, world, the glyph check) and `npm run build` pass
+on the branch merged with `main` (10891c3). Filmed in headless Edge at 1376 x 768 on the dev
+server: both stances at the game camera with him turned four ways and close up from four sides
+(the game's look and the bare body); the hand on the belt close up from five sides; the standing
+loop; a played sequence (at ease, a lock-on, a strafe and a stop in the guard, two lights, the
+fight ending). The Lab's stance row was driven in the Browser pane. The numbers above are
+`herostance`'s output and the audit's.
+
+**Not checked / open:** a fight played by a human with it; the phone (look and feel); the Ashfall
+Courtyard and the Obsidian Throne in the browser (headless tests only); the outfits other than
+today's in the new stances; the idle actions were not re-tuned for the new base (each fades in from
+it: looked at, not measured). The free hand's fingers lie straight along the hip (the hand has no
+finger joints): 7-9 cm of them stand off the belly's curve.
+
+**Next:** the owner's look at it in play (the Lab's stance row holds either stance); then the idle
+actions re-posed from the hand on the belt if they read wrong.
+## 2026-11-15 — Session 50: effects in the dragon's letters (the fire field), text effects, landmarks second pass
+
+**Owner:** "is there anything existing we should update? ... i want people to be stunned at the ascii
+style and amazed how text can make such detailed 3d objects that look great in animation and effect
+wise", and "all the spells, effects, etc need to look as realistic and cool as possible. for example,
+the dragon fire attacks look meh". Sent a sheet: the breath as it was (A), a prototype of fire as one
+body of small digits, calm (B) and hot (C), and a list of four things to update. Answer: "Do all 4
+and create parallel subagents to work on each task". They did not choose between B and C: B is built
+(my pick: closer to the wyrm's calm tone; `hdr` in `firePalettes.js` is the one number for C).
+Branch `fx/real-fire`. (Numbers: open PRs hold ADR-108 – 111 and Sessions 45 – 47, so this is ADR-113
+/ Session 48; the Obsidian Throne's rebuild then merged first as ADR-112 / Session 48, so this is
+ADR-113 / Session 49.)
+
+**How it was run.** The lead built the core first (`render/fireField.js`, the breath on it, the test
+harnesses), because three of the four tasks stand on it, then four agents worked in parallel, each
+in its own worktree and branch with a file list of its own, filming on a headless Edge on the real
+GPU: the landmarks; the wyrm's fire; the human bosses' effects and the timing cues; the text effects.
+The four branches merged without a conflict. `main` had moved by four PRs meanwhile (ADR-101, 102,
+106, 107): merged in, four conflicts, both sides kept.
+
+**Done** (ADR-112):
+- **The fire field** (`game.fx.fire`): blobs of heat that add up in a buffer with one texel per
+  letter cell; a flame pass per cell; a print pass in the wyrm's letters. Kinds: fire, void, steel,
+  smoke. Looks in `render/firePalettes.js`.
+- **On it:** every fire of the wyrm (`dragon/fx.js`, `bulletFx.js`), the bonfire, scorched ground's
+  smoke, the braziers, and, after the merge of `main`, ADR-107's ground fire and burning trees; the
+  Ash Disciple's and the Starless Lord's effects (`duelist/fx.js`, `starlessLord/fx.js`).
+- **One set of timing cues** drawn by `DuelFx.tellFlash` for all three bosses (the wyrm at 1.5x).
+- **Text effects:** heat haze, letting go (`render/letGo.js`), shed digits (`render/shedDigits.js`),
+  the breath's charge rising from the belly.
+- **Landmarks rebuilt and moved** to where the duel's camera looks (see the ADR for the list).
+  The forest's new breakables (ADR-107) keep off the landmarks' footprints.
+
+**Checked.** `npm test` (integ, duel, lord, world, the glyph check) and `npm run build` pass on the
+branch with `main` merged in. On film (headless Edge, RTX 4090, 1280x720): every converted effect
+before and after (sheets by each agent), the three levels loading and every boss ability triggered
+once with no console error, the wyrm's death, the breath setting the grass alight, the wyrm's blue
+cue. No breakable overlaps a moved landmark's collider (checked in the page for the three levels).
+Frame cost against a clean copy of `main`, render + a 1 px read-back, medians, twice each:
+1080p 2.1 – 2.4 ms on both, calm and mid-breath; 2160p 3.2 ms calm on both, 3.5 against 3.2 – 3.3
+mid-breath. Equal within noise on that GPU.
+
+**Not checked.** A phone (look and frame rate); anything in motion at real speed by eye (stills and
+strips only); low frame rates; the Lord's intro camera now that the wardens left the throne; the
+haze beside the human bosses' new effects; the wyrm's red cue on film (the frame fell between
+tiles); 1080p / 1440p cell sizes for the text effects; a hero standing in front of the dissolving
+body. The sims compile no shader and build no `ShedDigits`: the text effects are covered by film only.
+
+**Known weak spots** (each agent's own list, in the ADR and the roadmap): fire cannot hug the ground
+(blobs under 0.7 m fade into it); tongues always climb up the screen; the flame wall is a band, not
+tall, from the steep camera; the bonfire and braziers are redder and dimmer than before; red cues
+and red rings are fire at a low heat, not a crisp red; the Lord's spells changed colour (red to white
+and violet); the throne hall's landmarks are the weakest; the dying wyrm's eroding edge has a black
+fringe; the throat tell is a modest gain.
+
+**Left out on purpose.** The hero's effects: PR #39 and the branch `player/sword-fx` were changing
+`player/fx.js` and `combat/*`. The wyrm's blue and red wisps and orbs: colour signals.
+
+**After the Obsidian Throne's rebuild merged (ADR-112).** The hall is gone: its wardens, great swords
+and braziers are no longer placed, so this session's moved bronze wardens and brazier flames are not
+in the game (the builders stay in `landmarks.js`). The crater's vents burn in the fire field instead.
+Not filmed: the new crater with the Lord's effects on the field.
+
+**Next.** The owner's look at the sheets and the preview (palette B or C, the Lord's colours, the
+moved landmarks); the phone; then the hero's effects and a crisp red kind.
 ## 2026-11-15 — Session 47: the Ash Disciple uses the courtyard (four terrain moves)
 
 **Task** (from the session that built the destruction system, ADR-107): give Shen Hui moves that use

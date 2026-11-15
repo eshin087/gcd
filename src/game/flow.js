@@ -857,6 +857,8 @@ export class GameFlow {
     this._try(() => g.world?.clearPushers?.(1), 'world.clearPushers');
     this._try(() => {
       g.fx?.add?.clear?.();
+      g.fx?.fire?.clear?.();
+      g.fx?.shed?.clear?.();
       g.fx?.alpha?.clear?.();
     }, 'fx.clear');
     this._try(() => g.world?.atmosphere?.setBonfireLit?.(true), 'setBonfireLit');

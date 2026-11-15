@@ -19,6 +19,7 @@ const { CameraRig } = await imp('src/core/cameraRig.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
+const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { TELL, RESULT, POSTURE } = await imp('src/combat/rules.js');
 const { LEVELS, getLevel, levelFromSearch, applyLevel } = await imp('src/levels/index.js');
@@ -133,11 +134,22 @@ function build(seed = SEED, real = false) {
     };
     return p;
   };
+  // the fire field (render/fireField.js): the same NaN guard and spawn count as the glyph pools
+  const mkFire = () => {
+    const p = new FireField(U, { max: 6000 });
+    const spawn = p.spawn.bind(p);
+    p.spawn = (o) => {
+      for (const k of ['x', 'y', 'z', 'vx', 'vy', 'vz', 'life', 'size', 'sizeEnd', 'heat', 'heatEnd']) if (o[k] !== undefined && !Number.isFinite(o[k])) throw new Error(`NaN fire blob ${k}`);
+      counters.spawns++;
+      return spawn(o);
+    };
+    return p;
+  };
   const game = {
     THREE, CONFIG, level: LVL, levels: LEVELS.map((L) => ({ id: L.id, name: L.name })), pickLevel() {},
     renderer: null, scene, fxScene: new THREE.Scene(), camera, pipeline: { finalMat: { uniforms: { uHurt: { value: 0 }, uFade: { value: 0 }, uDesat: { value: 0 }, uWarm: { value: 0 }, uExposure: { value: 1 }, uBloom: { value: 1 } } } }, U,
     events: new Events(), input, cameraRig: new CameraRig(camera), lights: new LightPool(U),
-    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }) },
+    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }), fire: mkFire() },
     time: 0, realTime: 0, timeScale: 1, debugTimeScale: 1, hitstopTimer: 0, hitstopScale: 1,
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
@@ -200,6 +212,7 @@ function build(seed = SEED, real = false) {
     game.lights.update(dt, game.player.position);
     game.fx.alpha.update(dt, game.time);
     game.fx.add.update(dt, game.time);
+    game.fx.fire.update(dt);
     G.peakAdd = Math.max(G.peakAdd, game.fx.add.count);
     game.hud.update(realDt);
     game.audio.update(realDt);
@@ -360,12 +373,13 @@ async function scenarioLevel() {
   assert(walk(1, 0.12) > 20 && walk(-1, 0.12) > 20 && walk(0, 1) > 20, `the crater is open: walking east, west and south from the seal leaves it (${walk(1, 0.12).toFixed(0)} / ${walk(-1, 0.12).toFixed(0)} / ${walk(0, 1).toFixed(0)} m out)`);
   // the ambience runs headless (no pipeline): setup, a flare, a few frames
   const U = createSharedUniforms();
-  const g = { U, time: 0, lights: new LightPool(U), fx: { add: new GlyphParticles(U, { max: 2000 }), alpha: new GlyphParticles(U, { max: 2000, additive: false }) }, pipeline: null };
+  const g = { U, time: 0, lights: new LightPool(U), fx: { add: new GlyphParticles(U, { max: 2000 }), alpha: new GlyphParticles(U, { max: 2000, additive: false }), fire: new FireField(U, { max: 2000 }) }, pipeline: null };
   const amb = createThroneHall(U, new Colliders()).ambience;
   amb.setup(g);
   amb.flare(1);
   for (let i = 0; i < 30; i++) amb.update(DT, g);
-  assert(g.fx.add.count > 20 && g.lights.lights.length === 4, `the vents burn headless (${g.fx.add.count} particles, ${g.lights.lights.length} lights)`);
+  // (the vents' flames are heat in the fire field, the wisps and motes glyph particles)
+  assert(g.fx.fire.count > 5 && g.fx.add.count + g.fx.fire.count > 20 && g.lights.lights.length === 4, `the vents burn headless (${g.fx.fire.count} blobs, ${g.fx.add.count} particles, ${g.lights.lights.length} lights)`);
 
   const G = build();
   const d = G.game.dragon;

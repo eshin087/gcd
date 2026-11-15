@@ -101,6 +101,8 @@ export class World {
       this.scars?.setVisible(false);
       this.game.fx?.alpha?.clear?.();
       this.game.fx?.add?.clear?.();
+      this.game.fx?.fire?.clear?.();
+      this.game.fx?.shed?.clear?.();
     } else if (on && this._hidden !== null) {
       for (const [o, v] of this._hidden) o.visible = v;
       this._hidden = null;

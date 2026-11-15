@@ -446,7 +446,7 @@ export class Terrain {
       // the burning tree bursts: a fire blast, the grass and wood round it catch, its wreck burns on
       s.light?.kill?.();
       fx._light({ x, y: 1.2, z, color: [1, 0.58, 0.22], intensity: 8, radius: 13, life: 0.55, fade: 0.45, flicker: 0.3 });
-      fx._blast(x, z, spec.radius);
+      fx._fireBlast(x, z, spec.radius); // (the fire field's blast, ADR-113)
       g.world?.scorch?.burnCircle?.(x, z, spec.radius * 0.8, 0.45, 1);
       const ig = spec.ignite;
       if (ig) g.world?.ignite?.(x, z, spec.radius * ig[1], ig[0]);

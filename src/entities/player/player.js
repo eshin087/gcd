@@ -295,6 +295,9 @@ export class Player {
     this.debug = {
       god: false,
       infiniteFlasks: false,
+      // the stance he stands in (stances.js): true holds the fight stance, false at ease; null = the
+      // game decides (the fight stance while locked on or in a boss fight)
+      fightStance: null,
       // a multiplier on the attack clock: every swing's windup, cut and recovery run this much
       // faster (its lunge covers the same ground). 1 in play; the Lab's slider tries other paces
       attackSpeed: 1,
