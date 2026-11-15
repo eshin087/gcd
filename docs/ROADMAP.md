@@ -178,7 +178,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
 - [x] The owner's pick of the debris look: digits (chunks and shards turned down; the switch removed)
 - [x] The hero seen behind the wyrm (its own session, PR #41, ADR-106; merged)
-- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
+- [x] The Obsidian Throne rebuilt open (ADR-112, Session 48): three open arenas rendered for the
+      owner (Starfall, the Grave of Blades, the Broken Hall), "A Starfall" picked and built: a crater
+      with no walls, the star as his throne, 36 breakables (shards, rim slabs, stones in the air)
+  - [ ] Owner review of the PR preview on the phone (frame rate there is unverified)
+  - [ ] The stones in the air hang still: a slow bob needs the destruction system to carry them
+  - [ ] The first hall's wardens and great swords are no longer placed (builders kept in landmarks.js)
 - [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
 - [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
 - [ ] The Ash Disciple's terrain moves
@@ -357,7 +362,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
   - [ ] Sounds of his own: a blade hum and swing, thunder for the lightning, the ignition
   - [ ] The Void grip (lifted and held: mash to break free), designed and left out (M1.28 ships the
         Crushing Dark instead: a pin, no new hero state)
-  - [ ] The hall on a phone: frame cost of the inlay batch and six brazier lights
+  - [ ] The crater on a phone (the hall is gone, ADR-112): on-device frame rate with the inlay batch,
+        four vent lights and 36 breakables in one batch (desktop numbers: ADR-112)
   - [ ] A reward for beating him (ADR-059), once the technique system lands
 
 ## M1.22 — Controller support and remappable controls (2026-11-13, `input/gamepad`, ADR-066, ADR-067)
