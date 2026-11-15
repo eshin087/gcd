@@ -4,7 +4,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-two pieces of work since 0.4.0:
+Twenty-three pieces of work since 0.4.0:
+- **The Cinder Wyrm in large, readable letters** (2026-11-14, ADR-092): the wyrm is printed in bold
+  symbols four times the area of the old thin digits (8x13 px at 720p, the owner's pick of three
+  sizes), about 25 characters across its body: you can read every one. Its letter grid now travels
+  with it, so the body no longer slides under a fixed grid when the camera moves. *Changed:* the fine
+  scale outlines of the thin-digit look are gone at the game camera.
 - **The streak and the flurry** (2026-11-14, ADR-091): perfect dodges in a row are a **streak**
   (pips under your HP bar, "GHOSTEP ×N" over your head), and it lasts until a blow hurts you. Every
   perfect dodge is answered with as many blows as the streak counts, seven at most: **flash cuts**

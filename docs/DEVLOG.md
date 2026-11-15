@@ -5,6 +5,53 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-14 — Session 32: the ASCII look; the wyrm in large letters; landmarks, first pass
+
+**Owner:** "how can we improve the ascii visuals and graphics of this game? im not feeling the ascii
+art style to the fullest". Then, on three rendered options: "scrap everything. i want you to make the
+dragon, bosses, look more ascii like. also add bigger cooler detailed appropriate background objects
+that can also be made full of ASCII". Then, on the wyrm's three letter sizes: "B, large". Worktree
+`.claude/worktrees/ascii-bosses`, branch `render/ascii-bosses` from `main` (PR #27). (Sessions 30 and
+31 and ADR-086 – 091 belong to branches open at the same time.)
+
+**Done:**
+- **A diagnosis**, from captures of the three levels at the game camera: what reads as ASCII is big
+  glyphs on black (the throne hall, the canopies); what does not is the grass carpet, the fighters'
+  4 px dot marks and five different letter sizes on one screen.
+- **Three options rendered and scrapped by the owner** (live patches, no code kept): a typed lattice
+  ground, the hero in the wyrm's letters, a terminal finish.
+- **The wyrm in large letters** (ADR-092): `wyrmGlyphs.js` rewritten (bold font, cells 1/55 of the
+  height, three symbol sets); the pass averages 16 more taps per wyrm cell and anchors the grid to
+  the boss (`U.uBossScreen`, `uWyrmAnchor`, `uWyrmTaps`); tone set to the picked preview's.
+- **Landmarks, a first pass** (`src/world/landmarks.js`, hooked into the three sets; NOT in this PR:
+  uncommitted in the worktree until the owner picks which stay): the elder wyrm's skeleton and the Cinder Tree (Cinderwood), two stone
+  swordsmen, the sect gate and an incense cauldron (Ashfall), two throne wardens and six great swords
+  (the Obsidian Throne). Trees and boulders in their footprints are built, then dropped, so every
+  other tree and stone stays where it was.
+
+**Found on the way:** a big smooth form lit evenly lands on one level of the grid's glyph ramp and
+prints as rows of `====` (thin forms like bones read at once): landmarks get per-facet tones and a
+dark albedo. The camera's 58 degrees squash anything upright and hide the north rim: statues are
+drawn 1.3x taller than built and stand east and west. The hall's night needs a prop albedo twice the
+other levels'. The gate's roof profile hit `pow(negative, 1.7)` at the eaves (NaN positions; clamped).
+A connected gamepad walked the hero between captures.
+
+**Verification:** in the dev server at 1280x720: the wyrm at the fight camera and pulled back to 50 m
+(beside the picked preview), phase 3, the breath, a red tell (the glow still tints the letters), and
+at 852x393 (6x10 px letters). The anchor, measured in the wyrm's own frame over 0.1 / 0.2 / 0.4 m of
+camera travel: 13 / 15 / 21 % of its lit pixels change, 63 / 62 / 60 % with a screen-fixed grid.
+`npm test` and `npm run build` pass (run with the landmark files also in the tree; CI runs the PR's own tree).
+
+**Not checked / open:** 1080p and above (the pane timed out; the cell would be 12x20). The frame rate,
+on any device. The wyrm in flight and in motion at 60 fps (stills only). The human bosses' letters
+(no pick). Of the landmarks only the skeleton is at a finished standard; the tree's crown does not
+read, the gate sits mostly off the top of the frame, the wardens read as red-lit monoliths; none was
+played around (new colliders on the arena rims), none is in ARCHITECTURE or STYLE yet.
+
+**Next:** the owner's picks: the duelists' letter size (and whether the hero follows), which
+landmarks to keep; then a second pass on those.
+
+---
 ## 2026-11-14 — Session 31: the streak and the flurry (perfect dodges answered blow for blow)
 
 **Owner:** "lets have more different perfect dodge animations instead of the same one of just

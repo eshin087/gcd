@@ -2044,3 +2044,41 @@ elbow in two backhands' recoveries (ADR-078) still stand.
   collides until the flurry ends. `player:perfectDodge` + `player:ghostep` still fire once per
   perfect dodge, and the wyrm's last blow still emits `player:plunge` / `player:plungeHit`, so the
   stats, the call-outs and the sounds that listened to them did not change.
+
+## ADR-092 — The wyrm in large, readable letters; a grid that travels with it (2026-11-14)
+
+**Context.** The owner: "im not feeling the ascii art style to the fullest". A look at the three
+levels at the game camera showed why: most of what is on screen is drawn in marks too small to read
+as characters (the wyrm's 3x5 px digits, the fighters' 3x3 dot marks) or too overlapped (the grass).
+Three wider options were rendered (a typed lattice ground, the hero in the wyrm's letters, a terminal
+finish) and the owner scrapped all of them: "make the dragon, bosses, look more ascii like" and add
+bigger background objects full of ASCII. The wyrm was then rendered at three larger letter sizes
+(6x10 symbols, 8x13 symbols, 10x16 pixel digits); the owner picked the 8x13 one.
+
+**Decision.**
+- The wyrm's letters are the game's bold monospace in cells 1/55 of the screen height (8x13 px at
+  720p; `wyrmArtCell(H)`), three sets by brightness of symbols and blocky capitals (`WYRM_SETS`).
+  The thin 4x6 / 3x5 pixel fonts are removed.
+- A wyrm cell averages a 4x4 grid of its source (16 more taps, only in cells on the wyrm) and a
+  letter takes 30 % of its tone from its own pixels (was 85 %).
+- The grid is anchored to the boss's root on screen (`U.uBossScreen` → `uWyrmAnchor`).
+- Tone back to the picked preview's: bright and dense (`uArtLum.y` 4.5, `uArtMin.y` 0.1, gamma 0.8,
+  set steps 0.1 / 0.34). The art source (WYRM_ART) is unchanged.
+
+**Why.** At 4x6 px a letter cannot be read at the game camera, so the wyrm was a texture; at 8x13 it
+is about 25 readable characters across, which is what "ASCII art" means to a viewer. Point-sampling a
+13 px cell over scales a few px wide gave every cell a random tier. A screen-fixed grid of big
+letters re-letters the whole body whenever the camera moves: measured in the wyrm's own frame, 63 %
+of its lit pixels change per 0.1 m of camera travel against 13 % anchored.
+
+**Rejected.** A darker, steeper tone (truer to the charcoal reference, but the body turned into sparse
+punctuation on black: less ASCII than what was picked). Larger scales in the source (x1.8, x2.6: no
+visible gain at this letter size). Black cells at depth steps (they cut holes in the body). The
+6x10 and 10x16 sizes (the owner's call).
+
+**Consequences.** The fine scale outlines of the 2026-11-08 reference match are gone from the game
+camera: a scale is about two letters, its rim a brighter letter. The reference-view targets in
+STYLE.md were measured for the thin digits and are not re-measured. The human bosses and the hero
+still use the 4 px dot matrix (a sheet of three sizes was rendered; at their ~70 px height only 5x8
+letters hold a figure; no pick yet). Not checked: 1080p and above (the hidden pane timed out), the
+frame rate on a phone (16 more texture reads per wyrm pixel), the flight and the dives in motion.
