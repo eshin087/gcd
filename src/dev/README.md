@@ -66,6 +66,10 @@ A fighting game's training mode: every situation worth seeing, one click each.
   `.moveAnswer`, `.lastResult`.
 - Tests: integ / duel / lord TRAINING run every situation for their boss and check each one shows
   what it promises (`expect`).
+On the Ashfall level a **TERRAIN** category stages each of the Ash Disciple's courtyard moves where it
+works (the hero under a pillar, a lantern or the bell in reach) on a courtyard put back whole (ADR-111);
+the same moves under BOSS MOVES start from where he stands and go for the nearest piece.
+
 On the Obsidian Throne a **TERRAIN** category stages each of the Starless Lord's moves on the
 crater's pieces where it works (ADR-109), on a crater put back whole; the same moves under BOSS MOVES
 start from where he stands and take what there is. Not on the lab stage: it has no pieces.

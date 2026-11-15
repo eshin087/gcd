@@ -619,6 +619,28 @@ deflected, its last recoils him). His own:
   transition is **the Kindling**: he kneels, the blade kindles, a red shock ring (r 6 m, 10 damage,
   kb 6) at 1.75 s. Windups × [1, 0.92], recoveries × [0.9, 0.8]; four moves join in P2.
 
+### He uses the courtyard (2026-11-15, ADR-111)
+Four moves on the pieces of the set (*The world breaks*, below). His AI picks one only while a piece
+for it is in reach; with none, the move is simply not there. Each piece is spent for the fight (the
+bell aside), so they thin out as the duel goes on; the reset puts every piece back. To reach a piece
+he may leave his bound (12.5 m) by up to 9.5 m for the length of the move; after it the bound draws
+him back in at 5 m/s. Numbers: `ashDisciple/tuning.js` `TUNING.terrain`; code: `ashDisciple/terrain.js`.
+
+| Move | Tell | What happens | What it asks |
+|---|---|---|---|
+| **Severed Pillar** | white (his cut), then **red** (the pillar, the world's) | He crosses to behind the standing piece you are under (a pillar or the stele, 2.3 m or taller, you within its height + 0.5 m, he within 14 m of it) and cuts it through: windup 0.66 s, glint 0.3 s before the cut. It falls on you in 0.7 – 1.0 s (0.95 s for a 4.5 m pillar): the strip is marked from the moment it goes, its flash comes 0.3 s before it lands, 22 x its weight, unblockable, knocked down. | Be out of the strip (a walk does it), or roll as it lands. His cut (18) only reaches a hero who hugs the pillar: parry it. |
+| **Flying Lantern** | **blue**, cued on the piece | He is at a stone lantern, or a pillar's stump 0.9 – 2.3 m tall (within 13 m of him, you 4.5 – 26 m from it), and kicks it at where you will be 0.2 s on: windup 0.64 s, 0.62 – 0.95 s in the air. A ring of pale motes shows where it comes down; the glint pops on the piece 0.3 s before it lands. 22, knockback 2.4, within 1.5 m of the landing. | Parry on the glint: it bursts on the blade and costs him 14 posture. Or leave the ring. |
+| **Three Tolls** | white, white, **blue**, each cued on its ring | He leaps to the fallen bell (within 15 m of him, you within 23 m of it) and strikes it three times, 0.6 – 0.7 s apart. Each blow sends a ring of sound out at 12 m/s (it dies 26 m out); its glint pops on the ring 0.3 s before the front reaches you (your own run toward it counted in). 12, 12, 18. Sound is not stopped by cover. | Parry the three in rhythm (10 posture each), or roll through each (across their way: rolling toward the bell brings the next one sooner than a roll can follow a roll). Within about 4.6 m of the bell the rings are born past you: run in and cut his open back. |
+| **Swallow's Return** | **blue** | His way out when pressed (2.4 x as likely with his posture over 40 % or a blow landed in the last 2.2 s). From close (within 5.5 m), with a pillar 3.2 m or taller within 10.5 m behind him: he leaps back onto it (0.42 s), is on the stone for 0.13 s, and dives off it at you: windup 0.92 s in all, the glint as he leaves the stone, 0.3 s before the cut. 24; the dive follows you for its first half and covers up to 12.5 m. His feet chip the pillar (0.3): a worn one gives way. | Parry the dive (a perfect parry locks the blades), or step aside once he has left the stone. |
+
+Cooldowns 9 / 10 / 14 / 8 s; none is a counter, none changes in phase 2 beyond the shorter windups.
+In a 150 s duel against the fencing bot on the real courtyard (`duel.mjs` TERRAIN) he made 31 moves, 7
+of them these (3 Swallow's Returns, 2 Three Tolls, 1 Severed Pillar, 1 Flying Lantern): 23 %.
+Checked by `tests/integration/duel.mjs` TERRAIN (50 checks on the real set: each tell and timing, the
+piece used and where it ends, the hero hit only where it is marked, the answer each tell promises, no
+move without a piece in reach, the reset). **Not measured:** what they do to the fight's difficulty for
+a human, and the frame rate on a phone with three rings on screen.
+
 ### Pressure: how he closes (ADR-063)
 (owner: "it shouldn't be attacking if it's not near the player or able to hit them ... it should
 sprint and catch up ... instead of the player able to kite it out easily")
@@ -976,8 +998,11 @@ chip, stop nothing and block nobody: they are there for the Void to throw). It a
   metre of its trunk, then falls to embers and leaves a stump.
 - **The wyrm walks through wood**: a tree in its body's way goes down ahead of it. Stone turns it, as
   before.
-- **Lifting and throwing** (a boss tears a piece from the ground and hurls it) is in the world's API
-  (ARCHITECTURE.md "Destruction"). The wyrm's moves that use it: *The wyrm uses the ground*, below.
+- **The bosses use it.** The Ash Disciple cuts the pillar you stand under down on you, kicks stone
+  lanterns at you, rings the bronze bell (rings of sound that cross the courtyard) and springs off
+  pillars: *The Ash Disciple* → *He uses the courtyard* (ADR-111). The wyrm tears up trees and
+  boulders and hurls them: *The wyrm uses the ground*, below (ADR-110). The Starless Lord lifts the
+  crater's pieces with the Void (ADR-109). The world's API for it: ARCHITECTURE.md "Destruction".
 
 ### The wyrm uses the ground (2026-11-15, ADR-110)
 Three moves take what stands in the clearing. The wyrm only starts one with a piece in reach, a
