@@ -4,7 +4,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-three pieces of work since 0.4.0:
+Twenty-four pieces of work since 0.4.0:
+- **The Cinder Wyrm in large, readable letters** (2026-11-14, ADR-092): the wyrm is printed in bold
+  symbols four times the area of the old thin digits (8x13 px at 720p, the owner's pick of three
+  sizes), about 25 characters across its body: you can read every one. Its letter grid now travels
+  with it, so the body no longer slides under a fixed grid when the camera moves. *Changed:* the fine
+  scale outlines of the thin-digit look are gone at the game camera.
 - **The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from**
   (2026-11-14, ADR-086 – ADR-090): the hero's free hand has a wrist now and forms **sword fingers**
   (two fingers out, the others folded under the thumb). It gathers at the sword wrist and is thrown

@@ -63,6 +63,9 @@ export function createSharedUniforms() {
     uPushers: { value: Array.from({ length: MAX_PUSH }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uGust: { value: new THREE.Vector4(0, 0, 0, 1) }, // x, z, strength, radius (radial wind)
     uPlayerScreen: { value: new THREE.Vector4(0.5, 0.5, 1e9, 0) }, // uv x, uv y, view depth, unused
+    // the boss's root on screen: uv x, uv y, view depth, 1 while there is one (the art pass anchors
+    // the wyrm's letter grid to it)
+    uBossScreen: { value: new THREE.Vector4(0.5, 0.5, 1e9, 0) },
     uResolution: { value: new THREE.Vector2(1, 1) },
     uCullDist: { value: 60 },
     // creature ASCII art: 1 = materials feed the pass a smooth shaded source (no surface-glyph gaps),

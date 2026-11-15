@@ -230,6 +230,14 @@ async function boot() {
     const depth = tmp.clone().sub(camera.position).dot(camFwd);
     tmp.project(camera);
     U.uPlayerScreen.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5, depth, 0);
+    // ... and the boss's root (the wyrm's letter grid travels with it)
+    const bp = game.dragon?.position;
+    if (bp && Number.isFinite(bp.x + bp.y + bp.z)) {
+      tmp.copy(bp);
+      const bd = tmp.clone().sub(camera.position).dot(camFwd);
+      tmp.project(camera);
+      if (Number.isFinite(tmp.x + tmp.y)) U.uBossScreen.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5, bd, 1);
+    } else U.uBossScreen.value.w = 0;
   };
 
   // --- loop
