@@ -1,13 +1,12 @@
 import { el, setText, setClass, button } from './labDom.js';
 import { CATEGORIES, ANSWERS } from './training.js';
-import { STAGE_LOOKS } from '../world/trainingRoom.js';
 
 // The Training panel (ADR-098): a fighting game's training menu over the game. Every situation of
 // training.js for the boss loaded, by category; one click runs it (the runner plays the hero's side),
 // the row shows ✓ / ✗ once it has played out. A banner over the fight names what is running.
 // Keys while it is open: ↑ ↓ choose, Enter run, R replay, Esc stop (consumed: they never reach the
 // game). Toggle: F4, the Lab's TRAINING button, or load with ?training. The stage and the boss are
-// page reloads (`?stage=lab&stageLook=`, `?level=`), kept with ?training.
+// page reloads (`?stage=lab`, `?level=`), kept with ?training.
 
 const styleId = 'abyss-training-style'; // (not an UPPER_CASE const: the glyph check reads those as glyph strings)
 const CSS = `
@@ -182,13 +181,10 @@ export class TrainingPanel {
       const st = el('div', 'trn-bar', null, root);
       el('span', 'trn-lbl', 'STAGE', st);
       const stage = new URLSearchParams(globalThis.location?.search ?? '').get('stage');
-      const look = new URLSearchParams(globalThis.location?.search ?? '').get('stageLook') ?? STAGE_LOOKS[0].id;
-      for (const L of STAGE_LOOKS) {
-        const b = this._btn(st, L.label, () => globalThis.location?.assign?.(urlWith({ stage: 'lab', stageLook: L.id })));
-        b.title = `the training room: ${L.desc}`;
-        setClass(b, 'on', stage === 'lab' && look === L.id);
-      }
-      const lv = this._btn(st, 'Level set', () => globalThis.location?.assign?.(urlWith({ stage: null, stageLook: null })));
+      const room = this._btn(st, 'Training room', () => globalThis.location?.assign?.(urlWith({ stage: 'lab' })));
+      room.title = 'this boss in the training room: a cyan measuring grid, rings at 3 / 6 / 9 / 12 m';
+      setClass(room, 'on', stage === 'lab');
+      const lv = this._btn(st, 'Level set', () => globalThis.location?.assign?.(urlWith({ stage: null })));
       setClass(lv, 'on', stage !== 'lab');
       const bs = el('div', 'trn-bar', null, root);
       el('span', 'trn-lbl', 'BOSS', bs);

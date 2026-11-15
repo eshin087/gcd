@@ -9,14 +9,11 @@ import { TAU } from '../core/math.js';
 import { prep, carve, paint, slabGeometry, SLAB_LOOK, STONE_LOOK, buildBonfire } from './forest.js';
 
 // The Training Room (ADR-098): the lab stage, a fighting game's training stage for any boss
-// (`?stage=lab`, levels/index.js withStage; `&stageLook=grid|holo|void`). A square floor of great
-// tiles with a lit measuring grid on it (a line every 2 m, a brighter one every 10 m), rings round
-// the duel's centre at 3, 6, 9 and 12 m with their numbers, low walls of panels with light in their
-// seams and a pylon at each corner. Three looks, for the owner to pick from:
-//   grid  the classic training stage: pale grey tiles, white lines, gold numbers
-//   holo  a dark dojo of light: black tiles, cyan lines, a magenta ring, cyan pylons
-//   void  the black between the stars: no walls, a lattice of violet dots, rings of violet light,
-//         stars drifting overhead
+// (`?stage=lab`, levels/index.js withStage). A dark dojo of light: a square floor of great black
+// tiles with a cyan measuring grid on it (a line every 2 m, a brighter one every 10 m), magenta
+// rings round the duel's centre at 3, 6, 9 and 12 m with their numbers, low walls of panels with
+// cyan light in their seams and a pylon of light at each corner. (Three looks were built; the owner
+// picked this one, "Holo", over a pale "Grid" and a starry "Void".)
 // Same output shape as createForest / createThroneHall (world.js reads it). Everything is drawn
 // through the glyph systems (STYLE.md): carved glyphs for the tiles and walls, the screen grid for
 // the pylons and the bonfire, glyph particles for the lines, the numbers and the motes.
@@ -30,31 +27,12 @@ export const ROOM = {
   bonfire: { x: 0, z: 27 },
 };
 
-/** The looks (the panel's STAGE buttons). Colours linear HDR. */
-export const STAGE_LOOKS = Object.freeze([
-  {
-    id: 'grid', label: 'Grid', desc: 'pale tiles, white lines, gold numbers (the classic training stage)',
-    tile: [0.3, 0.31, 0.33], tileB: [0.25, 0.26, 0.28], line: [1.5, 1.55, 1.65], major: [2.4, 2.5, 2.7], ring: [2.6, 1.9, 0.6], num: [3.2, 2.4, 0.7],
-    wall: [0.24, 0.25, 0.27], seam: [1.6, 1.8, 2.2], pylon: [0.7, 0.9, 1.3], walls: true, dots: false, stars: 0, motes: [1.2, 1.4, 1.8],
-    sky: { moonColor: [0.62, 0.64, 0.7], ambient: [0.12, 0.12, 0.13], fogColor: [0.03, 0.032, 0.036], fogNear: 40, fogFar: 85 },
-  },
-  {
-    id: 'holo', label: 'Holo', desc: 'black tiles, a cyan grid of light, a magenta ring (a dojo of light)',
-    tile: [0.05, 0.065, 0.085], tileB: [0.035, 0.045, 0.06], line: [0.18, 1.05, 1.35], major: [0.4, 2.2, 2.8], ring: [2.3, 0.35, 1.9], num: [0.6, 2.6, 3.1],
-    wall: [0.05, 0.07, 0.09], seam: [0.3, 2.2, 2.8], pylon: [0.3, 1.8, 2.4], walls: true, dots: false, stars: 0, motes: [0.4, 1.8, 2.4],
-    sky: { moonColor: [0.22, 0.4, 0.55], ambient: [0.02, 0.04, 0.05], fogColor: [0.003, 0.009, 0.013], fogNear: 34, fogFar: 72 },
-  },
-  {
-    id: 'void', label: 'Void', desc: 'no walls: a lattice of violet light in the dark between the stars',
-    tile: [0.035, 0.03, 0.05], tileB: [0.025, 0.022, 0.04], line: [0.9, 0.5, 1.8], major: [1.6, 0.9, 2.9], ring: [1.9, 1.0, 3.2], num: [2.4, 1.8, 3.4],
-    wall: null, seam: null, pylon: null, walls: false, dots: true, stars: 260, motes: [1.2, 0.8, 2.2],
-    sky: { moonColor: [0.3, 0.26, 0.45], ambient: [0.025, 0.02, 0.04], fogColor: [0.006, 0.004, 0.012], fogNear: 36, fogFar: 80 },
-  },
-]);
-
-export function stageLook(id) {
-  return STAGE_LOOKS.find((L) => L.id === id) ?? STAGE_LOOKS[0];
-}
+/** The room's look (the owner's pick of three, 2026-11-15: "Holo"). Colours linear HDR. */
+export const LOOK = Object.freeze({
+  tile: [0.05, 0.065, 0.085], tileB: [0.035, 0.045, 0.06], line: [0.18, 1.05, 1.35], major: [0.4, 2.2, 2.8], ring: [2.3, 0.35, 1.9], num: [0.6, 2.6, 3.1],
+  wall: [0.05, 0.07, 0.09], seam: [0.3, 2.2, 2.8], pylon: [0.3, 1.8, 2.4], motes: [0.4, 1.8, 2.4],
+  sky: { moonColor: [0.22, 0.4, 0.55], ambient: [0.02, 0.04, 0.05], fogColor: [0.003, 0.009, 0.013], fogNear: 34, fogFar: 72 },
+});
 
 const SIN_PITCH = Math.sin(CONFIG.camera.pitch);
 /** The on-screen angle of a ground direction (dx, dz) at the fixed camera (north up). */
@@ -68,8 +46,8 @@ function box(w, h, d, x, y, z, col) {
   return g;
 }
 
-export function createTrainingRoom(U, colliders, lookId = 'grid') {
-  const L = stageLook(lookId);
+export function createTrainingRoom(U, colliders) {
+  const L = LOOK;
   const rng = mulberry32(CONFIG.seed + 977);
   const R = ROOM, C = R.center;
   const slabGeos = [], wallGeos = [], propGeos = [], slabs = [];
@@ -88,15 +66,11 @@ export function createTrainingRoom(U, colliders, lookId = 'grid') {
     }
   }
 
-  // ---- the measuring grid: lines every 2 m (a lattice of dots in the void), brighter every 10 m
+  // ---- the measuring grid: lines every 2 m, brighter every 10 m
   const G = R.gridHalf, step = 0.55;
   for (let k = -G; k <= G; k += R.cell) {
     const major = Math.abs(k % 10) < 1e-6;
     const col = major ? L.major : L.line, size = major ? 0.42 : 0.32;
-    if (L.dots) {
-      for (let j = -G; j <= G; j += R.cell) glow.push({ x: k, y: 0.06, z: j, glyph: major && Math.abs(j % 10) < 1e-6 ? '+' : '·', size: major ? 0.5 : 0.36, color: col, flicker: 0.08 });
-      continue;
-    }
     for (let t = -G; t <= G; t += step) {
       glow.push({ x: t, y: 0.05, z: k, glyph: '-', size, color: col, rot: groundRot(1, 0), flicker: 0.04 });
       glow.push({ x: k, y: 0.05, z: t, glyph: '|', size: size * 0.9, color: col, rot: 0, flicker: 0.04 });
@@ -124,7 +98,7 @@ export function createTrainingRoom(U, colliders, lookId = 'grid') {
 
   // ---- the walls: low panels round the floor, light in every seam, a pylon at each corner
   const pylons = [];
-  if (L.walls) {
+  {
     const W = R.half + 0.6, panel = 4;
     for (const [ax, az, horiz] of [[0, -W, true], [0, W, true], [-W, 0, false], [W, 0, false]]) {
       for (let t = -R.half; t < R.half; t += panel) {
@@ -132,7 +106,7 @@ export function createTrainingRoom(U, colliders, lookId = 'grid') {
         const h = 1.6 + 0.4 * rng();
         wallGeos.push(box(horiz ? panel - 0.12 : 0.6, h, horiz ? 0.6 : panel - 0.12, x, 0, z, () => L.wall));
         const sx = horiz ? t : ax, sz = horiz ? az : t;
-        for (let y = 0.3; y < h; y += 0.42) glow.push({ x: sx + (horiz ? 0 : 0), y, z: sz + (horiz ? 0 : 0), glyph: '|', size: 0.44, color: L.seam, rot: 0, flicker: 0.1 });
+        for (let y = 0.3; y < h; y += 0.42) glow.push({ x: sx, y, z: sz, glyph: '|', size: 0.44, color: L.seam, rot: 0, flicker: 0.1 });
       }
       for (let t = -R.half; t <= R.half; t += 1.5) colliders.add(horiz ? t : ax, horiz ? az : t, 0.8, 'stone');
     }
@@ -174,9 +148,9 @@ export function createTrainingRoom(U, colliders, lookId = 'grid') {
   addMesh(propGeos, mat, 'props');
   markCaster(group);
 
-  // ---- the room's life: the lit grid, the pylons' lights, motes, stars
+  // ---- the room's life: the lit grid, the pylons' lights, motes
   let glowSys = null;
-  const st = { motes: 0, stars: [] };
+  const st = { motes: 0 };
   const ambience = {
     setup(game) {
       glowSys = new GlyphParticles(game.U, { max: glow.length + 8, additive: true });
@@ -194,7 +168,7 @@ export function createTrainingRoom(U, colliders, lookId = 'grid') {
       const fx = game.fx?.add;
       if (!fx) return;
       const f = game.U.uFocus.value;
-      st.motes += dt * (L.stars ? 4 : 6);
+      st.motes += dt * 6;
       while (st.motes >= 1) {
         st.motes -= 1;
         const x = f.x + (Math.random() - 0.5) * 30, z = f.z + (Math.random() - 0.5) * 24;
@@ -203,17 +177,6 @@ export function createTrainingRoom(U, colliders, lookId = 'grid') {
           x, y: 0.1 + Math.random() * 0.6, z, vx: 0, vy: 0.3 + Math.random() * 0.4, vz: 0,
           life: 3 + Math.random() * 3, size: 0.1, sizeEnd: 0.03, glyph: ".'·", color: L.motes, colorEnd: L.motes.map((c) => c * 0.2), alpha: 0.9, alphaEnd: 0, flicker: 0.4,
         });
-      }
-      if (L.stars) {
-        // stars drifting high over the floor (a slow twinkle; re-made as they fade)
-        st.starT = (st.starT ?? 0) + dt * (L.stars / 6);
-        while (st.starT >= 1) {
-          st.starT -= 1;
-          fx.spawn({
-            x: f.x + (Math.random() - 0.5) * 60, y: 9 + Math.random() * 10, z: f.z + (Math.random() - 0.5) * 50 - 8, vx: 0.15, vy: 0, vz: 0,
-            life: 5 + Math.random() * 3, size: 0.12 + Math.random() * 0.18, sizeEnd: 0.05, glyph: '·+*', color: [1.6, 1.4, 2.4], colorEnd: [0.3, 0.2, 0.6], alpha: 0.9, alphaEnd: 0, flicker: 0.6,
-          });
-        }
       }
     },
   };
