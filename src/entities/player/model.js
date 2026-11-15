@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createSurfaceGlyphMaterial, FLAG } from '../../render/materials.js';
 import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
-import { DIM, BODY, REST, HAIR_CLUSTERS } from './heroDims.js';
+import { DIM, BODY, REST, HAIR_CLUSTERS, BUILD } from './heroDims.js';
 import { mergeGeometries, sub, partGeometry, orient, limb, swordTip } from './heroGeo.js';
 import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
 
@@ -131,7 +131,7 @@ export const HERO_SCALE = 1.2;
  * camera (side by side he is a little shorter). Visual only, like HERO_SCALE: the gameplay body, the
  * hits and the reach are unchanged (Player.unlean divides it out).
  */
-export const PLAYER_SCALE = HERO_SCALE * 0.9;
+export const PLAYER_SCALE = HERO_SCALE * 0.9 * (BUILD?.scale ?? 1); // (× a style's build on trial: styles.js)
 /** The blade core's unlit colour up close (player.js lifts it with distance). */
 export const BLADE_BASE = [0.05, 0.1, 0.2];
 

@@ -3,6 +3,8 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
+import { STYLE } from './styles.js'; // PROTOTYPE: the hero's style on trial (?style=a|b|c)
+import { BUILD } from './heroDims.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -282,7 +284,7 @@ const LD_FOE = unitAzEl(0, 0); // straight at the foe
 // the sword arm on the move in a fight (loco): the grip before the right ribs, the elbow back
 // beside them (pointed out to the side it flared 0.52, as the run's once did), the blade ahead and
 // level, a little out to the sword side: the fencer's guard, carried
-const FIGHT_RUN = { h: [-0.09, -0.26, 0.33], p: [-0.22, -0.7, -0.68], d: unitAzEl(-11, 3) };
+const FIGHT_RUN = { h: [-0.09, -0.26, 0.33], p: [-0.22, -0.7, -0.68], d: unitAzEl(-11, 3), f: [0.25, 1, 0] };
 export function guard(p, A) {
   const ph = A.time * (TAU / IDLE_LOOP);
   const br = Math.sin(ph), sw = Math.sin(ph * 0.5 + 1.1); // breath, and a slower weight sway
@@ -342,12 +344,12 @@ export function stand(p, A) {
   guard(p, A);
   if (!A.freeHand) return;
   const f = clamp(fin(A.fightW), 0, 1);
-  if (f >= 0.999) fencerGuard(p, P, A);
+  if (f >= 0.999) standGuard(p, A);
   else {
-    atEase(p, P, A);
+    standEase(p, A);
     if (f > 0.001) {
       for (let i = 0; i < N; i++) SCR_FIGHT[i] = p[i];
-      fencerGuard(SCR_FIGHT, P, A);
+      standGuard(SCR_FIGHT, A);
       blend(p, p, SCR_FIGHT, f * f * (3 - 2 * f));
     }
   }
@@ -359,6 +361,43 @@ export function stand(p, A) {
     to3(p, P.lD, REST_LD[0], REST_LD[1], REST_LD[2], mv);
     to3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2], mv);
   }
+}
+
+// (PROTOTYPE: a style on trial, styles.js, brings its own two stances)
+function standEase(p, A) {
+  if (STYLE) STYLE.ease(p, P, A, atEase);
+  else atEase(p, P, A);
+}
+function standGuard(p, A) {
+  if (STYLE) STYLE.guard(p, P, A);
+  else fencerGuard(p, P, A);
+}
+
+/** PROTOTYPE (styles.js `atk`): how a style cuts, over the swing clip's own keys and timing. The
+ *  body's share of the swing (the hips', chest's and lean's travel from the pose he swung from,
+ *  × `body`), the weight (a rise and a lean back in the windup, a dip, a lunge and a lean into the
+ *  cut, bell-shaped round mid-cut), the grip (`two`: the free hand on the grip throughout) and
+ *  wider arcs (`arc`: the hand further from the shoulder through the cut). `hb` = how far he is on
+ *  the way home (the layer lets go as he gets there). */
+const STYLE_BODY = [P.pelvY, P.spY, P.spX, P.spZ, P.bodyY];
+function styleAttack(p, A, S, t, W, Ac, hb) {
+  const F = A.from, live = 1 - clamp(hb, 0, 1);
+  if (!F) return;
+  const k = 1 + (S.body - 1) * live;
+  for (let i = 0; i < STYLE_BODY.length; i++) {
+    const c = STYLE_BODY[i];
+    p[c] = F[c] + (p[c] - F[c]) * k;
+  }
+  const antic = smoothstep(0.35 * W, 0.9 * W, t) * (1 - smoothstep(W, W + 0.35 * Ac, t)) * S.antic;
+  const x = (t - (W + 0.5 * Ac)) / Math.max(0.05, 0.9 * Ac), imp = Math.exp(-x * x * 2.2) * live;
+  p[P.bodyY] += S.dip * (0.4 * antic - imp);
+  p[P.bodyZ] += S.lunge * (imp - 0.5 * antic);
+  p[P.spX] += S.lean * (imp - 0.6 * antic);
+  if (S.arc !== 1) {
+    const e = 1 + (S.arc - 1) * imp;
+    for (let c = 0; c < 3; c++) p[P.rH + c] *= e;
+  }
+  if (S.two > 0) p[P.twoHand] = Math.max(p[P.twoHand], S.two);
 }
 
 /** The hero's blade (and, `arm`, the sword hand and its elbow) leaves where it was as this clip
@@ -539,7 +578,7 @@ export function loco(p, A) {
   // In a fight (A.fightW, the hero) he keeps his guard up on the move, the blade ahead of him and
   // level, riding the stride; only a sprint trails it. (ADR-114: trailed, every start and stop
   // swung the steel 140° between the fencer's guard and his back, 16-18 cm a frame at the point.)
-  const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = FIGHT_RUN;
+  const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = STYLE?.run ?? FIGHT_RUN, FD = STYLE ? STYLE.run.dv : FIGHT_RUN.d;
   // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
   // beside a free arm that pumps; it rides the stride now)
   to3(p, P.rH, lerp(lerp(lerp(-0.13, -0.15, s), -0.02, bw), FR.h[0], fw), lerp(lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
@@ -548,9 +587,9 @@ export function loco(p, A) {
   // front: they point back beside the ribs now)
   to3(p, P.rP, lerp(lerp(lerp(-0.4, -0.5, s), -0.85, bw), FR.p[0], fw), lerp(lerp(lerp(-0.3, 0.2, s), -0.3, bw), FR.p[1], fw), lerp(lerp(-0.95, -0.5, bw), FR.p[2], fw), ws);
   dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
-  if (fw > 0.001) dirLerp(SW_T, 0, SW_T[0], SW_T[1], SW_T[2], FR.d[0], FR.d[1] + 0.035 * st, FR.d[2], fw);
+  if (fw > 0.001) dirLerp(SW_T, 0, SW_T[0], SW_T[1], SW_T[2], FD[0], FD[1] + 0.035 * st, FD[2], fw);
   dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
-  to3(p, P.swF, lerp(lerp(-0.3, 0, bw), 0.25, fw), 1, lerp(lerp(0, 0.2, bw), 0, fw), ws);
+  to3(p, P.swF, lerp(lerp(-0.3, 0, bw), FR.f[0], fw), lerp(1, FR.f[1], fw), lerp(lerp(0, 0.2, bw), FR.f[2], fw), ws);
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (the run's back swing reaches further down and back, so the elbow opens behind him and folds as
@@ -1005,7 +1044,9 @@ function attackPose(p, A) {
   // then, so the follow-through runs into the way home without a stop (it was held to 0.5 of the
   // recovery, past the last key: the blade stood still for two frames and then snapped home in 0.12 s,
   // as fast as the cut)
-  const home = k.kind === 'clip' ? swingClip(k.clip)?.home ?? SW_HOME : 0.315;
+  const ST = A.freeHand && k.kind === 'clip' ? STYLE?.atk : null;
+  const home = ST ? ST.home : k.kind === 'clip' ? swingClip(k.clip)?.home ?? SW_HOME : 0.315;
+  let homeB = 0;
   if (rec > home) {
     // back toward the ready stance: the rear foot stays planted, the foot that stepped draws back
     // home in a recovery step (the foot planner settles the rest), and the sword hand comes round in
@@ -1020,6 +1061,7 @@ function attackPose(p, A) {
     HOME_WAY.ok = p[P.swD] > 0;
     HOME_WAY.d = -3;
     blend(p, p, SCRATCH, b, HOME_WAY);
+    homeB = b;
     for (let j = 0; j < FOOT_CH.length; j++) p[FOOT_CH[j]] = FOOT_KEEP[j];
     p[P.rH + 2] += 0.24 * Math.sin(Math.PI * b);
     const u = smoothstep(0.42, 0.9, rec); // home a beat before the blade crosses back in front of the legs
@@ -1037,6 +1079,7 @@ function attackPose(p, A) {
   // planted foot (A.leanF: the smoothed root acceleration, the loco's lean spring, set in update()
   // before the pose). Not on a dash: the cleave and the sprint slash key their own lean into it
   if (k.feet !== 'dash' && k.kind !== 'thrust') p[P.spX] -= ATK_INERTIA * fin(A.leanF, 0);
+  if (ST) styleAttack(p, A, ST, t, W, Ac, homeB);
   // the BITE (atk.hitAt, set by player.js _applyHit on a landed, unguarded blow): the edge catches in
   // what it cut. The hips drop, the chest folds into the blow, the head nods, the grip pulls in along
   // the blade, and the blade holds where it bit. It is full through the hit-pause (the frozen clock
@@ -1536,6 +1579,7 @@ function blockPose(p, A) {
   v3(p, P.lP, 0.5, -0.85, 0.0);
   p[P.twoHand] = 1;
   p[P.hs] = 0; // the fist on the grip (ADR-073's cross ward), open on the way there
+  if (A.freeHand && STYLE) STYLE.block(p, P, A); // PROTOTYPE: the style's own block (styles.js)
   // the guard breathes, and rides the stride when he walks in it: every channel above the hips was
   // a constant, so standing or walking the whole figure above the feet moved as one rigid piece
   // (0.0 cm of anything, measured). The elbows stay within 2°: still a firm guard
@@ -2702,7 +2746,7 @@ const HERO_SOFT = [0.93, 0.99];
 const ARM_FOLD = 40 * (Math.PI / 180), LEG_FOLD = 32 * (Math.PI / 180);
 const ARM_NEAR = Math.sqrt(DIM.upperArm ** 2 + DIM.foreArm ** 2 - 2 * DIM.upperArm * DIM.foreArm * Math.cos(ARM_FOLD));
 const LEG_NEAR = Math.sqrt(DIM.thigh ** 2 + DIM.shin ** 2 - 2 * DIM.thigh * DIM.shin * Math.cos(LEG_FOLD));
-const TORSO_R = [0.15, 0.115]; // m: the ribs' half-width and half-depth round the chest's axis (a hand stays outside)
+const TORSO_R = [0.15 * (BUILD?.chest ?? 1), 0.115 * (BUILD?.chest ?? 1)]; // m: the ribs' half-width and half-depth round the chest's axis (a hand stays outside)
 const WRIST_BACK = 128 * (Math.PI / 180); // the most the blade folds back from the forearm's line (0 = in line with it, a point)
 const WRIST_COS = Math.cos(WRIST_BACK), WRIST_SIN = Math.sin(WRIST_BACK);
 const WRIST_CLEAR_COS = Math.cos(70 * (Math.PI / 180)); // … and, there, the least angle round the forearm between the steel and the upper arm

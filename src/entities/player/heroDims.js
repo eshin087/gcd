@@ -107,3 +107,42 @@ export const HAIR_CLUSTERS = [
   { name: 'crown', pivot: [0, 0.25, -0.03], tip: [0, 0.55, -0.83] },
   { name: 'nape', pivot: [0, 0.15, -0.09], tip: [0, -0.9, -0.42] },
 ];
+
+// ---------------------------------------------------------------- PROTOTYPE: the hero's style
+// (the owner picks one of three rendered styles: `?style=a|b|c`, styles.js.) A style's BUILD is
+// applied here, after REST: the meshes keep being built from the rest heights (every absolute
+// height above the hips stays where it was in its joint), and only the body's place over the
+// ground (DIM.pivot) drops with the shorter legs. Shoulders: the joints move out, the deltoid and
+// the chest's upper rings grow. The human bosses share this skeleton: in a page with ?style= they
+// would change too (no boss stands on the hero's own level).
+/** The style in the address (`?style=a|b|c`), or null. */
+export const STYLE_ID = (() => {
+  try {
+    const v = new URLSearchParams(globalThis.location?.search ?? '').get('style');
+    return v === 'a' || v === 'b' || v === 'c' ? v : null;
+  } catch {
+    return null;
+  }
+})();
+// legs: m off the thigh and the shin; shoulder: m out per joint; deltoid / chest / limbs: × girth;
+// scale: × the drawn size (PLAYER_SCALE); coat: × the coat panels' length (with the legs)
+const BUILDS = {
+  a: { legs: [-0.075, -0.065], shoulder: 0.02, deltoid: 1.12, chest: 1.1, limbs: 1.06, scale: 1.03 },
+  b: { legs: [-0.065, -0.055], shoulder: 0.012, deltoid: 1.06, chest: 1.05, limbs: 1.0, scale: 1.0 },
+  c: { legs: [-0.055, -0.045], shoulder: 0.03, deltoid: 1.18, chest: 1.14, limbs: 1.03, scale: 1.04 },
+};
+export const BUILD = STYLE_ID ? BUILDS[STYLE_ID] : null;
+if (BUILD) {
+  const legs = BUILD.legs[0] + BUILD.legs[1];
+  BUILD.legScale = (DIM.thigh + DIM.shin + legs) / (DIM.thigh + DIM.shin);
+  DIM.thigh += BUILD.legs[0];
+  DIM.shin += BUILD.legs[1];
+  DIM.pivot += legs;
+  DIM.shoulder[0] += BUILD.shoulder;
+  DIM.gripShoulder[0] += BUILD.shoulder;
+  for (let i = 0; i < 3; i++) BODY.deltoid[i] *= BUILD.deltoid;
+  // the chest's rings from the chest up widen (the waist stays: the V from the shoulders)
+  for (const R of BODY.shell) if (R.y >= 1.3) R.rx *= BUILD.chest;
+  for (const k of ['upperArm', 'foreArm']) for (let i = 0; i < 2; i++) BODY[k][i] *= BUILD.limbs;
+  for (const k of ['thigh', 'shin']) for (let i = 0; i < 2; i++) BODY[k][i] *= BUILD.limbs;
+}

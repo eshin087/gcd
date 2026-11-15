@@ -31,7 +31,7 @@ const DEG = Math.PI / 180;
 export const STAND_LIFE = { breath: [3.7, 3.1], settle: 7.9, drift: 11.9, look: [9.1, 5.3], point: [4.7, 6.4], arms: 0.9 };
 
 const M = { br: 0, brL: 0, sw: 0, dr: 0, look: 0, tipA: 0, tipB: 0 };
-function oscillate(t, breath) {
+export function oscillate(t, breath) {
   const L = STAND_LIFE, b = (t * TAU) / breath;
   M.br = Math.sin(b);
   M.brL = Math.sin(b - L.arms);
@@ -45,13 +45,13 @@ function oscillate(t, breath) {
 }
 
 /** p[i..i+2] = the unit vector at azimuth az (0 ahead, + his left) and elevation el (degrees). */
-function dir(p, i, az, el) {
+export function dir(p, i, az, el) {
   const a = az * DEG, e = el * DEG, c = Math.cos(e);
   p[i] = c * Math.sin(a);
   p[i + 1] = Math.sin(e);
   p[i + 2] = c * Math.cos(a);
 }
-function set3(p, i, x, y, z) {
+export function set3(p, i, x, y, z) {
   p[i] = x;
   p[i + 1] = y;
   p[i + 2] = z;

@@ -10,6 +10,8 @@ import { Training } from './training.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
+import { STYLE_NAMES } from '../entities/player/styles.js';
+import { STYLE_ID } from '../entities/player/heroDims.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -692,6 +694,7 @@ export class Lab {
       this.ui.status = el('div', 'lab-status', 'ready', root);
 
       this._buildLevel(root);
+      this._buildStyle(root);
       this._buildOutfit(root);
       this._buildFight(root);
       this._buildAbilities(root);
@@ -729,6 +732,29 @@ export class Lab {
       });
       b.title = L.id === cur ? 'the level loaded now' : `reload into ${L.name} (?level=${L.id})`;
       if (L.id === cur) b.classList?.add?.('on');
+    }
+  }
+
+  /** STYLE (PROTOTYPE, styles.js): reload into one of the hero's three styles on trial, or today's
+   *  hero (`?style=a|b|c`; every other parameter, `?lab` included, is kept). */
+  _buildStyle(root) {
+    const { body } = this._section(root, 'style', 'HERO STYLE (preview)');
+    const grid = el('div', 'lab-grid c2', null, body);
+    const cur = STYLE_ID ?? 'now';
+    for (const [id, name] of Object.entries(STYLE_NAMES)) {
+      const b = button(grid, name, () => {
+        if (id === cur) return;
+        try {
+          const u = new URL(globalThis.location.href);
+          if (id === 'now') u.searchParams.delete('style');
+          else u.searchParams.set('style', id);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: style ${id}: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = id === cur ? 'the style loaded now' : `reload as ${name} (?style=${id === 'now' ? '' : id})`;
+      if (id === cur) b.classList?.add?.('on');
     }
   }
 
