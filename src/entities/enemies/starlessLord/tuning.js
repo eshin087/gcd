@@ -15,11 +15,11 @@ export const TUNING = {
   // his drawn size (model metres → world): a head taller than Shen Hui (1.2) and the hero (1.08).
   // Visual only, as theirs: the body circle, the hurt spheres and every reach are in gameplay metres
   scale: 1.32,
-  bound: 20, // (a circle round the seal that holds the whole hall: the real limit is `hall`)
-  // he stays on the hall's floor: between the walls, off the dais, inside the door (world/throneHall.js
-  // HALL: halfX 14.3, the dais from z -13.5, the south wall at z 16). A rectangle, not the duelist's
-  // circle: a hero backed into a corner or against the door is still in his reach
-  hall: { x: 13.0, zN: -12.3, zS: 15.0 },
+  // he stays on the crater's floor: a circle round the seal (world/throneHall.js THRONE.floor: the
+  // plates end at 15 m, the rim's slabs stand from 15.8 m), so a hero backed against the rim is still
+  // in his reach. North of it the dais is closed to him too: the level's CONFIG.world.bossFloor.zN
+  // (levels/starless.js; lord.js clampTarget), which the lab stage does not have
+  bound: 13.6,
 
   // ---- tells (rules: COMBAT.md; checked by tests/integration/lord.mjs). Faster than Shen Hui and
   // ramping (the owner's pick): a string's follow-up windups 0.34 s in form 1 (Shen Hui's) down to
@@ -117,13 +117,29 @@ export const TUNING = {
   grip: { range: 9.5, width: 2.2, crush: 0.55 }, // the Crushing Dark: a line from his hand; `crush` s of the seal closing
   rift: { speed: 13.5, radius: 0.75, life: 1.9 }, // fissures of red light along the floor
   star: { radius: 3.0, warn: 1.7, drift: 2.3 }, // the Dark Star: it follows the hero at `drift` m/s, then bursts
+  // ---- the crater's pieces in the Void's grip (terrain.js, ADR-109; the moves: moves.js `terrain`)
+  terrain: {
+    reach: 26, // a piece this far from him can be taken or pulled down
+    easyH: 4.5, // pieces taller than this are taken last (a 7 m slab is thrown when nothing else is left)
+    rise: 1.3, // m a piece comes up out of its place before it crosses to him
+    lift: 0.95, // s until it hangs over him (inside the windup)
+    per: 19, // its flight: distance / this s ...
+    flight: [0.7, 1.05], // ... within these
+    lead: 0.4, // thrown where the hero will be this many s on
+    radius: 2.3, // the ring where it lands: his blow reaches a hero inside it
+    power: 1.2, // what the landing does to the pieces it lands among (POWER: a thrown stone)
+    gap: 0.55, // Glass Rain: s between throws
+    // Crown Fall: the hero stands in the strip a piece would fall on: `min` m from its foot at least,
+    // `short` m inside its height; where he will be `lead` s on
+    fall: { min: 0.8, short: 0.2, lead: 0.3 },
+  },
   // ---- the glide: past this speed he is carried, not running (lord.js; the root lifts `hover` m)
   glide: { on: 3.4, off: 2.8, hover: 0.22, back: 0.26 },
 
   // ---- the intro: he rises from the throne and leaps down to the seal
   wakeRadius: 10,
   // (seatY: the root's height while he sits; daisY: the dais's top tier; stand: how far in front of
-  // the seat he stands up; then the leap to `land`, on the seal's northern edge)
+  // the seat he stands up; then the leap to `land`, on the seal's northern edge: 10 m from the seat)
   intro: { seatY: 0.74, daisY: 0.52, stand: 1.0, land: { x: 0, z: -5.5 }, leapFrom: 1.5, leapTo: 2.5, apex: 2.6 },
 };
 

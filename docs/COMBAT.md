@@ -827,8 +827,9 @@ hit stun are all as written above), with these differences.
   4 (Shen Hui: 0.42 s). The glint comes 0.26 s before every impact (his `flashLead`; Shen Hui's is
   0.3 s) and never before the blow ahead of it has landed. Breathers [0.14 – 0.4, 0.1 – 0.32, 0.08 –
   0.26, 0.05 – 0.18] s; he flows straight into another move [40, 50, 55, 65] % of the time.
-- **He keeps to the hall's floor** (a rectangle: between the walls, off the dais, inside the door), so
-  a hero backed into a corner or against the door is still in his reach. He walks inside striking
+- **He keeps to the crater's floor** (a circle of 13.6 m round the seal, and off the dais; the plates
+  end at 15 m and the rim's slabs stand beyond), so a hero backed against the rim is still in his
+  reach. The crater has no walls: the hero can leave it between the slabs. He walks inside striking
   range; outside it he **glides**: 6 m/s, and 9.2 m/s past 5.5 m (the hero sprints at 7.2), carried a
   hand's breadth over the floor with his cape streaming. He steps back and aside the same way.
 - Every blow × `damageScale` 1.1.
@@ -848,6 +849,17 @@ hit stun are all as written above), with these differences.
 | **The Rift** (forms 3, 4) | normal | 0.9 s: the staff raised and driven into the floor; three fissures of red light (five in form 4) race out in a fan at 13.5 m/s (16 each) | parry the one that comes for you (each cues itself), or step between them; roll |
 | **Dark Star** (forms 3, 4) | red | 0.9 s: a starless sun leaves his hand, drifts after you at 2.3 m/s for 1.7 s over a violet ring (r 3 m), then bursts (30, knockdown); he fights on meanwhile | be out of the ring when it bursts, or roll at its cue (it stops following you then) |
 | **Parting Light** (forms 2, 3, 4) | normal | a backflip 4 m away from you, and crescents of red light as he lands (2, 2, 3 by form) at 12 m/s | parry, roll, block costs guard |
+
+**He uses the crater** (ADR-109; `starlessLord/terrain.js`, numbers `TUNING.terrain`). Three moves on
+the pieces of his level, chosen only while there is a piece for them:
+| Move | Tell | What happens | Answer |
+|---|---|---|---|
+| **Void Hurl** (every form) | red | 1.2 s: a stone that hung in the air (when they are gone: the nearest shard, the big rim slabs last) comes out of its place and hangs beside him, then is thrown where you are going. The ring where it lands (2.3 m) is drawn as it leaves his grip, 0.7 – 1.05 s before it lands; the glint 0.26 s before (26, knockdown) | be out of the ring, or roll through the landing; stagger him in the windup and the stone drops where it hangs |
+| **Glass Rain** (forms 3, 4) | red | 1.4 s: three pieces gather round him and leave 0.55 s apart, the later ones a step to either side of your way (20 each, knockdown) | keep moving one way, or roll each as it glints |
+| **Crown Fall** (forms 2 – 4) | red | 0.85 s, only while you stand in the strip a tall piece would fall on: his hand closes on it and wrenches it down. The fall is the world's (below): its strip is marked red from the moment it goes, about 0.85 s for a 3.6 m shard (22 x the piece's weight, knockdown) | step out of the strip: sideways is shortest |
+
+The crater's pieces are finite: six stones in the air, then shards and slabs out of the floor; what he
+throws is gone until the fight resets. Torn Stone leaves the floor cracked where each stone was torn.
 
 Thrown things (the push, the crescents, the blade, the stones) cue themselves `flashLead` before they
 reach the hero; one that could only cue later than 0.2 s before contact fizzles, as the wyrm's
@@ -877,6 +889,9 @@ Shen Hui's; `a | b` = one of the two is drawn as the move starts; weights are pe
 | **Turning Mill** (3) | four N spins walking forward 0.52 · 0.34 · 0.34 · 0.34 (12 each) · B thrust 0.42 (21) | 1.5–6.5 · 7 |
 | Starfall (3, 4) | R 1.15 (30, knockdown): a leap (apex 3.8 m), the red ring follows you until 66 % of the windup | 4.2–14 · 9 |
 | Torn Stone (3, 4) | above | 5–15 · 10 |
+| Void Hurl (all) | R 1.2 (26, knockdown), above; needs a piece | 4.5–16 · 9 |
+| Glass Rain (3, 4) | R 1.4 (20 each, knockdown), above; needs two pieces | 4.5–16 · 13 |
+| Crown Fall (2, 3, 4) | R 0.85, the world's fall, above; needs a tall piece beside the hero | 2.5–18 · 10 |
 | Drawn Under (3) | R pull 0.8 · N spin 0.62 (16) · B overhead 0.42 (22) LOCK | 4.5–10.5 · 8 |
 | The Rift (3, 4) | N 0.9 (16 each), above | 3–14 · 9 |
 | Parting Light (2, 3, 4) | N 0.66 (14 each), above | 0–3 · 8 |
@@ -902,7 +917,7 @@ blows ≥ 0.34 s apart, each flash after the blow before it, a six-hit string th
 form, faster form by form), TIMING (53 move × form runs: every contact within 23 ms of its flash +
 0.26 s, every move's first hit lands), FORMS (the whole four-bar flow through the hero's own attack
 press), SPELLS (every answer in the table above, and the glide), BOUNDS (never off the floor; 32
-blows reach a cornered hero in 45 s), FLOW (the door, the throne intro, a death and the reset), WIN.
+blows reach a hero at the rim in 45 s), FLOW (the south lip, the throne intro, a death and the reset), WIN.
 **Difficulty (measured, seed 4242, god-mode fencing bots; 2026-11-14, with the moves above, the
 hero's faster chain of ADR-075, the guard of ADR-080 and the hit reactions of ADR-083):** a bot that
 answers every tell wins in 93 s with 67 parries (forms at 0 / 18 / 41 / 66 s); answering 85 % it takes
@@ -917,7 +932,9 @@ whole fight.
 What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood: the trees
 nearest the clearing, the dead trees, young pines and boulders inside it, and the stone circle. In
 Ashfall: the pillars, the lanterns, the stele, the near dead trees and boulders (the bronze bell only
-rings). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
+rings). In the Obsidian Throne's crater: the shards of the star's glass standing in the floor (cover,
+1.9 – 4.2 m), the tall slabs and shards of the rim, and six stones hanging in the air (these only
+chip, stop nothing and block nobody: they are there for the Void to throw). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
 
 - **Blows chip and break.** Every blow has a power. The hero: its damage / 110 (a quick cut 0.27, the
   slam 0.6, a full cleave 1.0). A duelist: damage / 40 (a cut 0.3, an overhead 0.6; red x 1.25). The

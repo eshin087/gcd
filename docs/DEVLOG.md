@@ -51,6 +51,97 @@ falling-tree strip is drawn in tell red on the ground, which ADR-052 ruled out f
 
 ---
 
+## 2026-11-15 — Session 49: the Starless Lord uses the crater (three terrain moves)
+
+**Owner:** "the 3rd sith boss will use the force to pick up rubble or the pillars to throw as examples.
+think of fun cool epic different terrain interactions". Branch `claude/lord-terrain-moves`, stacked on
+the open crater (PR #47, ADR-112).
+
+**Done** (ADR-109):
+- `starlessLord/terrain.js`: Void Hurl (one piece lifted and thrown), Glass Rain (three, one after
+  another), Crown Fall (a tall piece beside the hero wrenched down on him). Data in `moves.js`
+  (`terrain: kind`), numbers in `TUNING.terrain`; hooks in `lord.js` (`weigh`, `onActStart`, the cast,
+  the frame).
+- The duelist engine's `weigh` / `onActStart` hooks, copied from PR #46 (ADR-111) so both merge.
+- The hanging stones are built on the floor and hung by their bodies' offset (`def.hover`), so a
+  thrown one comes down to the floor. Torn Stone scars the floor where each stone is torn out.
+- Training: a TERRAIN category for him (three situations), shown only on a level with pieces.
+- Tests: `lord.mjs` TERRAIN (19 checks: no pieces → no move; each move's piece, ring, glint and blow;
+  out of the ring; a stagger drops the stone; shards once the stones are gone; the reset; 90 s with
+  the AI on), and the TRAINING scenario now runs on the real crater.
+
+**Filmed for the owner** (headless Edge, the real GPU): one sheet of film strips, the three moves at
+1280 x 720 and Void Hurl at 852 x 393. Sent; no answer yet.
+
+**Verification:** `npm test` (five suites) and `npm run build` pass.
+
+**Found on the way:** a piece lands where its PIVOT meets the ground (`destructibles._fly`), so
+geometry built in the air bursts in the air: build it on the floor and lift the body. A held piece
+3.6 m over his head is off the top of a phone's screen. Training's runner records a fixed list of
+events and does not answer a flash marked `hazard`: its situations for thrown pieces can only stand
+and take it. `debug.setForm(1)` emits an uncatalogued event: a staged situation must not step him
+back a form.
+
+**Not checked / open:** a fight played by a human; whether the moves make him easier or harder (a
+bot stood still for them); the phone in the hand; how the crater looks after a long fight when most
+shards are thrown; sounds (the throw reuses the world's crash).
+
+**Next:** the owner's look at the strips; then tuning (weights, the ring's lead) from a played fight.
+
+---
+
+## 2026-11-15 — Session 48: the Obsidian Throne rebuilt open (Starfall)
+
+**Owner:** "i want you to redo the sith lord level as the levels in general should not be so confined
+... the walls are also adding a visibility issue so make it more open, cool interesting
+objects/structures/terrain etc that will make the gme look stunning in ascii theme and also for the
+player bosses to interact with." One of the staged pieces of M1.38 (Session 44 built the destruction
+system beside it). Branch `claude/level-open-throne-d3eabd`, on top of `world/destruction`.
+
+**Rendered for the pick:** three open arenas behind a temporary `?arena=a|b|c` switch (Starfall, the
+Grave of Blades, the Broken Hall), each at the fight camera (1280 x 720), walking up to the throne,
+pulled back to show the whole arena, and at 852 x 393 with the touch preset; one sheet of all three
+and one per arena, with a line on what each gives the fight. The owner: **"A Starfall"**.
+
+**Done** (ADR-112):
+- `world/throneHall.js` is the crater: rings of plates round the seal, the star as his throne
+  (`landmarks.js` `buildFallenStar`, `buildSpike`, `starCleft`, `facetCol`), twelve shard clusters,
+  six stones hanging in the air, four vents, a broken crown of rim slabs (low south, tall north), the
+  forest outside thrown flat. Layout `THRONE`. The switch, the two other concepts and the hall's
+  walls, pillars, braziers, wardens and great swords are gone from the level.
+- 36 breakables in ADR-107's shape (shard 19, slab 11, hover 6), an ember `scarInk`.
+- `levels/starless.js`: the lip at z 14.8 is where he wakes; `dragonBound` 13.6 and `bossFloor.zN`
+  (the dais's line); two lines of text. The Lord's `TUNING.hall` rectangle is gone: `bound` 13.6 and
+  `clampTarget(p, pad)` / `onFloor(x, z)`.
+- `duelist.js`: `standable(x, z)`; a flurry's blow comes from a side of the hero he can stand on
+  (at the rim his flits were pushed back onto his floor and whiffed).
+- Tests: `lord.mjs` LEVEL (the layout, the breakables' shape, "open" as three checks, the vents),
+  BOUNDS (a hero at the rim), FLOW (the lip); `world.mjs` `sets` lists the throne.
+
+**Verification:** `npm test` (five suites) and `npm run build` pass. The final build rendered in
+headless Edge with the real GPU and compared with the frames the owner picked from: 0.07 – 0.21 % of
+pixels differ (particles). The walk in from the bonfire looked at too. Frame cost against the hall:
+ADR-112 (fewer triangles and lights, one more draw call, render time 0.85 – 1.03 of the hall's).
+
+**Found on the way:** separate timing runs are useless while other sessions use the GPU (the hall
+itself read 2 ms, then 19 ms): put both builds in one page (a second checkout served under a path of
+the same origin) and alternate the renders. A single render is shorter than a display refresh and
+reads as a multiple of it: time 12 – 20 passes, then wait for the GPU once. 60 % of the hall's
+triangles were sparse grass out to 75 m that the fog hides. `Colliders.resolve` does nothing for a
+point exactly on a circle's centre (a test probe has to stand beside it). A scar ink of 0.5 in the
+red channel was invisible on the black floor at the game camera (the marks are alpha glyphs): the
+crater's is 1.4, checked there.
+
+**Not checked / open:** a fight played by a human in the crater; his difficulty there (thin cover,
+no corners; nothing was retuned); the phone (frame rate on the device, the look in the hand); the
+Training situations on the real level (they run on the lab stage); how long a shard cluster lasts
+as cover in a real fight (one blast of power 2.5 broke a 3.1 m cluster and only chipped a 3.6 m one).
+
+**Next:** the Lord's terrain moves on this floor (ADR-109): shards and hanging stones lifted and
+thrown, a rim slab pulled down across the hero's path, a storm of rubble, Torn Stone tearing up real
+plates.
+
+---
 ## 2026-11-15 — Session 45: per-move telemetry; the death screen names the killing move
 
 **Owner:** "Yes, telemetry" (the genre review's third piece). Branch `game/move-telemetry`, stacked on
@@ -90,14 +181,14 @@ attack. the players can also do this as well. i want the bosses to also use the 
 also redo the backgrounds of the levels. i want you to redo the sith lord level ... ask me any
 questions". Branch `world/destruction` from `main`. (Numbers: other PRs open at the same time took ADR-101 – 103 and Sessions 40 – 42, so this is
 ADR-107 / Session 44; the hero seen behind the wyrm is ADR-106 / Session 43, the open Obsidian Throne
-ADR-108 / Session 45 and the Lord's terrain moves ADR-109.)
+ADR-112 / Session 48 (renumbered when PR #45 took ADR-108 / Session 45) and the Lord's terrain moves ADR-109.)
 
 **Asked, answered:** fire burns where it lands (no spreading); the terrain is a real tactic for the
 hero (cover, pieces felled onto a boss); Cinderwood and Ashfall keep their layouts and get things to
 break; "staged PRs and separate agents doing parallel tasks".
 
 **Split:** two sessions were started on their own branches: the hero seen behind the wyrm (PR #41,
-ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-108, ADR-109; it was sent
+ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-112, ADR-109; it was sent
 this API). This session built the system the rest stands on.
 
 **Done** (ADR-107):

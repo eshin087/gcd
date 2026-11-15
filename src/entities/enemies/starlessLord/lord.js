@@ -11,9 +11,10 @@ import { formPoses, glidePose } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, STREAKS, realise } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LordFx } from './fx.js';
+import { LordTerrain } from './terrain.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
-// Obsidian Throne Hall, who fills the boss slot of the Starless level. A duelist (duelist/duelist.js:
+// crater of the Obsidian Throne, who fills the boss slot of the Starless level. A duelist (duelist/duelist.js:
 // the body, the contract, the guard, posture, the duel's moments; duelist/brain.js: the mind) with
 // his own kit: moves (moves.js), numbers (tuning.js), gear (gear.js), four stances (poses.js), FX
 // (fx.js). What only he does is here:
@@ -62,7 +63,7 @@ class LordBrain extends DuelBrain {
   set C(v) {} // (the base constructor assigns the kit's set: his is per form)
 
   /** Into the duel. If the intro was skipped or cut short (the Lab, a flow jump), he is put where
-   *  its leap would have landed him: off the dais, on the hall's floor. */
+   *  its leap would have landed him: off the dais, on the crater's floor. */
   _toCombat() {
     const d = this.d;
     if (d.mode === 'sleep' || (d.mode === 'intro' && !d._introLanded)) {
@@ -187,6 +188,8 @@ export class StarlessLord extends Duelist {
       this.pilot.updraft = 0;
     }
     super.reset();
+    // (the base constructor resets before this class's own fields could exist: made here)
+    (this.terrain ??= new LordTerrain(this)).reset();
     // enthroned: the root sits at the seat (the pose's hips are lowered to it)
     this.position.y = TUNING.intro.seatY;
     if (this.blades) {
@@ -286,13 +289,39 @@ export class StarlessLord extends Duelist {
     return super.tellPoint(part, out);
   }
 
-  // ---------------------------------------------------------------- the hall's floor
-  /** Keep a point on the hall's floor (TUNING.hall). */
-  clampTarget(p) {
-    const H = TUNING.hall;
-    p.x = clamp(p.x, -H.x, H.x);
-    p.z = clamp(p.z, H.zN, H.zS);
+  // ---------------------------------------------------------------- the crater's floor
+  /** Keep a point where he may stand, `pad` m more: inside his circle round the seal (the duelist's
+   *  bound) and south of the dais (the level's CONFIG.world.bossFloor.zN; absent on the lab stage). */
+  clampTarget(p, pad = 0) {
+    const B = this.bound + pad, r = Math.hypot(p.x, p.z);
+    if (r > B) {
+      p.x *= B / r;
+      p.z *= B / r;
+    }
+    const zN = CONFIG.world.bossFloor?.zN;
+    if (Number.isFinite(zN) && p.z < zN - pad) p.z = zN - pad;
     return p;
+  }
+
+  /** Whether (x, z) is on that floor. */
+  onFloor(x, z) {
+    const zN = CONFIG.world.bossFloor?.zN;
+    return Math.hypot(x, z) <= this.bound && !(Number.isFinite(zN) && z < zN);
+  }
+
+  standable(x, z) {
+    return this.onFloor(x, z) && super.standable(x, z);
+  }
+
+  // ---------------------------------------------------------------- the crater's pieces (terrain.js)
+  /** His AI weighs a move: one that needs a piece of the crater weighs nothing while there is none. */
+  weigh(name, def, w) {
+    return def.terrain ? this.terrain.weigh(def, w) : w;
+  }
+
+  /** A move starts: one of the crater's takes its pieces (false: there is none, it does not start). */
+  onActStart(A) {
+    return A.def.terrain ? this.terrain.begin(A) : true;
   }
 
   moveBy(dx, dz) {
@@ -414,6 +443,7 @@ export class StarlessLord extends Duelist {
     this._showForm();
     if (this.mode === 'intro') this._intro(dt);
     this._glide(dt);
+    this.terrain.frame(dt);
     // the Void's wind under his cape: through a cast, a little always in form 4, a gust at an ignition
     {
       const cur = beatNow(act);
@@ -432,11 +462,9 @@ export class StarlessLord extends Duelist {
         const pl = this.game.player, p = pl?.position;
         if (p) {
           const lead = TUNING.storm.lead, j = St.left % 3 === 2 ? 2.6 : 0.5;
-          let x = p.x + fin(pl.vel?.x) * lead + this.fx.rand(-j, j), z = p.z + fin(pl.vel?.z) * lead + this.fx.rand(-j, j);
-          const H = TUNING.hall;
-          x = clamp(x, -H.x - 0.6, H.x + 0.6);
-          z = clamp(z, H.zN - 0.4, H.zS + 0.6);
-          this.fx.callStrike(x, z, TUNING.storm.radius, TUNING.storm.warn, { damage: St.damage, knockback: St.kb, attack: 'storm' });
+          // (a mark may fall a stride past his own floor: a hero at the rim is not out of the storm)
+          const m = this.clampTarget(_w.set(p.x + fin(pl.vel?.x) * lead + this.fx.rand(-j, j), 0, p.z + fin(pl.vel?.z) * lead + this.fx.rand(-j, j)), 0.6);
+          this.fx.callStrike(m.x, m.z, TUNING.storm.radius, TUNING.storm.warn, { damage: St.damage, knockback: St.kb, attack: 'storm' });
         }
       }
     }
@@ -658,6 +686,7 @@ export class StarlessLord extends Duelist {
   /** A cast beat's impact: the thrown blade, torn stone, called lightning. */
   onCast(b, s, act) {
     const D = b.def, C = D.cast, name = act?.name ?? C.kind;
+    if (act?.def?.terrain) return this.terrain.onCast(b, s, act);
     const ang = s ? s.ang : this.yaw, dx = Math.sin(ang), dz = Math.cos(ang);
     if (C.kind === 'glaive') {
       const G = TUNING.glaive;
@@ -671,6 +700,7 @@ export class StarlessLord extends Duelist {
         const r = big ? 2.2 : 1.7;
         const x = this.position.x + Math.sin(a) * r, z = this.position.z + Math.cos(a) * r;
         this.fx.tearUp(x, z);
+        this.game.world?.scars?.ground?.(x, z, big ? 1.1 : 0.75); // (the floor it was torn from stays cracked)
         this.fx.throwShot({
           // (it hangs turning round him in the Void's grip until its turn: fx.js `orbit`, angle from +x)
           orbit: { r, a: Math.atan2(z - this.position.z, x - this.position.x), w: i & 1 ? -1.6 : 1.6 },
@@ -733,8 +763,7 @@ export class StarlessLord extends Duelist {
     const pl = this.game.player, yaw = fin(pl?.yaw, wrapAngle(s.ang + Math.PI));
     const x0 = this.position.x, z0 = this.position.z;
     let tx = s.p.x - Math.sin(yaw) * K.behind, tz = s.p.z - Math.cos(yaw) * K.behind;
-    const H = TUNING.hall;
-    if (Math.abs(tx) > H.x || tz < H.zN || tz > H.zS) {
+    if (!this.onFloor(tx, tz)) {
       // no room behind him: to his side instead
       tx = s.p.x + Math.cos(yaw) * K.behind;
       tz = s.p.z - Math.sin(yaw) * K.behind;
