@@ -18,7 +18,7 @@ import * as THREE from 'three';
 
 const FIELDS = 14;
 // 0 x 1 y 2 z 3 vx 4 vy 5 vz 6 age 7 life 8 glyph 9 r 10 g 11 b 12 rest (1 = lies on the ground) 13 glow
-const GRAVITY = -11;
+const GRAVITY = -10;
 const DRAG = 0.9;
 const GROUND = 0.07;
 
@@ -146,7 +146,7 @@ export class ShedDigits {
         dz /= l;
       } else dx = dz = 0;
       const light = d.kind === 'flurry' && !d.heavy;
-      this.burst(p.x, p.y, p.z, dx, dz, light ? 4 : d.heavy || d.crit ? 18 : 10, look);
+      this.burst(p.x, p.y, p.z, dx, dz, light ? 4 : d.heavy || d.crit ? 20 : 12, look);
     });
   }
 
@@ -177,11 +177,12 @@ export class ShedDigits {
   burst(x, y, z, dx, dz, n, look) {
     if (!look) return;
     for (let i = 0; i < n; i++) {
-      const sp = rr(1.2, 4.2);
+      // (a paw is struck near the ground: they are thrown up and out far enough to clear the body)
+      const sp = rr(2, 6.5);
       this._spawn(
         x + dx * 0.3 + rr(-0.25, 0.25), y + rr(-0.2, 0.3), z + dz * 0.3 + rr(-0.25, 0.25),
-        dx * sp + rr(-1.5, 1.5), rr(1.2, 4.6), dz * sp + rr(-1.5, 1.5),
-        rr(0.9, 1.5), look,
+        dx * sp + rr(-2.2, 2.2), rr(2.2, 6.2), dz * sp + rr(-2.2, 2.2),
+        rr(1.1, 1.7), look,
       );
     }
   }
@@ -241,7 +242,7 @@ export class ShedDigits {
       D[i * 2] = d[k + 8];
       D[i * 2 + 1] = d[k + 13];
       // struck loose in the flash of the blow: brighter for its first instant
-      const lit = 1 + 0.9 * Math.exp(-d[k + 6] * 9);
+      const lit = 1 + 0.7 * Math.exp(-d[k + 6] * 9);
       C[i * 4] = d[k + 9] * lit; C[i * 4 + 1] = d[k + 10] * lit; C[i * 4 + 2] = d[k + 11] * lit;
       C[i * 4 + 3] = left < 0.4 ? left / 0.4 : 1; // the last 0.4 s it fades
     }

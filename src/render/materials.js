@@ -24,13 +24,16 @@ import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 //   0.6          LEAF     blobby foliage ramp
 //   1.0          STONE    letter ramp + edge outlines
 /**
- * The fire rising inside the wyrm before a breath (uWyrmHeat, Dragon._riseHeat): a front of heat
- * `radius` m wide that travels along its back and up its neck. Round it the molten glow is
- * x (1 + glow) (the dorsal blades' roots, the cracks, the throat), the gaps between the scales take
- * `gap` of the part's ember colour and the scales themselves `hide` (the digits on the dark hide
- * brighten as it passes). Calm: a tell, not a flash.
+ * The fire rising inside the wyrm before a breath (Dragon._riseHeat): the charge's glow (uGlowRise,
+ * each wyrm material's share of the throat charge) does not light the whole throat at once. It
+ * FILLS from the deep chest (uWyrmHeatFrom.xyz) out to a front (uWyrmHeat.xyz) that climbs the neck
+ * to the maw; uWyrmHeat.w = how much of that rule holds (0: the charge glows everywhere, as before).
+ * `soft` = the front's edge (m). Round the front itself (`radius` m, strength uWyrmHeatFrom.w) the
+ * glow is x (1 + glow), the gaps between the scales take `gap` of the part's ember colour, the
+ * scales `hide` and everything `flat`: the digits on the dark hide brighten as it passes. Calm: a
+ * tell, not a flash.
  */
-export const WYRM_HEAT = { radius: 2.3, glow: 1.4, gap: 1.3, hide: 0.22 };
+export const WYRM_HEAT = { soft: 1.0, radius: 2.0, glow: 0.6, gap: 2.4, hide: 0.5, flat: 0.07 };
 
 export const FLAG = { NONE: 0.0, ART_HERO: 0.48, ART: 0.5, ART_PROP: 0.57, LEAF: 0.6, STONE: 1.0 };
 /**
@@ -420,7 +423,13 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
       ...(o.wyrm != null ? letGoUniforms(U) : {}), // the wyrm dissolves letter by letter (letGo.js)
       // the fire rising in the wyrm's throat (Dragon._applyMaterials): xyz = where the front of heat
       // is (world), w = its strength; shared by every wyrm material
-      ...(o.wyrm != null ? { uWyrmHeat: (U.uWyrmHeat ??= { value: new THREE.Vector4(0, 0, 0, 0) }) } : {}),
+      ...(o.wyrm != null
+        ? {
+            uWyrmHeat: (U.uWyrmHeat ??= { value: new THREE.Vector4(0, 0, 0, 0) }),
+            uWyrmHeatFrom: (U.uWyrmHeatFrom ??= { value: new THREE.Vector4(0, 0, 0, 0) }),
+            uGlowRise: { value: 0 }, // this material's share of the throat charge (WYRM_HEAT)
+          }
+        : {}),
       ...(o.heroArt != null ? pickShared(U, HERO_ART_SHARED) : {}),
       ...feat.uniforms,
       uAsciiSet: { value: asciiSet },
@@ -612,6 +621,8 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
       // fissures and glowing gaps on the chest / throat / undersides, crimson torn membranes.
       ${LET_GO_GLSL}
       uniform vec4 uWyrmHeat;
+      uniform vec4 uWyrmHeatFrom;
+      uniform float uGlowRise;
       uniform vec2 uWScale;
       uniform vec4 uWShape;
       uniform vec4 uWTip;
@@ -757,14 +768,16 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         if (uWShape.y > 1.5 && fres >= uWShape.z) stroke = axisS;
         else if (uWShape.y > 0.5 && uWShape.y < 1.5 && rimT.z > 0.5) stroke = wStroke(rimT.xy, jx, jy);
         float hot = uGlow * uGlowMask;
-        // the fire rising in the throat (uWyrmHeat: the front's world point, its strength): round it
-        // the molten glow swells, and the fire inside shows through the gaps between the scales
-        float rise = 0.0;
+        // the fire rising in the throat (WYRM_HEAT): the charge's glow fills from the deep chest out
+        // to the front, which is a little hotter and shows through the gaps between the scales
+        float rise = 0.0, fill = 1.0;
         if (uWyrmHeat.w > 0.0) {
+          float rf = distance(uWyrmHeat.xyz, uWyrmHeatFrom.xyz);
+          fill = mix(1.0, 1.0 - smoothstep(rf - ${WYRM_HEAT.soft.toFixed(2)}, rf + ${(WYRM_HEAT.soft * 0.3).toFixed(2)}, distance(vW, uWyrmHeatFrom.xyz)), uWyrmHeat.w);
           vec3 hd = (vW - uWyrmHeat.xyz) / ${WYRM_HEAT.radius.toFixed(2)};
-          rise = uWyrmHeat.w * exp(-dot(hd, hd));
-          hot *= 1.0 + ${WYRM_HEAT.glow.toFixed(2)} * rise;
+          rise = uWyrmHeatFrom.w * exp(-dot(hd, hd));
         }
+        hot += uGlowRise * uGlowMask * fill * (1.0 + ${WYRM_HEAT.glow.toFixed(2)} * rise);
         // horns, spikes, claws (aGUV y = distance from the root): dark roots, bright tips, molten
         // roots on the glowing spines (uWTip: tip ramp from .x to .y, value at the root .z, root glow .w)
         float tipT = smoothstep(uWTip.x, uWTip.y, vG.y);
@@ -803,7 +816,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
           col += uWEmit * hot * uWCrack.x * (cg * cg + sc.y) * 0.5 * max(run, one) * uw * (0.8 + 0.2 * sin(uTime * 2.3 + sInfo.z * 6.28));
         }
         col += uWEmit * hot * (uWGlow.x * sc.y + uWGlow.y);
-        col += uWEmit * rise * (${WYRM_HEAT.gap.toFixed(2)} * sc.y + ${WYRM_HEAT.hide.toFixed(2)} * sc.x);
+        col += uWEmit * rise * (${WYRM_HEAT.gap.toFixed(2)} * sc.y + ${WYRM_HEAT.hide.toFixed(2)} * sc.x + ${WYRM_HEAT.flat.toFixed(3)});
         col += vec3(1.0, 0.92, 0.85) * uFlash * (0.15 + 0.6 * sc.x);
         col += uWarn.rgb * uWarn.a * (0.1 + 0.8 * sc.x + fres * 2.0);
         col = applyFog(col, vW);
@@ -997,6 +1010,9 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         float hot = uGlow * uGlowMask * glowW;
 #else
         float hot = uGlow * uGlowMask;
+#endif
+#ifdef SG_WYRM
+        hot += uGlowRise * uGlowMask; // (the patterned look-dev render: the whole throat charge)
 #endif
         col += uEmissive * hot * (seam * (1.0 - m) * 0.95 + (1.0 - m) * 0.03) * pulse;
         col = mix(col, col * vec3(1.2, 0.92, 0.8) + uEmissive * 0.06 * m, hot * 0.45);

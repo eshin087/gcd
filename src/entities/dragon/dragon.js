@@ -35,10 +35,11 @@ const HURT = [
   ['leg', 0.55], ['leg', 0.42], ['leg', 0.65], ['leg', 0.42],
   ['leg', 0.55], ['leg', 0.42], ['leg', 0.65], ['leg', 0.42],
 ];
-// the throat tell (_riseHeat): the front shows from a charge of `from`, whole at `full`; it sits at
-// charge ^ curve of the way from the tail's root to the maw, `back` (model units) above the spine's
-// joints along the body; `fade` = how fast it goes once the charge stops rising (1 / s)
-const HEAT_RISE = { from: 0.15, full: 0.45, curve: 0.8, back: 0.55, fade: 4.5, strength: 1 };
+// the throat tell (_riseHeat): the front sits at charge ^ curve of the way from the deep chest up
+// the neck to the mouth; `on` / `fade` = how fast the rule takes hold while the charge rises / lets
+// go once it stops (1 / s); `front` = the front's own extra heat at a full charge; it starts in the
+// belly: `belly` of the way from the chest to the hips, `low` (model units) under the chest
+const HEAT_RISE = { curve: 0.85, on: 14, fade: 5, front: 1, belly: 0.4, low: 0.8 };
 const FOOT_CIRCLE = 0.45; // body-circle radius around each planted foot (model units)
 const MAX_ATK_BOXES = 32;
 // red windup glow (TELL_STYLE.red.warn): rgb + strength ramp / spike / decay
@@ -115,7 +116,8 @@ export class Dragon {
     this._letGo = letGoUniforms(game.U).uWyrmLetGo.value;
     // the fire rising in the throat (materials.js uWyrmHeat): the front's point and strength
     this._heat = (game.U.uWyrmHeat ??= { value: new THREE.Vector4(0, 0, 0, 0) }).value;
-    this._heatS = 0; // where the front is: 0 the tail's root .. 1 the maw
+    this._heatFrom = (game.U.uWyrmHeatFrom ??= { value: new THREE.Vector4(0, 0, 0, 0) }).value;
+    this._heatS = 0; // where the front is: 0 the belly .. 1 the maw
     this._heatPath = Array.from({ length: 20 }, () => new THREE.Vector3()); // scratch: the path's points
     this._heatLen = new Float32Array(20); // ... and the length up to each
     this._heatW = 0; // its strength
@@ -418,7 +420,7 @@ export class Dragon {
     this.throat = 0;
     this.throatGlow = 0;
     this._heatS = this._heatW = this._throatPrev = 0;
-    this._heat.w = 0;
+    this._heat.w = this._heatFrom.w = 0;
     this.dissolve = 0;
     this.flinch = 0;
     this.flinchHead = false;
@@ -941,8 +943,12 @@ export class Dragon {
       const u = m[k].uniforms;
       const g = G[k];
       if (g) {
-        const v = g[0] * ember + g[1] * body + g[2] * throat;
+        // the charge's share goes to uGlowRise where the material has it: it fills from the chest
+        // up to the rising front (_riseHeat) instead of lighting the part all at once
+        const r = u.uGlowRise, c = g[2] * throat;
+        const v = g[0] * ember + g[1] * body + (r ? 0 : c);
         u.uGlow.value = Number.isFinite(v) ? v : 0;
+        if (r) r.value = Number.isFinite(c) ? c : 0;
       }
       u.uFlash.value = flash;
       u.uDissolve.value = this.dissolve;
@@ -957,36 +963,31 @@ export class Dragon {
 
   /**
    * THE THROAT TELL: while a breath (or a roar, a fireball) charges, the fire is seen rising inside
-   * the body. A front of heat travels from the root of the tail along the back, up the neck and
-   * into the maw as the charge (this.throat, 0..1, written by the attack's windup) rises, and
-   * arrives as the fire comes out: the materials brighten the molten glow, the dorsal blades' roots
-   * and the scale gaps round it (uWyrmHeat, materials.js WYRM_HEAT). It only draws the charge the
-   * attacks already have: no timing changes. A small charge (a bite's snarl) shows nothing; a
-   * charge that stops rising (the breath is out, the attack was cancelled) lets the front fade
-   * where it is.
+   * the body. The charge's glow (this.throat, 0..1, written by the attack's windup) fills from the
+   * deep chest up the throat behind a front that climbs the neck and reaches the maw as the charge
+   * completes, so the maw lights last, just before the fire comes out (materials.js WYRM_HEAT:
+   * uWyrmHeat = the front, uWyrmHeatFrom = where it starts). It only redraws the charge the attacks
+   * already have: no timing changes. When the charge stops rising (the breath is out, the attack
+   * was cancelled) the rule lets go and the glow is whole again.
    */
   _riseHeat(dt) {
-    const H = this._heat, th = this.throat;
+    const H = this._heat, F = this._heatFrom, th = this.throat, R = HEAT_RISE;
     if (!(dt > 0)) return; // a held frame holds the front
     const rising = th > this._throatPrev + 1e-5 && this.state !== 'dying' && this.state !== 'dead';
     this._throatPrev = th;
-    const R = HEAT_RISE;
     if (rising) this._heatS = Math.max(Math.pow(th, R.curve), this._heatW < 0.05 ? 0 : this._heatS);
-    const want = rising ? clamp((th - R.from) / (R.full - R.from), 0, 1) : 0;
-    this._heatW = damp(this._heatW, want, rising ? 9 : R.fade, dt);
+    this._heatW = damp(this._heatW, rising ? 1 : 0, rising ? R.on : R.fade, dt);
     if (!(this._heatW > 0.01)) {
-      H.w = 0;
+      H.w = F.w = 0;
       return;
     }
-    // the path: the tail's root, the back over the hips and the withers, the neck's joints, the mouth
-    const P = this._heatPath, L = this._heatLen, pt = this.rig.pt, nk = this.rig.neck.p, tl = this.rig.tail.p;
-    const up = R.back * S;
+    // the path: the deep chest, up the neck's joints, down the head to the mouth
+    const P = this._heatPath, L = this._heatLen, pt = this.rig.pt, nk = this.rig.neck.p;
     let n = 0;
-    P[n++].copy(tl[Math.min(2, tl.length - 1)]);
-    P[n++].copy(pt.hips).setY(pt.hips.y + up);
-    P[n++].lerpVectors(pt.hips, pt.chest, 0.5).setY((pt.hips.y + pt.chest.y) * 0.5 + up);
-    P[n++].copy(pt.chest).setY(pt.chest.y + up * 0.6);
-    for (let i = 1; i < nk.length && n < P.length - 1; i++) P[n++].copy(nk[i]);
+    // (it starts in the belly behind the chest, so the chest's own glow fills too)
+    P[n++].lerpVectors(pt.chestC, pt.hips, R.belly).setY(pt.chestC.y - R.low * S);
+    P[n++].copy(pt.chestC);
+    for (let i = 0; i < nk.length && n < P.length - 1; i++) P[n++].copy(nk[i]);
     P[n++].copy(pt.mouth);
     L[0] = 0;
     for (let i = 1; i < n; i++) L[i] = L[i - 1] + P[i].distanceTo(P[i - 1]);
@@ -995,8 +996,10 @@ export class Dragon {
     while (k < n - 1 && L[k] < at) k++;
     const seg = L[k] - L[k - 1];
     const v = this._tmp.lerpVectors(P[k - 1], P[k], seg > 1e-6 ? (at - L[k - 1]) / seg : 0);
-    if (Number.isFinite(v.x + v.y + v.z)) H.set(v.x, v.y, v.z, this._heatW * R.strength);
-    else H.w = 0;
+    if (Number.isFinite(v.x + v.y + v.z + P[0].x + P[0].y + P[0].z)) {
+      H.set(v.x, v.y, v.z, this._heatW);
+      F.set(P[0].x, P[0].y, P[0].z, this._heatW * th * R.front);
+    } else H.w = F.w = 0;
   }
 
   /**
