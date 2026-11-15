@@ -133,6 +133,19 @@ const CSS = `
   transition: opacity 0.18s;
 }
 .ab-lock.on { opacity: 1; }
+/* the guard meter: a thin steel bar under the HP bar */
+.ab-guard { height: 9px; margin-top: 1px; }
+.ab-guard .lbl { font-size: 8px; letter-spacing: 0.04em; }
+.ab-guard::after { content: ''; width: 64px; flex: none; }
+.ab-bar.guard { height: 4px; border-color: rgba(190, 206, 232, 0.3); background: rgba(4, 7, 12, 0.7); }
+.ab-bar.guard > .fill { background: linear-gradient(180deg, #e3ebf8, #7f90ad); }
+.ab-bar.guard > .chunk { background: rgba(255, 196, 120, 0.8); }
+.ab-bar.guard.low > .fill { background: linear-gradient(180deg, #ffb27a, #b3501c); }
+.ab-bar.guard.open { animation: ab-guard-open 0.6s ease-out; }
+@keyframes ab-guard-open {
+  0%, 100% { border-color: rgba(190, 206, 232, 0.3); box-shadow: none; }
+  20% { border-color: #ff6a3d; box-shadow: 0 0 8px rgba(255, 106, 61, 0.85); }
+}
 /* crit window (after a Ghostep): hidden row that lights up cyan */
 .ab-crit { margin-top: 2px; opacity: 0; transition: opacity 0.12s; }
 .ab-crit.on { opacity: 1; }
@@ -469,17 +482,19 @@ const CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  margin: -13px 0 0 -13px;
-  font-size: 22px;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  font-size: 15px;
   line-height: 1;
-  color: #fff4ea;
-  text-shadow: 0 0 6px rgba(255, 138, 61, 0.95), 0 0 2px #000;
+  color: #ffd2a8;
+  text-shadow: 0 0 4px rgba(255, 138, 61, 0.7), 0 0 2px #000;
   /* centred by the negative margin; the base tag translate must not leak into the spin keyframes */
   transform: none;
-  animation: ab-spin 2.6s linear infinite;
+  animation: ab-spin 5s linear infinite;
 }
+/* (its opacity is written by ui/nameTags.js: shown faintly when the lock is taken, then gone) */
+.ab-reticle { opacity: 0; }
 @keyframes ab-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* ---------- centre banners ---------- */

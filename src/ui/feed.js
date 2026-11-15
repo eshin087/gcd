@@ -142,6 +142,7 @@ export class CombatFeed {
       }
     });
     on('player:guardBreak', () => log('Your guard is broken!', 'warn', 'guardBreak', 1));
+    on('player:guardOpen', () => log('Your guard is knocked open.', 'warn', 'guardOpen', 1));
     // a duelist beat the hero's strike away (his counter is coming)
     on('player:bounced', () => log('Your strike is deflected!', 'warn', 'bounced', 1.5));
     on('combat:clash', () => log('Blades clash!', 'combat', 'clash', 1));

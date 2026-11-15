@@ -17,6 +17,8 @@ const KINDS = {
   deflect: { text: 'DEFLECT', life: 1.1, rise: 32, pop: 1.45 },
   ghostep: { text: 'GHOSTEP', life: 1.25, rise: 26, pop: 1.5, streak: true },
   gbreak: { text: 'GUARD BROKEN', life: 1.3, rise: 22, pop: 1.3 },
+  // the guard meter ran out on a blocked blow (player:guardOpen): styled as the guard break
+  gopen: { text: 'GUARD DOWN', life: 1.0, rise: 20, pop: 1.25, cls: 'gbreak' },
   block: { text: 'BLOCK', life: 0.6, rise: 16, pop: 1.15 },
   // a deflect chain: the parry call-out of that blow turns into "DEFLECT ×N" (styled as deflect)
   chain: { text: 'DEFLECT', life: 1.15, rise: 34, pop: 1.5, cls: 'deflect' },
@@ -119,6 +121,8 @@ export class Callouts {
         return;
       }
     }
+    // the blow that knocked the guard open was blocked first: its BLOCK pop makes way
+    if (kind === 'gopen') this.calls.find((c) => c.active && c.kind === 'block' && c.age < 0.05)?.hide();
     let lift = 0;
     for (const c of this.calls) if (c.active && c.age < STACK_GAP) lift = Math.max(lift, c.lift + STACK_PX);
     const it = this._take(this.calls);

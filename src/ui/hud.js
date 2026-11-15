@@ -1,4 +1,4 @@
-import { DEFENSE, POSTURE } from '../combat/rules.js';
+import { DEFENSE, GUARD, POSTURE } from '../combat/rules.js';
 import { DelayedBar, PostureBar } from './bars.js';
 import { Banner } from './banner.js';
 import { Callouts } from './callouts.js';
@@ -91,6 +91,10 @@ export class Hud {
     on('dragon:returned', (d) => this.calls.number(d.damage, d, { heavy: true }));
     on('player:block', () => this.calls.call('block'));
     on('player:guardBreak', () => this.calls.call('gbreak'));
+    on('player:guardOpen', () => {
+      this.calls.call('gopen');
+      flashClass(this.guardBar.root, 'open');
+    });
     on('player:perfectDodge', (d) => this._ghostep(d.streak));
     on('player:ghostep', () => this._ghostep(this.game.player?.streak));
     // the flurry: a count over the target for every cut that lands, and its name once the last has
@@ -132,6 +136,12 @@ export class Hud {
     el('span', 'lbl', 'HP', hpRow);
     this.hpBar = new DelayedBar(hpRow, 'hp', { hold: 0.6, drain: 2.4, rise: 6 });
     this.hpVal = el('span', 'val', '', hpRow);
+
+    // the guard meter (GUARD, ADR-094): steel under the HP bar; no number, it only has to be glanced at
+    const gdRow = el('div', 'ab-row ab-guard', null, pf);
+    el('span', 'lbl', 'GD', gdRow);
+    this.guardBar = new DelayedBar(gdRow, 'guard', { hold: 0.25, drain: 5, rise: 30, chunk: true });
+    this._gLow = null;
 
     // crit window cue (after a Ghostep): glowing cyan label + a bar that shrinks to zero
     this.critRow = el('div', 'ab-row ab-crit', null, pf);
@@ -331,6 +341,16 @@ export class Hud {
         this.hpBar.root.classList.toggle('low', low);
       }
 
+      // the guard meter
+      const gMax = Math.max(1, num(p.maxGuard, GUARD.max));
+      const gd = Math.min(1, Math.max(0, num(p.guard, gMax) / gMax));
+      this.guardBar.set(gd);
+      const gLow = gd < GUARD.low;
+      if (gLow !== this._gLow) {
+        this._gLow = gLow;
+        this.guardBar.root.classList.toggle('low', gLow);
+      }
+
       const maxF = Math.max(0, Math.min(9, Math.round(num(p.maxFlasks, 0))));
       const f = Math.max(0, Math.min(maxF, Math.round(num(p.flasks, 0))));
       const flKey = f * 16 + maxF;
@@ -380,6 +400,7 @@ export class Hud {
       }
     }
     this.hpBar.update(dt);
+    this.guardBar.update(dt);
   }
 
   _updateBoss(dt) {

@@ -381,6 +381,7 @@ export class GamepadControls {
     const on = (name, fn) => ev.on(name, (d) => this.active && fn(d && typeof d === 'object' ? d : {}));
     on('player:hurt', () => this.rumble(R.hurt));
     on('player:guardBreak', () => this.rumble(R.guardBreak));
+    on('player:guardOpen', () => this.rumble(R.guardBreak));
     on('player:bounced', () => this.rumble(R.parry)); // his guard threw the blade back
     on('combat:clash', () => this.rumble(R.perfectParry)); // two cuts met
     on('player:block', () => this.rumble(R.block));

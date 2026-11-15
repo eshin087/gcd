@@ -117,6 +117,36 @@ export const DEFENSE = Object.freeze({
   },
 });
 
+/**
+ * The hero's guard meter (ADR-094). A blocked blow costs GUARD instead of HP: its damage ×
+ * `cost[tell]`, between `costMin` and `costMax` (a heavy blue blow, the one to parry, costs more).
+ * While there is guard left a block takes no HP at all. The blow that empties the meter is still
+ * blocked, but it knocks the guard OPEN: `openDur` s of stagger (no knockdown, no damage) in which
+ * the next blow of a string lands.
+ * It is not a stamina bar and playing defensively is never punished: it refills by itself
+ * (`regenRate` / s, from `regenDelay` s after the last blow he blocked or took, `openDelay` s after
+ * it was knocked open) whatever he does: standing, moving, holding the guard up, swinging.
+ * Every parry gives a piece back at once (`parry[tell]`; a deflected bullet `parryLight`; a perfect
+ * one `perfect` on top), and so does every cut of his own that lands (`hit`).
+ * Contact streams (the fire breath's ticks, burning ground) are no blows: they keep their small
+ * HP chip through a block (blockReduction) and leave the meter alone.
+ */
+export const GUARD = Object.freeze({
+  max: 100,
+  cost: { normal: 1.0, blue: 1.5 },
+  costMin: 8,
+  costMax: 60,
+  regenDelay: 0.8,
+  regenRate: 60, // empty to full in ~1.7 s
+  openDur: 0.55,
+  openDelay: 0.35,
+  parry: { normal: 28, blue: 45 },
+  parryLight: 10,
+  perfect: 20,
+  hit: { light: 4, heavy: 10 },
+  low: 0.3, // fraction below which the HUD shows the meter as low
+});
+
 /** Attacker posture (enemy "break" meter, shown under the boss HP bar). */
 export const POSTURE = Object.freeze({
   parry: { normal: 26, blue: 48 }, // posture damage dealt to the attacker by a parry

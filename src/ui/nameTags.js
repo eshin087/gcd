@@ -6,6 +6,10 @@ import { bossNames } from './bossName.js';
 // rotating lock-on reticle. Projected with the game camera each frame and moved with transforms only.
 
 const AWAKE_HIDDEN = new Set(['sleeping', 'dying', 'dead']);
+// The lock-on marker is a hint, not a fixture (owner, 2026-11-14: "subtle and slowly fades away"):
+// taking the lock shows it faintly (`peak` opacity) for `hold` s, then it fades over `fade` s and
+// stays gone until the lock is taken again. Real seconds.
+export const LOCK_MARK = Object.freeze({ peak: 0.55, hold: 0.5, fade: 2.4 });
 
 class Tag {
   constructor(layer, className, text) {
@@ -38,6 +42,9 @@ export class NameTags {
     this.v = new THREE.Vector3();
     this.pv = new THREE.Vector3();
     this.lock = new THREE.Vector3();
+    this.lockT = Infinity; // s since the lock was taken
+    this._locked = false;
+    this._lockA = -1;
     this.w = window.innerWidth || 1;
     this.h = window.innerHeight || 1;
     addEventListener('resize', () => {
@@ -56,7 +63,7 @@ export class NameTags {
     tag.show(true);
   }
 
-  update() {
+  update(dt) {
     const g = this.game;
     const st = g.state;
     const visible = st !== 'title';
@@ -92,7 +99,18 @@ export class NameTags {
     else this.dragon.show(false);
 
     const targetable = typeof d?.isTargetable === 'function' ? !!d.isTargetable() : awake;
-    if (visible && p?.lockOn && targetable && lockOk) this._place(this.reticle, this.lock.x, this.lock.y, this.lock.z);
-    else this.reticle.show(false);
+    const locked = !!p?.lockOn;
+    if (locked && !this._locked) this.lockT = 0;
+    else if (locked) this.lockT += num(dt, 0);
+    this._locked = locked;
+    const M = LOCK_MARK;
+    const a = locked ? M.peak * Math.min(1, Math.max(0, 1 - (this.lockT - M.hold) / M.fade)) : 0;
+    if (visible && a > 0.004 && targetable && lockOk) {
+      this._place(this.reticle, this.lock.x, this.lock.y, this.lock.z);
+      if (Math.abs(a - this._lockA) > 0.008) {
+        this._lockA = a;
+        this.reticle.node.style.opacity = a.toFixed(3);
+      }
+    } else this.reticle.show(false);
   }
 }

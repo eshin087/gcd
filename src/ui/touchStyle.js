@@ -47,6 +47,9 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
 }
 .tc-root.off { opacity: 0; visibility: hidden; transition: opacity 0.35s ease, visibility 0s linear 0.35s; }
 .tc-root.off * { pointer-events: none !important; }
+/* paused: the controls show through the pause screen, inert (PAD POSITION / PAD SIZE are seen) */
+.tc-root.off.peek { opacity: 0.85; visibility: visible; z-index: 40; transition: opacity 0.2s ease; }
+.tc-root.off.peek .tc-stick, .tc-root.off.peek .tc-pause, .tc-root.off.peek .tc-lock { opacity: 0; }
 /* model viewer hides every HUD layer; the touch layer too */
 #ui.lab-mv > .tc-root { opacity: 0 !important; }
 
@@ -205,27 +208,44 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-btn.lit { border-color: rgba(255, 138, 61, 0.6); }
 .tc-btn.lit .g { color: ${EMBER}; text-shadow: 0 0 8px rgba(255, 138, 61, 0.8); }
 
-.tc-attack { right: 24px; bottom: 26px; width: 84px; height: 84px; }
-.tc-attack .g { font-size: 34px; }
-.tc-attack .t { font-size: 9px; }
+/* the pad: one pointer surface under three tiles that all touch (ui/touch.js places and sizes it
+   and its tiles from CONFIG.touch.pad; --tc-k is its scale) */
+.tc-pad { position: absolute; pointer-events: auto; touch-action: none; }
+.tc-tile { pointer-events: none; cursor: default; box-sizing: border-box; }
+.tc-tile::before { inset: 3px; opacity: 0.55; }
+.tc-tile.on::before { opacity: 1; }
+.tc-tile .g { font-size: calc(22px * var(--tc-k, 1)); }
+.tc-tile .t { font-size: calc(8px * var(--tc-k, 1)); line-height: 1.3; }
+.tc-tile .s { font-size: calc(7px * var(--tc-k, 1)); line-height: 1.3; }
+.tc-attack { background: rgba(6, 9, 14, 0.54); }
+.tc-attack .g { font-size: calc(36px * var(--tc-k, 1)); }
+.tc-attack .t { font-size: calc(9px * var(--tc-k, 1)); }
 .tc-attack.charge .t { color: var(--tc-gold); letter-spacing: 0.04em; padding-left: 0; }
 .tc-attack.full .t { color: #fff3c9; text-shadow: 0 0 6px rgba(216, 184, 106, 0.9); }
-.tc-dodge { right: 124px; bottom: 18px; width: 62px; height: 62px; }
-.tc-block { right: 34px; bottom: 126px; width: 62px; height: 62px; }
-.tc-flask { right: 122px; bottom: 102px; width: 44px; height: 44px; }
-.tc-lock { right: 112px; bottom: 166px; width: 44px; height: 44px; }
+/* BLOCK carries the guard meter: a gauge along its foot (--tc-gd 0..1, written by ui/touch.js) */
+.tc-block::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 4px;
+  height: 2px;
+  background: linear-gradient(90deg, #dfe7f5, #dfe7f5) left / calc(var(--tc-gd, 1) * 100%) 100% no-repeat, rgba(207, 214, 230, 0.16);
+}
+.tc-block.low::after { background: linear-gradient(90deg, #ff9a5a, #ff9a5a) left / calc(var(--tc-gd, 1) * 100%) 100% no-repeat, rgba(255, 138, 61, 0.2); }
+.tc-block.low { border-color: rgba(255, 138, 61, 0.55); }
+.tc-block { padding-bottom: 7px; }
+.tc-flask { box-sizing: border-box; }
+.tc-lock { right: 190px; top: 10px; width: 40px; height: 40px; opacity: 0.8; }
 .tc-pause { right: 142px; top: 10px; width: 40px; height: 40px; }
 .tc-flask .g, .tc-lock .g, .tc-pause .g { font-size: 16px; }
 .tc-flask .t, .tc-lock .t { font-size: 7px; letter-spacing: 0.12em; padding-left: 0.12em; }
+.tc-lock .t { display: none; }
 .tc-flask .g { color: var(--tc-gold); text-shadow: 0 0 6px rgba(216, 184, 106, 0.45); }
 
-/* taller phones / tablets: a little more room */
+/* taller phones / tablets: the minimap is full size there */
 @media (min-height: 561px) {
-  .tc-attack { right: 36px; bottom: 40px; width: 96px; height: 96px; }
-  .tc-dodge { right: 150px; bottom: 30px; width: 68px; height: 68px; }
-  .tc-block { right: 50px; bottom: 152px; width: 68px; height: 68px; }
-  .tc-flask { right: 148px; bottom: 122px; }
-  .tc-lock { right: 136px; bottom: 196px; }
+  .tc-lock { right: 266px; top: 12px; }
   .tc-pause { right: 218px; top: 12px; }
 }
 

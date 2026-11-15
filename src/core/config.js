@@ -52,6 +52,30 @@ export const CONFIG = {
     sprintAt: 0.94, // stick pushed to the rim = sprint (Shift)
     autoAimRange: 32, // m: in a fight, attacks / facing auto-aim at the dragon within this range
     aimDistance: 6, // m ahead of the hero along the stick when there is nothing to auto-aim at
+    // The right-thumb cluster (ADR-095): ATTACK, BLOCK and DODGE are three tiles that all touch one
+    // another, so the thumb goes from any one to any other without crossing a gap or a third tile.
+    //   tiles  each tile in the cluster's own box: x from its right edge, y up from its bottom edge
+    //   flask  the flask button rides with the cluster (same box), a gap away from the tiles
+    //   reach  a touch this far outside the cluster still goes to the nearest tile
+    //   slide  a thumb that slides from one tile onto another releases the first and presses the
+    //          second without lifting; `stick`: how far it must leave its tile before that happens
+    //   pos    where the cluster's bottom-right corner sits, [in from the right edge, up from the
+    //          bottom]; the player picks one in the pause menu (PAD POSITION), as its size (PAD SIZE)
+    //   tall   screens taller than 560 px (tablets): everything this much larger
+    pad: {
+      tiles: {
+        attack: { x: 0, y: 0, w: 98, h: 92 },
+        block: { x: 0, y: 92, w: 98, h: 62 },
+        dodge: { x: 98, y: 14, w: 70, h: 116 },
+      },
+      flask: { x: 104, y: 140, w: 58, h: 44 },
+      reach: 26,
+      slide: true,
+      stick: 10,
+      pos: { low: [26, 26], mid: [48, 52], high: [56, 84] },
+      size: { s: 0.88, m: 1, l: 1.14 },
+      tall: 1.14,
+    },
   },
 
   // Gamepad (src/ui/gamepad.js; the Gamepad API "standard" layout). Stick values are 0..1 deflection.

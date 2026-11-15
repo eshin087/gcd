@@ -163,6 +163,14 @@ export class PauseMenu {
       el('span', '', 'FULLSCREEN', this.btnFull);
       this.fullVal = el('span', 'v', '', this.btnFull);
     }
+    // touch: where the right-thumb cluster sits and how large it is (ui/touch.js cyclePad; the
+    // controls show through the pause screen while these are stepped)
+    this.btnPadPos = button(panel, 'tp-only', () => game.touch?.cyclePad?.('pos'));
+    el('span', '', 'PAD POSITION', this.btnPadPos);
+    this.padPosVal = el('span', 'v', '', this.btnPadPos);
+    this.btnPadSize = button(panel, 'tp-only', () => game.touch?.cyclePad?.('size'));
+    el('span', '', 'PAD SIZE', this.btnPadSize);
+    this.padSizeVal = el('span', 'v', '', this.btnPadSize);
     // the buttons in order, for the gamepad's menu focus (ui/gamepad.js)
     this.buttons = [resume, this.btnQuality, this.btnMute, this.btnControls, this.btnFull].filter(Boolean);
     el('div', 'ab-sep', null, panel);
@@ -193,6 +201,15 @@ export class PauseMenu {
     if (m !== this._m) {
       this._m = m;
       this.muteVal.textContent = m ? 'MUTED' : 'ON';
+    }
+    const tc = this.game.touch, pp = tc?.padPos, ps = tc?.padSize;
+    if (pp !== this._pp) {
+      this._pp = pp;
+      this.padPosVal.textContent = String(pp ?? '').toUpperCase();
+    }
+    if (ps !== this._ps) {
+      this._ps = ps;
+      this.padSizeVal.textContent = { s: 'SMALL', m: 'MEDIUM', l: 'LARGE' }[ps] ?? '';
     }
     if (this.fullVal) {
       const f = !!globalThis.document?.fullscreenElement;

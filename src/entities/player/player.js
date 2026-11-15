@@ -3,7 +3,7 @@ import { CONFIG } from '../../core/config.js';
 import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from '../../core/math.js';
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
-import { TELL, RESULT, DEFENSE, tellDefaults, facingDelta } from '../../combat/rules.js';
+import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
@@ -206,6 +206,12 @@ export class Player {
     // that hurts him ends it. streakT: s since the last one (DEFENSE.flurry.keepStreak)
     this.streak = 0;
     this.streakT = 0;
+    // the guard meter (combat/rules.js GUARD, ADR-094): a blocked blow costs guard, not HP; it
+    // refills by itself once guardWait (s) has run out. staggerLen: how long this stagger lasts
+    this.maxGuard = GUARD.max;
+    this.guard = GUARD.max;
+    this.guardWait = 0;
+    this.staggerLen = TUNE.staggerDur;
     this.slowmoPending = 0; // Ghostep slow-mo waiting for a harsher freeze to end (s)
     this.assist = { target: null, t: 0 };
     this.ghostFx = 0; // 1 → 0 after a Ghostep: dissolve-in + cold tint
@@ -447,6 +453,7 @@ export class Player {
     const guarded = chip && this.chipGuard > 0;
     if (chip) this.chipGuard = TUNE.chipGuard;
     this._streakEnd(); // hurt: the streak of perfect dodges is over
+    if (!chip) this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
     this.flash = 1;
@@ -607,6 +614,8 @@ export class Player {
     this.pl.phase = PL.VANISH;
     this.streak = 0;
     this.streakT = 0;
+    this.guard = this.maxGuard;
+    this.guardWait = 0;
     this.flurry.clear();
     this.tradeT = -Infinity;
     this.deflect.n = 0;
@@ -702,6 +711,8 @@ export class Player {
   restAtBonfire() {
     if (!this.alive) return;
     this.hp = this.maxHp;
+    this.guard = this.maxGuard;
+    this.guardWait = 0;
     this.flasks = this.maxFlasks;
     this.buf.action = null;
     this.critTimer = 0;
@@ -722,6 +733,9 @@ export class Player {
     if (this.critTimer > 0) this.critTimer = Math.max(0, this.critTimer - dt);
     if (this.iframeT > 0) this.iframeT = Math.max(0, this.iframeT - dt);
     if (this.assist.t > 0) this.assist.t -= dt;
+    // the guard meter refills by itself, whatever he is doing (GUARD)
+    if (this.guardWait > 0) this.guardWait -= dt;
+    else if (this.guard < this.maxGuard && this.alive) this.guard = Math.min(this.maxGuard, this.guard + GUARD.regenRate * dt);
     if (this.streak > 0 && DEFENSE.flurry.keepStreak > 0) {
       this.streakT += dt;
       if (this.streakT > DEFENSE.flurry.keepStreak) this._streakEnd();
@@ -941,6 +955,7 @@ export class Player {
     this.stateT = 0;
     this.onceMask = 0;
     this.enterN++;
+    if (state === 'stagger') this.staggerLen = TUNE.staggerDur; // (_guardOpen sets its own after)
     this.anim.play(animKey, blend, easeOut);
   }
 
@@ -1009,7 +1024,7 @@ export class Player {
         break;
       case 'stagger':
         this.want.x = this.want.z = 0;
-        if (this.stateT >= TUNE.staggerDur) this._toLoco(0.14);
+        if (this.stateT >= this.staggerLen) this._toLoco(0.14);
         break;
       case 'guardBreak':
         this.want.x = this.want.z = 0;
@@ -1178,7 +1193,35 @@ export class Player {
         g.flow?.cinematic?.({ x: cv.x, z: cv.z, slowmo: P.slowmo, dur: P.dur, zoom: P.zoom, weight: P.weight, kind: 'perfectParry' });
       }
     }
+    // every parry gives guard back at once (GUARD.parry)
+    this._guardGain((light ? GUARD.parryLight : GUARD.parry[tell] ?? GUARD.parry.normal) + (perfect ? GUARD.perfect : 0));
     this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last });
+  }
+
+  /** Guard given back (a parry, a cut of his own that landed). */
+  _guardGain(n) {
+    if (!(n > 0)) return;
+    this.guard = clamp(fin(this.guard) + n, 0, this.maxGuard);
+  }
+
+  /**
+   * The blow that emptied the guard meter (GUARD): it was blocked, and the guard is knocked open.
+   * A short stagger (the guard break's opening pose, without its knockdown), no damage; the meter
+   * starts to refill as he recovers.
+   */
+  _guardOpen(attack, nx, nz) {
+    const g = this.game;
+    this.guard = 0;
+    this.guardWait = GUARD.openDelay;
+    this._bladePoint(0.4, this._v);
+    this.fx.guardBreak(this._v.x, this._v.y, this._v.z, nx, nz);
+    this._emit('player:guardOpen', { attack });
+    g.shake?.(0.3);
+    this._interrupt();
+    this.recoil = 0;
+    this._enter('stagger', 'guardBreak', 0.07);
+    this.staggerLen = GUARD.openDur;
+    this.anim.kickCoat?.(0.5);
   }
 
   /**
@@ -1406,9 +1449,18 @@ export class Player {
 
   _block(dmg, tell, attack, chip, nx, nz) {
     const g = this.game;
+    // a blow costs guard and no HP (GUARD); a contact stream (the breath's ticks, a bullet) is no
+    // blow: it keeps its HP chip and leaves the meter alone
     const red = DEFENSE.blockReduction[tell] ?? DEFENSE.blockReduction.normal;
-    const taken = dmg * (1 - clamp(fin(red, 0.8), 0, 1));
-    this._damage(taken);
+    const taken = chip ? dmg * (1 - clamp(fin(red, 0.8), 0, 1)) : 0;
+    let open = false;
+    if (chip) this._damage(taken);
+    else if (!this.debug.god) {
+      const cost = clamp(dmg * (GUARD.cost[tell] ?? GUARD.cost.normal), GUARD.costMin, GUARD.costMax);
+      this.guard = Math.max(0, fin(this.guard) - cost);
+      this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
+      open = this.guard <= 0;
+    }
     const push = (DEFENSE.blockPushback[tell] ?? DEFENSE.blockPushback.normal) * (chip ? TUNE.chipPush : 1);
     this._setKb(nx, nz, Math.max(fin(this.kb.x * nx + this.kb.z * nz) / TUNE.knockbackDecay, push));
     const heavy = tell === TELL.BLUE && !chip;
@@ -1438,10 +1490,12 @@ export class Player {
       E.acc = 0;
     }
     if (this.hp <= 0) this._die();
+    else if (open) this._guardOpen(attack, nx, nz);
   }
 
   _guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc) {
     const g = this.game;
+    this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
     this.flash = 1;
@@ -2917,6 +2971,7 @@ export class Player {
     this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded, combo: d.combo ?? 1, weight: viaShards ? null : d.contact ?? (heavy ? 'slam' : 'light'), shards: viaShards });
     // turned by a guard: the guard draws the clash and sets its own freeze; no cut, no sparks of his
     if (guarded) return;
+    if (dealt > 0) this._guardGain(heavy ? GUARD.hit.heavy : GUARD.hit.light);
     // (the steel flares at its own contact: not when the shards hit and the blade is in the ground)
     if (!viaShards) this.bladeFlare = Math.max(this.bladeFlare, heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
     // the contact, for the animator and other areas: when (the attack clock: anim.js attackPose's bite;
@@ -3247,6 +3302,8 @@ export class Player {
   _debugHeal() {
     if (!this.alive) return false;
     this.hp = this.maxHp;
+    this.guard = this.maxGuard;
+    this.guardWait = 0;
     this._clearBurn();
     return true;
   }

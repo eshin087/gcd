@@ -171,6 +171,7 @@ export const TOUCH_CONTROLS = [
   ['ATTACK', 'tap: combo · hold: charged cleave'],
   ['BLOCK', 'hold: block · tap: parry'],
   ['DODGE', 'roll · perfect dodge = Ghostep'],
+  ['SLIDE', 'between ATTACK, BLOCK and DODGE without lifting'],
   ['FLASK', 'drink flask'],
   ['LOCK', 'lock-on (attacks auto-aim anyway)'],
   ['||', 'pause'],
