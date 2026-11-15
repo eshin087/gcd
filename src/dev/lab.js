@@ -10,7 +10,7 @@ import { Training } from './training.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
-import { STYLE_NAMES } from '../entities/player/styles.js';
+import { STYLE_NAMES, GUARD_ID, SHEATH_LOOK } from '../entities/player/styles.js';
 import { STYLE_ID } from '../entities/player/heroDims.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
@@ -739,22 +739,29 @@ export class Lab {
    *  hero (`?style=a|b|c`; every other parameter, `?lab` included, is kept). */
   _buildStyle(root) {
     const { body } = this._section(root, 'style', 'HERO STYLE (preview)');
-    const grid = el('div', 'lab-grid c2', null, body);
-    const cur = STYLE_ID ?? 'now';
-    for (const [id, name] of Object.entries(STYLE_NAMES)) {
-      const b = button(grid, name, () => {
-        if (id === cur) return;
-        try {
-          const u = new URL(globalThis.location.href);
-          if (id === 'now') u.searchParams.delete('style');
-          else u.searchParams.set('style', id);
-          globalThis.location.href = u.toString();
-        } catch (err) {
-          this._status(`error: style ${id}: ${err?.message ?? err}`, 'err');
-        }
-      });
-      b.title = id === cur ? 'the style loaded now' : `reload as ${name} (?style=${id === 'now' ? '' : id})`;
-      if (id === cur) b.classList?.add?.('on');
+    const reload = (key, id) => {
+      try {
+        const u = new URL(globalThis.location.href);
+        if (id === 'now') u.searchParams.delete(key);
+        else u.searchParams.set(key, id);
+        globalThis.location.href = u.toString();
+      } catch (err) {
+        this._status(`error: ${key} ${id}: ${err?.message ?? err}`, 'err');
+      }
+    };
+    const row = (key, cur, names, tip) => {
+      const grid = el('div', 'lab-grid c2', null, body);
+      for (const [id, name] of Object.entries(names)) {
+        const b = button(grid, name, () => id !== cur && reload(key, id));
+        b.title = id === cur ? `the ${tip} loaded now` : `reload with ${name} (?${key}=${id === 'now' ? '' : id})`;
+        if (id === cur) b.classList?.add?.('on');
+      }
+    };
+    row('style', STYLE_ID ?? 'now', STYLE_NAMES, 'style');
+    // (B3, sheathed: its three guards and three scabbard glows)
+    if (STYLE_ID === 'b3') {
+      row('guard', GUARD_ID, { 1: 'guard 1 · one hand, low', 2: 'guard 2 · two hands, middle', 3: 'guard 3 · two hands, low' }, 'guard');
+      row('sheath', SHEATH_LOOK, { cyan: 'scabbard · cyan', violet: 'scabbard · violet', gold: 'scabbard · gold' }, 'scabbard');
     }
   }
 

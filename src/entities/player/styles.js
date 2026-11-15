@@ -374,51 +374,190 @@ function b2Ease(p, P, A) {
   return 1;
 }
 
-/** B3 · Sheathed: the sword in its scabbard at the left hip (anim.js keeps it there), the free hand
- *  resting on the scabbard by its mouth, the sword hand hanging loose; an easy contrapposto. */
-// the scabbard (pelvis space): its mouth at the left hip, its axis back and down along the leg
-export const SCABBARD = { at: [0.17, -0.02, 0.075], axis: [0.18, -0.5, -0.85], len: 0.86, r: [0.042, 0.03] };
-function b3Ease(p, P, A) {
+/** B3 · Sheathed (round 3, the owner: "the sheathe looks promising but the sheathe placement is too
+ *  close to the character ... dont have it sheathe back in right away ... after like 20 secsonds of no
+ *  attack ... when the sword is out have it look like the original pose/angle ... the guard angle
+ *  looks really bad ... i also want the sheathe cover to be a bit glowly/epic"). The sword rests in a
+ *  scabbard hung out from his left hip; drawn, he stands in the at-ease pose he picked before
+ *  (stances.js atEase) with the free hand on the scabbard; it goes back in after 20 s without a
+ *  swing or a block (anim.js). Its guard and the scabbard's glow are options (`?guard=1|2|3`,
+ *  `?sheath=cyan|violet|gold`). */
+const PARAM = (k, ok, d) => {
+  try {
+    const v = new URLSearchParams(globalThis.location?.search ?? '').get(k);
+    return ok.includes(v) ? v : d;
+  } catch {
+    return d;
+  }
+};
+export const SHEATH_LOOK = PARAM('sheath', ['cyan', 'violet', 'gold'], 'cyan');
+export const GUARD_ID = PARAM('guard', ['1', '2', '3'], '1');
+// the scabbard (pelvis space): its mouth out from the left hip at the belt, its axis back, down and a
+// little out, clear of the thigh and the coat's side panel; hung from the belt by a hanger
+// (round 3: at 0.24 out it sat 3 cm off the thigh standing and cut 6 cm into it in a lunge)
+export const SCABBARD = { at: [0.29, 0.06, 0.12], axis: [0.44, -0.36, -0.82], len: 0.86, r: [0.046, 0.03] };
+/** The sheathed at-ease pose: an easy contrapposto, the sword hand loose at his side, the free hand
+ *  resting on the scabbard by its mouth (anim.js holds it there: the sheath's `lf`). */
+function b3Sheathed(p, P, A) {
   const m = oscillate(A.time, 4.3);
   const sway = Math.sin((A.time * TAU) / 9.1 + 0.2);
-  p[P.bodyX] = -0.04 - 0.01 * sway;
+  p[P.bodyX] = -0.035 - 0.01 * sway;
   p[P.bodyY] = -0.016 + 0.006 * m.br;
   p[P.bodyZ] = -0.008;
   p[P.pelvX] = 0.02;
-  p[P.pelvY] = -0.16;
-  p[P.pelvZ] = -0.07 - 0.01 * sway;
-  p[P.spX] = -0.045 + 0.02 * m.br;
-  p[P.spY] = 0.1;
-  p[P.spZ] = 0.08 + 0.01 * sway;
+  p[P.pelvY] = -0.14;
+  p[P.pelvZ] = -0.06 - 0.01 * sway;
+  p[P.spX] = -0.04 + 0.02 * m.br;
+  p[P.spY] = 0.08;
+  p[P.spZ] = 0.07 + 0.01 * sway;
   p[P.hdX] = 0.04 - 0.015 * m.br;
-  p[P.hdY] = 0.18 + 0.2 * m.look;
-  p[P.hdZ] = -0.07;
-  set3(p, P.rH, -0.205 + 0.004 * m.sw, -0.47 + 0.01 * m.brL, 0.03);
-  set3(p, P.rP, 0.4, -0.3, -0.85);
-  // (the blade itself sits in the scabbard; its pose direction follows the scabbard's line, so a
-  // blend out of it never swings through his legs)
+  p[P.hdY] = 0.16 + 0.2 * m.look;
+  p[P.hdZ] = -0.06;
+  // the sword hand loose at his side, the elbow soft
+  set3(p, P.rH, -0.205 + 0.004 * m.sw, -0.465 + 0.01 * m.brL, 0.035);
+  set3(p, P.rP, 0.45, -0.25, -0.85);
+  // (the blade sits in the scabbard; the pose's direction follows its line, so a blend out of it
+  // never swings through his legs)
   set3(p, P.swD, SCABBARD.axis[0], SCABBARD.axis[1], SCABBARD.axis[2]);
   set3(p, P.swF, 1, 0, 0);
-  set3(p, P.lH, -0.015, -0.46 + 0.008 * m.brL, 0.1);
-  set3(p, P.lP, 0.8, -0.2, -0.55);
-  set3(p, P.lD, -0.3, -0.5, 0.8);
-  set3(p, P.lN, -0.8, 0, -0.3);
+  b3FreeOnScabbard(p, P, m);
+  set3(p, P.rF, -0.12, DIM.ankle, -0.04);
+  set3(p, P.lF, 0.17, DIM.ankle, 0.1);
+  set3(p, P.rK, -0.3, 0.05, 1);
+  set3(p, P.lK, 0.5, 0.05, 1);
+  p[P.rFy] = -0.35;
+  p[P.lFy] = 0.45;
+  p[P.footFlat] = 0.95;
+}
+/** The free hand resting on the scabbard by its mouth (its target is the scabbard itself: anim.js
+ *  apply(), the sheath's `lf`): the palm on it, the fingers down round it, the thumb to the guard. */
+function b3FreeOnScabbard(p, P, m) {
+  set3(p, P.lH, 0.03, -0.46 + 0.006 * (m?.brL ?? 0), 0.14);
+  // (the elbow back, not out: out to the side it flared 30°; the hand rigid on the forearm: turned
+  // to wrap the scabbard the wrist bent 60°)
+  set3(p, P.lP, 0.35, -0.45, -0.82);
+  set3(p, P.lD, 0, 0, 0);
+  set3(p, P.lN, 0, 0, 0);
   p[P.hs] = 0;
   p[P.lk] = 0;
   p[P.twoHand] = 0;
   p[P.offAt] = 0;
-  set3(p, P.rF, -0.12, DIM.ankle, -0.04);
-  set3(p, P.lF, 0.18, DIM.ankle, 0.11);
-  set3(p, P.rK, -0.3, 0.05, 1);
-  set3(p, P.lK, 0.55, 0.05, 1);
-  p[P.rFy] = -0.35;
-  p[P.lFy] = 0.5;
-  p[P.footFlat] = 0.95;
 }
+/** Drawn, at ease: the at-ease stance he picked (stances.js atEase: the blade down the arm's own
+ *  line), the free hand on the scabbard instead of the belt. */
+function b3Drawn(p, P, A, base) {
+  base(p, P, A);
+  b3FreeOnScabbard(p, P, oscillate(A.time, 3.7));
+}
+
+/** The guard's life (all three options): a combat breath, the weight rocking on the balls of the
+ *  feet, the arms a beat behind, the point drawing a slow small circle on the foe. */
+function guardLife(p, P, A, az, el) {
+  const t = A.time, br = Math.sin((t * TAU) / 2.4);
+  const rock = Math.sin((t * TAU) / 1.9), rockL = Math.sin((t * TAU) / 1.9 - 0.8), c = (t * TAU) / 3.3;
+  p[P.bodyZ] += 0.014 * rock;
+  p[P.bodyY] += 0.006 * br - 0.004 * Math.abs(rock);
+  p[P.spX] += 0.012 * br + 0.008 * rockL;
+  p[P.rH] += 0.007 * Math.cos(c);
+  p[P.rH + 1] += 0.007 * Math.sin(c) + 0.005 * rockL;
+  dir(p, P.swD, az + 2.5 * Math.cos(c - 0.5), el + 2.2 * Math.sin(c - 0.5));
+}
+/** The guards' shared stance: nearly square to the foe (the owner: not side-on), the left foot a
+ *  little forward, the knees soft, the chest open to the front, the eyes on the foe. */
+function squareStance(p, P, A, sink) {
+  p[P.bodyX] = 0.004;
+  p[P.bodyY] = -sink;
+  p[P.bodyZ] = 0.01;
+  p[P.pelvX] = 0.03;
+  p[P.pelvY] = -0.16;
+  p[P.pelvZ] = 0;
+  p[P.spX] = 0.07;
+  p[P.spY] = 0.06;
+  p[P.spZ] = 0;
+  p[P.hdX] = -0.03;
+  p[P.hdZ] = 0;
+  p[P.hdY] = -(p[P.pelvY] + p[P.spY]) * 0.85;
+  set3(p, P.lF, 0.14, DIM.ankle, 0.22);
+  set3(p, P.rF, -0.15, DIM.ankle, -0.2);
+  set3(p, P.lK, 0.3, 0, 1);
+  set3(p, P.rK, -0.4, 0, 1);
+  p[P.lFy] = 0.15;
+  p[P.rFy] = -0.5;
+  p[P.footFlat] = 0.93;
+}
+const B3_GUARDS = {
+  /** 1 · LOW, ONE HAND: the sword hand before the right hip, the elbow down by the ribs, the blade
+   *  straight off the forearm with its point low at the foe; the free hand on the scabbard. */
+  1: {
+    pose(p, P, A) {
+      squareStance(p, P, A, 0.1);
+      set3(p, P.rH, -0.03, -0.4, 0.27);
+      set3(p, P.rP, 0.15, -0.9, -0.4);
+      set3(p, P.swF, 0.3, 1, 0);
+      b3FreeOnScabbard(p, P, null);
+      guardLife(p, P, A, -8, -18);
+    },
+    run: { h: [-0.03, -0.38, 0.27], p: [0.15, -0.9, -0.4], d: [-8, -15], f: [0.3, 1, 0] },
+    lf: 1,
+  },
+  /** 2 · MIDDLE, TWO HANDS: both hands on the grip before his navel, the elbows in, the point up at
+   *  the foe's throat (the middle guard every school starts from). */
+  2: {
+    pose(p, P, A) {
+      squareStance(p, P, A, 0.11);
+      set3(p, P.rH, 0.1, -0.35, 0.3);
+      set3(p, P.rP, -0.35, -0.85, -0.25);
+      set3(p, P.lP, 0.4, -0.85, -0.2);
+      set3(p, P.swF, 0.6, 0.8, 0);
+      p[P.twoHand] = 1;
+      p[P.offAt] = 0;
+      p[P.hs] = 0;
+      p[P.lk] = 0;
+      guardLife(p, P, A, 3, 22);
+    },
+    run: { h: [0.1, -0.35, 0.3], p: [-0.35, -0.85, -0.25], d: [3, 18], f: [0.6, 0.8, 0] },
+    lf: 0,
+  },
+  /** 3 · LOW, TWO HANDS: both hands on the grip before the belt, the point down at the foe's feet,
+   *  inviting the attack. */
+  3: {
+    pose(p, P, A) {
+      squareStance(p, P, A, 0.12);
+      set3(p, P.rH, 0.1, -0.42, 0.26);
+      set3(p, P.rP, -0.3, -0.85, -0.3);
+      set3(p, P.lP, 0.4, -0.85, -0.25);
+      set3(p, P.swF, 0.6, 0.8, 0);
+      p[P.twoHand] = 1;
+      p[P.offAt] = 0;
+      p[P.hs] = 0;
+      p[P.lk] = 0;
+      guardLife(p, P, A, 0, -22);
+    },
+    run: { h: [0.1, -0.42, 0.26], p: [-0.3, -0.85, -0.3], d: [0, -18], f: [0.6, 0.8, 0] },
+    lf: 0,
+  },
+};
+const B3G = B3_GUARDS[GUARD_ID];
 const bTake = (ease, extra) => ({ ...B_STYLE, ease, guard: bGuardAlive, life: B_LIFE, ...extra });
 const B1_STYLE = bTake(b1Ease, { trans: 'twirl', fidgets: ['look', 'stretch', 'flick', 'twirl', 'inspect'] });
 const B2_STYLE = bTake(b2Ease, { trans: 'twirl', fidgets: ['look', 'stretch', 'flick', 'twirl'] });
-const B3_STYLE = bTake(b3Ease, { trans: 'draw', sheath: true, fidgets: ['look', 'stretch', 'hilt'] });
+const B3_STYLE = {
+  ...B_STYLE,
+  // drawn: the picked at-ease pose (base = stances.js atEase); sheathed: b3Sheathed (anim.js stand()
+  // blends the two by the sheath)
+  ease: b3Drawn,
+  sheathedEase: b3Sheathed,
+  guard: B3G.pose,
+  block: null, // (the cross ward every style shares: the owner flagged the braced upright one)
+  run: B3G.run,
+  guardLf: B3G.lf,
+  life: B_LIFE,
+  trans: 'draw',
+  sheath: true,
+  sheatheAfter: 20, // s without a swing, a block or a fight before he sheathes the sword
+  fidgets: ['look', 'stretch', 'flick', 'twirl', 'inspect'], // drawn
+  fidgetsSheathed: ['look', 'stretch', 'hilt'],
+};
 
 const STYLES = { a: A_STYLE, b: B_STYLE, c: C_STYLE, b1: B1_STYLE, b2: B2_STYLE, b3: B3_STYLE };
 /** The style on trial (null: today's hero). Its run carry's blade direction as a unit vector. */
