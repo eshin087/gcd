@@ -68,7 +68,7 @@ export const RELEASES = [
         date: '2026-11-15',
         title: 'The Starless Lord uses the crater',
         notes: [
-          'Void Hurl: a hanging stone or a shard is thrown at a ringed spot.',
+          'Void Hurl: a hanging stone or a shard is thrown at a ringed spot. The ring gives you time to run out of it.',
           'Glass Rain (forms 3 and 4): three throws in a row.',
           'Crown Fall (forms 2 to 4): stand by something tall and he pulls it down on you.',
           'Stagger him in the windup and the stone drops.',
