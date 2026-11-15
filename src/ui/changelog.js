@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-15',
+        title: 'Dark music for every level and every boss phase',
+        notes: [
+          'Each level has its own dark music while you explore, and every boss phase has its own track that takes over when the phase changes: three for the Cinder Wyrm, two for the Ash Disciple, four for the Starless Lord.',
+          'A short victory fanfare and a game-over theme. All 14 tracks are free (CC0) recordings from OpenGameArt, picked by ear.',
+          'Sound effects are unchanged. The old synthesised music still plays while a track loads.',
+        ],
+      },
+      {
+        date: '2026-11-15',
         title: "What's new in the menu; the phone camera stays back",
         notes: [
           "WHAT'S NEW on the title screen and in the pause menu lists every version and what changed. A badge counts what you have not read yet.",

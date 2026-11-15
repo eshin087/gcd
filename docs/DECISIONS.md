@@ -3207,3 +3207,37 @@ ADR-092).
   Keep history); a PR rebased after another one landed its headline fails `npm test` until it adds
   the entry. Not checked on an iPhone: whether the page zoom was what the owner saw, and the
   `touchend` guard on the device.
+
+## ADR-117 — Recorded music from OpenGameArt: a dark track per level and per boss phase (2026-11-15)
+- **Context:** all music was synthesised at runtime, one score shared by every level, changing once
+  (boss → boss2). The owner asked for the game's sound and music to be replaced with CC0 recordings
+  from OpenGameArt. A first pass (PR #55, closed unmerged) also replaced the sound effects (129
+  recorded sounds and ambience beds); the owner: "the new sounds is way too much right now and feels
+  noisy everywhere. lets just focus on changing the background music with something very dark, grim,
+  and good to hear in the background for each level where the music changes per phase", with an
+  audition page to choose what ships.
+- **Decision:** music only; every sound effect stays synthesised. Each level has an exploring track
+  and one track per boss phase (the Cinder Wyrm 3, the Ash Disciple 2, the Starless Lord 4), plus a
+  shared victory and death track: 14 tracks, all CC0, chosen by the owner on an audition page
+  (three candidates per slot, 75 s clips at equal loudness) from OGA's CC0 music, searched for dark,
+  grim and horror pieces and measured for darkness (spectral centroid), density and dynamics.
+  The picks: Cinderwood Creepy Forest (F) / Dark Intro / Inside the Overlords Domain / Ancient
+  Grudge; Ashfall Ruins of an Ancient Culture / Hunted by the Evil / Boss_Koto; the Obsidian Throne
+  The Abyss / Zodik Deep Choir / Dramatic Boss Encounter / Final Stand (phase 3) / Fall of
+  Nightmares; Victory Fanfare Short; Death of a Ninja. The engine picks the track from the mode and
+  the boss's phase (`_bossPhase`), so flow keeps calling `setMusic('boss' | 'boss2')` and every
+  phase event crossfades to its track. Tracks are loudness-normalised (fights -18 LUFS, exploring
+  -21) and lifted 6 dB on the bus (measured against the synth score). Data in `trackList.js`, player
+  in `tracks.js`, the files built by `scripts/audio/build-music.py`.
+- **Kept:** the synthesised score as the fallback (before a track decodes, offline, a file://
+  build, `?music=synth`, a track that fails to load); the death gong.
+- **Licences:** only CC0 (several pages are CC0 and OGA-BY; the CC0 one is used). The first pass
+  also showed why a pack's own files are checked: one sound pack listed as CC0 shipped a CC BY-SA
+  licence inside.
+- **Alternatives turned down:** recorded sound effects (the owner: too noisy); one track per boss
+  with the synth's intensity layers (the owner asked for a change per phase); streaming through
+  `<audio>` elements (iOS wants a gesture per element; decoded buffers, at most 3 at a time).
+- **Consequences:** the build is the page plus `dist/assets/` (about 14 MB of music); the first
+  track starts a moment after the first tap (prefetched, decoded on demand). Each level now sounds
+  different, and the Starless Lord's four forms each get their own music. Not checked on the
+  iPhone: memory and decode time with three decoded tracks.

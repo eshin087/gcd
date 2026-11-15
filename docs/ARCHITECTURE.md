@@ -1781,7 +1781,32 @@ play(name, opts)           // one-shot SFX by name (sfx.js SFX, then fire.js FIR
 setMusic(mode)             // 'none'|'ambient'|'boss'|'boss2'|'victory'|'death'
 toggleMute(); muted: boolean;  setVolume(0..1)
 ```
-Every sound is procedural (no samples). 2026-11-09 additions:
+**Recorded music (ADR-117).** The sound effects stay synthesised. The background music is recorded:
+each level's exploring track and one track per boss phase, all CC0 from OpenGameArt, picked by the
+owner (`audio/trackList.js` `SCORE`; files in `assets/audio/music/`, credits in
+`assets/audio/CREDITS.md`). `audio/tracks.js` plays them; the synthesised score in `music.js` stays
+the fallback.
+- `_build()` makes `engine.tracks` (a `TrackBank`) and prefetches the compressed bytes of the
+  level's tracks (`game.level.id`), plus victory and death. Nothing loads outside http(s) (a file://
+  build, the headless tests) or with `?music=synth`: the synth score plays as before.
+- `_setMusic(mode)`: 'ambient' plays the level's `explore` track; 'boss' / 'boss2' play
+  `phases[n - 1]` for the boss's current phase `n` (`_bossPhase`: the higher of `game.dragon.phase` and
+  `_phaseHint`, the latest phase a `dragon:phase2/3/4` event announced: the wyrm announces a phase at
+  its transition roar and sets its number later; 'boss2' is at least phase 2; past the last listed
+  phase the last one plays on; `_tick` follows a phase number that moves without a music call), so a phase change (flow's `setMusic('boss2')` on
+  `dragon:phase2/3/4`) crossfades to the next phase's track (1.5 s); 'victory' / 'death' play the
+  shared tracks (the death gong still tolls). The music state is the mode and the phase
+  (`musicMode`, `_musicPhase`). A mode with no track (or a level with none) gets the synth layer,
+  and the synth's boss ↔ boss2 intensity change still applies to it.
+- A `TrackLoop` has the MusicLayer contract (`fadeIn`, `fadeOut`, `schedule`, `dispose`, `kind`
+  'track', `fading`, `deadAt`); it starts when its track has decoded, loops from `loopFrom` with an
+  `xfade` overlap (a few ms for loops written to repeat), and a track that fails to load sets
+  `failed`, after which the engine swaps in the synth layer. At most 3 tracks stay decoded.
+- The Lab's VIEW → "Recorded music" switches `tracks.enabled` and restarts the current mode.
+  `scripts/build.mjs` copies `assets/` into `dist/assets/`; `scripts/audio/build-music.py` rebuilds
+  the tracks from their OpenGameArt sources.
+
+2026-11-09 additions:
 - `sfx.js`: `parry {tell, chain}` (each deflect in a chain rings 2 semitones higher, up to 8 steps,
   with a bell 'ting' from the 2nd), `plungeDive {exec}` (on `player:plunge`), `plungeHit {exec}` (on
   `player:plungeHit`; a `player:hitDragon` of kind 'plunge' plays no ordinary hit sound). The flurry:

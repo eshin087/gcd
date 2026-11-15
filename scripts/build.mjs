@@ -28,3 +28,12 @@ html = html
 fs.mkdirSync('dist', { recursive: true });
 fs.writeFileSync('dist/index.html', html);
 console.log(`Built dist/index.html (${(html.length / 1024).toFixed(0)} KB)`);
+
+// the recorded music (ADR-117) is fetched next to the page: dist/assets/audio/. Opened
+// from disk (file://) the game cannot fetch it and plays its synthesised score instead.
+fs.rmSync('dist/assets', { recursive: true, force: true });
+fs.cpSync('assets', 'dist/assets', { recursive: true, filter: (src) => !/\.md$/i.test(src) });
+let bytes = 0;
+const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else bytes += fs.statSync(p).size; } };
+walk('dist/assets');
+console.log(`Copied dist/assets (${(bytes / 1048576).toFixed(1)} MB)`);

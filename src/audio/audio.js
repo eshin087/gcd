@@ -7,8 +7,10 @@ import { ForestAmbience, BreathLoop } from './ambience.js';
 import { ChargeHum } from './charge.js';
 import { createMusic } from './music.js';
 import { FIRE_SFX, subscribeFire } from './fire.js';
+import { TrackBank, TrackLoop } from './tracks.js';
 
-// Procedural WebAudio engine: every sound is synthesised at runtime (no sample files).
+// WebAudio engine: every sound effect is synthesised at runtime; the music is recorded tracks per level
+// and boss phase (tracks.js; ADR-117) over a synthesised fallback score (music.js).
 // The AudioContext is created lazily by unlock() (flow calls it on title dismiss; the engine
 // also unlocks itself on the first pointer/key gesture). Every method is a no-op before that.
 //
@@ -33,7 +35,10 @@ import { FIRE_SFX, subscribeFire } from './fire.js';
 //   aliases  ui click select confirm start pause resume back cancel error → blip variants
 //
 // Music (setMusic): 'none' | 'ambient' | 'boss' | 'boss2' | 'victory' | 'death', 1.5 s
-// crossfades. If flow does not pick music itself, the engine follows game.state / dragon
+// crossfades. A level's recorded tracks (tracks.js, trackList.js; ADR-117) play over the synthesised
+// score when they have loaded: 'ambient' is the level's exploring track, 'boss' / 'boss2' the track of
+// the boss's current phase (a phase change crossfades to the next); the synth is the fallback.
+// If flow does not pick music itself, the engine follows game.state / dragon
 // events; an explicit setMusic() in the same frame always wins over the automatic choice.
 
 const MODES = new Set(['none', 'ambient', 'boss', 'boss2', 'victory', 'death']);
@@ -81,6 +86,9 @@ export class AudioEngine {
     this.ambience = null;
     this.breath = null;
     this.charge = null; // heavy-attack charge hum (built with the graph)
+    this.tracks = null; // recorded music (built with the graph; ADR-117)
+    this._musicPhase = 0; // the boss phase whose track is playing (0: not a boss mode)
+    this._phaseHint = 1; // the latest phase a dragon:phase* event announced (the wyrm sets its own number later)
     this._fading = []; // layers crossfading out
     this._musicSince = 0;
     this.pools = { sfx: [], music: [], amb: [] };
@@ -154,7 +162,7 @@ export class AudioEngine {
       this._failed = true;
       this.master = this.duck = this.sfxBus = this.musicBus = this.ambientBus = this.uiBus = null;
       this.cueBus = this.slowLp = this.slowGain = this.musicDip = null;
-      this.reverbIn = this.ambience = this.breath = this.charge = this.music = null;
+      this.reverbIn = this.ambience = this.breath = this.charge = this.music = this.tracks = null;
       this._fading.length = 0;
       for (const l of this._poolLists) l.length = 0;
       return;
@@ -293,11 +301,14 @@ export class AudioEngine {
     this.ambience = new ForestAmbience(this);
     this.breath = new BreathLoop(this);
     this.charge = new ChargeHum(this);
+    this.tracks = new TrackBank(this);
+    this.tracks.load();
 
     this._applyMaster(0.35);
     if (this._ducked) this._duck(true);
     const mode = this.musicMode;
     this.musicMode = 'none';
+    this._musicPhase = 0;
     this._setMusic(mode);
   }
 
@@ -395,7 +406,19 @@ export class AudioEngine {
     }
     this.charge?.update(now, dt, this.game);
 
-    if (this.music) this.music.schedule(now, 0.3);
+    // the boss's phase moved without a music call (a phase number set after its event): follow it
+    if ((this.musicMode === 'boss' || this.musicMode === 'boss2') && this._bossPhase(this.musicMode) !== this._musicPhase) {
+      this._setMusic(this.musicMode);
+    }
+    if (this.music) {
+      // a recorded track that cannot load hands over to the synthesised score
+      if (this.music.failed) {
+        this.music.dispose();
+        this.music = createMusic(this, this.musicMode);
+        this.music?.fadeIn(now, XFADE);
+      }
+      this.music?.schedule(now, 0.3);
+    }
     for (let i = this._fading.length - 1; i >= 0; i--) {
       const l = this._fading[i];
       if (now > l.deadAt) {
@@ -529,14 +552,22 @@ export class AudioEngine {
   _setMusic(mode) {
     if (!MODES.has(mode)) mode = 'none';
     const ctx = this.ctx;
-    if (mode === this.musicMode) return;
+    // a boss mode follows the boss's phase: each phase may have a recorded track of its own
+    const boss = mode === 'boss' || mode === 'boss2';
+    if (!boss) this._phaseHint = 1; // a fight over (or not begun): the next one starts at phase 1
+    const phase = boss ? this._bossPhase(mode) : 0;
+    if (mode === this.musicMode && phase === this._musicPhase) return;
+    if (mode !== this.musicMode) this._musicSince = ctx ? ctx.currentTime : 0;
     this.musicMode = mode;
-    this._musicSince = ctx ? ctx.currentTime : 0;
+    this._musicPhase = phase;
     if (!ctx) return;
     const now = ctx.currentTime;
     const cur = this.music;
-    // boss ↔ boss2 keeps the same beat grid; only the extra parts fade
-    if (cur && cur.kind === 'boss' && (mode === 'boss' || mode === 'boss2')) {
+    const spec = this.tracks?.track(mode, phase) ?? null;
+    // the same recorded track (a phase past the level's last listed one): it plays on
+    if (spec && cur && cur.kind === 'track' && cur.spec.file === spec.file) return;
+    // synth boss ↔ boss2 keeps the same beat grid; only the extra parts fade
+    if (!spec && cur && cur.kind === 'boss' && boss) {
       cur.setIntensity(mode === 'boss2' ? 2 : 1, now, XFADE);
       return;
     }
@@ -545,15 +576,19 @@ export class AudioEngine {
       this._fading.push(cur);
       this.music = null;
     }
-    if (mode === 'death') {
-      this.play('gong'); // rate-limited: no double toll with player:died
-      return;
-    }
-    const layer = createMusic(this, mode);
+    if (mode === 'death') this.play('gong'); // rate-limited: no double toll with player:died
+    const layer = spec ? new TrackLoop(this, this.tracks, spec, this.musicBus) : createMusic(this, mode);
     if (layer) {
       layer.fadeIn(now, XFADE);
       this.music = layer;
     }
+  }
+
+  /** The boss's current phase (1-based) for the phase tracks; without a boss, 'boss2' is phase 2. */
+  _bossPhase(mode) {
+    const p = Number(this.game.dragon?.phase);
+    const n = Math.max(Number.isFinite(p) && p >= 1 ? Math.floor(p) : 1, this._phaseHint, mode === 'boss2' ? 2 : 1);
+    return Math.min(9, n);
   }
 
   /** Automatic music choice; applied at the end of the frame unless flow chose explicitly. */
@@ -815,6 +850,7 @@ export class AudioEngine {
       this._last.set('roar', now);
     });
     on('dragon:phase2', () => {
+      this._phaseHint = Math.max(this._phaseHint, 2);
       // the dragon emits dragon:roar in the same frame: the phase2 sting carries the enraged
       // roar itself, so it claims the roar slot (rate limit) instead of stacking two roars
       const now = this.ctx.currentTime;
@@ -826,6 +862,7 @@ export class AudioEngine {
     });
     // (phase 4: a boss with four forms, the Starless Lord: the same sting)
     for (const name of ['dragon:phase3', 'dragon:phase4']) on(name, () => {
+      this._phaseHint = Math.max(this._phaseHint, name === 'dragon:phase4' ? 4 : 3);
       // the white-hot phase: the enraged sting again (it claims the roar slot like phase 2), and the
       // phase-2 music if the Lab jumped straight here
       const now = this.ctx.currentTime;

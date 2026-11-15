@@ -5,6 +5,39 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 54: dark music per level and per boss phase
+
+**Owner:** "Lets update all the sound effects and music to the game. Browse and pick the best cc0
+sounds from opengameart." Then, after hearing the first pass on the preview: "the new sounds is way
+too much right now and feels noisy everywhere. lets just focus on changing the background music with
+something very dark, grim, and good to hear in the background for each level where the music changes
+per phase. give me a simple audition page with the music for me to preview and choose which one goes
+to prod". Branch `audio/dark-score` from `main` (the first pass, `audio/oga-samples` / PR #55, was
+closed unmerged). ADR-117 / Session 54 / M1.42.
+
+**Done** (ADR-117):
+- First pass (dropped): 129 recorded sound effects and three ambience beds over the synth, level-matched
+  by offline renders. Too noisy for the owner; none of it ships.
+- Music: OGA's CC0 music searched for dark / grim / horror / ominous / drone / choir pieces (500
+  results, 85 pages read, 49 downloaded), measured (centroid, onset density, loudness range) and
+  shortlisted: three per slot for 14 slots, 75 s clips at -18 LUFS on an audition page
+  (https://claude.ai/artifact/2m5awirsURxL9SrSh2wdbN) whose picks are saved in its database and read back.
+- `audio/tracks.js` (`TrackBank`, `TrackLoop`) and `audio/trackList.js` (`SCORE`: explore + phases per
+  level, victory, death); `audio.js` picks the phase track from `game.dragon.phase` (`_bossPhase`,
+  `_musicPhase`). `scripts/audio/build-music.py`; `build.mjs` copies `assets/`; Lab VIEW → "Recorded
+  music".
+
+**Verified:** integ MUSIC (every listed track exists and nothing unlisted ships; exploring, phases
+1 - 3 and a phase past the last; the same phase plays on; a loop restarts at its loop point; a failed
+track and a mode without one play the synth; `?music=synth`). Browser on all three levels: the
+level's exploring track, then the phase tracks as the boss's phase changes. `npm test`, `npm run build`.
+
+Found in the browser: the wyrm's phase 2 kept phase 1's track (it emits `dragon:phase2` at the
+transition roar and sets `phase` later): the engine now keeps the announced phase (`_phaseHint`) and
+follows a phase number that moves on its own.
+
+**Open:** the owner's listen in play and on the iPhone (loop seams, the phase crossfades, memory).
+
 ## 2026-11-15 — Session 53: WHAT'S NEW in the game; the phone camera in a duel's moment; a game of its own
 
 **Owner:** "On mobile theres a bug where after i lock onto the dragon target, the camera zooms in
