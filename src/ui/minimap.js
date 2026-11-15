@@ -47,6 +47,18 @@ export class Minimap {
     this.drawAcc += dt;
     if (this.drawAcc >= 1 / DRAW_HZ && this.ctx) {
       this.drawAcc = 0;
+      // what stands has changed (a tree felled, a pillar down, the fight's reset: ADR-103): bake again
+      const ver = this.game.world?.colliders?.version;
+      if (ver !== undefined && ver !== this._ver) {
+        if (this._ver !== undefined) {
+          try {
+            this.layer = this._bake();
+          } catch (err) {
+            console.warn('[hud] minimap bake failed', err);
+          }
+        }
+        this._ver = ver;
+      }
       this._draw();
     }
     this.textAcc += dt;

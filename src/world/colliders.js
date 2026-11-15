@@ -2,11 +2,14 @@
 export class Colliders {
   constructor() {
     this.circles = [];
+    /** Counts every change of the set (a breakable going, the reset): what bakes the circles (the minimap) re-bakes on it. */
+    this.version = 0;
   }
 
   add(x, z, r, tag = 'static') {
     const c = { x, z, r, tag };
     this.circles.push(c);
+    this.version++;
     return c;
   }
 
@@ -15,12 +18,16 @@ export class Colliders {
     const i = this.circles.indexOf(c);
     if (i < 0) return false;
     this.circles.splice(i, 1);
+    this.version++;
     return true;
   }
 
   /** Put a removed circle back (the fight's reset). No duplicate. */
   restore(c) {
-    if (c && !this.circles.includes(c)) this.circles.push(c);
+    if (c && !this.circles.includes(c)) {
+      this.circles.push(c);
+      this.version++;
+    }
     return c;
   }
 
