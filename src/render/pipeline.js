@@ -5,6 +5,7 @@ import { rigidBones } from './rigidBatch.js';
 import { createGridAtlas, createPixelArtAtlas, pixelArtCell, GRID_COLS, GRID_ROW } from './glyphs.js';
 import { createWyrmArtAtlas, wyrmArtFont } from './wyrmGlyphs.js';
 import { HERO_ART } from './materials.js';
+import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 
 // Frame pipeline:
 //   0. one scene-graph matrix update, then the rigid batches' bone matrices (rigidBatch.js)
@@ -248,6 +249,13 @@ export class Pipeline {
         // in tFlame.b), y = brightness flicker, z = the warm lift on dark letters
         uHazeRoll: { value: new THREE.Vector3(0.7, 0.3, 0.035) },
         uTime: U.uTime ?? { value: 0 },
+        // LETTING GO (letGo.js): the dying wyrm's letters let go cell by cell and fall; shared with
+        // its materials (uWyrmGrid: the art cell and the grid anchor; uWyrmLetGo.x: 0 = off)
+        ...letGoUniforms(U),
+        // a falling letter: x = how much it takes the ember colour as it falls, y = its brightness
+        // floor (a dim charcoal letter still reads while it falls), z = how dark the body behind it
+        // goes (its backing), w = brightness of the ember colour
+        uLetGoInk: { value: new THREE.Vector4(0.85, 0.1, 0.7, 0.55) },
         // extra source taps per wyrm cell (a 4x4 grid) on top of the 4 that find the cell: the cell's
         // letter TIER comes from the average of its source, so it does not flip between bright and
         // dark letters as scale rims cross its four point samples (0 = off); each letter pixel still
@@ -329,6 +337,8 @@ export class Pipeline {
         uniform vec4 uHaze;
         uniform vec3 uHazeRoll;
         uniform float uTime;
+        uniform vec4 uLetGoInk;
+        ${LET_GO_GLSL}
         varying vec2 vUv;
         // heat haze, set per cell by hazeCell before artLetters prints it: x = 0..1 how deep the cell
         // is in the heat, y = the fire's letter roll for it, z = 1 violet (void fire), w = shimmer px
@@ -568,7 +578,7 @@ export class Pipeline {
           return vec2(pc != pn ? 0.6 : near ? 0.4 : 0.0, 0.0);
         }
 
-        void main() {
+        void cellMain() {
           vec2 px = gl_FragCoord.xy;
           // the hero first: his own pixel-font grid, drawn as ink-line art
           vec2 hcell = floor(px / uHeroCell);
@@ -757,6 +767,12 @@ export class Pipeline {
           // stroke-coded spike / claw / horn tip that would otherwise vanish between the samples)
           float strokeHits = max(max(votes.x, votes.y), max(votes.z, votes.w));
           if (ahits >= 2.0 || (ahits >= 1.0 && (strokeHits >= 1.0 || edgeS >= 0.0))) {
+            // letting go: the cell's letter has left it (main draws it falling); its body stays black
+            // until the material lets the cell go
+            if (uWyrmLetGo.x > 0.0 && uWyrmLetGo.x >= letGoAt(acell)) {
+              gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+              return;
+            }
             if (uArtEdge.y > 0.0 && (dmax - dmin) > uArtEdge.y * dmin) {
               gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
               return;
@@ -858,6 +874,43 @@ export class Pipeline {
             col = stoneCell(c, cell, local);
           }
           gl_FragColor = vec4(col * (1.0 - heroHalo(px)), 1.0);
+        }
+
+        // ---- letting go (letGo.js; only while the wyrm dissolves): the letter of a cell that has
+        // let go falls down the screen, accelerating, turning to ember and fading. A pixel finds the
+        // falling letter that covers it among the cells straight above (LG_FALL of them at most);
+        // the letter is printed from its cell's source, which the material keeps until it has fallen.
+        void letGoFall() {
+          gHaze = vec4(0.0);
+          vec2 g = (gl_FragCoord.xy - uWyrmGrid.zw) / uWyrmGrid.xy;
+          vec2 c0 = floor(g);
+          // outside the body's box (and the fall below it): nothing can be falling here
+          if (abs(c0.x) > uWyrmLetGo.w || c0.y > uWyrmLetGo.y + 1.0 || c0.y < uWyrmLetGo.y - uWyrmLetGo.z - LG_FALL - 1.0) return;
+          for (int k = 0; k <= int(LG_FALL); k++) {
+            vec2 s = c0 + vec2(0.0, float(k));
+            float t = (uWyrmLetGo.x - letGoAt(s)) / LG_WINDOW;
+            if (t <= 0.0 || t >= 1.0) continue;
+            float ly = g.y - s.y + LG_FALL * t * t;
+            if (ly < 0.0 || ly >= 1.0) continue;
+            vec2 suv = ((s + 0.5) * uWyrmGrid.xy + uWyrmGrid.zw) / uRes;
+            vec4 sc = texture2D(tScene, suv);
+            if (!isArt(sc.a) || isHero(sc.a)) continue;
+            // it falls at its own depth: whatever stands nearer (the hero, a stone) covers it
+            if (linDepth(suv) > linDepth(gl_FragCoord.xy / uRes) + 1.5) continue;
+            vec3 ember = vec3(1.0, 0.36, 0.08) * uLetGoInk.w;
+            // its own colour, lifted so a charcoal letter reads, burning to ember as it falls
+            vec3 src = max(sc.rgb, vec3(uLetGoInk.y * 0.2)) + ember * (0.05 + 0.25 * t);
+            vec3 ink = artLetters(src, src, s, vec2(fract(g.x), ly), -1.0, uWyrmTone, uWyrmGlyph, vec3(uArtBlack.y, uArtLum.y, max(uArtMin.y, uLetGoInk.y)));
+            float a = 1.0 - t * t * t;
+            bool body = isArt(texture2D(tScene, gl_FragCoord.xy / uRes).a);
+            gl_FragColor.rgb = gl_FragColor.rgb * (1.0 - (body ? uLetGoInk.z : 0.0) * a) + ink * a;
+            return;
+          }
+        }
+
+        void main() {
+          cellMain();
+          if (uWyrmLetGo.x > 0.0) letGoFall();
         }
       `,
       depthTest: false,
@@ -994,9 +1047,7 @@ export class Pipeline {
       const k = Math.min(1, Math.max(0, (ps.z - hs.w * 0.4) / (hs.w * 0.6)));
       h.set(ps.x, ps.y, rPx, k * k * (3 - 2 * k));
     } else h.w = 0;
-    // the wyrm's grid anchor: its root on screen, in whole px (the letters stay pixel-exact)
-    const bs = this.U.uBossScreen?.value;
-    if (bs && bs.w > 0.5 && Number.isFinite(bs.x + bs.y)) u.uWyrmAnchor.value.set(Math.round(bs.x * this.width), Math.round(bs.y * this.height));
+    // (the wyrm's grid anchor: _updateWyrmGrid, before the scene pass)
     // the props' grid anchor: where the world's ground origin would be on screen if the whole ground
     // moved like the ground at the focus (the screen position of the focus, minus the focus's world
     // offset times the px-per-metre there), wrapped to one cell
@@ -1014,6 +1065,18 @@ export class Pipeline {
       const cw = this.artCell.x, ch = this.artCell.y;
       if (Number.isFinite(ax + ay)) u.uPropAnchor.value.set(((Math.round(ax) % cw) + cw) % cw, ((Math.round(ay) % ch) + ch) % ch);
     }
+  }
+
+  /**
+   * The wyrm's letter grid: its anchor is its root on screen, in whole px (the letters stay
+   * pixel-exact). Set before the scene pass: the wyrm's materials count the same cells when it
+   * dissolves letter by letter (letGo.js, U.uWyrmGrid).
+   */
+  _updateWyrmGrid() {
+    const a = this.asciiMat.uniforms.uWyrmAnchor.value;
+    const bs = this.U.uBossScreen?.value;
+    if (bs && bs.w > 0.5 && Number.isFinite(bs.x + bs.y)) a.set(Math.round(bs.x * this.width), Math.round(bs.y * this.height));
+    this.asciiMat.uniforms.uWyrmGrid.value.set(this.artCell.x, this.artCell.y, a.x, a.y);
   }
 
   /** The fire field (render/fireField.js): its heat passes run after the scene pass, its letters draw first in the FX pass. */
@@ -1117,6 +1180,7 @@ export class Pipeline {
     // in each render), then the rigid batches' bones from them (the drawn state: the hero's lean
     // is on by now)
     const prevAutoUpdate = scene.matrixWorldAutoUpdate;
+    this._updateWyrmGrid();
     scene.updateMatrixWorld();
     this.rigid.sync();
     scene.matrixWorldAutoUpdate = false;

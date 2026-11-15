@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { COMMON_GLSL, HERO_PARTS, RIGID_VERT_GLSL } from './shaderLib.js';
 import { gi } from './glyphs.js';
+import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 
 // Material families (see STYLE.md):
 //  - AsciiObject: trees, bones, the bonfire. Writes a FLAG in alpha so the post pass converts the
@@ -22,6 +23,15 @@ import { gi } from './glyphs.js';
 //                         on a grid counted from the ground (pipeline uProp*; ADR-100)
 //   0.6          LEAF     blobby foliage ramp
 //   1.0          STONE    letter ramp + edge outlines
+/**
+ * The fire rising inside the wyrm before a breath (uWyrmHeat, Dragon._riseHeat): a front of heat
+ * `radius` m wide that travels along its back and up its neck. Round it the molten glow is
+ * x (1 + glow) (the dorsal blades' roots, the cracks, the throat), the gaps between the scales take
+ * `gap` of the part's ember colour and the scales themselves `hide` (the digits on the dark hide
+ * brighten as it passes). Calm: a tell, not a flash.
+ */
+export const WYRM_HEAT = { radius: 2.3, glow: 1.4, gap: 1.3, hide: 0.22 };
+
 export const FLAG = { NONE: 0.0, ART_HERO: 0.48, ART: 0.5, ART_PROP: 0.57, LEAF: 0.6, STONE: 1.0 };
 /**
  * Hero ink-line art (materials with `heroArt`): instead of FLAG.ART_HERO they write a PART ID into
@@ -407,6 +417,10 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
       ...pickShared(U, SURFACE_SHARED),
       uBoneTex: U.uBoneTex ?? { value: null }, // rigid batches' bone matrices (RIGID_VERT_GLSL)
       ...(o.wyrm != null ? pickShared(U, ['uCamRight', 'uCamUp']) : {}), // the wyrm source's key light
+      ...(o.wyrm != null ? letGoUniforms(U) : {}), // the wyrm dissolves letter by letter (letGo.js)
+      // the fire rising in the wyrm's throat (Dragon._applyMaterials): xyz = where the front of heat
+      // is (world), w = its strength; shared by every wyrm material
+      ...(o.wyrm != null ? { uWyrmHeat: (U.uWyrmHeat ??= { value: new THREE.Vector4(0, 0, 0, 0) }) } : {}),
       ...(o.heroArt != null ? pickShared(U, HERO_ART_SHARED) : {}),
       ...feat.uniforms,
       uAsciiSet: { value: asciiSet },
@@ -596,6 +610,8 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
       // ---- wyrm ASCII-art source (option wyrm; see wyrmFeatures). The owner's reference dragon:
       // dark charcoal hide of overlapping shingle scales whose free edges catch the light, molten
       // fissures and glowing gaps on the chest / throat / undersides, crimson torn membranes.
+      ${LET_GO_GLSL}
+      uniform vec4 uWyrmHeat;
       uniform vec2 uWScale;
       uniform vec4 uWShape;
       uniform vec4 uWTip;
@@ -741,6 +757,14 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         if (uWShape.y > 1.5 && fres >= uWShape.z) stroke = axisS;
         else if (uWShape.y > 0.5 && uWShape.y < 1.5 && rimT.z > 0.5) stroke = wStroke(rimT.xy, jx, jy);
         float hot = uGlow * uGlowMask;
+        // the fire rising in the throat (uWyrmHeat: the front's world point, its strength): round it
+        // the molten glow swells, and the fire inside shows through the gaps between the scales
+        float rise = 0.0;
+        if (uWyrmHeat.w > 0.0) {
+          vec3 hd = (vW - uWyrmHeat.xyz) / ${WYRM_HEAT.radius.toFixed(2)};
+          rise = uWyrmHeat.w * exp(-dot(hd, hd));
+          hot *= 1.0 + ${WYRM_HEAT.glow.toFixed(2)} * rise;
+        }
         // horns, spikes, claws (aGUV y = distance from the root): dark roots, bright tips, molten
         // roots on the glowing spines (uWTip: tip ramp from .x to .y, value at the root .z, root glow .w)
         float tipT = smoothstep(uWTip.x, uWTip.y, vG.y);
@@ -779,6 +803,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
           col += uWEmit * hot * uWCrack.x * (cg * cg + sc.y) * 0.5 * max(run, one) * uw * (0.8 + 0.2 * sin(uTime * 2.3 + sInfo.z * 6.28));
         }
         col += uWEmit * hot * (uWGlow.x * sc.y + uWGlow.y);
+        col += uWEmit * rise * (${WYRM_HEAT.gap.toFixed(2)} * sc.y + ${WYRM_HEAT.hide.toFixed(2)} * sc.x);
         col += vec3(1.0, 0.92, 0.85) * uFlash * (0.15 + 0.6 * sc.x);
         col += uWarn.rgb * uWarn.a * (0.1 + 0.8 * sc.x + fres * 2.0);
         col = applyFog(col, vW);
@@ -819,7 +844,12 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         vec2 cell = floor(g);
         vec2 f = fract(g);
         float h = hash12(cell + uSeed);
+#ifdef SG_WYRM
+        // the wyrm lets go a whole letter cell of the art grid at a time, once its letter has fallen
+        if (uDissolve > 0.0 && uDissolve >= letGoAt(floor((gl_FragCoord.xy - uWyrmGrid.zw) / uWyrmGrid.xy)) + LG_WINDOW) discard;
+#else
         if (uDissolve > 0.0 && h < uDissolve) discard;
+#endif
 #ifdef SG_WYRM
         if (uArtSolid * step(0.46, uFlag) * step(uFlag, 0.55) > 0.5) { wyrmMain(); return; } // wyrm art source
 #endif
