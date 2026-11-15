@@ -832,9 +832,12 @@ and it is a settle of `SW_SETTLE` (0.35 s; a carry's own `settle`, `settleOf`) t
 recovery: `attackPose` writes how far it has come (`anim.settleH`), and the `play('loco')` that ends
 the attack hands it to the carry's cross-fade (`anim.tail`, mode `'all'`, `_tailBlend`: the upper body
 and the blade finish the same smootherstep at the same pace, the bulge with it, the legs on the fade's
-own smoothstep; what is left of a settle all but done still takes at least the clip's blend). A
-carry's `dip` (rad, `dipOf`, `dipBlade`) lowers the blade's point by `dip` × sin(π × the settle) on the
-way, never under `DIP_FLOOR`, and the tail carries it on like the bulge. While a tail runs, the
+own smoothstep; what is left of a settle all but done still takes at least the clip's blend, and when
+loco's sword arm lies farther than the settle's target, `guard()`, he is still running out of the
+sprint slash, the rest of the curve is stretched by how much farther, `armWay`, up to
+`SW_TAIL_MAX`). A carry's `dip` (rad, `dipOf`, `dipBlade`) lowers the blade's point by `dip` ×
+sin(π × the settle) on the way, easing off over `DIP_SOFT` above `DIP_FLOOR`, and the tail carries it
+on like the bulge. While a tail runs, the
 carry's own sword-arm fades (`via`, `armFade`, `armOff`, below) do not also act. A roll, a
 step back, a block or a drink (`SW_TAIL_KEYS`) out of the hero's light / slam (any part of it) or out
 of a tail still running, and a `loco` out of a running tail, take mode `'arm'`: the sword arm (`rH`

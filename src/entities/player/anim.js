@@ -702,10 +702,14 @@ function dipBlade(p, d) {
   if (!(d > 1e-5)) return;
   azEl(p[P.swD], p[P.swD + 1], p[P.swD + 2], _ae);
   if (_ae[2] < 0.05) return; // (a blade upright has no heading to keep)
-  const el = Math.max(Math.min(_ae[1], DIP_FLOOR), _ae[1] - d), c = Math.cos(el);
+  // (a soft floor: within DIP_SOFT of DIP_FLOOR the drop eases off, C1. A hard clamp stopped the
+  // point's fall dead in one frame, 19 → 13 m/s)
+  const x = _ae[1] - d - DIP_FLOOR, low = x >= DIP_SOFT ? _ae[1] - d : DIP_FLOOR + DIP_SOFT * Math.exp(x / DIP_SOFT - 1);
+  const el = Math.min(_ae[1], low), c = Math.cos(el);
   v3(p, P.swD, c * Math.sin(_ae[0]), Math.sin(el), c * Math.cos(_ae[0]));
 }
 const DIP_FLOOR = -0.95; // rad: the dip leaves the point above this (the grass, the shins)
+const DIP_SOFT = 0.3; // rad: … easing off over this much above it
 // The hero's sword arm (the hand, its elbow, the blade, its flat) when a roll, a step back, a block or
 // a drink cuts the way home, or the swing itself (HeroAnimator.tail, mode 'arm'): it carries on at the
 // speed it had and gets to the new clip's pose over a time its distance needs (the steel's path at
@@ -719,6 +723,13 @@ const SW_TAIL_MAX = 0.3;
 // forearm turned 53-96° in a frame)
 const SW_TAIL_VL = 2.6;
 const SW_TAIL_KEYS = new Set(['roll', 'backstep', 'block', 'heal']);
+const SCR_TAIL = new Float32Array(N); // (_tailBlend: the settle's own target, guard())
+/** How far apart two poses' sword arms are (m): the hand's way plus the blade tip's arc. */
+function armWay(a, b) {
+  const la = Math.hypot(a[P.swD], a[P.swD + 1], a[P.swD + 2]) || 1, lb = Math.hypot(b[P.swD], b[P.swD + 1], b[P.swD + 2]) || 1;
+  const c = clamp((a[P.swD] * b[P.swD] + a[P.swD + 1] * b[P.swD + 1] + a[P.swD + 2] * b[P.swD + 2]) / (la * lb), -1, 1);
+  return Math.hypot(b[P.rH] - a[P.rH], b[P.rH + 1] - a[P.rH + 1], b[P.rH + 2] - a[P.rH + 2]) + SW_BLADE * Math.acos(c);
+}
 const ARM_MASK = new Uint8Array(N); // 1 on the sword arm's channels, 2 on the free arm's
 for (let c = 0; c < 3; c++) ARM_MASK[P.rH + c] = ARM_MASK[P.rP + c] = ARM_MASK[P.swD + c] = ARM_MASK[P.swF + c] = 1;
 for (let c = 0; c < 3; c++) ARM_MASK[P.lH + c] = ARM_MASK[P.lP + c] = ARM_MASK[P.lD + c] = ARM_MASK[P.lN + c] = 2;
@@ -3842,6 +3853,17 @@ export class HeroAnimator {
       // waist, then the leg clearance flipped it to his right in one frame, 98°)
       T.mem.d = bladeWay(a, b);
       T.mem.ok = true;
+      if (T.mode === 'all') {
+        // (still moving as the attack ends, the sprint slash's run-out, loco's sword arm is not the
+        // settle's target: the same rest of the curve toward a farther pose stepped the point up
+        // 8 m/s in one frame. The curve is stretched by how much farther, so the speed carries on)
+        guard(SCR_TAIL, this);
+        const dg = armWay(a, SCR_TAIL), db = armWay(a, b);
+        if (dg > 0.02 && db > dg * 1.05) {
+          T.dur = Math.min(T.dur * (db / dg), Math.max(T.dur, SW_TAIL_MAX));
+          this.blendDur = Math.max(this.blendDur, T.dur);
+        }
+      }
       if (T.mode === 'arm') {
         // the time the arm needs: the hand's way and the blade's arc at SW_TAIL_V on average
         azEl(a[P.swD], a[P.swD + 1], a[P.swD + 2], _ae);

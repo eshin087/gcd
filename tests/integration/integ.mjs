@@ -8078,8 +8078,8 @@ async function scenarioHeroFlow() {
     // ≤ 40° a frame (or today's hold's, hip's, + 3: the block's own entry is main's, out of the flow's
     // scope), the steel out of him, the point no faster than from today's hold + 10 %. The windup's
     // way (the point's path to the coil) ≤ 1.2 m: a gather, not a second cut (main: 2.3 m).
-    // F5 home to the carry: after a single hit and after the mashed chain the speed rises ≤ 6 m/s a
-    // frame, it comes to rest in the carry (the last moving frame ≤ 1 m/s), a single hit's way home
+    // F5 home to the carry: after a single hit, the mashed chain and the sprint slash (it ends still
+    // running out: loco's pose is not the settle's target) the speed rises ≤ 6 m/s a frame, it comes to rest in the carry (the last moving frame ≤ 1 m/s), a single hit's way home
     // peaks ≤ 25 m/s
     const CC = chains.filter((C) => C.R.kind === 'carry');
     const coilAt = (S) => { const rows = S.run.rows; let i = S.i0; while (i < S.i1 && !(rows[i].u >= 1)) i++; return i; };
@@ -8147,10 +8147,10 @@ async function scenarioHeroFlow() {
       // the way home: after each single hit (the picks) and after the mashed chain
       const homes = [0, 1, 2].map((k) => of(`pick${k}`)).filter(Boolean), M = of('mash');
       const one = Math.max(...homes.map((C) => Math.max(0, ...C.E.prof.slice(6))));
-      const ends = [...homes, M].filter(Boolean).map((C) => C.E);
+      const ends = [...homes, M, of('sprint')].filter(Boolean).map((C) => C.E);
       const jump = Math.max(...ends.map((E) => E.jump)), arrive = Math.max(...ends.map((E) => E.arrive));
       show.push(`home: a single hit's way home peaks ${f1(one)} m/s; the speed rises ≤ ${f1(jump)} m/s a frame; arrives at ${f1(arrive)} m/s; the mashed chain (${M?.hits.map((S) => S.clip).join(' ')}) ${M?.E.prof.map((x) => x.toFixed(0)).join(' ')}`);
-      if (!(ends.length === 4 && M?.hits.length === 5 && one <= 25 && jump <= 6 && arrive <= 1)) fails.push(`${id} home: ${M?.hits.length ?? 0} hits, single ${f1(one)} rise ${f1(jump)} arrive ${f1(arrive)}`);
+      if (!(ends.length === 5 && M?.hits.length === 5 && one <= 25 && jump <= 6 && arrive <= 1)) fails.push(`${id} home: ${M?.hits.length ?? 0} hits, single ${f1(one)} rise ${f1(jump)} arrive ${f1(arrive)}`);
       // the block and the charge from the carry
       for (const t of ['block', 'charge']) {
         const R = of(t)?.R;
