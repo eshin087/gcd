@@ -800,7 +800,9 @@ and so for every pose and every cross-fade: `_arm` / `_leg` hold a hand / a foot
 and move a hand out of the ribs' outline (`TORSO_R`); `_wristLimit` keeps the blade within
 `WRIST_BACK` (128°) of the sword forearm's line. The off hand on the grip keeps the grip.
 (The hero's reverse-grip carry lifts that limit toward `WRIST_REV` (172°) by the pose channel `rev`,
-below; at the lifted limit there is no upper-arm clearance: the carry itself keeps the steel off the arm.)
+below; at the lifted limit the upper-arm clearance comes back in only as the hold drops under
+`REV_CLEAR` (0.3): the carry itself keeps the steel off the arm, and the steel does not jump round
+the forearm the frame the hold is let go.)
 `_hingeFloor` (ADR-083) keeps a knee / an elbow above the grass (`KNEE_FLOOR`, `ELBOW_FLOOR`): one
 solved under it is swung round its limb's line up to it. **Hit reactions** (ADR-083) read three
 things off the player: `hitPush` (the flinch gives that way), `kdProne` (the knockdown clip's

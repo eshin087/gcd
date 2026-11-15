@@ -2970,6 +2970,7 @@ const WRIST_COS = Math.cos(WRIST_BACK), WRIST_SIN = Math.sin(WRIST_BACK);
 // … and in a reverse grip's hold (pose channel `rev`: the hero's `back` carry) up to this: the
 // blade lies back along the forearm, out past the fist's little finger
 const WRIST_REV = 172 * (Math.PI / 180);
+const REV_CLEAR = 0.3; // … the upper-arm clearance comes in as the hold drops under this
 const WRIST_CLEAR_COS = Math.cos(70 * (Math.PI / 180)); // … and, there, the least angle round the forearm between the steel and the upper arm
 const ELBOW_RATE = 14; // rad/s: the most an elbow swings round its shoulder → hand line (~13° a frame)
 const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vector3(), _eC = new THREE.Vector3();
@@ -4290,14 +4291,31 @@ export class HeroAnimator {
     if (c >= WRIST_COS) return;
     if (rev > 1e-4) {
       // a reverse grip's hold (pose channel `rev`, the hero's carries): the limit lifts toward
-      // WRIST_REV, the blade lying back along the forearm. Past it, it stops there (no upper-arm
-      // clearance: the carry keeps the steel off the arm itself)
+      // WRIST_REV, the blade lying back along the forearm. Past it, it stops there; the upper-arm
+      // clearance below comes in as the hold is let go (under REV_CLEAR of it), so the steel does
+      // not jump round the forearm the frame the hold is gone (a reverse grip's first cut held at its
+      // coil: 12° in a frame, 15 m/s at the point)
       const lim = WRIST_BACK + (WRIST_REV - WRIST_BACK) * Math.min(1, rev), cl = Math.cos(lim);
       if (c >= cl) return;
       _w.copy(_bz).addScaledVector(_v, -c);
       if (_w.lengthSq() < 1e-6) _w.set(0, 1, 0).addScaledVector(_v, -_v.y);
       if (_w.lengthSq() < 1e-6) return;
       _w.normalize();
+      const k = 1 - smoothstep(0, REV_CLEAR, rev);
+      if (k > 0) {
+        _G.set(0, 1, 0).applyQuaternion(A.upper.quaternion).applyQuaternion(_q2);
+        _G.addScaledVector(_v, -_G.dot(_v));
+        if (_G.lengthSq() > 1e-6) {
+          _G.normalize();
+          const cu = clamp(_w.dot(_G), -1, 1);
+          if (cu > WRIST_CLEAR_COS) {
+            _TL.crossVectors(_v, _G);
+            const side = _w.dot(_TL) < 0 ? -1 : 1;
+            _eC.copy(_G).multiplyScalar(WRIST_CLEAR_COS).addScaledVector(_TL, side * Math.sqrt(1 - WRIST_CLEAR_COS * WRIST_CLEAR_COS));
+            _w.lerp(_eC, k).normalize();
+          }
+        }
+      }
       _bz.copy(_v).multiplyScalar(cl).addScaledVector(_w, Math.sin(lim)).normalize();
       return;
     }
