@@ -3366,7 +3366,7 @@ export class Player {
       if (this.state === 'charge') this.fx.chargeTick(dt, sw.a, sw.b, this.chargeK);
       else if (this.critTimer > 0 && this.alive) this.fx.critTick(dt, sw.a, sw.b);
       // the blade's dot halo: dim at idle, brighter while it glows (strikes, charge, crit)
-      if (this.alive && this.object3d.visible !== false && !hidden && armed) {
+      if (this.alive && this.object3d.visible !== false && !hidden && armed && !(this.anim.sheath?.s > 0.5)) {
         const bu = this.rig.materials.blade.uniforms;
         this.fx.bladeHalo(dt, clamp((bu.uInkGlow.value - 0.16) * 0.8 + TUNE.bladeFlare.halo * this.bladeFlare, 0.25, 2), this.bladeFar);
       }

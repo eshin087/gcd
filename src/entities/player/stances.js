@@ -67,7 +67,7 @@ function turned(p, i, v, c, s) {
   p[i + 2] = -v[0] * s + v[2] * c;
 }
 /** `yaw` = this stance's chest turn (pelvY + spY): the hand belongs to the waist, which turns with it. */
-function onTheBelt(p, P, m, yaw) {
+export function onTheBelt(p, P, m, yaw) {
   const a = yaw - BELT.yaw, c = Math.cos(a), s = Math.sin(a);
   // the palm on the side of the waist at the belt, a hand's thickness off it …
   turned(p, P.lH, BELT.h, c, s);

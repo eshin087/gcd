@@ -119,7 +119,7 @@ export const HAIR_CLUSTERS = [
 export const STYLE_ID = (() => {
   try {
     const v = new URLSearchParams(globalThis.location?.search ?? '').get('style');
-    return v === 'a' || v === 'b' || v === 'c' ? v : null;
+    return ['a', 'b', 'c', 'b1', 'b2', 'b3'].includes(v) ? v : null;
   } catch {
     return null;
   }
@@ -131,7 +131,7 @@ const BUILDS = {
   b: { legs: [-0.065, -0.055], shoulder: 0.012, deltoid: 1.06, chest: 1.05, limbs: 1.0, scale: 1.0 },
   c: { legs: [-0.055, -0.045], shoulder: 0.03, deltoid: 1.18, chest: 1.14, limbs: 1.03, scale: 1.04 },
 };
-export const BUILD = STYLE_ID ? BUILDS[STYLE_ID] : null;
+export const BUILD = STYLE_ID ? BUILDS[STYLE_ID[0]] : null; // (b1-b3: style B's build)
 if (BUILD) {
   const legs = BUILD.legs[0] + BUILD.legs[1];
   BUILD.legScale = (DIM.thigh + DIM.shin + legs) / (DIM.thigh + DIM.shin);
