@@ -257,6 +257,24 @@ export class GameFlow {
     this.pause(false);
   }
 
+  /**
+   * Leave the fight for the title screen (the pause menu's QUIT TO TITLE). The level is reloaded
+   * (game.pickLevel: each level is its own page load), which starts on the title with everything
+   * reset; where nothing can reload (headless) the state goes to 'title' and the title is shown.
+   */
+  quitToTitle() {
+    const g = this.game;
+    g.hud?.showPause?.(false);
+    this.pausedFrom = null;
+    if (typeof g.pickLevel === 'function' && typeof globalThis.location?.assign === 'function') {
+      this._try(() => g.pickLevel(g.level?.id), 'quitToTitle');
+      return;
+    }
+    this._setState('title');
+    g.timeScale = 1;
+    g.hud?.showTitle?.();
+  }
+
   cycleQuality() {
     const g = this.game;
     const n = CONFIG.quality.length;

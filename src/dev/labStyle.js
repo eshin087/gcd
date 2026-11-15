@@ -182,10 +182,11 @@ const CSS = `
 .lab-ev.t-blue .nm { color: var(--lab-blue); }
 .lab-ev.t-red .nm { color: var(--lab-red); }
 
+/* bottom centre: the boss's rows hold the top centre (ADR-098) */
 .lab-badge {
   position: absolute;
   left: 50%;
-  top: 8px;
+  bottom: 8px;
   z-index: 41;
   transform: translateX(-50%);
   display: flex;

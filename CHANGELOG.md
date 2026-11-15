@@ -4,7 +4,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-nine pieces of work since 0.4.0:
+Thirty pieces of work since 0.4.0:
+- **The boss's bar at the top; QUIT TO TITLE** (2026-11-15): the boss's name, HP and posture moved
+  from the bottom of the screen to the top centre. The pause menu has **QUIT TO TITLE** (press it
+  twice: the first press asks), and RESUME is laid out like the other items.
 - **Background objects drawn like the dragon, and landmarks** (2026-11-15, ADR-100): pillars, walls,
   standing stones, boulders, lanterns, the throne and its dais, bones, braziers, the bonfire and the
   fallen bell are now made of the wyrm's small digits: a dark body, brighter digits where light

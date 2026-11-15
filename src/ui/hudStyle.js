@@ -237,10 +237,11 @@ const CSS = `
 @keyframes ab-age { to { opacity: 0.32; } }
 
 /* ---------- boss bar (bottom-centre) ---------- */
+/* the boss's rows: top centre (between the player's rows and the minimap) */
 .ab-boss {
   position: absolute;
   left: 50%;
-  bottom: 46px;
+  top: 14px;
   font-size: clamp(10px, 1.15vw, 15px);
   text-align: center;
   white-space: nowrap;
@@ -725,7 +726,10 @@ const CSS = `
   outline: none;
 }
 .ab-btn:hover { color: #fff; border-color: rgba(255, 138, 61, 0.6); background: rgba(255, 138, 61, 0.08); }
-.ab-btn.primary { justify-content: center; gap: 8px; color: #fff; }
+.ab-btn.primary { color: #fff; }
+/* QUIT TO TITLE asks once more before it leaves the fight */
+.ab-btn.confirm { color: #fff; border-color: var(--ab-ember); background: rgba(255, 138, 61, 0.12); }
+.ab-btn.confirm .v { color: var(--ab-ember); }
 .ab-btn .v { color: var(--ab-gold); }
 .ab-sep { height: 1px; margin: 14px 0 12px; background: var(--ab-line); }
 
@@ -770,7 +774,7 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
 @media (max-height: 560px) {
   .ab-touch { font-size: 10px; }
   .ab-touch .ab-pf { left: 8px; top: 6px; font-size: 10px; }
-  .ab-touch .ab-boss { bottom: 8px; font-size: 10px; }
+  .ab-touch .ab-boss { top: 6px; font-size: 10px; }
   .ab-touch .ab-banner .band { height: 112px; }
   .ab-touch .ab-banner .sub { margin-top: 40px; font-size: 10px; }
   .ab-touch .ab-banner.k-area { top: 22%; }
@@ -788,8 +792,8 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
   .ab-touch .ab-title-ctrl { margin-top: 10px; font-size: 9.5px; line-height: 17px; }
   .ab-touch .ab-legend.title { margin-top: 6px; font-size: 9.5px; }
   .ab-touch .ab-credit { bottom: 5px; font-size: 9px; }
-  /* below the floating LAB toggle (top centre, 36 px) when the Lab is in the page */
-  .ab-touch .ab-pause { align-items: flex-end; padding-bottom: 6px; }
+  /* above the floating LAB toggle (bottom centre, 36 px) when the Lab is in the page */
+  .ab-touch .ab-pause { align-items: flex-start; padding-top: 6px; }
   .ab-touch .ab-pause-panel { width: min(420px, 92vw); max-height: calc(100% - 54px); padding: 10px 16px 12px; }
   .ab-touch .ab-pause-title { font-size: 16px; margin-bottom: 6px; }
   .ab-touch .ab-btn { margin: 5px 0; padding: 0 10px; }
@@ -807,7 +811,7 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
 @media (max-width: 560px) and (orientation: portrait) {
   .ab-touch { font-size: 10px; }
   .ab-touch .ab-pf { left: 6px; top: 6px; font-size: 10px; }
-  .ab-touch .ab-boss { top: 78px; bottom: auto; font-size: 10px; }
+  .ab-touch .ab-boss { top: 78px; font-size: 10px; }
   .ab-touch .ab-boss-name { letter-spacing: 0.16em; }
   .ab-touch .ab-prompt { bottom: 47%; }
   .ab-touch .ab-banner .band { height: 112px; }

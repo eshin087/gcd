@@ -138,6 +138,8 @@ export class TitleScreen {
   }
 }
 
+const QUIT_CONFIRM = 3; // s: QUIT TO TITLE's second press must come within this
+
 export class PauseMenu {
   constructor(game, parent) {
     this.game = game;
@@ -145,7 +147,8 @@ export class PauseMenu {
     const panel = el('div', 'ab-pause-panel ab-panel', null, this.root);
     el('div', 'ab-pause-title', 'PAUSED', panel);
     const resume = button(panel, 'primary', () => game.flow?.resume?.());
-    fillKeyText(resume, 'RESUME  [@pause]');
+    el('span', '', 'RESUME', resume);
+    fillKeyText(el('span', 'v', null, resume), '[@pause]');
     this.btnQuality = button(panel, '', () => game.flow?.cycleQuality?.());
     fillKeyText(el('span', '', null, this.btnQuality), 'QUALITY [F2]');
     this.qualityVal = el('span', 'v', '', this.btnQuality);
@@ -171,8 +174,13 @@ export class PauseMenu {
     this.btnPadSize = button(panel, 'tp-only', () => game.touch?.cyclePad?.('size'));
     el('span', '', 'PAD SIZE', this.btnPadSize);
     this.padSizeVal = el('span', 'v', '', this.btnPadSize);
+    // back to the title screen (the fight is lost): a second press within QUIT_CONFIRM s confirms
+    this.btnQuit = button(panel, '', () => this._quit());
+    el('span', '', 'QUIT TO TITLE', this.btnQuit);
+    this.quitVal = el('span', 'v', '›', this.btnQuit);
+    this.quitArmed = 0;
     // the buttons in order, for the gamepad's menu focus (ui/gamepad.js)
-    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnControls, this.btnFull].filter(Boolean);
+    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnQuit].filter(Boolean);
     el('div', 'ab-sep', null, panel);
     controlsGrid(panel, 'kb').classList.add('kb-only');
     touchGrid(panel).classList.add('tp-only');
@@ -183,8 +191,28 @@ export class PauseMenu {
     this._m = null;
   }
 
+  /** QUIT TO TITLE: the first press arms it ("SURE? PRESS AGAIN"), a second within QUIT_CONFIRM s leaves. */
+  _quit() {
+    const now = Number(globalThis.performance?.now?.() ?? Date.now()) / 1000;
+    if (this.quitArmed > 0 && now - this.quitArmed <= QUIT_CONFIRM) {
+      this._disarm();
+      this.game.flow?.quitToTitle?.();
+      return;
+    }
+    this.quitArmed = now;
+    this.btnQuit.classList.add('confirm');
+    this.quitVal.textContent = 'SURE? PRESS AGAIN';
+  }
+
+  _disarm() {
+    this.quitArmed = 0;
+    this.btnQuit.classList.remove('confirm');
+    this.quitVal.textContent = '›';
+  }
+
   show(on) {
     this.on = !!on;
+    this._disarm();
     this.root.classList.toggle('on', this.on);
     this.refresh();
   }
@@ -192,6 +220,7 @@ export class PauseMenu {
   /** Cheap: only touches the DOM when quality / mute changed. */
   refresh() {
     if (!this.on) return;
+    if (this.quitArmed > 0 && Number(globalThis.performance?.now?.() ?? Date.now()) / 1000 - this.quitArmed > QUIT_CONFIRM) this._disarm();
     const q = this.game.settings?.quality;
     if (q !== this._q) {
       this._q = q;
