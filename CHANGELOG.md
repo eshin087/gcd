@@ -5,11 +5,11 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Twenty-four pieces of work since 0.4.0:
-- **The Cinder Wyrm in large, readable letters** (2026-11-14, ADR-092): the wyrm is printed in bold
-  symbols four times the area of the old thin digits (8x13 px at 720p, the owner's pick of three
-  sizes), about 25 characters across its body: you can read every one. Its letter grid now travels
-  with it, so the body no longer slides under a fixed grid when the camera moves. *Changed:* the fine
-  scale outlines of the thin-digit look are gone at the game camera.
+- **The Cinder Wyrm in finer, steadier letters** (2026-11-14 – 15, ADR-092, ADR-093): the wyrm's
+  digits are one size up at 720p (5x8 px cells, the owner's pick of three sizes) with the calm
+  charcoal tone that shows every scale, and they now travel with it: the body no longer slides under
+  a fixed grid of letters when the camera moves. (For a day it was printed in large bright symbols;
+  that read as "way too flashy" and is gone.)
 - **The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from**
   (2026-11-14, ADR-086 – ADR-090): the hero's free hand has a wrist now and forms **sword fingers**
   (two fingers out, the others folded under the thumb). It gathers at the sword wrist and is thrown
