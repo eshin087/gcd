@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-six pieces of work since 0.4.0:
+Twenty-seven pieces of work since 0.4.0:
+- **Background objects drawn like the dragon, and landmarks** (2026-11-15, ADR-100): pillars, walls,
+  standing stones, boulders, lanterns, the throne and its dais, bones, braziers, the bonfire and the
+  fallen bell are now made of the wyrm's small digits: a dark body, brighter digits where light
+  catches, an outline of stroke characters, no blank spots. *Fixed:* wall and pillar faces turned
+  sideways printed solid bars instead of characters. *Added:* big set pieces in each level: the
+  skeleton of an elder wyrm along Cinderwood's north rim and a great burned tree on its west; two
+  colossal stone swordsmen, the sect's gate and an incense cauldron round the Ashfall Courtyard; two
+  hooded wardens beside the Obsidian Throne and six great swords in its aisles. Floors, the hero,
+  the human bosses and the trees look as before.
 - **Phone controls you can hold, and a guard meter** (2026-11-14, ADR-095, ADR-096):
   - **The right thumb's pad.** ATTACK, BLOCK and DODGE are now three large tiles that touch each
     other, moved up and in from the corner. Slide your thumb from one onto another without lifting:

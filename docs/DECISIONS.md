@@ -2390,3 +2390,52 @@ not fit across it and the keep-in-view pan works harder; nothing was re-tuned fo
 controls can be lost against bright ground (a lit pillar behind the pad); the halo helps, and the
 rest opacity is one number in `ui/touchStyle.js`. A desktop window dragged taller than wide also
 gets the wider field of view. Not tried on a real phone.
+
+## ADR-100 — One art design: background objects in the dragon's look; landmarks (2026-11-15)
+
+**Context.** After the wyrm's fine digits shipped (ADR-093) the owner: "all 3 levels need all the
+background objects like the pillars and structures to look completely made of ascii characters.
+Right now it looks like a normal object with random ascii pattern stickers put on top of it. There
+should be no object or character that has this fake ascii look with empty blank spots". A first
+answer (carved glyphs filled to every cell, floors too) was shown and turned down: "Lets not touch
+the floor character and bosses ... The prod build is the perfect ascii look im aiming for. Apply
+this design to all the background objects as well." Asked, the owner confirmed the small-digit wyrm
+as the reference and kept the trees as they are. A whole-frame character grid in the manner of the
+owner's gcdAtlas project was then prototyped at their request, previewed and measured; they chose
+"dragon look and update any md file to ensure all future background and characters are following
+the same art design".
+
+**Decision.**
+- **The dragon look is the house style** for every new background object and character. It is
+  written as a rule in CLAUDE.md and as the first section of STYLE.md.
+- **Prop art:** `FLAG.ART_PROP` (0.57) and `createPropArtMaterial`, a smooth lit source for static
+  objects; a prop branch in the art pass prints it with the wyrm's atlas, cell and `artLetters()`,
+  its own tone (every cell prints), stroke-glyph outlines on the silhouette and on inner depth
+  steps, and a grid counted from the ground.
+- **What moved to it:** the three sets' `stones` meshes (standing stones, boulders, pillars,
+  lanterns, the stele, walls, the dais, the throne) and the small grid props (bones, the bonfire,
+  the fallen bell, braziers).
+- **Landmarks** (`world/landmarks.js`), all in prop art: the elder wyrm's skeleton (Cinderwood); two
+  stone swordsmen, the sect gate, an incense cauldron (Ashfall); two throne wardens, six great
+  swords (the Obsidian Throne). The Cinder Tree is a tree and stays on the screen grid.
+- **Untouched by the owner's word:** floors (carved glyphs), the hero, the human bosses; trees.
+
+**Why.** The carved-glyph objects read as stickers for four reasons found by looking: a lit slab
+under sparse glyphs, blank or speck-filled dark levels, solid edge bands, and east / west faces that
+smeared one lattice column into bars. The wyrm has none of these because the pass draws it: letters
+are the only thing on screen, the edge is characters. Reusing its pass gives objects the same letter
+size, sets and outline for free, and one place to tune.
+
+**Rejected.** Filling the carved lattice (still a second glyph style beside the wyrm; turned down).
+A whole-frame grid like gcdAtlas (feasible; measured about equal to the live game on a desktop GPU;
+the fighters shrink to ~9 character rows, and it would replace the wyrm, hero and floors the owner
+wanted kept). The wyrm's 16 extra samples per cell for props (a prop's source is smooth: the 4 that
+find the cell are enough).
+
+**Consequences.** Upright objects are screen-space letters now, not world-fixed ones: the grid is
+anchored to the ground at the camera's focus, so letters hold on an object near the hero and drift
+slowly toward the screen edges. `createCarvedGlyphMaterial` is for floors only. Cost, measured in
+Chrome on an RTX 4090 in the throne hall (the heaviest view), median ms per frame: 1080p live 10.0 –
+10.5, this change 9.1 – 12.5 (equal within noise); 4K live 24.9, this change 32.1 (one noisy run).
+The pass reads 4 more samples per screen pixel; a phone was not measured. New colliders stand on the
+arena rims. Not checked: the look in motion, a fight played around the landmarks, the phone.
