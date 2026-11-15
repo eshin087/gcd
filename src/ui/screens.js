@@ -21,7 +21,8 @@ const SHIMMER_HZ = 12;
 const TITLE_KEYS = [
   '[@move] move',
   '[@aim] aim',
-  '[@attack] attack · hold: heavy',
+  '[@attack] light',
+  '[@heavy] heavy · hold: charge',
   '[@block] block · tap: parry',
   '[@dodge] dodge',
   '[@sprint] sprint',
@@ -36,7 +37,8 @@ const TITLE_KB_ONLY = ['[@mute] mute', '[F1] lab'];
 // the same list for the touch controls (src/ui/touch.js); shown instead on touch devices
 const TITLE_TOUCH = [
   '[STICK] move · rim: sprint',
-  '[ATTACK] tap: combo · hold: cleave',
+  '[ATTACK] light combo',
+  '[HEAVY] heavy · hold: cleave',
   '[BLOCK] hold · tap: parry',
   '[DODGE] roll',
   '[FLASK] heal',

@@ -121,7 +121,7 @@ function build(opts = {}) {
   const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 16 / 9, CONFIG.camera.near, CONFIG.camera.far);
   // ---- input mock with the real Input interface (core/input.js). Edges last exactly one frame.
   //   tap(code) / click(b): down for this frame, released at its end (a quick tap)
-  //   hold(code) / release(code), press(b) / up(b): held across frames (block = press(2) … up(2))
+  //   hold(code) / release(code), press(b) / up(b): held across frames (block = press(1) … up(1))
   const keys = new Set(), pk = new Set(), rk = new Set(), tapKeys = new Set();
   const btn = [false, false, false], pb = [false, false, false], rb = [false, false, false], tapBtn = [false, false, false];
   // keys go through the window first: a key the Lab's capture listener consumes never reaches Input
@@ -349,7 +349,7 @@ function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
       for (const e of pend) {
         const left = e.at - t - DT;
         if (e.stream) {
-          if (left <= 0.3) { e.done = true; blockUntil = t + 2.6; input.press(2); stats.blockTry++; }
+          if (left <= 0.3) { e.done = true; blockUntil = t + 2.6; input.press(1); stats.blockTry++; }
         } else if (e.tell === TELL.RED || style === 'dodge') {
           if (left <= (style === 'parry' ? 0.3 : 0.1)) {
             e.done = true;
@@ -361,12 +361,12 @@ function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
           }
         } else if (left <= 0.12) {
           e.done = true;
-          input.up(2);
-          input.click(2);
+          input.up(1);
+          input.click(1);
           stats.parryTry++;
         }
       }
-      if (blockUntil > 0 && t > blockUntil) { blockUntil = -1; input.up(2); }
+      if (blockUntil > 0 && t > blockUntil) { blockUntil = -1; input.up(1); }
       // like a player who sees the tell: stop swinging while an answer is due (a swing can't be rolled out of)
       let busy = blockUntil > 0;
       for (const e of pend) if (!e.done && e.at - t < 0.9) busy = true;
@@ -463,7 +463,7 @@ function forceAttack(G, name, plan = {}) {
     if (n === 'player:ghostep') rec.ghost = { px: game.player.position.x, pz: game.player.position.z, dx: game.dragon.position.x, dz: game.dragon.position.z, dyaw: game.dragon.yaw };
   };
   const h0 = G.hits.length;
-  if (plan.hold) input.press(2);
+  if (plan.hold) input.press(1);
   run(G, 0.15, { passive: true });
   rec.trigger = game.lab.trigger(name);
   let acted = 0, after = -1;
@@ -473,10 +473,10 @@ function forceAttack(G, name, plan = {}) {
     input.axis = { x: 0, y: 0 };
     if (rec.impactT !== null) {
       const left = rec.impactT - game.time - DT;
-      if (plan.answer === 'parry' && !acted && left <= 0.12) { acted = 1; input.click(2); rec.pressLead = left; }
-      if (plan.answer === 'early' && !acted && left <= 0.45) { acted = 1; input.click(2); rec.pressLead = left; }
-      if (plan.answer === 'late' && !acted && left <= -0.06) { acted = 1; input.click(2); rec.pressLead = left; }
-      if (plan.answer === 'mash' && acted < mash.length && left <= -mash[acted]) { acted++; input.click(2); }
+      if (plan.answer === 'parry' && !acted && left <= 0.12) { acted = 1; input.click(1); rec.pressLead = left; }
+      if (plan.answer === 'early' && !acted && left <= 0.45) { acted = 1; input.click(1); rec.pressLead = left; }
+      if (plan.answer === 'late' && !acted && left <= -0.06) { acted = 1; input.click(1); rec.pressLead = left; }
+      if (plan.answer === 'mash' && acted < mash.length && left <= -mash[acted]) { acted++; input.click(1); }
       if (plan.answer === 'dodge' && !acted && left <= 0.1) {
         acted = 1;
         const d = game.dragon.position, p = game.player.position;
@@ -492,7 +492,7 @@ function forceAttack(G, name, plan = {}) {
       if (h) { rec.res = h.r; rec.hit = h; rec.hitT = h.t; after = 0; rec.postureAtHit = game.dragon.posture; rec.hpAtHit = game.player.hp; }
     } else if (++after > (plan.settle ?? 6)) break;
   }
-  if (plan.hold) input.up(2);
+  if (plan.hold) input.up(1);
   for (const k in G.counts) rec.ev[k] = G.counts[k] - (c0[k] || 0);
   G.watch = null;
   return rec;
@@ -1039,7 +1039,7 @@ async function scenarioGuard() {
   fightSetup(G);
   const d = game.dragon, p = game.player;
   const c = (n) => G.counts[n] || 0;
-  const guardUp = () => { settle(G); place(G, 6); p.guard = p.maxGuard; p.guardWait = 0; input.press(2); run(G, 0.6, { passive: true }); };
+  const guardUp = () => { settle(G); place(G, 6); p.guard = p.maxGuard; p.guardWait = 0; input.press(1); run(G, 0.6, { passive: true }); };
   const blow = (damage, tell = TELL.NORMAL, extra = {}) => p.takeHit({ damage, tell, attack: 'bite', attacker: d, knockback: 2, ...extra });
   assert(p.guard === GUARD.max && p.maxGuard === GUARD.max, `the meter starts full (${p.guard} / ${p.maxGuard})`);
 
@@ -1054,7 +1054,7 @@ async function scenarioGuard() {
   const g2 = p.guard;
   blow(1);
   assert(near(g2 - p.guard, GUARD.costMin, 1e-6), `the smallest blow costs ${GUARD.costMin}`);
-  input.up(2);
+  input.up(1);
 
   // 2) the refill: nothing for regenDelay, then quickly; behind a held guard and in a swing too
   guardUp();
@@ -1066,7 +1066,7 @@ async function scenarioGuard() {
   assert(p.guard > gHit + 10 && p.blocking, `then it refills behind the held guard (${gHit} → ${p.guard.toFixed(1)})`);
   run(G, 1.5, { passive: true });
   assert(p.guard === p.maxGuard, `and is full again within ${(GUARD.regenDelay + 1.9).toFixed(1)} s (${p.guard})`);
-  input.up(2);
+  input.up(1);
   settle(G);
   place(G, 14);
   p.guard = 10;
@@ -1091,7 +1091,7 @@ async function scenarioGuard() {
   for (let i = 0; i < 70; i++) { G.tick(DT); if (p.state === 'knockdown' || p.state === 'guardBreak') down = true; }
   assert(!down && openT < GUARD.openDur + 0.5, `it ends by itself with no knockdown (${openT.toFixed(2)} s)`);
   assert(p.blocking && p.guard > 20, `RMB still held: the guard is up again and the meter refilling (${p.state}, ${p.guard.toFixed(1)})`);
-  input.up(2);
+  input.up(1);
 
   // 4) a parry gives guard back at once; a perfect one more
   settle(G);
@@ -1116,7 +1116,7 @@ async function scenarioGuard() {
   const hp6 = p.hp;
   const r6 = p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'breath', attacker: d, knockback: 0 });
   assert(r6 === RESULT.BLOCKED && near(hp6 - p.hp, 10 * (1 - DEFENSE.blockReduction.normal), 1e-6) && p.guard === p.maxGuard, `a blocked stream tick chips HP and costs no guard (hp −${(hp6 - p.hp).toFixed(1)}, guard ${p.guard})`);
-  input.up(2);
+  input.up(1);
 
   // 7) a rest and a respawn fill it; the HUD shows it
   p.guard = 5;
@@ -1158,10 +1158,10 @@ async function scenarioBlock() {
   place(G, 3, Math.PI / 2);
   const seen = [];
   G.watch = (n, dd) => { if (/^player:(charge|attack|hitDragon)$/.test(n)) seen.push([n, dd]); };
-  G.input.press(0);
+  G.input.press(2);
   run(G, 1.3, { passive: true });
   const charging = p.state === 'charge', k = p.chargeK;
-  G.input.up(0);
+  G.input.up(2);
   run(G, 1.0, { passive: true });
   const ch = seen.filter((e) => e[0] === 'player:charge'), atk = seen.filter((e) => e[0] === 'player:attack'), hit = seen.find((e) => e[0] === 'player:hitDragon');
   out(`   heavy: charging ${charging} k ${k?.toFixed(2)} · charge events ${ch.length} (t ${ch[0]?.[1]?.t}) · attacks ${JSON.stringify(atk.map((e) => e[1]))} · hit ${hit ? `${hit[1].damage} heavy ${hit[1].heavy}` : 'none'}`);
@@ -1171,15 +1171,15 @@ async function scenarioBlock() {
   // RMB cancels a charge into the guard; releasing LMB afterwards does not fire the heavy
   settle(G);
   seen.length = 0;
-  G.input.press(0);
+  G.input.press(2);
   run(G, 0.6, { passive: true });
   const wasCharging = p.state === 'charge';
-  G.input.press(2);
+  G.input.press(1);
   run(G, 0.1, { passive: true });
   const blockingNow = p.state === 'block' && p.blocking;
-  G.input.up(0);
-  run(G, 0.5, { passive: true });
   G.input.up(2);
+  run(G, 0.5, { passive: true });
+  G.input.up(1);
   run(G, 0.3, { passive: true });
   G.watch = null;
   assert(wasCharging && blockingNow && !seen.some((e) => e[0] === 'player:attack'), `RMB cancels a charge into block, no heavy on release (${seen.map((e) => e[0]).join(',')})`);
@@ -1188,7 +1188,7 @@ async function scenarioBlock() {
 
 // ================================================================== scenario: reach (every hero attack, from the front)
 async function scenarioReach() {
-  out('\n== scenario REACH (idle wyrm, hero straight in front: the five hits of the chain and the charged cleave at 2-3.5 m) ==');
+  out('\n== scenario REACH (idle wyrm, hero straight in front: the five hits of the chain, the five heavy branches and the charged cleave at 2-3.5 m) ==');
   const G = build();
   const { game, input } = G;
   fightSetup(G);
@@ -1209,22 +1209,39 @@ async function scenarioReach() {
     aimAt(G);
   };
   const fresh = () => { d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G); };
-  const KINDS = { L1: 'light', L2: 'light', L3: 'light', L4: 'light', slam: 'slam', cleave: 'cleave' };
+  const KINDS = { L1: 'light', L2: 'light', L3: 'light', L4: 'light', slam: 'slam', cleave: 'cleave', H0: 'heavy', H1: 'heavy', H2: 'heavy', H3: 'heavy', H4: 'slam' };
+  // the heavy branches (ADR-114): n lights in open air, then the heavy press in the n-th one's recovery
+  const { HEAVY: HV } = await imp('src/entities/player/combat.js');
+  const HNAME = { H0: HV[0].name, H1: HV[1].name, H2: HV[2].name, H3: HV[3].name, H4: HV[4].name };
   const CLICKS = { L1: 1, L2: 2, L3: 3, L4: 4, slam: 5 }; // the 5-hit chain (ADR-041): falling cut, rising cut, whirl, stab, slam
   const CHARGE_HOLD = 1.3; // s: a full charge
   /** One measured attack at `gap`; earlier combo hits swing in open air far from the wyrm. */
   const trial = (name, gap) => {
     fresh();
     let hit = null, at = NaN, slamEv = 0;
-    const kinds = [];
-    if (name === 'cleave') {
+    const kinds = [], names = [];
+    if (name[0] === 'H') {
+      const n = Number(name[1]);
+      if (n > 0) { p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40); aimAt(G); }
+      for (let k = 0; k < n; k++) {
+        aimAt(G);
+        input.click(0);
+        run(G, CHAIN_EVERY, { passive: true });
+      }
+      stand(gap);
+      at = surf();
+      G.watch = (nn, dd) => { if (nn === 'player:hitDragon' && !hit) hit = dd; if (nn === 'player:attack') { kinds.push(dd.kind); names.push(dd.name); } };
+      aimAt(G);
+      input.click(2);
+      run(G, 1.5, { passive: true });
+    } else if (name === 'cleave') {
       stand(gap);
       at = surf();
       G.watch = (n, dd) => { if (n === 'player:hitDragon' && !hit) hit = dd; if (n === 'player:attack') kinds.push(dd.kind); };
-      input.press(0);
+      input.press(2);
       run(G, CHARGE_HOLD, { passive: true });
       aimAt(G);
-      input.up(0);
+      input.up(2);
       run(G, 1.0, { passive: true });
     } else {
       const n = CLICKS[name];
@@ -1241,17 +1258,21 @@ async function scenarioReach() {
       }
     }
     G.watch = null;
-    return { name, gap, at, hit, kinds, slamEv };
+    return { name, gap, at, hit, kinds, names, slamEv };
   };
   // (CHARGE_HOLD hoisted above)
   const rows = [];
   p.anim.forceVariant = 0; // each hit's own `anim`; the variants are swung below
   for (const gap of [0, 2, 2.5, 3, 3.5]) {
-    const r = ['L1', 'L2', 'L3', 'L4', 'slam', 'cleave'].map((nm) => trial(nm, gap));
+    const r = ['L1', 'L2', 'L3', 'L4', 'slam', 'cleave', 'H0', 'H1', 'H2', 'H3', 'H4'].map((nm) => trial(nm, gap));
     rows.push(r);
     out(`   ${gap ? `${gap.toFixed(1)} m` : 'contact'}`.padEnd(12) + r.map((t) => `${t.name} ${t.hit ? `${t.hit.kind}/${t.hit.part} ${Math.round(t.hit.damage)}` : 'MISS'} @${t.at.toFixed(2)}`.padEnd(30)).join(''));
   }
   p.anim.forceVariant = null;
+  for (const r of rows) for (const t of r) {
+    if (t.name[0] !== 'H') continue;
+    assert(t.names[0] === HNAME[t.name], `${t.name}: ${t.name[1]} light${t.name[1] === '1' ? '' : 's'} then heavy is ${HNAME[t.name]} (${t.names[0]})`);
+  }
   for (const r of rows) for (const t of r) {
     const where = t.gap ? `${t.gap} m` : 'contact';
     assert(!!t.hit && t.hit.kind === KINDS[t.name] && t.kinds[0] === KINDS[t.name], `${t.name} connects from the front at ${where} (${t.hit ? `${t.hit.kind} on ${t.hit.part}` : 'miss'}, hero ${t.at.toFixed(2)} m from the chest surface)`);
@@ -1755,10 +1776,10 @@ async function scenarioFlurry() {
   settle(G);
   place(G, 6);
   p.debug.streak(3);
-  input.press(2);
+  input.press(1);
   run(G, 0.6, { passive: true }); // (held past the parry window: a block)
   const rb = p.takeHit({ damage: 20, tell: TELL.NORMAL, attack: 'bite', attacker: d, knockback: 2 });
-  input.up(2);
+  input.up(1);
   assert(rb === RESULT.BLOCKED && p.streak === 3, `a blocked blow leaves the streak alone (${rb}, streak ${p.streak})`);
   run(G, 0.5, { passive: true });
   let lost = null;
@@ -1897,12 +1918,12 @@ async function scenarioDeflect() {
       // blow k's tap: down `lead` s before its impact (a held button can't be pressed again), up `hold` real s later
       if (pressedFor !== k && game.time >= impact - lead - 1e-9) {
         pressedFor = k;
-        if (!input.buttons[2]) {
-          input.press(2);
+        if (!input.buttons[1]) {
+          input.press(1);
           downAt = game.realTime;
         }
       }
-      if (input.buttons[2] && game.realTime - downAt >= hold - 1e-9) input.up(2);
+      if (input.buttons[1] && game.realTime - downAt >= hold - 1e-9) input.up(1);
       if (game.time >= impact - 1e-9) {
         d.posture = 0; // (the meter would break the wyrm mid-string; not under test here)
         res.push(d.hitPlayer({ damage: 18, attack: 'clawCombo', tell: TELL.NORMAL, knockback: 1, kind: 'claw' }));
@@ -1913,7 +1934,7 @@ async function scenarioDeflect() {
       aimAt(G);
       G.tick(DT);
     }
-    input.up(2);
+    input.up(1);
     G.watch = null;
     run(G, 0.3, { passive: true });
     return { res, chains, parries: (G.counts['player:parry'] || 0) - (c0['player:parry'] || 0), hurt: (G.counts['player:hurt'] || 0) - (c0['player:hurt'] || 0) };
@@ -1981,7 +2002,7 @@ async function scenarioBullets() {
     const yaw = Math.atan2(-ux, -uz);
     const grp = o.grp ?? (o.cap ? B.group(o.cap) : -1);
     let spawned = 0, next = game.time, answered = 0, seenHits = 0;
-    if (o.hold) input.press(2);
+    if (o.hold) input.press(1);
     for (let i = 0; i < Math.round((o.T ?? 2.4) / DT); i++) {
       while (spawned < n && game.time >= next - 1e-9) {
         B.spawn(kind, 'emberStorm', sx, 1.0, sz, yaw, speed, grp);
@@ -1992,7 +2013,7 @@ async function scenarioBullets() {
       input.axis = { x: 0, y: 0 };
       if (answered < rec.flashAt.length) {
         const left = rec.flashAt[answered] + lead - game.time - DT;
-        if (o.answer === 'parry' && left <= (o.parryLead ?? 0.12)) { answered++; input.click(2); rec.pressAt.push(game.time + DT); }
+        if (o.answer === 'parry' && left <= (o.parryLead ?? 0.12)) { answered++; input.click(1); rec.pressAt.push(game.time + DT); }
         else if (o.answer === 'roll' && left <= 0.1) { answered++; input.axis = { x: ux, y: -uz }; input.tap('Space'); }
         else if (o.answer === 'swing' && left <= (o.swingLead ?? 0.3)) { answered++; input.click(0); }
         else if (!o.answer || o.answer === 'none') answered++;
@@ -2001,7 +2022,7 @@ async function scenarioBullets() {
       const hs = G.hits.length - h0;
       if (hs > seenHits) { seenHits = hs; if (rec.postureAtHit === null) rec.postureAtHit = d.posture; rec.state.push(p.state); }
     }
-    if (o.hold) input.up(2);
+    if (o.hold) input.up(1);
     G.watch = null;
     rec.hits = G.hits.slice(h0);
     rec.res = rec.hits.map((h) => h.r);
@@ -2107,7 +2128,7 @@ async function scenarioBullets() {
     G.watch = (n, e) => { if (n === 'dragon:returned') rr.push(e.damage); };
     for (let i = 0; i < Math.round(1.2 / DT); i++) {
       aimAt(G);
-      if (!fired && b.alive && B.tti(b) <= 0.05) { fired = true; input.click(2); }
+      if (!fired && b.alive && B.tti(b) <= 0.05) { fired = true; input.click(1); }
       G.tick(DT);
     }
     G.watch = null;
@@ -2240,7 +2261,7 @@ async function scenarioBullets() {
       if (ended >= 0 && B.live === 0 && !B.wheel.on && i - ended > 30) break;
     }
     G.watch = null;
-    input.up(2);
+    input.up(1);
     const hs = G.hits.slice(h0).filter((h) => h.attack === name);
     const by = (r) => hs.filter((h) => h.r === r).length;
     return { born, spread: SPREAD[name] ?? 0, ok, ended, tells, flashes, peak, bad, hit: by(RESULT.HIT), parried: by(RESULT.PARRIED), blocked: by(RESULT.BLOCKED), dodged: by(RESULT.DODGED) + by(RESULT.PERFECT), live: B.live, wheel: B.wheel.on, hurt: (G.counts['player:hurt'] || 0) - (c0['player:hurt'] || 0) };
@@ -2742,7 +2763,7 @@ async function scenarioFire() {
         if (!d.brain.action && !H.count(null)) break;
       }
       G.watch = null;
-      input.up(2);
+      input.up(1);
       p.debug.god = true;
       const hits = G.hits.slice(h0).filter((h) => h.attack === 'meteorRain');
       rec.trig = trig;
@@ -3060,9 +3081,9 @@ async function scenarioHero() {
   assert(chain[0] === 'fallingCut', `LMB out of a backstep starts the chain (${chain[0]})`);
   G.watch = null;
   go(0.6);
-  input.press(0);
+  input.press(2);
   go(1.4);
-  input.up(0);
+  input.up(2);
   go(1.0);
   assert(!bad, `rig matrices stay finite through every move (${frames} frames)`);
   assert(low > -0.02, `torn strip tips stay above the grass (lowest ${low.toFixed(3)} m)`);
@@ -3202,9 +3223,9 @@ async function scenarioHero() {
       run(0.6, (a) => { const at = p.atk; if (at?.def?.name === 'fallingCut' && at.t >= at.def.windup && at.t <= at.def.windup + at.def.active) swing = Math.max(swing, a); });
       p.anim.forceVariant = null;
       for (let k = 1; k < 5; k++) { input.click(0); run(k === 4 ? 0.9 : CHAIN_EVERY); }
-      input.press(0);
+      input.press(2);
       run(1.4);
-      input.up(0);
+      input.up(2);
       run(1.0);
       p.debug.god = false;
       p.hp = p.maxHp;
@@ -3362,9 +3383,9 @@ async function scenarioHeroLife() {
     input.click(0);
     go(0.9, probe);
     // the charged cleave: both hands through the dash and the cut (its last frames let the off hand go)
-    input.press(0);
+    input.press(2);
     go(1.4);
-    input.up(0);
+    input.up(2);
     go(0.9, () => { const a = p.atk; if (a?.def?.kind === 'cleave' && a.t <= a.def.windup + a.def.active * 0.9) probe(); });
     const names = Object.keys(seen), lights = names.filter((n) => seen[n].light), heavies = names.filter((n) => !seen[n].light);
     out(`   one hand: ${lights.map((n) => `${n} reach ${seen[n].reach.toFixed(2)} off ${(seen[n].gapMin * 100).toFixed(0)} cm`).join(' · ')}`);
@@ -3751,10 +3772,10 @@ async function scenarioHeroLife() {
       go(1.0);
       input.axis = { x: 0, y: 0 };
       go(0.5);
-      input.press(0);
-      go(0.22);
+      input.press(2);
+      go(0.18);
       const quiet = glints.length;
-      input.up(0);
+      input.up(2);
       go(1.0);
       glints.length = 0;
       p._startHeavy(THRUST, chargeStats(CHARGE.full, THRUST));
@@ -3997,10 +4018,10 @@ async function scenarioHeroLife() {
       }
     };
     go(1.0);
-    input.press(0);
+    input.press(2);
     go(1.3, measure);
     const held = { ...now };
-    input.up(0);
+    input.up(2);
     go(1.0, measure);
     for (let look = 0; look < 3; look++) {
       A.forceVariant = look;
@@ -4013,9 +4034,9 @@ async function scenarioHeroLife() {
     input.tap('Space');
     go(0.8, measure);
     input.axis = { x: 0, y: 0 };
-    input.press(2);
+    input.press(1);
     go(0.6, measure);
-    input.up(2);
+    input.up(1);
     go(0.6, measure);
     out(`   anatomy: tightest elbow ${worst.elbow.toFixed(0)}° (${at.elbow}), tightest knee ${worst.knee.toFixed(0)}° (${at.knee}), the blade back on the forearm at most ${worst.wrist.toFixed(0)}° (${at.wrist}); held charge: sword wrist ${held.wristR.toFixed(0)}°, elbows ${held.elbowR.toFixed(0)}° / ${held.elbowL.toFixed(0)}°, off wrist ${held.wristL.toFixed(0)}°, off hand ${(held.handL * 100).toFixed(0)} cm from the chest's axis`);
     assert(worst.elbow >= 38 && worst.knee >= 30, `no joint folds flat: elbows ≥ 38° (${worst.elbow.toFixed(0)}°, ${at.elbow}), knees ≥ 30° (${worst.knee.toFixed(0)}°, ${at.knee})`);
@@ -4028,7 +4049,7 @@ async function scenarioHeroLife() {
   // (2) the guard, the cross ward (Session 25): both hands, the blade slanting up across the body
   // (25°–50° up: its length shows across his back from the camera behind him), sunk and side-on
   {
-    input.press(2);
+    input.press(1);
     go(0.5);
     // the blade's direction from two of its points (the hero's matrices carry the drawn scale and the
     // camera lean, so a decomposed world rotation would not be the blade's)
@@ -4048,7 +4069,7 @@ async function scenarioHeroLife() {
     assert(elev > 25 && elev < 50 && across > 0.6, `the cross ward: the blade slants ${elev.toFixed(0)}° up (25°–50°) and lies ${(across * 100).toFixed(0)} % across his body (> 60 %)`);
     assert(sink > 0.14 && side > 0.4, `the deeper stance: hips ${sink.toFixed(2)} m down (> 0.14), hips and chest turned ${(side * 57.3).toFixed(0)}° side-on (> 23°)`);
     assert(hands > -0.2, `the hands are up before the chest: the grip ${(-hands * 100).toFixed(0)} cm below the shoulder (< 20 cm; it was 34 cm, at the hip)`);
-    input.up(2);
+    input.up(1);
     go(0.8);
   }
 
@@ -4062,9 +4083,9 @@ async function scenarioHeroLife() {
       frames++;
       if (sheetHit(r, m, v)) hit++;
     };
-    input.press(0);
+    input.press(2);
     go(1.6, clip);
-    input.up(0);
+    input.up(2);
     go(1.0);
     out(`   charge: the blade touched a cloak sheet in ${hit} of ${frames} frames`);
     assert(frames > 60 && hit <= 2, `held charge: the drawn-back blade stays out of the cloak (${hit} of ${frames} frames within 2 cm of a sheet)`);
@@ -4321,15 +4342,15 @@ function heroRoute(G, go, mark = () => {}) {
   input.click(0);
   go(1.0);
   mark('charge');
-  input.press(0);
+  input.press(2);
   go(1.4);
   mark('release');
-  input.up(0);
+  input.up(2);
   go(1.0);
   mark('block');
-  input.press(2);
+  input.press(1);
   go(0.8);
-  input.up(2);
+  input.up(1);
   go(0.6);
 }
 
@@ -4460,9 +4481,9 @@ async function scenarioHeroLook() {
     d.hp = d.maxHp;
     d.posture = 0;
     go(0.4);
-    input.press(0);
+    input.press(2);
     go(0.6 + rep * 0.4);
-    input.up(0);
+    input.up(2);
     go(1.4);
   }
   for (let rep = 0; rep < 2; rep++) {
@@ -4499,13 +4520,13 @@ async function scenarioHeroLook() {
   input.axis = { x: 0, y: 0 };
   input.click(0);
   go(1.0);
-  input.press(0);
-  go(1.4);
-  input.up(0);
-  go(1.0);
   input.press(2);
-  go(0.8);
+  go(1.4);
   input.up(2);
+  go(1.0);
+  input.press(1);
+  go(0.8);
+  input.up(1);
   go(0.6);
   assert(worst < 0.02, `the drawn blade never sinks > 2 cm into his body (${frames} frames; deepest ${(worst * 100).toFixed(1)} cm: ${worstAt}; into the free hand off the grip ${(hand * 100).toFixed(1)} cm: ${handAt})`);
   assert(locoCross <= Math.max(3, locoFrames * 0.05), `the blade passes through a coat panel on ${locoCross} of ${locoFrames} run / sprint / idle frames (≤ 5 %; ${cross} of ${frames} over every move)`);
@@ -4680,13 +4701,13 @@ async function scenarioHeroHand() {
   input.axis = { x: 0, y: 0 };
   input.click(0);
   go(0.9, eachLook);
-  input.press(0);
-  go(1.4, eachLook);
-  input.up(0);
-  go(1.2, eachLook);
   input.press(2);
-  go(0.6, eachLook);
+  go(1.4, eachLook);
   input.up(2);
+  go(1.2, eachLook);
+  input.press(1);
+  go(0.6, eachLook);
+  input.up(1);
   go(0.6, eachLook);
 
   for (const c of order) {
@@ -4706,9 +4727,10 @@ async function scenarioHeroHand() {
     const ends = order.map((c) => looks[c].end).filter(Boolean);
     const span = (k) => Math.max(...ends.map((e) => e[k])) - Math.min(...ends.map((e) => e[k]));
     assert(ends.length >= 13 && span('y') >= 0.4 && span('z') >= 0.4, `the finishes are not one template: across ${ends.length} looks the free hand ends ${span('y').toFixed(2)} m apart in height and ${span('z').toFixed(2)} m fore and aft (each ≥ 0.40, chest frame)`);
-    const EXEMPT = new Set(['whirl', 'risingWhirl', 'risingThrust']); // (by design: tucked through the turn; converging on the point)
+    // (by design: tucked through the turn; converging on the point; the heavy branches are two-handed)
+    const EXEMPT = new Set(['whirl', 'risingWhirl', 'risingThrust', 'heavyThrust', 'heavyRise', 'heavySpin', 'heavyCrush']);
     const late = order.filter((c) => !EXEMPT.has(c) && !(looks[c].prog >= 0.45));
-    assert(order.length - EXEMPT.size >= 10 && !late.length, `at contact the free hand is ≥ 45 % of the way from its coil to its finish in every look (${late.map((c) => `${c} ${(looks[c].prog * 100).toFixed(0)} %`).join(', ') || 'all'})`);
+    assert(order.filter((c) => !EXEMPT.has(c)).length >= 10 && !late.length, `at contact the free hand is ≥ 45 % of the way from its coil to its finish in every look (${late.map((c) => `${c} ${(looks[c].prog * 100).toFixed(0)} %`).join(', ') || 'all'})`);
   }
   assert(lockN > 0 && lockMin >= 0.33, `on the grip the free elbow keeps a bend: ≥ ${(lockMin * DEG).toFixed(0)}° (≥ 19°: it locked straight in the cleave; ${lockN} frames, ${lockMinAt})`);
 
@@ -5300,46 +5322,24 @@ async function scenarioHeroWeight() {
     assert(worst <= 15, `no hip whip: the hips turn at most ${worst.toFixed(1)}° a frame through every light's windup and cut (≤ 15°; ${at})`);
   }
 
-  // (W6) a held light waits at its coil (0.25 s: under CHARGE.hold): the hips, which reach it a
-  // lead ahead (~16° into the cut), settle back to the coil key's turn without a snap (each step no
-  // bigger than the one before; the first lead fade snapped them back ~12° in one frame) and hold
-  // still by the end; released, the cut fires without a snap
+  // (W6) a held light does NOT wait at its coil (ADR-114: the charge moved to the heavy button):
+  // the attack button held 0.25 s, the light passes its windup on its own clock and cuts, never
+  // pending and never a charge. (Until 2026-11-15 it waited at the coil while held: that hold and its
+  // settling hips and foot were tested here.)
   {
     far();
     go(0.8, record);
     A.forceVariant = 0;
     const hold = [];
     input.press(0);
-    for (let i = 0, n = Math.round(0.25 / DT); i < n; i++) { G.tick(DT); hold.push({ F: record(), hip: A.cur[P.pelvY], ank: A.cur[(A.stepL ? P.lF : P.rF) + 1], sole: soleOf(A.stepL ? r.legs.L.foot : r.legs.R.foot) }); }
+    for (let i = 0, n = Math.round(0.25 / DT); i < n; i++) { G.tick(DT); hold.push({ F: record(), st: p.state }); }
     input.up(0);
-    const after = [];
-    for (let i = 0; i < 40; i++) {
-      G.tick(DT);
-      const F = record();
-      if (F.atk?.def && F.t > F.atk.def.windup + F.atk.def.active) break;
-      after.push(F);
-    }
+    go(0.6);
     A.forceVariant = null;
-    const coilHip = SWINGS.fallingCut.keys.find((k) => k.u === 1).hip, W = hold[0].F.atk?.def?.windup ?? 0;
-    // the steps of the hips' turn (pose channel) from the frame before the coil to the hold's end
-    const k0 = hold.findIndex((h) => h.F.t >= W - 1e-6);
-    const steps = hold.slice(Math.max(1, k0)).map((h, i) => Math.abs(h.hip - hold[Math.max(1, k0) + i - 1].hip) * DEG);
-    // (steps[0] is the arrival: the cut's last frame before the coil, still a lead ahead)
-    const settle = steps.slice(2).every((s, i) => s <= steps[i + 1] + 1e-3);
-    const first = Math.max(...steps), lastStep = steps[steps.length - 1], off = Math.abs(hold[hold.length - 1].hip - coilHip);
-    const snap = Math.max(...after.map((F) => Math.abs(F.dPel) * DEG)), arm = Math.max(...after.map((F) => F.arm));
-    out(`   held coil: the hips step ${steps.map((s) => s.toFixed(1)).join(', ')}° a frame from the coil on, ${off.toFixed(3)} rad off the coil's (${coilHip}) at the end; released: ≤ ${snap.toFixed(1)}° a frame, the arms ≤ ${arm.toFixed(0)}°`);
-    assert(k0 > 0 && hold.every((h) => h.F.pending) && first <= 5 && settle && lastStep <= 1 && off <= 0.05,
-      `a held light's hips settle back to the coil without a snap: at most ${first.toFixed(1)}° a frame (≤ 5°), each step no bigger than the one before, still by the hold's end (${lastStep.toFixed(2)}° ≤ 1°), within 0.05 rad of the coil key's turn (${off.toFixed(3)})`);
-    assert(after.length >= 5 && snap <= 25 && arm < 60, `released from the coil, the cut fires without a snap: the hips ≤ 25° a frame (${snap.toFixed(1)}°), no arm segment ≥ 60° a frame (${arm.toFixed(0)}°)`);
-    // … and the stepping foot, caught mid-step at the coil, is set down on the grass (it hung up to
-    // 0.21 m above it for as long as the button was held, then 4 cm with a "toe down" sole the rig
-    // drew level): never rising once at the coil, its sole (the boot's lowest point) on the grass ± 1 cm
-    // by the hold's end
-    const atCoil = hold.slice(k0), rise = Math.max(...atCoil.slice(1).map((h, i) => h.ank - atCoil[i].ank)), endAnk = hold[hold.length - 1].ank - HD.ankle;
-    const sole = hold[hold.length - 1].sole;
-    out(`   held coil: the stepping ankle ${(endAnk * 100).toFixed(1)} cm above its rest at the hold's end, its sole ${(sole * 100).toFixed(1)} cm above the grass (rising at most ${(rise * 1000).toFixed(1)} mm a frame at the coil)`);
-    assert(endAnk <= 0.045 && rise <= 0.002 && Math.abs(sole) <= 0.01, `a held light's stepping foot rests on the grass: its sole ${(sole * 100).toFixed(1)} cm above it at the hold's end (± 1), the ankle ${(endAnk * 100).toFixed(1)} cm up (≤ 4.5), never rising at the coil (${(rise * 1000).toFixed(1)} mm ≤ 2)`);
+    const W = hold[0].F.atk?.def?.windup ?? 0, at = hold.findIndex((h) => h.F.t >= W - 1e-6);
+    out(`   a held light: windup ${W} s passed on frame ${at} (${(at * DT).toFixed(3)} s) with the button still down; pending on ${hold.filter((h) => h.F.pending).length} frames; charge on ${hold.filter((h) => h.st === 'charge').length}`);
+    assert(W > 0 && at >= 0 && at * DT <= W + 2 * DT && !hold.some((h) => h.F.pending) && !hold.some((h) => h.st === 'charge'),
+      `a held light cuts at once: its windup (${W} s) ends on its own clock with the button held (frame ${at}), never pending, never a charge`);
   }
 
   // (W5) the bite: 2.5 m from the wyrm, every landed blow (player:hitDragon, unguarded, atk.hitAt
@@ -5375,9 +5375,9 @@ async function scenarioHeroWeight() {
       d.hp = d.maxHp;
       d.posture = 0;
       run(0.4);
-      input.press(0);
+      input.press(2);
       run(0.6 + rep * 0.4);
-      input.up(0);
+      input.up(2);
       run(1.4);
     }
     for (let rep = 0; rep < 2; rep++) {
@@ -5550,7 +5550,7 @@ async function scenarioHeroArms() {
 
   // (A4) the charge and its release: the blade's pass by his head
   let holdMin = Infinity, holdAt = 0, dashMin = Infinity, dashAt = 0, gapMax = 0, chargeL = [180, 0], chargeR = [180, 0], holdN = 0, dashN = 0;
-  input.press(0);
+  input.press(2);
   go(1.7, () => {
     if (p.state !== 'charge') return;
     holdN++;
@@ -5563,7 +5563,7 @@ async function scenarioHeroArms() {
     }
   });
   const fistShown = r.offHand.grip.visible;
-  input.up(0);
+  input.up(2);
   go(1.2, () => {
     const a = p.atk;
     if (!a?.def || p.state !== 'heavy') return;
@@ -6124,7 +6124,7 @@ async function scenarioTouch() {
   const c = (n) => counts[n] || 0;
   const touch = (type, target, id, x = 0, y = 0) => {
     // a pad tile (ATTACK / BLOCK / DODGE) has no pointers of its own: the pad takes the touch at the tile's middle
-    const tile = target?.classList?.contains('tc-tile') ? ['attack', 'block', 'dodge'].find((n) => target.classList.contains(`tc-${n}`)) : null;
+    const tile = target?.classList?.contains('tc-tile') ? ['attack', 'heavy', 'block', 'dodge'].find((n) => target.classList.contains(`tc-${n}`)) : null;
     if (tile) {
       const m = t.padPoint(tile);
       target = cls('tc-pad');
@@ -6152,8 +6152,8 @@ async function scenarioTouch() {
 
   fightSetup(G);
   const B = (id) => cls(`tc-${id}`);
-  const atk = B('attack'), blk = B('block'), dge = B('dodge'), flask = B('flask'), lock = B('lock'), pause = B('pause'), zone = cls('tc-zone');
-  assert(atk && blk && dge && flask && lock && pause && zone, 'stick zone + ATTACK / BLOCK / DODGE / FLASK / LOCK / || built');
+  const atk = B('attack'), hvy = B('heavy'), blk = B('block'), dge = B('dodge'), flask = B('flask'), lock = B('lock'), pause = B('pause'), zone = cls('tc-zone');
+  assert(atk && hvy && blk && dge && flask && lock && pause && zone, 'stick zone + ATTACK / HEAVY / BLOCK / DODGE / FLASK / LOCK / || built');
   run(G, 0.2, { passive: true });
   assert(!cls('tc-root').classList.contains('off'), 'controls shown in the fight');
   // auto-aim: game.mouseGround sits on the dragon's lock point
@@ -6172,18 +6172,35 @@ async function scenarioTouch() {
   touch('pointerup', atk, 11);
   frames(0.6);
   assert(kinds[0] === 'light', `ATTACK tap → light swing (${kinds.join(',')})`);
-  // hold ATTACK → charge, release → the cleave
+  // HEAVY tap → a heavy (ADR-114: HEAVY[0] on its own)
   settle(G); place(G, 6);
   kinds.length = 0;
-  touch('pointerdown', atk, 12);
+  touch('pointerdown', hvy, 13);
+  frames(0.1);
+  touch('pointerup', hvy, 13);
+  frames(0.9);
+  assert(kinds[0] === 'heavy', `HEAVY tap → a heavy swing (${kinds.join(',')})`);
+  // hold HEAVY → charge, release → the cleave
+  settle(G); place(G, 6);
+  kinds.length = 0;
+  touch('pointerdown', hvy, 12);
   let charged = false;
   frames(0.9, () => { if (p.state === 'charge') charged = true; });
   G.tick(DT);
-  const meter = atk.find((e) => e.classList?.contains('t'))?.textContent ?? '';
-  touch('pointerup', atk, 12);
+  const meter = hvy.find((e) => e.classList?.contains('t'))?.textContent ?? '';
+  touch('pointerup', hvy, 12);
   frames(0.8);
-  assert(charged && kinds.includes('cleave'), `ATTACK hold 0.9 s → charge → the cleave on release (${kinds.join(',')})`);
-  assert(/^\[#+\.*\]$/.test(meter), `ATTACK shows the ASCII charge meter while held ("${meter}")`);
+  assert(charged && kinds.includes('cleave'), `HEAVY hold 0.9 s → charge → the cleave on release (${kinds.join(',')})`);
+  assert(/^\[#+\.*\]$/.test(meter), `HEAVY shows the ASCII charge meter while held ("${meter}")`);
+  // holding ATTACK no longer charges: a light, at once
+  settle(G); place(G, 6);
+  kinds.length = 0;
+  touch('pointerdown', atk, 14);
+  let chargedL = false;
+  frames(0.9, () => { if (p.state === 'charge') chargedL = true; });
+  touch('pointerup', atk, 14);
+  frames(0.6);
+  assert(!chargedL && kinds[0] === 'light', `ATTACK held 0.9 s is a light, not a charge (${kinds.join(',')})`);
   G.watch = null;
   // DODGE → roll
   settle(G); place(G, 8);
@@ -6225,9 +6242,11 @@ async function scenarioTouch() {
   {
     settle(G); place(G, 12);
     const pad = cls('tc-pad'), geo = t.padGeo, T = geo.tiles;
-    assert(!!pad && atk.classList.contains('tc-tile') && blk.classList.contains('tc-tile') && dge.classList.contains('tc-tile') && !flask.classList.contains('tc-tile'), 'ATTACK / BLOCK / DODGE are tiles of the pad; FLASK is its own button');
+    assert(!!pad && atk.classList.contains('tc-tile') && hvy.classList.contains('tc-tile') && blk.classList.contains('tc-tile') && dge.classList.contains('tc-tile') && !flask.classList.contains('tc-tile'), 'ATTACK / HEAVY / BLOCK / DODGE are tiles of the pad; FLASK is its own button');
     const touchSide = (a, b) => (a[2] === b[0] || b[2] === a[0]) ? Math.min(a[3], b[3]) - Math.max(a[1], b[1]) : (a[3] === b[1] || b[3] === a[1]) ? Math.min(a[2], b[2]) - Math.max(a[0], b[0]) : 0;
-    assert(touchSide(T.attack, T.block) >= 40 && touchSide(T.attack, T.dodge) >= 40 && touchSide(T.block, T.dodge) >= 30, `each tile shares an edge with both others (${touchSide(T.attack, T.block)} / ${touchSide(T.attack, T.dodge)} / ${touchSide(T.block, T.dodge)} px)`);
+    // (ADR-114: a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK: each tile shares an edge with the two beside it)
+    const sides = [touchSide(T.attack, T.heavy), touchSide(T.attack, T.dodge), touchSide(T.block, T.heavy), touchSide(T.block, T.dodge)];
+    assert(sides.every((v) => v >= 40), `each tile shares an edge with the two beside it (${sides.map((v) => v.toFixed(0)).join(' / ')} px)`);
     const A = t.padPoint('attack'), Bk = t.padPoint('block'), Dg = t.padPoint('dodge');
     assert(innerWidth - A.x >= 80 && innerHeight - A.y >= 80, `ATTACK sits out of the corner (its middle ${(innerWidth - A.x).toFixed(0)} px in, ${(innerHeight - A.y).toFixed(0)} px up)`);
     const P = (type, id, x, y) => pad.dispatch(type, { pointerType: 'touch', pointerId: id, clientX: x, clientY: y });
@@ -6588,23 +6607,30 @@ async function scenarioRemap() {
   const mem = new Map();
   const storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)) };
   const b = new Bindings(storage);
-  assert(b.isDefault() && b.codes('dodge').join() === 'Space' && b.buttons('attack').join() === '5,7', 'defaults: Space dodges, RB / RT attack');
+  assert(b.isDefault() && b.codes('dodge').join() === 'Space' && b.buttons('attack').join() === '5' && b.buttons('heavy').join() === '7', 'defaults: Space dodges, RB light, RT heavy');
+  assert(b.codes('attack').join() === 'Mouse0' && b.codes('heavy').join() === 'Mouse2' && b.codes('block').join() === 'Mouse1' && b.codes('lockOn').join() === 'Tab', 'defaults (ADR-114): LMB light, RMB heavy, MMB block, Tab lock-on');
   assert(b.bindKey('dodge', 'KeyQ') && b.codes('dodge').join() === 'KeyQ' && !ACTIONS.some((a) => b.codes(a.id).includes('Space')), 'bind Q to dodge: Space is free');
   assert(b.bindKey('dodge', 'KeyF') && b.codes('dodge').join() === 'KeyF' && b.codes('flask').join() === 'KeyQ', 'F (the flask key) to dodge → a swap: the flask gets Q');
   assert(b.bindKey('up', 'ArrowDown') && b.codes('up').join() === 'ArrowDown' && b.codes('down').join() === 'KeyS', 'a taken alternate (↓) moves without a swap when its action keeps a key');
   assert(!b.bindKey('dodge', 'Escape') && !b.bindKey('dodge', 'F1') && !b.bindKey('pause', 'KeyP') && !b.bindPad('dodge', 9) && !b.bindKey('zoomIn', 'KeyZ'), 'refused: Esc, F1, the fixed pause, the pad\'s Menu, a pad-only action on the keyboard');
-  assert(b.bindPad('attack', 0) && b.buttons('attack').join() === '0' && b.buttons('dodge').join() === '5,7', 'pad: A to attack → dodge takes RB / RT');
+  assert(b.bindPad('attack', 0) && b.buttons('attack').join() === '0' && b.buttons('dodge').join() === '5', 'pad: A to attack → dodge takes RB');
   assert(b.moveText() === '↓ASD', `the move chip follows (${b.moveText()})`);
   const b2 = new Bindings(storage);
   assert(b2.codes('dodge').join() === 'KeyF' && b2.codes('flask').join() === 'KeyQ' && b2.buttons('attack').join() === '0', 'saved: a new Bindings on the same storage loads them');
   b2.reset(true, 'pad');
-  assert(b2.buttons('attack').join() === '5,7' && b2.codes('dodge').join() === 'KeyF', 'reset the pad tab only: the keyboard keeps its remap');
-  mem.set('abyss.bindings.v1', '{ not json');
+  assert(b2.buttons('attack').join() === '5' && b2.codes('dodge').join() === 'KeyF', 'reset the pad tab only: the keyboard keeps its remap');
+  mem.set('abyss.bindings.v2', '{ not json');
   assert(new Bindings(storage).isDefault(), 'corrupt storage → defaults');
-  mem.set('abyss.bindings.v1', JSON.stringify({ kb: { dodge: ['KeyF'], flask: ['KeyF'], attack: ['Escape', 7] }, pad: { attack: [5, 99, 9] } }));
+  mem.set('abyss.bindings.v2', JSON.stringify({ kb: { dodge: ['KeyF'], flask: ['KeyF'], attack: ['Escape', 7] }, pad: { attack: [5, 99, 9] } }));
   const b3 = new Bindings(storage);
   assert(b3.isDefault('kb') && b3.buttons('attack').join() === '5' && b3.buttons('block').join() === '4,6',
     `stored clash that would leave the flask unbound → keyboard defaults; pad junk (99, Menu) dropped (attack ${b3.buttons('attack')})`);
+  {
+    // (a v1 save put the guard on the right click, now the heavy's: it is not read)
+    const m1 = new Map([['abyss.bindings.v1', JSON.stringify({ kb: { block: ['Mouse2'] } })]]);
+    const b4 = new Bindings({ getItem: (k) => m1.get(k) ?? null, setItem: (k, v) => m1.set(k, String(v)) });
+    assert(b4.isDefault() && b4.codes('block').join() === 'Mouse1' && b4.codes('heavy').join() === 'Mouse2', 'a v1 save (the guard on RMB) is not read: the new defaults stand');
+  }
 
   // ---- the panel, in the game
   const nav = globalThis.navigator;
@@ -6865,7 +6891,7 @@ async function scenarioStrings() {
   for (let i = 0; i < Math.round(8 / DT); i++) {
     aimAt(G);
     input.axis = { x: 0, y: 0 };
-    for (const e of pend) if (!e.done && e.at - game.time - DT <= 0.12) { e.done = true; input.click(2); }
+    for (const e of pend) if (!e.done && e.at - game.time - DT <= 0.12) { e.done = true; input.click(1); }
     G.tick(DT);
     if (par.length !== last) { last = par.length; if (last > 0) actAfter.push(d.brain.action?.name ?? '-'); }
     if (!d.brain.action || (d.brain.action.name !== 'rendingFlurry' && d.brain.action.name !== 'recoil')) break;
@@ -6897,7 +6923,7 @@ async function scenarioStrings() {
     aimAt(G);
     input.axis = { x: 0, y: 0 };
     p.hp = p.maxHp;
-    for (const e of pend2) if (!e.done && e.at - game.time - DT <= 0.12) { e.done = true; input.click(2); }
+    for (const e of pend2) if (!e.done && e.at - game.time - DT <= 0.12) { e.done = true; input.click(1); }
     G.tick(DT);
     if (!d.brain.action || (d.brain.action.name !== 'clawCombo' && d.brain.action.name !== 'recoil')) break;
   }
@@ -6910,7 +6936,7 @@ async function scenarioStrings() {
   place(G, 4.0);
   const res = [];
   const h0 = G.hits.length;
-  input.press(2);
+  input.press(1);
   run(G, 0.2, { passive: true });
   const gb0 = G.counts['player:guardBreak'] || 0;
   d.brain.startAction(ATTACKS.tailLash);
@@ -6921,7 +6947,7 @@ async function scenarioStrings() {
     p.hp = p.maxHp;
     if (!d.brain.action || d.brain.action.name !== 'tailLash') break;
   }
-  input.up(2);
+  input.up(1);
   for (const h of G.hits.slice(h0)) if (h.attack === 'tailLash') res.push(`${h.tell}:${h.r}`);
   out(`   tailLash vs a held guard: ${res.join(' · ')} · guardBreak ${(G.counts['player:guardBreak'] || 0) - gb0}`);
   assert(res[0] === 'normal:blocked', `the string's normal claw is blocked (${res[0]})`);

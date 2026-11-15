@@ -33,6 +33,7 @@ const SPRINT_OFF = 0.08; // hysteresis below sprintAt before the sprint drops
 
 const BUTTONS = [
   { id: 'attack', code: '@attack', glyph: '†', label: 'ATTACK', tile: true },
+  { id: 'heavy', code: '@heavy', glyph: '‡', label: 'HEAVY', sub: 'hold: charge', tile: true },
   { id: 'block', code: '@block', glyph: '[#]', label: 'BLOCK', sub: 'tap: parry', tile: true },
   { id: 'dodge', code: '@dodge', glyph: '»', label: 'DODGE', tile: true },
   { id: 'flask', code: '@flask', glyph: '◆', label: 'FLASK' },
@@ -582,15 +583,15 @@ export class TouchControls {
   _syncButtons() {
     const p = this.game.player, B = this.btn, K = this._keys;
     if (!p || !B) return;
-    // ATTACK: ASCII charge meter while the cleave charges
+    // HEAVY: ASCII charge meter while the cleave charges (the heavy button holds the charge, ADR-114)
     const charging = p.state === 'charge';
     const cells = charging ? Math.max(0, Math.min(CHARGE_CELLS, Math.round(fin(p.chargeK) * CHARGE_CELLS))) : -1;
-    if (cells !== K.charge) {
+    if (cells !== K.charge && B.heavy) {
       K.charge = cells;
-      const a = B.attack;
+      const a = B.heavy;
       a.el.classList.toggle('charge', charging);
       a.el.classList.toggle('full', cells === CHARGE_CELLS);
-      if (a.t) a.t.textContent = charging ? `[${'#'.repeat(cells)}${'.'.repeat(CHARGE_CELLS - cells)}]` : 'ATTACK';
+      if (a.t) a.t.textContent = charging ? `[${'#'.repeat(cells)}${'.'.repeat(CHARGE_CELLS - cells)}]` : 'HEAVY';
     }
     // FLASK: count, dim when empty
     const inf = !!p.debug?.infiniteFlasks;

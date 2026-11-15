@@ -78,13 +78,16 @@ export const CONFIG = {
     //   pos    where the cluster's bottom-right corner sits, [in from the right edge, up from the
     //          bottom]; the player picks one in the pause menu (PAD POSITION), as its size (PAD SIZE)
     //   tall   screens taller than 560 px (tablets): everything this much larger
+    // (ADR-114, the owner's pick: a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK; every tile
+    // touches the two beside it and the slide works between them)
     pad: {
       tiles: {
-        attack: { x: 0, y: 0, w: 98, h: 92 },
-        block: { x: 0, y: 92, w: 98, h: 62 },
-        dodge: { x: 98, y: 14, w: 70, h: 116 },
+        attack: { x: 0, y: 0, w: 92, h: 84 },
+        heavy: { x: 0, y: 84, w: 92, h: 66 },
+        dodge: { x: 92, y: 0, w: 80, h: 84 },
+        block: { x: 92, y: 84, w: 80, h: 66 },
       },
-      flask: { x: 104, y: 140, w: 58, h: 44 },
+      flask: { x: 106, y: 158, w: 58, h: 42 },
       reach: 26,
       slide: true,
       stick: 10,

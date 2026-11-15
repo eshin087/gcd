@@ -135,7 +135,8 @@ export const CONTROLS = [
   ['@move', 'move'],
   ['@aim', 'aim', 'kb'],
   ['@aim', 'aim (let go: auto-aim at the boss)', 'pad'],
-  ['@attack', 'attack · hold to charge heavy'],
+  ['@attack', 'light attack · a combo of five'],
+  ['@heavy', 'heavy · branches off the combo · hold: charged cleave'],
   ['@block', 'hold block · tap to parry'],
   ['@dodge', 'dodge · perfect dodge = Ghostep'],
   ['@sprint', 'sprint (a stick click: until you let go)', 'pad'],
@@ -168,10 +169,11 @@ export function controlsGrid(parent, dev = 'kb') {
 // The touch-controls reference (pause menu on touch devices; src/ui/touch.js).
 export const TOUCH_CONTROLS = [
   ['STICK', 'move · push to the rim: sprint'],
-  ['ATTACK', 'tap: combo · hold: charged cleave'],
+  ['ATTACK', 'light: a combo of five'],
+  ['HEAVY', 'heavy, branching off the combo · hold: charged cleave'],
   ['BLOCK', 'hold: block · tap: parry'],
   ['DODGE', 'roll · perfect dodge = Ghostep'],
-  ['SLIDE', 'between ATTACK, BLOCK and DODGE without lifting'],
+  ['SLIDE', 'between the four tiles without lifting'],
   ['FLASK', 'drink flask'],
   ['LOCK', 'lock-on (attacks auto-aim anyway)'],
   ['||', 'pause'],

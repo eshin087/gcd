@@ -10,9 +10,13 @@ import { DIM } from './model.js';
 //   LMB while sprinting      SPRINT_ATK: a bounding rising slash that keeps the run's momentum
 //   LMB out of a forward roll ROLL_ATK: a low cut rising out of the crouch
 //               (both count as hit 1: the next tap is the rising backhand)
-//   LMB hold    a deep coiled charge, the blade held up behind the right shoulder and glowing;
+//   HEAVY       (RMB / R2 / the HEAVY tile; ADR-114) the chain's BRANCH at the point it is pressed:
+//               HEAVY[0] alone (or after the slam, a sprint's or a roll's run-out), HEAVY[n] after the
+//               n-th light (L-H, L-L-H, ...): five heavy moves, each with its own job (combat.js HEAVY)
+//   HEAVY hold  a deep coiled charge, the blade held up behind the right shoulder and glowing;
 //               release = the dashing CLEAVE (the root travels forward, farther with more charge, and
-//               the blade carves one diagonal through the target as the dash arrives)
+//               the blade carves one diagonal through the target as the dash arrives). A light press
+//               comes out at once: only the heavy button waits to see whether it is held
 //
 // Swing shapes (`anim`) are read by anim.js:
 //   kind 'clip'   — a keyframed clip from swings.js (`clip`: its name): the light swings, the
@@ -125,6 +129,65 @@ export const LIGHT = [
   },
 ];
 
+/**
+ * The heavy BRANCHES (ADR-114; owner: "Heavy branches"): HEAVY[0] is the heavy pressed on its own,
+ * HEAVY[n] the heavy pressed after the n-th light of the chain (in that light's recovery, from its
+ * `chain`, or buffered through its cut). Each is a two-handed blow with its own job:
+ *   0 Piercing Gale      a dashing two-handed thrust: the gap closer (`dash`, `travel` m)
+ *   1 Rising Crescent    L-H: a rising two-handed cut from the left hip: it throws a duelist out of
+ *                        what he is doing (`reel` 2: the stagger a flurry's last blow gives)
+ *   2 Whirling Tempest   L-L-H: a full two-handed turn (`spin`): the blade sweeps all round him
+ *   3 Mountain Splitter  L-L-L-H: a falling diagonal from over the left shoulder whose posture
+ *                        (`poise` 50) crushes a duelist's raised guard (TUNING.guard.crushPoise 48)
+ *   4 Earthbreaker       L-L-L-L-H: the slam with a higher leap, more damage and a wider ring of
+ *                        shards (L-L-L-L-L is the plain slam, as before)
+ * They end the chain: the next light is hit 1. Held past CHARGE.hold, a heavy press is the charge
+ * (the dashing cleave) instead. Numbers are a first pass, to be tuned from play (game/telemetry.js).
+ * `button: 'heavy'`: the press may still turn into the charge (its swing waits at the coil while the
+ * button is held, player.js `pending`).
+ */
+export const HEAVY = [
+  {
+    name: 'piercingGale', label: 'Piercing Gale', kind: 'heavy', button: 'heavy', combo: 0, damage: 54, poise: 34, heavy: true, dash: true,
+    windup: 0.3, active: 0.14, recovery: 0.42, chain: 0.35, lunge: 0, travel: 2.8, reach: 2.4,
+    hitstop: 0.1, shake: 0.3, bite: 1.2, contact: 'point', punch: 1.2, kick: 0.16, glint: 'ridge',
+    anim: { kind: 'clip', clip: 'heavyThrust', feet: 'dash', dashW: true },
+  },
+  {
+    name: 'risingCrescent', label: 'Rising Crescent', kind: 'heavy', button: 'heavy', combo: 1, damage: 50, poise: 36, heavy: true, reel: 2,
+    windup: 0.28, active: 0.14, recovery: 0.42, chain: 0.35, lunge: 0.7, reach: 2.3,
+    hitstop: 0.1, shake: 0.32, bite: 1.25, contact: 'sweep', punch: 1.2, kick: 0.16,
+    anim: { kind: 'clip', clip: 'heavyRise' },
+  },
+  {
+    name: 'whirlingTempest', label: 'Whirling Tempest', kind: 'heavy', button: 'heavy', combo: 2, damage: 52, poise: 30, heavy: true,
+    windup: 0.28, active: 0.18, recovery: 0.44, chain: 0.35, lunge: 0.6, reach: 2.4,
+    hitstop: 0.1, shake: 0.32, bite: 1.2, contact: 'sweep', punch: 1.1, kick: 0.15,
+    anim: { kind: 'clip', clip: 'heavySpin', spin: -1, spinFeet: 'hop' },
+  },
+  {
+    name: 'mountainSplitter', label: 'Mountain Splitter', kind: 'heavy', button: 'heavy', combo: 3, damage: 62, poise: 50, heavy: true,
+    windup: 0.34, active: 0.14, recovery: 0.46, chain: 0.35, lunge: 0.8, reach: 2.3,
+    hitstop: 0.12, shake: 0.4, bite: 1.35, contact: 'slam', punch: 1.5, kick: 0.2,
+    anim: { kind: 'clip', clip: 'heavyCrush' },
+  },
+  {
+    name: 'earthbreaker', label: 'Earthbreaker', kind: 'slam', button: 'heavy', combo: 4, damage: 84, poise: 52, heavy: true,
+    windup: 0.32, active: 0.13, recovery: 0.5, chain: 0.35, lunge: 0.85, reach: 2.1,
+    hitstop: 0.14, shake: 0.5, bite: 1.4, contact: 'slam', punch: 1.9, kick: 0.24,
+    up: 1.0,
+    shards: { radius: 2.6, height: 3.6 },
+    anim: { kind: 'clip', clip: 'slam', hop: 0.36, tuck: 1.3 },
+  },
+];
+
+/** The heavy that a heavy press makes after `def` (the attack in whose recovery it comes): after the
+ *  n-th light (n 1-4) its branch HEAVY[n]; after anything else (the slam, a heavy, nothing) HEAVY[0]. */
+export function heavyAfter(def) {
+  const n = def?.kind === 'light' ? Math.round(Number(def.combo) || 0) : 0;
+  return HEAVY[n >= 1 && n <= 4 ? n : 0];
+}
+
 /** LMB while sprinting: a bounding rising slash, low right → high left, that carries the run's
  *  momentum `travel` m along the run direction (`keepYaw`: it does not snap to the aim). Counts as
  *  hit 1 of the combo. */
@@ -144,7 +207,7 @@ export const ROLL_ATK = {
   anim: { kind: 'clip', clip: 'rollCut' },
 };
 
-/** The charged attack (hold LMB, release): the DASHING CLEAVE. The charge itself is the windup, so
+/** The charged attack (hold HEAVY, release): the DASHING CLEAVE. The charge itself is the windup, so
  *  the release is quick: he bursts `travel` m forward (lerped by charge; `dash`: the root's travel
  *  runs through the active frames, front-loaded) with the blade cocked behind the right shoulder,
  *  and carves one two-handed diagonal through whatever the dash reaches as it dies out (the blade
@@ -175,7 +238,7 @@ export const THRUST = {
 };
 
 export const CHARGE = {
-  hold: 0.3, // s LMB must be held before a press becomes a charge (shorter = light attack on release)
+  hold: 0.3, // s the HEAVY button must be held before a press becomes a charge (shorter = a heavy on release)
   full: 1.2, // s of hold for full damage
   maxHold: 2.6, // auto-release (also guards against a lost mouseup)
   move: 0.4, // movement multiplier while charging (low crouched stance)
