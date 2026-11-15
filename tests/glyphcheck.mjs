@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 // Static check: every string literal passed as glyph/glyphs/gi()/gis() in module files is in the world
 // glyph atlas (render/glyphs.js). Exits non-zero on a bad glyph so `npm test` fails.
@@ -106,40 +107,36 @@ for (const f of world) {
     }
   });
 }
-// The wyrm's large letters (render/wyrmGlyphs.js, ADR-092): its three sets and its strokes use world
-// atlas glyphs only, no lowercase (runs of it read as words), and the cell follows the screen height.
+// The wyrm's pixel-font letters (render/wyrmGlyphs.js, ADR-093): every letter of its three sets and
+// its four strokes has a bitmap in each font (a missing one prints blank), each bitmap is the font's
+// size, and the cell follows the screen height (5x8 px at 720p: the owner's pick).
 {
-  const f = path.join(root, 'src/render/wyrmGlyphs.js');
-  const src = fs.readFileSync(f, 'utf8');
-  const sets = /export const WYRM_SETS = (\{.*\});/.exec(src);
-  const strokes = /export const WYRM_STROKES = ('.*');/.exec(src);
-  const cellFn = /export function wyrmArtCell\(H\) \{([\s\S]*?)\n\}/.exec(src);
-  if (!sets || !strokes || !cellFn) {
-    bad++;
-    console.log('BAD wyrmGlyphs.js: WYRM_SETS / WYRM_STROKES / wyrmArtCell not found where the check reads them');
-  } else {
-    const S = new Function(`return ${sets[1]}`)();
-    const K = new Function(`return ${strokes[1]}`)();
-    for (const [name, str] of [...Object.entries(S), ['strokes', K]]) {
-      checked++;
-      for (const ch of str) {
-        if (!OK.has(ch) || /[a-z]/.test(ch)) {
-          bad++;
-          console.log(`BAD wyrm letter "${ch}" in the ${name} set (src/render/wyrmGlyphs.js)`);
-        }
-      }
-    }
-    if ([...S.dim].length < 4 || [...S.mid].length < 4 || [...S.bright].length < 4 || K.length !== 4) {
-      bad++;
-      console.log('BAD wyrm letter sets: each tier needs at least 4 letters, and there are 4 strokes');
-    }
-    const cell = new Function('H', cellFn[1]);
-    for (const [H, want] of [[393, [6, 10]], [720, [8, 13]], [1080, [12, 20]], [2160, [19, 30]]]) {
-      const got = cell(H);
-      if (got[0] !== want[0] || got[1] !== want[1]) {
+  const { WYRM_SETS: S, WYRM_STROKES: K, WYRM_FONTS, wyrmArtCell } = await import(pathToFileURL(path.join(root, 'src/render/wyrmGlyphs.js')).href);
+  const letters = [...Object.values(S).join(''), ...K];
+  for (const [key, F] of Object.entries(WYRM_FONTS)) {
+    checked++;
+    for (const ch of new Set(letters)) {
+      if (!F.glyphs[ch]) {
         bad++;
-        console.log(`BAD wyrmArtCell(${H}) = ${got}, expected ${want}`);
+        console.log(`BAD wyrm letter "${ch}" has no bitmap in ${key} (src/render/wyrmGlyphs.js)`);
       }
+    }
+    for (const [ch, rows] of Object.entries(F.glyphs)) {
+      if (rows.length !== F.h || rows.some((r) => !(r >= 0 && r < 1 << F.w))) {
+        bad++;
+        console.log(`BAD ${key} bitmap for "${ch}": ${rows.length} rows, expected ${F.h} rows of ${F.w} bits`);
+      }
+    }
+  }
+  if ([...S.dim].length < 4 || [...S.mid].length < 4 || [...S.bright].length < 4 || [...K].length !== 4) {
+    bad++;
+    console.log('BAD wyrm letter sets: each tier needs at least 4 letters, and there are 4 strokes');
+  }
+  for (const [H, want] of [[393, [4, 6]], [720, [5, 8]], [1080, [6, 9]], [1440, [10, 16]], [2160, [15, 24]]]) {
+    const got = wyrmArtCell(H);
+    if (got[0] !== want[0] || got[1] !== want[1]) {
+      bad++;
+      console.log(`BAD wyrmArtCell(${H}) = ${got}, expected ${want}`);
     }
   }
 }
