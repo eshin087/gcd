@@ -59,7 +59,10 @@ scene.updateMatrixWorld()            once for both scene passes (scene.matrixWor
 → rigid bone sync                    every batched mesh's matrixWorld → U.uBoneTex (render/rigidBatch.js)
 → moon shadow map                    LAYER_CASTER with the depth material, then LAYER_CASTER_RIGID (one shadow
                                      mesh per batched actor) with the bone-reading depth material, same map
-→ world → sceneRT → ASCII pass → FX particles (fxScene) → bloom → final grade
+→ world → sceneRT
+→ the hero where something covers him   a probe, then (only while it finds cover) the hero alone → seenRT,
+                                     minus what the scene shows of him, the rest back into sceneRT (ADR-106)
+→ ASCII pass → FX particles (fxScene) → bloom → final grade
 ```
 World matrices are therefore final when `render` starts: anything that moves an object after the
 actors' updates must do so before `pipeline.render()` (a transform changed between the two scene
@@ -239,7 +242,54 @@ Render helpers for creature modules:
     `_updateAsciiCamera` from `U.uPlayerScreen` (radius `HERO_HALO_R` 2.1 m; strength fades in from
     0.4 × to 1 × `uHeroHaloShape.w` = 20 m view depth, so none in close-ups), and `uHeroHaloShape`
     (x / y tap radii 2 / 4 px × hs, z darkening 0.72). Two rings of 8 taps darken **world-grid**
-    pixels round him (grass, stones, trees, bonfire); the wyrm's letters are not darkened.
+    pixels round him (grass, stones, trees, bonfire); the wyrm's letters are not darkened, except
+    round the parts of him it covers (`seenHalo`, next item).
+- **The hero seen through what covers him** (ADR-106; `pipeline.js`). When something stands
+  between the camera and the hero (the wyrm's body or a wing, a tree, a pillar, a landmark), the
+  covered parts of him are printed through it: his own ink-line art in the blade's cyan, with a
+  thin dark gap round it. In the open nothing changes (the frame is pixel-identical).
+  - **API:** `pipeline.setSeenThrough(object3d | null)` names the object (main.js: the player's
+    `object3d`; a loadout rebuild keeps that root). `CONFIG.render.seenThrough` = `{ on, reach,
+    margin, bareMargin, probe, hold }`: `on` is read every frame (`false` when the page URL has
+    `?noseen`, read once in `core/config.js`: an A/B switch like `?nobatch`); `reach` 2.8 m is the
+    half-size of the box round his screen point (`U.uPlayerScreen`) that is drawn; `margin` 0.6 m
+    / `bareMargin` 1.5 m are how far in front of him a tagged / an untagged (alpha < 0.03) pixel
+    must be to count as cover; `probe` `[half-width, from, to]` m is the slab through his body the
+    gate tests; `hold` 20 frames the pass keeps running after the gate last found cover.
+  - **What counts as cover** needs nothing from the covering object's material: anything drawn
+    in the scene pass that writes depth, at least the margin in front of his surface. Never
+    cover: a pixel in the hero's alpha window (a human boss is built by `buildHero` and writes
+    it; the duels are unchanged), grass and ground within `bareMargin`, and anything in the FX
+    scene (glyph particles are composited after the ASCII pass and do not write the scene depth).
+    A new big object (a thrown tree, a lifted pillar, a wall) gets it for free; to keep a small
+    thing from ever triggering it, leave it untagged or keep it within the margin of him.
+  - **The pass** (`_renderSeen`, render step 2b, right after the world pass; no allocation; it
+    returns whether it ran): (1) the **gate** `_seenProbe`: one quad (`seenProbeMat`, no colour or
+    depth write, `GreaterDepth`) over the screen rect of the probe slab, at his centre line's
+    depth less `margin − 0.1`, inside an `ANY_SAMPLES_PASSED` occlusion query on the scene
+    target. Its answer is read on a later frame; a yes (or no answer for more than 3 frames: a
+    hidden tab, frames stepped in one task with `__tick`) keeps the pass on for `hold` frames.
+    Without usable queries (they throw, or the renderer has no GL context as in the headless
+    tests) `seenGate.off` is set and the pass runs every frame. (2) the object alone, with its
+    own materials, into `seenRT` (the size of the scene target, half-float + depth texture,
+    scissored to the box: outside it the target is stale and never read). (3) `seenMaskMat`: a
+    quad into `seenRT` whose depth is the scene's pushed back by the margin, `GreaterEqualDepth`,
+    writing alpha 0: it erases every pixel of him the scene shows. (4) `seenPatchMat`: what is
+    left goes into `sceneRT` over its cover (colour, part id, his own depth; `AlwaysDepth`), so
+    the ASCII pass draws him there like anywhere else. The scene target's depth at those pixels
+    is then the hero's (the FX particles' soft depth test sees him, not his cover).
+  - **The ASCII pass:** `tSeen` (= `seenRT`), `uSeen` (xy his screen uv, z the box's half-size in
+    px less 2, w 1 while the pass ran this frame, else 0 and `tSeen` is not read), `uSeenInk`
+    (0.3, 0.86, 1.0: the blade's cyan), `uSeenTone` (x silhouette line 1.15, y inner-line gain
+    1.6, z fill gain 1.2, both capped at 1.3; w the dark gap 0.85). At the end of the hero's
+    branch a pixel (or its cell centre) that `tSeen` marks takes `uSeenInk` × that brightness;
+    the wyrm's letters are multiplied by `1 − seenHalo(px)` (the halo's two rings looking for
+    `tSeen` pixels); over props and the world grid the existing halo finds the patched pixels.
+    `IS_HERO_GLSL` is the one definition of the hero's alpha window, shared by the ASCII pass and
+    both quads.
+  - **Cost** (Edge, RTX 4090, 1280x720, one task per frame): in the open one more draw call (the
+    probe: 57 → 58) and no measurable time; while covered 21 more (78: the hero's 18 material
+    batches, the probe, two quads) and 0.3–0.5 ms a frame.
 - **Leftovers** (declared, no longer effective): `U.uArtHeroKey` / `U.uArtHeroEdge` are still in
   `SURFACE_SHARED` and computed by the generic source, but the `SG_HERO_ART` fill replaces that
   colour on every hero material. `createArtAtlas` (`glyphs.js`) is no longer imported; the generic
@@ -381,6 +431,8 @@ Render helpers for creature modules:
   - `CONFIG.render.batch` (default `true`; `false` when the page URL has `?nobatch`, read once in
     `core/config.js`): with it off `batchRigid` returns an empty set and every mesh is drawn as
     before — an A/B switch for frame rate and image checks.
+  - `CONFIG.render.seenThrough.on` (`false` with `?noseen`): the same kind of switch for the hero
+    printed through his cover (see "The hero seen through what covers him" above).
 - `gi(ch)`, `gis(str)` (`render/glyphs.js`).
 - `game.pipeline.finalMat.uniforms` — `uHurt` (red edge 0..1), `uFade` (black 0..1), `uDesat` (0..1), `uWarm` (boss grade 0..1), `uExposure`, `uBloom`. **Owned by the HUD/flow module** (game/grade.js `ScreenGrade`: `hurtPulse`, `ghostPulse`, `dip`, `fadeTo`, `desatTo`, and `flashPulse(k)`: a white flash, `uExposure` × (1 + 0.9 k) over its base, gone in ~0.2 s; flow fires it on every `player:parry` of a blade).
 

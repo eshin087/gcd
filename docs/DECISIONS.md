@@ -2601,6 +2601,52 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   sees it (event timestamps could place it in its step: not done). Not deterministic: a step's
   length still follows the display above 50 Hz.
 
+
+## ADR-106 — The hero prints through what covers him: an ink ghost in the blade's cyan (2026-11-15)
+- **Context:** the owner: "i noticed while fighting the dragon the player disappears and cant see
+  whats going on if its behind the dragon. think of a good way to still let the player be seen
+  somehow for these situations." The camera has a fixed yaw and the wyrm fills a third of the
+  screen: north of its body, under a wing, behind it while it rears (Armageddon), under it while it
+  flies low, the hero's letters were gone (reproduced at 1280x720 and at a phone's 852x393). The
+  scene is drawn once with a depth test, so where the wyrm is in front, nothing of the hero is
+  left for the ASCII pass to draw. The owner dislikes lasting overlays, does not want the wyrm or
+  the hero restyled, and picks looks from rendered options.
+- **Decision:** (1) **The mechanism:** after the world pass the hero is drawn once more, alone,
+  into a second target (`seenRT`, only the box round him); a quad erases every pixel of him the
+  scene already shows (a depth test against the scene pushed back by a margin: 0.6 m, 1.5 m for
+  untagged pixels so grass never counts, never for a pixel in the hero's own alpha window so a
+  human boss is never cover); what is left, the hero exactly where he is covered, goes back into
+  the scene target over its cover. It is depth based: nothing is asked of the covering object, so
+  trees, pillars, landmarks and whatever is thrown or lifted later get it for free. (2) **The
+  look:** three were built behind a temporary `?seen=a|b|c` switch and rendered on the same frozen
+  frames (five situations at desktop size, four at phone size, a film strip): *A, ink ghost* (his
+  own line art in the blade's cyan over a thin dark gap), *B, window* (the letters over him thin
+  out, he keeps his colours), *C, rim only* (a cyan outline, the letters untouched). The owner
+  picked **A**; the switch and the other two were removed. (3) **A gate:** the pass costs a second
+  draw of the hero (18 draw calls), so it runs only while a probe finds something in front of his
+  torso: one quad in an occlusion query, answered a frame or two later, held for 20 frames.
+- **Rejected:** *A window as the look* (B): it cut a hole into the wyrm's chest glow, which is a
+  tell, and its letters dropped in and out as he moved. *A rim only* (C): quiet, but a one-pixel
+  line is weak over bright letters. *A mark on the ground or an icon:* it says where he is, not
+  what he is doing, and the owner dislikes overlays. *Dithering the wyrm away near the player in
+  its material* (what trees and pillars do): it restyles the wyrm, needs every future big thing to
+  opt in, and a pixel dither turns to noise on a letter grid. *A stencil or a second depth-greater
+  draw of the hero in the scene pass:* his own far side would overwrite his near side; the second
+  target resolves his nearest surface first. *Reading the hero's art from two textures in the
+  ASCII pass:* it rewrites every tap of the hero's branch; patching the scene target leaves that
+  branch as it was. *Running the pass every frame:* +0.44 ms and +20 draw calls a frame on a
+  desktop whether he is covered or not, a third more draws on a phone where draw calls are the
+  frame. *Gating it by where the boss stands:* not general (props, landmarks, thrown things).
+- **Consequences:** a second render target the size of the scene's (half-float + depth; only the
+  box round the hero is ever written). One more draw call in the open (the probe), 21 more while
+  covered; measured in Edge on an RTX 4090 at 1280x720: nothing measurable in the open, 0.3–0.5 ms
+  a frame while covered. The ghost appears a frame or two after cover does (the query's answer)
+  and the pass stops 20 frames after it ends. Where the pass runs, the scene target's depth under
+  the ghost is the hero's, so particles between him and his cover show over him. Cyan is now the
+  hero's colour by rule (STYLE.md). A thing drawn in the FX scene never counts as cover; a cover
+  thinner than the margin in front of him (he presses against it) hides him without a ghost. Not
+  measured on a phone.
+
 ## ADR-108 — Every answered blow is logged per move; the death screen names the killing move (2026-11-15)
 - **Context:** the genre review (the owner: "Yes, telemetry"). Every difficulty number so far comes
   from bots that answer a cue in one frame, and every boss section of COMBAT.md ends on "no human

@@ -116,6 +116,7 @@ async function boot() {
   game.world = new World(game);
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
+  pipeline.setSeenThrough(game.player.object3d); // he prints through what covers him (ADR-106)
   // the boss slot (ARCHITECTURE.md → Levels): the wyrm or the level's own boss; game.boss is the same
   game.dragon = level.createBoss(game);
   game.boss = game.dragon;

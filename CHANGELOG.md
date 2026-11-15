@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-four pieces of work since 0.4.0:
+Thirty-five pieces of work since 0.4.0:
 - **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
   which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
   attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory
@@ -12,6 +12,14 @@ Thirty-four pieces of work since 0.4.0:
   to you (blows seen, landed, blocked, parried, dodged, damage, deaths), added up over every
   attempt in this browser; `__telemetry()` in the console prints it for the level, the deadliest
   move first. Nothing leaves your machine.
+- **You can see yourself behind the dragon** (2026-11-15, ADR-106). *Fixed:* the hero vanished
+  whenever the Cinder Wyrm stood between him and the camera: north of its body, under a wing,
+  behind it while it rears, under it while it flies low. *Added:* the parts of him that are
+  covered now print through whatever covers them as a cyan ghost of his own line art (the colour
+  of his blade), so you can follow where he is and what he is doing. It shows only where he is
+  covered and only while he is; in the open he looks as before. It works through trees, pillars,
+  standing stones and landmarks too. Duels are unchanged: a human boss in front of you is not
+  drawn over. `?noseen` in the address turns it off (for comparing).
 - **The same fight at any frame rate** (2026-11-15, ADR-103): the game used to simulate each drawn
   frame in one step of its real length, so on a machine at 30 frames a second a perfect parry's
   0.08 s window was looked at only two or three times, and under 20 frames a second the game ran in
