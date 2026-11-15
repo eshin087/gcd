@@ -57,9 +57,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Background objects in the dragon's look (prop art); the house style written down (ADR-100)
 - [x] Landmarks: big set pieces per level, in the same look (ADR-100)
 - [x] A second pass on the landmarks at the game camera: rebuilt as a few flat masses, moved to where
-      the duel's camera looks (ADR-112)
+      the duel's camera looks (ADR-113)
 - [x] Effects in the dragon's letters: the fire field (fire, void, steel, smoke), every boss's fire and
-      spells on it, one set of timing cues, heat haze, letting go, shed digits (ADR-112)
+      spells on it, one set of timing cues, heat haze, letting go, shed digits (ADR-113)
   - [ ] The owner's look at it: the calm palette was built without their pick (C, hotter, is one number);
         the Lord's spells went from red to white and violet; the landmarks moved
   - [ ] The phone: the look at 4x6 cells and the frame rate (the bonfire and the braziers keep the
@@ -185,7 +185,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
 - [x] The owner's pick of the debris look: digits (chunks and shards turned down; the switch removed)
 - [x] The hero seen behind the wyrm (its own session, PR #41, ADR-106; merged)
-- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
+- [x] The Obsidian Throne rebuilt open (ADR-112, Session 48): three open arenas rendered for the
+      owner (Starfall, the Grave of Blades, the Broken Hall), "A Starfall" picked and built: a crater
+      with no walls, the star as his throne, 36 breakables (shards, rim slabs, stones in the air)
+  - [ ] Owner review of the PR preview on the phone (frame rate there is unverified)
+  - [ ] The stones in the air hang still: a slow bob needs the destruction system to carry them
+  - [ ] The first hall's wardens and great swords are no longer placed (builders kept in landmarks.js)
 - [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
 - [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
 - [ ] The Ash Disciple's terrain moves
@@ -364,7 +369,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
   - [ ] Sounds of his own: a blade hum and swing, thunder for the lightning, the ignition
   - [ ] The Void grip (lifted and held: mash to break free), designed and left out (M1.28 ships the
         Crushing Dark instead: a pin, no new hero state)
-  - [ ] The hall on a phone: frame cost of the inlay batch and six brazier lights
+  - [ ] The crater on a phone (the hall is gone, ADR-112): on-device frame rate with the inlay batch,
+        four vent lights and 36 breakables in one batch (desktop numbers: ADR-112)
   - [ ] A reward for beating him (ADR-059), once the technique system lands
 
 ## M1.22 — Controller support and remappable controls (2026-11-13, `input/gamepad`, ADR-066, ADR-067)

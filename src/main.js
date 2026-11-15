@@ -83,7 +83,7 @@ async function boot() {
     fx: {
       alpha: new GlyphParticles(U, { max: 3000, additive: false }),
       add: new GlyphParticles(U, { max: 7000, additive: true }),
-      // fire, void fire, sparks and smoke as one body of heat printed in small digits (ADR-101)
+      // fire, void fire, sparks and smoke as one body of heat printed in small digits (ADR-113)
       fire: new FireField(U, { max: 6000 }),
     },
     time: 0,

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FIRE_PALETTES, FIRE_SMOKE, FIRE_KIND } from './firePalettes.js';
 
-// The fire field (ADR-101): fire, void fire, sparks and smoke as ONE body of heat printed in the
+// The fire field (ADR-113): fire, void fire, sparks and smoke as ONE body of heat printed in the
 // wyrm's small digits, instead of separate big glyph sprites.
 //
 //   game.fx.fire.spawn({ x, y, z, vx, vy, vz, life: 0.7, size: 1.2, sizeEnd: 3.0,

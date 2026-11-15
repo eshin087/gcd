@@ -4,11 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-seven pieces of work since 0.4.0:
-- **Fire, spells and effects made of the same small letters** (2026-11-15, ADR-112). *Changed:* fire
+Thirty-eight pieces of work since 0.4.0:
+- **Fire, spells and effects made of the same small letters** (2026-11-15, ADR-113). *Changed:* fire
   is no longer loose glowing symbols. Every fire of the Cinder Wyrm (the breath, fireballs and their
   blasts, meteors, eruptions, the flame ring and wall, the burning pass, the nova, ember bullets, the
-  Scouring breath), the bonfire, the braziers, burning grass and burning trees is now one body of
+  Scouring breath), the bonfire, the crater's vents, burning grass and burning trees is now one body of
   small digits: a white-hot heart, an orange body, red tongues that climb and tear off, grey smoke.
   The Ash Disciple's and the Starless Lord's effects are drawn the same way: lightning is a jagged
   path of bright strokes in a violet sheath, crescents and blade trails are arcs of strokes, the
@@ -20,8 +20,18 @@ Thirty-seven pieces of work since 0.4.0:
   rises from its belly to its maw before the fire comes. *Changed:* the landmarks are rebuilt to
   read at a glance and stand where the fight's camera looks: the sect gate is beyond the east
   pillars (it was to the north), the stone swordsmen stand in the pillar ring, the cauldron on the
-  paving, the elder wyrm's skeleton along Cinderwood's east rim, the throne's wardens in the aisles,
-  in dark bronze. *Not changed:* the hero's own effects, and the wyrm's blue and red wisps.
+  paving, the elder wyrm's skeleton along Cinderwood's east rim. *Not changed:* the hero's own effects, and the wyrm's blue and red wisps.
+- **The Obsidian Throne is open** (2026-11-15, ADR-112). *Changed:* the Starless Lord's level is no
+  longer a walled hall. It is the crater where he fell: a round floor of cracked black plates round
+  the red seal, the star itself split open behind his seat, shards of its glass standing in the
+  floor, stones hanging in the air, a broken crown of slabs round the rim (low to the south, tall
+  behind him), and the forest outside thrown flat with every trunk pointing away. There are no
+  walls: nothing tall stands between the camera and the duel, and you can walk out between the
+  slabs (he keeps to the floor, a circle of 13.6 m round the seal). He wakes when you step over the
+  south lip onto the floor. The shards and the rim's slabs can be chipped, broken and felled and are
+  cover; the stones in the air only chip. *Fixed:* a duelist's flurry against a hero at the edge of
+  his floor: its blows came from spots he could not stand on and missed. *Removed:* the hall's walls,
+  door, pillars, braziers, stone wardens and great swords.
 - **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
   which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
   attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory

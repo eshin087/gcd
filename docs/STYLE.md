@@ -37,7 +37,7 @@ the wyrm next to it, it is wrong, however good it looks alone.
 - **The hero and the two human bosses** keep their ink-line art on a 4 px dot matrix. The owner:
   "Lets not touch the floor character and bosses" (2026-11-15). A sheet of them in larger letters
   was shown and not taken up.
-- **The floors** (flagstones, the courtyard's paving, the hall's tiles) keep carved glyphs
+- **The floors** (flagstones, the courtyard's paving, the crater's plates) keep carved glyphs
   (`createCarvedGlyphMaterial`): the ground must stay calm under the fight.
 - **The trees** keep the screen grid's bigger round letters (`FLAG.LEAF`, trunks `FLAG.STONE`): the
   owner chose to keep them ("perfect ASCII feel", v0.1).
@@ -47,7 +47,7 @@ the wyrm next to it, it is wrong, however good it looks alone.
 - Low-poly with FLAT facets: each facet is one tone, and the spread of tones is what prints as form.
   A big smooth shape lit evenly prints as one flat field of digits.
 - Albedo around 0.1 – 0.2 (linear), with variation; the pass lifts it. A level with its own dark
-  night (the throne hall) raises the material's `gain`, not the albedo.
+  night (the Obsidian Throne) raises the material's `gain`, not the albedo.
 - Look at it at the game camera, 720p and 852x393, next to the wyrm. The camera looks down at 58
   degrees: upright things are squashed (statues are drawn 1.3x taller than built), and anything on a
   level's north rim is off the top of the frame unless the hero is near.
@@ -61,7 +61,7 @@ the wyrm next to it, it is wrong, however good it looks alone.
   **glyph particles** from the world atlas; the flames are heat in the fire field (below). No
   debris meshes, no decals, no textures.
 
-**Effects (ADR-112).** Anything that burns, glows or strikes as a body is HEAT IN THE FIRE FIELD
+**Effects (ADR-113).** Anything that burns, glows or strikes as a body is HEAT IN THE FIRE FIELD
 (`game.fx.fire`), printed in the same small letters as the wyrm: never a big glyph sprite. Read
 "The fire field" below before making an effect. Only small things that fly on their own (an
 ember, a spark, dust, a chip of debris) are glyph particles, about one letter cell in size.
@@ -163,10 +163,10 @@ History matters here:
 
 | Thing | Technique | Where |
 |---|---|---|
-| Standing stones, boulders, pillars, walls, lanterns, the throne and dais, statues, bones, braziers, the bonfire, the fallen bell | **prop art, the dragon look** (ADR-100): a smooth lit source printed in the wyrm's fine digits, a dark body, stroke-glyph outlines, no blank cells; grid counted from the ground. Rules: "The house style" above and "Background objects" below | `createPropArtMaterial` / `FLAG.ART_PROP` (`render/materials.js`) → `render/pipeline.js` (the prop branch) |
-| Landmarks: the elder wyrm's skeleton, two stone swordsmen, the sect gate and its cauldron, two throne wardens, six great swords | the same prop art, built once per level | `world/landmarks.js` |
-| Flagstones, the courtyard's paving, the hall's tiles (floors only) | **carved glyphs**: one crisp glyph per world-fixed lattice cell (0.22 × 0.28 m on a plane facing the default camera, rows randomly offset), picked by light on flat facets (lit `% # 8 @ &`, shadow `. : ;`), mid-lit flanks hatched along their contour (`/ \| \`), world-fixed cracks, dim green moss tufts (`, ; " *`), near-black gaps. Flagstones: dimmer, irregular 5–7-sided slabs, half-sunk and tilted, a chipped moonlit chamfer, grass leaning over and growing through the rim | `createCarvedGlyphMaterial` (`render/materials.js`), looks `STONE_LOOK` / `SLAB_LOOK` in `world/forest.js` |
-| Trunks (the Cinder Tree's wood is prop art since ADR-112) | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
+| Standing stones, boulders, pillars, walls, lanterns, the throne and dais, statues, bones, braziers, the bonfire, the fallen bell, the crater's slabs, shards and hanging stones | **prop art, the dragon look** (ADR-100): a smooth lit source printed in the wyrm's fine digits, a dark body, stroke-glyph outlines, no blank cells; grid counted from the ground. Rules: "The house style" above and "Background objects" below | `createPropArtMaterial` / `FLAG.ART_PROP` (`render/materials.js`) → `render/pipeline.js` (the prop branch) |
+| Landmarks: the elder wyrm's skeleton, two stone swordsmen, the sect gate and its cauldron, the fallen star (the wardens and great swords of the first hall are kept in the file, not placed) | the same prop art, built once per level | `world/landmarks.js` |
+| Flagstones, the courtyard's paving, the crater's plates (floors only) | **carved glyphs**: one crisp glyph per world-fixed lattice cell (0.22 × 0.28 m on a plane facing the default camera, rows randomly offset), picked by light on flat facets (lit `% # 8 @ &`, shadow `. : ;`), mid-lit flanks hatched along their contour (`/ \| \`), world-fixed cracks, dim green moss tufts (`, ; " *`), near-black gaps. Flagstones: dimmer, irregular 5–7-sided slabs, half-sunk and tilted, a chipped moonlit chamfer, grass leaning over and growing through the rim | `createCarvedGlyphMaterial` (`render/materials.js`), looks `STONE_LOOK` / `SLAB_LOOK` in `world/forest.js` |
+| Trunks (the Cinder Tree's wood is prop art since ADR-113) | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
 | Canopies | screen-grid `LEAF` 0.6: blobby ramp `. : o 0 O 8 @` | same |
 | Grass | ~260k instanced quads, each ONE glyph stroke (`\| / \ ' Y V v l i`) **anchored in the world** (no shimmer when the camera moves); gentle slow wind, trample pushers, wing gusts, burnt to ash glyphs; dim world-space soil glyphs between | `world/grass.js`, `world/ground.js` |
 | Hero, wyrm | **classic ASCII art** of a shaded SOURCE image (v0.4), matched to the owner's two reference images on 2026-11-08: the **wyrm** as fine pixel-font digits (5x8 px cells at 720p since 2026-11-15, ADR-093) whose brightness draws charcoal scales, molten cracks and crimson torn sails; the **hero** as ink-line art, dim dense letters inside bright one-pixel ink lines. Rules and numbers: "Creature ASCII art" below | `createSurfaceGlyphMaterial` (`wyrm` / `heroArt` sources) → `render/pipeline.js` (hero branch, `wyrmCell`), `render/wyrmGlyphs.js`, `createPixelArtAtlas` |
@@ -449,8 +449,8 @@ each glyph smeared into solid bars.
 - **The grid is counted from the ground:** the screen position a fixed world point would have at
   the camera's focus. Letters stay on an object while the camera follows the hero: exact at the
   focus depth, a slow drift nearer and farther.
-- **Colour:** the object's own hue (blue-grey stone, vermilion columns, bronze, bone). The hall's
-  material uses `gain` 1.5 for its dark night.
+- **Colour:** the object's own hue (blue-grey stone, vermilion columns, bronze, bone). The Obsidian
+  Throne's material uses `gain` 1.5 for its dark night.
 - **Not checked in motion** when this was built: the drift toward the screen edges, and the
   fade-near-player dither on a letter grid.
 
@@ -475,7 +475,7 @@ gone.
   keeps his own colours: it cut a dark hole into the wyrm's glow, and its letters flickered as
   he moved) and a *rim only* (a cyan outline over the untouched letters: thin over bright ones).
 
-### The fire field: effects in the dragon's letters (2026-11-15, ADR-112)
+### The fire field: effects in the dragon's letters (2026-11-15, ADR-113)
 The owner: "the dragon fire attacks look meh ... make it look like real fire and more threatening
 and detailed". Fire used to be separate large glyph sprites with glow on top, outside the letter
 grid. Now (`render/fireField.js`, `render/firePalettes.js`):
@@ -511,7 +511,7 @@ grid. Now (`render/fireField.js`, `render/firePalettes.js`):
   colours are signals), the Lord's red blade, `combat/clashFx.js`.
 - **Bullets:** an ember is a small ball of fire round a gold `*`, with a burning tail.
 
-### Text effects (2026-11-15, ADR-112)
+### Text effects (2026-11-15, ADR-113)
 Things only a world made of letters can do. One rule for all of them: **a loose letter is always
 one art cell, pixel-snapped, from the wyrm's own atlas: never a scaled sprite.**
 - **Heat haze:** the letters of the wyrm and of objects within about nine cells above and three
@@ -527,7 +527,7 @@ one art cell, pixel-snapped, from the wyrm's own atlas: never a scaled sprite.**
   the maw (it used to light all at once).
 
 ### Fire, hazards and the plunge (2026-11-09)
-(Since ADR-112 the bodies of fire below are heat in the fire field, above; what this section says
+(Since ADR-113 the bodies of fire below are heat in the fire field, above; what this section says
 of shapes, timings and warnings still holds, the glyph and colour lists do not.)
 Every effect below is glyph particles (`fx.add`, additive HDR, for fire and light; `fx.alpha` for
 smoke and dust) using world-atlas glyphs only (`gi()` throws on others; `npm test`'s glyph check).
@@ -660,15 +660,32 @@ all glyph particles in the dragon's `add` / `alpha` pools.
 - **Claw wakes** (`clawTrail`): a burning streak behind the toes on every active frame of a claw or
   overhead; **slam burst** (`slamBurst`): fire and dust thrown up where an overhead lands.
 
-### The Obsidian Throne Hall and the blades of red light (2026-11-13, ADR-069, ADR-070)
-- **The hall** is the first set with a made floor: great square obsidian tiles (carved glyphs, the
-  calm paving look, sparser and dimmer than the courtyard's) whose seams draw a faint grid. Its light
-  is its own (`sky`: a dim cold moon, a red-tinted ambient and fog) plus six braziers burning crimson
-  (glyph flames, pooled lights). What glows without burning is **inlay**: the floor seal's rings,
-  spokes and runes, the lines down the centre runner, a slit down each pillar and the three windows
-  behind the throne are single glyphs laid along their lines (a dash turned to the line's on-screen
-  angle) in one additive batch that never moves. Keep inlay dim (ink 0.8 – 1.7 in the red channel): it
-  is the largest lit shape on screen and must sit under the fight; the seal flares only on an ignition.
+### The Obsidian Throne and the blades of red light (2026-11-13, ADR-069, ADR-070; the open crater: 2026-11-15, ADR-112)
+- **The crater** (the owner's pick "A, Starfall" of three rendered open arenas; it replaced a walled
+  hall: "the walls are also adding a visibility issue so make it more open") has a made floor: rings
+  of fused obsidian plates round the seal (carved glyphs, the calm paving look, sparser and dimmer
+  than the courtyard's) whose seams draw faint rings and spokes; toward the rim the plates tilt and
+  some are gone. Its light is its own (`sky`: a dim cold moon, a red-tinted ambient and fog) plus four
+  vents burning crimson in the floor (glyph flames, pooled lights). What glows without burning is
+  **inlay**: the floor seal's rings, spokes and runes, jagged cracks running from the seal toward the
+  rim and the two lines of strokes in the star's cleft are single glyphs laid along their lines (a
+  dash turned to the line's on-screen angle) in one additive batch that never moves. Keep inlay dim
+  (ink 0.8 – 1.7 in the red channel; the cleft 2.4, it is small): it is the largest lit shape on
+  screen and must sit under the fight; the seal flares only on an ignition.
+- **What stands in it** is prop art in two hues: obsidian (the rim's slabs, the star, rubble, the
+  stones hanging in the air) and the star's glass, the same dark stone with a violet cast (the shards
+  in the floor, a third of the rim, the crown behind the throne). Every piece is low-poly with one
+  tone a facet (`landmarks.js` `facetCol`): a shard is a five-sided prism with a long point, a
+  cluster is one tall shard and two to four leaning out of its foot, and what prints is the facets.
+  Nothing here is saturated: red stays for the seal, the blades and the tells, violet-white for the
+  Void's lightning (the glass is far dimmer than a bolt). A stone in the air reads by its shadow on
+  the floor and a wisp of red motes rising under it.
+- **Open means:** no wall anywhere (the rim is a crown of separate slabs with gaps a hero walks
+  through), nothing over 3 m south of the seal, the tall pieces north and on the flanks where the
+  fixed camera shows them. A set piece on the north rim is off the top of the frame until the hero
+  walks up to it: the star is seen from the dais's foot, and in the intro.
+- **Outside** the forest lies flat, every trunk pointing away from the crater (the dead trees' own
+  screen-grid look, laid down); far out a few still stand.
 - **A blade of light** is three things: a thin mesh in the hero-art pass (red fill, red-white ink
   lines), a row of additive strokes re-drawn along it every frame (red, with a hotter core stroke on
   every second one), and one red point light that follows it and lights the floor round him. The
@@ -688,7 +705,7 @@ all glyph particles in the dragon's `add` / `alpha` pools.
 - **The Void's colours:** red for what comes from his blades and his will (crescents, the Rift's
   fissures, the grip's talons, the pull, his wake and aura), violet-white for what comes from the
   sky and the dark (lightning, the Dark Star). A marked area is ringed in the tell's red on the floor;
-  the Dark Star also draws its reach in violet, because the hall's inlay is red and a red ring alone
+  the Dark Star also draws its reach in violet, because the crater's inlay is red and a red ring alone
   is lost on it. Lightning is a white-violet core inside a dimmer sheath that outlives it, two thin
   strands wound round it and forks that die in the air: one stroke per segment, laid along it on
   screen and stretched to its length (`LordFx._stroke`).

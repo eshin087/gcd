@@ -5,7 +5,7 @@ import { DuelFx } from '../enemies/duelist/fx.js';
 /** A blast as a blow on the world (world.impact). */
 const FIRE_BLOW = Object.freeze({ kind: 'blast', by: 'boss' });
 
-// Dragon FX. Everything that burns is heat in the fire field (render/fireField.js, ADR-101: blobs
+// Dragon FX. Everything that burns is heat in the fire field (render/fireField.js, ADR-113: blobs
 // that add up into one body of fire printed in the wyrm's small digits): the breath, the fireballs
 // and their blasts, meteors, lava pillars, the burning strip / ring / wall, the nova. Sparks, embers,
 // rocks and dust stay small glyph particles; the roar's rings are the field's crisp kind (strokes).

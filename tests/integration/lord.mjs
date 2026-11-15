@@ -1,7 +1,7 @@
 // The Starless level and the Starless Lord, headless (COMBAT.md → "The Starless Lord"): the REAL
 // Player, StarlessLord, Hud, GameFlow, AudioEngine and Lab (+ real LightPool, GlyphParticles,
 // CameraRig, Events) wired like src/main.js for `?level=starless`; the world is a light mock on the
-// real Colliders, filled by the real throne-hall set. A bot drives the input.
+// real Colliders, filled by the real set (the crater: world/throneHall.js). A bot drives the input.
 // usage: node lord.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
 //   scenario: level | data | timing | forms | spells | bounds | flow | win | all
 // (the spells scenario also covers the Crushing Dark, the Rift, the Dark Star, Parting Light and the glide)
@@ -23,7 +23,7 @@ const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { TELL, RESULT, POSTURE } = await imp('src/combat/rules.js');
 const { LEVELS, getLevel, levelFromSearch, applyLevel } = await imp('src/levels/index.js');
-const { createThroneHall, HALL } = await imp('src/world/throneHall.js');
+const { createThroneHall, THRONE } = await imp('src/world/throneHall.js');
 const { Player } = await imp('src/entities/player/player.js');
 const { StarlessLord } = await imp('src/entities/enemies/starlessLord/lord.js');
 const { Duelist } = await imp('src/entities/enemies/duelist/duelist.js');
@@ -68,7 +68,7 @@ const CATALOGUE = (() => {
 const EMITTED = new Set();
 
 applyLevel(LVL);
-// the hall's real colliders (pillars, walls, braziers, the dais's edge), built once
+// the crater's real colliders (the shards, the rim's slabs, the star, the dais's edge), built once
 const HALL_SET = (() => {
   const c = new Colliders();
   const set = createThroneHall(createSharedUniforms(), c);
@@ -110,7 +110,7 @@ function build(seed = SEED) {
   for (const k of HALL_SET.circles) colliders.add(k.x, k.z, k.r, k.tag);
   const counters = { spawns: 0, flares: 0, burns: 0 };
   const world = {
-    colliders, bonfire: { ...CONFIG.world.bonfire }, nest: { x: 0, z: HALL.throne.z },
+    colliders, bonfire: { ...CONFIG.world.bonfire }, nest: { x: 0, z: THRONE.throne.z },
     forest: { treeSpots: [], bonfire: { ...CONFIG.world.bonfire }, ambience: { update() {}, flare() { counters.flares++; } } },
     setGrassQuality() {}, resolve: (pos, r, b) => colliders.resolve(pos, r, b),
     setPusher(slot, x, y, z, r) { if (![x, y, z, r].every(Number.isFinite)) throw new Error(`NaN pusher ${slot}`); },
@@ -325,23 +325,36 @@ function deathblow(G, how = 'posture') {
 
 // ================================================================== scenario: level
 async function scenarioLevel() {
-  out('\n== scenario LEVEL (registry, the throne hall set, the boss slot) ==');
+  out('\n== scenario LEVEL (registry, the crater set, the boss slot) ==');
   assert(LEVELS.includes(LVL) && LVL.id === 'starless', `levels: ${LEVELS.map((l) => l.id).join(', ')}`);
   assert(levelFromSearch('?level=starless') === LVL && levelFromSearch('?lab&level=LORD') === LVL && levelFromSearch('?level=throne') === LVL, '?level=starless / lord / throne pick the level (case-insensitive)');
   for (const k of ['arrive', 'stir', 'phase2', 'phase3', 'phase4', 'victory', 'fallen', 'restReset', 'again', 'rise']) if (!LVL.text[k]) assert(false, `the level has its ${k} line`);
-  assert(CONFIG.world.bonfire.z === HALL.bonfire.z && CONFIG.world.dragonSleep.z === HALL.throne.z + 0.5 && CONFIG.world.bossTriggerZ < HALL.zS, 'applyLevel merged the hall layout into CONFIG.world');
+  assert(CONFIG.world.bonfire.z === THRONE.bonfire.z && CONFIG.world.dragonSleep.z === THRONE.throne.z + 0.5 && CONFIG.world.bossTriggerZ < THRONE.entryZ && CONFIG.world.dragonBound === THRONE.floor.r && CONFIG.world.bossFloor.zN === THRONE.floor.zN && TUNING.bound === THRONE.floor.r, 'applyLevel merged the crater layout into CONFIG.world (the bonfire, the throne, the lip, his floor)');
   const S = HALL_SET.set;
-  assert(S.group?.isObject3D && Array.isArray(S.slabs) && S.slabs.length > 150 && S.bonfire && S.nest && S.sky && typeof S.ambience?.update === 'function' && typeof S.ambience?.flare === 'function', `the set has the forest's shape, a sky and its ambience (${S.slabs.length} floor slabs)`);
+  assert(S.group?.isObject3D && Array.isArray(S.slabs) && S.slabs.length > 100 && S.bonfire && S.nest && S.sky && typeof S.ambience?.update === 'function' && typeof S.ambience?.flare === 'function', `the set has the forest's shape, a sky and its ambience (${S.slabs.length} floor slabs)`);
   let bad = 0;
   S.group.traverse((m) => { const pos = m.geometry?.attributes?.position; if (pos) for (const v of pos.array) if (!Number.isFinite(v)) bad++; });
-  assert(bad === 0, `the hall has no NaN vertices (${bad})`);
+  for (const b of S.breakables ?? []) for (const g of [...b.geos, ...(b.broken?.geos ?? [])]) for (const v of g.attributes.position.array) if (!Number.isFinite(v)) bad++;
+  assert(bad === 0, `the crater has no NaN vertices (${bad})`);
+  // what can be broken, lifted and thrown is listed for the destruction system, not merged into the set
+  const B = S.breakables, kinds = (k) => B.filter((b) => b.kind === k).length;
+  assert(Array.isArray(B) && B.length >= 30 && B.length <= 120 && kinds('shard') >= 12 && kinds('slab') >= 8 && kinds('hover') === 6, `its breakables: ${B?.length} (shard ${kinds('shard')}, slab ${kinds('slab')}, hover ${kinds('hover')})`);
+  assert(B.every((b) => b.mat === 'stone' && b.look === 'prop' && b.geos.length > 0 && Array.isArray(b.colliders) && [b.x, b.z, b.r, b.h].every(Number.isFinite) && b.r > 0 && b.h > 0), 'each in the contract\'s shape (ARCHITECTURE.md Destruction)');
+  assert(B.filter((b) => b.kind === 'hover').every((b) => b.colliders.length === 0 && b.cover === false && b.hp === Infinity && b.lift === 2) && B.filter((b) => b.kind !== 'hover').every((b) => b.colliders.length === 1 && b.lift === 2 && b.broken?.geos?.length), 'a hanging stone has no collider and gives no cover; a standing piece has its circle and leaves rubble; the Void may lift all of them');
+  // open: nothing tall on the near side (south of the seal's rim), no wall anywhere
+  const south = B.filter((b) => b.z > 6 && b.kind !== 'hover'), tallS = Math.max(...south.map((b) => b.h));
+  assert(south.length >= 4 && tallS < 3.2, `nothing tall stands south of the duel (${south.length} pieces there, the tallest ${tallS.toFixed(1)} m)`);
+  assert(S.scarInk?.length === 3 && S.scarInk[0] > S.scarInk[2] * 4, 'cracks in its floor are ember red');
   assert(HALL_SET.circles.length > 100 && HALL_SET.circles.every((k) => [k.x, k.z, k.r].every(Number.isFinite)), `its colliders are finite (${HALL_SET.circles.length})`);
-  // the seal is the origin and clear of colliders; the door is open; the dais is closed
+  // the seal is the origin and clear of colliders; the way in is open; the dais and the star are closed
   const c = new Colliders();
   for (const k of HALL_SET.circles) c.add(k.x, k.z, k.r, k.tag);
   const free = (x, z) => { const p = { x, z }; c.resolve(p, 0.45, 40); return Math.hypot(p.x - x, p.z - z) < 1e-6; };
-  assert(free(0, 0) && free(6, 6) && free(-9, -9) && free(0, HALL.zS + 1.2) && free(0, HALL.bonfire.z - 2), 'the floor, the door and the path are walkable');
-  assert(!free(0, HALL.daisZ - 0.8) && !free(HALL.pillarX + 0.3, HALL.pillarZ[2]) && !free(HALL.halfX + 1.3, 0), 'the dais, the pillars and the walls are not');
+  assert(free(0, 0) && free(6, 6) && free(-9, -9) && free(0, THRONE.entryZ + 1.2) && free(0, THRONE.entryZ - 1) && free(0, THRONE.bonfire.z - 2), 'the floor, the south lip and the path are walkable');
+  assert(!free(0, THRONE.daisZ - 0.8) && !free(7.6, -4.4) && !free(THRONE.star.x, THRONE.star.z + 1.2), 'the dais, a shard and the star are not');
+  // no wall: the hero can walk out of the crater between the rim's slabs, east and west as well as south
+  const walk = (dx, dz) => { const p = { x: 0, z: 0 }; for (let i = 0; i < 260; i++) { p.x += dx * 0.1; p.z += dz * 0.1; c.resolve(p, 0.45, 40); } return Math.hypot(p.x, p.z); };
+  assert(walk(1, 0.12) > 20 && walk(-1, 0.12) > 20 && walk(0, 1) > 20, `the crater is open: walking east, west and south from the seal leaves it (${walk(1, 0.12).toFixed(0)} / ${walk(-1, 0.12).toFixed(0)} / ${walk(0, 1).toFixed(0)} m out)`);
   // the ambience runs headless (no pipeline): setup, a flare, a few frames
   const U = createSharedUniforms();
   const g = { U, time: 0, lights: new LightPool(U), fx: { add: new GlyphParticles(U, { max: 2000 }), alpha: new GlyphParticles(U, { max: 2000, additive: false }), fire: new FireField(U, { max: 2000 }) }, pipeline: null };
@@ -349,7 +362,7 @@ async function scenarioLevel() {
   amb.setup(g);
   amb.flare(1);
   for (let i = 0; i < 30; i++) amb.update(DT, g);
-  assert(g.fx.add.count > 20 && g.lights.lights.length === 6, `braziers burn headless (${g.fx.add.count} particles, ${g.lights.lights.length} lights)`);
+  assert(g.fx.add.count > 20 && g.lights.lights.length === 4, `the vents burn headless (${g.fx.add.count} particles, ${g.lights.lights.length} lights)`);
 
   const G = build();
   const d = G.game.dragon;
@@ -733,7 +746,7 @@ async function scenarioSpells() {
       }
     }, () => dist2(G) < 3.2);
     run(G, 1.5, hold);
-    assert(glided && top > TUNING.glide.hover * 0.8 && fast > TUNING.glide.on && d.position.y < 0.02 && d.anim.key === 'loco' && d.mode === 'foot', `across the hall he is carried (${top.toFixed(2)} m off the floor at ${fast.toFixed(1)} m/s); in reach he comes down and walks`);
+    assert(glided && top > TUNING.glide.hover * 0.8 && fast > TUNING.glide.on && d.position.y < 0.02 && d.anim.key === 'loco' && d.mode === 'foot', `across the crater he is carried (${top.toFixed(2)} m off the floor at ${fast.toFixed(1)} m/s); in reach he comes down and walks`);
   }
   // ---- the red tide
   {
@@ -748,21 +761,21 @@ async function scenarioSpells() {
 
 // ================================================================== scenario: bounds
 async function scenarioBounds() {
-  out('\n== scenario BOUNDS (he keeps to the hall\'s floor, and a cornered hero is still in his reach) ==');
+  out('\n== scenario BOUNDS (he keeps to the crater\'s floor, and a hero backed against the rim is still in his reach) ==');
   const G = build();
   const { game } = G;
-  const d = game.dragon, p = game.player, H = TUNING.hall;
+  const d = game.dragon, p = game.player, B = THRONE.floor.r, zN = THRONE.floor.zN;
   duel(G, { dist: 4, ai: true, form: 3 });
   p.debug.god = true;
   let outside = 0, melee = 0;
   const h0 = G.hits.length;
   run(G, 45, () => {
-    p.debug.teleport(12.6, 14.6); // the south-east corner, by the door wall
-    if (d.mode !== 'intro' && d.position.y < 0.5 && (Math.abs(d.position.x) > H.x + 1e-6 || d.position.z < H.zN - 1e-6 || d.position.z > H.zS + 1e-6)) outside++;
+    p.debug.teleport(10.3, 10.4); // against the south-east rim, a metre past his floor
+    if (d.mode !== 'intro' && d.position.y < 0.5 && (Math.hypot(d.position.x, d.position.z) > B + 1e-6 || d.position.z < zN - 1e-6)) outside++;
   });
   for (const h of G.hits.slice(h0)) if (h.r === RESULT.HIT && h.kind === 'slash') melee++;
-  assert(outside === 0, `45 s of form 3 against a cornered hero: never off the floor (${outside} frames outside)`);
-  assert(melee >= 3, `his blade reaches the corner (${melee} blows landed there)`);
+  assert(d.bound === B && outside === 0, `45 s of form 3 against a hero at the rim: never off his floor, a circle of ${B} m south of the dais (${outside} frames outside)`);
+  assert(melee >= 3, `his blade reaches the rim (${melee} blows landed there)`);
   // every form, AI on, a hero who stands in the middle: no errors, no NaN (G.tick throws), the particle pool holds
   // (and his free hand stays the duelists': rigid on the forearm, no wrist turn, no sword fingers;
   // the hero's alone has them, anim.js opts.freeHand)
@@ -783,7 +796,7 @@ async function scenarioBounds() {
 
 // ================================================================== scenario: flow
 async function scenarioFlow() {
-  out('\n== scenario FLOW (title → the door → the throne intro → the duel) ==');
+  out('\n== scenario FLOW (title → the south lip → the throne intro → the duel) ==');
   const G = build();
   const { game, input } = G;
   const d = game.dragon, p = game.player;
@@ -793,19 +806,19 @@ async function scenarioFlow() {
   if (game.state !== 'explore') game.flow.debug.toState('explore');
   run(G, 0.3);
   assert(game.state === 'explore' && d.mode === 'sleep', 'exploring; he sits');
-  p.debug.teleport(0, HALL.zS + 0.6);
+  p.debug.teleport(0, THRONE.entryZ + 0.6);
   run(G, 0.2);
-  assert(d.mode === 'sleep', 'outside the door he does not stir');
+  assert(d.mode === 'sleep', 'outside the crater he does not stir');
   run(G, 3, () => { input.axis = { x: 0, y: 1 }; }, () => d.mode !== 'sleep');
   input.axis = { x: 0, y: 0 };
-  assert(d.mode === 'intro' && game.state === 'bossIntro' && p.position.z < CONFIG.world.bossTriggerZ + 0.5, `through the door he lifts his head (hero at z ${p.position.z.toFixed(1)})`);
+  assert(d.mode === 'intro' && game.state === 'bossIntro' && p.position.z < CONFIG.world.bossTriggerZ + 0.5, `over the lip, on the crater's floor, he lifts his head (hero at z ${p.position.z.toFixed(1)})`);
   let top = 0, lit = false, air = false;
   run(G, 6, () => { top = Math.max(top, d.position.y); lit = lit || d.lit > 0.9; air = air || d.state === 'airborne'; }, () => d.mode === 'foot' || d.mode === 'act');
   run(G, 0.2);
   assert(G.counts['dragon:introDone'] === 1 && game.state === 'boss', `the intro ends in the duel (${game.state})`);
   assert(lit && air && top > TUNING.intro.apex * 0.9 && G.counts['dragon:land'] >= 1, `the blade ignites and he leaps from the dais (apex ${top.toFixed(1)} m)`);
   // (on the floor, or carried a hand's breadth over it: he glides after a hero who keeps his distance)
-  assert(d.position.y >= 0 && d.position.y <= TUNING.glide.hover + 1e-6 && Math.hypot(d.position.x - TUNING.intro.land.x, d.position.z - TUNING.intro.land.z) < 6 && d.position.z > TUNING.hall.zN - 1e-6, `he lands on the hall's floor by the seal (${d.position.x.toFixed(1)}, ${d.position.z.toFixed(1)})`);
+  assert(d.position.y >= 0 && d.position.y <= TUNING.glide.hover + 1e-6 && Math.hypot(d.position.x - TUNING.intro.land.x, d.position.z - TUNING.intro.land.z) < 6 && d.position.z > THRONE.floor.zN - 1e-6, `he lands on the crater's floor by the seal (${d.position.x.toFixed(1)}, ${d.position.z.toFixed(1)})`);
   // the hero dies; resting resets him to the throne
   p.debug.god = false;
   p.hp = 1;

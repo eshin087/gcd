@@ -1,4 +1,4 @@
-// The fire field's looks (render/fireField.js, ADR-101): data, not logic. One block per kind of heat.
+// The fire field's looks (render/fireField.js, ADR-113): data, not logic. One block per kind of heat.
 //
 // A heat value h runs from 0 (nothing) through ~0.4 (the cool rim), ~1 (the body) to 2+ (the heart,
 // where many blobs overlap). `stops` are the five linear HDR colours the letters take along that

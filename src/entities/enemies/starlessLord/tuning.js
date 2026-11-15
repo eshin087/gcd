@@ -15,11 +15,11 @@ export const TUNING = {
   // his drawn size (model metres → world): a head taller than Shen Hui (1.2) and the hero (1.08).
   // Visual only, as theirs: the body circle, the hurt spheres and every reach are in gameplay metres
   scale: 1.32,
-  bound: 20, // (a circle round the seal that holds the whole hall: the real limit is `hall`)
-  // he stays on the hall's floor: between the walls, off the dais, inside the door (world/throneHall.js
-  // HALL: halfX 14.3, the dais from z -13.5, the south wall at z 16). A rectangle, not the duelist's
-  // circle: a hero backed into a corner or against the door is still in his reach
-  hall: { x: 13.0, zN: -12.3, zS: 15.0 },
+  // he stays on the crater's floor: a circle round the seal (world/throneHall.js THRONE.floor: the
+  // plates end at 15 m, the rim's slabs stand from 15.8 m), so a hero backed against the rim is still
+  // in his reach. North of it the dais is closed to him too: the level's CONFIG.world.bossFloor.zN
+  // (levels/starless.js; lord.js clampTarget), which the lab stage does not have
+  bound: 13.6,
 
   // ---- tells (rules: COMBAT.md; checked by tests/integration/lord.mjs). Faster than Shen Hui and
   // ramping (the owner's pick): a string's follow-up windups 0.34 s in form 1 (Shen Hui's) down to
@@ -123,7 +123,7 @@ export const TUNING = {
   // ---- the intro: he rises from the throne and leaps down to the seal
   wakeRadius: 10,
   // (seatY: the root's height while he sits; daisY: the dais's top tier; stand: how far in front of
-  // the seat he stands up; then the leap to `land`, on the seal's northern edge)
+  // the seat he stands up; then the leap to `land`, on the seal's northern edge: 10 m from the seat)
   intro: { seatY: 0.74, daisY: 0.52, stand: 1.0, land: { x: 0, z: -5.5 }, leapFrom: 1.5, leapTo: 2.5, apex: 2.6 },
 };
 
