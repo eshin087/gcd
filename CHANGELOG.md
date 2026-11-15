@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-two pieces of work since 0.4.0:
+Thirty-three pieces of work since 0.4.0:
 - **The same fight at any frame rate** (2026-11-15, ADR-103): the game used to simulate each drawn
   frame in one step of its real length, so on a machine at 30 frames a second a perfect parry's
   0.08 s window was looked at only two or three times, and under 20 frames a second the game ran in
@@ -21,6 +21,15 @@ Thirty-two pieces of work since 0.4.0:
   moment too late and his blow lands. *Added:* a **perfect parry** now deals half again the
   posture and makes your next light cut twice as fast and a crit. *Fixed:* a blow of a boss's own
   flurry that fell short of you settled nothing, so blocking all of it did not always break him.
+- **The flurry reads against the human bosses, and every blink leaves an ASCII afterimage**
+  (2026-11-15, ADR-101). *Changed:* against Shen Hui and the Starless Lord each flash cut now shows
+  the hero wound up for a moment, runs past the boss's side instead of through him, and slows into a
+  finish you can see; the hanging cuts and flares are sized to a man; the camera no longer lurches.
+  *Fixed:* the boss was thrown 0.3 m by every cut (he seemed to jump about), kept his own attack's
+  pose while he was cut, and after the last blow stumbled back into the hero. *Added:* every blink
+  (the Ghostep, the plunge, each cut of a flurry) leaves the hero behind as he stood, printed in
+  rows of cold blue digits that fall apart from the feet up, while some of them fly to where he
+  reappears.
 - **The boss's bar at the top; QUIT TO TITLE** (2026-11-15): the boss's name, HP and posture moved
   from the bottom of the screen to the top centre. The pause menu has **QUIT TO TITLE** (press it
   twice: the first press asks), and RESUME is laid out like the other items.
