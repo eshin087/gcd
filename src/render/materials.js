@@ -18,9 +18,11 @@ import { gi } from './glyphs.js';
 //   0.5          ART      hero / wyrm: their crisp render is the SOURCE IMAGE of a fine screen-space
 //                         ASCII-art grid (letters picked by brightness, coloured per cell);
 //   0.48         ART_HERO the same, with the hero's own pass settings (pipeline uArt* .x)
+//   0.57         ART_PROP background objects (stone, metal, bone): the same fine letters as the wyrm,
+//                         on a grid counted from the ground (pipeline uProp*; ADR-100)
 //   0.6          LEAF     blobby foliage ramp
 //   1.0          STONE    letter ramp + edge outlines
-export const FLAG = { NONE: 0.0, ART_HERO: 0.48, ART: 0.5, LEAF: 0.6, STONE: 1.0 };
+export const FLAG = { NONE: 0.0, ART_HERO: 0.48, ART: 0.5, ART_PROP: 0.57, LEAF: 0.6, STONE: 1.0 };
 /**
  * Hero ink-line art (materials with `heroArt`): instead of FLAG.ART_HERO they write a PART ID into
  * alpha, a0 + id × step (id = part × 2 + the geometry's aPart sub-id 0/1), still inside the pass's
@@ -1012,6 +1014,101 @@ export const CARVED_DEFAULTS = {
   cell: [0.22, 0.28],
 };
 const CARVED_LEVELS = 6;
+
+/**
+ * Prop art source (FLAG.ART_PROP, ADR-100): the smooth lit image of a background object, which the
+ * art pass prints in the wyrm's fine letters (a dark body, brighter letters where a face or an edge
+ * catches the light, an outline of stroke glyphs). For static stone / metal / bone geometry baked in
+ * world space: pillars, walls, standing stones, boulders, statues, the throne.
+ *
+ * Geometry attributes (the CarvedGlyph set, so a set's `stones` geometries need no change): position,
+ * normal (flat facet normals read best: each facet is one tone), aCol (vec3 albedo, linear), aAO
+ * (0..1), aEdge (0..1 edge band that catches the light). aMoss / aInk may be present and are ignored.
+ *
+ * Options: gain (source brightness, default 1), key (camera-fixed key light from the viewer's upper
+ * left, default 0.5: the form reads the same from every side, like the wyrm's), edge (aEdge band
+ * strength, default 1), fadeNearPlayer (dither away in front of the player), side.
+ */
+export function createPropArtMaterial(U, o = {}) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      ...pickShared(U, SHARED),
+      uPlayerScreen: U.uPlayerScreen,
+      uResolution: U.uResolution,
+      uCamRight: U.uCamRight,
+      uCamUp: U.uCamUp,
+      uFadeOn: { value: o.fadeNearPlayer ? 1 : 0 },
+      uGain: { value: o.gain ?? 1 },
+      uKey: { value: o.key ?? 0.5 },
+      uEdge: { value: o.edge ?? 1 },
+    },
+    vertexShader: /* glsl */ `
+      attribute vec3 aCol;
+      attribute float aAO;
+      attribute float aEdge;
+      varying vec3 vW;
+      varying vec3 vN;
+      varying vec3 vCol;
+      varying float vAO;
+      varying float vEdge;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vW = wp.xyz;
+        vN = normalize(mat3(modelMatrix) * normal);
+        vCol = aCol;
+        vAO = aAO;
+        vEdge = aEdge;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      ${COMMON_GLSL}
+      uniform vec4 uPlayerScreen;
+      uniform vec2 uResolution;
+      uniform vec3 uCamRight;
+      uniform vec3 uCamUp;
+      uniform float uFadeOn;
+      uniform float uGain;
+      uniform float uKey;
+      uniform float uEdge;
+      varying vec3 vW;
+      varying vec3 vN;
+      varying vec3 vCol;
+      varying float vAO;
+      varying float vEdge;
+      void main() {
+        if (uFadeOn > 0.5) {
+          vec2 sp = gl_FragCoord.xy / uResolution;
+          vec2 d = (sp - uPlayerScreen.xy) * vec2(uResolution.x / uResolution.y, 1.0);
+          float viewDepth = 1.0 / gl_FragCoord.w;
+          if (viewDepth < uPlayerScreen.z - 1.5) {
+            float t = smoothstep(0.17, 0.07, length(d));
+            if (bayer4(gl_FragCoord.xy * 0.5) < t * 0.92) discard;
+          }
+        }
+        vec3 n = normalize(gl_FrontFacing ? vN : -vN);
+        float sh = shadowAt(vW + n * 0.12);
+        vec3 L = lightAt(vW, n, 0.2, sh);
+        // the key light: fixed to the camera, from the viewer's upper left (the wyrm's light)
+        vec3 keyDir = normalize(-0.5 * uCamRight + 0.9 * uCamUp + cross(uCamRight, uCamUp));
+        float key = max(dot(n, keyDir), 0.0);
+        L += uMoonColor * uKey * key * key * (0.35 + 0.65 * sh);
+        vec3 col = vCol * L * vAO * uGain;
+        // an edge band catches the light: brighter letters along a chamfer or a rim
+        col += vCol * vEdge * uEdge * (luma(L) + 0.08) * 0.9;
+        // dragon fire scorches low stones; embers glow on them
+        vec2 sc = scorchAt(vW.xz);
+        float low = 1.0 - smoothstep(0.3, 1.4, vW.y);
+        col *= 1.0 - sc.x * 0.55 * low;
+        col += vec3(1.0, 0.28, 0.04) * sc.y * sc.y * low * 0.3;
+        col = applyFog(col, vW);
+        gl_FragColor = vec4(col, ${FLAG.ART_PROP.toFixed(2)});
+      }
+    `,
+    side: o.side ?? THREE.DoubleSide,
+    blending: THREE.NoBlending,
+  });
+}
 
 /**
  * Carved glyph material for rocks: crisp glyphs fixed on the stone, chosen by light (lit facets

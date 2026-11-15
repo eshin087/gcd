@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial } from '../render/materials.js';
+import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { GlyphParticles } from '../render/particles.js';
 import { mulberry32, range, fbm2 } from '../core/rng.js';
@@ -10,6 +10,7 @@ import {
   prep, lumpy, paint, carve, slabGeometry, mul, STONE_LOOK, SLAB_LOOK,
   buildDeadTree, buildBoulder, buildFlagstone, buildBonfire,
 } from './forest.js';
+import { buildWarden, buildGreatSword, carved } from './landmarks.js';
 
 // The Obsidian Throne Hall (the Starless Lord's level; owner's pick "A" of three rendered arenas,
 // 2026-11-13). South to north (the player walks north, -z): the bonfire, a path of flagstones through
@@ -182,7 +183,7 @@ export function createThroneHall(U, colliders) {
     const bowl = prep(new THREE.CylinderGeometry(0.52, 0.26, 0.36, 8, 1));
     bowl.translate(bx, y0 + 1.3, bz);
     for (const g of [post, bowl]) {
-      paint(g, { col: IRON, flag: FLAG.STONE, ao: 0.9 });
+      paint(g, { col: IRON, flag: FLAG.ART_PROP, ao: 0.9 });
       propGeos.push(g);
     }
     colliders.add(bx, bz, 0.45, 'stone');
@@ -244,14 +245,28 @@ export function createThroneHall(U, colliders) {
     colliders.add(x, z, size * 0.85, 'boulder');
   }
 
+  // ---- landmarks (landmarks.js): two hooded wardens flanking the throne, and in the side aisles
+  // the great swords of those who came before, driven into the floor
+  {
+    const lr = mulberry32(CONFIG.seed + 2977);
+    for (const sx of [-1, 1]) {
+      stoneGeos.push(...carved(buildWarden(lr, sx * 5.7, T.z + 0.2, -sx * 0.3, 1.25)));
+      for (const [i, z] of [-12.75, -1.75, 9.25].entries()) {
+        const x = sx * (H.pillarX + 2.45);
+        stoneGeos.push(...carved(buildGreatSword(lr, x, z, sx * 0.25, 1.05 - i * 0.08, { lean: sx * (0.12 + 0.07 * i) * (i === 1 ? -1 : 1) })));
+        colliders.add(x, z, 0.9, 'stone');
+      }
+    }
+  }
+
   // ---- meshes
   const group = new THREE.Group();
   group.name = 'throneHall';
   const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   const pitch = CONFIG.camera.pitch;
-  const stoneMat = createCarvedGlyphMaterial(U, {
-    ...STONE_LOOK, gain: 3.3, lumScale: 4.6, jitter: 0.36, inkFloor: 0.07, crackAmount: 0.35, mossInk: [0.05, 0.012, 0.014], fadeNearPlayer: true, viewPitch: pitch,
-  });
+  // pillars, walls, the dais, the throne and the landmarks are printed like the wyrm (prop art,
+  // ADR-100); the floor tiles stay carved. The hall's own night is dark: a higher source gain
+  const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: 1.5 });
   // a whole floor under the duel must stay calm: sparse, dim glyphs
   const slabMat = createCarvedGlyphMaterial(U, {
     ...SLAB_LOOK, gain: 1.55, lumScale: 2.2, edge: 0.42, inkFloor: 0.03, crackAmount: 0.3, topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'], viewPitch: pitch,

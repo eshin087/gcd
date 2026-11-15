@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial } from '../render/materials.js';
+import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { mulberry32, range, hash2, fbm2 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
+import { buildElderWyrm, buildCinderTree, landmarkPoint, ELDER_COLLIDERS } from './landmarks.js';
 
 // Procedural forest ring around a moonlit clearing: blob oaks and pines (leaf-ramp ASCII),
 // a broken standing-stone circle, boulders, flagstones, the bones of past challengers near
@@ -383,7 +384,7 @@ export function buildFlagstone(rng, x, z, w, d, yaw) {
 function buildBones(rng, cx, cz) {
   const parts = [];
   const add = (geo, colK = 1) => {
-    paint(geo, { col: (px, py, pz) => mul(BONE, colK * (0.7 + 0.45 * hash2(px * 11, pz * 11 + py))), flag: FLAG.STONE, ao: 0.9 });
+    paint(geo, { col: (px, py, pz) => mul(BONE, colK * (0.7 + 0.45 * hash2(px * 11, pz * 11 + py))), flag: FLAG.ART_PROP, ao: 0.9 });
     parts.push(geo);
   };
   // great ribcage of an older wyrm, half sunk into the earth
@@ -434,7 +435,7 @@ function buildBones(rng, cx, cz) {
     if (rng() < 0.4) {
       const helm = prep(new THREE.SphereGeometry(0.24, 7, 5, 0, TAU, 0, Math.PI * 0.6));
       helm.translate(x, 0.0, z);
-      paint(helm, { col: [0.2, 0.21, 0.23], flag: FLAG.STONE, ao: 0.9 });
+      paint(helm, { col: [0.2, 0.21, 0.23], flag: FLAG.ART_PROP, ao: 0.9 });
       parts.push(helm);
     } else if (rng() < 0.5) {
       const sword = prep(new THREE.BoxGeometry(0.08, 1.15, 0.03));
@@ -442,7 +443,7 @@ function buildBones(rng, cx, cz) {
       sword.rotateZ(range(rng, -0.4, 0.4));
       sword.rotateY(rng() * TAU);
       sword.translate(x, 0, z);
-      paint(sword, { col: [0.3, 0.31, 0.34], flag: FLAG.STONE, ao: 1 });
+      paint(sword, { col: [0.3, 0.31, 0.34], flag: FLAG.ART_PROP, ao: 1 });
       parts.push(sword);
     } else {
       const bone = prep(new THREE.CylinderGeometry(0.05, 0.07, 0.9, 5));
@@ -463,20 +464,20 @@ export function buildBonfire(rng, x, z) {
     lumpy(st, 0.1, 4, i);
     st.scale(1, 0.7, 1);
     st.translate(x + Math.cos(a) * 0.72, 0.08, z + Math.sin(a) * 0.72);
-    paint(st, { col: mul(STONE, 1.1), flag: FLAG.STONE, ao: 0.9 });
+    paint(st, { col: mul(STONE, 1.1), flag: FLAG.ART_PROP, ao: 0.9 });
     parts.push(st);
   }
   const ash = prep(new THREE.SphereGeometry(0.55, 10, 4, 0, TAU, 0, Math.PI / 2));
   ash.scale(1, 0.22, 1);
   ash.translate(x, 0, z);
-  paint(ash, { col: [0.06, 0.055, 0.05], flag: FLAG.STONE, ao: 1 });
+  paint(ash, { col: [0.06, 0.055, 0.05], flag: FLAG.ART_PROP, ao: 1 });
   parts.push(ash);
   for (let i = 0; i < 3; i++) {
     const log = prep(new THREE.CylinderGeometry(0.07, 0.09, 0.95, 5));
     log.rotateZ(Math.PI / 2 - 0.35);
     log.rotateY((i / 3) * TAU);
     log.translate(x, 0.22, z);
-    paint(log, { col: [0.05, 0.035, 0.025], flag: FLAG.STONE, ao: 0.8 });
+    paint(log, { col: [0.05, 0.035, 0.025], flag: FLAG.ART_PROP, ao: 0.8 });
     parts.push(log);
   }
   const sword = prep(new THREE.BoxGeometry(0.09, 1.25, 0.035));
@@ -487,13 +488,19 @@ export function buildBonfire(rng, x, z) {
     g.rotateZ(0.12);
     g.rotateY(0.6);
     g.translate(x, 0.35, z);
-    paint(g, { col: [0.32, 0.31, 0.3], flag: FLAG.STONE, ao: 1 });
+    paint(g, { col: [0.32, 0.31, 0.3], flag: FLAG.ART_PROP, ao: 1 });
     parts.push(g);
   }
   return parts;
 }
 
 // ---------- assembly ----------
+/** Where the forest's landmarks stand (landmarks.js): world x, z, yaw, scale. */
+export const FOREST_LANDMARKS = {
+  elder: { x: -1, z: -31, yaw: 0.06, s: 1 },
+  tree: { x: -29.5, z: -5.5, yaw: 0.4, s: 1 },
+};
+
 export function createForest(U, colliders) {
   const rng = mulberry32(CONFIG.seed);
   const W = CONFIG.world;
@@ -510,6 +517,15 @@ export function createForest(U, colliders) {
   // trees in a ring around the clearing, leaving a path open to the south
   const trees = [];
   const open = (x, z) => !(z > 27 && Math.abs(x) < 4.2 + (z - 27) * 0.18);
+  // the landmarks (landmarks.js) stand on the rim: trees and boulders drawn there are dropped AFTER
+  // they are built, so the layout's random sequence (every other tree and stone) stays as it was
+  const LM = FOREST_LANDMARKS;
+  const inLandmark = (x, z, pad = 0) => {
+    if (Math.hypot(x - LM.tree.x, z - LM.tree.z) < 8.5 + pad) return true;
+    const e = LM.elder, c = Math.cos(e.yaw), s = Math.sin(e.yaw);
+    const lx = (x - e.x) * c - (z - e.z) * s, lz = (x - e.x) * s + (z - e.z) * c;
+    return Math.abs(lx + 0.5) < 17 + pad && lz > -8 - pad && lz < 6.5 + pad;
+  };
   // spatial hash so the min-spacing test stays cheap with many trees
   const cellOf = (x, z) => `${Math.floor(x / 4)},${Math.floor(z / 4)}`;
   const buckets = new Map();
@@ -537,6 +553,7 @@ export function createForest(U, colliders) {
   }
   for (const t of trees) {
     const g = t.type === 'pine' ? buildPine(rng, t.x, t.z, t.s) : t.type === 'dead' ? buildDeadTree(rng, t.x, t.z, t.s) : buildOak(rng, t.x, t.z, t.s);
+    if (inLandmark(t.x, t.z)) continue;
     treeGeos.push(...g);
     treeSpots.push({ x: t.x, z: t.z, r: t.type === 'pine' ? 2.2 * t.s : 3.0 * t.s });
     if (Math.hypot(t.x, t.z) < 42) colliders.add(t.x, t.z, 0.45 * t.s, 'trunk');
@@ -576,7 +593,9 @@ export function createForest(U, colliders) {
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (!open(x, z) || (edge && z > 20 && Math.abs(x) < 8)) continue;
     const size = edge ? range(rng, 0.9, 1.6) : range(rng, 0.7, 2.0);
-    stoneGeos.push(buildBoulder(rng, x, z, size));
+    const boulder = buildBoulder(rng, x, z, size);
+    if (inLandmark(x, z, -1.5)) continue;
+    stoneGeos.push(boulder);
     if (r < 42) colliders.add(x, z, size * 0.85, 'boulder');
   }
 
@@ -601,13 +620,28 @@ export function createForest(U, colliders) {
   colliders.add(bf.x, bf.z, 0.75, 'bonfire');
   bare.push({ x: bf.x, z: bf.z, r: 1.6 });
 
+  // landmarks: the elder wyrm's skeleton along the north rim, the Cinder Tree on the west rim
+  {
+    const lr = mulberry32(CONFIG.seed + 977);
+    const e = LM.elder, t = LM.tree;
+    propGeos.push(...buildElderWyrm(lr, e.x, e.z, e.yaw, e.s));
+    for (const [lx, lz, r] of ELDER_COLLIDERS) {
+      const p = landmarkPoint(e.x, e.z, e.yaw, e.s, lx, lz);
+      colliders.add(p.x, p.z, r * e.s, 'stone');
+    }
+    treeGeos.push(...buildCinderTree(lr, t.x, t.z, t.yaw, t.s));
+    colliders.add(t.x, t.z, 2.5 * t.s, 'trunk');
+    treeSpots.push({ x: t.x, z: t.z, r: 5 });
+  }
+
   const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   const treeMesh = new THREE.Mesh(mergeGeometries(treeGeos), mat);
   treeMesh.name = 'trees';
   const propMesh = new THREE.Mesh(mergeGeometries(propGeos), mat);
   propMesh.name = 'props';
   const pitch = CONFIG.camera.pitch;
-  const stoneMat = createCarvedGlyphMaterial(U, { ...STONE_LOOK, fadeNearPlayer: true, viewPitch: pitch });
+  // standing stones and boulders are printed like the wyrm (prop art, ADR-100); flagstones stay carved
+  const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true });
   const stoneMesh = new THREE.Mesh(mergeGeometries(stoneGeos), stoneMat);
   stoneMesh.name = 'stones';
   const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, viewPitch: pitch });
