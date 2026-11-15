@@ -2731,3 +2731,64 @@ the sizzle and the ember hiss.
   the stored table needs a desktop browser on the same origin. Burn deaths read "THE FLAMES".
   Blows dodged by walking out of reach are never "seen" (no hit was resolved).
 
+## ADR-113 — Two stances: at ease, and a fencer's guard in a fight (2026-11-15)
+- **Context:** the owner: "review the current character posture, angle of the right hand sword
+  when the character is not attacking. i want the characters hands to have some kind of cool
+  looking idle motion/stance where it looks natural and cool. something about the current idle
+  animation is bothering me." The ready stance (ADR-036, ADR-040), measured: the blade 52° down and
+  79° out from his front, 27° out of line with the forearm, held there from an elbow tucked at the
+  ribs (the arm of a man showing the way); both hands beside the hips at one height, the chest
+  square; over a 2.4 s breath nothing travelled more than 1-3 cm, under half a pixel at the game
+  camera; and the idle actions (ADR-047) never play while locked on, so in a fight he was a statue.
+  Asked what is off, the owner ticked the bent wrist, the mannequin arms and the statue (not the
+  blade showing at his side), asked for three options across three attitudes, each with a stance
+  for exploring and one for a fight, and for motion that is "alive, not busy". Three were built
+  behind a temporary switch and rendered (an overview, a detail sheet and a loop each): A "At ease",
+  B "Coiled" (two-handed, a deep middle guard), C "Hidden blade" (the sword reversed behind the
+  arm). The owner picked A, the motion as shown, and the fight stance for a lock-on or a boss fight.
+- **Decision:** (1) **Two stances, one layer.** `stances.js` holds `atEase` and `fencerGuard`;
+  `anim.js stand()` writes them over `guard()` for the hero's animator only (`A.freeHand`), blended
+  by `HeroAnimator.fightW`. `loco()` builds on `stand()` and an attack's recovery comes home to it.
+  `guard()` is unchanged: it stays the base every other clip is written over and what a duelist's
+  footwork reads, so no other clip and no boss moved. (2) **At ease:** tall, a little side-on, the
+  weight on the rear leg; the sword arm hangs loose (elbow 136°) and the blade lies on the forearm's
+  line (6° on average, 10° at most as the point drifts), down and out to his front-right, the point 0.19 m off the grass; the free hand lies
+  open on the belt, the elbow out behind it. (3) **The fight stance** is a fencer's guard: the sword
+  side turned to the foe (half in the hips, half in the waist) and stepped forward, the arm half
+  extended (99°), the blade on the forearm's line (7° on average) with its point on the foe, the flat up; the free
+  hand stays on the belt. It holds while `player.lockOn` or the flow is in `bossIntro` / `boss`
+  (aiming with the mouse he never locks on: without the second rule he would stand at ease beside a
+  boss). He takes it in 0.38 s and lets it down over 0.88 s. (4) **The life** (`STAND_LIFE`): the
+  breath (3.7 s at ease, 3.1 s in the guard; the arms follow late), the weight settling from foot to
+  foot (7.9 s), a slower drift, a look around made of two sines, and two that carry the blade's
+  point; no period within 4 % of a multiple of another. The point travels 18 cm at ease and 13 cm in
+  the guard over 12 s (the stance before: 2-4 cm), never more than 0.25 cm in a frame. (5) **What
+  the guard asked of the rest:** in a fight the sword arm keeps the guard on the move (`FIGHT_RUN`
+  in `loco()`; a sprint still trails the blade); a roll and a backstep, written over `guard()`'s low
+  blade, ease the sword arm out of the pose they began in over 0.16 s (`swordFromEntry`), and the
+  loco clip settles the blade into the stance over 0.24 s; the idle actions play at ease only.
+  (6) The Lab's PLAYER section holds either stance (`player.debug.fightStance`).
+- **Why:** the three complaints have one cause each, and A answers all three with the least risk:
+  the wrist is straight because the arm, not the wrist, carries the blade's line; the arms differ
+  because one hand has a place of its own; and the motion is five times larger because it is
+  written for the game camera, where 1 cm is a fifth of a pixel. B kept both hands on the grip,
+  which every one-handed light would have had to break; C needed a reversed grip to turn into every
+  attack. A fight stance of its own was the owner's call. Keeping `guard()` as the base means
+  thirty clips and three bosses were not re-posed for a stance change.
+- **Measured** (headless, against `main`; the fastest frame of the blade's point, cm): running,
+  strafing and backing away in a fight 2.6 / 3.0 / 3.1 (the old stance 4.7 / 4.6 / 11.4; the guard
+  with a trailed blade 15.5 / 17.7); into a block 38 (105); into a roll from the guard 46 (173
+  before the easing; the old stance 57); taking the guard 22; letting it down 9. The hand on the
+  belt: the palm 2.7-3.2 cm off the waist, no fingertip in the hips or the torso standing, setting
+  off or stopping. The flat of the blade to the game camera with him turned four ways: ≥ 0.28 of
+  its width at ease (a blade that hangs this steeply cannot face four cameras), ≥ 0.42 in the guard.
+- **Rejected:** changing `guard()` itself (every clip that starts from it, and both duelists' rest,
+  would have moved); one stance for both (the owner chose two); the fight stance on lock-on only
+  (see above); a blade trailed on the move in a fight (the 140° swing at every start and stop);
+  the guard's blade straight ahead with its edge down (invisible from the camera behind him).
+- **Consequences:** the first frames of every swing begin from another pose, so a seeded bot fight
+  plays out differently: the WIN scenario's default seed now sees one guard break (a red fireball
+  inside a parry tap); seeds 1-6 see none on either stance, and the check allows one. The idle
+  actions were written over the old base and fade in from the new one unchanged. The free hand has
+  no finger joints: its fingers lie straight along the hip. Not judged by a human in play yet, nor
+  on the phone.

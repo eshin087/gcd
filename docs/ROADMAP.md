@@ -162,6 +162,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.39 — The hero's stance: at ease, and a fencer's guard (2026-11-15, `player/idle-stance`, ADR-113)
+- [x] Three stances rendered for the owner's pick (A "At ease", B "Coiled", C "Hidden blade"); A picked
+- [x] At ease: the blade on the arm's own line, a hand on the belt; alive at the game camera
+- [x] A fencer's guard while locked on or in a boss fight, kept up on the move
+- [x] The transitions audited against `main`: the run, a roll, a backstep, taking the guard and letting it down
+- [ ] Follow-ups:
+  - [ ] The owner's look at it in play and on the phone
+  - [ ] The idle actions re-posed from the hand on the belt, if they read wrong
+  - [ ] The other outfits (`?heroLook=`) looked at in both stances
+
 ## M1.38 — The world breaks (2026-11-15, `world/destruction`, ADR-107; staged PRs by parallel sessions)
 - [x] Breakables in a rigid batch, ground fire that burns where it lands, cover, marks, the reset;
       every fighter's blows hit the world (`world/destruction`, ADR-107)

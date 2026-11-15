@@ -525,6 +525,8 @@ update(dt)
 debug: { god: boolean, infiniteFlasks: boolean, heal(), teleport(x, z), kill(),   // used by the Lab
          attackSpeed: number,          // × the attack clock (1 in play): every swing's windup, cut and recovery run this
                                        //   much faster, its step covering the same ground (the Lab's "atk" slider)
+         fightStance: boolean | null,  // the stance he stands in (ADR-108): true holds the fight stance, false at ease;
+                                       //   null = the game decides (the Lab's "stance" row)
          plunge(execution = false) }   // Lab / captures: start the plunge on the dragon now (any range, in the air too)
 ```
 Module-private state the animator reads (anim.js): `plungeAnim { phase, u, t, exec, h }` (the plunge
@@ -959,11 +961,24 @@ the hero's rest (sword fingers low by the left hip, pointing ahead and down), so
 animator carries the hero's values in them too and ignores them; `locoGuard` carries them in
 `GUARD_CH`. A hit, a fall, the drink and the lean on the pommel open the hand and make the wrist
 rigid (`freeLimp`); the charge, the block and the plunge (`plBase`) open it to the grip (`hs` 0).
-**Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, not locked on, with no
-guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
+**The two stances** (ADR-113, `stances.js`): where the hero stands. `stand(pose, A)` (anim.js) is
+`guard()`'s ready stance, and for the hero's animator (`A.freeHand`) the stance written over it:
+`atEase` (the blade on the forearm's line down at his front-right, the free hand open on the belt)
+and `fencerGuard` (the sword side to the foe, the arm half extended, the point on the foe), blended
+by `anim.fightW` (0 at ease … 1 the guard). `HeroAnimator.update` drives `fightW` toward 1 while
+`player.lockOn` or the flow state is `bossIntro` / `boss` (`player.debug.fightStance` true / false
+overrides): up at `FIGHT_EASE[0]` (0.38 s), down at `FIGHT_EASE[1]` (0.88 s). `loco()` builds on
+`stand()` and an attack's recovery comes home to it; `guard()` stays the base of every other clip
+and of a duelist's footwork. Its life is `STAND_LIFE` (periods of the breath, the weight, a look
+around and the blade's point; none a multiple of another). In a fight the sword arm keeps the guard
+on the move (`FIGHT_RUN`; a sprint trails the blade); a roll and a backstep ease the sword arm out
+of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco clip settles the
+blade into the stance over `LOCO_SETTLE` (0.24 s).
+**Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
+on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
 `Math.random`), never the same twice in a row: `look`, `stretch`, `inspect`, `twirl`, `shoulder`,
-`lean` (1.7–4.2 s each). Each is a layer over the ready stance (`idleLife` in `locoGuard`) with a
+`lean` (1.7–4.2 s each). Each is a layer over the at-ease stance (`idleLife` in `locoGuard`) with a
 0.45 s fade in and 0.55 s out; anything else (a move, a lock-on, a guard, another clip) cuts it within
 `IDLE_LIFE.cancel` (0.16 s). State: `anim.fidget = { k, t, w, cut, still, wait, last, count, name }`.
 Visual only: no hit test runs outside attacks.
