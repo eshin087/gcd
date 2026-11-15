@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-eight pieces of work since 0.4.0:
+Thirty-nine pieces of work since 0.4.0:
 - **A heavy attack, and five heavies to choose from** (2026-11-15, ADR-114). *Added:* a HEAVY button (right
   click, R2, and a fourth tile on the phone). Pressed on its own it is a dashing two-handed thrust;
   pressed after the first, second, third or fourth light of the combo it is that point's own heavy:
@@ -13,6 +13,17 @@ Thirty-eight pieces of work since 0.4.0:
   holding attack), so a light attack now comes out the instant you press it. Block / parry moved to
   the middle click and lock-on to Tab; saved key bindings start over on the new defaults. The phone
   pad is a 2 x 2 square: BLOCK and HEAVY on top, DODGE and ATTACK below.
+- **The Ash Disciple uses the courtyard** (2026-11-15, ADR-111). *Added:* four moves on the pieces of
+  the Ashfall Courtyard. **Severed Pillar:** he is suddenly behind the pillar you stand under and cuts
+  it through; it falls on you along a strip marked in red (walk out of it, or roll as it lands).
+  **Flying Lantern:** he kicks a stone lantern at you; a pale ring shows where it comes down and it
+  glints before it lands: parry it and it bursts on your blade, or leave the ring. **Three Tolls:** he
+  leaps to the fallen bell and strikes it three times; each blow sends a ring of sound across the
+  courtyard: parry the three in rhythm or roll through them, or run in, since close to the bell they
+  pass you by and his back is open. **Swallow's Return:** when you press him he leaps back onto a
+  pillar and dives off it at you from another side (parry the dive, or step aside). He only does these
+  with a piece in reach, and each lantern and pillar is used up for the fight. *Dev:* a TERRAIN
+  category in Training stages each one.
 - **The Cinder Wyrm uses the ground** (2026-11-15, ADR-110). *Added:* three moves that take what
   stands in the clearing. **Uproot and hurl**: it bites into the nearest tree or boulder, tears it
   out and throws it; the ground glows where it will land and follows you until the throw (red:
@@ -23,7 +34,6 @@ Thirty-eight pieces of work since 0.4.0:
   breath and thrown burning; its wreck burns on for 3.4 s and the grass round it catches. The
   wyrm only does these with a piece in reach, and what it throws is gone until the fight resets.
   *Dev:* the three are in the Lab's ABILITIES and Training's BOSS MOVES.
-Thirty-eight pieces of work since 0.4.0:
 - **The Starless Lord uses the crater** (2026-11-15, ADR-109). *Added:* three moves on the pieces of
   his level. **Void Hurl** (every form): a stone that hung in the air, or a shard torn out of the
   floor, comes to hang beside him and is thrown; the place it lands is ringed in red as it leaves his

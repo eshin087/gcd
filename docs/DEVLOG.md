@@ -33,6 +33,52 @@ the heavies by eye.
 
 **Next:** the owner's look at the sheet and the preview; then HP-linked posture for every boss.
 
+## 2026-11-15 — Session 47: the Ash Disciple uses the courtyard (four terrain moves)
+
+**Task** (from the session that built the destruction system, ADR-107): give Shen Hui moves that use
+the Ashfall Courtyard's pieces. Branch `claude/ash-terrain-moves-12f7d8`, cut from `world/destruction`
+and rebased onto `main` once PR #44 had merged. Numbers reserved for it: ADR-111, Session 47.
+
+**Found first:** he is bound to 12.5 m and only the bell and the stele stand inside that; the pillars
+ring the paving at 15.6 m, the lanterns at 17.4 m. So each move takes him out to its piece and his
+bound stretches for it (ADR-111).
+
+**Done** (ADR-111; COMBAT.md → "He uses the courtyard"):
+- `ashDisciple/terrain.js` (`TerrainMoves`): which piece, how he gets to it, what the piece does.
+  Four moves as data in `moves.js`, numbers in `TUNING.terrain`: Severed Pillar (white cut, the fall is
+  the world's red), Flying Lantern (blue, cued on the piece), Three Tolls (white, white, blue rings of
+  sound), Swallow's Return (blue, off a pillar; wanted 2.4 x as much when he is pressed).
+- Two generic hooks in `duelist/brain.js`: `weigh(name, def, w, dist)` in `_choose`, `onActStart(act)`
+  in `startAct`. Nothing else in the engine changed; no `src/world` file changed.
+- Training: a TERRAIN category (six situations that stage each move and put the courtyard back).
+- Tests: `duel.mjs` `build({ real: true })` (the real courtyard and its breakables), scenario TERRAIN
+  (50 checks), TRAINING on the real set (70 situations), DATA / TIMING know a `cast` and skip the
+  terrain moves on the mock.
+
+**Filmed** in headless Edge at 1280 x 720 at the game camera (a wrapper page stepping the game with
+`__tick`): one strip per move, and Three Tolls at 852 x 393 with the phone camera. Sent to the owner
+with one line per move on what it asks, and two looks for the ring of sound ("arc": one crisp line of
+strokes; "wave": three thin ripples). The owner picked **"A: arc"**; the wave look and the
+`TUNING.terrain.toll.look` switch that held it are removed. Nothing was said about the moves themselves.
+
+**Changed after the first film:** the kick drew the blade's sweep trail (it read as a cut: `noSweep`);
+the lantern's landing mark was a dark ring nobody could see on the night paving (now pale motes); the
+glide's streak was too bright.
+
+**Verified:** `duel.mjs` all, `lord.mjs` all, `world.mjs` all, `integ.mjs` all, the glyph check and the
+build (see the PR). **Not verified:** a human duel with them, a phone's frame rate with three rings on
+screen, the Lab panel by hand (the abilities list is read from `debug.abilities()`, which the tests
+check).
+
+**Open / next:**
+- The bell has no toll sound of its own (the world's metal `chip` plays): `src/audio`.
+- `courtyard.js` builds two pillars on the same spot at three corners of the ring (the loop adds
+  `[t, -P]` and `[P, t]` for the same corner): seen while listing the pieces, not touched (not this
+  session's file).
+- Phase 2 only shortens the windups; a kindled variant (a burning lantern, ember rings) would fit.
+- Training's BOSS MOVES trigger a terrain move from where he stands (the nearest piece however far);
+  the TERRAIN category is the staged version.
+
 ---
 
 ## 2026-11-15 — Session 46: the Cinder Wyrm uses the ground (three terrain moves)
