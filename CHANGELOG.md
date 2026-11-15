@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-five pieces of work since 0.4.0:
+Thirty-six pieces of work since 0.4.0:
+- **The Obsidian Throne is open** (2026-11-15, ADR-108). *Changed:* the Starless Lord's level is no
+  longer a walled hall. It is the crater where he fell: a round floor of cracked black plates round
+  the red seal, the star itself split open behind his seat, shards of its glass standing in the
+  floor, stones hanging in the air, a broken crown of slabs round the rim (low to the south, tall
+  behind him), and the forest outside thrown flat with every trunk pointing away. There are no
+  walls: nothing tall stands between the camera and the duel, and you can walk out between the
+  slabs (he keeps to the floor, a circle of 13.6 m round the seal). He wakes when you step over the
+  south lip onto the floor. The shards and the rim's slabs can be chipped, broken and felled and are
+  cover; the stones in the air only chip. *Fixed:* a duelist's flurry against a hero at the edge of
+  his floor: its blows came from spots he could not stand on and missed. *Removed:* the hall's walls,
+  door, pillars, braziers, stone wardens and great swords.
 - **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
   lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
   as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a

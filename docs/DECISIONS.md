@@ -2707,3 +2707,79 @@ filmed looks: "A: digits", a shower of the characters it is drawn in (bigger lum
 were turned down; the `?debris=` switch that held them is gone). The Obsidian Throne lists no breakables yet: its
 rebuild (ADR-108) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
 the sizzle and the ember hiss.
+
+## ADR-108 — The Obsidian Throne rebuilt open: Starfall, a crater with no walls (2026-11-15)
+
+**Context.** The Starless Lord's level was a walled hall 28.6 x 37 m (ADR-069): two rows of pillars, a
+door in the south wall, wardens and great swords in the side aisles. The owner: "i want you to redo
+the sith lord level as the levels in general should not be so confined like the sith lord level. i
+realized the walls are also adding a visibility issue so make it more open, cool interesting
+objects/structures/terrain etc that will make the gme look stunning in ascii theme and also for the
+player bosses to interact with." The camera has a fixed yaw and looks down at 58 degrees, so a wall
+or a pillar standing south of the fighters covers them, and the hall's south wall and pillar rows did.
+The work is one of the staged pieces of M1.38; the destruction system (ADR-107) was built beside it.
+
+**Decision.**
+- **Three open arenas were built far enough to render and shown on one sheet** (the fight at 1280 x
+  720, the walk up to the throne, the whole arena, the fight at 852 x 393), behind a temporary
+  `?arena=` switch: **A Starfall** (the crater where he fell, the star as his throne), **B the Grave
+  of Blades** (a plain of planted swords round a paved duelling ring, under one colossal blade), **C
+  the Broken Hall** (the old hall without roof or walls). The owner picked **A Starfall**. The switch
+  and the other two are gone; the final build was compared with the picked frames (0.07 – 0.21 % of
+  pixels differ: the particles).
+- **The crater** (`world/throneHall.js`, layout `THRONE`): a disc of fused plates 15 m in radius laid
+  in seven rings round the seal (the origin, unchanged), heaved and broken toward the rim; the dais
+  and seat 16 m north of the seal, in front of the cleft of the star itself (`landmarks.js`
+  `buildFallenStar`: two faceted halves, a crown of ten glass splinters up to 10 m); twelve clusters
+  of the star's glass standing in the floor (1.9 – 4.2 m); six stones hanging in the air; four
+  vents burning in the floor (the crater's lights); a rim of slabs and shards thrown up and outward
+  from 15.8 m, up to 7 m behind him and under 1.4 m in the south, with gaps all round and the south
+  left open; outside, 110 dead trees, those within 24 m of the rim lying flat with their tops away
+  from the crater. The bonfire stays due south (z 30), the path runs to the south lip (z 14.8), and
+  stepping onto the floor there (z < 14) wakes him.
+- **Open is three rules, each tested** (`lord.mjs` LEVEL): no wall (a walk east, west or south from
+  the seal leaves the crater), nothing tall on the near side (no breakable south of z 6 is over 3.2
+  m), the tall pieces north and on the flanks.
+- **Where he may stand is a circle, and the level says so.** The hall's rectangle (`TUNING.hall`) is
+  gone: `TUNING.bound` 13.6 m is the duelist engine's circle round the seal, and the dais's line is
+  the level's (`CONFIG.world.bossFloor.zN`, read by `StarlessLord.clampTarget`), so the lab stage,
+  which has no dais, has no such line.
+- **Everything free-standing is a breakable** (ADR-107's contract): 19 shards, 11 rim slabs, 6
+  hanging stones, all `lift: 2`. A hanging stone has no collider, gives no cover and only chips: it
+  is ammunition for the Void (ADR-109), not cover. The set returns an ember-red `scarInk`
+  ([1.4, 0.12, 0.075]: at 0.5 the cracks did not show on the black floor).
+- **A flurry's blow comes from a side he can stand on.** A duelist's flurry puts him at another side
+  of the hero for each blow (`duelist.flit`). Against a hero at the rim, half of those sides are off
+  his floor: he was put there, pushed back, and the blow whiffed (the Training suite caught it: four
+  flurry situations never ended). `Duelist.standable(x, z)` (inside his bound, clear of colliders;
+  the Lord's adds his floor) now picks the side he turns to or the nearest one he may take.
+- **The star is a landmark builder** (STYLE.md's rule for big set pieces), built with `carve()`
+  attributes directly; `buildSpike` and `facetCol` are shared from `landmarks.js`.
+
+**Why.** A crater answers both of the owner's complaints at once: nothing encloses it, and what
+stands in it is low on the camera's side. It is the place the Lord's story already named (he "fell
+out of the night sky"), and its pieces are what a lord who lifts things with his will would throw:
+shards, slabs, stones already in the air. A round floor suits the duelist engine, whose bound was
+always a circle; the rectangle was a patch for the hall. Rings of plates give the floor seams that
+follow the seal instead of a grid.
+
+**Rejected.** B (the owner's pick decided it; thin swords also print mostly as outline strokes, the
+least "made of characters" of the three) and C (still the most built, and its pillars stood inside
+the fighting space). Keeping the first hall's wardens and great swords in the crater: the picked
+render has none, and a pick is matched, not improved; their builders stay in `landmarks.js`.
+Animating the hanging stones in this change: the destruction system draws them, and a bob is its
+`carry`, which belongs with the moves that take them (ADR-109). Braziers: the vents light the
+crater and cannot be knocked over, so nothing here promises a fire the level has no fuel for.
+
+**Consequences.** The level's first hall no longer exists; `createThroneHall` and `throneHall.js`
+keep their names (levels, tests and the glyph check know them). Fights move differently: cover is
+thin and scattered, there is no corner to be backed into, and the hero can leave the crater (the
+Lord cannot). His tuning was not retuned for it and **no human has played it**. Fallen trunks have
+two collider circles each within 38 m. Cost against the hall, measured in headless Edge on an RTX
+4090 at the fight camera with the AI off: 352 k → 280 k triangles a frame (the hall's unseen grass
+out to 75 m was most of the level; the crater's stops at 54 m), 52 → 53 draw calls (the breakables'
+batch), 8 → 6 lights, 236 → 185 colliders. Render time, both levels in one page with renders
+alternated (other sessions were loading the GPU, so only the ratio means anything): Starfall /
+hall 0.85 and 0.89 at 1920 x 1080, 1.03 at 3840 x 2160, 0.92 and 1.01 at 852 x 393 on LOW. So: no
+slower, about a tenth cheaper at 1080p, no measurable difference at 4K or at phone size. **A phone
+was not measured.** The seal's flare, the intro and the reset are unchanged and tested.
