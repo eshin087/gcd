@@ -5,6 +5,32 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 33: the wyrm in fine digits again, one size up
+
+**Owner** (after PR #31 went live): "the dragon is way too flashy right now and the ascii text is too
+big. use more smaller and make the ascii graphics detailed instead of huge flashy like this". Then,
+on three rendered sizes: "B, medium". Branch `render/wyrm-detail` from `main` (PR #31 merged).
+
+**Done** (ADR-093):
+- **An option sheet**, rendered in game at 720p with the old calm tone: 4x6, 5x8 and 6x9 px cells
+  beside the live 8x13; the owner picked 5x8.
+- **`wyrmGlyphs.js` back to pixel fonts:** the 3x5 and 4x6 fonts of ADR-018 and a new 5x7 one,
+  picked per screen height by `wyrmArtFont(H)` (cell ≈ H / 90: 5x8 at 720p, 6x9 at 1080p, 4x6 on a
+  phone); the old digit sets. The pass rebuilds the atlas when the font changes.
+- **The calm tone back** in the pass (`uWyrmTone`, `uWyrmGlyph`, `uArtLum.y`, `uArtMin.y`). Kept: the
+  anchored grid and the 4x4 averaged tier.
+- **The glyph check** now imports `wyrmGlyphs.js`: every set letter has a bitmap in each font, each
+  bitmap is the font's size, and the cell per screen height (393 / 720 / 1080 / 1440 / 2160 px).
+
+**Verification:** in the dev server: the built look beside the picked preview at 720p (the same), the
+camera pulled back to 50 m, phase 3 with the fire breath, 852x393 (4x6 cells) and 1920x1080 (6x9
+cells); no console errors. `npm test` (all four suites) and `npm run build` pass.
+
+**Not checked / open:** the frame rate on a phone; the wyrm in flight and in motion at 60 fps
+(stills only). The human bosses' letter size and the landmarks (a first pass parked on the local
+branch `wip/landmarks`) still wait on the owner.
+
+---
 ## 2026-11-14 — Session 32: the ASCII look; the wyrm in large letters; landmarks, first pass
 
 **Owner:** "how can we improve the ascii visuals and graphics of this game? im not feeling the ascii
