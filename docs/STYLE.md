@@ -684,6 +684,9 @@ all glyph particles in the dragon's `add` / `alpha` pools.
   through), nothing over 3 m south of the seal, the tall pieces north and on the flanks where the
   fixed camera shows them. A set piece on the north rim is off the top of the frame until the hero
   walks up to it: the star is seen from the dais's foot, and in the intro.
+- **A piece in his grip** (ADR-109) is the piece itself, carried: it comes up out of its place,
+  crosses to hang beside him turning slowly, and a thread of red arcs runs to it from his casting
+  hand. Where it will land is the tells' red ring, drawn strong from the moment it leaves him.
 - **Outside** the forest lies flat, every trunk pointing away from the crater (the dead trees' own
   screen-grid look, laid down); far out a few still stand.
 - **A blade of light** is three things: a thin mesh in the hero-art pass (red fill, red-white ink

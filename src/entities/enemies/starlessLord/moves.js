@@ -16,6 +16,8 @@ import { TUNING } from './tuning.js';
 //   cast: { kind, ... }   'glaive' (the thrown blade), 'debris' (hurled stones), 'storm' (called lightning),
 //                         'star' (the Dark Star: a drifting singularity that bursts)
 //   grip: true            the Crushing Dark: the hit pins the hero to the floor (lord.js draws the crush)
+//   cast: { kind }        … and 'hurl' / 'rain' / 'fall': the crater's pieces (terrain.js; the move is
+//                         marked `terrain: kind`: his AI picks it only while there is a piece for it)
 //   left: true            the off-hand blade strikes (form 2: its sweep trail, its glint)
 // A move's `weight` is per FORM [1, 2, 3, 4] (0 = not in that form's moveset): each form has its own
 // strings; a few spells are shared. Rules (checked by tests/integration/lord.mjs): a tell on every real
@@ -609,6 +611,29 @@ export const MOVES = {
   debris: {
     label: 'Torn Stone', phase: 3, weight: [0, 0, 1.8, 1.4], cooldown: 10, band: [5, 15], recovery: 0.6,
     beats: [{ tell: N, windup: 0.95, fixed: true, active: 0.1, damage: 14, knockback: 1.5, cast: { kind: 'debris', count: 3, big: 1, selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: hurlKeys() }],
+  },
+  // ---------------------------------------------------------------- the crater (ADR-109, terrain.js)
+  // Three moves on the pieces of the set (numbers: TUNING.terrain). `terrain: kind` marks one: his AI
+  // picks it only while there is a piece for it, and it cannot start with none. Each is one long
+  // windup (the piece rising out of its place is the tell) and a cast: what is thrown cues itself
+  // (the ring where it lands, the glint flashLead before), what is pulled down is told by the world.
+  /** Void Hurl: a piece of the crater (a stone already in the air, else a shard or a slab torn out
+   *  of the floor) rises, hangs over his hand and is thrown. Red: be out of the ring. */
+  voidHurl: {
+    label: 'Void Hurl', phase: 1, weight: [1.3, 1.1, 1.0, 1.2], cooldown: 9, band: [4.5, 16], recovery: 0.6, terrain: 'hurl',
+    beats: [{ tell: R, windup: 1.2, fixed: true, active: 0.1, damage: 26, knockback: 4, cast: { kind: 'hurl', selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: hurlKeys() }],
+  },
+  /** Glass Rain: three pieces at once, thrown one after another where the hero is going. */
+  glassRain: {
+    label: 'Glass Rain', phase: 3, weight: [0, 0, 1.4, 1.6], cooldown: 13, band: [4.5, 16], recovery: 0.7, terrain: 'rain',
+    beats: [{ tell: R, windup: 1.4, fixed: true, active: 0.1, damage: 20, knockback: 3, cast: { kind: 'rain', count: 3, selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: stormKeys() }],
+  },
+  /** Crown Fall: the open hand closes on a tall slab or shard beside the hero and wrenches it down
+   *  on him. The fall is the world's: red, its strip marked, about a second from the wrench
+   *  (BREAK.topple: 22 damage x the piece's weight; `damage` here is not used). */
+  crownFall: {
+    label: 'Crown Fall', phase: 2, weight: [0, 1.5, 1.4, 1.6], cooldown: 10, band: [2.5, 18], recovery: 0.55, terrain: 'fall',
+    beats: [{ tell: R, windup: 0.85, fixed: true, active: 0.1, damage: 0, knockback: 0, cast: { kind: 'fall', selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: gripKeys() }],
   },
   /** Drawn Under: the pull, then the staff's low ring where you land. */
   undertow: {

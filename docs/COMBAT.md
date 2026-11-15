@@ -859,6 +859,17 @@ hit stun are all as written above), with these differences.
 | **Dark Star** (forms 3, 4) | red | 0.9 s: a starless sun leaves his hand, drifts after you at 2.3 m/s for 1.7 s over a violet ring (r 3 m), then bursts (30, knockdown); he fights on meanwhile | be out of the ring when it bursts, or roll at its cue (it stops following you then) |
 | **Parting Light** (forms 2, 3, 4) | normal | a backflip 4 m away from you, and crescents of red light as he lands (2, 2, 3 by form) at 12 m/s | parry, roll, block costs guard |
 
+**He uses the crater** (ADR-109; `starlessLord/terrain.js`, numbers `TUNING.terrain`). Three moves on
+the pieces of his level, chosen only while there is a piece for them:
+| Move | Tell | What happens | Answer |
+|---|---|---|---|
+| **Void Hurl** (every form) | red | 1.2 s: a stone that hung in the air (when they are gone: the nearest shard, the big rim slabs last) comes out of its place and hangs beside him, then is thrown where you are going. The ring where it lands (2.3 m) is drawn as it leaves his grip, 0.7 – 1.05 s before it lands; the glint 0.26 s before (26, knockdown) | be out of the ring, or roll through the landing; stagger him in the windup and the stone drops where it hangs |
+| **Glass Rain** (forms 3, 4) | red | 1.4 s: three pieces gather round him and leave 0.55 s apart, the later ones a step to either side of your way (20 each, knockdown) | keep moving one way, or roll each as it glints |
+| **Crown Fall** (forms 2 – 4) | red | 0.85 s, only while you stand in the strip a tall piece would fall on: his hand closes on it and wrenches it down. The fall is the world's (below): its strip is marked red from the moment it goes, about 0.85 s for a 3.6 m shard (22 x the piece's weight, knockdown) | step out of the strip: sideways is shortest |
+
+The crater's pieces are finite: six stones in the air, then shards and slabs out of the floor; what he
+throws is gone until the fight resets. Torn Stone leaves the floor cracked where each stone was torn.
+
 Thrown things (the push, the crescents, the blade, the stones) cue themselves `flashLead` before they
 reach the hero; one that could only cue later than 0.2 s before contact fizzles, as the wyrm's
 bullets do. The ground under a strike is marked from the moment it is called.
@@ -887,6 +898,9 @@ Shen Hui's; `a | b` = one of the two is drawn as the move starts; weights are pe
 | **Turning Mill** (3) | four N spins walking forward 0.52 · 0.34 · 0.34 · 0.34 (12 each) · B thrust 0.42 (21) | 1.5–6.5 · 7 |
 | Starfall (3, 4) | R 1.15 (30, knockdown): a leap (apex 3.8 m), the red ring follows you until 66 % of the windup | 4.2–14 · 9 |
 | Torn Stone (3, 4) | above | 5–15 · 10 |
+| Void Hurl (all) | R 1.2 (26, knockdown), above; needs a piece | 4.5–16 · 9 |
+| Glass Rain (3, 4) | R 1.4 (20 each, knockdown), above; needs two pieces | 4.5–16 · 13 |
+| Crown Fall (2, 3, 4) | R 0.85, the world's fall, above; needs a tall piece beside the hero | 2.5–18 · 10 |
 | Drawn Under (3) | R pull 0.8 · N spin 0.62 (16) · B overhead 0.42 (22) LOCK | 4.5–10.5 · 8 |
 | The Rift (3, 4) | N 0.9 (16 each), above | 3–14 · 9 |
 | Parting Light (2, 3, 4) | N 0.66 (14 each), above | 0–3 · 8 |

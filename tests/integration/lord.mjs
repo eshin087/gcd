@@ -24,6 +24,8 @@ const { Colliders } = await imp('src/world/colliders.js');
 const { TELL, RESULT, POSTURE } = await imp('src/combat/rules.js');
 const { LEVELS, getLevel, levelFromSearch, applyLevel } = await imp('src/levels/index.js');
 const { createThroneHall, THRONE } = await imp('src/world/throneHall.js');
+const { Destructibles, STATE } = await imp('src/world/destructibles.js');
+const { Scars } = await imp('src/world/scars.js');
 const { Player } = await imp('src/entities/player/player.js');
 const { StarlessLord } = await imp('src/entities/enemies/starlessLord/lord.js');
 const { Duelist } = await imp('src/entities/enemies/duelist/duelist.js');
@@ -75,7 +77,10 @@ const HALL_SET = (() => {
   return { set, circles: c.circles.map((k) => ({ ...k })) };
 })();
 
-function build(seed = SEED) {
+/** `real`: the crater built anew with its breakables (world.destructibles, the scars, the set's
+ *  ambience), for the moves that use them (ADR-109); without it the world is the mock the older
+ *  scenarios were written on (the set's colliders, no pieces). */
+function build(seed = SEED, real = false) {
   resetWindow();
   Math.random = mulberry32(seed);
   ui.children.forEach((c) => (c.parentNode = null));
@@ -107,7 +112,8 @@ function build(seed = SEED) {
   };
   installActions(input, new Bindings(null));
   const colliders = new Colliders();
-  for (const k of HALL_SET.circles) colliders.add(k.x, k.z, k.r, k.tag);
+  const set = real ? createThroneHall(U, colliders) : null;
+  if (!set) for (const k of HALL_SET.circles) colliders.add(k.x, k.z, k.r, k.tag);
   const counters = { spawns: 0, flares: 0, burns: 0 };
   const world = {
     colliders, bonfire: { ...CONFIG.world.bonfire }, nest: { x: 0, z: THRONE.throne.z },
@@ -162,6 +168,15 @@ function build(seed = SEED) {
     emit(n, d);
   };
   game.world = world;
+  if (set) {
+    world.forest = set;
+    world.scars = new Scars(game, set.scarInk);
+    world.destructibles = new Destructibles(game, world, set);
+    world.impact = (x, z, r, power, o) => world.destructibles.strike(x, z, r, power, { kind: 'blunt', by: 'world', ...(o ?? {}) });
+    world.restore = () => { world.destructibles.reset(); world.scars.reset(); };
+    world.update = (dt) => { world.destructibles.update(dt); world.scars.update?.(dt); set.ambience.update(dt, game); };
+    set.ambience.setup(game);
+  }
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
   game.dragon = LVL.createBoss(game);
@@ -192,6 +207,7 @@ function build(seed = SEED) {
     game.flow.update(dt, realDt);
     game.player.update(dt);
     game.dragon.update(dt);
+    game.world.update(dt);
     game.cameraRig.update(realDt, game.player.position);
     game.lights.update(dt, game.player.position);
     game.fx.alpha.update(dt, game.time);
@@ -462,6 +478,7 @@ async function scenarioTiming() {
   for (const name of MOVE_NAMES) {
     const def = MOVES[name];
     if (def.transition) continue;
+    if (def.terrain) continue; // (a move on the crater's pieces needs them: scenario TERRAIN, on the real set)
     for (const f of formsOf(name)) {
       const G = build();
       const d = G.game.dragon;
@@ -836,7 +853,7 @@ async function scenarioFlow() {
 // (src/dev/training.js): each must play out (done, within its time) and show what it promises.
 async function scenarioTraining() {
   out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
-  const G = build();
+  const G = build(SEED, true); // (the real crater: the TERRAIN situations and his terrain moves need its pieces)
   const { game } = G;
   duel(G, { dist: 4 });
   const T = game.lab.training;
@@ -857,6 +874,146 @@ async function scenarioTraining() {
   T.stop();
   assert(L.length >= 20 && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
   return G;
+}
+
+// ================================================================== scenario: terrain (ADR-109)
+// The crater's pieces in his grip, on the real set with its real breakables (build(seed, true)).
+async function scenarioTerrain() {
+  out('\n== scenario TERRAIN (the crater\'s pieces in his grip: Void Hurl, Glass Rain, Crown Fall) ==');
+  const names = ['voidHurl', 'glassRain', 'crownFall'];
+  // ---- a world without pieces: the lab stage, the other scenarios' mock
+  {
+    const G = build();
+    duel(G, { dist: 8, form: 3 });
+    const d = G.game.dragon;
+    assert(names.every((n) => MOVES[n]?.terrain && d.weigh(n, MOVES[n], 1, 8) === 0 && d.debug.trigger(n) === false) && d.mode === 'foot', 'in a world without pieces his AI gives the three moves no weight and none can start');
+    assert(names.every((n) => d.debug.abilities().some((a) => a.name === n)), 'they are in his abilities (the Lab, Training\'s BOSS MOVES)');
+  }
+  /** The real crater, the duel on, form `form`: him at (bx, bz), the hero at (hx, hz). */
+  const stage = (form, hx, hz, bx = 0, bz = -4) => {
+    const G = build(SEED, true);
+    duel(G, { dist: 8, form });
+    const d = G.game.dragon, p = G.game.player;
+    p.debug.god = true;
+    d.position.set(bx, 0, bz);
+    p.debug.teleport(hx, hz);
+    d.yaw = Math.atan2(hx - bx, hz - bz);
+    run(G, 0.2);
+    G.flashes = [];
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon' && e.hazard) G.flashes.push(G.game.time); };
+    return G;
+  };
+  const settled = (G) => () => {
+    const d = G.game.dragon;
+    return d.mode === 'foot' && !d.terrain.busy && !G.game.world.destructibles.active.some((b) => b.state === STATE.FALLING || b.state === STATE.FLYING);
+  };
+  /** Run his move to the end; what he held on the way. */
+  const play = (G, name, step = null) => {
+    const D = G.game.world.destructibles, seen = new Set();
+    let top = 0;
+    const ok = G.game.dragon.debug.trigger(name);
+    run(G, 8, () => {
+      for (const b of D.list) if (b.state === STATE.HELD) { seen.add(b); top = Math.max(top, b.py); }
+      step?.(G);
+    }, settled(G));
+    return { ok, held: [...seen], top };
+  };
+
+  // ---- the stones in the air hang by their bodies' offset (the set's ambience keeps them there)
+  {
+    const G = stage(1, 0, 4.5);
+    const hov = G.game.world.destructibles.list.filter((b) => b.kind === 'hover');
+    assert(hov.length === 6 && hov.every((b) => b.def.hover > 1 && Math.abs(b.body.position.y - b.def.hover) < 1e-9 && b.state === STATE.INTACT), `six stones hang whole, ${hov.map((b) => (b.def.hover + b.h * 0.5).toFixed(1)).join(' / ')} m up`);
+
+    // ---- Void Hurl on a hero who stands still
+    const d = G.game.dragon;
+    assert(d.weigh('voidHurl', MOVES.voidHurl, 1, 8.5) > 0, 'Void Hurl: with pieces in reach his AI may pick it');
+    const h0 = G.hits.length;
+    const r = play(G, 'voidHurl');
+    const hit = G.hits.slice(h0).filter((h) => h.attack === 'voidHurl');
+    assert(r.ok && r.held.length === 1 && r.held[0].kind === 'hover' && r.top > 2.2, `Void Hurl takes ONE piece, a stone already in the air, and hangs it beside him (${r.top.toFixed(1)} m)`);
+    assert(hit.length === 1 && hit[0].r === RESULT.HIT && hit[0].tell === TELL.RED && hit[0].kind === 'crush' && G.flashes.length === 1 && Math.abs(hit[0].t - G.flashes[0] - TUNING.flashLead) < 0.06, `it lands on a hero who stands still: red, cued ${(hit[0] ? hit[0].t - G.flashes[0] : NaN).toFixed(3)} s before (flashLead ${TUNING.flashLead})`);
+    assert(r.held[0].state === STATE.GONE && r.held[0].body.position.y === 0 && !d.terrain.busy, 'the stone is gone where it landed; nothing of his is left in the air');
+    // ---- the reset puts it back in the air
+    G.game.world.restore();
+    run(G, 0.1);
+    assert(hov.every((b) => b.state === STATE.INTACT && Math.abs(b.body.position.y - b.def.hover) < 1e-9), 'after the reset every stone hangs again');
+  }
+  // ---- out of the ring: no blow
+  {
+    const G = stage(1, 0, 4.5);
+    const D = G.game.world.destructibles, p = G.game.player;
+    const h0 = G.hits.length;
+    let moved = false;
+    const r = play(G, 'voidHurl', () => { if (!moved && D.list.some((b) => b.state === STATE.FLYING)) { moved = true; p.debug.teleport(7, 9); } });
+    assert(r.ok && moved && G.flashes.length === 1 && !G.hits.slice(h0).some((h) => h.attack === 'voidHurl'), 'a hero who leaves the ring while the stone is in the air is not hit (the ring still glints)');
+  }
+  // ---- cut short before the throw: what he holds drops
+  {
+    const G = stage(1, 0, 4.5);
+    const d = G.game.dragon, D = G.game.world.destructibles;
+    const h0 = G.hits.length;
+    d.debug.trigger('voidHurl');
+    run(G, 0.5);
+    const held = D.list.find((b) => b.state === STATE.HELD);
+    d.debug.stagger();
+    run(G, 4, null, settled(G));
+    assert(held && held.state === STATE.GONE && !d.terrain.busy && G.flashes.length === 0 && !G.hits.slice(h0).some((h) => h.attack === 'voidHurl'), 'staggered in the windup, the stone drops where it hung: no ring, no blow');
+  }
+  // ---- with the stones gone he tears shards out of the floor
+  {
+    const G = stage(1, 0, 4.5);
+    const D = G.game.world.destructibles;
+    for (const b of D.list) if (b.kind === 'hover') { D.take(b); D.drop(b); }
+    run(G, 1.5);
+    const r = play(G, 'voidHurl');
+    assert(r.ok && r.held.length === 1 && r.held[0].kind !== 'hover' && r.held[0].colliders.length === 1 && !G.game.world.colliders.circles.includes(r.held[0].colliders[0]), `with no stone left in the air he tears a ${r.held[0]?.kind} out of the floor (its collider goes with it)`);
+  }
+  // ---- Glass Rain
+  {
+    const G = stage(3, 0, 4.5);
+    const d = G.game.dragon;
+    assert(d.weigh('glassRain', MOVES.glassRain, 1, 8.5) > 0, 'Glass Rain: his AI may pick it in form 3');
+    const h0 = G.hits.length;
+    const r = play(G, 'glassRain');
+    const hits = G.hits.slice(h0).filter((h) => h.attack === 'glassRain');
+    const gaps = G.flashes.slice(1).map((t, i) => t - G.flashes[i]);
+    assert(r.ok && r.held.length === 3 && r.held.every((b) => b.state === STATE.GONE), 'Glass Rain takes three pieces and throws them all');
+    assert(G.flashes.length === 3 && gaps.every((g) => g >= TUNING.minHitGap - 0.02) && hits.length >= 1 && hits.every((h) => h.tell === TELL.RED), `three rings, each cued, ${gaps.map((g) => g.toFixed(2)).join(' and ')} s apart (>= ${TUNING.minHitGap}); ${hits.length} land on a hero who stands still`);
+  }
+  // ---- Crown Fall: the tall shard beside the hero comes down on him; the fall is the world's
+  {
+    const G = stage(2, 8.6, 4.4, 2, -2);
+    const d = G.game.dragon, D = G.game.world.destructibles;
+    const shard = D.list.filter((b) => b.kind === 'shard').sort((a, b) => Math.hypot(a.x - 10.2, a.z - 3.3) - Math.hypot(b.x - 10.2, b.z - 3.3))[0];
+    assert(shard.topples && shard.h > 3 && d.weigh('crownFall', MOVES.crownFall, 1, 9) > 0 && d.terrain.fall.piece === shard, `Crown Fall: the hero 2 m from a ${shard.h.toFixed(1)} m shard: his AI may pick it, for that shard`);
+    const h0 = G.hits.length;
+    const tells = [];
+    const w = G.watch;
+    G.watch = (n, e) => { w(n, e); if (n === 'combat:tell' && e?.source === 'world') tells.push(G.game.time); };
+    const t0 = G.game.time;
+    const r = play(G, 'crownFall');
+    const hit = G.hits.slice(h0).find((h) => h.attack === 'fallingDebris');
+    assert(r.ok && shard.state === STATE.BROKEN && tells.length >= 1 && hit && hit.r === RESULT.HIT && hit.tell === TELL.RED, `he wrenches it down: the world tells it (red) and it lands on a hero who stays, ${(hit ? hit.t - t0 : NaN).toFixed(2)} s after the move began`);
+    assert(hit.t - tells[0] > 0.5, `the strip is marked ${(hit.t - tells[0]).toFixed(2)} s before it lands`);
+    // far from every tall piece: not his move
+    const G2 = stage(2, 0, 2, 0, -5);
+    assert(G2.game.dragon.weigh('crownFall', MOVES.crownFall, 1, 7) === 0 && G2.game.dragon.debug.trigger('crownFall') === false, 'with the hero in the open (no tall piece within its own height of him) Crown Fall weighs nothing and does not start');
+  }
+  // ---- his AI uses them in a fight, and nothing breaks
+  {
+    const G = stage(3, 0, 5);
+    const d = G.game.dragon;
+    d.debug.setAI(true);
+    const used = {};
+    let moves = 0;
+    const w = G.watch;
+    G.watch = (n, e) => { w(n, e); if (n === 'dragon:windup' && e?.name) { moves++; if (MOVES[e.name]?.terrain) used[e.name] = (used[e.name] || 0) + 1; } };
+    run(G, 90, () => { if (Math.hypot(G.game.player.position.x, G.game.player.position.z) > 9) G.game.player.debug.teleport(0, 5); });
+    const n = Object.values(used).reduce((a, b) => a + b, 0);
+    assert(moves >= 20 && n >= 2 && n <= moves * 0.4, `90 s of form 3 with the AI on: ${moves} moves, ${n} of them on the crater's pieces (${Object.entries(used).map(([k, v]) => `${k} ${v}`).join(', ')})`);
+    if (G.payload.size) assert(false, `finite event payloads (${[...G.payload].join(', ')})`);
+  }
 }
 
 async function scenarioWin() {
@@ -919,7 +1076,7 @@ async function scenarioStrategy() {
 // ================================================================== run
 const S = {
   level: scenarioLevel, data: scenarioData, timing: scenarioTiming, forms: scenarioForms, spells: scenarioSpells,
-  bounds: scenarioBounds, flow: scenarioFlow, win: scenarioWin, training: scenarioTraining,
+  bounds: scenarioBounds, flow: scenarioFlow, terrain: scenarioTerrain, win: scenarioWin, training: scenarioTraining,
 };
 const OPT_IN = { strategy: scenarioStrategy }; // run only when named
 if (OPT_IN[SCEN]) S[SCEN] = OPT_IN[SCEN];
