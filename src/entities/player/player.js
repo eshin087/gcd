@@ -7,7 +7,7 @@ import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta } from '../../c
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
-import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
@@ -19,7 +19,8 @@ import { Flurry } from './flurry.js';
 // No stamina (v0.2): pacing comes from attack recovery, roll recovery and the enemy's patterns.
 // Moveset (combat.js, ADR-041): LMB chain falling cut → rising backhand → whirl → stab → two-handed
 // slam (finisher, ground shards); LMB out of a sprint = the sprint slash, out of a forward roll = the
-// roll cut; hold LMB = crouched charge, release = lunging thrust. Swings hit giant targets through
+// roll cut; HEAVY (RMB / R2) = the chain's heavy branch (combat.js HEAVY, ADR-115); hold HEAVY =
+// crouched charge, release = the dashing cleave. Swings hit giant targets through
 // a vertical reach band and step in toward a hurt surface ahead (REACH).
 // A perfect dodge is answered by the flurry (flurry.js, ADR-091): as many blows as the streak of
 // perfect dodges counts, flash cuts and then an art; the plunge below is the wyrm's first art.
@@ -185,7 +186,9 @@ export class Player {
     this.control = false;
     this.intent = { x: 0, z: 0, len: 0, sprint: false };
     this.buf = { action: null, t: 0 };
-    this.lmb = { held: false, t: 0 }; // hold time of the current LMB press (game time)
+    // the HEAVY button's press (game time held): held past CHARGE.hold it is the charge (ADR-115; it
+    // was the attack button's until the heavy button came: a light no longer waits to see if it is held)
+    this.hb = { held: false, t: 0 };
     this.rmb = { held: false, upT: -Infinity, parryT: -Infinity, edge: false, chain: false };
     this.vel = { x: 0, z: 0 }; // own movement
     this.want = { x: 0, z: 0 }; // desired movement this frame
@@ -622,8 +625,8 @@ export class Player {
     this.rollBack = false;
     this.healApplied = false;
     this.buf.action = null;
-    this.lmb.held = false;
-    this.lmb.t = 0;
+    this.hb.held = false;
+    this.hb.t = 0;
     this.rmb.held = false;
     this.rmb.edge = false;
     this.rmb.upT = -Infinity;
@@ -791,8 +794,8 @@ export class Player {
     // guard comes up the moment it can instead of only at the end of the recovery.
     const Rb = this.rmb;
     if (Rb.edge && this.state !== 'block' && this.state !== 'parry' && this._canGuard()) {
-      // the guard spends the held LMB press, otherwise _tickBlock would re-enter the charge at once
-      if (this.state === 'charge' || this.atk?.pending) this.lmb.held = false;
+      // the guard spends the held heavy press, otherwise _tickBlock would re-enter the charge at once
+      if (this.state === 'charge' || this.atk?.pending) this.hb.held = false;
       this._startBlock();
     }
     if (!Rb.held || this.state === 'block' || this.state === 'parry') Rb.edge = false;
@@ -832,7 +835,7 @@ export class Player {
 
   // ------------------------------------------------------------------ input + lock-on
   _readInput(control, dt) {
-    const I = this.intent, inp = this.game.input, L = this.lmb, Rb = this.rmb;
+    const I = this.intent, inp = this.game.input, L = this.hb, Rb = this.rmb; // (L: the heavy button)
     if (!control || !inp) {
       I.x = I.z = I.len = 0;
       I.sprint = false;
@@ -850,15 +853,18 @@ export class Player {
     if (inp.actPressed('flask')) this._buffer('heal');
     if (inp.actPressed('lockOn')) this._toggleLock();
 
-    // attack (LMB): a press starts a light attack at once; holding past CHARGE.hold turns it into a charge
-    if (inp.actPressed('attack')) {
+    // attack (LMB / R1 / ATTACK): a press starts a light attack at once. heavy (RMB / R2 / HEAVY): a
+    // press starts the chain's heavy branch (combat.js heavyAfter); held past CHARGE.hold it is the
+    // charge, the dashing cleave (ADR-115)
+    if (inp.actPressed('attack')) this._buffer('light');
+    if (inp.actPressed('heavy')) {
       L.held = true;
       L.t = 0;
-      this._buffer('light');
+      this._buffer('heavy');
     } else if (L.held) {
       L.t += dt;
     }
-    if (L.held && (!inp.act('attack') || L.t >= CHARGE.maxHold)) L.held = false; // released (or auto-release)
+    if (L.held && (!inp.act('heavy') || L.t >= CHARGE.maxHold)) L.held = false; // released (or auto-release)
 
     // block (RMB): hold = block; a press counts as a parry attempt only after a full re-arm (anti-mash). A
     // successful deflect re-arms at once (Rb.chain): the next press counts as soon as RMB was released,
@@ -1087,7 +1093,7 @@ export class Player {
   /** Start whatever is buffered (or a held charge), if allowed. Returns true if a new action began.
    *  An attack press near a posture-broken wyrm's head is the plunge execution instead. */
   _tryAction(allowRoll = true, allowAttack = true, allowHeal = true) {
-    if (allowAttack && this.lmb.held && this.lmb.t >= CHARGE.hold) return this._startCharge();
+    if (allowAttack && this.hb.held && this.hb.t >= CHARGE.hold) return this._startCharge();
     const a = this.buf.action;
     if (!a) return false;
     if (a === 'roll' && allowRoll) {
@@ -1101,6 +1107,12 @@ export class Player {
       if (this.state === 'sprint' && Math.hypot(fin(this.groundVel.x), fin(this.groundVel.z)) > TUNE.runSpeed * 1.05) return this._startAttack(SPRINT_ATK);
       if (this.state === 'roll' && !this.rollBack) return this._startAttack(ROLL_ATK);
       return this._startAttack(LIGHT[0]);
+    }
+    // a heavy on its own (out of a sprint or a roll too): the gap-closing thrust, HEAVY[0]
+    if (a === 'heavy' && allowAttack) {
+      this.buf.action = null;
+      if (this._tryExecution()) return true;
+      return this._startAttack(HEAVY[0]);
     }
     if (a === 'heal' && allowHeal) {
       this.buf.action = null;
@@ -1131,7 +1143,7 @@ export class Player {
   _startBlock(blend = 0.08) {
     this.atk = null;
     this.chargeK = 0;
-    if (this.buf.action === 'light') this.buf.action = null;
+    if (this.buf.action === 'light' || this.buf.action === 'heavy') this.buf.action = null;
     this._enter('block', 'block', blend);
     return true;
   }
@@ -1409,8 +1421,8 @@ export class Player {
     this.atk = null;
     this.chargeK = 0;
     this.releaseK = 0;
-    this.lmb.held = false;
-    if (this.buf.action === 'light') this.buf.action = null;
+    this.hb.held = false;
+    if (this.buf.action === 'light' || this.buf.action === 'heavy') this.buf.action = null;
     this._setKb(nx, nz, push);
     this._enter('bounce', 'bounce', 0.04);
     this.anim.kickCoat(0.5, this.anim.noise);
@@ -1808,7 +1820,7 @@ export class Player {
     if (ap && Number.isFinite(ap.x + ap.z)) this.yaw = Math.atan2(ap.x - p.x, ap.z - p.z);
     this.object3d.rotation.y = this.yaw;
     this.vel.x = this.vel.z = this.kb.x = this.kb.z = 0;
-    this.lmb.held = false;
+    this.hb.held = false;
     // (the cross-fade runs after the perfect parry's freeze, which holds the contact it was won on)
     const D = this.deflect;
     D.high = D.nx = D.ny = D.nz = 0;
@@ -1846,9 +1858,9 @@ export class Player {
       this._toLoco(0.12);
       return;
     }
-    // a press of either button pushes: the buffered light (LMB, the touch ATTACK) or an RMB edge
+    // a press of any button pushes: a buffered light or heavy (ATTACK / HEAVY) or a guard's edge
     let pushed = false;
-    if (this.buf.action === 'light') {
+    if (this.buf.action === 'light' || this.buf.action === 'heavy') {
       this.buf.action = null;
       pushed = true;
     }
@@ -1856,7 +1868,7 @@ export class Player {
       this.rmb.edge = false;
       pushed = true;
     }
-    this.lmb.held = false; // a held press must not become a charge once the lock is over
+    this.hb.held = false; // a held press must not become a charge once the lock is over
     if (pushed) {
       B.meter += B.push;
       this.recoil = 1;
@@ -2023,7 +2035,7 @@ export class Player {
     if (!d?.broken) return false;
     if (!this._plungeable(d)) return this._startExecuteThrust(d);
     if (!this._startPlunge(d, true)) return false;
-    this.lmb.held = false; // the press is spent: no charge waiting after the landing
+    this.hb.held = false; // the press is spent: no charge waiting after the landing
     return true;
   }
 
@@ -2043,7 +2055,7 @@ export class Player {
     this.object3d.rotation.y = this.yaw;
     this.atk.exec = d;
     this.atk.travel = clamp(dist - 1.0, 0, 3);
-    this.lmb.held = false;
+    this.hb.held = false;
     this._emit('player:plunge', { execution: true });
     return true;
   }
@@ -2493,7 +2505,9 @@ export class Player {
       // hitAt: the attack clock at the contact (-1 none); cutDir: the blade's unit travel there ({x, y, z},
       // world) or null; glintZ: how far up the edge the glint has run (fx.edgeGlint)
       hitAt: -1, cutDir: null, glintZ: null,
-      pending: light && this.lmb.held, // still held: may become a charge (the swing waits at the coil)
+      // a heavy press still held: it may become the charge (the swing waits at the coil). A light
+      // never waits (ADR-115: the charge moved to the heavy button)
+      pending: def.button === 'heavy' && this.hb.held,
       damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0, relT: 0, shaped: false, svx: 0, svz: 0,
     };
     this.chargeK = 0;
@@ -2506,7 +2520,7 @@ export class Player {
 
   /** A swing really starts (a held light only once it is released): announce it, glint the gem. */
   _swingStarted(def, charge) {
-    this._emit('player:attack', { kind: def.kind, combo: def.combo, charge });
+    this._emit('player:attack', { kind: def.kind, combo: def.combo, charge, name: def.name ?? null });
     if (def.kind !== 'light') this.anim.kickCoat(def.dash ? 0.5 + 0.5 * charge : 0.45);
     this.rig.gem.getWorldPosition(this._gem);
     const gv = this.gemVel;
@@ -2515,16 +2529,16 @@ export class Player {
 
   _startCharge() {
     this.atk = null;
-    if (this.buf.action === 'light') this.buf.action = null;
-    this.chargeK = chargeStats(this.lmb.t).k;
+    if (this.buf.action === 'light' || this.buf.action === 'heavy') this.buf.action = null;
+    this.chargeK = chargeStats(this.hb.t).k;
     this.chargeFull = false;
     this._enter('charge', 'charge', 0.16);
-    this._emit('player:charge', { t: Math.max(0.25, CHARGE.full - this.lmb.t) });
+    this._emit('player:charge', { t: Math.max(0.25, CHARGE.full - this.hb.t) });
     return true;
   }
 
   _tickCharge(dt) {
-    const L = this.lmb;
+    const L = this.hb;
     if (!this.control) {
       this._toLoco(0.14); // pause / cutscene mid-charge: drop it rather than fire it
       return;
@@ -2618,11 +2632,11 @@ export class Player {
     const sp = this._attackSpeed();
     dt *= sp; // the attack's own clock (the root's speeds below are scaled back, so distances hold)
     if (a.pending) {
-      if (!this.lmb.held) {
+      if (!this.hb.held) {
         a.pending = false; // tap: the swing goes ahead
         a.relT = a.t; // its step starts here (the root's step in; a late release compresses it)
         this._swingStarted(d, 0);
-      } else if (this.lmb.t >= CHARGE.hold) {
+      } else if (this.hb.t >= CHARGE.hold) {
         this._startCharge();
         return;
       }
@@ -2668,11 +2682,16 @@ export class Player {
         if (this._tryExecution()) return;
         const next = d.kind === 'light' ? LIGHT[d.combo % LIGHT.length] : LIGHT[0];
         if (this._startAttack(next)) return;
+      } else if (b === 'heavy' && r >= fin(d.chain, 0)) {
+        // the heavy branch: after the n-th light its own heavy (combat.js HEAVY); it ends the chain
+        this.buf.action = null;
+        if (this._tryExecution()) return;
+        if (this._startAttack(heavyAfter(d))) return;
       } else if (b === 'heal' && r >= TUNE.rollCancel) {
         this.buf.action = null;
         if (this._startHeal()) return;
       }
-      if (this.lmb.held && this.lmb.t >= CHARGE.hold) {
+      if (this.hb.held && this.hb.t >= CHARGE.hold) {
         this._startCharge();
         return;
       }
@@ -3148,7 +3167,8 @@ export class Player {
     const dp = dr.position, x0 = fin(dp?.x, NaN), y0 = fin(dp?.y, NaN), z0 = fin(dp?.z, NaN);
     let dealt = damage;
     try {
-      const r = dr.takeHit({ damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true });
+      // (`reel` 2: a blow that throws a duelist out of what he is doing, the Rising Crescent)
+      const r = dr.takeHit({ damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true, ...(d.reel ? { reel: d.reel } : null) });
       if (Number.isFinite(r)) dealt = r;
     } catch (err) {
       console.error('[player] dragon.takeHit failed', err);

@@ -293,8 +293,8 @@ function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed' } = {}) {
           }
         } else if (left <= early) {
           e.done = true;
-          input.up(2);
-          input.click(2);
+          input.up(1);
+          input.click(1);
           stats.parryTry++;
         }
       }

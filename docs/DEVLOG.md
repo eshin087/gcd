@@ -5,6 +5,36 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 52: a heavy button; five heavy branches off the chain; the charge on the heavy
+
+**Owner:** "Yes, ask me first" (the genre review's heavy button). Asked, answered: heavy branches off
+the chain, hold heavy to charge, a fourth tile on the phone (2 x 2), heavy on the right click (then:
+the guard on the middle click). Branch `player/heavy-branches` from `main`, own worktree. ADR-115 /
+Session 52 / M1.40 (PR #49 took ADR-114 and Session 51 while this was open; #50 took 113).
+
+**Done** (ADR-115):
+- `combat.js` `HEAVY` and `heavyAfter`; four two-handed clips in `swings.js`; the Earthbreaker on
+  the slam clip with a higher leap.
+- `player.js`: the heavy press (`this.hb`, was `lmb`) buffers 'heavy'; from a light's recovery it is
+  that light's branch; held 0.3 s it is the charge. A light never waits at its coil.
+- Bindings v2; the 2 x 2 touch pad with the charge meter on HEAVY; help, title and pad texts.
+- Training: the five heavies; every situation starts on a restored set.
+- **Tests:** the guard on button 1 and the charge on button 2 everywhere (main's new tests too);
+  REACH swings every heavy at 0 - 3.5 m; duel HEAVY; TOUCH (the HEAVY tile, its charge, a held ATTACK
+  is a light, the 2 x 2 edges); REMAP (the new defaults, a v1 save not read); the held-light test
+  rewritten (a held light cuts at once).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server: the phone pad at
+852 x 393 (`?touch`) and a film sheet of the five heavies at the game camera beside Shen Hui.
+
+**Not checked / open:** no human has played them; the clips were looked at as a sheet of stills, not
+in motion, and not from four sides; the phone pad's feel under a thumb; the wyrm and the Lord with
+the heavies by eye.
+
+**Next:** the owner's look at the sheet and the preview; then HP-linked posture for every boss.
+
+---
+
 ## 2026-11-15 — Session 51: the hero's stance: at ease, and a fencer's guard in a fight
 
 **Owner:** "review the current character posture, angle of the right hand sword when the character

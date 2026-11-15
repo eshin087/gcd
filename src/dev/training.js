@@ -102,7 +102,7 @@ add('PARRY & RIPOSTE', [
 ]);
 
 add('BOSS STREAK', [
-  { id: 'foeBuild', name: 'Build his streak, he answers', boss: 'duel', foe: 4, dist: 2.0, answer: 'parry', ai: true, desc: 'Strike into his guard: his streak climbs and his guard answers with his flurry. Parry every blow.', go: (T) => T.tap('Mouse0'), until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 14, expect: ['dragon:flurry'] },
+  { id: 'foeBuild', name: 'Build his streak, he answers', boss: 'duel', foe: 4, dist: 2.0, answer: 'parry', ai: true, desc: 'Strike into his guard: his streak climbs and his guard answers with his flurry. Parry every blow.', go: (T) => T.tap('@attack'), until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 14, expect: ['dragon:flurry'] },
   ...[3, 5, 7].map((n) => ({ id: `foe${n}`, name: `His flurry ${N(n)} · parry all`, boss: 'duel', foe: n, dist: 2.6, answer: 'parry', desc: `${n} blows, each from another side. Parry every one and his posture breaks.`, go: (T) => T.d.debug.flurry(n), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] })),
   { id: 'foePerfect', name: `His flurry ${N(5)} · perfect parries`, boss: 'duel', foe: 5, dist: 2.6, answer: 'perfect', desc: 'Every blow perfect-parried (each counts two toward the total).', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd'] },
   { id: 'foeBlock', name: `His flurry ${N(5)} · block all`, boss: 'duel', foe: 5, dist: 2.6, answer: 'block', desc: 'A held guard meets them from any side: he breaks too.', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] },
@@ -111,11 +111,23 @@ add('BOSS STREAK', [
 ]);
 
 add('OFFENCE', [
-  { id: 'chain', name: 'Light chain (5 hits)', boss: 'any', desc: 'The five-hit chain into the slam.', dist: 2.4, wyrmDist: 3.2, go: () => {}, tick: (T) => T.every(0.36, 5, () => T.tap('Mouse0')), until: (T) => T.t > 2.4 && T.heroFree(), expect: ['player:attack'] },
-  { id: 'cleave', name: 'Charged cleave', boss: 'any', desc: 'Hold attack to full charge, release: the dashing cleave.', dist: 4.5, wyrmDist: 5, go: (T) => T.hold('Mouse0', 1.3), until: (T) => T.t > 1.9 && T.heroFree(), expect: ['player:charge'] },
-  { id: 'critChain', name: 'Crit window after a Ghostep', boss: 'any', streak: 0, role: 'red', answer: 'dodge', desc: 'A perfect dodge, then the chain inside the crit window.', after: (T) => T.everyFrom(T.afterT, 0.36, 5, () => T.tap('Mouse0'), 'crit'), until: (T) => T.afterT >= 0 && T.t - T.afterT > 2.2 && T.heroFree(), expect: ['player:perfectDodge'] },
-  { id: 'execute', name: 'Posture break → execution', boss: 'any', desc: 'His posture broken, an attack near him executes him (the deathblow on the Starless Lord ends a form).', dist: 2.6, wyrmDist: 4, go: (T) => T.d.debug.postureBreak(), tick: (T) => T.at(0.6, () => T.tap('Mouse0')), until: (T) => T.t > 1 && T.heroFree() && !T.moving(), max: 9, expect: ['player:plungeHit'] },
-  { id: 'crush', name: 'Guard crush (full charge)', boss: 'duel', dist: 3.6, desc: 'A full-charge cleave into his raised guard crushes it: he staggers.', go: (T) => T.hold('Mouse0', 1.3), until: (T) => T.t > 2 && T.heroFree(), expect: ['player:charge'] },
+  { id: 'chain', name: 'Light chain (5 hits)', boss: 'any', desc: 'The five-hit chain into the slam.', dist: 2.4, wyrmDist: 3.2, go: () => {}, tick: (T) => T.every(0.36, 5, () => T.tap('@attack')), until: (T) => T.t > 2.4 && T.heroFree(), expect: ['player:attack'] },
+  // the heavy branches (ADR-115): n lights, then HEAVY (combat.js HEAVY)
+  ...[
+    ['Piercing Gale', 'Heavy on its own: a dashing two-handed thrust that closes the gap.'],
+    ['Rising Crescent', 'Light, then heavy: a two-handed rising cut that staggers a duelist.'],
+    ['Whirling Tempest', 'Two lights, then heavy: a full two-handed turn, the blade all round him.'],
+    ['Mountain Splitter', 'Three lights, then heavy: a falling cut from over the left shoulder that crushes a raised guard.'],
+    ['Earthbreaker', 'Four lights, then heavy: the slam with a higher leap and a wider ring of shards.'],
+  ].map(([name, desc], n) => ({
+    id: `heavy${n}`, name: `${'L-'.repeat(n)}H · ${name}`, boss: 'any', desc, dist: 2.4, wyrmDist: 3.2, go: () => {},
+    tick: (T) => { if (n) T.every(0.36, n, () => T.tap('@attack')); T.at(0.36 * n + 0.02, () => T.tap('@heavy')); },
+    until: (T) => T.t > 0.36 * n + 1.6 && T.heroFree(), max: 8, expect: ['player:attack'],
+  })),
+  { id: 'cleave', name: 'Charged cleave', boss: 'any', desc: 'Hold heavy to full charge, release: the dashing cleave.', dist: 4.5, wyrmDist: 5, go: (T) => T.hold('@heavy', 1.3), until: (T) => T.t > 1.9 && T.heroFree(), expect: ['player:charge'] },
+  { id: 'critChain', name: 'Crit window after a Ghostep', boss: 'any', streak: 0, role: 'red', answer: 'dodge', desc: 'A perfect dodge, then the chain inside the crit window.', after: (T) => T.everyFrom(T.afterT, 0.36, 5, () => T.tap('@attack'), 'crit'), until: (T) => T.afterT >= 0 && T.t - T.afterT > 2.2 && T.heroFree(), expect: ['player:perfectDodge'] },
+  { id: 'execute', name: 'Posture break → execution', boss: 'any', desc: 'His posture broken, an attack near him executes him (the deathblow on the Starless Lord ends a form).', dist: 2.6, wyrmDist: 4, go: (T) => T.d.debug.postureBreak(), tick: (T) => T.at(0.6, () => T.tap('@attack')), until: (T) => T.t > 1 && T.heroFree() && !T.moving(), max: 9, expect: ['player:plungeHit'] },
+  { id: 'crush', name: 'Guard crush (full charge)', boss: 'duel', dist: 3.6, desc: 'A full-charge cleave into his raised guard crushes it: he staggers.', go: (T) => T.hold('@heavy', 1.3), until: (T) => T.t > 2 && T.heroFree(), expect: ['player:charge'] },
 ]);
 
 add('GETTING HIT', [
@@ -354,6 +366,13 @@ export class Training {
     this._release();
     this.pending.length = 0;
     if (g.state !== 'boss' || DOWN.has(d?.state) || p?.alive === false) g.flow?.debug?.toState?.('boss');
+    // every situation on a whole set: what an earlier one broke stands again and nothing is still
+    // falling (a pillar toppled by the last situation fell on the hero in the next one's flurry)
+    try {
+      g.world?.restore?.();
+    } catch (err) {
+      console.error('[training] world.restore failed', err);
+    }
     d?.debug?.setAI?.(!!s.ai);
     if (p?.debug) {
       p.debug.god = s.god !== false;
@@ -445,7 +464,7 @@ export class Training {
       if (s.move && fin(s.phase, 1) > fin(d.phase, 1) && typeof d.enterPhase === 'function') d.enterPhase(s.phase);
       if (name) d.debug?.trigger?.(name);
     }
-    if (s.answer === 'block' || (typeof s.answer === 'function' && s.answer(0, this) === 'block')) this.hold('Mouse2', 99);
+    if (s.answer === 'block' || (typeof s.answer === 'function' && s.answer(0, this) === 'block')) this.hold('@block', 99);
     this._changed();
   }
 
@@ -458,11 +477,11 @@ export class Training {
       this.pending.splice(i, 1);
       this._answer(A.mode);
     }
-    if (s.mash && p?.state === 'lock') this.every(0.08, 999, () => this.tap('Mouse0'), 'mash');
+    if (s.mash && p?.state === 'lock') this.every(0.08, 999, () => this.tap('@attack'), 'mash');
     s.tick?.(this, dt);
-    if (this.holds.has('Mouse2') && this.holds.get('Mouse2') > g.time + 1 && this.t > 0.6 && !this.moving()) {
-      this.holds.delete('Mouse2');
-      this._key('Mouse2', false);
+    if (this.holds.has('@block') && this.holds.get('@block') > g.time + 1 && this.t > 0.6 && !this.moving()) {
+      this.holds.delete('@block');
+      this._key('@block', false);
     }
     if (s.after && this.events.has('player:perfectDodge') && (this.afterT >= 0 || HERO_FREE.has(p?.state))) {
       if (this.afterT < 0) this.afterT = this.t;
@@ -503,7 +522,7 @@ export class Training {
     const mode = typeof s.answer === 'function' ? s.answer(i, this) : s.answer;
     if (!mode || mode === 'none') return;
     if (mode === 'block') {
-      this.hold('Mouse2', 99);
+      this.hold('@block', 99);
       return;
     }
     const A = ANSWERS[mode];
@@ -528,9 +547,9 @@ export class Training {
     switch (mode) {
       case 'parry':
       case 'perfect':
-        this.holds.delete('Mouse2');
-        this._key('Mouse2', false);
-        this.tap('Mouse2', 0.05);
+        this.holds.delete('@block');
+        this._key('@block', false);
+        this.tap('@block', 0.05);
         break;
       case 'dodge':
       case 'roll':
@@ -545,7 +564,7 @@ export class Training {
         this.later(0.3, () => this._axis(0, 0));
         break;
       case 'trade':
-        this.tap('Mouse0');
+        this.tap('@attack');
         break;
       default:
         break;

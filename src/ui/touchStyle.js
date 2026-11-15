@@ -224,8 +224,10 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-tile .t { font-size: calc(8px * var(--tc-k, 1)); line-height: 1.3; }
 .tc-attack .g { font-size: calc(36px * var(--tc-k, 1)); }
 .tc-attack .t { font-size: calc(9px * var(--tc-k, 1)); }
-.tc-attack.charge .t { color: var(--tc-gold); letter-spacing: 0.04em; padding-left: 0; }
-.tc-attack.full .t { color: #fff3c9; text-shadow: 0 0 6px rgba(216, 184, 106, 0.9); }
+.tc-heavy .g { font-size: calc(30px * var(--tc-k, 1)); }
+.tc-heavy .t { font-size: calc(9px * var(--tc-k, 1)); }
+.tc-heavy.charge .t { color: var(--tc-gold); letter-spacing: 0.04em; padding-left: 0; }
+.tc-heavy.full .t { color: #fff3c9; text-shadow: 0 0 6px rgba(216, 184, 106, 0.9); }
 /* BLOCK carries the guard meter: a gauge along its foot (--tc-gd 0..1, written by ui/touch.js) */
 .tc-block::after {
   content: '';

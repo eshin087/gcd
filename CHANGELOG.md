@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty-one pieces of work since 0.4.0:
+Forty-two pieces of work since 0.4.0:
+- **A heavy attack, and five heavies to choose from** (2026-11-15, ADR-115). *Added:* a HEAVY button (right
+  click, R2, and a fourth tile on the phone). Pressed on its own it is a dashing two-handed thrust;
+  pressed after the first, second, third or fourth light of the combo it is that point's own heavy:
+  a rising cut that staggers a duelist, a full spinning sweep, a falling cut that breaks through a
+  raised guard, and a bigger slam. *Changed:* holding HEAVY charges the dashing cleave (it was
+  holding attack), so a light attack now comes out the instant you press it. Block / parry moved to
+  the middle click and lock-on to Tab; saved key bindings start over on the new defaults. The phone
+  pad is a 2 x 2 square: BLOCK and HEAVY on top, DODGE and ATTACK below.
 - **The hero stands like a swordsman** (2026-11-15, ADR-114). *Changed:* when he is not attacking he no
   longer holds the sword out sideways with both hands hanging. Exploring, he stands at ease: one
   hand on his belt, the blade carried down the line of his arm. Locked on, or anywhere in a boss
@@ -29,7 +37,6 @@ Forty-one pieces of work since 0.4.0:
   read at a glance and stand where the fight's camera looks: the sect gate is beyond the east
   pillars (it was to the north), the stone swordsmen stand in the pillar ring, the cauldron on the
   paving, the elder wyrm's skeleton along Cinderwood's east rim. *Not changed:* the hero's own effects, and the wyrm's blue and red wisps.
-Thirty-seven pieces of work since 0.4.0:
 - **The Ash Disciple uses the courtyard** (2026-11-15, ADR-111). *Added:* four moves on the pieces of
   the Ashfall Courtyard. **Severed Pillar:** he is suddenly behind the pillar you stand under and cuts
   it through; it falls on you along a strip marked in red (walk out of it, or roll as it lands).
@@ -51,7 +58,6 @@ Thirty-seven pieces of work since 0.4.0:
   breath and thrown burning; its wreck burns on for 3.4 s and the grass round it catches. The
   wyrm only does these with a piece in reach, and what it throws is gone until the fight resets.
   *Dev:* the three are in the Lab's ABILITIES and Training's BOSS MOVES.
-Thirty-eight pieces of work since 0.4.0:
 - **The Starless Lord uses the crater** (2026-11-15, ADR-109). *Added:* three moves on the pieces of
   his level. **Void Hurl** (every form): a stone that hung in the air, or a shard torn out of the
   floor, comes to hang beside him and is thrown at you; the place it lands is ringed in red as it

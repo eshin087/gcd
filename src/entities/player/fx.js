@@ -229,7 +229,7 @@ export class PlayerFx {
 
   /** Where the arc's edge runs along the hit segment for a swing of `kind` (0 hilt … 1 reach end). */
   arcAt(kind = 'light') {
-    return Math.min(1, ARC_LOOK.at * (kind === 'slam' || kind === 'cleave' ? ARC_HEAVY : 1));
+    return Math.min(1, ARC_LOOK.at * (kind === 'slam' || kind === 'heavy' || kind === 'cleave' ? ARC_HEAVY : 1));
   }
 
   /**
@@ -256,7 +256,7 @@ export class PlayerFx {
     if (!fx) return;
     const S = ARC_LOOK;
     const cleave = kind === 'cleave';
-    const heavy = kind === 'slam' || cleave;
+    const heavy = kind === 'slam' || kind === 'heavy' || cleave;
     const thrust = kind === 'thrust';
     arcSetup(pa, pb, a, b);
     const turn = gate ? Math.min(1, Math.max(0, (ARC.th - ARC_TURN[0]) / (ARC_TURN[1] - ARC_TURN[0]))) : 1;

@@ -283,8 +283,8 @@ function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
           }
         } else if (left <= 0.12) {
           e.done = true;
-          input.up(2);
-          input.click(2);
+          input.up(1);
+          input.click(1);
           stats.parryTry++;
         }
       }
@@ -498,9 +498,9 @@ async function scenarioGuard() {
   run(G, 0.3);
   d.brain.raiseT = 0;
   const hp3 = d.hp;
-  input.press(0);
+  input.press(2);
   run(G, 1.4);
-  input.up(0);
+  input.up(2);
   run(G, 0.6);
   assert(d.hp < hp3, `the hero's own full thrust breaks through the guard (hp ${hp3} → ${d.hp})`);
   return G;
@@ -554,14 +554,14 @@ async function scenarioClash() {
   input.click(0);
   run(G, 0.05);
   assert(p.state === 'bounce', `an attack press does not cancel the bounce (${p.state})`);
-  input.press(2);
+  input.press(1);
   run(G, 0.04);
   assert(p.state === 'block', `a guard press cancels the bounce at once (${p.state})`);
   const h0 = G.hits.length;
   run(G, 1.6, () => { d.brain.gapT = 99; }, () => G.hits.length > h0);
   assert(seen.includes('riposte'), `the Riposte comes out of the deflect (${seen.join(', ')})`);
   assert(G.hits.length > h0 && G.hits[h0].r !== RESULT.HIT, `the guard raised out of the bounce answers its first cut (${G.hits[h0]?.r})`);
-  input.up(2);
+  input.up(1);
   G.watch = null;
   d.debug.setAI(false);
   settle(G, 8);
@@ -586,10 +586,10 @@ async function scenarioClash() {
   input.click(0);
   run(G, 0.4, null, () => p.state === 'attack' && p.atk && p.atk.t >= p.atk.def.windup + 0.02);
   const inCut2 = p.state === 'attack' && p.atk.t >= p.atk.def.windup && p.atk.t < p.atk.def.windup + p.atk.def.active;
-  input.press(2);
+  input.press(1);
   run(G, 0.04);
   assert(inCut2 && p.state === 'block', `a guard cancels the cut itself (${p.state})`);
-  input.up(2);
+  input.up(1);
   settle(G);
   // (4) the blades meet: every blow of two strings parried, the hero's blade lies on his
   const gaps = [], backs = [], stops = [];
@@ -635,8 +635,8 @@ async function scenarioClash() {
   run(G, 0.3);
   answerMove(G, 'fallingAsh', (left) => {
     if (left > 0.05) return false;
-    input.up(2);
-    input.click(2);
+    input.up(1);
+    input.click(1);
     return true;
   }, 2);
   const locked = p.state === 'lock';
@@ -756,7 +756,7 @@ async function scenarioTrade() {
   run(G, 1.2, () => {
     game.mouseGround.set(d.position.x, 0, d.position.z);
     if (pressed === 'due') { pressed = true; due = game.time + TUNING.flashLead - 0.12; }
-    if (due > 0 && game.time >= due) { due = -1; input.up(2); input.click(2); }
+    if (due > 0 && game.time >= due) { due = -1; input.up(1); input.click(1); }
   }, () => G.hits.length > h1);
   G.watch = null;
   assert(ev.includes('clash') && G.hits.length > h1 && G.hits[h1].r === RESULT.PARRIED, `a guard press out of the bounce parries the blow that follows (${G.hits[h1]?.r})`);
@@ -774,9 +774,9 @@ async function scenarioTrade() {
   place(G, 6);
   run(G, 0.3);
   p.debug.heal();
-  input.press(0);
+  input.press(2);
   run(G, 1.4);
-  input.up(0);
+  input.up(2);
   run(G, 0.6, null, () => p.state === 'heavy' && p.atk && p.atk.t >= p.atk.def.windup + 0.02);
   const inDash = p.state === 'heavy' && p.atk.poise >= TUNING.guard.crushPoise;
   let crushEv = null;
@@ -1035,11 +1035,11 @@ async function scenarioStreak() {
   d.posture = 0;
   d.debug.streak(3);
   const c3 = { ...G.counts };
-  input.press(2);
+  input.press(1);
   run(G, 0.5);
   d.debug.flurry();
   const t3 = through(8);
-  input.up(2);
+  input.up(1);
   assert(since(c3, 'player:block') >= 3 && since(c3, 'player:hurt') === 0 && t3.ended?.answered === true && d.broken, `three blows blocked from three sides (${since(c3, 'player:block')} blocks, no hurt): he breaks`);
   assert(!t3.arts.length, 'a block is not answered by the riposte');
 
@@ -1405,8 +1405,8 @@ async function scenarioImpact() {
     G.watch = (n, e) => { if (n === 'game:cinematic') seen.push(e?.kind); };
     answerMove(G, 'swallow', (left) => {
       if (left > (perfect ? 0.05 : 0.12)) return false;
-      input.up(2);
-      input.click(2);
+      input.up(1);
+      input.click(1);
       return true;
     }, 0.9);
     G.watch = null;
@@ -1468,8 +1468,8 @@ async function scenarioMoments() {
   let parried = false;
   const ok1 = answerMove(G, 'fallingStar', (left) => {
     if (left > 0.05) return false; // inside the perfect window (0.08 s)
-    input.up(2);
-    input.click(2);
+    input.up(1);
+    input.click(1);
     parried = true;
     return true;
   }, 1.6);
@@ -1493,8 +1493,8 @@ async function scenarioMoments() {
   run(G, 0.2);
   answerMove(G, 'fallingStar', (left) => {
     if (left > 0.05) return false;
-    input.up(2);
-    input.click(2);
+    input.up(1);
+    input.click(1);
     return true;
   }, 1.6);
   const hp0 = p.hp;
@@ -1516,8 +1516,8 @@ async function scenarioMoments() {
   run(G, 0.2);
   answerMove(G, 'fallingStar', (left) => {
     if (left > 0.05) return false;
-    input.up(2);
-    input.click(2);
+    input.up(1);
+    input.click(1);
     return true;
   }, 1.6);
   seen.length = 0;
@@ -1587,8 +1587,8 @@ async function scenarioMoments() {
   let reeled = false;
   const ok3 = answerMove(G, 'ashRain', (left) => {
     if (left > 0.12) return false;
-    input.up(2);
-    input.click(2);
+    input.up(1);
+    input.click(1);
     return true;
   }, 9);
   reeled = seen.includes('dragon:deflected') || d.brain.react?.kind === 'reeling';
@@ -1856,7 +1856,7 @@ async function scenarioTerrain() {
   const ms = (v) => (Number.isFinite(v) ? (v * 1000).toFixed(0) : '∞');
   const parryOn = (ev, GG) => {
     // the hero's side: a parry 0.12 s before each cued impact
-    for (const f of ev.flashes) if (!f.used && game.time >= f.t + TUNING.flashLead - 0.12 - DT) { f.used = true; GG.input.up(2); GG.input.click(2); }
+    for (const f of ev.flashes) if (!f.used && game.time >= f.t + TUNING.flashLead - 0.12 - DT) { f.used = true; GG.input.up(1); GG.input.click(1); }
   };
   const N0 = W.list.length;
   assert(N0 >= 60 && W.standing === N0, `the real courtyard: ${N0} breakables, all standing`);
@@ -2076,7 +2076,7 @@ async function scenarioPerfect() {
     d.debug.trigger('plumThrust');
     run(G, 2.5, () => {
       game.mouseGround.set(d.position.x, 0, d.position.z);
-      if (flashT !== null && !pressed && game.time >= flashT + TUNING.flashLead - lead - DT) { pressed = true; input.up(2); input.click(2); }
+      if (flashT !== null && !pressed && game.time >= flashT + TUNING.flashLead - lead - DT) { pressed = true; input.up(1); input.click(1); }
     }, () => !!parry);
     G.watch = null;
     return { parry, posture: d.posture };
@@ -2185,7 +2185,7 @@ async function scenarioTelemetry() {
   d.debug.trigger('plumThrust');
   run(G, 2.5, () => {
     game.mouseGround.set(d.position.x, 0, d.position.z);
-    if (flashT !== null && !pressed && game.time >= flashT + TUNING.flashLead - 0.12 - DT) { pressed = true; input.up(2); input.click(2); }
+    if (flashT !== null && !pressed && game.time >= flashT + TUNING.flashLead - 0.12 - DT) { pressed = true; input.up(1); input.click(1); }
   }, () => answers.length > 0);
   G.watch = w0;
   const pt = M.attempt.get('plumThrust');
@@ -2210,6 +2210,90 @@ async function scenarioTelemetry() {
   assert(game.state === 'explore' && M.attempt.size === 0 && M.killedBy === null && game.hud.bannerUi.rec.children.length === 0, `rising again starts a new attempt (${game.state}; ${M.attempt.size} rows, ${game.hud.bannerUi.rec.children.length} lines)`);
   G.watch = null;
   p.debug.noRiposte = false;
+  return G;
+}
+
+// ================================================================== scenario: heavy (ADR-115)
+// The heavy branches on a duelist: the right one for each point of the chain, the Mountain
+// Splitter crushing his raised guard where a light is turned, the Rising Crescent staggering him,
+// a held heavy charging, a light that no longer waits.
+async function scenarioHeavy() {
+  out('\n== scenario HEAVY (the heavy branches: the chain picks the heavy; a crush through his guard; a stagger; the charge on the heavy button) ==');
+  const { HEAVY } = await imp('src/entities/player/combat.js');
+  const G = build();
+  duel(G, { dist: 2.2 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  run(G, 0.4);
+  const names = [], ev = [];
+  G.watch = (n, e) => { if (n === 'player:attack') names.push(e.name); ev.push(n); };
+  /** n lights in open air (far from him), then a heavy press `gap` m before him. Returns the heavy's name. */
+  const branch = (n, gap = 2.2, prep = null) => {
+    settle(G, 8);
+    home(G);
+    if (n > 0) {
+      p.debug.teleport(d.position.x + 30, d.position.z + 30);
+      game.mouseGround.set(d.position.x + 60, 0, d.position.z + 60);
+    }
+    for (let k = 0; k < n; k++) { input.click(0); run(G, 0.36); }
+    place(G, gap);
+    prep?.();
+    names.length = 0;
+    ev.length = 0;
+    input.click(2);
+    run(G, 1.4, () => game.mouseGround.set(d.position.x, 0, d.position.z));
+    return names[0];
+  };
+  for (let n = 0; n <= 4; n++) {
+    const got = branch(n, 8);
+    assert(got === HEAVY[n].name, `${n} light${n === 1 ? '' : 's'} then heavy: ${HEAVY[n].label} (${got})`);
+  }
+  // after a heavy the chain starts over: the next light is the first
+  settle(G, 8);
+  place(G, 8);
+  input.click(2);
+  run(G, 0.9);
+  names.length = 0;
+  input.click(0);
+  run(G, 0.5);
+  assert(names[0] === 'fallingCut', `after a heavy the next light is the chain's first (${names[0]})`);
+  // his raised guard turns a light ...
+  settle(G, 8);
+  home(G);
+  place(G, 2.2);
+  d.brain.raiseT = 0;
+  run(G, 0.2);
+  let hp0 = d.hp;
+  input.click(0);
+  run(G, 0.6);
+  assert(d.hp === hp0 && (G.counts['dragon:guard'] ?? 0) > 0, `his raised guard turns a light (hp ${hp0} -> ${d.hp})`);
+  // ... the Mountain Splitter crushes it: it lands and he staggers
+  hp0 = d.hp;
+  const got3 = branch(3, 2.2, () => { d.brain.raiseT = 0; });
+  assert(got3 === HEAVY[3].name && d.hp < hp0 && ev.includes('dragon:stagger'), `the Mountain Splitter (poise ${HEAVY[3].poise}) crushes his raised guard: ${hp0 - d.hp} damage, he staggers (${ev.filter((n) => n.startsWith('dragon:')).join(', ')})`);
+  // the Rising Crescent staggers him where he stands, his guard down
+  hp0 = d.hp;
+  const got1 = branch(1, 2.2, () => { d.brain.raiseT = 99; });
+  assert(got1 === HEAVY[1].name && d.hp < hp0 && ev.includes('dragon:stagger'), `the Rising Crescent lands (${hp0 - d.hp}) and staggers him (reel ${HEAVY[1].reel})`);
+  // held, the heavy is the charge; the light never charges
+  settle(G, 8);
+  place(G, 8);
+  names.length = 0;
+  input.press(2);
+  let charged = false;
+  run(G, 1.0, () => { if (p.state === 'charge') charged = true; });
+  input.up(2);
+  run(G, 1.0);
+  assert(charged && names.includes('cleave'), `the heavy held 1 s charges, released: the cleave (${names.join(', ')})`);
+  settle(G, 8);
+  place(G, 8);
+  input.press(0);
+  let chargedL = false;
+  run(G, 1.0, () => { if (p.state === 'charge') chargedL = true; });
+  input.up(0);
+  run(G, 0.6);
+  assert(!chargedL, 'the light held 1 s never charges');
+  G.watch = null;
   return G;
 }
 
@@ -2251,7 +2335,7 @@ async function scenarioStrategy() {
   return last;
 }
 
-const SCENARIOS = { strategy: scenarioStrategy, terrain: scenarioTerrain, probe: scenarioProbe, perfect: scenarioPerfect, telemetry: scenarioTelemetry, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
+const SCENARIOS = { strategy: scenarioStrategy, terrain: scenarioTerrain, probe: scenarioProbe, perfect: scenarioPerfect, telemetry: scenarioTelemetry, heavy: scenarioHeavy, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

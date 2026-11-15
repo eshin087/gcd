@@ -240,8 +240,26 @@ shown on the grip only once the hand is there (`OFF_SNAP`).
 | 5 — slam (finisher) | 5th tap | 0.28 / 0.13 / 0.42 s (0.83 s) | 66 | 18 | two-handed (ADR-076): he gathers (dips and coils right, the blade drawn down-back past the right hip), leaps as the blade sweeps up his right side and cocks over the shoulder, and brings it down in one diagonal across his front into the ground ahead and a little left, landing folded over the planted blade and holding it; a crystal-shard burst (r 1.7 m) at the point hits if the blade missed |
 | Sprint slash | LMB while sprinting (faster than a run) | 0.11 / 0.13 / 0.32 s | 40 | 7 | a bounding rising slash, low right → high left; carries 2.4 m along the RUN direction (it does not snap to the aim); counts as hit 1 (the next tap is the rising backhand) |
 | Roll cut | LMB out of a forward roll | 0.10 / 0.11 / 0.26 s | 34 | 6 | a low cut rising out of the crouch, right → left; counts as hit 1. A backstep (Space with no direction) starts the plain chain |
-| Cleave — charged | hold LMB ≥ 0.3 s, release | 0.08 / 0.24 / 0.45 s | 70–110 by charge (full at 1.2 s) | 12–20 | a deep stance coiled away from the target, both hands on the grip held out before the right side of his chest, the sword elbow lifted out to the side and the off forearm across the chest (ADR-078), the blade standing nearly upright out to his right, a hand's width clear of his hood (ADR-090: it stood beside the ear and crossed his face) (moves at ×0.4; lightning crawls on the blade past half charge); the release dashes 2.2–3.6 m along the facing with the blade still cocked and carves one two-handed diagonal, high right to past the left hip, as the dash dies out (the blade crosses his front over the last 45 % of the active frames), sinking into a long low lunge that he holds, the free hand letting go and snapping into sword fingers at the foe while the blade trails low behind; a wide crescent that hangs in the air (cooling to violet), and on a hit a 0.15–0.2 s freeze, a doubled slash line with a tick across it, a ring, a fan of streaks along the cut, a 0.14–0.24 m kick and a 1.2–2.0 m punch (ADR-072; it was a lunging thrust) |
+| Cleave — charged | hold HEAVY ≥ 0.3 s, release (ADR-115; it was the attack button's) | 0.08 / 0.24 / 0.45 s | 70–110 by charge (full at 1.2 s) | 12–20 | a deep stance coiled away from the target, both hands on the grip held out before the right side of his chest, the sword elbow lifted out to the side and the off forearm across the chest (ADR-078), the blade standing nearly upright out to his right, a hand's width clear of his hood (ADR-090: it stood beside the ear and crossed his face) (moves at ×0.4; lightning crawls on the blade past half charge); the release dashes 2.2–3.6 m along the facing with the blade still cocked and carves one two-handed diagonal, high right to past the left hip, as the dash dies out (the blade crosses his front over the last 45 % of the active frames), sinking into a long low lunge that he holds, the free hand letting go and snapping into sword fingers at the foe while the blade trails low behind; a wide crescent that hangs in the air (cooling to violet), and on a hit a 0.15–0.2 s freeze, a doubled slash line with a tick across it, a ring, a fan of streaks along the cut, a 0.14–0.24 m kick and a 1.2–2.0 m punch (ADR-072; it was a lunging thrust) |
 
+- **Heavy branches** (ADR-115; owner: heavy branches off the chain; numbers in `combat.js` `HEAVY`, a
+  first pass to tune from play): HEAVY (RMB / R2 / the HEAVY tile) pressed on its own, or in the
+  recovery of the n-th light (from its `chain`, or buffered through its cut), is that point's own
+  heavy. Each is two-handed and holds its finish; each ends the chain (the next light is hit 1).
+  Held past `CHARGE.hold` (0.3 s) a heavy press is the charge instead. A light press no longer waits
+  to see whether it is held: it cuts at once.
+
+  | Input | Heavy | Windup / active / recovery (s) | Damage | Posture | Its job |
+  |---|---|---|---|---|---|
+  | H | Piercing Gale | 0.30 / 0.14 / 0.42 | 54 | 34 | a two-handed thrust on a 2.8 m dash: the gap closer |
+  | L-H | Rising Crescent | 0.28 / 0.14 / 0.42 | 50 | 36 | rises from the left hip to high right; staggers a duelist (`reel` 2) |
+  | L-L-H | Whirling Tempest | 0.28 / 0.18 / 0.44 | 52 | 30 | a full two-handed turn: the blade all round him |
+  | L-L-L-H | Mountain Splitter | 0.34 / 0.14 / 0.46 | 62 | 50 | a falling diagonal from over the left shoulder; its poise (50 ≥ crushPoise 48) crushes a raised guard |
+  | L-L-L-L-H | Earthbreaker | 0.32 / 0.13 / 0.50 | 84 | 52 | the slam with a higher leap and shards in 2.6 m (the plain slam: 1.7) |
+
+  Checked by `npm test`: REACH swings every heavy at contact, 2, 2.5, 3 and 3.5 m from the wyrm's
+  chest; duel HEAVY (the branch at each point, the crush through his guard, the stagger, the charge on
+  the heavy button, a light that never charges).
 - **Variants** (ADR-055, ADR-071): hits 1–5 each have 2–3 looks, picked at random as the hit starts
   (never the same one twice in a row, and never along the line the swing before it cut, so two hits
   in a row are never in the same plane): 1 falling cut / low draw cut / rising slash with a skip;

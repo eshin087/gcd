@@ -14,12 +14,14 @@ export const ACTIONS = [
   { id: 'down', label: 'move down', kb: ['KeyS', 'ArrowDown'], pad: null },
   { id: 'left', label: 'move left', kb: ['KeyA', 'ArrowLeft'], pad: null },
   { id: 'right', label: 'move right', kb: ['KeyD', 'ArrowRight'], pad: null },
-  { id: 'attack', label: 'attack · hold: charge', kb: ['Mouse0'], pad: [5, 7] },
-  { id: 'block', label: 'block · tap: parry', kb: ['Mouse2'], pad: [4, 6] },
+  // (ADR-115, the owner's pick: heavy on the right click and R2, the guard on the middle click)
+  { id: 'attack', label: 'light attack', kb: ['Mouse0'], pad: [5] },
+  { id: 'heavy', label: 'heavy attack · hold: charge', kb: ['Mouse2'], pad: [7] },
+  { id: 'block', label: 'block · tap: parry', kb: ['Mouse1'], pad: [4, 6] },
   { id: 'dodge', label: 'dodge', kb: ['Space'], pad: [0] },
   { id: 'sprint', label: 'sprint', kb: ['ShiftLeft', 'ShiftRight'], pad: [1, 10] },
   { id: 'flask', label: 'drink flask', kb: ['KeyF'], pad: [2] },
-  { id: 'lockOn', label: 'lock-on', kb: ['Tab', 'Mouse1'], pad: [11] },
+  { id: 'lockOn', label: 'lock-on', kb: ['Tab'], pad: [11] },
   { id: 'interact', label: 'rest · fight again', kb: ['KeyE', 'KeyR'], pad: [3] },
   { id: 'help', label: 'help', kb: ['KeyH'], pad: [8] },
   { id: 'mute', label: 'mute', kb: ['KeyM'], pad: null },
@@ -38,7 +40,9 @@ export const PAD_BUTTONS = 16;
 /** Stick clicks: bound to sprint they latch it until the stick is let go (holding one while moving is awkward). */
 export const STICK_CLICKS = new Set([10, 11]);
 
-const STORE_KEY = 'abyss.bindings.v1';
+// (v2, 2026-11-15: the heavy button came and the guard moved to the middle click. A v1 save had the
+// guard on the right click, now the heavy's: it is not read, every player starts on the new defaults)
+const STORE_KEY = 'abyss.bindings.v2';
 
 // ---------------------------------------------------------------- labels
 const KEY_NAMES = {

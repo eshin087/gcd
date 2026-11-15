@@ -354,6 +354,79 @@ export const SWINGS = {
     ],
   },
 
+  // ---- the heavy branches (combat.js HEAVY; ADR-115) -------------------------------------------
+  // Two-handed, slower to gather, and each holds its finish (`home` 0.385, like the slam and the
+  // cleave): the commitment a heavy is, readable from the camera behind him. Each starts on the side
+  // the light before it leaves the blade.
+  /** Piercing Gale (HEAVY[0]): both hands draw the grip back to the right ribs, the point already up;
+   *  the dash (combat.js `dash`) carries him in as the arms drive the point forward and up. */
+  heavyThrust: {
+    line: 'point',
+    home: 0.385,
+    rF: [-0.17, -0.52], fy: [0.1, -0.8], drag: 0.12,
+    lF: [0.14, 0.6],
+    keys: [
+      { u: 0.6, by: -0.2, bz: -0.12, bx: -0.05, hip: -0.5, sy: -0.62, sx: 0.12 },
+      { u: 1.0, h: [-0.02, -0.24, -0.08], a: [4, 22], two: 1, lp: [0.7, -0.6, 0.3], by: -0.24, bz: -0.1, hip: -0.42, sy: -0.56, sx: 0.16, bx: -0.04, hs: 0 },
+      { u: 1.45, h: [0.08, -0.1, 0.28], a: [2, 30], two: 1, by: -0.26, bz: 0.06, hip: -0.06, sy: -0.08, sx: 0.3, bx: 0.0 },
+      { u: 1.9, h: [0.13, 0.08, 0.5], a: [0, 36], two: 1, by: -0.3, bz: 0.18, hip: 0.2, sy: 0.3, sx: 0.44, bx: 0.04 },
+      { u: 2.1, by: -0.32, bz: 0.2, bx: 0.04, hip: 0.24, sy: 0.34, sx: 0.48 },
+      { u: 2.55, h: [0.13, 0.06, 0.46], a: [0, 34], two: 1, by: -0.28, bz: 0.14, hip: 0.2, sy: 0.28, sx: 0.42, bx: 0.03 },
+    ],
+  },
+  /** Rising Crescent (HEAVY[1], after the first light, which leaves the blade low on his left): both
+   *  hands sink to the left hip and the blade rises across his front to high on his right. */
+  heavyRise: {
+    line: 'right',
+    home: 0.385,
+    fy: [0.45, -0.6],
+    keys: [
+      { u: 0.6, by: -0.34, bz: -0.08, bx: -0.06, hip: 0.52, sy: 0.6, sx: 0.42 },
+      { u: 1.0, h: [0.34, -0.4, 0.04], a: [150, -34], two: 1, lp: [0.7, -0.6, 0.3], by: -0.32, bz: -0.07, bx: -0.05, hip: 0.44, sy: 0.54, sx: 0.4, hs: 0 },
+      { u: 1.25, h: [0.28, -0.32, 0.3], a: [100, -28] },
+      { u: 1.5, h: [0.12, -0.14, 0.46], a: [30, -6], two: 1, by: -0.18, bz: 0.08, bx: 0.01, hip: -0.06, sy: 0.06, sx: 0.24 },
+      { u: 1.75, h: [-0.08, 0.08, 0.42], a: [-32, 20] },
+      { u: 2.0, h: [-0.16, 0.18, 0.3], a: [-70, 40], two: 1, by: -0.07, bz: 0.12, bx: 0.05, hip: -0.36, sy: -0.36, sx: 0.04, sz: 0.06 },
+      { u: 2.15, by: -0.06, bz: 0.13, bx: 0.06, hip: -0.48, sy: -0.5, sx: 0.0 },
+      { u: 2.55, h: [-0.18, 0.22, 0.16], a: [-112, 44], two: 1, by: -0.07, bz: 0.09, bx: 0.04, hip: -0.43, sy: -0.45, sx: 0.02, sz: 0.05 },
+    ],
+  },
+  /** Whirling Tempest (HEAVY[2], after the backhand, which leaves the blade high on his right): one
+   *  full turn to his right (combat.js `spin`) with both hands on the grip and the blade level, out
+   *  past his reach: it sweeps all round him and crosses his front late in the turn. */
+  heavySpin: {
+    line: 'flat',
+    home: 0.385,
+    keys: [
+      { u: 0.5, by: -0.24, sx: 0.24 },
+      { u: 1.0, h: [-0.22, -0.08, 0.12], a: [-124, 8], two: 1, lp: [0.7, -0.6, 0.3], by: -0.22, hip: -0.2, sy: -0.3, sx: 0.2, bx: -0.04, hs: 0 },
+      { u: 1.5, h: [-0.18, -0.1, 0.26], a: [-96, 2], two: 1, by: -0.26, hip: -0.12, sy: -0.16, sx: 0.26 },
+      { u: 2.0, h: [-0.12, -0.14, 0.36], a: [-60, -6], two: 1, by: -0.3, bz: 0.06, hip: -0.14, sy: -0.22, sx: 0.32, bx: 0.05 },
+      { u: 2.45, h: [-0.2, -0.2, 0.2], a: [-112, -14], two: 1, by: -0.26, bz: 0.05, hip: -0.34, sy: -0.42, sx: 0.26 },
+    ],
+  },
+  /** Mountain Splitter (HEAVY[3], after the third light): both hands carry the blade over the LEFT
+   *  shoulder (the slam's comes from over the right) and he steps through one falling diagonal across
+   *  his chest to the right hip, sinking deep, and holds the finish. Its posture crushes a guard. */
+  heavyCrush: {
+    line: 'left',
+    home: 0.385,
+    step: [0.45, 1.5],
+    drag: 0.2,
+    lF: [0.15, 0.5], rF: [-0.17, -0.46], fy: [0.15, -0.75],
+    keys: [
+      { u: 0.4, h: [0.22, -0.2, 0.16], a: [120, 10], two: 1, lp: [0.7, -0.6, 0.3], by: -0.16, bz: -0.06, hip: 0.3, sy: 0.38, sx: 0.12, hs: 0 },
+      { u: 0.75, by: -0.07, bz: -0.09, bx: -0.06, hip: 0.5, sy: 0.6, sx: -0.06 },
+      { u: 1.0, h: [0.28, 0.18, 0.1], a: [156, 44], two: 1, by: -0.08, bz: -0.07, bx: -0.05, hip: 0.42, sy: 0.54, sx: -0.02, sz: -0.05 },
+      { u: 1.25, h: [0.22, 0.12, 0.32], a: [104, 34] },
+      { u: 1.5, h: [0.1, -0.06, 0.46], a: [30, 10], two: 1, by: -0.24, bz: 0.1, bx: 0.01, hip: -0.06, sy: 0.0, sx: 0.36 },
+      { u: 1.75, h: [-0.08, -0.26, 0.42], a: [-30, -20] },
+      { u: 2.0, h: [-0.16, -0.38, 0.3], a: [-66, -40], two: 1, by: -0.34, bz: 0.15, bx: 0.05, hip: -0.36, sy: -0.4, sx: 0.5, sz: 0.07 },
+      { u: 2.15, by: -0.36, bz: 0.16, bx: 0.06, hip: -0.46, sy: -0.52, sx: 0.54 },
+      { u: 2.55, h: [-0.18, -0.4, 0.26], a: [-70, -42], two: 1, by: -0.34, bz: 0.13, bx: 0.05, hip: -0.42, sy: -0.48, sx: 0.5, sz: 0.06 },
+    ],
+  },
+
   // ---- out of a sprint / a roll ----------------------------------------------------------------
   /** The sprint slash: on the run, from behind the right knee up across his front to high left. */
   sprintSlash: {

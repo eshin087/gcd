@@ -11,7 +11,7 @@ import { relabelChips } from './dom.js';
 // (the parry tap, the charge hold) is the real device's. The left stick moves (setPadAxis), the
 // right stick aims; neither is remappable. Default layout (Gamepad API "standard" mapping, Xbox
 // names; PlayStation in brackets):
-//   RB / RT [R1 / R2] attack   LB / LT [L1 / L2] block, tap parry   A [✕] dodge   B [○] hold sprint
+//   RB [R1] light attack   RT [R2] heavy, hold: charge   LB / LT [L1 / L2] block, tap parry   A [✕] dodge   B [○] hold sprint
 //   L3 sprint until the stick is let go (any stick click bound to sprint latches)   X [□] flask
 //   Y [△] rest / fight again   R3 lock-on   View [Share] help   D-pad up / down zoom
 //   Menu [Options] pause (fixed, never remappable)
