@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../../core/math.js';
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
+import { atEase, fencerGuard } from './stances.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -49,6 +50,8 @@ const ANK = DIM.ankle;
 const LEG_IDX = [P.rF, P.rF + 1, P.rF + 2, P.lF, P.lF + 1, P.lF + 2, P.rK, P.rK + 1, P.rK + 2, P.lK, P.lK + 1, P.lK + 2, P.footFlat, P.rFy, P.lFy, P.rFf, P.lFf];
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const IDLE_LOOP = 2.4; // s (concept sheet: idle 2.4 s loop)
+const FIGHT_STATES = new Set(['bossIntro', 'boss']); // flow states in which the hero stands in his fight stance (stand())
+const FIGHT_EASE = [6, 2.6]; // 1/s: he takes the guard in ~0.35 s and lets it down over ~0.9 s (one rate both ways dropped the point 18 cm a frame as a fight ended)
 
 // ---------------------------------------------------------------- pose helpers
 export const v3 = (p, i, x, y, z) => {
@@ -272,9 +275,14 @@ const unitAzEl = (az, el) => {
   return [c * Math.sin(a), Math.sin(e), c * Math.cos(a)];
 };
 const REST_LD = unitAzEl(14, -50); // the rest's sword fingers: ahead and down, a "seated" jian rest
+const REST_LN = [-0.35, -0.6, -0.72]; // … their palm down and back
 const LD_BRACE = unitAzEl(0, -10); // a palm braced on the grass: the fingers ahead
 const LD_WARD = unitAzEl(-4, -12); // the backstep's warding low point
 const LD_FOE = unitAzEl(0, 0); // straight at the foe
+// the sword arm on the move in a fight (loco): the grip before the right ribs, the elbow down and
+// out, the blade ahead and level, a little out to the sword side (the fencer's guard, carried)
+// (the elbow back beside the ribs: out to the side, 0.52, it flared like the run's once did)
+const FIGHT_RUN = { h: [-0.09, -0.26, 0.33], p: [-0.22, -0.7, -0.68], d: unitAzEl(-11, 3) };
 export function guard(p, A) {
   const ph = A.time * (TAU / IDLE_LOOP);
   const br = Math.sin(ph), sw = Math.sin(ph * 0.5 + 1.1); // breath, and a slower weight sway
@@ -320,9 +328,55 @@ export function guard(p, A) {
   // palm down and back; the fingers breathe with the chest
   const RD = REST_LD;
   v3(p, P.lD, RD[0], RD[1] + 0.05 * br, RD[2]);
-  v3(p, P.lN, -0.35, -0.6, -0.72);
+  v3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2]);
   p[P.hs] = 1;
   p[P.lk] = 0;
+}
+
+const SCR_FIGHT = new Float32Array(N);
+/** Where the hero STANDS (ADR-108, stances.js): at ease, or in the fencer's guard once a fight is
+ *  on, blended by A.fightW (HeroAnimator.update). The hero's animator only (A.freeHand): a
+ *  duelist's footwork reads guard(), and guard() stays the base every other clip is written over.
+ *  loco() blends the gait in over this, and an attack's recovery comes home to it. */
+export function stand(p, A) {
+  guard(p, A);
+  if (!A.freeHand) return;
+  const f = clamp(fin(A.fightW), 0, 1);
+  if (f >= 0.999) fencerGuard(p, P, A);
+  else {
+    atEase(p, P, A);
+    if (f > 0.001) {
+      for (let i = 0; i < N; i++) SCR_FIGHT[i] = p[i];
+      fencerGuard(SCR_FIGHT, P, A);
+      blend(p, p, SCR_FIGHT, f * f * (3 - 2 * f));
+    }
+  }
+  // setting off, the free hand lets go of the belt's shape for the rest it swings in (guard()'s:
+  // the fingers ahead and down). Kept, the hand turned in on the hip put its fingertips 6.7 cm
+  // into it as the arm swung past.
+  const mv = smoothstep(0.02, 0.3, A.moveW);
+  if (mv > 0) {
+    to3(p, P.lD, REST_LD[0], REST_LD[1], REST_LD[2], mv);
+    to3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2], mv);
+  }
+}
+
+/** The hero's blade (and, `arm`, the sword hand and its elbow) leaves where it was as this clip
+ *  began over `dur` s, not inside the cross-fade's few frames. (ADR-108: a roll and a backstep are
+ *  written over guard()'s low blade and hand; entered from the fencer's guard, the cross-fade swung
+ *  the steel 100° in three frames, up to 1.7 m a frame at the point, and dipped the hand 25 cm.
+ *  Coming back to the guard out of a roll it rose 74 cm a frame: LOCO_SETTLE.) */
+const SWORD_ENTRY = 0.16, LOCO_SETTLE = 0.24; // s
+function swordFromEntry(p, A, dur, arm = true) {
+  if (!A.freeHand || !A.from) return;
+  const e = 1 - smoothstep(0, dur, A.t);
+  if (e <= 0.001) return;
+  const F = A.from;
+  dirLerp(p, P.swD, p[P.swD], p[P.swD + 1], p[P.swD + 2], F[P.swD], F[P.swD + 1], F[P.swD + 2], e);
+  to3(p, P.swF, F[P.swF], F[P.swF + 1], F[P.swF + 2], e);
+  if (!arm) return;
+  to3(p, P.rH, F[P.rH], F[P.rH + 1], F[P.rH + 2], e);
+  to3(p, P.rP, F[P.rP], F[P.rP + 1], F[P.rP + 2], e);
 }
 
 /** One foot of the gait (model space). u = this foot's cycle phase: stance [0, β) sweeps the foot
@@ -403,7 +457,7 @@ function gaitParams(G, sp, sprintW) {
  *  behind (sprint); the free fist swings / pumps against the legs. Planted feet are held in the
  *  world by the foot planner (HeroAnimator._feet). */
 export function loco(p, A) {
-  guard(p, A);
+  stand(p, A);
   const w = A.moveW;
   // (the sword lag outlasts moveW: dropping it at once snapped the last few % of the blade's
   // swing back to the ready stance in one frame)
@@ -482,15 +536,21 @@ export function loco(p, A) {
   const hero = A.freeHand === true;
   const armF = hero ? fin(A.armSign, 1) * Math.max(Math.abs(mz), 0.65) : mz;
   const amp = 0.09 * cs * armF, ws = A.swordW, bw = A.backW;
+  // In a fight (A.fightW, the hero) he keeps his guard up on the move, the blade ahead of him and
+  // level, riding the stride; only a sprint trails it. (ADR-108: trailed, every start and stop
+  // swung the steel 140° between the fencer's guard and his back, 16-18 cm a frame at the point.)
+  const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = FIGHT_RUN;
   // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
   // beside a free arm that pumps; it rides the stride now)
-  to3(p, P.rH, lerp(lerp(-0.13, -0.15, s), -0.02, bw), lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), ws);
+  to3(p, P.rH, lerp(lerp(lerp(-0.13, -0.15, s), -0.02, bw), FR.h[0], fw), lerp(lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
+    lerp(lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
   // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
   // front: they point back beside the ribs now)
-  to3(p, P.rP, lerp(lerp(-0.4, -0.5, s), -0.85, bw), lerp(lerp(-0.3, 0.2, s), -0.3, bw), lerp(-0.95, -0.5, bw), ws);
+  to3(p, P.rP, lerp(lerp(lerp(-0.4, -0.5, s), -0.85, bw), FR.p[0], fw), lerp(lerp(lerp(-0.3, 0.2, s), -0.3, bw), FR.p[1], fw), lerp(lerp(-0.95, -0.5, bw), FR.p[2], fw), ws);
   dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
+  if (fw > 0.001) dirLerp(SW_T, 0, SW_T[0], SW_T[1], SW_T[2], FR.d[0], FR.d[1] + 0.035 * st, FR.d[2], fw);
   dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
-  to3(p, P.swF, lerp(-0.3, 0, bw), 1, lerp(0, 0.2, bw), ws);
+  to3(p, P.swF, lerp(lerp(-0.3, 0, bw), 0.25, fw), 1, lerp(lerp(0, 0.2, bw), 0, fw), ws);
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (the run's back swing reaches further down and back, so the elbow opens behind him and folds as
@@ -951,7 +1011,7 @@ function attackPose(p, A) {
     // home in a recovery step (the foot planner settles the rest), and the sword hand comes round in
     // FRONT of the chest (a straight blend of the shoulder offsets ran it through the torso)
     for (let j = 0; j < FOOT_CH.length; j++) FOOT_KEEP[j] = p[FOOT_CH[j]];
-    guard(SCRATCH, A);
+    stand(SCRATCH, A);
     // (smootherstep: no speed and no acceleration left as the hands arrive)
     const hx = clamp((rec - home) / Math.max(1e-6, 1 - home), 0, 1), b = hx * hx * hx * (hx * (6 * hx - 15) + 10);
     // a finish over his LEFT shoulder (light 1) comes home round the FRONT: the ready blade now
@@ -1664,6 +1724,7 @@ function rollPose(p, A) {
   to3(p, P.rK, -0.2, 0.5, 1, tuck);
   to3(p, P.lK, 0.2, 0.5, 1, tuck);
   p[P.footFlat] = lerp(0.9, 0, tuck);
+  swordFromEntry(p, A, SWORD_ENTRY);
 }
 /** Backstep (0.4 s): a short crouched hop backward. The feet push off the grass (held on their
  *  spots for the first frames while the root moves), fly with the knees up, and land a little
@@ -1716,6 +1777,7 @@ function backstepPose(p, A) {
   // the free hand wards with a low point
   to3(p, P.lD, LD_WARD[0], LD_WARD[1], LD_WARD[2], raise);
   to3(p, P.lN, 0, -1, 0, raise);
+  swordFromEntry(p, A, SWORD_ENTRY);
 }
 
 /** Drink: legs keep walking (slowly), the free hand raises the flask, head tips back. */
@@ -2265,6 +2327,7 @@ function bouncePose(p, A) {
  *  between taps instead of dropping to the low ready guard and back for every blow. */
 function locoGuard(p, A) {
   loco(p, A);
+  swordFromEntry(p, A, LOCO_SETTLE, false); // the blade settles into the stance (a roll's end, a guard let down)
   idleLife(p, A);
   const g = clamp(fin(A.player?.guardHold), 0, 1);
   if (g < 0.001) return;
@@ -2746,6 +2809,7 @@ export class HeroAnimator {
     this.moveW = 0;
     this.sprintW = 0;
     this.swordW = 0;
+    this.fightW = 0; // 0 at ease … 1 the fight stance (stand(), stances.js)
     this.speed = 0;
     this.phase = 0;
     this.mx = 0;
@@ -2925,6 +2989,7 @@ export class HeroAnimator {
     this.moveW = 0;
     this.sprintW = 0;
     this.swordW = 0;
+    this.fightW = 0; // 0 at ease … 1 the fight stance (stand(), stances.js)
     this.speed = 0;
     this.speedS = this.speedSV = 0;
     this.backW = 0;
@@ -3149,6 +3214,14 @@ export class HeroAnimator {
       this.trav.z = tx * s + tz * c;
     }
     this.pathCh = null;
+    {
+      // which stance he stands in (stances.js): the fencer's guard while locked on or while a boss
+      // fight is on (also without a lock: aiming with the mouse he never stands at ease beside a
+      // boss), else at ease. The Lab can hold either (player.debug.fightStance: true / false)
+      const force = pl.debug?.fightStance;
+      const fight = typeof force === 'boolean' ? force : !!pl.lockOn || FIGHT_STATES.has(pl.game?.state);
+      this.fightW = damp(fin(this.fightW), fight ? 1 : 0, FIGHT_EASE[fight ? 0 : 1], dt);
+    }
     this._idleLife(dt, sp);
     this.poses[this.key](this.target, this);
     if (this.blendT < this.blendDur) {
@@ -3221,7 +3294,7 @@ export class HeroAnimator {
    *  when he moves, attacks or guards. */
   _idleLife(dt, sp) {
     const F = this.fidget, pl = this.player;
-    const calm = this.key === 'loco' && pl.state === 'idle' && sp < 0.1 && this.moveW < 0.05 && !pl.lockOn && !(fin(pl.guardHold) > 0.001);
+    const calm = this.key === 'loco' && pl.state === 'idle' && sp < 0.1 && this.moveW < 0.05 && !pl.lockOn && !(this.fightW > 0.05) && !(fin(pl.guardHold) > 0.001);
     if (this.key !== 'loco' && F.k >= 0) {
       // another clip took over (its cross-fade starts from this pose)
       F.k = -1;
