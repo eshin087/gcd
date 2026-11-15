@@ -1767,7 +1767,7 @@ panel and the pause panel still scroll). Tuning: `CONFIG.touch`, sizes / look in
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
 `starless`), `DEFAULT_LEVEL`,
-`withStage(level, search)` (`?stage=lab&stageLook=grid|holo|void`: the same level on the training
+`withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-098), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
 default), `applyLevel(level)` (merges `level.world` into `CONFIG.world`: main.js calls it once,

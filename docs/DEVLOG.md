@@ -18,8 +18,9 @@ background/stage". Branch `dev/training-lab`, own worktree.
   each: the runner sets it up and plays the hero through the input's virtual keys, answering the
   boss's glints. A banner names it and gives ✓ / ✗. Speed, loop, the answer for boss moves, the
   stage and the boss in the panel. F4 / the Lab's TRAINING button / `?training`.
-- **The lab stage** (`world/trainingRoom.js`, `?stage=lab`): a training room for any boss, three
-  looks to pick from (Grid, Holo, Void).
+- **The lab stage** (`world/trainingRoom.js`, `?stage=lab`): a training room for any boss. Three
+  looks were filmed for the owner (Grid, Holo, Void); the owner picked **Holo** and the others were
+  removed.
 - **Found on the way:** the Ash Disciple's streak flurry had the same name as his phase-2 string
   (both "Hundred Petals"): it is **Scattering Ash** now.
 - **Tests:** integ / duel / lord TRAINING run every situation for their boss (all pass).
@@ -29,9 +30,9 @@ background/stage". Branch `dev/training-lab`, own worktree.
 sheet sent to the owner).
 
 **Not checked / open:** the wyrm and the Lord on the lab stage only headless (their sims run on their
-own sets); phones (the panel is narrower there but not tried); the owner's pick of a look.
+own sets); phones (the panel is narrower there but not tried).
 
-**Next:** the owner picks a stage look (the other two can go); then situations he asks for.
+**Next:** situations the owner asks for.
 
 ---
 

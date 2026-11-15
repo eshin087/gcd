@@ -486,13 +486,12 @@ all glyph particles in the dragon's `add` / `alpha` pools.
   screen and stretched to its length (`LordFx._stroke`).
 
 ### The Training Room (2026-11-15, ADR-098; `world/trainingRoom.js`, `?stage=lab`)
-A lab stage for any boss, in three looks (`STAGE_LOOKS`; the owner picks): **Grid** (pale grey
-tiles, white lines, gold numbers), **Holo** (black tiles, a cyan grid of light, magenta rings, cyan
-pylons), **Void** (no walls, a lattice of violet dots, violet rings, stars drifting overhead). The
-floor is great 2 m tiles in a two-shade checker (carved glyphs, calm and sparse); the measuring grid
-is glyph particles in one additive batch of its own (a line every 2 m out to 22 m, brighter every
-10 m), rings round the duel's centre at 3, 6, 9 and 12 m with their numbers, a centre cross; low
-panel walls with light in their seams and a pylon of light at each corner (not in the void).
+A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
+pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved
+glyphs, calm and sparse); a cyan measuring grid of glyph particles in one additive batch of its own
+(a line every 2 m out to 22 m, brighter every 10 m); magenta rings round the duel's centre at 3, 6,
+9 and 12 m with their numbers in cyan, a centre cross; low dark panel walls with cyan light in their
+seams and a pylon of cyan light at each corner; cyan motes rising.
 
 ### Steel on steel (2026-11-14, ADR-079; `combat/clashFx.js`)
 One effect for every blade that meets a blade: the hero's parry, a duelist's guard, his deflect, the

@@ -12,8 +12,8 @@ Twenty-seven pieces of work since 0.4.0:
   let through, the chain, the cleave, the execution, getting hit, his phases, and every move he has
   answered the way you choose. The game plays your side for you, on the real timing windows, and
   says whether the situation showed what it should. Speed, loop and replay. Add `?stage=lab` (or
-  the STAGE buttons) to fight any boss in a **training room** with a measuring grid, in three looks
-  to choose from. *Changed:* the Ash Disciple's streak flurry is called Scattering Ash.
+  the STAGE buttons) to fight any boss in a **training room**: a dark dojo with a cyan measuring
+  grid and rings marked at 3, 6, 9 and 12 m. *Changed:* the Ash Disciple's streak flurry is called Scattering Ash.
 - **Phone controls you can hold, and a guard meter** (2026-11-14, ADR-095, ADR-096):
   - **The right thumb's pad.** ATTACK, BLOCK and DODGE are now three large tiles that touch each
     other, moved up and in from the corner. Slide your thumb from one onto another without lifting:

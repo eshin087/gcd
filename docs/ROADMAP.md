@@ -161,9 +161,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 ## M1.33 — Training and the lab stage (2026-11-15, `dev/training-lab`, ADR-098)
 - [x] A catalogue of situations by category, one click each, played through the game's own input
 - [x] The panel: banner, ✓ / ✗, speed, loop, the answer for boss moves, the stage, the boss
-- [x] The training room (`?stage=lab`) in three looks
+- [x] The training room (`?stage=lab`): three looks built, the owner picked Holo
 - [x] Every situation is a test (integ / duel / lord TRAINING)
-- [ ] The owner picks a stage look
 - [ ] Phones: the panel and the stage
 - [ ] More situations as they are asked for (a whole phase played out, a boss bot vs the hero bot)
 

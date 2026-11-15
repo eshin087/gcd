@@ -2405,7 +2405,8 @@ gets the wider field of view. Not tried on a real phone.
   same catalogue is a test:** the three sims run every situation for their boss and fail on one that
   does not show what it promises. (4) **A lab stage** (`?stage=lab`) puts any level's boss on a
   training room with a measuring grid; it wraps the level (the same boss, the room's set and
-  layout), so no boss needs to know about it. Three looks were built for the owner to pick.
+  layout), so no boss needs to know about it. Three looks were built (a pale Grid, a dark Holo of
+  cyan light, a starry Void without walls); the owner picked **Holo**, and the other two were removed.
 - **Rejected:** *Calling the hero's methods directly* (`_parry`, `_startRoll`): faster to write,
   but it skips the input, the buffers and the timing windows, which are what a situation is meant to
   show. *One stage per boss:* the duelists keep to their own rectangles and bounds, and a stage that

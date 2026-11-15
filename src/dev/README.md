@@ -60,8 +60,8 @@ A fighting game's training mode: every situation worth seeing, one click each.
   own glints. A banner over the fight names the situation, then ✓ (with its time) or ✗ and what was
   not seen; the row keeps the mark. **R** replays, **Esc** stops, **LOOP** repeats it.
 - **SPEED** ×1 / ×0.5 / ×0.25 / ×0.1 (`game.debugTimeScale`, as the Lab's TIME).
-- **STAGE:** Grid / Holo / Void reload onto the training room in that look (`?stage=lab&stageLook=`);
-  Level set goes back to the level's own. **BOSS** reloads into another level (the stage is kept).
+- **STAGE:** Training room reloads onto the lab stage (`?stage=lab`); Level set goes back to the
+  level's own. **BOSS** reloads into another level (the stage is kept).
 - Console: `__game.lab.training.run(id)`, `.list()`, `.replay()`, `.step(±1)`, `.loop`,
   `.moveAnswer`, `.lastResult`.
 - Tests: integ / duel / lord TRAINING run every situation for their boss and check each one shows
