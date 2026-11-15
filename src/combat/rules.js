@@ -72,7 +72,9 @@ export const DEFENSE = Object.freeze({
   // other attacker within its range it blinks `distanceBehind` m behind it (the v0.2 Ghostep)
   // (critWindow 1.6 → 2.2 s with the slower light chain, Session 25: a hit every ~0.42 s instead of
   // 0.25 s, so the window still holds about five swings and the walk back in from a plunge's landing)
-  ghostep: { distanceBehind: 3.2, slowmoScale: 0.3, slowmoTime: 0.6, critWindow: 2.2, critMult: 1.8 },
+  // (`critWindowWhite`: the crit window a perfect dodge of a WHITE or heavy blow opens: none. With 1.2 s
+  // a bot that only dodged still beat the wyrm fastest, on crits alone; ADR-102)
+  ghostep: { distanceBehind: 3.2, slowmoScale: 0.3, slowmoTime: 0.6, critWindow: 2.2, critWindowWhite: 0, critMult: 1.8 },
   // --- the plunge (contract 2): a perfect dodge of a plungeable attacker within `range` m (the hit
   // may forbid it: takeHit `plunge: false`) → vanish, reappear `appearUp` m above its head
   // (`appearBack` m out toward the landing side), hang, dive, a reverse-grip stab into the head
@@ -106,7 +108,13 @@ export const DEFENSE = Object.freeze({
   //   turn   rad: each pass's line is turned this much from the far end of the last one's
   //   last   the last blow against a foe without the plunge (the wyrm's is DEFENSE.plunge)
   //   keepStreak  the streak survives this long (s) without a perfect dodge; 0 = until he is hurt
+  //   on     which perfect dodges the flurry answers (ADR-102): 'red' = only a blow that nothing but a
+  //          dodge answers. A perfect dodge of a white or heavy blow counts in the streak and gives the
+  //          slow-mo where he stands (no crit window): the string goes on, and the streak is
+  //          cashed on the next red blow (or by the riposte). 'any' = every perfect dodge (until
+  //          2026-11-15: measured, a bot that only dodged beat every boss faster than one that parried)
   flurry: {
+    on: 'red',
     max: 7,
     world: 0.07,
     cut: { blink: 0.045, dash: 0.1, stop: 0.065, hold: 0.04, rush: 0.6, damage: 28, posture: 5, reel: 0.09 },
@@ -130,6 +138,17 @@ export const DEFENSE = Object.freeze({
   // parries or blocks takes one off the streak (a perfect parry counts two toward the total); when
   // all of them were answered his posture breaks. A blow that lands, or one dodged, breaks nothing.
   foeStreak: { min: 3, max: 7, launch: [0.5, 0.75, 1] },
+  // --- the flash counter (ADR-102): the riskiest answer pays the most. A trade clash whose cut only
+  // just became a cut when his blow arrived (at most `window` s into its active frames: an attack
+  // press about 0.08 - 0.14 s before his blow lands; any later and the blow lands on the hero) is not
+  // thrown back: it beats his blow aside and goes through him. `damage` (final) and `posture` at
+  // once, he reels (attacker.onCounter: his string is over), the crit window opens. `stop` / `shake`
+  // / `punch`: the freeze, the camera
+  counter: { window: 0.03, damage: 70, posture: 60, stop: 0.16, shake: 0.55, punch: 3.8 },
+  // --- a PERFECT parry of a blow of the body or the blade (ADR-102; a bullet's is the return): its
+  // posture damage x POSTURE.perfect, and the counter cut: the first light started within
+  // `cutWindow` s winds up `cutSpeed` x as fast and crits
+  perfectParry: { cutWindow: 0.9, cutSpeed: 2 },
 });
 
 /**
@@ -165,6 +184,7 @@ export const GUARD = Object.freeze({
 /** Attacker posture (enemy "break" meter, shown under the boss HP bar). */
 export const POSTURE = Object.freeze({
   parry: { normal: 26, blue: 48 }, // posture damage dealt to the attacker by a parry
+  perfect: 1.5, // ... x this when the parry was perfect (DEFENSE.perfectParryWindow; ADR-102)
   hit: { light: 5, heavy: 16 }, // posture damage dealt by the player's weapon hits
   regenDelay: 3.0, // s without posture damage before it starts recovering
   regenRate: 14, // posture/s

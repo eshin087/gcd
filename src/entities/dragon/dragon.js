@@ -274,7 +274,7 @@ export class Dragon {
       if (last) this.brain.recoil();
       else this._startKnock(b, h);
     }
-    this.addPosture(POSTURE.parry[tell] ?? POSTURE.parry.normal);
+    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1));
   }
 
   /** The hero's plunge rides this point: the top of the head (+0.6 x SCALE up), valid in flight. */

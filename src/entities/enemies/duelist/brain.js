@@ -637,6 +637,9 @@ export class DuelBrain {
       }
       if (t > b.end + dt * 0.5) {
         b.done = true; // a whiff
+        // (a blow of his flurry that reached nobody: the hero stood his ground and it fell short, or
+        // he left: duelist.onStreakBlow settles which, so the flurry always ends one way or the other)
+        if (a.streak && !b.feint) d.onStreakBlow(a, b, null, !!s && s.dist <= fin(b.def.zone?.r, 2.3) + 1.2);
         continue;
       }
       this.zone = b.def.zone;

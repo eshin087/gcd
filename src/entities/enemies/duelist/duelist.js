@@ -382,7 +382,7 @@ export class Duelist {
     // (no burst of his own: the hero's parry draws the one clash, on the crossing of the two blades)
     this.flash = Math.max(this.flash, 0.5);
     this.jolt = Math.max(this.jolt, tell === TELL.BLUE ? 0.75 : 0.55); // the turned blow jars him
-    this.addPosture(POSTURE.parry[tell] ?? POSTURE.parry.normal);
+    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1));
     if (this.mode !== 'act' || !a) return; // the parry broke his posture (broken) or the move is gone
     if (a) a.parried = (a.parried ?? 0) + 1;
     // the blade lock: a PERFECT parry of a blow marked `lock` crosses the blades
@@ -459,6 +459,25 @@ export class Duelist {
     if (!b || b.last || a.hits <= 1) {
       if (this.brain.startReact('clash') && this.brain.react) this.brain.react.travel = -TR.push;
     }
+  }
+
+  /**
+   * The flash counter (player.js _trade, DEFENSE.counter): the hero's cut met his blow in the instant
+   * it became a cut. His blow is beaten aside and the cut goes through him: `damage` (final, past
+   * any guard) and `posture` at once, he reels (a cinematic moment) and his string is over.
+   * o: { point, dir }. Returns the damage dealt.
+   */
+  onCounter(o = {}) {
+    if (this.mode === 'dying' || this.mode === 'dead') return 0;
+    this._lastParry = this.time; // (hitPlayer's onClashed for this same blow: already answered)
+    const K = DEFENSE.counter;
+    this.jolt = Math.max(this.jolt, 1);
+    const dealt = this.takeHit({ damage: K.damage, part: 'body', point: o.point, dir: o.dir, heavy: true, crit: true, exact: true, posture: K.posture, flash: 1, reel: 1 });
+    if (this.mode === 'dying' || this.mode === 'dead' || this.broken) return fin(dealt);
+    this.emit('dragon:stagger');
+    this._cinematic('counter');
+    this.brain.startReact('reeling');
+    return fin(dealt);
   }
 
   /** The blade lock is decided (player.js _endLock). Won by the hero: he reels, a cinematic moment;
@@ -1021,11 +1040,13 @@ export class Duelist {
    * A blow of his flurry was answered (brain._act; `a.streak` = { need, got, failed }): a parry or
    * a block takes one off his streak and counts toward the total (a perfect parry counts two); a
    * blow that lands, or one dodged, fails it. All of them answered: his posture breaks.
+   * A blow that reached nobody (`r` null): `near` = the hero stood within its reach + 1.2 m (it fell
+   * short of a hero who held his ground: it counts as answered); else he left: the flurry fails.
    */
-  onStreakBlow(a, b, r) {
+  onStreakBlow(a, b, r, near = false) {
     const S = a.streak;
     if (!S) return;
-    if (r === RESULT.PARRIED || r === RESULT.BLOCKED) {
+    if (r === RESULT.PARRIED || r === RESULT.BLOCKED || (r === null && near)) {
       S.got += r === RESULT.PARRIED && this.game.player?.deflect?.perfect ? 2 : 1;
       this._streakSet(this.streak - 1);
       if (!S.failed && S.got >= S.need) {

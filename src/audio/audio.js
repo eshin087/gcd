@@ -703,6 +703,7 @@ export class AudioEngine {
       else this.play('block', { tell: 'blue', damage: 10 });
     });
     on('player:mikiri', () => this.play('parry', { tell: 'blue', chain: 5 }));
+    on('player:counter', () => this.play('parry', { tell: 'blue', chain: 7, perfect: true }));
     // a deep gong under the slow motion (the blade lock's camera push-in has its own clash and no slow-mo)
     on('game:cinematic', (e) => { if (e?.kind !== 'lock' && e?.kind !== 'perfectParry' && e?.kind !== 'flurry') this.play('gong'); });
     on('dragon:deflected', () => this.play('parry', { tell: 'blue', chain: 8 }));
