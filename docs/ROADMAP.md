@@ -166,7 +166,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Breakables in a rigid batch, ground fire that burns where it lands, cover, marks, the reset;
       every fighter's blows hit the world (`world/destruction`, ADR-107)
 - [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
-- [ ] The owner's pick of the debris look (digits / chunks / shards); the switch and the two others removed
+- [x] The owner's pick of the debris look: digits (chunks and shards turned down; the switch removed)
 - [x] The hero seen behind the wyrm (its own session, PR #41, ADR-106; merged)
 - [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
 - [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)

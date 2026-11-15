@@ -36,7 +36,8 @@ this API). This session built the system the rest stands on.
 - Tests: `tests/integration/world.mjs` (87 checks), added to `npm test`.
 
 **Rendered for the pick:** three ways a broken piece comes apart (digits, chunks, shards; a
-temporary `?debris=` switch) and the fire on grass and a tree. Sent as two sheets; no answer yet.
+temporary `?debris=` switch) and the fire on grass and a tree, sent as two sheets. The owner picked
+**"A: digits"**; the switch and the two other looks are removed. Nothing was said about the fire.
 
 **Verification:** `npm test` (five suites) and `npm run build` pass. Filmed in headless Edge at 1280 x 720
 on the dev server: a tree and grass set alight and burning out, a tree felled onto the hero (the red
@@ -53,10 +54,10 @@ material's lit colour bloomed white.
 **Not checked / open:** a fight played by a human; the difficulty with breakables and fire; the
 phone (look and frame rate); frame time; Ashfall and its duelist's blows in the browser (headless
 tests only); Training places the hero without a look at what
-stands there; the debris pick.
+stands there.
 
-**Next:** the owner's pick of the debris look, then the switch and the two other looks go; the PR;
-then the wyrm's and the Ash Disciple's terrain moves as their own sessions.
+**Next:** the owner's review of PR #44; the wyrm's and the Ash Disciple's terrain moves and the open
+Obsidian Throne run as their own sessions (started; the throne waits on the owner's pick of an arena).
 
 ---
 

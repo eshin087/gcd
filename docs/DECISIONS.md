@@ -2642,7 +2642,8 @@ changed, and the wyrm fells what it walks through. The minimap re-bakes when the
 suites' bots run on world mocks; the new `world.mjs` checks the mechanics, not a fight). Cost at the
 game camera, the fight on, measured in headless Edge against `main`: Cinderwood 57 → 60 draw calls and
 1.025 M → 1.034 M triangles a frame; Ashfall 52 → 54 and 566 k → 574 k. Frame time was not measured
-(the run uses virtual time), nor a phone. How a broken piece comes apart is three looks behind a
-temporary `?debris=` switch until the owner picks. The Obsidian Throne lists no breakables yet: its
+(the run uses virtual time), nor a phone. How a broken piece comes apart was the owner's pick of three
+filmed looks: "A: digits", a shower of the characters it is drawn in (bigger lumps and long shards
+were turned down; the `?debris=` switch that held them is gone). The Obsidian Throne lists no breakables yet: its
 rebuild (ADR-108) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
 the sizzle and the ember hiss.

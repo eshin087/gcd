@@ -65,11 +65,12 @@ the wyrm next to it, it is wrong, however good it looks alone.
   ash. A danger marker is red strokes, never heat (heat means fire).
 - At the game camera a debris glyph must be at least ~0.4 m to read as a character (a 0.2 m glyph is
   a dot).
-- **Open:** how a broken piece comes apart is the owner's pick between three rendered looks
-  (`?debris=digits|chunks|shards`; the sheet was sent on 2026-11-15). Until then the default is
-  "digits": it bursts into the characters it is drawn in.
+- **A broken piece bursts into the characters it is drawn in** (the owner's pick of three filmed
+  looks, 2026-11-15): prop art's digits for stone and metal, a tree's round leaves and strokes for
+  wood. Bigger lumps (`# % & @`) and long thrown strokes were shown and turned down.
 
-**Tried and turned down by the owner (do not propose again):** a typed lattice ground and a
+**Tried and turned down by the owner (do not propose again):** debris as big lumps or as long
+shards (2026-11-15: digits were picked); a typed lattice ground and a
 "terminal" post-process finish (2026-11-14: "scrap everything"); large bold symbols on the wyrm
 (ADR-092: "way too flashy ... too big"); carved glyphs filled to every cell on pillars and floors
 (2026-11-15); one character grid over the whole frame in the manner of the owner's gcdAtlas project

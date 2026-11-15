@@ -16,8 +16,8 @@ Thirty-three pieces of work since 0.4.0:
   it), then is ash for the rest of the fight; a tree that catches burns about 7 seconds and falls to
   embers. Fire never spreads. The wyrm walks through trees. Everything stands again when the fight
   resets. *Changed:* Cinderwood has 7 dead trees, 4 young pines and 6 boulders inside the clearing.
-  *Dev:* a WORLD section in the Lab (Burn ahead, Fell on me, Blast ahead, Restore); a temporary
-  `?debris=digits|chunks|shards` switch while the look of the debris is being chosen.
+  A broken piece comes apart into the characters it is drawn in. *Dev:* a WORLD section in the Lab
+  (Burn ahead, Fell on me, Blast ahead, Restore).
 - **You can see yourself behind the dragon** (2026-11-15, ADR-106). *Fixed:* the hero vanished
   whenever the Cinder Wyrm stood between him and the camera: north of its body, under a wing,
   behind it while it rears, under it while it flies low. *Added:* the parts of him that are
