@@ -47,7 +47,7 @@ export class Minimap {
     this.drawAcc += dt;
     if (this.drawAcc >= 1 / DRAW_HZ && this.ctx) {
       this.drawAcc = 0;
-      // what stands has changed (a tree felled, a pillar down, the fight's reset: ADR-103): bake again
+      // what stands has changed (a tree felled, a pillar down, the fight's reset: ADR-107): bake again
       const ver = this.game.world?.colliders?.version;
       if (ver !== undefined && ver !== this._ver) {
         if (this._ver !== undefined) {

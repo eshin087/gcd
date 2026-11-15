@@ -463,7 +463,7 @@ export class DragonFx {
   }
 
   /**
-   * A blast of fire lands on the world (ADR-103): the breakables in it take `power` and the floor
+   * A blast of fire lands on the world (ADR-107): the breakables in it take `power` and the floor
    * cracks (world.impact), and the grass and the wood within ig[1] of its radius catch for ig[0] of
    * a full burn (world.ignite). Numbers: TUNING.world.
    */

@@ -864,7 +864,7 @@ Shen Hui's 85 % bot takes 7 – 8 hits. Target: 3 – 5 min for a player who kno
 played him yet, and the bots never use the blade lock or the mikiri and stand inside his reach the
 whole fight.
 
-## The world breaks (2026-11-15, ADR-103)
+## The world breaks (2026-11-15, ADR-107)
 What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood: the trees
 nearest the clearing, the dead trees, young pines and boulders inside it, and the stone circle. In
 Ashfall: the pillars, the lanterns, the stele, the near dead trees and boulders (the bronze bell only

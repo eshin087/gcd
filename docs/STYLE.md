@@ -54,7 +54,7 @@ the wyrm next to it, it is wrong, however good it looks alone.
 - Thin parts (a rib, a rail) are narrower than a letter: they print as outline strokes only.
 - Render a before / after sheet and let the owner pick before finishing.
 
-**How things break (ADR-103).** Destruction is drawn with the same means, never with new ones:
+**How things break (ADR-107).** Destruction is drawn with the same means, never with new ones:
 - A breakable piece is the same geometry through the same two set materials (the screen grid for
   trees, prop art for stone and metal), drawn from a rigid batch so it can fall, fly or vanish.
 - Debris, dust, flames, embers, the red strip under a falling piece and the marks a blow leaves are

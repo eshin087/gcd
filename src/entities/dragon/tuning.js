@@ -33,7 +33,7 @@ export const TUNING = {
   phase2At: 0.66, // = phaseAt[1] (kept for older readers)
   phase3At: 0.33, // = phaseAt[2]
   radius: 2.0 * S, // collision radius vs stones / arena bound
-  // what its blows do to the world (ADR-103; world/breakTuning.js POWER scale: 1 fells a tree)
+  // what its blows do to the world (ADR-107; world/breakTuning.js POWER scale: 1 fells a tree)
   world: {
     melee: 0.7, // a striking part, x its radius in body units (a claw 0.77, the charge's chest 1.2)
     stomp: 1.0, leap: 1.7, hop: 1.2, dive: 2.5,

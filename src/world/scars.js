@@ -2,7 +2,7 @@ import { GlyphParticles } from '../render/particles.js';
 import { CONFIG } from '../core/config.js';
 import { SCAR } from './breakTuning.js';
 
-// Impact marks (ADR-103): what a blow leaves behind. Glyphs that stay where they are until the fight
+// Impact marks (ADR-107): what a blow leaves behind. Glyphs that stay where they are until the fight
 // is reset, in one batch of their own (the throne hall's inlay works the same way):
 //   scars.ground(x, z, power, dx, dz)        a star of cracks in the floor, as wide as the blow was hard
 //   scars.object(owner, x, y, z, power, M)   a nick on a struck object (dropped when it breaks)

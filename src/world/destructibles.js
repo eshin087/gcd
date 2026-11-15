@@ -6,7 +6,7 @@ import { batchRigid } from '../render/rigidBatch.js';
 import { TELL } from '../combat/rules.js';
 import { BREAK, BLOW, DEBRIS } from './breakTuning.js';
 
-// Breakable objects (ADR-103): the trees, stones, pillars and props of a set that blows can chip,
+// Breakable objects (ADR-107): the trees, stones, pillars and props of a set that blows can chip,
 // break, fell, burn, lift and throw. A set lists them in its output (`breakables`, built with
 // world/breakableKit.js) instead of merging them into its static meshes; this module gives each its
 // own node, draws them all through two rigid batches (render/rigidBatch.js: one draw call per

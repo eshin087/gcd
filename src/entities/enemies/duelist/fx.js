@@ -448,7 +448,7 @@ export class DuelFx {
         c.alive = false;
         continue;
       }
-      // the world in its way (ADR-103): a crescent bursts on cover and chips it; a wall of force
+      // the world in its way (ADR-107): a crescent bursts on cover and chips it; a wall of force
       // goes through and throws down what it meets; a fissure runs under everything
       const W = this.game.world?.destructibles;
       if (W?.stop && c.style !== 'rift') {

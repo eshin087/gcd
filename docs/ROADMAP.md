@@ -162,14 +162,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.35 — The world breaks (2026-11-15, `world/destruction`, ADR-103; staged PRs by parallel sessions)
+## M1.38 — The world breaks (2026-11-15, `world/destruction`, ADR-107; staged PRs by parallel sessions)
 - [x] Breakables in a rigid batch, ground fire that burns where it lands, cover, marks, the reset;
-      every fighter's blows hit the world (`world/destruction`, ADR-103)
+      every fighter's blows hit the world (`world/destruction`, ADR-107)
 - [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
 - [ ] The owner's pick of the debris look (digits / chunks / shards); the switch and the two others removed
 - [~] The hero seen behind the wyrm (its own session, PR #41, ADR-106)
-- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-102)
-- [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-105)
+- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
+- [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
 - [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
 - [ ] The Ash Disciple's terrain moves
 - [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire

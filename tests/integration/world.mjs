@@ -1,4 +1,4 @@
-// The world's destruction, headless (ADR-103; ARCHITECTURE.md → "Destruction"): the REAL Colliders,
+// The world's destruction, headless (ADR-107; ARCHITECTURE.md → "Destruction"): the REAL Colliders,
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]

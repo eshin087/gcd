@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Thirty-two pieces of work since 0.4.0:
-- **The world breaks** (2026-11-15, ADR-103). *Added:* trees, standing stones, boulders, pillars and
+- **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
   lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
   as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
   red blow (its landing strip is marked, roll or step out); one you fell onto a boss hurts it badly

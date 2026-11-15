@@ -693,7 +693,7 @@ export class Bullets {
         this._kill(b);
         continue;
       }
-      // cover (ADR-103): a bullet that meets a standing stone, a pillar or a trunk bursts on it and
+      // cover (ADR-107): a bullet that meets a standing stone, a pillar or a trunk bursts on it and
       // chips it (one the hero sent back flies on: it is his now)
       if (!b.deflected && (b.x !== b.px || b.z !== b.pz)) {
         const cover = d.game.world?.destructibles;

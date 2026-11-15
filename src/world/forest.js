@@ -604,7 +604,7 @@ export function createForest(U, colliders) {
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key).push(t);
   }
-  // breakables (world/destructibles.js, ADR-103): what can be chipped, felled, burned and thrown is
+  // breakables (world/destructibles.js, ADR-107): what can be chipped, felled, burned and thrown is
   // listed here instead of merged into the static meshes. Their stumps and rubble, and the things
   // added inside the clearing, draw on a stream of their own: the layout's sequence stays as it was
   const breakables = [];
@@ -688,7 +688,7 @@ export function createForest(U, colliders) {
   colliders.add(bf.x, bf.z, 0.75, 'bonfire');
   bare.push({ x: bf.x, z: bf.z, r: 1.6 });
 
-  // things to break inside the clearing (ADR-103: the fight uses its ground): dead trees, young
+  // things to break inside the clearing (ADR-107: the fight uses its ground): dead trees, young
   // pines and boulders in a loose belt, clear of the centre, the nest, the wyrm's bed, the way in
   // from the bonfire and the stone circle
   {

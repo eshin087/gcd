@@ -811,7 +811,7 @@ export class Lab {
     el('div', 'lab-note', 'click = trigger + select for Loop · chip = tell (white / blue parry / red dodge)', body);
   }
 
-  /** WORLD (ADR-103): try the destruction by hand: fire, a piece felled at the hero, a blast, the reset. */
+  /** WORLD (ADR-107): try the destruction by hand: fire, a piece felled at the hero, a blast, the reset. */
   _buildWorld(root) {
     const { body } = this._section(root, 'world', 'WORLD');
     const grid = el('div', 'lab-grid', null, body);

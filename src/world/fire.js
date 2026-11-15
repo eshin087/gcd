@@ -1,7 +1,7 @@
 import { FIRE } from './breakTuning.js';
 import { TELL } from '../combat/rules.js';
 
-// Ground fire (ADR-103): grass that a boss's fire lands on catches, burns for a few seconds as a
+// Ground fire (ADR-107): grass that a boss's fire lands on catches, burns for a few seconds as a
 // hazard, and is ash for the rest of the fight. It never spreads (the owner's pick: "burns where it
 // lands"), and ash cannot catch again, so the field burns down as the fight goes on.
 //

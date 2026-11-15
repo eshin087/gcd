@@ -57,7 +57,7 @@ export function sweepHit(d, a, key, pos, r) {
   d.markHitbox?.(pos.x, pos.y, pos.z, r);
   const player = d.game.player;
   const dist = prev.distanceTo(pos);
-  // the striking part meets the world too (ADR-103): one blow per action per piece, along its travel
+  // the striking part meets the world too (ADR-107): one blow per action per piece, along its travel
   const W = d.game.world?.destructibles;
   if (W?.strike) {
     const o = (a.wblow ??= { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0, src: W.swing() });

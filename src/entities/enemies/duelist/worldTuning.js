@@ -1,4 +1,4 @@
-// What a duelist's blows do to the world (ADR-103; world/breakTuning.js POWER scale: 1 fells a
+// What a duelist's blows do to the world (ADR-107; world/breakTuning.js POWER scale: 1 fells a
 // tree). Shared by the Ash Disciple and the Starless Lord; an actor's `T.world` overrides fields.
 export const DUEL_WORLD = Object.freeze({
   per: 40, // a blade's blow: its damage / per (a cut of 12 → 0.3, an overhead of 24 → 0.6)

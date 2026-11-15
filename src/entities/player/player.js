@@ -2917,7 +2917,7 @@ export class Player {
       if (t >= W && prevT <= end + 0.04) {
         // the hit first: a cut that lands this frame draws its contact, not the arc's glint
         if (!a.hit && prevT <= end) this._tryHit(a);
-        // the blade meets the world too (ADR-103): what it sweeps through is chipped, cut down, felled
+        // the blade meets the world too (ADR-107): what it sweeps through is chipped, cut down, felled
         if (prevT <= end) this._cutWorld(a, sw);
         // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
         this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
@@ -3040,7 +3040,7 @@ export class Player {
   }
 
   /**
-   * The swing against the world's breakables (ADR-103): each piece the blade sweeps through takes one
+   * The swing against the world's breakables (ADR-107): each piece the blade sweeps through takes one
    * blow per swing, as hard as the cut (POWER = its damage / 110: a full cleave fells a tree). What
    * falls, falls away from him: stand so the thing is between you and the foe.
    */

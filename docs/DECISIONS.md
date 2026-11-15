@@ -2541,7 +2541,7 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   either way). An afterimage is up to ~390 particles for ~0.6 s; a seven-blow flurry peaks near
   1700 particles (800 before; the additive batch holds 7000).
 
-## ADR-103 — The world breaks: breakables in a rigid batch, fire that burns where it lands, cover (2026-11-15)
+## ADR-107 — The world breaks: breakables in a rigid batch, fire that burns where it lands, cover (2026-11-15)
 
 **Context.** The owner: "i want all the bosses to be able to cause destruction to the background. for
 example, the dragon fire that hits the background (trees, grass) get on fire and are a temporarily
@@ -2552,7 +2552,7 @@ defensive or offensive strategy". Asked, they chose: fire **burns where it lands
 spreads); the terrain is **a real tactic** for the hero (cover stops projectiles until it breaks, a
 piece felled onto a boss deals real damage); Cinderwood and Ashfall **keep their layouts and get
 things to break** brought into the fighting space; **staged PRs by separate sessions** (the hero seen
-behind the wyrm: ADR-106; the open Obsidian Throne: ADR-102; the bosses' terrain moves after).
+behind the wyrm: ADR-106; the open Obsidian Throne: ADR-108; the bosses' terrain moves after).
 
 **Decision.**
 - **A set lists what can break** (`breakables`) instead of merging it into its static meshes.
@@ -2599,5 +2599,5 @@ game camera, the fight on, measured in headless Edge against `main`: Cinderwood 
 1.025 M → 1.034 M triangles a frame; Ashfall 52 → 54 and 566 k → 574 k. Frame time was not measured
 (the run uses virtual time), nor a phone. How a broken piece comes apart is three looks behind a
 temporary `?debris=` switch until the owner picks. The Obsidian Throne lists no breakables yet: its
-rebuild (ADR-102) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
+rebuild (ADR-108) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
 the sizzle and the ember hiss.

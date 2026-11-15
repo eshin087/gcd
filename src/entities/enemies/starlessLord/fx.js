@@ -3,7 +3,7 @@ import { DuelFx } from '../duelist/fx.js';
 import { perPhase } from '../duelist/realise.js';
 import { DUEL_WORLD } from '../duelist/worldTuning.js';
 
-/** A thrown stone stopped by cover / a blast on the floor, as blows on the world (ADR-103). */
+/** A thrown stone stopped by cover / a blast on the floor, as blows on the world (ADR-107). */
 const SHOT_BLOW = Object.freeze({ kind: 'blunt', by: 'boss', y: 0.95 });
 const BLAST_BLOW = Object.freeze({ kind: 'blast', by: 'boss' });
 
@@ -632,7 +632,7 @@ export class LordFx extends DuelFx {
         if (s.kind === 'glaive') d.onGlaiveBack?.();
         continue;
       }
-      // the world in its way (ADR-103): cover stops a torn stone; the great stone breaks through
+      // the world in its way (ADR-107): cover stops a torn stone; the great stone breaks through
       // it; the blade cuts through whatever it crosses, out and home
       const W = this.game.world?.destructibles;
       if (W?.stop) {

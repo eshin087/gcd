@@ -1086,7 +1086,7 @@ export const SFX = {
     },
   },
 
-  /** world:impact 'chip' { mat, power }: a blow meets wood, stone, metal or bone (ADR-103). */
+  /** world:impact 'chip' { mat, power }: a blow meets wood, stone, metal or bone (ADR-107). */
   chip: {
     prio: 3, rev: 0.1, gap: 0.05, falloff: 0.8,
     play(v, t, o) {
@@ -1108,7 +1108,7 @@ export const SFX = {
     },
   },
 
-  /** world:impact 'break' | 'topple' | 'crash' | 'throw' { mat, power }: something comes down (ADR-103). */
+  /** world:impact 'break' | 'topple' | 'crash' | 'throw' { mat, power }: something comes down (ADR-107). */
   crash: {
     prio: 5, rev: 0.28, gap: 0.12, falloff: 0.6,
     play(v, t, o) {

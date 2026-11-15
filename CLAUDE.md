@@ -57,7 +57,7 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in
   `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, glyph particles). No plain shaded
   meshes. Only glyphs in the world atlas may be passed to `gi()` / materials / particles — `npm test` checks.
-- **The world breaks (ADR-103).** Anything new that stands in a level and could be hit is listed in
+- **The world breaks (ADR-107).** Anything new that stands in a level and could be hit is listed in
   its set's `breakables` (not merged into the static meshes), and anything new that hits (a blow, a
   projectile, fire) calls the world: `world.impact`, `world.ignite`, `world.destructibles.strike /
   sweep / stop`, guarded with `?.`. Its power goes in the fighter's tuning. See

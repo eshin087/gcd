@@ -776,7 +776,7 @@ export class DuelBrain {
   }
 
   /**
-   * The cover between him and the hero for a line of the Void (a bolt, the pull, the grip; ADR-103),
+   * The cover between him and the hero for a line of the Void (a bolt, the pull, the grip; ADR-107),
    * or null. The cover answers for the hero: a bolt blasts it, the pull drags it down toward him, the
    * grip crushes it.
    */
@@ -801,7 +801,7 @@ export class DuelBrain {
   }
 
   /**
-   * A blade's blow meets the world (ADR-103): what stands in the beat's zone is chipped or cut down,
+   * A blade's blow meets the world (ADR-107): what stands in the beat's zone is chipped or cut down,
    * as hard as the blow (its damage / T.world.per; a red blow harder). A ring or a blow that knocks
    * down bites stone as a blunt blow and cracks the floor.
    */

@@ -1,4 +1,4 @@
-// Destruction numbers (world/destructibles.js, world/fire.js, world/scars.js; ADR-103). Content is
+// Destruction numbers (world/destructibles.js, world/fire.js, world/scars.js; ADR-107). Content is
 // data: what a material is worth, how hard a blow is, how long things burn.
 //
 // POWER is the one scale every blow is put on (0 = a touch, 1 = a blow that fells a tree):

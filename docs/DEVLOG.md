@@ -5,26 +5,26 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-15 — Session 42: the world breaks (breakables, ground fire, cover, marks)
+## 2026-11-15 — Session 44: the world breaks (breakables, ground fire, cover, marks)
 
 **Owner:** "i want all the bosses to be able to cause destruction to the background ... the dragon
 fire that hits the background (trees, grass) get on fire and are a temporarily hazard ... the
 humanoid bosses will chip and damage the structures and leave impact based on the power of the
 attack. the players can also do this as well. i want the bosses to also use the terrain ... you can
 also redo the backgrounds of the levels. i want you to redo the sith lord level ... ask me any
-questions". Branch `world/destruction` from `main`. (Sessions 41 and 43 and ADR-102, 105 and 106 are
-left to the two sessions started for the other pieces; ADR-101 and Session 40, first reserved for one
-of them, were taken by PR #39 meanwhile.)
+questions". Branch `world/destruction` from `main`. (Numbers: other PRs open at the same time took ADR-101 – 103 and Sessions 40 – 42, so this is
+ADR-107 / Session 44; the hero seen behind the wyrm is ADR-106 / Session 43, the open Obsidian Throne
+ADR-108 / Session 45 and the Lord's terrain moves ADR-109.)
 
 **Asked, answered:** fire burns where it lands (no spreading); the terrain is a real tactic for the
 hero (cover, pieces felled onto a boss); Cinderwood and Ashfall keep their layouts and get things to
 break; "staged PRs and separate agents doing parallel tasks".
 
 **Split:** two sessions were started on their own branches: the hero seen behind the wyrm (PR #41,
-ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-102, ADR-105; it was sent
+ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-108, ADR-109; it was sent
 this API). This session built the system the rest stands on.
 
-**Done** (ADR-103):
+**Done** (ADR-107):
 - `world/destructibles.js`, `fire.js`, `scars.js`, `breakTuning.js`; `world.impact / ignite / restore`;
   `Colliders.remove / restore`; the two set materials can be rigid-batched.
 - Cinderwood lists 81 breakables (17 of them new, inside the clearing), Ashfall 72.
@@ -42,7 +42,7 @@ temporary `?debris=` switch) and the fire on grass and a tree. Sent as two sheet
 on the dev server: a tree and grass set alight and burning out, a tree felled onto the hero (the red
 strip, the hit), a stone chipped then broken, the hero felling a dead tree with two charged cleaves,
 the wyrm's breath lighting the grass, and a 16 s fight with the AI on. Draw calls and triangles
-against `main`: ADR-103.
+against `main`: ADR-107.
 
 **Found on the way:** `node_modules` in the main checkout was emptied while this session ran
 (reinstalled; cause not found, the parallel worktrees are the likely one). The Browser pane was

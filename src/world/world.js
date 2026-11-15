@@ -17,7 +17,7 @@ import { BLOW, SCAR } from './breakTuning.js';
 //   world.gust(x, z, strength, radius)      radial wind impulse (wing beats, landings)
 //   world.scorch.burnCircle(x, z, r, burn, heat)
 //   world.debug.setVisible(bool)            Lab only: hide / restore the environment (see below)
-// Destruction (ADR-103; tuning in breakTuning.js):
+// Destruction (ADR-107; tuning in breakTuning.js):
 //   world.impact(x, z, r, power, o)         a blow lands on the world: breakables in the disc take it,
 //                                           a hard one cracks the floor; o.fire: it also sets alight
 //   world.ignite(x, z, r, k, grass = true)  fire lands: grass (unless grass = false) and wood catch

@@ -541,7 +541,7 @@ export class Dragon {
       const d = Math.hypot(this.position.x, this.position.z);
       if (d > B) this.position.multiplyScalar(B / d);
     } else {
-      // its body walks through wood (ADR-103): a tree in its way goes down ahead of it. Stone turns it
+      // its body walks through wood (ADR-107): a tree in its way goes down ahead of it. Stone turns it
       const W = this.game.world?.destructibles;
       if (W?.strike && this.state !== 'sleeping') {
         const o = (this._trample ??= { kind: 'blunt', by: 'boss', only: 'wood', dx: 0, dz: 0 });

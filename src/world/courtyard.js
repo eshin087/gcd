@@ -206,7 +206,7 @@ export function createCourtyard(U, colliders) {
   const treeSpots = [];
   const bare = [];
   const slabs = [];
-  // breakables (world/destructibles.js, ADR-103): the pillars, lanterns, the stele, the near trees and
+  // breakables (world/destructibles.js, ADR-107): the pillars, lanterns, the stele, the near trees and
   // boulders are listed here instead of merged into the static meshes; their rubble draws on a stream
   // of its own, so the layout's sequence stays as it was
   const breakables = [];
