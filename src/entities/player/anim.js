@@ -2464,8 +2464,11 @@ function fidgetTwirl(p, A, u, e) {
   const c = Math.sqrt(1 - TWIRL_X * TWIRL_X);
   const D = A.carryK ? A.carryK.rest.d : IDLE_SW; // (the hero's carry: the circle starts from its blade)
   const a = Math.atan2(D[2], -D[1]) + TAU * s;
-  dirTo(p, P.swD, TWIRL_X, -Math.cos(a) * c, Math.sin(a) * c, e);
-  to3(p, P.swF, -1, 0, 0, e);
+  // (the circle eases in and out: it started at full weight, a jump of the steel wherever the rest
+  // under it was not the circle's own start; 36° in a frame out of a reverse grip)
+  const k = e * smoothstep(0, 0.1, s) * (1 - smoothstep(0.9, 1, s));
+  dirTo(p, P.swD, TWIRL_X, -Math.cos(a) * c, Math.sin(a) * c, k);
+  to3(p, P.swF, -1, 0, 0, k);
   p[P.hdY] -= 0.2 * e; // he watches it
 }
 /** Lays the blade on his right shoulder, the flat on it and the point up behind him; a light bounce
@@ -2496,13 +2499,16 @@ function fidgetLean(p, A, u, e) {
   p[P.bodyY] -= 0.02 * e;
   p[P.bodyZ] += 0.02 * e;
 }
+// (`blade`: the action takes the sword. The hero does it from the READY hold: his carry eases back
+// to it under the action's weight (HeroAnimator.update), the poses it was made over; from a trailing
+// blade the shoulder rest swung the steel 51° in a frame and 3.6 cm into the sword arm)
 const FIDGETS = [
   { name: 'look', dur: 3.4, fn: fidgetLook },
   { name: 'stretch', dur: 3.0, fn: fidgetStretch },
-  { name: 'inspect', dur: 3.8, fn: fidgetInspect },
-  { name: 'twirl', dur: 1.7, fn: fidgetTwirl },
-  { name: 'shoulder', dur: 3.6, fn: fidgetShoulder },
-  { name: 'lean', dur: 4.2, fn: fidgetLean },
+  { name: 'inspect', dur: 3.8, fn: fidgetInspect, blade: true },
+  { name: 'twirl', dur: 1.7, fn: fidgetTwirl, blade: true },
+  { name: 'shoulder', dur: 3.6, fn: fidgetShoulder, blade: true },
+  { name: 'lean', dur: 4.2, fn: fidgetLean, blade: true },
 ];
 /** The current idle action's layer (A.fidget, timed in HeroAnimator._idleLife). */
 function idleLife(p, A) {
@@ -3248,7 +3254,9 @@ export class HeroAnimator {
       this.relaxT = RELAX_RESET.has(this.key) ? 0 : fin(this.relaxT, 1e3) + dt;
       const x = clamp((this.relaxT - RELAX.delay) / RELAX.dur, 0, 1);
       this.relax = x * x * x * (x * (6 * x - 15) + 10);
-      carryInto(this.carryK, this.carry, this.relax, carryDir);
+      // (an idle action that takes the blade does it from the ready hold: FIDGETS `blade`)
+      const F = this.fidget, fw = F.k >= 0 && FIDGETS[F.k]?.blade ? clamp(fin(F.w), 0, 1) : 0;
+      carryInto(this.carryK, this.carry, this.relax * (1 - fw), carryDir);
     }
     this.poses[this.key](this.target, this);
     if (this.freeHand && !REV_KEEP.has(this.key)) {

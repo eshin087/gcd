@@ -5226,9 +5226,10 @@ async function scenarioHeroArms() {
   });
   out(`   charge: the blade passes ${(holdMin * 100).toFixed(1)} cm from the head's axis (at charge ${holdAt.toFixed(2)}); released ${(dashMin * 100).toFixed(1)} cm (t ${dashAt.toFixed(2)}); elbows R ${chargeR[0].toFixed(0)}-${chargeR[1].toFixed(0)}° L ${chargeL[0].toFixed(0)}-${chargeL[1].toFixed(0)}°; the free hand ${(gapMax * 100).toFixed(1)} cm off the grip at most, the fist ${fistShown ? 'shown' : 'NOT shown'}`);
 
-  // (A1) at rest the arms hang: the free elbow open and beside the ribs
-  assert(rest.R >= 110 && rest.L >= 125 && rest.fL <= 0.3 && rest.fR <= 0.3,
-    `at rest the arms hang: elbows open ${rest.R.toFixed(0)}° (sword, ≥ 110) and ${rest.L.toFixed(0)}° (free, ≥ 125), neither out from the ribs (flare ${rest.fR.toFixed(2)} / ${rest.fL.toFixed(2)} ≤ 0.3)`);
+  // (A1) at rest the arms hang: the free elbow open and beside the ribs; the sword arm relaxed nearly
+  // straight in the default carry (carry.js `trail`; today's `hip` held it at 120°, HEROCARRY checks it ≥ 110)
+  assert(rest.R >= 145 && rest.L >= 125 && rest.fL <= 0.3 && rest.fR <= 0.3,
+    `at rest the arms hang: elbows open ${rest.R.toFixed(0)}° (sword, the trail's relaxed arm: ≥ 145) and ${rest.L.toFixed(0)}° (free, ≥ 125), neither out from the ribs (flare ${rest.fR.toFixed(2)} / ${rest.fL.toFixed(2)} ≤ 0.3)`);
   // (A2) on the run the elbows point back, not out, and the free arm opens behind him and folds in
   // front; in a PURE strafe (the aim held square to the run: |mz| < 0.1, no sideways drift) the arms
   // still swing
@@ -5652,6 +5653,41 @@ async function scenarioHeroCarry() {
     const blk = per.block?.turnBack ?? 0;
     assert(others <= BOUND.turn && blk <= hipBlockBack + 0.5,
       `${id}: the way back into the carry after a cut (3 looks), the sprint slash, a roll, the roll cut, the charge, a drink and a hit turns the blade ≤ ${others.toFixed(1)}° a frame (≤ ${BOUND.turn}); after the guard ${blk.toFixed(1)}° (the guard's own exit into the ready hold: today's ${hipBlockBack.toFixed(1)}°, + 0.5)`);
+  }
+
+  // (G) idle life from each carry (ADR-047's six actions are layers over the rest): the steel stays
+  // out of him, a turn of the blade stays a turn (≤ 35° a frame), the reverse grip's hold is let go
+  // while an action takes the blade
+  for (const id of CARRY_IDS) {
+    if (ONLY && !ONLY.has(id)) continue;
+    const G = setup(id), M = mk(G), S = stepper(G, M), p = M.p, A = M.A;
+    S.go(1.5);
+    const b0 = new THREE.Vector3(), b1 = new THREE.Vector3();
+    const res = [];
+    let bad = 0;
+    for (let k = 0; k < 6; k++) {
+      const F = A.fidget;
+      Object.assign(F, { k, t: 0, w: 0, cut: false, still: 0, wait: 1e9, name: 'forced' });
+      let pen = -1, turn = 0, has = false, ran = 0, rev = 0;
+      const name = ['look', 'stretch', 'inspect', 'twirl', 'shoulder', 'lean'][k];
+      S.each = () => {
+        if (F.k === k) ran++;
+        pen = Math.max(pen, M.pen()[0]);
+        M.blade(b1);
+        if (has) turn = Math.max(turn, b1.angleTo(b0) * DEG);
+        b0.copy(b1);
+        has = true;
+        if (F.k === k && F.w > 0.98) rev = Math.max(rev, A.cur[P.rev]);
+      };
+      S.go(4.6);
+      F.wait = 1e9;
+      S.each = null;
+      S.go(0.6);
+      const ok = ran > 60 && pen < 0.02 && turn <= 35 && (k < 2 || CARRIES[id].rev === 0 || rev < 0.05);
+      if (!ok) bad++;
+      res.push(`${name} ${(pen * 100).toFixed(1)} cm/${turn.toFixed(0)}°${CARRIES[id].rev ? `/rev ${rev.toFixed(2)}` : ''}${ok ? '' : ' ✗'}`);
+    }
+    assert(!bad, `${id}: idle life from the carry (deepest / most turn in a frame${CARRIES[id].rev ? ' / the reverse hold left while it holds the blade' : ''}): ${res.join(' · ')}`);
   }
 
   // (F) live: setCarry while he stands eases into the new carry (≤ 35° a frame); an unknown id throws

@@ -839,7 +839,9 @@ rigid (`freeLimp`); the charge, the block and the plunge (`plBase`) open it to t
 guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
 `Math.random`), never the same twice in a row: `look`, `stretch`, `inspect`, `twirl`, `shoulder`,
-`lean` (1.7–4.2 s each). Each is a layer over the ready stance (`idleLife` in `locoGuard`) with a
+`lean` (1.7–4.2 s each; the four that take the blade, `FIDGETS` `blade`, the hero does from the
+READY hold: his carry eases back to it under the action's weight, and the twirl's circle eases in and
+out). Each is a layer over the ready stance (`idleLife` in `locoGuard`) with a
 0.45 s fade in and 0.55 s out; anything else (a move, a lock-on, a guard, another clip) cuts it within
 `IDLE_LIFE.cancel` (0.16 s). State: `anim.fidget = { k, t, w, cut, still, wait, last, count, name }`.
 Visual only: no hit test runs outside attacks.
