@@ -179,6 +179,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.41 — WHAT'S NEW; the phone camera in a duel's moment; a game of its own (2026-11-15, `ui/changelog-own-identity`, ADR-116)
+- [x] WHAT'S NEW: every version's notes from the title (corner button) and the pause menu, with an unread badge
+- [x] `tests/changelogcheck.mjs`: every CHANGELOG headline has an in-game entry
+- [x] A cinematic's zoom scaled for the phone's closer camera (it took the camera to 9 m)
+- [x] The page can no longer be double-tap zoomed from the controls or the game screen (iOS)
+- [x] The inspiration's name removed from the game, the docs and the source
+- [ ] Follow-ups:
+  - [ ] The owner's check on the iPhone: does lock-on still zoom in? (if yes: a screen recording)
+  - [ ] Cut 0.5.0: the LATEST release has carried forty-five entries since 0.4.0
+
 ## M1.39 — The hero's stance: at ease, and a fencer's guard (2026-11-15, `player/idle-stance`, ADR-114)
 - [x] Three stances rendered for the owner's pick (A "At ease", B "Coiled", C "Hidden blade"); A picked
 - [x] At ease: the blade on the arm's own line, a hand on the belt; alive at the game camera
@@ -558,7 +568,7 @@ Spec: `docs/specs/ash-disciple.md`.
 
 ## M3 — World (v0.4)
 - [ ] Zone streaming: multiple connected areas, transitions, minimap per zone
-- [ ] Data-driven zone layout (sketch → procedural props, like Ansenjeo's pipeline)
+- [ ] Data-driven zone layout (sketch → procedural props)
 - [ ] NPCs, dialogue, quests; bonfire/shrine fast travel
 - [ ] Day/night + weather (rain glyphs)
 

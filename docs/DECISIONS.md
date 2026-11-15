@@ -4,7 +4,7 @@ Short records of significant decisions. Append new ones; don't rewrite history �
 Template: **Context** (why decide) · **Decision** · **Consequences**.
 
 ## ADR-001 — Browser + Three.js, plain ES modules, no framework (2026-11-01)
-- **Context:** fastest iteration on a custom rendering style; the reference (Ansenjeo) is also JS.
+- **Context:** fastest iteration on a custom rendering style.
 - **Decision:** Three.js (WebGL2) with hand-written ShaderMaterials; plain ES modules served as-is in
   dev (import map → `node_modules`); esbuild only to produce the single-file release.
 - **Consequences:** no bundler config to maintain; zero-install play via `dist/index.html`; we own
@@ -2396,7 +2396,7 @@ gets the wider field of view. Not tried on a real phone.
 **Context.** The owner: "Make the minimap much smaller and opaque on mobile. Theres no need for
 mini map in general for this game so lets make it small overall on both desktop and mobile ...
 Also think of ways to improve the ui design and layout and to also incorporate the ascii art style
-as well to fit the ascii theme." The HUD was the MMO overlay of the art reference: a framed player
+as well to fit the ascii theme." The HUD was the first version's MMO-style overlay: a framed player
 panel with a name, "Lv 12" and a class line, smooth gradient bars, a serif book font for the boss's
 name and the banners. Nothing in it was made of characters except its labels. Asked first: the
 minimap tiny and faint ("opaque" meant see-through); the log, the name tags and the key hints
@@ -3158,3 +3158,45 @@ ADR-092).
   special effect beyond damage and posture (the stagger and the crush are a duelist's); the owner's
   look at the swings (a film sheet sent with the PR).
 
+## ADR-116 — WHAT'S NEW in the game; a cinematic's zoom scaled for the phone; the page never zooms (2026-11-15)
+- **Context:** the owner: "On mobile theres a bug where after i lock onto the dragon target, the
+  camera zooms in really close. Fix that. Also add a changelog in the game menu with an indicator
+  showing whats new with all the version changes with notes on what changed." (and: remove every
+  reference to the game that first inspired the look, "as i want this to be my own thing now").
+  Reproduced on the phone preset (`?touch`, 852 x 393 and 393 x 852): lock-on itself never moves the
+  camera in (its pull-out is capped at 3 m on a phone and the distance stayed 20 - 27 m in every
+  case tried, the wyrm asleep, waking or fighting, near and far). What did: `flow.cinematic` (a
+  duel's perfect deflect, blade lock, counter, mikiri, execution) adds `cine.zoom` (-9 m by default,
+  -7 m for the lock) to the distance unscaled, so the phone's 20 m camera, already 3.3 m in from the
+  duel camera, went to 9.3 m (56 %; a desktop goes 30 → 21 m, 70 %). Also suspected: iOS Safari
+  ignores `user-scalable=no`, and nothing stopped its double-tap zoom on the small LOCK button.
+- **Decision:** (1) `cameraRig._extra()` scales `cine.zoom` by `defaultDistance / CONFIG.camera.distance`,
+  like the punch and the duel camera already were: the phone's moment comes in by the same share as
+  the desktop's (16.7 → 12.6 m). (2) While the touch layer is on, a non-passive `touchend` listener
+  cancels the default on the canvas and inside `.tc-root` (they run on pointer events alone, so the
+  double-tap zoom and the synthetic click are never needed there), and `gesturechange` / `dblclick`
+  are cancelled like `gesturestart` was. Menus keep their default. (3) **WHAT'S NEW**: the releases
+  as data (`ui/changelog.js` `RELEASES`, newest first; the work since the last release is the
+  versionless LATEST release), a panel (`ui/changelogPanel.js`) opened from a corner button on the
+  title screen and an item in the pause menu, each with a count of the entries this browser has not
+  read (localStorage `abyss.whatsnew.seen`, the ids read; on a first visit only the newest day's
+  entries are new). Closing the panel marks everything read. Entries are short, player-facing
+  rewrites of CHANGELOG.md's headlines; `tests/changelogcheck.mjs` (in `npm test`) fails when a
+  headline in CHANGELOG.md → [Unreleased] has no entry with the same title, or when `GAME_VERSION`
+  is not package.json's `version`. (4) The inspiration's name is gone from the game, the docs and
+  the source (the title's credit line now reads `prototype v<version>`); git history keeps it.
+- **Why:** the lock-on code was clean, and the only close zoom the phone could reach was the
+  unscaled cinematic, which plays in exactly the fights where the player is locked on; the owner may
+  also have met the page zoom, which no in-game camera test can show, so both are fixed. Handwritten
+  notes over the CHANGELOG's prose: those entries are written for the owner (ADR numbers, Lab rows,
+  measurements) and run to ten lines; a player needs two or three. The check keeps the two lists
+  from drifting apart without a build step (the dev server has none). An entry is keyed by its date
+  and title, not its release, so cutting a version does not make old entries new again.
+- **Rejected:** parsing CHANGELOG.md at runtime (the single-file build does not ship it, and its prose
+  is not player-facing); a per-version "seen" marker (the site ships continuously between versions,
+  so 0.4.0 has carried forty entries); the badge on first visit for every entry (a new player would
+  see fifty-odd NEW); a `visualViewport` reset (iOS gives a page no way to undo a zoom).
+- **Consequences:** every CHANGELOG headline needs a WHAT'S NEW entry in the same PR (CLAUDE.md →
+  Keep history); a PR rebased after another one landed its headline fails `npm test` until it adds
+  the entry. Not checked on an iPhone: whether the page zoom was what the owner saw, and the
+  `touchend` guard on the device.
