@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-two pieces of work since 0.4.0:
+Thirty-three pieces of work since 0.4.0:
 - **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
   lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
   as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
@@ -18,6 +18,14 @@ Thirty-two pieces of work since 0.4.0:
   resets. *Changed:* Cinderwood has 7 dead trees, 4 young pines and 6 boulders inside the clearing.
   *Dev:* a WORLD section in the Lab (Burn ahead, Fell on me, Blast ahead, Restore); a temporary
   `?debris=digits|chunks|shards` switch while the look of the debris is being chosen.
+- **You can see yourself behind the dragon** (2026-11-15, ADR-106). *Fixed:* the hero vanished
+  whenever the Cinder Wyrm stood between him and the camera: north of its body, under a wing,
+  behind it while it rears, under it while it flies low. *Added:* the parts of him that are
+  covered now print through whatever covers them as a cyan ghost of his own line art (the colour
+  of his blade), so you can follow where he is and what he is doing. It shows only where he is
+  covered and only while he is; in the open he looks as before. It works through trees, pillars,
+  standing stones and landmarks too. Duels are unchanged: a human boss in front of you is not
+  drawn over. `?noseen` in the address turns it off (for comparing).
 - **The flurry reads against the human bosses, and every blink leaves an ASCII afterimage**
   (2026-11-15, ADR-101). *Changed:* against Shen Hui and the Starless Lord each flash cut now shows
   the hero wound up for a moment, runs past the boss's side instead of through him, and slows into a

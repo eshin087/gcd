@@ -60,6 +60,62 @@ then the wyrm's and the Ash Disciple's terrain moves as their own sessions.
 
 ---
 
+## 2026-11-15 — Session 43: the hero seen through the wyrm (an ink ghost in the blade's cyan)
+
+**Owner:** "i noticed while fighting the dragon the player disappears and cant see whats going on
+if its behind the dragon. think of a good way to still let the player be seen somehow for these
+situations." Branch `claude/render-hero-seen-125813` (PR #41), one of several sessions working in parallel
+(destructible terrain, the open Obsidian Throne). ADR-101 / Session 40, set aside for this, went to
+a PR that merged first; ADR-102 to ADR-105 and Sessions 41 / 42 belong to PRs open at the same
+time (the terrain and throne work of this group, and #42 / #43).
+
+**Reproduced** (dev server on its own port, the wyrm frozen in a pose, the hero placed round it):
+north of its body, under a wing, behind it while it rears for Armageddon, under it while it flies
+low; at 1280x720 and at a phone's 852x393 (`?touch`). In all four he is fully gone.
+
+**Options rendered for the pick** (a temporary `?seen=a|b|c` switch; the same frozen frame in every
+column; five situations on desktop, four on the phone, a film strip of him walking in under a wing,
+whole frames): A ink ghost, B window, C rim only. The owner picked **A**. A draft PR carried the
+switch so the three could be tried on the phone's preview.
+
+**Done** (ADR-106):
+- `pipeline.js`: `seenRT`, `setSeenThrough`, `_renderSeen` (the hero alone, the erasing quad, the
+  patch into the scene target), `_seenProbe` (the occlusion-query gate), the ASCII pass's `tSeen` /
+  `uSeen` / `uSeenInk` / `uSeenTone`, `seenHalo` over the wyrm's letters, one shared definition of
+  the hero's alpha window. `main.js`: one line. `config.js`: `CONFIG.render.seenThrough`, `?noseen`.
+- A human boss in front of him is never cover (he is drawn through the hero's materials); grass
+  at his feet never counts.
+- Tests: integ SEEN (51 checks, the real `Pipeline` on a recording renderer): when the pass runs
+  and when not, its box, what it tells the ASCII pass, the state it leaves (also when a draw
+  throws), its place in the frame, the probe (on from the first frame, off 20 frames after the
+  last yes, on while no answer comes, off for good when queries fail), `?noseen`.
+- Docs: ARCHITECTURE (the contract, the frame order), STYLE (the look; cyan is the hero's).
+
+**Numbers:** in the open the frame is pixel-identical with the pass on or off (0 of 921,600
+pixels differ); under a wing ~6,200 differ (the ghost and its glow, ~800 covered hero pixels).
+Frame cost, Edge headless on the RTX 4090, 1280x720, medians of 12 x 60 frames, one task a frame:
+in the open 5.24 → 5.22 ms (58 draw calls, 57 before); under a wing 3.85 → 4.37 ms; north of the
+body 3.82 → 4.10 ms (78 draw calls). Without the gate: +0.44 ms and 77 draw calls everywhere.
+
+**Verification:** `npm test`, `npm run build` (see the PR). Browser: the four situations and the
+open at 1280x720, a wing at 852x393, the Ashfall duel (unchanged with the boss in front of him).
+
+**Found on the way:** a `javascript_tool` call that runs too long is killed without its `finally`
+blocks: a per-frame flag my first version flipped on the hero's root stayed flipped and he was
+drawn at a stale place for the rest of the page load (the pass no longer touches that flag). An
+occlusion query's answer never arrives inside one task, so frames stepped with `__tick` would have
+switched the pass off: no answer for more than 3 frames counts as a yes.
+
+**Not checked / open:** a real phone (look, frame rate, Safari's occlusion queries: if they throw
+the pass runs every frame; if they never answer, too); the look in a played fight rather than
+posed frames and one strip; 1080p and 4K by eye; the Obsidian Throne (being rebuilt in another
+session). A cover closer than 0.6 m in front of him hides him without a ghost.
+
+**Next:** the owner's phone test on the preview; then the terrain work's thrown trees and lifted
+pillars should need nothing more than being drawn in the scene pass.
+
+---
+
 ## 2026-11-15 — Session 40: the flurry on a man, paced to be followed; an afterimage in digits
 
 **Owner:** "the animation looks great vs the dragon but against the humanoid bosses, the

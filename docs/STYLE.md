@@ -447,6 +447,27 @@ each glyph smeared into solid bars.
 - **Not checked in motion** when this was built: the drift toward the screen edges, and the
   fade-near-player dither on a letter grid.
 
+### The hero seen through what covers him (2026-11-15, ADR-106)
+The owner: "while fighting the dragon the player disappears and cant see whats going on if its
+behind the dragon". The wyrm fills a third of the screen and the camera never turns, so a hero
+north of its body, under a wing, behind it while it rears or under it while it flies was simply
+gone.
+- **Now** the parts of him that something covers print through it as an **ink ghost**: his own
+  line art (the same silhouette, inner lines and fill letters, in his own cells) in the blade's
+  cyan, with a thin dark gap round it over the wyrm's letters. The parts of him in the open keep
+  their look; a hero half under a wing is half ghost.
+- **Only while covered.** Nothing lasts on screen: the ghost is exactly the covered pixels of
+  that frame, and in the open the frame is identical to the one without the pass.
+- **Cyan is his.** Neither the wyrm's fire nor a tell uses it (red glow: dodge; white glint:
+  parry), and the ghost darkens only his own figure and a 4 px gap, so a glowing chest behind
+  him still reads. Do not give an enemy, an effect or a tell this cyan.
+- **It acts on anything** that hides him and is drawn into the scene with depth: trees, pillars,
+  standing stones, landmarks, whatever is thrown or lifted later. Not on grass at his feet, and
+  not on a human boss (the duels are fought at arm's length and the boss's tells stay his own).
+- **Turned down** (built and shown beside it): a *window* (the letters over him thin out and he
+  keeps his own colours: it cut a dark hole into the wyrm's glow, and its letters flickered as
+  he moved) and a *rim only* (a cyan outline over the untouched letters: thin over bright ones).
+
 ### Fire, hazards and the plunge (2026-11-09)
 Every effect below is glyph particles (`fx.add`, additive HDR, for fire and light; `fx.alpha` for
 smoke and dust) using world-atlas glyphs only (`gi()` throws on others; `npm test`'s glyph check).
