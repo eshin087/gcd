@@ -1601,6 +1601,15 @@ Every sound is procedural (no samples). 2026-11-09 additions:
 - `dragon:phase3` replays the phase-2 sting and keeps 'boss2'; `dragon:plunged` → `dragonPain`
   (an execution: the `postureBreak` roar).
 
+**A flurry's blow on a duelist (ADR-101).** `takeHit({ ..., exact, reel, away })`: `reel` 1 (a flash
+cut) flinches him where he stands whatever he was doing (`brain.startReact('flinch')`, travel 0) and
+does not shove him; `reel` 2 (the last blow) staggers him and `away` ({ x, z }: where the hero is
+when the blow is over) picks the way he stumbles: away from that point. Any actor that takes the
+flurry's hits may ignore both. **The afterimage** (`PlayerFx._afterimage(fx, segs, n, { dx, dz,
+light })`, `blinkStream(fx, x, y, z)`, `blinkIn(fx, x, y, z)`) reads `PlayerFx.body` / `bodyN`:
+world points of the hero's body, written by `player._sampleGhost()` (which calls `_sampleBody()`)
+every time a pose is sampled.
+
 ### Lab — `src/dev/lab.js` exports `class Lab`
 ```
 constructor(game)          // hidden unless URL has ?lab or the user presses F1 / backquote / the LAB button

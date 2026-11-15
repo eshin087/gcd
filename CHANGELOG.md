@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-one pieces of work since 0.4.0:
+Thirty-two pieces of work since 0.4.0:
 - **The world breaks** (2026-11-15, ADR-103). *Added:* trees, standing stones, boulders, pillars and
   lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
   as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
@@ -18,6 +18,15 @@ Thirty-one pieces of work since 0.4.0:
   resets. *Changed:* Cinderwood has 7 dead trees, 4 young pines and 6 boulders inside the clearing.
   *Dev:* a WORLD section in the Lab (Burn ahead, Fell on me, Blast ahead, Restore); a temporary
   `?debris=digits|chunks|shards` switch while the look of the debris is being chosen.
+- **The flurry reads against the human bosses, and every blink leaves an ASCII afterimage**
+  (2026-11-15, ADR-101). *Changed:* against Shen Hui and the Starless Lord each flash cut now shows
+  the hero wound up for a moment, runs past the boss's side instead of through him, and slows into a
+  finish you can see; the hanging cuts and flares are sized to a man; the camera no longer lurches.
+  *Fixed:* the boss was thrown 0.3 m by every cut (he seemed to jump about), kept his own attack's
+  pose while he was cut, and after the last blow stumbled back into the hero. *Added:* every blink
+  (the Ghostep, the plunge, each cut of a flurry) leaves the hero behind as he stood, printed in
+  rows of cold blue digits that fall apart from the feet up, while some of them fly to where he
+  reappears.
 - **The boss's bar at the top; QUIT TO TITLE** (2026-11-15): the boss's name, HP and posture moved
   from the bottom of the screen to the top centre. The pause menu has **QUIT TO TITLE** (press it
   twice: the first press asks), and RESUME is laid out like the other items.

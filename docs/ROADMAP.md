@@ -162,6 +162,31 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.35 — The world breaks (2026-11-15, `world/destruction`, ADR-103; staged PRs by parallel sessions)
+- [x] Breakables in a rigid batch, ground fire that burns where it lands, cover, marks, the reset;
+      every fighter's blows hit the world (`world/destruction`, ADR-103)
+- [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
+- [ ] The owner's pick of the debris look (digits / chunks / shards); the switch and the two others removed
+- [~] The hero seen behind the wyrm (its own session, PR #41, ADR-106)
+- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-102)
+- [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-105)
+- [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
+- [ ] The Ash Disciple's terrain moves
+- [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire
+- Follow-ups:
+  - [x] A broken piece leaves the minimap (it re-bakes when the colliders change)
+  - [ ] The phone: the look and the frame rate with fire and debris on screen
+  - [ ] Sounds of their own for fire catching and a tree burning (the sizzle and ember hiss are reused)
+  - [ ] Training places the hero without checking what stands there
+
+## M1.34 — The flurry on a man; the afterimage (2026-11-15, `player/flurry-duel-read`, ADR-101)
+- [x] A pacing of its own against a duelist: wound up, past his side, a held finish
+- [x] A flurry's blows do not shove a duelist; the last staggers him away from the hero
+- [x] Effects and camera sized for a man
+- [x] The afterimage printed in digits from his own body, on every blink; digits fly to where he reappears
+- [x] Three afterimage looks built; the owner picked digits
+- [ ] Phones: the particle count of a long flurry
+
 ## M1.33 — Training and the lab stage (2026-11-15, `dev/training-lab`, ADR-099)
 - [x] A catalogue of situations by category, one click each, played through the game's own input
 - [x] The panel: banner, ✓ / ✗, speed, loop, the answer for boss moves, the stage, the boss
@@ -437,23 +462,6 @@ Spec: `docs/specs/ash-disciple.md`.
   - [ ] Bullet sounds of their own (the patterns reuse the fire casts; a deflect reuses the parry)
   - [ ] Look at `slamBurst`, the Storm flurry and the frame cost of a phase-3 storm on a low-end device
   - [ ] The drawn steel is 0.44 m shorter than the hit segment: decide whether to shorten the reach
-
-## M1.30 — The world breaks (2026-11-15, staged PRs by parallel sessions)
-- [x] Breakables in a rigid batch, ground fire that burns where it lands, cover, marks, the reset;
-      every fighter's blows hit the world (`world/destruction`, ADR-103)
-- [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
-- [ ] The owner's pick of the debris look (digits / chunks / shards); the switch and the two others removed
-- [~] The hero seen behind the wyrm (its own session and PR, ADR-101)
-- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-102)
-- [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-105)
-- [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
-- [ ] The Ash Disciple's terrain moves
-- [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire
-- Follow-ups:
-  - [x] A broken piece leaves the minimap (it re-bakes when the colliders change)
-  - [ ] The phone: the look and the frame rate with fire and debris on screen
-  - [ ] Sounds of their own for fire catching and a tree burning (the sizzle and ember hiss are reused)
-  - [ ] Training places the hero without checking what stands there
 
 ## M2 — The boss rush's foundations (revised 2026-11-12, ADR-059)
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the

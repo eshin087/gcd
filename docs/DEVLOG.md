@@ -12,15 +12,16 @@ fire that hits the background (trees, grass) get on fire and are a temporarily h
 humanoid bosses will chip and damage the structures and leave impact based on the power of the
 attack. the players can also do this as well. i want the bosses to also use the terrain ... you can
 also redo the backgrounds of the levels. i want you to redo the sith lord level ... ask me any
-questions". Branch `world/destruction` from `main`. (Sessions 40 and 41 and ADR-101, 102 and 105 are
-left to the two sessions started for the other pieces.)
+questions". Branch `world/destruction` from `main`. (Sessions 41 and 43 and ADR-102, 105 and 106 are
+left to the two sessions started for the other pieces; ADR-101 and Session 40, first reserved for one
+of them, were taken by PR #39 meanwhile.)
 
 **Asked, answered:** fire burns where it lands (no spreading); the terrain is a real tactic for the
 hero (cover, pieces felled onto a boss); Cinderwood and Ashfall keep their layouts and get things to
 break; "staged PRs and separate agents doing parallel tasks".
 
 **Split:** two sessions were started on their own branches: the hero seen behind the wyrm (PR #41,
-ADR-101) and the open Obsidian Throne with the Lord's terrain moves (ADR-102, ADR-105; it was sent
+ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-102, ADR-105; it was sent
 this API). This session built the system the rest stands on.
 
 **Done** (ADR-103):
@@ -56,6 +57,49 @@ stands there; the debris pick.
 
 **Next:** the owner's pick of the debris look, then the switch and the two other looks go; the PR;
 then the wyrm's and the Ash Disciple's terrain moves as their own sessions.
+
+---
+
+## 2026-11-15 — Session 40: the flurry on a man, paced to be followed; an afterimage in digits
+
+**Owner:** "the animation looks great vs the dragon but against the humanoid bosses, the
+teleportation attacks are a bit hard to follow and doesnt seem fluid and buggy. lets also leave a
+cool after image that fades always in a stunning transition effect per teleport and use ascii for
+the effects where you can as well". Branch `player/flurry-duel-read`.
+
+**Measured first** (a probe that logs every frame of a flurry: positions, the camera, the boss's
+mode; the Training situations and `debug.flurry` on Shen Hui). What made it read as buggy: the hero
+froze on top of the duelist on every hit; a metre a frame, three readable frames a cut; the duelist
+shoved 0.32 m in a frame by every cut and left in his own attack's pose; after the last blow he
+staggered back into the hero; the camera jumped ~1.2 m a cut and ~5 m on the last; effects sized for
+the wyrm's head covered both men.
+
+**Done** (ADR-101):
+- `DEFENSE.flurry.ground`: the cuts against a duelist (hang, past his side, the strike before he is
+  abeam, a held finish, a short hanging line, effects at 62 %, a gentler camera). The Passing Cut
+  and the Falling Leaf pass his side too.
+- duelist `takeHit`: a flurry's cut flinches him in place (no shove, out of his move); the last blow
+  staggers him away from where the hero lands (`away`).
+- The afterimage: his own body printed in digits on a screen grid (`player._sampleBody`,
+  `PlayerFx._afterimage`), digits flying to where he reappears (`blinkStream`) and in onto him
+  (`blinkIn`). On every blink: Ghostep, plunge, flurry, riposte. Three looks were filmed for the
+  owner (digits / echo / shatter); the owner picked **digits** and the others were removed.
+- Tests (duel GHOSTEP): the cuts never nearer than the side offset, no step of his over 0.12 m in a
+  frame, he ends farther from the hero than he began and does not push him, the first cut throws him
+  out of his move, the afterimage has its points.
+
+**Numbers, before → after** (five blows, the Passing Cut, AI off): the duelist moved 1.97 → 0.13 m
+in all, 0.32 → 0.02 m at most in a frame; the camera's biggest step 4.62 → 2.78 m, its whole travel
+28.6 → 19.9 m; the flurry 105 → 131 frames. In the real situation (Training `pd5`): the hero pushed
+0.36 → 0 m after the last blow; the duelist ends 2.07 m from him (was walking into him).
+
+**Verification:** `npm test`, `npm run build` (see the PR). Browser: frame sheets before / after on
+Shen Hui, close-ups of the afterimage, the three looks (sent to the owner).
+
+**Not checked / open:** the Starless Lord and the wyrm only through their test suites (the wyrm's
+pacing is untouched; its blinks have the new afterimage); a phone.
+
+**Next:** the particle count of a long flurry on a phone.
 
 ---
 

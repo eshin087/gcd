@@ -24,6 +24,7 @@ import { FlurryFx } from './flurryFx.js';
 // Every blow freezes him too for a moment (`freeze`), the impact frame.
 
 const F = DEFENSE.flurry;
+const G = F.ground; // the cuts against a foe on the ground (a duelist)
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const CHEST = 1.2; // m above his root the blade crosses a target at
 const KEEP = 0.05; // s: the world's hold is re-armed for this long every frame
@@ -50,7 +51,7 @@ export const ARTS = Object.freeze({
   skyfall: { air: true, kind: 'plunge', label: 'Skyfall' },
   severing: { air: true, kind: 'iai', label: 'Severing Line', coil: 0.22, strike: 0.075, hold: 0.24, back: 5.4, out: 5.4 },
   heavensplit: { air: true, kind: 'split', label: 'Heaven Splitter', coil: 0.2, strike: 0.13, up: 4.6, back: 2.4 },
-  passing: { air: false, kind: 'iai', label: 'Passing Cut', coil: 0.22, strike: 0.07, hold: 0.24, back: 3.1 },
+  passing: { air: false, kind: 'iai', label: 'Passing Cut', coil: 0.22, strike: 0.1, hold: 0.24, back: 3.1 },
   falling: { air: false, kind: 'split', label: 'Falling Leaf', coil: 0.2, strike: 0.12, up: 3.9, back: 1.5 },
   rising: { air: false, kind: 'vault', label: 'Rising Moon', coil: 0.16, strike: 0.4, back: 1.3, up: 2.5 },
   // the riposte (a parried last blow): no art of its own. Every blow is a flash cut, the last one
@@ -62,6 +63,13 @@ const GROUND_ARTS = Object.keys(ARTS).filter((k) => !ARTS[k].air);
 // a flash cut plays one of the hero's own swings through its active frames (swings.js): never two
 // along the same line in a row
 const CUT_CLIPS = ['drawCut', 'fallingBackhand', 'risingSlash', 'flatBackhand', 'fallingCut', 'risingBackhand'];
+/** A ground cut's run, 0..1 of the dash → 0..1 of the path: in fast to the contact (`hitPos` of
+ *  the way at `hitAt`), out of it faster still and slowing into the finish. */
+function groundEase(v) {
+  if (v < G.hitAt) return G.hitPos * Math.pow(v / G.hitAt, 1.6);
+  const w = (v - G.hitAt) / (1 - G.hitAt);
+  return G.hitPos + (1 - G.hitPos) * (1 - Math.pow(1 - w, 2.4));
+}
 const SPLIT_AT = 0.55; // of a split's strike: where its path crosses the target
 const VAULT_HIT = 0.14; // of a vault's strike: the rising cut lands
 const VAULT_FLIP = 0.3; // … and from here he is in the somersault
@@ -80,6 +88,7 @@ export class Flurry {
     this.riposte = false;
     this.reelT = 0; // s (real) left of the beat after a cut in which the target reels
     this.cloned = false; // this pass has left its speed clone
+    this.hang = 0; // of a ground cut's dash: the part he is seen wound up in before he moves
     this.i = 0; // the blow being struck (0-based)
     this.ph = FP.BLINK;
     this.t = 0;
@@ -210,6 +219,7 @@ export class Flurry {
     this.on = true;
     this.pending = true;
     this.fx.pull = this.air ? AIR_PULL : 0;
+    this.fx.k = this.air ? 1 : G.fx;
     // the first line: from the side he dodged on
     this.ang = Math.atan2(this.ox - this.T.x, this.oz - this.T.z);
     if (!Number.isFinite(this.ang)) this.ang = P.yaw + Math.PI;
@@ -235,7 +245,7 @@ export class Flurry {
     // world's hold is the flurry's)
     // (the zoom is in metres at the desktop distance: scaled for the phone's closer camera)
     const zk = fin(g.cameraRig?.defaultDistance, CONFIG.camera.distance) / CONFIG.camera.distance;
-    g.flow?.cinematic?.({ x: this.T.x, z: this.T.z, slowmo: 1, dur: this._planned() + 0.5, zoom: (this.air ? -3 : -6) * zk, weight: 0.55, kind: 'flurry' });
+    g.flow?.cinematic?.({ x: this.T.x, z: this.T.z, slowmo: 1, dur: this._planned() + 0.5, zoom: (this.air ? -3 : G.zoom) * zk, weight: 0.55, kind: 'flurry' });
     this._hold();
     if (!riposte) {
       P._emit('player:perfectDodge', { attack, tell, streak: P.streak });
@@ -249,14 +259,15 @@ export class Flurry {
   _planned() {
     const C = F.cut, D = ARTS[this.art];
     let t = 0;
-    for (let i = 0; i < this.cuts; i++) t += (C.blink + C.dash + C.stop + C.hold) * this._pace(i);
+    const each = this.air ? C.blink + C.dash + C.stop + C.hold : C.blink + G.hang + G.dash + C.stop + G.hold;
+    for (let i = 0; i < this.cuts; i++) t += each * this._pace(i);
     return t + C.blink + (D.kind === 'plunge' ? 0.7 : D.kind === 'return' ? 0.1 : fin(D.coil) + fin(D.strike) + fin(D.hold) + 0.15);
   }
 
   /** A long flurry speeds up: the pace of cut `i` (1 → DEFENSE.flurry.cut.rush). */
   _pace(i) {
     const m = this.cuts - 1;
-    return m > 0 ? lerp(1, F.cut.rush, clamp(i / m, 0, 1)) : 1;
+    return m > 0 ? lerp(1, this.air ? F.cut.rush : G.rush, clamp(i / m, 0, 1)) : 1;
   }
 
   /** Keep the world held (a hit-stop at DEFENSE.flurry.world, re-armed for KEEP s). The scale is
@@ -324,17 +335,28 @@ export class Flurry {
         }
         break;
       case FP.DASH: {
-        p.lerpVectors(this.A, this.B, u);
-        this.anim.u = 1 + u;
+        // in the air: straight through the head. On the ground (`ground`): seen wound up where he
+        // appeared, in fast to the contact, then slowing into the finish
+        const v = this.air ? u : clamp((u - this.hang) / (1 - this.hang), 0, 1);
+        const e = this.air ? u : groundEase(v);
+        p.lerpVectors(this.A, this.B, e);
+        this.anim.u = 1 + v;
         const L = this.lines[this.nLines - 1];
-        if (L) L.k = u;
-        if (!this.cloned && u >= 0.3) {
+        if (L) L.k = e;
+        if (!this.cloned && this.air && u >= 0.3) {
           // a speed clone: the shape of him mid-pass, left hanging on the line
           this.cloned = true;
           this.fx.clone(P._ghostSegs, P._sampleGhost());
         }
-        if (!this.hit && u >= 0.5) this._cutHit();
-        if (u >= 1) this._phase(FP.HOLD, F.cut.hold * this._pace(this.i));
+        if (!this.hit && v >= (this.air ? 0.5 : G.hitAt)) {
+          if (!this.air) {
+            // on the ground the clone is the strike itself: the pose he cut in, left beside the foe
+            this.cloned = true;
+            this.fx.clone(P._ghostSegs, P._sampleGhost());
+          }
+          this._cutHit();
+        }
+        if (u >= 1) this._phase(FP.HOLD, (this.air ? F.cut.hold : G.hold) * this._pace(this.i));
         break;
       }
       case FP.HOLD:
@@ -361,7 +383,7 @@ export class Flurry {
   _vanish(blink) {
     const P = this.p, p = P.position;
     const n = P._sampleGhost();
-    this.fx.vanish(P._ghostSegs, n, p.x, p.y, p.z, true);
+    this.fx.vanish(P._ghostSegs, n, p.x, p.y, p.z, true, this.d.x, this.d.z);
     this.hidden = true;
     this.i++;
     this._phase(FP.BLINK, blink);
@@ -444,9 +466,11 @@ export class Flurry {
       A.set(T.x + dx * R, Math.max(MIN_Y, cy + tilt), T.z + dz * R);
       B.set(T.x - dx * R, Math.max(MIN_Y, cy - tilt), T.z - dz * R);
     } else {
-      const R = F.reach.ground, bound = CONFIG.world.playerBound;
-      A.set(T.x + dx * R, 0, T.z + dz * R);
-      B.set(T.x - dx * R, 0, T.z - dz * R);
+      // past his side, never through him: the path runs `side` m off the line the cut is drawn on
+      // (each cut on the other side of him)
+      const R = G.reach, bound = CONFIG.world.playerBound, sd = (this.i % 2 ? -1 : 1) * G.side;
+      A.set(T.x + dx * R + dz * sd, 0, T.z + dz * R - dx * sd);
+      B.set(T.x - dx * R + dz * sd, 0, T.z - dz * R - dx * sd);
       g.world?.resolve?.(A, P.radius, bound);
       g.world?.resolve?.(B, P.radius, bound);
       if (!Number.isFinite(A.x + A.z + B.x + B.z)) {
@@ -461,10 +485,18 @@ export class Flurry {
     p.copy(A);
     P.yaw = Math.atan2(B.x - A.x, B.z - A.z);
     const L = this.lines[this.nLines++];
-    L.ax = A.x;
-    L.az = A.z;
-    L.bx = B.x;
-    L.bz = B.z;
+    if (this.air) {
+      L.ax = A.x;
+      L.az = A.z;
+      L.bx = B.x;
+      L.bz = B.z;
+    } else {
+      // the cut hangs ON him: a short line through where he stands
+      L.ax = T.x + dx * G.line;
+      L.az = T.z + dz * G.line;
+      L.bx = T.x - dx * G.line;
+      L.bz = T.z - dz * G.line;
+    }
     L.ay = this.air ? A.y + CHEST : lineY;
     L.by = this.air ? B.y + CHEST : lineY;
     L.k = 0;
@@ -474,7 +506,8 @@ export class Flurry {
     this.glow = 1;
     this._appear('cut', CUT_CLIPS[this.clipI++ % CUT_CLIPS.length], 1);
     this.fx.appear(A.x, A.y + CHEST, A.z, this.d.x, this.d.z, this.i, this.n);
-    this._phase(FP.DASH, F.cut.dash * this._pace(this.i));
+    this.hang = this.air ? 0 : G.hang / (G.hang + G.dash);
+    this._phase(FP.DASH, (this.air ? F.cut.dash : G.hang + G.dash) * this._pace(this.i));
   }
 
   /** A flash cut lands: its damage, the freeze of the impact frame. */
@@ -483,14 +516,15 @@ export class Flurry {
     this.hit = true;
     this._aim();
     const final = this.riposte && this.i >= this.cuts - 1; // a riposte's last cut is its last blow
-    const dealt = this._damage(C.damage, C.posture, false, 0.45, final ? 2 : 1);
+    const dealt = this._damage(C.damage, C.posture, false, 0.45, final ? 2 : 1, final ? { x: this.ox, z: this.oz } : null);
     const k = this.n > 1 ? this.i / (this.n - 1) : 0;
+    const ck = this.air ? 1 : G.kick, sk = this.air ? 1 : G.shake; // a man is framed closer than the wyrm
     this.fx.cut(T.x, T.y, T.z, this.d.x, this.d.z, this.i, this.n);
     if (!this.air) this.fx.ground(T.x, T.z, this.d.x, this.d.z, 0.6 + 0.6 * k);
     // weight: a kick along the cut, a punch in, the hero frozen on the contact, then a beat in which
     // the world runs and the target reels under it
-    g.shake?.(0.2 + 0.14 * k);
-    g.punch?.(0.9 + 0.9 * k);
+    g.shake?.((0.2 + 0.14 * k) * sk);
+    g.punch?.((0.9 + 0.9 * k) * ck);
     this.freeze = C.stop * (0.75 + 0.25 * this._pace(this.i)) * (final ? 1.8 : 1);
     this.reelT = this.freeze + fin(C.reel, 0);
     P.anim.kickCoat(0.5, P.anim.noise);
@@ -506,14 +540,15 @@ export class Flurry {
   }
 
   /** `damage` (final) into the target through its takeHit. Returns what was dealt. `reel`: how
-   *  hard it throws him (1 a cut, 2 the last blow: a duelist staggers). */
-  _damage(damage, posture, heavy, flash, reel = 1) {
+   *  hard it throws him (1 a cut, 2 the last blow: a duelist staggers). `away`: { x, z } where the
+   *  hero is when the blow is over (the last blow: a duelist stumbles away from there, not into him). */
+  _damage(damage, posture, heavy, flash, reel = 1, away = null) {
     const att = this.att, T = this.T;
     if (!this._alive(att) || typeof att.takeHit !== 'function') return 0;
     try {
       const r = att.takeHit({
         damage, part: this.air ? 'head' : 'body', point: { x: T.x, y: T.y, z: T.z }, dir: { x: this.d.x, z: this.d.z },
-        heavy, crit: true, exact: true, posture, flash, reel,
+        heavy, crit: true, exact: true, posture, flash, reel, away,
       });
       return Number.isFinite(r) ? r : 0;
     } catch (err) {
@@ -577,8 +612,11 @@ export class Flurry {
       if (!Number.isFinite(fy)) fy = Math.atan2(this.ox - ap.x, this.oz - ap.z);
       const fx = Math.sin(fy), fz = Math.cos(fy);
       const behind = fin(att.ghostepBehind, 1.5);
-      A.set(ap.x + fx * D.back, 0, ap.z + fz * D.back);
-      B.set(ap.x - fx * behind, 0, ap.z - fz * behind);
+      // (the iai and the split pass his side, as the cuts do: never through his body)
+      const sd = D.kind === 'vault' ? 0 : (P.anim.noise() < 0.5 ? -1 : 1) * G.side;
+      const ia = D.kind === 'iai' ? sd : 0;
+      A.set(ap.x + fx * D.back + fz * ia, 0, ap.z + fz * D.back - fx * ia);
+      B.set(ap.x - fx * behind + fz * sd, 0, ap.z - fz * behind - fx * sd);
       g.world?.resolve?.(A, P.radius, bound);
       g.world?.resolve?.(B, P.radius, bound);
       if (!Number.isFinite(A.x + A.z + B.x + B.z)) {
@@ -643,10 +681,12 @@ export class Flurry {
   _tickStrike(u) {
     const P = this.p, p = P.position, D = ARTS[this.art], A = this.A, B = this.B, X = this.X, an = this.anim;
     if (D.kind === 'iai') {
-      p.lerpVectors(A, B, u);
+      // (on the ground he slows into the finish, so the eye lands on it)
+      const e = this.air ? u : 1 - (1 - u) * (1 - u);
+      p.lerpVectors(A, B, e);
       an.u = 1 + u;
       const L = this.lines[this.nLines - 1];
-      if (L) L.k = u;
+      if (L) L.k = e;
       if (u >= 1) {
         // across, his back to it: the finish held while the cut hangs in the air unanswered
         this.fx.pass(this.T.x, this.T.y, this.T.z, this.d.x, this.d.z);
@@ -727,7 +767,7 @@ export class Flurry {
       if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: 'head', point: { x: T.x, y: T.y, z: T.z }, heavy: true, crit: false, kind: 'plunge' });
       P._emit('player:plungeHit', { damage: dealt, execution: false });
     } else {
-      dealt = this._damage(F.last.damage, F.last.posture, true, 1, 2);
+      dealt = this._damage(F.last.damage, F.last.posture, true, 1, 2, { x: this.B.x, z: this.B.z });
       if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: T.x, y: T.y, z: T.z }, heavy: true, crit: true, kind: 'flurry' });
     }
     // the weight of the last blow: he holds the contact half as long again, the frame freezes,
@@ -735,8 +775,8 @@ export class Flurry {
     this.freeze = stop * 1.5;
     this.reelT = 0;
     P._hitstop(PL.impactStop * 1.25, 0.02);
-    g.shake?.(Math.min(1, PL.impactShake + 0.06 * this.n));
-    g.punch?.(2.2 + 0.25 * this.n);
+    g.shake?.(Math.min(1, PL.impactShake + 0.06 * this.n) * (this.air ? 1 : G.shake));
+    g.punch?.((2.2 + 0.25 * this.n) * (this.air ? 1 : G.kick));
     g.world?.gust?.(T.x, T.z, 1.5, 8);
     P.anim.kickCoat(1.1, P.anim.noise);
     this.fx.artHit(T.x, T.y, T.z, this.d.x, this.d.z, ARTS[this.art].kind);
@@ -761,8 +801,8 @@ export class Flurry {
     P._emit('player:flurryHit', { n, of: n, last: true, damage: fin(dealt) });
     if (this.nLines > 0) {
       this.fx.burst(this.lines, this.nLines, fin(at?.x, P.position.x), fin(at?.y, 1.2), fin(at?.z, P.position.z));
-      g.shake?.(Math.min(0.5, 0.12 + 0.05 * this.nLines));
-      g.punch?.(Math.min(4, 1.2 + 0.45 * this.nLines));
+      g.shake?.(Math.min(0.5, 0.12 + 0.05 * this.nLines) * (this.air ? 1 : G.shake));
+      g.punch?.(Math.min(4, 1.2 + 0.45 * this.nLines) * (this.air ? 1 : G.kick));
     }
     this.nLines = 0;
     P._emit('player:flurryEnd', { strikes: n, damage: Math.round(this.total), art: this.art, label: ARTS[this.art]?.label ?? '' });

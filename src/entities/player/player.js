@@ -151,6 +151,8 @@ const PL_BLEND = [0.02, 0.03, 0.05, 0.025, 0.06, 0.05];
 // every build; setLoadout puts it back)
 const PART_UNIFORMS = ['uHeroPartInk', 'uHeroPartFill', 'uHeroPartRim'];
 
+const GHOST_PTS = 420; // points of his body an afterimage is drawn from (_sampleBody)
+
 export class Player {
   constructor(game) {
     this.game = game;
@@ -257,6 +259,9 @@ export class Player {
     this.bladeFar = 1; // 0 close-up … 1 game camera: how much the blade self-lights
     this.bladeFlare = 0; // 0..0.75: a landed cut's flare of the steel (TUNE.bladeFlare; any area may raise it)
     this._ghostSegs = new Float32Array(16 * 6);
+    // the afterimage's figure: points on his body as it was last drawn (world; _sampleBody)
+    this._ghostPts = new Float32Array(GHOST_PTS * 3);
+    this._ghostSrc = null; // { key, list: [{ mesh, idx }] }: which vertices of which meshes are sampled
     // the plunge (state 'plunge', DEFENSE.plunge): the attacker, the phase clock, the head point
     // this frame, the spring-off direction (dx, dz: from the head toward the landing side), the
     // ride offset, the flip's start and landing. position.y carries the visual lift while it runs.
@@ -1672,6 +1677,68 @@ export class Player {
       out[k + 4] = b.y;
       out[k + 5] = b.z;
       n++;
+    }
+    // the figure the afterimage is drawn as (fx.js _afterimage): his body's own points
+    this.fx.body = this._ghostPts;
+    this.fx.bodyN = this._sampleBody();
+    return n;
+  }
+
+  /**
+   * Points on the hero's body, in the pose he was last drawn in → this._ghostPts (world). Returns
+   * how many. GHOST_PTS vertices spread over his meshes by their size (picked once per rig; read
+   * from the geometry each time, so the coat's cloth is where it hangs now). Never throws.
+   */
+  _sampleBody() {
+    const out = this._ghostPts, root = this.object3d;
+    let n = 0;
+    try {
+      const key = this.batch ?? this.rig;
+      if (this._ghostSrc?.key !== key) {
+        const list = [];
+        let sum = 0;
+        root.traverse((o) => {
+          const g = o.geometry, pos = g?.attributes?.position;
+          if (!o.isMesh || !pos || pos.count < 3) return;
+          // (not the batches drawn in the sources' place, nor an inside face that doubles an outside)
+          if (g.attributes.aRigid || o.material?.name === 'rigidShadowProxy' || o.material?.side === THREE.BackSide) return;
+          if (!g.boundingSphere) g.computeBoundingSphere();
+          const r = g.boundingSphere?.radius;
+          if (!(r > 0) || !Number.isFinite(r)) return;
+          list.push({ mesh: o, pos, w: r * r, idx: null });
+          sum += r * r;
+        });
+        for (const s of list) {
+          const k = clamp(Math.round((GHOST_PTS * 0.92 * s.w) / Math.max(1e-6, sum)), 1, Math.min(s.pos.count, 48));
+          s.idx = new Uint32Array(k);
+          for (let j = 0; j < k; j++) s.idx[j] = Math.min(s.pos.count - 1, Math.floor(((j + 0.5) * s.pos.count) / k));
+        }
+        this._ghostSrc = { key, list };
+      }
+      for (const s of this._ghostSrc.list) {
+        let vis = true;
+        for (let o = s.mesh; o && o !== root; o = o.parent) {
+          if (o.visible === false) {
+            vis = false;
+            break;
+          }
+        }
+        if (!vis) continue;
+        const e = s.mesh.matrixWorld.elements, a = s.pos.array, st = s.pos.itemSize ?? 3;
+        if (!a || s.pos.isInterleavedBufferAttribute) continue;
+        for (let j = 0; j < s.idx.length && n < GHOST_PTS; j++) {
+          const i = s.idx[j] * st, x = a[i], y = a[i + 1], z = a[i + 2];
+          const wx = e[0] * x + e[4] * y + e[8] * z + e[12], wy = e[1] * x + e[5] * y + e[9] * z + e[13], wz = e[2] * x + e[6] * y + e[10] * z + e[14];
+          if (!Number.isFinite(wx + wy + wz)) continue;
+          out[n * 3] = wx;
+          out[n * 3 + 1] = wy;
+          out[n * 3 + 2] = wz;
+          n++;
+        }
+      }
+    } catch (err) {
+      console.error('[player] _sampleBody failed', err);
+      n = 0;
     }
     return n;
   }
