@@ -1,6 +1,7 @@
 import { CONFIG } from '../core/config.js';
 import { DEFENSE, TELL } from '../combat/rules.js';
 import { ARTS } from '../entities/player/flurry.js';
+import { GHOST_LOOKS } from '../entities/player/fx.js';
 import { el, setText, setClass, button, slider, section } from './labDom.js';
 import { injectLabStyle } from './labStyle.js';
 import { HitboxOverlay } from './hitboxOverlay.js';
@@ -851,6 +852,14 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.shudBtn.title = 'a struck duelist flickers along the cut through the freeze (on / off)';
+    // the afterimage a blink leaves (player/fx.js GHOST_LOOKS; three to pick from, ADR-101)
+    this.ui.ghostBtn = button(cutGrid, 'ghost: digits', () => {
+      const fx = this.game.player?.fx;
+      if (!fx?.setGhostLook) return;
+      const i = GHOST_LOOKS.indexOf(fx.ghostLook);
+      this.ui.ghostBtn.textContent = `ghost: ${fx.setGhostLook(GHOST_LOOKS[(i + 1) % GHOST_LOOKS.length])}`;
+    });
+    this.ui.ghostBtn.title = 'the afterimage a blink leaves: digits (the figure fades from the feet up) / echo (two fainter ones step off the way he left) / shatter (it bursts into its characters)';
     // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
     // cost, Lab only)
     const swr = el('div', 'lab-row', null, body);

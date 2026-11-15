@@ -303,7 +303,9 @@ export class Duelist {
       S.fresh = true; // the contact frame draws it at full strength: the countdown starts next frame
     }
     const px0 = this.position.x, pz0 = this.position.z;
-    if (this.mode !== 'broken' && this.position.y < 0.2) this.moveBy((dx / l) * hs.push, (dz / l) * hs.push);
+    // (a flurry's blows do not shove him: its cuts cross where he STANDS, and a shove from a new
+    // side every quarter second read as him jumping about. He jolts, and reels where he is)
+    if (this.mode !== 'broken' && this.position.y < 0.2 && !(reel > 0)) this.moveBy((dx / l) * hs.push, (dz / l) * hs.push);
     const pt = o.point;
     if (pt && Number.isFinite(pt.x + pt.y + pt.z)) {
       // (his spray starts on him where he is drawn after the shove: the cut moved with him)
@@ -332,8 +334,21 @@ export class Duelist {
       this.fx.guard(this._hilt.x, this._hilt.y, this._hilt.z, { heavy: true, deflect: true });
       this.brain.startReact('stagger');
     } else if (reel >= 2) {
-      // the last blow of a flurry: he is thrown out of whatever he was doing
-      if (this.brain.startReact('stagger')) this.emit('dragon:stagger');
+      // the last blow of a flurry: he is thrown out of whatever he was doing, and stumbles AWAY from
+      // where the hero ends it (o.away: behind him after an art, so he pitches forward; a stagger's
+      // own step back would carry him into the hero)
+      if (this.brain.startReact('stagger')) {
+        const R = this.brain.react, aw = o.away;
+        if (R && aw && Number.isFinite(aw.x + aw.z)) {
+          const front = (aw.x - this.position.x) * Math.sin(this.yaw) + (aw.z - this.position.z) * Math.cos(this.yaw);
+          R.travel = (front >= 0 ? -1 : 0.7) * Math.abs(R.travel);
+        }
+        this.emit('dragon:stagger');
+      }
+    } else if (reel > 0) {
+      // a flurry's cut: every one flinches him where he stands, whatever he was doing (the string
+      // he was dodged out of is over: he does not hang in its pose while he is cut)
+      if (this.brain.startReact('flinch') && this.brain.react) this.brain.react.travel = 0;
     } else this.brain.onStruck(heavy);
     return dmg;
   }
