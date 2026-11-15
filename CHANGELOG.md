@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-one pieces of work since 0.4.0:
+Thirty-two pieces of work since 0.4.0:
+- **You can see yourself behind the dragon** (2026-11-15, ADR-106). *Fixed:* the hero vanished
+  whenever the Cinder Wyrm stood between him and the camera: north of its body, under a wing,
+  behind it while it rears, under it while it flies low. *Added:* the parts of him that are
+  covered now print through whatever covers them as a cyan ghost of his own line art (the colour
+  of his blade), so you can follow where he is and what he is doing. It shows only where he is
+  covered and only while he is; in the open he looks as before. It works through trees, pillars,
+  standing stones and landmarks too. Duels are unchanged: a human boss in front of you is not
+  drawn over. `?noseen` in the address turns it off (for comparing).
 - **The flurry reads against the human bosses, and every blink leaves an ASCII afterimage**
   (2026-11-15, ADR-101). *Changed:* against Shen Hui and the Starless Lord each flash cut now shows
   the hero wound up for a moment, runs past the boss's side instead of through him, and slows into a

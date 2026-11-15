@@ -162,6 +162,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.37 — The hero seen through what covers him (2026-11-15, `claude/render-hero-seen-125813`, ADR-106)
+- [x] The covered parts of the hero print through the wyrm (and any object) as a cyan ink ghost
+- [x] Three looks built (ink ghost / window / rim only); the owner picked the ink ghost
+- [x] Only while covered; pixel-identical in the open; the duels unchanged
+- [x] A probe gates the pass: one draw call in the open, the second draw of the hero only under cover
+- [ ] The owner's phone test: the look in a played fight, the frame rate, Safari's occlusion queries
+- [ ] Thrown trees and lifted pillars (the terrain work) checked as cover when they exist
+
 ## M1.34 — The flurry on a man; the afterimage (2026-11-15, `player/flurry-duel-read`, ADR-101)
 - [x] A pacing of its own against a duelist: wound up, past his side, a held finish
 - [x] A flurry's blows do not shove a duelist; the last staggers him away from the hero
