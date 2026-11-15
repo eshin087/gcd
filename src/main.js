@@ -10,6 +10,7 @@ import { Pipeline } from './render/pipeline.js';
 import { LightPool } from './render/lights.js';
 import { GlyphParticles } from './render/particles.js';
 import { FireField } from './render/fireField.js';
+import { ShedDigits } from './render/shedDigits.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
 import { LEVELS, levelFromSearch, applyLevel, levelUrl, withStage } from './levels/index.js';
@@ -115,6 +116,7 @@ async function boot() {
   pipeline.registerParticles(game.fx.alpha);
   pipeline.registerParticles(game.fx.add);
   pipeline.registerFire(game.fx.fire);
+  game.fx.shed = new ShedDigits(game); // a struck or dissolving body sheds its letters (shedDigits.js)
 
   game.world = new World(game);
   game.audio = new AudioEngine(game);
@@ -315,6 +317,7 @@ async function boot() {
     game.fx.alpha.update(fxDt, game.time);
     game.fx.add.update(fxDt, game.time);
     game.fx.fire.update(fxDt);
+    game.fx.shed.update(fxDt);
     safe('hud', () => game.hud.update(realDt));
     safe('audio', () => game.audio.update(realDt));
 

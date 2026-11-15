@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { CONFIG } from '../../core/config.js';
 import { markCaster, LAYER_CASTER } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
+import { LET_GO, letGoRow, letGoUniforms } from '../../render/letGo.js';
 import { damp, lerp, clamp, turnToward, yawTo, angleDiff, wrapAngle } from '../../core/math.js';
 import { TELL, TELL_STYLE, RESULT, POSTURE, tellDefaults } from '../../combat/rules.js';
 import { TUNING, SCALE } from './tuning.js';
-import { buildDrake } from './model.js';
+import { buildDrake, SHED } from './model.js';
 import { Rig, createPose, resetPose } from './rig/anim.js';
 import { Brain, SEQ, NO_PLUNGE } from './ai.js';
 import { ATTACKS, MELEE, perPhase } from './attacks.js';
@@ -34,6 +35,11 @@ const HURT = [
   ['leg', 0.55], ['leg', 0.42], ['leg', 0.65], ['leg', 0.42],
   ['leg', 0.55], ['leg', 0.42], ['leg', 0.65], ['leg', 0.42],
 ];
+// the throat tell (_riseHeat): the front sits at charge ^ curve of the way from the deep chest up
+// the neck to the mouth; `on` / `fade` = how fast the rule takes hold while the charge rises / lets
+// go once it stops (1 / s); `front` = the front's own extra heat at a full charge; it starts in the
+// belly: `belly` of the way from the chest to the hips, `low` (model units) under the chest
+const HEAT_RISE = { curve: 0.85, on: 14, fade: 5, front: 1, belly: 0.4, low: 0.8 };
 const FOOT_CIRCLE = 0.45; // body-circle radius around each planted foot (model units)
 const MAX_ATK_BOXES = 32;
 // red windup glow (TELL_STYLE.red.warn): rgb + strength ramp / spike / decay
@@ -106,6 +112,18 @@ export class Dragon {
     this.knock = { t: -1, part: '', wi: 0, x: 0, z: 0 };
     this._lastPlunge = -1;
     this.crashing = false; // a plunge is cancelling a flight: its end() must not land it elsewhere
+    // letting go (render/letGo.js): the dissolve runs letter by letter; x = this.dissolve while dying
+    this._letGo = letGoUniforms(game.U).uWyrmLetGo.value;
+    // the fire rising in the throat (materials.js uWyrmHeat): the front's point and strength
+    this._heat = (game.U.uWyrmHeat ??= { value: new THREE.Vector4(0, 0, 0, 0) }).value;
+    this._heatFrom = (game.U.uWyrmHeatFrom ??= { value: new THREE.Vector4(0, 0, 0, 0) }).value;
+    this._heatS = 0; // where the front is: 0 the belly .. 1 the maw
+    this._heatPath = Array.from({ length: 20 }, () => new THREE.Vector3()); // scratch: the path's points
+    this._heatLen = new Float32Array(20); // ... and the length up to each
+    this._heatW = 0; // its strength
+    this._throatPrev = 0;
+    /** The letters a landed cut knocks loose (render/shedDigits.js reads it: a boss without one sheds none). */
+    this.shed = SHED;
 
     this.pose = createPose();
     this.rig = new Rig(this.model, this);
@@ -401,6 +419,8 @@ export class Dragon {
     this.glowTarget = 0;
     this.throat = 0;
     this.throatGlow = 0;
+    this._heatS = this._heatW = this._throatPrev = 0;
+    this._heat.w = this._heatFrom.w = 0;
     this.dissolve = 0;
     this.flinch = 0;
     this.flinchHead = false;
@@ -726,6 +746,7 @@ export class Dragon {
   finishDeath() {
     this.state = 'dead';
     this.dissolve = 1;
+    this._letGo.x = 0;
     this.broken = false;
     this._clearWarn();
     this.object3d.visible = false;
@@ -910,12 +931,24 @@ export class Dragon {
     const flash = this.flash * 0.55;
     const eyes = this.rig.s.eyes;
     const warn = this._updateWarn();
+    this._riseHeat(dt);
+    // letting go: the body's box on screen is measured once, when the dissolve starts
+    const lg = this._letGo;
+    if (this.dissolve > 0 && this.state === 'dying') {
+      if (!(lg.x > 0)) this._letGoSpan(lg);
+      lg.x = this.dissolve;
+      this._letGoShed(dt);
+    } else lg.x = 0;
     for (const k in m) {
       const u = m[k].uniforms;
       const g = G[k];
       if (g) {
-        const v = g[0] * ember + g[1] * body + g[2] * throat;
+        // the charge's share goes to uGlowRise where the material has it: it fills from the chest
+        // up to the rising front (_riseHeat) instead of lighting the part all at once
+        const r = u.uGlowRise, c = g[2] * throat;
+        const v = g[0] * ember + g[1] * body + (r ? 0 : c);
         u.uGlow.value = Number.isFinite(v) ? v : 0;
+        if (r) r.value = Number.isFinite(c) ? c : 0;
       }
       u.uFlash.value = flash;
       u.uDissolve.value = this.dissolve;
@@ -925,6 +958,98 @@ export class Dragon {
     if (m.eye) {
       m.eye.uniforms.uGlow.value = eyes;
       m.eye.uniforms.uInkGlow.value = eyes * 1.3; // a hot amber slit, not a glowing ball
+    }
+  }
+
+  /**
+   * THE THROAT TELL: while a breath (or a roar, a fireball) charges, the fire is seen rising inside
+   * the body. The charge's glow (this.throat, 0..1, written by the attack's windup) fills from the
+   * deep chest up the throat behind a front that climbs the neck and reaches the maw as the charge
+   * completes, so the maw lights last, just before the fire comes out (materials.js WYRM_HEAT:
+   * uWyrmHeat = the front, uWyrmHeatFrom = where it starts). It only redraws the charge the attacks
+   * already have: no timing changes. When the charge stops rising (the breath is out, the attack
+   * was cancelled) the rule lets go and the glow is whole again.
+   */
+  _riseHeat(dt) {
+    const H = this._heat, F = this._heatFrom, th = this.throat, R = HEAT_RISE;
+    if (!(dt > 0)) return; // a held frame holds the front
+    const rising = th > this._throatPrev + 1e-5 && this.state !== 'dying' && this.state !== 'dead';
+    this._throatPrev = th;
+    if (rising) this._heatS = Math.max(Math.pow(th, R.curve), this._heatW < 0.05 ? 0 : this._heatS);
+    this._heatW = damp(this._heatW, rising ? 1 : 0, rising ? R.on : R.fade, dt);
+    if (!(this._heatW > 0.01)) {
+      H.w = F.w = 0;
+      return;
+    }
+    // the path: the deep chest, up the neck's joints, down the head to the mouth
+    const P = this._heatPath, L = this._heatLen, pt = this.rig.pt, nk = this.rig.neck.p;
+    let n = 0;
+    // (it starts in the belly behind the chest, so the chest's own glow fills too)
+    P[n++].lerpVectors(pt.chestC, pt.hips, R.belly).setY(pt.chestC.y - R.low * S);
+    P[n++].copy(pt.chestC);
+    for (let i = 0; i < nk.length && n < P.length - 1; i++) P[n++].copy(nk[i]);
+    P[n++].copy(pt.mouth);
+    L[0] = 0;
+    for (let i = 1; i < n; i++) L[i] = L[i - 1] + P[i].distanceTo(P[i - 1]);
+    const at = clamp(this._heatS, 0, 1) * L[n - 1];
+    let k = 1;
+    while (k < n - 1 && L[k] < at) k++;
+    const seg = L[k] - L[k - 1];
+    const v = this._tmp.lerpVectors(P[k - 1], P[k], seg > 1e-6 ? (at - L[k - 1]) / seg : 0);
+    if (Number.isFinite(v.x + v.y + v.z + P[0].x + P[0].y + P[0].z)) {
+      H.set(v.x, v.y, v.z, this._heatW);
+      F.set(P[0].x, P[0].y, P[0].z, this._heatW * th * R.front);
+    } else H.w = F.w = 0;
+  }
+
+  /**
+   * The lying body's box in the wyrm's letter grid (render/letGo.js: uWyrmLetGo y = top row above
+   * the grid anchor, z = rows, w = half width in cells): its letters let go from the top row down.
+   * From the body points on screen, with room for the wings, the tail and the horns round them.
+   */
+  _letGoSpan(lg) {
+    const g = this.game, cam = g.camera, P = g.pipeline, v = this._tmp;
+    const cw = P?.artCell?.x, ch = P?.artCell?.y, W = P?.width, H = P?.height;
+    lg.y = 22;
+    lg.z = 44;
+    lg.w = 90;
+    if (!cam?.isCamera || !(cw > 0 && ch > 0 && W > 0 && H > 0)) return;
+    v.set(this.position.x, 0, this.position.z).project(cam);
+    const x0 = v.x, y0 = v.y;
+    if (!Number.isFinite(x0 + y0)) return;
+    let top = 0, bot = 0, wide = 0;
+    for (const h of this._hurtPool) {
+      // (the wings and the tail lie far out: what is above the top row goes first, in strands)
+      if (h.part === 'wing' || h.part === 'tail') continue;
+      v.set(h.x, h.y, h.z).project(cam);
+      if (!Number.isFinite(v.x + v.y)) continue;
+      const dy = ((v.y - y0) * 0.5 * H) / ch, dx = ((v.x - x0) * 0.5 * W) / cw;
+      if (dy > top) top = dy;
+      if (dy < bot) bot = dy;
+      if (Math.abs(dx) > wide) wide = Math.abs(dx);
+    }
+    if (!(top - bot > 4)) return;
+    lg.y = Math.ceil(top) + 3;
+    lg.z = Math.ceil(top - bot) + 6;
+    lg.w = Math.ceil(wide) + 60;
+  }
+
+  /**
+   * While the body lets go, loose digits stream off the body points whose letters are letting go now
+   * (the same rule as the shader's, per point: letGoRow), and fall to the ground round it.
+   */
+  _letGoShed(dt) {
+    const g = this.game, shed = g.fx?.shed, cam = g.camera, P = g.pipeline, v = this._tmp, lg = this._letGo;
+    const ch = P?.artCell?.y, H = P?.height;
+    if (!shed || !cam?.isCamera || !(ch > 0 && H > 0) || !(dt > 0)) return;
+    v.set(this.position.x, 0, this.position.z).project(cam);
+    const y0 = v.y;
+    if (!Number.isFinite(y0)) return;
+    const D = lg.x, W = LET_GO.window;
+    for (const h of this._hurtPool) {
+      v.set(h.x, h.y, h.z).project(cam);
+      const at = letGoRow(((v.y - y0) * 0.5 * H) / ch, lg);
+      if (D > at - 0.1 && D < at + W + 0.06) shed.stream(dt, h.x, h.y, h.z, h.r, this.shed.stream ?? 16, this.shed);
     }
   }
 
