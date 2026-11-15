@@ -85,6 +85,7 @@ export class World {
       this.forest?.ambience?.setVisible?.(false); // (a set's own glyph batch, e.g. the throne hall's inlay)
       this.game.fx?.alpha?.clear?.();
       this.game.fx?.add?.clear?.();
+      this.game.fx?.fire?.clear?.();
     } else if (on && this._hidden !== null) {
       for (const [o, v] of this._hidden) o.visible = v;
       this._hidden = null;

@@ -135,6 +135,7 @@ export class DragonFx {
     }));
     // fire hazards / spells (see the "fire" section): one reused spawn record + colour scratch
     this._r = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.1, size: 0.4, sizeEnd: 0.4, glyph: '*', color: null, colorEnd: null, alpha: 1, alphaEnd: 0, drag: 0, gravity: 0, spin: 0, rot: 0, flicker: 0, stretch: 0 };
+    this._b = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, size: 1, sizeEnd: 1, heat: 0.5, heatEnd: 0.2, drag: 0, gravity: 0, kind: 0 }; // _blob's record
     this._c0 = [0, 0, 0];
     this._c1 = [0, 0, 0];
     this.skyLights = [];
@@ -150,6 +151,24 @@ export class DragonFx {
   }
   get alpha() {
     return this.game.fx?.alpha;
+  }
+  /** The fire field (render/fireField.js): fire as one body of heat printed in small digits. */
+  get fire() {
+    return this.game.fx?.fire;
+  }
+
+  /**
+   * One blob of heat into the fire field (reused record: no per-frame allocation). size / sizeEnd in
+   * metres across, heat / heatEnd what it adds at its centre (overlaps add up), gravity > 0 rises.
+   */
+  _blob(x, y, z, vx, vy, vz, life, size, sizeEnd, heat, heatEnd, drag = 0, gravity = 0, kind = 0) {
+    const f = this.fire;
+    if (!f) return;
+    const b = this._b;
+    b.x = x; b.y = y; b.z = z; b.vx = vx; b.vy = vy; b.vz = vz;
+    b.life = life; b.size = size; b.sizeEnd = sizeEnd; b.heat = heat; b.heatEnd = heatEnd;
+    b.drag = drag; b.gravity = gravity; b.kind = kind;
+    f.spawn(b);
   }
 
   _spawn(pool, o) {
@@ -241,58 +260,42 @@ export class DragonFx {
       const cp = Math.cos(pj);
       const sp = rand(20, 27) * S; // the stream reaches T.range (scaled with the body)
       const hot = Math.random() < 0.5;
-      this._spawn(add, {
-        x: mouth.x + rand(-0.1, 0.1), y: mouth.y + rand(-0.1, 0.1), z: mouth.z + rand(-0.1, 0.1),
-        vx: Math.sin(y) * cp * sp, vy: -Math.sin(pj) * sp, vz: Math.cos(y) * cp * sp,
-        life: rand(0.55, 0.8), size: rand(0.28, 0.4) * S, sizeEnd: rand(0.95, 1.35) * S,
-        glyph: FIRE,
-        // dim per glyph on purpose: ~10 of these overlap additively down the middle of the stream,
-        // so the sum is a yellow heart with an orange-red skin (bright ones clip to a white tube)
-        color: hot ? [2.0, 0.7, 0.07] : [1.4, 0.32, 0.03],
-        colorEnd: hot ? [0.9, 0.1, 0.01] : [0.5, 0.04, 0.005],
-        alpha: 1, alphaEnd: 0, drag: 1.0, gravity: 2.5, spin: rand(-4, 4), rot: rand(0, 6.28), flicker: 0.25, stretch: 0.25,
-      });
+      // the stream: blobs of heat that swell as they fly. About ten overlap down the middle, so
+      // the field sums them into a yellow heart with an orange body and a red, licking rim
+      this._blob(
+        mouth.x + rand(-0.1, 0.1), mouth.y + rand(-0.1, 0.1), mouth.z + rand(-0.1, 0.1),
+        Math.sin(y) * cp * sp, -Math.sin(pj) * sp, Math.cos(y) * cp * sp,
+        rand(0.55, 0.8), rand(0.65, 0.92) * S, rand(2.2, 3.1) * S,
+        hot ? 0.34 : 0.21, 0, 1.0, 2.5,
+      );
     }
-    // a thin bright vein down the middle (small and yellow: a wide white core only blows the
-    // additive stream out into a blob with no glyphs left to read)
+    // a thin hot vein down the middle
     this._coreAcc += dt * 45;
     n = Math.min(3, Math.floor(this._coreAcc));
     this._coreAcc -= n;
     while (n-- > 0) {
       const y = aimYaw + rand(-0.02, 0.02), pj = pitch + rand(-0.015, 0.015);
       const cp = Math.cos(pj), sp = rand(27, 32) * S;
-      const o = this._rec(mouth.x + rand(-0.05, 0.05), mouth.y + rand(-0.05, 0.05), mouth.z + rand(-0.05, 0.05), rand(0.26, 0.38), rand(0.16, 0.22) * S, rand(0.3, 0.42) * S, BREATH_CORE);
-      o.vx = Math.sin(y) * cp * sp;
-      o.vy = -Math.sin(pj) * sp;
-      o.vz = Math.cos(y) * cp * sp;
-      o.drag = 1.1;
-      o.gravity = 1.5;
-      o.rot = rand(0, 6.28);
-      o.spin = rand(-6, 6);
-      o.stretch = 0.5;
-      o.flicker = 0.15;
-      this._col(HOT, 0.5, FLAME, 0.6);
-      this._spawn(add, o);
+      // small and hot: this is what turns the heart of the stream white near the maw
+      this._blob(
+        mouth.x + rand(-0.05, 0.05), mouth.y + rand(-0.05, 0.05), mouth.z + rand(-0.05, 0.05),
+        Math.sin(y) * cp * sp, -Math.sin(pj) * sp, Math.cos(y) * cp * sp,
+        rand(0.26, 0.38), rand(0.37, 0.5) * S, rand(0.7, 0.97) * S, 0.55, 0.1, 1.1, 1.5,
+      );
     }
-    // the ragged envelope: sparse, slower tongues that lick out wide of the stream and curl up.
-    // Each is a readable glyph against the dark, which is what makes it fire and not a beam.
+    // the ragged envelope: sparse, slower blobs that lick out wide of the stream and curl up:
+    // what makes it fire and not a beam
     this._tongueAcc += dt * 85;
     n = Math.min(5, Math.floor(this._tongueAcc));
     this._tongueAcc -= n;
     while (n-- > 0) {
       const y = aimYaw + rand(-0.3, 0.3), pj = pitch + rand(-0.14, 0.1);
       const cp = Math.cos(pj), sp = rand(14, 23) * S;
-      const o = this._rec(mouth.x + rand(-0.12, 0.12), mouth.y + rand(-0.12, 0.12), mouth.z + rand(-0.12, 0.12), rand(0.5, 0.78), rand(0.26, 0.36) * S, rand(0.55, 0.85) * S, FIRE_TALL);
-      o.vx = Math.sin(y) * cp * sp;
-      o.vy = -Math.sin(pj) * sp;
-      o.vz = Math.cos(y) * cp * sp;
-      o.drag = 1.5;
-      o.gravity = 4.5;
-      o.rot = rand(-0.5, 0.5);
-      o.spin = rand(-2.5, 2.5);
-      o.flicker = 0.45;
-      this._col(FLAME, 0.8, DARK, 0.9);
-      this._spawn(add, o);
+      this._blob(
+        mouth.x + rand(-0.12, 0.12), mouth.y + rand(-0.12, 0.12), mouth.z + rand(-0.12, 0.12),
+        Math.sin(y) * cp * sp, -Math.sin(pj) * sp, Math.cos(y) * cp * sp,
+        rand(0.5, 0.78), rand(0.6, 0.83) * S, rand(1.27, 1.95) * S, 0.48, 0, 1.5, 4.5,
+      );
     }
     // sparks torn off the stream: they arc out sideways and fall
     this._sparkAcc += dt * 55;
@@ -313,23 +316,18 @@ export class DragonFx {
     // the maw itself: one small held flare (exactly one copy per frame, see _hold)
     const flare = this._hold(this._held, 'flare', dt);
     if (flare > 0) {
-      const o = this._rec(mouth.x + sa * 0.4 * S, mouth.y - 0.05 * S, mouth.z + ca * 0.4 * S, flare, rand(0.75, 0.95) * S, 0.8 * S, METEOR_HALO);
-      o.rot = rand(0, 6.28);
-      o.alphaEnd = 0.8;
-      this._col(FLAME, 0.9, FLAME, 0.7);
-      this._spawn(add, o);
+      this._blob(mouth.x + sa * 0.4 * S, mouth.y - 0.05 * S, mouth.z + ca * 0.4 * S, 0, 0, 0, flare, rand(1.7, 2.2) * S, 1.85 * S, 0.59, 0.5);
     }
     // smoke rolling off the far end
     this.smokeAcc += dt * 28;
     while (this.smokeAcc >= 1) {
       this.smokeAcc -= 1;
       const dd = rand(7, 13) * S;
-      this._spawn(this.alpha, {
-        x: mouth.x + sa * dd + rand(-1, 1), y: rand(0.8, 2.0), z: mouth.z + ca * dd + rand(-1, 1),
-        vx: sa * 2 + rand(-0.6, 0.6), vy: rand(1.2, 2.4), vz: ca * 2 + rand(-0.6, 0.6),
-        life: rand(0.9, 1.4), size: 0.8 * S, sizeEnd: 2.2 * S, glyph: '%&#@',
-        color: [0.035, 0.03, 0.028], alpha: 0.55, alphaEnd: 0, drag: 0.8, spin: rand(-1, 1),
-      });
+      this._blob(
+        mouth.x + sa * dd + rand(-1, 1), rand(0.8, 2.0), mouth.z + ca * dd + rand(-1, 1),
+        sa * 2 + rand(-0.6, 0.6), rand(1.2, 2.4), ca * 2 + rand(-0.6, 0.6),
+        rand(0.9, 1.4), 1.85 * S, 5.0 * S, 0.5, 0, 0.8, 0, 1,
+      );
     }
     // lights along the stream
     this.breathLights.forEach((l, i) => {
@@ -345,12 +343,7 @@ export class DragonFx {
         const dd = d0 * S, r = r0 * S;
         const x = mouth.x + sa * dd + rand(-0.4, 0.4), z = mouth.z + ca * dd + rand(-0.4, 0.4);
         scorch?.burnCircle?.(x, z, r, 0.05, 0.9);
-        this._spawn(add, {
-          x: x + rand(-r, r) * 0.6, y: 0.25, z: z + rand(-r, r) * 0.6,
-          vx: rand(-0.5, 0.5), vy: rand(1.5, 3.2), vz: rand(-0.5, 0.5),
-          life: rand(0.35, 0.6), size: rand(0.35, 0.6), sizeEnd: 0.15, glyph: '^~*',
-          color: [3.2, 1.3, 0.25], colorEnd: [0.7, 0.07, 0.01], alpha: 1, alphaEnd: 0, drag: 1.5, flicker: 0.4,
-        });
+        this._blob(x + rand(-r, r) * 0.6, 0.25, z + rand(-r, r) * 0.6, rand(-0.5, 0.5), rand(1.5, 3.2), rand(-0.5, 0.5), rand(0.35, 0.6), rand(0.8, 1.4), 0.35, 0.56, 0, 1.5);
       }
     }
   }

@@ -18,6 +18,7 @@ const { CameraRig } = await imp('src/core/cameraRig.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
+const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { TELL, RESULT, DEFENSE, POSTURE } = await imp('src/combat/rules.js');
 const { LEVELS, DEFAULT_LEVEL, getLevel, levelFromSearch, applyLevel, levelUrl } = await imp('src/levels/index.js');
@@ -117,11 +118,22 @@ function build() {
     };
     return p;
   };
+  // the fire field (render/fireField.js): the same NaN guard and spawn count as the glyph pools
+  const mkFire = () => {
+    const p = new FireField(U, { max: 6000 });
+    const spawn = p.spawn.bind(p);
+    p.spawn = (o) => {
+      for (const k of ['x', 'y', 'z', 'vx', 'vy', 'vz', 'life', 'size', 'sizeEnd', 'heat', 'heatEnd']) if (o[k] !== undefined && !Number.isFinite(o[k])) throw new Error(`NaN fire blob ${k}`);
+      counters.spawns++;
+      return spawn(o);
+    };
+    return p;
+  };
   const game = {
     THREE, CONFIG, level: ASH, levels: LEVELS.map((L) => ({ id: L.id, name: L.name })), pickLevel() {},
     renderer: null, scene, fxScene: new THREE.Scene(), camera, pipeline: { finalMat: { uniforms: { uHurt: { value: 0 }, uFade: { value: 0 }, uDesat: { value: 0 }, uWarm: { value: 0 }, uExposure: { value: 1 }, uBloom: { value: 1 } } } }, U,
     events: new Events(), input, cameraRig: new CameraRig(camera), lights: new LightPool(U),
-    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }) },
+    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }), fire: mkFire() },
     time: 0, realTime: 0, timeScale: 1, debugTimeScale: 1, hitstopTimer: 0, hitstopScale: 1,
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
@@ -173,6 +185,7 @@ function build() {
     game.lights.update(dt, game.player.position);
     game.fx.alpha.update(dt, game.time);
     game.fx.add.update(dt, game.time);
+    game.fx.fire.update(dt);
     game.hud.update(realDt);
     game.audio.update(realDt);
     game.input.endFrame();

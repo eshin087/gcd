@@ -12,7 +12,9 @@ import { HERO_ART } from './materials.js';
 //      meshes on LAYER_CASTER_RIGID with a depth material that reads the bone texture)
 //   2. world -> sceneRT (HDR colour, alpha = ASCII flag, + depth texture)
 //   3. ASCII pass: flagged pixels become a screen-space character grid  -> compRT
-//   4. FX pass: glyph particles, soft depth-tested against sceneRT depth   -> compRT
+//   (2b. the fire field: heat blobs -> a heat buffer -> a flame texture, one texel per art cell)
+//   4. FX pass: the fire field's letters, then glyph particles, soft depth-tested against sceneRT
+//      depth                                                                -> compRT
 //   5. bloom + tone map + grade + vignette + feedback overlays             -> screen
 
 export { LAYER_CASTER, LAYER_CASTER_RIGID };
@@ -55,9 +57,12 @@ export class Pipeline {
     this.U = U;
     this.fs = new FullscreenPass();
     this.fxParticleMaterials = [];
+    this.fire = null; // the fire field (registerFire)
+    this.rtType = null;
 
     const canHalf = renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
     const type = canHalf ? THREE.HalfFloatType : THREE.UnsignedByteType;
+    this.rtType = type;
     const rt = (opts = {}) =>
       new THREE.WebGLRenderTarget(1, 1, { type, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, ...opts });
 
@@ -229,6 +234,10 @@ export class Pipeline {
         // U.uBossScreen): its letters travel with it when the camera pans or it walks, instead of
         // the body sliding under a fixed grid and re-lettering every cell (ADR-092)
         uWyrmAnchor: { value: new THREE.Vector2(0, 0) },
+        // the fire field's flame texture, one texel per art cell (fireField.js: r heat * 0.4, g smoke,
+        // b a letter roll, a kind + stroke), and uFlame = cells x, cells y, 1 while something burns
+        tFlame: { value: null },
+        uFlame: { value: new THREE.Vector4(1, 1, 0, 0) },
         // extra source taps per wyrm cell (a 4x4 grid) on top of the 4 that find the cell: the cell's
         // letter TIER comes from the average of its source, so it does not flip between bright and
         // dark letters as scale rims cross its four point samples (0 = off); each letter pixel still
@@ -950,6 +959,15 @@ export class Pipeline {
     }
   }
 
+  /** The fire field (render/fireField.js): its heat passes run after the scene pass, its letters draw first in the FX pass. */
+  registerFire(field) {
+    this.fire = field;
+    field.init(this.rtType, this.sceneRT.depthTexture);
+    this.fxScene.add(field.mesh);
+    this.asciiMat.uniforms.tFlame.value = field.flameRT.texture;
+    if (this.art) field.setSize(this.width, this.height, this.artCell, this.art);
+  }
+
   registerParticles(particleSystem) {
     this.fxParticleMaterials.push(particleSystem);
     particleSystem.uniforms.uDepth.value = this.sceneRT.depthTexture;
@@ -996,6 +1014,7 @@ export class Pipeline {
       this.asciiMat.uniforms.tArt.value = this.art.texture;
       this.asciiMat.uniforms.uWyrmAtlas.value.set(...this.art.sets, this.art.total);
     }
+    this.fire?.setSize(W, H, this.artCell, this.art);
     const hs = Math.max(1, Math.floor(H / 1080));
     const [heroW, heroH] = pixelArtCell(hs);
     if (!this.heroArt || heroW !== this.heroCell.x || heroH !== this.heroCell.y) {
@@ -1071,6 +1090,12 @@ export class Pipeline {
       this.shadowCam.layers.set(LAYER_CASTER);
       r.autoClear = prevAutoClear;
       scene.matrixWorldAutoUpdate = prevAutoUpdate;
+    }
+
+    // 2b. the fire field: blobs -> heat -> flame texture (reads the scene depth)
+    if (this.fire) {
+      this.fire.render(r, this.camera, this.fs);
+      this.asciiMat.uniforms.uFlame.value.set(this.fire.cells.x, this.fire.cells.y, this.fire.active ? 1 : 0, 0);
     }
 
     // 3. ASCII grid
