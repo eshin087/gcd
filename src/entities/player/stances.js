@@ -10,7 +10,7 @@
 //             sword side turned to the foe and stepped forward, the arm half extended with the
 //             blade straight off the forearm, its point on the foe; the free hand stays on the belt.
 //
-// Why (Session 49, the owner on the stance before it: "something about the current idle animation
+// Why (Session 50, the owner on the stance before it: "something about the current idle animation
 // is bothering me"; ticked: a stiff, bent sword wrist; arms that hang like a mannequin's; a statue):
 // the old ready stance held the blade 27° out of line with the forearm from an elbow tucked at the
 // ribs, both hands hung beside the hips at one height, and over a breath nothing travelled more

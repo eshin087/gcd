@@ -117,6 +117,22 @@ export const TUNING = {
   grip: { range: 9.5, width: 2.2, crush: 0.55 }, // the Crushing Dark: a line from his hand; `crush` s of the seal closing
   rift: { speed: 13.5, radius: 0.75, life: 1.9 }, // fissures of red light along the floor
   star: { radius: 3.0, warn: 1.7, drift: 2.3 }, // the Dark Star: it follows the hero at `drift` m/s, then bursts
+  // ---- the crater's pieces in the Void's grip (terrain.js, ADR-109; the moves: moves.js `terrain`)
+  terrain: {
+    reach: 26, // a piece this far from him can be taken or pulled down
+    easyH: 4.5, // pieces taller than this are taken last (a 7 m slab is thrown when nothing else is left)
+    rise: 1.3, // m a piece comes up out of its place before it crosses to him
+    lift: 0.95, // s until it hangs over him (inside the windup)
+    per: 19, // its flight: distance / this s ...
+    flight: [0.7, 1.05], // ... within these
+    lead: 0.4, // thrown where the hero will be this many s on
+    radius: 2.3, // the ring where it lands: his blow reaches a hero inside it
+    power: 1.2, // what the landing does to the pieces it lands among (POWER: a thrown stone)
+    gap: 0.55, // Glass Rain: s between throws
+    // Crown Fall: the hero stands in the strip a piece would fall on: `min` m from its foot at least,
+    // `short` m inside its height; where he will be `lead` s on
+    fall: { min: 0.8, short: 0.2, lead: 0.3 },
+  },
   // ---- the glide: past this speed he is carried, not running (lord.js; the root lifts `hover` m)
   glide: { on: 3.4, off: 2.8, hover: 0.22, back: 0.26 },
 

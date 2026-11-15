@@ -297,9 +297,13 @@ export function createThroneHall(U, colliders) {
     piece('shard', x, z, h * 0.24 + 0.2, geos);
   }
   // ---- stones the Void still holds off the ground ([x, height, z, radius]): no collider, no
-  // cover, they only chip. They are there for him to throw. A wisp of red rises under each
+  // cover, they only chip. They are there for him to throw (starlessLord/terrain.js). A wisp of red
+  // rises under each. A stone is BUILT on the floor and hung `hover` m up by its body's own offset
+  // (the ambience below keeps it there while it is whole), so that taken and thrown it comes down to
+  // the floor: destructibles.js lands a piece where its pivot meets the ground
   for (const [x, y, z, r] of [[-12.6, 3.4, -3.0, 1.0], [13.4, 4.2, -5.8, 1.25], [-8.8, 5.2, -10.4, 0.9], [9.2, 4.6, -11.0, 1.1], [14.2, 2.8, 4.8, 0.8], [-14.0, 2.5, 4.2, 0.7]]) {
-    piece('hover', x, z, 0, hoverRock(rng, x, y, z, r), { hp: Infinity, cover: false, topples: false, stub: false });
+    const y0 = r * 1.5 + 0.25; // (its centre when it lies on the floor, its splinters under it)
+    piece('hover', x, z, 0, hoverRock(rng, x, y0, z, r), { hp: Infinity, cover: false, topples: false, stub: false, hover: y - y0, r: 0.3 });
     fires.push({ x, y: 0.1, z, kind: 'wisp', r: r * 0.8, of: 'hover' });
   }
   // ---- vents: pits where the star still burns under the floor (the crater's light)
@@ -410,7 +414,15 @@ export function createThroneHall(U, colliders) {
         if (b.of && D?.list) {
           // a wisp rises under its stone only while the stone hangs there (bound once)
           if (b.piece === undefined) b.piece = D.list.find((o) => o.kind === b.of && Math.hypot(o.x - b.x, o.z - b.z) < 0.2) ?? null;
-          if (b.piece && b.piece.state !== 0) continue;
+          const pc = b.piece;
+          if (pc && pc.state !== 0) continue;
+          // ... and a whole stone hangs: its body lifted to its place (again after a reset: the
+          // Lord's grip takes the offset off when it takes the stone)
+          const up = pc?.def?.hover;
+          if (up > 0 && pc.body && pc.body.position.y !== up) {
+            pc.body.position.y = up;
+            pc.body.updateMatrix();
+          }
         }
         acc(b, 'fire', dt, vent ? 20 : 5, () => {
           const a = Math.random() * TAU, r = Math.random() * (vent ? 0.55 : b.r ?? 0.6), hot = Math.random();

@@ -184,7 +184,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Owner review of the PR preview on the phone (frame rate there is unverified)
   - [ ] The stones in the air hang still: a slow bob needs the destruction system to carry them
   - [ ] The first hall's wardens and great swords are no longer placed (builders kept in landmarks.js)
-- [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
+- [x] The Starless Lord's terrain moves (ADR-109, Session 49): Void Hurl, Glass Rain, Crown Fall on
+      the crater's shards, slabs and hanging stones; Torn Stone scars the floor
+  - [ ] The owner's look at the film strips; tuning from a played fight (weights, the ring's lead)
+  - [ ] Sounds of their own (the lift, the throw); the hanging stones bob while they wait
 - [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
 - [ ] The Ash Disciple's terrain moves
 - [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire
