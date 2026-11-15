@@ -297,7 +297,7 @@ export function createThroneHall(U, colliders) {
     st.shown = st.flare;
   };
   // a brazier flame's blob of heat (reused: no per-spawn object)
-  const blob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.6, size: 0.8, sizeEnd: 0.25, heat: 0.22, heatEnd: 0, drag: 1.2, gravity: 1, kind: 'fire' };
+  const blob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.6, size: 0.8, sizeEnd: 0.25, heat: 0.28, heatEnd: 0, drag: 1.2, gravity: 1, kind: 'fire' };
   const ambience = {
     setup(game) {
       // the inlay: glyphs that stay where they are, in one additive batch of their own
