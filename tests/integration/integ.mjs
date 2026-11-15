@@ -7730,9 +7730,9 @@ async function scenarioTerrain() {
     assert(rolled && (r3.hit?.r === RESULT.DODGED || r3.hit?.r === RESULT.PERFECT) && (G.counts['player:plunge'] || 0) === pd0, `hurl: a roll timed on the flash dodges it (${r3.hit?.r}), with no plunge`);
     // ---- a held guard does not stop it
     stage(G, 2, 0, Math.PI / 2, 2, 18);
-    G.input.press(2);
+    G.input.press(1);
     const r4 = follow(G, 'hurl');
-    G.input.up(2);
+    G.input.up(1);
     assert(r4.hit?.r === RESULT.HIT, `hurl: red, so a held guard fails (${r4.hit?.r})`);
     // ---- cut short with the piece in the jaws: it falls where it is, no blow, no late flash
     stage(G, 2, 0, Math.PI / 2, 2, 18);
@@ -7798,15 +7798,15 @@ async function scenarioTerrain() {
     const po0 = d.posture, hp1 = p.hp;
     let pressed = false;
     const r2 = follow(G, 'tailBat', (rec) => {
-      if (!pressed && rec.flashes.length && rec.flashes[0].t + lead - game.time - DT <= 0.12) { pressed = true; G.input.click(2); }
+      if (!pressed && rec.flashes.length && rec.flashes[0].t + lead - game.time - DT <= 0.12) { pressed = true; G.input.click(1); }
     });
     assert(pressed && r2.hit?.r === RESULT.PARRIED && p.hp === hp1 && d.posture - po0 >= POSTURE.parry.blue - 1e-6, `tail bat: a parry on the flash cuts it apart (${r2.hit?.r}; posture +${(d.posture - po0).toFixed(0)}, no damage)`);
     // ---- on a held guard: no damage, it costs guard
     stage(G, 0, 0, 0, -8, 16);
     const hp2 = p.hp;
-    G.input.press(2);
+    G.input.press(1);
     const r3 = follow(G, 'tailBat');
-    G.input.up(2);
+    G.input.up(1);
     assert(r3.hit?.r === RESULT.BLOCKED && p.hp === hp2, `tail bat: a held guard takes it (${r3.hit?.r}, no damage)`);
     // ---- off its line once the lash is committed: no blow, it flies past and comes apart
     stage(G, 0, 0, 0, -8, 16);

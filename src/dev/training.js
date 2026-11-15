@@ -346,6 +346,13 @@ export class Training {
     this._release();
     this.pending.length = 0;
     if (g.state !== 'boss' || DOWN.has(d?.state) || p?.alive === false) g.flow?.debug?.toState?.('boss');
+    // every situation on a whole set: what an earlier one broke stands again and nothing is still
+    // falling (a pillar toppled by the last situation fell on the hero in the next one's flurry)
+    try {
+      g.world?.restore?.();
+    } catch (err) {
+      console.error('[training] world.restore failed', err);
+    }
     d?.debug?.setAI?.(!!s.ai);
     if (p?.debug) {
       p.debug.god = s.god !== false;
