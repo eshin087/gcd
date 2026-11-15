@@ -7401,7 +7401,7 @@ async function scenarioHeroFlow() {
       lh: [A.cur[P.lH], A.cur[P.lH + 1], A.cur[P.lH + 2]], v: 0, vH: 0, vR: 0, turn: 0,
       sw: [A.cur[P.swD], A.cur[P.swD + 1], A.cur[P.swD + 2]], rh: [A.cur[P.rH], A.cur[P.rH + 1], A.cur[P.rH + 2]],
       u: clip && Number.isFinite(A.swU) ? A.swU : (clip && a.t < d.windup ? 0 : 9), // the clip's phase (anim.js swingPose: u < 1 before the blade's coil)
-      key: A.key, armT: 0, bladeT: 0, pen: 0,
+      key: A.key, armT: 0, bladeT: 0, pen: 0, elb: 180 - Math.abs(r.arms.R.fore.rotation.x) * DEG,
     };
     // the drawn blade (body frame) and the arm segments (upper, fore; right then left)
     v.set(0, 0, 1).applyQuaternion(r.sword.quaternion);
@@ -7414,7 +7414,7 @@ async function scenarioHeroFlow() {
       q2.set(0, -HD.foreArm, 0).applyMatrix4(arm.fore.matrixWorld).applyMatrix4(invB);
       F.arms.push(unit3(q0, q1), unit3(q1, q2));
     }
-    if (rec.kind === 'trans' || rec.kind === 'hold') {
+    if (rec.kind === 'trans' || rec.kind === 'hold' || rec.kind === 'carry') {
       // how deep the drawn steel sinks into his torso or hips (m, > 0 inside)
       for (let z = 0.25; z <= tipL + 1e-6; z += 0.1) {
         qw.set(0, 0, z).applyMatrix4(r.sword.matrixWorld);
@@ -7448,9 +7448,11 @@ async function scenarioHeroFlow() {
     runs.push(rec);
     go(0.15);
   };
-  // the carries a swing may start from (Track CARRY is changing the rest hold; the entry must not care):
-  // today's, and the blade trailing back-down by the right leg, up behind the sword arm (a reverse
-  // grip), level behind the waist; each held still at rest (the sword hand from its shoulder, the blade)
+  // synthetic start poses a swing may start from (the entry must not care what it starts from): the
+  // blade trailing back-down by the right leg, up behind the sword arm, level behind the waist; each
+  // held still at rest (the sword hand from its shoulder, the blade). Overrides of loco's sword arm,
+  // not carry.js's carries: those are worn for real in (10) and checked in C. ('rest' below is the
+  // carry the hero wears by default)
   // (`back` was [-160, 72]: past the wrist's limit, ADR-078, so the drawn blade at rest was not the
   // posed one, and the first frame of any swing out of it jumped as the limit let go: [-142, 56] is
   // where that limit held it)
@@ -7470,6 +7472,10 @@ async function scenarioHeroFlow() {
     q[P.swD] = Math.cos(el) * Math.sin(az); q[P.swD + 1] = Math.sin(el); q[P.swD + 2] = Math.cos(el) * Math.cos(az);
   } };
   const looksOf = (L) => 1 + (L.variants?.length ?? 0);
+  // (a mash up to hit n: a click every 0.1 s while the chain runs; the click starts the attack on the
+  // next tick: toEnd steps into it, then to its end)
+  const mashTo = (n, s = 3.4) => go(s, (i) => { if (i % 6 === 0 && !(p.atk?.def?.combo >= n) && !(i > 0 && !p.atk)) input.click(0); });
+  const toEnd = () => { for (let i = 0; i < 260 && (i < 3 || p.state === 'attack' || p.state === 'heavy'); i++) { G.tick(DT); sample(); } };
   // (1) the mashed chain, each look: a click every CHAIN_EVERY (each lands in the recovery before it),
   // and a real mash (a click every 0.1 s: the buffer always holds the next, which starts the moment
   // the chain window opens)
@@ -7574,9 +7580,6 @@ async function scenarioHeroFlow() {
     go(0.3);
   }
   // ---- review round (Track FLOW): what comes after an attack, the openers out of a way home, every pair
-  const mashTo = (n, s = 3.4) => go(s, (i) => { if (i % 6 === 0 && !(p.atk?.def?.combo >= n) && !(i > 0 && !p.atk)) input.click(0); });
-  // (the click starts the attack on the next tick: step into it, then to its end)
-  const toEnd = () => { for (let i = 0; i < 260 && (i < 3 || p.state === 'attack' || p.state === 'heavy'); i++) { G.tick(DT); sample(); } };
   // (6) one hit or a chain of 3 (each look), then a roll, a block or a move 0 / 0.1 / 0.2 s after the
   // attack ends (the settle still running: it outlasts the recovery by ~0.2 s)
   for (const src of ['one', 'three']) {
@@ -7658,6 +7661,61 @@ async function scenarioHeroFlow() {
     }
   }
   A.forceVariant = null;
+  // (10) per carry (carry.js: Track CARRY's real carries, each worn in turn): from rest in it, the
+  // opener the animator picks (three times: it never repeats a look), each look of hit 1 forced (some
+  // the picker never plays from that carry: their ease and the steel asserted, the rest printed), the
+  // sprint slash, the roll cut, the block, the charge (held from rest: a light's windup held at its
+  // coil), and a mashed chain of 5 home to rest in that carry
+  const { CARRY_IDS } = await imp('src/entities/player/carry.js');
+  const worn = p.carry;
+  for (const id of CARRY_IDS) {
+    p.setCarry(id);
+    for (let k = 0; k < 3; k++) {
+      begin(`c:${id}:pick${k}`, 'carry');
+      input.click(0);
+      go(1.4);
+    }
+    for (let look = 0; look < 3; look++) {
+      begin(`c:${id}:look${look}`, 'carry');
+      A.forceVariant = look;
+      input.click(0);
+      go(0.05);
+      A.forceVariant = null;
+      go(1.35);
+    }
+    begin(`c:${id}:mash`, 'carry');
+    mashTo(5, 3.4);
+    go(0.6);
+    begin(`c:${id}:sprint`, 'carry');
+    input.axis = { x: 0, y: 1 };
+    input.hold('ShiftLeft');
+    go(0.8);
+    input.click(0);
+    input.release('ShiftLeft');
+    input.axis = { x: 0, y: 0 };
+    go(1.4);
+    begin(`c:${id}:roll`, 'carry');
+    input.axis = { x: 0, y: 1 };
+    go(0.3);
+    input.tap('Space');
+    go(0.35);
+    input.axis = { x: 0, y: 0 };
+    input.click(0);
+    go(1.4);
+    begin(`c:${id}:block`, 'carry');
+    rec.act = rec.rows.length;
+    input.press(2);
+    go(0.6);
+    input.up(2);
+    go(1.2);
+    begin(`c:${id}:charge`, 'carry');
+    rec.act = rec.rows.length;
+    input.press(0);
+    go(1.0);
+    input.up(0);
+    go(1.6);
+  }
+  p.setCarry(worn);
 
   // ---- per attack
   const atks = [];
@@ -7689,7 +7747,7 @@ async function scenarioHeroFlow() {
     S.contact = c;
   }
   // ---- per chain: the links (contact → next contact), the cadence, the end
-  const chains = runs.filter((R) => R.kind === 'chain' || R.kind === 'pair' || R.kind === 'reclick' || /^rest:0\./.test(R.tag)).map((R) => {
+  const chains = runs.filter((R) => R.kind === 'chain' || R.kind === 'pair' || R.kind === 'reclick' || R.kind === 'carry' || /^rest:0\./.test(R.tag)).map((R) => {
     const hits = atks.filter((S) => S.run === R);
     const links = [];
     for (let k = 0; k + 1 < hits.length; k++) {
@@ -7728,6 +7786,27 @@ async function scenarioHeroFlow() {
     return { R, hits, links, E };
   });
 
+  // an opener's start (F1b, R): how far its coil is (the sword hand's way there plus the point's arc,
+  // m: anim.js swingWind), whether the pose was moving, whether it eases in (from rest: the first two
+  // frames ≤ 8 m/s, rising over three; out of a moving pose: ≤ 8 m/s of change a frame over its first
+  // three; 12 for a far coil), and whether the point strobes (zig: up and down on consecutive frames)
+  const coil = (clip) => SWINGS[clip]?.keys.find((k) => Math.abs(k.u - 1) < 1e-6 && k.h && k.a);
+  const opener = (S) => {
+    const rows = S.run.rows, F = rows[S.i0], K = coil(S.clip);
+    S.zig = 0;
+    for (let i = S.i0 + 1; i + 1 <= S.i1; i++) {
+      const d0 = rows[i].v - rows[i - 1].v, d1 = rows[i + 1].v - rows[i].v;
+      if (d0 * d1 < 0 && rows[i + 1].t <= S.W + S.Ac) S.zig = Math.max(S.zig, Math.min(Math.abs(d0), Math.abs(d1)));
+    }
+    const az = K ? K.a[0] / DEG : 0, el = K ? K.a[1] / DEG : 0, cd = [Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)];
+    const sl = Math.hypot(...F.sw) || 1;
+    S.wind = K ? Math.hypot(F.rh[0] - K.h[0], F.rh[1] - K.h[1], F.rh[2] - K.h[2]) + tipL * Math.acos(clamp((F.sw[0] * cd[0] + F.sw[1] * cd[1] + F.sw[2] * cd[2]) / sl, -1, 1)) : 0;
+    S.moving = (rows[S.i0 - 1]?.v ?? 0) > 2;
+    S.far = S.wind >= 1.6;
+    // (out of a slow drift, the carry's relax still running, a start that eases in as from rest counts too)
+    const restEase = S.v4[0] <= 8 && S.v4[1] <= (S.far ? 12 : 8) && S.v4[0] < S.v4[1] && S.v4[1] < S.v4[2];
+    S.ease = S.moving ? restEase || [0, 1, 2].every((k) => Math.abs((rows[S.i0 + k]?.v ?? 0) - (rows[S.i0 + k - 1]?.v ?? 0)) <= (S.far ? 12 : 8)) : restEase;
+  };
   // ---- one line per hit
   const f1 = (x) => x.toFixed(1);
   for (const C of chains.filter((C) => C.R.kind === 'chain' && !C.R.tag.startsWith('rand'))) {
@@ -7828,25 +7907,6 @@ async function scenarioHeroFlow() {
     out(`   F1 entries: ${ent.length}, the first frames at most ${f1(Math.max(...ent.map((S) => S.first)))} m/s [main 31.2 out of the carry]`);
     assert(ent.length >= 11 && !bad.length, `F1 an attack out of the carry, a run, the guard, the trailing carry or a sprint eases in: ≤ 8 m/s in its first frames and still rising on the third (${bad.map((S) => `${S.run.tag} ${S.v4.map((x) => x.toFixed(1)).join('/')}`).join(', ') || 'all'})`);
   }
-  // an opener's start (F1b, R): how far its coil is (the sword hand's way there plus the point's arc,
-  // m: anim.js swingWind), whether the pose was moving, whether it eases in (from rest: the first two
-  // frames ≤ 8 m/s, rising over three; out of a moving pose: ≤ 8 m/s of change a frame over its first
-  // three; 12 for a far coil), and whether the point strobes (zig: up and down on consecutive frames)
-  const coil = (clip) => SWINGS[clip]?.keys.find((k) => Math.abs(k.u - 1) < 1e-6 && k.h && k.a);
-  const opener = (S) => {
-    const rows = S.run.rows, F = rows[S.i0], K = coil(S.clip);
-    S.zig = 0;
-    for (let i = S.i0 + 1; i + 1 <= S.i1; i++) {
-      const d0 = rows[i].v - rows[i - 1].v, d1 = rows[i + 1].v - rows[i].v;
-      if (d0 * d1 < 0 && rows[i + 1].t <= S.W + S.Ac) S.zig = Math.max(S.zig, Math.min(Math.abs(d0), Math.abs(d1)));
-    }
-    const az = K ? K.a[0] / DEG : 0, el = K ? K.a[1] / DEG : 0, cd = [Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)];
-    const sl = Math.hypot(...F.sw) || 1;
-    S.wind = K ? Math.hypot(F.rh[0] - K.h[0], F.rh[1] - K.h[1], F.rh[2] - K.h[2]) + tipL * Math.acos(clamp((F.sw[0] * cd[0] + F.sw[1] * cd[1] + F.sw[2] * cd[2]) / sl, -1, 1)) : 0;
-    S.moving = (rows[S.i0 - 1]?.v ?? 0) > 2;
-    S.far = S.wind >= 1.6;
-    S.ease = S.moving ? [0, 1, 2].every((k) => Math.abs((rows[S.i0 + k]?.v ?? 0) - (rows[S.i0 + k - 1]?.v ?? 0)) <= (S.far ? 12 : 8)) : S.v4[0] <= 8 && S.v4[1] <= (S.far ? 12 : 8) && S.v4[0] < S.v4[1] && S.v4[1] < S.v4[2];
-  };
   {
     // F1b / F3b: the opener the animator picks out of every carry (today's, the blade trailing by the
     // leg, up behind the arm, level behind the waist) and out of every idle action at full weight: it
@@ -7996,11 +8056,118 @@ async function scenarioHeroFlow() {
     for (const [c, m] of Object.entries(MAIN)) {
       [0.3, 1.8].forEach((g, i) => { const a = landed[`${c}@${g}`]; if (!(Number.isFinite(a) && Math.abs(a - m[i]) <= 0.018)) bad.push(`${c}@${g} ${a?.toFixed(3) ?? 'miss'} (main ${m[i]})`); });
     }
-    assert(!bad.length, `the cut lands when it did: every look hits the wyrm within a frame of main's attack clock, from 0.3 and 1.8 m (${bad.join(', ') || 'all 24'})`);
+    // (a carry's own look lands with the look it stands in for: its contact and finish keys are that
+    // look's; the sprint slash's against the generic one swung out of today's hold, measured above)
+    const STANDS = { pointRise: MAIN.risingSlash, backFall: MAIN.fallingCut, sprintFall: [landed['sprintSlash@0.3'], landed['sprintSlash@1.8']] };
+    for (const [c, m] of Object.entries(STANDS)) {
+      [0.3, 1.8].forEach((g, i) => { const a = landed[`${c}@${g}`]; if (!(Number.isFinite(a) && Number.isFinite(m[i]) && Math.abs(a - m[i]) <= 0.018)) bad.push(`${c}@${g} ${a?.toFixed(3) ?? 'miss'} (as ${m[i]?.toFixed?.(3) ?? m[i]})`); });
+    }
+    assert(!bad.length, `the cut lands when it did: every look hits the wyrm within a frame of main's attack clock, from 0.3 and 1.8 m; the carries' own looks with the look each stands in for (${bad.join(', ') || 'all 30'})`);
+  }
+  // ---- per carry: the acceptance (C)
+  {
+    // C: from rest in each carry (carry.js), the first hit and the way home. The opener the animator
+    // picks (a carry's own look, carry.js `open`, or the generic one nearest): F1 (≤ 8 m/s in its first
+    // frames, rising over three), F3 (its windup ≤ 0.65 of its cut, the cut ≤ 42 m/s, the point's way
+    // to the coil short), the steel ≤ 2 cm into his torso / hips through it (the reverse grip's flip
+    // into its first cut is an arc, below). Each look forced: it eases in and keeps the steel out of him (its F3 is
+    // printed: the picker plays only the looks the carry feeds). The sprint slash and the roll cut: F1,
+    // F3, the steel; the sword elbow ≤ 30° a frame through the windup; the arc: the blade ≤ 30° a frame
+    // and the point's path ≤ 60° a frame while it moves faster than 6 m/s (a slow turn at a coil, the
+    // top of a swing, is an apex; at speed it is a flick). The block and the charge from the carry: no arm segment ≥ 60° a frame, the blade
+    // ≤ 40° a frame (or today's hold's, hip's, + 3: the block's own entry is main's, out of the flow's
+    // scope), the steel out of him, the point no faster than from today's hold + 10 %. The windup's
+    // way (the point's path to the coil) ≤ 1.2 m: a gather, not a second cut (main: 2.3 m).
+    // F5 home to the carry: after a single hit and after the mashed chain the speed rises ≤ 6 m/s a
+    // frame, it comes to rest in the carry (the last moving frame ≤ 1 m/s), a single hit's way home
+    // peaks ≤ 25 m/s
+    const CC = chains.filter((C) => C.R.kind === 'carry');
+    const coilAt = (S) => { const rows = S.run.rows; let i = S.i0; while (i < S.i1 && !(rows[i].u >= 1)) i++; return i; };
+    // (the windup: to the coil; the blade's and the path's turns on through the coil's departure, u 1.3:
+    // the turn into the cut is where a flick shows)
+    const win = (S) => {
+      const rows = S.run.rows, c = coilAt(S), W = { path: 0, blade: 0, turn: 0, flick: 0, pen: 0, elb: 0, penAll: 0 };
+      for (let i = S.i0; i <= S.i1; i++) {
+        const F = rows[i], F0 = rows[i - 1];
+        W.penAll = Math.max(W.penAll, F.pen);
+        if (i > c && !(F.u < 1.3)) continue;
+        if (F0 && i > S.i0) {
+          W.blade = Math.max(W.blade, F.bladeT);
+          if (F.v > 2 && F0.v > 1.2) W.turn = Math.max(W.turn, F.turn);
+          if (F.v > 6 || F0.v > 6) W.flick = Math.max(W.flick, F.turn);
+        }
+        if (i > c) continue;
+        W.pen = Math.max(W.pen, F.pen);
+        if (!F0 || i === S.i0) continue;
+        W.path += F.v * DT;
+        W.elb = Math.max(W.elb, Math.abs(F.elb - F0.elb));
+      }
+      return W;
+    };
+    const trans = (R) => {
+      const i0 = R.act ?? 0, i1 = Math.min(R.rows.length - 1, i0 + Math.round(0.45 / DT)), X = { arm: 0, blade: 0, v: 0, dv: 0, pen: 0 };
+      for (let i = Math.max(1, i0); i <= i1; i++) {
+        const F = R.rows[i], F0 = R.rows[i - 1];
+        X.arm = Math.max(X.arm, F.armT);
+        X.blade = Math.max(X.blade, F.bladeT);
+        X.v = Math.max(X.v, F.v);
+        X.dv = Math.max(X.dv, Math.abs(F.v - F0.v));
+        X.pen = Math.max(X.pen, F.pen);
+      }
+      return X;
+    };
+    const line = (S, W) => `${S.clip} ${S.v4.slice(0, 4).map(f1).join('/')} ${S.ease ? (S.moving ? 'carries on' : 'eases in') : 'JUMPS'} windup ${f1(S.windup)}/${f1(S.cut)} (${(S.windup / Math.max(1e-6, S.cut)).toFixed(2)}) path ${W.path.toFixed(2)} m blade ${W.blade.toFixed(0)}°/f turn ${W.turn.toFixed(0)}° (at speed ${W.flick.toFixed(0)}°) elbow ${W.elb.toFixed(0)}°/f steel ${(W.pen * 100).toFixed(1)} cm`;
+    // OPEN (named, held where they are): today's hold's draw cut leaves its coil at 1.6 → 11 → 32 m/s,
+    // turning 133° on the way (Track FLOW's apex: the pendulum's top is too short for a cut of 86°)
+    const OPEN_FLICK = { 'hip drawCut': 135 };
+    const hipT = {};
+    const fails = [];
+    for (const id of CARRY_IDS) {
+      const mine = CC.filter((C) => C.R.tag.startsWith(`c:${id}:`)), of = (t) => mine.find((C) => C.R.tag === `c:${id}:${t}`);
+      const show = [];
+      // (the roll cut carries the roll's own motion on: F1 is FLOW's, ≤ 8 m/s at first and rising from
+      // its second frame; its path turns with the roll's, the same out of every carry: not an arc here)
+      const check = (tag, S, strict) => {
+        if (!S) { fails.push(`${id} ${tag}: no attack`); return; }
+        opener(S);
+        const W = win(S), roll = tag === 'roll';
+        show.push(`${tag} ${line(S, W)}`);
+        const F1ok = roll ? S.first <= 8 && S.rise : S.ease && S.zig <= 15 && S.v4[0] <= 8;
+        const F3ok = S.windup <= 0.65 * S.cut && S.cut <= 42 && W.path <= 1.2 && W.elb <= 30;
+        const arc = roll || (W.blade <= 30 && W.flick <= (OPEN_FLICK[`${id} ${S.clip}`] ?? 60));
+        if (!F1ok) fails.push(`${id} ${tag} F1 ${S.v4.slice(0, 3).map(f1).join('/')}${S.zig > 15 ? ` zig ${f1(S.zig)}` : ''}`);
+        if (!(W.pen <= 0.02)) fails.push(`${id} ${tag} steel ${(W.pen * 100).toFixed(1)} cm`);
+        if (strict && !F3ok) fails.push(`${id} ${tag} F3 ${f1(S.windup)}/${f1(S.cut)} path ${W.path.toFixed(2)}`);
+        if (strict && !arc) fails.push(`${id} ${tag} arc blade ${W.blade.toFixed(0)}° turn ${W.flick.toFixed(0)}° at speed`);
+      };
+      for (let k = 0; k < 3; k++) check(`pick${k}`, of(`pick${k}`)?.hits[0], true);
+      for (let k = 0; k < 3; k++) check(`look${k}`, of(`look${k}`)?.hits[0], false);
+      check('sprint', of('sprint')?.hits[0], true);
+      check('roll', of('roll')?.hits[0], true);
+      // the way home: after each single hit (the picks) and after the mashed chain
+      const homes = [0, 1, 2].map((k) => of(`pick${k}`)).filter(Boolean), M = of('mash');
+      const one = Math.max(...homes.map((C) => Math.max(0, ...C.E.prof.slice(6))));
+      const ends = [...homes, M].filter(Boolean).map((C) => C.E);
+      const jump = Math.max(...ends.map((E) => E.jump)), arrive = Math.max(...ends.map((E) => E.arrive));
+      show.push(`home: a single hit's way home peaks ${f1(one)} m/s; the speed rises ≤ ${f1(jump)} m/s a frame; arrives at ${f1(arrive)} m/s; the mashed chain (${M?.hits.map((S) => S.clip).join(' ')}) ${M?.E.prof.map((x) => x.toFixed(0)).join(' ')}`);
+      if (!(ends.length === 4 && M?.hits.length === 5 && one <= 25 && jump <= 6 && arrive <= 1)) fails.push(`${id} home: ${M?.hits.length ?? 0} hits, single ${f1(one)} rise ${f1(jump)} arrive ${f1(arrive)}`);
+      // the block and the charge from the carry
+      for (const t of ['block', 'charge']) {
+        const R = of(t)?.R;
+        if (!R) { fails.push(`${id} ${t}: no run`); continue; }
+        const X = trans(R);
+        if (id === 'hip') hipT[t] = X;
+        const H = hipT[t] ?? X;
+        show.push(`${t} arm ${X.arm.toFixed(0)}°/f blade ${X.blade.toFixed(0)}°/f point ${f1(X.v)} m/s Δ ${f1(X.dv)} steel ${(X.pen * 100).toFixed(1)} cm`);
+        if (!(X.arm < 60 && X.blade <= Math.max(40, H.blade + 3) && X.pen <= 0.02 && X.v <= H.v * 1.1 + 1)) fails.push(`${id} ${t} arm ${X.arm.toFixed(0)} blade ${X.blade.toFixed(0)} v ${f1(X.v)} (hip ${f1(H.v)}) steel ${(X.pen * 100).toFixed(1)}`);
+      }
+      out(`   C ${id}:\n      ${show.join('\n      ')}`);
+    }
+    assert(CC.length === CARRY_IDS.length * 11 && !fails.length, `C every carry: the opener it feeds eases in, winds ≤ 0.65 of its cut on a short path, turns the blade as an arc and keeps the steel out of him; every look eases in; the sprint slash and the roll cut too; the block and the charge no rougher than from today's hold; home to the carry is a settle (${fails.join(', ') || `all ${CARRY_IDS.join(', ')}`})`);
   }
   if (process.env.ABYSS_FLOWDUMP) {
     const only = process.env.ABYSS_FLOWDUMP_TAG ? new RegExp(process.env.ABYSS_FLOWDUMP_TAG) : null; // (a regex on the run tags)
-    const dump = runs.filter((R) => !only || only.test(R.tag)).map((R) => ({ tag: R.tag, kind: R.kind, rows: R.rows.map((F) => ({ clip: F.clip, combo: F.combo, ph: F.ph, u: +F.u.toFixed(3), t: +F.t.toFixed(4), key: F.key, state: F.state, tip: F.tip.map((x) => +x.toFixed(4)), hand: F.hand.map((x) => +x.toFixed(4)), tipR: F.tipR.map((x) => +x.toFixed(4)), v: +F.v.toFixed(3), vH: +F.vH.toFixed(3), vR: +F.vR.toFixed(3), turn: +F.turn.toFixed(1), armT: +F.armT.toFixed(1), bladeT: +F.bladeT.toFixed(1), pen: +F.pen.toFixed(3), hip: +F.hip.toFixed(4), ch: +F.ch.toFixed(4), yaw: +F.yaw.toFixed(4), lh: F.lh.map((x) => +x.toFixed(4)), sw: F.sw.map((x) => +x.toFixed(4)), swA: F.swA.map((x) => +x.toFixed(4)), rh: F.rh.map((x) => +x.toFixed(4)) })) }));
+    const dump = runs.filter((R) => !only || only.test(R.tag)).map((R) => ({ tag: R.tag, kind: R.kind, rows: R.rows.map((F) => ({ clip: F.clip, combo: F.combo, ph: F.ph, u: +F.u.toFixed(3), t: +F.t.toFixed(4), key: F.key, state: F.state, tip: F.tip.map((x) => +x.toFixed(4)), hand: F.hand.map((x) => +x.toFixed(4)), tipR: F.tipR.map((x) => +x.toFixed(4)), v: +F.v.toFixed(3), vH: +F.vH.toFixed(3), vR: +F.vR.toFixed(3), turn: +F.turn.toFixed(1), armT: +F.armT.toFixed(1), bladeT: +F.bladeT.toFixed(1), pen: +F.pen.toFixed(3), hip: +F.hip.toFixed(4), ch: +F.ch.toFixed(4), yaw: +F.yaw.toFixed(4), lh: F.lh.map((x) => +x.toFixed(4)), sw: F.sw.map((x) => +x.toFixed(4)), swA: F.swA.map((x) => +x.toFixed(4)), rh: F.rh.map((x) => +x.toFixed(4)), elb: +F.elb.toFixed(1) })) }));
     fs.writeFileSync(process.env.ABYSS_FLOWDUMP, JSON.stringify(dump));
     out(`   (every frame written to ${process.env.ABYSS_FLOWDUMP})`);
   }
