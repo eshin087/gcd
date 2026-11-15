@@ -65,7 +65,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `events` | pub/sub: `on(name, fn)` → unsubscribe fn, `emit(name, data)` |
 | `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
 | `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame (the ray from the camera without the kick's translation, `cameraRig.kickOff`); with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
-| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool)` / `mobile`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default. `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance, negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
+| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool, portrait = false)` / `mobile` / `portrait` / `lead`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default; a phone held upright (`portrait`) stands `CONFIG.camera.portraitDistance` (1.2) × further back and looks `portraitLead` (1.5 m) south of the focus, so the hero stands above the middle of the screen (ADR-097). `fovFor(aspect)` (exported by `core/cameraRig.js`, applied by main.js on every resize): the vertical field of view, `CONFIG.camera.fov` in landscape, opened in a window taller than wide until the view is as wide as a square window's (`portraitMaxFov` 68 at most). `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance, negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
 | `touch` | touch controls (`ui/touch.js`, below): `active`, `phone`, `portrait`, `autoAim`, `setActive(bool)`, `update(realDt)` |
 | `gamepad` | gamepad controls (`ui/gamepad.js`, below): `active`, `connected`, `layout` (`'xbox'`/`'ps'`), `autoAim`, `focus`, `label(token)`, `rumble([ms, strong, weak])`, `update(realDt)` |
 | `shake(a)` | camera trauma (0.15 light hit … 0.7 huge slam) |
@@ -352,6 +352,10 @@ object3d: THREE.Object3D;  position: THREE.Vector3 (=== object3d.position);  yaw
 batch                                  // his rigid batches (render/rigidBatch.js batchRigid; empty with ?nobatch)
 name = 'Wanderer'
 hp, maxHp, flasks, maxFlasks: number   // (v0.2: NO stamina) TUNE: 160 HP, 5 flasks of +70 HP
+guard, maxGuard: number                // the guard meter (combat/rules.js GUARD, ADR-095): a blocked blow costs guard, not HP;
+                                       // refills by itself; at 0 on a blocked blow the guard is knocked open (state 'stagger'
+                                       // for GUARD.openDur with the guard break's pose, `player:guardOpen`); read by the HUD
+                                       // and the touch BLOCK tile
 state: string   // 'idle'|'run'|'sprint'|'roll'|'attack'|'charge'|'heavy'|'block'|'parry'|'ghostep'|'plunge'|'heal'|'stagger'|'guardBreak'|'knockdown'|'lock'|'mikiri'|'dead'
                 //  ('attack' = the light chain + the slam finisher, 'heavy' = the released charge's cleave (and the execution's thrust),
                 //   'ghostep' = a perfect dodge without the plunge, 'plunge' = the head-stab, contract 2,
@@ -1449,8 +1453,14 @@ showTitle() / hideTitle();  showPause(bool);  toggleHelp()
 the keyboard ↔ touch control lists in the title and pause menu, the pause menu's FULLSCREEN item
 where the Fullscreen API exists). With `.ab-touch` the log, the key hint and the help panel are
 hidden, the prompt becomes a tap target ("TAP › Rest at bonfire"), the pause panel scrolls; below
-560 px of height (phones in landscape) the player frame (×0.8) and minimap (×0.6) shrink, the boss
+560 px of height (phones in landscape) the player frame (×0.8) shrinks, the boss
 bar narrows to the bottom centre between the thumbs, and the title / banners / record compact.
+On a phone either way up (a side ≤ 560 px) the **minimap** is a bare 70 px disc in the top right
+corner at 72 % opacity: no panel, no zone title, no coordinates (the FPS line stays when on).
+**Held upright** (`(max-width: 560px) and (orientation: portrait)`; ADR-097): the frame top left,
+the boss bar under it across the screen, the prompt and banners above the thumbs (the big words
+sized in vw), the pause panel in the upper half so the pad shows below it, the title's logo and
+lists to the screen's width.
 Desktop (no `.ab-touch`) is unchanged.
 **Gamepad layout:** while a pad is the device in use, `html.abyss-pad` (and `.ab-pad` on the HUD root)
 hides `kb-only` and `tp-only` elements and shows `pad-only` ones (title "PRESS ANY BUTTON", the
@@ -1463,6 +1473,11 @@ stronger on the attacker's side) on a red `combat:flash`, dropped by a stagger /
 death / retry (`ui/tells.js`); flashes with `hazard: true` (meteors, chase pillars) are skipped,
 their red ground rings already warn. Also renders parry / Ghostep / guard-break call-outs, the cyan
 Ghostep edge pulse (a plunge's perfect dodge included), the posture bar, and the crit-window cue.
+The player frame carries the **guard meter** under the HP bar (`player.guard / maxGuard`, polled: a
+steel bar, warm under `GUARD.low`, a flash and "GUARD DOWN" on `player:guardOpen`). The **lock-on
+marker** (`ui/nameTags.js`, `LOCK_MARK`) is a hint, not a fixture: taking the lock shows a small
+dim diamond on the target (opacity 0.55) for 0.5 s, it fades over 2.4 s and stays gone until the
+lock is taken again (real seconds; the frame's "LOCKED ON" label and the touch LOCK button say the rest).
 `ui/callouts.js` subscribes itself to `combat:deflectChain {count}` ("DEFLECT ×N" over the hero's
 head: one counter per string that counts up in place and absorbs the PARRY / DEFLECT pop of the same
 blow; the GHOSTEP call-out counts the same way from the second perfect dodge of a streak,
@@ -1678,7 +1693,7 @@ change counts only after it is let go** (the title's A never rolls, the resuming
 the press that makes the pad active counts. Inactive (keyboard / mouse / touch used since): every
 pad hold is released. A pad unplugged while active in a play state pauses the game.
 `gamepadconnected` / `gamepaddisconnected` log a system line. **Rumble** (`CONFIG.gamepad.rumble`)
-on `player:hurt`, `player:guardBreak`, `player:block`, `player:parry` (perfect stronger, a bullet
+on `player:hurt`, `player:guardBreak`, `player:guardOpen`, `player:block`, `player:parry` (perfect stronger, a bullet
 lighter), `player:perfectDodge`, `player:hitDragon` (not guarded: `hitHeavy`, else `hitLight`); only while active.
 
 ### Touch controls — `src/ui/touch.js` exports `class TouchControls`
@@ -1696,21 +1711,39 @@ timings are the real device's):
 | control | feeds | behaviour |
 |---|---|---|
 | stick (left thumb, floats under the thumb in the left 42 % × lower 74 %) | `setVirtualAxis` | analog: dead zone 0.16, full run at 0.62 of the 52 px travel; ≥ 0.94 (rim) holds `@sprint` (off below 0.86) |
-| ATTACK | `@attack` | tap = light combo, hold ≥ 0.3 s = charge, release = the cleave; shows an ASCII charge meter `[###...]` |
-| BLOCK | `@block` | hold = block, tap just before impact = parry |
-| DODGE | `@dodge` | roll / perfect dodge |
-| FLASK · LOCK · PAUSE (glyph `\|\|`) | `@flask` · `@lockOn` · `@pause` | flask count, LOCK lit while locked on |
+| ATTACK (pad tile) | `@attack` | tap = light combo, hold ≥ 0.3 s = charge, release = the cleave; shows an ASCII charge meter `[###...]` |
+| BLOCK (pad tile) | `@block` | hold = block, tap just before impact = parry; a gauge along its foot is the guard meter |
+| DODGE (pad tile) | `@dodge` | roll / perfect dodge |
+| FLASK (rides with the pad) · LOCK · PAUSE (glyph `\|\|`, both top right) | `@flask` · `@lockOn` · `@pause` | flask count, LOCK lit while locked on |
 | the HUD prompt | `@<action>` from its `[@interact]` chip | rest at the bonfire / fight again |
 | a bare-screen tap on title / death | `Mouse0` | "press any key" |
 | two bare-screen fingers in play | `cameraRig.zoom` | pinch (distance × start / now) |
+
+**The pad** (ADR-096; `CONFIG.touch.pad`): ATTACK, BLOCK and DODGE are three tiles of one cluster
+that all share an edge with each other (ATTACK bottom right, BLOCK on top of it, DODGE down their
+left side), raised and inset from the corner. The pad is one pointer surface (`.tc-pad`; the tiles
+take no pointers themselves): a touch on it, or up to `reach` (26 px) outside the cluster, presses
+the nearest tile, and a thumb that **slides** onto another tile releases the first and presses the
+second without lifting (release edge first; it must leave its tile by `stick`, 10 px; a slide that
+wanders further than `reach` from every tile keeps what it holds). Each finger holds its own tile.
+The player places the cluster in the pause menu: PAD POSITION (low / mid / high: `pad.pos`) and
+PAD SIZE (small / medium / large: `pad.size`), kept in `localStorage` (`abyss.touchPad`); the
+controls show through the pause screen, inert, while they are stepped (`.tc-root.peek`). Screens
+taller than 560 px get everything × `pad.tall`. API: `padPos`, `padSize`, `cyclePad('pos' | 'size')`,
+`padPoint(id)` (the screen point at a tile's middle), `padGeo`.
 
 **Aim** (`game.mouseGround`, each frame in `explore` / `bossIntro` / `boss`): with the dragon
 targetable and within `CONFIG.touch.autoAimRange` (32 m) it is the dragon's lock point (attacks,
 facing and the camera look-ahead go to it, like a cursor parked on it); otherwise it sits
 `CONFIG.touch.aimDistance` (6 m) ahead of the hero along the last stick direction. LOCK still toggles
 the real lock-on. Controls show only in play states (hidden on title / pause / death / victory /
-model viewer); hiding releases every held control. **Portrait** (`innerHeight > innerWidth`): a
-"rotate your phone" overlay (z 60, on `<body>`), controls released, play states pause. Activation
+model viewer); hiding releases every held control. **Portrait** (`innerHeight > innerWidth`;
+ADR-097): the game plays on. `portrait` is true, the stick's zone is the lower left (50 % × 46 %),
+the pad takes its place from `pad.posPortrait` (low / mid / high, lifted from the bottom edge),
+the stick rests level with it, and the camera takes the upright profile
+(`cameraRig.setMobile(phone, portrait)`). Turning the phone releases every held control.
+**Look** (ADR-097): the controls are drawn on the game, not over it: no filled panels, faint
+outlines and glyphs at rest (stick 40 %, buttons 62 %), full strength under a thumb. Activation
 also: `html.abyss-touch` (touch-action none, no callouts, crisp `image-rendering: pixelated`),
 `.ab-touch` on the HUD, the phone camera profile, and `CONFIG.defaultQualityTouch` when the
 quality is still the default. Pointer Events with multi-touch (each control captures its own
@@ -1946,6 +1979,8 @@ Player → hud/audio/fx/flow:
   `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last}` (last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
+  `player:guardOpen {attack}` (the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a
+  short stagger; ADR-095; HUD "GUARD DOWN", audio the guard break's crack, the pad rumbles),
   `player:dodge {kind}` (an attack passed through i-frames), `player:perfectDodge {attack, tell, streak}` (every perfect dodge:
   flurry, plunge, in place or Ghostep; not on an execution; streak = perfect dodges in a row, this one included),
   `player:ghostep {x, z}` (with every perfect dodge; for the plunge x/z = the hang point above the head, for a flurry where he dodged),

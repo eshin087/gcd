@@ -133,6 +133,19 @@ const CSS = `
   transition: opacity 0.18s;
 }
 .ab-lock.on { opacity: 1; }
+/* the guard meter: a thin steel bar under the HP bar */
+.ab-guard { height: 9px; margin-top: 1px; }
+.ab-guard .lbl { font-size: 8px; letter-spacing: 0.04em; }
+.ab-guard::after { content: ''; width: 64px; flex: none; }
+.ab-bar.guard { height: 4px; border-color: rgba(190, 206, 232, 0.3); background: rgba(4, 7, 12, 0.7); }
+.ab-bar.guard > .fill { background: linear-gradient(180deg, #e3ebf8, #7f90ad); }
+.ab-bar.guard > .chunk { background: rgba(255, 196, 120, 0.8); }
+.ab-bar.guard.low > .fill { background: linear-gradient(180deg, #ffb27a, #b3501c); }
+.ab-bar.guard.open { animation: ab-guard-open 0.6s ease-out; }
+@keyframes ab-guard-open {
+  0%, 100% { border-color: rgba(190, 206, 232, 0.3); box-shadow: none; }
+  20% { border-color: #ff6a3d; box-shadow: 0 0 8px rgba(255, 106, 61, 0.85); }
+}
 /* crit window (after a Ghostep): hidden row that lights up cyan */
 .ab-crit { margin-top: 2px; opacity: 0; transition: opacity 0.12s; }
 .ab-crit.on { opacity: 1; }
@@ -508,17 +521,19 @@ const CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  margin: -13px 0 0 -13px;
-  font-size: 22px;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  font-size: 15px;
   line-height: 1;
-  color: #fff4ea;
-  text-shadow: 0 0 6px rgba(255, 138, 61, 0.95), 0 0 2px #000;
+  color: #ffd2a8;
+  text-shadow: 0 0 4px rgba(255, 138, 61, 0.7), 0 0 2px #000;
   /* centred by the negative margin; the base tag translate must not leak into the spin keyframes */
   transform: none;
-  animation: ab-spin 2.6s linear infinite;
+  animation: ab-spin 5s linear infinite;
 }
+/* (its opacity is written by ui/nameTags.js: shown faintly when the lock is taken, then gone) */
+.ab-reticle { opacity: 0; }
 @keyframes ab-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* ---------- centre banners ---------- */
@@ -819,7 +834,6 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
 @media (max-height: 560px) {
   .ab-touch { font-size: 10px; }
   .ab-touch .ab-pf { left: 8px; top: 6px; transform: scale(0.8); transform-origin: 0 0; }
-  .ab-touch .ab-map { right: 8px; top: 6px; transform: scale(0.6); transform-origin: 100% 0; }
   .ab-touch .ab-boss { bottom: 10px; width: min(38vw, 380px); min-width: 0; }
   .ab-touch .ab-boss-name { font-size: 10px; letter-spacing: 0.12em; overflow: hidden; text-overflow: ellipsis; }
   .ab-touch .ab-boss-head { margin-bottom: 2px; }
@@ -846,6 +860,51 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
   .ab-touch .ab-pause-title { font-size: 16px; margin-bottom: 6px; }
   .ab-touch .ab-btn { margin: 5px 0; padding: 0 10px; }
   .ab-touch .ab-sep { margin: 9px 0 8px; }
+  .ab-touch .ab-ctrls { font-size: 10px; }
+}
+/* phones, either way up: the minimap is a small bare disc in the corner (no panel, no title, no
+   coordinates), see-through like the controls */
+@media (max-height: 560px), (max-width: 560px) {
+  .ab-touch .ab-map { right: 6px; top: 6px; width: auto; padding: 0; background: none; border: 0; opacity: 0.72; }
+  .ab-touch .ab-map-zone, .ab-touch .ab-map-line:not(.fps) { display: none; }
+  .ab-touch .ab-map canvas { width: 70px; height: 70px; }
+  .ab-touch .ab-map-line.fps { font-size: 8px; margin-top: 1px; }
+}
+/* a phone held upright (~360-430 px wide): the frame and the boss bar at the top, the prompt and
+   the banners above the thumbs, the menus as wide as the screen */
+@media (max-width: 560px) and (orientation: portrait) {
+  .ab-touch { font-size: 10px; }
+  .ab-touch .ab-pf { left: 6px; top: 6px; transform: scale(0.8); transform-origin: 0 0; }
+  .ab-touch .ab-boss { top: 112px; bottom: auto; width: 90vw; min-width: 0; }
+  .ab-touch .ab-boss-name { font-size: 10px; letter-spacing: 0.12em; overflow: hidden; text-overflow: ellipsis; }
+  .ab-touch .ab-boss-head { margin-bottom: 2px; }
+  .ab-touch .ab-prompt { bottom: 47%; }
+  .ab-touch .ab-banner .band { height: 112px; }
+  .ab-touch .ab-banner .sub { margin-top: 40px; font-size: 10px; }
+  .ab-touch .ab-banner.k-area { top: 24%; }
+  .ab-touch .ab-banner.k-area .sub { margin-top: 20px; }
+  .ab-touch .ab-banner.k-victory { top: 18%; }
+  /* the big words fit the narrow screen */
+  .ab-touch .ab-banner.k-death .txt { font-size: 10vw; }
+  .ab-touch .ab-banner.k-victory .txt { font-size: 7vw; --ls: 0.14em; }
+  .ab-touch .ab-banner.k-bonfire .txt { font-size: 6.6vw; --ls: 0.26em; }
+  .ab-touch .ab-banner.k-phase .txt { font-size: 4.6vw; --ls: 0.16em; }
+  .ab-touch .ab-banner.k-area .txt { font-size: 3.8vw; --ls: 0.3em; gap: 10px; }
+  .ab-touch .ab-banner.k-area .txt::before, .ab-touch .ab-banner.k-area .txt::after { width: 24px; }
+  .ab-touch .ab-banner .sub { white-space: normal; padding: 0 14px; line-height: 1.5; }
+  .ab-touch .ab-stats { top: calc(18% + 44px); padding: 6px 12px 7px; max-width: 92vw; }
+  .ab-touch .ab-stats .row { line-height: 15px; font-size: 10px; }
+  .ab-touch .ab-mini { top: 24%; }
+  .ab-touch .ab-logo { font-size: clamp(5px, 2.5vw, 12px); }
+  .ab-touch .ab-title-sub { font-size: 10px; }
+  .ab-touch .ab-title-ctrl { font-size: 9.5px; line-height: 17px; max-width: 94vw; }
+  .ab-touch .ab-legend.title { font-size: 9.5px; max-width: 94vw; }
+  .ab-touch .ab-credit { bottom: 5px; font-size: 9px; }
+  /* the menu keeps to the upper part: the pad shows below it while PAD POSITION / PAD SIZE are stepped */
+  .ab-touch .ab-pause { align-items: flex-start; padding-top: 50px; }
+  .ab-touch .ab-pause-panel { width: 94vw; max-height: 50%; padding: 10px 14px 12px; }
+  .ab-touch .ab-pause-title { font-size: 16px; margin-bottom: 6px; }
+  .ab-touch .ab-btn { margin: 5px 0; padding: 0 10px; }
   .ab-touch .ab-ctrls { font-size: 10px; }
 }
 `;

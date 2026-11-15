@@ -5,6 +5,62 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-14 — Session 35: the phone's right thumb, a lock marker that fades, the guard meter
+
+**Owner:** "Lets improve mobile ui / user experience. The right side controls are too far bottom in
+the right corner ... Im having a hard time shuffling between attack dodge and block. Think of a way
+to make it easy and intuitive to switch between the different options. Make the target lock icon be
+subtle and slowly fades away ... add a guard meter and any parry will restore guard meter ... let it
+replenish quickly ... I don't want to punish the player for playing defensive." Four questions
+first; the answers: slide between the buttons; at empty the guard is knocked open; no HP chip while
+there is guard; landing hits restore it too. Branch `ui/mobile-guard` from `main`. (PR #32 and
+PR #34 merged while it was open and took Sessions 33 – 34 and ADR-093 – 094: this is 35 and ADR-095 – 097.)
+
+**Done:**
+- **The pad** (ADR-096, `ui/touch.js`, `CONFIG.touch.pad`): ATTACK, BLOCK and DODGE are three
+  tiles that all touch, raised and inset from the corner; a touch near the cluster goes to the
+  nearest tile; a thumb slides from tile to tile without lifting. FLASK rides with it, LOCK moved
+  to the top right. Pause menu: PAD POSITION (low / mid / high) and PAD SIZE (small / medium /
+  large), kept in localStorage; the controls show through the pause screen while they are stepped.
+- **The lock-on marker** (`ui/nameTags.js` `LOCK_MARK`): a small dim diamond when the lock is taken,
+  gone after 3 s.
+- **The guard meter** (ADR-095, `GUARD` in `combat/rules.js`): a blocked blow costs guard and no
+  HP; empty knocks the guard open for 0.55 s (`player:guardOpen`, GUARD DOWN); it refills at 60 / s
+  in every state; parries and landed cuts give some back. A steel bar under the HP bar, a gauge on
+  the BLOCK tile.
+- **Tests:** integ.mjs GUARD (new: cost, the refill behind a held guard and in a swing, the
+  opening, parry and hit restore, streams, the HUD bar); TOUCH drives the tiles through the pad and
+  checks nearest-tile, the slide (ATTACK → BLOCK → DODGE on one finger), the stick, two fingers,
+  the BLOCK gauge, position and size; BLOCK now expects no HP loss.
+
+**Second request, same session:** "Allow the game to be played in non landscape as well and adjust
+the ui to allow that. Make the joystick and right buttons to blend in with the game so the buttons
+aren't covering the game screen. The mini map is also covering a lot of the screen on mobile."
+- **Upright play** (ADR-097): the "rotate your phone" overlay and its pause are removed. The camera's
+  field of view opens in a window taller than wide (`fovFor`, 32° → ~64° on a phone), the upright
+  phone profile stands 1.2 × back and leads 1.5 m south; the stick's zone, the pad's three places
+  (`pad.posPortrait`) and the stick's rest follow; the HUD has an upright layout (frame and boss bar
+  on top, prompt and banners above the thumbs, the pause panel in the upper half, the title to the
+  screen's width).
+- **See-through controls:** no filled panels; hairline tiles, brackets and haloed glyphs at 62 %,
+  the stick at 40 % with no disc; full strength under a thumb.
+- **Minimap on phones:** a bare 70 px disc at 72 %, no panel, title or coordinates; LOCK and pause
+  beside it.
+- **Tests:** TOUCH's portrait block rewritten: no overlay and no pause, controls live, a held stick
+  let go when the phone turns, the camera profile and `fovFor`, the pad and the stick inside the
+  upright screen, a press at the portrait place, PAD POSITION upright, landscape restored.
+
+**Found on the way:** the first lead of 3 m put the hero at a third of the screen's height with
+the boss pressed against the HUD: 1.5 m. Faint tiles vanished over a lit pillar: a dark halo on
+the glyphs and 62 % instead of 55 %. The pause panel covered the pad it is meant to show while
+PAD POSITION is stepped: upright it keeps to the upper half.
+
+**Decisions:** ADR-095, ADR-096, ADR-097.
+
+**Not checked / open:** see the PR. Nothing was tried on a real phone: where the thumb rests (PAD
+POSITION is for that), whether the faint controls are findable in a fight, the upright camera
+against the wyrm (the view is ~14 m wide; only the Ashfall Courtyard was looked at upright), iOS
+Safari's bars in portrait. The bosses were not re-tuned for blocks that cost no HP.
 ## 2026-11-15 — Session 34: weight on the flurry; one streak for parries too; a foe's streak and flurry
 
 **Owner:** "Lets add some weight, hitstun impact to the teleport attacks and make it visually and

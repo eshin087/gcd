@@ -710,6 +710,11 @@ export class AudioEngine {
       this.charge?.stop(0.05);
       this.play('guardBreak');
     });
+    // the guard meter ran out on a blocked blow: the same crack (the block's own ring came first)
+    on('player:guardOpen', () => {
+      this.charge?.stop(0.05);
+      this.play('guardBreak');
+    });
     on('player:perfectDodge', () => this._ghostep());
     on('player:ghostep', () => this._ghostep());
 

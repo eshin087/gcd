@@ -8,7 +8,8 @@ each actor's `tuning`.
 
 ## Core rules
 1. **No stamina.** Attacking, rolling, sprinting and blocking are free; pacing comes from attack
-   recovery, roll recovery and the enemy's patterns.
+   recovery, roll recovery and the enemy's patterns. Blows met on a held guard wear the **guard
+   meter** (*The guard meter*, below): nothing the hero does spends it, and it refills by itself.
 2. **Every enemy attack has a tell** declared in its data: `normal`, `blue` or `red`
    (`TELL` in `rules.js`); every hit of a combo string has its own. Tells are **read from the
    attacker, never from HUD text or icons** (no PARRY / DODGE labels, no marks or rings over the
@@ -19,10 +20,12 @@ each actor's `tuning`.
 3. **Answers**
    | Tell | Block (hold RMB) | Parry (tap RMB just before impact) | Dodge (Space) |
    |---|---|---|---|
-   | `normal` — white glint | −80 % dmg, small pushback | full negate, posture dmg; a string goes on | i-frames; perfect → plunge |
-   | `blue` — big white glint (heavy blow) | −50 % dmg, big pushback | full negate, **big** posture dmg; a string goes on | i-frames; perfect → plunge |
+   | `normal` — white glint | no damage, costs guard (damage × 1), small pushback | full negate, posture dmg; a string goes on | i-frames; perfect → plunge |
+   | `blue` — big white glint (heavy blow) | no damage, costs guard (damage × 1.5), big pushback | full negate, **big** posture dmg; a string goes on | i-frames; perfect → plunge |
    | `red` — red glow + red flash | **fails** (full dmg, knockdown) | **fails** | **only answer**; perfect → plunge (a fire hazard: in place) |
 
+   A blocked contact stream (the fire breath's ticks, burning ground, a bullet) is no blow: it
+   chips HP as before (−80 % / −50 %) and costs no guard.
    Attacks may override parry/block (a fire stream is blockable but not parryable). "Perfect →
    plunge" needs an attacker with a head to stab (the wyrm) within range; otherwise a perfect dodge
    gives the slow-mo and the crit window where you dodged (rule 5).
@@ -83,6 +86,28 @@ each actor's `tuning`.
     and hazards heat the ground they will hit until impact, the edge drawn in the last flashLead s;
     every hazard can be dodged with i-frames or by moving) · every projectile has a visible source
     (bullets leave the jaws, ADR-050).
+
+## The guard meter (2026-11-14, ADR-095)
+The hero has a guard meter of 100 (`GUARD` in `rules.js`; a thin steel bar under his HP bar, and a
+gauge along the foot of the touch BLOCK tile). It makes a held guard something to manage without
+making defence a chore: it is not stamina.
+- **A blocked blow costs guard, not HP:** its damage × 1 (normal) or × 1.5 (blue: the blow you
+  should have parried), at least 8 and at most 60. While there is guard left a block takes no HP.
+- **The blow that empties it is still blocked**, but it knocks the guard open: GUARD DOWN, a
+  stagger of 0.55 s in the guard break's opening pose, with no damage and no knockdown. The next
+  blow of a string lands in it. (A red blow met on the guard is still the full guard break with
+  its knockdown: rule 3.)
+- **It refills by itself:** 60 per second (empty to full in about 1.7 s), starting 0.8 s after the
+  last blow he blocked or took (0.35 s after it was knocked open). Standing, moving, holding the
+  guard up and swinging all refill it: only being struck pauses it.
+- **Every parry gives guard back at once:** 28 (normal), 45 (blue), 10 for a deflected bullet, 20
+  more for a perfect parry.
+- **Every cut of his own that lands gives a little back:** 4 for a light hit, 10 for a heavy one.
+- Contact streams and bullets leave it alone (they chip HP through a block as before). God mode
+  spends none. Rest and respawn fill it.
+
+So: holding the guard through one string is safe, holding it through two in a row without a parry
+or a cut of your own gets it knocked open, and a parry or a hit between them resets the count.
 
 ## Tell presentation
 ```
@@ -681,7 +706,7 @@ r / ±ang, line r × w, ring r, metres; every hit also steps in, above):
 | Hesitating Blade (1) | feint 0.4 · B thrust 0.42 + hold 0.2–0.6 (22) · 50 %: N rising 0.34 (14) | line 2.0, sector 2.15 | 0–4.6 · [1.8, 2.0] · 5 |
 | Lotus Sweep (1) | R 0.62 (22, knockdown) a low spin at the ankles | ring 3.0 (red ground ring) | 0–3.4 · [1.6, 1.6] · 6 |
 | Wind Step (1) | N 0.56 (18) | glides in ≤ 10.5 m, sector 2.2 / ±1.0 | 4.6–13 · [2.6, 2.6] · 3 |
-| Ash Crescent (1) | N 0.5 (14) sword qi along the ground, 14 m/s; P2 a fan of three (±0.36 rad) | each crescent cues itself `flashLead` before it reaches the hero (too late: it fizzles); parry or roll, block chips | 6–16 · [1.0, 1.6] · 5 |
+| Ash Crescent (1) | N 0.5 (14) sword qi along the ground, 14 m/s; P2 a fan of three (±0.36 rad) | each crescent cues itself `flashLead` before it reaches the hero (too late: it fizzles); parry or roll, block costs guard | 6–16 · [1.0, 1.6] · 5 |
 | Riposte (counter) | N 0.46 (16) diagonal · B 0.36 (22) thrust | sector 2.15, line 2.0 | only from his guard, or after he wins a blade lock |
 | Thousand Needles (2) | N 0.5 · N 0.34 · N 0.34 · N 0.34 (10 each) · B 0.38 (18) | lines 1.95 | 0–3.8 · [0, 2.6] · 6 |
 | Hundred Petals (2) | N 0.5 · N 0.34 × 3 (11 each) · B 0.4 + hold 0.1–0.3 (18) LOCK · N 0.36 · N 0.34 × 2 (10) · B 0.36 thrust (16) · R 0.62 (26) MIKIRI | sectors 2.15–2.3, lines 2.0–2.1 | 0–3.6 · [0, 2.6] · 9 |
@@ -749,18 +774,18 @@ hit stun are all as written above), with these differences.
 **The Void** (his spells; each is read and answered like a blade):
 | Spell | Tell | What it is | Answers |
 |---|---|---|---|
-| **Void lightning** | blue | 0.78 s with the hand raised, crackling, then a bolt down a 17 × 1.7 m line he tracks until 92 % of the windup | **parry** (it counts in a string's deflect chain: 48 posture); a **perfect parry sends it back**: 55 damage and 34 posture to him, RETURN; block halves it; roll |
-| **Void push** | normal | a wall of force 4.8 m wide along the floor at 12.5 m/s (15 damage, thrown back 6.5 m) | parry cuts it (it cues itself 0.26 s before it reaches you); block: chip and a shove; roll through |
+| **Void lightning** | blue | 0.78 s with the hand raised, crackling, then a bolt down a 17 × 1.7 m line he tracks until 92 % of the windup | **parry** (it counts in a string's deflect chain: 48 posture); a **perfect parry sends it back**: 55 damage and 34 posture to him, RETURN; block costs guard (x 1.5); roll |
+| **Void push** | normal | a wall of force 4.8 m wide along the floor at 12.5 m/s (15 damage, thrown back 6.5 m) | parry cuts it (it cues itself 0.26 s before it reaches you); block: guard and a shove; roll through |
 | **Void pull** | red | 0.8 s, then a 11 × 2.4 m line: 5 damage and you are dragged 5.5 m to him, into the blow that follows | roll (i-frames): the pull misses; a block is broken |
 | **Returning blade** (forms 2, 3) | normal | the blade thrown spinning: out 12.5 m at 15 m/s, it hangs 0.32 s, then home to his hand at 17 m/s through you again (16 each way) | parry each pass (each cues itself); a parry on the way out turns it for home at once; roll |
 | **Torn stone** (forms 3, 4) | normal + red | floor torn up beside him: three stones (14) thrown 0.42 s apart at 16 m/s, then a great one (red, 27, knockdown) | parry / cut the small ones, roll the great one |
 | **The Starless Sky** (form 4) | red | six strikes, one called every 0.5 s onto where you are heading: a red ring (r 2.3 m) for 0.95 s, then the bolt (26, knockdown); he fights on meanwhile | leave the ring or roll as it lands |
-| **Red tide** (form 4) | normal | three cuts that throw crescents of red light (1, a fan of 3, 1) at 14 m/s | parry, roll, block chips |
+| **Red tide** (form 4) | normal | three cuts that throw crescents of red light (1, a fan of 3, 1) at 14 m/s | parry, roll, block costs guard |
 | **The blink** (form 4, Void Rend) | - | as a cut's windup starts he is gone and 2 m behind you (to your side if there is no floor there); a shape of him is left where he stood | turn and parry, or roll: the cut is cued as any other |
 | **Crushing Dark** (forms 1, 4) | red | 0.95 s: his open hand lifts and five talons of the Void close on where it is aimed (on you while he tracks you, until 88 % of the windup); a 9.5 × 2.2 m line. Caught: 30 damage, you are thrown to the floor and the Void presses down for 0.55 s | roll through the instant it closes, or be out of its line; a block is broken |
 | **The Rift** (forms 3, 4) | normal | 0.9 s: the staff raised and driven into the floor; three fissures of red light (five in form 4) race out in a fan at 13.5 m/s (16 each) | parry the one that comes for you (each cues itself), or step between them; roll |
 | **Dark Star** (forms 3, 4) | red | 0.9 s: a starless sun leaves his hand, drifts after you at 2.3 m/s for 1.7 s over a violet ring (r 3 m), then bursts (30, knockdown); he fights on meanwhile | be out of the ring when it bursts, or roll at its cue (it stops following you then) |
-| **Parting Light** (forms 2, 3, 4) | normal | a backflip 4 m away from you, and crescents of red light as he lands (2, 2, 3 by form) at 12 m/s | parry, roll, block chips |
+| **Parting Light** (forms 2, 3, 4) | normal | a backflip 4 m away from you, and crescents of red light as he lands (2, 2, 3 by form) at 12 m/s | parry, roll, block costs guard |
 
 Thrown things (the push, the crescents, the blade, the stones) cue themselves `flashLead` before they
 reach the hero; one that could only cue later than 0.2 s before contact fizzles, as the wyrm's
