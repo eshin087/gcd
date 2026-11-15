@@ -162,6 +162,23 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.38 — The world breaks (2026-11-15, `world/destruction`, ADR-107; staged PRs by parallel sessions)
+- [x] Breakables in a rigid batch, ground fire that burns where it lands, cover, marks, the reset;
+      every fighter's blows hit the world (`world/destruction`, ADR-107)
+- [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
+- [x] The owner's pick of the debris look: digits (chunks and shards turned down; the switch removed)
+- [x] The hero seen behind the wyrm (its own session, PR #41, ADR-106; merged)
+- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
+- [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
+- [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
+- [ ] The Ash Disciple's terrain moves
+- [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire
+- Follow-ups:
+  - [x] A broken piece leaves the minimap (it re-bakes when the colliders change)
+  - [ ] The phone: the look and the frame rate with fire and debris on screen
+  - [ ] Sounds of their own for fire catching and a tree burning (the sizzle and ember hiss are reused)
+  - [ ] Training places the hero without checking what stands there
+
 ## M1.37 — The hero seen through what covers him (2026-11-15, `claude/render-hero-seen-125813`, ADR-106)
 - [x] The covered parts of the hero print through the wyrm (and any object) as a cyan ink ghost
 - [x] Three looks built (ink ghost / window / rim only); the owner picked the ink ghost

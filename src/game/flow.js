@@ -559,6 +559,7 @@ export class GameFlow {
       // resting while the wyrm is awake sends it back to its nest
       this._try(() => d.reset?.(), 'dragon.reset');
       this._try(() => g.world?.scorch?.reset?.(), 'scorch.reset');
+      this._try(() => g.world?.restore?.(), 'world.restore'); // what broke and burned stands again
       g.hud?.hideBossBar?.();
       this.phase2 = false;
       this._log(this._text('restReset'), 'lore');
@@ -816,6 +817,7 @@ export class GameFlow {
     this._respawnPlayer();
     this._try(() => g.dragon?.reset?.(), 'dragon.reset');
     this._try(() => g.world?.scorch?.reset?.(), 'scorch.reset');
+    this._try(() => g.world?.restore?.(), 'world.restore'); // what broke and burned stands again
     this._try(() => g.world?.clearPushers?.(1), 'world.clearPushers');
     this._try(() => {
       g.fx?.add?.clear?.();
