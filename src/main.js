@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from './core/config.js';
 import { Input } from './core/input.js';
 import { Events } from './core/events.js';
-import { CameraRig } from './core/cameraRig.js';
+import { CameraRig, fovFor } from './core/cameraRig.js';
 import { clamp, damp } from './core/math.js';
 import { createSharedUniforms } from './render/shaderLib.js';
 import { createGlyphAtlas, loadFonts } from './render/glyphs.js';
@@ -133,6 +133,7 @@ async function boot() {
     // 3x5 pixel letters blur into grey under the browser's smooth upscale
     game.renderer.domElement.style.imageRendering = dpr < (devicePixelRatio || 1) - 0.01 ? 'pixelated' : '';
     camera.aspect = innerWidth / innerHeight;
+    camera.fov = fovFor(camera.aspect); // a window held upright opens the view (CONFIG.camera.portraitMaxFov)
     camera.updateProjectionMatrix();
   };
   game.applyQuality = applyQuality;

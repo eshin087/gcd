@@ -34,12 +34,26 @@ const PUNCH = { max: 6, lambda: 11 };
 // ~0.25 s), at most `max` m off on either screen axis, stepped in `sub` s sub-steps
 const KICK = { max: 0.5, omega: 30, zeta: 0.55, sub: 1 / 120 };
 
+/**
+ * The vertical field of view (degrees) for a window of this aspect (width / height). Landscape:
+ * CONFIG.camera.fov. Portrait: opened until the view is as wide as a square window's would be
+ * (the horizontal field of view stays CONFIG.camera.fov), CONFIG.camera.portraitMaxFov at most.
+ */
+export function fovFor(aspect) {
+  const c = CONFIG.camera;
+  if (!(aspect > 0) || aspect >= 1) return c.fov;
+  const v = (2 * Math.atan(Math.tan((c.fov * Math.PI) / 360) / aspect) * 180) / Math.PI;
+  return Math.min(c.portraitMaxFov ?? 68, v);
+}
+
 export class CameraRig {
   constructor(camera) {
     const c = CONFIG.camera;
     this.camera = camera;
     this.pitch = c.pitch;
     this.mobile = false;
+    this.portrait = false; // a phone held upright (setMobile): further back, looking `lead` m south of the focus
+    this.lead = 0;
     this.defaultDistance = c.distance;
     this.minDistance = c.minDistance;
     this.maxDistance = c.maxDistance;
@@ -74,15 +88,19 @@ export class CameraRig {
     this._look = new THREE.Vector3();
   }
 
-  /** Switch the distance profile (phones: true). Resets the zoom to the profile's default. */
-  setMobile(on) {
+  /** Switch the distance profile (phones: true; `portrait`: the phone is held upright). Resets
+   *  the zoom to the profile's default. */
+  setMobile(on, portrait = false) {
     on = !!on;
-    if (on === this.mobile) return;
-    const c = CONFIG.camera;
+    portrait = on && !!portrait;
+    if (on === this.mobile && portrait === this.portrait) return;
+    const c = CONFIG.camera, k = portrait ? c.portraitDistance : 1;
     this.mobile = on;
-    this.defaultDistance = on ? c.mobileDistance : c.distance;
-    this.minDistance = on ? c.mobileMinDistance : c.minDistance;
-    this.maxDistance = on ? c.mobileMaxDistance : c.maxDistance;
+    this.portrait = portrait;
+    this.lead = portrait ? c.portraitLead : 0;
+    this.defaultDistance = (on ? c.mobileDistance : c.distance) * k;
+    this.minDistance = (on ? c.mobileMinDistance : c.minDistance) * k;
+    this.maxDistance = (on ? c.mobileMaxDistance : c.maxDistance) * k;
     this.maxExtraZoom = on ? c.mobileMaxExtraZoom : Infinity;
     this.targetDistance = this.defaultDistance;
   }
@@ -182,7 +200,7 @@ export class CameraRig {
     b.z = damp(b.z, desiredFocus.z, c.followLambda, dt);
     this.distance = damp(this.distance, this.targetDistance + this._extra(), 4, dt);
     this._fit(dt);
-    this.focus.set(b.x + this.fitX, b.y, b.z + this.fitZ);
+    this.focus.set(b.x + this.fitX, b.y, b.z + this.fitZ + this.lead);
     this.punchZ = damp(this.punchZ, 0, PUNCH.lambda, dt);
     if (!(this.punchZ > 1e-3)) this.punchZ = 0;
     const D = this.distance + this.fitZoom - this.punchZ * (this.defaultDistance / c.distance);
@@ -230,7 +248,7 @@ export class CameraRig {
     if (n > 0 && cam) {
       const sp = Math.sin(this.pitch), cp = Math.cos(this.pitch);
       const D = this.distance + this.fitZoom;
-      const fx = this._base.x + this.fitX, fy = this._base.y, fz = this._base.z + this.fitZ;
+      const fx = this._base.x + this.fitX, fy = this._base.y, fz = this._base.z + this.fitZ + this.lead;
       const cx = fx, cy = fy + sp * D, cz = fz + cp * D;
       const tanV = Math.tan(((Number.isFinite(cam.fov) ? cam.fov : CONFIG.camera.fov) * Math.PI) / 360);
       const asp = Number.isFinite(cam.aspect) && cam.aspect > 0.1 ? cam.aspect : 16 / 9;

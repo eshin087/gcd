@@ -42,6 +42,13 @@ export const CONFIG = {
     mobileMaxDistance: 34,
     mobileMaxExtraZoom: 3,
     mobileMaxSide: 600,
+    // A window taller than it is wide (a phone held upright; ADR-096): the vertical field of view
+    // opens until the view is as WIDE as a square window's (cameraRig.js fovFor), portraitMaxFov at
+    // most. A phone held upright also stands portraitDistance x further back and looks portraitLead
+    // m south of the hero, so he stands above the middle of the screen, clear of the thumbs.
+    portraitMaxFov: 68,
+    portraitDistance: 1.2,
+    portraitLead: 1.5,
   },
 
   // Touch controls (src/ui/touch.js). Sizes in CSS px.
@@ -73,6 +80,8 @@ export const CONFIG = {
       slide: true,
       stick: 10,
       pos: { low: [26, 26], mid: [48, 52], high: [56, 84] },
+      // the same three places on a screen held upright (thumbs come up from the bottom corners)
+      posPortrait: { low: [12, 44], mid: [14, 104], high: [14, 170] },
       size: { s: 0.88, m: 1, l: 1.14 },
       tall: 1.14,
     },

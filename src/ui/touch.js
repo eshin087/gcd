@@ -18,7 +18,8 @@ import { aimWithoutCursor } from './aim.js';
 // is put on its lock point (auto-aim); otherwise it sits CONFIG.touch.aimDistance m ahead of the hero
 // along the last stick direction. Taps on the bare screen dismiss "press any key" screens (title,
 // death) as a virtual click; the HUD prompt ("[@interact] Rest", "... Fight again") is tappable. Two fingers
-// on the bare screen pinch-zoom through cameraRig.zoom. Portrait shows a rotate overlay and pauses.
+// on the bare screen pinch-zoom through cameraRig.zoom. Held upright (portrait) the game plays on:
+// the stick and the pad sit in the lower part of the screen and the camera opens (ADR-096).
 // Inert (no DOM, no state) until activated: `pointer: coarse` at boot, ?touch in the URL, or the
 // first touch. ?touch=0 keeps it off. Desktop mouse + keyboard play never sees it.
 
@@ -37,19 +38,6 @@ const BUTTONS = [
   { id: 'flask', code: '@flask', glyph: '◆', label: 'FLASK' },
   { id: 'lock', code: '@lockOn', glyph: '◎', label: 'LOCK' },
   { id: 'pause', code: '@pause', glyph: '||', label: '' },
-];
-
-// a phone in portrait, drawn in ASCII (the overlay turns it to landscape); '@' is the hero
-const PHONE_ART = [
-  ' .------. ',
-  ' |  --  | ',
-  ' | .--. | ',
-  ' | |  | | ',
-  ' | | <b>@</b>| | ',
-  ' | |  | | ',
-  " | '--' | ",
-  ' |  ()  | ',
-  " '------' ",
 ];
 
 /** The stroke an ASCII artist draws a circle with at angle a (screen space, y down): its tangent. */
@@ -172,7 +160,6 @@ export class TouchControls {
     }
     if (!on) {
       this._releaseAll();
-      this.ui?.rotate.classList.remove('on');
       this.portrait = false;
       this.phone = false;
       this.autoAim = false;
@@ -189,15 +176,14 @@ export class TouchControls {
     this._layout(false);
     const st = g.state;
     const play = PLAY.has(st);
-    if (this.portrait && play) g.flow?.pause?.(true); // rotate overlay up: the fight waits
-    const live = play && !this.portrait && !g.lab?.viewer?.active;
+    const live = play && !g.lab?.viewer?.active;
     if (live !== this._shown) {
       this._shown = live;
       this.ui?.root.classList.toggle('off', !live);
       if (!live) this._releaseControls();
     }
     // paused: the controls show through, inert, so PAD POSITION / PAD SIZE are seen as they change
-    const peek = st === 'paused' && !this.portrait;
+    const peek = st === 'paused';
     if (peek !== this._peek) {
       this._peek = peek;
       this.ui?.root.classList.toggle('peek', peek);
@@ -217,6 +203,7 @@ export class TouchControls {
       /* private mode: the choice lasts for this page */
     }
     this._padLayout();
+    if (this.stick.id === null) this._restStick();
     return what === 'size' ? this.padSize : this.padPos;
   }
 
@@ -250,15 +237,15 @@ export class TouchControls {
     this._h = h;
     if (!this.active) return;
     this.phone = Math.min(w, h) <= CONFIG.camera.mobileMaxSide;
-    this.game.cameraRig?.setMobile?.(this.phone);
     const portrait = h > w;
+    this.game.cameraRig?.setMobile?.(this.phone, portrait);
     if (portrait !== this.portrait) {
+      // the phone was turned: every control is somewhere else now, so nothing stays held
       this.portrait = portrait;
-      this.ui?.rotate.classList.toggle('on', portrait);
-      if (portrait) this._releaseAll();
+      this._releaseAll();
     }
-    if (this.stick.id === null) this._restStick();
     this._padLayout();
+    if (this.stick.id === null) this._restStick();
   }
 
   /**
@@ -271,7 +258,8 @@ export class TouchControls {
     const w = fin(globalThis.innerWidth, 1), h = fin(globalThis.innerHeight, 1);
     const tall = h > 560 ? fin(P.tall, 1) : 1;
     const k = fin(P.size[this.padSize], 1) * tall;
-    const pos = P.pos[this.padPos] ?? P.pos.mid;
+    const places = (h > w && P.posPortrait) || P.pos;
+    const pos = places[this.padPos] ?? places.mid;
     const px = pos[0] * tall, py = pos[1] * tall, reach = P.reach * k;
     const tiles = {};
     let W = 0, H = 0;
@@ -369,7 +357,7 @@ export class TouchControls {
 
       // right thumb: the pad (one pointer surface under the three tiles) and the small buttons
       const pad = el('div', 'tc-pad', null, root);
-      this.ui = { root, zone, stick, knob, tag, dots, pad, rotate: null };
+      this.ui = { root, zone, stick, knob, tag, dots, pad };
       this._bindStick(zone);
       this.buttons = BUTTONS.map((def) => this._button(def.tile ? pad : root, def));
       this.btn = Object.fromEntries(this.buttons.map((b) => [b.def.id, b]));
@@ -383,14 +371,6 @@ export class TouchControls {
         prompt.addEventListener('pointercancel', (e) => this._guard('prompt', () => this._tapUp(e), e));
       }
 
-      // portrait: rotate your phone
-      const rot = el('div', 'tc-rotate', null, document.body ?? host);
-      const art = el('pre', 'tc-phone', null, rot);
-      art.innerHTML = PHONE_ART.join('\n');
-      el('div', 'h', 'ROTATE YOUR PHONE', rot);
-      el('div', 'rule', '◆', rot);
-      el('div', 'sub', 'ABYSS is played in landscape', rot);
-      this.ui.rotate = rot;
       this._restStick();
     } catch (err) {
       this._report('build', err);
@@ -566,9 +546,11 @@ export class TouchControls {
   _restStick() {
     const u = this.ui, S = this.stick;
     if (!u) return;
-    const R = RING_R + 22;
-    S.ox = R + 18;
-    S.oy = Math.max(R, fin(globalThis.innerHeight, 400) - R - 14);
+    // at rest: the bottom left corner; held upright, level with the pad (the thumbs come up from below)
+    const R = RING_R + 22, G = this.padGeo;
+    const lift = this.portrait && G ? fin(globalThis.innerHeight, 400) - G.cy + 24 * G.k : 14;
+    S.ox = R + (this.portrait ? 8 : 18);
+    S.oy = Math.max(R, fin(globalThis.innerHeight, 400) - R - lift);
     u.stick.style.transform = `translate3d(${S.ox}px, ${S.oy}px, 0)`;
     u.knob.style.transform = 'translate3d(0px, 0px, 0)';
     this._stickClass(false, false);
@@ -642,7 +624,7 @@ export class TouchControls {
   // ---------------------------------------------------------------- window pointers
   /** Controls accept presses: active, landscape, in play, not hidden by the model viewer. */
   _live() {
-    return this.active && !this.portrait && this._shown === true;
+    return this.active && this._shown === true;
   }
 
   _canvas() {
@@ -655,7 +637,7 @@ export class TouchControls {
       if (this.forced === false) return;
       this.setActive(true); // first touch on a device that did not report a coarse pointer
     }
-    if (e.target !== this._canvas() || this.portrait) return; // controls / menus / Lab handle their own
+    if (e.target !== this._canvas()) return; // controls / menus / Lab handle their own
     e.preventDefault?.();
     const st = this.game.state;
     if (TAP_DISMISS.has(st)) {
@@ -695,7 +677,7 @@ export class TouchControls {
   }
 
   _promptDown(e) {
-    if (!this.active || this.portrait) return;
+    if (!this.active) return;
     e.preventDefault?.();
     // the prompt's action chip ("[@interact] Rest at bonfire") is the action the tap presses
     const m = /\[@([A-Za-z]+)\]/.exec(String(this.game.hud?.promptText ?? ''));

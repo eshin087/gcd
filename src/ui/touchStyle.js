@@ -1,6 +1,8 @@
 // Touch-controls stylesheet, injected from JS (style.css stays foundation-only). Matches the HUD:
-// JetBrains Mono, dark translucent panels, thin light borders, ember accents; the stick is an ASCII
-// ring of glyphs around an '@' knob and every button wears HUD-style corner brackets.
+// JetBrains Mono, thin light lines, ember accents; the stick is an ASCII ring of glyphs around an
+// '@' knob and every button wears HUD-style corner brackets.
+// The controls are drawn ON the game, not over it (ADR-096): no filled panels, faint outlines and
+// glyphs at rest (the fight shows through them), full strength only under a thumb.
 
 const LINE = 'rgba(207, 214, 230, 0.30)';
 const CORNER = 'rgba(207, 214, 230, 0.55)';
@@ -69,11 +71,11 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
   top: 0;
   width: 0;
   height: 0;
-  opacity: 0.62;
-  transition: opacity 0.2s ease;
+  opacity: 0.4;
+  transition: opacity 0.25s ease;
   will-change: transform;
 }
-.tc-stick.on { opacity: 0.95; transition: opacity 0.05s; }
+.tc-stick.on { opacity: 0.9; transition: opacity 0.05s; }
 .tc-disc {
   position: absolute;
   left: -64px;
@@ -81,7 +83,7 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
   width: 128px;
   height: 128px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(6, 9, 14, 0.5) 0%, rgba(6, 9, 14, 0.38) 62%, rgba(6, 9, 14, 0) 72%);
+  background: none;
 }
 .tc-ring > span {
   position: absolute;
@@ -124,8 +126,8 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
   font-size: 20px;
   font-weight: 700;
   color: #f2e7d2;
-  background: rgba(6, 9, 14, 0.72);
-  border: 1px solid ${LINE};
+  background: rgba(6, 9, 14, 0.12);
+  border: 1px solid rgba(207, 214, 230, 0.2);
   text-shadow: 0 0 8px rgba(255, 138, 61, 0.55);
   will-change: transform;
 }
@@ -150,6 +152,7 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
   text-shadow: 0 1px 2px #000;
 }
 .tc-stick.sprint .tc-tag { color: var(--tc-gold); }
+.tc-stick:not(.sprint) .tc-tag { display: none; }
 
 /* ---------- buttons (right thumb) ---------- */
 .tc-btn {
@@ -163,9 +166,10 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
   margin: 0;
   font-family: var(--tc-mono);
   color: var(--tc-ink);
-  background: rgba(6, 9, 14, 0.46);
-  border: 1px solid ${LINE};
+  background: transparent;
+  border: 1px solid rgba(207, 214, 230, 0.13);
   border-radius: 0;
+  opacity: 0.62;
   pointer-events: auto;
   touch-action: none;
   -webkit-appearance: none;
@@ -173,8 +177,9 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
   outline: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.08s, border-color 0.08s, opacity 0.2s;
+  transition: background 0.08s, border-color 0.08s, opacity 0.25s;
 }
+.tc-btn.on { opacity: 1; transition: background 0.05s, border-color 0.05s, opacity 0.05s; }
 .tc-btn::before {
   content: '';
   position: absolute;
@@ -186,7 +191,7 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
   font-size: 22px;
   line-height: 1;
   color: #eef1f8;
-  text-shadow: 0 1px 2px #000;
+  text-shadow: 0 0 3px #000, 0 0 7px rgba(0, 0, 0, 0.85), 0 1px 2px #000;
 }
 .tc-btn .t {
   font-size: 8px;
@@ -195,16 +200,17 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
   padding-left: 0.2em;
   color: var(--tc-dim);
   white-space: pre;
+  text-shadow: 0 0 3px #000, 0 1px 2px #000;
 }
-.tc-btn .s { font-size: 7px; line-height: 9px; letter-spacing: 0.08em; color: rgba(125, 135, 156, 0.75); white-space: nowrap; }
+.tc-btn .s { display: none; }
 .tc-btn.on {
-  background: rgba(255, 138, 61, 0.2);
+  background: rgba(255, 138, 61, 0.14);
   border-color: rgba(255, 138, 61, 0.75);
 }
 .tc-btn.on::before { background: ${corners(EMBER, 8)}; }
 .tc-btn.on .g { color: #ffe2cc; text-shadow: 0 0 10px rgba(255, 138, 61, 0.95), 0 1px 2px #000; }
 .tc-btn.on .t { color: #ffd2a4; }
-.tc-btn.dim { opacity: 0.45; }
+.tc-btn.dim { opacity: 0.3; }
 .tc-btn.lit { border-color: rgba(255, 138, 61, 0.6); }
 .tc-btn.lit .g { color: ${EMBER}; text-shadow: 0 0 8px rgba(255, 138, 61, 0.8); }
 
@@ -212,12 +218,10 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
    and its tiles from CONFIG.touch.pad; --tc-k is its scale) */
 .tc-pad { position: absolute; pointer-events: auto; touch-action: none; }
 .tc-tile { pointer-events: none; cursor: default; box-sizing: border-box; }
-.tc-tile::before { inset: 3px; opacity: 0.55; }
+.tc-tile::before { inset: 3px; opacity: 0.6; }
 .tc-tile.on::before { opacity: 1; }
 .tc-tile .g { font-size: calc(22px * var(--tc-k, 1)); }
 .tc-tile .t { font-size: calc(8px * var(--tc-k, 1)); line-height: 1.3; }
-.tc-tile .s { font-size: calc(7px * var(--tc-k, 1)); line-height: 1.3; }
-.tc-attack { background: rgba(6, 9, 14, 0.54); }
 .tc-attack .g { font-size: calc(36px * var(--tc-k, 1)); }
 .tc-attack .t { font-size: calc(9px * var(--tc-k, 1)); }
 .tc-attack.charge .t { color: var(--tc-gold); letter-spacing: 0.04em; padding-left: 0; }
@@ -234,68 +238,26 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
 }
 .tc-block.low::after { background: linear-gradient(90deg, #ff9a5a, #ff9a5a) left / calc(var(--tc-gd, 1) * 100%) 100% no-repeat, rgba(255, 138, 61, 0.2); }
 .tc-block.low { border-color: rgba(255, 138, 61, 0.55); }
-.tc-block { padding-bottom: 7px; }
+.tc-block { padding-bottom: 5px; }
 .tc-flask { box-sizing: border-box; }
-.tc-lock { right: 190px; top: 10px; width: 40px; height: 40px; opacity: 0.8; }
-.tc-pause { right: 142px; top: 10px; width: 40px; height: 40px; }
+/* top right, left of the small minimap (phones, either way up) */
+.tc-lock { right: 130px; top: 8px; width: 38px; height: 38px; }
+.tc-pause { right: 84px; top: 8px; width: 38px; height: 38px; }
 .tc-flask .g, .tc-lock .g, .tc-pause .g { font-size: 16px; }
 .tc-flask .t, .tc-lock .t { font-size: 7px; letter-spacing: 0.12em; padding-left: 0.12em; }
 .tc-lock .t { display: none; }
 .tc-flask .g { color: var(--tc-gold); text-shadow: 0 0 6px rgba(216, 184, 106, 0.45); }
 
-/* taller phones / tablets: the minimap is full size there */
-@media (min-height: 561px) {
+/* tablets: the minimap is full size there */
+@media (min-height: 561px) and (min-width: 561px) {
   .tc-lock { right: 266px; top: 12px; }
   .tc-pause { right: 218px; top: 12px; }
 }
 
-/* ---------- portrait: rotate your phone ---------- */
-.tc-rotate {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 24px;
-  text-align: center;
-  pointer-events: auto;
-  touch-action: none;
-  font-family: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
-  color: #cfd6e6;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 45%, rgba(40, 18, 8, 0.35), rgba(3, 5, 9, 0) 70%),
-    rgba(3, 5, 9, 0.97);
+/* ---------- a screen held upright: the left thumb's zone is the lower left ---------- */
+@media (orientation: portrait) {
+  .tc-zone { width: 50%; height: 46%; }
 }
-.tc-rotate.on { display: flex; }
-.tc-phone {
-  margin: 0;
-  font-family: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
-  font-size: 15px;
-  line-height: 1.1;
-  white-space: pre;
-  color: #ddd6c6;
-  text-shadow: 0 0 10px rgba(255, 138, 61, 0.35);
-  animation: tc-turn 2.6s ease-in-out infinite;
-}
-.tc-phone b { color: ${EMBER}; font-weight: 700; }
-@keyframes tc-turn {
-  0%, 18% { transform: rotate(0deg); }
-  48%, 72% { transform: rotate(-90deg); }
-  100% { transform: rotate(0deg); }
-}
-.tc-rotate .h {
-  font-family: 'Cinzel', 'Trajan Pro', Georgia, serif;
-  font-size: 18px;
-  letter-spacing: 0.32em;
-  padding-left: 0.32em;
-  color: #ebe3d3;
-  text-shadow: 0 0 14px rgba(255, 138, 61, 0.35);
-}
-.tc-rotate .rule { color: ${EMBER}; font-size: 10px; letter-spacing: 0.6em; padding-left: 0.6em; }
-.tc-rotate .sub { font-size: 11px; letter-spacing: 0.16em; color: #7d879c; }
 `;
 
 export function injectTouchStyle() {
