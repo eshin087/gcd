@@ -923,7 +923,7 @@ async function scenarioTerrain() {
   {
     const G = stage(1, 0, 4.5);
     const hov = G.game.world.destructibles.list.filter((b) => b.kind === 'hover');
-    assert(hov.length === 6 && hov.every((b) => b.def.hover > 1 && Math.abs(b.body.position.y - b.def.hover) < 1e-9 && b.state === STATE.INTACT), `six stones hang whole, ${hov.map((b) => (b.def.hover + b.h * 0.5).toFixed(1)).join(' / ')} m up`);
+    assert(hov.length === 6 && hov.every((b) => b.def.hover > 1 && Math.abs(b.body.position.y - b.def.hover) <= 0.15 && b.state === STATE.INTACT), `six stones hang whole, ${hov.map((b) => (b.def.hover + b.h * 0.5).toFixed(1)).join(' / ')} m up`);
 
     // ---- Void Hurl on a hero who stands still
     const d = G.game.dragon;
@@ -937,7 +937,7 @@ async function scenarioTerrain() {
     // ---- the reset puts it back in the air
     G.game.world.restore();
     run(G, 0.1);
-    assert(hov.every((b) => b.state === STATE.INTACT && Math.abs(b.body.position.y - b.def.hover) < 1e-9), 'after the reset every stone hangs again');
+    assert(hov.every((b) => b.state === STATE.INTACT && Math.abs(b.body.position.y - b.def.hover) <= 0.15), 'after the reset every stone hangs again');
   }
   // ---- out of the ring: no blow
   {
@@ -1014,6 +1014,103 @@ async function scenarioTerrain() {
     assert(moves >= 20 && n >= 2 && n <= moves * 0.4, `90 s of form 3 with the AI on: ${moves} moves, ${n} of them on the crater's pieces (${Object.entries(used).map(([k, v]) => `${k} ${v}`).join(', ')})`);
     if (G.payload.size) assert(false, `finite event payloads (${[...G.payload].join(', ')})`);
   }
+  // ---- every answer works, standing still does not: a roll at the glint (or as the ring appears),
+  // running out of the ring a quarter second after it appears, running one way the whole time
+  const rows = terrainAnswers();
+  for (const r of rows) out(`     ${r.name}: ` + Object.entries(r).filter(([k]) => k !== 'name').map(([k, v]) => `${k} ${v}`).join(' · '));
+  assert(rows.every((r) => r.stand >= 1), 'a hero who stands still is hit by each of them');
+  assert(rows.every((r) => Object.entries(r).every(([k, v]) => k === 'name' || k === 'stand' || v === 0)), 'and escapes each of them with any answer: roll, run out of the ring or strip, keep running');
+}
+
+/** The terrain moves against heroes who answer them (scenario TERRAIN): hits taken per answer. */
+function terrainAnswers() {
+  /** answer: 'stand' | 'roll' (at the glint) | 'run' (out of the ring when it appears, after `react` s) |
+   *  'line' (running east the whole time) | 'rollRing' (a roll away from the ring when it appears) */
+  const trial = (move, form, hx, hz, bx, bz, answer, react = 0.25) => {
+    const G = build(SEED, true);
+    duel(G, { dist: 8, form });
+    const d = G.game.dragon, p = G.game.player, inp = G.input;
+    p.debug.god = true;
+    d.position.set(bx, 0, bz);
+    p.debug.teleport(hx, hz);
+    d.yaw = Math.atan2(hx - bx, hz - bz);
+    run(G, 0.2);
+    const h0 = G.hits.length;
+    let ringT = -1, ringX = 0, ringZ = 0, glints = 0, rolled = 0;
+    const seenMarks = new Set();
+    let wantRoll = false;
+    G.watch = (n, e) => {
+      if (n === 'combat:flash' && e?.source === 'dragon' && e.hazard && answer === 'roll') { glints++; wantRoll = true; }
+    };
+    let T0 = G.game.time;
+    if (!d.debug.trigger(move)) return { ok: false };
+    T0 = G.game.time;
+    run(G, 8, () => {
+      const t = G.game.time;
+      if (wantRoll) {
+        // (a roll away from the ring, sideways when he stands at its centre; a tap with no direction is a backstep)
+        const m = d.terrain.marks.find((k) => k.alive && k.flashed) ?? { x: p.position.x - 1, z: p.position.z };
+        const ex = p.position.x - m.x, ez = p.position.z - m.z, el = Math.hypot(ex, ez);
+        inp.axis = el < 0.05 ? { x: 1, y: 0 } : { x: ex / el, y: -ez / el };
+        wantRoll = false;
+        inp.tap('Space');
+        rolled++;
+      }
+      // a new ring
+      for (const m of d.terrain.marks) {
+        if (m.alive && !seenMarks.has(m) ) { seenMarks.add(m); m._seenAt = t; ringT = t; ringX = m.x; ringZ = m.z; }
+        if (!m.alive) seenMarks.delete(m);
+      }
+      if (answer === 'line') inp.axis = { x: 1, y: 0 };
+      else if ((answer === 'run' || answer === 'rollRing') && ringT >= 0 && t - ringT >= react) {
+        const dx = p.position.x - ringX, dz = p.position.z - ringZ, l = Math.hypot(dx, dz);
+        const ax = l < 0.05 ? 1 : dx / l, az = l < 0.05 ? 0 : dz / l;
+        inp.axis = { x: ax, y: -az };
+        if (answer === 'rollRing' && t - ringT < react + 0.02) { inp.tap('Space'); rolled++; }
+      }
+    }, () => G.game.time - T0 > 1 && d.mode === 'foot' && !d.terrain.busy && !G.game.world.destructibles.active.some((b) => b.state === STATE.FALLING || b.state === STATE.FLYING));
+    inp.axis = { x: 0, y: 0 };
+    const hits = G.hits.slice(h0).filter((h) => h.attack === move || h.attack === 'fallingDebris');
+    return { ok: true, hits: hits.filter((h) => h.r === RESULT.HIT).length, rolled };
+  };
+  const rows = [];
+  for (const [move, form, hx, hz, bx, bz] of [['voidHurl', 1, 0, 4.5, 0, -4], ['voidHurl', 1, 0, 2, 0, -2], ['voidHurl', 1, 4, 8, -2, -6], ['glassRain', 3, 0, 4.5, 0, -4], ['glassRain', 3, 0, 8, 0, -6]]) {
+    const r = {};
+    for (const a of ['stand', 'roll', 'run', 'rollRing', 'line']) r[a] = trial(move, form, hx, hz, bx, bz, a).hits;
+    rows.push({ name: `${move} hero (${hx}, ${hz}) lord (${bx}, ${bz})`, ...r });
+  }
+  // Crown Fall: stand / run sideways out of the strip when the fall starts
+  {
+    const r = {};
+    for (const a of ['stand', 'roll', 'run']) {
+      const G = build(SEED, true);
+      duel(G, { dist: 8, form: 2 });
+      const d = G.game.dragon, p = G.game.player, inp = G.input;
+      p.debug.god = true;
+      d.position.set(2, 0, -2);
+      p.debug.teleport(8.6, 4.4);
+      run(G, 0.2);
+      const h0 = G.hits.length;
+      let tellT = -1, dirx = 0, dirz = 0;
+      G.watch = (n, e) => {
+        if (n === 'combat:tell' && e?.source === 'world' && tellT < 0) { tellT = G.game.time; const F = d.terrain; dirx = -F.fall.dz || 1; dirz = F.fall.dx || 0; }
+        if (n === 'combat:flash' && e?.source === 'world' && a === 'roll') G._rollNow = true;
+      };
+      d.debug.trigger('crownFall');
+      const T0 = G.game.time;
+      let fdx = 0, fdz = 0;
+      const F0 = { ...d.terrain.fall };
+      run(G, 6, () => {
+        if (d.terrain.fall.piece) { fdx = d.terrain.fall.dx; fdz = d.terrain.fall.dz; }
+        if (a === 'run' && tellT >= 0 && G.game.time - tellT > 0.25) inp.axis = { x: -F0.dz, y: -F0.dx };
+        if (G._rollNow) { G._rollNow = false; inp.axis = { x: -F0.dz, y: -F0.dx }; inp.tap('Space'); }
+      }, () => G.game.time - T0 > 1 && d.mode === 'foot' && !G.game.world.destructibles.active.some((b) => b.state === STATE.FALLING));
+      inp.axis = { x: 0, y: 0 };
+      r[a] = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT).length;
+    }
+    rows.push({ name: 'crownFall hero beside a 3.6 m shard', ...r });
+  }
+  return rows;
 }
 
 async function scenarioWin() {

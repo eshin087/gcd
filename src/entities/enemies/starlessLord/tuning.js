@@ -123,10 +123,16 @@ export const TUNING = {
     easyH: 4.5, // pieces taller than this are taken last (a 7 m slab is thrown when nothing else is left)
     rise: 1.3, // m a piece comes up out of its place before it crosses to him
     lift: 0.95, // s until it hangs over him (inside the windup)
-    per: 19, // its flight: distance / this s ...
-    flight: [0.7, 1.05], // ... within these
-    lead: 0.4, // thrown where the hero will be this many s on
-    radius: 2.3, // the ring where it lands: his blow reaches a hero inside it
+    // its flight: distance / `per` s, within `flight`. The ring is drawn as it leaves: 0.9 s at the
+    // least lets a hero who sees it run out of it (2.1 m + his half width at 4.6 m/s, after a quarter
+    // second to react); a roll gets out of it at any time (the bots: tests/integration/lord.mjs TERRAIN)
+    per: 16,
+    flight: [0.9, 1.2],
+    // thrown where the hero will be this many s on: less than its flight, so a hero who keeps
+    // running one way is past the ring when it lands, and one who stands still is under it
+    lead: 0.15,
+    radius: 2.1, // the ring where it lands: his blow reaches a hero inside it
+    spread: 1.0, // Glass Rain: the later throws land up to this far to either side of the aim
     power: 1.2, // what the landing does to the pieces it lands among (POWER: a thrown stone)
     gap: 0.55, // Glass Rain: s between throws
     // Crown Fall: the hero stands in the strip a piece would fall on: `min` m from its foot at least,

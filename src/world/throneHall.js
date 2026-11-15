@@ -420,10 +420,10 @@ export function createThroneHall(U, colliders) {
           const pc = b.piece;
           if (pc && pc.state !== 0) continue;
           // ... and a whole stone hangs: its body lifted to its place (again after a reset: the
-          // Lord's grip takes the offset off when it takes the stone)
+          // Lord's grip takes the offset off when it takes the stone), drifting slowly up and down
           const up = pc?.def?.hover;
-          if (up > 0 && pc.body && pc.body.position.y !== up) {
-            pc.body.position.y = up;
+          if (up > 0 && pc.body) {
+            pc.body.position.y = up + 0.14 * Math.sin(game.time * 0.8 + pc.id * 1.7);
             pc.body.updateMatrix();
           }
         }

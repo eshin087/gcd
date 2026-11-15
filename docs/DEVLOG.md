@@ -279,9 +279,10 @@ the open crater (PR #47, ADR-112).
 - The hanging stones are built on the floor and hung by their bodies' offset (`def.hover`), so a
   thrown one comes down to the floor. Torn Stone scars the floor where each stone is torn out.
 - Training: a TERRAIN category for him (three situations), shown only on a level with pieces.
-- Tests: `lord.mjs` TERRAIN (19 checks: no pieces → no move; each move's piece, ring, glint and blow;
+- Tests: `lord.mjs` TERRAIN (21 checks: no pieces → no move; each move's piece, ring, glint and blow;
   out of the ring; a stagger drops the stone; shards once the stones are gone; the reset; 90 s with
-  the AI on), and the TRAINING scenario now runs on the real crater.
+  the AI on; every answer escapes each move, standing still does not), and the TRAINING scenario now
+  runs on the real crater.
 
 **Filmed for the owner** (headless Edge, the real GPU): one sheet of film strips, the three moves at
 1280 x 720 and Void Hurl at 852 x 393. Sent; no answer yet.
@@ -299,7 +300,13 @@ back a form.
 bot stood still for them); the phone in the hand; how the crater looks after a long fight when most
 shards are thrown; sounds (the throw reuses the world's crash).
 
-**Next:** the owner's look at the strips; then tuning (weights, the ring's lead) from a played fight.
+**Tuned** (the owner: "Keep and tune"): bots that answer each move (roll at the glint, roll or run
+as the ring appears, keep running one way). With the first numbers only rolls escaped; now (flight
+0.9 – 1.2 s, ring 2.1 m, aimed 0.15 s ahead, the rain's spread 1 m) every answer escapes and standing
+still is hit; TERRAIN asserts it (ADR-109). The hanging stones drift slowly up and down. Found: a roll
+tapped with no direction is a backstep, whose i-frames end before a red glint's blow lands.
+
+**Next:** a played fight: his weights for the three moves, and whether 0.9 s is too generous.
 
 ---
 
