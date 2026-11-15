@@ -2507,3 +2507,37 @@ Chrome on an RTX 4090 in the throne hall (the heaviest view), median ms per fram
 10.5, this change 9.1 – 12.5 (equal within noise); 4K live 24.9, this change 32.1 (one noisy run).
 The pass reads 4 more samples per screen pixel; a phone was not measured. New colliders stand on the
 arena rims. Not checked: the look in motion, a fight played around the landmarks, the phone.
+
+## ADR-101 — The flurry on a man: paced to be followed; an afterimage printed in digits (2026-11-15)
+- **Context:** the owner, after watching every flurry in Training: "the animation looks great vs the
+  dragon but against the humanoid bosses, the teleportation attacks are a bit hard to follow and
+  doesnt seem fluid and buggy. lets also leave a cool after image that fades always in a stunning
+  transition effect per teleport and use ascii for the effects where you can as well". Measured
+  frame by frame on Shen Hui (five blows, the Passing Cut): the hero crossed him at about a metre a
+  frame and froze **on top of him** on every hit; he was in a pose worth reading for three frames a
+  cut; the duelist was **shoved 0.32 m in one frame by every cut**, from a new side each time, kept
+  his own attack's pose through the first cuts, and after the last blow **staggered back into the
+  hero** who had landed behind him (and pushed him 0.36 m); the camera jumped 0.9–1.3 m on every cut
+  and 4.6–5.3 m on the last; and the cuts' flares and 5.6 m hanging lines, sized for a head three
+  metres across, covered both men. The afterimage was sixteen bone strokes: a few bright sticks.
+- **Decision:** (1) **A second pacing for a target on the ground** (`DEFENSE.flurry.ground`; the
+  wyrm's is untouched): seen wound up where he appears, in past the foe's side, the strike just
+  before he is abeam, slowing into a held finish; a shorter line left on him; smaller effects; a
+  gentler camera. (2) **A flurry's blows do not shove a duelist**: each cut flinches him where he
+  stands and out of his move; the last staggers him away from where the hero ends (`away`).
+  (3) **The afterimage is the hero himself, printed**: points of his own meshes in the pose he was
+  last drawn in, one digit to a screen cell, falling apart from the feet up; on every blink some of
+  them fly to where he reappears and more rush in onto him. All of it glyph particles (no new
+  material, no draw call). Every blink uses it: the Ghostep, the plunge, the flurry, the riposte.
+  Three looks were built for the owner to pick (digits / echo / shatter).
+- **Rejected:** *Slowing the wyrm's flurry too* (the owner: it looks great). *A true copy of the
+  hero's meshes as the ghost* (his art, exactly): a second set of bone slots in the rigid batch or
+  ~140 draw calls a ghost; the printed figure costs one batch of particles and reads as ASCII, which
+  is what was asked. *Keeping the shove but smoothing it:* the cuts are drawn crossing ON him, and a
+  target that drifts from under them is the thing that read as a bug.
+- **Consequences:** a flurry on a duelist is longer (five blows: 2.2 s, 1.75 s before; seven: about
+  2.6 s). A duelist is interrupted by the first cut instead of the last (he was staggered at the end
+  either way). An afterimage is up to ~390 particles for ~0.6 s; a seven-blow flurry peaks near
+  1700 particles (800 before; the additive batch holds 7000). The two looks not picked are to be
+  removed with the Lab's button.
+

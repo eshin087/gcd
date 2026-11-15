@@ -778,7 +778,8 @@ async function scenarioGhostep() {
   const behindOf = () => -((p.position.x - d.position.x) * Math.sin(d.yaw) + (p.position.z - d.position.z) * Math.cos(d.yaw));
   /** Tick until the flurry is over: its blows, whether it stayed invulnerable and finite. */
   const ride = (max = 6) => {
-    const tr = { hits: [], end: null, frames: 0, iframes: true, finite: true, maxY: 0 };
+    const tr = { hits: [], end: null, frames: 0, iframes: true, finite: true, maxY: 0, shove: 0, close: Infinity };
+    let bx = d.position.x, bz = d.position.z;
     const w0 = G.watch;
     G.watch = (n, e) => {
       if (n === 'player:flurryHit') tr.hits.push({ ...e });
@@ -790,6 +791,12 @@ async function scenarioGhostep() {
       if (p.state === 'flurry' && !p.isInvulnerable()) tr.iframes = false;
       if (![p.position.x, p.position.y, p.position.z].every(Number.isFinite)) tr.finite = false;
       tr.maxY = Math.max(tr.maxY, p.position.y);
+      // (ADR-101) how far he is thrown in one frame, and how near the hero comes to him in a flash cut
+      tr.shove = Math.max(tr.shove, Math.hypot(d.position.x - bx, d.position.z - bz));
+      bx = d.position.x;
+      bz = d.position.z;
+      const fl = p.flurry;
+      if (p.state === 'flurry' && !fl.hidden && fl.i < fl.cuts) tr.close = Math.min(tr.close, Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z));
     }, () => p.state !== 'flurry');
     G.watch = w0;
     return tr;
@@ -851,6 +858,30 @@ async function scenarioGhostep() {
   const t5 = ride(8);
   assert(t5.hits.length === 5 && hp5 - d.hp === 4 * F.cut.damage + F.last.damage && t5.end?.strikes === 5, `five blows: ${hp5 - d.hp} damage (${4 * F.cut.damage + F.last.damage}) in ${(t5.frames * DT).toFixed(2)} s`);
   assert(p.state !== 'flurry' && p.position.y === 0 && p.flurry.nLines === 0 && !p.flurry.pending, 'it ends on the ground, nothing left hanging');
+  // ADR-101: a flurry on a man is paced to be followed. The cuts pass his side (never through his
+  // body), they do not throw him about, and the last blow sends him away from where the hero lands
+  const GR = F.ground;
+  out(`   the cuts: nearest ${t5.close.toFixed(2)} m to him (side ${GR.side}) · his biggest step in a frame ${t5.shove.toFixed(3)} m · afterimage of ${p.fx.bodyN} points`);
+  assert(t5.close > GR.side * 0.7, `a flash cut runs past his side: never nearer than ${t5.close.toFixed(2)} m (was 0: through his body)`);
+  assert(t5.shove < 0.12, `no blow of it throws him across the floor in a frame (${t5.shove.toFixed(3)} m; a shove of 0.32 m per cut read as him jumping about)`);
+  assert(p.fx.bodyN >= 100 && p.fx.body === p._ghostPts, `the afterimage is drawn from his own body: ${p.fx.bodyN} points sampled`);
+  const hx5 = p.position.x, hz5 = p.position.z, gap0 = Math.hypot(hx5 - d.position.x, hz5 - d.position.z);
+  run(G, 0.7, () => { input.axis = { x: 0, y: 0 }; });
+  const gap1 = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z), pushed = Math.hypot(p.position.x - hx5, p.position.z - hz5);
+  out(`   after it: ${gap0.toFixed(2)} m behind him → ${gap1.toFixed(2)} m · the hero moved ${pushed.toFixed(2)} m`);
+  assert(gap1 >= gap0 - 0.05 && pushed < 0.1, `he stumbles away from the hero, not into him (${gap0.toFixed(2)} → ${gap1.toFixed(2)} m, the hero pushed ${pushed.toFixed(2)} m)`);
+  // a cut flinches him out of whatever he was doing: he does not hang in his string's pose
+  settle(G);
+  place(G, 2.6);
+  run(G, 0.3);
+  d.debug.trigger(MOVES.plumThrust ? 'plumThrust' : Object.keys(MOVES)[0]);
+  run(G, 0.1);
+  const mode0 = d.mode;
+  p.debug.flurry(3, 'passing');
+  run(G, 2, null, () => p.flurry.i >= 1 || p.state !== 'flurry');
+  out(`   cut out of his own move: ${mode0} → ${d.mode}${d.brain.react ? ' (' + d.brain.react.kind + ')' : ''}`);
+  assert(mode0 === 'act' && d.mode === 'react', `the first cut throws him out of his move (${mode0} → ${d.mode})`);
+  ride(8);
   p.debug.flurryArt = null;
   return G;
 }
