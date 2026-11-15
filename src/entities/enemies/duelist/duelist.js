@@ -83,6 +83,9 @@ export class Duelist {
     this.execRange = TUNING.execRange;
     // the Ghostep (player.js) puts the hero this far behind him: within sword reach of his back
     this.ghostepBehind = TUNING.ghostepBehind;
+    // his streak (DEFENSE.foeStreak): strikes of the hero's his guard turned in a row; a strike that
+    // lands on him ends it; from its `min` a guard may answer with his flurry (brain.startStreak)
+    this.streak = 0;
     this.hurtSpheres = [];
     this.bodyCircles = [];
     this._hs = [
@@ -143,6 +146,9 @@ export class Duelist {
       phase3: () => this.brain.forcePhase(3),
       phase4: () => this.brain.forcePhase(4),
       stagger: () => this.brain.startReact('stagger'),
+      // his streak set by hand, and his flurry of `n` blows now (DEFENSE.foeStreak)
+      streak: (n) => this._streakSet(n),
+      flurry: (n = 4) => this.brain.startStreak(n),
       postureBreak: () => this._break(),
       kill: () => this._kill(),
       reset: () => this.reset(),
@@ -278,10 +284,14 @@ export class Duelist {
     }
     // hit stun: a freeze-frame, his chest and head snapped back (poses.js jolt), a shove along the
     // blow; it never cancels a windup (only footwork and his recovery: brain.onStruck)
-    const HS = this.T.hitStun, hs = heavy || crushed ? HS.heavy : HS.light;
+    // (`reel`: a blow of the hero's flurry: 1 a flash cut, thrown as by a heavy blow; 2 its last,
+    // which staggers him)
+    const reel = fin(o.reel, 0);
+    this._streakSet(0); // struck: his streak of guards is over
+    const HS = this.T.hitStun, hs = heavy || crushed || reel > 0 ? HS.heavy : HS.light;
     const stopUsed = crit ? Math.max(hs.stop, HS.critStop) : hs.stop;
     this.hitstop(stopUsed, 0.03);
-    this.jolt = Math.max(this.jolt, hs.jolt);
+    this.jolt = Math.max(this.jolt, hs.jolt * (reel > 0 ? 1.25 : 1));
     // (the shudder is a sword cut's: o.swing; not his own returned bolt)
     const sa = o.swing ? fin(hs.shudder, 0) * fin(this.shudderK, 1) : 0, S = this._shud;
     if (sa > 0 && stopUsed > 0) {
@@ -321,6 +331,9 @@ export class Duelist {
       this.emit('dragon:stagger');
       this.fx.guard(this._hilt.x, this._hilt.y, this._hilt.z, { heavy: true, deflect: true });
       this.brain.startReact('stagger');
+    } else if (reel >= 2) {
+      // the last blow of a flurry: he is thrown out of whatever he was doing
+      if (this.brain.startReact('stagger')) this.emit('dragon:stagger');
     } else this.brain.onStruck(heavy);
     return dmg;
   }
@@ -610,6 +623,7 @@ export class Duelist {
     this.posture = 0;
     this.postureTimer = 0;
     this.broken = false;
+    this._streakSet(0);
     this.flash = 0;
     this.dissolve = 0;
     this.warn = 0;
@@ -756,6 +770,7 @@ export class Duelist {
   _guardClash(heavy, point) {
     const G = this.T.guard, p = this.game.player;
     this.addPosture(heavy ? this.T.posture.guard.heavy : this.T.posture.guard.light);
+    if (!this.broken) this._streakSet(this.streak + 1); // a strike turned: his streak counts one more
     const what = this.broken ? 'armor' : this.brain.onGuarded(heavy, this._wardFor(p));
     const deflect = what === 'deflect';
     if (what !== 'armor' && this.mode === 'react') this._animate(1 / 120);
@@ -835,6 +850,8 @@ export class Duelist {
         // a blade's blow: where the steel is (the hero's deflect meets it there), and whether the
         // exchange goes on after it (a string's non-final hit: a short freeze)
         steel: !!o.beat && !o.crescent && !o.projectile,
+        melee: !!o.beat && !o.crescent && !o.projectile, // (what the hero's riposte may answer)
+        around: !!o.beat?.def?.flit, // a blow of his flurry: a guard meets it from any side
         last: o.beat ? !!o.beat.last : true,
         ...(o.extra ?? null),
       });
@@ -989,6 +1006,59 @@ export class Duelist {
 
   emit(name, data) {
     this.game.events?.emit(name, data);
+  }
+
+  // ---------------------------------------------------------------- his streak and his flurry
+  _streakSet(n) {
+    n = clamp(Math.round(fin(n, 0)), 0, 99);
+    if (n === this.streak) return n;
+    this.streak = n;
+    this.emit('dragon:streak', { count: n, ready: n >= DEFENSE.foeStreak.min });
+    return n;
+  }
+
+  /**
+   * A blow of his flurry was answered (brain._act; `a.streak` = { need, got, failed }): a parry or
+   * a block takes one off his streak and counts toward the total (a perfect parry counts two); a
+   * blow that lands, or one dodged, fails it. All of them answered: his posture breaks.
+   */
+  onStreakBlow(a, b, r) {
+    const S = a.streak;
+    if (!S) return;
+    if (r === RESULT.PARRIED || r === RESULT.BLOCKED) {
+      S.got += r === RESULT.PARRIED && this.game.player?.deflect?.perfect ? 2 : 1;
+      this._streakSet(this.streak - 1);
+      if (!S.failed && S.got >= S.need) {
+        this._streakSet(0);
+        this.emit('dragon:flurryEnd', { count: S.need, answered: true });
+        S.failed = true; // (once)
+        this._break();
+      }
+      return;
+    }
+    if (!S.failed) this.emit('dragon:flurryEnd', { count: S.need, answered: false });
+    S.failed = true;
+  }
+
+  /**
+   * A flurry's later blow: he is gone from where he stood and at another side of the hero, `K.r` m
+   * off, facing him (`s`: the brain's sense of the hero; `i`: the blow's index, which side he
+   * turns to).
+   */
+  flit(s, K, i = 0) {
+    const p = s.p, x0 = this.position.x, z0 = this.position.z;
+    if (!p || !Number.isFinite(p.x + p.z)) return;
+    const a0 = Math.atan2(x0 - p.x, z0 - p.z);
+    const a = a0 + (i % 2 ? -1 : 1) * (1.6 + 1.0 * Math.random());
+    const r = fin(K?.r, 2.3);
+    this.position.x = p.x + Math.sin(a) * r;
+    this.position.z = p.z + Math.cos(a) * r;
+    this.position.y = 0;
+    this.moveBy(0, 0);
+    this.yaw = Math.atan2(p.x - this.position.x, p.z - this.position.z);
+    this.object3d.rotation.y = this.yaw;
+    this.anim.teleported?.();
+    this.fx.flit(x0, z0, this.position.x, this.position.z);
   }
 
   /** game.hitstop that never crushes a longer, gentler slow-mo already running (the Ghostep's). */

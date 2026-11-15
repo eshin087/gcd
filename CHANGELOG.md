@@ -4,7 +4,22 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-four pieces of work since 0.4.0:
+Twenty-five pieces of work since 0.4.0:
+- **Weight on the flurry; one streak; the riposte; bosses with a streak of their own** (2026-11-15,
+  ADR-094): the teleport cuts now **land**: you freeze on each contact, the boss reels under every
+  cut before time holds him again, the ground cracks under him, and the last blow hits with speed
+  lines across the screen, a dark blink and a flash, and staggers a duelist. **Parries, deflects
+  and clashes count in the same streak** as perfect dodges, and parrying the **last blow** of a
+  string is answered with a **riposte**: as many flash cuts as your streak counts, after which you
+  are back where you parried. **Duelists keep a streak too**: every strike of yours their guard
+  turns adds a pip to their bar, and from three they may answer with a flurry of that many blows
+  (Hundred Petals, Starless Storm), each from another side of you. Your guard meets them from any
+  side: **parry or block every blow and their posture breaks**.
+- **The Cinder Wyrm in large, readable letters** (2026-11-14, ADR-092): the wyrm is printed in bold
+  symbols four times the area of the old thin digits (8x13 px at 720p, the owner's pick of three
+  sizes), about 25 characters across its body: you can read every one. Its letter grid now travels
+  with it, so the body no longer slides under a fixed grid when the camera moves. *Changed:* the fine
+  scale outlines of the thin-digit look are gone at the game camera.
 - **The Cinder Wyrm in finer, steadier letters** (2026-11-14 – 15, ADR-092, ADR-093): the wyrm's
   digits are one size up at 720p (5x8 px cells, the owner's pick of three sizes) with the calm
   charcoal tone that shows every scale, and they now travel with it: the body no longer slides under

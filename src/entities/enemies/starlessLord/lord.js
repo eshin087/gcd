@@ -8,7 +8,7 @@ import { DuelBrain } from '../duelist/brain.js';
 import { perPhase } from '../duelist/realise.js';
 import { LORD_LOADOUT, SABER, buildOffSaber } from './gear.js';
 import { formPoses, glidePose } from './poses.js';
-import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, realise } from './moves.js';
+import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, STREAKS, realise } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LordFx } from './fx.js';
 
@@ -46,6 +46,7 @@ export const LORD_KIT = Object.freeze({
   TUNING, MOVES, MOVE_NAMES, CLIP, realise,
   transitions: TRANSITIONS,
   counterMove: (form) => COUNTERS[clamp(form, 1, COUNTERS.length) - 1],
+  streakMove: (form) => STREAKS[clamp(form, 1, STREAKS.length) - 1],
   maxPhase: TUNING.forms,
   loadout: LORD_LOADOUT,
   poses: POSES,

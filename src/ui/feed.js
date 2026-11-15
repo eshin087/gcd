@@ -130,6 +130,12 @@ export class CombatFeed {
       const n = Math.round(num(d.strikes));
       if (n >= 2) log(`${d.label ? `${d.label}: ` : ''}${n} cuts, ${Math.round(num(d.damage))} damage.`, 'combat', 'flurry', 0.5);
     });
+    // a duelist's flurry, decided: every blow answered (his posture breaks), or one let through
+    on('dragon:flurryEnd', (d) => {
+      const n = Math.round(num(d.count));
+      if (d.answered) log(`All ${n} blows answered: his guard breaks!`, 'combat', 'foeFlurry', 1);
+      else log('His flurry gets through.', 'warn', 'foeFlurry', 1);
+    });
     on('player:streak', (d) => {
       const lost = Math.round(num(d.lost));
       if (lost >= 2) log(`Ghostep streak of ${lost} broken.`, 'warn', 'streak', 1);

@@ -290,6 +290,23 @@ export const MOVES = {
     }],
   },
 
+  /**
+   * Hundred Petals: his answer to a streak of guards (duelist.js `streak`, DEFENSE.foeStreak): as
+   * many cuts as the streak counts. The first comes from where he stands; before each of the others
+   * he is gone and at another side of the hero (`flit`), and a raised guard meets them from any side.
+   * Parry or block them all and his posture breaks. Realised with { count } (realise.js): beat 0,
+   * then the others in turn; triggered by hand it plays these four.
+   */
+  streakFlurry: {
+    label: 'Hundred Petals', phase: 1, weight: [0, 0], counter: true, streak: true, cooldown: 0, band: [0, 6], recovery: 0.75,
+    beats: [
+      cut('diag', N, 0.62, 14, { track: 0.7 }),
+      cut('flat', N, 0.48, 14, { flit: { r: 2.6 } }),
+      cut('rise', N, 0.48, 14, { flit: { r: 2.6 } }),
+      cut('diag', N, 0.48, 14, { flit: { r: 2.6 } }),
+    ],
+  },
+
   /** Riposte: his counter out of a guard: a diagonal cut, then a thrust. Only from the guard. */
   riposte: {
     label: 'Riposte', phase: 1, weight: [0, 0], counter: true, cooldown: 0, band: [0, 5], recovery: 0.55,

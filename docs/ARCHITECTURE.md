@@ -529,7 +529,29 @@ called by the art or by the plunge's impact. Events: `player:flurry`, `player:fl
 `player:plunge` / `player:plungeHit`. The animator's clip `flurry` reads `player.flurryAnim`
 ({ pose: 'cut' | 'coil' | 'raise' | 'crouch' | 'flip', clip, u, air, k }): a flash cut plays one of
 the hero's own swing clips through its active frames. Lab / tests: `player.debug.flurry(strikes,
-art)`, `.streak(n)`, `.flurryArt`.
+art)`, `.streak(n)`, `.flurryArt`, `.noRiposte`.
+**The shared streak, the riposte, weight** (ADR-094). `_streakUp()` is also called by `_parry` (not
+a bullet's), `_trade` and `_mikiri`. A parry whose hit says `last !== false` and `melee === true`
+(the attacker's word: the wyrm's `hitPlayer` and a duelist's both give them) arms `player.riposte`;
+`_tickRiposte` starts it once `game.hitstopTimer` has run out, from the parry, a guard or standing
+free, if the target is within `DEFENSE.flurry.riposteRange`: `flurry.start(att, air, streak, attack,
+tell, { riposte: true })`. A riposte is `ARTS.riposte` (kind `return`): every blow a flash cut
+(`flurry.cuts` = all of them), the last one calls `burst`, then `_return` puts him back where he
+parried in state `ghostep` without the crit window; it emits no `player:perfectDodge`.
+`startBladeLock` refuses during a flurry and drops a waiting riposte. Weight: `_hold` SETS
+`game.hitstopScale` every frame (`DEFENSE.flurry.world`, or `reelWorld` for `cut.reel` s after a
+cut, `flurry.reelT`); a cut passes `reel: 1` to `takeHit`, the last blow `reel: 2`.
+`takeHit({ around: true })`: the parry and block arcs are not checked (a foe's flurry).
+**A duelist's streak and flurry** (`enemies/duelist/`, `DEFENSE.foeStreak`; ADR-094): `d.streak`
+counts up in `_guardClash` and is zeroed by a `takeHit` that deals damage (`_streakSet`). In
+`brain.onGuarded`, from `foeStreak.min` a roll (`launch`) makes the guard a deflect for certain and
+marks its reaction `flurry`; as the deflect ends `brain.startStreak()` plays the kit's
+`streakMove(phase)` (default `streakFlurry`), a move with `streak: true` realised with `{ count }`
+(`realise.js`: its first beat, then the others in turn). A beat with `flit: { r }` puts him at
+another side of the hero as it starts (`duelist.flit`) and its hit carries `around: true`. `brain._act`
+reports every blow's result to `duelist.onStreakBlow(a, b, r)` (`a.streak` = { need, got, failed }):
+parried or blocked counts (a perfect parry two) and takes one off `d.streak`; `got >= need` with
+none missed calls `_break()`. Lab / tests: `dragon.debug.streak(n)`, `.flurry(n)`.
 **Execution:** while `game.dragon.broken`, a light-attack press (from neutral or buffered from a
 recovery, `_tryExecution`) with the head within `DEFENSE.plunge.execRange` 9 m starts the same move
 at HANG with `execution: true` (`execDamage`, no slow-mo, no perfect-dodge events); the press is
@@ -1012,7 +1034,8 @@ takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, cut:{x,z}, poise, heavy, crit,
                                         // threshold until its transition starts (no skipping a phase).
                                         // exact: the damage is final (no part / broken multipliers); posture:
                                         // add exactly this much instead of the weapon gain (onPlunge);
-                                        // flash: the most the hurt flash may be (the flurry's cuts)
+                                        // flash: the most the hurt flash may be (the flurry's cuts);
+                                        // reel (a duelist): 1 thrown as by a heavy blow, 2 staggered
 onParried({ attack, tell }): void       // the dragon calls this itself when player.takeHit returns 'parried'.
                                         // Deflect chain (contract 1): a string's non-final hit is only
                                         // deflected (posture + a 0.14 s visual knock-back, the string goes
@@ -1930,7 +1953,8 @@ Player → hud/audio/fx/flow:
   `player:flurry {strikes, art, air, dur}` (a perfect dodge is answered: blows in all, the art's name, in the air round a head or on
   the ground, real seconds it takes, about), `player:flurryHit {n, of, last, damage}` (a blow of it landed; last = the art's),
   `player:flurryArt {art, air, dur}` (the art's coil starts; not for the plunge), `player:flurryEnd {strikes, damage, art, label}`
-  (the last blow landed and the hanging cuts burst: the damage of all of them, the art's display name),
+  (the last blow landed and the hanging cuts burst: the damage of all of them, the art's display name; a parried last blow's
+  riposte emits these too, with art 'riposte', and no perfect-dodge events),
   `player:plunge {execution}` (the dive starts; also an execution), `player:plungeHit {damage, execution}` (the blade
   meets the head, once per plunge; damage = what onPlunge returned; also a `player:hitDragon` with kind 'plunge' when
   it dealt damage), `player:roll {backstep}`, `player:heal {amount, flasks}`, `player:noFlask`, `player:died`,
@@ -1961,6 +1985,8 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   true = the bullet is returned), `dragon:returned {kind, damage, x, y, z}` (a perfectly parried bullet's return
   lands on the head: kind 0 ember / 1 wisp, damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
   flow counts it in the run stats like a sword hit),
+  `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
+  (his flurry starts: that many blows), `dragon:flurryEnd {count, answered}` (decided: every blow parried or blocked, or one missed),
   `dragon:posture {posture, max}`, `dragon:postureBreak`, `dragon:stagger` (ordinary stagger only), `dragon:phase2`,
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),

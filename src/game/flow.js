@@ -179,7 +179,15 @@ export class GameFlow {
     ev?.on('player:flurry', (d) => {
       if (finite(d?.strikes) >= 2) this.grade.ghostPulse(finite(d?.dur, 0.6));
     });
-    ev?.on('player:flurryHit', (d) => this.grade.flashPulse(d?.last ? 0.3 + Math.min(0.3, 0.05 * finite(d?.of)) : 0.14));
+    ev?.on('player:flurryHit', (d) => {
+      if (!d?.last) {
+        this.grade.flashPulse(Math.min(0.32, 0.14 + 0.03 * finite(d?.n))); // every cut a little brighter
+        return;
+      }
+      // the last blow's impact frame: the screen dips dark for a blink, then flashes
+      this.grade.dip(0.42, 0.1);
+      this.grade.flashPulse(0.5 + Math.min(0.4, 0.06 * finite(d?.of)));
+    });
     ev?.on('player:streak', (d) => {
       this.stats.bestStreak = Math.max(this.stats.bestStreak, finite(d?.count));
     });

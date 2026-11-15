@@ -2244,3 +2244,41 @@ sizes (a browser font closes up into blots under ~10 px).
 font gives an exact 7.5x12. ADR-092's large-letter atlas and its glyph check are gone; the check now
 verifies every set letter has a bitmap in each font and the cell per screen height. The human bosses
 and the hero are unchanged (their letter size is still the owner's open pick).
+
+## ADR-094 — One streak for every perfect defence; the riposte; a foe's streak and his flurry (2026-11-15)
+- **Context:** the flurry (ADR-091) answered perfect dodges only, its cuts landed while the world
+  stood still (the target never looked hit), and only the hero had it. The owner: "add some weight,
+  hitstun impact to the teleport attacks and make it ... way more epic ... add this streak system to
+  parries clash deflects as well. Also give the streak system and attacks to bosses as well ... if
+  the boss is on a high streak, the player needs to parry / block the total # of attacks". Asked,
+  the owner chose: one shared streak; a counter flurry on a string's last parried blow; duelists
+  build theirs by guarding; answering every blow breaks his posture.
+- **Decision:** (1) **One streak.** A parry or deflect (not of a bullet), a trade clash and a mikiri
+  count in the same streak as a perfect dodge. (2) **The riposte.** A parried LAST blow (of the body
+  or the blade, the target near) is answered with as many flash cuts as the streak counts and puts
+  the hero back where he parried: no art, no crit window, no plunge. It waits for the parry's own
+  freeze, so the clash is seen first, and a blade lock takes precedence. Parries inside a string
+  only count: a string is still parried blow for blow. (3) **Weight.** The flurry SETS the world's
+  time scale instead of merging a hit-stop: after every cut the world runs at 60 % for a beat, so
+  the target reels where it was only held; the hero freezes on each contact; the camera kicks harder
+  with every cut; the last blow gets an impact frame (speed lines, a dark blink, a flash, screen
+  cuts in the HUD), breaks the ground and staggers a duelist. (4) **A foe's streak** is the mirror:
+  a duelist counts the strikes his guard turns, loses the count when one lands, and from three may
+  answer out of his guard with a flurry of that many blows, each of the later ones from another
+  side of the hero. A guard meets them from any side (`hit.around`), so it tests rhythm, not
+  facing. Every blow answered breaks his posture; a missed one breaks nothing and stays in his
+  streak. It is a move like his others (data, a tell and a glint for every blow, the realiser
+  given a count), not a second engine.
+- **Rejected:** *An art on every parried last blow:* a parry would then deal the plunge's 90 and
+  cancel the wyrm's recoil, and the dodge would have nothing of its own. *A riposte on every parry:*
+  it would cut a string off at its first blow. *Blows of his flurry that must be faced:* the hero
+  turns to the mouse or a stick, and a blow from behind every half second would be a test of the
+  camera. *The wyrm with a streak:* it has no guard to build one on (the owner's choice: duelists).
+  *A perfect dodge of his flurry counting as an answer:* the owner asked for parries and blocks; a
+  dodge still avoids the blow.
+- **Consequences:** a string parried in full now gives its length to the streak, so the cap of seven
+  is reached in two exchanges; a riposte of seven is 196 damage on top of the punish window. Wyrm
+  strings now say which blow is their last (`last`), so the hero's parry of an earlier one takes the
+  shorter freeze a duelist's always had. A player who only ever strikes a duelist's guard is
+  answered with his flurry about every third strike. Nothing was re-tuned. `player.debug.noRiposte`
+  switches the riposte off (tests that measure a parry's own numbers).

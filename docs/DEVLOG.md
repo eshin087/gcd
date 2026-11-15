@@ -5,6 +5,52 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 34: weight on the flurry; one streak for parries too; a foe's streak and flurry
+
+**Owner:** "Lets add some weight, hitstun impact to the teleport attacks and make it visually and
+animation effect wise way more epic ... add this streak system to parries clash deflects as well.
+Also give the streak system and attacks to bosses as well. Lets allow the player the opportunity to
+block perfect parry a boss's special attack from its defensive option and if the boss is on a high
+streak, the player needs to parry / block the total # of attacks. Ask me any questions". Four
+questions asked; the owner took the recommended answer to each (one shared streak; a counter flurry
+on the last blow of a string; duelists build theirs by guarding; answering every blow breaks his
+posture). Branch `combat/streak-everywhere`, in its own worktree (the main checkout held another
+session's uncommitted work). Session 34 / ADR-094: PR #32, open beside it, holds 33 and ADR-093.
+
+**Done** (ADR-094):
+- **Weight:** every flash cut freezes the hero on the contact and is followed by a beat in which
+  the world runs at 60 %, so the target reels (a duelist thrown and shoved, the wyrm's head
+  flinching); a speed clone mid-pass; a shock ring and dust under a foe on the ground; the last
+  blow's impact frame (speed lines across the screen, a dark blink, a flash, the HUD's screen
+  cuts), broken ground, and a duelist staggered.
+- **One streak:** parries, deflects, trade clashes and the mikiri count in it.
+- **The riposte:** a parried last blow is answered with as many flash cuts as the streak counts;
+  the hero ends where he parried.
+- **A foe's streak:** a duelist counts the strikes his guard turns (pips on the boss bar) and from
+  three may answer with his flurry (Hundred Petals; Starless Storm, one per form): the first blow
+  from where he stands, each later one from another side; a guard meets them from any side; all of
+  them answered breaks his posture.
+- **Tests:** duel.mjs STREAK (his streak; his flurry parried, blocked, let through; the riposte),
+  integ.mjs RIPOSTE (on the wyrm); STRINGS and the guard's counter test isolate what they measure.
+
+**Found on the way:** the wyrm never said which blow of a string was its last, so every parry of
+one was a "last blow" to the hero (the riposte would have cut every string off at its first blow;
+the parry's freeze was the long one): `hitPlayer` now passes `last` and `melee`.
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server, as strips at 60 fps:
+a flurry of four on Shen Hui with the new weight (the reel beats, the clones, the impact frame);
+his own flurry of four against an idle hero.
+
+**Not checked / open:** no human has played it. Not filmed: the riposte (tested headless on both
+bosses), the Starless Lord's flurries (his data tests pass), the HUD's screen cuts and the boss
+pips (DOM, exercised by the tests' shim only), anything on the phone preset. The sounds were not
+heard. Nothing was re-tuned: a riposte of seven after two parried strings is a lot of damage, and
+his flurry comes about every third guarded strike.
+
+**Next:** the owner plays it; then the riposte's damage and the foe's streak thresholds.
+
+---
+
 ## 2026-11-15 — Session 33: the wyrm in fine digits again, one size up
 
 **Owner** (after PR #31 went live): "the dragon is way too flashy right now and the ascii text is too

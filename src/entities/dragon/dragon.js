@@ -582,6 +582,11 @@ export class Dragon {
         plunge: o.plunge ?? cur?.plunge, // false: a perfect dodge never plunges (fire hazards)
         perfect: o.perfect, // false: rolling through it is a plain dodge, no Ghostep (small bullets)
         light: !!o.bullet, // a parry of it is a light clash (no hit-stop pile-up in a bullet stream)
+        // a string's blow that is not its last (the hero's parry of it is a deflect: a shorter
+        // freeze, and no riposte: that answers the LAST blow), and whether it is a blow of the body
+        // (a claw, the jaws, the tail: what the hero's riposte may answer; not a shell or a hazard)
+        last: !(a?.def?.string && (cur?.hit ?? 0) < (a.beats?.length ?? 1) - 1),
+        melee: !!a && !o.bullet && (MELEE.has(a.name) || !!a.def?.melee),
       });
     } catch (err) {
       console.error('[dragon] player.takeHit failed', err);

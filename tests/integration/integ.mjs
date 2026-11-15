@@ -1523,6 +1523,38 @@ async function scenarioFlurry() {
   return G;
 }
 
+// ================================================================== scenario: the riposte (ADR-094, on the wyrm)
+async function scenarioRiposte() {
+  out('\n== scenario RIPOSTE (parries count in the streak; a parried bite is answered by flash cuts round the head) ==');
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry;
+  const since = (c0, n) => (G.counts[n] || 0) - (c0[n] || 0);
+  settle(G);
+  place(G, 6);
+  p.debug.streak(2);
+  const hp0 = d.hp, at = p.position.clone(), c0 = { ...G.counts };
+  let art = null, end = null;
+  const r = forceAttack(G, 'bite', { answer: 'parry', settle: 1 });
+  G.watch = (n, e) => { if (n === 'player:flurry') art = e; if (n === 'player:flurryEnd') end = e; };
+  let flurried = false, maxY = 0;
+  for (let i = 0; i < Math.round(5 / DT); i++) {
+    aimAt(G);
+    G.tick(DT);
+    if (p.state === 'flurry') { flurried = true; maxY = Math.max(maxY, p.position.y); }
+    else if (flurried) break;
+  }
+  G.watch = null;
+  const moved = Math.hypot(p.position.x - at.x, p.position.z - at.z);
+  out(`   bite parried: ${r.res} · streak ${p.streak} · answered by ${JSON.stringify(art)} · wyrm −${hp0 - d.hp} · ${maxY.toFixed(1)} m up · back ${moved.toFixed(2)} m from where he parried · crit ${p.critTimer.toFixed(2)} · ${p.state}`);
+  assert(r.res === RESULT.PARRIED && p.streak === 3, `the parry counts in the streak (${p.streak})`);
+  assert(flurried && art?.art === 'riposte' && art?.strikes === 3 && end?.strikes === 3, 'a parried bite is answered by the riposte: three flash cuts for a streak of three');
+  assert(hp0 - d.hp === 3 * F.cut.damage && since(c0, 'player:plungeHit') === 0 && since(c0, 'player:perfectDodge') === 0, `${hp0 - d.hp} damage (3 x ${F.cut.damage}); no plunge, no perfect dodge`);
+  assert(maxY > 1 && moved < 1.5 && p.position.y === 0 && p.critTimer === 0 && p.state !== 'flurry', `round the head (${maxY.toFixed(1)} m up), then back where he parried (${moved.toFixed(2)} m off), no crit window`);
+  return G;
+}
+
 // ================================================================== scenario: deflect chain (contract 1, player side)
 async function scenarioDeflect() {
   out('\n== scenario DEFLECT (a string parried in rhythm: tap, release, tap; 0.45 s between impacts) ==');
@@ -6364,6 +6396,9 @@ async function scenarioStrings() {
   const G = build();
   const { game, input } = G;
   fightSetup(G);
+  // (the parries' own numbers are under test: the riposte a parried last blow is answered with,
+  // scenario RIPOSTE, would add its cuts' posture)
+  G.game.player.debug.noRiposte = true;
   const d = game.dragon, p = game.player;
   const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
   const lead = TUNING.flashLead, gapMin = TUNING.minHitGap;
@@ -6796,7 +6831,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
