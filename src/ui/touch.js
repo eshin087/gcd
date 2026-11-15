@@ -125,11 +125,27 @@ export class TouchControls {
       on(globalThis, 'contextmenu', (e) => this.active && e.preventDefault?.(), true);
     }
     on(globalThis.document, 'gesturestart', (e) => this.active && e.preventDefault?.());
+    on(globalThis.document, 'gesturechange', (e) => this.active && e.preventDefault?.());
+    // iOS Safari ignores user-scalable=no: two quick taps on a control (LOCK is tapped twice to switch
+    // or drop the target) or on the bare screen zoomed the whole page in close, and it stayed so. The
+    // controls and the canvas are driven by pointer events alone, so their touchend default (the
+    // double-tap zoom, the synthetic click) is never needed; menus keep theirs.
+    on(
+      globalThis.document,
+      'touchend',
+      (e) => {
+        if (!this.active || e.cancelable === false) return;
+        const t = e.target;
+        if (t === this._canvas() || t?.closest?.('.tc-root')) e.preventDefault?.();
+      },
+      { passive: false },
+    );
+    on(globalThis.document, 'dblclick', (e) => this.active && e.preventDefault?.());
     on(
       globalThis.document,
       'touchmove',
       (e) => {
-        if (!this.active || e.target?.closest?.('.lab-root, .ab-pause-panel')) return; // scrollable panels
+        if (!this.active || e.target?.closest?.('.lab-root, .ab-pause-panel, .ab-news-list')) return; // scrollable panels
         if (e.cancelable !== false) e.preventDefault?.();
       },
       { passive: false },
