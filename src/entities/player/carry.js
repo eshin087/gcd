@@ -34,7 +34,8 @@
 //           lift goes round it: back's flip goes up past his front, not out level at hip height
 //   relax   (optional) the carry's own RELAX: point's blade lies between the cuts' finishes and the
 //           ready hold, so a way home that found the ready hold overshot the carry and came back; it
-//           relaxes within the way home (0.2 s), the way home arriving at the carry itself
+//           relaxes within the way home (0.2 s), the way home arriving at the carry itself (with a
+//           few degrees of overshoot and return)
 //   rest    the idle hold: h the sword hand (an offset from the sword shoulder, DIM.gripShoulder),
 //           rp the sword elbow's pole, d the blade, f the flat's normal; hBr / dBr: × the breath
 //           (sin, 2.4 s), dSw: × the slow weight sway; free (optional): the free hand's own rest
@@ -67,7 +68,9 @@ export const CARRIES = Object.freeze({
   // 提剑 (the sword carried trailing): a relaxed, nearly straight arm, the hand just outside and a
   // little behind the right hip, the blade trailing back and down beside the right leg, the edge
   // down. Hit 1's draw cut and rising slash coil right here (swings.js: the hand behind the right
-  // hip, the blade back, −12° / −34°): from the trail they need almost no wind
+  // hip, the blade back, −12° / −34°): from the trail they need almost no wind. On the run the blade
+  // stands further out (38° off straight back) and less steeply down (28°): 24° out it hid behind
+  // the cloak and the legs from the camera behind him at 30-36 m in parts of each stride
   trail: Object.freeze({
     id: 'trail',
     name: 'Trailing (提剑)',
@@ -76,7 +79,7 @@ export const CARRIES = Object.freeze({
     via: true,
     armFade: 0.12,
     rest: Object.freeze({ h: v(-0.09, -0.54, -0.12), hBr: v(0, 0.006, 0.004), rp: v(-0.3, 0, -1), d: v(-0.372, -0.669, -0.644), dBr: v(0, 0.012, 0), dSw: v(0.01, 0, 0), f: v(0.87, 0, -0.5), free: null }),
-    run: Object.freeze({ h: v(-0.1, -0.5, -0.14), rp: v(-0.35, -0.1, -1), d: v(-0.341, -0.545, -0.766), f: v(1, 0.1, -0.4) }),
+    run: Object.freeze({ h: v(-0.1, -0.5, -0.14), rp: v(-0.35, -0.1, -1), d: v(-0.544, -0.469, -0.696), f: v(1, 0.1, -0.4) }),
     sprint: Object.freeze({ h: v(-0.12, -0.4, -0.3), rp: v(-0.5, 0.2, -0.95), d: v(-0.3, -0.2, -0.93), f: v(-0.2, 1, 0) }),
     back: Object.freeze({ h: v(-0.02, -0.38, 0.3), rp: v(-0.85, -0.3, -0.5), d: v(-0.15, -0.22, 1), f: v(0, 1, 0.2) }),
     swing: v(0.06, 0.6, 0.6),
@@ -86,7 +89,9 @@ export const CARRIES = Object.freeze({
   // 背剑 (the sword carried behind the arm): a reverse grip, the hand by the right hip, the blade
   // standing up behind the sword arm along the back of the upper arm, the point a forearm above the
   // right shoulder and canted out (≥ 0.26 m from the head's axis; the hand out past the coat skirt:
-  // inside it the steel came up through the panels); the free forearm across the belt, the sword
+  // inside it the steel came up through the panels; and a hand's width ahead of the right panel: as
+  // the panels flared after a turn or a stop the steel's foot crossed them, 34 of 3698 frames); the
+  // free forearm across the belt, the sword
   // fingers pointing to his right. Hit 1's falling cut coils with the blade at the same azimuth: the
   // wind lifts the hand, the steel already stands there
   back: Object.freeze({
@@ -101,12 +106,12 @@ export const CARRIES = Object.freeze({
     // the camera behind him)
     way: v(0.554, 0.259, 0.791),
     rest: Object.freeze({
-      h: v(-0.09, -0.55, 0.1), hBr: v(0, 0.006, 0), rp: v(-0.5, 0, -1), d: v(-0.27, 0.95, -0.15), dBr: v(0, 0, -0.01), dSw: v(-0.008, 0, 0), f: v(0, 0.15, 0.99),
+      h: v(-0.09, -0.55, 0.15), hBr: v(0, 0.006, 0), rp: v(-0.5, 0, -1), d: v(-0.27, 0.95, -0.15), dBr: v(0, 0, -0.01), dSw: v(-0.008, 0, 0), f: v(0, 0.15, 0.99),
       free: Object.freeze({ l: v(-0.18, -0.38, 0.17), lp: v(0.6, -0.7, -0.3), ld: v(-80, -15), pn: v(0, -0.3, -1) }),
     }),
-    run: Object.freeze({ h: v(-0.1, -0.54, 0.06), rp: v(-0.5, -0.1, -1), d: v(-0.28, 0.95, -0.12), f: v(0, 0.12, 0.99) }),
-    sprint: Object.freeze({ h: v(-0.11, -0.51, 0.0), rp: v(-0.5, 0, -1), d: v(-0.3, 0.94, -0.16), f: v(0, 0.15, 0.99) }),
-    back: Object.freeze({ h: v(-0.09, -0.54, 0.12), rp: v(-0.5, 0, -1), d: v(-0.27, 0.95, -0.15), f: v(0, 0.15, 0.99) }),
+    run: Object.freeze({ h: v(-0.1, -0.54, 0.11), rp: v(-0.5, -0.1, -1), d: v(-0.28, 0.95, -0.12), f: v(0, 0.12, 0.99) }),
+    sprint: Object.freeze({ h: v(-0.11, -0.51, 0.05), rp: v(-0.5, 0, -1), d: v(-0.3, 0.94, -0.16), f: v(0, 0.15, 0.99) }),
+    back: Object.freeze({ h: v(-0.09, -0.54, 0.17), rp: v(-0.5, 0, -1), d: v(-0.27, 0.95, -0.15), f: v(0, 0.15, 0.99) }),
     swing: v(0.03, 1, 1),
     bob: v(0.012, 0.012, 0),
     dBob: 0,
@@ -124,7 +129,7 @@ export const CARRIES = Object.freeze({
     what: 'on guard: the hand before the right hip, the point lowered toward the foe',
     rev: 0,
     armFade: 0.1,
-    relax: Object.freeze({ lead: 0.2, drop: 0.15, dur: 0.2 }),
+    relax: Object.freeze({ lead: 0.15, drop: 0.15, dur: 0.2 }),
     rest: Object.freeze({
       h: v(-0.15, -0.46, 0.12), hBr: v(0, 0.006, 0.003), rp: v(-0.3, -0.4, -1), d: v(-0.492, -0.643, 0.587), dBr: v(0, 0.01, 0), dSw: v(0.01, 0, 0), f: v(-0.766, 0.0, -0.642),
       free: Object.freeze({ l: v(0.04, -0.44, 0.15), lp: v(0.36, -0.2, -0.9), ld: v(0, -40), pn: v(-0.35, -0.6, -0.72) }),
