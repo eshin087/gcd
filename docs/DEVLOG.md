@@ -27,7 +27,8 @@ the wyrm's head covered both men.
   staggers him away from where the hero lands (`away`).
 - The afterimage: his own body printed in digits on a screen grid (`player._sampleBody`,
   `PlayerFx._afterimage`), digits flying to where he reappears (`blinkStream`) and in onto him
-  (`blinkIn`). On every blink: Ghostep, plunge, flurry, riposte. Three looks (Lab: `ghost:`).
+  (`blinkIn`). On every blink: Ghostep, plunge, flurry, riposte. Three looks were filmed for the
+  owner (digits / echo / shatter); the owner picked **digits** and the others were removed.
 - Tests (duel GHOSTEP): the cuts never nearer than the side offset, no step of his over 0.12 m in a
   frame, he ends farther from the hero than he began and does not push him, the first cut throws him
   out of his move, the afterimage has its points.
@@ -41,9 +42,9 @@ in all, 0.32 → 0.02 m at most in a frame; the camera's biggest step 4.62 → 2
 Shen Hui, close-ups of the afterimage, the three looks (sent to the owner).
 
 **Not checked / open:** the Starless Lord and the wyrm only through their test suites (the wyrm's
-pacing is untouched; its blinks have the new afterimage); a phone; the owner's pick of a look.
+pacing is untouched; its blinks have the new afterimage); a phone.
 
-**Next:** the owner picks an afterimage look (remove the other two and the Lab button).
+**Next:** the particle count of a long flurry on a phone.
 
 ---
 

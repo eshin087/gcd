@@ -518,10 +518,9 @@ a cell of a 0.13 m grid on the screen (his own coat's cell), in rows and columns
 brighter), where his body was (420 points of his own meshes, `player._sampleBody`). It falls apart
 from the feet up in 0.25–0.7 s. A character never lies on another: stacked, they bloom into a white
 blot. As he appears, a few dozen of its digits tear off and **fly to where he is now** (the eye is
-carried there), and more rush in onto him. Three looks were built for the owner to pick
-(`GHOST_LOOKS`, the Lab's `ghost:` button): **digits** (the figure alone, the default), **echo**
-(the figure and two fainter ones stepping off the way he left), **shatter** (the figure bursts into
-its characters). Against a duelist the flurry's flare, crescent, hanging cuts and burst are drawn at
+carried there), and more rush in onto him. (The owner's pick of three looks: "Digits", the figure
+alone, over an "Echo" of two fainter copies stepping off the way he left and a "Shatter" that burst
+it into its characters.) Against a duelist the flurry's flare, crescent, hanging cuts and burst are drawn at
 62 % (`FlurryFx.k`): at the wyrm's size they hid a man and the hero both.
 - **A duelist's flurry** (`duelist/fx.js` `flit`): between two blows a bright ember streak along the
   way he went, a tall flash where he stood, and where he stands a flash and a ring of sparks.

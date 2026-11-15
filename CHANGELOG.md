@@ -13,7 +13,7 @@ Thirty-one pieces of work since 0.4.0:
   pose while he was cut, and after the last blow stumbled back into the hero. *Added:* every blink
   (the Ghostep, the plunge, each cut of a flurry) leaves the hero behind as he stood, printed in
   rows of cold blue digits that fall apart from the feet up, while some of them fly to where he
-  reappears. Three looks to choose from (Lab: `ghost:`).
+  reappears.
 - **The boss's bar at the top; QUIT TO TITLE** (2026-11-15): the boss's name, HP and posture moved
   from the bottom of the screen to the top centre. The pause menu has **QUIT TO TITLE** (press it
   twice: the first press asks), and RESUME is laid out like the other items.

@@ -2529,7 +2529,8 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   last drawn in, one digit to a screen cell, falling apart from the feet up; on every blink some of
   them fly to where he reappears and more rush in onto him. All of it glyph particles (no new
   material, no draw call). Every blink uses it: the Ghostep, the plunge, the flurry, the riposte.
-  Three looks were built for the owner to pick (digits / echo / shatter).
+  Three looks were built (digits / echo / shatter); the owner picked **digits**, the figure alone,
+  and the other two were removed with the Lab's button.
 - **Rejected:** *Slowing the wyrm's flurry too* (the owner: it looks great). *A true copy of the
   hero's meshes as the ghost* (his art, exactly): a second set of bone slots in the rigid batch or
   ~140 draw calls a ghost; the printed figure costs one batch of particles and reads as ASCII, which
@@ -2538,6 +2539,5 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
 - **Consequences:** a flurry on a duelist is longer (five blows: 2.2 s, 1.75 s before; seven: about
   2.6 s). A duelist is interrupted by the first cut instead of the last (he was staggered at the end
   either way). An afterimage is up to ~390 particles for ~0.6 s; a seven-blow flurry peaks near
-  1700 particles (800 before; the additive batch holds 7000). The two looks not picked are to be
-  removed with the Lab's button.
+  1700 particles (800 before; the additive batch holds 7000).
 

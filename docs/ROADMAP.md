@@ -167,7 +167,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A flurry's blows do not shove a duelist; the last staggers him away from the hero
 - [x] Effects and camera sized for a man
 - [x] The afterimage printed in digits from his own body, on every blink; digits fly to where he reappears
-- [ ] The owner picks an afterimage look (digits / echo / shatter); remove the other two
+- [x] Three afterimage looks built; the owner picked digits
 - [ ] Phones: the particle count of a long flurry
 
 ## M1.33 — Training and the lab stage (2026-11-15, `dev/training-lab`, ADR-099)

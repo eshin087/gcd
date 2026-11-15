@@ -1608,8 +1608,7 @@ when the blow is over) picks the way he stumbles: away from that point. Any acto
 flurry's hits may ignore both. **The afterimage** (`PlayerFx._afterimage(fx, segs, n, { dx, dz,
 light })`, `blinkStream(fx, x, y, z)`, `blinkIn(fx, x, y, z)`) reads `PlayerFx.body` / `bodyN`:
 world points of the hero's body, written by `player._sampleGhost()` (which calls `_sampleBody()`)
-every time a pose is sampled; `PlayerFx.setGhostLook(id)` / `player.debug.ghostLook(id)` pick one of
-`GHOST_LOOKS`.
+every time a pose is sampled.
 
 ### Lab — `src/dev/lab.js` exports `class Lab`
 ```
