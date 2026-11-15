@@ -11,6 +11,8 @@ import { HERO_ART } from './materials.js';
 //   1. moon shadow map  (casters = objects on LAYER_CASTER, then the batched actors' shadow
 //      meshes on LAYER_CASTER_RIGID with a depth material that reads the bone texture)
 //   2. world -> sceneRT (HDR colour, alpha = ASCII flag, + depth texture)
+//   2b. the hero alone -> seenRT, minus what the scene shows of him; the rest (the hero where
+//      something covers him) is put back into sceneRT so the ASCII pass prints him through (ADR-105)
 //   3. ASCII pass: flagged pixels become a screen-space character grid  -> compRT
 //   4. FX pass: glyph particles, soft depth-tested against sceneRT depth   -> compRT
 //   5. bloom + tone map + grade + vignette + feedback overlays             -> screen
@@ -18,8 +20,8 @@ import { HERO_ART } from './materials.js';
 export { LAYER_CASTER, LAYER_CASTER_RIGID };
 /** World radius (m) round the hero's screen point inside which the art pass draws his dark halo. */
 const HERO_HALO_R = 2.1;
-/** World half-size (m) of the box round the hero that the seen-through pass draws (his reach). */
-const SEEN_R = 2.8;
+/** GLSL: alpha `a` is one of the hero's part ids (materials.js HERO_ART; FLAG.ART_HERO = 0.48, FLAG.ART = 0.5). */
+const IS_HERO_GLSL = 'bool isHero(float a) { return a > 0.46 && a < 0.49; }';
 /**
  * Make an object (and children) cast moon shadows. Works before or after rigid batching
  * (rigidBatch.js): a batched source keeps its layer mask without being drawn, and its actor's
@@ -69,20 +71,34 @@ export class Pipeline {
       magFilter: THREE.NearestFilter,
       depthTexture: new THREE.DepthTexture(1, 1),
     });
-    // --- the hero seen through what covers him (PROTOTYPE: ?seen=a|b|c). The hero alone is drawn
-    // into seenRT (only the box round him), the pixels of him the scene already shows are erased,
-    // and what is left (him where something stands in front) is what the ASCII pass prints through.
+    // --- the hero seen through what covers him (ADR-105). When the wyrm (or a tree, a pillar, a
+    // landmark: anything drawn into the scene with depth) stands between the camera and the hero,
+    // his letters are gone. So after the world pass the hero is drawn once more, alone, into seenRT
+    // (only the box round him), a quad erases the pixels of him the scene already shows (a depth
+    // test against the scene), and what is left (the hero exactly where he is covered) is put back
+    // into the scene target over its cover. The ASCII pass draws those pixels as his usual line
+    // art, in the blade's cyan (tSeen marks them). See _renderSeen.
     this.seenRT = new THREE.WebGLRenderTarget(1, 1, {
       type,
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       depthTexture: new THREE.DepthTexture(1, 1),
     });
-    this.seenRT.scissorTest = true;
-    /** The object drawn alone for the seen-through pass (the hero's root; main.js sets it). */
+    this.seenRT.scissorTest = true; // only the box round the hero is ever cleared and drawn
+    /** The object printed through what covers it (setSeenThrough), or null. */
     this.seenRoot = null;
-    /** 0 off, 1 ink ghost, 2 window, 3 rim only. */
-    this.seenMode = { a: 1, b: 2, c: 3 }[new URLSearchParams(globalThis.location?.search ?? '').get('seen')] ?? 0;
+    // The pass draws the hero a second time (a draw per material), so it only runs while a PROBE
+    // finds something in front of him: one quad over his torso's screen rect, depth-tested against
+    // the scene inside an occlusion query (_seenProbe). The answer comes a frame or two later;
+    // `hold` counts the frames the pass still runs after the last yes. `off`: no usable queries
+    // (or no GL context: the headless tests), the pass then runs every frame.
+    this.seenGate = { gl: null, query: null, pending: false, age: 0, hold: 0, off: false };
+    // (a restored GL context: the query object is gone, start over)
+    renderer.domElement?.addEventListener?.('webglcontextrestored', () => {
+      const G = this.seenGate;
+      G.gl = G.query = null;
+      G.pending = false;
+    });
     this.compRT = rt();
     this.brightRT = rt();
     this.blur = [rt(), rt(), rt(), rt()];
@@ -266,17 +282,19 @@ export class Pipeline {
         // have at the camera's focus (px, set per frame), so letters stay on an object while the
         // camera follows the hero (exact at the focus depth, a slow drift nearer and farther)
         uPropAnchor: { value: new THREE.Vector2(0, 0) },
-        // ---- PROTOTYPE: the hero seen through (seenRT: only his HIDDEN pixels are left in it)
+        // ---- the hero seen through what covers him (ADR-105). tSeen = seenRT: the hero's pixels
+        // that something stands in front of (their alpha is in the hero's window), and nothing else
         tSeen: { value: this.seenRT.texture },
-        // xy = his screen centre (uv), z = the radius (px) of the box round him, w = mode (0 off)
+        // xy = his screen centre (uv), z = the half-size (px) of the box round him that seenRT holds
+        // this frame, w = 1 while the pass ran (0: tSeen is not read); set per frame in _renderSeen
         uSeen: { value: new THREE.Vector4(0.5, 0.5, 0, 0) },
-        uSeenInk: { value: new THREE.Vector3(0.3, 0.86, 1.0) }, // the blade's cyan
-        // x = silhouette line brightness, y = inner line gain, z = fill gain, w = halo strength
+        // his covered parts print in his blade's cyan: his own colour, and one neither the wyrm's
+        // fire nor a tell (red glow, white glint) uses
+        uSeenInk: { value: new THREE.Vector3(0.3, 0.86, 1.0) },
+        // x = brightness of his silhouette line there, y / z = gain on his inner lines / his fill
+        // letters (× his own art's brightness, capped at 1.3: the blade keeps a little glow), w =
+        // how dark the gap round him is over the wyrm's letters (the two rings of uHeroHaloShape)
         uSeenTone: { value: new THREE.Vector4(1.15, 1.6, 1.2, 0.85) },
-        // window (mode 2): x / y = half width / height of the window (in box radii), z = how much of
-        // the letters in it drop out at its centre, w = brightness the others keep there
-        uSeenWin: { value: new THREE.Vector4(0.36, 0.56, 0.8, 0.4) },
-        uSeenDepth: { value: 1e9 }, // his view depth (m)
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
@@ -336,8 +354,6 @@ export class Pipeline {
         uniform vec4 uSeen;
         uniform vec3 uSeenInk;
         uniform vec4 uSeenTone;
-        uniform vec4 uSeenWin;
-        uniform float uSeenDepth;
         varying vec2 vUv;
 
         float hash12(vec2 p) {
@@ -409,7 +425,7 @@ export class Pipeline {
         }
 
         bool isArt(float a) { return a > 0.46 && a < 0.55; }
-        bool isHero(float a) { return a > 0.46 && a < 0.49; } // FLAG.ART_HERO = 0.48, FLAG.ART = 0.5
+        ${IS_HERO_GLSL}
         bool isProp(float a) { return a > 0.555 && a < 0.585; } // FLAG.ART_PROP = 0.57
 
         // ---- the wyrm (FLAG.ART): fine pixel-font digits on black (wyrmGlyphs.js atlas in tArt; ADR-093).
@@ -495,18 +511,21 @@ export class Pipeline {
           }
           return uHeroHalo.w * uHeroHaloShape.z * max(step(0.5, n1), 0.55 * step(0.5, n2));
         }
-        // ---- PROTOTYPE: the hero seen through what covers him
+        // ---- the hero seen through what covers him (ADR-105). tSeen holds only the pixels of him
+        // that something stands in front of, inside the box round his screen position (outside it
+        // the texture is stale: never read)
         bool seenBox(vec2 px) {
           if (uSeen.w < 0.5) return false;
           vec2 d = abs(px - uSeen.xy * uRes);
           return max(d.x, d.y) < uSeen.z;
         }
-        // this pixel shows a part of the hero that something stands in front of
+        // this pixel shows a part of the hero that is covered
         bool seenAt(vec2 px) {
           return seenBox(px) && isHero(texture2D(tSeen, px / uRes).a);
         }
-        // the dark gap round his hidden figure over the letters that cover him (the same two rings
-        // as heroHalo, but looking for his HIDDEN pixels)
+        // the dark gap round his covered figure, over the letters of the wyrm that covers him: 0 .. 1
+        // how much it darkens this pixel (heroHalo's two rings, looking for his COVERED pixels; his
+        // halo over the world grid and the props finds them in the scene target by itself)
         float seenHalo(vec2 px) {
           if (!seenBox(px)) return 0.0;
           float r1 = uHeroHaloShape.x * uHeroPx.x, r2 = uHeroHaloShape.y * uHeroPx.x;
@@ -518,36 +537,6 @@ export class Pipeline {
             n2 += isHero(texture2D(tSeen, (px + o * r2) / uRes).a) ? 1.0 : 0.0;
           }
           return uSeenTone.w * max(step(0.5, n1), 0.55 * step(0.5, n2));
-        }
-        // how much of him is hidden, 0 .. 1 (a 5 x 7 grid of taps over his figure)
-        float seenAmount() {
-          float n = 0.0;
-          vec2 c = uSeen.xy * uRes;
-          for (int j = 0; j < 7; j++) {
-            for (int i = 0; i < 5; i++) {
-              vec2 o = vec2((float(i) - 2.0) * 0.11, (float(j) - 3.0) * 0.14) * uSeen.z;
-              n += isHero(texture2D(tSeen, (c + o) / uRes).a) ? 1.0 : 0.0;
-            }
-          }
-          return n / 12.0; // ~12 of the 35 taps land on a figure standing in the open
-        }
-        // the window (mode 2): what is left of a letter of something that covers him. cell = its
-        // letter cell (the letters drop out whole), d = its view depth (m)
-        float seenWindow(vec2 px, vec2 cell, float d) {
-          if (uSeen.w < 1.5 || uSeen.w > 2.5 || !seenBox(px)) return 1.0;
-          if (d > uSeenDepth - 0.6) return 1.0; // not in front of him
-          vec2 q = (px - uSeen.xy * uRes) / (uSeen.z * uSeenWin.xy);
-          float w = smoothstep(1.0, 0.45, length(q)) * smoothstep(0.04, 0.3, seenAmount());
-          if (w <= 0.0) return 1.0;
-          return hash12(cell * 1.91 + 7.3) < w * uSeenWin.z ? 0.0 : mix(1.0, uSeenWin.w, w);
-        }
-        // what is left of a wyrm letter near his hidden figure: mode 1 the dark gap, mode 2 the window
-        float seenCover(vec2 px, vec2 cell, float d) {
-          if (uSeen.w < 0.5 || uSeen.w > 2.5) return 1.0;
-          return (1.0 - seenHalo(px)) * seenWindow(px, cell, d);
-        }
-        bool seenOrHero(vec2 px) {
-          return seenAt(px) || isHero(texture2D(tScene, px / uRes).a);
         }
         float heroPartOf(float a) { return floor((a - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25); }
         float heroIdOf(float a) { return floor((a - ${HERO_ART.a0.toFixed(4)}) / ${HERO_ART.step.toFixed(4)} + 0.5); }
@@ -591,7 +580,7 @@ export class Pipeline {
           return vec2(pc != pn ? 0.6 : near ? 0.4 : 0.0, 0.0);
         }
 
-        void cellMain() {
+        void main() {
           vec2 px = gl_FragCoord.xy;
           // the hero first: his own pixel-font grid, drawn as ink-line art
           vec2 hcell = floor(px / uHeroCell);
@@ -630,7 +619,7 @@ export class Pipeline {
             // ---- the cell: a fill letter from its part, light and edges
             vec3 col = vec3(0.0);
             float lineC = 0.0;
-            float seenLine = 0.0; // PROTOTYPE: 1 this pixel is a silhouette line, 0.6 an inner line
+            float inkP = 0.0; // the ink line this pixel draws: 1 his silhouette, 0.6 an inner line, 0 none
             if (hCell) {
               // the cell's part = its centre (else its nearest hero sample)
               float dC = cHero ? linDepth(cuvH) : dN;
@@ -731,14 +720,15 @@ export class Pipeline {
                 // the silhouette takes the part's own rim ink (cloth: dim blue-lavender; armour: white)
                 if (outer) lc = pRim.rgb * (mix(uHeroInk.x, uHeroInk.y, vP) * k * pRim.a * hdrP * soft);
                 if (uHeroDebug > 2.5) lc = 0.5 * (outer ? vec3(1.0) : pl > 0.7 ? vec3(1.0, 0.08, 0.05) : pl > 0.5 ? vec3(0.1, 1.0, 0.15) : vec3(1.0, 0.85, 0.05));
-                if (on > 0.5) { col = lc; seenLine = outer ? 1.0 : 0.6; }
+                if (on > 0.5) { col = lc; inkP = outer ? 1.0 : 0.6; }
                 else if (uHeroDebug > 1.5) col = vec3(0.0);
               } else if (uHeroDebug > 1.5) col = vec3(0.0);
             }
-            // PROTOTYPE mode 1: his hidden parts print through in the blade's cyan
-            if (uSeen.w > 0.5 && uSeen.w < 1.5 && (seenAt(px) || seenAt(hbase + 0.5 * uHeroCell))) {
+            // where something covers him (ADR-105) the same art prints through it in the blade's cyan:
+            // a bright silhouette, his inner lines and fill letters at their own brightness
+            if (seenAt(px) || seenAt(hbase + 0.5 * uHeroCell)) {
               float l = max(col.r, max(col.g, col.b));
-              col = uSeenInk * (seenLine > 0.9 ? uSeenTone.x : min(l * (seenLine > 0.1 ? uSeenTone.y : uSeenTone.z), 1.3));
+              col = uSeenInk * (inkP > 0.9 ? uSeenTone.x : min(l * (inkP > 0.1 ? uSeenTone.y : uSeenTone.z), 1.3));
             }
             gl_FragColor = vec4(col, 1.0);
             return;
@@ -809,7 +799,9 @@ export class Pipeline {
             }
             if (stroke >= 0.0) { ca = arim; cp = arim; } // an outline glyph is drawn whole in the rim's colour
             if (edgeS >= 0.0) { stroke = edgeS; ca = max(asum / ahits, arim); cp = ca; }
-            gl_FragColor = vec4(wyrmCell(ca, cp, acell, (px - abase) / uArtCell, stroke) * seenCover(px, acell, dmin), 1.0);
+            // (a thin dark gap round the hero where this cell covers him: his cyan figure stays apart
+            // from the wyrm's letters, also over its glow)
+            gl_FragColor = vec4(wyrmCell(ca, cp, acell, (px - abase) / uArtCell, stroke) * (1.0 - seenHalo(px)), 1.0);
             return;
           }
           if (isArt(texture2D(tScene, px / uRes).a)) {
@@ -856,7 +848,7 @@ export class Pipeline {
               vec4 sp = texture2D(tScene, px / uRes);
               vec3 cp = isProp(sp.a) && pstroke < 0.0 ? sp.rgb : ca;
               vec3 pc = artLetters(ca, cp, pcell, (px - pbase) / uArtCell, pstroke, uPropTone, uPropGlyph, uPropLum);
-              gl_FragColor = vec4(pc * (1.0 - heroHalo(px)) * seenWindow(px, pcell, linDepth(px / uRes)), 1.0);
+              gl_FragColor = vec4(pc * (1.0 - heroHalo(px)), 1.0);
               return;
             }
           }
@@ -884,23 +876,7 @@ export class Pipeline {
           } else {
             col = stoneCell(c, cell, local);
           }
-          if (a >= 0.03) col *= seenWindow(px, cell, linDepth(cuv));
           gl_FragColor = vec4(col * (1.0 - heroHalo(px)), 1.0);
-        }
-
-        void main() {
-          cellMain();
-          // PROTOTYPE mode 3: only his outline, over the letters as they are
-          if (uSeen.w > 2.5) {
-            vec2 px = gl_FragCoord.xy;
-            if (seenAt(px)) {
-              float o = uHeroPx.x;
-              bool edge = !seenOrHero(px + vec2(o, 0.0)) || !seenOrHero(px - vec2(o, 0.0)) || !seenOrHero(px + vec2(0.0, o)) || !seenOrHero(px - vec2(0.0, o));
-              gl_FragColor.rgb = edge ? uSeenInk * uSeenTone.x : gl_FragColor.rgb * 0.4;
-            } else if (!isHero(texture2D(tScene, px / uRes).a)) {
-              gl_FragColor.rgb *= 1.0 - seenHalo(px); // a dark gap outside the line
-            }
-          }
         }
       `,
       depthTest: false,
@@ -916,9 +892,40 @@ export class Pipeline {
       u.uArtMin.value.y = 0.012;
     }
 
-    // --- PROTOTYPE: the seen-through quads (drawn over the box round the hero only)
-    // 1. into seenRT: erase the hero's pixels the scene shows (whatever covers him is less than
-    // uMargin m in front of him there): the quad's depth is the scene's, pushed back by the margin
+    // --- the seen-through probe (ADR-105): a quad over the hero's torso rect, at the depth of his
+    // centre line pulled towards the camera (uProbe: screen y of the slab's foot / top in px, the
+    // view depth in m to test there). It passes where the scene is nearer: something may cover
+    // him. It writes nothing; _seenProbe counts its samples with an occlusion query.
+    this.seenProbeMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uProbe: { value: new THREE.Vector4(0, 1, 1, 1) },
+        uNear: { value: 1 },
+        uFar: { value: 200 },
+      },
+      vertexShader: FS_VERT,
+      fragmentShader: /* glsl */ `
+        uniform vec4 uProbe;
+        uniform float uNear;
+        uniform float uFar;
+        void main() {
+          float t = clamp((gl_FragCoord.y - uProbe.x) / max(uProbe.y - uProbe.x, 1.0), 0.0, 1.0);
+          float lin = max(mix(uProbe.z, uProbe.w, t), uNear);
+          gl_FragDepth = clamp(0.5 * (uFar + uNear - 2.0 * uNear * uFar / lin) / (uFar - uNear) + 0.5, 0.0, 1.0);
+          gl_FragColor = vec4(0.0);
+        }
+      `,
+      depthTest: true,
+      depthFunc: THREE.GreaterDepth,
+      depthWrite: false,
+      colorWrite: false,
+      blending: THREE.NoBlending,
+    });
+    // --- the seen-through quads (ADR-105), drawn over the box round the hero only (_renderSeen)
+    // 1. into seenRT, which holds the hero drawn alone: erase every pixel of him the scene shows.
+    // The quad's depth is the scene's, pushed back by a margin, and it passes (erases) where that is
+    // not in front of the hero's own depth. So a pixel of him stays only where something stands at
+    // least the margin in front of him: uMargin.x m for tagged things (the wyrm, props, trees),
+    // .y m for untagged ones (alpha 0: the grass at his feet must never count).
     this.seenMaskMat = new THREE.ShaderMaterial({
       uniforms: {
         tScene: { value: this.sceneRT.texture },
@@ -926,8 +933,7 @@ export class Pipeline {
         uRes: this.asciiMat.uniforms.uRes,
         uNear: { value: 1 },
         uFar: { value: 200 },
-        // x = tagged things (the wyrm, props, trees), y = untagged ones (grass must never count)
-        uMargin: { value: new THREE.Vector2(0.6, 1.5) },
+        uMargin: { value: new THREE.Vector2(0.6, 1.5) }, // CONFIG.render.seenThrough, per frame
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
@@ -937,16 +943,16 @@ export class Pipeline {
         uniform float uNear;
         uniform float uFar;
         uniform vec2 uMargin;
+        ${IS_HERO_GLSL}
         void main() {
           vec2 uv = gl_FragCoord.xy / uRes;
-          float z = texture2D(tDepth, uv).r * 2.0 - 1.0;
-          float lin = (2.0 * uNear * uFar) / (uFar + uNear - z * (uFar - uNear));
           float a = texture2D(tScene, uv).a;
-          lin += a < 0.03 ? uMargin.y : uMargin.x;
+          float z = texture2D(tDepth, uv).r * 2.0 - 1.0;
+          float lin = (2.0 * uNear * uFar) / (uFar + uNear - z * (uFar - uNear)) + (a < 0.03 ? uMargin.y : uMargin.x);
           gl_FragDepth = clamp(0.5 * (uFar + uNear - 2.0 * uNear * uFar / lin) / (uFar - uNear) + 0.5, 0.0, 1.0);
-          // a figure of his own kind (a human boss is drawn through the hero's materials) is never
-          // cover: the two duel at arm's length, and the boss's tells must stay his own
-          if (a > 0.46 && a < 0.49) gl_FragDepth = 1.0;
+          // a figure of his own kind is never cover (a human boss is drawn through the hero's
+          // materials): the two duel at arm's length, and the boss's tells must stay his own
+          if (isHero(a)) gl_FragDepth = 1.0;
           gl_FragColor = vec4(0.0);
         }
       `,
@@ -955,7 +961,8 @@ export class Pipeline {
       depthWrite: false,
       blending: THREE.NoBlending,
     });
-    // 2. into sceneRT: put what is left (the hidden hero) over what covers him, with his depth
+    // 2. into sceneRT: what is left in seenRT (the hero where he is covered) goes over its cover,
+    // colour, part id and his own depth, so the ASCII pass draws him there like anywhere else
     this.seenPatchMat = new THREE.ShaderMaterial({
       uniforms: {
         tSeen: { value: this.seenRT.texture },
@@ -967,10 +974,11 @@ export class Pipeline {
         uniform sampler2D tSeen;
         uniform sampler2D tSeenDepth;
         uniform vec2 uRes;
+        ${IS_HERO_GLSL}
         void main() {
           vec2 uv = gl_FragCoord.xy / uRes;
           vec4 s = texture2D(tSeen, uv);
-          if (!(s.a > 0.46 && s.a < 0.49)) discard;
+          if (!isHero(s.a)) discard;
           gl_FragDepth = texture2D(tSeenDepth, uv).r;
           gl_FragColor = s;
         }
@@ -1125,45 +1133,135 @@ export class Pipeline {
   }
 
   /**
-   * PROTOTYPE: the hero alone into seenRT (the box round him), minus what the scene shows of him;
-   * modes 1 / 2 then put the rest back into the scene target, over what covers him.
+   * The object printed through whatever covers it on screen (ADR-105): the hero's root (main.js),
+   * or null for none. It is drawn a second time, alone, every frame it is on screen.
+   */
+  setSeenThrough(root) {
+    this.seenRoot = root ?? null;
+  }
+
+  /**
+   * Render step 2b (ADR-105), right after the world pass: the seen-through object alone into
+   * seenRT, inside the box round the hero's screen point (U.uPlayerScreen; CONFIG.render.seenThrough
+   * `reach`); then the quad that erases what the scene shows of it (seenMaskMat); then what is left
+   * into sceneRT (seenPatchMat). Sets uSeen for the ASCII pass and returns true when it ran: not
+   * with the switch off, without an object, while the object is hidden, with a non-finite or
+   * too-near screen point, off screen, or while the probe finds nothing in front of him
+   * (_seenProbe). No allocation; the renderer's autoClear and the scene target's scissor are left
+   * as they were.
    */
   _renderSeen() {
-    const u = this.asciiMat.uniforms, r = this.renderer, cam = this.camera;
-    const root = this.seenRoot, ps = this.U.uPlayerScreen?.value;
-    u.uSeen.value.w = 0;
-    if (!this.seenMode || !root || !ps || !Number.isFinite(ps.x + ps.y + ps.z) || ps.z <= 0.5) return;
+    const u = this.asciiMat.uniforms.uSeen.value, r = this.renderer, cam = this.camera;
+    const S = CONFIG.render.seenThrough, root = this.seenRoot, ps = this.U.uPlayerScreen?.value;
+    u.w = 0;
+    if (!S?.on || !root || root.visible === false || !ps || !(ps.z > 0.5)) return false;
     const W = this.width, H = this.height;
-    const rPx = Math.ceil((SEEN_R * 0.5 * H * cam.projectionMatrix.elements[5]) / ps.z);
+    const rPx = Math.ceil((S.reach * 0.5 * H * cam.projectionMatrix.elements[5]) / ps.z);
     const cx = ps.x * W, cy = ps.y * H;
+    if (!Number.isFinite(cx + cy + rPx)) return false;
     const x0 = Math.max(0, Math.floor(cx - rPx)), y0 = Math.max(0, Math.floor(cy - rPx));
     const x1 = Math.min(W, Math.ceil(cx + rPx)), y1 = Math.min(H, Math.ceil(cy + rPx));
-    if (!(x1 > x0 && y1 > y0)) return; // off screen
-    const rt = this.seenRT;
-    rt.scissor.set(x0, y0, x1 - x0, y1 - y0);
-    const prevClear = r.autoClear;
+    if (!(x1 > x0 && y1 > y0)) return false; // he is off screen
+    if (!this._seenProbe(root, cx, ps.z)) return false; // nothing stands in front of him
+    const seen = this.seenRT, sceneRT = this.sceneRT, prevClear = r.autoClear;
+    seen.scissor.set(x0, y0, x1 - x0, y1 - y0);
+    sceneRT.scissor.set(x0, y0, x1 - x0, y1 - y0);
     try {
+      // the object alone (its own materials: colour, part ids, depth), the box cleared first
       r.autoClear = true;
-      r.setRenderTarget(rt);
+      r.setRenderTarget(seen);
       r.setClearColor(0x000000, 0);
       r.render(root, cam);
+      // ... minus what the scene shows of it
       r.autoClear = false;
       const m = this.seenMaskMat.uniforms;
       m.uNear.value = cam.near;
       m.uFar.value = cam.far;
-      this.fs.render(r, this.seenMaskMat, rt);
-      if (this.seenMode !== 3) {
-        const s = this.sceneRT;
-        s.scissor.set(x0, y0, x1 - x0, y1 - y0);
-        s.scissorTest = true;
-        this.fs.render(r, this.seenPatchMat, s);
-        s.scissorTest = false;
-      }
+      m.uMargin.value.set(S.margin, S.bareMargin);
+      this.fs.render(r, this.seenMaskMat, seen);
+      // ... and the rest over its cover in the scene target
+      sceneRT.scissorTest = true;
+      this.fs.render(r, this.seenPatchMat, sceneRT);
     } finally {
+      sceneRT.scissorTest = false;
       r.autoClear = prevClear;
     }
-    u.uSeen.value.set(ps.x, ps.y, rPx - 2, this.seenMode);
-    u.uSeenDepth.value = ps.z;
+    u.set(ps.x, ps.y, rPx - 2, 1);
+    return true;
+  }
+
+  /**
+   * The gate of the seen-through pass: true while it must run. Every frame it reads the answer of
+   * the last probe when it is there, and sends a new one: a quad over the screen rect of a slab
+   * through the hero's body (CONFIG.render.seenThrough.probe, above `root`'s origin; `cx` = his
+   * screen x in px, `depth` = his view depth in m), at his centre line's depth less the margin (a
+   * little less pulled than the pass's own test, so whatever the pass would print is found),
+   * depth-tested against the scene in an ANY_SAMPLES_PASSED query. A yes keeps the pass running
+   * for `hold` frames. No answer for a few frames (a hidden tab, frames stepped in one task)
+   * counts as a yes; without usable queries the pass runs every frame. No allocation.
+   */
+  _seenProbe(root, cx, depth) {
+    const G = this.seenGate, S = CONFIG.render.seenThrough, r = this.renderer, cam = this.camera;
+    if (G.off) return true;
+    let gl = G.gl;
+    if (!gl) {
+      gl = G.gl = typeof r.getContext === 'function' ? r.getContext() : null;
+      if (!gl || typeof gl.createQuery !== 'function') {
+        G.off = true;
+        return true;
+      }
+      G.hold = S.hold + 1; // until the first answer: as if he were covered
+    }
+    const sceneRT = this.sceneRT, prevClear = r.autoClear;
+    try {
+      if (G.pending) {
+        if (gl.getQueryParameter(G.query, gl.QUERY_RESULT_AVAILABLE)) {
+          if (gl.getQueryParameter(G.query, gl.QUERY_RESULT)) G.hold = S.hold + 1;
+          G.pending = false;
+        } else if (++G.age > 3) G.hold = S.hold + 1;
+      }
+      if (G.hold > 0) G.hold--;
+      if (!G.pending) {
+        // the slab's foot and top: view depth and screen y of the two points above his origin
+        const e = root.matrixWorld.elements, v = cam.matrixWorldInverse.elements, P5 = cam.projectionMatrix.elements[5];
+        const W = this.width, H = this.height, pr = S.probe;
+        const ya = e[13] + pr[1], yb = e[13] + pr[2];
+        const da = -(v[2] * e[12] + v[6] * ya + v[10] * e[14] + v[14]), db = -(v[2] * e[12] + v[6] * yb + v[10] * e[14] + v[14]);
+        const sa = ((P5 * (v[1] * e[12] + v[5] * ya + v[9] * e[14] + v[13])) / da) * 0.5 * H + 0.5 * H;
+        const sb = ((P5 * (v[1] * e[12] + v[5] * yb + v[9] * e[14] + v[13])) / db) * 0.5 * H + 0.5 * H;
+        const hw = (pr[0] * 0.5 * H * P5) / depth;
+        const x0 = Math.max(0, Math.floor(cx - hw)), x1 = Math.min(W, Math.ceil(cx + hw));
+        const y0 = Math.max(0, Math.floor(Math.min(sa, sb))), y1 = Math.min(H, Math.ceil(Math.max(sa, sb)));
+        if (da > 0.5 && db > 0.5 && Number.isFinite(sa + sb + hw) && x1 > x0 && y1 > y0) {
+          const u = this.seenProbeMat.uniforms, pull = Math.max(0, S.margin - 0.1);
+          u.uProbe.value.set(sa, sb, da - pull, db - pull);
+          u.uNear.value = cam.near;
+          u.uFar.value = cam.far;
+          sceneRT.scissor.set(x0, y0, x1 - x0, y1 - y0);
+          sceneRT.scissorTest = true;
+          r.autoClear = false;
+          G.query ??= gl.createQuery();
+          gl.beginQuery(gl.ANY_SAMPLES_PASSED, G.query);
+          try {
+            this.fs.render(r, this.seenProbeMat, sceneRT);
+          } finally {
+            gl.endQuery(gl.ANY_SAMPLES_PASSED);
+          }
+          G.pending = true;
+          G.age = 0;
+        }
+      }
+    } catch (err) {
+      // a browser whose queries fail: the pass simply runs every frame from here on
+      G.off = true;
+      G.pending = false;
+      console.warn('seen-through: occlusion queries unavailable, the pass runs every frame', err);
+      return true;
+    } finally {
+      sceneRT.scissorTest = false;
+      r.autoClear = prevClear;
+    }
+    return G.hold > 0;
   }
 
   registerParticles(particleSystem) {
@@ -1283,7 +1381,8 @@ export class Pipeline {
       r.setClearColor(fog, 0);
       r.clear();
       r.render(scene, this.camera);
-      this._renderSeen(); // PROTOTYPE
+      // 2b. the hero where something covers him, back into the scene target
+      this._renderSeen();
     } finally {
       scene.overrideMaterial = null;
       this.shadowCam.layers.set(LAYER_CASTER);

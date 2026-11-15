@@ -9,6 +9,15 @@ const NO_BATCH = (() => {
     return false;
   }
 })();
+// `?noseen` in the URL (read once): do not print the hero through what covers him (render/pipeline.js,
+// ADR-105). An A/B switch for frame-rate and image checks.
+const NO_SEEN = (() => {
+  try {
+    return typeof location !== 'undefined' && new URLSearchParams(location.search).has('noseen');
+  } catch {
+    return false;
+  }
+})();
 
 export const CONFIG = {
   seed: 1337,
@@ -115,6 +124,14 @@ export const CONFIG = {
     shadowSize: 2048, // default moon shadow map size (texels); the quality presets set their own
     shadowExtent: 80, // half-size in meters of the moon's orthographic shadow frustum
     batch: !NO_BATCH, // rigid batching of the hero and the wyrm (false with ?nobatch)
+    // The hero printed through whatever covers him on screen (pipeline.js, ADR-105; `on` false with
+    // ?noseen). `reach`: half-size (m) of the box round him that is drawn a second time (his figure
+    // and his sword's reach). `margin`: how far (m) in front of him a thing must stand to count as
+    // cover (what touches him, a blade that crosses his body, does not). `bareMargin`: the same for
+    // untagged pixels (alpha 0: the grass at his feet must never count). The pass only runs while a
+    // probe finds something in front of his torso (`probe`: the slab it tests, [half-width, from,
+    // to] in m above his feet) and for `hold` frames after it last did.
+    seenThrough: { on: !NO_SEEN, reach: 2.8, margin: 0.6, bareMargin: 1.5, probe: [0.4, 0.6, 1.9], hold: 20 },
     exposure: 1.55,
     bloomStrength: 0.85,
     bloomThreshold: 0.55,

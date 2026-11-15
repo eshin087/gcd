@@ -7157,7 +7157,248 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
+// ================================================================== scenario: the hero seen through what covers him
+// render/pipeline.js step 2b (ADR-105): the hero's root is drawn alone into seenRT inside a box round
+// his screen point, a quad erases what the scene shows of him, and the rest goes back into the
+// scene target for the ASCII pass to print through. Checked here with the real Pipeline and a
+// renderer that records what is drawn where: when the pass runs and when it does not (no object,
+// a hidden one, off screen, a non-finite or too-near screen point, the switch off), the box it
+// draws, what it tells the ASCII pass (uSeen), the state it leaves behind (also when a draw
+// throws), its place in the frame, the probe that gates it (an occlusion query over his torso: on
+// from the first frame, off `hold` frames after the last yes, on while no answer comes, off for
+// good when queries fail), and the `?noseen` URL flag.
+async function scenarioSeen() {
+  out('\n== scenario SEEN (the hero printed through what covers him: when the pass runs, what it draws, what it leaves) ==');
+  const { Pipeline } = await imp('src/render/pipeline.js');
+  const { HERO_ART } = await imp('src/render/materials.js');
+  const G = build();
+  const { game } = G;
+  const U = game.U, cam = game.camera, S = CONFIG.render.seenThrough;
+  const log = [];
+  let target = null, boom = null;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true,
+    setRenderTarget(rt) { target = rt; },
+    setClearColor() {},
+    clear() {},
+    render(obj) {
+      const e = { obj, mat: obj.material ?? null, target, autoClear: this.autoClear, scissor: target?.scissorTest === true, box: target ? target.scissor.toArray() : null };
+      log.push(e);
+      if (boom && boom(e)) throw new Error('draw failed');
+    },
+  };
+  const pipe = new Pipeline(renderer, game.scene, game.fxScene, cam, U);
+  const W = 1280, H = 720;
+  pipe.width = W;
+  pipe.height = H;
+  pipe.sceneRT.setSize(W, H);
+  pipe.seenRT.setSize(W, H);
+  cam.aspect = W / H;
+  cam.updateProjectionMatrix();
+  const uSeen = pipe.asciiMat.uniforms.uSeen.value, ps = U.uPlayerScreen.value;
+  const root = game.player.object3d;
+  const run = () => { log.length = 0; return pipe._renderSeen(); };
+  const off = (why) => assert(run() === false && log.length === 0 && uSeen.w === 0 && pipe.sceneRT.scissorTest === false && renderer.autoClear === true, `no pass ${why}: nothing is drawn, uSeen.w = 0`);
+  const half = (z) => Math.ceil((S.reach * 0.5 * H * cam.projectionMatrix.elements[5]) / z);
+
+  assert(S.on === true && S.reach > 2 && S.margin > 0 && S.bareMargin > S.margin && S.hold > 0 && S.probe.length === 3 && S.probe[2] > S.probe[1],
+    `CONFIG.render.seenThrough is on (reach ${S.reach} m, margin ${S.margin} m, ${S.bareMargin} m for untagged pixels, probe ${S.probe.join(' / ')} m, hold ${S.hold} frames)`);
+  // no object yet
+  ps.set(0.5, 0.5, 36, 0);
+  off('without an object');
+
+  // the hero's root, in the middle of the screen at the game camera's distance
+  pipe.setSeenThrough(root);
+  assert(run() === true && log.length === 3, `with the hero on screen the pass runs: ${log.length} draws`);
+  const [a, b, c] = log;
+  const r36 = half(36);
+  out(`   box at 36 m: ${JSON.stringify(a.box)} (half-size ${r36} px of ${W} x ${H})`);
+  assert(a.obj === root && a.target === pipe.seenRT && a.autoClear === true && a.scissor, 'first the hero alone into seenRT, its box cleared (autoClear on, scissored)');
+  assert(b.obj === pipe.fs.mesh && b.mat === pipe.seenMaskMat && b.target === pipe.seenRT && b.autoClear === false && b.scissor, '... then the quad that erases what the scene shows of him (no clear, the same box)');
+  assert(c.obj === pipe.fs.mesh && c.mat === pipe.seenPatchMat && c.target === pipe.sceneRT && c.autoClear === false && c.scissor, '... then what is left into the scene target (no clear, scissored)');
+  assert(a.box.join() === [640 - r36, 360 - r36, 2 * r36, 2 * r36].join() && c.box.join() === a.box.join() && r36 > 60 && r36 < 120,
+    `the box is centred on his screen point, ${2 * r36} px wide (${S.reach} m each way), the same in both targets`);
+  assert(uSeen.x === 0.5 && uSeen.y === 0.5 && uSeen.z === r36 - 2 && uSeen.w === 1, `the ASCII pass is told where: uSeen = (${uSeen.toArray().join(', ')})`);
+  assert(pipe.sceneRT.scissorTest === false && pipe.seenRT.scissorTest === true && renderer.autoClear === true, 'afterwards the scene target is unscissored again and autoClear is back on');
+  const mu = pipe.seenMaskMat.uniforms;
+  assert(mu.uNear.value === cam.near && mu.uFar.value === cam.far && mu.uMargin.value.x === S.margin && mu.uMargin.value.y === S.bareMargin, 'the erasing quad got the camera planes and the margins of the config');
+  // autoClear off before: left off
+  renderer.autoClear = false;
+  run();
+  assert(renderer.autoClear === false && log[0].autoClear === true, 'a renderer with autoClear off gets it back off (the box is still cleared)');
+  renderer.autoClear = true;
+
+  // nearer: a larger box; at the screen edge: clamped
+  ps.set(0.5, 0.5, 18, 0);
+  run();
+  assert(Math.abs(log[0].box[2] - 4 * r36) <= 2 && uSeen.z === half(18) - 2, `half the distance, twice the box (${log[0].box[2]} px)`);
+  ps.set(0.01, 0.98, 36, 0);
+  const edge = run() && log[0].box;
+  assert(edge && edge[0] === 0 && edge[1] + edge[3] === H && edge[2] > 0 && edge[2] < 2 * r36 && edge[3] > 0 && edge[3] < 2 * r36, `at the screen's corner the box is clamped to the screen (${JSON.stringify(edge)})`);
+
+  // when it must not run
+  ps.set(1.5, 0.5, 36, 0);
+  off('while he is off screen (right)');
+  ps.set(0.5, -0.4, 36, 0);
+  off('while he is off screen (below)');
+  ps.set(NaN, 0.5, 36, 0);
+  off('with a NaN screen point');
+  ps.set(0.5, 0.5, NaN, 0);
+  off('with a NaN view depth');
+  ps.set(0.5, 0.5, 0.2, 0);
+  off('with the camera inside him (depth 0.2 m)');
+  ps.set(0.5, 0.5, -3, 0);
+  off('with him behind the camera');
+  ps.set(0.5, 0.5, 36, 0);
+  root.visible = false;
+  off('while he is hidden');
+  root.visible = true;
+  S.on = false;
+  off('with CONFIG.render.seenThrough.on false');
+  S.on = true;
+  pipe.setSeenThrough(null);
+  off('after setSeenThrough(null)');
+  pipe.setSeenThrough(root);
+  assert(run() === true && uSeen.w === 1, '... and it runs again once every condition holds');
+
+  // a draw that throws: the state is restored, the ASCII pass is told there is nothing
+  for (const [name, at] of [['the hero', 0], ['the erasing quad', 1], ['the patch', 2]]) {
+    boom = (e) => log.indexOf(e) === at;
+    let threw = false;
+    try { run(); } catch { threw = true; }
+    boom = null;
+    assert(threw && pipe.sceneRT.scissorTest === false && renderer.autoClear === true && uSeen.w === 0, `a failing draw (${name}) leaves the scene target unscissored, autoClear on and uSeen.w = 0`);
+  }
+
+  // its place in the frame: after the world pass, before the ASCII pass; and a loadout rebuild keeps it
+  game.scene.updateMatrixWorld();
+  log.length = 0;
+  pipe.render();
+  const world = log.findIndex((e) => e.obj === game.scene && e.target === pipe.sceneRT);
+  const seenAt = log.findIndex((e) => e.obj === root), ascii = log.findIndex((e) => e.mat === pipe.asciiMat);
+  assert(world >= 0 && seenAt === world + 1 && ascii === seenAt + 3 && log[ascii].target === pipe.compRT && log[ascii].scissor === false,
+    `in a whole frame: the world (${world}), then the hero alone and the two quads (${seenAt}..${seenAt + 2}), then the ASCII pass (${ascii})`);
+  assert(game.scene.matrixWorldAutoUpdate === true && root.matrixWorldAutoUpdate === true, 'the frame leaves the scene graph updating its matrices');
+  game.player.setLoadout({ ...game.player.loadout });
+  assert(pipe.seenRoot === game.player.object3d && run() === true, 'a loadout rebuild keeps the same root: he is still printed through');
+
+  // the contract of the three shaders: one hero window, wide enough for every part id; the quads' depth rules
+  const win = /bool isHero\(float a\) \{ return a > ([\d.]+) && a < ([\d.]+); \}/;
+  const wins = [pipe.asciiMat, pipe.seenMaskMat, pipe.seenPatchMat].map((m) => win.exec(m.fragmentShader));
+  const lo = Number(wins[0]?.[1]), hi = Number(wins[0]?.[2]);
+  assert(wins.every((w) => w && w[0] === wins[0][0]) && HERO_ART.a0 > lo && HERO_ART.a0 + (HERO_ART.parts * 2 - 1) * HERO_ART.step < hi,
+    `the ASCII pass and both quads test the same hero window (${lo}, ${hi}), and every part id is inside it`);
+  assert(pipe.seenMaskMat.depthTest && pipe.seenMaskMat.depthFunc === THREE.GreaterEqualDepth && pipe.seenMaskMat.depthWrite === false && pipe.seenMaskMat.blending === THREE.NoBlending,
+    'the erasing quad: passes where the scene (plus the margin) is not in front of him, writes no depth, no blending');
+  assert(pipe.seenPatchMat.depthTest && pipe.seenPatchMat.depthFunc === THREE.AlwaysDepth && pipe.seenPatchMat.depthWrite === true && pipe.seenPatchMat.blending === THREE.NoBlending,
+    'the patch: always passes, writes his depth, no blending');
+  assert(pipe.asciiMat.uniforms.tSeen.value === pipe.seenRT.texture && pipe.seenPatchMat.uniforms.tSeen.value === pipe.seenRT.texture && pipe.seenMaskMat.uniforms.tDepth.value === pipe.sceneRT.depthTexture,
+    'the ASCII pass and the patch read seenRT; the erasing quad reads the scene depth');
+
+  // ---- the gate: with a GL context, a probe (an occlusion query over his torso) decides whether
+  // the pass runs. A second pipeline on a renderer whose context answers the queries by script.
+  {
+    const q = { available: true, result: 0, made: 0, begun: 0, ended: 0, fail: false };
+    const gl = {
+      ANY_SAMPLES_PASSED: 0x8c2f, QUERY_RESULT: 0x8866, QUERY_RESULT_AVAILABLE: 0x8867,
+      createQuery() { q.made++; return { id: q.made }; },
+      beginQuery(t) { if (q.fail || t !== this.ANY_SAMPLES_PASSED) throw new Error('no queries'); q.begun++; },
+      endQuery(t) { if (t === this.ANY_SAMPLES_PASSED) q.ended++; },
+      getQueryParameter(o, name) { return name === this.QUERY_RESULT_AVAILABLE ? q.available : q.result; },
+    };
+    const r2 = { ...renderer, autoClear: true, getContext: () => gl };
+    const pipe2 = new Pipeline(r2, game.scene, game.fxScene, cam, U);
+    pipe2.width = W;
+    pipe2.height = H;
+    pipe2.sceneRT.setSize(W, H);
+    pipe2.seenRT.setSize(W, H);
+    pipe2.setSeenThrough(root);
+    // the game's view of him: the camera behind and above, looking at the point 1 m above his feet
+    const pp = game.player.position, pitch = CONFIG.camera.pitch, D = CONFIG.camera.distance;
+    cam.position.set(pp.x, pp.y + 1 + D * Math.sin(pitch), pp.z + D * Math.cos(pitch));
+    cam.lookAt(pp.x, pp.y + 1, pp.z);
+    game.scene.updateMatrixWorld();
+    cam.updateMatrixWorld();
+    ps.set(0.5, 0.5, D, 0);
+    const u2 = pipe2.asciiMat.uniforms.uSeen.value, G2 = pipe2.seenGate;
+    const frame = () => { log.length = 0; return pipe2._renderSeen(); };
+
+    // the first frame: the probe goes out, and the pass runs until an answer says otherwise
+    assert(frame() === true && log.length === 4 && q.made === 1 && q.begun === 1 && q.ended === 1, `first frame: a probe (${q.begun} query) and the pass (${log.length} draws)`);
+    const pr = log[0], box = log[1].box;
+    const up = pipe2.seenProbeMat.uniforms.uProbe.value;
+    out(`   probe rect ${JSON.stringify(pr.box)} inside the pass's box ${JSON.stringify(box)}; depths ${up.z.toFixed(2)} m (foot) .. ${up.w.toFixed(2)} m (top), he stands at ${D} m`);
+    assert(pr.obj === pipe2.fs.mesh && pr.mat === pipe2.seenProbeMat && pr.target === pipe2.sceneRT && pr.scissor && pr.autoClear === false, 'the probe is one quad into the scene target, scissored, nothing cleared');
+    assert(pr.box[0] >= box[0] && pr.box[1] >= box[1] && pr.box[0] + pr.box[2] <= box[0] + box[2] && pr.box[1] + pr.box[3] <= box[1] + box[3] && pr.box[2] > 8 && pr.box[2] < box[2] / 2 && pr.box[3] > 8,
+      `its rect is his torso: inside the box, ${pr.box[2]} x ${pr.box[3]} px`);
+    assert(Math.abs(pr.box[0] + pr.box[2] / 2 - 640) <= 1 && pr.box[1] < 360 && pr.box[1] + pr.box[3] > 360, 'the rect is centred on his screen x and spans the point 1 m above his feet');
+    assert(up.w < up.z && up.z < D + 0.5 && up.w > D - 1.5 && up.z - up.w > 0.5 && up.x < up.y, `the tested depth runs from his foot (${up.z.toFixed(2)} m) to his nearer top (${up.w.toFixed(2)} m), pulled towards the camera`);
+    assert(pipe2.seenProbeMat.depthTest && pipe2.seenProbeMat.depthFunc === THREE.GreaterDepth && pipe2.seenProbeMat.depthWrite === false && pipe2.seenProbeMat.colorWrite === false,
+      'the probe passes where the scene is nearer, and writes neither colour nor depth');
+    assert(pipe2.sceneRT.scissorTest === false && r2.autoClear === true, '... and leaves the scene target unscissored, autoClear on');
+
+    // answers "nothing in front of him": after `hold` frames only the probe is left
+    let n = 0;
+    while (frame() && n < 200) n++;
+    assert(n >= S.hold - 2 && n <= S.hold + 1 && log.length === 1 && log[0].mat === pipe2.seenProbeMat && u2.w === 0, `in the open the pass stops after ${n} frames (hold ${S.hold}): one probe quad a frame is all that is drawn`);
+    for (let i = 0; i < 30; i++) frame();
+    assert(frame() === false && log.length === 1 && q.begun === q.ended && q.made === 1, `... and it stays off, one query a frame (${q.begun} so far, one query object)`);
+    // "something is in front of him": the pass is back on the frame the answer is read
+    q.result = 1;
+    assert(frame() === true && log.length === 4 && u2.w === 1, 'an answer of yes: the pass runs again that frame');
+    q.result = 0;
+    let m = 0;
+    while (frame() && m < 200) m++;
+    assert(m >= S.hold - 2 && m <= S.hold + 1, `after the last yes it runs ${m} more frames, then stops`);
+    // no answer at all (a hidden tab, frames stepped in one task): counted as a yes, no second query
+    q.available = false;
+    const begun = q.begun;
+    let all = true;
+    for (let i = 0; i < 60; i++) all = frame() && all;
+    const later = frame();
+    assert(q.begun === begun && later === true && log.length === 3, `while no answer arrives no new probe goes out and the pass runs (${G2.age} frames waiting)`);
+    assert(!all, '... after the three frames it gives an answer to come');
+    q.available = true;
+    // he leaves the screen or is hidden: neither probe nor pass
+    const b2 = q.begun;
+    ps.set(1.6, 0.5, D, 0);
+    assert(frame() === false && log.length === 0 && q.begun === b2, 'off screen: no probe, no pass');
+    ps.set(0.5, 0.5, D, 0);
+    root.visible = false;
+    assert(frame() === false && log.length === 0 && q.begun === b2, 'hidden: no probe, no pass');
+    root.visible = true;
+    // queries that fail: one warning, then the pass runs every frame
+    const warn = console.warn;
+    let warned = 0;
+    console.warn = () => { warned++; };
+    try {
+      q.fail = true;
+      const first = frame(), second = frame(), third = frame();
+      assert(first && second && third && G2.off === true && log.length === 3 && warned === 1 && pipe2.sceneRT.scissorTest === false && r2.autoClear === true,
+        `a context whose queries throw: the gate switches itself off (${warned} warning) and the pass runs every frame`);
+    } finally {
+      console.warn = warn;
+    }
+    // without a GL context there is nothing to ask
+    assert(pipe.seenGate.off === true && pipe.seenGate.gl === null, 'a renderer without a GL context (the first pipeline here) never probes: the pass ran every frame above');
+  }
+
+  // the URL flag: a fresh copy of core/config.js loaded with ?noseen in the address
+  {
+    const had = 'location' in globalThis, prev = globalThis.location;
+    const load = async (search, tag) => {
+      globalThis.location = { search };
+      return (await import(`${pathToFileURL(`${ROOT}/src/core/config.js`).href}?${tag}`)).CONFIG;
+    };
+    const offCfg = await load('?lab&noseen', 'seen-off'), onCfg = await load('?lab', 'seen-on');
+    if (had) globalThis.location = prev;
+    else delete globalThis.location;
+    assert(offCfg.render.seenThrough.on === false && onCfg.render.seenThrough.on === true && CONFIG.render.seenThrough.on === true, '?noseen in the URL turns CONFIG.render.seenThrough.on off');
+  }
+  return G;
+}
+
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
