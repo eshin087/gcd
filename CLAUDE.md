@@ -14,7 +14,8 @@ Read this file first, every session.
 1. Read `docs/DEVLOG.md` (latest entries first) and `CHANGELOG.md` → `[Unreleased]` to see where work stands.
 2. Read the docs relevant to your task:
    - `docs/ARCHITECTURE.md` — module contracts, `game` context, event catalogue, frame order. **Source of truth for cross-module APIs.**
-   - `docs/STYLE.md` — the ASCII art direction (what makes it look right; how each technique works).
+   - `docs/STYLE.md` — the ASCII art direction. Its first section, "The house style", is the rule every
+     new object and character follows (the dragon look).
    - `docs/COMBAT.md` — combat rules: attack tells, block / parry / perfect dodge, balance numbers.
    - `docs/ROADMAP.md` — where the project is going; pick work from here when unsure.
    - `docs/DECISIONS.md` — architecture decision records (why things are the way they are).
@@ -41,9 +42,21 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 - **Content is data.** Attack definitions (timings, damage, tell type), tuning numbers and enemy
   stats live in `tuning.js` / data files, not buried in logic. New enemies reuse the shared combat
   system (`src/combat/`) and the actor contract.
+- **One art design: the dragon look.** The owner's reference for how this game is drawn is the
+  Cinder Wyrm as it ships ("the perfect ascii look im aiming for"; ADR-093, ADR-100). Read
+  `docs/STYLE.md` → "The house style" before making anything visible. In short: small fine digits, a
+  dark body with brighter digits only where light catches, an outline made of stroke characters, no
+  blank cell inside a shape.
+  - Every NEW background object (stone, metal, bone, a building, a statue, a prop) is drawn through
+    the prop art path: `createPropArtMaterial`, or `FLAG.ART_PROP` on a screen-grid prop.
+  - Every NEW creature or character is drawn through the wyrm's art path (`FLAG.ART`).
+  - Do not invent another glyph style, letter size, ramp or font for something new.
+  - Do not restyle what exists and is not in that look (the hero, the human bosses, the floors, the
+    grass, the trees) unless the owner asks: each was their call.
+  - Any change to how something looks: render before / after options and let the owner pick first.
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in
-  `docs/STYLE.md` (screen-grid ASCII, surface glyphs, glyph particles). No plain shaded meshes.
-  Only glyphs in the world atlas may be passed to `gi()` / materials / particles — `npm test` checks.
+  `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, glyph particles). No plain shaded
+  meshes. Only glyphs in the world atlas may be passed to `gi()` / materials / particles — `npm test` checks.
 - **Combat must be readable.** Every enemy attack declares a tell type (`normal` / `blue` parry /
   `red` perfect-dodge) and a windup long enough to react to. See `docs/COMBAT.md`.
 - **Never freeze the frame.** Per-frame code must not throw; `main.js` isolates module errors, but
@@ -75,7 +88,8 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 ```
 src/core       config, input, camera rig, math, rng, events
 src/render     glyph atlases, shared shader lib, materials, particles, lights, frame pipeline
-src/world      ground, grass, forest/stones/bones/bonfire, scorch map, atmosphere, colliders
+src/world      ground, grass, forest/stones/bones/bonfire, landmarks (the big set pieces), scorch map,
+               atmosphere, colliders
 src/combat     shared combat rules: hit resolution, guard/parry/dodge, attack tells
 src/entities   player/ (gear/ = equipment slot items)  dragon/  enemies/duelist/ (the engine human
                bosses share)  enemies/ashDisciple/  enemies/starlessLord/  (future: npcs/)

@@ -96,8 +96,10 @@ Render helpers for creature modules:
   (`pipeline.js`) turns it into letters. `createSurfaceGlyphMaterial` defaults `flag` to `FLAG.ART`
   (0.5); with the shared `U.uArtSolid` = 1 the material writes its art source (0 = the patterned
   surface render, a look-dev A/B). `artGain` (default 1) scales the generic smooth source. The pass
-  tests the hero's grid first, then the wyrm's, then the world grid. Two creature paths, told
-  apart by the **alpha contract** (no other material may write alpha in 0.46–0.55):
+  tests the hero's grid first, then the wyrm's, then the background props' (`FLAG.ART_PROP` 0.57,
+  window 0.555–0.585, ADR-100), then the world grid. Two creature paths, told
+  apart by the **alpha contract** (no other material may write alpha in 0.46–0.55, and none but
+  prop art in 0.555–0.585):
 
   | alpha written | by | meaning |
   |---|---|---|
@@ -272,8 +274,35 @@ Render helpers for creature modules:
     radiating wing veins; use `rowShift: 0` so they stay continuous), `'x'` = along x only (between
     rows). With `crack: 'voronoi'` it stretches the plates 3× along that axis instead.
 - `limbGeometry`, `ellipsoidGeometry`, `hornGeometry`, `cylindricalGUV`, `planarGUV` (`render/glyphGeometry.js`).
-- `createCarvedGlyphMaterial(U, opts)` (`render/materials.js`) — **carved glyphs for static rock**
-  (standing stones, boulders, flagstones; future ruins). Glyph cells sit on a world-fixed lattice in
+- `createPropArtMaterial(U, opts)` (`render/materials.js`) — **prop art: background objects in the
+  dragon's look** (ADR-100; the rule for every new object: STYLE.md "The house style"). Writes the
+  smooth lit source of a static object with alpha `FLAG.ART_PROP`; the art pass prints it. Geometry
+  baked in world space with the carved attribute set (`aCol`, `aAO`, `aEdge`; `aMoss` / `aInk` may be
+  present, ignored), so a set's `stones` geometries need no change. Options: `gain` (1), `key`
+  (camera-fixed key light, 0.5), `edge` (1), `fadeNearPlayer`, `side`. A prop in a set's screen-grid
+  `props` mesh (`createAsciiObjectMaterial`) joins the same look with `flag: FLAG.ART_PROP` in
+  `paint()`.
+  - **The pass's prop branch** (`pipeline.js`): the wyrm's atlas and cell (`tArt`, `uArtCell`), cells
+    counted from `uPropAnchor`; 4 samples find a cell (2 must hit, 1 if it draws a stroke) and are
+    its tone; `artLetters()` (shared with `wyrmCell`) prints it; `edgeDir()` gives the stroke along
+    a silhouette (1–3 hits) or along a depth step inside the object.
+  - Uniforms: `uPropTone` (x brightest letter 0.9, y gamma 1.3, z cutoff 0 = every cell prints, w
+    own-pixel share 0.7), `uPropGlyph` (x / y set steps 0.16 / 0.48, z dither 0.08), `uPropLum` (x
+    black point 0, y curve 9, z dimmest letter 0.085), `uPropOutline` (x silhouette stroke gain 1.9,
+    y inner depth step 0.012, z its gain 1.35), `uPropAnchor` (vec2 px, set per frame in
+    `_updateAsciiCamera` from `U.uFocus`: the screen position of the focus minus its world offset
+    times the px-per-metre there, wrapped to one cell).
+- **Landmarks** (`world/landmarks.js`): builders that return painted geometries in world space:
+  `buildElderWyrm`, `buildCinderTree` (Cinderwood), `buildSectGate`, `buildCauldron`, `buildColossus`
+  (Ashfall), `buildWarden`, `buildGreatSword` (the Obsidian Throne), all `(rng, x, z, yaw, s, opts?)`.
+  `carved(parts)` converts painted parts to the carved attribute set for a set's `stones` mesh;
+  `landmarkPoint(x, z, yaw, s, lx, lz)` maps a builder's local point to the world;
+  `ELDER_COLLIDERS` / `GATE_COLLIDERS` are `[lx, lz, r]` lists the set adds. Where they stand:
+  `FOREST_LANDMARKS` (`forest.js`), `COURTYARD.greatGate / cauldron / guardians` (`courtyard.js`),
+  inline in `throneHall.js`. Trees and boulders in a landmark's footprint are built, then dropped, so
+  the rest of a level's random layout does not move. Each set uses its own seeded rng for them.
+- `createCarvedGlyphMaterial(U, opts)` (`render/materials.js`) — **carved glyphs, for FLOORS only**
+  since ADR-100 (flagstones, paving, the hall's tiles; upright objects use prop art above). Glyph cells sit on a world-fixed lattice in
   a plane facing the default camera (`viewPitch`), so they are upright, equal-sized and never
   re-pick as the camera moves; one glyph per cell, picked by light on flat facets, contour strokes on
   mid-lit flanks, world-fixed cracks and moss. Renders directly (alpha `FLAG.NONE`, the grid pass

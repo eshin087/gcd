@@ -54,8 +54,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 ## M1.6 — Reference match (2026-11-08, PR #4, `look/reference-match`)
 - [x] Wyrm as the owner's red-black ASCII dragon: thin pixel font, letter sets, art source, shape (ADR-018)
 - [x] Wyrm letters: fine digits in 5x8 px cells at 720p, calm tone, grid anchored to it (ADR-092, ADR-093)
-- [ ] Human bosses "more ASCII": letter size for the duelists (sheet rendered, no pick yet; ADR-092)
-- [ ] Landmarks: big set pieces full of ASCII per level (first pass built, the owner picks which stay)
+- [x] Background objects in the dragon's look (prop art); the house style written down (ADR-100)
+- [x] Landmarks: big set pieces per level, in the same look (ADR-100)
+- [ ] A second pass on the landmarks at the game camera (the stone swordsmen read as a mass of digits;
+      the gate sits mostly off the top of the frame)
+- [ ] The hero and the human bosses in the house style: only when the owner asks (ADR-100: "not touch")
 - [x] Hero as ink-line art: per-pixel lines, a dark figure + halo at the game camera, longer drawn
       blade with a depth pull (ADR-019 … ADR-022)
 - [x] Wyrm motion: flip-free rig, planted feet, the painting's resting display, idle life, strike

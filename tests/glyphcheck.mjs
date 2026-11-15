@@ -140,5 +140,40 @@ for (const f of world) {
     }
   }
 }
+// The house style (ADR-100): background objects are prop art. FLAG.ART_PROP sits in its own alpha
+// window (the pass's isProp), clear of the creatures' and the foliage's; each level's upright stone
+// goes through createPropArtMaterial; and the rule stays written where an agent reads it first.
+{
+  const mat = fs.readFileSync(path.join(root, 'src/render/materials.js'), 'utf8');
+  const pipe = fs.readFileSync(path.join(root, 'src/render/pipeline.js'), 'utf8');
+  const flags = /export const FLAG = (\{[^}]*\});/.exec(mat);
+  const win = /bool isProp\(float a\) \{ return a > ([\d.]+) && a < ([\d.]+); \}/.exec(pipe);
+  checked++;
+  if (!flags || !win) {
+    bad++;
+    console.log('BAD prop art: FLAG or the isProp window of the pass not found where the check reads them');
+  } else {
+    const F = new Function(`return ${flags[1]}`)();
+    const lo = Number(win[1]), hi = Number(win[2]);
+    if (!(F.ART_PROP > lo && F.ART_PROP < hi) || !(lo >= 0.55) || !(hi <= F.LEAF - 0.01) || !(F.ART < 0.55)) {
+      bad++;
+      console.log(`BAD prop art: FLAG.ART_PROP ${F.ART_PROP} must sit inside isProp (${lo}, ${hi}), above the creatures' window (< 0.55) and below FLAG.LEAF ${F.LEAF}`);
+    }
+  }
+  for (const f of ['src/world/forest.js', 'src/world/courtyard.js', 'src/world/throneHall.js']) {
+    checked++;
+    if (!/const stoneMat = createPropArtMaterial\(/.test(fs.readFileSync(path.join(root, f), 'utf8'))) {
+      bad++;
+      console.log(`BAD ${f}: its upright stone (stoneMat) must be prop art (createPropArtMaterial), the house style`);
+    }
+  }
+  for (const [f, needle] of [['CLAUDE.md', 'One art design: the dragon look'], ['docs/STYLE.md', '## The house style: the dragon look']]) {
+    checked++;
+    if (!fs.readFileSync(path.join(root, f), 'utf8').includes(needle)) {
+      bad++;
+      console.log(`BAD ${f}: the house-style rule ("${needle}") is missing`);
+    }
+  }
+}
 console.log(`checked ${checked} glyph-ish literals in ${files.length} files (${exempt} HTML-only exempt), ${world.length} world-side files for TELL_STYLE glyphs, bad=${bad}`);
 process.exit(bad ? 1 : 0);
