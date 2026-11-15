@@ -173,8 +173,6 @@ const SPRAY = new THREE.Vector3(); // parry(): the default spray (back toward th
 // the parry shockwave's rings (shockwave): bright, but not so hot that bloom swallows the duel
 const RING = { white: [1.5, 1.55, 1.75], warm: [1.6, 1.3, 0.8], gold: [2.0, 1.45, 0.45] };
 
-/** The afterimage's looks (PlayerFx._afterimage; the owner picks one). */
-export const GHOST_LOOKS = Object.freeze(['digits', 'echo', 'shatter']);
 // (the characters an afterimage is made of: fine digits, as the wyrm is printed)
 const GHOST_DIGITS = '0123456789';
 const GHOST_CELL = 0.13; // m: an afterimage's character cell (about the cell his coat is printed in)
@@ -183,7 +181,6 @@ export class PlayerFx {
   constructor(game, rig) {
     this.body = null; // points on his body as last sampled (world xyz …; player.js _sampleBody)
     this.bodyN = 0;
-    this.ghostLook = GHOST_LOOKS[0];
     this._ghostCells = new Set(); // (reused: the cells one afterimage has printed in)
     this.game = game;
     this.rig = rig;
@@ -789,8 +786,8 @@ export class PlayerFx {
    * bare test rig) it is strokes along his bones, as it used to be.
    * `o`: { dx, dz } the way he left (unit, ground plane; 0, 0 = unknown), `light`: a lesser one (a
    * clone left mid-pass: every other point, shorter-lived).
-   * Looks (GHOST_LOOKS; `this.ghostLook`): 'digits' the figure alone | 'echo' the figure and two
-   * fainter ones stepping off the way he left | 'shatter' the figure bursts into its characters.
+   * (Three looks were built; the owner picked this one, "Digits", over an "Echo" of fainter copies
+   * stepping off the way he left and a "Shatter" that burst the figure into its characters.)
    */
   _afterimage(fx, segs, nSegs, o = null) {
     const pts = this.body, n = Math.min(this.bodyN | 0, pts ? Math.floor(pts.length / 3) : 0);
@@ -803,49 +800,30 @@ export class PlayerFx {
     if (!Number.isFinite(dx + dz)) dx = dz = 0;
     let y0 = Infinity;
     for (let i = 0; i < n; i++) y0 = Math.min(y0, pts[i * 3 + 1]);
-    const look = this.ghostLook, lifeK = light ? 0.7 : 1;
-    const copies = look === 'echo' && !light && (dx || dz) ? 3 : 1;
+    const lifeK = light ? 0.7 : 1;
     // one character to a cell of a GHOST_CELL grid ON THE SCREEN, as he is printed himself: a point
     // that falls in a cell already taken is dropped (characters on top of one another bloom into a
     // white blot), and each is moved onto its cell, so they stand in rows and columns
     const cells = this._ghostCells, q = 1 / GHOST_CELL, C = CAM;
     const rx = C ? C[0] : 1, ry = C ? C[1] : 0, rz = C ? C[2] : 0, ux = C ? C[4] : 0, uy = C ? C[5] : 1, uz = C ? C[6] : 0;
-    for (let c = 0; c < copies; c++) {
-      const off = c * 0.42, dim = c === 0 ? 1 : c === 1 ? 0.5 : 0.28, st = step * (c ? 2 : 1);
-      cells.clear();
-      for (let i = c % st; i < n; i += st) {
-        const k = i * 3, px = pts[k], py = pts[k + 1], pz = pts[k + 2];
-        const sx = px * rx + py * ry + pz * rz, sy = px * ux + py * uy + pz * uz;
-        const cx = Math.round(sx * q), cy = Math.round(sy * q);
-        const key = (cx & 0xffff) * 65536 + (cy & 0xffff);
-        if (cells.has(key)) continue;
-        cells.add(key);
-        const mx = cx * GHOST_CELL - sx, my = cy * GHOST_CELL - sy;
-        const x = px + rx * mx + ux * my + dx * off, y = py + ry * mx + uy * my, z = pz + rz * mx + uz * my + dz * off;
-        const h = Math.min(1, Math.max(0, (y - y0) / 1.8)); // 0 his feet … 1 his head
-        let vx = dx * R(0.05, 0.3), vy = R(0.02, 0.16), vz = dz * R(0.05, 0.3);
-        let life = (0.24 + 0.3 * h + R(0, 0.14)) * lifeK, drag = 1.2;
-        if (look === 'shatter') {
-          // every character thrown off him: out from his middle and along the way he left
-          const a = R(0, Math.PI * 2), sp = R(1.5, 5.5);
-          vx = Math.cos(a) * sp + dx * R(2, 7);
-          vy = R(-1, 3.5);
-          vz = Math.sin(a) * sp + dz * R(2, 7);
-          life = R(0.2, 0.45) * lifeK;
-          drag = 4.5;
-        }
-        fx.spawn({
-          x, y, z, vx, vy, vz, life, size: GHOST_CELL * 1.25, sizeEnd: GHOST_CELL * 0.8, glyph: GHOST_DIGITS,
-          color: i % 11 === 0 ? COL.ghost : COL.ghostDim, colorEnd: COL.ghostEnd, alpha: 0.9 * dim, alphaEnd: 0, drag, flicker: 0.3,
-        });
-      }
+    cells.clear();
+    for (let i = 0; i < n; i += step) {
+      const k = i * 3, px = pts[k], py = pts[k + 1], pz = pts[k + 2];
+      const sx = px * rx + py * ry + pz * rz, sy = px * ux + py * uy + pz * uz;
+      const cx = Math.round(sx * q), cy = Math.round(sy * q);
+      const key = (cx & 0xffff) * 65536 + (cy & 0xffff);
+      if (cells.has(key)) continue;
+      cells.add(key);
+      const mx = cx * GHOST_CELL - sx, my = cy * GHOST_CELL - sy;
+      const x = px + rx * mx + ux * my, y = py + ry * mx + uy * my, z = pz + rz * mx + uz * my;
+      const h = Math.min(1, Math.max(0, (y - y0) / 1.8)); // 0 his feet … 1 his head
+      // (it drifts a little the way he left, and rises)
+      fx.spawn({
+        x, y, z, vx: dx * R(0.05, 0.3), vy: R(0.02, 0.16), vz: dz * R(0.05, 0.3),
+        life: (0.24 + 0.3 * h + R(0, 0.14)) * lifeK, size: GHOST_CELL * 1.25, sizeEnd: GHOST_CELL * 0.8, glyph: GHOST_DIGITS,
+        color: i % 11 === 0 ? COL.ghost : COL.ghostDim, colorEnd: COL.ghostEnd, alpha: 0.9, alphaEnd: 0, drag: 1.2, flicker: 0.3,
+      });
     }
-  }
-
-  /** Pick the afterimage's look (GHOST_LOOKS; unknown → the first). Returns the one in use. */
-  setGhostLook(id) {
-    this.ghostLook = GHOST_LOOKS.includes(id) ? id : GHOST_LOOKS[0];
-    return this.ghostLook;
   }
 
   /**

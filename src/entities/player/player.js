@@ -302,8 +302,6 @@ export class Player {
       // the art the next flurries end on (flurry.js ARTS; null = one at random), the streak set by
       // hand, and a flurry of `strikes` blows on the boss now (`art`: for this one only)
       flurryArt: null,
-      // the afterimage's look (fx.js GHOST_LOOKS; the Lab's button): 'digits' | 'echo' | 'shatter'
-      ghostLook: (id) => this.fx.setGhostLook(id),
       noRiposte: false, // true: a parried last blow is not answered with the riposte
       streak: (n) => this._debugStreak(n),
       flurry: (strikes = 3, art = null) => this._debugFlurry(strikes, art),
