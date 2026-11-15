@@ -46,7 +46,13 @@ The cinematic re-measured on the Ashfall Courtyard.
 **Not checked / open:** the owner's iPhone (the lock-on report, the `touchend` guard, the panel's
 scrolling); a gamepad on the panel (code path only); portrait title layout with the corner button.
 
-**Next:** the owner tries the Vercel preview on the phone; cut 0.5.0 when they want a version line.
+**Follow-up:** the owner: it happens without lock-on, every time. A scripted walk from the title to the
+waking wyrm and a 12 s fight on the phone preset: the camera never under 20 m. So the page zoom: every
+double tap is guarded now (menus get the click by hand), a zoomed page is reset through the viewport
+meta, and `?camdebug` prints page scale / camera distance / canvas size on screen for a phone report.
+
+**Next:** the owner tries the Vercel preview on the phone (with `?camdebug` if it still happens); cut
+0.5.0 when they want a version line.
 
 ---
 

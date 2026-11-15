@@ -3196,6 +3196,13 @@ ADR-092).
   is not player-facing); a per-version "seen" marker (the site ships continuously between versions,
   so 0.4.0 has carried forty entries); the badge on first visit for every entry (a new player would
   see fifty-odd NEW); a `visualViewport` reset (iOS gives a page no way to undo a zoom).
+- **Follow-up (the owner, same day):** "it does not require the target to be locked on for this bug
+  to happen and it always happens 100%". A full scripted walk-up and fight on the phone preset never
+  took the game camera under 20 m, so the page zoom is the cause that fits: a double tap is constant
+  in play (mashing ATTACK), Safari zooms the page about 2x round it, and the blocked pinch leaves it
+  stuck. The guard now covers every double tap while the touch layer is on (menus: the second tap
+  of a pair loses its default and its button is clicked by hand), and a zoomed page is put back by
+  rewriting the viewport meta. `?camdebug` shows what the phone reports, in case it is neither.
 - **Consequences:** every CHANGELOG headline needs a WHAT'S NEW entry in the same PR (CLAUDE.md →
   Keep history); a PR rebased after another one landed its headline fails `npm test` until it adds
   the entry. Not checked on an iPhone: whether the page zoom was what the owner saw, and the

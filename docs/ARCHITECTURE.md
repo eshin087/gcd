@@ -2011,8 +2011,11 @@ taller than 560 px get everything × `pad.tall`. API: `padPos`, `padSize`, `cycl
 **The page never zooms** (ADR-116): iOS Safari ignores `user-scalable=no`. While the layer is on it
 cancels `gesturestart` / `gesturechange`, `dblclick`, `touchmove` (outside the Lab, the pause panel and
 the WHAT'S NEW list, which scroll) and `touchend` on the canvas and inside `.tc-root` (non-passive): the
-canvas and the controls run on pointer events only, so a quick second tap (LOCK) cannot double-tap
-zoom the page.
+canvas and the controls run on pointer events only. Anywhere else (the menus) the second of two
+touchends within `DOUBLE_TAP_MS` (350 ms) is cancelled too and a `button` / `.ab-btn` under it gets its
+`click()` by hand. If the page is zoomed anyway (`visualViewport.scale` > 1.01), `_unzoom()` rewrites
+the viewport meta (Safari lays the page out at scale 1 again; counted in `unzooms`). `?camdebug`: a
+fixed one-line readout (`.tc-camdebug`): page scale, fixes, camera distance and base, canvas vs window size.
 
 **Aim** (`game.mouseGround`, each frame in `explore` / `bossIntro` / `boss`): with the dragon
 targetable and within `CONFIG.touch.autoAimRange` (32 m) it is the dragon's lock point (attacks,

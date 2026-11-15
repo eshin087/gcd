@@ -12,8 +12,10 @@ Forty-six pieces of work since 0.4.0:
   browser remembers). *Fixed:* on a phone, a duel's slow-motion moments (perfect deflect, blade lock,
   counter, mikiri, execution) took the camera in to about 9 m, knees only: their zoom is now scaled
   for the phone's closer camera like every other camera move (about 12.6 m). On an iPhone, a quick
-  second tap on LOCK or another control could zoom the whole page in; the controls and the game
-  screen now block it. *Changed:* the title's credit line reads "prototype v0.4.0"; the docs and the
+  double tap (mashing ATTACK, LOCK twice) zoomed the whole page in about 2x and it stayed stuck
+  (pinching back out is blocked in play): double taps are now blocked everywhere in the game, and a
+  page that gets zoomed anyway is put back at once. `?camdebug` shows a one-line readout (page zoom,
+  camera distance, canvas size) for a report from a phone. *Changed:* the title's credit line reads "prototype v0.4.0"; the docs and the
   code no longer name the game that first inspired the look.
 - **A heavy attack, and five heavies to choose from** (2026-11-15, ADR-115). *Added:* a HEAVY button (right
   click, R2, and a fourth tile on the phone). Pressed on its own it is a dashing two-handed thrust;
