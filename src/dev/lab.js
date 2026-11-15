@@ -6,6 +6,8 @@ import { injectLabStyle } from './labStyle.js';
 import { HitboxOverlay } from './hitboxOverlay.js';
 import { TimingTrainer, tellName } from './timingTrainer.js';
 import { ModelViewer, VIEW_ANGLES, VIEW_LOOKS } from './modelView.js';
+import { setCutStyle, cutStyle } from '../combat/cutFx.js';
+import { SWORD_PARAM } from '../entities/player/gear/index.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -682,6 +684,7 @@ export class Lab {
       this.ui.status = el('div', 'lab-status', 'ready', root);
 
       this._buildLevel(root);
+      this._buildOutfit(root);
       this._buildFight(root);
       this._buildAbilities(root);
       this._buildPlayer(root);
@@ -718,6 +721,38 @@ export class Lab {
       b.title = L.id === cur ? 'the level loaded now' : `reload into ${L.name} (?level=${L.id})`;
       if (L.id === cur) b.classList?.add?.('on');
     }
+  }
+
+  /** OUTFIT: the hero's outfit options (game.heroLooks / game.pickHeroLook, main.js; `?heroLook=`;
+   *  kept for later use; today's look is the default). Live: the rig is rebuilt, the pose restarts. */
+  _buildOutfit(root) {
+    const looks = this.game.heroLooks;
+    if (!Array.isArray(looks) || looks.length < 2) return;
+    const { body } = this._section(root, 'outfit', 'OUTFIT');
+    // two columns (each look beside its shaded-face twin, `looks.js` order), today's look across both
+    const grid = el('div', 'lab-grid', null, body);
+    if (grid.style) grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    this.ui.lookBtns = looks.map((L, i) => {
+      const b = button(grid, L.name, () => {
+        try {
+          this.game.pickHeroLook?.(L.id);
+          this._status(`outfit: ${L.name}`, 'ok');
+        } catch (err) {
+          this._status(`error: outfit ${L.id}: ${err?.message ?? err}`, 'err');
+          this._fail('outfit', err);
+        }
+        this._syncOutfit();
+        this._mvSync?.();
+      });
+      b.title = `wear ${L.name} (?heroLook=${L.id}; the rig is rebuilt, the pose restarts)`;
+      if (i === 0 && b.style) b.style.gridColumn = '1 / -1';
+      return { id: L.id, el: b };
+    });
+    this._syncOutfit();
+  }
+
+  _syncOutfit() {
+    for (const B of this.ui.lookBtns ?? []) B.el.classList?.toggle?.('on', B.id === this.game.player?.look);
   }
 
   _buildFight(root) {
@@ -789,6 +824,48 @@ export class Lab {
       setText(this.ui.atkSpeedVal, `x${v.toFixed(2)}`);
     });
     this.ui.atkSpeedVal = el('span', 'lab-val', 'x1.00', sp);
+    // the look of a landed cut (combat/cutFx.js; the owner's pick): the slash line, or a fan of sparks
+    const cut = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'cut', cut).title = 'the look of a landed cut (combat/cutFx.js)';
+    const cutGrid = el('div', 'lab-grid', null, cut);
+    cutGrid.style.flex = '1';
+    this.ui.cutBtns = ['gash', 'fan'].map((s) => {
+      const b = button(cutGrid, s, () => {
+        setCutStyle(s);
+        this._syncCutBtns();
+      });
+      b.title = s === 'gash' ? 'a tapered slash line across the body, along the cut' : 'no line: a wider fan of sparks along the cut';
+      return { s, el: b };
+    });
+    // a struck duelist's shudder through the freeze (drawn only; duelist.js shudderK)
+    this.ui.shudBtn = button(cutGrid, 'shudder', () => {
+      const d = this.game.dragon;
+      if (d && 'shudderK' in d) d.shudderK = d.shudderK > 0 ? 0 : 1;
+      this._syncCutBtns();
+    });
+    this.ui.shudBtn.title = 'a struck duelist flickers along the cut through the freeze (on / off)';
+    // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
+    // cost, Lab only)
+    const swr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'sword', swr).title = "the sword looks for the owner's pick (?sword=)";
+    const swGrid = el('div', 'lab-grid', null, swr);
+    swGrid.style.flex = '1';
+    this.ui.swordBtns = Object.keys(SWORD_PARAM).map((k) => {
+      const b = button(swGrid, k, () => {
+        const p = this.game.player;
+        if (typeof p?.equip !== 'function') return this._status('n/a: player.equip()', 'warn');
+        try {
+          p.equip('weapon', SWORD_PARAM[k]);
+          this._status(`player.equip(weapon, ${SWORD_PARAM[k]})`, 'ok');
+        } catch (err) {
+          console.error('[lab] player.equip failed', err);
+          this._status(`error: player.equip: ${err?.message ?? err}`, 'err');
+        }
+        this._syncCutBtns();
+      });
+      b.title = `equip ${SWORD_PARAM[k]}`;
+      return { k, el: b };
+    });
     // the flurry (player/flurry.js): a perfect dodge's answer at a streak of N, started on the boss
     // from where the hero stands; `art` pins the last blow's look (flurry.js ARTS) for the next ones
     const fr = el('div', 'lab-row', null, body);
@@ -805,6 +882,15 @@ export class Lab {
     this.ui.artBtns = [null, ...arts].map((k) => ({ k, el: button(ag, k ? ARTS[k].label : 'any', () => this._flurryArt(k)) }));
     const pinned = this.game.player?.debug?.flurryArt ?? null;
     for (const b of this.ui.artBtns) setClass(b.el, 'on', b.k === pinned);
+    this._syncCutBtns();
+  }
+
+  _syncCutBtns() {
+    for (const { s, el: b } of this.ui.cutBtns ?? []) setClass(b, 'on', cutStyle() === s);
+    const d = this.game.dragon;
+    setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
+    const w = this.game.player?.loadout?.weapon;
+    for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
   }
 
   /** A flurry of `n` blows on the boss now (player.debug.flurry). */
@@ -1148,6 +1234,8 @@ export class Lab {
     if (pd?.god) flags.push('god');
     if (pd?.infiniteFlasks) flags.push('inf flasks');
     if (finite(pd?.attackSpeed, 1) !== 1) flags.push(`atk x${finite(pd.attackSpeed, 1).toFixed(2)}`);
+    if (cutStyle() !== 'gash') flags.push(`cut ${cutStyle()}`);
+    if (g.dragon && 'shudderK' in g.dragon && !(g.dragon.shudderK > 0)) flags.push('no shudder');
     const ts = finite(g.debugTimeScale, 1);
     if (ts !== 1) flags.push(ts === 0 ? 'FROZEN' : `x${ts}`);
     if (this.loop.on) flags.push(`loop ${this.selected}`);

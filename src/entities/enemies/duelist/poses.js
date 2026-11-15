@@ -1,4 +1,4 @@
-import { P, v3, to3, dirLerp, loco, turnTwist } from '../../player/anim.js';
+import { P, N, v3, to3, dirLerp, loco, turnTwist } from '../../player/anim.js';
 import { DIM } from '../../player/model.js';
 import { clamp, lerp, smoothstep, TAU } from '../../../core/math.js';
 
@@ -52,8 +52,8 @@ const EASE = {
   h: () => 0,
 };
 const ARM_R = [0.2, 0.46]; // the fist's radius round the shoulder: folded … full reach
-const SCR = new Float32Array(64);
-const SCR_W = new Float32Array(64);
+const SCR = new Float32Array(N);
+const SCR_W = new Float32Array(N);
 // the channels the raised guard (pilot.ward) takes over from his footwork: the arms, the blade, the chest
 const WARD_CH = [P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.lH, P.lH + 1, P.lH + 2, P.lP, P.lP + 1, P.lP + 2, P.swF, P.swF + 1, P.swF + 2, P.spX, P.spY, P.hdY, P.bodyY, P.pitch];
 const AX = { arm: 0, ext: 0.75, lead: 0, larm: 0, lext: 0.75, llead: 0, laz: 0, lel: 0 };

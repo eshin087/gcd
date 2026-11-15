@@ -1,13 +1,19 @@
 import * as THREE from 'three';
 import { gi } from './glyphs.js';
 
+// cosmetic noise (a multi-char glyph's pick, the flicker phase) from this module's own stream: the
+// seeded sims replay the AI's Math.random, and a spark must never move it
+let pseed = 0x2f6b9e3d;
+const prnd = () => (pseed = (Math.imul(pseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+
 // Camera-facing glyph particles (fire, embers, sparks, dust, blood-ash...). Rendered in the FX
 // pass AFTER the ASCII grid conversion, with a soft manual depth test against the scene.
 //
 //   game.fx.add.spawn({ x, y, z, vx, vy, vz, life: 0.8, size: 0.5, sizeEnd: 0.1,
 //                       glyph: '*', color: [3, 1.4, 0.4], colorEnd: [0.8, 0.1, 0.02],
 //                       alpha: 1, alphaEnd: 0, gravity: -2, drag: 1.5, spin: 3, flicker: 0.3 });
-// `glyph` may be a single char, a string (one char picked at random) or an atlas index.
+// `glyph` may be a single char, a string (one char picked at random: the module's own stream, never
+// Math.random) or an atlas index.
 // Colours are linear HDR: values > 1 bloom.
 
 const FIELDS = 26;
@@ -110,7 +116,7 @@ export class GlyphParticles {
     const d = this.data;
     const k = i * FIELDS;
     let glyph = o.glyph ?? '*';
-    if (typeof glyph === 'string') glyph = gi(glyph.length > 1 ? glyph[Math.floor(Math.random() * glyph.length)] : glyph);
+    if (typeof glyph === 'string') glyph = gi(glyph.length > 1 ? glyph[Math.floor(prnd() * glyph.length)] : glyph);
     const c0 = o.color ?? [1, 1, 1];
     const c1 = o.colorEnd ?? c0;
     d[k] = o.x ?? 0; d[k + 1] = o.y ?? 0; d[k + 2] = o.z ?? 0;
@@ -123,7 +129,7 @@ export class GlyphParticles {
     d[k + 18] = glyph;
     d[k + 19] = o.rot ?? 0; d[k + 20] = o.spin ?? 0;
     d[k + 21] = o.drag ?? 0; d[k + 22] = o.gravity ?? 0;
-    d[k + 23] = o.flicker ?? 0; d[k + 24] = Math.random() * 100; d[k + 25] = o.stretch ?? 0;
+    d[k + 23] = o.flicker ?? 0; d[k + 24] = prnd() * 100; d[k + 25] = o.stretch ?? 0;
     return i;
   }
 

@@ -151,19 +151,22 @@ Numbers live in `src/entities/player/combat.js` (`LIGHT`, `SPRINT_ATK`, `ROLL_AT
 `THRUST` (the execution's), `CHARGE`, `REACH`); the swings' key poses in `src/entities/player/swings.js`
 (ADR-071); movement / defence timings in `TUNE` (`player.js`). The LMB chain is five hits (ADR-041;
 it was sweep, backhand, slam: "the same 3 attack patterns"). Hits 1–4 are one-handed, the free hand
-held composed against the sword hand, and he walks through them: the lead foot changes with every
-hit. The slam and the charged cleave are two-handed.
+in sword fingers (jian jue) answering the sword hand: it points at the foe in the coil, gathers on
+the sword wrist before a backhand and splits from it as the cut goes out, and ends each cut in one
+line through the body against the blade, out of its path (swings.js `FH`); he walks through them:
+the lead foot changes with every hit. The slam and the charged cleave are two-handed, the free fist
+shown on the grip only once the hand is there (`OFF_SNAP`).
 
 | Move | Input | Timing (windup / active / recovery) | Damage | Posture | Notes |
 |---|---|---|---|---|---|
-| 1 — falling cut | LMB tap | 0.11 / 0.12 / 0.24 s (0.47 s) | 30 | 5 | one-handed: cocked beside the head (blade up-back-right), the free hand out toward the target; a diagonal down across the front as the hips turn through and the body sinks, ending low past the left hip; cyan crescent |
-| 2 — backhand | LMB tap in the recovery | 0.11 / 0.12 / 0.24 s | 32 | 5 | back across his front from the left: rising from the left hip to high right, the body rising with it (or level at chest height with a pivot, or falling from over the left shoulder) |
-| 3 — whirl | 3rd tap | 0.13 / 0.15 / 0.26 s (0.54 s) | 36 | 6 | he follows the backhand round to his right: one full turn with the sword arm thrown out level and the free arm flung wide, dropping into the turn and leaning to the inside of it, his head staying on the target and coming round ahead of the body; the blade crosses the front about two thirds of the way round, inside the active frames, and carries on round to his right |
-| 4 — lunge | 4th tap | 0.11 / 0.10 / 0.24 s (0.45 s) | 30 | 6 | one-handed: the hand draws back to the right ribs with the point already up and the free hand out along the line, then one long line from the rear heel to the point, driven forward and UP at 35° (the rising thrust: 45°), the free arm thrown straight back. Both thrusts rise (ADR-077): a level blade pointed toward the game camera is drawn straight down the screen to the grass at his feet, as if planted in the ground |
+| 1 — falling cut | LMB tap | 0.11 / 0.12 / 0.24 s (0.47 s) | 30 | 5 | one-handed: cocked beside the head (blade up-back-right), the sword fingers pointing at the target; a diagonal down across the front as the hips turn through and the body sinks, ending low past the left hip while the fingers draw back high-left like a bow; cyan crescent |
+| 2 — backhand | LMB tap in the recovery | 0.11 / 0.12 / 0.24 s | 32 | 5 | back across his front from the left: rising from the left hip to high right, the body rising with it (or level at chest height with a pivot, or falling from over the left shoulder); the sword fingers gather on the sword wrist in the coil and split from it, opening out to his left (the falling one tucks them before the chest and draws them back high) |
+| 3 — whirl | 3rd tap | 0.13 / 0.15 / 0.26 s (0.54 s) | 36 | 6 | he follows the backhand round to his right: one full turn with the sword arm thrown out level and the free arm tucked before the chest through the turn, then flung wide as the brake, dropping into the turn and leaning to the inside of it, his head staying on the target and coming round ahead of the body; the blade crosses the front about two thirds of the way round, inside the active frames, and carries on round to his right |
+| 4 — lunge | 4th tap | 0.11 / 0.10 / 0.24 s (0.45 s) | 30 | 6 | one-handed: the hand draws back to the right ribs with the point already up and the sword fingers at the foe, then one long line from the fingertips behind the hip through the arm to the point, driven forward and UP at 35° (the rising thrust: 45°, its fingers and point converging on one spot). Both thrusts rise (ADR-077): a level blade pointed toward the game camera is drawn straight down the screen to the grass at his feet, as if planted in the ground |
 | 5 — slam (finisher) | 5th tap | 0.28 / 0.13 / 0.42 s (0.83 s) | 66 | 18 | two-handed (ADR-076): he gathers (dips and coils right, the blade drawn down-back past the right hip), leaps as the blade sweeps up his right side and cocks over the shoulder, and brings it down in one diagonal across his front into the ground ahead and a little left, landing folded over the planted blade and holding it; a crystal-shard burst (r 1.7 m) at the point hits if the blade missed |
 | Sprint slash | LMB while sprinting (faster than a run) | 0.11 / 0.13 / 0.32 s | 40 | 7 | a bounding rising slash, low right → high left; carries 2.4 m along the RUN direction (it does not snap to the aim); counts as hit 1 (the next tap is the rising backhand) |
 | Roll cut | LMB out of a forward roll | 0.10 / 0.11 / 0.26 s | 34 | 6 | a low cut rising out of the crouch, right → left; counts as hit 1. A backstep (Space with no direction) starts the plain chain |
-| Cleave — charged | hold LMB ≥ 0.3 s, release | 0.08 / 0.24 / 0.45 s | 70–110 by charge (full at 1.2 s) | 12–20 | a deep stance coiled away from the target, both hands on the grip held out a forearm's length before the right shoulder, the sword elbow lifted out to the side and the off forearm across the chest (ADR-078), the blade standing nearly upright beside his head (moves at ×0.4; lightning crawls on the blade past half charge); the release dashes 2.2–3.6 m along the facing with the blade still cocked and carves one two-handed diagonal, high right to past the left hip, as the dash dies out (the blade crosses his front over the last 45 % of the active frames), sinking into a long low lunge that he holds; a wide crescent that hangs in the air, and on a hit a 0.15–0.2 s freeze, a ring and a fan of streaks (ADR-072; it was a lunging thrust) |
+| Cleave — charged | hold LMB ≥ 0.3 s, release | 0.08 / 0.24 / 0.45 s | 70–110 by charge (full at 1.2 s) | 12–20 | a deep stance coiled away from the target, both hands on the grip held out before the right side of his chest, the sword elbow lifted out to the side and the off forearm across the chest (ADR-078), the blade standing nearly upright out to his right, a hand's width clear of his hood (ADR-090: it stood beside the ear and crossed his face) (moves at ×0.4; lightning crawls on the blade past half charge); the release dashes 2.2–3.6 m along the facing with the blade still cocked and carves one two-handed diagonal, high right to past the left hip, as the dash dies out (the blade crosses his front over the last 45 % of the active frames), sinking into a long low lunge that he holds, the free hand letting go and snapping into sword fingers at the foe while the blade trails low behind; a wide crescent that hangs in the air (cooling to violet), and on a hit a 0.15–0.2 s freeze, a doubled slash line with a tick across it, a ring, a fan of streaks along the cut, a 0.14–0.24 m kick and a 1.2–2.0 m punch (ADR-072; it was a lunging thrust) |
 
 - **Variants** (ADR-055, ADR-071): hits 1–5 each have 2–3 looks, picked at random as the hit starts
   (never the same one twice in a row, and never along the line the swing before it cut, so two hits
@@ -207,6 +210,10 @@ hit. The slam and the charged cleave are two-handed.
   counts when it overlaps the blade's swept wall extended `up` 2.6 m above (the slam: 1.0 m) and
   `down` 0.5 m below it; the hit segment runs 0.4 m past the steel (the edge wave). Swings **step
   in** toward a hurt surface within 4.8 m and 0.8 rad of the facing (lunge stretched by ≤ 1.3 m).
+  The step is a push-off and a brake (`TUNE.lungeShape`): ~90 % of it is done as the front foot
+  plants (0.45 of the active frames) and he stands still as the cut ends (it was an even glide to
+  the end of the active frames, the body sliding on past the planted foot); a light held past a
+  click and released before the coil steps all of it from the release.
   Result (`npm test` → scenario REACH): all five chain hits and the cleave connect from the front
   of an idle wyrm from contact out to 3.5 m from its chest surface.
 - **Chain pacing (ADR-041, ADR-071, ADR-075):** the five hits deal 194 damage in 2.76 s of full
@@ -584,6 +591,41 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   shake (0.3–0.6) on top of the hurt flash and the stagger.
 - **His blade** leaves a sweep trail through every strike, from the snap out of the cock through the
   follow-through: a crescent of strokes laid along each blade point's path, pale steel (ember in P2).
+- **His edge bites** (a landed, unguarded hit of a swing: `atk.hitAt`): through the freeze the blade
+  holds where it bit, the grip pulls in along it, the hips drop ~4.5 cm, the chest folds into the
+  blow and the head nods; then the blade tears on through over 0.08 s of the swing's clock (it is
+  never pulled back past the frame that hit). Per weight (combat.js `bite`): the lights 1, the
+  sprint slash 1.1, the slam 1.3, the cleave 1.5 (its hips drop ~7 cm, but its chest does not fold
+  and its head does not nod: the two-handed blade stands upright before his face, and a close
+  contact held it 2.5 cm into his head through the longest freeze; swings.js `fold` 0); a guarded
+  strike never bites.
+- **A cut that lands** (the hero's, on any boss; 2026-11-14): drawn where the drawn blade meets the
+  drawn body (`player._contactPoint`; STYLE.md "A cut that lands"). Its weight is per attack
+  (`combat.js` data, crit factors in `HIT_FEEL`):
+
+  | Attack | contact | freeze (s) | shake | punch (m) | kick (m) |
+  |---|---|---|---|---|---|
+  | falling cut, backhand | light | 0.055 | 0.12 | 0.35 | 0.08 |
+  | whirl | sweep | 0.065 | 0.16 | 0.45 | 0.10 |
+  | lunge (stab) | point | 0.07 | 0.14 | 0.6 | 0.10 |
+  | slam | slam | 0.12 | 0.42 | 1.6 | 0.20 |
+  | sprint slash | sweep | 0.07 | 0.2 | 0.5 | 0.10 |
+  | roll cut | light | 0.06 | 0.14 | 0.4 | 0.08 |
+  | cleave | cleave | 0.15 x (1 + 0.3 x charge) | 0.45 | 1.2 - 2.0 | 0.14 - 0.24 |
+  | the execution | execute | 0.16 | 0.5 | 2.0 | 0.24 |
+
+  A crit: the freeze x1.4, the shake x1.3, the punch + 0.6, the kick x1.35. Against a duelist his
+  own hit stun (0.065 s for a light) is the longer freeze, so the lights' retune shows on the wyrm.
+  The **kick** throws the picture along the blade's travel on screen (a light about one 4 px cell at
+  36 m, the full cleave about 12 px) and springs back in ~0.25 s with one small overshoot, in real
+  time. Every landed cut **punches** (the lights too). The blade **flares** (x1.62 on a light's
+  contact frame, x1.95 heavy), held through the freeze. The **sound** is the body's hit (scales, or
+  cloth on a duelist) under the blade's own `cut` layer (a slice and a ring per weight, a semitone up
+  each hit of the chain); a guarded strike plays only its clash. The pad rumbles on every landed
+  cut. A struck duelist **shudders** through the freeze (drawn only; a sword cut's only). His shove
+  is instant, so the cut and his spray move with him: they sit on the body the freeze holds. A slam
+  that lands only through its ground shards draws no cut: no flare, no `cut` layer (the body's hit
+  only). A strike his guard turns gets none of it: the guard draws its own clash.
 
 **Moves** (`moves.js`; N normal, B blue, R red; P1 windup s (damage); LOCK = a perfect parry locks
 the blades, MIKIRI = perilous; hits test a zone from his root through their active frames: sector

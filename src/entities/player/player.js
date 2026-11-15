@@ -1,14 +1,17 @@
 import * as THREE from 'three';
 import { CONFIG } from '../../core/config.js';
-import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep } from '../../core/math.js';
+import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from '../../core/math.js';
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, tellDefaults, facingDelta } from '../../combat/rules.js';
-import { buildHero, setHeroGlyphScale, installLean, LEAN, PLAYER_SCALE, BLADE_BASE } from './model.js';
+import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
+import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
-import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, chargeStats, bandHit, SwordSweep } from './combat.js';
-import { PlayerFx } from './fx.js';
+import { LIGHT, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { PlayerFx, EDGE_GLINT } from './fx.js';
+import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
+import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
@@ -50,6 +53,13 @@ export const TUNE = {
   pusherRoll: 1.3,
   pusherDown: 1.0,
   windupSteer: 9, // rad/s of steering allowed during attack windups
+  // a light's step in: a push-off and a brake (smoothstep) from `pre` s before the coil to `end` of
+  // the active frames, so ~90 % of it is done as the front foot plants (anim.js lungeFeet, 0.45 of
+  // the active frames) and the rest is a short skid. It was a constant-speed box to the end of the
+  // active frames, and a third of every lunge slid the body on past the planted foot. A held light
+  // released late starts its step at the release (`atk.relT`), at least `min` s long
+  lungeShape: { pre: 0.08, end: 0.7, min: 0.1 },
+  attackDamp: 30, // 1/s: in an attack the root's velocity follows `want` through this filter (_integrate)
   // a roll (and a guard) cancels a swing at ANY point: its windup, the cut itself, the recovery
   // (owner, 2026-11-14: "being able to animation cancel from a swing to a guard or dodge instantly").
   // A flask still waits for this fraction of the recovery
@@ -115,6 +125,12 @@ export const TUNE = {
   plungeFade: 7, // 1/s: the plunge's reappear above the head resolves faster (it hangs only briefly)
   rollCoatKick: 0.7, // the coat tails fly out as the dodge starts
   gemGlintEvery: 1.8, // s between idle glints of the violet gem (± 40 %)
+  // the blade flares where the game camera can see it (part 17's pass gains: at 36 m the blade is one
+  // 4 px cell, mostly silhouette line, and the art pass compresses its glow): × (1 + strike) through a
+  // strike's window ([light, heavy]), + hit ([light, heavy or crit]) on a landed cut, held through the
+  // freeze and cooling in `fall` s of game time; `line` = how much of the gain the ink and rim lines
+  // take; `halo` = how much the flare lifts the dot halo
+  bladeFlare: { strike: [0.12, 0.2], hit: [0.5, 0.75], fall: 0.12, line: 0.5, halo: 0.6 },
 };
 
 const CONTROL = new Set(['explore', 'bossIntro', 'boss']);
@@ -129,6 +145,9 @@ const PLUNGE_RIDE_MAX = 40; // m/s: the rider eases through a jump of the head (
 const PLUNGE_HANG_TRACK = 7; // m/s: the hang point drifts after a moving head at most this fast
 // cross-fade (s) into each plunge phase's pose: the impact lands almost at once
 const PL_BLEND = [0.02, 0.03, 0.05, 0.025, 0.06, 0.05];
+// the shared per-part ink every rig on the page reads (model.js createHeroMaterials rewrites it on
+// every build; setLoadout puts it back)
+const PART_UNIFORMS = ['uHeroPartInk', 'uHeroPartFill', 'uHeroPartRim'];
 
 export class Player {
   constructor(game) {
@@ -137,7 +156,13 @@ export class Player {
     /** His drawn size (model metres → world; model.js PLAYER_SCALE, ADR-064): the lean and the
      *  animator's foot planner read it. */
     this.drawScale = PLAYER_SCALE;
-    this.rig = buildHero(game.U);
+    // the outfit (gear/looks.js; main.js reads `?heroLook=`): its loadout, and its colours on this
+    // rig's own materials. ?sword= (the owner's pick of the sword looks, gear/moonblade.js) swaps the
+    // outfit's weapon
+    this.look = getLook(game.heroLook)?.id ?? DEFAULT_LOOK;
+    const sword = swordFromUrl(), lo = HERO_LOOKS[this.look].loadout;
+    this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo);
+    tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
     this.radius = 0.45;
@@ -162,7 +187,13 @@ export class Player {
     this.want = { x: 0, z: 0 }; // desired movement this frame
     this.kb = { x: 0, z: 0 }; // knockback slide
     this.groundVel = { x: 0, z: 0 }; // actual displacement / dt (drives the gait)
-    this.atk = null; // { def, t, hit, prevT, pending, damage, poise, charge, gust, lunge, travel, impact }
+    // { def, t, hit, prevT, pending, damage, poise, charge, gust, lunge, travel, impact, relT, hitAt,
+    //   cutDir, glintZ, shaped, svx, svz }
+    // (relT: the attack clock at a held light's release, 0 = never held; hitAt: at the landed,
+    // unguarded hit, −1 = none. anim.js reads both: the root's step, the bite. Internal: shaped =
+    // this frame's `want` is a light's shaped step, svx / svz = the step's velocity _integrate landed
+    // the root on last frame: the step's filter pre-compensation)
+    this.atk = null;
     this.gemT = 0.6; // s to the next idle gem glint
     this.chargeK = 0; // 0..1 while charging (anim + glow)
     this.chargeFull = false;
@@ -197,6 +228,14 @@ export class Player {
     this._v2 = new THREE.Vector3();
     this._lock = new THREE.Vector3();
     this._hit = { sphere: null, x: 0, y: 0, z: 0 };
+    // the drawn contact of the last landed cut (_contactPoint): the point (x, y, z), where it lies
+    // along the hit segment (f), the blade's travel there (cx, cy, cz; world, last frame → this one),
+    // its ground-plane direction (gx, gz, unit) and the blade's own direction (ex, ey, ez, unit)
+    this._cut = { x: 0, y: 0, z: 0, f: 0, cx: 0, cy: 0, cz: 0, gx: 0, gz: 1, ex: 0, ey: 0, ez: 1 };
+    this._cA = new THREE.Vector3();
+    this._cB = new THREE.Vector3();
+    this._cS = new THREE.Vector3();
+    this._cP = new THREE.Vector3();
     this._tip = new THREE.Vector3();
     this._tipPrev = new THREE.Vector3();
     this._gem = new THREE.Vector3();
@@ -205,6 +244,7 @@ export class Player {
     this.glyphScale = 1; // hero glyph-cell scale from the view distance (model.js setHeroGlyphScale)
     this.viewDist = 36; // camera → hero distance (m), sampled each frame
     this.bladeFar = 1; // 0 close-up … 1 game camera: how much the blade self-lights
+    this.bladeFlare = 0; // 0..0.75: a landed cut's flare of the steel (TUNE.bladeFlare; any area may raise it)
     this._ghostSegs = new Float32Array(16 * 6);
     // the plunge (state 'plunge', DEFENSE.plunge): the attacker, the phase clock, the head point
     // this frame, the spring-off direction (dx, dz: from the head toward the landing side), the
@@ -250,7 +290,7 @@ export class Player {
       flurry: (strikes = 3, art = null) => this._debugFlurry(strikes, art),
     };
 
-    this.anim = new HeroAnimator(this.rig, this);
+    this.anim = new HeroAnimator(this.rig, this, null, { freeHand: true });
     this.anim.onFootstep = (side, dust) => this._footstep(side, dust);
     this.fx = new PlayerFx(game, this.rig);
     this.flurry = new Flurry(this, TUNE);
@@ -574,6 +614,7 @@ export class Player {
     this.deflect.perfect = false;
     this.guardHold = 0;
     this.flash = 0;
+    this.bladeFlare = 0;
     this.burnGlow = 0;
     this.chipGuard = 0;
     this.dodgeN = -1;
@@ -609,7 +650,17 @@ export class Player {
    * wrong slot, before anything is changed. Build-time cost (allocates): never call it per frame.
    */
   setLoadout(loadout) {
-    const rig = buildHero(this.game.U, loadout);
+    // a build rewrites the SHARED per-part ink for every rig on the page (model.js
+    // createHeroMaterials): put back what was there (a boss's own, e.g. the Lord's red part 19), even
+    // if the build throws
+    const U = this.game.U, saved = PART_UNIFORMS.map((k) => U[k]?.value?.map((v) => v.clone()) ?? null);
+    let rig;
+    try {
+      rig = buildHero(U, loadout);
+    } finally {
+      saved.forEach((a, i) => a && U[PART_UNIFORMS[i]].value.forEach((v, j) => a[j] && v.copy(a[j])));
+    }
+    tintHero(rig.materials, HERO_LOOKS[this.look]?.tint);
     const root = this.object3d, old = this.rig;
     this.batch?.dispose(); // the old rig's rigid batches (their bone slots are reused below)
     for (const c of [...root.children]) root.remove(c);
@@ -621,7 +672,7 @@ export class Player {
     for (const m of old.mats) m.dispose();
     this.rig = rig;
     const onFootstep = this.anim.onFootstep;
-    this.anim = new HeroAnimator(rig, this);
+    this.anim = new HeroAnimator(rig, this, null, { freeHand: true });
     this.anim.onFootstep = onFootstep;
     this.fx.rig = rig;
     this.sweep.sword = rig.sword;
@@ -631,6 +682,21 @@ export class Player {
     this._updateMaterials(0);
     root.updateMatrixWorld(true);
     return rig.loadout;
+  }
+
+  /** Wear outfit option `id` (gear/looks.js): its loadout (the equipped weapon kept) and its colours.
+   *  Throws on an unknown id and changes nothing. Build-time cost (setLoadout). */
+  setLook(id) {
+    const L = getLook(id);
+    if (!L) throw new Error(`no hero look "${id}" (${LOOK_IDS.join(', ')})`);
+    const prev = this.look;
+    this.look = L.id;
+    try {
+      return this.setLoadout({ ...L.loadout, weapon: this.rig.loadout.weapon });
+    } catch (e) {
+      this.look = prev;
+      throw e;
+    }
   }
 
   restAtBonfire() {
@@ -1779,13 +1845,34 @@ export class Player {
     } catch (err) {
       console.error('[player] onExecute failed', err);
     }
-    const pt = d.lockPoint?.(this._v) ?? this._v.set(d.position.x, 1.2, d.position.z);
-    const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) };
-    if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: pt.x, y: pt.y, z: pt.z }, heavy: true, crit: true, kind: 'execute' });
+    // the drawn contact (the blade run into his drawn body), else his lock point
+    const C = this._contactPoint(d, 'thrust', this._cut) ? this._cut : null;
+    const pt = C ?? d.lockPoint?.(this._v) ?? this._v.set(d.position.x, 1.2, d.position.z);
+    if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: pt.x, y: pt.y, z: pt.z }, heavy: true, crit: true, kind: 'execute', combo: 1, weight: 'execute' });
     this._emit('player:plungeHit', { damage: dealt, execution: true });
-    this._hitstop(0.16);
-    this.game.shake?.(0.5);
-    this.fx.sparks(pt.x, pt.y, pt.z, dir.x, dir.z, true, true);
+    a.hitAt = a.t;
+    a.cutDir = this._cutDir(C, a.cutDir);
+    this.bladeFlare = Math.max(this.bladeFlare, TUNE.bladeFlare.hit[1]);
+    const X = THRUST.exec;
+    this._hitstop(X.hitstop);
+    this.game.shake?.(X.shake);
+    this.game.punch?.(X.punch);
+    if (C) this.game.kick?.(C.cx, C.cy, C.cz, X.kick);
+    else this.game.kick?.(Math.sin(this.yaw), 0, Math.cos(this.yaw), X.kick);
+    this.fx.contact(pt, 'execute', C, true, 1);
+    if (C) this._edgeFlash(C, true, true, true);
+  }
+
+  /** The contact's mark on the steel (fx.edgeFlash) at contact C's height along the blade (a contact
+   *  out in the arc, past the drawn steel, flashes at the point). */
+  _edgeFlash(C, heavy, crit, ridge = false) {
+    if (!this.rig.loadout?.weapon) return;
+    const z = clamp(DIM.bladeBase + C.f * (DIM.bladeTip + REACH.tipExt - DIM.bladeBase), DIM.forte, DIM.drawnTip - 0.02);
+    // the frames the freeze holds, in fx time (main.js: this frame at the full rate, the freeze at
+    // fxLive, whole frames: one more of margin): the mark is gone as the blade swings on
+    const g = this.game, rd = fin(g.realDt, 1 / 60), k = fin(g.timeScale, 1) * fin(g.debugTimeScale, 1);
+    const hold = (rd + (Math.max(0, fin(g.hitstopTimer, 0)) + rd) * fin(CONFIG.render?.fxLive, 0.6)) * k;
+    this.fx.edgeFlash(this.sweep, z, heavy, crit, ridge, hold);
   }
 
   /**
@@ -2146,6 +2233,13 @@ export class Player {
       this.yaw = Math.atan2(I.x, I.z); // roll toward the input
     }
     this.rollBack = back;
+    // its first frame carries on only what was already moving him its way (_tickRoll sets `want` from
+    // the next frame on: the frame before's drove this one, and out of a swing that was the swing's
+    // step along the old facing, 15-30 cm in one frame, forward even for a backstep). A run into a
+    // roll the same way, or a roll from standing, is unchanged
+    const along = Math.max(0, this.want.x * this.rollDir.x + this.want.z * this.rollDir.z);
+    this.want.x = this.rollDir.x * along;
+    this.want.z = this.rollDir.z * along;
     this.atk = null;
     this.chargeK = 0;
     this._enter('roll', back ? 'backstep' : 'roll', 0.05);
@@ -2179,8 +2273,11 @@ export class Player {
     const light = def.kind === 'light';
     this.atk = {
       def, t: 0, hit: false, prevT: 0, gust: false, impact: false, flared: false, lunge: null, travel: fin(def.travel, 0),
+      // hitAt: the attack clock at the contact (-1 none); cutDir: the blade's unit travel there ({x, y, z},
+      // world) or null; glintZ: how far up the edge the glint has run (fx.edgeGlint)
+      hitAt: -1, cutDir: null, glintZ: null,
       pending: light && this.lmb.held, // still held: may become a charge (the swing waits at the coil)
-      damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0,
+      damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0, relT: 0, shaped: false, svx: 0, svz: 0,
     };
     this.chargeK = 0;
     if (!def.keepYaw) this.yaw = this._aimYaw(this.yaw); // commit the swing direction
@@ -2248,7 +2345,8 @@ export class Player {
   _startHeavy(def, st) {
     this.atk = {
       def, t: 0, hit: false, prevT: 0, gust: false, impact: false, flared: false, pending: false,
-      lunge: 0, travel: st.travel, damage: st.damage, poise: st.poise, charge: st.k,
+      lunge: 0, travel: st.travel, damage: st.damage, poise: st.poise, charge: st.k, relT: 0,
+      hitAt: -1, cutDir: null, glintZ: null, // (as _startAttack)
     };
     this.releaseK = st.k;
     this.chargeK = 0;
@@ -2303,6 +2401,7 @@ export class Player {
     if (a.pending) {
       if (!this.lmb.held) {
         a.pending = false; // tap: the swing goes ahead
+        a.relT = a.t; // its step starts here (the root's step in; a late release compresses it)
         this._swingStarted(d, 0);
       } else if (this.lmb.t >= CHARGE.hold) {
         this._startCharge();
@@ -2319,7 +2418,7 @@ export class Player {
     if (t < W && !d.keepYaw) this.yaw = turnToward(this.yaw, this._aimYaw(this.yaw), TUNE.windupSteer * dt);
     // lunge forward through the strike (stretched by the step-in assist); a dashing heavy's root
     // travel (the cleave, the execution's thrust) is front-loaded through its active frames
-    let lv = 0;
+    let lv = 0, shaped = false;
     if (d.dash) {
       if (t >= W && t <= W + A) lv = (a.travel / A) * (1.5 - (t - W) / A);
     } else if (a.travel > 0) {
@@ -2328,14 +2427,18 @@ export class Player {
       const T = W + A;
       if (!a.pending && t <= T) lv = (a.travel / T) * (1.4 - (0.8 * t) / T);
     } else {
-      const l0 = W - 0.08, l1 = W + A;
-      if (!a.pending && t >= l0 && t <= l1) {
+      // (the exact share of the step this frame. Nothing while the button is still held: it may
+      // become a charge; a late release starts the step there and compresses it)
+      shaped = true;
+      const LS = TUNE.lungeShape, l0 = Math.max(W - LS.pre, fin(a.relT, 0)), l1 = Math.max(W + A * LS.end, l0 + LS.min);
+      if (!a.pending && t > l0 && t - dt < l1 && dt > 1e-6) {
         if (a.lunge === null) a.lunge = this._lungeFor(d);
-        lv = a.lunge / (l1 - l0);
+        lv = (a.lunge * (smoothstep(l0, l1, t) - smoothstep(l0, l1, t - dt))) / dt;
       }
     }
     this.want.x = Math.sin(this.yaw) * lv * sp;
     this.want.z = Math.cos(this.yaw) * lv * sp;
+    a.shaped = shaped; // (_integrate lands the root's velocity on this step's shape)
 
     if (t >= W + A) {
       const r = (t - W - A) / R;
@@ -2502,9 +2605,24 @@ export class Player {
         lambda = 0;
         break;
       case 'attack':
-      case 'heavy':
-        lambda = 30;
+      case 'heavy': {
+        lambda = TUNE.attackDamp;
+        const a = this.atk;
+        if (a?.shaped) {
+          // a light's shaped step (`want`): through the filter alone it ran ~2 frames late (74 % of it
+          // by the plant, still 0.8-1.4 m/s past the cut). The velocity lands ON the step's shape each
+          // frame, and only what it carries beyond the shape it had last frame (atk.svx / svz: a run's
+          // momentum into the swing) dies out through the filter. (`want` stays the step's own speed:
+          // a roll out of the swing starts from it)
+          const k = 1 - Math.exp(-lambda * dt);
+          v.x = w.x + (v.x - fin(a.svx, 0)) * (1 - k);
+          v.z = w.z + (v.z - fin(a.svz, 0)) * (1 - k);
+          a.svx = w.x;
+          a.svz = w.z;
+          lambda = 0;
+        }
         break;
+      }
       case 'stagger':
       case 'knockdown':
       case 'guardBreak':
@@ -2629,23 +2747,38 @@ export class Player {
       const prevT = a.prevT;
       a.prevT = t;
       const crit = this.critTimer > 0;
+      const armed = !!this.rig.loadout?.weapon;
       // any overlap of this frame with the active window counts (robust to long frames)
       if (t >= W && prevT <= end + 0.04) {
-        this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit);
+        // the hit first: a cut that lands this frame draws its contact, not the arc's glint
+        if (!a.hit && prevT <= end) this._tryHit(a);
+        // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
+        this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
-        // edge runs just past the steel's point (fx.arcAt), not at the end of the reach
-        if (!a.glint && d.kind !== 'thrust' && t >= W + d.active * (d.kind === 'cleave' ? 0.82 : 0.6)) {
+        // edge runs just past the steel's point (fx.arcAt), not at the end of the reach. A landed
+        // cut's core is the beat's one star: a whiff keeps the glint
+        if (!a.hit && !a.glint && d.kind !== 'thrust' && t >= W + d.active * (d.kind === 'cleave' ? 0.82 : 0.6)) {
           a.glint = true;
           const f = this.fx.arcAt(d.kind);
           this._tip.lerpVectors(sw.a, sw.b, f);
           this._tipPrev.lerpVectors(sw.pa, sw.pb, f);
           this.fx.arcGlint(this._tip.x, this._tip.y, this._tip.z, this._tip.x - this._tipPrev.x, this._tip.y - this._tipPrev.y, this._tip.z - this._tipPrev.z, !!d.heavy, crit);
         }
-        if (!a.hit && prevT <= end) this._tryHit(a);
         // the sweep's snap flares the coat tails (cosmetic: the animator's own noise, not the RNG)
         if (d.kind === 'light' && !a.flared) {
           a.flared = true;
           this.anim.kickCoat(0.32, this.anim.noise);
+        }
+      }
+      // the edge glint runs up the leading edge as the cut comes in (fx.edgeGlint): from just before
+      // the active frames until the cut lands (after the hit test: never a second star on the contact
+      // frame) or reaches the arc's glint on a whiff. Not the execution's thrust
+      if (armed && !a.hit && d.kind !== 'thrust') {
+        const G = EDGE_GLINT, g0 = W - G.lead, g1 = W + d.active * (d.kind === 'cleave' ? G.atCleave : G.at);
+        if (t >= g0 && prevT <= g1) {
+          const u = clamp((t - g0) / (g1 - g0), 0, 1), z = lerp(G.z[0], G.z[1], u ** G.ease);
+          this.fx.edgeGlint(sw, a.glintZ ?? G.z[0], z, this.bladeFar, crit, fin(this.game.realDt, 1 / 60), d.glint === 'ridge');
+          a.glintZ = z;
         }
       }
       if (d.kind === 'cleave') {
@@ -2720,7 +2853,8 @@ export class Player {
     if (!dr || typeof dr.takeHit !== 'function' || dr.state === 'dead' || dr.state === 'dying') return;
     const spheres = dr.hurtSpheres;
     if (!Array.isArray(spheres) || !spheres.length) return;
-    if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit);
+    // (viaShards: the blade is in the ground, the shards are the contact: no drawn cut)
+    if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit, true);
   }
 
   _tryHit(a) {
@@ -2738,8 +2872,13 @@ export class Player {
     this._applyHit(a, h);
   }
 
-  /** Deal one swing's damage at contact h {sphere, x, y, z}. */
-  _applyHit(a, h) {
+  /**
+   * Deal one swing's damage at contact h {sphere, x, y, z} (the upright gameplay point the hit test
+   * found). The cut is DRAWN where the drawn blade meets the drawn body (_contactPoint): the FX, his
+   * spray and the damage number go there, and the camera is thrown along the cut. `viaShards`: the
+   * slam's ground burst hit (the blade is in the ground: no drawn cut).
+   */
+  _applyHit(a, h, viaShards = false) {
     const dr = this.game.dragon;
     a.hit = true; // one hit per swing
 
@@ -2747,25 +2886,145 @@ export class Player {
     const part = typeof h.sphere.part === 'string' ? h.sphere.part : 'body';
     const crit = this.critTimer > 0;
     const damage = a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
-    const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) };
-    const point = { x: h.x, y: h.y, z: h.z };
+    const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) }; // the facing: the shove
+    const C = !viaShards && this._contactPoint(dr, d.kind, this._cut) ? this._cut : null;
+    const point = C ? { x: C.x, y: C.y, z: C.z } : { x: h.x, y: h.y, z: h.z };
+    const cut = C ? { x: C.gx, z: C.gz } : null; // the blade's ground-plane travel: his spray
+    const dp = dr.position, x0 = fin(dp?.x, NaN), y0 = fin(dp?.y, NaN), z0 = fin(dp?.z, NaN);
     let dealt = damage;
     try {
-      const r = dr.takeHit({ damage, part, point, dir, poise: a.poise, heavy, crit, swing: true });
+      const r = dr.takeHit({ damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true });
       if (Number.isFinite(r)) dealt = r;
     } catch (err) {
       console.error('[player] dragon.takeHit failed', err);
     }
+    // his shove: a duelist's takeHit moves him at once (TUNING.hitStun push), and the freeze holds the
+    // frame he is drawn in after it: the cut goes with his drawn body (his spray did the same)
+    const mx = fin(dp?.x, NaN) - x0, my = fin(dp?.y, NaN) - y0, mz = fin(dp?.z, NaN) - z0;
+    if (Number.isFinite(mx + my + mz) && mx * mx + my * my + mz * mz < 1) {
+      point.x += mx;
+      point.y += my;
+      point.z += mz;
+      if (C) {
+        C.x += mx;
+        C.y += my;
+        C.z += mz;
+      }
+    }
     // (this.atk may be gone: a deflect or a trade clash bounced him)
     const guarded = (!!a.guarded || !!a.traded) && dealt === 0;
-    this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded });
+    // (the slam's ground shards: the blade is in the ground, no cut: no cut weight, no blade sound)
+    this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded, combo: d.combo ?? 1, weight: viaShards ? null : d.contact ?? (heavy ? 'slam' : 'light'), shards: viaShards });
     // turned by a guard: the guard draws the clash and sets its own freeze; no cut, no sparks of his
     if (guarded) return;
-    this._hitstop(d.hitstop * (crit ? 1.4 : 1) * (d.kind === 'cleave' ? 1 + 0.3 * a.charge : 1));
-    this.game.shake?.(d.shake * (crit ? 1.3 : 1));
-    if (heavy || crit) this.game.punch?.(heavy ? 1.6 : 1.0);
-    this.fx.sparks(h.x, h.y, h.z, dir.x, dir.z, heavy, crit);
-    if (d.kind === 'cleave') this.fx.cleaveImpact(h.x, h.y, h.z, dir.x, dir.z, a.charge, crit);
+    // (the steel flares at its own contact: not when the shards hit and the blade is in the ground)
+    if (!viaShards) this.bladeFlare = Math.max(this.bladeFlare, heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
+    // the contact, for the animator and other areas: when (the attack clock: anim.js attackPose's bite;
+    // −1 = none) and which way the blade went
+    a.hitAt = a.t;
+    a.cutDir = this._cutDir(C, a.cutDir);
+    const HF = HIT_FEEL.crit, k = fin(a.charge, 0);
+    this._hitstop(fin(d.hitstop, 0.05) * (crit ? HF.stop : 1) * (d.kind === 'cleave' ? 1 + 0.3 * k : 1));
+    this.game.shake?.(fin(d.shake, 0) * (crit ? HF.shake : 1));
+    const pm = feel(d.punch, k) + (crit ? HF.punch : 0);
+    if (pm > 0) this.game.punch?.(pm);
+    const km = feel(d.kick, k) * (crit ? HF.kick : 1);
+    if (km > 0 && C) this.game.kick?.(C.cx, C.cy, C.cz, km);
+    if (!viaShards) this.fx.contact(point, d.contact ?? 'light', C, crit || dr.broken === true, k);
+    if (C) this._edgeFlash(C, heavy, crit, d.glint === 'ridge');
+    if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);
+  }
+
+  /** The unit world travel of the blade at contact C (into `out`, reused), or null without one. */
+  _cutDir(C, out) {
+    const l = C ? Math.hypot(C.cx, C.cy, C.cz) : 0;
+    if (!(l > 1e-6) || !Number.isFinite(l)) return null;
+    const o = out ?? { x: 0, y: 0, z: 0 };
+    o.x = C.cx / l;
+    o.y = C.cy / l;
+    o.z = C.cz / l;
+    return o;
+  }
+
+  /**
+   * Where a landed cut is DRAWN (→ out; false when there is no drawn body or no blade): the hit test
+   * runs on the upright gameplay bodies (unleaned, unscaled), so its point floats 13-65 px off the
+   * drawn blade and the drawn body at the game camera. Here the drawn blade's stretch from
+   * CUT_LOOK.from to the arc's edge (fx.arcAt) is met with the boss's DRAWN hurt spheres
+   * (dr.drawnPoint, × dr.drawScale; identity without one, the wyrm): the nearest sphere to that
+   * stretch; the contact is on the blade, moved CUT_LOOK.toBody of the way onto its surface (and at
+   * most CUT_LOOK.offMax off it; on the blade where it is inside). Fills out { x, y, z, f (along the
+   * hit segment), cx, cy, cz (the blade's travel there since last frame, less the hero's own), gx, gz
+   * (its unit ground-plane direction; the facing if it has none), ex, ey, ez (the blade's unit
+   * direction) }. No allocation.
+   */
+  _contactPoint(dr, kind, out) {
+    const sw = this.sweep, H = dr?.hurtSpheres;
+    if (!sw.valid || !Array.isArray(H) || !H.length) return false;
+    const f0 = CUT_LOOK.from, f1 = this.fx.arcAt(kind);
+    const A = this._cA.lerpVectors(sw.a, sw.b, f0), B = this._cB.lerpVectors(sw.a, sw.b, f1);
+    const abx = B.x - A.x, aby = B.y - A.y, abz = B.z - A.z, l2 = abx * abx + aby * aby + abz * abz;
+    if (!(l2 > 1e-8)) return false;
+    const toDrawn = typeof dr.drawnPoint === 'function', sc = toDrawn ? fin(dr.drawScale, 1) : 1;
+    const S = this._cS;
+    let best = Infinity, bu = 0, px = 0, py = 0, pz = 0, sx = 0, sy = 0, sz = 0, br = 0, bd = 0;
+    for (let i = 0; i < H.length; i++) {
+      const q = H[i];
+      if (!q || !(q.r > 0)) continue;
+      S.set(q.x, q.y, q.z);
+      if (toDrawn) dr.drawnPoint(S);
+      if (!Number.isFinite(S.x + S.y + S.z)) continue;
+      const r = q.r * sc;
+      const u = clamp(((S.x - A.x) * abx + (S.y - A.y) * aby + (S.z - A.z) * abz) / l2, 0, 1);
+      const qx = A.x + abx * u, qy = A.y + aby * u, qz = A.z + abz * u;
+      const dd = Math.hypot(qx - S.x, qy - S.y, qz - S.z), g = dd - r;
+      if (g < best) {
+        best = g;
+        bu = u;
+        px = qx;
+        py = qy;
+        pz = qz;
+        sx = S.x;
+        sy = S.y;
+        sz = S.z;
+        br = r;
+        bd = dd;
+      }
+    }
+    if (best === Infinity) return false;
+    const P = this._cP.set(px, py, pz);
+    if (best > 0 && bd > 1e-6) {
+      // the sphere's surface point nearest the blade, and toBody of the way there from the blade (at
+      // most offMax off the surface: a wide gap is the reach band's, the cut lands on the body)
+      const k = br / bd, T = Math.max(CUT_LOOK.toBody, 1 - CUT_LOOK.offMax / best);
+      P.x += (sx + (px - sx) * k - px) * T;
+      P.y += (sy + (py - sy) * k - py) * T;
+      P.z += (sz + (pz - sz) * k - pz) * T;
+    }
+    out.x = P.x;
+    out.y = P.y;
+    out.z = P.z;
+    out.f = f0 + bu * (f1 - f0);
+    // the blade's travel at f since last frame (pa / pb: _combat commits after the hit), less the
+    // root's own (the cleave's dash would tilt the cut forward)
+    const cur = this._cA.lerpVectors(sw.a, sw.b, out.f), prev = this._cB.lerpVectors(sw.pa, sw.pb, out.f);
+    const gdt = fin(this.game.dt, 0);
+    out.cx = cur.x - prev.x - fin(this.groundVel.x, 0) * gdt;
+    out.cy = cur.y - prev.y;
+    out.cz = cur.z - prev.z - fin(this.groundVel.z, 0) * gdt;
+    const gl = Math.hypot(out.cx, out.cz);
+    if (gl > 1e-4) {
+      out.gx = out.cx / gl;
+      out.gz = out.cz / gl;
+    } else {
+      out.gx = Math.sin(this.yaw);
+      out.gz = Math.cos(this.yaw);
+    }
+    const ex = sw.b.x - sw.a.x, ey = sw.b.y - sw.a.y, ez = sw.b.z - sw.a.z, el = Math.hypot(ex, ey, ez) || 1;
+    out.ex = ex / el;
+    out.ey = ey / el;
+    out.ez = ez / el;
+    return Number.isFinite(out.x + out.y + out.z + out.f + out.cx + out.cy + out.cz + out.gx + out.gz + out.ex + out.ey + out.ez);
   }
 
   // ------------------------------------------------------------------ fx / visuals
@@ -2833,7 +3092,7 @@ export class Player {
       // the blade's dot halo: dim at idle, brighter while it glows (strikes, charge, crit)
       if (this.alive && this.object3d.visible !== false && !hidden && armed) {
         const bu = this.rig.materials.blade.uniforms;
-        this.fx.bladeHalo(dt, clamp((bu.uInkGlow.value - 0.16) * 0.8, 0.25, 2), this.bladeFar);
+        this.fx.bladeHalo(dt, clamp((bu.uInkGlow.value - 0.16) * 0.8 + TUNE.bladeFlare.halo * this.bladeFlare, 0.25, 2), this.bladeFar);
       }
     }
     // the violet gem: an always-on glow point, idle glints, a fast flicker while charging. Every
@@ -2852,7 +3111,8 @@ export class Player {
       this.fx.gemTick(dt, this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + this.chargeK : 0.35, gv.x, gv.z, gv.y);
       this.gemT -= dt;
       if (this.gemT <= 0) {
-        this.gemT = charging ? 0.22 : TUNE.gemGlintEvery * (0.6 + 0.8 * Math.random());
+        // (the animator's own noise: a cosmetic timer must not move the AI's seeded Math.random)
+        this.gemT = charging ? 0.22 : TUNE.gemGlintEvery * (0.6 + 0.8 * this.anim.noise());
         // only while the hilt is steady: a glint left behind by a fast swing floats off the gem
         if (charging || LOCO.has(this.state)) this.fx.gemGlint(this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + 0.5 * this.chargeK : 0.45, gv.x, gv.z, gv.y);
       }
@@ -2900,7 +3160,8 @@ export class Player {
     // wide and its seams are sub-pixel, so the flats self-light more with distance: the sword stays
     // the brightest thing on the hero there, while close-ups keep dark steel with glowing edges.
     // (lean reference match: 2.3 → 1.25 × far: the self-lit blade bloomed into a halo that hid his body)
-    let ink = 0.6 + 1.0 * far + 0.08 * Math.sin(this.time * 2.6), glow = 1.45 + 0.15 * Math.sin(this.time * 3.7);
+    const restInk = 0.6 + 1.0 * far;
+    let ink = restInk + 0.08 * Math.sin(this.time * 2.6), glow = 1.45 + 0.15 * Math.sin(this.time * 3.7);
     const a = this.atk, st = this.state;
     if (st === 'charge') {
       const k = this.chargeK;
@@ -2909,8 +3170,10 @@ export class Player {
     } else if (a && (st === 'attack' || st === 'heavy') && !a.pending) {
       const d = a.def, t = a.t;
       if (t >= d.windup - 0.06 && t <= d.windup + d.active + 0.12) {
-        ink = d.heavy ? 2.2 : 1.6;
-        glow = d.heavy ? 1.5 : 1.25;
+        // relative to rest: at the game camera the rest ink is already 1.6 and the rest glow 1.45 (a
+        // flat 1.6 / 1.25 left a light strike no brighter than the idle blade there, its seams dimmer)
+        ink = Math.max(d.heavy ? 2.2 : 1.6, restInk + (d.heavy ? 0.6 : 0.3));
+        glow = Math.max(1.45, d.heavy ? 1.6 : 1.5);
       }
       if (d.dash) {
         const fade = 1 - smoothstep(d.windup + d.active, d.windup + d.active + 0.3, t);
@@ -2952,6 +3215,26 @@ export class Player {
     // … and the dark steel between them lights up too (gaps are base × light)
     bu.uBase.value.setRGB(BLADE_BASE[0] + 0.2 * far, BLADE_BASE[1] + 0.36 * far, BLADE_BASE[2] + 0.5 * far);
     this.bladeFar = far;
+    {
+      // the flare where the game camera sees it: part 17's pass gains (the art pass compresses luma, so
+      // uInkGlow alone does not read at 36 m; the fill gain is linear past the far HDR cap, and the
+      // blade there is one 4 px cell of mostly silhouette line, so its ink AND rim lines flare too).
+      // Part 17 is only the hero's sword (gear/wanderer.js M.blade / M.bladeTip; HERO_INK.bladeTip
+      // writes it last). ABSOLUTE values every frame: another buildHero (the boss's, setLoadout) resets
+      // the shared arrays; at g = 1 this writes exactly the HERO_INK base
+      const F = TUNE.bladeFlare, B = HERO_INK.bladeTip, P = B.part;
+      const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.06 && a.t <= a.def.windup + a.def.active + 0.12;
+      const g = this.alive ? 1 + (inStrike ? (a.def.heavy ? F.strike[1] : F.strike[0]) : 0) + this.bladeFlare : 1;
+      if (Number.isFinite(g)) {
+        const U = this.game.U, lk = 1 + F.line * (g - 1), rl = B.rimLine ?? B.line;
+        const pf = U?.uHeroPartFill?.value?.[P], pi = U?.uHeroPartInk?.value?.[P], pr = U?.uHeroPartRim?.value?.[P];
+        if (pf) pf.x = (B.fillGain ?? 1) * g;
+        if (pi) pi.w = B.line[3] * lk;
+        if (pr) pr.w = rl[3] * lk;
+      }
+      // (after the write: the contact frame shows the full flare; game dt, so it holds through the freeze)
+      this.bladeFlare = Math.max(0, this.bladeFlare - (Number.isFinite(dt) ? dt : 0) / F.fall);
+    }
     // the violet gem breathes; burns brighter while charging and through heavy swings
     const heavyNow = st === 'charge' || flurrying || (plunging && this.pl.phase <= PL.RIDE) || (!!a && !!a.def?.heavy && (st === 'attack' || st === 'heavy'));
     const gemTarget = (heavyNow ? 1.6 : 0.8) + 0.25 * Math.sin(this.time * 2.1) + (st === 'charge' ? 0.8 * this.chargeK : 0);

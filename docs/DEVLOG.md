@@ -62,6 +62,104 @@ run out.
 
 ---
 
+## 2026-11-14 — Session 30: the free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from
+
+**Owner:** "The character left hand pose and animation looks unnatural and weird during the attack
+animations. Lets focus on making the characters motions attack animation and overall design and look
+be better." Asked first: the free hand reads "stiff, like a mannequin" and "the hand itself" is wrong;
+the style is **sword fingers** (jian jue); also improve weight and impact, footwork and body, the hero's
+design (as options: "new look, show options") and the sword and its effects. Kept distinct from the
+Ash Disciple: no douli, no red tassel, the moonlit cyan/violet longsword. Branch `player/free-hand`
+from `main` (7855769), with `player/sword-fx` and `player/outfits` merged in; built as three tracks,
+each with an independent review and a fix round.
+
+**Measured first** (the old free hand, through the chain): rigid on the forearm (no wrist), a binary
+open/fist swap at `twoHand` 0.6 that popped the fist 9-21 cm, the off elbow locked at 152-176° on the
+grip, the elbow ping-ponging 47-75° to 116-126° between keys, and no counterbalance (the hand's travel
+against the blade's: cos −0.29..+0.55).
+
+**Done:**
+- **The free hand** (ADR-086): a wrist joint (`arms.L.wrist`, `arms.L.point`), turned by a spring inside
+  human limits (sub-stepped: stable from 144 to 15 fps); the sword-fingers hand (index and middle
+  straight and pressed together, ring and little folded under the thumb, 1.3× long so the point
+  survives the glyph pass); a choreography for every cut: it gathers at the sword wrist and is thrown
+  opposite the cut, overhead only rarely; the fist on the grip only once the hand is there (no pops);
+  the free elbow keeps ≥ 23° of bend on the grip. Every outfit's arms build it (`gear/hands.js`).
+- **Weight and footwork** (ADR-087): a light's step pushes off and brakes at the plant; the hips lead
+  the hand by 0.033 s, the chest by 0.017 s; anticipation and overshoot keys; deeper bow stances on
+  the thrusts and the falling cuts; the edge **bites** on a landed hit (the blade holds where it bit
+  through the freeze, the hips drop 4-6 cm, then it tears on through); planted feet pivot and follow
+  instead of skating (worst slide 2 cm, was 7-30); the whirl hops round its turn and overshoots.
+- **A cut that lands** (ADR-088): drawn where the drawn blade meets the drawn body (it sat 13-65 px
+  off); a slash line along the cut with a tick across it, sparks thrown along the blade's travel, a
+  flare on the steel and a glint up the edge, the camera kicked along the cut, a punch on every landed
+  cut, a `cut` sound layer, the struck duelist shudders through the freeze; the white star that hid
+  both fighters is gone. Per-attack weights are data (`combat.js` `contact`, `punch`, `kick`).
+- **Options for the owner** (ADR-089): three outfits behind `?heroLook=` (Moonlit Robe, Swallow, Moon
+  Warden; each also with its face in shadow, `-shade`) and three sword looks behind `?sword=` (sheet,
+  ribbon, crescent); today's look and sword stay the default. Lab rows OUTFIT and sword. Sheets:
+  outfits (four sides solid + the game camera), faces, duels, swords.
+- After the merge, from the close-ups: the two straight fingers splayed into a V (a peace sign) and
+  the curled two stood out as knobs; the pair is now two touching tapered capsules, the curled two lie
+  on the palm, the palm is flatter.
+
+**Found on the way:** `setLoadout` let a hero rebuild wipe the shared part ink (the Lord's red part
+19); the wrist spring was unstable at ≤ 35 fps (period-2 flip of ~30° a frame at rest; sub-stepped);
+the fist popped to sword fingers on the plunge's hang; the cleave's bite put the blade 2.5 cm into his
+head (the cleave's bite folds no chest or head now); the first hop whirl scissored the feet (now each
+foot is carried round from where it stands); a duelist's drawn cut floated off his body after his
+shove (moved with the shove); a slam's shards-only hit played the blade's cut.
+
+**Round 2, the owner on the preview (ADR-090):** "keep the new skins for now to be used in the
+future. we will use the current todays look for now as the default. the right hand looks very
+disfigured. when charging, the sword is piercing the characters face, make it have more distance
+away from the face. somethign about the arms still feel unnatural and stiff".
+- **The outfits and sword looks stay** behind `?heroLook=` / `?sword=` and the Lab rows as options
+  for later; today's look and sword are the default. Nothing is removed.
+- **The sword hand:** the fist was four thin discs and a plank (since ADR-041, on every rig): now
+  finger rolls that close into one hand with shallow grooves and a rounded back of the hand.
+- **The charge:** the blade stood 10 cm from the head's axis, inside the hood. The hands sit lower
+  and out to his right and the blade leans out: 25 cm through the hold, 21 cm through the release.
+- **The arms**, measured in the chest's frame: no swing opened an elbow past 124-130° (the soft
+  reach crumpled every full-reach key); both elbows flared out on the run; the free arm ran as one
+  87° crook; strafing, the arms did not swing at all. Now: 143-159° at contact (`HERO_SOFT`, hero
+  only, never locked), elbows back beside the ribs, the free arm opens and folds 56° a stride, the
+  arms swing in a strafe (`armF`), an open hand on the run, sword fingers 1.15×, the flung "wing"
+  sloped down from the shoulder.
+- **Tests:** a new HEROARMS scenario (rest, run, strafe, sprint, every swing's opening, the lock
+  bound, the charged blade's clearance). HERO's "never locks" bound is 15° (was 23°).
+- **An independent review of round 2** (three reviewers, headless probes against the parent
+  commit) confirmed the gains (frozen-elbow stretches 55 → 17 over one script; the charge 6.8 →
+  26.1 cm by their probe) and found: the arms still froze in an exactly sideways strafe, and
+  HEROARMS' strafe check passed only because he slid round a stone of the harness; a fast
+  direction flip threw the free hand 20 cm in one frame; the Ash Disciple's running arm had changed
+  with the hero's (his sleeve into his ribs); the cleave's new wind-back key made a hitch. Fixed:
+  the swing's sign is latched and eased (a pure strafe swings 27 cm; a flick moves the hand 7.4 cm
+  a frame, the parent's 8.2), the hero's loco numbers are gated on `A.freeHand` (the Disciple is
+  bit-identical again), the key moved to u 1.3, the scenario runs in a clear lane and asserts the
+  strafe is one. Also from their ranked list of what still read stiff: the guard breathes and rides
+  the walk; the way home from a swing starts earlier and lands softly; the sword arm rides the
+  stride backing away. LOOKS' budget is 27k triangles (the new fist is 624, was 460).
+- Left from the review: coming up from a held light's coil into the charge the blade still turns
+  52° in one frame (87° before this session); the roll's exit opens the free elbow to 155-160°.
+- Found on the way: the owner's gamepad drives any visible page, the filming page too (its
+  `navigator.getGamepads` has to be stubbed while they play).
+
+**Verification:** `npm test` (integ incl. HEROHAND, HEROWEIGHT, LOOKS, CUTFX; DUEL; LORD) green after
+the merge; `npm run build` OK. Filmed in the pane: the chain (solid and the game camera), contact and
+follow-through stills, the hand close-up, the outfit and sword sheets, the cut's contact on the Ash
+Disciple, the whirl's hop against carry and the base.
+
+**Open / next:**
+- The owner's look at round 2 on the preview (the arms, the charge, the fist); the whirl's feet
+  (`hop`, shipped, or `carry`) are still theirs to pick. The outfits and sword looks stay as options.
+- On the phone: the lunge is ~35 % longer on a short click (the shaped step), the kick's feel, fps.
+- The wrist sits on a limit for much of the falling backhand, the falling cut and the whirl (by
+  design of the keys; tune in the Lab close-up if it reads stiff).
+- Hems and cloak tips dip under the grass in the death's collapse, and today's arm drape 17 cm while a
+  knockdown death settles (printed, not asserted; `_hemY` checks only the hem's centre).
+- The Lord's black plate still takes the 'cloth' hit sound.
+
 ## 2026-11-14 — Session 29: the Starless Lord in black plate; how he moves; three more spells
 
 **Owner:** "improve the new bosses animation, movesets, spell effects, force effects, character detail

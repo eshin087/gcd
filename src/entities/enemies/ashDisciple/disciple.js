@@ -68,8 +68,9 @@ export class AshDisciple extends Duelist {
   /** Swing trails (ember once kindled), the kindled blade's embers, the stars of a break. */
   afterPose(dt, a) {
     const t1 = this._tip;
-    // the blade's sweep from the snap out of the cock through the follow-through
-    if (a && this._tipOk) {
+    // the blade's sweep from the snap out of the cock through the follow-through (not through a
+    // shudder: its flicker is no swing)
+    if (a && this._tipOk && !this.shuddering) {
       for (const b of a.beats) {
         if (b.feint || a.t < b.impact - 0.32 * b.W - 0.02 || a.t > b.end + 0.6 * b.A + 0.05) continue;
         this.fx.sweep(this._hiltPrev, this._tipPrev, this._hilt, this._tip, this.phase >= 2);

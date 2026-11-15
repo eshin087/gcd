@@ -244,8 +244,8 @@ Rules of thumb:
   tight line. A dark halo (two rings round his screen position, fading in from 8 to 20 m) darkens
   the world grid next to him, so he cuts out of the grass. The outline is one letter thick: a
   two-cell band turned the ~12-letter-wide figure into a wireframe.
-- **Blade:** drawn 1.25 m with the pommel (ADR-038; the 1.64 m portrait blade was "way too long and
-  dark" and ran through the coat), the single-figure image's sword since ADR-034: broad at the
+- **Blade:** drawn 1.12 m with the pommel (ADR-073; 1.25 m since ADR-038, and the 1.64 m portrait
+  blade was "way too long and dark" and ran through the coat), the single-figure image's sword since ADR-034: broad at the
   guard, one long taper to a sharp point, a ridge line between the edges, hooked barbs at the base,
   lightning notches up the lower half, a guard swept up toward the blade round a violet four-point
   star gem. It is **moonlit**: a lit blue core (`BLADE_BASE` `[0.05,0.1,0.2]`, inks `[0.3,0.52,0.9]`
@@ -257,6 +257,24 @@ Rules of thumb:
   through his back or legs, and the coat hangs inside or drapes over it instead of passing through
   (a few run frames still cross a panel). *Superseded:* the 2026-11-08 depth pull that drew it up to
   0.65 m nearer the camera (ADR-022) put the sword through his back from behind.
+  - **It flares where the game camera can see it** (`TUNE.bladeFlare`, player.js): at 36 m the blade
+    is one 4 px cell, mostly silhouette line, and the art pass compresses luma (v = 1 - e^(-k luma),
+    far HDR capped at 1.3), so its uInkGlow flare never showed there. Part 17's pass gains are the
+    lever (the fill gain is linear past the cap; the ink AND rim lines flare at half the fill's
+    rate): x1.12 through a light strike's window, x1.2 a heavy's, +0.5 on a landed cut (+0.75 heavy
+    or crit), held through the freeze and cooling in 0.12 s; exactly the `HERO_INK` base at rest.
+    The strike's ink and glow are relative to rest (a flat 1.6 / 1.25 left a light strike no
+    brighter than the idle blade at 36 m, its seams dimmer).
+  - **The edge glint** (`EDGE_GLINT`, fx.js): from 0.03 s before the active frames a 9 px cold `+`
+    runs up the LEADING edge (the ridge for the stab's point-first drive) from the forte to the point,
+    easing in, two or three `|` strokes behind it; on a whiff it reaches the point as the arc's glint
+    pops. A landed cut stops it and marks the steel itself: four white `|` strokes along the leading
+    edge from the contact to the point (`edgeFlash`; no star: the cut's core is the beat's one). It
+    lives the frames the freeze holds and is gone as the blade swings on (with no velocity, a longer
+    life left a bright bar for two frames where the blade had been).
+  - **The arc's tone** (`ARC_TONE`): the lights' arc cools from white-hot to indigo; the slam, the
+    cleave, the thrusts and the plunge's dive cool to the gem's violet. For 0.06 s after a cut lands
+    the arc's edge bites: white-hot, opaque, 15 % thicker.
 - **Build (athletic, ADR-040):** the owner found the lean match "a bit too lanky". On the same
   skeleton (`BODY` in `player/model.js`): chest 0.39 m over a 0.27 m waist, shoulder joints ±0.178
   (≈ 0.52 m across the deltoids), upper arms r 0.066, thighs r 0.086, boots r 0.064, a head drawn
@@ -270,6 +288,14 @@ Rules of thumb:
 - **Hands (ADR-041):** a gauntlet fist closed round the grip (finger rolls with ink lines between
   them, a bright knuckle ridge) and a loosely closed left glove with skin fingertips. The sword hand
   used to be one small ellipsoid hidden behind the guard.
+- **The free hand: sword fingers (jian jue).** The hero's free hand turns on its own wrist and holds
+  sword fingers (index and middle straight and pressed together, 1.15× long so the point survives
+  the glyph pass (1.3× read up close as two claws); ring and little curled, the thumb across them)
+  at rest and through the chain; it opens on the run, to take the grip, to brace on the grass, to
+  drink, and when he is hit or falls. At the 36 m
+  game camera the hand is ~2 cells: it reads by WHERE it goes (one arm line through the body against
+  the blade), the pale one-cell point off the end of that line and the way the point aims; the finger
+  shape itself reads up close. A pale hand needs dark cloth round it: keep drapes off the left wrist.
 - **Profile (ADR-041):** the cloak's width belongs to the front and back views (the reference's wide
   A). From the side he is slim: the outer cape sheets turn to his right (`CAPE_SHEETS.ry`), the ones
   down his back hang close (`out` 0.24 / 0.2), the front coat panels hang nearly straight (`flare`
@@ -454,3 +480,39 @@ picture for 3 – 8 frames, so the rule is: **lines, not light**.
   orange-red = he beat it away and his counter is coming.
 - Sparks and lights advance through a hit-stop (`game.fxDt`), so nothing is pre-aged to "look
   mid-burst": the fighters freeze, the burst does not.
+
+### A cut that lands (2026-11-14; `combat/cutFx.js`, `player._contactPoint`)
+The hero's blade into a body (the wyrm's scales, a duelist's cloth) is the clash's sibling, under
+the same rule, **lines, not light**, and it is drawn ONCE, where the picture shows the blade meet
+the body.
+- **The drawn contact:** the hit test runs on the upright, unscaled gameplay bodies, so its point
+  floated 13 - 65 px off both drawn figures (a median 1.06 m off on the Ash Disciple). The cut is
+  drawn where the DRAWN blade (from `CUT_LOOK.from` to the arc's edge) meets the boss's DRAWN hurt
+  spheres (`drawnPoint`), 70 % of the way from the blade onto the body and never more than 0.12 m
+  off its surface (the wyrm's reach band hits a chest 1 - 2 m above the drawn blade). A duelist is
+  shoved in the same tick (0.14 m, a heavy 0.32 m) and the freeze holds the frame he is drawn in
+  after it, so the cut (and his spray) moves with him: ≤ 0.09 m off his drawn body in that frame.
+- **One line, not a burst:** a tapered cold slash line LAID ACROSS THE BODY along the cut's screen
+  direction through the contact (0.9 m for a light ... 1.6 - 1.9 m for the cleave; most of it ahead
+  of the contact, along the cut), its far end breaking off in one or two dry-brush gaps. A heavy blow
+  doubles it (a fainter second line on the hilt's side) and lays a short tick across it along the
+  blade; a crit adds that tick as a cross. A thrust's line runs along the blade (a puncture), with a
+  small puff of points round the entry; its tick (the execution's, a crit stab's) squares across the
+  line instead (`CUT_LOOK.crossMin`: whenever the blade is within 0.5 rad of the line on screen).
+- **Sparks along the cut:** 8 - 22 thin `|` streaks thrown in the screen's plane, three quarters
+  inside +-0.45 - 0.6 rad of the cut, a quarter across it; 2 - 6 falling motes. His own spray (ash and
+  embers) flies along the blade's travel too, not along the hero's facing.
+- **The core:** one `*`, 0.22 - 0.3 m, two frames. The 0.75 - 1.15 m `*` it replaces blotted out both
+  figures through the freeze-frame.
+- **Cold palette:** pale steel-blue lines cooling to indigo (the crit's colder and bluer); the
+  clash keeps the white-gold. **No screen flash:** `flashPulse` stays steel on steel.
+- **Budgets** (additive pool, desktop): light 19, sweep 23, point 22, slam 59, cleave 61 - 69,
+  execute 63 spawns; a crit at most 11 more; the LOW preset trims the sparks, motes and ring to 0.65
+  (the line, the tick and the core stay). A thin ring opens on heavy blows (two on the execution).
+- **The look is the owner's pick** (the Lab's 'cut' row, `?cutfx=fan`): 'gash' (the line, default)
+  or 'fan' (no line or tick: a wider fan of sparks, the nearest to the look before).
+- **The shudder:** through the freeze a struck duelist's drawn figure flickers +-0.045 m (a heavy
+  0.07 m) side to side along the cut, fading: 2 - 3 px at 36 m, while the hero holds the frame. Drawn
+  only (`lean.ox / oz`); the Lab's 'shudder' toggle turns it off. A sword cut's only (`takeHit`'s
+  `swing`: not the Lord's own returned bolt); his blade's sweep trail pauses while it runs (the
+  flicker would draw zig-zag strokes).

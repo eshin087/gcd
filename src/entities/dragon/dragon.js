@@ -201,7 +201,18 @@ export class Dragon {
     this.flinch = Math.min(1.2, this.flinch + (part === 'head' ? 0.9 : 0.3) * (o.heavy ? 1.3 : 1));
     this.flinchHead = part === 'head';
     const pt = o.point;
-    if (pt && Number.isFinite(pt.x + pt.y + pt.z)) this.fx.hitSpark(pt.x, pt.y, pt.z, this.flinchDir.x, this.flinchDir.z, !!o.heavy || crit);
+    // the spray flies along the cut (o.cut: the blade's ground-plane travel at the contact; the
+    // flinch's way when it is not given)
+    let sx = Number(o.cut?.x), sz = Number(o.cut?.z);
+    const sl = Math.hypot(sx, sz);
+    if (!Number.isFinite(sl) || sl < 1e-3) {
+      sx = this.flinchDir.x;
+      sz = this.flinchDir.z;
+    } else {
+      sx /= sl;
+      sz /= sl;
+    }
+    if (pt && Number.isFinite(pt.x + pt.y + pt.z)) this.fx.hitSpark(pt.x, pt.y, pt.z, sx, sz, !!o.heavy || crit);
 
     this.emit('dragon:hurt', { damage: dmg, part, hp: this.hp, crit });
 

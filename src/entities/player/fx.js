@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { DIM } from './model.js';
 import { CLASH, clashBurst } from '../../combat/clashFx.js';
+import { cutBurst } from '../../combat/cutFx.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
 // cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
@@ -8,7 +9,11 @@ import { CLASH, clashBurst } from '../../combat/clashFx.js';
 // sparks, guard-break shards, Ghostep afterimage + streak, charge gather / ready glint, crit-window
 // motes. Every glyph used here is in the world atlas.
 
-const R = (a, b) => a + Math.random() * (b - a);
+// cosmetic noise from this module's own stream: the seeded sims replay the AI's Math.random, and an
+// arc stroke or a mote must never move it
+let fseed = 0x51ed270b;
+const rnd = () => (fseed = (Math.imul(fseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+const R = (a, b) => a + rnd() * (b - a);
 
 const COL = {
   trail: [0.4, 1.25, 2.3], trailEnd: [0.02, 0.14, 0.45], // icy cyan arcs
@@ -52,6 +57,61 @@ const COL = {
 // this crescent and afterimages of the blade; the owner picked the crescent and the others went.)
 export const ARC_LOOK = { at: 0.64, edge: 0.11, life: [0.2, 0.27], veil: [[0.94, 0.3], [0.88, 0.2], [0.82, 0.12], [0.76, 0.06]], motes: 1 };
 const ARC_HEAVY = 1.22; // the slam's and the cleave's arc reaches this much further out
+/** The arc's colours (trail): the lights cool from white-hot to indigo; the heavy blows (the slam, the
+ *  cleave, the thrusts, the plunge's dive) to the gem's violet, so a heavy reads apart from a light
+ *  at a glance (the gem already burns brighter through them); a crit stays the crit's cold blue. */
+export const ARC_TONE = {
+  light: { core: COL.arcCore, veil: COL.arcVeil, end: COL.arcEnd },
+  heavy: { core: [1.9, 2.45, 3.1], veil: [0.42, 0.8, 2.3], end: [0.3, 0.07, 0.85] },
+  crit: { core: COL.crit, veil: COL.crit, end: COL.critEnd },
+};
+
+/**
+ * The edge glint (edgeGlint): a small cold '+' running up the LEADING edge of the steel from the
+ * forte toward the point as a cut comes in, its trail a few '|' strokes behind it; it starts `lead`
+ * s before the active frames and reaches the point at `at` of them (`atCleave` for the cleave), its
+ * height along the blade z[0] → z[1] (sword space, m) easing in (u^ease). Re-spawned on the steel
+ * every frame (no velocity): it rides the blade and is held through a freeze.
+ *   step / maxSub  m of the glint's travel per sub-step / at most this many a frame
+ *   hw      the drawn blade's half width along it: [[z, half width], ...] (piecewise linear)
+ *   inset   the glint sits at this share of the half width (on the edge's bevel, not past it)
+ *   ridge   the blade's travel must be at least this much across its flat (normalised) for an edge
+ *           to lead; under it (a thrust along the blade) the glint runs up the ridge
+ *   flash   edgeFlash: the contact's mark ON the steel, n '|' strokes laid along the leading edge
+ *           from the contact up toward the point, `step` m apart (× heavy for a heavy blow or a crit).
+ *           It has no velocity: it lives the frames the freeze holds (the player passes them as
+ *           `hold`; at most `life`, at least `lifeMin` s of fx time), fading to `holdEnd` × alpha,
+ *           then is gone as the blade swings on (a longer life left a bar where the blade was)
+ */
+export const EDGE_GLINT = {
+  lead: 0.03, at: 0.6, atCleave: 0.82, z: [0.24, 0.9], ease: 2, step: 0.08, maxSub: 4,
+  hw: [[0.2, 0.042], [0.79, 0.034], [0.93, 0]], inset: 0.9, ridge: 0.35,
+  head: { glyph: '+', rot: 0.785, size: 0.07, sizeFar: 0.1 }, tail: { glyph: '|', size: 0.1, len: 0.16 },
+  color: [2.6, 3.2, 4.2], colorEnd: [0.4, 1.1, 2.2], alpha: 0.9, tailAlpha: 0.55, life: [0.03, 0.08],
+  flash: { n: 4, step: 0.05, size: 0.12, stretch: 1.6, life: 0.1, lifeMin: 0.03, holdEnd: 0.35, alpha: 0.9, heavy: 1.25 },
+};
+/** The drawn blade's half width at sword-space height z (EDGE_GLINT.hw). */
+export function hwAt(z) {
+  const T = EDGE_GLINT.hw;
+  if (!(z > T[0][0])) return T[0][1];
+  for (let i = 1; i < T.length; i++) {
+    if (z <= T[i][0]) {
+      const [z0, w0] = T[i - 1], [z1, w1] = T[i];
+      return w0 + ((w1 - w0) * (z - z0)) / (z1 - z0);
+    }
+  }
+  return T[T.length - 1][1];
+}
+/** Which edge leads this frame (+1 the sword's +X edge, −1 the −X one, 0 neither: the blade moves
+ *  along itself): the blade's mid travel (sweep: last frame → this one) against its X axis (`e`: the
+ *  sword joint's matrixWorld elements). */
+export function leadSide(sw, e) {
+  const tx = (sw.a.x + sw.b.x - sw.pa.x - sw.pb.x) * 0.5, ty = (sw.a.y + sw.b.y - sw.pa.y - sw.pb.y) * 0.5, tz = (sw.a.z + sw.b.z - sw.pa.z - sw.pb.z) * 0.5;
+  const tl = Math.hypot(tx, ty, tz), xl = Math.hypot(e[0], e[1], e[2]);
+  if (!(tl > 1e-6) || !(xl > 1e-9)) return 0;
+  const c = (tx * e[0] + ty * e[1] + tz * e[2]) / (tl * xl);
+  return !Number.isFinite(c) || Math.abs(c) < EDGE_GLINT.ridge ? 0 : Math.sign(c);
+}
 const ARC_TURN = [0.03, 0.2]; // rad the blade turns in a frame: below, no arc; above, the full one
 const TRAIL_SUB_LEN = 0.11; // m of the edge's travel per trail sub-step (short: the line bends smoothly) …
 const TRAIL_SUB_MAX = 14; // … up to this many sub-steps a frame
@@ -105,6 +165,10 @@ const alongRot = (dx, dy, dz) => {
   return Math.atan2(dy * UP_Y + dz * UP_Z, dx) - Math.PI / 2;
 };
 
+/** The blade halo's dots sit this far off the blade's axis (m, sword space): beside both edges of
+ *  the slimmer moon blades too (it was 0.06-0.12). */
+export const HALO_X = [0.055, 0.11];
+
 const SPRAY = new THREE.Vector3(); // parry(): the default spray (back toward the blow and up)
 // the parry shockwave's rings (shockwave): bright, but not so hot that bloom swallows the duel
 const RING = { white: [1.5, 1.55, 1.75], warm: [1.6, 1.3, 0.8], gold: [2.0, 1.45, 0.45] };
@@ -144,7 +208,7 @@ export class PlayerFx {
     const fx = this.alpha;
     if (!fx) return;
     for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2;
+      const a = rnd() * Math.PI * 2;
       const sp = R(0.6, 1.6) * power;
       fx.spawn({
         x: x + Math.cos(a) * 0.2, y: y + R(0, 0.1), z: z + Math.sin(a) * 0.2,
@@ -173,12 +237,14 @@ export class PlayerFx {
    * so it swells and tapers with the cut and a blade merely carried along (a dash, a lunge) leaves
    * none. kind: 'light' | 'slam' | 'cleave' (both reach further and hang longer) | 'thrust' (the
    * edge only: thrustStreak draws the beam).
+   * The heavy blows cool to violet, not indigo (ARC_TONE). `bite`: the cut just landed (player.js, the
+   * first 0.06 s after the contact): the edge is drawn white-hot and a little thicker.
    * (Session 25: a line at the end of the reach with a four-row veil, in place of a slab of bright
    * strokes under a rim of letters. Session 26, owner: "make the sword trail effect look way cooler
    * and more subtle": that veil was still a glowing band half the reach wide, its edge was a row of
    * dashes, and it ran a metre past the steel.)
    */
-  trail(pa, pb, a, b, kind = 'light', crit = false, gate = true) {
+  trail(pa, pb, a, b, kind = 'light', crit = false, gate = true, bite = false) {
     const fx = this.add;
     if (!fx) return;
     const S = ARC_LOOK;
@@ -193,8 +259,8 @@ export class PlayerFx {
     // and a little of the next, so the line is unbroken at any speed
     const tipStep = Math.hypot(b.x - pb.x, b.y - pb.y, b.z - pb.z) * at;
     const nSub = Math.min(TRAIL_SUB_MAX, Math.max(2, Math.ceil(tipStep / TRAIL_SUB_LEN)));
-    const core = crit ? COL.crit : COL.arcCore, veil = crit ? COL.crit : COL.arcVeil;
-    const end = crit ? COL.critEnd : COL.arcEnd;
+    const T = crit ? ARC_TONE.crit : ARC_TONE[heavy || thrust ? 'heavy' : 'light'];
+    const core = T.core, veil = T.veil, end = T.end;
     const linger = cleave ? 1.7 : heavy ? 1.3 : 1;
     const rows = thrust ? TRAIL_NONE : S.veil;
     for (let s = 1; s <= nSub; s++) {
@@ -205,12 +271,12 @@ export class PlayerFx {
       let dx = ARC_P[0] - ARC_Q[0], dy = ARC_P[1] - ARC_Q[1], dz = ARC_P[2] - ARC_Q[2];
       let step = Math.hypot(dx, dy, dz);
       if (step > 0.01) {
-        const size = S.edge * (heavy ? 1.25 : 1) * (0.6 + 0.4 * turn);
+        const size = S.edge * (heavy ? 1.25 : 1) * (0.6 + 0.4 * turn) * (bite ? 1.15 : 1);
         fx.spawn({
           x: (ARC_P[0] + ARC_Q[0]) / 2, y: (ARC_P[1] + ARC_Q[1]) / 2, z: (ARC_P[2] + ARC_Q[2]) / 2,
           life: R(S.life[0], S.life[1]) * linger, size, sizeEnd: size * 0.15,
           glyph: '|', rot: alongRot(dx, dy, dz), stretch: Math.min(30, (step / size) * 1.7),
-          color: core, colorEnd: end, alpha: 0.45 + 0.55 * turn, alphaEnd: 0, drag: 2,
+          color: bite ? COL.arcGlint : core, colorEnd: end, alpha: bite ? 1 : 0.45 + 0.55 * turn, alphaEnd: 0, drag: 2,
         });
       }
       // the veil
@@ -236,8 +302,8 @@ export class PlayerFx {
     const n = thrust ? 0 : S.motes + (heavy ? 1 : 0);
     const tx = b.x - pb.x, ty = b.y - pb.y, tz = b.z - pb.z, tl = Math.hypot(tx, ty, tz) || 1;
     for (let i = 0; i < n; i++) {
-      if (Math.random() > turn * 0.7) continue;
-      arcPoint(Math.random(), at * R(0.9, 1), ARC_P);
+      if (rnd() > turn * 0.7) continue;
+      arcPoint(rnd(), at * R(0.9, 1), ARC_P);
       const sp = R(0.5, 2);
       fx.spawn({
         x: ARC_P[0], y: ARC_P[1], z: ARC_P[2],
@@ -269,6 +335,60 @@ export class PlayerFx {
     }
   }
 
+  /**
+   * The edge glint as a cut comes in (EDGE_GLINT; player.js _combat, from just before the active
+   * frames until it lands or reaches the point): this frame it runs from z0 to z1 (sword-space height
+   * along the blade) up the LEADING edge (leadSide; the ridge for a thrust), a '+' head at z1 and '|'
+   * strokes behind it. Spawned on the steel this frame, no velocity: it rides the blade and holds in
+   * a freeze. `far` 0..1 grows the head at the game camera; `realDt` sets its life (it lasts about a
+   * frame and a half); `ridge`: up the ridge whatever leads (a thrust's point-first drive: its coil's
+   * last flick into line led with an edge). No Math.random.
+   */
+  edgeGlint(sw, z0, z1, far = 1, crit = false, realDt = 1 / 60, ridge = false) {
+    const fx = this.add, s = this.rig?.sword;
+    if (!fx || !s || !sw?.valid || !Number.isFinite(z0 + z1)) return;
+    const G = EDGE_GLINT, e = s.matrixWorld.elements, side = ridge ? 0 : leadSide(sw, e);
+    const n = Math.max(1, Math.min(G.maxSub, Math.ceil(Math.abs(z1 - z0) / G.step)));
+    const life = Math.min(G.life[1], Math.max(G.life[0], 1.6 * (Number.isFinite(realDt) ? realDt : 1 / 60)));
+    const zl = Math.hypot(e[8], e[9], e[10]) || 1, rot = alongRot(e[8] / zl, e[9] / zl, e[10] / zl);
+    for (let i = 1; i <= n; i++) {
+      const z = z0 + ((z1 - z0) * i) / n, xx = side * G.inset * hwAt(z);
+      const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], wz = e[2] * xx + e[10] * z + e[14];
+      if (!Number.isFinite(x + y + wz) || y < 0.02) continue;
+      if (i === n) {
+        const size = G.head.size + G.head.sizeFar * (Number.isFinite(far) ? far : 1);
+        fx.spawn({ x, y, z: wz, life, size, sizeEnd: size * 0.6, glyph: '+', rot: G.head.rot, color: crit ? COL.ghostCore : G.color, colorEnd: G.colorEnd, alpha: G.alpha, alphaEnd: 0 });
+      } else {
+        fx.spawn({ x, y, z: wz, life, size: G.tail.size, sizeEnd: G.tail.size * 0.6, glyph: '|', rot, stretch: G.tail.len / G.tail.size, color: G.color, colorEnd: G.colorEnd, alpha: G.tailAlpha, alphaEnd: 0 });
+      }
+    }
+  }
+
+  /**
+   * The contact's mark ON the steel (player.js, a landed cut): EDGE_GLINT.flash.n white '|' strokes
+   * laid along the leading edge from zc (sword-space height of the contact) up toward the point (a
+   * contact too near the point, or past it out in the arc, ends them at the point instead of stacking
+   * them there). No star: the cut's core is the beat's one. Lives in fx time (held through the
+   * freeze): `hold` (fx s, optional) = the frames the freeze holds, so it is gone as the blade swings
+   * on (EDGE_GLINT.flash). `ridge`: as edgeGlint.
+   */
+  edgeFlash(sw, zc, heavy = false, crit = false, ridge = false, hold = NaN) {
+    const fx = this.add, s = this.rig?.sword;
+    if (!fx || !s || !sw?.valid || !Number.isFinite(zc)) return;
+    const G = EDGE_GLINT, F = G.flash, e = s.matrixWorld.elements, side = ridge ? 0 : leadSide(sw, e);
+    const zl = Math.hypot(e[8], e[9], e[10]) || 1, rot = alongRot(e[8] / zl, e[9] / zl, e[10] / zl);
+    const size = F.size * (heavy || crit ? F.heavy : 1);
+    const held = Number.isFinite(hold) && hold > 0, life = held ? Math.min(F.life, Math.max(F.lifeMin, hold)) : F.life;
+    const aEnd = held ? F.alpha * F.holdEnd : 0;
+    const zTop = DIM.drawnTip - 0.02, z0 = Math.max(DIM.forte, Math.min(zc, zTop - (F.n - 1) * F.step));
+    for (let i = 0; i < F.n; i++) {
+      const z = Math.min(zTop, z0 + i * F.step), xx = side * G.inset * hwAt(z);
+      const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], wz = e[2] * xx + e[10] * z + e[14];
+      if (!Number.isFinite(x + y + wz)) continue;
+      fx.spawn({ x, y, z: wz, life, size, sizeEnd: size * 0.5, glyph: '|', rot, stretch: F.stretch, color: COL.arcGlint, colorEnd: COL.arcEnd, alpha: F.alpha, alphaEnd: aEnd });
+    }
+  }
+
   /** A thrust's (the execution's, the plunge's) long cyan beam along the point's path (from → to, world): a thin
    *  white-cyan core of '-' / '=' laid along the line with a '·' halo, lingering as one line behind
    *  the lunge; k = charge 0..1. */
@@ -282,7 +402,7 @@ export class PlayerFx {
     const col = crit ? COL.crit : COL.trailCore;
     const n = Math.min(24, Math.max(1, Math.ceil(len / 0.1)));
     for (let i = 0; i < n; i++) {
-      const f = (i + Math.random()) / n;
+      const f = (i + rnd()) / n;
       const size = R(0.16, 0.2) * (1 + 0.2 * k);
       const x = from.x + dx * f, y = from.y + dy * f, z = from.z + dz * f;
       fx.spawn({
@@ -291,9 +411,9 @@ export class PlayerFx {
         life: R(0.3, 0.42) * (1 + 0.3 * k), size, sizeEnd: size * 0.6, stretch: 1.6,
         glyph: '-=', rot, color: col, colorEnd: COL.trailEnd, alpha: 0.95, alphaEnd: 0, drag: 2,
       });
-      if (Math.random() < 0.5) {
+      if (rnd() < 0.5) {
         const L = LATTICE * 0.75;
-        const side = Math.random() < 0.5 ? -1 : 1;
+        const side = rnd() < 0.5 ? -1 : 1;
         fx.spawn({
           x: Math.round(x / L) * L, y: Math.round((y + side * R(0.05, 0.1)) / L) * L, z: Math.round(z / L) * L,
           life: R(0.3, 0.45), size: 0.09, sizeEnd: 0.04,
@@ -353,7 +473,7 @@ export class PlayerFx {
     const fa = this.alpha;
     if (fa) {
       for (let i = 0; i < 8; i++) {
-        const a = Math.random() * Math.PI * 2, sp = R(0.8, 2.2);
+        const a = rnd() * Math.PI * 2, sp = R(0.8, 2.2);
         fa.spawn({
           x: x + Math.cos(a) * 0.15, y: 0.08, z: z + Math.sin(a) * 0.15,
           vx: Math.cos(a) * sp, vy: R(1.5, 3.2), vz: Math.sin(a) * sp,
@@ -423,13 +543,38 @@ export class PlayerFx {
   }
 
   /**
+   * A cut that lands (combat/cutFx.js) at p (the drawn contact): `tier` = the attack's `contact`
+   * (combat.js), C = player._cut (the blade's travel and direction there) or null (the cut's line
+   * then falls back across the blade), crit, k = the charge. Returns the spawn count.
+   */
+  contact(p, tier, C, crit = false, k = 0) {
+    if (!p || !this.add) return 0;
+    const o = this._co ?? (this._co = { tier, cut: { x: 0, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 0 }, hilt: null, crit, power: 0, low: false });
+    o.tier = tier;
+    o.crit = !!crit;
+    o.power = k;
+    o.low = this.game.settings?.quality === 0;
+    if (C) {
+      o.cut.x = C.cx; o.cut.y = C.cy; o.cut.z = C.cz;
+      o.edge.x = C.ex; o.edge.y = C.ey; o.edge.z = C.ez;
+    } else {
+      o.cut.x = o.cut.y = o.cut.z = NaN;
+      o.edge.x = o.edge.y = o.edge.z = NaN;
+    }
+    const sw = this.rig?.sword;
+    o.hilt = sw?.matrixWorld ? (this._hiltV ?? (this._hiltV = new THREE.Vector3())).set(0, 0, DIM.guard).applyMatrix4(sw.matrixWorld) : null;
+    return cutBurst(this.game, p.x, p.y, p.z, o);
+  }
+
+  /**
    * The charged cleave bites: a ring bursting out of the contact in the camera's plane, a fan of long
    * cyan-white streaks thrown on along the cut's way (dx, dz), and a cold flash of light; k = charge.
+   * `bare`: the fan only (a landed cut's contact() draws the ring and the light).
    */
-  cleaveImpact(x, y, z, dx, dz, k = 0, crit = false) {
+  cleaveImpact(x, y, z, dx, dz, k = 0, crit = false, bare = false) {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
-    this.shockwave(x, y, z, k > 0.5);
+    if (!bare) this.shockwave(x, y, z, k > 0.5);
     const c0 = crit ? COL.crit : COL.trailCore, c1 = crit ? COL.critEnd : COL.trailEnd;
     const base = Math.atan2(dz, dx), n = 10 + Math.round(8 * k);
     for (let i = 0; i < n; i++) {
@@ -441,7 +586,7 @@ export class PlayerFx {
         color: c0, colorEnd: c1, alpha: 1, alphaEnd: 0, drag: 3.5,
       });
     }
-    this._light({ x, y, z, color: crit ? [0.6, 0.8, 1.3] : [0.55, 0.85, 1.25], intensity: 4 + 2 * k, radius: 7, life: 0.2, fade: 0.18 });
+    if (!bare) this._light({ x, y, z, color: crit ? [0.6, 0.8, 1.3] : [0.55, 0.85, 1.25], intensity: 4 + 2 * k, radius: 7, life: 0.2, fade: 0.18 });
   }
 
   /** Charged heavy's release: a short ground gust ring of dust and glints around the feet. */
@@ -697,7 +842,7 @@ export class PlayerFx {
     this.plAcc += dt * 60;
     while (this.plAcc >= 1) {
       this.plAcc -= 1;
-      const a = Math.random() * Math.PI * 2, r = R(0.6, 1.2);
+      const a = rnd() * Math.PI * 2, r = R(0.6, 1.2);
       const ex = Math.cos(a) * r, ey = R(-0.7, 0.9), ez = Math.sin(a) * r;
       const life = R(0.16, 0.26);
       fx.spawn({
@@ -733,7 +878,7 @@ export class PlayerFx {
     }
     // molten blood: hot embers thrown up out of the wound, falling back
     for (let i = 0; i < Math.round(26 * k); i++) {
-      const a = Math.random() * Math.PI * 2, sp = R(1.5, 6);
+      const a = rnd() * Math.PI * 2, sp = R(1.5, 6);
       fx.spawn({
         x, y: y + 0.1, z, vx: Math.cos(a) * sp * 0.6 + dx * 1.2, vy: R(3, 9), vz: Math.sin(a) * sp * 0.6 + dz * 1.2,
         life: R(0.4, 0.85), size: R(0.15, 0.3), sizeEnd: 0.05,
@@ -762,8 +907,8 @@ export class PlayerFx {
     this.plAcc += dt * 70 * k;
     while (this.plAcc >= 1) {
       this.plAcc -= 1;
-      const a = Math.random() * Math.PI * 2, sp = R(0.5, 2.5);
-      const cold = Math.random() < 0.25;
+      const a = rnd() * Math.PI * 2, sp = R(0.5, 2.5);
+      const cold = rnd() < 0.25;
       fx.spawn({
         x: x + R(-0.15, 0.15), y: y + R(0, 0.2), z: z + R(-0.15, 0.15),
         vx: Math.cos(a) * sp - dx * 0.8, vy: R(2, 6), vz: Math.sin(a) * sp - dz * 0.8,
@@ -828,7 +973,7 @@ export class PlayerFx {
       this.chargeAcc -= 1;
       const f = R(0.3, 1);
       const px = a.x + (b.x - a.x) * f, py = a.y + (b.y - a.y) * f, pz = a.z + (b.z - a.z) * f;
-      if (k > 0.45 && Math.random() < 0.35 + 0.4 * k) {
+      if (k > 0.45 && rnd() < 0.35 + 0.4 * k) {
         // a lightning stroke hugging the blade
         const g = R(0, 0.85);
         fx.spawn({
@@ -838,7 +983,7 @@ export class PlayerFx {
         });
         continue;
       }
-      const ang = Math.random() * Math.PI * 2, r = R(0.35, 0.8);
+      const ang = rnd() * Math.PI * 2, r = R(0.35, 0.8);
       const ox = Math.cos(ang) * r, oz = Math.sin(ang) * r, oy = R(-0.2, 0.5);
       const life = R(0.22, 0.34);
       fx.spawn({
@@ -905,9 +1050,9 @@ export class PlayerFx {
     const L = 0.06;
     while (this.haloAcc >= 1) {
       this.haloAcc -= 1;
-      const past = Math.random() < 0.3;
+      const past = rnd() < 0.3;
       const zz = past ? tip + R(0.0, 0.1) : R(DIM.forte, tip);
-      const xx = past ? R(-0.02, 0.02) : (Math.random() < 0.5 ? -1 : 1) * R(0.06, 0.12);
+      const xx = past ? R(-0.02, 0.02) : (rnd() < 0.5 ? -1 : 1) * R(HALO_X[0], HALO_X[1]);
       // sword space (xx, 0, zz) → world
       const x = e[0] * xx + e[8] * zz + e[12], y = e[1] * xx + e[9] * zz + e[13], z = e[2] * xx + e[10] * zz + e[14];
       if (!Number.isFinite(x + y + z) || y < 0.02) continue;
@@ -985,7 +1130,7 @@ export class PlayerFx {
     this.healAcc += dt * 34 * k;
     while (this.healAcc >= 1) {
       this.healAcc -= 1;
-      const a = Math.random() * Math.PI * 2, r = R(0.15, 0.45);
+      const a = rnd() * Math.PI * 2, r = R(0.15, 0.45);
       fx.spawn({
         x: x + Math.cos(a) * r, y: R(0.2, 1.5), z: z + Math.sin(a) * r,
         vx: 0, vy: R(0.6, 1.2), vz: 0,
@@ -1003,7 +1148,7 @@ export class PlayerFx {
     const pts = this.rig.fxPoints;
     while (this.flameAcc >= 1) {
       this.flameAcc -= 1;
-      const j = pts[(Math.random() * pts.length) | 0];
+      const j = pts[(rnd() * pts.length) | 0];
       j.getWorldPosition(this._v);
       fx.spawn({
         x: this._v.x + R(-0.12, 0.12), y: this._v.y + R(-0.08, 0.12), z: this._v.z + R(-0.12, 0.12),
@@ -1028,7 +1173,7 @@ export class PlayerFx {
     while (acc[slot] >= 1) {
       acc[slot] -= 1;
       const s = sp * R(0.15, 0.45), side = R(-0.9, 0.9);
-      const grass = Math.random() < 0.3;
+      const grass = rnd() < 0.3;
       fx.spawn({
         x: x + R(-0.08, 0.08), y: R(0.03, 0.12), z: z + R(-0.08, 0.08),
         vx: -dx * s - dz * side, vy: R(0.4, 1.5), vz: -dz * s + dx * side,

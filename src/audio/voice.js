@@ -68,14 +68,16 @@ export class NodeBag {
     return o;
   }
 
-  /** Looping noise from the shared tables, started at a random offset. */
-  noise(kind, t0, t1 = null, rate = 1) {
+  /** Looping noise from the shared tables, started at a random offset (`off` 0..1: that offset from
+   *  the caller's own stream instead of Math.random, for sounds the seeded sims must not feel). */
+  noise(kind, t0, t1 = null, rate = 1, off = null) {
     const buf = this.E.noise[kind] || this.E.noise.white;
     const s = this.ctx.createBufferSource();
     s.buffer = buf;
     s.loop = true;
     s.playbackRate.value = rate;
-    s.start(t0, Math.random() * buf.duration * 0.9);
+    // (typeof: `null >= 0` is true in JS, and every existing caller would start at offset 0)
+    s.start(t0, (typeof off === 'number' && off >= 0 && off < 1 ? off : Math.random()) * buf.duration * 0.9);
     if (t1 !== null) {
       s.stop(t1);
       this.until(t1);

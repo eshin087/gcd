@@ -4,7 +4,30 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-two pieces of work since 0.4.0:
+Twenty-three pieces of work since 0.4.0:
+- **The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from**
+  (2026-11-14, ADR-086 – ADR-090): the hero's free hand has a wrist now and forms **sword fingers**
+  (two fingers out, the others folded under the thumb). It gathers at the sword wrist and is thrown
+  opposite each cut instead of hanging stiff off the forearm, and it no longer pops off the grip or
+  locks the elbow straight on two-handed blows. The body carries the cuts: a light's step pushes off
+  and brakes on the planted foot, the hips lead the cut, the thrusts and falling cuts sink into
+  deeper stances, and on a landed hit the edge **bites** (the blade holds where it struck through the
+  freeze, then tears on through). Planted feet pivot instead of skating, and the whirl hops round its
+  turn. A landed cut is drawn where the blade meets the body, with a slash line along the cut, sparks
+  thrown the way the blade travels, a flare and a glint on the steel, the camera kicked along the cut
+  and a new cut sound; the struck duelist shudders through the freeze. The white star that hid both
+  fighters on a hit is gone.
+  His arms open now: a cut and a thrust reach out with the elbow nearly straight instead of every
+  swing being made with the same crooked arm; on the run the elbows stay in beside the ribs, the free
+  arm swings from the elbow, and the arms keep swinging when he strafes. The guard breathes and
+  rides his steps instead of standing rigid, and a swing's arms come home softly instead of
+  stopping dead. The charged blade stands out
+  to his right, clear of his hood (it crossed his face). The sword hand's fist is a closed hand with
+  finger grooves (up close it was a stack of discs), on the bosses too.
+  Kept for later use (today's look and sword are the default): three outfits, `?heroLook=robe`,
+  `swallow` or `warden` (`-shade` puts the face in shadow), and three swords, `?sword=sheet`,
+  `ribbon` or `crescent`; both are rows in the Lab.
+  *Fixed:* rebuilding the hero's gear wiped a boss's own part colours (the Starless Lord's red line).
 - **The streak and the flurry** (2026-11-14, ADR-091): perfect dodges in a row are a **streak**
   (pips under your HP bar, "GHOSTEP ×N" over your head), and it lasts until a blow hurts you. Every
   perfect dodge is answered with as many blows as the streak counts, seven at most: **flash cuts**
