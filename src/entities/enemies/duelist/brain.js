@@ -1,5 +1,5 @@
 import { clamp, wrapAngle, smoothstep, turnToward } from '../../../core/math.js';
-import { TELL, RESULT } from '../../../combat/rules.js';
+import { TELL, RESULT, DEFENSE } from '../../../combat/rules.js';
 import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
 
@@ -311,12 +311,18 @@ export class DuelBrain {
     }
   }
 
-  /** Start a move now. Returns false if it can't (unknown, he is down). */
-  startAct(name, phase = this.d.phase) {
+  /** Start a move now. Returns false if it can't (unknown, he is down). `opts.count`: his flurry
+   *  (a `streak` move) of that many blows: every one the hero parries or blocks is counted
+   *  (duelist.onStreakBlow). */
+  startAct(name, phase = this.d.phase, opts = null) {
     const d = this.d;
     if (d.mode === 'dying' || d.mode === 'dead' || d.mode === 'broken') return false;
-    const A = this.K.realise(name, phase, Math.random);
+    const A = this.K.realise(name, phase, Math.random, opts);
     if (!A) return false;
+    if (A.def.streak) {
+      A.streak = { need: A.hits, got: 0, failed: false };
+      d.emit('dragon:flurry', { count: A.hits });
+    }
     A.t = 0;
     A.chain = 0;
     A.striking = null;
@@ -640,6 +646,7 @@ export class DuelBrain {
           from: { x: d.position.x, z: d.position.z }, mikiri: !!b.def.mikiri, beat: b,
         });
         if (r !== RESULT.IGNORED) {
+          if (a.streak) d.onStreakBlow(a, b, r);
           b.done = true;
           b.landed = r === RESULT.HIT;
           if (r === RESULT.HIT || r === RESULT.BLOCKED) a.chain = 0;
@@ -678,6 +685,11 @@ export class DuelBrain {
         b.closed = (b.closed ?? 0) + step;
         d.moveBy((L.dx / (L.dist || 1)) * step, (L.dz / (L.dist || 1)) * step);
       }
+    }
+    // a flurry's later blows: he is gone, and at another side of the hero (duelist.flit)
+    if (D.flit && !b._flit && s) {
+      b._flit = true;
+      d.flit(s, D.flit, b.hit);
     }
     if (D.travel) {
       const prev = b._trav ?? 0, now = track(D.travel, u);
@@ -801,6 +813,8 @@ export class DuelBrain {
     if (R.t >= R.clip.dur) {
       const guard = GUARD_KINDS.has(R.kind);
       // the deflect: his counter comes straight out of the beat (no footwork between)
+      // (on a streak of guards the counter is his flurry: as many blows as the streak counts)
+      if (R.kind === 'deflect' && R.flurry && this.startStreak()) return;
       if (R.kind === 'deflect' && this.aiEnabled && this.startAct(this.K.counterMove?.(d.phase) ?? 'riposte')) return;
       this._toFoot(guard || R.kind === 'backstep' || R.kind === 'sidestep' ? 0.25 : null);
       // a ward or a flinch: the guard is straight back up (a cut does not open him for the next one)
@@ -827,14 +841,34 @@ export class DuelBrain {
     C.t = d.time;
     C.n++;
     this.wardT = G.wardLinger ?? 0.6;
-    const p = G.counterChance[Math.min(G.counterChance.length - 1, C.n - 1)] ?? 1;
+    // a streak of guards (DEFENSE.foeStreak): from its `min` he may answer with his flurry, and
+    // then the strike is beaten away for certain
+    const FS = DEFENSE.foeStreak, k = fin(d.streak) - FS.min;
+    const flurry = this.aiEnabled && k >= 0 && !!this.K.MOVES?.[this._streakMove()] && Math.random() < (FS.launch[Math.min(FS.launch.length - 1, k)] ?? 1);
+    const p = flurry ? 1 : G.counterChance[Math.min(G.counterChance.length - 1, C.n - 1)] ?? 1;
     if (this.aiEnabled && Math.random() < p) {
       C.n = 0;
-      if (this.startReact('deflect')) return 'deflect';
+      if (this.startReact('deflect')) {
+        this.react.flurry = flurry;
+        return 'deflect';
+      }
     }
     if (!this.startReact(this.C[clip] ? clip : 'ward')) return 'armor';
     if (heavy) this.react.travel *= 1.7; // a heavy strike drives him back
     return 'ward';
+  }
+
+  /** His flurry's move for this phase (the kit's `streakMove(phase)`, else 'streakFlurry'). */
+  _streakMove() {
+    return this.K.streakMove?.(this.d.phase) ?? 'streakFlurry';
+  }
+
+  /** His flurry, now: as many blows as his streak counts (DEFENSE.foeStreak.max at most; `count`
+   *  pins it: the Lab, tests). False when he has none or cannot act. */
+  startStreak(count = null) {
+    const d = this.d, FS = DEFENSE.foeStreak;
+    const n = clamp(Math.round(fin(count, fin(d.streak))), 1, FS.max);
+    return this.startAct(this._streakMove(), d.phase, { count: n });
   }
 
   /** A strike landed on him outside his guard: in footwork he flinches, and breaks off after a few. */

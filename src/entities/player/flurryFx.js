@@ -117,6 +117,71 @@ export class FlurryFx {
     }
   }
 
+  /** A speed clone: the shape of him in the middle of a pass (`segs`: PlayerFx._afterimage), left
+   *  hanging on the cut's line. */
+  clone(segs, nSegs) {
+    if (!this.add) return;
+    this.pfx?._afterimage?.(this._fx, segs, nSegs);
+  }
+
+  /**
+   * The ground gives under a blow on a foe who stands on it, at (x, z), the cut travelling (dx, dz):
+   * a low shock ring racing out, dust thrown up along the cut, grit. k: 0.6 a flash cut … 1.6 the
+   * last blow.
+   */
+  ground(x, z, dx, dz, k = 1) {
+    const fx = this.add, fa = this.game.fx?.alpha ?? null;
+    if (!fx || !Number.isFinite(x + z)) return;
+    const n = Math.round(14 * k);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, sp = (5 + 4 * k) * (0.8 + 0.4 * Math.random());
+      fx.spawn({
+        x: x + Math.cos(a) * 0.3, y: 0.1, z: z + Math.sin(a) * 0.3, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp,
+        life: 0.2 + 0.08 * k, size: 0.16 * (0.8 + 0.3 * k), sizeEnd: 0.05, stretch: 1.8, glyph: '|', rot: this._rot(-Math.sin(a), 0, Math.cos(a)),
+        color: COL.ice, colorEnd: COL.iceEnd, alpha: 0.8, alphaEnd: 0, drag: 5,
+      });
+    }
+    if (!fa) return;
+    for (let i = 0; i < Math.round(9 * k); i++) {
+      const s = R(-1, 1), sp = R(2, 6) * k;
+      fa.spawn({
+        x: x + R(-0.3, 0.3), y: 0.1, z: z + R(-0.3, 0.3), vx: dx * sp - dz * s * 2, vy: R(0.8, 3) * k, vz: dz * sp + dx * s * 2,
+        life: R(0.4, 0.8), size: R(0.16, 0.26), sizeEnd: R(0.4, 0.6), glyph: '.,:', color: [0.2, 0.19, 0.17], colorEnd: [0.08, 0.08, 0.07],
+        alpha: 0.75, alphaEnd: 0, drag: 2.6, gravity: -3,
+      });
+    }
+  }
+
+  /**
+   * The impact frame of a heavy blow at (x, y, z): speed lines thrown out of it across the whole
+   * screen (in the screen's own plane, long and thin, gone in a few frames), most along the cut
+   * (dx, dz) and against it. k: 0.7 a riposte's last cut … 1 an art.
+   */
+  impact(x, y, z, dx, dz, k = 1) {
+    const fx = this.add;
+    if (!fx || !Number.isFinite(x + y + z)) return;
+    const C = this.cam;
+    const rx = C ? C[0] : 1, ry = C ? C[1] : 0, rz = C ? C[2] : 0;
+    const ux = C ? C[4] : 0, uy = C ? C[5] : UP_Y, uz = C ? C[6] : UP_Z;
+    // the cut's heading on the screen
+    const cx = dx * rx + dz * rz, cy = dx * ux + dz * uz, base = Math.atan2(cy, cx);
+    const n = Math.round(30 * k);
+    for (let i = 0; i < n; i++) {
+      // two fans, along the cut and against it, a few strays all round
+      const a = i % 5 === 0 ? R(0, Math.PI * 2) : base + (i % 2 ? Math.PI : 0) + R(-0.55, 0.55);
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const wx = rx * ca + ux * sa, wy = ry * ca + uy * sa, wz = rz * ca + uz * sa;
+      const r0 = R(1.2, 3.2), sp = R(22, 46) * k, size = R(0.07, 0.13);
+      fx.spawn({
+        x: x + wx * r0, y: y + wy * r0, z: z + wz * r0, vx: wx * sp, vy: wy * sp, vz: wz * sp,
+        life: R(0.09, 0.17), size, sizeEnd: size * 0.3, stretch: R(14, 30), glyph: '|', rot: a - Math.PI / 2,
+        color: i % 3 ? COL.hot : COL.ice, colorEnd: COL.iceEnd, alpha: 0.85, alphaEnd: 0, drag: 2,
+      });
+    }
+    // a hard white core for two frames, then nothing: the frame the blow lands on
+    fx.spawn({ x, y, z, life: 0.05, size: 2.2 * k, sizeEnd: 1.2 * k, glyph: '+', rot: base, color: COL.hot, colorEnd: COL.hot, alpha: 1, alphaEnd: 0.4 });
+  }
+
   /** He is THERE: an upright flash of cold light at (x, y, z: his chest), streaks thrown back
    *  against his heading (dx, dz). `i` of `n`: later cuts flash brighter; `art`: the last blow's. */
   appear(x, y, z, dx, dz, i = 0, n = 1, art = false) {

@@ -109,12 +109,27 @@ export const DEFENSE = Object.freeze({
   flurry: {
     max: 7,
     world: 0.07,
-    cut: { blink: 0.045, dash: 0.1, stop: 0.05, hold: 0.04, rush: 0.6, damage: 28, posture: 5 },
+    cut: { blink: 0.045, dash: 0.1, stop: 0.065, hold: 0.04, rush: 0.6, damage: 28, posture: 5, reel: 0.09 },
+    // after every cut the world runs at `reelWorld` for `cut.reel` s (real), so the target is SEEN to
+    // reel under it (its flinch, its stagger, the shove) before it is held again
+    reelWorld: 0.6,
+    // the riposte (ADR-094): parrying a string's LAST blow (or a single one) answers with as many
+    // flash cuts as the streak counts and puts the hero back where he parried; no art, no crit
+    // window. Only when the target is within this many metres (ground distance; the head / the foe)
+    riposteRange: { air: 11, ground: 6 },
     reach: { air: 4.6, ground: 2.8 },
     turn: [0.55, 0.95],
     last: { damage: 60, posture: 22 },
     keepStreak: 0,
   },
+  // --- a foe's streak (ADR-094; a duelist: duelist.js): every strike of the hero's his guard turns
+  // counts one; a strike that lands on him ends it. From `min`, a guard may answer with his flurry
+  // (chance `launch` at min, min + 1, ...; then his guard always beats the strike away): as many
+  // blows as the streak counts, `max` at most, the first from where he stands and each of the
+  // others from another side of the hero (a guard meets them from any side). Every blow the hero
+  // parries or blocks takes one off the streak (a perfect parry counts two toward the total); when
+  // all of them were answered his posture breaks. A blow that lands, or one dodged, breaks nothing.
+  foeStreak: { min: 3, max: 7, launch: [0.5, 0.75, 1] },
 });
 
 /** Attacker posture (enemy "break" meter, shown under the boss HP bar). */

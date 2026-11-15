@@ -351,6 +351,36 @@ export class DuelFx {
   }
 
   /** Dust and ash kicked up by a landing or a hard step. */
+  /** He is gone from (x0, z0) and at (x1, z1): a bright streak along the way he went, a tall flash
+   *  where he stood, and where he stands a flash and a ring of sparks thrown out (a blow of his
+   *  flurry: duelist.flit). */
+  flit(x0, z0, x1, z1) {
+    const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz);
+    if (!Number.isFinite(len) || !(len > 0.2)) return;
+    const ux = dx / len, uz = dz / len;
+    const n = Math.min(30, Math.round(len / 0.18));
+    for (let i = 0; i <= n; i++) {
+      const f = i / n;
+      this._spawn(this.add, {
+        x: x0 + dx * f + this.rand(-0.08, 0.08), y: this.rand(0.5, 1.5), z: z0 + dz * f + this.rand(-0.08, 0.08),
+        vx: ux * this.rand(0.5, 3), vy: this.rand(-0.1, 0.3), vz: uz * this.rand(0.5, 3),
+        life: this.rand(0.22, 0.42) * (0.5 + 0.5 * f), size: this.rand(0.2, 0.3), sizeEnd: 0.05, stretch: 2.2, glyph: "-=~",
+        color: [3.4, 2.5, 1.6], colorEnd: [0.9, 0.25, 0.06], alpha: 0.95, alphaEnd: 0, drag: 2.5,
+      });
+    }
+    this._spawn(this.add, { x: x0, y: 1.1, z: z0, life: 0.12, size: 0.16, sizeEnd: 0.04, stretch: 12, glyph: '|', color: [3.6, 2.8, 2.0], colorEnd: [1.2, 0.4, 0.1], alpha: 0.9, alphaEnd: 0 });
+    this._spawn(this.add, { x: x1, y: 1.1, z: z1, life: 0.14, size: 0.22, sizeEnd: 0.05, stretch: 12, glyph: '|', color: [4.0, 3.2, 2.4], colorEnd: [1.4, 0.5, 0.1], alpha: 1, alphaEnd: 0 });
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2, sp = this.rand(4, 8);
+      this._spawn(this.add, {
+        x: x1 + Math.cos(a) * 0.3, y: 0.2, z: z1 + Math.sin(a) * 0.3, vx: Math.cos(a) * sp, vy: this.rand(0.2, 1.5), vz: Math.sin(a) * sp,
+        life: this.rand(0.18, 0.3), size: this.rand(0.12, 0.2), sizeEnd: 0.04, glyph: "'*-", color: [3.2, 2.2, 1.2], colorEnd: [0.8, 0.2, 0.05], alpha: 1, alphaEnd: 0, drag: 5,
+      });
+    }
+    this.dust(x0, z0, 0.6);
+    this.dust(x1, z1, 0.9);
+  }
+
   dust(x, z, k = 1) {
     if (!Number.isFinite(x + z)) return;
     for (let i = 0; i < Math.round(8 * k); i++) {

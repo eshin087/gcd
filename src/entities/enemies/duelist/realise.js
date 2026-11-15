@@ -16,17 +16,23 @@ export function perPhase(v, phase) {
  * scaling, drawn alternatives, rolled chances, the bait holds, absolute times per beat ({ start,
  * impact, end, flash, tellAt }) and the compiled clip. `rnd` = a 0..1 source (the game's Math.random,
  * so the seeded sims replay). `compileClip(keys, dur, phase)` → the clip (poses.js).
+ * `opts.count` (a `streak` move: his flurry, DEFENSE.foeStreak): that many beats, the move's first
+ * and then its others in turn.
  */
 export function makeRealise({ TUNING, MOVES, compileClip }) {
-  return function realise(name, phase = 1, rnd = Math.random) {
+  return function realise(name, phase = 1, rnd = Math.random, opts = null) {
     const def = MOVES[name];
     if (!def) return null;
+    const cnt = Math.round(Number(opts?.count));
+    const list = def.streak && cnt >= 1 && def.beats.length > 1
+      ? Array.from({ length: cnt }, (_, i) => (i === 0 ? def.beats[0] : def.beats[1 + ((i - 1) % (def.beats.length - 1))]))
+      : def.beats;
     const ws = perPhase(TUNING.windupScale, phase), rs = perPhase(TUNING.recoveryScale, phase);
     const lead = perPhase(TUNING.flashLead, phase);
     const beats = [];
     const keys = [];
     let t = 0;
-    def.beats.forEach((raw, i) => {
+    list.forEach((raw, i) => {
       const b = Array.isArray(raw.pick) ? raw.pick[Math.min(raw.pick.length - 1, Math.floor(rnd() * raw.pick.length))] : raw;
       if (b.chance !== undefined && b.chance < 1 && !(rnd() < b.chance)) return;
       const W = b.windup * (b.fixed ? 1 : ws);
