@@ -241,8 +241,8 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-block { padding-bottom: 5px; }
 .tc-flask { box-sizing: border-box; }
 /* top right, left of the small minimap (phones, either way up) */
-.tc-lock { right: 130px; top: 8px; width: 38px; height: 38px; }
-.tc-pause { right: 84px; top: 8px; width: 38px; height: 38px; }
+.tc-lock { right: 98px; top: 6px; width: 38px; height: 38px; }
+.tc-pause { right: 54px; top: 6px; width: 38px; height: 38px; }
 .tc-flask .g, .tc-lock .g, .tc-pause .g { font-size: 16px; }
 .tc-flask .t, .tc-lock .t { font-size: 7px; letter-spacing: 0.12em; padding-left: 0.12em; }
 .tc-lock .t { display: none; }
@@ -250,8 +250,8 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
 
 /* tablets: the minimap is full size there */
 @media (min-height: 561px) and (min-width: 561px) {
-  .tc-lock { right: 266px; top: 12px; }
-  .tc-pause { right: 218px; top: 12px; }
+  .tc-lock { right: 142px; top: 12px; }
+  .tc-pause { right: 96px; top: 12px; }
 }
 
 /* ---------- a screen held upright: the left thumb's zone is the lower left ---------- */

@@ -1453,13 +1453,13 @@ showTitle() / hideTitle();  showPause(bool);  toggleHelp()
 the keyboard ↔ touch control lists in the title and pause menu, the pause menu's FULLSCREEN item
 where the Fullscreen API exists). With `.ab-touch` the log, the key hint and the help panel are
 hidden, the prompt becomes a tap target ("TAP › Rest at bonfire"), the pause panel scrolls; below
-560 px of height (phones in landscape) the player frame (×0.8) shrinks, the boss
-bar narrows to the bottom centre between the thumbs, and the title / banners / record compact.
-On a phone either way up (a side ≤ 560 px) the **minimap** is a bare 70 px disc in the top right
-corner at 72 % opacity: no panel, no zone title, no coordinates (the FPS line stays when on).
+560 px of height (phones in landscape) the player's rows and the boss's are set in 10 px type, the boss
+sits at the bottom centre between the thumbs, and the title / record compact.
+The **minimap** is a bare disc in the top right corner on every device: 72 px at 60 % opacity, on a
+phone (a side ≤ 560 px) 40 px at 50 %; no panel, no zone title, no coordinates (the FPS line stays
+when on).
 **Held upright** (`(max-width: 560px) and (orientation: portrait)`; ADR-097): the frame top left,
-the boss bar under it across the screen, the prompt and banners above the thumbs (the big words
-sized in vw), the pause panel in the upper half so the pad shows below it, the title's logo and
+the boss's rows under them, the prompt and banners above the thumbs, the pause panel in the upper half so the pad shows below it, the title's logo and
 lists to the screen's width.
 Desktop (no `.ab-touch`) is unchanged.
 **Gamepad layout:** while a pad is the device in use, `html.abyss-pad` (and `.ab-pad` on the HUD root)
@@ -1473,8 +1473,22 @@ stronger on the attacker's side) on a red `combat:flash`, dropped by a stagger /
 death / retry (`ui/tells.js`); flashes with `hazard: true` (meteors, chase pillars) are skipped,
 their red ground rings already warn. Also renders parry / Ghostep / guard-break call-outs, the cyan
 Ghostep edge pulse (a plunge's perfect dodge included), the posture bar, and the crit-window cue.
-The player frame carries the **guard meter** under the HP bar (`player.guard / maxGuard`, polled: a
-steel bar, warm under `GUARD.low`, a flash and "GUARD DOWN" on `player:guardOpen`). The **lock-on
+**Look (ADR-098): an ASCII overlay with no panels in play.** The player's rows (top left: HP, guard,
+the crit window, the streak, the flasks and the lock label; no name plate) and the boss's (its name
+in spaced capitals, HP with a `|` at each phase gate, posture) are text on the game. Every meter is a
+`GlyphBar` (`ui/glyphBar.js`: `set(0..1)` / `snap` / `update(dt)`, `root` takes the state classes,
+`mark(f)`): a run of fill characters, the piece just lost (held `hold` s, then drained) and the empty
+rest, between brackets, written to the DOM only when a run's length changes; anything above zero
+shows at least one cell and only a full meter shows them all. `GlyphPosture` grows from the middle.
+HP 24 cells of `#`, guard 24 of `=`, crit 16 of `>`, the boss 48, posture 32.
+The banners' big words are block letters (`ui/blockText.js`: `blockLines(text)` → six rows in the
+title logo's letterforms, `blockText(text, { maxCols })` stacks words to fit): `ui/banner.js` sizes
+them to the window's width (`BLOCK_MAX` px a character by kind) and lays them out again when the
+window is resized or turned; the plain text stays in the DOM, unseen. A phase call, which comes in
+the middle of a fight, is the smallest (6 px) and sits above the fighters (21 % of the height, no
+dark band). No serif font is used.
+The player's rows carry the **guard meter** under HP (`player.guard / maxGuard`, polled: steel
+`=`, warm under `GUARD.low`, a flash and "GUARD DOWN" on `player:guardOpen`). The **lock-on
 marker** (`ui/nameTags.js`, `LOCK_MARK`) is a hint, not a fixture: taking the lock shows a small
 dim diamond on the target (opacity 0.55) for 0.5 s, it fades over 2.4 s and stays gone until the
 lock is taken again (real seconds; the frame's "LOCKED ON" label and the touch LOCK button say the rest).
@@ -1623,7 +1637,7 @@ actors never see their `visible` flag change). Poses are driven as usual — `dr
 player inputs / methods — and stepped with `__tick(dt, frames)`.
 
 **Training** (`dev/training.js` `class Training`, `lab.training`; panel `dev/trainingPanel.js`,
-`lab.trainingPanel`; ADR-098). `SITUATIONS` is data: `{ id, cat, name, desc, boss (kinds: 'wyrm' |
+`lab.trainingPanel`; ADR-099). `SITUATIONS` is data: `{ id, cat, name, desc, boss (kinds: 'wyrm' |
 'duel' | 'ash' | 'lord' | 'any'), role (a boss move by role: single / string / long / red / lock /
 mikiri, per level in `ROLES`), dist / wyrmDist / ang, streak, foe, art, hp, god, ai, answer (an
 `ANSWERS` key, or (i, T) → key per glint), go(T), tick(T, dt), after(T), until(T), tail, max, expect
@@ -1769,7 +1783,7 @@ panel and the pause panel still scroll). Tuning: `CONFIG.touch`, sizes / look in
 `starless`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
-before `applyLevel`; ADR-098), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
+before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
 default), `applyLevel(level)` (merges `level.world` into `CONFIG.world`: main.js calls it once,
 before building any module), `levelUrl(id, href)`. One level per page load; switching reloads.
 A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text }`.

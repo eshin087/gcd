@@ -37,7 +37,7 @@ export function levelFromSearch(search) {
 }
 
 /**
- * The level on the training room instead of its own set (`?stage=lab`; ADR-098): the same boss, the lab stage's floor and layout (world/trainingRoom.js). Any other URL
+ * The level on the training room instead of its own set (`?stage=lab`; ADR-099): the same boss, the lab stage's floor and layout (world/trainingRoom.js). Any other URL
  * returns `level` unchanged.
  */
 export function withStage(level, search) {

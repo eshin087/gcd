@@ -3,7 +3,7 @@ import { DEFENSE } from '../combat/rules.js';
 import { ARTS } from '../entities/player/flurry.js';
 import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.js';
 
-// Training (ADR-098; usage: src/dev/README.md → Training): a fighting game's training mode for the
+// Training (ADR-099; usage: src/dev/README.md → Training): a fighting game's training mode for the
 // boss of the level loaded. A catalogue of SITUATIONS by category, each one click: the runner puts
 // the fight in place (the flow in 'boss', the boss's AI off, god mode, the hero placed, the streaks
 // set), starts it (a boss move, a hero action, a debug call) and plays the hero's side itself: an

@@ -4,8 +4,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-seven pieces of work since 0.4.0:
-- **Training mode and a lab stage** (2026-11-15, ADR-098): press **F4** (or open the Lab and click
+Twenty-eight pieces of work since 0.4.0:
+- **Training mode and a lab stage** (2026-11-15, ADR-099): press **F4** (or open the Lab and click
   TRAINING, or load with `?training`) for a fighting-game training menu: every situation worth
   seeing, by category, one click each: perfect dodges at every streak, each art, parries and
   ripostes, the blade lock, the trade clash, the mikiri, a boss's own flurry parried, blocked or
@@ -14,6 +14,17 @@ Twenty-seven pieces of work since 0.4.0:
   says whether the situation showed what it should. Speed, loop and replay. Add `?stage=lab` (or
   the STAGE buttons) to fight any boss in a **training room**: a dark dojo with a cyan measuring
   grid and rings marked at 3, 6, 9 and 12 m. *Changed:* the Ash Disciple's streak flurry is called Scattering Ash.
+- **An ASCII HUD** (2026-11-14, ADR-098): the overlay is now made of characters like the rest of
+  the game.
+  - **Meters are text.** HP, guard, the crit window, the boss's HP and its posture are rows of
+    characters (`HP [################........] 104 / 160`), drawn straight on the game with no
+    panel behind them. The piece you just lost shows pale for a moment before it drains.
+  - **Big words are block letters.** YOU DIED, the victory line, area names and phase calls are
+    built from characters in the style of the ABYSS title logo, and stack word by word on a narrow
+    screen. The serif font is gone from the HUD.
+  - *Removed:* the name / "Lv 12" / class lines of the player frame (they were decoration).
+  - **The minimap barely exists:** a small faint disc (72 px on desktop, 40 px on phones) with no
+    frame, title or coordinates.
 - **Phone controls you can hold, and a guard meter** (2026-11-14, ADR-095, ADR-096):
   - **The right thumb's pad.** ATTACK, BLOCK and DODGE are now three large tiles that touch each
     other, moved up and in from the corner. Slide your thumb from one onto another without lifting:

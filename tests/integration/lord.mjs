@@ -802,7 +802,7 @@ async function scenarioFlow() {
 }
 
 // ================================================================== scenario: win
-// ================================================================== scenario: training (ADR-098)
+// ================================================================== scenario: training (ADR-099)
 // Every situation of the Training catalogue that applies to this boss, run by the runner itself
 // (src/dev/training.js): each must play out (done, within its time) and show what it promises.
 async function scenarioTraining() {

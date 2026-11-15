@@ -8,7 +8,7 @@ import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
 import { prep, carve, paint, slabGeometry, SLAB_LOOK, STONE_LOOK, buildBonfire } from './forest.js';
 
-// The Training Room (ADR-098): the lab stage, a fighting game's training stage for any boss
+// The Training Room (ADR-099): the lab stage, a fighting game's training stage for any boss
 // (`?stage=lab`, levels/index.js withStage). A dark dojo of light: a square floor of great black
 // tiles with a cyan measuring grid on it (a line every 2 m, a brighter one every 10 m), magenta
 // rings round the duel's centre at 3, 6, 9 and 12 m with their numbers, low walls of panels with

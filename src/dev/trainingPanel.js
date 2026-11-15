@@ -1,7 +1,7 @@
 import { el, setText, setClass, button } from './labDom.js';
 import { CATEGORIES, ANSWERS } from './training.js';
 
-// The Training panel (ADR-098): a fighting game's training menu over the game. Every situation of
+// The Training panel (ADR-099): a fighting game's training menu over the game. Every situation of
 // training.js for the boss loaded, by category; one click runs it (the runner plays the hero's side),
 // the row shows ✓ / ✗ once it has played out. A banner over the fight names what is running.
 // Keys while it is open: ↑ ↓ choose, Enter run, R replay, Esc stop (consumed: they never reach the
