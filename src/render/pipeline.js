@@ -238,6 +238,16 @@ export class Pipeline {
         // b a letter roll, a kind + stroke), and uFlame = cells x, cells y, 1 while something burns
         tFlame: { value: null },
         uFlame: { value: new THREE.Vector4(1, 1, 0, 0) },
+        // HEAT HAZE: the letters of the wyrm and the background objects re-roll and shimmer where the
+        // fire field is hot at, under or beside their cell, as if the heat boiled the text (read only
+        // while something burns: uFlame.z). x / y = the heat (as the fire field counts it: ~0.4 a
+        // cool rim, ~1 a body) where the haze starts / is whole, z = how much of the fire's colour
+        // the letters take, w = the shimmer: px a letter slides sideways in a wave that climbs
+        uHaze: { value: new THREE.Vector4(0.03, 0.5, 0.5, 1) },
+        // ... x = share of the cells that re-roll at full haze (each on the fire's own beat: the roll
+        // in tFlame.b), y = brightness flicker, z = the warm lift on dark letters
+        uHazeRoll: { value: new THREE.Vector3(0.7, 0.3, 0.035) },
+        uTime: U.uTime ?? { value: 0 },
         // extra source taps per wyrm cell (a 4x4 grid) on top of the 4 that find the cell: the cell's
         // letter TIER comes from the average of its source, so it does not flip between bright and
         // dark letters as scale rims cross its four point samples (0 = off); each letter pixel still
@@ -314,7 +324,15 @@ export class Pipeline {
         uniform vec3 uPropLum;
         uniform vec3 uPropOutline;
         uniform vec2 uPropAnchor;
+        uniform sampler2D tFlame;
+        uniform vec4 uFlame;
+        uniform vec4 uHaze;
+        uniform vec3 uHazeRoll;
+        uniform float uTime;
         varying vec2 vUv;
+        // heat haze, set per cell by hazeCell before artLetters prints it: x = 0..1 how deep the cell
+        // is in the heat, y = the fire's letter roll for it, z = 1 violet (void fire), w = shimmer px
+        vec4 gHaze = vec4(0.0);
 
         float hash12(vec2 p) {
           vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -406,6 +424,12 @@ export class Pipeline {
         vec3 artLetters(vec3 c, vec3 cp, vec2 acell, vec2 local, float stroke, vec4 tone, vec4 glyph, vec3 lum) {
           float v = 1.0 - exp(-max(luma(c) - lum.x, 0.0) * lum.y);
           float h = hash12(acell * 1.37 + 11.0);
+          // heat haze: a share of the cells takes the fire's roll for its letter (it re-rolls on the
+          // fire's beat), and every letter in the heat slides a pixel sideways in a climbing wave
+          float hz = gHaze.x;
+          bool boil = hz > 0.0 && hash12(acell * 0.53 + 7.9) < hz * uHazeRoll.x;
+          if (boil) h = fract(h + gHaze.y);
+          if (hz > 0.0) local.x = clamp(local.x + gHaze.w / uArtCell.x, 0.0, 0.999);
           float d = (hash12(acell * 0.71 + 3.7) - 0.5) * glyph.z;
           float s0 = v < glyph.x + d ? 1.0 : v < glyph.y + d ? uWyrmAtlas.x : uWyrmAtlas.y;
           float s1 = v < glyph.x + d ? uWyrmAtlas.x : v < glyph.y + d ? uWyrmAtlas.y : uWyrmAtlas.z;
@@ -419,7 +443,38 @@ export class Pipeline {
           vec3 hue = s / max(mx, 1e-4);
           float sat = (mx - min(min(s.r, s.g), s.b)) / max(mx, 1e-4);
           float b = mix(lum.z, tone.x, pow(vp, tone.y));
-          return hue * b * mix(1.0, max(1.0, mx), smoothstep(0.25, 0.6, sat)) * m;
+          vec3 ink = hue * b * mix(1.0, max(1.0, mx), smoothstep(0.25, 0.6, sat));
+          if (hz > 0.0) {
+            // the letters flicker and take the fire's colour: dark ones are lifted a little (lit by
+            // it), bright ones tinted, none of them brighter than a lit rim
+            vec3 warm = gHaze.z > 0.5 ? vec3(0.62, 0.34, 1.0) : vec3(1.0, 0.46, 0.14);
+            float fl = boil ? 1.0 + (gHaze.y - 0.5) * 2.0 * uHazeRoll.y : 1.0;
+            ink = mix(ink, warm * (luma(ink) * 1.25 + uHazeRoll.z), hz * uHaze.z) * fl;
+          }
+          return ink * m;
+        }
+        // heat haze (uFlame.z > 0 only): the fire field's flame texture has one texel per art cell
+        // counted from the screen's lower-left corner. A cell is in the haze when the field is hot at
+        // it, in the cells under it (heat climbs) or beside it. Steel (sparks, glints) makes none.
+        vec2 flameHeat(vec2 fc) {
+          vec4 f = texture2D(tFlame, (fc + 0.5) / uFlame.xy);
+          float kind = floor(f.a * 4.0 + 0.01);
+          return vec2(kind < 1.5 ? f.r * 2.5 : 0.0, kind);
+        }
+        void hazeCell(vec2 cpx, vec2 acell) {
+          vec2 fc = floor(cpx / uArtCell);
+          vec4 f0 = texture2D(tFlame, (fc + 0.5) / uFlame.xy);
+          float k0 = floor(f0.a * 4.0 + 0.01);
+          vec2 best = vec2(k0 < 1.5 ? f0.r * 2.5 : 0.0, k0);
+          vec2 t;
+          t = flameHeat(fc + vec2(0.0, -2.0)); t.x *= 0.9; if (t.x > best.x) best = t;
+          t = flameHeat(fc + vec2(0.0, -5.0)); t.x *= 0.7; if (t.x > best.x) best = t;
+          t = flameHeat(fc + vec2(0.0, -9.0)); t.x *= 0.45; if (t.x > best.x) best = t;
+          t = flameHeat(fc + vec2(-3.0, -1.0)); t.x *= 0.7; if (t.x > best.x) best = t;
+          t = flameHeat(fc + vec2(3.0, -1.0)); t.x *= 0.7; if (t.x > best.x) best = t;
+          float hz = smoothstep(uHaze.x, uHaze.y, best.x);
+          float wave = sin(acell.y * 1.1 - uTime * 8.0 + acell.x * 0.45);
+          gHaze = vec4(hz, f0.b, best.y, hz > 0.0 ? floor(wave * uHaze.w * (0.4 + 0.6 * hz) + 0.5) : 0.0);
         }
         vec3 wyrmCell(vec3 c, vec3 cp, vec2 acell, vec2 local, float stroke) {
           return artLetters(c, cp, acell, local, stroke, uWyrmTone, uWyrmGlyph, vec3(uArtBlack.y, uArtLum.y, uArtMin.y));
@@ -725,6 +780,7 @@ export class Pipeline {
             }
             if (stroke >= 0.0) { ca = arim; cp = arim; } // an outline glyph is drawn whole in the rim's colour
             if (edgeS >= 0.0) { stroke = edgeS; ca = max(asum / ahits, arim); cp = ca; }
+            if (uFlame.z > 0.5) hazeCell(abase + 0.5 * uArtCell, acell);
             gl_FragColor = vec4(wyrmCell(ca, cp, acell, (px - abase) / uArtCell, stroke), 1.0);
             return;
           }
@@ -771,6 +827,7 @@ export class Pipeline {
               vec3 ca = psum / phits * pgain;
               vec4 sp = texture2D(tScene, px / uRes);
               vec3 cp = isProp(sp.a) && pstroke < 0.0 ? sp.rgb : ca;
+              if (uFlame.z > 0.5) hazeCell(pbase + 0.5 * uArtCell, pcell);
               vec3 pc = artLetters(ca, cp, pcell, (px - pbase) / uArtCell, pstroke, uPropTone, uPropGlyph, uPropLum);
               gl_FragColor = vec4(pc * (1.0 - heroHalo(px)), 1.0);
               return;
