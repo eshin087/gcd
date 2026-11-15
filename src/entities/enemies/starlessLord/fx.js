@@ -1,21 +1,26 @@
-import { TELL, TELL_STYLE, RESULT } from '../../../combat/rules.js';
-import { DuelFx } from '../duelist/fx.js';
+import { TELL, RESULT } from '../../../combat/rules.js';
+import { DuelFx, K_FIRE, K_SMOKE, K_VOID, K_STEEL, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 import { perPhase } from '../duelist/realise.js';
 
-// The Starless Lord's glyph FX (STYLE.md: everything is glyph particles from the world atlas + pooled
-// lights), on top of the duelist's (tells, clashes, sparks, sweep trails). His own: the blades of red
-// light (a glow of strokes along each blade and a red light that follows it), the Void spells
-// (lightning, the push's wall of force, the pull's vortex, the Crushing Dark, the thrown blade, torn
-// stone, the Rift, called lightning, the Dark Star), the wake of his glide, form 4's aura, the blink's
-// afterimage and the forms' ignitions.
+// The Starless Lord's FX, on top of the duelist's (tells, clashes, sparks, sweep trails). Void and
+// steel, both printed by the fire field (render/fireField.js) in the wyrm's small digits:
+//   - `void`: violet fire with a pale heart. What the Void does: the gathering in his hand, the
+//     wreath of form 4, the wake of his glide and of a cut, the fire out of a rift, the Dark Star,
+//     the rings and the pillar of an ignition, what an afterimage is made of.
+//   - `steel`: thin lines that print as the strokes running along them ('-' '/' '|' '\'). What is
+//     sharp: lightning (a jagged path of strokes, white-hot joints, forks, a violet afterglow of
+//     void round it), the crescents' edges, the wall of the push, the talons of the Crushing Dark,
+//     the taut line of the pull, the thrown blade.
+// Small glyph particles (about one letter cell) stay for what flies on its own: embers of his red
+// blades, sparks, chips of stone, motes. The blades themselves stay red light (strokes + a red light
+// that follows the main blade) round a white-hot core of steel.
 // Thrown things (the blade, the stones, the fissures) fly here: each cues itself `flashLead` before it
 // reaches the hero (a glint on it + combat:flash), and one that could only cue too late fizzles on
 // touch, as the wyrm's bullets and the Ash Crescent do (COMBAT.md → fairness).
 
 const TAU = Math.PI * 2;
 const RED = [3.4, 0.2, 0.12], RED_CORE = [3.9, 0.95, 0.7], RED_END = [0.5, 0.03, 0.02], RED_DIM = [1.5, 0.08, 0.1];
-const VOID = [2.6, 0.5, 3.4], VOID_CORE = [4.6, 3.4, 5.2], VOID_END = [0.35, 0.05, 0.6], VOID_DIM = [0.9, 0.16, 1.3]; // Void lightning: violet-white
-const GOLD = [3.6, 2.6, 0.9];
+const VOID = [2.6, 0.5, 3.4], VOID_END = [0.35, 0.05, 0.6]; // the motes drawn in to a cast (glyphs)
 const STONE = [0.5, 0.5, 0.58];
 const DARK = [0.012, 0.0, 0.02]; // the Dark Star's heart: it drinks the light (the alpha pool)
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -30,8 +35,9 @@ export class LordFx extends DuelFx {
     this.auraAcc = 0;
     this.castAcc = 0;
     this.wakeAcc = 0;
+    this.pullAcc = 0;
     this.light = null; // the red light that follows the main blade
-    this._pts = new Float32Array(3 * 40);
+    this._pts = new Float32Array(3 * 48);
   }
 
   reset() {
@@ -50,28 +56,37 @@ export class LordFx extends DuelFx {
     this.updateCrushes(dt, d);
   }
 
-  /** The on-screen angle of a world direction (for strokes laid along it). */
+  /** The on-screen angle of a world direction (for glyph strokes laid along it). */
   _screenRot(dx, dy, dz) {
-    const U = this.game.U, Rg = U?.uCamRight?.value, Up = U?.uCamUp?.value;
-    const sx = dx * (Rg?.x ?? 1) + dy * (Rg?.y ?? 0) + dz * (Rg?.z ?? 0);
-    const sy = dx * (Up?.x ?? 0) + dy * (Up?.y ?? 1) + dz * (Up?.z ?? 0);
+    const A = this._axes();
+    const sx = dx * A.rx + dy * A.ry + dz * A.rz, sy = dx * A.ux + dy * A.uy + dz * A.uz;
     return sx * sx + sy * sy > 1e-10 ? Math.atan2(sy, sx) - Math.PI / 2 : 0;
   }
 
-  /** One stroke from a to b: a '|' laid along it on screen and stretched to its length. Returns the
-   *  spawn record before it is spawned (so the caller may set more on it), or null. */
-  _stroke(ax, ay, az, bx, by, bz, life, w, color, end = null) {
-    const dx = bx - ax, dy = by - ay, dz = bz - az, l = Math.hypot(dx, dy, dz);
-    if (!(l > 1e-4) || !Number.isFinite(l + ax + ay + az)) return null;
-    const o = this._rec((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2, life, w, w * 0.4, '|', color, end);
-    o.rot = this._screenRot(dx, dy, dz);
-    o.stretch = Math.min(4.5, (l / w) * 1.2);
-    return o;
+  /** A ring of `n` blobs round (x, z) at height y, this frame only. `lobes` > 0: that many hotter
+   *  stretches turning with `spin` (rad), so a ring of one colour is seen to turn. */
+  _ring(x, y, z, r, n, size, heat, kind, lobes = 0, spin = 0) {
+    const life = this._frame();
+    if (!(life > 0) || !(r > 0)) return;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU, h = lobes > 0 ? heat * (0.55 + 0.75 * Math.max(0, Math.cos(lobes * (a - spin)))) : heat;
+      this._blob(x + Math.cos(a) * r, y, z + Math.sin(a) * r, 0, 0, 0, life, size, size, h, h, kind);
+    }
+  }
+
+  /** A ring of blobs thrown outward from (x, z): it races to about `r` m in `life` s. */
+  _shock(x, y, z, r, n, life, size, sizeEnd, heat, kind, r0 = 0.5, drag = 0.5) {
+    const sp = Math.max(0, r - r0) / Math.max(0.05, life);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU, ca = Math.cos(a), sa = Math.sin(a);
+      this._blob(x + ca * r0, y, z + sa * r0, ca * sp, 0, sa * sp, life, size, sizeEnd, heat, 0, kind, drag);
+    }
   }
 
   // ---------------------------------------------------------------- the blades of red light
   /** One blade's glow this frame (hilt a → tip b, `k` 0..1 how far it is lit, `hot` > 1 in form 4):
-   *  a row of red strokes along it, a white-hot core, re-drawn every frame. */
+   *  a row of small red strokes along it, re-drawn every frame (his weapon, not a spell: it stays
+   *  red light, as the red light that follows it). */
   bladeGlow(a, b, k = 1, hot = 1) {
     const add = this.add;
     if (!add || !(k > 0.02) || !Number.isFinite(a.x + a.y + a.z + b.x + b.y + b.z)) return;
@@ -82,19 +97,12 @@ export class LordFx extends DuelFx {
     const n = Math.max(3, Math.round(len / 0.16));
     for (let i = 0; i < n; i++) {
       const u = ((i + 0.5) / n) * k;
-      const o = this._rec(a.x + dx * u, a.y + dy * u, a.z + dz * u, life, 0.3 * hot, 0.3 * hot, '|', RED, null);
+      const o = this._rec(a.x + dx * u, a.y + dy * u, a.z + dz * u, life, 0.26 * hot, 0.26 * hot, '|', RED, null);
       o.rot = rot;
       o.stretch = 0.5;
-      o.alpha = 0.85;
-      o.alphaEnd = 0.85;
+      o.alpha = 0.8;
+      o.alphaEnd = 0.8;
       add.spawn(o);
-      if (i & 1) {
-        const c = this._rec(a.x + dx * u, a.y + dy * u, a.z + dz * u, life, 0.17, 0.17, '|', RED_CORE, null);
-        c.rot = rot;
-        c.stretch = 0.8;
-        c.alphaEnd = 1;
-        add.spawn(c);
-      }
     }
   }
 
@@ -114,15 +122,21 @@ export class LordFx extends DuelFx {
     L.radius = 6.5 + 2 * (hot - 1);
   }
 
-  /** A blade ignites (or dies): sparks thrown off along it, a flash. */
+  /** A blade ignites (or dies): the whole blade flashes white, red sparks are thrown off along it, a
+   *  breath of the Void rises off it. */
   igniteBurst(a, b, k = 1) {
     if (!Number.isFinite(a.x + a.y + a.z + b.x + b.y + b.z)) return;
-    for (let i = 0; i < 16 * k; i++) {
+    this._ink(a.x, a.y, a.z, b.x, b.y, b.z, 0.16, 1.15);
+    for (let i = 0; i < 6 * k; i++) {
+      const u = this.rnd();
+      this._blob(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, a.z + (b.z - a.z) * u, this.rand(-0.4, 0.4), this.rand(0.4, 1.4), this.rand(-0.4, 0.4), this.rand(0.25, 0.45), 0.5, 0.25, 0.3, 0, K_VOID, 1, 1);
+    }
+    for (let i = 0; i < 14 * k; i++) {
       const u = this.rnd(), ang = this.rnd() * TAU, sp = this.rand(1.5, 5);
       this._spawn(this.add, {
         x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, z: a.z + (b.z - a.z) * u,
         vx: Math.cos(ang) * sp, vy: this.rand(-0.5, 3), vz: Math.sin(ang) * sp,
-        life: this.rand(0.2, 0.5), size: this.rand(0.14, 0.26), sizeEnd: 0.04, glyph: "+*'", color: RED_CORE, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 3, gravity: -4,
+        life: this.rand(0.2, 0.5), size: this.rand(0.12, 0.22), sizeEnd: 0.04, glyph: "+*'", color: RED_CORE, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 3, gravity: -4,
       });
     }
     this._light({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2, color: [1, 0.2, 0.1], intensity: 5 * k, radius: 8, life: 0.3, fade: 0.25 });
@@ -142,62 +156,50 @@ export class LordFx extends DuelFx {
     }
   }
 
-  /** Form 4: the Void wreathes him: dark-red wisps rising off the body, arcs crawling over the plate,
-   *  and under his feet a slow wheel of marks. */
+  /** Form 4: the Void wreathes him: violet fire rising BEHIND him (so it licks round his outline and
+   *  never covers the figure), arcs crawling over the plate, and under his feet a slow wheel. */
   aura(x, y, z, dt, k = 1, fx = x, fz = z) {
-    this.auraAcc += dt * 38 * k;
+    // (behind him as the camera sees him: the field's depth test hides what the body covers)
+    const A = this._axes();
+    const bx = A.ry * A.uz - A.rz * A.uy, by = A.rz * A.ux - A.rx * A.uz, bz = A.rx * A.uy - A.ry * A.ux; // toward the camera
+    const ox = x - bx * 0.7, oy = y - by * 0.7, oz = z - bz * 0.7;
+    this.auraAcc += dt * 46 * k;
     while (this.auraAcc >= 1) {
       this.auraAcc -= 1;
-      const a = this.rnd() * TAU, r = this.rand(0.2, 0.55);
-      this._spawn(this.add, {
-        x: x + Math.cos(a) * r, y: y + this.rand(-1.0, 0.5), z: z + Math.sin(a) * r,
-        vx: Math.cos(a) * 0.4, vy: this.rand(0.8, 2.4), vz: Math.sin(a) * 0.4,
-        life: this.rand(0.4, 0.9), size: this.rand(0.16, 0.3), sizeEnd: 0.04, glyph: "~'^`", color: [2.2, 0.16, 0.2], colorEnd: [0.3, 0.02, 0.08], alpha: 0.9, alphaEnd: 0, drag: 1, flicker: 0.4,
-      });
-      if (this.rnd() < 0.12) {
-        const bx = x + this.rand(-0.7, 0.7), by = y + this.rand(-0.9, 0.7), bz = z + this.rand(-0.7, 0.7);
-        this.arc(x + this.rand(-0.2, 0.2), y + this.rand(-0.4, 0.4), z + this.rand(-0.2, 0.2), bx, by, bz, 0.3, RED_CORE, RED_END);
+      // (spread across the screen and up his height, never toward the camera)
+      const s = this.rand(-0.85, 0.85), h = this.rand(-1.0, 0.9);
+      this._blob(ox + A.rx * s, oy + h, oz + A.rz * s, A.rx * s * 0.4, this.rand(0.7, 2.0), A.rz * s * 0.4, this.rand(0.5, 0.95), 0.75, 0.4, 0.6, 0.12, K_VOID, 1, 0.8);
+      if (this.rnd() < 0.1) {
+        const ex = x + this.rand(-0.7, 0.7), ey = y + this.rand(-0.9, 0.7), ez = z + this.rand(-0.7, 0.7);
+        this.arc(x + this.rand(-0.2, 0.2), y + this.rand(-0.4, 0.4), z + this.rand(-0.2, 0.2), ex, ey, ez, 0.3);
       }
     }
-    // the wheel on the floor: twelve marks turning slowly, re-drawn every frame
-    const life = Math.max(0.02, (this.game.fxDt ?? this.game.dt ?? 0.016) * 1.6), t = this.d.time ?? 0;
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * TAU + t * 0.7, r = 1.25 + 0.06 * Math.sin(t * 3 + i);
-      const o = this._rec(fx + Math.cos(a) * r, 0.07, fz + Math.sin(a) * r, life, 0.3, 0.3, i & 1 ? '+' : 'x', RED_DIM, null);
-      o.alpha = 0.75 * k;
-      o.alphaEnd = 0.75 * k;
-      this._spawn(this.add, o);
-    }
+    // the wheel on the floor: a ring of the Void, four hotter spokes of it turning slowly
+    this._ring(fx, GROUND_Y, fz, 1.25, 28, 0.34, 0.34 * GROUND_GAIN * k, K_VOID, 4, (this.d.time ?? 0) * 0.7);
   }
 
-  /** The wake of his glide: red wisps torn off under him, a ripple on the floor now and then. */
+  /** The wake of his glide: the Void torn off under him, left burning low on the floor behind. */
   glideWake(x, z, vx, vz, dt, k = 1) {
     const sp = Math.hypot(vx, vz);
     this.wakeAcc += dt * (16 + 4 * sp) * k;
     while (this.wakeAcc >= 1) {
       this.wakeAcc -= 1;
       const a = this.rnd() * TAU, r = this.rand(0, 0.4);
-      this._spawn(this.add, {
-        x: x + Math.cos(a) * r, y: this.rand(0.05, 0.4), z: z + Math.sin(a) * r,
-        vx: -vx * 0.25 + this.rand(-0.5, 0.5), vy: this.rand(-0.2, 0.9), vz: -vz * 0.25 + this.rand(-0.5, 0.5),
-        life: this.rand(0.25, 0.6), size: this.rand(0.16, 0.3), sizeEnd: 0.04, glyph: "~-'`", rot: this._screenRot(vx, 0, vz) + Math.PI / 2,
-        color: [1.9, 0.12, 0.2], colorEnd: [0.16, 0.01, 0.06], alpha: 0.85, alphaEnd: 0, drag: 2,
-      });
+      this._blob(x + Math.cos(a) * r, this.rand(0.3, 0.5), z + Math.sin(a) * r, -vx * 0.2 + this.rand(-0.4, 0.4), this.rand(0, 0.5), -vz * 0.2 + this.rand(-0.4, 0.4), this.rand(0.3, 0.6), 0.55, 0.85, 0.85, 0, K_VOID, 2);
     }
   }
 
   // ---------------------------------------------------------------- Void lightning
-  /** A small arc from a to b: a few jagged strokes (the Void crawling over him, a mark crackling). */
-  arc(ax, ay, az, bx, by, bz, w = 0.22, color = VOID, end = VOID_END, steps = 4) {
-    const add = this.add;
-    if (!add || !Number.isFinite(ax + ay + az + bx + by + bz)) return;
+  /** A small arc from a to b: a few jagged strokes (the Void crawling over him, a mark crackling).
+   *  `w` 0.14 .. 0.3 = how bright; (`color` / `end`: the old glyph colours, unused: arcs are steel). */
+  arc(ax, ay, az, bx, by, bz, w = 0.22, color = null, end = null, steps = 4) {
+    if (!this.fire || !Number.isFinite(ax + ay + az + bx + by + bz)) return;
     let px = ax, py = ay, pz = az;
-    const j = 0.18 * Math.hypot(bx - ax, by - ay, bz - az);
+    const j = 0.18 * Math.hypot(bx - ax, by - ay, bz - az), h = Math.min(1.15, 0.35 + 2.4 * w);
     for (let i = 1; i <= steps; i++) {
       const t = i / steps, e = i < steps ? 1 : 0;
       const x = ax + (bx - ax) * t + this.rand(-j, j) * e, y = ay + (by - ay) * t + this.rand(-j, j) * e, z = az + (bz - az) * t + this.rand(-j, j) * e;
-      const o = this._stroke(px, py, pz, x, y, z, this.rand(0.05, 0.13), w, color, end);
-      if (o) add.spawn(o);
+      this._ink(px, py, pz, x, y, z, this.rand(0.06, 0.13), h, 0.2, h, i > 1 ? 1 : 0);
       px = x;
       py = y;
       pz = z;
@@ -205,100 +207,99 @@ export class LordFx extends DuelFx {
   }
 
   /**
-   * A bolt from a to b: a white-violet core in a violet sheath, two thinner strands winding round
-   * it, forks that die in the air, a burst where it lands. `k` = size; `lit`: its flash of light and
-   * its landing burst; `gold`: a bolt thrown back by a perfect parry.
+   * A bolt from a to b, drawn in text: a jagged path of thin steel, so it prints as the strokes that
+   * run along it ('-' '/' '|' '\'), each joint white-hot (a digit); forks that die in the air; round
+   * it a sheath of the Void that lingers and tears for a third of a second after the core is gone
+   * (the afterglow). `k` = size (0.6 a small arc along the floor, 1.1 the bolt from his hand, 2.4
+   * lightning out of the sky); `lit`: its flash of light and its landing burst; `gold`: a bolt thrown
+   * back by a perfect parry (its sheath is fire).
    */
   lightning(ax, ay, az, bx, by, bz, k = 1, lit = true, gold = false) {
-    const add = this.add;
-    if (!add || !Number.isFinite(ax + ay + az + bx + by + bz)) return;
+    if (!this.fire || !Number.isFinite(ax + ay + az + bx + by + bz + k)) return;
     const dx = bx - ax, dy = by - ay, dz = bz - az, len = Math.hypot(dx, dy, dz);
     if (!(len > 0.05)) return;
-    const steps = Math.max(3, Math.min(36, Math.round(len / 0.4)));
-    const body = gold ? GOLD : VOID, core = gold ? [4.6, 4.2, 3] : VOID_CORE, end = gold ? [0.6, 0.3, 0.05] : VOID_END, dim = gold ? [1.4, 0.9, 0.3] : VOID_DIM;
+    const steps = Math.max(3, Math.min(40, Math.round(len / 0.55)));
+    const big = k >= 0.8, kk = Math.min(k, 2.4), sheath = gold ? K_FIRE : K_VOID;
     const P = this._pts;
-    // the core's path: jagged, its ends true
+    // the path of the core: it wanders off the straight line and back (each joint keeps half of the
+    // drift of the one before, so it runs in long leaning strokes, not a staircase), its ends true
+    const j = 0.3 * Math.min(kk, 1.7) + 0.06;
+    let ox = 0, oy = 0, oz = 0;
     for (let i = 0; i <= steps; i++) {
-      const t = i / steps, j = i > 0 && i < steps ? (0.3 * k * Math.sin(Math.PI * t) + 0.1) : 0;
-      P[i * 3] = ax + dx * t + this.rand(-j, j);
-      P[i * 3 + 1] = ay + dy * t + this.rand(-j, j);
-      P[i * 3 + 2] = az + dz * t + this.rand(-j, j);
+      const t = i / steps, e = i > 0 && i < steps ? Math.min(1, Math.sin(Math.PI * t) * 2.2) : 0;
+      ox = ox * 0.5 + this.rand(-j, j);
+      oy = oy * 0.5 + this.rand(-j, j);
+      oz = oz * 0.5 + this.rand(-j, j);
+      P[i * 3] = ax + dx * t + ox * e;
+      P[i * 3 + 1] = ay + dy * t + oy * e;
+      P[i * 3 + 2] = az + dz * t + oz * e;
     }
-    const big = k >= 0.8;
+    // the core, written on the grid one cell wide: every cell a bright stroke along the bolt (just
+    // under the heat at which a cell prints a digit), every third joint a white-hot digit. It cools
+    // in ~0.2 s to grey strokes. A bolt out of the sky is two cells wide.
+    const heat = big ? 1.16 : 0.8, A = this._axes(), w2 = kk > 1.8 ? 0.14 : 0;
     for (let i = 1; i <= steps; i++) {
       const x0 = P[i * 3 - 3], y0 = P[i * 3 - 2], z0 = P[i * 3 - 1], x1 = P[i * 3], y1 = P[i * 3 + 1], z1 = P[i * 3 + 2];
-      const c = this._stroke(x0, y0, z0, x1, y1, z1, this.rand(0.12, 0.22), 0.3 * k, core, end);
-      if (c) add.spawn(c);
-      if (big) {
-        // the sheath: wider, dimmer, it lingers a moment after the core is gone
-        const s = this._stroke(x0, y0, z0, x1, y1, z1, this.rand(0.2, 0.34), 0.62 * k, dim, end);
-        if (s) {
-          s.alpha = 0.6;
-          add.spawn(s);
-        }
-        if (this.rnd() < 0.22 && i < steps) {
-          // a fork that dies in the air
-          let fx = x1, fy = y1, fz = z1;
-          for (let q = 0; q < 3; q++) {
-            const nx = fx + this.rand(-0.55, 0.55), ny = fy + this.rand(-0.45, 0.55), nz = fz + this.rand(-0.55, 0.55);
-            const f = this._stroke(fx, fy, fz, nx, ny, nz, this.rand(0.06, 0.14), 0.2 * k, body, end);
-            if (f) add.spawn(f);
-            fx = nx;
-            fy = ny;
-            fz = nz;
-          }
-        }
-      }
-    }
-    if (big) {
-      // two strands winding round the core
-      for (let sIdx = 0; sIdx < 2; sIdx++) {
-        const n = Math.max(3, Math.round(steps * 0.6)), ph = this.rnd() * TAU;
-        let px = ax, py = ay, pz = az;
-        for (let i = 1; i <= n; i++) {
-          const t = i / n, w = (i < n ? 0.42 * k : 0) * Math.sin(Math.PI * t), a = ph + t * 9 + sIdx * Math.PI;
-          const x = ax + dx * t + Math.cos(a) * w + this.rand(-0.08, 0.08), y = ay + dy * t + Math.sin(a) * w * 0.7, z = az + dz * t + Math.sin(a + 1) * w + this.rand(-0.08, 0.08);
-          const o = this._stroke(px, py, pz, x, y, z, this.rand(0.07, 0.16), 0.16 * k, body, end);
-          if (o) add.spawn(o);
-          px = x;
-          py = y;
-          pz = z;
+      const life = this.rand(0.15, 0.23);
+      this._ink(x0, y0, z0, x1, y1, z1, life, heat, 0.3, heat, i > 1 ? 1 : 0);
+      if (i % 3 === 0 && i < steps) this._blob(x1, y1, z1, 0, 0, 0, 0.12, 0.3, 0.26, 0.9, 0, K_STEEL); // a joint burns white
+      if (w2) this._ink(x0 + A.rx * w2, y0 + A.ry * w2, z0 + A.rz * w2, x1 + A.rx * w2, y1 + A.ry * w2, z1 + A.rz * w2, life, heat, 0.25, heat);
+      if (!big) continue;
+      // the sheath: violet letters round the core that outlive it and tear upward (the afterglow)
+      const sz = 0.75 * Math.sqrt(kk);
+      this._blob((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, this.rand(-0.3, 0.3), this.rand(0, 0.6), this.rand(-0.3, 0.3), this.rand(0.3, 0.5), sz, sz * 0.55, 0.45, 0, sheath, 1);
+      this._blob(x1, y1, z1, this.rand(-0.3, 0.3), this.rand(0, 0.6), this.rand(-0.3, 0.3), this.rand(0.3, 0.5), sz, sz * 0.55, 0.45, 0, sheath, 1);
+      if (this.rnd() < 0.34 && i < steps) {
+        // a fork that dies in the air
+        let fx = x1, fy = y1, fz = z1;
+        const r = 0.6 * Math.min(kk, 1.6);
+        for (let q = 0; q < 3; q++) {
+          const nx = fx + this.rand(-r, r), ny = fy + this.rand(-r * 0.8, r), nz = fz + this.rand(-r, r);
+          this._ink(fx, fy, fz, nx, ny, nz, this.rand(0.08, 0.15), 0.95 - 0.2 * q, 0.15, 0.85 - 0.2 * q);
+          fx = nx;
+          fy = ny;
+          fz = nz;
         }
       }
     }
     if (lit) {
       this._light({ x: (ax + bx) / 2, y: Math.max(1, (ay + by) / 2), z: (az + bz) / 2, color: gold ? [1, 0.8, 0.4] : [0.7, 0.4, 1], intensity: 5.5 * k, radius: 9 + len * 0.3, life: 0.24, fade: 0.2 });
-      this._spawn(add, { x: bx, y: by, z: bz, life: 0.14, size: 1.5 * k, sizeEnd: 0.3, glyph: '*', color: core, colorEnd: end, alpha: 1, alphaEnd: 0, spin: 6 });
-      for (let i = 0; i < 14; i++) {
+      // where it lands: a burst of short strokes, a breath of the sheath, a few sparks
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * TAU + this.rnd() * 0.3, ca = Math.cos(a), sa = Math.sin(a), sp = this.rand(5, 9) * Math.min(kk, 1.6);
+        const ux = A.rx * ca + A.ux * sa, uy = A.ry * ca + A.uy * sa, uz = A.rz * ca + A.uz * sa;
+        this._blob(bx + ux * 0.15, by + uy * 0.15, bz + uz * 0.15, ux * sp, uy * sp, uz * sp, this.rand(0.12, 0.2), 0.27, 0.2, 0.6, 0, K_STEEL, 6);
+      }
+      for (let i = 0; i < 4; i++) this._blob(bx + this.rand(-0.2, 0.2), Math.max(0.35, by) + this.rand(0, 0.3), bz + this.rand(-0.2, 0.2), this.rand(-1, 1), this.rand(0.5, 2), this.rand(-1, 1), this.rand(0.25, 0.4), 0.5 * Math.min(kk, 1.8), 0.3, 0.42, 0, sheath, 2, 1);
+      for (let i = 0; i < 8; i++) {
         const a = this.rnd() * TAU, sp = this.rand(2, 7);
-        this._spawn(add, { x: bx, y: by, z: bz, vx: Math.cos(a) * sp, vy: this.rand(0, 4.5), vz: Math.sin(a) * sp, life: this.rand(0.15, 0.4), size: 0.2, sizeEnd: 0.04, glyph: '+x*', color: core, colorEnd: end, alpha: 1, alphaEnd: 0, drag: 4 });
+        this._spawn(this.add, { x: bx, y: by, z: bz, vx: Math.cos(a) * sp, vy: this.rand(0, 4.5), vz: Math.sin(a) * sp, life: this.rand(0.15, 0.4), size: 0.16, sizeEnd: 0.04, glyph: "+x*'", color: gold ? [4.2, 3.4, 1.6] : [3.6, 2.6, 4.4], colorEnd: gold ? [0.6, 0.3, 0.05] : VOID_END, alpha: 1, alphaEnd: 0, drag: 4 });
       }
       // where it meets the floor it runs out along it
       if (by < 0.8) for (let i = 0; i < 4; i++) {
-        const a = this.rnd() * TAU, r = this.rand(0.8, 1.9) * k;
-        this.arc(bx, 0.08, bz, bx + Math.cos(a) * r, 0.08, bz + Math.sin(a) * r, 0.2, body, end, 3);
+        const a = this.rnd() * TAU, r = this.rand(0.8, 1.9) * Math.min(kk, 1.6);
+        this.arc(bx, GROUND_Y, bz, bx + Math.cos(a) * r, GROUND_Y, bz + Math.sin(a) * r, 0.3, null, null, 3);
       }
     }
   }
 
-  /** The Void gathering in his hand through a cast's windup (`k` 0..1): arcs snapping off the hand,
-   *  motes drawn in to it, and past half-way an arc to the floor now and then. */
+  /** The Void gathering in his hand through a cast's windup (`k` 0..1): a ball of violet fire that
+   *  swells, arcs snapping off it, motes drawn in to it, and past half-way an arc to the floor now
+   *  and then. (`color`: the motes'.) */
   crackle(x, y, z, k, dt, color = VOID) {
-    this.castAcc += dt * (22 + 60 * k);
-    const add = this.add;
+    this.castAcc += dt * (14 + 34 * k);
     while (this.castAcc >= 1) {
       this.castAcc -= 1;
-      const a = this.rnd() * TAU, e = this.rand(-1, 1), r = this.rand(0.12, 0.36 + 0.26 * k);
-      const ex = x + Math.cos(a) * r, ey = y + e * r, ez = z + Math.sin(a) * r;
-      const o = this._stroke(x, y, z, ex, ey, ez, this.rand(0.05, 0.12), 0.18, color, VOID_END);
-      if (o) add?.spawn(o);
+      const a = this.rnd() * TAU, e = this.rand(-1, 1), r = this.rand(0.2, 0.42 + 0.3 * k);
+      this._ink(x, y, z, x + Math.cos(a) * r, y + e * r, z + Math.sin(a) * r, this.rand(0.05, 0.1), 1.0, 0.2, 0.6);
       // a mote drawn in from further out
       const R = this.rand(0.7, 1.3), b = this.rnd() * TAU, h = this.rand(-0.6, 0.6);
       const mx = x + Math.cos(b) * R, my = y + h, mz = z + Math.sin(b) * R, life = this.rand(0.16, 0.28);
-      this._spawn(add, { x: mx, y: my, z: mz, vx: (x - mx) / life, vy: (y - my) / life, vz: (z - mz) / life, life, size: 0.12, sizeEnd: 0.04, glyph: ".'", color, colorEnd: VOID_END, alpha: 0.2, alphaEnd: 1 });
-      if (k > 0.5 && this.rnd() < 0.1) this.arc(x, y, z, x + this.rand(-0.7, 0.7), 0.06, z + this.rand(-0.7, 0.7), 0.2, color, VOID_END, 5);
+      this._spawn(this.add, { x: mx, y: my, z: mz, vx: (x - mx) / life, vy: (y - my) / life, vz: (z - mz) / life, life, size: 0.12, sizeEnd: 0.04, glyph: ".'", color, colorEnd: VOID_END, alpha: 0.2, alphaEnd: 1 });
+      if (k > 0.5 && this.rnd() < 0.1) this.arc(x, y, z, x + this.rand(-0.7, 0.7), 0.2, z + this.rand(-0.7, 0.7), 0.26, null, null, 5);
     }
-    this._spawn(add, { x, y, z, life: 0.06, size: 0.22 + 0.3 * k, sizeEnd: 0.1, glyph: '*', color: [color[0] * (0.6 + k), color[1] * (0.6 + k), color[2] * (0.6 + k)], alpha: 1, alphaEnd: 0.4 });
+    const P = this._toCamera(x, y, z);
+    this._dot(P.x, P.y, P.z, 0.42 + 0.4 * k, 0.45 + 0.6 * k, K_VOID);
   }
 
   // ---------------------------------------------------------------- the push, the pull, crescents, the rift
@@ -311,231 +312,168 @@ export class LordFx extends DuelFx {
       c.half = o.half;
       c.life = o.life;
       c.seed = this.rnd() * 100;
+      c.lx = c.lz = NaN; // (the rift: where its crack last reached)
     }
     return c;
   }
 
-  /** The push leaves his palm: a cone of force torn out of the air before him, the floor swept. */
+  /** The push leaves his palm: dashes of force thrown out in a fan before him, the floor swept. */
   pushBurst(x, y, z, dx, dz) {
     const base = Math.atan2(dz, dx);
-    for (let i = -9; i <= 9; i++) {
-      const a = base + (i / 9) * 1.15, ca = Math.cos(a), sa = Math.sin(a), sp = this.rand(11, 16);
-      this._spawn(this.add, {
-        x: x + ca * 0.5, y: y + this.rand(-0.7, 0.5), z: z + sa * 0.5, vx: ca * sp, vz: sa * sp,
-        life: this.rand(0.16, 0.28), size: 0.6, sizeEnd: 1.3, glyph: ')', rot: Math.atan2(sa, ca), color: [2.4, 2.0, 2.3], colorEnd: [0.3, 0.1, 0.3], alpha: 0.9, alphaEnd: 0, drag: 2.5,
-      });
+    for (let i = -6; i <= 6; i++) {
+      const a = base + (i / 6) * 1.15, ca = Math.cos(a), sa = Math.sin(a), yy = y + this.rand(-0.6, 0.4), sp = this.rand(9, 12);
+      for (let q = 0; q < 3; q++) this._blob(x + ca * (0.5 + q * 0.14), yy, z + sa * (0.5 + q * 0.14), ca * (sp + q * 2.5), 0, sa * (sp + q * 2.5), this.rand(0.14, 0.24), 0.27, 0.22, 0.34, 0, K_STEEL, 2.5);
     }
-    for (let i = 0; i < 18; i++) {
-      const a = base + this.rand(-1, 1), sp = this.rand(3, 10);
-      this._spawn(this.alpha, { x: x + Math.cos(a) * 0.6, y: 0.12, z: z + Math.sin(a) * 0.6, vx: Math.cos(a) * sp, vy: this.rand(0.4, 2.2), vz: Math.sin(a) * sp, life: this.rand(0.3, 0.7), size: 0.22, sizeEnd: 0.7, glyph: ".,'~", color: [0.3, 0.27, 0.32], alpha: 0.8, alphaEnd: 0, drag: 2.4 });
+    for (let i = 0; i < 7; i++) {
+      const a = base + this.rand(-1, 1), sp = this.rand(3, 8);
+      this._blob(x + Math.cos(a) * 0.6, 0.3, z + Math.sin(a) * 0.6, Math.cos(a) * sp, this.rand(0.2, 0.8), Math.sin(a) * sp, this.rand(0.4, 0.7), 0.5, 1.2, 0.7, 0, K_SMOKE, 2.4);
     }
     this._light({ x, y, z, color: [0.9, 0.75, 1], intensity: 4, radius: 8, life: 0.2, fade: 0.18 });
   }
 
   _drawCrescent(c) {
-    const life = Math.max(0.02, (this.game.fxDt ?? this.game.dt ?? 0.016) * 1.7);
-    const px = -c.dz, pz = c.dx, rot = Math.atan2(c.dz, c.dx);
+    const px = -c.dz, pz = c.dx;
     if (c.style === 'push') {
-      // a wall of force: ranks of pale strokes bowed forward and standing as tall as a man, a shimmer
-      // of upright strokes through it, the dust of the floor torn along behind
+      // a wall of force: three bowed lines of pale strokes, one above the other, as tall as a man; a
+      // fainter rank behind them; upright strokes shimmering through; the floor's dust torn along
       const half = c.half ?? 2.4, t = c.age ?? 0;
-      for (let rank = 0; rank < 3; rank++) {
-        const back = rank * 0.42, n = 9 - rank * 2, col = rank === 0 ? [2.6, 2.2, 2.6] : [1.2 - rank * 0.3, 0.3, 0.6];
-        for (let i = -n; i <= n; i++) {
-          const u = i / n, bow = 0.7 * (1 - u * u) - back;
-          const o = this._rec(c.x + px * u * half + c.dx * bow, 0.25 + 1.6 * ((i + n + rank) % 3) / 2.2, c.z + pz * u * half + c.dz * bow, life, 0.5 - rank * 0.1, 0.5, ')', col, null);
-          o.rot = rot;
-          o.alphaEnd = 1;
-          o.alpha = rank === 0 ? 1 : 0.7;
-          this._spawn(this.add, o);
-        }
-      }
+      this._bow(c, half, 0.7, 0.45, 0, 0.27, 0.7);
+      this._bow(c, half, 0.7, 1.0, 0, 0.27, 0.85);
+      this._bow(c, half, 0.7, 1.55, 0, 0.27, 0.7);
+      this._bow(c, half * 0.85, 0.7, 0.72, 0, 0.27, 0.4, K_STEEL, 0.45);
+      this._bow(c, half * 0.85, 0.7, 1.28, 0, 0.27, 0.4, K_STEEL, 0.45);
       for (let i = 0; i < 5; i++) {
         const u = Math.sin(t * 23 + i * 2.4 + (c.seed ?? 0)), bow = 0.7 * (1 - u * u);
-        const o = this._rec(c.x + px * u * half + c.dx * bow, 1.0, c.z + pz * u * half + c.dz * bow, life, 0.34, 0.34, '|', [1.6, 1.3, 1.9], null);
-        o.stretch = 2.6;
-        o.alpha = 0.55;
-        o.alphaEnd = 0.55;
-        this._spawn(this.add, o);
+        const x = c.x + px * u * half + c.dx * bow, z = c.z + pz * u * half + c.dz * bow;
+        this._ink(x, 0.45, z, x, 1.55, z, 0, 0.5);
       }
-      for (let i = 0; i < 2; i++) {
-        this._spawn(this.alpha, {
-          x: c.x + this.rand(-half, half) * px, y: 0.15, z: c.z + this.rand(-half, half) * pz,
-          vx: c.dx * 3, vy: this.rand(0.4, 1.8), vz: c.dz * 3, life: this.rand(0.3, 0.6), size: 0.24, sizeEnd: 0.65, glyph: ".,'~", color: [0.3, 0.27, 0.32], alpha: 0.8, alphaEnd: 0, drag: 2,
-        });
-      }
+      if (this.rnd() < 0.7) this._blob(c.x + this.rand(-half, half) * px - c.dx * 0.3, 0.3, c.z + this.rand(-half, half) * pz - c.dz * 0.3, c.dx * 3, this.rand(0.2, 0.8), c.dz * 3, this.rand(0.35, 0.6), 0.5, 1.1, 0.65, 0, K_SMOKE, 2);
       return;
     }
     if (c.style === 'rift') {
-      // a fissure racing along the floor: a bright jagged head, red light bursting up out of the
-      // crack behind it, the crack itself left glowing for a moment
+      // a fissure racing along the floor: a white-hot jagged head, the crack it leaves drawn in thin
+      // strokes that cool behind it, the Void's fire bursting up out of the crack
       const t = c.age ?? 0, jag = Math.sin(t * 40 + (c.seed ?? 0)) * 0.22;
       const hx = c.x + px * jag, hz = c.z + pz * jag;
-      for (let i = -1; i <= 1; i++) {
-        const o = this._rec(hx + px * i * 0.26 - c.dx * Math.abs(i) * 0.3, 0.1, hz + pz * i * 0.26 - c.dz * Math.abs(i) * 0.3, life, 0.5, 0.5, i === 0 ? '^' : i < 0 ? '/' : '\\', i === 0 ? RED_CORE : RED, null);
-        o.rot = rot - Math.PI / 2;
-        o.alphaEnd = 1;
-        this._spawn(this.add, o);
-      }
-      // the scar it leaves
-      const s = this._rec(hx, 0.06, hz, this.rand(0.5, 0.8), 0.34, 0.2, "v<>x"[Math.floor(this.rnd() * 4)], RED, RED_END);
-      s.rot = this.rnd() * TAU;
-      s.alphaEnd = 0;
-      this._spawn(this.add, s);
+      if (Number.isFinite(c.lx + c.lz) && Math.hypot(hx - c.lx, hz - c.lz) < 3) this._ink(c.lx, 0.45, c.lz, hx, 0.45, hz, this.rand(0.5, 0.75), 1.15, 0, 1.15, 1);
+      c.lx = hx;
+      c.lz = hz;
+      this._dot(hx, 0.45, hz, 0.3, 0.6, K_STEEL);
       for (let i = 0; i < 3; i++) {
-        const b = this.rand(0, 1.3), w = this.rand(-0.14, 0.14);
-        const o = this._rec(c.x - c.dx * b + px * w, 0.1, c.z - c.dz * b + pz * w, this.rand(0.16, 0.34), 0.26, 0.08, '|', i ? RED : RED_CORE, RED_END);
-        o.vy = this.rand(3.5, 8) * (1 - b * 0.5);
-        o.stretch = 1.8;
-        o.alphaEnd = 0;
-        this._spawn(this.add, o);
+        const b = this.rand(0, 1.3), w = this.rand(-0.12, 0.12);
+        this._blob(c.x - c.dx * b + px * w, 0.35, c.z - c.dz * b + pz * w, 0, this.rand(2.5, 6) * (1 - b * 0.4), 0, this.rand(0.2, 0.36), 0.5, 0.24, 0.8, 0, K_VOID, 3);
       }
       if (this.rnd() < 0.5) this._spawn(this.alpha, { x: hx, y: 0.1, z: hz, vx: this.rand(-1.5, 1.5), vy: this.rand(1, 3.5), vz: this.rand(-1.5, 1.5), life: this.rand(0.3, 0.6), size: 0.16, sizeEnd: 0.05, glyph: "#,.'", color: STONE, alpha: 1, alphaEnd: 0, gravity: -9 });
       return;
     }
-    // a crescent of red light: a bowed blade of strokes standing off the floor, a hot core, embers
-    for (let i = -4; i <= 4; i++) {
-      const u = i / 4, bow = 0.4 * (1 - u * u);
-      const o = this._rec(c.x + px * u * 1.0 + c.dx * bow, 0.6 + 0.16 * (1 - u * u), c.z + pz * u * 1.0 + c.dz * bow, life, 0.5, 0.5, ')', Math.abs(i) <= 1 ? RED_CORE : RED, null);
-      o.rot = rot;
-      o.alphaEnd = 1;
-      this._spawn(this.add, o);
+    // a crescent of light: a bowed edge of white strokes standing off the floor, the Void burning in
+    // the hollow behind it and torn off in its wake, a red ember shed now and then
+    this._bow(c, 1.0, 0.6, 0.6, 0.16, 0.28, 1.15);
+    this._bow(c, 0.9, 0.55, 0.62, 0.12, 0.62, 0.62, K_VOID, 0.34, 0.2);
+    for (let i = 0; i < 2; i++) {
+      const u = this.rand(-0.85, 0.85), bow = 0.55 * (1 - u * u) - 0.55;
+      this._blob(c.x + px * u + c.dx * bow, 0.6, c.z + pz * u + c.dz * bow, -c.dx * 1.5, this.rand(0.1, 0.7), -c.dz * 1.5, this.rand(0.2, 0.34), 0.55, 0.26, 0.42, 0, K_VOID, 1.5, 0.8);
     }
-    for (let i = -2; i <= 2; i++) {
-      const u = i / 2.6, bow = 0.4 * (1 - u * u) - 0.28;
-      const o = this._rec(c.x + px * u + c.dx * bow, 0.6, c.z + pz * u + c.dz * bow, life, 0.4, 0.4, ')', RED_DIM, null);
-      o.rot = rot;
-      o.alpha = 0.6;
-      o.alphaEnd = 0.6;
-      this._spawn(this.add, o);
-    }
-    this._spawn(this.add, { x: c.x + this.rand(-0.7, 0.7) * px, y: 0.3, z: c.z + this.rand(-0.7, 0.7) * pz, vx: -c.dx * 2, vy: this.rand(0.3, 1.2), vz: -c.dz * 2, life: this.rand(0.2, 0.5), size: 0.14, sizeEnd: 0.04, glyph: ".'", color: RED, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 2 });
+    if (this.rnd() < 0.6) this._spawn(this.add, { x: c.x + this.rand(-0.7, 0.7) * px, y: 0.3, z: c.z + this.rand(-0.7, 0.7) * pz, vx: -c.dx * 2, vy: this.rand(0.3, 1.2), vz: -c.dz * 2, life: this.rand(0.2, 0.5), size: 0.14, sizeEnd: 0.04, glyph: ".'", color: RED, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 2 });
   }
 
   _fizzle(c) {
     const col = c.style === 'push' ? [1.6, 1.4, 1.5] : RED;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       const a = this.rnd() * TAU, sp = this.rand(1, 5);
-      this._spawn(this.add, { x: c.x, y: 0.7, z: c.z, vx: Math.cos(a) * sp, vy: this.rand(0, 2.5), vz: Math.sin(a) * sp, life: this.rand(0.2, 0.5), size: 0.2, sizeEnd: 0.05, glyph: ")'.", color: col, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 3 });
+      this._spawn(this.add, { x: c.x, y: 0.7, z: c.z, vx: Math.cos(a) * sp, vy: this.rand(0, 2.5), vz: Math.sin(a) * sp, life: this.rand(0.2, 0.5), size: 0.16, sizeEnd: 0.05, glyph: "'.*", color: col, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 3 });
     }
+    // the edge breaks: its halves fly apart and go out; what was behind it goes up
+    const px = -c.dz, pz = c.dx, half = c.style === 'push' ? Math.min(1.6, c.half ?? 1.6) : 0.9;
+    for (let i = -5; i <= 5; i++) {
+      if (!i) continue;
+      const u = i / 5, sp = 3 * Math.sign(i) + u * 2;
+      this._blob(c.x + px * u * half, 0.65, c.z + pz * u * half, px * sp, this.rand(0.5, 2.2), pz * sp, this.rand(0.12, 0.22), 0.27, 0.2, 0.55, 0, K_STEEL, 3);
+    }
+    if (c.style !== 'push') for (let i = 0; i < 4; i++) this._blob(c.x + this.rand(-0.4, 0.4), 0.6, c.z + this.rand(-0.4, 0.4), this.rand(-1, 1), this.rand(0.5, 2), this.rand(-1, 1), this.rand(0.2, 0.36), 0.5, 0.25, 0.36, 0, K_VOID, 2, 1);
   }
 
-  /** The pull's windup: the air drawn from the hero down a narrowing vortex into his hand, and a
-   *  taut line between the two. */
+  /** The pull's windup: a taut line of strokes between his hand and the hero that brightens as it
+   *  closes, and the Void drawn from him down a narrowing vortex into the hand. */
   pullStream(hx, hy, hz, px, py, pz, k, dt) {
     const dx = hx - px, dy = hy - py, dz = hz - pz, l = Math.hypot(dx, dy, dz) || 1;
+    if (!Number.isFinite(l + k)) return;
     // two unit vectors across the line
     const ux = -dz / (Math.hypot(dx, dz) || 1), uz = dx / (Math.hypot(dx, dz) || 1);
-    this.glowAcc += dt * (34 + 70 * k);
+    this.pullAcc += dt * (30 + 60 * k);
     const t = this.d.time ?? 0;
-    while (this.glowAcc >= 1) {
-      this.glowAcc -= 1;
+    while (this.pullAcc >= 1) {
+      this.pullAcc -= 1;
       const u = this.rnd(), ang = u * 11 - t * 14 + (this.rnd() < 0.5 ? Math.PI : 0), r = (0.75 * (1 - u) + 0.1) * (0.5 + 0.5 * k);
       const x = px + dx * u + ux * Math.cos(ang) * r, y = py + dy * u + Math.sin(ang) * r, z = pz + dz * u + uz * Math.cos(ang) * r;
       const sp = 9 + 7 * k;
-      const o = this._rec(x, y, z, this.rand(0.1, 0.2), 0.24, 0.07, '-', [2.6, 0.22, 0.4], RED_END);
-      o.vx = (dx / l) * sp;
-      o.vy = (dy / l) * sp;
-      o.vz = (dz / l) * sp;
-      o.rot = this._screenRot(dx, dy, dz) + Math.PI / 2;
-      o.stretch = 1.5;
-      this.add?.spawn(o);
+      this._blob(x, y, z, (dx / l) * sp, (dy / l) * sp, (dz / l) * sp, this.rand(0.12, 0.22), 0.46, 0.24, 0.5, 0, K_VOID);
     }
-    // the line: a few strokes along it, flickering
-    const life = Math.max(0.02, (this.game.fxDt ?? this.game.dt ?? 0.016) * 1.6);
-    for (let i = 0; i < 6; i++) {
-      const u0 = (i + this.rnd() * 0.4) / 6, u1 = u0 + 0.1;
-      const o = this._stroke(px + dx * u0, py + dy * u0, pz + dz * u0, px + dx * u1, py + dy * u1, pz + dz * u1, life, 0.1, [1.6 + 1.6 * k, 0.1, 0.3], null);
-      if (o) {
-        o.alpha = 0.5 + 0.5 * k;
-        o.alphaEnd = o.alpha;
-        this.add?.spawn(o);
-      }
-    }
+    this._ink(px, py, pz, hx, hy, hz, 0, (0.4 + 0.7 * k) * this.rand(0.85, 1.0));
   }
 
   // ---------------------------------------------------------------- the Crushing Dark
-  /** The grip's windup round the hero (x, y, z = his chest; `k` 0..1): five talons of the Void
-   *  closing in on him from above, a ring tightening on the floor. Re-drawn every frame. */
+  /** The grip's windup round the hero (x, y, z = his chest; `k` 0..1): five talons closing in on him
+   *  from above, thin strokes tipped with the Void, and a ring of it tightening on the floor.
+   *  Re-drawn every frame. */
   gripClaw(x, y, z, k) {
-    const add = this.add;
-    if (!add || !Number.isFinite(x + y + z)) return;
-    const life = Math.max(0.02, (this.game.fxDt ?? this.game.dt ?? 0.016) * 1.6), t = this.d.time ?? 0;
-    const R = 1.75 - 0.85 * k, col = [1.2 + 2.2 * k, 0.1, 0.16 + 0.3 * k];
+    if (!this.fire || !Number.isFinite(x + y + z + k)) return;
+    if (!(this._frame() > 0)) return;
+    const t = this.d.time ?? 0;
+    const R = 1.75 - 0.85 * k, h = 0.45 + 0.25 * k;
     for (let f = 0; f < 5; f++) {
       const a = (f / 5) * TAU + t * 1.4;
       let px = x + Math.cos(a) * R * 0.25, py = y + R * 1.05, pz = z + Math.sin(a) * R * 0.25;
       for (let i = 1; i <= 4; i++) {
         const u = i / 4, th = u * (1.25 + 0.5 * k); // how far down the sphere the talon has curled
         const nx = x + Math.cos(a) * R * Math.sin(th), ny = y + R * Math.cos(th) * 1.05, nz = z + Math.sin(a) * R * Math.sin(th);
-        const o = this._stroke(px, py, pz, nx, ny, nz, life, 0.2 + 0.08 * (1 - u), i === 4 ? RED_CORE : col, null);
-        if (o) {
-          o.alpha = 0.5 + 0.5 * k;
-          o.alphaEnd = o.alpha;
-          add.spawn(o);
-        }
+        this._ink(px, py, pz, nx, ny, nz, 0, h, 0, h, i > 1 ? 1 : 0);
+        this._line(px, py, pz, nx, ny, nz, 0, 0.46 - 0.06 * i, 0.3 + 0.2 * k, 0, K_VOID, 0.2);
         px = nx;
         py = ny;
         pz = nz;
       }
+      this._dot(px, py, pz, 0.3, 0.3 + 0.5 * k, K_STEEL); // the point of the claw
     }
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * TAU - t * 2, r = R * 0.95;
-      const o = this._rec(x + Math.cos(a) * r, 0.07, z + Math.sin(a) * r, life, 0.34, 0.34, ')', col, null);
-      o.rot = a + Math.PI;
-      o.alpha = 0.6 + 0.4 * k;
-      o.alphaEnd = o.alpha;
-      add.spawn(o);
-    }
+    this._ring(x, GROUND_Y, z, R * 0.95, 30, 0.36, (0.24 + 0.24 * k) * GROUND_GAIN, K_VOID, 5, -t * 2);
   }
 
   /** The hand closed on nothing: the talons snap shut and scatter. */
   gripSnap(x, y, z) {
-    for (let i = 0; i < 20; i++) {
+    if (!Number.isFinite(x + y + z)) return;
+    for (let i = 0; i < 16; i++) {
       const a = this.rnd() * TAU, e = this.rand(-0.3, 1), r = 0.9, life = this.rand(0.1, 0.2);
       const sx = x + Math.cos(a) * r, sy = y + e * r, sz = z + Math.sin(a) * r;
-      this._spawn(this.add, { x: sx, y: sy, z: sz, vx: (x - sx) / life * 0.8, vy: (y - sy) / life * 0.8, vz: (z - sz) / life * 0.8, life, size: 0.26, sizeEnd: 0.06, glyph: "-'~", color: RED, colorEnd: RED_END, alpha: 1, alphaEnd: 0 });
+      this._blob(sx, sy, sz, ((x - sx) / life) * 0.8, ((y - sy) / life) * 0.8, ((z - sz) / life) * 0.8, life, 0.27, 0.2, 0.5, 0, K_STEEL);
     }
+    for (let i = 0; i < 5; i++) this._blob(x + this.rand(-0.2, 0.2), y + this.rand(-0.2, 0.2), z + this.rand(-0.2, 0.2), this.rand(-1.5, 1.5), this.rand(0, 2), this.rand(-1.5, 1.5), this.rand(0.2, 0.35), 0.5, 0.25, 0.36, 0, K_VOID, 3, 1);
   }
 
   /** The hand closed on the hero: for `dur` s the Void presses him into the floor at (x, z). */
   gripCrush(x, z, dur = 0.55) {
     const c = this.crushes.find((p) => !p.alive) ?? this.crushes[0];
     Object.assign(c, { alive: true, x, z, t: 0, dur });
-    this._light({ x, y: 1, z, color: [1, 0.15, 0.2], intensity: 5, radius: 7, life: dur, fade: 0.3 });
+    this._light({ x, y: 1, z, color: [0.75, 0.3, 1], intensity: 5, radius: 7, life: dur, fade: 0.3 });
     return c;
   }
 
   updateCrushes(dt) {
-    const add = this.add;
     for (const c of this.crushes) {
       if (!c.alive) continue;
       c.t += dt;
-      const k = clamp01(c.t / c.dur), life = Math.max(0.02, (this.game.fxDt ?? dt) * 1.6);
-      // three rings closing on him, strokes driven down onto him from above
+      const k = clamp01(c.t / c.dur);
+      // three rings of the Void closing on him, strokes driven down onto him from above
       for (let ring = 0; ring < 3; ring++) {
-        const r = (1.5 - ring * 0.42) * (1 - 0.75 * k) + 0.16, n = 12 - ring * 2;
-        for (let i = 0; i < n; i++) {
-          const a = (i / n) * TAU + c.t * (5 + ring * 2) * (ring & 1 ? -1 : 1);
-          const o = this._rec(c.x + Math.cos(a) * r, 0.08 + ring * 0.02, c.z + Math.sin(a) * r, life, 0.36, 0.36, ')', ring === 0 ? RED : RED_CORE, null);
-          o.rot = a + Math.PI;
-          o.alphaEnd = 1;
-          this._spawn(add, o);
-        }
+        const r = (1.5 - ring * 0.42) * (1 - 0.75 * k) + 0.16;
+        this._ring(c.x, GROUND_Y + ring * 0.04, c.z, r, 18 - ring * 4, 0.32, 0.2 * GROUND_GAIN, K_VOID, 3, c.t * (5 + ring * 2) * (ring & 1 ? -1 : 1));
       }
-      for (let i = 0; i < 3; i++) {
-        const a = this.rnd() * TAU, r = this.rand(0, 0.7);
-        const o = this._rec(c.x + Math.cos(a) * r, this.rand(1.6, 2.6), c.z + Math.sin(a) * r, this.rand(0.1, 0.18), 0.22, 0.08, '|', [2.6, 0.2, 0.4], RED_END);
-        o.vy = -this.rand(9, 14);
-        o.stretch = 2.2;
-        this._spawn(add, o);
+      for (let i = 0; i < 2; i++) {
+        const a = this.rnd() * TAU, r = this.rand(0, 0.7), x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r, y = this.rand(1.6, 2.6), vy = -this.rand(9, 14), life = this.rand(0.1, 0.18);
+        for (let q = 0; q < 3; q++) this._blob(x, y + q * 0.14, z, 0, vy, 0, life, 0.25, 0.2, 0.42, 0, K_STEEL);
       }
       if (c.t >= c.dur) {
         c.alive = false;
-        for (let i = 0; i < 26; i++) {
-          const a = (i / 26) * TAU, sp = this.rand(5, 9);
-          this._spawn(add, { x: c.x, y: 0.2, z: c.z, vx: Math.cos(a) * sp, vy: this.rand(0, 1.5), vz: Math.sin(a) * sp, life: this.rand(0.2, 0.4), size: 0.5, sizeEnd: 0.9, glyph: ')', rot: Math.atan2(-Math.sin(a), Math.cos(a)), color: RED_CORE, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 3 });
-        }
+        this._shock(c.x, 0.4, c.z, 2.2, 30, 0.3, 0.5, 0.85, 0.75, K_VOID, 0.3, 2);
         this.game.shake?.(0.3);
         this.game.world?.scorch?.burnCircle?.(c.x, c.z, 1.1, 0.3, 0.8);
       }
@@ -556,7 +494,7 @@ export class LordFx extends DuelFx {
       alive: true, kind: o.kind, x: o.x, y: o.y ?? 1, z: o.z, ox: o.x, oz: o.z, dx: o.dx / l, dz: o.dz / l, speed: o.speed, radius: o.radius ?? 0.8, life: o.life ?? 2.5,
       tell: o.tell ?? TELL.NORMAL, damage: o.damage ?? 14, kb: o.knockback ?? 1.2, attack: o.attack ?? 'thrown', age: 0, flashed: -1, done: false,
       wait: 0, delay: o.delay ?? 0, big: !!o.big, range: o.range ?? 12, back: o.back ?? o.speed, phase: o.delay > 0 ? 'hang' : 'fly', spin: this.rnd() * TAU, hx: o.x, hz: o.z, rise: o.rise ?? 1.8,
-      orbit: o.orbit ?? null,
+      orbit: o.orbit ?? null, pspin: NaN,
     });
     return s;
   }
@@ -663,65 +601,72 @@ export class LordFx extends DuelFx {
     }
   }
 
+  /** The thrown blade: a line of white strokes turning in the air, the arcs its two points leave
+   *  behind them (a wheel of strokes), the Void at its hub, red embers shed. */
   _drawGlaive(s) {
-    const life = Math.max(0.02, (this.game.fxDt ?? this.game.dt ?? 0.016) * 1.6);
-    const c = Math.cos(s.spin), sn = Math.sin(s.spin);
-    for (let i = -4; i <= 4; i++) {
-      const u = i / 4, x = s.x + c * u * 0.95, z = s.z + sn * u * 0.95;
-      const o = this._rec(x, s.y, z, life, 0.3, 0.3, '|', i === 0 ? [1.2, 1.2, 1.3] : Math.abs(i) === 4 ? RED_CORE : RED, null);
-      o.rot = this._screenRot(c, 0, sn);
-      o.stretch = 0.6;
-      o.alphaEnd = 1;
-      this._spawn(this.add, o);
-    }
-    // the disc it draws in the air: a wheel of fading arcs behind each end of the blade
+    const c = Math.cos(s.spin), sn = Math.sin(s.spin), R = 0.95;
+    this._ink(s.x - c * R * 0.86, s.y, s.z - sn * R * 0.86, s.x + c * R * 0.86, s.y, s.z + sn * R * 0.86, 0, 0.85);
+    this._dot(s.x, s.y, s.z, 0.6, 0.34, K_VOID);
+    // what the points leave: from where each was last frame to where it is
+    const p0 = Number.isFinite(s.pspin) && Math.abs(s.spin - s.pspin) < 1.2 ? s.pspin : s.spin - 0.4;
+    s.pspin = s.spin;
     for (let e = 0; e < 2; e++) {
-      for (let i = 0; i < 5; i++) {
-        const a = s.spin + e * Math.PI - 0.35 - i * 0.42, x = s.x + Math.cos(a) * 0.95, z = s.z + Math.sin(a) * 0.95;
-        this._spawn(this.add, { x, y: s.y, z, life: 0.08, size: 0.26, sizeEnd: 0.08, glyph: ')', rot: this._screenRot(-Math.sin(a), 0, Math.cos(a)), color: RED, colorEnd: RED_END, alpha: 0.85 - i * 0.16, alphaEnd: 0 });
+      let lx = s.x + Math.cos(p0 + e * Math.PI) * R, lz = s.z + Math.sin(p0 + e * Math.PI) * R;
+      for (let q = 1; q <= 3; q++) {
+        const a = p0 + (s.spin - p0) * (q / 3) + e * Math.PI, x = s.x + Math.cos(a) * R, z = s.z + Math.sin(a) * R;
+        this._ink(lx, s.y, lz, x, s.y, z, 0.13, 0.5, 0, 0.5, 1);
+        lx = x;
+        lz = z;
       }
     }
     if (this.rnd() < 0.6) this._spawn(this.add, { x: s.x + this.rand(-0.8, 0.8), y: s.y, z: s.z + this.rand(-0.8, 0.8), vx: -s.dx * 3, vy: this.rand(-0.5, 1), vz: -s.dz * 3, life: this.rand(0.2, 0.45), size: 0.13, sizeEnd: 0.03, glyph: ".'", color: RED_CORE, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 2 });
   }
 
+  /** A torn stone: a clump of small grey letters in the Void's grip (violet fire round it). */
   _drawStone(s, hang) {
     const life = Math.max(0.02, (this.game.fxDt ?? this.game.dt ?? 0.016) * 1.6);
-    const k = s.big ? 1.7 : 1, n = s.big ? 9 : 5;
+    const k = s.big ? 1.6 : 1, n = s.big ? 12 : 7;
     for (let i = 0; i < n; i++) {
-      const a = s.spin + (i / n) * TAU, r = i === 0 ? 0 : 0.26 * k, e = Math.sin(a * 1.7 + i) * 0.5;
-      const o = this._rec(s.x + Math.cos(a) * r, s.y + e * r, s.z + Math.sin(a) * r, life, 0.42 * k, 0.42 * k, '#&%@8'[i % 5], s.big ? [0.75, 0.3, 0.3] : STONE, null);
+      const a = s.spin + (i / n) * TAU, r = i === 0 ? 0 : (i & 1 ? 0.2 : 0.11) * k, e = Math.sin(a * 1.7 + i) * 0.6;
+      const o = this._rec(s.x + Math.cos(a) * r, s.y + e * r, s.z + Math.sin(a) * r, life, 0.24, 0.24, '#&%@8'[i % 5], s.big ? [0.75, 0.42, 0.5] : STONE, null);
       o.alphaEnd = 1;
       this._spawn(this.alpha, o);
     }
-    // the Void's red grip on it
-    const g = this._rec(s.x, s.y, s.z, life, (s.big ? 1.5 : 0.9), (s.big ? 1.5 : 0.9), 'o', s.big ? [2.6, 0.2, 0.14] : [1.1, 0.1, 0.12], null);
-    g.alphaEnd = 1;
-    g.alpha = 0.7;
-    this._spawn(this.add, g);
+    // the Void's grip on it
+    this._dot(s.x, s.y, s.z, s.big ? 1.25 : 0.85, s.big ? 0.62 : 0.4, K_VOID);
     if (hang) {
       if (this.rnd() < 0.5) this._spawn(this.alpha, { x: s.x + this.rand(-0.3, 0.3), y: s.y - 0.2, z: s.z + this.rand(-0.3, 0.3), vy: -this.rand(1, 3), life: this.rand(0.2, 0.5), size: 0.14, sizeEnd: 0.05, glyph: ".,'", color: [0.3, 0.3, 0.34], alpha: 0.9, alphaEnd: 0 });
       // a thread of the Void from his hand to the stone it holds
       const h = this.d._hand;
-      if (h && this.rnd() < 0.3) this.arc(h.x, h.y, h.z, s.x, s.y, s.z, 0.14, [2.2, 0.16, 0.3], RED_END, 5);
-    } else if (this.rnd() < 0.7) {
-      this._spawn(this.add, { x: s.x, y: s.y, z: s.z, vx: -s.dx * 2, vy: this.rand(-0.3, 0.6), vz: -s.dz * 2, life: this.rand(0.15, 0.35), size: 0.2 * k, sizeEnd: 0.04, glyph: "-'", rot: this._screenRot(s.dx, 0, s.dz) + Math.PI / 2, color: s.big ? RED : RED_DIM, colorEnd: RED_END, alpha: 0.8, alphaEnd: 0 });
+      if (h && this.rnd() < 0.3) this.arc(h.x, h.y, h.z, s.x, s.y, s.z, 0.14, null, null, 5);
+    } else if (this.rnd() < 0.8) {
+      this._blob(s.x - s.dx * 0.3, s.y, s.z - s.dz * 0.3, -s.dx * 2, this.rand(-0.2, 0.5), -s.dz * 2, this.rand(0.16, 0.3), 0.5 * k, 0.25, 0.34, 0, K_VOID, 1);
     }
   }
 
   /** A stone tears out of the floor (dust and chips where it left). */
   tearUp(x, z) {
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       const a = this.rnd() * TAU, sp = this.rand(1, 4);
-      this._spawn(this.alpha, { x, y: 0.15, z, vx: Math.cos(a) * sp, vy: this.rand(1, 4), vz: Math.sin(a) * sp, life: this.rand(0.3, 0.7), size: 0.24, sizeEnd: 0.5, glyph: ",.`#", color: [0.26, 0.26, 0.3], alpha: 0.8, alphaEnd: 0, drag: 2.5, gravity: -6 });
+      this._spawn(this.alpha, { x, y: 0.15, z, vx: Math.cos(a) * sp, vy: this.rand(1, 4), vz: Math.sin(a) * sp, life: this.rand(0.3, 0.7), size: 0.18, sizeEnd: 0.1, glyph: ",.`#", color: [0.26, 0.26, 0.3], alpha: 0.8, alphaEnd: 0, drag: 2.5, gravity: -6 });
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = this.rnd() * TAU, sp = this.rand(0.5, 1.8);
+      this._blob(x, 0.3, z, Math.cos(a) * sp, this.rand(0.3, 1), Math.sin(a) * sp, this.rand(0.4, 0.7), 0.5, 1.0, 0.7, 0, K_SMOKE, 2.5);
     }
   }
 
   _shatter(s) {
     s.alive = false;
-    for (let i = 0; i < (s.big ? 22 : 12); i++) {
+    for (let i = 0; i < (s.big ? 16 : 10); i++) {
       const a = this.rnd() * TAU, sp = this.rand(1.5, 6);
-      this._spawn(this.alpha, { x: s.x, y: s.y, z: s.z, vx: Math.cos(a) * sp + s.dx * 3, vy: this.rand(-1, 4), vz: Math.sin(a) * sp + s.dz * 3, life: this.rand(0.3, 0.7), size: this.rand(0.16, 0.32), sizeEnd: 0.05, glyph: "#%,.'", color: STONE, colorEnd: [0.15, 0.15, 0.18], alpha: 1, alphaEnd: 0, drag: 2, gravity: -9 });
+      this._spawn(this.alpha, { x: s.x, y: s.y, z: s.z, vx: Math.cos(a) * sp + s.dx * 3, vy: this.rand(-1, 4), vz: Math.sin(a) * sp + s.dz * 3, life: this.rand(0.3, 0.7), size: this.rand(0.14, 0.24), sizeEnd: 0.05, glyph: "#%,.'", color: STONE, colorEnd: [0.15, 0.15, 0.18], alpha: 1, alphaEnd: 0, drag: 2, gravity: -9 });
     }
+    for (let i = 0; i < (s.big ? 7 : 4); i++) {
+      const a = this.rnd() * TAU, sp = this.rand(1, 3.5);
+      this._blob(s.x, s.y, s.z, Math.cos(a) * sp + s.dx * 2, this.rand(0, 2), Math.sin(a) * sp + s.dz * 2, this.rand(0.2, 0.4), 0.5, 0.3, 0.4, 0, K_VOID, 2.5, 0.8);
+    }
+    this._blob(s.x, s.y, s.z, s.dx, 0.4, s.dz, 0.6, 0.6, 1.4, 0.7, 0, K_SMOKE, 1);
     this.game.shake?.(s.big ? 0.3 : 0.12);
   }
 
@@ -788,70 +733,36 @@ export class LordFx extends DuelFx {
   }
 
   /** A mark waiting for its lightning: arcs crackling up off the floor inside it, and high above it
-   *  a wheel of light turning faster, leaders reaching down as the strike nears. */
+   *  a wheel of the Void turning faster and drawing in, leaders reaching down as the strike nears. */
   _drawMark(s, k, dt) {
-    if (this.rnd() < 0.35) this.arc(s.x + this.rand(-s.r, s.r) * 0.6, 0.1, s.z + this.rand(-s.r, s.r) * 0.6, s.x + this.rand(-0.4, 0.4), this.rand(0.6, 1.6), s.z + this.rand(-0.4, 0.4), 0.22, VOID, VOID_END, 3);
-    const life = Math.max(0.02, (this.game.fxDt ?? dt) * 1.6), H = 8.5, t = s.t;
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU + t * (2 + 6 * k), r = 1.3 - 0.5 * k;
-      const o = this._rec(s.x + Math.cos(a) * r, H, s.z + Math.sin(a) * r, life, 0.42, 0.42, ')', VOID, null);
-      o.rot = a + Math.PI;
-      o.alpha = 0.3 + 0.7 * k;
-      o.alphaEnd = o.alpha;
-      this._spawn(this.add, o);
-    }
+    if (this.rnd() < 0.35) this.arc(s.x + this.rand(-s.r, s.r) * 0.6, GROUND_Y, s.z + this.rand(-s.r, s.r) * 0.6, s.x + this.rand(-0.4, 0.4), this.rand(0.7, 1.7), s.z + this.rand(-0.4, 0.4), 0.26, null, null, 3);
+    const H = 8.5;
+    this._ring(s.x, H, s.z, 1.3 - 0.5 * k, 18, 0.42, 0.22 + 0.34 * k, K_VOID, 3, s.t * (2 + 6 * k));
     if (k > 0.45 && this.rnd() < 0.5) {
       const y0 = H - this.rand(0, 1), y1 = y0 - this.rand(1.2, 3.2) * k;
-      this.arc(s.x + this.rand(-0.4, 0.4), y0, s.z + this.rand(-0.4, 0.4), s.x + this.rand(-0.6, 0.6), y1, s.z + this.rand(-0.6, 0.6), 0.2, VOID_CORE, VOID_END, 3);
+      this.arc(s.x + this.rand(-0.4, 0.4), y0, s.z + this.rand(-0.4, 0.4), s.x + this.rand(-0.6, 0.6), y1, s.z + this.rand(-0.6, 0.6), 0.3, null, null, 3);
     }
   }
 
-  /** The Dark Star gathering over its ring: a heart that drinks the light inside a turning rim, the
-   *  air spiralling in to it, arcs from it to the floor. */
+  /** The Dark Star gathering over its ring: a heart that drinks the light inside a burning rim of
+   *  the Void, short rays standing off it, the air spiralling in to it, arcs from it to the floor,
+   *  and its reach on the floor in the Void's own colour. */
   _drawStar(s, k, dt) {
     const life = Math.max(0.02, (this.game.fxDt ?? dt) * 1.6), y = 1.3 + 0.1 * Math.sin(s.t * 5), R = 0.6 + 0.55 * k;
     for (let i = 0; i < 4; i++) {
-      const o = this._rec(s.x + this.rand(-0.1, 0.1) * R, y + this.rand(-0.1, 0.1) * R, s.z + this.rand(-0.1, 0.1) * R, life, R * 1.9, R * 1.9, '@#8M'[i], DARK, null);
+      const o = this._rec(s.x + this.rand(-0.1, 0.1) * R, y + this.rand(-0.1, 0.1) * R, s.z + this.rand(-0.1, 0.1) * R, life, R * 1.6, R * 1.6, '@#8M'[i], DARK, null);
       o.alphaEnd = 1;
       o.rot = s.t * 3 + i;
       this._spawn(this.alpha, o);
     }
-    const n = 20;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU + s.t * (3 + 5 * k);
-      const o = this._rec(s.x + Math.cos(a) * R, y + Math.sin(a * 2 + s.t * 4) * 0.08, s.z + Math.sin(a) * R, life, 0.26, 0.26, ')', i % 4 ? VOID_DIM : VOID, null);
-      o.rot = this._screenRot(Math.cos(a), 0, Math.sin(a));
-      o.alphaEnd = 1;
-      this._spawn(this.add, o);
-    }
+    // the rim: hotter stretches of it turn round the heart
+    this._ring(s.x, y, s.z, R * 1.1, 24, 0.5, 0.5 + 0.4 * k, K_VOID, 2, s.t * (3 + 5 * k));
     // its corona: short rays standing off the rim, flickering
-    for (let i = 0; i < 9; i++) {
-      const a = (i / 9) * TAU - s.t * 2.2 + Math.sin(s.t * 7 + i) * 0.2, c = Math.cos(a), sn = Math.sin(a), l = 0.25 + 0.3 * k + 0.12 * Math.sin(s.t * 13 + i * 2.1);
-      const o = this._stroke(s.x + c * R * 1.05, y + sn * R * 0.35, s.z + sn * R * 1.05, s.x + c * (R + l), y + sn * (R + l) * 0.35, s.z + sn * (R + l), life, 0.14, VOID, null);
-      if (o) {
-        o.alphaEnd = 1;
-        this._spawn(this.add, o);
-      }
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * TAU - s.t * 2.2 + Math.sin(s.t * 7 + i) * 0.2, c = Math.cos(a), sn = Math.sin(a), l = 0.3 + 0.35 * k + 0.12 * Math.sin(s.t * 13 + i * 2.1);
+      this._ink(s.x + c * R * 1.15, y + sn * R * 0.35, s.z + sn * R * 1.15, s.x + c * (R + l), y + sn * (R + l) * 0.35, s.z + sn * (R + l), 0, 0.9, 0, 0.5);
     }
-    // its reach on the floor, in the Void's own colour (the hall's inlays are red): a turning ring of
-    // strokes that brightens as it fills, motes of the dark inside it
-    const m = Math.max(24, Math.round((TAU * s.r) / 0.42)), b = 0.6 + 0.6 * k;
-    for (let i = 0; i < m; i++) {
-      const a = (i / m) * TAU - s.t * 0.9;
-      const o = this._rec(s.x + Math.cos(a) * s.r, 0.09, s.z + Math.sin(a) * s.r, life, 0.5, 0.5, ')', [VOID[0] * b, VOID[1] * b, VOID[2] * b], null);
-      o.rot = a + Math.PI;
-      o.alphaEnd = 1;
-      this._spawn(this.add, o);
-    }
-    const ri = s.r * (1 - 0.8 * k), mi = Math.max(10, Math.round((TAU * ri) / 0.6));
-    for (let i = 0; i < mi; i++) {
-      const a = (i / mi) * TAU + s.t * 1.6;
-      const o = this._rec(s.x + Math.cos(a) * ri, 0.08, s.z + Math.sin(a) * ri, life, 0.3, 0.3, '-', VOID_DIM, null);
-      o.rot = a + Math.PI / 2;
-      o.alphaEnd = 1;
-      this._spawn(this.add, o);
-    }
-    s.acc += dt * (40 + 70 * k);
+    s.acc += dt * (30 + 50 * k);
     while (s.acc >= 1) {
       s.acc -= 1;
       // drawn in along a spiral from the ring's edge
@@ -859,114 +770,106 @@ export class LordFx extends DuelFx {
       const sx = s.x + Math.cos(a) * r, sz = s.z + Math.sin(a) * r;
       this._spawn(this.add, {
         x: sx, y: h, z: sz, vx: ((s.x - sx) / lf) - Math.sin(a) * 3, vy: (y - h) / lf, vz: ((s.z - sz) / lf) + Math.cos(a) * 3,
-        life: lf, size: 0.2, sizeEnd: 0.05, glyph: "-~'", rot: this._screenRot(-Math.sin(a), 0, Math.cos(a)) + Math.PI / 2, color: this.rnd() < 0.5 ? VOID : RED, colorEnd: VOID_END, alpha: 0.3, alphaEnd: 1, drag: 0.6,
+        life: lf, size: 0.18, sizeEnd: 0.05, glyph: "-~'", rot: this._screenRot(-Math.sin(a), 0, Math.cos(a)) + Math.PI / 2, color: this.rnd() < 0.5 ? VOID : RED, colorEnd: VOID_END, alpha: 0.3, alphaEnd: 1, drag: 0.6,
       });
     }
     if (this.rnd() < 0.3 + 0.4 * k) {
       const a = this.rnd() * TAU, r = this.rand(0.4, 1) * s.r * 0.8;
-      this.arc(s.x, y, s.z, s.x + Math.cos(a) * r, 0.06, s.z + Math.sin(a) * r, 0.2, VOID, VOID_END, 5);
+      this.arc(s.x, y, s.z, s.x + Math.cos(a) * r, GROUND_Y, s.z + Math.sin(a) * r, 0.26, null, null, 5);
     }
   }
 
-  /** The Dark Star bursts: the heart flares white, a violet ring races out to its edge, arcs run out
-   *  along the floor, the dark is thrown up. */
+  /** The Dark Star bursts: the heart goes up in a ball of the Void (pale at its heart), a ring of it
+   *  races out to its edge, bolts run out along the floor, the dark is thrown up. */
   _starBurst(s) {
-    const add = this.add, y = 1.25;
-    this._spawn(add, { x: s.x, y, z: s.z, life: 0.2, size: 3.4, sizeEnd: 0.4, glyph: '*', color: VOID_CORE, colorEnd: VOID_END, alpha: 1, alphaEnd: 0, spin: 8 });
-    for (let i = 0; i < 64; i++) {
-      const a = (i / 64) * TAU, ca = Math.cos(a), sa = Math.sin(a);
-      this._spawn(add, { x: s.x + ca * 0.5, y: 0.4, z: s.z + sa * 0.5, vx: ca * (s.r / 0.22), vz: sa * (s.r / 0.22), life: 0.26, size: 0.8, sizeEnd: 1.4, glyph: ')', rot: Math.atan2(-sa, ca), color: i & 1 ? VOID_CORE : VOID, colorEnd: VOID_END, alpha: 1, alphaEnd: 0, drag: 0.6 });
+    const y = 1.25;
+    for (let i = 0; i < 14; i++) {
+      const a = this.rnd() * TAU, sp = this.rand(0.5, 4);
+      this._blob(s.x, y + this.rand(-0.3, 0.3), s.z, Math.cos(a) * sp, this.rand(0, 3), Math.sin(a) * sp, this.rand(0.28, 0.45), 0.8, 1.5, 0.5, 0, K_VOID, 2, 1);
     }
+    this._shock(s.x, 0.5, s.z, s.r, 60, 0.26, 0.6, 1.0, 0.8, K_VOID, 0.5, 0.6);
     for (let i = 0; i < 7; i++) {
       const a = (i / 7) * TAU + this.rnd(), r = s.r * this.rand(0.8, 1.05);
-      this.lightning(s.x, y, s.z, s.x + Math.cos(a) * r, 0.1, s.z + Math.sin(a) * r, 0.7, false);
+      this.lightning(s.x, y, s.z, s.x + Math.cos(a) * r, GROUND_Y, s.z + Math.sin(a) * r, 0.7, false);
     }
-    for (let i = 0; i < 36; i++) {
+    for (let i = 0; i < 24; i++) {
       const a = this.rnd() * TAU, sp = this.rand(2, 10);
-      this._spawn(this.alpha, { x: s.x, y, z: s.z, vx: Math.cos(a) * sp, vy: this.rand(1, 8), vz: Math.sin(a) * sp, life: this.rand(0.4, 0.9), size: this.rand(0.2, 0.44), sizeEnd: 0.05, glyph: "#@%*'", color: [0.05, 0.0, 0.09], alpha: 1, alphaEnd: 0, drag: 1.5, gravity: -7 });
+      this._spawn(this.alpha, { x: s.x, y, z: s.z, vx: Math.cos(a) * sp, vy: this.rand(1, 8), vz: Math.sin(a) * sp, life: this.rand(0.4, 0.9), size: this.rand(0.16, 0.26), sizeEnd: 0.05, glyph: "#@%*'", color: [0.05, 0.0, 0.09], alpha: 1, alphaEnd: 0, drag: 1.5, gravity: -7 });
     }
     this._light({ x: s.x, y: 1.4, z: s.z, color: [0.75, 0.45, 1], intensity: 9, radius: s.r * 3.4, life: 0.5, fade: 0.4 });
   }
 
   // ---------------------------------------------------------------- the blink, the ignition, the deathblow
-  /** A shape left where he stood: his bones traced in dark-red strokes that rise and fade. `segs` =
-   *  [x0, y0, z0, x1, y1, z1] per bone (world), `n` of them. */
+  /** A shape left where he stood: his bones traced in the Void, letters that rise and go out.
+   *  `segs` = [x0, y0, z0, x1, y1, z1] per bone (world), `n` of them. */
   afterimage(segs, n) {
     for (let i = 0; i < n; i++) {
-      const k = i * 6;
-      for (let q = 0; q < 2; q++) {
-        const o = this._stroke(segs[k], segs[k + 1], segs[k + 2], segs[k + 3], segs[k + 4], segs[k + 5], this.rand(0.3, 0.5), q ? 0.34 : 0.2, q ? [0.9, 0.05, 0.14] : [2.4, 0.2, 0.3], [0.1, 0, 0.04]);
-        if (!o) continue;
-        o.vy = 0.5;
-        o.alpha = q ? 0.6 : 1;
-        this.add?.spawn(o);
+      const k = i * 6, ax = segs[k], ay = segs[k + 1], az = segs[k + 2], dx = segs[k + 3] - ax, dy = segs[k + 4] - ay, dz = segs[k + 5] - az;
+      const l = Math.hypot(dx, dy, dz);
+      if (!(l > 1e-3) || !Number.isFinite(l + ax + ay + az)) continue;
+      const m = Math.min(8, Math.max(1, Math.ceil(l / 0.16)));
+      for (let q = 0; q <= m; q++) {
+        const t = q / m;
+        this._blob(ax + dx * t, ay + dy * t, az + dz * t, 0, 0.5, 0, this.rand(0.3, 0.5), 0.34, 0.2, 0.36, 0, K_VOID, 0, 0.5);
       }
     }
   }
 
-  /** He is gone from (x0, z0) and at (x1, z1): a red-black streak between, an implosion where he
-   *  stood, a burst where he is. */
+  /** He is gone from (x0, z0) and at (x1, z1): a streak of the Void between with one bright line
+   *  through it, an implosion where he stood, a ring thrown out where he is. */
   blinkTrail(x0, z0, x1, z1) {
     const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz);
-    const n = Math.max(4, Math.round(len / 0.35));
+    if (!Number.isFinite(len)) return;
+    const n = Math.min(40, Math.max(4, Math.round(len / 0.3)));
     for (let i = 0; i <= n; i++) {
       const u = i / n;
       for (let h = 0; h < 3; h++) {
-        this._spawn(this.add, {
-          x: x0 + dx * u + this.rand(-0.15, 0.15), y: 0.4 + h * 0.6, z: z0 + dz * u + this.rand(-0.15, 0.15),
-          life: this.rand(0.14, 0.3) + 0.1 * (1 - u), size: 0.34, sizeEnd: 0.06, glyph: '-~', rot: this._screenRot(dx, 0, dz) + Math.PI / 2, stretch: 1.5,
-          color: [2.4 * (0.4 + 0.6 * u), 0.14, 0.2], colorEnd: [0.2, 0.01, 0.05], alpha: 1, alphaEnd: 0,
-        });
+        this._blob(x0 + dx * u + this.rand(-0.15, 0.15), 0.5 + h * 0.6, z0 + dz * u + this.rand(-0.15, 0.15), 0, this.rand(0, 0.6), 0, this.rand(0.16, 0.3) + 0.12 * u, 0.5, 0.26, 0.26 + 0.3 * u, 0, K_VOID, 0, 0.6);
       }
     }
+    this._ink(x0, 1.1, z0, x1, 1.1, z1, 0.16, 0.25, 0, 1.15);
     // where he stood: the air falls in
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 14; i++) {
       const a = this.rnd() * TAU, r = this.rand(0.8, 1.5), h = this.rand(0.2, 2.2), lf = this.rand(0.14, 0.26);
-      this._spawn(this.add, { x: x0 + Math.cos(a) * r, y: h, z: z0 + Math.sin(a) * r, vx: -Math.cos(a) * r / lf, vy: (1.2 - h) / lf, vz: -Math.sin(a) * r / lf, life: lf, size: 0.22, sizeEnd: 0.05, glyph: "-'", color: RED_DIM, colorEnd: [0.1, 0, 0.03], alpha: 0.4, alphaEnd: 1 });
+      this._spawn(this.add, { x: x0 + Math.cos(a) * r, y: h, z: z0 + Math.sin(a) * r, vx: -Math.cos(a) * r / lf, vy: (1.2 - h) / lf, vz: -Math.sin(a) * r / lf, life: lf, size: 0.18, sizeEnd: 0.05, glyph: "-'", color: RED_DIM, colorEnd: [0.1, 0, 0.03], alpha: 0.4, alphaEnd: 1 });
     }
     // where he is: thrown out
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * TAU;
-      this._spawn(this.add, { x: x1, y: 1.1, z: z1, vx: Math.cos(a) * 7, vy: this.rand(-1, 1), vz: Math.sin(a) * 7, life: 0.2, size: 0.4, sizeEnd: 0.7, glyph: ')', rot: Math.atan2(-Math.sin(a), Math.cos(a)), color: RED, colorEnd: RED_END, alpha: 0.9, alphaEnd: 0, drag: 4 });
-    }
-    this._light({ x: x1, y: 1.2, z: z1, color: [1, 0.15, 0.2], intensity: 3.5, radius: 6, life: 0.2, fade: 0.18 });
+    this._shock(x1, 1.1, z1, 1.6, 18, 0.2, 0.42, 0.7, 0.55, K_VOID, 0.2, 4);
+    this._light({ x: x1, y: 1.2, z: z1, color: [0.8, 0.25, 1], intensity: 3.5, radius: 6, life: 0.2, fade: 0.18 });
   }
 
-  /** A form's ignition lands: a pillar of red light through him, a shock ring racing out, arcs along
-   *  the floor, glyphs thrown up. */
+  /** A form's ignition lands: a pillar of the Void through him round a core of white strokes, a
+   *  ring of it racing out, bolts along the floor, red sparks thrown up. */
   igniteNova(x, z, r) {
-    const c = TELL_STYLE.red.color;
-    for (let i = 0; i < 56; i++) {
-      const a = (i / 56) * TAU, ca = Math.cos(a), sa = Math.sin(a);
-      this._spawn(this.add, {
-        x: x + ca * 0.8, y: 0.5, z: z + sa * 0.8, vx: ca * (r / 0.3), vz: sa * (r / 0.3),
-        life: 0.32, size: 0.8, sizeEnd: 1.3, glyph: ')', rot: Math.atan2(-sa, ca), color: [c[0] * 1.4, c[1] * 0.7, c[2] * 0.5], colorEnd: [c[0] * 0.3, c[1] * 0.15, c[2] * 0.15], alpha: 1, alphaEnd: 0, drag: 0.5,
-      });
-    }
+    if (!Number.isFinite(x + z + r)) return;
+    this._shock(x, 0.5, z, r, 64, 0.32, 0.7, 1.2, 0.8, K_VOID, 0.8, 0.5);
     // the pillar
-    for (let i = 0; i < 34; i++) {
-      const a = this.rnd() * TAU, rr = this.rand(0, 0.5), h = this.rand(0, 3);
-      const o = this._rec(x + Math.cos(a) * rr, h, z + Math.sin(a) * rr, this.rand(0.3, 0.6), 0.34, 0.1, '|', i % 3 ? RED : RED_CORE, RED_END);
-      o.vy = this.rand(9, 20);
-      o.stretch = 3;
-      this._spawn(this.add, o);
+    for (let i = 0; i < 30; i++) {
+      const a = this.rnd() * TAU, rr = this.rand(0, 0.45), h = this.rand(0.2, 3);
+      this._blob(x + Math.cos(a) * rr, h, z + Math.sin(a) * rr, 0, this.rand(8, 18), 0, this.rand(0.3, 0.6), 0.6, 0.3, 0.5, 0, K_VOID, 1);
     }
+    this._ink(x, 0.3, z, x, 6, z, 0.26, 1.5, 0, 1.0);
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * TAU + this.rnd() * 0.5, rr = r * this.rand(0.55, 0.9);
-      this.lightning(x, 0.2, z, x + Math.cos(a) * rr, 0.1, z + Math.sin(a) * rr, 0.6, false, false);
+      this.lightning(x, GROUND_Y, z, x + Math.cos(a) * rr, GROUND_Y, z + Math.sin(a) * rr, 0.6, false, false);
     }
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 22; i++) {
       const a = this.rnd() * TAU, sp = this.rand(2, 9);
-      this._spawn(this.add, { x, y: 1, z, vx: Math.cos(a) * sp, vy: this.rand(2, 9), vz: Math.sin(a) * sp, life: this.rand(0.4, 0.9), size: this.rand(0.16, 0.3), sizeEnd: 0.04, glyph: "+*'", color: RED_CORE, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 1.5, gravity: -8 });
+      this._spawn(this.add, { x, y: 1, z, vx: Math.cos(a) * sp, vy: this.rand(2, 9), vz: Math.sin(a) * sp, life: this.rand(0.4, 0.9), size: this.rand(0.12, 0.22), sizeEnd: 0.04, glyph: "+*'", color: RED_CORE, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 1.5, gravity: -8 });
     }
-    this._light({ x, y: 1.4, z, color: [1, 0.2, 0.1], intensity: 8, radius: r * 1.6, life: 0.55, fade: 0.45 });
+    this._light({ x, y: 1.4, z, color: [0.8, 0.3, 1], intensity: 8, radius: r * 1.6, life: 0.55, fade: 0.45 });
   }
 
-  /** The deathblow goes through him: a burst of red light out of his back. */
+  /** The deathblow goes through him: the Void and red sparks burst out of his back. */
   deathblowBurst(x, y, z, dx, dz) {
-    for (let i = 0; i < 26; i++) {
+    if (!Number.isFinite(x + y + z + dx + dz)) return;
+    for (let i = 0; i < 12; i++) {
+      const sp = this.rand(3, 9), a = Math.atan2(dz, dx) + this.rand(-0.5, 0.5);
+      this._blob(x, y, z, Math.cos(a) * sp, this.rand(-0.5, 2.5), Math.sin(a) * sp, this.rand(0.25, 0.5), 0.5, 0.26, 0.42, 0, K_VOID, 3, 0.6);
+    }
+    for (let i = 0; i < 16; i++) {
       const sp = this.rand(3, 11), a = Math.atan2(dz, dx) + this.rand(-0.5, 0.5);
-      this._spawn(this.add, { x, y, z, vx: Math.cos(a) * sp, vy: this.rand(-1, 3.5), vz: Math.sin(a) * sp, life: this.rand(0.25, 0.6), size: this.rand(0.16, 0.34), sizeEnd: 0.04, glyph: "*+'-", color: RED_CORE, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 3 });
+      this._spawn(this.add, { x, y, z, vx: Math.cos(a) * sp, vy: this.rand(-1, 3.5), vz: Math.sin(a) * sp, life: this.rand(0.25, 0.6), size: this.rand(0.12, 0.22), sizeEnd: 0.04, glyph: "*+'-", color: RED_CORE, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 3 });
     }
     this._light({ x, y, z, color: [1, 0.25, 0.15], intensity: 6, radius: 9, life: 0.35, fade: 0.3 });
   }
