@@ -2037,6 +2037,10 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   reads it; a level or stage without `bossFloor` has no such line). Its breakables: 'shard' (the
   star's glass in the floor and on the rim), 'slab' (the rim's tall plates) and 'hover' (six stones
   hanging in the air: no collider, `cover: false`, `hp: Infinity`: they only chip); all `lift: 2`.
+  A hanging stone's geometry is built ON THE FLOOR and its entry carries `hover` (m): the set's
+  ambience lifts the piece's `body` by it while the piece is INTACT, and whoever takes the stone
+  sets `body.position.y = 0` and carries it from `hover` up (a piece lands where its pivot meets the
+  ground: ADR-109).
   Three rng streams: the layout (the picked render's sequence: add nothing to it), the rubble broken
   pieces leave, and anything added later.
 - `text`: `arrive[]`, `stir`, `phase2`, `phase3`, `phase4` (null / absent: no banner), `victory`,
@@ -2209,6 +2213,13 @@ moveBy / clampTarget(p, pad) / onFloor(x, z)
                                // (CONFIG.world.bossFloor.zN, the level's; absent on the lab stage)
 _glide(dt)                     // in footwork past TUNING.glide.on m/s: the animator's 'glide' clip, the root
                                // lifted TUNING.glide.hover m, a wake under him; a backstep / sidestep likewise
+weigh(name, def, w) / onActStart(A)
+                               // a move marked `terrain` (ADR-109): his AI gives it weight only while the
+                               // crater has a piece for it; it takes its pieces as it starts (false: none)
+terrain                        // LordTerrain (terrain.js): begin(A), onCast(b, s, a), frame(dt), drop(),
+                               // reset(), busy; the pieces held (`held`), the rings where thrown ones land
+                               // (`marks`), Crown Fall's pick (`fall`). Uses world.destructibles: take,
+                               // carry, throwTo (his blow in onLand), drop, topple
 debug.phase4(), debug.setForm(n), debug.form
 ```
 **His gear** (gear.js, ADR-084): `lord.*` items registered into the hero's gear registry: `lord.hood`
