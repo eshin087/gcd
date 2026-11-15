@@ -121,6 +121,63 @@ export const TUNING = {
   // ---- the projectile (Ash Crescent)
   crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25 },
 
+  // ---- the terrain (ADR-111; terrain.js; COMBAT.md → "The Ash Disciple" → "He uses the courtyard").
+  // Four moves on the pieces of the set (world.destructibles). Each is chosen only while a piece for
+  // it is in reach; from the Lab it goes for the nearest one however far.
+  terrain: {
+    edge: 6.5, // a piece may stand this far outside his bound (the ring of pillars, the lanterns, the gate)
+    leash: 5, // m/s: out past his bound for a piece, he is drawn back in this fast once the move is over
+    // Severed Pillar: he is behind the standing piece nearest the hero and cuts it down on him
+    fell: {
+      reach: 14, // m he will cross to get behind it
+      minH: 2.3, // a piece this tall at least (it must fall, not shatter)
+      heroMin: 1.2, // the hero this far from its base at least ...
+      over: 0.5, // ... and at most its height + this (inside the strip it lands on)
+      stand: 0.45, // m of air between him and the piece
+      cut: 0.85, // m up the piece where the blade goes through (drawn)
+    },
+    // Flying Lantern: a short stone piece (a lantern, a pillar's stump) kicked at the hero
+    kick: {
+      reach: 13,
+      minH: 0.9, maxH: 2.3, maxWeight: 1.0, // what he can send flying
+      lantern: 4, // m a lantern is preferred over a stump by
+      heroMin: 4.5, heroMax: 26, // the hero this far from the piece
+      stand: 0.35,
+      time: [0.62, 0.95], per: 34, // s in the air: time[0] + distance / per, at most time[1]
+      lead: 0.2, // s of the hero's own movement it is aimed ahead by
+      hit: 1.5, // m round where it lands that it strikes the hero (+ his radius)
+      power: 0.9, radius: 2.0, // its burst on the other pieces where it lands (POWER, m)
+      parryPosture: 14, // a parry bursts it on the blade
+    },
+    // Three Tolls: he strikes the fallen bell; each blow sends a ring of sound across the courtyard
+    toll: {
+      reach: 15,
+      heroMax: 23, // the hero this far from the bell at most
+      stand: 0.3,
+      arc: 1.3, // m: the height of his leap to it
+      from: 1.5, speed: 12, range: 26, // the ring: born this wide (m), m/s, where it dies
+      width: 0.45, // m either side of its front that it strikes
+      strike: 0.9, // his blow on the bronze (POWER; it only rings)
+      parryPosture: 10,
+      look: 'arc', // how the ring is drawn: 'arc' (one crisp line of strokes) | 'wave' (three ripples)
+    },
+    // Swallow's Return: he leaps back onto a pillar and springs off it into a diving cut
+    spring: {
+      reach: 10.5, near: 2.2, // the pillar this far from him (at most / at least)
+      minH: 3.2, // tall enough to spring from
+      heroMin: 3, heroMax: 12.5, // the hero this far from the pillar
+      perch: 2.3, // m up it where his feet land (at most; 0.9 m under its top)
+      arc: 0.9, // m the leap rises above the straight line to the perch
+      stop: 1.4, // the dive ends this far short of the hero (his cut reaches the rest)
+      max: 12.5, // m the dive can cover
+      trackTo: 0.55, // the dive follows the hero until this fraction of it
+      power: 0.3, // what his feet do to the pillar (POWER, a blunt blow)
+      // the defensive read: pressed (his posture over `postureOver` of its max, or struck within
+      // `struckWithin` s), he wants the way out `pressed` times as much
+      pressed: 2.4, postureOver: 0.4, struckWithin: 2.2,
+    },
+  },
+
   // ---- the intro: he wakes when the hero crosses the gate or comes this close (flow also checks)
   wakeRadius: 9,
 };

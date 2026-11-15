@@ -52,6 +52,7 @@ check).
   the TERRAIN category is the staged version.
 
 ---
+
 ## 2026-11-15 — Session 45: per-move telemetry; the death screen names the killing move
 
 **Owner:** "Yes, telemetry" (the genre review's third piece). Branch `game/move-telemetry`, stacked on

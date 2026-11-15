@@ -34,8 +34,10 @@ import { closestOnSegments } from '../../../combat/clashFx.js';
 //   REACT, OPEN          extra reaction clips' root motion / which of them leave him open (optional)
 // }
 // Subclass hooks: _tint(M) (his colours), _setup() (extra meshes, before batching), _bladeMaterials(dt),
-// brainFrame(dt), afterPose(dt, act), onRelease(beat, sense, act), onCast(beat, sense, act),
-// beatMotion(beat, u, sense, dt), onTransitionEnd(act), _onHpZero().
+// brainFrame(dt), afterPose(dt, act), onImpact(beat, sense, act), onRelease(beat, sense, act),
+// onCast(beat, sense, act), beatMotion(beat, u, sense, dt), onTransitionEnd(act), _onHpZero(), and for
+// moves that depend on the level (ADR-111): weigh(name, def, w, dist) → the weight his AI gives the
+// move right now (0 = not now), onActStart(act, opts) → false when the move cannot start (no piece).
 
 const TARGETABLE = new Set(['waking', 'combat', 'staggered', 'airborne']);
 // a parried blow's contact (parryContact): the pose is stepped back over `max` s of clip time in
