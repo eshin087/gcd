@@ -2541,6 +2541,41 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   either way). An afterimage is up to ~390 particles for ~0.6 s; a seven-blow flurry peaks near
   1700 particles (800 before; the additive batch holds 7000).
 
+## ADR-102 — The riskier the answer, the more it pays: the flurry on red only, the flash counter, a perfect parry that pays (2026-11-15)
+- **Context:** the owner asked what would make the combat stand with Sekiro, Phantom Blade Zero and
+  Onimusha, then: "yes measure and lets implement your suggestions". The suspicion: a perfect dodge
+  worked on every tell, had the parry's window (0.20 s against 0.22 s) and paid the most (the
+  flurry: damage, invulnerability, a stagger, the crit window, and the string over), while the
+  trade clash, the riskiest answer, earned no opening. Measured with three god-mode bots that
+  differ only in how they answer a tell (`strategy`, opt-in, in all three suites): the bot that only
+  dodged beat every boss fastest with a third of the inputs (Shen Hui 27 – 32 s against 38 – 45 s for
+  parries only; the wyrm 68 s against 149 s). Nobody had to learn a string.
+- **Decision:** order the rewards by risk (COMBAT.md "The reward order").
+  - The flurry (and the plunge) answer a perfect dodge of a **red** blow only (`DEFENSE.flurry.on`).
+    A perfect dodge of a white or heavy blow counts in the streak and gives the slow-mo where the
+    hero stands: no teleport, no damage, no crit window (`ghostep.critWindowWhite` 0), the string
+    goes on. The streak is built on white blows and cashed on a red one or by the riposte.
+  - **The flash counter** (`DEFENSE.counter`, Onimusha's Issen): a trade clash in the instant the
+    hero's cut became a cut (≤ 0.03 s into its active frames) is not thrown back: 70 final damage and
+    60 posture at once, the attacker reels (`attacker.onCounter`), the crit window opens,
+    `player:counter`.
+  - **A perfect parry** of a blow of the body or the blade deals × 1.5 posture (`POSTURE.perfect`)
+    and readies the counter cut (`DEFENSE.perfectParry`: the next light within 0.9 s winds up twice
+    as fast and crits).
+  - Found on the way: a blow of a foe's flurry that reached nobody settled nothing, so "block all
+    five and he breaks" could silently not happen. It now counts as answered when the hero stood
+    within its reach + 1.2 m, and fails the flurry when he left.
+- **Alternatives turned down:** a dodge cooldown or shrinking i-frames (the owner: defence must not
+  be punished; nothing here stops the player from dodging); a 1.2 s crit window on a white perfect
+  dodge (measured: the dodge bot still beat the wyrm fastest, in 63 s, on crits alone).
+- **Consequences:** after the change the dodge-only bot is the slowest on both duelists (Shen Hui
+  75 – 95 s, the Lord 152 – 161 s) and level with mixed play on the wyrm; mixed and parry-only times
+  did not move. A perfect dodge of a white blow against a duelist no longer puts the hero at his
+  back. The old rule is one switch away (`flurry.on: 'any'`, `player.debug.flurryAny`). Not done:
+  the wyrm's claws are not steel, so the flash counter is a duelist's only; no human has played it
+  (the counter's 0.06 s of press timing, the counter cut's feel); the Lab has no button for
+  `flurryAny`; the flash counter was not filmed.
+
 
 ## ADR-106 — The hero prints through what covers him: an ink ghost in the blade's cyan (2026-11-15)
 - **Context:** the owner: "i noticed while fighting the dragon the player disappears and cant see

@@ -72,7 +72,7 @@ add('HERO STREAK', [
     // (a streak of one against the wyrm may be the plain plunge: no hanging cuts to burst)
     expect: n === 1 ? ['player:perfectDodge'] : ['player:perfectDodge', 'player:flurryEnd'],
   })),
-  { id: 'pdString', name: 'Perfect-dodge a whole string', boss: 'any', streak: 0, role: 'long', answer: 'dodge', desc: 'Every blow of a long string perfect-dodged: the streak climbs blow by blow and every flurry is longer than the last.', expect: ['player:perfectDodge'] },
+  { id: 'pdString', name: 'Perfect-dodge a whole string', boss: 'any', streak: 0, role: 'long', answer: 'dodge', desc: 'Every blow of a long string perfect-dodged: the streak climbs blow by blow. White blows give slow motion and a short crit window where you stand; only a red one is answered with the flurry.', expect: ['player:perfectDodge'] },
   { id: 'streakLost', name: 'Streak lost (hit at ×5)', boss: 'any', streak: 5, role: 'single', answer: 'none', desc: 'A blow that hurts ends the streak: the pips break and the log says so.', expect: ['player:streak'] },
   { id: 'streakKept', name: 'Streak kept (block at ×5)', boss: 'any', streak: 5, role: 'single', answer: 'block', desc: 'A blocked blow leaves the streak alone.', expect: ['player:block'] },
 ]);
@@ -97,7 +97,7 @@ add('PARRY & RIPOSTE', [
   { id: 'deflectLong', name: 'Deflect a long string', boss: 'any', streak: 0, role: 'long', answer: 'parry', desc: 'A long string parried blow for blow: watch the streak climb and the riposte at the end.', expect: ['player:parry'] },
   { id: 'blockString', name: 'Block a string', boss: 'any', role: 'string', answer: 'block', desc: 'The guard held through a string: chip damage, pushback, no riposte.', expect: ['player:block'] },
   { id: 'lock', name: 'Blade lock', boss: 'duel', role: 'lock', answer: 'perfect', mash: true, desc: 'A perfect parry of his heavy blow locks the blades: mash attack to win the push.', expect: ['player:lock'] },
-  { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt.', expect: ['combat:clash'] },
+  { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
   { id: 'mikiri', name: 'Mikiri', boss: 'ash', role: 'mikiri', answer: 'mikiri', dist: 3.2, desc: 'A roll INTO his perilous thrust: you step on his blade.', expect: ['player:mikiri'] },
 ]);
 
@@ -107,7 +107,7 @@ add('BOSS STREAK', [
   { id: 'foePerfect', name: `His flurry ${N(5)} · perfect parries`, boss: 'duel', foe: 5, dist: 2.6, answer: 'perfect', desc: 'Every blow perfect-parried (each counts two toward the total).', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd'] },
   { id: 'foeBlock', name: `His flurry ${N(5)} · block all`, boss: 'duel', foe: 5, dist: 2.6, answer: 'block', desc: 'A held guard meets them from any side: he breaks too.', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] },
   { id: 'foeMiss', name: `His flurry ${N(5)} · one let through`, boss: 'duel', foe: 5, dist: 2.6, answer: (i) => (i === 2 ? 'none' : 'parry'), desc: 'The third blow lands: nothing breaks, and your streak is lost.', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd'] },
-  { id: 'foeDodge', name: `His flurry ${N(4)} · perfect-dodge it`, boss: 'duel', foe: 4, dist: 2.6, answer: 'dodge', desc: 'Perfect dodges answer his blows with flurries of your own (they break nothing of his).', go: (T) => T.d.debug.flurry(4), expect: ['player:perfectDodge'] },
+  { id: 'foeDodge', name: `His flurry ${N(4)} · perfect-dodge it`, boss: 'duel', foe: 4, dist: 2.6, answer: 'dodge', desc: 'Perfect dodges of his blows count in your streak (white blows: no flurry) and break nothing of his.', go: (T) => T.d.debug.flurry(4), expect: ['player:perfectDodge'] },
 ]);
 
 add('OFFENCE', [

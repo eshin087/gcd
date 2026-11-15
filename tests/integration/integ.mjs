@@ -320,7 +320,9 @@ const toward = (G) => { const d = G.game.dragon, p = G.game.player, x = d.positi
 //   blue / normal → tap RMB 0.12 s before impact (parry) · red → Space 0.1 s before impact (Ghostep)
 //   streams that cannot be parried (breath) → hold the guard through them
 //   act() returns true while an answer is due (the bot holds its swings)
-function makeDefender(G, { skill = 1 } = {}) {
+// style (the STRATEGY measurement): 'mixed' = the above; 'dodge' = a perfect dodge of every tell, never a
+// parry; 'parry' = parries, and a red blow rolled early (i-frames, outside the perfect window)
+function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
   const pend = [];
   const stats = { tells: 0, parryTry: 0, dodgeTry: 0, blockTry: 0 };
   const lead = TUNING.flashLead;
@@ -348,8 +350,8 @@ function makeDefender(G, { skill = 1 } = {}) {
         const left = e.at - t - DT;
         if (e.stream) {
           if (left <= 0.3) { e.done = true; blockUntil = t + 2.6; input.press(2); stats.blockTry++; }
-        } else if (e.tell === TELL.RED) {
-          if (left <= 0.1) {
+        } else if (e.tell === TELL.RED || style === 'dodge') {
+          if (left <= (style === 'parry' ? 0.3 : 0.1)) {
             e.done = true;
             const d = g.dragon.position, p = g.player.position;
             const dx = d.x - p.x, dz = d.z - p.z, l = Math.hypot(dx, dz) || 1;
@@ -639,6 +641,34 @@ async function scenarioProbe() {
   out(`   ${res} after ${(game.time - t0).toFixed(1)} s · wyrm hp ${d.hp}/${d.maxHp} (${Math.round((100 * d.hp) / d.maxHp)} %) phase ${d.phase} (P2 at ${phaseT[1].toFixed(0)} s, P3 at ${phaseT[2].toFixed(0)} s)`);
   out(`   hero: took ${hurt} dmg (worst ${worst}) · heals ${c('player:heal')} · parries ${c('player:parry')} · chains ${c('combat:deflectChain')} · perfect ${c('player:perfectDodge')} · plunges ${c('player:plungeHit')} · breaks ${c('dragon:postureBreak')} · hits ${c('player:hitDragon')}`);
   return G;
+}
+
+// ================================================================== scenario: strategy (opt-in)
+// Which defence wins? Three god-mode bots that differ only in how they answer a tell (makeDefender
+// `style`). Not a pass / fail check: node tests/integration/integ.mjs . strategy
+async function scenarioStrategy() {
+  out('\n== scenario STRATEGY (mixed / parry-only / dodge-only, god mode) ==');
+  let last = null;
+  for (const style of ['mixed', 'parry', 'dodge']) {
+    const G = build();
+    const { game, input, counts } = G;
+    G.defend = makeDefender(G, { style });
+    run(G, 1.0);
+    input.tap('Space');
+    G.tick(DT);
+    run(G, 30, { god: true, attack: false }, () => game.state === 'bossIntro');
+    run(G, 20, { god: true, attack: false }, () => game.state === 'boss');
+    const t0 = game.time;
+    let hurt = 0, hurtN = 0;
+    G.watch = (n, e) => { if (n === 'player:hurt') { hurt += e?.damage ?? 0; hurtN++; } };
+    const won = run(G, 900, { god: true, defend: true }, () => game.state === 'victory');
+    G.watch = null;
+    const c = (n) => counts[n] || 0;
+    out(`   ${style.padEnd(5)} ${won ? 'WON ' : 'time'} ${(game.time - t0).toFixed(0).padStart(3)} s  hits taken ${String(hurtN).padStart(2)} (${Math.round(hurt)} dmg)  parries ${String(c('player:parry')).padStart(3)}  perfect dodges ${String(c('player:perfectDodge')).padStart(3)}  plunges ${c('player:plungeHit')}  breaks ${c('dragon:postureBreak')}`);
+    G.defend = null;
+    last = G;
+  }
+  return last;
 }
 
 // ================================================================== scenario: die + retry + pause + rest
@@ -1365,6 +1395,21 @@ async function scenarioRed() {
   G.tick(DT);
   out(`   slow-mo x${slow0} ${left0.toFixed(2)} s left → after the break x${game.hitstopScale} ${game.hitstopTimer.toFixed(2)} s`);
   assert(near(game.hitstopScale, DEFENSE.ghostep.slowmoScale, 1e-6), `Ghostep slow-mo survives the break freeze (x${game.hitstopScale})`);
+  // (ADR-102) a WHITE or heavy blow can be parried: its perfect dodge counts in the streak and gives
+  // the slow-mo where he stands, but no plunge, no flurry and no crit window
+  run(G, 4, { passive: true }, () => p.state !== 'plunge' && p.state !== 'flurry');
+  settle(G);
+  place(G, 6);
+  p.debug.streak(0);
+  {
+    p.critTimer = 0; // (the plunge above left its window open)
+    const hpW = d.hp, at = p.position.clone();
+    const wd = forceAttack(G, 'bite', { answer: 'dodge', settle: 1 });
+    const moved = Math.hypot(p.position.x - at.x, p.position.z - at.z);
+    assert(wd.res === RESULT.PERFECT && p.state === 'ghostep' && p.streak === 1 && p.position.y === 0, `a perfect dodge of the bite (a heavy blow that can be parried) is no plunge (${wd.res}, state ${p.state}, streak ${p.streak})`);
+    assert(d.hp === hpW && moved < 5 && p.critTimer <= DEFENSE.ghostep.critWindowWhite + 1e-6, `the wyrm is not hurt, the hero stays where he dodged (${moved.toFixed(1)} m), no crit window (${p.critTimer.toFixed(2)} s)`);
+    assert(evn(wd, 'player:perfectDodge') === 1 && evn(wd, 'player:ghostep') === 1 && !evn(wd, 'player:plunge') && !evn(wd, 'player:flurry'), 'player:perfectDodge + player:ghostep, no plunge, no flurry');
+  }
   return G;
 }
 
@@ -1415,6 +1460,7 @@ async function scenarioPlunge() {
   // (the plunge is one of the flurry's arts, scenario FLURRY: pinned here, and every perfect dodge
   // below is the first of its streak: one blow)
   p.debug.flurryArt = 'skyfall';
+  p.debug.flurryAny = true; // (the move itself is tested here, on a bite; which tells it answers: scenario RED)
 
   // 1) a perfect dodge of the bite, in range → the plunge, one hit on the head, a landing in front
   p.debug.streak(0);
@@ -1640,6 +1686,7 @@ async function scenarioFlurry() {
   ready();
   p.debug.streak(0);
   p.debug.flurryArt = 'skyfall';
+  p.debug.flurryAny = true; // (the move itself is tested here, on a bite; which tells it answers: scenario RED)
   const r1 = forceAttack(G, 'bite', { answer: 'dodge', settle: 1 });
   assert(r1.res === RESULT.PERFECT && p.streak === 1 && p.state === 'plunge' && r1.ev['player:flurry'] === 1, `the first perfect dodge of a streak is one blow: the art alone (streak ${p.streak}, state ${p.state})`);
   ride();
@@ -7398,9 +7445,9 @@ async function scenarioSeen() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
+const SCENARIOS = { strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
-const OPT_IN = new Set(['probe']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 

@@ -187,6 +187,23 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner's phone test: the look in a played fight, the frame rate, Safari's occlusion queries
 - [ ] Thrown trees and lifted pillars (the terrain work) checked as cover when they exist
 
+## M1.35 — The rewards ordered by risk (2026-11-15, `combat/reward-order`, ADR-102)
+The first of the changes from the genre review (owner: "lets implement your suggestions").
+- [x] Strategy bots (mixed / parry-only / dodge-only) in all three suites; measured before and after
+- [x] The flurry and the plunge on a red blow's perfect dodge only; a white one: a pip and slow-mo
+- [x] The flash counter: a trade clash at the last instant goes through him
+- [x] A perfect parry pays: × 1.5 posture, the counter cut
+- [ ] A human plays it; then the counter's window (0.03 s), its 70 damage, the counter cut's 0.9 s
+- [ ] Film the flash counter and the in-place perfect dodge; a Lab switch for `flurryAny`
+- [ ] The rest of the review, each its own PR:
+  - [ ] A fixed-timestep simulation (windows equal at any frame rate); a performance budget
+  - [ ] Per-move telemetry; the killing move on the death screen
+  - [ ] A heavy button; direction + button choose the swing (the 13 looks become moves)
+  - [ ] HP-linked posture (the Lord's rule) for every boss
+  - [ ] Save file, a hub at the bonfire, a boss order that starts on Shen Hui, ranks, difficulty tiers,
+        a reduce-flashes option
+  - [ ] The single boss slot as an actor list (before mobs or a duo fight)
+  - [ ] Designed sound for the core combat hits; a theme per boss
 ## M1.34 — The flurry on a man; the afterimage (2026-11-15, `player/flurry-duel-read`, ADR-101)
 - [x] A pacing of its own against a duelist: wound up, past his side, a held finish
 - [x] A flurry's blows do not shove a duelist; the last staggers him away from the hero

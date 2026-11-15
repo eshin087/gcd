@@ -117,6 +117,42 @@ pillars should need nothing more than being drawn in the scene pass.
 
 ---
 
+## 2026-11-15 — Session 41: the rewards ordered by risk: the flurry on red only, the flash counter, a perfect parry that pays
+
+**Owner:** "what updates, combat engine changes, etc can we do to make this game to be one of the most
+soulslike/onimusha/phantom blade genre type of game? i plan to sell this on steam", then, on the
+write-up: "yes measure and lets implement your suggestions". Branch `combat/reward-order`, own
+worktree (the main checkout held another session's work). Session 41 / ADR-102 / M1.35: PR #39, open
+beside it, holds 40, ADR-101 and M1.34.
+
+**Measured first** (the `strategy` scenario, new in all three suites, opt-in): three god-mode bots
+that differ only in how they answer a tell. The bot that only perfect-dodged beat every boss fastest
+with a third of the inputs. The table is in COMBAT.md "The reward order".
+
+**Done** (ADR-102):
+- **The flurry on red only.** A perfect dodge of a white or heavy blow counts in the streak and slows
+  time where the hero stands; no flurry, no plunge, no crit window, the string goes on.
+- **The flash counter.** A trade clash in the instant the cut became a cut goes through him: 70 damage,
+  60 posture, he reels, the crit window, FLASH COUNTER (`player:counter`, `attacker.onCounter`).
+- **A perfect parry pays:** × 1.5 posture and the counter cut (the next light twice as fast, a crit).
+- **Fixed:** a blow of a foe's flurry that reached nobody settled nothing (the flurry never ended).
+- **Tests:** duel GHOSTEP (white: in place; red: the flurry; the switch), TRADE (the flash counter),
+  PERFECT (new), integ RED (the bite's perfect dodge is no plunge); PLUNGE / FLURRY test the move
+  itself under `debug.flurryAny`; `strategy` in integ / duel / lord.
+
+**Found on the way:** a 1.2 s crit window on a white perfect dodge left the dodge bot the fastest on
+the wyrm (63 s): the window is 0. The Lord's training run failed on "block his flurry" once the
+random stream shifted: two of five blows fell short of a standing hero and nothing ended the flurry.
+
+**Verification:** `npm test`, `npm run build` (see the PR). The strategy runs before and after.
+
+**Not checked / open:** no human has played it. The flash counter and the in-place perfect dodge
+were not filmed. The wyrm cannot be flash-countered (its claws are not steel). One seed per bot on
+the wyrm before the change.
+
+**Next** (the owner's go-ahead covers them, each its own PR): a fixed-timestep simulation; per-move
+telemetry and the killing move on the death screen; a heavy button and chosen swings; HP-linked
+posture for every boss; then saves, a hub and ranks.
 ## 2026-11-15 — Session 40: the flurry on a man, paced to be followed; an afterimage in digits
 
 **Owner:** "the animation looks great vs the dragon but against the humanoid bosses, the

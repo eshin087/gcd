@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-three pieces of work since 0.4.0:
+Thirty-four pieces of work since 0.4.0:
 - **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
   lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
   as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
@@ -26,6 +26,16 @@ Thirty-three pieces of work since 0.4.0:
   covered and only while he is; in the open he looks as before. It works through trees, pillars,
   standing stones and landmarks too. Duels are unchanged: a human boss in front of you is not
   drawn over. `?noseen` in the address turns it off (for comparing).
+- **The riskier the answer, the more it pays** (2026-11-15, ADR-102): measured with bots, a player
+  who only perfect-dodged beat every boss fastest and never had to learn a string. *Changed:* the
+  flurry (and the plunge) now answer a perfect dodge of a **red** blow only. A perfect dodge of a
+  white or heavy blow still dodges, counts in your streak and slows time where you stand, but his
+  string goes on: build the streak on white blows, cash it on a red one or with a parried last
+  blow. *Added:* the **flash counter**: attack at the last instant before a duelist's blow lands
+  and your cut goes through his and through him (70 damage, he reels, the crit window opens); a
+  moment too late and his blow lands. *Added:* a **perfect parry** now deals half again the
+  posture and makes your next light cut twice as fast and a crit. *Fixed:* a blow of a boss's own
+  flurry that fell short of you settled nothing, so blocking all of it did not always break him.
 - **The flurry reads against the human bosses, and every blink leaves an ASCII afterimage**
   (2026-11-15, ADR-101). *Changed:* against Shen Hui and the Starless Lord each flash cut now shows
   the hero wound up for a moment, runs past the boss's side instead of through him, and slows into a

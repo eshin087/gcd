@@ -472,6 +472,11 @@ onTrade(att, { tell, attack, last }): { heavy, crush } | null
                                        // cut stopped on his blade (_meetBlade, shared with the parry), the burst,
                                        // 'combat:clash', the bounce. crush (a cleave whose poise reaches the attacker's
                                        // TUNING.guard.crushPoise): no bounce, the cut carries on.
+                                       // The flash counter (ADR-102, DEFENSE.counter): in takeHit's half only, when the
+                                       // cut is at most counter.window s into its active frames and the attacker offers
+                                       // onCounter({ point, dir, attack }) -> damage dealt: no bounce, the attacker deals
+                                       // itself counter.damage (final) + counter.posture and reels, 'player:counter',
+                                       // the crit window opens. Returns { heavy, crush, counter }.
 onGuarded({ deflect, heavy, attacker })
                                        // a duelist's guard met the hero's strike (he calls it from takeHit). A plain
                                        // ward: the chain goes on. deflect: the blade is thrown back, state 'bounce'
@@ -2214,7 +2219,9 @@ Player → hud/audio/fx/flow:
   `player:footstep {x, z, sprint}` (a planted foot's touchdown while moving, and a dash's
   two bounding steps), `player:lockOn {on}`,
   `player:lock {phase}` (the blade lock with a duelist: phase start / push / won / lost),
-  `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade)
+  `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade),
+  `player:counter {attack, damage}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
+  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER")
 Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash Disciple, emits the same
 `dragon:*` names, see "Levels and the boss slot") → hud/audio/flow:
 - `combat:tell {source:'dragon', attack, tell, impactIn, x, z}` (windup start, per hit, so once per hit of a
@@ -2222,8 +2229,9 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `combat:flash {source:'dragon', attack, tell, x, y, z, perilous}` (~0.35 s before impact — the **authoritative**
   timing cue: moving targets (charge, fireball) and hazard-dealt blows re-time it after the tell; perilous:
   a duelist's mikiri thrust, roll into it),
-  `combat:clash {heavy, crush, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
-  neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back; HUD "CLASH",
+  `combat:clash {heavy, crush, counter, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
+  neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back, counter = the
+  flash counter (it is followed by player:counter and the HUD shows that instead); HUD "CLASH",
   audio two steels ringing, a flicker of the frame),
   `combat:deflectChain {count}` (the attacker's count: the 2nd, 3rd ... parry in a row within one string;
   a hit that lands or is blocked resets it, dodges keep it; contract 1; the HUD shows "DEFLECT ×N")
