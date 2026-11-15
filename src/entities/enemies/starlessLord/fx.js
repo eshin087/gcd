@@ -1,6 +1,11 @@
 import { TELL, TELL_STYLE, RESULT } from '../../../combat/rules.js';
 import { DuelFx } from '../duelist/fx.js';
 import { perPhase } from '../duelist/realise.js';
+import { DUEL_WORLD } from '../duelist/worldTuning.js';
+
+/** A thrown stone stopped by cover / a blast on the floor, as blows on the world (ADR-107). */
+const SHOT_BLOW = Object.freeze({ kind: 'blunt', by: 'boss', y: 0.95 });
+const BLAST_BLOW = Object.freeze({ kind: 'blast', by: 'boss' });
 
 // The Starless Lord's glyph FX (STYLE.md: everything is glyph particles from the world atlas + pooled
 // lights), on top of the duelist's (tells, clashes, sparks, sweep trails). His own: the blades of red
@@ -538,6 +543,7 @@ export class LordFx extends DuelFx {
         }
         this.game.shake?.(0.3);
         this.game.world?.scorch?.burnCircle?.(c.x, c.z, 1.1, 0.3, 0.8);
+        this.game.world?.impact?.(c.x, c.z, 1.1, DUEL_WORLD.crush, BLAST_BLOW);
       }
     }
   }
@@ -625,6 +631,31 @@ export class LordFx extends DuelFx {
         s.alive = false;
         if (s.kind === 'glaive') d.onGlaiveBack?.();
         continue;
+      }
+      // the world in its way (ADR-107): cover stops a torn stone; the great stone breaks through
+      // it; the blade cuts through whatever it crosses, out and home
+      const W = this.game.world?.destructibles;
+      if (W?.stop) {
+        const WT = d.T.world ?? DUEL_WORLD;
+        const sp = s.phase === 'back' ? (s.wait > 0 ? 0 : s.back) : s.speed;
+        const px = s.x - s.dx * sp * dt, pz = s.z - s.dz * sp * dt;
+        if (s.kind === 'stone' && !s.big) {
+          if (W.stop(px, pz, s.x, s.z, s.radius, WT.stone ?? DUEL_WORLD.stone, SHOT_BLOW)) {
+            this._shatter(s);
+            continue;
+          }
+        } else if (sp > 0) {
+          // (one blow per pass per piece: a fresh id for each flight, and for the blade's way home)
+          if (s.wsrc === undefined || s.age < s.wAge || s.wPhase !== s.phase) s.wsrc = W.swing();
+          s.wAge = s.age;
+          s.wPhase = s.phase;
+          const o = (this._shotBlow ??= { kind: 'cut', by: 'boss', dx: 0, dz: 0, y: 0.95, src: -1 });
+          o.kind = s.kind === 'stone' ? 'blunt' : 'cut';
+          o.dx = s.dx;
+          o.dz = s.dz;
+          o.src = s.wsrc;
+          W.sweep(px, pz, s.x, s.z, s.radius, s.kind === 'stone' ? WT.bigStone ?? DUEL_WORLD.bigStone : WT.glaive ?? DUEL_WORLD.glaive, o);
+        }
       }
       if (s.kind === 'glaive') this._drawGlaive(s);
       else this._drawStone(s, false);
@@ -778,6 +809,7 @@ export class LordFx extends DuelFx {
         this.ringPulse(s.x, s.z, s.r);
       }
       this.game.world?.scorch?.burnCircle?.(s.x, s.z, s.r * 0.8, 0.3, 0.9);
+      this.game.world?.impact?.(s.x, s.z, s.r, (d.T.world ?? DUEL_WORLD).strike ?? DUEL_WORLD.strike, BLAST_BLOW);
       this.game.shake?.(star ? 0.4 : 0.22);
       d.emit('dragon:explosion', { x: s.x, z: s.z, radius: s.r });
       const pp = p?.position;

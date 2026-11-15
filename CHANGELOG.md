@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-five pieces of work since 0.4.0:
+Thirty-six pieces of work since 0.4.0:
 - **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
   which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
   attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory
@@ -12,6 +12,19 @@ Thirty-five pieces of work since 0.4.0:
   to you (blows seen, landed, blocked, parried, dodged, damage, deaths), added up over every
   attempt in this browser; `__telemetry()` in the console prints it for the level, the deadliest
   move first. Nothing leaves your machine.
+- **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
+  lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
+  as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
+  red blow (its landing strip is marked, roll or step out); one you fell onto a boss hurts it badly
+  and never hurts you. Anything 1.1 m or taller is cover: it stops the wyrm's bullets, a duelist's
+  crescents and torn stones, and takes the Void's bolt, pull or grip in your place, until it breaks.
+  Fire burns where it lands: grass under the wyrm's breath, fireballs, meteors, lava pillars, the
+  burning pass and the dive catches, burns about 4 seconds (5 HP every half second if you stand in
+  it), then is ash for the rest of the fight; a tree that catches burns about 7 seconds and falls to
+  embers. Fire never spreads. The wyrm walks through trees. Everything stands again when the fight
+  resets. *Changed:* Cinderwood has 7 dead trees, 4 young pines and 6 boulders inside the clearing.
+  A broken piece comes apart into the characters it is drawn in. *Dev:* a WORLD section in the Lab
+  (Burn ahead, Fell on me, Blast ahead, Restore).
 - **You can see yourself behind the dragon** (2026-11-15, ADR-106). *Fixed:* the hero vanished
   whenever the Cinder Wyrm stood between him and the camera: north of its body, under a wing,
   behind it while it rears, under it while it flies low. *Added:* the parts of him that are

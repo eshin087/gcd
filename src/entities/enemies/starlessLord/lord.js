@@ -579,7 +579,10 @@ export class StarlessLord extends Duelist {
       // the bolt: from his hand to the hero (in its line) or out along his facing
       const h = this._hand, p = this.game.player;
       const inLine = !!s && this.brain._inZone(D.zone, s);
-      if (inLine && p?.getChestPos) {
+      if (inLine && b.cover) {
+        // the hero stands behind cover: the bolt strikes that (brain._coverFor already blasted it)
+        this.fx.lightning(h.x, h.y, h.z, b.cover.x, Math.min(1.4, b.cover.h * 0.6), b.cover.z, 1.1, true);
+      } else if (inLine && p?.getChestPos) {
         p.getChestPos(_v, true);
         this.fx.lightning(h.x, h.y, h.z, _v.x, _v.y, _v.z, 1.1, true);
       } else {
