@@ -2,7 +2,7 @@
 
 ABYSS is a long-term browser game: a **wuxia skill boss rush** in the vein of Phantom Blade Zero,
 with some exploring and RPG elements and fixed rewards (techniques, weapons, abilities; ADR-059),
-rendered in an ASCII look inspired by @Ansenjeo's ASCII MMORPG. Today: three levels, each its own
+rendered in its own ASCII look. Today: three levels, each its own
 page load (`?level=`): Cinderwood Hollow (the Cinder Wyrm), the Ashfall Courtyard (the Ash Disciple,
 a human duelist) and the Obsidian Throne (the Starless Lord, a four-form duelist with Void spells).
 Read this file first, every session.
@@ -74,7 +74,9 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   Lab, `__tick`). Logic changes need `npm test` green. Add/extend tests in `tests/` for new systems.
 - **Keep history.** Every working session ends by:
   1. adding a dated entry to `docs/DEVLOG.md` (what changed, why, what's next, open issues),
-  2. updating `CHANGELOG.md` `[Unreleased]` (Added / Changed / Fixed / Removed),
+  2. updating `CHANGELOG.md` `[Unreleased]` (Added / Changed / Fixed / Removed), and giving each new
+     headline a short player-facing entry in the game's WHAT'S NEW list (`src/ui/changelog.js`,
+     same title; `npm test` checks),
   3. recording any significant design choice as a new ADR in `docs/DECISIONS.md`,
   4. updating `docs/ROADMAP.md` checkboxes.
 - **Commits**: small, imperative subject (`combat: add parry window`), body explains why. Area
@@ -90,8 +92,9 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   only touch docs / *.md / tests / .github / .claude — keep doc-only work in its own commits.
   It only diffs the pushed tip against its parent (HEAD^..HEAD), so on a PR branch make the LAST
   pushed commit a code commit when you need a fresh preview. Don't create manual CLI deployments (`vercel deploy`); let the Git integration deploy.
-- **Releases**: bump `version` in `package.json`, move `[Unreleased]` to a version heading in the
-  changelog, tag `vX.Y.Z`.
+- **Releases**: bump `version` in `package.json` and `GAME_VERSION` in `src/ui/changelog.js`, move
+  `[Unreleased]` to a version heading in the changelog (and the LATEST release in `changelog.js` to
+  that version), tag `vX.Y.Z`.
 
 ## Layout
 ```
@@ -103,7 +106,7 @@ src/combat     shared combat rules: hit resolution, guard/parry/dodge, attack te
 src/entities   player/ (gear/ = equipment slot items)  dragon/  enemies/duelist/ (the engine human
                bosses share)  enemies/ashDisciple/  enemies/starlessLord/  (future: npcs/)
 src/levels     level registry (?level=): the set, the boss, the flow's lines per level
-src/ui         HUD, menus           src/game   flow (title, boss intro, death, victory)
+src/ui         HUD, menus, WHAT'S NEW (changelog.js)   src/game   flow (title, boss intro, death, victory)
 src/audio      procedural WebAudio  src/dev    Lab / debug tools
 tests/         headless integration sims + static checks
 docs/          ARCHITECTURE, STYLE, COMBAT, ROADMAP, DECISIONS, DEVLOG

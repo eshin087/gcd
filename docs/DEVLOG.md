@@ -5,6 +5,57 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 53: WHAT'S NEW in the game; the phone camera in a duel's moment; a game of its own
+
+**Owner:** "On mobile theres a bug where after i lock onto the dragon target, the camera zooms in
+really close. Fix that. Also add a changelog in the game menu with an indicator showing whats new
+with all the version changes with notes on what changed. Also remove all text within the game, repo
+documentation, and source files on all references to [the game that inspired the look] as i want
+this to be my own thing now". Branch `ui/changelog-own-identity` from `main` (14cb0b2). Numbers:
+PR #53 (heavy branches, open) holds ADR-115 and Session 52, so this is ADR-116 / Session 53 / M1.41.
+
+**The lock-on zoom.** Not reproduced as described: on the phone preset (`?touch`, landscape and
+upright) locking on (the real toggle and `_setLock`) at 6, 12 and 20 m from the wyrm, asleep,
+waking and fighting, never brought the camera in: lock-on adds a pull-out capped at 3 m on a phone,
+and the distance stayed 20 - 27 m. Two causes found that fit "zooms in really close": (1) a duel's
+cinematic moments add `cine.zoom` (-9 / -7 m) unscaled, so on the phone the camera went from 16.7 m
+(the duel camera, already in) to 9.3 m; scaled now like the punch (16.7 → 12.6 m, the desktop's share);
+(2) iOS ignores `user-scalable=no` and nothing stopped a double-tap zoom of the page on LOCK (a
+38 px button tapped twice to switch or drop the target); the touch layer now cancels `touchend` on
+the canvas and its own controls, plus `gesturechange` and `dblclick`. Which one the owner saw is not
+known: the second cannot be shown in the browser pane.
+
+**WHAT'S NEW** (ADR-116): `ui/changelog.js` (releases as data: LATEST, 0.4.0 ... 0.1.0, 55 entries of
+two or three player-facing notes each, rewritten from CHANGELOG.md), `ui/changelogPanel.js` (the
+panel, read ids in localStorage), a corner button with an "N NEW" badge on the title, an item with
+"N NEW ›" in the pause menu, the gamepad (walk to it on the title, B / Menu / A close, the stick
+scrolls), Esc closes it without pausing or starting the game. `tests/changelogcheck.mjs` added to
+`npm test`. CHANGELOG.md had three "N pieces of work since 0.4.0" lines from merges: one now.
+
+**The inspiration's name** is gone from CLAUDE.md, README, STYLE (its first section is "The founding
+look (v0.1)" now, the creator's quote paraphrased), DECISIONS (ADR-001, ADR-098's context), DEVLOG
+(Session 1), ROADMAP, CHANGELOG (0.1.0), `cameraRig.js` and the title's credit line, which now reads
+"prototype v0.4.0". Git history still has it (rewriting `main` is not possible under its protection).
+
+**Verification:** `npm test` (all suites + the glyph and changelog checks) and `npm run build` pass. Browser pane, phone
+preset 852 x 393: the title's badge (17 NEW on a first visit), the panel over the title (the game
+does not start, Esc closes it, the badge clears and stays cleared after a reload), the pause item
+("1 NEW ›") and the panel over the pause menu, above the touch controls' peek (it was under them).
+The cinematic re-measured on the Ashfall Courtyard.
+
+**Not checked / open:** the owner's iPhone (the lock-on report, the `touchend` guard, the panel's
+scrolling); a gamepad on the panel (code path only); portrait title layout with the corner button.
+
+**Follow-up:** the owner: it happens without lock-on, every time. A scripted walk from the title to the
+waking wyrm and a 12 s fight on the phone preset: the camera never under 20 m. So the page zoom: every
+double tap is guarded now (menus get the click by hand), a zoomed page is reset through the viewport
+meta, and `?camdebug` prints page scale / camera distance / canvas size on screen for a phone report.
+
+**Next:** the owner tries the Vercel preview on the phone (with `?camdebug` if it still happens); cut
+0.5.0 when they want a version line.
+
+---
+
 ## 2026-11-15 — Session 52: a heavy button; five heavy branches off the chain; the charge on the heavy
 
 **Owner:** "Yes, ask me first" (the genre review's heavy button). Asked, answered: heavy branches off
@@ -2844,13 +2895,13 @@ glyphs for the creatures; a brighter outline to find the hero; red flash + white
 ---
 
 ## 2026-11-01 — Session 1: from reference study to playable slice (v0.1.0)
-**Goal:** a demo matching @Ansenjeo's ASCII MMORPG look (camera, art style) with a dragon in a forest.
+**Goal:** a first demo of the ASCII look (camera, art style) with a dragon in a forest.
 
 **Done**
-- Studied the reference (X banner + 4 clips): steep top-down perspective camera, three glyph
+- Set the look: steep top-down perspective camera, three glyph
   techniques (arranged strokes, screen-grid ASCII, glyph FX), night palette, fire light spill.
   Findings in `docs/STYLE.md`.
-- Built the rendering foundation + world myself; validated against the reference via screenshots.
+- Built the rendering foundation + world; checked via screenshots.
 - Parallel agent workflow built the dragon, player, HUD/flow and audio modules against
   `docs/ARCHITECTURE.md`, each independently reviewed, then an integration check (35 events wired,
   headless sims for win / death / retry / pause / breath).

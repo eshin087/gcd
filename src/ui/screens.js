@@ -1,4 +1,5 @@
 import { CONFIG } from '../core/config.js';
+import { GAME_VERSION } from './changelog.js';
 import { button, controlsGrid, el, fillKeyText, tellLegend, touchGrid } from './dom.js';
 
 // Full-screen / panel UI: title, pause menu, help panel, victory record.
@@ -49,8 +50,10 @@ const TITLE_TOUCH = [
 
 export class TitleScreen {
   /** stage (optional): { levels: [{ id, name }], current: id, pick(id) } — the stage picker (each
-   *  level is its own page load: picking one reloads the game into it, levels/index.js). */
-  constructor(parent, visible, stage = null) {
+   *  level is its own page load: picking one reloads the game into it, levels/index.js).
+   *  news (optional): the WHAT'S NEW panel (ui/changelogPanel.js): a button under the picker opens
+   *  it and carries its unread badge. */
+  constructor(parent, visible, stage = null, news = null) {
     this.root = el('div', 'ab-title', null, parent);
     const inner = el('div', 'ab-title-inner', null, this.root);
     inner.style.cssText = 'display:flex;flex-direction:column;align-items:center';
@@ -69,6 +72,19 @@ export class TitleScreen {
         this.stageButtons.push(b);
       }
     }
+    // WHAT'S NEW: walked with the stage buttons on a pad (ui/gamepad.js), never starts the game
+    this.newsButton = null;
+    if (news) {
+      const row = el('div', 'ab-stage ab-news-row', null, this.root);
+      const b = button(row, 'ab-news-btn', () => news.open());
+      el('span', '', "WHAT'S NEW", b);
+      this.newsBadge = el('span', 'ab-news-badge', '', b);
+      this.newsButton = b;
+      this._news = news;
+      const sync = () => setBadge(this.newsBadge, news.unseenCount(), (n) => `${n} NEW`);
+      news.onChange(sync);
+      sync();
+    }
     el('div', 'ab-press kb-only', 'PRESS ANY KEY', inner);
     el('div', 'ab-press tp-only', 'TAP TO BEGIN', inner);
     el('div', 'ab-press pad-only', 'PRESS ANY BUTTON', inner);
@@ -79,7 +95,7 @@ export class TitleScreen {
     const tctrl = el('div', 'ab-title-ctrl tp-only', null, inner);
     for (const item of TITLE_TOUCH) fillKeyText(el('span', 'item', null, tctrl), item);
     tellLegend(inner).classList.add('title');
-    el('div', 'ab-credit', "art direction inspired by @Ansenjeo's ASCII MMORPG  ·  prototype v0.4", this.root);
+    el('div', 'ab-credit', `prototype v${GAME_VERSION}`, this.root);
 
     // shimmer: a sweeping column of '▓' plus a few random '▒' over the solid blocks
     this.chars = [...LOGO.join('\n')];
@@ -143,7 +159,7 @@ export class TitleScreen {
 const QUIT_CONFIRM = 3; // s: QUIT TO TITLE's second press must come within this
 
 export class PauseMenu {
-  constructor(game, parent) {
+  constructor(game, parent, news = null) {
     this.game = game;
     this.root = el('div', 'ab-pause', null, parent);
     const panel = el('div', 'ab-pause-panel ab-panel', null, this.root);
@@ -176,13 +192,27 @@ export class PauseMenu {
     this.btnPadSize = button(panel, 'tp-only', () => game.touch?.cyclePad?.('size'));
     el('span', '', 'PAD SIZE', this.btnPadSize);
     this.padSizeVal = el('span', 'v', '', this.btnPadSize);
+    // WHAT'S NEW (ui/changelogPanel.js): every version and what changed; the value counts the unread
+    this.btnNews = null;
+    if (news) {
+      this.btnNews = button(panel, '', () => news.open());
+      el('span', '', "WHAT'S NEW", this.btnNews);
+      this.newsVal = el('span', 'v', '›', this.btnNews);
+      const sync = () => {
+        const n = news.unseenCount();
+        this.newsVal.textContent = n > 0 ? `${n} NEW ›` : '›';
+        this.btnNews.classList.toggle('has-new', n > 0);
+      };
+      news.onChange(sync);
+      sync();
+    }
     // back to the title screen (the fight is lost): a second press within QUIT_CONFIRM s confirms
     this.btnQuit = button(panel, '', () => this._quit());
     el('span', '', 'QUIT TO TITLE', this.btnQuit);
     this.quitVal = el('span', 'v', '›', this.btnQuit);
     this.quitArmed = 0;
     // the buttons in order, for the gamepad's menu focus (ui/gamepad.js)
-    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnQuit].filter(Boolean);
+    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnNews, this.btnQuit].filter(Boolean);
     el('div', 'ab-sep', null, panel);
     controlsGrid(panel, 'kb').classList.add('kb-only');
     touchGrid(panel).classList.add('tp-only');
@@ -250,6 +280,14 @@ export class PauseMenu {
       }
     }
   }
+}
+
+/** A badge's text and visibility: shown with label(n) while n > 0. */
+function setBadge(node, n, label) {
+  if (!node) return;
+  const on = Number.isFinite(n) && n > 0;
+  node.textContent = on ? label(n) : '';
+  node.classList.toggle('on', on);
 }
 
 /** Enter / leave fullscreen; in fullscreen also try to lock landscape (Android; iOS has neither). */

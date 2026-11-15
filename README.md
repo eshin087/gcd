@@ -2,8 +2,8 @@
 
 A playable vertical slice of a long-term browser action RPG: a black-coat swordsman, a moonlit forest
 clearing, a ring of broken standing stones, and a sleeping wyvern curled in the bones of the last ones
-who tried. The art style is modelled on **@Ansenjeo's ASCII MMORPG** — see [docs/STYLE.md](docs/STYLE.md)
-for what was studied and how each technique is reproduced. Combat reads tells instead of managing
+who tried. Everything on screen is drawn in characters — see [docs/STYLE.md](docs/STYLE.md) for the
+art direction and how each technique works. Combat reads tells instead of managing
 stamina — see [docs/COMBAT.md](docs/COMBAT.md).
 
 ## Play it
@@ -67,7 +67,7 @@ stagger / posture break / kill / reset, god mode, infinite flasks, slow-mo and f
 overlay and a parry/dodge timing trainer. See [src/dev/README.md](src/dev/README.md).
 
 ## How the look works (short version)
-- **Camera:** fixed-yaw, steep (58°) top-down perspective like Ansenjeo's.
+- **Camera:** fixed-yaw, steep (58°) top-down perspective.
 - **One character grid:** the scene renders to an HDR target whose alpha tags each pixel's class;
   a post pass turns the whole frame into a pixel-exact ASCII grid — grass (`| / \ ' Y V` strokes
   from a procedural meadow, trampled, gusted and burnt), stone (outlined), foliage, and creatures,

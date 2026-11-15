@@ -454,6 +454,7 @@ export class GameFlow {
   // ------------------------------------------------------------------ states
   _title() {
     this._titleShot();
+    if (this.game.hud?.newsUi?.on) return; // reading WHAT'S NEW: a key or click must not start the game
     if (this.stateTime > TUNE.title.minTime && this._dismissPressed()) this._startGame();
   }
 

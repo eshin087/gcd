@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp, damp } from './math.js';
 import { CONFIG } from './config.js';
 
-// Fixed-yaw, steep top-down perspective camera (Ansenjeo-style): looks north (-Z),
+// Fixed-yaw, steep top-down perspective camera: looks north (-Z),
 // pitched ~58° down, follows a focus point with damping, trauma-based screen shake.
 // Two distance profiles: desktop (CONFIG.camera.distance / min / max, extra zoom unlimited) and
 // mobile (setMobile(true): closer default, own zoom range, extra zoom capped so lock-on, boss
@@ -181,7 +181,9 @@ export class CameraRig {
 
   _extra() {
     const e = Number.isFinite(this.extraZoom) ? this.extraZoom : 0;
-    const k = Number.isFinite(this.cine.zoom) ? this.cine.zoom : 0;
+    // a cinematic's zoom is given at the desktop distance: scaled for the phone's closer camera like
+    // the punch (unscaled, a duel's -9 m moment took the phone's 20 m camera in to ~9 m: knees only)
+    const k = Number.isFinite(this.cine.zoom) ? this.cine.zoom * (this.defaultDistance / CONFIG.camera.distance) : 0;
     return Math.min(e, this.maxExtraZoom) + k;
   }
 

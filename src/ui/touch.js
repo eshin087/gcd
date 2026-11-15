@@ -28,6 +28,7 @@ const TAP_DISMISS = new Set(['title', 'dead']);
 const RING = 12; // glyphs around the stick: an ASCII-drawn circle, arrows at the four cardinals
 const RING_R = 62; // px
 const TAU = Math.PI * 2;
+const DOUBLE_TAP_MS = 350; // two touchends this close are a double tap (iOS zooms the page on one)
 const CHARGE_CELLS = 6;
 const SPRINT_OFF = 0.08; // hysteresis below sprintAt before the sprint drops
 
@@ -125,11 +126,46 @@ export class TouchControls {
       on(globalThis, 'contextmenu', (e) => this.active && e.preventDefault?.(), true);
     }
     on(globalThis.document, 'gesturestart', (e) => this.active && e.preventDefault?.());
+    on(globalThis.document, 'gesturechange', (e) => this.active && e.preventDefault?.());
+    // iOS Safari ignores user-scalable=no: two quick taps (mashing ATTACK, LOCK twice, DODGE twice)
+    // zoomed the whole page in about 2x round the tap, and it stayed so (the pinch that would undo it
+    // is blocked above). The controls and the canvas are driven by pointer events alone, so their
+    // touchend default (the double-tap zoom, the synthetic click) is never needed. Anywhere else (the
+    // menus) the second of two quick taps loses its default too, and a button gets its click by hand.
+    on(
+      globalThis.document,
+      'touchend',
+      (e) => {
+        if (!this.active || e.cancelable === false) return;
+        const t = e.target, now = Number(e.timeStamp) || 0, quick = now - this._lastTouchEnd < DOUBLE_TAP_MS;
+        this._lastTouchEnd = now;
+        if (t === this._canvas() || t?.closest?.('.tc-root')) {
+          e.preventDefault?.();
+          return;
+        }
+        if (!quick) return;
+        e.preventDefault?.();
+        const b = t?.closest?.('button, .ab-btn');
+        if (b && typeof b.click === 'function') b.click();
+      },
+      { passive: false },
+    );
+    this._lastTouchEnd = -1e9;
+    on(globalThis.document, 'dblclick', (e) => this.active && e.preventDefault?.());
+    // ... and if the page is zoomed anyway (an older iOS, a gesture that got through), it is put back
+    // at once: rewriting the viewport meta makes Safari lay the page out at initial-scale 1 again
+    const vv = globalThis.visualViewport;
+    if (vv?.addEventListener) on(vv, 'resize', () => this._unzoom());
+    // ?camdebug: a one-line readout of the page zoom, the camera distance and the canvas size, for a
+    // report from a phone (a screenshot shows which of them changed)
+    this.camDebug = /[?&]camdebug\b/.test(String(globalThis.location?.search ?? ''));
+    this._dbgEl = null;
+    this._dbgT = 0;
     on(
       globalThis.document,
       'touchmove',
       (e) => {
-        if (!this.active || e.target?.closest?.('.lab-root, .ab-pause-panel')) return; // scrollable panels
+        if (!this.active || e.target?.closest?.('.lab-root, .ab-pause-panel, .ab-news-list')) return; // scrollable panels
         if (e.cancelable !== false) e.preventDefault?.();
       },
       { passive: false },
@@ -171,10 +207,11 @@ export class TouchControls {
   }
 
   /** Per frame (main.js, right after the mouse ray and before the Lab / flow / player). */
-  update() {
+  update(realDt) {
     if (!this.active) return;
     const g = this.game;
     this._layout(false);
+    if (this.camDebug) this._camDebug(realDt);
     const st = g.state;
     const play = PLAY.has(st);
     const live = play && !g.lab?.viewer?.active;
@@ -192,6 +229,35 @@ export class TouchControls {
     if (play) this._aimUpdate();
     else this.autoAim = false;
     if (live) this._syncButtons();
+  }
+
+  /** The page was zoomed (visualViewport.scale > 1): rewrite the viewport meta, Safari lays it out
+   *  at scale 1 again. Counted in `unzooms` (the ?camdebug readout shows it). */
+  _unzoom() {
+    const vv = globalThis.visualViewport, doc = globalThis.document;
+    if (!this.active || !(fin(vv?.scale, 1) > 1.01)) return;
+    const m = doc?.querySelector?.('meta[name="viewport"]');
+    if (!m) return;
+    const base = 'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no';
+    this.unzooms = (this.unzooms ?? 0) + 1;
+    m.setAttribute('content', `${base},minimum-scale=1`);
+    globalThis.setTimeout?.(() => m.setAttribute('content', base), 60);
+  }
+
+  /** ?camdebug: page zoom · camera distance · canvas / window size, a few times a second. */
+  _camDebug(dt) {
+    this._dbgT -= fin(dt, 0.016);
+    if (this._dbgT > 0) return;
+    this._dbgT = 0.25;
+    const doc = globalThis.document;
+    if (!this._dbgEl && doc?.body) {
+      this._dbgEl = el('div', 'tc-camdebug', null, doc.body);
+      this._dbgEl.style.cssText = 'position:fixed;left:50%;top:2px;transform:translateX(-50%);z-index:99;font:10px monospace;color:#ff8a3d;background:rgba(0,0,0,.6);padding:1px 6px;pointer-events:none;white-space:nowrap';
+    }
+    if (!this._dbgEl) return;
+    const g = this.game, r = g.cameraRig, vv = globalThis.visualViewport, c = this._canvas();
+    const D = r && g.camera?.position?.distanceTo ? g.camera.position.distanceTo(r.focus) : NaN;
+    this._dbgEl.textContent = `page x${fin(vv?.scale, 1).toFixed(2)} (fixed ${this.unzooms ?? 0}) · cam ${fin(D).toFixed(1)} m (base ${fin(r?.targetDistance).toFixed(0)}) · canvas ${c?.clientWidth}x${c?.clientHeight} / win ${globalThis.innerWidth}x${globalThis.innerHeight}`;
   }
 
   /** Step the cluster's placement ('pos': low / mid / high) or its size ('size': s / m / l); kept. */

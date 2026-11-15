@@ -184,6 +184,22 @@ export class GamepadControls {
     const g = this.game, inp = g.input, B = BTN;
     const pressed = (i) => this.eff[i] && !this.prev[i];
     this.autoAim = false;
+    // WHAT'S NEW (ui/changelogPanel.js), over the title or the pause menu: B / Menu close it, the
+    // stick or D-pad scroll it, nothing reaches the screen under it
+    const N = g.hud?.newsUi;
+    if (N?.on) {
+      inp.setPad('@pause', false);
+      this._useList('news');
+      this._showFocus([], -1);
+      if (pressed(B.B) || pressed(B.START) || pressed(B.A)) {
+        N.close();
+        this._blockHeld(); // the button that closed it must not also act on the screen under it
+        return;
+      }
+      const dy = (this.eff[B.DOWN] ? 1 : this.eff[B.UP] ? -1 : 0) || (Math.abs(ly) > 0.25 ? ly : 0);
+      if (dy) N.scroll(dy * 520 * Math.max(0, Math.min(0.1, Number.isFinite(realDt) ? realDt : 0)));
+      return;
+    }
     if (g.state === 'paused') {
       const R = g.hud?.remapUi;
       if (R?.on) {
@@ -287,7 +303,9 @@ export class GamepadControls {
   }
 
   _stageButtons() {
-    return this.game.hud?.titleUi?.stageButtons ?? [];
+    const T = this.game.hud?.titleUi;
+    const list = T?.stageButtons ?? [];
+    return T?.newsButton ? [...list, T.newsButton] : list;
   }
 
   _press(b) {

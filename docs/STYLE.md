@@ -1,7 +1,7 @@
-# ABYSS — Visual Style Bible (Ansenjeo-inspired ASCII)
+# ABYSS — Visual Style Bible
 
-Reference: @Ansenjeo's "ASCII MMORPG" (X / TikTok, Oct 2026). Studied from his banner and four
-gameplay clips. This document describes what we observed and how this codebase reproduces it.
+ABYSS draws everything in characters. This document sets out the look and how this codebase
+produces it.
 
 ## The house style: the dragon look (read this first)
 
@@ -83,7 +83,7 @@ shards (2026-11-15: digits were picked); a typed lattice ground and a
 (2026-11-15: feasible and no slower on a desktop GPU, but the fighters shrink to ~9 character rows
 and lose their poses; the owner chose the dragon look).
 
-## Observed in the reference
+## The founding look (v0.1)
 
 **Camera.** Steep top-down *perspective* (≈55–65° pitch), fixed yaw (north up), fairly high.
 Characters are tiny (≈3–5 % of screen height) with small white monospace name tags above them.
@@ -94,8 +94,8 @@ dragon fall up/right.
 teal-green; rocks blue-grey; fire is the only warm light and it *spills* orange over the grass
 glyphs around it. White dots (flowers/dew) are sprinkled through the grass.
 
-**Three kinds of glyph rendering** (the creator's own words: "instead of just putting symbols on a
-grid, I arrange them to create those patterns… our brains recognize shapes and patterns"):
+**Three kinds of glyph rendering** (symbols are not just put on a grid: they are arranged into
+patterns, so the eye reads shapes):
 
 1. **Arranged stroke glyphs** for organic surfaces. Grass = millions of single glyph strokes
    (`| / \ ' Y V v l i`) standing in the world. Dragon skin = chevrons (`^ < v A`) laid *along the
@@ -107,7 +107,7 @@ grid, I arrange them to create those patterns… our brains recognize shapes and
    (`o 0 O 8 @ &`), stone uses letters.
 3. **Glyph particles** for FX: fire `* # % @ & ^ ~`, embers `. ' \``, sparks `+ x *`.
 
-**UI (the reference).** Monospace everything; thin bars; translucent dark panels with 1px light
+**UI (v0.1).** Monospace everything; thin bars; translucent dark panels with 1px light
 borders; a chat/log panel bottom-left with tabs; minimap top-right with a zone name; FPS readout;
 hotbar bottom-centre.
 

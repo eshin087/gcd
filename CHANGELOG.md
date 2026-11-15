@@ -4,7 +4,19 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty-two pieces of work since 0.4.0:
+Forty-six pieces of work since 0.4.0:
+- **What's new in the menu; the phone camera stays back** (2026-11-15, ADR-116). *Added:* **WHAT'S
+  NEW**, a button in the title screen's top-right corner and an item in the pause menu: every
+  version and what changed in it, newest first, in short notes. A badge counts the entries you have
+  not read yet ("3 NEW"); they are tagged NEW in the list, and closing it marks them read (this
+  browser remembers). *Fixed:* on a phone, a duel's slow-motion moments (perfect deflect, blade lock,
+  counter, mikiri, execution) took the camera in to about 9 m, knees only: their zoom is now scaled
+  for the phone's closer camera like every other camera move (about 12.6 m). On an iPhone, a quick
+  double tap (mashing ATTACK, LOCK twice) zoomed the whole page in about 2x and it stayed stuck
+  (pinching back out is blocked in play): double taps are now blocked everywhere in the game, and a
+  page that gets zoomed anyway is put back at once. `?camdebug` shows a one-line readout (page zoom,
+  camera distance, canvas size) for a report from a phone. *Changed:* the title's credit line reads "prototype v0.4.0"; the docs and the
+  code no longer name the game that first inspired the look.
 - **A heavy attack, and five heavies to choose from** (2026-11-15, ADR-115). *Added:* a HEAVY button (right
   click, R2, and a fourth tile on the phone). Pressed on its own it is a dashing two-handed thrust;
   pressed after the first, second, third or fourth light of the combo it is that point's own heavy:
@@ -855,7 +867,7 @@ First playable vertical slice: *The Cinder Wyrm*.
 - Wyvern boss *Vaelgrim, the Cinder Wyrm*: procedural rig (IK legs, spring tail, folding membrane
   wings), sleep → wake intro, bite / wing-claw swipe / tail sweep / stomp / fire breath / fireball
   volley / charge, phase 2 at 50% (molten seams, faster, leap slam), stagger, death dissolve.
-- HUD in Ansenjeo's MMO style: player frame, boss bar, tabbed log, minimap, name tags, lock-on
+- HUD: player frame, boss bar, tabbed log, minimap, name tags, lock-on
   reticle, banners (YOU DIED, WYRM VANQUISHED), title, pause, help.
 - Game flow: title → explore → boss intro → boss → death/retry or victory; bonfire rest.
 - Procedural audio: ambience, SFX for every combat event, boss music with phase-2 layer.
