@@ -763,7 +763,8 @@ export function buildGreatSword(rng, x, z, yaw = 0, s = 1, { lean = 0.12, tilt =
 }
 
 /**
- * The throne's wardens: two hooded colossi in obsidian over swords of cold steel (the hall is lit
- * red from every side: a red blade sank into it, a pale one is the brightest thing in the aisle).
+ * The throne's wardens: two hooded colossi cast in dark bronze, over swords of cold steel. The hall
+ * is obsidian lit red from every side: in obsidian they sank into the pillars and walls round them,
+ * and a red blade into the light. Bronze and pale steel are the two hues the hall does not have.
  */
-export const buildWarden = (rng, x, z, yaw, s) => buildColossus(rng, x, z, yaw, s, { col: mul(OBSIDIAN, 1.15), head: 'hood', blade: mul(COLD_STEEL, 0.8) });
+export const buildWarden = (rng, x, z, yaw, s) => buildColossus(rng, x, z, yaw, s, { col: mul(OLD_BRONZE, 0.75), head: 'hood', blade: mul(COLD_STEEL, 0.8) });
