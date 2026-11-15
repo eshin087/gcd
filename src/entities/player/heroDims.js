@@ -83,6 +83,7 @@ export const BODY = {
   upperArm: [0.066, 0.056], // sleeve radius at the shoulder / the elbow
   foreArm: [0.057, 0.048], // vambrace / bracer at the elbow / the wrist
   hand: 1.12, // gauntlet / glove size (× the lean build's)
+  fingerEx: 1.15, // the sword fingers' exaggeration (length, √girth) so the point survives the glyph pass (1.3 read up close as two claws hanging off the hand)
   thigh: [0.086, 0.062, 0.01], // r at the hip, at the knee, mid bulge
   shin: [0.064, 0.049, 0.01], // the boot: r at the knee, at the ankle, calf bulge
   foot: { c: [0, -0.02, 0.052], r: [0.056, 0.048, 0.146] }, // boot foot ellipsoid (foot space)

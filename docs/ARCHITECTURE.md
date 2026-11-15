@@ -64,12 +64,13 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `renderer, scene, fxScene, camera, pipeline, U` | rendering. `U` = shared uniforms (`render/shaderLib.js`), including `U.uBoneTex` (the rigid batches' bone matrices, see Rigid batching below). `pipeline.setShadowSize(texels)` resizes the moon shadow map (`pipeline.shadowSize`; main.js `applyQuality` passes the preset's `shadow`) |
 | `events` | pub/sub: `on(name, fn)` → unsubscribe fn, `emit(name, data)` |
 | `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
-| `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame; with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
-| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool)` / `mobile`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default. `punch(m)`: the zoom punch (`game.punch`). `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance, negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
+| `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame (the ray from the camera without the kick's translation, `cameraRig.kickOff`); with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
+| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool)` / `mobile`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default. `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance, negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
 | `touch` | touch controls (`ui/touch.js`, below): `active`, `phone`, `portrait`, `autoAim`, `setActive(bool)`, `update(realDt)` |
 | `gamepad` | gamepad controls (`ui/gamepad.js`, below): `active`, `connected`, `layout` (`'xbox'`/`'ps'`), `autoAim`, `focus`, `label(token)`, `rumble([ms, strong, weak])`, `update(realDt)` |
 | `shake(a)` | camera trauma (0.15 light hit … 0.7 huge slam) |
-| `punch(m)` | a zoom punch: the camera jumps `m` metres closer and springs back in ~0.25 s (`cameraRig.punch`: stacks to 6 m, eased at 11/s, scaled for the phone's closer camera). A blade's clash (1.5 – 3.6), a guard (0.7 – 2.4), a heavy hit (1.6). Optional: callers use `game.punch?.()` |
+| `punch(m)` | a zoom punch: the camera jumps `m` metres closer and springs back in ~0.25 s (`cameraRig.punch`: stacks to 6 m, eased at 11/s, scaled for the phone's closer camera). A blade's clash (1.5 – 3.6), a guard (0.7 – 2.4), every landed cut (lights 0.35 – 0.6, the slam 1.6, the cleave 1.2 – 2.0, the execution 2.0; a crit + 0.6). Optional: callers use `game.punch?.()` |
+| `kick(x, y, z, m)` | a directional kick: the picture is thrown `m` metres (≤ 0.5; at the desktop distance, scaled for the phone like the punch) along world direction (x, y, z) as seen on screen and springs back with one ~12 % overshoot in ~0.25 s, in real time (it plays through a freeze). A landed cut throws it along the blade's travel (lights 0.08 ≈ 4 px at 36 m … the full cleave 0.24). Optional: callers use `game.kick?.()` |
 | `fxDt` | this frame's FX time step (see Frame order): particles and lights run on through a hit-stop |
 | `hitstop(sec, scale=0.04)` | brief time-scale dip measured in real seconds (also the perfect-dodge slow-mo, the plunge's included: `hitstop(0.6, 0.3)`) |
 | `debugTimeScale` | Lab multiplier on game time (1 = normal). Only the Lab writes it. |
@@ -79,6 +80,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
+| `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
 | `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks |
 | `settings` | `{ quality: 0..2, showFps: bool }`; `applyQuality()` re-applies. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
@@ -181,7 +183,11 @@ Render helpers for creature modules:
   1 dotted (`dotted`), 2 unbroken (`solid`), + 4 when `open`: no dark channel or depth-step gap, the
   face), z `farLine` (share of inner-line light kept at the game camera: 0 a dark seam (cloth) … 1
   bright (armour, blade)), w `farFill` (fill gain there). Materials that share a `part` must share
-  these fields.
+  these fields. Part 17 = the player's blade (`HERO_INK.blade` / `bladeTip`, only gear/wanderer.js's
+  sword uses `M.blade` / `M.bladeTip`): `player.js` rewrites its fill .x, ink .w and rim .w every
+  frame (`TUNE.bladeFlare`: the strike and contact flare; absolute values, the `HERO_INK` base at
+  rest). Nothing else may use part 17 (a boss blade on `M.blade` would flare with the hero's: give it
+  a new part).
 - **The hero's letters and lines** (pass, hero branch):
   - Grid (ADR-036): `createPixelArtAtlas(hs)` (`glyphs.js`; hs = max(1, floor(H / 1080))) →
     `{ texture, count, cols }`: one row, the 3x3 micro-font `PIXEL_3X3` (29 marks) sorted sparse →
@@ -354,6 +360,10 @@ hitPush: { x, z }                      // the way the last blow drove him, in hi
 kdProne: boolean                       // the knockdown fell him on his FRONT (the blow came from behind; ADR-083)
 deadDown: boolean; downFrom: number    // killed in the knockdown, `downFrom` s into it: he dies where he lies (clip 'deadDown')
 critTimer: number                      // > 0 while the crit window is open (after a perfect dodge / the plunge's landing)
+bladeFlare: number                     // 0..0.75: the steel's flare at a landed cut (TUNE.bladeFlare.hit: 0.5, heavy / crit 0.75;
+                                       // not a slam's shards-only hit). Any area may raise it (Math.max), never lower it; it
+                                       // decays by 1 / TUNE.bladeFlare.fall per s of GAME time (held through the freeze) and
+                                       // drives part 17's fill / lines and the blade halo
 lockOn: boolean                        // toggled by Tab / middle mouse; facing tracks dragon.lockPoint
 get alive(): boolean
 isInvulnerable(): boolean              // roll i-frames, the whole plunge, Ghostep / plunge-landing i-frames, get-up, the blade lock, dead
@@ -431,12 +441,27 @@ Tab / MMB = lock-on. (E is flow's.)
 Drawn body vs gameplay body (ADR-017): the root draws the hero `player.drawScale` tall (model.js
 `PLAYER_SCALE` = 0.9 × `HERO_SCALE` = 1.08 since ADR-064; the Ash Disciple, on the same skeleton,
 is drawn at `HERO_SCALE` 1.2) and leaned away from the camera (`model.js` `LEAN`,
-`installLean(root, scale = HERO_SCALE)`; the returned lean carries its `scale`). The animator reads
+`installLean(root, scale = HERO_SCALE)`; the returned lean carries its `scale`, and `ox` / `oz`: a
+drawn-only offset in metres, 0 for the hero; a struck duelist's shudder). The animator reads
 the figure's scale as `anim.drawScale` (its owner's `drawScale`, else `HERO_SCALE`) for the drawn
 ground speed of the gait and the foot planner's world spots. The animator runs with `lean.on = false`
 (plain upright 1.85 m body, so IK and ground clamps work in metres); the drawn transform is applied
 after it. FX read the drawn joints; the sword sweep's hit test, `getChestPos()` (the dragon's aim)
 and the hurt cylinder use the upright body (`SwordSweep(sword, unlean)`).
+**The drawn contact** (`_contactPoint(dr, kind, out)`): the hit test runs on the upright
+gameplay bodies, so its point floats off both drawn figures; a landed cut is DRAWN where the drawn
+blade (`CUT_LOOK.from` … `fx.arcAt(kind)` of the hit segment) meets the boss's drawn hurt spheres
+(`dr.drawnPoint`, radius × `dr.drawScale`). `player._cut` holds it: the point, f along the hit
+segment, the blade's travel there (`cx, cy, cz`; unit ground-plane `gx, gz`) and its direction
+(`ex, ey, ez`). That point goes to `takeHit` (with `cut: {x: gx, z: gz}`); whatever `takeHit` moved
+the boss's root by (a duelist's shove is instant, and the freeze holds the frame he is drawn in
+after it) moves the point and `_cut` with him (≤ 1 m, else ignored); then it goes to
+`player:hitDragon` and to `fx.contact`; `game.kick` throws the camera along the travel. Each attack def's `contact`
+(the cutFx tier), `hitstop`, `shake`, `punch` and `kick` (a number or [k0, k1] lerped by the charge;
+`combat.js` `HIT_FEEL` holds the crit factors, `feel(v, k)` reads one; `THRUST.exec` the execution's)
+set the weight of the cut. `atk.hitAt` (the attack clock at the contact, -1 none) and `atk.cutDir`
+({x, y, z} unit world travel of the blade there, or null) are set before the freeze starts, for the
+animator and other areas. The slam's ground-shard hit draws no cut (the shards are its contact).
 Deals damage via `game.dragon.takeHit(...)` using `game.dragon.hurtSpheres`, tested through a
 vertical reach band (`REACH` in `player/combat.js`: a sphere overlapping the blade's swept wall
 extended `up` m above / `down` m below it counts, so the giant wyrm's chest is in reach from the
@@ -569,13 +594,24 @@ the hips at the anchor) and `len[1]` includes the slant.
 The animator (`player/anim.js`) drives: `coat` = 6 panels (`COAT_PANELS`, above), each two spring
 segments (the lower one is two meshes: `coat` above, the lavender torn zone `hem` over its last
 60 %) plus `strips` (12 torn strips, one spring each, kept above the grass; per-panel `BREEZE` /
-`IDLE_FLARE` follow the panel order); `streamers` (two-segment spring sheets: the Shrouded set's
+`IDLE_FLARE` follow the panel order, unless a panel carries its own `breeze?` / `idleFlare?`);
+`streamers` (two-segment spring sheets: the Shrouded set's
 cloak, five sheets on the chest and the upper arms (a narrow cape, ADR-073), `SHROUD_SHEETS` in `gear/shroud.js`, ADR-043;
-or the Wanderer's torn cape, four sheets behind the right shoulder, `CAPE_SHEETS`, ADR-037; each
-record `{ segs, len, out, lag?, max?, w?, arm? }`, `out` = its own outward flare, `lag` = how much
+or the Wanderer's torn cape, four sheets behind the right shoulder, `CAPE_SHEETS`, ADR-037; any
+slot's item may return them (a head ribbon, a sleeve wing, a sash tail); each record
+`{ segs, len, out, lag?, max?, w?, arm?, wrap?, inMax?, floor? }`, `out` = its own outward flare, `lag` = how much
 it trails the motion (default 1 = a light ribbon, the cloak 0.5), `max` = how far it may swing from
 hanging (rad; default 2.6, the cloak 1.45), `w` = its widths [root, seam, hem] (default 0.3 m
-across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest)). **Cloth vs steel**
+across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest), `wrap` = the
+radius the sheet curves round at its root (read by the tests' sheet model, not by the animator),
+`inMax` = [root, tip] how far each segment may swing IN toward its wearer (rad, + = in; negative =
+always at least that far out; default its `max`; not applied lying, ADR-083) so a head ribbon or a
+scarf off the back never swings into the body, `floor` = while he rolls or falls (not lying: there
+`_layFlat` rules) the segments' ends stay `STREAM_FLOOR` (2 cm) over the grass: the target swings to
+the nearest angle that clears it and a lagging spring is eased out toward the least swing that clears
+it, at most `STREAM_PUSH` (6 rad/s, so it never pops) (a head ribbon in the forward roll, where his
+crown meets the grass; default off, today's cloak and every boss's cape go without)).
+**Cloth vs steel**
 (ADR-048): every frame `_colliders` places spheres along the blade (`COL_BLADE`; the arm lists
 `COL_FORE` / `COL_UPPER` are empty: holding the sheets out round the arms widened his back), and
 `_sheetBound` keeps each streamer segment on the side of each sphere it came in from
@@ -621,24 +657,86 @@ and `player.setLoadout(loadout)` swap gear at runtime: the rig is rebuilt under 
 (`object3d` and `position` stay the same objects), the animator is recreated (the pose restarts from
 the ready stance), old geometries and materials are disposed, and the rig's rigid batches
 (`player.batch`, `render/rigidBatch.js`) are disposed and rebuilt, reusing their bone slots; an
-unknown id throws before anything changes. No event is emitted. Limits: the animator, `combat.js` and `fx.js` read the sword's
-numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values; the
-pauldron joint is the right shoulder only.
+unknown id throws before anything changes. No event is emitted. Shared builders (`gear/`):
+`hands.js` `buildFreeHand(ctx, mat = M.skin)` is the free hand every `arms` item that draws hands
+calls (the skin wrist on the forearm, the open hand and the sword fingers on `arms.L.wrist ??
+arms.L.fore`, the grip hand on the `sword` joint; returns `{ offHand, keep }`: every outfit gets the
+sword fingers); `sheet.js` `hangSheet(ctx, parent, d, mats)`
+builds one streamer sheet (or a ribbon) from data and returns its record, `panelSkirt(ctx, PANELS,
+{ seed })` a skirt of coat panels (returns `{ coat }`; a panel's `hemFrom` puts the pale `hem` over
+the end of its lower sheet). `heroGeo.js` `shellGeometry(rings, { arc: [a0, a1] })` builds one arc
+of a shell (rad: 0 = his front, + = his left). `model.js` `tintHero(M, tint)` recolours ONE rig's
+material instances (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, sub?, inkGlow?,
+glowK? } }`), never the shared `U.*`. `player.setLoadout` puts the shared per-part ink
+(`U.uHeroPartInk` / `uHeroPartFill` / `uHeroPartRim`, rewritten by every `buildHero`) back as it was
+after the build, also when the build throws: a boss's own part ink (the Starless Lord's red part 19)
+survives a hero rebuild. **Outfit options** (kept for later use: the owner, 2026-11-14, keeps today's look as the default; a URL switch like the old
+`?lordLook=`): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint, of? }` (`shroud`
+"Wanderer (today)" = `DEFAULT_LOADOUT`, no tint, the default; `robe` "Moonlit Robe", `swallow`
+"Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`; each of the
+three also as `<id>-shade`, "<look> (shaded)": the same loadout and tint with the head item's
+`shadowsFace` twin, `of` = the lit look's id, so the owner picks the face from renders), `LOOK_IDS`,
+`DEFAULT_LOOK`, `getLook(id)`, `heroLookFromSearch(search)`, `heroLookUrl(id, href)`. The Player wears
+`game.heroLook` (`player.look`; unknown or absent: the default) and tints its rig with the look's
+`tint`; `player.setLook(id)` wears another one live (its loadout with the equipped weapon kept, through
+`setLoadout`; throws on an unknown id and changes nothing), and every later `setLoadout` keeps the
+look's tint. Nothing in `gear/` imports `looks.js`. Limits: the animator, `combat.js` and `fx.js` read the sword's
+numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values (unless
+a panel overrides it with `idleFlare`); the pauldron joint is the right shoulder only.
+**The sword looks** (for the owner's pick, 2026-11-14;
+`gear/moonblade.js`): weapon items `moon.sheet`, `moon.ribbon`, `moon.crescent` (the longsword's
+`dims` and materials; `wanderer.js` exports `SWORD_DIMS` and `swordHilt(D, opts)`, the longsword's
+own hilt unchanged without options). `gear/index.js` exports `SWORD_PARAM` (today, sheet, ribbon,
+crescent → item id) and `swordFromUrl()`: the Player's constructor wears `?sword=`'s weapon over
+the outfit's loadout (none, or no `location`: the outfit's sword); the Lab's 'sword' row equips one. A
+weapon's own streamer (the ribbon) carries `weapon: true`. Kept as options like the outfits (the owner, 2026-11-14): today's sword is the
+default. If one is picked later it becomes `wanderer.sword` and the switch can go.
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a
 knuckle ridge round the grip, hung on the `sword` joint by the `arms` item so it closes round the
 grip in every pose (with no weapon it is a closed fist); the free hand is `looseHand` on the left
-forearm (palm, four curled fingers, thumb). An `arms` item may return `offHand: { open, grip }`
-(`rig.offHand`, else null): the free hand open on the forearm, and the same hand closed round the grip
-`DIM.offGrip` (0.08 m) below the sword hand on the `sword` joint; `apply()` shows `grip` while the
-pose's `twoHand` > 0.6 and `open` otherwise (the Shrouded set's bare hands do; the Wanderer's arms
-do not). **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
+forearm (palm, four curled fingers, thumb), built with the sword fingers and the grip hand by
+`gear/hands.js` `buildFreeHand` for every outfit that draws hands. The skeleton gives the free arm a WRIST:
+`rig.arms.L.wrist` (a joint on `arms.L.fore` at y −(`DIM.foreArm` − 0.03)) and `rig.arms.L.point`
+(on the wrist: the sword fingers' tip, `swordTip(BODY.hand, BODY.fingerEx)`; tests, FX). An `arms`
+item may return `offHand: { open, grip, fingers? }` (`rig.offHand`, else null; all three in `keep`):
+the free hand open, the same hand closed round the grip `DIM.offGrip` (0.08 m) below the sword hand
+on the `sword` joint, and (optional) the sword fingers (jian jue, `swordFingers`: index and middle
+straight, `BODY.fingerEx` 1.15 long); `open` and `fingers` hang on `arms.L.wrist` in wrist space (the
+Shrouded set's bare hands do; the Wanderer's arms return no `offHand`). For a duelist `apply()` shows
+`grip` while the pose's `twoHand` > 0.6 and `open` otherwise. For the hero (`HeroAnimator` with
+`opts.freeHand`) `grip` shows only once the hand is THERE: `twoHand` > 0.6 and `anim.gripGap` (the IK
+end to its place on the grip, chest local, model metres) under `OFF_SNAP[0]` 3.5 cm, kept until it
+passes `OFF_SNAP[1]` 5 cm (`OFF_SNAP[2]` 8 cm while `twoHand` ≥ 0.95: a free arm that cannot quite
+reach the hilt, the plunge's raised fists, keeps its fist); off the grip `fingers` shows while the pose's `hs` > 0.6 (kept to 0.4),
+else `open` (`anim.handFX { fingers, fist }`). **The free hand** (the hero only, `opts.freeHand`):
+`_wristL` turns `arms.L.wrist` so the fingers point along the pose's `lD` and the palm faces `lN`
+(body axes; each vector's LENGTH is its weight: 0 = the hand rigid on the forearm, today's look),
+clamped to `WRIST_L` (radial −20° / ulnar 30°, pronation −85° / supination 85°, flex −70° / extension
+60°) through a spring (`anim.wristL { x, y, z, vx, vy, vz, tx, ty, tz, ok, clamped }`: Euler YXZ =
+deviation, twist, flex; sub-stepped at ≤ 1/120 s, so it is stable at any frame rate, the frame's
+turn capped at `WRIST_L.cap`). `lk` (0..1) pulls the IK end onto the sword wrist (the fingers along the
+sword forearm; `anim.lkEff`, let go as the sword hand passes 4-8 m/s); on the grip (`twoHand`) the
+wrist goes rigid. `LOCK_REACH` (0.98 × the arm's length) keeps the free elbow ≥ 23° bent on the grip
+(the soft reach for every other arm is unchanged). **The hero's reach** (ADR-090, `opts.freeHand`):
+`_arm` compresses a far hand target with `HERO_SOFT` [0.93, 0.99] instead of `ARM_SOFT` [0.78, 0.955]
+(every other animator's), so his elbows open to ~145-160° at a cut's contact and a thrust's end and
+never lock (163° at most); his sword arm blends back to `ARM_SOFT` by the pose's `twoHand`, so the
+free hand can follow the grip. `loco()` swings the hero's arms by `armF` = `anim.armSign` × max(|mz|,
+0.65): `armSign` is the fore-aft direction he last moved in (`anim.armDir`, latched while |mz| >
+0.15) eased at 12/s in `update()`, so they swing in a pure strafe and do not jump as the direction
+flips; it opens the free hand on the move (`hs` → 0). `loco()` and `guard()` also feed the
+duelists' footwork: the hero's free-arm numbers in them are gated on `A.freeHand`. **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
 their looks, the sprint slash, the roll cut) and the charged cleave is a keyframed clip. An attack's
 `anim: { kind: 'clip', clip: '<name>' }` names a `SWINGS` entry: a list of keys over the attack's own
 phases (`u` 0–1 the windup, 1–2 the active frames, 2–3 the recovery, so a clip follows its def's
 timing; a held attack button freezes it at `u` = 1, the coil). A key holds the sword hand (`h`, an
 offset from the right shoulder), the blade's direction (`a`: [azimuth, elevation] in degrees), the
 free hand (`l`), the hips and the chest (`by bx bz hip sy sx sz`), the head, `two` / `offAt`, elbow
-poles and the flat's normal; a field missing from a key is interpolated (Catmull-Rom through the
+poles and the flat's normal; the free hand's fingers (`ld`: [azimuth, elevation] in degrees × `lw`,
+0..1, default 1), its palm (`pn`, a vector), its shape (`hs`: 0 open, 1 sword fingers) and its rest
+on the sword wrist (`lk` 0..1); `fh: '<name>'` lays a free-hand place from `FH` (swings.js: `aim`,
+`aimLo`, `chest`, `wrist`, `highWing`, `wing`, `wingLo`, `tail`, `high`, each `{ l, lp, ld, pn, lk }`)
+under the key's own fields. A field missing from a key is interpolated (Catmull-Rom through the
 keys that have it). `swingPose` (anim.js) plays it over the fighting stance: the attack's time maps
 to the phase through `swingPhase` (a monotone cubic through the three parts, so the rate does not
 kink where the cut ends); key 0 is the pose he was in (`A.from`), so a cut runs straight on out of
@@ -646,9 +744,31 @@ the last one; the blade turns from there to the first key (the coil, one key at 
 front and is still moving as it gets there (`swingDir`); elbow poles follow the hands
 (`swingPoles`), the head stays on the target, the flat turns into the plane the blade is swinging
 in; and the clip hands its channels to `update()` (`A.pathCh`), so the cross-fade leaves them
-alone. Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
-(so the lead foot alternates down a chain) while the other holds its spot, its heel peeling; or
-`dashFeet` with `feet: 'dash'` (`dashW: true` starts the dash at the windup's end). In `apply()`,
+alone. **The body leads the blade:** the hips' channels (`bx by bz hip`) play `lead[0]` s and the
+chest's (`sx sy sz`) `lead[1]` s ahead of the hand (a clip's `lead`, default `SW_LEAD` [0.033,
+0.017]; the cleave [0.033, 0]), ramped in from 0.35 of the windup (0.6 when the entry's hips stand
+over 0.5 rad from the coil key's turn: they would whip round). While a held light waits at the coil
+the lead fades out (`anim.leadK`, 18/s, damped once a frame in `update()`) and runs ahead again on
+the release. `bx` is across toward the foot that steps (`anim.stepL`, set by `play()`: the foot
+further back along his facing; the keys are mirrored when it is the right one); a clip's `fy`
+[front, rear] gives the stance's foot yaws (rad, for a left-front stance, mirrored by
+`lungeFeet`). Every light clip keys a body-only anticipation (u 0.5-0.8) and overshoot (u 2.1-2.15)
+round its coil and finish (swings.js header). Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
+(so the lead foot alternates down a chain) and stays on the spot it planted on, while the other
+stays planted where it stood, its heel peeling (it no longer settles sideways onto the stance line);
+once stretched `drag` m past the stance's rear spot, or past its leg's reach from the hips the clip
+keys (`HOLD_REACH` 0.97 × the leg), its TOE drags after the body and it stays where it was dragged
+to (`anim.holdOff`; `anim.footDrag`: bit 1 the right toe, 2 the left; its heel settles back after
+a drag over a few frames, `anim.toeK`), and just after the front foot takes the weight (as soon as
+it is down if the foot is being dragged already) a foot dragged > 3 cm takes ONE lifted follow step
+up onto the stance line (`anim.follow { on, x, z, t0, t1 }`, `FOLLOW`); the clip drives the feet itself (`C.chFeet` in
+`A.pathCh`: the cross-fade slid them while the root still drifted out of a roll). While a held
+light waits at the coil the stepping foot is set down on the grass, without weight (`anim.coilHold`,
+`COIL_HOLD`). `turn`
+pivots the feet on their balls where they stand (`pivotYaw`: their yaw turns, the heels lift);
+the way home steps the foot that stepped (the left for a dash or the thrust); or `dashFeet` with
+`feet: 'dash'` (`dashW: true` starts the dash at the windup's end; its landing times follow the
+attack's own `charge`). In `apply()`,
 `_elbow` limits how fast either elbow swings round its shoulder → hand line (`ELBOW_RATE`, 14 rad/s:
 the hand still reaches its target), for every clip. **Joint limits** (ADR-078), also in `apply()`
 and so for every pose and every cross-fade: `_arm` / `_leg` hold a hand / a foot at least
@@ -661,7 +781,14 @@ things off the player: `hitPush` (the flinch gives that way), `kdProne` (the kno
 on-his-front variant) and `downFrom` (the `deadDown` clip: killed in the knockdown he dies where
 he lies); a reaction entered mid-turn unwinds the turn (`yaw0`, `carryYaw`), and while a lying
 clip plays (`LYING_KEYS`) the cloth sheets obey gravity (`_layFlat`). A light def's `chain` (0..1) is the fraction of
-its recovery after which the next light may start (`player.js` `_tickAttack`). Options on the
+its recovery after which the next light may start (`player.js` `_tickAttack`). A light's root step
+(its `lunge`, stretched by the step-in assist) is a push-off and a brake (`TUNE.lungeShape`
+`{ pre, end, min }`: a smoothstep from `pre` s before the coil to `end` of the active frames, so
+~90 % of it is done as the front foot plants), each frame moving exactly its share; nothing while a
+held light waits at the coil, and one released late steps from its release (`atk.relT`), over at
+least `min` s. In an attack the root's velocity follows `want` through a `TUNE.attackDamp` (30/s)
+filter (`_integrate`); for the shaped step it lands ON the shape each frame instead (only momentum
+carried in, a run's, dies out through the filter), so `want` stays the step's own speed. Options on the
 anim block: `spin` (±1, a full turn through the active frames: `spinTurn`), `turn` (rad, a partial
 pivot from mid-strike through the follow-through, turning back late in the recovery: `pivotYaw`),
 `hop` (m, a skip off the ground from the windup into the strike; `tuck`: how far the feet lift
@@ -671,7 +798,17 @@ kind is `thrust` (the execution's lunge). **The way home:** from a clip's `home`
 `SW_HOME` 0.3 of the recovery; the slam and the cleave 0.55, they hold their finish) `attackPose`
 blends the pose toward the ready stance while the clip's last keys are still moving, so the
 follow-through runs into the return without a stop. `spinTurn` (the whirl) also drops and leans
-him into the turn and turns his head back toward the target, then ahead of the body (`SPIN_SPOT`).
+him into the turn and turns his head back toward the target, then ahead of the body (`SPIN_SPOT`);
+the hips run ahead of the turn and the chest trails it (`SPIN_LEAD`), and its momentum carries him
+~14° past the full turn before he settles back (`SPIN_OV`, a damped spring let go at the turn's last
+speed; the feet pivot on their balls). The anim block's `spinFeet` picks the feet: `'carry'` (the
+default: the stance spots carried round the root in two quick pivot steps) or `'hop'` (the whirls:
+each foot leaves the grass from where lungeFeet has it over `SPIN_HOP.up` of the turn and is
+carried round with the body, moving across it round its own side from the spot it left (`anim.hop
+{ set, yaw, a, r }`: caught as the feet lift) to the stance spot lungeFeet left in `anim.spots`,
+drawn in to `SPIN_HOP.tuck` × the stance's spread at the top; over `SPIN_HOP.down` it runs on round
+with the turn onto that spot, planted from there. Blended in angle and radius about the root, never
+in straight lines through the middle; no follow step; the hips rise `SPIN_HOP.rise`).
 **Attack variants** (ADR-055): a `LIGHT` def may carry `variants` (more `anim` blocks for the same
 hit: same timing, damage, reach and lunge). `HeroAnimator.play('attack')` calls `_pickVariant()`:
 `anim` or one of `variants` at random with the animator's own noise, never the same one twice in a
@@ -688,7 +825,13 @@ and side-on, the grip low outside the right hip, the blade slanting ~38° up acr
 the left shoulder, the flat to the enemy; `locoGuard` carries `twoHand` and `offAt` in `GUARD_CH`.
 Pose channel `offAt` (m): with `twoHand`, how far up the blade from the grip the off hand sits (0 =
 on the grip; above 0.04 the hand stays open: a palm braced on the flat; no clip uses it yet). At
-rest and on the move he carries the sword in one hand.
+rest and on the move he carries the sword in one hand. The free-hand channels (`P.lD` 53, `P.lN` 56:
+vec3 body axes, length = weight; `P.hs` 59; `P.lk` 60; the pose has `N` = 61 channels, exported, and
+a duelist's scratch poses are sized from it) are read only with `opts.freeHand`: `guard()` writes
+the hero's rest (sword fingers low by the left hip, pointing ahead and down), so every other
+animator carries the hero's values in them too and ignores them; `locoGuard` carries them in
+`GUARD_CH`. A hit, a fall, the drink and the lean on the pommel open the hand and make the wrist
+rigid (`freeLimp`); the charge, the block and the plunge (`plBase`) open it to the grip (`hs` 0).
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, not locked on, with no
 guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -723,18 +866,42 @@ uniform, no allocation).
 FX helpers that changed shape: `PlayerFx.gemTick(dt, x, y, z, k, vx, vz, vy)` and
 `gemGlint(x, y, z, s, vx, vz, vy)` take the gem's own velocity (`player.gemVel`, measured from the
 gem joint each frame) so glints ride the hilt; `gemTick` also keeps an always-on 0.22–0.26 m violet
-glow point at the gem; `bladeHalo(dt, k, far)` grows its dots with distance and lays a short bright
-`|` streak 0.06–0.26 m past the drawn point. `trail(pa, pb, a, b, kind, crit, gate = true)`
+glow point at the gem; `bladeHalo(dt, k, far)` grows its dots with distance (beside both edges,
+`HALO_X` m off the blade's axis) and lays a short bright
+`|` streak 0.06–0.26 m past the drawn point. `trail(pa, pb, a, b, kind, crit, gate = true, bite = false)`
 sub-steps by the edge's travel (one per 0.11 m, up to 14) and slerps the blade round the hilt
 between frames, so a sweep reads as one curved arc. Since ADR-077 the arc hugs the STEEL: its EDGE
 is one fine line of overlapping `|` strokes laid along the path of a point just past the steel's
 point (`arcAt(kind)`: 0.64 of the hit segment, × 1.22 for the slam and the cleave; the steel
-ends at 0.44, the reach at 1), white-hot when drawn and cooling to indigo as it thins to nothing.
+ends at 0.44, the reach at 1), white-hot when drawn and cooling to indigo as it thins to nothing
+(the heavy blows, the thrusts and the plunge's dive cool to the gem's violet: the exported
+`ARC_TONE`; `bite`, the 0.06 s after a cut lands: the edge white-hot and 15 % thicker).
 A VEIL of four faint rows runs close inside it (a thin crescent; the numbers are the exported
 `ARC_LOOK`). Its strength follows how far the blade TURNED this frame, so a blade only carried
 along (a dash) leaves none (`gate: false` for the plunge's dive). `arcGlint(x, y, z, dx, dy, dz,
 heavy, crit)`: a small star and sparks on the arc's edge, once a swing as the cut comes through
-(`player.js` `_combat`). New: `skid(dt, slot, x, z, dx, dz, sp,
+(`player.js` `_combat`), only on a whiff (a landed cut's core is the beat's one star).
+`contact(p, tier, C, crit, k)`: a cut that LANDS, drawn at p (the drawn contact) by
+`combat/cutFx.js` `cutBurst(game, x, y, z, o)` (o = { tier, cut, edge, hilt, crit, power, low }):
+a tapered slash line across the body along the cut's screen direction (a second line and a tick
+along the blade on heavy blows, a cross on a crit), thin sparks thrown along the cut, falling motes,
+a 0.22-0.3 m two-frame core, a ring on heavy blows, one small light; per-tier numbers in the exported
+`CUT_LOOK`, the last burst's counts in `CUT_LAST`, the look switch `setCutStyle('gash' | 'fan')` /
+`cutStyle()` (the Lab's 'cut' row; `?cutfx=fan`). `cleaveImpact(..., bare)`: bare = the fan only
+(contact draws the ring and the light). `sparks()` stays for the plunge.
+`edgeGlint(sw, z0, z1, far, crit, realDt, ridge)`: a small cold '+' (and '|' strokes behind it)
+running up the LEADING edge of the steel from sword-space height z0 to z1 this frame (`leadSide(sw,
+e)`: the blade's mid travel against its X axis; the ridge under `EDGE_GLINT.ridge`, or always with
+`ridge`); `player.js` `_combat` drives it from `EDGE_GLINT.lead` s before the active frames to the
+arc's glint (`at`, `atCleave`; z eased up `EDGE_GLINT.z`), on the steel every frame (no velocity),
+stopped by a landed cut (`atk.glintZ` = how far it ran); never for the thrust kind. An attack def's
+`glint: 'ridge'` (the stab) runs it up the ridge. `edgeFlash(sw, zc, heavy, crit, ridge, hold)`: the
+contact's mark on the steel, `EDGE_GLINT.flash.n` '|' strokes along the leading edge from the
+contact's height up to the point (`player._edgeFlash`, after `contact`); no velocity, so it lives
+`hold` fx s (the frames the freeze holds: this frame at the full rate + the freeze at `fxLive` +
+one frame; clamped to `flash.lifeMin` … `life`, fading to `holdEnd` × alpha) and is gone as the
+blade swings on (no `hold`: `flash.life`). Exported: `EDGE_GLINT`,
+`hwAt(z)` (the drawn blade's half width), `leadSide(sw, e)`. New: `skid(dt, slot, x, z, dx, dz, sp,
 k)` (dust and torn grass off a sliding contact; `slot` 0 / 1 keeps a rate accumulator each) and
 `scrape(dt, x, y, z, dx, dz, sp)` (cold sparks off the dragging point). 2026-11-09: `parry(x, y, z,
 blue, chain = 1, dx = 0, dz = 0)` (the clash grows with the deflect chain, crossed streaks from the
@@ -756,6 +923,24 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
   never `Math.random` (the sims seed it and the wyrm's AI rolls on it). The light sweeps kick 0.32 on
   their first active frame (`player.atk.flared`, a new flag on the attack record), the slam's impact
   0.6.
+- The attack record also carries `atk.relT` (the attack clock at a held light's release; 0 = never
+  held: the root's step in starts there) and `atk.hitAt` (the attack clock at a landed, unguarded
+  hit, set in `_applyHit` before the hit-stop starts; −1 = none: test `hitAt >= 0`, never
+  `Number.isFinite`). `anim.js` reads `pending` (the held coil: `anim.leadK`) and `hitAt` (the
+  bite, below). Internal to `player.js`: `atk.shaped` (this frame's `want` is a light's shaped
+  step) and `atk.svx` / `svz` (the step's velocity `_integrate` landed the root on last frame): the
+  step's filter pre-compensation (`TUNE.attackDamp`, above). A roll's first frame (before
+  `_tickRoll` sets `want`) keeps only the part of the frame before's `want` along the roll
+  (`_startRoll`): out of a swing it no longer runs on along the swing's facing.
+- **The bite** (`attackPose`, clips only): from a landed hit (`atk.hitAt`) the edge catches in what
+  it cut: the blade holds where the contact frame drew it (`anim.bite { rec, at, dir }`, keyed on the
+  record and the time), the grip pulls in along it, the hips drop, the chest folds and the head
+  nods (`BITE`, × the def's `bite`, combat.js; the fold and the nod also × the clip's `fold`,
+  swings.js: the cleave's upright two-handed blade stands before his face, 0), full through the
+  hit-pause (whose frozen clock keeps `t − hitAt` ≈ 0) and let go over `BITE.dur` (0.08 s) of the
+  attack's clock after it. **Inertia**:
+  outside a dash, the chest pitches against the root's acceleration (`ATK_INERTIA` × `anim.leanF`,
+  the loco's lean spring): behind the hips on the push-off, over the planted foot on the brake.
 - Internal animator state worth knowing: `pathCh` (channels a windup path drives this frame, copied
   past the cross-fade), `updraft` 0..1 (the charge lifts the coat and hair), `dashStep` (bits: dash
   touchdowns taken), `marks` (4 per-clip ground marks), `feet` (the world-space foot planner),
@@ -765,7 +950,10 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
   the clip's own pose by windup − 1/30 s and hands its channels back; recovery shaping starts at
   windup + active + 0.035 s (the frame after the active window is still hit-tested); active-frame
   shaping only touches non-blade channels (free arm, feet, head, coat). The proof is a per-frame
-  compare of `sword.matrixWorld` and the hit points against the previous build.
+  compare of `sword.matrixWorld` and the hit points against the previous build. The rule has been
+  relaxed for the hero's own clips since ADR-031 / 071 / 076, and the weight work moves his active
+  frames again (the hips' lead, the root's step shape, the bite after contact): for those the REACH
+  table (every look connecting from contact out to 3.5 m) is the gate.
 - Blade directions blend by azimuth / elevation round the outside of the body (`dirLerp` /
   `dirTo`), a cross-fade keeps last frame's way round, and outside attacks the blade is pushed out of
   the leg capsules before the ground clamp (ADR-023). Since the broad build (ADR-031) the clearances
@@ -812,8 +1000,13 @@ crashing: boolean                       // true while a plunge stops a flight: t
 isTargetable(): boolean                 // false while sleeping/dying/dead
 lockPoint(out): Vector3                  // chest/neck base, for lock-on + camera
 startIntro()                            // wake → rise → roar; emits 'dragon:introDone' when the fight starts
-takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, poise, heavy, crit, exact, posture, flash }): number
+takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, cut:{x,z}, poise, heavy, crit, exact, posture, flash }): number
                                         // returns the damage dealt (before the gate clamp); adds posture.
+                                        // point = where the cut is DRAWN (the hero's drawn blade on the
+                                        // boss's drawn body, Player._contactPoint): FX and the damage
+                                        // number only, never gameplay. cut (optional): the unit
+                                        // ground-plane travel of the blade at the contact: the hit
+                                        // spray flies along it (absent: along dir / the flinch)
                                         // Phase gate: with the AI on, damage stops at the next phase's
                                         // threshold until its transition starts (no skipping a phase).
                                         // exact: the damage is final (no part / broken multipliers); posture:
@@ -1303,6 +1496,14 @@ Every sound is procedural (no samples). 2026-11-09 additions:
   `player:plungeHit`; a `player:hitDragon` of kind 'plunge' plays no ordinary hit sound). The flurry:
   `flurryCut {n}` per flash cut (a ring a whole tone higher each cut), `flurryCoil {dur}`, `flurryBurst {n}` as the
   hanging cuts open (all on the cue bus: crisp while the held world is muffled, `_slowDuck` for its length).
+- A landed cut (`player:hitDragon`, not guarded: a guarded strike plays only its clash on
+  `dragon:guard`): `hit {heavy, crit, part, damage, body}` (body 'cloth' against a duelist: a muffled
+  slap, no scaly clack; its metallic ring only on a crit) and the blade's own layer `cut {weight,
+  combo, crit, alt}` (not for a `shards` hit: the slam's blade is in the ground) (a slice through a
+  falling band and a steel ring per weight, `CUT_SND`; a
+  semitone up each hit of the chain, the finisher a step down, `CUT_STEP`; alt detunes alternate
+  cuts; its noise offset from its own stream: `Voice.noise(kind, t0, t1, rate, off)` takes an
+  optional 0..1 offset instead of Math.random).
 - `audio/fire.js` (`FIRE_SFX`, `subscribeFire(on, engine)`): `dragon:spell` → skyStrafe `skyRoar`,
   diveBomb `diveScream`, meteorRain `meteorCast`, eruptions `rumble`, flameRing / flameWall
   `flameIgnite`, nova `novaCharge`; `dragon:hazard` → meteor fall `meteorFall`, hit `meteorHit`,
@@ -1454,7 +1655,7 @@ the press that makes the pad active counts. Inactive (keyboard / mouse / touch u
 pad hold is released. A pad unplugged while active in a play state pauses the game.
 `gamepadconnected` / `gamepaddisconnected` log a system line. **Rumble** (`CONFIG.gamepad.rumble`)
 on `player:hurt`, `player:guardBreak`, `player:block`, `player:parry` (perfect stronger, a bullet
-lighter), `player:perfectDodge`, `player:hitDragon` (heavy only); only while active.
+lighter), `player:perfectDodge`, `player:hitDragon` (not guarded: `hitHeavy`, else `hitLight`); only while active.
 
 ### Touch controls — `src/ui/touch.js` exports `class TouchControls`
 ```
@@ -1519,7 +1720,10 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   comma: ui/bossName.js), `state` (`sleeping|waking|combat|staggered|airborne|dying|dead`), `hp,
   maxHp, phase, phaseAt, nextPhaseHp, posture, maxPosture, broken`, `hurtSpheres`, `bodyCircles`,
   `position, yaw, object3d, batch`, `isTargetable()`, `lockPoint(out)`, `startIntro()`, `takeHit(o)`,
-  `onParried(info)`, `reset()`, `update(dt)`, `debug` (the Lab's generic shape). A plunge target adds
+  `onParried(info)`, `reset()`, `update(dt)`, `debug` (the Lab's generic shape). Optional
+  `drawnPoint(v)` (+ `drawScale`): maps an upright gameplay point (a hurt sphere's centre) to where it
+  is drawn (the lean, the drawn size, a drawn-only offset), in place; the hero's landed cut is drawn
+  where his drawn blade meets those drawn spheres (absent: identity, the wyrm). A plunge target adds
   `plungePoint` / `onPlunge` (the wyrm); a **duelist** (`kind: 'duelist'`) instead offers
   `onExecute({ damage })` and `execRange` (the execution thrust, Player below) and gets no creature
   voice (audio.js gates roars, pain and recoil yelps on `kind`). A boss with **several health bars**
@@ -1540,7 +1744,15 @@ a subclass with a few hooks.
   (extra meshes, before batching), `_makeFx()`, `_makeBrain()`, `_bladeMaterials(dt, M)`, `_onHpZero()`
   (default: he dies), `brainFrame(dt)`, `afterPose(dt, act)`, `onImpact(beat, sense, act)`,
   `onRelease(beat, sense, act)`, `onCast(beat, sense, act)`, `beatMotion(beat, u, sense, dt)`,
-  `onTransitionEnd(act)`, `clampTarget(point)`. `d.T` = `kit.TUNING`.
+  `onTransitionEnd(act)`, `clampTarget(point)`. `d.T` = `kit.TUNING`. `drawnPoint(v)`: an upright
+  gameplay point → where it is drawn (lean, `drawScale`, the lean's `ox` / `oz`). Hit stun
+  (`TUNING.hitStun.light / heavy`): `stop`, `jolt`, `push` and `shudder` (m: through the freeze his
+  drawn figure flickers ± this far along the cut, fading, in real time, through `lean.ox` / `oz`;
+  only for a sword cut, `takeHit`'s `swing`; `d.shudderK` 0 turns it off, the Lab's 'shudder'
+  toggle; `d.shuddering` is true while it runs, and the blades' sweep trails pause then: the
+  flicker is no swing). His hit spray flies along `takeHit`'s `cut` (the shove keeps `dir`) and
+  starts at `point` moved by his own shove (the shove is instant: the hero moves the drawn cut the
+  same way, so both sit on the body the freeze holds).
 - `brain.js` `class DuelBrain(d)`: the mind and timeline (modes sleep, intro, foot, act, react, broken,
   dying), all data from `d.kit`. Phases are generic: when a gate is hit it starts
   `kit.transitions[phase]` and emits `dragon:phase<n>`; `forcePhase(n)` for the Lab. Beats: a zone hit
@@ -1638,10 +1850,13 @@ capped 9 m/s) and every step-in, windup track and dash aims at where he will be 
 string whose next hit can't reach (`_reach`) ends there. Footwork circles only inside
 `TUNING.move.band`, runs beyond it, sprints past `sprintAt`; a hero in state 'heal' is punished (no
 breather, ground-covering moves × `TUNING.punish.weight`). Numbers: tuning.js.
-**HeroAnimator** (anim.js): `new HeroAnimator(rig, player, poses = null)` — `poses` merges extra clips
+**HeroAnimator** (anim.js): `new HeroAnimator(rig, player, poses = null, opts = {})` — `poses` merges extra clips
 over the hero's table for that instance (a key it shares replaces the hero's clip for that instance
 only; a key of its own that is not a walking clip gets no foot planning: the Starless Lord's
-`glide`). Exported for other pose tables: `P, v3, to3, dirLerp, kf, guard, loco, turnTwist`. A pilot
+`glide`). `opts.freeHand` (the player only, never a duelist): the free hand's wrist, the sword
+fingers, the gap-gated fist and the free elbow's `LOCK_REACH` (see Hands, above); `anim.freeHand`
+says which. Exported for other pose tables: `P, N, v3, to3, dirLerp, kf, guard, loco, turnTwist`
+(and, for the tests, `WRIST_L`, `OFF_SNAP`). A pilot
 may set `updraft` (0..1): a wind under its cloth outside the hero's charge (a duelist's casts).
 
 ### Starless Lord — `src/entities/enemies/starlessLord/lord.js` exports `class StarlessLord` (ADR-069)
@@ -1697,8 +1912,12 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'slam'|'cleave'|'thrust', combo, charge}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; cleave = the charge's release, thrust = the execution against a duelist),
   `player:charge {t}` (charge start; t = seconds to full charge), `player:slam {x, z}` (the slam meets the ground: shard burst),
-  `player:hitDragon {damage, part, point, heavy, crit, kind, guarded}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
-  head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0), `player:hurt {damage, kind, hp}`,
+  `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight, shards}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
+  head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn
+  (on a duelist: after his shove, where he is drawn in the held frame);
+  combo = the chain hit 1-5 (1 outside the chain); weight = the cut's look and sound tier, the attack's contact:
+  light, sweep, point, slam, cleave or execute; the plunge's has neither; shards = true when only the slam's ground
+  shards hit (the blade is in the ground: weight null, no cut drawn, no blade sound)), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
   `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last}` (last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within

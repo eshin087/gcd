@@ -13,6 +13,21 @@ import { env, perc, glide, spikes, rnd, mtof, num } from './dsp.js';
 
 const RX_FIRE = /burn|fire|flame|breath|blaze|inferno|ball/i;
 
+// the 'cut' layer's noise offset from its own stream (the seeded sims replay the AI's Math.random)
+let cseed = 0x3c6ef372;
+const crnd = () => (cseed = (Math.imul(cseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+/** A landed cut per weight (player:hitDragon `weight`): the slice's band sweep f0 → f1 Hz over D s at
+ *  peak a, and its ring (gain, decay s). */
+const CUT_SND = {
+  light: { f0: 5200, f1: 1700, D: 0.075, a: 0.32, ring: 0.05, rd: 0.14 },
+  sweep: { f0: 4800, f1: 1500, D: 0.09, a: 0.34, ring: 0.055, rd: 0.16 },
+  point: { f0: 6200, f1: 2600, D: 0.06, a: 0.3, ring: 0.06, rd: 0.12 },
+  slam: { f0: 4200, f1: 900, D: 0.12, a: 0.45, ring: 0.08, rd: 0.22 },
+  cleave: { f0: 4400, f1: 800, D: 0.14, a: 0.48, ring: 0.09, rd: 0.26 },
+  execute: { f0: 5600, f1: 1200, D: 0.12, a: 0.45, ring: 0.1, rd: 0.3 },
+};
+const CUT_STEP = [1, 1.0595, 1.1225, 1.189, 0.84]; // a semitone up each hit of the chain; the finisher drops
+
 // --- shared building blocks ---------------------------------------------------------------
 
 /**
@@ -222,23 +237,46 @@ export const SFX = {
       // meaty thud + flesh slap
       thump(v, t, heavy ? 125 : 150, heavy ? 36 : 46, heavy ? 0.16 : 0.12, 0.85 * k, heavy ? 0.32 : 0.2);
       burst(v, t, 'brown', 'lowpass', wing ? 1500 : 950, 0.9, 0.9 * k, heavy ? 0.14 : 0.09);
-      // scaly clack (membrane thwap on wings)
-      burst(v, t + 0.004, 'white', 'bandpass', wing ? 700 : rnd(2300, 3200), wing ? 1.3 : 3.5, wing ? 0.7 : 0.55, wing ? 0.08 : 0.04, 0.001);
-      if (!wing) {
+      if (o.body === 'cloth') {
+        // a duelist: cloth over a body, no scales (a muffled slap, no clack or tick)
+        burst(v, t + 0.004, 'brown', 'bandpass', 1100, 1.0, 0.45, 0.05, 0.001);
+      } else {
+        // scaly clack (membrane thwap on wings)
+        burst(v, t + 0.004, 'white', 'bandpass', wing ? 700 : rnd(2300, 3200), wing ? 1.3 : 3.5, wing ? 0.7 : 0.55, wing ? 0.08 : 0.04, 0.001);
+      }
+      if (!wing && o.body !== 'cloth') {
         const q = v.osc('square', rnd(1100, 1500), t, t + 0.06);
         const hp = v.filter('highpass', 900, 0.7);
         const qg = v.gain(0);
         perc(qg.gain, t + 0.003, 0.09, 0.001, 0.025);
         q.connect(hp).connect(qg).connect(v.out);
       }
-      // bright metallic ring for heavies, full for crits
-      if (crit || heavy) {
-        const ring = crit ? 1 : 0.45;
+      // a bright metallic ring for crits (every landed cut rings in its own 'cut' layer)
+      if (crit) {
         for (const [f, a, d] of [[2093, 0.12, 0.35], [3136, 0.08, 0.25], [4699, 0.05, 0.18]]) {
-          ping(v, t + 0.005, 'sine', f * rnd(0.99, 1.01), a * ring, d);
+          ping(v, t + 0.005, 'sine', f * rnd(0.99, 1.01), a, d);
         }
-        if (crit) burst(v, t + 0.003, 'white', 'highpass', 6000, 0.7, 0.18, 0.12, 0.001);
+        burst(v, t + 0.003, 'white', 'highpass', 6000, 0.7, 0.18, 0.12, 0.001);
       }
+    },
+  },
+
+  /** The blade's layer of a landed cut (over 'hit'): a slice (white noise through a falling band) and a
+   *  steel ring, per weight (CUT_SND), a semitone up each hit of the chain (CUT_STEP), detuned ±2 %
+   *  on alternate cuts; a crit adds a high partial. No Math.random (its noise offset: crnd). */
+  cut: {
+    prio: 3, rev: 0.1, gap: 0.03,
+    play(v, t, o) {
+      const W = CUT_SND[o.weight] ?? CUT_SND.light;
+      const st = CUT_STEP[((((num(o.combo, 1) | 0) - 1) % 5) + 5) % 5], det = o.alt ? 1.02 : 0.98;
+      const n = v.noise('white', t, t + W.D + 0.03, det, crnd()), bp = v.filter('bandpass', W.f0 * st, 1.3), g = v.gain(0);
+      env(bp.frequency, t, [[0, W.f0 * st], [W.D, W.f1 * st]]);
+      env(g.gain, t, [[0, 0], [0.004, W.a], [W.D * 0.5, W.a * 0.55], [W.D, 0]]);
+      n.connect(bp).connect(g).connect(v.out);
+      const f = 2350 * st * det;
+      ping(v, t + 0.002, 'sine', f, W.ring, W.rd);
+      ping(v, t + 0.002, 'sine', f * 2.76, W.ring * 0.5, W.rd * 0.7);
+      if (o.crit) ping(v, t + 0.004, 'sine', f * 5.4, W.ring * 0.6, W.rd * 0.5);
     },
   },
 

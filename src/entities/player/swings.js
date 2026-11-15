@@ -18,7 +18,15 @@
 //   a   the blade's direction as [azimuth, elevation] in DEGREES: azimuth round the body (0 = ahead,
 //       + = his left, 180 = behind), elevation above level. Consecutive keys at most ~100° apart.
 //   l   the free hand, as an offset from the left shoulder
-//   by bx bz   the hips: sink (−) / across (+ = left) / forward
+//   ld  the free hand's fingers as [azimuth, elevation] in DEGREES (like `a`), × `lw` (0..1, default
+//       1: the length is the weight; 0 = the hand rigid on the forearm)
+//   pn  the way the free palm faces (a vector, length ≥ 0.6: its weight, like `ld`'s)
+//   hs  the free hand's shape: 0 open, 1 sword fingers (jian jue; the fist on the grip comes from
+//       `two` and the hand being there, never from `hs`)
+//   lk  0..1 the free hand resting on the sword wrist (the fingers along the sword forearm)
+//   fh  a free-hand place from FH below ('aim', 'chest', 'wing', ...): its fields, under the key's own
+//   by bx bz   the hips: sink (−) / across (+ = toward the foot that steps; mirrored per swing,
+//              anim.js swingPose: + = his left when the left foot steps) / forward
 //   hip sy     the hips' and the chest's turn (+ = to his left); the chest's is on top of the hips'
 //   sx sz      the chest's lean forward (+) and to his right (+)
 //   hy hx hz   the head (default: the eyes stay on the target)
@@ -32,17 +40,31 @@
 //   as he sees it ('right': the diagonal between high right and low left, either way; 'left': its
 //   mirror; 'flat'; 'down' the middle; 'low' along the grass; 'spiral'; 'point' a thrust): the
 //   animator never follows a swing with another on the same line (anim.js _pickVariant).
+//   `lead` [hipsSec, chestSec] (default [0.033, 0.017]): how far ahead of the hand the hips and the
+//   chest run (anim.js swingPose: the hips' and chest's keys are played that much earlier);
+//   `fy` [frontYaw, rearYaw] (rad, for a left-front stance, mirrored when the right foot steps): the
+//   stance's foot yaws; `drag` (default 0.22: m the holding foot may stretch past the stance's rear
+//   spot before its toe drags after the body); `fold` (0..1, default 1: × the chest's fold and the
+//   head's nod in the bite after a landed hit, anim.js BITE: 0 for a blade held upright before the
+//   face, which they would put his head into).
 //
 // Authoring notes: a cut reads as powered by the body when the hips lead (their turn is ahead of the
 // chest's at mid-cut), the hand is furthest from the shoulder as the blade crosses his front, and the
 // weight goes from the back foot (`bz` -, the hips up) into the front one (`bz` +, the hips down).
 // The COIL is one key, at u = 1: the blade is still moving as it gets there and turns into the cut
-// (two keys there made a dead stop, a hitch between the hits of a chain). The free hand stays
-// composed: before the chest in the coil, drawn back beside the hip by the end of the cut, never
-// flung from in front of him to behind him (it then snapped forward again for the next coil), and
-// never near the hip with the elbow out ("hand on hip"). Each hit of the chain cuts in a different
-// plane, and each starts on the side where the hit before it leaves the blade (hit 1 ends on his
-// left, hit 2 on his right), so the steel swings back the way a pendulum does.
+// (two keys there made a dead stop, a hitch between the hits of a chain). Around it, two BODY-ONLY
+// keys (no `h` / `a`; the free hand's fields may ride on them): an ANTICIPATION key at u 0.5-0.8
+// (the hips 0.06-0.08 rad and the chest 0.04-0.06 past the coil's turn, away from the cut; the
+// weight back, `bz` −0.02; `bx` −0.06 toward the trail foot; `by` +0.03, a rise, before a falling
+// cut, −0.04, a sink, before a rising one) and an OVERSHOOT key at u 2.1-2.15 (the hips and chest
+// 0.08-0.14 rad past the u = 2 key, 2 cm deeper); the last key settles back between the two. Never
+// key an overshoot on `h` / `a`: the blade's own follow-through is the hand's (the one-cut test).
+// Keep the hips low enough for the legs to reach planted feet: standing up onto a straight front leg
+// over a long bow, or rising and drawing back from a far front foot (the anticipation's rise), puts
+// the holding foot out of its leg's reach and its toe skates after the body (anim.js HOLD_REACH;
+// HEROWEIGHT bounds the toe drag at 12 cm a swing). Each hit of the chain
+// cuts in a different plane, and each starts on the side where the hit before it leaves the blade
+// (hit 1 ends on his left, hit 2 on his right), so the steel swings back the way a pendulum does.
 // The planes are DIAGONALS, never straight up and down: the blade crosses his front near chest
 // height (elevation within ~15° of level at mid-cut) and no key stands it above ~45°, so a "falling"
 // cut runs from a high shoulder across the chest to the far hip, not over the top of his head. (The
@@ -51,6 +73,39 @@
 // The blade WHIPS: through the first half of a cut the hand runs ahead and the blade hangs back
 // (at mid-cut the hand is at full reach in front of him and the blade is still ~30° short of
 // pointing ahead), then it comes through and passes the hand as the cut ends.
+// THE FREE HAND holds sword fingers (jian jue) and answers the blade (at the game camera it is a
+// pale point off a clear arm line: WHERE it goes is what reads, so every finish puts it somewhere):
+//   (a) GATHER then SPLIT: before a backhand the fingers come to the sword wrist (`lk`), and as the
+//       cut goes out they leave it at waist level and open the other way.
+//   (b) OPPOSITION: at the finish the free arm makes one line through the body against the blade.
+//   (c) OUT OF THE BLADE'S PATH: a cut ending on his left sends the hand high-back or behind the hip.
+//   (d) ARMS IN through the turns (the chest tuck), ARMS OUT as the brake.
+//   (e) The POINT leads: with the blade cocked back, the fingers point at the foe.
+//   (f) Overhead is rare: the Ash Disciple's mark (only the low sweep's `high`, beside the head).
+//   (g) Key a large elbow change (> ~60°) in the windup: ELBOW_RATE (14 rad/s, anim.js) lags it in
+//       a seven-frame cut.
+//   (h) At contact (u ≈ 1.45) the hand is ≥ 45 % of the way to its finish (the hit-stop shows it).
+//   (i) Rest it on the sword wrist only where that wrist is ≤ 0.43 m from the left shoulder.
+//   (j) Avoid a palm opposite the IK's neutral (the twist is clamped at ±85°).
+// It is never flung from in front of him to behind him and snapped forward again for the next coil
+// in one frame: the arm-snap test bounds it.
+
+/** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
+ *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
+export const FH = {
+  aim: { l: [-0.02, 0, 0.4], lp: [0.35, -0.9, -0.1], ld: [-6, 10], pn: [-1, 0, 0], lk: 0 }, // 立剑指: at the foe, the thumb up, the elbow dropped
+  aimLo: { l: [0.06, -0.26, 0.36], lp: [0.45, -0.85, -0.2], ld: [-4, -12], pn: [0, -1, 0], lk: 0 }, // 平剑指: a low point, the palm down
+  chest: { l: [-0.1, -0.22, 0.26], lp: [0.6, -0.75, -0.2], ld: [22, 55], pn: [-1, 0, 0], lk: 0 }, // tucked before the left chest, the fingers up (arms in)
+  wrist: { l: [-0.1, -0.25, 0.3], lp: [0.5, -0.85, -0.1], ld: [-60, -20], pn: [0, -1, 0], lk: 1 }, // 合: on the sword wrist (give `l` per clip)
+  highWing: { l: [0.3, -0.02, -0.2], lp: [0.35, -0.8, -0.45], ld: [130, 25], pn: [-0.5, -1, 0.2], lk: 0 }, // drawn back-left at shoulder height (a bow draw)
+  // (Session 30: it was LEVEL at shoulder height, [0.46, -0.06, -0.1]: with the whirl's and the flat
+  // backhand's finish he stood like a scarecrow, one arm straight out. The hand sits a hand's width
+  // under the shoulder now and the elbow hangs: a line that slopes away from the blade)
+  wing: { l: [0.44, -0.17, -0.12], lp: [0.2, -0.75, -0.65], ld: [100, -8], pn: [0, -1, 0], lk: 0 }, // 展: out to his left, sloping down from the shoulder
+  wingLo: { l: [0.4, -0.3, -0.14], lp: [0.3, -0.45, -0.85], ld: [110, -35], pn: [0, -1, 0], lk: 0 }, // low, out to his left
+  tail: { l: [0.22, -0.38, -0.22], lp: [0.75, -0.3, -0.6], ld: [170, -58], pn: [-1, 0, 0], lk: 0 }, // behind the hip, the fingers back and down
+  high: { l: [0.2, 0.3, -0.1], lp: [0.85, -0.3, 0.4], ld: [-10, 75], pn: [0.2, 0, 1], lk: 0 }, // RARE (the low sweep only): beside the head, never over the crown
+};
 
 export const SWINGS = {
   // ---- hit 1: right to left ------------------------------------------------------------------
@@ -58,38 +113,48 @@ export const SWINGS = {
    *  past the left hip. */
   fallingCut: {
     line: 'right',
+    lF: [0.15, 0.48], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
     keys: [
-      { u: 1.0, h: [-0.06, 0.2, 0.0], a: [-152, 40], l: [0.0, -0.1, 0.34], by: -0.07, bz: -0.06, bx: -0.03, hip: -0.36, sy: -0.44, sx: -0.04, sz: 0.05 },
+      { u: 0.6, by: -0.04, bz: -0.09, bx: -0.06, hip: -0.44, sy: -0.5, sx: -0.1 },
+      { u: 1.0, h: [-0.06, 0.2, 0.0], a: [-152, 40], by: -0.08, bz: -0.07, bx: -0.05, hip: -0.36, sy: -0.44, sx: -0.04, sz: 0.05, fh: 'aim' },
       { u: 1.25, h: [0.02, 0.14, 0.24], a: [-102, 32] },
-      { u: 1.5, h: [0.14, -0.05, 0.46], a: [-30, 12], l: [0.2, -0.24, 0.14], by: -0.19, bz: 0.06, bx: 0.0, hip: 0.18, sy: 0.0, sx: 0.3, sz: 0.0 },
+      { u: 1.5, h: [0.14, -0.05, 0.46], a: [-30, 12], by: -0.21, bz: 0.09, bx: 0.01, hip: 0.18, sy: 0.0, sx: 0.3, sz: 0.0, l: [0.26, -0.06, 0.06], lp: [0.45, -0.85, -0.3], ld: [70, 15], pn: [-0.3, -1, 0], lk: 0 },
       { u: 1.75, h: [0.25, -0.22, 0.41], a: [30, -16] },
-      { u: 2.0, h: [0.31, -0.33, 0.3], a: [72, -34], l: [0.3, -0.4, -0.04], by: -0.26, bz: 0.1, bx: 0.03, hip: 0.38, sy: 0.4, sx: 0.42, sz: -0.07 },
-      { u: 2.4, h: [0.34, -0.36, 0.16], a: [126, -24], l: [0.3, -0.4, -0.08], by: -0.24, bz: 0.08, bx: 0.03, hip: 0.42, sy: 0.46, sx: 0.36, sz: -0.06 },
+      { u: 2.0, h: [0.31, -0.33, 0.3], a: [72, -34], by: -0.28, bz: 0.13, bx: 0.05, hip: 0.38, sy: 0.4, sx: 0.42, sz: -0.07, fh: 'highWing', l: [0.32, 0.01, -0.22] },
+      { u: 2.15, by: -0.3, bz: 0.15, bx: 0.06, hip: 0.48, sy: 0.54, sx: 0.47 },
+      { u: 2.4, h: [0.34, -0.36, 0.16], a: [126, -24], by: -0.25, bz: 0.1, bx: 0.04, hip: 0.43, sy: 0.47, sx: 0.38, sz: -0.06, fh: 'highWing' },
     ],
   },
   /** The draw cut: low from behind the right hip, sinking into it, rising a little as it ends. */
   drawCut: {
     line: 'flat',
+    lF: [0.18, 0.4], fy: [0.55, -0.6],
     keys: [
-      { u: 1.0, h: [-0.14, -0.37, -0.16], a: [-156, -12], l: [0.02, -0.2, 0.32], by: -0.2, bz: -0.05, bx: -0.03, hip: -0.42, sy: -0.48, sx: 0.26 },
+      { u: 0.6, by: -0.24, bz: -0.08, bx: -0.06, hip: -0.5, sy: -0.54, sx: 0.3 },
+      { u: 1.0, h: [-0.14, -0.37, -0.16], a: [-156, -12], by: -0.22, bz: -0.06, bx: -0.05, hip: -0.42, sy: -0.48, sx: 0.26, fh: 'aimLo' },
       { u: 1.3, h: [0.0, -0.34, 0.26], a: [-104, -10] },
-      { u: 1.5, h: [0.14, -0.3, 0.44], a: [-32, -5], l: [0.22, -0.26, 0.1], by: -0.28, bz: 0.06, bx: 0.0, hip: 0.14, sy: 0.02, sx: 0.36 },
+      { u: 1.5, h: [0.14, -0.3, 0.44], a: [-32, -5], by: -0.3, bz: 0.09, bx: 0.01, hip: 0.14, sy: 0.02, sx: 0.36, l: [0.24, -0.08, 0.14], lp: [0.45, -0.85, -0.3], ld: [60, 10], pn: [0, -1, 0], lk: 0 },
       { u: 1.75, h: [0.3, -0.25, 0.36], a: [36, 3] },
-      { u: 2.0, h: [0.38, -0.19, 0.2], a: [96, 12], l: [0.3, -0.36, -0.06], by: -0.24, bz: 0.09, bx: 0.03, hip: 0.4, sy: 0.42, sx: 0.28 },
-      { u: 2.4, h: [0.36, -0.12, 0.1], a: [138, 22], l: [0.3, -0.36, -0.1], by: -0.18, bz: 0.07, bx: 0.03, hip: 0.44, sy: 0.48, sx: 0.2 },
+      { u: 2.0, h: [0.38, -0.19, 0.2], a: [96, 12], by: -0.25, bz: 0.12, bx: 0.05, hip: 0.4, sy: 0.42, sx: 0.28, fh: 'highWing', l: [0.34, 0.02, -0.18] },
+      { u: 2.15, by: -0.23, bz: 0.13, bx: 0.06, hip: 0.5, sy: 0.54, sx: 0.3 },
+      { u: 2.4, h: [0.36, -0.12, 0.1], a: [138, 22], by: -0.19, bz: 0.08, bx: 0.04, hip: 0.45, sy: 0.49, sx: 0.21, fh: 'highWing', l: [0.32, -0.02, -0.17] },
     ],
   },
   /** The rising slash: a skip in (combat.js `hop`), from behind the right knee up across his front
    *  to high left: the falling cut's other diagonal. */
   risingSlash: {
     line: 'left',
+    fy: [0.3, -0.6],
     keys: [
-      { u: 1.0, h: [-0.16, -0.36, -0.14], a: [-154, -34], l: [0.0, -0.14, 0.32], by: -0.26, bz: -0.05, bx: -0.03, hip: -0.36, sy: -0.44, sx: 0.36 },
+      { u: 0.6, by: -0.31, bz: -0.08, bx: -0.06, hip: -0.44, sy: -0.5, sx: 0.42 },
+      { u: 1.0, h: [-0.16, -0.36, -0.14], a: [-154, -34], by: -0.27, bz: -0.06, bx: -0.05, hip: -0.36, sy: -0.44, sx: 0.36, fh: 'chest' },
       { u: 1.25, h: [-0.01, -0.3, 0.26], a: [-102, -28] },
-      { u: 1.5, h: [0.14, -0.12, 0.46], a: [-30, -6], l: [0.22, -0.26, 0.1], by: -0.16, bz: 0.06, bx: 0.0, hip: 0.14, sy: 0.02, sx: 0.24 },
+      { u: 1.5, h: [0.14, -0.12, 0.46], a: [-30, -6], by: -0.15, bz: 0.08, bx: 0.01, hip: 0.14, sy: 0.02, sx: 0.24, l: [0.16, -0.34, 0.06], lp: [0.6, -0.6, -0.4], ld: [100, -50], pn: [-1, 0, 0], lk: 0 },
       { u: 1.75, h: [0.3, 0.08, 0.38], a: [32, 22] },
-      { u: 2.0, h: [0.38, 0.2, 0.22], a: [72, 44], l: [0.3, -0.4, -0.06], by: -0.05, bz: 0.08, bx: 0.03, hip: 0.34, sy: 0.38, sx: 0.02, sz: -0.05 },
-      { u: 2.4, h: [0.4, 0.26, 0.08], a: [124, 54], l: [0.3, -0.4, -0.08], by: -0.03, bz: 0.06, bx: 0.03, hip: 0.4, sy: 0.44, sx: -0.04 },
+      // (the hips end at −0.08-0.1, not −0.02-0.04: higher, the rear toe skated 10 cm a frame)
+      { u: 2.0, h: [0.38, 0.2, 0.22], a: [72, 44], by: -0.1, bz: 0.11, bx: 0.05, hip: 0.34, sy: 0.38, sx: 0.02, sz: -0.05, fh: 'tail', l: [0.24, -0.42, -0.3] },
+      { u: 2.15, by: -0.08, bz: 0.12, bx: 0.06, hip: 0.44, sy: 0.5, sx: -0.05 },
+      { u: 2.4, h: [0.4, 0.26, 0.08], a: [124, 54], by: -0.08, bz: 0.08, bx: 0.04, hip: 0.41, sy: 0.45, sx: -0.03, fh: 'tail' },
     ],
   },
 
@@ -97,38 +162,51 @@ export const SWINGS = {
   /** The rising backhand: from the left hip up across his front to high on the right. */
   risingBackhand: {
     line: 'right',
+    fy: [0.45, -0.6],
     keys: [
-      { u: 1.0, h: [0.36, -0.37, 0.06], a: [148, -30], l: [-0.14, -0.14, 0.26], by: -0.23, bz: -0.04, bx: 0.03, hip: 0.38, sy: 0.47, sx: 0.32 },
+      { u: 0.6, by: -0.28, bz: -0.07, bx: -0.06, hip: 0.46, sy: 0.53, sx: 0.36, fh: 'wrist', l: [0.1, -0.33, 0.28] },
+      { u: 1.0, h: [0.36, -0.37, 0.06], a: [148, -30], by: -0.25, bz: -0.06, bx: -0.05, hip: 0.38, sy: 0.47, sx: 0.32, fh: 'wrist', l: [0.1, -0.33, 0.28], lk: 0.85 },
+      { u: 1.1, l: [0.2, -0.3, 0.22], lp: [0.5, -0.8, -0.2], ld: [60, -30], pn: [0, -1, 0], lk: 0.25 },
       { u: 1.25, h: [0.28, -0.3, 0.32], a: [98, -26] },
-      { u: 1.5, h: [0.13, -0.14, 0.46], a: [30, -8], l: [0.14, -0.24, 0.12], by: -0.16, bz: 0.06, bx: 0.0, hip: -0.06, sy: 0.08, sx: 0.22 },
+      { u: 1.5, h: [0.13, -0.14, 0.46], a: [30, -8], by: -0.15, bz: 0.08, bx: 0.01, hip: -0.06, sy: 0.08, sx: 0.22, l: [0.34, -0.3, 0], lp: [0.4, -0.6, -0.6], ld: [95, -30], pn: [0, -1, 0], lk: 0 },
       { u: 1.75, h: [-0.08, 0.06, 0.42], a: [-30, 18] },
-      { u: 2.0, h: [-0.2, 0.18, 0.3], a: [-70, 40], l: [0.3, -0.4, -0.06], by: -0.05, bz: 0.09, bx: -0.03, hip: -0.34, sy: -0.34, sx: 0.04, sz: 0.06 },
-      { u: 2.4, h: [-0.24, 0.24, 0.12], a: [-118, 52], l: [0.3, -0.42, -0.08], by: -0.03, bz: 0.07, bx: -0.03, hip: -0.4, sy: -0.42, sx: -0.03, sz: 0.05 },
+      { u: 2.0, h: [-0.2, 0.18, 0.3], a: [-70, 40], by: -0.05, bz: 0.11, bx: 0.05, hip: -0.34, sy: -0.34, sx: 0.04, sz: 0.06, fh: 'wingLo', l: [0.42, -0.32, -0.16] },
+      { u: 2.15, by: -0.03, bz: 0.12, bx: 0.06, hip: -0.45, sy: -0.47, sx: -0.02 },
+      { u: 2.4, h: [-0.24, 0.24, 0.12], a: [-118, 52], by: -0.04, bz: 0.08, bx: 0.04, hip: -0.41, sy: -0.43, sx: -0.03, sz: 0.05, fh: 'wingLo' },
     ],
   },
   /** The flat backhand: at chest height, rising a little, the whole body pivoting round with it. */
   flatBackhand: {
     line: 'flat',
+    lF: [0.2, 0.36], fy: [0.7, -0.55],
     keys: [
-      { u: 1.0, h: [0.36, -0.1, 0.16], a: [148, 6], l: [-0.12, -0.16, 0.26], by: -0.16, bz: -0.04, bx: 0.03, hip: 0.4, sy: 0.5, sx: 0.16 },
+      { u: 0.6, by: -0.19, bz: -0.07, bx: -0.06, hip: 0.48, sy: 0.56, sx: 0.18, fh: 'wrist', l: [0.08, -0.12, 0.3] },
+      { u: 1.0, h: [0.36, -0.1, 0.16], a: [148, 6], by: -0.17, bz: -0.06, bx: -0.05, hip: 0.4, sy: 0.5, sx: 0.16, fh: 'wrist', l: [0.08, -0.12, 0.3], lk: 0.85 },
+      { u: 1.1, l: [0.22, -0.1, 0.22], lp: [0.3, -0.8, -0.4], ld: [70, 0], pn: [0, -1, 0], lk: 0.25 },
       { u: 1.25, h: [0.28, -0.1, 0.34], a: [100, 2] },
-      { u: 1.5, h: [0.1, -0.08, 0.46], a: [32, 2], l: [0.16, -0.24, 0.1], by: -0.19, bz: 0.06, bx: 0.0, hip: -0.06, sy: 0.04, sx: 0.22 },
+      { u: 1.5, h: [0.1, -0.08, 0.46], a: [32, 2], by: -0.21, bz: 0.08, bx: 0.01, hip: -0.06, sy: 0.04, sx: 0.22, l: [0.4, -0.08, 0.02], lp: [0.15, -0.65, -0.75], ld: [95, 5], pn: [0, -1, 0], lk: 0 },
       { u: 1.75, h: [-0.16, -0.05, 0.42], a: [-34, 6] },
-      { u: 2.0, h: [-0.3, -0.02, 0.26], a: [-94, 12], l: [0.3, -0.36, -0.08], by: -0.17, bz: 0.09, bx: -0.03, hip: -0.38, sy: -0.38, sx: 0.12 },
-      { u: 2.4, h: [-0.32, 0.0, 0.1], a: [-138, 16], l: [0.3, -0.36, -0.1], by: -0.15, bz: 0.07, bx: -0.03, hip: -0.44, sy: -0.46, sx: 0.08 },
+      { u: 2.0, h: [-0.3, -0.02, 0.26], a: [-94, 12], by: -0.19, bz: 0.11, bx: 0.05, hip: -0.38, sy: -0.38, sx: 0.12, fh: 'wing', l: [0.45, -0.16, -0.13] },
+      { u: 2.15, by: -0.2, bz: 0.12, bx: 0.06, hip: -0.49, sy: -0.5, sx: 0.14 },
+      { u: 2.4, h: [-0.32, 0.0, 0.1], a: [-138, 16], by: -0.16, bz: 0.08, bx: 0.04, hip: -0.45, sy: -0.47, sx: 0.09, fh: 'wing' },
     ],
   },
   /** The falling backhand: lifted over the left shoulder, a diagonal across his chest down to the
    *  right hip. */
   fallingBackhand: {
     line: 'left',
+    lF: [0.15, 0.48], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
     keys: [
-      { u: 1.0, h: [0.32, 0.14, 0.1], a: [156, 44], l: [0.02, -0.16, 0.3], by: -0.08, bz: -0.05, bx: 0.03, hip: 0.34, sy: 0.45, sx: 0.0, sz: -0.05 },
+      // (no rise before it, `by` at the coil's height: out of a long stance the rise and the weight
+      // drawn back took the front foot out of reach, and it skated 15 cm back through the windup)
+      { u: 0.6, by: -0.1, bz: -0.08, bx: -0.06, hip: 0.42, sy: 0.51, sx: -0.06, l: [0.18, -0.3, 0.08] },
+      { u: 1.0, h: [0.32, 0.14, 0.1], a: [156, 44], by: -0.09, bz: -0.06, bx: -0.05, hip: 0.34, sy: 0.45, sx: 0.0, sz: -0.05, fh: 'chest', l: [-0.06, -0.2, 0.26], ld: [15, 55] },
       { u: 1.25, h: [0.24, 0.1, 0.32], a: [104, 34] },
-      { u: 1.5, h: [0.1, -0.06, 0.46], a: [30, 12], l: [0.2, -0.26, 0.06], by: -0.19, bz: 0.06, bx: 0.0, hip: -0.06, sy: 0.0, sx: 0.3 },
+      { u: 1.5, h: [0.1, -0.06, 0.46], a: [30, 12], by: -0.21, bz: 0.09, bx: 0.01, hip: -0.06, sy: 0.0, sx: 0.3, l: [0.22, -0.1, 0.12], lp: [0.4, -0.85, -0.3], ld: [60, 40], pn: [-0.4, -1, 0], lk: 0 },
       { u: 1.75, h: [-0.12, -0.24, 0.4], a: [-30, -16] },
-      { u: 2.0, h: [-0.24, -0.34, 0.26], a: [-70, -34], l: [0.3, -0.3, -0.1], by: -0.26, bz: 0.1, bx: -0.03, hip: -0.34, sy: -0.38, sx: 0.4, sz: 0.07 },
-      { u: 2.4, h: [-0.26, -0.38, 0.08], a: [-124, -26], l: [0.3, -0.3, -0.12], by: -0.24, bz: 0.08, bx: -0.03, hip: -0.4, sy: -0.44, sx: 0.34, sz: 0.06 },
+      { u: 2.0, h: [-0.24, -0.34, 0.26], a: [-70, -34], by: -0.28, bz: 0.13, bx: 0.05, hip: -0.34, sy: -0.38, sx: 0.4, sz: 0.07, fh: 'highWing', l: [0.32, 0.04, -0.2] },
+      { u: 2.15, by: -0.3, bz: 0.15, bx: 0.06, hip: -0.45, sy: -0.5, sx: 0.45 },
+      { u: 2.4, h: [-0.26, -0.38, 0.08], a: [-124, -26], by: -0.25, bz: 0.1, bx: 0.04, hip: -0.41, sy: -0.45, sx: 0.36, sz: 0.06, fh: 'highWing' },
     ],
   },
 
@@ -139,35 +217,40 @@ export const SWINGS = {
   whirl: {
     line: 'flat',
     keys: [
-      { u: 1.0, h: [-0.34, -0.05, 0.0], a: [-128, 12], l: [-0.1, -0.12, 0.28], by: -0.16, hip: -0.16, sy: -0.24, sx: 0.14 },
-      { u: 1.5, h: [-0.4, -0.06, 0.14], a: [-100, 4], l: [0.26, -0.14, 0.04], by: -0.2, hip: -0.1, sy: -0.12, sx: 0.22 },
-      { u: 2.0, h: [-0.36, -0.1, 0.26], a: [-62, -6], l: [0.28, -0.3, -0.06], by: -0.22, bz: 0.06, hip: -0.12, sy: -0.2, sx: 0.26 },
-      { u: 2.35, h: [-0.34, -0.18, 0.1], a: [-115, -16], l: [0.28, -0.38, -0.06], by: -0.2, bz: 0.05, hip: -0.32, sy: -0.4, sx: 0.2 },
+      { u: 0.5, by: -0.2, sx: 0.2 },
+      { u: 1.0, h: [-0.34, -0.05, 0.0], a: [-128, 12], by: -0.16, hip: -0.16, sy: -0.24, sx: 0.14, fh: 'chest', bx: -0.04 },
+      { u: 1.5, h: [-0.4, -0.06, 0.14], a: [-100, 4], by: -0.2, hip: -0.1, sy: -0.12, sx: 0.22, fh: 'chest', l: [-0.06, -0.24, 0.24] },
+      { u: 2.0, h: [-0.36, -0.1, 0.26], a: [-62, -6], by: -0.24, bz: 0.06, hip: -0.12, sy: -0.2, sx: 0.26, fh: 'wing', l: [0.45, -0.16, -0.1], bx: 0.05 },
+      { u: 2.35, h: [-0.34, -0.18, 0.1], a: [-115, -16], by: -0.2, bz: 0.05, hip: -0.32, sy: -0.4, sx: 0.2, fh: 'wing' },
     ],
   },
   /** The rising whirl: the same turn out of a crouch, the blade spiralling up from the knee. */
   risingWhirl: {
     line: 'spiral',
     keys: [
-      { u: 1.0, h: [-0.3, -0.3, 0.0], a: [-128, -32], l: [-0.1, -0.2, 0.28], by: -0.28, hip: -0.16, sy: -0.24, sx: 0.32 },
-      { u: 1.5, h: [-0.4, -0.14, 0.14], a: [-100, -5], l: [0.26, -0.16, 0.04], by: -0.17, hip: -0.1, sy: -0.12, sx: 0.2 },
-      { u: 2.0, h: [-0.34, 0.1, 0.26], a: [-62, 30], l: [0.3, -0.38, -0.06], by: -0.05, bz: 0.06, hip: -0.12, sy: -0.2, sx: 0.04 },
-      { u: 2.35, h: [-0.3, 0.2, 0.1], a: [-115, 48], l: [0.3, -0.42, -0.08], by: -0.03, bz: 0.05, hip: -0.32, sy: -0.38, sx: -0.02 },
+      { u: 0.5, by: -0.31, sx: 0.36 },
+      { u: 1.0, h: [-0.3, -0.3, 0.0], a: [-128, -32], by: -0.28, hip: -0.16, sy: -0.24, sx: 0.32, fh: 'chest', l: [-0.06, -0.3, 0.26], ld: [0, 40], bx: -0.04 },
+      { u: 1.5, h: [-0.4, -0.14, 0.14], a: [-100, -5], by: -0.17, hip: -0.1, sy: -0.12, sx: 0.2, fh: 'chest', l: [-0.04, -0.3, 0.24], ld: [0, 40] },
+      { u: 2.0, h: [-0.34, 0.1, 0.26], a: [-62, 30], by: -0.05, bz: 0.06, hip: -0.12, sy: -0.2, sx: 0.04, fh: 'wingLo', l: [0.42, -0.3, -0.12], bx: 0.05 },
+      { u: 2.35, h: [-0.3, 0.2, 0.1], a: [-115, 48], by: -0.03, bz: 0.05, hip: -0.32, sy: -0.38, sx: -0.02, fh: 'wingLo' },
     ],
   },
   /** The low sweep: dropping from the backhand's finish into a crouch, the blade skimming the grass
    *  right to left and lifting as it ends, the free hand up for balance. */
   lowSweep: {
     line: 'low',
+    lF: [0.2, 0.44], rF: [-0.19, -0.44], fy: [0.5, -0.85],
     keys: [
-      { u: 1.0, h: [-0.22, -0.32, -0.16], a: [-150, -14], l: [0.1, 0.06, 0.24], by: -0.34, bz: -0.04, hip: -0.36, sy: -0.42, sx: 0.42 },
+      { u: 0.6, by: -0.3, bz: -0.08, bx: -0.06, hip: -0.44, sy: -0.48, sx: 0.38 },
+      { u: 1.0, h: [-0.22, -0.32, -0.16], a: [-150, -14], by: -0.35, bz: -0.06, hip: -0.36, sy: -0.42, sx: 0.42, fh: 'chest', l: [-0.04, -0.24, 0.28], bx: -0.05 },
       { u: 1.4, h: [-0.06, -0.36, 0.24], a: [-84, -13] },
       // (the blade crosses his front late in the cut, when the step in is nearly done: a low blade
       // reaches less far under a tall target, combat.js REACH)
-      { u: 1.65, h: [0.13, -0.34, 0.45], a: [-8, -10], l: [0.24, 0.04, 0.04], by: -0.36, bz: 0.07, hip: 0.1, sy: 0.05, sx: 0.5 },
+      { u: 1.65, h: [0.13, -0.34, 0.45], a: [-8, -10], by: -0.37, bz: 0.08, hip: 0.1, sy: 0.05, sx: 0.5, l: [0.18, 0.12, 0.06], lp: [0.8, -0.5, 0.3], ld: [-5, 75], pn: [0.2, 0, 1], lk: 0, bx: 0.02 },
       { u: 1.85, h: [0.28, -0.35, 0.34], a: [52, -9] },
-      { u: 2.0, h: [0.36, -0.32, 0.18], a: [98, -4], l: [0.3, 0.08, -0.12], by: -0.35, bz: 0.08, hip: 0.36, sy: 0.4, sx: 0.44 },
-      { u: 2.4, h: [0.36, -0.26, 0.08], a: [138, 6], l: [0.3, 0.08, -0.14], by: -0.3, bz: 0.07, hip: 0.4, sy: 0.45, sx: 0.38 },
+      { u: 2.0, h: [0.36, -0.32, 0.18], a: [98, -4], by: -0.36, bz: 0.1, hip: 0.36, sy: 0.4, sx: 0.44, fh: 'high', bx: 0.05 },
+      { u: 2.15, by: -0.37, bz: 0.11, bx: 0.06, hip: 0.44, sy: 0.5, sx: 0.47 },
+      { u: 2.4, h: [0.36, -0.26, 0.08], a: [138, 6], by: -0.31, bz: 0.08, hip: 0.41, sy: 0.46, sx: 0.39, fh: 'high', l: [0.26, 0.16, -0.08], bx: 0.04 },
     ],
   },
 
@@ -182,24 +265,36 @@ export const SWINGS = {
    *  the hip as the sword arm drives out. */
   lunge: {
     line: 'point',
-    lF: [0.14, 0.46],
+    rF: [-0.17, -0.5], fy: [0.1, -0.8], drag: 0.12,
+    lF: [0.14, 0.58],
     keys: [
-      { u: 1.0, h: [-0.03, -0.2, -0.08], a: [3, 20], l: [0.0, -0.12, 0.32], by: -0.17, bz: -0.07, hip: -0.34, sy: -0.5, sx: 0.08 },
-      { u: 1.45, h: [0.08, -0.08, 0.26], a: [1, 28], l: [0.12, -0.16, 0.14], by: -0.22, bz: 0.04, hip: -0.04, sy: -0.06, sx: 0.26 },
-      { u: 1.9, h: [0.15, 0.1, 0.48], a: [0, 35], l: [0.24, -0.16, -0.08], by: -0.25, bz: 0.13, hip: 0.24, sy: 0.34, sx: 0.4 },
-      { u: 2.45, h: [0.14, 0.08, 0.44], a: [0, 33], l: [0.26, -0.14, -0.14], by: -0.23, bz: 0.1, hip: 0.22, sy: 0.3, sx: 0.36 },
+      { u: 0.6, by: -0.14, bz: -0.11, bx: -0.05, hip: -0.42, sy: -0.56, sx: 0.02 },
+      { u: 1.0, h: [-0.03, -0.2, -0.08], a: [3, 20], by: -0.18, bz: -0.09, hip: -0.34, sy: -0.5, sx: 0.08, fh: 'aim', l: [0.02, -0.08, 0.36], ld: [-6, 12], bx: -0.04 },
+      { u: 1.2, l: [0.08, -0.2, 0.28], lp: [0.45, -0.85, -0.2], ld: [30, -20], pn: [-0.5, -1, 0], lk: 0 },
+      { u: 1.45, h: [0.08, -0.08, 0.26], a: [1, 28], by: -0.24, bz: 0.06, hip: -0.04, sy: -0.06, sx: 0.26, l: [0.2, -0.38, 0.04], lp: [0.6, -0.7, -0.3], ld: [100, -65], pn: [-1, 0, 0], lk: 0, bx: 0.0 },
+      { u: 1.9, h: [0.15, 0.1, 0.48], a: [0, 35], by: -0.28, bz: 0.16, hip: 0.24, sy: 0.34, sx: 0.4, fh: 'tail', l: [0.24, -0.34, -0.26], ld: [170, -58], bx: 0.04 },
+      { u: 2.1, by: -0.3, bz: 0.18, bx: 0.04, hip: 0.27, sy: 0.37, sx: 0.44 },
+      { u: 2.45, h: [0.14, 0.08, 0.44], a: [0, 33], by: -0.25, bz: 0.12, hip: 0.22, sy: 0.3, sx: 0.37, fh: 'tail', bx: 0.03 },
     ],
   },
   /** The rising thrust: out of a crouch, the whole body rising behind the point as it drives up
    *  steeply into the target. */
   risingThrust: {
     line: 'point',
-    lF: [0.14, 0.46],
+    rF: [-0.17, -0.5], fy: [0.1, -0.8], drag: 0.12,
+    lF: [0.14, 0.58],
     keys: [
-      { u: 1.0, h: [-0.04, -0.34, -0.06], a: [4, 24], l: [0.0, -0.2, 0.32], by: -0.32, bz: -0.07, hip: -0.34, sy: -0.46, sx: 0.3 },
-      { u: 1.45, h: [0.07, -0.14, 0.26], a: [2, 34], l: [0.12, -0.22, 0.14], by: -0.24, bz: 0.04, hip: -0.04, sy: -0.06, sx: 0.24 },
-      { u: 1.9, h: [0.14, 0.18, 0.46], a: [0, 45], l: [0.24, -0.26, -0.08], by: -0.08, bz: 0.12, hip: 0.24, sy: 0.32, sx: 0.12 },
-      { u: 2.45, h: [0.13, 0.14, 0.42], a: [0, 42], l: [0.26, -0.26, -0.12], by: -0.1, bz: 0.1, hip: 0.22, sy: 0.3, sx: 0.12 },
+      { u: 0.5, l: [0.2, -0.24, 0.1], lp: [0.7, -0.5, -0.4], ld: [40, -30], pn: [0, -1, 0], lk: 0 },
+      // (at u 0.7, not 0.6: out of the low sweep's finish on the far side the hips have 0.83 rad to
+      // turn back through before it, and at 0.6 they whipped round 15° a frame)
+      { u: 0.7, by: -0.36, bz: -0.1, bx: -0.05, hip: -0.42, sy: -0.52, sx: 0.36 },
+      { u: 1.0, h: [-0.04, -0.34, -0.06], a: [4, 24], by: -0.33, bz: -0.08, hip: -0.34, sy: -0.46, sx: 0.3, l: [0.06, -0.42, 0.14], lp: [0.6, -0.3, -0.7], ld: [0, -20], pn: [0, -1, 0], lk: 0, bx: -0.04 },
+      { u: 1.45, h: [0.07, -0.14, 0.26], a: [2, 34], by: -0.22, bz: 0.06, hip: -0.04, sy: -0.06, sx: 0.24, l: [0, -0.24, 0.32], lp: [0.4, -0.9, -0.1], ld: [0, 10], pn: [-0.6, -0.8, 0], lk: 0 },
+      // (it rises to −0.15, not −0.07: standing up over its 1 m bow put the rear foot out of reach,
+      // and its toe skated 14-23 cm in two frames)
+      { u: 1.9, h: [0.14, 0.18, 0.46], a: [0, 45], by: -0.15, bz: 0.15, hip: 0.24, sy: 0.32, sx: 0.12, fh: 'aim', l: [-0.02, -0.06, 0.42], ld: [-8, 30], pn: [-1, -0.3, 0], bx: 0.04 },
+      { u: 2.1, by: -0.17, bz: 0.16, bx: 0.04, hip: 0.27, sy: 0.36, sx: 0.08 },
+      { u: 2.45, h: [0.13, 0.14, 0.42], a: [0, 42], by: -0.15, bz: 0.11, hip: 0.22, sy: 0.3, sx: 0.12, fh: 'aim', l: [0, -0.08, 0.4], ld: [-8, 28], pn: [-1, -0.3, 0], bx: 0.03 },
     ],
   },
 
@@ -215,19 +310,19 @@ export const SWINGS = {
    *  upright plane leaned 24°, and the hands covered half a metre in one frame of the blow.) */
   slam: {
     line: 'down',
-    home: 0.55,
+    home: 0.385,
     step: [0.45, 1.5],
     drag: 0.25,
     keys: [
-      { u: 0.3, h: [-0.15, -0.33, -0.02], a: [-140, -20], two: 1, lp: [0.7, -0.6, 0.3], by: -0.2, hip: -0.2, sy: -0.34, sx: 0.32, sz: 0.06, hx: 0.12, hy: 0.38 },
-      { u: 0.7, h: [-0.06, 0.1, 0.2], a: [-102, 67], two: 1, by: -0.05, hip: -0.24, sy: -0.3, sx: -0.06, sz: 0.04, hx: -0.16, hy: 0.3 },
-      { u: 1.0, h: [-0.06, 0.22, 0.16], a: [-146, 46], two: 1, by: -0.03, bz: -0.06, hip: -0.3, sy: -0.42, sx: -0.14, sz: 0.05, hx: -0.2, hy: 0.5 },
+      { u: 0.3, h: [-0.15, -0.33, -0.02], a: [-140, -20], two: 1, lp: [0.7, -0.6, 0.3], by: -0.2, hip: -0.2, sy: -0.34, sx: 0.32, sz: 0.06, hx: 0.12, hy: 0.38, hs: 0 },
+      { u: 0.7, h: [-0.06, 0.1, 0.2], a: [-102, 67], two: 1, by: -0.05, hip: -0.24, sy: -0.3, sx: -0.06, sz: 0.04, hx: -0.16, hy: 0.3, hs: 0 },
+      { u: 1.0, h: [-0.06, 0.22, 0.16], a: [-146, 46], two: 1, by: -0.03, bz: -0.06, hip: -0.3, sy: -0.42, sx: -0.14, sz: 0.05, hx: -0.2, hy: 0.5, hs: 0 },
       { u: 1.25, h: [0.06, 0.22, 0.3], a: [-104, 42] },
-      { u: 1.5, h: [0.13, 0.1, 0.45], a: [-34, 22], two: 1, by: -0.14, bz: 0.05, hip: 0.04, sy: 0.0, sx: 0.28, sz: 0.0, hx: 0.0, hy: 0.0 },
+      { u: 1.5, h: [0.13, 0.1, 0.45], a: [-34, 22], two: 1, by: -0.14, bz: 0.05, hip: 0.04, sy: 0.0, sx: 0.28, sz: 0.0, hx: 0.0, hy: 0.0, hs: 0 },
       { u: 1.75, h: [0.19, -0.16, 0.46], a: [8, -18] },
-      { u: 2.0, h: [0.2, -0.36, 0.36], a: [16, -48], two: 1, by: -0.34, bz: 0.12, hip: 0.22, sy: 0.26, sx: 0.62, sz: -0.05, hx: 0.1, hy: -0.3 },
-      { u: 2.2, h: [0.2, -0.38, 0.35], a: [16, -50], two: 1, by: -0.38, bz: 0.12, hip: 0.22, sy: 0.26, sx: 0.68, sz: -0.05, hx: 0.26, hy: -0.3 },
-      { u: 2.55, h: [0.2, -0.38, 0.35], a: [16, -50], two: 1, by: -0.36, bz: 0.12, hip: 0.22, sy: 0.26, sx: 0.66, sz: -0.05, hx: 0.2, hy: -0.3 },
+      { u: 2.0, h: [0.2, -0.36, 0.36], a: [16, -48], two: 1, by: -0.34, bz: 0.12, hip: 0.22, sy: 0.26, sx: 0.62, sz: -0.05, hx: 0.1, hy: -0.3, hs: 0 },
+      { u: 2.2, h: [0.2, -0.38, 0.35], a: [16, -50], two: 1, by: -0.38, bz: 0.12, hip: 0.22, sy: 0.26, sx: 0.68, sz: -0.05, hx: 0.26, hy: -0.3, hs: 0 },
+      { u: 2.55, h: [0.2, -0.38, 0.35], a: [16, -50], two: 1, by: -0.36, bz: 0.12, hip: 0.22, sy: 0.26, sx: 0.66, sz: -0.05, hx: 0.2, hy: -0.3, hs: 0 },
     ],
   },
 
@@ -236,19 +331,26 @@ export const SWINGS = {
    *  leaning into the dash with the blade still up beside his head, winding back over the shoulder,
    *  and as the dash dies out the whole body unwinds: one diagonal from high right across his chest
    *  to past the left hip, sinking into a long low lunge. The off hand lets go as the blade sweeps
-   *  on behind him, and he holds that finish. */
+   *  on behind him and snaps into sword fingers pointing at the foe, and he holds that finish. */
   cleave: {
     line: 'right',
-    home: 0.55,
+    home: 0.385,
+    lead: [0.033, 0], // (a chest lead put his head 2.1-2.2 cm into the upright blade: HEROLOOK)
+    fold: 0, // (the bite's chest fold and head nod put his head 2.5 cm into it at a close contact)
     keys: [
-      { u: 0.9, h: [-0.03, 0.02, 0.24], a: [-145, 74], two: 1, lp: [0.7, -0.6, 0.3], by: -0.26, bz: 0.05, hip: -0.34, sy: -0.5, sx: 0.4 },
-      { u: 1.4, h: [-0.07, 0.1, 0.18], a: [-148, 50], two: 1, by: -0.23, bz: 0.06, hip: -0.32, sy: -0.52, sx: 0.44 },
+      // (Session 30: the coil's blade and the wind back over the shoulder passed 10-14 cm from the head's
+      // axis, inside the hood: the hands stay out to his right and the blade winds back OUT over the
+      // shoulder, not in beside the ear)
+      { u: 0.9, h: [-0.1, -0.08, 0.3], a: [-84, 74], two: 1, lp: [0.7, -0.6, 0.3], by: -0.26, bz: 0.05, hip: -0.34, sy: -0.5, sx: 0.34, hs: 0 },
+      // (u 1.3, not 1.4: the hand has four frames to come across to the cut's first key; at 1.4 it went
+      // 21 cm out and 11 cm back in one frame, a hitch in the release)
+      { u: 1.3, h: [-0.17, 0.02, 0.22], a: [-122, 50], two: 1, by: -0.23, bz: 0.06, hip: -0.32, sy: -0.52, sx: 0.38, hs: 0 },
       { u: 1.55, h: [0.05, 0.1, 0.28], a: [-110, 40] },
       { u: 1.7, h: [0.14, -0.03, 0.44], a: [-38, 16], by: -0.26, hip: 0.1, sy: 0.0, sx: 0.4 },
       { u: 1.86, h: [0.24, -0.24, 0.4], a: [28, -18] },
-      { u: 2.0, h: [0.3, -0.36, 0.3], a: [68, -36], two: 1, by: -0.32, bz: 0.08, hip: 0.36, sy: 0.4, sx: 0.5 },
-      { u: 2.25, h: [0.36, -0.4, 0.12], a: [125, -28], two: 0, l: [0.3, -0.34, -0.12], by: -0.34, hip: 0.42, sy: 0.5, sx: 0.46 },
-      { u: 2.6, h: [0.36, -0.4, 0.12], a: [128, -26], two: 0, l: [0.3, -0.34, -0.14], by: -0.33, hip: 0.42, sy: 0.5, sx: 0.44 },
+      { u: 2.0, h: [0.3, -0.36, 0.3], a: [68, -36], two: 1, by: -0.32, bz: 0.08, hip: 0.36, sy: 0.4, sx: 0.5, hs: 0 },
+      { u: 2.25, h: [0.36, -0.4, 0.12], a: [125, -28], two: 0, by: -0.34, hip: 0.42, sy: 0.5, sx: 0.46, hs: 1, fh: 'aim', l: [0.02, -0.1, 0.42], ld: [-4, 6] },
+      { u: 2.6, h: [0.36, -0.4, 0.12], a: [128, -26], two: 0, by: -0.33, hip: 0.42, sy: 0.5, sx: 0.44, hs: 1, fh: 'aim', l: [0.02, -0.1, 0.42], ld: [-4, 6] },
     ],
   },
 
@@ -257,24 +359,28 @@ export const SWINGS = {
   sprintSlash: {
     line: 'left',
     keys: [
-      { u: 1.0, h: [-0.16, -0.37, -0.18], a: [-156, -38], l: [0.0, -0.16, 0.32], by: -0.22, hip: -0.32, sy: -0.42, sx: 0.42 },
+      { u: 1.0, h: [-0.16, -0.37, -0.18], a: [-156, -38], by: -0.22, hip: -0.32, sy: -0.42, sx: 0.42, fh: 'tail', l: [0.2, -0.36, -0.2] },
       { u: 1.3, h: [-0.01, -0.3, 0.26], a: [-104, -30] },
-      { u: 1.5, h: [0.14, -0.12, 0.47], a: [-30, -4], l: [0.2, -0.26, 0.1], by: -0.16, bz: 0.05, hip: 0.1, sy: 0.0, sx: 0.25 },
+      { u: 1.5, h: [0.14, -0.12, 0.47], a: [-30, -4], by: -0.16, bz: 0.05, hip: 0.1, sy: 0.0, sx: 0.25, fh: 'tail', l: [0.22, -0.42, -0.22] },
       { u: 1.75, h: [0.3, 0.08, 0.38], a: [32, 24] },
-      { u: 2.0, h: [0.4, 0.2, 0.2], a: [74, 46], l: [0.3, -0.4, -0.06], by: -0.05, bz: 0.05, hip: 0.3, sy: 0.34, sx: 0.02 },
-      { u: 2.35, h: [0.4, 0.26, 0.06], a: [126, 56], l: [0.3, -0.42, -0.08], by: -0.03, hip: 0.34, sy: 0.4, sx: -0.04 },
+      { u: 2.0, h: [0.4, 0.2, 0.2], a: [74, 46], by: -0.05, bz: 0.05, hip: 0.3, sy: 0.34, sx: 0.02, fh: 'tail', l: [0.24, -0.44, -0.3] },
+      { u: 2.12, by: -0.02, hip: 0.37, sy: 0.43, sx: -0.06 },
+      { u: 2.35, h: [0.4, 0.26, 0.06], a: [126, 56], by: -0.03, hip: 0.34, sy: 0.4, sx: -0.04, fh: 'tail' },
     ],
   },
   /** The roll cut: out of the roll's crouch, low from the right and rising past the left shoulder. */
   rollCut: {
     line: 'left',
     keys: [
-      { u: 1.0, h: [-0.14, -0.37, -0.14], a: [-152, -14], l: [0.0, -0.25, 0.3], by: -0.36, hip: -0.38, sy: -0.44, sx: 0.45 },
+      { u: 0.6, by: -0.38, bz: -0.06, bx: -0.05, hip: -0.46, sy: -0.5, sx: 0.48 },
+      { u: 1.0, h: [-0.14, -0.37, -0.14], a: [-152, -14], by: -0.36, hip: -0.38, sy: -0.44, sx: 0.45, fh: 'aimLo', l: [0.06, -0.3, 0.34], bx: -0.04 },
       { u: 1.3, h: [-0.01, -0.34, 0.25], a: [-104, -12] },
-      { u: 1.5, h: [0.14, -0.28, 0.44], a: [-30, -6], l: [0.2, -0.28, 0.1], by: -0.3, bz: 0.05, hip: 0.1, sy: 0.02, sx: 0.4 },
+      { u: 1.5, h: [0.14, -0.28, 0.44], a: [-30, -6], by: -0.3, bz: 0.08, hip: 0.1, sy: 0.02, sx: 0.4, l: [0.18, -0.38, 0.04], lp: [0.6, -0.6, -0.4], ld: [100, -50], pn: [-1, 0, 0], lk: 0 },
       { u: 1.75, h: [0.3, -0.16, 0.36], a: [34, 8] },
-      { u: 2.0, h: [0.38, -0.05, 0.2], a: [82, 26], l: [0.3, -0.38, -0.06], by: -0.18, bz: 0.05, hip: 0.34, sy: 0.38, sx: 0.2 },
-      { u: 2.4, h: [0.38, 0.05, 0.08], a: [130, 40], l: [0.3, -0.38, -0.08], by: -0.12, hip: 0.38, sy: 0.44, sx: 0.14 },
+      // (the hips end at −0.16-0.22, not −0.12-0.17: higher, the rear toe skated 14 cm after the body)
+      { u: 2.0, h: [0.38, -0.05, 0.2], a: [82, 26], by: -0.22, bz: 0.1, hip: 0.34, sy: 0.38, sx: 0.2, fh: 'tail', l: [0.24, -0.42, -0.28], bx: 0.05 },
+      { u: 2.15, by: -0.18, bz: 0.1, bx: 0.06, hip: 0.42, sy: 0.5, sx: 0.12 },
+      { u: 2.4, h: [0.38, 0.05, 0.08], a: [130, 40], by: -0.16, hip: 0.39, sy: 0.45, sx: 0.14, fh: 'tail' },
     ],
   },
 };

@@ -75,10 +75,11 @@ export function gridGeometry(cols, rows, fn, flip = false, skip = null) {
 /**
  * Lofted body shell around +Y through elliptical rings {y, rx, rz, cz, gap}: `gap` = half the
  * chord left open at the front (the open coat), 0 = closed except a hairline at the front.
- * `span` limits it to the front ±span rad instead (the shirt). aGUV: x = angle × 0.15 (columns line
- * up down the body, like the panel), y = height, so glyphs stand upright.
+ * `span` limits it to the front ±span rad instead (the shirt); `arc` [a0, a1] to that one arc (rad: 0 =
+ * his front, + = his left, +X; a plate open at the sides, a capelet over one shoulder). aGUV: x =
+ * angle × 0.15 (columns line up down the body, like the panel), y = height, so glyphs stand upright.
  */
-export function shellGeometry(rings, { sub = 2, cols = 24, span = 0 } = {}) {
+export function shellGeometry(rings, { sub = 2, cols = 24, span = 0, arc = null } = {}) {
   const rows = (rings.length - 1) * sub;
   return gridGeometry(cols, rows, (s, t, o) => {
     const f = t * (rings.length - 1);
@@ -88,7 +89,9 @@ export function shellGeometry(rings, { sub = 2, cols = 24, span = 0 } = {}) {
     const y = lerp(A.y, B.y, u), rx = lerp(A.rx, B.rx, u), rz = lerp(A.rz, B.rz, u);
     const cz = lerp(A.cz ?? 0, B.cz ?? 0, u), gap = lerp(A.gap ?? 0, B.gap ?? 0, u);
     let a;
-    if (span > 0) {
+    if (arc) {
+      a = lerp(arc[0], arc[1], s);
+    } else if (span > 0) {
       a = (s - 0.5) * 2 * span;
     } else {
       const a0 = Math.asin(Math.min(0.95, Math.max(0.004, gap) / rx));
@@ -471,14 +474,49 @@ export function gripFist(k = 1) {
   for (let i = 0; i < 4; i++) {
     const z = (-0.034 + i * 0.0235) * k + 0.006;
     // the index finger (nearest the guard) is the thickest roll, the little finger the thinnest
-    const r = (0.036 + 0.0025 * i) * k;
-    fingers.push(sub(ellipsoidGeometry(r * 1.12, r * 0.94, 0.0135 * k, { widthSegs: 12, heightSegs: 5 }).translate(0, 0, z), i & 1));
+    const r = (0.034 + 0.002 * i) * k;
+    // (each roll is nearly as deep along the grip as the rolls are apart, so they close into ONE fist
+    // with a shallow groove between the fingers: at 0.0135 the grooves cut half way to the grip and the
+    // fist read up close as a stack of discs, "the right hand looks very disfigured")
+    fingers.push(sub(ellipsoidGeometry(r * 1.1, r * 0.92, 0.0225 * k, { widthSegs: 12, heightSegs: 6 }).translate(0, 0, z), i & 1));
   }
-  const thumb = sub(place(ellipsoidGeometry(0.0135 * k, 0.012 * k, 0.034 * k, { widthSegs: 8, heightSegs: 5 }), 0.012 * k, 0.034 * k, 0.03 * k + 0.006, 0.18, 0, 0), 1);
-  // the knuckle ridge: a raised strip across the four rolls on the +X edge side
-  const ridge = boxGeometry(0.012 * k, 0.03 * k, 0.088 * k, 0.04 * k, 0, 0.006);
+  const thumb = sub(place(ellipsoidGeometry(0.013 * k, 0.012 * k, 0.034 * k, { widthSegs: 8, heightSegs: 5 }), 0.012 * k, 0.033 * k, 0.026 * k + 0.006, 0.18, 0, 0), 1);
+  // the back of the hand: a low rounded ridge along the knuckles on the +X edge side (it was a flat
+  // plank standing off the rolls)
+  const ridge = ellipsoidGeometry(0.012 * k, 0.027 * k, 0.046 * k, { widthSegs: 8, heightSegs: 6 }).translate(0.031 * k, 0, 0.006);
   return { fingers: mergeGeometries(fingers), thumb, ridge };
 }
+
+/**
+ * SWORD FINGERS (jian jue), in WRIST space (origin at the wrist pivot, the hand down −Y, the palm
+ * toward the body: −X for the left hand, the thumb +Z): index and middle straight and pressed
+ * together, ring and little curled into the palm, the thumb across their nails. `ex` exaggerates
+ * the two straight fingers (length and √girth) so the point survives the glyph pass (BODY.fingerEx).
+ * `side` = +1 left arm / −1 right arm, `k` = size (BODY.hand).
+ * Returns { palm, fingers, curled, thumb } (fingers = the pair, tips included; the ink line splits
+ * the pair up close).
+ */
+export function swordFingers(side, k = 1, ex = 1.3) {
+  const inX = -side;
+  // (a flatter palm than the open hand's: an ellipsoid as thick as it is wide read as a ball)
+  const palm = ellipsoidGeometry(0.019 * k, 0.045 * k, 0.039 * k, { widthSegs: 10, heightSegs: 6 }).translate(0, -0.036 * k, 0.002);
+  const L = 0.046 * k * ex, r = 0.0098 * k * Math.sqrt(ex);
+  const y0 = -0.074 * k; // the knuckles
+  // the pair: two tapered capsules from just inside the knuckles, side by side and touching (centres
+  // 1.84 r apart: one blade of two fingers, not a V; two ellipsoids tapered apart at the tips and read
+  // as a peace sign), the middle a touch longer. Tips at y0 − 2 L and y0 − 2.1 L (swordTip)
+  const top = y0 + 0.3 * r, r1 = 0.8 * r;
+  const finger = (tip, z, id) => sub(limb({ length: top - tip - r1, r0: r, r1, radial: 8, rings: 3, capSegs: 2 }).translate(0, top, z), id);
+  const fingers = mergeGeometries([finger(y0 - 2 * L, 0.001 + 0.92 * r, 0), finger(y0 - 2.1 * L, 0.001 - 0.92 * r, 1)]);
+  // ring and little folded into the palm (on its face, tipped in), not knobs standing out of it
+  const curled = mergeGeometries([0, 1].map((i) => sub(place(ellipsoidGeometry(0.0085 * k, 0.015 * k, 0.0085 * k, { widthSegs: 6, heightSegs: 4 }), inX * 0.017 * k, y0 + 0.014 * k, (-0.012 - 0.0145 * i) * k, 0, 0, inX * 0.45), i & 1)));
+  // the thumb across their nails
+  const thumb = sub(place(ellipsoidGeometry(0.0105 * k, 0.026 * k, 0.011 * k, { widthSegs: 6, heightSegs: 5 }), inX * 0.027 * k, -0.064 * k, -0.014 * k, -1.2, 0, inX * 0.3), 1);
+  return { palm, fingers, curled, thumb };
+}
+/** The sword fingers' fingertip (wrist space; swordFingers' middle finger's end): rig.arms.L.point,
+ *  for the tests and the FX. */
+export const swordTip = (k = 1, ex = 1.3) => [0, -0.074 * k - 2.1 * 0.046 * k * ex, 0.001];
 
 /**
  * The FREE hand: a loosely closed hand hanging off the end of a forearm (fore space: the arm runs

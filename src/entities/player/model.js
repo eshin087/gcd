@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createSurfaceGlyphMaterial, FLAG } from '../../render/materials.js';
 import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
 import { DIM, BODY, REST, HAIR_CLUSTERS } from './heroDims.js';
-import { mergeGeometries, sub, partGeometry, orient, limb } from './heroGeo.js';
+import { mergeGeometries, sub, partGeometry, orient, limb, swordTip } from './heroGeo.js';
 import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
 
 // The Wanderer, "Shadow Swordsman" (owner concept sheets; build spec docs/art/hero.md; the lean
@@ -139,11 +139,12 @@ export const BLADE_BASE = [0.05, 0.1, 0.2];
  * Make `root` compose its matrix as T · lean · R · `scale` (the drawn size: HERO_SCALE, the player's
  * PLAYER_SCALE) while `lean.on` (drawing, FX, the sword sweep), or the plain T · R while it is off: the
  * animator runs with it off, so its IK, ground clamps and coat springs work on the upright 1.85 m
- * body in metres. Returns the live lean { k, dx, dz, on, scale }: the drawn body shifts by k · height
- * along the horizontal unit vector (dx, dz).
+ * body in metres. Returns the live lean { k, dx, dz, on, scale, ox, oz }: the drawn body shifts by k ·
+ * height along the horizontal unit vector (dx, dz), and by (ox, oz) m (a drawn-only offset: a struck
+ * duelist's shudder; 0 for the hero). Gameplay never sees either (it reads the body with `on` off).
  */
 export function installLean(root, scale = HERO_SCALE) {
-  const lean = { k: 0, dx: 0, dz: -1, on: true, scale };
+  const lean = { k: 0, dx: 0, dz: -1, on: true, scale, ox: 0, oz: 0 };
   root.updateMatrix = function updateLeanMatrix() {
     this.matrix.compose(this.position, this.quaternion, this.scale);
     if (lean.on) {
@@ -156,6 +157,8 @@ export function installLean(root, scale = HERO_SCALE) {
         e[c] += lean.k * lean.dx * y;
         e[c + 2] += lean.k * lean.dz * y;
       }
+      e[12] += lean.ox;
+      e[14] += lean.oz;
     }
     this.matrixWorldNeedsUpdate = true;
   };
@@ -358,7 +361,8 @@ export function createHeroMaterials(U) {
       inkAlt: [0.85, 1.0, 1.25], altChance: 0.2, lumScale: 3, glyphZoom: 0.72,
       gain: 0.9, rim: 0.3, outline: 0.35, inkGlow: 0.6, emissive: [0.7, 1.4, 2.5], glowMask: 1, seed: 1.9,
     }, { lockX: true }),
-    // the last 0.15 m (the taper to the point): the brightest steel
+    // the cutting-edge band (gear/wanderer.js: blade.edge, the whole edge and the point): the brightest
+    // steel. Its HERO_INK part 17 is rewritten every frame by player.js (the strike / contact flare)
     bladeTip: S({
       levels: ["^A", "A^", "AA"], cell: [0.045, 0.09], rowShift: 0, seamAxis: 'y', base: [0.14, 0.26, 0.42],
       levelInk: [[0.7, 0.92, 1.2], [0.9, 1.08, 1.32], [1.1, 1.22, 1.45]], ink: [1.1, 1.22, 1.45],
@@ -387,6 +391,29 @@ export function createHeroMaterials(U) {
       partRim?.[h.part]?.set(rl[0], rl[1], rl[2], rl[3]);
   }
   return Object.fromEntries(Object.entries(specs).map(([name, s]) => [name, make(name, s.o, s.opts)]));
+}
+
+/**
+ * Recolour ONE rig's materials (`rig.materials`, by HERO_INK name): an outfit's own colours. Only
+ * that rig's material instances change (their per-instance art uniforms), never the shared U.* (the
+ * per-part ink every rig on the page reads). `tint` = { <HERO_INK name>: { fill?: [r, g, b], ink?,
+ * emissive?, spec?: [k, pow], rim?, sub?, inkGlow?, glowK? } }; null / a missing name is skipped.
+ * Build-time: call it once after buildHero (batches share the material objects, so a later tint shows).
+ */
+export function tintHero(M, tint) {
+  if (!M || !tint) return;
+  for (const name in tint) {
+    const t = tint[name], u = M[name]?.uniforms;
+    if (!t || !u) continue;
+    if (t.fill) u.uArtFill?.value.setRGB(t.fill[0], t.fill[1], t.fill[2]);
+    if (t.ink) u.uInk?.value.setRGB(t.ink[0], t.ink[1], t.ink[2]);
+    if (t.emissive) u.uEmissive?.value.setRGB(t.emissive[0], t.emissive[1], t.emissive[2]);
+    if (t.spec && u.uArtSpec) u.uArtSpec.value.set(t.spec[0], t.spec[1]);
+    if (t.rim != null && u.uArtRim) u.uArtRim.value = t.rim;
+    if (t.sub != null && u.uArtSub) u.uArtSub.value = t.sub;
+    if (t.inkGlow != null && u.uInkGlow) u.uInkGlow.value = t.inkGlow;
+    if (t.glowK != null && u.uArtGlowK) u.uArtGlowK.value = t.glowK;
+  }
 }
 
 /** Merge the static meshes hung directly on each joint that share a material AND an owner (one
@@ -482,6 +509,11 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     const fore = joint(upper, 0, -DIM.upperArm, 0);
     arms[side < 0 ? 'R' : 'L'] = { upper, fore };
   }
+  // the free hand's wrist: the open hand and the sword fingers hang on it (anim.js _wristL; it stays
+  // at identity, the hand rigid on the forearm, for every duelist); `point` marks the sword fingers'
+  // tip (tests, FX)
+  arms.L.wrist = joint(arms.L.fore, 0, -(DIM.foreArm - 0.03), 0);
+  arms.L.point = joint(arms.L.wrist, ...swordTip(BODY.hand, BODY.fingerEx));
   // the sword hand's targets stay offsets from the round-2 shoulder (DIM.gripShoulder)
   arms.R.anchor = new THREE.Vector3(-DIM.gripShoulder[0], DIM.gripShoulder[1], DIM.gripShoulder[2]);
   const legs = {};
@@ -574,8 +606,9 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   const mats = Object.values(M);
   return {
     root, body, pelvis, spine, chest, head, hair, arms, legs, coat, streamers, sword, gem, pauldron, flask,
-    // { open, grip } | null: the free hand hanging open, and the same hand closed on the grip below
-    // the sword hand; the animator shows one or the other with `twoHand` (gear/README.md)
+    // { open, grip, fingers? } | null: the free hand open, the same hand closed on the grip below the
+    // sword hand, and (optional) the sword fingers; open and fingers hang on arms.L.wrist. The
+    // animator shows one of them (`twoHand` and the grip gap, `hs`; gear/README.md)
     offHand: handles.offHand,
     loadout: equipped,
     slots,
@@ -587,7 +620,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     ghostChains: [
       [head, chest, spine, pelvis],
       [arms.R.upper, arms.R.fore],
-      [arms.L.upper, arms.L.fore],
+      [arms.L.upper, arms.L.fore], // (as the sword arm's: the Starless Lord's blink shares the chains)
       [legs.R.thigh, legs.R.shin, legs.R.foot],
       [legs.L.thigh, legs.L.shin, legs.L.foot],
     ],

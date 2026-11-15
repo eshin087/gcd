@@ -320,6 +320,7 @@ export class StarlessLord extends Duelist {
     if (H?.open && f === 2) {
       H.open.visible = false;
       if (H.grip) H.grip.visible = false;
+      if (H.fingers) H.fingers.visible = false;
     }
   }
 
@@ -516,8 +517,10 @@ export class StarlessLord extends Duelist {
       fx.aura(c.x, c.y, c.z, dt, 1, this.position.x, this.position.z);
     }
     if (a) {
-      // the sweep trail of whichever blade is cutting, from the snap out of the cock on
+      // the sweep trail of whichever blade is cutting, from the snap out of the cock on (not through a
+      // shudder: its flicker is no swing)
       for (const b of a.beats) {
+        if (this.shuddering) break;
         if (b.feint || a.t < b.impact - 0.32 * b.W - 0.02 || a.t > b.end + 0.6 * b.A + 0.05) continue;
         const D = b.def;
         if (isCast(D)) break;

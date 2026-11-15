@@ -2002,6 +2002,136 @@ elbow in two backhands' recoveries (ADR-078) still stand.
   it yet. A flourish is the first half of its recovery only: past `guard.recoverOpen` (ADR-080) his
   guard is up again and he may ward or step out of the rest.
 
+## ADR-086 — The free hand: a wrist, sword fingers, a choreography for every cut (2026-11-14)
+- **Context:** the owner: the free hand "looks unnatural and weird during the attack animations",
+  "stiff, like a mannequin", and "the hand itself" is wrong; the style they chose is sword fingers.
+  Measured: the hand was rigid on the forearm (no wrist), swapped open/fist at `twoHand` 0.6 with a
+  9-21 cm pop, locked the off elbow at 152-176° on the grip, ping-ponged the elbow 47° ↔ 126° between
+  keys, and moved with no counterbalance to the blade.
+- **Decision:** (1) A **wrist joint** for the free arm (`arms.L.wrist`, `arms.L.point` at the
+  fingertip), turned only for the hero (`HeroAnimator` `opts.freeHand`; the duelists keep a rigid
+  hand) by a spring inside human limits (`WRIST_L`), sub-stepped at ≤ 1/120 s so it is stable at any
+  frame rate. (2) The **sword-fingers hand** (`heroGeo.swordFingers`): index and middle straight and
+  pressed together, ring and little folded into the palm under the thumb, 1.3× long (`BODY.fingerEx`)
+  so the point survives the glyph pass; shown by the pose's hand shape `hs`. (3) Four pose channels
+  (N 53 → 61): the fingers' direction `lD`, the palm's normal `lN`, `hs`, and `lk` (rest the hand on
+  the sword wrist). (4) **A choreography per cut** (swings.js `FH` places and keys): the hand gathers at
+  the sword wrist in the windup and is thrown opposite the cut through the follow-through; overhead
+  only rarely; authoring rules written into swings.js. (5) **The grip without pops:** the fist shows
+  only once the hand is within 3.5 cm of its place on the grip (kept to 5 cm, 8 cm in a fully
+  two-handed pose); `LOCK_REACH` 0.98 keeps the free elbow ≥ 23° bent on the grip. (6) One builder,
+  `gear/hands.js` `buildFreeHand`, for every outfit's arms (the sword fingers included).
+- **Consequences:** the duelists' animator carries the new channels but ignores them (their wrist is
+  identity every frame: DUEL and LORD check). The wrist sits on a limit through much of the falling
+  backhand, the falling cut and the whirl (the keys ask for more turn than a wrist has); tune those
+  keys in the Lab close-up if it reads stiff. HEROHAND (H1-H14, H5b) guards the contract: the turn
+  per frame, the limits, the fingers out of his body, the fist's distance, 30 fps stability.
+
+## ADR-087 — Weight and footwork: the body leads, the edge bites, the feet stay planted (2026-11-14)
+- **Context:** the owner asked for "weight and impact" and "footwork and body". On film the hips,
+  chest and hand peaked together (0.150 s), a light's step glided past its plant, planted feet skated
+  7-30 cm through turns, the whirl skated its planted foot about a metre, and a landed hit changed
+  nothing in the body.
+- **Decision:** (1) A light's **step is shaped** (`TUNE.lungeShape`: push off, brake at the plant),
+  with the root filter's lag pre-compensated inside `_integrate` (`atk.shaped`, `svx`, `svz`).
+  (2) **The body leads:** the hips by 0.033 s, the chest by 0.017 s (`anim.leadK`, faded at a held
+  coil); anticipation and overshoot keys (body only); bow stances on the thrusts and falling cuts.
+  (3) **The bite** (`atk.hitAt`, per-def `bite`): through the freeze the blade holds where it bit, the
+  grip pulls in along it, the hips drop, the chest folds and the head nods; then it tears through over
+  0.08 s of the swing's clock. The cleave bites hardest (1.5) but folds neither chest nor head
+  (swings.js `fold` 0: its upright blade stands before his face). A guarded strike never bites.
+  (4) **Planted feet** pivot on the balls of the feet, the rear foot holds, drags its toe when
+  stretched and follows in one step; the return to stance moves the foot that stepped. (5) **The
+  whirl hops** (`spinFeet: 'hop'`): each foot is carried round from where it stands, tucked in the
+  air, and the turn overshoots ~14° and settles.
+- **Consequences:** a short click now steps the whole lunge (~35 % further than before in real play:
+  a feel check on the phone). The hit segment's far end moves up to 46 cm (lights) and 62 cm (whirl)
+  against before; REACH is unchanged (38 ok). `carry` stays a code option for the whirl, for an A/B.
+  HEROWEIGHT (W1-W11) guards the lead, the bite, the plant, the drag and the hop.
+
+## ADR-088 — A cut that lands where it is drawn (2026-11-14)
+- **Context:** a landed cut's effects were spawned at the hit test's point, on the upright, unleaned,
+  unscaled gameplay bodies: at the game camera they sat 13-65 px off both the drawn blade and the drawn
+  body, and a big white star hid both fighters in the freeze.
+- **Decision:** (1) The **drawn contact** (`player._contactPoint`): the drawn blade's stretch met with
+  the boss's drawn hurt spheres (`drawnPoint`, `drawScale`), moved onto the body; on a duelist it moves
+  with his shove. (2) **The contact effect** per weight (`combat.js` `contact`: light, sweep, point,
+  slam, cleave, execute; `cutFx.js`): a slash line laid along the cut, a tick across it on a crit or a
+  puncture, sparks thrown along the blade's travel. (3) **The steel:** a flare at contact
+  (`player.bladeFlare`), a glint up the leading edge, a flash along it held through the freeze.
+  (4) **The camera:** a kick along the cut (`cameraRig.kick`, sprung back in ~0.25 s; the mouse ray
+  leaves it out) and a punch on every landed cut. (5) **Sound:** a `cut` layer (a slice and a ring
+  per weight) over the body's hit; none for a guarded strike or a slam's shards. (6) A struck duelist
+  **shudders** through the freeze (drawn only; a sword cut's only; his trail pauses). (7) Cosmetic FX
+  noise draws from its own random streams, so effects never shift the AI's seeded stream.
+- **Consequences:** the lights' freezes are a hair longer (0.055 s, was 0.05). The particle pool peaks
+  at ~396 through a mashed chain (the arc trail dominates, as before). CUTFX checks the drawn contact
+  within 0.15 m of the drawn body in the frame the freeze holds.
+
+## ADR-089 — Outfits and sword looks as options until the owner picks (2026-11-14)
+- **Context:** the owner wanted a new look and asked to be shown options. The hero must stay distinct
+  from the Ash Disciple (no douli, no red tassel) and keep the moonlit cyan/violet longsword.
+- **Decision:** (1) Three outfits behind `?heroLook=` (gear/looks.js `HERO_LOOKS`; the `?lordLook=`
+  precedent): the **Moonlit Robe** (a high-low robe, violet sash, silver guan), the **Swallow** (a short
+  jacket, swallow tails, a moon scarf, bare forearms), the **Moon Warden** (lamellar, a left pauldron
+  and capelet, a headband and ribbon); each also as `<id>-shade` with the face in shadow (the lit faces
+  read as a gold disc at the game camera). Today's look stays the default. (2) Three sword looks behind
+  `?sword=` (gear/moonblade.js): **sheet** (a clean leaf blade on the swept guard), **ribbon** (the same
+  with a strip of the cloak's hem off the pommel), **crescent** (a silver crescent cradling the star
+  gem). (3) Supporting engine: per-rig tints (`tintHero`: one rig's materials, never the shared
+  uniforms), `setLoadout` restores the shared part ink even when the build throws, cloth `inMax` (no
+  swinging into the wearer) and `floor` (ends kept over the grass in a roll), shell arcs, data-built
+  sheets (`gear/sheet.js`).
+- **Consequences:** (superseded in part by ADR-090: the owner keeps all of them as options for later,
+  with today's look and sword as the default.) As first planned: after the picks the winners become the defaults, and the losers, both
+  switches, their Lab rows and the CLAUDE.md line go (a non-default sword also drops the `blade.*`
+  Blender parts). The tints recolour the hilt's trim and leather per outfit. LOOKS guards each look's
+  cost (≤ today's meshes, ≤ 26.6k triangles, ≤ 21 draws), its cloth above the grass and its colours on
+  its own rig.
+
+## ADR-090 — Arms that open and swing; the charged blade clear of his face; a fist that is a hand (2026-11-14)
+- **Context:** the owner on the preview of PR #29: "the right hand looks very disfigured", "when
+  charging, the sword is piercing the characters face", "something about the arms still feel
+  unnatural and stiff"; and the outfits: "keep the new skins for now to be used in the future. we
+  will use the current todays look for now as the default". Measured in the chest's own frame (the
+  drawn figure is sheared toward the camera and scaled: world angles lie): (1) the fist (`gripFist`,
+  every rig since ADR-041) was four thin discs with a plank across them: up close a spring, not a
+  hand. (2) In the charge the blade stood 0.10 m from the head's axis, 3-7 cm INSIDE the hood (the
+  hood's radius is 0.13-0.17 m): it leaned back toward a head that leans forward. (3) His clips ask
+  for the hand at 0.94-1.01 of the arm's length at a cut's contact and a thrust's end, and the soft
+  reach (ADR-044: `ARM_SOFT` [0.78, 0.955]) turned every one into an elbow of 124-130°: the arms
+  never opened. (4) On the run both elbows pointed 0.47-0.73 out to the side (arms akimbo from the
+  front) and the free arm was one rigid 87° crook; and the arms' swing followed the fore-aft move
+  direction alone, so strafing with the aim held elsewhere (most of a fight on the mouse, or locked
+  on) they hung still.
+- **Decision:** (1) **The fist:** finger rolls nearly as deep along the grip as they are apart (one
+  hand with shallow grooves) and a rounded back of the hand; for every rig. (2) **The charge:** the
+  hands lower and out to his right (`rH` −0.10, −0.11, 0.31), the blade leaning OUT (az −82°, not
+  back), less of a bow; the cleave's first keys match and wind back out over the shoulder. The blade
+  passes 25 cm from the head's axis through the hold and 21 cm through the release. (3) **The hero's
+  reach** (`HERO_SOFT` [0.93, 0.99], `opts.freeHand` only): the elbows open to 143-159° where a clip
+  asks for a full reach and never lock (163° at most); the sword arm blends back to `ARM_SOFT` by
+  `twoHand`, so the free hand can follow the grip (the slam's and the cleave's gaps are unchanged).
+  (4) **The run:** elbow poles back beside the ribs (rest too), the free hand's back swing reaches
+  down and back so the elbow opens behind him and folds in front (56° a stride), and the hand is
+  open on the move. The swing's sign is the fore-aft direction he last moved in, latched through
+  sideways and eased (`anim.armSign`), so the arms swing in a pure strafe (27 cm; 0 before) and do
+  not jump when the direction flips. The sword arm rides the stride backing away too. (4b) **The
+  guard** breathes and rides the walk (it was rigid from the hips up); **the way home** from a
+  swing starts earlier and lands on a smootherstep (both arms whipped home at 6-7 m/s and stopped
+  dead on one frame). (5) **The free hand:** sword fingers
+  1.15× (1.3× read as claws up close); the `wing` place slopes down from the shoulder (level, it made
+  a scarecrow of the whirl's and the flat backhand's finish). (6) **The outfits and sword looks stay**
+  as options behind their switches for later use; today's look and sword are the default (ADR-089's
+  "temporary" no longer holds).
+- **Consequences:** ADR-044's "the elbow keeps ~35° at a full stretch" now holds for the duelists
+  only; the hero keeps ≥ 15° (HERO asserts it; it was 23°). His sword hand reaches up to ~3 cm
+  further at a full stretch. `loco()` and `guard()` are shared with the duelists' footwork, so the
+  hero's free-arm numbers there are gated on `A.freeHand`: the Ash Disciple's running arm is
+  bit-identical to before (tucked in like the hero's, his sleeve ran into his ribs). A swing's
+  finish is held ~30 % shorter before he comes home. HEROARMS guards the rest pose, the run, a pure
+  strafe, the opening at contact, the lock bound and the charged blade's clearance.
+
 ## ADR-091 — A streak of perfect dodges is answered blow for blow: the flurry (2026-11-14)
 - **Context:** a perfect dodge had one answer for each kind of boss: the plunge onto the wyrm's head
   (ADR-027), a blink behind a duelist (ADR-061). The owner: "more different perfect dodge animations

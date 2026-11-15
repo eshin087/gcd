@@ -134,6 +134,8 @@ function build() {
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
     shake(a) { if (!Number.isFinite(a)) throw new Error('NaN shake'); this.cameraRig.addTrauma(a); },
+    punch(m) { if (!Number.isFinite(m)) throw new Error('NaN punch'); this.cameraRig.punch(m); },
+    kick(x, y, z, m) { if (!Number.isFinite(x + y + z + m)) throw new Error('NaN kick'); this.cameraRig.kick(x, y, z, m); },
   };
   const G = { game, input, counts: {}, counters, watch: null, hits: [], payload: new Set(), peakAdd: 0 };
   const emit = game.events.emit.bind(game.events);
@@ -352,6 +354,15 @@ async function scenarioLevel() {
     // one head: the hood over the faceplate (the owner's pick of three; the two helms are gone)
     const heads = LORD_ITEMS.filter((it) => it.slot === 'head');
     assert(heads.length === 1 && heads[0].id === 'lord.hood' && heads[0].hidesHair && heads[0].shadowsFace && LORD_LOADOUT.head === 'lord.hood', `one head item: ${heads.map((h) => `${h.id} "${h.name}"`).join(', ')}`);
+  }
+  // the hero's outfit switch (gear/looks.js) rebuilds his rig, which rewrites the shared per-part ink:
+  // the Lord's red part-19 line (his blades) is put back
+  {
+    const U = G.game.U, pl = G.game.player, snap = () => ['uHeroPartInk', 'uHeroPartFill', 'uHeroPartRim'].map((k) => U[k].value[19].toArray().join());
+    const s0 = snap();
+    pl.setLook('robe');
+    pl.setLook('shroud');
+    assert(snap().join('|') === s0.join('|') && U.uHeroPartInk.value[19].x > 1.5 && pl.look === 'shroud', "a hero outfit switch keeps the Lord's red part-19 line");
   }
   bad = 0;
   d.object3d.traverse((m) => { const pos = m.geometry?.attributes?.position; if (pos) for (const v of pos.array) if (!Number.isFinite(v)) bad++; });
@@ -736,16 +747,21 @@ async function scenarioBounds() {
   assert(outside === 0, `45 s of form 3 against a cornered hero: never off the floor (${outside} frames outside)`);
   assert(melee >= 3, `his blade reaches the corner (${melee} blows landed there)`);
   // every form, AI on, a hero who stands in the middle: no errors, no NaN (G.tick throws), the particle pool holds
-  let peak = 0;
+  // (and his free hand stays the duelists': rigid on the forearm, no wrist turn, no sword fingers;
+  // the hero's alone has them, anim.js opts.freeHand)
+  let peak = 0, wMin = 1, plain = true;
   for (let f = 1; f <= FORMS; f++) {
     const Gf = build();
     duel(Gf, { dist: 3, ai: true, form: f });
     Gf.game.player.debug.god = true;
-    run(Gf, 30);
+    const df = Gf.game.dragon;
+    run(Gf, 30, () => { wMin = Math.min(wMin, Math.abs(df.rig.arms.L.wrist.quaternion.w)); });
+    plain &&= df.anim.freeHand === false && df.rig.offHand?.fingers === undefined && Gf.game.player.anim.freeHand === true;
     peak = Math.max(peak, Gf.peakAdd);
     if (Gf.payload.size) assert(false, `form ${f}: finite event payloads (${[...Gf.payload].join(', ')})`);
   }
   assert(peak < 6500, `30 s of every form with the AI on: the additive particle pool peaks at ${peak} of 7000`);
+  assert(plain && wMin > 0.99999, `his free hand is a duelist's: no free-hand animator, no sword fingers, the wrist never turns (|w| ≥ ${wMin.toFixed(6)})`);
 }
 
 // ================================================================== scenario: flow

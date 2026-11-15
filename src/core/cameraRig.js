@@ -30,6 +30,9 @@ const FIT = {
 
 // the zoom punch (punch()): at most `max` m closer, easing back at `lambda` 1/s
 const PUNCH = { max: 6, lambda: 11 };
+// the directional kick (kick()): a damped spring (omega rad/s, zeta: one ~12 % overshoot, settled in
+// ~0.25 s), at most `max` m off on either screen axis, stepped in `sub` s sub-steps
+const KICK = { max: 0.5, omega: 30, zeta: 0.55, sub: 1 / 120 };
 
 export class CameraRig {
   constructor(camera) {
@@ -53,6 +56,12 @@ export class CameraRig {
     this.cine = { zoom: 0, x: 0, z: 0, w: 0 };
     // a zoom punch (punch()): metres the camera sits closer right now, springing back
     this.punchZ = 0;
+    // a directional kick (kick()): the camera's offset along the screen's right (kickX) and up (kickY)
+    // axes (m) and their velocities, springing back to 0
+    this.kickX = this.kickY = this.kickVX = this.kickVY = 0;
+    // the world translation the kick put on the camera this frame (0 without one): the mouse's ground
+    // point is taken from the camera without it (main.js), so aiming never wobbles with a landed cut
+    this.kickOff = new THREE.Vector3();
     this._cineFocus = new THREE.Vector3();
     // keep-in-view: this frame's subjects and the eased pan (fitX / fitZ, m) and zoom (fitZoom, m)
     this.fitX = 0;
@@ -83,6 +92,7 @@ export class CameraRig {
     this.focus.copy(focus);
     this.fitX = this.fitZ = this.fitZoom = 0;
     this.punchZ = 0;
+    this.kickX = this.kickY = this.kickVX = this.kickVY = 0;
     this._n = 0;
     this.distance = this.targetDistance + this._extra();
     this.update(0, focus);
@@ -98,6 +108,38 @@ export class CameraRig {
   punch(m) {
     if (!(m > 0)) return;
     this.punchZ = Math.min(PUNCH.max, this.punchZ + m);
+  }
+
+  /**
+   * A directional kick: the picture is thrown `m` metres (at the desktop distance; scaled for the
+   * phone's closer camera like the punch) along world direction (dx, dy, dz) as seen on screen, and
+   * springs back (one ~12 % overshoot, settled in ~0.25 s). Real time: it plays through a freeze.
+   * Stacks, clamped to KICK.max per axis. A landed cut (player.js). Non-finite or degenerate input
+   * does nothing.
+   */
+  kick(dx, dy, dz, m) {
+    if (!(m > 0) || !Number.isFinite(dx + dy + dz + m)) return;
+    const sx = dx, sy = dy * Math.cos(this.pitch) - dz * Math.sin(this.pitch), l = Math.hypot(sx, sy);
+    if (!(l > 1e-6)) return;
+    const k = (Math.min(m, KICK.max) * (this.defaultDistance / CONFIG.camera.distance)) / l;
+    this.kickX = clamp(this.kickX - sx * k, -KICK.max, KICK.max); // the camera moves against the blow …
+    this.kickY = clamp(this.kickY - sy * k, -KICK.max, KICK.max); // … so the picture is thrown along it
+  }
+
+  /** The kick's spring over dt (real s): semi-implicit Euler in KICK.sub sub-steps. */
+  _stepKick(dt) {
+    let T = Math.min(Math.max(Number.isFinite(dt) ? dt : 0, 0), 0.1);
+    const w = KICK.omega, z = KICK.zeta;
+    while (T > 1e-9) {
+      const h = Math.min(KICK.sub, T);
+      T -= h;
+      this.kickVX += (-w * w * this.kickX - 2 * z * w * this.kickVX) * h;
+      this.kickVY += (-w * w * this.kickY - 2 * z * w * this.kickVY) * h;
+      this.kickX += this.kickVX * h;
+      this.kickY += this.kickVY * h;
+    }
+    if (!Number.isFinite(this.kickX + this.kickY + this.kickVX + this.kickVY)) this.kickX = this.kickY = this.kickVX = this.kickVY = 0;
+    else if (Math.max(Math.abs(this.kickX), Math.abs(this.kickY), Math.abs(this.kickVX), Math.abs(this.kickVY)) < 1e-5) this.kickX = this.kickY = this.kickVX = this.kickVY = 0;
   }
 
   /** amount 0..1; stacks and decays. ~0.25 light hit, ~0.6 big slam. */
@@ -157,8 +199,20 @@ export class CameraRig {
     this._look.copy(this.focus);
     this._look.x += sx * 0.6;
     this._look.z += sz * 0.6;
+    // the kick: a translation along the screen's right / up axes (camera and look point together, so
+    // the view direction, and with it the figures' lean, is unchanged). This frame's offset is drawn
+    // before the spring steps: the kick's frame shows the whole throw
+    const K = this.kickOff;
+    K.set(0, 0, 0);
+    if (this.kickX || this.kickY) {
+      const cpi = Math.cos(this.pitch), spi = Math.sin(this.pitch);
+      K.set(this.kickX, this.kickY * cpi, -this.kickY * spi);
+      this.camera.position.add(K);
+      this._look.add(K);
+    }
     this.camera.lookAt(this._look);
     this.camera.updateMatrixWorld();
+    this._stepKick(dt);
     this.trauma = Math.max(0, this.trauma - dt * 1.6);
     this._n = 0; // keep() requests last one frame
   }

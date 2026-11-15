@@ -17,12 +17,31 @@ buildHero(U, {});                                         // the plain undersuit
 
 | File | What it holds |
 | --- | --- |
-| `index.js` | `SLOTS`, the `GEAR` registry, `registerItem`, `getItem`, `DEFAULT_LOADOUT`, `WANDERER_LOADOUT`, `BASE_LOADOUT`, `resolveLoadout` |
+| `index.js` | `SLOTS`, the `GEAR` registry, `registerItem`, `getItem`, `DEFAULT_LOADOUT`, `WANDERER_LOADOUT`, `BASE_LOADOUT`, `resolveLoadout`, `SWORD_PARAM` and `swordFromUrl()` (the `?sword=` pick, below) |
 | `shroud.js` | the Shrouded set (the default since ADR-043): hood, wrap tunic, bound sleeves, the tattered cloak (`SHROUD_SHEETS`: a narrow cape down his back and a drape on each arm, ADR-073). Built from `heroGeo.js` sheets only, no sculpted parts |
 | `wanderer.js` | the Wanderer's set, one item per slot, plus its data (`COAT_PANELS`, `CAPE_SHEETS`). Its legs, coat tails and sword are part of the default loadout |
 | `base.js` | the undersuit: fallback items for `chest`, `arms`, `legs` |
+| `moonblade.js` | the moon looks, for the owner's pick (2026-11-14): `moon.sheet` (the sheet's blade, built in code from a profile, `bladeGeometry(spec)`, on the longsword's swept guard with a silver rim round the pommel), `moon.ribbon` (the same with an unforked strip of the cloak's hem off the pommel: it echoes the Ash Disciple's tassel), `moon.crescent` (a silver crescent moon cradling the star gem in place of the swept quillons: it echoes the Starless Lord's crescents). `SWORD_LOOKS`, `SWORD_PARAM`, `MOONBLADE_ITEMS`. Each keeps the longsword's `dims` and its materials (part 17 flares). `?sword=today\|sheet\|ribbon\|crescent` (`swordFromUrl`, player.js) and the Lab's 'sword' row wear one. After the pick the winner becomes `wanderer.sword` (its build replaces `buildSword`) and the others, `SWORD_PARAM` and `swordFromUrl` go; a winner that is not today's also drops the `blade.*` parts from hero_parts.py / heroParts.js |
+| `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls (one hand for every outfit) |
+| `sheet.js` | `hangSheet(ctx, parent, d, mats)`: one cloth sheet or ribbon on the streamer springs, from data; `panelSkirt(ctx, PANELS, { seed })`: a skirt of coat panels on the pelvis |
+| `looks.js` | the outfit options (kept for later use: the owner, 2026-11-14, keeps today's look as the default): `HERO_LOOKS` (id → `{ id, name, loadout, tint, of? }`; each new look also as `<id>-shade`, its face in shadow, `of` = the lit look), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
+| `moon.js`, `swallow.js`, `warden.js` | the three outfit options' items, loadouts (`MOON_LOADOUT`, ...) and colours (`MOON_TINT`, ...): the Moonlit Robe, the Swallow, the Moon Warden |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |
+
+### Outfit options (kept for later; today's look is the default)
+
+An outfit option is a loadout plus its colours: a `tint` (`{ <HERO_INK name>: { fill?, ink?,
+emissive?, spec?, rim?, sub?, inkGlow?, glowK? } }`) that `tintHero(rig.materials, tint)` (`model.js`)
+writes on ONE rig's material instances. A tint never names `skin`, `eye`, `blade`, `bladeTip`, `gem`
+or `flask`, and never touches the shared `U.*` (the per-part ink every rig on the page reads; the
+bosses build from `HERO_INK` too). To add one: a file here with its items (`<set>.<piece>` ids, built
+from `heroGeo.js`, `sheet.js` and `hands.js`), registered in `index.js`'s loop; a `HERO_LOOKS` entry
+in `looks.js`. A look whose bare head may read as a "gold face" at the game camera also gets a
+shaded twin: a second head item with `shadowsFace: true` (same `build`), a `<id>-shade` entry with
+`of: '<id>'`. `?heroLook=<id>` wears it, the Lab's OUTFIT row switches it live. Once the owner picks
+one, `looks.js`, the switch and the losing options go and the pick becomes `DEFAULT_LOADOUT` (its
+tint applied beside it).
 
 ## Slots
 
@@ -34,7 +53,7 @@ gets the `base.*` item for it. Any other slot may be empty.
 | `head` | helmets, hoods, masks. Hair, face and neck are the body, not gear; an item with `hair: [...]` keeps only those pieces of the hair (`'cap'` and `HAIR_CLUSTERS` names), `hidesHair: true` none of it; `shadowsFace: true` puts the face and neck in the item's shadow (near-black, no eyes) | `head` | `shroud.hood` (keeps the cap, builds its own gold strands, shadows the face) |
 | `chest` | the torso from the hips' top (1.09 m) to the collar: shell, shirt, buttons, belts, baldric, lapels, collar, yoke, emblem | `spine`, `chest` | `shroud.tunic` |
 | `shoulders` | shoulder armour: the pauldron on its own joint, and any lames riding on the upper arms | `pauldron`, `arms.R.upper`, `arms.L.upper` | none (`wanderer.pauldron` in the Wanderer's set) |
-| `arms` | both arms from the shoulder joint to the hand: sleeves, deltoid caps, vambrace / bracer, gauntlet / glove (the hands), elbow and wrist points. The SWORD hand's fist (`gripFist`) hangs on the `sword` joint, the grip's own frame, so it closes round the grip in every pose; it belongs to this slot, not to `weapon` | `arms.{R,L}.{upper,fore}`, `sword` (the fist) | `shroud.arms` |
+| `arms` | both arms from the shoulder joint to the hand: sleeves, deltoid caps, vambrace / bracer, gauntlet / glove (the hands), elbow and wrist points. The SWORD hand's fist (`gripFist`) hangs on the `sword` joint, the grip's own frame, so it closes round the grip in every pose; it belongs to this slot, not to `weapon` | `arms.{R,L}.{upper,fore}`, `arms.L.wrist` (the free hand), `sword` (the fist) | `shroud.arms` |
 | `legs` | hips, thighs, shins, feet, and what is strapped to them: hip straps, knee straps, boots, greaves, knee guards | `pelvis`, `legs.{R,L}.{thigh,shin,foot}` | `wanderer.legs` |
 | `waist` | cloth hanging from the belt line: skirt panels, tassets | `pelvis` | `wanderer.skirt` |
 | `back` | cloaks and capes | `chest`, and `arms.{R,L}.upper` for sheets draped over an arm | `shroud.cloak` |
@@ -96,8 +115,8 @@ The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 
 | Handle | From | Shape |
 | --- | --- | --- |
 | `coat` | `waist` | array of panels `{ anchor, segs: [upper, lower], def, strips, len: [upper, lower], r0 }` (below) |
-| `streamers` | `back` | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm? }` (below) |
-| `offHand` | `arms` | `{ open, grip }`: the free hand open on the left forearm, and the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint); the animator shows one or the other with `twoHand` |
+| `streamers` | any (a weapon's own: `weapon`) | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm?, wrap?, inMax?, floor?, weapon? }` (below) |
+| `offHand` | `arms` | `{ open, grip, fingers? }`: the free hand open, the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint), and (optional) the sword fingers (`swordFingers`). Hang `open` and `fingers` on `arms.L.wrist` in wrist space (the hero's animator turns that joint) and put all three in `keep`; the animator shows one of them (`twoHand` and the hand's distance from the grip, the pose's `hs`). Build it with `buildFreeHand(ctx)` (`hands.js`): it does all of that |
 | `gem` | `weapon` | an Object3D on the weapon whose world position is where the gem glows |
 | `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`) |
 | `keep` | any | meshes of yours that must not be merged (see "Merging") |
@@ -146,23 +165,38 @@ any item:
 - **Coat panels** (`coat`). Each panel is `anchor` (a joint on the `pelvis`, yawed to `def.az`,
   local +Z outward) → `segs[0]` → `segs[1]` → `strips[k].joint`, exactly two segments.
   `def` needs `az`, `w: [top, join, hem]`, `len: [upper, lower]`, and may set `flare`, `skew`,
-  `flap`; `len` is the pair of spring lengths, `r0` the anchor's distance from the pelvis axis;
-  each strip is `{ joint, len, rest, phase }`. The idle breeze has per-panel values for the first
-  six panels (`IDLE_FLARE`); later ones get none. `COAT_PANELS` in `wanderer.js` is the worked
-  example.
+  `flap`, and its own idle stir `breeze` / `idleFlare` (else the tables'); `len` is the pair of
+  spring lengths, `r0` the anchor's distance from the pelvis axis; each strip is
+  `{ joint, len, rest, phase }`. The idle breeze has per-panel values for the first six panels
+  (`BREEZE` / `IDLE_FLARE`); later ones get none unless they set their own. `COAT_PANELS` in
+  `wanderer.js` is the worked example; `panelSkirt` (`sheet.js`) builds a skirt from such a table
+  (plus `hemFrom`: 0..1 down the lower sheet where the pale `hem` takes over).
 - **Streamers** (`streamers`). Two-segment springs: `segs[0]` at the root, `segs[1]` at
   `−len[0]` below it; `out` is the resting outward flare; `lag` (default 1) scales how far the
   sheet trails the motion: 1 is a light ribbon that streams out level at a run, the cloak uses 0.5;
-  `max` (default 2.6 rad) is how far a segment may swing from hanging, the cloak uses 1.45.
+  `max` (default 2.6 rad) is how far a segment may swing from hanging, the cloak uses 1.45;
+  `inMax` ([root, tip] rad, + = toward the wearer) caps how far each segment may swing IN (a head
+  ribbon or a scarf off the back that must not swing into him; negative = always at least that far
+  out; not applied while he lies down); `wrap` is the radius the sheet curves round at its root
+  (the tests model the sheet with it); `floor: true` keeps its ends over the grass while he rolls or
+  falls (a head ribbon: the forward roll puts his crown at the grass; a lagging end is eased back
+  out, never snapped). Any slot may return streamers.
+  `weapon: true` marks a weapon's own streamer (the moon ribbon off the pommel): the tests count
+  the cloak's sheets without it.
   The root may hang on any joint (the cloak drapes one sheet over each upper arm). Give `w` (the
   widths [root, seam, hem]) so the animator can keep the sheet off the blade (ADR-048: spheres along
   the steel), and `arm` (1 / 2 for a sheet on the right / left upper arm). The arms do not push the
   cloth: a cloak hangs over its wearer's arms (holding the sheets out round them made the figure
   wide from behind).
-- **The arms.** `_arm` compresses the last fifth of each arm's reach (ADR-044), so a hand target at
-  full stretch is reached with the elbow bent ~35°: model sleeves and hands for a bent arm, and do
-  not rely on a pose locking the elbow. Every swing and the block are two-handed (ADR-046): the
-  free hand spends a lot of time on the grip, so return `offHand` if the item draws hands.
+- **The arms.** `_arm` compresses the last of each arm's reach (ADR-044), so a hand target at
+  full stretch is reached with the elbow still bent (~35° for a duelist; the hero's arms open
+  further, ~20-30°, ADR-090): model sleeves and hands for a bent arm, and do not rely on a pose
+  locking the elbow. The heavy blows, the charge and the block are two-handed
+  (ADR-071): the free hand spends time on the grip, so return `offHand` if the item draws hands.
+  The free hand turns on its wrist (`arms.L.wrist`: sword fingers, a point, a palm braced on the
+  grass): hang the open hand and the sword fingers there, keep the forearm's own meshes on
+  `arms.L.fore` (a flask or a bracer stays on the forearm), and keep the left wrist clear of a
+  drape so the pale hand reads on its own.
 - **The weapon.** The animator's ground clamp and blade-in-body checks (`steelTip`, `forte`,
   `drawnTip`), the hit segment in `combat.js` (`bladeBase`, `bladeTip`) and the sword FX in `fx.js`
   (`forte`, `drawnTip`) read the sword's numbers from `DIM`. The weapon item carries a copy of
