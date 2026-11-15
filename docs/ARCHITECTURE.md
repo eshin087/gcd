@@ -747,7 +747,8 @@ flurry's strikes and the cleave keep the paths above): (1) the clip leaves `A.fr
 velocity: `HeroAnimator` keeps `vel` (per channel, per s: this frame's pose − the last one's,
 angles wrapped) and `play('attack')` copies it to `fromV` (× smoothstep of the point's speed over
 `SW_DRIFT`: a slower drift does not steer the windup) and steps `from` one frame on along it (the
-legs excepted), so the attack's first frame, at its clock's 0, does not stand still; each track's
+legs excepted; the blade from its DRAWN direction, `rig.sword`, which the clearance outside the
+attacks may have bent), so the attack's first frame, at its clock's 0, does not stand still; each track's
 entry tangent is `fromV` × the windup's length (`T.M0`), the blade's its azimuth / elevation rates:
 from rest it eases in, out of a follow-through it carries on; (2) the sword hand and the blade
 (`T.blade`: `rH`, `rP`; `swingDir`) run on the visible cut's clock, `cutPhase` through four knots:

@@ -3193,6 +3193,14 @@ export class HeroAnimator {
     const ak = this.player?.atk?.def?.kind;
     const inert = this.freeHand && key === 'attack' && this.velOk && (ak === 'light' || ak === 'slam');
     if (inert) {
+      // (from the blade as it was DRAWN, not as posed: outside the attacks the legs' and the ground's
+      // clearance bend it, and the roll's point drags in the grass; starting from the posed blade
+      // jumped the point 16 m/s on the roll cut's first frame as the clearance let go)
+      const sq = this.rig.sword?.quaternion;
+      if (sq) {
+        _v.set(0, 0, 1).applyQuaternion(sq);
+        if (Number.isFinite(_v.x + _v.y + _v.z)) v3(this.from, P.swD, _v.x, _v.y, _v.z);
+      }
       // (a drift under SW_DRIFT m/s at the point, a thrust creeping on at full stretch, does not steer
       // the windup's first frames: it starts from rest the way it goes)
       const V = this.vel, sp = SW_BLADE * Math.hypot(V[P.swD], V[P.swD + 1], V[P.swD + 2]) + Math.hypot(V[P.rH], V[P.rH + 1], V[P.rH + 2]);
