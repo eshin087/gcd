@@ -6,7 +6,7 @@ import { GlyphParticles } from '../render/particles.js';
 import { mulberry32, range, fbm2, hash2 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
-import { prep, lumpy, paint, carve, slabGeometry, mul, SLAB_LOOK, buildDeadTree, buildBoulder, buildFlagstone, buildBonfire } from './forest.js';
+import { prep, lumpy, paint, carve, slabGeometry, mul, SLAB_LOOK, buildDeadTree, buildBoulder, buildFlagstone, buildBonfire, buildRubble, geosHeight } from './forest.js';
 import { buildWarden, buildGreatSword, carved } from './landmarks.js';
 
 // TEMPORARY (phase 1 of the open Obsidian Throne): three open arenas for the owner to pick from,
@@ -45,13 +45,26 @@ function makeKit(seed) {
   return {
     rng: mulberry32(CONFIG.seed + seed), stone: [], slab: [], prop: [], tree: [], slabs: [], bare: [], treeSpots: [],
     glow: [], fires: [], breakables: [],
+    br: mulberry32(CONFIG.seed + seed + 7001), // the rubble left by broken pieces: a stream of its own
   };
 }
 
-/** A free-standing thing that can later be chipped, toppled, lifted and thrown: its own entry. */
-function thing(K, colliders, kind, mat, x, z, r, h, geos, mesh = 'stone') {
-  K.breakables.push({ kind, mat, x, z, r, h, geos, mesh });
-  if (r > 0) colliders.add(x, z, r, 'stone');
+/**
+ * A free-standing thing that can be chipped, toppled, lifted and thrown: one entry of the set's
+ * `breakables` (ARCHITECTURE.md "Destruction"; world/destructibles.js builds and draws it, so its
+ * geometry is NOT merged into the static meshes). `mesh`: 'stone' = carve() geometry (prop art),
+ * 'prop' = paint() geometry. extra: any field of the contract, plus `stub: false` (nothing is left
+ * standing when it breaks) and `more` (further collider circles that belong to it).
+ */
+function thing(K, colliders, kind, mat, x, z, r, h, geos, mesh = 'stone', extra = {}) {
+  const { stub = mat === 'stone', more = [], ...rest } = extra;
+  const cs = r > 0 ? [colliders.add(x, z, r, 'stone')] : [];
+  const rr = r > 0 ? r : 0.6;
+  K.breakables.push({
+    kind, mat, look: mesh === 'prop' ? 'grid' : 'prop', x, z, r: rr, h: geosHeight(geos), geos, colliders: [...cs, ...more],
+    ...(stub ? { broken: { geos: buildRubble(K.br, x, z, rr * 0.85, { col: mul(OBS, 1.4), h: range(K.br, 0.35, 0.65) }), look: 'prop', r: rr * 0.7 } } : {}),
+    lift: 2, ...rest,
+  });
 }
 
 /** A polygon slab (pts round its own centre), tilted a little, carved; pushed onto the floor. */
@@ -182,8 +195,8 @@ function brazier(K, colliders, x, z, y0 = 0) {
   const bowl = prep(new THREE.CylinderGeometry(0.52, 0.26, 0.36, 8, 1));
   bowl.translate(x, y0 + 1.3, z);
   for (const g of [post, bowl]) paint(g, { col: IRON, flag: FLAG.ART_PROP, ao: 0.9 });
-  thing(K, colliders, 'brazier', 'metal', x, z, 0.45, 1.5, [post, bowl], 'prop');
-  K.fires.push({ x, y: y0 + 1.5, z, kind: 'brazier' });
+  thing(K, colliders, 'brazier', 'metal', x, z, 0.45, 1.5, [post, bowl], 'prop', { topples: false });
+  K.fires.push({ x, y: y0 + 1.5, z, kind: 'brazier', of: 'brazier' });
 }
 
 /** The seal: the centre of the duel (the hall's inlay, unchanged). */
@@ -275,7 +288,6 @@ const acc = (o, key, dt, rate, fn) => {
 
 /** Meshes, the ambience and the set's return value. */
 function finish(K, U, name, L, { inArena, grass, lights = true }) {
-  for (const b of K.breakables) (b.mesh === 'prop' ? K.prop : K.stone).push(...b.geos);
   const group = new THREE.Group();
   group.name = name;
   const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
@@ -331,8 +343,17 @@ function finish(K, U, name, L, { inArena, grass, lights = true }) {
       glowSys?.update(dt, game.time);
       const fx = game.fx?.add;
       if (!fx) return;
+      const D = game.world?.destructibles;
       for (const b of fires) {
         const vent = b.kind === 'vent', wisp = b.kind === 'wisp';
+        if (b.of && D?.list) {
+          // (bound once: the breakable this flame sits on)
+          if (b.piece === undefined) b.piece = D.list.find((o) => o.kind === b.of && Math.hypot(o.x - b.x, o.z - b.z) < 0.2) ?? null;
+          const out = !!b.piece && b.piece.state !== 0;
+          if (b.light && out !== !!b.out) b.light.intensity = out ? 0 : 2.5;
+          b.out = out;
+          if (out) continue;
+        }
         acc(b, 'fire', dt, wisp ? 5 : vent ? 20 : 24, () => {
           const a = Math.random() * TAU, r = Math.random() * (vent ? 0.55 : wisp ? b.r ?? 0.6 : 0.3), hot = Math.random();
           fx.spawn({
@@ -359,6 +380,7 @@ function finish(K, U, name, L, { inArena, grass, lights = true }) {
   return {
     group, treeSpots: K.treeSpots, bare: K.bare, slabs: K.slabs, nest: { x: L.throne.x, z: L.throne.z }, bonfire: { x: L.bonfire.x, z: L.bonfire.z },
     material: mat, stoneMaterial: stoneMat, slabMaterial: slabMat, grass, sky: SKY, ambience, breakables: K.breakables,
+    scarInk: [0.5, 0.05, 0.03], // cracks in the black floor glow like embers (the default dark ink would not show)
   };
 }
 
@@ -416,7 +438,8 @@ function createStarfall(U, colliders) {
     const g = glass
       ? crystal(rng, x, z, { h: h * 1.1 + 0.6, r: 0.3 + h * 0.1, lean, yaw })
       : spike(rng, x, -0.2, z, { h, w, d: dd, tip: range(rng, 0.1, 0.36), lean, yaw, col: facetCol(OBS, 1.3), lump: 0.1 });
-    thing(K, colliders, glass ? 'shard' : 'slab', 'stone', x, z, h > 1.3 ? 0.85 : 0, h, [g]);
+    if (h > 1.3) thing(K, colliders, glass ? 'shard' : 'slab', 'stone', x, z, 0.85, h, [g]);
+    else K.stone.push(g); // (low rubble of the rim: scenery)
     if (rng() < 0.5) K.stone.push(...rubble(rng, x - Math.sin(a) * 1.2, z + Math.cos(a) * 1.2, 1.1, 3));
   }
 
@@ -434,8 +457,9 @@ function createStarfall(U, colliders) {
   }
   // ---- stones the Void still holds off the ground
   for (const [x, y, z, r] of [[-12.6, 3.4, -3.0, 1.0], [13.4, 4.2, -5.8, 1.25], [-8.8, 5.2, -10.4, 0.9], [9.2, 4.6, -11.0, 1.1], [14.2, 2.8, 4.8, 0.8], [-14.0, 2.5, 4.2, 0.7]]) {
-    thing(K, colliders, 'hover', 'stone', x, z, 0, y + r, hoverRock(rng, x, y, z, r));
-    K.fires.push({ x, y: 0.1, z, kind: 'wisp', r: r * 0.8 });
+    // (in the air: no collider, no cover, it only chips; it is there for him to throw)
+    thing(K, colliders, 'hover', 'stone', x, z, 0, y + r, hoverRock(rng, x, y, z, r), 'stone', { hp: Infinity, cover: false, topples: false, stub: false });
+    K.fires.push({ x, y: 0.1, z, kind: 'wisp', r: r * 0.8, of: 'hover' });
   }
   // ---- vents: pits where the star still burns under the floor (the arena's light)
   for (const [x, z] of [[-8.6, -1.6], [8.8, 0.2], [-7.0, 10.2], [8.4, 6.4]]) {
@@ -497,7 +521,7 @@ function createBladeGrave(U, colliders) {
     [14.2, -7.4, 1.2, -0.22, -0.25], [17.6, 0.6, 1.0, 0.16, 0.45], [11.8, -13.8, 1.35, -0.08, -0.1], [20.2, -11, 1.05, -0.32, -0.7],
     [-16.2, 9.4, 0.62, 0.34, 0.2], [16.4, 10.2, 0.56, -0.3, -0.3],
   ]) {
-    thing(K, colliders, 'greatsword', 'metal', x, z, 0.9 * s, 9 * s, sword(x, z, s, lean, yaw, true));
+    thing(K, colliders, 'greatsword', 'metal', x, z, 0.9 * s, 9 * s, sword(x, z, s, lean, yaw, true), 'stone', { stub: true });
   }
   // ---- the fallen's own blades, planted through the fighting space (he calls them out and throws them)
   const planted = [];
@@ -637,7 +661,7 @@ function createBrokenHall(U, colliders) {
     return g;
   };
   K.stone.push(arc(-0.45, 1.12), arc(1.72, Math.PI + 0.45));
-  thing(K, colliders, 'ringpiece', 'stone', 9.4, T.z + 1.2, 1.5, 1.6, [arc(1.16, 1.66, { flat: true, x: 9.4, z: T.z + 1.2, yaw: 0.5 }), ...rubble(rng, 8.6, T.z + 2.4, 1.6, 6)]);
+  thing(K, colliders, 'ringpiece', 'stone', 9.4, T.z + 1.2, 1.5, 1.6, [arc(1.16, 1.66, { flat: true, x: 9.4, z: T.z + 1.2, yaw: 0.5 }), ...rubble(rng, 8.6, T.z + 2.4, 1.6, 6)], 'stone', { topples: false });
   for (const sx of [-1, 1]) colliders.add(T.x + sx * RR, zc, 1.3, 'stone');
   for (let a = -0.3; a < Math.PI + 0.3; a += 0.085) {
     if (a > 1.12 && a < 1.72) continue;
@@ -654,8 +678,8 @@ function createBrokenHall(U, colliders) {
     rows[sx].forEach((d, i) => {
       const x = sx * L.pillarX, z = PZ[i];
       if (d.fallen !== undefined) {
-        thing(K, colliders, 'pillar', 'stone', x, z, 0.9, 1.2, fallenPillar(rng, x, z, d.len, d.fallen));
-        for (const f of [0.3, 0.55, 0.85]) colliders.add(x + Math.sin(d.fallen) * d.len * f, z + Math.cos(d.fallen) * d.len * f, 0.62, 'stone');
+        const more = [0.3, 0.55, 0.85].map((f) => colliders.add(x + Math.sin(d.fallen) * d.len * f, z + Math.cos(d.fallen) * d.len * f, 0.62, 'stone'));
+        thing(K, colliders, 'pillar', 'stone', x, z, 0.9, 1.2, fallenPillar(rng, x, z, d.len, d.fallen), 'stone', { topples: false, more });
         return;
       }
       const geos = pillar(rng, x, z, d);
@@ -670,15 +694,15 @@ function createBrokenHall(U, colliders) {
     K.stone.push(box(1.3, 3.6, 3.4, sx * (L.halfX + 1.1), 0, L.zN + 0.6, { col: obs(1.2), seg: 3 }), box(3.2, 2.2, 1.3, sx * (L.halfX - 0.6), 0, L.zN - 1.2, { col: obs(1.2), seg: 2 }));
     colliders.add(sx * (L.halfX + 1.1), L.zN + 0.6, 1.4, 'stone');
     // the door's stumps: the threshold
-    thing(K, colliders, 'stump', 'stone', sx * 3.1, L.zS + 1.1, 0.8, 1.1, [box(1.3, range(rng, 0.8, 1.2), 1.4, sx * 3.1, 0, L.zS + 1.1, { col: obs(1.5) }), ...rubble(rng, sx * 4.4, L.zS + 1.3, 0.9, 4)]);
+    thing(K, colliders, 'stump', 'stone', sx * 3.1, L.zS + 1.1, 0.8, 1.1, [box(1.3, range(rng, 0.8, 1.2), 1.4, sx * 3.1, 0, L.zS + 1.1, { col: obs(1.5) }), ...rubble(rng, sx * 4.4, L.zS + 1.3, 0.9, 4)], 'stone', { topples: false, stub: false });
   }
   // ---- the wardens on the flanks, turned to the seal; the great swords beyond the pillars
   for (const sx of [-1, 1]) {
     const x = sx * 13.6, z = -4.4;
-    thing(K, colliders, 'warden', 'stone', x, z, 2.2, 9.5, carved(buildWarden(lr, x, z, -sx * 0.5, 1.15)));
+    thing(K, colliders, 'warden', 'stone', x, z, 2.2, 9.5, carved(buildWarden(lr, x, z, -sx * 0.5, 1.15)), 'stone', { hp: Infinity, lift: 0, topples: false, stub: false }); // (it only chips)
     for (const [i, zz] of [-13.5, 4.6].entries()) {
       const gx = sx * (12.2 + i * 2.6);
-      thing(K, colliders, 'greatsword', 'metal', gx, zz, 0.9, 8, carved(buildGreatSword(lr, gx, zz, sx * 0.25, 1.05 - i * 0.2, { lean: sx * (0.14 + 0.1 * i) * (i ? -1 : 1) })));
+      thing(K, colliders, 'greatsword', 'metal', gx, zz, 0.9, 8, carved(buildGreatSword(lr, gx, zz, sx * 0.25, 1.05 - i * 0.2, { lean: sx * (0.14 + 0.1 * i) * (i ? -1 : 1) })), 'stone', { stub: true });
     }
   }
   for (const [x, z] of [[-4.6, -8.6], [4.6, -8.6], [-11.2, 6.4], [11.2, 6.4]]) brazier(K, colliders, x, z);
