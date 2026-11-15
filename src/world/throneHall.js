@@ -296,6 +296,8 @@ export function createThroneHall(U, colliders) {
     }
     st.shown = st.flare;
   };
+  // a brazier flame's blob of heat (reused: no per-spawn object)
+  const blob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.6, size: 0.8, sizeEnd: 0.25, heat: 0.28, heatEnd: 0, drag: 1.2, gravity: 1, kind: 'fire' };
   const ambience = {
     setup(game) {
       // the inlay: glyphs that stay where they are, in one additive batch of their own
@@ -320,15 +322,29 @@ export function createThroneHall(U, colliders) {
       glowSys?.update(dt, game.time);
       const fx = game.fx?.add;
       if (!fx) return;
+      const fire = game.fx?.fire;
       for (const b of braziers) {
-        acc(b, 'fire', dt, 24, () => {
-          const a = Math.random() * TAU, r = Math.random() * 0.3, hot = Math.random();
+        // the flame: heat in the fire field (render/fireField.js). Few, cool blobs: they sum to a
+        // low body that prints in the red end of the fire's colours (the hall's light is red)
+        if (fire) {
+          acc(b, 'fire', dt, 16, () => {
+            const a = Math.random() * TAU, r = Math.random() * 0.25;
+            blob.x = b.x + Math.cos(a) * r; blob.y = b.y + 0.15 + Math.random() * 0.15; blob.z = b.z + Math.sin(a) * r;
+            blob.vx = (Math.random() - 0.5) * 0.25; blob.vy = 1.0 + Math.random() * 1.1; blob.vz = (Math.random() - 0.5) * 0.25;
+            blob.life = 0.45 + Math.random() * 0.5;
+            blob.size = 0.7 + Math.random() * 0.25;
+            fire.spawn(blob);
+          });
+        }
+        // sparks off it
+        acc(b, 'spark', dt, 12, () => {
+          const a = Math.random() * TAU, r = Math.random() * 0.3;
           fx.spawn({
-            x: b.x + Math.cos(a) * r, y: b.y + Math.random() * 0.12, z: b.z + Math.sin(a) * r,
-            vx: (Math.random() - 0.5) * 0.25, vy: 1.1 + Math.random() * 1.2, vz: (Math.random() - 0.5) * 0.25,
-            life: 0.4 + Math.random() * 0.5, size: 0.3 + hot * 0.16, sizeEnd: 0.05, glyph: "*^'`\"~%",
-            color: [3.4, 0.5 + hot * 0.4, 0.28], colorEnd: [0.8, 0.03, 0.03], alpha: 1, alphaEnd: 0,
-            drag: 1.2, flicker: 0.25, spin: (Math.random() - 0.5) * 2,
+            x: b.x + Math.cos(a) * r, y: b.y + 0.2 + Math.random() * 0.3, z: b.z + Math.sin(a) * r,
+            vx: (Math.random() - 0.5) * 0.7, vy: 1.2 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 0.7,
+            life: 0.7 + Math.random() * 0.7, size: 0.13, sizeEnd: 0.04, glyph: ".'`",
+            color: [3.0, 0.5, 0.2], colorEnd: [0.6, 0.03, 0.02], alpha: 1, alphaEnd: 0,
+            drag: 0.6, flicker: 0.5,
           });
         });
       }

@@ -1,10 +1,14 @@
-// Glyph FX of the bullet-hell projectiles and the fire wheel (bullets.js). Plain functions over the
-// wyrm's DragonFx instance (`fx`): they reuse its spawn record (_rec / _col), held-mark timer
-// (_hold), pooled lights (_light) and the shared additive glyph pool, so nothing here allocates per
-// frame. Only atlas glyphs (tests/glyphcheck.mjs).
+// FX of the bullet-hell projectiles and the fire wheel (bullets.js). Plain functions over the
+// wyrm's DragonFx instance (`fx`): they reuse its spawn records (_rec / _col, _blob), held-mark timer
+// (_hold), pooled lights (_light), the shared additive glyph pool and the fire field, so nothing
+// here allocates per frame. Only atlas glyphs (tests/glyphcheck.mjs).
+//
+// What is fire burns in the fire field (render/fireField.js): the ember bullets, the muzzle puffs,
+// the Scouring breath and its tongues. The wisp and the orb stay glyph marks: their colours are
+// combat signals (blue-white = homing, red = dodge only) and the field has no such kind.
 //
 // The three bullets read apart by colour AND shape (docs/STYLE.md "Bullets"):
-//   ember  gold-orange '*' with a short ember tail            (parry / block / roll / cut)
+//   ember  a small ball of fire round a gold '*', a burning tail (parry / block / roll / cut)
 //   wisp   blue-white 'o' in a pale '@' halo, a '~' wake      (homing: parry / cut)
 //   orb    red '@' in a turning 'O' ring, a '!' / '#' tail    (dodge only)
 
@@ -25,10 +29,7 @@ const STREAK = '-';
 const GLINT_PLUS = '+';
 const GLINT_STAR = '*';
 const WARN_MARK = '!';
-const FLAME_TALL = '^*#%&';
-const BEAM_CORE = '#';
 const PUFF = '*^~';
-const RETURN_HALO = 'O';
 
 const RED = TELL_STYLE.red.color;
 const GOLD = [4.4, 2.5, 0.6];
@@ -74,19 +75,29 @@ export function drawBullet(fx, b, dt) {
       o.rot = -b.t * 2 + b.seed;
       fx._spawn(fx.add, o);
     } else {
-      // (an ember still gathering before its launch is smaller and flickers)
+      // an ember: a small ball of fire (a yellow heart in an orange skin) round a gold point that
+      // marks exactly where it is (an ember still gathering before its launch is smaller and flickers)
       const k = b.launched ? 1 : 0.6 + 0.25 * Math.sin(b.t * 30 + b.seed);
+      fx._blob(b.x, b.y, b.z, 0, 0, 0, life, (b.launched ? 1.05 : 0.8) * pulse, 1.05 * pulse, 1.15 * dim * k, 1.15 * dim * k);
       fx._col(GOLD, dim * k, GOLD, dim * k);
-      o = fx._rec(b.x, b.y, b.z, life, 0.66 * pulse * (b.launched ? 1 : 0.75), 0.66 * pulse, EMBER_CORE);
+      o = fx._rec(b.x, b.y, b.z, life, 0.3 * pulse, 0.3 * pulse, EMBER_CORE);
       o.alphaEnd = 1;
       o.rot = b.t * 5 + b.seed;
       fx._spawn(fx.add, o);
     }
   }
-  b.acc += dt * (b.kind === 2 ? 14 : 10);
+  b.acc += dt * (b.kind === 2 ? 14 : b.kind === 1 ? 10 : 26);
   while (b.acc >= 1) {
     b.acc -= 1;
     let o;
+    if (b.kind === 0) {
+      // the heat it sheds: a short burning tail (and now and then an ember)
+      fx._blob(
+        b.x + rand(-0.08, 0.08), b.y + rand(-0.08, 0.08), b.z + rand(-0.08, 0.08), b.vx * 0.12, rand(0.2, 0.9), b.vz * 0.12,
+        rand(0.2, 0.32), 0.7, 0.25, 0.4 * dim, 0, 2, 1,
+      );
+      if (Math.random() > 0.3) continue;
+    }
     if (b.kind === 2) {
       fx._col(RED, 0.9 * dim, RED, 0.2);
       o = fx._rec(b.x + rand(-0.2, 0.2), b.y + rand(-0.2, 0.2), b.z + rand(-0.2, 0.2), rand(0.25, 0.4), 0.55, 0.12, ORB_TAIL);
@@ -96,7 +107,7 @@ export function drawBullet(fx, b, dt) {
       o.rot = rand(-0.5, 0.5);
     } else {
       fx._col(ORANGE, dim, DARK, 1);
-      o = fx._rec(b.x + rand(-0.08, 0.08), b.y + rand(-0.08, 0.08), b.z + rand(-0.08, 0.08), rand(0.22, 0.34), 0.34, 0.06, EMBER_TAIL);
+      o = fx._rec(b.x + rand(-0.08, 0.08), b.y + rand(-0.08, 0.08), b.z + rand(-0.08, 0.08), rand(0.22, 0.34), 0.26, 0.06, EMBER_TAIL);
       o.vy = rand(0.2, 0.9);
       o.flicker = 0.4;
     }
@@ -133,28 +144,33 @@ export function drawReturned(fx, b, dt, size = 1.8) {
   const life = fx._hold(b, 'hold', dt);
   const s = b.kind === 1 ? 1.1 * size : size;
   if (life > 0) {
+    // a ball of fire `size` x a bullet's, white-hot through and through, round a white point
+    fx._blob(b.x, b.y, b.z, 0, 0, 0, life, 1.0 * s, 1.0 * s, 1.1, 1.1);
+    fx._blob(b.x, b.y, b.z, 0, 0, 0, life, 0.55 * s, 0.55 * s, 1.3, 1.3);
     fx._col(WHITE, 1.25, WHITE, 1.25);
-    let o = fx._rec(b.x, b.y, b.z, life, 0.62 * s, 0.62 * s, EMBER_CORE);
+    const o = fx._rec(b.x, b.y, b.z, life, 0.22 * s, 0.22 * s, EMBER_CORE);
     o.alphaEnd = 1;
     o.rot = b.t * 9 + b.seed;
     fx._spawn(fx.add, o);
-    fx._col(GOLD, 0.7, GOLD, 0.7);
-    o = fx._rec(b.x, b.y, b.z, life, 1.0 * s, 1.0 * s, RETURN_HALO);
-    o.alphaEnd = 1;
-    o.rot = -b.t * 6 + b.seed;
-    fx._spawn(fx.add, o);
   }
-  b.acc += dt * 34;
+  b.acc += dt * 60;
   while (b.acc >= 1) {
     b.acc -= 1;
-    fx._col(ORANGE, 1.1, DARK, 1);
-    const o = fx._rec(b.x + rand(-0.12, 0.12), b.y + rand(-0.12, 0.12), b.z + rand(-0.12, 0.12), rand(0.28, 0.45), 0.5, 0.08, EMBER_TAIL);
-    o.vx = -b.vx * 0.08;
-    o.vz = -b.vz * 0.08;
-    o.vy = rand(0, 0.8);
-    o.drag = 2;
-    o.flicker = 0.3;
-    fx._spawn(fx.add, o);
+    const back = Math.random() * dt;
+    fx._blob(
+      b.x - b.vx * back + rand(-0.1, 0.1), b.y + rand(-0.1, 0.1), b.z - b.vz * back + rand(-0.1, 0.1), b.vx * 0.1, rand(0, 0.8), b.vz * 0.1,
+      rand(0.28, 0.45), 0.5 * s, 0.2, 0.5, 0, 2, 1,
+    );
+    if (Math.random() < 0.3) {
+      fx._col(ORANGE, 1.1, DARK, 1);
+      const o = fx._rec(b.x + rand(-0.12, 0.12), b.y + rand(-0.12, 0.12), b.z + rand(-0.12, 0.12), rand(0.28, 0.45), 0.26, 0.06, EMBER_TAIL);
+      o.vx = -b.vx * 0.08;
+      o.vz = -b.vz * 0.08;
+      o.vy = rand(0, 0.8);
+      o.drag = 2;
+      o.flicker = 0.3;
+      fx._spawn(fx.add, o);
+    }
   }
 }
 
@@ -172,12 +188,11 @@ export function returnLaunch(fx, x, y, z) {
 export function returnBurst(fx, x, y, z, kind) {
   if (!Number.isFinite(x + y + z)) return;
   const k = kind === 1 ? 1.3 : 1;
-  fx._col(WHITE, 1.4, GOLD, 0.5);
-  let o = fx._rec(x, y, z, 0.24, 2.6 * k, 0.6, GLINT_STAR);
-  fx._spawn(fx.add, o);
-  fx._col(GOLD, 0.9, ORANGE, 0.4);
-  o = fx._rec(x, y, z, 0.2, 1.2, 3.2 * k, RETURN_HALO);
-  fx._spawn(fx.add, o);
+  // a burst of flame: blobs born on top of each other (a white heart for a blink) that fly apart
+  for (let i = 0; i < Math.round(12 * k); i++) {
+    const a = Math.random() * TAU, sp = rand(1.5, 7);
+    fx._blob(x, y, z, Math.cos(a) * sp, rand(-1, 4), Math.sin(a) * sp, rand(0.3, 0.55), rand(0.8, 1.1), rand(1.5, 2.1) * k, 0.42, 0, 2.6, 1.5);
+  }
   sparks(fx, x, y, z, Math.round(18 * k), GOLD, DARK, 11, 0.5, SPARKS, 5);
   sparks(fx, x, y, z, Math.round(10 * k), ORANGE, DARK, 6, 0.6, EMBER_TAIL, 3);
   fx._light({ x, y, z, color: FIRE_LIGHT, intensity: 6 * k, radius: 10, life: 0.3, fade: 0.25 });
@@ -188,8 +203,14 @@ export function burst(fx, x, y, z, kind) {
   if (!Number.isFinite(x + y + z)) return;
   const c = coreCol(kind);
   fx._col(c, 1.4, c, 0.5);
-  const o = fx._rec(x, y, z, 0.2, kind === 2 ? 2.2 : 1.3, 0.3, GLINT_STAR);
+  const o = fx._rec(x, y, z, 0.2, kind === 2 ? 2.2 : kind === 1 ? 1.3 : 0.6, 0.2, GLINT_STAR);
   fx._spawn(fx.add, o);
+  if (!kind) {
+    for (let i = 0; i < 5; i++) {
+      const a = Math.random() * TAU, sp = rand(1, 4);
+      fx._blob(x, y, z, Math.cos(a) * sp, rand(0, 3), Math.sin(a) * sp, rand(0.22, 0.4), rand(0.6, 0.9), rand(1.1, 1.5), 0.4, 0, 2.6, 1);
+    }
+  }
   sparks(fx, x, y, z, kind === 2 ? 16 : 9, c, endCol(kind), kind === 2 ? 9 : 6.5, 0.42, SPARKS, 4);
 }
 
@@ -255,9 +276,19 @@ export function cueGlint(fx, x, y, z, tell) {
 export function muzzle(fx, x, y, z, dx, dz, n = 8, blue = false) {
   if (!Number.isFinite(x + y + z + dx + dz)) return;
   for (let i = 0; i < n; i++) {
-    fx._col(blue ? WISP : HOT, 1, blue ? WISP_END : DARK, 1);
-    const o = fx._rec(x + rand(-0.4, 0.4), y + rand(-0.3, 0.3), z + rand(-0.4, 0.4), rand(0.25, 0.5), rand(0.5, 0.9), 0.1, PUFF);
     const sp = rand(2, 7);
+    if (!blue) {
+      // a puff of flame (every second one; they overlap into one body) and a spark
+      if (i % 2 === 0) {
+        fx._blob(
+          x + rand(-0.4, 0.4), y + rand(-0.3, 0.3), z + rand(-0.4, 0.4), dx * sp + rand(-1.5, 1.5), rand(-0.5, 2.5), dz * sp + rand(-1.5, 1.5),
+          rand(0.25, 0.5), rand(0.8, 1.2), rand(1.3, 1.8), 0.4, 0, 2.5, 1,
+        );
+        continue;
+      }
+      fx._col(HOT, 1, DARK, 1);
+    } else fx._col(WISP, 1, WISP_END, 1);
+    const o = fx._rec(x + rand(-0.4, 0.4), y + rand(-0.3, 0.3), z + rand(-0.4, 0.4), rand(0.25, 0.5), blue ? rand(0.3, 0.45) : rand(0.2, 0.3), 0.08, blue ? PUFF : EMBER_TAIL);
     o.vx = dx * sp + rand(-1.5, 1.5);
     o.vy = rand(-0.5, 2.5);
     o.vz = dz * sp + rand(-1.5, 1.5);
@@ -285,95 +316,88 @@ export function wheelWarn(fx, w, dt, k) {
 
 let beamAcc = 0;
 /**
- * The Scouring breath's stream from the jaws down to its strike point (sx, sz): flame glyphs pouring
- * along the line, a splash where it hits the ground. Short-lived (they never sink under the ground).
+ * The Scouring breath's stream from the jaws down to its strike point (sx, sz): fire pouring along
+ * the line (blobs that swell toward the ground), a splash of flame where it hits. Short-lived (they
+ * never sink under the ground).
  */
 export function breathBeam(fx, m, sx, sz, dt) {
   if (!Number.isFinite(m.x + m.y + m.z + sx + sz)) return;
-  const dx = sx - m.x, dy = 0.3 - m.y, dz = sz - m.z;
-  beamAcc += dt * 70;
-  let n = Math.min(8, Math.floor(beamAcc));
+  const dx = sx - m.x, dy = 0.5 - m.y, dz = sz - m.z;
+  beamAcc += dt * 110;
+  let n = Math.min(9, Math.floor(beamAcc));
   beamAcc -= n;
   while (n-- > 0) {
     const u = Math.random();
-    const hot = Math.random() < 0.4;
-    fx._col(hot ? HOT : ORANGE, hot ? 0.55 : 0.6, DARK, 1);
-    const o = fx._rec(m.x + dx * u + rand(-0.15, 0.15), m.y + dy * u + rand(-0.1, 0.1), m.z + dz * u + rand(-0.15, 0.15), rand(0.12, 0.2), rand(0.55, 0.9), 0.3, FLAME_TALL);
-    o.vx = dx * 2.5;
-    o.vy = dy * 2.5;
-    o.vz = dz * 2.5;
-    o.drag = 2;
-    o.flicker = 0.3;
-    o.spin = rand(-3, 3);
-    fx._spawn(fx.add, o);
+    fx._blob(
+      m.x + dx * u + rand(-0.15, 0.15), m.y + dy * u + rand(-0.1, 0.1), m.z + dz * u + rand(-0.15, 0.15), dx * 2.5, dy * 2.5, dz * 2.5,
+      rand(0.12, 0.2), 0.8 + 0.8 * u, 1.0 + 1.0 * u, Math.random() < 0.4 ? 0.4 : 0.28, 0.1, 2, 0,
+    );
   }
-  if (Math.random() < dt * 30) {
-    fx._col(GOLD, 0.8, DARK, 1);
-    const o = fx._rec(sx + rand(-0.4, 0.4), 0.3, sz + rand(-0.4, 0.4), rand(0.3, 0.5), rand(0.8, 1.2), 0.2, FLAME_TALL);
-    o.vy = rand(3, 6);
-    o.drag = 1.5;
-    o.flicker = 0.3;
-    fx._spawn(fx.add, o);
+  if (Math.random() < dt * 40) {
+    const a = Math.random() * TAU, sp = rand(1, 4);
+    fx._blob(sx + rand(-0.4, 0.4), rand(0.7, 1.1), sz + rand(-0.4, 0.4), Math.cos(a) * sp, rand(2.5, 5.5), Math.sin(a) * sp, rand(0.3, 0.5), rand(1.2, 1.7), 0.5, 0.45, 0, 1.5, 1);
   }
 }
 
-/** Ignition: every spoke flares up at once, a shock ring runs out from the body. */
+/** Ignition: every spoke flares up at once (a rush of flame along it), a ring of air runs out from the body. */
 export function wheelIgnite(fx, w) {
   for (let i = 0; i < w.n; i++) {
     const a = w.ang + w.offs[i];
     const sx = Math.sin(a), sz = Math.cos(a);
     for (let r = w.r0; r <= w.r1; r += 0.9) {
-      fx._col(GOLD, 0.9, ORANGE, 0.5);
-      const o = fx._rec(w.x + sx * r, 0.3, w.z + sz * r, rand(0.35, 0.6), rand(0.8, 1.3), 0.2, FLAME_TALL);
-      o.vy = rand(4, 9);
-      o.drag = 2;
-      o.flicker = 0.3;
-      fx._spawn(fx.add, o);
+      fx._blob(w.x + sx * r, rand(0.7, 1.2), w.z + sz * r, 0, rand(4, 9), 0, rand(0.35, 0.6), rand(1.2, 1.6), 0.6, 0.55, 0, 2, 0);
     }
   }
-  if (!w.follow) fx.shockRing(w.x, w.z, w.r0 + 5);
+  // (strokes, not fire: between the tongues it does not burn)
+  if (!w.follow) fx._wave(w.x, w.z, w.r0, w.r0 + 5, 0.32, 72, 1.0, 0.5, 1.2, 0.6, 3);
   fx._light({ x: w.x, y: 2, z: w.z, color: FIRE_LIGHT, intensity: 7, radius: 22, life: 0.5, fade: 0.4 });
 }
 
-/** The burning spokes: a gold core line under tall flames that lean back against the turn.
- *  Additive glyphs overlap along a spoke, so each one is kept dim and warm: the sum reads as a
- *  yellow heart in an orange skin (bright ones clip to a row of white blobs). */
+/** The burning spokes: a hot line of heat along each (held: one copy a frame) under flames that climb
+ *  and lean back against the turn. Each blob is cool; where they overlap along the spoke the field
+ *  sums them into a yellow heart in an orange skin with red tongues, as wide as the spoke hurts. */
 export function wheelLive(fx, w, dt, omega, hx, hz) {
   const life = fx._hold(w, 'hold', dt);
   const span = w.r1 - w.r0;
   const fade = w.fade;
+  const size = Math.max(1.3, w.width * 1.2);
   if (life > 0) {
-    const step = 0.9, n = Math.floor(span / step);
+    // (a blob's heat halves 0.2 x its size from its centre: at this step the line has no beads)
+    const step = 0.42, n = Math.floor(span / step);
     for (let i = 0; i < w.n; i++) {
       const a = w.ang + w.offs[i];
       const sx = Math.sin(a), sz = Math.cos(a);
       for (let j = 0; j <= n; j++) {
         const r = w.r0 + j * step + ((w.t * 6) % step);
         if (r > w.r1) continue;
-        fx._col(GOLD, 0.5 * fade, GOLD, 0.5 * fade);
-        const o = fx._rec(w.x + sx * r, 0.5, w.z + sz * r, life, 0.55, 0.55, BEAM_CORE);
-        o.alphaEnd = 1;
-        fx._spawn(fx.add, o);
+        fx._blob(w.x + sx * r, 1.0, w.z + sz * r, 0, 0, 0, life, size, size, 0.6 * fade, 0.6 * fade);
       }
     }
   }
-  w.acc += dt * 240 * w.n * fade;
-  while (w.acc >= 1) {
-    w.acc -= 1;
+  w.acc += dt * 110 * w.n * fade;
+  let m = Math.min(24, Math.floor(w.acc));
+  w.acc -= m;
+  while (m-- > 0) {
     const a = w.ang + w.offs[(Math.random() * w.n) | 0];
     const sx = Math.sin(a), sz = Math.cos(a);
     const r = w.r0 + Math.random() * span;
-    const hot = Math.random() < 0.3;
-    fx._col(hot ? GOLD : ORANGE, hot ? 0.75 : 0.7, DARK, hot ? 1.6 : 1);
-    const o = fx._rec(w.x + sx * r + rand(-0.25, 0.25), rand(0.15, 0.7), w.z + sz * r + rand(-0.25, 0.25), rand(0.35, 0.7), rand(0.7, 1.25), 0.2, FLAME_TALL);
     // tangent of +angle is (cos, -sin): the flames trail behind the turning spoke
     const lag = -omega * r * 0.35;
-    o.vx = sz * lag + rand(-0.4, 0.4);
-    o.vy = rand(2.6, 7);
-    o.vz = -sx * lag + rand(-0.4, 0.4);
-    o.drag = 1.5;
-    o.flicker = 0.35;
-    fx._spawn(fx.add, o);
+    fx._blob(
+      w.x + sx * r + rand(-0.2, 0.2), rand(0.8, 1.4), w.z + sz * r + rand(-0.2, 0.2), sz * lag + rand(-0.4, 0.4), rand(2.6, 6.5), -sx * lag + rand(-0.4, 0.4),
+      rand(0.35, 0.65), rand(1.0, 1.4), 0.5, 0.42 * fade, 0.05, 1.5, 1,
+    );
+    if (m % 5 === 0) {
+      fx._col(GOLD, 0.8 * fade, DARK, 1.4);
+      const o = fx._rec(w.x + sx * r + rand(-0.25, 0.25), rand(0.4, 1.0), w.z + sz * r + rand(-0.25, 0.25), rand(0.4, 0.8), rand(0.2, 0.3), 0.05, EMBER_TAIL);
+      o.vx = sz * lag * 1.5 + rand(-1.5, 1.5);
+      o.vy = rand(2, 6);
+      o.vz = -sx * lag * 1.5 + rand(-1.5, 1.5);
+      o.drag = 1.2;
+      o.gravity = -8;
+      o.flicker = 0.4;
+      fx._spawn(fx.add, o);
+    }
   }
   // sparse scorch + one moving light on the spoke nearest the hero
   w.scorchT -= dt;

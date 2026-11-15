@@ -1,7 +1,8 @@
 import { range } from '../core/rng.js';
 import { TAU } from '../core/math.js';
 
-// Living night: bonfire flames + embers (and its light), fireflies drifting at the forest edge,
+// Living night: the bonfire (its flames are heat in the fire field, its embers small glyphs; and its
+// light), fireflies drifting at the forest edge,
 // leaves falling from the canopy near the camera; skyGlow(k): the sky over the clearing burning
 // orange (Armageddon, ADR-053) by warming the shared ambient and fog colours. A set with `ash: true`
 // (the Ashfall courtyard) has ash flakes falling everywhere and a few drifting embers instead of the
@@ -32,6 +33,10 @@ export class Atmosphere {
     this._amb0 = null; // the ambient / fog colours without the glow
     this._fog0 = null;
     this.fireAcc = 0;
+    this.smokeAcc = 0;
+    // the bonfire's blobs of heat and smoke (reused: no per-spawn object)
+    this._blob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.7, size: 0.8, sizeEnd: 0.3, heat: 0.32, heatEnd: 0, drag: 1.2, gravity: 1, kind: 'fire' };
+    this._smoke = { x: 0, y: 2.0, z: 0, vx: 0, vy: 0.7, vz: 0, life: 2, size: 0.8, sizeEnd: 2.2, heat: 0.3, heatEnd: 0, drag: 0.3, gravity: 0, kind: 'smoke' };
     this.emberAcc = 0;
     this.leafAcc = 0;
     this.ashAcc = 0;
@@ -88,20 +93,30 @@ export class Atmosphere {
     const bf = this.bonfire;
 
     if (this.bonfireLit) {
-      this.fireAcc += dt * 48;
+      // the flames: heat in the fire field (render/fireField.js). Small cool blobs born over the
+      // logs that climb and shrink; they overlap at the foot (a yellow heart) and thin out into
+      // red tongues above it
+      const fire = this.game.fx.fire;
+      this.fireAcc += dt * 26;
       while (this.fireAcc >= 1) {
         this.fireAcc -= 1;
-        const a = Math.random() * TAU, r = Math.random() * 0.32;
-        const hot = Math.random();
-        fxA.spawn({
-          x: bf.x + Math.cos(a) * r, y: 0.25 + Math.random() * 0.15, z: bf.z + Math.sin(a) * r,
-          vx: (Math.random() - 0.5) * 0.3, vy: 1.3 + Math.random() * 1.3, vz: (Math.random() - 0.5) * 0.3,
-          life: 0.45 + Math.random() * 0.55,
-          size: 0.34 + hot * 0.18, sizeEnd: 0.06,
-          glyph: "*^'`\"~%",
-          color: [3.4, 1.7 + hot * 0.6, 0.5], colorEnd: [0.9, 0.12, 0.02],
-          alpha: 1, alphaEnd: 0, drag: 1.2, flicker: 0.25, spin: (Math.random() - 0.5) * 2,
-        });
+        if (!fire) continue;
+        const a = Math.random() * TAU, r = Math.random() * 0.3;
+        const b = this._blob;
+        b.x = bf.x + Math.cos(a) * r; b.y = 0.5 + Math.random() * 0.25; b.z = bf.z + Math.sin(a) * r;
+        b.vx = (Math.random() - 0.5) * 0.3; b.vy = 1.1 + Math.random() * 1.2; b.vz = (Math.random() - 0.5) * 0.3;
+        b.life = 0.5 + Math.random() * 0.45;
+        b.size = 0.7 + Math.random() * 0.3;
+        fire.spawn(b);
+      }
+      this.smokeAcc += dt * 1.6;
+      while (this.smokeAcc >= 1) {
+        this.smokeAcc -= 1;
+        const s = this._smoke;
+        s.x = bf.x + (Math.random() - 0.5) * 0.3; s.z = bf.z + (Math.random() - 0.5) * 0.3;
+        s.vx = 0.25 + Math.random() * 0.25; s.vz = (Math.random() - 0.5) * 0.3;
+        s.life = 1.6 + Math.random() * 1.2;
+        fire?.spawn(s);
       }
       this.emberAcc += dt * 7;
       while (this.emberAcc >= 1) {
