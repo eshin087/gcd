@@ -181,11 +181,11 @@ export class LordFx extends DuelFx {
   /** The wake of his glide: the Void torn off under him, left burning low on the floor behind. */
   glideWake(x, z, vx, vz, dt, k = 1) {
     const sp = Math.hypot(vx, vz);
-    this.wakeAcc += dt * (12 + 3 * sp) * k;
+    this.wakeAcc += dt * (16 + 4 * sp) * k;
     while (this.wakeAcc >= 1) {
       this.wakeAcc -= 1;
       const a = this.rnd() * TAU, r = this.rand(0, 0.4);
-      this._blob(x + Math.cos(a) * r, this.rand(0.3, 0.5), z + Math.sin(a) * r, -vx * 0.2 + this.rand(-0.4, 0.4), this.rand(0, 0.5), -vz * 0.2 + this.rand(-0.4, 0.4), this.rand(0.3, 0.6), 0.5, 0.8, 0.5, 0, K_VOID, 2);
+      this._blob(x + Math.cos(a) * r, this.rand(0.3, 0.5), z + Math.sin(a) * r, -vx * 0.2 + this.rand(-0.4, 0.4), this.rand(0, 0.5), -vz * 0.2 + this.rand(-0.4, 0.4), this.rand(0.3, 0.6), 0.55, 0.85, 0.85, 0, K_VOID, 2);
     }
   }
 
@@ -223,7 +223,7 @@ export class LordFx extends DuelFx {
     const P = this._pts;
     // the path of the core: it wanders off the straight line and back (each joint keeps half of the
     // drift of the one before, so it runs in long leaning strokes, not a staircase), its ends true
-    const j = 0.2 * Math.min(kk, 1.7) + 0.06;
+    const j = 0.3 * Math.min(kk, 1.7) + 0.06;
     let ox = 0, oy = 0, oz = 0;
     for (let i = 0; i <= steps; i++) {
       const t = i / steps, e = i > 0 && i < steps ? Math.min(1, Math.sin(Math.PI * t) * 2.2) : 0;
@@ -234,26 +234,25 @@ export class LordFx extends DuelFx {
       P[i * 3 + 1] = ay + dy * t + oy * e;
       P[i * 3 + 2] = az + dz * t + oz * e;
     }
-    // the core, written on the grid one cell wide. A bolt is born white-hot (every cell of it a white
-    // digit) and cools in ~0.2 s through bright strokes along its path to grey ones; a small arc
-    // (k < 0.8) is strokes from the start.
-    // A bolt out of the sky is two cells wide.
-    const heat = big ? 1.7 : 0.8, A = this._axes(), w2 = kk > 1.8 ? 0.14 : 0;
+    // the core, written on the grid one cell wide: every cell a bright stroke along the bolt (just
+    // under the heat at which a cell prints a digit), every third joint a white-hot digit. It cools
+    // in ~0.2 s to grey strokes. A bolt out of the sky is two cells wide.
+    const heat = big ? 1.16 : 0.8, A = this._axes(), w2 = kk > 1.8 ? 0.14 : 0;
     for (let i = 1; i <= steps; i++) {
       const x0 = P[i * 3 - 3], y0 = P[i * 3 - 2], z0 = P[i * 3 - 1], x1 = P[i * 3], y1 = P[i * 3 + 1], z1 = P[i * 3 + 2];
       const life = this.rand(0.15, 0.23);
       this._ink(x0, y0, z0, x1, y1, z1, life, heat, 0.3, heat, i > 1 ? 1 : 0);
-      if (i % 3 === 0 && i < steps) this._blob(x1, y1, z1, 0, 0, 0, 0.1, 0.3, 0.26, 0.9, 0, K_STEEL); // a joint burns white
+      if (i % 3 === 0 && i < steps) this._blob(x1, y1, z1, 0, 0, 0, 0.12, 0.3, 0.26, 0.9, 0, K_STEEL); // a joint burns white
       if (w2) this._ink(x0 + A.rx * w2, y0 + A.ry * w2, z0 + A.rz * w2, x1 + A.rx * w2, y1 + A.ry * w2, z1 + A.rz * w2, life, heat, 0.25, heat);
       if (!big) continue;
       // the sheath: violet letters round the core that outlive it and tear upward (the afterglow)
       const sz = 0.75 * Math.sqrt(kk);
-      this._blob((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, this.rand(-0.3, 0.3), this.rand(0, 0.6), this.rand(-0.3, 0.3), this.rand(0.3, 0.5), sz, sz * 0.55, gold ? 0.45 : 0.55, 0, sheath, 1);
-      this._blob(x1, y1, z1, this.rand(-0.3, 0.3), this.rand(0, 0.6), this.rand(-0.3, 0.3), this.rand(0.3, 0.5), sz, sz * 0.55, gold ? 0.45 : 0.55, 0, sheath, 1);
-      if (this.rnd() < 0.24 && i < steps) {
+      this._blob((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, this.rand(-0.3, 0.3), this.rand(0, 0.6), this.rand(-0.3, 0.3), this.rand(0.3, 0.5), sz, sz * 0.55, 0.45, 0, sheath, 1);
+      this._blob(x1, y1, z1, this.rand(-0.3, 0.3), this.rand(0, 0.6), this.rand(-0.3, 0.3), this.rand(0.3, 0.5), sz, sz * 0.55, 0.45, 0, sheath, 1);
+      if (this.rnd() < 0.34 && i < steps) {
         // a fork that dies in the air
         let fx = x1, fy = y1, fz = z1;
-        const r = 0.5 * Math.min(kk, 1.6);
+        const r = 0.6 * Math.min(kk, 1.6);
         for (let q = 0; q < 3; q++) {
           const nx = fx + this.rand(-r, r), ny = fy + this.rand(-r * 0.8, r), nz = fz + this.rand(-r, r);
           this._ink(fx, fy, fz, nx, ny, nz, this.rand(0.08, 0.15), 0.95 - 0.2 * q, 0.15, 0.85 - 0.2 * q);
@@ -266,7 +265,6 @@ export class LordFx extends DuelFx {
     if (lit) {
       this._light({ x: (ax + bx) / 2, y: Math.max(1, (ay + by) / 2), z: (az + bz) / 2, color: gold ? [1, 0.8, 0.4] : [0.7, 0.4, 1], intensity: 5.5 * k, radius: 9 + len * 0.3, life: 0.24, fade: 0.2 });
       // where it lands: a burst of short strokes, a breath of the sheath, a few sparks
-      const A = this._axes();
       for (let i = 0; i < 10; i++) {
         const a = (i / 10) * TAU + this.rnd() * 0.3, ca = Math.cos(a), sa = Math.sin(a), sp = this.rand(5, 9) * Math.min(kk, 1.6);
         const ux = A.rx * ca + A.ux * sa, uy = A.ry * ca + A.uy * sa, uz = A.rz * ca + A.uz * sa;
@@ -357,10 +355,10 @@ export class LordFx extends DuelFx {
       // strokes that cool behind it, the Void's fire bursting up out of the crack
       const t = c.age ?? 0, jag = Math.sin(t * 40 + (c.seed ?? 0)) * 0.22;
       const hx = c.x + px * jag, hz = c.z + pz * jag;
-      if (Number.isFinite(c.lx + c.lz) && Math.hypot(hx - c.lx, hz - c.lz) < 3) this._ink(c.lx, 0.45, c.lz, hx, 0.45, hz, this.rand(0.5, 0.75), 1.5, 0, 1.5, 1);
+      if (Number.isFinite(c.lx + c.lz) && Math.hypot(hx - c.lx, hz - c.lz) < 3) this._ink(c.lx, 0.45, c.lz, hx, 0.45, hz, this.rand(0.5, 0.75), 1.15, 0, 1.15, 1);
       c.lx = hx;
       c.lz = hz;
-      this._dot(hx, 0.45, hz, 0.3, 1.2, K_STEEL);
+      this._dot(hx, 0.45, hz, 0.3, 0.6, K_STEEL);
       for (let i = 0; i < 3; i++) {
         const b = this.rand(0, 1.3), w = this.rand(-0.12, 0.12);
         this._blob(c.x - c.dx * b + px * w, 0.35, c.z - c.dz * b + pz * w, 0, this.rand(2.5, 6) * (1 - b * 0.4), 0, this.rand(0.2, 0.36), 0.5, 0.24, 0.8, 0, K_VOID, 3);
@@ -422,7 +420,7 @@ export class LordFx extends DuelFx {
     if (!this.fire || !Number.isFinite(x + y + z + k)) return;
     if (!(this._frame() > 0)) return;
     const t = this.d.time ?? 0;
-    const R = 1.75 - 0.85 * k, h = 0.5 + 0.35 * k;
+    const R = 1.75 - 0.85 * k, h = 0.45 + 0.25 * k;
     for (let f = 0; f < 5; f++) {
       const a = (f / 5) * TAU + t * 1.4;
       let px = x + Math.cos(a) * R * 0.25, py = y + R * 1.05, pz = z + Math.sin(a) * R * 0.25;
@@ -435,7 +433,7 @@ export class LordFx extends DuelFx {
         py = ny;
         pz = nz;
       }
-      this._dot(px, py, pz, 0.3, 0.4 + 0.6 * k, K_STEEL); // the point of the claw
+      this._dot(px, py, pz, 0.3, 0.3 + 0.5 * k, K_STEEL); // the point of the claw
     }
     this._ring(x, GROUND_Y, z, R * 0.95, 30, 0.36, (0.24 + 0.24 * k) * GROUND_GAIN, K_VOID, 5, -t * 2);
   }
