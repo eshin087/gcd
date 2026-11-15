@@ -778,6 +778,41 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
 .ab-remap-foot .ab-btn { justify-content: center; margin: 4px 0 0; }
 .ab-remap-foot .ab-btn.dim { opacity: 0.45; }
 
+/* ---------- WHAT'S NEW: src/ui/changelogPanel.js (title + pause menu) ---------- */
+.ab-pause.news .ab-pause-panel { display: none; }
+.ab-news { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(2, 3, 6, 0.72); z-index: 45; pointer-events: auto; } /* over the touch controls' pause peek (z 40) */
+.ab-news.on { display: flex; }
+.ab-news-panel { width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); display: flex; flex-direction: column; padding: 16px 20px 12px; pointer-events: auto; background: rgba(6, 9, 14, 0.9); }
+.ab-news-head { text-align: center; }
+.ab-news-head .ab-pause-title { margin-bottom: 2px; }
+.ab-news-ver { font-size: 10px; letter-spacing: 0.2em; color: var(--ab-faint); margin-bottom: 10px; }
+.ab-news-list { scrollbar-width: thin; scrollbar-color: rgba(207, 214, 230, 0.25) transparent; flex: 1 1 auto; min-height: 0; overflow-y: auto; text-align: left; padding-right: 6px; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.ab-news-rel { margin-bottom: 14px; }
+.ab-news-relhead { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--ab-line); padding-bottom: 3px; margin-bottom: 6px; }
+.ab-news-relhead .v { color: var(--ab-ember); font-weight: 700; letter-spacing: 0.22em; }
+.ab-news-relhead .d { color: var(--ab-faint); font-size: 10px; letter-spacing: 0.1em; }
+.ab-news-sum { color: var(--ab-dim); font-size: 10.5px; margin-bottom: 8px; }
+.ab-news-entry { margin: 0 0 9px; padding-left: 8px; border-left: 1px solid rgba(207, 214, 230, 0.1); }
+.ab-news-entry.unseen { border-left-color: var(--ab-ember); }
+.ab-news-title { display: flex; gap: 8px; align-items: baseline; color: #ebe3d3; font-size: 11px; letter-spacing: 0.04em; }
+.ab-news-title .n { flex: 1 1 auto; }
+.ab-news-title .d { color: var(--ab-faint); font-size: 10px; white-space: nowrap; }
+.ab-news-title .new { display: none; color: #0b0d12; background: var(--ab-ember); font-size: 9px; font-weight: 700; letter-spacing: 0.12em; padding: 0 4px; }
+.ab-news-entry.unseen .ab-news-title .new { display: inline-block; }
+.ab-news-notes { margin: 3px 0 0; padding: 0; list-style: none; color: var(--ab-dim); font-size: 10.5px; line-height: 1.45; }
+.ab-news-notes li { position: relative; padding-left: 12px; }
+.ab-news-notes li::before { content: '-'; position: absolute; left: 0; color: var(--ab-faint); }
+.ab-news-foot { display: flex; margin-top: 8px; }
+.ab-news-foot .ab-btn { justify-content: center; margin: 0; }
+/* the title's WHAT'S NEW button and the badges that count the unread entries */
+.ab-news-row { position: absolute; top: 14px; right: 16px; margin: 0; } /* a corner: the title's column stays as it was */
+.ab-touch .ab-news-row { top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); }
+.ab-touch .ab-news-row .ab-btn { min-height: 32px; }
+.ab-news-btn { gap: 8px; }
+.ab-news-badge { display: none; color: #0b0d12; background: var(--ab-ember); font-size: 9px; font-weight: 700; letter-spacing: 0.12em; padding: 0 5px; }
+.ab-news-badge.on { display: inline-block; animation: ab-blink 1.8s ease-in-out infinite; }
+.ab-btn.has-new .v { color: var(--ab-ember); }
+
 /* ---------- touch devices (src/ui/touch.js adds .ab-touch; desktop never gets it) ---------- */
 .ab-root:not(.ab-touch) .tp-only { display: none !important; }
 .ab-touch .kb-only { display: none !important; }

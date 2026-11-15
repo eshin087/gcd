@@ -9,6 +9,7 @@ import { LogPanel } from './logPanel.js';
 import { Minimap } from './minimap.js';
 import { NameTags } from './nameTags.js';
 import { ScreenProjector } from './project.js';
+import { ChangelogPanel } from './changelogPanel.js';
 import { RemapPanel } from './remap.js';
 import { HelpPanel, PauseMenu, StatsPanel, TitleScreen } from './screens.js';
 import { TellEdges } from './tells.js';
@@ -62,8 +63,10 @@ export class Hud {
     fillKeyText(hint, '[@help] help  [@pause] pause');
     // the stage picker: game.levels / game.pickLevel (main.js; levels/index.js)
     const stage = Array.isArray(game.levels) ? { levels: game.levels, current: game.level?.id, pick: (id) => game.pickLevel?.(id) } : null;
-    this.titleUi = new TitleScreen(this.root, (game.state || 'title') === 'title', stage);
-    this.pauseUi = new PauseMenu(game, this.root);
+    // WHAT'S NEW (ui/changelogPanel.js): opened from the title and the pause menu, both show its badge
+    this.newsUi = new ChangelogPanel(game, this.root);
+    this.titleUi = new TitleScreen(this.root, (game.state || 'title') === 'title', stage, this.newsUi);
+    this.pauseUi = new PauseMenu(game, this.root, this.newsUi);
     this.remapUi = new RemapPanel(game, this.root);
     this.feed = new CombatFeed(game, this);
     this._ghostAt = -10;
@@ -316,7 +319,10 @@ export class Hud {
   }
 
   showPause(on) {
-    if (!on) this.remapUi.close();
+    if (!on) {
+      this.remapUi.close();
+      this.newsUi.close();
+    }
     this.pauseUi.show(on);
   }
 

@@ -1,0 +1,445 @@
+// The in-game changelog (WHAT'S NEW: title screen and pause menu; ui/changelogPanel.js; ADR-115).
+// Content is data: one release per version, newest first; each entry is a short, player-facing
+// version of a CHANGELOG.md entry. `npm test` (tests/changelogcheck.mjs) checks that every headline
+// in CHANGELOG.md → [Unreleased] has an entry here with the same title, so a session that adds a
+// CHANGELOG entry adds one here too. Notes are plain text: no markup, no ADR numbers, no URLs.
+
+/** The version the game calls itself (package.json `version`). */
+export const GAME_VERSION = '0.4.0';
+
+/**
+ * Releases, newest first. `version`: null for the work since the last release (it ships to the
+ * site as it lands). Entries: { date 'YYYY-MM-DD', title, notes: [string] }.
+ */
+export const RELEASES = [
+  {
+    version: null,
+    label: 'LATEST',
+    summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
+    entries: [
+      {
+        date: '2026-11-15',
+        title: "What's new in the menu; the phone camera stays back",
+        notes: [
+          "WHAT'S NEW on the title screen and in the pause menu lists every version and what changed. A badge counts what you have not read yet.",
+          'Phones: a duel\'s slow-motion moments (parry, blade lock, counter, execution) no longer pull the camera in to the knees. They come in as far as on a computer, for the phone\'s closer camera.',
+          'Phones: a quick second tap on LOCK or a button can no longer zoom the whole page in.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The hero stands like a swordsman',
+        notes: [
+          'Exploring, he stands at ease: a hand on his belt, the blade carried down his arm.',
+          "Locked on or in a boss fight, he holds a fencer's guard with the point on the enemy, and keeps it while he moves.",
+          'He breathes, shifts his weight and looks around.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'Fire, spells and effects made of the same small letters',
+        notes: [
+          'All fire is one body of small digits: a white-hot heart, an orange body, red tongues and grey smoke.',
+          "The duelists' lightning, crescents and Void spells are drawn the same way. The Lord's spells are white and violet now.",
+          'One set of timing cues for every boss: a white cross to parry, an eight-point star for a heavy blow, a red blaze to dodge.',
+          'The landmarks are rebuilt and moved to where the fight\'s camera looks.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The Ash Disciple uses the courtyard',
+        notes: [
+          'Severed Pillar: he cuts through the pillar you stand under. Leave the red strip.',
+          'Flying Lantern: he kicks a stone lantern at you. Parry it or leave the ring.',
+          'Three Tolls: three rings of sound from the bell. Parry them in rhythm, roll through, or run in.',
+          'Swallow\'s Return: he leaps onto a pillar and dives at you from another side.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The Cinder Wyrm uses the ground',
+        notes: [
+          'Uproot and hurl: it tears out a tree or boulder and throws it. Get out of the glow.',
+          'Tail bat: a boulder skims along a glowing line. Parry, block, step aside or take cover.',
+          'Firebrand (phase 2): it throws a burning tree that sets the grass alight.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The Starless Lord uses the crater',
+        notes: [
+          'Void Hurl: a hanging stone or a shard is thrown at a ringed spot.',
+          'Glass Rain (forms 3 and 4): three throws in a row.',
+          'Crown Fall (forms 2 to 4): stand by something tall and he pulls it down on you.',
+          'Stagger him in the windup and the stone drops.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The Obsidian Throne is open',
+        notes: [
+          "The Lord's level is now the crater where he fell: cracked black plates, glass shards, stones hanging in the air and a broken crown of slabs.",
+          'No walls stand between the camera and the duel. He wakes when you step onto the floor.',
+          'The shards and slabs break and are cover.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The death screen names what killed you',
+        notes: [
+          'Under YOU DIED: the move that dealt the last blow, and which moves hit you and how often.',
+          'The victory record shows what struck you most.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The world breaks',
+        notes: [
+          'Trees, stones, boulders, pillars and lanterns chip, break and fall, by your blows and the bosses\'.',
+          'Fell a piece onto a boss to hurt it badly. Under one a boss fells, take the red blow or roll out.',
+          'Anything tall is cover against bullets, crescents, thrown stones and the Void, until it breaks.',
+          'Fire burns where it lands for a few seconds, then leaves ash. It never spreads.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'You can see yourself behind the dragon',
+        notes: [
+          'When the wyrm, a tree or a pillar covers the hero, he shows through it as a cyan ghost of his own outline.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The same fight at any frame rate',
+        notes: [
+          'On a slow device the timing windows are as fair as on a fast one, and the game no longer runs in slow motion under 20 fps.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The riskier the answer, the more it pays',
+        notes: [
+          'The flurry now answers a perfect dodge of a red blow only. White and heavy dodges still build your streak.',
+          'Flash counter: attack at the last instant before a duelist\'s blow and cut straight through it.',
+          'A perfect parry deals more posture and makes your next light cut fast and critical.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'The flurry reads against the human bosses, and every blink leaves an ASCII afterimage',
+        notes: [
+          'Each flash cut against a duelist winds up, runs past his side and ends in a finish you can see.',
+          'Every blink leaves your outline behind in cold blue digits that fall apart.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: "The boss's bar at the top; QUIT TO TITLE",
+        notes: [
+          "The boss's name, HP and posture sit at the top centre.",
+          'The pause menu has QUIT TO TITLE (press it twice).',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'Background objects drawn like the dragon, and landmarks',
+        notes: [
+          'Pillars, stones, lanterns, the throne, bones and the bonfire are made of the wyrm\'s small digits.',
+          'Each level has big set pieces: an elder wyrm\'s skeleton, colossal stone swordsmen, a sect gate and more.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'Training mode and a lab stage',
+        notes: [
+          'F4 opens Training: every situation worth practising, one click each, with the game playing your side.',
+          'A training room stage: a dark dojo with a measuring grid.',
+        ],
+      },
+      {
+        date: '2026-11-14',
+        title: 'An ASCII HUD',
+        notes: [
+          'HP, guard and the boss\'s bars are rows of characters drawn on the game.',
+          'YOU DIED, victory and area names are block letters like the title logo.',
+          'The minimap is a small faint disc.',
+        ],
+      },
+      {
+        date: '2026-11-14',
+        title: 'Phone controls you can hold, and a guard meter',
+        notes: [
+          'ATTACK, BLOCK and DODGE are three tiles that touch: slide your thumb between them. Move and size them in the pause menu.',
+          'A guard meter: a blocked blow costs guard, not HP. Run it dry and your guard is knocked open.',
+          'Play upright: holding the phone in portrait works.',
+        ],
+      },
+      {
+        date: '2026-11-15',
+        title: 'Weight on the flurry; one streak; the riposte; bosses with a streak of their own',
+        notes: [
+          'Flash cuts land with a freeze, the boss reels and the last blow staggers a duelist.',
+          'Parries count in your streak. Parry the last blow of a string for a riposte.',
+          'Duelists keep a streak too and answer with their own flurry. Parry or block it all to break them.',
+        ],
+      },
+      {
+        date: '2026-11-14',
+        title: 'The Cinder Wyrm in large, readable letters',
+        notes: ['The wyrm was printed in large bold symbols for a day. The next entry replaced it.'],
+      },
+      {
+        date: '2026-11-14',
+        title: 'The Cinder Wyrm in finer, steadier letters',
+        notes: ['The wyrm is drawn in fine, calm digits that travel with its body instead of sliding under a fixed grid.'],
+      },
+      {
+        date: '2026-11-14',
+        title: 'The free hand in sword fingers; weight and footwork; a cut that lands; outfits to pick from',
+        notes: [
+          'The free hand forms sword fingers and moves against each cut.',
+          'The body carries the cuts, the feet plant and pivot, and a landed edge bites before it tears through.',
+          'A landed cut shows a slash line, sparks and a camera kick.',
+        ],
+      },
+      {
+        date: '2026-11-14',
+        title: 'The streak and the flurry',
+        notes: [
+          'Perfect dodges in a row build a streak. Each one is answered with that many flash cuts and an art.',
+          'Arts against the wyrm: Skyfall, Severing Line, Heaven Splitter. Against a duelist: Passing Cut, Falling Leaf, Rising Moon.',
+        ],
+      },
+      {
+        date: '2026-11-14',
+        title: 'The Starless Lord in black plate, and how he moves',
+        notes: [
+          'He wears a hooded black harness with a slit of red light, and glides instead of running.',
+          'New moves, among them three spells: the Crushing Dark, the Rift and the Dark Star.',
+        ],
+      },
+      {
+        date: '2026-11-14',
+        title: 'Hit reactions and the death, made natural',
+        notes: ['The hero falls the way a blow drives him, buckles at the knees and lies naturally.'],
+      },
+      {
+        date: '2026-11-14',
+        title: 'Steel on steel',
+        notes: [
+          'Parries show the two blades crossed, with sparks.',
+          'A duelist guards and deflects your strikes. A guard press or dodge cancels any swing.',
+          'Blade lock, and the trade clash: swing as he swings and the cuts meet.',
+          'The camera eases closer within a duelist\'s reach.',
+        ],
+      },
+      {
+        date: '2026-11-14',
+        title: 'A faster chain, a new finisher, swings that flow home',
+        notes: [
+          'A hit about every 0.32 s, and a new leaping two-handed finisher.',
+          'After each cut the blade eases home instead of snapping back. A finer sword trail.',
+        ],
+      },
+      {
+        date: '2026-11-13',
+        title: 'Wuxia-flow swings, a dashing cleave, a deeper guard, a narrower cloak, a new sword arc',
+        notes: [
+          'Every swing is a whole-body cut with several looks per hit.',
+          'The charged attack is a dashing diagonal cleave. The guard is a deeper, side-on stance.',
+        ],
+      },
+      {
+        date: '2026-11-13',
+        title: 'The Starless Lord, a third level',
+        notes: [
+          'The Obsidian Throne: a dark lord with a blade of red light, in four forms with four health bars.',
+          'Empty a bar or break his posture, then strike the DEATHBLOW. Between strings he works the Void.',
+        ],
+      },
+      {
+        date: '2026-11-13',
+        title: 'Controller support',
+        notes: ['Play with an Xbox, PlayStation or any standard gamepad, with rumble and on-screen pad hints.'],
+      },
+      {
+        date: '2026-11-13',
+        title: 'Remappable controls',
+        notes: ['Pause → CONTROLS: rebind any action on the keyboard, mouse or controller.'],
+      },
+      {
+        date: '2026-11-12',
+        title: "The hero at Shen Hui's size, a trimmed cloak",
+        notes: ['The hero is drawn a little smaller and his cloak is trimmed, so his back and arms show.'],
+      },
+      {
+        date: '2026-11-12',
+        title: 'The Ash Disciple, a second level',
+        notes: [
+          'The Ashfall Courtyard and Shen Hui, a fast swordsman with a long jian.',
+          'Perfect deflects, blade locks and the mikiri, each in slow motion.',
+          'Pick a level on the title screen.',
+        ],
+      },
+      {
+        date: '2026-11-12',
+        title: 'Attack variants, hair that reads, a fuller cloak',
+        notes: ['Every hit of the chain has two or three looks, so the combo does not repeat.'],
+      },
+      {
+        date: '2026-11-11',
+        title: 'Breath-born bullets, perfect-parry returns, Armageddon, heat-glow warnings',
+        notes: [
+          'Bullets pour from the wyrm\'s jaws. A perfect parry sends one back.',
+          'Armageddon: a sky full of meteors. Ground warnings glow with heat.',
+        ],
+      },
+      {
+        date: '2026-11-12',
+        title: 'Two hands, a raised guard, idle life, gold hair',
+        notes: ['Two-handed swings, a raised guard, and idle moves when you stand still.'],
+      },
+      {
+        date: '2026-11-11',
+        title: 'A hooded cloak, arms that bend, fewer draw calls',
+        notes: ['A hooded, tattered cloak, a sword arm that bends, and a lighter load for phones.'],
+      },
+      {
+        date: '2026-11-11',
+        title: 'Hands, a longer combo and equipment slots',
+        notes: ['Real hands on the grip and a five-hit chain with a sprint slash and a roll cut.'],
+      },
+      {
+        date: '2026-11-09',
+        title: 'The hero filled out',
+        notes: ['Broader chest and shoulders, and the sword held where you can see it.'],
+      },
+      {
+        date: '2026-11-09',
+        title: 'Bullet hell and the moonlit sword',
+        notes: ['The wyrm throws spirals and swarms of fire bullets you can deflect. The sword glows blue-white.'],
+      },
+      {
+        date: '2026-11-09',
+        title: 'Blender-built hero parts',
+        notes: ['Hair, collar, cape and blade sculpted in Blender.'],
+      },
+      {
+        date: '2026-11-09',
+        title: 'Single-figure reference, round 2',
+        notes: ['A new stance, a fine dot-matrix look and a fuller coat.'],
+      },
+      {
+        date: '2026-11-09',
+        title: 'The lean reference match',
+        notes: ['A lean swordsman with spiky hair, a flared collar and split coat tails.'],
+      },
+      {
+        date: '2026-11-09',
+        title: 'The epic wyrm fight',
+        notes: ['A longer, harder battle in three phases, with combos to parry blow by blow, fire spells and short flights.'],
+      },
+      {
+        date: '2026-11-08',
+        title: 'The reference match',
+        notes: ['The wyrm and the hero look like the reference images and move better.'],
+      },
+    ],
+  },
+  {
+    version: '0.4.0',
+    date: '2026-11-02',
+    summary: 'Classic ASCII art, and the game is playable on phones.',
+    entries: [
+      {
+        date: '2026-11-02',
+        title: 'Touch controls',
+        notes: [
+          'A floating stick, ATTACK, BLOCK, DODGE, FLASK, LOCK and pause on phones.',
+          'Auto-aim at the boss, pinch zoom, and a closer phone camera.',
+        ],
+      },
+      {
+        date: '2026-11-02',
+        title: 'The hero shows his details',
+        notes: ['The hero is drawn bigger in finer letters, so he reads at the game camera.'],
+      },
+      {
+        date: '2026-11-02',
+        title: 'A fine ASCII-art grid',
+        notes: ['The hero and the wyrm print through a fine grid of letters coloured per cell.'],
+      },
+    ],
+  },
+  {
+    version: '0.3.0',
+    date: '2026-11-01',
+    summary: 'A look pass from the concept sheets.',
+    entries: [
+      {
+        date: '2026-11-01',
+        title: 'A four-legged drake',
+        notes: ['The wyrm became a bigger, four-legged drake with sail wings and a molten underside.'],
+      },
+      {
+        date: '2026-11-01',
+        title: 'The Shadow Swordsman',
+        notes: ['The hero became a black-coated swordsman with a big sword and new poses.'],
+      },
+      {
+        date: '2026-11-01',
+        title: 'New moves and clearer tells',
+        notes: [
+          'An overhead slam and a lunging thrust.',
+          'Attack tells are read from the boss itself: a red glow to dodge, a white glint to parry.',
+        ],
+      },
+    ],
+  },
+  {
+    version: '0.2.0',
+    date: '2026-11-01',
+    summary: 'Combat and presentation.',
+    entries: [
+      {
+        date: '2026-11-01',
+        title: 'Block, parry and the perfect dodge',
+        notes: [
+          'Hold to block, tap just before impact to parry, and a perfect dodge blinks you behind the boss.',
+          'A posture meter: break it for big critical hits. A charged heavy attack.',
+        ],
+      },
+      {
+        date: '2026-11-01',
+        title: 'Every attack tells you how to answer it',
+        notes: ['White for a normal blow, blue to parry, red to dodge.'],
+      },
+      {
+        date: '2026-11-01',
+        title: 'A gentler start',
+        notes: ['More HP, five flasks and no stamina bar.'],
+      },
+    ],
+  },
+  {
+    version: '0.1.0',
+    date: '2026-11-01',
+    summary: 'The first playable fight: the Cinder Wyrm.',
+    entries: [
+      {
+        date: '2026-11-01',
+        title: 'The Cinder Wyrm',
+        notes: [
+          'A moonlit forest drawn in ASCII, with grass, stones, bones and a bonfire.',
+          'A knight with a light combo, a heavy attack, a roll and flasks against a wyvern in two phases.',
+          'Procedural sound and music.',
+        ],
+      },
+    ],
+  },
+];
+
+/** A stable id for an entry: its date and title (not its release, so cutting a version keeps it read). */
+export function entryId(entry) {
+  return `${entry?.date ?? ''}|${entry?.title ?? ''}`;
+}
