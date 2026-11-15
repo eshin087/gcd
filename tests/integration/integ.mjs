@@ -1657,6 +1657,34 @@ async function scenarioRiposte() {
   return G;
 }
 
+// ================================================================== scenario: training (ADR-098)
+// Every situation of the Training catalogue that applies to this boss, run by the runner itself
+// (src/dev/training.js): each must play out (done, within its time) and show what it promises.
+async function scenarioTraining() {
+  out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const T = game.lab.training;
+  const L = T.list();
+  const cats = new Set(L.map((s) => s.cat));
+  out(`   ${L.length} situations in ${cats.size} categories: ${[...cats].join(', ')}`);
+  const bad = [];
+  for (const s of L) {
+    if (s.cat === 'BOSS MOVES' && !true) continue;
+    T.run(s.id);
+    let frames = 0;
+    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
+    const r = T.lastResult;
+    const ok = T.ph === 'done' && r?.id === s.id && r.ok;
+    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
+    if (!ok) bad.push(s.id);
+  }
+  T.stop();
+  assert(L.length >= 20 && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+  return G;
+}
+
 // ================================================================== scenario: deflect chain (contract 1, player side)
 async function scenarioDeflect() {
   out('\n== scenario DEFLECT (a string parried in rhythm: tap, release, tap; 0.45 s between impacts) ==');
@@ -7035,7 +7063,7 @@ async function scenarioBatch() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

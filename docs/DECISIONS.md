@@ -2390,3 +2390,30 @@ not fit across it and the keep-in-view pan works harder; nothing was re-tuned fo
 controls can be lost against bright ground (a lit pillar behind the pad); the halo helps, and the
 rest opacity is one number in `ui/touchStyle.js`. A desktop window dragged taller than wide also
 gets the wider field of view. Not tried on a real phone.
+
+## ADR-098 — Training: every situation, one click, played by the game's own input (2026-11-15)
+- **Context:** the owner: "Make a lab mode to easily tell every situation with a simple click ... see
+  every streak animation and effect between the character and bosses ... every situation i would
+  want to test in a list by category like a fighting game lab mode in a cool lab background/stage".
+  The Lab could trigger a boss move, but every answer (a parry at the right frame, a perfect dodge,
+  a streak of seven) had to be played by hand.
+- **Decision:** (1) **Situations are data** (`dev/training.js`): a category, a boss filter, the
+  set-up (distances, streaks, art), how it starts, how the hero answers, when it is over, and what
+  it must show (`expect`). (2) **The runner plays the hero through the input's virtual keys** (the
+  touch controls' path), timing each answer off the boss's own glint (`combat:flash` + the boss's
+  flash lead), so what plays is the real game, not a shortcut through the hero's methods. (3) **The
+  same catalogue is a test:** the three sims run every situation for their boss and fail on one that
+  does not show what it promises. (4) **A lab stage** (`?stage=lab`) puts any level's boss on a
+  training room with a measuring grid; it wraps the level (the same boss, the room's set and
+  layout), so no boss needs to know about it. Three looks were built for the owner to pick.
+- **Rejected:** *Calling the hero's methods directly* (`_parry`, `_startRoll`): faster to write,
+  but it skips the input, the buffers and the timing windows, which are what a situation is meant to
+  show. *One stage per boss:* the duelists keep to their own rectangles and bounds, and a stage that
+  wraps any level keeps them all. *A separate page:* the Lab already owns the debug APIs; Training is
+  one more view on them.
+- **Consequences:** the BOSS MOVES category grows by itself with every new move. A move of a later
+  phase puts a duelist into that phase without its transition; the wyrm takes any move in any phase.
+  The Starless Lord seated on the training room's floor (no throne) only shows while the fight has
+  not started. On the lab stage the courtyard's pillars and the hall's walls are gone, so a boss that
+  relies on them (the Lord's hall bound) still keeps to its own numbers.
+

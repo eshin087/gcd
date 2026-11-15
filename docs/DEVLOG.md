@@ -5,6 +5,36 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 36: Training (every situation, one click) and the lab stage
+
+**Owner:** "Make a lab mode to easily tell every situation with a simple click. For example i want to
+see every streak animation and effect between the character and bosses. Think of every situation i
+would want to test in a list by category like a fighting game lab mode in a cool lab
+background/stage". Branch `dev/training-lab`, own worktree.
+
+**Done** (ADR-098):
+- **Training** (`dev/training.js`, `dev/trainingPanel.js`): 8 categories, 42 situations on the wyrm,
+  60 on the Ash Disciple, 82 on the Starless Lord (BOSS MOVES grows with his moves). One click plays
+  each: the runner sets it up and plays the hero through the input's virtual keys, answering the
+  boss's glints. A banner names it and gives ✓ / ✗. Speed, loop, the answer for boss moves, the
+  stage and the boss in the panel. F4 / the Lab's TRAINING button / `?training`.
+- **The lab stage** (`world/trainingRoom.js`, `?stage=lab`): a training room for any boss, three
+  looks to pick from (Grid, Holo, Void).
+- **Found on the way:** the Ash Disciple's streak flurry had the same name as his phase-2 string
+  (both "Hundred Petals"): it is **Scattering Ash** now.
+- **Tests:** integ / duel / lord TRAINING run every situation for their boss (all pass).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the browser: the panel and a riposte
+×3 on Shen Hui on the Holo stage (screenshot); a flurry on Shen Hui on each of the three looks (a
+sheet sent to the owner).
+
+**Not checked / open:** the wyrm and the Lord on the lab stage only headless (their sims run on their
+own sets); phones (the panel is narrower there but not tried); the owner's pick of a look.
+
+**Next:** the owner picks a stage look (the other two can go); then situations he asks for.
+
+---
+
 ## 2026-11-14 — Session 35: the phone's right thumb, a lock marker that fades, the guard meter
 
 **Owner:** "Lets improve mobile ui / user experience. The right side controls are too far bottom in

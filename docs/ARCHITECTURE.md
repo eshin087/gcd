@@ -1622,6 +1622,20 @@ right. `solo` hides the other actor only between `lab.postUpdate` and the next `
 actors never see their `visible` flag change). Poses are driven as usual — `dragon.debug.trigger(name)`,
 player inputs / methods — and stepped with `__tick(dt, frames)`.
 
+**Training** (`dev/training.js` `class Training`, `lab.training`; panel `dev/trainingPanel.js`,
+`lab.trainingPanel`; ADR-098). `SITUATIONS` is data: `{ id, cat, name, desc, boss (kinds: 'wyrm' |
+'duel' | 'ash' | 'lord' | 'any'), role (a boss move by role: single / string / long / red / lock /
+mikiri, per level in `ROLES`), dist / wyrmDist / ang, streak, foe, art, hp, god, ai, answer (an
+`ANSWERS` key, or (i, T) → key per glint), go(T), tick(T, dt), after(T), until(T), tail, max, expect
+[events] }`. `list()` filters them for the boss loaded (`bossKinds(game)`) and appends one BOSS
+MOVES situation per `dragon.debug.abilities()` entry. `run(id)` → phases prep (flow to `boss`, AI,
+god, pins) → settle (boss and hero free; else the flow's boss jump) → place (teleport, heal, the
+streaks via `player.debug.streak` / `dragon.debug.streak`) → run (go; every `combat:flash` from the
+boss schedules its answer `lead` s before the impact; `until`) → tail → done (`lastResult` = { id,
+ok, missing, secs }). It drives the hero only through `game.input.setVirtual` /
+`setVirtualAxis` (the sims' mock: press / up / hold / release / axis) and aims with
+`game.mouseGround`. `lab.update` calls `training.update(realDt)` every frame; it uses game time.
+
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```
 ACTIONS                     // [{ id, label, kb: [codes] | null, pad: [buttons] | null, fixed? }] — the defaults
@@ -1753,7 +1767,9 @@ panel and the pause panel still scroll). Tuning: `CONFIG.touch`, sizes / look in
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
 `starless`), `DEFAULT_LEVEL`,
-`getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
+`withStage(level, search)` (`?stage=lab&stageLook=grid|holo|void`: the same level on the training
+room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
+before `applyLevel`; ADR-098), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
 default), `applyLevel(level)` (merges `level.world` into `CONFIG.world`: main.js calls it once,
 before building any module), `levelUrl(id, href)`. One level per page load; switching reloads.
 A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text }`.
