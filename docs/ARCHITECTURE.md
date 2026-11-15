@@ -359,9 +359,9 @@ Render helpers for creature modules:
 - **Landmarks** (`world/landmarks.js`): builders that return painted geometries in world space:
   `buildElderWyrm`, `buildCinderTree` (Cinderwood), `buildSectGate`, `buildCauldron`, `buildColossus`
   (Ashfall), `buildWarden`, `buildGreatSword` (built for the Obsidian Throne's first hall; not placed
-  since ADR-108), all `(rng, x, z, yaw, s, opts?)`.
+  since ADR-112), all `(rng, x, z, yaw, s, opts?)`.
   `carved(parts)` converts painted parts to the carved attribute set for a set's `stones` mesh;
-  For the Obsidian Throne's crater (ADR-108): `buildFallenStar(rng, x, z)` (the split star behind the
+  For the Obsidian Throne's crater (ADR-112): `buildFallenStar(rng, x, z)` (the split star behind the
   seat and its crown of splinters), `buildSpike(rng, x, y, z, { h, w, d, tip, lean, yaw, roll, col,
   lump })` (a tapering slab: the rim's plates, the crown), `starCleft(rng, x, z)` (inlay glyphs for
   the set's glow batch), `facetCol(col, k)` (a `carve()` colour: one tone a facet), `STAR_GLASS`,
@@ -659,7 +659,7 @@ marks its reaction `flurry`; as the deflect ends `brain.startStreak()` plays the
 `streakMove(phase)` (default `streakFlurry`), a move with `streak: true` realised with `{ count }`
 (`realise.js`: its first beat, then the others in turn). A beat with `flit: { r }` puts him at
 another side of the hero as it starts (`duelist.flit`: the side he turns to, or the nearest one that
-is `standable(x, z)`: inside his bound and clear of colliders; the Lord's also on his floor; ADR-108)
+is `standable(x, z)`: inside his bound and clear of colliders; the Lord's also on his floor; ADR-112)
 and its hit carries `around: true`. `brain._act`
 reports every blow's result to `duelist.onStreakBlow(a, b, r)` (`a.streak` = { need, got, failed }):
 parried or blocked counts (a perfect parry two) and takes one off `d.streak`; `got >= need` with
@@ -1153,6 +1153,9 @@ onParried({ attack, tell }): void       // the dragon calls this itself when pla
                                         // deflected (posture + a 0.14 s visual knock-back, the string goes
                                         // on); its last hit / a single melee attack recoils. Emits
                                         // dragon:parried {attack, tell, hit, last} (+ combat:deflectChain)
+attackLabel(id): string | null          // a move's name for the player (the death screen, the move telemetry): its tuning
+                                        // label without the note in brackets; null for an id it does not know. Every boss
+                                        // offers it (a duelist: kit.MOVES[id].label)
 plungePoint(out): Vector3               // contract 2: the top of the head (rig.pt.head + 0.6 × SCALE up), valid in flight
 onPlunge({ damage, posture, point, execution }): number   // contract 2 (below): final damage to the head
                                         // (phase gate kept), posture, the 'plunged' reaction; emits
@@ -1548,6 +1551,9 @@ log(text, channel='system')          // channel: 'system'|'combat'|'warn'|'lore'
 showBossBar(name) / hideBossBar()    // boss HP + posture bar
 banner(text, kind, opts)             // kind: 'death'|'victory'|'area'|'bonfire'|'phase'
 bannerHint(text) / clearBanner(instant)   // sub-line under the current banner; flow uses both
+bannerRecap(lines | null)                 // small lines under the hint (the death screen: the killing move, then what
+                                          // struck him); the first is drawn brighter; cleared by a new banner and by
+                                          // clearBanner(true)
 showStats(rows)                      // victory / death run stats
 prompt(text|null)                    // interaction prompt, e.g. "[@interact] Rest at bonfire" (the chip shows the bound key)
 promptText                           // getter: the prompt shown now (raw "[@interact] ..." text) or null
@@ -1613,6 +1619,15 @@ phase gate (`dragon.phaseAt` after the first, read at construction: 66 % and 33 
 three colours.
 
 ### Flow — `src/game/flow.js` exports `class GameFlow`
+**Move telemetry** (ADR-108, `game/telemetry.js` `MoveLog`): `flow.moves` logs every `combat:answer` per boss move:
+`attempt` (a Map id → { seen, hit, blocked, parried, perfectParry, clashed, dodged, perfectDodge, damage, kills },
+counted in BLOWS; a contact stream is one blow per 1.5 s), `killedBy` ({ attack, tell }; 'burn' when no blow dealt
+the death), `worst(n)`, `commit('death' | 'victory')` (adds the attempt to the level's totals in localStorage
+`abyss.telemetry.v1`: { [level]: { attempts, deaths, wins, killedBy, moves } }), `reset()` on every respawn,
+`table(level, label)` and `totals()` / `clear()`. `flow.moveLabel(id)` names a move (the boss's `attackLabel`, else the
+id spelled out); `flow.deathRecap()` is the death screen's lines ("SLAIN BY …", then up to three moves with "n of m
+blows landed"), shown with `hud.bannerRecap`. The victory record gains "Struck most by". Console:
+`__telemetry()` (this level's table, the deadliest move first), `__telemetry('all')`, `__telemetry('clear')`.
 ```
 constructor(game);  update(dt, realDt)
 quitToTitle()              // the pause menu's QUIT TO TITLE: reload the level (game.pickLevel), which opens on the title;
@@ -2013,7 +2028,7 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
     its own particle batch: `game.pipeline.registerParticles`) and `update` every frame INSTEAD of
     the fireflies / mist / leaves / ash (the bonfire's flames stay). The Obsidian Throne's also has
     `flare(k)`: its floor seal brightens and settles (the boss calls it; optional for callers).
-- **The Obsidian Throne's set** (`world/throneHall.js`: `createThroneHall`, layout `THRONE`; ADR-108;
+- **The Obsidian Throne's set** (`world/throneHall.js`: `createThroneHall`, layout `THRONE`; ADR-112;
   the names are from the hall it replaced). An open crater: a disc of plates `THRONE.R` 15 m round the
   seal (the origin), the dais from `daisZ`, the seat at `throne`, the fallen star at `star`, the south
   lip at `entryZ`, the bonfire at `bonfire`. `THRONE.floor = { r, zN }` is where the boss may stand:
@@ -2257,7 +2272,11 @@ Player → hud/audio/fx/flow:
   `player:lock {phase}` (the blade lock with a duelist: phase start / push / won / lost),
   `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade),
   `player:counter {attack, damage}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
-  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER")
+  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER"),
+  `combat:answer {attack, tell, result, damage, dead, stream, perfect}` (every blow the hero answers, from
+  the player's takeHit, whatever the answer: result = the RESULT it returned (never 'ignored'), damage = the HP it cost,
+  dead = it killed him, stream = a contact tick (breath, burning ground), perfect = a perfect parry; the move
+  telemetry reads it, ADR-108)
 Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash Disciple, emits the same
 `dragon:*` names, see "Levels and the boss slot") → hud/audio/flow:
 - `combat:tell {source:'dragon', attack, tell, impactIn, x, z}` (windup start, per hit, so once per hit of a

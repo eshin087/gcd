@@ -168,7 +168,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
 - [x] The owner's pick of the debris look: digits (chunks and shards turned down; the switch removed)
 - [x] The hero seen behind the wyrm (its own session, PR #41, ADR-106; merged)
-- [x] The Obsidian Throne rebuilt open (ADR-108, Session 45): three open arenas rendered for the
+- [x] The Obsidian Throne rebuilt open (ADR-112, Session 48): three open arenas rendered for the
       owner (Starfall, the Grave of Blades, the Broken Hall), "A Starfall" picked and built: a crater
       with no walls, the star as his throne, 36 breakables (shards, rim slabs, stones in the air)
   - [ ] Owner review of the PR preview on the phone (frame rate there is unverified)
@@ -205,7 +205,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
         20.8 ms at any frame rate; not a fixed step with interpolation: see the ADR)
   - [ ] A performance budget (a target machine, a frame-time ceiling); the cost of two to six steps
         a frame on a slow machine; event-timestamped presses
-  - [ ] Per-move telemetry; the killing move on the death screen
+  - [x] Per-move telemetry; the killing move on the death screen (`game/move-telemetry`, ADR-108)
+  - [ ] Read the table after the owner's sessions and tune from it; a way to read it on the phone
   - [ ] A heavy button; direction + button choose the swing (the 13 looks become moves)
   - [ ] HP-linked posture (the Lord's rule) for every boss
   - [ ] Save file, a hub at the bonfire, a boss order that starts on Shen Hui, ranks, difficulty tiers,
@@ -351,8 +352,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
   - [ ] Sounds of his own: a blade hum and swing, thunder for the lightning, the ignition
   - [ ] The Void grip (lifted and held: mash to break free), designed and left out (M1.28 ships the
         Crushing Dark instead: a pin, no new hero state)
-  - [ ] The crater on a phone (the hall is gone, ADR-108): on-device frame rate with the inlay batch,
-        four vent lights and 36 breakables in one batch (desktop numbers: ADR-108)
+  - [ ] The crater on a phone (the hall is gone, ADR-112): on-device frame rate with the inlay batch,
+        four vent lights and 36 breakables in one batch (desktop numbers: ADR-112)
   - [ ] A reward for beating him (ADR-059), once the technique system lands
 
 ## M1.22 — Controller support and remappable controls (2026-11-13, `input/gamepad`, ADR-066, ADR-067)

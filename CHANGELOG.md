@@ -4,8 +4,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-six pieces of work since 0.4.0:
-- **The Obsidian Throne is open** (2026-11-15, ADR-108). *Changed:* the Starless Lord's level is no
+Thirty-seven pieces of work since 0.4.0:
+- **The Obsidian Throne is open** (2026-11-15, ADR-112). *Changed:* the Starless Lord's level is no
   longer a walled hall. It is the crater where he fell: a round floor of cracked black plates round
   the red seal, the star itself split open behind his seat, shards of its glass standing in the
   floor, stones hanging in the air, a broken crown of slabs round the rim (low to the south, tall
@@ -16,6 +16,13 @@ Thirty-six pieces of work since 0.4.0:
   cover; the stones in the air only chip. *Fixed:* a duelist's flurry against a hero at the edge of
   his floor: its blows came from spots he could not stand on and missed. *Removed:* the hall's walls,
   door, pillars, braziers, stone wardens and great swords.
+- **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
+  which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
+  attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory
+  record gains "Struck most by". *Added:* the game now keeps a table of what every boss move did
+  to you (blows seen, landed, blocked, parried, dodged, damage, deaths), added up over every
+  attempt in this browser; `__telemetry()` in the console prints it for the level, the deadliest
+  move first. Nothing leaves your machine.
 - **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
   lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
   as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a

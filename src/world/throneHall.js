@@ -10,7 +10,7 @@ import { prep, lumpy, carve, slabGeometry, mul, SLAB_LOOK, buildDeadTree, buildF
 import { buildSpike, buildFallenStar, starCleft, facetCol, STAR_GLASS, STAR_COLLIDERS } from './landmarks.js';
 
 // The Obsidian Throne: STARFALL (the Starless Lord's level; the owner's pick "A" of three rendered
-// open arenas, 2026-11-15, ADR-108; before it a walled hall, ADR-069). The crater where he fell out
+// open arenas, 2026-11-15, ADR-112; before it a walled hall, ADR-069). The crater where he fell out
 // of the night sky. South to north (the player walks north, -z): the bonfire, a path of flagstones
 // through a forest thrown flat (every trunk points away from the impact), the low south lip of the
 // crater, then its floor: rings of fused black plates round the red seal (the origin: the duel's

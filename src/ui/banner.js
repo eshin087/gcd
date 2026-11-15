@@ -31,6 +31,7 @@ export class Banner {
     this.block = el('pre', 'blk', null, this.txt);
     this.text = '';
     this.sub = el('div', 'sub', null, this.root);
+    this.rec = el('div', 'recap', null, this.root); // a few small lines under the hint (recap())
     this.kind = KINDS.area;
     this.active = false;
     this.phase = 'in';
@@ -53,6 +54,7 @@ export class Banner {
     this._fit();
     this.sub.textContent = opts.sub ?? '';
     this.sub.classList.remove('blink');
+    this.recap(null);
     // opts.hold: seconds to hold (Infinity = until clear())
     this.hold = opts.hold !== undefined ? Math.max(0, num(opts.hold, Infinity)) : k.hold;
     this.phase = 'in';
@@ -82,9 +84,19 @@ export class Banner {
     this.sub.classList.toggle('blink', !!text);
   }
 
+  /** Small lines under the hint (the death screen's killing move and what struck him): an array of
+   *  strings, the first drawn brighter; null clears them. */
+  recap(lines) {
+    this.rec.textContent = '';
+    const L = Array.isArray(lines) ? lines.filter((s) => typeof s === 'string' && s) : [];
+    for (let i = 0; i < L.length; i++) el('div', i === 0 ? 'l first' : 'l', L[i], this.rec);
+    this.rec.classList.toggle('on', L.length > 0);
+  }
+
   clear(instant = false) {
     if (!this.active) return;
     if (instant) {
+      this.recap(null);
       this.active = false;
       this.alpha = 0;
       this._op = 0;

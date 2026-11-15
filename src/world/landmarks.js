@@ -651,7 +651,7 @@ export function buildGreatSword(rng, x, z, yaw = 0, s = 1, { lean = 0.16, col = 
 /** The throne's wardens: two hooded colossi in obsidian, their swords edged in red. */
 export const buildWarden = (rng, x, z, yaw, s) => buildColossus(rng, x, z, yaw, s, { col: OBSIDIAN, head: 'hood', blade: BLOODSTEEL, worn: 0.03 });
 
-// ---------------------------------------------------------------- the Obsidian Throne: Starfall (ADR-108)
+// ---------------------------------------------------------------- the Obsidian Throne: Starfall (ADR-112)
 // The crater's pieces are built for prop art directly: carve() attributes, flat facets, one tone a
 // facet. They go into a set's `stones` mesh (or its breakables) as they are: no carved() pass.
 const STAR_ROCK = [0.075, 0.078, 0.105]; // the crater floor's obsidian

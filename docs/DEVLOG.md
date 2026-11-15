@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-15 — Session 45: the Obsidian Throne rebuilt open (Starfall)
+## 2026-11-15 — Session 48: the Obsidian Throne rebuilt open (Starfall)
 
 **Owner:** "i want you to redo the sith lord level as the levels in general should not be so confined
 ... the walls are also adding a visibility issue so make it more open, cool interesting
@@ -18,7 +18,7 @@ Grave of Blades, the Broken Hall), each at the fight camera (1280 x 720), walkin
 pulled back to show the whole arena, and at 852 x 393 with the touch preset; one sheet of all three
 and one per arena, with a line on what each gives the fight. The owner: **"A Starfall"**.
 
-**Done** (ADR-108):
+**Done** (ADR-112):
 - `world/throneHall.js` is the crater: rings of plates round the seal, the star as his throne
   (`landmarks.js` `buildFallenStar`, `buildSpike`, `starCleft`, `facetCol`), twelve shard clusters,
   six stones hanging in the air, four vents, a broken crown of rim slabs (low south, tall north), the
@@ -36,7 +36,7 @@ and one per arena, with a line on what each gives the fight. The owner: **"A Sta
 **Verification:** `npm test` (five suites) and `npm run build` pass. The final build rendered in
 headless Edge with the real GPU and compared with the frames the owner picked from: 0.07 – 0.21 % of
 pixels differ (particles). The walk in from the bonfire looked at too. Frame cost against the hall:
-ADR-108 (fewer triangles and lights, one more draw call, render time 0.85 – 1.03 of the hall's).
+ADR-112 (fewer triangles and lights, one more draw call, render time 0.85 – 1.03 of the hall's).
 
 **Found on the way:** separate timing runs are useless while other sessions use the GPU (the hall
 itself read 2 ms, then 19 ms): put both builds in one page (a second checkout served under a path of
@@ -57,6 +57,33 @@ thrown, a rim slab pulled down across the hero's path, a storm of rubble, Torn S
 plates.
 
 ---
+## 2026-11-15 — Session 45: per-move telemetry; the death screen names the killing move
+
+**Owner:** "Yes, telemetry" (the genre review's third piece). Branch `game/move-telemetry`, stacked on
+`core/sim-step` (PR #43), own worktree. Session 45 / ADR-108: PR #41 and #44, open beside it, hold
+Sessions 43 / 44 and ADR-106 / 107.
+
+**Done** (ADR-108):
+- `player.takeHit` announces every blow it resolves: `combat:answer`.
+- `game/telemetry.js` `MoveLog`: a row per boss move (blows seen, hit, blocked, parried, clashed,
+  dodged, damage, kills) for the attempt; totals per level in localStorage; a contact stream is one
+  blow per 1.5 s.
+- The death screen: "SLAIN BY <MOVE>" and up to three moves with "n of m blows landed", small and
+  dim under the hint (`hud.bannerRecap`). The victory record: "Struck most by".
+- `boss.attackLabel(id)` on the wyrm and the duelists; `flow.moveLabel`, `flow.deathRecap`.
+- Console: `__telemetry()`, `__telemetry('all')`, `__telemetry('clear')`.
+- **Tests:** duel TELEMETRY (the table by itself with a fake storage; in the duel: a string taken, a
+  parry, a death, the recap in the banner, a new attempt after rising).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server on `?level=ash`: Swallow
+Flicks taken, then killed by Lotus Sweep: the death screen at 800 x 600 and at the phone's 852 x 393
+(`?touch`): three lines under the hint, clear of the banner, inside the screen.
+
+**Not checked / open:** the wyrm's and the Lord's labels only by the tests' lookups (no death filmed
+there); upright on a phone; nothing read back from a real play session yet. The phone has no way
+to read the stored table.
+
+**Next:** the owner plays; then tune from `__telemetry()`. The heavy button needs their answers.
 
 ## 2026-11-15 — Session 44: the world breaks (breakables, ground fire, cover, marks)
 
@@ -67,14 +94,14 @@ attack. the players can also do this as well. i want the bosses to also use the 
 also redo the backgrounds of the levels. i want you to redo the sith lord level ... ask me any
 questions". Branch `world/destruction` from `main`. (Numbers: other PRs open at the same time took ADR-101 – 103 and Sessions 40 – 42, so this is
 ADR-107 / Session 44; the hero seen behind the wyrm is ADR-106 / Session 43, the open Obsidian Throne
-ADR-108 / Session 45 and the Lord's terrain moves ADR-109.)
+ADR-112 / Session 48 (renumbered when PR #45 took ADR-108 / Session 45) and the Lord's terrain moves ADR-109.)
 
 **Asked, answered:** fire burns where it lands (no spreading); the terrain is a real tactic for the
 hero (cover, pieces felled onto a boss); Cinderwood and Ashfall keep their layouts and get things to
 break; "staged PRs and separate agents doing parallel tasks".
 
 **Split:** two sessions were started on their own branches: the hero seen behind the wyrm (PR #41,
-ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-108, ADR-109; it was sent
+ADR-106) and the open Obsidian Throne with the Lord's terrain moves (ADR-112, ADR-109; it was sent
 this API). This session built the system the rest stands on.
 
 **Done** (ADR-107):

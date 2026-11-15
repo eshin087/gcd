@@ -224,6 +224,12 @@ export class Duelist {
     return TARGETABLE.has(this.state);
   }
 
+  /** A move's name for the player (the death screen, the telemetry); null for an id he does not know. */
+  attackLabel(id) {
+    const l = this.kit?.MOVES?.[id]?.label;
+    return typeof l === 'string' && l ? l.replace(/\s*\(.*\)\s*$/, '') : null;
+  }
+
   lockPoint(out) {
     const c = this._hs[1];
     if (Number.isFinite(c.x + c.y + c.z) && (c.x || c.z)) return out.set(c.x, c.y, c.z);

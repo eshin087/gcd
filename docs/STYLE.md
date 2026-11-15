@@ -601,7 +601,7 @@ all glyph particles in the dragon's `add` / `alpha` pools.
 - **Claw wakes** (`clawTrail`): a burning streak behind the toes on every active frame of a claw or
   overhead; **slam burst** (`slamBurst`): fire and dust thrown up where an overhead lands.
 
-### The Obsidian Throne and the blades of red light (2026-11-13, ADR-069, ADR-070; the open crater: 2026-11-15, ADR-108)
+### The Obsidian Throne and the blades of red light (2026-11-13, ADR-069, ADR-070; the open crater: 2026-11-15, ADR-112)
 - **The crater** (the owner's pick "A, Starfall" of three rendered open arenas; it replaced a walled
   hall: "the walls are also adding a visibility issue so make it more open") has a made floor: rings
   of fused obsidian plates round the seal (carved glyphs, the calm paving look, sparser and dimmer

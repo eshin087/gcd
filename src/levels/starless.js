@@ -2,7 +2,7 @@ import { createThroneHall, THRONE } from '../world/throneHall.js';
 import { StarlessLord } from '../entities/enemies/starlessLord/lord.js';
 
 // The Obsidian Throne: the crater where the Starless Lord fell out of the night sky, and the star he
-// took for a throne (COMBAT.md → "The Starless Lord"; world/throneHall.js, ADR-108). The seal inlaid
+// took for a throne (COMBAT.md → "The Starless Lord"; world/throneHall.js, ADR-112). The seal inlaid
 // in the crater's floor is the origin: the duel's centre. The bonfire waits to the south, at the foot
 // of the path through the flattened forest.
 const H = THRONE;
