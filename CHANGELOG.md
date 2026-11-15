@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-seven pieces of work since 0.4.0:
+Twenty-eight pieces of work since 0.4.0:
 - **Background objects drawn like the dragon, and landmarks** (2026-11-15, ADR-100): pillars, walls,
   standing stones, boulders, lanterns, the throne and its dais, bones, braziers, the bonfire and the
   fallen bell are now made of the wyrm's small digits: a dark body, brighter digits where light
@@ -14,6 +14,17 @@ Twenty-seven pieces of work since 0.4.0:
   colossal stone swordsmen, the sect's gate and an incense cauldron round the Ashfall Courtyard; two
   hooded wardens beside the Obsidian Throne and six great swords in its aisles. Floors, the hero,
   the human bosses and the trees look as before.
+- **An ASCII HUD** (2026-11-14, ADR-098): the overlay is now made of characters like the rest of
+  the game.
+  - **Meters are text.** HP, guard, the crit window, the boss's HP and its posture are rows of
+    characters (`HP [################........] 104 / 160`), drawn straight on the game with no
+    panel behind them. The piece you just lost shows pale for a moment before it drains.
+  - **Big words are block letters.** YOU DIED, the victory line, area names and phase calls are
+    built from characters in the style of the ABYSS title logo, and stack word by word on a narrow
+    screen. The serif font is gone from the HUD.
+  - *Removed:* the name / "Lv 12" / class lines of the player frame (they were decoration).
+  - **The minimap barely exists:** a small faint disc (72 px on desktop, 40 px on phones) with no
+    frame, title or coordinates.
 - **Phone controls you can hold, and a guard meter** (2026-11-14, ADR-095, ADR-096):
   - **The right thumb's pad.** ATTACK, BLOCK and DODGE are now three large tiles that touch each
     other, moved up and in from the corner. Slide your thumb from one onto another without lifting:

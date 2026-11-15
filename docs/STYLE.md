@@ -85,8 +85,25 @@ grid, I arrange them to create those patterns… our brains recognize shapes and
    (`o 0 O 8 @ &`), stone uses letters.
 3. **Glyph particles** for FX: fire `* # % @ & ^ ~`, embers `. ' \``, sparks `+ x *`.
 
-**UI.** Monospace everything; thin bars; translucent dark panels with 1px light borders; a chat/log
-panel bottom-left with tabs; minimap top-right with a zone name; FPS readout; hotbar bottom-centre.
+**UI (the reference).** Monospace everything; thin bars; translucent dark panels with 1px light
+borders; a chat/log panel bottom-left with tabs; minimap top-right with a zone name; FPS readout;
+hotbar bottom-centre.
+
+**UI (this game, ADR-098).** The HUD is ASCII too, and in play it has no panels: it is text drawn
+straight on the game with a dark halo.
+- **Meters are rows of characters** (`ui/glyphBar.js`): `HP [################........] 104 / 160`.
+  A meter is three runs: the fill (`#`; the guard `=`, the crit window `>`), the piece just lost
+  (a paler run that holds, then drains) and the empty rest (`.`), between `[` and `]`. The boss's
+  posture is a run of `=` growing from the middle of a row of `-`. Colour says which meter it is
+  (red HP, steel guard, cyan crit, gold posture); the characters say how much.
+- **Big words are block letters** (`ui/blockText.js`): YOU DIED, the victory line, area names and
+  phase calls are built from the same six-row letterforms as the ABYSS title logo, sized to the
+  screen and stacked word by word on a narrow one. Names that are too long for that (the boss's)
+  are wide-spaced capitals in the game's monospace. There is no serif font in the HUD.
+- **No name plate** (name, level, class): it was decoration. **The minimap** is a small faint disc
+  (72 px, 40 px on phones) with no frame: an arena with one boss barely needs it.
+- Menus (pause, title, record) and the desktop log keep thin-bordered translucent panels: they are
+  read, not glanced at.
 
 ## How this codebase does it (v0.3)
 

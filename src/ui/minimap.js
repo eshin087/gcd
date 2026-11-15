@@ -2,7 +2,8 @@ import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
 import { el, num } from './dom.js';
 
-// Top-right minimap (canvas 2D). The static clearing (canopies, stone ring, boulders, nest) is
+// Top-right minimap (canvas 2D): a small see-through disc (72 px on desktop, 40 px on phones; the
+// zone title and the coordinates are in the DOM but not shown: an arena with one boss needs neither). The static clearing (canopies, stone ring, boulders, nest) is
 // baked once into an offscreen layer; the live layer (bonfire flicker, dragon, player arrow) is
 // redrawn at ~30 Hz. North (world -Z) is up, +X is right — the same as the game camera.
 
@@ -14,7 +15,7 @@ const SLEEPY = new Set(['sleeping', 'dying', 'dead']);
 export class Minimap {
   constructor(game, parent) {
     this.game = game;
-    this.root = el('div', 'ab-map ab-panel ab-play', null, parent);
+    this.root = el('div', 'ab-map ab-play', null, parent);
     el('div', 'ab-map-zone', String(game.level?.name ?? 'Cinderwood Hollow').toUpperCase(), this.root);
     this.canvas = el('canvas', '', null, this.root);
     this.dpr = Math.min(2, Math.max(1, num(window.devicePixelRatio, 1)));

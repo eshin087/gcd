@@ -1,4 +1,12 @@
 import { el, num } from './dom.js';
+import { blockText } from './blockText.js';
+
+// The big words are BLOCK LETTERS built from characters, in the ABYSS logo's letterforms
+// (ui/blockText.js; ADR-098): as large as fits the screen's width up to BLOCK_MAX px a character
+// (by kind), stacked word by word on a narrow screen. BLOCK_MIN: below this the words stack instead.
+const BLOCK_MAX = { death: 17, victory: 13, area: 9, bonfire: 11, phase: 6 };
+const BLOCK_MIN = 5.5;
+const CH = 0.602; // a character's advance in em (the block letters' monospace)
 
 // Centre-screen souls banners ("YOU DIED", "WYRM VANQUISHED", area titles, ...).
 // Timing per kind: fade in → hold → fade out, animated from update(realDt). A new banner replaces
@@ -19,7 +27,9 @@ export class Banner {
     this.root = el('div', 'ab-banner', null, parent);
     el('div', 'band', null, this.root);
     this.txt = el('div', 'txt', null, this.root);
-    this.txtInner = el('span', 't', null, this.txt);
+    this.txtInner = el('span', 't', null, this.txt); // the plain text (not shown: for readers and tests)
+    this.block = el('pre', 'blk', null, this.txt);
+    this.text = '';
     this.sub = el('div', 'sub', null, this.root);
     this.kind = KINDS.area;
     this.active = false;
@@ -37,6 +47,10 @@ export class Banner {
     this.kind = k;
     this.root.className = `ab-banner k-${KINDS[kind] ? kind : 'area'}`;
     this.txtInner.textContent = String(text ?? '');
+    this.text = String(text ?? '');
+    this.blockKind = KINDS[kind] ? kind : 'area';
+    this._w = -1;
+    this._fit();
     this.sub.textContent = opts.sub ?? '';
     this.sub.classList.remove('blink');
     // opts.hold: seconds to hold (Infinity = until clear())
@@ -50,6 +64,16 @@ export class Banner {
     this._sc = -1;
     this.root.style.visibility = 'visible';
     this.root.style.opacity = '0';
+  }
+
+  /** Lay the block letters out for the screen's width (on show, and when the window is resized or turned). */
+  _fit() {
+    const W = num(globalThis.innerWidth, 1280);
+    if (W === this._w) return;
+    this._w = W;
+    const { lines, cols } = blockText(this.text, { maxCols: Math.floor((0.92 * W) / (CH * BLOCK_MIN)) });
+    this.block.textContent = lines.join('\n');
+    this.block.style.fontSize = `${Math.max(4, Math.min(BLOCK_MAX[this.blockKind] ?? 10, (0.9 * W) / (cols * CH))).toFixed(1)}px`;
   }
 
   /** Blinking line under the banner (e.g. "press any key to rise again"); null clears it. */
@@ -73,6 +97,7 @@ export class Banner {
 
   update(dt) {
     if (!this.active) return;
+    this._fit();
     const k = this.kind;
     this.t += dt;
     if (this.phase === 'in') {
