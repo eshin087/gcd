@@ -16,7 +16,7 @@ import { CONFIG } from './config.js';
 // hero) are never cropped to fit the others. The pan / zoom are damped (FIT.lambda), never
 // snapped, and reset by snap().
 const FIT = {
-  box: [0.9, 0.86, 0.78], // NDC limits: |x|, top, bottom (the boss bar sits at the bottom)
+  box: [0.9, 0.78, 0.86], // NDC limits: |x|, top, bottom (the boss's rows sit at the top)
   lambda: 5, // 1/s: how fast the fit pans / zooms (and eases back) …
   mustLambda: 12, // … and how fast it pans while a must subject is off the box (a blink up into the air)
   maxPan: 30, // m
