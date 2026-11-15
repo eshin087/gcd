@@ -3385,7 +3385,11 @@ async function scenarioHeroLife() {
     let armKey = null, leadDef = null;
     const arms = () => {
       const a = p.atk, def = a?.def;
-      const key = def && p.state === 'attack' && def.kind === 'light' && !a.pending ? `${def.name}#${A.atkVar}` : null;
+      // (from a swing's second frame: its first is where its clip takes over from the last pose. Until
+      // ADR-115 a light pressed on that frame was still 'pending' there and never measured; the same
+      // frames are measured now. That first frame of the rising backhand turns the free hand ~64°:
+      // a follow-up, ROADMAP M1.40)
+      const key = def && p.state === 'attack' && def.kind === 'light' && !a.pending && a.t > 1e-6 ? `${def.name}#${A.atkVar}` : null;
       inv.copy(r.body.matrixWorld).invert();
       [r.arms.R, r.arms.L].forEach((arm, k) => {
         e0.setFromMatrixPosition(arm.upper.matrixWorld).applyMatrix4(inv);
