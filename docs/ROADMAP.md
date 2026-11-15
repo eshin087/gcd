@@ -46,6 +46,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [x] The right thumb's pad: three tiles that touch, slide between them, placed and sized by the player (ADR-096)
   - [x] The guard meter: blocks cost guard, not HP; parries and hits restore it (ADR-095)
   - [x] Played upright (portrait) as well as in landscape; see-through controls; a 70 px minimap on phones (ADR-097)
+  - [x] An ASCII HUD: text meters, block-letter banners, no panels in play, a 40 – 72 px minimap (ADR-098)
   - [ ] Owner's verdict on the phone: the pad's default place and size, the slide's stick (10 px), the guard meter's numbers,
         how faint the controls are, the upright camera against the wyrm
 - [x] Owner approval; released as v0.4.0

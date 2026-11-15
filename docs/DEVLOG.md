@@ -5,6 +5,51 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-14 — Session 36: an ASCII HUD (text meters, block-letter banners), a minimap that barely exists
+
+**Owner:** "Make the minimal much smaller and opaque on mobile. Theres no need for mini map in
+general for this game so lets make it small overall on both desktop and mobile to not take screen
+space. Also think of ways to improve the ui design and layout and to also incorporate the ascii art
+style as well to fit the ascii theme. Ask me any questions". Branch `ui/ascii-hud` from `main`.
+
+**Asked, answered:** the minimap tiny and faint; keep the desktop log, the name tags and the key
+hints, drop the name / level / class lines; for the HUD's look and for the big words: "render all
+three first" and "show me what the ascii block letters would look like first".
+
+**Rendered for the pick** (desktop 1280 x 720 and phone 852 x 393, in the Ashfall Courtyard fight):
+three HUD looks behind a `?hud=` switch (bare glyph lines / terminal frames / a roguelike status
+line) and three big-word styles behind `?words=` (logo-style blocks / # only / spaced capitals).
+The owner picked **bare glyph lines** and **logo-style blocks**. The switches and the two looks not
+picked are removed again.
+
+**Done** (ADR-098):
+- `ui/glyphBar.js`: `GlyphBar` and `GlyphPosture`, meters made of characters, with the old bars'
+  contract. `ui/bars.js` deleted.
+- The player's rows and the boss's have no panel; the name plate is gone; the boss's name is
+  spaced monospace capitals; phase gates are a `|` over the meter.
+- `ui/blockText.js`: block letters A – Z in the logo's letterforms; `ui/banner.js` draws every
+  banner with them, fitted to the window and refitted on resize.
+- The minimap: 72 px at 60 % on desktop, 40 px at 50 % on phones, no frame / title / coordinates.
+  LOCK and pause moved beside the smaller disc.
+- No serif font in the HUD (the mini banner and the pause title are monospace).
+- The flask key chip is hidden on touch (a phone has the FLASK button).
+- **Tests:** integ.mjs ASCIIHUD (the meters' runs, the lost piece, the smallest and the fullest
+  cell, the posture from its middle, the block font's rows, the stacking, the HUD's own meters and
+  banner, no name plate, no minimap panel).
+
+**Found on the way:** the empty cells were invisible at 50 % and the meters had no visible end:
+brighter dots and brackets. "104 / 160" wrapped under the meter. The phase tick sat a bracket's
+width off: it is placed inside the brackets. In '#' only, the font's sixth row (shadow strokes)
+was blank. The new test found a meter held just short of full drawing a
+"lost" cell. A phase call in block letters lay across the fighters in the middle of the fight: it is
+smaller (6 px a character at most) and sits at 21 % of the height, without the dark band.
+
+**Not checked / open:** see the PR. Nobody but me has seen the meters move. Only the Ashfall
+Courtyard was captured; the wyrm's three-phase bar and the Starless Lord's life pips were not
+looked at with the new rows. Tablets not looked at.
+
+---
+
 ## 2026-11-14 — Session 35: the phone's right thumb, a lock marker that fades, the guard meter
 
 **Owner:** "Lets improve mobile ui / user experience. The right side controls are too far bottom in
