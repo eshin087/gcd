@@ -58,7 +58,7 @@ export class DuelFx {
     this._pt = { x: 0, y: 0, z: 0 };
     this._scr = { mpp: 0.025, px: 0, py: 0, cw: 5, ch: 8, W: 0, H: 0, ok: false }; // _screen's result
     // the white glints alive (re-drawn on the letter grid every frame of their short life)
-    this.glints = Array.from({ length: 6 }, () => ({ alive: false, x: 0, y: 0, z: 0, age: 0, k: 1, style: TELL_GLINT.normal }));
+    this.glints = Array.from({ length: 6 }, () => ({ alive: false, x: 0, y: 0, z: 0, age: 0, k: 1, frame: -1, style: TELL_GLINT.normal }));
     // Ash Crescent projectiles (pooled)
     this.crescents = Array.from({ length: 6 }, () => ({ alive: false, x: 0, z: 0, dx: 0, dz: 1, age: 0, flashed: -1, done: false, tell: TELL.NORMAL, damage: 0, kb: 0, attack: '' }));
   }
@@ -338,6 +338,7 @@ export class DuelFx {
     g.age = 0;
     g.k = k;
     g.style = style;
+    g.frame = -1;
     this._drawGlint(g);
     // the heart's sparkle: one small star of light (the only bloom in it)
     const c = TELL_STYLE.normal.color, sp = this._rec(P.x, P.y, P.z, 0.12, 0.26 * (style.diag ? 1.25 : 1), 0.1, '*', c, null);
@@ -366,6 +367,9 @@ export class DuelFx {
   _drawGlint(g) {
     const life = this._frame();
     if (!(life > 0)) return;
+    // (once a frame: the frame a glint is born, tellFlash draws it and update comes after)
+    if (this._fNow !== undefined && g.frame === this._fNow) return;
+    g.frame = this._fNow;
     const st = g.style, t = Math.min(1, g.age / st.life), A = this._axes(), S = this._screen(g.x, g.y, g.z);
     const cw = S.cw * S.mpp, ch = S.ch * S.mpp, D = 12 * S.mpp;
     let x = g.x, y = g.y, z = g.z;
@@ -420,14 +424,14 @@ export class DuelFx {
     if (!(life > 0)) return;
     const n = Math.min(90, Math.max(16, Math.round((TAU * r) / 0.3)));
     const spin = (this.game.time ?? 0) * 0.6;
-    const h = (0.34 + 0.16 * k) * GROUND_GAIN;
+    const h = (0.48 + 0.26 * k) * GROUND_GAIN;
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU + spin, hh = i % 4 ? h : h * 1.5; // (every fourth stands taller: the old ring's '!' marks)
+      const a = (i / n) * TAU + spin, hh = i % 4 ? h : h * 1.25; // (every fourth stands taller: the old ring's '!' marks)
       this._blob(x + Math.cos(a) * r, GROUND_Y, z + Math.sin(a) * r, 0, 0, 0, life, 0.36, 0.36, hh, hh, K_FIRE);
     }
     const ri = r * (1 - 0.85 * k);
     const m = Math.min(60, Math.max(8, Math.round((TAU * ri) / 0.34)));
-    const hi = 0.26 * GROUND_GAIN;
+    const hi = 0.34 * GROUND_GAIN;
     for (let i = 0; i < m; i++) {
       const a = (i / m) * TAU - spin;
       this._blob(x + Math.cos(a) * ri, GROUND_Y, z + Math.sin(a) * ri, 0, 0, 0, life, 0.3, 0.3, hi, hi, K_FIRE);
@@ -564,6 +568,11 @@ export class DuelFx {
       if (wake >= 0) {
         const f = this.rand(0.5, 0.92), fire = wake === K_FIRE;
         this._blob(hx + (tx - hx) * f, hy + (ty - hy) * f, hz + (tz - hz) * f, this.rand(-0.2, 0.2), this.rand(0.1, 0.5), this.rand(-0.2, 0.2), this.rand(0.16, 0.28), 0.5, 0.26, fire ? 0.38 : 0.42, 0, wake, 1.5, fire ? 1.5 : 0.6);
+      } else {
+        // bare steel: the air the blade crossed, a wash of faint strokes behind the edge (cool
+        // steel prints as dim '|' '/' '\\')
+        this._blob(hx + (tx - hx) * 0.8, hy + (ty - hy) * 0.8, hz + (tz - hz) * 0.8, 0, 0, 0, this.rand(0.12, 0.18), 0.42, 0.36, 0.085, 0, K_STEEL);
+        if (s & 1) this._blob(hx + (tx - hx) * 0.5, hy + (ty - hy) * 0.5, hz + (tz - hz) * 0.5, 0, 0, 0, this.rand(0.1, 0.15), 0.42, 0.36, 0.085, 0, K_STEEL);
       }
     }
   }
@@ -755,8 +764,8 @@ export class DuelFx {
   /** The Ash Crescent: a bow of pale steel across its path, ash rolling off behind it; kindled
    *  (phase 2), flame in its wake. */
   _drawCrescent(c, ember) {
-    this._bow(c, 0.9, 0.35, 0.55, 0.1, 0.27, 1.15);
-    this._bow(c, 0.7, 0.35, 0.55, 0.1, 0.27, 0.6, K_STEEL, 0.22);
+    this._bow(c, 0.9, 0.55, 0.55, 0.1, 0.27, 1.15);
+    this._bow(c, 0.65, 0.5, 0.55, 0.1, 0.27, 0.5, K_STEEL, 0.42);
     const px = -c.dz, pz = c.dx, u = this.rand(-0.8, 0.8);
     if (ember) this._blob(c.x + px * u, 0.55, c.z + pz * u, -c.dx * 1.5, this.rand(0.2, 0.8), -c.dz * 1.5, this.rand(0.2, 0.32), 0.44, 0.2, 0.36, 0, K_FIRE, 1.5, 1.5);
     else if (this.rnd() < 0.5) this._blob(c.x + px * u - c.dx * 0.2, 0.5, c.z + pz * u - c.dz * 0.2, -c.dx * 1.5, this.rand(0.1, 0.5), -c.dz * 1.5, this.rand(0.3, 0.5), 0.45, 0.9, 0.6, 0, K_SMOKE, 1.5);

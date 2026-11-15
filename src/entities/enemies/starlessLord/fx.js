@@ -162,12 +162,13 @@ export class LordFx extends DuelFx {
     // (behind him as the camera sees him: the field's depth test hides what the body covers)
     const A = this._axes();
     const bx = A.ry * A.uz - A.rz * A.uy, by = A.rz * A.ux - A.rx * A.uz, bz = A.rx * A.uy - A.ry * A.ux; // toward the camera
-    const ox = x - bx * 0.5, oy = y - by * 0.5, oz = z - bz * 0.5;
-    this.auraAcc += dt * 44 * k;
+    const ox = x - bx * 0.7, oy = y - by * 0.7, oz = z - bz * 0.7;
+    this.auraAcc += dt * 46 * k;
     while (this.auraAcc >= 1) {
       this.auraAcc -= 1;
-      const a = this.rnd() * TAU, r = this.rand(0.25, 0.8);
-      this._blob(ox + Math.cos(a) * r, oy + this.rand(-1.0, 0.5), oz + Math.sin(a) * r, Math.cos(a) * 0.3, this.rand(0.7, 2.0), Math.sin(a) * 0.3, this.rand(0.45, 0.9), 0.7, 0.3, 0.44, 0, K_VOID, 1, 0.8);
+      // (spread across the screen and up his height, never toward the camera)
+      const s = this.rand(-0.85, 0.85), h = this.rand(-1.0, 0.9);
+      this._blob(ox + A.rx * s, oy + h, oz + A.rz * s, A.rx * s * 0.4, this.rand(0.7, 2.0), A.rz * s * 0.4, this.rand(0.5, 0.95), 0.75, 0.4, 0.6, 0.12, K_VOID, 1, 0.8);
       if (this.rnd() < 0.1) {
         const ex = x + this.rand(-0.7, 0.7), ey = y + this.rand(-0.9, 0.7), ez = z + this.rand(-0.7, 0.7);
         this.arc(x + this.rand(-0.2, 0.2), y + this.rand(-0.4, 0.4), z + this.rand(-0.2, 0.2), ex, ey, ez, 0.3);
@@ -369,10 +370,10 @@ export class LordFx extends DuelFx {
     }
     // a crescent of light: a bowed edge of white strokes standing off the floor, the Void burning in
     // the hollow behind it and torn off in its wake, a red ember shed now and then
-    this._bow(c, 1.0, 0.4, 0.6, 0.16, 0.28, 1.15);
-    this._bow(c, 0.9, 0.4, 0.62, 0.12, 0.62, 0.62, K_VOID, 0.3, 0.2);
+    this._bow(c, 1.0, 0.6, 0.6, 0.16, 0.28, 1.15);
+    this._bow(c, 0.9, 0.55, 0.62, 0.12, 0.62, 0.62, K_VOID, 0.34, 0.2);
     for (let i = 0; i < 2; i++) {
-      const u = this.rand(-0.85, 0.85), bow = 0.4 * (1 - u * u) - 0.5;
+      const u = this.rand(-0.85, 0.85), bow = 0.55 * (1 - u * u) - 0.55;
       this._blob(c.x + px * u + c.dx * bow, 0.6, c.z + pz * u + c.dz * bow, -c.dx * 1.5, this.rand(0.1, 0.7), -c.dz * 1.5, this.rand(0.2, 0.34), 0.55, 0.26, 0.42, 0, K_VOID, 1.5, 0.8);
     }
     if (this.rnd() < 0.6) this._spawn(this.add, { x: c.x + this.rand(-0.7, 0.7) * px, y: 0.3, z: c.z + this.rand(-0.7, 0.7) * pz, vx: -c.dx * 2, vy: this.rand(0.3, 1.2), vz: -c.dz * 2, life: this.rand(0.2, 0.5), size: 0.14, sizeEnd: 0.04, glyph: ".'", color: RED, colorEnd: RED_END, alpha: 1, alphaEnd: 0, drag: 2 });
@@ -606,7 +607,7 @@ export class LordFx extends DuelFx {
    *  behind them (a wheel of strokes), the Void at its hub, red embers shed. */
   _drawGlaive(s) {
     const c = Math.cos(s.spin), sn = Math.sin(s.spin), R = 0.95;
-    this._ink(s.x - c * R, s.y, s.z - sn * R, s.x + c * R, s.y, s.z + sn * R, 0, 0.85);
+    this._ink(s.x - c * R * 0.86, s.y, s.z - sn * R * 0.86, s.x + c * R * 0.86, s.y, s.z + sn * R * 0.86, 0, 0.85);
     this._dot(s.x, s.y, s.z, 0.6, 0.34, K_VOID);
     // what the points leave: from where each was last frame to where it is
     const p0 = Number.isFinite(s.pspin) && Math.abs(s.spin - s.pspin) < 1.2 ? s.pspin : s.spin - 0.4;
@@ -751,20 +752,18 @@ export class LordFx extends DuelFx {
   _drawStar(s, k, dt) {
     const life = Math.max(0.02, (this.game.fxDt ?? dt) * 1.6), y = 1.3 + 0.1 * Math.sin(s.t * 5), R = 0.6 + 0.55 * k;
     for (let i = 0; i < 4; i++) {
-      const o = this._rec(s.x + this.rand(-0.1, 0.1) * R, y + this.rand(-0.1, 0.1) * R, s.z + this.rand(-0.1, 0.1) * R, life, R * 1.9, R * 1.9, '@#8M'[i], DARK, null);
+      const o = this._rec(s.x + this.rand(-0.1, 0.1) * R, y + this.rand(-0.1, 0.1) * R, s.z + this.rand(-0.1, 0.1) * R, life, R * 1.6, R * 1.6, '@#8M'[i], DARK, null);
       o.alphaEnd = 1;
       o.rot = s.t * 3 + i;
       this._spawn(this.alpha, o);
     }
     // the rim: hotter stretches of it turn round the heart
-    this._ring(s.x, y, s.z, R, 22, 0.44, 0.34 + 0.3 * k, K_VOID, 2, s.t * (3 + 5 * k));
+    this._ring(s.x, y, s.z, R * 1.1, 24, 0.5, 0.5 + 0.4 * k, K_VOID, 2, s.t * (3 + 5 * k));
     // its corona: short rays standing off the rim, flickering
     for (let i = 0; i < 7; i++) {
       const a = (i / 7) * TAU - s.t * 2.2 + Math.sin(s.t * 7 + i) * 0.2, c = Math.cos(a), sn = Math.sin(a), l = 0.3 + 0.35 * k + 0.12 * Math.sin(s.t * 13 + i * 2.1);
       this._ink(s.x + c * R * 1.15, y + sn * R * 0.35, s.z + sn * R * 1.15, s.x + c * (R + l), y + sn * (R + l) * 0.35, s.z + sn * (R + l), 0, 0.9, 0, 0.5);
     }
-    // its reach on the floor (inside the red warning ring), brightening as it fills
-    this._ring(s.x, GROUND_Y, s.z, s.r * 0.88, Math.max(24, Math.round((TAU * s.r) / 0.34)), 0.34, (0.3 + 0.2 * k) * GROUND_GAIN, K_VOID, 6, -s.t * 0.9);
     s.acc += dt * (30 + 50 * k);
     while (s.acc >= 1) {
       s.acc -= 1;
