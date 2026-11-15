@@ -136,15 +136,16 @@ Render helpers for creature modules:
   `SG_WYRM_MEMBRANE` reads two static vertex attributes of `WingMembrane` (`membrane.js`, laid out
   once on `WING_KEYS.HALF`): `aEdge` (0 inside → 1 on the free trailing edge: holes and the ragged
   edge) and `aBone` (model units to the panel's nearer bone: `boneGlow`).
-- **The wyrm's letters** (pass; `wyrmGlyphs.js`, tested by the wyrm branch for `FLAG.ART` pixels;
-  large readable letters since ADR-092):
-  - `wyrmArtCell(H)` → `[cw, ch]` device px: `ch` = round(H / 55) clamped to 10 – 30, `cw` =
-    round(ch × 0.62), at least 6 (8 x 13 at 720p, 12 x 20 at 1080p, 6 x 10 on a 393 px phone).
-    `createWyrmArtAtlas(cw, ch)` → `{ texture, sets: [mid start, bright start, stroke start],
-    total }`: one row drawn in the game's bold monospace, column 0 blank, then `WYRM_SETS.dim / mid /
-    bright`, then `WYRM_STROKES` (`- / | \`). `setSize` rebuilds it (`tArt`, `uArtCell`,
-    `uWyrmAtlas`).
-  - The grid is anchored to the boss: `main.js` writes his root's screen position into
+- **The wyrm's letters** (pass; `wyrmGlyphs.js`, tested by the wyrm branch for `FLAG.ART` pixels and
+  by `tests/glyphcheck.mjs`; fine pixel-font digits, ADR-093):
+  - `WYRM_FONTS` (`f3x5`, `f4x6`, `f5x7`: glyph w x h px, `top` offset, cell cw x ch, bitmaps) and
+    `wyrmArtFont(H)` → `{ font, s, cell: [cw, ch] }`: the font and integer scale whose cell height is
+    nearest H / 90, ties to the smaller (4x6 cells on a 393 px phone, 5x8 at 720p, 6x9 at 1080p,
+    10x16 at 1440p, 15x24 at 2160p). `wyrmArtCell(H)` is its `cell`. `createWyrmArtAtlas(font, s)` →
+    `{ texture, sets: [mid start, bright start, stroke start], total }`: one row, column 0 blank, then
+    `WYRM_SETS.dim / mid / bright`, then `WYRM_STROKES` (`- / | \`), each glyph with a soft 0.24
+    halo. `setSize` rebuilds it when the font or scale changes (`tArt`, `uArtCell`, `uWyrmAtlas`).
+  - The grid is anchored to the boss (ADR-092): `main.js` writes his root's screen position into
     `U.uBossScreen` (uv x, uv y, view depth, 1 while there is a boss) every frame, the pass rounds it
     to whole px (`uWyrmAnchor`) and counts cells from there, so the letters travel with the wyrm.
   - Per cell (4 samples find it; 2 must hit, 1 if the cell draws a stroke; then, with `uWyrmTaps` 1,
@@ -153,12 +154,12 @@ Render helpers for creature modules:
     stroke-code votes print that stroke glyph in the brightest coded sample's colour; silhouette
     cells (1–3 hits) print a marching-squares edge stroke (`uWyrmOutline`; a horizontal edge keeps
     its letter); each letter pixel takes `uWyrmTone.w` of its brightness and hue from its own source
-    pixel.
-  - Uniforms: `uWyrmTone` (x brightest letter 1.0, y gamma 0.8, z value below which a cell prints
-    nothing 0.02, w own-pixel share 0.3), `uWyrmGlyph` (x / y set steps dim → mid → bright 0.1 /
-    0.34, z per-cell dither 0.08, w stroke votes 1), `uWyrmAtlas` (vec4: the atlas `sets` and
+    pixel (the scale edges cut through the digits).
+  - Uniforms: `uWyrmTone` (x brightest letter 0.95, y gamma 1.3, z value below which a cell prints
+    nothing 0.022, w own-pixel share 0.85), `uWyrmGlyph` (x / y set steps dim → mid → bright 0.12 /
+    0.42, z per-cell dither 0.08, w stroke votes 1), `uWyrmAtlas` (vec4: the atlas `sets` and
     `total`), `uWyrmOutline` (1), `uWyrmAnchor` (vec2 px), `uWyrmTaps` (1). The pass's `.y` uniforms
-    are the wyrm's: `uArtLum.y` 4.5, `uArtBlack.y` 0.004, `uArtMin.y` 0.1, `uArtEdge.y` 0 (the
+    are the wyrm's: `uArtLum.y` 2.2, `uArtBlack.y` 0.004, `uArtMin.y` 0.012, `uArtEdge.y` 0 (the
     depth-gap blackout is off). `uArtMax` (0.8) is shared.
 - **The hero's source** (`heroArt: {...}` option, built from `HERO_INK` by `createHeroMaterials`):
   `part` (0..19, required; throws outside), `fill [r, g, b]`, `spec`, `specPow`, `rim`, `glow` (share

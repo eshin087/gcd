@@ -3,7 +3,7 @@ import { CONFIG } from '../core/config.js';
 import { FS_VERT, HERO_PARTS, LAYER_CASTER, LAYER_CASTER_RIGID, RIGID_VERT_GLSL } from './shaderLib.js';
 import { rigidBones } from './rigidBatch.js';
 import { createGridAtlas, createPixelArtAtlas, pixelArtCell, GRID_COLS, GRID_ROW } from './glyphs.js';
-import { createWyrmArtAtlas, wyrmArtCell } from './wyrmGlyphs.js';
+import { createWyrmArtAtlas, wyrmArtFont } from './wyrmGlyphs.js';
 import { HERO_ART } from './materials.js';
 
 // Frame pipeline:
@@ -109,8 +109,9 @@ export class Pipeline {
     // --- ASCII grid pass (see FLAG in materials.js and GRID_ROW in glyphs.js)
     this.cell = new THREE.Vector2(7, 12);
     this.grid = null;
-    // the wyrm's ASCII-art grid (FLAG.ART): large readable letters, 8x13 px at 720p (wyrmGlyphs.js)
-    this.artCell = new THREE.Vector2(8, 13);
+    // the wyrm's ASCII-art grid (FLAG.ART): fine pixel-font digits, 5x8 px at 720p (wyrmGlyphs.js)
+    this.artCell = new THREE.Vector2(5, 8);
+    this.artFont = '';
     this.art = null;
     // the hero's own, finer grid: a 3x3 micro-font in square 4x4 cells (x2 from 2160 px tall): the
     // reference's dot matrix, and ~28 rows of it down his figure at the game camera
@@ -208,29 +209,30 @@ export class Pipeline {
         // spanning it go black (0 = off). Hero (.x): beyond the slope a neighbour predicts, it draws an
         // ink line on the nearer side and a dim gap on the far one (0.004 = 0.14 m at the 36 m camera).
         uArtEdge: { value: new THREE.Vector2(0.004, 0.0) },
-        // ---- the wyrm's letters (wyrmCell; large bold letters from wyrmGlyphs.js, ADR-092). Its .y uniforms above
+        // ---- the wyrm's letters (wyrmCell; pixel-font digits from wyrmGlyphs.js, ADR-093). Its .y uniforms above
         // map the source: black point, 1 - exp(-luma * k), min brightness, dither, part-gap depth.
         // x = brightest letter, y = brightness gamma (dim charcoal body, bright rims), z = v below
         // which a cell prints nothing (the black gaps between scales), w = how much each stroke
         // pixel takes its own source pixel instead of the cell average (crisp shapes through text)
-        // (large letters, ADR-092: w 0.85 -> 0.3. A 13 px letter that takes every pixel from its
-        // own source pixel breaks into speckle; it keeps a little of it, so a rim still shades it)
-        uWyrmTone: { value: new THREE.Vector4(1.0, 0.8, 0.02, 0.3) },
+        // (ADR-093: back to the calm charcoal of the fine digits after the bright large letters of
+        // ADR-092 read as "way too flashy": a dim body, bright letters only where a rim or tip is lit)
+        uWyrmTone: { value: new THREE.Vector4(0.95, 1.3, 0.022, 0.85) },
         // glyph pick: x / y = cell value v where the letter set steps dim -> mid -> bright (the cell's
         // hash picks the letter inside its set, so letters hold still while the wyrm moves), z = per-
         // cell dither of those steps (no contour lines), w = samples (of 4) a stroke code needs to
         // turn the cell into a stroke glyph
-        uWyrmGlyph: { value: new THREE.Vector4(0.1, 0.34, 0.08, 1) },
+        uWyrmGlyph: { value: new THREE.Vector4(0.12, 0.42, 0.08, 1) },
         // atlas columns (wyrmGlyphs.js): mid set start, bright set start, stroke start, glyphs in the row
         uWyrmAtlas: { value: new THREE.Vector4(10, 20, 28, 32) },
         uWyrmOutline: { value: 1 }, // 1: silhouette cells draw their edge as a stroke glyph
         // the wyrm's grid is anchored to its own screen position (px, set per frame from
         // U.uBossScreen): its letters travel with it when the camera pans or it walks, instead of
-        // the body sliding under a fixed grid and re-lettering every cell (large letters swim)
+        // the body sliding under a fixed grid and re-lettering every cell (ADR-092)
         uWyrmAnchor: { value: new THREE.Vector2(0, 0) },
-        // extra source taps per wyrm cell (a 4x4 grid) on top of the 4 that find the cell: a 13 px
-        // cell over shingle scales a few px wide must AVERAGE them, or four point samples print a
-        // lottery of bright and dark letters (0 = off)
+        // extra source taps per wyrm cell (a 4x4 grid) on top of the 4 that find the cell: the cell's
+        // letter TIER comes from the average of its source, so it does not flip between bright and
+        // dark letters as scale rims cross its four point samples (0 = off); each letter pixel still
+        // takes uWyrmTone.w of its own source pixel, which is what draws the scale edges through it
         uWyrmTaps: { value: 1 },
       },
       vertexShader: FS_VERT,
@@ -355,7 +357,7 @@ export class Pipeline {
         bool isArt(float a) { return a > 0.46 && a < 0.55; }
         bool isHero(float a) { return a > 0.46 && a < 0.49; } // FLAG.ART_HERO = 0.48, FLAG.ART = 0.5
 
-        // ---- the wyrm (FLAG.ART): large bold letters on black (wyrmGlyphs.js atlas in tArt; ADR-092).
+        // ---- the wyrm (FLAG.ART): fine pixel-font digits on black (wyrmGlyphs.js atlas in tArt; ADR-093).
         // The letter is picked per cell: its average source picks a letter SET (a dark cell prints
         // nothing; dim / mid / bright sets, the steps dithered per cell), the cell's own hash picks the
         // letter inside it, so the letters hold still while the wyrm moves under them (the owner's
@@ -715,11 +717,10 @@ export class Pipeline {
       // the wyrm's (.y) art-pass numbers, read by wyrmCell: its source (materials.js wyrmMain) is a
       // dark hide with bright scale rims, so a steep curve + low floor keeps most letters charcoal
       const u = this.asciiMat.uniforms;
-      // (large letters, ADR-092: a 13 px letter at the old floor of 0.012 is invisible, so the dim
-      // hide prints grey marks at 0.1 and the curve is steeper)
-      u.uArtLum.value.y = 4.5;
+      // (ADR-093: the calm values again; ADR-092's 4.5 / 0.1 lit the whole body bright)
+      u.uArtLum.value.y = 2.2;
       u.uArtBlack.value.y = 0.004;
-      u.uArtMin.value.y = 0.1;
+      u.uArtMin.value.y = 0.012;
     }
 
     // --- bloom
@@ -882,12 +883,15 @@ export class Pipeline {
       this.grid = createGridAtlas(cellW, cellH);
       this.asciiMat.uniforms.tGrid.value = this.grid.texture;
     }
-    // the wyrm's ASCII art: large bold letters, 1/55 of the height (8x13 px at 720p; wyrmGlyphs.js)
-    const [artW, artH] = wyrmArtCell(H);
-    if (!this.art || artW !== this.artCell.x || artH !== this.artCell.y) {
+    // the wyrm's ASCII art: pixel-font digits in cells ~1/90 of the height (5x8 px at 720p, 6x9 at
+    // 1080p, 4x6 on a phone; wyrmGlyphs.js wyrmArtFont)
+    const wf = wyrmArtFont(H);
+    const fontKey = `${wf.font}x${wf.s}`;
+    if (!this.art || fontKey !== this.artFont) {
       this.art?.texture.dispose();
-      this.artCell.set(artW, artH);
-      this.art = createWyrmArtAtlas(artW, artH);
+      this.artFont = fontKey;
+      this.artCell.set(...wf.cell);
+      this.art = createWyrmArtAtlas(wf.font, wf.s);
       this.asciiMat.uniforms.tArt.value = this.art.texture;
       this.asciiMat.uniforms.uWyrmAtlas.value.set(...this.art.sets, this.art.total);
     }

@@ -2213,6 +2213,38 @@ still use the 4 px dot matrix (a sheet of three sizes was rendered; at their ~70
 letters hold a figure; no pick yet). Not checked: 1080p and above (the hidden pane timed out), the
 frame rate on a phone (16 more texture reads per wyrm pixel), the flight and the dives in motion.
 
+## ADR-093 — The wyrm in fine digits again, one size up; the calm tone back (2026-11-15)
+
+**Context.** ADR-092 printed the wyrm in large bold symbols (8x13 px cells at 720p, bright tone).
+Live, the owner: "the dragon is way too flashy right now and the ascii text is too big. use more
+smaller and make the ascii graphics detailed instead of huge flashy like this". Three smaller
+options were rendered in game with the calm tone of the old thin digits (4x6, 5x8 and 6x9 px cells
+at 720p); the owner picked 5x8 ("B, medium").
+
+**Decision.**
+- The wyrm's letters are pixel fonts again (`WYRM_FONTS`: the 3x5 and 4x6 fonts of ADR-018 and a new
+  5x7 one), in cells about 1/90 of the screen height (`wyrmArtFont(H)`: the font and integer scale
+  whose cell height is nearest H / 90): 5x8 px at 720p, 6x9 at 1080p, 4x6 on a 393 px phone. The
+  letter sets are the old digit sets (`17iv!;r27` / `2345968017` / `96805A@3`).
+- The tone is the old calm one: `uWyrmTone` 0.95 / 1.3 / 0.022 / 0.85, `uWyrmGlyph` steps 0.12 /
+  0.42, `uArtLum.y` 2.2, `uArtMin.y` 0.012.
+- Kept from ADR-092: the grid anchored to the boss, and the 4x4 average of a cell's source for its
+  letter tier.
+
+**Why.** The owner judges the wyrm at the game camera, where detail (scales, joints, wing bones)
+matters more than reading single characters; a bright body of big symbols hides the scales and
+glows. 5x8 is one step up from the pre-ADR-092 4x6 cells at 720p, so the digits are a little more
+legible than before without losing the scale pattern. Pixel fonts keep every letter crisp at these
+sizes (a browser font closes up into blots under ~10 px).
+
+**Rejected.** 4x6 cells (the old size: the most detail, unreadable letters), 6x9 cells at 720p
+(scales start to break into letters), the large symbols (the owner's reversal).
+
+**Consequences.** The 1080p cell (6x9, H / 120) is relatively finer than 720p's (H / 90): no pixel
+font gives an exact 7.5x12. ADR-092's large-letter atlas and its glyph check are gone; the check now
+verifies every set letter has a bitmap in each font and the cell per screen height. The human bosses
+and the hero are unchanged (their letter size is still the owner's open pick).
+
 ## ADR-094 — One streak for every perfect defence; the riposte; a foe's streak and his flurry (2026-11-15)
 - **Context:** the flurry (ADR-091) answered perfect dodges only, its cuts landed while the world
   stood still (the target never looked hit), and only the hero had it. The owner: "add some weight,

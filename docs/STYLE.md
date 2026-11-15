@@ -55,6 +55,9 @@ History matters here:
   fullest". Three wider options were rendered and scrapped by the owner (a typed lattice ground, the
   hero in letters, a terminal finish); the ask became "make the dragon, bosses, look more ascii like"
   and bigger set pieces full of ASCII. The wyrm's letters went from 4x6 px digits to 8x13 px symbols.
+- **Fine digits again, one size up (2026-11-15, ADR-093):** live, the large letters were "way too
+  flashy ... too big. use more smaller and make the ascii graphics detailed". Of three rendered
+  sizes the owner picked 5x8 px cells at 720p with the calm charcoal tone of the thin digits.
 - **Lean reference match (2026-11-09, ADR-034):** the owner's six-view ASCII turnaround and
   single-figure image. The hero is the lean swordsman of the sheet (a V to a narrow belted waist,
   slim limbs), with spiky pointed hair, a flared collar, a shaped upper back, a spiked lame stack
@@ -67,7 +70,7 @@ History matters here:
 | Trunks, bones, bonfire | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
 | Canopies | screen-grid `LEAF` 0.6: blobby ramp `. : o 0 O 8 @` | same |
 | Grass | ~260k instanced quads, each ONE glyph stroke (`\| / \ ' Y V v l i`) **anchored in the world** (no shimmer when the camera moves); gentle slow wind, trample pushers, wing gusts, burnt to ash glyphs; dim world-space soil glyphs between | `world/grass.js`, `world/ground.js` |
-| Hero, wyrm | **classic ASCII art** of a shaded SOURCE image (v0.4), matched to the owner's two reference images on 2026-11-08: the **wyrm** as LARGE readable letters (8x13 px at 720p since 2026-11-14, ADR-092; thin one-pixel digits before) whose brightness draws charcoal scales, molten cracks and crimson torn sails; the **hero** as ink-line art, dim dense letters inside bright one-pixel ink lines. Rules and numbers: "Creature ASCII art" below | `createSurfaceGlyphMaterial` (`wyrm` / `heroArt` sources) → `render/pipeline.js` (hero branch, `wyrmCell`), `render/wyrmGlyphs.js`, `createPixelArtAtlas` |
+| Hero, wyrm | **classic ASCII art** of a shaded SOURCE image (v0.4), matched to the owner's two reference images on 2026-11-08: the **wyrm** as fine pixel-font digits (5x8 px cells at 720p since 2026-11-15, ADR-093) whose brightness draws charcoal scales, molten cracks and crimson torn sails; the **hero** as ink-line art, dim dense letters inside bright one-pixel ink lines. Rules and numbers: "Creature ASCII art" below | `createSurfaceGlyphMaterial` (`wyrm` / `heroArt` sources) → `render/pipeline.js` (hero branch, `wyrmCell`), `render/wyrmGlyphs.js`, `createPixelArtAtlas` |
 | FX | camera-facing glyph particles, additive HDR (bloom) or alpha, drawn after the grid pass; the fire spells' ground warnings, meteors, lava, flame walls and the plunge's bursts are made of them too ("Fire, hazards and the plunge" below) | `render/particles.js`, `dragon/fx.js`, `player/fx.js` |
 | Fire light | pooled point lights (8 visible) lighting every shader | `render/lights.js` |
 | Shadows | moon orthographic shadow map, casters on layer 1 (`markCaster`) | `render/pipeline.js` |
@@ -200,40 +203,39 @@ Rules of thumb:
 - *Superseded:* the single density-sorted `ART_CHARS` ramp for both creatures (`createArtAtlas`,
   `artCell`), the hero's edge darkening (`uArtHeroEdge`) and black depth gaps, `uArtBlack.x` 0.04.
 
-**The wyrm (large letters since 2026-11-14, ADR-092; the red-black dragon reference is its source).**
-- **Letters:** LARGE and readable: the game's bold monospace in cells 1/55 of the screen height
-  (8x13 px at 720p, 12x20 at 1080p, never under 6x10), about 25 letters across the body at the fight
-  camera. The owner's pick ("B") of three rendered sizes, after "make the dragon, bosses, look more
-  ascii like": at this size it is classic ASCII art, every character can be read. Symbols and blocky
-  capitals only (lowercase runs read as words). *Superseded:* thin one-pixel 4x6 digits in 5x8 px
-  cells (3x5 in 4x6 under 900 px), which matched the reference's fine digit field in a close-up but
-  read as a grey texture at the game camera.
-- **Three letter sets by brightness.** A cell's brightness picks one of three sets (`WYRM_SETS`:
-  dim `:;~^"!-=`, mid `+*<>?17XVY`, bright `#%&@8B0M$W`), the cell's own hash picks the letter inside
-  it, so a letter only changes when its cell changes tier. The dim set is light marks, not lone
-  dots: a body of `. , '` printed as an empty black shape with specks. Dark cells print nothing.
-- **A cell averages its source.** A 13 px cell covers several shingle scales; four point samples
-  printed a lottery of bright and dark letters, so each wyrm cell averages a 4x4 grid of the source,
-  and a letter takes only 30 % of its tone from its own pixels (more broke big letters into speckle).
-- **The grid travels with the wyrm.** Its cells are counted from the wyrm's own screen position, so
-  when the camera pans or it walks the letters ride with the body instead of the body sliding under
-  a fixed grid (measured in his own frame: 13 % of his lit pixels change per 0.1 m of camera travel,
-  63 % with a screen-fixed grid). Large letters that re-pick every frame swim.
+**The wyrm (the red-black dragon reference; fine digits, ADR-093).**
+- **Letters:** fine pixel-font digits, each glyph one pixel wide with a soft 0.24 halo and a black gap
+  round it, in cells about 1/90 of the screen height: a 4x6 font in 5x8 px cells at 720p (the owner's
+  pick "B, medium" of three sizes, 2026-11-15), a 5x7 font in 6x9 cells at 1080p, 3x5 in 4x6 on a
+  393 px phone, the 4x6 font doubled at 1440p (`wyrmArtFont`). Never a bold browser font.
+  *Superseded:* large bold symbols in 8x13 px cells (ADR-092): every character could be read, but
+  live it was "way too flashy" and "too big", and the scales were gone; before that, 3x5 digits in
+  4x6 cells at 720p.
+- **Brightness draws the dragon, not letter density, and the body stays dark.** A cell's brightness
+  picks one of three letter sets (`WYRM_SETS`: dim `17iv!;r27`, mid `2345968017`, bright `96805A@3`),
+  the cell's own hash picks the letter inside it, so a letter only changes when its cell changes
+  tier. The tone is steep and low (gamma 1.3, floor 0.012): most of the body prints dim charcoal
+  digits, and bright ones sit only where a scale rim, a horn or a claw catches the key light. That
+  contrast is the detail: a bright, even body (ADR-092's tone) hid every scale.
+- **A cell averages its source, a letter keeps its own pixels.** The cell's letter tier comes from a
+  4x4 average of the source under it (steady as rims cross its samples), and each letter pixel takes
+  85 % of its brightness from its own source pixel, so a scale edge cuts through the digits.
+- **The grid travels with the wyrm** (ADR-092). Its cells are counted from the wyrm's own screen
+  position, so when the camera pans or it walks the letters ride with the body instead of the body
+  sliding under a fixed grid (measured with the large letters, in his own frame: 13 % of his lit
+  pixels change per 0.1 m of camera travel, 63 % with a screen-fixed grid).
 - **Strokes:** thin parts (spikes, horns, claws, wing bones, teeth) and the
   silhouette print stroke glyphs (`/ | \`) along their edge; a horizontal edge keeps its letter
   (long `-` runs read as ruled lines). The hide's scale outlines come from letter brightness only:
   rim strokes on every scale printed a field of `\ / |` chevrons at the game camera.
-- **Source:** dark charcoal shingle scales (unchanged by the large letters: a scale is now ~2
-  letters, so scale rims show as brighter letters, not as outlines) whose free edges catch a camera-fixed key light from the upper left;
+- **Source:** dark charcoal shingle scales (≈3–4 letters across at the reference view; smaller ones
+  print as letter noise) whose free edges catch a camera-fixed key light from the upper left;
   molten cracks along the scale gaps only on down-facing surfaces (chest, throat, belly, inner legs,
   tail underside: the back stays charcoal from the game camera), glowing ~2.5 gap widths wide so
   they light the letters over them; orange-lit chest and throat scales with gold rims; crimson
   mottled sails with torn edges, holes, orange bone streaks and ember specks; spikes dark at the root,
   bright at the tip.
-- **Tried for the large letters and dropped:** a darker, steeper tone (the body became sparse
-  punctuation on black, less ASCII than the picked preview), scales 1.8x and 2.6x larger (no visible
-  gain), black cells at depth steps (holes in the body).
-- **Targets at the reference view (1080p; measured for the old thin digits, not re-measured):** the
+- **Targets at the reference view (1080p; measured for the thin 4x6 digits of 2026-11-08):** the
   reference's body region has mean brightness ≈ 29,
   ≈ 22 % ink pixels and ≈ 9 % bright ones (round 1 measured 30 / 23 / 11); its lit ink is white 41 /
   orange 22 / red 37 % (round 2 measured 43 / 23 / 35).
