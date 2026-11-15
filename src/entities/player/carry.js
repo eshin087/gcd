@@ -11,9 +11,10 @@
 // After a fight action (a cut, the charge, the guard, a parry, a flurry...) he does not drop straight
 // into the carry: the way home lands in the READY hold (`hip`: today's low guard at the right hip)
 // and he RELAXES into the carry over `RELAX` (anim.js HeroAnimator: `anim.relax`, 0 ready … 1 the
-// carry). Every clip's way out (the attacks' way home, the block's and the roll's cross-fades) was
-// tuned against the ready hold; a carry far from it (a blade trailing behind, a reverse grip) would
-// otherwise be reached by a 250-300° sweep of the steel in a few frames.
+// carry): a beat on guard, then the blade lowers / turns into the carry over 0.7 s. Every clip's way
+// out (the attacks' way home, the block's and the roll's cross-fades) was tuned against the ready
+// hold; a carry far from it (a blade trailing behind, a reverse grip) would otherwise be reached by a
+// 250-300° sweep of the steel in a few frames.
 //
 // Fields (body axes: +x his LEFT, +y up, +z forward; metres; directions need not be unit):
 //   rev     0..1 a REVERSE grip: the sword wrist's limit (anim.js WRIST_BACK, ADR-078) is lifted
@@ -120,9 +121,10 @@ export const CARRY_IDS = Object.keys(CARRIES);
 export const DEFAULT_CARRY = 'trail';
 /** The ready hold every carry relaxes from after a fight action (and the duelists' numbers). */
 export const READY_CARRY = HIP;
-/** The relax into the carry after a fight action: it starts `delay` s after the action ends and
- *  takes `dur` s (a smootherstep: no speed at either end). */
-export const RELAX = Object.freeze({ delay: 0.3, dur: 0.6 });
+/** The relax into the carry after a fight action: it starts `delay` s after the action ends (a beat
+ *  on guard: the way home arrives with no speed left, and 0.3 s of it read as the old hold coming
+ *  back) and takes `dur` s (a smootherstep: no speed at either end). */
+export const RELAX = Object.freeze({ delay: 0.12, dur: 0.7 });
 
 /** The carry registered under `id`, or null. */
 export const getCarry = (id) => (typeof id === 'string' && Object.hasOwn(CARRIES, id) ? CARRIES[id] : null);

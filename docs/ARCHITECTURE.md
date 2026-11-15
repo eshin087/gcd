@@ -869,7 +869,8 @@ rest: sword hand, elbow pole, blade, flat, `rev`, the free hand's own rest by it
 `loco()` (run / sprint / backpedal, the stride's swing and bob) read for the hero only (`A.freeHand`):
 with `hip` worn they write exactly anim.js's own numbers (the duelists'; HEROCARRY checks it to the
 bit). **The relax:** a fight action (`RELAX_RESET`: attack, charge, block, parry, bounce, lock,
-ghostep, plunge, flurry, guardBreak) resets `anim.relaxT`; `anim.relax` is a smootherstep of it over
+ghostep, plunge, flurry, guardBreak; and `player.guardHold`, the guard held up between parries)
+resets `anim.relaxT`; `anim.relax` is a smootherstep of it over
 `RELAX.dur` from `RELAX.delay` s after the action, so every clip's way out (the way home, the guard's
 release) lands in the READY hold it was tuned against and he then eases into the carry; a roll, a
 drink and a flinch do not reset it. Pose channel `rev` (`P.rev` 61; `N` = 62): a reverse grip's hold

@@ -3249,9 +3249,10 @@ export class HeroAnimator {
     this.pathCh = null;
     this._idleLife(dt, sp);
     if (this.carry) {
-      // the relax into the carry (carry.js RELAX): reset by a fight action, then a smootherstep
-      // from RELAX.delay s after it, over RELAX.dur s
-      this.relaxT = RELAX_RESET.has(this.key) ? 0 : fin(this.relaxT, 1e3) + dt;
+      // the relax into the carry (carry.js RELAX): reset by a fight action (and while the guard is
+      // held up between parries, locoGuard), then a smootherstep from RELAX.delay s after it, over
+      // RELAX.dur s
+      this.relaxT = RELAX_RESET.has(this.key) || fin(pl.guardHold) > 0.001 ? 0 : fin(this.relaxT, 1e3) + dt;
       const x = clamp((this.relaxT - RELAX.delay) / RELAX.dur, 0, 1);
       this.relax = x * x * x * (x * (6 * x - 15) + 10);
       // (an idle action that takes the blade does it from the ready hold: FIDGETS `blade`)
