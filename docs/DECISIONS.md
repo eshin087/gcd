@@ -2543,3 +2543,28 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   (the counter's 0.06 s of press timing, the counter cut's feel); the Lab has no button for
   `flurryAny`; the flash counter was not filmed.
 
+## ADR-103 — A frame is simulated in steps of about 1 / 60 s (2026-11-15)
+- **Context:** the genre review (the owner: "lets implement your suggestions"; the game is to be
+  sold on Steam, so it must play the same on any PC). main.js simulated every rendered frame in ONE
+  step of its real length, clamped at 50 ms: a machine at 30 fps took 33 ms steps, in which the
+  0.08 s perfect-parry window is sampled two or three times, an attack's 0.12 s active frames three
+  or four, and under 20 fps the game ran slow. Every headless test steps at exactly 1 / 60 s, so none
+  of that was ever tested.
+- **Decision:** `core/timestep.js`: a frame is cut into equal simulation steps none longer than
+  20.8 ms (1 / 60 s with a quarter of slack, so a 60 Hz frame a hair late and a 50 Hz display stay
+  one step). 30 fps runs two steps of 1 / 60 s, 20 fps three; six steps at most, so the game runs
+  slow only under 10 fps. The devices are read once a frame; the input's edges are cleared after the
+  first step; the camera, the HUD, the audio and the render run once a frame. `__tick` keeps its
+  exact single step (film strips) and gains `asFrame`.
+- **Alternatives turned down:** a fixed 120 Hz step with render interpolation (the standard answer,
+  and deterministic: but every transform of the hero, the wyrm's rig, the cloth and the particles
+  would need an interpolated copy, the tests would run at another step than the game or twice as
+  long, and at 60 Hz the simulation would cost twice as much: later, if replays are wanted); stepping
+  at 1 / 120 s without interpolation (judder on 144 Hz displays, and not the tests' step).
+- **Consequences:** at 50 Hz and above nothing changes (one step, as before). Below it the game
+  simulates the steps the tests run, at the cost of simulating twice (30 fps) to six times a frame:
+  a machine that is slow because of the SIMULATION (not the picture) gets slower still. Not measured.
+  Presses are still read once a frame: at 30 fps a press can be up to 33 ms old when the first step
+  sees it (event timestamps could place it in its step: not done). Not deterministic: a step's
+  length still follows the display above 50 Hz.
+
