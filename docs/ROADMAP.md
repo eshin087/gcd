@@ -171,13 +171,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
 - [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
 - [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
-- [ ] The Ash Disciple's terrain moves
+- [x] The Ash Disciple's terrain moves: Severed Pillar, Flying Lantern, Three Tolls, Swallow's Return
+      (its own session and PR, ADR-111)
 - [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire
 - Follow-ups:
   - [x] A broken piece leaves the minimap (it re-bakes when the colliders change)
   - [ ] The phone: the look and the frame rate with fire and debris on screen
   - [ ] Sounds of their own for fire catching and a tree burning (the sizzle and ember hiss are reused)
   - [ ] Training places the hero without checking what stands there
+  - [ ] The owner's pick of the look of the bell's ring of sound ('arc' is built in; 'wave' is in the code)
+  - [ ] A toll sound of its own for the bell (the world's metal chip plays)
+  - [ ] The courtyard's ring builds two pillars on the same spot at three corners
 
 ## M1.37 — The hero seen through what covers him (2026-11-15, `claude/render-hero-seen-125813`, ADR-106)
 - [x] The covered parts of the hero print through the wyrm (and any object) as a cyan ink ghost

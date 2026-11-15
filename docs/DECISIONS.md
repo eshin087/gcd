@@ -2731,3 +2731,58 @@ the sizzle and the ember hiss.
   the stored table needs a desktop browser on the same origin. Burn deaths read "THE FLAMES".
   Blows dodged by walking out of reach are never "seen" (no hit was resolved).
 
+## ADR-111 — The Ash Disciple uses the courtyard: four moves on its pieces, chosen only with a piece in reach (2026-11-15)
+**Context.** The world breaks (ADR-107) and the owner asked for bosses that "use the terrain as a way
+for their defensive or offensive strategy" and "showcase the destructibility of the terrain in cool
+ascii manner". Shen Hui already chips and cuts down what his blade meets, and cover already stops his
+crescents; he did nothing with the set on purpose. He is bound to 12.5 m round the courtyard's centre:
+of its 72 pieces only the bell and the stele are inside his reach; the ring of pillars stands at
+15.6 m, the lanterns at 17.4 m.
+
+**Decision.**
+- Four moves, a spread of uses and of answers (COMBAT.md → "He uses the courtyard"): **Severed Pillar**
+  (a standing piece used as a weapon: he cuts the pillar the hero stands under and it falls on him;
+  the fall is the world's red hazard), **Flying Lantern** (a kicked piece: blue, cued on the piece in
+  the air, a parry bursts it), **Three Tolls** (the set's landmark: three blows on the bell, three rings
+  of sound to parry in rhythm or roll through), **Swallow's Return** (positional and defensive: pressed,
+  he leaps back onto a pillar and dives off it from another angle).
+- They are **moves in his system**: data in `moves.js` (`terrain: kind`), numbers in `TUNING.terrain`,
+  realised, told and cued like his others, in the Lab's ABILITIES and Training's BOSS MOVES. What only
+  they do is in `ashDisciple/terrain.js`.
+- **A move needs a piece.** His AI weighs such a move 0 while no piece for it is in reach (and the hero
+  is not placed for it), so it is simply not chosen; started by hand it goes for the nearest piece
+  however far, and with no piece at all it does not start. Two generic hooks in the duelist brain carry
+  this for any duelist: `weigh(name, def, w, dist)` and `onActStart(act, opts)`.
+- **His bound stretches for the move** (up to 9.5 m), and draws him back in after (5 m/s), instead of
+  a larger bound for the whole duel.
+- **Whose blow it is.** A piece he fells is the world's hazard (red, the strip marked, the world deals
+  it: one rule for everything that falls). A piece he sends and a ring he rings are his: each cues
+  itself `flashLead` before it reaches the hero, as his crescents do, and a ring that could not cue in
+  time (the hero stood at the bell) passes him by.
+- **Pieces are spent.** Four lanterns, a few stumps, each pillar once: the courtyard is used up as the
+  duel goes on, and the reset puts it back.
+- Tests run on the **real set**: `duel.mjs` `build({ real: true })` wires the real courtyard, `Scars` and
+  `Destructibles`; scenario TERRAIN (50 checks) and TRAINING use it. The other scenarios keep the mock.
+
+**Why.** A terrain move that can start without its piece would be a move thrown at air, and one that
+is always available would crowd out his strings: availability by reach makes the hero's position part
+of the fight (stand under a pillar and it can come down; stay in the middle and he has only the bell
+and the lanterns he can reach). Routing the pillar's fall through the world keeps one tell for every
+falling piece, whoever felled it. Blue on the lantern and white / white / blue on the rings give the
+parry player something to do with the terrain, and red on the pillar gives the dodge player one;
+"defensive play must not be punished" (owner): three of the four are answered from the guard.
+
+**Rejected.** A larger bound for the whole duel (the fight's footprint and every existing sim would
+move). Cutting pillars with sword qi from inside his bound (it reads as an Ash Crescent that missed).
+A red landing ring for the lantern (it can be parried, and a parryable blow gets no colour before its
+glint: the ring is pale). Standing on top of the bell (he would be out of the hero's reach for the
+whole move). Rings stopped by cover (sound; and it would make a pillar the answer to them). New
+`src/world` API (nothing was needed: `topple`, `take`, `carry`, `throwTo`, `strike` and `list` cover it).
+
+**Consequences.** The hero's position near the edge of the courtyard now matters. In a 150 s bot duel
+on the real set 7 of his 31 moves were these (23 %). The fight's difficulty with them is **not
+measured** against a human, and the bots of the other scenarios never meet them (their world has no
+pieces). The bell's toll is the world's generic metal `chip` sound: it has no toll of its own yet.
+The ring of sound has two looks in the code (`TUNING.terrain.toll.look`: 'arc', built in, and 'wave');
+the owner was sent both and has not picked yet. Training stages each move (category TERRAIN) and puts
+the courtyard back first.

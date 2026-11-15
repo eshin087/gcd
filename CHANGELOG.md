@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-six pieces of work since 0.4.0:
+Thirty-seven pieces of work since 0.4.0:
+- **The Ash Disciple uses the courtyard** (2026-11-15, ADR-111). *Added:* four moves on the pieces of
+  the Ashfall Courtyard. **Severed Pillar:** he is suddenly behind the pillar you stand under and cuts
+  it through; it falls on you along a strip marked in red (walk out of it, or roll as it lands).
+  **Flying Lantern:** he kicks a stone lantern at you; a pale ring shows where it comes down and it
+  glints before it lands: parry it and it bursts on your blade, or leave the ring. **Three Tolls:** he
+  leaps to the fallen bell and strikes it three times; each blow sends a ring of sound across the
+  courtyard: parry the three in rhythm or roll through them, or run in, since close to the bell they
+  pass you by and his back is open. **Swallow's Return:** when you press him he leaps back onto a
+  pillar and dives off it at you from another side (parry the dive, or step aside). He only does these
+  with a piece in reach, and each lantern and pillar is used up for the fight. *Dev:* a TERRAIN
+  category in Training stages each one.
 - **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
   which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
   attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory
