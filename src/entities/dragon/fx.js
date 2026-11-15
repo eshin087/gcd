@@ -1343,7 +1343,7 @@ export class DragonFx {
       const u = Math.random(), a = Math.random() * Math.PI * 2, rr = r * 0.34 * Math.sqrt(Math.random()) * (1 - 0.5 * u);
       this._blob(
         x + Math.cos(a) * rr, 0.8 + u * u * 6, z + Math.sin(a) * rr, Math.cos(a) * rand(0, 1), rand(5, 11) * (0.6 + u), Math.sin(a) * rand(0, 1),
-        rand(0.45, 0.8), rand(1.5, 2.0) * (1 - 0.45 * u), rand(0.6, 0.9), 0.5 * (1 - 0.4 * u), 0, 0.6, -10,
+        rand(0.55, 0.95), rand(1.5, 2.0) * (1 - 0.45 * u), rand(0.7, 1.0), 0.62 * (1 - 0.4 * u), 0.1, 0.6, -10,
       );
     }
     this._wave(x, z, r * 0.3, r * 0.9, 0.25, 14, 1.0, 1.0, 1.5, 0.5);
@@ -1370,14 +1370,14 @@ export class DragonFx {
   /** The erupting column (k 1 -> 0 as it dies down). */
   pillarBurn(h, dt, x, z, r, k) {
     if (k <= 0) return;
-    h.acc3 += dt * 70 * k;
-    let m = Math.min(6, Math.floor(h.acc3));
+    h.acc3 += dt * 100 * k;
+    let m = Math.min(8, Math.floor(h.acc3));
     h.acc3 -= m;
     while (m-- > 0) {
       const u = Math.random(), a = Math.random() * Math.PI * 2, rr = r * 0.34 * Math.sqrt(Math.random()) * (1 - 0.5 * u);
       this._blob(
         x + Math.cos(a) * rr, 0.8 + u * u * 5.5 * k, z + Math.sin(a) * rr, 0, rand(5, 11) * (0.5 + u) * (0.5 + 0.5 * k), 0,
-        rand(0.35, 0.6), rand(1.4, 1.9) * (1 - 0.45 * u), rand(0.6, 0.9), 0.46 * (1 - 0.4 * u) * (0.6 + 0.4 * k), 0, 0, -8,
+        rand(0.4, 0.65), rand(1.4, 1.9) * (1 - 0.45 * u), rand(0.7, 1.0), 0.56 * (1 - 0.4 * u) * (0.6 + 0.4 * k), 0.08, 0, -8,
       );
       if (m % 3 === 0) {
         const o = this._rec(x + Math.cos(a) * rr, rand(1, 3), z + Math.sin(a) * rr, rand(0.5, 0.9), rand(0.2, 0.3), 0.06, LAVA_DROPS);
@@ -1533,7 +1533,7 @@ export class DragonFx {
       const ca = Math.cos(a), sa = Math.sin(a);
       if (m % 3 === 0) {
         // the heart of the band: smaller, hotter blobs down its middle (close enough to run together)
-        this._blob(h.x + ca * r, rand(0.8, 1.3), h.z + sa * r, ca * h.speed * 0.95, rand(1.5, 3.5), sa * h.speed * 0.95, rand(0.3, 0.45), rand(1.2, 1.5), 0.9, 0.58 * k, 0.3 * k, 0.2, 1);
+        this._blob(h.x + ca * r, rand(0.8, 1.3), h.z + sa * r, ca * h.speed * 0.95, rand(1.5, 3.5), sa * h.speed * 0.95, rand(0.3, 0.45), rand(1.2, 1.5), 0.9, 0.44 * k, 0.24 * k, 0.2, 1);
         continue;
       }
       this._blob(
@@ -1590,7 +1590,7 @@ export class DragonFx {
       const l = (Math.random() * 2 - 1) * half, s = (Math.random() * 2 - 1) * hw * 0.6;
       if (m % 3 === 0) {
         // the heart of the wall: smaller, hotter blobs along its foot (close enough to run together)
-        this._blob(cx + qx * l, rand(0.8, 1.4), cz + qz * l, h.dx * h.speed * 0.95, rand(2, 4), h.dz * h.speed * 0.95, rand(0.3, 0.45), rand(1.3, 1.6), 1.0, 0.58 * k, 0.3 * k, 0.2, 1);
+        this._blob(cx + qx * l, rand(0.8, 1.4), cz + qz * l, h.dx * h.speed * 0.95, rand(2, 4), h.dz * h.speed * 0.95, rand(0.3, 0.45), rand(1.3, 1.6), 1.0, 0.44 * k, 0.24 * k, 0.2, 1);
         continue;
       }
       const high = Math.random() < 0.45;
