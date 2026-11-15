@@ -179,7 +179,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The phone: the look and the frame rate with fire and debris on screen
   - [ ] Sounds of their own for fire catching and a tree burning (the sizzle and ember hiss are reused)
   - [ ] Training places the hero without checking what stands there
-  - [ ] The owner's pick of the look of the bell's ring of sound ('arc' is built in; 'wave' is in the code)
+  - [x] The owner's pick of the look of the bell's ring of sound: arc (the wave look turned down and removed)
   - [ ] A toll sound of its own for the bell (the world's metal chip plays)
   - [ ] The courtyard's ring builds two pillars on the same spot at three corners
 

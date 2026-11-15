@@ -2783,6 +2783,6 @@ whole move). Rings stopped by cover (sound; and it would make a pillar the answe
 on the real set 7 of his 31 moves were these (23 %). The fight's difficulty with them is **not
 measured** against a human, and the bots of the other scenarios never meet them (their world has no
 pieces). The bell's toll is the world's generic metal `chip` sound: it has no toll of its own yet.
-The ring of sound has two looks in the code (`TUNING.terrain.toll.look`: 'arc', built in, and 'wave');
-the owner was sent both and has not picked yet. Training stages each move (category TERRAIN) and puts
-the courtyard back first.
+How a ring of sound is drawn was the owner's pick of two filmed looks: "A: arc", one line of bronze
+strokes bulging outward (three thin ripples were turned down; the switch that held them is gone).
+Training stages each move (category TERRAIN) and puts the courtyard back first.

@@ -29,8 +29,9 @@ bound stretches for it (ADR-111).
 
 **Filmed** in headless Edge at 1280 x 720 at the game camera (a wrapper page stepping the game with
 `__tick`): one strip per move, and Three Tolls at 852 x 393 with the phone camera. Sent to the owner
-with one line per move on what it asks, and two looks for the ring of sound ('arc', built in, and
-'wave'). **No answer yet**: the looks are as built.
+with one line per move on what it asks, and two looks for the ring of sound ("arc": one crisp line of
+strokes; "wave": three thin ripples). The owner picked **"A: arc"**; the wave look and the
+`TUNING.terrain.toll.look` switch that held it are removed. Nothing was said about the moves themselves.
 
 **Changed after the first film:** the kick drew the blade's sweep trail (it read as a cut: `noSweep`);
 the lantern's landing mark was a dark ring nobody could see on the night paving (now pale motes); the
@@ -42,7 +43,6 @@ screen, the Lab panel by hand (the abilities list is read from `debug.abilities(
 check).
 
 **Open / next:**
-- The owner's pick of the ring's look; then the other one goes.
 - The bell has no toll sound of its own (the world's metal `chip` plays): `src/audio`.
 - `courtyard.js` builds two pillars on the same spot at three corners of the ring (the loop adds
   `[t, -P]` and `[P, t]` for the same corner): seen while listing the pieces, not touched (not this
