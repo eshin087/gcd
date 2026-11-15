@@ -200,7 +200,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
         20.8 ms at any frame rate; not a fixed step with interpolation: see the ADR)
   - [ ] A performance budget (a target machine, a frame-time ceiling); the cost of two to six steps
         a frame on a slow machine; event-timestamped presses
-  - [ ] Per-move telemetry; the killing move on the death screen
+  - [x] Per-move telemetry; the killing move on the death screen (`game/move-telemetry`, ADR-108)
+  - [ ] Read the table after the owner's sessions and tune from it; a way to read it on the phone
   - [ ] A heavy button; direction + button choose the swing (the 13 looks become moves)
   - [ ] HP-linked posture (the Lord's rule) for every boss
   - [ ] Save file, a hub at the bonfire, a boss order that starts on Shen Hui, ranks, difficulty tiers,

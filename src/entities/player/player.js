@@ -372,6 +372,23 @@ export class Player {
    */
   takeHit(hit = {}) {
     hit = hit && typeof hit === 'object' ? hit : {};
+    const hp0 = this.hp, was = this.alive;
+    const r = this._takeHit(hit);
+    // every blow he answers is announced (the move telemetry, game/telemetry.js): what it was, how
+    // it was answered and what it cost. `stream`: a contact tick (breath, burning ground), not a blow
+    if (r !== RESULT.IGNORED && was) {
+      this._emit('combat:answer', {
+        attack: typeof hit.attack === 'string' && hit.attack ? hit.attack : String(hit.kind ?? 'blow'),
+        tell: hit.tell === TELL.BLUE || hit.tell === TELL.RED ? hit.tell : TELL.NORMAL,
+        result: r, damage: Math.max(0, fin(hp0) - fin(this.hp)), dead: !this.alive,
+        stream: !hit.bullet && !hit.steel && !(fin(hit.knockback, 0) > 0) && !hit.knockdown && fin(hit.damage, 0) <= 8,
+        perfect: r === RESULT.PARRIED && !!this.deflect?.perfect,
+      });
+    }
+    return r;
+  }
+
+  _takeHit(hit) {
     if (!this.alive) return RESULT.IGNORED;
     const g = this.game;
     if (g.state === 'victory' || g.state === 'title') return RESULT.IGNORED;

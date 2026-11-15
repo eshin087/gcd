@@ -285,6 +285,11 @@ export class Hud {
     this.bannerUi.hint(text);
   }
 
+  /** Small lines under the banner's hint (the death screen's recap); null clears them. */
+  bannerRecap(lines) {
+    this.bannerUi.recap(lines);
+  }
+
   clearBanner(instant = false) {
     this.bannerUi.clear(instant);
   }

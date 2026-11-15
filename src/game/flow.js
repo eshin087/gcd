@@ -4,6 +4,7 @@ import { clamp, damp, lerp } from '../core/math.js';
 import { DEFENSE } from '../combat/rules.js';
 import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
+import { MoveLog, prettyMove } from './telemetry.js';
 
 // Game flow: owns game.state and every transition
 //   title → explore → bossIntro → boss → dead | victory   (+ paused from explore/bossIntro/boss)
@@ -89,6 +90,9 @@ export class GameFlow {
 
     this.grade = new ScreenGrade(game);
     this.stats = new RunStats();
+    // what each of the boss's moves did to the hero (game/telemetry.js): this attempt's table and
+    // the totals kept across sessions
+    this.moves = new MoveLog(globalThis.localStorage ?? null, game.level?.id ?? 'cinderwood');
     this.queue = [];
     this.pausedFrom = null;
     this.stateTime = 0;
@@ -139,6 +143,7 @@ export class GameFlow {
       this.stats.damageTaken += dmg;
       if (dmg > 0) this.grade.hurtPulse(dmg, d?.kind === 'burn');
     });
+    ev?.on('combat:answer', (d) => this.moves.answer(d, this.game.time));
     ev?.on('player:heal', () => this.stats.flasksUsed++);
     ev?.on('player:hitDragon', (d) => {
       this.stats.damageDealt += finite(d?.damage);
@@ -711,6 +716,9 @@ export class GameFlow {
     if (g.state === 'dead') return;
     this._setState('dead');
     this.stats.deaths++;
+    // (a death no blow dealt: the burn's ticks)
+    if (!this.moves.killedBy) this.moves.killedBy = { attack: 'burn', tell: null };
+    this._try(() => this.moves.commit('death'), 'moves.commit');
     this.deathT = 0;
     this.deathBanner = false;
     this.canRetry = false;
@@ -732,6 +740,7 @@ export class GameFlow {
     if (!this.deathBanner && this.deathT >= TUNE.deathBannerDelay) {
       this.deathBanner = true;
       g.hud?.banner?.('YOU DIED', 'death', { hold: Infinity });
+      g.hud?.bannerRecap?.(this.deathRecap());
     }
     if (!this.canRetry && this.deathT >= TUNE.deathHold) {
       this.canRetry = true;
@@ -753,6 +762,7 @@ export class GameFlow {
     g.hud?.prompt?.(null);
     g.hud?.banner?.(this._text('victory'), 'victory');
     g.audio?.setMusic?.('victory');
+    this._try(() => this.moves.commit('victory'), 'moves.commit');
     g.events?.emit('game:victory', this.stats.snapshot());
     if (this.bossBarHideT < 0) this.bossBarHideT = 1.2;
     this._dragonFocus(this._ov.focus);
@@ -768,10 +778,35 @@ export class GameFlow {
     this.victoryT += rdt;
     if (!this.statsShown && this.victoryT >= TUNE.statsDelay) {
       this.statsShown = true;
-      g.hud?.showStats?.(this.stats.rows());
+      const w = this.moves.worst(1)[0];
+      g.hud?.showStats?.(w ? [...this.stats.rows(), ['Struck most by', `${this.moveLabel(w.id)} (${w.hit})`]] : this.stats.rows());
       g.hud?.prompt?.('[@interact] Fight again');
     }
     if (this.victoryT > 1 && !this.respawning && this._act('interact')) this._beginRespawn(true);
+  }
+
+  /** A boss move's name for the player: the boss's own label for it, else the id spelled out. */
+  moveLabel(id) {
+    if (id === 'burn') return 'The flames';
+    let l = null;
+    try {
+      l = this.game.dragon?.attackLabel?.(id) ?? null;
+    } catch {
+      l = null;
+    }
+    return typeof l === 'string' && l ? l : prettyMove(id);
+  }
+
+  /** The death screen's lines: the move that killed him, then the moves that struck him this attempt
+   *  (three at most, the worst first) with how many of their blows landed. */
+  deathRecap() {
+    const M = this.moves, out = [];
+    if (M.killedBy) out.push(`SLAIN BY ${this.moveLabel(M.killedBy.attack).toUpperCase()}`);
+    for (const w of M.worst(3)) {
+      if (!(w.hit > 0)) continue;
+      out.push(`${this.moveLabel(w.id)}  ${w.hit} of ${w.seen} blow${w.seen === 1 ? '' : 's'} landed`);
+    }
+    return out;
   }
 
   // ------------------------------------------------------------------ respawn / restart
@@ -803,6 +838,7 @@ export class GameFlow {
     this._resetWorld();
     if (resetRun) this.stats.reset();
     else this.stats.attemptTime = 0;
+    this.moves.reset();
 
     this._setState('explore');
     g.events?.emit('game:retry');
@@ -829,6 +865,7 @@ export class GameFlow {
     hud?.hideBossBar?.();
     hud?.clearBanner?.(true);
     hud?.bannerHint?.(null);
+    hud?.bannerRecap?.(null);
     hud?.prompt?.(null);
     hud?.showStats?.(null);
 
