@@ -6,6 +6,10 @@ import { createForest } from './forest.js';
 import { createGrass, meadowDensity, meadowHeight } from './grass.js';
 import { Scorch } from './scorch.js';
 import { Atmosphere } from './atmosphere.js';
+import { GroundFire } from './fire.js';
+import { Scars } from './scars.js';
+import { Destructibles } from './destructibles.js';
+import { BLOW, SCAR } from './breakTuning.js';
 
 // Owns the static environment and the shared environment-interaction APIs:
 //   world.resolve(pos, radius, bound)       circle collision vs stones/trunks + arena bound
@@ -13,6 +17,12 @@ import { Atmosphere } from './atmosphere.js';
 //   world.gust(x, z, strength, radius)      radial wind impulse (wing beats, landings)
 //   world.scorch.burnCircle(x, z, r, burn, heat)
 //   world.debug.setVisible(bool)            Lab only: hide / restore the environment (see below)
+// Destruction (ADR-103; tuning in breakTuning.js):
+//   world.impact(x, z, r, power, o)         a blow lands on the world: breakables in the disc take it,
+//                                           a hard one cracks the floor; o.fire: it also sets alight
+//   world.ignite(x, z, r, k, grass = true)  fire lands: grass (unless grass = false) and wood catch
+//   world.destructibles / .fire / .scars    the systems behind them (destructibles.js, fire.js, scars.js)
+//   world.restore()                         everything stands and is unburnt again (the fight's reset)
 export const PUSHER_SLOTS = MAX_PUSH;
 
 /** A set's own night (`sky: { moonColor, moonDir, ambient, fogColor, fogNear, fogFar }`, all optional):
@@ -56,6 +66,11 @@ export class World {
     const q = CONFIG.quality[CONFIG.quality.length - 1];
     this.grass = createGrass(U, { count: q.grass, extent, density, height, ash: G?.ash ?? 0 });
     game.scene.add(this.grass.mesh);
+    // destruction: what burns (the grass is the fuel), what breaks (the set's `breakables`), what is left
+    this.fire = new GroundFire(game, this, density);
+    this.scars = new Scars(game, this.forest.scarInk);
+    this.destructibles = new Destructibles(game, this, this.forest);
+    this._impact = { kind: BLOW.BLUNT, by: 'world', dx: NaN, dz: NaN, y: undefined, src: -1 };
     this.atmosphere = new Atmosphere(game, this.forest);
     this.bonfire = this.forest.bonfire;
     this.nest = this.forest.nest;
@@ -83,14 +98,48 @@ export class World {
       this._hidden = parts.map((o) => [o, o.visible]);
       for (const o of parts) o.visible = false;
       this.forest?.ambience?.setVisible?.(false); // (a set's own glyph batch, e.g. the throne hall's inlay)
+      this.scars?.setVisible(false);
       this.game.fx?.alpha?.clear?.();
       this.game.fx?.add?.clear?.();
     } else if (on && this._hidden !== null) {
       for (const [o, v] of this._hidden) o.visible = v;
       this._hidden = null;
       this.forest?.ambience?.setVisible?.(true);
+      this.scars?.setVisible(true);
     }
     return this._hidden === null;
+  }
+
+  /**
+   * A blow lands on the world at (x, z): every breakable the disc touches takes `power` (POWER scale,
+   * breakTuning.js), and a hard one (>= SCAR.ground.min) cracks the floor. `o`: { kind: BLOW.*, by:
+   * 'player' | 'boss' | 'world', dx, dz (its way), y (its height: a blow above a low piece passes
+   * over it), src (one id per swing), scar: false (no floor mark), fire: k (it also sets alight) }.
+   * Returns how many pieces it struck.
+   */
+  impact(x, z, r, power, o) {
+    if (!Number.isFinite(x + z + r + power) || !(power > 0)) return 0;
+    const n = this.destructibles.strike(x, z, r, power, o ?? this._impact);
+    if (o?.scar !== false && power >= SCAR.ground.min) {
+      this.scars.ground(x, z, power, o?.dx, o?.dz);
+      // torn ground: the grass there is gone (char without heat)
+      this.scorch.burnCircle(x, z, Math.min(r, 0.6 + power * 0.9), 0.5, 0);
+    }
+    if (o?.fire > 0) this.ignite(x, z, r, o.fire);
+    return n;
+  }
+
+  /** Fire lands on the disc (x, z, r): the grass in it (unless `grass` is false) and the wood catch. */
+  ignite(x, z, r, k = 1, grass = true) {
+    const n = grass ? this.fire.ignite(x, z, r, k) : 0;
+    return n + this.destructibles.ignite(x, z, r, k);
+  }
+
+  /** The fight's reset: what broke stands again, what burns goes out, the marks are gone. */
+  restore() {
+    this.fire.reset();
+    this.scars.reset();
+    this.destructibles.reset();
   }
 
   resolve(pos, radius, bound = Infinity) {
@@ -120,6 +169,9 @@ export class World {
     g.strength *= Math.exp(-dt * 2.2);
     if (g.strength < 0.01) g.strength = 0;
     this.game.U.uGust.value.set(g.x, g.z, g.strength, g.radius);
+    this.destructibles.update(dt);
+    this.fire.update(dt);
+    this.scars.update(this.game.fxDt ?? dt, this.game.time);
     this.scorch.update(dt);
     if (this._hidden === null) this.atmosphere.update(dt);
   }

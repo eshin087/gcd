@@ -33,6 +33,18 @@ export const TUNING = {
   phase2At: 0.66, // = phaseAt[1] (kept for older readers)
   phase3At: 0.33, // = phaseAt[2]
   radius: 2.0 * S, // collision radius vs stones / arena bound
+  // what its blows do to the world (ADR-103; world/breakTuning.js POWER scale: 1 fells a tree)
+  world: {
+    melee: 0.7, // a striking part, x its radius in body units (a claw 0.77, the charge's chest 1.2)
+    stomp: 1.0, leap: 1.7, hop: 1.2, dive: 2.5,
+    nova: [2.2, 0.45, 0.45], // the blast: at its heart, at its rim; the heart's share of the radius
+    explosion: 0.9, meteor: 1.5, pillar: 1.0,
+    trample: 1.2, // its body walks through wood: a tree in its way goes down ahead of it
+    // fire that lands sets the grass and the wood alight: how long (x FIRE.life / BREAK.burn.time)
+    // and how much of the blast's radius catches
+    ignite: { breath: 1, strip: 1, explosion: [1, 0.6], meteor: [0.7, 0.55], pillar: [0.8, 0.7], dive: [0.8, 0.5], nova: [1, 0.6] },
+    bullet: 0.12, // a small bullet stopped by cover takes this out of it (the orb: x 3)
+  },
   // the root stays inside min(CONFIG.world.dragonBound, bound) (m). CONFIG's 26 was sized for the
   // v0.2 wyrm; at x1.875 the chest / neck-base body circles (~5.8 m ahead of the root) would cross
   // the 30 m clearing and pin the hero against its edge. 24 keeps them inside.

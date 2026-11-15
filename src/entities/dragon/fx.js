@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
 import { TELL_STYLE } from '../../combat/rules.js';
 
+/** A blast as a blow on the world (world.impact). */
+const FIRE_BLOW = Object.freeze({ kind: 'blast', by: 'boss' });
+
 // Dragon FX: fire breath stream (glyph particles + pooled lights + scorch), fireball projectiles,
 // roar shock rings, dust, nostril embers, eye glints, phase-2 / death embers, and the combat
 // read-outs: timing flashes (red alarm burst for dodge-only tells, a white glint for parryable
@@ -345,6 +348,7 @@ export class DragonFx {
         const dd = d0 * S, r = r0 * S;
         const x = mouth.x + sa * dd + rand(-0.4, 0.4), z = mouth.z + ca * dd + rand(-0.4, 0.4);
         scorch?.burnCircle?.(x, z, r, 0.05, 0.9);
+        this.game.world?.ignite?.(x, z, r, TUNING.world.ignite.breath); // what the breath lands on catches
         this._spawn(add, {
           x: x + rand(-r, r) * 0.6, y: 0.25, z: z + rand(-r, r) * 0.6,
           vx: rand(-0.5, 0.5), vy: rand(1.5, 3.2), vz: rand(-0.5, 0.5),
@@ -458,6 +462,17 @@ export class DragonFx {
     }
   }
 
+  /**
+   * A blast of fire lands on the world (ADR-103): the breakables in it take `power` and the floor
+   * cracks (world.impact), and the grass and the wood within ig[1] of its radius catch for ig[0] of
+   * a full burn (world.ignite). Numbers: TUNING.world.
+   */
+  _landed(x, z, r, power, ig) {
+    const w = this.game.world;
+    w?.impact?.(x, z, r, power, FIRE_BLOW);
+    w?.ignite?.(x, z, r * ig[1], ig[0]);
+  }
+
   explode(x, z, radius, volley = null) {
     this._light({ x, y: 1.2, z, color: [1, 0.58, 0.22], intensity: 9, radius: 14, life: 0.6, fade: 0.45, flicker: 0.3 });
     if (Number.isFinite(x + z + radius)) this._blast(x, z, radius);
@@ -473,6 +488,7 @@ export class DragonFx {
     }
     this.dustRing(x, z, radius * 0.6, 26, 1);
     this.game.world?.scorch?.burnCircle?.(x, z, radius, 0.55, 1);
+    this._landed(x, z, radius, TUNING.world.explosion, TUNING.world.ignite.explosion);
     this.d.onExplosion?.(x, z, radius, volley);
   }
 
@@ -1321,6 +1337,7 @@ export class DragonFx {
     this._shock(x, z, r * 0.3, r * 1.3, 0.26, 26, 0.5, HOT, 0.9);
     this.dustRing(x, z, r * 0.6, 24, 0.9);
     g.world?.scorch?.burnCircle?.(x, z, r, 0.6, 1);
+    this._landed(x, z, r, TUNING.world.meteor, TUNING.world.ignite.meteor);
     g.world?.gust?.(x, z, 1.2, 9);
     this._light({ x, y: 1.5, z, color: [1, 0.62, 0.3], intensity: 8, radius: 13, life: 0.5, fade: 0.4, flicker: 0.2 });
     h.l1 = this._light({ x, y: 0.8, z, color: [1, 0.38, 0.08], intensity: 2.2, radius: 6, life: 1.3, fade: 1.0, flicker: 0.5 });
@@ -1401,6 +1418,7 @@ export class DragonFx {
       this._spawn(add, o);
     }
     g.world?.scorch?.burnCircle?.(x, z, r * 1.1, 0.7, 1);
+    this._landed(x, z, r * 1.1, TUNING.world.pillar, TUNING.world.ignite.pillar);
     this._light({ x, y: 2.5, z, color: [1, 0.5, 0.15], intensity: 7, radius: 11, life: 0.85, fade: 0.6, flicker: 0.3 });
     const p = g.player?.position;
     const dist = p ? Math.hypot(p.x - x, p.z - z) : 99;
@@ -1468,6 +1486,7 @@ export class DragonFx {
       if (h.acc2 <= 0) {
         h.acc2 = 0.07;
         this.game.world?.scorch?.burnCircle?.(fx, fz, hw * 1.1, 0.16, 1);
+        this.game.world?.ignite?.(fx, fz, hw, TUNING.world.ignite.strip); // the pass sets what it crosses alight
         for (let i = 0; i < 3; i++) {
           const l = (Math.random() * 2 - 1) * hw;
           const o = this._rec(fx + qx * l, 0.3, fz + qz * l, rand(0.4, 0.7), rand(1.0, 1.5), 0.2, FIRE);
@@ -1596,6 +1615,8 @@ export class DragonFx {
       for (let i = 0; i < 5; i++) {
         const a = Math.random() * Math.PI * 2;
         sc?.burnCircle?.(h.x + Math.cos(a) * r, h.z + Math.sin(a) * r, hw * 1.4, 0.18, 0.9);
+        // (a sweeping ring lights the wood it crosses, not the whole field's grass)
+        this.game.world?.ignite?.(h.x + Math.cos(a) * r, h.z + Math.sin(a) * r, hw * 1.4, 1, false);
       }
     }
   }
@@ -1648,6 +1669,7 @@ export class DragonFx {
       for (let i = 0; i < 9; i++) {
         const l = (Math.random() * 2 - 1) * half;
         sc?.burnCircle?.(cx + qx * l, cz + qz * l, hw * 1.6, 0.15, 0.9);
+        this.game.world?.ignite?.(cx + qx * l, cz + qz * l, hw * 1.6, 1, false); // (wood only, as the ring)
       }
     }
   }
@@ -1830,6 +1852,7 @@ export class DragonFx {
     }
     this.dustRing(x, z, 3 * S, 48, 1.6);
     g.world?.scorch?.burnCircle?.(x, z, r * 0.85, 0.32, 0.6);
+    g.world?.ignite?.(x, z, r * TUNING.world.ignite.nova[1], TUNING.world.ignite.nova[0], false); // (wood only)
     g.world?.gust?.(x, z, 2, r * 1.4);
     this._light({ x, y: 4, z, color: [1, 0.85, 0.6], intensity: 14, radius: 34, life: 0.55, fade: 0.45 });
     this._light({ x, y: 2, z, color: [1, 0.45, 0.12], intensity: 4, radius: 22, life: 1.8, fade: 1.4, flicker: 0.4 });
@@ -1869,6 +1892,7 @@ export class DragonFx {
     }
     this.dustRing(x, z, 2.2 * S, 60, 1.7);
     g.world?.scorch?.burnCircle?.(x, z, r * 0.7, 0.4, 0.8);
+    g.world?.ignite?.(x, z, r * TUNING.world.ignite.dive[1], TUNING.world.ignite.dive[0]);
     g.world?.gust?.(x, z, 2, 24 * S);
     this._light({ x, y: 2, z, color: [1, 0.6, 0.25], intensity: 9, radius: 16, life: 0.6, fade: 0.45 });
   }

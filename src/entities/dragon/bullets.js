@@ -57,6 +57,9 @@ function record(slot) {
   };
 }
 
+/** A bullet stopped by cover, as a blow on it (world.destructibles.stop; y = the bullet's height). */
+const COVER_BLOW = { kind: 'blast', by: 'boss', y: 0 };
+
 export class Bullets {
   constructor(dragon) {
     this.d = dragon;
@@ -689,6 +692,19 @@ export class Bullets {
       if (ox * ox + oz * oz > bound2) {
         this._kill(b);
         continue;
+      }
+      // cover (ADR-103): a bullet that meets a standing stone, a pillar or a trunk bursts on it and
+      // chips it (one the hero sent back flies on: it is his now)
+      if (!b.deflected && (b.x !== b.px || b.z !== b.pz)) {
+        const cover = d.game.world?.destructibles;
+        if (cover?.stop) {
+          COVER_BLOW.y = b.y;
+          if (cover.stop(b.px, b.pz, b.x, b.z, b.r, (TUNING.world?.bullet ?? 0.12) * (b.kind === BULLET.ORB ? 3 : 1), COVER_BLOW)) {
+            BFX.fizzle(fx, b.x, b.y, b.z, b.kind);
+            this._kill(b);
+            continue;
+          }
+        }
       }
       // a swing cuts the small ones out of the air
       if (sw && b.kind !== BULLET.ORB) {

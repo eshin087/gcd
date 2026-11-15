@@ -2108,6 +2108,14 @@ Flow → hud/audio:
   fullDeflect / bladeLock / mikiri / execution / perfectParry (the hero's perfect parry of a blade: a short
   slow motion, no gong), or lock = the blade lock's camera push-in: no slow motion,
   audio plays no gong)
+World → audio (destruction, ADR-103; see "Destruction" above):
+- `world:impact {kind, mat, x, y, z, power, by, id}` (a blow on a breakable. kind: 'chip' = it held, 'break' = it
+  shattered where it stood, 'topple' = it starts to fall, 'crash' = it lands (or a thrown piece does), 'burn' = wood
+  catches, 'burnout' = it burned through, 'throw' = a boss tears it from the ground. mat: 'wood' / 'stone' / 'metal'
+  / 'bone'. power: on the POWER scale. by: 'player' / 'boss' / 'world'. id: its index in the breakables' list.
+  One reused payload: a subscriber must not keep it), `world:fire {x, z, radius, cells}` (grass catches)
+- A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
+  and hazard: true (be out from under it; audio plays the hazard cue)
 
 ## Ownership (parallel work)
 Foundation (read-only for module authors unless their brief says otherwise): `src/core/**`,

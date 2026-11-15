@@ -540,7 +540,19 @@ export class Dragon {
     if (this.state === 'airborne') {
       const d = Math.hypot(this.position.x, this.position.z);
       if (d > B) this.position.multiplyScalar(B / d);
-    } else this.game.world?.resolve?.(this.position, R, B + R);
+    } else {
+      // its body walks through wood (ADR-103): a tree in its way goes down ahead of it. Stone turns it
+      const W = this.game.world?.destructibles;
+      if (W?.strike && this.state !== 'sleeping') {
+        const o = (this._trample ??= { kind: 'blunt', by: 'boss', only: 'wood', dx: 0, dz: 0 });
+        o.dx = this.position.x - (this._lastX ?? this.position.x);
+        o.dz = this.position.z - (this._lastZ ?? this.position.z);
+        W.strike(this.position.x, this.position.z, R * 0.8, TUNING.world.trample, o);
+      }
+      this.game.world?.resolve?.(this.position, R, B + R);
+    }
+    this._lastX = this.position.x;
+    this._lastZ = this.position.z;
     this.position.y = 0;
   }
 

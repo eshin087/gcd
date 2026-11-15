@@ -10,6 +10,20 @@ export class Colliders {
     return c;
   }
 
+  /** Take a circle out (a breakable that fell: world/destructibles.js). True if it was in. */
+  remove(c) {
+    const i = this.circles.indexOf(c);
+    if (i < 0) return false;
+    this.circles.splice(i, 1);
+    return true;
+  }
+
+  /** Put a removed circle back (the fight's reset). No duplicate. */
+  restore(c) {
+    if (c && !this.circles.includes(c)) this.circles.push(c);
+    return c;
+  }
+
   /**
    * Push a moving circle (pos.x/pos.z, radius) out of all colliders and keep it within `bound`
    * (radius around the origin). Mutates pos. Returns true if any correction happened.

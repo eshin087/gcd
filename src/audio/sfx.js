@@ -1086,6 +1086,44 @@ export const SFX = {
     },
   },
 
+  /** world:impact 'chip' { mat, power }: a blow meets wood, stone, metal or bone (ADR-103). */
+  chip: {
+    prio: 3, rev: 0.1, gap: 0.05, falloff: 0.8,
+    play(v, t, o) {
+      const k = 0.6 + 0.5 * clamp(num(o.power, 0.3), 0, 1.2);
+      if (o.mat === 'metal') {
+        // bronze rings
+        for (const [r, a, d] of [[1, 0.2, 0.5], [2.76, 0.12, 0.35], [5.4, 0.06, 0.2]]) ping(v, t, 'sine', 420 * r * rnd(0.98, 1.02), a * k, d, 0.001);
+        burst(v, t, 'white', 'bandpass', 3600, 1.6, 0.3 * k, 0.03, 0.0005);
+      } else if (o.mat === 'wood' || o.mat === 'bone') {
+        // a dry knock
+        thump(v, t, 210, 120, 0.05, 0.6 * k, 0.09);
+        burst(v, t, 'pink', 'bandpass', o.mat === 'bone' ? 1700 : 900, 1.2, 0.5 * k, 0.05, 0.001);
+      } else {
+        // stone: a crack and grit
+        thump(v, t, 130, 60, 0.07, 0.6 * k, 0.12);
+        burst(v, t, 'white', 'bandpass', 2400, 1.1, 0.45 * k, 0.04, 0.0005);
+        burst(v, t, 'brown', 'lowpass', 500, 0.8, 0.4 * k, 0.1);
+      }
+    },
+  },
+
+  /** world:impact 'break' | 'topple' | 'crash' | 'throw' { mat, power }: something comes down (ADR-103). */
+  crash: {
+    prio: 5, rev: 0.28, gap: 0.12, falloff: 0.6,
+    play(v, t, o) {
+      const k = 0.7 + 0.4 * clamp(num(o.power, 1), 0, 1.5);
+      thump(v, t, 70, 24, 0.5, 1.0 * k, 0.8);
+      burst(v, t, 'brown', 'lowpass', 320, 0.8, 0.8 * k, 0.5, 0.004);
+      // the rattle of what falls after
+      const c = v.noise('pink', t, t + 0.75);
+      const bp = v.filter('bandpass', o.mat === 'wood' ? 1100 : 2000, 0.8);
+      const cg = v.gain(0);
+      spikes(cg.gain, t + 0.04, 0.6, 12, 0.3 * k, 0.002, 0.02, 0.7);
+      c.connect(bp).connect(cg).connect(v.out);
+    },
+  },
+
   stagger: {
     prio: 5, rev: 0.3, gap: 0.5, falloff: 0.6,
     play(v, t) {

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
 import { clamp, lerp, smoothstep, easeOutCubic, easeInCubic, easeInOutSine, angleDiff } from '../../core/math.js';
-import { beat, roarFx, roarPose } from './attacks.js';
+import { beat, roarFx, roarPose, GROUND_BLOW } from './attacks.js';
 
 // Fire / flight attacks and spells (contract 3; numbers in tuningFire.js = TUNING.attacks.*). Same
 // shape as attacks.js (phases / beats / zone / weight / start / enter / update / hit / end, driven by
@@ -372,6 +372,7 @@ const diveBomb = {
     touchDown(d, true);
     d.hitstop(0.09);
     d.fx.crashWave(a.target.x, a.target.z, DB.radius);
+    d.game.world?.impact?.(a.target.x, a.target.z, DB.radius, TUNING.world.dive, GROUND_BLOW);
     d.emit('dragon:hazard', { kind: 'crash', stage: 'hit', x: a.target.x, z: a.target.z, radius: DB.radius });
     if (!deal) return;
     d.markHitbox?.(a.target.x, 0, a.target.z, DB.radius);
@@ -1118,6 +1119,12 @@ const nova = {
     if (phase !== 'blast') return;
     const g = d.game, c = d.rig.pt.chest;
     d.fx.novaBlast(a.cx, Math.max(2, c.y), a.cz, NV.radius);
+    {
+      // the blast on the world: everything near its heart goes, the rim is only chipped
+      const NW = TUNING.world.nova;
+      g.world?.impact?.(a.cx, a.cz, NV.radius * NW[2], NW[0], GROUND_BLOW);
+      g.world?.destructibles?.strike(a.cx, a.cz, NV.radius, NW[1], GROUND_BLOW);
+    }
     d.emit('dragon:hazard', { kind: 'nova', stage: 'hit', x: a.cx, z: a.cz, radius: NV.radius });
     roarFx(d, 1.3);
     g.shake?.(0.9);

@@ -1,6 +1,10 @@
 import { TELL, TELL_STYLE, RESULT } from '../../../combat/rules.js';
 import { perPhase } from './realise.js';
 import { CLASH, clashBurst } from '../../../combat/clashFx.js';
+import { DUEL_WORLD } from './worldTuning.js';
+
+/** A thrown thing stopped by cover, as a blow on it (world.destructibles.stop). */
+const COVER_BLOW = Object.freeze({ kind: 'cut', by: 'boss', y: 0.9 });
 
 // A duelist's glyph FX (STYLE.md: everything is glyph particles from the world atlas + pooled lights),
 // shared by every boss on duelist.js. The tells look exactly like the wyrm's (COMBAT.md "Tell
@@ -443,6 +447,27 @@ export class DuelFx {
       if (c.age > (c.life ?? C.life) || Math.hypot(c.x, c.z) > 60) {
         c.alive = false;
         continue;
+      }
+      // the world in its way (ADR-103): a crescent bursts on cover and chips it; a wall of force
+      // goes through and throws down what it meets; a fissure runs under everything
+      const W = this.game.world?.destructibles;
+      if (W?.stop && c.style !== 'rift') {
+        const WT = T.world ?? DUEL_WORLD;
+        const px = c.x - c.dx * speed * dt, pz = c.z - c.dz * speed * dt;
+        if (c.style === 'push') {
+          // (one blow per wall per piece: a fresh id when the pooled record starts a new flight)
+          if (c.wsrc === undefined || c.age < c.wAge) c.wsrc = W.swing();
+          c.wAge = c.age;
+          const o = (this._pushBlow ??= { kind: 'blunt', by: 'boss', dx: 0, dz: 0, src: -1 });
+          o.dx = c.dx;
+          o.dz = c.dz;
+          o.src = c.wsrc;
+          W.sweep(px, pz, c.x, c.z, half, WT.push ?? DUEL_WORLD.push, o);
+        } else if (W.stop(px, pz, c.x, c.z, Math.min(0.6, half * 0.5), WT.crescent ?? DUEL_WORLD.crescent, COVER_BLOW)) {
+          this._fizzle(c);
+          c.alive = false;
+          continue;
+        }
       }
       this._drawCrescent(c, d.phase >= 2);
       const pp = p?.position;
