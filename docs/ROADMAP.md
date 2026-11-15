@@ -185,6 +185,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Cinderwood and Ashfall list their breakables; things to break inside Cinderwood's clearing
 - [x] The owner's pick of the debris look: digits (chunks and shards turned down; the switch removed)
 - [x] The hero seen behind the wyrm (its own session, PR #41, ADR-106; merged)
+- [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
+- [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
+- [x] The wyrm's terrain moves: Uproot and hurl, Tail bat, Firebrand (its own session and PR, ADR-110)
+  - [x] The owner's pick of how it holds a tree: over the shoulder (upright turned down; the switch removed)
+  - [ ] A played fight: how often the moves come up on the real clearing, and the phone
+  - [ ] The lab stage has no breakables: there the three moves find nothing to take
 - [x] The Obsidian Throne rebuilt open (ADR-112, Session 48): three open arenas rendered for the
       owner (Starfall, the Grave of Blades, the Broken Hall), "A Starfall" picked and built: a crater
       with no walls, the star as his throne, 36 breakables (shards, rim slabs, stones in the air)
