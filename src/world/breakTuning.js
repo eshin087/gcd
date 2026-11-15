@@ -73,23 +73,9 @@ export const BREAK = Object.freeze({
   burn: Object.freeze({ time: 7, pad: 1.0, light: [3.2, 1.1, 0.25] }),
 });
 
-/**
- * How a broken piece comes apart (TEMPORARY: three looks for the owner to pick from, `?debris=`;
- * the two not picked and this switch go once they have):
- *   digits  a shower of the characters it is drawn in (prop art's digits, a tree's round leaves)
- *   chunks  fewer, bigger lumps (# % & @) that drop hard, and twice the dust
- *   shards  long strokes (/  | -) thrown wide and fast, bright on their edges
- */
-export const DEBRIS = (() => {
-  let look = 'digits';
-  try {
-    const q = new URLSearchParams(globalThis.location?.search ?? '').get('debris');
-    if (q === 'chunks' || q === 'shards' || q === 'digits') look = q;
-  } catch {
-    /* headless: the default */
-  }
-  return { look };
-})();
+// (How a broken piece comes apart is the owner's pick of three filmed looks, 2026-11-15: "digits",
+// a shower of the characters it is drawn in. Chunks and shards were turned down: destructibles.js
+// `_crumble`.)
 
 /** Grass and ground fire (world/fire.js). Fire burns where it lands and never spreads (the owner's pick). */
 export const FIRE = Object.freeze({
