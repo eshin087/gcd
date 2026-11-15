@@ -23,7 +23,7 @@ export const RELEASES = [
         notes: [
           "WHAT'S NEW on the title screen and in the pause menu lists every version and what changed. A badge counts what you have not read yet.",
           'Phones: a duel\'s slow-motion moments (parry, blade lock, counter, execution) no longer pull the camera in to the knees. They come in as far as on a computer, for the phone\'s closer camera.',
-          'Phones: a quick second tap on LOCK or a button can no longer zoom the whole page in.',
+          'iPhone: a quick double tap (mashing ATTACK, LOCK twice) zoomed the whole page in and it stayed stuck. Double taps are blocked now, and a page that gets zoomed anyway snaps back.',
         ],
       },
       {
