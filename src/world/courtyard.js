@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial } from '../render/materials.js';
+import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { mulberry32, range, hash2, fbm2 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
@@ -9,6 +9,7 @@ import {
   prep, lumpy, paint, carve, slabGeometry, mul, STONE, STONE_LOOK, SLAB_LOOK,
   buildDeadTree, buildStandingStone, buildBoulder, buildFlagstone, buildBonfire,
 } from './forest.js';
+import { buildSectGate, buildColossus, buildCauldron, carved, landmarkPoint, GATE_COLLIDERS } from './landmarks.js';
 
 // The Ashfall Courtyard (docs/specs/ash-disciple.md §2): the ruins of a sword sect on a burned
 // hillside. South to north (the player walks north, -z): the bonfire on a scorched landing, a path of
@@ -26,6 +27,14 @@ export const COURTYARD = {
   cell: 1.45, // paving slab pitch
   pillarAt: 15.6, // the ring of pillars, this far out from the centre along each edge
   gateZ: 15.6,
+  // landmarks (landmarks.js): the sect's mountain gate north of the ruined hall, the incense
+  // cauldron before it, two colossal stone swordsmen watching the duel from east and west
+  greatGate: { x: 0, z: -22.4, yaw: 0, s: 1 },
+  cauldron: { x: 0, z: -18.3, yaw: 0.3, s: 0.85 },
+  guardians: [
+    { x: -18.8, z: -3, yaw: 0.35, s: 1.3, head: 'hat' },
+    { x: 18.8, z: -3, yaw: -0.35, s: 1.3, head: 'none' },
+  ],
   gateX: 3.4, // the gate pillars at x = ±gateX
   steps: [16.6, 17.5, 18.4, 19.3], // rows of broken steps (z)
   pathTo: 34, // the flagstone path runs from the steps to here
@@ -162,7 +171,7 @@ function buildBell(rng, x, z, yaw) {
   all.rotateY(yaw);
   paint(all, {
     col: (px, py, pz) => mul(BRONZE, 0.7 + 0.6 * fbm2(px * 2.2 + 5, pz * 2.2 + py, 2)),
-    flag: FLAG.STONE,
+    flag: FLAG.ART_PROP,
     ao: (px, py) => 0.55 + 0.45 * Math.min(1, py / 1.6),
   });
   all.translate(x, 0, z);
@@ -301,6 +310,9 @@ export function createCourtyard(U, colliders) {
     if (Math.hypot(x - bf.x, z - bf.z) < 5) return false;
     return true;
   };
+  const G = C.greatGate;
+  const inLandmark = (x, z) =>
+    (Math.abs(x - G.x) < 10.5 && Math.abs(z - G.z) < 5.5) || C.guardians.some((s) => Math.hypot(x - s.x, z - s.z) < 4.2);
   const trees = [];
   for (let i = 0; i < 30000 && trees.length < 340; i++) {
     const a = rng() * TAU, r = 18 + Math.pow(rng(), 1.3) * 52;
@@ -316,6 +328,7 @@ export function createCourtyard(U, colliders) {
       const col = geo.attributes.aCol;
       if (col && !t.stump) for (let k = 0; k < col.count; k++) col.setXYZ(k, col.getX(k) * 0.55, col.getY(k) * 0.52, col.getZ(k) * 0.52);
     }
+    if (inLandmark(t.x, t.z)) continue; // (built first: the layout's random sequence stays as it was)
     treeGeos.push(...g);
     treeSpots.push({ x: t.x, z: t.z, r: (t.stump ? 1.2 : 2.4) * t.s });
     if (Math.hypot(t.x, t.z) < 46) colliders.add(t.x, t.z, (t.stump ? 0.4 : 0.42) * t.s, 'trunk');
@@ -326,8 +339,27 @@ export function createCourtyard(U, colliders) {
     const x = Math.cos(a) * r, z = Math.sin(a) * r + 6;
     if (!open(x, z)) continue;
     const size = range(rng, 0.7, 1.7);
-    stoneGeos.push(buildBoulder(rng, x, z, size));
+    const boulder = buildBoulder(rng, x, z, size);
+    if (inLandmark(x, z)) continue;
+    stoneGeos.push(boulder);
     if (r < 46) colliders.add(x, z, size * 0.85, 'boulder');
+  }
+
+  // ---- landmarks
+  {
+    const lr = mulberry32(CONFIG.seed + 1977);
+    stoneGeos.push(...carved(buildSectGate(lr, G.x, G.z, G.yaw, G.s)));
+    for (const [lx, lz, r] of GATE_COLLIDERS) {
+      const p = landmarkPoint(G.x, G.z, G.yaw, G.s, lx, lz);
+      colliders.add(p.x, p.z, r * G.s, 'stone');
+    }
+    const K = C.cauldron;
+    stoneGeos.push(...carved(buildCauldron(lr, K.x, K.z, K.yaw, K.s)));
+    colliders.add(K.x, K.z, 1.75 * K.s, 'stone');
+    for (const s of C.guardians) {
+      stoneGeos.push(...carved(buildColossus(lr, s.x, s.z, s.yaw, s.s, { head: s.head })));
+      colliders.add(s.x, s.z, 2.3 * s.s, 'stone');
+    }
   }
 
   const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
@@ -336,7 +368,9 @@ export function createCourtyard(U, colliders) {
   const propMesh = new THREE.Mesh(mergeGeometries(propGeos), mat);
   propMesh.name = 'props';
   const pitch = CONFIG.camera.pitch;
-  const stoneMat = createCarvedGlyphMaterial(U, { ...STONE_LOOK, fadeNearPlayer: true, viewPitch: pitch });
+  // pillars, lanterns, the stele, boulders and the landmarks are printed like the wyrm (prop art,
+  // ADR-100); the paving stays carved
+  const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true });
   const stoneMesh = new THREE.Mesh(mergeGeometries(stoneGeos), stoneMat);
   stoneMesh.name = 'stones';
   const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, ...PAVING_LOOK, viewPitch: pitch });

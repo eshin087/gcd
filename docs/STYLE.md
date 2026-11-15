@@ -3,6 +3,64 @@
 Reference: @Ansenjeo's "ASCII MMORPG" (X / TikTok, Oct 2026). Studied from his banner and four
 gameplay clips. This document describes what we observed and how this codebase reproduces it.
 
+## The house style: the dragon look (read this first)
+
+**The rule (the owner, 2026-11-15):** the Cinder Wyrm as it ships is "the perfect ascii look im
+aiming for. Apply this design to all the background objects as well", and every future background
+object and character follows it. This section is that design. If something new does not look like
+the wyrm next to it, it is wrong, however good it looks alone.
+
+**What the look is** (ADR-093 for the wyrm, ADR-100 for objects):
+1. **Small, fine digits.** A pixel font in cells about 1/90 of the screen height (5x8 px at 720p,
+   6x9 at 1080p, 4x6 on a phone; `wyrmArtFont`). One letter size for everything in this look.
+2. **Brightness draws the shape, not letter density.** The same three letter sets everywhere
+   (`WYRM_SETS`); a cell's brightness picks the set and how bright its digit is.
+3. **A dark body, light only where it is caught.** Most of a shape is dim; brighter digits sit on
+   lit faces, rims and edges. Never an evenly bright shape (the owner: "way too flashy").
+4. **The outline is made of characters.** The silhouette prints stroke glyphs (`- / | \`) along
+   itself; inner steps (a cap over a shaft, an arm over a robe) print dimmer ones.
+5. **No blank cell inside a shape.** A shadowed face prints dim digits, not nothing (the owner:
+   "no ... fake ascii look with empty blank spots"). Only the wyrm keeps black gaps between scales.
+6. **Its own colour, kept low.** Stone blue-grey, bone pale, bronze, a red column: the digit takes
+   the object's hue. Saturated light stays for fire, blades and tells.
+
+**Which path draws what:**
+
+| You are adding | Use | Do not use |
+|---|---|---|
+| A background object: stone, metal, bone, a wall, a pillar, a statue, a building, a prop | `createPropArtMaterial` on geometry with `carve()` attributes; or `FLAG.ART_PROP` in `paint()` for a prop in a set's `props` mesh | `createCarvedGlyphMaterial`, `FLAG.STONE` |
+| A big set piece | a builder in `world/landmarks.js`, pushed through `carved()` into the set's `stones` | a new material |
+| A creature, a boss, a character | `createSurfaceGlyphMaterial` with an art source, `FLAG.ART` (the wyrm's pass) | a new pass, a new font |
+| An effect | glyph particles (`fx.add` / `fx.alpha`) | meshes |
+
+**What is NOT in this look, on purpose (do not "fix" it):**
+- **The hero and the two human bosses** keep their ink-line art on a 4 px dot matrix. The owner:
+  "Lets not touch the floor character and bosses" (2026-11-15). A sheet of them in larger letters
+  was shown and not taken up.
+- **The floors** (flagstones, the courtyard's paving, the hall's tiles) keep carved glyphs
+  (`createCarvedGlyphMaterial`): the ground must stay calm under the fight.
+- **The trees** keep the screen grid's bigger round letters (`FLAG.LEAF`, trunks `FLAG.STONE`): the
+  owner chose to keep them ("perfect ASCII feel", v0.1).
+- **The grass and the soil** keep their world-anchored strokes.
+
+**Checklist for a new object or character:**
+- Low-poly with FLAT facets: each facet is one tone, and the spread of tones is what prints as form.
+  A big smooth shape lit evenly prints as one flat field of digits.
+- Albedo around 0.1 – 0.2 (linear), with variation; the pass lifts it. A level with its own dark
+  night (the throne hall) raises the material's `gain`, not the albedo.
+- Look at it at the game camera, 720p and 852x393, next to the wyrm. The camera looks down at 58
+  degrees: upright things are squashed (statues are drawn 1.3x taller than built), and anything on a
+  level's north rim is off the top of the frame unless the hero is near.
+- Thin parts (a rib, a rail) are narrower than a letter: they print as outline strokes only.
+- Render a before / after sheet and let the owner pick before finishing.
+
+**Tried and turned down by the owner (do not propose again):** a typed lattice ground and a
+"terminal" post-process finish (2026-11-14: "scrap everything"); large bold symbols on the wyrm
+(ADR-092: "way too flashy ... too big"); carved glyphs filled to every cell on pillars and floors
+(2026-11-15); one character grid over the whole frame in the manner of the owner's gcdAtlas project
+(2026-11-15: feasible and no slower on a desktop GPU, but the fighters shrink to ~9 character rows
+and lose their poses; the owner chose the dragon look).
+
 ## Observed in the reference
 
 **Camera.** Steep top-down *perspective* (≈55–65° pitch), fixed yaw (north up), fairly high.
@@ -83,8 +141,10 @@ History matters here:
 
 | Thing | Technique | Where |
 |---|---|---|
-| Standing stones, boulders, flagstones | **carved glyphs**: one crisp glyph per world-fixed lattice cell (0.22 × 0.28 m on a plane facing the default camera, rows randomly offset), picked by light on flat facets (lit `% # 8 @ &`, shadow `. : ;`), mid-lit flanks hatched along their contour (`/ \| \`), world-fixed cracks, dim green moss tufts (`, ; " *`), near-black gaps. Flagstones: dimmer, irregular 5–7-sided slabs, half-sunk and tilted, a chipped moonlit chamfer, grass leaning over and growing through the rim | `createCarvedGlyphMaterial` (`render/materials.js`), looks `STONE_LOOK` / `SLAB_LOOK` in `world/forest.js` |
-| Trunks, bones, bonfire | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
+| Standing stones, boulders, pillars, walls, lanterns, the throne and dais, statues, bones, braziers, the bonfire, the fallen bell | **prop art, the dragon look** (ADR-100): a smooth lit source printed in the wyrm's fine digits, a dark body, stroke-glyph outlines, no blank cells; grid counted from the ground. Rules: "The house style" above and "Background objects" below | `createPropArtMaterial` / `FLAG.ART_PROP` (`render/materials.js`) → `render/pipeline.js` (the prop branch) |
+| Landmarks: the elder wyrm's skeleton, two stone swordsmen, the sect gate and its cauldron, two throne wardens, six great swords | the same prop art, built once per level | `world/landmarks.js` |
+| Flagstones, the courtyard's paving, the hall's tiles (floors only) | **carved glyphs**: one crisp glyph per world-fixed lattice cell (0.22 × 0.28 m on a plane facing the default camera, rows randomly offset), picked by light on flat facets (lit `% # 8 @ &`, shadow `. : ;`), mid-lit flanks hatched along their contour (`/ \| \`), world-fixed cracks, dim green moss tufts (`, ; " *`), near-black gaps. Flagstones: dimmer, irregular 5–7-sided slabs, half-sunk and tilted, a chipped moonlit chamfer, grass leaning over and growing through the rim | `createCarvedGlyphMaterial` (`render/materials.js`), looks `STONE_LOOK` / `SLAB_LOOK` in `world/forest.js` |
+| Trunks, the Cinder Tree | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
 | Canopies | screen-grid `LEAF` 0.6: blobby ramp `. : o 0 O 8 @` | same |
 | Grass | ~260k instanced quads, each ONE glyph stroke (`\| / \ ' Y V v l i`) **anchored in the world** (no shimmer when the camera moves); gentle slow wind, trample pushers, wing gusts, burnt to ash glyphs; dim world-space soil glyphs between | `world/grass.js`, `world/ground.js` |
 | Hero, wyrm | **classic ASCII art** of a shaded SOURCE image (v0.4), matched to the owner's two reference images on 2026-11-08: the **wyrm** as fine pixel-font digits (5x8 px cells at 720p since 2026-11-15, ADR-093) whose brightness draws charcoal scales, molten cracks and crimson torn sails; the **hero** as ink-line art, dim dense letters inside bright one-pixel ink lines. Rules and numbers: "Creature ASCII art" below | `createSurfaceGlyphMaterial` (`wyrm` / `heroArt` sources) → `render/pipeline.js` (hero branch, `wyrmCell`), `render/wyrmGlyphs.js`, `createPixelArtAtlas` |
@@ -348,6 +408,30 @@ Rules of thumb:
 - **Scale:** at the 36 m game camera ~25 rows of 4x6 px letters (~15 on a phone at LOW); drawn 1.2×
   and leaned toward the camera (ADR-017). Close-ups (Lab model viewer) show the full reference look.
 
+### Background objects in the dragon's look (2026-11-15, ADR-100)
+The owner: "all 3 levels need all the background objects like the pillars and structures to look
+completely made of ascii characters. Right now it looks like a normal object with random ascii
+pattern stickers put on top of it." What made the carved-glyph objects read as stickers: a lit slab
+of the object's own colour under sparse glyphs; ramps whose dark levels were spaces, dots and commas
+(blank spots with specks); a solid bright band on every chamfer; and, the worst, wall and pillar
+faces turned east or west, which held ONE lattice column across their width and printed a slice of
+each glyph smeared into solid bars.
+- **Now** every upright object is a smooth lit SOURCE (`createPropArtMaterial`: facet light, a
+  camera-fixed key light from the upper left like the wyrm's, an edge band, scorch) and the art pass
+  prints it in the wyrm's letters with the props' own tone: every cell a digit (cutoff 0, dimmest
+  letter 0.085), a steeper curve than the wyrm's (`uPropLum.y` 9: a stone's source is dimmer than a
+  scale rim).
+- **Outlines in characters:** a cell on the silhouette prints a stroke glyph along the edge, 1.9x
+  the body's brightness; a cell across a depth step inside the object (1.2 % of its distance)
+  prints one at 1.35x.
+- **The grid is counted from the ground:** the screen position a fixed world point would have at
+  the camera's focus. Letters stay on an object while the camera follows the hero: exact at the
+  focus depth, a slow drift nearer and farther.
+- **Colour:** the object's own hue (blue-grey stone, vermilion columns, bronze, bone). The hall's
+  material uses `gain` 1.5 for its dark night.
+- **Not checked in motion** when this was built: the drift toward the screen edges, and the
+  fade-near-player dither on a letter grid.
+
 ### Fire, hazards and the plunge (2026-11-09)
 Every effect below is glyph particles (`fx.add`, additive HDR, for fire and light; `fx.alpha` for
 smoke and dust) using world-atlas glyphs only (`gi()` throws on others; `npm test`'s glyph check).
@@ -508,7 +592,8 @@ pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-s
 glyphs, calm and sparse); a cyan measuring grid of glyph particles in one additive batch of its own
 (a line every 2 m out to 22 m, brighter every 10 m); magenta rings round the duel's centre at 3, 6,
 9 and 12 m with their numbers in cyan, a centre cross; low dark panel walls with cyan light in their
-seams and a pylon of cyan light at each corner; cyan motes rising.
+seams and a pylon of cyan light at each corner, both printed as prop art (the house style); cyan
+motes rising.
 
 ### Steel on steel (2026-11-14, ADR-079; `combat/clashFx.js`)
 One effect for every blade that meets a blade: the hero's parry, a duelist's guard, his deflect, the

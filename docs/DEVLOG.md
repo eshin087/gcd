@@ -5,6 +5,50 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 38: one art design: objects in the dragon's look; landmarks
+
+**Owner:** "all 3 levels need all the background objects like the pillars and structures to look
+completely made of ascii characters. Right now it looks like a normal object with random ascii
+pattern stickers put on top of it." Then: "Lets not touch the floor character and bosses ... The
+prod build is the perfect ascii look im aiming for. Apply this design to all the background objects
+as well." Then, after a gcdAtlas-style preview they asked for: "dragon look and update any md file
+to ensure all future background and characters are following the same art design". Branch
+`render/prop-art` from `main` (PR #34). (ADR-098 / 099 and sessions 36 / 37 are left to the two PRs
+open at the same time, #35 and #36, which both use 098 and 36.)
+
+**Done** (ADR-100):
+- **Prop art:** `FLAG.ART_PROP`, `createPropArtMaterial`, the art pass's prop branch (`artLetters`,
+  `edgeDir`, `uProp*`), the ground anchor. The three sets' `stones` meshes and the small grid props
+  (bones, bonfire, bell, braziers) moved to it. Floors stay carved.
+- **Landmarks** (`world/landmarks.js`): seven builders, hooked into the three sets with their
+  colliders; trees and boulders in their footprints are built, then dropped.
+- **The rule, written down:** CLAUDE.md ("One art design: the dragon look"), STYLE.md's new first
+  section "The house style" (what the look is, which path draws what, what is exempt and why, a
+  checklist, what the owner turned down), ARCHITECTURE.md (the contracts).
+
+**On the way (kept out of the repo):**
+- A first answer, carved glyphs filled to every cell on objects and floors, was built, shown and
+  turned down. It did find why the old objects read as stickers (see STYLE.md "Background objects").
+- A whole-frame character grid ported from the owner's gcdAtlas project, as a scratch module:
+  rendered in all three levels and measured. Feasible; the owner chose the dragon look.
+
+**Verification:** in the dev server at 1280x720: two views per level beside the live game, close-ups.
+Frame cost in Chrome on an RTX 4090 (ADR-100 has the numbers): about equal to the live game at
+1080p. `npm test` (all four suites, no console errors) and `npm run build` pass; the static check
+now guards the prop flag's alpha window, each set's prop art material and the written rule.
+
+**Found on the way:** the built-in Browser pane renders with a software driver (frame timings there
+are meaningless); a visible Chrome tab keeps the fight running, so timings need a frozen, calm scene.
+The throne hall costs ~10 ms a frame at 1080p on a 4090 before this change: the heaviest view.
+
+**Not checked / open:** the look in motion (the letters' drift toward the screen edges, the
+fade-near-player dither); a fight played round the new colliders; the phone (look and frame rate);
+1080p and 4K by eye. The stone swordsmen read as a mass of digits with inner outlines, not yet as a
+clear figure; the gate is mostly off the top of the frame; the old bone pile is mostly strokes.
+
+**Next:** the owner's look at the Vercel preview; then a second pass on the landmarks.
+
+---
 ## 2026-11-15 — Session 37: Training (every situation, one click) and the lab stage
 
 **Owner:** "Make a lab mode to easily tell every situation with a simple click. For example i want to

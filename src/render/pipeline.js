@@ -234,6 +234,22 @@ export class Pipeline {
         // dark letters as scale rims cross its four point samples (0 = off); each letter pixel still
         // takes uWyrmTone.w of its own source pixel, which is what draws the scale edges through it
         uWyrmTaps: { value: 1 },
+        // ---- background props (FLAG.ART_PROP, ADR-100): printed like the wyrm, in its letters and
+        // its cell, with their own tone. uPropTone: x brightest letter, y gamma, z value below which
+        // a cell prints nothing (0: EVERY cell of an object prints a letter), w own-pixel share.
+        // uPropGlyph: x / y set steps dim -> mid -> bright, z per-cell dither. uPropLum: x black
+        // point, y curve 1 - exp(-luma * y), z brightness of the dimmest letter.
+        uPropTone: { value: new THREE.Vector4(0.9, 1.3, 0.0, 0.7) },
+        uPropGlyph: { value: new THREE.Vector4(0.16, 0.48, 0.08, 0) },
+        uPropLum: { value: new THREE.Vector3(0.0, 9.0, 0.085) },
+        // x = brightness of the outline's stroke glyphs against the body (the object's edge is drawn
+        // in characters, a little brighter than what it encloses), y = relative depth step inside an
+        // object that draws an inner outline stroke (0 = none), z = brightness of those
+        uPropOutline: { value: new THREE.Vector3(1.9, 0.012, 1.35) },
+        // the props' grid is counted from the GROUND: the screen position a fixed world point would
+        // have at the camera's focus (px, set per frame), so letters stay on an object while the
+        // camera follows the hero (exact at the focus depth, a slow drift nearer and farther)
+        uPropAnchor: { value: new THREE.Vector2(0, 0) },
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
@@ -284,6 +300,11 @@ export class Pipeline {
         uniform float uWyrmOutline;
         uniform vec2 uWyrmAnchor;
         uniform float uWyrmTaps;
+        uniform vec4 uPropTone;
+        uniform vec4 uPropGlyph;
+        uniform vec3 uPropLum;
+        uniform vec3 uPropOutline;
+        uniform vec2 uPropAnchor;
         varying vec2 vUv;
 
         float hash12(vec2 p) {
@@ -356,6 +377,7 @@ export class Pipeline {
 
         bool isArt(float a) { return a > 0.46 && a < 0.55; }
         bool isHero(float a) { return a > 0.46 && a < 0.49; } // FLAG.ART_HERO = 0.48, FLAG.ART = 0.5
+        bool isProp(float a) { return a > 0.555 && a < 0.585; } // FLAG.ART_PROP = 0.57
 
         // ---- the wyrm (FLAG.ART): fine pixel-font digits on black (wyrmGlyphs.js atlas in tArt; ADR-093).
         // The letter is picked per cell: its average source picks a letter SET (a dark cell prints
@@ -369,23 +391,37 @@ export class Pipeline {
         // stroke >= 0: the material marked this cell as a scale rim / thin part running in that screen
         // direction (0 '-', 1 '/', 2 '|', 3 '\\'): draw the stroke glyph, the reference's edge-shaped
         // letters that outline every scale
-        vec3 wyrmCell(vec3 c, vec3 cp, vec2 acell, vec2 local, float stroke) {
-          float v = 1.0 - exp(-max(luma(c) - uArtBlack.y, 0.0) * uArtLum.y);
+        // (artLetters: the letters themselves, shared by the wyrm and the background props. tone = x
+        // brightest letter, y gamma, z value below which a cell prints nothing, w own-pixel share;
+        // glyph = x / y set steps, z their dither; lum = x black point, y curve, z dimmest letter)
+        vec3 artLetters(vec3 c, vec3 cp, vec2 acell, vec2 local, float stroke, vec4 tone, vec4 glyph, vec3 lum) {
+          float v = 1.0 - exp(-max(luma(c) - lum.x, 0.0) * lum.y);
           float h = hash12(acell * 1.37 + 11.0);
-          float d = (hash12(acell * 0.71 + 3.7) - 0.5) * uWyrmGlyph.z;
-          float s0 = v < uWyrmGlyph.x + d ? 1.0 : v < uWyrmGlyph.y + d ? uWyrmAtlas.x : uWyrmAtlas.y;
-          float s1 = v < uWyrmGlyph.x + d ? uWyrmAtlas.x : v < uWyrmGlyph.y + d ? uWyrmAtlas.y : uWyrmAtlas.z;
+          float d = (hash12(acell * 0.71 + 3.7) - 0.5) * glyph.z;
+          float s0 = v < glyph.x + d ? 1.0 : v < glyph.y + d ? uWyrmAtlas.x : uWyrmAtlas.y;
+          float s1 = v < glyph.x + d ? uWyrmAtlas.x : v < glyph.y + d ? uWyrmAtlas.y : uWyrmAtlas.z;
           float idx = s0 + min(floor(h * (s1 - s0)), s1 - s0 - 1.0);
           if (stroke >= 0.0) idx = uWyrmAtlas.z + stroke;
-          if (v < uWyrmTone.z) idx = 0.0;
+          if (v < tone.z) idx = 0.0;
           float m = texture2D(tArt, vec2((idx + local.x) / uWyrmAtlas.w, local.y)).a;
-          vec3 s = mix(c, cp, uWyrmTone.w);
-          float vp = 1.0 - exp(-max(luma(s) - uArtBlack.y, 0.0) * uArtLum.y);
+          vec3 s = mix(c, cp, tone.w);
+          float vp = 1.0 - exp(-max(luma(s) - lum.x, 0.0) * lum.y);
           float mx = max(max(s.r, s.g), s.b);
           vec3 hue = s / max(mx, 1e-4);
           float sat = (mx - min(min(s.r, s.g), s.b)) / max(mx, 1e-4);
-          float b = mix(uArtMin.y, uWyrmTone.x, pow(vp, uWyrmTone.y));
+          float b = mix(lum.z, tone.x, pow(vp, tone.y));
           return hue * b * mix(1.0, max(1.0, mx), smoothstep(0.25, 0.6, sat)) * m;
+        }
+        vec3 wyrmCell(vec3 c, vec3 cp, vec2 acell, vec2 local, float stroke) {
+          return artLetters(c, cp, acell, local, stroke, uWyrmTone, uWyrmGlyph, vec3(uArtBlack.y, uArtLum.y, uArtMin.y));
+        }
+        // the screen direction (0 '-', 1 '/', 2 '|', 3 '\\') of the edge between the samples of a cell
+        // that are in (mask: x BL, y BR, z TL, w TR) and those that are not: marching squares
+        float edgeDir(vec4 mask, float hits) {
+          if (hits == 2.0 && mask.x == mask.w) return mask.x > 0.5 ? 1.0 : 3.0; // a diagonal pair
+          float gx = (mask.y + mask.w) - (mask.x + mask.z);
+          float gy = (mask.z + mask.w) - (mask.x + mask.y);
+          return mod(floor(mod(atan(gx, -gy), 3.14159265) / 0.7853982 + 0.5), 4.0);
         }
 
         // ---- the hero as ink-line art (the owner's reference: anime line art turned into ASCII).
@@ -687,6 +723,54 @@ export class Pipeline {
             gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // creature edge sliver: black, like the images
             return;
           }
+          // ---- background props (FLAG.ART_PROP): the wyrm's letters, on the grid counted from the
+          // ground. The silhouette prints stroke glyphs along itself, a depth step inside the object
+          // (a cap over a shaft, an arm over a robe) a dimmer one: the object is outlined in characters.
+          vec2 pcell = floor((px - uPropAnchor) / uArtCell);
+          vec2 pbase = pcell * uArtCell + uPropAnchor;
+          vec3 psum = vec3(0.0);
+          float phits = 0.0;
+          vec4 pmask = vec4(0.0), pdep = vec4(0.0);
+          for (int i = 0; i < 4; i++) {
+            vec2 o = vec2(i == 1 || i == 3 ? 0.75 : 0.25, i >= 2 ? 0.75 : 0.25);
+            vec2 suv = (pbase + o * uArtCell) / uRes;
+            vec4 sa = texture2D(tScene, suv);
+            if (isProp(sa.a)) {
+              float dz = linDepth(suv);
+              if (i == 0) { pmask.x = 1.0; pdep.x = dz; } else if (i == 1) { pmask.y = 1.0; pdep.y = dz; } else if (i == 2) { pmask.z = 1.0; pdep.z = dz; } else { pmask.w = 1.0; pdep.w = dz; }
+              psum += sa.rgb;
+              phits += 1.0;
+            }
+          }
+          if (phits >= 1.0) {
+            float pstroke = -1.0, pgain = 1.0;
+            if (phits <= 3.0) {
+              pstroke = edgeDir(pmask, phits);
+              pgain = uPropOutline.x;
+            } else if (uPropOutline.y > 0.0) {
+              float dmin = min(min(pdep.x, pdep.y), min(pdep.z, pdep.w));
+              float dmax = max(max(pdep.x, pdep.y), max(pdep.z, pdep.w));
+              if (dmax - dmin > uPropOutline.y * dmin) {
+                vec4 nearM = step(pdep, vec4(0.5 * (dmin + dmax)));
+                float nh = nearM.x + nearM.y + nearM.z + nearM.w;
+                if (nh >= 1.0 && nh <= 3.0) { pstroke = edgeDir(nearM, nh); pgain = uPropOutline.z; }
+              }
+            }
+            if (phits >= 2.0 || pstroke >= 0.0) {
+              // (the four samples that found the cell are its tone: a prop's source is smooth, facet by
+              // facet, so the wyrm's 16 extra taps would cost a quarter of the pass for nothing)
+              vec3 ca = psum / phits * pgain;
+              vec4 sp = texture2D(tScene, px / uRes);
+              vec3 cp = isProp(sp.a) && pstroke < 0.0 ? sp.rgb : ca;
+              vec3 pc = artLetters(ca, cp, pcell, (px - pbase) / uArtCell, pstroke, uPropTone, uPropGlyph, uPropLum);
+              gl_FragColor = vec4(pc * (1.0 - heroHalo(px)), 1.0);
+              return;
+            }
+          }
+          if (isProp(texture2D(tScene, px / uRes).a)) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // an object's edge sliver: black
+            return;
+          }
           vec2 cell = floor(px / uCell);
           vec2 cuv = (cell + 0.5) * uCell / uRes;
           vec4 c = texture2D(tScene, cuv);
@@ -697,8 +781,8 @@ export class Pipeline {
             col = texture2D(tScene, px / uRes).rgb; // untagged: pass through
           } else if (a < 0.46) {
             col = creatureCell(c, cell, local);
-          } else if (isArt(a)) {
-            col = texture2D(tScene, px / uRes).rgb; // world cell centred on a creature edge: raw pixel
+          } else if (isArt(a) || isProp(a)) {
+            col = texture2D(tScene, px / uRes).rgb; // world cell centred on a creature / prop edge: raw pixel
           } else if (a < 0.8) {
             float l = 1.0 - exp(-luma(c.rgb) * uLumMap);
             float level = clamp(floor(l * 14.0), 0.0, 13.0);
@@ -847,6 +931,23 @@ export class Pipeline {
     // the wyrm's grid anchor: its root on screen, in whole px (the letters stay pixel-exact)
     const bs = this.U.uBossScreen?.value;
     if (bs && bs.w > 0.5 && Number.isFinite(bs.x + bs.y)) u.uWyrmAnchor.value.set(Math.round(bs.x * this.width), Math.round(bs.y * this.height));
+    // the props' grid anchor: where the world's ground origin would be on screen if the whole ground
+    // moved like the ground at the focus (the screen position of the focus, minus the focus's world
+    // offset times the px-per-metre there), wrapped to one cell
+    const F = this.U.uFocus?.value;
+    if (F && Number.isFinite(F.x + F.z)) {
+      const v = (this._v ??= new THREE.Vector3());
+      const W = this.width, H = this.height;
+      v.set(F.x, 0, F.z).project(cam);
+      const x0 = (v.x * 0.5 + 0.5) * W, y0 = (v.y * 0.5 + 0.5) * H;
+      v.set(F.x + 1, 0, F.z).project(cam);
+      const jxx = (v.x * 0.5 + 0.5) * W - x0, jxy = (v.y * 0.5 + 0.5) * H - y0;
+      v.set(F.x, 0, F.z + 1).project(cam);
+      const jzx = (v.x * 0.5 + 0.5) * W - x0, jzy = (v.y * 0.5 + 0.5) * H - y0;
+      const ax = x0 - (jxx * F.x + jzx * F.z), ay = y0 - (jxy * F.x + jzy * F.z);
+      const cw = this.artCell.x, ch = this.artCell.y;
+      if (Number.isFinite(ax + ay)) u.uPropAnchor.value.set(((Math.round(ax) % cw) + cw) % cw, ((Math.round(ay) % ch) + ch) % ch);
+    }
   }
 
   registerParticles(particleSystem) {

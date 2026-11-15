@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial } from '../render/materials.js';
+import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { GlyphParticles } from '../render/particles.js';
 import { mulberry32 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
-import { prep, carve, paint, slabGeometry, SLAB_LOOK, STONE_LOOK, buildBonfire } from './forest.js';
+import { prep, carve, paint, slabGeometry, SLAB_LOOK, buildBonfire } from './forest.js';
 
 // The Training Room (ADR-099): the lab stage, a fighting game's training stage for any boss
 // (`?stage=lab`, levels/index.js withStage). A dark dojo of light: a square floor of great black
@@ -15,8 +15,9 @@ import { prep, carve, paint, slabGeometry, SLAB_LOOK, STONE_LOOK, buildBonfire }
 // cyan light in their seams and a pylon of light at each corner. (Three looks were built; the owner
 // picked this one, "Holo", over a pale "Grid" and a starry "Void".)
 // Same output shape as createForest / createThroneHall (world.js reads it). Everything is drawn
-// through the glyph systems (STYLE.md): carved glyphs for the tiles and walls, the screen grid for
-// the pylons and the bonfire, glyph particles for the lines, the numbers and the motes.
+// through the glyph systems (STYLE.md): carved glyphs for the floor tiles, prop art for the walls
+// and the pylons (the house style), the screen grid for the bonfire, glyph particles for the lines,
+// the numbers and the motes.
 
 export const ROOM = {
   half: 32, // the floor: |x|, |z| <= half
@@ -115,7 +116,7 @@ export function createTrainingRoom(U, colliders) {
         const x = sx * (W - 0.2), z = sz * (W - 0.2);
         const g = prep(new THREE.CylinderGeometry(0.35, 0.45, 4.2, 6));
         g.translate(x, 2.1, z);
-        paint(g, { col: L.wall, flag: FLAG.STONE, ao: 0.85 });
+        paint(g, { col: L.wall, flag: FLAG.ART_PROP, ao: 0.85 });
         propGeos.push(g);
         pylons.push({ x, y: 4.4, z });
         for (let y = 0.4; y < 4.2; y += 0.45) glow.push({ x, y, z: z + 0.36 * -sz, glyph: '|', size: 0.5, color: L.pylon, rot: 0, flicker: 0.15 });
@@ -136,7 +137,9 @@ export function createTrainingRoom(U, colliders) {
   const slabMat = createCarvedGlyphMaterial(U, {
     ...SLAB_LOOK, gain: 1.4, lumScale: 2.0, edge: 0.55, inkFloor: 0.03, crackAmount: 0.08, topGlyphs: ['.   ', '. . ', '.:. ', ':.:.', ':;:.', ';:;:'], viewPitch: pitch,
   });
-  const wallMat = createCarvedGlyphMaterial(U, { ...STONE_LOOK, gain: 2.6, lumScale: 3.8, jitter: 0.2, crackAmount: 0.05, fadeNearPlayer: true, viewPitch: pitch });
+  // the walls and the pylons are printed like the wyrm (prop art, the house style: ADR-100); the
+  // floor stays carved, as every level's does. A dark room: a higher source gain
+  const wallMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: 1.6 });
   const addMesh = (geos, m, name) => {
     if (!geos.length) return;
     const mesh = new THREE.Mesh(mergeGeometries(geos), m);
