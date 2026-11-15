@@ -198,6 +198,8 @@ function build(opts = {}) {
     kick(x, y, z, m) { if (!Number.isFinite(x + y + z + m)) throw new Error('NaN kick'); this.cameraRig.kick(x, y, z, m); },
     // the hero's outfit option (main.js reads `?heroLook=`; gear/looks.js): null = the default
     heroLook: opts.heroLook ?? null,
+    // how the hero holds the sword when not attacking (main.js reads `?carry=`; player/carry.js): null = the default
+    heroCarry: opts.heroCarry ?? null,
   };
   const G = { game, input: game.input, canvas: canvasEl, evLog: [], counts: {}, counters, finalU, logTimes: [], hits: [], watch: null, defend: null };
   // event log + payload contract check (a wrapper, not a subscriber: it must not count as a consumer)
@@ -4191,8 +4193,8 @@ async function scenarioHeroHand() {
   // (H1) the contract
   assert(W?.parent === r.arms.L.fore && Math.abs(W.position.y + (HD.foreArm - 0.03)) < 1e-6 && Math.hypot(W.position.x, W.position.z) < 1e-9 && r.arms.L.point?.parent === W
     && !!H?.fingers && H.fingers.parent === W && H.open.parent === W && H.grip.parent === r.sword
-    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && N === 61 && N <= 64 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
-    `the free hand's contract: arms.L.wrist on the forearm ${(HD.foreArm - 0.03).toFixed(2)} m down and arms.L.point on it; offHand { open, grip, fingers }, open and fingers on the wrist; channels lD 53, lN 56, hs 59, lk 60 (N ${N} ≤ 64); the hero's animator has the free hand`);
+    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && P.rev === 61 && N === 62 && N <= 64 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
+    `the free hand's contract: arms.L.wrist on the forearm ${(HD.foreArm - 0.03).toFixed(2)} m down and arms.L.point on it; offHand { open, grip, fingers }, open and fingers on the wrist; channels lD 53, lN 56, hs 59, lk 60, rev 61 (N ${N} ≤ 64); the hero's animator has the free hand`);
 
   // every frame of the set: chest-local points (model metres: the drawn hero is lean-sheared and scaled)
   const { ell, cap, shell } = heroShapes(BODY, HD);
@@ -5229,9 +5231,10 @@ async function scenarioHeroArms() {
   });
   out(`   charge: the blade passes ${(holdMin * 100).toFixed(1)} cm from the head's axis (at charge ${holdAt.toFixed(2)}); released ${(dashMin * 100).toFixed(1)} cm (t ${dashAt.toFixed(2)}); elbows R ${chargeR[0].toFixed(0)}-${chargeR[1].toFixed(0)}° L ${chargeL[0].toFixed(0)}-${chargeL[1].toFixed(0)}°; the free hand ${(gapMax * 100).toFixed(1)} cm off the grip at most, the fist ${fistShown ? 'shown' : 'NOT shown'}`);
 
-  // (A1) at rest the arms hang: the free elbow open and beside the ribs
-  assert(rest.R >= 110 && rest.L >= 125 && rest.fL <= 0.3 && rest.fR <= 0.3,
-    `at rest the arms hang: elbows open ${rest.R.toFixed(0)}° (sword, ≥ 110) and ${rest.L.toFixed(0)}° (free, ≥ 125), neither out from the ribs (flare ${rest.fR.toFixed(2)} / ${rest.fL.toFixed(2)} ≤ 0.3)`);
+  // (A1) at rest the arms hang: the free elbow open and beside the ribs; the sword arm relaxed nearly
+  // straight in the default carry (carry.js `trail`; today's `hip` held it at 120°, HEROCARRY checks it ≥ 110)
+  assert(rest.R >= 145 && rest.L >= 125 && rest.fL <= 0.3 && rest.fR <= 0.3,
+    `at rest the arms hang: elbows open ${rest.R.toFixed(0)}° (sword, the trail's relaxed arm: ≥ 145) and ${rest.L.toFixed(0)}° (free, ≥ 125), neither out from the ribs (flare ${rest.fR.toFixed(2)} / ${rest.fL.toFixed(2)} ≤ 0.3)`);
   // (A2) on the run the elbows point back, not out, and the free arm opens behind him and folds in
   // front; in a PURE strafe (the aim held square to the run: |mz| < 0.1, no sideways drift) the arms
   // still swing
@@ -5259,6 +5262,544 @@ async function scenarioHeroArms() {
   assert(holdN >= 60 && dashN >= 30 && Number.isFinite(holdMin) && Number.isFinite(dashMin) && holdMin >= 0.22 && dashMin >= 0.2 && fistShown && gapMax <= 0.035,
     `the charged blade stands clear of his face: ${(holdMin * 100).toFixed(1)} cm from the head's axis through the hold (≥ 22; it was 10.2, inside the hood) and ${(dashMin * 100).toFixed(1)} cm through the release (≥ 20; ${holdN} + ${dashN} frames measured), the free hand's fist on the grip (${(gapMax * 100).toFixed(1)} cm off at most)`);
   return G;
+}
+
+// ================================================================== scenario: the carries (?carry=)
+// How he holds the sword when he is not attacking (player/carry.js; 2026-11-15, the owner: "the way
+// the character holds the sword when not attacking needs to be changed"): the URL switch, the
+// registry, live switching and the Lab's 'carry' row; `hip` (today's hold, and the READY hold every
+// carry relaxes from after a fight action) is anim.js's own numbers, the duelists'. Per carry, through
+// idle, a walk, a run, a sprint, strafes, a backpedal, stops, turns and a roll: the sword arm inside
+// human ranges (chest frame), the hold breathing at rest and riding the stride, the steel out of his
+// body and (as rarely as today) through the coat, the reverse grip's blade clear of his head. From
+// each carry the first light (each look), the sprint slash, the roll cut, the block and the charge
+// keep the steel out of him and let go of the reverse grip by the end of the windup; the way back
+// into the carry after a cut, a roll, the guard, a drink and a hit turns the blade ≤ 35° a frame.
+async function scenarioHeroCarry() {
+  out('\n== scenario HEROCARRY (the carries behind ?carry=: switch, hip = today, anatomy, the steel out of him, the entries, the way back) ==');
+  const { CARRIES, CARRY_IDS, DEFAULT_CARRY, READY_CARRY, RELAX, carryFromSearch, carryUrl, getCarry } = await imp('src/entities/player/carry.js');
+  const { BODY, sheetOffset } = await imp('src/entities/player/model.js');
+  const { P, guard, loco } = await imp('src/entities/player/anim.js');
+  const D = HERO_DIM, DEG = 180 / Math.PI, TIP = D.drawnTip ?? D.steelTip;
+  const { ell, cap, shell } = heroShapes(BODY, D);
+  const v = new THREE.Vector3(), w = new THREE.Vector3(), f = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Quaternion();
+  const LANE = [-10, 13]; // HEROARMS' open ground
+
+  // (A) the switch and the registry
+  {
+    const fs_ = carryFromSearch;
+    const u1 = new URL(carryUrl('back', 'http://x/?level=ash&lab'));
+    const u2 = new URL(carryUrl(DEFAULT_CARRY, u1.toString()));
+    const dataOk = CARRY_IDS.every((id) => {
+      const C = CARRIES[id];
+      const vec = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+      return C.id === id && typeof C.name === 'string' && typeof C.what === 'string' && C.rev >= 0 && C.rev <= 1
+        && ['rest', 'run', 'sprint', 'back'].every((s) => vec(C[s].h) && vec(C[s].rp) && vec(C[s].d) && Math.hypot(...C[s].h) <= 0.6 && Math.hypot(...C[s].d) > 0.9)
+        && vec(C.swing) && vec(C.bob) && Number.isFinite(C.dBob);
+    });
+    assert(CARRY_IDS.join() === 'hip,trail,back,point' && DEFAULT_CARRY === 'trail' && READY_CARRY === CARRIES.hip && getCarry('nope') === null && dataOk
+      && RELAX.lead > 0 && RELAX.drop > 0 && RELAX.dur > 0.2
+      && fs_('?carry=back') === 'back' && fs_('?level=ash&carry=POINT&lab') === 'point' && ['?carry=nope', '', undefined, '%%%'].every((s) => fs_(s) === DEFAULT_CARRY)
+      && u1.searchParams.get('carry') === 'back' && u1.searchParams.get('level') === 'ash' && u1.searchParams.has('lab') && !u2.searchParams.has('carry'),
+      `the carries: ${CARRY_IDS.map((id) => `${id} "${CARRIES[id].name}"`).join(', ')} (default ${DEFAULT_CARRY}); ?carry= picks one (case-insensitive; unknown or absent: the default); carryUrl sets / clears it and keeps the other params`);
+  }
+
+  // measures, all in his own frames (the drawn figure is lean-sheared and scaled: world angles lie)
+  const mk = (G) => {
+    const p = G.game.player, r = p.rig, A = p.anim;
+    const parts = [
+      ['torso', r.spine, shell],
+      ['hips', r.pelvis, (x) => ell(x, BODY.hips.c, BODY.hips.r)],
+      ['head', r.head, (x) => ell(x, BODY.head.c, BODY.head.r)],
+      ['right upper arm', r.arms.R.upper, (x) => cap(x, 0, D.upperArm, BODY.upperArm[0], BODY.upperArm[1])],
+      ['left upper arm', r.arms.L.upper, (x) => cap(x, 0, D.upperArm, BODY.upperArm[0], BODY.upperArm[1])],
+      ['left forearm', r.arms.L.fore, (x) => cap(x, 0, D.foreArm - 0.06, BODY.foreArm[0], BODY.foreArm[1])],
+      ...['R', 'L'].flatMap((s) => [
+        [`thigh ${s}`, r.legs[s].thigh, (x) => cap(x, 0, D.thigh, BODY.thigh[0], BODY.thigh[1])],
+        [`shin ${s}`, r.legs[s].shin, (x) => cap(x, -0.02, D.shin - 0.04, BODY.shin[0], BODY.shin[1])],
+      ]),
+    ];
+    const M = {
+      p, r, A,
+      // the deepest the drawn blade sinks into a body part now (m) and where
+      pen() {
+        let worst = -1, at = '';
+        for (let z = 0.2; z <= TIP + 1e-6; z += 0.05) {
+          v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld);
+          for (const [name, J, fn] of parts) {
+            const d = fn(J.worldToLocal(w.copy(v)));
+            if (d > worst) { worst = d; at = name; }
+          }
+        }
+        return [worst, at];
+      },
+      elbow: (s = 'R') => 180 - Math.abs(r.arms[s].fore.rotation.x) * DEG,
+      // the blade (body frame), and against the sword forearm (the wrist's fold), both in the chest's frame
+      blade: (o) => o.set(0, 0, 1).applyQuaternion(r.sword.quaternion),
+      wrist() {
+        q.copy(r.pelvis.quaternion).multiply(r.spine.quaternion).multiply(r.chest.quaternion).invert();
+        M.blade(b).applyQuaternion(q);
+        f.set(0, -1, 0).applyQuaternion(r.arms.R.fore.quaternion).applyQuaternion(r.arms.R.upper.quaternion);
+        return Math.acos(clamp(f.dot(b), -1, 1)) * DEG;
+      },
+      // the sword shoulder: how far the upper arm is drawn back (extension) and out (abduction), deg
+      shoulder() {
+        f.set(0, -1, 0).applyQuaternion(r.arms.R.upper.quaternion);
+        return [Math.atan2(-f.z, -f.y) * DEG, Math.atan2(-f.x, -f.y) * DEG];
+      },
+      // the drawn blade's nearest pass to the head's axis between the chin and the crown (head-local m)
+      head() {
+        let best = Infinity;
+        for (let z = 0.12; z <= TIP + 1e-6; z += 0.02) {
+          r.head.worldToLocal(v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld));
+          if (v.y < -0.06 || v.y > 0.32) continue;
+          best = Math.min(best, Math.hypot(v.x, v.z));
+        }
+        return best;
+      },
+      coat: () => coatCrossOf(r, TIP, sheetOffset, v, w),
+      // the sword hand and the drawn point in the body's frame (m)
+      hand: (o) => o.copy(r.sword.position),
+      tip: (o) => o.copy(r.sword.position).addScaledVector(M.blade(b), TIP),
+    };
+    return M;
+  };
+  const setup = (id) => {
+    const G = build({ heroCarry: id });
+    fightSetup(G);
+    const p = G.game.player;
+    p.debug.god = true;
+    p.debug.teleport(LANE[0], LANE[1]);
+    p.anim.fidget.wait = 1e9; // (no idle life here: (G) plays each action from each carry)
+    return G;
+  };
+  // he faces the mouse's ground point, set BEFORE each tick (far north: the stick's y is north)
+  const stepper = (G, M) => {
+    const S = { aim: [0, -60], each: null };
+    S.go = (s) => {
+      for (let i = 0, n = Math.round(s / DT); i < n; i++) {
+        G.game.mouseGround.set(M.p.position.x + S.aim[0], 0, M.p.position.z + S.aim[1]);
+        G.tick(DT);
+        S.each?.();
+      }
+    };
+    return S;
+  };
+
+  // (B) `hip` is anim.js's own numbers: the hero's sword arm in guard() and loco() with `hip` worn is
+  // exactly a duelist's (their footwork reads the literal numbers), at any breath, stride and blend
+  {
+    const G = setup('hip');
+    const { game } = G, p = game.player, A = p.anim;
+    const S = stepper(G, mk(G));
+    S.go(1.0);
+    const SW = [P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.swD, P.swD + 1, P.swD + 2, P.swF, P.swF + 1, P.swF + 2];
+    const pa = new Float32Array(A.cur.length), pb = new Float32Array(A.cur.length);
+    const duel = Object.create(A);
+    duel.freeHand = false;
+    let diff = 0, n = 0;
+    const keep = { time: A.time, moveW: A.moveW, swordW: A.swordW, sprintW: A.sprintW, speedS: A.speedS, phase: A.phase, mx: A.mx, mz: A.mz, armSign: A.armSign, backW: A.backW };
+    for (const [t, mw, s, ph, bw] of [[0.3, 0, 0, 0, 0], [1.1, 0, 0, 0, 0], [2.0, 0.5, 0, 0.2, 0], [0.7, 1, 0, 0.55, 0], [1.6, 1, 0.6, 0.8, 0], [2.3, 1, 1, 0.1, 0.4], [0.2, 0.7, 0, 0.45, 1]]) {
+      Object.assign(A, { time: t, moveW: mw, swordW: mw, sprintW: s, speedS: 4 * mw, phase: ph, mx: 0, mz: 1, armSign: 1, backW: bw });
+      for (const fn of [guard, loco]) {
+        fn(pa, A);
+        fn(pb, duel);
+        for (const i of SW) diff = Math.max(diff, Math.abs(pa[i] - pb[i]));
+        n++;
+      }
+    }
+    Object.assign(A, keep);
+    S.go(0.5);
+    const restR = mk(G).elbow('R');
+    assert(diff === 0 && n === 14 && A.carry === CARRIES.hip && A.cur[P.rev] === 0 && restR >= 110,
+      `hip is today's hold: the hero's sword arm in guard() / loco() equals a duelist's to the bit (${n} poses, largest difference ${diff}); no reverse grip; the sword elbow at rest ${restR.toFixed(0)}° (≥ 110, HEROARMS' old bound)`);
+  }
+
+  // (C) each carry through the route
+  const BOUND = {
+    elbow: [35, 172], wrist: { hip: 129, trail: 129, back: 173, point: 129 }, ext: 60, abd: 95,
+    pen: 0.02, coat: 0.05, head: 0.26, turn: 35, elbRate: 15, elbCut: 25, oldHold: 6, dip: 0.5,
+  };
+  const rows = {};
+  const ONLY = process.env.ABYSS_CARRY ? new Set(process.env.ABYSS_CARRY.split(',')) : null; // (a quicker run while tuning one)
+  for (const id of CARRY_IDS) {
+    if (ONLY && !ONLY.has(id)) continue;
+    const G = setup(id), { input } = G, M = mk(G), S = stepper(G, M), p = M.p, A = M.A;
+    const R = (rows[id] = { el: [180, 0], wr: 0, ext: -90, abd: -90, pen: -1, penAt: '', head: Infinity, headAt: '', coat: 0, locoN: 0, rest: null, breath: 0, swing: [0, 0], turn: 0, turnAt: '', elb: 0, elbAt: '', idleTurn: 0, finite: true, carry: A.carry?.id });
+    let seg = 'idle';
+    const t0 = new THREE.Vector3(), t1 = new THREE.Vector3(), b0 = new THREE.Vector3(), b1 = new THREE.Vector3();
+    let has = false, hz = [9, -9], e0 = 0;
+    S.each = () => {
+      const loc = p.state === 'idle' || p.state === 'run' || p.state === 'sprint';
+      if (!A.cur.every(Number.isFinite)) R.finite = false;
+      const [pen, at] = M.pen();
+      if (pen > R.pen) { R.pen = pen; R.penAt = `${at}, ${seg} ${p.state}`; }
+      M.blade(b1);
+      const e1 = M.elbow('R');
+      if (has) {
+        const a = b1.angleTo(b0) * DEG;
+        if (a > R.turn) { R.turn = a; R.turnAt = `${seg} ${p.state}`; }
+        if (Math.abs(e1 - e0) > R.elb) { R.elb = Math.abs(e1 - e0); R.elbAt = `${seg} ${p.state}`; }
+      }
+      b0.copy(b1);
+      e0 = e1;
+      has = true;
+      if (!loc) return;
+      R.locoN++;
+      if (M.coat()) R.coat++;
+      const e = M.elbow('R');
+      R.el = [Math.min(R.el[0], e), Math.max(R.el[1], e)];
+      R.wr = Math.max(R.wr, M.wrist());
+      const [ex, ab] = M.shoulder();
+      R.ext = Math.max(R.ext, ex);
+      R.abd = Math.max(R.abd, ab);
+      const h = M.head();
+      if (h < R.head) { R.head = h; R.headAt = `${seg}`; }
+      if (seg === 'run') {
+        M.hand(t1);
+        hz = [Math.min(hz[0], t1.z), Math.max(hz[1], t1.z)];
+      }
+    };
+    // idle: settled, then the 2.4 s breath (the drawn point's travel in his frame)
+    S.go(1.5);
+    R.rest = { el: M.elbow('R'), wr: M.wrist(), relax: A.relax, d: M.blade(new THREE.Vector3()), tipY: M.tip(new THREE.Vector3()).y };
+    {
+      const lo = new THREE.Vector3(9, 9, 9), hi = new THREE.Vector3(-9, -9, -9);
+      const each = S.each;
+      S.each = () => { each(); M.tip(t0); lo.min(t0); hi.max(t0); };
+      S.go(2.4);
+      S.each = each;
+      R.breath = hi.distanceTo(lo);
+    }
+    const lane = () => p.debug.teleport(LANE[0], LANE[1]);
+    seg = 'walk';
+    input.axis = { x: 0, y: 0.45 };
+    S.go(1.0);
+    lane();
+    seg = 'run';
+    input.axis = { x: 0, y: 1 };
+    S.go(1.2);
+    R.swing = hz.slice();
+    lane();
+    seg = 'sprint';
+    input.hold('ShiftLeft');
+    S.go(1.0);
+    input.release('ShiftLeft');
+    seg = 'stop';
+    input.axis = { x: 0, y: 0 };
+    S.go(0.8);
+    lane();
+    seg = 'strafe';
+    input.axis = { x: 1, y: 0 };
+    S.go(1.0);
+    input.axis = { x: -1, y: 0 };
+    S.go(1.0);
+    lane();
+    seg = 'backpedal';
+    input.axis = { x: 0, y: -1 };
+    S.go(1.0);
+    seg = 'stop';
+    input.axis = { x: 0, y: 0 };
+    S.go(0.8);
+    seg = 'turn';
+    S.aim = [0, 60];
+    S.go(0.7);
+    S.aim = [60, 0];
+    S.go(0.7);
+    S.aim = [0, -60];
+    S.go(0.7);
+    lane();
+    seg = 'roll';
+    input.axis = { x: 0, y: 1 };
+    S.go(0.3);
+    input.tap('Space');
+    S.go(0.9);
+    input.axis = { x: 0, y: 0 };
+    S.go(1.2);
+    out(`   ${id}: rest elbow ${R.rest.el.toFixed(0)}°, wrist ${R.rest.wr.toFixed(0)}°, the point ${R.rest.tipY.toFixed(2)} m over the pivot; breath ${(R.breath * 100).toFixed(1)} cm; on the move elbow ${R.el[0].toFixed(0)}-${R.el[1].toFixed(0)}°, wrist ≤ ${R.wr.toFixed(0)}°, shoulder back ≤ ${R.ext.toFixed(0)}° out ≤ ${R.abd.toFixed(0)}°; the hand swings ${((R.swing[1] - R.swing[0]) * 100).toFixed(1)} cm on the run; deepest ${(R.pen * 100).toFixed(1)} cm (${R.penAt}); the coat crossed on ${R.coat} of ${R.locoN} frames; head ${Number.isFinite(R.head) ? (R.head * 100).toFixed(0) + ' cm' : '-'}; the blade turns ≤ ${R.turn.toFixed(0)}° a frame (${R.turnAt}), the sword elbow ≤ ${R.elb.toFixed(1)}° a frame (${R.elbAt})`);
+    const wb = BOUND.wrist[id];
+    const sw = R.swing[1] - R.swing[0];
+    assert(R.finite && R.carry === id && R.rest.relax === 1 && R.el[0] >= BOUND.elbow[0] && R.el[1] <= BOUND.elbow[1] && R.rest.el >= BOUND.elbow[0] && R.wr <= wb && R.ext <= BOUND.ext && R.abd <= BOUND.abd,
+      `${id}: the sword arm stays in human ranges standing and on the move (elbow ${R.el[0].toFixed(0)}-${R.el[1].toFixed(0)}° in [${BOUND.elbow}], the wrist's fold ≤ ${R.wr.toFixed(0)}° ≤ ${wb}, the shoulder drawn back ≤ ${R.ext.toFixed(0)}° ≤ ${BOUND.ext} and out ≤ ${R.abd.toFixed(0)}° ≤ ${BOUND.abd})`);
+    assert(R.breath >= 0.008 && R.breath <= 0.08 && sw >= 0.01 && sw <= 0.3,
+      `${id}: alive: the point breathes ${(R.breath * 100).toFixed(1)} cm at rest (0.8-8), the sword hand rides the stride ${(sw * 100).toFixed(1)} cm on the run (1-30)`);
+    assert(R.pen < BOUND.pen && R.coat <= Math.max(3, R.locoN * BOUND.coat),
+      `${id}: the steel stays out of him (deepest ${(R.pen * 100).toFixed(1)} cm < 2: ${R.penAt}) and through the coat on ${R.coat} of ${R.locoN} idle / run / sprint frames (≤ 5 %)`);
+    if (CARRIES[id].rev > 0) assert(R.head >= BOUND.head, `${id}: the reverse grip's blade passes ${(R.head * 100).toFixed(1)} cm from his head's axis at the closest (≥ 26; the hood's radius is 13-17), ${R.headAt}`);
+    // (the route's own turns and elbow: the roll took a blade standing up behind the arm round in
+    // a 3-frame fade, 50° a frame; a straight arm folded 18-28° a frame into it. hip = today's)
+    const H = rows.hip ?? { turn: 15, elb: 6 };
+    assert(R.turn <= Math.max(H.turn + 2, BOUND.turn) && R.elb <= Math.max(H.elb, BOUND.elbRate) + 1,
+      `${id}: through the route the blade turns ≤ ${R.turn.toFixed(1)}° a frame (≤ ${Math.max(H.turn + 2, BOUND.turn).toFixed(0)}: ${R.turnAt}) and the sword elbow folds / opens ≤ ${R.elb.toFixed(1)}° a frame (≤ ${(Math.max(H.elb, BOUND.elbRate) + 1).toFixed(0)}: ${R.elbAt}; hip ${H.elb.toFixed(1)})`);
+  }
+
+  // (D) the entries: settled in each carry, the first light (each look), the sprint slash, the roll,
+  // the roll cut, the block, a tap of the guard, the charge, a drink, a hit and a fall: the steel out
+  // of him; the reverse grip let go by the windup's end; the blade's turn and the sword elbow's fold a
+  // frame on the way in no worse than from today's hold (hip, measured first; the elbow through a
+  // cut's windup only: the cut's own is the cut's). After a light: the old hold (the READY blade,
+  // within 10°) shows ≤ BOUND.oldHold frames, and between the way home and the carry the point never
+  // stops (no valley under BOUND.dip m/s between it and a second move faster than 2 m/s)
+  // (E) the way back: from the action's end until he is settled in the carry again, the blade turns
+  // ≤ 35° a frame (the guard's own release: ≤ today's, hip's, + 0.5)
+  const HIPD = {};
+  const RD = new THREE.Vector3(...READY_CARRY.rest.d).normalize();
+  for (const id of CARRY_IDS) {
+    if (ONLY && !ONLY.has(id)) continue;
+    const G = setup(id), { input } = G, M = mk(G), S = stepper(G, M), p = M.p, A = M.A;
+    const b0 = new THREE.Vector3(), b1 = new THREE.Vector3();
+    let has = false, worst = -1, worstAt = '', back = 0, backAt = '', revLeft = 0, tipV = [], phase = '', watchBack = false, e0 = 0;
+    const per = {};
+    const tp = new THREE.Vector3(), tp0 = new THREE.Vector3();
+    let L = null; // a light's record: { old, sp: [the point's speeds after its strike], done }
+    S.each = () => {
+      const [pen, at] = M.pen();
+      if (phase && p.state !== 'idle' && pen > worst) { worst = pen; worstAt = `${at}, ${phase} ${p.state} t ${(p.atk?.t ?? p.stateT).toFixed(2)}`; }
+      M.blade(b1);
+      const e1 = M.elbow('R');
+      const K = phase.replace(/ back$/, '').replace(/^light look/, 'light'), E = phase ? (per[K] ??= { pen: -1, turnIn: 0, turnBack: 0, elbIn: 0 }) : null;
+      if (E && p.state !== 'idle') E.pen = Math.max(E.pen, pen);
+      const at2 = p.atk, cut = !!at2?.def && (p.state === 'attack' || p.state === 'heavy');
+      if (has && E) {
+        const a = b1.angleTo(b0) * DEG;
+        if (watchBack) E.turnBack = Math.max(E.turnBack, a);
+        else {
+          E.turnIn = Math.max(E.turnIn, a);
+          if (!cut || at2.t <= at2.def.windup + 1e-6) E.elbIn = Math.max(E.elbIn, Math.abs(e1 - e0));
+        }
+      }
+      if (has && watchBack) {
+        const a = b1.angleTo(b0) * DEG;
+        if (a > back) { back = a; backAt = `${phase} ${p.state} relax ${A.relax.toFixed(2)}`; }
+      }
+      b0.copy(b1);
+      e0 = e1;
+      has = true;
+      // (the reverse grip's hold in the strike: never. In the last blow's way home the relax may take
+      // the carry's back up)
+      if (at2?.def && at2.t >= at2.def.windup && at2.t <= at2.def.windup + at2.def.active && A.key === 'attack') revLeft = Math.max(revLeft, A.cur[P.rev]);
+      M.tip(tp);
+      const v = tp.distanceTo(tp0) / DT;
+      if (tipV.length < 4 && phase.startsWith('light') && p.state === 'attack') tipV.push(v);
+      tp0.copy(tp);
+      if (L && !L.done) {
+        if (b1.angleTo(RD) * DEG < 10) L.old++;
+        if (!cut || at2.t >= at2.def.windup + at2.def.active) L.sp.push(v);
+        if (!cut && A.relax >= 0.9) L.done = true;
+      }
+    };
+    const settled = () => { phase = ''; watchBack = false; S.go(1.6); };
+    // the way back: watched from the action's end (the state back in idle) until settled
+    const thenBack = (name) => {
+      for (let i = 0; i < 240 && p.state !== 'idle'; i++) S.go(DT);
+      phase = name + ' back';
+      watchBack = true;
+      S.go(RELAX.dur + 0.4);
+      watchBack = false;
+    };
+    // a light's numbers: the frames in the old hold, and the slowest the point gets after its strike
+    // between the way home and a second move faster than 2 m/s (the relax; a settle under 2 m/s is
+    // today's own: hip's point stops at 0.4 m/s and sways back at 1.3)
+    const lights = [];
+    const lightDone = () => {
+      const sp = L.sp;
+      let dip = Infinity;
+      for (let i = 1; i < sp.length - 1; i++) {
+        let before = 0, after = 0;
+        for (let k = 0; k < i; k++) before = Math.max(before, sp[k]);
+        for (let k = i + 1; k < sp.length; k++) after = Math.max(after, sp[k]);
+        if (before > 2 && after > 2) dip = Math.min(dip, sp[i]);
+      }
+      lights.push({ old: L.old, dip });
+      L = null;
+    };
+    const speeds = [];
+    settled();
+    for (let look = 0; look < 3; look++) {
+      A.forceVariant = look;
+      phase = `light look ${look}`;
+      tipV = [];
+      L = { old: 0, sp: [], done: false };
+      input.click(0);
+      S.go(0.05);
+      thenBack(`light ${look}`);
+      lightDone();
+      speeds.push(tipV.slice(1).map((x) => x.toFixed(0)).join('/'));
+      A.forceVariant = null;
+      settled();
+    }
+    // the sprint slash
+    p.debug.teleport(LANE[0], LANE[1]);
+    phase = 'sprint slash';
+    input.axis = { x: 0, y: 1 };
+    input.hold('ShiftLeft');
+    S.go(0.8);
+    input.click(0);
+    input.release('ShiftLeft');
+    input.axis = { x: 0, y: 0 };
+    S.go(0.05);
+    thenBack('sprint slash');
+    settled();
+    // the roll, then the roll cut
+    p.debug.teleport(LANE[0], LANE[1]);
+    phase = 'roll';
+    input.axis = { x: 0, y: 1 };
+    S.go(0.2);
+    input.tap('Space');
+    S.go(0.1);
+    input.axis = { x: 0, y: 0 };
+    thenBack('roll');
+    settled();
+    phase = 'roll cut';
+    input.axis = { x: 0, y: 1 };
+    S.go(0.2);
+    input.tap('Space');
+    S.go(0.35);
+    input.axis = { x: 0, y: 0 };
+    input.click(0);
+    S.go(0.05);
+    thenBack('roll cut');
+    settled();
+    // the guard (a held block), a tap of it, then the charge and its cleave
+    phase = 'block';
+    input.press(2);
+    S.go(0.7);
+    input.up(2);
+    thenBack('block');
+    settled();
+    phase = 'guard tap';
+    input.click(2);
+    S.go(0.05);
+    thenBack('guard tap');
+    settled();
+    phase = 'charge';
+    input.press(0);
+    S.go(1.0);
+    input.up(0);
+    S.go(0.05);
+    thenBack('charge');
+    settled();
+    // a drink, a hit, a fall
+    phase = 'heal';
+    p.flasks = Math.max(1, p.flasks);
+    p.hp = Math.max(1, p.maxHp - 40);
+    input.tap('KeyF');
+    S.go(0.05);
+    thenBack('heal');
+    settled();
+    phase = 'hit';
+    p.debug.god = false;
+    p.hp = p.maxHp;
+    p.takeHit({ damage: 10, tell: 'normal', attack: 'test', from: { x: p.position.x, z: p.position.z - 3 }, knockback: 0 });
+    S.go(0.05);
+    thenBack('hit');
+    settled();
+    phase = 'fall';
+    p.hp = p.maxHp;
+    p.takeHit({ damage: 30, tell: 'normal', attack: 'test', from: { x: p.position.x, z: p.position.z - 3 }, knockback: 6, knockdown: true });
+    S.go(0.05);
+    thenBack('fall');
+    p.debug.god = true;
+    p.hp = p.maxHp;
+    settled();
+    if (id === 'hip') Object.assign(HIPD, per);
+    out(`   ${id}: per action (deepest cm / most turn in a frame on the way in / the sword elbow's most a frame on the way in / the turn on the way back): ${Object.entries(per).map(([k, E]) => `${k} ${(E.pen * 100).toFixed(1)}/${E.turnIn.toFixed(0)}°/${E.elbIn.toFixed(0)}°/${E.turnBack.toFixed(1)}°`).join(' · ')}`);
+    out(`   ${id}: entries deepest ${(worst * 100).toFixed(1)} cm (${worstAt}); the reverse grip ${revLeft.toFixed(2)} at most past a windup; the first light's point speed, frames 2-4 (m/s): ${speeds.join(' · ')}; after each light, frames in the old hold / the slowest the point gets between two moves (m/s): ${lights.map((x) => `${x.old}/${Number.isFinite(x.dip) ? x.dip.toFixed(2) : '-'}`).join(' · ')}; the way back turns ≤ ${back.toFixed(0)}° a frame (${backAt})`);
+    assert(worst < BOUND.pen && revLeft < 0.05,
+      `${id}: from the carry the first light (3 looks), the sprint slash, the roll, the roll cut, the guard, the charge, a drink, a hit and a fall keep the steel out of him (deepest ${(worst * 100).toFixed(1)} cm < 2: ${worstAt}); the reverse grip is let go by the end of the windup (${revLeft.toFixed(2)} left in a strike)`);
+    // (the way in against today's hold: the blade's turn ≤ hip's + 3° or BOUND.turn; the elbow ≤ hip's
+    // or BOUND.elbRate (a cut's windup: BOUND.elbCut, anim.js ELBOW_FLEX), + 1°)
+    const CUTS = /^light|^sprint slash$|^roll cut$|^charge$/;
+    const badIn = Object.entries(per).filter(([k, E]) => {
+      const H = HIPD[k];
+      return H && (E.turnIn > Math.max(H.turnIn + 3, BOUND.turn) || E.elbIn > Math.max(H.elbIn, CUTS.test(k) ? BOUND.elbCut : BOUND.elbRate) + 1);
+    }).map(([k, E]) => `${k} ${E.turnIn.toFixed(1)}°/${E.elbIn.toFixed(1)}° (hip ${HIPD[k].turnIn.toFixed(1)}°/${HIPD[k].elbIn.toFixed(1)}°)`);
+    assert(!badIn.length, `${id}: on the way into each action the blade turns and the sword elbow folds no faster than from today's hold (hip: the turn + 3° or ${BOUND.turn}°, the elbow + 1° or ${BOUND.elbRate}°, ${BOUND.elbCut}° in a cut's windup)${badIn.length ? ': ' + badIn.join(', ') : ''}`);
+    if (id !== 'hip') {
+      const old = Math.max(...lights.map((x) => x.old)), dip = Math.min(...lights.map((x) => x.dip));
+      assert(old <= BOUND.oldHold && dip >= BOUND.dip,
+        `${id}: after a light the old hold shows ${old} frames at most (≤ ${BOUND.oldHold}) and the point never stops between the way home and the carry (slowest ${Number.isFinite(dip) ? dip.toFixed(2) : '-'} m/s ≥ ${BOUND.dip})`);
+    }
+    const hipBlockBack = HIPD.block?.turnBack ?? 35.2;
+    const others = Math.max(...Object.entries(per).filter(([k]) => k !== 'block').map(([, E]) => E.turnBack));
+    const blk = per.block?.turnBack ?? 0;
+    assert(others <= BOUND.turn && blk <= Math.max(BOUND.turn, hipBlockBack + 0.5),
+      `${id}: the way back into the carry after a cut (3 looks), the sprint slash, a roll, the roll cut, a tap of the guard, the charge, a drink, a hit and a fall turns the blade ≤ ${others.toFixed(1)}° a frame (≤ ${BOUND.turn}); after the guard ${blk.toFixed(1)}° (≤ ${BOUND.turn}, or today's ${hipBlockBack.toFixed(1)}° + 0.5)`);
+  }
+
+  // (G) idle life from each carry (ADR-047's six actions are layers over the rest): the steel stays
+  // out of him, a turn of the blade stays a turn (≤ 35° a frame), the reverse grip's hold is let go
+  // while an action takes the blade
+  for (const id of CARRY_IDS) {
+    if (ONLY && !ONLY.has(id)) continue;
+    const G = setup(id), M = mk(G), S = stepper(G, M), p = M.p, A = M.A;
+    S.go(1.5);
+    const b0 = new THREE.Vector3(), b1 = new THREE.Vector3();
+    const res = [];
+    let bad = 0;
+    for (let k = 0; k < 6; k++) {
+      const F = A.fidget;
+      Object.assign(F, { k, t: 0, w: 0, cut: false, still: 0, wait: 1e9, name: 'forced' });
+      let pen = -1, turn = 0, has = false, ran = 0, rev = 0;
+      const name = ['look', 'stretch', 'inspect', 'twirl', 'shoulder', 'lean'][k];
+      S.each = () => {
+        if (F.k === k) ran++;
+        pen = Math.max(pen, M.pen()[0]);
+        M.blade(b1);
+        if (has) turn = Math.max(turn, b1.angleTo(b0) * DEG);
+        b0.copy(b1);
+        has = true;
+        if (F.k === k && F.w > 0.98) rev = Math.max(rev, A.cur[P.rev]);
+      };
+      S.go(4.6);
+      F.wait = 1e9;
+      S.each = null;
+      S.go(0.6);
+      const ok = ran > 60 && pen < 0.02 && turn <= 35 && (k < 2 || CARRIES[id].rev === 0 || rev < 0.05);
+      if (!ok) bad++;
+      res.push(`${name} ${(pen * 100).toFixed(1)} cm/${turn.toFixed(0)}°${CARRIES[id].rev ? `/rev ${rev.toFixed(2)}` : ''}${ok ? '' : ' ✗'}`);
+    }
+    assert(!bad, `${id}: idle life from the carry (deepest / most turn in a frame${CARRIES[id].rev ? ' / the reverse hold left while it holds the blade' : ''}): ${res.join(' · ')}`);
+  }
+
+  // (F) live: setCarry while he stands eases into the new carry (≤ 35° a frame); an unknown id throws
+  // and changes nothing; the Lab's 'carry' row switches it and moves the highlight
+  {
+    const G = setup(DEFAULT_CARRY), { game, input } = G, M = mk(G), S = stepper(G, M), p = M.p, A = M.A;
+    S.go(1.5);
+    const b0 = new THREE.Vector3(), b1 = new THREE.Vector3();
+    let turn = 0, turnAt = '', has = false;
+    S.each = () => {
+      M.blade(b1);
+      if (has) { const a = b1.angleTo(b0) * DEG; if (a > turn) { turn = a; turnAt = `${p.carry}`; } }
+      b0.copy(b1);
+      has = true;
+    };
+    const order = [...CARRY_IDS, DEFAULT_CARRY];
+    for (const id of order) {
+      p.setCarry(id);
+      S.go(1.0);
+    }
+    let threw = false;
+    try { p.setCarry('nope'); } catch { threw = true; }
+    const kept = p.carry === DEFAULT_CARRY && A.carry === CARRIES[DEFAULT_CARRY];
+    assert(turn <= BOUND.turn && threw && kept, `live: switching ${order.join(' → ')} standing turns the blade ≤ ${turn.toFixed(0)}° a frame (≤ ${BOUND.turn}; ${turnAt}); an unknown carry throws and changes nothing`);
+    game.heroCarry = p.carry;
+    game.heroCarries = CARRY_IDS.map((id) => ({ id, name: CARRIES[id].name, what: CARRIES[id].what }));
+    game.pickHeroCarry = (id) => { game.player.setCarry(id); game.heroCarry = game.player.carry; };
+    input.tap('F1');
+    G.tick(DT);
+    const btns = game.lab.ui.carryBtns ?? [];
+    const B = (id) => btns.find((x) => x.id === id);
+    const on0 = !!B(DEFAULT_CARRY)?.el.classList.contains('on');
+    B('back')?.el.dispatch('click');
+    G.tick(DT);
+    assert(btns.length === CARRY_IDS.length && on0 && p.carry === 'back' && A.carry === CARRIES.back && game.heroCarry === 'back' && B('back').el.classList.contains('on') && !B(DEFAULT_CARRY).el.classList.contains('on'),
+      `the Lab's 'carry' row: ${btns.length} buttons; a click wears 'back' (${p.carry}) and moves the highlight`);
+    input.tap('F1');
+    S.go(0.3);
+    return G;
+  }
 }
 
 // ================================================================== scenario: the outfit options (?heroLook=)
@@ -7427,7 +7968,7 @@ async function scenarioHeroFlow() {
   return G;
 }
 
-const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, heroflow: scenarioHeroFlow, looks: scenarioLooks, probe: scenarioProbe };
+const SCENARIOS = { gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, heroflow: scenarioHeroFlow, herocarry: scenarioHeroCarry, looks: scenarioLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

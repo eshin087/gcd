@@ -13,6 +13,7 @@ import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
 import { LEVELS, levelFromSearch, applyLevel, levelUrl } from './levels/index.js';
 import { HERO_LOOKS, LOOK_IDS, heroLookFromSearch, heroLookUrl } from './entities/player/gear/looks.js';
+import { CARRIES, CARRY_IDS, carryFromSearch, carryUrl } from './entities/player/carry.js';
 import { Hud } from './ui/hud.js';
 import { TouchControls } from './ui/touch.js';
 import { GamepadControls } from './ui/gamepad.js';
@@ -30,6 +31,8 @@ async function boot() {
   applyLevel(level);
   // the hero's outfit option (`?heroLook=robe`; gear/looks.js: kept for later use, today's look is the default)
   const heroLook = heroLookFromSearch(location.search);
+  // how the hero holds the sword when not attacking (`?carry=back`; player/carry.js)
+  const heroCarry = carryFromSearch(location.search);
 
   const canvas = document.getElementById('game');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -62,6 +65,19 @@ async function boot() {
       this.heroLook = this.player.look;
       try {
         history.replaceState(history.state, '', heroLookUrl(this.heroLook, location.href));
+      } catch {
+        /* no history */
+      }
+    },
+    heroCarry,
+    // the carries (player/carry.js; `?carry=`, kept by pickLevel): the Lab's 'carry' row; live (no
+    // rebuild: he eases into it)
+    heroCarries: CARRY_IDS.map((id) => ({ id, name: CARRIES[id].name, what: CARRIES[id].what })),
+    pickHeroCarry(id) {
+      this.player.setCarry(id);
+      this.heroCarry = this.player.carry;
+      try {
+        history.replaceState(history.state, '', carryUrl(this.heroCarry, location.href));
       } catch {
         /* no history */
       }
