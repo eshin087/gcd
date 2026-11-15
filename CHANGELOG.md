@@ -4,7 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty pieces of work since 0.4.0:
+Thirty-one pieces of work since 0.4.0:
+- **The riskier the answer, the more it pays** (2026-11-15, ADR-102): measured with bots, a player
+  who only perfect-dodged beat every boss fastest and never had to learn a string. *Changed:* the
+  flurry (and the plunge) now answer a perfect dodge of a **red** blow only. A perfect dodge of a
+  white or heavy blow still dodges, counts in your streak and slows time where you stand, but his
+  string goes on: build the streak on white blows, cash it on a red one or with a parried last
+  blow. *Added:* the **flash counter**: attack at the last instant before a duelist's blow lands
+  and your cut goes through his and through him (70 damage, he reels, the crit window opens); a
+  moment too late and his blow lands. *Added:* a **perfect parry** now deals half again the
+  posture and makes your next light cut twice as fast and a crit. *Fixed:* a blow of a boss's own
+  flurry that fell short of you settled nothing, so blocking all of it did not always break him.
 - **The boss's bar at the top; QUIT TO TITLE** (2026-11-15): the boss's name, HP and posture moved
   from the bottom of the screen to the top centre. The pause menu has **QUIT TO TITLE** (press it
   twice: the first press asks), and RESUME is laid out like the other items.
