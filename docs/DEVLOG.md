@@ -5,6 +5,66 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 48: effects in the dragon's letters (the fire field), text effects, landmarks second pass
+
+**Owner:** "is there anything existing we should update? ... i want people to be stunned at the ascii
+style and amazed how text can make such detailed 3d objects that look great in animation and effect
+wise", and "all the spells, effects, etc need to look as realistic and cool as possible. for example,
+the dragon fire attacks look meh". Sent a sheet: the breath as it was (A), a prototype of fire as one
+body of small digits, calm (B) and hot (C), and a list of four things to update. Answer: "Do all 4
+and create parallel subagents to work on each task". They did not choose between B and C: B is built
+(my pick: closer to the wyrm's calm tone; `hdr` in `firePalettes.js` is the one number for C).
+Branch `fx/real-fire`. (Numbers: open PRs hold ADR-108 – 111 and Sessions 45 – 47, so this is ADR-112
+/ Session 48.)
+
+**How it was run.** The lead built the core first (`render/fireField.js`, the breath on it, the test
+harnesses), because three of the four tasks stand on it, then four agents worked in parallel, each
+in its own worktree and branch with a file list of its own, filming on a headless Edge on the real
+GPU: the landmarks; the wyrm's fire; the human bosses' effects and the timing cues; the text effects.
+The four branches merged without a conflict. `main` had moved by four PRs meanwhile (ADR-101, 102,
+106, 107): merged in, four conflicts, both sides kept.
+
+**Done** (ADR-112):
+- **The fire field** (`game.fx.fire`): blobs of heat that add up in a buffer with one texel per
+  letter cell; a flame pass per cell; a print pass in the wyrm's letters. Kinds: fire, void, steel,
+  smoke. Looks in `render/firePalettes.js`.
+- **On it:** every fire of the wyrm (`dragon/fx.js`, `bulletFx.js`), the bonfire, scorched ground's
+  smoke, the braziers, and, after the merge of `main`, ADR-107's ground fire and burning trees; the
+  Ash Disciple's and the Starless Lord's effects (`duelist/fx.js`, `starlessLord/fx.js`).
+- **One set of timing cues** drawn by `DuelFx.tellFlash` for all three bosses (the wyrm at 1.5x).
+- **Text effects:** heat haze, letting go (`render/letGo.js`), shed digits (`render/shedDigits.js`),
+  the breath's charge rising from the belly.
+- **Landmarks rebuilt and moved** to where the duel's camera looks (see the ADR for the list).
+  The forest's new breakables (ADR-107) keep off the landmarks' footprints.
+
+**Checked.** `npm test` (integ, duel, lord, world, the glyph check) and `npm run build` pass on the
+branch with `main` merged in. On film (headless Edge, RTX 4090, 1280x720): every converted effect
+before and after (sheets by each agent), the three levels loading and every boss ability triggered
+once with no console error, the wyrm's death, the breath setting the grass alight, the wyrm's blue
+cue. No breakable overlaps a moved landmark's collider (checked in the page for the three levels).
+Frame cost against a clean copy of `main`, render + a 1 px read-back, medians, twice each:
+1080p 2.1 – 2.4 ms on both, calm and mid-breath; 2160p 3.2 ms calm on both, 3.5 against 3.2 – 3.3
+mid-breath. Equal within noise on that GPU.
+
+**Not checked.** A phone (look and frame rate); anything in motion at real speed by eye (stills and
+strips only); low frame rates; the Lord's intro camera now that the wardens left the throne; the
+haze beside the human bosses' new effects; the wyrm's red cue on film (the frame fell between
+tiles); 1080p / 1440p cell sizes for the text effects; a hero standing in front of the dissolving
+body. The sims compile no shader and build no `ShedDigits`: the text effects are covered by film only.
+
+**Known weak spots** (each agent's own list, in the ADR and the roadmap): fire cannot hug the ground
+(blobs under 0.7 m fade into it); tongues always climb up the screen; the flame wall is a band, not
+tall, from the steep camera; the bonfire and braziers are redder and dimmer than before; red cues
+and red rings are fire at a low heat, not a crisp red; the Lord's spells changed colour (red to white
+and violet); the throne hall's landmarks are the weakest; the dying wyrm's eroding edge has a black
+fringe; the throat tell is a modest gain.
+
+**Left out on purpose.** The hero's effects: PR #39 and the branch `player/sword-fx` were changing
+`player/fx.js` and `combat/*`. The wyrm's blue and red wisps and orbs: colour signals.
+
+**Next.** The owner's look at the sheets and the preview (palette B or C, the Lord's colours, the
+moved landmarks); the phone; then the hero's effects and a crisp red kind.
+
 ## 2026-11-15 — Session 44: the world breaks (breakables, ground fire, cover, marks)
 
 **Owner:** "i want all the bosses to be able to cause destruction to the background ... the dragon

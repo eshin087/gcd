@@ -4,7 +4,24 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-four pieces of work since 0.4.0:
+Thirty-five pieces of work since 0.4.0:
+- **Fire, spells and effects made of the same small letters** (2026-11-15, ADR-112). *Changed:* fire
+  is no longer loose glowing symbols. Every fire of the Cinder Wyrm (the breath, fireballs and their
+  blasts, meteors, eruptions, the flame ring and wall, the burning pass, the nova, ember bullets, the
+  Scouring breath), the bonfire, the braziers, burning grass and burning trees is now one body of
+  small digits: a white-hot heart, an orange body, red tongues that climb and tear off, grey smoke.
+  The Ash Disciple's and the Starless Lord's effects are drawn the same way: lightning is a jagged
+  path of bright strokes in a violet sheath, crescents and blade trails are arcs of strokes, the
+  Void burns violet. The Lord's spells are white and violet now instead of red; his blade is still
+  red. *Changed:* one set of timing cues for all three bosses: a white cross for a blow you can
+  parry, a larger eight-point star with a ring for a heavy one, a ragged red blaze for one you must
+  dodge. Ground warnings are as before. *Added:* letters beside a flame boil in the heat; the dying
+  wyrm comes apart letter by letter; a cut knocks a few of its digits loose; the glow of a breath
+  rises from its belly to its maw before the fire comes. *Changed:* the landmarks are rebuilt to
+  read at a glance and stand where the fight's camera looks: the sect gate is beyond the east
+  pillars (it was to the north), the stone swordsmen stand in the pillar ring, the cauldron on the
+  paving, the elder wyrm's skeleton along Cinderwood's east rim, the throne's wardens in the aisles,
+  in dark bronze. *Not changed:* the hero's own effects, and the wyrm's blue and red wisps.
 - **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
   lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
   as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
