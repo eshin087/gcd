@@ -1842,6 +1842,111 @@ async function scenarioPerfect() {
   return G;
 }
 
+// ================================================================== scenario: telemetry (ADR-108)
+// What each of his moves did to the hero: every answered blow is announced (combat:answer), the
+// attempt's table, the killing move on the death screen, the totals kept across sessions.
+async function scenarioTelemetry() {
+  out('\n== scenario TELEMETRY (every answered blow is logged per move; the death screen names the killing move; totals are kept) ==');
+  const { MoveLog, prettyMove } = await imp('src/game/telemetry.js');
+  // --- the table by itself
+  const mem = new Map();
+  const store = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
+  const L = new MoveLog(store, 'ash');
+  const A = (attack, result, o = {}) => L.answer({ attack, tell: 'normal', result, damage: 0, dead: false, stream: false, ...o }, o.t ?? 0);
+  A('swallow', 'hit', { damage: 14 });
+  A('swallow', 'parried');
+  A('swallow', 'parried', { perfect: true });
+  A('swallow', 'blocked');
+  A('lotus', 'perfectDodge');
+  A('lotus', 'dodged');
+  A('plumThrust', 'clashed');
+  A('breath', 'hit', { damage: 5, stream: true, t: 1.0 });
+  A('breath', 'hit', { damage: 5, stream: true, t: 1.15 });
+  A('breath', 'hit', { damage: 5, stream: true, t: 1.3 });
+  A('breath', 'hit', { damage: 5, stream: true, t: 3.0 });
+  A('nothing', 'ignored');
+  const sw = L.attempt.get('swallow'), lo = L.attempt.get('lotus'), br = L.attempt.get('breath');
+  assert(sw.seen === 4 && sw.hit === 1 && sw.parried === 2 && sw.perfectParry === 1 && sw.blocked === 1 && sw.damage === 14, `a move's row counts its blows by answer (${JSON.stringify(sw)})`);
+  assert(lo.seen === 2 && lo.dodged === 2 && lo.perfectDodge === 1 && L.attempt.get('plumThrust').clashed === 1 && !L.attempt.has('nothing'), 'dodges, perfect dodges and clashes are counted; an ignored hit is not');
+  assert(br.seen === 2 && br.hit === 2 && br.damage === 20, `a stream's ticks are one blow per 1.5 s, its damage counts in full (${br.seen} blows, ${br.damage} damage)`);
+  A('swallow', 'hit', { damage: 30, dead: true });
+  assert(L.killedBy?.attack === 'swallow' && L.attempt.get('swallow').kills === 1, 'the blow that killed him is remembered');
+  const w = L.worst(3);
+  assert(w.length === 2 && w[0].id === 'swallow' && w[0].hit === 2 && w[0].seen === 5 && w[1].id === 'breath', `worst(): the moves that struck him, the worst first (${w.map((x) => `${x.id} ${x.hit}/${x.seen}`).join(', ')})`);
+  let T = L.commit('death');
+  assert(T.attempts === 1 && T.deaths === 1 && T.wins === 0 && T.killedBy.swallow === 1 && T.moves.swallow.hit === 2, 'commit(death) adds the attempt to the stored totals');
+  L.reset();
+  assert(L.attempt.size === 0 && L.killedBy === null, 'reset(): a new attempt starts empty');
+  A('swallow', 'parried');
+  T = L.commit('victory');
+  const again = new MoveLog(store, 'ash');
+  assert(T.attempts === 2 && T.wins === 1 && again.totals().ash.moves.swallow.parried === 3 && again.totals().ash.moves.swallow.seen === 6, 'the totals survive a new session (the same storage) and keep adding up');
+  const tab = again.table('ash', (id) => id.toUpperCase());
+  assert(tab[0].move === 'SWALLOW' && tab[0].kills === 1 && tab[0]['hit %'] === 33 && tab.length === 4, `table(): one row a move, the deadliest first (${tab.map((r) => r.move).join(', ')})`);
+  again.clear();
+  assert(Object.keys(again.totals()).length === 0, 'clear() forgets them');
+  const bad = new MoveLog({ getItem: () => '{broken', setItem: () => { throw new Error('full'); } }, 'ash');
+  bad.answer({ attack: 'x', result: 'hit', damage: 1 }, 0);
+  assert(bad.commit('death').attempts === 1 && Object.keys(bad.totals()).length === 0, 'broken or full storage never throws');
+  assert(prettyMove('heavenFall') === 'Heaven Fall' && prettyMove('ash_rain') === 'Ash Rain' && prettyMove('') === 'A blow', 'a move without a label is spelled out from its id');
+
+  // --- in the duel: his blows reach the table through the hero's own takeHit
+  const G = build();
+  duel(G, { dist: 2.0 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, M = game.flow.moves;
+  run(G, 0.4);
+  M.reset();
+  const answers = [];
+  G.watch = (n, e) => { if (n === 'combat:answer') answers.push({ ...e }); };
+  // Swallow Flicks taken on the chin (god mode off, full HP)
+  p.debug.god = false;
+  p.debug.heal();
+  d.debug.trigger('swallow');
+  run(G, 4, () => { input.axis = { x: 0, y: 0 }; game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode !== 'act');
+  const row = M.attempt.get('swallow');
+  assert(row && row.seen >= 2 && row.hit === row.seen && row.damage > 0 && answers.every((a) => a.attack === 'swallow' && a.result === RESULT.HIT && a.damage > 0 && !a.stream), `Swallow Flicks taken unanswered: ${row?.hit} of ${row?.seen} blows landed for ${row?.damage.toFixed(0)} (combat:answer x${answers.length})`);
+  assert(d.attackLabel('swallow') === 'Swallow Flicks' && d.attackLabel('nope') === null && game.flow.moveLabel('swallow') === 'Swallow Flicks' && game.flow.moveLabel('nope') === 'Nope' && game.flow.moveLabel('burn') === 'The flames', 'a move is named by the boss (attackLabel), else spelled out');
+  // a parried Plum Thrust is a parry in its row
+  settle(G, 8);
+  home(G);
+  place(G, 2.0);
+  run(G, 0.3);
+  answers.length = 0;
+  let flashT = null, pressed = false;
+  const w0 = G.watch;
+  G.watch = (n, e) => { w0(n, e); if (n === 'combat:flash' && e?.attack === 'plumThrust' && flashT === null) flashT = game.time; };
+  d.debug.trigger('plumThrust');
+  run(G, 2.5, () => {
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    if (flashT !== null && !pressed && game.time >= flashT + TUNING.flashLead - 0.12 - DT) { pressed = true; input.up(2); input.click(2); }
+  }, () => answers.length > 0);
+  G.watch = w0;
+  const pt = M.attempt.get('plumThrust');
+  assert(answers[0]?.result === RESULT.PARRIED && pt?.parried === 1 && pt.hit === 0 && pt.damage === 0, `a parried Plum Thrust is a parry in its row (${JSON.stringify(pt)})`);
+  // the death: the killing move is named, the recap lists what struck him, the totals take it
+  p.debug.noRiposte = true;
+  settle(G, 8);
+  home(G);
+  place(G, 2.0);
+  run(G, 0.3);
+  p.hp = 1;
+  d.debug.trigger('plumThrust');
+  run(G, 4, () => { input.axis = { x: 0, y: 0 }; }, () => game.state === 'dead');
+  assert(game.state === 'dead' && M.killedBy?.attack === 'plumThrust' && M.attempt.get('plumThrust').kills === 1, `killed by Plum Thrust (${game.state}, ${M.killedBy?.attack})`);
+  const rec = game.flow.deathRecap();
+  assert(rec[0] === 'SLAIN BY PLUM THRUST' && rec.some((l) => /^Swallow Flicks {2}\d+ of \d+ blows? landed$/.test(l)) && rec.length <= 4, `the death recap: ${JSON.stringify(rec)}`);
+  run(G, 1.5);
+  const shown = game.hud.bannerUi.rec.children.map((c) => c.textContent);
+  assert(shown.length === rec.length && shown[0] === rec[0] && game.hud.bannerUi.rec.classList.contains('on'), `the death screen shows it under YOU DIED (${shown.length} lines)`);
+  // rising again starts a new attempt and clears the lines
+  run(G, 6, () => { if (game.flow.canRetry) input.tap('Space'); }, () => game.state === 'explore' && !game.flow.respawning);
+  assert(game.state === 'explore' && M.attempt.size === 0 && M.killedBy === null && game.hud.bannerUi.rec.children.length === 0, `rising again starts a new attempt (${game.state}; ${M.attempt.size} rows, ${game.hud.bannerUi.rec.children.length} lines)`);
+  G.watch = null;
+  p.debug.noRiposte = false;
+  return G;
+}
+
 // ================================================================== scenario: strategy (opt-in)
 /** Which defence wins? Three bots that differ only in how they answer a tell (makeDefender `style`),
  *  each in god mode (how fast it kills, how often it is struck) and mortal at ABYSS_SKILL (does it
@@ -1880,7 +1985,7 @@ async function scenarioStrategy() {
   return last;
 }
 
-const SCENARIOS = { strategy: scenarioStrategy, probe: scenarioProbe, perfect: scenarioPerfect, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
+const SCENARIOS = { strategy: scenarioStrategy, probe: scenarioProbe, perfect: scenarioPerfect, telemetry: scenarioTelemetry, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

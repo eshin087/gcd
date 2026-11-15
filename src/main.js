@@ -347,6 +347,21 @@ async function boot() {
     return { state: game.state, time: +game.time.toFixed(2), steps: game.simSteps };
   };
 
+  // Dev aid: window.__telemetry() prints and returns this level's stored move table (what each boss
+  // move did to the hero, every attempt added up; game/telemetry.js), the deadliest move first.
+  // __telemetry('all') returns every level's raw totals; __telemetry('clear') forgets them.
+  window.__telemetry = (cmd) => {
+    const M = game.flow.moves;
+    if (cmd === 'clear') {
+      M.clear();
+      return 'cleared';
+    }
+    if (cmd === 'all') return M.totals();
+    const rows = M.table(M.level, (id) => game.flow.moveLabel(id));
+    console.table?.(rows);
+    return rows;
+  };
+
   // Dev aid: window.__inspect(x, y, w, h) magnifies a device-pixel region of the live frame
   // into a full-window overlay (nearest-neighbour); window.__inspect() hides it.
   const inspect = {
