@@ -17,8 +17,8 @@ export const BREAK = Object.freeze({
       take: Object.freeze({ cut: 1, blunt: 0.9, blast: 1.1, fire: 0 }),
       chips: "/\\|-'`,", // splinters
       dust: ".,'",
-      color: [0.42, 0.3, 0.2],
-      colorEnd: [0.12, 0.08, 0.06],
+      color: [0.34, 0.25, 0.17],
+      colorEnd: [0.1, 0.07, 0.05],
       burns: true,
     }),
     stone: Object.freeze({
@@ -26,8 +26,8 @@ export const BREAK = Object.freeze({
       take: Object.freeze({ cut: 0.45, blunt: 1, blast: 1.15, fire: 0 }),
       chips: '#%&o:.,', // chunks
       dust: '.:,',
-      color: [0.5, 0.54, 0.66],
-      colorEnd: [0.16, 0.17, 0.2],
+      color: [0.3, 0.33, 0.42], // (kept low: debris in the stone's own dim hue, never a white flash)
+      colorEnd: [0.12, 0.13, 0.16],
       burns: false,
     }),
     metal: Object.freeze({
@@ -45,8 +45,8 @@ export const BREAK = Object.freeze({
       take: Object.freeze({ cut: 0.8, blunt: 1.1, blast: 1.2, fire: 0 }),
       chips: "|/\\-:.'",
       dust: '.:',
-      color: [0.7, 0.66, 0.56],
-      colorEnd: [0.2, 0.19, 0.16],
+      color: [0.46, 0.43, 0.36],
+      colorEnd: [0.16, 0.15, 0.13],
       burns: false,
     }),
   }),
@@ -72,6 +72,24 @@ export const BREAK = Object.freeze({
   /** burning wood: seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's */
   burn: Object.freeze({ time: 7, pad: 1.0, light: [3.2, 1.1, 0.25] }),
 });
+
+/**
+ * How a broken piece comes apart (TEMPORARY: three looks for the owner to pick from, `?debris=`;
+ * the two not picked and this switch go once they have):
+ *   digits  a shower of the characters it is drawn in (prop art's digits, a tree's round leaves)
+ *   chunks  fewer, bigger lumps (# % & @) that drop hard, and twice the dust
+ *   shards  long strokes (/  | -) thrown wide and fast, bright on their edges
+ */
+export const DEBRIS = (() => {
+  let look = 'digits';
+  try {
+    const q = new URLSearchParams(globalThis.location?.search ?? '').get('debris');
+    if (q === 'chunks' || q === 'shards' || q === 'digits') look = q;
+  } catch {
+    /* headless: the default */
+  }
+  return { look };
+})();
 
 /** Grass and ground fire (world/fire.js). Fire burns where it lands and never spreads (the owner's pick). */
 export const FIRE = Object.freeze({

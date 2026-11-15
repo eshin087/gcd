@@ -4,7 +4,7 @@ import { createAsciiObjectMaterial, createPropArtMaterial } from '../render/mate
 import { markCaster } from '../render/pipeline.js';
 import { batchRigid } from '../render/rigidBatch.js';
 import { TELL } from '../combat/rules.js';
-import { BREAK, BLOW } from './breakTuning.js';
+import { BREAK, BLOW, DEBRIS } from './breakTuning.js';
 
 // Breakable objects (ADR-103): the trees, stones, pillars and props of a set that blows can chip,
 // break, fell, burn, lift and throw. A set lists them in its output (`breakables`, built with
@@ -53,12 +53,23 @@ const NONE = Object.freeze({});
 const LEAVES = 'o0O8@&';
 const DIGITS = '0123456789';
 const FLAMES = "*^'`\"~%";
+const CHUNKS = '#%&@8';
+const SHARDS = '/\|-';
 const FLASH_LEAD = 0.3;
 const SIDES = [-1, 1];
 
 // cosmetic noise from this module's own stream (the seeded sims replay Math.random)
 let seed = 0x3d9e42b1;
 const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+
+/** A shard's ink: the material's colour, bright on the edge. */
+const _shard = [0, 0, 0];
+const SHARD_INK = (c) => {
+  _shard[0] = c[0] * 1.35;
+  _shard[1] = c[1] * 1.35;
+  _shard[2] = c[2] * 1.35;
+  return _shard;
+};
 
 /** Distance from (px, pz) to the segment a → b; writes where along it (0..1) into `out.t`. */
 function segDist(px, pz, ax, az, bx, bz, out) {
@@ -408,7 +419,7 @@ export class Destructibles {
         fx.spawn({
           x: b.x + Math.cos(a) * rr, y: 0.2 + hy * b.h * (1 - 0.35 * u), z: b.z + Math.sin(a) * rr,
           vx: (rnd() - 0.5) * 0.6, vy: 1.6 + rnd() * 2.2, vz: (rnd() - 0.5) * 0.6,
-          life: 0.4 + rnd() * 0.5, size: 0.46 + hot * 0.36, sizeEnd: 0.07, glyph: FLAMES,
+          life: 0.4 + rnd() * 0.5, size: 0.5 + hot * 0.4, sizeEnd: 0.07, glyph: FLAMES, stretch: 0.5,
           color: [3.4, 1.0 + hot * 0.8, 0.22], colorEnd: [0.8, 0.05, 0.02], alpha: 1, alphaEnd: 0,
           drag: 1.0, flicker: 0.3, spin: (rnd() - 0.5) * 2,
         });
@@ -418,7 +429,7 @@ export class Destructibles {
     b.heatT -= dt;
     if (b.heatT <= 0) {
       b.heatT = 0.3;
-      this.world.scorch?.burnCircle?.(b.x, b.z, b.r + BREAK.burn.pad, 0.05, 0.85);
+      this.world.scorch?.burnCircle?.(b.x, b.z, b.r + BREAK.burn.pad, 0.05, 0.6);
     }
     this.world.fire?.touch?.(b.x, b.z, b.r + BREAK.burn.pad);
     if (b.burn <= 0) {
@@ -566,17 +577,21 @@ export class Destructibles {
         b.mark = 0.08;
         const hot = b.flashed ? 1 : 0.5, w = BREAK.topple.pad + b.r * 0.6;
         const rot = Math.atan2(-b.dz * 0.848, b.dx);
-        for (let s = 0.9; s < b.h + 0.3; s += 0.6) {
+        // where it will land: red strokes down both edges of the strip, a row of marks down its
+        // middle, brighter once its flash has come (glyphs only: no heat, nothing here burns)
+        for (let s = 0.9; fx && s < b.h + 0.3; s += 0.45) {
           const cx = b.x + b.dx * s, cz = b.z + b.dz * s;
-          this.world.scorch?.burnCircle?.(cx, cz, w + 0.25, 0, 0.5 + 0.4 * u);
-          if (!fx) continue;
           for (const side of SIDES) {
             fx.spawn({
               x: cx - b.dz * side * w, y: 0.45, z: cz + b.dx * side * w,
-              life: 0.2, size: 0.55, sizeEnd: 0.55, glyph: '-', color: [3.2 * hot, 0.2 * hot, 0.12 * hot], colorEnd: [1.4 * hot, 0.06, 0.04],
+              life: 0.2, size: 0.6, sizeEnd: 0.6, glyph: '-', color: [3.4 * hot, 0.22 * hot, 0.13 * hot], colorEnd: [1.5 * hot, 0.06, 0.04],
               alpha: 1, alphaEnd: 0, rot,
             });
           }
+          fx.spawn({
+            x: cx + (rnd() - 0.5) * w, y: 0.4, z: cz + (rnd() - 0.5) * w,
+            life: 0.2, size: 0.34, sizeEnd: 0.34, glyph: 'x', color: [1.8 * hot * u, 0.1 * hot, 0.06 * hot], colorEnd: [0.8 * hot * u, 0.03, 0.02], alpha: 1, alphaEnd: 0,
+          });
         }
       }
     }
@@ -700,7 +715,8 @@ export class Destructibles {
     const solid = this.game.fx?.alpha, glow = this.game.fx?.add;
     if (!solid) return;
     const M = b.M;
-    const n = Math.round(clamp(b.r * b.h * 26, 26, 130));
+    const look = DEBRIS.look, chunks = look === 'chunks', shards = look === 'shards';
+    const n = Math.round(clamp(b.r * b.h * 26, 26, 130) * (chunks ? 0.6 : 1));
     const prop = b.def.look === 'prop';
     const wx = b.x + b.pivot.position.x, wy = b.pivot.position.y, wz = b.z + b.pivot.position.z;
     const q = b.pivot.quaternion, v = this._v;
@@ -711,23 +727,23 @@ export class Destructibles {
       const a = rnd() * 6.283, rr = (leaf ? wide : b.r) * Math.sqrt(rnd());
       v.set(Math.cos(a) * rr, t * b.h, Math.sin(a) * rr).applyQuaternion(q);
       const x = wx + v.x, y = Math.max(0.1, wy + v.y), z = wz + v.z;
-      const out = 0.6 + rnd() * 2.2;
-      const up = fallen ? 0.6 + rnd() * 2.4 : 0.5 + rnd() * 3.2;
+      const out = (0.6 + rnd() * 2.2) * (shards ? 2.2 : chunks ? 0.7 : 1);
+      const up = (fallen ? 0.6 + rnd() * 2.4 : 0.5 + rnd() * 3.2) * (shards ? 1.5 : 1);
       const fall = Math.sqrt((2 * y) / 15) + up / 15;
       const hot = ember || (M.sparks && rnd() < 0.35);
       (hot && glow ? glow : solid).spawn({
         x, y, z,
         vx: Math.cos(a) * out + dx * (fallen ? 1.2 : 2.6), vy: up, vz: Math.sin(a) * out + dz * (fallen ? 1.2 : 2.6),
-        life: clamp(fall + 0.3 + rnd() * 0.35, 0.5, 1.7), size: (leaf ? 0.46 : 0.42) + rnd() * 0.24, sizeEnd: 0.2,
-        glyph: leaf ? LEAVES : prop ? DIGITS : M.chips,
-        color: hot ? [2.8, 0.9 + rnd() * 0.6, 0.18] : leaf ? [0.26, 0.42, 0.2] : M.color,
+        life: clamp(fall + 0.3 + rnd() * 0.35, 0.5, 1.7), size: ((leaf ? 0.46 : 0.42) + rnd() * 0.24) * (chunks && !leaf ? 1.7 : shards && !leaf ? 1.25 : 1), sizeEnd: chunks ? 0.45 : 0.2,
+        glyph: leaf ? LEAVES : chunks ? CHUNKS : shards ? SHARDS : prop ? DIGITS : M.chips, stretch: shards && !leaf ? 0.9 : 0,
+        color: hot ? [2.8, 0.9 + rnd() * 0.6, 0.18] : leaf ? [0.26, 0.42, 0.2] : shards ? SHARD_INK(M.color) : M.color,
         colorEnd: hot ? [0.5, 0.04, 0.02] : leaf ? [0.07, 0.11, 0.06] : M.colorEnd,
-        alpha: 1, alphaEnd: 0, gravity: leaf ? -5 : -15, drag: leaf ? 1.6 : 0.4, spin: (rnd() - 0.5) * (leaf ? 4 : 9), rot: rnd() * 6.283,
+        alpha: 1, alphaEnd: 0, gravity: leaf ? -5 : chunks ? -22 : -15, drag: leaf ? 1.6 : 0.4, spin: (rnd() - 0.5) * (leaf ? 4 : chunks ? 3 : shards ? 16 : 9), rot: rnd() * 6.283,
         flicker: hot ? 0.4 : 0,
       });
     }
     // the dust it raises
-    for (let i = 0; i < 6 + Math.round(b.weight * 5); i++) {
+    for (let i = 0; i < (6 + Math.round(b.weight * 5)) * (chunks ? 2 : 1); i++) {
       const t = rnd();
       v.set((rnd() - 0.5) * b.r * 2, t * b.h, (rnd() - 0.5) * b.r * 2).applyQuaternion(q);
       solid.spawn({

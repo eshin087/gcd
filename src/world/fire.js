@@ -140,9 +140,9 @@ export class GroundFire {
       const left = (this.left[i] -= dt);
       const done = left <= 0;
       const u = done ? 1 : 1 - left / this.life[i];
-      if (s.heat[i] < FIRE.heat && !done) s.heat[i] = FIRE.heat;
-      const char = 0.25 + 0.75 * u;
-      if (s.burn[i] < char) s.burn[i] = char;
+      // (one even glow and one even char over the blaze: the scorch map's own jitter would chequer it)
+      if (!done) s.heat[i] = FIRE.heat;
+      s.burn[i] = done ? 1 : Math.max(0.3 + 0.7 * u, Math.min(s.burn[i], 0.3 + 0.7 * u + 0.08));
       s.active.add(i);
       s._write(i);
       if (done) {
@@ -166,7 +166,7 @@ export class GroundFire {
         fx.spawn({
           x: this.min + ((i % N) + rnd()) * c, y: 0.12 + rnd() * 0.25, z: this.min + (Math.floor(i / N) + rnd()) * c,
           vx: (rnd() - 0.5) * 0.5, vy: (1.3 + rnd() * 1.6) * tall, vz: (rnd() - 0.5) * 0.5,
-          life: 0.34 + rnd() * 0.42, size: (0.42 + hot * 0.3) * (0.7 + 0.3 * tall), sizeEnd: 0.06, glyph: FLAME_GLYPHS,
+          life: 0.34 + rnd() * 0.42, size: (0.5 + hot * 0.36) * (0.7 + 0.3 * tall), sizeEnd: 0.06, glyph: FLAME_GLYPHS, stretch: 0.5 * tall,
           color: [3.2, 0.95 + hot * 0.7, 0.2], colorEnd: [0.7, 0.05, 0.02], alpha: 1, alphaEnd: 0,
           drag: 1.1, flicker: 0.3, spin: (rnd() - 0.5) * 2,
         });
