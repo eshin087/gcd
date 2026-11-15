@@ -4,6 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
+Thirty-seven pieces of work since 0.4.0:
+- **The Cinder Wyrm uses the ground** (2026-11-15, ADR-110). *Added:* three moves that take what
+  stands in the clearing. **Uproot and hurl**: it bites into the nearest tree or boulder, tears it
+  out and throws it; the ground glows where it will land and follows you until the throw (red:
+  be out of the glow or roll through it). **Tail bat**: its back to a boulder, one lash of the
+  tail, and the boulder skims the ground at you along a glowing line (blue: parry it and you cut
+  it out of the air, or take it on the guard, step off the line, or stand behind a tree or a
+  standing stone, which stops it). **Firebrand** (from phase 2): a tree in its jaws, lit with a
+  breath and thrown burning; its wreck burns on for 3.4 s and the grass round it catches. The
+  wyrm only does these with a piece in reach, and what it throws is gone until the fight resets.
+  *Dev:* the three are in the Lab's ABILITIES and Training's BOSS MOVES.
 Thirty-eight pieces of work since 0.4.0:
 - **The Starless Lord uses the crater** (2026-11-15, ADR-109). *Added:* three moves on the pieces of
   his level. **Void Hurl** (every form): a stone that hung in the air, or a shard torn out of the

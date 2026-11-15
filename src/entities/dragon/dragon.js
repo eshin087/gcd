@@ -12,6 +12,7 @@ import { ATTACKS, MELEE, perPhase } from './attacks.js';
 import { DragonFx } from './fx.js';
 import { Hazards } from './hazards.js';
 import { Bullets } from './bullets.js';
+import { Terrain } from './terrain.js';
 
 // VAELGRIM, THE CINDER WYRM — the boss. Public contract: see docs/ARCHITECTURE.md (Dragon).
 // Wiring: Brain (ai.js) writes pose targets + root motion and runs the attack tell beats, Rig
@@ -112,6 +113,7 @@ export class Dragon {
     this.fx = new DragonFx(this);
     this.hazards = new Hazards(this); // fire hazards (hazards.js): cleared by fx.reset(), death, phase changes
     this.bullets = new Bullets(this); // the bullet field + fire wheel (bullets.js): cleared like the hazards
+    this.terrain = new Terrain(this); // the piece in its jaws / in the air, its mark and its blow (terrain.js, ADR-110)
     this.brain = new Brain(this);
     this.debug = createDebug(this);
 
@@ -390,6 +392,7 @@ export class Dragon {
       this.resetting = false;
     }
     this.fx.reset();
+    this.terrain.reset(); // (a piece still in the jaws falls; the world's own reset stands it up again)
     this._clearWarn();
     this.state = 'sleeping';
     this.hp = this.maxHp;
@@ -651,6 +654,8 @@ export class Dragon {
       case 'shell':
         if (a?.volley && this.fx.shellPos(a.volley, out)) return out;
         return out.copy(pt.mouth);
+      case 'piece': // a terrain move: the tree or boulder it holds or has thrown
+        return this.terrain.piecePos(out);
       case 'bullet': // a bullet pattern's headline: its lead bullet
         if (this.bullets.leadPos(out)) return out;
         return out.copy(pt.mouth);
@@ -821,6 +826,7 @@ export class Dragon {
     this.fx.update(dt);
     this.hazards.update(dt); // (guarded inside: never throws)
     this.bullets.update(dt); // (guarded inside: never throws)
+    this.terrain.update(dt); // (guarded inside: never throws)
     if (this.state !== 'dying') {
       this.fx.eyeGlints(dt, this.rig.pt.eyes, this.rig.s.eyes);
       // phase 2 smoulders, phase 3 burns (TUNING.phaseEmbers)

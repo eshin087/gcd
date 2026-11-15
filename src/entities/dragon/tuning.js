@@ -4,6 +4,7 @@
 import { TELL } from '../../combat/rules.js';
 import { FIRE_ATTACKS } from './tuningFire.js';
 import { BULLETS, BULLET_ATTACKS } from './tuningBullets.js';
+import { TERRAIN, TERRAIN_ATTACKS } from './tuningTerrain.js';
 
 const DEG = Math.PI / 180;
 
@@ -27,6 +28,7 @@ export const TUNING = {
   // their final damage.
   damageScale: 0.85,
   bullets: BULLETS, // the small projectiles of bullets.js (tuningBullets.js)
+  terrain: TERRAIN, // what the jaws and the tail can take from the clearing (tuningTerrain.js, ADR-110)
   // three phases (contract 4): phase n starts at phaseAt[n - 1] of max HP (P1 100 %, P2 66 %, P3 33 %).
   // Each threshold is a gate: with the AI on, damage stops there until the transition roar starts.
   phaseAt: [1, 0.66, 0.33],
@@ -296,6 +298,7 @@ export const TUNING = {
 };
 Object.assign(TUNING.attacks, FIRE_ATTACKS); // fire / flight attacks and spells (tuningFire.js)
 Object.assign(TUNING.attacks, BULLET_ATTACKS); // the bullet-hell patterns (tuningBullets.js)
+Object.assign(TUNING.attacks, TERRAIN_ATTACKS); // the terrain moves (tuningTerrain.js, ADR-110)
 
 // Skeleton proportions in MODEL units (see SCALE above). Root = ground point under the torso centre,
 // facing +Z, model-left = +X. See model.js for how these are assembled and docs/art/dragon.md
