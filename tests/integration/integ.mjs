@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | herolook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | samples | herolook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -8193,7 +8193,148 @@ async function scenarioTerrain() {
   }
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, probe: scenarioProbe };
+async function scenarioSamples() {
+  out('\n== scenario SAMPLES (recorded CC0 sounds + score over the synth; ADR-117) ==');
+  const { BANKS, CUES, MUSIC, BEDS, allSampleFiles } = await imp('src/audio/sampleBank.js');
+  const { SampleLoop } = await imp('src/audio/samples.js');
+  const { SFX } = await imp('src/audio/sfx.js');
+  const { FIRE_SFX } = await imp('src/audio/fire.js');
+  // the manifest: every file it names is in assets/audio, every cue it maps has a synth recipe
+  const files = allSampleFiles();
+  const missing = files.filter((f) => !fs.existsSync(`${ROOT}/assets/audio/${f}`));
+  assert(files.length > 120 && !missing.length, `every sample file exists (${files.length} files; missing ${JSON.stringify(missing.slice(0, 5))})`);
+  const orphan = Object.keys(CUES).filter((k) => !SFX[k] && !FIRE_SFX[k]);
+  assert(!orphan.length, `every sampled cue has a synth fallback ${JSON.stringify(orphan)}`);
+  const unmapped = [...Object.keys(SFX), ...Object.keys(FIRE_SFX)].filter((k) => !CUES[k]);
+  assert(!unmapped.length, `every synth cue is in the sample map (null = synth on purpose) ${JSON.stringify(unmapped)}`);
+  const badBank = [];
+  for (const [k, fn] of Object.entries(CUES)) {
+    for (const o of [{}, { heavy: true, roar: true }]) {
+      const s = fn(o, { game: { level: { id: 'ash' } } });
+      if (s && (!BANKS[s.bank] || (s.extra && !BANKS[s.extra]))) badBank.push(k);
+    }
+  }
+  assert(!badBank.length, `every cue resolves to a real bank ${JSON.stringify(badBank)}`);
+  assert(['cinderwood', 'ash', 'starless'].every((id) => MUSIC[id]?.ambient && MUSIC[id]?.boss && MUSIC[id]?.boss2 && BEDS[id]) && MUSIC.victory && MUSIC.death,
+    'each level has an ambient, boss and boss2 track and a bed; victory and death are shared');
+
+  const G = build();
+  const { game, input } = G;
+  input.tap('Space');
+  G.tick(DT);
+  const A = game.audio, S = A.samples, ctx = AUDIO.ctx;
+  assert(S && S.loaded === 0 && !A.bed, 'the bank is built with the graph; nothing is fetched outside a browser (synth only)');
+  const e0 = errors.length;
+  // a fake load: every one-shot "decoded" (a tagged buffer); count the tagged buffers started
+  let started = 0;
+  const cbs = ctx.createBufferSource.bind(ctx);
+  ctx.createBufferSource = () => {
+    const n = cbs();
+    const st = n.start.bind(n);
+    n.start = (t, o) => {
+      if (n.buffer?.tag) started++;
+      return st(t, o);
+    };
+    return n;
+  };
+  const fake = (len, ch = 1) => Object.assign(ctx.createBuffer(ch, len, 48000), { tag: 1 });
+  for (const f of new Set(Object.values(BANKS).flat())) S.sfx.set(f, { buf: fake(4800), off: 0.001 });
+  S.loaded = S.total = S.sfx.size;
+  const OPTS = [{}, { heavy: true, combo: 2 }, { thrust: true }, { crit: true, body: 'cloth', part: 'wing' }, { weight: 'cleave', combo: 5, alt: 1 },
+    { perfect: true, chain: 3 }, { tell: 'blue', damage: 10, chain: 9 }, { mat: 'wood', power: 1 }, { mat: 'metal', power: 0.2 }, { mat: 'bone' },
+    { roar: true, strength: 1.2, pitch: 0.9 }, { roar: false }, { radius: 8 }, { radius: 2 }, { kind: 'error' }, { kind: 'resume' }, { sprint: true },
+    { on: false }, { exec: true }, { n: 3, x: 4, z: -6 }, { strength: NaN, pitch: 'x', power: Infinity }];
+  let plays = 0, sampled = 0;
+  for (const name of Object.keys(CUES)) {
+    for (const o of OPTS) {
+      A._last.clear();
+      const b = started;
+      if (A.play(name, { ...o })) plays++;
+      if (started > b) sampled++;
+      ctx.currentTime += 0.5; // let the voice pool reap (a full pool refuses low-priority sounds)
+      A.update(DT);
+    }
+  }
+  out(`   ${Object.keys(CUES).length} cues x ${OPTS.length} option sets: ${plays} played, ${sampled} with a recording`);
+  assert(plays === Object.keys(CUES).length * OPTS.length && errors.length === e0, `every cue plays with any options, no errors (${errors.length - e0} new)`);
+  const synthOnly = Object.keys(CUES).filter((k) => !CUES[k]({ kind: 'select' }, A));
+  assert(sampled > 0.75 * plays && synthOnly.length <= 10, `most cues play a recording; synth-only on purpose: ${synthOnly.join(' ')}`);
+  // the footsteps follow the floor: grass in Cinderwood, stone elsewhere
+  const lv = game.level;
+  game.level = { id: 'cinderwood' };
+  const g = CUES.footstep({}, A).bank;
+  game.level = { id: 'starless' };
+  const s2 = CUES.footstep({}, A).bank;
+  game.level = lv;
+  assert(g === 'stepGrass' && s2 === 'stepStone', `footsteps: ${g} in Cinderwood, ${s2} in the Obsidian Throne`);
+  // no immediate repeat of a variant
+  let rep = 0, prev = null;
+  for (let i = 0; i < 40; i++) {
+    const x = S._pick('stepStone');
+    if (x === prev) rep++;
+    prev = x;
+  }
+  assert(rep === 0, `a bank never plays the same variant twice in a row (${rep} repeats in 40)`);
+  // samples off (?sound=synth): every cue is the synth again
+  S.enabled = false;
+  const b0 = started;
+  A._last.clear();
+  A.play('swing', {});
+  A.play('roar', {});
+  assert(started === b0, 'with samples off the recipes play (no recording started)');
+  S.enabled = true;
+
+  // music: a recorded track loops from loopFrom with an overlap; a failed track hands over to the synth
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  const track = { buf: fake(48000 * 10, 2), off: 0, end: 10 };
+  let segs = 0, badFrom = 0;
+  S.decodeTrack = () => Promise.resolve(track);
+  S.track = (mode) => (mode === 'boss' || mode === 'ambient' ? { file: `music/${mode}.mp3`, gain: 0.9, loop: true, loopFrom: 2, xfade: 1 } : null);
+  A.setMusic('boss');
+  await flush();
+  const M = A.music;
+  const seg0 = M._segment.bind(M);
+  M._segment = (at, from, xf) => {
+    segs++;
+    if (from !== 0 && from !== 2) badFrom++;
+    return seg0(at, from, xf);
+  };
+  for (let i = 0; i < 25 * 60; i++) {
+    ctx.currentTime += DT;
+    A.update(DT);
+  }
+  out(`   recorded boss track: ${segs} passes in 25 s (10 s track, loop from 2 s, 1 s overlap)`);
+  assert(M instanceof SampleLoop && M.started && segs >= 3 && segs <= 5 && M.segs.length <= 2 && !badFrom,
+    `the track plays and loops from its loop point (${segs} passes, ${M.segs.length} live)`);
+  S.decodeTrack = () => Promise.reject(new Error('offline'));
+  A.setMusic('ambient');
+  await flush();
+  for (let i = 0; i < 10; i++) {
+    ctx.currentTime += DT;
+    A.update(DT);
+  }
+  assert(A.music && A.music.kind === 'ambient', `a track that cannot load hands over to the synth score (now ${A.music?.kind})`);
+  A.setMusic('victory');
+  for (let i = 0; i < 10; i++) {
+    ctx.currentTime += DT;
+    A.update(DT);
+  }
+  assert(A.music && A.music.kind === 'victory', 'a mode with no recording plays the synth score');
+  // the ambience bed starts once
+  S.decodeTrack = () => Promise.resolve(track);
+  S.bed = () => ({ file: 'amb/x.mp3', gain: 0.5, loop: true, loopFrom: 0, xfade: 1 });
+  A.bed = null;
+  for (let i = 0; i < 30; i++) {
+    ctx.currentTime += DT;
+    A.update(DT);
+    if (i === 1) await flush();
+  }
+  assert(A.bed instanceof SampleLoop && A.bed.started, 'the level bed starts on the ambient bus');
+  assert(errors.length === e0, `no errors through the music checks (${errors.length - e0})`);
+  return G;
+}
+
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, samples: scenarioSamples, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

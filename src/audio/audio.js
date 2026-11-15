@@ -7,8 +7,11 @@ import { ForestAmbience, BreathLoop } from './ambience.js';
 import { ChargeHum } from './charge.js';
 import { createMusic } from './music.js';
 import { FIRE_SFX, subscribeFire } from './fire.js';
+import { SampleBank, SampleLoop } from './samples.js';
 
-// Procedural WebAudio engine: every sound is synthesised at runtime (no sample files).
+// WebAudio engine. Every cue has a synthesised recipe (sfx.js, fire.js, music.js); recorded CC0 sounds
+// and music (samples.js, sampleBank.js; ADR-117) replace or layer over them once their files have
+// loaded, and the recipe stays the fallback (before the load, offline, `?sound=synth`).
 // The AudioContext is created lazily by unlock() (flow calls it on title dismiss; the engine
 // also unlocks itself on the first pointer/key gesture). Every method is a no-op before that.
 //
@@ -81,6 +84,8 @@ export class AudioEngine {
     this.ambience = null;
     this.breath = null;
     this.charge = null; // heavy-attack charge hum (built with the graph)
+    this.samples = null; // recorded sounds + score (built with the graph; ADR-117)
+    this.bed = null; // the level's recorded ambience loop
     this._fading = []; // layers crossfading out
     this._musicSince = 0;
     this.pools = { sfx: [], music: [], amb: [] };
@@ -154,7 +159,7 @@ export class AudioEngine {
       this._failed = true;
       this.master = this.duck = this.sfxBus = this.musicBus = this.ambientBus = this.uiBus = null;
       this.cueBus = this.slowLp = this.slowGain = this.musicDip = null;
-      this.reverbIn = this.ambience = this.breath = this.charge = this.music = null;
+      this.reverbIn = this.ambience = this.breath = this.charge = this.music = this.samples = this.bed = null;
       this._fading.length = 0;
       for (const l of this._poolLists) l.length = 0;
       return;
@@ -207,7 +212,14 @@ export class AudioEngine {
     const v = this._voice('sfx', { bus, pan, gain, rev: def.rev ?? 0.12, prio: def.prio ?? 2 });
     if (!v) return false;
     try {
-      def.play(v, now + 0.006 + Math.max(0, num(o.delay, 0)), o, this);
+      const t = now + 0.006 + Math.max(0, num(o.delay, 0));
+      // a recorded sound when its bank has loaded (layer: the recipe plays under it as well)
+      const smp = this.samples?.resolve(name, o);
+      if (smp && this.samples.start(v, t, smp)) {
+        if (smp.layer) def.play(v, t, o, this);
+      } else {
+        def.play(v, t, o, this);
+      }
     } catch (err) {
       v.kill(now);
       this._warn(`sfx:${name}`, err);
@@ -293,6 +305,8 @@ export class AudioEngine {
     this.ambience = new ForestAmbience(this);
     this.breath = new BreathLoop(this);
     this.charge = new ChargeHum(this);
+    this.samples = new SampleBank(this);
+    this.samples.load();
 
     this._applyMaster(0.35);
     if (this._ducked) this._duck(true);
@@ -395,7 +409,16 @@ export class AudioEngine {
     }
     this.charge?.update(now, dt, this.game);
 
-    if (this.music) this.music.schedule(now, 0.3);
+    if (this.music) {
+      // a recorded track that cannot load hands over to the synthesised score
+      if (this.music.failed) {
+        this.music.dispose();
+        this.music = createMusic(this, this.musicMode);
+        this.music?.fadeIn(now, XFADE);
+      }
+      this.music?.schedule(now, 0.3);
+    }
+    this._updateBed(now);
     for (let i = this._fading.length - 1; i >= 0; i--) {
       const l = this._fading[i];
       if (now > l.deadAt) {
@@ -545,15 +568,32 @@ export class AudioEngine {
       this._fading.push(cur);
       this.music = null;
     }
-    if (mode === 'death') {
-      this.play('gong'); // rate-limited: no double toll with player:died
-      return;
-    }
-    const layer = createMusic(this, mode);
+    if (mode === 'death') this.play('gong'); // rate-limited: no double toll with player:died
+    const layer = this._musicLayer(mode);
     if (layer) {
       layer.fadeIn(now, XFADE);
       this.music = layer;
     }
+  }
+
+  /** The level's recorded track for a mode (ADR-117), else the synthesised layer (null: silence). */
+  _musicLayer(mode) {
+    const spec = this.samples?.track(mode);
+    return spec ? new SampleLoop(this, this.samples, spec, this.musicBus) : createMusic(this, mode);
+  }
+
+  /** The level's recorded ambience bed: started once, quieter while the fight is on. */
+  _updateBed(now) {
+    if (!this.bed) {
+      const spec = this.samples?.bed();
+      if (!spec) return;
+      this.bed = new SampleLoop(this, this.samples, spec, this.ambientBus);
+      this.bed.fadeIn(now, 4);
+    }
+    if (this.bed.failed) return;
+    this.bed.schedule(now);
+    const st = this.game.state === 'paused' ? this._prePause : this.game.state;
+    this.bed.setLevel(st === 'boss' || st === 'bossIntro' || st === 'dead' ? 0.45 : 1, now, 1.2);
   }
 
   /** Automatic music choice; applied at the end of the frame unless flow chose explicitly. */

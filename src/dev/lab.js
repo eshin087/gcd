@@ -993,6 +993,26 @@ export class Lab {
     this.ui.stateBtns = STATES.map((s) => ({ s, el: button(grid, s[0].toUpperCase() + s.slice(1), () => this._flowTo(s)) }));
   }
 
+  /** Recorded sounds on / off (A/B against the synth); the music restarts in the other set. */
+  _toggleSamples() {
+    const A = this.game.audio;
+    if (!A) return this._status('n/a: game.audio', 'warn');
+    if (!A.samples) A.unlock?.();
+    const S = A.samples;
+    if (!S) return this._status('sound starts after the first key / tap', 'warn');
+    S.enabled = !S.enabled;
+    const mode = A.musicMode;
+    A.setMusic('none');
+    A.setMusic(mode);
+    if (A.bed && !S.enabled) {
+      A.bed.fadeOut(A.ctx.currentTime, 1);
+      A._fading.push(A.bed); // disposed by the engine once faded
+      A.bed = null;
+    }
+    setClass(this.ui.soundBtn, 'on', S.enabled);
+    this._status(S.enabled ? `recorded sound (${S.loaded}/${S.total} loaded)` : 'synthesised sound', 'ok');
+  }
+
   _buildView(root) {
     const { body } = this._section(root, 'view', 'VIEW');
     const show = el('div', 'lab-grid c2', null, body);
@@ -1002,6 +1022,9 @@ export class Lab {
     this.ui.touchBtn = button(show, 'Touch UI', () => this._toggleTouch());
     this.ui.touchBtn.title = 'show / hide the phone touch controls (stick + buttons, close camera, LOW quality); ?touch in the URL forces them';
     setClass(this.ui.touchBtn, 'on', !!this.game.touch?.active);
+    this.ui.soundBtn = button(show, 'Recorded sound', () => this._toggleSamples());
+    this.ui.soundBtn.title = 'A/B the sound: the recorded CC0 sounds + score (on) or the synthesised ones (off); ?sound=synth starts with them off (ADR-117)';
+    setClass(this.ui.soundBtn, 'on', this.game.audio?.samples?.enabled !== false);
     const row = el('div', 'lab-row', null, body);
     this.ui.hitBtn = button(row, 'Hitboxes', () => this.setHitboxes(!this.hitboxes));
     setClass(this.ui.hitBtn, 'on', this.hitboxes);

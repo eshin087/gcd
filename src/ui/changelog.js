@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-15',
+        title: 'Recorded sound and music',
+        notes: [
+          'The game now sounds like recordings instead of a synthesiser: steel on steel for parries, blocks and clashes, swishes and cuts, hits, footsteps on grass or stone, the wyrm\'s roar and wings, fire, explosions, breaking wood and stone, and the menus. 129 sounds, all free (CC0) from OpenGameArt.',
+          'Each level has its own music: a dark forest theme and an epic battle for the Cinder Wyrm, koto and ninja themes in the Ashfall Courtyard, a dark shrine and a choir in the Obsidian Throne, plus a victory fanfare and a short game-over theme.',
+          'Crickets, wind or a cold hall play under each level. The old synthesised sounds remain as a fallback while the files load.',
+        ],
+      },
+      {
+        date: '2026-11-15',
         title: "What's new in the menu; the phone camera stays back",
         notes: [
           "WHAT'S NEW on the title screen and in the pause menu lists every version and what changed. A badge counts what you have not read yet.",
