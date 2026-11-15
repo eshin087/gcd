@@ -5,14 +5,14 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-15 — Session 44: the hero seen through the wyrm (an ink ghost in the blade's cyan)
+## 2026-11-15 — Session 43: the hero seen through the wyrm (an ink ghost in the blade's cyan)
 
 **Owner:** "i noticed while fighting the dragon the player disappears and cant see whats going on
 if its behind the dragon. think of a good way to still let the player be seen somehow for these
 situations." Branch `claude/render-hero-seen-125813` (PR #41), one of several sessions working in parallel
 (destructible terrain, the open Obsidian Throne). ADR-101 / Session 40, set aside for this, went to
-a PR that merged first; 102 / 41 and 103 / 42 are in use by three PRs open at the same time (#42,
-#43, #44), and 104 / 43 are left for whichever of those renumbers.
+a PR that merged first; ADR-102 to ADR-105 and Sessions 41 / 42 belong to PRs open at the same
+time (the terrain and throne work of this group, and #42 / #43).
 
 **Reproduced** (dev server on its own port, the wyrm frozen in a pose, the hero placed round it):
 north of its body, under a wing, behind it while it rears for Armageddon, under it while it flies
@@ -23,7 +23,7 @@ column; five situations on desktop, four on the phone, a film strip of him walki
 whole frames): A ink ghost, B window, C rim only. The owner picked **A**. A draft PR carried the
 switch so the three could be tried on the phone's preview.
 
-**Done** (ADR-105):
+**Done** (ADR-106):
 - `pipeline.js`: `seenRT`, `setSeenThrough`, `_renderSeen` (the hero alone, the erasing quad, the
   patch into the scene target), `_seenProbe` (the occlusion-query gate), the ASCII pass's `tSeen` /
   `uSeen` / `uSeenInk` / `uSeenTone`, `seenHalo` over the wyrm's letters, one shared definition of

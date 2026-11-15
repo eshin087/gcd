@@ -432,7 +432,7 @@ each glyph smeared into solid bars.
 - **Not checked in motion** when this was built: the drift toward the screen edges, and the
   fade-near-player dither on a letter grid.
 
-### The hero seen through what covers him (2026-11-15, ADR-105)
+### The hero seen through what covers him (2026-11-15, ADR-106)
 The owner: "while fighting the dragon the player disappears and cant see whats going on if its
 behind the dragon". The wyrm fills a third of the screen and the camera never turns, so a hero
 north of its body, under a wing, behind it while it rears or under it while it flies was simply

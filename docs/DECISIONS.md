@@ -2542,7 +2542,7 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   1700 particles (800 before; the additive batch holds 7000).
 
 
-## ADR-105 — The hero prints through what covers him: an ink ghost in the blade's cyan (2026-11-15)
+## ADR-106 — The hero prints through what covers him: an ink ghost in the blade's cyan (2026-11-15)
 - **Context:** the owner: "i noticed while fighting the dragon the player disappears and cant see
   whats going on if its behind the dragon. think of a good way to still let the player be seen
   somehow for these situations." The camera has a fixed yaw and the wyrm fills a third of the

@@ -162,7 +162,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.37 — The hero seen through what covers him (2026-11-15, `claude/render-hero-seen-125813`, ADR-105)
+## M1.37 — The hero seen through what covers him (2026-11-15, `claude/render-hero-seen-125813`, ADR-106)
 - [x] The covered parts of the hero print through the wyrm (and any object) as a cyan ink ghost
 - [x] Three looks built (ink ghost / window / rim only); the owner picked the ink ghost
 - [x] Only while covered; pixel-identical in the open; the duels unchanged

@@ -48,7 +48,7 @@ scene.updateMatrixWorld()            once for both scene passes (scene.matrixWor
                                      mesh per batched actor) with the bone-reading depth material, same map
 → world → sceneRT
 → the hero where something covers him   a probe, then (only while it finds cover) the hero alone → seenRT,
-                                     minus what the scene shows of him, the rest back into sceneRT (ADR-105)
+                                     minus what the scene shows of him, the rest back into sceneRT (ADR-106)
 → ASCII pass → FX particles (fxScene) → bloom → final grade
 ```
 World matrices are therefore final when `render` starts: anything that moves an object after the
@@ -230,7 +230,7 @@ Render helpers for creature modules:
     (x / y tap radii 2 / 4 px × hs, z darkening 0.72). Two rings of 8 taps darken **world-grid**
     pixels round him (grass, stones, trees, bonfire); the wyrm's letters are not darkened, except
     round the parts of him it covers (`seenHalo`, next item).
-- **The hero seen through what covers him** (ADR-105; `pipeline.js`). When something stands
+- **The hero seen through what covers him** (ADR-106; `pipeline.js`). When something stands
   between the camera and the hero (the wyrm's body or a wing, a tree, a pillar, a landmark), the
   covered parts of him are printed through it: his own ink-line art in the blade's cyan, with a
   thin dark gap round it. In the open nothing changes (the frame is pixel-identical).
