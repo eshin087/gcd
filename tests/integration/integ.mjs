@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | herolook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | herolook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -8193,7 +8193,115 @@ async function scenarioTerrain() {
   }
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, probe: scenarioProbe };
+async function scenarioMusic() {
+  out('\n== scenario MUSIC (recorded CC0 tracks per level and boss phase over the synth score; ADR-117) ==');
+  const { SCORE, allTrackFiles } = await imp('src/audio/trackList.js');
+  const { TrackLoop } = await imp('src/audio/tracks.js');
+  const files = allTrackFiles();
+  const missing = files.filter((f) => !fs.existsSync(`${ROOT}/assets/audio/${f}`));
+  assert(!missing.length, `every listed track exists (${files.length} files; missing ${JSON.stringify(missing.slice(0, 5))})`);
+  const onDisk = fs.existsSync(`${ROOT}/assets/audio/music`) ? fs.readdirSync(`${ROOT}/assets/audio/music`).map((f) => `music/${f}`) : [];
+  const unused = onDisk.filter((f) => !files.includes(f));
+  assert(!unused.length, `no track ships that the game never plays ${JSON.stringify(unused)}`);
+  assert(['cinderwood', 'ash', 'starless'].every((id) => SCORE.levels[id] && Array.isArray(SCORE.levels[id].phases)), 'a score entry for each level');
+
+  const G = build();
+  const { game, input } = G;
+  input.tap('Space');
+  G.tick(DT);
+  const A = game.audio, T = A.tracks, ctx = AUDIO.ctx;
+  assert(T && !T.bytes.size, 'the track bank is built with the graph; nothing is fetched outside a browser (synth score)');
+  const e0 = errors.length;
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  const step = async (n) => {
+    for (let i = 0; i < n; i++) {
+      ctx.currentTime += DT;
+      A.update(DT);
+      if (i === 1) await flush();
+    }
+  };
+  // a fake level score: an exploring track and three phase tracks (10 s each), loaded at once
+  const fake = (len, ch = 2) => ctx.createBuffer(ch, len, 48000);
+  const track = { buf: fake(48000 * 10), off: 0, end: 10 };
+  const spec = (name, o = {}) => ({ file: `music/${name}.mp3`, gain: 1, loop: true, loopFrom: 0, xfade: 1, ...o });
+  const L = { explore: spec('explore'), phases: [spec('p1', { loopFrom: 2 }), spec('p2'), spec('p3')] };
+  T.decodeTrack = () => Promise.resolve(track);
+  T.track = function (mode, phase) {
+    if (mode === 'ambient') return L.explore;
+    if (mode === 'boss' || mode === 'boss2') return L.phases[Math.min(L.phases.length, Math.max(1, phase)) - 1];
+    return null;
+  };
+  const d = game.dragon;
+  const ph0 = d.phase;
+  const playing = () => (A.music?.kind === 'track' ? A.music.spec.file.replace(/^music\/|\.mp3$/g, '') : A.music?.kind || 'none');
+  A.setMusic('none');
+  A.setMusic('ambient');
+  await step(10);
+  assert(playing() === 'explore' && A.music.started, `exploring: the level's track (${playing()})`);
+  d.phase = 1;
+  A.setMusic('boss');
+  await step(10);
+  const M = A.music;
+  assert(playing() === 'p1', `boss phase 1: its track (${playing()})`);
+  let segs = 0, badFrom = 0;
+  const seg0 = M._segment.bind(M);
+  M._segment = (at, from, xf) => {
+    segs++;
+    if (from !== 0 && from !== 2) badFrom++;
+    return seg0(at, from, xf);
+  };
+  await step(25 * 60);
+  assert(segs >= 2 && segs <= 4 && M.segs.length <= 2 && !badFrom, `a phase track loops from its loop point (${segs} more passes in 25 s, ${M.segs.length} live)`);
+  for (const [n, want] of [[2, 'p2'], [3, 'p3'], [4, 'p3']]) {
+    d.phase = n;
+    A.setMusic('boss2');
+    await step(10);
+    assert(playing() === want, `boss phase ${n}: ${want} (${playing()})`);
+  }
+  const before = A.music;
+  A.setMusic('boss2');
+  await step(5);
+  assert(A.music === before, 'the same phase again: the track plays on (no restart)');
+  // the wyrm announces a phase (dragon:phase2) before it sets its own number: the music follows the
+  // announcement, and a phase number that moves without a music call is followed on the next frame
+  d.phase = 1;
+  A.setMusic('none');
+  A.setMusic('boss');
+  await step(5);
+  game.events.emit('dragon:phase2');
+  A.setMusic('boss2');
+  await step(5);
+  assert(playing() === 'p2', `phase 2 announced while the boss still reads phase 1: p2 (${playing()})`);
+  d.phase = 3;
+  await step(5);
+  assert(playing() === 'p3', `a phase number that moves without a music call is followed (${playing()})`);
+  A.setMusic('ambient');
+  d.phase = 1;
+  A.setMusic('boss');
+  await step(5);
+  assert(playing() === 'p1', `a new fight starts again at phase 1 (${playing()})`);
+  d.phase = ph0;
+  // a track that cannot load hands over to the synth score; a mode without a track plays the synth
+  T.decodeTrack = () => Promise.reject(new Error('offline'));
+  A.setMusic('ambient');
+  await step(10);
+  assert(A.music && A.music.kind === 'ambient', `a track that cannot load hands over to the synth score (now ${A.music?.kind})`);
+  A.setMusic('victory');
+  await step(10);
+  assert(A.music && A.music.kind === 'victory', 'a mode with no track plays the synth score');
+  // off (?music=synth / the Lab): the synth score
+  T.decodeTrack = () => Promise.resolve(track);
+  T.enabled = false;
+  T.track = () => null;
+  A.setMusic('ambient');
+  await step(5);
+  assert(A.music?.kind === 'ambient', 'with the tracks off the synth score plays');
+  assert(errors.length === e0, `no errors through the music checks (${errors.length - e0})`);
+  assert(A.music instanceof TrackLoop === false, 'the synth layer is not a track');
+  return G;
+}
+
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

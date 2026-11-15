@@ -15,6 +15,7 @@ const types = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.map': 'application/json',
+  '.mp3': 'audio/mpeg',
 };
 
 http
