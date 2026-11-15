@@ -179,6 +179,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.42 — Dark music per level and per boss phase (2026-11-15, `audio/dark-score`, ADR-117)
+- [x] Recorded CC0 sound effects tried and dropped (too noisy: PR #55 closed); the effects stay synthesised
+- [x] An audition page: three dark candidates for each of 14 slots; the owner's picks ship
+- [x] Each level's exploring track; a track per boss phase (3 + 2 + 4); victory and death
+- [x] The synth score stays the fallback; `?music=synth` and a Lab A/B switch
+- [ ] Follow-ups:
+  - [ ] The owner's listen in play, on the phone: levels, loop seams, the phase changes
+  - [ ] On the phone: decode time and memory with three decoded tracks
+
 ## M1.41 — WHAT'S NEW; the phone camera in a duel's moment; a game of its own (2026-11-15, `ui/changelog-own-identity`, ADR-116)
 - [x] WHAT'S NEW: every version's notes from the title (corner button) and the pause menu, with an unread badge
 - [x] `tests/changelogcheck.mjs`: every CHANGELOG headline has an in-game entry
@@ -269,7 +278,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
   - [ ] Save file, a hub at the bonfire, a boss order that starts on Shen Hui, ranks, difficulty tiers,
         a reduce-flashes option
   - [ ] The single boss slot as an actor list (before mobs or a duo fight)
-  - [ ] Designed sound for the core combat hits; a theme per boss
+  - [ ] Designed sound for the core combat hits
+  - [x] A theme per boss, and per phase (recorded CC0 music, ADR-117)
 ## M1.34 — The flurry on a man; the afterimage (2026-11-15, `player/flurry-duel-read`, ADR-101)
 - [x] A pacing of its own against a duelist: wound up, past his side, a held finish
 - [x] A flurry's blows do not shove a duelist; the last staggers him away from the hero

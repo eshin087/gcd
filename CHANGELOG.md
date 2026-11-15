@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty-six pieces of work since 0.4.0:
+Forty-seven pieces of work since 0.4.0:
+- **Dark music for every level and every boss phase** (2026-11-15, ADR-117). *Changed:* the music is
+  no longer synthesised. Each level has its own dark exploring track, and every boss phase has its
+  own track that takes over when the phase changes: the Cinder Wyrm's three phases, the Ash
+  Disciple's two and the Starless Lord's four forms, plus a short victory fanfare and a game-over
+  theme. All 14 tracks are CC0 from OpenGameArt, picked by ear on an audition page (credits in
+  `assets/audio/CREDITS.md`). The synthesised music remains the fallback while a track loads, and
+  with `?music=synth`; the Lab's VIEW section can switch between the two. Sound effects are
+  unchanged.
 - **What's new in the menu; the phone camera stays back** (2026-11-15, ADR-116). *Added:* **WHAT'S
   NEW**, a button in the title screen's top-right corner and an item in the pause menu: every
   version and what changed in it, newest first, in short notes. A badge counts the entries you have
