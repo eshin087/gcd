@@ -31,6 +31,25 @@ const _v = V(), _g = V();
 const wind = (d, base) => base * (d.tScale ?? 1);
 const ARENA = 31; // m round the centre a throw may be aimed at (the clearing is 30)
 
+/**
+ * How a tree is held before the throw (TEMPORARY: two looks for the owner to pick from, `?hold=`; the
+ * one not picked and this switch go once they have):
+ *   back     swung back over the shoulder, nearly lying along the wyrm (spec.cock rad), whipped forward
+ *   upright  held up like a club, leaning back a little (UPRIGHT rad)
+ */
+const UPRIGHT = 0.35;
+export const HOLD = (() => {
+  let look = 'back';
+  try {
+    const q = new URLSearchParams(globalThis.location?.search ?? '').get('hold');
+    if (q === 'upright' || q === 'back') look = q;
+  } catch {
+    /* headless: the default */
+  }
+  return { look };
+})();
+const cockOf = (X) => (HOLD.look === 'upright' ? UPRIGHT : X.cock);
+
 /** The plan the picker wrote for the action that is starting (phases() runs right before start()). */
 const _jaws = { piece: null, time: 0, travel: 0 };
 const _tail = { piece: null, dir: 1 };
@@ -268,7 +287,7 @@ function makeThrow(name, wood) {
         pose.spread[0] = pose.spread[1] = 0.55 + 0.25 * e;
         pose.spreadRate = 5;
         // it comes out of the ground upright and swings back over the shoulder: a tree that leans is a tree held
-        a.tilt = (-X.cock * 0.7 * smoothstep(0.25, 1, k) + 0.1 * Math.sin(a.t * 9) * (1 - e)) * lean;
+        a.tilt = (-cockOf(X) * 0.7 * smoothstep(0.25, 1, k) + 0.1 * Math.sin(a.t * 9) * (1 - e)) * lean;
       } else if (ph === 'kindle') {
         // held out ahead and up, the crown forward: a breath runs up the trunk
         pose.head = d.rootPt(pose.headTarget, 0, 4.8, 4.0);
@@ -294,7 +313,7 @@ function makeThrow(name, wood) {
         pose.swell = k;
         pose.spread[0] = pose.spread[1] = 0.85;
         pose.spreadRate = 4;
-        a.tilt += ((-X.cock + 0.06 * Math.sin(a.t * 11)) * lean - a.tilt) * (1 - Math.exp(-9 * dt));
+        a.tilt += ((-cockOf(X) + 0.06 * Math.sin(a.t * 11)) * lean - a.tilt) * (1 - Math.exp(-9 * dt));
         if (burning) d.throat = 0.6;
       } else if (ph === 'active') {
         // the whip: head and neck snap forward and down, the jaws let go on the way
@@ -311,7 +330,7 @@ function makeThrow(name, wood) {
         pose.bodyRate = 12;
         pose.spread[0] = pose.spread[1] = lerp(0.85, 0.4, e);
         pose.spreadRate = 16;
-        if (!a.thrown) a.tilt = -X.cock * lean * (1 - e) * (1 - e);
+        if (!a.thrown) a.tilt = -cockOf(X) * lean * (1 - e) * (1 - e);
       } else {
         // the follow-through: the head low and out, the jaws open (a roar after it); then it settles
         const hold = k < 0.3;

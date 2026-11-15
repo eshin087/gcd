@@ -34,34 +34,12 @@ const LEAVES = 'o0O8@&';
 const GRIT = ".,:'";
 const DUST = ",.`:'";
 const FLAMES = "*^'`\"~%";
-const PALE = [0.62, 0.6, 0.52];
 const PALE_DIM = [0.2, 0.2, 0.19];
 const EARTH = [0.34, 0.27, 0.2];
 const EARTH_END = [0.12, 0.1, 0.08];
 const LEAF = [0.26, 0.42, 0.2];
 const LEAF_END = [0.07, 0.11, 0.06];
-const GOLDEN = 2.399963229728653;
 const rand = (a, b) => a + Math.random() * (b - a);
-const hash01 = (seed, i) => {
-  const x = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
-  return x - Math.floor(x);
-};
-
-/**
- * How a landing is marked. 'heat' = the ground heats up (ADR-052, every other footprint of the
- * fight); 'dust' = pale grit shaken loose (the option filmed beside it). TEMPORARY switch `?mark=`
- * until the owner has picked.
- */
-export const MARK = (() => {
-  let style = TERRAIN.mark;
-  try {
-    const q = new URLSearchParams(globalThis.location?.search ?? '').get('mark');
-    if (q === 'dust' || q === 'heat') style = q;
-  } catch {
-    /* headless: the default */
-  }
-  return { style };
-})();
 
 /** world.destructibles when it can lift and throw (a test's world mock may have none). */
 export function pieces(d) {
@@ -190,7 +168,7 @@ export class Terrain {
     this.d = d;
     this.game = d.game;
     /** the piece in the jaws */
-    this.hold = { piece: null, grip: 0, ox: 0, oy: 0, oz: 0, blend: 0, bx: 0, by: 0, bz: 0, ax: 0, ay: 1, az: 0, fire: 0, acc: 0, dirt: 0, light: null };
+    this.hold = { piece: null, grip: 0, ox: 0, oy: 0, oz: 0, blend: 0, bx: 0, by: 0, bz: 0, ax: 0, ay: 1, az: 0, fire: 0, acc: 0, dirt: 0, shed: 0, light: null };
     this.shots = [blankShot(0), blankShot(1), blankShot(2)];
     this.pyres = [blankPyre(), blankPyre(), blankPyre()];
     /** the mark before the throw (one move aims at a time) */
@@ -264,6 +242,27 @@ export class Terrain {
       o.drag = 0.4;
       fx._col(EARTH, 1, EARTH_END, 1);
       fx._spawn(fx.alpha, o);
+    }
+    // and it sheds: leaves and bark shaken off along its length (the read at the game camera: the
+    // dark tree in the jaws is the one trailing litter)
+    if (b.h >= BREAK.topple.minH) {
+      h.shed += dt * 26;
+      n = Math.min(3, Math.floor(h.shed));
+      h.shed -= n;
+      while (n-- > 0) {
+        const u = 0.25 + 0.75 * Math.random(), leaf = b.leafy > 0 && u > 0.45;
+        const o = fx._rec(h.bx + h.ax * b.h * u + rand(-0.5, 0.5), h.by + h.ay * b.h * u + rand(-0.3, 0.3), h.bz + h.az * b.h * u + rand(-0.5, 0.5), rand(0.6, 1.1), rand(0.3, 0.44), 0.12, leaf ? LEAVES : b.M?.chips ?? GRIT);
+        o.vx = rand(-0.8, 0.8);
+        o.vy = rand(-0.6, 0.8);
+        o.vz = rand(-0.8, 0.8);
+        o.gravity = leaf ? -3.5 : -11;
+        o.drag = leaf ? 1.4 : 0.5;
+        o.spin = rand(-5, 5);
+        o.rot = rand(0, 6.283);
+        if (leaf) fx._col(LEAF, 1.5, LEAF_END, 1);
+        else fx._col(b.M?.color ?? PALE_DIM, 1.3, b.M?.colorEnd ?? PALE_DIM, 1);
+        fx._spawn(fx.alpha, o);
+      }
     }
   }
 
@@ -498,85 +497,18 @@ export class Terrain {
   _disc(st, dt, x, z, r, k, hot) {
     const fx = this.d.fx;
     const life = fx.holdLife(st, dt);
-    if (MARK.style === 'heat') {
-      fx.heatDisc(life, st, dt, x, z, r, k, hot, st.seed);
-      return;
-    }
-    // 'dust': pale grit shaken loose over the footprint, thicker as the piece comes; its edge in
-    // the last flashLead s; grit hopping once it is close
-    if (!(r > 0) || !Number.isFinite(x + z)) return;
-    k = clamp(k, 0, 1);
-    const pool = fx.add;
-    if (life && pool) {
-      const area = Math.PI * r * r;
-      const n = Math.max(10, Math.min(170, Math.round(area / 0.6)));
-      const sp = Math.sqrt(area / n);
-      const dens = 0.3 + 0.7 * k, t = this.game.time ?? 0;
-      const o = fx._rec(x, 0.14, z, life, 0.4, 0.4, '.');
-      for (let i = 0; i < n; i++) {
-        const h1 = hash01(st.seed, i);
-        if (h1 > dens) continue;
-        const h2 = hash01(st.seed + 1.37, i), h3 = hash01(st.seed + 2.71, i);
-        const u = Math.sqrt((i + 0.5) / n), a = st.seed + i * GOLDEN;
-        const rr = Math.min(r * 0.97, r * u + (h2 - 0.5) * sp * 0.45);
-        o.x = x + Math.cos(a) * rr;
-        o.z = z + Math.sin(a) * rr;
-        const fl = 0.7 + 0.3 * Math.sin(t * (2 + 3 * h2) + 6.283 * h3);
-        fx._col(PALE, (0.25 + 0.75 * k) * fl, PALE, (0.25 + 0.75 * k) * fl);
-        o.alpha = o.alphaEnd = 0.3 + 0.5 * k;
-        o.glyph = GRIT[(h3 * 4) | 0];
-        pool.spawn(o);
-      }
-      if (hot) {
-        const m = Math.max(16, Math.min(150, Math.round((Math.PI * 2 * r) / 0.55)));
-        o.glyph = '·';
-        o.size = o.sizeEnd = 0.5;
-        o.alpha = o.alphaEnd = 0.95;
-        fx._col(PALE, 1.5, PALE, 1.5);
-        for (let i = 0; i < m; i++) {
-          const a = st.seed + (i / m) * Math.PI * 2;
-          o.x = x + Math.cos(a) * r;
-          o.z = z + Math.sin(a) * r;
-          pool.spawn(o);
-        }
-      }
-    }
-    if (k > 0.55) {
-      st.acc4 = (st.acc4 || 0) + dt * 26 * ((k - 0.55) / 0.45);
-      let m = Math.min(5, Math.floor(st.acc4));
-      st.acc4 -= m;
-      while (m-- > 0) {
-        const a = Math.random() * 6.283, rr = r * Math.sqrt(Math.random());
-        const o = fx._rec(x + Math.cos(a) * rr, 0.15, z + Math.sin(a) * rr, rand(0.3, 0.5), rand(0.2, 0.3), 0.08, GRIT);
-        o.vy = rand(1.2, 2.6);
-        o.gravity = -9;
-        fx._col(PALE, 1, PALE_DIM, 1);
-        fx._spawn(fx.add, o);
-      }
-    }
+    // the ground heats up over the footprint, as under every other blow from above (ADR-052)
+    fx.heatDisc(life, st, dt, x, z, r, k, hot, st.seed);
   }
 
   _band(st, dt, ax, az, dx, dz, s0, s1, hw, k, hot) {
     const fx = this.d.fx;
-    fx.heatBand(fx.holdLife(st, dt), st, dt, ax, az, dx, dz, s0, s1, hw, k, hot, st.seed, -1, s1, MARK.style === 'heat');
+    fx.heatBand(fx.holdLife(st, dt), st, dt, ax, az, dx, dz, s0, s1, hw, k, hot, st.seed);
   }
 
   /** The flash of a landing (combat:flash): its mark flares. */
   _pulse(x, z, r) {
-    const fx = this.d.fx;
-    if (MARK.style === 'heat') {
-      fx.heatFlare(x, z, r);
-      return;
-    }
-    const n = Math.max(14, Math.min(40, Math.round((Math.PI * 2 * r) / 0.9)));
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2;
-      const o = fx._rec(x + Math.cos(a) * r, 0.25, z + Math.sin(a) * r, rand(0.25, 0.42), 0.5, 0.15, GRIT);
-      o.vy = rand(2, 4.5);
-      o.drag = 3;
-      fx._col(PALE, 1.6, PALE_DIM, 1);
-      fx._spawn(fx.add, o);
-    }
+    this.d.fx.heatFlare(x, z, r);
   }
 
   /** The piece the wyrm has chosen sheds dust and grit before it is taken. */
@@ -603,14 +535,14 @@ export class Terrain {
   /** Flames along a trunk: its foot at (bx, by, bz), its axis (ax, ay, az); k 0..1 = how much of it burns. */
   _flames(st, dt, bx, by, bz, ax, ay, az, b, k) {
     const fx = this.d.fx;
-    st.acc += dt * (30 + b.h * 16) * k;
-    let n = Math.min(14, Math.floor(st.acc));
+    st.acc += dt * (70 + b.h * 34) * k;
+    let n = Math.min(22, Math.floor(st.acc));
     st.acc -= n;
     const wide = b.leafy > 0 ? b.r * 2.6 : b.r * 1.1;
     while (n-- > 0) {
       const u = Math.random() * k, hot = Math.random();
       const rr = (u > 0.45 ? wide : b.r) * Math.sqrt(Math.random()), a = Math.random() * 6.283;
-      const o = fx._rec(bx + ax * b.h * u + Math.cos(a) * rr, by + ay * b.h * u + rand(-0.2, 0.2), bz + az * b.h * u + Math.sin(a) * rr, rand(0.35, 0.7), 0.5 + hot * 0.45, 0.08, FLAMES);
+      const o = fx._rec(bx + ax * b.h * u + Math.cos(a) * rr, by + ay * b.h * u + rand(-0.2, 0.2), bz + az * b.h * u + Math.sin(a) * rr, rand(0.35, 0.7), 0.7 + hot * 0.6, 0.1, FLAMES);
       o.vx = rand(-0.5, 0.5);
       o.vy = rand(1.4, 3.4);
       o.vz = rand(-0.5, 0.5);

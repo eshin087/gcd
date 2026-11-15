@@ -11,7 +11,7 @@
 
 import { TELL } from '../../combat/rules.js';
 
-/** What the jaws and the tail can reach, and how a landing is marked. */
+/** What the jaws and the tail can reach. A landing is marked as every footprint is: the ground heats up (ADR-052). */
 export const TERRAIN = {
   jaws: {
     // the jaws close on a piece this far ahead of the root (3.3 .. 5.2 model units x SCALE 1.875:
@@ -30,9 +30,6 @@ export const TERRAIN = {
     body: 5.2, // the line it flies must pass this far from the root (it is not batted through the wyrm)
     cos: 0.3, // the tail's travel at the piece and the line to the hero: at least this cosine apart
   },
-  // how a landing spot is marked (ADR-052: the ground heats up, as under every other footprint).
-  // 'dust' is the option filmed beside it for the owner's pick: `?mark=dust` (TEMPORARY)
-  mark: 'heat',
   // the piece the wyrm has chosen stirs before it is taken: dust and grit off it, per second
   stir: 26,
 };
