@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../../core/math.js';
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
-import { CARRIES, DEFAULT_CARRY, RELAX, getCarry, carryScratch, carryInto } from './carry.js';
+import { CARRIES, DEFAULT_CARRY, RELAX, OPEN_RELAX, getCarry, carryScratch, carryInto } from './carry.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -3093,6 +3093,7 @@ const ELBOW_FREE = new Set(['parry', 'flurry', 'plunge', 'lock', 'ghostep']);
 const ARM_OFF = new Float32Array(VIA_CH.length + 2);
 const ARM_OFF_MAX = [0.1, 0.6]; // m (the hand), rad (the blade)
 const CARRY_SWITCH = 0.4;
+const OWN_VAR = 10; // (atkVar of a carry's own look, carry.js `open`: 10 + its index)
 const carryDir = (o, ax, ay, az, bx, by, bz, t) => dirLerp(o, 0, ax, ay, az, bx, by, bz, t);
 const READY_K = carryInto(carryScratch(), CARRIES.hip, 1, carryDir); // the ready hold, as a blended carry
 
@@ -3933,6 +3934,19 @@ export class HeroAnimator {
     const list = def?.variants;
     const lineOf = (an) => (an?.kind === 'clip' ? SWINGS[an.clip]?.line ?? null : null);
     const prev = def && def.combo > 1 ? this.lastLine : null; // (a chain's first hit follows nothing)
+    // the hero's first blow out of a carry that has its own looks for it (carry.js `open`), relaxed in
+    // it: one of those (never the same twice running when there are more), not a generic one
+    const own = this.freeHand && def && def.combo === 1 && !Number.isInteger(this.forceVariant) && this.relax >= OPEN_RELAX ? this.carry?.open?.[def.name] : null;
+    if (own?.length) {
+      const n = own.length, last = this.varLast[def.name] ?? -1;
+      let k = n > 1 ? Math.floor(this.noise() * n) : 0;
+      if (n > 1 && OWN_VAR + k === last) k = (k + 1) % n;
+      this.varLast[def.name] = OWN_VAR + k;
+      this.atkVar = OWN_VAR + k;
+      this.atkAnim = own[k];
+      this.lastLine = lineOf(this.atkAnim);
+      return;
+    }
     let k = 0;
     if (def && Array.isArray(list) && list.length) {
       const n = list.length + 1;

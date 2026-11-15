@@ -414,4 +414,64 @@ export const SWINGS = {
       { u: 2.4, h: [0.38, 0.05, 0.08], a: [118, 30], by: -0.16, hip: 0.39, sy: 0.45, sx: 0.14, fh: 'tail' },
     ],
   },
+
+  // ---- the carries' own first looks (carry.js `open`: a carry the generic looks do not feed) ---
+  /** The point's rising cut (垂剑 → 撩): out of the point lowered (carry `point`) the blade is already
+   *  low before his right hip, where the rising slash's cut passes: a small dip of the point, then
+   *  the rising slash from there up across his front to high left (its contact and finish keys).
+   *  (Every generic look of hit 1 coils behind his right hip: out of the point the windup swung the
+   *  blade 76° back in five frames at 24 m/s and reversed at the coil, 142° in a frame.) */
+  pointRise: {
+    line: 'left',
+    fy: [0.3, -0.6],
+    keys: [
+      { u: 0.6, by: -0.31, bz: -0.08, bx: -0.06, hip: -0.44, sy: -0.5, sx: 0.42 },
+      { u: 1.0, h: [-0.17, -0.42, 0.04], a: [-62, -42], by: -0.27, bz: -0.06, bx: -0.05, hip: -0.36, sy: -0.44, sx: 0.36, fh: 'chest' },
+      { u: 1.25, h: [-0.01, -0.3, 0.3], a: [-50, -24] },
+      { u: 1.5, h: [0.14, -0.12, 0.46], a: [-30, -6], by: -0.15, bz: 0.08, bx: 0.01, hip: 0.14, sy: 0.02, sx: 0.24, l: [0.16, -0.34, 0.06], lp: [0.6, -0.6, -0.4], ld: [100, -50], pn: [-1, 0, 0], lk: 0 },
+      { u: 1.75, h: [0.3, 0.08, 0.38], a: [32, 22] },
+      { u: 2.0, h: [0.38, 0.2, 0.22], a: [72, 44], by: -0.1, bz: 0.11, bx: 0.05, hip: 0.34, sy: 0.38, sx: 0.02, sz: -0.05, fh: 'tail', l: [0.24, -0.42, -0.3] },
+      { u: 2.15, by: -0.08, bz: 0.12, bx: 0.06, hip: 0.44, sy: 0.5, sx: -0.05 },
+      { u: 2.4, h: [0.4, 0.26, 0.08], a: [116, 40], by: -0.08, bz: 0.08, bx: 0.04, hip: 0.41, sy: 0.45, sx: -0.03, fh: 'tail' },
+    ],
+  },
+  /** The reverse grip's falling cut (背剑, carry `back`): the blade stands up behind the sword arm;
+   *  the hand rises a little before his ribs (not to the shoulder) as the steel tips from upright into
+   *  a high cock over his right side, then falls forward into the falling cut's diagonal (its contact
+   *  and finish keys): the windup runs the way the cut goes, no swing back and forth. (Out of the reverse grip the
+   *  falling cut's own cock at the shoulder lifted the hand 0.55 m and folded the elbow 118° in six
+   *  frames, the hand at 10 m/s, and the cut turned off it 63-70° in a frame.) */
+  backFall: {
+    line: 'right',
+    cut: [0.03, 0.07],
+    lF: [0.15, 0.48], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
+    keys: [
+      { u: 0.6, by: -0.04, bz: -0.09, bx: -0.06, hip: -0.44, sy: -0.5, sx: -0.1 },
+      { u: 1.0, h: [-0.12, -0.3, 0.14], a: [-116, 54], by: -0.08, bz: -0.07, bx: -0.05, hip: -0.36, sy: -0.44, sx: -0.04, sz: 0.05, fh: 'aim' },
+      { u: 1.25, h: [-0.02, -0.11, 0.3], a: [-74, 30] },
+      { u: 1.5, h: [0.14, -0.05, 0.46], a: [-30, 12], by: -0.21, bz: 0.09, bx: 0.01, hip: 0.18, sy: 0.0, sx: 0.3, sz: 0.0, l: [0.26, -0.06, 0.06], lp: [0.45, -0.85, -0.3], ld: [70, 15], pn: [-0.3, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.25, -0.22, 0.41], a: [30, -16] },
+      { u: 2.0, h: [0.31, -0.33, 0.3], a: [72, -34], by: -0.28, bz: 0.13, bx: 0.05, hip: 0.38, sy: 0.4, sx: 0.42, sz: -0.07, fh: 'highWing', l: [0.32, 0.01, -0.22] },
+      { u: 2.15, by: -0.3, bz: 0.15, bx: 0.06, hip: 0.48, sy: 0.54, sx: 0.47 },
+      { u: 2.4, h: [0.34, -0.36, 0.16], a: [116, -28], by: -0.25, bz: 0.1, bx: 0.04, hip: 0.43, sy: 0.47, sx: 0.38, sz: -0.06, fh: 'highWing' },
+    ],
+  },
+  /** The falling sprint slash (背剑, carry `back`): on the run the reverse grip holds the blade up
+   *  behind the sword arm; the hand rises to the chest as the blade lowers into a high cock (backFall's),
+   *  then the falling cut's diagonal down across his front with the sprint's lean. (The rising
+   *  sprint slash coils low behind his hip: out of the raised blade it swung the steel 100° down in
+   *  six frames at 27 m/s and then, wound up from that far, cut at 51 m/s.) */
+  sprintFall: {
+    line: 'right',
+    cut: [0.03, 0.07],
+    keys: [
+      { u: 1.0, h: [-0.12, -0.3, 0.14], a: [-116, 54], by: -0.16, hip: -0.32, sy: -0.42, sx: 0.1, fh: 'tail', l: [0.2, -0.36, -0.2] },
+      { u: 1.25, h: [-0.02, -0.11, 0.3], a: [-74, 30] },
+      { u: 1.5, h: [0.14, -0.05, 0.47], a: [-30, 10], by: -0.2, bz: 0.05, hip: 0.1, sy: 0.0, sx: 0.3, fh: 'tail', l: [0.22, -0.42, -0.22] },
+      { u: 1.75, h: [0.26, -0.22, 0.41], a: [30, -16] },
+      { u: 2.0, h: [0.32, -0.33, 0.28], a: [72, -32], by: -0.24, bz: 0.05, hip: 0.32, sy: 0.36, sx: 0.4, fh: 'highWing', l: [0.32, 0.01, -0.22] },
+      { u: 2.12, by: -0.26, hip: 0.39, sy: 0.45, sx: 0.44 },
+      { u: 2.35, h: [0.34, -0.36, 0.14], a: [116, -28], by: -0.22, hip: 0.36, sy: 0.42, sx: 0.36, fh: 'highWing' },
+    ],
+  },
 };

@@ -4691,9 +4691,10 @@ async function scenarioHeroWeight() {
     const bad = [];
     const has = (k, f) => k[f] != null;
     const nohand = (k) => !has(k, 'h') && !has(k, 'a');
-    for (const name of [...L10, 'sprintSlash']) {
+    // (and the carries' own first looks, carry.js `open`; a sprint slash keys no anticipation: it runs into it)
+    for (const name of [...L10, 'sprintSlash', 'pointRise', 'backFall', 'sprintFall']) {
       const C = SWINGS[name], ks = C.keys;
-      if (name !== 'sprintSlash') {
+      if (name !== 'sprintSlash' && name !== 'sprintFall') {
         const coil = ks.find((k) => k.u >= 0.9 && k.u <= 1 && has(k, 'hip')), ant = ks.find((k) => k.u >= 0.5 && k.u <= 0.8 && has(k, 'hip') && nohand(k));
         const toward = [...ks].filter((k) => k.u <= 2 && has(k, 'hip')).pop();
         const sg = -Math.sign(toward.hip - coil.hip);
@@ -5708,11 +5709,15 @@ async function scenarioHeroCarry() {
     assert(worst < BOUND.pen && revLeft < 0.05,
       `${id}: from the carry the first light (3 looks), the sprint slash, the roll, the roll cut, the guard, the charge, a drink, a hit and a fall keep the steel out of him (deepest ${(worst * 100).toFixed(1)} cm < 2: ${worstAt}); the reverse grip is let go by the end of the windup (${revLeft.toFixed(2)} left in a strike)`);
     // (the way in against today's hold: the blade's turn ≤ hip's + 3° or BOUND.turn; the elbow ≤ hip's
-    // or BOUND.elbRate (a cut's windup: BOUND.elbCut, anim.js ELBOW_FLEX), + 1°)
+    // or BOUND.elbRate (a cut's windup: BOUND.elbCut, anim.js ELBOW_FLEX), + 1°. The falling cut forced
+    // out of a carry (look 0; the picker opens with it from none of them): ≤ main's hip (e09a3b1,
+    // ELBOW_MAIN), as this check was made against; the flow's own hip eases its windup in and folds
+    // 26°, while from a straight arm the shoulder cock folds the elbow ~115° in the 0.11 s windup)
     const CUTS = /^light|^sprint slash$|^roll cut$|^charge$/;
+    const ELBOW_MAIN = { 'light 0': 38.9 };
     const badIn = Object.entries(per).filter(([k, E]) => {
       const H = HIPD[k];
-      return H && (E.turnIn > Math.max(H.turnIn + 3, BOUND.turn) || E.elbIn > Math.max(H.elbIn, CUTS.test(k) ? BOUND.elbCut : BOUND.elbRate) + 1);
+      return H && (E.turnIn > Math.max(H.turnIn + 3, BOUND.turn) || E.elbIn > Math.max(H.elbIn, ELBOW_MAIN[k] ?? 0, CUTS.test(k) ? BOUND.elbCut : BOUND.elbRate) + 1);
     }).map(([k, E]) => `${k} ${E.turnIn.toFixed(1)}°/${E.elbIn.toFixed(1)}° (hip ${HIPD[k].turnIn.toFixed(1)}°/${HIPD[k].elbIn.toFixed(1)}°)`);
     assert(!badIn.length, `${id}: on the way into each action the blade turns and the sword elbow folds no faster than from today's hold (hip: the turn + 3° or ${BOUND.turn}°, the elbow + 1° or ${BOUND.elbRate}°, ${BOUND.elbCut}° in a cut's windup)${badIn.length ? ': ' + badIn.join(', ') : ''}`);
     if (id !== 'hip') {
@@ -7776,6 +7781,40 @@ async function scenarioHeroFlow() {
       }
     }
     out(`   the cut lands (attack clock, s; at 0.3 / 1.8 m from the chest): ${Object.keys(landed).filter((n) => n.endsWith('@0.3')).map((n) => { const c = n.split('@')[0]; return `${c} ${landed[n]?.toFixed(3) ?? 'miss'}/${landed[`${c}@1.8`]?.toFixed(3) ?? 'miss'}`; }).join(' · ')}`);
+    // … and the carries' own first looks (carry.js `open`), swung the same way from a fresh game
+    // wearing the carry, the sprint slash against the generic one swung out of today's hold
+    const { CARRIES: CA } = await imp('src/entities/player/carry.js');
+    const { SPRINT_ATK } = await imp('src/entities/player/combat.js');
+    const swingAt = (carry, atk, gap) => {
+      const G2 = build({ heroCarry: carry });
+      fightSetup(G2);
+      const g2 = G2.game, d = g2.dragon, p2 = g2.player, A2 = p2.anim, in2 = G2.input;
+      p2.debug.god = true;
+      settle(G2);
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      p2.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+      p2.yaw = Math.atan2(c.x - p2.position.x, c.z - p2.position.z);
+      p2.debug.heal();
+      aimAt(G2);
+      let at = null;
+      G2.watch = (n) => { if (n === 'player:hitDragon' && at === null && p2.atk) at = p2.atk.hitAt >= 0 ? p2.atk.hitAt : p2.atk.t; };
+      if (atk === LIGHT[0].name) in2.click(0);
+      else p2._startAttack(SPRINT_ATK);
+      for (let i = 0; i < 50 && at === null; i++) G2.tick(DT);
+      G2.watch = null;
+      return { at, clip: A2.atkAnim?.clip };
+    };
+    for (const [id, C] of Object.entries(CA)) {
+      for (const atk of Object.keys(C.open ?? {})) {
+        for (const gap of [0.3, 1.8]) {
+          const S = swingAt(id, atk, gap);
+          landed[`${S.clip}@${gap}`] = S.at;
+          if (atk === SPRINT_ATK.name) landed[`sprintSlash@${gap}`] = swingAt('hip', atk, gap).at;
+        }
+      }
+    }
+    out(`   the carries' own looks land (0.3 / 1.8 m): ${['pointRise', 'backFall', 'sprintFall', 'sprintSlash'].map((c) => `${c} ${landed[`${c}@0.3`]?.toFixed(3) ?? 'miss'}/${landed[`${c}@1.8`]?.toFixed(3) ?? 'miss'}`).join(' · ')}`);
   }
   // ---- the acceptance (Track FLOW; main e09a3b1's numbers in brackets)
   const forced = chains.filter((C) => /^(chain|mash)\d$/.test(C.R.tag));

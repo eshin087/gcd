@@ -36,6 +36,16 @@
 //           ready hold, so a way home that found the ready hold overshot the carry and came back; it
 //           relaxes within the way home (0.2 s), the way home arriving at the carry itself (with a
 //           few degrees of overshoot and return)
+//   open    (optional) the first blow's look out of this carry, per attack (combat.js name → anim
+//           blocks, `{ kind: 'clip', clip }` plus its options): a chain's first hit or the sprint
+//           slash started while he stands relaxed in the carry (anim.relax ≥ OPEN_RELAX) plays one of
+//           these, not the generic picks (anim.js _pickVariant: those choose by the nearest coil, and
+//           every look of hit 1 coils at his right side, cocked or behind the hip). Each look is
+//           shaped for where the carry holds the blade: a short wind, never a swing back and forth
+//   settle  (optional) s: the way home after the last blow (anim.js SW_SETTLE, 0.35): a carry far round
+//           from the cuts' finishes takes longer, so the way home is a settle, not a second cut
+//   dip     (optional) rad: on that way home the point drops this much at mid-way as the blade comes
+//           across his front (a relaxed arm lets it fall): a shorter path round to a low carry
 //   rest    the idle hold: h the sword hand (an offset from the sword shoulder, DIM.gripShoulder),
 //           rp the sword elbow's pole, d the blade, f the flat's normal; hBr / dBr: × the breath
 //           (sin, 2.4 s), dSw: × the slow weight sway; free (optional): the free hand's own rest
@@ -111,6 +121,15 @@ export const CARRIES = Object.freeze({
     // straight from the ready hold it swung out level at hip height, a bar off his right side from
     // the camera behind him)
     way: v(0.554, 0.259, 0.791),
+    // (a falling cut from a high cock over his right side, swings.js backFall / sprintFall: the hand
+    // rises to the chest as the upright steel lowers into it. The draw cut the picker also allowed
+    // swung the steel 80° down beside the leg and cut at 45 m/s; the falling cut's own cock at the
+    // shoulder lifted the hand 0.55 m in six frames; the rising sprint slash coils low behind the hip:
+    // 100° down at 27 m/s, then a 51 m/s cut)
+    open: Object.freeze({
+      fallingCut: Object.freeze([Object.freeze({ kind: 'clip', clip: 'backFall' })]),
+      sprintSlash: Object.freeze([Object.freeze({ kind: 'clip', clip: 'sprintFall', feet: 'dash' })]),
+    }),
     rest: Object.freeze({
       h: v(-0.09, -0.55, 0.15), hBr: v(0, 0.006, 0), rp: v(-0.5, 0, -1), d: v(-0.27, 0.95, -0.15), dBr: v(0, 0, -0.01), dSw: v(-0.008, 0, 0), f: v(0, 0.15, 0.99),
       free: Object.freeze({ l: v(-0.18, -0.38, 0.17), lp: v(0.6, -0.7, -0.3), ld: v(-80, -15), pn: v(0, -0.3, -1) }),
@@ -136,6 +155,11 @@ export const CARRIES = Object.freeze({
     rev: 0,
     armFade: 0.1,
     relax: Object.freeze({ lead: 0.15, drop: 0.15, dur: 0.2 }),
+    // (the point's own rising cut, swings.js pointRise: every generic look of hit 1 coils behind his
+    // right hip, a swing of the blade back from before him and a reversal at the coil)
+    open: Object.freeze({
+      fallingCut: Object.freeze([Object.freeze({ kind: 'clip', clip: 'pointRise', hop: 0.12 })]),
+    }),
     rest: Object.freeze({
       h: v(-0.15, -0.46, 0.12), hBr: v(0, 0.006, 0.003), rp: v(-0.3, -0.4, -1), d: v(-0.492, -0.643, 0.587), dBr: v(0, 0.01, 0), dSw: v(0.01, 0, 0), f: v(-0.766, 0.0, -0.642),
       free: Object.freeze({ l: v(0.04, -0.44, 0.15), lp: v(0.36, -0.2, -0.9), ld: v(0, -40), pn: v(-0.35, -0.6, -0.72) }),
@@ -158,6 +182,9 @@ export const READY_CARRY = HIP;
  *  action ends, or `lead` s before the last blow of a chain ends (inside its way home: no next blow
  *  buffered). */
 export const RELAX = Object.freeze({ lead: 0.15, drop: 0.15, dur: 0.5 });
+/** How far into the carry he must have relaxed (anim.relax) for a first blow to play the carry's own
+ *  look (`open`): out of a fight's way home the blade is nearer the generic coils. */
+export const OPEN_RELAX = 0.6;
 
 /** The carry registered under `id`, or null. */
 export const getCarry = (id) => (typeof id === 'string' && Object.hasOwn(CARRIES, id) ? CARRIES[id] : null);

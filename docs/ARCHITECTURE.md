@@ -870,7 +870,14 @@ the pick (tests). The hero's chain OPENS (def `combo` 1) with a look its carry f
 whose coil lies within `SW_PICK_NEAR` (0.3 m) of the nearest coil to the sword as it stands
 (`SW_DIST`, `swingWind`: the sword hand's way there plus the point's arc), then the rules above (a
 repeat only when nothing else is near): out of the low carry the draw cut or the rising slash, out
-of the cross guard, the shoulder rest or the blade raised before him the falling cut. The blade is still the hit test, so each look is swung at the wyrm in REACH.
+of the cross guard, the shoulder rest or the blade raised before him the falling cut. A carry with
+its own looks for that attack (carry.js `open`: the attack's name → anim blocks) overrides this for a
+first blow (combo 1, the chain's or the sprint slash) while he stands relaxed in it (`anim.relax` ≥
+`OPEN_RELAX`, carry.js; not with `forceVariant` set): one of those, never the same twice running when
+there are more, `atkVar` = `OWN_VAR` (10) + its index; `back` opens with `backFall` and sprints into
+`sprintFall`, `point` opens with `pointRise` (swings.js, the carries' own looks: each keys its own
+coil where the carry holds the blade and the contact and finish of the look it stands in for, so the
+hit lands when that look's does; HEROFLOW swings them at the wyrm). The blade is still the hit test, so each look is swung at the wyrm in REACH.
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
@@ -906,13 +913,13 @@ loco sword arm come from his carry, below.) An attack's recovery brings a blade 
 over his left shoulder home round the front (`HOME_WAY` in `attackPose`).
 **The carries** (`player/carry.js`; 2026-11-15, the owner: "the way the character holds the sword
 when not attacking needs to be changed"): how the hero holds the sword at rest and on the move.
-`CARRIES` = id → `{ id, name, what, rev, via?, armFade?, way?, relax?, rest, run, sprint, back, swing, bob, dBob }` (body axes;
+`CARRIES` = id → `{ id, name, what, rev, via?, armFade?, way?, relax?, open?, settle?, dip?, rest, run, sprint, back, swing, bob, dBob }` (body axes; `open` the first blow's own looks, `settle` / `dip` the way home's length and the point's drop on it: see the swings above;
 `rest` = { h, hBr, rp, d, dBr, dSw, f, free? }: the sword hand's offset, its breath, the elbow's pole,
 the blade, its breath and sway, the flat, the free hand's own rest `{ l, lp, ld: [az, el] deg, pn }`;
 `run` / `sprint` / `back` (backpedal) = { h, rp, d, f? }); `CARRY_IDS` (`hip` today's hold, `trail` the
 default: the blade trailing back-down beside the right leg, `back` a reverse grip with the blade up
 behind the sword arm, `point` on guard with the point lowered toward the foe), `DEFAULT_CARRY`,
-`READY_CARRY` (= `hip`), `RELAX` `{ lead, drop, dur }`, `getCarry(id)`, `carryFromSearch(search)`,
+`READY_CARRY` (= `hip`), `RELAX` `{ lead, drop, dur }`, `OPEN_RELAX`, `getCarry(id)`, `carryFromSearch(search)`,
 `carryUrl(id, href)`, `carryScratch()`, `carryInto(out, carry, k, dir)`. The hero's animator
 (`opts.carry`: its id) holds `anim.carry` (the carry worn) and `anim.carryK` (the READY hold blended
 into it by `anim.relax`, 0..1, through `carryInto`; directions by `dirLerp`), which `guard()` (the
