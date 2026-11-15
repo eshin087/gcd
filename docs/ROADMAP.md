@@ -153,6 +153,18 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.32 — Weight on the flurry; one streak; a foe's streak (2026-11-15, `combat/streak-everywhere`, ADR-094)
+- [x] Flash cuts that land: the hero's freeze, the target's reel, clones, ground shock, the last blow's impact frame
+- [x] Parries, deflects, clashes and the mikiri count in the streak
+- [x] The riposte: a parried last blow answered with as many flash cuts as the streak counts
+- [x] Duelists: a streak of guards (pips on the boss bar) and a flurry of that many blows from every side
+- [x] Answer every blow of it (parry or block) and his posture breaks
+- [ ] A human plays it; then the riposte's damage, the foe's thresholds
+- [ ] Follow-ups:
+  - [ ] Film the riposte, the Lord's flurries, the screen cuts; the phone
+  - [ ] Sounds of its own for his flurry (it borrows the gong and the tells)
+  - [ ] An afterimage of the foe where he stood (the Lord has one for his blink)
+
 ## M1.30 — The streak and the flurry (2026-11-14, `player/ghostep-flurry`, ADR-091)
 - [x] A streak of perfect dodges (it ends when a blow hurts); pips, "GHOSTEP ×N", the victory record
 - [x] The flurry: N blows for a streak of N (7 at most): flash cuts whose lines hang, then an art

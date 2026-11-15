@@ -127,7 +127,7 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
 
 ## Contract (summary — full signatures in ARCHITECTURE.md)
 - Attacker → defender: `defender.takeHit({ damage, from, knockback, knockdown, kind, burn, tell,
-  parryable, blockable, attack, attacker, plunge, steel, last })` returns a `RESULT` (`hit` / `blocked` / `clashed` /
+  parryable, blockable, attack, attacker, plunge, steel, last, melee, around })` returns a `RESULT` (`hit` / `blocked` / `clashed` /
   `parried` / `dodged` / `perfectDodge` / `ignored`). `plunge: false` keeps a perfect dodge of that
   hit from becoming the plunge (fire hazards).
 - How the hero takes a hit he does not answer (ADR-083): a **flinch** (0.4 s) gives the way the
@@ -259,10 +259,11 @@ more successful perfect dodges in a streak, make the attack also hit the # of at
 on a streak ... epic anime". Numbers: `DEFENSE.flurry` (`rules.js`), the arts in
 `player/flurry.js` `ARTS`.
 
-**The streak** counts perfect dodges in a row (`player.streak`, the STREAK row of pips under the HP
-bar, "GHOSTEP ×N" over the hero). It ends when a blow **hurts** him (a plain hit, a guard break,
-death). A blocked or parried blow, a plain dodge, a burn's ticks and time leave it alone
-(`keepStreak: 0`; a number there would let it run out).
+**The streak** counts perfect defences in a row (`player.streak`, the STREAK row of pips under the
+HP bar): a perfect dodge, a **parry or deflect** of a blow of the body or the blade (not a deflected
+bullet), a **trade clash** and a mikiri each count one (ADR-094; until then only perfect dodges). It
+ends when a blow **hurts** him (a plain hit, a guard break, death). A blocked blow, a plain dodge, a
+burn's ticks and time leave it alone (`keepStreak: 0`; a number there would let it run out).
 
 **The flurry.** A perfect dodge that can reach its attacker (rule 5) is answered with N blows, N =
 the streak, 7 at most (`max`; the streak itself counts on):
@@ -302,6 +303,43 @@ the streak, 7 at most (`max`; the streak itself counts on):
 - Damage of a whole flurry: 90 + 28 × (N − 1) against the wyrm (118 at two, 258 at seven; the wyrm
   has 4500 HP), 60 + 28 × (N − 1) against a duelist (88 at two, 228 at seven; Shen Hui 3000, a
   form of the Starless Lord 1400).
+
+**Weight** (ADR-094; owner: "add some weight, hitstun impact to the teleport attacks"). Every flash
+cut freezes the hero on the contact (0.065 s), kicks and punches the camera harder with each cut,
+and is followed by a beat (0.09 s) in which the world runs at 60 % instead of 7 %: the target is
+SEEN to reel under it (a duelist is thrown as by a heavy blow and shoved along the cut; the wyrm's
+head flinches) before it is held again. Under a foe on the ground a shock ring races out and dust is
+thrown along the cut. The last blow holds its contact half as long again, freezes the frame (0.16 s),
+throws speed lines across the whole screen, dips the screen dark for a blink and flashes it, breaks
+the ground under a duelist, and **staggers** him (0.8 s: an opening on top of the crit window).
+
+**The riposte** (ADR-094). Parrying the **last** blow of a string, or a single blow, of the body or
+the blade is answered once the parry's own freeze is over: as many flash cuts as the streak counts
+(that parry included; 7 at most), the last of them opening the hanging cuts, and the hero is back
+where he parried, free at once. No art, no crit window, no plunge: the wyrm's recoil and a
+duelist's (the punish window a parried last blow has always given) are still to come, and the world
+was held while he cut. Only when the target is near: its head within 11 m on the ground plan, a
+duelist within 6 m. A blade lock takes precedence (a perfect parry of a `lock` blow). Parries
+inside a string only count. Damage: 28 × N.
+
+### A foe's streak and his flurry (ADR-094, the duelists)
+Owner: "give the streak system and attacks to bosses as well ... if the boss is on a high streak, the
+player needs to parry / block the total # of attacks". Numbers: `DEFENSE.foeStreak`.
+- **His streak** counts the strikes of the hero's that his guard turns, in a row (pips after his
+  name on the boss bar, lit red from three). A strike that lands on him ends it.
+- From a streak of **three**, a guard may answer with **his flurry** instead of the Riposte (50 % at
+  three, 75 % at four, always from five; the strike is then beaten away for certain): Hundred Petals
+  (Shen Hui), Starless Storm (the Lord, one for each blade form). As many cuts as his streak counts,
+  seven at most. The first comes from where he stands (windup 0.62 s); before each of the others
+  (0.48 s apart, each with its white glint) he is **gone and at another side of you**. A parry or a
+  held guard meets them **from any side** (`hit.around`): it is a test of rhythm, not of facing.
+- **Answer every blow** (a parry or a block each; a perfect parry counts two) and **his posture
+  breaks**. Each blow answered takes one off his streak. A blow that lands, or one dodged, breaks
+  nothing, and what was not answered stays in his streak. Every blow is a white tell: all of it can
+  be parried, blocked or dodged; 14 damage a cut (the Lord 13).
+- The parries count in your own streak, and the last one is a last blow parried: the riposte
+  answers it while he breaks.
+- The wyrm has no guard and no streak.
 
 ## Strings and the deflect chain (2026-11-09, ADR-026)
 **Strings** (`attacks.js` `makeString`, data in `tuning.js` `TUNING.attacks[name].hits`): an attack

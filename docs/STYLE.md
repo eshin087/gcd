@@ -402,6 +402,14 @@ section), `player/fx.js` (the plunge).
   particles are depth-tested, and a cut through a head several metres thick would show only where it
   leaves it. Through the flurry the hero keeps a full cold cast, so the dark coat reads against the
   night. Glyphs: `| + * ° ' · A ^ V`.
+  **Weight** (ADR-094): a pass leaves a second afterimage in the middle of its line (a speed
+  clone); under a foe on the ground every cut throws a low shock ring and dust along the cut; the
+  last blow throws **speed lines** across the whole screen (long thin strokes in the screen's own
+  plane, two fans along the cut and against it, gone in a few frames) round a hard white core that
+  lives two frames. The HUD adds a **screen cut**: a line of light across the whole frame on every
+  cut, two crossing on the last blow, and the frame dips dark for a blink before it flashes.
+- **A duelist's flurry** (`duelist/fx.js` `flit`): between two blows a bright ember streak along the
+  way he went, a tall flash where he stood, and where he stands a flash and a ring of sparks.
 - **The deflect chain:** each parry in rhythm clashes bigger and brighter, with a crossed pair of
   sparking streaks from the second one.
 

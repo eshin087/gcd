@@ -26,7 +26,7 @@ const { createThroneHall, HALL } = await imp('src/world/throneHall.js');
 const { Player } = await imp('src/entities/player/player.js');
 const { StarlessLord } = await imp('src/entities/enemies/starlessLord/lord.js');
 const { Duelist } = await imp('src/entities/enemies/duelist/duelist.js');
-const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, TRANSITIONS, realise } = await imp('src/entities/enemies/starlessLord/moves.js');
+const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, STREAKS, TRANSITIONS, realise } = await imp('src/entities/enemies/starlessLord/moves.js');
 const { TUNING } = await imp('src/entities/enemies/starlessLord/tuning.js');
 const { LORD_ITEMS, LORD_LOADOUT, LORD_CAPE, LORD_PANELS } = await imp('src/entities/enemies/starlessLord/gear.js');
 const { Hud } = await imp('src/ui/hud.js');
@@ -52,7 +52,7 @@ const weightIn = (def, f) => (Array.isArray(def.weight) ? def.weight[f - 1] ?? 0
 const formsOf = (name) => {
   const def = MOVES[name];
   if (def.transition) return [def.phase - 1];
-  if (def.counter) return [COUNTERS.indexOf(name) + 1].filter((f) => f > 0);
+  if (def.counter) return [COUNTERS.indexOf(name) + 1, STREAKS.indexOf(name) + 1].filter((f) => f > 0); // (a form's counter / its flurry)
   return [1, 2, 3, 4].filter((f) => weightIn(def, f) > 0);
 };
 
