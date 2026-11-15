@@ -1820,8 +1820,8 @@ a piece and throw it. The rules as the player meets them: COMBAT.md "The world b
 **POWER** is the one scale every blow is put on (0 a touch … 1 fells a tree): 0.12 a quick cut, 0.3 a
 duelist's cut, 0.5 a heavy cut, 0.8 a claw or the hero's charged cleave, 1.0 a tail / slam / thrown
 stone, 1.5 a meteor or a bolt of the Void, 2.5 the dive's crash. A piece loses power x its material's
-factor for that kind of blow (`BREAK.mats[mat].take[kind]`: a cut barely marks stone, a blunt blow or a
-blast bites it); below `BREAK.scratch` it only takes a mark.
+factor for that kind of blow (`BREAK.mats[mat].take[kind]`: a cut bites stone at 0.7, a blunt blow or a
+blast in full); below `BREAK.scratch` it only takes a mark.
 
 **A set's `breakables`** (built in the set builder; `forest.js` and `courtyard.js` are the examples). One entry:
 | field | what |

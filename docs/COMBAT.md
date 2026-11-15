@@ -861,9 +861,10 @@ rings). It all stands again when the fight resets (a death, a rest at the bonfir
   slam 0.6, a full cleave 1.0). A duelist: damage / 40 (a cut 0.3, an overhead 0.6; red x 1.25). The
   wyrm: 0.7 x the striking part's size (a claw 0.77, the charge 1.2), a stomp 1.0, the leap 1.7, a
   meteor 1.5, the dive's crash 2.5. A piece has structure by material and size: a young pine ~0.9, a
-  dead tree ~1.6, a boulder ~1.6, a pillar 1.5 – 3, a standing stone ~3. A cut barely marks stone
-  (x 0.45; a blow worth under 0.1 only leaves a nick): the slam and the charged cleave are blunt blows
-  and bite it in full. Every blow leaves a mark as big as it was hard; a hard one cracks the floor.
+  dead tree ~1.6, a boulder ~1.3, a pillar 1 – 2.4 (the gate's 3.2), a standing stone ~2.3. A cut
+  bites stone less (x 0.7; a blow worth under 0.1 only leaves a nick): the slam and the charged cleave
+  are blunt blows and bite it in full. A duelist cuts a pillar down in about ten blows, three of his
+  heavy ones. Every blow leaves a mark as big as it was hard; a hard one cracks the floor.
 - **Tall pieces fall.** A piece 2.2 m or taller falls the way the blow drove it (the hero's: away
   from him) in about a second, and lands on a strip as long as it is tall. **Under a piece a boss
   felled, the hero takes one red blow** (22 x its weight 0.6 – 1.3, unblockable, knocked down): the
@@ -878,7 +879,7 @@ rings). It all stands again when the fight resets (a death, a rest at the bonfir
   Dark crushes it (3), and the hero behind it is not hit. The great red stone, the returning blade
   and the wall of force go through and strike what they cross. Breath, rings, walls, the nova and
   anything that comes down from the sky are not stopped. Cover is temporary: a standing stone stops
-  about 23 bullets.
+  about 17 bullets.
 - **Fire burns where it lands.** Grass under the breath, a fireball, a meteor, a lava pillar, the
   burning pass or the dive's crash catches. It burns 3.2 – 4.6 s, then it is ash and cannot burn
   again: the field burns down as the fight goes on. Standing in it costs 5 HP every 0.55 s after the
