@@ -2790,8 +2790,9 @@ rotation, and a new API (`burst(piece)` now, or a spin axis on `throwTo`) would 
 **Consequences.** `ATTACKS` has 33 entries. The wyrm's suite builds real `Destructibles` on a
 hand-built set where a scenario asks for it (`build({ terrain })`: TERRAIN and LAB), and the LAB
 scenario restores the pieces before each ability. The lab stage (`world/trainingRoom.js`) lists no
-breakables, so the three moves only cast about there. How a tree is held is the owner's pick of two
-filmed looks (over the shoulder / upright), behind a temporary `?hold=` switch. **Not measured:** how
+breakables, so the three moves only cast about there. How a tree is held was the owner's pick of two
+filmed looks: "A: over shoulder" (swung back, nearly lying along the wyrm, then whipped forward);
+held upright like a club was turned down, and the `?hold=` switch that held it is gone. **Not measured:** how
 often the moves come up on the real clearing in a played fight, what they do to the difficulty, the
 frame time, the phone on a device. The sounds are the existing ones (the bite, the world's tear and
 crash, the swipe whoosh, the breath loop, the explosion): `dragon:spell` carries the three names for

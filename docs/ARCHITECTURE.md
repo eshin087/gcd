@@ -1561,7 +1561,8 @@ wyrm's side is `terrain.js`:
 - Events: `dragon:spell {name}` at the throw / the kindling / the bat; `dragon:bite` at the bite;
   `dragon:breathStart` / `dragon:breathEnd` round the kindling; `dragon:explosion` where a firebrand
   lands; the world's own `world:impact` (`throw`, `crash`).
-- TEMPORARY: `?hold=upright` (`terrainAttacks.js` `HOLD`) films the second way a tree is held.
+- A tree is swung back over the shoulder before the whip (`cock` rad, the owner's pick) and leaves
+  the jaws upright: the world's flight starts every piece upright.
 
 **Melee FX hooks** (`DragonFx`, called by `attacks.js` through optional calls): `clawTrail(wi, toe,
 heavy)` (a claw's burning wake, every active frame of a claw / overhead hit) and `slamBurst(x, z, r)`

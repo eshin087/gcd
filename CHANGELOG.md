@@ -14,8 +14,7 @@ Thirty-seven pieces of work since 0.4.0:
   standing stone, which stops it). **Firebrand** (from phase 2): a tree in its jaws, lit with a
   breath and thrown burning; its wreck burns on for 3.4 s and the grass round it catches. The
   wyrm only does these with a piece in reach, and what it throws is gone until the fight resets.
-  *Dev:* the three are in the Lab's ABILITIES and Training's BOSS MOVES; a temporary
-  `?hold=upright` switch while the way it holds a tree is being chosen.
+  *Dev:* the three are in the Lab's ABILITIES and Training's BOSS MOVES.
 - **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
   which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
   attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory

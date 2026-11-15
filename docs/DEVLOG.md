@@ -25,7 +25,8 @@ from `world/destruction` and rebased onto `main` once PR #44 had merged.
 
 **Shown to the owner:** a sheet of film strips (headless Edge, 1280 x 720, the game camera, lock on):
 the three moves with one line each on what they ask, the hurl at 852 x 393 (`?touch`), and one pick:
-how it holds a tree (A over the shoulder, the default; B upright, `?hold=upright`). No answer yet.
+how it holds a tree (A over the shoulder; B upright). **The owner picked "A: over shoulder"**: the
+upright hold and its temporary `?hold=` switch were removed.
 
 **Decided on the way:** the pale dust mark was dropped after filming (invisible on the night grass);
 the hold "across the jaws" is not offered (the world's flight would snap it upright at the release);
@@ -46,7 +47,7 @@ and nothing bursts a held piece at once (`drop` and `throwTo` take at least 0.25
 and a start angle would allow a flat-spinning trunk and a boulder that stops dead on cover. The
 falling-tree strip is drawn in tell red on the ground, which ADR-052 ruled out for footprints.
 
-**Next:** the owner's pick of the hold, then the switch goes; a played fight on the PR's preview.
+**Next:** a played fight on the PR's preview.
 
 ---
 
