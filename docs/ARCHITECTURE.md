@@ -1476,6 +1476,8 @@ promptEl                             // the prompt's element (touch controls mak
 pauseUi.buttons; titleUi.stageButtons  // the menu buttons in order, for the gamepad's focus
 remapUi                              // the CONTROLS panel (ui/remap.js; see Bindings)
 showTitle() / hideTitle();  showPause(bool);  toggleHelp()
+// the pause menu (ui/screens.js PauseMenu): RESUME · QUALITY · SOUND · CONTROLS · FULLSCREEN /
+// PAD POSITION / PAD SIZE (touch) · QUIT TO TITLE (pressed twice within 3 s → flow.quitToTitle())
 ```
 **Touch layout:** the touch controls add `.ab-touch` to the HUD root (`.ab-root`). Elements with
 `kb-only` are hidden then, `tp-only` ones only show then (title "PRESS ANY KEY" ↔ "TAP TO BEGIN",
@@ -1503,8 +1505,8 @@ death / retry (`ui/tells.js`); flashes with `hazard: true` (meteors, chase pilla
 their red ground rings already warn. Also renders parry / Ghostep / guard-break call-outs, the cyan
 Ghostep edge pulse (a plunge's perfect dodge included), the posture bar, and the crit-window cue.
 **Look (ADR-098): an ASCII overlay with no panels in play.** The player's rows (top left: HP, guard,
-the crit window, the streak, the flasks and the lock label; no name plate) and the boss's (its name
-in spaced capitals, HP with a `|` at each phase gate, posture) are text on the game. Every meter is a
+the crit window, the streak, the flasks and the lock label; no name plate) and the boss's (top
+centre: its name in spaced capitals, HP with a `|` at each phase gate, posture) are text on the game. Every meter is a
 `GlyphBar` (`ui/glyphBar.js`: `set(0..1)` / `snap` / `update(dt)`, `root` takes the state classes,
 `mark(f)`): a run of fill characters, the piece just lost (held `hold` s, then drained) and the empty
 rest, between brackets, written to the DOM only when a run's length changes; anything above zero
@@ -1534,6 +1536,8 @@ three colours.
 ### Flow — `src/game/flow.js` exports `class GameFlow`
 ```
 constructor(game);  update(dt, realDt)
+quitToTitle()              // the pause menu's QUIT TO TITLE: reload the level (game.pickLevel), which opens on the title;
+                           // headless (no location.assign) the state goes to 'title' and the title shows
 cameraOverride: null | { focus: Vector3, weight: 0..1, zoom: meters }   // read by main.js
 debug: { toState(name) }               // Lab: 'explore'|'boss'|'dead'|'victory' with consistent side effects
 cinematic({ x, z, zoom = -9, weight = 0.6, slowmo = 0.3, dur = 0.8, kind }): boolean
@@ -1607,7 +1611,7 @@ open: boolean
 showroom()                 // look-dev preset: fight on, AI off, god mode, hero 7 m in front, camera close
 modelView(opts | null)     // model viewer (below)
 ```
-**Floating toggle** (`.lab-badge.lab-toggle`, top centre, clear of the player frame): shown whenever
+**Floating toggle** (`.lab-badge.lab-toggle`, bottom centre: the boss's rows hold the top centre): shown whenever
 the Lab exists in the page (`?lab`, or opened once) or a Lab cheat is active; a tap / click opens or
 closes the panel (phones have no F1). Closed it reads `LAB` (+ `· god · x0.25 …` while cheats run),
 open `× LAB`. The panel's own `×` and the toggle are 36 px touch targets on coarse pointers / touch.

@@ -5,6 +5,34 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 39: the boss's rows at the top; QUIT TO TITLE; RESUME like the other items
+
+**Owner:** "move the boss hp ui from bottom to top", then "also when you press esc in a level, give
+an option to go back to the title screen. align the resume button to be on the left like the other
+buttons." Branch `ui/boss-bar-top` from `main`.
+
+**Done:**
+- The boss's rows (name, HP, posture, BROKEN) sit at the top centre on every screen (desktop 14 px
+  down, a phone held sideways 6 px; upright they were already under the player's rows). The
+  camera's keep-in-view box trades room accordingly (top 0.78, bottom 0.86 of the frame).
+- The Lab's floating toggle moved to the bottom centre (it covered the boss's name); a phone's
+  pause panel now hangs from the top.
+- Pause menu: **QUIT TO TITLE** as the last item (`flow.quitToTitle()`: the level is reloaded, which
+  opens on the title with the fight reset). It asks once: the first press turns it into "SURE? PRESS
+  AGAIN" for 3 s, reopening the menu disarms it. The pad's menu focus reaches it.
+- **RESUME** reads like the other items: the label on the left, its key on the right.
+- Tests: ASCIIHUD checks RESUME's layout, QUIT TO TITLE's place, its arming and disarming, and the
+  title after the second press (headless: no reload, the flow goes to 'title').
+
+**Verification:** `npm test`, `npm run build`; in a browser, QUIT TO TITLE pressed twice in the pause
+menu reloaded `?level=ash` onto the title screen. Screenshots of the boss's rows on desktop, a phone
+held sideways and upright, and of the pause menu on desktop and phone.
+
+**Not checked / open:** Over the wyrm's bright red body at the top of the frame the boss's rows are harder
+to read: they rely on their halo.
+
+---
+
 ## 2026-11-15 — Session 38: one art design: objects in the dragon's look; landmarks
 
 **Owner:** "all 3 levels need all the background objects like the pillars and structures to look

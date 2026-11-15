@@ -932,6 +932,21 @@ async function scenarioAsciiHud() {
   const wide = hud.bannerUi.block.textContent.split('\n');
   assert(narrow.length === 13 && wide.length === 6, `it stacks on a narrow window and is laid out again when the window changes (${narrow.length} → ${wide.length} rows)`);
   hud.clearBanner(true);
+  // the pause menu: RESUME's label on the left (the key chip its value), QUIT TO TITLE asks once more
+  game.flow.debug.toState('boss');
+  G.tick(DT);
+  game.flow.pause(true);
+  const pm = hud.pauseUi, resumeBtn = pm.buttons[0];
+  assert(game.state === 'paused' && resumeBtn.children[0]?.textContent === 'RESUME' && resumeBtn.children[1]?.classList.contains('v'), 'RESUME is laid out like the other items (label left, key right)');
+  assert(pm.buttons.includes(pm.btnQuit) && pm.buttons.at(-1) === pm.btnQuit, 'QUIT TO TITLE is the last item and the pad can focus it');
+  pm.btnQuit.click();
+  assert(game.state === 'paused' && pm.btnQuit.classList.contains('confirm') && pm.quitVal.textContent !== '›', 'one press arms it: still paused');
+  pm.show(true);
+  assert(!pm.btnQuit.classList.contains('confirm') && pm.quitVal.textContent === '›', 'reopening the menu disarms it');
+  pm.btnQuit.click();
+  pm.btnQuit.click();
+  G.tick(DT);
+  assert(game.state === 'title' && !pm.on, `a second press goes to the title screen (${game.state})`);
   p.respawn();
   return G;
 }
