@@ -5,6 +5,76 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 51: the hero's stance: at ease, and a fencer's guard in a fight
+
+**Owner:** "review the current character posture, angle of the right hand sword when the character
+is not attacking. i want the characters hands to have some kind of cool looking idle motion/stance
+where it looks natural and cool. something about the current idle animation is bothering me. ask me
+questions to help you and come up with 3 different variations for me to review and approve on a
+final one". Branch `player/idle-stance` from `main`, in its own worktree.
+
+**Measured first** (the stance as it shipped, filmed at the game camera from four sides and close
+up): the blade 52° down and 79° out from his front, 27° out of line with the forearm, from an elbow
+tucked at the ribs; both hands beside the hips at 0.95 and 0.92 m; over a 2.4 s breath the hands
+travelled 1-3 cm, under half a pixel at the game camera; no idle action ever while locked on.
+
+**Asked, answered:** what is off (ticked: the stiff bent wrist, arms that hang like a mannequin's,
+a statue; not ticked: "the sword sticks out sideways"); the three options to span three attitudes;
+two stances (exploring / locked on); "alive, not busy".
+
+**Rendered for the pick:** three styles behind a temporary `?idle=a|b|c` switch and a Lab row, each
+an explore pose, a fight pose and its motion: A "At ease" (a hand on the belt, the blade down the
+arm's line; a fencer's guard), B "Coiled" (both hands on the grip, low; a deep middle guard), C
+"Hidden blade" (the sword reversed behind the arm, a sword-finger seal; the fingers at the foe).
+Sent: one overview sheet, and per style a detail sheet and a 6 s loop (close up and at the game
+camera). The owner picked **A**, the motion "about right", and the fight stance for "lock-on or
+boss fight". B, C, the switch and the reversed grip's wrist range are gone.
+
+**Done** (ADR-114):
+- `stances.js`: `atEase` and `fencerGuard`, the free hand on the belt in both (`BELT`), the life in
+  them (`STAND_LIFE`). `anim.js stand()` writes them over `guard()` for the hero's animator only;
+  `loco()` and an attack's way home use it. `guard()` stays the base of every other clip and of a
+  duelist's footwork.
+- `HeroAnimator.fightW`: the guard while locked on or in `bossIntro` / `boss`; up in 0.38 s, down
+  over 0.88 s. Idle actions play at ease only.
+- A transition audit against `main` (13 transitions, the fastest frame of six points) found and
+  fixed: in a fight he now keeps the guard up on the move (trailed, the point swung 16-18 cm a frame
+  at every start and stop; 2.6-3.1 now, under the old stance's 4.6-11.4); a roll and a backstep
+  ease the sword arm out of the guard (the point moved 173 / 118 cm a frame inside the cross-fade;
+  46 / 22 now); the blade settles into the stance over 0.24 s on the way back.
+- Found at the game camera: two fight blades stood edge-on to the camera behind him and vanished
+  (the flat is up now), and pointed straight ahead they stood behind his own head (they point a
+  little out to the sword side).
+- Found by the tests: the fingertips of the hand on the belt 2.7-3.8 cm in the hip, and the palm
+  hovering 9 cm off the waist (it is 2.7-3.2 cm off it now and turns with each stance's chest); the
+  hips whipped 16.8° in a light's first frame out of the guard (half of the turn moved to the
+  waist); the guard's sword elbow 0.52 out to the side (0.23); the front foot did not turn with a
+  light's pivot (its toes are out like the swings' own stance).
+- The Lab: PLAYER → stance (auto / at ease / fight; `player.debug.fightStance`).
+- Tests: `herostance` (16 checks: the rule, the wrist, the hand on the waist, the flat to the
+  camera, the life, the transitions, `guard()` untouched for a duelist). Seven checks that
+  described the old stance rewritten (the free hand at rest, the arms at rest, the idle breath, the
+  idle actions' count, three outfits' hem heights). Two relaxed, with the reason beside them: the
+  ribbon landing in a knockdown (5 → 10 cm: the hilt falls from higher) and the fighting bot's
+  guard breaks (0 → at most 1: the default seed's fight is reshuffled; seeds 1-6 give 0 on both
+  stances).
+
+**Verification:** `npm test` (integ, duel, lord, world, the glyph check) and `npm run build` pass
+on the branch merged with `main` (10891c3). Filmed in headless Edge at 1376 x 768 on the dev
+server: both stances at the game camera with him turned four ways and close up from four sides
+(the game's look and the bare body); the hand on the belt close up from five sides; the standing
+loop; a played sequence (at ease, a lock-on, a strafe and a stop in the guard, two lights, the
+fight ending). The Lab's stance row was driven in the Browser pane. The numbers above are
+`herostance`'s output and the audit's.
+
+**Not checked / open:** a fight played by a human with it; the phone (look and feel); the Ashfall
+Courtyard and the Obsidian Throne in the browser (headless tests only); the outfits other than
+today's in the new stances; the idle actions were not re-tuned for the new base (each fades in from
+it: looked at, not measured). The free hand's fingers lie straight along the hip (the hand has no
+finger joints): 7-9 cm of them stand off the belly's curve.
+
+**Next:** the owner's look at it in play (the Lab's stance row holds either stance); then the idle
+actions re-posed from the hand on the belt if they read wrong.
 ## 2026-11-15 — Session 50: effects in the dragon's letters (the fire field), text effects, landmarks second pass
 
 **Owner:** "is there anything existing we should update? ... i want people to be stunned at the ascii
