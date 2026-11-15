@@ -10,7 +10,7 @@ import {
   prep, lumpy, paint, carve, slabGeometry, mul, STONE_LOOK, SLAB_LOOK,
   buildDeadTree, buildBoulder, buildFlagstone, buildBonfire,
 } from './forest.js';
-import { buildWarden, buildGreatSword, carved } from './landmarks.js';
+import { buildWarden, buildGreatSword, carved, COLOSSUS_COLLIDERS } from './landmarks.js';
 
 // The Obsidian Throne Hall (the Starless Lord's level; owner's pick "A" of three rendered arenas,
 // 2026-11-13). South to north (the player walks north, -z): the bonfire, a path of flagstones through
@@ -37,6 +37,8 @@ export const HALL = {
   pillarX: 10.4,
   pillarZ: [-15.5, -10, -4.5, 1, 6.5, 12],
   doorX: 3.1, // the door: |x| < doorX in the south wall
+  wardens: { x: 12.9, z: -1.75, yaw: 0.5, s: 1.2 }, // the two hooded colossi (landmarks.js), one in each aisle
+  swordZ: [-12.75, -7.25, 9.25], // the great swords (landmarks.js): the aisle bays they stand in
   bonfire: { x: 0, z: 31 },
 };
 
@@ -245,15 +247,20 @@ export function createThroneHall(U, colliders) {
     colliders.add(x, z, size * 0.85, 'boulder');
   }
 
-  // ---- landmarks (landmarks.js): two hooded wardens flanking the throne, and in the side aisles
-  // the great swords of those who came before, driven into the floor
+  // ---- landmarks (landmarks.js): in the side aisles, two hooded wardens and the great swords of
+  // those who came before, driven into the floor
   {
     const lr = mulberry32(CONFIG.seed + 2977);
     for (const sx of [-1, 1]) {
-      stoneGeos.push(...carved(buildWarden(lr, sx * 5.7, T.z + 0.2, -sx * 0.3, 1.25)));
-      for (const [i, z] of [-12.75, -1.75, 9.25].entries()) {
+      // (in the aisle between two pillars, turned toward the hall, head and shoulders above the
+      // pillars: by the throne they stood off the top of the frame for the whole duel)
+      const W = HALL.wardens;
+      stoneGeos.push(...carved(buildWarden(lr, sx * W.x, W.z, -sx * W.yaw, W.s)));
+      for (const [, , r] of COLOSSUS_COLLIDERS) colliders.add(sx * W.x, W.z, r * W.s, 'stone');
+      for (const [i, z] of HALL.swordZ.entries()) {
         const x = sx * (H.pillarX + 2.45);
-        stoneGeos.push(...carved(buildGreatSword(lr, x, z, sx * 0.25, 1.05 - i * 0.08, { lean: sx * (0.12 + 0.07 * i) * (i === 1 ? -1 : 1) })));
+        // (each leans in toward the hall: at the side of the frame that stands it nearer upright)
+        stoneGeos.push(...carved(buildGreatSword(lr, x, z, sx * 0.3, 1.3 - i * 0.1, { lean: sx * (0.1 + 0.06 * i), tilt: 0.12 - 0.1 * i })));
         colliders.add(x, z, 0.9, 'stone');
       }
     }
