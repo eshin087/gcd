@@ -11,6 +11,7 @@ import { formPoses, glidePose } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, STREAKS, realise } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LordFx } from './fx.js';
+import { LordTerrain } from './terrain.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
 // crater of the Obsidian Throne, who fills the boss slot of the Starless level. A duelist (duelist/duelist.js:
@@ -187,6 +188,8 @@ export class StarlessLord extends Duelist {
       this.pilot.updraft = 0;
     }
     super.reset();
+    // (the base constructor resets before this class's own fields could exist: made here)
+    (this.terrain ??= new LordTerrain(this)).reset();
     // enthroned: the root sits at the seat (the pose's hips are lowered to it)
     this.position.y = TUNING.intro.seatY;
     if (this.blades) {
@@ -310,6 +313,17 @@ export class StarlessLord extends Duelist {
     return this.onFloor(x, z) && super.standable(x, z);
   }
 
+  // ---------------------------------------------------------------- the crater's pieces (terrain.js)
+  /** His AI weighs a move: one that needs a piece of the crater weighs nothing while there is none. */
+  weigh(name, def, w) {
+    return def.terrain ? this.terrain.weigh(def, w) : w;
+  }
+
+  /** A move starts: one of the crater's takes its pieces (false: there is none, it does not start). */
+  onActStart(A) {
+    return A.def.terrain ? this.terrain.begin(A) : true;
+  }
+
   moveBy(dx, dz) {
     super.moveBy(dx, dz);
     this.clampTarget(this.position);
@@ -429,6 +443,7 @@ export class StarlessLord extends Duelist {
     this._showForm();
     if (this.mode === 'intro') this._intro(dt);
     this._glide(dt);
+    this.terrain.frame(dt);
     // the Void's wind under his cape: through a cast, a little always in form 4, a gust at an ignition
     {
       const cur = beatNow(act);
@@ -671,6 +686,7 @@ export class StarlessLord extends Duelist {
   /** A cast beat's impact: the thrown blade, torn stone, called lightning. */
   onCast(b, s, act) {
     const D = b.def, C = D.cast, name = act?.name ?? C.kind;
+    if (act?.def?.terrain) return this.terrain.onCast(b, s, act);
     const ang = s ? s.ang : this.yaw, dx = Math.sin(ang), dz = Math.cos(ang);
     if (C.kind === 'glaive') {
       const G = TUNING.glaive;
@@ -684,6 +700,7 @@ export class StarlessLord extends Duelist {
         const r = big ? 2.2 : 1.7;
         const x = this.position.x + Math.sin(a) * r, z = this.position.z + Math.cos(a) * r;
         this.fx.tearUp(x, z);
+        this.game.world?.scars?.ground?.(x, z, big ? 1.1 : 0.75); // (the floor it was torn from stays cracked)
         this.fx.throwShot({
           // (it hangs turning round him in the Void's grip until its turn: fx.js `orbit`, angle from +x)
           orbit: { r, a: Math.atan2(z - this.position.z, x - this.position.x), w: i & 1 ? -1.6 : 1.6 },
