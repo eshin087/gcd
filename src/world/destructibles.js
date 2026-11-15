@@ -52,7 +52,6 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const NONE = Object.freeze({});
 const LEAVES = 'o0O8@&';
 const DIGITS = '0123456789';
-const FLAMES = "*^'`\"~%";
 const FLASH_LEAD = 0.3;
 const SIDES = [-1, 1];
 
@@ -73,6 +72,7 @@ export class Destructibles {
   constructor(game, world, set) {
     this.game = game;
     this.world = world;
+    this._blob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.5, size: 1, sizeEnd: 0.35, heat: 0.5, heatEnd: 0, drag: 1.0, gravity: 0, kind: 'fire' }; // the fire field's reused record
     /** every breakable of the set, by id */
     this.list = [];
     /** those with something going on (falling, flying, burning, shuddering) */
@@ -395,8 +395,8 @@ export class Destructibles {
   _burnStep(b, dt) {
     b.burn -= dt;
     const u = 1 - b.burn / b.burnLife; // 0 → 1 as it burns down
-    // flames up the trunk and through the crown
-    const fx = this.game.fx?.add;
+    // flames up the trunk and through the crown: heat in the fire field (render/fireField.js)
+    const fx = this.game.fx?.fire;
     if (fx) {
       b.flame += dt * (22 + b.h * 13) * (1 - 0.4 * u);
       const wide = b.leafy > 0 ? b.r * 3.2 : b.r * 1.2;
@@ -405,13 +405,17 @@ export class Destructibles {
         const hy = rnd(), a = rnd() * 6.283;
         const rr = (hy > 0.45 ? wide : b.r) * Math.sqrt(rnd());
         const hot = rnd();
-        fx.spawn({
-          x: b.x + Math.cos(a) * rr, y: 0.2 + hy * b.h * (1 - 0.35 * u), z: b.z + Math.sin(a) * rr,
-          vx: (rnd() - 0.5) * 0.6, vy: 1.6 + rnd() * 2.2, vz: (rnd() - 0.5) * 0.6,
-          life: 0.4 + rnd() * 0.5, size: 0.5 + hot * 0.4, sizeEnd: 0.07, glyph: FLAMES, stretch: 0.5,
-          color: [3.4, 1.0 + hot * 0.8, 0.22], colorEnd: [0.8, 0.05, 0.02], alpha: 1, alphaEnd: 0,
-          drag: 1.0, flicker: 0.3, spin: (rnd() - 0.5) * 2,
-        });
+        const q = this._blob;
+        q.x = b.x + Math.cos(a) * rr;
+        q.y = Math.max(0.7, 0.2 + hy * b.h * (1 - 0.35 * u));
+        q.z = b.z + Math.sin(a) * rr;
+        q.vx = (rnd() - 0.5) * 0.6;
+        q.vy = 1.6 + rnd() * 2.2;
+        q.vz = (rnd() - 0.5) * 0.6;
+        q.life = 0.4 + rnd() * 0.5;
+        q.size = 1.1 + hot * 0.8;
+        q.heat = 0.48 + hot * 0.16;
+        fx.spawn(q);
       }
     }
     // the ground round it glows and chars; the ring round it burns the hero

@@ -21,6 +21,7 @@ const { clamp, damp } = await imp('src/core/math.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
+const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Destructibles, STATE: PIECE } = await imp('src/world/destructibles.js');
 const { buildDeadTree, buildBoulder, buildStump, geosHeight } = await imp('src/world/forest.js');
@@ -225,6 +226,17 @@ function build(opts = {}) {
     };
     return p;
   };
+  // the fire field (render/fireField.js): the same NaN guard and spawn count as the glyph pools
+  const mkFire = () => {
+    const p = new FireField(U, { max: 6000 });
+    const spawn = p.spawn.bind(p);
+    p.spawn = (o) => {
+      for (const k of ['x', 'y', 'z', 'vx', 'vy', 'vz', 'life', 'size', 'sizeEnd', 'heat', 'heatEnd']) if (o[k] !== undefined && !Number.isFinite(o[k])) throw new Error(`NaN fire blob ${k}`);
+      counters.spawns++;
+      return spawn(o);
+    };
+    return p;
+  };
   // opts.realInput: the real core/input.js on a mock canvas (#game) — the touch scenario drives it
   // through the touch controls' pointer events instead of the mock above
   let canvasEl = null;
@@ -237,7 +249,7 @@ function build(opts = {}) {
     THREE, CONFIG, renderer: canvasEl ? { domElement: canvasEl } : null, scene, fxScene: new THREE.Scene(), camera,
     pipeline: { finalMat: { uniforms: finalU } }, U,
     events: new Events(), input: opts.realInput ? new Input(canvasEl) : input, cameraRig: new CameraRig(camera), lights: new LightPool(U),
-    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }) },
+    fx: { alpha: mkParticles({ max: 3000, additive: false }), add: mkParticles({ max: 7000, additive: true }), fire: mkFire() },
     time: 0, realTime: 0, timeScale: 1, debugTimeScale: 1, hitstopTimer: 0, hitstopScale: 1,
     mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
     hitstop(seconds, scale = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, seconds); this.hitstopScale = Math.min(this.hitstopScale, scale); },
@@ -338,6 +350,7 @@ function build(opts = {}) {
     game.lights.update(dt, game.player.position);
     game.fx.alpha.update(dt, game.time);
     game.fx.add.update(dt, game.time);
+    game.fx.fire.update(dt);
     safe('hud', () => game.hud.update(realDt));
     safe('audio', () => game.audio.update(realDt));
     safe('lab', () => game.lab.postRender?.()); // (main.js: after pipeline.render; nothing is drawn here)
@@ -7878,7 +7891,9 @@ async function scenarioTerrain() {
     const e0 = errors.length;
     let restored = 0;
     const dbg = {};
-    for (let i = 0; i < Math.round(150 / DT); i++) {
+    // (300 s: about 50 attacks. At 150 s there were about 25, and a count of 2 of them was a matter
+    // of the seed: 0 to 4 over four seeds, on this code and on the code before it)
+    for (let i = 0; i < Math.round(300 / DT); i++) {
       bot(G, { god: true, defend: true });
       if (process.env.ABYSS_TRACE2 && !d.brain.action && d.state === 'combat') { for (const n of ['hurl', 'tailBat', 'fireBrand']) { const w = attackWeight(ATTACKS[n], n, d, d.sense); dbg[n] = (dbg[n] || 0) + (w > 0 ? 1 : 0); dbg[n + 'cd'] = (dbg[n + 'cd'] || 0) + ((d.brain.cooldowns[n] ?? 0) > 0 ? 1 : 0); } dbg.idle = (dbg.idle || 0) + 1; dbg.dist = (dbg.dist || 0) + d.sense.dist; }
       G.tick(DT);
@@ -7895,7 +7910,7 @@ async function scenarioTerrain() {
     if (process.env.ABYSS_TRACE2) out('   ' + JSON.stringify(dbg) + ' ' + JSON.stringify(picks));
     const total = Object.values(picks).reduce((a, b) => a + b, 0);
     const mine = (picks.hurl || 0) + (picks.tailBat || 0) + (picks.fireBrand || 0);
-    out(`   150 s with the AI on: ${total} attacks, terrain moves ${mine} (hurl ${picks.hurl || 0}, tail bat ${picks.tailBat || 0}, firebrand ${picks.fireBrand || 0}); phase ${d.phase}; tells ${tells}, flashes ${flashes}`);
+    out(`   300 s with the AI on: ${total} attacks, terrain moves ${mine} (hurl ${picks.hurl || 0}, tail bat ${picks.tailBat || 0}, firebrand ${picks.fireBrand || 0}); phase ${d.phase}; tells ${tells}, flashes ${flashes}`);
     assert(mine >= 2 && mine <= total * 0.3, `a fight: the terrain moves come up (${mine} of ${total} attacks) and stay under 30 % of them`);
     assert(flashes <= tells && tells - flashes <= 2 && errors.length === e0, `a fight: their tells get their flashes (${flashes} of ${tells}; an interrupted one has none), no errors`);
     return G;

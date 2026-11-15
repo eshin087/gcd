@@ -57,8 +57,14 @@ the wyrm next to it, it is wrong, however good it looks alone.
 **How things break (ADR-107).** Destruction is drawn with the same means, never with new ones:
 - A breakable piece is the same geometry through the same two set materials (the screen grid for
   trees, prop art for stone and metal), drawn from a rigid batch so it can fall, fly or vanish.
-- Debris, dust, flames, embers, the red strip under a falling piece and the marks a blow leaves are
-  **glyph particles** from the world atlas. No debris meshes, no decals, no textures.
+- Debris, dust, embers, the red strip under a falling piece and the marks a blow leaves are
+  **glyph particles** from the world atlas; the flames are heat in the fire field (below). No
+  debris meshes, no decals, no textures.
+
+**Effects (ADR-113).** Anything that burns, glows or strikes as a body is HEAT IN THE FIRE FIELD
+(`game.fx.fire`), printed in the same small letters as the wyrm: never a big glyph sprite. Read
+"The fire field" below before making an effect. Only small things that fly on their own (an
+ember, a spark, dust, a chip of debris) are glyph particles, about one letter cell in size.
 - Debris keeps the piece's own dim hue (`BREAK.mats`): a breaking stone must not flash white.
   Saturated light stays for fire and for the red danger strip.
 - Fire on grass is flame glyphs over the scorch map's ember glow; burned grass is the scorch map's
@@ -160,7 +166,7 @@ History matters here:
 | Standing stones, boulders, pillars, walls, lanterns, the throne and dais, statues, bones, braziers, the bonfire, the fallen bell, the crater's slabs, shards and hanging stones | **prop art, the dragon look** (ADR-100): a smooth lit source printed in the wyrm's fine digits, a dark body, stroke-glyph outlines, no blank cells; grid counted from the ground. Rules: "The house style" above and "Background objects" below | `createPropArtMaterial` / `FLAG.ART_PROP` (`render/materials.js`) → `render/pipeline.js` (the prop branch) |
 | Landmarks: the elder wyrm's skeleton, two stone swordsmen, the sect gate and its cauldron, the fallen star (the wardens and great swords of the first hall are kept in the file, not placed) | the same prop art, built once per level | `world/landmarks.js` |
 | Flagstones, the courtyard's paving, the crater's plates (floors only) | **carved glyphs**: one crisp glyph per world-fixed lattice cell (0.22 × 0.28 m on a plane facing the default camera, rows randomly offset), picked by light on flat facets (lit `% # 8 @ &`, shadow `. : ;`), mid-lit flanks hatched along their contour (`/ \| \`), world-fixed cracks, dim green moss tufts (`, ; " *`), near-black gaps. Flagstones: dimmer, irregular 5–7-sided slabs, half-sunk and tilted, a chipped moonlit chamfer, grass leaning over and growing through the rim | `createCarvedGlyphMaterial` (`render/materials.js`), looks `STONE_LOOK` / `SLAB_LOOK` in `world/forest.js` |
-| Trunks, the Cinder Tree | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
+| Trunks (the Cinder Tree's wood is prop art since ADR-113) | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
 | Canopies | screen-grid `LEAF` 0.6: blobby ramp `. : o 0 O 8 @` | same |
 | Grass | ~260k instanced quads, each ONE glyph stroke (`\| / \ ' Y V v l i`) **anchored in the world** (no shimmer when the camera moves); gentle slow wind, trample pushers, wing gusts, burnt to ash glyphs; dim world-space soil glyphs between | `world/grass.js`, `world/ground.js` |
 | Hero, wyrm | **classic ASCII art** of a shaded SOURCE image (v0.4), matched to the owner's two reference images on 2026-11-08: the **wyrm** as fine pixel-font digits (5x8 px cells at 720p since 2026-11-15, ADR-093) whose brightness draws charcoal scales, molten cracks and crimson torn sails; the **hero** as ink-line art, dim dense letters inside bright one-pixel ink lines. Rules and numbers: "Creature ASCII art" below | `createSurfaceGlyphMaterial` (`wyrm` / `heroArt` sources) → `render/pipeline.js` (hero branch, `wyrmCell`), `render/wyrmGlyphs.js`, `createPixelArtAtlas` |
@@ -469,7 +475,60 @@ gone.
   keeps his own colours: it cut a dark hole into the wyrm's glow, and its letters flickered as
   he moved) and a *rim only* (a cyan outline over the untouched letters: thin over bright ones).
 
+### The fire field: effects in the dragon's letters (2026-11-15, ADR-113)
+The owner: "the dragon fire attacks look meh ... make it look like real fire and more threatening
+and detailed". Fire used to be separate large glyph sprites with glow on top, outside the letter
+grid. Now (`render/fireField.js`, `render/firePalettes.js`):
+- **You place heat; density draws the fire.** An emitter spawns soft blobs (metres across, a heat
+  each). They add up in a buffer with one texel per letter cell. The summed heat h picks the letter
+  and its colour: below ~0.24 red strokes `| / \` (the tips of tongues), ~0.45 to 1 digits in orange,
+  above ~1 round bright digits in yellow, above ~1.5 the white-hot heart. Many small cool blobs
+  (0.2 to 0.5 each) that overlap make a body with a hot core and a ragged rim. ONE big hot blob
+  makes a featureless white disc: never do that.
+- **It moves like fire by itself:** noise that scrolls upward makes the heat climb as tongues, lean,
+  and tear at the cool rim; each cell re-rolls its letter a few times a second on its own beat (the
+  fire boils). Tongues always climb up the screen.
+- **A dark backing** sits behind every letter of a flame (the house style: a dark body with brighter
+  digits), which keeps fire readable over lit grass.
+- **Calm.** `hdr` 0.6: the owner called big bright letters "way too flashy" (ADR-093), and above
+  about 1 the bloom swallows the digits. Do not raise it without showing the owner options.
+- **Kinds:** `fire`; `void` (the Starless Lord: violet body, pale heart); `steel` (crisp, no
+  turbulence: a thin line of it prints as the stroke that runs along it, so a bolt, a cut or a
+  glint is drawn in `- / | \`; heat 1.15 or less prints strokes, above 1.2 a white digit: where two
+  lines cross there is a hot joint); `smoke` (dim grey letters, only where no fire prints).
+- **Rules of thumb:** a line of fire needs blobs about 0.3 x their size apart (a blob's heat halves
+  0.2 x its size from its centre). Keep blobs at least 0.7 m up: lower, the soft depth test fades
+  them into the ground. A soft line thinner than about 16 px vanishes when it falls between two
+  rows of cells: write crisp lines on the grid (`DuelFx._ink`, one blob per cell). Heat re-drawn
+  every frame goes through the one-copy frame clock (`_frame` / `_dot`), or it stacks in slow
+  motion. Fire spawned behind a figure (as the camera sees it) wreathes it without covering it.
+- **Warnings are not fire.** Ground warnings stay glyph specks on the ground (ADR-052) and draw over
+  the field; air and sound rings (the roar, the nova's charge) are `steel`.
+- **Timing cues, one design for every boss** (COMBAT.md "Tell presentation"): a white cross written
+  on the grid; a larger eight-point star with a ring; a ragged red blaze with no straight line in it.
+- **What stays a glyph particle:** embers, sparks, dust, rocks, debris, about one cell in size (0.2
+  to 0.4) and few. Also, for now: the hero's effects, the wyrm's blue and red wisps and orbs (their
+  colours are signals), the Lord's red blade, `combat/clashFx.js`.
+- **Bullets:** an ember is a small ball of fire round a gold `*`, with a burning tail.
+
+### Text effects (2026-11-15, ADR-113)
+Things only a world made of letters can do. One rule for all of them: **a loose letter is always
+one art cell, pixel-snapped, from the wyrm's own atlas: never a scaled sprite.**
+- **Heat haze:** the letters of the wyrm and of objects within about nine cells above and three
+  beside a flame re-roll on the fire's beat, slide a pixel sideways in a climbing wave and take a
+  little of the fire's colour (violet beside void fire; steel makes none). `uHazeRoll.x` is the
+  share of cells that re-roll: lower it if it reads as noise.
+- **Letting go:** the dying wyrm comes apart as text: its letters let go from the top row down, in
+  strands of columns; each falls about five cells, turns ember and fades before its cell shows the
+  ground. Cells, not patches.
+- **Shed digits:** a cut on the wyrm knocks a few of its own cells loose (12 a cut, 20 a heavy one);
+  they fall, lie on the grass and fade. A detail, not a spectacle.
+- **The breath's charge rises:** during the windup the glow fills from the belly up the throat to
+  the maw (it used to light all at once).
+
 ### Fire, hazards and the plunge (2026-11-09)
+(Since ADR-113 the bodies of fire below are heat in the fire field, above; what this section says
+of shapes, timings and warnings still holds, the glyph and colour lists do not.)
 Every effect below is glyph particles (`fx.add`, additive HDR, for fire and light; `fx.alpha` for
 smoke and dust) using world-atlas glyphs only (`gi()` throws on others; `npm test`'s glyph check).
 Fire stays the only saturated warm light: white-yellow HDR cores `[4.6,3.5,1.5]` cooling through

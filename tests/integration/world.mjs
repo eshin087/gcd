@@ -15,6 +15,7 @@ const { Events } = await imp('src/core/events.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
+const { FireField } = await imp('src/render/fireField.js');
 const { rigidBones } = await imp('src/render/rigidBatch.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Scorch } = await imp('src/world/scorch.js');
@@ -52,7 +53,7 @@ function build(makeSet = createForest, density = () => 1) {
   };
   const game = {
     THREE, CONFIG, U, events, time: 0, dt: 1 / 60, fxDt: 1 / 60, state: 'boss', scene: new THREE.Scene(),
-    lights: new LightPool(U), fx: { alpha: mk({ max: 3000, additive: false }), add: mk({ max: 7000, additive: true }) },
+    lights: new LightPool(U), fx: { alpha: mk({ max: 3000, additive: false }), add: mk({ max: 7000, additive: true }), fire: new FireField(U, { max: 6000 }) },
     shakes: 0, shake(a) { if (!Number.isFinite(a)) throw new Error('NaN shake'); this.shakes++; },
   };
   const colliders = new Colliders();
@@ -83,6 +84,7 @@ function build(makeSet = createForest, density = () => 1) {
       world.scorch.update(dt);
       game.fx.alpha.update(dt, game.time);
       game.fx.add.update(dt, game.time);
+      game.fx.fire.update(dt);
     }
   };
   return { game, world, set, D: world.destructibles, colliders, hits, log, step, U };
@@ -266,7 +268,7 @@ const S = {
     assert(D.ignite(t.x, t.z, 1, 1) === 0, 'what burned through does not catch again');
     // world.ignite's two halves, as world.js wires them
     const lights = game.lights;
-    assert(lights && Number.isFinite(game.fx.add.count), 'flames are glyph particles, the blaze has a light');
+    assert(lights && Number.isFinite(game.fx.fire.count), 'flames are heat in the fire field, the blaze has a light');
   },
 
   // ---------------------------------------------------------------- a boss lifts a piece and throws it

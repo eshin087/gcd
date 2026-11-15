@@ -5,6 +5,7 @@ import { rigidBones } from './rigidBatch.js';
 import { createGridAtlas, createPixelArtAtlas, pixelArtCell, GRID_COLS, GRID_ROW } from './glyphs.js';
 import { createWyrmArtAtlas, wyrmArtFont } from './wyrmGlyphs.js';
 import { HERO_ART } from './materials.js';
+import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 
 // Frame pipeline:
 //   0. one scene-graph matrix update, then the rigid batches' bone matrices (rigidBatch.js)
@@ -14,7 +15,9 @@ import { HERO_ART } from './materials.js';
 //   2b. the hero alone -> seenRT, minus what the scene shows of him; the rest (the hero where
 //      something covers him) is put back into sceneRT so the ASCII pass prints him through (ADR-106)
 //   3. ASCII pass: flagged pixels become a screen-space character grid  -> compRT
-//   4. FX pass: glyph particles, soft depth-tested against sceneRT depth   -> compRT
+//   (2b. the fire field: heat blobs -> a heat buffer -> a flame texture, one texel per art cell)
+//   4. FX pass: the fire field's letters, then glyph particles, soft depth-tested against sceneRT
+//      depth                                                                -> compRT
 //   5. bloom + tone map + grade + vignette + feedback overlays             -> screen
 
 export { LAYER_CASTER, LAYER_CASTER_RIGID };
@@ -59,9 +62,12 @@ export class Pipeline {
     this.U = U;
     this.fs = new FullscreenPass();
     this.fxParticleMaterials = [];
+    this.fire = null; // the fire field (registerFire)
+    this.rtType = null;
 
     const canHalf = renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
     const type = canHalf ? THREE.HalfFloatType : THREE.UnsignedByteType;
+    this.rtType = type;
     const rt = (opts = {}) =>
       new THREE.WebGLRenderTarget(1, 1, { type, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, ...opts });
 
@@ -261,6 +267,27 @@ export class Pipeline {
         // U.uBossScreen): its letters travel with it when the camera pans or it walks, instead of
         // the body sliding under a fixed grid and re-lettering every cell (ADR-092)
         uWyrmAnchor: { value: new THREE.Vector2(0, 0) },
+        // the fire field's flame texture, one texel per art cell (fireField.js: r heat * 0.4, g smoke,
+        // b a letter roll, a kind + stroke), and uFlame = cells x, cells y, 1 while something burns
+        tFlame: { value: null },
+        uFlame: { value: new THREE.Vector4(1, 1, 0, 0) },
+        // HEAT HAZE: the letters of the wyrm and the background objects re-roll and shimmer where the
+        // fire field is hot at, under or beside their cell, as if the heat boiled the text (read only
+        // while something burns: uFlame.z). x / y = the heat (as the fire field counts it: ~0.4 a
+        // cool rim, ~1 a body) where the haze starts / is whole, z = how much of the fire's colour
+        // the letters take, w = the shimmer: px a letter slides sideways in a wave that climbs
+        uHaze: { value: new THREE.Vector4(0.03, 0.5, 0.5, 1) },
+        // ... x = share of the cells that re-roll at full haze (each on the fire's own beat: the roll
+        // in tFlame.b), y = brightness flicker, z = the warm lift on dark letters
+        uHazeRoll: { value: new THREE.Vector3(0.7, 0.3, 0.035) },
+        uTime: U.uTime ?? { value: 0 },
+        // LETTING GO (letGo.js): the dying wyrm's letters let go cell by cell and fall; shared with
+        // its materials (uWyrmGrid: the art cell and the grid anchor; uWyrmLetGo.x: 0 = off)
+        ...letGoUniforms(U),
+        // a falling letter: x = how much it takes the ember colour as it falls, y = its brightness
+        // floor (a dim charcoal letter still reads while it falls), z = how dark the body behind it
+        // goes (its backing), w = brightness of the ember colour
+        uLetGoInk: { value: new THREE.Vector4(0.85, 0.1, 0.7, 0.55) },
         // extra source taps per wyrm cell (a 4x4 grid) on top of the 4 that find the cell: the cell's
         // letter TIER comes from the average of its source, so it does not flip between bright and
         // dark letters as scale rims cross its four point samples (0 = off); each letter pixel still
@@ -350,11 +377,21 @@ export class Pipeline {
         uniform vec3 uPropLum;
         uniform vec3 uPropOutline;
         uniform vec2 uPropAnchor;
+        uniform sampler2D tFlame;
+        uniform vec4 uFlame;
+        uniform vec4 uHaze;
+        uniform vec3 uHazeRoll;
+        uniform float uTime;
+        uniform vec4 uLetGoInk;
+        ${LET_GO_GLSL}
         uniform sampler2D tSeen;
         uniform vec4 uSeen;
         uniform vec3 uSeenInk;
         uniform vec4 uSeenTone;
         varying vec2 vUv;
+        // heat haze, set per cell by hazeCell before artLetters prints it: x = 0..1 how deep the cell
+        // is in the heat, y = the fire's letter roll for it, z = 1 violet (void fire), w = shimmer px
+        vec4 gHaze = vec4(0.0);
 
         float hash12(vec2 p) {
           vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -446,6 +483,12 @@ export class Pipeline {
         vec3 artLetters(vec3 c, vec3 cp, vec2 acell, vec2 local, float stroke, vec4 tone, vec4 glyph, vec3 lum) {
           float v = 1.0 - exp(-max(luma(c) - lum.x, 0.0) * lum.y);
           float h = hash12(acell * 1.37 + 11.0);
+          // heat haze: a share of the cells takes the fire's roll for its letter (it re-rolls on the
+          // fire's beat), and every letter in the heat slides a pixel sideways in a climbing wave
+          float hz = gHaze.x;
+          bool boil = hz > 0.0 && hash12(acell * 0.53 + 7.9) < hz * uHazeRoll.x;
+          if (boil) h = fract(h + gHaze.y);
+          if (hz > 0.0) local.x = clamp(local.x + gHaze.w / uArtCell.x, 0.0, 0.999);
           float d = (hash12(acell * 0.71 + 3.7) - 0.5) * glyph.z;
           float s0 = v < glyph.x + d ? 1.0 : v < glyph.y + d ? uWyrmAtlas.x : uWyrmAtlas.y;
           float s1 = v < glyph.x + d ? uWyrmAtlas.x : v < glyph.y + d ? uWyrmAtlas.y : uWyrmAtlas.z;
@@ -459,7 +502,38 @@ export class Pipeline {
           vec3 hue = s / max(mx, 1e-4);
           float sat = (mx - min(min(s.r, s.g), s.b)) / max(mx, 1e-4);
           float b = mix(lum.z, tone.x, pow(vp, tone.y));
-          return hue * b * mix(1.0, max(1.0, mx), smoothstep(0.25, 0.6, sat)) * m;
+          vec3 ink = hue * b * mix(1.0, max(1.0, mx), smoothstep(0.25, 0.6, sat));
+          if (hz > 0.0) {
+            // the letters flicker and take the fire's colour: dark ones are lifted a little (lit by
+            // it), bright ones tinted, none of them brighter than a lit rim
+            vec3 warm = gHaze.z > 0.5 ? vec3(0.62, 0.34, 1.0) : vec3(1.0, 0.46, 0.14);
+            float fl = boil ? 1.0 + (gHaze.y - 0.5) * 2.0 * uHazeRoll.y : 1.0;
+            ink = mix(ink, warm * (luma(ink) * 1.25 + uHazeRoll.z), hz * uHaze.z) * fl;
+          }
+          return ink * m;
+        }
+        // heat haze (uFlame.z > 0 only): the fire field's flame texture has one texel per art cell
+        // counted from the screen's lower-left corner. A cell is in the haze when the field is hot at
+        // it, in the cells under it (heat climbs) or beside it. Steel (sparks, glints) makes none.
+        vec2 flameHeat(vec2 fc) {
+          vec4 f = texture2D(tFlame, (fc + 0.5) / uFlame.xy);
+          float kind = floor(f.a * 4.0 + 0.01);
+          return vec2(kind < 1.5 ? f.r * 2.5 : 0.0, kind);
+        }
+        void hazeCell(vec2 cpx, vec2 acell) {
+          vec2 fc = floor(cpx / uArtCell);
+          vec4 f0 = texture2D(tFlame, (fc + 0.5) / uFlame.xy);
+          float k0 = floor(f0.a * 4.0 + 0.01);
+          vec2 best = vec2(k0 < 1.5 ? f0.r * 2.5 : 0.0, k0);
+          vec2 t;
+          t = flameHeat(fc + vec2(0.0, -2.0)); t.x *= 0.9; if (t.x > best.x) best = t;
+          t = flameHeat(fc + vec2(0.0, -5.0)); t.x *= 0.7; if (t.x > best.x) best = t;
+          t = flameHeat(fc + vec2(0.0, -9.0)); t.x *= 0.45; if (t.x > best.x) best = t;
+          t = flameHeat(fc + vec2(-3.0, -1.0)); t.x *= 0.7; if (t.x > best.x) best = t;
+          t = flameHeat(fc + vec2(3.0, -1.0)); t.x *= 0.7; if (t.x > best.x) best = t;
+          float hz = smoothstep(uHaze.x, uHaze.y, best.x);
+          float wave = sin(acell.y * 1.1 - uTime * 8.0 + acell.x * 0.45);
+          gHaze = vec4(hz, f0.b, best.y, hz > 0.0 ? floor(wave * uHaze.w * (0.4 + 0.6 * hz) + 0.5) : 0.0);
         }
         vec3 wyrmCell(vec3 c, vec3 cp, vec2 acell, vec2 local, float stroke) {
           return artLetters(c, cp, acell, local, stroke, uWyrmTone, uWyrmGlyph, vec3(uArtBlack.y, uArtLum.y, uArtMin.y));
@@ -580,7 +654,7 @@ export class Pipeline {
           return vec2(pc != pn ? 0.6 : near ? 0.4 : 0.0, 0.0);
         }
 
-        void main() {
+        void cellMain() {
           vec2 px = gl_FragCoord.xy;
           // the hero first: his own pixel-font grid, drawn as ink-line art
           vec2 hcell = floor(px / uHeroCell);
@@ -776,6 +850,12 @@ export class Pipeline {
           // stroke-coded spike / claw / horn tip that would otherwise vanish between the samples)
           float strokeHits = max(max(votes.x, votes.y), max(votes.z, votes.w));
           if (ahits >= 2.0 || (ahits >= 1.0 && (strokeHits >= 1.0 || edgeS >= 0.0))) {
+            // letting go: the cell's letter has left it (main draws it falling); its body stays black
+            // until the material lets the cell go
+            if (uWyrmLetGo.x > 0.0 && uWyrmLetGo.x >= letGoAt(acell)) {
+              gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+              return;
+            }
             if (uArtEdge.y > 0.0 && (dmax - dmin) > uArtEdge.y * dmin) {
               gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
               return;
@@ -799,6 +879,7 @@ export class Pipeline {
             }
             if (stroke >= 0.0) { ca = arim; cp = arim; } // an outline glyph is drawn whole in the rim's colour
             if (edgeS >= 0.0) { stroke = edgeS; ca = max(asum / ahits, arim); cp = ca; }
+            if (uFlame.z > 0.5) hazeCell(abase + 0.5 * uArtCell, acell);
             // (a thin dark gap round the hero where this cell covers him: his cyan figure stays apart
             // from the wyrm's letters, also over its glow)
             gl_FragColor = vec4(wyrmCell(ca, cp, acell, (px - abase) / uArtCell, stroke) * (1.0 - seenHalo(px)), 1.0);
@@ -847,6 +928,7 @@ export class Pipeline {
               vec3 ca = psum / phits * pgain;
               vec4 sp = texture2D(tScene, px / uRes);
               vec3 cp = isProp(sp.a) && pstroke < 0.0 ? sp.rgb : ca;
+              if (uFlame.z > 0.5) hazeCell(pbase + 0.5 * uArtCell, pcell);
               vec3 pc = artLetters(ca, cp, pcell, (px - pbase) / uArtCell, pstroke, uPropTone, uPropGlyph, uPropLum);
               gl_FragColor = vec4(pc * (1.0 - heroHalo(px)), 1.0);
               return;
@@ -877,6 +959,43 @@ export class Pipeline {
             col = stoneCell(c, cell, local);
           }
           gl_FragColor = vec4(col * (1.0 - heroHalo(px)), 1.0);
+        }
+
+        // ---- letting go (letGo.js; only while the wyrm dissolves): the letter of a cell that has
+        // let go falls down the screen, accelerating, turning to ember and fading. A pixel finds the
+        // falling letter that covers it among the cells straight above (LG_FALL of them at most);
+        // the letter is printed from its cell's source, which the material keeps until it has fallen.
+        void letGoFall() {
+          gHaze = vec4(0.0);
+          vec2 g = (gl_FragCoord.xy - uWyrmGrid.zw) / uWyrmGrid.xy;
+          vec2 c0 = floor(g);
+          // outside the body's box (and the fall below it): nothing can be falling here
+          if (abs(c0.x) > uWyrmLetGo.w || c0.y > uWyrmLetGo.y + 1.0 || c0.y < uWyrmLetGo.y - uWyrmLetGo.z - LG_FALL - 1.0) return;
+          for (int k = 0; k <= int(LG_FALL); k++) {
+            vec2 s = c0 + vec2(0.0, float(k));
+            float t = (uWyrmLetGo.x - letGoAt(s)) / LG_WINDOW;
+            if (t <= 0.0 || t >= 1.0) continue;
+            float ly = g.y - s.y + LG_FALL * t * t;
+            if (ly < 0.0 || ly >= 1.0) continue;
+            vec2 suv = ((s + 0.5) * uWyrmGrid.xy + uWyrmGrid.zw) / uRes;
+            vec4 sc = texture2D(tScene, suv);
+            if (!isArt(sc.a) || isHero(sc.a)) continue;
+            // it falls at its own depth: whatever stands nearer (the hero, a stone) covers it
+            if (linDepth(suv) > linDepth(gl_FragCoord.xy / uRes) + 1.5) continue;
+            vec3 ember = vec3(1.0, 0.36, 0.08) * uLetGoInk.w;
+            // its own colour, lifted so a charcoal letter reads, burning to ember as it falls
+            vec3 src = max(sc.rgb, vec3(uLetGoInk.y * 0.2)) + ember * (0.05 + 0.25 * t);
+            vec3 ink = artLetters(src, src, s, vec2(fract(g.x), ly), -1.0, uWyrmTone, uWyrmGlyph, vec3(uArtBlack.y, uArtLum.y, max(uArtMin.y, uLetGoInk.y)));
+            float a = 1.0 - t * t * t;
+            bool body = isArt(texture2D(tScene, gl_FragCoord.xy / uRes).a);
+            gl_FragColor.rgb = gl_FragColor.rgb * (1.0 - (body ? uLetGoInk.z : 0.0) * a) + ink * a;
+            return;
+          }
+        }
+
+        void main() {
+          cellMain();
+          if (uWyrmLetGo.x > 0.0) letGoFall();
         }
       `,
       depthTest: false,
@@ -1110,9 +1229,7 @@ export class Pipeline {
       const k = Math.min(1, Math.max(0, (ps.z - hs.w * 0.4) / (hs.w * 0.6)));
       h.set(ps.x, ps.y, rPx, k * k * (3 - 2 * k));
     } else h.w = 0;
-    // the wyrm's grid anchor: its root on screen, in whole px (the letters stay pixel-exact)
-    const bs = this.U.uBossScreen?.value;
-    if (bs && bs.w > 0.5 && Number.isFinite(bs.x + bs.y)) u.uWyrmAnchor.value.set(Math.round(bs.x * this.width), Math.round(bs.y * this.height));
+    // (the wyrm's grid anchor: _updateWyrmGrid, before the scene pass)
     // the props' grid anchor: where the world's ground origin would be on screen if the whole ground
     // moved like the ground at the focus (the screen position of the focus, minus the focus's world
     // offset times the px-per-metre there), wrapped to one cell
@@ -1130,6 +1247,27 @@ export class Pipeline {
       const cw = this.artCell.x, ch = this.artCell.y;
       if (Number.isFinite(ax + ay)) u.uPropAnchor.value.set(((Math.round(ax) % cw) + cw) % cw, ((Math.round(ay) % ch) + ch) % ch);
     }
+  }
+
+  /**
+   * The wyrm's letter grid: its anchor is its root on screen, in whole px (the letters stay
+   * pixel-exact). Set before the scene pass: the wyrm's materials count the same cells when it
+   * dissolves letter by letter (letGo.js, U.uWyrmGrid).
+   */
+  _updateWyrmGrid() {
+    const a = this.asciiMat.uniforms.uWyrmAnchor.value;
+    const bs = this.U.uBossScreen?.value;
+    if (bs && bs.w > 0.5 && Number.isFinite(bs.x + bs.y)) a.set(Math.round(bs.x * this.width), Math.round(bs.y * this.height));
+    this.asciiMat.uniforms.uWyrmGrid.value.set(this.artCell.x, this.artCell.y, a.x, a.y);
+  }
+
+  /** The fire field (render/fireField.js): its heat passes run after the scene pass, its letters draw first in the FX pass. */
+  registerFire(field) {
+    this.fire = field;
+    field.init(this.rtType, this.sceneRT.depthTexture);
+    this.fxScene.add(field.mesh);
+    this.asciiMat.uniforms.tFlame.value = field.flameRT.texture;
+    if (this.art) field.setSize(this.width, this.height, this.artCell, this.art);
   }
 
   /**
@@ -1311,6 +1449,7 @@ export class Pipeline {
       this.asciiMat.uniforms.tArt.value = this.art.texture;
       this.asciiMat.uniforms.uWyrmAtlas.value.set(...this.art.sets, this.art.total);
     }
+    this.fire?.setSize(W, H, this.artCell, this.art);
     const hs = Math.max(1, Math.floor(H / 1080));
     const [heroW, heroH] = pixelArtCell(hs);
     if (!this.heroArt || heroW !== this.heroCell.x || heroH !== this.heroCell.y) {
@@ -1356,6 +1495,7 @@ export class Pipeline {
     // in each render), then the rigid batches' bones from them (the drawn state: the hero's lean
     // is on by now)
     const prevAutoUpdate = scene.matrixWorldAutoUpdate;
+    this._updateWyrmGrid();
     scene.updateMatrixWorld();
     this.rigid.sync();
     scene.matrixWorldAutoUpdate = false;
@@ -1388,6 +1528,12 @@ export class Pipeline {
       this.shadowCam.layers.set(LAYER_CASTER);
       r.autoClear = prevAutoClear;
       scene.matrixWorldAutoUpdate = prevAutoUpdate;
+    }
+
+    // 2b. the fire field: blobs -> heat -> flame texture (reads the scene depth)
+    if (this.fire) {
+      this.fire.render(r, this.camera, this.fs);
+      this.asciiMat.uniforms.uFlame.value.set(this.fire.cells.x, this.fire.cells.y, this.fire.active ? 1 : 0, 0);
     }
 
     // 3. ASCII grid

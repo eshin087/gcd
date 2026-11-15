@@ -50,12 +50,16 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   - Every NEW background object (stone, metal, bone, a building, a statue, a prop) is drawn through
     the prop art path: `createPropArtMaterial`, or `FLAG.ART_PROP` on a screen-grid prop.
   - Every NEW creature or character is drawn through the wyrm's art path (`FLAG.ART`).
+  - Every NEW effect that burns, glows or strikes as a body (fire, a spell, a bolt, a blade's trail,
+    a timing cue) is heat in the fire field (`game.fx.fire`, STYLE.md "The fire field"): it prints
+    in the same small letters. Glyph particles are for small things that fly on their own (embers,
+    sparks, dust, debris), about one letter cell in size. No big glowing glyph sprites.
   - Do not invent another glyph style, letter size, ramp or font for something new.
   - Do not restyle what exists and is not in that look (the hero, the human bosses, the floors, the
     grass, the trees) unless the owner asks: each was their call.
   - Any change to how something looks: render before / after options and let the owner pick first.
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in
-  `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, glyph particles). No plain shaded
+  `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, the fire field, glyph particles). No plain shaded
   meshes. Only glyphs in the world atlas may be passed to `gi()` / materials / particles — `npm test` checks.
 - **The world breaks (ADR-107).** Anything new that stands in a level and could be hit is listed in
   its set's `breakables` (not merged into the static meshes), and anything new that hits (a blow, a

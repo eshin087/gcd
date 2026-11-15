@@ -15,7 +15,6 @@ import { TELL } from '../combat/rules.js';
 // Contact burns the hero like a burning crater does (hazards.js `_tick`): small blockable ticks,
 // never while he rolls. No per-frame allocation: fixed arrays, one reused hit record.
 
-const FLAME_GLYPHS = "*^'`\"~%";
 const lerp = (a, b, t) => a + (b - a) * t;
 
 // cosmetic noise from this module's own stream (the seeded sims replay Math.random)
@@ -40,6 +39,7 @@ export class GroundFire {
     this._flame = 0;
     this._tick = 0;
     this._lightT = 0;
+    this._blob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.5, size: 1, sizeEnd: 0.3, heat: 0.5, heatEnd: 0, drag: 1.1, gravity: 0, kind: 'fire' }; // the fire field's reused record
     this._hit = {
       damage: FIRE.damage, from: { x: 0, z: 0 }, knockback: 0, knockdown: false, kind: 'fire', burn: 0,
       tell: TELL.NORMAL, parryable: false, blockable: true, attack: 'groundFire', attacker: null,
@@ -152,8 +152,10 @@ export class GroundFire {
     }
     s.dirty = true;
 
-    // flames: glyphs over cells picked at random, a budget for the whole field
-    const fx = this.game.fx?.add;
+    // flames: heat in the fire field (render/fireField.js) over cells picked at random, a budget for
+    // the whole blaze. Cool blobs that overlap: the grass burns orange with red tongues, and only a
+    // thick blaze has a yellow heart. (Born 0.7 m up: lower, the field's depth fade eats them.)
+    const fx = this.game.fx?.fire;
     if (fx && this.count) {
       const area = this.count * c * c;
       this._flame += dt * Math.min(FIRE.maxFlames, area * FIRE.flames);
@@ -163,13 +165,18 @@ export class GroundFire {
         const u = 1 - this.left[i] / this.life[i];
         const tall = 1 - 0.55 * u; // the flames sink as the grass goes
         const hot = rnd();
-        fx.spawn({
-          x: this.min + ((i % N) + rnd()) * c, y: 0.12 + rnd() * 0.25, z: this.min + (Math.floor(i / N) + rnd()) * c,
-          vx: (rnd() - 0.5) * 0.5, vy: (1.3 + rnd() * 1.6) * tall, vz: (rnd() - 0.5) * 0.5,
-          life: 0.34 + rnd() * 0.42, size: (0.5 + hot * 0.36) * (0.7 + 0.3 * tall), sizeEnd: 0.06, glyph: FLAME_GLYPHS, stretch: 0.5 * tall,
-          color: [3.2, 0.95 + hot * 0.7, 0.2], colorEnd: [0.7, 0.05, 0.02], alpha: 1, alphaEnd: 0,
-          drag: 1.1, flicker: 0.3, spin: (rnd() - 0.5) * 2,
-        });
+        const b = this._blob;
+        b.x = this.min + ((i % N) + rnd()) * c;
+        b.y = 0.7 + rnd() * 0.3;
+        b.z = this.min + (Math.floor(i / N) + rnd()) * c;
+        b.vx = (rnd() - 0.5) * 0.5;
+        b.vy = (1.3 + rnd() * 1.6) * tall;
+        b.vz = (rnd() - 0.5) * 0.5;
+        b.life = 0.34 + rnd() * 0.42;
+        b.size = (1.1 + hot * 0.7) * (0.7 + 0.3 * tall);
+        b.sizeEnd = 0.3;
+        b.heat = 0.46 + hot * 0.14;
+        fx.spawn(b);
       }
     }
 

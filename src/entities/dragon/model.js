@@ -118,6 +118,14 @@ export const GLOW = {
 };
 
 /**
+ * The letters the wyrm sheds (render/shedDigits.js): knocked loose by a landed cut, streaming off
+ * the body while it dissolves. Linear colours of its own letters: charcoal `ink`, the pale `rim` of
+ * a lit scale edge, the `ember` of its cracks; `embers` / `rims` = the share of each; `stream` =
+ * digits per second off each body point that is letting go while it dissolves.
+ */
+export const SHED = { ink: [0.3, 0.28, 0.26], rim: [0.78, 0.74, 0.68], ember: [1.25, 0.42, 0.08], embers: 0.22, rims: 0.22, stream: 16 };
+
+/**
  * ASCII-art source per material (createSurfaceGlyphMaterial `wyrm`, render/materials.js): the image
  * the art pass turns into letters, matched to the owner's red-black reference. The hide is dark
  * charcoal shingle scales (aGUV units, tips toward -y: tailward on the body, down the limbs) whose
