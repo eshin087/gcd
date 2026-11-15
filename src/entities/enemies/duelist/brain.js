@@ -7,8 +7,8 @@ import { DUEL_WORLD } from './worldTuning.js';
 // A duelist's mind and timeline: the Ash Disciple's (docs/specs/ash-disciple.md §3), shared by every
 // human boss built on duelist.js. Everything it knows about one boss comes from the actor's kit
 // (d.kit: { TUNING, MOVES, MOVE_NAMES, CLIP, realise, transitions }); what only one boss does is a
-// hook on the actor (d.brainFrame, d.afterPose, d.onRelease, d.onCast, d.beatMotion,
-// d.onTransitionEnd). Modes (d.mode):
+// hook on the actor (d.brainFrame, d.afterPose, d.onImpact, d.onRelease, d.onCast, d.beatMotion,
+// d.onTransitionEnd, and for moves that depend on the level: d.weigh, d.onActStart). Modes (d.mode):
 //   sleep    kneeling in meditation (state 'sleeping'); flow calls startIntro, or a strike wakes him
 //   intro    rises, flicks the jian, salutes; then 'dragon:introDone' (state 'waking')
 //   foot     footwork between moves: circling / closing / backing off, guard up after a raise delay
@@ -320,6 +320,9 @@ export class DuelBrain {
     if (d.mode === 'dying' || d.mode === 'dead' || d.mode === 'broken') return false;
     const A = this.K.realise(name, phase, Math.random, opts);
     if (!A) return false;
+    // the actor's own set-up for the move (it picks the piece of the level the move will use); false:
+    // it cannot be done now, and nothing has changed
+    if (d.onActStart?.(A, opts) === false) return false;
     if (A.def.streak) {
       A.streak = { need: A.hits, got: 0, failed: false };
       d.emit('dragon:flurry', { count: A.hits });
@@ -546,6 +549,8 @@ export class DuelBrain {
       const [lo, hi] = def.band;
       if (dist < lo || dist > hi) continue;
       let w = perPhase(def.weight, d.phase);
+      // the actor's own say on it right now (a move that needs a piece of the level in reach, a mood): 0 = not now
+      if (w > 0 && d.weigh) w = d.weigh(name, def, w, dist);
       if (!(w > 0)) continue;
       if (this.last[0] === name) w *= 0.3;
       else if (this.last[1] === name) w *= 0.65;

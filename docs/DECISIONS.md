@@ -2731,6 +2731,62 @@ the sizzle and the ember hiss.
   the stored table needs a desktop browser on the same origin. Burn deaths read "THE FLAMES".
   Blows dodged by walking out of reach are never "seen" (no hit was resolved).
 
+## ADR-109 — The Starless Lord uses the crater: three moves on its pieces (2026-11-15)
+
+**Context.** The owner, of the level's rebuild (ADR-112) and the destruction system (ADR-107): "the 3rd
+sith boss will use the force to pick up rubble or the pillars to throw as examples. think of fun cool
+epic different terrain interactions the bosses and players and to showcase the destructibility of the
+terrain in cool ascii manner." The crater lists 36 breakables (shards of the star's glass, the rim's
+slabs, six stones hanging in the air), all liftable by the Void (`lift: 2`). His blade beats, bolts,
+pull and grip already met the world (ADR-107); nothing of his yet TOOK a piece.
+
+**Decision.** Three moves, each one long windup and a cast (`moves.js`, marked `terrain: kind`; the
+numbers in `TUNING.terrain`; the pieces' side in `starlessLord/terrain.js`):
+- **Void Hurl** (every form; 1.2 s): one piece comes out of its place, crosses to hang beside him and
+  is thrown where the hero is going. A stone already in the air first, then the nearest shard, the big
+  rim slabs last. The ring where it lands is drawn from the moment it leaves his grip (0.7 – 1.05 s of
+  flight), the glint comes `flashLead` before it lands, and the blow there is his: red, 26, knockdown,
+  2.3 m. What the landing does to the pieces round it is the world's (`throwTo`).
+- **Glass Rain** (forms 3, 4; 1.4 s): up to three pieces at once, thrown 0.55 s apart, the later ones a
+  step to either side of the hero's way (20 each). The throws go on after the cast by themselves, as
+  the Starless Sky's marks do.
+- **Crown Fall** (forms 2 – 4; 0.85 s): only while the hero stands in the strip a tall piece would fall
+  on. His hand closes on it and wrenches it down (`topple(piece, dx, dz, 'boss')`): the fall, its red
+  tell, its marked strip and its blow are the world's (ADR-107), about 0.85 s for a 3.6 m shard.
+- **Chosen only with a piece for it** (`weigh` → 0 otherwise; the hooks `weigh` / `onActStart` are the
+  ones the Ash Disciple's terrain moves added to the duelist engine, ADR-111, copied line for line so
+  the two merge). Started by hand it takes what there is and cannot start with none: the lab stage and
+  the older tests' world mocks have no pieces.
+- **Cut short before the throw** (a stagger, a posture break, his death), what he holds drops where it
+  hangs and comes apart there: interrupting him costs him the stone.
+- **Torn Stone leaves the floor cracked** where each stone was torn out (a scar per stone).
+- **A hanging stone is built on the floor** and hung by its body's own offset (`def.hover`; the set's
+  ambience keeps it there while the piece is whole, his grip takes the offset off as it takes the
+  stone). A piece lands where its pivot meets the ground, so a stone whose geometry was built 4 m up
+  would have burst 4 m up.
+
+**Why.** Thrown pieces follow the rule every thrown thing of his follows (it cues itself where it will
+land), so the new moves need no new reading from the player: a long windup with a visible cause, a
+red ring, a glint. Crown Fall hands the tell to the world on purpose: the falling piece is the tell,
+and the destruction system already draws and deals it. Taking stones that are finite makes the crater
+change over a fight: the stones in the air go first, then his throws strip the hero's cover.
+
+**Rejected.** A piece thrown straight from where it stood (shorter, but off screen for a piece at the
+rim, and the hero has no cause to look at). Bringing the piece over his head (3.6 m up it was off the
+top of a phone's screen). A crush of the hero's cover as its own move (the grip already does it,
+ADR-107). Pieces that orbit him as a shield (it would stop the hero's blows: a new defensive rule,
+not a terrain move). Dealing the throw's blow from a called strike's timer: `onLand` is the moment
+the piece is seen to land.
+
+**Consequences.** His AI used the three moves 6 times in 39 moves in a 90 s bot fight in form 3; their
+effect on the fight's length and difficulty is **not measured**, and no human has played them. The
+crater runs out of stones in the air after six throws and can run low on shards in a long fight (36
+pieces, everything stands again on a reset). Training has a TERRAIN category for him (three staged
+situations, on a level with pieces only). `tests/integration/lord.mjs` builds the real crater with
+its breakables for the TERRAIN and TRAINING scenarios (`build(seed, true)`). The held piece's hang
+height and the ring's strength were set from film strips at 1280 x 720 and 852 x 393; the phone itself
+was not tried.
+
 ## ADR-112 — The Obsidian Throne rebuilt open: Starfall, a crater with no walls (2026-11-15)
 
 **Context.** The Starless Lord's level was a walled hall 28.6 x 37 m (ADR-069): two rows of pillars, a

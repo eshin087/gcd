@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-seven pieces of work since 0.4.0:
+Thirty-eight pieces of work since 0.4.0:
+- **The Starless Lord uses the crater** (2026-11-15, ADR-109). *Added:* three moves on the pieces of
+  his level. **Void Hurl** (every form): a stone that hung in the air, or a shard torn out of the
+  floor, comes to hang beside him and is thrown; the place it lands is ringed in red as it leaves his
+  grip and glints just before. **Glass Rain** (forms 3 and 4): three at once, one after another.
+  **Crown Fall** (forms 2 to 4): when you stand beside something tall, he wrenches it down on you; the
+  strip it falls on is marked. All three are red: be out of the ring or the strip, or roll. Stagger
+  him in the windup and the stone drops. He only does them while there is a piece for them, and every
+  piece stands again when the fight resets. Torn Stone now leaves the floor cracked where it tore.
+  *Dev:* a TERRAIN category in Training for him.
 - **The Obsidian Throne is open** (2026-11-15, ADR-112). *Changed:* the Starless Lord's level is no
   longer a walled hall. It is the crater where he fell: a round floor of cracked black plates round
   the red seal, the star itself split open behind his seat, shards of its glass standing in the

@@ -66,6 +66,9 @@ A fighting game's training mode: every situation worth seeing, one click each.
   `.moveAnswer`, `.lastResult`.
 - Tests: integ / duel / lord TRAINING run every situation for their boss and check each one shows
   what it promises (`expect`).
+On the Obsidian Throne a **TERRAIN** category stages each of the Starless Lord's moves on the
+crater's pieces where it works (ADR-109), on a crater put back whole; the same moves under BOSS MOVES
+start from where he stands and take what there is. Not on the lab stage: it has no pieces.
 
 ## Model viewer
 Renders the hero or the dragon from the angles of a character sheet, for comparing the models with

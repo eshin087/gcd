@@ -5,6 +5,45 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 49: the Starless Lord uses the crater (three terrain moves)
+
+**Owner:** "the 3rd sith boss will use the force to pick up rubble or the pillars to throw as examples.
+think of fun cool epic different terrain interactions". Branch `claude/lord-terrain-moves`, stacked on
+the open crater (PR #47, ADR-112).
+
+**Done** (ADR-109):
+- `starlessLord/terrain.js`: Void Hurl (one piece lifted and thrown), Glass Rain (three, one after
+  another), Crown Fall (a tall piece beside the hero wrenched down on him). Data in `moves.js`
+  (`terrain: kind`), numbers in `TUNING.terrain`; hooks in `lord.js` (`weigh`, `onActStart`, the cast,
+  the frame).
+- The duelist engine's `weigh` / `onActStart` hooks, copied from PR #46 (ADR-111) so both merge.
+- The hanging stones are built on the floor and hung by their bodies' offset (`def.hover`), so a
+  thrown one comes down to the floor. Torn Stone scars the floor where each stone is torn out.
+- Training: a TERRAIN category for him (three situations), shown only on a level with pieces.
+- Tests: `lord.mjs` TERRAIN (19 checks: no pieces → no move; each move's piece, ring, glint and blow;
+  out of the ring; a stagger drops the stone; shards once the stones are gone; the reset; 90 s with
+  the AI on), and the TRAINING scenario now runs on the real crater.
+
+**Filmed for the owner** (headless Edge, the real GPU): one sheet of film strips, the three moves at
+1280 x 720 and Void Hurl at 852 x 393. Sent; no answer yet.
+
+**Verification:** `npm test` (five suites) and `npm run build` pass.
+
+**Found on the way:** a piece lands where its PIVOT meets the ground (`destructibles._fly`), so
+geometry built in the air bursts in the air: build it on the floor and lift the body. A held piece
+3.6 m over his head is off the top of a phone's screen. Training's runner records a fixed list of
+events and does not answer a flash marked `hazard`: its situations for thrown pieces can only stand
+and take it. `debug.setForm(1)` emits an uncatalogued event: a staged situation must not step him
+back a form.
+
+**Not checked / open:** a fight played by a human; whether the moves make him easier or harder (a
+bot stood still for them); the phone in the hand; how the crater looks after a long fight when most
+shards are thrown; sounds (the throw reuses the world's crash).
+
+**Next:** the owner's look at the strips; then tuning (weights, the ring's lead) from a played fight.
+
+---
+
 ## 2026-11-15 — Session 48: the Obsidian Throne rebuilt open (Starfall)
 
 **Owner:** "i want you to redo the sith lord level as the levels in general should not be so confined
