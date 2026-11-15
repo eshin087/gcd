@@ -177,6 +177,23 @@ export function dirLerp(out, i, ax, ay, az, bx, by, bz, t, mem = null) {
   }
   v3(out, i, x, y, z);
 }
+/** The azimuth (rad, + = to his left) the blade of pose a turns through to pose b's: dirLerp's way,
+ *  but never through straight behind him under his head (DIR_FLIP_HIGH), however short that way is:
+ *  from a hand in front of him the steel would cross his body. (A way home from his left goes round
+ *  his front, the settle's HOME_WAY.) */
+function bladeWay(a, b) {
+  azEl(a[P.swD], a[P.swD + 1], a[P.swD + 2], _ae);
+  const a0 = _ae[0], e0 = _ae[1], h0 = _ae[2];
+  azEl(b[P.swD], b[P.swD + 1], b[P.swD + 2], _ae);
+  const a1 = _ae[0], e1 = _ae[1], h1 = _ae[2];
+  let d = wrapAngle(a1 - a0);
+  if (!(Math.min(h0, h1) > 0.3) || Math.abs(d) < 1e-4) return fin(d); // (an end with little heading: dirLerp's own way)
+  const across = (x) => (d > 0 ? x > 0 && x < d : x < 0 && x > d);
+  const fb = wrapAngle(Math.PI - a0), f = wrapAngle(DIR_AVOID - a0);
+  if (across(fb) && e0 + ((e1 - e0) * fb) / d < DIR_FLIP_HIGH) d -= Math.sign(d) * TAU;
+  else if (Math.min(e0, e1) < DIR_HIGH && Math.abs(d) > DIR_LOCAL && across(f) && e0 + ((e1 - e0) * f) / d < DIR_HIGH) d -= Math.sign(d) * TAU;
+  return fin(d);
+}
 /** Turn the blade direction p[i..i+2] toward (x, y, z) by t, round the outside (see dirLerp). */
 function dirTo(p, i, x, y, z, t) {
   if (!(t > 0)) return;
@@ -630,6 +647,23 @@ const SW_HOME = 0.42; // the fraction of a recovery after which he starts back t
 // It was 0.21 and done by the recovery's end: the blade turned back at 6 m/s while the follow-through
 // still ran, and came home round his front at 32 m/s, a second cut)
 const SW_SETTLE = 0.5;
+// The hero's sword arm (the hand, its elbow, the blade, its flat) when a roll, a step back, a block or
+// a drink cuts the way home, or the swing itself (HeroAnimator.tail, mode 'arm'): it carries on at the
+// speed it had and gets to the new clip's pose over a time its distance needs (the steel's path at
+// SW_TAIL_V m/s on average, within [the clip's own blend, SW_TAIL_MAX]); the body takes the clip's own
+// blend. (The roll's 0.05 s blend covered what was left of the settle in one or two frames: the point
+// moved 102-113 m/s and the blade turned 99-119° in a frame)
+const SW_TAIL_V = 13;
+const SW_TAIL_MAX = 0.3;
+// m/s: the free hand (where it is, or the grip as it joins it) on the same terms, on its own clock
+// (it went from the swing's finish to the roll's or the block's place in the clip's 0.05-0.12 s: the
+// forearm turned 53-96° in a frame)
+const SW_TAIL_VL = 2.6;
+const SW_TAIL_KEYS = new Set(['roll', 'backstep', 'block', 'heal']);
+const ARM_MASK = new Uint8Array(N); // 1 on the sword arm's channels, 2 on the free arm's
+for (let c = 0; c < 3; c++) ARM_MASK[P.rH + c] = ARM_MASK[P.rP + c] = ARM_MASK[P.swD + c] = ARM_MASK[P.swF + c] = 1;
+for (let c = 0; c < 3; c++) ARM_MASK[P.lH + c] = ARM_MASK[P.lP + c] = ARM_MASK[P.lD + c] = ARM_MASK[P.lN + c] = 2;
+ARM_MASK[P.twoHand] = ARM_MASK[P.offAt] = ARM_MASK[P.lk] = ARM_MASK[P.hs] = 2;
 // s: the visible cut of the hero's light chain starts this long before the active frames and ends
 // this long after them (a clip's `cut`; swingPose). The blade crossed its 4 m arc in the seven active
 // frames, 52-62 m/s at the tip: 0.9 m a frame, a strobe the eye could not follow
@@ -3048,7 +3082,11 @@ export class HeroAnimator {
     // come (0..1 of SW_SETTLE); and the carry's cross-fade finishing it (play: from h, over dur s)
     this.homeGo = false;
     this.settleH = 0;
-    this.tail = { on: false, h: 0, dur: 0, leg: 0 };
+    // (mode 'all': attackPose's settle finished by the carry's cross-fade at its own pace, the legs on
+    // the fade's; 'arm': the sword arm at the speed it had over D s, the rest on the clip's blend, leg
+    // s. mem: the blade's way round, through his front from his left like the settle's, HOME_WAY;
+    // ra / re: the blade's azimuth and elevation rates as it started, rad/s)
+    this.tail = { on: false, mode: 'all', h: 0, dur: 0, leg: 0, D: 0, DL: 0, ra: 0, re: 0, mem: { d: -3, ok: false }, v0: new Float32Array(N) };
     this.bite = { rec: null, at: -1, dir: new Float32Array(3) }; // attackPose: the hit the bite is for, the blade it bit with
     this.coilHold = 0; // lungeFeet: 1 while a held light waits at the coil (the stepping foot rests)
     // lungeFeet: the holding foot's follow step (on: −1 undecided, 0 none, 1 stepping; from x, z;
@@ -3151,13 +3189,32 @@ export class HeroAnimator {
       if (l > 1e-6) for (let c = 0; c < 3; c++) F[P.swD + c] /= l;
     } else this.fromV.fill(0);
     // the carry takes over from the hero's way home part way (the attack's recovery ended): its
-    // cross-fade finishes that settle at the same pace (update), the legs on their own fade
-    const T = this.tail;
-    T.on = this.freeHand && this.key === 'attack' && key === 'loco' && this.homeGo && this.settleH > 0 && this.settleH < 1;
-    if (T.on) {
-      T.h = this.settleH;
-      T.dur = (1 - T.h) * SW_SETTLE;
-      T.leg = blend > 0 ? Math.max(1e-3, blend) : 1e-3;
+    // cross-fade finishes that settle at the same pace (update), the legs on their own fade. A roll, a
+    // step back, a block or a drink out of a swing or a way home: the sword arm carries on at the speed
+    // it had and takes the time its distance needs, the rest on the clip's own blend (_tailBlend)
+    const T = this.tail, tailing = T.on && this.blendT < this.blendDur;
+    T.on = false;
+    if (this.freeHand && blend > 0 && (key === 'loco' || SW_TAIL_KEYS.has(key))) {
+      const dk = this.def?.kind, atk = this.key === 'attack' && (dk === 'light' || dk === 'slam');
+      if (key === 'loco' && atk && this.homeGo && this.settleH > 0 && this.settleH < 1) {
+        T.on = true;
+        T.mode = 'all';
+        T.h = this.settleH;
+        T.dur = (1 - T.h) * SW_SETTLE;
+      } else if (tailing || (atk && key !== 'loco')) {
+        T.on = true;
+        T.mode = 'arm';
+        T.D = 0; // (_tailBlend's first frame: from the distance to the clip's pose)
+        const V = this.vel, ok = this.velOk;
+        for (let i = 0; i < N; i++) T.v0[i] = ok && ARM_MASK[i] ? clamp(fin(V[i]), -6, 6) : 0;
+        // the blade's azimuth and elevation rates (rad/s; a blade near upright has no heading to turn)
+        const F = this.cur, fl = Math.hypot(F[P.swD], F[P.swD + 1], F[P.swD + 2]) || 1;
+        const ux = F[P.swD] / fl, uy = F[P.swD + 1] / fl, uz = F[P.swD + 2] / fl, hh = ux * ux + uz * uz;
+        const vx = ok ? fin(V[P.swD]) : 0, vy = ok ? fin(V[P.swD + 1]) : 0, vz = ok ? fin(V[P.swD + 2]) : 0;
+        T.ra = hh > 1e-4 ? clamp(((vx * uz - vz * ux) / hh) * smoothstep(0.04, 0.2, hh), -20, 20) : 0;
+        T.re = clamp((vy - uy * (ux * vx + uy * vy + uz * vz)) / Math.sqrt(Math.max(1e-4, hh)), -20, 20);
+      }
+      T.leg = Math.max(1e-3, blend);
     }
     this.homeGo = false;
     this.settleH = 0;
@@ -3183,7 +3240,7 @@ export class HeroAnimator {
     this.fadeMem.ok = false; // the new fade picks its own way round
     this.blendT = 0;
     this.blendDur = blend > 0 ? Math.max(1e-3, blend) : 0;
-    if (T.on) this.blendDur = Math.max(this.blendDur, T.dur, T.leg);
+    if (T.on && T.mode === 'all') this.blendDur = Math.max(this.blendDur, T.dur, T.leg);
     this.easeOut = easeOut;
   }
 
@@ -3434,12 +3491,18 @@ export class HeroAnimator {
     this._idleLife(dt, sp);
     this.poses[this.key](this.target, this);
     if (this.blendT < this.blendDur) {
+      const first = this.blendT === 0;
       this.blendT += dt;
-      const u = clamp(this.blendT / this.blendDur, 0, 1);
-      if (this.tail.on) this._tailBlend();
-      // attack entries (easeOut) get there early and hold the coil, but start from rest: an
-      // ease-out cubic jumped the blade a third of the way (~80° round the body) in its first frame
-      else blend(this.cur, this.from, this.target, this.easeOut ? smoothstep(0, ENTRY_EASE, u) : u * u * (3 - 2 * u), this.fadeMem);
+      if (this.tail.on) {
+        // (it may lengthen the fade on its first frame: the arm's own time)
+        this._tailBlend(first);
+        if (this.blendT >= this.blendDur) this.tail.on = false;
+      } else {
+        // attack entries (easeOut) get there early and hold the coil, but start from rest: an
+        // ease-out cubic jumped the blade a third of the way (~80° round the body) in its first frame
+        const u = clamp(this.blendT / this.blendDur, 0, 1);
+        blend(this.cur, this.from, this.target, this.easeOut ? smoothstep(0, ENTRY_EASE, u) : u * u * (3 - 2 * u), this.fadeMem);
+      }
       if (this.pathCh) {
         // a windup path (light 1's loop, the slam's raise) already starts from the entry pose: the
         // channels it drives are final
@@ -3481,14 +3544,62 @@ export class HeroAnimator {
   /** The carry's cross-fade out of the hero's way home (play: `tail`): the upper body and the blade
    *  finish attackPose's settle at its own pace (the rest of its smootherstep, from where it was),
    *  the legs on the fade's own (a smoothstep over the blend asked for). */
-  _tailBlend() {
+  _tailBlend(first) {
     const T = this.tail, t = this.blendT;
+    const a = this.from, b = this.target, o = this.cur;
+    if (first) {
+      // the blade's way round, kept for the whole fade (the target moves): the settle's own, through
+      // his front, never behind him under his head (the fade's own pick took a finish high on his left
+      // home round his BACK: the blade pointed straight back through him from a hand in front of his
+      // waist, then the leg clearance flipped it to his right in one frame, 98°)
+      T.mem.d = bladeWay(a, b);
+      T.mem.ok = true;
+      if (T.mode === 'arm') {
+        // the time the arm needs: the hand's way and the blade's arc at SW_TAIL_V on average
+        azEl(a[P.swD], a[P.swD + 1], a[P.swD + 2], _ae);
+        const e0 = _ae[1];
+        azEl(b[P.swD], b[P.swD + 1], b[P.swD + 2], _ae);
+        const e1 = _ae[1];
+        const arc = SW_BLADE * Math.hypot(T.mem.d * Math.cos(0.5 * (e0 + e1)), e1 - e0);
+        const hand = Math.hypot(b[P.rH] - a[P.rH], b[P.rH + 1] - a[P.rH + 1], b[P.rH + 2] - a[P.rH + 2]);
+        T.D = clamp(fin((arc + hand) / SW_TAIL_V, T.leg), T.leg, SW_TAIL_MAX);
+        // the free hand's way: to where it is posed, or (two-handed) to the grip, as a free-hand offset
+        let free = 0;
+        for (let c = 0; c < 3; c++) {
+          const g0 = a[P.rH + c] + (c === 0 ? LEFT_FROM_RIGHT : 0), g1 = b[P.rH + c] + (c === 0 ? LEFT_FROM_RIGHT : 0);
+          const w0 = clamp(fin(a[P.twoHand]), 0, 1), w1 = clamp(fin(b[P.twoHand]), 0, 1);
+          const d = b[P.lH + c] + (g1 - b[P.lH + c]) * w1 - (a[P.lH + c] + (g0 - a[P.lH + c]) * w0);
+          free += d * d;
+        }
+        T.DL = clamp(fin(Math.sqrt(free) / SW_TAIL_VL, T.leg), T.leg, SW_TAIL_MAX);
+        this.blendDur = Math.max(this.blendDur, T.D, T.DL, T.leg);
+      }
+    }
+    if (T.mode === 'arm') {
+      // the sword arm: a Hermite from where it was at the speed it had (v0) to the clip's pose in D s
+      // (the free arm on its own, DL s); the rest on the clip's own blend (a smoothstep over leg s)
+      const uB = clamp(t / T.leg, 0, 1), sB = uB * uB * (3 - 2 * uB);
+      const D = Math.max(1e-3, T.D), u = clamp(t / D, 0, 1), h01 = u * u * (3 - 2 * u), h10 = u * (1 - u) * (1 - u);
+      const DL = Math.max(1e-3, T.DL), uL = clamp(t / DL, 0, 1), l01 = uL * uL * (3 - 2 * uL), l10 = uL * (1 - uL) * (1 - uL);
+      for (let i = 0; i < N; i++) {
+        const m = ARM_MASK[i];
+        o[i] = m === 1 ? a[i] + (b[i] - a[i]) * h01 + T.v0[i] * D * h10 : m === 2 ? a[i] + (b[i] - a[i]) * l01 + T.v0[i] * DL * l10 : a[i] + (b[i] - a[i]) * sB;
+      }
+      dirLerp(o, P.swD, a[P.swD], a[P.swD + 1], a[P.swD + 2], b[P.swD], b[P.swD + 1], b[P.swD + 2], h01, T.mem);
+      if (h10 > 1e-6 && (T.ra !== 0 || T.re !== 0)) {
+        // … the blade leaving at its own azimuth / elevation rates
+        azEl(o[P.swD], o[P.swD + 1], o[P.swD + 2], _ae);
+        const az = _ae[0] + clamp(T.ra * D, -SW_ENT_MAX, SW_ENT_MAX) * h10;
+        const el = clamp(_ae[1] + clamp(T.re * D, -SW_ENT_MAX, SW_ENT_MAX) * h10, -1.5, 1.5), c = Math.cos(el);
+        v3(o, P.swD, c * Math.sin(az), Math.sin(el), c * Math.cos(az));
+      }
+      return;
+    }
     const uL = clamp(t / T.leg, 0, 1), sL = uL * uL * (3 - 2 * uL);
     const uT = clamp(t / Math.max(1e-3, T.dur), 0, 1), s0 = smoother(T.h), h = T.h + uT * (1 - T.h);
     const sT = s0 < 1 - 1e-6 ? (smoother(h) - s0) / (1 - s0) : 1;
-    const a = this.from, b = this.target, o = this.cur;
     for (let i = 0; i < N; i++) o[i] = a[i] + (b[i] - a[i]) * (LEG_MASK[i] ? sL : sT);
-    dirLerp(o, P.swD, a[P.swD], a[P.swD + 1], a[P.swD + 2], b[P.swD], b[P.swD + 1], b[P.swD + 2], sT, this.fadeMem);
+    dirLerp(o, P.swD, a[P.swD], a[P.swD + 1], a[P.swD + 2], b[P.swD], b[P.swD + 1], b[P.swD + 2], sT, T.mem);
     // the sword hand's bulge forward on the way home (attackPose) carries on with the settle
     o[P.rH + 2] += SW_BULGE * (Math.sin(Math.PI * smoother(h)) - (1 - sT) * Math.sin(Math.PI * s0));
   }

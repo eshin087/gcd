@@ -822,9 +822,19 @@ forward round his chest). The hero's chain (`flow`): it starts only once the cha
 (`player.buf.action`: with one pressed the next hit carries on out of the follow-through instead),
 and it is a settle of `SW_SETTLE` (0.5 s) that outlasts the recovery: `attackPose` writes how far it
 has come (`anim.settleH`), and the `play('loco')` that ends the attack hands it to the carry's
-cross-fade (`anim.tail { on, h, dur, leg }`, `_tailBlend`: the upper body and the blade finish the
-same smootherstep at the same pace, the bulge with it, the legs on the fade's own smoothstep); a
-block, a roll or the next attack cut it. The cleave and the execution keep the old way (done by the
+cross-fade (`anim.tail`, mode `'all'`, `_tailBlend`: the upper body and the blade finish the same
+smootherstep at the same pace, the bulge with it, the legs on the fade's own smoothstep). A roll, a
+step back, a block or a drink (`SW_TAIL_KEYS`) out of the hero's light / slam (any part of it) or out
+of a tail still running, and a `loco` out of a running tail, take mode `'arm'`: the sword arm (`rH`
+`rP` `swD` `swF`, `ARM_MASK` 1) leaves at the speed it had (`tail.v0` = `vel`, the blade's azimuth /
+elevation rates `ra` / `re`) on a Hermite to the clip's pose over `D` s (the hand's way plus the
+blade's arc at `SW_TAIL_V` m/s, within [the clip's blend, `SW_TAIL_MAX`]), the free arm (`lH` `lP`
+`lD` `lN` `twoHand` `offAt` `lk` `hs`, `ARM_MASK` 2) likewise over `DL` (its hand's way, or the
+grip's when it joins it, at `SW_TAIL_VL`), the body and legs on the clip's own blend (`leg`); the
+fade lasts the longest of them. Either mode keeps the blade's way round fixed for the whole fade
+(`tail.mem`, `bladeWay`: dirLerp's, but never through straight behind him under `DIR_FLIP_HIGH`:
+from his left it goes round his front, like the settle's `HOME_WAY`). The next attack cuts a tail
+(its entry carries the velocity on). The cleave and the execution keep the old way (done by the
 recovery's end). `spinTurn` (the whirl) also drops and leans
 him into the turn and turns his head back toward the target, then ahead of the body (`SPIN_SPOT`);
 the hips run ahead of the turn and the chest trails it (`SPIN_LEAD`), and its momentum carries him
