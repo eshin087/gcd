@@ -2200,7 +2200,7 @@ async function scenarioTelemetry() {
   return G;
 }
 
-// ================================================================== scenario: heavy (ADR-114)
+// ================================================================== scenario: heavy (ADR-115)
 // The heavy branches on a duelist: the right one for each point of the chain, the Mountain
 // Splitter crushing his raised guard where a light is turned, the Rising Crescent staggering him,
 // a held heavy charging, a light that no longer waits.

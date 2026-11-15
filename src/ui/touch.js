@@ -583,7 +583,7 @@ export class TouchControls {
   _syncButtons() {
     const p = this.game.player, B = this.btn, K = this._keys;
     if (!p || !B) return;
-    // HEAVY: ASCII charge meter while the cleave charges (the heavy button holds the charge, ADR-114)
+    // HEAVY: ASCII charge meter while the cleave charges (the heavy button holds the charge, ADR-115)
     const charging = p.state === 'charge';
     const cells = charging ? Math.max(0, Math.min(CHARGE_CELLS, Math.round(fin(p.chargeK) * CHARGE_CELLS))) : -1;
     if (cells !== K.charge && B.heavy) {

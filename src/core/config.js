@@ -78,7 +78,7 @@ export const CONFIG = {
     //   pos    where the cluster's bottom-right corner sits, [in from the right edge, up from the
     //          bottom]; the player picks one in the pause menu (PAD POSITION), as its size (PAD SIZE)
     //   tall   screens taller than 560 px (tablets): everything this much larger
-    // (ADR-114, the owner's pick: a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK; every tile
+    // (ADR-115, the owner's pick: a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK; every tile
     // touches the two beside it and the slide works between them)
     pad: {
       tiles: {

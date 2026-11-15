@@ -10,7 +10,7 @@ import { DIM } from './model.js';
 //   LMB while sprinting      SPRINT_ATK: a bounding rising slash that keeps the run's momentum
 //   LMB out of a forward roll ROLL_ATK: a low cut rising out of the crouch
 //               (both count as hit 1: the next tap is the rising backhand)
-//   HEAVY       (RMB / R2 / the HEAVY tile; ADR-114) the chain's BRANCH at the point it is pressed:
+//   HEAVY       (RMB / R2 / the HEAVY tile; ADR-115) the chain's BRANCH at the point it is pressed:
 //               HEAVY[0] alone (or after the slam, a sprint's or a roll's run-out), HEAVY[n] after the
 //               n-th light (L-H, L-L-H, ...): five heavy moves, each with its own job (combat.js HEAVY)
 //   HEAVY hold  a deep coiled charge, the blade held up behind the right shoulder and glowing;
@@ -130,7 +130,7 @@ export const LIGHT = [
 ];
 
 /**
- * The heavy BRANCHES (ADR-114; owner: "Heavy branches"): HEAVY[0] is the heavy pressed on its own,
+ * The heavy BRANCHES (ADR-115; owner: "Heavy branches"): HEAVY[0] is the heavy pressed on its own,
  * HEAVY[n] the heavy pressed after the n-th light of the chain (in that light's recovery, from its
  * `chain`, or buffered through its cut). Each is a two-handed blow with its own job:
  *   0 Piercing Gale      a dashing two-handed thrust: the gap closer (`dash`, `travel` m)

@@ -354,7 +354,7 @@ export const SWINGS = {
     ],
   },
 
-  // ---- the heavy branches (combat.js HEAVY; ADR-114) -------------------------------------------
+  // ---- the heavy branches (combat.js HEAVY; ADR-115) -------------------------------------------
   // Two-handed, slower to gather, and each holds its finish (`home` 0.385, like the slam and the
   // cleave): the commitment a heavy is, readable from the camera behind him. Each starts on the side
   // the light before it leaves the blade.

@@ -2984,7 +2984,7 @@ hall 0.85 and 0.89 at 1920 x 1080, 1.03 at 3840 x 2160, 0.92 and 1.01 at 852 x 3
 slower, about a tenth cheaper at 1080p, no measurable difference at 4K or at phone size. **A phone
 was not measured.** The seal's flare, the intro and the reset are unchanged and tested.
 
-## ADR-114 — A heavy button: five heavy branches off the chain; the charge moves to it (2026-11-15)
+## ADR-115 — A heavy button: five heavy branches off the chain; the charge moves to it (2026-11-15)
 - **Context:** the genre review: the hero had one attack button and one fixed chain (13 looks picked
   at random), against Phantom Blade Zero's and Onimusha's choice of what comes out. The owner, asked
   first: heavy branches off the light chain (not direction-chosen swings), hold heavy to charge, a

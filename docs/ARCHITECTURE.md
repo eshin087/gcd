@@ -458,7 +458,7 @@ guard, maxGuard: number                // the guard meter (combat/rules.js GUARD
                                        // for GUARD.openDur with the guard break's pose, `player:guardOpen`); read by the HUD
                                        // and the touch BLOCK tile
 state: string   // 'idle'|'run'|'sprint'|'roll'|'attack'|'charge'|'heavy'|'block'|'parry'|'ghostep'|'plunge'|'heal'|'stagger'|'guardBreak'|'knockdown'|'lock'|'mikiri'|'dead'
-                //  ('attack' = the light chain + the slam finisher + the heavy branches (combat.js HEAVY, ADR-114),
+                //  ('attack' = the light chain + the slam finisher + the heavy branches (combat.js HEAVY, ADR-115),
                 //   'heavy' = the released charge's cleave (and the execution's thrust),
                 //   'ghostep' = a perfect dodge without the plunge, 'plunge' = the head-stab, contract 2,
                 //   'lock' = blades crossed with a duelist, 'mikiri' = stepping on a perilous thrust)
@@ -471,7 +471,7 @@ bladeFlare: number                     // 0..0.75: the steel's flare at a landed
                                        // not a slam's shards-only hit). Any area may raise it (Math.max), never lower it; it
                                        // decays by 1 / TUNE.bladeFlare.fall per s of GAME time (held through the freeze) and
                                        // drives part 17's fill / lines and the blade halo
-lockOn: boolean                        // toggled by Tab (the middle click is the guard since ADR-114); facing tracks dragon.lockPoint
+lockOn: boolean                        // toggled by Tab (the middle click is the guard since ADR-115); facing tracks dragon.lockPoint
 get alive(): boolean
 isInvulnerable(): boolean              // roll i-frames, the whole plunge, Ghostep / plunge-landing i-frames, get-up, the blade lock, dead
 // impact (ADR-063, ADR-079; TUNE.parryStop / parryPunch / perfectParry / hurtStop): a blade's parry
@@ -1823,7 +1823,7 @@ ok, missing, secs }). It drives the hero only through `game.input.setVirtual` /
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```
 ACTIONS                     // [{ id, label, kb: [codes] | null, pad: [buttons] | null, fixed? }] — the defaults
-new Bindings(storage = localStorage)   // loads 'abyss.bindings.v2' (ADR-114: a v1 save is not read); storage null = defaults, nothing saved
+new Bindings(storage = localStorage)   // loads 'abyss.bindings.v2' (ADR-115: a v1 save is not read); storage null = defaults, nothing saved
 codes(a) / buttons(a)       // the keyboard-mouse codes / pad button indices bound to action a
 bindKey(a, code) / bindPad(a, i)   // replace a's binding; false when refused (reserved, fixed, wrong device)
 reset(save, 'kb' | 'pad' | null);  isDefault(which);  onChange(fn) → unsubscribe;  version
@@ -1832,7 +1832,7 @@ keyLabel(code) / padLabel(i, layout);  installActions(input, bindings)   // the 
 ```
 Actions: up, down, left, right (keyboard only), attack (the light), heavy, block, dodge, sprint, flask, lockOn,
 interact (rest / fight again), help, mute (keyboard only), zoomIn, zoomOut (pad only), pause
-(fixed: Esc / the pad's Menu). Defaults (ADR-114): attack LMB / R1, heavy RMB / R2, block MMB / L1 L2, lockOn Tab /
+(fixed: Esc / the pad's Menu). Defaults (ADR-115): attack LMB / R1, heavy RMB / R2, block MMB / L1 L2, lockOn Tab /
 R3, dodge Space / A. Keyboard codes are `KeyboardEvent.code` or `Mouse0`-`Mouse2`; pad
 buttons are standard-mapping indices. **Every action also answers to its virtual code `'@<id>'`**:
 the touch and gamepad layers press those (so a keyboard remap never moves a touch or pad button).
@@ -1918,7 +1918,7 @@ timings are the real device's):
 | a bare-screen tap on title / death | `Mouse0` | "press any key" |
 | two bare-screen fingers in play | `cameraRig.zoom` | pinch (distance × start / now) |
 
-**The pad** (ADR-096; `CONFIG.touch.pad`; four tiles since ADR-114): ATTACK, HEAVY, BLOCK and DODGE are a
+**The pad** (ADR-096; `CONFIG.touch.pad`; four tiles since ADR-115): ATTACK, HEAVY, BLOCK and DODGE are a
 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK, each sharing an edge with the two beside it (ATTACK
 bottom right), raised and inset from the corner. HEAVY carries the charge meter while it is held. The pad is one pointer surface (`.tc-pad`; the tiles
 take no pointers themselves): a touch on it, or up to `reach` (26 px) outside the cluster, presses
@@ -2309,7 +2309,7 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
-- `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-114; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
+- `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
   `player:charge {t}` (charge start; t = seconds to full charge), `player:slam {x, z}` (the slam meets the ground: shard burst),
   `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight, shards}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
   head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn

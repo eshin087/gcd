@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Thirty-nine pieces of work since 0.4.0:
-- **A heavy attack, and five heavies to choose from** (2026-11-15, ADR-114). *Added:* a HEAVY button (right
+- **A heavy attack, and five heavies to choose from** (2026-11-15, ADR-115). *Added:* a HEAVY button (right
   click, R2, and a fourth tile on the phone). Pressed on its own it is a dashing two-handed thrust;
   pressed after the first, second, third or fourth light of the combo it is that point's own heavy:
   a rising cut that staggers a duelist, a full spinning sweep, a falling cut that breaks through a

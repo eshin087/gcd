@@ -1256,7 +1256,7 @@ async function scenarioReach() {
   };
   const fresh = () => { d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G); };
   const KINDS = { L1: 'light', L2: 'light', L3: 'light', L4: 'light', slam: 'slam', cleave: 'cleave', H0: 'heavy', H1: 'heavy', H2: 'heavy', H3: 'heavy', H4: 'slam' };
-  // the heavy branches (ADR-114): n lights in open air, then the heavy press in the n-th one's recovery
+  // the heavy branches (ADR-115): n lights in open air, then the heavy press in the n-th one's recovery
   const { HEAVY: HV } = await imp('src/entities/player/combat.js');
   const HNAME = { H0: HV[0].name, H1: HV[1].name, H2: HV[2].name, H3: HV[3].name, H4: HV[4].name };
   const CLICKS = { L1: 1, L2: 2, L3: 3, L4: 4, slam: 5 }; // the 5-hit chain (ADR-041): falling cut, rising cut, whirl, stab, slam
@@ -5369,7 +5369,7 @@ async function scenarioHeroWeight() {
     assert(worst <= 15, `no hip whip: the hips turn at most ${worst.toFixed(1)}° a frame through every light's windup and cut (≤ 15°; ${at})`);
   }
 
-  // (W6) a held light does NOT wait at its coil (ADR-114: the charge moved to the heavy button):
+  // (W6) a held light does NOT wait at its coil (ADR-115: the charge moved to the heavy button):
   // the attack button held 0.25 s, the light passes its windup on its own clock and cuts, never
   // pending and never a charge. (Until 2026-11-15 it waited at the coil while held: that hold and its
   // settling hips and foot were tested here.)
@@ -6219,7 +6219,7 @@ async function scenarioTouch() {
   touch('pointerup', atk, 11);
   frames(0.6);
   assert(kinds[0] === 'light', `ATTACK tap → light swing (${kinds.join(',')})`);
-  // HEAVY tap → a heavy (ADR-114: HEAVY[0] on its own)
+  // HEAVY tap → a heavy (ADR-115: HEAVY[0] on its own)
   settle(G); place(G, 6);
   kinds.length = 0;
   touch('pointerdown', hvy, 13);
@@ -6291,7 +6291,7 @@ async function scenarioTouch() {
     const pad = cls('tc-pad'), geo = t.padGeo, T = geo.tiles;
     assert(!!pad && atk.classList.contains('tc-tile') && hvy.classList.contains('tc-tile') && blk.classList.contains('tc-tile') && dge.classList.contains('tc-tile') && !flask.classList.contains('tc-tile'), 'ATTACK / HEAVY / BLOCK / DODGE are tiles of the pad; FLASK is its own button');
     const touchSide = (a, b) => (a[2] === b[0] || b[2] === a[0]) ? Math.min(a[3], b[3]) - Math.max(a[1], b[1]) : (a[3] === b[1] || b[3] === a[1]) ? Math.min(a[2], b[2]) - Math.max(a[0], b[0]) : 0;
-    // (ADR-114: a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK: each tile shares an edge with the two beside it)
+    // (ADR-115: a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK: each tile shares an edge with the two beside it)
     const sides = [touchSide(T.attack, T.heavy), touchSide(T.attack, T.dodge), touchSide(T.block, T.heavy), touchSide(T.block, T.dodge)];
     assert(sides.every((v) => v >= 40), `each tile shares an edge with the two beside it (${sides.map((v) => v.toFixed(0)).join(' / ')} px)`);
     const A = t.padPoint('attack'), Bk = t.padPoint('block'), Dg = t.padPoint('dodge');
@@ -6655,7 +6655,7 @@ async function scenarioRemap() {
   const storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)) };
   const b = new Bindings(storage);
   assert(b.isDefault() && b.codes('dodge').join() === 'Space' && b.buttons('attack').join() === '5' && b.buttons('heavy').join() === '7', 'defaults: Space dodges, RB light, RT heavy');
-  assert(b.codes('attack').join() === 'Mouse0' && b.codes('heavy').join() === 'Mouse2' && b.codes('block').join() === 'Mouse1' && b.codes('lockOn').join() === 'Tab', 'defaults (ADR-114): LMB light, RMB heavy, MMB block, Tab lock-on');
+  assert(b.codes('attack').join() === 'Mouse0' && b.codes('heavy').join() === 'Mouse2' && b.codes('block').join() === 'Mouse1' && b.codes('lockOn').join() === 'Tab', 'defaults (ADR-115): LMB light, RMB heavy, MMB block, Tab lock-on');
   assert(b.bindKey('dodge', 'KeyQ') && b.codes('dodge').join() === 'KeyQ' && !ACTIONS.some((a) => b.codes(a.id).includes('Space')), 'bind Q to dodge: Space is free');
   assert(b.bindKey('dodge', 'KeyF') && b.codes('dodge').join() === 'KeyF' && b.codes('flask').join() === 'KeyQ', 'F (the flask key) to dodge → a swap: the flask gets Q');
   assert(b.bindKey('up', 'ArrowDown') && b.codes('up').join() === 'ArrowDown' && b.codes('down').join() === 'KeyS', 'a taken alternate (↓) moves without a swap when its action keeps a key');

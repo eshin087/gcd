@@ -14,7 +14,7 @@ export const ACTIONS = [
   { id: 'down', label: 'move down', kb: ['KeyS', 'ArrowDown'], pad: null },
   { id: 'left', label: 'move left', kb: ['KeyA', 'ArrowLeft'], pad: null },
   { id: 'right', label: 'move right', kb: ['KeyD', 'ArrowRight'], pad: null },
-  // (ADR-114, the owner's pick: heavy on the right click and R2, the guard on the middle click)
+  // (ADR-115, the owner's pick: heavy on the right click and R2, the guard on the middle click)
   { id: 'attack', label: 'light attack', kb: ['Mouse0'], pad: [5] },
   { id: 'heavy', label: 'heavy attack · hold: charge', kb: ['Mouse2'], pad: [7] },
   { id: 'block', label: 'block · tap: parry', kb: ['Mouse1'], pad: [4, 6] },

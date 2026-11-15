@@ -112,7 +112,7 @@ add('BOSS STREAK', [
 
 add('OFFENCE', [
   { id: 'chain', name: 'Light chain (5 hits)', boss: 'any', desc: 'The five-hit chain into the slam.', dist: 2.4, wyrmDist: 3.2, go: () => {}, tick: (T) => T.every(0.36, 5, () => T.tap('@attack')), until: (T) => T.t > 2.4 && T.heroFree(), expect: ['player:attack'] },
-  // the heavy branches (ADR-114): n lights, then HEAVY (combat.js HEAVY)
+  // the heavy branches (ADR-115): n lights, then HEAVY (combat.js HEAVY)
   ...[
     ['Piercing Gale', 'Heavy on its own: a dashing two-handed thrust that closes the gap.'],
     ['Rising Crescent', 'Light, then heavy: a two-handed rising cut that staggers a duelist.'],

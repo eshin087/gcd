@@ -5,14 +5,14 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-15 — Session 51: a heavy button; five heavy branches off the chain; the charge on the heavy
+## 2026-11-15 — Session 52: a heavy button; five heavy branches off the chain; the charge on the heavy
 
 **Owner:** "Yes, ask me first" (the genre review's heavy button). Asked, answered: heavy branches off
 the chain, hold heavy to charge, a fourth tile on the phone (2 x 2), heavy on the right click (then:
-the guard on the middle click). Branch `player/heavy-branches` from `main`, own worktree. ADR-114 /
-Session 51 / M1.40: open PRs hold 111, 113 and Sessions 47, 50 and M1.39.
+the guard on the middle click). Branch `player/heavy-branches` from `main`, own worktree. ADR-115 /
+Session 52 / M1.40 (PR #49 took ADR-114 and Session 51 while this was open; #50 took 113).
 
-**Done** (ADR-114):
+**Done** (ADR-115):
 - `combat.js` `HEAVY` and `heavyAfter`; four two-handed clips in `swings.js`; the Earthbreaker on
   the slam clip with a higher leap.
 - `player.js`: the heavy press (`this.hb`, was `lmb`) buffers 'heavy'; from a light's recovery it is

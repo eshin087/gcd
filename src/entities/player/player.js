@@ -19,7 +19,7 @@ import { Flurry } from './flurry.js';
 // No stamina (v0.2): pacing comes from attack recovery, roll recovery and the enemy's patterns.
 // Moveset (combat.js, ADR-041): LMB chain falling cut → rising backhand → whirl → stab → two-handed
 // slam (finisher, ground shards); LMB out of a sprint = the sprint slash, out of a forward roll = the
-// roll cut; HEAVY (RMB / R2) = the chain's heavy branch (combat.js HEAVY, ADR-114); hold HEAVY =
+// roll cut; HEAVY (RMB / R2) = the chain's heavy branch (combat.js HEAVY, ADR-115); hold HEAVY =
 // crouched charge, release = the dashing cleave. Swings hit giant targets through
 // a vertical reach band and step in toward a hurt surface ahead (REACH).
 // A perfect dodge is answered by the flurry (flurry.js, ADR-091): as many blows as the streak of
@@ -186,7 +186,7 @@ export class Player {
     this.control = false;
     this.intent = { x: 0, z: 0, len: 0, sprint: false };
     this.buf = { action: null, t: 0 };
-    // the HEAVY button's press (game time held): held past CHARGE.hold it is the charge (ADR-114; it
+    // the HEAVY button's press (game time held): held past CHARGE.hold it is the charge (ADR-115; it
     // was the attack button's until the heavy button came: a light no longer waits to see if it is held)
     this.hb = { held: false, t: 0 };
     this.rmb = { held: false, upT: -Infinity, parryT: -Infinity, edge: false, chain: false };
@@ -852,7 +852,7 @@ export class Player {
 
     // attack (LMB / R1 / ATTACK): a press starts a light attack at once. heavy (RMB / R2 / HEAVY): a
     // press starts the chain's heavy branch (combat.js heavyAfter); held past CHARGE.hold it is the
-    // charge, the dashing cleave (ADR-114)
+    // charge, the dashing cleave (ADR-115)
     if (inp.actPressed('attack')) this._buffer('light');
     if (inp.actPressed('heavy')) {
       L.held = true;
@@ -2503,7 +2503,7 @@ export class Player {
       // world) or null; glintZ: how far up the edge the glint has run (fx.edgeGlint)
       hitAt: -1, cutDir: null, glintZ: null,
       // a heavy press still held: it may become the charge (the swing waits at the coil). A light
-      // never waits (ADR-114: the charge moved to the heavy button)
+      // never waits (ADR-115: the charge moved to the heavy button)
       pending: def.button === 'heavy' && this.hb.held,
       damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0, relT: 0, shaped: false, svx: 0, svz: 0,
     };
