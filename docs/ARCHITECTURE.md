@@ -828,10 +828,14 @@ kind is `thrust` (the execution's lunge). **The way home:** from a clip's `home`
 forward round his chest). The hero's chain (`flow`): it starts only once the chain really ends,
 `anim.homeGo`, latched in `update()` when `rec` passes `home` with no light in the player's buffer
 (`player.buf.action`: with one pressed the next hit carries on out of the follow-through instead),
-and it is a settle of `SW_SETTLE` (0.35 s) that outlasts the recovery: `attackPose` writes how far it
-has come (`anim.settleH`), and the `play('loco')` that ends the attack hands it to the carry's
-cross-fade (`anim.tail`, mode `'all'`, `_tailBlend`: the upper body and the blade finish the same
-smootherstep at the same pace, the bulge with it, the legs on the fade's own smoothstep). A roll, a
+and it is a settle of `SW_SETTLE` (0.35 s; a carry's own `settle`, `settleOf`) that outlasts the
+recovery: `attackPose` writes how far it has come (`anim.settleH`), and the `play('loco')` that ends
+the attack hands it to the carry's cross-fade (`anim.tail`, mode `'all'`, `_tailBlend`: the upper body
+and the blade finish the same smootherstep at the same pace, the bulge with it, the legs on the fade's
+own smoothstep; what is left of a settle all but done still takes at least the clip's blend). A
+carry's `dip` (rad, `dipOf`, `dipBlade`) lowers the blade's point by `dip` × sin(π × the settle) on the
+way, never under `DIP_FLOOR`, and the tail carries it on like the bulge. While a tail runs, the
+carry's own sword-arm fades (`via`, `armFade`, `armOff`, below) do not also act. A roll, a
 step back, a block or a drink (`SW_TAIL_KEYS`) out of the hero's light / slam (any part of it) or out
 of a tail still running, and a `loco` out of a running tail, take mode `'arm'`: the sword arm (`rH`
 `rP` `swD` `swF`, `ARM_MASK` 1) leaves at the speed it had (`tail.v0` = `vel`, the blade's azimuth /

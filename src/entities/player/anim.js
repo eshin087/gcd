@@ -691,6 +691,21 @@ const SW_HOME = 0.42; // the fraction of a recovery after which he starts back t
 // opener wound across his whole front at 47-58 m/s, faster than its cut: 0.35 s peaks at ~24 m/s on
 // the way home after a single hit, main's 31-44)
 const SW_SETTLE = 0.35;
+// (a carry far round from the cuts' finishes takes its own, longer way home: carry.js `settle`. Into
+// the trailing blade the way home sweeps ~270° round his front: in 0.35 s it peaked at 27 m/s)
+const settleOf = (A) => (A.carry && A.carry.settle > 0 ? A.carry.settle : SW_SETTLE);
+// … and the point drops as the blade comes across his front, the way a relaxed arm lets it fall
+// (carry.js `dip`, rad at mid-way): the path across his front is shorter, the way home slower
+const dipOf = (A) => (A.carry && A.carry.dip > 0 ? A.carry.dip : 0);
+/** The blade p[swD] lowered by d rad of elevation (not below DIP_FLOOR); allocates nothing. */
+function dipBlade(p, d) {
+  if (!(d > 1e-5)) return;
+  azEl(p[P.swD], p[P.swD + 1], p[P.swD + 2], _ae);
+  if (_ae[2] < 0.05) return; // (a blade upright has no heading to keep)
+  const el = Math.max(Math.min(_ae[1], DIP_FLOOR), _ae[1] - d), c = Math.cos(el);
+  v3(p, P.swD, c * Math.sin(_ae[0]), Math.sin(el), c * Math.cos(_ae[0]));
+}
+const DIP_FLOOR = -0.95; // rad: the dip leaves the point above this (the grass, the shins)
 // The hero's sword arm (the hand, its elbow, the blade, its flat) when a roll, a step back, a block or
 // a drink cuts the way home, or the swing itself (HeroAnimator.tail, mode 'arm'): it carries on at the
 // speed it had and gets to the new clip's pose over a time its distance needs (the steel's path at
@@ -1270,7 +1285,7 @@ function attackPose(p, A) {
     for (let j = 0; j < FOOT_CH.length; j++) FOOT_KEEP[j] = p[FOOT_CH[j]];
     guard(SCRATCH, A);
     // (smootherstep: no speed and no acceleration left as the hands arrive)
-    const hx = flow ? clamp((t - W - Ac - home * R) / SW_SETTLE, 0, 1) : clamp((rec - home) / Math.max(1e-6, 1 - home), 0, 1), b = smoother(hx);
+    const hx = flow ? clamp((t - W - Ac - home * R) / settleOf(A), 0, 1) : clamp((rec - home) / Math.max(1e-6, 1 - home), 0, 1), b = smoother(hx);
     if (flow) A.settleH = hx;
     // a finish over his LEFT shoulder (light 1) comes home round the FRONT: the ready blade now
     // lies out to his right, and the short way there from the left-back runs behind his head and
@@ -1280,6 +1295,7 @@ function attackPose(p, A) {
     blend(p, p, SCRATCH, b, HOME_WAY);
     for (let j = 0; j < FOOT_CH.length; j++) p[FOOT_CH[j]] = FOOT_KEEP[j];
     p[P.rH + 2] += SW_BULGE * Math.sin(Math.PI * b);
+    if (flow) dipBlade(p, dipOf(A) * Math.sin(Math.PI * b));
     const u = smoothstep(0.42, 0.9, rec); // home a beat before the blade crosses back in front of the legs
     // (the foot that STEPPED: it was always the left, so after a right-foot step the rear left foot
     // stepped 13 cm forward while the right stayed out. A dash and the thrust land the left in front)
@@ -3334,7 +3350,7 @@ export class HeroAnimator {
         T.on = true;
         T.mode = 'all';
         T.h = this.settleH;
-        T.dur = (1 - T.h) * SW_SETTLE;
+        T.dur = (1 - T.h) * settleOf(this);
       } else if (tailing || (atk && key !== 'loco')) {
         T.on = true;
         T.mode = 'arm';
@@ -3349,6 +3365,9 @@ export class HeroAnimator {
         T.re = clamp((vy - uy * (ux * vx + uy * vy + uz * vz)) / Math.sqrt(Math.max(1e-4, hh)), -20, 20);
       }
       T.leg = Math.max(1e-3, blend);
+      // (what is left of a settle all but done, the slam's after its long recovery, still takes the
+      // clip's own blend: the body's last difference from loco's pose went in one frame, 8 m/s at the point)
+      if (T.on && T.mode === 'all') T.dur = Math.max(T.dur, T.leg);
     }
     this.homeGo = false;
     this.settleH = 0;
@@ -3870,6 +3889,8 @@ export class HeroAnimator {
     dirLerp(o, P.swD, a[P.swD], a[P.swD + 1], a[P.swD + 2], b[P.swD], b[P.swD + 1], b[P.swD + 2], sT, T.mem);
     // the sword hand's bulge forward on the way home (attackPose) carries on with the settle
     o[P.rH + 2] += SW_BULGE * (Math.sin(Math.PI * smoother(h)) - (1 - sT) * Math.sin(Math.PI * s0));
+    // … and so does the point's dip (carry.js `dip`)
+    dipBlade(o, dipOf(this) * (Math.sin(Math.PI * smoother(h)) - (1 - sT) * Math.sin(Math.PI * s0)));
   }
 
   /** The sword arm's fade from the carry (this.from) to the clip's pose (a carry's armFade). */

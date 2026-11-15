@@ -78,6 +78,12 @@ export const CARRIES = Object.freeze({
     rev: 0,
     via: true,
     armFade: 0.12,
+    // (the way home from a finish on his left sweeps ~270° round his front into the trail: in the
+    // flow's 0.35 s it peaked at 27 m/s, nearly the cut's speed. Slower than 0.37 s, a click again as
+    // the attack ends finds the blade still far on his left and winds across his front faster than
+    // its cut (0.45 s: 1.1 of it); the point dropping 0.9 rad at mid-way shortens the way round)
+    settle: 0.37,
+    dip: 0.9,
     rest: Object.freeze({ h: v(-0.09, -0.54, -0.12), hBr: v(0, 0.006, 0.004), rp: v(-0.3, 0, -1), d: v(-0.372, -0.669, -0.644), dBr: v(0, 0.012, 0), dSw: v(0.01, 0, 0), f: v(0.87, 0, -0.5), free: null }),
     run: Object.freeze({ h: v(-0.1, -0.5, -0.14), rp: v(-0.35, -0.1, -1), d: v(-0.544, -0.469, -0.696), f: v(1, 0.1, -0.4) }),
     sprint: Object.freeze({ h: v(-0.12, -0.4, -0.3), rp: v(-0.5, 0.2, -0.95), d: v(-0.3, -0.2, -0.93), f: v(-0.2, 1, 0) }),
