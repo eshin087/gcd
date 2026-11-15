@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { FLAG } from '../render/materials.js';
 import { hash2, fbm2, range } from '../core/rng.js';
 import { TAU } from '../core/math.js';
-import { prep, lumpy, paint, mul } from './forest.js';
+import { prep, lumpy, paint, carve, mul } from './forest.js';
 
 // Landmarks: the big set pieces of each level (STYLE.md "Landmarks"). Every one is a screen-grid
 // prop (FLAG.STONE / FLAG.LEAF through the AsciiObject material): a mass of readable characters with
@@ -650,3 +650,77 @@ export function buildGreatSword(rng, x, z, yaw = 0, s = 1, { lean = 0.16, col = 
 
 /** The throne's wardens: two hooded colossi in obsidian, their swords edged in red. */
 export const buildWarden = (rng, x, z, yaw, s) => buildColossus(rng, x, z, yaw, s, { col: OBSIDIAN, head: 'hood', blade: BLOODSTEEL, worn: 0.03 });
+
+// ---------------------------------------------------------------- the Obsidian Throne: Starfall (ADR-108)
+// The crater's pieces are built for prop art directly: carve() attributes, flat facets, one tone a
+// facet. They go into a set's `stones` mesh (or its breakables) as they are: no carved() pass.
+const STAR_ROCK = [0.075, 0.078, 0.105]; // the crater floor's obsidian
+/** The star's glass: obsidian with a violet cast (the shards, the crown behind the throne). */
+export const STAR_GLASS = [0.07, 0.058, 0.13];
+
+/** One tone per facet, keyed by its normal: a spread of tones is what prints as form. */
+const facetTone = (nx, ny, nz) => 0.5 + 1.1 * hash2(Math.round(nx * 9) + Math.round(ny * 9) * 31, Math.round(nz * 9) + 7);
+/** A carve() colour: `c` × k × the facet's tone. */
+export const facetCol = (c, k = 1) => (px, py, pz, nx, ny, nz) => mul(c, k * facetTone(nx, ny, nz));
+
+/**
+ * A spike: a box tapering to `tip` of its base, its foot at (x, y, z). `lean` rad toward
+ * (sin yaw, cos yaw); `roll` rad sideways in its own plane (a fan of spikes facing the camera).
+ * Carved. The crater's rim slabs and the crown behind the throne are these.
+ */
+export function buildSpike(rng, x, y, z, { h, w, d = w, tip = 0.1, lean = 0, yaw = 0, roll = 0, col, lump = 0.04 }) {
+  const g = prep(new THREE.BoxGeometry(w, h, d, 1, 4, 1));
+  g.translate(0, h / 2, 0);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const t = 1 - (1 - tip) * Math.pow(Math.max(0, p.getY(i) / h), 1.2);
+    p.setX(i, p.getX(i) * t);
+    p.setZ(i, p.getZ(i) * t);
+  }
+  if (lump) lumpy(g, lump, 1.3, rng() * 99, V(0, h / 2, 0));
+  if (roll) g.rotateZ(roll);
+  g.rotateX(lean);
+  g.rotateY(yaw);
+  g.translate(x, y, z);
+  carve(g, { col, ao: (px, py) => 0.5 + 0.5 * Math.min(1, (py - y) / 1.5) });
+  return g;
+}
+
+/**
+ * The star that fell with him, half sunk where it stopped: two faceted halves split down the
+ * middle (he climbed out of the cleft), a crown of ten glass splinters fanned behind them, the
+ * tallest 10 m. ~18 m wide. (x, z) is its centre; the cleft faces +z, and his seat stands 5.4 m in
+ * front of it. Carved parts.
+ */
+export function buildFallenStar(rng, x, z) {
+  const parts = [];
+  for (const sx of [-1, 1]) {
+    const half = prep(new THREE.IcosahedronGeometry(4.6, 1));
+    lumpy(half, 2.2, 0.3, 7.3 + sx * 3);
+    half.scale(1.0, 0.95, 0.9);
+    half.rotateZ(sx * 0.16);
+    half.translate(x + sx * 4.3, 1.5, z);
+    carve(half, { col: facetCol(STAR_ROCK, 1.3), ao: (px, py) => 0.45 + 0.55 * Math.min(1, py / 3.2) });
+    parts.push(half);
+  }
+  for (let i = -5; i <= 5; i++) {
+    if (i === 0) continue;
+    const roll = -i * 0.2 + range(rng, -0.05, 0.05), h = (10.5 - Math.abs(i) * 1.1) * range(rng, 0.85, 1.1);
+    parts.push(buildSpike(rng, x + i * 1.15, 2.6, z + 0.6 - Math.abs(i) * 0.12, { h, w: 0.95 - Math.abs(i) * 0.05, d: 0.42, tip: 0.06, roll, lean: -0.1, col: facetCol(STAR_GLASS, 1.7) }));
+  }
+  return parts;
+}
+/** Colliders of the fallen star in local space: [lx, lz, r] (a row across its south face). */
+export const STAR_COLLIDERS = [-7.5, -5.9, -4.3, -2.7, -1.1, 0.5, 2.1, 3.7, 5.3, 6.9].map((lx) => [lx, 1.2, 1.1]);
+
+/**
+ * The light in the star's cleft: two lines of strokes that open upward from behind the seat.
+ * Returns inlay glyphs ({ x, y, z, glyph, size, color, flicker }) for the set's glow batch.
+ */
+export function starCleft(rng, x, z) {
+  const out = [];
+  for (let y = 1.4; y < 7.4; y += 0.36) {
+    for (const sx of [-1, 1]) out.push({ x: x + sx * (0.1 + y * 0.17) + range(rng, -0.12, 0.12), y, z: z + 3.0 - y * 0.25, glyph: sx < 0 ? '\\' : '/', size: 0.5, color: [2.4, 0.12, 0.08], flicker: 0.14 });
+  }
+  return out;
+}

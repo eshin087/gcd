@@ -50,6 +50,8 @@ const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 /** A move's first real hit's tell (a `pick` beat: its first alternative). */
 const firstTell = (def) => def.beats.map((b) => (Array.isArray(b.pick) ? b.pick[0] : b)).find((b) => !b.feint)?.tell ?? TELL.NORMAL;
 
+const _spot = { x: 0, z: 0 }; // (standable's probe)
+
 export class Duelist {
   constructor(game, kit) {
     this.game = game;
@@ -1076,6 +1078,16 @@ export class Duelist {
     S.failed = true;
   }
 
+  /** Whether he may stand at (x, z): inside his bound and clear of the world's colliders (a boss
+   *  whose floor is not just that circle adds to it). */
+  standable(x, z) {
+    if (!Number.isFinite(x + z) || Math.hypot(x, z) > this.bound) return false;
+    _spot.x = x;
+    _spot.z = z;
+    this.game.world?.resolve?.(_spot, this.T.radius, Infinity);
+    return Math.hypot(_spot.x - x, _spot.z - z) < 0.2;
+  }
+
   /**
    * A flurry's later blow: he is gone from where he stood and at another side of the hero, `K.r` m
    * off, facing him (`s`: the brain's sense of the hero; `i`: the blow's index, which side he
@@ -1085,8 +1097,16 @@ export class Duelist {
     const p = s.p, x0 = this.position.x, z0 = this.position.z;
     if (!p || !Number.isFinite(p.x + p.z)) return;
     const a0 = Math.atan2(x0 - p.x, z0 - p.z);
-    const a = a0 + (i % 2 ? -1 : 1) * (1.6 + 1.0 * Math.random());
+    const turn = (i % 2 ? -1 : 1) * (1.6 + 1.0 * Math.random());
     const r = fin(K?.r, 2.3);
+    // the side he turns to, or the nearest one he may stand on: a hero at the edge of his floor or
+    // beside a stone has sides he cannot take, and a blow from a spot he was pushed off whiffs
+    let a = a0 + turn;
+    for (const da of [turn, -turn, turn * 0.5, -turn * 0.5, Math.PI, 0]) {
+      if (!this.standable(p.x + Math.sin(a0 + da) * r, p.z + Math.cos(a0 + da) * r)) continue;
+      a = a0 + da;
+      break;
+    }
     this.position.x = p.x + Math.sin(a) * r;
     this.position.z = p.z + Math.cos(a) * r;
     this.position.y = 0;

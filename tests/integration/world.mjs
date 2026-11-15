@@ -24,6 +24,7 @@ const { Destructibles, STATE } = await imp('src/world/destructibles.js');
 const { BREAK, BLOW, FIRE, SCAR } = await imp('src/world/breakTuning.js');
 const { createForest } = await imp('src/world/forest.js');
 const { createCourtyard } = await imp('src/world/courtyard.js');
+const { createThroneHall } = await imp('src/world/throneHall.js');
 const { TELL, RESULT } = await imp('src/combat/rules.js');
 
 const errors = [];
@@ -90,7 +91,7 @@ function build(makeSet = createForest, density = () => 1) {
 const S = {
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder']], ['courtyard', createCourtyard, ['pillar', 'lantern']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       assert(L.length >= 20 && L.length <= 160, `${name}: ${L.length} breakables (20..160)`);
