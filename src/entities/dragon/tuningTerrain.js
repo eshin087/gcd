@@ -44,7 +44,9 @@ export const TERRAIN_ATTACKS = {
     lift: 0.65, // torn out, raised; the body turns to the hero
     aim: 0.55, // held high, cocked back: the mark follows the hero
     active: 0.24, release: 0.55, // the whip; the piece leaves the jaws at this share of it
-    cock: 1.2, // rad a tree leans back over the shoulder before the whip (it leaves the jaws upright)
+    // rad a tree is swung back over the shoulder before the whip (the owner's pick of two filmed
+    // holds: "A: over shoulder", against held upright like a club); it leaves the jaws upright
+    cock: 1.2,
     recovery: 1.0, // (never shorter than the flight: it watches the piece land)
     flight: [0.85, 1.2], flightPer: 34, // s in the air: 0.55 + metres / flightPer, kept in this range
     lead: 0.45, // of the flight: it is thrown where the hero will be if he keeps going
