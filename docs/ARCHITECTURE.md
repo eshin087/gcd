@@ -741,7 +741,27 @@ keys that have it). `swingPose` (anim.js) plays it over the fighting stance: the
 to the phase through `swingPhase` (a monotone cubic through the three parts, so the rate does not
 kink where the cut ends); key 0 is the pose he was in (`A.from`), so a cut runs straight on out of
 the last one; the blade turns from there to the first key (the coil, one key at `u` = 1) round his
-front and is still moving as it gets there (`swingDir`); elbow poles follow the hands
+front (`swingDir`, the way round: `swingWay`). **The hero's light chain and slam** (Track FLOW,
+2026-11-15; `inert` in `swingPose`: `A.freeHand`, key `attack`, def kind `light` / `slam`; the
+flurry's strikes and the cleave keep the paths above): (1) the clip leaves `A.from` at the pose's own
+velocity: `HeroAnimator` keeps `vel` (per channel, per s: this frame's pose − the last one's,
+angles wrapped) and `play('attack')` copies it to `fromV` (× smoothstep of the point's speed over
+`SW_DRIFT`: a slower drift does not steer the windup) and steps `from` one frame on along it (the
+legs excepted), so the attack's first frame, at its clock's 0, does not stand still; each track's
+entry tangent is `fromV` × the windup's length (`T.M0`), the blade's its azimuth / elevation rates:
+from rest it eases in, out of a follow-through it carries on; (2) the sword hand and the blade
+(`T.blade`: `rH`, `rP`; `swingDir`) run on the visible cut's clock, `cutPhase` through four knots:
+`u` 1 at `W − cut[0]` (a clip's `cut`, default `SW_CUT` [0.03, 0.05] s, less of it when the way to
+the coil is long: `swingWind`, `SW_WIND`), `u` 1.5 at `W + Ac/2` (where it was: the cut lands when
+it did, HEROFLOW), `u` 2 at `W + Ac + cut[1]`, `u` 3 at the recovery's end, the rate at the coil a
+clip's `join` (default `SW_JOIN` 0.4) × the first half's; the body, the free hand and the head keep
+the attack's clock (`swingPhase`), with the lead; (3) the coil is the top of a pendulum's swing:
+when the way into it runs against the cut (`swingCoilKeep`, `SW_KEEP` on the cosine) the hand and
+the blade are at rest there (`T.jc`, the key at `u` 1: `swingTrack`'s `jz` / `kz`), when it runs with
+it (out of a carry already behind the coil) they draw straight through; a clip's `apex: false` (the
+slam, the thrusts) passes it on the spline; `follow` [k, right, left] (the thrusts) turns the coil's
+blade k of the way toward where the blade comes from (`dir.Vc` the keyed coil); the hand's way to
+the coil bulges round his chest by sin² (no speed at either end); elbow poles follow the hands
 (`swingPoles`), the head stays on the target, the flat turns into the plane the blade is swinging
 in; and the clip hands its channels to `update()` (`A.pathCh`), so the cross-fade leaves them
 alone. **The body leads the blade:** the hips' channels (`bx by bz hip`) play `lead[0]` s and the
@@ -795,9 +815,17 @@ pivot from mid-strike through the follow-through, turning back late in the recov
 with it, × the hop: over 1 the knees draw up, a leap). The finisher (def kind `slam`) is a clip too
 (`slam`, ADR-076: a gather, a leap, one two-handed diagonal into the ground); the only other anim
 kind is `thrust` (the execution's lunge). **The way home:** from a clip's `home` (default
-`SW_HOME` 0.3 of the recovery; the slam and the cleave 0.55, they hold their finish) `attackPose`
-blends the pose toward the ready stance while the clip's last keys are still moving, so the
-follow-through runs into the return without a stop. `spinTurn` (the whirl) also drops and leans
+`SW_HOME` 0.42 of the recovery; the slam 0.22, the cleave 0.385, the execution's thrust 0.315)
+`attackPose` blends the pose toward the ready stance (a smootherstep, the hand bulging `SW_BULGE`
+forward round his chest). The hero's chain (`flow`): it starts only once the chain really ends,
+`anim.homeGo`, latched in `update()` when `rec` passes `home` with no light in the player's buffer
+(`player.buf.action`: with one pressed the next hit carries on out of the follow-through instead),
+and it is a settle of `SW_SETTLE` (0.5 s) that outlasts the recovery: `attackPose` writes how far it
+has come (`anim.settleH`), and the `play('loco')` that ends the attack hands it to the carry's
+cross-fade (`anim.tail { on, h, dur, leg }`, `_tailBlend`: the upper body and the blade finish the
+same smootherstep at the same pace, the bulge with it, the legs on the fade's own smoothstep); a
+block, a roll or the next attack cut it. The cleave and the execution keep the old way (done by the
+recovery's end). `spinTurn` (the whirl) also drops and leans
 him into the turn and turns his head back toward the target, then ahead of the body (`SPIN_SPOT`);
 the hips run ahead of the turn and the chest trails it (`SPIN_LEAD`), and its momentum carries him
 ~14° past the full turn before he settles back (`SPIN_OV`, a damped spring let go at the turn's last
@@ -816,7 +844,10 @@ row for one def (`varLast`) and never a clip along the `line` the swing before i
 entries carry `line`; `anim.lastLine`; a chain's first hit follows nothing), so two hits in a row
 are never in the same plane. The result is `anim.atkDef` / `anim.atkAnim` / `anim.atkVar` (0 =
 `anim`), and `attackPose` reads `atkAnim` for its def. `anim.forceVariant` (an index, or null) pins
-the pick (tests). The blade is still the hit test, so each look is swung at the wyrm in REACH.
+the pick (tests). The hero's chain OPENS (def `combo` 1) with a look its carry feeds: only the looks
+whose coil lies within `SW_PICK_NEAR` (0.6 rad) of the nearest coil to the blade as it stands
+(`SW_DIST`), then the rules above (a repeat only when nothing else is near): out of the low carry the
+draw cut or the rising slash, out of the cross guard the falling cut. The blade is still the hit test, so each look is swung at the wyrm in REACH.
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
