@@ -4,6 +4,7 @@ import { Input } from './core/input.js';
 import { Events } from './core/events.js';
 import { CameraRig, fovFor } from './core/cameraRig.js';
 import { clamp, damp } from './core/math.js';
+import { runFrame, FRAME_MAX } from './core/timestep.js';
 import { createSharedUniforms } from './render/shaderLib.js';
 import { createGlyphAtlas, loadFonts } from './render/glyphs.js';
 import { Pipeline } from './render/pipeline.js';
@@ -255,7 +256,7 @@ async function boot() {
   game.fps = 0;
   const frame = (now) => {
     requestAnimationFrame(frame);
-    const realDt = Math.min(0.05, (now - last) / 1000);
+    const realDt = Math.min(FRAME_MAX, (now - last) / 1000);
     last = now;
     fpsAcc += realDt;
     fpsFrames++;
@@ -279,11 +280,15 @@ async function boot() {
     }
   };
 
-  const tick = (realDt) => {
+  // One simulation step of `stepDt` real seconds: the clocks, then everything that plays the game
+  // (the Lab, the flow, the fighters, the world, the lights and particles). A frame runs one or more
+  // of them (core/timestep.js), then presents once.
+  let lightsAt = null; // where the light pool looked last frame (the view override's focus, if any)
+  const simulate = (stepDt) => {
     let scale = game.timeScale;
     let fxScale = scale;
     if (game.hitstopTimer > 0) {
-      game.hitstopTimer -= realDt;
+      game.hitstopTimer -= stepDt;
       scale *= game.hitstopScale;
       // a freeze-frame holds the fighters, not the sparks: particles and lights run on (never
       // slower than the game, never while the game itself stands still: a pause)
@@ -291,34 +296,47 @@ async function boot() {
       if (game.hitstopTimer <= 0) game.hitstopScale = 1;
     }
     const dbg = game.debugTimeScale ?? 1;
-    const dt = realDt * scale * dbg;
-    const fxDt = realDt * fxScale * dbg;
-    game.realTime += realDt;
+    const dt = stepDt * scale * dbg;
+    const fxDt = stepDt * fxScale * dbg;
+    game.realTime += stepDt;
     game.time += dt;
     game.dt = dt;
     game.fxDt = fxDt;
-    game.realDt = realDt;
+    game.realDt = stepDt;
+
+    safe('lab', () => game.lab.update(stepDt));
+    safe('flow', () => game.flow.update(dt, stepDt));
+    safe('player', () => game.player.update(dt));
+    safe('dragon', () => game.dragon.update(dt));
+    safe('world', () => game.world.update(dt));
+    game.lights.update(fxDt, lightsAt ?? game.player.position);
+    game.fx.alpha.update(fxDt, game.time);
+    game.fx.add.update(fxDt, game.time);
+    game.fx.fire.update(fxDt);
+    game.fx.shed.update(fxDt);
+  };
+
+  const steps = { n: 1, dt: 0 };
+  const endEdges = () => game.input.endFrame();
+  /** A frame of `realDt` s: the devices, its simulation steps, the camera, the HUD, the picture.
+   *  `one`: simulate it in a single step whatever its length (window.__tick: a dev aid's exact step). */
+  const tick = (realDt, one = false) => {
+    game.frameDt = realDt;
 
     if (game.input.wheel) game.cameraRig.zoom(game.input.wheel);
     updateMouseGround();
     safe('gamepad', () => game.gamepad.update(realDt)); // pad aim overrides mouseGround
     safe('touch', () => game.touch.update(realDt)); // touch aim overrides mouseGround
 
-    safe('lab', () => game.lab.update(realDt));
-    safe('flow', () => game.flow.update(dt, realDt));
-    safe('player', () => game.player.update(dt));
-    safe('dragon', () => game.dragon.update(dt));
+    // (the input's edges are cleared after the first step: core/timestep.js runFrame)
+    runFrame(realDt, simulate, endEdges, steps, one);
+    game.simSteps = steps.n;
     safe('lab', () => game.lab.postUpdate?.()); // hitbox overlay matches this frame
     safe('camera', () => updateCameraFocus(realDt));
     let viewAt = null;
     safe('view', () => (viewAt = applyViewOverride()));
+    lightsAt = viewAt;
     updateSharedUniforms(viewAt);
-    safe('world', () => game.world.update(dt));
-    game.lights.update(fxDt, viewAt ?? game.player.position);
-    game.fx.alpha.update(fxDt, game.time);
-    game.fx.add.update(fxDt, game.time);
-    game.fx.fire.update(fxDt);
-    game.fx.shed.update(fxDt);
     safe('hud', () => game.hud.update(realDt));
     safe('audio', () => game.audio.update(realDt));
 
@@ -326,15 +344,31 @@ async function boot() {
     pipeline.render();
     safe('lab', () => game.lab.postRender?.()); // the model viewer's sheet reads the frame back
     if (inspect.rect) inspect.draw();
-    game.input.endFrame();
   };
   requestAnimationFrame(frame);
 
   // Dev aid: advance the simulation manually (works even when rAF is throttled), e.g.
-  // window.__tick(1 / 60, 120) runs two seconds of game time.
-  window.__tick = (dt = 1 / 60, frames = 1) => {
-    for (let i = 0; i < frames; i++) tick(Math.min(0.05, dt));
-    return { state: game.state, time: +game.time.toFixed(2) };
+  // window.__tick(1 / 60, 120) runs two seconds of game time. Each frame is ONE step of dt (a film
+  // strip's exact step); `asFrame`: each is a rendered frame of dt, cut into steps as the real loop
+  // cuts it (window.__tick(1 / 30, 30, true): a second at 30 fps, two steps a frame).
+  window.__tick = (dt = 1 / 60, frames = 1, asFrame = false) => {
+    for (let i = 0; i < frames; i++) tick(Math.min(asFrame ? FRAME_MAX : 0.05, dt), !asFrame);
+    return { state: game.state, time: +game.time.toFixed(2), steps: game.simSteps };
+  };
+
+  // Dev aid: window.__telemetry() prints and returns this level's stored move table (what each boss
+  // move did to the hero, every attempt added up; game/telemetry.js), the deadliest move first.
+  // __telemetry('all') returns every level's raw totals; __telemetry('clear') forgets them.
+  window.__telemetry = (cmd) => {
+    const M = game.flow.moves;
+    if (cmd === 'clear') {
+      M.clear();
+      return 'cleared';
+    }
+    if (cmd === 'all') return M.totals();
+    const rows = M.table(M.level, (id) => game.flow.moveLabel(id));
+    console.table?.(rows);
+    return rows;
   };
 
   // Dev aid: window.__inspect(x, y, w, h) magnifies a device-pixel region of the live frame

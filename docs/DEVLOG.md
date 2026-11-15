@@ -64,6 +64,33 @@ fringe; the throat tell is a modest gain.
 
 **Next.** The owner's look at the sheets and the preview (palette B or C, the Lord's colours, the
 moved landmarks); the phone; then the hero's effects and a crisp red kind.
+## 2026-11-15 — Session 45: per-move telemetry; the death screen names the killing move
+
+**Owner:** "Yes, telemetry" (the genre review's third piece). Branch `game/move-telemetry`, stacked on
+`core/sim-step` (PR #43), own worktree. Session 45 / ADR-108: PR #41 and #44, open beside it, hold
+Sessions 43 / 44 and ADR-106 / 107.
+
+**Done** (ADR-108):
+- `player.takeHit` announces every blow it resolves: `combat:answer`.
+- `game/telemetry.js` `MoveLog`: a row per boss move (blows seen, hit, blocked, parried, clashed,
+  dodged, damage, kills) for the attempt; totals per level in localStorage; a contact stream is one
+  blow per 1.5 s.
+- The death screen: "SLAIN BY <MOVE>" and up to three moves with "n of m blows landed", small and
+  dim under the hint (`hud.bannerRecap`). The victory record: "Struck most by".
+- `boss.attackLabel(id)` on the wyrm and the duelists; `flow.moveLabel`, `flow.deathRecap`.
+- Console: `__telemetry()`, `__telemetry('all')`, `__telemetry('clear')`.
+- **Tests:** duel TELEMETRY (the table by itself with a fake storage; in the duel: a string taken, a
+  parry, a death, the recap in the banner, a new attempt after rising).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server on `?level=ash`: Swallow
+Flicks taken, then killed by Lotus Sweep: the death screen at 800 x 600 and at the phone's 852 x 393
+(`?touch`): three lines under the hint, clear of the banner, inside the screen.
+
+**Not checked / open:** the wyrm's and the Lord's labels only by the tests' lookups (no death filmed
+there); upright on a phone; nothing read back from a real play session yet. The phone has no way
+to read the stored table.
+
+**Next:** the owner plays; then tune from `__telemetry()`. The heavy button needs their answers.
 
 ## 2026-11-15 — Session 44: the world breaks (breakables, ground fire, cover, marks)
 
@@ -174,6 +201,32 @@ session). A cover closer than 0.6 m in front of him hides him without a ghost.
 
 **Next:** the owner's phone test on the preview; then the terrain work's thrown trees and lifted
 pillars should need nothing more than being drawn in the scene pass.
+
+## 2026-11-15 — Session 42: a frame is simulated in steps of about 1 / 60 s
+
+**Owner:** "lets implement your suggestions" (the genre review; this is its second piece). Branch
+`core/sim-step`, stacked on `combat/reward-order` (PR #42), own worktree.
+
+**Done** (ADR-103):
+- `core/timestep.js`: `simSteps(realDt)` cuts a frame into equal steps none longer than 20.8 ms (one
+  at 50 Hz and above, two of 1 / 60 s at 30 fps, six at most); `runFrame` runs them and clears the
+  input's edges after the first.
+- `main.js`: the loop is `simulate(stepDt)` (clocks, Lab, flow, fighters, world, lights, particles)
+  one or more times, then the camera, the HUD, the audio and the render once. The frame clamp went
+  from 50 ms to 100 ms: the game runs slow under 10 fps, not under 20.
+- `window.__tick(dt, frames, asFrame)`: `asFrame` runs each as a rendered frame cut into steps.
+- **Tests:** integ TIMESTEP (the split at 240 – 2 fps, the longest step, runFrame's order, a second
+  at 30 fps, a tap in a two-step frame is one press, how often the 0.08 s window is sampled).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server on `?level=ash`,
+through the real loop's own tick (`__tick(1 / 30, n, true)`): two steps of 16.7 ms a frame, a second
+of real time in 30 frames, a tap of lock-on toggles once, a Plum Thrust parried at 30 fps frames.
+
+**Not checked / open:** the pane was hidden, so `requestAnimationFrame` itself never drove it: the
+loop was driven through `__tick`'s frame path. Nothing was run on a machine that is really slow, and
+the cost of two to six steps a frame was not measured. A press is still read once a frame.
+
+**Next:** per-move telemetry and the killing move on the death screen; a heavy button.
 
 ---
 

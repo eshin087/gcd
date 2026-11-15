@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-five pieces of work since 0.4.0:
+Thirty-seven pieces of work since 0.4.0:
 - **Fire, spells and effects made of the same small letters** (2026-11-15, ADR-112). *Changed:* fire
   is no longer loose glowing symbols. Every fire of the Cinder Wyrm (the breath, fireballs and their
   blasts, meteors, eruptions, the flame ring and wall, the burning pass, the nova, ember bullets, the
@@ -22,6 +22,13 @@ Thirty-five pieces of work since 0.4.0:
   pillars (it was to the north), the stone swordsmen stand in the pillar ring, the cauldron on the
   paving, the elder wyrm's skeleton along Cinderwood's east rim, the throne's wardens in the aisles,
   in dark bronze. *Not changed:* the hero's own effects, and the wyrm's blue and red wisps.
+- **The death screen names what killed you** (2026-11-15, ADR-108): under YOU DIED, small lines say
+  which move dealt the last blow ("SLAIN BY LOTUS SWEEP") and which moves struck you in that
+  attempt, with how many of their blows landed ("Swallow Flicks 3 of 3 blows landed"). The victory
+  record gains "Struck most by". *Added:* the game now keeps a table of what every boss move did
+  to you (blows seen, landed, blocked, parried, dodged, damage, deaths), added up over every
+  attempt in this browser; `__telemetry()` in the console prints it for the level, the deadliest
+  move first. Nothing leaves your machine.
 - **The world breaks** (2026-11-15, ADR-107). *Added:* trees, standing stones, boulders, pillars and
   lanterns can be chipped, broken and felled, by every boss and by the hero; each blow leaves a mark
   as big as it was hard. A tall piece falls the way it was struck: under one a boss felled you take a
@@ -43,6 +50,12 @@ Thirty-five pieces of work since 0.4.0:
   covered and only while he is; in the open he looks as before. It works through trees, pillars,
   standing stones and landmarks too. Duels are unchanged: a human boss in front of you is not
   drawn over. `?noseen` in the address turns it off (for comparing).
+- **The same fight at any frame rate** (2026-11-15, ADR-103): the game used to simulate each drawn
+  frame in one step of its real length, so on a machine at 30 frames a second a perfect parry's
+  0.08 s window was looked at only two or three times, and under 20 frames a second the game ran in
+  slow motion. *Changed:* a slow frame is now simulated in several short steps (two at 30 frames a
+  second, up to six), each about a sixtieth of a second: the step every automated test of the
+  combat runs. At 50 frames a second and above nothing changes. The game runs slow only under 10.
 - **The riskier the answer, the more it pays** (2026-11-15, ADR-102): measured with bots, a player
   who only perfect-dodged beat every boss fastest and never had to learn a string. *Changed:* the
   flurry (and the plunge) now answer a perfect dodge of a **red** blow only. A perfect dodge of a

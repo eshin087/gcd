@@ -295,6 +295,13 @@ export class Dragon {
     this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1));
   }
 
+  /** A move's name for the player (the death screen, the telemetry): its tuning label without the
+   *  note in brackets ('Rending flurry (4 hits)' → 'Rending flurry'); null for an id it does not know. */
+  attackLabel(id) {
+    const l = TUNING.attacks?.[id]?.label;
+    return typeof l === 'string' && l ? l.replace(/\s*\(.*\)\s*$/, '') : null;
+  }
+
   /** The hero's plunge rides this point: the top of the head (+0.6 x SCALE up), valid in flight. */
   plungePoint(out) {
     const h = this.rig.pt.head;

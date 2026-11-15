@@ -2576,6 +2576,31 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   (the counter's 0.06 s of press timing, the counter cut's feel); the Lab has no button for
   `flurryAny`; the flash counter was not filmed.
 
+## ADR-103 — A frame is simulated in steps of about 1 / 60 s (2026-11-15)
+- **Context:** the genre review (the owner: "lets implement your suggestions"; the game is to be
+  sold on Steam, so it must play the same on any PC). main.js simulated every rendered frame in ONE
+  step of its real length, clamped at 50 ms: a machine at 30 fps took 33 ms steps, in which the
+  0.08 s perfect-parry window is sampled two or three times, an attack's 0.12 s active frames three
+  or four, and under 20 fps the game ran slow. Every headless test steps at exactly 1 / 60 s, so none
+  of that was ever tested.
+- **Decision:** `core/timestep.js`: a frame is cut into equal simulation steps none longer than
+  20.8 ms (1 / 60 s with a quarter of slack, so a 60 Hz frame a hair late and a 50 Hz display stay
+  one step). 30 fps runs two steps of 1 / 60 s, 20 fps three; six steps at most, so the game runs
+  slow only under 10 fps. The devices are read once a frame; the input's edges are cleared after the
+  first step; the camera, the HUD, the audio and the render run once a frame. `__tick` keeps its
+  exact single step (film strips) and gains `asFrame`.
+- **Alternatives turned down:** a fixed 120 Hz step with render interpolation (the standard answer,
+  and deterministic: but every transform of the hero, the wyrm's rig, the cloth and the particles
+  would need an interpolated copy, the tests would run at another step than the game or twice as
+  long, and at 60 Hz the simulation would cost twice as much: later, if replays are wanted); stepping
+  at 1 / 120 s without interpolation (judder on 144 Hz displays, and not the tests' step).
+- **Consequences:** at 50 Hz and above nothing changes (one step, as before). Below it the game
+  simulates the steps the tests run, at the cost of simulating twice (30 fps) to six times a frame:
+  a machine that is slow because of the SIMULATION (not the picture) gets slower still. Not measured.
+  Presses are still read once a frame: at 30 fps a press can be up to 33 ms old when the first step
+  sees it (event timestamps could place it in its step: not done). Not deterministic: a step's
+  length still follows the display above 50 Hz.
+
 
 ## ADR-106 — The hero prints through what covers him: an ink ghost in the blade's cyan (2026-11-15)
 - **Context:** the owner: "i noticed while fighting the dragon the player disappears and cant see
@@ -2682,6 +2707,29 @@ filmed looks: "A: digits", a shower of the characters it is drawn in (bigger lum
 were turned down; the `?debris=` switch that held them is gone). The Obsidian Throne lists no breakables yet: its
 rebuild (ADR-108) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
 the sizzle and the ember hiss.
+
+## ADR-108 — Every answered blow is logged per move; the death screen names the killing move (2026-11-15)
+- **Context:** the genre review (the owner: "Yes, telemetry"). Every difficulty number so far comes
+  from bots that answer a cue in one frame, and every boss section of COMBAT.md ends on "no human
+  has played him yet". When the owner plays, nothing recorded WHICH move struck or killed them:
+  `RunStats` held totals only, and the hero's events did not all carry the attack.
+- **Decision:** `player.takeHit` announces every blow it resolves as `combat:answer { attack, tell,
+  result, damage, dead, stream, perfect }` (one place, whatever the answer). `game/telemetry.js`
+  `MoveLog` keeps a row per boss move, counted in blows, for the attempt, and adds each attempt to
+  totals per level in localStorage. The death screen shows the killing move and up to three moves
+  that struck the hero ("3 of 4 blows landed") under the hint, as small dim lines; the victory record
+  gains "Struck most by". `__telemetry()` in the console prints the level's table. Bosses name
+  their moves through `attackLabel(id)`. (ADR-104 / 105 are left to other open work: PR #41 and
+  #44 hold 106 and 107.)
+- **Alternatives turned down:** deriving it from the existing events (`player:hurt`, `player:block`
+  and `player:dodge` carry no attack); a panel with the whole table on the death screen (the owner
+  keeps the HUD bare: three lines, and the table stays in the console); sending it anywhere (it is
+  the player's own browser storage, nothing leaves the machine).
+- **Consequences:** a death teaches which move to learn, and a play session leaves numbers to tune
+  from (hit rate and kills per move). A string's blows are counted one by one, so "seen" is blows,
+  not casts. The phone has no console: there the recap and the record are all that shows; reading
+  the stored table needs a desktop browser on the same origin. Burn deaths read "THE FLAMES".
+  Blows dodged by walking out of reach are never "seen" (no hit was resolved).
 
 ## ADR-112 — Effects in the dragon's letters: the fire field; text effects; landmarks where the camera looks (2026-11-15)
 
