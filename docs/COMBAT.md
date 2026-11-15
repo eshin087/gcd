@@ -339,7 +339,20 @@ the streak, 7 at most (`max`; the streak itself counts on):
   28 damage (final: no part or break multiplier, past a duelist's guard) and 5 posture, freezes him
   on the hit for 0.05 s, and rings a whole tone higher than the last. A long flurry speeds up (its
   last cuts take 60 % of the time of its first). Round the wyrm's head the cuts fly at its height,
-  4.6 m to each side; through a duelist they run on the ground, 2.8 m to each side.
+  4.6 m to each side.
+- **Against a duelist the cuts are paced to be followed** (`DEFENSE.flurry.ground`, ADR-101; a man
+  is framed closer than the wyrm's head, and what suits a head three metres across hid him). Each
+  cut: he appears 2.3 m to one side of him, is **seen wound up for 0.035 s**, runs in **past his
+  side** (0.55 m off the line of the cut, each cut on the other side: never through his body),
+  strikes 42 % of the way along (the blade on him, the two of them side by side in the freeze),
+  comes out of it faster and **slows into a finish held 0.085 s**. About 0.35 s a cut (0.25 s
+  before); a long flurry's last cuts take 75 % of the time of its first. The cut left hanging is a
+  short line ON him (1.9 m to each side), and the flare, the crescent and the burst are 62 % of the
+  wyrm's. The camera leans in 4 m (6 before) and takes 45 % of the punch and 65 % of the shake.
+  The duelist is **not shoved** by a flurry's blows (a 0.32 m shove from a new side every quarter
+  second read as him jumping about; the cuts cross where he stands): each cut **flinches him where
+  he is**, out of whatever move he was in, and the last blow staggers him **away from where the hero
+  lands** (he pitches forward when the hero ends behind him), never into him.
 - **The art**, the last blow, one of three for each kind of target, at random and never the same
   twice running:
 
@@ -348,8 +361,8 @@ the streak, 7 at most (`max`; the streak itself counts on):
   | the wyrm | **Skyfall** | the plunge itself (below) | the plunge's 90 + 40 posture |
   | the wyrm | **Severing Line** | he hangs to one side of the head in a deep draw (0.22 s), crosses it in one level line (0.075 s) and holds the finish, his back to it (0.24 s): only then does the cut land; a backflip down | the same, through `onPlunge` |
   | the wyrm | **Heaven Splitter** | he hangs 4.6 m above the far side of the head, the blade raised (0.2 s), and cleaves down through it to the ground on the side he came from (0.13 s) | the same |
-  | a duelist | **Passing Cut** | the same draw 3.1 m before him, through him, the finish held behind his back | 60 + 22 posture |
-  | a duelist | **Falling Leaf** | 3.9 m above his front, the blade raised, down through him to the ground behind | the same |
+  | a duelist | **Passing Cut** | the same draw 3.1 m before him, past his side in 0.1 s (slowing into the finish), the finish held behind his back | 60 + 22 posture |
+  | a duelist | **Falling Leaf** | 3.9 m above his front, the blade raised, down onto him and on to the ground behind his shoulder | the same |
   | a duelist | **Rising Moon** | crouched right before him, one rising cut, and over him in a somersault with a half turn (apex 2.5 m) | the same |
 
   On the last blow every hanging cut **bursts** at once: the lines flare wide and throw sparks off
@@ -358,7 +371,7 @@ the streak, 7 at most (`max`; the streak itself counts on):
 - **Time.** While he cuts, the world runs at 7 % of its speed (`world`) and the hero in real time:
   the boss stands in his blow while the cuts land. Time comes back on the last blow, with its own
   freeze (0.13 s) and shake. A flurry of two takes about 0.9 s, of seven about 2 s (the plunge as its
-  art: its own 1.6–1.9 s more, as ever).
+  art: its own 1.6–1.9 s more, as ever); against a duelist about 1.0 s and 2.6 s.
 - He cannot be hit from the dodge to the landing. Against the wyrm he lands through the plunge's own
   flip and landing; against a duelist 1.5 m behind his back in the Ghostep's reappear. The crit
   window (2.2 s, ×1.8) opens either way, and against the wyrm the last blow is a plunge to it: the

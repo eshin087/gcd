@@ -179,6 +179,13 @@ The first of the changes from the genre review (owner: "lets implement your sugg
         a reduce-flashes option
   - [ ] The single boss slot as an actor list (before mobs or a duo fight)
   - [ ] Designed sound for the core combat hits; a theme per boss
+## M1.34 — The flurry on a man; the afterimage (2026-11-15, `player/flurry-duel-read`, ADR-101)
+- [x] A pacing of its own against a duelist: wound up, past his side, a held finish
+- [x] A flurry's blows do not shove a duelist; the last staggers him away from the hero
+- [x] Effects and camera sized for a man
+- [x] The afterimage printed in digits from his own body, on every blink; digits fly to where he reappears
+- [x] Three afterimage looks built; the owner picked digits
+- [ ] Phones: the particle count of a long flurry
 
 ## M1.33 — Training and the lab stage (2026-11-15, `dev/training-lab`, ADR-099)
 - [x] A catalogue of situations by category, one click each, played through the game's own input

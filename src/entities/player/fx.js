@@ -36,7 +36,7 @@ const COL = {
   moon: [2.6, 3.4, 4.8], moonEnd: [0.3, 0.7, 1.9], // the moonlit blade's steel light (deflect slash)
   block: [2.3, 2.0, 1.5], blockEnd: [0.7, 0.35, 0.1],
   break: [1.5, 1.5, 1.6], breakEnd: [0.3, 0.3, 0.38],
-  ghost: [1.3, 1.75, 2.6], ghostEnd: [0.12, 0.25, 0.75],
+  ghost: [1.3, 1.75, 2.6], ghostEnd: [0.12, 0.25, 0.75], ghostDim: [0.42, 0.68, 1.3],
   ghostCore: [2.6, 3.0, 3.8],
   charge: [0.7, 1.7, 3.0], chargeEnd: [0.2, 0.5, 1.6],
   halo: [0.2, 0.6, 1.0], haloEnd: [0.02, 0.1, 0.25], // the blade's dot halo
@@ -173,8 +173,15 @@ const SPRAY = new THREE.Vector3(); // parry(): the default spray (back toward th
 // the parry shockwave's rings (shockwave): bright, but not so hot that bloom swallows the duel
 const RING = { white: [1.5, 1.55, 1.75], warm: [1.6, 1.3, 0.8], gold: [2.0, 1.45, 0.45] };
 
+// (the characters an afterimage is made of: fine digits, as the wyrm is printed)
+const GHOST_DIGITS = '0123456789';
+const GHOST_CELL = 0.13; // m: an afterimage's character cell (about the cell his coat is printed in)
+
 export class PlayerFx {
   constructor(game, rig) {
+    this.body = null; // points on his body as last sampled (world xyz …; player.js _sampleBody)
+    this.bodyN = 0;
+    this._ghostCells = new Set(); // (reused: the cells one afterimage has printed in)
     this.game = game;
     this.rig = rig;
     this._v = new THREE.Vector3();
@@ -735,10 +742,13 @@ export class PlayerFx {
   ghostep(segs, nSegs, ox, oz, nx, nz) {
     const fx = this.add;
     if (!fx) return;
-    this._afterimage(fx, segs, nSegs);
-    // streak from the old spot to the new one
     const sx = nx - ox, sz = nz - oz;
     const dist = Math.hypot(sx, sz);
+    const ok = dist > 0.3 && Number.isFinite(dist);
+    this._afterimage(fx, segs, nSegs, ok ? { dx: sx / dist, dz: sz / dist } : null);
+    this.blinkStream(fx, nx, 1.1, nz);
+    this.blinkIn(fx, nx, 1.1, nz);
+    // streak from the old spot to the new one
     if (dist > 0.3 && Number.isFinite(dist)) {
       const rot = alongRot(sx, 0, sz) + Math.PI / 2; // '-' laid along the ground path
       const n = Math.min(60, Math.round(dist / 0.18));
@@ -769,9 +779,94 @@ export class PlayerFx {
     this._light({ x: nx, y: 1.1, z: nz, color: [0.55, 0.75, 1.3], intensity: 3.2, radius: 6, life: 0.5, fade: 0.45, fadeIn: 0.02 });
   }
 
-  /** The cold blue-white afterimage: strokes along each bone of the pose sampled before a blink
-   *  (`segs`: flat [ax, ay, az, bx, by, bz, ...] world segments), oriented to their screen direction. */
-  _afterimage(fx, segs, nSegs) {
+  /**
+   * The afterimage (ADR-101): the hero as he stood, drawn in fine digits where he was, cold
+   * blue-white, falling apart from the feet up. Its points are his body's own (`this.body`,
+   * `this.bodyN`: player.js _sampleBody, taken with the pose's `segs`); without them (no meshes: a
+   * bare test rig) it is strokes along his bones, as it used to be.
+   * `o`: { dx, dz } the way he left (unit, ground plane; 0, 0 = unknown), `light`: a lesser one (a
+   * clone left mid-pass: every other point, shorter-lived).
+   * (Three looks were built; the owner picked this one, "Digits", over an "Echo" of fainter copies
+   * stepping off the way he left and a "Shatter" that burst the figure into its characters.)
+   */
+  _afterimage(fx, segs, nSegs, o = null) {
+    const pts = this.body, n = Math.min(this.bodyN | 0, pts ? Math.floor(pts.length / 3) : 0);
+    if (!(n >= 24)) {
+      this._afterimageBones(fx, segs, nSegs);
+      return;
+    }
+    const light = !!o?.light, step = light ? 2 : 1;
+    let dx = Number(o?.dx), dz = Number(o?.dz);
+    if (!Number.isFinite(dx + dz)) dx = dz = 0;
+    let y0 = Infinity;
+    for (let i = 0; i < n; i++) y0 = Math.min(y0, pts[i * 3 + 1]);
+    const lifeK = light ? 0.7 : 1;
+    // one character to a cell of a GHOST_CELL grid ON THE SCREEN, as he is printed himself: a point
+    // that falls in a cell already taken is dropped (characters on top of one another bloom into a
+    // white blot), and each is moved onto its cell, so they stand in rows and columns
+    const cells = this._ghostCells, q = 1 / GHOST_CELL, C = CAM;
+    const rx = C ? C[0] : 1, ry = C ? C[1] : 0, rz = C ? C[2] : 0, ux = C ? C[4] : 0, uy = C ? C[5] : 1, uz = C ? C[6] : 0;
+    cells.clear();
+    for (let i = 0; i < n; i += step) {
+      const k = i * 3, px = pts[k], py = pts[k + 1], pz = pts[k + 2];
+      const sx = px * rx + py * ry + pz * rz, sy = px * ux + py * uy + pz * uz;
+      const cx = Math.round(sx * q), cy = Math.round(sy * q);
+      const key = (cx & 0xffff) * 65536 + (cy & 0xffff);
+      if (cells.has(key)) continue;
+      cells.add(key);
+      const mx = cx * GHOST_CELL - sx, my = cy * GHOST_CELL - sy;
+      const x = px + rx * mx + ux * my, y = py + ry * mx + uy * my, z = pz + rz * mx + uz * my;
+      const h = Math.min(1, Math.max(0, (y - y0) / 1.8)); // 0 his feet … 1 his head
+      // (it drifts a little the way he left, and rises)
+      fx.spawn({
+        x, y, z, vx: dx * R(0.05, 0.3), vy: R(0.02, 0.16), vz: dz * R(0.05, 0.3),
+        life: (0.24 + 0.3 * h + R(0, 0.14)) * lifeK, size: GHOST_CELL * 1.25, sizeEnd: GHOST_CELL * 0.8, glyph: GHOST_DIGITS,
+        color: i % 11 === 0 ? COL.ghost : COL.ghostDim, colorEnd: COL.ghostEnd, alpha: 0.9, alphaEnd: 0, drag: 1.2, flicker: 0.3,
+      });
+    }
+  }
+
+  /**
+   * The way he went: characters torn off the afterimage just left (`this.body`) fly to where he is
+   * now (tx, ty, tz: his chest) and are gone as they reach it. The eye is carried from the one to
+   * the other. Call it as he appears.
+   */
+  blinkStream(fx, tx, ty, tz) {
+    const pts = this.body, n = Math.min(this.bodyN | 0, pts ? Math.floor(pts.length / 3) : 0);
+    if (!fx || !(n >= 24) || !Number.isFinite(tx + ty + tz)) return;
+    const m = 34, st = n / m;
+    for (let j = 0; j < m; j++) {
+      const k = Math.min(n - 1, Math.floor(j * st + rnd() * st)) * 3;
+      const x = pts[k], y = pts[k + 1], z = pts[k + 2];
+      const ex = tx + R(-0.25, 0.25) - x, ey = ty + R(-0.6, 0.5) - y, ez = tz + R(-0.25, 0.25) - z;
+      const d = Math.hypot(ex, ey, ez);
+      if (!(d > 0.4) || d > 40) continue;
+      const life = R(0.07, 0.17);
+      fx.spawn({
+        x, y, z, vx: ex / life, vy: ey / life, vz: ez / life, life, size: GHOST_CELL * 1.3, sizeEnd: GHOST_CELL * 0.8, glyph: GHOST_DIGITS,
+        color: COL.ghost, colorEnd: COL.ghostDim, alpha: 0.9, alphaEnd: 0.2,
+      });
+    }
+  }
+
+  /** He resolves at (x, y, z: his chest): characters rush in onto him from all round. */
+  blinkIn(fx, x, y, z) {
+    if (!fx || !Number.isFinite(x + y + z)) return;
+    for (let j = 0; j < 18; j++) {
+      const a = R(0, Math.PI * 2), r = R(0.8, 1.5), ey = R(-0.9, 0.7);
+      const life = R(0.08, 0.15);
+      const tx = x + Math.cos(a) * R(0, 0.22), tz = z + Math.sin(a) * R(0, 0.22), ty = y + ey;
+      const sx = x + Math.cos(a) * r, sz = z + Math.sin(a) * r, sy = ty + R(-0.3, 0.3);
+      fx.spawn({
+        x: sx, y: sy, z: sz, vx: (tx - sx) / life, vy: (ty - sy) / life, vz: (tz - sz) / life, life, size: GHOST_CELL * 1.2, sizeEnd: GHOST_CELL * 0.8,
+        glyph: GHOST_DIGITS, color: COL.ghostDim, colorEnd: COL.ghost, alpha: 0.3, alphaEnd: 0.9,
+      });
+    }
+  }
+
+  /** The afterimage without a body to sample: strokes along each bone of the pose (`segs`: flat
+   *  [ax, ay, az, bx, by, bz, ...] world segments), oriented to their screen direction. */
+  _afterimageBones(fx, segs, nSegs) {
     for (let s = 0; s < nSegs; s++) {
       const k = s * 6;
       const ax = segs[k], ay = segs[k + 1], az = segs[k + 2];
@@ -802,6 +897,7 @@ export class PlayerFx {
     const fx = this.add;
     if (!fx || !Number.isFinite(ox + oz + nx + ny + nz)) return;
     this._afterimage(fx, segs, nSegs);
+    this.blinkStream(fx, nx, ny + 1.1, nz);
     // the rising streak, laid along the 3D path (it reads as the way he went)
     const sx = nx - ox, sy = ny + 0.4, sz = nz - oz;
     const dist = Math.hypot(sx, sy, sz);
