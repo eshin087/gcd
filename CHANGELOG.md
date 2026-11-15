@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty pieces of work since 0.4.0:
+Forty-one pieces of work since 0.4.0:
 - **The hero stands like a swordsman** (2026-11-15, ADR-113). *Changed:* when he is not attacking he no
   longer holds the sword out sideways with both hands hanging. Exploring, he stands at ease: one
   hand on his belt, the blade carried down the line of his arm. Locked on, or anywhere in a boss
@@ -13,6 +13,17 @@ Forty pieces of work since 0.4.0:
   blade's point drifts: five times more movement than before, so it shows at the game camera. The
   idle actions (the stretch, the twirl, ...) now play only at ease. *Fixed:* the sword wrist was
   bent 27°; it is about 6° now. The Lab's PLAYER section can hold either stance (`stance`).
+- **The Ash Disciple uses the courtyard** (2026-11-15, ADR-111). *Added:* four moves on the pieces of
+  the Ashfall Courtyard. **Severed Pillar:** he is suddenly behind the pillar you stand under and cuts
+  it through; it falls on you along a strip marked in red (walk out of it, or roll as it lands).
+  **Flying Lantern:** he kicks a stone lantern at you; a pale ring shows where it comes down and it
+  glints before it lands: parry it and it bursts on your blade, or leave the ring. **Three Tolls:** he
+  leaps to the fallen bell and strikes it three times; each blow sends a ring of sound across the
+  courtyard: parry the three in rhythm or roll through them, or run in, since close to the bell they
+  pass you by and his back is open. **Swallow's Return:** when you press him he leaps back onto a
+  pillar and dives off it at you from another side (parry the dive, or step aside). He only does these
+  with a piece in reach, and each lantern and pillar is used up for the fight. *Dev:* a TERRAIN
+  category in Training stages each one.
 - **The Cinder Wyrm uses the ground** (2026-11-15, ADR-110). *Added:* three moves that take what
   stands in the clearing. **Uproot and hurl**: it bites into the nearest tree or boulder, tears it
   out and throws it; the ground glows where it will land and follows you until the throw (red:

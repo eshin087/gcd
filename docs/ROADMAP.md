@@ -195,13 +195,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The owner's look at the film strips; tuning from a played fight (weights, the ring's lead)
   - [ ] Sounds of their own (the lift, the throw); the hanging stones bob while they wait
 - [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
-- [ ] The Ash Disciple's terrain moves
+- [x] The Ash Disciple's terrain moves: Severed Pillar, Flying Lantern, Three Tolls, Swallow's Return
+      (its own session and PR, ADR-111)
 - [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire
 - Follow-ups:
   - [x] A broken piece leaves the minimap (it re-bakes when the colliders change)
   - [ ] The phone: the look and the frame rate with fire and debris on screen
   - [ ] Sounds of their own for fire catching and a tree burning (the sizzle and ember hiss are reused)
   - [ ] Training places the hero without checking what stands there
+  - [x] The owner's pick of the look of the bell's ring of sound: arc (the wave look turned down and removed)
+  - [ ] A toll sound of its own for the bell (the world's metal chip plays)
+  - [ ] The courtyard's ring builds two pillars on the same spot at three corners
 
 ## M1.37 — The hero seen through what covers him (2026-11-15, `claude/render-hero-seen-125813`, ADR-106)
 - [x] The covered parts of the hero print through the wyrm (and any object) as a cyan ink ghost

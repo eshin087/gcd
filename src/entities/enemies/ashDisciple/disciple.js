@@ -5,13 +5,14 @@ import { ASH_LOADOUT, JIAN } from './gear.js';
 import { DUEL_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, realise } from './moves.js';
 import { TUNING } from './tuning.js';
+import { TerrainMoves } from './terrain.js';
 
 // The Ash Disciple (docs/specs/ash-disciple.md): a grey-robed jian swordsman who fills the boss slot
 // of the Ashfall level. A duelist (duelist/duelist.js: the body, the contract, the guard, posture,
 // the duel's moments; duelist/brain.js: the mind and timeline) with his own kit: the moves as data
 // (moves.js), the numbers (tuning.js), his gear (gear.js) and his clips (poses.js). What only he does
-// is here: his colours, the blade kindled in phase 2 (its glow, its embers, the ember sweep trail)
-// and the Ash Crescent's sword qi.
+// is here: his colours, the blade kindled in phase 2 (its glow, its embers, the ember sweep trail),
+// the Ash Crescent's sword qi, and the hooks of the moves that use the courtyard (terrain.js, ADR-111).
 
 /** Everything the shared duelist needs to be him (duelist.js: kit). */
 export const ASH_KIT = Object.freeze({
@@ -52,13 +53,43 @@ export class AshDisciple extends Duelist {
 
   reset() {
     this.kindle = 0; // phase 2's ember blade 0..1
+    // (the base constructor resets before this class's own fields could exist: made here)
+    (this.terrain ??= new TerrainMoves(this)).reset();
     super.reset();
+  }
+
+  // ---------------------------------------------------------------- the courtyard (terrain.js)
+  /** The bound he keeps to in the duel (the level's). */
+  get baseBound() {
+    return super.bound;
+  }
+  /** ... stretched while a move takes him out to a piece of the set, and drawing back in after. */
+  get bound() {
+    return super.bound + (this.terrain?.slack ?? 0);
+  }
+  /** His AI weighs a move: one that needs a piece of the courtyard weighs nothing while none is in reach. */
+  weigh(name, def, w) {
+    return def.terrain ? this.terrain.weigh(def, w) : w;
+  }
+  /** A move starts: one of the courtyard's picks its piece (false: there is none, it does not start). */
+  onActStart(A) {
+    return A.def.terrain ? this.terrain.begin(A) : true;
+  }
+  beatMotion(b, u, s, dt) {
+    if (this.brain.act?.def?.terrain) this.terrain.motion(b, u, s, dt);
+  }
+  onImpact(b, s, a) {
+    if (a?.def?.terrain) this.terrain.impact(b, s, a);
+  }
+  onCast(b, s, a) {
+    if (a?.def?.terrain) this.terrain.cast(b, s, a);
   }
 
   // ---------------------------------------------------------------- the kindled blade (phase 2)
   /** It grows in through phase 2's transition. */
   brainFrame(dt) {
     if (this.phase >= 2) this.kindle = Math.min(1, this.kindle + dt * 1.5);
+    this.terrain.frame(dt);
   }
 
   onTransitionEnd() {
@@ -72,7 +103,8 @@ export class AshDisciple extends Duelist {
     // shudder: its flicker is no swing)
     if (a && this._tipOk && !this.shuddering) {
       for (const b of a.beats) {
-        if (b.feint || a.t < b.impact - 0.32 * b.W - 0.02 || a.t > b.end + 0.6 * b.A + 0.05) continue;
+        // (`noSweep`: a blow that is not the blade's: the kick)
+        if (b.feint || b.def?.noSweep || a.t < b.impact - 0.32 * b.W - 0.02 || a.t > b.end + 0.6 * b.A + 0.05) continue;
         this.fx.sweep(this._hiltPrev, this._tipPrev, this._hilt, this._tip, this.phase >= 2);
         break;
       }
