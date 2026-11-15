@@ -159,7 +159,6 @@ export const TUNING = {
       width: 0.45, // m either side of its front that it strikes
       strike: 0.9, // his blow on the bronze (POWER; it only rings)
       parryPosture: 10,
-      look: 'arc', // how the ring is drawn: 'arc' (one crisp line of strokes) | 'wave' (three ripples)
     },
     // Swallow's Return: he leaps back onto a pillar and springs off it into a diving cut
     spring: {

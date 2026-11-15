@@ -592,38 +592,32 @@ export class TerrainMoves {
   }
 
   // ------------------------------------------------------------------ glyphs
-  /** A ring of sound, re-drawn every frame: bronze strokes along its front, fading as it widens. */
+  /** A ring of sound, re-drawn every frame: one line of bronze strokes along its front, each bulging
+   *  outward, fading as it widens; a few motes of bronze dust lifted behind it. (The owner's pick of
+   *  two filmed looks, 2026-11-15: "A: arc"; three thin ripples were turned down.) */
   _drawRing(R, dt, K) {
     const fx = this.d.fx, add = fx.add;
     if (!add) return;
     const life = Math.max(0.02, (this.game.fxDt ?? dt) * 1.7);
     const fade = clamp(1.15 - R.r / K.range, 0, 1) * (R.heavy ? 1.25 : 0.9);
-    const c = this._c;
-    const wave = K.look === 'wave';
-    const rows = wave ? 3 : 1;
-    for (let j = 0; j < rows; j++) {
-      const r = R.r - j * 0.55;
-      if (r < 0.6) break;
-      const n = clamp(Math.round((Math.PI * 2 * r) / (wave ? 0.95 : 0.6)), 18, wave ? 96 : 150);
-      const b = fade * (wave ? 0.75 - 0.22 * j : 1);
-      c[0] = BRONZE[0] * b;
-      c[1] = BRONZE[1] * b;
-      c[2] = BRONZE[2] * b;
-      const size = (R.heavy ? 0.62 : 0.5) * (wave ? 0.9 : 1);
-      const off = (j * 0.5) / Math.max(1, n) * Math.PI * 2;
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2 + off, ca = Math.cos(a), sa = Math.sin(a);
-        const o = fx._rec(R.x + ca * r, 0.5, R.z + sa * r, life, size, size, wave ? '~' : ')', c, null);
-        o.rot = wave ? Math.atan2(-sa, ca) + Math.PI / 2 : Math.atan2(-sa, ca);
-        o.alphaEnd = 1;
-        add.spawn(o);
-      }
+    const c = this._c, r = R.r;
+    c[0] = BRONZE[0] * fade;
+    c[1] = BRONZE[1] * fade;
+    c[2] = BRONZE[2] * fade;
+    const n = clamp(Math.round((Math.PI * 2 * r) / 0.6), 18, 150);
+    const size = R.heavy ? 0.62 : 0.5;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+      const o = fx._rec(R.x + ca * r, 0.5, R.z + sa * r, life, size, size, ')', c, null);
+      o.rot = Math.atan2(-sa, ca);
+      o.alphaEnd = 1;
+      add.spawn(o);
     }
-    // the hum it leaves: a few motes of bronze dust lifted behind the front
-    if (!wave && R.r > 1) {
+    // the hum it leaves
+    if (r > 1) {
       for (let i = 0; i < 3; i++) {
-        const a = fx.rnd() * Math.PI * 2, r = R.r - fx.rand(0.2, 0.9);
-        const o = fx._rec(R.x + Math.cos(a) * r, 0.2, R.z + Math.sin(a) * r, fx.rand(0.25, 0.5), 0.16, 0.04, ".'", BRONZE, BRONZE_END);
+        const a = fx.rnd() * Math.PI * 2, rr = r - fx.rand(0.2, 0.9);
+        const o = fx._rec(R.x + Math.cos(a) * rr, 0.2, R.z + Math.sin(a) * rr, fx.rand(0.25, 0.5), 0.16, 0.04, ".'", BRONZE, BRONZE_END);
         o.vy = fx.rand(0.4, 1.2);
         o.alpha = 0.7 * fade;
         add.spawn(o);
