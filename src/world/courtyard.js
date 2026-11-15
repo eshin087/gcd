@@ -7,7 +7,7 @@ import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
 import {
   prep, lumpy, paint, carve, slabGeometry, mul, STONE, STONE_LOOK, SLAB_LOOK,
-  buildDeadTree, buildStandingStone, buildBoulder, buildFlagstone, buildBonfire,
+  buildDeadTree, buildStandingStone, buildBoulder, buildFlagstone, buildBonfire, buildStump as buildSnag, buildRubble, geosHeight,
 } from './forest.js';
 import { buildSectGate, buildColossus, buildCauldron, carved, landmarkPoint, GATE_COLLIDERS } from './landmarks.js';
 
@@ -192,6 +192,8 @@ function buildStump(rng, x, z, s) {
 }
 
 // ---------- assembly ----------
+/** Trees and boulders this close to the courtyard's centre are breakables (world/destructibles.js). */
+const BREAK_R = 30;
 export function createCourtyard(U, colliders) {
   const rng = mulberry32(CONFIG.seed + 101);
   const C = COURTYARD;
@@ -204,6 +206,18 @@ export function createCourtyard(U, colliders) {
   const treeSpots = [];
   const bare = [];
   const slabs = [];
+  // breakables (world/destructibles.js, ADR-107): the pillars, lanterns, the stele, the near trees and
+  // boulders are listed here instead of merged into the static meshes; their rubble draws on a stream
+  // of its own, so the layout's sequence stays as it was
+  const breakables = [];
+  const br = mulberry32(CONFIG.seed + 5177);
+  /** A standing pillar / column / stele as a breakable: it topples when tall, leaves a jagged base. */
+  const standing = (kind, geo, x, z, r, extra = {}) => {
+    breakables.push({
+      kind, mat: 'stone', look: 'prop', x, z, r, h: geosHeight([geo]), geos: [geo], colliders: [colliders.add(x, z, r, 'stone')],
+      broken: { geos: buildRubble(br, x, z, r * 0.85, { h: range(br, 0.35, 0.65) }), r: r * 0.7 }, lift: 2, ...extra,
+    });
+  };
 
   // ---- the paving: rows of slabs, some two cells long, a staggered bond; some missing (scorched
   // earth shows through)
@@ -243,16 +257,16 @@ export function createCourtyard(U, colliders) {
     const h = fallen ? range(rng, 3, 4) : roll < 0.5 ? range(rng, 1.0, 2.2) : range(rng, 3.4, 4.4);
     // a fallen pillar lies outward, away from the duel
     const out = Math.atan2(x, z);
-    stoneGeos.push(buildPillar(rng, x, z, h, { fallen, yaw: fallen ? out + range(rng, -0.4, 0.4) : 0 }));
+    const pillar = buildPillar(rng, x, z, h, { fallen, yaw: fallen ? out + range(rng, -0.4, 0.4) : 0 });
     if (fallen) {
       const dx = Math.sin(out), dz = Math.cos(out);
-      for (const f of [0.3, 0.75]) colliders.add(x + dx * h * f, z + dz * h * f, 0.55, 'stone');
-    } else colliders.add(x, z, 0.62, 'stone');
+      const cs = [0.3, 0.75].map((f) => colliders.add(x + dx * h * f, z + dz * h * f, 0.55, 'stone'));
+      breakables.push({ kind: 'pillar', mat: 'stone', look: 'prop', x: x + dx * h * 0.5, z: z + dz * h * 0.5, r: h * 0.45, h: 0.95, geos: [pillar], colliders: cs, topples: false, cover: false });
+    } else standing('pillar', pillar, x, z, 0.62);
   });
   // the gate: two tall pillars, the lintel fallen beside them
   for (const s of [-1, 1]) {
-    stoneGeos.push(buildPillar(rng, s * C.gateX, C.gateZ, 4.6, { r: 0.5 }));
-    colliders.add(s * C.gateX, C.gateZ, 0.7, 'stone');
+    standing('pillar', buildPillar(rng, s * C.gateX, C.gateZ, 4.6, { r: 0.5 }), s * C.gateX, C.gateZ, 0.7);
   }
   {
     const lx = C.gateX + 2.6, lz = C.gateZ + 1.6, yaw = 0.35;
@@ -262,20 +276,16 @@ export function createCourtyard(U, colliders) {
   // stone lanterns at the inner corners
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
     const x = sx * (C.half - 2.2), z = sz * (C.half - 2.2);
-    stoneGeos.push(buildLantern(rng, x, z, range(rng, -0.2, 0.2)));
-    colliders.add(x, z, 0.45, 'stone');
+    standing('lantern', buildLantern(rng, x, z, range(rng, -0.2, 0.2)), x, z, 0.45, { topples: false });
   }
   // the ruined hall to the north: a row of column stumps, a stele
   for (const x of [-9, -4.5, 4.5, 9]) {
     const h = Math.abs(x) > 6 ? range(rng, 3.5, 4.5) : range(rng, 0.6, 1.4);
-    stoneGeos.push(buildPillar(rng, x, -C.half - 4.2, h, { r: 0.5 }));
-    colliders.add(x, -C.half - 4.2, 0.7, 'stone');
+    standing('pillar', buildPillar(rng, x, -C.half - 4.2, h, { r: 0.5 }), x, -C.half - 4.2, 0.7);
   }
-  stoneGeos.push(buildStandingStone(rng, 9.6, -10.8, { h: 2.6, w: 1.2, d: 0.35, yaw: 0.25 }));
-  colliders.add(9.6, -10.8, 0.75, 'stone');
-  // the fallen bell
-  propGeos.push(...buildBell(rng, -9.2, -10.6, 0.5));
-  colliders.add(-9.2, -10.6, 1.25, 'stone');
+  standing('stele', buildStandingStone(rng, 9.6, -10.8, { h: 2.6, w: 1.2, d: 0.35, yaw: 0.25 }), 9.6, -10.8, 0.75);
+  // the fallen bell: bronze does not break, it rings and throws sparks
+  breakables.push({ kind: 'bell', mat: 'metal', look: 'grid', x: -9.2, z: -10.6, r: 1.25, h: 2, geos: buildBell(rng, -9.2, -10.6, 0.5), colliders: [colliders.add(-9.2, -10.6, 1.25, 'stone')], hp: Infinity, topples: false });
 
   // ---- the steps up to the gate: long slabs in rows, cracked into pieces
   for (const z of C.steps) {
@@ -329,9 +339,13 @@ export function createCourtyard(U, colliders) {
       if (col && !t.stump) for (let k = 0; k < col.count; k++) col.setXYZ(k, col.getX(k) * 0.55, col.getY(k) * 0.52, col.getZ(k) * 0.52);
     }
     if (inLandmark(t.x, t.z)) continue; // (built first: the layout's random sequence stays as it was)
-    treeGeos.push(...g);
     treeSpots.push({ x: t.x, z: t.z, r: (t.stump ? 1.2 : 2.4) * t.s });
-    if (Math.hypot(t.x, t.z) < 46) colliders.add(t.x, t.z, (t.stump ? 0.4 : 0.42) * t.s, 'trunk');
+    const rad = Math.hypot(t.x, t.z);
+    const c = rad < 46 ? colliders.add(t.x, t.z, (t.stump ? 0.4 : 0.42) * t.s, 'trunk') : null;
+    // the dead trees nearest the courtyard can be felled, burned and thrown
+    if (!t.stump && rad < BREAK_R) {
+      breakables.push({ kind: 'deadTree', mat: 'wood', look: 'grid', x: t.x, z: t.z, r: 0.42 * t.s, h: geosHeight(g), geos: g, colliders: c ? [c] : [], broken: { geos: buildSnag(br, t.x, t.z, t.s, CHAR), r: 0.36 * t.s }, lift: 1 });
+    } else treeGeos.push(...g);
   }
   // toppled stones and boulders on the slope
   for (let i = 0; i < 26; i++) {
@@ -341,8 +355,9 @@ export function createCourtyard(U, colliders) {
     const size = range(rng, 0.7, 1.7);
     const boulder = buildBoulder(rng, x, z, size);
     if (inLandmark(x, z)) continue;
-    stoneGeos.push(boulder);
-    if (r < 46) colliders.add(x, z, size * 0.85, 'boulder');
+    const c = r < 46 ? colliders.add(x, z, size * 0.85, 'boulder') : null;
+    if (Math.hypot(x, z) < BREAK_R) breakables.push({ kind: 'boulder', mat: 'stone', look: 'prop', x, z, r: size * 0.85, h: geosHeight([boulder]), geos: [boulder], colliders: c ? [c] : [], topples: false, lift: 1 });
+    else stoneGeos.push(boulder);
   }
 
   // ---- landmarks
@@ -383,6 +398,8 @@ export function createCourtyard(U, colliders) {
   return {
     group, treeSpots, bare, slabs, nest: { x: S.x, z: S.z }, bonfire: { x: bf.x, z: bf.z },
     material: mat, stoneMaterial: stoneMat, slabMaterial: slabMat,
+    breakables,
+    scarInk: [0.012, 0.012, 0.016], // dark cracks in the ash-grey paving
     ash: true,
     // a burned hillside: sparse, short, ash-grey grass; in the courtyard only a few tufts in the cracks
     grass: {

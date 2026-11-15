@@ -2,6 +2,7 @@ import { clamp, wrapAngle, smoothstep, turnToward } from '../../../core/math.js'
 import { TELL, RESULT, DEFENSE } from '../../../combat/rules.js';
 import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
+import { DUEL_WORLD } from './worldTuning.js';
 
 // A duelist's mind and timeline: the Ash Disciple's (docs/specs/ash-disciple.md §3), shared by every
 // human boss built on duelist.js. Everything it knows about one boss comes from the actor's kit
@@ -622,7 +623,10 @@ export class DuelBrain {
       if (b.feint || b.done || t < b.impact) continue;
       if (!b.struck) {
         b.struck = true; // the impact's first frame: the actor's own FX (a bolt, a shock ring)
+        // (the cover the hero stands behind, for a line of the Void: found first, the FX draw to it)
+        b.cover = this._coverFor(b, s);
         d.onImpact?.(b, s, a);
+        if (!b.def.release && !b.def.cast) this._worldBlow(b);
       }
       if (b.def.release) {
         b.done = true;
@@ -641,6 +645,10 @@ export class DuelBrain {
       }
       this.zone = b.def.zone;
       if (s && this._inZone(b.def.zone, s)) {
+        if (b.cover) {
+          b.done = true; // the cover took it: the hero behind it is untouched
+          continue;
+        }
         const r = d.hitPlayer({
           damage: b.def.damage, knockback: b.def.knockback, knockdown: !!b.def.knockdown, kind: 'slash', tell: b.def.tell, attack: a.name,
           from: { x: d.position.x, z: d.position.z }, mikiri: !!b.def.mikiri, beat: b,
@@ -764,6 +772,65 @@ export class DuelBrain {
       d.emit('dragon:land', { x: d.position.x, z: d.position.z });
       d.fx.dust(d.position.x, d.position.z, 1.6);
       d.game.world?.gust?.(d.position.x, d.position.z, 1.2, 5);
+    }
+  }
+
+  /**
+   * The cover between him and the hero for a line of the Void (a bolt, the pull, the grip; ADR-107),
+   * or null. The cover answers for the hero: a bolt blasts it, the pull drags it down toward him, the
+   * grip crushes it.
+   */
+  _coverFor(b, s) {
+    const D = b.def, d = this.d;
+    if (!(D.bolt || D.pull || D.grip) || !s || !this._inZone(D.zone, s)) return null;
+    const W = d.game.world?.destructibles, p = d.game.player?.position;
+    if (!W?.coverAt || !p) return null;
+    const c = W.coverAt(d.position.x, d.position.z, p.x, p.z, 0.2);
+    if (!c) return null;
+    const WT = this.T.world ?? DUEL_WORLD;
+    if (D.pull) W.topple(c, d.position.x - c.x, d.position.z - c.z, 'boss');
+    else {
+      const o = (this._wb ??= { kind: 'blast', by: 'boss', dx: 0, dz: 0, y: 1, src: -1, scar: false });
+      o.kind = 'blast';
+      o.dx = c.x - d.position.x;
+      o.dz = c.z - d.position.z;
+      o.src = W.swing();
+      W.strike(c.x, c.z, 0.2, D.grip ? WT.grip ?? DUEL_WORLD.grip : WT.bolt ?? DUEL_WORLD.bolt, o);
+    }
+    return c;
+  }
+
+  /**
+   * A blade's blow meets the world (ADR-107): what stands in the beat's zone is chipped or cut down,
+   * as hard as the blow (its damage / T.world.per; a red blow harder). A ring or a blow that knocks
+   * down bites stone as a blunt blow and cracks the floor.
+   */
+  _worldBlow(b) {
+    const d = this.d, w = d.game.world, z = b.def.zone;
+    const W = w?.destructibles;
+    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || d.position.y > 0.6) return;
+    const WT = this.T.world ?? DUEL_WORLD;
+    const heavy = z.kind === 'ring' || !!b.def.ring || !!b.def.knockdown;
+    const power = ((b.def.damage ?? 12) / (WT.per ?? DUEL_WORLD.per)) * (b.def.tell === TELL.RED ? WT.red ?? DUEL_WORLD.red : 1);
+    const o = (this._wb ??= { kind: 'cut', by: 'boss', dx: 0, dz: 0, y: 1, src: -1, scar: false });
+    o.kind = heavy ? 'blunt' : 'cut';
+    o.src = W.swing();
+    o.scar = heavy;
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), x = d.position.x, zz = d.position.z;
+    if (z.kind === 'ring') {
+      o.dx = o.dz = NaN; // (outward from him)
+      w.impact?.(x, zz, z.r, power, o);
+    } else if (z.kind === 'line') {
+      o.dx = fx;
+      o.dz = fz;
+      W.sweep(x + fx * 0.4, zz + fz * 0.4, x + fx * z.r, zz + fz * z.r, z.w / 2, power, o);
+      if (heavy) w.impact?.(x + fx * z.r * 0.8, zz + fz * z.r * 0.8, 0.6, power, o);
+    } else {
+      o.dx = fx;
+      o.dz = fz;
+      const cx = x + fx * z.r * 0.6, cz = zz + fz * z.r * 0.6;
+      if (heavy) w.impact?.(cx, cz, z.r * 0.55, power, o);
+      else W.strike(cx, cz, z.r * 0.55, power, o);
     }
   }
 

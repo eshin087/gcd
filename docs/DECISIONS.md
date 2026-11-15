@@ -2586,3 +2586,64 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   hero's colour by rule (STYLE.md). A thing drawn in the FX scene never counts as cover; a cover
   thinner than the margin in front of him (he presses against it) hides him without a ghost. Not
   measured on a phone.
+## ADR-107 — The world breaks: breakables in a rigid batch, fire that burns where it lands, cover (2026-11-15)
+
+**Context.** The owner: "i want all the bosses to be able to cause destruction to the background. for
+example, the dragon fire that hits the background (trees, grass) get on fire and are a temporarily
+hazard until the grass/tree burns away so the player has to dodge those as well ... the humanoid
+bosses will chip and damage the structures and leave impact based on the power of the attack. the
+players can also do this as well. i want the bosses to also use the terrain as a way for their
+defensive or offensive strategy". Asked, they chose: fire **burns where it lands** (it never
+spreads); the terrain is **a real tactic** for the hero (cover stops projectiles until it breaks, a
+piece felled onto a boss deals real damage); Cinderwood and Ashfall **keep their layouts and get
+things to break** brought into the fighting space; **staged PRs by separate sessions** (the hero seen
+behind the wyrm: ADR-106; the open Obsidian Throne: ADR-108; the bosses' terrain moves after).
+
+**Decision.**
+- **A set lists what can break** (`breakables`) instead of merging it into its static meshes.
+  `world/destructibles.js` gives each piece a node of its own and draws them all through two rigid
+  batches (the hero's and the wyrm's mechanism, ADR-045): one draw call per material however many
+  pieces there are, each free to fall, fly or vanish. The two set materials place vertices with
+  `rigidMatrix()`; only twins built with `rigid: true` are batched.
+- **One POWER scale** for every blow (1 fells a tree), a structure per material and size, and a
+  factor per kind of blow, in `world/breakTuning.js`. Each fighter's numbers live in its own tuning
+  (`TUNING.world`, `DUEL_WORLD`; the hero's is its damage / 110).
+- **Tall pieces fall; short ones shatter.** A falling piece is the world's own hazard: red, a marked
+  strip, a flash 0.3 s before it lands. The hero is never hurt by a piece he felled; a boss under it is.
+- **Cover.** A piece 1.1 m or taller stops what is thrown along the ground, and pays for it. For a
+  line of the Void the cover answers in the hero's place.
+- **Fire** (`world/fire.js`) lives on the scorch map's grid: a cell with grass left catches, burns
+  3.2 – 4.6 s as blockable contact ticks, and is ash after. Sweeping fire lights wood only.
+- **Marks** (`world/scars.js`): glyphs that stay until the reset, in one batch.
+- **Lift and throw** are in the API (`take`, `carry`, `throwTo`, `nearest`); a thrown piece's blow at the
+  hero is the thrower's (its own tell), dealt in `onLand`.
+- **Everything is reset** with the fight (`world.restore()` beside every scorch reset).
+- Cinderwood: the 57 trees within 36.5 m, the stone circle and the edge boulders are breakables, and 7
+  dead trees, 4 young pines and 6 boulders stand inside the clearing (81 in all). Ashfall: its pillars,
+  lanterns, stele and bell, and the dead trees and boulders within 30 m (72).
+
+**Why.** Per-object meshes would have cost ~160 draw calls a level, twice (the world pass and the
+shadow pass); the rigid batch costs 3. A world-side API with one POWER scale lets a new boss or move
+hit the world with one call and no knowledge of what stands there. Fire on the scorch grid needs no
+new texture and no new shader: the grass and the ground already read that map. The fall of a piece a
+boss felled must follow the game's tell rule, so the world emits the tell itself.
+
+**Rejected.** Fire that creeps or spreads freely (offered; the owner chose the readable one). Per-piece
+shader state (a burn or damage uniform per object): the batch shares uniforms; the scorch map, a
+stump variant and glyph particles do the job. Physics debris as meshes (the look is glyphs). Cover
+against melee, breath and blasts (it would make standing behind a stone the answer to everything).
+Leaving a felled trunk lying as an obstacle (the hero would clip through it or be blocked by an
+invisible wall; it comes apart where it lands). Hooking fire to every `scorch.burnCircle` call (the
+hazards' warm-up heats the ground before anything lands).
+
+**Consequences.** Trees and boulders now stand inside the wyrm's clearing: sightlines and paths
+changed, and the wyrm fells what it walks through. The minimap re-bakes when the colliders change
+(`Colliders.version`). The fights' difficulty with breakables and grass fire is **not measured** (the other
+suites' bots run on world mocks; the new `world.mjs` checks the mechanics, not a fight). Cost at the
+game camera, the fight on, measured in headless Edge against `main`: Cinderwood 57 → 60 draw calls and
+1.025 M → 1.034 M triangles a frame; Ashfall 52 → 54 and 566 k → 574 k. Frame time was not measured
+(the run uses virtual time), nor a phone. How a broken piece comes apart was the owner's pick of three
+filmed looks: "A: digits", a shower of the characters it is drawn in (bigger lumps and long shards
+were turned down; the `?debris=` switch that held them is gone). The Obsidian Throne lists no breakables yet: its
+rebuild (ADR-108) does. Sounds for breaking are two new one-shots (`chip`, `crash`); burning reuses
+the sizzle and the ember hiss.

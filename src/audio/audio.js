@@ -769,6 +769,15 @@ export class AudioEngine {
     on('dragon:breathEnd', () => this.breath?.stop());
     on('dragon:fireball', (d) => this.play('fireball', d));
     on('dragon:explosion', (d) => this.play('explosion', d));
+    // the world breaks (ADR-107): a blow on wood / stone / metal, something coming down, fire catching
+    on('world:impact', (d) => {
+      const o = { x: d.x, z: d.z, mat: d.mat, power: num(d.power, 0.5) };
+      if (d.kind === 'chip') this.play('chip', o);
+      else if (d.kind === 'burn') this.play('sizzle', o);
+      else if (d.kind === 'burnout') this.play('emberHiss', o);
+      else this.play('crash', o);
+    });
+    on('world:fire', (d) => this.play('sizzle', { x: d.x, z: d.z }));
     on('dragon:bite', () => this.play('bite', this._atDragon()));
     on('dragon:hurt', (d) => {
       if (!beast()) return;

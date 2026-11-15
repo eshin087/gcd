@@ -2917,6 +2917,8 @@ export class Player {
       if (t >= W && prevT <= end + 0.04) {
         // the hit first: a cut that lands this frame draws its contact, not the arc's glint
         if (!a.hit && prevT <= end) this._tryHit(a);
+        // the blade meets the world too (ADR-107): what it sweeps through is chipped, cut down, felled
+        if (prevT <= end) this._cutWorld(a, sw);
         // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
         this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
@@ -3012,6 +3014,9 @@ export class Player {
     g.world?.gust?.(x, z, 1.1, 4.5);
     g.shake?.(d.shake * 0.6);
     this._emit('player:slam', { x, z });
+    // the ground takes it: a crack where the point went in, and whatever stands in the shards' reach
+    const wb = this._worldBlowOf(a, true);
+    if (wb) g.world?.impact?.(x, z, fin(d.shards?.radius, 1.5), fin(a.damage, 60) / 110, wb);
     const S = d.shards;
     if (a.hit || !S) return;
     const dr = g.dragon;
@@ -3020,6 +3025,37 @@ export class Player {
     if (!Array.isArray(spheres) || !spheres.length) return;
     // (viaShards: the blade is in the ground, the shards are the contact: no drawn cut)
     if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit, true);
+  }
+
+  /** This swing as a blow on the world (world.destructibles: one id per swing, so a piece takes it once). */
+  _worldBlowOf(a, ground = false) {
+    const D = this.game.world?.destructibles;
+    if (!D?.swing) return null;
+    if (a.wsrc === undefined) a.wsrc = D.swing();
+    const o = (this._worldBlow ??= { kind: 'cut', by: 'player', dx: 0, dz: 0, y: 0, src: -1, scar: true });
+    o.kind = a.def.heavy ? 'blunt' : 'cut'; // a heavy cut bites stone; a quick one barely marks it
+    o.src = a.wsrc;
+    o.scar = ground;
+    return o;
+  }
+
+  /**
+   * The swing against the world's breakables (ADR-107): each piece the blade sweeps through takes one
+   * blow per swing, as hard as the cut (POWER = its damage / 110: a full cleave fells a tree). What
+   * falls, falls away from him: stand so the thing is between you and the foe.
+   */
+  _cutWorld(a, sw) {
+    const o = this._worldBlowOf(a);
+    if (!o) return;
+    const p = this.position;
+    o.dx = (sw.a.x + sw.b.x) * 0.5 - p.x;
+    o.dz = (sw.a.z + sw.b.z) * 0.5 - p.z;
+    o.y = Math.min(sw.a.y, sw.b.y) - 0.3;
+    const n = this.game.world.destructibles.sweep(sw.a.x, sw.a.z, sw.b.x, sw.b.z, REACH.radius, fin(a.damage, 30) / 110, o);
+    if (n > 0 && !a.wfelt) {
+      a.wfelt = true; // the hand feels it: one small jolt per swing
+      this.game.shake?.(a.def.heavy ? 0.12 : 0.05);
+    }
   }
 
   _tryHit(a) {
