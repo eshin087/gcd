@@ -7158,7 +7158,7 @@ async function scenarioBatch() {
 }
 
 // ================================================================== scenario: the hero seen through what covers him
-// render/pipeline.js step 2b (ADR-105): the hero's root is drawn alone into seenRT inside a box round
+// render/pipeline.js step 2b (ADR-106): the hero's root is drawn alone into seenRT inside a box round
 // his screen point, a quad erases what the scene shows of him, and the rest goes back into the
 // scene target for the ASCII pass to print through. Checked here with the real Pipeline and a
 // renderer that records what is drawn where: when the pass runs and when it does not (no object,

@@ -12,7 +12,7 @@ import { HERO_ART } from './materials.js';
 //      meshes on LAYER_CASTER_RIGID with a depth material that reads the bone texture)
 //   2. world -> sceneRT (HDR colour, alpha = ASCII flag, + depth texture)
 //   2b. the hero alone -> seenRT, minus what the scene shows of him; the rest (the hero where
-//      something covers him) is put back into sceneRT so the ASCII pass prints him through (ADR-105)
+//      something covers him) is put back into sceneRT so the ASCII pass prints him through (ADR-106)
 //   3. ASCII pass: flagged pixels become a screen-space character grid  -> compRT
 //   4. FX pass: glyph particles, soft depth-tested against sceneRT depth   -> compRT
 //   5. bloom + tone map + grade + vignette + feedback overlays             -> screen
@@ -71,7 +71,7 @@ export class Pipeline {
       magFilter: THREE.NearestFilter,
       depthTexture: new THREE.DepthTexture(1, 1),
     });
-    // --- the hero seen through what covers him (ADR-105). When the wyrm (or a tree, a pillar, a
+    // --- the hero seen through what covers him (ADR-106). When the wyrm (or a tree, a pillar, a
     // landmark: anything drawn into the scene with depth) stands between the camera and the hero,
     // his letters are gone. So after the world pass the hero is drawn once more, alone, into seenRT
     // (only the box round him), a quad erases the pixels of him the scene already shows (a depth
@@ -282,7 +282,7 @@ export class Pipeline {
         // have at the camera's focus (px, set per frame), so letters stay on an object while the
         // camera follows the hero (exact at the focus depth, a slow drift nearer and farther)
         uPropAnchor: { value: new THREE.Vector2(0, 0) },
-        // ---- the hero seen through what covers him (ADR-105). tSeen = seenRT: the hero's pixels
+        // ---- the hero seen through what covers him (ADR-106). tSeen = seenRT: the hero's pixels
         // that something stands in front of (their alpha is in the hero's window), and nothing else
         tSeen: { value: this.seenRT.texture },
         // xy = his screen centre (uv), z = the half-size (px) of the box round him that seenRT holds
@@ -511,7 +511,7 @@ export class Pipeline {
           }
           return uHeroHalo.w * uHeroHaloShape.z * max(step(0.5, n1), 0.55 * step(0.5, n2));
         }
-        // ---- the hero seen through what covers him (ADR-105). tSeen holds only the pixels of him
+        // ---- the hero seen through what covers him (ADR-106). tSeen holds only the pixels of him
         // that something stands in front of, inside the box round his screen position (outside it
         // the texture is stale: never read)
         bool seenBox(vec2 px) {
@@ -724,7 +724,7 @@ export class Pipeline {
                 else if (uHeroDebug > 1.5) col = vec3(0.0);
               } else if (uHeroDebug > 1.5) col = vec3(0.0);
             }
-            // where something covers him (ADR-105) the same art prints through it in the blade's cyan:
+            // where something covers him (ADR-106) the same art prints through it in the blade's cyan:
             // a bright silhouette, his inner lines and fill letters at their own brightness
             if (seenAt(px) || seenAt(hbase + 0.5 * uHeroCell)) {
               float l = max(col.r, max(col.g, col.b));
@@ -892,7 +892,7 @@ export class Pipeline {
       u.uArtMin.value.y = 0.012;
     }
 
-    // --- the seen-through probe (ADR-105): a quad over the hero's torso rect, at the depth of his
+    // --- the seen-through probe (ADR-106): a quad over the hero's torso rect, at the depth of his
     // centre line pulled towards the camera (uProbe: screen y of the slab's foot / top in px, the
     // view depth in m to test there). It passes where the scene is nearer: something may cover
     // him. It writes nothing; _seenProbe counts its samples with an occlusion query.
@@ -920,7 +920,7 @@ export class Pipeline {
       colorWrite: false,
       blending: THREE.NoBlending,
     });
-    // --- the seen-through quads (ADR-105), drawn over the box round the hero only (_renderSeen)
+    // --- the seen-through quads (ADR-106), drawn over the box round the hero only (_renderSeen)
     // 1. into seenRT, which holds the hero drawn alone: erase every pixel of him the scene shows.
     // The quad's depth is the scene's, pushed back by a margin, and it passes (erases) where that is
     // not in front of the hero's own depth. So a pixel of him stays only where something stands at
@@ -1133,7 +1133,7 @@ export class Pipeline {
   }
 
   /**
-   * The object printed through whatever covers it on screen (ADR-105): the hero's root (main.js),
+   * The object printed through whatever covers it on screen (ADR-106): the hero's root (main.js),
    * or null for none. It is drawn a second time, alone, every frame it is on screen.
    */
   setSeenThrough(root) {
@@ -1141,7 +1141,7 @@ export class Pipeline {
   }
 
   /**
-   * Render step 2b (ADR-105), right after the world pass: the seen-through object alone into
+   * Render step 2b (ADR-106), right after the world pass: the seen-through object alone into
    * seenRT, inside the box round the hero's screen point (U.uPlayerScreen; CONFIG.render.seenThrough
    * `reach`); then the quad that erases what the scene shows of it (seenMaskMat); then what is left
    * into sceneRT (seenPatchMat). Sets uSeen for the ASCII pass and returns true when it ran: not
