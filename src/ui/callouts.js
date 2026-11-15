@@ -16,6 +16,8 @@ const KINDS = {
   parry: { text: 'PARRY', life: 0.95, rise: 30, pop: 1.35 },
   deflect: { text: 'DEFLECT', life: 1.1, rise: 32, pop: 1.45 },
   ghostep: { text: 'GHOSTEP', life: 1.25, rise: 26, pop: 1.5, streak: true },
+  // a parried last blow answered with flash cuts (player:flurry, art 'riposte')
+  riposte: { text: 'RIPOSTE', life: 1.1, rise: 26, pop: 1.5, cls: 'deflect', streak: true },
   gbreak: { text: 'GUARD BROKEN', life: 1.3, rise: 22, pop: 1.3 },
   // the guard meter ran out on a blocked blow (player:guardOpen): styled as the guard break
   gopen: { text: 'GUARD DOWN', life: 1.0, rise: 20, pop: 1.25, cls: 'gbreak' },
@@ -183,6 +185,17 @@ export class Callouts {
     it.span.textContent = `${KINDS.ghostep.text} ×${n}`;
     it.pop = Math.min(2.3, KINDS.ghostep.pop + 0.12 * (n - 1));
     it.life = KINDS.ghostep.life + Math.min(0.5, 0.06 * n);
+  }
+
+  /** RIPOSTE over the hero's head ("RIPOSTE ×N" for two cuts or more). */
+  riposte(strikes) {
+    const n = Math.round(num(strikes));
+    this.call('riposte');
+    if (!(n >= 2)) return;
+    const it = this.calls.find((c) => c.active && c.kind === 'riposte' && c.age === 0);
+    if (!it) return;
+    it.span.textContent = `${KINDS.riposte.text} ×${n}`;
+    it.pop = Math.min(2.3, KINDS.riposte.pop + 0.12 * (n - 1));
   }
 
   /** A flurry's cut `n` landed at world `point`: one counter over the target, counting up in place. */

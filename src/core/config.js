@@ -42,7 +42,7 @@ export const CONFIG = {
     mobileMaxDistance: 34,
     mobileMaxExtraZoom: 3,
     mobileMaxSide: 600,
-    // A window taller than it is wide (a phone held upright; ADR-096): the vertical field of view
+    // A window taller than it is wide (a phone held upright; ADR-097): the vertical field of view
     // opens until the view is as WIDE as a square window's (cameraRig.js fovFor), portraitMaxFov at
     // most. A phone held upright also stands portraitDistance x further back and looks portraitLead
     // m south of the hero, so he stands above the middle of the screen, clear of the thumbs.
@@ -59,7 +59,7 @@ export const CONFIG = {
     sprintAt: 0.94, // stick pushed to the rim = sprint (Shift)
     autoAimRange: 32, // m: in a fight, attacks / facing auto-aim at the dragon within this range
     aimDistance: 6, // m ahead of the hero along the stick when there is nothing to auto-aim at
-    // The right-thumb cluster (ADR-095): ATTACK, BLOCK and DODGE are three tiles that all touch one
+    // The right-thumb cluster (ADR-096): ATTACK, BLOCK and DODGE are three tiles that all touch one
     // another, so the thumb goes from any one to any other without crossing a gap or a third tile.
     //   tiles  each tile in the cluster's own box: x from its right edge, y up from its bottom edge
     //   flask  the flask button rides with the cluster (same box), a gap away from the tiles

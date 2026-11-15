@@ -43,9 +43,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Owner approval; released as v0.3.0
 - [x] Classic ASCII-art creatures (screen-grid conversion, owner's references); hero drawn bigger and leaned (ADR-017)
 - [~] Phone support: touch controls, phone camera, Lab toggle (released; needs a real-device check)
-  - [x] The right thumb's pad: three tiles that touch, slide between them, placed and sized by the player (ADR-095)
-  - [x] The guard meter: blocks cost guard, not HP; parries and hits restore it (ADR-094)
-  - [x] Played upright (portrait) as well as in landscape; see-through controls; a 70 px minimap on phones (ADR-096)
+  - [x] The right thumb's pad: three tiles that touch, slide between them, placed and sized by the player (ADR-096)
+  - [x] The guard meter: blocks cost guard, not HP; parries and hits restore it (ADR-095)
+  - [x] Played upright (portrait) as well as in landscape; see-through controls; a 70 px minimap on phones (ADR-097)
   - [ ] Owner's verdict on the phone: the pad's default place and size, the slide's stick (10 px), the guard meter's numbers,
         how faint the controls are, the upright camera against the wyrm
 - [x] Owner approval; released as v0.4.0
@@ -157,6 +157,18 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Face: brow, nose and jaw lines under the fringe
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
+
+## M1.32 — Weight on the flurry; one streak; a foe's streak (2026-11-15, `combat/streak-everywhere`, ADR-094)
+- [x] Flash cuts that land: the hero's freeze, the target's reel, clones, ground shock, the last blow's impact frame
+- [x] Parries, deflects, clashes and the mikiri count in the streak
+- [x] The riposte: a parried last blow answered with as many flash cuts as the streak counts
+- [x] Duelists: a streak of guards (pips on the boss bar) and a flurry of that many blows from every side
+- [x] Answer every blow of it (parry or block) and his posture breaks
+- [ ] A human plays it; then the riposte's damage, the foe's thresholds
+- [ ] Follow-ups:
+  - [ ] Film the riposte, the Lord's flurries, the screen cuts; the phone
+  - [ ] Sounds of its own for his flurry (it borrows the gong and the tells)
+  - [ ] An afterimage of the foe where he stood (the Lord has one for his blink)
 
 ## M1.30 — The streak and the flurry (2026-11-14, `player/ghostep-flurry`, ADR-091)
 - [x] A streak of perfect dodges (it ends when a blow hurts); pips, "GHOSTEP ×N", the victory record

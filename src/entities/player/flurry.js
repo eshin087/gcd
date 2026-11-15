@@ -53,6 +53,9 @@ export const ARTS = Object.freeze({
   passing: { air: false, kind: 'iai', label: 'Passing Cut', coil: 0.22, strike: 0.07, hold: 0.24, back: 3.1 },
   falling: { air: false, kind: 'split', label: 'Falling Leaf', coil: 0.2, strike: 0.12, up: 3.9, back: 1.5 },
   rising: { air: false, kind: 'vault', label: 'Rising Moon', coil: 0.16, strike: 0.4, back: 1.3, up: 2.5 },
+  // the riposte (a parried last blow): no art of its own. Every blow is a flash cut, the last one
+  // opens the hanging cuts, and he is back where he parried
+  riposte: { air: null, kind: 'return', label: 'Riposte' },
 });
 const AIR_ARTS = Object.keys(ARTS).filter((k) => ARTS[k].air);
 const GROUND_ARTS = Object.keys(ARTS).filter((k) => !ARTS[k].air);
@@ -73,6 +76,10 @@ export class Flurry {
     this.att = null;
     this.air = false;
     this.n = 1; // blows in all
+    this.cuts = 0; // how many of them are flash cuts (all but the art; all of a riposte's)
+    this.riposte = false;
+    this.reelT = 0; // s (real) left of the beat after a cut in which the target reels
+    this.cloned = false; // this pass has left its speed clone
     this.i = 0; // the blow being struck (0-based)
     this.ph = FP.BLINK;
     this.t = 0;
@@ -173,13 +180,14 @@ export class Flurry {
    * start (the caller falls back to the Ghostep). One blow whose art is the plunge IS the plunge,
    * started as it always was.
    */
-  start(att, air, strikes, attack, tell) {
+  start(att, air, strikes, attack, tell, opts = null) {
     const P = this.p, g = P.game, p = P.position;
+    const riposte = !!opts?.riposte;
     this.att = att;
     this.air = !!air;
     if (!this._aim()) return false;
     const n = clamp(Math.round(fin(strikes, 1)), 1, F.max);
-    const art = this._pickArt(this.air);
+    const art = riposte ? 'riposte' : this._pickArt(this.air);
     if (n === 1 && ARTS[art].kind === 'plunge') {
       this.clear();
       this.art = art;
@@ -193,6 +201,8 @@ export class Flurry {
     this.air = !!air;
     this.art = art;
     this.n = n;
+    this.riposte = riposte;
+    this.cuts = riposte ? n : n - 1;
     this.attack = attack;
     this.tell = tell;
     this.ox = p.x;
@@ -227,8 +237,10 @@ export class Flurry {
     const zk = fin(g.cameraRig?.defaultDistance, CONFIG.camera.distance) / CONFIG.camera.distance;
     g.flow?.cinematic?.({ x: this.T.x, z: this.T.z, slowmo: 1, dur: this._planned() + 0.5, zoom: (this.air ? -3 : -6) * zk, weight: 0.55, kind: 'flurry' });
     this._hold();
-    P._emit('player:perfectDodge', { attack, tell, streak: P.streak });
-    P._emit('player:ghostep', { x: p.x, z: p.z });
+    if (!riposte) {
+      P._emit('player:perfectDodge', { attack, tell, streak: P.streak });
+      P._emit('player:ghostep', { x: p.x, z: p.z });
+    }
     P._emit('player:flurry', { strikes: n, art, air: this.air, dur: this._planned() });
     return true;
   }
@@ -237,19 +249,24 @@ export class Flurry {
   _planned() {
     const C = F.cut, D = ARTS[this.art];
     let t = 0;
-    for (let i = 0; i < this.n - 1; i++) t += (C.blink + C.dash + C.stop + C.hold) * this._pace(i);
-    return t + C.blink + (D.kind === 'plunge' ? 0.7 : fin(D.coil) + fin(D.strike) + fin(D.hold) + 0.15);
+    for (let i = 0; i < this.cuts; i++) t += (C.blink + C.dash + C.stop + C.hold) * this._pace(i);
+    return t + C.blink + (D.kind === 'plunge' ? 0.7 : D.kind === 'return' ? 0.1 : fin(D.coil) + fin(D.strike) + fin(D.hold) + 0.15);
   }
 
   /** A long flurry speeds up: the pace of cut `i` (1 → DEFENSE.flurry.cut.rush). */
   _pace(i) {
-    const m = this.n - 2;
+    const m = this.cuts - 1;
     return m > 0 ? lerp(1, F.cut.rush, clamp(i / m, 0, 1)) : 1;
   }
 
-  /** Keep the world held (a hit-stop at DEFENSE.flurry.world, re-armed for KEEP s). */
+  /** Keep the world held (a hit-stop at DEFENSE.flurry.world, re-armed for KEEP s). The scale is
+   *  SET, not merged: a target's own freeze on a cut (0.03 for 0.12 s) must not stand for the whole
+   *  flurry, and in the beat after a cut the world is let run (`reelWorld`) so the target reels. */
   _hold() {
-    this.p.game.hitstop?.(KEEP, F.world);
+    const g = this.p.game;
+    if (typeof g.hitstop !== 'function') return;
+    g.hitstop(KEEP, F.world);
+    g.hitstopScale = this.reelT > 0 ? fin(F.reelWorld, F.world) : F.world;
   }
 
   _phase(ph, dur) {
@@ -268,6 +285,9 @@ export class Flurry {
     this.total = 0;
     this.i = 0;
     this.hit = false;
+    this.riposte = false;
+    this.cuts = 0;
+    this.reelT = 0;
     this.glow = 0;
     this.animDt = 0;
     this.anim.pose = 'cut';
@@ -287,6 +307,7 @@ export class Flurry {
       P._toLoco(0.1);
       return;
     }
+    if (this.reelT > 0) this.reelT -= rdt;
     this._hold();
     if (this.freeze > 0) {
       this.freeze -= rdt;
@@ -298,7 +319,7 @@ export class Flurry {
     switch (this.ph) {
       case FP.BLINK:
         if (u >= 1) {
-          if (this.i < this.n - 1) this._beginCut();
+          if (this.i < this.cuts) this._beginCut();
           else this._beginArt();
         }
         break;
@@ -307,6 +328,11 @@ export class Flurry {
         this.anim.u = 1 + u;
         const L = this.lines[this.nLines - 1];
         if (L) L.k = u;
+        if (!this.cloned && u >= 0.3) {
+          // a speed clone: the shape of him mid-pass, left hanging on the line
+          this.cloned = true;
+          this.fx.clone(P._ghostSegs, P._sampleGhost());
+        }
         if (!this.hit && u >= 0.5) this._cutHit();
         if (u >= 1) this._phase(FP.HOLD, F.cut.hold * this._pace(this.i));
         break;
@@ -444,6 +470,7 @@ export class Flurry {
     L.k = 0;
     L.last = false;
     this.hit = false;
+    this.cloned = false;
     this.glow = 1;
     this._appear('cut', CUT_CLIPS[this.clipI++ % CUT_CLIPS.length], 1);
     this.fx.appear(A.x, A.y + CHEST, A.z, this.d.x, this.d.z, this.i, this.n);
@@ -455,25 +482,38 @@ export class Flurry {
     const P = this.p, g = P.game, T = this.T, C = F.cut;
     this.hit = true;
     this._aim();
-    const dealt = this._damage(C.damage, C.posture, false, 0.45);
-    this.total += dealt;
+    const final = this.riposte && this.i >= this.cuts - 1; // a riposte's last cut is its last blow
+    const dealt = this._damage(C.damage, C.posture, false, 0.45, final ? 2 : 1);
     const k = this.n > 1 ? this.i / (this.n - 1) : 0;
     this.fx.cut(T.x, T.y, T.z, this.d.x, this.d.z, this.i, this.n);
-    g.shake?.(0.14 + 0.1 * k);
-    g.punch?.(0.5 + 0.5 * k);
-    this.freeze = C.stop * this._pace(this.i);
-    if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: this.air ? 'head' : 'body', point: { x: T.x, y: T.y, z: T.z }, heavy: false, crit: true, kind: 'flurry' });
+    if (!this.air) this.fx.ground(T.x, T.z, this.d.x, this.d.z, 0.6 + 0.6 * k);
+    // weight: a kick along the cut, a punch in, the hero frozen on the contact, then a beat in which
+    // the world runs and the target reels under it
+    g.shake?.(0.2 + 0.14 * k);
+    g.punch?.(0.9 + 0.9 * k);
+    this.freeze = C.stop * (0.75 + 0.25 * this._pace(this.i)) * (final ? 1.8 : 1);
+    this.reelT = this.freeze + fin(C.reel, 0);
+    P.anim.kickCoat(0.5, P.anim.noise);
+    if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: this.air ? 'head' : 'body', point: { x: T.x, y: T.y, z: T.z }, heavy: final, crit: true, kind: 'flurry' });
+    if (final) {
+      this.fx.impact(T.x, T.y, T.z, this.d.x, this.d.z, 0.7);
+      P._hitstop(DEFENSE.plunge.impactStop * 0.7, 0.03);
+      this.burst(dealt, T);
+      return;
+    }
+    this.total += dealt;
     P._emit('player:flurryHit', { n: this.i + 1, of: this.n, last: false, damage: dealt });
   }
 
-  /** `damage` (final) into the target through its takeHit. Returns what was dealt. */
-  _damage(damage, posture, heavy, flash) {
+  /** `damage` (final) into the target through its takeHit. Returns what was dealt. `reel`: how
+   *  hard it throws him (1 a cut, 2 the last blow: a duelist staggers). */
+  _damage(damage, posture, heavy, flash, reel = 1) {
     const att = this.att, T = this.T;
     if (!this._alive(att) || typeof att.takeHit !== 'function') return 0;
     try {
       const r = att.takeHit({
         damage, part: this.air ? 'head' : 'body', point: { x: T.x, y: T.y, z: T.z }, dir: { x: this.d.x, z: this.d.z },
-        heavy, crit: true, exact: true, posture, flash,
+        heavy, crit: true, exact: true, posture, flash, reel,
       });
       return Number.isFinite(r) ? r : 0;
     } catch (err) {
@@ -487,6 +527,10 @@ export class Flurry {
     const P = this.p, p = P.position, g = P.game, T = this.T, D = ARTS[this.art];
     if (!this._aim()) {
       this._bail();
+      return;
+    }
+    if (D.kind === 'return') {
+      this._return();
       return;
     }
     if (D.kind === 'plunge') {
@@ -683,15 +727,24 @@ export class Flurry {
       if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: 'head', point: { x: T.x, y: T.y, z: T.z }, heavy: true, crit: false, kind: 'plunge' });
       P._emit('player:plungeHit', { damage: dealt, execution: false });
     } else {
-      dealt = this._damage(F.last.damage, F.last.posture, true, 1);
+      dealt = this._damage(F.last.damage, F.last.posture, true, 1, 2);
       if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: T.x, y: T.y, z: T.z }, heavy: true, crit: true, kind: 'flurry' });
     }
-    this.freeze = stop;
-    P._hitstop(PL.impactStop, 0.03);
-    g.shake?.(PL.impactShake);
-    g.world?.gust?.(T.x, T.z, 1.2, 7);
-    P.anim.kickCoat(0.9, P.anim.noise);
+    // the weight of the last blow: he holds the contact half as long again, the frame freezes,
+    // the camera is thrown in and shaken hard, the ground gives under a foe who stands on it
+    this.freeze = stop * 1.5;
+    this.reelT = 0;
+    P._hitstop(PL.impactStop * 1.25, 0.02);
+    g.shake?.(Math.min(1, PL.impactShake + 0.06 * this.n));
+    g.punch?.(2.2 + 0.25 * this.n);
+    g.world?.gust?.(T.x, T.z, 1.5, 8);
+    P.anim.kickCoat(1.1, P.anim.noise);
     this.fx.artHit(T.x, T.y, T.z, this.d.x, this.d.z, ARTS[this.art].kind);
+    this.fx.impact(T.x, T.y, T.z, this.d.x, this.d.z, 1);
+    if (!this.air) {
+      this.fx.ground(T.x, T.z, this.d.x, this.d.z, 1.6);
+      P.fx.slamShards(T.x + this.d.x * 0.4, T.z + this.d.z * 0.4, true);
+    }
     this.burst(dealt, T);
   }
 
@@ -734,8 +787,20 @@ export class Flurry {
     this._settle();
   }
 
-  /** On the ground behind the foe: the Ghostep's reappear, the crit window open. */
-  _settle() {
+  /** A riposte is over: he is back where he parried, facing the foe, free at once. */
+  _return() {
+    const P = this.p, p = P.position, g = P.game;
+    if (this.pending) this.burst(0, this.T);
+    p.set(fin(this.ox, p.x), 0, fin(this.oz, p.z));
+    g.world?.resolve?.(p, P.radius, CONFIG.world.playerBound);
+    this.fx.pull = 0;
+    this.fx.appear(p.x, CHEST, p.z, 0, 0, 0, 1, true);
+    P.anim.teleported();
+    this._settle(false);
+  }
+
+  /** On the ground behind the foe: the Ghostep's reappear, the crit window open (`crit`). */
+  _settle(crit = true) {
     const P = this.p, p = P.position, att = this.att, ap = att?.position;
     this.on = false;
     this.hidden = false;
@@ -745,7 +810,7 @@ export class Flurry {
     const has = !!ap && Number.isFinite(ap.x + ap.z);
     if (has && (ap.x - p.x) ** 2 + (ap.z - p.z) ** 2 > 1e-4) P.yaw = Math.atan2(ap.x - p.x, ap.z - p.z);
     P.iframeT = this.tune.ghostepIframes;
-    P.critTimer = DEFENSE.ghostep.critWindow;
+    if (crit) P.critTimer = DEFENSE.ghostep.critWindow;
     P.assist.target = has && this._alive(att) ? att : null;
     P.assist.t = P.assist.target ? this.tune.ghostepAssist : 0;
     P.sweep.valid = false;

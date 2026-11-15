@@ -1,7 +1,7 @@
 // Touch-controls stylesheet, injected from JS (style.css stays foundation-only). Matches the HUD:
 // JetBrains Mono, thin light lines, ember accents; the stick is an ASCII ring of glyphs around an
 // '@' knob and every button wears HUD-style corner brackets.
-// The controls are drawn ON the game, not over it (ADR-096): no filled panels, faint outlines and
+// The controls are drawn ON the game, not over it (ADR-097): no filled panels, faint outlines and
 // glyphs at rest (the fight shows through them), full strength only under a thumb.
 
 const LINE = 'rgba(207, 214, 230, 0.30)';

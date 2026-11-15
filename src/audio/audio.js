@@ -647,6 +647,8 @@ export class AudioEngine {
     on('player:flurryHit', (d) => {
       if (!d.last) this.play('flurryCut', { n: num(d.n, 1) });
     });
+    // a duelist answers a streak of guards with his own flurry: a low gong under its first tell
+    on('dragon:flurry', () => this.play('gong'));
     on('player:flurryArt', (d) => this.play('flurryCoil', { dur: num(d.dur, 0.2) }));
     on('player:flurryEnd', (d) => {
       this._slowOpen();

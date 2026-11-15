@@ -65,7 +65,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `events` | pub/sub: `on(name, fn)` → unsubscribe fn, `emit(name, data)` |
 | `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
 | `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame (the ray from the camera without the kick's translation, `cameraRig.kickOff`); with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
-| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool, portrait = false)` / `mobile` / `portrait` / `lead`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default; a phone held upright (`portrait`) stands `CONFIG.camera.portraitDistance` (1.2) × further back and looks `portraitLead` (1.5 m) south of the focus, so the hero stands above the middle of the screen (ADR-096). `fovFor(aspect)` (exported by `core/cameraRig.js`, applied by main.js on every resize): the vertical field of view, `CONFIG.camera.fov` in landscape, opened in a window taller than wide until the view is as wide as a square window's (`portraitMaxFov` 68 at most). `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance, negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
+| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool, portrait = false)` / `mobile` / `portrait` / `lead`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default; a phone held upright (`portrait`) stands `CONFIG.camera.portraitDistance` (1.2) × further back and looks `portraitLead` (1.5 m) south of the focus, so the hero stands above the middle of the screen (ADR-097). `fovFor(aspect)` (exported by `core/cameraRig.js`, applied by main.js on every resize): the vertical field of view, `CONFIG.camera.fov` in landscape, opened in a window taller than wide until the view is as wide as a square window's (`portraitMaxFov` 68 at most). `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance, negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
 | `touch` | touch controls (`ui/touch.js`, below): `active`, `phone`, `portrait`, `autoAim`, `setActive(bool)`, `update(realDt)` |
 | `gamepad` | gamepad controls (`ui/gamepad.js`, below): `active`, `connected`, `layout` (`'xbox'`/`'ps'`), `autoAim`, `focus`, `label(token)`, `rumble([ms, strong, weak])`, `update(realDt)` |
 | `shake(a)` | camera trauma (0.15 light hit … 0.7 huge slam) |
@@ -352,7 +352,7 @@ object3d: THREE.Object3D;  position: THREE.Vector3 (=== object3d.position);  yaw
 batch                                  // his rigid batches (render/rigidBatch.js batchRigid; empty with ?nobatch)
 name = 'Wanderer'
 hp, maxHp, flasks, maxFlasks: number   // (v0.2: NO stamina) TUNE: 160 HP, 5 flasks of +70 HP
-guard, maxGuard: number                // the guard meter (combat/rules.js GUARD, ADR-094): a blocked blow costs guard, not HP;
+guard, maxGuard: number                // the guard meter (combat/rules.js GUARD, ADR-095): a blocked blow costs guard, not HP;
                                        // refills by itself; at 0 on a blocked blow the guard is knocked open (state 'stagger'
                                        // for GUARD.openDur with the guard break's pose, `player:guardOpen`); read by the HUD
                                        // and the touch BLOCK tile
@@ -533,7 +533,29 @@ called by the art or by the plunge's impact. Events: `player:flurry`, `player:fl
 `player:plunge` / `player:plungeHit`. The animator's clip `flurry` reads `player.flurryAnim`
 ({ pose: 'cut' | 'coil' | 'raise' | 'crouch' | 'flip', clip, u, air, k }): a flash cut plays one of
 the hero's own swing clips through its active frames. Lab / tests: `player.debug.flurry(strikes,
-art)`, `.streak(n)`, `.flurryArt`.
+art)`, `.streak(n)`, `.flurryArt`, `.noRiposte`.
+**The shared streak, the riposte, weight** (ADR-094). `_streakUp()` is also called by `_parry` (not
+a bullet's), `_trade` and `_mikiri`. A parry whose hit says `last !== false` and `melee === true`
+(the attacker's word: the wyrm's `hitPlayer` and a duelist's both give them) arms `player.riposte`;
+`_tickRiposte` starts it once `game.hitstopTimer` has run out, from the parry, a guard or standing
+free, if the target is within `DEFENSE.flurry.riposteRange`: `flurry.start(att, air, streak, attack,
+tell, { riposte: true })`. A riposte is `ARTS.riposte` (kind `return`): every blow a flash cut
+(`flurry.cuts` = all of them), the last one calls `burst`, then `_return` puts him back where he
+parried in state `ghostep` without the crit window; it emits no `player:perfectDodge`.
+`startBladeLock` refuses during a flurry and drops a waiting riposte. Weight: `_hold` SETS
+`game.hitstopScale` every frame (`DEFENSE.flurry.world`, or `reelWorld` for `cut.reel` s after a
+cut, `flurry.reelT`); a cut passes `reel: 1` to `takeHit`, the last blow `reel: 2`.
+`takeHit({ around: true })`: the parry and block arcs are not checked (a foe's flurry).
+**A duelist's streak and flurry** (`enemies/duelist/`, `DEFENSE.foeStreak`; ADR-094): `d.streak`
+counts up in `_guardClash` and is zeroed by a `takeHit` that deals damage (`_streakSet`). In
+`brain.onGuarded`, from `foeStreak.min` a roll (`launch`) makes the guard a deflect for certain and
+marks its reaction `flurry`; as the deflect ends `brain.startStreak()` plays the kit's
+`streakMove(phase)` (default `streakFlurry`), a move with `streak: true` realised with `{ count }`
+(`realise.js`: its first beat, then the others in turn). A beat with `flit: { r }` puts him at
+another side of the hero as it starts (`duelist.flit`) and its hit carries `around: true`. `brain._act`
+reports every blow's result to `duelist.onStreakBlow(a, b, r)` (`a.streak` = { need, got, failed }):
+parried or blocked counts (a perfect parry two) and takes one off `d.streak`; `got >= need` with
+none missed calls `_break()`. Lab / tests: `dragon.debug.streak(n)`, `.flurry(n)`.
 **Execution:** while `game.dragon.broken`, a light-attack press (from neutral or buffered from a
 recovery, `_tryExecution`) with the head within `DEFENSE.plunge.execRange` 9 m starts the same move
 at HANG with `execution: true` (`execDamage`, no slow-mo, no perfect-dodge events); the press is
@@ -1016,7 +1038,8 @@ takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, cut:{x,z}, poise, heavy, crit,
                                         // threshold until its transition starts (no skipping a phase).
                                         // exact: the damage is final (no part / broken multipliers); posture:
                                         // add exactly this much instead of the weapon gain (onPlunge);
-                                        // flash: the most the hurt flash may be (the flurry's cuts)
+                                        // flash: the most the hurt flash may be (the flurry's cuts);
+                                        // reel (a duelist): 1 thrown as by a heavy blow, 2 staggered
 onParried({ attack, tell }): void       // the dragon calls this itself when player.takeHit returns 'parried'.
                                         // Deflect chain (contract 1): a string's non-final hit is only
                                         // deflected (posture + a 0.14 s visual knock-back, the string goes
@@ -1434,7 +1457,7 @@ hidden, the prompt becomes a tap target ("TAP › Rest at bonfire"), the pause p
 bar narrows to the bottom centre between the thumbs, and the title / banners / record compact.
 On a phone either way up (a side ≤ 560 px) the **minimap** is a bare 70 px disc in the top right
 corner at 72 % opacity: no panel, no zone title, no coordinates (the FPS line stays when on).
-**Held upright** (`(max-width: 560px) and (orientation: portrait)`; ADR-096): the frame top left,
+**Held upright** (`(max-width: 560px) and (orientation: portrait)`; ADR-097): the frame top left,
 the boss bar under it across the screen, the prompt and banners above the thumbs (the big words
 sized in vw), the pause panel in the upper half so the pad shows below it, the title's logo and
 lists to the screen's width.
@@ -1696,7 +1719,7 @@ timings are the real device's):
 | a bare-screen tap on title / death | `Mouse0` | "press any key" |
 | two bare-screen fingers in play | `cameraRig.zoom` | pinch (distance × start / now) |
 
-**The pad** (ADR-095; `CONFIG.touch.pad`): ATTACK, BLOCK and DODGE are three tiles of one cluster
+**The pad** (ADR-096; `CONFIG.touch.pad`): ATTACK, BLOCK and DODGE are three tiles of one cluster
 that all share an edge with each other (ATTACK bottom right, BLOCK on top of it, DODGE down their
 left side), raised and inset from the corner. The pad is one pointer surface (`.tc-pad`; the tiles
 take no pointers themselves): a touch on it, or up to `reach` (26 px) outside the cluster, presses
@@ -1715,11 +1738,11 @@ facing and the camera look-ahead go to it, like a cursor parked on it); otherwis
 `CONFIG.touch.aimDistance` (6 m) ahead of the hero along the last stick direction. LOCK still toggles
 the real lock-on. Controls show only in play states (hidden on title / pause / death / victory /
 model viewer); hiding releases every held control. **Portrait** (`innerHeight > innerWidth`;
-ADR-096): the game plays on. `portrait` is true, the stick's zone is the lower left (50 % × 46 %),
+ADR-097): the game plays on. `portrait` is true, the stick's zone is the lower left (50 % × 46 %),
 the pad takes its place from `pad.posPortrait` (low / mid / high, lifted from the bottom edge),
 the stick rests level with it, and the camera takes the upright profile
 (`cameraRig.setMobile(phone, portrait)`). Turning the phone releases every held control.
-**Look** (ADR-096): the controls are drawn on the game, not over it: no filled panels, faint
+**Look** (ADR-097): the controls are drawn on the game, not over it: no filled panels, faint
 outlines and glyphs at rest (stick 40 %, buttons 62 %), full strength under a thumb. Activation
 also: `html.abyss-touch` (touch-action none, no callouts, crisp `image-rendering: pixelated`),
 `.ab-touch` on the HUD, the phone camera profile, and `CONFIG.defaultQualityTouch` when the
@@ -1957,7 +1980,7 @@ Player → hud/audio/fx/flow:
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
   `player:guardOpen {attack}` (the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a
-  short stagger; ADR-094; HUD "GUARD DOWN", audio the guard break's crack, the pad rumbles),
+  short stagger; ADR-095; HUD "GUARD DOWN", audio the guard break's crack, the pad rumbles),
   `player:dodge {kind}` (an attack passed through i-frames), `player:perfectDodge {attack, tell, streak}` (every perfect dodge:
   flurry, plunge, in place or Ghostep; not on an execution; streak = perfect dodges in a row, this one included),
   `player:ghostep {x, z}` (with every perfect dodge; for the plunge x/z = the hang point above the head, for a flurry where he dodged),
@@ -1965,7 +1988,8 @@ Player → hud/audio/fx/flow:
   `player:flurry {strikes, art, air, dur}` (a perfect dodge is answered: blows in all, the art's name, in the air round a head or on
   the ground, real seconds it takes, about), `player:flurryHit {n, of, last, damage}` (a blow of it landed; last = the art's),
   `player:flurryArt {art, air, dur}` (the art's coil starts; not for the plunge), `player:flurryEnd {strikes, damage, art, label}`
-  (the last blow landed and the hanging cuts burst: the damage of all of them, the art's display name),
+  (the last blow landed and the hanging cuts burst: the damage of all of them, the art's display name; a parried last blow's
+  riposte emits these too, with art 'riposte', and no perfect-dodge events),
   `player:plunge {execution}` (the dive starts; also an execution), `player:plungeHit {damage, execution}` (the blade
   meets the head, once per plunge; damage = what onPlunge returned; also a `player:hitDragon` with kind 'plunge' when
   it dealt damage), `player:roll {backstep}`, `player:heal {amount, flasks}`, `player:noFlask`, `player:died`,
@@ -1996,6 +2020,8 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   true = the bullet is returned), `dragon:returned {kind, damage, x, y, z}` (a perfectly parried bullet's return
   lands on the head: kind 0 ember / 1 wisp, damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
   flow counts it in the run stats like a sword hit),
+  `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
+  (his flurry starts: that many blows), `dragon:flurryEnd {count, answered}` (decided: every blow parried or blocked, or one missed),
   `dragon:posture {posture, max}`, `dragon:postureBreak`, `dragon:stagger` (ordinary stagger only), `dragon:phase2`,
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),

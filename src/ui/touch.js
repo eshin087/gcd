@@ -19,7 +19,7 @@ import { aimWithoutCursor } from './aim.js';
 // along the last stick direction. Taps on the bare screen dismiss "press any key" screens (title,
 // death) as a virtual click; the HUD prompt ("[@interact] Rest", "... Fight again") is tappable. Two fingers
 // on the bare screen pinch-zoom through cameraRig.zoom. Held upright (portrait) the game plays on:
-// the stick and the pad sit in the lower part of the screen and the camera opens (ADR-096).
+// the stick and the pad sit in the lower part of the screen and the camera opens (ADR-097).
 // Inert (no DOM, no state) until activated: `pointer: coarse` at boot, ?touch in the URL, or the
 // first touch. ?touch=0 keeps it off. Desktop mouse + keyboard play never sees it.
 

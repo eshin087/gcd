@@ -705,7 +705,21 @@ export const MOVES = {
   ignite3: ignite(3),
   ignite4: ignite(4),
 };
+// His answer to a streak of guards (duelist.js `streak`, DEFENSE.foeStreak), one for each blade
+// form: as many cuts as the streak counts, the first from where he stands, each of the others from
+// another side of the hero (`flit`); a raised guard meets them from any side. Realised with
+// { count } (realise.js): beat 0, then the others in turn.
+const storm = (form, kinds) => ({
+  label: `Starless Storm${form > 1 ? ` (${form})` : ''}`, phase: form, weight: 0, counter: true, streak: true, cooldown: 0, band: [0, 6], recovery: 0.75,
+  beats: kinds.map((k, i) => cut(k, N, i ? 0.48 : 0.62, 13, i ? { form, flit: { r: 2.7 } } : { form, track: 0.7 })),
+});
+MOVES.streakFlurry = storm(1, ['diag', 'flat', 'rise', 'back']);
+MOVES.streakFlurry2 = storm(2, ['diag', 'flat', 'rise', 'back']);
+MOVES.streakFlurry3 = storm(3, ['flatBack', 'flat', 'diag', 'back']);
+MOVES.streakFlurry4 = storm(4, ['diag', 'flatBack', 'rise', 'flat']);
 export const MOVE_NAMES = Object.keys(MOVES);
+/** Each form's flurry (the kit's `streakMove`). */
+export const STREAKS = Object.freeze(['streakFlurry', 'streakFlurry2', 'streakFlurry3', 'streakFlurry4']);
 /** The transition that begins each later form, and each form's counter out of his guard. */
 export const TRANSITIONS = Object.freeze({ 2: 'ignite2', 3: 'ignite3', 4: 'ignite4' });
 export const COUNTERS = Object.freeze(['riposte', 'riposte2', 'riposte3', 'riposte4']);

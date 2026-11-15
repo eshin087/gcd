@@ -438,6 +438,7 @@ async function scenarioGuard() {
   d.brain.raiseT = 0;
   let countered = false;
   for (let i = 0; i < 4 && !countered; i++) {
+    d.debug.streak(0); // (the Riposte is under test: his streak of guards would answer with his flurry, scenario STREAK)
     d.takeHit({ damage: 30, part: 'body', heavy: false, poise: 5, point: { x: d.position.x, y: 1.2, z: d.position.z } });
     // (he beats the strike away, the deflect, and the Riposte comes straight out of it)
     countered = d.brain.react?.kind === 'deflect' || d.brain.act?.name === 'riposte';
@@ -854,6 +855,128 @@ async function scenarioGhostep() {
   return G;
 }
 
+// ================================================================== scenario: streak (ADR-094)
+// The shared streak (parries and clashes count in it), the riposte a parried last blow is answered
+// with, his own streak of guards and the flurry it brings.
+async function scenarioStreak() {
+  out('\n== scenario STREAK (parries feed the streak; the riposte; his streak of guards and his flurry: answer every blow and he breaks) ==');
+  const G = build();
+  duel(G, { dist: 2.4 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry, FS = DEFENSE.foeStreak;
+  const since = (c0, n) => (G.counts[n] || 0) - (c0[n] || 0);
+  /** Run his move to its end with the defender bot answering (or `step`): what happened. */
+  const through = (max, step = null) => {
+    const tr = { flits: 0, arts: [], ended: null, frames: 0, finite: true, around: 0 };
+    let lx = d.position.x, lz = d.position.z;
+    const w0 = G.watch;
+    G.watch = (n, e) => {
+      if (n === 'player:flurry') tr.arts.push(e.art);
+      if (n === 'dragon:flurryEnd') tr.ended = { ...e };
+    };
+    run(G, max, () => {
+      input.axis = { x: 0, y: 0 };
+      step?.();
+      tr.frames++;
+      if (Math.hypot(d.position.x - lx, d.position.z - lz) > 1.5) tr.flits++;
+      lx = d.position.x;
+      lz = d.position.z;
+      if (![p.position.x, p.position.y, p.position.z, d.position.x, d.position.z].every(Number.isFinite)) tr.finite = false;
+    }, () => tr.frames > 20 && d.mode !== 'act' && p.state !== 'flurry' && game.hitstopTimer <= 0);
+    G.watch = w0;
+    return tr;
+  };
+
+  // 1) his streak: a strike his guard turns counts one, a strike that lands ends it
+  run(G, 0.4);
+  d.brain.raiseT = 0;
+  d.takeHit({ damage: 30, part: 'body', heavy: false, poise: 5, point: { x: d.position.x, y: 1.2, z: d.position.z } });
+  assert(d.streak === 1, `a strike his guard turns: his streak counts ${d.streak}`);
+  settle(G);
+  d.takeHit({ damage: 30, part: 'body', exact: true, point: { x: d.position.x, y: 1.2, z: d.position.z } });
+  assert(d.streak === 0, `a strike that lands ends it (${d.streak})`);
+
+  // 2) his flurry of four, every blow parried: he is at another side for each, the last parry is
+  // answered by the riposte, and his posture breaks
+  settle(G);
+  place(G, 2.4);
+  run(G, 0.3);
+  p.debug.streak(0);
+  d.debug.streak(4);
+  const c2 = { ...G.counts };
+  G.defend = makeDefender(G);
+  const ok2 = d.debug.flurry();
+  const a2 = d.brain.act;
+  const beats2 = a2?.beats.length, flit2 = a2?.beats.filter((b) => b.def.flit).length;
+  const t2 = through(8, () => G.defend.act());
+  G.defend = null;
+  out(`   his flurry of ${beats2}: parries ${since(c2, 'player:parry')} · he moved to another side ${t2.flits} times · hero's streak ${p.streak} · answered ${JSON.stringify(t2.ended)} · broken ${d.broken} · his streak ${d.streak} · the hero's answer: ${t2.arts.join(',') || '-'}`);
+  assert(ok2 === true && a2?.name === 'streakFlurry' && beats2 === 4 && flit2 === 3 && since(c2, 'dragon:flurry') === 1, `his flurry starts with as many blows as his streak counts (${beats2}; ${flit2} of them from another side)`);
+  assert(since(c2, 'player:parry') === 4 && t2.flits >= 3, `every blow parried, from wherever it came (${since(c2, 'player:parry')} parries, ${t2.flits} blinks)`);
+  assert(t2.ended?.answered === true && d.broken && d.streak === 0 && since(c2, 'dragon:postureBreak') >= 1, 'all of them answered: his posture breaks, his streak is spent');
+  assert(p.streak >= 4 && t2.arts.includes('riposte'), `the parries count in the hero's streak (${p.streak}); the last one is answered by the riposte`);
+  assert(t2.finite && p.state !== 'flurry' && p.position.y === 0, 'it all ends on the ground');
+
+  // 3) the same blocked: a held guard meets them from any side; no riposte
+  run(G, 5, null, () => !d.broken && d.mode === 'foot');
+  settle(G);
+  place(G, 2.4);
+  run(G, 0.3);
+  d.posture = 0;
+  d.debug.streak(3);
+  const c3 = { ...G.counts };
+  input.press(2);
+  run(G, 0.5);
+  d.debug.flurry();
+  const t3 = through(8);
+  input.up(2);
+  assert(since(c3, 'player:block') >= 3 && since(c3, 'player:hurt') === 0 && t3.ended?.answered === true && d.broken, `three blows blocked from three sides (${since(c3, 'player:block')} blocks, no hurt): he breaks`);
+  assert(!t3.arts.length, 'a block is not answered by the riposte');
+
+  // 4) one let through: nothing breaks, and what was not answered stays in his streak
+  run(G, 5, null, () => !d.broken && d.mode === 'foot');
+  settle(G);
+  place(G, 2.4);
+  run(G, 0.3);
+  d.posture = 0;
+  p.debug.god = true;
+  d.debug.streak(3);
+  d.debug.flurry();
+  const t4 = through(8);
+  assert(t4.ended?.answered === false && !d.broken && d.streak === 3 && p.streak === 0, `no blow answered: he does not break, his streak stays ${d.streak}, the hero's is lost`);
+  p.debug.god = false;
+
+  // 5) the riposte by itself: a single thrust parried, one flash cut, and the hero is back where he stood
+  settle(G);
+  place(G, 4.5);
+  run(G, 0.3);
+  p.debug.streak(0);
+  d.debug.streak(0);
+  d.posture = 0;
+  const hp5 = d.hp, at5 = p.position.clone(), c5 = { ...G.counts };
+  G.defend = makeDefender(G);
+  d.debug.trigger('plumThrust');
+  const t5 = through(6, () => G.defend.act());
+  G.defend = null;
+  const moved = Math.hypot(p.position.x - at5.x, p.position.z - at5.z);
+  out(`   a parried thrust: parries ${since(c5, 'player:parry')} · answered by ${t5.arts.join(',') || '-'} · he lost ${hp5 - d.hp} · the hero ${moved.toFixed(2)} m from where he parried · crit ${p.critTimer.toFixed(2)}`);
+  assert(since(c5, 'player:parry') === 1 && t5.arts.join() === 'riposte' && hp5 - d.hp === F.cut.damage, `a parried single blow is answered by one flash cut (${hp5 - d.hp} damage)`);
+  assert(moved < 1.2 && p.position.y === 0 && p.critTimer === 0 && p.state !== 'flurry', `and the hero is back where he parried (${moved.toFixed(2)} m off), no crit window`);
+  // debug.noRiposte switches it off
+  settle(G);
+  place(G, 4.5);
+  run(G, 0.3);
+  p.debug.noRiposte = true;
+  const c6 = { ...G.counts };
+  G.defend = makeDefender(G);
+  d.debug.trigger('plumThrust');
+  through(6, () => G.defend.act());
+  G.defend = null;
+  p.debug.noRiposte = false;
+  assert(since(c6, 'player:parry') === 1 && since(c6, 'player:flurry') === 0, 'player.debug.noRiposte: a parry is only a parry');
+  return G;
+}
+
 // ================================================================== scenario: execute
 async function scenarioExecute() {
   out('\n== scenario EXECUTE (posture break → the execution thrust → he rises) ==');
@@ -989,6 +1112,9 @@ async function scenarioPressure() {
   p.debug.god = true;
   // (1) a hero who stands his ground and answers every tell: every glint is a blow that reaches him
   //     (the reds the bot rolls across leave the zone by design: only the others count)
+  // (his pressure over 40 s of the clock is under test: the riposte a parried last blow is answered
+  // with, scenario STREAK, holds the world still while the hero cuts)
+  p.debug.noRiposte = true;
   G.defend = makeDefender(G);
   let flashes = 0, wMin = 1;
   const h0 = G.hits.length;
@@ -1005,6 +1131,7 @@ async function scenarioPressure() {
     `through 40 s of his strings his free wrist never turns (|w| ≥ ${wMin.toFixed(6)}) and he has no sword fingers (the hero's free hand alone)`);
   G.watch = null;
   G.defend = null;
+  p.debug.noRiposte = false;
   const met = G.hits.slice(h0).filter((h) => h.attack !== 'ashCrescent' && h.tell !== TELL.RED).length;
   assert(flashes >= 25 && met >= flashes - 1, `standing his ground, every glint is a blow that reaches the hero: ${met} met of ${flashes} non-red flashes`);
   settle(G);
@@ -1551,7 +1678,7 @@ async function scenarioProbe() {
   return G;
 }
 
-const SCENARIOS = { probe: scenarioProbe, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
+const SCENARIOS = { probe: scenarioProbe, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

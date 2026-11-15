@@ -291,6 +291,45 @@ const CSS = `
   transition: background 0.4s, box-shadow 0.4s;
 }
 .ab-boss-lives .life.gone { background: transparent; box-shadow: inset 0 0 0 1px rgba(207, 214, 230, 0.3); }
+/* a foe's streak of guards: pips after his name; lit and pulsing once his flurry may come */
+.ab-boss-streak {
+  margin: 0 0 3px 12px;
+  align-self: center;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: #d98c78;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.ab-boss-streak.on { opacity: 0.9; }
+.ab-boss-streak.ready { color: #ff5a44; text-shadow: 0 0 8px rgba(255, 74, 58, 0.95); animation: ab-foe-streak 0.45s ease-in-out infinite alternate; }
+@keyframes ab-foe-streak {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+/* the flurry's screen cut: a line of light thrown across the whole frame, gone in a fifth of a second */
+.ab-slash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 170vmax;
+  height: 2px;
+  margin: -1px 0 0 -85vmax;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), #ffffff 28%, #e6f8ff 50%, #ffffff 72%, rgba(255, 255, 255, 0));
+  box-shadow: 0 0 12px 2px ${rgba(CYAN, 0.7)};
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+  transform: rotate(var(--a, 0deg)) scaleX(0);
+}
+.ab-slash.big { height: 5px; margin-top: -2px; box-shadow: 0 0 26px 6px ${rgba(CYAN, 0.85)}; }
+.ab-slash.go { animation: ab-slash 0.2s cubic-bezier(0.1, 0.9, 0.2, 1); }
+.ab-slash.big.go { animation-duration: 0.3s; }
+@keyframes ab-slash {
+  0% { opacity: 0.85; transform: rotate(var(--a, 0deg)) scaleX(0.04); }
+  30% { opacity: 0.85; transform: rotate(var(--a, 0deg)) scaleX(1); }
+  100% { opacity: 0; transform: rotate(var(--a, 0deg)) scaleX(1) scaleY(0.15); }
+}
 .ab-boss-dmg {
   font-size: 12px;
   color: #f4e8d0;

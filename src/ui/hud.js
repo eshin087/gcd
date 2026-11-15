@@ -49,6 +49,9 @@ export class Hud {
     this._prompt = null;
     this.tags = new NameTags(game, this.root);
     this.calls = new Callouts(game, this.root, this.proj);
+    // the flurry's screen cuts: a line of light across the whole frame on every cut, two crossing
+    // on the last blow
+    this.slashes = [el('div', 'ab-slash', null, this.root), el('div', 'ab-slash', null, this.root)];
     this.bannerUi = new Banner(this.root);
     this.statsUi = new StatsPanel(this.root);
     this.help = new HelpPanel(this.root);
@@ -98,6 +101,31 @@ export class Hud {
     on('player:perfectDodge', (d) => this._ghostep(d.streak));
     on('player:ghostep', () => this._ghostep(this.game.player?.streak));
     // the flurry: a count over the target for every cut that lands, and its name once the last has
+    on('player:flurry', (d) => {
+      if (d.art === 'riposte') this.calls.riposte(d.strikes);
+    });
+    // a foe's streak of guards (a duelist): pips beside his name; lit when his flurry may come
+    on('dragon:streak', (d) => {
+      const n = Math.max(0, Math.min(DEFENSE.foeStreak.max, Math.round(num(d.count))));
+      this.bossStreak.textContent = '◆'.repeat(n);
+      this.bossStreak.classList.toggle('on', n > 0);
+      this.bossStreak.classList.toggle('ready', n >= DEFENSE.foeStreak.min);
+    });
+    on('player:flurryHit', (d) => {
+      const last = !!d.last, n = Math.round(num(d.n));
+      if (num(d.of) >= 2 || last) {
+        const A = this.slashes[0], a = ((n * 67) % 150) - 75;
+        A.style.setProperty?.('--a', `${a}deg`);
+        A.classList.toggle('big', last);
+        flashClass(A, 'go');
+        if (last && num(d.of) >= 2) {
+          const B = this.slashes[1];
+          B.style.setProperty?.('--a', `${a + 62}deg`);
+          B.classList.add('big');
+          flashClass(B, 'go');
+        }
+      }
+    });
     on('player:flurryHit', (d) => {
       if (num(d.of) >= 2) this.calls.count(d.n, this.game.player?.flurry?.T);
     });
@@ -137,7 +165,7 @@ export class Hud {
     this.hpBar = new DelayedBar(hpRow, 'hp', { hold: 0.6, drain: 2.4, rise: 6 });
     this.hpVal = el('span', 'val', '', hpRow);
 
-    // the guard meter (GUARD, ADR-094): steel under the HP bar; no number, it only has to be glanced at
+    // the guard meter (GUARD, ADR-095): steel under the HP bar; no number, it only has to be glanced at
     const gdRow = el('div', 'ab-row ab-guard', null, pf);
     el('span', 'lbl', 'GD', gdRow);
     this.guardBar = new DelayedBar(gdRow, 'guard', { hold: 0.25, drain: 5, rise: 30, chunk: true });
@@ -190,6 +218,7 @@ export class Hud {
       const row = el('span', 'ab-boss-lives', null, head);
       for (let i = 0; i < lives.total; i++) this.lifeEls.push(el('i', 'life', null, row));
     }
+    this.bossStreak = el('span', 'ab-boss-streak', '', head);
     this.bossDmg = el('span', 'ab-boss-dmg', '', head);
     this.bossBar = new DelayedBar(this.bossEl, 'boss', { hold: 0.6, drain: 1.8, rise: 2.2 });
     // the phase gates (dragon.phaseAt, e.g. 66 % / 33 %): thin ticks where the next phase starts

@@ -134,6 +134,8 @@ export const TUNE = {
 };
 
 const CONTROL = new Set(['explore', 'bossIntro', 'boss']);
+// the states a riposte may start from (the parry's flick, a held guard, standing free)
+const RIPOSTE_FROM = new Set(['parry', 'block', 'idle', 'run', 'sprint']);
 const LOCO = new Set(['idle', 'run', 'sprint']);
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 // plunge phases (DEFENSE.plunge; the animator reads player.plungeAnim)
@@ -202,17 +204,20 @@ export class Player {
     this.blockStunT = 0;
     this.blockEvt = { t: -Infinity, attack: null, stream: false, acc: 0 };
     this.iframeT = 0; // Ghostep i-frames
-    // perfect dodges in a row (DEFENSE.flurry): the next one is answered with one blow more; a blow
-    // that hurts him ends it. streakT: s since the last one (DEFENSE.flurry.keepStreak)
+    // perfect dodges, parries and clashes in a row (DEFENSE.flurry): the next perfect dodge (or
+    // parried last blow) is answered with one blow more; a blow that hurts him ends it. streakT: s
+    // since the last one (DEFENSE.flurry.keepStreak)
     this.streak = 0;
     this.streakT = 0;
-    // the guard meter (combat/rules.js GUARD, ADR-094): a blocked blow costs guard, not HP; it
+    // the guard meter (combat/rules.js GUARD, ADR-095): a blocked blow costs guard, not HP; it
     // refills by itself once guardWait (s) has run out. staggerLen: how long this stagger lasts
     this.maxGuard = GUARD.max;
     this.guard = GUARD.max;
     this.guardWait = 0;
     this.staggerLen = TUNE.staggerDur;
     this.slowmoPending = 0; // Ghostep slow-mo waiting for a harsher freeze to end (s)
+    // a riposte waiting for the parry's own freeze to end (flurry.js `riposte`; DEFENSE.flurry)
+    this.riposte = { att: null, t: 0, attack: null, tell: TELL.NORMAL };
     this.assist = { target: null, t: 0 };
     this.ghostFx = 0; // 1 → 0 after a Ghostep: dissolve-in + cold tint
     this.rollBack = false;
@@ -292,6 +297,7 @@ export class Player {
       // the art the next flurries end on (flurry.js ARTS; null = one at random), the streak set by
       // hand, and a flurry of `strikes` blows on the boss now (`art`: for this one only)
       flurryArt: null,
+      noRiposte: false, // true: a parried last blow is not answered with the riposte
       streak: (n) => this._debugStreak(n),
       flurry: (strikes = 3, art = null) => this._debugFlurry(strikes, art),
     };
@@ -427,7 +433,7 @@ export class Player {
       parryable &&
       this._canGuard() &&
       this.time - this.rmb.parryT <= DEFENSE.parryWindow &&
-      this._inArc(DEFENSE.parryArc, hasFrom, fx, fz, hasAtk ? ap : null)
+      (hit.around || this._inArc(DEFENSE.parryArc, hasFrom, fx, fz, hasAtk ? ap : null))
     ) {
       const perfect = this.time - this.rmb.parryT <= DEFENSE.perfectParryWindow;
       this._parry(tell, attack, hasSrc ? sx : NaN, hasSrc ? sz : NaN, !!hit.light, perfect, hit);
@@ -439,7 +445,8 @@ export class Player {
       return RESULT.CLASHED;
     }
     // (e) block / (f) guard break
-    if (this.blocking && this._inArc(DEFENSE.blockArc, hasFrom, fx, fz, hasAtk ? ap : null)) {
+    // (`hit.around`: a foe's flurry comes from every side in turn: a raised guard meets it from any)
+    if (this.blocking && (hit.around || this._inArc(DEFENSE.blockArc, hasFrom, fx, fz, hasAtk ? ap : null))) {
       if (blockable) {
         this._block(dmg, tell, attack, chip, nx, nz);
         return RESULT.BLOCKED;
@@ -616,6 +623,7 @@ export class Player {
     this.streakT = 0;
     this.guard = this.maxGuard;
     this.guardWait = 0;
+    this.riposte.att = null;
     this.flurry.clear();
     this.tradeT = -Infinity;
     this.deflect.n = 0;
@@ -748,6 +756,7 @@ export class Player {
     this._updateLock();
 
     this.stateT += dt;
+    this._tickRiposte(dt);
     if (this.hp <= 0 && this.state !== 'dead') this._die(); // hp zeroed from outside: never stuck half-dead
     // RMB press: raise the guard from anything that can guard (cancels windups, recoveries, a charge
     // or a held light). Pressed mid-swing / mid-roll, the request waits while RMB stays held, so the
@@ -1195,7 +1204,39 @@ export class Player {
     }
     // every parry gives guard back at once (GUARD.parry)
     this._guardGain((light ? GUARD.parryLight : GUARD.parry[tell] ?? GUARD.parry.normal) + (perfect ? GUARD.perfect : 0));
+    if (!light) {
+      // a blade met counts in the streak; meeting a string's LAST blow (or a single one) answers
+      // with the riposte once this parry's freeze is over (update)
+      this._streakUp();
+      const att = hit?.attacker ?? null, R = this.riposte;
+      R.att = last && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
+      R.t = 0;
+      R.attack = attack;
+      R.tell = tell;
+    }
     this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last });
+  }
+
+  /** The riposte a parried last blow asked for: starts as the parry's freeze ends, if the hero is
+   *  still free and the foe in its reach; dropped by a blade lock, a hurt, or half a second. */
+  _tickRiposte(dt) {
+    const R = this.riposte, g = this.game;
+    if (!R.att) return;
+    R.t += dt > 0 ? fin(g.realDt, dt) : 0;
+    if (!this.alive || R.t > 0.5 || !RIPOSTE_FROM.has(this.state)) {
+      if (this.state !== 'parry' && this.state !== 'block') R.att = null;
+      else if (R.t > 0.5) R.att = null;
+      return;
+    }
+    if (fin(g.hitstopTimer) > 0) return;
+    const att = R.att;
+    R.att = null;
+    const kind = this.flurry.reach(att, true);
+    if (!kind) return;
+    const T = this.flurry._v, p = this.position;
+    const tp = kind === 'air' ? (this._plungePoint(att, T) ? T : null) : att.position;
+    if (!tp || !(Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange[kind])) return;
+    this.flurry.start(att, kind === 'air', this.streak, R.attack, R.tell, { riposte: true });
   }
 
   /** Guard given back (a parry, a cut of his own that landed). */
@@ -1379,6 +1420,7 @@ export class Player {
     const crush = heavy && fin(a?.poise) >= fin(att?.T?.guard?.crushPoise, Infinity);
     if (a) a.traded = true;
     this.tradeT = this.time;
+    this._streakUp(); // two cuts met: it counts in the streak
     const C = this._cp, cv = this._v, p = this.position, ap = att?.position;
     let nx = -Math.sin(this.yaw), nz = -Math.cos(this.yaw);
     if (ap && Number.isFinite(ap.x + ap.z)) {
@@ -1643,7 +1685,8 @@ export class Player {
    * Returns false when the hero can't lock (down, plunging).
    */
   startBladeLock(att, L = {}) {
-    if (!this.alive || this.state === 'plunge' || this.state === 'dead' || this.state === 'lock') return false;
+    if (!this.alive || this.state === 'plunge' || this.state === 'dead' || this.state === 'lock' || this.state === 'flurry') return false;
+    this.riposte.att = null;
     this._interrupt();
     this.bladeLock = { att, meter: fin(L.start, 0.5), push: fin(L.push, 0.085), decay: fin(L.decay, 0.32), dur: fin(L.dur, 2.6), hold: fin(L.hold, 0.6), shown: -1 };
     const ap = att?.position, p = this.position;
@@ -1788,6 +1831,7 @@ export class Player {
    *  a stamping counter pose; the attacker reels (onMikiri). */
   _mikiri(att, attack) {
     const p = this.position, ap = att.position;
+    this._streakUp();
     this.atk = null;
     this.chargeK = 0;
     this.buf.action = null;

@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-14 — Session 34: the phone's right thumb, a lock marker that fades, the guard meter
+## 2026-11-14 — Session 35: the phone's right thumb, a lock marker that fades, the guard meter
 
 **Owner:** "Lets improve mobile ui / user experience. The right side controls are too far bottom in
 the right corner ... Im having a hard time shuffling between attack dodge and block. Think of a way
@@ -13,18 +13,18 @@ to make it easy and intuitive to switch between the different options. Make the 
 subtle and slowly fades away ... add a guard meter and any parry will restore guard meter ... let it
 replenish quickly ... I don't want to punish the player for playing defensive." Four questions
 first; the answers: slide between the buttons; at empty the guard is knocked open; no HP chip while
-there is guard; landing hits restore it too. Branch `ui/mobile-guard` from `main`. (Rebased over
-PR #32, which took Session 33 and ADR-093: this is 34 and ADR-094 / ADR-095.)
+there is guard; landing hits restore it too. Branch `ui/mobile-guard` from `main`. (PR #32 and
+PR #34 merged while it was open and took Sessions 33 – 34 and ADR-093 – 094: this is 35 and ADR-095 – 097.)
 
 **Done:**
-- **The pad** (ADR-095, `ui/touch.js`, `CONFIG.touch.pad`): ATTACK, BLOCK and DODGE are three
+- **The pad** (ADR-096, `ui/touch.js`, `CONFIG.touch.pad`): ATTACK, BLOCK and DODGE are three
   tiles that all touch, raised and inset from the corner; a touch near the cluster goes to the
   nearest tile; a thumb slides from tile to tile without lifting. FLASK rides with it, LOCK moved
   to the top right. Pause menu: PAD POSITION (low / mid / high) and PAD SIZE (small / medium /
   large), kept in localStorage; the controls show through the pause screen while they are stepped.
 - **The lock-on marker** (`ui/nameTags.js` `LOCK_MARK`): a small dim diamond when the lock is taken,
   gone after 3 s.
-- **The guard meter** (ADR-094, `GUARD` in `combat/rules.js`): a blocked blow costs guard and no
+- **The guard meter** (ADR-095, `GUARD` in `combat/rules.js`): a blocked blow costs guard and no
   HP; empty knocks the guard open for 0.55 s (`player:guardOpen`, GUARD DOWN); it refills at 60 / s
   in every state; parries and landed cuts give some back. A steel bar under the HP bar, a gauge on
   the BLOCK tile.
@@ -36,7 +36,7 @@ PR #32, which took Session 33 and ADR-093: this is 34 and ADR-094 / ADR-095.)
 **Second request, same session:** "Allow the game to be played in non landscape as well and adjust
 the ui to allow that. Make the joystick and right buttons to blend in with the game so the buttons
 aren't covering the game screen. The mini map is also covering a lot of the screen on mobile."
-- **Upright play** (ADR-096): the "rotate your phone" overlay and its pause are removed. The camera's
+- **Upright play** (ADR-097): the "rotate your phone" overlay and its pause are removed. The camera's
   field of view opens in a window taller than wide (`fovFor`, 32° → ~64° on a phone), the upright
   phone profile stands 1.2 × back and leads 1.5 m south; the stick's zone, the pad's three places
   (`pad.posPortrait`) and the stick's rest follow; the HUD has an upright layout (frame and boss bar
@@ -55,12 +55,55 @@ the boss pressed against the HUD: 1.5 m. Faint tiles vanished over a lit pillar:
 the glyphs and 62 % instead of 55 %. The pause panel covered the pad it is meant to show while
 PAD POSITION is stepped: upright it keeps to the upper half.
 
-**Decisions:** ADR-094, ADR-095, ADR-096.
+**Decisions:** ADR-095, ADR-096, ADR-097.
 
 **Not checked / open:** see the PR. Nothing was tried on a real phone: where the thumb rests (PAD
 POSITION is for that), whether the faint controls are findable in a fight, the upright camera
 against the wyrm (the view is ~14 m wide; only the Ashfall Courtyard was looked at upright), iOS
 Safari's bars in portrait. The bosses were not re-tuned for blocks that cost no HP.
+## 2026-11-15 — Session 34: weight on the flurry; one streak for parries too; a foe's streak and flurry
+
+**Owner:** "Lets add some weight, hitstun impact to the teleport attacks and make it visually and
+animation effect wise way more epic ... add this streak system to parries clash deflects as well.
+Also give the streak system and attacks to bosses as well. Lets allow the player the opportunity to
+block perfect parry a boss's special attack from its defensive option and if the boss is on a high
+streak, the player needs to parry / block the total # of attacks. Ask me any questions". Four
+questions asked; the owner took the recommended answer to each (one shared streak; a counter flurry
+on the last blow of a string; duelists build theirs by guarding; answering every blow breaks his
+posture). Branch `combat/streak-everywhere`, in its own worktree (the main checkout held another
+session's uncommitted work). Session 34 / ADR-094: PR #32, open beside it, holds 33 and ADR-093.
+
+**Done** (ADR-094):
+- **Weight:** every flash cut freezes the hero on the contact and is followed by a beat in which
+  the world runs at 60 %, so the target reels (a duelist thrown and shoved, the wyrm's head
+  flinching); a speed clone mid-pass; a shock ring and dust under a foe on the ground; the last
+  blow's impact frame (speed lines across the screen, a dark blink, a flash, the HUD's screen
+  cuts), broken ground, and a duelist staggered.
+- **One streak:** parries, deflects, trade clashes and the mikiri count in it.
+- **The riposte:** a parried last blow is answered with as many flash cuts as the streak counts;
+  the hero ends where he parried.
+- **A foe's streak:** a duelist counts the strikes his guard turns (pips on the boss bar) and from
+  three may answer with his flurry (Hundred Petals; Starless Storm, one per form): the first blow
+  from where he stands, each later one from another side; a guard meets them from any side; all of
+  them answered breaks his posture.
+- **Tests:** duel.mjs STREAK (his streak; his flurry parried, blocked, let through; the riposte),
+  integ.mjs RIPOSTE (on the wyrm); STRINGS and the guard's counter test isolate what they measure.
+
+**Found on the way:** the wyrm never said which blow of a string was its last, so every parry of
+one was a "last blow" to the hero (the riposte would have cut every string off at its first blow;
+the parry's freeze was the long one): `hitPlayer` now passes `last` and `melee`.
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server, as strips at 60 fps:
+a flurry of four on Shen Hui with the new weight (the reel beats, the clones, the impact frame);
+his own flurry of four against an idle hero.
+
+**Not checked / open:** no human has played it. Not filmed: the riposte (tested headless on both
+bosses), the Starless Lord's flurries (his data tests pass), the HUD's screen cuts and the boss
+pips (DOM, exercised by the tests' shim only), anything on the phone preset. The sounds were not
+heard. Nothing was re-tuned: a riposte of seven after two parried strings is a lot of damage, and
+his flurry comes about every third guarded strike.
+
+**Next:** the owner plays it; then the riposte's damage and the foe's streak thresholds.
 
 ---
 
