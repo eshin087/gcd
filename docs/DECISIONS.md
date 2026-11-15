@@ -2731,3 +2731,68 @@ the sizzle and the ember hiss.
   the stored table needs a desktop browser on the same origin. Burn deaths read "THE FLAMES".
   Blows dodged by walking out of reach are never "seen" (no hit was resolved).
 
+## ADR-110 — The Cinder Wyrm uses the ground: three moves on the world's pieces, picked only with a piece in reach (2026-11-15)
+
+**Context.** The owner: "i want the bosses to also use the terrain as a way for their defensive or
+offensive strategy. like the dragon will pick up a tree or item on the ground and throw it at the
+player ... think of fun cool epic different terrain interactions". The world's side was there
+(ADR-107: `take`, `carry`, `throwTo`, `stop`, `nearest`, the pieces of a set); a thrown piece's blow at
+the hero is the thrower's. Asked of this session: the owner's own example, one move that shapes the
+field or defends, one that chains with fire.
+
+**Decision.**
+- **Three moves, each a different answer.** *Uproot and hurl* (red, P1): a tree or a boulder in the
+  jaws, thrown in an arc; leave the marked ground or roll. *Tail bat* (blue, P1): a boulder lashed
+  along the ground; parry it, guard it, step off its line or stand behind cover. *Firebrand* (red,
+  P2+): a tree lit in the jaws and thrown; its wreck and the grass round it burn on, so the landing
+  is denied for a few seconds. Numbers: `tuningTerrain.js`.
+- **A move exists only with a piece.** Each move's AI weight comes from a picker (`jawsPiece`,
+  `tailPiece` in `terrain.js`) that returns the piece it would use, or nothing: then the weight is 0.
+  Forced with nothing in reach (the Lab, Training on a bare stage) the action is a one-second
+  `search`: it casts about and snorts, with no tell and no blow.
+- **The wyrm goes to the piece.** The clearing's pieces stand 14 – 28 m from its centre, so the hurl
+  and the firebrand start with a `fetch` phase: a turn and a short run (at most 1.7 s) to stand 8.3 m
+  from the piece. The tell starts at the bite, not at the run: nothing can land yet.
+- **One module holds the piece** (`dragon.terrain`, `terrain.js`): in the jaws, in the air, its mark,
+  its blow, the burning wreck. The actions only pose the wyrm. A piece in the air outlives its
+  action: it carries the action's beat and sends the flash itself if the action is gone.
+- **Arcs are the world's flight; the skim is carried here.** A lobbed piece uses `throwTo` (its blow
+  dealt in `onLand`). A batted boulder must stop at the first cover and test the hero along its way,
+  which `throwTo` cannot do: it stays HELD and `terrain.js` carries it along its line every frame,
+  calls `stop` on each step, and lets it go with a 0.25 s `throwTo` where it ends.
+- **Released upright.** The world's flight starts a piece upright and turns it end over end about the
+  axis across its travel. `carry(tilt, yaw)` with the yaw of the throw is the same rotation, so a tree
+  swung back over the shoulder and whipped forward leaves the jaws at tilt 0 and goes on turning
+  without a jump. A tree held across the jaws would snap upright at the release, so it is not offered.
+- **The landing is marked as every footprint is** (ADR-052: the ground heats up), a disc for an arc
+  and a band for the skim, from before the throw is committed. A pale "dust" mark for pieces that are
+  not fire was built and filmed: on the night grass it could not be seen (the heat mark's glow is the
+  scorch map lighting the ground itself, not its glyphs), so it was dropped.
+- **Readable in the jaws.** Trees are drawn dark; in the jaws one was hard to tell from one standing
+  behind the wyrm. A held tree leans (standing trees never do), earth falls from its foot, and it
+  sheds leaves and bark along its length; the chosen piece sheds dust before it is taken.
+- **Weights on a par with its best picks** (3.0 – 3.2; the rending flurry is 3.0), held back by
+  cooldowns of 15 / 12 / 19 s, by the piece having to be in reach, and for the hurl by x 0.7 with the
+  hero closer than 9 m (it turns its back on him). In a 150 s bot fight on a field with a piece every
+  9 m, 4 of 25 attacks were terrain moves.
+
+**Why.** A move that cannot find a piece must not be chosen: a wyrm that walks to a tree that is not
+there reads as a bug. A blue projectile gives the defender (parry, guard) something to do with the
+terrain theme, beside two red blows; the owner's taste is that defensive play is not punished. Cover
+stopping the boulder makes the hero's use of the terrain and the wyrm's meet in one rule.
+
+**Rejected.** A piece conjured when none is in reach (a slab clawed out of the ground): the move
+would stop being about what stands in the level. The tail's own blow during the bat (two blows from
+one tell); the AI gate keeps the hero out of the lash's arc instead. A tree club swung through the
+hero (a fourth move): left for later. A flat spin for a thrown trunk: the world's flight has one
+rotation, and a new API (`burst(piece)` now, or a spin axis on `throwTo`) would be needed.
+
+**Consequences.** `ATTACKS` has 33 entries. The wyrm's suite builds real `Destructibles` on a
+hand-built set where a scenario asks for it (`build({ terrain })`: TERRAIN and LAB), and the LAB
+scenario restores the pieces before each ability. The lab stage (`world/trainingRoom.js`) lists no
+breakables, so the three moves only cast about there. How a tree is held is the owner's pick of two
+filmed looks (over the shoulder / upright), behind a temporary `?hold=` switch. **Not measured:** how
+often the moves come up on the real clearing in a played fight, what they do to the difficulty, the
+frame time, the phone on a device. The sounds are the existing ones (the bite, the world's tear and
+crash, the swipe whoosh, the breath loop, the explosion): `dragon:spell` carries the three names for
+sounds of their own.

@@ -5,6 +5,51 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 46: the Cinder Wyrm uses the ground (three terrain moves)
+
+**Owner:** "the dragon will pick up a tree or item on the ground and throw it at the player ...
+think of fun cool epic different terrain interactions the bosses and players". One of the staged
+sessions after the destruction system (ADR-107). Branch `claude/dragon-terrain-moves-97933f`, cut
+from `world/destruction` and rebased onto `main` once PR #44 had merged.
+
+**Done** (ADR-110):
+- `tuningTerrain.js` (numbers), `terrain.js` (`dragon.terrain`: the piece in the jaws and in the air,
+  the mark, the blow, the burning wreck; the pickers `jawsPiece` / `tailPiece`), `terrainAttacks.js`
+  (`hurl`, `tailBat`, `fireBrand`), wired into `ATTACKS`, `TUNING.attacks`, `dragon.js` (update,
+  reset, the tell part `'piece'`).
+- Uproot and hurl (red, P1), Tail bat (blue, P1; cover stops the boulder), Firebrand (red, P2+; the
+  wreck burns 3.4 s). A move is picked only with a piece in reach; forced with none it casts about.
+- They are in the Lab's ABILITIES and Training's BOSS MOVES (both read `debug.abilities()`).
+- Tests: `integ.mjs` scenario TERRAIN (56 checks) on real `Destructibles` over a hand-built set
+  (`build({ terrain })`); LAB runs on a grid of pieces and restores them before each ability.
+
+**Shown to the owner:** a sheet of film strips (headless Edge, 1280 x 720, the game camera, lock on):
+the three moves with one line each on what they ask, the hurl at 852 x 393 (`?touch`), and one pick:
+how it holds a tree (A over the shoulder, the default; B upright, `?hold=upright`). No answer yet.
+
+**Decided on the way:** the pale dust mark was dropped after filming (invisible on the night grass);
+the hold "across the jaws" is not offered (the world's flight would snap it upright at the release);
+the weights were raised from ~1.6 to ~3 after a bot fight picked a terrain move once in 25 attacks.
+
+**Verification:** scenarios TERRAIN, LAB and TRAINING pass after the rebase; the full `npm test` and
+`npm run build`: see the PR's check. Filmed: each move from the Lab trigger with the hero 16 – 20 m
+off, on the real forest.
+
+**Not checked / open:** a fight played by a human (how often the moves come up on the real clearing:
+its pieces stand 14 – 28 m out; the difficulty); the phone on a device (look, frame rate); frame time;
+the moves with the hero SOUTH of the wyrm at 18 m+, where the game camera cuts the wyrm's head off
+the top of the screen (the mark and the piece's flight are on screen, the bite is not); the lab
+stage has nothing to take; no sounds of their own.
+
+**For the world's side (not edited here):** `throwTo` starts every flight upright with one spin axis,
+and nothing bursts a held piece at once (`drop` and `throwTo` take at least 0.25 s): a `burst(piece)`
+and a start angle would allow a flat-spinning trunk and a boulder that stops dead on cover. The
+falling-tree strip is drawn in tell red on the ground, which ADR-052 ruled out for footprints.
+
+**Next:** the owner's pick of the hold, then the switch goes; a played fight on the PR's preview.
+
+---
+
 ## 2026-11-15 — Session 45: per-move telemetry; the death screen names the killing move
 
 **Owner:** "Yes, telemetry" (the genre review's third piece). Branch `game/move-telemetry`, stacked on
@@ -32,6 +77,8 @@ there); upright on a phone; nothing read back from a real play session yet. The 
 to read the stored table.
 
 **Next:** the owner plays; then tune from `__telemetry()`. The heavy button needs their answers.
+
+---
 
 ## 2026-11-15 — Session 44: the world breaks (breakables, ground fire, cover, marks)
 

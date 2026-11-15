@@ -170,7 +170,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The hero seen behind the wyrm (its own session, PR #41, ADR-106; merged)
 - [~] The Obsidian Throne rebuilt open, listing its breakables (its own session and PR, ADR-108)
 - [ ] The Starless Lord's terrain moves: pillars and rubble lifted by the Void and thrown (ADR-109)
-- [ ] The wyrm's terrain moves: a tree or a boulder taken up and thrown
+- [x] The wyrm's terrain moves: Uproot and hurl, Tail bat, Firebrand (its own session and PR, ADR-110)
+  - [ ] The owner's pick of how it holds a tree (over the shoulder / upright; `?hold=` until then)
+  - [ ] A played fight: how often the moves come up on the real clearing, and the phone
+  - [ ] The lab stage has no breakables: there the three moves find nothing to take
 - [ ] The Ash Disciple's terrain moves
 - [ ] A human playtest and a bot measurement of the difficulty with breakables and grass fire
 - Follow-ups:
