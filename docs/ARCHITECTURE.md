@@ -1183,8 +1183,8 @@ hitstop(sec, scale)                     // game.hitstop that won't crush a runni
 reset()                                 // back to sleeping at the nest, full HP/posture, phase 1, FX/lights/hazards cleared
 update(dt)
 debug: {                                // used by the Lab (generic shape every future enemy implements)
-  abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (30: singles, strings, fire
-                                        // attacks, bullet patterns and 'roar', the transition shock ring)
+  abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (33: singles, strings, fire
+                                        // attacks, bullet patterns, terrain moves and 'roar', the transition shock ring)
   trigger(name): boolean,               // force an ability now (wakes/starts the fight if needed); false while busy
   setAI(enabled: boolean), aiEnabled: boolean,
   wake(), startFight(),                 // startFight skips the intro straight into combat (no-op if fighting)
@@ -1319,7 +1319,7 @@ model-left (+X) side. Gait contacts (`rig.gait.limbs`): footL, footR, handL, han
 walk (LH → LF → RH → RF) up to 5 m/s, diagonal trot to 8, bound above.
 Striking-part names for tells (`partPos`): 'snout', 'head', 'mouth', 'claw' (a front paw, `b.wi`),
 'forefeet' (front-paw midpoint; flashes at both paws; 'wrists' is the v0.3 alias), 'wing' (a wing's
-middle knuckle, `b.wi`: the wing buffet), 'tailTip', 'shell', default chest. The stomp's red ground ring is centred between the two forefeet's landing
+middle knuckle, `b.wi`: the wing buffet), 'tailTip', 'shell', 'piece' (the tree or boulder a terrain move holds or has thrown), default chest. The stomp's red ground ring is centred between the two forefeet's landing
 spots (root frame (±1.2, 0, 2.9) model units); the slam presses the paws there (dust + a heavy
 `dragon:step` at each), holds them for 0.3 of the recovery, then plants them and steps home.
 
@@ -1553,6 +1553,39 @@ No pattern spawns from the body or the wings. The wisps are roared from the mout
 initial headings fan out round the head). A P3 Cinder burst may queue an Ember torrent
 (`brain.queued`, `fanVolley.chain`). A string hit may carry `burst: { n, wait, stagger, speed }`
 (`cinderFlurry`'s overhead): embers scattered by its slam, rising out of a puff of flame.
+
+**Terrain moves** (ADR-110; `terrainAttacks.js` `TERRAIN_MOVES`, numbers `tuningTerrain.js`
+`TERRAIN_ATTACKS` + `TERRAIN`, spread into `ATTACKS` like `FIRE`; the same action shape): `hurl`
+(Uproot and hurl), `tailBat`, `fireBrand`. The pieces are the world's ("Destruction" below); the
+wyrm's side is `terrain.js`:
+- `jawsPiece(d, wood, out, any)` → the liftable piece (lift 1) that costs the least to reach (a turn
+  at `TERRAIN.jaws.turn`, a run at `fetchSpeed` to stand `stand` m from it, inside the bound, within
+  `fetchTime`), never one within `clear` m of the hero; `wood` = a tree only. `tailPiece(d, out, any)`
+  → a boulder in the tail's ring whose line to the hero is clear of the body, with the lash's travel
+  pointing the hero's way and the hero out of the lash's arc; it writes which way the pivot turns.
+  `any` (a forced move) relaxes the gates. Each move's `weight` is 0 when its picker finds nothing,
+  so the AI never starts one without a piece; `phases()` picks again, and with nothing at all the
+  action is one `search` phase (no beat, no blow).
+- `dragon.terrain` (`class Terrain`; `dragon.update` calls `terrain.update(dt)` after the bullets,
+  guarded; `reset()` drops a held piece and forgets what flies): `grab(piece, x, y, z)` (the jaws
+  there: `take`), `carry(dt, x, y, z, tilt, yaw)` every frame after the rig (the grip point at the
+  mouth; earth and litter fall from it), `blaze(dt, k)`, `drop()`, `lob(tx, tz, spec, attack, a, b,
+  burning)` → the flight time (`throwTo`; the blow at the hero is dealt in its `onLand`, red, `plunge:
+  false`; a burning piece also bursts, calls `world.ignite` and leaves a pyre: contact ticks like a
+  burning strip, put out by a phase change), `bat(piece, dx, dz, len, hitS, speed, spec, attack, a,
+  b)` (the piece stays HELD and is carried along its line here, so `world.destructibles.stop` can
+  end it at the first cover; it tests the hero as it passes, with the spec's tell, and is let go
+  with a 0.25 s `throwTo` where it ends), `mark(dt, x, z, r, k, hot)` / `lane(...)` (the landing
+  before the throw: `fx.heatDisc` / `heatBand`; in the air the shot draws its own), `stir(dt,
+  piece)`, `piecePos(out)`.
+- A thrown piece carries its action's beat: if the action ends or is cut short after the release,
+  `Terrain` sends the beat's flash (`dragon.flashTell`) `flashLead` before the piece arrives, once.
+  An action cut short BEFORE the release drops the piece and sends no flash.
+- Events: `dragon:spell {name}` at the throw / the kindling / the bat; `dragon:bite` at the bite;
+  `dragon:breathStart` / `dragon:breathEnd` round the kindling; `dragon:explosion` where a firebrand
+  lands; the world's own `world:impact` (`throw`, `crash`).
+- A tree is swung back over the shoulder before the whip (`cock` rad, the owner's pick) and leaves
+  the jaws upright: the world's flight starts every piece upright.
 
 **Melee FX hooks** (`DragonFx`, called by `attacks.js` through optional calls): `clawTrail(wi, toe,
 heavy)` (a claw's burning wake, every active frame of a claw / overhead hit) and `slamBurst(x, z, r)`
@@ -2012,7 +2045,7 @@ its WORLD section (Burn ahead, Fell on me, Blast ahead, Restore) too.
 | who | where | numbers |
 |---|---|---|
 | the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
-| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop; `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall / wheel igniting; `dragon.js` `_collide` (its body fells wood in its way); `bullets.js` (cover) | `TUNING.world` |
+| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop; `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall / wheel igniting; `terrain.js` (a thrown piece: `throwTo`'s blast; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_collide` (its body fells wood in its way); `bullets.js` (cover) | `TUNING.world` |
 | a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
 
 **Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with

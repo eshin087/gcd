@@ -968,7 +968,42 @@ chip, stop nothing and block nobody: they are there for the Void to throw). It a
 - **The wyrm walks through wood**: a tree in its body's way goes down ahead of it. Stone turns it, as
   before.
 - **Lifting and throwing** (a boss tears a piece from the ground and hurls it) is in the world's API
-  (ARCHITECTURE.md "Destruction"); the bosses' moves that use it come in their own PRs.
+  (ARCHITECTURE.md "Destruction"). The wyrm's moves that use it: *The wyrm uses the ground*, below.
+
+### The wyrm uses the ground (2026-11-15, ADR-110)
+Three moves take what stands in the clearing. The wyrm only starts one with a piece in reach, a
+piece it throws is gone until the fight resets, and it never takes the tree you stand against.
+
+- **Uproot and hurl** (red, phase 1). It turns to the nearest tree or boulder (a short run if it
+  must), bites into it, tears it out, swings it back over its shoulder and whips it at you. The
+  landing glows (the ground heats up, ADR-052) from the moment the piece leaves the ground and
+  **follows you until the throw**; from the release it is fixed, and the piece is 0.85 – 1.2 s in the
+  air. One red blow in 3.4 m: be out of the glow when it lands, or roll through it (a perfect dodge
+  gives the slow-mo and crits in place, never a plunge: a thrown tree is no body to leap onto).
+  About 2.9 s from its tell to the blow. It turns its back on you for the tree: that is an opening,
+  and a stagger or a posture break while it holds the piece makes it drop it (no blow).
+- **Tail bat** (blue, phase 1). It pivots its back to a boulder, the tail cocked, and one lash sends
+  the boulder skimming along the ground at you. Its line glows through the pivot and is fixed when
+  the lash starts. **Parry it** (you cut it out of the air: blue posture damage, no recoil), take
+  it on the guard (it costs guard x 1.5), step 1.6 m off the line, or stand behind a tree or a
+  standing stone: cover stops it and pays for it (ADR-107). The tail itself strikes nothing in
+  this move; the AI does not pick it when you stand in the lash's arc.
+- **Firebrand** (red, from phase 2). A tree in the jaws (never a boulder), a breath up its trunk
+  for 0.8 s, then the hurl. Where it lands: the red blow (r 4.0, a burn), the grass and wood
+  within 4.8 m catch (the world's fire: it burns where it lands), and the tree's wreck burns on
+  for 3.4 s within 2.9 m (4 per 0.3 s, blockable, never while you roll; not on top of the grass
+  fire's own ticks). A new phase puts the wreck out, as it does the fire hazards.
+
+Fairness: each has one tell at its windup and one flash 0.35 s before the blow (the flash still
+comes if the action is cut short after the release: the piece carries it); the landing is marked
+before the throw is committed; nothing lands outside its mark. Checked by scenario TERRAIN of
+`tests/integration/integ.mjs` (56 checks on the real `Destructibles` over a hand-built set): the tell
+and its flash (the blow within 85 ms of flash + lead), the piece taken, flown and landed on its
+mark, no blow 0.4 m outside it, the roll, the parry, the guard, cover, a stagger mid-hold, nothing
+in reach (never picked; forced, it casts about and ends), the reset, Training, and a 150 s fight
+with the AI on (4 of 25 attacks were terrain moves). **Not measured:** how often they come up on
+the real clearing in a played fight (its pieces stand 14 – 28 m from the centre), the difficulty
+with them, the phone. On the lab stage (`?stage=lab`) nothing stands to be taken.
 
 Checked by `npm test` → `tests/integration/world.mjs`: SETS, CHIP, FELL, COVER, FIRE, THROW, RESET (87
 checks on the real forest and courtyard). **Not measured:** what breakables and grass fire do to the
@@ -1043,6 +1078,14 @@ re-arm 0.25 s (skipped right after a deflect), perfect-dodge window 0.2 s, slow-
 | Flame ring `flameRing` (2) | windup 1.1 · cast 0.25 · recovery until the ring has run (≥ 1.85) | 24, burn 2, kb 4 | from 3 m round the wyrm to 20 m at 10 m/s, band 2.2 m | [0, 1.4, 1.2] / 12 | ≤ 14 m |
 | Flame wall `flameWall` (3) | windup 1.2 · cast 0.3 · recovery until the sweep ends (≥ 3.15) | 28, burn 2, kb 5 | 40 m long × 2.4 m thick, springs up 4 m ahead, sweeps 30 m at 10 m/s | [0, 0, 1.6] / 14 | any |
 | Inferno nova `nova` (3) | charge 2.5 in every phase · blast 0.45 · recovery 1.6 | 70, knockdown, burn 3, kb 10; a perfect dodge may plunge | r 22 | [0, 0, 0.7] / 32 | also the P3 opener |
+
+**Terrain moves** (`tuningTerrain.js`, ADR-110; sizes in world metres; picked only with a piece in reach):
+
+| Ability (phase ≥) | Tell | P1 timing (s) | Damage | Size | Weight [P1, P2, P3] / cooldown | AI gate |
+|---|---|---|---|---|---|---|
+| Uproot and hurl `hurl` (1) | R | a run to the piece ≤ 1.7 (no tell yet) · bite 0.7 · lift 0.65 · aim 0.55 · whip 0.24 (released at 55 %) · flight 0.85–1.2 · recovery ≥ 1.4 | 30, knockdown, kb 5; a perfect dodge never plunges | r 3.4; on the world 1.2 | [3.2, 3.0, 2.6] / 15 | a tree or boulder within 21 m of it, not one you stand against; you 5–36 m away (× 0.7 under 9 m) |
+| Tail bat `tailBat` (1) | B | pivot 0.95 (≥ 0.8) · lash 0.36 (the tail meets the boulder ~0.21 in) · the boulder at 22–34 m/s · recovery 0.95 | 26, kb 5 | a line 1.15 m either side, 7 m past you; cover stops it (it takes 1.0) | [3.0, 3.0, 2.8] / 12 | a boulder 6–15.5 m from its root, 7–32 m from you, its line clear of the wyrm's body, you out of the lash's arc |
+| Firebrand `fireBrand` (2) | R | as the hurl, with 0.8 of kindling between the lift and the aim (bite 0.65 · lift 0.6 · aim 0.45) · flight 0.9–1.25 | 32, knockdown, burn 2, kb 5; the wreck 4 per 0.3 s for 3.4 s (blockable) | r 4.0; the wreck r 2.9; grass and wood catch within 4.8 m; on the world 1.4 | [0, 2.8, 3.0] / 19 | a tree (wood only), as the hurl |
 
 **AI pick shares at close range** (measured for v0.5, before the two new strings and the four bullet
 patterns joined the pool; not re-measured): P1 strings ~60 %, bite / stomp ~40 %; P2 strings ~39 %, fire and flights ~35 %, singles
