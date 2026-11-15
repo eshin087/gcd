@@ -18,12 +18,24 @@ the plunge, three phases, fire hazards, keep-in-view camera, and now the bullet 
 
 ## Frame order (src/main.js)
 ```
-wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt) → lab.update(realDt)
-→ flow.update(dt, realDt) → player.update(dt) → dragon.update(dt)
-→ lab.postUpdate() → camera (rig) → view override → shared uniforms → world.update(dt)
-→ lights.update → fx.update → hud.update(realDt) → audio.update(realDt) → render
+wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt)
+→ 1 – 6 simulation steps (core/timestep.js), each of stepDt real seconds:
+    clocks → lab.update(stepDt) → flow.update(dt, stepDt) → player.update(dt) → dragon.update(dt)
+    → world.update(dt) → lights.update → fx.update
+    (input.endFrame() after the FIRST step: the frame's presses and releases are seen once)
+→ lab.postUpdate() → camera (rig, realDt) → view override → shared uniforms
+→ hud.update(realDt) → audio.update(realDt) → render
 → lab.postRender()   (same task: the Lab model viewer's sheet reads the drawn frame back)
 ```
+**Simulation steps** (ADR-103, `core/timestep.js`): a frame of `realDt` s (at most `FRAME_MAX` 0.1 s) is
+simulated in `simSteps(realDt)` equal steps, none longer than `STEP.max` 1 / 60 s × (1 + `slack` 0.25)
+= 20.8 ms: one step at 50 Hz and above (as before), two steps of 1 / 60 s at 30 fps, three at 20 fps,
+six at most (below 10 fps the game runs slow). `runFrame(realDt, simulate, afterFirst, out, one)` runs
+them. So no machine simulates a longer step than the headless tests do (they step at 1 / 60 s), and a
+0.08 s perfect-parry window is sampled five times at 30 fps instead of three. Inside a step
+`game.realDt` is the STEP's real time; `game.frameDt` is the frame's and `game.simSteps` how many
+steps it took. `window.__tick(dt, frames)` runs one exact step of `dt` per frame (film strips);
+`window.__tick(dt, frames, true)` runs each as a rendered frame of `dt`, cut as the real loop cuts it.
 **View override** (`game.viewOverride`, Lab model viewer only): when it is
 `{ pos, target, focus? }` (Vector3-likes, world metres), main.js places the camera at `pos` looking
 at `target` right after the rig update, and the fog centre (`U.uFocus`), the light-pool selection
@@ -37,8 +49,9 @@ override is skipped for that frame (never throws, never feeds NaN).
 through a hit-stop, where it is `realDt × timeScale × debugTimeScale × max(hit-stop, CONFIG.render.fxLive
 0.6)`: a freeze-frame holds the fighters on the impact's pose while its sparks fly on (never faster
 than the game, never while the game stands still: a pause). Glyphs re-drawn every frame size their
-life from `game.fxDt ?? game.dt`. Input edges
-(`pressed`) are valid for exactly one frame. Construction order: world, audio, player, dragon, hud,
+life from `game.fxDt ?? game.dt` (one set is alive at each render however many steps a frame takes:
+a set dies in the step after it was drawn). Input edges
+(`pressed`) are valid for exactly one simulation step: the first of their frame. Construction order: world, audio, player, dragon, hud,
 gamepad, touch, flow, lab — constructors must not dereference modules built later.
 **`render`** = `pipeline.updateShadowCamera(focus)` then `pipeline.render()` (`render/pipeline.js`):
 ```
@@ -85,7 +98,8 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
-| `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks |
+| `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks (`dt` / `realDt` / `fxDt`: of the running simulation step) |
+| `frameDt`, `simSteps` | the rendered frame's real time and the number of simulation steps it was cut into (Frame order) |
 | `settings` | `{ quality: 0..2, showFps: bool }`; `applyQuality()` re-applies. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
 
 Shared combat rules: `src/combat/rules.js` — `TELL`, `RESULT`, `TELL_STYLE`, `DEFENSE`, `POSTURE`,

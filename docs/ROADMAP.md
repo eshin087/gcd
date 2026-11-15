@@ -196,7 +196,10 @@ The first of the changes from the genre review (owner: "lets implement your sugg
 - [ ] A human plays it; then the counter's window (0.03 s), its 70 damage, the counter cut's 0.9 s
 - [ ] Film the flash counter and the in-place perfect dodge; a Lab switch for `flurryAny`
 - [ ] The rest of the review, each its own PR:
-  - [ ] A fixed-timestep simulation (windows equal at any frame rate); a performance budget
+  - [x] A frame simulated in steps of about 1 / 60 s (`core/sim-step`, ADR-103: no step longer than
+        20.8 ms at any frame rate; not a fixed step with interpolation: see the ADR)
+  - [ ] A performance budget (a target machine, a frame-time ceiling); the cost of two to six steps
+        a frame on a slow machine; event-timestamped presses
   - [ ] Per-move telemetry; the killing move on the death screen
   - [ ] A heavy button; direction + button choose the swing (the 13 looks become moves)
   - [ ] HP-linked posture (the Lord's rule) for every boss
