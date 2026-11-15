@@ -22,6 +22,8 @@ import { GUARD_CLIPS } from '../duelist/guard.js';
 //   travel [[u, metres], ...] (forward root motion), dash { from, to, stop, max } (toward the hero's
 //   spot as the dash starts), lift [[u, metres], ...] (root height: the leap),
 //   release { count [P1, P2], spread, speed } (Ash Crescent: sword qi thrown at u = 1),
+//   cast { kind, selfCue } (a thing sent out at u = 1 that cues itself: a kicked piece, a toll's ring),
+//   go / spring (a move of the courtyard: see "the courtyard" below),
 //   keys [[u, pose], ...] (u 0..1 = the windup, 1 = the impact, 1..2 = the active frames; a pose is a
 //   poses.js clip key without its `t`) }
 // Rules (COMBAT.md, checked by tests/integration/duel.mjs): a tell on every real hit, a move's first
@@ -139,6 +141,32 @@ const spinKeys = (cock = 0.66, low = false) => {
 const PERIL_COIL = { ...COIL, bY: -0.34, bZ: -0.14, yaw: 0.95, rH: [-0.12, -0.32, -0.08], sw: [-1.0, -0.08], lH: [0.28, 0.06, 0.1], lP: [0.9, 0.2, -0.2], hdY: -0.8, rF: [-0.12, 0.34], lF: [0.2, -0.38] };
 const PERIL_LUNGE = { ...LUNGE, bZ: 0.3, bY: -0.34, rF: [-0.08, 1.05], lF: [0.22, -0.68], lH: [0.2, 0.08, -0.44] };
 const perilKeys = () => [[0.4, { ...PERIL_COIL }], [0.84, { ...PERIL_COIL, bY: -0.36, rH: [-0.14, -0.33, -0.1] }], [1.0, { ...PERIL_LUNGE, e: 'i' }], [1.6, { ...PERIL_LUNGE, e: 'o', bZ: 0.34 }], [2.0, { ...PERIL_LUNGE }]];
+
+// ---- the courtyard's moves (ADR-111)
+/** The kick: the weight back on the left leg, the right knee drawn up; then the leg driven out flat. */
+const KICK_COIL = {
+  bY: -0.3, pitch: -0.04, yaw: 0.25, hip: 0.1, spX: -0.04, hdY: -0.2,
+  rH: [-0.26, -0.2, -0.1], rP: [-0.8, -0.4, -0.4], sw: [-1.9, -0.3], swF: [0, 1, 0], lH: [0.24, 0.0, 0.3], lP: [0.8, -0.2, 0.3],
+  rF: [-0.1, 0.44, 0.14], lF: [0.16, -0.12], rK: [-0.1, 0.4, 1], lK: [0.4, 0, 0.9], flat: 0.5,
+};
+const KICK_OUT = {
+  bY: -0.2, bZ: -0.1, pitch: -0.28, yaw: 0.1, hip: -0.1, spX: -0.1, hdX: 0.1, hdY: -0.1,
+  rH: [-0.3, -0.15, -0.2], rP: [-0.8, -0.4, -0.4], sw: [-2.2, -0.2], swF: [0, 1, 0], lH: [0.3, 0.05, 0.1], lP: [0.8, -0.2, 0.3],
+  rF: [-0.04, 0.74, 0.95], lF: [0.14, -0.2], rK: [0, 0.3, 1], lK: [0.4, 0, 0.9], rFy: 0, flat: 0.3,
+};
+/** A blow on the bell: a level cut that stops on the bronze and springs back off it. */
+const tollKeys = (from, cock) => slashKeys({ from, through: [0.0, -0.05], to: [from[0] > 0 ? -0.45 : 0.45, 0.3], yaw: from[0] < 0 ? [0.1, 0.5, 0.62] : [0.95, 0.55, 0.45], cock, sink: 0.06 });
+/** The leap to the pillar (knees drawn up, the blade trailing) and the beat on it (coiled against the stone). */
+const TUCK = {
+  bY: -0.1, pitch: 0.3, yaw: 0.1, spX: 0.2, hdX: 0.1, hdY: 0,
+  rH: [-0.2, -0.3, -0.1], rP: [-0.8, -0.4, -0.4], sw: [-2.4, -0.3], swF: [0, 1, 0], lH: [0.25, -0.1, 0.25],
+  rF: [-0.12, 0.34, 0.1], lF: [0.16, 0.28, -0.14], rK: [-0.2, 0.3, 1], lK: [0.3, 0.3, 1], flat: 0.3,
+};
+const PERCH = {
+  bY: -0.5, pitch: 0.5, yaw: 0.2, spX: 0.25, hdX: -0.25, hdY: -0.2,
+  rH: [-0.1, -0.1, -0.15], rP: [-0.8, 0.2, -0.4], sw: [-0.8, 1.2], swF: [1, 0, 0], lH: [0.25, -0.2, 0.3],
+  rF: [-0.14, 0.3], lF: [0.16, 0.1], rK: [-0.5, 0.2, 1], lK: [0.5, 0.2, 1], flat: 0.6,
+};
 
 // ---------------------------------------------------------------- the moves
 // PBZ-fast (owner, 2026-11-12: "very fast, PBZ-boss level"): a move's first hit winds up ~0.46–0.6 s
@@ -288,6 +316,75 @@ export const MOVES = {
       tell: N, windup: 0.5, active: 0.1, damage: 14, knockback: 0.8, release: { count: [1, 3], spread: 0.36 }, close: 0,
       keys: slashKeys({ from: [-1.2, 1.2], through: [0.0, -0.3], to: [1.0, -0.8], yaw: [0.3, 0.5, 0.8], cock: 0.7 }),
     }],
+  },
+
+  // ---------------------------------------------------------------- the courtyard (ADR-111)
+  // Four moves on the pieces of the set (terrain.js; numbers: TUNING.terrain). `terrain: kind` marks
+  // one: his AI picks it only while a piece for it is in reach, and it cannot start with none.
+  // A terrain beat: `go: [from, to, arc]` (windup fractions between which he crosses to the piece, the
+  // height of the leap; none = a glide), `spring: { up: [from, to], off }` (up to the pillar, then off
+  // it at `off`). He never tracks the hero or steps in by himself in one (track 0, close 0).
+
+  /** Severed Pillar: gone from the duel and behind the standing piece nearest the hero, he cuts it
+   *  through. The cut is his (white: it reaches a hero who hugs the piece); the fall is the world's:
+   *  red, the strip it lands on marked from the moment it goes. Be out of the strip. */
+  pillarFall: {
+    label: 'Severed Pillar', phase: 1, terrain: 'fell', weight: [1.8, 2.0], cooldown: 9, band: [0, 18], recovery: 0.7,
+    beats: [{
+      tell: N, windup: 0.66, active: 0.1, damage: 18, knockback: 1.4, zone: { kind: 'sector', r: 2.4, ang: 1.0 },
+      close: 0, track: 0, go: [0.05, 0.45],
+      keys: slashKeys({ from: [-2.15, -0.12], through: [0.0, -0.16], to: [1.75, -0.1], yaw: [0.05, 0.5, 0.95], cock: 0.78, sink: 0.12, extra: { cocked: { pitch: 0.18 } } }),
+    }],
+    recoveryKeys: [[0.5, { arm: 1, ext: 0.85, sw: [1.2, -0.2], bY: -0.3, yaw: 0.9, ...STEP_IN }]],
+  },
+
+  /** Flying Lantern: he is at a stone lantern (or a pillar's stump) and kicks it at the hero. It
+   *  glints as it comes down: parry it and it bursts on the blade, or be gone from under it. */
+  lanternKick: {
+    label: 'Flying Lantern', phase: 1, terrain: 'kick', weight: [1.3, 1.5], cooldown: 10, band: [0, 18], recovery: 0.55,
+    beats: [{
+      tell: B, windup: 0.64, active: 0.1, damage: 22, knockback: 2.4, cast: { kind: 'lantern', selfCue: true }, noSweep: true,
+      close: 0, track: 0, go: [0.05, 0.44],
+      keys: [
+        [0.5, { ...KICK_COIL, bY: -0.24, rF: [-0.1, 0.2, 0.06] }],
+        [0.8, { ...KICK_COIL }],
+        [1.0, { ...KICK_OUT, e: 'i' }],
+        [1.6, { ...KICK_OUT, e: 'o', bZ: -0.14, rF: [-0.04, 0.8, 0.98] }],
+        [2.0, { ...KICK_OUT, pitch: -0.12, rF: [-0.08, 0.3, 0.6] }],
+      ],
+    }],
+    recoveryKeys: [[0.4, { bY: -0.22, pitch: 0.0, rH: [-0.2, -0.3, 0.05], sw: [-1.5, -0.3], lH: [0.2, 0.0, 0.3], rF: [-0.1, 0.5], lF: [0.18, -0.25] }]],
+  },
+
+  /** Three Tolls: he leaps to the fallen bell and strikes it three times. Each blow sends a ring of
+   *  sound across the courtyard that glints before it reaches the hero: parry the three in rhythm
+   *  (the last is the heavy one) or roll through them. He stands at the bell with his back open. */
+  bellToll: {
+    label: 'Three Tolls', phase: 1, terrain: 'toll', weight: [1.1, 1.5], cooldown: 14, band: [0, 22], recovery: 0.65,
+    beats: [
+      { tell: N, windup: 0.7, active: 0.1, damage: 12, knockback: 1.0, cast: { kind: 'toll', selfCue: true }, close: 0, track: 0, go: [0.05, 0.5, TUNING.terrain.toll.arc], keys: tollKeys([-2.0, 0.1], 0.8) },
+      { tell: N, windup: 0.44, active: 0.1, damage: 12, knockback: 1.0, cast: { kind: 'toll', selfCue: true }, close: 0, track: 0, keys: tollKeys([1.8, 0.3], 0.62) },
+      { tell: B, windup: 0.5, active: 0.1, damage: 18, knockback: 2.2, cast: { kind: 'toll', selfCue: true }, close: 0, track: 0, keys: overKeys(0.7) },
+    ],
+    recoveryKeys: [[0.5, { ...CHOP, two: 0.4, bY: -0.24, sw: [-0.3, -0.5], rH: [0.0, -0.32, 0.4] }]],
+  },
+
+  /** Swallow's Return: his way out when he is pressed. He leaps back onto a pillar behind him and
+   *  springs off it into a diving cut from where the hero was not looking. The glint comes as he
+   *  leaves the stone; the cut can be locked. */
+  swallowReturn: {
+    label: "Swallow's Return", phase: 1, terrain: 'spring', weight: [1.3, 1.6], cooldown: 8, band: [0, 5.5], recovery: 0.55,
+    beats: [{
+      tell: B, windup: 0.92, active: 0.1, damage: 24, knockback: 1.8, zone: { kind: 'sector', r: 2.5, ang: 0.6 }, lock: true,
+      close: 0, track: 0, spring: { up: [0.04, 0.5], off: 0.64 },
+      keys: [
+        [0.28, { ...TUCK }],
+        [0.52, { ...PERCH, arm: 0 }],
+        [0.64, { ...PERCH, arm: 0, bY: -0.58, pitch: 0.56 }],
+        ...slashKeys({ from: [-0.7, 1.45], through: [0.0, -0.1], to: [0.5, -1.0], yaw: [0.2, 0.45, 0.6], cock: 0.86, sink: 0.04, extra: { cocked: { pitch: 0.5, bY: -0.16, rF: [-0.1, 0.34, -0.45], lF: [0.2, 0.46, -0.8], rK: [-0.2, -0.4, 1], lK: [0.3, -0.5, 1], flat: 0.2 } } }).slice(1),
+      ],
+    }],
+    recoveryKeys: [[0.45, { arm: 1, ext: 0.8, sw: [-0.3, -0.7], bY: -0.26, ...STEP_IN }]],
   },
 
   /**

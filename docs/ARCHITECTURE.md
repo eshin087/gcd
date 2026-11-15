@@ -2109,7 +2109,11 @@ a subclass with a few hooks.
   (extra meshes, before batching), `_makeFx()`, `_makeBrain()`, `_bladeMaterials(dt, M)`, `_onHpZero()`
   (default: he dies), `brainFrame(dt)`, `afterPose(dt, act)`, `onImpact(beat, sense, act)`,
   `onRelease(beat, sense, act)`, `onCast(beat, sense, act)`, `beatMotion(beat, u, sense, dt)`,
-  `onTransitionEnd(act)`, `clampTarget(point)`. `d.T` = `kit.TUNING`. `drawnPoint(v)`: an upright
+  `onTransitionEnd(act)`, `clampTarget(point)`, and two for moves that depend on the level (ADR-111):
+  `weigh(name, def, w, dist)` → the weight his AI gives the move right now (`brain._choose` calls it for
+  every move it could pick; 0 = not now: no piece in reach) and `onActStart(act, opts)` → `false` when the
+  move cannot start (`brain.startAct` then returns false and nothing has changed; the Lab's trigger
+  included): the actor picks the piece of the level the move will use there. `d.T` = `kit.TUNING`. `drawnPoint(v)`: an upright
   gameplay point → where it is drawn (lean, `drawScale`, the lean's `ox` / `oz`). Hit stun
   (`TUNING.hitStun.light / heavy`): `stop`, `jolt`, `push` and `shudder` (m: through the freeze his
   drawn figure flickers ± this far along the cut, fading, in real time, through `lean.ox` / `oz`;
@@ -2215,6 +2219,24 @@ capped 9 m/s) and every step-in, windup track and dash aims at where he will be 
 string whose next hit can't reach (`_reach`) ends there. Footwork circles only inside
 `TUNING.move.band`, runs beyond it, sprints past `sprintAt`; a hero in state 'heal' is punished (no
 breather, ground-covering moves × `TUNING.punish.weight`). Numbers: tuning.js.
+**The courtyard's moves (ADR-111, `ashDisciple/terrain.js` `class TerrainMoves`, `d.terrain`).** A move
+marked `terrain: 'fell' | 'kick' | 'toll' | 'spring'` (moves.js: `pillarFall`, `lanternKick`,
+`bellToll`, `swallowReturn`) uses a piece of `world.destructibles` (every call guarded: a world
+without it has no such move). `terrain.find(kind, forced)` → the piece or null (`forced`: the nearest
+however far, for the Lab and Training); the engine's hooks route to it: `weigh` → `terrain.weigh(def, w)`
+(0 with no piece in reach; it remembers the piece for that brain frame), `onActStart` →
+`terrain.begin(act)` (false with no piece at all), `beatMotion` → `terrain.motion` (his own root
+motion: a beat's `go: [from, to, arc]`, the windup fractions between which he crosses to the piece and
+the leap's height, or `spring: { up: [from, to], off }`; such a beat has `track: 0, close: 0`),
+`onImpact` → `terrain.impact` (the pillar is felled: `destructibles.topple(piece, dx, dz, 'boss')`, so
+the fall's tell, strip and blow are the world's), `onCast` → `terrain.cast` (a `cast: { kind: 'lantern'
+| 'toll', selfCue: true }` beat: `take` / `carry` / `throwTo` with his own blow in `onLand`, or a ring
+of sound), `brainFrame` → `terrain.frame(dt)` (the piece in the air and the rings: each emits its own
+`combat:flash` { source: 'dragon', attack, tell } `flashLead` before it reaches the hero and deals
+through `hitPlayer({ projectile: true })`). `terrain.busy`: something of his is still in the air.
+`d.baseBound` is the level's bound; `d.bound` adds `terrain.slack` (he may stand out past his bound
+for a piece; it shrinks at `TUNING.terrain.leash` m/s once the move is over). A beat's `noSweep` keeps
+the blade's sweep trail off a blow that is not the blade's (the kick). `reset()` clears it all.
 **HeroAnimator** (anim.js): `new HeroAnimator(rig, player, poses = null, opts = {})` — `poses` merges extra clips
 over the hero's table for that instance (a key it shares replaces the hero's clip for that instance
 only; a key of its own that is not a walking clip gets no foot planning: the Starless Lord's

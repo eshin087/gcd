@@ -153,6 +153,26 @@ add('BOSS STATES', [
   { id: 'bossDeath', name: 'His death', boss: 'any', desc: 'The killing blow (the next situation wakes him again).', go: (T) => T.d.debug.kill(), until: (T) => T.t > 4, expect: [] },
 ]);
 
+// The Ash Disciple's moves on the courtyard's pieces (ADR-111): each staged where it works (the hero
+// under a pillar, a lantern or the bell in reach), on a courtyard put back whole.
+const stage = (T, bx, bz, hx, hz, move) => {
+  T.game.world?.restore?.();
+  T.d.position.set(bx, 0, bz);
+  T.d.yaw = Math.atan2(hx - bx, hz - bz);
+  T.p.debug.teleport(hx, hz);
+  T.p.yaw = Math.atan2(bx - hx, bz - hz);
+  T.d.debug.trigger(move);
+};
+const settled = (T) => T.t > 1 && !T.moving() && T.heroFree() && !T.pending.length && !T.d.terrain?.busy;
+add('TERRAIN', [
+  { id: 'terr-fell', name: 'Severed Pillar · step out of the strip', boss: 'ash', pieces: true, answer: 'none', desc: 'He is behind the pillar you stand under and cuts it down on you: the strip it lands on is marked red. Walk out of it.', go: (T) => stage(T, -6, 2, -12.4, 0.4, 'pillarFall'), tick: (T) => { T.at(0.8, () => T._axis(0, 1)); T.at(1.5, () => T._axis(0, 0)); }, until: (T) => T.t > 2.4 && settled(T), expect: ['combat:flash'] },
+  { id: 'terr-fell-hit', name: 'Severed Pillar · under it', boss: 'ash', pieces: true, answer: 'none', desc: 'The same, and you stay: the pillar lands on you (red: no guard holds it).', go: (T) => stage(T, -6, 2, -12.4, 0.4, 'pillarFall'), until: (T) => T.t > 2.4 && settled(T), expect: ['player:hurt'] },
+  { id: 'terr-kick', name: 'Flying Lantern · parry it', boss: 'ash', pieces: true, answer: 'parry', desc: 'He kicks a stone lantern at you. It glints as it comes down: the parry bursts it on your blade.', go: (T) => stage(T, 8, 6, 2, 1, 'lanternKick'), until: settled, expect: ['player:parry'] },
+  { id: 'terr-toll', name: 'Three Tolls · parry the rings', boss: 'ash', pieces: true, answer: 'parry', desc: 'Three blows on the fallen bell, three rings of sound: parry each as it reaches you (the last is the heavy one).', go: (T) => stage(T, -4, -5, 1.5, -1, 'bellToll'), until: settled, max: 14, expect: ['player:parry'] },
+  { id: 'terr-toll-roll', name: 'Three Tolls · roll through', boss: 'ash', pieces: true, answer: 'dodge', desc: 'The same, rolled: each ring is passed through as it arrives.', go: (T) => stage(T, -4, -5, 1.5, -1, 'bellToll'), until: settled, max: 14, expect: ['player:perfectDodge'] },
+  { id: 'terr-spring', name: "Swallow's Return · parry the dive", boss: 'ash', pieces: true, answer: 'parry', desc: 'He leaps back onto the pillar behind him and dives off it at you: the glint comes as he leaves the stone.', go: (T) => stage(T, -10.5, 0.6, -7.4, 0, 'swallowReturn'), until: settled, expect: ['player:parry'] },
+]);
+
 export const SITUATIONS = Object.freeze(S);
 export const CATEGORIES = Object.freeze([...new Set(S.map((s) => s.cat)), 'BOSS MOVES']);
 
