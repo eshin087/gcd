@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Thirty-seven pieces of work since 0.4.0:
+Thirty-eight pieces of work since 0.4.0:
+- **A heavy attack, and five heavies to choose from** (2026-11-15, ADR-114). *Added:* a HEAVY button (right
+  click, R2, and a fourth tile on the phone). Pressed on its own it is a dashing two-handed thrust;
+  pressed after the first, second, third or fourth light of the combo it is that point's own heavy:
+  a rising cut that staggers a duelist, a full spinning sweep, a falling cut that breaks through a
+  raised guard, and a bigger slam. *Changed:* holding HEAVY charges the dashing cleave (it was
+  holding attack), so a light attack now comes out the instant you press it. Block / parry moved to
+  the middle click and lock-on to Tab; saved key bindings start over on the new defaults. The phone
+  pad is a 2 x 2 square: BLOCK and HEAVY on top, DODGE and ATTACK below.
 - **The Cinder Wyrm uses the ground** (2026-11-15, ADR-110). *Added:* three moves that take what
   stands in the clearing. **Uproot and hurl**: it bites into the nearest tree or boulder, tears it
   out and throws it; the ground glows where it will land and follows you until the throw (red:

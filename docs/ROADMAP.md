@@ -216,7 +216,9 @@ The first of the changes from the genre review (owner: "lets implement your sugg
         a frame on a slow machine; event-timestamped presses
   - [x] Per-move telemetry; the killing move on the death screen (`game/move-telemetry`, ADR-108)
   - [ ] Read the table after the owner's sessions and tune from it; a way to read it on the phone
-  - [ ] A heavy button; direction + button choose the swing (the 13 looks become moves)
+  - [x] A heavy button: five heavy branches off the chain, the charge on the heavy, a 2 x 2 phone pad
+        (`player/heavy-branches`, ADR-114; the owner picked branches over direction-chosen swings)
+  - [ ] The owner's look at the heavies in motion; tune their numbers from play
   - [ ] HP-linked posture (the Lord's rule) for every boss
   - [ ] Save file, a hub at the bonfire, a boss order that starts on Shen Hui, ranks, difficulty tiers,
         a reduce-flashes option

@@ -2928,3 +2928,32 @@ alternated (other sessions were loading the GPU, so only the ratio means anythin
 hall 0.85 and 0.89 at 1920 x 1080, 1.03 at 3840 x 2160, 0.92 and 1.01 at 852 x 393 on LOW. So: no
 slower, about a tenth cheaper at 1080p, no measurable difference at 4K or at phone size. **A phone
 was not measured.** The seal's flare, the intro and the reset are unchanged and tested.
+
+## ADR-114 — A heavy button: five heavy branches off the chain; the charge moves to it (2026-11-15)
+- **Context:** the genre review: the hero had one attack button and one fixed chain (13 looks picked
+  at random), against Phantom Blade Zero's and Onimusha's choice of what comes out. The owner, asked
+  first: heavy branches off the light chain (not direction-chosen swings), hold heavy to charge, a
+  fourth tile on the phone (a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK), heavy on the right
+  click and R2, and the guard on the middle click ("Middle mouse", over a thumb button or keeping the
+  guard on the right click).
+- **Decision:** `combat.js` `HEAVY`: the heavy pressed on its own is HEAVY[0], pressed in the n-th
+  light's recovery HEAVY[n] (`heavyAfter`): Piercing Gale (a dashing thrust), Rising Crescent (staggers
+  a duelist: `reel` 2), Whirling Tempest (a full turn), Mountain Splitter (poise 50 crushes a raised
+  guard), Earthbreaker (a bigger slam). Two-handed clips of their own (`swings.js`), kind 'heavy' (the
+  Earthbreaker is a slam). A heavy ends the chain. The charge moved from the attack button to the
+  heavy: a heavy press still held waits at its coil (`pending`) and becomes the charge at 0.3 s; a
+  light press cuts at once (it used to wait at its coil while held, in case it became the charge).
+  Bindings v2 (LMB / R1 light, RMB / R2 heavy, MMB block, Tab lock-on): a v1 save had the guard on the
+  right click, now the heavy's, so it is not read. Training gets the five heavies, and every
+  situation now starts on a restored set (a pillar toppled by one situation fell on the hero in the
+  next once the timings moved).
+- **Alternatives turned down (by the owner):** direction picks the swing; both; hold ATTACK or a
+  swipe for the heavy on the phone; heavy on the middle click or Q; the guard on a thumb button.
+- **Consequences:** a player now chooses: a fast light chain, or a heavy that answers the moment
+  (close a gap, stagger, crush a guard, sweep round). The chain's random looks stay looks. Every
+  numbers row is a first pass (`__telemetry()` and play to tune). The guard on the middle click is
+  stiffer for timed parries than the right click was (the owner's pick; remappable). Not done: a
+  heavy out of a sprint or a roll of its own (both give HEAVY[0]); heavies against the wyrm have no
+  special effect beyond damage and posture (the stagger and the crush are a duelist's); the owner's
+  look at the swings (a film sheet sent with the PR).
+
