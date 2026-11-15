@@ -91,7 +91,9 @@ function build() {
     mouseDown(b) { return this.enabled && btn[b]; }, mousePressed(b) { return this.enabled && pb[b]; }, mouseReleased(b) { return this.enabled && rb[b]; },
     moveAxis() { return this.enabled ? this.axis : { x: 0, y: 0 }; },
     tap(code) { if (keys.has(code)) return; keys.add(code); pk.add(code); tapKeys.add(code); this.anyPressed = true; },
+    hold(code) { if (keys.has(code)) return; keys.add(code); pk.add(code); this.anyPressed = true; },
     release(code) { if (!keys.delete(code)) return; rk.add(code); },
+    press(b) { if (btn[b]) return; btn[b] = true; pb[b] = true; this.anyPressed = true; },
     click(b = 0) { if (btn[b]) return; btn[b] = true; pb[b] = true; tapBtn[b] = true; this.anyPressed = true; },
     up(b) { if (!btn[b]) return; btn[b] = false; rb[b] = true; },
     endFrame() {
@@ -800,6 +802,34 @@ async function scenarioFlow() {
 }
 
 // ================================================================== scenario: win
+// ================================================================== scenario: training (ADR-099)
+// Every situation of the Training catalogue that applies to this boss, run by the runner itself
+// (src/dev/training.js): each must play out (done, within its time) and show what it promises.
+async function scenarioTraining() {
+  out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
+  const G = build();
+  const { game } = G;
+  duel(G, { dist: 4 });
+  const T = game.lab.training;
+  const L = T.list();
+  const cats = new Set(L.map((s) => s.cat));
+  out(`   ${L.length} situations in ${cats.size} categories: ${[...cats].join(', ')}`);
+  const bad = [];
+  for (const s of L) {
+    if (s.cat === 'BOSS MOVES' && !true) continue;
+    T.run(s.id);
+    let frames = 0;
+    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
+    const r = T.lastResult;
+    const ok = T.ph === 'done' && r?.id === s.id && r.ok;
+    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
+    if (!ok) bad.push(s.id);
+  }
+  T.stop();
+  assert(L.length >= 20 && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+  return G;
+}
+
 async function scenarioWin() {
   out('\n== scenario WIN (a fencing bot in god mode: parries, rolls, cuts in his openings, gives the deathblows) ==');
   const G = build();
@@ -833,7 +863,7 @@ async function scenarioWin() {
 // ================================================================== run
 const S = {
   level: scenarioLevel, data: scenarioData, timing: scenarioTiming, forms: scenarioForms, spells: scenarioSpells,
-  bounds: scenarioBounds, flow: scenarioFlow, win: scenarioWin,
+  bounds: scenarioBounds, flow: scenarioFlow, win: scenarioWin, training: scenarioTraining,
 };
 const list = SCEN === 'all' ? Object.keys(S) : [SCEN];
 for (const k of list) {

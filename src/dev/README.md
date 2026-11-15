@@ -40,6 +40,33 @@ nothing is needed, as the flow follows the dragon into `boss` on its own.
 | **VIEW** | Hitbox overlay: `dragon.debug.hitboxes()` as wireframe spheres (cyan = hurt, red = active attack, falling back to `hurtSpheres`), plus the player's radius ring, facing line and parry arc. The ring turns blue when blocking, gold in the crit window and violet during i-frames. The overlay is one `THREE.LineSegments` in `game.fxScene` with `depthTest: false`. Its fixed buffers are rewritten in place each frame, and it is removed from the scene when toggled off or when the Lab closes. **Showroom** (look-dev preset) and **Camera default**. **MODEL VIEW** (see below): Hero / Dragon pick the target and enter the viewer, Dark toggles the world, Exit returns to the game camera; Front / 3/4 L / 3/4 R / Left / Right / Back / Rear R / Rear L = yaw 0 / 35 / 325 / 90 / 270 / 180 / 215 / 145 at pitch 8 (R = the hero's right side, his pauldron and sword side: the reference sheet's 3/4 and rear 3/4), Game = the gameplay camera (58°, world-fixed yaw, the rig's current distance: normal play size, centred on the actor's root), **Spin** = a turntable at eye level. **Sheet** = every angle at once (below). Looks: **ASCII** (the game render), **Solid** (the bare geometry plain-lit, no ASCII pass: geometry vs renderer problems), **Source** (the pass input), **Lines** (only the ink lines). The line under the buttons shows the framing. |
 | **READOUT** | Dragon state / current action (name · phase · t/dur) / hp / posture / phase / broken / AI. Player state / hp / flasks / crit window / blocking / cheats. Game state and clock. Then the **timing trainer** and the **event list** (below). |
 
+## Training (ADR-099)
+A fighting game's training mode: every situation worth seeing, one click each.
+- **Open:** **F4**, the **TRAINING** button in the Lab's header, or load with `?training`
+  (`http://localhost:5173/?training&stage=lab`). The panel sits on the right, under the minimap.
+- **The list** (`dev/training.js` `SITUATIONS`, for the boss loaded): HERO STREAK (perfect dodges
+  at a streak of 1, 2, 3, 5, 7; a whole string perfect-dodged; the streak lost / kept), HERO ARTS
+  (each art of this boss's three at four blows; the longest flurry), PARRY & RIPOSTE (a parry, a
+  perfect parry, ripostes ×3 / ×7, a string deflected, a long string, a string blocked, the blade
+  lock, the trade clash, the mikiri), BOSS STREAK (a duelist: his streak built until he answers; his
+  flurry of 3 / 5 / 7 parried, perfect-parried, blocked, one let through, perfect-dodged), OFFENCE
+  (the chain, the charged cleave, the crit window after a Ghostep, the execution, the guard crush),
+  GETTING HIT (a hit, a knockdown, a guard break, death), BOSS STATES (stagger, posture break, each
+  phase, his death) and BOSS MOVES (every move he has, answered with the toolbar's ANSWER). A
+  situation that needs what this boss lacks is not listed (the wyrm has no guard and no blade).
+- **Click a row** (or ↑ ↓ and Enter) and it plays: the runner puts the fight in place (flow in
+  `boss`, his AI off, god mode, the hero placed, the streaks set), starts it, and plays the hero's
+  side through the input's virtual keys: it parries, blocks, dodges, mashes and swings on the boss's
+  own glints. A banner over the fight names the situation, then ✓ (with its time) or ✗ and what was
+  not seen; the row keeps the mark. **R** replays, **Esc** stops, **LOOP** repeats it.
+- **SPEED** ×1 / ×0.5 / ×0.25 / ×0.1 (`game.debugTimeScale`, as the Lab's TIME).
+- **STAGE:** Training room reloads onto the lab stage (`?stage=lab`); Level set goes back to the
+  level's own. **BOSS** reloads into another level (the stage is kept).
+- Console: `__game.lab.training.run(id)`, `.list()`, `.replay()`, `.step(±1)`, `.loop`,
+  `.moveAnswer`, `.lastResult`.
+- Tests: integ / duel / lord TRAINING run every situation for their boss and check each one shows
+  what it promises (`expect`).
+
 ## Model viewer
 Renders the hero or the dragon from the angles of a character sheet, for comparing the models with
 concept art (the game camera is a fixed 58° top-down view). Console API (exact contract in

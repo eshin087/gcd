@@ -11,7 +11,7 @@ import { LightPool } from './render/lights.js';
 import { GlyphParticles } from './render/particles.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
-import { LEVELS, levelFromSearch, applyLevel, levelUrl } from './levels/index.js';
+import { LEVELS, levelFromSearch, applyLevel, levelUrl, withStage } from './levels/index.js';
 import { HERO_LOOKS, LOOK_IDS, heroLookFromSearch, heroLookUrl } from './entities/player/gear/looks.js';
 import { Hud } from './ui/hud.js';
 import { TouchControls } from './ui/touch.js';
@@ -26,7 +26,8 @@ async function boot() {
   await loadFonts();
   // the level (`?level=ash`; levels/index.js): its world overrides land in CONFIG.world before any
   // module reads them
-  const level = levelFromSearch(location.search);
+  // (`?stage=lab`: the same boss on the training room, the lab stage)
+  const level = withStage(levelFromSearch(location.search), location.search);
   applyLevel(level);
   // the hero's outfit option (`?heroLook=robe`; gear/looks.js: kept for later use, today's look is the default)
   const heroLook = heroLookFromSearch(location.search);

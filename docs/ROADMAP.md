@@ -162,6 +162,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.33 — Training and the lab stage (2026-11-15, `dev/training-lab`, ADR-099)
+- [x] A catalogue of situations by category, one click each, played through the game's own input
+- [x] The panel: banner, ✓ / ✗, speed, loop, the answer for boss moves, the stage, the boss
+- [x] The training room (`?stage=lab`): three looks built, the owner picked Holo
+- [x] Every situation is a test (integ / duel / lord TRAINING)
+- [ ] Phones: the panel and the stage
+- [ ] More situations as they are asked for (a whole phase played out, a boss bot vs the hero bot)
+
 ## M1.32 — Weight on the flurry; one streak; a foe's streak (2026-11-15, `combat/streak-everywhere`, ADR-094)
 - [x] Flash cuts that land: the hero's freeze, the target's reel, clones, ground shock, the last blow's impact frame
 - [x] Parries, deflects, clashes and the mikiri count in the streak

@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Twenty-eight pieces of work since 0.4.0:
+Twenty-nine pieces of work since 0.4.0:
 - **Background objects drawn like the dragon, and landmarks** (2026-11-15, ADR-100): pillars, walls,
   standing stones, boulders, lanterns, the throne and its dais, bones, braziers, the bonfire and the
   fallen bell are now made of the wyrm's small digits: a dark body, brighter digits where light
@@ -14,6 +14,15 @@ Twenty-eight pieces of work since 0.4.0:
   colossal stone swordsmen, the sect's gate and an incense cauldron round the Ashfall Courtyard; two
   hooded wardens beside the Obsidian Throne and six great swords in its aisles. Floors, the hero,
   the human bosses and the trees look as before.
+- **Training mode and a lab stage** (2026-11-15, ADR-099): press **F4** (or open the Lab and click
+  TRAINING, or load with `?training`) for a fighting-game training menu: every situation worth
+  seeing, by category, one click each: perfect dodges at every streak, each art, parries and
+  ripostes, the blade lock, the trade clash, the mikiri, a boss's own flurry parried, blocked or
+  let through, the chain, the cleave, the execution, getting hit, his phases, and every move he has
+  answered the way you choose. The game plays your side for you, on the real timing windows, and
+  says whether the situation showed what it should. Speed, loop and replay. Add `?stage=lab` (or
+  the STAGE buttons) to fight any boss in a **training room**: a dark dojo with a cyan measuring
+  grid and rings marked at 3, 6, 9 and 12 m. *Changed:* the Ash Disciple's streak flurry is called Scattering Ash.
 - **An ASCII HUD** (2026-11-14, ADR-098): the overlay is now made of characters like the rest of
   the game.
   - **Meters are text.** HP, guard, the crit window, the boss's HP and its posture are rows of
@@ -55,7 +64,7 @@ Twenty-eight pieces of work since 0.4.0:
   string is answered with a **riposte**: as many flash cuts as your streak counts, after which you
   are back where you parried. **Duelists keep a streak too**: every strike of yours their guard
   turns adds a pip to their bar, and from three they may answer with a flurry of that many blows
-  (Hundred Petals, Starless Storm), each from another side of you. Your guard meets them from any
+  (Scattering Ash, Starless Storm), each from another side of you. Your guard meets them from any
   side: **parry or block every blow and their posture breaks**.
 - **The Cinder Wyrm in large, readable letters** (2026-11-14, ADR-092): the wyrm is printed in bold
   symbols four times the area of the old thin digits (8x13 px at 720p, the owner's pick of three

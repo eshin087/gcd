@@ -977,6 +977,34 @@ async function scenarioStreak() {
   return G;
 }
 
+// ================================================================== scenario: training (ADR-099)
+// Every situation of the Training catalogue that applies to this boss, run by the runner itself
+// (src/dev/training.js): each must play out (done, within its time) and show what it promises.
+async function scenarioTraining() {
+  out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
+  const G = build();
+  const { game } = G;
+  duel(G, { dist: 4 });
+  const T = game.lab.training;
+  const L = T.list();
+  const cats = new Set(L.map((s) => s.cat));
+  out(`   ${L.length} situations in ${cats.size} categories: ${[...cats].join(', ')}`);
+  const bad = [];
+  for (const s of L) {
+    if (s.cat === 'BOSS MOVES' && !true) continue;
+    T.run(s.id);
+    let frames = 0;
+    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
+    const r = T.lastResult;
+    const ok = T.ph === 'done' && r?.id === s.id && r.ok;
+    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
+    if (!ok) bad.push(s.id);
+  }
+  T.stop();
+  assert(L.length >= 20 && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+  return G;
+}
+
 // ================================================================== scenario: execute
 async function scenarioExecute() {
   out('\n== scenario EXECUTE (posture break → the execution thrust → he rises) ==');
@@ -1678,7 +1706,7 @@ async function scenarioProbe() {
   return G;
 }
 
-const SCENARIOS = { probe: scenarioProbe, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
+const SCENARIOS = { probe: scenarioProbe, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
 const runs = [];
 const OPT_IN = new Set(['probe']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

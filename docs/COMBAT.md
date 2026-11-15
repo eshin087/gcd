@@ -353,7 +353,7 @@ player needs to parry / block the total # of attacks". Numbers: `DEFENSE.foeStre
 - **His streak** counts the strikes of the hero's that his guard turns, in a row (pips after his
   name on the boss bar, lit red from three). A strike that lands on him ends it.
 - From a streak of **three**, a guard may answer with **his flurry** instead of the Riposte (50 % at
-  three, 75 % at four, always from five; the strike is then beaten away for certain): Hundred Petals
+  three, 75 % at four, always from five; the strike is then beaten away for certain): Scattering Ash
   (Shen Hui), Starless Storm (the Lord, one for each blade form). As many cuts as his streak counts,
   seven at most. The first comes from where he stands (windup 0.62 s); before each of the others
   (0.48 s apart, each with its white glint) he is **gone and at another side of you**. A parry or a
