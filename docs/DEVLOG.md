@@ -5,6 +5,36 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 45: per-move telemetry; the death screen names the killing move
+
+**Owner:** "Yes, telemetry" (the genre review's third piece). Branch `game/move-telemetry`, stacked on
+`core/sim-step` (PR #43), own worktree. Session 45 / ADR-108: PR #41 and #44, open beside it, hold
+Sessions 43 / 44 and ADR-106 / 107.
+
+**Done** (ADR-108):
+- `player.takeHit` announces every blow it resolves: `combat:answer`.
+- `game/telemetry.js` `MoveLog`: a row per boss move (blows seen, hit, blocked, parried, clashed,
+  dodged, damage, kills) for the attempt; totals per level in localStorage; a contact stream is one
+  blow per 1.5 s.
+- The death screen: "SLAIN BY <MOVE>" and up to three moves with "n of m blows landed", small and
+  dim under the hint (`hud.bannerRecap`). The victory record: "Struck most by".
+- `boss.attackLabel(id)` on the wyrm and the duelists; `flow.moveLabel`, `flow.deathRecap`.
+- Console: `__telemetry()`, `__telemetry('all')`, `__telemetry('clear')`.
+- **Tests:** duel TELEMETRY (the table by itself with a fake storage; in the duel: a string taken, a
+  parry, a death, the recap in the banner, a new attempt after rising).
+
+**Verification:** `npm test`, `npm run build` (see the PR). In the dev server on `?level=ash`: Swallow
+Flicks taken, then killed by Lotus Sweep: the death screen at 800 x 600 and at the phone's 852 x 393
+(`?touch`): three lines under the hint, clear of the banner, inside the screen.
+
+**Not checked / open:** the wyrm's and the Lord's labels only by the tests' lookups (no death filmed
+there); upright on a phone; nothing read back from a real play session yet. The phone has no way
+to read the stored table.
+
+**Next:** the owner plays; then tune from `__telemetry()`. The heavy button needs their answers.
+
+---
+
 ## 2026-11-15 — Session 42: a frame is simulated in steps of about 1 / 60 s
 
 **Owner:** "lets implement your suggestions" (the genre review; this is its second piece). Branch

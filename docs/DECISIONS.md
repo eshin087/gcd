@@ -2601,3 +2601,26 @@ arena rims. Not checked: the look in motion, a fight played around the landmarks
   sees it (event timestamps could place it in its step: not done). Not deterministic: a step's
   length still follows the display above 50 Hz.
 
+## ADR-108 — Every answered blow is logged per move; the death screen names the killing move (2026-11-15)
+- **Context:** the genre review (the owner: "Yes, telemetry"). Every difficulty number so far comes
+  from bots that answer a cue in one frame, and every boss section of COMBAT.md ends on "no human
+  has played him yet". When the owner plays, nothing recorded WHICH move struck or killed them:
+  `RunStats` held totals only, and the hero's events did not all carry the attack.
+- **Decision:** `player.takeHit` announces every blow it resolves as `combat:answer { attack, tell,
+  result, damage, dead, stream, perfect }` (one place, whatever the answer). `game/telemetry.js`
+  `MoveLog` keeps a row per boss move, counted in blows, for the attempt, and adds each attempt to
+  totals per level in localStorage. The death screen shows the killing move and up to three moves
+  that struck the hero ("3 of 4 blows landed") under the hint, as small dim lines; the victory record
+  gains "Struck most by". `__telemetry()` in the console prints the level's table. Bosses name
+  their moves through `attackLabel(id)`. (ADR-104 / 105 are left to other open work: PR #41 and
+  #44 hold 106 and 107.)
+- **Alternatives turned down:** deriving it from the existing events (`player:hurt`, `player:block`
+  and `player:dodge` carry no attack); a panel with the whole table on the death screen (the owner
+  keeps the HUD bare: three lines, and the table stays in the console); sending it anywhere (it is
+  the player's own browser storage, nothing leaves the machine).
+- **Consequences:** a death teaches which move to learn, and a play session leaves numbers to tune
+  from (hit rate and kills per move). A string's blows are counted one by one, so "seen" is blows,
+  not casts. The phone has no console: there the recap and the record are all that shows; reading
+  the stored table needs a desktop browser on the same origin. Burn deaths read "THE FLAMES".
+  Blows dodged by walking out of reach are never "seen" (no hit was resolved).
+
