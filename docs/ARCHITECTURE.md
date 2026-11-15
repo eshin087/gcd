@@ -855,29 +855,44 @@ loco sword arm come from his carry, below.) An attack's recovery brings a blade 
 over his left shoulder home round the front (`HOME_WAY` in `attackPose`).
 **The carries** (`player/carry.js`; 2026-11-15, the owner: "the way the character holds the sword
 when not attacking needs to be changed"): how the hero holds the sword at rest and on the move.
-`CARRIES` = id → `{ id, name, what, rev, via?, rest, run, sprint, back, swing, bob, dBob }` (body axes;
+`CARRIES` = id → `{ id, name, what, rev, via?, armFade?, way?, relax?, rest, run, sprint, back, swing, bob, dBob }` (body axes;
 `rest` = { h, hBr, rp, d, dBr, dSw, f, free? }: the sword hand's offset, its breath, the elbow's pole,
 the blade, its breath and sway, the flat, the free hand's own rest `{ l, lp, ld: [az, el] deg, pn }`;
 `run` / `sprint` / `back` (backpedal) = { h, rp, d, f? }); `CARRY_IDS` (`hip` today's hold, `trail` the
 default: the blade trailing back-down beside the right leg, `back` a reverse grip with the blade up
 behind the sword arm, `point` on guard with the point lowered toward the foe), `DEFAULT_CARRY`,
-`READY_CARRY` (= `hip`), `RELAX` `{ delay, dur }`, `getCarry(id)`, `carryFromSearch(search)`,
+`READY_CARRY` (= `hip`), `RELAX` `{ lead, drop, dur }`, `getCarry(id)`, `carryFromSearch(search)`,
 `carryUrl(id, href)`, `carryScratch()`, `carryInto(out, carry, k, dir)`. The hero's animator
 (`opts.carry`: its id) holds `anim.carry` (the carry worn) and `anim.carryK` (the READY hold blended
 into it by `anim.relax`, 0..1, through `carryInto`; directions by `dirLerp`), which `guard()` (the
 rest: sword hand, elbow pole, blade, flat, `rev`, the free hand's own rest by its weight) and
 `loco()` (run / sprint / backpedal, the stride's swing and bob) read for the hero only (`A.freeHand`):
 with `hip` worn they write exactly anim.js's own numbers (the duelists'; HEROCARRY checks it to the
-bit). **The relax:** a fight action (`RELAX_RESET`: attack, charge, block, parry, bounce, lock,
-ghostep, plunge, flurry, guardBreak; and `player.guardHold`, the guard held up between parries)
-resets `anim.relaxT`; `anim.relax` is a smootherstep of it over
-`RELAX.dur` from `RELAX.delay` s after the action, so every clip's way out (the way home, the guard's
-release) lands in the READY hold it was tuned against and he then eases into the carry; a roll, a
-drink and a flinch do not reset it. Pose channel `rev` (`P.rev` 61; `N` = 62): a reverse grip's hold
-(`carry.rev` × relax); every clip but `REV_KEEP` (loco, heal) lets go of it as the blade turns out of
-it (an attack over its windup, anything else over `REV_FADE` 0.25 s). A carry with `via` (`back`):
-the guard and the charge (`VIA_KEYS`) started from it take the sword arm through the READY hold on
-their cross-fade (`_viaReady`, at least `VIA_MIN` 0.14 s). `anim.setCarry(id)` (unknown: the
+bit). **The relax** (`anim.relaxT` 0..1, `anim.relax` its smootherstep): a fight action
+(`RELAX_RESET`: attack, charge, block, parry, bounce, lock, ghostep, plunge, flurry, guardBreak; and
+`player.guardHold`, the guard held up between parries) winds it back toward the READY hold over
+`RELAX.drop` s (a tap of the guard barely leaves the carry); once the action ends it runs on into the
+carry over `RELAX.dur` s, and the last blow of a chain (no next blow buffered: `player.buf.action`)
+starts it `RELAX.lead` s before its end, inside its way home. Every clip's way out (the way home,
+which aims at `guard()`, the guard's release) is tuned against the READY hold: the hold is a waypoint
+the way out bends past into the carry, not a stop. A carry's own `relax` overrides `RELAX` (`point`
+relaxes within the way home). After a cut's way home loco's sword arm takes over with the offset it
+started at let go over the fade (`anim.armOff`: the blade keeps its speed). A roll, a drink and a
+flinch do not wind it. Pose channel `rev` (`P.rev` 61; `N` = 62): a reverse grip's hold (`carry.rev`
+× relax); every clip but `REV_KEEP` (loco, heal) lets go of it on an absolute clock from the frame
+the hold was left (`anim.rev0` / `revT` / `revDur`: over a cut's windup, re-timed by each cut, else
+`REV_FADE` 0.25 s; `REV_DROP` flurry, plunge and lock drop it at once); in the last blow's way home
+the relax may take the carry's hold back up. **Leaving a carry** (every carry but `hip`, whose
+numbers every clip was made against): a carry with `via` (`trail`, `back`): the guard (`VIA_KEYS`)
+started from it take the sword arm round the READY hold on its own cross-fade (one
+quadratic curve with the hold as its control point, `_viaReady`; at least `VIA_MIN` 0.14 s); any
+other clip but `ARM_FADE_SKIP` (a cut, the parry, the flurry, the plunge, lock, loco) takes the
+carry's `armFade` s for the sword arm (× the relax; `_armFade`); the body keeps the clip's own fade.
+`anim.elbRate`: the sword elbow folds / opens at most `ELBOW_FLEX` (`_elbowFlex` in `_arm`: the hand
+is held along its line at the reach the limit allows; ~15° a frame in any clip but `ELBOW_FREE`, and
+in a cut only through the windup of a blow started from the carry, ~25° a frame rising toward the
+windup's end so the hand has caught up before the strike). `carryInto` turns the blade round a
+carry's `way` waypoint on the relax (one curve: `back`'s flip goes up past his front). `anim.setCarry(id)` (unknown: the
 default) eases into another carry live (a 0.4 s cross-fade standing). The Player: `player.carry`
 (main.js reads `?carry=` into `game.heroCarry`), `player.setCarry(id)` (throws on an unknown id and
 changes nothing); the Lab's 'carry' row (PLAYER section) calls `game.pickHeroCarry(id)`. Blade blending (`dirLerp`): besides the back-left rule (ADR-023), a near half-turn
