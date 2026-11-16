@@ -143,9 +143,31 @@ export const TUNING = {
   glaive: { speed: 15, back: 17, range: 12.5, radius: 0.9, life: 3.2 }, // the thrown blade: out, then back to his hand
   debris: { speed: 16, radius: 0.8, life: 2.4, gap: 0.42, rise: 1.9 }, // hurled stones, `gap` s apart
   storm: { radius: 2.3, warn: 0.95, gap: 0.5, lead: 0.5 }, // called lightning: marked ground, then the strike
+  // ---- the second pass's Void (spells.js): what flies, waits or falls while he fights on
+  // the wheeling blade (form 2, thrown mid-string): it comes in on the hero `flight` s after the
+  // throw (min - max; a string with a `catch` beat times it into the gap before the catch), out
+  // `wide` m to one side and `beyond` m past him on the way; home at `back` m/s; `home` s more at most
+  wheel: { flight: 1.1, min: 0.7, max: 1.8, yield: 0.4, wide: 3.4, beyond: 1.2, rise: 0.55, back: 18, home: 1.6, radius: 0.9, reach: 0.6 },
+  // the orbit (form 3): `count` stones turning round him at `r` m, `w` rad/s, each thrown into a
+  // gap of his string (`minGap` s wide at least) and `flight` s in the air whatever the distance
+  // (speed within `speed`); each set on the wheel to fly from `side` rad off the line to the hero; one
+  // too near the hero all the same (< minDist m) turns on round him (maxWait s at most), then crumbles;
+  // any torn stone (Torn Stone's too) waits up to `yield` s in the grip for a slot clear of his string
+  orbit: { count: 3, r: 2.6, w: 2.0, rise: 2.0, flight: 0.55, minDelay: 0.6, minGap: 0.5, after: 0.6, minDist: 1.7, maxWait: 0.3, side: 1.9, early: 0.06, yield: 0.9, speed: [3, 24], radius: 0.8, life: 2.4 },
+  // the Starless Sky as weather (form `form` on): one strike every `gap` s ([bar full, bar empty]),
+  // a second with `pair` chance ([full, empty]) `pairGap` s later and `apart` m off; each lands
+  // `warn` s from its call (up to `slack` more to find a slot clear of his blade), `lead` s ahead of
+  // where the hero is going, up to `scatter` m off; at most `maxLive` on the floor; first `start` s into the form.
+  // Called only inside a move of his, landing in a pause of it or in its recovery (`inString` s
+  // before its end at the latest): his strings are dense, their recovery is the hero's own time
+  weather: { form: 4, start: 4, gap: [3.2, 1.8], pair: [0.25, 0.6], inString: 0.1, pairGap: 0.45, apart: 3.8, warn: 1.1, slack: 0.9, retry: 0.4, radius: 2.1, lead: 0.55, scatter: 1.4, maxLive: 2, damage: 22, knockback: 3 },
+  // Starless Night (form 4's great spell): `waves` fronts `gap` s apart from r0 m round where he
+  // stands, out at `speed` m/s to `reach` m; each strikes a hero it runs over (red: roll through it);
+  // `firstAfter` s into form 4 before he may cast it
+  night: { waves: 3, gap: 0.9, speed: 8, r0: 0.8, reach: 16.5, width: 0.8, firstAfter: 14 },
   grip: { range: 9.5, width: 2.2, crush: 0.55 }, // the Crushing Dark: a line from his hand; `crush` s of the seal closing
   rift: { speed: 13.5, radius: 0.75, life: 1.9 }, // fissures of red light along the floor
-  star: { radius: 3.0, warn: 1.7, drift: 2.3 }, // the Dark Star: it follows the hero at `drift` m/s, then bursts
+  star: { radius: 3.0, warn: 1.7, drift: 2.3, after: 0.45, minWarn: 1.2 }, // the Dark Star: it follows the hero at `drift` m/s, then bursts (cast inside a string: `after` s past its last blow, `minWarn` s at least)
   // ---- the crater's pieces in the Void's grip (terrain.js, ADR-109; the moves: moves.js `terrain`)
   terrain: {
     reach: 26, // a piece this far from him can be taken or pulled down

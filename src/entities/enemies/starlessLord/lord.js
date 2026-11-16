@@ -13,6 +13,7 @@ import { TUNING } from './tuning.js';
 import { LordFx } from './fx.js';
 import { LordTerrain } from './terrain.js';
 import { LINKS } from './links.js';
+import { LordSpells } from './spells.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
 // crater of the Obsidian Throne, who fills the boss slot of the Starless level. A duelist (duelist/duelist.js:
@@ -41,6 +42,27 @@ const POSES = Object.freeze({
 const beatNow = (a) => (a ? a.beats.find((b) => a.t < b.end + 1e-6) ?? null : null);
 /** A beat that works the Void (a spell, not steel): the cape lifts through it. */
 const isCast = (D) => !!(D && (D.cast || D.bolt || D.pull || D.grip || D.release?.style === 'push' || D.release?.style === 'rift'));
+/** A beat that is the Void alone (no steel in it): it can be cast while his main blade is in the air. */
+const voidOnly = (D) => !!(D && (D.feint || D.bolt || D.pull || D.grip || D.left || D.release?.style === 'push' || (D.cast && D.cast.kind !== 'glaive' && D.cast.kind !== 'wheel')));
+const _needsBlade = new WeakMap(), _asksGuard = new WeakMap();
+/** Does a move ask a guard anywhere (a white or blue beat, any alternative)? */
+const asksGuard = (def) => {
+  let v = _asksGuard.get(def);
+  if (v === undefined) {
+    v = (def.beats ?? []).some((b) => (Array.isArray(b.pick) ? b.pick : [b]).some((x) => !x.feint && (x.tell === TELL.NORMAL || x.tell === TELL.BLUE)));
+    _asksGuard.set(def, v);
+  }
+  return v;
+};
+/** Does a move swing his MAIN blade (any beat, any alternative)? Not while it is thrown. */
+const needsBlade = (def) => {
+  let v = _needsBlade.get(def);
+  if (v === undefined) {
+    v = (def.beats ?? []).some((b) => (Array.isArray(b.pick) ? b.pick : [b]).some((x) => !voidOnly(x)));
+    _needsBlade.set(def, v);
+  }
+  return v;
+};
 
 /** Everything the shared duelist needs to be him (duelist.js: kit). */
 export const LORD_KIT = Object.freeze({
@@ -191,6 +213,7 @@ export class StarlessLord extends Duelist {
     super.reset();
     // (the base constructor resets before this class's own fields could exist: made here)
     (this.terrain ??= new LordTerrain(this)).reset();
+    (this.spells ??= new LordSpells(this)).reset();
     // enthroned: the root sits at the seat (the pose's hips are lowered to it)
     this.position.y = TUNING.intro.seatY;
     if (this.blades) {
@@ -273,6 +296,10 @@ export class StarlessLord extends Duelist {
     this.lit = 0;
     this.litWant = 0;
     this.glaiveOut = false;
+    this.spells?.onForm(this.phase);
+    // (the great spell is not how a form opens)
+    const night = MOVES.starlessNight;
+    if (this.brain && night && perPhase(night.weight, this.phase) > 0) this.brain.cooldowns.starlessNight = Math.max(this.brain.cooldowns.starlessNight ?? 0, TUNING.night.firstAfter);
     this._showForm();
   }
 
@@ -280,6 +307,7 @@ export class StarlessLord extends Duelist {
     this._changing = false;
     this.litWant = 0;
     this._storm.left = 0;
+    this.spells?.clear();
     super._die();
   }
 
@@ -317,12 +345,39 @@ export class StarlessLord extends Duelist {
   // ---------------------------------------------------------------- the crater's pieces (terrain.js)
   /** His AI weighs a move: one that needs a piece of the crater weighs nothing while there is none. */
   weigh(name, def, w) {
-    return def.terrain ? this.terrain.weigh(def, w) : w;
+    if (def.terrain) return this.terrain.weigh(def, w);
+    // while his main blade is in the air (the Returning Blade, the wheeling blade) he works the Void
+    // or the off-hand blade: nothing that swings the blade he threw
+    if (this.glaiveOut && needsBlade(def)) return 0;
+    // while Starless Night's waves run over the crater, nothing that asks a guard (he stands in the
+    // eye of it: two answers are never asked at once)
+    if (this.spells?.nightLive && asksGuard(def)) return 0;
+    return w;
   }
 
-  /** A move starts: one of the crater's takes its pieces (false: there is none, it does not start). */
+  /** A move starts: one of the crater's takes its pieces (false: there is none, it does not start).
+   *  One that needs the blade he threw (a counter, the Lab) calls it home first. */
   onActStart(A) {
-    return A.def.terrain ? this.terrain.begin(A) : true;
+    if (A.def.terrain) return this.terrain.begin(A);
+    if (this.glaiveOut && needsBlade(A.def)) this._recallBlade();
+    return true;
+  }
+
+  /** His thrown blade comes home now (not cued yet on this pass: it gives the pass up, no hit). */
+  _recallBlade() {
+    this.spells?.recall();
+    for (const s of this.fx.shots ?? []) {
+      if (!s.alive || s.kind !== 'glaive') continue;
+      if (s.phase === 'fly' && s.flashed < 0) {
+        s.phase = 'back';
+        s.wait = 0;
+        s.done = true;
+      }
+      if (s.phase === 'back') {
+        s.wait = 0;
+        s.back = Math.max(s.back, TUNING.glaive.back * 1.8);
+      }
+    }
   }
 
   moveBy(dx, dz) {
@@ -445,6 +500,7 @@ export class StarlessLord extends Duelist {
     if (this.mode === 'intro') this._intro(dt);
     this._glide(dt);
     this.terrain.frame(dt);
+    this.spells.frame(dt);
     // the Void's wind under his cape: through a cast, a little always in form 4, a gust at an ignition
     {
       const cur = beatNow(act);
@@ -464,7 +520,8 @@ export class StarlessLord extends Duelist {
         if (p) {
           const lead = TUNING.storm.lead, j = St.left % 3 === 2 ? 2.6 : 0.5;
           // (a mark may fall a stride past his own floor: a hero at the rim is not out of the storm)
-          const m = this.clampTarget(_w.set(p.x + fin(pl.vel?.x) * lead + this.fx.rand(-j, j), 0, p.z + fin(pl.vel?.z) * lead + this.fx.rand(-j, j)), 0.6);
+          // (its scatter from the spells' own stream: never the fx object's, which the drawing shares)
+          const m = this.clampTarget(_w.set(p.x + fin(pl.vel?.x) * lead + this.spells.rand(-j, j), 0, p.z + fin(pl.vel?.z) * lead + this.spells.rand(-j, j)), 0.6);
           this.fx.callStrike(m.x, m.z, TUNING.storm.radius, TUNING.storm.warn, { damage: St.damage, knockback: St.kb, attack: 'storm' });
         }
       }
@@ -665,6 +722,9 @@ export class StarlessLord extends Duelist {
       const px = p.position.x, pz = p.position.z;
       o = { ...o, from: { x: px + (px - this.position.x), z: pz + (pz - this.position.z) }, kind: 'pull' };
     } else if (D?.bolt) o = { ...o, kind: 'lightning' };
+    // a blow out of a blink comes from wherever he appeared: a guard meets it from any side, as his
+    // flurry's (the hero cannot turn to it in the time its cue gives)
+    if (D?.blink) o = { ...o, extra: { ...(o.extra ?? null), around: true } };
     else if (D?.grip) o = { ...o, kind: 'grip', extra: { plunge: false } };
     const r = super.hitPlayer(o);
     if (D?.grip && r === RESULT.HIT && p?.position) {
@@ -699,11 +759,12 @@ export class StarlessLord extends Duelist {
     }
     if (R.style === 'rift') {
       // fissures from where the staff's point went in, fanned across his front
-      const n = perPhase(R.count ?? 3, this.phase), F = TUNING.rift;
-      const ox = this.position.x + Math.sin(base) * 1.2, oz = this.position.z + Math.cos(base) * 1.2;
+      // (a string's last fissures may run slower and start nearer: R.speed, R.from)
+      const n = perPhase(R.count ?? 3, this.phase), F = TUNING.rift, off = R.from ?? 1.2;
+      const ox = this.position.x + Math.sin(base) * off, oz = this.position.z + Math.cos(base) * off;
       for (let i = 0; i < n; i++) {
         const a = base + (i - (n - 1) / 2) * (R.spread ?? 0.36);
-        this.fx.throwCrescent(ox, oz, Math.sin(a), Math.cos(a), { tell: b.def.tell, damage: b.def.damage, knockback: b.def.knockback, attack: act?.name ?? 'rift', style: 'rift', speed: F.speed, radius: F.radius, life: F.life });
+        this.fx.throwCrescent(ox, oz, Math.sin(a), Math.cos(a), { tell: b.def.tell, damage: b.def.damage, knockback: b.def.knockback, attack: act?.name ?? 'rift', style: 'rift', speed: R.speed ?? F.speed, radius: F.radius, life: F.life });
       }
       this.fx.igniteBurst(this._hilt, this._tip, 0.8);
       this.fx.dust(ox, oz, 1.6);
@@ -723,6 +784,8 @@ export class StarlessLord extends Duelist {
   onCast(b, s, act) {
     const D = b.def, C = D.cast, name = act?.name ?? C.kind;
     if (act?.def?.terrain) return this.terrain.onCast(b, s, act);
+    // the second pass's Void: the wheeling blade, the orbit, Starless Night (spells.js)
+    if (this.spells.cast(b, s, act)) return;
     const ang = s ? s.ang : this.yaw, dx = Math.sin(ang), dz = Math.cos(ang);
     if (C.kind === 'glaive') {
       const G = TUNING.glaive;
@@ -750,13 +813,21 @@ export class StarlessLord extends Duelist {
       this._storm.t = 0;
       this._storm.damage = D.damage;
       this._storm.kb = D.knockback;
-      this.fx.lightning(this._tip.x, this._tip.y, this._tip.z, this._tip.x + this.fx.rand(-2, 2), 24, this._tip.z + this.fx.rand(-2, 2), 1.6, true);
+      this.fx.lightning(this._tip.x, this._tip.y, this._tip.z, this._tip.x + this.spells.lr(-2, 2), 24, this._tip.z + this.spells.lr(-2, 2), 1.6, true);
     } else if (C.kind === 'star') {
       // the Dark Star leaves his hand: it gathers a few steps before him and goes after the hero
       const S = TUNING.star, h = this._hand;
       const star = { x: this.position.x + dx * 2.6, z: this.position.z + dz * 2.6 };
       this.clampTarget(star);
-      this.fx.callStrike(star.x, star.z, S.radius, S.warn, { damage: D.damage, knockback: D.knockback, attack: name, style: 'star', drift: S.drift });
+      // cast inside a string (`after`): it drifts after the hero while the string runs and bursts
+      // `after` s past the string's last blow
+      let warn = S.warn;
+      if (C.after && act) {
+        let last = act.t;
+        for (const x of act.beats) if (!x.feint && x !== b && x.impact > last) last = x.impact;
+        warn = Math.max(S.minWarn ?? 1.2, last - act.t + (S.after ?? 0.45));
+      }
+      this.fx.callStrike(star.x, star.z, S.radius, warn, { damage: D.damage, knockback: D.knockback, attack: name, style: 'star', drift: S.drift });
       this.fx.arc(h.x, h.y, h.z, star.x, 1.25, star.z, 0.3, [2.6, 0.5, 3.4], [0.35, 0.05, 0.6], 7);
       this.game.shake?.(0.15);
     }
@@ -792,6 +863,11 @@ export class StarlessLord extends Duelist {
 
   /** A beat's own root motion: the blink (he is gone, and behind the hero). */
   beatMotion(b, u, s) {
+    // the catch: the wheeling blade comes home to his hand
+    if (b.def.catch && !b._caught && u >= 0.2) {
+      b._caught = true;
+      this.spells.catch();
+    }
     const K = b.def.blink;
     if (!K || b._blinked || u < 0.1 || !s) return;
     b._blinked = true;
