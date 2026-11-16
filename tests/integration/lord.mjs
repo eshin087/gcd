@@ -1241,8 +1241,17 @@ async function scenarioStrategy() {
 
 // ================================================================== run
 const S = {
-  level: scenarioLevel, data: scenarioData, timing: scenarioTiming, forms: scenarioForms, spells: scenarioSpells,
-  bounds: scenarioBounds, flow: scenarioFlow, terrain: scenarioTerrain, win: scenarioWin, training: scenarioTraining, flare: scenarioFlare,
+  level: scenarioLevel,
+  data: scenarioData,
+  timing: scenarioTiming,
+  forms: scenarioForms,
+  spells: scenarioSpells,
+  bounds: scenarioBounds,
+  flow: scenarioFlow,
+  terrain: scenarioTerrain,
+  win: scenarioWin,
+  training: scenarioTraining,
+  flare: scenarioFlare,
 };
 const OPT_IN = { strategy: scenarioStrategy }; // run only when named
 if (OPT_IN[SCEN]) S[SCEN] = OPT_IN[SCEN];
