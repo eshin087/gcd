@@ -141,7 +141,7 @@ export const BREAK = Object.freeze({
    * weight (0.7 elsewhere: a felled rim tree tears into the wall behind it), and a fire in the wall may
    * pass on `gens` more times than BREAK.spread.gens (a blaze eats into the wall, not round the ring).
    */
-  wall: Object.freeze({ from: 32, hp: 1.15, out: 0.55, domino: 1.4, gens: 1 }),
+  wall: Object.freeze({ from: 32, hp: 1.15, out: 0.55, domino: 1.6, gens: 1 }),
   /** a piece some of whose `guards` stand (the Cinder Tree's trunk under its boughs) takes this share of a blow */
   guarded: 0.2,
   /**
@@ -151,9 +151,9 @@ export const BREAK = Object.freeze({
    * burns too), then its trunk falls to a charred stump; the bone nest's great ribcage and skull.
    */
   landmark: Object.freeze({
-    rib: 2.4, spine: 3.2, skull: 6, jaw: 3, horn: 2, hip: 3, mast: 2.6, fingers: 1.6, wing: 2.2,
+    rib: 2.8, spine: 3.2, skull: 6, jaw: 3, horn: 2, hip: 3, mast: 2.6, fingers: 1.6, wing: 2.2,
     bough: 2.6, trunk: 7,
-    nestRib: 1.6, nestSkull: 3.5,
+    nestRib: 2.6, nestSkull: 5,
   }),
 });
 
