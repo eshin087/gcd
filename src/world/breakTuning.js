@@ -130,18 +130,19 @@ export const BREAK = Object.freeze({
    * hidden until the first slab shows in them (one draw call each from then on).
    * A blow's power on a slab falls off from the blow's centre: full within `core` m, `rim` of it at its
    * edge, so a heavy blow breaks the slab under it and cracks its neighbours, a cut cracks one.
-   *   hp      a paving slab's structure: a heavy blunt blow (a ring, a knockdown: 0.7 - 0.94), a
-   *           hurled stone (1.2 x weight), a falling pillar (0.7 x weight) break the one under it; a cut
-   *           (0.25 - 0.375 x 0.7) cracks it, a few in one place break it
-   *   plate   the crater's big plates (over `big` m2: its inner rings)
-   *   sweep   the share of a blow drawn ALONG the floor (an edge, a dash, a falling piece's strip:
-   *           destructibles.sweep) a slab takes; a blow landing on it (strike, world.impact) bites in full
+   *   hp      a paving slab's structure: a red heavy blow (a ring, a knockdown: 0.75 - 0.94), a hurled
+   *           stone (1.2 x weight), a falling pillar (0.7 x weight, its whole strip) break the one under
+   *           it; a heavy blow that is not red (0.6) cracks it and a second breaks it; a cut (0.25 -
+   *           0.375 x 0.7) cracks it, a few in one place break it
+   *   plate   the crater's big plates (over `big` m2: most of its rings)
+   *   sweep   the share of a blow drawn ALONG the floor (an edge, a dash: destructibles.sweep) a slab
+   *           takes; a blow landing on it (strike, world.impact, a falling piece's strip) bites in full
    *   debris  the share of a standing piece's chips and crumble a slab throws (a ring blow strikes many)
    *   lift    its lift class: 3 = only a move that asks for floor takes it (nearest / floorNear with
    *           lift 3); the wyrm's (1) and the Void's (2) choices are unchanged
    *   carry   meshes for slabs in a boss's hands (a slab torn out shows as a block of prop art)
    */
-  floor: Object.freeze({ hp: 0.7, plate: 1.2, big: 5, crack: 0.8, core: 0.8, rim: 0.35, sweep: 0.6, debris: 0.45, lift: 3, carry: 6 }),
+  floor: Object.freeze({ hp: 0.85, plate: 1.3, big: 5, crack: 0.8, core: 0.8, rim: 0.35, sweep: 0.6, debris: 0.45, lift: 3, carry: 6 }),
   /**
    * A colossus comes down in two stages (the courtyard's two stone swordsmen): its upper half (chest,
    * arms, head) is one piece standing on its legs; blows on either wear the upper half down (`top`),

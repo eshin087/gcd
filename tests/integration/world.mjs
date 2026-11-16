@@ -210,10 +210,10 @@ const S = {
     // a heavy blow breaks the slab under it and cracks its neighbours, in one sound and no shake
     const s2 = F.reduce((a, b) => (Math.hypot(b.x - 6, b.z + 4) < Math.hypot(a.x - 6, a.z + 4) ? b : a));
     const n0 = log.length, sh = game.shakes;
-    const hit = D.strike(s2.x, s2.z, 1.3, 0.8, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    const hit = D.strike(s2.x, s2.z, 1.3, 0.9, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() }); // (a red overhead: 24 x 1.25 / 40 = 0.75 .. 0.94)
     const near = F.filter((b) => b !== s2 && Math.hypot(b.x - s2.x, b.z - s2.z) < 1.3 + b.r);
     const ev = log.slice(n0).filter((x) => x.n === 'world:impact');
-    assert(s2.state === STATE.BROKEN && s2.stub.visible && brokenMesh.visible && near.some((b) => b.cracked) && near.filter((b) => b.state === STATE.BROKEN).length <= 2, `a heavy blow (0.8 blunt, r 1.3) breaks the slab under it and cracks ${near.filter((b) => b.cracked).length} of its ${near.length} neighbours (${near.filter((b) => b.state === STATE.BROKEN).length} broken)`);
+    assert(s2.state === STATE.BROKEN && s2.stub.visible && brokenMesh.visible && near.some((b) => b.cracked) && near.filter((b) => b.state === STATE.BROKEN).length <= 2, `a heavy red blow (0.9 blunt, r 1.3) breaks the slab under it and cracks ${near.filter((b) => b.cracked).length} of its ${near.length} neighbours (${near.filter((b) => b.state === STATE.BROKEN).length} broken)`);
     assert(hit >= 3 && ev.length === 1 && game.shakes === sh, `it struck ${hit} slabs: one world:impact for them all (${ev.length}), no camera shake of their own`);
     // a blade's edge above the floor passes over it; one drawn along it bites less
     const s3 = F.reduce((a, b) => (Math.hypot(b.x + 6, b.z + 6) < Math.hypot(a.x + 6, a.z + 6) ? b : a));

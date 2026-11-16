@@ -64,7 +64,8 @@ import { prep, lumpy, carve, mul, STONE } from './forest.js';
 //   reset()                               everything stands again
 //   o = { kind: BLOW.*, by: 'player' | 'boss' | 'world', dx, dz (the blow's way), y (its height), src (one id per swing),
 //         falloff: 0..1 (strike: the blast x 1 - falloff at its rim), brush: true (a body walking: BREAK.brush),
-//         only: 'wood' | ... (just that material), spare: a piece to leave alone, incidental: true (skip reserved pieces) }
+//         only: 'wood' | ... (just that material), spare: a piece to leave alone, incidental: true (skip reserved pieces),
+//         down: true (a sweep that comes DOWN on the floor, a falling piece's strip: a slab takes it in full) }
 // Every query walks a spatial grid (BREAK.grid.cell m), not the whole list.
 // Events: 'world:impact' { kind: 'chip' | 'break' | 'topple' | 'crash' | 'burn' | 'burnout' | 'throw', mat, x, y, z, power, by }
 // (one reused payload: a subscriber must not keep it), and 'combat:tell' / 'combat:flash' for a
@@ -572,7 +573,7 @@ export class Destructibles {
           }
           const px = ax + (bx - ax) * s.t, pz = az + (bz - az) * s.t;
           // (a floor slab under an edge drawn along it, not a blow landing on it: BREAK.floor.sweep of it)
-          if (this._hit(b, b.floor ? power * BREAK.floor.sweep : power, o, px, clamp(o.y ?? 1, 0.2, b.h), pz, dx, dz)) n++;
+          if (this._hit(b, b.floor && o.down !== true ? power * BREAK.floor.sweep : power, o, px, clamp(o.y ?? 1, 0.2, b.h), pz, dx, dz)) n++;
         }
       }
     }
@@ -1176,7 +1177,7 @@ export class Destructibles {
     this.game.shake?.(clamp(T.shake * b.weight, 0.15, 0.6));
     // what stood under it
     const ax = b.x + dx * (off + 0.9), az = b.z + dz * (off + 0.9), ex = b.x + dx * (off + len), ez = b.z + dz * (off + len);
-    this.sweep(ax, az, ex, ez, pad, 0.7 * b.weight, { kind: BLOW.BLUNT, by: b.by, dx, dz, src: this.swing() });
+    this.sweep(ax, az, ex, ez, pad, 0.7 * b.weight, { kind: BLOW.BLUNT, by: b.by, dx, dz, src: this.swing(), down: true });
     // who stood under it: the hero under a piece a boss (or the world) felled, the boss under the hero's
     const s = this._seg, g = this.game;
     const w = clamp(b.weight, 0.6, 1.3);
