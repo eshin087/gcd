@@ -131,15 +131,17 @@ export const BREAK = Object.freeze({
    * throws per metre of its size (x quality). `shakeMax`: range pieces (the forest's trees) that may
    * shudder at once (their vertices are rewritten each frame; x quality; the rest only chip).
    */
-  wear: Object.freeze({ at: Object.freeze([0.75, 0.48, 0.22]), lean: 0.2, leanTime: 0.6, burn: 0.85, debris: 14, shakeMax: 10 }),
+  wear: Object.freeze({ at: Object.freeze([0.82, 0.5, 0.22]), lean: 0.2, leanTime: 0.6, burn: 0.85, debris: 14, shakeMax: 10 }),
   /**
    * The tree wall round the clearing (2026-11-16): every tree of it breaks, out to the forest's edge
    * (74 m). A tree whose base is beyond `from` m is the wall's: `hp` x the structure of a tree of its
    * size (it takes a fight's worth of blows, a hit shows at once as a stage), and it falls mostly AWAY
    * from the arena: at least `out` of its way points out (a fall that cannot reach the hero's bound tells
-   * nothing: there is nothing to dodge).
+   * nothing: there is nothing to dodge). Where it lands it strikes the trees behind with `domino` x its
+   * weight (0.7 elsewhere: a felled rim tree tears into the wall behind it), and a fire in the wall may
+   * pass on `gens` more times than BREAK.spread.gens (a blaze eats into the wall, not round the ring).
    */
-  wall: Object.freeze({ from: 32, hp: 1.6, out: 0.55 }),
+  wall: Object.freeze({ from: 32, hp: 1.15, out: 0.55, domino: 1.4, gens: 1 }),
   /** a piece some of whose `guards` stand (the Cinder Tree's trunk under its boughs) takes this share of a blow */
   guarded: 0.2,
   /**

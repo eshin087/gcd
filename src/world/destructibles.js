@@ -149,6 +149,7 @@ class RangeBody {
     this._nDirty = false;
     this._urP = { start: this.start * 3, count: this.count * 3 };
     this._urN = { start: this.start * 3, count: this.count * 3 };
+    this.mesh.userData.on = (this.mesh.userData.on ?? 0) + 1;
   }
 
   get parts() {
@@ -163,6 +164,10 @@ class RangeBody {
     v = !!v;
     if (v === this._on) return;
     this._on = v;
+    // (a mesh marked autoHide, the stumps, is drawn only while one of its bodies shows)
+    const U = this.mesh.userData;
+    U.on = (U.on ?? 0) + (v ? 1 : -1);
+    if (U.autoHide) this.mesh.visible = U.on > 0;
     this.write();
   }
 
@@ -1031,7 +1036,7 @@ export class Destructibles {
     const A = this.active;
     for (let i = 0; i < A.length; i++) {
       const b = A[i];
-      if (b.burn <= 0 || b.gen >= S.gens || b.spreadT < S.after + S.every) continue;
+      if (b.burn <= 0 || b.gen >= S.gens + (b.wall ? BREAK.wall.gens : 0) || b.spreadT < S.after + S.every) continue;
       b.spreadT = S.after;
       if (rnd() > S.chance) continue;
       if (this._catchNear(b.x, b.z, b.r, b, null, b.gen + 1) && (this._tokens < 1 || !this._fireRoom())) return;
@@ -1313,7 +1318,7 @@ export class Destructibles {
     this.game.shake?.(clamp(T.shake * b.weight, 0.15, 0.6));
     // what stood under it
     const ax = b.x + dx * 0.9, az = b.z + dz * 0.9, ex = b.x + dx * len, ez = b.z + dz * len;
-    this.sweep(ax, az, ex, ez, pad, 0.7 * b.weight, { kind: BLOW.BLUNT, by: b.by, dx, dz, src: this.swing() });
+    this.sweep(ax, az, ex, ez, pad, (b.wall ? BREAK.wall.domino : 0.7) * b.weight, { kind: BLOW.BLUNT, by: b.by, dx, dz, src: this.swing() });
     // who stood under it: the hero under a piece a boss (or the world) felled, the boss under the hero's
     const s = this._seg, g = this.game;
     const w = clamp(b.weight, 0.6, 1.3);
@@ -1613,8 +1618,8 @@ export class Destructibles {
       if (b.ranged && b.touched) {
         // (only what was touched is rewritten: the forest is one mesh of ~600k vertices)
         b.body.home0();
-        b.body._on = true;
-        b.body.write();
+        if (b.body.visible) b.body.write();
+        else b.body.visible = true;
         b.touched = false;
       } else b.body.visible = true;
       if (b.stub) b.stub.visible = false;

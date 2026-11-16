@@ -71,7 +71,10 @@ export const TUNING = {
     // (run alone, seed 1337 stands at 47 %; inside the whole suite, after the scenarios before it have
     // taught the director other tells, the same seed's fight went another way and left 24 %: the lower
     // bound sits under that)
-    meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 6 },
+    // (2026-11-16: the landmarks inside the bound count too: the nest's ribcage and skull, the elder
+    // wyrm's pieces, the Cinder Tree's boughs, 107 pieces in all (72 before). burnt 6 -> 9: the Cinder
+    // Tree's five boughs burn. Measured on seeds 1337, 7, 4242, 99, 2024: brk report)
+    meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 9 },
   },
   // the root stays inside min(CONFIG.world.dragonBound, bound) (m). CONFIG's 26 was sized for the
   // v0.2 wyrm; at x1.875 the chest / neck-base body circles (~5.8 m ahead of the root) would cross

@@ -666,7 +666,8 @@ function footprint(geos) {
     for (let i = 0; i < p.count; i++) r2 += (p.getX(i) - x) ** 2 + (p.getZ(i) - z) ** 2;
   }
   // (the vertices' spread, not their farthest: a rib's arc should not claim a 3 m disc)
-  const r = Math.min(3, Math.max(0.35, Math.sqrt(r2 / (n || 1)) * 1.2));
+  // (at most 1.8 m: the spatial grid widens every query by the largest piece's radius)
+  const r = Math.min(1.8, Math.max(0.35, Math.sqrt(r2 / (n || 1)) * 1.2));
   return { x, z, r, h: Math.max(0.3, h) };
 }
 
@@ -946,7 +947,7 @@ export function createForest(U, colliders) {
       }
       const f = footprint(geos);
       const def = {
-        kind: 'cinderBough', mat: 'wood', look: 'range', digits: true, x: f.x, z: f.z, r: Math.min(2.6, f.r), h: f.h,
+        kind: 'cinderBough', mat: 'wood', look: 'range', digits: true, x: f.x, z: f.z, r: f.r, h: f.h,
         range: treeRuns.add(geos, (i) => geos[i].attributes.aFlag.array[0] === FLAG.LEAF), colliders: [], hp: LK.bough, topples: false,
         cover: false, lift: 0, wreck: false, leafy: 0.25,
       };
@@ -956,7 +957,7 @@ export function createForest(U, colliders) {
     if (trunkGeos) {
       const f = footprint(trunkGeos);
       breakables.push({
-        kind: 'cinderTrunk', mat: 'wood', look: 'range', digits: true, x: t.x, z: t.z, r: 2.4 * t.s, h: f.h,
+        kind: 'cinderTrunk', mat: 'wood', look: 'range', digits: true, x: t.x, z: t.z, r: 1.8 * t.s, h: f.h,
         range: treeRuns.add(trunkGeos), colliders: [colliders.add(t.x, t.z, 3.0 * t.s, 'trunk')], soft: false,
         broken: { range: stumpRuns.add(buildCinderStump(lr, t.x, t.z, t.yaw, t.s)), r: 2.3 * t.s },
         hp: LK.trunk, guard: boughs, topples: false, cover: true, lift: 0, wreck: false, weight: 2.2,
@@ -971,6 +972,8 @@ export function createForest(U, colliders) {
   const treeMesh = treeRuns.finish(treeGeos, mat, 'trees');
   const propMesh = propRuns.finish(propGeos, mat, 'props'); // (the bonfire: whole, after the pieces)
   const stumpMesh = stumpRuns.finish([], mat, 'stumps');
+  stumpMesh.userData.autoHide = true; // (drawn only while a stump shows: RangeBody counts them)
+  stumpMesh.visible = false;
   const pitch = CONFIG.camera.pitch;
   // standing stones and boulders are printed like the wyrm (prop art, ADR-100); flagstones stay carved
   const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true });
