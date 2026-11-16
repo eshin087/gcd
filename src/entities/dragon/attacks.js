@@ -632,6 +632,7 @@ function stompImpact(d, a, spec) {
   g.world?.gust?.(c.x, c.z, 1.4, 13 * S);
   g.world?.impact?.(c.x, c.z, spec.radius, TUNING.world.stomp, GROUND_BLOW);
   d.fx.dustRing(c.x, c.z, 1.5 * S, 40, 1.1);
+  d.fx.groundShock?.(c.x, c.z, Math.min(6, spec.radius), 0.7);
   d.markHitbox?.(c.x, 0, c.z, spec.radius);
   // the striking forefeet: a dust burst + a heavy step where each one landed
   for (let i = 0; i < 2; i++) {
@@ -1169,6 +1170,7 @@ const leap = {
     g.shake?.(0.7);
     d.hitstop(0.08);
     d.fx.dustRing(a.target.x, a.target.z, 2.2 * S, 56, 1.6);
+    d.fx.groundShock?.(a.target.x, a.target.z, Math.min(8, T.leap.radius), 1); // (~350 blobs at 8 m)
     if (!deal) return;
     d.markHitbox?.(a.target.x, 0, a.target.z, T.leap.radius);
     const p = g.player?.position;
@@ -1920,6 +1922,7 @@ const HOP = {
     g.world?.gust?.(h.ring.x, h.ring.z, 1.6, 14 * S);
     g.world?.impact?.(h.ring.x, h.ring.z, h.spec.radius, TUNING.world.hop, GROUND_BLOW);
     d.fx.dustRing(h.ring.x, h.ring.z, 1.6 * S, 44, 1.2);
+    d.fx.groundShock?.(h.ring.x, h.ring.z, Math.min(6, h.spec.radius), 0.7);
     d.markHitbox?.(h.ring.x, 0, h.ring.z, h.spec.radius);
     const p = g.player?.position;
     if (p && Math.hypot(p.x - h.ring.x, p.z - h.ring.z) <= h.spec.radius + playerR(g)) {
@@ -2338,6 +2341,7 @@ const TAIL_SLAM = {
     g.shake?.(0.45);
     tailSlamLine(d.fx, ch.p, 4, n, d.phase >= 2);
     const tip = ch.p[n];
+    d.fx.groundShock?.(tip.x, tip.z, 3.5, 0.5);
     for (let i = 6; i <= n; i += 5) g.world?.impact?.(ch.p[i].x, ch.p[i].z, 1.6 * S, TUNING.world.hop, GROUND_BLOW);
     d.emit('dragon:step', { x: tip.x, z: tip.z, heavy: true });
     const p = g.player?.position;

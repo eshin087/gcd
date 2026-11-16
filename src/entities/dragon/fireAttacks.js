@@ -68,8 +68,8 @@ function takeOff(d) {
   g.shake?.(0.2);
 }
 
-/** Touch-down: back on the ground ('combat'), dust and a gust, 'dragon:land'. */
-function touchDown(d, heavy = false) {
+/** Touch-down: back on the ground ('combat'), dust, a gust, a ground shock (`shock`: not for a crash, it has its crashWave), 'dragon:land'. */
+function touchDown(d, heavy = false, shock = true) {
   if (d.state === 'airborne') d.state = 'combat';
   d.position.y = 0;
   const g = d.game, x = d.position.x, z = d.position.z;
@@ -77,6 +77,7 @@ function touchDown(d, heavy = false) {
   g.world?.gust?.(x, z, heavy ? 2 : 1.5, (heavy ? 22 : 16) * S);
   g.shake?.(heavy ? 0.7 : 0.35);
   d.fx.dustRing(x, z, (heavy ? 2.2 : 1.8) * S, heavy ? 56 : 40, heavy ? 1.6 : 1.1);
+  if (shock) d.fx.groundShock?.(x, z, heavy ? 7 : 5.5, heavy ? 1 : 0.7); // (a great weight meets the ground; a crash has its crashWave)
 }
 
 /** Every downbeat low over the ground blasts dust out from under the flier. */
@@ -371,7 +372,7 @@ const diveBomb = {
     a.crashed = true;
     d.position.x = a.target.x;
     d.position.z = a.target.z;
-    touchDown(d, true);
+    touchDown(d, true, false);
     d.hitstop(0.09);
     d.fx.crashWave(a.target.x, a.target.z, DB.radius);
     d.game.world?.impact?.(a.target.x, a.target.z, DB.radius, TUNING.world.dive, GROUND_BLOW);
@@ -901,7 +902,7 @@ function makeFlightCombo(key) {
       a.crashed = true;
       d.position.x = a.target.x;
       d.position.z = a.target.z;
-      touchDown(d, true);
+      touchDown(d, true, false);
       d.hitstop(0.09);
       d.fx.crashWave(a.target.x, a.target.z, FD.radius);
       d.game.world?.impact?.(a.target.x, a.target.z, FD.radius, TUNING.world.dive, GROUND_BLOW);

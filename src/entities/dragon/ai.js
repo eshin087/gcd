@@ -310,6 +310,7 @@ export const SEQ = {
       g.shake?.(PL.crashShake);
       g.world?.gust?.(p.x, p.z, 2.0, 20 * S);
       d.fx.dustRing(p.x, p.z, 2.4 * S, 60, 1.6);
+      d.fx.groundShock?.(p.x, p.z, 6, 1);
       d.hitstop(0.07);
     },
     update(d, a, dt) {

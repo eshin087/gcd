@@ -200,6 +200,7 @@ export function smashOn(fx, x, y, z, dx, dz, M) {
  */
 export function landing(fx, x, z, r, dx, dz, b, burning = false) {
   fx.dustRing?.(x, z, r * 0.55, 34, 1.0);
+  fx.groundShock?.(x, z, r * 0.8, 0.4); // (small: the throw's own burst is its dust and clods)
   for (let i = 0; i < 30; i++) {
     const a = Math.random() * 6.283, sp = rand(1.5, 5), fw = rand(2, 9);
     chip(fx, fx.alpha, x + Math.cos(a) * 0.6, rand(0.1, 0.6), z + Math.sin(a) * 0.6, Math.cos(a) * sp + dx * fw, rand(3, 9), Math.sin(a) * sp + dz * fw, rand(0.5, 1.1), rand(0.3, 0.48), i % 2 ? CLODS : GRIT, EARTH, 1.5, EARTH_END, 1, -18, 0.4);
