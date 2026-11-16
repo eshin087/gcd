@@ -284,6 +284,10 @@ export class Pipeline {
         uWyrmGlyph: { value: new THREE.Vector4(0.12, 0.42, 0.08, 1) },
         // atlas columns (wyrmGlyphs.js): mid set start, bright set start, stroke start, glyphs in the row
         uWyrmAtlas: { value: new THREE.Vector4(10, 20, 28, 32) },
+        // the art letters' brightness at a zoom ladder step (?zoomArt): the frame size's own font's ink
+        // over this font's (a smaller font fills more of its cell), so an object keeps its tone as its
+        // letters shrink; 1 at step 0 (option a, the default zoom)
+        uArtInk: { value: 1 },
         uWyrmOutline: { value: 1 }, // 1: silhouette cells draw their edge as a stroke glyph
         // the wyrm's grid is anchored to its own screen position (px, set per frame from
         // U.uBossScreen): its letters travel with it when the camera pans or it walks, instead of
@@ -391,6 +395,7 @@ export class Pipeline {
         uniform vec4 uWyrmTone;
         uniform vec4 uWyrmGlyph;
         uniform vec4 uWyrmAtlas;
+        uniform float uArtInk;
         uniform float uWyrmOutline;
         uniform vec2 uWyrmAnchor;
         uniform float uWyrmTaps;
@@ -532,7 +537,7 @@ export class Pipeline {
             float fl = boil ? 1.0 + (gHaze.y - 0.5) * 2.0 * uHazeRoll.y : 1.0;
             ink = mix(ink, warm * (luma(ink) * 1.25 + uHazeRoll.z), hz * uHaze.z) * fl;
           }
-          return ink * m;
+          return ink * (m * uArtInk);
         }
         // heat haze (uFlame.z > 0 only): the fire field's flame texture has one texel per art cell
         // counted from the screen's lower-left corner. A cell is in the haze when the field is hot at
@@ -1540,6 +1545,8 @@ export class Pipeline {
       this.artCell.set(f.cell[0], f.cell[1]);
       u.tArt.value = f.atlas.texture;
       u.uWyrmAtlas.value.set(f.atlas.sets[0], f.atlas.sets[1], f.atlas.sets[2], f.atlas.total);
+      const k = i > 0 && f.atlas.ink > 0 ? this.zoomLadder[0].atlas.ink / f.atlas.ink : 1;
+      u.uArtInk.value = Number.isFinite(k) ? Math.min(1.25, Math.max(0.75, k)) : 1;
     }
     if (this.grid !== f.grid) {
       this.grid = f.grid;

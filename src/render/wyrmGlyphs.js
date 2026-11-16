@@ -200,7 +200,8 @@ export function zoomArtStep(hs, r, p, cur = 0, hyst = 0.06) {
  * Pixel-exact single-row atlas of font `key` at integer scale `s`: a blank, the WYRM_SETS dim / mid /
  * bright letters, then the 4 WYRM_STROKES, each glyph `top` px down from its cell's top-left with a
  * soft 0.24 halo on its neighbours (never into the gap column, so letters stay apart). Returns
- * { texture, sets: [mid start, bright start, stroke start] (atlas columns; dim starts at 1), total }.
+ * { texture, sets: [mid start, bright start, stroke start] (atlas columns; dim starts at 1), total,
+ * ink: the set letters' mean coverage of their cell, 0..1 }.
  */
 export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
   const F = WYRM_FONTS[key] ?? WYRM_FONTS.f4x6;
@@ -215,6 +216,10 @@ export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
   canvas.height = ch;
   const ctx = canvas.getContext('2d');
   const on = (rows, x, y) => y >= 0 && y < gh && x >= 0 && x < gw && (rows[y] & (msb >> x)) !== 0;
+  // ink: the letters' mean coverage of their cell (lit pixels, halo pixels at 0.24), the set letters
+  // only: smaller fonts fill more of a smaller cell (the zoom ladder evens it out, pipeline.js uArtInk)
+  let ink = 0;
+  const letters = dim.length + mid.length + bright.length;
   glyphs.forEach((rows, col) => {
     // a soft halo on the stroke's neighbours (the reference's letters are anti-aliased, not 1 px
     // hairlines: at 0.12 the hide read as sparse wire text, at 0.24 as the reference's soft digit field)
@@ -222,12 +227,19 @@ export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
     for (let y = -top; y <= gh; y++) {
       for (let x = 0; x < gw; x++) {
         if (on(rows, x, y) || y + top >= F.ch) continue;
-        if (on(rows, x - 1, y) || on(rows, x + 1, y) || on(rows, x, y - 1) || on(rows, x, y + 1)) ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+        if (on(rows, x - 1, y) || on(rows, x + 1, y) || on(rows, x, y - 1) || on(rows, x, y + 1)) {
+          ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+          if (col >= 1 && col <= letters) ink += 0.24;
+        }
       }
     }
     ctx.fillStyle = '#fff';
     rows.forEach((b, y) => {
-      for (let x = 0; x < gw; x++) if (b & (msb >> x)) ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+      for (let x = 0; x < gw; x++) {
+        if (!(b & (msb >> x))) continue;
+        ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+        if (col >= 1 && col <= letters) ink += 1;
+      }
     });
   });
   const tex = new THREE.CanvasTexture(canvas);
@@ -236,5 +248,5 @@ export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
   tex.minFilter = THREE.NearestFilter;
   tex.magFilter = THREE.NearestFilter;
   tex.needsUpdate = true;
-  return { texture: tex, sets, total: glyphs.length };
+  return { texture: tex, sets, total: glyphs.length, ink: ink / (letters * F.cw * F.ch) };
 }

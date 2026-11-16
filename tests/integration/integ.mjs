@@ -9649,6 +9649,9 @@ async function scenarioZoomArt() {
   const c = pipe.artCell;
   assert(pipe.zoomStep > 0 && c.x === 4 && c.y === 6, `after a frame at 65 m the next frame is drawn in ${c.toArray().join('x')} cells (step ${pipe.zoomStep}, ${pipe.zoomStepMs?.toFixed(3)} ms)`);
   assert(A.uArtCell.value === c && A.tArt.value === pipe.art.texture && A.uWyrmAtlas.value.w === pipe.art.total, 'the art pass: its cell is artCell itself, its atlas the step\'s');
+  const ink0 = pipe.zoomLadder[0].atlas.ink, inkS = pipe.art.ink;
+  assert(ink0 > 0.2 && inkS > ink0 && Math.abs(A.uArtInk.value - ink0 / inkS) < 1e-6 && A.uArtInk.value < 1,
+    `... and its letters' brightness x${A.uArtInk.value.toFixed(3)} (the 6x9 font covers ${(ink0 * 100).toFixed(1)} % of its cell, the 4x6 ${(inkS * 100).toFixed(1)} %): the tone holds`);
   assert(shed.uniforms.uArtCell === A.uArtCell && shed.uniforms.tArt === A.tArt && shed.uniforms.uWyrmAtlas === A.uWyrmAtlas, 'shed digits share the art pass\'s uniform objects');
   assert(U.uWyrmGrid?.value.x === c.x && U.uWyrmGrid.value.y === c.y, `the let-go grid (uWyrmGrid) counts the same cells (${U.uWyrmGrid?.value.x}x${U.uWyrmGrid?.value.y})`);
   const fu = fire.printMat.uniforms;
@@ -9663,7 +9666,7 @@ async function scenarioZoomArt() {
   // back at 36 m: the default again
   at(36);
   pipe.render();
-  assert(pipe.zoomStep === 0 && c.x === 6 && c.y === 9 && fire.cells.x === Math.ceil(pipe.width / 6) && A.uCell.value.y === 12, 'back at 36 m: 6x9 and the 7x12 grid again');
+  assert(pipe.zoomStep === 0 && c.x === 6 && c.y === 9 && fire.cells.x === Math.ceil(pipe.width / 6) && A.uCell.value.y === 12 && A.uArtInk.value === 1, 'back at 36 m: 6x9, the 7x12 grid and the letters\' own brightness again');
 
   // option a and the phone: unchanged
   size('a', 1080);
