@@ -568,7 +568,7 @@ export const SFX = {
     },
   },
 
-  /** dragon:returned — a returned bullet bursts on the wyrm's head: a fiery crack and a low hit. opts.kind 1 (wisp): heavier. */
+  /** dragon:returned — a returned bullet bursts on the wyrm's head: a fiery crack and a low hit. opts.kind = the bullet's kind (embers today; kind 1, the gone wisp, played heavier). */
   returnHit: {
     prio: 5, rev: 0.3, gap: 0.05,
     play(v, t, o) {

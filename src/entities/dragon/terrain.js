@@ -692,12 +692,9 @@ export class Terrain {
     const b = s.beat;
     if (b && !b.flashed) {
       b.flashed = true;
-      // the cue belongs to the flying piece: its flare, and not the wyrm's body spike (flashTell
-      // arms that for any red blow; it is put back as it was)
-      const d = this.d, w = d._warnAt, wa = d._warnAction;
-      d.flashTell(s.action, b);
-      d._warnAt = w;
-      d._warnAction = wa;
+      // the cue belongs to the flying piece: its flare, not the wyrm's body spike (flashTell skips
+      // the spike for a beat whose part is the piece)
+      this.d.flashTell(s.action, b);
     }
     return true;
   }

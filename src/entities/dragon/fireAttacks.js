@@ -865,7 +865,7 @@ function makeFlightCombo(key) {
         a.breathing = true;
         d.emit('dragon:breathStart');
         d.fx.skyBegin();
-        d.emit('dragon:spell', { name: key, x: d.position.x, z: d.position.z });
+        d.emit('dragon:spell', { name: key, part: 'pass', x: d.position.x, z: d.position.z });
       } else if (phase === 'rise' || phase === 'wheel') {
         this.stopBreath(d, a);
         if (phase === 'rise') takeOff(d);
@@ -886,12 +886,12 @@ function makeFlightCombo(key) {
         inBound(a.ctrl, d.bound - 1);
       } else if (phase === 'barrage') {
         seg.aimed = seg.shot = 0;
-        d.emit('dragon:spell', { name: key, x: d.position.x, z: d.position.z });
+        d.emit('dragon:spell', { name: key, part: 'barrage', x: d.position.x, z: d.position.z });
       } else if (phase === 'dive') {
         a.locked = true;
         a.dv0.copy(d.position);
         a.alt0 = Math.max(2, alt);
-        d.emit('dragon:spell', { name: key, x: a.target.x, z: a.target.z });
+        d.emit('dragon:spell', { name: key, part: 'dive', x: a.target.x, z: a.target.z });
       } else if (phase === 'recovery') {
         this.crash(d, a);
       }

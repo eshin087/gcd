@@ -46,7 +46,7 @@ const DODGE_TEXT = [
   ['ember', 'an ember'],
   ['fan', 'an ember'],
   ['cinder', 'an ember'],
-  ['wheel', 'the fire wheel'],
+  ['wheel', 'the scouring breath'],
   ['fire', 'the flames'],
 ];
 // damage streams summed into one log line per second: burn DoT (every 0.5 s) and breath contact

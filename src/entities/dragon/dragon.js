@@ -705,13 +705,14 @@ export class Dragon {
   /**
    * The timing cue, flashLead s before impact: 'combat:flash' + the in-world flash at the striking
    * part: a white glint for an ordinary blow, THE FLARE for a moment (red / black: dodge; a blue blow
-   * marked `flare`: parry; ADR-118) and, for red and black, the body's spike.
+   * marked `flare`: parry; ADR-118) and, for red and black, the body's spike (not for a thrown piece:
+   * its flare is on the piece, the body that threw it is not the blow).
    */
   flashTell(a, b) {
     const p = this.partPos(b.part, a, b, this._part);
     const flare = isFlare(b.tell, b.flare);
     this.emit('combat:flash', { source: 'dragon', attack: b.attack, tell: b.tell, x: p.x, y: p.y, z: p.z, flare });
-    if (dodgeOnly(b.tell)) {
+    if (dodgeOnly(b.tell) && b.part !== 'piece') {
       this._warnAt = this.time;
       this._warnAction = a;
       this._warnTell = b.tell;
