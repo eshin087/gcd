@@ -493,8 +493,13 @@ const S = {
       game.player.position.set(t.x + 14, 0, t.z - 12);
       const hp = t.hp;
       W.run(2.5);
-      const hit = log.filter((e) => e.n === 'world:impact' && e.id === t.id);
-      assert(hit.length > 0 && (t.hp < hp || t.state !== STATE.INTACT), `turning in place (${(WYRM.turnSpeed[0] * 180 / Math.PI * 0.8).toFixed(0)} deg/s), its tail sweeps the tree behind it: ${hit.map((e) => e.kind).join(', ')}`);
+      // (tuning pass, 2026-11-15: a limb, a wing or the tail only BRUSHES what it passes (BREAK.brush):
+      // a turn shakes the pieces round it and breaks only the small ones; it no longer fells the tree
+      // behind it, which with the stones a walk felled left a sixth of the clearing after a fight)
+      const hit = log.filter((e) => e.n === 'world:impact' && e.by === 'boss');
+      const big = new Set(hit.filter((e) => e.kind === 'topple' || e.kind === 'break').map((e) => e.id));
+      const felledBig = [...big].map((id) => D.list[id]).filter((b) => b && b.hpMax >= 1.2);
+      assert(hit.length > 0 && t.state === STATE.INTACT && !felledBig.length, `turning in place (${(WYRM.turnSpeed[0] * 180 / Math.PI * 0.8).toFixed(0)} deg/s), its body brushes what stands round it (${hit.length} blow(s): ${[...new Set(hit.map((e) => e.kind))].join(', ')}) and fells nothing big (${felledBig.map((b) => b.kind).join(', ') || 'none'}; the tree behind it stands)`);
     }
     // landing: a heavy landing breaks what stands round it; flying low: it shears the crowns it passes
     {

@@ -955,7 +955,9 @@ export class Dragon {
     const T = TUNING.world, B = T.body, P = this._hurtPool, n = P.length;
     const st = (this._trample ??= {
       prev: new Float32Array(n * 3), ready: false, alt: 0, top: 0, flap: 1, rx: this.position.x, rz: this.position.z, settle: 0,
-      // (a brush: BREAK.brush; only what a sweep has over a share of a piece's structure bites)
+      // (every sweep of its body is a brush, BREAK.brush: the torso's mass is what lets a walk push a tree
+      // over in a couple of seconds while a limb or the tail passing only shakes it. A brush flag that
+      // changed per sphere cost ~3 KB of garbage a frame in world.mjs BUDGET: it stays one record)
       o: { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0, incidental: true, brush: true, spare: null },
       seg: { ax: 0.5, az: 0.5, bx: 0.5, bz: 0.5, r: 0.5, power: 0.5 }, // (sweepRec: no numbers boxed per call)
       // (the wind of its wings bends wood; a landing's weight breaks stone too)

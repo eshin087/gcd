@@ -2186,6 +2186,7 @@ const WING_SLAM = {
     g.world?.gust?.(c.x, c.z, 2.0, 16 * S);
     g.world?.impact?.(c.x, c.z, Sp.radius, TUNING.world.stomp, GROUND_BLOW);
     wingSlamBurst(d.fx, c.x, c.z, Sp.radius, d.fwd.x, d.fwd.z, d.phase >= 2);
+    d.emit('dragon:spell', { name: 'wingSlam', x: c.x, z: c.z }); // (its own sound: audio/fire.js SPELL)
     const W = d.rig.pt.wings;
     for (let i = 0; i < 2; i++) d.emit('dragon:step', { x: W[i].tips[1].x, z: W[i].tips[1].z, heavy: true });
     d.markHitbox?.(c.x, 0, c.z, Sp.radius);
@@ -2250,6 +2251,7 @@ const TAIL_WHIP = {
   },
   aim(d, a, h) {
     h.st.yawW = d.yaw;
+    d.emit('dragon:spell', { name: 'tailWhip', x: d.position.x, z: d.position.z }); // (the lash's whoosh: audio/fire.js SPELL)
   },
   active(d, a, h, k, dt) {
     const pose = d.pose, st = h.st;
@@ -2342,6 +2344,7 @@ const TAIL_SLAM = {
     g.shake?.(0.45);
     tailSlamLine(d.fx, ch.p, 4, n, d.phase >= 2);
     const tip = ch.p[n];
+    d.emit('dragon:spell', { name: 'tailSlam', x: tip.x, z: tip.z }); // (its own sound: audio/fire.js SPELL)
     d.fx.groundShock?.(tip.x, tip.z, 3.5, 0.5);
     for (let i = 6; i <= n; i += 5) g.world?.impact?.(ch.p[i].x, ch.p[i].z, 1.6 * S, TUNING.world.hop, GROUND_BLOW);
     d.emit('dragon:step', { x: tip.x, z: tip.z, heavy: true });

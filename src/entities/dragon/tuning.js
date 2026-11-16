@@ -52,13 +52,13 @@ export const TUNING = {
     // of pushing; the tail of a turn ~1.5; a charge or a dive ~2). `pad` m on each sphere; nothing
     // above maxY m (a sphere's bottom) is near the treetops; a step over `jump` m is a teleport, after
     // which it settles `settle` s before its body meets the world again
-    body: { minSpeed: 1.6, perSpeed: 0.17, max: 2.2, pad: 0.15, maxY: 12, jump: 6, settle: 0.6, mass: { head: 0.7, neck: 0.8, body: 1.5, tail: 1.1, wing: 0.8, leg: 0.9 } },
+    body: { minSpeed: 1.6, perSpeed: 0.17, max: 2.2, pad: 0.15, maxY: 12, jump: 6, settle: 0.6, mass: { head: 0.7, neck: 0.8, body: 1.9, tail: 1.1, wing: 0.8, leg: 0.9 } }, // (tuning: body 1.5: with BREAK.brush the torso's weight pushes a tree over in a few seconds of walking into it)
     // the wings' blasts on what stands round it: as it leaves the ground (alt rising through `alt` m),
     // and each downbeat of its wings under maxAlt (weaker the higher it is): wood only, the wind bends
     // trees; as it lands (alt falling through `alt` after a flight at least `minFall` high): its weight,
     // stone too
     takeoff: { alt: 1.0, radius: 7, power: 1.0 }, // (tuning: radius 9)
-    landing: { alt: 0.6, minFall: 2.5, radius: 8.5, power: 1.0 }, // (tuning: power 1.4; weaker toward its rim: falloff)
+    landing: { alt: 0.6, minFall: 2.5, radius: 8.5, power: 1.6 }, // (tuning: power 1.4, now weaker toward its rim: falloff; its heart fells)
     downbeat: { maxAlt: 11, radius: 7.5, power: 0.6 },
     // fire that lands sets the grass and the wood alight: how long (x FIRE.life / BREAK.burn.time)
     // and how much of the blast's radius catches
@@ -319,7 +319,8 @@ export const TUNING = {
         // impact = the landing (the end of the active); radius around the forefeet's landing spot;
         // hop apex height (m) and the longest hop (model units)
         { kind: 'hop', tell: TELL.RED, windup: 0.8, active: 0.6, impact: 0.6, damage: 30, knockback: 5, knockdown: true, radius: 3.3 * S, height: 4.5, maxHop: 10 },
-        { kind: 'bite', tell: TELL.BLUE, windup: 0.55, active: 0.2, impact: 0.06, damage: 22, knockback: 2.5, reach: 5.4 * S },
+        // (windup 0.57: phase 3's x 0.7 put the bite 0.445 s after the landing; tuning, was 0.55)
+        { kind: 'bite', tell: TELL.BLUE, windup: 0.57, active: 0.2, impact: 0.06, damage: 22, knockback: 2.5, reach: 5.4 * S },
       ],
       recovery: 1.0, cooldown: 7, weight: [0, 2.2, 2.4], range: [6.0, 13.0], maxAng: 1.0,
     },
@@ -337,7 +338,7 @@ export const TUNING = {
         { kind: 'bite', tell: TELL.BLUE, windup: 0.55, active: 0.2, impact: 0.12, damage: 24, knockback: 3, reach: 5.4 * S },
         { kind: 'stomp', tell: TELL.RED, windup: 0.85, active: 0.15, impact: 0.15, damage: 36, knockback: 4, radius: 4.5 * S },
       ],
-      recovery: 1.2, cooldown: 12, weight: [0, 0, 1.8], range: [2.4, 5.4], maxAng: 0.9, // (w2: [0, 0, 3.4])
+      recovery: 1.2, cooldown: 12, weight: [0, 0, 1.8], range: [3.0, 5.4], maxAng: 0.9, // (w2: [0, 0, 3.4])
     },
     // the long clash: three quick claws, the overhead, the lunging bite. Five parries in rhythm
     // (the deflect chain rings higher with each); lighter blows than the rending flurry's
@@ -351,7 +352,7 @@ export const TUNING = {
         { kind: 'overhead', side: 0, tell: TELL.BLUE, windup: 0.6, active: 0.24, impact: 0.22, damage: 18, knockback: 2.5, lunge: 2.4, turn: 2.2 }, // (w2: side -1, lunge 1.2; the scythe gives ground and turns it away)
         { kind: 'lungeBite', tell: TELL.BLUE, windup: 0.55, active: 0.24, impact: 0.05, damage: 20, knockback: 3.5, reach: 6.0 * S, lunge: 2.5 * S },
       ],
-      recovery: 1.1, cooldown: 9, weight: [1.6, 1.6, 1.6], range: [2.4, 5.4], maxAng: 0.9, // (w2: [1.6, 2.2, 2.4]; merge [1.2, 1.4, 1.2])
+      recovery: 1.1, cooldown: 9, weight: [1.6, 1.6, 1.6], range: [3.0, 5.4], maxAng: 0.9, // (w2: [1.6, 2.2, 2.4]; merge [1.2, 1.4, 1.2])
     },
     // claws, a bite, then an overhead whose slam scatters hanging embers (`burst`: n embers that
     // drop on the hero one by one, `wait` s after the slam and `stagger` s apart, at `speed` m/s):
@@ -397,7 +398,7 @@ export const TUNING = {
         { kind: 'claw', side: 0, chance: 0.7, tell: TELL.NORMAL, windup: 0.5, hold: [0.2, 0.6], active: 0.25, impact: 0.15, damage: 16, knockback: 1.5, turn: 1.0 },
         { kind: 'lungeBite', tell: TELL.BLUE, flare: true, windup: 0.6, active: 0.24, impact: 0.05, damage: 22, knockback: 3, reach: 6.0 * S, lunge: 2.5 * S },
       ],
-      recovery: 1.0, cooldown: 7, weight: [2.6, 2.2, 1.6], range: [2.4, 5.4], maxAng: 0.9,
+      recovery: 1.0, cooldown: 7, weight: [2.6, 2.2, 1.6], range: [3.0, 5.4], maxAng: 0.9,
     },
     // he stands at its flank: a pivot and a tail whip (roll), a wing scythed across, a claw, and maybe the tail
     // back the other way
@@ -486,7 +487,7 @@ export const TUNING = {
         { kind: 'wingSlam', tell: TELL.BLUE, flare: true, windup: 0.85, active: 0.3, impact: 0.3, damage: 32, knockback: 6, radius: 3.0 * S, near: 4.0, far: 7.5,
           burst: { phase: 2, n: 6, wait: 0.5, stagger: 0.26, speed: 12 } },
       ],
-      recovery: 1.3, cooldown: 12, weight: [0, 0, 3.0], range: [2.4, 5.4], maxAng: 0.9,
+      recovery: 1.3, cooldown: 12, weight: [0, 0, 3.0], range: [3.0, 5.4], maxAng: 0.9,
     },
     tail: {
       label: 'Tail sweep', tell: TELL.RED,

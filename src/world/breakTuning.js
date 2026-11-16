@@ -64,6 +64,10 @@ export const BREAK = Object.freeze({
    * over the paving; a stomp, a landing, a dive or a thrown piece (world.impact) still breaks it
    */
   brush: 0.55,
+  // ... but never less than this share of it: a body that keeps pushing into a tree (walking straight
+  // through it) still brings it down in a couple of seconds; a turn's brush only shakes it
+  brushMin: 0.4,
+  brushRehit: 0.3, // s between two brushes of one piece (a limb rubbing past it)
   brushFlat: 0.3,
   /**
    * Fire that LANDS lights wood (destructibles.ignite: a breath, a flame wall, a burning pass; not the

@@ -57,6 +57,15 @@ import { Wreckage } from './wreckage.js';
 // piece a boss felled (source 'world', red: be out from under it).
 // No per-frame allocation: scratch vectors, reused hit, event and particle records.
 
+/** A brush's bite (BREAK.brush): what a blow `dmg` has over a share of the piece's structure, at least
+ *  brushMin of it; a flat stone takes nothing. */
+function brushed(b, dmg) {
+  if (b.hpMax === Infinity) return dmg;
+  if (b.mat === 'stone' && b.h < BREAK.brushFlat) return 0;
+  const over = dmg - BREAK.brush * b.hpMax, least = dmg * BREAK.brushMin;
+  return over > least ? over : least;
+}
+
 export const STATE = Object.freeze({ INTACT: 0, FALLING: 1, BROKEN: 2, HELD: 3, FLYING: 4, GONE: 5 });
 const { INTACT, FALLING, BROKEN, HELD, FLYING, GONE } = STATE;
 
@@ -432,6 +441,8 @@ export class Destructibles {
         for (let k = g.start[c]; k < g.start[c + 1]; k++) {
           const b = L[g.items[k]];
           if (this._skip(b, o)) continue;
+          // (a brush passes over a flat stone: BREAK.brushFlat)
+          if (b.h < BREAK.brushFlat && o.brush === true && b.mat === 'stone') continue;
           if (segDist(b.x, b.z, ax, az, bx, bz, s) > r + b.r) continue;
           if (o.y !== undefined && o.y - r > b.h) continue;
           let dx = o.dx, dz = o.dz;
@@ -484,26 +495,29 @@ export class Destructibles {
   _hit(b, power, o, px, py, pz, dx, dz) {
     const now = this.game.time ?? 0;
     const src = o.src ?? -1;
-    if (src >= 0 ? b.src === src : now - b.srcT < BREAK.rehit) return false;
+    if (src >= 0 ? b.src === src : now - b.srcT < (o.brush === true ? BREAK.brushRehit : BREAK.rehit)) return false;
     b.src = src;
     b.srcT = now;
     const l = Math.hypot(dx, dz) || 1;
     dx /= l;
     dz /= l;
     const kind = o.kind ?? BLOW.BLUNT, by = o.by ?? 'world';
-    let dmg = power * (b.M.take[kind] ?? 1);
     // a brush (a body walking into it): only what is over BREAK.brush of its structure bites
-    if (o.brush === true && b.hpMax !== Infinity) dmg = b.mat === 'stone' && b.h < BREAK.brushFlat ? 0 : dmg - BREAK.brush * b.hpMax;
-    this._chips(b, px, py, pz, dx, dz, power);
+    const brush = o.brush === true;
+    const dmg = brush ? brushed(b, power * (b.M.take[kind] ?? 1)) : power * (b.M.take[kind] ?? 1);
+    // a brush that bites nothing is a shove: it shudders, no splinters, no nick, no sound (a body
+    // rubbing past a stone would chip it every rehit)
+    const shove = brush && dmg < BREAK.scratch;
+    if (!shove) this._chips(b, px, py, pz, dx, dz, brush ? dmg : power); // (a brush: splinters for what it bit)
     if (dmg < BREAK.scratch || b.hpMax === Infinity || (b.hp -= dmg) > 0) {
       // it holds: a nick, a shudder
-      this.world.scars?.object(b.id, px, py, pz, power, b.M);
+      if (!shove) this.world.scars?.object(b.id, px, py, pz, power, b.M);
       b.shake = 0.28;
       b.shakeAmp = Math.min(0.09, 0.02 + power * 0.05) / Math.max(0.6, b.weight);
       b.dx = dx;
       b.dz = dz;
       this._wake(b);
-      this._emit('chip', b, px, py, pz, power, by);
+      if (!shove) this._emit('chip', b, px, py, pz, power, by);
       return true;
     }
     this._break(b, dx, dz, by, kind);

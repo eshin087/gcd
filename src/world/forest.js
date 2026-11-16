@@ -839,9 +839,10 @@ export function createForest(U, colliders) {
     flags.forEach((f, i) => {
       const n = f.geo.attributes.position.count, m = shardGeos[i].attributes.position.count;
       breakables.push({
-        // (hp 3.2: a stomp or a landing cracks it, three heavy blows near it break it; the body's steps
-        // scrape over it (BREAK.brushFlat). Was 1.5: the paving was gone halfway through a fight)
-        kind: 'flagstone', mat: 'stone', look: 'range', x: f.x, z: f.z, r: f.r, h: 0.08, hp: 3.2,
+        // (hp 4.5: a stomp, a landing, a meteor crack it; it breaks under the heart of a dive, a leap or a
+        // few blasts in one place; the body's steps scrape over it (BREAK.brushFlat). Was 1.5: the
+        // paving was gone halfway through a fight)
+        kind: 'flagstone', mat: 'stone', look: 'range', x: f.x, z: f.z, r: f.r, h: 0.08, hp: 4.5,
         range: { mesh: slabMesh, start: v, count: n }, broken: { range: { mesh: shardMesh, start: w, count: m } },
         colliders: [], topples: false, cover: false, wreck: false, lift: 0,
       });
