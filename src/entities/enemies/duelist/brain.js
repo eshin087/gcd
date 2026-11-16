@@ -26,12 +26,13 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //       (>= pressure.guard.sep + margin s) of every known impact needing the other answer, the
 //       running move's beats included: 0 = now is clear, -1 = no wait up to `max` clears it (call it
 //       later or not at all). Count a delay you made with brain.stats.delays++.
-//   brain.stats  { picks, links, chains, cuts, rests, holds, holdTime, feints, delays, fizzles, floors, seeks }
+//   brain.stats  { picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors, seeks }
 //       picks: AI picks · links: moves started from a LINKS entry · chains: moves started by the old
 //       flow roll (`chain`) · cuts: of those, started before the recovery's end (`cut`) · rests:
 //       breathers after pressure.chainDepth moves in a row · holds / holdTime: blade blows held at
 //       the cock by the fairness guard (s in all) · feints: blows it could not clear by a hold, not
-//       thrown (a feint: no glint, no hit) · delays: called strikes / torn stones moved later (or faded) ·
+//       thrown (a feint: no glint, no hit) · toldFeints: of those, ones whose combat:tell had gone out (a
+//       blow at risk is announced only once the guard clears it at its cue: _tellRisk) · delays: called strikes / torn stones moved later (or faded) ·
 //       fizzles: things in flight that gave way to a falling piece of the world · floors:
 //       picks a floor forced · seeks: footwork sent to another range for an absent category.
 //   brain.ledger  the CueLedger (ledger.js): conflict / clearShift / pending queries.
@@ -153,7 +154,9 @@ export class DuelBrain {
     this.seek = null;
     this.seekNext = 0;
     this._phaseSeen = 0;
-    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0 };
+    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, toldFeints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0 };
+    this.guardLog = Array.from({ length: 64 }, () => ({ t: -1, kind: '', what: '', with: '' }));
+    this._gi = 0;
     this.ledger?.reset();
     this.cooldowns = {};
     this.last = [null, null];
@@ -313,11 +316,24 @@ export class DuelBrain {
 
   /** How long a CALLED strike landing `timeFromNow` s from now must wait to land clear of every
    *  known impact needing the other answer (0: clear now; -1: no wait up to `max` clears it). */
-  fairDelay(timeFromNow, tell, max = this.P?.guard?.maxDelay ?? 0.6) {
+  fairDelay(timeFromNow, tell, max = this.P?.guard?.maxDelay ?? 0.6, source = '') {
     const G = this.P?.guard;
     if (!G || !Number.isFinite(timeFromNow)) return 0;
     const L = this.ledger;
-    return L.clearShift(L.now + timeFromNow, answerOf(tell), (G.sep ?? 0.3) + (G.margin ?? 0), max);
+    const sh = L.clearShift(L.now + timeFromNow, answerOf(tell), (G.sep ?? 0.3) + (G.margin ?? 0), max);
+    if (sh < 0 && max > 0) this._note('uncalled', source || this.act?.name || '?');
+    return sh;
+  }
+
+  /** The guard's diary: what it would not let through, and the impact it collided with (a ring of
+   *  64 entries, written only when the guard steps in; the PACE meter tallies the pairs). */
+  _note(kind, what) {
+    const g = this.guardLog, e = g[this._gi % g.length];
+    this._gi++;
+    e.t = this.d.time;
+    e.kind = kind;
+    e.what = what;
+    e.with = this.ledger.hit;
   }
 
   /**
@@ -348,6 +364,7 @@ export class DuelBrain {
       } else if (sh < 0) {
         // no wait up to maxDelay clears it: the mark fades out unstruck (never two answers at once)
         s.alive = false;
+        this._note('fade', s.attack ?? 'strike');
         this.stats.delays++;
         moved = true;
       }
@@ -437,7 +454,10 @@ export class DuelBrain {
       // glints), so the hero is never asked two answers at once. Not in his flurry (it counts blows)
       if (a.streak) return false;
       b.feint = true;
+      this._note(b.announced ? 'toldFeint' : 'feint', a.name);
       this.stats.feints++;
+      // (one already announced: the guard's verdict changed after its tell; the meter reports it)
+      if (b.announced) this.stats.toldFeints++;
       return true;
     }
     if (b.hl > 0) b.hl += sh;
@@ -468,6 +488,29 @@ export class DuelBrain {
     this.stats.holds++;
     this.stats.holdTime += sh;
     return true;
+  }
+
+  /** A beat's announcement (combat:tell: the HUD, the audio's sting, the timing trainer). */
+  _announce(a, b, t) {
+    const d = this.d;
+    b.announced = true;
+    const p = d.tellPoint(b.def.part, d._v2);
+    d.emit('combat:tell', { source: 'dragon', attack: a.name, tell: b.def.tell, impactIn: Math.max(0.05, b.impact - t), x: p.x, z: p.z, flare: isFlare(b.def.tell, b.def.flare) });
+  }
+
+  /**
+   * At a beat's announcement: would the fairness guard turn it into a feint if its cue were due now
+   * (_holdBeat's own test, with the hold it may still take)? Then its tell waits for the guard's
+   * verdict at the cue. Never for a black blow (its charge is drawn through the windup), his flurry
+   * (never feinted), a transition or a cast that is not thrown.
+   */
+  _tellRisk(a, b, t) {
+    const G = this.P?.guard;
+    if (!G || a.def.transition || a.streak || b.feint || b.def.tell === TELL.BLACK || (b.def.cast && !throwsAt(b))) return false;
+    const room = b.def.fixed ? 0 : Math.max(0, G.maxHold - (b.hl ?? 0));
+    const L = this.ledger, sep = (G.sep ?? 0.3) + (G.margin ?? 0);
+    const th = throwsAt(b), fly = th ? L.travel(b) : 0, pad = th ? G.pad ?? 0 : 0;
+    return L.clearShift(L.now + (b.impact - t) + fly, answerOf(b.def.tell), sep + pad, room, true, true) < 0;
   }
 
   /** After the pose (the blade's points are fresh): the actor's swing trails and body FX. */
@@ -860,15 +903,19 @@ export class DuelBrain {
       if (this.P && throwsAt(b) && !b.relChecked && t >= b.flash) {
         if (this._holdBeat(a, b, t)) continue;
         b.relChecked = true;
+        if (b.tellHeld && !b.announced) this._announce(a, b, t);
       }
-      if (!b.announced && t >= b.tellAt) {
-        b.announced = true;
-        const p = d.tellPoint(b.def.part, d._v2);
-        d.emit('combat:tell', { source: 'dragon', attack: a.name, tell: b.def.tell, impactIn: Math.max(0.05, b.impact - t), x: p.x, z: p.z, flare: isFlare(b.def.tell, b.def.flare) });
+      if (!b.announced && !b.tellHeld && t >= b.tellAt) {
+        // (a blow the fairness guard could already not clear is not announced yet: it is announced
+        // when the guard clears it at its cue, or never if it becomes a feint: a feint the guard
+        // makes then says nothing, as an authored feint says nothing)
+        if (this.P && this._tellRisk(a, b, t)) b.tellHeld = true;
+        else this._announce(a, b, t);
       }
       if (!b.flashed && t >= b.flash && !b.def.release && !b.def.cast?.selfCue) {
         // (the fairness guard: a blow that would land within 0.3 s of one needing the other answer waits)
         if (this.P && this._holdBeat(a, b, t)) continue;
+        if (b.tellHeld && !b.announced) this._announce(a, b, t);
         b.flashed = true;
         const p = d.tellPoint(b.def.part, d._v2);
         // perilous: a thrust a mikiri answers (its own read: the deep low coil, the held beat)
