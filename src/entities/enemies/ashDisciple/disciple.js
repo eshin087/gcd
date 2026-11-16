@@ -7,6 +7,12 @@ import { MOVES, MOVE_NAMES, CLIP, realise } from './moves.js';
 import { TUNING } from './tuning.js';
 import { TerrainMoves } from './terrain.js';
 import { LINKS } from './links.js';
+import { AshMoveFx } from './moveFx.js';
+import { lookOf } from '../duelist/lookSwitch.js';
+import { TELL } from '../../../combat/rules.js';
+
+// the crescents in flight at once (DuelFx pools 6; the Storm of Ash throws nine within a second and a half)
+const CRESCENT_POOL = 12;
 
 // The Ash Disciple (docs/specs/ash-disciple.md): a grey-robed jian swordsman who fills the boss slot
 // of the Ashfall level. A duelist (duelist/duelist.js: the body, the contract, the guard, posture,
@@ -19,7 +25,7 @@ import { LINKS } from './links.js';
 export const ASH_KIT = Object.freeze({
   id: 'ashDisciple',
   TUNING, MOVES, MOVE_NAMES, CLIP, realise,
-  transitions: Object.freeze({ 2: 'kindle' }),
+  transitions: Object.freeze({ 2: 'kindle', 3: 'ashWind' }),
   loadout: ASH_LOADOUT,
   poses: DUEL_POSES,
   blade: JIAN,
@@ -28,6 +34,10 @@ export const ASH_KIT = Object.freeze({
 export class AshDisciple extends Duelist {
   constructor(game) {
     super(game, ASH_KIT);
+    // (a bigger pool of crescents: the same records DuelFx makes, more of them)
+    const C = this.fx?.crescents;
+    while (C && C.length < CRESCENT_POOL) C.push({ alive: false, x: 0, z: 0, dx: 0, dz: 1, age: 0, flashed: -1, done: false, tell: TELL.NORMAL, damage: 0, kb: 0, attack: '' });
+    this._ghO = { dx: 0, dz: 0, life: 0.6, light: 0, ox: 0, oz: 0, ember: 0 };
   }
 
   /** His colours: the hero's material set, recoloured on HIS instances (gear.js says which is which). */
@@ -56,6 +66,7 @@ export class AshDisciple extends Duelist {
     this.kindle = 0; // phase 2's ember blade 0..1
     // (the base constructor resets before this class's own fields could exist: made here)
     (this.terrain ??= new TerrainMoves(this)).reset();
+    (this.moveFx ??= new AshMoveFx(this)).reset(); // burning ground (moveFx.js)
     super.reset();
   }
 
@@ -78,10 +89,41 @@ export class AshDisciple extends Duelist {
   }
   beatMotion(b, u, s, dt) {
     if (this.brain.act?.def?.terrain) this.terrain.motion(b, u, s, dt);
+    const D = b.def;
+    // (the second pass) a beat's `zig`: before its dash he steps this far aside (+ his left), so a
+    // chain of glides comes in from a new side each time
+    if (D.zig && !this.brain.leap) {
+      const until = D.dash?.from ?? 0.5, k = Math.max(0, Math.min(1, (u - 0.05) / Math.max(0.05, until - 0.05)));
+      const e = k * k * (3 - 2 * k), prev = b._zig ?? 0;
+      if (e > prev) {
+        b._zig = e;
+        const m = D.zig * (e - prev);
+        this.moveBy(Math.cos(this.yaw) * m, -Math.sin(this.yaw) * m);
+      }
+    }
+    // a flit inside a string: an afterimage where he was (the ash look `?flit=a` draws its own)
+    if (D.flit && b._flit && !b._ghosted) {
+      b._ghosted = true;
+      if (lookOf('flit', '0') !== 'a') this._ghost(0.55);
+    }
   }
   onImpact(b, s, a) {
     if (a?.def?.terrain) this.terrain.impact(b, s, a);
     this.fx.onBlow?.(b, s, a); // what lands with the blow: the Kindling, a ring's shock, phase 3's afterimages (duelist/fx.js)
+    // the phase-3 change (ash on the wind): the burst is the effects' (fxash: DuelFx.phaseBurst)
+    if (a?.def?.transition && (a.def.phase ?? 2) === 3) this.fx.phaseBurst?.(3, this.position.x, this.position.z);
+    // what his blade cuts burns (phase 2 on: moveFx.js)
+    if (b.def.burn) this.moveFx?.burn(b, a);
+  }
+
+  /** An afterimage of him where he stands as last drawn (DuelFx.ghost), drifting on the ash wind. */
+  _ghost(life = 0.55) {
+    const o = this._ghO;
+    o.dx = o.dz = 0;
+    o.life = life;
+    o.light = 0;
+    o.ember = this.phase === 2 ? 1 : 0;
+    this.fx.ghost?.(this, o);
   }
   onCast(b, s, a) {
     if (a?.def?.terrain) this.terrain.cast(b, s, a);
@@ -93,6 +135,7 @@ export class AshDisciple extends Duelist {
     // (held while a transition runs: the Kindling's kneel drives it from afterPose, the blade catching)
     if (this.phase >= 2 && !this.brain.act?.def?.transition) this.kindle = Math.min(1, this.kindle + dt * 1.5);
     this.terrain.frame(dt);
+    this.moveFx?.frame(dt);
   }
 
   onTransitionEnd() {
@@ -158,10 +201,20 @@ export class AshDisciple extends Duelist {
     const R = b.def.release;
     const n = perPhase(R.count, this.phase);
     const base = s ? s.ang : this.yaw;
+    const C = this.T.crescent, p = this.game.player?.position, pr = this.game.player?.radius ?? 0.45;
     for (let i = 0; i < n; i++) {
       const a = base + (i - (n - 1) / 2) * R.spread;
       const sx = this.position.x + Math.sin(a) * 1.0, sz = this.position.z + Math.cos(a) * 1.0;
-      this.fx.throwCrescent(sx, sz, Math.sin(a), Math.cos(a), { tell: b.def.tell, damage: b.def.damage, knockback: b.def.knockback, attack: act?.name ?? 'ashCrescent' });
+      // (the second pass: a crescent that would meet the hero too soon to glint fairly is not thrown:
+      // a string's last cut at a hero still close only cuts the air; DuelFx would fizzle it on him
+      // after a glint that promised a blow)
+      const speed = R.speed ?? C.speed;
+      if (p && C) {
+        const dx = Math.sin(a), dz = Math.cos(a), rx = p.x - sx, rz = p.z - sz, along = rx * dx + rz * dz, across = Math.abs(-rx * dz + rz * dx);
+        if (across < 1.0 && (along - (C.radius ?? 0.7) - pr) / speed < (C.minLead ?? 0.27)) continue;
+      }
+      const c = this.fx.throwCrescent(sx, sz, Math.sin(a), Math.cos(a), { tell: b.def.tell, damage: b.def.damage, knockback: b.def.knockback, attack: act?.name ?? 'ashCrescent' });
+      if (c && R.speed) c.speed = R.speed;
     }
   }
 
