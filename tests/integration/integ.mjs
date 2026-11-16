@@ -9574,7 +9574,9 @@ async function scenarioZoomArt() {
   const pipe = new Pipeline(renderer, game.scene, game.fxScene, cam, U);
   const fire = new FireField(U, { max: 64 });
   pipe.registerFire(fire);
-  // the game camera's geometry at distance D (rig.update writes userData; a bare camera: the defaults)
+  // the game camera's geometry at distance D, without the rig (its userData.zoomRatio cleared: the
+  // pipeline then measures the camera's own distance)
+  delete cam.userData.zoomRatio;
   const at = (D) => {
     cam.position.set(0, Math.sin(P58) * D, Math.cos(P58) * D);
     cam.lookAt(0, 0, 0);
@@ -9673,13 +9675,32 @@ async function scenarioZoomArt() {
   const phone = settle(34)[1];
   delete cam.userData.zoomArtOff;
   assert(phone === 6 && pipe.zoomLadder[0].cell[1] === 6, 'the phone (852x393, its rig mobile) keeps its 4x6 letters at its farthest zoom');
-  const rig = game.cameraRig;
+  // the camera rig: the player's own zoom counts, the game's framing does not
+  const rig = game.cameraRig, ud = rig.camera.userData, o = new THREE.Vector3();
   rig.setMobile(true);
-  rig.update(1 / 60, new THREE.Vector3());
-  const mob = rig.camera.userData.zoomArtOff === true && rig.camera.userData.zoomRef === CONFIG.camera.mobileDistance;
+  rig.update(1 / 60, o);
+  const mob = ud.zoomArtOff === true;
   rig.setMobile(false);
-  rig.update(1 / 60, new THREE.Vector3());
-  assert(mob && rig.camera.userData.zoomArtOff === false && rig.camera.userData.zoomRef === CONFIG.camera.distance, 'the camera rig tells the pipeline its default distance, and that a phone keeps its letters');
+  rig.snap(o);
+  assert(mob && ud.zoomArtOff === false && Math.abs(ud.zoomRatio - 1) < 1e-9, `the rig tells the pipeline a phone keeps its letters; at the default zoom the ratio is ${ud.zoomRatio}`);
+  size('b', 1080);
+  rig.extraZoom = 8; // the boss framing pulls back 8 m
+  for (let i = 0; i < 120; i++) rig.update(1 / 60, o);
+  const framed = ud.zoomRatio, framedD = rig.distance;
+  assert(Math.abs(framed - 1) < 1e-9 && framedD > 43, `the boss framing (${framedD.toFixed(1)} m) leaves the ratio at ${framed}: the fight's look at the default zoom is today's`);
+  pipe.render();
+  assert(pipe.zoomStep === 0 && pipe.artCell.y === 9, `... and option b draws it in today's 6x9 (the camera ${pipe.zoomDistance().toFixed(1)} m out)`);
+  rig.zoom(7.2); // the wheel to its farthest (54 m)
+  const ratios = [];
+  for (let i = 0; i < 90; i++) { rig.update(1 / 60, o); ratios.push(ud.zoomRatio); }
+  assert(ratios.every((r, i) => i === 0 || r >= ratios[i - 1]) && Math.abs(ratios[89] - 1.5) < 0.01 && ratios[3] < 1.3, `the wheel to 54 m: the ratio eases like the distance (${ratios[3].toFixed(2)} after 4 frames, ${ratios[89].toFixed(3)} after 1.5 s)`);
+  pipe.render();
+  pipe.render();
+  assert(pipe.artCell.y === 6, `... and option b steps to the 4x6 letters (the camera ${pipe.zoomDistance().toFixed(1)} m out with the framing)`);
+  rig.extraZoom = 0;
+  rig.targetDistance = CONFIG.camera.distance;
+  rig.snap(o);
+  delete ud.zoomRatio;
   return G;
 }
 

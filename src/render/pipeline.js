@@ -1573,17 +1573,26 @@ export class Pipeline {
   }
 
   /**
-   * After a frame: pick the zoom ladder step for the camera that drew it (wyrmGlyphs.js
-   * zoomArtStep, with its hysteresis) and switch to it for the next frame. Option a, a phone
-   * (camera.userData.zoomArtOff) and a camera that does not look down stay on step 0.
+   * After a frame: pick the zoom ladder step for the zoom that drew it (wyrmGlyphs.js zoomArtStep,
+   * with its hysteresis) and switch to it for the next frame. The zoom is the player's own:
+   * camera.userData.zoomRatio, the rig's eased wheel distance over its default (cameraRig.js); a
+   * camera without a rig (tests, tools): its distance to the ground over CONFIG.camera.distance.
+   * Option a, a phone (camera.userData.zoomArtOff) and a camera that does not look down stay on
+   * step 0.
    */
   updateZoomArt() {
     if (this._zoomHs.length < 2) return;
     const Z = CONFIG.camera.zoomArt ?? {}, ud = this.camera?.userData;
     const p = this.zoomArt === 'a' || ud?.zoomArtOff ? 0 : Z.strength?.[this.zoomArt] ?? 0;
-    const ref = ud?.zoomRef > 0 ? ud.zoomRef : CONFIG.camera.distance;
-    const D = p > 0 ? this.zoomDistance() : 0;
-    const i = zoomArtStep(this._zoomHs, D > 0 ? D / ref : 1, p, this.zoomStep, Z.hyst ?? 0.1);
+    let r = 1;
+    if (p > 0) {
+      if (ud?.zoomRatio > 0 && Number.isFinite(ud.zoomRatio)) r = ud.zoomRatio;
+      else {
+        const D = this.zoomDistance();
+        if (D > 0) r = D / CONFIG.camera.distance;
+      }
+    }
+    const i = zoomArtStep(this._zoomHs, r, p, this.zoomStep, Z.hyst ?? 0.1);
     if (i !== this.zoomStep) {
       const t0 = performance.now();
       this._applyZoomStep(i);
