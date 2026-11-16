@@ -3308,3 +3308,20 @@ ADR-092).
   full gesture envelopes at multiple frame rates, interruptions, exact attack restoration and the
   drawn blade's lateral travel; browser checks include actual heavy contact. Human approval and
   complete outfit/weapon fitting still precede any adoption.
+
+## ADR-122 — Reference-led hand continuity in the isolated Tempered preview (2026-11-15)
+- **Context:** the owner supplied a motion reference and identified awkward left-hand motion in
+  light combos and normal-to-heavy transitions. V3 combined the source wrist contacts / wide arm
+  poses with partial corrections, and the studio masked transitions by waiting through full recovery.
+- **Decision:** keep the experiment private to the preview entries. `attackMotion.js` authors
+  compact free-hand arcs for all light variants, neutral fingers and a direct return to the candidate
+  stance. `hands.js` snapshots the solved left endpoint when the instance enters an attack; a hidden
+  target beneath a grip is not the actual starting hand position. Read local bone transforms so
+  camera shear and presentation proportions cannot contaminate this entry data.
+- **Heavy entry:** gather before joining the hilt, reach full two-hand grip before active frames,
+  and keep an existing grip continuous. Add forward clearance during falling windups, fading it out
+  before their active phase. Preserve the original active cutting paths, phase times and combat data.
+- **Review:** use the real earliest chain cutoff in the studio combo and expose rest-to-heavy plus
+  all four light-heavy branches. Verify alternate chains at 30/60/120 Hz, actual buffered input and
+  boss contact in the playable page, and front/rear rendered motion. The reference stays local.
+  These checks support owner review; they do not approve adoption. Draft PR #58 remains unmerged.

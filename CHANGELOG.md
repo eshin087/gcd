@@ -719,7 +719,9 @@ Forty-seven pieces of work since 0.4.0:
   closer camera, optional invulnerability and temporary storage. V2 refines hand alignment, relaxed
   running wrists, attack windup / cut / recovery and the charge hold (ADR-120). V3 replaces all six
   idle gestures, removes the belt-rest default, changes the opening heavy to a sweeping slash and
-  adds in-game idle replay controls (ADR-121). Awaiting owner review; the normal
+  adds in-game idle replay controls (ADR-121). V4 follows the owner's motion reference with softer
+  combo hands and a progressive heavy grip; the studio now exposes buffered chains and every
+  light-to-heavy transition (ADR-122). Awaiting owner review; the normal
   game is unchanged. This is deliberately not a shipped WHAT'S NEW item.
 
 ## [0.4.0] - 2026-11-02

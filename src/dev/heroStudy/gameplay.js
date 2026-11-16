@@ -31,7 +31,7 @@ async function bootPreview() {
     if (event.target instanceof HTMLButtonElement) event.target.blur();
   });
   const reflect = () => {
-    title.textContent = study.variant === 'tempered' ? 'Tempered · v3' : 'Current hero';
+    title.textContent = study.variant === 'tempered' ? 'Tempered · v4' : 'Current hero';
     for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.hero === study.variant));
     const u = new URL(location.href);
     u.searchParams.set('hero', study.variant);

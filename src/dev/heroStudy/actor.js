@@ -8,6 +8,7 @@ import { clamp, smoothstep } from '../../core/math.js';
 import { installTemperedHands } from './hands.js';
 import { temperedIdle } from './idles.js';
 import { temperedAttack } from './attacks.js';
+import { createAttackMotion } from './attackMotion.js';
 
 export const STUDY = Object.freeze({
   scale: Object.freeze([1.08, 0.94, 1.04]),
@@ -103,19 +104,12 @@ function attack(p, A) {
   const high = smoothstep(0.04, 0.22, p[P.rH + 1]);
   p[P.rH + 2] += 0.035 * coil * high;
   p[P.rH + 1] -= 0.025 * coil * high;
-  // The free arm gathers, opens against the cut, then comes home. Keep all
-  // two-handed and wrist-contact choreography in the original contact solver.
-  const free = (1 - smoothstep(0.02, 0.5, p[P.twoHand])) * (1 - smoothstep(0.05, 0.5, p[P.lk]));
-  const gather = coil * free * 0.24;
-  set(p, P.lH, -0.035, -0.22, 0.29, gather);
-  set(p, P.lP, 0.45, -0.8, -0.3, gather);
-  const finish = smoothstep(d.windup + d.active * 0.5, d.windup + d.active, A.t) * leave * free;
-  if (p[P.lH + 1] > -0.08) p[P.lH + 1] += (-0.08 - p[P.lH + 1]) * 0.4 * finish;
   p[P.hdY] -= p[P.pelvY] * 0.06 * w;
 }
 
 export function createTemperedPoses(source) {
   const recovery = new Float32Array(N);
+  const handMotion = createAttackMotion();
   const poses = { ...source };
   poses.loco = (p, A) => {
     // Keep the existing scheduler/cancel envelope, replace all six gestures.
@@ -152,6 +146,7 @@ export function createTemperedPoses(source) {
         for (let i = 0; i < N; i++) p[i] += (recovery[i] - p[i]) * home;
       }
     }
+    handMotion(p, A);
   };
   poses.block = (p, A) => {
     source.block(p, A);

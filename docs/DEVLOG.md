@@ -5,6 +5,31 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 59: Reference-led combo hands and heavy entry (Codex, review pending)
+
+**Owner:** normal-to-heavy transitions and the left hand during light combos still look awkward;
+supplied a 7.6-second gameplay reference showing relaxed fingers, a bent free elbow and connected
+cuts. V3's studio let every light recover fully, hiding the earliest buffered transitions.
+
+**Changed:** private `attackMotion.js` supplies smaller free-hand counterbalance arcs for every
+light variant, without the repeated wrist clasp, high-back point or palm flips. Each attack carries
+the actual solved hand into its entry; the old pose target can be hidden beneath a contact. The
+supporting hand gathers before closing on the hilt, and falling windups pass farther in front of
+the chest. Recovery returns directly to Tempered's stance. Original cut timing and active blade
+paths remain. The studio's light combo now uses the real earliest chain windows, and Normal →
+heavy exposes the relaxed start plus all four light-to-heavy branches. Pages labeled v4. ADR-122.
+
+**Verified:** 32 before/after browser captures, including front and rear three-quarter views.
+11,728 additional attack frames cover every adjacent light-variant pair and heavy branch at
+30/60/120 Hz: no free-wrist limit contacts, maximum sampled entry hand speed 7.27 m/s, supporting
+grip gap at most 4.7 cm. In the same default-chain diagnostic at 120 Hz, entry peak fell from
+17.64 to 4.21 m/s; this measures continuity, not visual approval. Existing study/hand/idle checks
+pass and the normal-game build retains its base SHA-256. Full regression and actual-game / hosted
+checks are recorded in draft PR #58.
+
+**Hold:** owner reviews this interpretation of the reference in game. No merge or adoption;
+production, saved data and Claude's active checkout remain untouched. Reference footage stays local.
+
 ## 2026-11-15 — Session 58: Replace missed idle poses and the heavy poke (Codex, review pending)
 
 **Owner:** some idle hands still bend badly, the free hand should not default to the waist, and
@@ -2319,7 +2344,7 @@ session's files are the hero's only (model, anim, fx, parts, the `herolook` test
   stance. Before, it pointed ahead from a straight arm and was hidden at the game camera when he
   faced away.
 - **Light 1 recovery** comes home round the front (`HOME_WAY`); the short way to the new idle went
-  behind his head (the `herolook` test caught it as 4.3 cm of blade in the sword arm).
+  behind his head (the `herolook` test caught it as 4.7 cm of blade in the sword arm).
 - **Tip streak** moved onto the drawn point.
 
 **Verification:** `npm test` ALL PASSED, `npm run build` ok (1652 KB). Looked at in the Lab model

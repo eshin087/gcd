@@ -5,8 +5,8 @@
     "dev": "node scripts/serve.mjs",
     "build": "node scripts/build.mjs",
     "hero-parts": "node scripts/blender/build-hero-parts.mjs",
-    "test": "node tests/integration/integ.mjs . all && node tests/integration/duel.mjs . all && node tests/integration/lord.mjs . all && node tests/integration/world.mjs . all && node tests/glyphcheck.mjs . && node tests/changelogcheck.mjs . && node tests/hero-study.mjs && node tests/hero-hands.mjs && node tests/hero-idles.mjs",
-    "test:hero-study": "node tests/hero-study.mjs && node tests/hero-hands.mjs && node tests/hero-idles.mjs"
+    "test": "node tests/integration/integ.mjs . all && node tests/integration/duel.mjs . all && node tests/integration/lord.mjs . all && node tests/integration/world.mjs . all && node tests/glyphcheck.mjs . && node tests/changelogcheck.mjs . && node tests/hero-study.mjs && node tests/hero-hands.mjs && node tests/hero-idles.mjs && node tests/hero-transitions.mjs",
+    "test:hero-study": "node tests/hero-study.mjs && node tests/hero-hands.mjs && node tests/hero-idles.mjs && node tests/hero-transitions.mjs"
   },
   "description": "ASCII soulslike demo: a wyvern boss fight in a moonlit forest",
   "dependencies": {

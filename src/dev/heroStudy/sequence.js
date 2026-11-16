@@ -4,6 +4,7 @@ import { IDLE_GESTURES } from './idles.js';
 
 const duration = (d) => d.windup + d.active + d.recovery;
 const cut = (d, label) => ({ key: 'attack', label, duration: duration(d), def: d, fight: true });
+const chain = (d, label) => ({ ...cut(d, label), duration: d.windup + d.active + d.recovery * d.chain });
 const ease = (n = 2) => ({ key: 'loco', label: 'At ease', duration: n });
 const guard = (n = 2) => ({ key: 'loco', label: 'Ready guard', duration: n, fight: true });
 const walk = (speed, n, label, sprint = false) => ({ key: 'loco', label, speed, duration: n, sprint });
@@ -22,7 +23,8 @@ export const SEQUENCES = {
   guard: { label: 'Ready guard', description: 'An oblique blade, supported elbow and active free hand.', steps: [guard(7)] },
   walk: { label: 'Walk → run', description: 'Speed-matched footsteps with a steadier chest and head.', steps: [ease(0.5), walk(1.5, 3, 'Walk'), walk(4.6, 3, 'Run'), ease(1.5)] },
   sprint: { label: 'Sprint → stop', description: 'Acceleration, forward intent and a weighted stop.', steps: [ease(0.7), walk(7.2, 3.5, 'Sprint', true), ease(2)] },
-  combo: { label: 'Five-hit chain', description: 'The hips drive the cuts; the finish has time to read.', steps: [guard(0.8), ...LIGHT.map((d, i) => cut(d, `Light ${i + 1}`)), guard(1.3)] },
+  combo: { label: 'Buffered light combo', description: 'Five lights at the actual earliest combo timing. Watch the free hand between hits.', steps: [guard(0.8), ...LIGHT.map((d, i) => (i < LIGHT.length - 1 ? chain : cut)(d, `Light ${i + 1}`)), guard(1.3)] },
+  heavyEntry: { label: 'Normal → heavy', description: 'From a relaxed stance, then from each light-chain branch: gather, join the grip, cut.', steps: [ease(0.8), cut(HEAVY[0], 'At ease → heavy'), ...HEAVY.slice(1).flatMap((d, n) => [guard(0.6), ...LIGHT.slice(0, n + 1).map((l, i) => chain(l, `Light ${i + 1}`)), cut(d, `${n + 1} light${n ? 's' : ''} → heavy`)]), guard(1)] },
   heavy: { label: 'Heavy attacks', description: 'Tempered opens with a dashing slash, followed by rising cut, sweep, falling cut and earthbreaker.', steps: HEAVY.flatMap((d, i) => [guard(0.5), cut(d, `Heavy ${i + 1}`)]).concat(guard(1)) },
   charge: { label: 'Charged cleave', description: 'Gather, hold a quiet breath, commit, then settle.', steps: [guard(0.8), { ...charge, label: 'Gather & hold', duration: 3, chargeDuration: 1.5 }, cut(CLEAVE, 'Charged cleave'), guard(1.4)] },
   defense: { label: 'Block & dodge', description: 'A braced guard followed by the existing roll and recovery.', steps: [guard(0.8), block, roll, guard(1.5)] },

@@ -10,6 +10,23 @@ const freeClips = new Set(['loco', 'attack', 'block', 'charge']);
 
 export function installTemperedHands(anim, enabled = () => true) {
   const arm = anim._arm, wrist = anim._wristL;
+  const play = anim.play;
+  const entryHand = new THREE.Vector3(), entryQ = new THREE.Quaternion();
+  anim.temperedEntry = { hand: new Float32Array(3) };
+  anim.play = function (key, ...args) {
+    if (key === 'attack') {
+      // The previous pose's lH can be an unused target under a wrist link or
+      // two-handed grip. Carry the actual endpoint across the transition.
+      // Local bone transforms avoid the preview's camera shear/drawing scale.
+      const r = this.rig, L = r.arms.L;
+      entryHand.set(0, -DIM.foreArm, 0).applyQuaternion(L.fore.quaternion);
+      entryHand.y -= DIM.upperArm;
+      entryHand.applyQuaternion(L.upper.quaternion).add(L.upper.position).sub(L.anchor ?? L.upper.position);
+      entryQ.copy(r.pelvis.quaternion).multiply(r.spine.quaternion).multiply(r.chest.quaternion);
+      entryHand.applyQuaternion(entryQ).toArray(this.temperedEntry.hand);
+    }
+    return play.call(this, key, ...args);
+  };
   const bodyQ = new THREE.Quaternion(), chestQ = new THREE.Quaternion();
   const toChest = new THREE.Quaternion(), foreQ = new THREE.Quaternion(), turnQ = new THREE.Quaternion();
   const axis = new THREE.Vector3(), blade = new THREE.Vector3(), pole = new THREE.Vector3();

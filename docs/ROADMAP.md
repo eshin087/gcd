@@ -18,6 +18,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Tempered v2 hand alignment, relaxed wrists, attack phrasing and quiet charge hold (ADR-120)
 - [x] V3: replace all six idle gestures, remove the belt rest, change the opening heavy to a slash;
   add explicit idle review controls (ADR-121)
+- [x] V4: reference-led free-hand arcs, progressive heavy grip and solved-hand continuity;
+  review buffered light chains and all light-to-heavy branches (ADR-122)
 - [ ] Owner chooses or rejects the direction in the draft PR
 - [ ] Only if chosen: Claude integrates the hero and validates combat / outfits in all three levels
 
