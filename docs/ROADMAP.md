@@ -179,6 +179,22 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.44 — The Cinder Wyrm's second pass: pressure, whole-body combos, flying combos, a clearing that breaks (2026-11-15, `dragon/wyrm-second-pass`, ADR-119)
+- [x] A director over the wyrm's pick; combo links for every attack; fairness guards; the pressure meter
+- [x] Six whole-body attack kinds, seven new strings; the breath's body braced
+- [x] Flying combos of two, three and four parts; more fire from the spells; the apocalypse reworked
+- [x] The wisp swarm removed; no spinning while breathing; ground tongues, ember rain, cinder spit, fire lanes
+- [x] Shock fronts, the fire breath and the small effects redrawn (three looks each for the ring and the breath)
+- [x] Terrain moves in 1.3 - 1.8 s with a whole-body grab and no landing mark
+- [x] 183 breakables; the wyrm's body wrecks what it meets; wreckage stays; fire spreads within limits
+- [ ] Follow-ups:
+  - [ ] The owner picks the look of the shock ring, the fire breath and the apocalypse (`?ring=`, `?breath=`, `?apoc=`)
+  - [ ] A human playtest: the pace per phase, the fairness of layered fire, how fast the clearing wrecks
+  - [ ] Phase 1 and phase 3 under their cue-rate targets on some seeds; the wing sweep's misses in three strings
+  - [ ] The grabbed tree read from the side; white knots in shell and fireball impacts and in the torrent breath
+  - [ ] On the iPhone: frame rate in a phase-3 fight, the sky deck, the flare
+  - [ ] The same pass for the Ash Disciple and the Starless Lord
+
 ## M1.43 — The flare: red, blue and black flashes; the counter; the charged blow (2026-11-15, `combat/flash-tells`, ADR-118)
 - [x] The flare replaces the red windup glow and a boss's own red floor ring (hazards keep their ground mark)
 - [x] A blue flare marks a parry moment: any parry of it ends the string and the hero counters by himself
