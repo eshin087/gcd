@@ -282,6 +282,17 @@ export class LordSpells {
       w.y = 1.05 + Math.sin(Math.PI * u) * W.rise;
       const left = w.T - w.t;
       w.h?.retime?.(Math.max(0, left));
+      // (a moment before its cue: if something that asks the other answer is due within the guard's
+      // reach of its pass (a piece of the world falling, a mark), it goes by uncued and harmless)
+      if (!w.flashed && !w.quiet && left <= this._lead + 0.05 && pl) {
+        const L = d.brain?.ledger, G = TUNING.pressure.guard;
+        if (L?.conflict?.(L.now + left, answerOf(TELL.NORMAL), (G.sep ?? 0.3) + (G.margin ?? 0) + (G.pad ?? 0))) {
+          w.quiet = true;
+          w.h?.cancel?.();
+          w.h = null;
+          d.brain.stats.fizzles++;
+        }
+      }
       if (!w.flashed && !w.quiet && left <= this._lead && pl) {
         w.flashed = true;
         w.flashT = d.time;
