@@ -3,7 +3,7 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
-import { STYLE, SCABBARD } from './styles.js'; // PROTOTYPE: the hero's style on trial (?style=a|b|c|b1|b2|b3)
+import { STYLE } from './styles.js'; // PROTOTYPE: hero v2's motion base (?hero=a|b|c)
 import { BUILD } from './heroDims.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
@@ -344,10 +344,9 @@ export function stand(p, A) {
   guard(p, A);
   if (!A.freeHand) return;
   const f = clamp(fin(A.fightW), 0, 1);
-  let rev = 0;
   if (f >= 0.999) standGuard(p, A);
   else {
-    rev = standEase(p, A) * (1 - f);
+    standEase(p, A);
     if (f > 0.001) {
       for (let i = 0; i < N; i++) SCR_FIGHT[i] = p[i];
       standGuard(SCR_FIGHT, A);
@@ -356,8 +355,7 @@ export function stand(p, A) {
   }
   if (STYLE && f > 0.001 && f < 0.999) {
     // (PROTOTYPE) half way between the two stances the free hand passes in front of his chest: a
-    // straight line from the belt to the raised sword fingers ran past the shoulder and the arm
-    // stood out sideways like a signpost
+    // straight line from the belt to the grip ran past the shoulder and the arm stood out sideways
     const k = 4 * f * (1 - f);
     p[P.lH] -= 0.1 * k;
     p[P.lH + 1] -= 0.05 * k;
@@ -365,10 +363,6 @@ export function stand(p, A) {
     p[P.lP] += 0.1 * k;
     p[P.lP + 1] -= 0.3 * k;
   }
-  if (STYLE?.trans) styleTransition(p, A);
-  // (a reversed grip opens the sword wrist's range: _wristLimit, this.revW; setting off, the run's
-  // trailing carry takes the blade, and the range closes)
-  A.revAsk = Math.max(fin(A.revAsk), rev * (1 - smoothstep(0.02, 0.3, fin(A.swordW))));
   // setting off, the free hand lets go of the belt's shape for the rest it swings in (guard()'s:
   // the fingers ahead and down). Kept, the hand turned in on the hip put its fingertips 6.7 cm
   // into it as the arm swung past.
@@ -380,75 +374,9 @@ export function stand(p, A) {
 }
 
 // (PROTOTYPE: a style on trial, styles.js, brings its own two stances)
-const SCR_SHEATH = new Float32Array(N);
 function standEase(p, A) {
-  if (STYLE?.sheath) {
-    // (B3) drawn: the picked at-ease pose; sheathed: its own; between them as the sword goes in
-    const w = clamp(fin(A.sheW, 1), 0, 1);
-    if (w >= 0.999) STYLE.sheathedEase(p, P, A);
-    else {
-      STYLE.ease(p, P, A, atEase);
-      if (w > 0.001) {
-        for (let i = 0; i < N; i++) SCR_SHEATH[i] = p[i];
-        STYLE.sheathedEase(SCR_SHEATH, P, A);
-        blend(p, p, SCR_SHEATH, w * w * (3 - 2 * w));
-      }
-    }
-    return 0;
-  }
-  if (STYLE) return fin(STYLE.ease(p, P, A, atEase));
-  atEase(p, P, A);
-  return 0;
-}
-
-// ---------------------------------------------------------------- PROTOTYPE: B's transitions
-// (styles.js `trans`.) Taking the guard: 'twirl' turns the blade once beside him on the way into it;
-// 'draw' reaches across for the hilt and draws the sword out of its scabbard (A.sheath, apply()).
-// Letting it down: a flick that shakes the blade clean (chiburi), then for 'draw' the blade goes
-// back into the scabbard. A swing or a block out of a fight ends the same way (update()).
-const DRAW = [0.22, 0.28, 0.48, 0.8]; // s: the hand at the hilt, the grip, the blade out, the sweep into the guard
-const SHEATHE = [0.45, 0.8, 1.15, 1.4]; // s: the flick, the point to the mouth, slid home, the hand lets go
-const SLIDE = 0.83; // m of blade out of the scabbard when its point sits in the mouth
-const SHEATH_KEYS = new Set(['loco', 'roll', 'backstep', 'heal', 'stagger', 'knockdown', 'dead']);
-const ARMED_KEYS = new Set(['attack', 'charge', 'block', 'parry', 'bounce', 'lock', 'guardBreak', 'ghostep', 'flurry', 'plunge']);
-function styleTransition(p, A) {
-  const T = STYLE.trans;
-  if (T === 'draw') {
-    // (B3) reaching across for the hilt and pulling the blade out along the scabbard; later, the
-    // flick and the way back in: the elbow out to his right, the chest turned toward the hilt (the
-    // hands themselves go where the sheath puts them: apply())
-    const td = fin(A.drawT, 99), ts = fin(A.sheatheT, -1);
-    if (A.drawn && td < DRAW[3]) {
-      const k = smoothstep(0, 0.08, td) * (1 - smoothstep(DRAW[2], DRAW[3], td));
-      to3(p, P.rP, -0.7, -0.45, -0.3, k);
-      p[P.hdX] += 0.1 * k;
-      p[P.spY] -= 0.15 * k;
-    }
-    if (ts >= 0) {
-      if (ts < 0.5) chiburi(p, A, ts / 0.5, 1);
-      const k = smoothstep(SHEATHE[0], SHEATHE[0] + 0.15, ts) * (1 - smoothstep(SHEATHE[3] - 0.1, SHEATHE[3] + 0.2, ts));
-      to3(p, P.rP, -0.7, -0.45, -0.3, k);
-      p[P.hdX] += 0.08 * k;
-      p[P.spY] -= 0.12 * k;
-    }
-    return;
-  }
-  const t = fin(A.fightT, 99);
-  if (A.fightOn) {
-    if (T === 'twirl' && t < 0.62) fidgetTwirl(p, A, clamp(t / 0.62, 0, 1), smoothstep(0, 0.1, t) * (1 - smoothstep(0.45, 0.62, t)));
-  } else if (t < 0.5 && !(A.moveW > 0.5)) chiburi(p, A, t / 0.5, 1);
-}
-/** The flick that shakes the blade clean (chiburi): out and down to his right fast, a hold, back.
- *  u 0..1 over the move, e its weight. */
-function chiburi(p, A, u, e) {
-  if (!(e > 0)) return;
-  const k = smoothstep(0, 0.2, u) * (1 - smoothstep(0.62, 1, u)) * e;
-  if (!(k > 0)) return;
-  to3(p, P.rH, -0.3, -0.36, 0.22, k);
-  to3(p, P.rP, -0.2, -0.5, -0.85, k);
-  dirTo(p, P.swD, -0.62, -0.52, 0.58, k);
-  to3(p, P.swF, -0.6, 0.1, -0.8, k);
-  p[P.hdY] -= 0.15 * k;
+  if (STYLE) STYLE.ease(p, P, A, atEase);
+  else atEase(p, P, A);
 }
 function standGuard(p, A) {
   if (STYLE) STYLE.guard(p, P, A);
@@ -663,20 +591,18 @@ export function loco(p, A) {
   const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = STYLE?.run ?? FIGHT_RUN, FD = STYLE ? STYLE.run.dv : FIGHT_RUN.d;
   // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
   // beside a free arm that pumps; it rides the stride now)
-  // (PROTOTYPE, a style on trial: the sword hand runs beside the thigh, not behind it: trailed back
-  // the arm swung 43° behind him as he stopped)
-  const RZ = STYLE ? 0.13 : -0.08, RY = STYLE ? -0.36 : -0.44;
-  to3(p, P.rH, lerp(lerp(lerp(STYLE ? -0.2 : -0.13, -0.15, s), -0.02, bw), FR.h[0], fw), lerp(lerp(lerp(RY, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
-    lerp(lerp(lerp(RZ + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
+  // (PROTOTYPE, hero v2: running, the whole sword ARM trails back with the blade, the hand out
+  // behind the hip and the steel on the forearm's own line: a long bright line behind him from the
+  // game camera, and no bent wrist. Today's run pumps the forearm ahead under a blade that trails
+  // (the wrist bent 62-78°); round 3's carry held the blade ahead along the forearm, which from
+  // behind him foreshortened it to a dash.)
+  const RX = STYLE ? -0.2 : -0.13, RY = STYLE ? -0.4 : -0.44, RZ = STYLE ? -0.2 + amp * 0.4 : -0.08 + amp;
+  to3(p, P.rH, lerp(lerp(lerp(RX, -0.15, s), -0.02, bw), FR.h[0], fw), lerp(lerp(lerp(RY, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
+    lerp(lerp(lerp(RZ, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
   // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
   // front: they point back beside the ribs now)
   to3(p, P.rP, lerp(lerp(lerp(-0.4, -0.5, s), -0.85, bw), FR.p[0], fw), lerp(lerp(lerp(-0.3, 0.2, s), -0.3, bw), FR.p[1], fw), lerp(lerp(-0.95, -0.5, bw), FR.p[2], fw), ws);
-  // (PROTOTYPE, a style on trial: running, the blade is carried low and ahead along the forearm,
-  // as he stands at ease; trailed back off a forearm that points forward the wrist bent 64-78°. A
-  // sprint still trails it)
-  // (the elbow bent, the forearm ahead and down, the blade on its line well clear of the grass: hung
-  // straight down off a hanging arm the point met the ground mid-stride and was tipped up 30°)
-  if (STYLE) dirLerp(SW_T, 0, lerp(-0.5, -0.36, s), lerp(-0.53, -0.2, s) - 0.03 * st * (1 - s), lerp(0.68, -0.91, s), -0.15, -0.22, 1, bw);
+  if (STYLE) dirLerp(SW_T, 0, lerp(-0.32, -0.36, s), lerp(-0.5, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.8, -0.91, s), -0.15, -0.22, 1, bw);
   else dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
   if (fw > 0.001) dirLerp(SW_T, 0, SW_T[0], SW_T[1], SW_T[2], FD[0], FD[1] + 0.035 * st, FD[2], fw);
   dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
@@ -2652,16 +2578,6 @@ function fidgetLean(p, A, u, e) {
   p[P.bodyY] -= 0.02 * e;
   p[P.bodyZ] += 0.02 * e;
 }
-function fidgetFlick(p, A, u, e) {
-  chiburi(p, A, clamp((u - 0.15) / 0.6, 0, 1), e);
-}
-/** (B3, the sword sheathed) the sword hand comes to rest on the hilt for a while (A.hiltRest:
- *  the sheath's hand-on-hilt weight, apply()), leaning a little into it. */
-function fidgetHilt(p, A, u, e) {
-  A.hiltRest = Math.max(fin(A.hiltRest), e);
-  p[P.spX] += 0.015 * e;
-  p[P.hdX] += 0.04 * e;
-}
 const FIDGETS = [
   { name: 'look', dur: 3.4, fn: fidgetLook },
   { name: 'stretch', dur: 3.0, fn: fidgetStretch },
@@ -2670,17 +2586,11 @@ const FIDGETS = [
   { name: 'shoulder', dur: 3.6, fn: fidgetShoulder },
   { name: 'lean', dur: 4.2, fn: fidgetLean },
 ];
-// (PROTOTYPE: a style's own idle actions and pace, styles.js `fidgets` / `life`)
-const EXTRA_FIDGETS = { flick: { name: 'flick', dur: 1.8, fn: fidgetFlick }, hilt: { name: 'hilt', dur: 4.6, fn: fidgetHilt } };
-const FID = STYLE?.fidgets ? STYLE.fidgets.map((n) => FIDGETS.find((f) => f.name === n) ?? EXTRA_FIDGETS[n]).filter(Boolean) : FIDGETS;
-const LIFE = STYLE?.life ? { ...IDLE_LIFE, ...STYLE.life } : IDLE_LIFE;
-const FID_SHEATHED = STYLE?.fidgetsSheathed ? STYLE.fidgetsSheathed.map((n) => FIDGETS.find((f) => f.name === n) ?? EXTRA_FIDGETS[n]).filter(Boolean) : FID;
 /** The current idle action's layer (A.fidget, timed in HeroAnimator._idleLife). */
 function idleLife(p, A) {
   const F = A.fidget;
   if (!F || F.k < 0 || !(F.w > 0.001)) return;
-  const D = (F.list ?? FID)[F.k];
-  if (!D) return;
+  const D = FIDGETS[F.k];
   D.fn(p, A, clamp(F.t / D.dur, 0, 1), F.w);
 }
 
@@ -2761,7 +2671,6 @@ const _S = new THREE.Vector3(), _T = new THREE.Vector3(), _pole = new THREE.Vect
 const _w = new THREE.Vector3(), _v = new THREE.Vector3(), _g = new THREE.Vector3();
 const _bx = new THREE.Vector3(), _by = new THREE.Vector3(), _bz = new THREE.Vector3();
 const _m4 = new THREE.Matrix4();
-const _shMat = new THREE.Matrix4(), _shM = new THREE.Vector3(), _shZ = new THREE.Vector3(), _shY = new THREE.Vector3(), _shH = new THREE.Vector3(), _shW = new THREE.Vector3();
 const _qInv = new THREE.Quaternion(), _qA = new THREE.Quaternion(), _q0 = new THREE.Quaternion();
 const _qs = new THREE.Quaternion(), _pa = new THREE.Vector3(), _e0 = new THREE.Vector3(), _e1 = new THREE.Vector3();
 const _axis = new THREE.Vector3();
@@ -2858,8 +2767,7 @@ const TORSO_R = [0.15 * (BUILD?.chest ?? 1), 0.115 * (BUILD?.chest ?? 1)]; // m:
 const WRIST_BACK = 128 * (Math.PI / 180); // the most the blade folds back from the forearm's line (0 = in line with it, a point)
 const WRIST_COS = Math.cos(WRIST_BACK), WRIST_SIN = Math.sin(WRIST_BACK);
 const WRIST_NATURAL = [32 * (Math.PI / 180), 45 * (Math.PI / 180)]; // (PROTOTYPE) one hand, two hands: _wristNatural
-const WRIST_SWING = [60 * (Math.PI / 180), 60 * (Math.PI / 180)]; // … in a swing's wind-up and recovery
-const REV_BACK = 178 * (Math.PI / 180); // … with the sword held reversed (PROTOTYPE, styles.js B2; this.revW)
+const WRIST_SWING = [60 * (Math.PI / 180), 60 * (Math.PI / 180)]; // ... in a swing's wind-up and recovery
 const WRIST_CLEAR_COS = Math.cos(70 * (Math.PI / 180)); // … and, there, the least angle round the forearm between the steel and the upper arm
 const ELBOW_RATE = 14; // rad/s: the most an elbow swings round its shoulder → hand line (~13° a frame)
 const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vector3(), _eC = new THREE.Vector3();
@@ -2965,18 +2873,6 @@ export class HeroAnimator {
     this.sprintW = 0;
     this.swordW = 0;
     this.fightW = 0; // 0 at ease … 1 the fight stance (stand(), stances.js)
-    this.fightOn = false; // (PROTOTYPE, styles.js) the fight's edge, the clock since it, the reversed grip, the sheath
-    this.fightT = 99;
-    this._prevKey = 'loco';
-    this.revAsk = 0;
-    this.revW = 0;
-    this.hiltRest = 0;
-    this.sheath = STYLE?.sheath ? { s: 1, slide: 0, hf: 0, lf: 1 } : null;
-    this.drawn = false;
-    this.drawT = 99;
-    this.sheatheT = -1;
-    this.calmT = 0;
-    this.sheW = 1;
     this.speed = 0;
     this.phase = 0;
     this.mx = 0;
@@ -3157,18 +3053,6 @@ export class HeroAnimator {
     this.sprintW = 0;
     this.swordW = 0;
     this.fightW = 0; // 0 at ease … 1 the fight stance (stand(), stances.js)
-    this.fightOn = false; // (PROTOTYPE, styles.js) the fight's edge, the clock since it, the reversed grip, the sheath
-    this.fightT = 99;
-    this._prevKey = 'loco';
-    this.revAsk = 0;
-    this.revW = 0;
-    this.hiltRest = 0;
-    this.sheath = STYLE?.sheath ? { s: 1, slide: 0, hf: 0, lf: 1 } : null;
-    this.drawn = false;
-    this.drawT = 99;
-    this.sheatheT = -1;
-    this.calmT = 0;
-    this.sheW = 1;
     this.speed = 0;
     this.speedS = this.speedSV = 0;
     this.backW = 0;
@@ -3400,22 +3284,9 @@ export class HeroAnimator {
       const force = pl.debug?.fightStance;
       const fight = typeof force === 'boolean' ? force : !!pl.lockOn || FIGHT_STATES.has(pl.game?.state);
       this.fightW = damp(fin(this.fightW), fight ? 1 : 0, FIGHT_EASE[fight ? 0 : 1], dt);
-      // (PROTOTYPE, styles.js `trans`: the clock of the way into or out of the guard; a swing or a
-      // block out of a fight restarts the way out: the flick, and the sheathe)
-      if (fight !== this.fightOn) {
-        this.fightOn = fight;
-        this.fightT = 0;
-      } else this.fightT = fin(this.fightT, 99) + dt;
-      if (STYLE?.trans && !fight && ARMED_KEYS.has(this._prevKey) && !ARMED_KEYS.has(this.key)) this.fightT = 0;
-      this._prevKey = this.key;
     }
-    this.revAsk = 0;
-    this.hiltRest = 0;
-    if (this.sheath) this._sheathState(dt);
     this._idleLife(dt, sp);
     this.poses[this.key](this.target, this);
-    this.revW = damp(fin(this.revW), this.key === 'loco' ? clamp(fin(this.revAsk), 0, 1) : 0, 16, dt);
-    if (this.sheath) this._sheathPlan(dt);
     if (this.blendT < this.blendDur) {
       this.blendT += dt;
       const u = clamp(this.blendT / this.blendDur, 0, 1);
@@ -3482,92 +3353,6 @@ export class HeroAnimator {
     this.lastLine = lineOf(this.atkAnim);
   }
 
-  /** PROTOTYPE (styles.js B3): where the sword is: `s` 1 = in the scabbard (0 = in the hand),
-   *  `slide` m drawn out along it, `hf` the sword hand on its hilt (apply()). Out of a fight it rests
-   *  sheathed; taking the guard it is drawn (DRAW), letting it down it is sheathed (SHEATHE); any
-   *  clip that swings, blocks or charges has it in the hand at once. */
-  _sheathPlan(dt) {
-    const S = this.sheath, td = fin(this.drawT, 99), ts = fin(this.sheatheT, -1);
-    let s = 1, slide = 0, hf = 0, hold = 0;
-    if (ts >= 0) {
-      // the way back in: the flick, the point to the mouth, slid home, the hand lets go
-      hold = 1;
-      if (ts < SHEATHE[0]) s = 0;
-      else if (ts < SHEATHE[1]) {
-        hf = s = smoothstep(SHEATHE[0], SHEATHE[1], ts);
-        slide = SLIDE;
-      } else if (ts < SHEATHE[2]) {
-        hf = 1;
-        slide = SLIDE * (1 - smoothstep(SHEATHE[1], SHEATHE[2], ts));
-      } else hf = 1 - smoothstep(SHEATHE[2], SHEATHE[3], ts);
-    } else if (this.drawn) {
-      // drawn: the draw itself, then the sword in the hand
-      if (td < DRAW[0]) hf = smoothstep(0, DRAW[0], td);
-      else if (td < DRAW[1]) hf = 1;
-      else if (td < DRAW[2]) {
-        hf = 1;
-        slide = SLIDE * smoothstep(DRAW[1], DRAW[2], td);
-      } else if (td < DRAW[3]) {
-        const u = smoothstep(DRAW[2], DRAW[3], td);
-        hf = s = 1 - u;
-        slide = SLIDE;
-      } else s = 0;
-      if (td < DRAW[2]) hold = 1;
-    } else hf = clamp(fin(this.hiltRest), 0, 1);
-    // the free hand on the scabbard: at ease (drawn or not), in a guard that keeps it there, through
-    // the draw and the way back in; let go to run, in any other clip, or for an idle action that
-    // uses the hand
-    let lf = Math.max(hold, lerp(1, fin(STYLE.guardLf, 0), smoothstep(0.3, 0.7, fin(this.fightW))));
-    lf *= 1 - smoothstep(0.05, 0.35, this.moveW);
-    const F = this.fidget;
-    if (F.k >= 0 && F.name !== 'look' && F.name !== 'hilt') lf *= 1 - clamp(F.w, 0, 1);
-    if (SHEATH_KEYS.has(this.key)) {
-      S.s = s;
-      S.hf = hf;
-    } else {
-      // (an attack out of the scabbard: the blade is in the hand within a few frames, a blur)
-      S.s = damp(S.s, 0, 40, dt);
-      S.hf = damp(S.hf, 0, 40, dt);
-      lf = 0;
-    }
-    S.slide = slide;
-    S.lf = damp(fin(S.lf), lf, 12, dt);
-  }
-
-  /** PROTOTYPE (styles.js B3): is the sword out? Drawn when a fight starts (the draw) or by any
-   *  swing or block (at once); sheathed again (the flick, then back in) after `sheatheAfter` s out of
-   *  a fight with no swing and no block, standing still. A swing, a block or a fight during the way
-   *  back in keeps it out. */
-  _sheathState(dt) {
-    const armed = ARMED_KEYS.has(this.key) || this.fightOn;
-    this.calmT = armed ? 0 : fin(this.calmT) + dt;
-    if (!this.drawn) {
-      if (this.fightOn && SHEATH_KEYS.has(this.key)) {
-        this.drawn = true;
-        // (from a hand already on the hilt, an idle action's: the reach starts where the hand is,
-        // the inverse of the reach's smoothstep, not back at the thigh)
-        const h = clamp(fin(this.sheath?.hf), 0, 1);
-        this.drawT = DRAW[0] * (0.5 - Math.sin(Math.asin(1 - 2 * h) / 3));
-      } else if (ARMED_KEYS.has(this.key)) {
-        this.drawn = true;
-        this.drawT = 99;
-      }
-    } else this.drawT = fin(this.drawT, 99) + dt;
-    if (this.sheatheT >= 0) {
-      if (armed) {
-        // (half way in: it comes out again from the grip)
-        if (this.sheatheT > SHEATHE[0]) this.drawT = DRAW[0];
-        this.sheatheT = -1;
-      } else if ((this.sheatheT += dt) >= SHEATHE[3]) {
-        this.drawn = false;
-        this.sheatheT = -1;
-      }
-    } else if (this.drawn && !armed && this.key === 'loco' && this.moveW < 0.3 && this.fidget.k < 0 && this.calmT >= fin(this.sheatheAfter, STYLE.sheatheAfter)) {
-      this.sheatheT = 0;
-    }
-    this.sheW = damp(fin(this.sheW, 1), this.drawn ? 0 : 1, 7, dt);
-  }
-
   /** Idle life (IDLE_LIFE): time the current action, start the next after a calm spell, cut it
    *  when he moves, attacks or guards. */
   _idleLife(dt, sp) {
@@ -3579,37 +3364,35 @@ export class HeroAnimator {
       F.w = 0;
     }
     if (F.k >= 0) {
-      const D = (F.list ?? FID)[F.k] ?? FID[0];
+      const D = FIDGETS[F.k];
       F.t += dt;
-      const env = smoothstep(0, LIFE.fadeIn, F.t) * (1 - smoothstep(D.dur - LIFE.fadeOut, D.dur, F.t));
+      const env = smoothstep(0, IDLE_LIFE.fadeIn, F.t) * (1 - smoothstep(D.dur - IDLE_LIFE.fadeOut, D.dur, F.t));
       if (!calm) F.cut = true;
-      F.w = F.cut ? Math.max(0, Math.min(env, F.w - dt / LIFE.cancel)) : env;
+      F.w = F.cut ? Math.max(0, Math.min(env, F.w - dt / IDLE_LIFE.cancel)) : env;
       if (F.t >= D.dur || (F.cut && F.w <= 0)) {
         F.k = -1;
         F.w = 0;
         F.name = '';
         F.still = 0;
-        F.wait = lerp(LIFE.gap[0], LIFE.gap[1], this.noise());
+        F.wait = lerp(IDLE_LIFE.gap[0], IDLE_LIFE.gap[1], this.noise());
       }
       return;
     }
     if (!calm) {
       F.still = 0;
-      F.wait = Math.max(F.wait, LIFE.after);
+      F.wait = Math.max(F.wait, IDLE_LIFE.after);
       return;
     }
     F.still += dt;
     if (F.still < F.wait) return;
-    const L = this.sheath && !this.drawn ? FID_SHEATHED : FID;
-    F.list = L;
-    let k = Math.min(L.length - 1, Math.floor(this.noise() * L.length));
-    if (k === F.last) k = (k + 1 + Math.floor(this.noise() * (L.length - 1))) % L.length;
+    let k = Math.min(FIDGETS.length - 1, Math.floor(this.noise() * FIDGETS.length));
+    if (k === F.last) k = (k + 1 + Math.floor(this.noise() * (FIDGETS.length - 1))) % FIDGETS.length;
     F.k = F.last = k;
     F.t = 0;
     F.w = 0;
     F.cut = false;
     F.count++;
-    F.name = L[k].name;
+    F.name = FIDGETS[k].name;
   }
 
   /** The root travel recorded the first frame this clip reached time t0 (slot 0/1); before that,
@@ -3798,35 +3581,9 @@ export class HeroAnimator {
     _qBC.copy(_qChest).invert().multiply(_qBody); // body axes → chest local
     _qBP.copy(_qPelvis).invert().multiply(_qBody); // body axes → pelvis local
 
-    // (PROTOTYPE, styles.js B3) the scabbard in body space (its joint rides the pelvis; the root's
-    // lean and scale cancel out between the two), and the hand on its hilt
-    const SH = this.sheath, scab = r.scabbard;
-    const shOn = !!(SH && scab && (SH.s > 0.001 || SH.hf > 0.001 || SH.lf > 0.001));
-    if (shOn) {
-      _shMat.copy(r.body.matrixWorld).invert().multiply(scab.matrixWorld);
-      _shM.setFromMatrixPosition(_shMat);
-      _shZ.set(0, 0, 1).transformDirection(_shMat);
-      _shY.set(0, 1, 0).transformDirection(_shMat);
-      // the grip: the guard at the mouth, `slide` m further out along the scabbard's line
-      _shH.copy(_shM).addScaledVector(_shZ, -(DIM.guard + SH.slide));
-    }
-    const TR = this._handTarget(r.arms.R, p, P.rH);
-    if (shOn && SH.hf > 0.001) {
-      _shW.copy(_shH);
-      r.body.localToWorld(_shW);
-      r.chest.worldToLocal(_shW);
-      TR.lerp(_shW, SH.hf);
-    }
-    this._arm(r.arms.R, TR, p, P.rP, true);
+    this._arm(r.arms.R, this._handTarget(r.arms.R, p, P.rH), p, P.rP, true);
     // off hand: its own target, or (twoHand) down the grip below the sword hand
     this._handTarget(r.arms.L, p, P.lH);
-    if (shOn && SH.lf > 0.001) {
-      // (PROTOTYPE, B3) the free hand on the scabbard just behind its mouth, on its outer face
-      _shW.copy(_shM).addScaledVector(_shZ, 0.06).addScaledVector(_shY, 0.045);
-      r.body.localToWorld(_shW);
-      r.chest.worldToLocal(_shW);
-      _T.lerp(_shW, SH.lf);
-    }
     let lk = 0;
     if (this.freeHand) {
       // the sword fingers on the sword wrist (lk): the right wrist (chest local) from the solved sword
@@ -3875,10 +3632,6 @@ export class HeroAnimator {
     _bz.set(p[P.swD], p[P.swD + 1], p[P.swD + 2]);
     if (_bz.lengthSq() < 1e-6) _bz.set(0, 0, 1);
     _bz.normalize();
-    // (PROTOTYPE, a style on trial) standing and running, the blade keeps near the forearm's own line:
-    // a held sword is carried by the arm, not by a wrist bent back (the owner: "the hand/arm angles
-    // ... looks unnatural"; running with it out the wrist bent 78°, stopping 59°). The swings keep
-    // their whole range
     // outside the attacks (whose swept blade is the hit test), the steel never passes through his
     // own legs: the ready stance carries it across the front of the left leg with ~10 cm to spare,
     // so a hip twist in a turn, a foot landing forward or a fall swings it clear instead. The
@@ -3900,19 +3653,7 @@ export class HeroAnimator {
       const d = this.def, t = fin(this.t);
       if (t < d.windup - 0.02 || t > d.windup + d.active + 0.04) this._wristNatural(r, clamp(fin(p[P.twoHand]), 0, 1), WRIST_SWING);
     }
-    if (shOn && SH.s > 0.001) {
-      // the sword in (or sliding along) the scabbard
-      r.sword.position.lerp(_shH, SH.s);
-      _bz.lerp(_shZ, SH.s);
-      if (_bz.lengthSq() < 1e-6) _bz.copy(_shZ);
-      _bz.normalize();
-    }
-    if (r.bladeParts) {
-      const hide = shOn && SH.s > 0.98 && SH.slide < 0.01;
-      for (const m of r.bladeParts) m.visible = !hide;
-    }
     _by.set(p[P.swF], p[P.swF + 1], p[P.swF + 2]);
-    if (shOn && SH.s > 0.001) _by.lerp(_shY, SH.s);
     _by.addScaledVector(_bz, -_by.dot(_bz));
     if (_by.lengthSq() < 1e-6) {
       _by.set(0, 1, 0).addScaledVector(_bz, -_bz.y);
@@ -3956,11 +3697,7 @@ export class HeroAnimator {
     // the forearm's line, elbow → wrist, in body space (the arm hangs along -Y; chest → body)
     _v.set(0, -1, 0).applyQuaternion(_q1.copy(A.upper.quaternion).multiply(A.fore.quaternion)).applyQuaternion(_q2.copy(_qBC).invert());
     const c = clamp(_v.dot(_bz), -1, 1);
-    // (PROTOTYPE, styles.js B2: a reversed grip, the blade up along the back of the arm: the grip
-    // is turned in the hand, not the wrist bent; this.revW opens the range)
-    const rv = clamp(fin(this.revW), 0, 1), lim = rv > 0.001 ? lerp(WRIST_BACK, REV_BACK, rv) : WRIST_BACK;
-    const WC = rv > 0.001 ? Math.cos(lim) : WRIST_COS, WS = rv > 0.001 ? Math.sin(lim) : WRIST_SIN;
-    if (c >= WC) return;
+    if (c >= WRIST_COS) return;
     // the part of the blade's direction square to the forearm
     _w.copy(_bz).addScaledVector(_v, -c);
     if (_w.lengthSq() < 1e-6) _w.set(0, 1, 0).addScaledVector(_v, -_v.y);
@@ -3980,14 +3717,12 @@ export class HeroAnimator {
         _w.copy(_G).multiplyScalar(WRIST_CLEAR_COS).addScaledVector(_TL, side * Math.sqrt(1 - WRIST_CLEAR_COS * WRIST_CLEAR_COS)).normalize();
       }
     }
-    _bz.copy(_v).multiplyScalar(WC).addScaledVector(_w, WS).normalize();
+    _bz.copy(_v).multiplyScalar(WRIST_COS).addScaledVector(_w, WRIST_SIN).normalize();
   }
 
   /** PROTOTYPE (styles.js): the blade (_bz) at most WRIST_NATURAL off the sword forearm's line
-   *  (two hands on the grip: the wider second value, the wrists cocked as in a middle guard). Not
-   *  with the sword reversed (this.revW). */
+   *  (two hands on the grip: the wider second value, the wrists cocked as in a middle guard). */
   _wristNatural(r, two, L = WRIST_NATURAL) {
-    if (fin(this.revW) > 0.1) return;
     const A = r.arms.R;
     _v.set(0, -1, 0).applyQuaternion(_q1.copy(A.upper.quaternion).multiply(A.fore.quaternion)).applyQuaternion(_q2.copy(_qBC).invert());
     const cap = lerp(L[0], L[1], two), c = clamp(_v.dot(_bz), -1, 1);

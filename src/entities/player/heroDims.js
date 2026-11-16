@@ -108,30 +108,29 @@ export const HAIR_CLUSTERS = [
   { name: 'nape', pivot: [0, 0.15, -0.09], tip: [0, -0.9, -0.42] },
 ];
 
-// ---------------------------------------------------------------- PROTOTYPE: the hero's style
-// (the owner picks one of three rendered styles: `?style=a|b|c`, styles.js.) A style's BUILD is
-// applied here, after REST: the meshes keep being built from the rest heights (every absolute
-// height above the hips stays where it was in its joint), and only the body's place over the
-// ground (DIM.pivot) drops with the shorter legs. Shoulders: the joints move out, the deltoid and
-// the chest's upper rings grow. The human bosses share this skeleton: in a page with ?style= they
-// would change too (no boss stands on the hero's own level).
-/** The style in the address (`?style=a|b|c`), or null. */
-export const STYLE_ID = (() => {
+// ---------------------------------------------------------------- PROTOTYPE: hero v2
+// (the owner: "focus on improving the characters model design, detail, animation, motion, pose".
+// `?hero=a|b|c` wears one of three reworked models on trial (gear/shroud2.js) over one reworked
+// body and motion base (styles.js); without it the hero is today's, untouched.) The BUILD is the
+// one the owner liked of three (style B): legs a little shorter, shoulders a little broader. It is
+// applied here, after REST: the meshes keep being built from the rest heights, and only the body's
+// place over the ground (DIM.pivot) drops with the shorter legs. The human bosses share this
+// skeleton: in a page with ?hero= they would change too (no boss stands on the hero's own level).
+const param = (k, ok, d = null) => {
   try {
-    const v = new URLSearchParams(globalThis.location?.search ?? '').get('style');
-    return ['a', 'b', 'c', 'b1', 'b2', 'b3'].includes(v) ? v : null;
+    const v = new URLSearchParams(globalThis.location?.search ?? '').get(k);
+    return ok.includes(v) ? v : d;
   } catch {
-    return null;
+    return d;
   }
-})();
-// legs: m off the thigh and the shin; shoulder: m out per joint; deltoid / chest / limbs: × girth;
-// scale: × the drawn size (PLAYER_SCALE); coat: × the coat panels' length (with the legs)
-const BUILDS = {
-  a: { legs: [-0.075, -0.065], shoulder: 0.02, deltoid: 1.12, chest: 1.1, limbs: 1.06, scale: 1.03 },
-  b: { legs: [-0.065, -0.055], shoulder: 0.012, deltoid: 1.06, chest: 1.05, limbs: 1.0, scale: 1.0 },
-  c: { legs: [-0.055, -0.045], shoulder: 0.03, deltoid: 1.18, chest: 1.14, limbs: 1.03, scale: 1.04 },
 };
-export const BUILD = STYLE_ID ? BUILDS[STYLE_ID[0]] : null; // (b1-b3: style B's build)
+/** The hero model on trial in the address (`?hero=a|b|c`), or null: today's hero. */
+export const HERO_ID = param('hero', ['a', 'b', 'c']);
+/** Its guard (`?guard=1|2|3`; styles.js). */
+export const GUARD_ID = param('guard', ['1', '2', '3'], '2');
+// legs: m off the thigh and the shin; shoulder: m out per joint; deltoid / chest / limbs: x girth;
+// scale: x the drawn size (PLAYER_SCALE)
+export const BUILD = HERO_ID ? { legs: [-0.065, -0.055], shoulder: 0.012, deltoid: 1.06, chest: 1.05, limbs: 1.0, scale: 1.0 } : null;
 if (BUILD) {
   const legs = BUILD.legs[0] + BUILD.legs[1];
   BUILD.legScale = (DIM.thigh + DIM.shin + legs) / (DIM.thigh + DIM.shin);

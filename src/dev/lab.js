@@ -10,8 +10,8 @@ import { Training } from './training.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
-import { STYLE_NAMES, GUARD_ID, SHEATH_LOOK } from '../entities/player/styles.js';
-import { STYLE_ID } from '../entities/player/heroDims.js';
+import { HERO_NAMES, GUARD_NAMES } from '../entities/player/styles.js';
+import { HERO_ID, GUARD_ID } from '../entities/player/heroDims.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -735,10 +735,11 @@ export class Lab {
     }
   }
 
-  /** STYLE (PROTOTYPE, styles.js): reload into one of the hero's three styles on trial, or today's
-   *  hero (`?style=a|b|c`; every other parameter, `?lab` included, is kept). */
+  /** HERO v2 (PROTOTYPE, styles.js / gear/shroud2.js): reload into one of the three reworked hero
+   *  models on trial, or today's hero (`?hero=a|b|c`), and its guard (`?guard=1|2|3`); every other
+   *  parameter, `?lab` included, is kept. */
   _buildStyle(root) {
-    const { body } = this._section(root, 'style', 'HERO STYLE (preview)');
+    const { body } = this._section(root, 'style', 'HERO v2 (preview)');
     const reload = (key, id) => {
       try {
         const u = new URL(globalThis.location.href);
@@ -757,12 +758,8 @@ export class Lab {
         if (id === cur) b.classList?.add?.('on');
       }
     };
-    row('style', STYLE_ID ?? 'now', STYLE_NAMES, 'style');
-    // (B3, sheathed: its three guards and three scabbard glows)
-    if (STYLE_ID === 'b3') {
-      row('guard', GUARD_ID, { 1: 'guard 1 · one hand, low', 2: 'guard 2 · two hands, middle', 3: 'guard 3 · two hands, low' }, 'guard');
-      row('sheath', SHEATH_LOOK, { cyan: 'scabbard · cyan', violet: 'scabbard · violet', gold: 'scabbard · gold' }, 'scabbard');
-    }
+    row('hero', HERO_ID ?? 'now', HERO_NAMES, 'hero');
+    if (HERO_ID) row('guard', GUARD_ID, GUARD_NAMES, 'guard');
   }
 
   /** OUTFIT: the hero's outfit options (game.heroLooks / game.pickHeroLook, main.js; `?heroLook=`;

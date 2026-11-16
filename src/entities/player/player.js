@@ -6,6 +6,8 @@ import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
+import { V2_LOADOUT } from './gear/shroud2.js';
+import { HERO_ID } from './heroDims.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
@@ -165,7 +167,8 @@ export class Player {
     // rig's own materials. ?sword= (the owner's pick of the sword looks, gear/moonblade.js) swaps the
     // outfit's weapon
     this.look = getLook(game.heroLook)?.id ?? DEFAULT_LOOK;
-    const sword = swordFromUrl(), lo = HERO_LOOKS[this.look].loadout;
+    // (PROTOTYPE: hero v2, `?hero=a|b|c`, wears its own reworked set: gear/shroud2.js)
+    const sword = swordFromUrl(), lo = HERO_ID ? V2_LOADOUT : HERO_LOOKS[this.look].loadout;
     this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo);
     tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
     this.object3d = this.rig.root;
@@ -3366,7 +3369,7 @@ export class Player {
       if (this.state === 'charge') this.fx.chargeTick(dt, sw.a, sw.b, this.chargeK);
       else if (this.critTimer > 0 && this.alive) this.fx.critTick(dt, sw.a, sw.b);
       // the blade's dot halo: dim at idle, brighter while it glows (strikes, charge, crit)
-      if (this.alive && this.object3d.visible !== false && !hidden && armed && !(this.anim.sheath?.s > 0.5)) {
+      if (this.alive && this.object3d.visible !== false && !hidden && armed) {
         const bu = this.rig.materials.blade.uniforms;
         this.fx.bladeHalo(dt, clamp((bu.uInkGlow.value - 0.16) * 0.8 + TUNE.bladeFlare.halo * this.bladeFlare, 0.25, 2), this.bladeFar);
       }

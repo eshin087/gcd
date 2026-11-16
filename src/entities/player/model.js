@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { createSurfaceGlyphMaterial, FLAG } from '../../render/materials.js';
 import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
-import { DIM, BODY, REST, HAIR_CLUSTERS, BUILD, STYLE_ID } from './heroDims.js';
-import { SCABBARD, SHEATH_LOOK } from './styles.js';
+import { DIM, BODY, REST, HAIR_CLUSTERS, BUILD } from './heroDims.js';
 import { mergeGeometries, sub, partGeometry, orient, limb, swordTip } from './heroGeo.js';
 import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
 
@@ -594,40 +593,8 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   const flask = handles.flask ?? mesh(arms.L.fore, orient.up(ellipsoidGeometry(0.036, 0.036, 0.055, { widthSegs: 10, heightSegs: 6 })), M.flask, 0, -DIM.foreArm - 0.03, 0.068);
   flask.visible = false;
 
-  // (PROTOTYPE, styles.js B3) a scabbard at the left hip, and the blade's glowing parts kept apart
-  // so the animator can hide them while it is sheathed
-  let scabbard = null, bladeParts = null;
-  if (STYLE_ID === 'b3') {
-    const S = SCABBARD;
-    scabbard = joint(pelvis, ...S.at);
-    const z = new THREE.Vector3(...S.axis).normalize(), y = new THREE.Vector3(1, 0, 0).addScaledVector(z, -z.x).normalize();
-    scabbard.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(y, z), y, z));
-    // (limbGeometry runs down -Y: turned to run along +Z, flattened across the blade's flats)
-    const tube = (len, r0, r1, at = 0) => limb({ length: len, r0, r1 }).rotateX(-Math.PI / 2).scale(1.2, 0.62, 1).translate(0, 0, at);
-    // the glow (?sheath=): cyan, the blade shining through it; violet, the gem's runes on dark steel;
-    // gold, bright fittings and a seam of light on dark steel
-    const L = { cyan: { body: M.blade, fit: M.bladeTip, seam: M.bladeTip }, violet: { body: M.armor, fit: M.gem, seam: M.gem }, gold: { body: M.armor, fit: M.flask, seam: M.flask } }[SHEATH_LOOK];
-    mesh(scabbard, tube(S.len, S.r[0], S.r[1]), L.body);
-    // the mouth's collar, two bands and the chape (the tip's fitting)
-    mesh(scabbard, tube(0.05, S.r[0] + 0.008, S.r[0] + 0.007), L.fit);
-    for (const u of [0.3, 0.56]) {
-      const r = S.r[0] + (S.r[1] - S.r[0]) * u + 0.005;
-      mesh(scabbard, tube(0.022, r, r, S.len * u), L.fit);
-    }
-    mesh(scabbard, tube(0.08, S.r[1] + 0.006, S.r[1] * 0.45, S.len - 0.07), L.fit);
-    // a seam of light down its outer face
-    const seam = limb({ length: S.len - 0.12, r0: 0.007, r1: 0.005 }).rotateX(-Math.PI / 2).translate(0, S.r[0] * 0.62 * 0.92, 0.05);
-    mesh(scabbard, seam, L.seam);
-    // the hanger: a strap from the belt to the scabbard behind its mouth
-    const at = new THREE.Vector3(...S.at), A0 = new THREE.Vector3(0.15, 0.075, 0.07), B0 = at.clone().addScaledVector(z, 0.12).add(new THREE.Vector3(-0.02, 0.03, 0));
-    const d = B0.clone().sub(A0), dl = d.length();
-    const strap = limb({ length: dl, r0: 0.012, r1: 0.012 }).scale(1.6, 1, 0.6);
-    strap.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), d.normalize())).translate(A0.x, A0.y, A0.z);
-    mesh(pelvis, strap, M.leather);
-    bladeParts = sword.children.filter((o) => o.isMesh && (o.material === M.blade || o.material === M.bladeTip));
-  }
   // fewer draw calls: static meshes sharing a joint, a material and an owner become one mesh
-  mergeStatic(root, new Set([flask, ...handles.keep, ...(bladeParts ?? [])]));
+  mergeStatic(root, new Set([flask, ...handles.keep]));
 
   // who owns what: the objects each slot hung on the skeleton (after the merge)
   const slots = Object.fromEntries(SLOTS.map((s) => [s, []]));
@@ -638,7 +605,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
 
   const mats = Object.values(M);
   return {
-    root, body, pelvis, spine, chest, head, hair, arms, legs, coat, streamers, sword, gem, pauldron, flask, scabbard, bladeParts,
+    root, body, pelvis, spine, chest, head, hair, arms, legs, coat, streamers, sword, gem, pauldron, flask,
     // { open, grip, fingers? } | null: the free hand open, the same hand closed on the grip below the
     // sword hand, and (optional) the sword fingers; open and fingers hang on arms.L.wrist. The
     // animator shows one of them (`twoHand` and the grip gap, `hs`; gear/README.md)

@@ -79,7 +79,8 @@ export function panelSkirt({ pelvis, M, DIM, mesh, joint }, PANELS, { seed = 0 }
     anchor.rotation.y = Pn.az; // local +Z = outward, +X = tangent
     const s0 = joint(anchor);
     const sk = Pn.skew ?? 0, w0 = Pn.w[0], sl = Pn.slant ?? 0;
-    const nF = Math.max(1, Math.round(Pn.w[2] / 0.09)) + 0.5, fph = i * 2.3 + 0.4;
+    // (`folds`: the drawn folds across the panel; default by its width)
+    const nF = Pn.folds != null ? Pn.folds + 0.5 : Math.max(1, Math.round(Pn.w[2] / 0.09)) + 0.5, fph = i * 2.3 + 0.4;
     const L0 = Pn.len[0], L1 = Pn.len[1];
     const wAt = (d) => (d < L0 ? lerp(Pn.w[0], Pn.w[1], d / L0) : lerp(Pn.w[1], Pn.w[2], Math.min(1, (d - L0) / L1)));
     const pleat = (d0) => (x, y, z, u, gy) => {
