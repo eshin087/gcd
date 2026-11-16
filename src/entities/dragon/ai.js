@@ -513,11 +513,19 @@ const PR = TUNING.pressure ?? {};
 const GUARD = PR.guard ?? { sep: 0.3, margin: 0.05, maxHold: 0.5, safeMin: 6, horizon: 1.4, roll: 4.2 };
 export const CATEGORIES = Object.freeze(['melee', 'wing', 'tail', 'fire', 'flight', 'spell', 'terrain']);
 const _cat = new Map();
+// a string hit's kind -> the part of the body it is thrown with (attacks.js KINDS): tail, wing, fire;
+// anything else (claws, jaws, a hop, a stomp) is melee
+const kindGroup = (k) => (k.startsWith('tail') ? 'tail' : k.startsWith('wing') ? 'wing' : k === 'fireSnap' || k === 'emberRake' ? 'fire' : 'melee');
 /**
  * The move category of an attack (melee / wing / tail / fire / flight / spell / terrain), for the
  * director's mix: its tuning's (or definition's) `category`, else TUNING.pressure.category, else where
- * it is tuned (terrain moves; bullet patterns = fire; fire attacks = flight when they fly at an `alt`,
- * else spell) and what its hits are (any tail hit = tail, else any wing hit = wing), else melee.
+ * it is tuned (terrain moves; bullet patterns = fire; fire attacks = flight when they fly: an `alt`, a
+ * flying combo's `parts`, an air move; else spell) and what its hits are: a string is thrown mostly
+ * with what most of its hits use. Its tail, wing or fire hits (a burst hit counts as fire too) make it
+ * that category when they are at least two of them or a third of the string (the most of them wins;
+ * a tie goes tail, wing, fire), else it is melee: so Pivot lash and Rear guard (two tail blows) are
+ * tail, the Wing buffet and the Sky hammer wing, the Cinder rake and the Cataclysm (their raking
+ * fire) and the Furnace maw (a snap of fire and a burning slam) fire; the claw strings stay melee.
  */
 export function categoryOf(name) {
   let c = _cat.get(name);
@@ -525,13 +533,22 @@ export function categoryOf(name) {
   const spec = TUNING.attacks[name] ?? {}, def = ATTACKS[name] ?? {};
   c = spec.category ?? def.category ?? PR.category?.[name];
   if (!c) {
-    const kinds = Array.isArray(spec.hits) ? spec.hits.map((h) => h?.kind ?? '') : [];
+    const hits = Array.isArray(spec.hits) ? spec.hits : [];
     if (name in TERRAIN_ATTACKS) c = 'terrain';
     else if (name in BULLET_ATTACKS) c = 'fire';
-    else if (name in FIRE_ATTACKS) c = spec.alt > 0 || def.air ? 'flight' : 'spell';
-    else if (kinds.some((k) => k.startsWith('tail'))) c = 'tail';
-    else if (kinds.includes('wing')) c = 'wing';
-    else if (def.air) c = 'flight';
+    else if (name in FIRE_ATTACKS) c = spec.alt > 0 || Array.isArray(spec.parts) || def.air ? 'flight' : 'spell';
+    else if (hits.length) {
+      let tail = 0, wing = 0, fire = 0;
+      for (const h of hits) {
+        const g = kindGroup(String(h?.kind ?? ''));
+        if (g === 'tail') tail++;
+        else if (g === 'wing') wing++;
+        else if (g === 'fire') fire++;
+        if (h?.burst && g !== 'fire') fire++;
+      }
+      const best = Math.max(tail, wing, fire);
+      c = best >= 2 || (best > 0 && best * 3 >= hits.length) ? (tail === best ? 'tail' : wing === best ? 'wing' : 'fire') : 'melee';
+    } else if (def.air) c = 'flight';
     else c = 'melee';
   }
   if (CATEGORIES.indexOf(c) < 0) c = 'melee';
@@ -564,30 +581,38 @@ export function linkWhen(when, s) {
   }
 }
 
-const _guardTell = new Map();
-/** Does any blow of the attack ask for a guard (a blue or normal tell: a parry, a block)? */
-function guardTell(name) {
-  let g = _guardTell.get(name);
-  if (g !== undefined) return g;
+// The answers an attack's blows ask for, as bits: 1 a guard (a blue parry, a normal parry / block), 2 a
+// dodge (red, black). From its data: each string hit's tell, its headline tell, the red orbs a bullet
+// pattern coughs (BULLETS.orb: orbs / orbWave / barkOrbs), the flights and spells (every part is
+// red). And learned from the cues it really sends (_onCue): an attack that turns out to mix answers
+// is known as mixing from its first cue on.
+const GUARD_BIT = 1, DODGE_BIT = 2;
+const _answers = new Map();
+const tellBit = (t) => (t === TELL.RED || t === TELL.BLACK ? DODGE_BIT : GUARD_BIT);
+const anyPositive = (v) => (Array.isArray(v) ? v.some((x) => x > 0) : v > 0);
+function answers(name) {
+  let m = _answers.get(name);
+  if (m !== undefined) return m;
   const spec = TUNING.attacks[name] ?? {};
-  const tells = Array.isArray(spec.hits) ? spec.hits.map((h) => h?.tell) : [spec.tell ?? ATTACKS[name]?.tell];
-  g = tells.some((t) => t === TELL.BLUE || t === TELL.NORMAL || t === undefined);
-  _guardTell.set(name, g);
-  return g;
-}
-
-const _redTell = new Map();
-/** Does any blow of the attack ask for a dodge (red, black; every flight and spell)? */
-function redTell(name) {
-  let r = _redTell.get(name);
-  if (r !== undefined) return r;
-  const spec = TUNING.attacks[name] ?? {};
-  const tells = Array.isArray(spec.hits) ? spec.hits.map((h) => h?.tell) : [spec.tell ?? ATTACKS[name]?.tell];
+  m = 0;
+  if (Array.isArray(spec.hits) && spec.hits.length) for (const h of spec.hits) m |= tellBit(h?.tell ?? spec.tell);
+  else m |= tellBit(spec.tell ?? ATTACKS[name]?.tell);
+  if (name in BULLET_ATTACKS && (anyPositive(spec.orbs) || anyPositive(spec.orbWave) || anyPositive(spec.barkOrbs))) m |= DODGE_BIT;
   const cat = categoryOf(name);
-  r = cat === 'flight' || cat === 'spell' || tells.some((t) => t === TELL.RED || t === TELL.BLACK);
-  _redTell.set(name, r);
-  return r;
+  if (cat === 'flight' || cat === 'spell') m |= DODGE_BIT;
+  _answers.set(name, m);
+  return m;
 }
+/** A cue of `name` asked for `tell`: remembered (the attack's answers grow; no allocation once known). */
+function learnTell(name, tell) {
+  if (!name || !(name in ATTACKS)) return;
+  const m = answers(name), b = tellBit(tell);
+  if ((m & b) === 0) _answers.set(name, m | b);
+}
+/** Does any blow of the attack ask for a guard (a blue or normal tell: a parry, a block)? */
+const guardTell = (name) => (answers(name) & GUARD_BIT) !== 0;
+/** Does any blow of the attack ask for a dodge (red, black; every flight and spell; a pattern's red orbs)? */
+const redTell = (name) => (answers(name) & DODGE_BIT) !== 0;
 
 // actions after which the hero keeps the old (longer) opening (TUNING.pressure.openingGap)
 const OPENINGS = new Set(['recoil', 'stagger', 'postureBreak', 'plunged']);
@@ -628,6 +653,7 @@ export class Brain {
   /** A cue from anywhere (bullets, hazards, the world, the running move): kept as an upcoming impact. */
   _onCue(e, flash) {
     if (!e || (e.source !== 'dragon' && e.source !== 'world')) return;
+    if (e.source === 'dragon') learnTell(e.attack, e.tell);
     const now = this.d.game?.time ?? 0;
     const lead = TUNING.flashLead;
     const L = this._ledger;
@@ -669,7 +695,7 @@ export class Brain {
       if (H) {
         const p = this.d.game?.player?.position;
         for (const h of H) {
-          if (!h.alive || h.shape !== 0 || h.fired) continue;
+          if (!h.alive || h.shape !== 0 || h.fired || h.noBlow) continue;
           // (a blast he cannot reach in a roll is no clash)
           if (p && Math.hypot(p.x - h.x, p.z - h.z) > h.r + GUARD.roll + 1.5) continue;
           const ht = now + (h.impact - h.t);
@@ -681,6 +707,12 @@ export class Brain {
       }
     }
     return hit;
+  }
+
+  /** Upcoming impacts of `name` in the ledger are dropped (its move ended without them). */
+  _forget(name) {
+    const now = this.d.game?.time ?? 0;
+    for (const r of this._ledger) if (r.attack === name && r.t > now - 0.1) r.t = -1;
   }
 
   reset() {
@@ -746,6 +778,10 @@ export class Brain {
       console.error('[dragon] action end failed', err);
     }
     if (interrupted && a.name === 'face') this.queued = null;
+    // a move cut short (parried into a recoil, staggered, broken) or abandoned (a terrain move whose
+    // piece went: aborted) never lands the blows it announced: they leave the ledger, or the guard
+    // would keep holding other blows (or giving up on them) for an impact that never comes
+    if (interrupted || a.aborted) this._forget(a.name);
     const isAttack = ATTACK_NAMES.has(a.name);
     if (isAttack) {
       this.cooldowns[a.name] = a.def.cooldown ?? 0;
@@ -760,7 +796,7 @@ export class Brain {
         gap = PR.openingGap ?? gap;
         this.chain = 0;
       } else if (isAttack) {
-        const link = this.queued ? null : this._link(a);
+        const link = this.queued || a.aborted ? null : this._link(a);
         if (link) {
           this.queued = link;
           this.chain++;
@@ -1339,6 +1375,28 @@ export class Brain {
     // that ask for a guard while meteors / a chase come down, moves that ask for a dodge while
     // bullets (embers, wisps) fly
     const sky = this._emitterLive(), shots = this._bulletsLive();
+    // a category absent past floorForce x its floor that can be used from here is the pick (the floor
+    // boost alone does not bring it back once every category is past its floor: with about fifty
+    // attacks, a category of three, the terrain moves, was a few % of a phase-3 pick). The most
+    // overdue first; never a flight past maxAir or a spell past maxCast. It stands until one of its
+    // attacks is picked (a pick it could not take, its moves waiting on a cue of the other answer,
+    // goes to another) or it cannot be used from here any more
+    if (this.forceCat && !this._catUsable(this.forceCat, s)) this.forceCat = '';
+    if (!this.forceCat) {
+      const fk = PR.floorForce;
+      let best = '', ba = 0;
+      if (fk > 0) {
+        for (const cat of CATEGORIES) {
+          const absent = this.clock - (this.catSeen[cat] ?? 0);
+          if (absent <= floor * fk || absent <= ba || (airFull && cat === 'flight') || (castFull && cat === 'spell')) continue;
+          if (this._catUsable(cat, s)) {
+            best = cat;
+            ba = absent;
+          }
+        }
+      }
+      if (best) this.forceCat = best;
+    }
     for (const name in ATTACKS) {
       const def = ATTACKS[name];
       if (!def || (this.cooldowns[name] ?? 0) > 0) continue;
@@ -1380,7 +1438,7 @@ export class Brain {
       }
     }
     this._picked(pick.name);
-    this.forceCat = '';
+    if (categoryOf(pick.name) === this.forceCat) this.forceCat = '';
     return pick;
   }
 
@@ -1507,7 +1565,7 @@ export class Brain {
         const ang = Math.random() * Math.PI * 2, rr = rand(F[0], F[1]) + R;
         const cx = p.x + Math.cos(ang) * rr, cz = p.z + Math.sin(ang) * rr;
         if (Math.hypot(cx, cz) > 25 || Math.hypot(cx - d.position.x, cz - d.position.z) < 4.5) continue;
-        if (this._spawnCinder(cx, cz, R, warn + k * 0.38)) spawned++;
+        if (this._spawnCinder(cx, cz, R, warn + k * 0.38, true)) spawned++;
         break;
       }
     }
@@ -1517,15 +1575,19 @@ export class Brain {
     }
   }
 
-  /** One cinder (a self-announcing hazard circle) from a wing's wrist or the jaws onto (x, z). */
-  _spawnCinder(x, z, R, delay) {
+  /**
+   * One cinder (a self-announcing hazard circle) from a wing's wrist or the jaws onto (x, z). `far`: one
+   * that falls out of the hero's reach: no cue and no blow even if he runs under it (noBlow; it was
+   * dropped while a guard was due: a red cue of it then would ask for the other answer).
+   */
+  _spawnCinder(x, z, R, delay, far = false) {
     const d = this.d, A = PR.ambient, pt = d.rig?.pt;
     const src = !pt ? null : Math.random() < 0.6 ? pt.wings[Math.random() < 0.5 ? 0 : 1].wrist : pt.mouth;
     return d.hazards?.circle({
       kind: 'shell', attack: 'cinders', drawShell: true, announce: true,
       x, z, r: R, delay, fall: Math.min(A.fall, delay),
       from: src && Number.isFinite(src.x + src.y + src.z) ? src : { x: d.position.x, y: 8, z: d.position.z },
-      damage: A.damage, burn: A.burn, knockback: A.knockback, active: 0.12,
+      damage: A.damage, burn: A.burn, knockback: A.knockback, active: 0.12, noBlow: far,
     });
   }
 
@@ -1580,7 +1642,7 @@ export class Brain {
       let hit = false;
       if (H) {
         for (const h of H) {
-          if (!h.alive || h.shape !== 0) continue;
+          if (!h.alive || h.shape !== 0 || h.noBlow) continue;
           const left = h.impact - h.t;
           if (left > GUARD.horizon || h.t - h.impact > h.active) continue;
           if (Math.hypot(x - h.x, z - h.z) <= h.r + pr) {

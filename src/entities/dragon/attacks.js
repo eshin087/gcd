@@ -1991,9 +1991,8 @@ function groundFire(d, a, ax, az, bx, bz, G) {
   const ref = H.strip({
     kind: 'meleeFire', attack: a.name, ax, az, bx, bz, w: G.w, speed: G.speed ?? 45, linger: G.linger,
     tick: G.tick, tickDamage: G.tickDamage, tickBurn: G.burn ?? 0, delay: G.delay ?? 0.05,
+    noBlow: true, // contact fire only (the strip's front would be a second, red blow)
   });
-  const h = H.get?.(ref);
-  if (h) h.hit = true; // contact fire only (the strip's front would be a second, red blow)
   const W = d.game.world, ig = TUNING.world?.ignite?.strip ?? 1;
   for (let i = 0; i <= 2; i++) {
     const x = lerp(ax, bx, i / 2), z = lerp(az, bz, i / 2);

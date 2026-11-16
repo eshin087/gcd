@@ -208,8 +208,8 @@ function blank(i) {
     x: 0, z: 0, r: 0, ax: 0, az: 0, dx: 0, dz: 1, len: 0, w: 0,
     r0: 0, r1: 0, speed: 0, dist: 0, n: 0, step: 0, delay: 0, active: 0,
     f: 0, // last front / radius / sweep position (swept hit tests)
-    // blow
-    damage: 0, burn: 0, knockback: 0, knockdown: false, plunge: false,
+    // blow (noBlow: none at all: a strip that only burns, a cinder falling out of reach)
+    damage: 0, burn: 0, knockback: 0, knockdown: false, plunge: false, noBlow: false,
     // strip contact fire
     linger: 0, tick: 0, tickT: 0, tickDamage: 0, tickBurn: 0,
     // tells
@@ -312,7 +312,10 @@ export class Hazards {
     // the wyrm breathes or spits from the air: the strafe's front, the hover barrage's shells). Spells
     // that fall from the sky or burst from the ground (meteors, pillars, rings, walls) never do.
     h.plunge = o.plunge === true;
-    h.announce = o.announce !== false;
+    // noBlow: the hazard deals no blow and sends no cue (a strip set burning by a fire blow: only its
+    // contact ticks; a cinder falling beyond the hero's reach: fire on the field). Its fire is drawn as ever
+    h.noBlow = o.noBlow === true;
+    h.announce = o.announce !== false && !h.noBlow;
     h.group = Number.isInteger(o.group) ? o.group : -1;
     h.impact = Math.max(0.05, num(o.delay, 1));
     h.seed = Math.random() * 100;
@@ -357,7 +360,10 @@ export class Hazards {
     return this._ref(h);
   }
 
-  /** Fire front from A to B (unit dir, length) starting `delay` s from now at `speed` m/s, width w. */
+  /**
+   * Fire front from A to B (unit dir, length) starting `delay` s from now at `speed` m/s, width w.
+   * `noBlow: true`: the front deals no blow (ground a fire blow set burning: only the contact ticks).
+   */
   strip(o) {
     const h = this._take(SHAPE.STRIP, o);
     if (!h) return null;
@@ -683,7 +689,7 @@ export class Hazards {
   /** The hazard's one blow (red, unblockable, i-frames dodge it, never a plunge). */
   _blow(h, fx, fz, y = 0.8) {
     h.hit = true;
-    if (this._capped(h)) return RESULT.IGNORED;
+    if (h.noBlow || this._capped(h)) return RESULT.IGNORED;
     const o = this._hit;
     o.damage = h.damage;
     o.knockback = h.knockback;

@@ -674,6 +674,7 @@ async function scenarioPressure() {
     return 'melee';
   });
   const perPhase = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, ph) - 1] : v);
+  const CATS_P = ['melee', 'wing', 'tail', 'fire', 'flight', 'spell', 'terrain'];
   const answerOf = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
   // combo links for the attacks that exist today (the data the director reads; their tuning belongs
   // to the agents of those attacks: injected here, put back after)
@@ -764,7 +765,10 @@ async function scenarioPressure() {
   }
 
   const linksBefore = {};
-  for (const k in LINKS) if (TUNING.attacks[k]) { linksBefore[k] = TUNING.attacks[k].links; TUNING.attacks[k].links = LINKS[k]; }
+  // (integration, 2026-11-15: only for an attack with no links of its own. After the merge the
+  // agents' attacks carry their own (the strings, the flights, the bullet patterns, the terrain
+  // moves): the table stands in for the data that is missing, it does not overwrite what is there)
+  for (const k in LINKS) if (TUNING.attacks[k] && !(Array.isArray(TUNING.attacks[k].links) && TUNING.attacks[k].links.length)) { linksBefore[k] = TUNING.attacks[k].links; TUNING.attacks[k].links = LINKS[k]; }
   const rows = [];
   const pinAt = [0.83, 0.5, 0.17];
   let lastG = null;
@@ -785,19 +789,20 @@ async function scenarioPressure() {
       const pin = Math.round(d.maxHp * pinAt[ph - 1]);
       const flashes = [], tellsOf = {}, cats = {}, winds = [], dbgLog = [];
       let safeAt = '';
-      let air = 0, fire = 0, idle = 0, frames = 0, minSafe = 99, minSky = 99, safeLow = 0, hurt = 0;
+      let air = 0, fire = 0, idle = 0, frames = 0, minSafe = 99, minSky = 99, safeLow = 0, hurt = 0, idleProbe = 0;
+      const avail = {}, seenNow = {}, streamT = [];
       const chains0 = d.brain.stats?.links ?? 0, amb0 = d.brain.stats?.ambient ?? 0;
       G.watch = (n, e) => {
         if (n === 'combat:flash' && e?.source === 'dragon') flashes.push([game.time, e.tell, e.attack]);
         if (n === 'dragon:windup') { winds.push([game.time, e.name]); const c = catOf(e.name); cats[c] = (cats[c] || 0) + 1; tellsOf[e.name] = (tellsOf[e.name] || 0) + 1; }
         if (n === 'player:hurt') hurt++;
-        if (process.env.ABYSS_PDBG && /dragon:windup|combat:flash|combat:tell|dragon:takeoff|dragon:land/.test(n)) dbgLog.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''}${n === 'combat:tell' ? ` ${e.tell} in ${e.impactIn?.toFixed(2)}` : ''} [${d.brain.action?.name ?? 'idle'} ${d.brain.action?.phase ?? ''} amb${d.brain.stats.ambient} dist ${d.sense.dist.toFixed(1)}]`]);
+        if (process.env.ABYSS_PDBG && /dragon:windup|combat:flash|combat:tell|dragon:takeoff|dragon:land|dragon:attack/.test(n)) dbgLog.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''}${n === 'combat:tell' ? ` ${e.tell} in ${e.impactIn?.toFixed(2)}` : ''} [${d.brain.action?.name ?? 'idle'} ${d.brain.action?.phase ?? ''} amb${d.brain.stats.ambient} dist ${d.sense.dist.toFixed(1)}]`]);
       };
       const H = d.hazards.list;
       const pr = game.player.radius ?? 0.45;
       const covered = (x, z) => {
         for (const h of H) {
-          if (!h.alive) continue;
+          if (!h.alive || h.noBlow) continue; // (a cinder falling out of his reach: no blow)
           if (h.shape === 0) { // a circle that has not gone off yet, or is still hitting
             const left = h.impact - h.t;
             if (left < 0.6 && h.t - h.impact < h.active && Math.hypot(x - h.x, z - h.z) <= h.r + pr) return true;
@@ -829,7 +834,26 @@ async function scenarioPressure() {
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
         frames++;
         if (d.state === 'airborne') air++;
-        if (!d.brain.action) idle++;
+        // the breath's stream is one long answer (a guard held through it, or out of the cone): its
+        // active span counts as pressure for the longest gap (sampled every 0.1 s), not as cues
+        if (d.brain.action?.name === 'breath' && d.brain.action.phase.startsWith('active') && game.time - (streamT[streamT.length - 1] ?? -9) >= 0.1) streamT.push(game.time);
+        if (!d.brain.action) {
+          idle++;
+          // which categories it could pick from where it stands now (a terrain move needs a piece in
+          // reach: the wyrm's body and its fire wreck the field as the fight goes on)
+          if (d.state === 'combat' && i % 6 === 0) {
+            idleProbe++;
+            for (const c of CATS_P) seenNow[c] = false;
+            for (const name in ATTACKS) {
+              const c = catOf(name);
+              if (seenNow[c]) continue;
+              let w = 0;
+              try { w = attackWeight(ATTACKS[name], name, d, d.sense); } catch { w = 0; }
+              if (w > 0) seenNow[c] = true;
+            }
+            for (const c of CATS_P) if (seenNow[c]) avail[c] = (avail[c] || 0) + 1;
+          }
+        }
         if (d.hazards.alive > 0 || d.bullets.count(0) + d.bullets.count(1) + d.bullets.count(2) > 0) fire++;
         if (i % 15 === 0) {
           const p = game.player.position;
@@ -850,18 +874,22 @@ async function scenarioPressure() {
       let gapMax = 0, gapSum = 0, conflicts = 0, inner = 0, gapAt = '';
       const conflictAt = [], innerAt = [];
       const ts = [t0, ...flashes.map((f) => f[0]), t0 + T];
+      for (let i = 1; i < ts.length; i++) gapSum += ts[i] - ts[i - 1];
+      // the longest gap: between cues or the breath's stream (integration, 2026-11-15: in phase 3 the
+      // longest gaps, 4.3 - 5.1 s on three seeds, were all after a breath: its one flash, then its
+      // 2.4 s stream, its 1.0 s recovery and the next move's windup; the stream is a held answer)
+      if (streamT.length) { ts.push(...streamT); ts.sort((a, b) => a - b); }
       for (let i = 1; i < ts.length; i++) {
         const g = ts[i] - ts[i - 1];
-        gapSum += g;
         if (g > gapMax && process.env.ABYSS_PDBG) { out(`      gap ${g.toFixed(2)} from ${(ts[i - 1] - t0).toFixed(1)}: ${dbgLog.filter((x) => x[0] > ts[i - 1] - 1 && x[0] < ts[i] + 0.2).map((x) => `${(x[0] - t0).toFixed(1)} ${x[1]}`).join(' | ')}`); }
-        if (g > gapMax) { gapMax = g; gapAt = `${(ts[i - 1] - t0).toFixed(0)} s after ${flashes[i - 2]?.[2] ?? 'start'}: ${winds.filter((w) => w[0] > ts[i - 1] - 0.5 && w[0] < ts[i]).map((w) => w[1]).join(', ') || 'no move'}`; }
+        if (g > gapMax) { gapMax = g; gapAt = `${(ts[i - 1] - t0).toFixed(0)} s after ${streamT.includes(ts[i - 1]) ? 'breath (its stream)' : flashes.findLast((f) => f[0] <= ts[i - 1])?.[2] ?? 'start'}: ${winds.filter((w) => w[0] > ts[i - 1] - 0.5 && w[0] < ts[i]).map((w) => w[1]).join(', ') || 'no move'}`; }
       }
       for (let i = 0; i < flashes.length; i++) {
         for (let j = i + 1; j < flashes.length && flashes[j][0] - flashes[i][0] < 0.3; j++) {
           if (answerOf(flashes[i][1]) === answerOf(flashes[j][1])) continue;
           // (within one pattern, e.g. a torrent's red orb inside its ember stream: the pattern's own
           // design, counted apart; between two sources: the director's composition)
-          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.push(flashes[i][2]); } else { conflicts++; conflictAt.push(`${flashes[i][2]}/${flashes[j][2]}`); }
+          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.push(flashes[i][2]); } else { conflicts++; conflictAt.push(`${flashes[i][2]}/${flashes[j][2]}`); if (process.env.ABYSS_PDBG) out(`      CLASH at ${(flashes[i][0] - t0).toFixed(2)}: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 4 && x[0] < flashes[j][0] + 0.5).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`); }
         }
       }
       const picks = Object.values(cats).reduce((a, b) => a + b, 0) || 1;
@@ -869,7 +897,7 @@ async function scenarioPressure() {
         seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMean: gapSum / (ts.length - 1), gapMax,
         cats, picks, chains: (d.brain.stats?.links ?? 0) - chains0, ambient: (d.brain.stats?.ambient ?? 0) - amb0,
         air: air / frames, fire: fire / frames, idle: idle / frames, minSafe, safeLow, conflicts, conflictAt, inner, innerAt, hurt, tellsOf,
-        holds: d.brain.stats?.holds ?? 0, seeks: d.brain.stats?.seeks ?? 0, gapAt, safeAt, minSky,
+        holds: d.brain.stats?.holds ?? 0, seeks: d.brain.stats?.seeks ?? 0, gapAt, safeAt, minSky, avail, idleProbe,
       });
     }
   }
@@ -879,6 +907,7 @@ async function scenarioPressure() {
   for (const r of rows) {
     out(`   ${String(r.seed).padStart(4)}  ${r.ph}  ${r.perMin.toFixed(1).padStart(7)}  ${r.gapMean.toFixed(2).padStart(7)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.chains).padStart(6)} ${String(r.ambient).padStart(4)} ${(r.air * 100).toFixed(0).padStart(5)} ${(r.fire * 100).toFixed(0).padStart(6)} ${(r.idle * 100).toFixed(0).padStart(5)} ${String(r.minSafe).padStart(4)} ${String(r.conflicts).padStart(5)} ${String(r.hurt).padStart(4)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / r.picks).toFixed(0).padStart(7)).join('')}`);
     if (r.conflicts) out(`         clashes between sources: ${r.conflictAt.slice(0, 8).join(' · ')}`);
+    out(`         usable at a pick (share of ${r.idleProbe} idle probes): ${CATS_P.map((c) => c + ' ' + Math.round(((r.avail[c] || 0) * 100) / (r.idleProbe || 1)) + '%').join(', ')}`);
     out(`         longest gap ${r.gapAt}${r.minSafe < 3 ? ` · least safe under ${r.safeAt}` : ''}${r.minSky < 99 ? ` · least safe under Armageddon ${r.minSky}` : ''} · holds ${r.holds} · seeks ${r.seeks}`);
     if (r.inner) out(`         inside one pattern: ${r.inner} (${[...new Set(r.innerAt)].join(', ')})`);
   }
@@ -900,6 +929,12 @@ async function scenarioPressure() {
         const w = perPhase(raw, x.ph);
         if ((ATTACKS[name].phase ?? spec.phase ?? 1) <= x.ph && typeof w === 'number' && w > 0) want.add(catOf(name));
       }
+      // (integration, 2026-11-15: a terrain move needs a piece in reach, and the wyrm's body, its
+      // flights and its fire now wreck the field as the fight goes on: on seed 7 the Lab's 36 liftable
+      // pieces were 35 at phase 3's start and 6 at its end, a terrain move usable at 26 - 47 % of the
+      // idle moments of phase 3 (52 - 91 % in phases 1 - 2). Every other category the director can
+      // reach by moving (its seek); terrain is asked for only where it was usable at half of them)
+      if (want.has('terrain') && (x.avail.terrain || 0) < 0.5 * x.idleProbe) want.delete('terrain');
       const missing = [...want].filter((c) => !x.cats[c]);
       assert(!missing.length, `seed ${seed} P${x.ph}: every category the phase has was picked (${[...want].join(', ')}; missing ${JSON.stringify(missing)})`);
       assert(x.conflicts === 0, `seed ${seed} P${x.ph}: no two blows of different sources needing different answers within 0.3 s (${x.conflicts}: ${x.conflictAt.slice(0, 4).join(' · ')})`);

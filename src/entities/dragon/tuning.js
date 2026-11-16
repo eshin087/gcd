@@ -111,6 +111,7 @@ export const TUNING = {
     sameCat: 0.7, // the last pick's category x this
     floorAfter: [20, 15, 12], // s: a category absent this long comes back ...
     floorBoost: 2.5, // ... its weight x this (x absent / floorAfter, up to x3 more)
+    floorForce: 2, // ... and absent past floorAfter x this, usable from where it stands: it is the pick
     // a bias per category [P1, P2, P3]: the body moves (many cues, close) over the long casts
     bias: { melee: [1.25, 1.25, 1.3], wing: [1.25, 1.25, 1.3], tail: [1.25, 1.25, 1.3] },
     // gap closers when the hero is far (an attack's tuning `closer: true` adds one)
