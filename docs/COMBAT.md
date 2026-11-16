@@ -10,19 +10,23 @@ each actor's `tuning`.
 1. **No stamina.** Attacking, rolling, sprinting and blocking are free; pacing comes from attack
    recovery, roll recovery and the enemy's patterns. Blows met on a held guard wear the **guard
    meter** (*The guard meter*, below): nothing the hero does spends it, and it refills by itself.
-2. **Every enemy attack has a tell** declared in its data: `normal`, `blue` or `red`
+2. **Every enemy attack has a tell** declared in its data: `normal`, `blue`, `red` or `black`
    (`TELL` in `rules.js`); every hit of a combo string has its own. Tells are **read from the
    attacker, never from HUD text or icons** (no PARRY / DODGE labels, no marks or rings over the
    enemy, no off-screen arrows). Every hit has a **timing cue ~0.35 s before impact**
-   (`combat:flash`). Windups are long enough to react to (≥ 0.7 s in phase 1 for melee, the first
-   hit of a string included; a string's next hit lands ≥ 0.45 s after the previous one). How each
-   tell looks: see *Tell presentation* below.
+   (`combat:flash`): a white glint for an ordinary blow, **the flare** for a moment (ADR-118: red =
+   dodge, blue = parry, black = dodge a charged blow). Windups are long enough to react to (≥ 0.7 s
+   in phase 1 for melee, the first hit of a string included; a string's next hit lands ≥ 0.45 s
+   after the previous one). How each tell looks: see *Tell presentation* below; the moments: *The
+   flare, the counter and the charged blow*.
 3. **Answers**
    | Tell | Block (hold RMB) | Parry (tap RMB just before impact) | Dodge (Space) |
    |---|---|---|---|
    | `normal` — white glint | no damage, costs guard (damage × 1), small pushback | full negate, posture dmg; a string goes on | i-frames; perfect → a streak pip and slow-mo where you stand |
    | `blue` — big white glint (heavy blow) | no damage, costs guard (damage × 1.5), big pushback | full negate, **big** posture dmg; a string goes on | i-frames; perfect → a streak pip and slow-mo where you stand |
-   | `red` — red glow + red flash | **fails** (full dmg, knockdown) | **fails** | **only answer**; perfect → the flurry / the plunge (a fire hazard: in place) |
+   | `blue` + `flare` — **the blue flare** (a parry moment) | as `blue` | full negate, big posture, his string **ends**, and the hero **counters by himself** | as `blue` |
+   | `red` — **the red flare** | **fails** (full dmg, knockdown) | **fails** | **only answer**; perfect → the flurry / the plunge (a fire hazard: in place) |
+   | `black` — darkness gathers through a long windup, then **the black flare** | stopped, no damage, but **the whole guard meter is gone** and the guard is knocked open (0.8 s) | the same as a block | **only clean answer**; perfect → the flurry / the plunge |
 
    A blocked contact stream (the fire breath's ticks, burning ground, a bullet) is no blow: it
    chips HP as before (−80 % / −50 %) and costs no guard.
@@ -100,7 +104,8 @@ The riskier the answer, the more it pays. From safest to riskiest:
 | Dodge | everything | nothing |
 | Perfect dodge | white, heavy | a streak pip, slow-mo where you stand; the string goes on |
 | Parry | white, heavy | posture (26 / 48), guard back, a streak pip; the last blow: his recoil and the riposte |
-| Perfect dodge | red | the flurry (the plunge on the wyrm): as many blows as the streak counts, the crit window |
+| Parry | a blue flare blow (a parry moment) | the same, wherever in his string it came: his string ends, and the counter: the streak's flash cuts, the last one the counter blow (64 damage, 30 posture) |
+| Perfect dodge | red, black | the flurry (the plunge on the wyrm): as many blows as the streak counts, the crit window |
 | Perfect parry (≤ 0.08 s) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
 | Flash counter (attack ≤ ~0.14 s before his blow) | a blade's white or heavy blow | 70 damage and 60 posture at once, he reels, the crit window; too late and his blow lands |
 
@@ -127,6 +132,47 @@ dodge the dodge bot still beat the wyrm in 63 s on crits alone: that window is 0
 (`DEFENSE.ghostep.critWindowWhite`). Bots answer a cue in one frame: a human playtest is still owed.
 The old rule is one switch away: `DEFENSE.flurry.on: 'any'`, or `player.debug.flurryAny` in the console.
 
+## The flare, the counter and the charged blow (2026-11-15, ADR-118)
+Owner: "add more perfect parry / perfect dodge moments into the game from the bosses ... a red
+flash to give you a tell/sign to dodge at that exact moment and if you do dodge it in time, it will do
+a cool animation of the dodge/parry and do a counter attack ... a black charged up attack ... the
+player needs to dodge it, if they block it they lose all guard". The owner's four answers: flash only;
+the counters automatic for both; a black blow on the guard empties it and deals nothing; all three
+bosses.
+
+**A moment** is a blow cued by the flare (*Tell presentation*). Three kinds:
+
+| Flare | Answer | In time | Wrong answer |
+|---|---|---|---|
+| **red** | dodge | a perfect dodge (the roll started ≤ 0.2 s before the blow): **the flurry** (the plunge on the wyrm), as before | a guard or a parry fails: full damage, knocked down |
+| **blue** | parry | any parry (pressed ≤ 0.22 s before the blow): **the counter** | a held guard holds it but costs guard x 1.5; a hit is a hit |
+| **black** | dodge | a perfect dodge: the flurry, as for red | a guard or a parry stops the blow and deals nothing, but **the whole guard meter is gone** and the guard is knocked open for 0.8 s, thrown back 2.4 m (`GUARD.black`): the next blow lands |
+
+- **The counter** (`DEFENSE.flareCounter`, `player:flareCounter`). A blue blow marked `flare: true` in
+  its data is a parry moment. A parry of it (not only a perfect one) beats the blow aside in a blue
+  burst, **ends his string there** (he recoils as from a parried last blow, wherever in the string it
+  came) and the hero answers by himself once the parry's freeze is over: the riposte's flash cuts, as
+  many as the streak counts (7 at most), **the last one the counter blow: 64 damage (final) and 30
+  posture**, a heavier freeze, COUNTER on the banner. He ends where he parried, free at once. Only
+  when the target is in the riposte's range (the wyrm's head within 11 m, a duelist within 6 m). A
+  perfect parry of a `lock` blow still crosses the blades first (the blade lock). A heavy blow that is
+  not marked keeps the white star and the plain deflect.
+- **The charged blow** is the one thing a held guard is wrong for: a defensive player loses nothing
+  by blocking anything else (ADR-095), and here the charge is the warning, 1.5 s of it.
+- **The moments each boss has** (`flare: true` on a blue beat / hit; `tell: black`):
+
+  | Boss | Parry moments (blue flare) | Dodge moments (red flare; * = new) | The charged blow (black) |
+  |---|---|---|---|
+  | The Cinder Wyrm | Bite; Hesitant maw's held bite; Claw combo's lunging bite; Wing buffet's second wing | every red blow it had (tail, stomp, charge, pounce, leap, the fire flights) | **Black maw**: the head rears and holds 1.5 s + 0.15 - 0.6 s, then the snap: 44, range 3.5 - 6.5 m off its chest, cooldown 14 s |
+  | Shen Hui | Falling Ash; Falling Star; Swallow Flicks' thrust; Crane Spins' chop; Swallow's Return; **Severing Wind*** (one long step from 3.6 - 10 m and a level two-handed cut, 26) | Piercing Ash, Lotus Sweep, Ember Whirl's last, Heaven-Splitting Fall, Hundred Petals' last; **Twin Embers*** (a dashing cut, then the low sweep 0.92 s later: dodge, dodge; 22 and 24) | **Black Tide**: the jian drawn back low, 1.45 s + 0.1 - 0.5 s, then a dashing cleave up to 7.5 m: 38, knocked down, cooldown 12 s |
+  | The Starless Lord | Falling Star; Scissor; Grasp and Sever's chop; **Severance*** (a long step and a two-handed chop, 26; every form) | his red blows and spells as before; **Red Meridian*** (a dashing level cut, then the blade round at the ankles; every form) | **Nightfall**: the same charge and cleave, 36; every form, cooldown 12 s |
+
+- Checked by `npm test`: duel FLARE (the rules; nothing shows before a red cue; a parried Falling Ash
+  is countered and a parried unmarked heavy is not; Black Tide on a held guard, on a parry press,
+  unanswered, perfectly dodged), lord FLARE, integ FLARE (the bite's counter round the head, Black
+  maw). **Not measured:** how the fights' length and difficulty moved (the bots of *The reward order*
+  were not re-run), and how readable the flare is on a phone.
+
 ## The guard meter (2026-11-14, ADR-095)
 The hero has a guard meter of 100 (`GUARD` in `rules.js`; a thin steel bar under his HP bar, and a
 gauge along the foot of the touch BLOCK tile). It makes a held guard something to manage without
@@ -152,22 +198,41 @@ or a cut of your own gets it knocked open, and a parry or a hit between them res
 ## Tell presentation
 ```
        windup start (combat:tell)            timing cue (combat:flash), 0.35 s before impact
-red    body glows red, 0.1 ramping to 0.38   body spike 1.6, gone in 0.25 s
-       the ground heats up (AoE attacks)     a ragged red blaze + red light at the part
-       audio: low brass sting                red screen-edge flash, ~0.25 s
-normal animation only (faint audio tick)     a white cross on the letter grid + bright ting
+red    animation only                        THE RED FLARE through the striking part, a red light,
+       audio: low brass sting                body spike 1.6 gone in 0.25 s, red screen-edge flash
 blue   animation only (blade 'shing')        a white eight-point star 1.6x as big, with a ring
+ +flare (a parry moment)                     THE BLUE FLARE instead, a blue light, blue screen edge
+black  darkness gathers on the striking      THE BLACK FLARE (a dark bar round a white-hot thread),
+       part (an eclipse that grows), the     the screen edge goes dark
+       body darkens, the screen edge dims
+normal animation only (faint audio tick)     a white cross on the letter grid + bright ting
 hazard the ground heats up from its spawn     its edge shows, the heat flares, a warm light
        audio: a lighter hazard cue           no screen-edge flash
 ```
-- **Dodge-only (`red`) — the attacker warns.** It glows red through the windup (creature material
-  uniform `uWarn`: hot red `[1.0, 0.12, 0.05]`, strength ramps from 0.1 at the tell to 0.38 at the
-  cue), gives a hard red flash on the cue (strength 1.6 decaying to 0 over 0.25 s, plus a red glyph
-  burst and red light at the striking part). Audio: a low brass sting at windup start, a sharp
-  crack on the cue. Area attacks also heat the ground of their danger area until impact (ADR-052). The
-  HUD only adds a brief red screen-edge vignette on the cue (fades in ~0.25 s, stronger on the
-  attacker's side) — nothing during the windup. Numbers: `TELL_STYLE.red.warn` in `rules.js`. In a
-  string every hit is its own beat: a red hit glows through its own windup only.
+- **The flare (ADR-118; owner: "exactly like Phantom Blade Zero ... a red flash to give you a
+  tell/sign to dodge at that exact moment").** The cue of a moment is one wide streak of light
+  through the striking part, across the screen, with a white-hot heart: a row of `-` strokes written
+  on the letter grid (three rows thick near the heart, a short upright stroke through it, a soft
+  cloud of letters round it). It opens at full size on the cue frame, holds 0.1 s and draws back into
+  its heart (0.34 s in all). It is steel in the fire field, **dyed** by a tint zone (`FireField.tint`,
+  `TELL_STYLE[tell].flare`): **red** = dodge, **blue** = parry, **black** = dodge (the cells behind its
+  letters are blacked out: a dark bar round a white-hot thread). A light in its colour, small strokes
+  thrown out along it, the HUD's screen edge in its colour for 0.25 s. Data: `TELL_FLARE` in
+  `enemies/duelist/fx.js` (three looks behind `?flare=streak|star|lance`; `?flare=blaze` draws the
+  old red blaze); the wyrm draws it 1.5x as big, and one streak for a blow of both forefeet.
+- **Nothing before the cue.** A red blow no longer glows through its windup (`TELL_STYLE.red.warn`
+  `from` = `to` = 0; it ramped 0.1 → 0.38) and a boss's own red area no longer marks the floor
+  (`TELL_STYLE.red.floor: false`: a duelist's ring of red letters, the ground heating under the
+  wyrm's stomp, pounce, leap, dive and nova). The windup is read from the animation and the audio
+  sting; the flare says when. On the cue the body still spikes red (1.6, gone in 0.25 s).
+  **What lands away from the boss keeps its ground mark** (a flare on him cannot say where): meteors,
+  chase pillars, burning strips, the hover barrage's shells, the Lord's sky bolts, Dark Star and
+  thrown stones, a felled pillar's strip (*Hazards*, ADR-052). Armageddon's rear-up still glows.
+- **The charge (`black`).** A black blow is wound up for about 1.5 s plus a held beat that is never
+  the same (0.1 - 0.6 s). Through it darkness is drawn into the striking part: an eclipse that grows
+  on it (a disc of blacked-out cells with a pale corona), motes of pale light pulled in from all
+  round, the body darkening (`TELL_STYLE.black.warn`), the screen edge dimming (`combat:charge`).
+  The levels are dark, so black is drawn by what rings it. Then the black flare.
 - **Parryable (`normal`, `blue`) — the animation is the tell.** No colour coding during the windup
   (audio: a faint tick, or a blade "shing" for `blue`). On the cue a brief **white cross** pops at
   the striking part with a short bright "ting": one row of `-` (13 cells) through one column of `|`
@@ -193,6 +258,10 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   are covered by the spawning attack's own tell (the wyrm glows red through that windup).
   Armageddon's rear-up and salvo glow red on the body (`dragon.bodyWarn`) but send no tell: the
   salvo deals nothing, and each meteor warns for itself.
+- **How a red blow was shown until ADR-118** (kept for reference): the body glowed red through the
+  windup, a duelist's area ringed the floor in red letters, and the cue was a ragged red blaze
+  (`TELL_BLAZE`). The owner asked for the flare instead of "a red circular area of where the attack
+  will land".
 - The glow clears the moment the windup is cancelled: stagger, posture break, parry recoil, the
   plunge's reaction, death, reset, or a Lab interrupt replacing the attack.
 - After-the-fact feedback (PARRY / DEFLECT / DEFLECT ×N / GHOSTEP / EXECUTION / GUARD BROKEN

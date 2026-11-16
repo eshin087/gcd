@@ -399,9 +399,17 @@ Render helpers for creature modules:
     written on the letter grid, one steel blob per cell it crosses), `Atmosphere` (the bonfire),
     `Scorch`, the throne hall's braziers, `GroundFire`, `Destructibles` (a burning tree). All read
     `game.fx?.fire` guarded. The test harnesses carry a `FireField` with the glyph pools' NaN guard.
-  - **Timing cues:** `DuelFx.tellFlash(tell, x, y, z, k = 1)` draws them for every boss (`k` = scale,
-    1 a human; `TELL_GLINT`, `TELL_BLAZE` are the data); `DragonFx.tellFlash` forwards to a `DuelFx`
-    it owns (`this.tells`, k 1.5) and ages its glints in `update`.
+  - `tint(id, px, py, rx, ry, rgb, k = 1, dark = 0, ttl = 0.05)` (ADR-118): for `ttl` s, steel
+    printed inside that ellipse of the frame (frame pixels, origin bottom-left) is dyed `rgb` (its
+    white-hot heart stays white); `dark` 0..1 also blacks out the cell behind each letter. Two zones
+    at most; the same `id` set again moves its zone. Set every frame while it is wanted.
+  - **Timing cues:** `DuelFx.tellFlash(tell, x, y, z, k = 1, flare = false)` draws them for every boss
+    (`k` = scale, 1 a human): the flare for a moment (red, black, a blue blow with `flare`; data
+    `TELL_FLARE`, three looks, `flareLook()` / `setFlareLook(k)`, `?flare=`), else the white glint
+    (`TELL_GLINT`). `hazardFlash(tell, x, y, z, k)` is the cue of a thing that lands away from its
+    thrower: never the flare (red: the ragged blaze, `TELL_BLAZE`). `charge(x, y, z, u, dt, k)`: a
+    black blow's windup, called every frame of it (`TELL_CHARGE`). `DragonFx.tellFlash` / `charge`
+    forward to a `DuelFx` it owns (`this.tells`, k 1.5) and age its glints and flares in `update`.
 - **Text effects** (ADR-113):
   - *Heat haze*: ASCII pass uniforms `uHaze`, `uHazeRoll`, `uTime`; `hazeCell()` runs for wyrm and
     prop cells only while `uFlame.z > 0.5` (six nearest reads of the flame texture, then).
@@ -565,7 +573,12 @@ startBladeLock(att, { start, push, decay, dur, hold }): boolean
                                        // slides TUNE.lockSlide 0.9 m with the meter (ADR-081).
 isSwinging(): boolean                  // a light / heavy swing's active frames (the dragon's bullets are cut on it)
 takeHit({ damage, from:{x,z}, knockback=0, knockdown=false, kind='hit', burn=0,
-          tell='normal', parryable, blockable, attack, attacker, plunge, perfect, light }): RESULT   // see COMBAT.md
+          tell='normal', parryable, blockable, attack, attacker, plunge, perfect, light, flare }): RESULT   // see COMBAT.md
+                                       // tell 'black' (a charged blow, ADR-118): a held guard or a parry press in
+                                       // its way returns 'blocked' with no damage, the guard meter emptied and the
+                                       // guard knocked open (GUARD.black; player:guardOpen {black})
+                                       // flare: true on a blue blow = a parry moment: a parry of it readies the
+                                       // counter (the riposte with a counter blow; player:parry {flare})
                                        // perfect: false = a roll through this hit is a plain dodge, never a
                                        // perfect dodge (small bullets); light: true = a parry of it is a light
                                        // clash (short hit-stop, a quarter of the push; player:parry {light})
@@ -1452,15 +1465,25 @@ Rig helpers (internal to the dragon module):
 
 Damages the player only via `game.player.takeHit(...)` with tell data; announces tells with
 `combat:tell` / `combat:flash` and shows them on its own body (no HUD marks):
-- red (dodge-only) hits: `uWarn` on every material (`model.mats`), driven in `_updateWarn` from the
-  running action's beats — strength ramps 0.1 → 0.38 from the hit's `combat:tell` to its
-  `combat:flash`, spikes to 1.6 on the flash, decays to 0 in 0.25 s (game time). A replaced action
-  (stagger, posture break, parry recoil, plunge reaction, death, Lab interrupt) drops it at once;
-  `reset()` and death zero it. Plus a red glyph burst + red light at the striking part on the flash
-  (`fx.tellFlash`). Each hit of a string is its own beat, so a red hit inside a string glows on its
-  own windup only. An action with a red glow but no blow of its own (Armageddon's rear-up and
-  salvo) sets `dragon.bodyWarn` 0..1 every frame: the same 0.1 → 0.38 ramp, read and zeroed by
-  `_updateWarn`.
+- **moments are cued by the flare (ADR-118; COMBAT.md "Tell presentation")**: `fx.tellFlash(tell, x,
+  y, z, flare)` → `DuelFx.tellFlash(tell, x, y, z, k, flare)` draws the flare for a red or black
+  blow and for a blue one whose beat says `flare` (`rules.js` `isFlare`), else the white glint. One
+  flare per cue (a blow of both forefeet is one streak), kept inside the frame.
+- red (dodge-only) hits: nothing through the windup (`TELL_STYLE.red.warn` from = to = 0; until
+  ADR-118 `uWarn` ramped 0.1 → 0.38) and no heat on the ground under its own area
+  (`TELL_STYLE.red.floor` false: `Brain._warnZone` returns at once). On the cue `uWarn` on every
+  material (`model.mats`, driven in `_updateWarn`) spikes to 1.6 and decays to 0 in 0.25 s (game
+  time). A replaced action (stagger, posture break, parry recoil, plunge reaction, death, Lab
+  interrupt) drops it at once; `reset()` and death zero it. An action with a red glow but no blow of
+  its own (Armageddon's rear-up and salvo) sets `dragon.bodyWarn` 0..1 every frame: a 0.1 → 0.38
+  ramp of its own (`BODY_WARN`), read and zeroed by `_updateWarn`.
+- black (charged) hits: through the windup `Brain._charge` draws the charge on the striking part
+  (`fx.charge` → `DuelFx.charge`) and emits `combat:charge` once; `_updateWarn` ramps
+  `TELL_STYLE.black.warn` (x `BLACK_BODY` 0.16 on a body this size; `dragon.warnRGB` is the colour
+  written to `uWarn`).
+- a blue hit marked `flare` (a parry moment): `hitPlayer` passes `flare` and holds the blow as a
+  last one; `onParried` recoils the wyrm wherever in the string it came (`dragon:parried { last,
+  flare }`).
 - parryable (normal / blue) hits: nothing during the windup; on the flash a white glint (star core,
   four-point sparkle, short rays, small white light) at the striking part, ×1.5 for blue.
 - parries throw white/gold sparks (bigger for blue).
@@ -1695,8 +1718,10 @@ pause / help pad grid); `ab-nontouch` elements (the title's controls line, the c
 CONTROLS item) hide on touch unless a pad is in use. Action chips relabel to the pad's buttons (and
 PlayStation symbols). `.pad-focus` marks the focused menu button.
 Renders no attack tells of its own: no text, icons, rings or arrows (tells are read from the
-attacker — COMBAT.md). Its only tell cue is a brief red screen-edge flash (~0.25 s, game time,
-stronger on the attacker's side) on a red `combat:flash`, dropped by a stagger / posture break /
+attacker — COMBAT.md). Its only tell cue is a brief screen-edge flash (~0.25 s, game time,
+stronger on the attacker's side) in the flare's colour on the `combat:flash` of a moment (red; blue
+with `flare`; black: the edges go dark, and they dim slowly through a black blow's charge, from
+`combat:charge`), dropped by a stagger / posture break /
 death / retry (`ui/tells.js`); flashes with `hazard: true` (meteors, chase pillars) are skipped,
 their red ground rings already warn. Also renders parry / Ghostep / guard-break call-outs, the cyan
 Ghostep edge pulse (a plunge's perfect dodge included), the posture bar, and the crit-window cue.
@@ -2429,10 +2454,10 @@ Player → hud/audio/fx/flow:
   light, sweep, point, slam, cleave or execute; the plunge's has neither; shards = true when only the slam's ground
   shards hit (the blade is in the ground: weight null, no cut drawn, no blade sound)), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
-  `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last}` (last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
+  `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last, flare}` (flare = the blow was a parry moment, a blue flare blow: the counter follows; last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
-  `player:guardOpen {attack}` (the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a
+  `player:guardOpen {attack, black}` (black = a black, charged, blow met on the guard or a parry: the whole meter at once, ADR-118; else the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a
   short stagger; ADR-095; HUD "GUARD DOWN", audio the guard break's crack, the pad rumbles),
   `player:dodge {kind}` (an attack passed through i-frames), `player:perfectDodge {attack, tell, streak}` (every perfect dodge:
   flurry, plunge, in place or Ghostep; not on an execution; streak = perfect dodges in a row, this one included),
@@ -2452,17 +2477,25 @@ Player → hud/audio/fx/flow:
   `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade),
   `player:counter {attack, damage}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
   a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER"),
+  `player:flareCounter {attack, damage, strikes}` (the counter, ADR-118: a blue flare blow was parried and the hero
+  answered by himself; fired as its last cut, the counter blow, lands: damage = that blow's, strikes = the
+  cuts in all; HUD "COUNTER"),
   `combat:answer {attack, tell, result, damage, dead, stream, perfect}` (every blow the hero answers, from
   the player's takeHit, whatever the answer: result = the RESULT it returned (never 'ignored'), damage = the HP it cost,
   dead = it killed him, stream = a contact tick (breath, burning ground), perfect = a perfect parry; the move
   telemetry reads it, ADR-108)
 Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash Disciple, emits the same
 `dragon:*` names, see "Levels and the boss slot") → hud/audio/flow:
-- `combat:tell {source:'dragon', attack, tell, impactIn, x, z}` (windup start, per hit, so once per hit of a
-  string; x/z = the striking part; impactIn is a first estimate in game seconds),
-  `combat:flash {source:'dragon', attack, tell, x, y, z, perilous}` (~0.35 s before impact — the **authoritative**
+- `combat:tell {source:'dragon', attack, tell, impactIn, x, z, flare}` (windup start, per hit, so once per hit of a
+  string; x/z = the striking part; impactIn is a first estimate in game seconds; tell: normal / blue / red /
+  black; flare: the blow is a moment, cued by the flare: every red and black blow, a blue one marked so in its
+  data, ADR-118),
+  `combat:flash {source:'dragon', attack, tell, x, y, z, perilous, flare}` (~0.35 s before impact — the **authoritative**
   timing cue: moving targets (charge, fireball) and hazard-dealt blows re-time it after the tell; perilous:
-  a duelist's mikiri thrust, roll into it),
+  a duelist's mikiri thrust, roll into it; flare as above: the HUD flashes the screen edge in the flare's colour),
+  `combat:charge {source:'dragon', attack, dur, x, z}` (a black blow begins to charge: darkness gathers on the
+  striking part for dur game seconds, until its cue; the HUD darkens the screen edge through it, audio plays
+  the charge's swell),
   `combat:clash {heavy, crush, counter, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
   neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back, counter = the
   flash counter (it is followed by player:counter and the HUD shows that instead); HUD "CLASH",

@@ -5,6 +5,71 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 55: the flare (red, blue, black); the counter; a charged blow for every boss
+
+**Owner:** "lets add more perfect parry / perfect dodge moments into the game from the bosses. instead
+of giving a red circular area of where the attack will land, i want it to be exactly like phantom
+blade zero where there's a red flash to give you a tell/sign to dodge at that exact moment and if you
+do dodge it in time, it will do a cool animation of the dodge/parry and do a counter attack. also i
+want to add a black charged up attack ... the player needs to dodge it, if they block it they lose
+all guard", with two clips (a perfect dodge of a red flash, a perfect parry of a blue flash). Four
+questions asked first; the owner took the recommended answer to each: flash only (what lands away
+from the boss keeps a ground mark), the counters automatic for both, a black blow on the guard
+empties it and deals nothing, all three bosses. Branch `combat/flash-tells` from `main` (46e2c98).
+ADR-118 / Session 55 / M1.43.
+
+**The flare** (`enemies/duelist/fx.js` `TELL_FLARE`, `_flare`, `_drawFlare`): the cue of a moment is a
+streak of `-` strokes through the striking part across the whole frame, three rows thick near a
+white-hot heart, written cell by cell on the letter grid in the fire field's steel. The field has no
+free heat channel for a new colour, so `FireField.tint` dyes the steel inside an ellipse of the frame
+for as long as it is set (two zones; a `dark` zone also blacks out the cell behind each letter). Red
+= dodge, blue = parry, black = dodge. A part outside the frame (the wyrm's tail) has its flare drawn
+at the nearest point inside it. The HUD's screen edge flashes in the flare's colour; black dims it
+through the charge. Three looks behind `?flare=streak|star|lance` for the owner to choose from.
+
+**Nothing before the cue:** `TELL_STYLE.red.warn` from / to are 0 and `TELL_STYLE.red.floor` is false:
+the duelists' red ring and the heat under the wyrm's own area blows are off (code kept behind the
+flag). Thrown and falling things call the new `hazardFlash` and keep the red blaze where they land.
+
+**The counter** (`DEFENSE.flareCounter`): a blue beat / hit marked `flare: true` is a parry moment.
+`player._parry` readies the riposte for it wherever in a string it came, the attacker treats the
+parry as a last blow (`dragon:parried { last, flare }`), and `Flurry.start({ riposte, counter })`
+makes the last flash cut the counter blow (64 / 30 posture, `player:flareCounter`, COUNTER).
+
+**The charged blow** (`TELL.BLACK`, `GUARD.black`): `_takeHit` (c2) answers a held guard or a parry
+press with `_guardOpen(…, black)`: no damage, the meter to 0, 0.8 s open, thrown back. A perfect
+dodge is answered as a red blow's (`dodgeOnly`). Through its windup `DuelFx.charge` draws an eclipse
+on the striking part (a disc of blacked-out cells, a pale corona, motes pulled in), the body takes
+`TELL_STYLE.black.warn` (the wyrm at 16 % of it: at a duelist's strength the whole screen went
+violet) and `combat:charge` dims the screen edge.
+
+**Moves:** the wyrm's Black maw; Shen Hui's Severing Wind, Twin Embers, Black Tide; the Lord's
+Severance, Red Meridian, Nightfall (every form). Twelve existing heavy blows marked as parry moments.
+All composed from existing key poses: no new animation.
+
+**Found on the way:** `GROUND_ARTS` was filtered with `!ARTS[k].air`, and the riposte's entry has
+`air: null`: a perfect dodge of a duelist's red blow could draw the riposte as its art, which with a
+streak of one cut nothing. Fixed (`=== false`).
+
+**Verification:** `npm test` and `npm run build`: see the PR. New scenarios: duel FLARE (22 checks),
+lord FLARE (9), integ FLARE (10), and Black maw added to the wyrm's TIMING verifier (66 of 66 AI
+placements land, within 50 ms of the cue). Changed checks, with the reason in each: the wyrm's RED
+(the bite's screen edge is blue now) and RIPOSTE (the bite's answer is the counter), duel PRESSURE
+(>= 20 white / blue cues in 60 s, was 25 in 40 s: a parried moment ends his string; seeds 4242 / 7 /
+99 gave 31, 40, 44) and TERRAIN (the courtyard's share
+<= 35 %, was 30: seeds 4242 / 7 / 99 gave 32, 17, 18 %). On screen (headless Edge on the real GPU,
+1280 x 720 and 852 x 393): the three flares on all three bosses, the three looks, the charge.
+
+**Not checked / open:** nobody has played it: the timing of a flare-only red blow for a human, the
+fights' length (the ADR-102 strategy bots were not re-run), the feel of the counter. Black reads as a
+dark violet bar with a white thread rather than as pure black: on these dark levels a black shape
+cannot be seen, so it is drawn by its rim; the owner should judge it. The flare's frame cost on the
+phone is not measured. The Training catalogue has no entries for the new moves.
+
+**Next:** the owner picks the flare's look and plays the Vercel preview; tune from that.
+
+---
+
 ## 2026-11-15 — Session 54: dark music per level and per boss phase
 
 **Owner:** "Lets update all the sound effects and music to the game. Browse and pick the best cc0

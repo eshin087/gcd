@@ -3241,3 +3241,53 @@ ADR-092).
   track starts a moment after the first tap (prefetched, decoded on demand). Each level now sounds
   different, and the Starless Lord's four forms each get their own music. Not checked on the
   iPhone: memory and decode time with three decoded tracks.
+
+## ADR-118 — The flare: a moment is cued by a flash alone; the counter; the charged black blow (2026-11-15)
+- **Context:** a dodge-only blow warned three ways: the boss glowed red through its windup, a red
+  ring burned on the floor under an area, and a ragged red blaze popped 0.3 s before the hit. The
+  owner, with two clips of Phantom Blade Zero's perfect dodge and perfect parry: "add more perfect
+  parry / perfect dodge moments ... instead of giving a red circular area of where the attack will
+  land, i want it to be exactly like phantom blade zero where there's a red flash to give you a
+  tell/sign to dodge at that exact moment and if you do dodge it in time, it will do a cool animation
+  of the dodge/parry and do a counter attack. also i want to add a black charged up attack ... the
+  player needs to dodge it, if they block it they lose all guard". Asked four questions, the owner
+  took: flash only (hazards that land away from the boss keep a ground mark); the counters automatic
+  for both; a black blow on the guard empties it and deals no damage; all three bosses.
+- **Decision:**
+  1. **The flare** is the cue of a moment: one wide streak of light through the striking part with
+     a white-hot heart, written on the letter grid in the fire field's steel and dyed by a new tint
+     zone (`FireField.tint`): red = dodge, blue = parry, black = dodge. Red and black blows always
+     flare; a blue blow only when its data says `flare: true` (the unmarked heavy blows keep the white
+     star). Nothing shows before it: `TELL_STYLE.red.warn` ramps from 0 to 0, `TELL_STYLE.red.floor`
+     is false (the duelists' red ring and the heat under the wyrm's own area blows are off, the code
+     kept behind the flag).
+  2. **The counter:** any parry of a blue flare blow ends the boss's string and is answered by the
+     hero without a further press: the riposte's flash cuts (the streak), the last one a counter blow
+     of 64 damage and 30 posture (`DEFENSE.flareCounter`). The red flare's answer is the flurry that a
+     perfect dodge of a red blow already was.
+  3. **`TELL.BLACK`**, the charged blow: wound up about 1.5 s plus a random held beat while darkness
+     gathers on the weapon, then the black flare. Neither a guard nor a parry holds it: either stops
+     the blow, deals no damage, empties the guard meter and knocks the guard open for 0.8 s
+     (`GUARD.black`). A perfect dodge of it is answered as a red blow's is.
+  4. **New moves**, composed from each boss's existing key poses: Shen Hui's Severing Wind (blue
+     flare), Twin Embers (red, red) and Black Tide; the Lord's Severance, Red Meridian and Nightfall
+     (every form); the wyrm's Black maw. Twelve existing heavy blows are marked as parry moments.
+- **Why a tint zone and not a new kind of fire:** the fire field's heat buffer has four channels and
+  all four are taken (fire, smoke, void, steel). A zone of the frame in which steel prints in another
+  colour costs two uniforms and no render target, and the flare is steel anyway (strokes along a
+  line). Two zones at most; the hero's own blade trail inside a flare's zone is dyed for its 0.3 s.
+- **Why black is drawn as an eclipse:** all three levels are dark, so a black shape on them is
+  invisible. Black is shown by what rings it (a pale corona round a disc of blacked-out cells, a
+  white-hot thread through a dark bar) and by the screen edge going dark.
+- **Alternatives turned down:** a faint glow kept through the windup (offered; the owner chose flash
+  only); every heavy blow as a parry moment (the full deflect of a seven-blow string would be gone:
+  a parried fourth blow would end it); a counter that needs a press (the perfect parry's counter cut
+  stays for that); the black blow dealing its damage through the guard (offered; turned down).
+- **Consequences:** a boss's own area blow (the wyrm's leap, a duelist's Heaven-Splitting Fall) no
+  longer shows where it lands: the roll's i-frames answer it at the flare, walking out of the area
+  needs the animation to be read. A held guard has one thing it is wrong for. Also fixed on the way:
+  the flurry's art list for a foe on the ground held the riposte's entry (`air: null` passed a
+  `!air` filter), so about one perfect dodge in four of a duelist's red blow got no art and dealt nothing.
+  **Not measured:** the length and difficulty of the three fights after the change (the strategy
+  bots of ADR-102 were not re-run), the flare on a phone screen, and the frame cost of a full-width
+  streak (about 300 blobs a frame for 0.34 s).

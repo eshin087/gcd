@@ -4,7 +4,23 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty-seven pieces of work since 0.4.0:
+Forty-eight pieces of work since 0.4.0:
+- **Red, blue and black flashes: dodge, parry, and a charged blow** (2026-11-15, ADR-118). *Changed:*
+  a boss's dodge-only attack no longer glows red while it winds up and no longer draws a red ring on
+  the floor. Its only sign is **a red flash**: a wide streak of light through the weapon, across the
+  screen, at the moment to dodge. Dodge in time and the hero answers with his flurry, as before.
+  Things that land away from the boss (meteors, sky bolts, a falling pillar, thrown stones) keep
+  their mark on the ground. *Added:* **a blue flash** marks a blow to parry. Parry it and the boss's
+  combo ends there and the hero counters by himself: the streak's flash cuts, the last a counter
+  blow (64 damage). Twelve existing heavy blows are parry moments now (the wyrm's bite, Falling Ash,
+  Falling Star and others). **A black charged attack** for every boss: darkness gathers on the
+  weapon for about a second and a half, then a black flash and a long cleave (the wyrm: Black maw;
+  Shen Hui: Black Tide; the Starless Lord: Nightfall). Dodge it. Block or parry it and it deals no
+  damage, but the whole guard meter is gone and the guard is knocked open. New moves: Shen Hui's
+  Severing Wind (parry) and Twin Embers (dodge, dodge), the Lord's Severance and Red Meridian.
+  *Fixed:* about one perfect dodge in four of a duelist's red blow was answered with no blow at all
+  (the riposte's entry had got into the list of finishing arts). `?flare=star` and `?flare=lance`
+  show two other looks for the flash; `?flare=blaze` the old red burst.
 - **Dark music for every level and every boss phase** (2026-11-15, ADR-117). *Changed:* the music is
   no longer synthesised. Each level has its own dark exploring track, and every boss phase has its
   own track that takes over when the phase changes: the Cinder Wyrm's three phases, the Ash

@@ -179,6 +179,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.43 — The flare: red, blue and black flashes; the counter; the charged blow (2026-11-15, `combat/flash-tells`, ADR-118)
+- [x] The flare replaces the red windup glow and a boss's own red floor ring (hazards keep their ground mark)
+- [x] A blue flare marks a parry moment: any parry of it ends the string and the hero counters by himself
+- [x] `TELL.BLACK`, the charged blow: a guard or a parry in its way is emptied and knocked open, no damage
+- [x] One charged blow per boss (Black maw, Black Tide, Nightfall); Severing Wind, Twin Embers, Severance, Red Meridian
+- [x] Twelve existing heavy blows marked as parry moments
+- [ ] Follow-ups:
+  - [ ] The owner picks the flare's look (`?flare=streak|star|lance`) and judges the black charge on screen
+  - [ ] A human playtest: how the three fights' length and difficulty moved (the ADR-102 bots not re-run)
+  - [ ] The flare on the phone: readable at 852 x 393? Its frame cost?
+  - [ ] More moments in the long strings (a marked blow mid-string ends it: tune which)
+  - [ ] Training catalogue entries and Lab chips for the new moves
+
 ## M1.42 — Dark music per level and per boss phase (2026-11-15, `audio/dark-score`, ADR-117)
 - [x] Recorded CC0 sound effects tried and dropped (too noisy: PR #55 closed); the effects stay synthesised
 - [x] An audition page: three dark candidates for each of 14 slots; the owner's picks ship
