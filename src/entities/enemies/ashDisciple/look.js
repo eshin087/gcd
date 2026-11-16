@@ -21,7 +21,7 @@ import { setFill } from './bodyArt.js';
 
 /** The option chosen: { art, dress }. */
 export function ashLookNow() {
-  const o = lookOf('ashLook', '0');
+  const o = lookOf('ashLook', '0', 'b');
   return { art: o === 'a' || o === 'c', dress: o === 'b' || o === 'c' };
 }
 

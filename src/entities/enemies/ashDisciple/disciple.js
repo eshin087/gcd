@@ -9,6 +9,7 @@ import { TerrainMoves } from './terrain.js';
 import { LINKS } from './links.js';
 import { AshMoveFx } from './moveFx.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { dressFrame } from './look.js';
 import { TELL } from '../../../combat/rules.js';
 
 // the crescents in flight at once (DuelFx pools 6; the Storm of Ash throws nine within a second and a half)
@@ -29,6 +30,7 @@ export const ASH_KIT = Object.freeze({
   loadout: ASH_LOADOUT,
   poses: DUEL_POSES,
   blade: JIAN,
+  dress: dressFrame,
 });
 
 export class AshDisciple extends Duelist {

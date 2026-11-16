@@ -21,13 +21,20 @@ try {
   // no URL: the defaults
 }
 
-/** The option chosen for switch `name` (a short lower-case word); `def` when nothing chose one. */
-export function lookOf(name, def = '0') {
+/** The option chosen for switch `name` (a short lower-case word); `def` when nothing chose one.
+ *  `pick`: the proposal `?looks=new` shows for a redraw (its author's pick; `a` by convention, `b`
+ *  for the bodies, whose `a` is the dragon look their author would not ship). */
+export function lookOf(name, def = '0', pick = 'a') {
   const f = forced.get(name);
   if (f != null) return f;
   const u = fromUrl.get(name);
   if (u != null) return u;
-  return allNew && def === '0' ? 'a' : def;
+  return allNew && def === '0' ? pick : def;
+}
+
+/** True when the URL asked for every proposal at once (`?looks=new`). */
+export function allProposals() {
+  return allNew;
 }
 
 /** Switch a look live (null: back to the URL's or the default). */
