@@ -109,7 +109,8 @@ export function dressHood(ctx, made, maskStrip) {
   const helm = mesh(head, foldLines(ellipsoidGeometry(0.09, 0.1, 0.1, { widthSegs: 14, heightSegs: 8 }), (x, y) => 0.5 + 0.45 * Math.sin(y * 70)).translate(sx, sy + 0.014, sz - 0.022), M.armor);
   // the faceplate split down its prow by red light
   const split = mesh(head, mergeGeometries([
-    maskStrip(0.475, 0.505, () => -0.05, () => 0.55, 0.009, 1, 5),
+    // (t from 0: the faceplate's width curve is a power of t, NaN below it)
+    maskStrip(0.475, 0.505, () => 0, () => 0.55, 0.009, 1, 5),
     maskStrip(0.49, 0.525, () => 0.5, () => 1.0, 0.009, 1, 4),
   ]), M.flask);
   // the hood fallen onto the yoke behind his neck: a bunched cowl
