@@ -719,6 +719,8 @@ export class Destructibles {
       } else if (b.wrecks && !b.stub && b.mat === 'stone' && b.h >= 0.4) this.wreck?.rubble(b.x, b.z, b.r * 0.85, b.M);
       // (a boulder leaves a pile of itself; a stone with a broken base of its own has that)
       if (!b.floor) this.game.shake?.(clamp(0.12 + 0.12 * b.weight, 0.1, 0.4));
+      // (a slab breaking under someone's feet: a hop of grit and chunks off it, besides its crumble)
+      else this._burst(b, b.x, 0.08, b.z, dx, dz, BREAK.floor.grit, 0.3);
       if (loud) this._emit('break', b, b.x, b.h * 0.5, b.z, b.weight, by);
     }
   }

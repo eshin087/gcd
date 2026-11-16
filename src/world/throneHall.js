@@ -406,7 +406,7 @@ export function createThroneHall(U, colliders) {
   // is not one of them); the cracked and broken looks in two more meshes, hidden until first used
   {
     const slabMesh = group.children[group.children.length - 1];
-    breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group }).defs);
+    breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group, earth: [0.12, 0.068, 0.062] }).defs); // (the star's scorched ground: a dark ember brown)
   }
 
   // ---- the crater's life: the vents' flames and lights, wisps, motes, the inlay
