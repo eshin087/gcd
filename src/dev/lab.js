@@ -848,6 +848,36 @@ export class Lab {
       const n = a ? w()?.impact?.(a.x, a.z, 3, 3, { kind: 'blast', by: 'boss' }) : 0;
       this._status(`a blast 4 m ahead struck ${n ?? 0} piece(s)`, 'ok');
     }).title = 'a hard blast 4 m in front of the hero: what stands there breaks, the floor cracks';
+    // (2026-11-16: the tree wall wears down in stages; the landmarks break in pieces)
+    const nearestWall = (at) => {
+      let best = null, bd = 1e9;
+      for (const b of w()?.destructibles?.list ?? []) {
+        if (b.state !== 0 || !(b.wall || /^(elder|cinder|nest)/.test(b.kind))) continue;
+        const d = Math.hypot(b.x - at.x, b.z - at.z);
+        if (d < bd) {
+          best = b;
+          bd = d;
+        }
+      }
+      return best;
+    };
+    button(grid, 'Wear wall', () => {
+      const D = w()?.destructibles, at = p();
+      const b = at && D ? nearestWall(at) : null;
+      if (!b) return this._status('no wall tree or landmark piece standing', '');
+      const l = Math.hypot(b.x - at.x, b.z - at.z) || 1, dx = (b.x - at.x) / l, dz = (b.z - at.z) / l;
+      D.strike(b.x - dx * 0.6, b.z - dz * 0.6, 0.8, 1, { kind: 'blunt', by: 'boss', dx, dz, y: 1.5, src: D.swing() });
+      this._status(`a tail's blow (power 1) on a ${b.kind} ${l.toFixed(1)} m away: stage ${b.wear ?? 0}, ${b.hp.toFixed(2)} of ${b.hpMax.toFixed(2)} left`, 'ok');
+    }).title = 'the nearest tree of the wall (or landmark piece) takes a blow of a tail\'s power: watch it wear down stage by stage';
+    button(grid, 'Wreck wall', () => {
+      const D = w()?.destructibles, at = p();
+      if (!D || !at) return;
+      const R = Math.hypot(at.x, at.z) || 1, ox = at.x / R, oz = at.z / R;
+      let n = 0;
+      for (let k = 0; k < 4; k++) n += D.strike(ox * (34 + k * 4), oz * (34 + k * 4), 5, 2.5, { kind: 'blast', by: 'boss', dx: ox, dz: oz, src: D.swing() });
+      w()?.ignite?.(ox * 40, oz * 40, 4, 1, false);
+      this._status(`the wall behind the hero: ${n} blows, and fire`, 'ok');
+    }).title = 'blasts and fire in the wall straight out behind the hero (a stretch torn open)';
     button(grid, 'Restore', () => {
       w()?.scorch?.reset?.();
       w()?.restore?.();
