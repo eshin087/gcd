@@ -1,38 +1,62 @@
 import { clamp, turnToward } from '../../../core/math.js';
 import { TELL } from '../../../combat/rules.js';
+import { FIRE_KIND } from '../../../render/firePalettes.js';
 import { perPhase } from '../duelist/realise.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 import { TUNING } from './tuning.js';
 
 // The Ash Disciple uses the courtyard (ADR-111; COMBAT.md → "The Ash Disciple" → "He uses the
-// courtyard"). Four moves on the pieces of the set (world.destructibles, ARCHITECTURE.md →
+// courtyard"). His moves on the pieces of the set (world.destructibles, ARCHITECTURE.md →
 // "Destruction"); the moves themselves are data (moves.js: a move marked `terrain: kind`), their
 // numbers TUNING.terrain. What is here: which piece he goes for, how he gets to it, and what the piece
 // then does.
 //   fell    Severed Pillar    he is behind the standing piece nearest the hero and cuts it through: it
-//                             falls on the hero (the world tells it red, marks the strip and deals it)
-//   kick    Flying Lantern    a short stone piece kicked at the hero: it cues itself flashLead before
-//                             it lands (blue: a parry bursts it on the blade), the blow is his
+//                             falls on the hero (the world tells it red, marks the strip and deals it).
+//                             A colossus's upper half too: its strip starts `fallOff` m out from its base
+//   kick    Flying Lantern    a short stone piece kicked at the hero: the flare on the flying piece
+//                             flashLead before it lands (blue: a parry bursts it on the blade), the blow
+//                             is his. Nothing is drawn where it will land (the owner's choice, 2026-11-16)
 //   toll    Three Tolls       three blows on the fallen bell, each a ring of sound that crosses the
 //                             courtyard and cues itself flashLead before it reaches the hero
 //   spring  Swallow's Return  he leaps back onto a pillar and springs off it into a diving cut
+//   flag    Rising Flagstone  (the second pass) the floor: his blade levers a flagstone up out of the
+//                             paving and he kicks it at the hero (blue, the flare on the piece); a move
+//                             of two or three beats levers and kicks one each beat
+//   fan     Scattered Flagstones  (phase 3) three flagstones levered up at once and cut through in the
+//                             air: they leave as a fan, each with its own flare
 // A move is chosen by his AI only while a piece for it is in reach (weigh → 0 otherwise); started by
 // hand (the Lab, Training) it goes for the nearest one however far, and cannot start with none (the
 // tests' world mocks have no pieces). Out past his bound for a piece, his bound stretches (`slack`)
 // and draws him back in once the move is over.
+// Every piece in the air is told to the cue ledger (duelist/ledger.js: the lantern and the toll's
+// rings by its predictor, the kicked flagstones through brain.expect) and its flight is lengthened by
+// the fairness guard (brain.fairDelay) when it would land too near a cue that asks the other answer.
+// Two random streams of its own: `_g` for what decides the game (none drawn yet: kept for the fan's
+// aim if it ever jitters), `_l` for what only draws. Neither is the effects' stream (fx.rnd), so no
+// look option can move a landing.
 // No per-frame allocation: one record per move, per shot and per ring, reused; drawn through the
-// duelist FX's reused spawn record.
+// duelist FX's reused records.
 
 /** A piece's states (world/destructibles.js STATE; ARCHITECTURE.md → "Destruction"). */
-const INTACT = 0, FLYING = 4;
+const INTACT = 0, HELD = 3, FLYING = 4;
+const K_STEEL = FIRE_KIND.steel, K_FIRE = FIRE_KIND.fire, K_SMOKE = FIRE_KIND.smoke;
+const TAU = Math.PI * 2;
 const ease = (u) => u * u * (3 - 2 * u);
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
+/** A steady hash 0..1 of a number (a ragged ring that does not boil frame to frame). */
+const hash = (n) => {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+};
 
-const STREAK = [1.7, 1.65, 1.6], STREAK_END = [0.3, 0.28, 0.27];
 const GRIT = [1.1, 1.15, 1.35], GRIT_END = [0.2, 0.21, 0.26];
-const MARK = [0.75, 0.78, 0.9];
 const DUST = [0.24, 0.23, 0.22];
 const BRONZE = [2.5, 1.6, 0.55], BRONZE_END = [0.6, 0.22, 0.05];
-const STEEL = [3.0, 3.0, 3.2], STEEL_END = [0.5, 0.5, 0.6];
+const SPARK = [3.2, 2.6, 1.6], SPARK_END = [0.8, 0.3, 0.08];
+/** The looks of a toll's ring of sound (`?toll=`): '0' the bronze ')' arcs as shipped, 'a' a ragged
+ *  front of steel in the fire field, 'b' the same with a low bronze heat under it. */
+export const TOLL_LOOKS = Object.freeze(['0', 'a', 'b']);
+const FLOOR_KINDS = new Set(['flag', 'fan']);
 
 export class TerrainMoves {
   constructor(d) {
@@ -41,23 +65,46 @@ export class TerrainMoves {
     /** m his bound is stretched by (a move that takes him out to a piece; it draws him back after) */
     this.slack = 0;
     /** the piece his AI found for each kind when it last weighed its moves (at brain time `pickT`) */
-    this.pick = { fell: null, kick: null, toll: null, spring: null };
+    this.pick = { fell: null, kick: null, toll: null, spring: null, flag: null, fan: null };
     this.pickT = -1;
     /** the move running: its act, its piece, where he started and where he is going */
-    this.cur = { act: null, kind: '', piece: null, x0: 0, z0: 0, sx: 0, sy: 0, sz: 0, face: 0, k: 0, struck: false, dive: false, landed: false, px: 0, py: 0, pz: 0, tx: 0, tz: 0 };
+    this.cur = { act: null, kind: '', piece: null, x0: 0, z0: 0, sx: 0, sy: 0, sz: 0, face: 0, k: 0, struck: false, dive: false, landed: false, px: 0, py: 0, pz: 0, tx: 0, tz: 0, beat: null, levered: false };
     /** the piece in the air (Flying Lantern) */
-    this.shot = { live: false, piece: null, flashed: false, tell: TELL.BLUE, damage: 0, kb: 0, attack: 'lanternKick', dx: 0, dz: 1, tx: 0, tz: 0 };
+    this.shot = { live: false, piece: null, flashed: false, tell: TELL.BLUE, damage: 0, kb: 0, attack: 'lanternKick', dx: 0, dz: 1, tx: 0, tz: 0, quiet: false };
     /** the rings of sound (Three Tolls) */
-    this.rings = Array.from({ length: 4 }, () => ({ alive: false, x: 0, z: 0, r: 0, age: 0, flashed: -1, done: false, tell: TELL.NORMAL, damage: 0, kb: 0, attack: 'bellToll', heavy: false }));
+    this.rings = Array.from({ length: 4 }, () => ({ alive: false, x: 0, z: 0, r: 0, age: 0, flashed: -1, done: false, tell: TELL.NORMAL, damage: 0, kb: 0, attack: 'bellToll', heavy: false, seed: 0 }));
+    /** flagstones levered up and waiting for the kick (Rising Flagstone, Scattered Flagstones) */
+    this.lifted = Array.from({ length: 4 }, () => ({ piece: null, t: 0, x0: 0, z0: 0, ox: 0, oz: 0, y: 0, spin: 0 }));
+    /** flagstones in the air: each told to the cue ledger (`h`, brain.expect) */
+    this.kicks = Array.from({ length: 4 }, () => ({ live: false, piece: null, flashed: false, quiet: false, tell: TELL.BLUE, damage: 0, kb: 0, attack: '', dx: 0, dz: 1, h: null }));
     this._blow = { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 1, src: -1 };
     this._throw = { time: 0.7, power: 1, radius: 2, by: 'boss', onLand: (b, x, z) => this._landed(b, x, z) };
-    this._flash = { source: 'dragon', attack: '', tell: TELL.NORMAL, x: 0, y: 0, z: 0 };
+    this._slabThrow = { time: 0.7, power: 1, radius: 2, by: 'boss', onLand: (b, x, z) => this._slabLanded(b, x, z) };
+    // (a thrown piece's cue: `flare` — the flare is drawn on the piece; not a `hazard`, as before: the
+    // HUD's edge and the trainer read it as his blow)
+    this._flash = { source: 'dragon', attack: '', tell: TELL.NORMAL, x: 0, y: 0, z: 0, flare: false };
     this._v = { x: 0, y: 0, z: 0 };
-    this._c = [0, 0, 0];
+    this._near = [];
+    this._gs = 0x6a09e667;
+    this._ls = 0x3c6ef372;
   }
 
   get W() {
     return this.game.world?.destructibles ?? null;
+  }
+
+  /** The gameplay stream (its own: no look can move it). */
+  _g() {
+    this._gs = (Math.imul(this._gs, 1664525) + 1013904223) >>> 0;
+    return this._gs / 4294967296;
+  }
+  /** The looks' stream (its own: a look drawing more or less never moves anything). */
+  _l() {
+    this._ls = (Math.imul(this._ls, 1103515245) + 12345) >>> 0;
+    return this._ls / 4294967296;
+  }
+  _lr(a, b) {
+    return a + this._l() * (b - a);
   }
 
   reset() {
@@ -65,14 +112,32 @@ export class TerrainMoves {
     this.pickT = -1;
     this.cur.act = null;
     this.cur.piece = null;
+    this.cur.beat = null;
     this.shot.live = false;
     this.shot.piece = null;
     for (const r of this.rings) r.alive = false;
+    for (const L of this.lifted) L.piece = null;
+    for (const k of this.kicks) {
+      k.live = false;
+      k.piece = null;
+      k.h?.cancel?.();
+      k.h = null;
+    }
+    this._gs = 0x6a09e667;
+    this._ls = 0x3c6ef372;
   }
 
-  /** Something of his is still in the air (a kicked piece, a ring of sound). */
+  /** Something of his is still in the air (a kicked piece, a ring of sound, a levered flagstone). */
   get busy() {
-    return this.shot.live || this.rings.some((r) => r.alive);
+    return this.shot.live || this.rings.some((r) => r.alive) || this.kicks.some((k) => k.live) || this.lifted.some((L) => L.piece);
+  }
+
+  /** Where the hero is (a point ahead of him when there is none). */
+  _hero() {
+    const d = this.d, me = d.position, p = this.game.player?.position, v = this._v;
+    v.x = Number.isFinite(p?.x) ? p.x : me.x + Math.sin(d.yaw) * 4;
+    v.z = Number.isFinite(p?.z) ? p.z : me.z + Math.cos(d.yaw) * 4;
+    return v;
   }
 
   // ------------------------------------------------------------------ which piece
@@ -81,18 +146,18 @@ export class TerrainMoves {
    * that the hero is placed for. `forced` (the Lab, Training): the best one however far.
    */
   find(kind, forced = false) {
+    if (FLOOR_KINDS.has(kind)) return this._floorAhead(TUNING.terrain[kind], forced);
     const L = this.W?.list;
     const T = TUNING.terrain, K = T[kind];
     if (!L?.length || !K) return null;
     const d = this.d, me = d.position;
-    const p = this.game.player?.position;
-    const hx = Number.isFinite(p?.x) ? p.x : me.x + Math.sin(d.yaw) * 4, hz = Number.isFinite(p?.z) ? p.z : me.z + Math.cos(d.yaw) * 4;
+    const H = this._hero(), hx = H.x, hz = H.z;
     const lim = d.baseBound + T.edge;
     const dHero = Math.hypot(me.x - hx, me.z - hz) || 1;
     let best = null, bs = Infinity;
     for (let i = 0; i < L.length; i++) {
       const b = L[i];
-      if (b.state !== INTACT || Math.hypot(b.x, b.z) > lim) continue;
+      if (b.state !== INTACT || b.floor || Math.hypot(b.x, b.z) > lim) continue;
       const dh = Math.hypot(hx - b.x, hz - b.z), dd = Math.hypot(me.x - b.x, me.z - b.z);
       let score;
       if (kind === 'toll') {
@@ -103,14 +168,18 @@ export class TerrainMoves {
         if (b.mat !== 'stone' || b.hpMax === Infinity) continue;
         if (kind === 'fell') {
           if (!b.topples || b.h < K.minH) continue;
-          if (!forced && (dh < K.heroMin || dh > b.h + K.over || dd > K.reach)) continue;
-          score = dh;
+          // (a colossus: its legs stand while its upper half does, and the upper half is what falls; its
+          // strip starts `fallOff` m out from the base, where the upper half comes down)
+          if (b.top && b.top.state === INTACT) continue;
+          const off = fin(b.fallOff, 0);
+          if (!forced && (dh - off < K.heroMin || dh - off > b.h + K.over || dd > K.reach)) continue;
+          score = dh; // (the piece nearest the hero: a pillar before a colossus beside it)
         } else if (kind === 'kick') {
           if (!(b.lift > 0) || b.h < K.minH || b.h > K.maxH || b.weight > K.maxWeight) continue;
           if (!forced && (dd > K.reach || dh < K.heroMin || dh > K.heroMax)) continue;
           score = dd - (b.kind === 'lantern' ? K.lantern : 0);
         } else {
-          if (!b.topples || b.h < K.minH) continue;
+          if (!b.topples || b.h < K.minH || b.y0 > 0) continue;
           score = dd;
           if (!forced) {
             if (dd > K.reach || dd < K.near || dh < K.heroMin || dh > K.heroMax) continue;
@@ -129,11 +198,39 @@ export class TerrainMoves {
     return best;
   }
 
+  /**
+   * A flagstone to lever up (Rising Flagstone, Scattered Flagstones): whole slabs of the paving within
+   * `K.reach` of the point `K.ahead` m in front of him toward the hero, nearest first, into this._near
+   * (at most `K.count`). His AI: only while the hero stands `heroMin` .. `heroMax` m off and there are
+   * `need` of them. Returns the first, or null.
+   */
+  _floorAhead(K, forced) {
+    const W = this.W, d = this.d, me = d.position, out = this._near;
+    out.length = 0;
+    if (!K || !W?.floorNear || !W.floor?.length) return null;
+    const H = this._hero();
+    let ux = H.x - me.x, uz = H.z - me.z;
+    const dist = Math.hypot(ux, uz);
+    if (!forced && (dist < K.heroMin || dist > K.heroMax)) return null;
+    if (dist > 0.05) {
+      ux /= dist;
+      uz /= dist;
+    } else {
+      ux = Math.sin(d.yaw);
+      uz = Math.cos(d.yaw);
+    }
+    const n = W.floorNear(me.x + ux * K.ahead, me.z + uz * K.ahead, forced ? K.reach * 2.5 : K.reach, out, { kind: K.kind, whole: true, max: K.count ?? 1 });
+    if (!n || (!forced && n < (K.need ?? 1))) return null;
+    return out[0];
+  }
+
   /** His AI weighs a move (brain._choose → disciple.weigh): 0 while no piece for it is in reach. */
   weigh(def, w) {
     const kind = def.terrain;
     if (!kind) return w;
     const d = this.d;
+    // (a flagstone move while one is still in the air or levered: not yet)
+    if (FLOOR_KINDS.has(kind) && (this.kicks.some((k) => k.live) || this.lifted.some((L) => L.piece))) return 0;
     const b = this.find(kind, false);
     this.pick[kind] = b;
     this.pickT = d.time;
@@ -163,8 +260,14 @@ export class TerrainMoves {
     C.z0 = me.z;
     C.k = 0;
     C.struck = C.dive = C.landed = false;
-    const p = this.game.player?.position;
-    const hx = Number.isFinite(p?.x) ? p.x : me.x + Math.sin(d.yaw) * 4, hz = Number.isFinite(p?.z) ? p.z : me.z + Math.cos(d.yaw) * 4;
+    C.beat = A.beats?.[0] ?? null;
+    C.levered = false;
+    if (FLOOR_KINDS.has(kind)) {
+      this._standBehind(C, b, K);
+      this.slack = Math.max(this.slack, T.edge + 3);
+      return true;
+    }
+    const H = this._hero(), hx = H.x, hz = H.z;
     // from the piece toward the hero
     let ux = hx - b.x, uz = hz - b.z, l = Math.hypot(ux, uz);
     if (l < 0.05) {
@@ -200,19 +303,41 @@ export class TerrainMoves {
       C.sx = b.x - ux * (R + K.stand);
       C.sz = b.z - uz * (R + K.stand);
     }
-    if (kind !== 'spring') {
-      const v = this._v;
-      v.x = C.sx;
-      v.z = C.sz;
-      this.game.world?.resolve?.(v, d.T.radius, Infinity);
-      if (Number.isFinite(v.x + v.z)) {
-        C.sx = v.x;
-        C.sz = v.z;
-      }
-    }
+    if (kind !== 'spring') this._resolve(C);
     C.face = Math.atan2(b.x - C.sx, b.z - C.sz);
     this.slack = Math.max(this.slack, T.edge + 3);
     return true;
+  }
+
+  /** His stand point out of the colliders. */
+  _resolve(C) {
+    const v = this._v, d = this.d;
+    v.x = C.sx;
+    v.z = C.sz;
+    this.game.world?.resolve?.(v, d.T.radius, Infinity);
+    if (Number.isFinite(v.x + v.z)) {
+      C.sx = v.x;
+      C.sz = v.z;
+    }
+  }
+
+  /** A flagstone move: his foot planted just behind the slab, the slab between him and the hero. */
+  _standBehind(C, b, K) {
+    const d = this.d, H = this._hero();
+    let ux = H.x - b.x, uz = H.z - b.z, l = Math.hypot(ux, uz);
+    if (l < 0.05) {
+      ux = Math.sin(d.yaw);
+      uz = Math.cos(d.yaw);
+      l = 1;
+    }
+    ux /= l;
+    uz /= l;
+    C.piece = b;
+    C.sx = b.x - ux * (b.r * 0.5 + K.stand);
+    C.sz = b.z - uz * (b.r * 0.5 + K.stand);
+    C.sy = 0;
+    this._resolve(C);
+    C.face = Math.atan2(H.x - C.sx, H.z - C.sz);
   }
 
   // ------------------------------------------------------------------ his own root motion
@@ -223,6 +348,19 @@ export class TerrainMoves {
     if (C.kind === 'spring') {
       this._spring(b, u, s, dt);
       return;
+    }
+    const floor = FLOOR_KINDS.has(C.kind);
+    if (floor && C.beat !== b) {
+      // the next beat of a flagstone string: the next slab, from where he stands now
+      C.beat = b;
+      C.levered = false;
+      C.k = 0;
+      C.x0 = d.position.x;
+      C.z0 = d.position.z;
+      const K = TUNING.terrain[C.kind];
+      const nb = this._floorAhead(K, true);
+      if (nb) this._standBehind(C, nb, K);
+      else C.piece = null;
     }
     const G = b.def.go, pos = d.position;
     let k = 1;
@@ -236,11 +374,21 @@ export class TerrainMoves {
         this._trail(px, py, pz, pos.x, pos.y, pos.z);
         if (k >= 1) {
           pos.y = 0;
-          d.fx.dust(pos.x, pos.z, 1.1);
+          if (Math.hypot(C.sx - C.x0, C.sz - C.z0) > 1.5) d.fx.dust(pos.x, pos.z, 1.1);
         }
         C.k = k;
       }
       d.state = pos.y > 0.4 ? 'airborne' : 'combat';
+    }
+    if (floor) {
+      // he faces the hero over the slab; the blade levers it up at `lever` of the windup
+      if (s) C.face = Math.atan2(s.p.x - pos.x, s.p.z - pos.z);
+      d.yaw = turnToward(d.yaw, C.face, 22 * dt);
+      if (!C.levered && u >= fin(b.def.lever, 0.5) && u < 1) {
+        C.levered = true;
+        this._lever(C, b.def.cast?.kind === 'fan' ? TUNING.terrain.fan : TUNING.terrain.flag);
+      }
+      return;
     }
     // he looks where he is going, then at the piece
     const far = Math.hypot(C.sx - C.x0, C.sz - C.z0) > 1;
@@ -333,6 +481,143 @@ export class TerrainMoves {
     W.strike(pc.x, pc.z, 0.2, K.power, o);
   }
 
+  // ------------------------------------------------------------------ the flagstones
+  /**
+   * The blade's point under the slab: it jumps up out of the paving (the world: torn out, its hole
+   * shows the broken look, a block of prop art in the air). Scattered Flagstones: up to `K.count` at
+   * once, each from its own place, gathering into a row in front of him.
+   */
+  _lever(C, K) {
+    const W = this.W, d = this.d, fx = d.fx;
+    if (!W?.take || !K) return;
+    const fan = (K.count ?? 1) > 1;
+    let n = 0;
+    if (fan) this._floorAhead(K, true);
+    const list = fan ? this._near : null;
+    const want = fan ? Math.min(list.length, K.count, this.lifted.length) : 1;
+    const fwx = Math.sin(d.yaw), fwz = Math.cos(d.yaw);
+    for (let i = 0; i < want; i++) {
+      const pc = fan ? list[i] : C.piece;
+      if (!pc || pc.state !== INTACT || !W.take(pc)) continue;
+      const L = this.lifted.find((x) => !x.piece);
+      if (!L) {
+        W.drop?.(pc);
+        continue;
+      }
+      L.piece = pc;
+      L.t = 0;
+      L.x0 = pc.x;
+      L.z0 = pc.z;
+      // where it hangs: in front of him (the fan: a row across his front)
+      const side = fan ? (i === 0 ? 0 : i === 1 ? -1 : 1) * K.row : 0;
+      const ahead = fan ? K.hang : Math.hypot(pc.x - d.position.x, pc.z - d.position.z);
+      L.ox = d.position.x + fwx * ahead + fwz * side;
+      L.oz = d.position.z + fwz * ahead - fwx * side;
+      L.y = fan ? K.rise + 0.25 * Math.abs(side) : K.rise;
+      L.spin = (i % 2 ? -1 : 1) * (2.5 + i);
+      W.carry(pc, pc.x, 0.05, pc.z, 0, 0);
+      n++;
+      // the scoop: grit thrown up off its edge, a pale stroke where the blade went under it
+      this._burst(pc.x, 0.15, pc.z, 7, DUST, 2.4, false);
+      fx._ink(pc.x - fwx * pc.r, 0.12, pc.z - fwz * pc.r, pc.x + fwx * 0.3, 0.5, pc.z + fwz * 0.3, 0.16, 0.95, 0);
+    }
+    if (n) this.game.shake?.(0.08);
+  }
+
+  /** The kick (or the fan's cut): every levered slab leaves for the hero. */
+  _kickSlabs(b, s, a) {
+    const d = this.d, W = this.W, fx = d.fx, D = b.def;
+    const fan = D.cast?.kind === 'fan';
+    const K = fan ? TUNING.terrain.fan : TUNING.terrain.flag;
+    const H = this._hero();
+    let tx0 = H.x, tz0 = H.z;
+    if (s) {
+      tx0 = s.p.x + s.vx * K.lead;
+      tz0 = s.p.z + s.vz * K.lead;
+    }
+    let i = 0;
+    for (const L of this.lifted) {
+      const pc = L.piece;
+      if (!pc) continue;
+      L.piece = null;
+      if (pc.state !== HELD || !W?.throwTo) continue;
+      // the fan: the middle one at the hero, the others turned `spread` rad to either side of it
+      let tx = tx0, tz = tz0;
+      const off = fan ? (i === 0 ? 0 : i === 1 ? -1 : 1) * K.spread : 0;
+      i++;
+      if (off) {
+        const vx = tx0 - pc.px, vz = tz0 - pc.pz, c = Math.cos(off), sn = Math.sin(off);
+        tx = pc.px + vx * c + vz * sn;
+        tz = pc.pz - vx * sn + vz * c;
+      }
+      const dist = Math.hypot(tx - pc.px, tz - pc.pz), l = dist || 1;
+      const dx = (tx - pc.px) / l, dz = (tz - pc.pz) / l;
+      let fl = clamp(K.time[0] + dist / K.per, K.time[0], K.time[1]);
+      // the fairness guard: a flight that would land too near a cue asking the other answer is
+      // lengthened (a higher lob); one that cannot be cleared lands uncued, and so harms nobody
+      const dl = d.brain?.fairDelay?.(fl, D.tell, K.maxDelay) ?? 0;
+      if (dl > 0) {
+        fl += dl;
+        if (d.brain.stats) d.brain.stats.delays++;
+      }
+      const o = this._slabThrow;
+      o.time = fl;
+      o.power = K.power;
+      o.radius = K.radius;
+      if (!W.throwTo(pc, tx, tz, o)) {
+        W.drop?.(pc);
+        continue;
+      }
+      const R = this.kicks.find((x) => !x.live);
+      if (R) {
+        R.live = true;
+        R.piece = pc;
+        R.flashed = false;
+        R.quiet = dl < 0;
+        R.tell = D.tell;
+        R.damage = D.damage;
+        R.kb = D.knockback ?? 2;
+        R.attack = a?.name ?? 'flagKick';
+        R.dx = dx;
+        R.dz = dz;
+        R.h?.cancel?.();
+        R.h = R.quiet ? null : d.brain?.expect?.(fl, D.tell, R.attack) ?? null;
+      }
+      // the blow that sends it: pale strokes thrown the way it goes, grit off the slab
+      for (let q = -2; q <= 2; q++) {
+        const w = q * 0.2, y = pc.py + 0.15 + 0.05 * Math.abs(q);
+        fx._ink(pc.px - dz * w, y, pc.pz + dx * w, pc.px - dz * w * 1.6 + dx * 1.3, y + 0.1, pc.pz + dx * w * 1.6 + dz * 1.3, 0.13, 0.85, 0);
+      }
+      this._burst(pc.px, pc.py + 0.1, pc.pz, 6, GRIT, 2.6, false, dx, dz);
+    }
+    if (i) {
+      this.game.shake?.(fan ? 0.2 : 0.14);
+      if (fan) {
+        // the cut through the three: one bright line across them
+        const fwx = Math.sin(d.yaw), fwz = Math.cos(d.yaw), cx = d.position.x + fwx * K.hang, cz = d.position.z + fwz * K.hang;
+        fx._ink(cx - fwz * (K.row + 1), K.rise + 0.3, cz + fwx * (K.row + 1), cx + fwz * (K.row + 1), K.rise + 0.25, cz - fwx * (K.row + 1), 0.2, 1.15, 0);
+      }
+    }
+  }
+
+  /** A kicked slab has landed (the world's onLand): its blow at the hero, if he is under it and it was cued. */
+  _slabLanded(pc, x, z) {
+    const R = this.kicks.find((k) => k.live && k.piece === pc);
+    if (!R) return;
+    R.live = false;
+    R.piece = null;
+    R.h?.cancel?.();
+    R.h = null;
+    const d = this.d, p = this.game.player, K = TUNING.terrain.flag;
+    d.fx.dust?.(x, z, 0.7);
+    if (!p?.position || p.alive === false || !R.flashed) return;
+    if (Math.hypot(p.position.x - x, p.position.z - z) > K.hit + (p.radius ?? 0.45)) return;
+    d.hitPlayer({
+      damage: R.damage, knockback: R.kb, kind: 'stone', tell: R.tell, attack: R.attack,
+      from: { x: x - R.dx * 1.4, z: z - R.dz * 1.4 }, projectile: true, parryPosture: K.parryPosture,
+    });
+  }
+
   // ------------------------------------------------------------------ what the piece does
   /** A terrain beat's impact, its first frame (brain → disciple.onImpact). */
   impact(b, s, a) {
@@ -361,20 +646,23 @@ export class TerrainMoves {
     if (!W.topple(pc, dx, dz, 'boss')) return;
     const l = Math.hypot(dx, dz) || 1, y = TUNING.terrain.fell.cut;
     this._cutLine(pc.x, y, pc.z, -dz / l, dx / l, pc.r);
+    // (a colossus: its upper half shears off at its cut, high over the blade's line)
+    if (pc.y0 > 0) this._cutLine(pc.x, pc.y0, pc.z, -dz / l, dx / l, pc.r * 0.8);
     this.game.shake?.(0.22);
     this.game.world?.gust?.(pc.x, pc.z, 0.8, 5);
   }
 
-  /** A terrain cast's impact (brain → disciple.onCast): the kick, a toll. */
+  /** A terrain cast's impact (brain → disciple.onCast): the kick, a toll, a flagstone. */
   cast(b, s, a) {
     const C = this.cur;
     if (!C.act || C.act !== a) return;
     if (C.kind === 'kick') this._kick(b, s, a);
     else if (C.kind === 'toll') this._toll(b, a);
+    else if (FLOOR_KINDS.has(C.kind)) this._kickSlabs(b, s, a);
   }
 
   /** Flying Lantern: the piece leaves the ground and flies at the hero (world.destructibles.take /
-   *  throwTo). It cues itself (frame) and its blow at the hero is his (_landed). */
+   *  throwTo). It cues itself (frame: the flare on it) and its blow at the hero is his (_landed). */
   _kick(b, s, a) {
     const C = this.cur, d = this.d, W = this.W, pc = C.piece, K = TUNING.terrain.kick;
     if (!W?.take || !pc || pc.state !== INTACT || !W.take(pc)) return;
@@ -388,6 +676,12 @@ export class TerrainMoves {
     W.carry(pc, pc.x + dx * 0.2, 0.3, pc.z + dz * 0.2, 0.25, Math.atan2(dx, dz));
     const o = this._throw;
     o.time = clamp(K.time[0] + dist / K.per, K.time[0], K.time[1]);
+    // the fairness guard (as the flagstones'): a longer flight, or no cue and no blow
+    const dl = d.brain?.fairDelay?.(o.time, b.def.tell, K.maxDelay) ?? 0;
+    if (dl > 0) {
+      o.time += dl;
+      if (d.brain.stats) d.brain.stats.delays++;
+    }
     o.power = K.power;
     o.radius = K.radius;
     if (!W.throwTo(pc, tx, tz, o)) {
@@ -398,6 +692,7 @@ export class TerrainMoves {
     S.live = true;
     S.piece = pc;
     S.flashed = false;
+    S.quiet = dl < 0;
     S.tell = b.def.tell;
     S.damage = b.def.damage;
     S.kb = b.def.knockback ?? 2;
@@ -407,14 +702,12 @@ export class TerrainMoves {
     S.tx = tx;
     S.tz = tz;
     this._burst(pc.x, 0.7, pc.z, 14, DUST, 3.2, false, dx, dz);
-    // the blow that sends it: a fan of pale strokes thrown the way it goes
-    const fx = d.fx, rot = Math.atan2(-dz * 0.848, dx);
+    // the blow that sends it: a fan of pale strokes in the field, thrown the way it goes
+    const fx = d.fx;
     for (let i = -3; i <= 3; i++) {
-      const sp = fx.rand(9, 15), w = i * 0.22;
-      fx._spawn(fx.add, {
-        x: pc.x - dx * 0.5 - dz * w, y: 0.8 + 0.1 * Math.abs(i), z: pc.z - dz * 0.5 + dx * w, vx: dx * sp, vy: 0.6, vz: dz * sp,
-        life: fx.rand(0.14, 0.24), size: 0.4, sizeEnd: 0.08, glyph: ')', rot, color: STEEL, colorEnd: STEEL_END, alpha: 0.95, alphaEnd: 0, drag: 5,
-      });
+      const w = i * 0.22, y = 0.8 + 0.1 * Math.abs(i);
+      const x0 = pc.x - dx * 0.5 - dz * w, z0 = pc.z - dz * 0.5 + dx * w;
+      fx._ink(x0, y, z0, x0 + dx * 1.5 - dz * w * 0.6, y + 0.15, z0 + dz * 1.5 + dx * w * 0.6, 0.15, 0.9, 0);
     }
     this.game.shake?.(0.18);
   }
@@ -427,7 +720,8 @@ export class TerrainMoves {
     const p = this.game.player, K = TUNING.terrain.kick;
     if (!p?.position || p.alive === false) return;
     if (Math.hypot(p.position.x - x, p.position.z - z) > K.hit + (p.radius ?? 0.45)) return;
-    // (it must have been cued: it always is, its flight is longer than the lead)
+    // (it must have been cued: it always is, its flight is longer than the lead, unless the fairness
+    // guard could not clear it: then it lands uncued and harms nobody)
     if (!S.flashed) return;
     d.hitPlayer({
       damage: S.damage, knockback: S.kb, kind: 'stone', tell: S.tell, attack: S.attack,
@@ -469,6 +763,7 @@ export class TerrainMoves {
       R.damage = b.def.damage;
       R.kb = b.def.knockback ?? 1;
       R.attack = a?.name ?? 'bellToll';
+      R.seed = this._l() * 100;
     }
     const heavy = b.def.tell === TELL.BLUE;
     this._burst(pc.x, 1.1, pc.z, heavy ? 26 : 16, BRONZE, heavy ? 7 : 5, true);
@@ -478,13 +773,15 @@ export class TerrainMoves {
   }
 
   // ------------------------------------------------------------------ frame
-  /** Every brain update (disciple.brainFrame): his bound's slack, the piece in the air, the rings. */
+  /** Every brain update (disciple.brainFrame): his bound's slack, the pieces in the air, the rings. */
   frame(dt) {
     const d = this.d, C = this.cur, T = TUNING.terrain;
-    // the move is over (it ran out, or he was thrown out of it)
+    // the move is over (it ran out, or he was thrown out of it): a flagstone still levered falls
     if (C.act && d.brain.act !== C.act) {
       C.act = null;
       C.piece = null;
+      C.beat = null;
+      this._dropLifted();
     }
     // out past his bound for a piece: once the move is over the bound draws back in, and him with it
     if (C.act) this.slack = Math.max(this.slack, T.edge + 3);
@@ -494,56 +791,103 @@ export class TerrainMoves {
     }
     const lead = perPhase(d.T.flashLead, d.phase);
     this._shot(dt, lead);
+    this._liftedFrame(dt);
+    this._kicksFrame(dt, lead);
     this._rings(dt, lead);
   }
 
-  /** The kicked piece in the air: dust off it, its shadow where it will land, its cue. */
+  _dropLifted() {
+    const W = this.W;
+    for (const L of this.lifted) {
+      if (L.piece?.state === HELD) W?.drop?.(L.piece);
+      L.piece = null;
+    }
+  }
+
+  /** The levered slabs: up out of the paving, turning, to hang a moment before the kick. */
+  _liftedFrame(dt) {
+    const W = this.W, K = TUNING.terrain.flag;
+    for (const L of this.lifted) {
+      const pc = L.piece;
+      if (!pc) continue;
+      if (pc.state !== HELD) {
+        L.piece = null;
+        continue;
+      }
+      L.t += dt;
+      const k = ease(clamp(L.t / K.riseT, 0, 1));
+      const bob = Math.sin(L.t * 9) * 0.04 * k;
+      // (kept near flat, rocking: a slab stood on its edge is a wall of stone that hides him from the camera)
+      W?.carry(pc, pc.x + (L.ox - pc.x) * k, 0.05 + (L.y - 0.05) * k + bob, pc.z + (L.oz - pc.z) * k, (0.3 + 0.12 * Math.sin(L.t * 11)) * k, L.t * L.spin * 0.4);
+    }
+  }
+
+  /** The kicked slabs in the air: grit off them, the flare on each flashLead before it lands. */
+  _kicksFrame(dt, lead) {
+    const d = this.d, fx = d.fx;
+    for (const R of this.kicks) {
+      if (!R.live) continue;
+      const pc = R.piece;
+      if (!pc || pc.state !== FLYING) {
+        R.live = false; // (the fight was reset under it)
+        R.piece = null;
+        R.h?.cancel?.();
+        R.h = null;
+        continue;
+      }
+      const left = pc.T - pc.t;
+      R.h?.retime?.(Math.max(0, left));
+      const y = Math.max(0.2, pc.py + 0.15);
+      if (this._l() < 0.6) this._grit(pc.px, y, pc.pz, R.dx, R.dz);
+      if (!R.flashed && !R.quiet && left <= lead) {
+        R.flashed = true;
+        this._flare(R.attack, R.tell, pc.px, y + 0.2, pc.pz);
+      }
+    }
+  }
+
+  /** The flare of a thrown piece, ON the piece (ADR-119's rule, the owner's for the duelists too):
+   *  the cue the ledger, the HUD, the sound and the AI read, and the flare drawn there. */
+  _flare(attack, tell, x, y, z) {
+    const f = this._flash, d = this.d;
+    f.attack = attack;
+    f.tell = tell;
+    f.x = x;
+    f.y = y;
+    f.z = z;
+    f.flare = true;
+    d.emit('combat:flash', f);
+    d.fx.tellFlash(tell, x, y, z, 1, true);
+  }
+
+  /** A little grit shed off a flying stone (small glyph particles, the looks' own stream). */
+  _grit(x, y, z, dx, dz) {
+    const fx = this.d.fx;
+    const o = fx._rec(x + this._lr(-0.25, 0.25), y + this._lr(-0.2, 0.3), z + this._lr(-0.25, 0.25), this._lr(0.22, 0.42), this._lr(0.12, 0.2), 0.05, '.,:', GRIT, GRIT_END);
+    o.vx = -dx * this._lr(1, 3);
+    o.vz = -dz * this._lr(1, 3);
+    o.vy = this._lr(0, 0.8);
+    o.drag = 2;
+    o.alpha = 0.85;
+    fx._spawn(fx.add, o);
+  }
+
+  /** The kicked piece in the air: grit off it, and its flare flashLead before it lands. Nothing is
+   *  drawn where it will come down. */
   _shot(dt, lead) {
     const S = this.shot;
     if (!S.live) return;
-    const pc = S.piece, d = this.d, fx = d.fx;
+    const pc = S.piece;
     if (!pc || pc.state !== FLYING) {
       S.live = false; // (the fight was reset under it)
       return;
     }
     const left = pc.T - pc.t;
-    const life = Math.max(0.02, (this.game.fxDt ?? dt) * 1.7);
-    // the wake it leaves: grit and pale stone dust strung out along its flight
     const y = Math.max(0.3, pc.py + pc.h * 0.5);
-    for (let i = 0; i < 2; i++) {
-      const o = fx._rec(pc.px + fx.rand(-0.3, 0.3), y + fx.rand(-0.4, 0.4), pc.pz + fx.rand(-0.3, 0.3), fx.rand(0.22, 0.45), 0.24, 0.05, i ? '-=' : '.,:', GRIT, GRIT_END);
-      o.vx = -S.dx * fx.rand(1, 3);
-      o.vz = -S.dz * fx.rand(1, 3);
-      o.vy = fx.rand(0, 0.8);
-      o.drag = 2;
-      o.stretch = i ? 1.8 : 0;
-      o.alpha = 0.85;
-      fx._spawn(fx.add, o);
-    }
-    // where it will come down: a ring of pale dust motes on the stones, closing as it nears (no
-    // colour: it can be parried, and the glint on the piece is the cue)
-    const K = TUNING.terrain.kick, k = clamp(1 - left / Math.max(0.05, pc.T), 0, 1);
-    const r = K.hit * (1.5 - 0.6 * k), spin = (this.game.time ?? 0) * 1.4, c = this._c;
-    const lum = 0.7 + 1.3 * k;
-    c[0] = MARK[0] * lum;
-    c[1] = MARK[1] * lum;
-    c[2] = MARK[2] * lum;
-    for (let i = 0; i < 18; i++) {
-      const a = (i / 18) * Math.PI * 2 + spin;
-      const q = fx._rec(S.tx + Math.cos(a) * r, 0.14, S.tz + Math.sin(a) * r, life, i % 3 ? 0.3 : 0.44, i % 3 ? 0.3 : 0.44, i % 3 ? 'o' : 'x', c, null);
-      q.alphaEnd = 1;
-      fx._spawn(fx.add, q);
-    }
-    if (!S.flashed && left <= lead) {
+    for (let i = 0; i < 2; i++) this._grit(pc.px, y, pc.pz, S.dx, S.dz);
+    if (!S.flashed && !S.quiet && left <= lead) {
       S.flashed = true;
-      const f = this._flash;
-      f.attack = S.attack;
-      f.tell = S.tell;
-      f.x = pc.px;
-      f.y = y;
-      f.z = pc.pz;
-      d.emit('combat:flash', f);
-      fx.hazardFlash(S.tell, f.x, f.y, f.z);
+      this._flare(S.attack, S.tell, pc.px, y, pc.pz);
     }
   }
 
@@ -559,7 +903,9 @@ export class TerrainMoves {
         R.alive = false;
         continue;
       }
-      this._drawRing(R, dt, K);
+      const look = lookOf('toll', '0');
+      if (look === 'a' || look === 'b') this._drawRingField(R, K, look === 'b');
+      else this._drawRing(R, dt, K);
       const pp = p?.position;
       if (R.done || !pp || p.alive === false) continue;
       const ox = pp.x - R.x, oz = pp.z - R.z, D = Math.hypot(ox, oz) || 1e-3;
@@ -575,6 +921,7 @@ export class TerrainMoves {
           f.x = R.x + (ox / D) * R.r;
           f.y = 0.9;
           f.z = R.z + (oz / D) * R.r;
+          f.flare = false;
           d.emit('combat:flash', f);
           d.fx.hazardFlash(R.tell, f.x, f.y, f.z);
         }
@@ -592,15 +939,16 @@ export class TerrainMoves {
   }
 
   // ------------------------------------------------------------------ glyphs
-  /** A ring of sound, re-drawn every frame: one line of bronze strokes along its front, each bulging
-   *  outward, fading as it widens; a few motes of bronze dust lifted behind it. (The owner's pick of
-   *  two filmed looks, 2026-11-15: "A: arc"; three thin ripples were turned down.) */
+  /** A ring of sound as shipped (`?toll=0`), re-drawn every frame: one line of bronze strokes along
+   *  its front, each bulging outward, fading as it widens; a few motes of bronze dust lifted behind
+   *  it. (The owner's pick of two filmed looks, 2026-11-15: "A: arc"; three thin ripples were turned
+   *  down.) Big glyph sprites: kept only as the default until the owner picks a redraw. */
   _drawRing(R, dt, K) {
     const fx = this.d.fx, add = fx.add;
     if (!add) return;
     const life = Math.max(0.02, (this.game.fxDt ?? dt) * 1.7);
     const fade = clamp(1.15 - R.r / K.range, 0, 1) * (R.heavy ? 1.25 : 0.9);
-    const c = this._c, r = R.r;
+    const c = this._c ?? (this._c = [0, 0, 0]), r = R.r;
     c[0] = BRONZE[0] * fade;
     c[1] = BRONZE[1] * fade;
     c[2] = BRONZE[2] * fade;
@@ -616,73 +964,109 @@ export class TerrainMoves {
     // the hum it leaves
     if (r > 1) {
       for (let i = 0; i < 3; i++) {
-        const a = fx.rnd() * Math.PI * 2, rr = r - fx.rand(0.2, 0.9);
-        const o = fx._rec(R.x + Math.cos(a) * rr, 0.2, R.z + Math.sin(a) * rr, fx.rand(0.25, 0.5), 0.16, 0.04, ".'", BRONZE, BRONZE_END);
-        o.vy = fx.rand(0.4, 1.2);
+        const a = this._l() * Math.PI * 2, rr = r - this._lr(0.2, 0.9);
+        const o = fx._rec(R.x + Math.cos(a) * rr, 0.2, R.z + Math.sin(a) * rr, this._lr(0.25, 0.5), 0.16, 0.04, ".'", BRONZE, BRONZE_END);
+        o.vy = this._lr(0.4, 1.2);
         o.alpha = 0.7 * fade;
         add.spawn(o);
       }
     }
   }
 
-  /** The streak he leaves crossing the courtyard to a piece (frame to frame). */
-  _trail(x0, y0, z0, x1, y1, z1) {
-    const fx = this.d.fx, add = fx.add;
-    const len = Math.hypot(x1 - x0, y1 - y0, z1 - z0);
-    if (!add || !(len > 0.04) || len > 9) return;
-    const n = Math.min(12, Math.max(1, Math.round(len / 0.28)));
-    const vx = (x1 - x0) / len, vz = (z1 - z0) / len;
+  /**
+   * A ring of sound in the fire field (`?toll=a|b`, STYLE.md: rings of sound and cut air are steel):
+   * a front of pale steel at waist height, ragged (each stretch keeps its own strength and a little
+   * wander in radius, steady frame to frame, with gaps where it is weak), a fainter row trailing it,
+   * fading as it widens; the heavy (blue) third toll stands taller and brighter. `bronze` (b): a low
+   * fire heat under the front, the bell's colour in the field. Re-drawn every frame: at most ~150
+   * blobs a ring (b: ~230); three rings at most at once.
+   */
+  _drawRingField(R, K, bronze) {
+    const fx = this.d.fx;
+    if (!fx.fire) return;
+    const life = fx._frame();
+    if (!(life > 0)) return;
+    const r = R.r, fade = clamp(1.35 - r / K.range, 0, 1);
+    const heat = (R.heavy ? 1.25 : 1.05) * fade, tall = R.heavy ? 1.35 : 1;
+    const n = clamp(Math.round((TAU * r) / 0.3), 24, 150);
+    const s0 = R.seed;
     for (let i = 0; i < n; i++) {
-      const f = (i + fx.rnd()) / n;
-      const o = fx._rec(x0 + (x1 - x0) * f + fx.rand(-0.1, 0.1), y0 + (y1 - y0) * f + fx.rand(0.45, 1.5), z0 + (z1 - z0) * f + fx.rand(-0.1, 0.1), fx.rand(0.16, 0.32), fx.rand(0.18, 0.28), 0.05, '-=~', STREAK, STREAK_END);
-      o.vx = vx * fx.rand(0.5, 2.5);
-      o.vz = vz * fx.rand(0.5, 2.5);
-      o.stretch = 2.2;
-      o.alpha = 0.9;
-      o.drag = 2.5;
-      add.spawn(o);
+      const j0 = hash(s0 + i * 0.37), j1 = hash(s0 + i * 0.37 + 17.1);
+      // strength along the ring: two slow waves turning with it, and a hash: weak stretches are gaps
+      const a = ((i + (j0 - 0.5) * 0.6) / n) * TAU;
+      const st = 0.66 + 0.24 * Math.sin(3 * a + s0) + 0.18 * Math.sin(7 * a + s0 * 1.7) + (j1 - 0.5) * 0.3;
+      if (st < 0.3) continue;
+      const rr = r * (1 + (j1 - 0.5) * 0.035), ca = Math.cos(a), sa = Math.sin(a);
+      const x = R.x + ca * rr, z = R.z + sa * rr, h = heat * st;
+      fx._blob(x, 0.75 * tall, z, 0, 0, 0, life, 0.42, 0.42, h, h, K_STEEL);
+      if (R.heavy && i % 2 === 0) fx._blob(x, 1.25, z, 0, 0, 0, life, 0.32, 0.32, h * 0.8, h * 0.8, K_STEEL);
+      // the row that trails it
+      if (i % 2 === 1) {
+        const rb = rr - 0.42, hb = h * 0.6;
+        fx._blob(R.x + ca * rb, 0.6 * tall, R.z + sa * rb, 0, 0, 0, life, 0.32, 0.32, hb, hb, K_STEEL);
+      }
+      if (bronze && i % 2 === 0) {
+        const hf = 0.4 * fade * st;
+        fx._blob(R.x + ca * (rr - 0.25), 0.55, R.z + sa * (rr - 0.25), 0, 0, 0, life, 0.6, 0.6, hf, hf, K_FIRE);
+      }
     }
+    // the hum it leaves: a few motes of dust lifted behind it (small glyphs)
+    if (r > 1 && this._l() < 0.7) {
+      const a = this._l() * TAU, rr = r - this._lr(0.3, 1.0);
+      const o = fx._rec(R.x + Math.cos(a) * rr, 0.2, R.z + Math.sin(a) * rr, this._lr(0.25, 0.5), 0.14, 0.04, ".'", bronze ? BRONZE : GRIT, bronze ? BRONZE_END : GRIT_END);
+      o.vy = this._lr(0.4, 1.2);
+      o.alpha = 0.7 * fade;
+      fx._spawn(fx.add, o);
+    }
+  }
+
+  /** The streak he leaves crossing the courtyard to a piece (frame to frame): cut air, steel in the
+   *  fire field (a short-lived line at his chest and a fainter one at his knees), dust where he lands. */
+  _trail(x0, y0, z0, x1, y1, z1) {
+    const fx = this.d.fx;
+    const len = Math.hypot(x1 - x0, y1 - y0, z1 - z0);
+    if (!(len > 0.04) || len > 9) return;
+    fx._line(x0, y0 + 1.1, z0, x1, y1 + 1.1, z1, 0.2, 0.32, 0.42, 0, K_STEEL, 0.2);
+    fx._line(x0, y0 + 0.5, z0, x1, y1 + 0.5, z1, 0.14, 0.3, 0.24, 0, K_STEEL, 0.3);
     if (y1 < 0.3 && fx.alpha) {
-      const o = fx._rec(x1, 0.12, z1, fx.rand(0.35, 0.6), 0.26, 0.6, ',.`', DUST, null);
-      o.vx = -vx * fx.rand(0.5, 1.5);
-      o.vy = fx.rand(0.2, 0.8);
-      o.vz = -vz * fx.rand(0.5, 1.5);
+      const vx = (x1 - x0) / len, vz = (z1 - z0) / len;
+      const o = fx._rec(x1, 0.12, z1, this._lr(0.35, 0.6), 0.2, 0.3, ',.`', DUST, null);
+      o.vx = -vx * this._lr(0.5, 1.5);
+      o.vy = this._lr(0.2, 0.8);
+      o.vz = -vz * this._lr(0.5, 1.5);
       o.alpha = 0.7;
       o.drag = 3;
       fx.alpha.spawn(o);
     }
   }
 
-  /** The cut through a piece: a bright line across it (along (px, pz), the cut's way), sparks off the stone. */
+  /** The cut through a piece: a bright line of steel across it (along (px, pz), the cut's way) written
+   *  on the letter grid, a fainter one under it; sparks off the stone (small glyphs). */
   _cutLine(x, y, z, px, pz, r) {
     const fx = this.d.fx;
     const w = r + 0.9;
-    for (let i = -6; i <= 6; i++) {
-      const f = i / 6;
-      fx._spawn(fx.add, {
-        x: x + px * w * f, y: y + 0.12 * f, z: z + pz * w * f, life: 0.2 + 0.12 * (1 - Math.abs(f)), size: 0.34, sizeEnd: 0.06, glyph: '-=', stretch: 2.6,
-        color: STEEL, colorEnd: STEEL_END, alpha: 1, alphaEnd: 0,
-      });
-    }
+    fx._ink(x - px * w, y - 0.12, z - pz * w, x + px * w, y + 0.12, z + pz * w, 0.28, 1.15, 0);
+    fx._ink(x - px * w * 0.8, y - 0.2, z - pz * w * 0.8, x + px * w * 0.8, y + 0.02, z + pz * w * 0.8, 0.2, 0.6, 0);
+    fx._blob(x, y, z, 0, 0, 0, 0.22, 0.5, 0.8, 0.6, 0, K_SMOKE);
     for (let i = 0; i < 16; i++) {
-      const sp = fx.rand(2, 7), side = fx.rnd() < 0.5 ? -1 : 1;
+      const sp = this._lr(2, 7), side = this._l() < 0.5 ? -1 : 1;
       fx._spawn(fx.add, {
-        x: x + px * r * side * 0.6, y: y + fx.rand(-0.1, 0.1), z: z + pz * r * side * 0.6, vx: px * sp * side + fx.rand(-1, 1), vy: fx.rand(0.5, 3), vz: pz * sp * side + fx.rand(-1, 1),
-        life: fx.rand(0.2, 0.45), size: fx.rand(0.14, 0.24), sizeEnd: 0.04, glyph: "*'+", color: [3.2, 2.6, 1.6], colorEnd: [0.8, 0.3, 0.08], alpha: 1, alphaEnd: 0, drag: 3, gravity: -6,
+        x: x + px * r * side * 0.6, y: y + this._lr(-0.1, 0.1), z: z + pz * r * side * 0.6, vx: px * sp * side + this._lr(-1, 1), vy: this._lr(0.5, 3), vz: pz * sp * side + this._lr(-1, 1),
+        life: this._lr(0.2, 0.45), size: this._lr(0.12, 0.2), sizeEnd: 0.04, glyph: "*'+", color: SPARK, colorEnd: SPARK_END, alpha: 1, alphaEnd: 0, drag: 3, gravity: -6,
       });
     }
     fx._light({ x, y: 1, z, color: [1, 0.95, 0.85], intensity: 2.6, radius: 5, life: 0.2, fade: 0.18 });
   }
 
   /** A burst of glyphs at a point: dust kicked up (solid) or bronze sparks (`glow`), thrown out and
-   *  along (dx, dz). */
+   *  along (dx, dz). Small letters (a letter cell or so). */
   _burst(x, y, z, n, color, speed, glow, dx = 0, dz = 0) {
     const fx = this.d.fx, pool = glow ? fx.add : fx.alpha;
     for (let i = 0; i < n; i++) {
-      const a = fx.rnd() * Math.PI * 2, sp = fx.rand(0.4, 1) * speed;
+      const a = this._l() * TAU, sp = this._lr(0.4, 1) * speed;
       fx._spawn(pool, {
-        x, y: y + fx.rand(-0.2, 0.2), z, vx: Math.cos(a) * sp + dx * speed * 0.6, vy: fx.rand(0.4, glow ? 4 : 2.2), vz: Math.sin(a) * sp + dz * speed * 0.6,
-        life: fx.rand(0.3, 0.7), size: glow ? fx.rand(0.16, 0.3) : fx.rand(0.24, 0.4), sizeEnd: glow ? 0.04 : 0.6, glyph: glow ? '*+x.' : ',.:`',
+        x, y: y + this._lr(-0.2, 0.2), z, vx: Math.cos(a) * sp + dx * speed * 0.6, vy: this._lr(0.4, glow ? 4 : 2.2), vz: Math.sin(a) * sp + dz * speed * 0.6,
+        life: this._lr(0.3, 0.7), size: glow ? this._lr(0.14, 0.24) : this._lr(0.16, 0.26), sizeEnd: glow ? 0.04 : 0.3, glyph: glow ? '*+x.' : ',.:`',
         color, colorEnd: glow ? BRONZE_END : color, alpha: glow ? 1 : 0.75, alphaEnd: 0, drag: glow ? 2.2 : 3, gravity: glow ? -7 : 0,
       });
     }

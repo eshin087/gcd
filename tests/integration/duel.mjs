@@ -2495,6 +2495,144 @@ async function scenarioTerrain() {
   stage(-10.5, 0, -13.5, 0);
   assert(d.terrain.find('spring') !== west, 'a pillar on the hero\'s side of him is not his way out');
 
+  // ---------------------------------------------------------------- the second pass: thrown pieces show the flare only
+  // (the owner, 2026-11-16: "flare only": nothing drawn where a thrown piece will land; the flare on the
+  // flying piece flashLead before it lands; a roll at the flare always dodges). Every way the duelist's
+  // effects draw on the ground ahead of a blow is counted while a thrown piece's move runs or flies.
+  const fx = d.fx;
+  const MARKED = ['warnRing', 'ringPulse', 'hazardFlash', 'shockRing'];
+  const marks = { n: 0 };
+  const saved = MARKED.map((k) => fx[k]);
+  const spyMarks = (on) => MARKED.forEach((k, i) => { fx[k] = on && typeof saved[i] === 'function' ? (...a) => { marks.n++; return saved[i].apply(fx, a); } : saved[i]; });
+  /** The answers to a thrown piece: `stand`, `parry` (0.12 s before the impact), `roll` at its flare
+   *  (across its way). Returns the hits it dealt that landed (RESULT.HIT) and the results. */
+  const answer = (name, how, bx, bz, hx, hz, phase = 1, pin = false) => {
+    stage(bx, bz, hx, hz);
+    if (phase > 1) d.phase = phase;
+    marks.n = 0;
+    spyMarks(true);
+    const e = play(name, (GG, ev) => {
+      // (`pin`: he stays on his spot whatever knocks him: each slab of a string is aimed at where he stands)
+      if (pin) { p.position.x = hx; p.position.z = hz; }
+      GG.game.mouseGround.set(d.position.x, 0, d.position.z); // (he faces the boss, as a locked-on hero)
+      if (how === 'parry') parryOn(ev, GG);
+      if (how === 'roll') for (const f of ev.flashes) if (!f.used) {
+        f.used = true;
+        p.debug.god = false;
+        const ax = p.position.x - d.position.x, az = p.position.z - d.position.z, l = Math.hypot(ax, az) || 1;
+        GG.input.axis = { x: -az / l, y: -ax / l };
+        GG.input.tap('Space');
+      }
+    });
+    spyMarks(false);
+    input.axis = { x: 0, y: 0 };
+    p.debug.god = true;
+    e.marks = marks.n;
+    e.landed = e.hits.filter((h) => h.attack === name && h.r === RESULT.HIT).length;
+    return e;
+  };
+  // Flying Lantern: the flare on the piece, nothing on the ground
+  ev = answer('lanternKick', 'stand', 8, 8, 0, 0);
+  assert(ev.marks === 0 && ev.flashes.length === 1 && ev.flashes[0].tell === TELL.BLUE && lan.state === STATE.GONE, `Flying Lantern: nothing is drawn on the ground where it lands (${ev.marks} ground marks); one blue cue`);
+  for (const [hx, hz] of [[0, 0], [3, -4], [-2, 4]]) {
+    const r = answer('lanternKick', 'roll', 8, 8, hx, hz);
+    assert(r.flashes.length === 1 && r.landed === 0 && p.hp === p.maxHp, `Flying Lantern at a hero at (${hx}, ${hz}): a roll at its flare is through it (${r.hits.filter((h) => h.attack === 'lanternKick').map((h) => h.r).join(', ') || 'no contact'})`);
+  }
+
+  // ---------------------------------------------------------------- the floor: Rising Flagstone
+  const flagNames = ['flagKick', 'flagVolley', 'flagFan'];
+  assert(flagNames.every((n) => MOVES[n]?.terrain && d.debug.abilities().some((a) => a.name === n)), 'the floor\'s three moves are in his abilities');
+  stage(0, -3, 0, 5);
+  const wFlag = weight('flagKick'), flagPick = d.terrain.pick.flag;
+  assert(wFlag > 0 && flagPick?.kind === 'flagstone' && flagPick.floor && Math.hypot(flagPick.x, flagPick.z + 3) < 4, `Rising Flagstone: in the middle of the courtyard, the hero 8 m off: his AI may pick it, for a flagstone ${flagPick ? Math.hypot(flagPick.x, flagPick.z + 3).toFixed(1) : '-'} m from him`);
+  stage(0, -3, 0, -1);
+  assert(weight('flagKick') === 0, 'with the hero 2 m from him (inside his blade\'s reach) it is not chosen');
+  let exp = 0;
+  const ex0 = d.brain.expect;
+  d.brain.expect = (...a) => { exp++; return ex0.apply(d.brain, a); };
+  const standing0 = W.floor.filter((b) => b.state === STATE.INTACT).length;
+  ev = answer('flagKick', 'stand', 0, -3, 0, 5);
+  d.brain.expect = ex0;
+  hit = ev.hits.filter((h) => h.attack === 'flagKick');
+  assert(ev.ok && ev.tells.length === 1 && ev.tells[0].tell === TELL.BLUE && ev.flashes.length === 1 && ev.flashes[0].tell === TELL.BLUE, `it tells blue once and its slab flares once (${ev.tells.length} tell, ${ev.flashes.length} flare)`);
+  assert(W.floor.filter((b) => b.state === STATE.INTACT).length < standing0 && ev.impacts.some((e) => e.kind === 'throw') && ev.impacts.some((e) => e.kind === 'crash'), 'a flagstone left the paving, flew and burst (world:impact throw, then crash)');
+  assert(ev.marks === 0 && exp >= 1, `nothing is drawn where it lands (${ev.marks}); it was told to the cue ledger (brain.expect x${exp})`);
+  assert(hit.length === 1 && hit[0].r === RESULT.HIT && worst(ev, 'flagKick') <= 0.085, `it strikes a hero who stands once, ${ms(worst(ev, 'flagKick'))} ms off its flare + ${TUNING.flashLead} s`);
+  ev = answer('flagKick', 'parry', 0, -3, 0, 5);
+  hit = ev.hits.filter((h) => h.attack === 'flagKick');
+  assert(hit.length === 1 && hit[0].r === RESULT.PARRIED, `blue: a parry bursts it on the blade (${hit.map((h) => h.r).join(', ')})`);
+  for (const [bx, bz, hx, hz] of [[0, -3, 0, 5], [2, -2, 9, 4], [-4, 3, -9, -6]]) {
+    const r = answer('flagKick', 'roll', bx, bz, hx, hz);
+    assert(r.flashes.length === 1 && r.landed === 0 && p.hp === p.maxHp, `him at (${bx}, ${bz}), the hero at (${hx}, ${hz}): a roll at its flare is through it (${r.hits.filter((h) => h.attack === 'flagKick').map((h) => h.r).join(', ') || 'no contact'})`);
+  }
+  stage(0, -3, 0, 5);
+  ev = play('flagKick', (GG, e) => { if (e.flashes.length && !e.moved) { e.moved = true; p.debug.teleport(3.2, 5); } });
+  assert(!ev.hits.some((h) => h.attack === 'flagKick'), 'a hero 3.2 m from where it lands when it flares is not hit');
+
+  // ---------------------------------------------------------------- Flagstone Volley (phase 2), Scattered Flagstones (phase 3)
+  ev = answer('flagVolley', 'stand', 0, -3, 0, 5, 2, true);
+  hit = ev.hits.filter((h) => h.attack === 'flagVolley');
+  const nV = ev.tells.length;
+  if (process.env.ABYSS_TDBG) out('     volley', JSON.stringify({ hits: ev.hits.map((h) => [h.attack, h.r, +h.t.toFixed(2)]), flashes: ev.flashes.map((f) => +f.t.toFixed(2)), tells: ev.tells.map((f) => +f.t.toFixed(2)), impacts: ev.impacts.filter((e) => e.kind === 'throw' || e.kind === 'crash').map((e) => [e.kind, e.id, +e.t.toFixed(2)]) }));
+  assert(ev.ok && nV >= 2 && nV <= 3 && ev.tells.every((t) => t.tell === TELL.BLUE) && ev.flashes.length === nV && ev.marks === 0, `Flagstone Volley (phase 2): ${nV} slabs, each levered and kicked, each with its flare; nothing on the ground`);
+  assert(hit.length === nV && hit.every((h) => h.r === RESULT.HIT) && worst(ev, 'flagVolley') <= 0.085 && hit.slice(1).every((h, i) => h.t - hit[i].t >= TUNING.minHitGap), `each strikes a hero who stands, ${ms(worst(ev, 'flagVolley'))} ms off its flare + lead, ${hit.slice(1).map((h, i) => (h.t - hit[i].t).toFixed(2)).join(' / ')} s apart`);
+  ev = answer('flagVolley', 'parry', 0, -3, 0, 5, 2, true);
+  assert(ev.hits.filter((h) => h.attack === 'flagVolley').every((h) => h.r === RESULT.PARRIED) && ev.hits.some((h) => h.attack === 'flagVolley'), `parried in turn, every slab bursts on the blade (${ev.hits.filter((h) => h.attack === 'flagVolley').map((h) => h.r + ' ' + h.t.toFixed(2)).join(', ')}; flares ${ev.flashes.map((f) => f.t.toFixed(2)).join(' ')})`);
+  ev = answer('flagVolley', 'roll', 0, -3, 0, 6, 2);
+  assert(ev.landed === 0, `a roll at each flare is through each (${ev.hits.filter((h) => h.attack === 'flagVolley').map((h) => h.r).join(', ') || 'no contact'})`);
+  ev = answer('flagFan', 'stand', 0, -3, 0, 6, 3);
+  const fanTaken = ev.impacts.filter((e) => e.kind === 'throw').length;
+  hit = ev.hits.filter((h) => h.attack === 'flagFan');
+  assert(ev.ok && ev.tells.length === 1 && fanTaken >= 2 && ev.flashes.length >= 1 && ev.marks === 0, `Scattered Flagstones (phase 3): ${fanTaken} slabs levered at once and cut into a fan; ${ev.flashes.length} flare(s), nothing on the ground`);
+  assert(hit.length === 1 && hit[0].r === RESULT.HIT && worst(ev, 'flagFan') <= 0.085, `the middle one strikes a hero who stands, once, ${ms(worst(ev, 'flagFan'))} ms off its flare + lead (the others land to either side)`);
+  for (const [bx, bz, hx, hz] of [[0, -3, 0, 6], [3, 0, -5, 6]]) {
+    const r = answer('flagFan', 'roll', bx, bz, hx, hz, 3);
+    assert(r.landed === 0, `the fan at a hero at (${hx}, ${hz}): a roll at the flare is through it`);
+  }
+
+  // ---------------------------------------------------------------- a colossus: the Severed Pillar's rule, its strip from fallOff
+  const colo = W.list.filter((b) => b.kind === 'colossus' && b.base).sort((a, b) => Math.hypot(a.x + 15.6, a.z + 2.6) - Math.hypot(b.x + 15.6, b.z + 2.6))[0];
+  if (colo) {
+    // (the pillars beside it would be picked first, being nearer the hero: they stand aside for this check)
+    const others = W.list.filter((b) => b !== colo && b.topples && !b.floor);
+    const tp = others.map((b) => b.topples);
+    for (const b of others) b.topples = false;
+    const ux = -colo.x / Math.hypot(colo.x, colo.z), uz = -colo.z / Math.hypot(colo.x, colo.z);
+    const inStrip = colo.fallOff + 2.6, under = colo.fallOff * 0.5;
+    stage(colo.x + ux * 9, colo.z + uz * 9, colo.x + ux * under, colo.z + uz * under);
+    const wUnder = weight('pillarFall');
+    stage(colo.x + ux * 9, colo.z + uz * 9, colo.x + ux * inStrip, colo.z + uz * inStrip);
+    assert(colo.fallOff > 1 && wUnder === 0 && weight('pillarFall') > 0 && d.terrain.pick.fell === colo, `a colossus: the hero ${under.toFixed(1)} m from its base (under its legs, short of where its upper half lands) is not in its strip; ${inStrip.toFixed(1)} m out he is, and his AI may cut it down on him`);
+    ev = play('pillarFall');
+    fall = ev.hits.filter((h) => h.attack === 'fallingDebris');
+    assert(colo.state === STATE.BROKEN && ev.worldTells.length >= 1 && fall.length === 1 && fall[0].r === RESULT.HIT, `its upper half comes down on the hero (the world's red, marked strip): ${fall.map((h) => h.r).join(', ') || 'no contact'}`);
+    others.forEach((b, i) => { b.topples = tp[i]; });
+  } else assert(false, 'the courtyard has a colossus');
+
+  // ---------------------------------------------------------------- the bell's ring of sound: its looks (?toll=)
+  {
+    const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+    const res = {};
+    for (const L of ['0', 'a', 'b']) {
+      setLook('toll', L);
+      const cnt = { old: 0, field: 0, blobs: 0 };
+      const T = d.terrain, o0 = T._drawRing, o1 = T._drawRingField, sp = game.fx.fire?.spawn;
+      T._drawRing = (...a) => { cnt.old++; return o0.apply(T, a); };
+      T._drawRingField = (...a) => { cnt.field++; return o1.apply(T, a); };
+      if (sp) game.fx.fire.spawn = (b) => { cnt.blobs++; return sp.call(game.fx.fire, b); };
+      stage(-4, -5, 4, 4);
+      const e = play('bellToll');
+      T._drawRing = o0;
+      T._drawRingField = o1;
+      if (sp) game.fx.fire.spawn = sp;
+      res[L] = { ...cnt, hits: e.hits.filter((h) => h.attack === 'bellToll' && h.r === RESULT.HIT).length };
+    }
+    setLook('toll', null);
+    out(`     the toll's looks: ${Object.entries(res).map(([k, v]) => `${k}: drawn ${v.old} / ${v.field} frames, ${v.blobs} field blobs, ${v.hits} hits`).join(' · ')}`);
+    assert(res['0'].old > 0 && res['0'].field === 0 && res.a.field > 0 && res.a.old === 0 && res.b.field > 0 && res.a.blobs > res['0'].blobs, 'the toll\'s ring: today\'s bronze arcs by default (?toll=0), a front of steel in the fire field under a and b');
+    assert(res['0'].hits === 3 && res.a.hits === 3 && res.b.hits === 3, 'whatever its look, each of the three rings strikes a hero who stands once');
+  }
+
   // ---------------------------------------------------------------- the reset; a world without pieces
   stage(8, 8, 0, 0);
   play('lanternKick');
@@ -2509,7 +2647,9 @@ async function scenarioTerrain() {
   const M = build();
   duel(M, { dist: 4 });
   const dm = M.game.dragon;
-  assert(['pillarFall', 'lanternKick', 'bellToll', 'swallowReturn'].every((n) => dm.weigh(n, MOVES[n], 1, 4) === 0 && dm.debug.trigger(n) === false) && dm.mode === 'foot', 'in a world without pieces (the other scenarios\' mock) none is chosen and none starts');
+  assert(['pillarFall', 'lanternKick', 'bellToll', 'swallowReturn', 'flagKick'].every((n) => dm.weigh(n, MOVES[n], 1, 4) === 0 && dm.debug.trigger(n) === false) && dm.mode === 'foot', 'in a world without pieces (the other scenarios\' mock) none is chosen and none starts');
+  dm.phase = 3;
+  assert(['flagVolley', 'flagFan'].every((n) => dm.weigh(n, MOVES[n], 1, 6) === 0 && dm.debug.trigger(n) === false), '... nor the floor\'s later ones');
 
   // ---------------------------------------------------------------- a duel on the real set: they come up, they do not crowd out his strings
   const F = build({ real: true });

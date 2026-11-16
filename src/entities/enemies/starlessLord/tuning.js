@@ -151,22 +151,44 @@ export const TUNING = {
     reach: 26, // a piece this far from him can be taken or pulled down
     easyH: 4.5, // pieces taller than this are taken last (a 7 m slab is thrown when nothing else is left)
     rise: 1.3, // m a piece comes up out of its place before it crosses to him
-    lift: 0.95, // s until it hangs over him (inside the windup)
-    // its flight: distance / `per` s, within `flight`. The ring is drawn as it leaves: 0.9 s at the
-    // least lets a hero who sees it run out of it (2.1 m + his half width at 4.6 m/s, after a quarter
-    // second to react); a roll gets out of it at any time (the bots: tests/integration/lord.mjs TERRAIN)
+    lift: 0.8, // s until it hangs over him (inside the windup; Void Hurl's is 1.0 s)
+    // its flight: distance / `per` s, within `flight`. Nothing is drawn where it will land (the owner,
+    // 2026-11-16): the flare is drawn on the flying piece flashLead before it lands and a roll at it is
+    // through it; a hero who keeps moving is not where it lands (the bots: tests/integration/lord.mjs
+    // TERRAIN). (Before the second pass a ring was drawn from the release and the flight was 0.9 - 1.2 s
+    // so a hero could run out of it.)
     per: 16,
-    flight: [0.9, 1.2],
+    flight: [0.8, 1.1],
+    maxDelay: 0.4, // s the fairness guard may lengthen a flight by (a cue of the other answer too near)
+    floorReach: 6.5, // Void Hurl: once the stones in the air are spent, a plate of the floor this near him first
     // thrown where the hero will be this many s on: less than its flight, so a hero who keeps
     // running one way is past the ring when it lands, and one who stands still is under it
     lead: 0.15,
-    radius: 2.1, // the ring where it lands: his blow reaches a hero inside it
+    // m round where it lands that his blow reaches (+ half the hero's radius). (2.1 while a ring was
+    // drawn there; nothing is drawn now: the piece's own size, a little more)
+    radius: 1.8,
     spread: 1.0, // Glass Rain: the later throws land up to this far to either side of the aim
     power: 1.2, // what the landing does to the pieces it lands among (POWER: a thrown stone)
     gap: 0.55, // Glass Rain: s between throws
     // Crown Fall: the hero stands in the strip a piece would fall on: `min` m from its foot at least,
     // `short` m inside its height; where he will be `lead` s on
     fall: { min: 0.8, short: 0.2, lead: 0.3 },
+    // (the second pass) Rupture (form 2 on): the floor tears open in a line from him toward the hero:
+    // a plate every `step` m from `first` m out to `past` m beyond the hero (`max` at most), the first
+    // `delay` s after the cast, then one every `gap` s (per form: a line racing at 7.5 - 9 m/s). Each quivers `quiver` s before it
+    // goes and flares (red, on the plate) for a hero within `radius + cue` m of it; it bursts up out of
+    // the floor (the plate within `take` m thrown `skid` m on in `pop` s) and strikes a hero within
+    // `radius` m: one blow at most for the line. `power`: what it does to the pieces round it
+    rupture: { first: 1.8, step: 1.5, past: 2.5, max: 7, delay: 0.15, gap: [0.2, 0.2, 0.18, 0.16], radius: 1.25, cue: 2.0, quiver: 0.32, take: 1.8, pop: 0.5, skid: 0.6, power: 0.9, maxDelay: 0.6 },
+    // Falling Halo (forms 3 and 4): `count` plates (per form) torn up `r0` .. `r1` m round where the
+    // hero stands (`lead` s of his way on), none in the arc `gapArc` rad facing away from him (the way
+    // out), rising to `hangY` m in `lift` s; from the cast one drops every `gap` s from `first`, aimed at
+    // the hero but inside `inner` x the ring (out of it he is clear), falling in `drop` s (+ distance /
+    // `per`). Each is a thrown piece: red, the flare on it, a hero within `radius` m. `need`: fewer, no move
+    // (`gap` >= the hero's roll-to-roll 0.5 s less a little: a roll at each flare is through each;
+    // `inner` 0.6: a hero 4 m out of the ring's middle is out of every drop's reach; a plate in his
+    // grip is a block ~1.6 m across: `r0` keeps them off the hero's head)
+    halo: { count: [0, 0, 4, 5], need: 3, r0: 2.4, r1: 4.8, gapArc: 1.3, hangY: 2.7, lift: 0.7, first: 0.15, gap: [0.5, 0.5, 0.5, 0.46], drop: [0.45, 0.65], per: 10, lead: 0.12, inner: 0.6, radius: 1.4, power: 0.9, maxDelay: 0.5 },
   },
   // ---- the glide: past this speed he is carried, not running (lord.js; the root lifts `hover` m)
   glide: { on: 3.4, off: 2.8, hover: 0.22, back: 0.26 },
