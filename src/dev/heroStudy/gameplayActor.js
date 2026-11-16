@@ -1,12 +1,17 @@
 // Instance-only adapter for hero-play.html. No Player prototype or shared rig data changes.
 import { createTemperedPoses, STUDY } from './actor.js';
 import { installTemperedHands } from './hands.js';
+import { temperedAttack, originalAttack } from './attacks.js';
 
 export function installGameplayStudy(player, initial = 'tempered') {
   let enabled = initial !== 'current', animator, source, tempered;
   const root = player.object3d;
   const updateMatrix = root.updateMatrix;
   const update = player.update, unlean = player.unlean, leanPoint = player.leanPoint;
+  const startAttack = player._startAttack;
+  player._startAttack = function (def, ...args) {
+    return startAttack.call(this, enabled ? temperedAttack(def) : def, ...args);
+  };
   const [sx, sy, sz] = STUDY.scale;
   const prepare = () => {
     // Equipment changes rebuild the animator, but keep this same root / player.
@@ -52,6 +57,7 @@ export function installGameplayStudy(player, initial = 'tempered') {
     get variant() { return enabled ? 'tempered' : 'current'; },
     select(id) {
       enabled = id === 'tempered';
+      if (player.atk?.def) player.atk.def = enabled ? temperedAttack(player.atk.def) : originalAttack(player.atk.def);
       prepare();
       // A comparison click must not create a swept hit between differently sized blades.
       player.sweep.valid = false;

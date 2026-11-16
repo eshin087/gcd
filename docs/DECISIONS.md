@@ -3290,3 +3290,21 @@ ADR-092).
 - **Consequences:** these are private preview hooks, not a proposed shared animator API. Tests
   cover all 21 ordinary attack variants at 30/60/120 Hz and exact bypass; full combat/outfit reach
   and human feel review remain adoption work. No player-facing WHAT'S NEW item until shipped.
+
+## ADR-121 — Replace all idle gestures and map the opening heavy to a slash (2026-11-15)
+- **Status:** v3 preview only. V2 did not satisfy the owner's idle-hand feedback; no merge authorized.
+- **Decision:** suppress the source idle layer only during the candidate's loco pose call, restore
+  its envelope immediately, and apply six new gestures from `heroStudy/idles.js`. Keep the original
+  scheduler, cancellation and springs. The default free arm hangs beside the thigh; readiness lifts
+  it forward. Neutral wrist targets replace forced finger/palm directions. A low controlled flourish,
+  forward lift and weight shift replace the full wrist circle, behind-shoulder rest and pommel lean.
+- **Heavy:** `heroStudy/attacks.js` maps the ordinary heavy's definition to an immutable preview
+  copy: existing `heavyCrush` diagonal choreography with the dash footwork, sweep contact and edge
+  glint. Damage, poise, travel and phase times are preserved. Wrap only this player's `_startAttack`;
+  the studio uses the same mapping. A/B restores the original definition even mid-attack, preserves
+  its clock, and invalidates sweep history. Shared `HEAVY`/`SWINGS` and bosses are untouched.
+- **Review:** the studio has a forced six-gesture sequence; the playable page has a select/replay
+  control that explicitly resets to exploration. Both run through the real animator. Tests sample
+  full gesture envelopes at multiple frame rates, interruptions, exact attack restoration and the
+  drawn blade's lateral travel; browser checks include actual heavy contact. Human approval and
+  complete outfit/weapon fitting still precede any adoption.

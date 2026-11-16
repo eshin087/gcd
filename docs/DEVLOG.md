@@ -5,6 +5,31 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 58: Replace missed idle poses and the heavy poke (Codex, review pending)
+
+**Owner:** some idle hands still bend badly, the free hand should not default to the waist, and
+heavy attacks should cut rather than poke. V2 only replaced the fighting guard; the relaxed stance
+and six random idle gestures still inherited the old targets. This pass addresses those omissions.
+
+**Changed:** the free arm hangs loose beside the thigh at ease and lifts in front for readiness.
+All six idle gestures get new choreography, with wrists following the forearms and the sword kept
+in front of the shoulder. Keep the original scheduler and movement/attack cancellation. The
+opening heavy becomes Sweeping Gale, a dashing diagonal slash using the existing falling-cut
+choreography and a private attack definition; damage, phase times and travel stay the same.
+Current restores the original thrust, including when switched mid-attack. Other heavy branches
+retain their distinct cuts. The studio exposes all six idles as a sequence; the game adds an idle
+selector and replay button. V1/v2 evidence is preserved. ADR-121.
+
+**Verified:** 32 before/after browser captures; six gestures at 30/60/120 Hz, no free-wrist limit
+contacts and at most 28° sword/forearm bend. The opening heavy's drawn lateral span is 2.04 m
+(Current 0.21 m). All ordinary attack checks still pass. Actual game checks cover all three levels,
+heavy taps and charged release; both variants connect with the Ash Disciple. All six replay
+buttons, attack interruptions, mid-attack A/B restoration and mobile layout pass without browser
+errors. Normal-game build hash is unchanged. Full regression and hosted checks are in draft PR #58.
+
+**Hold:** owner visual review; no merge, production change or saved-data changes. Claude's active
+checkout is untouched. Complete outfit/weapon fitting remains adoption work.
+
 ## 2026-11-15 — Session 57: Tempered v2 hands and attack motion (Codex, review pending)
 
 **Owner:** likes Tempered's look and requests natural hand angles, poses and attack animation for

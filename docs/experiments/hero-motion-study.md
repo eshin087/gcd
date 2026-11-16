@@ -1,7 +1,8 @@
 # The Wanderer: Tempered (unapproved visual study)
 
-**Status:** Tempered v2, draft experiment. The owner likes the look; refined hands and motion await
-another review. Do not merge or adopt without the owner's
+**Status:** Tempered v3, draft experiment. The owner likes the look but rejected v2's idle hand
+angles, waist-held default and opening heavy thrust. These are revised for another review.
+Do not merge or adopt without the owner's
 choice. The motion studio and the playable preview are separate pages; the regular game is unchanged.
 
 Open `/hero-study.html` on this PR's Vercel preview, or run `npm run dev` and open
@@ -16,6 +17,8 @@ boss**, then switch **A · Current / B · Tempered** during the same fight. The 
 Cinderwood, Ashfall and the Obsidian Throne. **Closer camera** helps inspect the character at the
 normal gameplay angle. **Invulnerable** starts on and can be switched off. On narrow screens, tap
 the collapsed preview panel to open the controls; the normal touch / controller inputs still work.
+Choose an **IDLE** gesture and **Play idle gesture** to reset to exploration and replay that exact
+motion. Moving or attacking interrupts it normally. This avoids waiting for random idle choices.
 
 The playable page replaces its own localStorage and sessionStorage with empty memory stores
 **before** importing the game. It does not read or write the browser's existing stores. Reloading
@@ -26,6 +29,9 @@ inverted by `unlean` before SwordSweep uses blade points; `leanPoint` applies th
 transform. Switching resets sweep history so the different silhouettes cannot produce a phantom
 hit between them. It preserves player position, health, action clocks and boss state. Equipment
 rebuilds get their own candidate pose map. Shared prototypes, bosses and combat tuning are unchanged.
+The opening heavy uses a private definition with diagonal-cut choreography, sweep contact feedback
+and an edge glint. Its damage, travel and phase times stay unchanged. Switching to Current restores
+the original thrust definition, including during a live attack.
 
 This is a playable experiment, not final gameplay approval: the pose edits change the blade path.
 Complete reach / outfit / alternate-move calibration and human feel review remain for adoption.
@@ -42,10 +48,13 @@ is untouched; this is an additional option, based on main `46e2c989` (PR #57).
 | --- | --- | --- |
 | Presentation proportions | 1:1 | width 1.08, height 0.94, depth 1.04 |
 | Rest / readiness | approved at-ease / fencer poses | 3.5 cm lower centre, 3.5 cm wider foot target on each side |
+| Free hand at ease | resting on the belt | loose beside the thigh, wrist aligned with the forearm |
 | Ready blade | near-horizontal point | oblique line, roughly 28° to the sword side / 22° up before wrist constraints; straighter grip |
-| Free hand in guard | on belt | open sword fingers in front of the chest, relaxed wrist |
+| Free hand in guard | on belt | relaxed open hand in front of the chest, wrist aligned with the forearm |
 | Walk / run | existing speed-matched stride | same feet, lower centre, quieter bounce, counterbalanced shoulders and relaxed free hand |
 | Cuts | existing keyframed clips | hip/chest accents, eased gather, faster middle cut, controlled recovery and free-arm counterbalance |
+| Opening heavy | dashing thrust | dashing diagonal slash, with sweep contact and edge glint |
+| Six idle gestures | original body/hand targets | new look, shoulder loosen, edge check, low flourish, forward lift and weight shift |
 | Held charge | high-frequency shake | small, slow held breath; existing release and combat timing |
 | Roll, hair, cloth | existing animation / springs | retained, with the candidate's presentation proportions |
 
@@ -59,7 +68,7 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
   to the other's height. A / B solo buttons switch without resetting time and are useful on phones.
   Narrow phones open on the candidate alone; A + B remains one tap away.
 - Full sequence: rest → guard → walk → run → sprint → combo → block → charge → cleave → dodge.
-- Nine motion selections, five camera angles including the actual 58° / 36 m game scale,
+- Ten motion selections (including all six forced idle gestures), five camera angles including the actual 58° / 36 m game scale,
   turntable, 0.25× / 0.5× / 1×, pause, one-frame advance, and deterministic timeline scrubbing.
 - Both actors get the same original combat timing and default variant. This pilot is a controlled
   audition: it does not reproduce input buffering, cancel windows, targets, impacts or real combat.
@@ -67,6 +76,29 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
   analytics, localStorage, network data or player settings are instantiated by the study.
 
 ![Current and Tempered, ready guard](hero-motion-study-v01.png)
+
+### V3: full idle replacement and a heavy slash
+
+V2 changed the fighting guard but left the relaxed stance's belt hand and the original six idle
+gestures underneath. V3 explicitly replaces that entire idle layer. The free arm hangs below the
+belt by the thigh, with open fingers following the forearm. Look and shoulder motions keep that
+loose arm; the edge check lifts it forward. The old full wrist circle, blade behind the shoulder
+and pommel lean become a controlled low flourish, forward blade lift and weight shift. Original
+random timing and movement/attack cancellation remain.
+
+Sweeping Gale replaces the opening heavy's poke with the existing two-handed diagonal falling cut,
+carried by the same dash. The other four heavy branches already cut and remain distinct. The
+private definition preserves damage, poise, travel and timings; slash feedback replaces point
+feedback. The drawn blade travels 2.04 m laterally through this heavy's active phase, versus 0.21 m
+for Current in the same controlled sample. Current restores the exact original definition.
+
+![Tempered v3 relaxed hand beside the thigh](hero-motion-study-v03.png)
+
+All six complete idle envelopes were checked at 30/60/120 Hz: 5,181 frames with no free-wrist clamp,
+neutral free wrists, and a maximum sword/forearm angle of 28°. Thirty-two before/after captures
+cover both sides of the idles and the heavy's windup, cut and finish. The playable preview checks
+each replay button, attack interruption and the new heavy's actual boss contact. This supplements
+visual review; it is not a claim that every combat pose is anatomically final.
 
 ### V2 hand and motion refinement
 
@@ -90,7 +122,8 @@ replace visual review or establish an anatomical limit.
 ![Tempered v2 ready pose, three-quarter view](hero-motion-study-v02.png)
 
 The v1 image above and [v1 playable deployment](https://gcdabyss-4gu8z054o-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered)
-are preserved for comparison. V2 is labeled in both preview pages.
+are preserved for comparison. [V2 is also preserved](https://gcdabyss-dvvzg2uhr-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
+The current pages are labeled v3.
 
 ## Isolation and verification
 
@@ -99,7 +132,7 @@ bundled pages. It adds no import or branch to the normal game. The build of `dis
 original build script from `46e2c989` and the experimental build script matched byte-for-byte:
 SHA-256 `77146f1462407f64105582ca05e9eb0674b603cd3e8553f0f1c91eeb3355c342`.
 
-`npm run test:hero-study`: 4,451 paired frames across nine sequences check finite poses and rig
+`npm run test:hero-study`: 5,933 paired frames across ten sequences check finite poses and rig
 matrices, the blade's floor clearance, synchronized root travel, repeatable seeking, private
 materials / pose maps, unchanged shared definitions, and removal of presentation scale for IK.
 This check is also appended to `npm test`. The playable adapter additionally checks real blade
@@ -107,7 +140,7 @@ points at 36 headings / leans, inverse / forward transforms, exact pose-map rest
 rebuilds, sweep reset and storage isolation (including failure before game boot if isolation fails).
 V2 adds 6,675 frames covering 21 attack variants at 30 / 60 / 120 Hz: finite poses, hand-to-sword
 attachment, visible supporting grip, blade floor clearance, relaxed ready wrist and exact original
-arm/wrist results with the hooks bypassed. The widest sampled supporting-hand gap is 7.9 cm;
+arm/wrist results with the hooks bypassed. The widest sampled supporting-hand gap in v3 is 4.9 cm;
 full outfit / weapon contact fitting remains for adoption.
 
 The existing full integration suite (`npm test`), glyph and changelog checks, and `npm run build`
@@ -130,6 +163,8 @@ The changes are self-contained in `src/dev/heroStudy/` and the two HTML preview 
 owns the shared candidate poses; `gameplayActor.js` adapts the real player on the playable page.
 `hands.js` owns the instance-only elbow / free-wrist guidance. It wraps private animator methods,
 so adoption should define an explicit integration point rather than copying the preview decorator.
+`idles.js` supplies all six replacement gestures; `attacks.js` maps and restores the private heavy
+definition. The source scheduler and shared combat tables remain intact.
 No shared pose API or boss skeleton changed.
 
 If selected, first decide whether to keep a presentation transform or author actual per-hero

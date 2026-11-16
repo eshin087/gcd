@@ -1,5 +1,6 @@
 import { LIGHT, HEAVY, CLEAVE } from '../../entities/player/combat.js';
 import { clamp, smoothstep } from '../../core/math.js';
+import { IDLE_GESTURES } from './idles.js';
 
 const duration = (d) => d.windup + d.active + d.recovery;
 const cut = (d, label) => ({ key: 'attack', label, duration: duration(d), def: d, fight: true });
@@ -17,11 +18,12 @@ export const SEQUENCES = {
     block, charge, cut(CLEAVE, 'Charged cleave'), guard(0.7), roll, guard(1.5), ease(2),
   ] },
   idle: { label: 'At ease', description: 'Relaxed shoulders, a soft knee and a quiet breath.', steps: [ease(7)] },
+  idleLife: { label: 'All six idle gestures', description: 'Every idle gesture, including its entry and exit. Tempered keeps the free hand off the belt.', steps: [ease(0.8), ...IDLE_GESTURES.flatMap((g, i) => [{ key: 'loco', label: g.label, fidget: i, duration: g.duration }, ease(0.7)])] },
   guard: { label: 'Ready guard', description: 'An oblique blade, supported elbow and active free hand.', steps: [guard(7)] },
   walk: { label: 'Walk → run', description: 'Speed-matched footsteps with a steadier chest and head.', steps: [ease(0.5), walk(1.5, 3, 'Walk'), walk(4.6, 3, 'Run'), ease(1.5)] },
   sprint: { label: 'Sprint → stop', description: 'Acceleration, forward intent and a weighted stop.', steps: [ease(0.7), walk(7.2, 3.5, 'Sprint', true), ease(2)] },
   combo: { label: 'Five-hit chain', description: 'The hips drive the cuts; the finish has time to read.', steps: [guard(0.8), ...LIGHT.map((d, i) => cut(d, `Light ${i + 1}`)), guard(1.3)] },
-  heavy: { label: 'Heavy attacks', description: 'Thrust, rising cut, sweep, falling cut and earthbreaker.', steps: HEAVY.flatMap((d, i) => [guard(0.5), cut(d, `Heavy ${i + 1}`)]).concat(guard(1)) },
+  heavy: { label: 'Heavy attacks', description: 'Tempered opens with a dashing slash, followed by rising cut, sweep, falling cut and earthbreaker.', steps: HEAVY.flatMap((d, i) => [guard(0.5), cut(d, `Heavy ${i + 1}`)]).concat(guard(1)) },
   charge: { label: 'Charged cleave', description: 'Gather, hold a quiet breath, commit, then settle.', steps: [guard(0.8), { ...charge, label: 'Gather & hold', duration: 3, chargeDuration: 1.5 }, cut(CLEAVE, 'Charged cleave'), guard(1.4)] },
   defense: { label: 'Block & dodge', description: 'A braced guard followed by the existing roll and recovery.', steps: [guard(0.8), block, roll, guard(1.5)] },
 };
@@ -50,7 +52,7 @@ export class StudySequence {
       // actor before play() carries walking feet across the next transition.
       a.update(0);
       const p = a.pilot, s = this.step;
-      p.atk = s.def ? { def: s.def, pending: false, relT: -1, hitAt: -1 } : null;
+      p.atk = s.def ? { def: a.attackDef(s.def), pending: false, relT: -1, hitAt: -1 } : null;
       p.state = s.sprint ? 'sprint' : s.speed ? 'run' : s.key === 'loco' ? 'idle' : s.key;
       p.animT = p.stateT = 0;
       p.debug.fightStance = !!s.fight;
@@ -69,6 +71,11 @@ export class StudySequence {
       const p = a.pilot;
       p.animT = p.stateT = t;
       p.chargeK = s.key === 'charge' ? clamp(t / (s.chargeDuration ?? s.duration), 0, 1) : 0;
+      if (this.id === 'idleLife') {
+        const F = a.anim.fidget;
+        F.k = s.fidget ?? -1; F.t = Math.max(0, t - h); F.cut = false; F.wait = Infinity;
+        if (F.k < 0) F.w = 0;
+      }
       let speed = s.speed ?? 0;
       if (s.def) {
         const d = s.def;

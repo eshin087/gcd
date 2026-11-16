@@ -16,6 +16,9 @@ switches invalidate sword sweep history and preserve fight state. This is not im
 V2 (ADR-120) also wraps that animator's `_arm` / `_wristL` in `hands.js` for elbow guidance and
 comfortable free-wrist targets. Current bypasses the wrappers. Contacts retain the original solver;
 temporary pose overrides restore before returning. These private hooks are preview-only.
+V3 (ADR-121) substitutes the six idle gesture poses without changing their scheduler. A private
+opening-heavy definition uses the existing diagonal cut, with matching sweep feedback. Only the
+preview player's `_startAttack` maps it; A/B restores the source definition and preserves its clock.
 
 - Units: meters, seconds, radians. **Y up**, ground plane y = 0 (flat).
 - Camera looks north: **screen-up = world −Z**, screen-right = +X. Fixed yaw, ~58° pitch.

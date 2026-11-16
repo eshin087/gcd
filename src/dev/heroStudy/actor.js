@@ -6,6 +6,8 @@ import { buildHero } from '../../entities/player/model.js';
 import { HeroAnimator, P, N } from '../../entities/player/anim.js';
 import { clamp, smoothstep } from '../../core/math.js';
 import { installTemperedHands } from './hands.js';
+import { temperedIdle } from './idles.js';
+import { temperedAttack } from './attacks.js';
 
 export const STUDY = Object.freeze({
   scale: Object.freeze([1.08, 0.94, 1.04]),
@@ -43,6 +45,13 @@ function locomotion(p, A) {
   p[P.pelvZ] += 0.016 * Math.sin(A.time * 0.8) * still;
   p[P.spZ] -= 0.012 * Math.sin(A.time * 0.8) * still;
   p[P.hdX] -= 0.018 * still;
+  // A loose arm beside the thigh replaces the hand parked on the belt. Its
+  // fingers follow the forearm; life comes from the arm and breathing torso.
+  const free = still * (1 - clamp(A.player?.guardHold ?? 0, 0, 1));
+  set(p, P.lH, 0.085, -0.45 + 0.009 * breath, 0.105 + 0.008 * Math.sin(A.time * 0.8), free);
+  set(p, P.lP, 0.36, -0.25, -0.9, free);
+  set(p, P.lD, 0, 0, 0, free); set(p, P.lN, 0, 0, 0, free);
+  p[P.hs] *= 1 - free;
   // The point is held on an oblique line with the elbow under it, not a rigid
   // horizontal pointer. The free hand opens beside the chest for balance.
   const guard = fight * (1 - A.sprintW) * (1 - 0.3 * move);
@@ -53,11 +62,10 @@ function locomotion(p, A) {
     const el = (STUDY.guardElevation + 1.1 * breath) * Math.PI / 180;
     set(p, P.swD, Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el), guard);
     set(p, P.swF, 0.2, 1, -0.25, guard);
-    set(p, P.lH, -0.04, -0.19 + 0.006 * breath, 0.27, guard * still);
+    set(p, P.lH, 0.015, -0.24 + 0.006 * breath, 0.27, guard * free);
     set(p, P.lP, 0.4, -0.86, -0.3, guard * still);
-    set(p, P.lD, -0.06, 0.25, 0.96, guard * still);
-    set(p, P.lN, -0.9, -0.35, 0, guard * still);
-    p[P.hs] += (1 - p[P.hs]) * guard * still;
+    set(p, P.lD, 0, 0, 0, guard * free);
+    set(p, P.lN, 0, 0, 0, guard * free);
   }
   // Preserve the speed-matched feet; give the run a steadier upper body.
   if (move > 0.001) {
@@ -109,7 +117,14 @@ function attack(p, A) {
 export function createTemperedPoses(source) {
   const recovery = new Float32Array(N);
   const poses = { ...source };
-  poses.loco = (p, A) => { source.loco(p, A); locomotion(p, A); };
+  poses.loco = (p, A) => {
+    // Keep the existing scheduler/cancel envelope, replace all six gestures.
+    const F = A.fidget, weight = F?.w;
+    if (F) F.w = 0;
+    try { source.loco(p, A); } finally { if (F) F.w = weight; }
+    locomotion(p, A);
+    temperedIdle(p, A);
+  };
   poses.attack = (p, A) => {
     // Ease the gather, accelerate through the middle of the cut, then settle.
     // Every phase boundary stays fixed; restore A.t before other animator work.
@@ -191,6 +206,7 @@ export function createStudyActor(U, candidate = false) {
   };
   return {
     rig, pilot, anim, candidate,
+    attackDef: candidate ? temperedAttack : def => def,
     update(dt) {
       drawing = false;
       rig.root.updateMatrixWorld(true);

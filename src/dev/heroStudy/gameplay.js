@@ -1,5 +1,6 @@
 import { installGameplayStudy } from './gameplayActor.js';
 import { installTemporaryStorage } from './temporaryStorage.js';
+import { IDLE_GESTURES } from './idles.js';
 
 async function bootPreview() {
   // A failure to isolate storage aborts before the game is imported.
@@ -30,7 +31,7 @@ async function bootPreview() {
     if (event.target instanceof HTMLButtonElement) event.target.blur();
   });
   const reflect = () => {
-    title.textContent = study.variant === 'tempered' ? 'Tempered · v2' : 'Current hero';
+    title.textContent = study.variant === 'tempered' ? 'Tempered · v3' : 'Current hero';
     for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.hero === study.variant));
     const u = new URL(location.href);
     u.searchParams.set('hero', study.variant);
@@ -69,6 +70,21 @@ async function bootPreview() {
     game.player.lockOn = true;
     game.cameraRig.snap(game.player.position);
     status.textContent = 'Boss fight. Invulnerability can be switched off above.';
+  };
+  const idle = document.querySelector('#preview-idle');
+  IDLE_GESTURES.forEach((gesture, k) => {
+    const option = document.createElement('option'); option.value = String(k); option.textContent = gesture.label;
+    idle.append(option);
+  });
+  document.querySelector('#preview-idle-play').onclick = () => {
+    // A deliberate audition resets to exploration; movement or an attack still
+    // cancels through the normal animator. No special gameplay loop is added.
+    game.flow.debug.toState('explore');
+    game.player.lockOn = false;
+    game.player.debug.fightStance = null;
+    const k = Number(idle.value);
+    Object.assign(game.player.anim.fidget, { k, last: k, t: 0, w: 0, cut: false, still: 0 });
+    status.textContent = `${IDLE_GESTURES[k].label}. Explore reset for this audition; move or attack to interrupt.`;
   };
   reflect();
   status.textContent = 'Choose Explore / reset or Fight boss to begin.';

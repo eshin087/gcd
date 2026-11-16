@@ -16,6 +16,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Synchronized playback, slow motion, frame stepping, camera angles and responsive comparison
 - [x] Separate playable A/B preview in all three levels, with temporary settings / telemetry (ADR-119)
 - [x] Tempered v2 hand alignment, relaxed wrists, attack phrasing and quiet charge hold (ADR-120)
+- [x] V3: replace all six idle gestures, remove the belt rest, change the opening heavy to a slash;
+  add explicit idle review controls (ADR-121)
 - [ ] Owner chooses or rejects the direction in the draft PR
 - [ ] Only if chosen: Claude integrates the hero and validates combat / outfits in all three levels
 

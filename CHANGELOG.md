@@ -717,7 +717,9 @@ Forty-seven pieces of work since 0.4.0:
   with compact presentation proportions, an oblique guard and body-led motion accents. Also a
   separate playable `/hero-play.html` preview (ADR-119): live A/B switching, all three levels,
   closer camera, optional invulnerability and temporary storage. V2 refines hand alignment, relaxed
-  running wrists, attack windup / cut / recovery and the charge hold (ADR-120). Awaiting owner review; the normal
+  running wrists, attack windup / cut / recovery and the charge hold (ADR-120). V3 replaces all six
+  idle gestures, removes the belt-rest default, changes the opening heavy to a sweeping slash and
+  adds in-game idle replay controls (ADR-121). Awaiting owner review; the normal
   game is unchanged. This is deliberately not a shipped WHAT'S NEW item.
 
 ## [0.4.0] - 2026-11-02
