@@ -574,6 +574,7 @@ async function scenarioMoves() {
     const stood = G4.hits.slice(h0).filter((h) => h.attack === 'qiStorm');
     let gapMin = Infinity;
     for (let i = 1; i < flashes.length; i++) gapMin = Math.min(gapMin, flashes[i] - flashes[i - 1]);
+    // (nine crescents in four waves: the fans' middles and the heavy one reach a hero who stands; the straddling two pass him)
     assert(thrown.length === 9 && stood.length <= 3, `Storm of Ash: ${thrown.length} crescents in four waves, ${stood.length} of them reach a hero who stands still (the two that straddle him pass either side)`);
     assert(MOVES.qiStorm.beats.every((b) => b.tell !== TELL.RED && b.tell !== TELL.BLACK) && gapMin >= 0.4, `every wave is guardable and the glints come ${gapMin.toFixed(2)} s apart at least (>= 0.4: a roll for each)`);
     settle(G4, 6);
