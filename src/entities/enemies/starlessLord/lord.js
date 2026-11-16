@@ -545,6 +545,18 @@ export class StarlessLord extends Duelist {
       const c = this._hs[1];
       fx.aura(c.x, c.y, c.z, dt, 1, this.position.x, this.position.z);
     }
+    // ?presence=a: forms 2 and 3 carry something of their own (fx.presence)
+    if (fx.look?.('presence') === 'a') fx.presence?.(f, dt);
+    // ?void=a: his death: the Void goes out of him at once, then leaves his bones as he falls
+    const dying = this.mode === 'dying';
+    if (dying && fx.look?.('void') === 'a') {
+      if (!this._fxDying) {
+        const c = this._hs[1];
+        fx.deathBurst?.(c.x, c.y, c.z);
+      }
+      fx.unravel?.(this._ghost, this._sampleGhost(), clamp(1 - (this.brain.modeT ?? 0) / 3, 0, 1), dt);
+    }
+    this._fxDying = dying;
     if (a) {
       // the sweep trail of whichever blade is cutting, from the snap out of the cock on (not through a
       // shudder: its flicker is no swing)
@@ -563,7 +575,30 @@ export class StarlessLord extends Duelist {
       }
       // the Void gathering in his hand through a cast's windup
       const cur = a.beats.find((b) => a.t < b.impact);
-      if (cur && !cur.feint) {
+      const each = fx.look?.('void') === 'a';
+      if (cur && !cur.feint && a.def.transition) {
+        // an ignition's kneel (?ignite=a|b): the Void drawn in to him along the floor
+        if (fx.look?.('ignite') !== '0') fx.igniteGather?.(this.position.x, this.position.z, clamp((a.t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1), dt, f);
+      } else if (cur && !cur.feint && each) {
+        // ?void=a: each spell gathers its own way (fx.gather); the grip's talons and the pull's line
+        // round the hero stay as they are
+        const D = cur.def, k = clamp((a.t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1), h = this._hand;
+        const kind = D.bolt ? 'bolt' : D.pull ? 'pull' : D.grip ? 'grip' : D.cast?.kind === 'star' ? 'star' : D.release?.style === 'rift' ? 'rift' : D.release?.style === 'push' ? 'push' : D.cast?.kind === 'debris' ? 'debris' : D.cast?.kind === 'storm' ? 'storm' : null;
+        if (kind) fx.gather(kind, h, k, dt);
+        if (D.pull) {
+          const p = this.game.player;
+          if (p?.getChestPos && k > 0.25) {
+            p.getChestPos(_v, true);
+            fx.pullStream(h.x, h.y, h.z, _v.x, _v.y, _v.z, k, dt);
+          }
+        } else if (D.grip) {
+          const p = this.game.player?.position;
+          const dist = clamp(p ? Math.hypot(p.x - this.position.x, p.z - this.position.z) : 4, 1.5, TUNING.grip.range);
+          this._grip.x = this.position.x + Math.sin(this.yaw) * dist;
+          this._grip.z = this.position.z + Math.cos(this.yaw) * dist;
+          fx.gripClaw(this._grip.x, 1.15, this._grip.z, k);
+        }
+      } else if (cur && !cur.feint) {
         const D = cur.def, k = clamp((a.t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1), h = this._hand;
         if (D.bolt) fx.crackle(h.x, h.y, h.z, k, dt);
         else if (D.pull) {
@@ -596,7 +631,7 @@ export class StarlessLord extends Duelist {
       // the ignition: the new form's blades light, the shock ring goes out, the seal flares
       this.litWant = 1;
       this._changing = false;
-      this.fx.igniteNova(this.position.x, this.position.z, TUNING.ignite.ringRadius);
+      this.fx.igniteNova(this.position.x, this.position.z, TUNING.ignite.ringRadius, this.phase);
       this.fx.igniteBurst(this._hilt, this._tip, 1.5);
       this.game.shake?.(0.4);
       this.game.world?.forest?.ambience?.flare?.(1);
