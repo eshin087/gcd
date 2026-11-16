@@ -80,6 +80,7 @@ export class AshDisciple extends Duelist {
   }
   onImpact(b, s, a) {
     if (a?.def?.terrain) this.terrain.impact(b, s, a);
+    this.fx.onBlow?.(b, s, a); // what lands with the blow: the Kindling, a ring's shock, phase 3's afterimages (duelist/fx.js)
   }
   onCast(b, s, a) {
     if (a?.def?.terrain) this.terrain.cast(b, s, a);
@@ -88,7 +89,8 @@ export class AshDisciple extends Duelist {
   // ---------------------------------------------------------------- the kindled blade (phase 2)
   /** It grows in through phase 2's transition. */
   brainFrame(dt) {
-    if (this.phase >= 2) this.kindle = Math.min(1, this.kindle + dt * 1.5);
+    // (held while a transition runs: the Kindling's kneel drives it from afterPose, the blade catching)
+    if (this.phase >= 2 && !this.brain.act?.def?.transition) this.kindle = Math.min(1, this.kindle + dt * 1.5);
     this.terrain.frame(dt);
   }
 
@@ -96,34 +98,51 @@ export class AshDisciple extends Duelist {
     this.kindle = Math.max(this.kindle, 0.3);
   }
 
-  /** Swing trails (ember once kindled), the kindled blade's embers, the stars of a break. */
+  /** Swing trails (ember once kindled, ash in phase 3), the Kindling's kneel, the kindled blade's
+   *  embers, phase 3's ash on the wind, the stars of a break. */
   afterPose(dt, a) {
-    const t1 = this._tip;
+    const t1 = this._tip, h0 = this._hilt, fx = this.fx;
+    // phase 3 (ash on the wind, duelist/fx.js ashWind): grows in over about a second
+    this._ashK = this.phase >= 3 && this.mode !== 'dying' && this.mode !== 'dead' ? Math.min(1, (this._ashK ?? 0) + dt * 0.8) : 0;
+    const ashLook = this._ashK > 0 ? (this.fx.ashLook?.() ?? 'a') : '';
     // the blade's sweep from the snap out of the cock through the follow-through (not through a
     // shudder: its flicker is no swing)
     if (a && this._tipOk && !this.shuddering) {
       for (const b of a.beats) {
         // (`noSweep`: a blow that is not the blade's: the kick)
         if (b.feint || b.def?.noSweep || a.t < b.impact - 0.32 * b.W - 0.02 || a.t > b.end + 0.6 * b.A + 0.05) continue;
-        this.fx.sweep(this._hiltPrev, this._tipPrev, this._hilt, this._tip, this.phase >= 2);
+        fx.sweep(this._hiltPrev, this._tipPrev, h0, t1, ashLook ? (ashLook === 'b' ? 'white' : 'ash') : this.phase >= 2);
         break;
       }
     }
-    if (this.kindle > 0.05 && this.mode !== 'dying') this.fx.emberBlade(this._hilt.x, this._hilt.y, this._hilt.z, t1.x, t1.y, t1.z, dt, this.kindle);
-    if (this.mode === 'broken') this.fx.stunStars(this._hs[0]);
+    // the Kindling's kneel: the blade catches (on the blade only: a red blow shows nothing else
+    // before its flare, ADR-118); at its impact it is alight
+    if (a?.def?.transition && (a.def.phase ?? 2) === 2 && this._tipOk) {
+      const b0 = a.beats[0];
+      if (b0 && a.t < b0.impact) this.kindle = fx.kindleCharge?.(h0.x, h0.y, h0.z, t1.x, t1.y, t1.z, Math.max(0, Math.min(1, (a.t - b0.start) / Math.max(0.1, b0.impact - b0.start))), dt) ?? this.kindle;
+      else this.kindle = 1;
+    }
+    // phase 3: the fire on the blade goes out into ash (a), burns white (b) or dies to cinders (c)
+    if (ashLook === 'a' || ashLook === 'c') this.kindle = Math.max(ashLook === 'c' ? 0.15 : 0, this.kindle - dt * 2.3);
+    if (this.kindle > 0.05 && this.mode !== 'dying') fx.emberBlade(h0.x, h0.y, h0.z, t1.x, t1.y, t1.z, dt, this.kindle);
+    if (this._ashK > 0) fx.ashWind?.(this, dt, this._ashK);
+    if (this.mode === 'broken') fx.stunStars(this._hs[0]);
   }
 
   /** The jian (his `armor` + `bevel` instances): pale steel that brightens through a strike; kindled
-   *  in phase 2, its ink burns ember and it glows. */
+   *  in phase 2, its ink burns ember and it glows; in phase 3 (`?ashp3=`) its fire goes out to pale
+   *  steel (a), burns white-hot (b) or smoulders dark (c). */
   _bladeMaterials(dt, M) {
     const k2 = this.kindle;
     const fu = M.armor?.uniforms, tu = M.bevel?.uniforms;
     if (!fu) return;
     const act = this.brain.act, striking = !!act && act.striking && act.t >= act.striking.impact - 0.06 && act.t <= act.striking.end + 0.1;
-    const glow = 1.3 * k2 + (striking ? 0.35 : 0);
+    const w = this._ashK > 0 && (this.fx.ashLook?.() ?? 'a') === 'b' ? this._ashK : 0; // white-hot
+    const glow = 1.3 * k2 + (striking ? 0.35 : 0) + 0.4 * w;
     fu.uGlow.value = dt > 0 ? damp(fu.uGlow.value, glow, 14, dt) : glow;
-    fu.uInkGlow.value = 0.15 + (striking ? 0.45 : 0) + 0.8 * k2;
-    fu.uInk.value.setRGB(0.75 + 0.7 * k2, 0.78 - 0.15 * k2, 0.84 - 0.6 * k2);
+    fu.uInkGlow.value = 0.15 + (striking ? 0.45 : 0) + 0.8 * k2 + 0.4 * w;
+    fu.uInk.value.setRGB(0.75 + 0.7 * k2 + 0.5 * w, 0.78 - 0.15 * k2 + 0.75 * w, 0.84 - 0.6 * k2 + 0.9 * w);
+    if (fu.uEmissive) fu.uEmissive.value.setRGB(1.6 + 0.6 * w, 0.5 + 1.4 * w, 0.1 + 1.6 * w);
     if (fu.uGlowMask) fu.uGlowMask.value = 1;
     if (tu) {
       tu.uGlow.value = fu.uGlow.value;
