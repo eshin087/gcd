@@ -27,7 +27,7 @@ const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Destructibles, STATE: PIECE } = await imp('src/world/destructibles.js');
-const { buildDeadTree, buildBoulder, buildStump, geosHeight } = await imp('src/world/forest.js');
+const { buildDeadTree, buildBoulder, buildStump, geosHeight, createForest } = await imp('src/world/forest.js');
 const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/combat/rules.js');
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
 const { DIM: HERO_DIM, setHeroGlyphScale } = await imp('src/entities/player/model.js');
@@ -139,6 +139,17 @@ function addTerrain(game, world, kind) {
     const b = buildBoulder(rng, x, z, 1.1);
     defs.push({ kind: 'boulder', mat: 'stone', look: 'prop', x, z, r: 0.94, h: geosHeight([b]), geos: [b], colliders: [], topples: false, lift: 1 });
   };
+  if (kind === 'forest') {
+    // the REAL Cinderwood clearing (world/forest.js), its breakables wired as world.js wires them
+    // (scenario WRECKAGE: what a whole fight leaves standing)
+    const set = createForest(game.U, world.colliders);
+    const D = (world.destructibles = new Destructibles(game, world, set));
+    const blow = { kind: 'blast', by: 'world' };
+    world.impact = (x, z, r, power, o) => { const n = D.strike(x, z, r, power, o ?? blow); if (o?.fire > 0) D.ignite(x, z, r, o.fire); return n; };
+    world.ignite = (x, z, r, k = 1) => D.ignite(x, z, r, k);
+    world.restore = () => D.reset();
+    return;
+  }
   if (kind === 'lab') {
     for (let i = -3; i <= 3; i++) {
       for (let j = -3; j <= 3; j++) {
@@ -676,39 +687,6 @@ async function scenarioPressure() {
   const perPhase = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, ph) - 1] : v);
   const CATS_P = ['melee', 'wing', 'tail', 'fire', 'flight', 'spell', 'terrain'];
   const answerOf = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
-  // combo links for the attacks that exist today (the data the director reads; their tuning belongs
-  // to the agents of those attacks: injected here, put back after)
-  const C = (a, b, c) => [a, b, c];
-  const LINKS = {
-    swipe: [{ to: 'tail', when: 'behind', chance: C(0.5, 0.7, 0.9) }, { to: 'bite', when: 'front', chance: C(0.3, 0.5, 0.7) }],
-    bite: [{ to: 'swipe', when: 'side', chance: C(0.3, 0.5, 0.7) }, { to: 'stomp', when: 'near', chance: C(0, 0.3, 0.5) }],
-    clawCombo: [{ to: 'tail', when: 'behind', chance: C(0.5, 0.7, 0.9) }, { to: 'wingBuffet', when: 'mid', chance: C(0.3, 0.5, 0.7) }, { to: 'hesitantMaw', when: 'front', chance: C(0, 0.3, 0.5) }],
-    rendingFlurry: [{ to: 'tail', when: 'behind', chance: C(0.5, 0.7, 0.9) }, { to: 'wingBuffet', when: 'mid', chance: C(0.3, 0.5, 0.7) }, { to: 'fanVolley', when: 'far', chance: C(0.2, 0.4, 0.6) }],
-    stormFlurry: [{ to: 'tail', when: 'behind', chance: C(0.5, 0.7, 0.9) }, { to: 'stomp', when: 'near', chance: C(0, 0.3, 0.5) }],
-    hesitantMaw: [{ to: 'swipe', when: 'side', chance: C(0.4, 0.6, 0.8) }, { to: 'charge', when: 'far', chance: C(0.2, 0.4, 0.6) }],
-    wingBuffet: [{ to: 'tail', when: 'behind', chance: C(0.4, 0.6, 0.8) }, { to: 'pounce', when: 'mid', chance: C(0, 0.5, 0.7) }, { to: 'fanVolley', when: 'far', chance: C(0.3, 0.5, 0.7) }],
-    tail: [{ to: 'clawCombo', when: 'front', chance: C(0.3, 0.5, 0.7) }, { to: 'wingBuffet', when: 'mid', chance: C(0.3, 0.5, 0.7) }, { to: 'hurl', when: 'far', chance: C(0.2, 0.4, 0.6) }],
-    tailLash: [{ to: 'pounce', when: 'mid', chance: C(0, 0.4, 0.6) }, { to: 'eruptions', when: 'far', chance: C(0, 0.3, 0.5) }],
-    pounce: [{ to: 'tail', when: 'behind', chance: C(0, 0.6, 0.8) }, { to: 'clawCombo', when: 'front', chance: C(0, 0.4, 0.6) }],
-    stomp: [{ to: 'tail', when: 'behind', chance: C(0.4, 0.6, 0.8) }, { to: 'wingBuffet', when: 'mid', chance: C(0.3, 0.5, 0.7) }],
-    charge: [{ to: 'tail', when: 'behind', chance: C(0.4, 0.6, 0.8) }, { to: 'clawCombo', when: 'front', chance: C(0.3, 0.5, 0.7) }],
-    hurl: [{ to: 'charge', when: 'far', chance: C(0.2, 0.4, 0.6) }, { to: 'fanVolley', when: 'mid', chance: C(0.2, 0.4, 0.6) }],
-    tailBat: [{ to: 'hurl', when: 'far', chance: C(0, 0.3, 0.5) }, { to: 'clawCombo', when: 'front', chance: C(0.3, 0.5, 0.7) }],
-    skyStrafe: [{ to: 'tail', when: 'behind', chance: C(0.3, 0.5, 0.7) }, { to: 'fanVolley', when: 'far', chance: C(0.3, 0.5, 0.7) }],
-    diveBomb: [{ to: 'stomp', when: 'near', chance: C(0, 0.5, 0.7) }, { to: 'tail', when: 'behind', chance: C(0, 0.5, 0.7) }],
-    fanVolley: [{ to: 'charge', when: 'far', chance: C(0.2, 0.4, 0.6) }, { to: 'clawCombo', when: 'front', chance: C(0.2, 0.4, 0.6) }],
-    breath: [{ to: 'tail', when: 'behind', chance: C(0.4, 0.6, 0.8) }],
-    emberStorm: [{ to: 'charge', when: 'far', chance: C(0.2, 0.4, 0.6) }, { to: 'stomp', when: 'near', chance: C(0.2, 0.4, 0.6) }],
-    wispSwarm: [{ to: 'clawCombo', when: 'front', chance: C(0, 0.5, 0.7) }, { to: 'wingBuffet', when: 'mid', chance: C(0, 0.5, 0.7) }],
-    fireWheel: [{ to: 'pounce', when: 'mid', chance: C(0, 0.4, 0.6) }, { to: 'stomp', when: 'near', chance: C(0, 0.4, 0.6) }],
-    hoverBarrage: [{ to: 'tail', when: 'behind', chance: C(0, 0.5, 0.7) }, { to: 'stomp', when: 'near', chance: C(0, 0.5, 0.7) }],
-    meteorRain: [{ to: 'tail', when: 'behind', chance: C(0, 0.6, 0.8) }, { to: 'charge', when: 'far', chance: C(0, 0.4, 0.6) }],
-    eruptions: [{ to: 'pounce', when: 'mid', chance: C(0, 0.5, 0.7) }, { to: 'tail', when: 'behind', chance: C(0, 0.5, 0.7) }],
-    flameRing: [{ to: 'charge', when: 'far', chance: C(0, 0.4, 0.6) }, { to: 'leap', when: 'mid', chance: C(0, 0.3, 0.5) }],
-    flameWall: [{ to: 'tail', when: 'behind', chance: C(0, 0, 0.7) }, { to: 'charge', when: 'far', chance: C(0, 0, 0.5) }],
-    nova: [{ to: 'leap', when: 'far', chance: C(0, 0, 0.6) }],
-    fireBrand: [{ to: 'charge', when: 'far', chance: C(0, 0.3, 0.5) }, { to: 'clawCombo', when: 'front', chance: C(0, 0.4, 0.6) }],
-  };
   // ---- the link reader, white-box: bite -> stomp -> bite ... (cooldowns cleared every frame)
   {
     const P0 = TUNING.pressure;
@@ -728,7 +706,7 @@ async function scenarioPressure() {
       G.watch = (n, e) => { if (n === 'dragon:windup') starts.push([game.time, e.name]); };
       d.brain.startAction(ATTACKS.bite);
       let last = 'bite';
-      for (let i = 0; i < Math.round(9 / DT); i++) {
+      for (let i = 0; i < Math.round(14 / DT); i++) { // (14 s: chainDepth 3 links and the breather)
         bot(G, { god: true, defend: true, attack: false });
         G.input.axis = { x: 0, y: 0 };
         G.tick(DT);
@@ -764,11 +742,7 @@ async function scenarioPressure() {
     TUNING.attacks.stomp.links = keep.stomp;
   }
 
-  const linksBefore = {};
-  // (integration, 2026-11-15: only for an attack with no links of its own. After the merge the
-  // agents' attacks carry their own (the strings, the flights, the bullet patterns, the terrain
-  // moves): the table stands in for the data that is missing, it does not overwrite what is there)
-  for (const k in LINKS) if (TUNING.attacks[k] && !(Array.isArray(TUNING.attacks[k].links) && TUNING.attacks[k].links.length)) { linksBefore[k] = TUNING.attacks[k].links; TUNING.attacks[k].links = LINKS[k]; }
+  // (every move carries its own links now: src/entities/dragon/tuningLinks.js; the test's stand-in table is gone)
   const rows = [];
   const pinAt = [0.83, 0.5, 0.17];
   let lastG = null;
@@ -790,7 +764,8 @@ async function scenarioPressure() {
       const flashes = [], tellsOf = {}, cats = {}, winds = [], dbgLog = [];
       let safeAt = '';
       let air = 0, fire = 0, idle = 0, frames = 0, minSafe = 99, minSky = 99, safeLow = 0, hurt = 0, idleProbe = 0;
-      const avail = {}, seenNow = {}, streamT = [];
+      const avail = {}, seenNow = {}, streamT = [], spent = {}, endsAt = {}, linked = {};
+      let lastAn = 'idle';
       const chains0 = d.brain.stats?.links ?? 0, amb0 = d.brain.stats?.ambient ?? 0;
       G.watch = (n, e) => {
         if (n === 'combat:flash' && e?.source === 'dragon') flashes.push([game.time, e.tell, e.attack]);
@@ -833,6 +808,18 @@ async function scenarioPressure() {
         if (d.hp < pin) d.hp = pin;
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
         frames++;
+        if (process.env.ABYSS_PATT) {
+          const an = d.brain.action?.name ?? 'idle';
+          spent[an] = (spent[an] || 0) + DT;
+          // where the hero is as a move ends (what its links can ask for): bearing f / s / b, distance n / m / f
+          if (an !== lastAn && ATTACKS[lastAn]) {
+            const s = d.sense, P0 = TUNING.pressure;
+            const k = (s.absAng < P0.front ? 'F' : s.absAng > P0.behind ? 'B' : 'S') + (s.dist < P0.near ? 'n' : s.dist > P0.far ? 'f' : 'm');
+            (endsAt[lastAn] ??= {})[k] = (endsAt[lastAn][k] || 0) + 1;
+            if (an !== 'idle' && ATTACKS[an]) linked[`${lastAn}>${an}`] = (linked[`${lastAn}>${an}`] || 0) + 1;
+          }
+          lastAn = an;
+        }
         if (d.state === 'airborne') air++;
         // the breath's stream is one long answer (a guard held through it, or out of the cone): its
         // active span counts as pressure for the longest gap (sampled every 0.1 s), not as cues
@@ -899,6 +886,16 @@ async function scenarioPressure() {
         air: air / frames, fire: fire / frames, idle: idle / frames, minSafe, safeLow, conflicts, conflictAt, inner, innerAt, hurt, tellsOf,
         holds: d.brain.stats?.holds ?? 0, seeks: d.brain.stats?.seeks ?? 0, gapAt, safeAt, minSky, avail, idleProbe,
       });
+      // ABYSS_PATT=1: where the phase's time went, move by move (s, picks, its cues, cues a second)
+      if (process.env.ABYSS_PATT) {
+        const fl = {};
+        for (const f of flashes) fl[f[2]] = (fl[f[2]] || 0) + 1;
+        out(`      P${ph} seed ${seed} time: ${Object.entries(spent).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}s/${tellsOf[k] ?? 0}x/${fl[k] ?? 0}c (${((fl[k] ?? 0) / v).toFixed(2)})`).join(' · ')}`);
+        const other = Object.entries(fl).filter(([k]) => !(k in spent)).map(([k, v]) => `${k} ${v}`).join(', ');
+        if (other) out(`      P${ph} cues from elsewhere: ${other}`);
+        out(`      P${ph} ends: ${Object.entries(endsAt).map(([k, v]) => `${k} ${Object.entries(v).map(([a, b]) => a + b).join('')}`).join(' · ')}`);
+        out(`      P${ph} straight into: ${Object.entries(linked).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+      }
     }
   }
   const CATS = ['melee', 'wing', 'tail', 'fire', 'flight', 'spell', 'terrain'];
@@ -913,7 +910,6 @@ async function scenarioPressure() {
   }
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
   out(`   mean  P1 ${mean(1, 'perMin').toFixed(1)} · P2 ${mean(2, 'perMin').toFixed(1)} · P3 ${mean(3, 'perMin').toFixed(1)} cues/min; longest gap P1 ${Math.max(...rows.filter((r) => r.ph === 1).map((r) => r.gapMax)).toFixed(2)} · P2 ${Math.max(...rows.filter((r) => r.ph === 2).map((r) => r.gapMax)).toFixed(2)} · P3 ${Math.max(...rows.filter((r) => r.ph === 3).map((r) => r.gapMax)).toFixed(2)} s`);
-  for (const k in linksBefore) TUNING.attacks[k].links = linksBefore[k];
   if (!P) { out('   (no TUNING.pressure: measured only, nothing asserted)'); return lastG; }
   const A = P.meter;
   for (const seed of SEEDS) {
@@ -942,6 +938,124 @@ async function scenarioPressure() {
     }
     assert(r[1].chains >= 1 && r[2].chains >= 1, `seed ${seed}: moves chain into each other from the links in phases 2 and 3 (${r.map((x) => x.chains).join(' / ')})`);
     assert(r[0].ambient === 0 && r[2].ambient > 0, `seed ${seed}: ambient fire only from phase 2, and in phase 3 (${r.map((x) => x.ambient).join(' / ')})`);
+  }
+  return lastG;
+}
+
+// ================================================================== scenario: wreckage (a whole fight on the real clearing)
+// The REAL Cinderwood clearing (world/forest.js: its trees, stones, flagstones, bones) under a whole AI
+// fight: a god-mode hero that roams and answers like the pressure meter's, `secs` s in each phase (the
+// wyrm's HP pinned inside it, the real transition roars between). Counted: the pieces standing inside
+// the hero's bound (CONFIG.world.playerBound) at the start, as phase 3 starts and at the end, by kind;
+// the liftable ones (lift 1: what the terrain moves can take); trees burnt through; and what felled
+// each piece (the wyrm's move at the time, 'idle' = walking / turning between moves). The tuning
+// (tuning.js `world`, breakTuning.js) aims at a clearing that changes through a fight without being
+// flattened: between a third and two thirds standing at the end, and pieces left for the terrain moves
+// in phase 3. ABYSS_WSEEDS=a,b,c, ABYSS_WSECS=s per phase (the report's: three seeds, 80 s: a 4-minute
+// fight); the suite runs one seed.
+async function scenarioWreckage() {
+  out('\n== scenario WRECKAGE (a whole AI fight on the real clearing: what stands, what burns, what felled it) ==');
+  const SECS = Number(process.env.ABYSS_WSECS ?? 80);
+  const SEEDS = (process.env.ABYSS_WSEEDS ?? '1337').split(',').map(Number).filter(Number.isFinite);
+  const BOUND = CONFIG.world.playerBound ?? 31;
+  const rows = [];
+  let lastG = null;
+  for (const seed of SEEDS) {
+    const G = (lastG = build({ terrain: 'forest' }));
+    const { game } = G;
+    const D = game.world.destructibles;
+    G.defend = steadyDefender(G);
+    fightSetup(G, { ai: true });
+    const d = game.dragon;
+    Math.random = mulberry32(seed * 11 + 3);
+    const inside = D.list.filter((b) => Math.hypot(b.x, b.z) < BOUND);
+    const count = () => {
+      const by = {};
+      let n = 0, lift = 0, burnt = 0;
+      for (const b of inside) {
+        if (b.burnt) burnt++;
+        if (b.state !== PIECE.INTACT) continue;
+        n++;
+        by[b.kind] = (by[b.kind] || 0) + 1;
+        if (b.lift === 1) lift++;
+      }
+      // (the whole forest, the ring of trees beyond the bound too: the background that burns)
+      let wood = 0, burntAll = 0;
+      for (const b of D.list) {
+        if (b.mat !== 'wood') continue;
+        if (b.burnt) burntAll++;
+        if (b.state === PIECE.INTACT) wood++;
+      }
+      return { n, by, lift, burnt, wood, burntAll };
+    };
+    const wood0 = D.list.filter((b) => b.mat === 'wood').length;
+    const cause = {}, lit = {};
+    G.watch = (n, e) => {
+      if (n !== 'world:impact') return;
+      const act = d.brain.action?.name ?? (d.state === 'airborne' ? 'air' : 'idle');
+      if (!(Math.hypot(e.x, e.z) < BOUND + 2)) return;
+      if (e.kind === 'topple' || e.kind === 'break') cause[act] = (cause[act] || 0) + 1;
+      else if (e.kind === 'burnout') cause['(burnt)'] = (cause['(burnt)'] || 0) + 1;
+    };
+    // what lights wood anywhere (the forest's ring too) straight from a fire that landed (gen 0), and
+    // what fire spread from tree to tree
+    const light0 = D._light.bind(D);
+    D._light = (b, k, gen = 0) => {
+      const act = gen > 0 ? '(spread)' : d.brain.action?.name ?? (d.state === 'airborne' ? 'air' : 'idle');
+      lit[act] = (lit[act] || 0) + 1;
+      return light0(b, k, gen);
+    };
+    const c0 = count(), at = [c0];
+    const roam = mulberry32(seed * 31 + 5), goal = { r: 6, a: 0, until: -1 };
+    for (let ph = 1; ph <= 3; ph++) {
+      if (ph > 1) {
+        d.debug.setHp(TUNING.phaseAt[ph - 1] - 0.01);
+        run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === ph && d.brain.action?.name !== `phase${ph}`);
+        at.push(count());
+      }
+      const pin = Math.round(d.maxHp * [0.83, 0.5, 0.17][ph - 1]);
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        bot(G, { god: true, defend: true, attack: false });
+        if (game.time > goal.until) {
+          const p = game.player.position;
+          goal.r = [6, 10, 15][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.x - d.position.x, p.z - d.position.z) + (roam() - 0.5) * 1.4;
+          goal.until = game.time + 5;
+        }
+        if (!G.input.pressedKeys.has('Space') && game.player.state !== 'roll') {
+          const p = game.player.position, b = goal.a;
+          const gx = d.position.x + Math.sin(b) * goal.r, gz = d.position.z + Math.cos(b) * goal.r;
+          const k = Math.hypot(gx, gz) > 24 ? 24 / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.x, dz = gz * k - p.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 1 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        G.tick(DT);
+        if (d.hp < pin) d.hp = pin;
+        if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+      }
+      if (ph === 1) at.push(count()); // (P1's end, before the roar)
+    }
+    G.watch = null;
+    at.push(count());
+    rows.push({ seed, total: inside.length, at, cause, lit, wood0 });
+  }
+  const fmt = (c) => `${String(c.n).padStart(4)} (lift ${String(c.lift).padStart(2)}, burnt ${String(c.burnt).padStart(2)})`;
+  out(`   ${SECS} s per phase · pieces standing inside the hero's ${BOUND} m bound: start · end of P1 · P2 start · P3 start · end`);
+  for (const r of rows) {
+    out(`   seed ${String(r.seed).padStart(5)} of ${r.total}: ${r.at.map(fmt).join(' · ')}`);
+    const kinds = Object.keys(r.at[0].by);
+    out(`         by kind (start > P3 > end): ${kinds.map((k) => `${k} ${r.at[0].by[k]}>${r.at[3].by[k] ?? 0}>${r.at[4].by[k] ?? 0}`).join(', ')}`);
+    out(`         felled / broken by: ${Object.entries(r.cause).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+    out(`         the whole forest's ${r.wood0} trees: standing ${r.at.map((c) => c.wood).join(' > ')}, burnt through ${r.at[4].burntAll}`);
+    out(`         set alight by: ${Object.entries(r.lit).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  }
+  for (const r of rows) {
+    const end = r.at[4].n / r.total, p3 = r.at[3];
+    const W = TUNING.world.meter;
+    if (!W) continue;
+    assert(end >= W.endShare[0] && end <= W.endShare[1], `seed ${r.seed}: ${(end * 100).toFixed(0)} % of the clearing's ${r.total} pieces stand at the end of the fight (${W.endShare.map((x) => x * 100 + ' %').join(' .. ')}: changed, not flattened)`);
+    assert(p3.lift >= W.liftP3, `seed ${r.seed}: ${p3.lift} liftable pieces stand as phase 3 starts (>= ${W.liftP3}: the terrain moves go on)`);
+    assert(r.at[4].burnt <= W.burnt, `seed ${r.seed}: ${r.at[4].burnt} pieces burnt through in the fight (<= ${W.burnt})`);
   }
   return lastG;
 }
@@ -9441,7 +9555,7 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, melee: scenarioMelee, budget: scenarioBudget, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, melee: scenarioMelee, budget: scenarioBudget, wreckage: scenarioWreckage, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 // ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process

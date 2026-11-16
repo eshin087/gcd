@@ -5,6 +5,7 @@ import { TELL } from '../../combat/rules.js';
 import { FIRE_ATTACKS } from './tuningFire.js';
 import { BULLETS, BULLET_ATTACKS } from './tuningBullets.js';
 import { TERRAIN, TERRAIN_ATTACKS } from './tuningTerrain.js';
+import { LINKS } from './tuningLinks.js';
 
 const DEG = Math.PI / 180;
 
@@ -38,9 +39,12 @@ export const TUNING = {
   // what its blows do to the world (ADR-107; world/breakTuning.js POWER scale: 1 fells a tree)
   world: {
     melee: 0.7, // a striking part, x its radius in body units (a claw 0.77, the charge's chest 1.2)
-    stomp: 1.0, leap: 1.7, hop: 1.2, dive: 2.5,
-    nova: [2.2, 0.45, 0.45], // the blast: at its heart, at its rim; the heart's share of the radius
-    explosion: 0.9, meteor: 1.5, pillar: 1.0,
+    stomp: 0.8, leap: 1.4, hop: 1.2, dive: 1.8, // (tuning, 2026-11-15: stomp 1.0, leap 1.7, dive 2.5)
+    nova: [1.2, 0.3, 0.45], // (tuning: [2.2, 0.45, 0.45]: its heart flattened ten metres of the clearing)
+    // a ground blow (the stomp, a leap, a hop, a dive, the nova) is this much weaker at its rim than at
+    // its heart (2026-11-15: the dive's 7.5 m felled all it covered: a four-minute fight left a sixth standing)
+    falloff: 0.6, // the blast: at its heart, at its rim; the heart's share of the radius
+    explosion: 0.7, meteor: 0.7, pillar: 0.9, // (tuning: explosion 0.9, meteor 1.5, pillar 1.0: Armageddon's sixty meteors broke the whole paving)
     trample: 1.2, // (ADR-107's trample round the root: replaced by `body` below; kept for older readers)
     // the body against the world (dragon.js _wreck, 2026-11-15): each hurt sphere that moves faster
     // than minSpeed m/s sweeps the pieces it passes through: power = (speed - minSpeed) x perSpeed x its
@@ -53,8 +57,8 @@ export const TUNING = {
     // and each downbeat of its wings under maxAlt (weaker the higher it is): wood only, the wind bends
     // trees; as it lands (alt falling through `alt` after a flight at least `minFall` high): its weight,
     // stone too
-    takeoff: { alt: 1.0, radius: 9, power: 1.0 },
-    landing: { alt: 0.6, minFall: 2.5, radius: 8.5, power: 1.4 },
+    takeoff: { alt: 1.0, radius: 7, power: 1.0 }, // (tuning: radius 9)
+    landing: { alt: 0.6, minFall: 2.5, radius: 8.5, power: 1.0 }, // (tuning: power 1.4; weaker toward its rim: falloff)
     downbeat: { maxAlt: 11, radius: 7.5, power: 0.6 },
     // fire that lands sets the grass and the wood alight: how long (x FIRE.life / BREAK.burn.time)
     // and how much of the blast's radius catches
@@ -69,14 +73,14 @@ export const TUNING = {
   turnSpeed: [70 * DEG, 110 * DEG, 125 * DEG], // rad/s (inside attacks; between them x pressure.turn)
   walkSpeed: [3.6, 4.6, 5.3], // (v0.6: 3.0, 4.1, 4.6) it closes on the hero between moves
   // later phases speed the fight up: windups + recoveries x this (the swings themselves keep their speed)
-  phaseTimeScale: [1, 0.85, 0.78],
-  phase2TimeScale: 0.85, // = phaseTimeScale[1] (kept for older readers)
+  phaseTimeScale: [1, 0.82, 0.7], // (tuning, 2026-11-15: [1, 0.85, 0.78])
+  phase2TimeScale: 0.82, // = phaseTimeScale[1] (kept for older readers)
   // pause between attacks (walking / turning / snorting) — the main "breathing room" knob; phase 3
   // keeps the pressure on (v0.6: 1.0-1.7, 0.7-1.2, 0.35-0.7 s: now pressure.openingGap)
   idleGap: [
-    [0.6, 1.0],
-    [0.3, 0.6],
-    [0.1, 0.35],
+    [0.25, 0.5], // (tuning, 2026-11-15: 0.6 - 1.0: phase 1 hunts)
+    [0.25, 0.5], // (tuning: 0.3 - 0.6)
+    [0.05, 0.25], // (tuning: 0.1 - 0.35)
   ],
   // THE DIRECTOR (ai.js): how the pick between moves is steered, how moves chain into each other,
   // the small fire it adds on its own and the fairness guards. Per phase [P1, P2, P3].
@@ -88,13 +92,14 @@ export const TUNING = {
       [0.7, 1.2],
       [0.35, 0.7],
     ],
-    // COMBO LINKS (an attack's tuning `links: [{ to, when, chance }]`, read when it ends on its own):
+    // COMBO LINKS (an attack's tuning `links: [{ to, when, chance }]`, all in tuningLinks.js; read
+    // when it ends on its own):
     // at most this many links in a row, then a breather of chainRest s
-    chainDepth: [2, 3, 4],
+    chainDepth: [3, 3, 5], // (tuning: [2, 3, 4])
     chainRest: [
-      [1.1, 1.5],
+      [0.7, 1.0], // (tuning: 1.1 - 1.5)
       [0.8, 1.1],
-      [0.55, 0.8],
+      [0.4, 0.65], // (tuning: 0.55 - 0.8)
     ],
     // `when` of a link: the hero's bearing off the nose (rad) and distance from the root (m)
     front: 0.9, behind: 1.75, near: 9, far: 18,
@@ -109,7 +114,7 @@ export const TUNING = {
     maxRun: [2, 2, 2], // no more than this many picks of one category in a row ...
     overRun: 0.03, // ... (a category past it: its weight x this; 0 would stall a lone candidate)
     sameCat: 0.7, // the last pick's category x this
-    floorAfter: [20, 15, 12], // s: a category absent this long comes back ...
+    floorAfter: [32, 15, 12], // (tuning: P1 20: a forced flight every minute was a quarter of phase 1 in the air at a cue every 4 s) // s: a category absent this long comes back ...
     floorBoost: 2.5, // ... its weight x this (x absent / floorAfter, up to x3 more)
     floorForce: 3, // ... and absent past floorAfter x this, usable from where it stands: it is the pick
     // a bias per category [P1, P2, P3]: the body moves (many cues, close) over the long casts
@@ -128,20 +133,25 @@ export const TUNING = {
     // MOVEMENT between moves: the idle turn is the attacks' turnSpeed x this; it walks at the hero's
     // spot `lead` s ahead when he is farther than `approach` m (cuts him off), circles him
     // (`strafe` m/s) through a longer pause
-    turn: [1.6, 1.7, 1.8],
+    // (tuning, 2026-11-15: [1.6, 1.7, 1.8] = 112 - 225 deg/s: filmed, the turn in place lifted all four feet
+    // at once in 0.13 s steps, a pirouette; 80 - 130 deg/s keeps one foot up at a time, two at most)
+    turn: [1.15, 1.1, 1.05],
     // the director repositions for a category absent past floorAfter that nothing can use from where
     // it stands: tries these changes of the hero's distance (m) and bearing (rad; -1 = as now), takes
     // the cheapest under `max` s (backing off at walkSpeed x back), at most once every `every` s
-    seek: { dist: [0, -3, 3, 6, 9], ang: [-1, 0, 1.3, 2.2], max: [1.3, 1.1, 0.9], back: 1.5, every: 6 },
+    // (tuning, 2026-11-15: dist [0, -3, 3, 6, 9], back 1.5, max [1.3, 1.1, 0.9], every 6. Filmed, the
+    // bound back was a 5.4 - 6.6 m/s walk backwards while turning: a moonwalk. It now only closes in
+    // and turns; a category that needs room comes back through the floors and the links)
+    seek: { dist: [0, -3], ang: [-1, 0, 1.3, 2.2], max: [1.0, 0.9, 0.8], back: 0.6, every: 9 },
     approach: [12, 11, 10],
     lead: 0.6,
-    strafe: [2.2, 2.8, 3.2],
+    strafe: [1.2, 1.5, 1.7], // (tuning: [2.2, 2.8, 3.2] m/s: a crab's scramble, three feet up at once)
     // AMBIENT FIRE (from phase 2): cinders shaken from its wings and spat from its jaws, falling near
     // the hero while it fights: self-announcing small blasts (their ground heats, red flash, roll).
     // Every `every` s on average (n of them), `warn` s of heated ground, landing `spread` m round the
     // hero (onHero: the share aimed where he will be); at most `alive` of them at once
     ambient: {
-      every: [0, 2.0, 1.1],
+      every: [0, 1.4, 0.7], // (tuning: [0, 2.0, 1.1]: more fire each phase)
       n: [[0, 0], [1, 2], [2, 3]],
       warn: [1.2, 1.2, 1.05],
       fall: 0.75, // s of the visible fall at the end of the warning
@@ -150,7 +160,7 @@ export const TUNING = {
       lead: 0.5, // s of the hero's velocity
       radius: [1.6, 1.6, 1.9],
       damage: 14, burn: 1.0, knockback: 2,
-      alive: [0, 3, 5],
+      alive: [0, 3, 6], // (tuning: [0, 3, 5])
       // when none may fall near him (a fire pattern runs, bullets fly, a pause): they fall this far
       // from him (m, + their radius: beyond a run and a roll before they land): no cue, no hit
       far: [8, 13],
@@ -252,7 +262,7 @@ export const TUNING = {
         // reach: max head reach from the neck base; lunge: max root travel during the bite (m)
         { kind: 'lungeBite', tell: TELL.BLUE, flare: true, windup: 0.6, active: 0.24, impact: 0.05, damage: 22, knockback: 3, reach: 6.0 * S, lunge: 2.5 * S },
       ],
-      recovery: 1.0, cooldown: 5, weight: [1.4, 1.0, 0.6], range: [2.4, 5.4], maxAng: 0.9, // (w2: [2.4, 2.4, 2.0])
+      recovery: 1.0, cooldown: 5, weight: [1.8, 1.2, 0.9], range: [2.4, 5.4], maxAng: 0.9, // (w2: [2.4, 2.4, 2.0]; merge [1.4, 1.0, 0.6])
     },
     // claw, claw, an overhead smash and a lunging bite: parry, parry, PARRY, PARRY
     rendingFlurry: {
@@ -264,7 +274,7 @@ export const TUNING = {
         { kind: 'overhead', side: 1, tell: TELL.BLUE, windup: 0.62, active: 0.24, impact: 0.22, damage: 22, knockback: 3, lunge: 1.2 },
         { kind: 'lungeBite', tell: TELL.BLUE, windup: 0.55, active: 0.24, impact: 0.05, damage: 24, knockback: 3.5, reach: 6.0 * S, lunge: 2.5 * S },
       ],
-      recovery: 1.1, cooldown: 7, weight: [1.6, 1.2, 0.8], range: [2.4, 5.4], maxAng: 0.9, // (w2: [3.0, 2.8, 2.4])
+      recovery: 1.1, cooldown: 7, weight: [1.8, 1.4, 1.2], range: [2.4, 5.4], maxAng: 0.9, // (w2: [3.0, 2.8, 2.4]; merge [1.6, 1.2, 0.8])
     },
     // the head rears back and HOLDS (a random delay), then snaps; half the time a quick second snap
     hesitantMaw: {
@@ -274,7 +284,7 @@ export const TUNING = {
         { kind: 'bite', chance: 0.5, tell: TELL.BLUE, windup: 0.5, active: 0.2, impact: 0.06, damage: 20, knockback: 2.5, reach: 5.4 * S },
       ],
       // (the reared head can't reach down under the snout: from 3.5 out)
-      recovery: 0.9, cooldown: 6, weight: [2.4, 2.2, 2.0], range: [3.5, 6.5], maxAng: 0.65,
+      recovery: 0.9, cooldown: 6, weight: [1.5, 1.6, 1.4], range: [3.5, 6.5], maxAng: 0.65, // (tuning: [2.4, 2.2, 2.0]; 0.4 - 0.6 cues a second)
     },
     // a wing smashes down beside the body, it pivots, the other wing smashes down (a gust shoves)
     wingBuffet: {
@@ -288,7 +298,7 @@ export const TUNING = {
       ],
       // the wing comes down ~7-8 model units out (its fingers): a mid-range answer to a hero standing
       // off out of claw reach (any side: the windup turns the flank to him)
-      recovery: 1.0, cooldown: 6, weight: [2.2, 2.4, 2.4], range: [6.8, 8.3], maxAng: 2.6,
+      recovery: 1.0, cooldown: 6, weight: [1.8, 2.0, 1.8], range: [6.8, 8.3], maxAng: 2.6, // (tuning: [2.2, 2.4, 2.4])
     },
     // a claw, a pivot (it turns its back), a tail jab thrust (dodge), a tail sweep (dodge)
     tailLash: {
@@ -316,7 +326,6 @@ export const TUNING = {
     // phase 3: six or seven hits, a delayed claw, a blue bite and a red stomp to finish
     frenzy: {
       label: 'Frenzy (6-7 hits)', tell: TELL.RED, phase: 3,
-      links: [{ to: 'tail', when: 'behind', chance: [0, 0, 0.8] }, { to: 'pounce', when: 'far', chance: [0, 0, 0.7] }, { to: 'cinderSpit', when: 'front', chance: [0, 0, 0.55] }],
       hits: [
         { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 16, knockback: 1.2, turn: 0.7 },
         { kind: 'claw', side: -1, tell: TELL.NORMAL, windup: 0.5, active: 0.25, impact: 0.15, damage: 16, knockback: 1.2, turn: 0.8 },
@@ -342,7 +351,7 @@ export const TUNING = {
         { kind: 'overhead', side: 0, tell: TELL.BLUE, windup: 0.6, active: 0.24, impact: 0.22, damage: 18, knockback: 2.5, lunge: 2.4, turn: 2.2 }, // (w2: side -1, lunge 1.2; the scythe gives ground and turns it away)
         { kind: 'lungeBite', tell: TELL.BLUE, windup: 0.55, active: 0.24, impact: 0.05, damage: 20, knockback: 3.5, reach: 6.0 * S, lunge: 2.5 * S },
       ],
-      recovery: 1.1, cooldown: 9, weight: [1.2, 1.4, 1.2], range: [2.4, 5.4], maxAng: 0.9, // (w2: [1.6, 2.2, 2.4])
+      recovery: 1.1, cooldown: 9, weight: [1.6, 1.6, 1.6], range: [2.4, 5.4], maxAng: 0.9, // (w2: [1.6, 2.2, 2.4]; merge [1.2, 1.4, 1.2])
     },
     // claws, a bite, then an overhead whose slam scatters hanging embers (`burst`: n embers that
     // drop on the hero one by one, `wait` s after the slam and `stagger` s apart, at `speed` m/s):
@@ -355,7 +364,7 @@ export const TUNING = {
         { kind: 'bite', tell: TELL.BLUE, windup: 0.55, active: 0.2, impact: 0.06, damage: 20, knockback: 2.5, reach: 5.4 * S },
         { kind: 'overhead', side: 1, tell: TELL.BLUE, windup: 0.62, active: 0.24, impact: 0.22, damage: 18, knockback: 3, lunge: 1.2, burst: { n: 4, wait: 0.55, stagger: 0.34, speed: 11 } },
       ],
-      recovery: 1.5, cooldown: 11, weight: [0, 1.4, 1.4], range: [2.4, 5.4], maxAng: 0.9, // (w2: [0, 2.2, 2.6])
+      recovery: 1.5, cooldown: 11, weight: [0, 2.0, 2.2], range: [2.4, 5.4], maxAng: 0.9, // (w2: [0, 2.2, 2.6]; merge [0, 1.4, 1.4])
     },
     // THE CHARGED BLOW (ADR-118): the head rears and holds, darkness drawn into the jaws (a second
     // and a half and a held beat that is never the same), then the snap. Black: dodge it. A guard or a
@@ -365,7 +374,7 @@ export const TUNING = {
       hits: [
         { kind: 'rearBite', tell: TELL.BLACK, windup: 1.5, hold: [0.15, 0.6], active: 0.2, impact: 0.06, damage: 44, knockback: 5, reach: 5.6 * S },
       ],
-      recovery: 1.2, cooldown: 14, weight: [1.3, 1.6, 1.8], range: [3.5, 6.5], maxAng: 0.65,
+      recovery: 1.2, cooldown: 14, weight: [1.1, 1.3, 1.2], range: [3.5, 6.5], maxAng: 0.65, // (tuning: [1.3, 1.6, 1.8]: one cue in 3 s)
     },
     // ---- the whole body (w2 melee): strings of claws, jaws, wings, tail and fire. New kinds
     // (attacks.js): wingSweep (a wing scythed down and across the front: face = rad off the nose the
@@ -378,7 +387,7 @@ export const TUNING = {
     // emberRake (a claw whose raked arc burns from ground.phase). `side: 0` = the side the hero is on
     // as that hit's windup starts. `ground`: the burning ground a fire blow leaves (a hazards strip
     // that only ticks: w m wide, linger s, tickDamage every tick s, blockable, never while rolling).
-    // `links`: follow-ups the AI may chain straight into (the brief's contract; ai.js reads them).
+    // `links`: follow-ups the AI may chain straight into (tuningLinks.js; ai.js reads them).
     // a claw, a wing scythed across the front, a held claw (it may not come), a lunging bite (parry moment)
     wingRend: {
       label: 'Wing rend (3-4 hits)', tell: TELL.BLUE, phase: 1,
@@ -389,12 +398,6 @@ export const TUNING = {
         { kind: 'lungeBite', tell: TELL.BLUE, flare: true, windup: 0.6, active: 0.24, impact: 0.05, damage: 22, knockback: 3, reach: 6.0 * S, lunge: 2.5 * S },
       ],
       recovery: 1.0, cooldown: 7, weight: [2.6, 2.2, 1.6], range: [2.4, 5.4], maxAng: 0.9,
-      links: [
-        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
-        { to: 'tail', when: 'behind', chance: [0.5, 0.7, 0.9] },
-        { to: 'pivotLash', when: 'side', chance: [0.3, 0.5, 0.6] },
-        { to: 'pounce', when: 'far', chance: [0, 0.5, 0.7] },
-      ],
     },
     // he stands at its flank: a pivot and a tail whip (roll), a wing scythed across, a claw, and maybe the tail
     // back the other way
@@ -407,10 +410,6 @@ export const TUNING = {
         { kind: 'tailWhip', chance: 0.6, tell: TELL.RED, windup: 0.7, active: 0.3, impact: 0.24, damage: 22, knockback: 4, at: 1.7, back: 0.3, spin: 165 * DEG, pivotRate: 5, minReach: 2.0 * S, reach: 9.5 * S },
       ],
       recovery: 1.0, cooldown: 7, weight: [2.2, 2.2, 2.0], range: [2.4, 7.0], minAng: 1.0,
-      links: [
-        { to: 'wingRend', when: 'front', chance: [0.3, 0.5, 0.6] },
-        { to: 'rearGuard', when: 'behind', chance: [0.3, 0.5, 0.7] },
-      ],
     },
     // he stands behind it: the tail rises over its back and hammers down along a line (roll aside),
     // whips round (roll), and a wing scythes across the front it has turned to him
@@ -423,10 +422,6 @@ export const TUNING = {
         { kind: 'wingSweep', side: 0, tell: TELL.NORMAL, windup: 0.7, active: 0.4, impact: 0.27, damage: 18, knockback: 4, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
       ],
       recovery: 1.0, cooldown: 8, weight: [2.2, 2.2, 2.0], range: [5.0, 6.0], minAng: 2.2,
-      links: [
-        { to: 'wingRend', when: 'front', chance: [0.3, 0.5, 0.6] },
-        { to: 'charge', when: 'far', chance: [0.3, 0.4, 0.5] },
-      ],
     },
     // an overhead smash, a bite, then both wings brought down on him: the blue flare (parry it, he counters)
     skyHammer: {
@@ -437,12 +432,7 @@ export const TUNING = {
         { kind: 'wingSlam', tell: TELL.BLUE, flare: true, windup: 0.95, active: 0.3, impact: 0.3, damage: 30, knockback: 6, radius: 3.0 * S, near: 4.0, far: 7.0,
           burst: { phase: 2, n: 4, wait: 0.55, stagger: 0.3, speed: 11 } },
       ],
-      recovery: 1.1, cooldown: 8, weight: [2.0, 1.8, 1.4], range: [2.4, 5.4], maxAng: 0.9,
-      links: [
-        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
-        { to: 'tail', when: 'behind', chance: [0.4, 0.6, 0.8] },
-        { to: 'fireball', when: 'far', chance: [0.3, 0.5, 0.6] },
-      ],
+      recovery: 1.1, cooldown: 8, weight: [2.0, 2.2, 2.4], range: [2.4, 5.4], maxAng: 0.9, // (tuning: [2.0, 1.8, 1.4])
     },
     // phase 2: claws, a bite, the jaws open into fire (block it or get out of the cone; the ground
     // burns), and both wings brought down: red, roll (embers fly from the slam)
@@ -457,13 +447,7 @@ export const TUNING = {
         { kind: 'wingSlam', tell: TELL.RED, windup: 0.9, active: 0.3, impact: 0.3, damage: 32, knockback: 6, knockdown: true, radius: 3.0 * S, near: 4.0, far: 7.5,
           burst: { phase: 2, n: 5, wait: 0.5, stagger: 0.28, speed: 12 } },
       ],
-      recovery: 1.2, cooldown: 9, weight: [0, 2.8, 2.4], range: [2.4, 5.4], maxAng: 0.9,
-      links: [
-        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
-        { to: 'tail', when: 'behind', chance: [0.6, 0.7, 0.9] },
-        { to: 'breath', when: 'mid', chance: [0, 0.4, 0.6] },
-        { to: 'pounce', when: 'far', chance: [0, 0.6, 0.8] },
-      ],
+      recovery: 1.2, cooldown: 9, weight: [0, 2.8, 2.6], range: [2.4, 5.4], maxAng: 0.9, // (tuning: [0, 2.8, 2.4])
     },
     // phase 2: two burning rakes (the arcs burn), a tail whip, a whirl into a fire snap, maybe a bite,
     // an overhead that scatters embers: the parry moment
@@ -480,12 +464,7 @@ export const TUNING = {
         { kind: 'bite', chance: 0.5, tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.06, damage: 18, knockback: 2, reach: 5.4 * S },
         { kind: 'overhead', side: 1, tell: TELL.BLUE, flare: true, windup: 0.65, active: 0.24, impact: 0.22, damage: 22, knockback: 3, lunge: 1.2, burst: { n: 4, wait: 0.55, stagger: 0.32, speed: 11 } },
       ],
-      recovery: 1.3, cooldown: 10, weight: [0, 2.6, 2.2], range: [2.4, 5.4], maxAng: 0.9,
-      links: [
-        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
-        { to: 'rearGuard', when: 'behind', chance: [0, 0.6, 0.8] },
-        { to: 'fireball', when: 'far', chance: [0, 0.5, 0.7] },
-      ],
+      recovery: 1.3, cooldown: 10, weight: [0, 2.6, 2.6], range: [2.4, 5.4], maxAng: 0.9, // (tuning: [0, 2.6, 2.2])
     },
     // phase 3: the cataclysm. Burning rakes, a held bite, a wing scythe, a tail whip, a whirl into
     // fire, a rake and a claw that may not come, and both wings down: the blue flare to end it
@@ -508,12 +487,6 @@ export const TUNING = {
           burst: { phase: 2, n: 6, wait: 0.5, stagger: 0.26, speed: 12 } },
       ],
       recovery: 1.3, cooldown: 12, weight: [0, 0, 3.0], range: [2.4, 5.4], maxAng: 0.9,
-      links: [
-        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
-        { to: 'tail', when: 'behind', chance: [0, 0, 0.9] },
-        { to: 'breath', when: 'mid', chance: [0, 0, 0.6] },
-        { to: 'pounce', when: 'far', chance: [0, 0, 0.8] },
-      ],
     },
     tail: {
       label: 'Tail sweep', tell: TELL.RED,
@@ -536,7 +509,7 @@ export const TUNING = {
       label: 'Fire breath', tell: TELL.NORMAL, parryable: false, blockable: true,
       windup: 1.1, active: 1.8, activeP2: 2.4, recovery: 1.0,
       tickDamage: 5, tick: 0.15, burn: 1.5, halfAngle: 28 * DEG, range: 11.5 * S, sweepP2: 70 * DEG,
-      particlesPerSec: 200, cooldown: 8, weight: [2.2, 2.64, 2.64],
+      particlesPerSec: 200, cooldown: 8, weight: [1.0, 1.2, 0.7], // (tuning: [2.2, 2.64, 2.64]: one cue and a held guard in ~4 s)
       // the body while it breathes (w2): the aim is a heavy spring (k stiffness, c damping, acc rad/s²,
       // capped at maxV rad/s: the old constant 32 deg/s track; maxVP2 for the P2 rake's eased arc); the neck carries it within neckArc rad
       // of the facing, beyond that the body shuffles round at bodyTurn rad/s (was 1.2: a turntable);
@@ -557,7 +530,7 @@ export const TUNING = {
     leap: {
       label: 'Leap slam', tell: TELL.RED, phase: 2,
       windup: 0.8, air: 1.8, recovery: 1.2, // impact = landing (end of air)
-      damage: 40, radius: 6 * S, knockback: 6, height: 10, cooldown: 13, weight: 1.8,
+      damage: 40, radius: 6 * S, knockback: 6, height: 10, cooldown: 13, weight: [0, 0.9, 0.5], // (tuning: 1.8 in P2 and P3: one cue in 3.6 s)
     },
     // phase transition roar: a damaging shock ring around the wyrm (also a Lab ability)
     roar: {
@@ -570,6 +543,8 @@ export const TUNING = {
 Object.assign(TUNING.attacks, FIRE_ATTACKS); // fire / flight attacks and spells (tuningFire.js)
 Object.assign(TUNING.attacks, BULLET_ATTACKS); // the bullet-hell patterns (tuningBullets.js)
 Object.assign(TUNING.attacks, TERRAIN_ATTACKS); // the terrain moves (tuningTerrain.js, ADR-110)
+// every move's combo links (tuningLinks.js: one table for the fight's flow)
+for (const k in LINKS) if (TUNING.attacks[k]) TUNING.attacks[k].links = LINKS[k];
 
 // Skeleton proportions in MODEL units (see SCALE above). Root = ground point under the torso centre,
 // facing +Z, model-left = +X. See model.js for how these are assembled and docs/art/dragon.md

@@ -73,19 +73,13 @@ export const TERRAIN_ATTACKS = {
     flight: [0.4, 0.68], flightBase: 0.22, flightPer: 48,
     lead: 0.7, // of the flight: it is thrown where the hero is heading at the release
     radius: 3.4, damage: 30, knockback: 5, knockdown: true,
-    power: 1.2, // on the world where it lands (world/breakTuning.js POWER: 1 fells a tree)
-    smash: 1.1, // on what stands in its path as it flies (a tree in the way goes down; it flies on)
+    power: 1.0, // on the world where it lands (world/breakTuning.js POWER: 1 fells a tree; tuning: 1.2)
+    smash: 0.9, // on what stands in its path as it flies (a tree in the way goes down; it flies on; tuning: 1.1)
     skid: 2.6, skidTime: 0.3, // past the blow it carries on this far, tumbling, and comes apart
     // the hero's distance from the wyrm: any but under its chest. Nearer than `close` it is picked
     // less (x closeK): it turns its back on him for the tree, and that is his opening
     minDist: 5, maxDist: 36, close: 9, closeK: 0.7,
-    weight: [3.2, 3.0, 2.6], cooldown: 15,
-    // (combo links, read by the AI agent's runner: a boulder batted after the throw when he is still
-    // far, the charge at him when he closed in)
-    links: [
-      { to: 'tailBat', when: 'far', chance: [0.2, 0.35, 0.5] },
-      { to: 'charge', when: 'mid', chance: [0, 0.3, 0.45] },
-    ],
+    weight: [2.6, 2.6, 2.4], cooldown: 15, // (tuning: [3.2, 3.0, 2.6])
   },
   // its back to a boulder, the tail cocked the other way, one lash: the tail meets the boulder and
   // it bursts off the ground, skimming at the hero. Blue and a parry MOMENT (the blue flare, ADR-118):
@@ -106,8 +100,7 @@ export const TERRAIN_ATTACKS = {
     damage: 26, knockback: 5,
     power: 1.0, // on the cover that stops it, and where it bursts
     burst: 2.0, // radius of that last blast on the world (m)
-    weight: [3.0, 3.0, 2.8], cooldown: 12,
-    links: [{ to: 'hurl', when: 'far', chance: [0, 0.25, 0.4] }],
+    weight: [2.6, 2.6, 2.4], cooldown: 12, // (tuning: [3.0, 3.0, 2.8])
   },
   // phase 2: a tree in the jaws, a breath up its trunk, and it is thrown burning. The blow is red;
   // where it lands the tree's wreck burns on (contact ticks, blockable) and the grass round it catches
@@ -125,7 +118,6 @@ export const TERRAIN_ATTACKS = {
     // what it lights on its way: the flying brand sets fire to the wood it smashes (share of a burn)
     trailIgnite: 0.5,
     minDist: 5, maxDist: 36, close: 9, closeK: 0.7,
-    weight: [0, 2.8, 3.0], cooldown: 19,
-    links: [{ to: 'tailBat', when: 'far', chance: [0, 0.3, 0.45] }],
+    weight: [0, 2.2, 2.6], cooldown: 19, // (tuning: [0, 2.8, 3.0])
   },
 };

@@ -49,6 +49,7 @@ import { Wreckage } from './wreckage.js';
 //   setQuality(k)                         the phone budget (0.3 .. 1): debris, flames, wreckage, fires
 //   reset()                               everything stands again
 //   o = { kind: BLOW.*, by: 'player' | 'boss' | 'world', dx, dz (the blow's way), y (its height), src (one id per swing),
+//         falloff: 0..1 (strike: the blast x 1 - falloff at its rim), brush: true (a body walking: BREAK.brush),
 //         only: 'wood' | ... (just that material), spare: a piece to leave alone, incidental: true (skip reserved pieces) }
 // Every query walks a spatial grid (BREAK.grid.cell m), not the whole list.
 // Events: 'world:impact' { kind: 'chip' | 'break' | 'topple' | 'crash' | 'burn' | 'burnout' | 'throw', mat, x, y, z, power, by }
@@ -164,6 +165,7 @@ export class Destructibles {
     this._maxR = 0;
     this._burningN = 0;
     this._tokens = BREAK.spread.bank;
+    this._litTokens = BREAK.light.bank; // (fire that lands: BREAK.light)
 
     const defs = Array.isArray(set?.breakables) ? set.breakables : [];
     if (!defs.length) return;
@@ -398,7 +400,9 @@ export class Destructibles {
             dz = d > 1e-3 ? oz / d : rnd() - 0.5;
           }
           const kk = d > 1e-3 ? Math.min(1, b.r / d) : 0;
-          if (this._hit(b, power, o, b.x - ox * kk, clamp(o.y ?? 1, 0.2, b.h), b.z - oz * kk, dx, dz)) n++;
+          // o.falloff: a blast weaker toward its rim (x 1 - falloff at the edge)
+          const pw = o.falloff > 0 ? power * (1 - o.falloff * Math.min(1, d / (r + b.r))) : power;
+          if (this._hit(b, pw, o, b.x - ox * kk, clamp(o.y ?? 1, 0.2, b.h), b.z - oz * kk, dx, dz)) n++;
         }
       }
     }
@@ -487,7 +491,9 @@ export class Destructibles {
     dx /= l;
     dz /= l;
     const kind = o.kind ?? BLOW.BLUNT, by = o.by ?? 'world';
-    const dmg = power * (b.M.take[kind] ?? 1);
+    let dmg = power * (b.M.take[kind] ?? 1);
+    // a brush (a body walking into it): only what is over BREAK.brush of its structure bites
+    if (o.brush === true && b.hpMax !== Infinity) dmg = b.mat === 'stone' && b.h < BREAK.brushFlat ? 0 : dmg - BREAK.brush * b.hpMax;
     this._chips(b, px, py, pz, dx, dz, power);
     if (dmg < BREAK.scratch || b.hpMax === Infinity || (b.hp -= dmg) > 0) {
       // it holds: a nick, a shudder
@@ -587,6 +593,9 @@ export class Destructibles {
           const b = L[g.items[kk]];
           if (b.state !== INTACT || !b.burns || b.burn > 0 || b.burnt) continue;
           if (Math.hypot(b.x - x, b.z - z) > r + b.r) continue;
+          // (the cap on fire that lands: BREAK.light; past it the wood is only scorched)
+          if (this._litTokens < 1 || this.burning >= Math.max(2, Math.round(BREAK.light.maxBurning * this.q))) continue;
+          this._litTokens -= 1;
           this._light(b, k, 0);
           n++;
         }
@@ -1242,6 +1251,7 @@ export class Destructibles {
       }
     }
     if (this.burning > 0) this._spread(dt);
+    this._litTokens = Math.min(BREAK.light.bank, this._litTokens + dt * BREAK.light.perSec);
     this.wreck?.update(dt);
   }
 
@@ -1270,6 +1280,7 @@ export class Destructibles {
     this.active.length = 0;
     this._burningN = 0;
     this._tokens = BREAK.spread.bank;
+    this._litTokens = BREAK.light.bank; // (fire that lands: BREAK.light)
     this.wreck?.reset();
   }
 }

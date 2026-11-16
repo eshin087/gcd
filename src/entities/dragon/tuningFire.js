@@ -26,7 +26,7 @@ export const FIRE_ATTACKS = {
     strip: { start: 10, width: 4.6, linger: 2.5, tick: 0.25, tickDamage: 4, tickBurn: 1.0 },
     damage: 26, burn: 2.0, knockback: 4,
     minDist: 7, maxDist: 34,
-    weight: [0.6, 0.5, 0.3], cooldown: 16, // (2nd pass: the flying combos carry the flights now; was [0.9, 1.4, 1.2])
+    weight: [0.1, 0.15, 0.1], cooldown: 16, // (tuning: [0.6, 0.5, 0.3]: one cue in ~5 s; the hunting flight is phase 1's) // (2nd pass: the flying combos carry the flights now; was [0.9, 1.4, 1.2])
   },
   // climbs ~14 m, hovers and tracks the player (red ring under it), then dives onto the spot; the
   // crash landing's shockwave is the hit (a perfect dodge may plunge onto its head)
@@ -37,7 +37,7 @@ export const FIRE_ATTACKS = {
     track: 2.6, lead: 0.35, // the target ring follows the player (exp rate /s, velocity lead s) until the dive
     radius: 7.5, damage: 34, burn: 1.0, knockback: 7,
     minDist: 0,
-    weight: [0, 0.6, 0.4], cooldown: 15, // (was [0, 1.6, 1.4]: folded into the combos' dives)
+    weight: [0, 0.2, 0.15], cooldown: 15, // (was [0, 1.6, 1.4]: folded into the combos' dives; tuning: [0, 0.6, 0.4])
   },
   // rises ~9 m and spits 3-5 fireballs while hovering; each shell's landing spot rings red from
   // `aim` s before the spit; then it lands
@@ -49,7 +49,7 @@ export const FIRE_ATTACKS = {
     lead: 0.55, // aim lead (s of the player's velocity)
     radius: 3.2, damage: 15, burn: 1.2, knockback: 2.5, maxHits: 2,
     minDist: 0,
-    weight: [0, 0.6, 0.4], cooldown: 13, // (was [0, 1.4, 1.2]: folded into the combos' barrages)
+    weight: [0, 0.4, 0.1], cooldown: 13, // (was [0, 1.4, 1.2]: folded into the combos' barrages; tuning: [0, 0.6, 0.4])
   },
   // ---- FLYING COMBOS (2026-11-15, second pass): one take-off, several cued parts strung together in
   // the air by banking turns, always ending in a dive whose crash landing is the last blow (and the
@@ -60,42 +60,27 @@ export const FIRE_ATTACKS = {
   // breathed / spat from the air (plunge: true): a perfect dodge sends the hero onto the flying
   // wyrm's head, it crashes and the combo ends there. The numbers of each part live in `flight`
   // below; the three combos only choose the parts, the pacing and the AI data.
-  // `links`: ground follow-ups the AI may chain from the landing (contract "Combo links").
+  // `links` (tuningLinks.js): ground follow-ups the AI may chain from the landing.
   skyHunt: {
     label: 'Hunting flight (pass, dive)', tell: TELL.RED, phase: 1,
     parts: ['pass', 'dive'],
     windup: 1.0, recovery: 1.3,
     minDist: 7, maxDist: 34,
-    weight: [1.0, 0.6, 0.3], cooldown: 15,
-    links: [
-      { to: 'tail', when: 'behind', chance: [0.4, 0.6, 0.8] },
-      { to: 'stomp', when: 'near', chance: [0.3, 0.5, 0.7] },
-      { to: 'charge', when: 'far', chance: [0.2, 0.4, 0.6] },
-    ],
+    weight: [0.9, 0.25, 0.15], cooldown: 24, // (tuning: [1.0, 0.6, 0.3], cooldown 15: the phase-1 flight, about twice a phase-1 minute and a half; later phases fly the longer combos)
   },
   skyFurnace: {
     label: 'Furnace flight (shells, pass, dive)', tell: TELL.RED, phase: 2,
     parts: ['barrage', 'pass', 'dive'],
     windup: 0.85, recovery: 1.2,
     minDist: 0, maxDist: 40,
-    weight: [0, 1.3, 0.8], cooldown: 17,
-    links: [
-      { to: 'flameRing', when: 'near', chance: [0, 0.5, 0.7] },
-      { to: 'tail', when: 'behind', chance: [0, 0.6, 0.8] },
-      { to: 'eruptions', when: 'mid', chance: [0, 0.4, 0.6] },
-    ],
+    weight: [0, 1.1, 0.2], cooldown: 17, // (tuning: [0, 1.3, 0.8]: phase 3 flies the cataclysm flight)
   },
   skyCataclysm: {
     label: 'Cataclysm flight (pass, shells, pass, dive)', tell: TELL.RED, phase: 3,
     parts: ['pass', 'barrage', 'pass', 'dive'],
     windup: 0.8, recovery: 1.1,
     minDist: 7, maxDist: 36,
-    weight: [0, 0, 1.5], cooldown: 18,
-    links: [
-      { to: 'flameRing', when: 'near', chance: [0, 0, 0.8] },
-      { to: 'tail', when: 'behind', chance: [0, 0, 0.8] },
-      { to: 'eruptions', when: 'mid', chance: [0, 0, 0.7] },
-    ],
+    weight: [0, 0, 1.2], cooldown: 18, // (tuning: [0, 0, 1.5])
   },
   // ARMAGEDDON (key meteorRain, ADR-053; replaced the Meteor rain): rears onto its hind legs and
   // fires a salvo of `missiles` fire bolts into the sky (visual; the punish window: it is committed
@@ -126,7 +111,7 @@ export const FIRE_ATTACKS = {
       b: { deckAt: 0.35, deckGrow: 2.6, menace: 0.22, drop: 0.38 },
       c: { deckAt: 0.5, deckGrow: 1.2, windup: 0.9, rise: 0.9, alt: 10, descend: 0.75, recovery: 0.55, cone: 0.45 },
     },
-    weight: [0, 1.2, 1.5], cooldown: 28,
+    weight: [0, 1.6, 1.8], cooldown: 28, // (tuning: [0, 1.2, 1.5]: two cues a second)
   },
   // slams the forefeet: lava pillars erupt in a line toward the player one after another (each
   // rings >= `first` s); in phase 3 a chasing variant spawns pillars under the player for ~3 s
@@ -139,7 +124,7 @@ export const FIRE_ATTACKS = {
     chase: { chance: 0.6, time: 3.0, every: 0.42, warn: 0.7, lead: 0.3, maxHits: 2 },
     radius: 2.4, active: 0.3, damage: 20, burn: 1.2, knockback: 4,
     minDist: 6, maxDist: 28,
-    weight: [0, 1.5, 1.4], cooldown: 11,
+    weight: [0, 0.9, 1.8], cooldown: 11, // (tuning: [0, 1.5, 1.4]: P2's line is one cue, P3's chase many)
   },
   // a ring of fire ignites round the wyrm and expands outward: roll through it (or be beyond r1)
   flameRing: {
@@ -149,7 +134,7 @@ export const FIRE_ATTACKS = {
     rings: [1, 2, 3], ringGap: 0.95, // rings per phase, one behind the other (each its own red beat)
     damage: 24, burn: 2.0, knockback: 4,
     maxDist: 14,
-    weight: [0, 1.4, 1.2], cooldown: 12,
+    weight: [0, 0.9, 0.7], cooldown: 12, // (tuning: [0, 1.4, 1.2]: its rings come one a second)
   },
   // a wall of fire springs up in front of the wyrm and sweeps across the arena: roll through it
   // (i-frames) or get behind the wyrm
@@ -159,7 +144,7 @@ export const FIRE_ATTACKS = {
     start: 4, length: 40, width: 2.4, speed: 10, sweep: 30,
     walls: [1, 1, 2], wallGap: 1.2, // P3: a second wall `wallGap` s later from the hero's side, square to the first
     damage: 28, burn: 2.0, knockback: 5,
-    weight: [0, 0, 1.6], cooldown: 14,
+    weight: [0, 0, 0.7], cooldown: 14, // (tuning: [0, 0, 1.6]: two cues in 6 s)
   },
   // 2.5 s charge (white-hot body, embers sucked in, rising sound), then an arena-sized blast: flee
   // beyond the radius or perfect-dodge it (plunge). Also the phase-3 opener (dragon-melee's ai.js)
@@ -167,7 +152,7 @@ export const FIRE_ATTACKS = {
     label: 'Inferno nova', tell: TELL.RED, phase: 3,
     windup: 2.5, blast: 0.45, recovery: 1.6,
     radius: 22, damage: 70, burn: 3, knockback: 10,
-    weight: [0, 0, 0.7], cooldown: 32,
+    weight: [0, 0, 0.35], cooldown: 32, // (tuning: [0, 0, 0.7]; the roar into phase 3 queues it anyway)
   },
 };
 

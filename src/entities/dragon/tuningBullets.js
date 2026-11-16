@@ -57,7 +57,9 @@ export const BULLETS = {
   tongue: { cd: 1.0, cdDodge: 0.5, cdOther: 0.3, cueHold: 0.75, cueMin: 0.27 },
   // what the fire does to the world (ADR-107): a landing ember's blow on the pieces it lands on, the
   // tongues setting what they crawl over alight (x FIRE.life)
-  world: { land: 0.25, landFire: 0.5, tongueFire: 1 },
+  // (tuning, 2026-11-15: land 0.25: every ember that landed chipped what it fell on, and a phase of
+  // torrents broke the whole paving; 0.08 is under BREAK.scratch: it marks and sets alight, no more)
+  world: { land: 0.08, landFire: 0.5, tongueFire: 1 },
 };
 
 export const BULLET_ATTACKS = {
@@ -87,8 +89,7 @@ export const BULLET_ATTACKS = {
     reach: 2.5, dy: -0.55, // the head's reach out of the neck base (model units) and its dip
     maxHits: 6, // a torrent cannot hit more often than this
     maxDist: 26,
-    weight: [1.6, 2.0, 2.0], cooldown: 10,
-    links: [{ to: 'emberRain', when: 'mid', chance: [0, 0.3, 0.45] }, { to: 'cinderSpit', when: 'far', chance: [0, 0.3, 0.5] }],
+    weight: [0.5, 2.0, 2.8], cooldown: 10, // (tuning: [1.6, 2.0, 2.0]; P1's one lane: a cue in 2 s, gaps of 3 s)
   },
   // CINDER BURST: the head snaps onto the hero and coughs shotgun cones, every bullet from the jaws.
   // Even coughs put an ember dead on him, odd ones put him in a gap (weave or deflect); P2+ the last
@@ -105,7 +106,7 @@ export const BULLET_ATTACKS = {
     recoil: 0.3, // m the head kicks up per cough
     maxHits: 5,
     minDist: 5, maxDist: 30,
-    weight: [2.4, 2.8, 2.8], cooldown: 6.5,
+    weight: [2.4, 2.8, 3.2], cooldown: 6.5, // (tuning: [2.4, 2.8, 2.8])
   },
   // CINDER SPIT: a quick snap between other moves: the head flicks onto the hero and spits two or
   // three fast embers, one dead on him (parry / block / roll). Short enough to be chained between
@@ -118,8 +119,7 @@ export const BULLET_ATTACKS = {
     arcMax: 1.1, // rad off its facing the hero may stand (a snap of the neck, not a turn)
     maxHits: 1,
     minDist: 3.5, maxDist: 28,
-    weight: [1.0, 1.4, 1.6], cooldown: 3.2,
-    links: [{ to: 'fanVolley', when: 'far', chance: [0, 0.2, 0.35] }],
+    weight: [1.6, 1.6, 1.8], cooldown: 3.2, // (tuning: [1.0, 1.4, 1.6])
   },
   // EMBER RAIN: rears up and coughs volleys of embers high into the air; they arc over and rain down
   // round the hero: one on the spot he stood on, the rest in a ring round it (turned each volley), the
@@ -134,8 +134,7 @@ export const BULLET_ATTACKS = {
     life: 3,
     maxHits: 3,
     minDist: 6, maxDist: 24,
-    weight: [0, 1.6, 1.8], cooldown: 9,
-    links: [{ to: 'cinderSpit', when: 'mid', chance: [0, 0.4, 0.6] }],
+    weight: [0, 1.6, 2.2], cooldown: 9, // (tuning: [0, 1.6, 1.8])
   },
   // SCOURING BREATH: braced on all fours, it rakes a sustained breath across the ground: the neck
   // sweeps the head through an arc of `arc` rad (about 90 degrees) across the hero's bearing, with a
@@ -157,8 +156,7 @@ export const BULLET_ATTACKS = {
     damage: 20, burn: 1.5, knockback: 4,
     maxHits: 3,
     minDist: 9, maxDist: 24, // (closer than ~7 m to the neck base he stands under the breath: no tongue starts there)
-    weight: [0, 1.2, 1.5], cooldown: 14,
-    links: [{ to: 'cinderSpit', when: 'far', chance: [0, 0.4, 0.6] }, { to: 'fireLanes', when: 'mid', chance: [0, 0, 0.35] }],
+    weight: [0, 0.7, 0.6], cooldown: 14, // (tuning: [0, 1.2, 1.5]: one cue in 6 - 8 s)
   },
   // FIRE LANES (P3): the head drives the breath into the ground at its feet, again and again, and
   // each strike splits into LANES of fire that crawl out across the field (`lanes` wedges round the
@@ -179,7 +177,6 @@ export const BULLET_ATTACKS = {
     damage: 18, burn: 1.2, knockback: 3,
     maxHits: 2,
     minDist: 8, maxDist: 22,
-    weight: [0, 0, 1.4], cooldown: 13,
-    links: [{ to: 'fanVolley', when: 'far', chance: [0, 0, 0.4] }],
+    weight: [0, 0, 0.8], cooldown: 13, // (tuning: [0, 0, 1.4]: a hero in a dark lane meets one cue)
   },
 };

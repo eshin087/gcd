@@ -1451,7 +1451,17 @@ export class Brain {
   /** A spell's emitter (a meteor barrage, a rain, a chase of pillars) still dropping blasts? */
   _emitterLive() {
     const H = this.d.hazards?.list;
-    if (H) for (const h of H) if (h.alive && h.shape >= 5) return true;
+    if (H) {
+      for (const h of H) {
+        if (!h.alive) continue;
+        if (h.shape >= 5) return true;
+        // (an ambient cinder still to land near him: red, its time known only to its circle. A move
+        // cut short (a terrain move whose piece went) leaves the ones it dropped falling into the next
+        // pick: a guard move waits for them. Tuning pass, 2026-11-15: a fire brand aborted, a torrent
+        // picked at once, its first ember cued 0.25 s after a cinder's)
+        if (h.attack === 'cinders' && !h.fired && !h.noBlow) return true;
+      }
+    }
     return false;
   }
 

@@ -54,6 +54,25 @@ export const BREAK = Object.freeze({
   scratch: 0.1,
   /** a struck object cannot be struck again by the same source for this long (one swing, one chip) */
   rehit: 0.18,
+  /**
+   * A BRUSH (a blow with `o.brush`: a boss's body walking, turning, shouldering into a piece): only
+   * what the blow has over `brush` x the piece's structure bites; the rest is a shove and a shudder.
+   * A walk shakes a big tree and breaks the small things (bones, helms, a sapling); a charge, a tail
+   * swept hard, a landing or a thrown piece still fells what it meets (2026-11-15, the tuning pass: the
+   * body's sweeps added up step by step and a four-minute fight left a sixth of the clearing standing).
+   * A flat stone (a flagstone: lower than `flat` m) takes nothing from a brush: claws and feet scrape
+   * over the paving; a stomp, a landing, a dive or a thrown piece (world.impact) still breaks it
+   */
+  brush: 0.55,
+  brushFlat: 0.3,
+  /**
+   * Fire that LANDS lights wood (destructibles.ignite: a breath, a flame wall, a burning pass; not the
+   * spread, which has its own budget below): at most `perSec` new fires a second over the level
+   * (banking `bank`), and only while fewer than `maxBurning` x the quality factor burn. Past it the
+   * grass still burns and the wood is only scorched (a flame wall that crossed the ring lit 22 - 29
+   * trees at once)
+   */
+  light: Object.freeze({ perSec: 0.12, bank: 3, maxBurning: 6 }),
   /** falling over: seconds for a 5 m piece (scaled by sqrt(h / 5)), the strip it lands on, what it deals */
   topple: Object.freeze({
     time: 1.0,
@@ -85,7 +104,7 @@ export const BREAK = Object.freeze({
    * over the whole level (it banks up to `bank`), and a fire passes on at most `gens` times from where
    * fire landed (a blaze stays a stand, it never walks round the whole ring).
    */
-  spread: Object.freeze({ after: 2.2, every: 1.1, chance: 0.45, reach: 5.2, maxBurning: 9, perSec: 0.3, bank: 2, k: 0.9, gens: 2 }),
+  spread: Object.freeze({ after: 2.2, every: 1.1, chance: 0.45, reach: 5.2, maxBurning: 7, perSec: 0.25, bank: 2, k: 0.9, gens: 2 }), // (tuning, 2026-11-15: maxBurning 9, perSec 0.3)
   /**
    * Wreckage (world/wreckage.js): what a felled tree, a broken stone and a thrown piece leave lying,
    * scenery the hero walks over (no collider, it stops nothing). Pools of prop-art meshes: `logs` fallen

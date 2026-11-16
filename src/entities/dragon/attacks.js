@@ -38,7 +38,8 @@ const V = () => new THREE.Vector3();
 const _a = V(), _b = V(), _c = V();
 
 /** A slam on the ground as a blow on the world (world.impact: breakables in its ring, a crack in the floor). */
-export const GROUND_BLOW = Object.freeze({ kind: 'blast', by: 'boss' });
+// (falloff: a ground blow is weaker toward its rim: TUNING.world.falloff)
+export const GROUND_BLOW = Object.freeze({ kind: 'blast', by: 'boss', falloff: TUNING.world.falloff });
 
 /** Sphere (x,y,z,r) vs the player's vertical cylinder (radius = player.radius, height 1.8). */
 export function sphereHitsPlayer(player, x, y, z, r) {
@@ -1128,7 +1129,7 @@ const leap = {
     out.copy(a.target);
     return T.leap.radius;
   },
-  weight: (d, s) => (d.phase >= 2 ? T.leap.weight * (s.dist >= 7 * S ? 1 : 0.35) : 0),
+  weight: (d, s) => (d.phase >= 2 ? perPhase(T.leap.weight, d.phase) * (s.dist >= 7 * S ? 1 : 0.35) : 0),
   start(d, a) {
     a.target = V().copy(d.sense.pos);
     a.target.y = 0;

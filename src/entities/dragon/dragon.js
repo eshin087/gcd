@@ -955,11 +955,12 @@ export class Dragon {
     const T = TUNING.world, B = T.body, P = this._hurtPool, n = P.length;
     const st = (this._trample ??= {
       prev: new Float32Array(n * 3), ready: false, alt: 0, top: 0, flap: 1, rx: this.position.x, rz: this.position.z, settle: 0,
-      o: { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0, incidental: true, spare: null },
+      // (a brush: BREAK.brush; only what a sweep has over a share of a piece's structure bites)
+      o: { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0, incidental: true, brush: true, spare: null },
       seg: { ax: 0.5, az: 0.5, bx: 0.5, bz: 0.5, r: 0.5, power: 0.5 }, // (sweepRec: no numbers boxed per call)
       // (the wind of its wings bends wood; a landing's weight breaks stone too)
-      blast: { kind: 'blast', by: 'boss', dx: NaN, dz: NaN, incidental: true, spare: null, only: 'wood' },
-      land: { kind: 'blunt', by: 'boss', dx: NaN, dz: NaN, incidental: true, spare: null },
+      blast: { kind: 'blast', by: 'boss', dx: NaN, dz: NaN, incidental: true, spare: null, only: 'wood', falloff: T.falloff ?? 0 },
+      land: { kind: 'blunt', by: 'boss', dx: NaN, dz: NaN, incidental: true, spare: null, falloff: T.falloff ?? 0 },
     });
     const prev = st.prev, s = this.rig.s;
     const on = this.state !== 'sleeping' && this.state !== 'dead' && this.object3d.visible !== false;
