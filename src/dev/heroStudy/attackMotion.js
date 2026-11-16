@@ -75,10 +75,11 @@ export function createAttackMotion() {
     if (two && t < W) {
       // Gather first; close the supporting hand as it reaches the hilt, before
       // the active frames. In v3 the falling heavy already had full grip at .4W.
-      p[P.twoHand] = mix(F[P.twoHand], 1, ease(W * 0.16, W * 0.86, t));
+      const carry = A.temperedEntry?.chainedHeavy;
+      p[P.twoHand] = mix(F[P.twoHand], 1, ease(carry ? 0 : W * 0.16, W * (carry ? 0.94 : 0.86), t));
       // Give the cross-body raise room in front of the chest. This offset is
       // gone before the active phase, so its cutting path remains the same.
-      if (clip === 'heavyCrush' || clip === 'slam') {
+      if (!carry && (clip === 'heavyCrush' || clip === 'slam')) {
         const arc = Math.sin(Math.PI * clamp(t / (W - 1 / 30), 0, 1)) ** 2;
         p[P.rH + 2] += 0.10 * arc;
       }

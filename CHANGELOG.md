@@ -721,7 +721,9 @@ Forty-seven pieces of work since 0.4.0:
   idle gestures, removes the belt-rest default, changes the opening heavy to a sweeping slash and
   adds in-game idle replay controls (ADR-121). V4 follows the owner's motion reference with softer
   combo hands and a progressive heavy grip; the studio now exposes buffered chains and every
-  light-to-heavy transition (ADR-122). Awaiting owner review; the normal
+  light-to-heavy transition (ADR-122). V5 covers the left forearm/hand in matching cloth and carries
+  light-attack momentum into heavy windups, avoiding the abrupt low gather; adds alternate-pair
+  review and early/middle/late transition checks (ADR-123). Awaiting owner review; the normal
   game is unchanged. This is deliberately not a shipped WHAT'S NEW item.
 
 ## [0.4.0] - 2026-11-02

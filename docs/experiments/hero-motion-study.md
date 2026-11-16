@@ -1,7 +1,7 @@
 # The Wanderer: Tempered (unapproved visual study)
 
-**Status:** Tempered v4, draft experiment. The owner likes the look and supplied a motion reference
-to refine the light-combo free hand and normal-to-heavy transition. These are revised for review.
+**Status:** Tempered v5, draft experiment. The owner likes v4 and requests a covered left arm/hand
+and smoother light-to-heavy links. These are revised for review.
 Do not merge or adopt without the owner's
 choice. The motion studio and the playable preview are separate pages; the regular game is unchanged.
 
@@ -19,9 +19,10 @@ normal gameplay angle. **Invulnerable** starts on and can be switched off. On na
 the collapsed preview panel to open the controls; the normal touch / controller inputs still work.
 Choose an **IDLE** gesture and **Play idle gesture** to reset to exploration and replay that exact
 motion. Moving or attacking interrupts it normally. This avoids waiting for random idle choices.
-For v4, tap a light, then Heavy during that attack to branch; repeat after two, three or four
-lights. The motion studio's **Buffered light combo** and **Normal → heavy** let the owner pause,
-slow and scrub those same transition windows from different angles.
+Tap a light, then Heavy during that attack to branch; repeat after two, three or four lights.
+Try both buffered input and a later press during recovery. The studio's **Buffered light combo**,
+**Normal → heavy** and **Alternate light → heavy** let the owner pause, slow and scrub the
+transitions from different angles.
 
 The playable page replaces its own localStorage and sessionStorage with empty memory stores
 **before** importing the game. It does not read or write the browser's existing stores. Reloading
@@ -54,6 +55,7 @@ is untouched; this is an additional option, based on main `46e2c989` (PR #57).
 | Free hand at ease | resting on the belt | loose beside the thigh, wrist aligned with the forearm |
 | Ready blade | near-horizontal point | oblique line, roughly 28° to the sword side / 22° up before wrist constraints; straighter grip |
 | Free hand in guard | on belt | relaxed open hand in front of the chest, wrist aligned with the forearm |
+| Left sleeve / hand | short forearm cloth, wraps and visible skin | full matching-cloth sleeve, long cuff and glove |
 | Walk / run | existing speed-matched stride | same feet, lower centre, quieter bounce, counterbalanced shoulders and relaxed free hand |
 | Cuts | existing keyframed clips | hip/chest accents, eased gather, faster middle cut, controlled recovery and free-arm counterbalance |
 | Opening heavy | dashing thrust | dashing diagonal slash, with sweep contact and edge glint |
@@ -71,7 +73,7 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
   to the other's height. A / B solo buttons switch without resetting time and are useful on phones.
   Narrow phones open on the candidate alone; A + B remains one tap away.
 - Full sequence: rest → guard → walk → run → sprint → combo → block → charge → cleave → dodge.
-- Eleven motion selections (including buffered lights, heavy transitions and all six forced idles), five camera angles including the actual 58° / 36 m game scale,
+- Twelve motion selections (including buffered lights, alternate heavy transitions and all six forced idles), five camera angles including the actual 58° / 36 m game scale,
   turntable, 0.25× / 0.5× / 1×, pause, one-frame advance, and deterministic timeline scrubbing.
 - Both actors get the same original combat timing and default variant. This pilot is a controlled
   audition: its chained selections use the earliest recovery cutoff from `def.chain`, but it does
@@ -80,6 +82,34 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
   analytics, localStorage, network data or player settings are instantiated by the study.
 
 ![Current and Tempered, ready guard](hero-motion-study-v01.png)
+
+### V5: covered left arm and connected heavy windups
+
+The left forearm now has a fuller sleeve, a longer cuff and a cloth-covered hand in the cloak's
+existing material. The glove follows every original hand shape and contact joint; the skin
+material used by the face is untouched. Current restores the original materials and mesh
+visibility. In game, the rigid draw batch is rebuilt only on A/B changes or equipment rebuild.
+
+The old heavy windups passed through a low gather even when the preceding light left the sword
+high. V5 carries the previous hand position, blade direction and motion toward the final coil,
+giving the cross-body path clearance. The elbow settles from its previous direction and the left
+hand joins over the windup. Late input also carries the light's existing recovery velocity,
+avoiding a sudden brake. Vertical weight transfer/hops stay coupled to the source feet; the guide
+fades out before the active phase. Combat values and phase times remain unchanged.
+
+At 120 Hz, the earliest whirl-to-falling-heavy windup's peak blade turn drops from **2,094 to
+631 degrees/s**. Light-lunge-to-slam drops from **1,763 to 637 degrees/s**, and its unnecessary
+hand dip from **43 to 2 cm**. Expanded checks sample **26,068 attack frames**, including every
+neighbouring light-variant pair, four heavy branches and finisher-to-heavy at early/middle/late
+recovery and 30/60/120 Hz. Maximum visible supporting-grip gap is 7.8 cm in that expanded set;
+no free-wrist limit contacts. A late entry can inherit a fast recovery, so the check distinguishes
+carried incoming motion from new acceleration through the unwanted waypoint.
+
+![Tempered v5 covered sleeve, compared with Current](hero-motion-study-v05.png)
+
+Repeated A/B selection restores the original clothes without accumulating rigid bone slots;
+equipment rebuilds retain coverage and can return to Current. The normal-game build remains
+byte-identical. These checks support visual review and do not approve adoption.
 
 ### V4: reference-led free-hand flow and heavy transitions
 
@@ -154,7 +184,8 @@ replace visual review or establish an anatomical limit.
 The v1 image above and [v1 playable deployment](https://gcdabyss-4gu8z054o-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered)
 are preserved for comparison. [V2 is also preserved](https://gcdabyss-dvvzg2uhr-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
 The [v3 preview is preserved](https://gcdabyss-drswtrwuj-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
-The current pages are labeled v4.
+The [v4 preview is preserved](https://gcdabyss-4fzcn2x5w-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
+The current pages are labeled v5.
 
 ## Isolation and verification
 
@@ -163,7 +194,7 @@ bundled pages. It adds no import or branch to the normal game. The build of `dis
 original build script from `46e2c989` and the experimental build script matched byte-for-byte:
 SHA-256 `77146f1462407f64105582ca05e9eb0674b603cd3e8553f0f1c91eeb3355c342`.
 
-`npm run test:hero-study`: 6,601 paired frames across eleven sequences check finite poses and rig
+`npm run test:hero-study`: paired frames across twelve sequences check finite poses and rig
 matrices, the blade's floor clearance, synchronized root travel, repeatable seeking, private
 materials / pose maps, unchanged shared definitions, and removal of presentation scale for IK.
 This check is also appended to `npm test`. The playable adapter additionally checks real blade
@@ -196,6 +227,9 @@ owns the shared candidate poses; `gameplayActor.js` adapts the real player on th
 so adoption should define an explicit integration point rather than copying the preview decorator.
 `attackMotion.js` owns the compact free-hand arcs, heavy grip envelope and recovery; `hands.js`
 also captures solved entry data in its instance `play` wrapper. The shared animator is untouched.
+`heavyTransition.js` uses captured pose/blade velocities for light-to-heavy windups only.
+`clothing.js` adds reversible left sleeve/hand coverage; adoption should integrate it with the
+outfit builders rather than retain the preview's batch-rebuild decorator.
 `idles.js` supplies all six replacement gestures; `attacks.js` maps and restores the private heavy
 definition. The source scheduler and shared combat tables remain intact.
 No shared pose API or boss skeleton changed.

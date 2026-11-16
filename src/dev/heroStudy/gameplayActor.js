@@ -2,9 +2,12 @@
 import { createTemperedPoses, STUDY } from './actor.js';
 import { installTemperedHands } from './hands.js';
 import { temperedAttack, originalAttack } from './attacks.js';
+import { installTemperedClothing } from './clothing.js';
+import { batchRigid } from '../../render/rigidBatch.js';
+import { markCaster } from '../../render/pipeline.js';
 
 export function installGameplayStudy(player, initial = 'tempered') {
-  let enabled = initial !== 'current', animator, source, tempered;
+  let enabled = initial !== 'current', animator, source, tempered, clothing, dressed;
   const root = player.object3d;
   const updateMatrix = root.updateMatrix;
   const update = player.update, unlean = player.unlean, leanPoint = player.leanPoint;
@@ -20,6 +23,18 @@ export function installGameplayStudy(player, initial = 'tempered') {
       source = animator.poses;
       tempered = createTemperedPoses(source);
       installTemperedHands(animator, () => enabled);
+      player.batch?.dispose();
+      clothing = installTemperedClothing(player.rig);
+      dressed = undefined;
+    }
+    if (dressed !== enabled) {
+      // Materials/geometries are baked into rigid batches. Rebuild only on an
+      // A/B toggle or equipment rebuild, never each animation frame.
+      player.batch?.dispose();
+      clothing.select(enabled);
+      markCaster(root);
+      player.batch = batchRigid(player.game.U, root);
+      dressed = enabled;
     }
     animator.poses = enabled ? tempered : source;
   };

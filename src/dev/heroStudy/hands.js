@@ -1,9 +1,9 @@
 // Tempered's instance-only arm finish. Keep grip positions / blade paths in the
 // existing IK, while giving the elbows and free wrist a comfortable way to follow.
 import * as THREE from 'three';
-import { P } from '../../entities/player/anim.js';
+import { P, N } from '../../entities/player/anim.js';
 import { DIM } from '../../entities/player/heroDims.js';
-import { clamp, smoothstep } from '../../core/math.js';
+import { clamp, smoothstep, wrapAngle } from '../../core/math.js';
 
 const deg = Math.PI / 180;
 const freeClips = new Set(['loco', 'attack', 'block', 'charge']);
@@ -11,8 +11,25 @@ const freeClips = new Set(['loco', 'attack', 'block', 'charge']);
 export function installTemperedHands(anim, enabled = () => true) {
   const arm = anim._arm, wrist = anim._wristL;
   const play = anim.play;
+  const update = anim.update;
   const entryHand = new THREE.Vector3(), entryQ = new THREE.Quaternion();
-  anim.temperedEntry = { hand: new Float32Array(3) };
+  const prior = new Float32Array(N), velocity = new Float32Array(N);
+  const bladeNow = new THREE.Vector3(), bladeVelocity = new Float32Array(2);
+  anim.temperedEntry = { hand: new Float32Array(3), velocity: new Float32Array(N),
+    bladeAngles: new Float32Array(2), bladeVelocity: new Float32Array(2), chainedHeavy: false };
+  anim.update = function (dt) {
+    prior.set(this.cur);
+    bladeNow.set(0, 0, 1).applyQuaternion(this.rig.sword.quaternion);
+    const az = Math.atan2(bladeNow.x, bladeNow.z), el = Math.asin(clamp(bladeNow.y, -1, 1));
+    const result = update.call(this, dt);
+    if (dt > 1e-5) {
+      for (let i = 0; i < N; i++) velocity[i] = (this.cur[i] - prior[i]) / dt;
+      bladeNow.set(0, 0, 1).applyQuaternion(this.rig.sword.quaternion);
+      bladeVelocity[0] = wrapAngle(Math.atan2(bladeNow.x, bladeNow.z) - az) / dt;
+      bladeVelocity[1] = (Math.asin(clamp(bladeNow.y, -1, 1)) - el) / dt;
+    }
+    return result;
+  };
   anim.play = function (key, ...args) {
     if (key === 'attack') {
       // The previous pose's lH can be an unused target under a wrist link or
@@ -24,6 +41,14 @@ export function installTemperedHands(anim, enabled = () => true) {
       entryHand.applyQuaternion(L.upper.quaternion).add(L.upper.position).sub(L.anchor ?? L.upper.position);
       entryQ.copy(r.pelvis.quaternion).multiply(r.spine.quaternion).multiply(r.chest.quaternion);
       entryHand.applyQuaternion(entryQ).toArray(this.temperedEntry.hand);
+      const E = this.temperedEntry;
+      E.chainedHeavy = this.key === 'attack' && !!this.atkDef && !this.atkDef.button
+        && this.player.atk?.def.button === 'heavy';
+      E.velocity.set(velocity);
+      E.bladeVelocity.set(bladeVelocity);
+      bladeNow.set(0, 0, 1).applyQuaternion(r.sword.quaternion);
+      E.bladeAngles[0] = Math.atan2(bladeNow.x, bladeNow.z);
+      E.bladeAngles[1] = Math.asin(clamp(bladeNow.y, -1, 1));
     }
     return play.call(this, key, ...args);
   };

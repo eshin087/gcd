@@ -9,6 +9,8 @@ import { installTemperedHands } from './hands.js';
 import { temperedIdle } from './idles.js';
 import { temperedAttack } from './attacks.js';
 import { createAttackMotion } from './attackMotion.js';
+import { installTemperedClothing } from './clothing.js';
+import { createHeavyTransition } from './heavyTransition.js';
 
 export const STUDY = Object.freeze({
   scale: Object.freeze([1.08, 0.94, 1.04]),
@@ -110,6 +112,7 @@ function attack(p, A) {
 export function createTemperedPoses(source) {
   const recovery = new Float32Array(N);
   const handMotion = createAttackMotion();
+  const heavyTransition = createHeavyTransition();
   const poses = { ...source };
   poses.loco = (p, A) => {
     // Keep the existing scheduler/cancel envelope, replace all six gestures.
@@ -146,6 +149,7 @@ export function createTemperedPoses(source) {
         for (let i = 0; i < N; i++) p[i] += (recovery[i] - p[i]) * home;
       }
     }
+    heavyTransition(p, A);
     handMotion(p, A);
   };
   poses.block = (p, A) => {
@@ -179,6 +183,7 @@ export function createStudyActor(U, candidate = false) {
   };
   const anim = new HeroAnimator(rig, pilot, null, { freeHand: true });
   if (candidate) {
+    installTemperedClothing(rig).select(true);
     anim.poses = createTemperedPoses(anim.poses);
     installTemperedHands(anim);
   }

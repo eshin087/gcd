@@ -3325,3 +3325,23 @@ ADR-092).
   all four light-heavy branches. Verify alternate chains at 30/60/120 Hz, actual buffered input and
   boss contact in the playable page, and front/rear rendered motion. The reference stays local.
   These checks support owner review; they do not approve adoption. Draft PR #58 remains unmerged.
+
+## ADR-123 — Covered left sleeve and momentum-aware heavy entry in the preview (2026-11-15)
+- **Context:** the owner likes v4 but wants the left arm/hand covered by the cloak clothes, and
+  intermittent light-to-heavy links still drop or reverse the sword too abruptly.
+- **Clothing:** `heroStudy/clothing.js` adds a fuller forearm sleeve/cuff on the existing left
+  forearm and uses the actor's coat material for each left-hand shape. It changes no shared
+  outfit builder or skin material. Current restores original visibility/materials. The playable
+  adapter disposes/rebuilds its rigid batch on selection or equipment rebuild so the baked geometry
+  and materials match; repeated selection or animation frames do not create batches.
+- **Motion:** the private instance update/play wrappers capture actual blade angles, pose velocity
+  and solved hand entry data. Only a light-to-heavy windup uses `heavyTransition.js`: carry the
+  preceding pose/momentum toward the final coil, with forward clearance and an elevated blade arc.
+  Avoid the source low gather waypoint that made a high light finish drop and immediately rise.
+  Ease the elbow from its entry direction. Keep the vertical hop/weight transfer tied to the feet;
+  blend fully back to source choreography before active frames. Phase times and combat tables stay
+  unchanged. Current bypasses candidate poses and restores its clothes.
+- **Review:** cover every light variant at early, middle and late recovery, including the finisher
+  into the opening heavy, at 30/60/120 Hz. Render front/rear views, verify actual game input/contact,
+  repeated A/B batch-slot stability, clothing restoration and equipment rebuild. The studio adds
+  alternate light-to-heavy pairs. This remains an unmerged experiment pending owner review.

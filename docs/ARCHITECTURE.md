@@ -23,6 +23,11 @@ V4 (ADR-122) adds private `attackMotion.js` free-hand paths and progressive two-
 instance's `play` wrapper snapshots the solved left endpoint in shoulder-relative body axes using
 local bone transforms (independent of drawing shear). This is private entry data, not a shared pose
 API. The studio's buffered chain ends each intermediate light at its actual `def.chain` boundary.
+V5 (ADR-123) adds `clothing.js` for reversible left sleeve/hand coverage; the adapter rebuilds its
+rigid batch only when A/B or the equipment rig changes. Instance update/play wrappers also capture
+entry velocity and actual blade angles. `heavyTransition.js` uses these only during chained heavy
+windups, carrying into the final coil before returning to the source active choreography. These
+private preview hooks add no shared actor/material/animator API.
 
 - Units: meters, seconds, radians. **Y up**, ground plane y = 0 (flat).
 - Camera looks north: **screen-up = world −Z**, screen-right = +X. Fixed yaw, ~58° pitch.

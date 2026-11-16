@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 60: Covered sleeve and carried heavy windups (Codex, review pending)
+
+**Owner:** likes v4; requests more cloak coverage on the left arm/hand and smoother light-to-heavy
+links, including intermittent awkward entries. Keep draft PR #58 unmerged.
+
+**Changed:** private `clothing.js` fits a full dark forearm sleeve, longer cuff and cloth glove to
+the existing left joints. A/B restores the original meshes/materials and rebuilds the rigid batch
+only on selection or equipment rebuild. Private `heavyTransition.js` carries the entry pose and
+velocity into the final heavy coil, avoiding the low gather waypoint after a high light finish.
+The sword elbow settles continuously and the supporting hand joins over the windup. The source
+vertical weight transfer, feet, active choreography, phase times and combat values remain.
+The studio adds alternate light-to-heavy pairs; both pages are labeled v5. ADR-123.
+
+**Verified:** 26,068 transition frames cover neighbouring light variants, all four heavy branches
+and finisher-to-heavy at early/middle/late recovery at 30/60/120 Hz. No free-wrist limit contacts;
+maximum visible supporting-grip gap 7.8 cm in this expanded set. At the earliest cutoff, the
+whirl-to-falling-heavy blade peak drops from 2,094 to 631 degrees/s; light-lunge-to-slam drops from
+1,763 to 637 degrees/s, with the unwanted hand dip reduced from 43 to 2 cm. Later presses carry
+the light's existing recovery velocity instead of braking it on entry. These are diagnostic
+measurements, not visual approval. Browser and full regression results are recorded in PR #58.
+
+**Hold:** owner review in game; no merge/adoption or production/save changes. Claude's active
+checkout and the local reference footage remain untouched.
+
 ## 2026-11-15 — Session 59: Reference-led combo hands and heavy entry (Codex, review pending)
 
 **Owner:** normal-to-heavy transitions and the left hand during light combos still look awkward;
