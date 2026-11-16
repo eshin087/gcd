@@ -123,13 +123,16 @@ export const TUNING = {
   //   parry; the flash still comes flashLead before the real impact), active, impact (s into the
   //   active), damage, knockback (+ knockdown and kind extras: reach, lunge, radius, turn ...),
   //   chance (0..1: the hit only happens this often, rolled at the string's start)
+  //   flare     on a BLUE hit (or a single blue attack): a parry MOMENT (ADR-118): the blue flare
+  //             cues it, and a parry of it is answered by the hero's counter and ends the string
+  //   tell BLACK  a CHARGED blow: darkness gathers on the striking part through a long windup
   // plus the string's recovery / cooldown / weight / phase and its AI band: `range` [min, max] model
   // units (x SCALE) from the root, `maxAng` / `minAng` rad off the nose. Every hit fires combat:tell
   // at its windup start and combat:flash flashLead s before its impact. A parried hit that is not
   // the last one is deflected (the string goes on); parrying the last one recoils the wyrm.
   attacks: {
     bite: {
-      label: 'Bite', tell: TELL.BLUE,
+      label: 'Bite', tell: TELL.BLUE, flare: true,
       windup: 0.75, active: 0.2, impact: 0.06, recovery: 0.8,
       damage: 24, knockback: 2, reach: 5.4 * S, cooldown: 1.2, weight: 1.5,
     },
@@ -145,7 +148,7 @@ export const TUNING = {
         { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.8, active: 0.25, impact: 0.15, damage: 16, knockback: 1.5, turn: 0.7 },
         { kind: 'claw', side: -1, tell: TELL.NORMAL, windup: 0.55, active: 0.25, impact: 0.15, damage: 16, knockback: 1.5, turn: 0.8 },
         // reach: max head reach from the neck base; lunge: max root travel during the bite (m)
-        { kind: 'lungeBite', tell: TELL.BLUE, windup: 0.6, active: 0.24, impact: 0.05, damage: 22, knockback: 3, reach: 6.0 * S, lunge: 2.5 * S },
+        { kind: 'lungeBite', tell: TELL.BLUE, flare: true, windup: 0.6, active: 0.24, impact: 0.05, damage: 22, knockback: 3, reach: 6.0 * S, lunge: 2.5 * S },
       ],
       recovery: 1.0, cooldown: 5, weight: [2.4, 2.4, 2.0], range: [2.4, 5.4], maxAng: 0.9,
     },
@@ -165,7 +168,7 @@ export const TUNING = {
     hesitantMaw: {
       label: 'Hesitant maw (1-2 bites)', tell: TELL.BLUE, phase: 1,
       hits: [
-        { kind: 'rearBite', tell: TELL.BLUE, windup: 0.85, hold: [0.25, 0.9], active: 0.2, impact: 0.06, damage: 24, knockback: 2.5, reach: 5.4 * S },
+        { kind: 'rearBite', tell: TELL.BLUE, flare: true, windup: 0.85, hold: [0.25, 0.9], active: 0.2, impact: 0.06, damage: 24, knockback: 2.5, reach: 5.4 * S },
         { kind: 'bite', chance: 0.5, tell: TELL.BLUE, windup: 0.5, active: 0.2, impact: 0.06, damage: 20, knockback: 2.5, reach: 5.4 * S },
       ],
       // (the reared head can't reach down under the snout: from 3.5 out)
@@ -179,7 +182,7 @@ export const TUNING = {
         // opening, amp = the beat (rad), roll / twist = the body leaning / the chest swinging the wing
         // forward through the blow
         { kind: 'wing', side: 1, tell: TELL.NORMAL, windup: 0.8, active: 0.3, impact: 0.25, damage: 18, knockback: 5, face: 1.15, spread: 0.45, amp: 0.95, roll: 0.38, twist: 0.6 },
-        { kind: 'wing', side: -1, tell: TELL.BLUE, windup: 0.9, active: 0.3, impact: 0.25, damage: 22, knockback: 7, face: 1.15, spread: 0.45, amp: 0.95, roll: 0.38, twist: 0.6 },
+        { kind: 'wing', side: -1, tell: TELL.BLUE, flare: true, windup: 0.9, active: 0.3, impact: 0.25, damage: 22, knockback: 7, face: 1.15, spread: 0.45, amp: 0.95, roll: 0.38, twist: 0.6 },
       ],
       // the wing comes down ~7-8 model units out (its fingers): a mid-range answer to a hero standing
       // off out of claw reach (any side: the windup turns the flank to him)
@@ -248,6 +251,16 @@ export const TUNING = {
         { kind: 'overhead', side: 1, tell: TELL.BLUE, windup: 0.62, active: 0.24, impact: 0.22, damage: 18, knockback: 3, lunge: 1.2, burst: { n: 4, wait: 0.55, stagger: 0.34, speed: 11 } },
       ],
       recovery: 1.5, cooldown: 11, weight: [0, 2.2, 2.6], range: [2.4, 5.4], maxAng: 0.9,
+    },
+    // THE CHARGED BLOW (ADR-118): the head rears and holds, darkness drawn into the jaws (a second
+    // and a half and a held beat that is never the same), then the snap. Black: dodge it. A guard or a
+    // parry in its way is knocked wide open, the whole guard meter gone
+    blackMaw: {
+      label: 'Black maw (charged)', tell: TELL.BLACK, phase: 1,
+      hits: [
+        { kind: 'rearBite', tell: TELL.BLACK, windup: 1.5, hold: [0.15, 0.6], active: 0.2, impact: 0.06, damage: 44, knockback: 5, reach: 5.6 * S },
+      ],
+      recovery: 1.2, cooldown: 14, weight: [1.3, 1.6, 1.8], range: [3.5, 6.5], maxAng: 0.65,
     },
     tail: {
       label: 'Tail sweep', tell: TELL.RED,

@@ -4,7 +4,7 @@ import { markCaster, LAYER_CASTER } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { LET_GO, letGoRow, letGoUniforms } from '../../render/letGo.js';
 import { damp, lerp, clamp, turnToward, yawTo, angleDiff, wrapAngle } from '../../core/math.js';
-import { TELL, TELL_STYLE, RESULT, POSTURE, tellDefaults } from '../../combat/rules.js';
+import { TELL, TELL_STYLE, RESULT, POSTURE, tellDefaults, dodgeOnly, isFlare } from '../../combat/rules.js';
 import { TUNING, SCALE } from './tuning.js';
 import { buildDrake, SHED } from './model.js';
 import { Rig, createPose, resetPose } from './rig/anim.js';
@@ -43,9 +43,15 @@ const HURT = [
 const HEAT_RISE = { curve: 0.85, on: 14, fade: 5, front: 1, belly: 0.4, low: 0.8 };
 const FOOT_CIRCLE = 0.45; // body-circle radius around each planted foot (model units)
 const MAX_ATK_BOXES = 32;
-// red windup glow (TELL_STYLE.red.warn): rgb + strength ramp / spike / decay
-const WARN = TELL_STYLE.red.warn ?? { color: [1.0, 0.12, 0.05], from: 0.15, to: 0.6, spike: 1.6, decay: 0.25 };
-const WARN_RGB = WARN.color;
+// the glow on its body (uWarn): a red cue's spike (TELL_STYLE.red.warn: nothing through the windup
+// since ADR-118) and a black blow's charge (TELL_STYLE.black.warn: it darkens toward the cue)
+const WARN = TELL_STYLE.red.warn ?? { color: [1.0, 0.12, 0.05], from: 0, to: 0, spike: 1.6, decay: 0.25 };
+const WARN_BLACK = TELL_STYLE.black.warn;
+// an action's own red glow without a blow of its own (bodyWarn: Armageddon's rear-up): its ramp
+const BODY_WARN = { from: 0.1, to: 0.38 };
+// the charge's glow on a body this size (the wyrm fills the frame: at a duelist's strength the whole
+// screen went violet, and the blow is meant to read as dark)
+const BLACK_BODY = 0.16;
 
 export class Dragon {
   constructor(game) {
@@ -106,6 +112,8 @@ export class Dragon {
     this._postureSent = -1;
     this.postureTimer = 0;
     this.warn = 0; // current red tell glow strength (uWarn.a)
+    this.warnRGB = WARN.color; // ... and its colour (a black blow's charge is dark violet)
+    this._warnTell = TELL.RED;
     this.bodyWarn = 0; // an action's red glow without a blow (0..1, set every frame: _updateWarn)
     this._warnAt = -1; // this.time of the last red timing flash (-1 = no spike)
     this._warnAction = null; // the action that flashed it (a replaced action drops the spike)
@@ -279,8 +287,11 @@ export class Dragon {
     const b = mine ? a.cur : null;
     const hit = Number.isFinite(b?.hit) ? b.hit : 0;
     const string = mine && !!a.def?.string;
-    const last = !string || hit >= (a.beats?.length ?? 1) - 1;
-    this.emit('dragon:parried', { attack, tell, hit, last });
+    // a parry MOMENT (a blue flare blow, ADR-118) ends the string wherever in it the blow came: it
+    // recoils as from a parried last blow, and the hero's counter comes (player.js _tickRiposte)
+    const moment = !!b?.flare && tell === TELL.BLUE;
+    const last = !string || hit >= (a.beats?.length ?? 1) - 1 || moment;
+    this.emit('dragon:parried', { attack, tell, hit, last, flare: moment });
     if (string) {
       a.chain = (a.chain ?? 0) + 1;
       if (a.chain >= 2) this.emit('combat:deflectChain', { count: a.chain });
@@ -627,7 +638,9 @@ export class Dragon {
         // a string's blow that is not its last (the hero's parry of it is a deflect: a shorter
         // freeze, and no riposte: that answers the LAST blow), and whether it is a blow of the body
         // (a claw, the jaws, the tail: what the hero's riposte may answer; not a shell or a hazard)
-        last: !(a?.def?.string && (cur?.hit ?? 0) < (a.beats?.length ?? 1) - 1),
+        // (a parry moment, a blue flare blow, ends the string: the hero's parry holds it as a last blow)
+        last: !(a?.def?.string && (cur?.hit ?? 0) < (a.beats?.length ?? 1) - 1) || (!!cur?.flare && tell === TELL.BLUE),
+        flare: !!cur?.flare && !o.bullet,
         melee: !!a && !o.bullet && (MELEE.has(a.name) || !!a.def?.melee),
       });
     } catch (err) {
@@ -687,27 +700,30 @@ export class Dragon {
   /** Windup start of one hit: 'combat:tell' (HUD mark, audio, timing trainer). */
   announceTell(a, b) {
     const p = this.partPos(b.part, a, b, this._part);
-    this.emit('combat:tell', { source: 'dragon', attack: b.attack, tell: b.tell, impactIn: b.impactIn, x: p.x, z: p.z });
+    this.emit('combat:tell', { source: 'dragon', attack: b.attack, tell: b.tell, impactIn: b.impactIn, x: p.x, z: p.z, flare: isFlare(b.tell, b.flare) });
   }
 
   /**
    * The timing cue, flashLead s before impact: 'combat:flash' + the in-world flash at the striking
-   * part (white glint for parryable tells, red burst for red) and, for red, the body's warning spike.
+   * part: a white glint for an ordinary blow, THE FLARE for a moment (red / black: dodge; a blue blow
+   * marked `flare`: parry; ADR-118) and, for red and black, the body's spike.
    */
   flashTell(a, b) {
     const p = this.partPos(b.part, a, b, this._part);
-    this.emit('combat:flash', { source: 'dragon', attack: b.attack, tell: b.tell, x: p.x, y: p.y, z: p.z });
-    if (b.tell === TELL.RED) {
+    const flare = isFlare(b.tell, b.flare);
+    this.emit('combat:flash', { source: 'dragon', attack: b.attack, tell: b.tell, x: p.x, y: p.y, z: p.z, flare });
+    if (dodgeOnly(b.tell)) {
       this._warnAt = this.time;
       this._warnAction = a;
+      this._warnTell = b.tell;
     }
-    if (b.part === 'forefeet' || b.part === 'wrists') {
+    if ((b.part === 'forefeet' || b.part === 'wrists') && !flare) {
       const w = this.rig.pt.arms;
       this.fx.tellFlash(b.tell, w[0].toe.x, w[0].toe.y, w[0].toe.z);
       this.fx.tellFlash(b.tell, w[1].toe.x, w[1].toe.y, w[1].toe.z);
-    } else this.fx.tellFlash(b.tell, p.x, p.y, p.z);
+    } else this.fx.tellFlash(b.tell, p.x, p.y, p.z, !!b.flare); // (a flare is one streak: never two)
     const z = a.def?.zone;
-    if (typeof z === 'function') {
+    if (TELL_STYLE.red.floor && typeof z === 'function') {
       const r = z(this, a, this._tmp);
       if (r > 0) this.fx.ringPulse(this._tmp.x, this._tmp.z, r);
     }
@@ -978,7 +994,8 @@ export class Dragon {
       u.uFlash.value = flash;
       u.uDissolve.value = this.dissolve;
       const w = u.uWarn?.value;
-      if (w?.isVector4) w.set(WARN_RGB[0], WARN_RGB[1], WARN_RGB[2], warn);
+      const wc = this.warnRGB;
+      if (w?.isVector4) w.set(wc[0], wc[1], wc[2], warn);
     }
     if (m.eye) {
       m.eye.uniforms.uGlow.value = eyes;
@@ -1091,31 +1108,41 @@ export class Dragon {
     let w = 0;
     // an action's own red glow without a blow of its own (Armageddon's rear-up): bodyWarn 0..1
     // ramps the same WARN.from -> WARN.to; set every frame by the action, read once here
-    if (this.bodyWarn > 0 && a && this.state !== 'dying' && this.state !== 'dead') w = WARN.from + (WARN.to - WARN.from) * Math.min(1, this.bodyWarn);
+    let black = false;
+    if (this.bodyWarn > 0 && a && this.state !== 'dying' && this.state !== 'dead') w = BODY_WARN.from + (BODY_WARN.to - BODY_WARN.from) * Math.min(1, this.bodyWarn);
     this.bodyWarn = 0;
     if (a && this.state !== 'dying' && this.state !== 'dead') {
       const B = a.beats, lead = TUNING.flashLead;
       for (let i = 0; i < B.length; i++) {
         const b = B[i];
         if (!b.told) break; // beats are in time order
-        if (b.flashed || b.tell !== TELL.RED) continue;
+        if (b.flashed || !dodgeOnly(b.tell)) continue;
+        const W = b.tell === TELL.BLACK ? WARN_BLACK : WARN;
         const k = clamp((a.T - b.at) / Math.max(0.05, b.impactIn - lead), 0, 1);
-        const v = WARN.from + (WARN.to - WARN.from) * k;
-        if (v > w) w = v;
+        const v = (W.from + (W.to - W.from) * k) * (b.tell === TELL.BLACK ? BLACK_BODY : 1);
+        if (v > w) {
+          w = v;
+          black = b.tell === TELL.BLACK;
+        }
       }
     }
     if (this._warnAt >= 0) {
+      const W = this._warnTell === TELL.BLACK ? WARN_BLACK : WARN;
       const age = this.time - this._warnAt;
-      if ((a && a !== this._warnAction) || !(age >= 0) || age >= WARN.decay) {
+      if ((a && a !== this._warnAction) || !(age >= 0) || age >= W.decay) {
         this._warnAt = -1;
         this._warnAction = null;
       } else {
-        const f = 1 - age / WARN.decay;
-        const v = WARN.spike * f * f;
-        if (v > w) w = v;
+        const f = 1 - age / W.decay;
+        const v = W.spike * f * f * (this._warnTell === TELL.BLACK ? BLACK_BODY : 1);
+        if (v > w) {
+          w = v;
+          black = this._warnTell === TELL.BLACK;
+        }
       }
     }
     this.warn = Number.isFinite(w) ? w : 0;
+    this.warnRGB = black ? WARN_BLACK.color : WARN.color;
     return this.warn;
   }
 

@@ -24,7 +24,7 @@ import { TUNING } from './tuning.js';
 // hit, a move's first real windup >= TUNING.minFirstWindup in every form it is used in, impacts
 // >= TUNING.minHitGap apart, feints never flash.
 
-const N = TELL.NORMAL, B = TELL.BLUE, R = TELL.RED;
+const N = TELL.NORMAL, B = TELL.BLUE, R = TELL.RED, K = TELL.BLACK;
 const TAU = Math.PI * 2;
 const PIV = DIM.pivot, ANK = DIM.ankle;
 
@@ -467,7 +467,7 @@ export const MOVES = {
   /** Falling Star: a somersault over the gap and a two-handed chop where he lands. */
   skyfall: {
     label: 'Falling Star', phase: 1, weight: [2.0, 1.6, 0, 2.0], cooldown: 4, band: [2.2, 7.5], recovery: 0.55, gapCloser: true,
-    beats: [{ ...cut('flip', B, 0.72, 26, { lock: true, cock: 0.34 }), dash: { from: 0.34, to: 0.98, stop: 1.3, max: 5.5 }, close: 0 }],
+    beats: [{ ...cut('flip', B, 0.72, 26, { lock: true, cock: 0.34, flare: true }), dash: { from: 0.34, to: 0.98, stop: 1.3, max: 5.5 }, close: 0 }],
   },
   /** Reaping Arc: dropping low, the blade swept round at the ankles. Red: roll through it. */
   reap: {
@@ -487,13 +487,39 @@ export const MOVES = {
   /** Grasp and Sever: the Void drags you to him (red: roll), and a two-handed chop is waiting. */
   grasp: {
     label: 'Grasp and Sever', phase: 1, weight: [1.4, 1.0, 1.2, 1.6], cooldown: 8, band: [4.5, 10.5], recovery: 0.6, gapCloser: true,
-    beats: [pull(0.8, { fixed: true }), cut('over', B, 0.62, 24, { lock: true, fixed: true, cock: 0.7 })],
+    beats: [pull(0.8, { fixed: true }), cut('over', B, 0.62, 24, { lock: true, fixed: true, cock: 0.7, flare: true })],
   },
   /** Crushing Dark: his open hand lifts, and the Void closes on whoever stands before it (red: roll
    *  through it or get out of its line). Caught, the hero is thrown to the floor and crushed. */
   grip: {
     label: 'Crushing Dark', phase: 1, weight: [1.3, 0, 0, 1.5], cooldown: 10, band: [3, 9], recovery: 0.7,
     beats: [grip(0.95)],
+  },
+  // -------------------------------------------------------------- the moments (ADR-118; every form)
+  /** Severance: one long step and a two-handed chop out of the dark. A parry moment: the blue flare,
+   *  and a parry of it is answered by the hero's counter. */
+  severance: {
+    label: 'Severance', phase: 1, weight: [1.5, 1.3, 1.3, 1.5], cooldown: 6, band: [3.4, 9.5], recovery: 0.6, gapCloser: true,
+    beats: [{ ...cut('over', B, 0.66, 26, { lock: true, cock: 0.72, flare: true }), dash: { from: 0.45, to: 0.96, stop: 1.2, max: 7.5 }, close: 0, track: 0.55 }],
+  },
+  /** Red Meridian: two blows no guard holds: a dashing level cut, then the blade swept round at the
+   *  ankles. Red, red: dodge, dodge. */
+  meridian: {
+    label: 'Red Meridian', phase: 1, weight: [1.3, 1.2, 1.2, 1.5], cooldown: 8, band: [2.4, 8], recovery: 0.65, gapCloser: true,
+    beats: [
+      { ...cut('flat', R, 0.66, 22, { cock: 0.76 }), knockback: 2.2, dash: { from: 0.55, to: 0.98, stop: 1.1, max: 6.0 }, close: 0, track: 0.6 },
+      spin(R, 0.72, 24, { low: true, form: 1, cock: 0.62, close: 1.4 }),
+    ],
+  },
+  /** Nightfall: the CHARGED blow. The blade is drawn back and the dark gathers on it (a second and a
+   *  half, and a held beat that is never the same), then one long dashing cleave. Black: dodge it. A
+   *  guard or a parry in its way is knocked wide open, the whole guard meter gone. */
+  nightfall: {
+    label: 'Nightfall', phase: 1, weight: [1.1, 1.1, 1.2, 1.5], cooldown: 12, band: [2.4, 9], recovery: 0.8, gapCloser: true,
+    beats: [{
+      ...cut('diag', K, 1.45, 36, { cock: 0.86 }), fixed: true, hold: [0.1, 0.5], active: 0.14, knockback: 4, knockdown: true,
+      zone: { kind: 'sector', r: 2.9, ang: 1.05 }, dash: { from: 0.88, to: 1.0, stop: 1.2, max: 7.5 }, close: 0, track: 0.88,
+    }],
   },
   /** His counter out of a guard (form 1): a diagonal cut, then a thrust. */
   riposte: {
@@ -542,7 +568,7 @@ export const MOVES = {
   scissor: {
     label: 'Scissor', phase: 2, weight: W(2, 2.0), cooldown: 3, band: [2.6, 7], recovery: 0.5, gapCloser: true,
     beats: [{
-      tell: B, windup: 0.52, active: 0.1, damage: 22, knockback: 1.6, zone: { kind: 'line', r: 2.1, w: 0.9 }, dash: { from: 0.7, to: 1.0, stop: 1.0, max: 5.0 }, close: 0, lock: true,
+      tell: B, flare: true, windup: 0.52, active: 0.1, damage: 22, knockback: 1.6, zone: { kind: 'line', r: 2.1, w: 0.9 }, dash: { from: 0.7, to: 1.0, stop: 1.0, max: 5.0 }, close: 0, lock: true,
       keys: [
         [0.72, { yaw: 0.2, bY: -0.3, bZ: -0.1, arm: 1, ext: 0.3, sw: [-1.2, 0.0], larm: 1, lext: 0.3, lsw: [1.2, 0.0], hdY: -0.2, ...SET }],
         [1.0, { e: 'i', yaw: 0.05, bY: -0.32, bZ: 0.24, pitch: 0.14, arm: 1, ext: 1, sw: [0.12, 0.02], larm: 1, lext: 1, lsw: [-0.12, 0.02], hdY: 0, ...LUNGE_FEET }],

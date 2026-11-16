@@ -281,7 +281,7 @@ function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed' } = {}) {
       for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.4) pend.splice(i, 1);
       for (const e of pend) {
         const left = e.at - t - DT;
-        if (e.tell === TELL.RED || style === 'dodge') {
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK || style === 'dodge') {
           if (left <= (style === 'parry' ? 0.3 : 0.1)) {
             e.done = true;
             const d = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
@@ -439,7 +439,7 @@ async function scenarioData() {
         const real = A.beats.filter((b) => !b.feint);
         most = Math.max(most, real.length);
         const tag = `${name} form ${f} r${r}`;
-        if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
+        if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
         const first = real[0];
         if (!def.transition && !(first && first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${first ? (first.impact - first.tellAt).toFixed(3) : '-'} >= ${TUNING.minFirstWindup}`);
         for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(3)} s apart >= ${TUNING.minHitGap}`);
@@ -1113,6 +1113,75 @@ function terrainAnswers() {
   return rows;
 }
 
+// ================================================================== scenario: flare (ADR-118)
+// His moments: the flare is the only sign; Severance parried is countered; Nightfall (the charged
+// blow) on a held guard; every form has the three new moves.
+async function scenarioFlare() {
+  out('\n== scenario FLARE (his moments: the flare alone, the counter, the charged blow; every form) ==');
+  const { DEFENSE, GUARD } = await imp('src/combat/rules.js');
+  const flat = (n) => MOVES[n].beats.flatMap((b) => (Array.isArray(b.pick) ? b.pick : [b]));
+  const inForm = (n, f) => (Array.isArray(MOVES[n].weight) ? MOVES[n].weight[f - 1] : MOVES[n].weight) > 0 && MOVES[n].phase <= f;
+  for (const f of [1, 2, 3, 4]) {
+    const parry = MOVE_NAMES.filter((n) => inForm(n, f) && flat(n).some((b) => b.flare && b.tell === TELL.BLUE));
+    const black = MOVE_NAMES.filter((n) => inForm(n, f) && flat(n).some((b) => b.tell === TELL.BLACK));
+    const red = MOVE_NAMES.filter((n) => inForm(n, f) && flat(n).some((b) => b.tell === TELL.RED && b.zone && !b.cast));
+    assert(parry.includes('severance') && black.length === 1 && black[0] === 'nightfall' && red.includes('meridian'), `form ${f}: parry moments ${parry.join(', ')}; charged ${black.join(', ')}; ${red.length} moves with a red blow of his own`);
+  }
+  const G = build();
+  duel(G, { dist: 3.0 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  const play = (name, dist, act = null, max = 6) => {
+    settle(G);
+    d.position.set(0, 0, -2);
+    d.yaw = 0;
+    place(G, dist);
+    run(G, 0.3);
+    p.guard = p.maxGuard;
+    p.streak = 0;
+    const ev = [];
+    let flashT = null, warnPre = 0, rings = 0, charges = 0;
+    const fx = d.fx, wr = fx.warnRing, ch = fx.charge;
+    fx.warnRing = (...a) => { rings++; return wr.apply(fx, a); };
+    fx.charge = (...a) => { charges++; return ch.apply(fx, a); };
+    const h0 = G.hits.length, hp0 = p.hp;
+    G.watch = (n, e) => { ev.push([n, e ? { ...e } : e]); if (n === 'combat:flash' && e?.attack === name && flashT === null) flashT = game.time; };
+    d.debug.trigger(name);
+    run(G, max, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (flashT === null && d.mode === 'act') warnPre = Math.max(warnPre, d.warn);
+      act?.(flashT);
+    }, () => flashT !== null && game.time > flashT + 1.6 && p.state !== 'flurry' && game.hitstopTimer <= 0);
+    G.watch = null;
+    fx.warnRing = wr;
+    fx.charge = ch;
+    input.up(1);
+    return { ev, flashT, warnPre, rings, charges, hits: G.hits.slice(h0), lost: hp0 - p.hp, has: (n) => ev.some((x) => x[0] === n), get: (n) => ev.find((x) => x[0] === n)?.[1], all: (n) => ev.filter((x) => x[0] === n).map((x) => x[1]) };
+  };
+  const at = (fT, lead) => fT !== null && game.time >= fT + TUNING.flashLead - lead - DT;
+  // Red Meridian: two red blows, nothing on the floor, nothing on him before the cue
+  p.debug.god = true;
+  const mer = play('meridian', 3.0);
+  p.debug.god = false;
+  const mf = mer.all('combat:flash').filter((e) => e.attack === 'meridian');
+  assert(mf.length === 2 && mf.every((e) => e.tell === TELL.RED && e.flare === true) && mer.rings === 0 && mer.warnPre === 0, `Red Meridian: two red flares (${mf.length}), no ring on the floor (${mer.rings}), no glow before the first cue (${mer.warnPre.toFixed(2)})`);
+  // Severance parried: the counter
+  let pressed = false;
+  const sev = play('severance', 5.0, (fT) => { if (!pressed && at(fT, 0.12)) { pressed = true; input.up(1); input.click(1); } });
+  const cnt = sev.get('player:flareCounter');
+  assert(sev.get('combat:flash')?.flare === true && sev.get('player:parry')?.flare === true && sev.get('dragon:parried')?.last === true && !!cnt && cnt.damage > 0 && sev.lost === 0,
+    `Severance (a blue flare) parried: his move ends and the hero counters (${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)}; DEFENSE.flareCounter ${DEFENSE.flareCounter.damage} before his posture rule)`);
+  // Nightfall on a held guard: the meter gone, no damage; unanswered it lands
+  let g0 = null;
+  const night = play('nightfall', 3.0, () => { input.press(1); if (g0 === null && G.hits.some((h) => h.attack === 'nightfall')) g0 = p.guard; });
+  const nh = night.hits.find((h) => h.attack === 'nightfall');
+  assert(night.get('combat:tell')?.tell === TELL.BLACK && night.has('combat:charge') && night.charges > 20 && night.warnPre > 0.5, `Nightfall: tell black, the charge drawn through its windup (${night.charges} frames), his body darkening (${night.warnPre.toFixed(2)})`);
+  assert(nh?.r === RESULT.BLOCKED && night.lost === 0 && g0 === 0 && night.get('player:guardOpen')?.black === true && Math.abs(p.staggerLen - GUARD.black.openDur) < 1e-6, `on a held guard it is stopped (${nh?.r}), no HP lost, the guard meter gone (${g0}) and the guard knocked open`);
+  const bare = play('nightfall', 3.0);
+  assert(bare.hits.find((h) => h.attack === 'nightfall')?.r === RESULT.HIT && bare.lost > 25, `unanswered it lands: ${bare.lost.toFixed(0)} HP`);
+  return G;
+}
+
 async function scenarioWin() {
   out('\n== scenario WIN (a fencing bot in god mode: parries, rolls, cuts in his openings, gives the deathblows) ==');
   const G = build();
@@ -1173,7 +1242,7 @@ async function scenarioStrategy() {
 // ================================================================== run
 const S = {
   level: scenarioLevel, data: scenarioData, timing: scenarioTiming, forms: scenarioForms, spells: scenarioSpells,
-  bounds: scenarioBounds, flow: scenarioFlow, terrain: scenarioTerrain, win: scenarioWin, training: scenarioTraining,
+  bounds: scenarioBounds, flow: scenarioFlow, terrain: scenarioTerrain, win: scenarioWin, training: scenarioTraining, flare: scenarioFlare,
 };
 const OPT_IN = { strategy: scenarioStrategy }; // run only when named
 if (OPT_IN[SCEN]) S[SCEN] = OPT_IN[SCEN];

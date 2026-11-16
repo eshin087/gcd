@@ -15,6 +15,7 @@ function rgba(hex, a) {
 }
 const BLUE = TELL_STYLE.blue.css;
 const RED = TELL_STYLE.red.css;
+const FLARE_BLUE = TELL_STYLE.blue.css; // the blue flare's edge (a parry moment, ADR-118)
 const WHITE = TELL_STYLE.normal.css;
 const CYAN = '#7ff6ff';
 // text drawn on the game with no panel behind it: a dark halo keeps it readable over lit ground
@@ -373,6 +374,15 @@ const CSS = `
 .ab-edge.r { right: 0; top: 0; bottom: 0; width: 16vw; background: linear-gradient(270deg, ${rgba(RED, 0.55)}, ${rgba(RED, 0)}); }
 .ab-edge.t { left: 0; right: 0; top: 0; height: 16vh; background: linear-gradient(180deg, ${rgba(RED, 0.5)}, ${rgba(RED, 0)}); }
 .ab-edge.b { left: 0; right: 0; bottom: 0; height: 16vh; background: linear-gradient(0deg, ${rgba(RED, 0.5)}, ${rgba(RED, 0)}); }
+/* the flare's other colours (ADR-118): blue = a parry moment, black = a charged blow (the edges go dark, wider) */
+.ab-edges.blue .ab-edge.l { background: linear-gradient(90deg, ${rgba(FLARE_BLUE, 0.55)}, ${rgba(FLARE_BLUE, 0)}); }
+.ab-edges.blue .ab-edge.r { background: linear-gradient(270deg, ${rgba(FLARE_BLUE, 0.55)}, ${rgba(FLARE_BLUE, 0)}); }
+.ab-edges.blue .ab-edge.t { background: linear-gradient(180deg, ${rgba(FLARE_BLUE, 0.5)}, ${rgba(FLARE_BLUE, 0)}); }
+.ab-edges.blue .ab-edge.b { background: linear-gradient(0deg, ${rgba(FLARE_BLUE, 0.5)}, ${rgba(FLARE_BLUE, 0)}); }
+.ab-edges.black .ab-edge.l { width: 30vw; background: linear-gradient(90deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0)); }
+.ab-edges.black .ab-edge.r { width: 30vw; background: linear-gradient(270deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0)); }
+.ab-edges.black .ab-edge.t { height: 30vh; background: linear-gradient(180deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0)); }
+.ab-edges.black .ab-edge.b { height: 30vh; background: linear-gradient(0deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0)); }
 .ab-edge-cool {
   position: absolute;
   inset: 0;

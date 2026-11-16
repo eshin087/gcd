@@ -760,16 +760,21 @@ export class AudioEngine {
       const o = this._atEvent(d);
       if (d.hazard) this.play('hazardTell', o); // a fire hazard's own tell (meteors, pillars): no brass sting
       else if (d.tell === 'blue') this.play('tellBlue', o);
-      else if (d.tell === 'red') {
+      else if (d.tell === 'red' || d.tell === 'black') {
+        // (a black, charged, blow opens on the same low sting: its long charge is the rest of it)
         this.play('tellRed', o);
         this._dipMusic();
       } else this.play('tellTick', o);
     });
     on('combat:flash', (d) => {
       const o = this._atEvent(d);
-      o.tell = d.tell === 'blue' || d.tell === 'red' ? d.tell : 'normal';
+      // (the black flare cracks like the red one; a blue flare is the crystal ping, louder: a moment)
+      o.tell = d.tell === 'black' ? 'red' : d.tell === 'blue' || d.tell === 'red' ? d.tell : 'normal';
       if (this.play('flash', o) && !d.bullet) this._dipMusic();
+      if (d.flare && d.tell === 'blue') this.play('parry', { tell: 'blue', chain: 3 });
     });
+    // the counter blow (a parried blue flare blow answered by the hero, ADR-118)
+    on('player:flareCounter', () => this.play('parry', { tell: 'blue', chain: 6, perfect: true }));
 
     on('player:died', () => {
       this.charge?.stop(0.1);

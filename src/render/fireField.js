@@ -20,11 +20,17 @@ import { FIRE_PALETTES, FIRE_SMOKE, FIRE_KIND } from './firePalettes.js';
 // kinds (firePalettes.js FIRE_KIND): 'fire', 'void' (the Starless Lord's), 'steel' (crisp: sparks,
 // glints, cuts; no turbulence, a thin line prints as the stroke that runs along it), 'smoke' (grey
 // letters where there is no fire). Where kinds overlap in a cell the hottest one prints.
+//
+// tint (ADR-118): the flare of a tell is written in steel and DYED: tint() names an ellipse of the
+// frame for a moment in which steel prints in a colour of the caller's (red, blue), its white-hot
+// heart kept white; `dark` also blacks out the cell behind each letter there (the black flare).
+// Two zones at most (the newest replace the oldest); each lives `ttl` s unless it is set again.
 
 const FIELDS = 15;
 // 0 x 1 y 2 z 3 vx 4 vy 5 vz 6 age 7 life 8 size 9 sizeEnd 10 heat 11 heatEnd 12 kind 13 drag 14 gravity
 const HEAT_ENC = 0.4; // heat is stored scaled, so a byte target (no float buffers) still holds 2.5
 const PALS = ['fire', 'void', 'steel'];
+const TINTS = 2;
 
 const NOISE = /* glsl */ `
   float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -47,6 +53,12 @@ export class FireField {
     this._broken = false;
     this._clear = new THREE.Color();
     this.cells = new THREE.Vector2(4, 4);
+    // the tint zones: [x, y, rx, ry] frame px, [r, g, b, strength], [dark, 0, 0, 0]; ttl s, age rank
+    this._tintA = Array.from({ length: TINTS }, () => new THREE.Vector4(0, 0, 1, 1));
+    this._tintC = Array.from({ length: TINTS }, () => new THREE.Vector4(1, 1, 1, 0));
+    this._tintD = Array.from({ length: TINTS }, () => new THREE.Vector4(0, 0, 0, 0));
+    this._tintT = new Float32Array(TINTS);
+    this._tintId = new Int32Array(TINTS).fill(-1);
 
     // --- blobs
     const base = new THREE.PlaneGeometry(1, 1);
@@ -215,6 +227,7 @@ export class FireField {
         uCells: { value: this.cells }, uCell: { value: new THREE.Vector2(5, 8) }, uScreen: { value: new THREE.Vector2(1, 1) },
         uStops: { value: stops }, uPal: { value: pal },
         uSmoke: { value: new THREE.Vector4(...FIRE_SMOKE.color, FIRE_SMOKE.back) },
+        uTintA: { value: this._tintA }, uTintC: { value: this._tintC }, uTintD: { value: this._tintD },
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
@@ -227,6 +240,9 @@ export class FireField {
         uniform vec3 uStops[15];
         uniform vec4 uPal[3];  // per kind: fill, rim backing, body backing
         uniform vec4 uSmoke;
+        uniform vec4 uTintA[${TINTS}]; // a tint zone: centre x, y and radii, frame px
+        uniform vec4 uTintC[${TINTS}]; // its colour, its strength
+        uniform vec4 uTintD[${TINTS}]; // x: how far it blacks out the cell behind the letter
         vec3 ramp(int p, float h) {
           vec3 c = mix(uStops[p * 5], uStops[p * 5 + 1], smoothstep(0.08, 0.42, h));
           c = mix(c, uStops[p * 5 + 2], smoothstep(0.4, 0.9, h));
@@ -260,7 +276,20 @@ export class FireField {
           vec4 pl = uPal[p];
           float body = smoothstep(0.3, 1.2, h);
           float heart = smoothstep(1.1, 2.0, h);
-          vec4 fire = vec4(ramp(p, h) * (m + (1.0 - m) * (pl.x * body + 0.3 * heart)), max(m, mix(pl.y, pl.z, body))) * vis;
+          vec3 rc = ramp(p, h);
+          float backA = mix(pl.y, pl.z, body);
+          if (p == 2) {
+            // steel inside a tint zone is dyed (a tell's flare); its white-hot heart stays white
+            for (int i = 0; i < ${TINTS}; i++) {
+              vec2 d = (px - uTintA[i].xy) / max(uTintA[i].zw, vec2(1.0));
+              float tk = smoothstep(0.0, 0.3, 1.0 - dot(d, d)) * uTintC[i].a;
+              if (tk <= 0.0) continue;
+              float lum = max(rc.r, max(rc.g, rc.b));
+              rc = mix(rc, uTintC[i].rgb * lum * 0.62, tk * (1.0 - 0.8 * heart));
+              backA = mix(backA, 1.0, tk * uTintD[i].x * smoothstep(0.08, 0.3, h));
+            }
+          }
+          vec4 fire = vec4(rc * (m + (1.0 - m) * (pl.x * body + 0.3 * heart)), max(m, backA)) * vis;
           vec4 smoke = vec4(uSmoke.rgb * m, max(m * 0.9, uSmoke.a)) * sv;
           gl_FragColor = fire + smoke * (1.0 - fire.a);
         }
@@ -335,10 +364,48 @@ export class FireField {
   clear() {
     this.count = 0;
     this.geometry.instanceCount = 0;
+    for (let i = 0; i < TINTS; i++) {
+      this._tintT[i] = 0;
+      this._tintC[i].w = 0;
+      this._tintId[i] = -1;
+    }
+  }
+
+  /**
+   * Dye the steel printed inside an ellipse of the frame (centre px, py and radii rx, ry: frame
+   * pixels, origin bottom-left, as _screen in the duelists' FX counts them) for `ttl` s: `rgb` the
+   * colour (linear, about 0..2.6), `k` 0..1 its strength, `dark` 0..1 how far the cell behind each
+   * letter is blacked out. `id`: the caller's own number for the zone: the same id set again moves
+   * its zone instead of taking another.
+   */
+  tint(id, px, py, rx, ry, rgb, k = 1, dark = 0, ttl = 0.05) {
+    if (!Number.isFinite(px + py + rx + ry + k)) return;
+    let slot = -1, old = 0;
+    for (let i = 0; i < TINTS; i++) {
+      if (this._tintId[i] === id) {
+        slot = i;
+        break;
+      }
+      if (this._tintT[i] <= this._tintT[old]) old = i;
+    }
+    if (slot < 0) slot = old;
+    this._tintId[slot] = id;
+    this._tintT[slot] = ttl;
+    this._tintA[slot].set(px, py, Math.max(1, rx), Math.max(1, ry));
+    this._tintC[slot].set(rgb[0], rgb[1], rgb[2], Math.max(0, Math.min(1, k)));
+    this._tintD[slot].x = Math.max(0, Math.min(1, dark));
   }
 
   update(dt) {
     const d = this.data;
+    for (let i = 0; i < TINTS; i++) {
+      if (this._tintT[i] <= 0) continue;
+      this._tintT[i] -= dt;
+      if (this._tintT[i] <= 0) {
+        this._tintC[i].w = 0;
+        this._tintId[i] = -1;
+      }
+    }
     let w = 0;
     for (let i = 0; i < this.count; i++) {
       const k = i * FIELDS;

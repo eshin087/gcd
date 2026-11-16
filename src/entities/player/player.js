@@ -3,7 +3,7 @@ import { CONFIG } from '../../core/config.js';
 import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from '../../core/math.js';
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
-import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta } from '../../combat/rules.js';
+import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
@@ -222,7 +222,7 @@ export class Player {
     this.staggerLen = TUNE.staggerDur;
     this.slowmoPending = 0; // Ghostep slow-mo waiting for a harsher freeze to end (s)
     // a riposte waiting for the parry's own freeze to end (flurry.js `riposte`; DEFENSE.flurry)
-    this.riposte = { att: null, t: 0, attack: null, tell: TELL.NORMAL };
+    this.riposte = { att: null, t: 0, attack: null, tell: TELL.NORMAL, counter: false };
     this.assist = { target: null, t: 0 };
     this.ghostFx = 0; // 1 → 0 after a Ghostep: dissolve-in + cold tint
     this.rollBack = false;
@@ -385,7 +385,7 @@ export class Player {
     if (r !== RESULT.IGNORED && was) {
       this._emit('combat:answer', {
         attack: typeof hit.attack === 'string' && hit.attack ? hit.attack : String(hit.kind ?? 'blow'),
-        tell: hit.tell === TELL.BLUE || hit.tell === TELL.RED ? hit.tell : TELL.NORMAL,
+        tell: tellOf(hit.tell),
         result: r, damage: Math.max(0, fin(hp0) - fin(this.hp)), dead: !this.alive,
         stream: !hit.bullet && !hit.steel && !(fin(hit.knockback, 0) > 0) && !hit.knockdown && fin(hit.damage, 0) <= 8,
         perfect: r === RESULT.PARRIED && !!this.deflect?.perfect,
@@ -401,7 +401,7 @@ export class Player {
     if (this.state === 'plunge' || this.state === 'flurry') return RESULT.IGNORED; // in the air / on the head / between two blinks: out of reach
     if (this.state === 'lock') return RESULT.IGNORED; // blades locked: the push decides it
     const kind = typeof hit.kind === 'string' ? hit.kind : 'hit';
-    const tell = hit.tell === TELL.BLUE || hit.tell === TELL.RED ? hit.tell : TELL.NORMAL;
+    const tell = tellOf(hit.tell);
     const def = tellDefaults(tell);
     const parryable = typeof hit.parryable === 'boolean' ? hit.parryable : def.parryable;
     const blockable = typeof hit.blockable === 'boolean' ? hit.blockable : def.blockable;
@@ -457,6 +457,16 @@ export class Player {
       }
     }
 
+    // (c2) a BLACK (charged) blow met on a raised guard or a parry press (ADR-118): it is stopped and
+    // deals nothing, but the whole guard meter is gone and the guard is knocked open (GUARD.black)
+    if (tell === TELL.BLACK && !parryable && !blockable) {
+      const arc = (a) => hit.around || this._inArc(a, hasFrom, fx, fz, hasAtk ? ap : null);
+      const pressed = this._canGuard() && this.time - this.rmb.parryT <= DEFENSE.parryWindow && arc(DEFENSE.parryArc);
+      if (pressed || (this.blocking && arc(DEFENSE.blockArc))) {
+        this._guardOpen(attack, nx, nz, true);
+        return RESULT.BLOCKED;
+      }
+    }
     // (d) parry: RMB pressed shortly before impact, attacker in the front arc; pressed within
     // perfectParryWindow it is a perfect parry (computed for every parry; only bullets consume it)
     if (
@@ -1224,7 +1234,11 @@ export class Player {
     const last = hit?.last !== false; // (a string's non-final blow says `last: false`)
     const big = tell === TELL.BLUE;
     const ret = light && !!perfect; // a bullet sent back (bullets.js reads deflect.perfect)
+    // a parry MOMENT (a blue flare blow, ADR-118): the blow is beaten aside in a blue burst and the
+    // hero answers by himself (the counter: _tickRiposte), wherever in a string it came
+    const moment = !light && !!hit?.flare && tell === TELL.BLUE;
     this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met });
+    if (moment) this.fx.flareParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (ret) this.fx.perfectParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (light) {
       this._hitstop(ret ? TUNE.returnStop : 0.03);
@@ -1251,12 +1265,13 @@ export class Player {
       // with the riposte once this parry's freeze is over (update)
       this._streakUp();
       const att = hit?.attacker ?? null, R = this.riposte;
-      R.att = last && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
+      R.att = (last || moment) && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
+      R.counter = moment;
       R.t = 0;
       R.attack = attack;
       R.tell = tell;
     }
-    this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last });
+    this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last, flare: moment });
   }
 
   /** The riposte a parried last blow asked for: starts as the parry's freeze ends, if the hero is
@@ -1278,7 +1293,7 @@ export class Player {
     const T = this.flurry._v, p = this.position;
     const tp = kind === 'air' ? (this._plungePoint(att, T) ? T : null) : att.position;
     if (!tp || !(Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange[kind])) return;
-    this.flurry.start(att, kind === 'air', this.streak, R.attack, R.tell, { riposte: true });
+    this.flurry.start(att, kind === 'air', this.streak, R.attack, R.tell, { riposte: true, counter: R.counter });
   }
 
   /** Guard given back (a parry, a cut of his own that landed). */
@@ -1290,21 +1305,30 @@ export class Player {
   /**
    * The blow that emptied the guard meter (GUARD): it was blocked, and the guard is knocked open.
    * A short stagger (the guard break's opening pose, without its knockdown), no damage; the meter
-   * starts to refill as he recovers.
+   * starts to refill as he recovers. `black`: a charged blow met on the guard or a parry (ADR-118):
+   * the whole meter at once, a longer stagger, thrown back (GUARD.black).
    */
-  _guardOpen(attack, nx, nz) {
+  _guardOpen(attack, nx, nz, black = false) {
     const g = this.game;
-    this.guard = 0;
+    if (!(black && this.debug.god)) this.guard = 0;
     this.guardWait = GUARD.openDelay;
     this._bladePoint(0.4, this._v);
     this.fx.guardBreak(this._v.x, this._v.y, this._v.z, nx, nz);
-    this._emit('player:guardOpen', { attack });
-    g.shake?.(0.3);
+    if (black) this.fx.blackBreak?.(this._v.x, this._v.y, this._v.z, nx, nz);
+    this._emit('player:guardOpen', { attack, black });
+    g.shake?.(black ? 0.45 : 0.3);
+    if (black) this._hitstop(0.1);
     this._interrupt();
     this.recoil = 0;
+    if (black) {
+      this.atk = null;
+      this.chargeK = 0;
+      this._setKb(nx, nz, GUARD.black.push);
+      if (Number.isFinite(nx + nz) && nx * nx + nz * nz > 1e-4) this.yaw = Math.atan2(-nx, -nz);
+    }
     this._enter('stagger', 'guardBreak', 0.07);
-    this.staggerLen = GUARD.openDur;
-    this.anim.kickCoat?.(0.5);
+    this.staggerLen = black ? GUARD.black.openDur : GUARD.openDur;
+    this.anim.kickCoat?.(black ? 0.9 : 0.5);
   }
 
   /**
@@ -1630,10 +1654,13 @@ export class Player {
     // (ADR-102) only a red blow is answered with the flurry: a white or heavy one can be parried, so
     // its perfect dodge counts in the streak and gives the slow-mo where he stands (no crit window),
     // and the string goes on
-    if (tell !== TELL.RED && DEFENSE.flurry.on === 'red' && !this.debug.flurryAny) {
+    if (!dodgeOnly(tell) && DEFENSE.flurry.on === 'red' && !this.debug.flurryAny) {
       this._ghostep(attacker, attack, tell, false, DEFENSE.ghostep.critWindowWhite);
       return;
     }
+    // (a flare blow dodged in time: a burst in its colour where he stood, as the answer begins)
+    this.getChestPos(this._v, true);
+    this.fx.flareDodge?.(this._v.x, this._v.y, this._v.z, tell === TELL.BLACK);
     const kind = this.flurry.reach(attacker, allowPlunge);
     if (kind && this.flurry.start(attacker, kind === 'air', n, attack, tell)) return;
     this._ghostep(attacker, attack, tell, !this._plungeable(attacker));

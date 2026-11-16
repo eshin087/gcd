@@ -605,7 +605,7 @@ export class LordFx extends DuelFx {
       if (across < half && along > 0 && s.flashed < 0 && (along - reach) / speed + Math.max(0, s.wait ?? 0) <= lead) {
         s.flashed = s.age;
         d.emit('combat:flash', { source: 'dragon', attack: s.attack, tell: s.tell, x: s.x, y: s.y, z: s.z, hazard: true, bullet: true });
-        this.tellFlash(s.tell, s.x, s.y, s.z);
+        this.hazardFlash(s.tell, s.x, s.y, s.z);
       }
       if (across < half && Math.abs(along) <= reach) {
         s.done = true;

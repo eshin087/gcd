@@ -36,6 +36,8 @@ const KINDS = {
   trade: { text: 'CLASH', life: 1.0, rise: 24, pop: 1.6, cls: 'deflect' },
   // ... and the flash counter (player:counter): the cut went through his blow and through him
   counter: { text: 'FLASH COUNTER', life: 1.4, rise: 30, pop: 1.8, cls: 'deflect', streak: true },
+  // the counter (player:flareCounter, ADR-118): a blue flare blow parried, and the hero's own answer landed
+  flareCounter: { text: 'COUNTER', life: 1.3, rise: 30, pop: 1.8, cls: 'deflect', streak: true },
   // the duel's moments (player:lock, player:mikiri, dragon:deflected)
   lock: { text: 'BLADE LOCK', life: 1.1, rise: 20, pop: 1.5, cls: 'deflect' },
   lockWon: { text: 'BREAKTHROUGH', life: 1.3, rise: 30, pop: 1.6, cls: 'deflect' },
@@ -108,6 +110,7 @@ export class Callouts {
       if (!d?.counter) this.call('trade');
     });
     game.events?.on?.('player:counter', () => this.call('counter'));
+    game.events?.on?.('player:flareCounter', () => this.call('flareCounter'));
     game.events?.on?.('player:lock', (d) => {
       if (d?.phase === 'start') this.call('lock');
       else if (d?.phase === 'won') this.call('lockWon');

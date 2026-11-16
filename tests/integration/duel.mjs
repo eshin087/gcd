@@ -272,7 +272,7 @@ function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
       for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.4) pend.splice(i, 1);
       for (const e of pend) {
         const left = e.at - t - DT;
-        if (e.tell === TELL.RED || style === 'dodge') {
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK || style === 'dodge') {
           if (left <= (style === 'parry' ? 0.3 : 0.1)) {
             e.done = true;
             const d = g.dragon.position, p = g.player.position;
@@ -357,7 +357,8 @@ async function scenarioData() {
         const A = realise(name, phase, () => r);
         const real = A.beats.filter((b) => !b.feint);
         const tag = `${name} P${phase} r${r}`;
-        if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
+        if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
+        if (!real.every((b) => !b.def.flare || (b.def.tell === TELL.BLUE && b.def.zone))) assert(false, `${tag}: a flare mark only on a blue blow of the blade`);
         const first = real[0];
         if (!(first && first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${first ? (first.impact - first.tellAt).toFixed(2) : '-'} >= ${TUNING.minFirstWindup}`);
         for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(2)} s apart >= ${TUNING.minHitGap}`);
@@ -1256,8 +1257,8 @@ async function scenarioPressure() {
   G.defend = makeDefender(G);
   let flashes = 0, wMin = 1;
   const h0 = G.hits.length;
-  G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon' && e.tell !== TELL.RED && e.attack !== 'ashCrescent' && !e.hazard) flashes++; };
-  run(G, 40, (GG) => {
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon' && e.tell !== TELL.RED && e.tell !== TELL.BLACK && e.attack !== 'ashCrescent' && !e.hazard) flashes++; };
+  run(G, 60, (GG) => {
     input.axis = { x: 0, y: 0 };
     game.mouseGround.set(d.position.x, 0, d.position.z);
     GG.defend.act();
@@ -1266,12 +1267,15 @@ async function scenarioPressure() {
   // (his free hand stays a duelist's: rigid on the forearm, no sword fingers; anim.js opts.freeHand
   // is the hero's alone)
   assert(d.anim.freeHand === false && d.rig.offHand?.fingers === undefined && p.anim.freeHand === true && wMin > 0.99999,
-    `through 40 s of his strings his free wrist never turns (|w| ≥ ${wMin.toFixed(6)}) and he has no sword fingers (the hero's free hand alone)`);
+    `through 60 s of his strings his free wrist never turns (|w| ≥ ${wMin.toFixed(6)}) and he has no sword fingers (the hero's free hand alone)`);
   G.watch = null;
   G.defend = null;
   p.debug.noRiposte = false;
-  const met = G.hits.slice(h0).filter((h) => h.attack !== 'ashCrescent' && h.tell !== TELL.RED).length;
-  assert(flashes >= 25 && met >= flashes - 1, `standing his ground, every glint is a blow that reaches the hero: ${met} met of ${flashes} non-red flashes`);
+  const met = G.hits.slice(h0).filter((h) => h.attack !== 'ashCrescent' && h.tell !== TELL.RED && h.tell !== TELL.BLACK).length;
+  // (40 s and >= 25 until ADR-118: a parried blue flare blow now ends his string and he recoils, and his
+  // red and black blows are not counted here: 60 s; seeds 4242 / 7 / 99 gave 31, 40, 44 cues)
+  out(`     60 s standing his ground: ${flashes} white / blue cues, ${met} of them met`);
+  assert(flashes >= 20 && met >= flashes - 1, `standing his ground, every glint is a blow that reaches the hero: ${met} met of ${flashes} non-red flashes`);
   settle(G);
   // (2) a kiting hero, sprinting round the courtyard: he runs him down (his sprint beats the hero's)
   home(G);
@@ -2027,7 +2031,8 @@ async function scenarioTerrain() {
   F.watch = null;
   const nT = Object.values(used).reduce((a, b) => a + b, 0);
   out(`     150 s against the fencing bot: ${moves} moves, ${nT} of the courtyard ${JSON.stringify(used)}; ${F.game.world.destructibles.list.length - F.game.world.destructibles.standing} pieces down`);
-  assert(nT >= 2 && nT <= moves * 0.3, `they come up in a duel (${nT}) without crowding out his strings (${((nT / Math.max(1, moves)) * 100).toFixed(0)} % of ${moves} moves, <= 30 %)`);
+  // (<= 30 % until ADR-118: the hero's counters and flurries hold the world, so 150 s hold fewer moves; seeds 4242 / 7 / 99: 32, 17, 18 %)
+  assert(nT >= 2 && nT <= moves * 0.35, `they come up in a duel (${nT}) without crowding out his strings (${((nT / Math.max(1, moves)) * 100).toFixed(0)} % of ${moves} moves, <= 35 %)`);
   assert(!F.payload.size, `no non-finite payload in his events (${[...F.payload].join(', ')})`);
   return G;
 }
@@ -2105,6 +2110,133 @@ async function scenarioPerfect() {
   assert(fast.t <= slow.t * 0.7 && fast.t >= slow.t / PP.cutSpeed - 2 * DT, `it winds up in ${fast.t.toFixed(3)} s against ${slow.t.toFixed(3)} s (x ${PP.cutSpeed})`);
   assert(!(p.quickUntil > game.time), 'one cut only: the next light is a plain one again');
   p.debug.noRiposte = false;
+  return G;
+}
+
+// ================================================================== scenario: flare (ADR-118)
+// The flare is the only sign of a moment (no glow through the windup, no ring on the floor); a parry
+// of a blue flare blow is answered by the hero's counter; the black (charged) blow.
+async function scenarioFlare() {
+  out('\n== scenario FLARE (the flare is the only sign; a parried blue flare is countered; the black charged blow) ==');
+  const { GUARD, TELL_STYLE, isFlare, dodgeOnly, tellDefaults } = await imp('src/combat/rules.js');
+  const G = build();
+  duel(G, { dist: 2.0 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  run(G, 0.4);
+  // --- the rules and the data
+  assert(isFlare(TELL.RED) && isFlare(TELL.BLACK) && !isFlare(TELL.BLUE) && isFlare(TELL.BLUE, true) && !isFlare(TELL.NORMAL, true), 'red and black always flare; a blue blow only when it is marked; a white one never');
+  assert(dodgeOnly(TELL.RED) && dodgeOnly(TELL.BLACK) && !dodgeOnly(TELL.BLUE) && !tellDefaults(TELL.BLACK).parryable && !tellDefaults(TELL.BLACK).blockable, 'black is dodge-only: no guard and no parry holds it');
+  assert(TELL_STYLE.red.warn.from === 0 && TELL_STYLE.red.warn.to === 0 && TELL_STYLE.red.floor === false, 'a red blow glows through no windup and marks no floor (TELL_STYLE.red)');
+  const beats = (n) => MOVES[n].beats.flatMap((b) => (Array.isArray(b.pick) ? b.pick : [b]));
+  const moments = MOVE_NAMES.filter((n) => beats(n).some((b) => b.flare));
+  const blacks = MOVE_NAMES.filter((n) => beats(n).some((b) => b.tell === TELL.BLACK));
+  out(`     parry moments: ${moments.join(', ')}; charged: ${blacks.join(', ')}`);
+  assert(moments.length >= 5 && moments.every((n) => beats(n).filter((b) => b.flare).every((b) => b.tell === TELL.BLUE && b.zone)), `he has ${moments.length} parry moments, each a blue blow of the blade`);
+  assert(blacks.length === 1 && beats(blacks[0])[0].windup >= 1.2 && MOVES[blacks[0]].weight.every((w) => w > 0), `one charged blow (${blacks[0]}), wound up ${beats(blacks[0])[0].windup} s, in both phases`);
+
+  /** One move from `dist` m, the hero answering through `act(flashT)`. */
+  const play = (name, dist, act = null, max = 5) => {
+    settle(G, 8);
+    home(G);
+    place(G, dist);
+    run(G, 0.3);
+    p.guard = p.maxGuard;
+    p.streak = 0;
+    d.posture = 0;
+    const ev = [];
+    let flashT = null, warnPre = 0, rings = 0, charges = 0, tellOfWarn = null;
+    const fx = d.fx, wr = fx.warnRing, ch = fx.charge;
+    fx.warnRing = (...a) => { rings++; return wr.apply(fx, a); };
+    fx.charge = (...a) => { charges++; return ch.apply(fx, a); };
+    const h0 = G.hits.length, hp0 = p.hp;
+    G.watch = (n, e) => {
+      ev.push([n, e ? { ...e } : e]);
+      if (n === 'combat:flash' && e?.attack === name && flashT === null) flashT = game.time;
+    };
+    d.debug.trigger(name);
+    run(G, max, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (flashT === null && d.mode === 'act') { if (d.warn > warnPre) { warnPre = d.warn; tellOfWarn = d.warnTell; } }
+      act?.(flashT);
+    }, () => flashT !== null && game.time > flashT + 1.6 && p.state !== 'flurry' && game.hitstopTimer <= 0);
+    G.watch = null;
+    fx.warnRing = wr;
+    fx.charge = ch;
+    input.up(1);
+    return { ev, flashT, warnPre, rings, charges, tellOfWarn, hits: G.hits.slice(h0), lost: hp0 - p.hp, has: (n) => ev.some((x) => x[0] === n), get: (n) => ev.find((x) => x[0] === n)?.[1] };
+  };
+  const at = (flashT, lead) => flashT !== null && game.time >= flashT + TUNING.flashLead - lead - DT;
+
+  // --- a red area: nothing before the flare
+  p.debug.god = true;
+  const red = play('lotus', 2.0);
+  p.debug.god = false;
+  assert(red.flashT !== null && red.get('combat:flash')?.flare === true && red.get('combat:tell')?.flare === true, 'Lotus Sweep (red): its tell and its cue say flare');
+  assert(red.warnPre === 0 && red.rings === 0, `... and until the cue nothing shows: no glow on him (${red.warnPre.toFixed(2)}), no ring on the floor (${red.rings} frames drawn)`);
+  assert(d.fx.flares.some((f) => f.tell === TELL.RED) || d.fx.flares.every((f) => !f.alive), 'the red flare was drawn through the flare pool');
+
+  // --- a blue flare parried: the counter
+  let pressed = false;
+  const blue = play('fallingAsh', 2.0, (fT) => { if (!pressed && at(fT, 0.14)) { pressed = true; input.up(1); input.click(1); } });
+  const par = blue.get('player:parry'), dpar = blue.get('dragon:parried'), cnt = blue.get('player:flareCounter'), fend = blue.get('player:flurryEnd');
+  assert(blue.get('combat:flash')?.flare === true && blue.get('combat:flash')?.tell === TELL.BLUE, 'Falling Ash is a parry moment: a blue cue marked flare');
+  assert(par?.flare === true && par.perfect === false && dpar?.flare === true && dpar.last === true, `a plain parry of it (0.14 s early) is the moment's: player:parry flare, dragon:parried last (${JSON.stringify(dpar)})`);
+  assert(!!cnt && cnt.damage >= DEFENSE.flareCounter.damage - 0.5 && fend?.art === 'counter', `... and the hero counters by himself: ${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)} (${DEFENSE.flareCounter.damage}), art ${fend?.art}`);
+  assert(blue.lost === 0 && blue.has('player:flurry'), 'the parry cost no HP and the counter ran as flash cuts (player:flurry)');
+  // (an ordinary heavy blow, not marked: the plain deflect, no counter)
+  pressed = false;
+  let flashes = 0;
+  const plainW = G.watch;
+  const rain = (() => {
+    settle(G, 8); home(G); place(G, 2.0); run(G, 0.3);
+    const ev = [];
+    let fT = null, n = 0, done = false;
+    G.watch = (nm, e) => { ev.push([nm, e ? { ...e } : e]); if (nm === 'combat:flash' && e?.attack === 'ashRain') { n++; if (n === 4) { fT = game.time; } } };
+    d.debug.trigger('ashRain');
+    p.debug.god = true;
+    run(G, 4, () => { game.mouseGround.set(d.position.x, 0, d.position.z); if (fT !== null && !done && game.time >= fT + TUNING.flashLead - 0.12 - DT) { done = true; input.up(1); input.click(1); } }, () => done && game.time > fT + 0.8);
+    G.watch = plainW;
+    p.debug.god = false;
+    return ev;
+  })();
+  const rp = rain.filter((x) => x[0] === 'dragon:parried').map((x) => x[1]);
+  assert(rp.length >= 1 && rp.every((e) => !e.flare) && !rain.some((x) => x[0] === 'player:flareCounter'), `Rain of Ashes' held overhead (heavy, not a moment) parried: a deflect, no counter (${JSON.stringify(rp[0] ?? null)})`);
+
+  // --- the black blow
+  // (a) a held guard: the blow is stopped, the meter is gone, the guard knocked open
+  const held = play('blackTide', 3.0, () => { input.press(1); });
+  const open = held.get('player:guardOpen'), hh = held.hits.find((h) => h.attack === 'blackTide');
+  assert(held.get('combat:tell')?.tell === TELL.BLACK && held.get('combat:flash')?.flare === true && held.has('combat:charge'), 'Black Tide: tell black, combat:charge as the dark gathers, a flare for its cue');
+  assert(held.charges > 20 && held.warnPre > 0.5 && held.tellOfWarn === TELL.BLACK && held.rings === 0, `through the windup the charge is drawn (${held.charges} frames) and his body darkens (${held.warnPre.toFixed(2)})`);
+  assert(hh?.r === RESULT.BLOCKED && held.lost === 0 && open?.black === true, `met on a held guard it is stopped (${hh?.r}), no HP lost (${held.lost})`);
+  assert(held.has('player:guardOpen') && !held.has('player:hurt') && !held.has('player:guardBreak'), '... GUARD DOWN, not a guard break: no hurt');
+  // (the meter right after: read from a fresh run, as it refills)
+  let gAfter = null, stAfter = null, lenAfter = 0;
+  const held2 = play('blackTide', 3.0, () => { input.press(1); if (gAfter === null && G.hits.some((h) => h.attack === 'blackTide' && h.t >= game.time - DT * 2 && h.r === RESULT.BLOCKED)) { gAfter = p.guard; stAfter = p.state; lenAfter = p.staggerLen; } });
+  assert(gAfter === 0 && stAfter === 'stagger' && Math.abs(lenAfter - GUARD.black.openDur) < 1e-6, `the whole guard meter is gone (${gAfter}) and he is knocked open for ${lenAfter} s (GUARD.black.openDur ${GUARD.black.openDur})`);
+  // (b) a parry press: the same
+  pressed = false;
+  const tap = play('blackTide', 3.0, (fT) => { if (!pressed && at(fT, 0.1)) { pressed = true; input.up(1); input.click(1); } });
+  const th = tap.hits.find((h) => h.attack === 'blackTide');
+  assert(th?.r === RESULT.BLOCKED && tap.get('player:guardOpen')?.black === true && !tap.has('player:parry') && tap.lost === 0, `a parry pressed in time does not turn it: the guard is knocked open (${th?.r}), no parry, no HP lost`);
+  // (c) nothing: it lands
+  const none = play('blackTide', 3.0);
+  assert(none.lost > 30 && none.hits.find((h) => h.attack === 'blackTide')?.r === RESULT.HIT, `unanswered it lands: ${none.lost.toFixed(0)} HP`);
+  p.debug.heal();
+  // (d) a perfect dodge: answered as a red blow's is, with the flurry
+  pressed = false;
+  const roll = play('blackTide', 3.0, (fT) => {
+    if (!pressed && at(fT, 0.1)) {
+      pressed = true;
+      const dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+      input.axis = { x: dz / l, y: dx / l };
+      input.tap('Space');
+    } else input.axis = { x: 0, y: 0 };
+  });
+  const pd = roll.get('player:perfectDodge');
+  assert(pd?.tell === TELL.BLACK && roll.has('player:flurry') && roll.lost === 0, `a perfect dodge of it is answered by the flurry (tell ${pd?.tell}, flurry ${roll.has('player:flurry')})`);
+  input.axis = { x: 0, y: 0 };
   return G;
 }
 
@@ -2335,7 +2467,7 @@ async function scenarioStrategy() {
   return last;
 }
 
-const SCENARIOS = { strategy: scenarioStrategy, terrain: scenarioTerrain, probe: scenarioProbe, perfect: scenarioPerfect, telemetry: scenarioTelemetry, heavy: scenarioHeavy, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
+const SCENARIOS = { strategy: scenarioStrategy, terrain: scenarioTerrain, probe: scenarioProbe, perfect: scenarioPerfect, flare: scenarioFlare, telemetry: scenarioTelemetry, heavy: scenarioHeavy, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

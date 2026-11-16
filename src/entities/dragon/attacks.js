@@ -88,6 +88,7 @@ export function beat(attack, at, impactIn, spec, part, extra = null) {
     at,
     impactIn: Number.isFinite(impactIn) ? Math.max(0.05, impactIn) : 0.8,
     tell: spec?.tell ?? TELL.NORMAL,
+    flare: !!spec?.flare, // a blue blow that is a parry MOMENT (the blue flare; ADR-118)
     parryable: spec?.parryable,
     blockable: spec?.blockable,
     part,
@@ -2050,11 +2051,12 @@ const pounce = makeString('pounce');
 const frenzy = makeString('frenzy');
 const stormFlurry = makeString('stormFlurry');
 const cinderFlurry = makeString('cinderFlurry');
+const blackMaw = makeString('blackMaw');
 
 /** Every ability (AI-selectable and Lab-triggerable). Order = Lab list order (keys 1-9 = the first nine). */
 export const ATTACKS = {
   bite, swipe, clawCombo, rendingFlurry, hesitantMaw, wingBuffet, tailLash, pounce, frenzy,
-  tail, stomp, breath, fireball, charge, leap, roar, stormFlurry, cinderFlurry,
+  tail, stomp, breath, fireball, charge, leap, roar, stormFlurry, cinderFlurry, blackMaw,
   ...FIRE, // fireAttacks.js: the short flights and the fire spells (contract 3)
   ...BULLET_HELL, // bulletAttacks.js: the bullet-hell patterns (ADR-039)
   ...TERRAIN_MOVES, // terrainAttacks.js: it takes a tree or a boulder and uses it (ADR-110)

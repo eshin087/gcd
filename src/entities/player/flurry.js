@@ -57,9 +57,12 @@ export const ARTS = Object.freeze({
   // the riposte (a parried last blow): no art of its own. Every blow is a flash cut, the last one
   // opens the hanging cuts, and he is back where he parried
   riposte: { air: null, kind: 'return', label: 'Riposte' },
+  // the counter (ADR-118; a parried blue flare blow): the riposte's cuts, the last one the counter
+  // blow (DEFENSE.flareCounter)
+  counter: { air: null, kind: 'return', label: 'Counter' },
 });
-const AIR_ARTS = Object.keys(ARTS).filter((k) => ARTS[k].air);
-const GROUND_ARTS = Object.keys(ARTS).filter((k) => !ARTS[k].air);
+const AIR_ARTS = Object.keys(ARTS).filter((k) => ARTS[k].air === true);
+const GROUND_ARTS = Object.keys(ARTS).filter((k) => ARTS[k].air === false);
 // a flash cut plays one of the hero's own swings through its active frames (swings.js): never two
 // along the same line in a row
 const CUT_CLIPS = ['drawCut', 'fallingBackhand', 'risingSlash', 'flatBackhand', 'fallingCut', 'risingBackhand'];
@@ -86,6 +89,7 @@ export class Flurry {
     this.n = 1; // blows in all
     this.cuts = 0; // how many of them are flash cuts (all but the art; all of a riposte's)
     this.riposte = false;
+    this.counter = false; // a riposte whose last cut is the counter blow (a parried blue flare blow)
     this.reelT = 0; // s (real) left of the beat after a cut in which the target reels
     this.cloned = false; // this pass has left its speed clone
     this.hang = 0; // of a ground cut's dash: the part he is seen wound up in before he moves
@@ -191,12 +195,12 @@ export class Flurry {
    */
   start(att, air, strikes, attack, tell, opts = null) {
     const P = this.p, g = P.game, p = P.position;
-    const riposte = !!opts?.riposte;
+    const riposte = !!opts?.riposte, counter = riposte && !!opts?.counter;
     this.att = att;
     this.air = !!air;
     if (!this._aim()) return false;
     const n = clamp(Math.round(fin(strikes, 1)), 1, F.max);
-    const art = riposte ? 'riposte' : this._pickArt(this.air);
+    const art = counter ? 'counter' : riposte ? 'riposte' : this._pickArt(this.air);
     if (n === 1 && ARTS[art].kind === 'plunge') {
       this.clear();
       this.art = art;
@@ -211,6 +215,7 @@ export class Flurry {
     this.art = art;
     this.n = n;
     this.riposte = riposte;
+    this.counter = counter;
     this.cuts = riposte ? n : n - 1;
     this.attack = attack;
     this.tell = tell;
@@ -297,6 +302,7 @@ export class Flurry {
     this.i = 0;
     this.hit = false;
     this.riposte = false;
+    this.counter = false;
     this.cuts = 0;
     this.reelT = 0;
     this.glow = 0;
@@ -516,7 +522,9 @@ export class Flurry {
     this.hit = true;
     this._aim();
     const final = this.riposte && this.i >= this.cuts - 1; // a riposte's last cut is its last blow
-    const dealt = this._damage(C.damage, C.posture, false, 0.45, final ? 2 : 1, final ? { x: this.ox, z: this.oz } : null);
+    // (the counter's last cut is the counter blow: DEFENSE.flareCounter)
+    const K = final && this.counter ? DEFENSE.flareCounter : null;
+    const dealt = this._damage(K ? K.damage : C.damage, K ? K.posture : C.posture, !!K, K ? 1 : 0.45, final ? 2 : 1, final ? { x: this.ox, z: this.oz } : null);
     const k = this.n > 1 ? this.i / (this.n - 1) : 0;
     const ck = this.air ? 1 : G.kick, sk = this.air ? 1 : G.shake; // a man is framed closer than the wyrm
     this.fx.cut(T.x, T.y, T.z, this.d.x, this.d.z, this.i, this.n);
@@ -530,8 +538,13 @@ export class Flurry {
     P.anim.kickCoat(0.5, P.anim.noise);
     if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: this.air ? 'head' : 'body', point: { x: T.x, y: T.y, z: T.z }, heavy: final, crit: true, kind: 'flurry' });
     if (final) {
-      this.fx.impact(T.x, T.y, T.z, this.d.x, this.d.z, 0.7);
-      P._hitstop(DEFENSE.plunge.impactStop * 0.7, 0.03);
+      this.fx.impact(T.x, T.y, T.z, this.d.x, this.d.z, K ? 1 : 0.7);
+      P._hitstop(DEFENSE.plunge.impactStop * (K ? 1 : 0.7), 0.03);
+      if (K) {
+        g.shake?.(0.42 * sk);
+        g.punch?.(2.6 * ck);
+        P._emit('player:flareCounter', { attack: this.attack, damage: dealt, strikes: this.n });
+      }
       this.burst(dealt, T);
       return;
     }

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
 import { ATTACKS, PHASE2_ROAR, PHASE3_ROAR, roarFx, roarPose, perPhase } from './attacks.js';
 import { resetPose } from './rig/anim.js';
-import { POSTURE } from '../../combat/rules.js';
+import { POSTURE, TELL, TELL_STYLE } from '../../combat/rules.js';
 import { clamp, damp, angleDiff, lerp, smoothstep } from '../../core/math.js';
 
 // Boss brain: owns the action runner (attacks + scripted sequences, tell beats) and the combat
@@ -598,6 +598,7 @@ export class Brain {
     a.k = clamp(a.t / a.dur, 0, 1);
     this._beats(a);
     this._warnZone(a, dt);
+    this._charge(a, dt);
     a.def.update?.(d, a, dt);
   }
 
@@ -626,9 +627,26 @@ export class Brain {
     }
   }
 
-  /** Red AoE attacks: the ground heats up over the danger area until impact (ADR-052). */
+  /** A black blow CHARGES (ADR-118): darkness is drawn into the striking part through its windup,
+   *  thicker toward the cue (the body darkens with it: Dragon._updateWarn). */
+  _charge(a, dt) {
+    const b = a.cur;
+    if (!b || b.tell !== TELL.BLACK || b.flashed) return;
+    const d = this.d, lead = TUNING.flashLead;
+    const k = smoothstep(0, 1, clamp((a.T - b.at) / Math.max(0.05, b.impactIn - lead), 0, 1));
+    const p = d.partPos(b.part, a, b, d._part);
+    d.fx.charge(p.x, p.y, p.z, k, dt);
+    if (!b.charging) {
+      b.charging = true;
+      d.emit('combat:charge', { source: 'dragon', attack: b.attack, dur: Math.max(0.05, b.at + b.impactIn - lead - a.T), x: p.x, z: p.z });
+    }
+  }
+
+  /** Red AoE attacks: the ground heats up over the danger area until impact (ADR-052). Off since
+   *  ADR-118 (TELL_STYLE.red.floor): a boss's own blow is cued by the flare alone. */
   _warnZone(a, dt) {
     const b = a.cur, def = a.def;
+    if (!TELL_STYLE.red.floor) return;
     if (!b || b.tell !== 'red' || typeof def.zone !== 'function') return;
     const left = b.at + b.impactIn - a.T;
     if (left < 0) return;
