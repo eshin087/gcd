@@ -45,7 +45,7 @@ export const BREAK = Object.freeze({
       take: Object.freeze({ cut: 0.8, blunt: 1.1, blast: 1.2, fire: 0 }),
       chips: "|/\\-:.'",
       dust: '.:',
-      color: [0.46, 0.43, 0.36],
+      color: [0.3, 0.285, 0.245], // (2026-11-16: 0.46, 0.43, 0.36 broke a rib in a white cloud; now the bone's own hue, landmarks.js BONE)
       colorEnd: [0.16, 0.15, 0.13],
       burns: false,
     }),
@@ -92,12 +92,12 @@ export const BREAK = Object.freeze({
   thrown: Object.freeze({ gravity: 22, spin: 5.5, blast: 1.2, shake: 0.4 }),
   /** cover: a piece stops a projectile and pays for it */
   cover: Object.freeze({ minH: 1.1, bullet: 0.12, bolt: 1.5, stone: 0.7, crescent: 0.35 }),
-  /** burning wood: seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's.
+  /** burning wood (`char`: m round its trunk the ground lies black once it has burned through): seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's.
    *  `glow`: its light is a LOCAL glow (radius m, intensity; it was ~16 m and 2.6, a yellow flood that
    *  buried the fire on the ground the hero must read): a piece that catches within `share` m of one
    *  already lit shares that light (it is kept on for as long as either burns); at most `lights` at once
    *  (only 8 reach the shaders) */
-  burn: Object.freeze({ time: 7, pad: 1.0, light: [3.2, 1.1, 0.25], lights: 4, glow: Object.freeze({ radius: 5, intensity: 1.5, share: 8 }) }),
+  burn: Object.freeze({ char: 2.2, time: 7, pad: 1.0, light: [3.2, 1.1, 0.25], lights: 4, glow: Object.freeze({ radius: 5, intensity: 1.5, share: 8 }) }),
   /** the spatial grid every query walks (strike, sweep, stop, coverAt, ignite, nearest): cell size, m */
   grid: Object.freeze({ cell: 4 }),
   /**
@@ -119,7 +119,7 @@ export const BREAK = Object.freeze({
    * not under them). A burnt log smoulders `smoulder` s (at most `smoulderMax` x quality at once: smoke and
    * embers, a warm patch of ground); a log that catches burns `burn` s.
    */
-  wreck: Object.freeze({ logs: 40, chars: 18, rubble: 30, sink: 1.4, trunk: Object.freeze([0.5, 0.85]), thick: 0.85, flatten: 0.4, smoulder: 30, smoulderMax: 8, burn: 6 }),
+  wreck: Object.freeze({ logs: 64, chars: 36, rubble: 30, bones: 48, sink: 1.4, trunk: Object.freeze([0.5, 0.85]), thick: 0.85, flatten: 0.4, smoulder: 30, smoulderMax: 8, burn: 6 }),
   /** a thrown piece smashes what stands in its way: power x its weight, while it flies under `y` m */
   flight: Object.freeze({ power: 0.8, y: 7 }),
   /**
@@ -131,7 +131,7 @@ export const BREAK = Object.freeze({
    * throws per metre of its size (x quality). `shakeMax`: range pieces (the forest's trees) that may
    * shudder at once (their vertices are rewritten each frame; x quality; the rest only chip).
    */
-  wear: Object.freeze({ at: Object.freeze([0.82, 0.5, 0.22]), lean: 0.2, leanTime: 0.6, burn: 0.85, debris: 14, shakeMax: 10 }),
+  wear: Object.freeze({ at: Object.freeze([0.82, 0.5, 0.22]), lean: 0.32, leanTime: 0.6, burn: 0.85, debris: 14, shakeMax: 10 }),
   /**
    * The tree wall round the clearing (2026-11-16): every tree of it breaks, out to the forest's edge
    * (74 m). A tree whose base is beyond `from` m is the wall's: `hp` x the structure of a tree of its
@@ -141,7 +141,25 @@ export const BREAK = Object.freeze({
    * weight (0.7 elsewhere: a felled rim tree tears into the wall behind it), and a fire in the wall may
    * pass on `gens` more times than BREAK.spread.gens (a blaze eats into the wall, not round the ring).
    */
-  wall: Object.freeze({ from: 32, hp: 1.15, out: 0.55, domino: 1.6, gens: 1 }),
+  // `fire` (2026-11-16, the tuning pass): the wall burns on budgets of its own, so fire that carries
+  // into it (destructibles.carryFire: a breath past its end, a missed shot) neither waits for nor eats the
+  // clearing's (BREAK.light / BREAK.spread stay the clearing's caps): new fires that land there `perSec`
+  // (banking `bank`), spreads `spreadPerSec` (`spreadBank`, with `chance`), at most `maxBurning` alight
+  // in the wall at once (x quality); `width` m either side of a ray that carries fire
+  wall: Object.freeze({
+    from: 32, hp: 1.15, out: 0.55, domino: 1.4, gens: 0,
+    fire: Object.freeze({ perSec: 0.15, bank: 2, maxBurning: 6, spreadPerSec: 0.08, spreadBank: 2, chance: 0.45, width: 1.2 }),
+  }),
+  /**
+   * Wind and shock on wood (destructibles.wind, 2026-11-16): a front rolls out at `speed` m/s; a tree
+   * it reaches takes power x (1 - d / reach)^fall as a blast's wear, nothing under `min`, never below
+   * `floor` of its structure (wind alone takes a tree to its second stage, never to its lean or its
+   * fall), at most once each `rehit` s, x 1 -/+ `vary` at random (a ragged front), and loses `leaves` leaves to it (x the power). `queue`: trees
+   * waiting for a front (a roar's reaches the whole ring: ~560)
+   */
+  wind: Object.freeze({ speed: 30, fall: 1.3, min: 0.04, floor: 0.3, rehit: 0.35, vary: 0.45, leaves: 5, queue: 1400 }),
+  /** debris glyphs (a stage's burst, the wind's leaves) a second over the level, banking `bank` (x quality) */
+  debris: Object.freeze({ perSec: 1500, bank: 900 }),
   /** a piece some of whose `guards` stand (the Cinder Tree's trunk under its boughs) takes this share of a blow */
   guarded: 0.2,
   /**

@@ -64,6 +64,28 @@ export const TUNING = {
     // and how much of the blast's radius catches
     ignite: { breath: 1, strip: 1, explosion: [1, 0.6], meteor: [0.7, 0.55], pillar: [0.8, 0.7], dive: [0.8, 0.5], nova: [1, 0.6] },
     bullet: 0.12, // a small bullet stopped by cover takes this out of it (the orb: x 3)
+    // ITS REACH INTO THE WALL (wallReach.js, 2026-11-16: the owner's "destroy more of ... the tree walls
+    // surrounding the map"; the wyrm fights inside the clearing and before this a fight left the wall
+    // much as it stood). None of it touches the hero.
+    // wind: [power (x the call's k), reach m, from m (nothing nearer the centre), falloff (else
+    // BREAK.wind.fall)] of the front of wind a source sends out (world.destructibles.wind: wear, never a
+    // fall: BREAK.wind.floor). A phase roar is a moment: its front runs round the whole ring, tearing
+    // leaves off everywhere, boughs here and there far off (a flat falloff, a ragged front) and near it
+    wind: {
+      roar: [0.3, 32, 0], // a roar (x its strength: the wake 1, the nova 1.3, a flight's 0.6)
+      phaseRoar: [0.22, 58, 0, 1.0], // the phase roars (phase 3 x 1.5 / 1.3)
+      shock: [0.35, 26, 0], // the roar's damaging shock ring
+      takeoff: [0.4, 26, 0], landing: [0.5, 28, 0], downbeat: [0.16, 20, 26], // its wings (x the beat's strength)
+      buffet: [0.4, 26, 0], // a wing buffet's downstroke, a wing rend
+      ground: [0.22, 22, 0], // a heavy body on the ground (a stomp, a leap, a crash: x its k)
+    },
+    // carry: [length m, at most every s, burn k (x BREAK.burn.time), heat blobs in its streak] of fire
+    // that does not stop where it lands (world.destructibles.carryFire): from the end of a breath, a pass's
+    // strip, a flame wall or ring that ran out, a shot that left the clearing, on to the first wood
+    carry: {
+      breath: [24, 0.35, 0.9, 10], strip: [20, 0.3, 0.9, 6], wall: [18, 0.25, 0.8, 6], ring: [16, 0.3, 0.8, 4],
+      shot: [22, 0.2, 0.7, 4], meteor: [0, 0, 0, 0],
+    },
     // the WRECKAGE scenario's bounds (integ.mjs: a whole AI fight on the real clearing, 80 s a phase):
     // the share of the clearing's pieces (inside the hero's bound) standing at the end, the liftable
     // pieces as phase 3 starts, the pieces burnt through. Measured 2026-11-15 on seeds 1337, 7, 4242:
@@ -74,7 +96,11 @@ export const TUNING = {
     // (2026-11-16: the landmarks inside the bound count too: the nest's ribcage and skull, the elder
     // wyrm's pieces, the Cinder Tree's boughs, 107 pieces in all (72 before). burnt 6 -> 9: the Cinder
     // Tree's five boughs burn. Measured on seeds 1337, 7, 4242, 99, 2024: brk report)
-    meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 9 },
+    // (2026-11-16, the tuning pass: `wall`: the share of the wall's front rows (32 - 46 m) worn or down
+    // at the end, `wallP1` at least that share marked by phase 1's end. Measured on seeds 1337, 7, 4242,
+    // 99, 2024 at 80 s a phase: 43, 41, 37, 45, 57 % (the merged build before it: 23, 33, 19, 34, 29 %);
+    // P1 8 - 18 %)
+    meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 9, wall: [0.3, 0.75], wallP1: 0.03 },
   },
   // the root stays inside min(CONFIG.world.dragonBound, bound) (m). CONFIG's 26 was sized for the
   // v0.2 wyrm; at x1.875 the chest / neck-base body circles (~5.8 m ahead of the root) would cross

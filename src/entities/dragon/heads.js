@@ -23,6 +23,20 @@ try {
 } catch {
   /* headless */
 }
+/**
+ * Each head's main horn tip (its right one: x is mirrored for the left), in headVis's own frame: where
+ * the phase-3 fire stands on the horns (ablaze.js, look c). The sculpted heads' are the ends of their
+ * main horns' bent paths below (skull: the crown's sabre; loong: the antler's beam; demon: the crown's
+ * bull horn); the old head's, of model.js buildOldHead's main horn (1.7 long from (0.2, 0.3, -0.02),
+ * pitch -0.24, yaw PI - 0.3, curve 0.34). 2026-11-16: ablaze guessed them off the old head.
+ */
+export const HORN_TIPS = Object.freeze({
+  old: Object.freeze([0.69, 0.76, -1.6]),
+  skull: Object.freeze([0.912, 0.502, -1.711]),
+  loong: Object.freeze([0.814, 1.227, -1.116]),
+  demon: Object.freeze([0.572, 1.257, -0.744]),
+});
+
 /** The head in use ('old' | 'skull' | 'loong' | 'demon'); read once from ?wyrmFace=. */
 export const wyrmFace = () => FACE;
 /** Pick the head the NEXT built wyrm wears (tests, the Lab). Returns false for an unknown name. */

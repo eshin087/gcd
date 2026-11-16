@@ -1108,6 +1108,29 @@ export const SFX = {
     },
   },
 
+  /**
+   * world:impact 'wear' { mat, power: the stage 1 - 3 }: a tree loses a stage (leaves torn off, boughs
+   * snapped, it leans). Quiet on purpose (the owner finds loud SFX "too noisy"): a rustle of leaves and a
+   * dry crack, a low creak for the lean. A roar's front sets off hundreds: `gap` keeps it to a few.
+   */
+  wear: {
+    prio: 2, rev: 0.16, gap: 0.14, falloff: 0.7, gain: 0.45,
+    play(v, t, o) {
+      const st = clamp(num(o.power, 1), 1, 3);
+      // the leaves (a soft hiss) and the snap of what broke
+      swish(v, t, 'pink', 'bandpass', 3200, 0.7, [[0, 0], [0.04, 0.22], [0.35, 0]]);
+      if (st >= 2) burst(v, t + 0.02, 'pink', 'bandpass', o.mat === 'bone' ? 1700 : 1100, 1.4, 0.35, 0.05, 0.001);
+      // the lean: a slow creak of wood
+      if (st >= 3) {
+        const c = v.osc('sawtooth', 70 * rnd(0.9, 1.1), t, t + 0.6);
+        const f = v.filter('bandpass', 420, 6);
+        const g = v.gain(0);
+        env(g.gain, t, [[0, 0], [0.08, 0.12], [0.45, 0.06], [0.6, 0]]);
+        c.connect(f).connect(g).connect(v.out);
+      }
+    },
+  },
+
   /** world:impact 'break' | 'topple' | 'crash' | 'throw' { mat, power }: something comes down (ADR-107). */
   crash: {
     prio: 5, rev: 0.28, gap: 0.12, falloff: 0.6,

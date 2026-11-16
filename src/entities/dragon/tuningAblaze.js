@@ -69,6 +69,8 @@ export const ABLAZE = {
   // a stride, not a flame standing beside it) lights it (world.ignite(x, z, r, k, false): wood
   // only, within the world's own caps BREAK.light / BREAK.spread). `perFrame` sites tried a frame, each at most
   // every `every` s, below `maxY` m; at most `perMin` fires a minute from the body.
+  // (2026-11-16, the tuning pass: wood in the wall it lights burns on the wall's own budget, BREAK.wall.fire;
+  // perMin 7 was tried and burned more of the clearing: kept at 5)
   wood: { r: 0.9, k: 0.7, every: 0.12, maxY: 6.5, minSpeed: 3, perMin: 5, perFrame: 6 },
   // The grass: burning footprints (looks b and c): where a foot plants, the scorch map is charred and
   // warmed (burn, heat; it glows and cools by itself) and a few small, low flames flicker there for

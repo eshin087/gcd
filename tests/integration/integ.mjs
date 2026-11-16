@@ -28,6 +28,7 @@ const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Destructibles, STATE: PIECE } = await imp('src/world/destructibles.js');
+const { BREAK } = await imp('src/world/breakTuning.js');
 const { buildDeadTree, buildBoulder, buildStump, geosHeight, createForest } = await imp('src/world/forest.js');
 const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/combat/rules.js');
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
@@ -959,6 +960,19 @@ async function scenarioPressure() {
 // flattened: between a third and two thirds standing at the end, and pieces left for the terrain moves
 // in phase 3. ABYSS_WSEEDS=a,b,c, ABYSS_WSECS=s per phase (the report's: three seeds, 80 s: a 4-minute
 // fight); the suite runs one seed.
+// (the wall report: its front rows out to WALL_FRONT m, the ring cut in WALL_SECTORS; a stretch is a run
+// of sectors at least WALL_HURT damaged (torn) or at most WALL_WHOLE (standing))
+const WALL_FRONT = 46, WALL_SECTORS = 24, WALL_HURT = 0.4, WALL_WHOLE = 0.15;
+function wallStretches(sec) {
+  const runs = (ok) => {
+    const n = sec.length;
+    if (sec.every(ok)) return 1;
+    let start = sec.findIndex((v) => !ok(v)), k = 0;
+    for (let i = 1; i <= n; i++) if (ok(sec[(start + i) % n]) && !ok(sec[(start + i - 1) % n])) k++;
+    return k;
+  };
+  return { hurt: runs((v) => v >= WALL_HURT), whole: runs((v) => v <= WALL_WHOLE) };
+}
 async function scenarioWreckage() {
   out('\n== scenario WRECKAGE (a whole AI fight on the real clearing: what stands, what burns, what felled it) ==');
   const SECS = Number(process.env.ABYSS_WSECS ?? 80);
@@ -998,6 +1012,7 @@ async function scenarioWreckage() {
     const cause = {}, lit = {};
     G.watch = (n, e) => {
       if (n !== 'world:impact') return;
+      wallWatch?.(n, e);
       const act = d.brain.action?.name ?? (d.state === 'airborne' ? 'air' : 'idle');
       if (!(Math.hypot(e.x, e.z) < BOUND + 2)) return;
       if (e.kind === 'topple' || e.kind === 'break') cause[act] = (cause[act] || 0) + 1;
@@ -1011,13 +1026,43 @@ async function scenarioWreckage() {
       lit[act] = (lit[act] || 0) + 1;
       return light0(b, k, gen);
     };
+    // the wall's front rows (the trees between BREAK.wall.from and WALL_FRONT m: what the camera sees of
+    // it from the clearing): worn (a stage reached, standing), down (felled, broken, burnt through), by
+    // sector of the ring, and what wore / felled / lit them (2026-11-16, the tuning pass: the owner's
+    // "destroy more of ... the tree walls surrounding the map")
+    const front = D.list.filter((b) => (b.kind === 'tree' || b.kind === 'deadTree') && b.wall && Math.hypot(b.x, b.z) <= WALL_FRONT);
+    const wallNow = () => {
+      const sec = new Int16Array(WALL_SECTORS), secN = new Int16Array(WALL_SECTORS);
+      let worn = 0, down = 0, burnt = 0;
+      for (const b of front) {
+        const s = Math.floor(((Math.atan2(b.z, b.x) + Math.PI) / (2 * Math.PI)) * WALL_SECTORS) % WALL_SECTORS;
+        secN[s]++;
+        const hurt = b.state !== PIECE.INTACT || b.wear > 0;
+        if (b.state !== PIECE.INTACT) down++;
+        else if (b.wear > 0) worn++;
+        if (b.burnt) burnt++;
+        if (hurt) sec[s]++;
+      }
+      return { worn, down, burnt, share: (worn + down) / Math.max(1, front.length), sec: Array.from(sec, (v, i) => v / Math.max(1, secN[i])) };
+    };
+    const wallBy = {};
+    const heroFall0 = G.hits.filter((h) => h.attack === 'fallingDebris').length;
+    const wallWatch = (n, e) => {
+      if (n !== 'world:impact' || !(e.id >= 0) || !D.list[e.id]?.wall) return;
+      if (!['wear', 'topple', 'break', 'burn'].includes(e.kind)) return;
+      const act = d.brain.action?.name ?? (d.state === 'airborne' ? 'air' : 'idle');
+      const k = `${e.kind}:${act}`;
+      wallBy[k] = (wallBy[k] || 0) + 1;
+    };
     const c0 = count(), at = [c0];
+    const walls = [wallNow()];
     const roam = mulberry32(seed * 31 + 5), goal = { r: 6, a: 0, until: -1 };
     for (let ph = 1; ph <= 3; ph++) {
       if (ph > 1) {
         d.debug.setHp(TUNING.phaseAt[ph - 1] - 0.01);
         run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === ph && d.brain.action?.name !== `phase${ph}`);
         at.push(count());
+        walls.push(wallNow());
       }
       const pin = Math.round(d.maxHp * [0.83, 0.5, 0.17][ph - 1]);
       for (let i = 0; i < Math.round(SECS / DT); i++) {
@@ -1039,11 +1084,17 @@ async function scenarioWreckage() {
         if (d.hp < pin) d.hp = pin;
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
       }
-      if (ph === 1) at.push(count()); // (P1's end, before the roar)
+      if (ph === 1) {
+        at.push(count()); // (P1's end, before the roar)
+        walls.push(wallNow());
+      }
     }
     G.watch = null;
     at.push(count());
-    rows.push({ seed, total: inside.length, at, cause, lit, wood0 });
+    walls.push(wallNow());
+    const falls = G.hits.filter((h) => h.attack === 'fallingDebris').slice(heroFall0);
+    const heroFall = `${falls.length}${falls.length ? ` (at ${falls.map((h) => Math.hypot(h.fx, h.fz).toFixed(1)).join(', ')} m from the centre)` : ''}`;
+    rows.push({ seed, total: inside.length, at, cause, lit, wood0, walls, front: front.length, wallBy, heroFall, stat: { ...(D.stat ?? {}) } });
   }
   const fmt = (c) => `${String(c.n).padStart(4)} (lift ${String(c.lift).padStart(2)}, burnt ${String(c.burnt).padStart(2)})`;
   out(`   ${SECS} s per phase · pieces standing inside the hero's ${BOUND} m bound: start · end of P1 · P2 start · P3 start · end`);
@@ -1054,6 +1105,13 @@ async function scenarioWreckage() {
     out(`         felled / broken by: ${Object.entries(r.cause).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
     out(`         the whole forest's ${r.wood0} trees: standing ${r.at.map((c) => c.wood).join(' > ')}, burnt through ${r.at[4].burntAll}`);
     out(`         set alight by: ${Object.entries(r.lit).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+    const ws = (w) => `${(w.share * 100).toFixed(0).padStart(2)} % (worn ${w.worn}, down ${w.down}, burnt ${w.burnt})`;
+    out(`         the wall's front rows (${r.front} trees, ${BREAK.wall.from} - ${WALL_FRONT} m) damaged: ${r.walls.map(ws).join(' · ')}`);
+    const end = r.walls[r.walls.length - 1], st = wallStretches(end.sec);
+    out(`         by sector (${WALL_SECTORS} x ${360 / WALL_SECTORS} deg, % damaged): ${end.sec.map((v) => String(Math.round(v * 100)).padStart(3)).join('')}`);
+    out(`         reach: ${JSON.stringify(r.stat)}`);
+    out(`         stretches: ${st.hurt} torn (>= ${WALL_HURT * 100} %), ${st.whole} standing (<= ${WALL_WHOLE * 100} %) · falling trees on the hero: ${r.heroFall}`);
+    out(`         the wall worn / felled / lit by: ${Object.entries(r.wallBy).sort((a, b) => b[1] - a[1]).slice(0, 24).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   }
   for (const r of rows) {
     const end = r.at[4].n / r.total, p3 = r.at[3];
@@ -1062,6 +1120,10 @@ async function scenarioWreckage() {
     assert(end >= W.endShare[0] && end <= W.endShare[1], `seed ${r.seed}: ${(end * 100).toFixed(0)} % of the clearing's ${r.total} pieces stand at the end of the fight (${W.endShare.map((x) => x * 100 + ' %').join(' .. ')}: changed, not flattened)`);
     assert(p3.lift >= W.liftP3, `seed ${r.seed}: ${p3.lift} liftable pieces stand as phase 3 starts (>= ${W.liftP3}: the terrain moves go on)`);
     assert(r.at[4].burnt <= W.burnt, `seed ${r.seed}: ${r.at[4].burnt} pieces burnt through in the fight (<= ${W.burnt})`);
+    if (W.wall) {
+      const we = r.walls[r.walls.length - 1].share, w1 = r.walls[1].share;
+      assert(we >= W.wall[0] && we <= W.wall[1] && w1 >= W.wallP1 && we > r.walls[3].share - 1e-9, `seed ${r.seed}: the wall's front rows ${(we * 100).toFixed(0)} % worn or down at the end (${W.wall.map((x) => x * 100 + ' %').join(' .. ')}), ${(w1 * 100).toFixed(0)} % by phase 1's end (>= ${W.wallP1 * 100} %): the wyrm reaches the wall, the arena keeps it`);
+    }
   }
   return lastG;
 }
