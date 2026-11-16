@@ -65,15 +65,16 @@ export const ABLAZE = {
   warn: 0.5, throat: 0.85,
   hero: { r: 3, k: 0.4 },
 
-  // Wood: a burning part that passes a tree or a log lights it (world.ignite(x, z, r, k, false): wood
-  // only, within the world's own caps BREAK.light / BREAK.spread). One site tried a frame, each at most
+  // Wood: a burning part that passes a tree or a log (moving at minSpeed m/s or more: a blow, a sweep,
+  // a stride, not a flame standing beside it) lights it (world.ignite(x, z, r, k, false): wood
+  // only, within the world's own caps BREAK.light / BREAK.spread). `perFrame` sites tried a frame, each at most
   // every `every` s, below `maxY` m; at most `perMin` fires a minute from the body.
-  wood: { r: 0.9, k: 0.7, every: 0.35, maxY: 6.5, perMin: 8 },
+  wood: { r: 0.9, k: 0.7, every: 0.12, maxY: 6.5, minSpeed: 3, perMin: 5, perFrame: 6 },
   // The grass: burning footprints (looks b and c): where a foot plants, the scorch map is charred and
   // warmed (burn, heat; it glows and cools by itself) and a few small, low flames flicker there for
   // `life` s. They never go through world.fire (that fire hurts the hero): smaller, lower and shorter
   // lived, so the player learns they are safe. The tail's drag leaves the same, every `drag` s.
-  print: { r: [0.55, 0.7], burn: 0.22, heat: 0.55, life: 1.4, rate: 10, size: [0.3, 0.45], heat2: 0.24, slots: 10, drag: 0.14, dragY: 0.55, dragSpeed: 4 },
+  print: { r: [0.6, 0.8], burn: 0.35, heat: 0.75, life: 1.6, rate: 14, size: [0.32, 0.5], heat2: 0.3, slots: 10, drag: 0.14, dragY: 0.55, dragSpeed: 6 },
 
   // The two pooled lights (render/lights.js, no rig of their own): the tail's tip and low between
   // the forefeet. [color, radius]

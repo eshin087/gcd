@@ -782,6 +782,14 @@ export class Lab {
     button(grid, 'Stagger', () => this._fightAction('stagger'));
     button(grid, 'Posture break', () => this._fightAction('postureBreak'));
     button(grid, 'Kill', () => this._fightAction('kill'), 'danger');
+    // the wyrm's phase-3 fire (dragon/ablaze.js): cycle its strength off / a / b / c
+    if (typeof this.game.dragon?.debug?.ablaze === 'function') {
+      const b = button(grid, `Ablaze ${this.game.dragon.debug.ablaze()}`, () => {
+        const L = ['off', 'a', 'b', 'c'], d = this.game.dragon.debug;
+        b.textContent = `Ablaze ${d.ablaze(L[(L.indexOf(d.ablaze()) + 1) % L.length])}`;
+      });
+      b.title = 'phase 3 sets the wyrm on fire: its strength (?ablaze=off|a|b|c)';
+    }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);
     this.ui.hp = slider(row, { min: 0, max: 100, step: 1, value: 100 }, (v) => {

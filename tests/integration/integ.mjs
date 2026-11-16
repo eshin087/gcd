@@ -3710,19 +3710,23 @@ async function scenarioAblaze() {
   // (no wood near: each call lights nothing; then every call lights one, and the budget holds)
   let lights = 0;
   game.world.ignite = (x, z, r, k, grass) => { const t = tailTip(); calls.push({ x, z, grass, tip: Math.hypot(x - t.x, z - t.z) }); return lights; };
-  run(G, 3, { passive: true });
+  // (a burning part lights wood only as it passes: the tail lashes, again and again)
+  const lash = () => { if (!d.brain.action && d.state === 'combat') d.debug.trigger('tail'); return false; };
+  run(G, 3, { passive: true }, lash);
   const nearTip = calls.filter((c) => c.tip < 0.01).length, n0 = calls.length;
   lights = 1;
   const lit0 = B.lit;
-  run(G, 30, { passive: true });
-  out(`   wood: ${n0} ignite calls in 3 s with nothing to light (grass false: ${calls.filter((c) => c.grass === false).length} of ${calls.length}, at the tail's tip ${nearTip}) · with wood everywhere ${B.lit - lit0} lit in 30 s`);
-  assert(n0 > 0 && calls.every((c) => c.grass === false), `wood: the burning parts call world.ignite(x, z, r, k, false) (${calls.length} calls, never the grass)`);
+  run(G, 30, { passive: true }, lash);
+  out(`   wood: ${n0} ignite calls in 3 s of a lashing tail with nothing to light (grass false: ${calls.filter((c) => c.grass === false).length} of ${calls.length}, at the tail's tip ${nearTip}) · with wood everywhere ${B.lit - lit0} lit in 30 s`);
+  assert(n0 > 0 && calls.every((c) => c.grass === false), `wood: the burning parts call world.ignite(x, z, r, k, false) as they pass (${calls.length} calls, never the grass)`);
   assert(nearTip > 0 && B.lit - lit0 <= Math.ceil(ABLAZE.wood.perMin / 2) + 2, `wood at the tail's tip is tried (${nearTip} calls there); the per-minute budget holds (${B.lit - lit0} lit in 30 s, ${ABLAZE.wood.perMin} a minute)`);
   delete game.world.ignite;
+  settle(G, 8); // (the last lash over)
   // ---- footprints: the hero standing in a burning one for 5 s takes no damage
   let burns = 0;
   const bc = game.world.scorch.burnCircle;
   game.world.scorch.burnCircle = (...a) => { burns++; return bc.apply(game.world.scorch, a); };
+  let own = 0; const pr0 = B._print.bind(B); B._print = (...a) => { own++; return pr0(...a); };
   const fx0 = d.position.x - 6, fz0 = d.position.z;
   B.step(fx0, fz0, true);
   p.debug.teleport(fx0, fz0);
@@ -3730,7 +3734,8 @@ async function scenarioAblaze() {
   const hp0 = p.hp, h0 = G.hits.length;
   run(G, 5, { passive: true }, () => { if (!B._prints.some((q) => q.t > 0)) B.step(fx0, fz0, true); return false; });
   game.world.scorch.burnCircle = bc;
-  out(`   footprint: ${burns} burns stamped under the hero · hp ${hp0} -> ${p.hp} · hits ${G.hits.length - h0}`);
+  B._print = pr0;
+  out(`   footprint: ${burns} scorch stamps in 5 s (${own} of them the body's footprints and drags) · hp ${hp0} -> ${p.hp} · hits ${G.hits.length - h0}`);
   assert(burns >= 1 && p.hp === hp0 && G.hits.length === h0, `a hero standing in a burning footprint for 5 s takes no damage (hp ${hp0} -> ${p.hp}, ${G.hits.length - h0} hits)`);
   // ---- no allocation a frame: the burning body's update (its parts moving) over a bare loop
   {

@@ -526,21 +526,24 @@ export class Ablaze {
     }
   }
 
-  /** Wood a burning part passes catches (one site a frame; the per-minute budget). */
+  /** Wood a burning part passes catches (A.wood.perFrame sites a frame; the per-minute budget). */
   _wood(dt) {
     const W = A.wood, w = this.game.world;
     this._tokens = Math.min(2, this._tokens + (dt * W.perMin) / 60);
     if (!w?.ignite || this._tokens < 1) return;
     const list = this._woodSites;
     if (!list.length) return;
-    const s = list[this._woodI++ % list.length];
     const t = this.d.time;
-    if (!(s.on > 0.5) || s.y > W.maxY || t - s.woodT < W.every || !Number.isFinite(s.x + s.z)) return;
-    s.woodT = t;
-    const n = w.ignite(s.x, s.z, W.r, W.k, false);
-    if (n > 0) {
-      this._tokens -= 1;
-      this.lit += n;
+    // (a few sites a frame: the tail's tip crosses a trunk in a few frames, and its sweep fells it)
+    for (let i = 0; i < W.perFrame && this._tokens >= 1; i++) {
+      const s = list[this._woodI++ % list.length];
+      if (!(s.on > 0.5) || s.spd < W.minSpeed || s.y > W.maxY || t - s.woodT < W.every || !Number.isFinite(s.x + s.z)) continue;
+      s.woodT = t;
+      const n = w.ignite(s.x, s.z, W.r, W.k, false);
+      if (n > 0) {
+        this._tokens -= 1;
+        this.lit += n;
+      }
     }
   }
 
@@ -551,7 +554,7 @@ export class Ablaze {
     if (this._dragT > 0) return;
     this._dragT = A.print.drag;
     for (const s of this.sites) {
-      if ((s.kind !== 'tail' && s.kind !== 'tailTip') || s.on < 0.5) continue;
+      if (s.kind !== 'tailTip' || s.on < 0.5) continue; // (its tip: the joints before it stamped the same line)
       if (s.y < A.print.dragY && s.spd > A.print.dragSpeed) this._print(s.x, s.z, A.print.r[0] * 0.8, A.print.life * 0.6);
     }
   }
