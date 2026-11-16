@@ -428,6 +428,22 @@ export class DuelBrain {
         this.stats.fizzles++;
       }
     }
+    // the courtyard's thrown pieces (ashDisciple/terrain.js: the kicked lantern, the kicked
+    // flagstones) still in the air and not cued: they land uncued and harmless (`quiet`), as a piece
+    // the guard could not clear at its throw does
+    const Tr = d.terrain;
+    if (Tr) {
+      const quiet = (R) => {
+        const pc = R?.piece;
+        if (!R?.live || R.flashed || R.quiet || !pc || answerOf(R.tell) === ans) return;
+        if (Math.abs(L.now + Math.max(0, (pc.T ?? 0) - (pc.t ?? 0)) - at) >= sep) return;
+        R.quiet = true;
+        R.h?.cancel?.();
+        this.stats.fizzles++;
+      };
+      quiet(Tr.shot);
+      if (Tr.kicks) for (const R of Tr.kicks) quiet(R);
+    }
   }
 
   /**

@@ -2306,6 +2306,41 @@ async function scenarioCutFx() {
 // timing, the piece it uses and where that ends, that the hero is hit only where it is marked and has
 // the answer the tell promises, that none is chosen without a piece in reach, and that the fight's
 // reset puts every piece back.
+// ================================================================== scenario: a world warning over a thrown piece
+// The integration pass: the world's falling piece wins over the courtyard's thrown pieces as it does
+// over his crescents (brain._worldCue): a kicked lantern / flagstone in the air whose landing would
+// fall within the guard's separation of a world warning needing the other answer lands uncued and
+// harmless (quiet: no flare, no blow).
+async function scenarioWorldCue() {
+  out('\n== scenario WORLDCUE (a world warning: his thrown pieces in the air give way) ==');
+  const G = build({ real: true });
+  const { game } = G;
+  duel(G, { dist: 7 });
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  for (const [move, kind] of [['lanternKick', 'shot'], ['flagKick', 'kick']]) {
+    game.world.restore();
+    d.debug.reset();
+    game.flow.debug.toState('boss');
+    d.debug.setAI(false);
+    run(G, 0.4);
+    settle(G);
+    place(G, 7);
+    const ok = d.debug.trigger(move);
+    const live = () => (kind === 'shot' ? (d.terrain.shot.live ? d.terrain.shot : null) : d.terrain.kicks.find((k) => k.live));
+    run(G, 6, null, () => !!live());
+    const R = live();
+    if (!R) { assert(false, `${move}: started (${ok}) and a piece flew`); continue; }
+    const left = R.piece.T - R.piece.t, f0 = d.brain.stats.fizzles;
+    game.events.emit('combat:tell', { source: 'world', attack: 'fallingDebris', tell: TELL.RED, impactIn: left + 0.05, x: 0, z: 0, hazard: true });
+    let flashed = false;
+    run(G, 2, () => { if (R.flashed === true) flashed = true; });
+    out(`   ${move}: landing in ${left.toFixed(2)} s, a red world warning 0.05 s after it: quiet ${R.quiet}, flared ${flashed}, fizzles +${d.brain.stats.fizzles - f0}`);
+    assert(R.quiet && !flashed && d.brain.stats.fizzles - f0 === 1, `${move}: the piece in the air gives way to the world's warning (lands uncued and harmless)`);
+  }
+  return G;
+}
+
 async function scenarioTerrain() {
   out('\n== scenario TERRAIN (Severed Pillar, Flying Lantern, Three Tolls, Swallow\'s Return on the real courtyard) ==');
   const G = build({ real: true });
@@ -3316,6 +3351,7 @@ async function scenarioStrategy() {
 const SCENARIOS = {
   strategy: scenarioStrategy,
   terrain: scenarioTerrain,
+  worldcue: scenarioWorldCue,
   probe: scenarioProbe,
   perfect: scenarioPerfect,
   flare: scenarioFlare,
