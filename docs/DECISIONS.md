@@ -3395,3 +3395,61 @@ ADR-092).
   lashing tongues, c: liquid fire; apocalypse b: one pillar, c: cast from the air) stay behind the
   switches and in the FXLOOKS scenario, as the flare's did (ADR-118); they can be removed later.
   The white knots in breath look a are still open.
+
+## ADR-120 — The wyrm ablaze, a forest that breaks, letters that follow the zoom; three heads kept for later (2026-11-16)
+- **Context:** the owner asked for four things at once: a more menacing, realistic face for the
+  wyrm ("a lego block dragon face"); that the dragon destroy "the tree walls surrounding the map",
+  its melee and fire making the trees "slowly crumble and break", with "every background object"
+  destructible; that the ASCII keep its quality when the camera zooms out; and that in phase 3 the
+  wyrm "set himself on fire like its wing tips, claws, and tail". Answers to four questions before
+  anything was built: three faces rendered to pick from; all of Cinderwood breaks, the two landmarks
+  and the nest included, the bonfire stays; the zoom is a desktop complaint; the phase 3 fire burns
+  the world and adds no damage to the hero.
+- **Decisions:**
+  1. **Every tree is a 'range' piece that can be posed.** The rigid batch (1023 bones) cannot hold
+     560 trees, so a tree's body stays a run of vertices in one static mesh, split into parts, and
+     moves by rewriting those vertices from a home copy (a quaternion about its base plus an
+     offset), uploaded once a frame. Pooled rigid bodies borrowed for the fall were the alternative;
+     posing covers shudder, lean, fall, carry, flight and reset with one mechanism and no bone.
+  2. **Trees wear down in stages** (`BREAK.wear.at` 0.82 / 0.5 / 0.22 of the structure): parts of
+     the crown drop in a burst of the tree's own characters, then it leans, then it falls. The
+     trees inside the clearing wear the same way and keep their toughness.
+  3. **The wall falls outward, quietly.** Trees past 32 m fall at least 0.55 away from the arena,
+     and a fall whose strip cannot reach the hero's bound gives no tell, flash or strip: several
+     times more trees can fall without a new source of damage (falling trees on the hero: 0 on five
+     seeds).
+  4. **The landmarks break.** This reverses ADR-119's "the Cinder Tree, the Elder Wyrm's skeleton
+     and the bonfire stay whole" for the first two and the nest, by the owner's answer. The
+     skeleton is 36 pieces, the Cinder Tree's trunk takes a fifth of a blow while a bough stands,
+     every broken bone leaves a heap. The bonfire stays: it is the rest point.
+  5. **The wyrm reaches the wall through wind and carried fire, on budgets of the wall's own.** The
+     wyrm fights inside the clearing, so tougher or weaker trees could not answer the request: its
+     roars, rings, wing beats, take-offs and landings send a front of wind that wears wall trees
+     (never past the second stage), and fire that passes the hero carries on to the first wall tree.
+     Neither changes an attack's hit, damage, timing or tell, and neither touches the clearing's
+     pieces. Meteors that miss still land inside the arena (moving them would change the attack).
+  6. **The burning body is fire-field heat with its own random numbers.** No glyph-sprite flames
+     (ADR-113). It draws from a generator of its own, so a seeded fight deals the same hits with it
+     off or on. It lights wood it passes (5 a minute at most, only from a part moving 3 m/s or more:
+     standing beside a tree burned the Lab's grid down); the footprints are a scorch with small
+     flames that never go through `world.fire`. It dims round every flash and near the hero.
+  7. **The letters follow the player's wheel, not the camera's measured distance.** The boss framing
+     keeps the camera 5 - 9 m beyond the wheel; a font chosen from the measured distance changed the
+     fight's look at the default zoom and would step as the framing breathes. Past the default
+     wheel distance the cell steps down a ladder of the existing pixel fonts (plus 3x5 at 2x), with
+     hysteresis; zooming in never grows the letters; a phone keeps its one font. The house style's
+     "one letter size" becomes one size per zoom step (ADR-093's pick is the look at the default).
+  8. **Three heads kept for later.** The owner looked at the three rendered heads and passed: "lets
+     pass on the remake of the dragon head for now." The head is unchanged; the skull, the loong and
+     the demon stay behind `?wyrmFace=` as the hero's looks do (ADR-089). Their weak points when
+     shown: teeth that print as one white wall from the side, scales that fight the sculpted form
+     close up, a modest difference at the game camera.
+  9. **The owner's picks:** zoom b (full strength) and fire b (trailing fire, burning footprints)
+     of three rendered options each; a and c stay behind `?zoomArt=` and `?ablaze=`.
+- **Consequences:** the forest lists 664 breakables on 228 bones (it was 183 on 368). The frame
+  costs more: paired against the base at 1080p, 16 - 22 % more render time with the wall intact,
+  14 - 21 % in phase 3, mostly the trees' new mesh (dynamic buffers, a stumps mesh), not the fire
+  or the zoom; not measured on a phone. `world:impact` has a new kind value for a wear stage and
+  its own sound. With zoom b the trees' letters step as well, and far stone prints denser. The wall
+  after a fight is damaged over 37 - 57 % of its front rows in one to three long stretches, not the
+  four separate ones aimed for.
