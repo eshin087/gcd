@@ -16,7 +16,9 @@
 // Impacts within K.cueGap s of an announced one ride on that cue: one parry answers them all (the
 // deflect opens a short shield that pops the small bullets touching the hero, and bursts the ones
 // around him). A bullet that could only be announced too late (K.cueMin) is a dud when it was
-// spawned point-blank (it fizzles on touch); a HIT opens K.grace s in which every touching bullet
+// spawned point-blank (it fizzles on touch); an impact that would land within K.clashSep s of an
+// announced one of the OTHER answer (an ember beside an orb: parry vs roll) is a dud too, and sends no
+// cue (the first announced keeps its cue: two answers never land together); a HIT opens K.grace s in which every touching bullet
 // fizzles, and each pattern caps its hits (group().max): a storm never melts the hero. A pattern's
 // headline flash follows its lead bullet even after the action has ended (holdFlash). The tongues
 // are announced the same way (the time until any tongue, burning or still to come from the plan,
@@ -39,7 +41,7 @@ import { clamp, smoothstep, angleDiff, distPointSegment } from '../../core/math.
 import * as BFX from './bulletFx.js';
 
 export const BULLET = Object.freeze({ EMBER: 0, ORB: 2 });
-export const CUE = Object.freeze({ NEW: 0, COVERED: 1, LATE: 2 });
+export const CUE = Object.freeze({ NEW: 0, COVERED: 1, LATE: 2, CLASH: 3 });
 
 const KEYS = ['ember', null, 'orb'];
 const MAX = 360;
@@ -396,7 +398,9 @@ export class Bullets {
   /**
    * Announce an impact `tti` s from now. NEW: glint + combat:tell + combat:flash went out;
    * COVERED: an announced impact of the same class is close enough to answer it too;
-   * LATE: too late to react to (the caller decides: dud or hit).
+   * LATE: too late to react to (the caller decides: dud or hit); CLASH: an announced impact of the
+   * other class (the other answer) is within K.clashSep s of it: not announced (the caller makes the
+   * bullet a dud).
    */
   cue(kind, attack, tell, tti, x, y, z) {
     if (!Number.isFinite(tti)) return CUE.LATE;
@@ -405,6 +409,8 @@ export class Bullets {
     const at = this.time + tti;
     const pre = orb ? 0.05 : 0.08;
     for (let i = 0; i < 8; i++) if (at >= tr[i] - pre && at <= tr[i] + K.cueGap) return CUE.COVERED;
+    const ot = orb ? this._cueSmall : this._cueOrb, sep = K.clashSep ?? 0.35;
+    for (let i = 0; i < 8; i++) if (Math.abs(at - ot[i]) < sep) return CUE.CLASH;
     if (tti < K.cueMin + (orb ? 0.03 : 0)) return CUE.LATE;
     tr[this._ci++ & 7] = at;
     const d = this.d;
@@ -830,7 +836,7 @@ export class Bullets {
           const tt = this.tti(b);
           if (tt <= FL + (b.kind === BULLET.ORB ? 0.04 : 0)) {
             const r = this.cue(b.kind, b.attack, b.tell, tt, b.x, b.y, b.z);
-            if (r === CUE.LATE && b.t - b.born < K.young) b.dud = true;
+            if ((r === CUE.LATE && b.t - b.born < K.young) || r === CUE.CLASH) b.dud = true;
             b.cued = true;
             b.cueAt = b.t + tt;
           }

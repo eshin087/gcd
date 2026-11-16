@@ -33,9 +33,10 @@ export function snapFire(fx, st, dt, mouth, yaw, pitch, range, u, first) {
     // the burst: fire balls out of the maw all at once, wider than the stream that follows
     for (let i = 0; i < 14; i++) {
       const y = yaw + rand(-0.35, 0.35), pj = pitch + rand(-0.12, 0.1), cp = Math.cos(pj), sp = rand(0.25, 0.6) * vMax;
-      fx._blob(mouth.x, mouth.y, mouth.z, Math.sin(y) * cp * sp, -Math.sin(pj) * sp + rand(0, 2), Math.cos(y) * cp * sp, rand(0.35, 0.55), rand(0.7, 1.0) * S, rand(1.6, 2.3) * S, 0.45, 0, 2.2, 2.5);
+      fx._blob(mouth.x, mouth.y, mouth.z, Math.sin(y) * cp * sp, -Math.sin(pj) * sp + rand(0, 2), Math.cos(y) * cp * sp, rand(0.35, 0.55), rand(0.7, 1.0) * S, rand(1.6, 2.3) * S, 0.3, 0, 2.2, 2.5);
     }
-    fx._light({ x: mouth.x + sa * 3, y: 1.4, z: mouth.z + ca * 3, color: [1, 0.5, 0.16], intensity: 6, radius: 9 * S, life: 0.55, fadeIn: 0.05, fade: 0.3, flicker: 0.5 });
+    // (one modest light: the ground it sets burning brings its own; at 6 / 9 S they flooded the grass yellow)
+    fx._light({ x: mouth.x + sa * 3, y: 1.4, z: mouth.z + ca * 3, color: [1, 0.5, 0.16], intensity: 3.2, radius: 6 * S, life: 0.5, fadeIn: 0.05, fade: 0.3, flicker: 0.5 });
   }
   // the gout itself: the breath's body (fx.breathBody: the same fire as every breath of the wyrm, in
   // the look in use), a short fat cone of about a third of the breath's rate

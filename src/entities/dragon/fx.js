@@ -620,8 +620,10 @@ export class DragonFx {
       this._breathLiquid(dt, mouth, aimYaw, pitch, R, HA, k);
       return;
     }
-    // the rod: small hot blobs close to the jaws (where they pile up: the white heart)
-    this._brStreams(dt, 0, (look === 'b' ? 140 : 240) * k, mouth, aimYaw, pitch, 0, Math.min(0.04, HA), R * 0.2, R * 0.34, 0.3, 0.4, 2.6, 0.3, 0.75, 0.24, 0.08, 1);
+    // the rod: small hot blobs close to the jaws (where they pile up: the white heart). A shorter fire
+    // packs them into less room: fewer of them, or the heart is a white ball at the jaws
+    const kr = k * Math.min(1, R / TUNING.attacks.breath.range);
+    this._brStreams(dt, 0, (look === 'b' ? 140 : 240) * kr, mouth, aimYaw, pitch, 0, Math.min(0.04, HA), R * 0.2, R * 0.34, 0.3, 0.4, 2.6, 0.3, 0.75, 0.24, 0.08, 1);
     if (look === 'b') {
       // lashing tongues: five streams that whip across the cone, each drawing a curved lick
       for (let i = 0; i < 5; i++) {
@@ -2082,7 +2084,7 @@ export class DragonFx {
     if (!mouth || !Number.isFinite(mouth.x + mouth.y + mouth.z + fx + fz)) return;
     const dx = fx - mouth.x, dy = 0.3 - mouth.y, dz = fz - mouth.z;
     const hz = Math.hypot(dx, dz), L = Math.hypot(hz, dy) || 1;
-    this.breathBody(dt, mouth, Math.atan2(dx, dz), Math.atan2(-dy, Math.max(0.01, hz)), L, 0.1, 0.32);
+    this.breathBody(dt, mouth, Math.atan2(dx, dz), Math.atan2(-dy, Math.max(0.01, hz)), L, 0.15, 0.24);
     let n;
     this._tongueAcc += dt * 45;
     n = Math.min(4, Math.floor(this._tongueAcc));

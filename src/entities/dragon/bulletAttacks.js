@@ -215,11 +215,15 @@ const laneOff = (n, j) => (j - (n - 1) / 2) * ES.laneGap;
 const gustOn = (a, t) => frac(a.gph + t * ES.gustHz) >= ES.gustGap;
 
 /**
- * Is the stream quiet for an ember leaving at cast time `t`, `D` m from the hero? It would reach him
- * within ES.orbSep s of the coughed orbs (a.orbAt, cast time): the stream has a gap there.
+ * Is the stream quiet for an ember leaving at cast time `t`, `D` m from the hero? It would reach him,
+ * or flash, within ES.orbSep s of the coughed orbs (a.orbAt / a.orbFlash, cast time): the stream has
+ * a gap there. (A bullet that reaches him in less than flashLead flashes as it leaves: the flashes are
+ * kept apart as well as the blows.)
  */
 function nearOrb(a, t, D) {
-  return a.orbAt > -1 && Math.abs(t + Math.max(0, D) / ES.speed - a.orbAt) < ES.orbSep;
+  if (!(a.orbAt > -1)) return false;
+  const fl = Math.max(0, D) / ES.speed, at = t + fl;
+  return Math.abs(at - a.orbAt) < ES.orbSep || Math.abs(at - Math.min(TUNING.flashLead, fl) - a.orbFlash) < ES.orbSep;
 }
 
 /** The torrent's target aim `te` s from now (the sweep; coughs and barks aside). */
@@ -296,7 +300,7 @@ const emberStorm = {
     a.covered = false;
     a.cough = 0;
     a.coughFired = true;
-    a.orbAt = -9; // cast time the last orbs reach the hero (nearOrb)
+    a.orbAt = a.orbFlash = -9; // cast time the last orbs reach the hero / flash (nearOrb)
     a.lastCos = Math.cos(a.ph);
     a.kick = 0;
     a.wasGust = false;
@@ -352,8 +356,11 @@ const emberStorm = {
       } else {
         a.ph += 2 * Math.PI * a.hz * dt;
         const c = Math.cos(a.ph);
-        // an extreme of the sweep: P2+ coughs a tight fan of red orbs at him (not into the barks)
-        if (a.orbs > 0 && c * a.lastCos < 0 && a.t > 0.3 && a.t < a.barkAt - 0.45) {
+        // an extreme of the sweep: P2+ coughs a tight fan of red orbs at him (not into the barks: the
+        // orbs, slower, reach him orbSep s before the first bark does or they do not come)
+        const Dq = G.D - BK.orb.r - playerR(d.game);
+        const orbIn = a.t + ES.cough * 0.5 + Math.max(0, Dq) / ES.orbSpeed, barkIn = a.barkAt + 0.25 + Math.max(0, Dq) / ES.barkSpeed;
+        if (a.orbs > 0 && c * a.lastCos < 0 && a.t > 0.3 && a.t < a.barkAt - 0.45 && (!Number.isFinite(Dq) || orbIn < barkIn - ES.orbSep)) {
           a.cough = ES.cough;
           a.coughFired = false;
         }
@@ -388,7 +395,11 @@ const emberStorm = {
         a.coughFired = true;
         for (let j = 0; j < a.orbs; j++) spit(d, BULLET.ORB, 'emberStorm', (j - (a.orbs - 1) / 2) * ES.orbSpread, ES.orbSpeed, a.grp, 5);
         const Gm = mouthGeo(d, _geo);
-        if (Number.isFinite(Gm.D)) a.orbAt = a.t + Math.max(0, Gm.D - BK.orb.r - playerR(d.game)) / ES.orbSpeed;
+        if (Number.isFinite(Gm.D)) {
+          const fo = Math.max(0, Gm.D - BK.orb.r - playerR(d.game)) / ES.orbSpeed;
+          a.orbAt = a.t + fo;
+          a.orbFlash = a.orbAt - Math.min(TUNING.flashLead, fo);
+        }
         BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, 14);
         a.kick = 1;
         d.game.shake?.(0.2);

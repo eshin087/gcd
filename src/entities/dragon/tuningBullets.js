@@ -35,6 +35,10 @@ export const BULLETS = {
   // them all), a bullet that could only be announced later than cueMin s before impact fizzles when
   // it is younger than `young` s (spawned point-blank), else it hits (the hero ran into it)
   cueGap: 0.3, cueMin: 0.24, young: 0.6,
+  // an impact within clashSep s of an announced one of the other answer (ember vs orb) is a dud, no
+  // cue (integration, 2026-11-15: the Ember torrent's in-flight embers reached the hero 0.08 s after
+  // its coughed orbs, red and white cued 0.07 s apart)
+  clashSep: 0.35,
   ricochet: 24, // a deflected bullet's speed back to the wyrm's head (m/s)
   returnSpeed: 34, // a perfectly parried bullet's speed back to the head (m/s; drawn x returnSize)
   returnSize: 1.8,

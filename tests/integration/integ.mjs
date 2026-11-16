@@ -889,7 +889,7 @@ async function scenarioPressure() {
           if (answerOf(flashes[i][1]) === answerOf(flashes[j][1])) continue;
           // (within one pattern, e.g. a torrent's red orb inside its ember stream: the pattern's own
           // design, counted apart; between two sources: the director's composition)
-          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.push(flashes[i][2]); } else { conflicts++; conflictAt.push(`${flashes[i][2]}/${flashes[j][2]}`); if (process.env.ABYSS_PDBG) out(`      CLASH at ${(flashes[i][0] - t0).toFixed(2)}: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 4 && x[0] < flashes[j][0] + 0.5).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`); }
+          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.push(flashes[i][2]); if (process.env.ABYSS_PDBG) out(`      INNER ${flashes[i][2]} ${(flashes[i][0] - t0).toFixed(2)} ${flashes[i][1]} / ${(flashes[j][0] - t0).toFixed(2)} ${flashes[j][1]} (P${ph}) :: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 1.5 && x[0] < flashes[j][0] + 0.3).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(" | ")}`); } else { conflicts++; conflictAt.push(`${flashes[i][2]}/${flashes[j][2]}`); if (process.env.ABYSS_PDBG) out(`      CLASH at ${(flashes[i][0] - t0).toFixed(2)}: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 4 && x[0] < flashes[j][0] + 0.5).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`); }
         }
       }
       const picks = Object.values(cats).reduce((a, b) => a + b, 0) || 1;
