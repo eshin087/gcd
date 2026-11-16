@@ -946,6 +946,85 @@ async function scenarioPressure() {
   return lastG;
 }
 
+// ================================================================== scenario: budget (one fight, one budget)
+// The whole wyrm with everything on (integration, 2026-11-15): a phase-3 fight with the AI on and a
+// hero bot in god mode that keeps moving (it roams like the pressure meter's and answers the tells).
+// Per seed: the peak of the fire field (it holds 6000 blobs), of both glyph pools (alpha 3000, add
+// 7000), and the worst and the mean frame time of dragon.update + world.update (headless node: the
+// CPU side only). Desktop settings, then the phone's (the world's LOW budget). It asserts the fire
+// field's peak stays under BUDGET_FIRE. ABYSS_BSEEDS=a,b,c ABYSS_BSECS=s for the full measurement
+// (the report's: three seeds, 180 s); the suite runs one seed for 60 s.
+async function scenarioBudget() {
+  out('\n== scenario BUDGET (a phase-3 fight, everything on: fire field, glyph pools, frame time of dragon + world) ==');
+  const SECS = Number(process.env.ABYSS_BSECS ?? 60);
+  const SEEDS = (process.env.ABYSS_BSEEDS ?? '4242').split(',').map(Number).filter(Number.isFinite);
+  const BUDGET_FIRE = 4500;
+  const rows = [];
+  let lastG = null;
+  for (const phone of [false, true]) {
+    for (const seed of SEEDS) {
+      const G = (lastG = build());
+      const { game } = G;
+      G.defend = steadyDefender(G);
+      fightSetup(G, { ai: true });
+      if (phone) game.world.setQuality?.(0.5); // (QUALITY.LOW: the touch preset)
+      const d = game.dragon;
+      Math.random = mulberry32(seed * 13 + (phone ? 1 : 0));
+      for (let n = 2; n <= 3; n++) {
+        d.debug.setHp(TUNING.phaseAt[n - 1] - 0.01);
+        run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === n && d.brain.action?.name !== `phase${n}`);
+      }
+      const pin = Math.round(d.maxHp * 0.17);
+      const fx = game.fx;
+      let fire = 0, add = 0, alpha = 0, worst = 0, sum = 0, n = 0, worstAt = '';
+      const dUp = d.update.bind(d), wUp = game.world.update.bind(game.world);
+      let tD = 0;
+      d.update = (dt) => { const t0 = performance.now(); dUp(dt); tD += performance.now() - t0; };
+      game.world.update = (dt) => { const t0 = performance.now(); wUp(dt); tD += performance.now() - t0; };
+      const roam = mulberry32(seed * 31 + 7), goal = { r: 6, a: 0, until: -1 };
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        bot(G, { god: true, defend: true, attack: false });
+        if (game.time > goal.until) {
+          const p = game.player.position;
+          goal.r = [6, 10, 15][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.x - d.position.x, p.z - d.position.z) + (roam() - 0.5) * 1.4;
+          goal.until = game.time + 5;
+        }
+        if (!G.input.pressedKeys.has('Space') && game.player.state !== 'roll') {
+          const p = game.player.position, b = goal.a;
+          const gx = d.position.x + Math.sin(b) * goal.r, gz = d.position.z + Math.cos(b) * goal.r;
+          const k = Math.hypot(gx, gz) > 24 ? 24 / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.x, dz = gz * k - p.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 1 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        tD = 0;
+        G.tick(DT);
+        if (d.hp < pin) d.hp = pin;
+        if (d.brain.pendingPhase > 3) d.brain.pendingPhase = 0;
+        if (i > 30) { // (the first frames compile and warm up)
+          sum += tD;
+          n++;
+          if (tD > worst) { worst = tD; worstAt = d.brain.action?.name ?? 'idle'; }
+        }
+        if (fx.fire.count > fire) fire = fx.fire.count;
+        if (fx.add.count > add) add = fx.add.count;
+        if (fx.alpha.count > alpha) alpha = fx.alpha.count;
+      }
+      d.update = dUp;
+      game.world.update = wUp;
+      rows.push({ phone, seed, fire, add, alpha, worst, mean: sum / Math.max(1, n), worstAt, phase: d.phase });
+    }
+  }
+  out(`   ${SECS} s of phase 3 per seed · peaks: fire field (of ${lastG?.game.fx.fire.max ?? 6000}), glyph pools add (of 7000) / alpha (of 3000) · dragon.update + world.update ms (worst, mean; node, CPU only)`);
+  out('   settings  seed   fire   add  alpha   worst ms  mean ms  worst during');
+  for (const r of rows) out(`   ${(r.phone ? 'phone' : 'desktop').padEnd(8)} ${String(r.seed).padStart(5)} ${String(r.fire).padStart(6)} ${String(r.add).padStart(5)} ${String(r.alpha).padStart(6)} ${r.worst.toFixed(2).padStart(10)} ${r.mean.toFixed(3).padStart(8)}  ${r.worstAt}`);
+  for (const r of rows) {
+    assert(r.phase === 3 && r.fire < BUDGET_FIRE, `budget (${r.phone ? 'phone' : 'desktop'}, seed ${r.seed}): the fire field's peak ${r.fire} < ${BUDGET_FIRE} of 6000 in a phase-3 fight`);
+    assert(r.add < 7000 && r.alpha < 3000, `budget (${r.phone ? 'phone' : 'desktop'}, seed ${r.seed}): the glyph pools never fill (add ${r.add} of 7000, alpha ${r.alpha} of 3000)`);
+  }
+  return lastG;
+}
+
 // ================================================================== scenario: win (god-mode bot that defends)
 async function scenarioWin() {
   out('\n== scenario WIN (god-mode bot: attacks, parries, blocks, dodges) ==');
@@ -9362,7 +9441,7 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, melee: scenarioMelee, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, melee: scenarioMelee, budget: scenarioBudget, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 // ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process

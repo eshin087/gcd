@@ -831,8 +831,10 @@ export class Hazards {
       }
     }
     if (run > 0 && !h.l0) {
-      h.l0 = fx.hazardLight(h.ax, h.az, [1, 0.45, 0.12], 3.2, 10);
-      h.l1 = fx.hazardLight(h.ax, h.az, [1, 0.4, 0.1], 2.6, 9);
+      // (ground a fire blow set burning, noBlow: one low light. A string lays two to four of them at
+      // once and the grass they light brings its own: with two bright lights each they flooded the field)
+      h.l0 = h.noBlow ? fx.hazardLight(h.ax, h.az, [1, 0.45, 0.12], 1.8, 7) : fx.hazardLight(h.ax, h.az, [1, 0.45, 0.12], 3.2, 10);
+      if (!h.noBlow) h.l1 = fx.hazardLight(h.ax, h.az, [1, 0.4, 0.1], 2.6, 9);
     }
     if (h.l0) {
       const a = b0 + (f - b0) * 0.75, c = b0 + (f - b0) * 0.25;

@@ -280,30 +280,35 @@ function updateDeck(fx, s, dt) {
   // of the frame: NDC v 0.62 .. 1.1, a little past both sides
   const H = Math.max(6, Math.min(15, camY * 0.48));
   const reach = 8 + 60 * s.spread;
+  // a short frame (a phone held sideways, ~393 px): the deck's printed letters are bigger for the
+  // frame, so it starts higher and its blobs are smaller (kept to the top sixth; integration, 2026-11-15)
+  const ph = fx.game.renderer?.domElement?.clientHeight;
+  const f = Number.isFinite(ph) && ph > 0 ? Math.max(0.5, Math.min(1, ph / 768)) : 1;
+  const v0 = 0.7 + 0.36 * (1 - f), sz = 0.6 + 0.4 * f;
   // smoke: the dark belly of the cloud
   s.accSmoke += dt * 34 * k;
   let n = Math.min(6, Math.floor(s.accSmoke));
   s.accSmoke -= n;
   while (n-- > 0) {
-    if (!rayAt(fx, s, rand(-1.25, 1.25), rand(0.7, 1.12), H + rand(-1, 1.5))) continue;
+    if (!rayAt(fx, s, rand(-1.25, 1.25), rand(v0, 1.12), H + rand(-1, 1.5))) continue;
     if (Math.hypot(s.ray.x - s.cx, s.ray.z - s.cz) > reach) continue;
-    fx._blob(s.ray.x, s.ray.y, s.ray.z, rand(-1, 1), rand(-0.2, 0.3), rand(-1, 1), rand(2.4, 3.4), rand(4, 6), rand(6, 8), 0.55, 0.3, 0.2, 0, 1);
+    fx._blob(s.ray.x, s.ray.y, s.ray.z, rand(-1, 1), rand(-0.2, 0.3), rand(-1, 1), rand(2.4, 3.4), rand(4, 6) * sz, rand(6, 8) * sz, 0.55, 0.3, 0.2, 0, 1);
   }
   // fire rolling under it: cool (red strokes, orange digits), a few hotter knots
   s.accFire += dt * 150 * k;
   n = Math.min(16, Math.floor(s.accFire));
   s.accFire -= n;
   while (n-- > 0) {
-    if (!rayAt(fx, s, rand(-1.25, 1.25), rand(0.74, 1.1), H + rand(-1.5, 0.5))) continue;
+    if (!rayAt(fx, s, rand(-1.25, 1.25), rand(v0 + 0.04, 1.1), H + rand(-1.5, 0.5))) continue;
     if (Math.hypot(s.ray.x - s.cx, s.ray.z - s.cz) > reach) continue;
     const hot = Math.random() < 0.15;
-    fx._blob(s.ray.x, s.ray.y, s.ray.z, rand(-1.5, 1.5), rand(-0.6, 0.4), rand(-1.5, 1.5), rand(1.2, 2.2), rand(1.6, 2.6), rand(2.6, 3.8), (hot ? 0.36 : 0.19) * (0.6 + 0.4 * k), 0, 0.3, 0);
+    fx._blob(s.ray.x, s.ray.y, s.ray.z, rand(-1.5, 1.5), rand(-0.6, 0.4), rand(-1.5, 1.5), rand(1.2, 2.2), rand(1.6, 2.6) * sz, rand(2.6, 3.8) * sz, (hot ? 0.36 : 0.19) * (0.6 + 0.4 * k), 0, 0.3, 0);
   }
   // rents of light: a seam tears open, a jagged line of hot blobs that flares and closes
   s.rentT -= dt;
   if (s.rentT <= 0 && k > 0.3) {
     s.rentT = rand(0.18, 0.5) / k;
-    if (rayAt(fx, s, rand(-1, 1), rand(0.72, 1.02), H - 0.5) && Math.hypot(s.ray.x - s.cx, s.ray.z - s.cz) <= reach) {
+    if (rayAt(fx, s, rand(-1, 1), rand(v0 + 0.02, 1.02), H - 0.5) && Math.hypot(s.ray.x - s.cx, s.ray.z - s.cz) <= reach) {
       let x = s.ray.x, z = s.ray.z;
       const a = rand(0, TAU), len = rand(6, 14), steps = Math.round(len / 0.8);
       let dx = Math.cos(a), dz = Math.sin(a);
