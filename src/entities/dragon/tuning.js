@@ -64,6 +64,11 @@ export const TUNING = {
     // and how much of the blast's radius catches
     ignite: { breath: 1, strip: 1, explosion: [1, 0.6], meteor: [0.7, 0.55], pillar: [0.8, 0.7], dive: [0.8, 0.5], nova: [1, 0.6] },
     bullet: 0.12, // a small bullet stopped by cover takes this out of it (the orb: x 3)
+    // the WRECKAGE scenario's bounds (integ.mjs: a whole AI fight on the real clearing, 80 s a phase):
+    // the share of the clearing's pieces (inside the hero's bound) standing at the end, the liftable
+    // pieces as phase 3 starts, the pieces burnt through. Measured 2026-11-15 on seeds 1337, 7, 4242:
+    // 36 - 50 % standing (11 - 15 before the tuning pass), 9 - 12 liftable, 2 - 4 burnt
+    meter: { endShare: [0.3, 0.7], liftP3: 8, burnt: 6 },
   },
   // the root stays inside min(CONFIG.world.dragonBound, bound) (m). CONFIG's 26 was sized for the
   // v0.2 wyrm; at x1.875 the chest / neck-base body circles (~5.8 m ahead of the root) would cross
@@ -174,7 +179,10 @@ export const TUNING = {
     // the pressure meter's bounds (integ.mjs scenario PRESSURE): each phase's cues per minute at least
     // x ramp the last's; the longest gap between cues (s). Measured on three seeds before the director
     // (v0.6 numbers): P1 6.6 - 7.2, P2 6.7 - 7.7, P3 5.6 - 10.3 s; with it: 5.7 - 7.6, 3.6 - 6.5, 3.5 - 4.5
-    meter: { ramp: 1.12, maxGap: [8, 7, 5] },
+    // (tuning pass, 2026-11-15, five seeds 1337 7 4242 99 2026: P1 30.7 - 36.7, P2 53.2 - 63.4, P3 71.6 -
+    // 86.0 cues a minute, P3 / P2 x1.15 - 1.62, P2 / P1 x1.55 - 1.88; longest gaps P1 4.4, P2 3.6, P3 3.2 s.
+    // Was maxGap [8, 7, 5] and no floor on the rate)
+    meter: { ramp: 1.12, maxGap: [5.5, 5, 4.5], minRate: [28, 48, 64] },
   },
   // the wyrm's heat per phase: crack glow (glowTarget) and body embers per second (phase 3 burns
   // white-hot)

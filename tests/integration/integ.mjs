@@ -917,6 +917,7 @@ async function scenarioPressure() {
     assert(r[1].perMin >= r[0].perMin * A.ramp && r[2].perMin >= r[1].perMin * A.ramp, `seed ${seed}: each phase busier than the last by x${A.ramp} (cues/min ${r.map((x) => x.perMin.toFixed(1)).join(' < ')})`);
     for (const x of r) {
       assert(x.gapMax <= perPhase(A.maxGap, x.ph), `seed ${seed} P${x.ph}: longest gap between cues ${x.gapMax.toFixed(2)} s <= ${perPhase(A.maxGap, x.ph)} s`);
+      if (A.minRate) assert(x.perMin >= perPhase(A.minRate, x.ph), `seed ${seed} P${x.ph}: ${x.perMin.toFixed(1)} cues a minute >= ${perPhase(A.minRate, x.ph)}`);
       // the categories this phase has: attacks the AI may pick in it (tuning weight > 0 there)
       const want = new Set();
       for (const name in ATTACKS) {
@@ -936,7 +937,9 @@ async function scenarioPressure() {
       assert(x.conflicts === 0, `seed ${seed} P${x.ph}: no two blows of different sources needing different answers within 0.3 s (${x.conflicts}: ${x.conflictAt.slice(0, 4).join(' · ')})`);
       assert(x.minSafe >= 1, `seed ${seed} P${x.ph}: always ground within a roll that no blast due within 0.6 s covers (least ${x.minSafe} of 17 spots, Armageddon apart)`);
     }
-    assert(r[1].chains >= 1 && r[2].chains >= 1, `seed ${seed}: moves chain into each other from the links in phases 2 and 3 (${r.map((x) => x.chains).join(' / ')})`);
+    // (tuning pass, 2026-11-15: every move carries links now; measured 8 - 19 chains a 120 s phase in
+    // phases 2 and 3 on five seeds, was 1 - 5: at least 5)
+    assert(r[1].chains >= 5 && r[2].chains >= 5, `seed ${seed}: moves chain into each other from the links in phases 2 and 3 (${r.map((x) => x.chains).join(' / ')})`);
     assert(r[0].ambient === 0 && r[2].ambient > 0, `seed ${seed}: ambient fire only from phase 2, and in phase 3 (${r.map((x) => x.ambient).join(' / ')})`);
   }
   return lastG;
