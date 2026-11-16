@@ -2111,6 +2111,106 @@ async function scenarioDeflect() {
 }
 
 // ================================================================== scenario: Lab + debug APIs
+// ---- TONGUES: the ground tongues of the Scouring breath and Fire lanes (bullets.scour): a standing
+// hero under the first rake is always hit; between two first-rake tongues he is safe until the rake
+// back; a dark wedge of Fire lanes is safe through its strike
+async function scenarioTongues() {
+  out('\n== scenario TONGUES (Scouring breath: standing is hit, between two tongues is safe; Fire lanes: a dark wedge is safe) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, B = d.bullets;
+  const FW = TUNING.attacks.fireWheel, CL = TUNING.attacks.fireLanes;
+  const toPhase = (ph) => { settle(G, 12); if (d.phase !== ph) { d.enterPhase(ph); run(G, 0.2, { passive: true }); settle(G, 14); } B.clear(); run(G, 0.6, { passive: true }); };
+  /** Trigger `name` with the hero `dist` (model units) at `ang` off the facing; `move(a)` may re-place him once the plan is laid; tick to the end. */
+  const play = (name, dist, ang, move) => {
+    place(G, dist, ang);
+    G.tick(DT); // (the wyrm senses him where he now stands: the plan is centred on that)
+    d.posture = 0;
+    const h0 = G.hits.length;
+    const ok = game.lab.trigger(name);
+    const a = d.brain.action, t0 = game.time;
+    if (move && a) move(a);
+    const hits = [];
+    for (let i = 0; i < Math.round(12 / DT); i++) {
+      input.axis = { x: 0, y: 0 };
+      d.posture = 0;
+      p.hp = p.maxHp; // (he stands through it: every touch is counted, none ends the run)
+      G.tick(DT);
+      for (const h of G.hits.slice(h0 + hits.length)) hits.push({ ...h, at: h.t - t0 });
+      if (!d.brain.action && !B.scouring) break;
+    }
+    return { ok, a, hits: hits.filter((h) => h.attack === name && h.r === RESULT.HIT) };
+  };
+  // 1. standing still under the first rake: hit, every phase, every placement (the middle tongue of
+  //    the first rake runs over him)
+  for (const ph of [2, 3]) {
+    toPhase(ph);
+    let worst = 0, miss = [];
+    for (const [dist, ang] of [[9, 0], [10, 0.25], [11, -0.25], [12, 0.4], [9, -0.4]]) {
+      const r = play('fireWheel', dist, ang);
+      const rt = perPhaseT(FW.rakeTime, ph), W = r.a.list[0][1];
+      const first = r.hits[0]?.at ?? Infinity;
+      worst = Math.max(worst, first);
+      if (!(first <= W + rt + 0.5)) miss.push(`${dist}@${ang}: ${Number.isFinite(first) ? first.toFixed(2) : 'no hit'}`);
+      B.clear();
+      settle(G, 12);
+    }
+    out(`   P${ph} Scouring breath, hero standing at 5 placements: first hit ≤ ${worst.toFixed(2)} s after the trigger${miss.length ? ` · MISSED ${miss.join(', ')}` : ''}`);
+    assert(!miss.length, `P${ph} Scouring breath: a hero standing still is hit by the first rake, every placement (${miss.join(', ') || 'all hit'})`);
+  }
+  // (Fire lanes: the first strike lights the middle wedge: a hero standing on his spot is hit by it)
+  {
+    toPhase(3);
+    const miss = [];
+    for (const [dist, ang] of [[9, 0], [11, 0.25], [10, -0.3]]) {
+      const r = play('fireLanes', dist, ang);
+      const end1 = r.a.list[0][1] + r.a.g;
+      if (!(r.hits[0]?.at < end1)) miss.push(`${dist}@${ang}`);
+      B.clear();
+      settle(G, 12);
+    }
+    out(`   P3 Fire lanes, hero standing at 3 placements: ${miss.length ? `MISSED by the first strike at ${miss.join(', ')}` : 'hit by the first strike every time'}`);
+    assert(!miss.length, `P3 Fire lanes: a hero standing still is hit by the first strike (${miss.join(', ') || 'all hit'})`);
+  }
+  // 2. P2: between two first-rake tongues (half a step off the middle one, 12 m from the pivot) he is
+  //    safe until the rake back lays its tongue in that gap
+  {
+    toPhase(2);
+    const m = perPhaseT(FW.tongues, 2), step = FW.arc / (m - 1);
+    let backAt = 0;
+    const r = play('fireWheel', 10, 0, (a) => {
+      const th = a.c + step / 2, R = 12;
+      p.debug.teleport(a.px + Math.sin(th) * R, a.pz + Math.cos(th) * R);
+      backAt = a.list[0][1] + a.rt + FW.pause; // the rake back starts
+    });
+    const before = r.hits.filter((h) => h.at < backAt), after = r.hits.filter((h) => h.at >= backAt);
+    out(`   P2 between two first-rake tongues (step ${step.toFixed(3)} rad, 12 m out): hits before the rake back ${before.length} · after it ${after.length} (at ${after.map((h) => h.at.toFixed(2)).join(', ')} s; it starts at ${backAt.toFixed(2)} s)`);
+    assert(r.ok && before.length === 0, `P2 Scouring breath: standing between two first-rake tongues is safe until the rake back (${before.length} hits before ${backAt.toFixed(2)} s)`);
+    assert(after.length >= 1, `P2 Scouring breath: the rake back lays a tongue in that gap (${after.length} hits)`);
+    B.clear();
+  }
+  // 3. P3 Fire lanes: a dark wedge of the first strike (lane 1 of 10101) is safe through that strike;
+  //    the second strike (01010) lights it
+  {
+    toPhase(3);
+    let strike2 = 0;
+    const r = play('fireLanes', 10, 0, (a) => {
+      const th = a.c + (a.flip ? -1 : 1) * (1 - (CL.lanes - 1) / 2) * CL.laneGap, R = 12;
+      p.debug.teleport(a.px + Math.sin(th) * R, a.pz + Math.cos(th) * R);
+      strike2 = a.list[0][1] + a.g;
+    });
+    const before = r.hits.filter((h) => h.at < strike2), after = r.hits.filter((h) => h.at >= strike2);
+    out(`   P3 Fire lanes, hero in the dark wedge of strike 1 (12 m out): hits before strike 2 ${before.length} · after ${after.length} (strike 2 at ${strike2.toFixed(2)} s)`);
+    assert(r.ok && before.length === 0, `P3 Fire lanes: a dark wedge is safe through its strike (${before.length} hits before ${strike2.toFixed(2)} s)`);
+    assert(after.length >= 1, `P3 Fire lanes: the next strike lights that wedge (${after.length} hits)`);
+    B.clear();
+  }
+  out(`   console errors so far: ${errors.length}`);
+  return G;
+}
+const perPhaseT = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length - 1, ph - 1)] : v);
+
 // ---- BULLETS: the bullet field (bullets.js) and the six breathed patterns (bulletAttacks.js), docs/COMBAT.md "Bullets"
 async function scenarioBullets() {
   out('\n== scenario BULLETS (deflect / block / roll / cut the small ones, dodge the red ones; the cue, the caps, the clears) ==');
@@ -8349,7 +8449,7 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, tongues: scenarioTongues, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

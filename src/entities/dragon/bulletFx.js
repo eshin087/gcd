@@ -372,14 +372,14 @@ export function tongueRelease(fx, tg) {
   if (!Number.isFinite(x + z)) return;
   for (let i = 0; i < 5; i++) {
     const sp = rand(5, 11);
-    fx._blob(x + rand(-0.3, 0.3), rand(0.4, 0.9), z + rand(-0.3, 0.3), tg.sx * sp + rand(-1.2, 1.2), rand(1, 3.5), tg.sz * sp + rand(-1.2, 1.2), rand(0.25, 0.4), rand(1.1, 1.5), rand(1.6, 2.2), 0.5, 0, 3, 1);
+    fx._blob(x, rand(0.4, 0.8), z, tg.sx * sp + rand(-0.3, 0.3), rand(1, 3), tg.sz * sp + rand(-0.3, 0.3), rand(0.25, 0.4), rand(0.9, 1.2), rand(1.2, 1.5), 0.5, 0, 3, 1); // (along its line only)
   }
   for (let i = 0; i < 3; i++) {
     fx._col(HOT, 1, DARK, 1);
     const o = fx._rec(x, 0.6, z, rand(0.4, 0.7), rand(0.22, 0.3), 0.06, EMBER_TAIL);
-    o.vx = tg.sx * rand(4, 9) + rand(-2, 2);
+    o.vx = tg.sx * rand(4, 9) + rand(-0.6, 0.6);
     o.vy = rand(2, 6);
-    o.vz = tg.sz * rand(4, 9) + rand(-2, 2);
+    o.vz = tg.sz * rand(4, 9) + rand(-0.6, 0.6);
     o.drag = 1.4;
     o.gravity = -9;
     o.flicker = 0.4;
@@ -388,87 +388,92 @@ export function tongueRelease(fx, tg) {
 }
 
 /**
- * A tongue, every frame (tg.front / tg.tail: the stretch burning now). The body is held fire along
- * the line from the tail to the front that wavers side to side and flickers along its length,
- * hottest just behind the front and dying toward the tail (each spot burns `hold` s); the front is a
- * clump of flame rolling forward; flames lick up off the body (the most at the front), sparks
- * climb, smoke rolls off the dying end. The ground under it is scorched and what it crawls over
- * catches (world.ignite).
+ * A tongue, every frame (tg.front / tg.tail: the stretch burning now). It must read from the game
+ * camera as ONE line of fire, no wider than it hurts, with dark ground beside it:
+ *   - a hot core line, unbroken from the tail to the front (small held blobs close together, on the
+ *     line itself: the field sums them into a white-gold thread),
+ *   - a body as wide as the hit (`width`), its edge wavering a little along the line (it licks, it
+ *     never smears sideways), hottest just behind the front and dying toward the tail,
+ *   - a bright front rolling forward (the way it travels), flames licking straight up off the line
+ *     (most at the front), a few sparks.
+ * No smoke, no flame thrown off the line, no wide ground heat: the gaps between tongues stay dark.
+ * The ground under it is charred (little heat), and wood the front crawls over catches.
  */
 export function tongueLive(fx, tg, dt) {
   const life = fx._hold(tg, 'hf', dt);
   const span = tg.front - tg.tail;
   if (!(span > 0)) return;
   const t = tg.t, sd = tg.seed, sx = tg.sx, sz = tg.sz, qx = sz, qz = -sx;
-  const W = Math.max(0.8, tg.width);
+  const W = Math.max(0.6, tg.width);
   const full = Math.max(0.5, tg.speed * tg.hold);
   const ending = tg.front >= tg.r1 - 0.01;
   if (life > 0) {
-    const step = 0.8;
-    for (let r = tg.front - 0.3; r >= tg.tail; r -= step) {
-      const u = (tg.front - r) / full; // 0 just behind the front .. 1 at the dying tail
-      const nz = 0.7 + 0.3 * Math.sin(r * 1.7 + t * 13 + sd) * Math.sin(r * 0.6 - t * 5 + sd * 2);
-      const h = Math.pow(Math.max(0, 1 - u), 1.25) * nz * (ending ? 0.85 : 1);
+    // the core: a thread on the line, every 0.45 m (blobs 0.6 m across overlap: no beads)
+    for (let r = tg.front; r >= tg.tail; r -= 0.45) {
+      const u = (tg.front - r) / full;
+      const h = Math.max(0, 1 - u);
+      if (h < 0.04) continue;
+      fx._blob(tg.x + sx * r, 0.35, tg.z + sz * r, 0, 0, 0, life, 0.9, 0.9, 0.75 + 0.65 * h, 0.75 + 0.65 * h);
+    }
+    // the body: as wide as the hit, its edge licking a little along the line
+    for (let r = tg.front - 0.2; r >= tg.tail; r -= 0.7) {
+      const u = (tg.front - r) / full;
+      const nz = 0.75 + 0.25 * Math.sin(r * 1.7 + t * 13 + sd) * Math.sin(r * 0.6 - t * 5 + sd * 2);
+      const h = Math.pow(Math.max(0, 1 - u), 1.2) * nz * (ending ? 0.85 : 1);
       if (h < 0.06) continue;
-      const wob = 0.34 * Math.sin(r * 0.8 + t * 6 + sd) + 0.16 * Math.sin(r * 2.3 - t * 9.5 + sd * 1.7);
-      fx._blob(tg.x + sx * r + qx * wob, 0.45 + 0.45 * h, tg.z + sz * r + qz * wob, 0, 0, 0, life, (0.8 + 0.5 * h) * W, (0.8 + 0.5 * h) * W, 0.72 * h, 0.72 * h);
+      const wob = 0.1 * W * Math.sin(r * 0.9 + t * 7 + sd);
+      fx._blob(tg.x + sx * r + qx * wob, 0.5 + 0.35 * h, tg.z + sz * r + qz * wob, 0, 0, 0, life, (0.7 + 0.2 * h) * W, (0.7 + 0.2 * h) * W, 0.5 * h, 0.5 * h);
     }
     if (!ending) {
-      // the front: a clump of flame rolling forward, a lick ahead of it
+      // the front: a bright clump rolling forward, a short lick ahead of it (the way it travels)
       const fx0 = tg.x + sx * tg.front, fz0 = tg.z + sz * tg.front;
-      const fw = 0.25 * Math.sin(t * 17 + sd);
-      fx._blob(fx0 + qx * fw, 0.85, fz0 + qz * fw, 0, 0, 0, life, 1.55 * W, 1.55 * W, 0.85, 0.85);
-      fx._blob(fx0 + sx * 0.55, 0.55, fz0 + sz * 0.55, 0, 0, 0, life, 1.0 * W, 1.0 * W, 0.42, 0.42);
+      fx._blob(fx0, 0.75, fz0, 0, 0, 0, life, 1.3 * W, 1.3 * W, 1.6, 1.6);
+      fx._blob(fx0 + sx * 0.7, 0.5, fz0 + sz * 0.7, 0, 0, 0, life, 0.9 * W, 0.9 * W, 0.8, 0.8);
     }
   }
-  // flames licking up off the body (the most at the front), sparks, smoke off the dying end
-  tg.acc += dt * Math.min(70, 26 + 4 * span);
-  let n = Math.min(10, Math.floor(tg.acc));
+  // flames licking straight up off the line (the most at the front), a few sparks
+  tg.acc += dt * Math.min(40, 14 + 2.5 * span);
+  let n = Math.min(6, Math.floor(tg.acc));
   tg.acc -= n;
   while (n-- > 0) {
     const q = Math.random();
     const r = tg.front - span * q * q;
-    const u = (tg.front - r) / full;
-    const h = Math.max(0, 1 - u);
-    const lat = rand(-0.45, 0.45) * W;
+    const h = Math.max(0, 1 - (tg.front - r) / full);
+    const lat = rand(-0.3, 0.3) * W;
     const x = tg.x + sx * r + qx * lat, z = tg.z + sz * r + qz * lat;
-    if (h < 0.25 && Math.random() < 0.5) {
-      fx._blob(x, rand(0.8, 1.6), z, rand(-0.4, 0.4), rand(1.2, 2.4), rand(-0.4, 0.4), rand(0.9, 1.4), 1.1, 2.6, 0.45, 0, 0.8, 0, 1);
-      continue;
-    }
-    fx._blob(x, rand(0.5, 1.0), z, sx * rand(0, 2) + rand(-0.5, 0.5), rand(2.5, 6) * (0.5 + 0.5 * h), sz * rand(0, 2) + rand(-0.5, 0.5), rand(0.3, 0.6), rand(0.9, 1.3) * W, 0.4, 0.46 * (0.4 + 0.6 * h), 0.05, 1.4, 1.2);
-    if (Math.random() < 0.18) {
+    fx._blob(x, rand(0.5, 0.9), z, sx * rand(0, 1), rand(2.5, 5) * (0.5 + 0.5 * h), sz * rand(0, 1), rand(0.25, 0.45), rand(0.6, 0.85) * W, 0.3, 0.45 * (0.4 + 0.6 * h), 0.05, 1.6, 1.2);
+    if (Math.random() < 0.12) {
       fx._col(GOLD, 0.85, DARK, 1.3);
-      const o = fx._rec(x, rand(0.4, 1.0), z, rand(0.4, 0.8), rand(0.2, 0.28), 0.05, EMBER_TAIL);
-      o.vx = rand(-1.2, 1.2);
-      o.vy = rand(2, 5.5);
-      o.vz = rand(-1.2, 1.2);
+      const o = fx._rec(x, rand(0.4, 1.0), z, rand(0.4, 0.7), rand(0.2, 0.26), 0.05, EMBER_TAIL);
+      o.vx = rand(-0.4, 0.4);
+      o.vy = rand(2, 5);
+      o.vz = rand(-0.4, 0.4);
       o.drag = 1.2;
       o.gravity = -6;
       o.flicker = 0.45;
       fx._spawn(fx.add, o);
     }
   }
-  // the ground: scorched where it burns, and what the front crawls over catches
+  // the ground: charred along the line (little heat: lit grass would bury the lines), wood catches
   tg.scT -= dt;
   if (tg.scT <= 0) {
     tg.scT = 0.14;
     const w = fx.game.world;
     const r = tg.tail + Math.random() * span;
-    w?.scorch?.burnCircle?.(tg.x + sx * r, tg.z + sz * r, W * 0.8, 0.25, 0.4); // (char, a little heat: the lit lanes must read against the burnt ones)
+    w?.scorch?.burnCircle?.(tg.x + sx * r, tg.z + sz * r, W * 0.5, 0.3, 0.12);
     if (!ending) {
       const fxp = tg.x + sx * tg.front, fzp = tg.z + sz * tg.front;
-      w?.scorch?.burnCircle?.(fxp, fzp, W * 0.8, 0.2, 0.5);
-      w?.ignite?.(fxp, fzp, W * 0.7, fx.d?.bullets?.K?.world?.tongueFire ?? 1, false); // (wood only: grass fire would bury the lines)
+      w?.scorch?.burnCircle?.(fxp, fzp, W * 0.5, 0.25, 0.15);
+      w?.ignite?.(fxp, fzp, W * 0.6, fx.d?.bullets?.K?.world?.tongueFire ?? 1, false); // (wood only: grass fire would bury the lines)
     }
   }
 }
 
-/** The one moving light of the tongues: on the front nearest the hero. */
+/** A small light riding a tongue's front (the field gives it to the fronts nearest the hero). */
 export function tongueLight(fx, tg) {
   const x = tg.x + tg.sx * tg.front, z = tg.z + tg.sz * tg.front;
   if (!Number.isFinite(x + z)) return;
-  fx._light({ x, y: 1.2, z, color: FIRE_LIGHT, intensity: 3.4, radius: 8, life: 0.2, fade: 0.14 });
+  fx._light({ x, y: 1.0, z, color: FIRE_LIGHT, intensity: 1.8, radius: 3.5, life: 0.2, fade: 0.14 });
 }
 
 // ---------------------------------------------------------------- lobbed embers

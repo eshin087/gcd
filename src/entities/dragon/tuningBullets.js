@@ -161,8 +161,9 @@ export const BULLET_ATTACKS = {
     label: 'Fire lanes (alternating ground fire)', tell: TELL.RED, phase: 3,
     windup: 1.0, recovery: 1.0,
     // wedges; rad between them; tongues per wedge, rad apart (band x bandGap = laneGap: a lit wedge
-    // is solid fire, a dark one has a ~3 m stripe to stand in at 12 m)
-    lanes: 5, laneGap: 0.3, band: 3, bandGap: 0.1,
+    // is a band of fire, its lines 1.1 - 1.7 m apart at 15 - 22 m, each 1.2 m wide; a dark one has a
+    // ~3 m stripe to stand in at 12 m)
+    lanes: 5, laneGap: 0.3, band: 4, bandGap: 0.075,
     // lit lanes per strike (bit i = lane i, 0 the leftmost): outer + middle, the two between, ...
     pattern: [0b10101, 0b01010, 0b10001, 0b01110], strikes: [3, 3, 4], strikeGap: [0.95, 0.95, 0.85],
     speed: 12, hold: 0.85, r1: 24, width: 1.2, // (hold < strikeGap: one strike's lanes die down as the next ones come)
