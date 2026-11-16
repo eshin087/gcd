@@ -2111,7 +2111,7 @@ async function scenarioDeflect() {
 }
 
 // ================================================================== scenario: Lab + debug APIs
-// ---- BULLETS: the bullet field (bullets.js) and the four patterns (bulletAttacks.js), docs/COMBAT.md "Bullets"
+// ---- BULLETS: the bullet field (bullets.js) and the six breathed patterns (bulletAttacks.js), docs/COMBAT.md "Bullets"
 async function scenarioBullets() {
   out('\n== scenario BULLETS (deflect / block / roll / cut the small ones, dodge the red ones; the cue, the caps, the clears) ==');
   const G = build();
@@ -2120,10 +2120,12 @@ async function scenarioBullets() {
   const d = game.dragon, p = game.player, B = d.bullets, K = TUNING.bullets;
   const lead = TUNING.flashLead;
   assert(B && K && typeof B.spawn === 'function' && B.live === 0, 'dragon.bullets exists, empty at the start');
-  const NAMES = ['emberStorm', 'fanVolley', 'wispSwarm', 'fireWheel'];
+  const NAMES = ['emberStorm', 'fanVolley', 'cinderSpit', 'emberRain', 'fireWheel', 'fireLanes'];
+  const TONGUES = new Set(['fireWheel', 'fireLanes']); // (fire on the ground, not bullets: red, roll through)
   const listed = new Set(d.debug.abilities().map((a) => a.name));
-  assert(NAMES.every((n) => listed.has(n) && TUNING.attacks[n]?.tell), 'the four patterns are Lab abilities with tuning data');
-  const KIND = { ember: 0, wisp: 1, orb: 2 };
+  assert(NAMES.every((n) => listed.has(n) && TUNING.attacks[n]?.tell), 'the six patterns are Lab abilities with tuning data');
+  assert(!listed.has('wispSwarm') && !TUNING.attacks.wispSwarm && !K.wisp, 'the homing wisp swarm is gone (2026-11-15)');
+  const KIND = { ember: 0, orb: 2 }; // (kind 1 was the wisp)
   /**
    * `n` bullets flown at the standing hero from `from` m (`gap` s apart), answered off the bullet's own
    * cue: answer = parry (RMB tap 0.12 s before impact) | roll (Space 0.1 s before) | swing (LMB on the
@@ -2203,9 +2205,6 @@ async function scenarioBullets() {
   assert(pa.light === true && pa.ev['player:parry'] === 1, 'player:parry { light: true }: a light clash');
   assert(pa.parried.length === 1 && pa.parried[0].bullet === true && pa.parried[0].attack === 'emberStorm', 'dragon:parried { bullet: true } once (the wyrm is not interrupted)');
   assert(pa.live === 0, 'the deflected ember flew back to the head and burst');
-  const wi = shot(KIND.wisp, { answer: 'parry' });
-  out(`   wisp, parried: ${wi.res.join(' ')} · posture ${wi.postureAtHit} · cue ${wi.cues[0]?.tell}`);
-  assert(wi.res[0] === RESULT.PARRIED && near(wi.postureAtHit, K.wisp.posture, 0.5) && wi.cues[0]?.tell === TELL.BLUE, 'a wisp is a blue tell: deflected for K.wisp.posture');
 
   // --- a PERFECT parry (RMB within DEFENSE.perfectParryWindow of the impact) returns the bullet:
   // HP damage + returnPosture on the head when the shot lands, dragon:returned; the wyrm goes on
@@ -2222,9 +2221,6 @@ async function scenarioBullets() {
   assert(near(pf.postureEnd, K.ember.returnPosture, 0.5), `the return adds returnPosture instead of the deflect's posture (${pf.postureEnd.toFixed(1)} / ${K.ember.returnPosture})`);
   assert(pf.live === 0 && d.brain.action === actBefore, 'the shot burst on the head; the wyrm was not interrupted');
   assert(stDealt === K.ember.returnDamage && stHits === 1, `the run stats count the return as the hero's hit (${stDealt} damage, ${stHits} hit)`);
-  const pw = shot(KIND.wisp, { answer: 'parry', parryLead: 0.05 });
-  out(`   wisp, RMB ${pw.gap.toFixed(3)} s before impact: perfect ${pw.perfect} · wyrm −${pw.dmg} HP · posture ${pw.postureEnd.toFixed(1)}`);
-  assert(pw.perfect === true && pw.dmg === K.wisp.returnDamage && near(pw.postureEnd, K.wisp.returnPosture, 0.5), `a perfectly parried wisp returns for ${K.wisp.returnDamage} HP + ${K.wisp.returnPosture} posture (${pw.dmg}, ${pw.postureEnd.toFixed(1)})`);
   const pn = shot(KIND.ember, { answer: 'parry', parryLead: 0.18 });
   out(`   ember, RMB ${pn.gap.toFixed(3)} s before impact: ${pn.res.join(' ')} · perfect ${pn.perfect} · wyrm −${pn.dmg} HP · posture ${pn.postureEnd.toFixed(1)}`);
   assert(pn.res[0] === RESULT.PARRIED && pn.perfect === false && pn.gap > PW, `a parry ${pn.gap.toFixed(3)} s before impact is a normal deflect`);
@@ -2340,17 +2336,17 @@ async function scenarioBullets() {
   // --- robustness and the clears
   settle(G);
   B.clear();
-  assert(B.spawn(KIND.ember, 'x', NaN, 1, 0, 0, 9) === null && B.spawn(7, 'x', 0, 1, 0, 0, 9) === null && B.live === 0, 'spawn rejects NaN / unknown kinds');
+  assert(B.spawn(KIND.ember, 'x', NaN, 1, 0, 0, 9) === null && B.spawn(7, 'x', 0, 1, 0, 0, 9) === null && B.spawn(1, 'x', 0, 1, 0, 0, 9) === null && B.live === 0, 'spawn rejects NaN / unknown kinds (1: the removed wisp)');
   B.update(NaN); B.update(0); B.update(-1);
   place(G, 9);
-  for (let i = 0; i < 40; i++) B.spawn(i % 3, 'emberStorm', d.position.x + Math.sin(i) * 6, 1.5, d.position.z + Math.cos(i) * 6, i * 0.7, 3);
-  B.startWheel({ attack: 'fireWheel', x: d.position.x, z: d.position.z, n: 4, ang: 0, dir: 1, warn: 0.5, dur: 4, speed: 1, r0: 3, r1: 26, width: 1.1, damage: 20, max: 2 });
+  for (let i = 0; i < 40; i++) B.spawn(i % 2 ? KIND.orb : KIND.ember, 'emberStorm', d.position.x + Math.sin(i) * 6, 1.5, d.position.z + Math.cos(i) * 6, i * 0.7, 3);
+  B.scour({ attack: 'fireWheel', x: d.position.x, z: d.position.z, times: [0, 0.1, 0.2, 2], angs: [0, 1.5, 3, 4.5], r0: 3, r1: 26, speed: 12, hold: 1.5, width: 1.1, damage: 20, grp: B.group(2) });
   run(G, 0.3, { passive: true });
-  const liveBefore = B.live;
+  const liveBefore = B.live, tonguesBefore = B.tonguesLive;
   d.enterPhase(2);
   run(G, 2 * DT, { passive: true });
-  out(`   phase change: ${liveBefore} bullets + wheel → ${B.live}, wheel ${B.wheel.on}`);
-  assert(liveBefore === 40 && B.live === 0 && B.wheel.on === false, 'a phase change clears the bullets and the wheel');
+  out(`   phase change: ${liveBefore} bullets + ${tonguesBefore} tongues (plan pending ${B.plan.on}) → ${B.live} + ${B.tonguesLive}, scouring ${B.scouring}`);
+  assert(liveBefore === 40 && tonguesBefore === 3 && B.live === 0 && B.scouring === false, 'a phase change clears the bullets, the tongues and the plan');
   settle(G, 12);
   for (let i = 0; i < 20; i++) B.spawn(0, 'emberStorm', d.position.x + Math.sin(i) * 7, 1.5, d.position.z + Math.cos(i) * 7, i * 0.7, 2);
   run(G, 0.2, { passive: true });
@@ -2375,19 +2371,27 @@ async function scenarioBullets() {
     let tells = 0, flashes = 0, peak = 0, bad = 0;
     // ADR-050: every bullet is breathed: born at pt.mouth, along the head's aim (a cone / fork round it)
     const born = { n: 0, far: 0, worst: 0, aimWorst: 0, offWorst: 0 };
-    const SPREAD = { emberStorm: TUNING.attacks.emberStorm.laneGap + TUNING.attacks.emberStorm.orbSpread * 1.5, fanVolley: TUNING.attacks.fanVolley.spread + 0.06 };
+    // (the widest emission off the head's aim: the forked stream / the orb cough / the barks; the
+    // cones; the spit's 2 - 3 embers; the rain's outer ring seen from the jaws at this range)
+        const SPREAD = { emberStorm: TUNING.attacks.emberStorm.laneGap + TUNING.attacks.emberStorm.orbSpread * 1.5, fanVolley: TUNING.attacks.fanVolley.spread + 0.06, cinderSpit: TUNING.attacks.cinderSpit.spread * 1.5 + 0.02, emberRain: Math.PI / 3 }; // (the rain's rings, 2.6 / 4.8 m round him, from jaws reared ~6 m short of him: up to 0.95 rad measured)
     G.watch = (n, e) => { def?.onEvent(n, e); if (n === 'combat:tell') tells++; if (n === 'combat:flash') flashes++; };
     const ok = game.lab.trigger(name);
     let ended = -1;
+    // the no-spinning rule (2026-11-15): the body never turns faster than its walking turn rate
+    let yawPrev = d.yaw, yawRate = 0, blobs = 0, tongues = 0;
     for (let i = 0; i < Math.round(16 / DT); i++) {
       aimAt(G);
       input.axis = { x: 0, y: 0 };
       def?.act();
       d.posture = 0; // (the meter would break the wyrm mid-pattern and clear the air; not under test here)
       G.tick(DT);
+      if (d.brain.action?.name === name) yawRate = Math.max(yawRate, Math.abs(angleDiffT(yawPrev, d.yaw)) / DT);
+      yawPrev = d.yaw;
       peak = Math.max(peak, B.live);
+      tongues = Math.max(tongues, B.tonguesLive);
+      blobs = Math.max(blobs, game.fx?.fire?.count ?? game.fx?.fire?.live ?? 0);
       for (let j = 0; j < B.pool.length; j++) { const b = B.pool[j]; if (b.alive && !Number.isFinite(b.x + b.y + b.z + b.vx + b.vz)) bad++; }
-      if (name !== 'fireWheel') {
+      if (!TONGUES.has(name)) {
         const m = d.rig.pt.mouth, f = d.rig.pt.headFwd, hy = Math.atan2(f.x, f.z);
         let sx = 0, sz = 0, cn = 0;
         for (let j = 0; j < B.pool.length; j++) {
@@ -2399,7 +2403,6 @@ async function scenarioBullets() {
           born.n++;
           born.worst = Math.max(born.worst, dm);
           if (dm > 0.6) born.far++;
-          if (b.kind === KIND.wisp) continue; // (a swarm is roared out in a spray round the head)
           const yb = Math.atan2(b.vx, b.vz);
           born.offWorst = Math.max(born.offWorst, Math.abs(angleDiffT(hy, yb)));
           sx += Math.sin(yb); sz += Math.cos(yb); cn++;
@@ -2407,20 +2410,19 @@ async function scenarioBullets() {
         if (cn > 0) born.aimWorst = Math.max(born.aimWorst, Math.abs(angleDiffT(hy, Math.atan2(sx, sz))));
       }
       if (ended < 0 && !d.brain.action) ended = i;
-      if (ended >= 0 && B.live === 0 && !B.wheel.on && i - ended > 30) break;
+      if (ended >= 0 && B.live === 0 && !B.scouring && i - ended > 30) break;
     }
     G.watch = null;
     input.up(1);
     const hs = G.hits.slice(h0).filter((h) => h.attack === name);
     const by = (r) => hs.filter((h) => h.r === r).length;
-    return { born, spread: SPREAD[name] ?? 0, ok, ended, tells, flashes, peak, bad, hit: by(RESULT.HIT), parried: by(RESULT.PARRIED), blocked: by(RESULT.BLOCKED), dodged: by(RESULT.DODGED) + by(RESULT.PERFECT), live: B.live, wheel: B.wheel.on, hurt: (G.counts['player:hurt'] || 0) - (c0['player:hurt'] || 0) };
+    return { born, spread: SPREAD[name] ?? 0, ok, ended, tells, flashes, peak, bad, yawRate, blobs, tongues, hit: by(RESULT.HIT), parried: by(RESULT.PARRIED), blocked: by(RESULT.BLOCKED), dodged: by(RESULT.DODGED) + by(RESULT.PERFECT), live: B.live, wheel: B.scouring, hurt: (G.counts['player:hurt'] || 0) - (c0['player:hurt'] || 0) };
   };
-  const DIST = { emberStorm: 9, fanVolley: 11, wispSwarm: 10, fireWheel: 9 };
+  const DIST = { emberStorm: 9, fanVolley: 11, cinderSpit: 8, emberRain: 9, fireWheel: 9, fireLanes: 9 };
 
-  // --- the cue in the corners (phase 2): an even-count fan, a wisp that misses and comes round, a
-  // swarm roared at a hero so far away that its lead wisp lands after the action has ended
+  // --- the cue in the corners (phase 2): an even-count fan
   const lateCues = () => {
-    const FV = TUNING.attacks.fanVolley, WS = TUNING.attacks.wispSwarm;
+    const FV = TUNING.attacks.fanVolley;
     const R = K.ember.r + (p.radius ?? 0.45);
     /** One pattern against a standing hero at `metres`: its headline tell / flash, hits, and `each(i)` per frame. */
     const watchPattern = (name, metres, each) => {
@@ -2481,49 +2483,6 @@ async function scenarioBullets() {
     assert(fvLag >= K.cueMin - DT && fvLag <= lead + 3 * DT, `even-count fan: the headline flash leads the first impact by ~flashLead (${fvLag.toFixed(3)} s)`);
     assert(fv.tells === fv.flashes, `even-count fan: one combat:flash per combat:tell (${fv.tells}/${fv.flashes})`);
 
-    // a homing wisp that the hero sidesteps after its cue comes round again: it has to announce the
-    // second pass too (or fizzle), never hit off the stale cue
-    settle(G, 12);
-    B.clear();
-    run(G, 0.8, { passive: true });
-    place(G, 7);
-    {
-      const h0 = G.hits.length, flashes = [];
-      G.watch = (n, e) => { if (n === 'combat:flash' && e?.bullet) flashes.push(game.time); };
-      const ux = (d.position.x - p.position.x), uz = (d.position.z - p.position.z), l = Math.hypot(ux, uz) || 1;
-      const w = B.spawn(KIND.wisp, 'wispSwarm', p.position.x + (ux / l) * 8, 1.0, p.position.z + (uz / l) * 8, Math.atan2(-ux, -uz), K.wisp.cruise);
-      w.turn = K.wisp.turn;
-      w.homeAt = 0;
-      let stepped = false, passes = 0, wasNear = false;
-      for (let i = 0; i < Math.round(7 / DT) && w.alive; i++) {
-        aimAt(G);
-        input.axis = { x: 0, y: 0 };
-        if (!stepped && flashes.length === 1 && game.time - flashes[0] >= 0.2) {
-          stepped = true; // out of its way, 0.15 s before it lands
-          p.debug.teleport(p.position.x - (uz / l) * 5, p.position.z + (ux / l) * 5);
-        }
-        G.tick(DT);
-        const near1 = Math.hypot(w.x - p.position.x, w.z - p.position.z) < 1.5;
-        if (near1 && !wasNear) passes++;
-        wasNear = near1;
-      }
-      G.watch = null;
-      const hs = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT);
-      const lag = hs[0] ? hs[0].t - flashes[flashes.length - 1] : NaN;
-      out(`   wisp sidestepped after its cue: cues ${flashes.length} · hits ${hs.length}${hs[0] ? ` (${lag.toFixed(3)} s after the last cue)` : ''} · dud ${w.dud} · came near ${passes}×`);
-      assert(stepped && flashes.length >= 1, 'the wisp was cued and sidestepped');
-      assert(hs.length === 0 ? w.dud || !w.alive : flashes.length >= 2 && lag >= K.cueMin - DT && lag <= lead + K.cueGap + 2 * DT, `a wisp that missed announces its second pass before it hits (cues ${flashes.length}, lag ${lag.toFixed(3)})`);
-      assert(flashes.length >= 2 || w.dud, `the second pass is cued again, or the wisp is a dud (cues ${flashes.length}, dud ${w.dud})`);
-    }
-
-    // a far hero: the lead wisp lands after the action is over; the headline flash waits for it
-    const ws = watchPattern('wispSwarm', 28);
-    const wsLag = ws.hits[0] && ws.headFlash !== null ? ws.hits[0].t - ws.headFlash : NaN;
-    out(`   P2 wisp swarm at ${ws.dist.toFixed(1)} m: tell at ${(ws.headTell ?? NaN).toFixed(2)} · action over at ${(ws.ended ?? NaN).toFixed(2)} · headline flash at ${(ws.headFlash ?? NaN).toFixed(2)} · first hit at ${(ws.hits[0]?.t ?? NaN).toFixed(2)} (${wsLag.toFixed(3)} s after the flash) · hits ${ws.hits.length}/${WS.maxHits} · tells ${ws.tells}/${ws.flashes}`);
-    assert(ws.ok && ws.dist > 26 && ws.headTell !== null && ws.headFlash !== null, 'far wisp swarm: headline tell and flash both go out');
-    assert(ws.headFlash > ws.ended, `far wisp swarm: the lead is still flying when the action ends; the flash waits for it (${(ws.headFlash - ws.ended).toFixed(2)} s after the end)`);
-    assert(wsLag >= K.cueMin - DT && wsLag <= lead + 3 * DT, `far wisp swarm: the headline flash leads the first impact by ~flashLead (${wsLag.toFixed(3)} s)`);
-    assert(ws.tells === ws.flashes && ws.hits.length >= 1 && ws.hits.length <= WS.maxHits, `far wisp swarm: one flash per tell, hits within the budget (${ws.tells}/${ws.flashes}, ${ws.hits.length})`);
   };
   const angleDiffT = (a, b) => { let x = (b - a) % (2 * Math.PI); if (x > Math.PI) x -= 2 * Math.PI; if (x < -Math.PI) x += 2 * Math.PI; return x; };
   const perPhaseOf = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length - 1, ph - 1)] : v);
@@ -2534,22 +2493,24 @@ async function scenarioBullets() {
       if ((spec.phase ?? 1) > phase) continue;
       const idle = pattern(name, phase, false, DIST[name]);
       const ans = pattern(name, phase, true, DIST[name]);
-      out(`   P${phase} ${name.padEnd(10)} standing: hit ${idle.hit}/${spec.maxHits} · peak ${String(idle.peak).padStart(3)} bullets · tells ${idle.tells}/${idle.flashes}   answering: hit ${ans.hit} parried ${ans.parried} dodged ${ans.dodged} blocked ${ans.blocked} · tells ${ans.tells}/${ans.flashes}`);
+      out(`   P${phase} ${name.padEnd(11)} standing: hit ${idle.hit}/${spec.maxHits} · peak ${String(idle.peak).padStart(3)} bullets ${String(idle.tongues).padStart(2)} tongues ${idle.blobs} fire blobs · tells ${idle.tells}/${idle.flashes} · body turn ≤ ${(idle.yawRate * 180 / Math.PI).toFixed(0)}°/s   answering: hit ${ans.hit} parried ${ans.parried} dodged ${ans.dodged} blocked ${ans.blocked} · tells ${ans.tells}/${ans.flashes}`);
+      // no spinning: never faster than the walking turn rate of this phase (TUNING.turnSpeed)
+      assert(Math.max(idle.yawRate, ans.yawRate) <= d.turnRate + 1e-3, `P${phase} ${name}: the body never turns faster than its walking turn rate while it breathes (${(Math.max(idle.yawRate, ans.yawRate) * 180 / Math.PI).toFixed(0)} ≤ ${(d.turnRate * 180 / Math.PI).toFixed(0)}°/s)`);
       assert(idle.ok && ans.ok && idle.ended >= 0 && ans.ended >= 0, `P${phase} ${name}: triggers and ends`);
       assert(idle.bad === 0 && ans.bad === 0 && idle.live === 0 && !idle.wheel && ans.live === 0, `P${phase} ${name}: no NaN, the field empties afterwards`);
       assert(idle.hit >= 1 && idle.hit <= spec.maxHits, `P${phase} ${name}: a standing hero is hit, at most maxHits times (${idle.hit}/${spec.maxHits})`);
       assert(idle.tells === idle.flashes && ans.tells === ans.flashes && idle.tells >= 1, `P${phase} ${name}: one combat:flash per combat:tell (${idle.tells}/${idle.flashes}, ${ans.tells}/${ans.flashes})`);
       // (the scripted defender answers one cue at a time: the phase-3 storm's crossing arms cost it a second hit)
       assert(ans.hit < idle.hit && ans.hit <= (name === 'emberStorm' ? 2 : 1), `P${phase} ${name}: answering the cues takes fewer hits than standing still (${ans.hit} < ${idle.hit})`);
-      if (name !== 'fireWheel') {
+      if (!TONGUES.has(name)) {
         const bo = idle.born;
         out(`      breathed: ${bo.n} bullets born ≤ ${bo.worst.toFixed(2)} m from pt.mouth · emission centre ≤ ${bo.aimWorst.toFixed(3)} rad off headFwd · widest ${bo.offWorst.toFixed(3)} rad`);
         assert(bo.n > 0 && bo.far === 0, `P${phase} ${name}: every bullet is born within 0.6 m of pt.mouth (worst ${bo.worst.toFixed(2)} m)`);
-        if (name !== 'wispSwarm') assert(bo.aimWorst <= 0.2 && bo.offWorst <= idle.spread + 0.2, `P${phase} ${name}: every emission leaves along the head's aim (centre ${bo.aimWorst.toFixed(3)} ≤ 0.2 rad, widest ${bo.offWorst.toFixed(3)} ≤ ${(idle.spread + 0.2).toFixed(2)})`);
+        assert(bo.aimWorst <= 0.2 && bo.offWorst <= idle.spread + 0.2, `P${phase} ${name}: every emission leaves along the head's aim (centre ${bo.aimWorst.toFixed(3)} ≤ 0.2 rad, widest ${bo.offWorst.toFixed(3)} ≤ ${(idle.spread + 0.2).toFixed(2)})`);
       }
       if (name === 'emberStorm') assert(ans.parried + ans.dodged >= 1, `P${phase} emberStorm: embers deflected / orbs rolled (${ans.parried} + ${ans.dodged})`);
-      else if (name !== 'fireWheel') assert(ans.parried >= 1, `P${phase} ${name}: bullets were deflected (${ans.parried})`);
-      else assert(ans.dodged >= 1, `P${phase} fireWheel: a spoke was rolled through (${ans.dodged})`);
+      else if (!TONGUES.has(name)) assert(ans.parried >= 1, `P${phase} ${name}: bullets were deflected (${ans.parried})`);
+      else assert(ans.dodged >= 1, `P${phase} ${name}: a tongue was rolled through (${ans.dodged})`);
     }
     if (phase === 2) lateCues();
   }
