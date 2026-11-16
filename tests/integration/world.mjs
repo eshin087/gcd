@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | landmarks | budget | all
+//   scenario: sets | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | budget | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -680,7 +680,7 @@ const S = {
     const A = BREAK.wear.at;
     // an oak, a pine and a dead tree of the wall, struck again and again with a tail's power along the way out
     const pick = (fn) => D.list.filter((b) => b.wall && b.state === STATE.INTACT && fn(b)).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0];
-    const trees = [pick((b) => b.kind === 'tree' && b.body.parts > 5), pick((b) => b.kind === 'tree' && b.cut[1] === 2 && b.body.parts === 5), pick((b) => b.kind === 'deadTree')];
+    const trees = [pick((b) => b.kind === 'tree' && b.body.parts > 5), pick((b) => b.kind === 'tree' && b.cut[0] === 2 && b.body.parts === 5), pick((b) => b.kind === 'deadTree')];
     for (const t of trees) {
       const R = Math.hypot(t.x, t.z), ox = t.x / R, oz = t.z / R;
       const pos = t.body.geometry.attributes.position.array, s = t.body.start * 3;
@@ -720,6 +720,61 @@ const S = {
     const hp = inner.hpMax;
     D.strike(inner.x, inner.z, 0.6, hp * (1 - A[0]) + 0.05, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
     assert(inner.state === STATE.INTACT && inner.wear >= 1 && inner.dropped >= 1, `a dead tree inside the clearing (hp ${hp.toFixed(2)}: unchanged) wears down too (stage ${inner.wear})`);
+  },
+
+  // ---------------------------------------------------------------- the wyrm's reach into the wall (2026-11-16, the tuning pass)
+  // destructibles.wind: a front of wind wears the wall's trees, in the order it reaches them, never past
+  // BREAK.wind.floor (wind alone fells nothing), nothing inside the clearing. destructibles.carryFire:
+  // fire carried along a ray lights the first tree of the wall, on the wall's own budget (the clearing's
+  // is untouched). A broken bone leaves a heap of bone (wreckage.js). reset() forgets all of it.
+  reach() {
+    const { D, log, step, game, world } = build();
+    game.player.position.set(0, 0, 0);
+    const wall = D.list.filter((b) => b.wall && b.order.length > 0);
+    const inner = D.list.filter((b) => !b.wall);
+    const hp0 = new Map(inner.map((b) => [b, b.hp]));
+    const L0 = log.length;
+    const n = D.wind(-10, 0, 1.4, 50, {});
+    step(0.3);
+    const early = log.slice(L0).filter((e) => e.n === 'world:impact' && e.kind === 'wear').length;
+    step(2.5);
+    const worn = wall.filter((b) => b.wear > 0);
+    const wearEv = log.slice(L0).filter((e) => e.n === 'world:impact' && e.kind === 'wear');
+    const near = worn.filter((b) => Math.hypot(b.x + 10, b.z) < 30).length, far = worn.filter((b) => Math.hypot(b.x + 10, b.z) > 42).length;
+    assert(n > 50 && worn.length > 20 && wearEv.length === worn.length && early < wearEv.length, `a front of wind (1.4 from (-10, 0), 50 m) reached ${n} trees of the wall, wore ${worn.length} (world:impact 'wear' ${wearEv.length}; ${early} in its first 0.3 s: it rolls out at ${BREAK.wind.speed} m/s)`);
+    assert(near > far, `... more of them near it than far (${near} within 30 m, ${far} past 42 m)`);
+    assert(wall.every((b) => b.state === STATE.INTACT && b.hp >= BREAK.wind.floor * b.hpMax - 1e-9) && inner.every((b) => b.hp === hp0.get(b)), `... none felled, none below ${BREAK.wind.floor} of its structure; the clearing's pieces untouched`);
+    // again at once: within rehit nothing more
+    const h1 = wall.map((b) => b.hp);
+    D.wind(-10, 0, 1.4, 50, {});
+    step(0.2);
+    assert(wall.every((b, i) => b.hp === h1[i] || Math.hypot(b.x + 10, b.z) > 0.2 * BREAK.wind.speed), `... a second front within ${BREAK.wind.rehit} s takes nothing more from the trees it reached`);
+    // fire carried along a ray: the first tree of the wall catches, on the wall's budget
+    D.reset();
+    const lit0 = D._litTokens;
+    const b = D.carryFire(0, 0, 1, 0.05, 60, 1);
+    assert(b && b.wall && b.burn > 0 && D._wallBurning === 1 && D._litTokens === lit0 && Math.hypot(b.x, b.z) > BREAK.wall.from, `carryFire along +x lit the wall's first tree in its way (${b ? Math.hypot(b.x, b.z).toFixed(1) : '-'} m; the clearing's budget untouched)`);
+    let lit = 1;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * 6.283;
+      const c = D.carryFire(0, 0, Math.cos(a), Math.sin(a), 60, 1);
+      if (c && c.burn > 0 && c !== b) lit++;
+    }
+    assert(lit <= BREAK.wall.fire.bank + 1 && D._wallBurning <= BREAK.wall.fire.maxBurning, `... at once twelve more lit ${lit - 1} (its bank ${BREAK.wall.fire.bank}); ${D._wallBurning} alight in the wall (<= ${BREAK.wall.fire.maxBurning})`);
+    const counted = () => D.list.filter((o) => o.wall && o.burn > 0).length;
+    step(BREAK.burn.time * 0.5);
+    const mid = [D._wallBurning, counted()];
+    step(60);
+    assert(mid[0] === mid[1] && D._wallBurning === 0 && counted() === 0, `... the wall's count of fires matches what burns (${mid[0]} = ${mid[1]}), and when they have burned out (spread included) it is 0`);
+    // a broken bone leaves a heap
+    const rib = D.list.find((o) => o.kind === 'elderRib');
+    const heaps0 = D.wreck.pools[3].filter((e) => e.on).length;
+    if (rib) D.strike(rib.x, rib.z, rib.r + 0.5, 50, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    step(2);
+    const heaps = D.wreck.pools[3].filter((e) => e.on).length;
+    assert(rib && rib.state !== STATE.INTACT && heaps > heaps0, `a broken ${rib?.kind ?? 'bone'} leaves a heap of bone (heaps lying: ${heaps0} -> ${heaps}; the strike broke its neighbours too)`);
+    D.reset();
+    assert(D._wq.n === 0 && D._wallBurning === 0 && D.list.every((b) => b.state === STATE.INTACT && b.wear === 0) && D.wreck.pools[3].every((e) => !e.on), 'reset(): no front waiting, nothing alight, the wall and the bones whole again');
   },
 
   // ---------------------------------------------------------------- the wall falls away from the arena; it is restored whole

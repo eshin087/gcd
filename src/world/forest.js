@@ -756,7 +756,9 @@ export function createForest(U, colliders) {
     const order = [];
     for (let i = n - 1; i >= 1; i--) order.push(i); // (part 0 the trunk; an oak's part 1 its core blob: last)
     const c = n - 1;
-    const cut = type === 'pine' ? [1, 2] : type === 'dead' ? [Math.ceil(c / 3), Math.ceil((2 * c) / 3)] : [Math.ceil(c * 0.25), Math.ceil(c * 0.6)];
+    // (a pine: its top snaps off first, two tiers at once, then all but the lowest skirt: one tier at a time
+    // hid inside the canopy and its stages barely read, 2026-11-16)
+    const cut = type === 'pine' ? [Math.min(2, c), Math.min(3, c)] : type === 'dead' ? [Math.ceil(c / 3), Math.ceil((2 * c) / 3)] : [Math.ceil(c * 0.4), Math.ceil(c * 0.8)]; // (an oak: 2026-11-16 a quarter and three fifths of its crown read as nothing from above)
     return { order, cut };
   };
   const treeBreakable = (t, g, c, rng = br) => {

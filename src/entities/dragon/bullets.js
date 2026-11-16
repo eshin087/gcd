@@ -39,6 +39,7 @@ import { TUNING } from './tuning.js';
 import { TELL, RESULT } from '../../combat/rules.js';
 import { clamp, smoothstep, angleDiff, distPointSegment } from '../../core/math.js';
 import * as BFX from './bulletFx.js';
+import { carryFire } from './wallReach.js';
 
 export const BULLET = Object.freeze({ EMBER: 0, ORB: 2 });
 export const CUE = Object.freeze({ NEW: 0, COVERED: 1, LATE: 2, CLASH: 3 });
@@ -796,11 +797,13 @@ export class Bullets {
       }
       if (b.t >= b.life) {
         BFX.fizzle(fx, b.x, b.y, b.z, b.kind);
+        if (b.launched) carryFire(d, b.x, b.z, b.vx, b.vz, 'shot', b.y); // (a shot that missed flies on into the trees)
         this._kill(b);
         continue;
       }
       const ox = b.x - d.position.x, oz = b.z - d.position.z;
       if (ox * ox + oz * oz > bound2) {
+        if (b.launched) carryFire(d, b.x, b.z, b.vx, b.vz, 'shot', b.y);
         this._kill(b);
         continue;
       }

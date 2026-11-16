@@ -76,8 +76,15 @@ const LEAVES = 'o0O8@&';
 const DIGITS = '0123456789';
 const FLASH_LEAD = 0.3;
 const SIDES = [-1, 1];
-const LEAF_COL = [0.26, 0.42, 0.2], LEAF_END = [0.07, 0.11, 0.06];
 const HOT_END = [0.5, 0.04, 0.02];
+// (a crown that wears down: its debris in the canopy's own dim hue, never a flash; STYLE.md "How things
+// break". The particles draw after the grid with no light or fog on them: at [0.26, 0.42, 0.2] a stage's burst
+// printed as pale yellow rings over the dark crowns. 2026-11-16, the tuning pass)
+const SHED_LEAF = [0.085, 0.15, 0.1], SHED_LEAF_END = [0.03, 0.05, 0.035];
+const SHED_WOOD = [0.16, 0.115, 0.075], SHED_WOOD_END = [0.06, 0.045, 0.03];
+// a burning crown sheds: most of it charred leaves falling dark, a few small sparks (no yellow blobs)
+const CHAR = [0.12, 0.06, 0.03], CHAR_END = [0.03, 0.02, 0.015];
+const SPARK = [1.5, 0.5, 0.08], SPARK_END = [0.35, 0.04, 0.01], SPARKS = ".'`";
 
 // cosmetic noise from this module's own stream (the seeded sims replay Math.random)
 let seed = 0x3d9e42b1;
@@ -317,6 +324,19 @@ export class Destructibles {
     this._burningN = 0;
     this._tokens = BREAK.spread.bank;
     this._litTokens = BREAK.light.bank; // (fire that lands: BREAK.light)
+    // the wall's own fire (BREAK.wall.fire): what burns beyond BREAK.wall.from, its budget of fire that lands
+    // there and of fire spreading through it (the clearing's caps above stay the clearing's)
+    this._wallBurning = 0;
+    this._wallLit = BREAK.wall.fire.bank;
+    this._wallSpread = BREAK.wall.fire.spreadBank;
+    // the wind's fronts (wind()): trees waiting for a front to reach them, in slots (no allocation)
+    const WQ = BREAK.wind.queue;
+    this._wq = { n: 0, id: new Int32Array(WQ), t: new Float64Array(WQ), p: new Float32Array(WQ), dx: new Float32Array(WQ), dz: new Float32Array(WQ) };
+    // debris glyphs a second (BREAK.debris: a roar's front strips hundreds of crowns at once)
+    this._debris = BREAK.debris.bank;
+    this._carryHit = { x: 0, z: 0, piece: null };
+    /** counts since the reset (the tests' wall report): wind fronts, trees they reached; carries, reached, lit */
+    this.stat = { wind: 0, windTrees: 0, carry: 0, reached: 0, lit: 0 };
 
     const defs = Array.isArray(set?.breakables) ? set.breakables : [];
     if (!defs.length) return;
@@ -408,7 +428,7 @@ export class Destructibles {
       // dynamics
       t: 0, T: 1, dx: 0, dz: 1, by: 'world', src: -1, srcT: -1e9, spare: 0,
       burn: 0, burnLife: 0, burnt: false, flame: 0, heatT: 0, light: null, carry: 0, spreadT: 0, gen: 0,
-      shake: 0, shakeAmp: 0, mark: 0,
+      shake: 0, shakeAmp: 0, mark: 0, windT: -1e9,
       told: false, flashed: false,
       // thrown
       px: 0, py: 0, pz: 0, vx: 0, vy: 0, vz: 0, ang: 0, tilt: 0, tx: 0, tz: 0, blast: 0, blastR: 0, onLand: null, flySrc: -1,
@@ -638,6 +658,176 @@ export class Destructibles {
     if (b && Number.isFinite(sec)) b.spare = Math.max(b.spare, (this.game.time ?? 0) + sec);
   }
 
+  // ------------------------------------------------------------------ wind and fire that carries on
+  /**
+   * Wind and shock (BREAK.wind; a roar, a shock ring, a wingbeat, a landing): a front rolls out from
+   * (x, z) at BREAK.wind.speed m/s to `reach` m, and each tree of the wall it passes (beyond
+   * BREAK.wall.from: the clearing's trees take the fight's blows as before) takes power x (1 - d / reach)^fall of a blast as WEAR: leaves torn off,
+   * boughs snapped, never below BREAK.wind.floor of its structure (wind alone never fells a tree, and
+   * a tree it touches loses a few leaves to the front even when it holds). `o.from` m: nothing nearer
+   * the centre than this is touched (a wingbeat need not strip the clearing). Returns how many trees
+   * the front will reach. `o.fall`: this front's falloff (else BREAK.wind.fall).
+   */
+  wind(x, z, power, reach, o = NONE) {
+    if (!Number.isFinite(x + z + power + reach) || !(power > 0) || !(reach > 0)) return 0;
+    if (!this._cells(x - reach, z - reach, x + reach, z + reach)) return 0;
+    const W = BREAK.wind, Q = this._wq, now = this.game.time ?? 0, from = o.from ?? 0, fall = o.fall > 0 ? o.fall : W.fall;
+    let n = 0;
+    this.stat.wind++;
+    const L = this.list, g = this._g, R = this._gr, ra = R.a, rb = R.b, rc = R.c, rd = R.d;
+    for (let cz = rc; cz <= rd; cz++) {
+      for (let cx = ra; cx <= rb; cx++) {
+        const c = cz * g.nx + cx;
+        for (let k = g.start[c]; k < g.start[c + 1]; k++) {
+          const b = L[g.items[k]];
+          // (the wall's trees only: inside the clearing the fight's blows are as they were)
+          if (b.state !== INTACT || !b.wall || !b.order.length || b.mat !== 'wood') continue;
+          const ox = b.x - x, oz = b.z - z, d = Math.hypot(ox, oz);
+          if (d > reach || (from > 0 && Math.hypot(b.x, b.z) < from)) continue;
+          const pw = power * Math.pow(1 - d / reach, fall);
+          if (pw < W.min || Q.n >= Q.id.length) continue;
+          const i = Q.n++;
+          Q.id[i] = b.id;
+          Q.t[i] = now + d / W.speed;
+          Q.p[i] = pw;
+          Q.dx[i] = d > 1e-3 ? ox / d : 0;
+          Q.dz[i] = d > 1e-3 ? oz / d : 1;
+          n++;
+          this.stat.windTrees++;
+        }
+      }
+    }
+    return n;
+  }
+
+  /** The fronts reach the trees due by now (update). */
+  _windStep() {
+    const Q = this._wq;
+    if (!Q.n) return;
+    const now = this.game.time ?? 0;
+    for (let i = Q.n - 1; i >= 0; i--) {
+      if (Q.t[i] > now) continue;
+      const b = this.list[Q.id[i]];
+      if (b) this._windHit(b, Q.p[i], Q.dx[i], Q.dz[i], now);
+      const j = --Q.n;
+      Q.id[i] = Q.id[j]; Q.t[i] = Q.t[j]; Q.p[i] = Q.p[j]; Q.dx[i] = Q.dx[j]; Q.dz[i] = Q.dz[j];
+    }
+  }
+
+  /** A front reaches a tree: wear down to BREAK.wind.floor of it at most, a few leaves torn off its crown. */
+  _windHit(b, power, dx, dz, now) {
+    const W = BREAK.wind;
+    if (b.state !== INTACT || now - b.windT < W.rehit) return;
+    b.windT = now;
+    // (a gust is not even: each tree takes `vary` more or less of it, so a front leaves a ragged line)
+    const floor = W.floor * b.hpMax, dmg = power * (b.M.take.blast ?? 1) * (1 - W.vary + 2 * W.vary * rnd());
+    if (b.hp > floor && b.hpMax < Infinity) {
+      b.hp = Math.max(floor, b.hp - dmg);
+      b.dx = dx;
+      b.dz = dz;
+      this._wearTo(b, dx, dz, 'boss');
+    }
+    // a shudder while there is room (BREAK.wear.shakeMax), and the leaves the front tears away
+    if (b.ranged && !(b.shake > 0) && this._rShake < Math.max(2, Math.round(BREAK.wear.shakeMax * this.q))) {
+      this._rShake++;
+      b.shake = 0.28;
+      b.shakeAmp = Math.min(0.06, 0.015 + power * 0.04) / Math.max(0.6, b.weight);
+      b.dx = dx;
+      b.dz = dz;
+      this._wake(b);
+    }
+    if (b.leafy > 0 && b.dropped < b.order.length) this._leaves(b, b.order[b.dropped], dx, dz, Math.round(W.leaves * Math.min(1.5, 0.4 + power)));
+  }
+
+  /** A few leaves torn off part i of a crown, blown along (dx, dz) (BREAK.debris's budget). */
+  _leaves(b, i, dx, dz, n) {
+    const fx = this.game.fx?.alpha;
+    n = Math.min(Math.round(n * this.q), Math.floor(this._debris));
+    if (!fx || n <= 0) return;
+    this._debris -= n;
+    const C = b.body.centre, cx = C[i * 4], cy = C[i * 4 + 1], cz = C[i * 4 + 2], cr = Math.max(0.3, C[i * 4 + 3]);
+    const p = this._p;
+    for (let k = 0; k < n; k++) {
+      const a = rnd() * 6.283, rr = cr * (0.5 + 0.5 * rnd());
+      p.x = cx + Math.cos(a) * rr;
+      p.y = Math.max(0.5, cy + (rnd() - 0.2) * cr);
+      p.z = cz + Math.sin(a) * rr;
+      const v = 2.5 + rnd() * 3;
+      p.vx = dx * v + (rnd() - 0.5);
+      p.vy = 0.6 + rnd() * 1.4;
+      p.vz = dz * v + (rnd() - 0.5);
+      p.life = 0.9 + rnd() * 0.8;
+      p.size = 0.36 + rnd() * 0.16;
+      p.sizeEnd = 0.18;
+      p.glyph = LEAVES;
+      p.color = SHED_LEAF;
+      p.colorEnd = SHED_LEAF_END;
+      p.alpha = 1;
+      p.alphaEnd = 0;
+      p.gravity = -3;
+      p.drag = 1.3;
+      p.spin = (rnd() - 0.5) * 5;
+      p.rot = rnd() * 6.283;
+      p.flicker = 0;
+      fx.spawn(p);
+    }
+  }
+
+  /**
+   * carryFire: fire that carries on (BREAK.wall.fire; a breath past its end, a strafing pass, a flame wall or ring
+   * that ran out, a shot that missed): along the ray from (ax, az) the way (dx, dz) for `len` m, the
+   * first standing wood OF THE WALL that can burn catches (it passes over the clearing's) (k: how long), on the wall's own budget of fire. Returns
+   * the piece it reached (lit or not) or null; this._carryHit holds where it met it.
+   */
+  carryFire(ax, az, dx, dz, len, k = 1) {
+    if (!Number.isFinite(ax + az + dx + dz + len) || !(len > 0)) return null;
+    this.stat.carry++;
+    const l = Math.hypot(dx, dz);
+    if (l < 1e-4) return null;
+    dx /= l;
+    dz /= l;
+    const bx = ax + dx * len, bz = az + dz * len, w = BREAK.wall.fire.width;
+    if (!this._cells(Math.min(ax, bx) - w, Math.min(az, bz) - w, Math.max(ax, bx) + w, Math.max(az, bz) + w)) return null;
+    let best = null, bt = 2;
+    const s = this._seg, L = this.list, g = this._g, R = this._gr, ra = R.a, rb = R.b, rc = R.c, rd = R.d;
+    for (let cz = rc; cz <= rd; cz++) {
+      for (let cx = ra; cx <= rb; cx++) {
+        const c = cz * g.nx + cx;
+        for (let kk = g.start[c]; kk < g.start[c + 1]; kk++) {
+          const b = L[g.items[kk]];
+          // (it passes over what stands in the clearing: it is the wall it carries to)
+          if (b.state !== INTACT || !b.wall || !b.burns || b.h < 1.5) continue;
+          if (segDist(b.x, b.z, ax, az, bx, bz, s) > b.r + w + b.leafy * 1.2) continue;
+          if (s.t < bt) {
+            bt = s.t;
+            best = b;
+          }
+        }
+      }
+    }
+    const H = this._carryHit;
+    H.piece = best;
+    if (!best) return null;
+    H.x = best.x;
+    H.z = best.z;
+    this.stat.reached++;
+    if (best.burn > 0 || best.burnt) return best;
+    if (best.wall ? this._wallRoom(true) : this._litTokens >= 1 && this.burning - this._wallBurning < Math.max(2, Math.round(BREAK.light.maxBurning * this.q))) {
+      if (best.wall) this._wallLit -= 1;
+      else this._litTokens -= 1;
+      this._light(best, k, 0);
+      this.stat.lit++;
+    } else this.world.scorch?.burnCircle?.(best.x, best.z, best.r + 0.8, 0.3, 0.5);
+    return best;
+  }
+
+  /** Room for one more fire in the wall: landing (`landed`: its token) or spreading. */
+  _wallRoom(landed) {
+    const F = BREAK.wall.fire;
+    if (this._wallBurning >= Math.max(3, Math.round(F.maxBurning * this.q))) return false;
+    return landed ? this._wallLit >= 1 : this._wallSpread >= 1;
+  }
+
   /** The phone budget (0.3 .. 1; world.setQuality from the quality preset). */
   setQuality(k) {
     if (Number.isFinite(k)) this.q = clamp(k, 0.3, 1);
@@ -738,7 +928,9 @@ export class Destructibles {
     if (!fx) return;
     const C = b.body.centre, cx = C[i * 4], cy = C[i * 4 + 1], cz = C[i * 4 + 2], cr = Math.max(0.3, C[i * 4 + 3]);
     const leaf = b.body.leaf[i] === 1, M = b.M, p = this._p, c0 = this._c0;
-    const n = Math.round(clamp(cr * BREAK.wear.debris, 8, 44) * this.q);
+    // (from the debris budget, BREAK.debris: a roar's front drops hundreds of crowns' parts at once)
+    const n = Math.min(Math.round(clamp(cr * BREAK.wear.debris, 8, 44) * this.q), Math.max(0, Math.floor(this._debris)));
+    this._debris -= n;
     for (let k = 0; k < n; k++) {
       const a = rnd() * 6.283, rr = cr * Math.sqrt(rnd()) * 0.8;
       p.x = cx + Math.cos(a) * rr;
@@ -749,25 +941,32 @@ export class Destructibles {
       p.vy = 0.3 + rnd() * 2.2;
       p.vz = Math.sin(a) * out + dz * 1.4;
       p.life = clamp(Math.sqrt((2 * p.y) / 15) + 0.4 + rnd() * 0.5, 0.6, 1.9);
-      p.size = (leaf ? 0.46 : 0.4) + rnd() * 0.22;
-      p.sizeEnd = 0.2;
-      p.glyph = leaf ? LEAVES : b.digits ? DIGITS : M.chips;
-      if (ember) {
-        c0[0] = 2.8; c0[1] = 0.9 + rnd() * 0.6; c0[2] = 0.18;
-        p.color = c0;
-        p.colorEnd = HOT_END;
+      const spark = ember && rnd() < 0.18; // (a burning crown: a few sparks among the charred leaves)
+      p.size = spark ? 0.2 + rnd() * 0.08 : (leaf ? 0.36 : 0.34) + rnd() * 0.14;
+      p.sizeEnd = spark ? 0.06 : 0.18;
+      p.glyph = spark ? SPARKS : leaf ? LEAVES : b.digits ? DIGITS : M.chips;
+      if (spark) {
+        p.color = SPARK;
+        p.colorEnd = SPARK_END;
+        p.vy += 1.5;
+      } else if (ember) {
+        p.color = CHAR;
+        p.colorEnd = CHAR_END;
+      } else if (b.digits) {
+        p.color = M.color;
+        p.colorEnd = M.colorEnd;
       } else {
-        p.color = leaf ? LEAF_COL : M.color;
-        p.colorEnd = leaf ? LEAF_END : M.colorEnd;
+        p.color = leaf ? SHED_LEAF : SHED_WOOD;
+        p.colorEnd = leaf ? SHED_LEAF_END : SHED_WOOD_END;
       }
       p.alpha = 1;
       p.alphaEnd = 0;
-      p.gravity = leaf ? -5 : -15;
-      p.drag = leaf ? 1.6 : 0.4;
-      p.spin = (rnd() - 0.5) * (leaf ? 4 : 9);
+      p.gravity = spark ? 2 : leaf ? -5 : -15;
+      p.drag = leaf || spark ? 1.6 : 0.4;
+      p.spin = spark ? 0 : (rnd() - 0.5) * (leaf ? 4 : 9);
       p.rot = rnd() * 6.283;
-      p.flicker = ember ? 0.4 : 0;
-      (ember && glow ? glow : fx).spawn(p);
+      p.flicker = spark ? 0.5 : 0;
+      (spark && glow ? glow : fx).spawn(p);
     }
   }
 
@@ -867,9 +1066,24 @@ export class Destructibles {
       this.world.scars?.rubble(b.x, b.z, b.r * 1.8 + 0.4, b.M, 6 + Math.round(b.weight * 6 * this.q), b.digits ? DIGITS : '.,:o');
       // a boulder leaves a pile of itself (a stone with a broken base of its own has that)
       if (b.wrecks && !b.stub && b.mat === 'stone' && b.h >= 0.4) this.wreck?.rubble(b.x, b.z, b.r * 0.85, b.M);
+      // ... and a broken bone (a rib, a run of vertebrae, the skull, the nest's ribcage) a heap of its shards
+      // (2026-11-16: a broken skeleton left nothing lying)
+      // (the landmarks list `wreck: false` against logs and rubble; their bones still leave a heap)
+      else if (b.mat === 'bone' && b.h >= 0.4) this._boneHeap(b, 0, 0, 0);
       this.game.shake?.(clamp(0.12 + 0.12 * b.weight, 0.1, 0.4));
       this._emit('break', b, b.x, b.h * 0.5, b.z, b.weight, by);
     }
+  }
+
+  /** What a broken bone piece leaves lying (wreckage.js's bone heaps): one heap, or along its fall (dx, dz, len). */
+  _boneHeap(b, dx, dz, len) {
+    const W = this.wreck;
+    if (!W) return;
+    const r = clamp(b.r * 0.8, 0.5, 1.6);
+    if (len > 1.5) {
+      W.rubble(b.x + dx * len * 0.3, b.z + dz * len * 0.3, r, b.M);
+      W.rubble(b.x + dx * len * 0.7, b.z + dz * len * 0.7, r * 0.75, b.M);
+    } else W.rubble(b.x, b.z, r, b.M);
   }
 
   /** Its colliders and nicks go. */
@@ -899,9 +1113,14 @@ export class Destructibles {
           const b = L[g.items[kk]];
           if (b.state !== INTACT || !b.burns || b.burn > 0 || b.burnt) continue;
           if (Math.hypot(b.x - x, b.z - z) > r + b.r) continue;
-          // (the cap on fire that lands: BREAK.light; past it the wood is only scorched)
-          if (this._litTokens < 1 || this.burning >= Math.max(2, Math.round(BREAK.light.maxBurning * this.q))) continue;
-          this._litTokens -= 1;
+          // (the cap on fire that lands: BREAK.light, the wall's BREAK.wall.fire; past it the wood is only scorched)
+          if (b.wall) {
+            if (!this._wallRoom(true)) continue;
+            this._wallLit -= 1;
+          } else {
+            if (this._litTokens < 1 || this.burning - this._wallBurning >= Math.max(2, Math.round(BREAK.light.maxBurning * this.q))) continue;
+            this._litTokens -= 1;
+          }
           this._light(b, k, 0);
           n++;
         }
@@ -918,6 +1137,7 @@ export class Destructibles {
     b.heatT = 0;
     b.spreadT = 0;
     this._burningN++;
+    if (b.wall) this._wallBurning++;
     b.light = this._lightAt(b.x, Math.min(2.5, b.h * 0.4), b.z, BREAK.burn.glow.radius, b.burn + 0.6);
     this._wake(b);
     this._emit('burn', b, b.x, b.h * 0.5, b.z, k, 'world');
@@ -952,13 +1172,14 @@ export class Destructibles {
 
   /** Room for one more fire that spreads (the cap: BREAK.spread.maxBurning x quality). */
   _fireRoom() {
-    return this.burning < Math.max(3, Math.round(BREAK.spread.maxBurning * this.q));
+    return this.burning - this._wallBurning < Math.max(3, Math.round(BREAK.spread.maxBurning * this.q));
   }
 
   _stopBurn(b) {
     if (b.burn > 0) {
       b.burn = 0;
       this._burningN--;
+      if (b.wall) this._wallBurning--;
       b.light?.kill?.();
       b.light = null;
     }
@@ -1010,6 +1231,7 @@ export class Destructibles {
       // burned through: what is left of it comes down as embers and ash, a black log beside its stump
       b.burn = 0;
       this._burningN--;
+      if (b.wall) this._wallBurning--;
       b.burnt = true;
       b.light = null; // (it fades out on its own)
       this._free(b);
@@ -1030,19 +1252,21 @@ export class Destructibles {
    * piece or log within reach, from a budget of `perSec` a second, never past the cap of fires.
    */
   _spread(dt) {
-    const S = BREAK.spread;
+    const S = BREAK.spread, F = BREAK.wall.fire;
     this._tokens = Math.min(S.bank, this._tokens + dt * S.perSec);
-    if (this._tokens < 1 || !this._fireRoom()) return;
+    // (the wall's fire spreads on a budget of its own: a blaze eats into the wall, BREAK.wall.fire)
+    this._wallSpread = Math.min(F.spreadBank, this._wallSpread + dt * F.spreadPerSec * this.q);
     const A = this.active;
     for (let i = 0; i < A.length; i++) {
       const b = A[i];
       if (b.burn <= 0 || b.gen >= S.gens + (b.wall ? BREAK.wall.gens : 0) || b.spreadT < S.after + S.every) continue;
+      if (b.wall ? !this._wallRoom(false) : this._tokens < 1 || !this._fireRoom()) continue;
       b.spreadT = S.after;
-      if (rnd() > S.chance) continue;
-      if (this._catchNear(b.x, b.z, b.r, b, null, b.gen + 1) && (this._tokens < 1 || !this._fireRoom())) return;
+      if (rnd() > (b.wall ? F.chance : S.chance)) continue;
+      this._catchNear(b.x, b.z, b.r, b, null, b.gen + 1, b.wall);
     }
     const W = this.wreck;
-    if (!W) return;
+    if (!W || this._tokens < 1 || !this._fireRoom()) return;
     const WL = W.live;
     for (let i = 0; i < WL.length; i++) {
       const e = WL[i];
@@ -1057,7 +1281,7 @@ export class Destructibles {
   }
 
   /** Light one unburnt piece or log near (x, z) (picked at random among those in reach). True if one caught. */
-  _catchNear(x, z, r, self, selfLog = null, gen = 1) {
+  _catchNear(x, z, r, self, selfLog = null, gen = 1, wall = false) {
     const S = BREAK.spread, reach = S.reach + r;
     let pick = null, seen = 0;
     if (this._cells(x - reach, z - reach, x + reach, z + reach)) {
@@ -1067,7 +1291,8 @@ export class Destructibles {
           const c = cz * g.nx + cx;
           for (let k = g.start[c]; k < g.start[c + 1]; k++) {
             const b = L[g.items[k]];
-            if (b === self || b.state !== INTACT || !b.burns || b.burn > 0 || b.burnt) continue;
+            // (the wall's fire spreads through the wall: it does not walk back into the clearing on the wall's budget)
+            if (b === self || b.state !== INTACT || !b.burns || b.burn > 0 || b.burnt || (wall && !b.wall)) continue;
             if (Math.hypot(b.x - x, b.z - z) > reach + b.r + b.leafy * 1.5) continue;
             if (rnd() * ++seen < 1) pick = b;
           }
@@ -1085,12 +1310,14 @@ export class Destructibles {
       }
     }
     if (log && this.wreck._light(log, BREAK.wreck.burn * S.k, gen)) {
-      this._tokens -= 1;
+      if (wall) this._wallSpread -= 1;
+      else this._tokens -= 1;
       return true;
     }
     if (pick && !log) {
       this._light(pick, S.k, gen);
-      this._tokens -= 1;
+      if (wall) this._wallSpread -= 1;
+      else this._tokens -= 1;
       return true;
     }
     return false;
@@ -1200,7 +1427,7 @@ export class Destructibles {
     // what is left of it lies where it came down
     if (b.wrecks) {
       if (b.mat === 'wood' && b.h >= 1.5) this.wreck?.log(x - b.dx * b.h * 0.3, z - b.dz * b.h * 0.3, b.dx, b.dz, b.h * 0.5, b.r * BREAK.wreck.thick);
-      else if (b.mat === 'stone') this.wreck?.rubble(x, z, Math.max(0.5, b.r * 0.9), b.M);
+      else if (b.mat === 'stone' || b.mat === 'bone') this.wreck?.rubble(x, z, Math.max(0.5, b.r * 0.9), b.M);
     }
     this.world.gust?.(x, z, 1.2, b.blastR + 4);
     this.game.shake?.(clamp(BREAK.thrown.shake * b.weight, 0.15, 0.6));
@@ -1309,7 +1536,7 @@ export class Destructibles {
     } else if (b.wrecks && b.mat === 'stone') {
       this.wreck?.rubble(b.x + dx * len * 0.35, b.z + dz * len * 0.35, Math.max(0.45, b.r * 0.8), b.M);
       this.wreck?.rubble(b.x + dx * len * 0.75, b.z + dz * len * 0.75, Math.max(0.4, b.r * 0.65), b.M);
-    }
+    } else if (b.mat === 'bone') this._boneHeap(b, dx, dz, len);
     const sc = this.world.scars;
     sc?.ground(b.x + dx * len * 0.4, b.z + dz * len * 0.4, 0.5 + 0.35 * b.weight, dx, dz);
     sc?.ground(b.x + dx * len * 0.85, b.z + dz * len * 0.85, 0.45 + 0.25 * b.weight, dx, dz);
@@ -1484,7 +1711,9 @@ export class Destructibles {
       const out = 0.6 + rnd() * 2.2;
       const up = fallen ? 0.6 + rnd() * 2.4 : 0.5 + rnd() * 3.2;
       const fall = Math.sqrt((2 * y) / 15) + up / 15;
-      const hot = ember || (M.sparks && rnd() < 0.35);
+      // (burnt through: charred leaves and wood falling dark, a few sparks; metal: its sparks)
+      const hot = (ember && rnd() < 0.2) || (M.sparks && rnd() < 0.35);
+      const char = ember && !hot;
       p.x = x;
       p.y = y;
       p.z = z;
@@ -1494,14 +1723,21 @@ export class Destructibles {
       p.life = clamp(fall + 0.3 + rnd() * 0.35, 0.5, 1.7);
       p.size = (leaf ? 0.46 : 0.42) + rnd() * 0.24;
       p.sizeEnd = 0.2;
-      p.glyph = leaf ? LEAVES : prop ? DIGITS : M.chips;
-      if (hot) {
+      p.glyph = hot && ember ? SPARKS : leaf ? LEAVES : prop ? DIGITS : M.chips;
+      if (hot && ember) {
+        p.color = SPARK;
+        p.colorEnd = SPARK_END;
+        p.size = 0.2 + rnd() * 0.08;
+      } else if (hot) {
         c0[0] = 2.8; c0[1] = 0.9 + rnd() * 0.6; c0[2] = 0.18;
         p.color = c0;
         p.colorEnd = HOT_END;
+      } else if (char) {
+        p.color = CHAR;
+        p.colorEnd = CHAR_END;
       } else {
-        p.color = leaf ? LEAF_COL : M.color;
-        p.colorEnd = leaf ? LEAF_END : M.colorEnd;
+        p.color = leaf ? SHED_LEAF : b.mat === 'wood' && !prop ? SHED_WOOD : M.color;
+        p.colorEnd = leaf ? SHED_LEAF_END : b.mat === 'wood' && !prop ? SHED_WOOD_END : M.colorEnd;
       }
       p.alpha = 1;
       p.alphaEnd = 0;
@@ -1589,6 +1825,10 @@ export class Destructibles {
     this._rShake = rShake;
     if (this.burning > 0) this._spread(dt);
     this._litTokens = Math.min(BREAK.light.bank, this._litTokens + dt * BREAK.light.perSec);
+    const F = BREAK.wall.fire;
+    this._wallLit = Math.min(F.bank, this._wallLit + dt * F.perSec * this.q);
+    this._debris = Math.min(BREAK.debris.bank, this._debris + dt * BREAK.debris.perSec * this.q);
+    this._windStep();
     this.wreck?.update(dt);
     flushRanges();
   }
@@ -1606,6 +1846,7 @@ export class Destructibles {
       b.carry = 0;
       b.spare = 0;
       b.shake = 0;
+      b.windT = -1e9;
       b.src = -1;
       b.srcT = -1e9;
       b.onLand = null;
@@ -1627,8 +1868,14 @@ export class Destructibles {
     this._rShake = 0;
     this.active.length = 0;
     this._burningN = 0;
+    this._wallBurning = 0;
     this._tokens = BREAK.spread.bank;
     this._litTokens = BREAK.light.bank; // (fire that lands: BREAK.light)
+    this._wallLit = BREAK.wall.fire.bank;
+    this._wallSpread = BREAK.wall.fire.spreadBank;
+    this._wq.n = 0;
+    const st = this.stat;
+    st.wind = st.windTrees = st.carry = st.reached = st.lit = 0;
     this.wreck?.reset();
     flushRanges();
   }

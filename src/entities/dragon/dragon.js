@@ -15,6 +15,7 @@ import { Hazards } from './hazards.js';
 import { Bullets } from './bullets.js';
 import { Terrain } from './terrain.js';
 import { Ablaze, ablazeLook, setAblazeLook } from './ablaze.js';
+import { wallWind } from './wallReach.js';
 
 // VAELGRIM, THE CINDER WYRM — the boss. Public contract: see docs/ARCHITECTURE.md (Dragon).
 // Wiring: Brain (ai.js) writes pose targets + root motion and runs the attack tell beats, Rig
@@ -1004,16 +1005,24 @@ export class Dragon {
       // the wings' blasts: a take-off, a landing, a downbeat near the ground
       const alt = s.alt ?? 0, x = this.position.x, z = this.position.z;
       const bl = st.blast;
-      if (alt >= T.takeoff.alt && st.alt < T.takeoff.alt) D.strike(x, z, T.takeoff.radius, T.takeoff.power, bl);
+      // (and their wind carries on into the trees round the clearing: wallReach.js, TUNING.world.wind)
+      if (alt >= T.takeoff.alt && st.alt < T.takeoff.alt) {
+        D.strike(x, z, T.takeoff.radius, T.takeoff.power, bl);
+        wallWind(this, x, z, 'takeoff');
+      }
       if (alt > st.top) st.top = alt;
       if (alt <= T.landing.alt && st.alt > T.landing.alt) {
-        if (st.top >= T.landing.minFall) D.strike(x, z, T.landing.radius, T.landing.power, st.land);
+        if (st.top >= T.landing.minFall) {
+          D.strike(x, z, T.landing.radius, T.landing.power, st.land);
+          wallWind(this, x, z, 'landing');
+        }
         st.top = 0;
       }
       const c = Math.cos(s.flapPhase ?? 0);
       if (st.flap > 0 && c <= 0 && (s.flapAmp ?? 0) > 0.25 && alt < T.downbeat.maxAlt) {
-        const pt = this.rig.pt.chest;
-        D.strike(pt.x, pt.z, T.downbeat.radius, T.downbeat.power * (1 - alt / T.downbeat.maxAlt), bl);
+        const pt = this.rig.pt.chest, k = 1 - alt / T.downbeat.maxAlt;
+        D.strike(pt.x, pt.z, T.downbeat.radius, T.downbeat.power * k, bl);
+        wallWind(this, pt.x, pt.z, 'downbeat', k * (s.flapAmp ?? 1));
       }
       st.flap = c;
       st.alt = alt;
