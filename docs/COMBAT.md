@@ -81,8 +81,8 @@ each actor's `tuning`.
    knocked back (visual only), and the next hit comes on schedule. Parrying the **last** hit (or a
    single melee attack) recoils the wyrm: the punish window. A red hit inside a string must be
    dodged; a perfect dodge of it plunges and ends the string (ADR-026).
-9. **Hazards** are world threats that live on their own (meteors, lava pillars, burning strips, fire
-   rings and walls), so the wyrm can keep fighting while they burn. Each heats the ground it will hit
+9. **Hazards** are world threats that live on their own (meteors, lava pillars and their pools,
+   burning strips, fire rings and walls, the ambient cinders), so the wyrm can keep fighting while they burn. Each heats the ground it will hit
    from spawn to impact (ADR-052: a glow of small ground glyphs and scorch heat, darker to brighter
    as it nears; the exact edge in the last 0.35 s). They are red: block and parry fail, i-frames or leaving the area avoid them,
    and a perfect dodge of one never plunges (slow-mo + crits in place). A burning strip's lingering
@@ -93,7 +93,15 @@ each actor's `tuning`.
     hitbox matches the visual · recovery window to punish · no unavoidable damage (AoE red attacks
     and hazards heat the ground they will hit until impact, the edge drawn in the last flashLead s;
     every hazard can be dodged with i-frames or by moving) · every projectile has a visible source
-    (bullets leave the jaws, ADR-050).
+    (bullets leave the jaws, ADR-050) · **two cues that need different answers never land within
+    0.3 s of each other** (ADR-119, enforced in code, not left to luck: across sources the wyrm holds
+    a melee blow's windup up to 0.5 s for a blast or a bullet of the other answer
+    (`TUNING.pressure.guard`), a spell or bullet pattern does not start on top of another's, a move
+    that asks for a guard waits while meteors or a chase fall and one that asks for a dodge while
+    bullets fly; inside one pattern an ember that would land beside an orb fizzles instead
+    (`TUNING.bullets.clashSep` 0.35 s, the torrent's `orbSep` 0.4 s)). The one exception to "what
+    lands away from the boss marks its ground": **the wyrm's thrown terrain shows no landing mark**
+    (the owner's choice, ADR-119): the flare on the flying piece is its cue.
 
 ## The reward order (2026-11-15, ADR-102)
 The riskier the answer, the more it pays. From safest to riskiest:
@@ -163,7 +171,7 @@ bosses.
 
   | Boss | Parry moments (blue flare) | Dodge moments (red flare; * = new) | The charged blow (black) |
   |---|---|---|---|
-  | The Cinder Wyrm | Bite; Hesitant maw's held bite; Claw combo's lunging bite; Wing buffet's second wing | every red blow it had (tail, stomp, charge, pounce, leap, the fire flights) | **Black maw**: the head rears and holds 1.5 s + 0.15 - 0.6 s, then the snap: 44, range 3.5 - 6.5 m off its chest, cooldown 14 s |
+  | The Cinder Wyrm | Bite; Hesitant maw's held bite; Claw combo's lunging bite; Wing buffet's second wing; **Wing rend's lunging bite\***, **Sky hammer's wing slam\***, **Cinder rake's overhead\***, **Cataclysm's wing slam\***, **the Tail bat\*** (the boulder; ADR-119) | every red blow it had (tail, stomp, charge, pounce, leap, the fire flights); **the tail whips\*** (Pivot lash, Rear guard, Cinder rake, Cataclysm), **Rear guard's tail slam\***, **Furnace maw's wing slam\***, the flying combos' blows\*, the ground tongues\*, the ambient cinders\*, a thrown tree or boulder\* (ADR-119) | **Black maw**: the head rears and holds 1.5 s + 0.15 - 0.6 s, then the snap: 44, range 3.5 - 6.5 m off its chest, cooldown 14 s |
   | Shen Hui | Falling Ash; Falling Star; Swallow Flicks' thrust; Crane Spins' chop; Swallow's Return; **Severing Wind*** (one long step from 3.6 - 10 m and a level two-handed cut, 26) | Piercing Ash, Lotus Sweep, Ember Whirl's last, Heaven-Splitting Fall, Hundred Petals' last; **Twin Embers*** (a dashing cut, then the low sweep 0.92 s later: dodge, dodge; 22 and 24) | **Black Tide**: the jian drawn back low, 1.45 s + 0.1 - 0.5 s, then a dashing cleave up to 7.5 m: 38, knocked down, cooldown 12 s |
   | The Starless Lord | Falling Star; Scissor; Grasp and Sever's chop; **Severance*** (a long step and a two-handed chop, 26; every form) | his red blows and spells as before; **Red Meridian*** (a dashing level cut, then the blade round at the ankles; every form) | **Nightfall**: the same charge and cleave, 36; every form, cooldown 12 s |
 
@@ -226,8 +234,11 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   wyrm's stomp, pounce, leap, dive and nova). The windup is read from the animation and the audio
   sting; the flare says when. On the cue the body still spikes red (1.6, gone in 0.25 s).
   **What lands away from the boss keeps its ground mark** (a flare on him cannot say where): meteors,
-  chase pillars, burning strips, the hover barrage's shells, the Lord's sky bolts, Dark Star and
-  thrown stones, a felled pillar's strip (*Hazards*, ADR-052). Armageddon's rear-up still glows.
+  chase pillars, burning strips, the hover barrage's shells, the wyrm's ambient cinders, the Lord's
+  sky bolts, Dark Star and thrown stones, a felled pillar's strip (*Hazards*, ADR-052). Armageddon's
+  rear-up still glows. **Not the wyrm's thrown terrain** (ADR-119, the owner: "don't show exactly
+  where the terrain will land"): nothing on the ground, the flare drawn on the flying piece 0.35 s
+  before it lands (until then the landing glowed and followed the hero until the throw, ADR-110).
 - **The charge (`black`).** A black blow is wound up for about 1.5 s plus a held beat that is never
   the same (0.1 - 0.6 s). Through it darkness is drawn into the striking part: an eclipse that grows
   on it (a disc of blacked-out cells with a pale corona), motes of pale light pulled in from all
@@ -523,7 +534,8 @@ an early parry), active, impact, damage and knockback; a hit with `chance` < 1 m
 Every hit announces itself (`combat:tell` at its windup start) and flashes `flashLead` (0.35 s)
 before its real impact, holds included. Data rules (checked by `npm test` → STRINGS, all phases): a
 tell per hit, the first windup ≥ 0.7 s, the flash after the tell, ≥ `minHitGap` 0.45 s from one
-impact to the next (time to release and re-press RMB). The nine strings are in *Current numbers*.
+impact to the next (time to release and re-press RMB). The seventeen strings are in *Current numbers*
+(the seven of the whole body also in *The whole body*, below).
 **Verifier** (`npm test` → TIMING): every string and single melee attack, started through the AI's
 own start path from every placement the AI picks it at (phases 1–3, the hero standing still), lands
 each contact within ±85 ms of its flash + lead (worst 67 ms on the merged build), and every pick
@@ -541,96 +553,251 @@ once (rule 4). A red hit inside a string can't be parried or blocked: dodge it (
 the plunge, which cancels the string). Rending flurry parried hit by hit: `dragon:parried` [0, f],
 [1, f], [2, f], [3, true], chain 2 → 3 → 4, +148 posture, no damage (STRINGS scenario).
 
-## Three phases (2026-11-09, ADR-028)
+## Three phases (2026-11-09, ADR-028; the pressure: 2026-11-15, ADR-119)
 P1 100–66 %, P2 66–33 %, P3 33–0 % of 4500 HP, each threshold a gate until its transition roar
 (always phase-1 timings; the red shock ring, 12 damage, which also clears the hazards). Later phases
-speed the windups and recoveries up (the swings keep their speed), turn and walk faster, idle less,
-grow the posture meter and glow hotter: phase 3 burns white-hot (crack glow 0.8, 50 body embers /
-s) and opens with the Inferno nova. A pending transition waits for a plunge reaction to finish. A
-new phase's abilities unlock one by one (opening cooldowns 2 + 2.5 × i + 0–2 s, in a random order),
-not all at once after the roar.
+speed the windups and recoveries up (× `phaseTimeScale` [1, 0.82, 0.7]; the swings keep their speed),
+turn and walk faster, pause less, link more, grow the posture meter and glow hotter: phase 3 burns
+white-hot (crack glow 0.8, 50 body embers / s) and opens with the Inferno nova. A pending transition
+waits for a plunge reaction to finish. A new phase's abilities unlock one by one (opening cooldowns
+1.5 + 1.6 × i + 0–1.5 s, in a random order; not the nova, not the roar: `pressure.unlockSkip`, nor an
+attack tuned `unlock: false`), not all at once after the roar.
 
-## Fire attacks and hazards (2026-11-09, ADR-029, ADR-030)
-- **Short flights** (take off, attack from the air, land, all inside one attack; no flight phase):
-  the **Burning pass** (a low pass over you breathing fire down; the ground it passes burns for
-  2.5 s), the **Sky dive** (climbs, hovers beside you while a red ring tracks you, dives onto the
-  spot: the crash landing is the blow) and the **Hover barrage** (3–5 fireballs from the air, each
-  landing in a red ring). Flying, the wyrm is out of sword reach; its body circles are off.
-- **Spells:** **Armageddon** (ADR-053, key `meteorRain`; replaced the Meteor rain): the wyrm
-  rears onto its hind legs, glowing red, the throat white-hot (1.4 s), and fires a salvo of 12 / 16
-  bolts into the sky out of its jaws (1.6 s; it deals nothing: rearing for ~3 s, it is open to a
-  hero close enough to reach its legs and belly). The sky answers: an orange glow overhead and a
-  rumble while it drops to all fours and fights on. Then the meteors come down in waves over the
-  whole clearing, falling on a slant from the sky above it: 3 waves of 8 (P2) / 4 of 10 (P3), 1.6
-  s apart, 0.12 s between impacts. Each heats its ground for 1.5 s (a led one 1.2 s): every 3rd is
-  led onto you (never two within 0.5 s), the rest spread evenly, and within 12 m of you a wave never
-  covers more than 45 % of the ground, nor do two of its craters overlap by more than a third: there
-  is always somewhere to stand. In P3 the craters burn on for 2 s (blockable contact ticks, never
-  while rolling: walk out). 1.2 s after the last wave one great meteor falls on you (r 7, a 2 s
-  warning). **Fire eruptions** (lava pillars in a line toward you;
-  in phase 3 they may chase you instead), **Flame ring** (expands from the wyrm: roll through it or
-  be beyond 20 m), **Flame wall** (sweeps across the arena: roll through it), **Inferno nova** (a
-  2.5 s charge, then an arena-sized blast: flee beyond 22 m or perfect-dodge it).
-- Every blow is red. Hazard-dealt blows never plunge; the dive's crash and the nova's blast may (the
-  wyrm is on the ground for both).
-- Flash timing (`npm test` → FIRE): every blow lands within 17 ms of its flash + lead.
+**Harder means more pressure at the same damage** (the owner's answer, ADR-119): a mistake costs what
+it did before (no damage band was added), but the fight gives fewer pauses to recover in. How:
+- **Shorter pauses.** Between two moves the wyrm waits `idleGap` [0.25 – 0.5, 0.25 – 0.5, 0.05 – 0.25]
+  s (v0.6: 1.0 – 1.7, 0.7 – 1.2, 0.35 – 0.7). **The hero's openings keep the old pause**
+  (`pressure.openingGap`, the v0.6 numbers): after a parry recoil, a stagger, a posture break, a
+  plunge reaction, or a move he answered with his flurry or his counter. Between moves it walks at
+  where he is heading (3.6 / 4.6 / 5.3 m/s, cutting him off past 12 / 11 / 10 m), turns at its
+  attack turn rate × [1.15, 1.1, 1.05] (rolling behind it is a moment, not a place to stay; faster
+  read as a pirouette when filmed) and through a longer pause near him sidesteps.
+- **Combo links.** When a move ends on its own, it may flow straight into another with no pause:
+  every one of the 45 attacks lists follow-ups by where the hero is as it ends (behind → the tail;
+  at the side → a pivot, a swipe; in front → a short follow-up such as a stomp, a bite or the Cinder
+  spit, or from phase 2 another string or a fire move; mid range → a pounce, a wing, a flight; far →
+  the charge, a shot, a flight), each with a chance per phase (`tuningLinks.js`). Phase 1 links short
+  follow-ups and rarely, phase 2 most moves, phase 3 nearly all. At most `chainDepth` [3, 3, 5] links
+  in a row, then a breather (`chainRest` [0.7 – 1.0, 0.8 – 1.1, 0.4 – 0.65] s). A move that was
+  parried into a recoil, staggered, broken or plunged never links (the opening is kept).
+- **A director over the dice** (the weighted pick is steered, ARCHITECTURE.md "The director"): every
+  attack has a category (melee, wing, tail, fire, flight, spell, terrain); no more than two picks of
+  one category in a row; a category absent too long (32 / 15 / 12 s) comes back stronger, and past
+  three times that it is the pick (the wyrm closes in or turns for it if it must); gap closers when
+  the hero is far (beyond 15 m: charge, pounce, leap, the flights), tail moves when he is behind;
+  ceilings on time in the air (18 / 24 / 30 % of the last ~20 s) and on live hazards (3 / 5 / 7) before
+  another flight or spell.
+- **Ambient cinders** (from phase 2): while it fights, small fire shaken from its wings and spat from
+  its jaws falls near the hero, 1.5 – 4.8 m round him (some aimed where he is going), every 1.4 /
+  0.7 s on average, 1 – 2 / 2 – 3 at a time, at most 3 / 6 near him. Each is a red blast (r 1.6 /
+  1.9 m, 14 damage before `damageScale`, burn 1, kb 2) whose ground heats for 1.2 / 1.05 s and that flares 0.35 s before it
+  lands: roll, or step out. A cinder only falls near him while a ground move runs with time left,
+  never within 0.3 s of another known blow, never during a breath, a guard-tell bullet pattern or a
+  string that scatters embers, never while bullets fly, and only where at least 6 of 17 spots (his and
+  16 a roll away) stay clear of every blast due in the next 1.4 s. When none may fall near him they
+  fall 8 – 13 m away: scenery, no cue, no blow.
+- **Fairness is enforced** (rule 10): the 0.3 s rule between cues of different answers, held melee
+  blows (up to 0.5 s), patterns and spells that do not layer, moves of the other answer that wait.
 
-## Bullets (2026-11-09, ADR-039; breathed, perfect returns and Hard: 2026-11-11, ADR-050, ADR-051)
-The wyrm's bullet-hell patterns (`bullets.js`, `bulletAttacks.js`; numbers `tuningBullets.js`) fill
-the arena with small fire projectiles that fly at the hero's chest height. **Every bullet is
-breathed** (ADR-050): it leaves the wyrm's jaws along the way its head points, at mouth height, and
-comes down to chest height before it reaches you (the head draws in over a close hero so the stream
-is not fired over him). Nothing comes out of the body or the wings. Three kinds:
+**The shape of each phase** (what the weights, links and floors add up to):
+- **Phase 1** hunts on the ground: claws, jaws, the wing scythe and the tail strings (Wing rend,
+  Pivot lash, Rear guard, Sky hammer), the black maw, the Cinder spit between strings, the terrain
+  throws, the Ember torrent's one lane and the Cinder burst, and one flight: the Hunting flight (a
+  pass and a dive).
+- **Phase 2** brings fire into the strings (Furnace maw, Cinder rake, the burning ground they leave),
+  the Furnace flight, Armageddon, the eruptions with their pools, two flame rings, the Ember rain, the
+  Scouring breath, the firebrand and the ambient cinders.
+- **Phase 3** is the cataclysm: the 7 – 9-hit string, the Cataclysm flight (four parts), five waves of
+  meteors, three flame rings and a second flame wall, the Fire lanes, chains of up to five moves, more
+  cinders.
 
-| Bullet | Tell | Answers | Damage (final) |
+**Measured** (ADR-119; the PRESSURE scenario of `integ.mjs`: five seeds, 120 s a phase, a bot that
+blocks and rolls). Cues a minute by phase: main 24 – 28 / 26 – 51 / 37 – 54, now 31 – 37 / 53 – 63 /
+72 – 86 (phase 1 is under its target of 34 on two seeds of five, phase 3 under its 78 on three; the same tuning gave 70 – 96 in phase 3 between runs).
+Longest gap between cues in phase 3: 2.2 – 3.2 s (main 5.6 – 10.3 s on three seeds). Chains per
+phase: 5 – 22 (main 0). A mortal defender that answers 95 % of the cues wins all three runs (45 – 89
+damage taken; on main it died in one of three); one that answers 80 % dies in all three (main: two of
+three); the worst single blow is 34, as before. The meter's bounds (`pressure.meter`): each phase at
+least 1.12 × the cues a minute of the one before, at least 28 / 48 / 64 a minute, no gap longer than
+5.5 / 5 / 4.5 s. **Nobody has played it yet:** these are bots that answer in a frame.
+
+## The whole body: melee kinds and strings (2026-11-15, ADR-119)
+The owner: "more cooler melee attacks mixed with wing attack, tail, and fire attacks instead of just
+using his hands a few times". Six new kinds of blow (`attacks.js` `KINDS`), each read from the body:
+
+| Kind | What it is | Tell | Answer |
 |---|---|---|---|
-| **Ember** (orange, small, straight) | normal | parry · block (chip) · roll through · cut with a swing | 8 |
-| **Wisp** (blue-white, hangs, then homes in) | blue | parry · block · roll · cut | 13 + burn 0.8 |
-| **Orb** (red, big, straight) | red | dodge only | 20 + burn 1.5, kb 3 |
+| **Wing scythe** `wingSweep` | one wing drawn up and back over the hero's side, then brought down and across the front in one stroke while the body pivots into it: the fingers rake through him low | normal (white) | parry it (or block, roll); it gives ground, so it can turn the next blow away |
+| **Wing slam** `wingSlam` | both wings raised and brought down in front, on a spot locked 4 – 7.5 model units ahead (r 3 × S); a slam of air and dust | blue flare in Sky hammer and Cataclysm; red in Furnace maw | blue: parry it and the hero counters (the string ends); red: roll |
+| **Tail whip** `tailWhip` | a pivot that puts the hero about 1.7 rad off the nose, then a short whip of the tail through him (165°) | red | roll (a perfect dodge: the flurry round the head) |
+| **Tail slam** `tailSlam` | the tail raised over its back (2.6 × its arch) and hammered down along a line, 0.9 model units either side; a ground shock | red, knockdown | roll aside; a guard breaks; from phase 2 the line burns 1.6 s |
+| **Fire snap** `fireSnap` | the jaws open into a short gout of fire, a cone of 7.5 × S m and ±24°, tracking the hero a little after a whirl in its windup | normal, **blockable, never parryable** | block it (chip), roll through or step out of the cone; it leaves a burning strip on the ground (1.4 – 1.6 s, 3 every 0.3 s, blockable, never while rolling) |
+| **Ember rake** `emberRake` | a claw rake whose arc burns from phase 2 (1.8 – 2.2 s of burning ground) | normal | parry it; then do not stand in the arc |
 
-- **Perfect parry → return** (ADR-051). RMB ≤ 0.08 s before the impact: the ember or wisp comes
-  back as a bigger white-gold shot (34 m/s) that hits the wyrm's head for HP damage (ember 30 ≈ a
-  light hit, wisp 70 ≈ a heavy hit) and 14 / 30 posture instead of the deflect's, flinching the
-  head (RETURN call-out, a gold burst, a 0.05 s stop, a brighter clang). Through the wyrm's own
-  damage path: the phase gate holds, it may kill. It never interrupts the wyrm. Only the struck
-  bullet returns. Orbs are never parried. A pattern gives back at most 120 HP in all
-  (`returnBudget`, ~8 % of a phase: four embers or one wisp); past that a perfect parry is a plain
-  deflect, so returns never out-damage the sword.
-- **Deflect.** A parried ember or wisp flies back to the wyrm's head (24 m/s) and adds posture (5 /
-  12). It is a *light* clash (`player:parry {light: true}`: hit-stop 0.03 s, a quarter of the push
-  back, a small shake), so a stream of them does not freeze the game; it counts in the hero's own
-  parry rhythm (`chain`) but never recoils the wyrm and is not part of a string's `DEFLECT ×N`
+`side: 0` on a claw, a wing scythe or an ember rake strikes from the side the hero is on as that
+hit's windup starts: after a tail blow has turned the wyrm round, its next blow comes from where he
+is now. The burning ground a fire blow leaves is contact fire only (no second, red blow).
+
+**The new strings** (hits: tell; P1 windup / active / impact s; damage before `damageScale`):
+
+| String (phase ≥) | Hits | Recovery / cooldown | Weight [P1, P2, P3] | AI band (× S from the root) |
+|---|---|---|---|---|
+| Wing rend `wingRend` (1) | claw (N; 0.75; 15) · wing scythe (N; 0.65 / 0.4 / 0.27; 18, kb 4) · 70 %: claw held (N; 0.5 + hold 0.2 – 0.6; 16) · lunge bite (**B flare**; 0.6 / 0.24 / 0.05; 22) | 1.0 / 7 | [2.6, 2.2, 1.6] | 3.0 – 5.4, ≤ 0.9 rad off the nose |
+| Pivot lash `pivotLash` (1) | tail whip (R; 0.85 / 0.3 / 0.24; 22) · wing scythe (N; 0.8; 18) · claw (N; 0.55; 16) · 60 %: tail whip back (R; 0.7; 22) | 1.0 / 7 | [2.2, 2.2, 2.0] | 2.4 – 7.0, ≥ 1.0 rad (at its flank) |
+| Rear guard `rearGuard` (1) | tail slam (R, knockdown; 1.1 + hold 0 – 0.3 / 0.34 / 0.34; 32, kb 5) · tail whip (R; 0.75; 22) · wing scythe (N; 0.7; 18) | 1.0 / 8 | [2.2, 2.2, 2.0] | 5.0 – 6.0, ≥ 2.2 rad (behind it) |
+| Sky hammer `skyHammer` (1) | overhead (N; 0.75 / 0.24 / 0.22; 18) · bite (N; 0.55; 18) · wing slam (**B flare**; 0.95 / 0.3 / 0.3; 30, kb 6; from P2 it scatters 4 embers) | 1.1 / 8 | [2.0, 2.2, 2.4] | 2.4 – 5.4, ≤ 0.9 |
+| Furnace maw `furnaceMaw` (2) | claw (N; 0.75; 15) · claw (N; 0.45; 15) · bite (N; 0.55; 18) · fire snap (N, blockable; 0.6 / 0.6; 6 per 0.12 s from 0.12 s in, burn 0.8) · wing slam (R, knockdown; 0.9 / 0.3 / 0.3; 32, kb 6; 5 embers) | 1.2 / 9 | [0, 2.8, 2.6] | 2.4 – 5.4, ≤ 0.9 |
+| Cinder rake `cinderRake` (2) | ember rake (N; 0.75; 15) · ember rake (N; 0.45; 15) · tail whip (R; 0.7; 22) · fire snap (N, blockable; 0.7 / 0.6) · 50 %: bite (N; 0.55; 18) · overhead (**B flare**; 0.65 / 0.24 / 0.22; 22; 4 embers) | 1.3 / 10 | [0, 2.6, 2.6] | 2.4 – 5.4, ≤ 0.9 |
+| Cataclysm `cataclysm` (3) | ember rake (N; 0.75; 14) · ember rake (N; 0.42; 14) · bite (N; 0.65 + hold 0.25 – 0.6; 18) · wing scythe (N; 0.55; 18) · tail whip (R; 0.65; 22) · fire snap (N, blockable; 0.65 / 0.6) · 60 %: ember rake (N; 0.45; 14) · 60 %: claw (N; 0.45; 15) · wing slam (**B flare**; 0.85 / 0.3 / 0.3; 32, kb 6; 6 embers) | 1.3 / 12 | [0, 0, 3.0] | 3.0 – 5.4, ≤ 0.9 |
+
+What each asks of the player: Wing rend is four parries (the held claw baits an early press; the bite
+is the counter); Pivot lash and Rear guard punish standing at its flank or behind it (roll, parry,
+roll); Sky hammer ends on a parry moment; Furnace maw is parries, a held block through the fire, and a
+roll; Cinder rake mixes parries, a roll and a block and ends on the counter; the Cataclysm is all of
+it in one breath. The embers a slam scatters drop on the hero one by one a beat later (parry them).
+
+**The old strings, re-weighted** (the hands-only feel): Claw combo [1.8, 1.2, 0.9], Rending flurry
+[1.8, 1.4, 1.2], Hesitant maw [1.5, 1.6, 1.4], Wing buffet [1.8, 2.0, 1.8], Cinder flurry [0, 2.0,
+2.2], Black maw [1.1, 1.3, 1.2], the claw swipe 1.6 (was 2.6). The Storm flurry's third hit and the
+Frenzy's fourth are now a wing scythe (the Storm flurry's overhead from the side he is on, 2.4 model
+units of lunge), and the Frenzy is weighted 1.8 in phase 3 (was 3.4).
+
+**The breath has a body** (the owner: "him breathing out a cone of fire and circling looks bad"): its
+aim is a heavy spring (`breath.track`: stiffness 9, damping 5, at most 1.6 rad/s² and 32°/s, 50°/s for
+the phase-2 rake), the neck carries it within `neckArc` 0.45 rad of the facing, and only past that
+does the body shuffle round, at `bodyTurn` 0.7 rad/s (it was 1.2: a turntable). The fire kicks back
+(`recoil` 0.35 s) and surges 1.3 times a second. Weight [1.0, 1.2, 0.7] (was [2.2, 2.64, 2.64]).
+
+Checked by `npm test` → MELEE (each new kind answered: the Wing rend parried hit by hit, a tail whip
+rolled, the tail slam rolled and blocked (the guard breaks), the Sky hammer's wing slam parried into
+the recoil, the fire snap blocked tick by tick and its burning strip, the rakes' burning arcs, the
+breath's body turning far less than its stream sweeps) and TIMING (every contact of all seven within
+±85 ms of its flash + lead; its list is every string but the Cinder flurry, and four singles). **Not right yet** (ADR-119): the wing scythe misses on 25 – 60 % of the
+placements in the Storm flurry, the Cataclysm and the Frenzy (cause not found); Pivot lash's claw lands
+on 124 of 174; the tail slam's raised arch barely reads.
+
+## Fire attacks and hazards (2026-11-09, ADR-029, ADR-030; flying combos and the reworked apocalypse: 2026-11-15, ADR-119)
+- **Flying combos** (ADR-119; the owner: "more flying attacks that are combos instead of just 1
+  attack"): one take-off, then cued parts strung together in the air by banking turns, always ending
+  in a dive whose crash landing is the last blow (and the opening after it). The parts:
+  - **a pass**: a low strafe (7 m up) along a line over where the hero is heading, breathing fire
+    down: the strip it lays burns [2.5, 3.2, 4.5] s by phase (4 per 0.25 s, blockable); its front is
+    the red blow (26, burn 2, kb 4);
+  - **a barrage**: hovering 9 m up, 12 m beside the hero, spitting [3, 3, 4] shells [0.6, 0.6, 0.55] s
+    apart (at least the hero's roll cadence: one roll a shell), each landing in heated ground 0.4 s
+    after its spit (15 each, ≤ 2 hits);
+  - **a dive**: it wheels round to hover 9 m beside him for [0.95, 0.8, 0.7] s, tracking him, and dives
+    (r 7.5, 34, knockdown, kb 7).
+
+  | Combo (phase ≥) | Parts | Windup / recovery (s) | Weight [P1, P2, P3] / cooldown | AI gate |
+  |---|---|---|---|---|
+  | Hunting flight `skyHunt` (1) | pass, dive | 1.0 / 1.3 | [0.9, 0.25, 0.15] / 24 | 7 – 34 m |
+  | Furnace flight `skyFurnace` (2) | barrage, pass, dive | 0.85 / 1.2 | [0, 1.1, 0.2] / 17 | 0 – 40 m |
+  | Cataclysm flight `skyCataclysm` (3) | pass, barrage, pass, dive | 0.8 / 1.1 | [0, 0, 1.2] / 18 | 7 – 36 m |
+
+  Every part's blow is red and cued (FLIGHT scenario: 2 / 5 / 7 tells and flashes, every blow within
+  17 ms of its flash + lead, a hero rolling on the cues loses nothing). The pass's stream and the
+  shells are breathed or spat from the air: **a perfect dodge of one plunges** the hero onto the flying
+  wyrm's head, it crashes and **the combo ends there** (what it had not breathed or spat yet is taken
+  back). Joining turns: a wheel 1.15 s, a swoop onto the next pass 0.65 s.
+- **The single flights** (take off, attack from the air, land, all inside one attack) are picked far
+  less now that the combos carry the flying: the **Burning pass** (a low pass over you breathing fire
+  down; the ground it passes burns for 2.5 s), the **Sky dive** (climbs, hovers beside you while the
+  ground under you heats, dives onto the spot: the crash landing is the blow) and the **Hover barrage**
+  (3–5 fireballs from the air, each landing in heated ground). Flying, the wyrm is out of sword reach;
+  its body circles are off.
+- **Spells:** **Armageddon** (ADR-053, key `meteorRain`; replaced the Meteor rain; the performance and
+  the sky reworked 2026-11-15, the owner: "his animation and shooting fire into the sky for the
+  apocalypse needs to be improved"): a beat of menace (low, still, glaring), then the weight goes back
+  onto the haunches, the wings unfurl, the throat and chest fill with fire, and it tears a dozen
+  columns of fire up into the sky (1.4 s windup, 1.6 s cast; it deals nothing: rearing for ~3 s, it is
+  open to a hero close enough to reach its legs and belly). A burning deck spreads over the sky above
+  the clearing while it drops onto its forefeet with a slam and fights on. Then the meteors come down
+  in waves over the whole clearing, falling on a slant from the sky above it: 3 waves of 8 (P2) / **5
+  of 10** (P3; it was 4), 1.6 s apart, 0.12 s between impacts. Each heats its ground for 1.5 s (a led
+  one 1.2 s): every 3rd is led onto you (never two within 0.5 s), the rest spread evenly, and within
+  12 m of you a wave never covers more than 45 % of the ground, nor do two of its craters overlap by
+  more than a third: there is always somewhere to stand. In P3 the craters burn on for 2 s (blockable
+  contact ticks, never while rolling: walk out). 1.2 s after the last wave one great meteor falls on
+  you (r 7, a 2 s warning). **Three looks** of the move exist behind `?apoc=a|b|c` (a: the salvo of
+  columns from the ground, the default; b: one sustained pillar roared up; c: cast from the air, out of
+  reach); **the owner has not picked yet**. **Fire eruptions** (lava pillars in a line toward you; in
+  phase 3 they may chase you instead; from phase 2 every pillar leaves a burning pool, r 1.9 m, for
+  [–, 2.2, 3.2] s: 3 per 0.25 s, blockable, never while rolling), **Flame ring** (expands from the
+  wyrm: roll through it or be beyond 20 m; **[1, 2, 3] rings by phase, one behind the other 0.95 s
+  apart**, each its own red beat), **Flame wall** (sweeps across the arena: roll through it; **in phase
+  3 a second wall 1.2 s later from your side, square to the first**), **Inferno nova** (a 2.5 s charge,
+  then an arena-sized blast: flee beyond 22 m or perfect-dodge it).
+- Every blow is red. Hazard-dealt blows never plunge, except fire breathed or spat from the air; the
+  dive's crash and the nova's blast may (the wyrm is on the ground for both).
+- Flash timing (`npm test` → FIRE, FLIGHT): every blow lands within 17 ms of its flash + lead.
+
+## Bullets (2026-11-09, ADR-039; breathed, perfect returns and Hard: 2026-11-11, ADR-050, ADR-051; no wisps, no spinning, ground tongues: 2026-11-15, ADR-119)
+The wyrm's bullet-hell patterns (`bullets.js`, `bulletAttacks.js`; numbers `tuningBullets.js`) fill
+the arena with small fire projectiles that fly at the hero's chest height, and drive fire along the
+ground in tongues. **Every bullet is breathed** (ADR-050): it leaves the wyrm's jaws along the way
+its head points, at mouth height, and comes down to chest height before it reaches you (the head
+draws in over a close hero so the stream is not fired over him). Nothing comes out of the body or the
+wings, and **nothing homes**: the blue wisp swarm was removed (the owner: "remove the dragons blue fire
+homing attacks as it looks bad"). **No spinning** (the owner: "his animation circling around looks
+comedic"): while it breathes a pattern, the neck and the head do the aiming and the body never turns
+faster than its walking turn rate (asserted for every pattern in every phase); the Ember torrent's
+phase-3 pirouette and the Scouring breath's turntable (the whole body spun at 123°/s) are gone.
+
+| Fire | Tell | Answers | Damage (final) |
+|---|---|---|---|
+| **Ember** (orange, small; straight, or lobbed from the sky in the Ember rain) | normal | parry · block (chip) · roll through · cut with a swing | 8 |
+| **Orb** (red, big, straight) | red | dodge only | 20 + burn 1.5, kb 3 |
+| **Tongue** (a line of fire crawling out along the ground from where a breath strikes it) | red | dodge only: roll through it, or stand where none runs | the pattern's (20 / 18 + burn) |
+
+- **Perfect parry → return** (ADR-051). RMB ≤ 0.08 s before the impact: the ember comes back as a
+  bigger white-gold shot (34 m/s) that hits the wyrm's head for 30 HP (≈ a light hit) and 14 posture
+  instead of the deflect's, flinching the head (RETURN call-out, a gold burst, a 0.05 s stop, a
+  brighter clang). Through the wyrm's own damage path: the phase gate holds, it may kill. It never
+  interrupts the wyrm. Only the struck bullet returns. Orbs are never parried. A pattern gives back at
+  most 120 HP in all (`returnBudget`, ~8 % of a phase: four embers); past that a perfect parry is a
+  plain deflect, so returns never out-damage the sword.
+- **Deflect.** A parried ember flies back to the wyrm's head (24 m/s) and adds 5 posture. It is a
+  *light* clash (`player:parry {light: true}`: hit-stop 0.03 s, a quarter of the push back, a small
+  shake), so a stream of them does not freeze the game; it counts in the hero's own parry rhythm
+  (`chain`) but never recoils the wyrm and is not part of a string's `DEFLECT ×N`
   (`dragon:parried {bullet: true}`, no `onParried`).
 - **One parry answers a clump.** A deflect opens a 0.3 s shield: small bullets that touch the hero
-  in it pop, and so do the ones within 1.5 m of him (was 2.2) or about to land within ~0.33 s.
+  in it pop, and so do the ones within 1.5 m of him or about to land within ~0.33 s.
 - **Cut.** A light or heavy swing's active frames cut the small bullets within 0.45 m of the blade
   (`Player.isSwinging()`, the sweep segment). **Roll.** Rolling through a small bullet is a plain
-  dodge (`hit.perfect === false`: no Ghostep, no slow-mo); the bullet flies on. An orb can be
-  perfect-dodged like any red blow (slow-mo in place; bullets never start the plunge).
+  dodge (`hit.perfect === false`: no Ghostep, no slow-mo); the bullet flies on. An orb or a tongue can
+  be perfect-dodged like any red blow (slow-mo in place; bullets never start the plunge).
 - **The cue (the fairness rule).** Every bullet that is going to hit announces itself `flashLead`
   (0.35 s) before impact: a glint on the bullet and a paired `combat:tell` + `combat:flash`
   `{hazard: true, bullet: true}` (a ping, no music dip). Impacts within 0.3 s of an announced one ride
   on that cue. A bullet that could only be announced later than 0.24 s before impact fizzles on
   touch when it is younger than 0.6 s (spawned point-blank); an older one hits (the hero ran into
-  it). A cue stands for one impact: a homing wisp that misses and comes round again (still flying
-  0.12 s after the impact it announced, `recue`) announces the second pass too, and fizzles when
-  it could only do that too late. A pattern's opening flash follows its lead bullet even when the
-  wyrm has already finished the move (a wisp swarm roared at a hero 25–30 m away).
+  it). **Two answers never land together:** an impact within `clashSep` 0.35 s of an announced one of
+  the other answer (an ember beside an orb) is a dud and sends no cue; the torrent opens a gap in its
+  stream so no ember reaches the hero within `orbSep` 0.4 s of its orbs. A pattern's opening flash
+  follows its lead bullet even when the wyrm has already finished the move. **Tongues** are announced
+  the same way (the time until any tongue, burning or still to come, next reaches the hero on his
+  sensed velocity), and a tongue only hurts a hero it announced (within 0.75 s); after a tongue hit the
+  tongues pause 1 s (0.5 s after a roll through one).
 - **No melting.** After a bullet hit every touching bullet fizzles for 0.45 s, and each pattern has
   a hit cap (below). The field is cleared on a phase change, the wyrm's death and a reset, and
   fizzles when its posture breaks.
-- Bullet and fire-wheel damage is final: it is **not** scaled by `TUNING.damageScale`.
+- Bullet and tongue damage is final: it is **not** scaled by `TUNING.damageScale`.
 
 | Pattern (phase ≥) | Tell | P1 timing (s) | What flies | Hit cap | Weight [P1, P2, P3] / cooldown | AI gate |
 |---|---|---|---|---|---|---|
-| Ember torrent `emberStorm` (1) | N | windup 1.1 · cast [3.6, 4.2, 4.8] · recovery 1.0 | plants its feet and sweeps its head ±[0.9, 1.1, 1.25] rad across your bearing at [0.45, 0.55, 0.65] Hz, breathing an ember every 0.06 s (9 m/s) in [1, 2, 3] lanes 0.22 rad apart: snaking curtains that cross you once per half-sweep (parry the crossing or walk with the wave); P2+ at each sweep extreme the head snaps round and coughs [–, 3, 4] red orbs at you (6.5 m/s); P3's last 1.5 s is a full body pirouette, breathing: one spiral arm | 6 | [1.6, 2.0, 2.0] / 10 | ≤ 26 m |
-| Cinder burst `fanVolley` (1) | N | windup 1.0 · [4, 6, 7] coughs 0.55 apart · recovery 0.9 | the head snaps onto you and coughs cones of [9, 11, 13] embers over ±0.55 rad at 10.5 m/s; the first has an ember dead on you, every second puts you in a gap (wider than you only from ~14 m off the jaws); P2+ the last cough is [–, 6, 7] red orbs (8 m/s); P3 every other cough is a double tap (a second cone 0.14 s later, half a spacing over: one parry's shield answers both), and 35 % of P3 bursts run straight into an Ember torrent | 5 | [2.4, 2.8, 2.8] / 6.5 | 5–30 m |
-| Wisp swarm `wispSwarm` (2) | B | windup 1.0 · cast 1.3 · recovery 0.8 | [–, 10, 13] wisps roared out of the maw: they hang, then home in 0.36 s apart (cruise 6.2 m/s, turning 1.9 rad/s and tighter with age, 6.5 s of life); they outlive the roar; a new swarm may start while ≤ 3 are alive | 6 | [0, 1.6, 1.8] / 12 | ≤ 30 m |
-| Scouring breath `fireWheel` (2) | R | windup 1.3 (the ground heats where the tongues will catch) · burns [4.6, 4.6, 5.4] · recovery 1.2 | a sustained breath strikes the ground before the snout and runs out as [3, 3, 5] tongues of fire over ±[0.45, 0.45, 0.8] rad of its aim, 1.5–26 m from the strike point, 1.1 m thick; the body turns them round at 2.15 rad/s (≥ 1.25 turns in all), the head stopping 0.25 s before it reverses once. It catches 0.55 rad beside you and sweeps onto you: roll through a tongue, or stay behind it. 20 + burn 1.5, kb 4; each approaching tongue flashes | 3 | [0, 1.2, 1.5] / 15 | ≤ 24 m |
+| Ember torrent `emberStorm` (1) | N | windup 1.1 · cast [3.6, 4.2, 4.8] · recovery 1.0 | plants its feet and sweeps its head ±[0.75, 0.85, 0.95] rad across your bearing at [0.32, 0.37, 0.42] sweeps / s (the neck does it; the centre follows you at 0.6 rad/s), breathing an ember every 0.06 s per lane (9 m/s) in [1, 2, 3] lanes 0.22 rad apart: a living stream in gusts (1.7 a second, a quarter of each a gap) that crosses you once per half-sweep (parry the crossing or walk with the wave); P2+ at each sweep extreme the head snaps round and coughs [–, 3, 4] red orbs at you (6.5 m/s); P2+ it ends in [–, 2, 3] **barks** 0.42 s apart, cones of [7, 7, 9] embers at 11 m/s (parry each), P3's last bark 5 red orbs (roll) | 6 | [0.5, 2.0, 2.8] / 10 | ≤ 26 m |
+| Cinder burst `fanVolley` (1) | N | windup 1.0 · [4, 6, 7] coughs 0.55 apart · recovery 0.9 | the head snaps onto you and coughs cones of [9, 11, 13] embers over ±0.55 rad at 10.5 m/s; the first has an ember dead on you, every second puts you in a gap (wider than you only from ~14 m off the jaws); P2+ the last cough is [–, 6, 7] red orbs (8 m/s); P3 every other cough is a double tap (a second cone 0.14 s later, half a spacing over: one parry's shield answers both), and 35 % of P3 bursts run straight into an Ember torrent | 5 | [2.4, 2.8, 3.2] / 6.5 | 5–30 m |
+| Cinder spit `cinderSpit` (1) | N | windup 0.36 · cast 0.14 · recovery 0.22 (0.72 s in all) | a quick snap between other moves (many moves link into it): the head flicks onto you and spits [2, 3, 3] fast embers 0.09 rad apart at 15 m/s, one dead on you; P3 a second spit 0.12 s later, half a spacing over (one parry answers both). Parry, block or roll | 1 | [1.6, 1.6, 1.8] / 3.2 | 3.5–28 m, you ≤ 1.1 rad off its facing |
+| Ember rain `emberRain` (2) | N | windup 0.9 · [3, 3, 4] volleys [0.6, 0.55, 0.5] apart · recovery 0.8 | it rears and coughs embers high into the air; each volley rains one on the spot you stood on and a ring of [6, 6, 8] round it 2.6 m out (P3 a second ring of 6 at 4.8 m), [1.1, 1.1, 0.95] s from the jaws to the ground, each spot glowing as it falls; in P3 the centre one lands 0.35 s ahead along your run. Keep moving (they land where you WERE), or parry the one that falls on you | 3 | [0, 1.6, 2.2] / 9 | 6–24 m |
+| Scouring breath `fireWheel` (2) | R | windup 1.3 (the strike point heats) · [2, 2, 3] rakes of [1.5, 1.45, 1.3] s with a 0.35 s stop between · recovery 1.1 | braced on all fours, the neck rakes a sustained breath through 1.6 rad (about 90°) across your bearing; where it strikes the ground (2 m ahead of the jaws) it drives **tongues** out along it: [7, 7, 9] per rake evenly over the arc (the middle one runs over you), each a front crawling out at 13 m/s to 26 m, 1.2 m wide, every spot it passed burning [1.5, 1.5, 1.8] s. The rake back lays its tongues in the gaps of the first. In the first rake of phase 2 you can stand between two (0.27 rad apart: ~3 m at 12 m) until the rake back fills the gap; else roll through a tongue. Closer than ~7 m to its neck no tongue starts; past 26 m none reaches. 20 + burn 1.5, kb 4 | 3 | [0, 0.7, 0.6] / 14 | 9–24 m |
+| Fire lanes `fireLanes` (3) | R | windup 1.0 · [3, 3, 4] strikes [0.95, 0.95, 0.85] s apart · recovery 1.0 | the head drives the breath into the ground at its feet again and again; each strike splits into 5 wedges 0.3 rad apart round your bearing, a lit wedge a band of 4 tongues (12 m/s, to 24 m, burning 0.85 s). Each strike lights a different set (the outer pair and the middle, the two between, the outer pair, the middle three): step into a dark wedge (~3 m wide at 12 m) before the fire reaches you, or roll through. 18 + burn 1.2, kb 3 | 2 | [0, 0, 0.8] / 13 | 8–22 m |
 
-The Cinder flurry's last blow (below) also scatters four embers that rise out of a puff of flame
-where it lands and drop on the hero one by one (0.55 s after the slam, 0.34 s apart, 11 m/s): the
-string ends on four more parries, not on a free punish.
+A string hit may scatter embers where it lands (`burst`: the Cinder flurry's overhead, the Sky hammer's,
+the Furnace maw's and the Cataclysm's wing slams, the Cinder rake's overhead): they rise out of a puff
+of flame and drop on the hero one by one (0.5 – 0.55 s after the slam, 0.26 – 0.34 s apart, 11 – 12
+m/s): the string ends on more parries, not on a free punish.
 
 Checked by `npm test` → BULLETS: every answer above per bullet kind, the perfect parry (RMB 0.05 s
 before impact returns the shot for its damage and posture; 0.17 s is a plain deflect; an orb is
@@ -638,24 +805,27 @@ never parried; a return cannot push the wyrm past a phase gate; in a transition 
 a sword hit deals), the cue's lead, the clump rule, the grace, the hit caps, the point-blank dud,
 the clears, and each pattern in each phase it runs in (every bullet born at the jaws along the
 head's aim; a standing hero is hit at most `maxHits` times; a hero who answers the cues takes fewer
-hits than one who stands still); the even-count burst's centring at range, a sidestepped wisp's
-second cue, the opening flash of a wisp swarm roared from 28 m, and the P3 burst → torrent chain.
+hits than one who stands still; the body never turns faster than its walking turn rate); the
+even-count burst's centring at range and the P3 burst → torrent chain. TONGUES: a hero standing in the
+Scouring breath or the Fire lanes is hit; between two first-rake tongues at 12 m he is not hit before
+the rake back; in the dark wedge of a strike he is not hit before the next strike.
 
 **Difficulty of the patterns** (scripted heroes, 2026-11-11; hits taken, standing / answering every
-cue, before → after the Hard breath patterns):
+cue, before → after the Hard breath patterns; measured before the second pass: the torrent's barks,
+the Scouring breath's tongues and the three new patterns are not in it, and the Wisp swarm's row went
+with the swarm):
 
 | Pattern | P1 | P2 | P3 |
 |---|---|---|---|
 | Ember storm → torrent | 2 / 1 → 4 / 0 | 4 / 1 → 6 / 0 | 4 / 2 → 6 / 0 |
 | Cinder fan → burst | 2 / 1 → 4 / 1 | 3 / 1 → 5 / 1 | 3 / 1 → 5 / 1 |
-| Wisp swarm | – | 4 / 1 → 6 / 1 | 4 / 0 → 6 / 0 |
 | Fire wheel → Scouring breath | – | 2 / 0 → 1 / 0 | 2 / 0 → 1 / 0 |
 | Meteor rain → Armageddon | – | 3 (P1 values) → 5 / 0 | – → 5 / 0 (+ 31 crater ticks) |
 
-A standing hero now takes the full cap in almost every pattern; the cue-answering bot (it parries
-0.12 s before impact and rolls 0.1 s before a red one, in a frame) still comes through nearly clean,
-so the patterns stay fair to perfect reads. Whether a person can read a P3 torrent with orbs is not
-something a bot shows: a human playtest is owed.
+A standing hero took the full cap in almost every pattern; the cue-answering bot (it parries 0.12 s
+before impact and rolls 0.1 s before a red one, in a frame) came through nearly clean, so the patterns
+stayed fair to perfect reads. Whether a person can read a P3 torrent with orbs is not something a bot
+shows: a human playtest is owed.
 
 ## The Ash Disciple (2026-11-12, ADR-060 – ADR-063; `?level=ash`)
 A duelist at **PBZ-boss speed** (owner, 2026-11-12): a move's first hit winds up 0.46–0.6 s (red
@@ -1046,22 +1216,38 @@ Shen Hui's 85 % bot takes 7 – 8 hits. Target: 3 – 5 min for a player who kno
 played him yet, and the bots never use the blade lock or the mikiri and stand inside his reach the
 whole fight.
 
-## The world breaks (2026-11-15, ADR-107)
-What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood: the trees
-nearest the clearing, the dead trees, young pines and boulders inside it, and the stone circle. In
-Ashfall: the pillars, the lanterns, the stele, the near dead trees and boulders (the bronze bell only
-rings). In the Obsidian Throne's crater: the shards of the star's glass standing in the floor (cover,
-1.9 – 4.2 m), the tall slabs and shards of the rim, and six stones hanging in the air (these only
-chip, stop nothing and block nobody: they are there for the Void to throw). It all stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
+## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119)
+What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood **the whole
+clearing breaks** (the owner, ADR-119: "the terrain itself is barely destructible"): 183 breakables
+(80 before): 102 trees, 13 dead trees, 10 stones of the circle, 20 boulders, 26 flagstones and the loose
+remains of past challengers (4 long bones, 5 helms, 3 swords). The Cinder Tree, the Elder Wyrm's
+skeleton and the bonfire stay whole (the owner's choice). In Ashfall: the pillars, the lanterns, the
+stele, the near dead trees and boulders (the bronze bell only rings). In the Obsidian Throne's crater:
+the shards of the star's glass standing in the floor (cover, 1.9 – 4.2 m), the tall slabs and shards
+of the rim, and six stones hanging in the air (these only chip, stop nothing and block nobody: they
+are there for the Void to throw). It all stands again when the fight resets (a death, a rest at the
+bonfire, the Lab's Reset).
 
 - **Blows chip and break.** Every blow has a power. The hero: its damage / 110 (a quick cut 0.27, the
   slam 0.6, a full cleave 1.0). A duelist: damage / 40 (a cut 0.3, an overhead 0.6; red x 1.25). The
-  wyrm: 0.7 x the striking part's size (a claw 0.77, the charge 1.2), a stomp 1.0, the leap 1.7, a
-  meteor 1.5, the dive's crash 2.5. A piece has structure by material and size: a young pine ~0.9, a
-  dead tree ~1.6, a boulder ~1.3, a pillar 1 – 2.4 (the gate's 3.2), a standing stone ~2.3. A cut
-  bites stone less (x 0.7; a blow worth under 0.1 only leaves a nick): the slam and the charged cleave
-  are blunt blows and bite it in full. A duelist cuts a pillar down in about ten blows, three of his
-  heavy ones. Every blow leaves a mark as big as it was hard; a hard one cracks the floor.
+  wyrm (`TUNING.world`, tuned down 2026-11-15 when its blows flattened the clearing): 0.7 x the
+  striking part's size (a claw 0.77, the charge 1.2), a stomp 0.8, a hop 1.2, the leap 1.4, the dive's
+  crash 1.8, a meteor 0.7, a lava pillar 0.9; its ground blows are weaker toward their rim (x 0.4 at
+  the edge, `falloff` 0.6). A piece has structure by material and size: a young pine ~0.9, a dead tree
+  ~1.6, a boulder ~1.3, a pillar 1 – 2.4 (the gate's 3.2), a standing stone ~2.3. A cut bites stone
+  less (x 0.7; a blow worth under 0.1 only leaves a nick): the slam and the charged cleave are blunt
+  blows and bite it in full. A duelist cuts a pillar down in about ten blows, three of his heavy ones.
+  Every blow leaves a mark as big as it was hard; a hard one cracks the floor, and one of power 1.2 or
+  more leaves a **crater** (a rim of thrown-up earth and a charred floor until the reset).
+- **The wyrm's body meets the world** (ADR-119; it replaced ADR-107's trample round its root, which
+  never reached a trunk). Every frame its head, neck, body, tail, wings and legs sweep what they pass
+  through, harder the faster they move and the heavier the part. A walk or a turn is a **brush**: it
+  shoves and shakes a big tree and breaks the small things (bones, helms, a sapling); walking into a
+  tree pushes it over in a couple of seconds; claws and feet scrape over the flagstones. A charge, a
+  tail swept hard, a landing, a low flight and a thrown piece **fell** what they hit. Its wings bend
+  the wood round it as it takes off and on every downbeat near the ground; a landing after a flight
+  breaks stone too. **It passes through wood it can break** (it no longer stops at a trunk); stone
+  still turns it until it breaks.
 - **Tall pieces fall.** A piece 2.2 m or taller falls the way the blow drove it (the hero's: away
   from him) in about a second, and lands on a strip as long as it is tall. **Under a piece a boss
   felled, the hero takes one red blow** (22 x its weight 0.6 – 1.3, unblockable, knocked down): the
@@ -1070,74 +1256,111 @@ chip, stop nothing and block nobody: they are there for the Void to throw). It a
   weight damage and 90 x weight posture**, and never hurts the hero: put the tree or the pillar
   between you and him. What a falling piece lands on is struck too. Shorter pieces shatter where
   they stand.
+- **Wreckage is scenery you walk over** (the owner's answer, ADR-119; until then a felled trunk came
+  apart where it landed): a felled tree's trunk lies where it fell, a broken stone or boulder leaves a
+  rubble pile, burnt wood lies black and smoulders, a thrown piece leaves its remains where it lands.
+  None of it has a collider: it stops nothing and blocks nobody. It lies until the fight resets; when
+  too much lies at once (40 logs, 18 burnt ones, 30 rubble piles, fewer on a phone) the oldest sinks
+  into the ground. A log can catch and burn (6 s).
 - **Cover.** A piece 1.1 m or taller stops the wyrm's bullets (each takes 0.12 out of it, an orb
-  three times that), a duelist's crescents and torn stones, and stands for the hero against the
-  Void's lines: a bolt blasts the cover (1.5), the pull drags it down toward the Lord, the Crushing
-  Dark crushes it (3), and the hero behind it is not hit. The great red stone, the returning blade
-  and the wall of force go through and strike what they cross. Breath, rings, walls, the nova and
-  anything that comes down from the sky are not stopped. Cover is temporary: a standing stone stops
-  about 17 bullets.
-- **Fire burns where it lands.** Grass under the breath, a fireball, a meteor, a lava pillar, the
-  burning pass or the dive's crash catches. It burns 3.2 – 4.6 s, then it is ash and cannot burn
-  again: the field burns down as the fight goes on. Standing in it costs 5 HP every 0.55 s after the
-  first 0.45 s (blockable; never while rolling). It never spreads. Sweeping fire (the ring, the wall,
-  the wheel, the nova) lights wood only. A tree that catches burns about 7 s, burns the hero within a
-  metre of its trunk, then falls to embers and leaves a stump.
-- **The wyrm walks through wood**: a tree in its body's way goes down ahead of it. Stone turns it, as
-  before.
+  three times that), a duelist's crescents and torn stones, the wyrm's batted boulder, and stands for
+  the hero against the Void's lines: a bolt blasts the cover (1.5), the pull drags it down toward the
+  Lord, the Crushing Dark crushes it (3), and the hero behind it is not hit. The great red stone, the
+  returning blade and the wall of force go through and strike what they cross. Breath, tongues, rings,
+  walls, the nova, a thrown tree and anything that comes down from the sky are not stopped. Cover is
+  temporary: a standing stone stops about 17 bullets.
+- **Fire burns where it lands, and wood spreads it** (ADR-119 reversed ADR-107's "it never spreads"
+  for wood). Grass under the breath, a fireball, a meteor, a lava pillar, the burning pass, the dive's
+  crash, a fire blow's burning ground or a firebrand catches. A grass cell burns 3.2 – 4.6 s, then it
+  is ash and cannot burn again: the field burns down as the fight goes on. Grass fire does not spread.
+  Standing in it costs 5 HP every 0.55 s after the first 0.45 s (blockable; never while rolling).
+  Sweeping fire (the ring, the wall, the ground tongues) lights wood only. **Fire that lands is
+  capped**: at most one new tree alight every ~8 s across the level (banking 3) and none while 6 burn
+  (fewer on a phone); past it the wood is only scorched (a flame wall once lit 22 – 29 trees at once).
+  A tree that catches burns about 7 s, burns the hero within a metre of its trunk, then falls to
+  embers and leaves a stump. **A burning tree passes it on**: after 2.2 s alight it tries every 1.1 s
+  to light one unburnt tree or log within 5.2 m (45 % a try), at most 7 alight at once, a level-wide
+  budget of one spread every 4 s, and at most two steps from where fire landed (a blaze stays a stand,
+  it never walks round the clearing). Its light is a local glow of 5 m (it was ~16 m: a yellow flood
+  that buried the fire on the ground the hero must read).
 - **The bosses use it.** The Ash Disciple cuts the pillar you stand under down on you, kicks stone
   lanterns at you, rings the bronze bell (rings of sound that cross the courtyard) and springs off
   pillars: *The Ash Disciple* → *He uses the courtyard* (ADR-111). The wyrm tears up trees and
-  boulders and hurls them: *The wyrm uses the ground*, below (ADR-110). The Starless Lord lifts the
-  crater's pieces with the Void (ADR-109). The world's API for it: ARCHITECTURE.md "Destruction".
+  boulders and hurls them: *The wyrm uses the ground*, below (ADR-110, ADR-119). The Starless Lord
+  lifts the crater's pieces with the Void (ADR-109). The world's API for it: ARCHITECTURE.md
+  "Destruction".
+- **A phone budget** (`world.setQuality`, from the LOW / MEDIUM / HIGH preset: 0.5 / 0.75 / 1): fewer
+  debris letters, flames, wreckage, fires and floor marks at once. The rules do not change with it.
 
-### The wyrm uses the ground (2026-11-15, ADR-110)
+### The wyrm uses the ground (2026-11-15, ADR-110; fast and unmarked: 2026-11-15, ADR-119)
 Three moves take what stands in the clearing. The wyrm only starts one with a piece in reach, a
-piece it throws is gone until the fight resets, and it never takes the tree you stand against.
+piece it throws is gone until the fight resets, and it never takes the tree you stand against. The
+owner: "the dragon looks very unnatural when it picks up the terrain and it gives too much time for
+the player to dodge. don't show exactly where the terrain will land". So: **about twice as fast from
+the tell to the blow, a whole-body grab and throw, and nothing drawn on the ground** before the piece
+arrives. This supersedes ADR-110 and ADR-118 for thrown pieces.
 
-- **Uproot and hurl** (red, phase 1). It turns to the nearest tree or boulder (a short run if it
-  must), bites into it, tears it out, swings it back over its shoulder and whips it at you. The
-  landing glows (the ground heats up, ADR-052) from the moment the piece leaves the ground and
-  **follows you until the throw**; from the release it is fixed, and the piece is 0.85 – 1.2 s in the
-  air. One red blow in 3.4 m: be out of the glow when it lands, or roll through it (a perfect dodge
-  gives the slow-mo and crits in place, never a plunge: a thrown tree is no body to leap onto).
-  About 2.9 s from its tell to the blow. It turns its back on you for the tree: that is an opening,
-  and a stagger or a posture break while it holds the piece makes it drop it (no blow).
-- **Tail bat** (blue, phase 1). It pivots its back to a boulder, the tail cocked, and one lash sends
-  the boulder skimming along the ground at you. Its line glows through the pivot and is fixed when
-  the lash starts. **Parry it** (you cut it out of the air: blue posture damage, no recoil), take
-  it on the guard (it costs guard x 1.5), step 1.6 m off the line, or stand behind a tree or a
-  standing stone: cover stops it and pays for it (ADR-107). The tail itself strikes nothing in
-  this move; the AI does not pick it when you stand in the lash's arc.
+- **Uproot and hurl** (red, phase 1). One lunge to the nearest tree or boulder (no trot; at most 0.5
+  s, up to 20 m), a foreleg pins the ground, the jaws clamp, a tug that holds, a heave that tears it
+  out (roots and dirt burst), it rocks back onto its haunches, the neck coils back over the shoulder
+  and whips: the piece leaves the jaws tumbling with the whip and flies flat and fast (0.4 – 0.68 s in
+  the air) at where you are heading. **One tell at the start; no landing mark; the flare drawn on the
+  flying piece 0.35 s before it lands** is the cue. One red blow in 3.4 m: roll at the flare (a roll
+  at it always dodges; a perfect dodge gives the slow-mo and crits in place, never a plunge: a thrown
+  tree is no body to leap onto), or keep moving. On its way it **smashes what stands in its path** (a
+  tree in the way goes down and it flies on), and past the blow it skids on 2.6 m, tumbling, and comes
+  apart. From the tell to the blow about 1.5 s in phase 1 (1.4 / 1.3 in phases 2 and 3; it was 2.9),
+  a boulder a little longer. A throw at a hero far round its side is slower: the neck's coil is drawn
+  out into a pivot of up to 0.4 s (his opening). It turns its back on you for the piece: that is an
+  opening too, and a stagger or a posture break while it holds the piece makes it drop it (no blow).
+- **Tail bat** (blue, **a parry moment**, phase 1). It pivots its back to a boulder, the tail cocked
+  the other way, and one lash sends the boulder bursting off the ground and skimming at you (its line
+  is not drawn). **Parry it** at the blue flare: you cut it out of the air (blue posture damage), and
+  the counter follows when its head is within reach, as for every parry moment; or take it on the guard (it costs guard x 1.5), step 1.15 m off its line, or stand behind a
+  tree or a standing stone: cover stops it and pays for it (ADR-107). The tail itself strikes nothing
+  in this move; the AI does not pick it when you stand in the lash's arc. Tell to blow about 1.3 s
+  (1.25 in phases 2 and 3; it was 1.8).
 - **Firebrand** (red, from phase 2). A tree in the jaws (never a boulder), a breath up its trunk
-  for 0.8 s, then the hurl. Where it lands: the red blow (r 4.0, a burn), the grass and wood
-  within 4.8 m catch (the world's fire: it burns where it lands), and the tree's wreck burns on
-  for 3.4 s within 2.9 m (4 per 0.3 s, blockable, never while you roll; not on top of the grass
-  fire's own ticks). A new phase puts the wreck out, as it does the fire hazards.
+  (0.42 s), then the throw, burning: the trees it smashes on its way catch. Where it lands: the red
+  blow (r 4.0, a burn), the grass and wood within 4.8 m catch, and the tree's wreck burns on for 3.4 s
+  within 2.9 m (4 per 0.3 s, blockable, never while you roll; not on top of the grass fire's own
+  ticks). A new phase puts the wreck out, as it does the fire hazards. Tell to blow about 1.8 s in
+  phase 2 (it was 3.4).
 
-Fairness: each has one tell at its windup and one flash 0.35 s before the blow (the flash still
-comes if the action is cut short after the release: the piece carries it); the landing is marked
-before the throw is committed; nothing lands outside its mark. Checked by scenario TERRAIN of
-`tests/integration/integ.mjs` (56 checks on the real `Destructibles` over a hand-built set): the tell
-and its flash (the blow within 85 ms of flash + lead), the piece taken, flown and landed on its
-mark, no blow 0.4 m outside it, the roll, the parry, the guard, cover, a stagger mid-hold, nothing
-in reach (never picked; forced, it casts about and ends), the reset, Training, and a 150 s fight
-with the AI on (4 of 25 attacks were terrain moves). **Not measured:** how often they come up on
-the real clearing in a played fight (its pieces stand 14 – 28 m from the centre), the difficulty
-with them, the phone. On the lab stage (`?stage=lab`) nothing stands to be taken.
+Fairness: each has one tell at its windup and one flash 0.35 s before the blow, drawn on the piece
+(the flash still comes if the action is cut short after the release: the piece carries it; the body
+does not spike for it). The piece the wyrm has chosen is its own: its body walking past does not
+break it before the move takes it. Checked by scenario TERRAIN of `tests/integration/integ.mjs` (68
+checks on the real `Destructibles` over a hand-built set): the tell and its flash on the piece (the
+blow within 85 ms of flash + lead), nothing drawn on the ground before it lands, the tug and the
+tear, the path smashed, the skid, the roll, the parry, the guard, cover, a stagger mid-hold, nothing
+in reach (never picked; forced, it casts about and ends), the reset, Training, the tell to blow per
+phase (one run: hurl 1.50 / 1.37 / 1.28 s, tail bat 1.33 / 1.25 / 1.25 s, firebrand 1.80 s in phase
+2), and a 300 s fight with the AI on (one run: 5 of 55 attacks were terrain moves). **Not right yet**
+(ADR-119): the grabbed tree reads from in front of the wyrm, partly from behind, poorly from beside
+it; late in a long fight few liftable pieces are left and the terrain moves get rare. On the lab
+stage (`?stage=lab`) nothing stands to be taken.
 
-Checked by `npm test` → `tests/integration/world.mjs`: SETS, CHIP, FELL, COVER, FIRE, THROW, RESET (87
-checks on the real forest and courtyard). **Not measured:** what breakables and grass fire do to the
-fights' difficulty. The bots of the other suites run on world mocks without them, and no human has
+Checked by `npm test` → `tests/integration/world.mjs`: SETS, CHIP, FELL, COVER, FIRE, THROW, RESET,
+GRID (the spatial grid answers as the whole list did), BODY (the walk, the turn, the charge, the
+wings, the landing against the clearing), WRECK (what falls lies and is walked over), SPREAD (the
+spread's limits) and BUDGET (183 pieces in 368 bones, 549 with the wyrm, of 1023; a 60 s rampage costs
+destructibles.update 0.003 ms on average and allocates nothing) (139 checks on the real forest,
+courtyard and throne). And integ WRECKAGE: a whole AI fight on the real clearing, 80 s a phase, must
+leave it changed, not flattened (`TUNING.world.meter`: 20 – 70 % of the pieces inside the hero's
+bound standing at the end, at least 8 liftable as phase 3 starts). Measured (ADR-119): a four-minute
+fight leaves 47 – 60 % standing (run alone; 24 % on one seed inside the whole suite). **Not
+measured:** what breakables, the spread and the wreckage do to the fights' difficulty; no human has
 played with them yet.
 
-## Current numbers (v0.6 "bullet hell", 2026-11-09)
-Source of truth: `rules.js` (`DEFENSE`, `POSTURE`), `player.js` `TUNE`, `tuning.js`, `tuningFire.js`,
-`tuningBullets.js`.
+## Current numbers (v0.6 "bullet hell", 2026-11-09; the wyrm's second pass, 2026-11-15, ADR-119)
+Source of truth: `rules.js` (`DEFENSE`, `POSTURE`), `player.js` `TUNE`, `tuning.js` (with
+`TUNING.pressure`), `tuningFire.js` (with `FLIGHT`), `tuningBullets.js`, `tuningTerrain.js`,
+`tuningLinks.js`, `world/breakTuning.js`.
 **Damage scale (v0.6):** the wyrm attacks far more often than in v0.5, so every hit it deals through
 `hitPlayer` is multiplied by `TUNING.damageScale` 0.85. The damage columns of the three tables below
-are the data values *before* that scale (a 20 lands as 17). Bullets and the fire wheel are exempt
-(the Bullets table above lists their final damage).
+are the data values *before* that scale (a 20 lands as 17), as are the strings of *The whole body*.
+Bullets and the ground tongues are exempt (the Bullets tables above list their final damage).
 S = `SCALE` 1.875 (model units → metres).
 
 **Player:** HP 160, 5 flasks (+70 HP, 0.85 s), roll 0.6 s (i-frames 0.04–0.4 s), backstep 0.4 s
@@ -1146,71 +1369,84 @@ re-arm 0.25 s (skipped right after a deflect), perfect-dodge window 0.2 s, slow-
 
 **The wyrm:**
 - HP 4500. Phase gates at 66 % (2970 HP) and 33 % (1485 HP).
-- Per phase [P1, P2, P3]: windups and recoveries × [1, 0.85, 0.78] (the swings, the flights'
-  airborne parts, the nova's charge and the transition roars keep their timings); turn [70, 110,
-  125] °/s; walk [3.0, 4.1, 4.6] m/s; idle gap [1.0–1.7, 0.7–1.2, 0.35–0.7] s (v0.5: [1.3–2.1,
-  0.9–1.5, 0.4–0.8]); posture max [560, 640,
-  720]; crack glow [0, 0.5, 0.8]; body embers [0, 22, 50] / s.
+- Per phase [P1, P2, P3]: windups and recoveries × [1, 0.82, 0.7] (v0.6: [1, 0.85, 0.78]; the
+  swings, the flights' airborne parts, the nova's charge and the transition roars keep their
+  timings); turn [70, 110, 125] °/s inside attacks, × [1.15, 1.1, 1.05] between them; walk [3.6, 4.6,
+  5.3] m/s (v0.6: [3.0, 4.1, 4.6]); idle gap [0.25–0.5, 0.25–0.5, 0.05–0.25] s, but the old [1.0–1.7,
+  0.7–1.2, 0.35–0.7] after the hero's openings (v0.5: [1.3–2.1, 0.9–1.5, 0.4–0.8]); links in a row
+  [3, 3, 5], then a breather [0.7–1.0, 0.8–1.1, 0.4–0.65] s; ambient cinders every [–, 1.4, 0.7] s;
+  posture max [560, 640, 720]; crack glow [0, 0.5, 0.8]; body embers [0, 22, 50] / s. The director's
+  numbers: *Three phases* above and ARCHITECTURE.md "The director".
 - Posture (`POSTURE`, unchanged since v0.2): parry 26 / 48 (normal / blue), weapon hit 5 / 16
   (light / heavy, ×1.25 on the head), regen after 3 s at 14 / s, break 3.2 s with ×2.2 crits. The
   plunge adds 40. A near-perfect defender breaks it about every 30–60 s.
 - The plunge 90, the execution 260 (final damage). Reactions 1.35 s / 2.0 s (+ ~0.6 s fall in the air).
 - Weapon-hit part multipliers: head 1.5, neck 1.15, body 1, tail 0.8, wing 0.9, leg 1.
-- Opening cooldowns after the intro: breath 7, fireball 5, charge 4, leap 10 s. A new phase's
-  abilities: 2 + 2.5 × i + 0–2 s (random order; the nova opener is not delayed).
+- Opening cooldowns after the intro: breath 5, fireball 4, charge 3, leap 8 s (v0.6: 7, 5, 4, 10).
+  A new phase's abilities: 1.5 + 1.6 × i + 0–1.5 s (v0.6: 2 + 2.5 × i + 0–2; random order; the nova
+  opener is not delayed).
 
 **Single attacks** (N normal, B blue, R red; P1 times; weight = AI weight, per phase where an array):
 
 | Attack (phase ≥) | Tell | Windup / active / recovery (s) | Damage | Weight / cooldown | Notes |
 |---|---|---|---|---|---|
 | Bite (1) | B | 0.75 / 0.2 / 0.8 | 24 | 1.5 / 1.2 | |
-| Claw swipe (1) | N | 0.8 / 0.25 / 0.7 | 20 | 2.6 / 1.6 | foreleg rake |
+| Claw swipe (1) | N | 0.8 / 0.25 / 0.7 | 20 | 1.6 / 1.6 | foreleg rake (was 2.6) |
 | Tail sweep (1) | R | 0.9 (≥ 0.76) / 0.45 / 0.9 | 32 | 2.4 / 2.5 | spin 200°; the windup floor keeps it after its flash in P3 |
 | Stomp (1) | R | 1.0 / 0.15 / 1.0 | 34 | 1.4 / 3 | ring r 4.5 × S |
-| Fire breath (1) | N, blockable, not parryable | 1.1 / 1.8 (P2+ 2.4, sweeping 70°) / 1.0 | 5 per 0.15 s + burn | [2.2, 2.64, 2.64] / 8 | AI band 4.5–16 × S |
+| Fire breath (1) | N, blockable, not parryable | 1.1 / 1.8 (P2+ 2.4, sweeping 70°) / 1.0 | 5 per 0.15 s + burn | [1.0, 1.2, 0.7] / 8 | AI band 4.5–16 × S; the braced body (*The whole body*); was [2.2, 2.64, 2.64] |
 | Fireball (1) | N | 0.9 / 0.35 (P2+ 0.9: 3 shells) / 0.9 | 22, r 3 m | [2.5, 3, 3] / 6.5 | |
 | Charge (1) | R | 0.9 / 1.0 / 1.1 | 36 | 2 / 6 | |
-| Leap slam (2) | R | 0.8 / air 1.8 / 1.2 | 40, r 6 × S | 1.8 / 13 | |
+| Leap slam (2) | R | 0.8 / air 1.8 / 1.2 | 40, r 6 × S | [0, 0.9, 0.5] / 13 | was 1.8 |
 | Roar ring (transitions) | R | 1.2 / 1.6 / 0.6 | 12, r 7 × S | never picked | |
 
 **Strings** (hits: tell; P1 windup / active / impact s; damage):
 
 | String (phase ≥) | Hits | Recovery / cooldown | Weight [P1, P2, P3] | AI band (× S from the root) |
 |---|---|---|---|---|
-| Claw combo (1) | claw (N; 0.8 / 0.25 / 0.15; 16) · claw (N; 0.55 / 0.25 / 0.15; 16) · lunge bite (B; 0.6 / 0.24 / 0.05; 22) | 1.0 / 5 | [2.4, 2.4, 2.0] | 2.4–5.4, ≤ 0.9 rad off the nose |
-| Rending flurry (1) | claw (N; 0.75; 16) · claw (N; 0.45; 16) · overhead claw (B; 0.62 / 0.24 / 0.22; 22) · lunge bite (B; 0.55 / 0.24 / 0.05; 24) | 1.1 / 7 | [3.0, 2.8, 2.4] | 2.4–5.4, ≤ 0.9 |
-| Hesitant maw (1) | reared bite (B; 0.85 + hold 0.25–0.9 / 0.2 / 0.06; 24) · 50 %: quick bite (B; 0.5 / 0.2 / 0.06; 20) | 0.9 / 6 | [2.4, 2.2, 2.0] | 3.5–6.5, ≤ 0.65 |
-| Wing buffet (1) | wing slam (N; 0.8 / 0.3 / 0.25; 18, kb 5) · pivot + the other wing (B; 0.9 / 0.3 / 0.25; 22, kb 7) | 1.0 / 6 | [2.2, 2.4, 2.4] | 6.8–8.3, any side up to 2.6 rad |
+| Claw combo (1) | claw (N; 0.8 / 0.25 / 0.15; 16) · claw (N; 0.55 / 0.25 / 0.15; 16) · lunge bite (B; 0.6 / 0.24 / 0.05; 22) | 1.0 / 5 | [1.8, 1.2, 0.9] | 2.4–5.4, ≤ 0.9 rad off the nose |
+| Rending flurry (1) | claw (N; 0.75; 16) · claw (N; 0.45; 16) · overhead claw (B; 0.62 / 0.24 / 0.22; 22) · lunge bite (B; 0.55 / 0.24 / 0.05; 24) | 1.1 / 7 | [1.8, 1.4, 1.2] | 2.4–5.4, ≤ 0.9 |
+| Hesitant maw (1) | reared bite (B; 0.85 + hold 0.25–0.9 / 0.2 / 0.06; 24) · 50 %: quick bite (B; 0.5 / 0.2 / 0.06; 20) | 0.9 / 6 | [1.5, 1.6, 1.4] | 3.5–6.5, ≤ 0.65 |
+| Wing buffet (1) | wing slam (N; 0.8 / 0.3 / 0.25; 18, kb 5) · pivot + the other wing (B; 0.9 / 0.3 / 0.25; 22, kb 7) | 1.0 / 6 | [1.8, 2.0, 1.8] | 6.8–8.3, any side up to 2.6 rad |
 | Tail lash (2) | claw (N; 0.75; 18) · pivot + tail lash (R; 1.0 / 0.36 / 0.245; 26) · tail sweep (R; 0.9 / 0.45 / 0.2 + flank 0.1; 30) | 1.0 / 8 | [0, 2.6, 2.4] | 2.4–5.4, ≤ 0.9 |
-| Pounce (2) | a hop onto the hero (R, ground ring r 3.3 × S; 0.8 / 0.6 / 0.6 = the landing; 30, knockdown) · bite (B; 0.55 / 0.2 / 0.06; 22) | 1.0 / 7 | [0, 2.2, 2.4] | 6–13, ≤ 1.0 |
-| Storm flurry (1) | claw (N; 0.75; 13) · claw (N; 0.42; 13) · claw (N; 0.42; 13) · overhead claw (B; 0.6 / 0.24 / 0.22; 18) · lunge bite (B; 0.55 / 0.24 / 0.05; 20) | 1.1 / 9 | [1.6, 2.2, 2.4] | 2.4–5.4, ≤ 0.9 |
-| Cinder flurry (2) | claw (N; 0.75; 14) · claw (N; 0.45; 14) · bite (B; 0.55 / 0.2 / 0.06; 20) · overhead claw (B; 0.62 / 0.24 / 0.22; 18) that scatters 4 embers (see Bullets) | 1.5 / 11 | [0, 2.2, 2.6] | 2.4–5.4, ≤ 0.9 |
-| Frenzy (3) | claw (N; 0.75; 16) · claw (N; 0.5; 16) · bite (N; 0.55; 18) · 60 %: claw (N; 0.5; 16) · a delayed claw (N; 0.5 + hold 0.3–0.75; 18) · bite (B; 0.55; 24) · stomp (R, ground ring; 0.85; 36) | 1.2 / 12 | [0, 0, 3.4] | 2.4–5.4, ≤ 0.9 |
+| Pounce (2) | a hop onto the hero (R, r 3.3 × S; 0.8 / 0.6 / 0.6 = the landing; 30, knockdown) · bite (B; 0.57 / 0.2 / 0.06; 22) | 1.0 / 7 | [0, 2.2, 2.4] | 6–13, ≤ 1.0 |
+| Storm flurry (1) | claw (N; 0.75; 13) · claw (N; 0.42; 13) · wing scythe (N; 0.55 / 0.4 / 0.27; 15) · overhead claw from his side (B; 0.6 / 0.24 / 0.22; 18) · lunge bite (B; 0.55 / 0.24 / 0.05; 20) | 1.1 / 9 | [1.6, 1.6, 1.6] | 3.0–5.4, ≤ 0.9 |
+| Cinder flurry (2) | claw (N; 0.75; 14) · claw (N; 0.45; 14) · bite (B; 0.55 / 0.2 / 0.06; 20) · overhead claw (B; 0.62 / 0.24 / 0.22; 18) that scatters 4 embers (see Bullets) | 1.5 / 11 | [0, 2.0, 2.2] | 2.4–5.4, ≤ 0.9 |
+| Frenzy (3) | claw (N; 0.75; 16) · claw (N; 0.5; 16) · bite (N; 0.55; 18) · 60 %: wing scythe (N; 0.5 / 0.4 / 0.27; 16) · a delayed claw from his side (N; 0.5 + hold 0.3–0.75; 18) · bite (B; 0.55; 24) · stomp (R; 0.85; 36) | 1.2 / 12 | [0, 0, 1.8] | 3.0–5.4, ≤ 0.9 |
+
+The Black maw (1; [1.1, 1.3, 1.2] / 14): *The flare, the counter and the charged blow*. The seven
+strings of the whole body (Wing rend, Pivot lash, Rear guard, Sky hammer, Furnace maw, Cinder rake,
+Cataclysm): *The whole body* above. The Tail lash is unchanged.
 
 **Fire attacks** (`tuningFire.js`; every blow red; sizes in world metres):
 
 | Ability (phase ≥) | P1 timing (s) | Damage | Size | Weight [P1, P2, P3] / cooldown | AI gate |
 |---|---|---|---|---|---|
-| Burning pass `skyStrafe` (1) | windup 1.0 · takeoff 0.75 · pass 1.9 (7 m up) · land 1.05 | front 26 + burn 2, kb 4; the burning ground 4 per 0.25 s (blockable) | strip 4.6 m wide from 10 m out to 3 m short of the landing (24–40 m along the line), burns 2.5 s | [0.9, 1.4, 1.2] / 16 | 7–34 m |
-| Sky dive `diveBomb` (2) | windup 0.8 · climb 1.1 · hover 1.2 (13 m up, 9 m beside the target; the tell) · dive 0.5 · recovery 1.4 | 34, knockdown, burn 1, kb 7; a perfect dodge may plunge | r 7.5 | [0, 1.6, 1.4] / 15 | any distance |
-| Hover barrage `hoverBarrage` (2) | windup 0.8 · rise 1.0 (9 m up, 13 m beside you) · 3–5 shells 0.5 s apart, each ringing 0.4 s before its spit · land 1.2 | 15 each, burn 1.2, kb 2.5; ≤ 2 hits | r 3.2 | [0, 1.4, 1.2] / 13 | any distance |
-| Armageddon `meteorRain` (2) | windup 1.4 · salvo 1.6 · recovery 0.9; the sky answers 0.8 s later, waves 1.6 s apart (0.12 s between impacts), the ground heating 1.5 s (led 1.2 s) under each, a 0.9 s visible fall; the great meteor 1.2 s after the last wave (a 2 s warning) | 20 each, burn 1.5, kb 3; ≤ 4 hits; the great one 34, kb 7 (not capped); P3 craters 4 per 0.25 s for 2 s (blockable) | r 3.4 (great r 7); 3 × 8 (P3 4 × 10) over the whole clearing, every 3rd led onto you, a wave covers ≤ 45 % within 12 m of you | [0, 1.2, 1.5] / 28 | not while a barrage or meteors fall |
-| Fire eruptions `eruptions` (2) | windup 0.9 · slam 0.2 · recovery 1.5; pillar k erupts 0.65 + 0.11 k after the slam | 20, burn 1.2, kb 4 | r 2.4; ≤ 9 pillars 3.4 m apart from 5.5 m out to 7 m past you; P3 chase (60 %): a pillar under you every 0.42 s for 3 s, each ringing 0.7 s, ≤ 2 hits | [0, 1.5, 1.4] / 11 | 6–28 m, ≤ 1.3 rad |
-| Flame ring `flameRing` (2) | windup 1.1 · cast 0.25 · recovery until the ring has run (≥ 1.85) | 24, burn 2, kb 4 | from 3 m round the wyrm to 20 m at 10 m/s, band 2.2 m | [0, 1.4, 1.2] / 12 | ≤ 14 m |
-| Flame wall `flameWall` (3) | windup 1.2 · cast 0.3 · recovery until the sweep ends (≥ 3.15) | 28, burn 2, kb 5 | 40 m long × 2.4 m thick, springs up 4 m ahead, sweeps 30 m at 10 m/s | [0, 0, 1.6] / 14 | any |
-| Inferno nova `nova` (3) | charge 2.5 in every phase · blast 0.45 · recovery 1.6 | 70, knockdown, burn 3, kb 10; a perfect dodge may plunge | r 22 | [0, 0, 0.7] / 32 | also the P3 opener |
+| Hunting flight `skyHunt` (1) | windup 1.0 · takeoff 0.75 · pass 1.6 · wheel 1.15 · hover 0.95 · dive 0.5 · recovery 1.3 | the pass's front 26 + burn 2, kb 4, its strip 4 per 0.25 s; the dive 34, knockdown, kb 7 | strip 4.6 m wide from 9 m out, 22–36 m along the line, burns [2.5, 3.2, 4.5] s; dive r 7.5 | [0.9, 0.25, 0.15] / 24 | 7–34 m |
+| Furnace flight `skyFurnace` (2) | windup 0.85 · rise 0.95 · barrage [3, 3, 4] shells [0.6, 0.6, 0.55] apart, each heated 0.4 s before its spit · swoop 0.65 · pass · wheel · hover [–, 0.8, 0.7] · dive · recovery 1.2 | shells 15, burn 1.2, kb 2.5, ≤ 2 hits; pass and dive as above | shells r 3.2 (9 m up, 12 m beside you) | [0, 1.1, 0.2] / 17 | 0–40 m |
+| Cataclysm flight `skyCataclysm` (3) | windup 0.8 · pass · wheel · barrage · swoop · pass · wheel · hover 0.7 · dive · recovery 1.1 | as above | as above | [0, 0, 1.2] / 18 | 7–36 m |
+| Burning pass `skyStrafe` (1) | windup 1.0 · takeoff 0.75 · pass 1.9 (7 m up) · land 1.05 | front 26 + burn 2, kb 4; the burning ground 4 per 0.25 s (blockable) | strip 4.6 m wide from 10 m out to 3 m short of the landing (24–40 m along the line), burns 2.5 s | [0.1, 0.15, 0.1] / 16 (was [0.9, 1.4, 1.2]) | 7–34 m |
+| Sky dive `diveBomb` (2) | windup 0.8 · climb 1.1 · hover 1.2 (13 m up, 9 m beside the target; the tell) · dive 0.5 · recovery 1.4 | 34, knockdown, burn 1, kb 7; a perfect dodge may plunge | r 7.5 | [0, 0.2, 0.15] / 15 (was [0, 1.6, 1.4]) | any distance |
+| Hover barrage `hoverBarrage` (2) | windup 0.8 · rise 1.0 (9 m up, 13 m beside you) · 3–5 shells 0.5 s apart, each heating its ground 0.4 s before its spit · land 1.2 | 15 each, burn 1.2, kb 2.5; ≤ 2 hits | r 3.2 | [0, 0.4, 0.1] / 13 (was [0, 1.4, 1.2]) | any distance |
+| Armageddon `meteorRain` (2) | windup 1.4 · salvo 1.6 · recovery 0.9; the sky answers 0.8 s later, waves 1.6 s apart (0.12 s between impacts), the ground heating 1.5 s (led 1.2 s) under each, a 0.9 s visible fall; the great meteor 1.2 s after the last wave (a 2 s warning) | 20 each, burn 1.5, kb 3; ≤ 4 hits; the great one 34, kb 7 (not capped); P3 craters 4 per 0.25 s for 2 s (blockable) | r 3.4 (great r 7); 3 × 8 (P3 5 × 10) over the whole clearing, every 3rd led onto you, a wave covers ≤ 45 % within 12 m of you | [0, 1.6, 1.8] / 28 | not while a barrage or meteors fall |
+| Fire eruptions `eruptions` (2) | windup 0.9 · slam 0.2 · recovery 1.5; pillar k erupts 0.65 + 0.11 k after the slam | 20, burn 1.2, kb 4; each pillar's pool 3 per 0.25 s (blockable) | r 2.4; ≤ 9 pillars 3.4 m apart from 5.5 m out to 7 m past you; pools r 1.9 for [–, 2.2, 3.2] s; P3 chase (60 %): a pillar under you every 0.42 s for 3 s, each ringing 0.7 s, ≤ 2 hits | [0, 0.9, 1.8] / 11 | 6–28 m, ≤ 1.3 rad |
+| Flame ring `flameRing` (2) | windup 1.1 · cast 0.25 · [1, 2, 3] rings 0.95 s apart · recovery until the last ring has run (≥ 1.85) | 24, burn 2, kb 4 | from 3 m round the wyrm to 20 m at 10 m/s, band 2.2 m | [0, 0.9, 0.7] / 12 | ≤ 14 m |
+| Flame wall `flameWall` (3) | windup 1.2 · cast 0.3 · P3 a second wall 1.2 s later from your side, square to the first · recovery until the sweep ends (≥ 3.15) | 28, burn 2, kb 5 | 40 m long × 2.4 m thick, springs up 4 m ahead, sweeps 30 m at 10 m/s | [0, 0, 0.7] / 14 | any |
+| Inferno nova `nova` (3) | charge 2.5 in every phase · blast 0.45 · recovery 1.6 | 70, knockdown, burn 3, kb 10; a perfect dodge may plunge | r 22 | [0, 0, 0.35] / 32 | also the P3 opener |
 
-**Terrain moves** (`tuningTerrain.js`, ADR-110; sizes in world metres; picked only with a piece in reach):
+**Terrain moves** (`tuningTerrain.js`, ADR-110, ADR-119; sizes in world metres; picked only with a
+piece in reach; no landing mark: the flare on the piece):
 
 | Ability (phase ≥) | Tell | P1 timing (s) | Damage | Size | Weight [P1, P2, P3] / cooldown | AI gate |
 |---|---|---|---|---|---|---|
-| Uproot and hurl `hurl` (1) | R | a run to the piece ≤ 1.7 (no tell yet) · bite 0.7 · lift 0.65 · aim 0.55 · whip 0.24 (released at 55 %) · flight 0.85–1.2 · recovery ≥ 1.4 | 30, knockdown, kb 5; a perfect dodge never plunges | r 3.4; on the world 1.2 | [3.2, 3.0, 2.6] / 15 | a tree or boulder within 21 m of it, not one you stand against; you 5–36 m away (× 0.7 under 9 m) |
-| Tail bat `tailBat` (1) | B | pivot 0.95 (≥ 0.8) · lash 0.36 (the tail meets the boulder ~0.21 in) · the boulder at 22–34 m/s · recovery 0.95 | 26, kb 5 | a line 1.15 m either side, 7 m past you; cover stops it (it takes 1.0) | [3.0, 3.0, 2.8] / 12 | a boulder 6–15.5 m from its root, 7–32 m from you, its line clear of the wyrm's body, you out of the lash's arc |
-| Firebrand `fireBrand` (2) | R | as the hurl, with 0.8 of kindling between the lift and the aim (bite 0.65 · lift 0.6 · aim 0.45) · flight 0.9–1.25 | 32, knockdown, burn 2, kb 5; the wreck 4 per 0.3 s for 3.4 s (blockable) | r 4.0; the wreck r 2.9; grass and wood catch within 4.8 m; on the world 1.4 | [0, 2.8, 3.0] / 19 | a tree (wood only), as the hurl |
+| Uproot and hurl `hurl` (1) | R | a lunge to the piece ≤ 0.5 (up to 20 m at ≤ 24 m/s; no tell yet) · bite 0.3 · lift 0.3 (it tears free 45 % into it) · aim 0.18 (a pivot of ≤ 0.4 more for a hero far round its side) · whip 0.16 (released at 50 %) · flight 0.4–0.68 · recovery 0.55 | 30, knockdown, kb 5; a perfect dodge never plunges | r 3.4; on the world 1.0 where it lands, 0.9 on what it smashes in its path; skids 2.6 m | [2.6, 2.6, 2.4] / 15 | a tree or boulder within reach of one lunge, not one you stand against (2.6 m); you 5–36 m away (× 0.7 under 9 m) |
+| Tail bat `tailBat` (1) | B, flare | pivot 0.6 (≥ 0.5) · lash 0.3 (the tail meets the boulder ~0.16 in) · the boulder at 26–42 m/s (re-timed to land on its flash) · recovery 0.6 | 26, kb 5 | a line 1.15 m either side, 7 m past you; cover stops it (it takes 1.0); it bursts r 2.0 | [2.6, 2.6, 2.4] / 12 | a boulder 6–15.5 m from its root, 7–32 m from you, its line clear of the wyrm's body, you out of the lash's arc |
+| Firebrand `fireBrand` (2) | R | as the hurl, with 0.42 of kindling between the lift and the aim · flight 0.42–0.7 · recovery 0.6 | 32, knockdown, burn 2, kb 5; the wreck 4 per 0.3 s for 3.4 s (blockable) | r 4.0; the wreck r 2.9; grass and wood catch within 4.8 m; what it smashes in flight catches; on the world 1.4 (smash 1.2) | [0, 2.2, 2.6] / 19 | a tree (wood only), as the hurl |
 
-**AI pick shares at close range** (measured for v0.5, before the two new strings and the four bullet
-patterns joined the pool; not re-measured): P1 strings ~60 %, bite / stomp ~40 %; P2 strings ~39 %, fire and flights ~35 %, singles
-~25 %; P3 strings ~42 %, fire ~41 %.
+**AI pick shares** (measured for v0.5; not re-measured since: the director, the links, the new strings,
+patterns and flights changed them entirely; ADR-119's PRESSURE numbers, *Three phases*, are the
+current measure). v0.5: P1 strings ~60 %, bite / stomp ~40 %; P2 strings ~39 %, fire and flights ~35 %,
+singles ~25 %; P3 strings ~42 %, fire ~41 %.
 
 **Difficulty (measured, ADR-033).** Integration bots (`tests/integration/integ.mjs`): `win` is a
 god-mode defender that answers every tell; the opt-in `probe` is a mortal bot that answers a share
@@ -1230,7 +1466,9 @@ Reading: the bots land where they did in v0.5 (95 % wins, 85 % is on the edge), 
 not in sword reach. The bots do not cut bullets and heal poorly, so the probe's death rates are
 pessimistic. Target: 3–5 min for a player who knows the moves, several deaths while learning it.
 **A human playtest is still needed**: a bot answers a flash in a frame; whether a person can read
-a phase-3 ember storm is not something these runs show.
+a phase-3 ember storm is not something these runs show. The `win` and `probe` runs above were not
+repeated after the second pass (ADR-119); its measure is the PRESSURE scenario's bots (*Three
+phases*: 95 % wins all three runs, 80 % dies in all three).
 
 ## Earlier numbers (v0.2 "approachable RPG" … the reference match) — superseded
 *Superseded 2026-11-09 by "Current numbers" above: HP 1500 → 4500, one phase gate at 50 % → three
