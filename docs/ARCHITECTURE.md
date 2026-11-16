@@ -596,6 +596,8 @@ debug: { god: boolean, infiniteFlasks: boolean, heal(), teleport(x, z), kill(), 
                                        //   much faster, its step covering the same ground (the Lab's "atk" slider)
          fightStance: boolean | null,  // the stance he stands in (ADR-114): true holds the fight stance, false at ease;
                                        //   null = the game decides (the Lab's "stance" row)
+         moves: 'ref' | null,          // the move set under review: 'ref' = the reference string (combat.js LIGHT_REF,
+                                       //   stances.js REF_EASE); null = today's (the Lab's "moves" row, `?moves=ref`)
          plunge(execution = false) }   // Lab / captures: start the plunge on the dragon now (any range, in the air too)
 ```
 Module-private state the animator reads (anim.js): `plungeAnim { phase, u, t, exec, h }` (the plunge

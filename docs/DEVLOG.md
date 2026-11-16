@@ -5,6 +5,43 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 59: the reference string (a second light chain and carry, under review)
+
+**Owner:** sent a 7.6 s film of a wuxia sword string (an idle, then five blows) and asked for the
+hero's pose and attack animations to mirror it. Branch `player/reference-string` from `main`.
+
+**Read from the film** (60 fps, cut into 30 fps strips): an upright idle with the blade hanging low
+and flat on his right; (1) the blade swung up his right side, round behind the head, a long falling
+diagonal to low left, the free arm thrown out; (2) drawn over the left shoulder, a level backhand at
+shoulder height; (3) a full turn off the ground with the blade upright, chopped down to low right;
+(4) a leap with a knee up, the blade cocked high left, a falling diagonal to low right; (5) a second
+turn, then a long low lunge with the point up, held. About 0.37 - 0.5 s a blow.
+
+**Done** (a prototype behind a switch; today's chain and stance are untouched and stay the default):
+- `combat.js` `LIGHT_REF` and `lightChain(set)`: five defs that keep the damage and posture of the
+  hits they replace, with windups 0.14 - 0.26 s (today's lights: 0.11 - 0.13; the slam 0.28). The
+  finisher is a thrust: no ground shards (those stay on the Earthbreaker).
+- `swings.js`: `refWrapCut`, `refNeckBackhand`, `refUprightWhirl`, `refCraneCut`, `refWhirlThrust`.
+- `stances.js` `REF_EASE`: at ease the blade lies at 38° below level, 66° out (today 55° / 56°).
+- The switch: `player.debug.moves = 'ref'`, `?moves=ref`, the Lab's PLAYER → moves row.
+
+**Measured** (headless Edge on the dev server, a mashed chain, both sets): a blow every 0.39 s
+(today 0.33); the fastest frame of the grip 17 - 31 cm (today 27 - 35), of the point 82 - 125 cm
+(today 50 - 99: the finisher's blade is carried round its turn), of a foot 8 - 45 cm (today 8 - 33);
+the blade's nearest pass to the head's centre 29 - 56 cm (today 31 - 49); the crane cut's feet 35 cm
+off the grass. All five blows connect on the wyrm from 3 - 9 m and on the Ash Disciple from
+1.5 - 4.5 m; the finisher lands at 0.87 of its active frames (the slam: 0.28).
+
+**Not checked / open:** no human has played it; none of the hero-motion tests swing the new clips
+(they are written for `LIGHT`); the phone; the Starless Lord; the heavy branches after the new
+lights (each was posed to start where today's light leaves the blade); the fight stance is today's.
+The CHANGELOG, WHAT'S NEW and an ADR wait for the owner's pick.
+
+**Next:** the owner's pick from the review sheet and clips (today's / the new string / parts of it,
+and the pace); then the tests, the variants and the docs for whatever is kept.
+
+---
+
 ## 2026-11-15 — Session 58: `npm test` runs its suites side by side; repo merge settings
 
 **Owner:** asked why every PR here is a squash merge, then whether any GitHub settings would make
