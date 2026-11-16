@@ -113,6 +113,7 @@ export const LINKS = {
   voidWaltz: melee(near('thunderVerse', f4(0.35)), near('judgment', f4(0.3))),
   thunderVerse: melee(near('hollowCrown', f4(0.3)), near('voidWaltz', f4(0.3))),
   hollowCrown: melee(near('eclipse', f4(0.3)), near('thunderVerse', f4(0.25))),
+  redEclipse: melee(near('judgment', f4(0.3)), near('voidWaltz', f4(0.3))),
   // ---- the moments and the gap closers: what waits where they land
   lunge: [...STRINGS, far('grasp', [0.3, 0, 0, 0.4])],
   skyfall: [...STRINGS, mid('drawnIn', f1(0.3)), mid('wingedPursuit', f2(0.35)), mid('voidWaltz', f4(0.35))],
@@ -140,7 +141,7 @@ export const LINKS = {
   crownFall: AFTER_SPELL,
   parting: [far('voidBolt', f2(0.35)), far('voidBolt', f3(0.4)), far('tide', f4(0.45)), mid('wingedPursuit', f2(0.4)), mid('walkingMountain', f3(0.4)), mid('voidWaltz', f4(0.4)), mid('voidPush', [0, 0.3, 0.35, 0.4])],
   // (the waves are still running over the crater: the mixed-answer rule keeps his blade back until they are past)
-  starlessNight: [far('voidWaltz', f4(0.4)), near('thunderVerse', f4(0.35))],
+  starlessNight: [near('redEclipse', f4(0.45)), far('voidWaltz', f4(0.4)), near('thunderVerse', f4(0.35))],
   // ---- his counters out of a guard: on into a string
   riposte: [near('veiledHand', f1(0.25)), near('voidVerse', f1(0.2))],
   riposte2: [near('wheelingBlade', f2(0.25)), near('twinCartwheel', f2(0.2))],

@@ -469,7 +469,7 @@ async function scenarioLevel() {
 async function scenarioMoves() {
   out('\n== scenario MOVES (the second pass: new moves answered, the thrown blade, the orbit, the weather, the great spell, links) ==');
   const NEW = ['veiledHand', 'voidVerse', 'drawnIn', 'pushOpening', 'crushingVerse', 'hollowStep', 'wheelingBlade', 'wingedPursuit', 'crossedTides', 'twinCartwheel',
-    'walkingMountain', 'stoneWheel', 'starHand', 'grindingWheel', 'voidWaltz', 'thunderVerse', 'hollowCrown', 'starlessNight'];
+    'walkingMountain', 'stoneWheel', 'starHand', 'grindingWheel', 'voidWaltz', 'thunderVerse', 'hollowCrown', 'redEclipse', 'starlessNight'];
   for (let f = 1; f <= FORMS; f++) assert(NEW.filter((n) => weightIn(MOVES[n], f) > 0).length >= 4, `form ${f} has at least four new moves`);
   const mikiriForms = [1, 2, 3, 4].filter((f) => MOVE_NAMES.some((n) => weightIn(MOVES[n], f) > 0 && MOVES[n].beats.flatMap((b) => (Array.isArray(b.pick) ? b.pick : [b])).some((b) => b.mikiri)));
   assert(mikiriForms.length === 4, `a perilous thrust in every form (${mikiriForms.join(', ')})`);

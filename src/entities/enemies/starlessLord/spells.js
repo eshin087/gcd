@@ -146,6 +146,7 @@ export class LordSpells {
     if (!(dt > 0)) return;
     this._wheel(dt);
     this._orbit(dt);
+    this._hang(dt);
     this._sky(dt);
     this._night(dt);
   }
@@ -173,10 +174,10 @@ export class LordSpells {
    * The blows not cued yet are not in the ledger's sight until their cue: a call made now that lands
    * on one would make the guard hold that blow (or turn it into a feint); this keeps them apart.
    */
-  _clearOfAct(T, tell) {
+  _clearOfAct(T, tell, pad = 0) {
     const d = this.d, br = d.brain, a = br?.act;
     if (d.mode !== 'act' || !a) return true;
-    const G = TUNING.pressure.guard, sep = (G.sep ?? 0.3) + (G.margin ?? 0) + 0.04, ans = answerOf(tell);
+    const G = TUNING.pressure.guard, sep = (G.sep ?? 0.3) + (G.margin ?? 0) + 0.04 + pad, ans = answerOf(tell);
     for (const b of a.beats) {
       if (b.feint || b.done) continue;
       if (b.def.cast && !b.def.release) continue; // (what a cast makes reports itself)
@@ -368,17 +369,14 @@ export class LordSpells {
         const m = Math.min((imp[k] + imp[k + 1]) / 2, imp[k] + lead + T.early);
         if (imp[k + 1] - imp[k] >= T.minGap && m - T.flight >= T.minDelay) at.push(m);
       }
-      let last = imp.length ? imp[imp.length - 1] : 0;
-      while (at.length < n) {
-        last = Math.max(last + T.after, T.minDelay + T.flight);
-        at.push(last);
-      }
+      // (a pause for each stone: no more stones than the string has pauses, none thrown after it)
+      if (!at.length) at.push(Math.max(imp.length ? imp[imp.length - 1] + T.after : 0, T.minDelay + T.flight));
     } else for (let i = 0; i < n; i++) at.push(T.minDelay + T.flight + i * T.after);
     // each stone set on the wheel so that, turning, it is at his side (not between him and the hero,
     // nor behind him) when its turn to fly comes: from there its flight is long enough to be cued
     const yaw = d.yaw, pl = this._hero();
     const toHero = pl ? Math.atan2(pl.position.z - d.position.z, pl.position.x - d.position.x) : Math.atan2(Math.cos(yaw), Math.sin(yaw)); // (from +x)
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < at.length; i++) {
       const delay = Math.max(T.minDelay, at[i] - T.flight), side = i & 1 ? -1 : 1;
       const a = toHero + side * T.side - T.w * delay, x = d.position.x + Math.cos(a) * T.r, z = d.position.z + Math.sin(a) * T.r;
       d.fx.tearUp?.(x, z);
@@ -390,7 +388,7 @@ export class LordSpells {
       if (!sh) continue;
       sh._mine = ++this._gen;
       sh._wait = 0;
-      this.orbit.push({ s: sh, gen: sh._mine });
+      this.orbit.push({ s: sh, gen: sh._mine, act });
       this.stats.orbitStones++;
     }
     d.game.shake?.(0.18);
@@ -408,7 +406,16 @@ export class LordSpells {
         L.splice(i, 1);
         continue;
       }
-      if (s.phase !== 'hang' || !pl) continue;
+      if (s.phase !== 'hang') continue;
+      // (the string they belong to is over or was cut short: the stones crumble in the grip; they
+      // never fly into another move's blows)
+      const own = L[i].act;
+      if (!pl || (own && (this.d.brain?.act !== own || this.d.mode !== 'act'))) {
+        s.alive = false;
+        this.d.fx.dust?.(s.x, s.z, 0.5);
+        L.splice(i, 1);
+        continue;
+      }
       const reach = (s.radius ?? 0.8) + (pl.radius ?? 0.45);
       const fly = Math.max(0, Math.hypot(pl.position.x - s.x, pl.position.z - s.z) - reach);
       if (s.age + dt >= s.delay && fly < T.minDist) {
@@ -424,6 +431,25 @@ export class LordSpells {
         }
       }
       s.speed = clamp(fly / T.flight, T.speed[0], T.speed[1]);
+    }
+  }
+
+  /**
+   * Every torn stone about to leave the Void's grip (Torn Stone's, the orbit's) waits in it while it
+   * would land within the guard's reach of a blow of the running string that asks the other answer
+   * and is not cued yet (the brain's guard sees those blows only at their cue: a great red stone
+   * thrown now could not be held back then). At most `T.yield` s a stone in all.
+   */
+  _hang(dt) {
+    const d = this.d, pl = this._hero(), Y = TUNING.orbit.yield;
+    if (!pl || d.mode !== 'act' || !d.brain?.act) return;
+    for (const s of d.fx.shots ?? []) {
+      if (!s.alive || s.kind !== 'stone' || s.phase !== 'hang' || s.age + dt < s.delay - 1e-4) continue;
+      if ((s._yield ?? 0) >= Y) continue;
+      const fly = Math.max(0, Math.hypot(pl.position.x - s.x, pl.position.z - s.z) - (s.radius ?? 0.8) - (pl.radius ?? 0.45)) / Math.max(1, s.speed);
+      if (this._clearOfAct(Math.max(0, s.delay - s.age) + fly, s.tell, 0.12)) continue;
+      s.delay += 0.05;
+      s._yield = (s._yield ?? 0) + 0.05;
     }
   }
 
@@ -451,7 +477,7 @@ export class LordSpells {
     const miss = 1 - clamp(d.hp / Math.max(1, d.maxHp), 0, 1);
     const T = this._skySlot(S.warn, S.slack);
     if (T < 0) {
-      Sk.t = S.retry;
+      Sk.t = S.retry * 0.5;
       this.stats.skySkips++;
       return;
     }
@@ -482,9 +508,17 @@ export class LordSpells {
   /** The first landing time from `warn` s on (up to `slack` more) clear of his own blows and of every
    *  known impact needing a guard; -1 if none. */
   _skySlot(warn, slack) {
-    const br = this.d.brain;
+    const d = this.d, br = d.brain, a = br.act;
+    // (never in the hero's opening: his recoil, a stagger, the reeling; inside a move of his: in a
+    // pause of it or in its recovery, the hero's own time (TUNING.weather.inString); in his footwork:
+    // the blow of the move he starts next waits for it at its cue if it must)
+    if (d.state === 'staggered') return -1;
+    const inAct = d.mode === 'act' && !!a;
+    if (inAct && a.def.transition) return -1;
+    const last = inAct ? a.end - a.t - TUNING.weather.inString : Infinity;
     for (let e = 0; e <= slack + 1e-6; e += 0.05) {
       const T = warn + e;
+      if (T > last) break;
       if (!this._clearOfAct(T, TELL.RED)) continue;
       if ((br.fairDelay?.(T, TELL.RED, 0) ?? 0) !== 0) continue;
       return T;

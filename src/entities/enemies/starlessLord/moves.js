@@ -786,7 +786,7 @@ export const MOVES = {
   },
   /** Starfall: a great leap; the red ring follows the hero, locks, and he comes down on it. */
   starfall: {
-    label: 'Starfall', phase: 3, weight: [0, 0, 2.0, 1.8], cooldown: 9, band: [4.2, 14], recovery: 0.75, gapCloser: true,
+    label: 'Starfall', phase: 3, weight: [0, 0, 2.0, 1.1], cooldown: 9, band: [4.2, 14], recovery: 0.75, gapCloser: true,
     beats: [{
       tell: R, windup: 1.15, active: 0.12, damage: 30, knockback: 4, knockdown: true, zone: { kind: 'ring', r: 2.8 }, ring: 2.8, part: 'feet',
       leap: { from: 0.36, lock: 0.66, apex: 3.8 }, track: 0.36, close: 0,
@@ -1022,6 +1022,18 @@ export const MOVES = {
       cut('rise', N, 0.48, 13, { form: 4, blink: { behind: 2.0 }, close: 1.2 }),
       cut('flat', N, 0.36, 13, { form: 4 }),
       spin(R, 0.62, 24, { form: 4, low: true, cock: 0.62 }),
+    ],
+  },
+  /** Crimson Eclipse: four blows no guard holds, each a roll (red, red, red, and the perilous thrust a
+   *  mikiri answers): a dashing cut, gone and behind the hero on the next, the low ring, the thrust.
+   *  (Dodges only: what he does while his weather is falling.) */
+  redEclipse: {
+    label: 'Crimson Eclipse', phase: 4, weight: W(4, 1.6), cooldown: 8, band: [0, 6], recovery: 0.7, recoveryKeys: FLOURISH[3], gapCloser: true,
+    beats: [
+      { ...cut('flat', R, 0.72, 22, { form: 4, cock: 0.76 }), knockback: 2.2, dash: { from: 0.55, to: 0.98, stop: 1.1, max: 4.0 }, close: 0, track: 0.6 },
+      { ...cut('back', R, 0.72, 22, { form: 4, cock: 0.76, step: 'L', blink: { behind: 2.0 }, close: 1.2 }), knockback: 2.2 },
+      spin(R, 0.74, 24, { form: 4, low: true, cock: 0.62 }),
+      peril(4, 26),
     ],
   },
   /** Starless Night, the great spell: the blade raised and driven into the floor (red: a ring at his
