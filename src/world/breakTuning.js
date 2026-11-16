@@ -69,9 +69,44 @@ export const BREAK = Object.freeze({
   thrown: Object.freeze({ gravity: 22, spin: 5.5, blast: 1.2, shake: 0.4 }),
   /** cover: a piece stops a projectile and pays for it */
   cover: Object.freeze({ minH: 1.1, bullet: 0.12, bolt: 1.5, stone: 0.7, crescent: 0.35 }),
-  /** burning wood: seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's */
-  burn: Object.freeze({ time: 7, pad: 1.0, light: [3.2, 1.1, 0.25] }),
+  /** burning wood: seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's.
+   *  `glow`: its light is a LOCAL glow (radius m, intensity; it was ~16 m and 2.6, a yellow flood that
+   *  buried the fire on the ground the hero must read): a piece that catches within `share` m of one
+   *  already lit shares that light (it is kept on for as long as either burns); at most `lights` at once
+   *  (only 8 reach the shaders) */
+  burn: Object.freeze({ time: 7, pad: 1.0, light: [3.2, 1.1, 0.25], lights: 4, glow: Object.freeze({ radius: 5, intensity: 1.5, share: 8 }) }),
+  /** the spatial grid every query walks (strike, sweep, stop, coverAt, ignite, nearest): cell size, m */
+  grid: Object.freeze({ cell: 4 }),
+  /**
+   * Fire spreads (2026-11-15: the owner's "fire spreads from tree to tree"; ADR-107 had it burn where
+   * it lands): a piece alight for `after` s tries every `every` s to light ONE unburnt wood piece (or a
+   * log) whose base is within `reach` m of its own (+ both radii), with `chance`. Limits: at most
+   * `maxBurning` things alight at once (x the quality factor), a budget of `perSec` spreads a second
+   * over the whole level (it banks up to `bank`), and a fire passes on at most `gens` times from where
+   * fire landed (a blaze stays a stand, it never walks round the whole ring).
+   */
+  spread: Object.freeze({ after: 2.2, every: 1.1, chance: 0.45, reach: 5.2, maxBurning: 9, perSec: 0.3, bank: 2, k: 0.9, gens: 2 }),
+  /**
+   * Wreckage (world/wreckage.js): what a felled tree, a broken stone and a thrown piece leave lying,
+   * scenery the hero walks over (no collider, it stops nothing). Pools of prop-art meshes: `logs` fallen
+   * trunks, `chars` burnt ones, `rubble` piles. The quality factor scales how many may lie at once; past
+   * that the oldest sinks into the ground (`sink` s). `trunk`: share of a tree's height that lies as its
+   * trunk [a crowned tree, a bare one] (the crown comes apart as before); `thick`: the log's radius x the
+   * piece's; `flatten`: the char it leaves on the grass under it (the blades shrink: it lies on them,
+   * not under them). A burnt log smoulders `smoulder` s (at most `smoulderMax` x quality at once: smoke and
+   * embers, a warm patch of ground); a log that catches burns `burn` s.
+   */
+  wreck: Object.freeze({ logs: 40, chars: 18, rubble: 30, sink: 1.4, trunk: Object.freeze([0.5, 0.85]), thick: 0.85, flatten: 0.4, smoulder: 30, smoulderMax: 8, burn: 6 }),
+  /** a thrown piece smashes what stands in its way: power x its weight, while it flies under `y` m */
+  flight: Object.freeze({ power: 0.8, y: 7 }),
 });
+
+/**
+ * The phone budget (world.setQuality, from the quality preset: LOW, MEDIUM, HIGH): a factor on the debris
+ * glyphs a break throws, the flames of burning wood, how much wreckage lies at once, how many fires and
+ * smouldering logs, and how many marks stay on the floor.
+ */
+export const QUALITY = Object.freeze({ LOW: 0.5, MEDIUM: 0.75, HIGH: 1 });
 
 // (How a broken piece comes apart is the owner's pick of three filmed looks, 2026-11-15: "digits",
 // a shower of the characters it is drawn in. Chunks and shards were turned down: destructibles.js
@@ -88,6 +123,7 @@ export const FIRE = Object.freeze({
   flames: 46, // flame glyphs per second per burning square metre (capped below)
   maxFlames: 800, // … per second over the whole field
   maxCells: 2600, // burning cells at once (a hard cap: the oldest fires are simply left to finish)
+  glow: Object.freeze({ intensity: 1.5, pad: 2, max: 6 }), // a blaze's one light: radius min(max, its radius + pad) m
 });
 
 /** Impact marks (world/scars.js). */
@@ -95,4 +131,8 @@ export const SCAR = Object.freeze({
   max: 520, // glyphs kept; the oldest go first
   ground: Object.freeze({ min: 0.45, glyphs: 'x+*', spokes: [5, 9], reach: [0.7, 2.6] }),
   object: Object.freeze({ glyphs: 'x/\\+', size: [0.22, 0.5] }),
+  /** a crater: a blow of `min` power or more leaves a rim of thrown-up earth and a charred disc */
+  crater: Object.freeze({ min: 1.2, glyphs: '.:o,', ring: [10, 26], char: 0.85 }),
+  /** at the cap this share of the oldest marks goes in one step (one rebuild of the batch, not one per mark) */
+  evict: 0.15,
 });
