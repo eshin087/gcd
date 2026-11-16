@@ -2584,6 +2584,89 @@ async function scenarioBullets() {
   return G;
 }
 
+async function scenarioFxLooks() {
+  out('\n== scenario FXLOOKS (the wyrm\'s shock fronts and breath in every look: shape, life, budget) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, fx = d.fx, F = game.fx.fire;
+  const M = await imp('src/entities/dragon/fx.js');
+  const { TUNING } = await imp('src/entities/dragon/tuning.js');
+  const step = (s) => {
+    for (let t = 0; t < s; t += DT) {
+      fx.update(DT);
+      F.update(DT);
+      game.fx.add?.update?.(DT);
+      game.fx.alpha?.update?.(DT);
+    }
+  };
+  const finite = () => {
+    for (let i = 0; i < F.count * 15; i++) if (!Number.isFinite(F.data[i])) return false;
+    return true;
+  };
+  const peakOf = (fire, s = 1.6) => {
+    let peak = 0;
+    fire();
+    for (let t = 0; t < s; t += DT) {
+      step(DT);
+      peak = Math.max(peak, F.count);
+    }
+    return peak;
+  };
+  const ignite0 = game.world?.ignite;
+  if (game.world) game.world.ignite = () => {}; // (count the effect's own blobs, not the grass it lights)
+  for (const L of ['a', 'b', 'c']) {
+    M.setRingLook(L);
+    assert(M.ringLook() === L, `?ring=${L} can be set`);
+    F.clear();
+    const ring = peakOf(() => fx.shockRing(0, 0, 7 * 1.875));
+    assert(ring >= 150 && ring <= 2000 && finite(), `ring ${L}: the phase roar's shock front is a body (${ring} blobs at its peak, old 124)`);
+    assert(fx._shocks.every((w) => !w.alive), `ring ${L}: every front it followed has ended`);
+    F.clear();
+    const nova = peakOf(() => fx.novaBlast(0, 4, 0, 22));
+    // the worst overlap the brief names: the nova during a flame wall (the wall's own peak ~1400)
+    assert(nova <= 3200 && nova + 1400 < F.max, `ring ${L}: the nova stays in the pool with a flame wall burning (${nova} + ~1400 of ${F.max})`);
+    F.clear();
+    const fire0 = game.world?.fire?.count ?? 0;
+    const g = peakOf(() => fx.groundShock(5, 5, 6, 1));
+    assert(g > 20 && finite() && (game.world?.fire?.count ?? 0) === fire0, `ring ${L}: groundShock draws a dust front (${g} blobs) and lights nothing`);
+  }
+  M.setRingLook('a');
+  // the breath: every look fills the hit cone and stays in it, reaching the far end
+  const T = TUNING.attacks.breath;
+  const mouth = { x: 0, y: 4, z: 0 };
+  for (const L of ['a', 'b', 'c']) {
+    M.setBreathLook(L);
+    F.clear();
+    fx.breathBegin();
+    let peak = 0;
+    for (let t = 0; t < 1.2; t += DT) {
+      fx.breathEmit(DT, mouth, 0, 0.17);
+      step(DT);
+      peak = Math.max(peak, F.count);
+    }
+    fx.breathEnd();
+    let n = 0, wide = 0, far = 0, out_ = 0;
+    for (let i = 0; i < F.count; i++) {
+      const k = i * 15, x = F.data[k], z = F.data[k + 2], kind = F.data[k + 12];
+      if (kind !== 0) continue;
+      const r = Math.hypot(x, z);
+      if (r < 2) continue;
+      n++;
+      const a = Math.abs(Math.atan2(x, z));
+      if (a > T.halfAngle + 0.15) out_++;
+      if (a > T.halfAngle * 0.6) wide++;
+      if (r > T.range * 0.8) far++;
+    }
+    assert(n > 40 && finite(), `breath ${L}: ${n} blobs of fire in flight (peak ${peak})`);
+    assert(out_ / n < 0.06, `breath ${L}: the fire stays in the +-${Math.round((T.halfAngle * 180) / Math.PI)} deg hit cone (${out_} of ${n} outside)`);
+    assert(wide / n > 0.1 && far / n > 0.05, `breath ${L}: it fills the cone (${wide} wide, ${far} near the far end)`);
+    assert(peak < 1500, `breath ${L}: within budget (${peak} blobs at its peak, old ~370)`);
+  }
+  M.setBreathLook('a');
+  if (game.world) game.world.ignite = ignite0;
+  return G;
+}
+
 async function scenarioLab() {
   out('\n== scenario LAB (Lab panel, every ability, posture break, time scale, flow states) ==');
   const G = build({ terrain: 'lab' }); // (pieces in reach: the terrain moves take one, ADR-110)
@@ -8388,7 +8471,7 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, fxlooks: scenarioFxLooks, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
