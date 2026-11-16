@@ -722,6 +722,7 @@ const breath = {
     a.side = Math.random() < 0.5 ? -1 : 1;
     a.aim = d.sense.yawTo;
     a.aim0 = a.aim;
+    a.aimV = 0; // the aim's angular speed (rad/s): a heavy neck accelerates into a track and overshoots
     a.tick = 0;
     a.on = false;
   },
@@ -730,72 +731,115 @@ const breath = {
       a.on = true;
       d.emit('dragon:breathStart');
       d.fx.breathBegin();
-      // start within the snout's reach; P1 then tracks the player, P2 sweeps across them
+      // start within the snout's reach; P1 then tracks the player, P2 rakes across them
       const center = d.yaw + clamp(angleDiff(d.yaw, d.sense.yawTo), -0.6, 0.6);
       a.aim0 = center - (d.phase >= 2 ? (a.side * T.breath.sweepP2) / 2 : 0);
       a.aim = a.aim0;
+      a.aimV = 0;
       a.tick = 0;
     } else if (phase === 'recovery') this.end(d, a);
   },
+  /**
+   * The body while it breathes (w2): planted and braced, the chest and neck driving. The aim is a
+   * heavy spring (it accelerates into a track, lags, overshoots a little) capped at T.breath.track
+   * .maxV; the NECK carries it (the head and the chest twist lead) and the body only shuffles round
+   * once the aim leaves the neck's arc (`neckArc`), slowly (`bodyTurn` rad/s): no turntable. The
+   * fire's kick rocks the head and chest back as it starts (`recoil` s), then it leans into the stream,
+   * surging with each breath (`surge` Hz). P2 rakes the stream across him on an eased arc.
+   */
   update(d, a, dt) {
-    const pose = d.pose, s = d.sense, pt = d.rig.pt;
+    const pose = d.pose, s = d.sense, pt = d.rig.pt, B = T.breath, f = d.fwd;
     if (a.phase === 'windup') {
-      // plants all four feet wide, the chest swells, the throat-to-chest lava charges, the neck draws
-      // back and up, embers leak from the mouth; the wings start to open late in the windup
-      d.turnToward(s.yawTo, d.turnRate * 0.9, dt);
-      pose.head = d.rootPt(pose.headTarget, 0, 5.6, 2.6);
-      pose.headRate = 4;
-      pose.jaw = 0.25;
+      // turns to him early, then plants: the chest heaves up, the neck draws up and back in an S,
+      // the throat-to-chest lava charges; at the end it coils (head back, jaw cracking open, the
+      // shoulders sinking) the instant before the fire
+      const k = a.k, e = smoothstep(0, 0.7, k), c = smoothstep(0.72, 1, k);
+      if (k < 0.65) d.turnToward(s.yawTo, d.turnRate * 0.9, dt);
+      pose.head = d.rootPt(pose.headTarget, 0, 5.4 + 0.6 * e - 0.2 * c, 2.7 - 0.5 * e - 0.6 * c);
+      pose.headRate = 3.5 + 3 * c;
+      pose.jaw = 0.2 + 0.25 * c;
       pose.look.copy(s.chest);
-      pose.look.y += 3 * S;
-      pose.pitch = -0.08;
-      pose.lower = -0.1;
-      pose.stanceF = 0.3;
-      pose.stanceH = 0.2;
+      pose.look.y += (3 + 1.5 * e) * S;
+      pose.pitch = -0.06 - 0.12 * e + 0.06 * c;
+      pose.lower = -0.1 - 0.12 * e + 0.2 * c;
+      pose.bodyRate = 3 + 4 * c;
+      pose.stanceF = 0.35;
+      pose.stanceH = 0.25;
       pose.restep = 1;
-      pose.swell = a.k;
-      pose.spread[0] = pose.spread[1] = a.k > 0.55 ? 1 : REST_SPREAD;
-      pose.mantle = a.k > 0.55 ? 1 : 0;
+      pose.swell = Math.min(1, k * 1.2);
+      pose.spread[0] = pose.spread[1] = k > 0.5 ? 1 : REST_SPREAD;
+      pose.mantle = k > 0.5 ? 1 : 0;
       pose.spreadRate = 3;
-      d.throat = a.k;
-      d.fx.mouthEmbers(dt, pt.mouth, 30, pt.headFwd);
+      pose.tailWave = 0.05 + 0.1 * c; // the tail lashes as it gathers
+      d.throat = k;
+      d.fx.mouthEmbers(dt, pt.mouth, 30 + 40 * c, pt.headFwd);
     } else if (a.phase === 'active') {
       pose.headExact = true; // the stream leaves the mouth
-      if (d.phase >= 2) a.aim = a.aim0 + a.side * T.breath.sweepP2 * a.k;
-      else a.aim = turnToward(a.aim, s.yawTo, 32 * DEG * dt);
-      d.turnToward(a.aim, 1.2, dt);
+      // the aim: a damped spring toward the target (him, or the P2 rake's eased arc)
+      const Tr = B.track ?? {};
+      let want = s.yawTo;
+      // (the target runs a little ahead: the heavy neck lags it and must still finish the arc)
+      if (d.phase >= 2) want = a.aim0 + a.side * B.sweepP2 * easeInOutSine(Math.min(1, a.k * 1.2)) + clamp(angleDiff(a.aim0 + a.side * B.sweepP2 * a.k, s.yawTo), -0.2, 0.2) * 0.4;
+      const err = angleDiff(a.aim, want);
+      const acc = clamp((Tr.k ?? 7) * err - (Tr.c ?? 4.5) * a.aimV, -(Tr.acc ?? 1.6), Tr.acc ?? 1.6);
+      const vMax = d.phase >= 2 ? Tr.maxVP2 ?? Tr.maxV ?? 32 * DEG : Tr.maxV ?? 32 * DEG;
+      a.aimV = clamp(a.aimV + acc * dt, -vMax, vMax);
+      if (!Number.isFinite(a.aimV)) a.aimV = 0;
+      a.aim += a.aimV * dt;
+      // the body: planted while the neck can carry the aim, a heavy shuffle once it can't
+      const rel = angleDiff(d.yaw, a.aim), arc = B.neckArc ?? 0.45;
+      if (Math.abs(rel) > arc) d.turnToward(a.aim - Math.sign(rel) * arc * 0.6, B.bodyTurn ?? 0.7, dt);
       const sa = Math.sin(a.aim), ca = Math.cos(a.aim);
+      // the fire's kick (the first `recoil` s), then the lean and the surges of the breath
+      const rk = Math.exp(-a.t / Math.max(0.05, (B.recoil ?? 0.35) * 0.4)) * smoothstep(0, 0.04, a.t);
+      const surge = 0.5 - 0.5 * Math.cos(a.t * Math.PI * 2 * (B.surge ?? 1.3));
+      const lean = smoothstep(0, 0.6, a.t);
       // the ASCII panel's pose: front crouched low (chest toward the ground, hips higher), forelegs
-      // braced wide, neck stretched forward and DOWN (the stream angles at the ground; the head
-      // tracks / sweeps with the neck alone), wings fully spread and high, the tail lashing slowly
-      pose.head = pose.headTarget.set(pt.neckBase.x + sa * 2.7 * S, pt.neckBase.y - 0.4 * S, pt.neckBase.z + ca * 2.7 * S);
-      pose.headRate = 5;
+      // braced wide, neck stretched forward and DOWN at the stream, wings fully spread and high
+      const reach = (2.4 + 0.35 * lean + 0.2 * surge * lean - 0.7 * rk) * S;
+      pose.head = pose.headTarget.set(pt.neckBase.x + sa * reach, pt.neckBase.y + (-0.4 + 0.9 * rk - 0.1 * surge) * S, pt.neckBase.z + ca * reach);
+      pose.headRate = 6;
       pose.lookDown = 1.0;
       pose.spread[0] = pose.spread[1] = 1;
       pose.spreadRate = 3;
       pose.mantle = 1;
+      pose.flap = 0.06 * rk; // the sails jolt with the kick
+      pose.flapHz = 3;
       pose.look.set(pt.mouth.x + sa * 8 * S, 0, pt.mouth.z + ca * 8 * S);
       pose.lookRate = 12;
       pose.jaw = 0.95;
-      pose.pitch = BREATH_PITCH;
-      pose.lower = 0.15;
-      pose.bodyRate = 4;
-      pose.stanceF = 0.3;
-      pose.stanceH = 0.2;
-      pose.restep = 1; // a foot still short of the wide stance re-plants (and the slow aim turn shuffles)
-      pose.elbowsOut = 0.45;
-      pose.swell = 1;
+      pose.pitch = BREATH_PITCH * lean - 0.16 * rk + 0.04 * surge * lean;
+      pose.lower = 0.15 * lean + 0.1 * rk;
+      pose.twist = clamp(rel * 0.7, -0.45, 0.45); // the chest leads the neck round
+      pose.roll = clamp(-rel * 0.12, -0.08, 0.08);
+      pose.bodyRate = rk > 0.2 ? 9 : 4;
+      pose.headOffset.x -= f.x * 0.5 * S * rk;
+      pose.headOffset.z -= f.z * 0.5 * S * rk;
+      pose.stanceF = 0.35;
+      pose.stanceH = 0.25;
+      pose.restep = 1; // a foot still short of the wide stance re-plants (and the shuffle steps)
+      pose.elbowsOut = 0.45 + 0.2 * rk;
+      pose.swell = 1 - 0.25 * a.k + 0.1 * surge; // it empties as it burns
       pose.tailWave = 0.13;
       d.throat = 1;
       d.fx.breathEmit(dt, pt.mouth, a.aim, BREATH_FALL);
     } else {
-      pose.jaw = 0.2;
-      pose.pitch = BREATH_PITCH * (1 - a.k);
-      pose.lower = 0.15 * (1 - a.k);
-      pose.spread[0] = pose.spread[1] = a.k < 0.3 ? 1 : REST_SPREAD;
+      // spent: the head pulls up out of its own smoke and shakes it off, the chest sags, the sails
+      // come down last
+      const k = a.k;
+      pose.jaw = k < 0.4 ? 0.5 : 0.15;
+      pose.pitch = BREATH_PITCH * (1 - k);
+      pose.lower = 0.15 * (1 - k) + 0.1 * Math.sin(Math.PI * Math.min(1, k * 2));
+      pose.headOffset.y += Math.sin(Math.PI * Math.min(1, k * 1.6)) * 0.6 * S;
+      pose.headOffset.x += Math.sin(d.time * 19) * 0.07 * S * (1 - k);
+      pose.headRate = 4;
+      pose.twist *= 1 - k;
+      pose.swell = 0;
+      pose.spread[0] = pose.spread[1] = k < 0.35 ? 1 : REST_SPREAD;
+      pose.mantle = k < 0.35 ? 1 : 0;
       pose.spreadRate = 2.5;
       d.throat = 0;
-      if (a.k < 0.6) d.fx.mouthEmbers(dt, pt.mouth, 18, pt.headFwd);
+      if (k < 0.6) d.fx.mouthEmbers(dt, pt.mouth, 18, pt.headFwd);
     }
   },
   hit(d, a, dt) {
@@ -1376,7 +1420,7 @@ const OVH_REACH = 4.2; // model units ahead of the root a planted foreleg smashe
 const OVERHEAD = {
   part: 'claw',
   init(d, a, h) {
-    h.w = swipeCurve((h.spec.side ?? 1) * a.side0);
+    h.w = swipeCurve((h.spec.side || 1) * a.side0);
     h.wi = h.w.wi;
     h.p0 = V();
     h.slam = V();
@@ -1385,9 +1429,15 @@ const OVERHEAD = {
     h.plant = null;
     h.planted = false;
   },
+  enterWindup(d, a, h) {
+    autoSide(d, a, h, (sd) => {
+      h.w = swipeCurve(sd);
+      h.wi = h.w.wi;
+    });
+  },
   windup(d, a, h, k, dt) {
     const pose = d.pose, side = h.w.side, ov = pose.pawOv[h.wi];
-    d.turnToward(d.sense.yawTo - side * 0.2, d.turnRate * 0.8, dt);
+    d.turnToward(d.sense.yawTo - side * 0.2, d.turnRate * (h.spec.turn ?? 0.8), dt);
     ov.w = 1;
     // up out of the stance beside the chest, then high over the shoulder, claws spread; the chest
     // lifts and twists toward the raised paw, the weight shifts onto the other three legs
@@ -2399,7 +2449,8 @@ const FIRE_SNAP = {
         d.emit('dragon:breathStart');
         // the ground the gout reaches burns on for a moment
         const G = Sp.ground;
-        if (G) groundFire(d, a, m.x + sa * 1.2 * S, m.z + ca * 1.2 * S, m.x + sa * Sp.range * 0.9, m.z + ca * Sp.range * 0.9, G);
+        // (from under the neck: the gout splashes back under the thrusting head)
+        if (G) groundFire(d, a, nb.x + sa * 0.5 * S, nb.z + ca * 0.5 * S, m.x + sa * Sp.range * 0.9, m.z + ca * Sp.range * 0.9, G);
       }
     }
   },
