@@ -3356,3 +3356,20 @@ ADR-092).
 - **Review:** preserve v5 artifacts/history; compare before/after idle, guard and attack renders.
   Recheck A/B, equipment rebuilds and actual gameplay. Draft PR #58 remains unmerged pending the
   owner's review; normal game source, production and saves are unchanged.
+
+## ADR-125 — Reference low carry, original scale and free-arm follow-through (2026-11-16)
+- **Context:** the owner questions the compressed proportions, finds the attacking left hand stiff,
+  and supplies a still showing a low sword carry beside the thigh. The visible v4 hand is retained.
+- **Decision:** remove the optional presentation compression (width 1.08, height 0.94, depth 1.04)
+  by returning to 1:1; no evidence established a bone-length defect. Keep a soft sword elbow and
+  forward/down blade in rest, readiness and late attack recovery. Add a comparable rear camera
+  to the studio. The still guides the carry, not the active cutting path.
+- **Free arm:** `freeArm.js` evaluates continuous chest-relative hand curves. Private entry data
+  adds the solved local endpoint, its velocity, chest orientation and an attack serial. A 70 ms
+  exponential torso follow keeps the arm from rotating rigidly with abrupt chest reversals.
+  `hands.js` adds small bounded wrist lag from actual forearm rotation before the existing spring;
+  two-hand, wrist-link and braced contacts bypass it. Zero-time refreshes advance neither lag.
+- **Review:** preserve v6 and earlier evidence; test low sword/hand placement, nonzero bounded
+  wrist motion, all light-neighbour pairs and early/middle/late heavy entries at 30/60/120 Hz.
+  Render the reference-side carry and moving combos, then verify actual input/contact in game.
+  This is private preview choreography only; PR #58 stays draft and unmerged for owner review.

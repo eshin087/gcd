@@ -1,7 +1,8 @@
 # The Wanderer: Tempered (unapproved visual study)
 
-**Status:** Tempered v6, draft experiment. The owner reports that v5's covered left hand reads as
-missing. Restore the v4 hand design while retaining the improved angles and animation.
+**Status:** Tempered v7, draft experiment. The owner requests a softer attacking left hand and a
+low sword carry like the supplied image, and questions the smaller proportions. Restore 1:1
+presentation scale, retain the visible v4 hand and improved heavy transitions, and revise the free arm.
 Do not merge or adopt without the owner's
 choice. The motion studio and the playable preview are separate pages; the regular game is unchanged.
 
@@ -43,28 +44,29 @@ Complete reach / outfit / alternate-move calibration and human feel review remai
 ## Direction
 
 Keep the Wanderer's identity and Claude's ink-line ASCII renderer, equipment, rig, IK, planted-foot
-planner and spring-driven cloth. Make the silhouette more compact, the ready pose more deliberate,
-and the cut feel carried by the hips and chest. The owner can reject the whole study without changing
+planner and spring-driven cloth. Keep the original proportions, a relaxed low sword carry,
+and cuts carried by the hips and chest with a loose free arm. The owner can reject the whole study without changing
 the game. Claude's independent three-style draft [PR #56](https://github.com/eshin087/gcdAbyss/pull/56)
 is untouched; this is an additional option, based on main `46e2c989` (PR #57).
 
 | Element | Current reference | Tempered candidate |
 | --- | --- | --- |
-| Presentation proportions | 1:1 | width 1.08, height 0.94, depth 1.04 |
-| Rest / readiness | approved at-ease / fencer poses | 3.5 cm lower centre, 3.5 cm wider foot target on each side |
+| Presentation proportions | 1:1 | 1:1; the earlier stockier drawing transform is withdrawn |
+| Rest / readiness | approved at-ease / fencer poses | upright low carry; no extra stance width/compression |
 | Free hand at ease | resting on the belt | loose beside the thigh, wrist aligned with the forearm |
-| Ready blade | near-horizontal point | oblique line, roughly 28° to the sword side / 22° up before wrist constraints; straighter grip |
-| Free hand in guard | on belt | relaxed open hand in front of the chest, wrist aligned with the forearm |
+| Ready blade | near-horizontal point | hand beside the thigh, blade roughly 18° to the sword side / 24° down; soft elbow |
+| Free hand in guard | on belt | visible relaxed hand beside the thigh |
 | Left sleeve / hand | short forearm cloth, wraps and visible skin | restored v4 appearance, with the improved hand motion |
 | Walk / run | existing speed-matched stride | same feet, lower centre, quieter bounce, counterbalanced shoulders and relaxed free hand |
-| Cuts | existing keyframed clips | hip/chest accents, eased gather, faster middle cut, controlled recovery and free-arm counterbalance |
+| Cuts | existing keyframed clips | hip/chest accents, continuous free-arm curves with torso lag and bounded wrist follow-through |
 | Opening heavy | dashing thrust | dashing diagonal slash, with sweep contact and edge glint |
 | Six idle gestures | original body/hand targets | new look, shoulder loosen, edge check, low flourish, forward lift and weight shift |
 | Held charge | high-frequency shake | small, slow held breath; existing release and combat timing |
-| Roll, hair, cloth | existing animation / springs | retained, with the candidate's presentation proportions |
+| Roll, hair, cloth | existing animation / springs | retained at original scale |
 
-The scale is a **drawing transform**, removed while IK and cloth solve. It compresses the entire
-rendered actor, including its weapon. It is not a new anatomically re-authored skeleton. All data in
+Earlier versions used a **drawing transform**, removed while IK and cloth solve: 6% shorter,
+8% wider and 4% deeper, including the weapon. That was a silhouette choice, not evidence of faulty
+anatomy or a re-authored skeleton. V7 removes it by returning the scale to 1:1. All data in
 `heroDims.js`, `swings.js`, `combat.js`, and every existing game source file is unchanged.
 
 ## Review
@@ -73,7 +75,7 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
   to the other's height. A / B solo buttons switch without resetting time and are useful on phones.
   Narrow phones open on the candidate alone; A + B remains one tap away.
 - Full sequence: rest → guard → walk → run → sprint → combo → block → charge → cleave → dodge.
-- Twelve motion selections (including buffered lights, alternate heavy transitions and all six forced idles), five camera angles including the actual 58° / 36 m game scale,
+- Twelve motion selections (including buffered lights, alternate heavy transitions and all six forced idles), six camera angles including the reference rear view and actual 58° / 36 m game scale,
   turntable, 0.25× / 0.5× / 1×, pause, one-frame advance, and deterministic timeline scrubbing.
 - Both actors get the same original combat timing and default variant. This pilot is a controlled
   audition: its chained selections use the earliest recovery cutoff from `def.chain`, but it does
@@ -81,7 +83,29 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
 - Reduced-motion preference starts paused. Nothing is saved, and no game flow, audio engine,
   analytics, localStorage, network data or player settings are instantiated by the study.
 
-![Current and Tempered, ready guard](hero-motion-study-v01.png)
+### V7: reference low carry and flowing free arm
+
+The supplied still guides the ready pose: hilt beside the thigh, soft sword elbow, upright torso
+and blade forward/down. Rest, combat readiness and late attack recovery share that carry. The
+**Reference angle** studio camera views it from the sword-side rear. The still is not treated as
+a reference for the active cutting trajectory. The supplied image stays local and is not published.
+
+The v4 hand remains visible. Free-hand curves now use the turning chest's frame, with continuous
+tangents through gather, follow-through and release. Entries retain the solved hand and its local
+velocity. A short torso-follow delay keeps fast reversals from dragging the arm around rigidly.
+Small bounded wrist inertia follows actual forearm motion and settles through the original spring;
+contact hands retain the original solver. Heavy-entry momentum carry is retained.
+
+Original proportions are restored. The earlier compressed silhouette was optional styling; it
+did not correct bone lengths. The normal game's source rig and dimensions remain unchanged.
+
+Focused checks cover 6,675 standalone attack frames, with free-wrist follow-through up to 11.6°,
+and 26,068 chained attack frames at 30/60/120 Hz. Peak entry speed is 7.06 m/s and maximum visible
+supporting-grip gap is 7.4 cm in that expanded set, with no free-wrist limit contacts. New assertions
+check the rendered low blade direction, low sword hand and nonzero bounded wrist motion. These
+are regression diagnostics, not anatomical or visual approval.
+
+![V6 and v7 sword carry from the reference side](hero-motion-study-v07.png)
 
 ### V6: visible v4 hand with improved motion
 
@@ -196,12 +220,15 @@ replace visual review or establish an anatomical limit.
 
 ![Tempered v2 ready pose, three-quarter view](hero-motion-study-v02.png)
 
+![Original v1 study, ready guard](hero-motion-study-v01.png)
+
 The v1 image above and [v1 playable deployment](https://gcdabyss-4gu8z054o-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered)
 are preserved for comparison. [V2 is also preserved](https://gcdabyss-dvvzg2uhr-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
 The [v3 preview is preserved](https://gcdabyss-drswtrwuj-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
 The [v4 preview is preserved](https://gcdabyss-4fzcn2x5w-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
 The [v5 preview is preserved](https://gcdabyss-erog882w3-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
-The current pages are labeled v6.
+The [v6 preview is preserved](https://gcdabyss-3fuwsoxd8-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
+The current pages are labeled v7.
 
 ## Isolation and verification
 

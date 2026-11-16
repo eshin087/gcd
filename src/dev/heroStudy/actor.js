@@ -12,11 +12,11 @@ import { createAttackMotion } from './attackMotion.js';
 import { createHeavyTransition } from './heavyTransition.js';
 
 export const STUDY = Object.freeze({
-  scale: Object.freeze([1.08, 0.94, 1.04]),
-  stanceSink: 0.035,
-  stanceWidth: 0.035,
-  guardAzimuth: -28,
-  guardElevation: 22,
+  scale: Object.freeze([1, 1, 1]),
+  stanceSink: 0,
+  stanceWidth: 0,
+  guardAzimuth: -18,
+  guardElevation: -24,
   runSink: 0.026,
   recoveryHold: 0.11,
 });
@@ -54,21 +54,28 @@ function locomotion(p, A) {
   set(p, P.lP, 0.36, -0.25, -0.9, free);
   set(p, P.lD, 0, 0, 0, free); set(p, P.lN, 0, 0, 0, free);
   p[P.hs] *= 1 - free;
-  // The point is held on an oblique line with the elbow under it, not a rigid
-  // horizontal pointer. The free hand opens beside the chest for balance.
-  const guard = fight * (1 - A.sprintW) * (1 - 0.3 * move);
+  // Reference: hand beside the thigh, soft elbow, blade forward and down.
+  // Use the same carry in combat; do not raise the free hand into a fixed guard.
+  const guard = (1 - A.sprintW) * (1 - 0.7 * move);
   if (guard > 0.001) {
-    set(p, P.rH, -0.14, -0.215 + 0.009 * breath, 0.33, guard);
-    set(p, P.rP, 0.02, -0.95, -0.34, guard);
+    set(p, P.rH, -0.12, -0.445 + 0.008 * breath, 0.12, guard);
+    set(p, P.rP, 0.25, -0.4, -0.85, guard);
     const az = (STUDY.guardAzimuth + 1.4 * Math.sin(A.time * 1.1)) * Math.PI / 180;
     const el = (STUDY.guardElevation + 1.1 * breath) * Math.PI / 180;
     set(p, P.swD, Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el), guard);
-    set(p, P.swF, 0.2, 1, -0.25, guard);
-    set(p, P.lH, 0.015, -0.24 + 0.006 * breath, 0.27, guard * free);
-    set(p, P.lP, 0.4, -0.86, -0.3, guard * still);
+    set(p, P.swF, 0.2, 1, 0.18, guard);
+    set(p, P.lH, 0.075, -0.45 + 0.008 * breath, 0.065, guard * free);
+    set(p, P.lP, 0.36, -0.25, -0.9, guard * still);
     set(p, P.lD, 0, 0, 0, guard * free);
     set(p, P.lN, 0, 0, 0, guard * free);
   }
+  const upright = still * fight;
+  p[P.bodyY] += (-0.025 + 0.006 * breath - p[P.bodyY]) * upright;
+  p[P.pelvY] += (0.10 - p[P.pelvY]) * upright;
+  p[P.spY] += (-0.03 - p[P.spY]) * upright;
+  p[P.hdY] += (-0.07 - p[P.hdY]) * upright;
+  p[P.rF + 2] += (0.13 - p[P.rF + 2]) * upright;
+  p[P.lF + 2] += (-0.12 - p[P.lF + 2]) * upright;
   // Preserve the speed-matched feet; give the run a steadier upper body.
   if (move > 0.001) {
     const contact = Math.cos(Math.PI * 4 * (A.phase - A.gait.beta * 0.5));

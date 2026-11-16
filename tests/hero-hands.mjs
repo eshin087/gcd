@@ -8,12 +8,13 @@ import { installTemperedHands } from '../src/dev/heroStudy/hands.js';
 import { StudySequence } from '../src/dev/heroStudy/sequence.js';
 import { LIGHT, HEAVY, SPRINT_ATK, ROLL_ATK, CLEAVE } from '../src/entities/player/combat.js';
 import { DIM } from '../src/entities/player/heroDims.js';
+import { P } from '../src/entities/player/anim.js';
 
 const defs = [ ...LIGHT, ...HEAVY, SPRINT_ATK, ROLL_ATK, CLEAVE ];
 const looks = defs.flatMap(d => [d.anim, ...d.variants ?? []].map(anim => ({ ...d, anim, variants: [] })));
 const grip = new THREE.Vector3(), end = new THREE.Vector3(), direction = new THREE.Vector3(), blade = new THREE.Vector3();
 const q = new THREE.Quaternion();
-let samples = 0, largestBend = 0, largestGripGap = 0;
+let samples = 0, largestBend = 0, largestGripGap = 0, largestFreeBend = 0;
 for (const fps of [30, 60, 120]) {
   const actor = createStudyActor(createSharedUniforms(), true), seq = new StudySequence([actor]);
   seq.select('guard'); seq.seek(1);
@@ -25,6 +26,10 @@ for (const fps of [30, 60, 120]) {
     direction.set(0, -1, 0).applyQuaternion(actor.rig.arms.R.fore.getWorldQuaternion(q));
     blade.set(0, 0, 1).applyQuaternion(actor.rig.sword.getWorldQuaternion(q));
     assert.ok(direction.angleTo(blade) < 25 * Math.PI / 180, 'ready sword and forearm align');
+    assert.ok(blade.y < -0.25 && blade.y > -0.65 && blade.z > 0.6, 'reference carry points forward and down');
+    actor.rig.sword.getWorldPosition(grip);
+    actor.rig.arms.R.upper.getWorldPosition(end);
+    assert.ok(end.y - grip.y > 0.35, 'reference sword hand stays low beside the thigh');
   }
   for (const def of looks) {
     seq.select('guard');
@@ -54,10 +59,16 @@ for (const fps of [30, 60, 120]) {
       const bend = direction.angleTo(blade) * 180 / Math.PI;
       largestBend = Math.max(largestBend, bend);
       assert.ok(bend <= 130, 'original sword wrist safety limit remains intact');
+      if (A.key === 'attack' && A.cur[P.twoHand] < 0.05 && A.cur[P.lk] < 0.05 && A.t > def.windup) {
+        const freeBend = Math.hypot(A.wristL.x, A.wristL.y, A.wristL.z) * 180 / Math.PI;
+        largestFreeBend = Math.max(largestFreeBend, freeBend);
+        assert.ok(freeBend < 20, 'free wrist follows the cut without folding sharply');
+      }
       samples++;
     }
   }
 }
+assert.ok(largestFreeBend > 2, 'attack wrist has visible follow-through instead of being locked neutral');
 
 // The live A toggle must bypass BOTH private solvers, not only the pose map.
 const original = createStudyActor(createSharedUniforms());
@@ -74,4 +85,4 @@ for (const clip of ['guard', 'sprint', 'combo', 'charge']) {
     assert.ok(original.rig.arms.L.wrist.quaternion.angleTo(bypassed.rig.arms.L.wrist.quaternion) < 1e-6, 'Current retains original wrist spring');
   }
 }
-console.log(`Tempered hands: ${looks.length} attack variants at 30/60/120 Hz, ${samples} frames, grip/floor safety, relaxed guard and exact Current bypass pass. Peak sword bend ${largestBend.toFixed(1)} deg; supporting grip gap ${(largestGripGap * 100).toFixed(1)} cm.`);
+console.log(`Tempered hands: ${looks.length} attack variants at 30/60/120 Hz, ${samples} frames, grip/floor safety, reference low carry and exact Current bypass pass. Peak sword bend ${largestBend.toFixed(1)} deg; free wrist follow-through ${largestFreeBend.toFixed(1)} deg; supporting grip gap ${(largestGripGap * 100).toFixed(1)} cm.`);

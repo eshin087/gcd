@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-16 — Session 62: Reference low carry and flowing free arm (Codex, review pending)
+
+**Owner:** the left hand still reads stiff during attacks; questions the smaller proportions and
+requests the sword angle/pose in a supplied rear three-quarter reference. Keep the study unmerged.
+
+**Changed:** v7 returns the presentation scale to 1:1. The previous 1.08 × 0.94 × 1.04 scale was
+an optional stockier silhouette, not a correction to bone lengths. Readiness now holds the sword
+hand beside the thigh, with a soft elbow and blade about 24° forward/down. Rest and late recovery
+return to the same low carry. The studio adds a reference-side rear camera.
+
+`freeArm.js` gives the light variants chest-relative continuous hand curves, seeded with the actual
+hand position/velocity. A short torso-follow delay lets the arm trail fast reversals; the free
+wrist has a small rotation-driven follow-through through the existing spring. Supporting grips
+and braced contacts retain the source solver. V4 hand appearance and the improved heavy entries remain.
+
+**Verified:** focused coverage retains 7,735 paired studio, 6,675 attack, 5,181 idle and 26,068
+transition frames at 30/60/120 Hz. New checks cover the actual low carry and bounded, non-rigid
+free-wrist motion (11.6° peak in standalone attacks). Expanded transitions: entry speed ≤7.06 m/s,
+grip gap ≤7.4 cm, no free-wrist limit contacts. Browser/full regression evidence is in draft PR #58.
+The normal-game build remains byte-identical. The supplied image stays local.
+
+**Hold:** owner review in game (ADR-125). No merge, production or save changes. Older candidates
+are preserved; Claude's active checkout is untouched.
+
 ## 2026-11-16 — Session 61: Restore the visible v4 hand, retain improved motion (Codex, review pending)
 
 **Owner:** v5's covered hand reads as missing; return to the Tempered v4 hand design with the

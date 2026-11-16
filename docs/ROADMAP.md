@@ -24,6 +24,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   alternate-variant review and early/middle/late input checks (ADR-123)
 - [x] V6: restore v4's visible hand/forearm after the owner rejects v5's covered-hand appearance;
   retain the improved angles, momentum carry and attack transitions (ADR-124)
+- [x] V7: original proportions, reference low sword carry and continuous free-arm/wrist follow;
+  add a reference-side camera and retain v4 hand visibility / improved heavy entries (ADR-125)
 - [ ] Owner chooses or rejects the direction in the draft PR
 - [ ] Only if chosen: Claude integrates the hero and validates combat / outfits in all three levels
 

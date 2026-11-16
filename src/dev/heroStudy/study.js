@@ -9,6 +9,7 @@ import { StudySequence, SEQUENCES } from './sequence.js';
 const $ = (id) => document.getElementById(id);
 const VIEWS = {
   three: { yaw: 35, pitch: 10, distance: 5.4 },
+  reference: { yaw: 225, pitch: 14, distance: 4.6 },
   front: { yaw: 0, pitch: 8, distance: 5.4 },
   side: { yaw: -90, pitch: 8, distance: 5.4 },
   back: { yaw: 180, pitch: 10, distance: 5.4 },

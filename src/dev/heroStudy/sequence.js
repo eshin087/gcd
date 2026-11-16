@@ -20,7 +20,7 @@ export const SEQUENCES = {
   ] },
   idle: { label: 'At ease', description: 'Relaxed shoulders, a soft knee and a quiet breath.', steps: [ease(7)] },
   idleLife: { label: 'All six idle gestures', description: 'Every idle gesture, including its entry and exit. Tempered keeps the free hand off the belt.', steps: [ease(0.8), ...IDLE_GESTURES.flatMap((g, i) => [{ key: 'loco', label: g.label, fidget: i, duration: g.duration }, ease(0.7)])] },
-  guard: { label: 'Ready guard', description: 'An oblique blade, supported elbow and active free hand.', steps: [guard(7)] },
+  guard: { label: 'Ready guard', description: 'Tempered carries the sword low beside the thigh, with the blade forward and down. Compare from Reference angle.', steps: [guard(7)] },
   walk: { label: 'Walk → run', description: 'Speed-matched footsteps with a steadier chest and head.', steps: [ease(0.5), walk(1.5, 3, 'Walk'), walk(4.6, 3, 'Run'), ease(1.5)] },
   sprint: { label: 'Sprint → stop', description: 'Acceleration, forward intent and a weighted stop.', steps: [ease(0.7), walk(7.2, 3.5, 'Sprint', true), ease(2)] },
   combo: { label: 'Buffered light combo', description: 'Five lights at the actual earliest combo timing. Watch the free hand between hits.', steps: [guard(0.8), ...LIGHT.map((d, i) => (i < LIGHT.length - 1 ? chain : cut)(d, `Light ${i + 1}`)), guard(1.3)] },

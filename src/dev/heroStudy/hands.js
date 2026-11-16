@@ -15,14 +15,26 @@ export function installTemperedHands(anim, enabled = () => true) {
   const entryHand = new THREE.Vector3(), entryQ = new THREE.Quaternion();
   const prior = new Float32Array(N), velocity = new Float32Array(N);
   const bladeNow = new THREE.Vector3(), bladeVelocity = new Float32Array(2);
+  const localBefore = new THREE.Vector3(), localAfter = new THREE.Vector3();
+  const localVelocity = new Float32Array(3);
+  const handLocal = (r, out) => {
+    const L = r.arms.L;
+    out.set(0, -DIM.foreArm, 0).applyQuaternion(L.fore.quaternion);
+    out.y -= DIM.upperArm;
+    return out.applyQuaternion(L.upper.quaternion).add(L.upper.position).sub(L.anchor ?? L.upper.position);
+  };
   anim.temperedEntry = { hand: new Float32Array(3), velocity: new Float32Array(N),
+    handLocal: new Float32Array(3), handLocalVelocity: new Float32Array(3),
+    chest: new THREE.Quaternion(), serial: 0,
     bladeAngles: new Float32Array(2), bladeVelocity: new Float32Array(2), chainedHeavy: false };
   anim.update = function (dt) {
     prior.set(this.cur);
+    handLocal(this.rig, localBefore);
     bladeNow.set(0, 0, 1).applyQuaternion(this.rig.sword.quaternion);
     const az = Math.atan2(bladeNow.x, bladeNow.z), el = Math.asin(clamp(bladeNow.y, -1, 1));
     const result = update.call(this, dt);
     if (dt > 1e-5) {
+      handLocal(this.rig, localAfter).sub(localBefore).multiplyScalar(1 / dt).toArray(localVelocity);
       for (let i = 0; i < N; i++) velocity[i] = (this.cur[i] - prior[i]) / dt;
       bladeNow.set(0, 0, 1).applyQuaternion(this.rig.sword.quaternion);
       bladeVelocity[0] = wrapAngle(Math.atan2(bladeNow.x, bladeNow.z) - az) / dt;
@@ -35,11 +47,12 @@ export function installTemperedHands(anim, enabled = () => true) {
       // The previous pose's lH can be an unused target under a wrist link or
       // two-handed grip. Carry the actual endpoint across the transition.
       // Local bone transforms avoid the preview's camera shear/drawing scale.
-      const r = this.rig, L = r.arms.L;
-      entryHand.set(0, -DIM.foreArm, 0).applyQuaternion(L.fore.quaternion);
-      entryHand.y -= DIM.upperArm;
-      entryHand.applyQuaternion(L.upper.quaternion).add(L.upper.position).sub(L.anchor ?? L.upper.position);
+      const r = this.rig;
+      handLocal(r, entryHand).toArray(this.temperedEntry.handLocal);
+      this.temperedEntry.handLocalVelocity.set(localVelocity);
       entryQ.copy(r.pelvis.quaternion).multiply(r.spine.quaternion).multiply(r.chest.quaternion);
+      this.temperedEntry.chest.copy(entryQ);
+      this.temperedEntry.serial++;
       entryHand.applyQuaternion(entryQ).toArray(this.temperedEntry.hand);
       const E = this.temperedEntry;
       E.chainedHeavy = this.key === 'attack' && !!this.atkDef && !this.atkDef.button
@@ -60,6 +73,9 @@ export function installTemperedHands(anim, enabled = () => true) {
   const xx = new THREE.Vector3(), yy = new THREE.Vector3(), zz = new THREE.Vector3();
   const matrix = new THREE.Matrix4(), euler = new THREE.Euler(0, 0, 0, 'YXZ');
   const saved = new Float32Array(6);
+  const foreBody = new THREE.Quaternion(), priorFore = new THREE.Quaternion(), delta = new THREE.Quaternion();
+  const lag = new THREE.Vector3();
+  let foreReady = false;
   const frames = (r) => {
     r.body.getWorldQuaternion(bodyQ); r.chest.getWorldQuaternion(chestQ);
     toChest.copy(chestQ).invert().multiply(bodyQ);
@@ -99,9 +115,23 @@ export function installTemperedHands(anim, enabled = () => true) {
 
   anim._wristL = function (rig, pose, two, linked) {
     // Braced palms, falls, and a hand meeting the grip keep their contact solver.
-    if (!enabled() || !freeClips.has(this.key) || two > 0.05 || linked > 0.05) return wrist.call(this, rig, pose, two, linked);
+    if (!enabled() || !freeClips.has(this.key) || two > 0.05 || linked > 0.05) {
+      foreReady = false; lag.set(0, 0, 0);
+      return wrist.call(this, rig, pose, two, linked);
+    }
     frames(rig);
     foreQ.copy(rig.arms.L.upper.quaternion).multiply(rig.arms.L.fore.quaternion);
+    foreBody.copy(toChest).invert().multiply(foreQ);
+    if (this.frameDt > 1e-5) {
+      if (foreReady && this.key === 'attack') {
+        delta.copy(priorFore).invert().multiply(foreBody).normalize();
+        if (delta.w < 0) delta.set(-delta.x, -delta.y, -delta.z, -delta.w);
+        const s = Math.hypot(delta.x, delta.y, delta.z);
+        const k = s > 1e-6 ? -0.018 * 2 * Math.atan2(s, delta.w) / (s * this.frameDt) : 0;
+        lag.set(clamp(delta.x * k, -0.12, 0.12), clamp(delta.y * k, -0.20, 0.20), clamp(delta.z * k, -0.10, 0.10));
+      } else lag.set(0, 0, 0);
+      priorFore.copy(foreBody); foreReady = true;
+    }
     turnQ.copy(foreQ).invert().multiply(toChest); // body axes → forearm local
     fingers.set(pose[P.lD], pose[P.lD + 1], pose[P.lD + 2]);
     palm.set(pose[P.lN], pose[P.lN + 1], pose[P.lN + 2]);
@@ -120,6 +150,9 @@ export function installTemperedHands(anim, enabled = () => true) {
     if (zz.lengthSq() < 1e-6) return wrist.call(this, rig, pose, two, linked);
     zz.normalize(); xx.crossVectors(yy, zz).normalize();
     matrix.makeBasis(xx, yy, zz); euler.setFromRotationMatrix(matrix, 'YXZ');
+    // Small inertia from actual forearm rotation; the existing wrist spring
+    // resolves it. No added oscillation, and hilt/ground contacts bypass this.
+    if (this.key === 'attack') { euler.x += lag.x; euler.y += lag.y; euler.z += lag.z; }
     euler.x = clamp(euler.x, -14 * deg, 18 * deg);
     euler.y = clamp(Math.abs(euler.y) > 150 * deg ? this.wristL.ty : euler.y, -55 * deg, 55 * deg);
     euler.z = clamp(euler.z, -32 * deg, 34 * deg);

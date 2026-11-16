@@ -29,6 +29,10 @@ windups, carrying into the final coil before returning to the source active chor
 private preview hooks add no shared actor/material/animator API.
 V6 (ADR-124) restores v4's visible hand/forearm. The v5 clothing overlay and its material/batch
 substitutions are removed; all motion helpers remain. A/B now leaves the existing draw batch intact.
+V7 (ADR-125) restores 1:1 presentation scale and a low reference sword carry. Private entry data
+adds solved chest-local hand/velocity, chest quaternion and attack serial. `freeArm.js` evaluates
+continuous hand curves with delayed torso follow; `hands.js` adds bounded free-wrist inertia to
+the existing spring. Contact hands bypass it. Zero-time refreshes do not advance the lag state.
 
 - Units: meters, seconds, radians. **Y up**, ground plane y = 0 (flat).
 - Camera looks north: **screen-up = world −Z**, screen-right = +X. Fixed yaw, ~58° pitch.

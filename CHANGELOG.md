@@ -725,6 +725,8 @@ Forty-seven pieces of work since 0.4.0:
   light-attack momentum into heavy windups, avoiding the abrupt low gather; adds alternate-pair
   review and early/middle/late transition checks (ADR-123). V6 restores v4's visible hand and
   forearm because the covered hand read as missing, while retaining the improved motion (ADR-124).
+  V7 restores original proportions, uses the owner's low sword carry and adds chest-led free-arm
+  paths with soft wrist follow-through; the studio adds a reference-side view (ADR-125).
   Awaiting owner review; the normal
   game is unchanged. This is deliberately not a shipped WHAT'S NEW item.
 

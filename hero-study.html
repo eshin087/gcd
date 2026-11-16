@@ -12,13 +12,13 @@
 <body>
   <header>
     <a class="wordmark" href="./">A B Y S S<span>CHARACTER ATELIER</span></a>
-    <div class="study-mark"><span class="status-dot"></span> REFINEMENT 05 <span class="divider">/</span> AWAITING YOUR REVIEW</div>
+    <div class="study-mark"><span class="status-dot"></span> TEMPERED 07 <span class="divider">/</span> AWAITING YOUR REVIEW</div>
     <a class="game-link" href="./hero-play.html?hero=tempered&level=ash">Try in game <span>↗</span></a>
   </header>
   <main>
     <section class="intro">
       <div><p class="eyebrow">THE WANDERER / MOTION & FORM</p><h1>Quiet intent.<br><em>Decisive motion.</em></h1></div>
-      <p class="intro-note">A compact, grounded swordsman. More weight in the stance, a clearer blade line, and cuts that carry through the whole body.</p>
+      <p class="intro-note">A relaxed low sword carry, the original silhouette, and a free arm that follows each cut with a soft elbow and wrist.</p>
     </section>
     <div class="workspace">
       <section class="comparison" aria-label="Synchronized character comparison">
@@ -30,7 +30,7 @@
             <div class="ground-line"><span>01 — SAME CAMERA / SAME CLOCK</span></div>
           </article>
           <article class="viewport candidate" id="candidate-pane">
-            <div class="viewport-title"><span class="letter">B</span><div><h2>Tempered · v6</h2><p>Visible hand & connected heavy windups</p></div><span class="tag">CANDIDATE</span></div>
+            <div class="viewport-title"><span class="letter">B</span><div><h2>Tempered · v7</h2><p>Low sword carry & flowing free arm</p></div><span class="tag">CANDIDATE</span></div>
             <canvas id="candidate" aria-label="Tempered candidate hero animation"></canvas>
             <div class="ground-line"><span>02 — PROPOSED DIRECTION</span></div>
           </article>
@@ -42,14 +42,14 @@
           <button id="step" title="Advance one frame" aria-label="Advance one frame">▸|</button>
           <label class="speed-label"><span>SPEED</span><select id="speed" aria-label="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option></select></label>
         </div>
-        <div class="camera-row"><span class="control-label">VIEW</span><div class="button-group" id="views"><button data-view="three" aria-pressed="true">Three-quarter</button><button data-view="front" aria-pressed="false">Front</button><button data-view="side" aria-pressed="false">Side</button><button data-view="back" aria-pressed="false">Back</button><button data-view="game" aria-pressed="false">Game scale</button></div><button id="orbit" aria-pressed="false">↻ Turntable</button></div>
+        <div class="camera-row"><span class="control-label">VIEW</span><div class="button-group" id="views"><button data-view="three" aria-pressed="true">Three-quarter</button><button data-view="reference" aria-pressed="false">Reference angle</button><button data-view="front" aria-pressed="false">Front</button><button data-view="side" aria-pressed="false">Side</button><button data-view="back" aria-pressed="false">Back</button><button data-view="game" aria-pressed="false">Game scale</button></div><button id="orbit" aria-pressed="false">↻ Turntable</button></div>
         <p class="view-note" id="view-note">Close study · the game’s actual ASCII renderer · both figures shown at equal scale</p>
       </section>
       <aside>
         <p class="eyebrow">MOTION LIBRARY</p>
         <div id="sequences" class="sequences" role="group" aria-label="Choose a motion"></div>
         <div class="sequence-note"><span class="small-rule"></span><p id="sequence-description"></p></div>
-        <details class="changes" open><summary>What to look for <span>−</span></summary><ol><li><strong>A softer free arm</strong><span>The elbow stays bent and the hand follows the torso through smaller arcs, inspired by your motion reference.</span></li><li><strong>Flow between lights</strong><span>The buffered combo uses the game's earliest chaining windows. Watch the hand carry into each next cut.</span></li><li><strong>Gather into heavy</strong><span>The hand joins the grip progressively. Normal → heavy shows the relaxed entry and all four light-chain branches.</span></li></ol></details>
+        <details class="changes" open><summary>What to look for <span>−</span></summary><ol><li><strong>The reference sword carry</strong><span>The sword hand rests beside the thigh, with a soft elbow and the blade pointing forward and down. Try Reference angle.</span></li><li><strong>A flowing free arm</strong><span>The visible v4 hand follows the turning chest, then settles through the wrist. Compare the buffered light combos.</span></li><li><strong>The original proportions</strong><span>The same height, width and depth as Current. The improved heavy transitions and visible hand are retained.</span></li></ol></details>
       </aside>
     </div>
     <footer><p><span class="status-dot"></span> A reviewable experiment. Your live game is unchanged.</p><p>View-only audition · no combat or saves · approval happens in the PR</p></footer>
