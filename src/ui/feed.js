@@ -46,7 +46,6 @@ const DODGE_TEXT = [
   ['ember', 'an ember'],
   ['fan', 'an ember'],
   ['cinder', 'an ember'],
-  ['wisp', 'a wisp'],
   ['wheel', 'the fire wheel'],
   ['fire', 'the flames'],
 ];
