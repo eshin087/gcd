@@ -340,6 +340,37 @@ function deathblow(G, how = 'posture') {
 }
 
 // ================================================================== scenario: level
+/**
+ * The floor breaks (2026-11-16, world/floor.js, BREAK.floor): a duel on the real set with his AI on
+ * against the fencing bot (god mode), until it ends or 4 minutes have passed, the share
+ * of the floor inside his bound broken (and cracked) after 30 s, 1, 2 and 4 minutes. The owner's target:
+ * not all rubble early, never untouched after two minutes, 30 - 50 % broken after a whole duel.
+ */
+async function scenarioFloor() {
+  out('\n== scenario FLOOR (a crater duel breaks the floor: the share over time) ==');
+  const F = build(SEED, true);
+  duel(F, { dist: 4, ai: true });
+  F.defend = makeDefender(F);
+  const fd = F.game.dragon, fp = F.game.player, W = F.game.world.destructibles;
+  fp.debug.god = true;
+  const inB = W.floor.filter((b) => Math.hypot(b.x, b.z) <= (fd.baseBound ?? 12.5));
+  const at = {};
+  let t = 0;
+  for (const s of [30, 60, 120, 240]) {
+    // (four bars: each ends in a deathblow, so the bot ends the duel itself, in 70 - 100 s of game time)
+    run(F, s - t, (GG) => fencer(GG), () => fd.state === 'dead');
+    t = s;
+    const broken = inB.filter((b) => b.state !== STATE.INTACT).length, cracked = inB.filter((b) => b.state === STATE.INTACT && b.cracked).length;
+    at[s] = broken / inB.length;
+    out(`     ${s} s (${F.game.time.toFixed(0)} s): ${broken} of ${inB.length} slabs inside his bound broken (${(at[s] * 100).toFixed(0)} %; ${inB.filter((b) => b.state !== STATE.INTACT && b.by === "player").length} by the hero), ${cracked} cracked; form ${fd.phase}${fd.state === 'dead' ? ', he has fallen' : ''}; ${W.list.length - W.standing} pieces down in all`);
+  }
+  assert(at[30] < 0.25 && at[120] > 0, `not rubble early (${(at[30] * 100).toFixed(0)} % after 30 s, < 25 %), never untouched after two minutes (${(at[120] * 100).toFixed(0)} %)`);
+  // (the owner's target 30 - 50 % after a whole duel; the band allows for the seed)
+  assert(at[240] >= 0.22 && at[240] <= 0.6, `after the duel (he fell, or 4 minutes) ${(at[240] * 100).toFixed(0)} % of the floor inside his bound is broken (22 .. 60 %; the aim 30 - 50 %)`);
+  assert(!F.payload.size, `no non-finite payload in his events (${[...F.payload].join(', ')})`);
+  return F;
+}
+
 async function scenarioLevel() {
   out('\n== scenario LEVEL (registry, the crater set, the boss slot) ==');
   assert(LEVELS.includes(LVL) && LVL.id === 'starless', `levels: ${LEVELS.map((l) => l.id).join(', ')}`);
@@ -354,9 +385,14 @@ async function scenarioLevel() {
   assert(bad === 0, `the crater has no NaN vertices (${bad})`);
   // what can be broken, lifted and thrown is listed for the destruction system, not merged into the set
   const B = S.breakables, kinds = (k) => B.filter((b) => b.kind === k).length;
-  assert(Array.isArray(B) && B.length >= 30 && B.length <= 120 && kinds('shard') >= 12 && kinds('slab') >= 8 && kinds('hover') === 6, `its breakables: ${B?.length} (shard ${kinds('shard')}, slab ${kinds('slab')}, hover ${kinds('hover')})`);
-  assert(B.every((b) => b.mat === 'stone' && b.look === 'prop' && b.geos.length > 0 && Array.isArray(b.colliders) && [b.x, b.z, b.r, b.h].every(Number.isFinite) && b.r > 0 && b.h > 0), 'each in the contract\'s shape (ARCHITECTURE.md Destruction)');
-  assert(B.filter((b) => b.kind === 'hover').every((b) => b.colliders.length === 0 && b.cover === false && b.hp === Infinity && b.lift === 2) && B.filter((b) => b.kind !== 'hover').every((b) => b.colliders.length === 1 && b.lift === 2 && b.broken?.geos?.length), 'a hanging stone has no collider and gives no cover; a standing piece has its circle and leaves rubble; the Void may lift all of them');
+  // (2026-11-16: everything but the landmarks breaks: 36 → 222. The floor's plates and the path, 105
+  // (plate 81, flagstone 24); the rim's low slabs and shards and its rubble, the vents' rings, the south
+  // lip's two stones, 35 trunks thrown down near the crater. The six hanging stones as they were)
+  const floor = B.filter((b) => b.floor), Lw = B.filter((b) => b.lift === 2 && b.kind !== 'hover');
+  assert(Array.isArray(B) && B.length >= 180 && B.length <= 280 && kinds('shard') >= 12 && kinds('slab') >= 8 && kinds('hover') === 6 && floor.length >= 90 && kinds('vent') === 4, `its breakables: ${B?.length} (shard ${kinds('shard')}, slab ${kinds('slab')}, hover ${kinds('hover')}, floor ${floor.length}: plate ${kinds('plate')}, flagstone ${kinds('flagstone')}; rubble ${kinds('rubble')}, vent ${kinds('vent')}, log ${kinds('log')})`);
+  assert(B.every((b) => ['stone', 'wood'].includes(b.mat) && Array.isArray(b.colliders) && [b.x, b.z, b.r, b.h].every(Number.isFinite) && b.r > 0 && b.h > 0 && (b.look === 'range' ? b.floor && b.range?.count > 0 : ['prop', 'grid'].includes(b.look) && b.geos.length > 0)), 'each in the contract\'s shape (ARCHITECTURE.md Destruction): its body in geometries, or a floor plate in its run of the paving mesh');
+  assert(B.filter((b) => b.kind === 'hover').every((b) => b.colliders.length === 0 && b.cover === false && b.hp === Infinity && b.lift === 2) && Lw.length >= 30 && Lw.every((b) => b.colliders.length === 1 && b.broken?.geos?.length), `a hanging stone has no collider and gives no cover; what the Void may lift (${Lw.length} standing pieces, as before) has its circle and leaves rubble`);
+  assert(floor.every((b) => b.colliders.length === 0 && b.lift === 3 && !b.cover && !b.topples) && B.filter((b) => !b.floor && b.kind !== 'hover' && b.lift !== 2).every((b) => b.lift <= 1), 'the floor\'s plates have no collider, cover nothing and are lifted only by a move that asks for floor (lift 3); the rest the Void does not take');
   // open: nothing tall on the near side (south of the seal's rim), no wall anywhere
   const south = B.filter((b) => b.z > 6 && b.kind !== 'hover'), tallS = Math.max(...south.map((b) => b.h));
   assert(south.length >= 4 && tallS < 3.2, `nothing tall stands south of the duel (${south.length} pieces there, the tallest ${tallS.toFixed(1)} m)`);
@@ -1242,6 +1278,7 @@ async function scenarioStrategy() {
 // ================================================================== run
 const S = {
   level: scenarioLevel,
+  floor: scenarioFloor,
   data: scenarioData,
   timing: scenarioTiming,
   forms: scenarioForms,

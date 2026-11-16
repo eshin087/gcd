@@ -139,9 +139,9 @@ export function breakableFloor({ slabs, slabGeos, slabMesh, mat, rng, group, loo
   const opt = FLOOR_LOOKS.includes(look) ? look : 'a';
   const cracked = [], broken = [], cnt = [];
   for (const s of slabs) {
-    const c = wedges(rng, s.x, s.z, s.outline, 2 + Math.floor(rng() * 3), { pull: 0.95, push: 0.012, tilt: 0.02, top: 0.04, inset: 0.05, drop: 0.035, col: s.col });
+    const c = wedges(rng, s.x, s.z, s.outline, 2 + Math.floor(rng() * 3), { pull: 0.9, push: 0.02, tilt: 0.015, top: 0.04, inset: 0.05, drop: 0.035, col: s.col });
     const b = opt === 'b'
-      ? wedges(rng, s.x, s.z, s.outline, 4 + Math.floor(rng() * 2), { pull: 0.82, push: 0.13, tilt: 0.24, sink: 0.02, top: 0.035, inset: 0.05, drop: 0.03, col: s.col, k: 0.78 })
+      ? wedges(rng, s.x, s.z, s.outline, 4 + Math.floor(rng() * 2), { pull: 0.84, push: 0.09, tilt: 0.1, sink: 0.015, top: 0.04, inset: 0.05, drop: 0.03, col: s.col, k: 0.95 })
       : rubbleLook(rng, s);
     const cg = mergeGeometries(c), bg = mergeGeometries(b);
     cracked.push(cg);
@@ -172,7 +172,7 @@ export function breakableFloor({ slabs, slabGeos, slabMesh, mat, rng, group, loo
       range: { mesh: slabMesh, start: start.get(s.geo), count: s.geo.attributes.position.count },
       cracked: { range: { mesh: crackMesh, start: ci, count: nc } },
       broken: { range: { mesh: brokenMesh, start: bi, count: nb } },
-      colliders: [], topples: false, cover: false, wreck: false, lift: F.lift,
+      colliders: [], topples: false, cover: false, lift: F.lift, // (no rubble pile where it breaks: it is under 0.4 m; thrown, it lands as shards)
     });
     ci += nc;
     bi += nb;

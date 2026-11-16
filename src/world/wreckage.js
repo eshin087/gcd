@@ -106,9 +106,10 @@ function shardsGeometry(r) {
 export class Wreckage {
   /**
    * `root`: the group it hangs under (the breakables' root: one batch for both); `mat`: the prop art
-   * twin; `owner`: the Destructibles (lights, quality, events).
+   * twin; `owner`: the Destructibles (lights, quality, events). `need`: { blocks, shards } (the pools
+   * only a set with a statue / a floor that can be thrown uses: no bones for them elsewhere).
    */
-  constructor(game, world, root, mat, owner) {
+  constructor(game, world, root, mat, owner, need = {}) {
     this.game = game;
     this.world = world;
     this.D = owner;
@@ -150,8 +151,8 @@ export class Wreckage {
     make(KIND.LOG, W.logs, logs);
     make(KIND.CHAR, W.chars, chars);
     make(KIND.RUBBLE, W.rubble, rocks);
-    make(KIND.BLOCK, W.blocks ?? 0, blocks);
-    make(KIND.SHARDS, W.shards ?? 0, shards);
+    make(KIND.BLOCK, need.blocks ? W.blocks : 0, blocks);
+    make(KIND.SHARDS, need.shards ? W.shards : 0, shards);
   }
 
   get count() {

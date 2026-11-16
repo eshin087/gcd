@@ -219,7 +219,10 @@ export class Destructibles {
     this._buildGrid();
     if (this.floor.length) this._buildCarry(set);
     // what the fight leaves lying (wreckage.js): its pools share the breakables' batch
-    if (set.wreckage !== false) this.wreck = new Wreckage(game, world, this.root, this.propMat, this);
+    if (set.wreckage !== false) {
+      const need = { blocks: this.list.some((b) => b.blocks > 0), shards: this.floor.some((b) => b.lift > 0) };
+      this.wreck = new Wreckage(game, world, this.root, this.propMat, this, need);
+    }
     markCaster(this.root);
     set.group?.add(this.root);
     this.batch = batchRigid(U, this.root);
@@ -568,7 +571,8 @@ export class Destructibles {
             dz = bz - az;
           }
           const px = ax + (bx - ax) * s.t, pz = az + (bz - az) * s.t;
-          if (this._hit(b, power, o, px, clamp(o.y ?? 1, 0.2, b.h), pz, dx, dz)) n++;
+          // (a floor slab under an edge drawn along it, not a blow landing on it: BREAK.floor.sweep of it)
+          if (this._hit(b, b.floor ? power * BREAK.floor.sweep : power, o, px, clamp(o.y ?? 1, 0.2, b.h), pz, dx, dz)) n++;
         }
       }
     }
