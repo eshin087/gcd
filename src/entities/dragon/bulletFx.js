@@ -416,13 +416,13 @@ export function tongueLive(fx, tg, dt) {
       fx._blob(tg.x + sx * r, 0.35, tg.z + sz * r, 0, 0, 0, life, 0.9, 0.9, 0.75 + 0.65 * h, 0.75 + 0.65 * h);
     }
     // the body: as wide as the hit, its edge licking a little along the line
-    for (let r = tg.front - 0.2; r >= tg.tail; r -= 0.7) {
+    for (let r = tg.front - 0.2; r >= tg.tail; r -= 0.42) {
       const u = (tg.front - r) / full;
       const nz = 0.75 + 0.25 * Math.sin(r * 1.7 + t * 13 + sd) * Math.sin(r * 0.6 - t * 5 + sd * 2);
       const h = Math.pow(Math.max(0, 1 - u), 1.2) * nz * (ending ? 0.85 : 1);
       if (h < 0.06) continue;
-      const wob = 0.1 * W * Math.sin(r * 0.9 + t * 7 + sd);
-      fx._blob(tg.x + sx * r + qx * wob, 0.5 + 0.35 * h, tg.z + sz * r + qz * wob, 0, 0, 0, life, (0.7 + 0.2 * h) * W, (0.7 + 0.2 * h) * W, 0.5 * h, 0.5 * h);
+      const wob = 0.08 * W * Math.sin(r * 0.9 + t * 7 + sd);
+      fx._blob(tg.x + sx * r + qx * wob, 0.5 + 0.35 * h, tg.z + sz * r + qz * wob, 0, 0, 0, life, (0.85 + 0.2 * h) * W, (0.85 + 0.2 * h) * W, 0.62 * h, 0.62 * h);
     }
     if (!ending) {
       // the front: a bright clump rolling forward, a short lick ahead of it (the way it travels)
