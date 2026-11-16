@@ -26,7 +26,7 @@ export function ashLookNow() {
 }
 
 /** Colours (linear): the robe as phase 3 burns it pale; the ember. */
-const PALE = { coat: [0.6, 0.58, 0.55], lining: [0.3, 0.29, 0.28] };
+const PALE = { coat: [0.9, 0.86, 0.8], lining: [0.45, 0.43, 0.41] };
 const EMBER = { fill: [1.0, 0.36, 0.08], glow: 1.1, ink: 0.9, flicker: 0.35 };
 
 function dressOf(root) {
