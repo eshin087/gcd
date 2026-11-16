@@ -723,7 +723,9 @@ Forty-seven pieces of work since 0.4.0:
   combo hands and a progressive heavy grip; the studio now exposes buffered chains and every
   light-to-heavy transition (ADR-122). V5 covers the left forearm/hand in matching cloth and carries
   light-attack momentum into heavy windups, avoiding the abrupt low gather; adds alternate-pair
-  review and early/middle/late transition checks (ADR-123). Awaiting owner review; the normal
+  review and early/middle/late transition checks (ADR-123). V6 restores v4's visible hand and
+  forearm because the covered hand read as missing, while retaining the improved motion (ADR-124).
+  Awaiting owner review; the normal
   game is unchanged. This is deliberately not a shipped WHAT'S NEW item.
 
 ## [0.4.0] - 2026-11-02

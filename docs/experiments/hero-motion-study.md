@@ -1,7 +1,7 @@
 # The Wanderer: Tempered (unapproved visual study)
 
-**Status:** Tempered v5, draft experiment. The owner likes v4 and requests a covered left arm/hand
-and smoother light-to-heavy links. These are revised for review.
+**Status:** Tempered v6, draft experiment. The owner reports that v5's covered left hand reads as
+missing. Restore the v4 hand design while retaining the improved angles and animation.
 Do not merge or adopt without the owner's
 choice. The motion studio and the playable preview are separate pages; the regular game is unchanged.
 
@@ -55,7 +55,7 @@ is untouched; this is an additional option, based on main `46e2c989` (PR #57).
 | Free hand at ease | resting on the belt | loose beside the thigh, wrist aligned with the forearm |
 | Ready blade | near-horizontal point | oblique line, roughly 28° to the sword side / 22° up before wrist constraints; straighter grip |
 | Free hand in guard | on belt | relaxed open hand in front of the chest, wrist aligned with the forearm |
-| Left sleeve / hand | short forearm cloth, wraps and visible skin | full matching-cloth sleeve, long cuff and glove |
+| Left sleeve / hand | short forearm cloth, wraps and visible skin | restored v4 appearance, with the improved hand motion |
 | Walk / run | existing speed-matched stride | same feet, lower centre, quieter bounce, counterbalanced shoulders and relaxed free hand |
 | Cuts | existing keyframed clips | hip/chest accents, eased gather, faster middle cut, controlled recovery and free-arm counterbalance |
 | Opening heavy | dashing thrust | dashing diagonal slash, with sweep contact and edge glint |
@@ -83,7 +83,22 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
 
 ![Current and Tempered, ready guard](hero-motion-study-v01.png)
 
-### V5: covered left arm and connected heavy windups
+### V6: visible v4 hand with improved motion
+
+The v5 glove and long cuff made the left hand blend into the dark clothing. At the owner's request,
+v6 restores the v4 forearm, wrist wraps and visible hand. The clothing overlay and material
+substitutions are removed entirely, along with the clothing-only draw-batch rebuilds.
+
+V5's hand-angle guidance, progressive supporting grip, elbow settling and carried light-to-heavy
+windups are unchanged. All alternate-pair and early/middle/late timing checks still pass. A/B
+retains original hand materials/visibility and leaves the draw batch intact; equipment rebuilds
+retain the same visible hand.
+
+![Tempered v6 restores the visible hand; v5 shown for comparison](hero-motion-study-v06.png)
+
+### V5: covered left arm and connected heavy windups (clothing withdrawn)
+
+The following records the v5 experiment. Its clothing is withdrawn in v6; the motion is retained.
 
 The left forearm now has a fuller sleeve, a longer cuff and a cloth-covered hand in the cloak's
 existing material. The glove follows every original hand shape and contact joint; the skin
@@ -185,7 +200,8 @@ The v1 image above and [v1 playable deployment](https://gcdabyss-4gu8z054o-eshin
 are preserved for comparison. [V2 is also preserved](https://gcdabyss-dvvzg2uhr-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
 The [v3 preview is preserved](https://gcdabyss-drswtrwuj-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
 The [v4 preview is preserved](https://gcdabyss-4fzcn2x5w-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
-The current pages are labeled v5.
+The [v5 preview is preserved](https://gcdabyss-erog882w3-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered).
+The current pages are labeled v6.
 
 ## Isolation and verification
 
@@ -228,8 +244,8 @@ so adoption should define an explicit integration point rather than copying the 
 `attackMotion.js` owns the compact free-hand arcs, heavy grip envelope and recovery; `hands.js`
 also captures solved entry data in its instance `play` wrapper. The shared animator is untouched.
 `heavyTransition.js` uses captured pose/blade velocities for light-to-heavy windups only.
-`clothing.js` adds reversible left sleeve/hand coverage; adoption should integrate it with the
-outfit builders rather than retain the preview's batch-rebuild decorator.
+V6 removes the v5 clothing overlay and its batch-rebuild decorator; hand/outfit geometry and
+materials are the original v4 design.
 `idles.js` supplies all six replacement gestures; `attacks.js` maps and restores the private heavy
 definition. The source scheduler and shared combat tables remain intact.
 No shared pose API or boss skeleton changed.

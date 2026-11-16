@@ -9,7 +9,6 @@ import { installTemperedHands } from './hands.js';
 import { temperedIdle } from './idles.js';
 import { temperedAttack } from './attacks.js';
 import { createAttackMotion } from './attackMotion.js';
-import { installTemperedClothing } from './clothing.js';
 import { createHeavyTransition } from './heavyTransition.js';
 
 export const STUDY = Object.freeze({
@@ -183,7 +182,6 @@ export function createStudyActor(U, candidate = false) {
   };
   const anim = new HeroAnimator(rig, pilot, null, { freeHand: true });
   if (candidate) {
-    installTemperedClothing(rig).select(true);
     anim.poses = createTemperedPoses(anim.poses);
     installTemperedHands(anim);
   }

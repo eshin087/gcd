@@ -5,6 +5,24 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-16 — Session 61: Restore the visible v4 hand, retain improved motion (Codex, review pending)
+
+**Owner:** v5's covered hand reads as missing; return to the Tempered v4 hand design with the
+improved angles, motion and animation. No merge is authorized.
+
+**Changed:** remove the v5 sleeve/cuff overlay and cloth glove substitution. The original visible
+hand, wrist wraps and forearm are restored in both preview entries. Remove the clothing-only
+rigid batch rebuilds. V5's `hands.js`, `attackMotion.js` and `heavyTransition.js` remain unchanged,
+including momentum carry, smooth elbow entry and progressive supporting grip. Pages labeled v6.
+
+**Verified:** focused checks retain 7,735 paired studio frames, 6,675 attack-variant frames,
+5,181 idle frames and 26,068 transition frames. A/B keeps original hand materials/visibility and
+does not rebuild the draw batch; equipment rebuilds retain the visible hand. The normal-game
+build hash is unchanged. Browser/full regression results and the new preview are in draft PR #58.
+
+**Hold:** owner review in game. V5 evidence is preserved, but its clothing choice is withdrawn
+(ADR-124). Production, saves and Claude's active checkout are untouched.
+
 ## 2026-11-15 — Session 60: Covered sleeve and carried heavy windups (Codex, review pending)
 
 **Owner:** likes v4; requests more cloak coverage on the left arm/hand and smoother light-to-heavy

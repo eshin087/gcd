@@ -64,23 +64,24 @@ const originalSleeve = [];
 player.rig.arms.L.fore.traverse(o => { if (o.isMesh) originalSleeve.push([o, o.material, o.visible]); });
 originalSleeve.push([player.rig.offHand.grip, player.rig.offHand.grip.material, player.rig.offHand.grip.visible]);
 const faceMaterial = player.rig.materials.skin;
+const batch = player.batch;
 const gameplay = installGameplayStudy(player);
-assert.equal(player.rig.root.getObjectByName('temperedLeftSleeve').visible, true);
-assert.equal(player.rig.offHand.grip.material, player.rig.materials.coat, 'supporting fist wears matching cloth');
+assert.equal(player.rig.root.getObjectByName('temperedLeftSleeve'), undefined, 'v5 cuff overlay removed');
+assert.equal(player.rig.offHand.grip.material, player.rig.materials.skin, 'v4 supporting hand remains visible');
 assert.equal(player.rig.materials.skin, faceMaterial, 'face/skin material itself is unchanged');
 const bones = rigidBones(player.game.U), boneCount = bones.count;
 for (let i = 0; i < 12; i++) {
-  gameplay.select('current');
-  for (const [mesh, material, visible] of originalSleeve) {
-    assert.equal(mesh.material, material, 'Current restores original sleeve/hand material');
-    assert.equal(mesh.visible, visible, 'Current restores original sleeve/hand visibility');
+  for (const variant of ['current', 'tempered']) {
+    gameplay.select(variant);
+    for (const [mesh, material, visible] of originalSleeve) {
+      assert.equal(mesh.material, material, 'both variants retain the v4 sleeve/hand materials');
+      assert.equal(mesh.visible, visible, 'both variants retain original hand visibility');
+    }
+    assert.equal(player.batch, batch, 'A/B no longer needs a clothing batch rebuild');
   }
-  assert.equal(player.rig.root.getObjectByName('temperedLeftSleeve').visible, false);
-  gameplay.select('tempered');
   assert.equal(bones.count, boneCount, 'A/B does not leak rigid bone slots');
   assert.equal(bones.sets.length, 1, 'only one player batch survives each switch');
 }
-const batch = player.batch;
 gameplay.select('tempered');
 assert.equal(player.batch, batch, 'unchanged selection does not rebuild the batch');
 for (let i = 0; i < 36; i++) {
@@ -109,8 +110,9 @@ player.setLoadout(player.rig.loadout);
 const rebuilt = player.anim.poses;
 gameplay.select('tempered');
 assert.notEqual(player.anim.poses, rebuilt, 'equipment rebuild receives private candidate poses');
-assert.equal(player.rig.root.getObjectByName('temperedLeftSleeve').visible, true, 'rebuilt rig receives covered sleeve');
-assert.equal(bones.count, boneCount, 'equipment rebuild releases old sleeve batch slots');
+assert.equal(player.rig.root.getObjectByName('temperedLeftSleeve'), undefined, 'equipment rebuild preserves v4 sleeve');
+assert.equal(player.rig.offHand.grip.material, player.rig.materials.skin, 'equipment rebuild preserves visible hand');
+assert.equal(bones.count, boneCount, 'equipment rebuild keeps the original batch size');
 gameplay.select('current');
 assert.equal(player.anim.poses, rebuilt, 'equipment rebuild can return to its own source poses');
 assert.equal(JSON.stringify({ DIM, BODY, SWINGS, LIGHT, HEAVY }), original, 'playable preview leaves shared definitions unchanged');

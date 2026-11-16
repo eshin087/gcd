@@ -3345,3 +3345,14 @@ ADR-092).
   into the opening heavy, at 30/60/120 Hz. Render front/rear views, verify actual game input/contact,
   repeated A/B batch-slot stability, clothing restoration and equipment rebuild. The studio adds
   alternate light-to-heavy pairs. This remains an unmerged experiment pending owner review.
+
+## ADR-124 — Restore v4 hand visibility while retaining v5 motion (2026-11-16)
+- **Context:** the owner reports that v5 looks as if the left hand is missing and explicitly asks
+  for the v4 hand design with the improved angles, motion and animation.
+- **Decision:** withdraw ADR-123's clothing overlay/material substitution and remove the associated
+  preview-only rigid batch rebuilding. Restore the original forearm/wrist wraps and all visible
+  hand shapes. Keep the v5 motion helpers and entry velocity capture unchanged. Both preview pages
+  are labeled v6. This is an appearance rollback, not an animation rollback.
+- **Review:** preserve v5 artifacts/history; compare before/after idle, guard and attack renders.
+  Recheck A/B, equipment rebuilds and actual gameplay. Draft PR #58 remains unmerged pending the
+  owner's review; normal game source, production and saves are unchanged.
