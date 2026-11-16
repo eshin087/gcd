@@ -71,8 +71,8 @@ const hash01 = (a, b) => {
 // ---------------------------------------------------------------- the looks the owner picks from
 // (?ring=a|b|c, ?breath=a|b|c; `a` is the default; read once, headless runs have no location)
 //   ring  a: a rolling wall of fire with a dust wall behind it      b: a pressure front written in
-//            crisp strokes on the ground, a dust skirt, echo ripples  c: a low surge of dust and licks
-//            of fire, ragged fingers, that throws rocks and turf
+//            crisp strokes on the ground, a dust skirt, echo ripples  c: the ground heaves: a ring of
+//            thrown earth, clods and stones running out, no fire but where it started
 //   breath a: a torrent: a white rod at the jaws that widens, slows and rolls up into billows, smoke
 //            over it, a splash of flame on the ground at its end      b: lashing tongues: five
 //            streams that whip across the cone        c: liquid fire: an arc that rains down onto the
@@ -117,9 +117,9 @@ const SHOCK = Object.freeze({
     lobe: [0.03, 0.02], gapBelow: 0.36, dust: 3.2, rocks: 0.1, scorch: [0.03, 0.55], echo: [[0.3, 0.5, 0.36], [0.6, 0.36, 0.42]], drag: 2.2,
   },
   c: {
-    front: { gap: 0.6, size: 1.3, sizeEnd: 2.8, heat: 0.7, y0: 0.75, y1: 1.0, kind: 1, gravity: 0.6 },
-    rows: [[0.9, 0.45, 0.32, 0], [0.7, 0.65, 0.85, 1]],
-    lobe: [0.12, 0.07], gapBelow: 0.12, dust: 3.6, rocks: 2.4, scorch: [0.12, 0.7], echo: [], drag: 3.2,
+    front: { gap: 0.5, size: 0.9, sizeEnd: 2.0, heat: 0.8, y0: 0.75, y1: 0.9, kind: 1, gravity: 0.3 },
+    rows: [[0.82, 0.7, 0.75, 1]],
+    lobe: [0.1, 0.06], gapBelow: 0.15, dust: 4.5, rocks: 5, scorch: [0.04, 0], echo: [], drag: 3.4, heave: true,
   },
 });
 const SHOCK_POOL = 14;
@@ -193,7 +193,7 @@ export class DragonFx {
       k: 1, fk: 1, look: 'a', dust: 0, rock: 0, scorchT: 0, echo: 0, p1: 0, p2: 0, p3: 0, p4: 0,
     }));
     this._brT = 0; // the breath's own clock (tongues, billows)
-    this._brAcc = [0, 0, 0, 0, 0, 0, 0, 0]; // the breath's emitters' accumulators
+    this._brAcc = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // the breath's emitters' accumulators
   }
 
   get add() {
@@ -326,7 +326,14 @@ export class DragonFx {
         );
       }
     }
-    if (fk > 0.3 && w.look !== 'b') {
+    if (fk > 0.3 && w.look === 'c') {
+      // the heave carries no fire out: it burns only where it started, a low bed that dies down
+      const m = Math.round(8 + 6 * k);
+      for (let i = 0; i < m; i++) {
+        const a = Math.random() * 6.283, rr = Math.max(0.6, w.r0 * 1.4) * Math.sqrt(Math.random());
+        this._blob(w.x + Math.cos(a) * rr, rand(0.8, 1.0), w.z + Math.sin(a) * rr, 0, rand(1, 2.5), 0, rand(0.5, 0.9), rand(1.0, 1.5), rand(0.6, 0.9), 0.3 * fk, 0.05, 0.8, 2);
+      }
+    } else if (fk > 0.3 && w.look !== 'b') {
       // the heart: a blink of heat where it went off, torn apart at once
       const m = Math.round(4 + 4 * k);
       for (let i = 0; i < m; i++) {
@@ -384,7 +391,7 @@ export class DragonFx {
         o.gravity = -5;
         o.alpha = rand(0.55, 0.85);
         o.spin = rand(-3, 3);
-        this._col(warm && Math.random() < 0.5 ? DUST_WARM : DUST_COL, rand(0.8, 1.4), DUST_COL, 0.7);
+        this._col(warm && Math.random() < 0.5 ? DUST_WARM : DUST_COL, rand(0.8, 1.4) * (L.heave ? 1.6 : 1), DUST_COL, 0.7);
         this._spawn(this.alpha, o);
         if (warm && m % 3 === 0) {
           // a spark off the burning front
@@ -401,21 +408,22 @@ export class DragonFx {
       }
       // rocks and clods flung up in arcs where the front tears the ground
       w.rock += dt * L.rocks * circ * share * k;
-      m = Math.min(6, Math.floor(w.rock));
+      m = Math.min(L.heave ? 16 : 6, Math.floor(w.rock));
       w.rock -= m;
       while (m-- > 0) {
         const a = Math.random() * 6.283, ca = Math.cos(a), sa = Math.sin(a);
-        const o = this._rec(w.x + ca * rc, 0.4, w.z + sa * rc, rand(0.6, 1.1), rand(0.3, 0.44), 0.26, ROCK);
-        const sp = vf * rand(0.3, 0.7) + rand(1, 3);
+        const low = L.heave && m % 2 === 0; // the ground heaving: clods popped up just ahead of the front
+        const o = this._rec(w.x + ca * rc, 0.4, w.z + sa * rc, rand(0.6, 1.1), rand(0.32, 0.46), 0.26, ROCK);
+        const sp = low ? vf * rand(0.6, 0.9) : vf * rand(0.3, 0.7) + rand(1, 3);
         o.vx = ca * sp;
-        o.vy = rand(4, 10);
+        o.vy = low ? rand(2, 4.5) : rand(4, 10);
         o.vz = sa * sp;
         o.gravity = -22;
         o.drag = 0.4;
         o.alpha = 0.95;
         o.alphaEnd = 0.6;
         o.spin = rand(-6, 6);
-        this._col(ROCK_COL, rand(0.9, 1.4), ROCK_COL, 0.7);
+        this._col(ROCK_COL, L.heave ? rand(1.8, 2.8) : rand(0.9, 1.4), ROCK_COL, L.heave ? 1.4 : 0.7);
         this._spawn(this.alpha, o);
       }
       // the ground where it passed: glowing, then charred (the scorch map cools it by itself)
@@ -599,24 +607,24 @@ export class DragonFx {
     if (look === 'c') this._breathLiquid(dt, mouth, aimYaw, pitch, R, HA);
     else {
       // the rod: small hot blobs close to the jaws (where they pile up: the white heart)
-      this._brStreams(dt, 0, 60, mouth, aimYaw, pitch, 0, 0.06, R * 0.45, R * 0.65, 0.3, 0.38, 2.0, 0.36, 0.95, 0.5, 0.1, 1);
+      this._brStreams(dt, 0, look === 'b' ? 140 : 240, mouth, aimYaw, pitch, 0, 0.04, R * 0.2, R * 0.34, 0.3, 0.4, 2.6, 0.3, 0.75, 0.24, 0.08, 1);
       if (look === 'b') {
         // lashing tongues: five streams that whip across the cone, each drawing a curved lick
         for (let i = 0; i < 5; i++) {
-          const t = this._brT, f = 2.0 + 0.65 * i;
-          let off = HA * 0.9 * Math.sin(t * f + i * 1.9) * (0.65 + 0.35 * Math.sin(t * 1.3 + i * 2.3));
+          const t = this._brT, f = 1.3 + 0.45 * i;
+          let off = HA * 0.95 * Math.sin(t * f + i * 1.9);
           off = Math.max(-HA, Math.min(HA, off));
           const len = 0.78 + 0.22 * hash01(i, 3.7);
-          this._brStreams(dt, 1 + (i % 2), 38, mouth, aimYaw + off, pitch, 0, 0.035, R * 0.8 * len, R * len, 0.5, 0.62, 1.6, 0.5, 2.2, 0.42, 0.03, 3);
+          this._brStreams(dt, 6 + i, 46, mouth, aimYaw + off, pitch, 0, 0.025, R * 0.8 * len, R * len, 0.55, 0.7, 1.4, 0.3, 0.95, 0.62, 0.22, 2);
         }
       } else {
         // the torrent: the body fills the cone (most of it near the axis), it slows and swells
-        this._brStreams(dt, 1, T.particlesPerSec * 1.1, mouth, aimYaw, pitch, 0, HA * 0.5, R * 0.75, R, 0.58, 0.8, 1.8, 0.5, 3.0, 0.36, 0.04, 2.5, true);
+        this._brStreams(dt, 1, T.particlesPerSec * 1.5, mouth, aimYaw, pitch, 0, HA * 0.95, R * 0.5, R * 1.02, 0.6, 0.85, 1.6, 0.5, 3.0, 0.15, 0.19, 2.5, true);
       }
       // licks along the edges: slower, cooler, they curl up off the rim of the cone
-      this._brStreams(dt, 3, 60, mouth, aimYaw, pitch, HA * 0.62, HA, R * 0.5, R * 0.85, 0.45, 0.6, 2.4, 0.45, 1.7, 0.24, 0, 6);
+      if (look !== 'b') this._brStreams(dt, 3, 90, mouth, aimYaw, pitch, HA * 0.72, HA, R * 0.55, R * 0.95, 0.5, 0.7, 2.0, 0.45, 1.8, 0.3, 0.08, 6);
       // billows: at the far end the fire has slowed; it rolls up and over in big cool balls
-      this._brAcc[4] += dt * (look === 'b' ? 14 : 24);
+      this._brAcc[4] += dt * (look === 'b' ? 0 : 26);
       let n = Math.min(4, Math.floor(this._brAcc[4]));
       this._brAcc[4] -= n;
       while (n-- > 0) {
@@ -624,7 +632,7 @@ export class DragonFx {
         const gy = Math.max(1.0, mouth.y - Math.sin(pitch) * dd) + rand(0, 0.8);
         this._blob(
           mouth.x + Math.sin(y) * dd, gy, mouth.z + Math.cos(y) * dd, Math.sin(y) * rand(1, 4), rand(1.5, 4), Math.cos(y) * rand(1, 4),
-          rand(0.6, 1.0), rand(1.4, 2.0), rand(3.0, 4.2), rand(0.24, 0.34), 0, 1, 3,
+          rand(0.6, 1.0), rand(1.4, 2.0), rand(3.0, 4.2), rand(0.14, 0.2), 0, 1, 3,
         );
       }
     }
@@ -642,7 +650,7 @@ export class DragonFx {
     let n = Math.min(14, Math.floor(this._brAcc[slot]));
     this._brAcc[slot] -= n;
     while (n-- > 0) {
-      let off = bell ? (Math.random() + Math.random() - 1) * aMax * 1.15 : rand(aMin, aMax) * (Math.random() < 0.5 ? -1 : 1);
+      let off = bell ? (Math.random() + Math.random() - 1) * aMax : rand(aMin, aMax) * (Math.random() < 0.5 ? -1 : 1);
       if (off > aMax) off = aMax - Math.random() * 0.1;
       if (off < -aMax) off = -aMax + Math.random() * 0.1;
       const y = aim + off, pj = pitch + rand(-0.04, 0.05);
@@ -660,30 +668,47 @@ export class DragonFx {
 
   /** Liquid fire (breath look c): an arc that rains down onto the ground and spreads there as a carpet of flame. */
   _breathLiquid(dt, mouth, aim, pitch, R, HA) {
-    this._brAcc[1] += dt * 150;
+    // three jets (left, middle, right of the cone) of hot drops that arc down and rain onto the ground
+    this._brAcc[1] += dt * 165;
     let n = Math.min(12, Math.floor(this._brAcc[1]));
     this._brAcc[1] -= n;
-    const g = 18;
+    const g = 16, t = this._brT;
     while (n-- > 0) {
-      const off = (Math.random() + Math.random() - 1) * HA * 1.1, y = aim + Math.max(-HA, Math.min(HA, off));
-      const dl = R * rand(0.35, 1.0), tf = rand(0.42, 0.58);
+      const jet = (n % 3) - 1;
+      const sway = 0.12 * Math.sin(t * 2.3 + jet * 2.1);
+      const y = aim + Math.max(-HA, Math.min(HA, jet * HA * 0.62 + sway + rand(-0.04, 0.04)));
+      const dl = R * rand(0.5, 0.95), tf = rand(0.8, 0.95);
       const vh = dl / tf, vy = (1.0 - mouth.y + 0.5 * g * tf * tf) / tf;
       const vx = Math.sin(y) * vh, vz = Math.cos(y) * vh, back = Math.random() * dt;
-      this._blob(mouth.x + vx * back, mouth.y + vy * back, mouth.z + vz * back, vx, vy, vz, tf, rand(0.4, 0.55) * S, rand(0.9, 1.3) * S, rand(0.38, 0.5), 0.26, 0, -g);
+      this._blob(mouth.x + vx * back, mouth.y + vy * back, mouth.z + vz * back, vx, vy, vz, tf, rand(0.22, 0.3) * S, rand(0.3, 0.42) * S, rand(0.6, 0.75), 0.5, 0, -g);
     }
-    // the hot rod at the jaws before it breaks into drops
-    this._brStreams(dt, 0, 40, mouth, aim, pitch - 0.1, 0, 0.05, R * 0.25, R * 0.35, 0.2, 0.28, 2.0, 0.36, 0.8, 0.5, 0.15, -4);
-    // the carpet: where it lands it spreads and burns low over the ground
-    this._brAcc[2] += dt * 150;
+    // the rod at the jaws before it splits into the jets
+    this._brStreams(dt, 0, 50, mouth, aim, pitch - 0.1, 0, 0.05, R * 0.15, R * 0.25, 0.2, 0.28, 2.0, 0.32, 0.7, 0.5, 0.15, -4);
+    // the pool: where the jets land the fire lies low and flat and spreads, fed as long as it rains
+    this._brAcc[2] += dt * 170;
     n = Math.min(10, Math.floor(this._brAcc[2]));
     this._brAcc[2] -= n;
     while (n-- > 0) {
-      const off = rand(-HA, HA) * 0.95, y = aim + off, dd = R * Math.sqrt(rand(0.12, 1.0));
-      const sp = rand(0.5, 3);
+      const off = rand(-HA, HA) * 0.9, y = aim + off, dd = R * rand(0.45, 1.0);
+      const sp = rand(0.5, 2.5);
       this._blob(
-        mouth.x + Math.sin(y) * dd, rand(0.8, 1.0), mouth.z + Math.cos(y) * dd, Math.sin(y) * sp + rand(-1, 1), rand(1.5, 3.5), Math.cos(y) * sp + rand(-1, 1),
-        rand(0.5, 0.9), rand(1.0, 1.5), rand(1.7, 2.4), rand(0.36, 0.48), 0.04, 1, 2.5,
+        mouth.x + Math.sin(y) * dd, rand(0.75, 0.9), mouth.z + Math.cos(y) * dd, Math.sin(y) * sp + rand(-1.2, 1.2), rand(0.4, 1.2), Math.cos(y) * sp + rand(-1.2, 1.2),
+        rand(1.1, 1.9), rand(1.8, 2.4), rand(2.8, 3.6), rand(0.24, 0.3), 0.12, 1.4, 0.2,
       );
+    }
+    // drops splashing where the jets land: sparks thrown up off the pool
+    this._brAcc[11] += dt * 40;
+    n = Math.min(4, Math.floor(this._brAcc[11]));
+    this._brAcc[11] -= n;
+    while (n-- > 0) {
+      const jet = (n % 3) - 1, y = aim + jet * HA * 0.62 + rand(-0.08, 0.08), dd = R * rand(0.5, 0.95);
+      const o = this._rec(mouth.x + Math.sin(y) * dd, 0.5, mouth.z + Math.cos(y) * dd, rand(0.4, 0.8), rand(0.26, 0.4), 0.06, LAVA_DROPS);
+      o.vx = rand(-2.5, 2.5);
+      o.vy = rand(3, 7);
+      o.vz = rand(-2.5, 2.5);
+      o.gravity = -18;
+      this._col(LAVA_HOT, 1, LAVA_END, 1);
+      this._spawn(this.add, o);
     }
   }
 
@@ -741,7 +766,7 @@ export class DragonFx {
         this._blob(
           mouth.x + Math.sin(y) * dd, rand(0.8, 1.1), mouth.z + Math.cos(y) * dd,
           Math.sin(y) * fw + Math.cos(y) * lat, rand(1.5, 3.5), Math.cos(y) * fw - Math.sin(y) * lat,
-          rand(0.4, 0.7), rand(1.0, 1.4), rand(1.8, 2.4), rand(0.3, 0.4), 0, 1.5, 2,
+          rand(0.4, 0.7), rand(1.0, 1.4), rand(1.8, 2.4), rand(0.2, 0.28), 0, 1.5, 2,
         );
       }
     }
@@ -1035,9 +1060,9 @@ export class DragonFx {
     // the sound is pressure on the ground, not rings in the air: ragged crisp ripples running out
     // along the ground from under the head, one after the other, and the dust they lift (no fire)
     const s = Math.max(0.4, Math.min(1.6, strength));
-    const r1 = 10 * s * S;
-    this._ripple(x, z, 0.85, 1.2 * S, r1, 0.75, 0.62, 0.8, 0.3, 2.2);
-    this._ripple(x, z, 0.85, 1.0 * S, r1 * 0.82, 0.9, 0.45, 0.75, 0.32, 2.2);
+    const r1 = 8 * s * S;
+    this._ripple(x, z, 0.85, 1.2 * S, r1, 0.75, 0.48, 0.8, 0.3, 2.2, 0.42);
+    this._ripple(x, z, 0.85, 1.0 * S, r1 * 0.82, 0.9, 0.34, 0.75, 0.32, 2.2, 0.48);
     this._shock(x, z, 1.4 * S, r1 * 0.7, 0.7, 0.45 * s, 0, 0.05, 'b');
   }
 
