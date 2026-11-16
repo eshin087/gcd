@@ -1,6 +1,7 @@
 import { TELL } from '../../../combat/rules.js';
 import { K_FIRE, K_SMOKE, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 import { perPhase } from '../duelist/realise.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 
 // The Ash Disciple's move effects of the second pass (wave 2): BURNING GROUND. From phase 2 a beat
 // marked `burn` (moves.js) leaves a line of fire on the stones where it cut (TUNING.burn): a level cut
@@ -13,8 +14,8 @@ import { perPhase } from '../duelist/realise.js';
 // Drawn as heat in the fire field (STYLE.md "The fire field"): a low seam of fire along the stones and
 // short flames off it (the grass fire's own recipe: orange letters, red tongues), a few embers (glyph
 // particles one letter in size). The flames stay low (under his knees) so his blade and his flare read
-// over them. Cost at its peak: about 60 blobs alive a line (flames) + 20 a frame (the seam); the cap of
-// lines alive (9 in phase 3) holds it near 700 of the field's 6000.
+// over them. Cost at its peak: about 25 blobs alive a line (flames) + 20 a frame (the seam); the cap of
+// lines alive (9 in phase 3) holds it near 400 of the field's 6000. Look: `?burn=a|b` (lookSwitch).
 //
 // Its look jitter draws from its own stream (never fx.rnd / Math.random: gameplay reads those).
 
@@ -245,24 +246,31 @@ export class AshMoveFx {
     const fade = T.fade ?? 0.6;
     const k = Math.min(1, L.age / 0.12) * Math.min(1, (L.life - L.age) / fade);
     if (!(k > 0.02)) return;
+    // the look (`?burn=`, new: a is the default): a = the seam only, glowing, with embers and a little
+    // smoke off it (the shape of the ground to step off reads plainest); b = a thinner seam and a
+    // fringe of short, low tongues (under his knees). (Inside, 'b' names the seam and 'a' the tongues.)
+    const look = lookOf('burn', 'a') === 'b' ? 'a' : 'b';
     // the seam: a low line of fire along the stones (held: re-drawn every frame)
-    fx._line?.(L.ax, GROUND_Y, L.az, L.bx, GROUND_Y, L.bz, 0, L.w * 0.7, 0.2 * GROUND_GAIN * k, 0, K_FIRE, 0.2);
-    // flames: short, low tongues all along it (born 0.7 m up: lower, the field's depth fade eats them)
+    fx._line?.(L.ax, GROUND_Y, L.az, L.bx, GROUND_Y, L.bz, 0, L.w * (look === 'b' ? 0.85 : 0.6), (look === 'b' ? 0.24 : 0.18) * GROUND_GAIN * k, 0, K_FIRE, 0.2);
     const dx = L.bx - L.ax, dz = L.bz - L.az, l = L.len || 1, nx = -dz / l, nz = dx / l;
-    L.acc += dt * (T.flames ?? 26) * L.len * k;
+    L.acc += dt * (look === 'b' ? 6 : T.flames ?? 26) * L.len * k;
     let guard = 0;
     while (L.acc >= 1 && guard++ < 12) {
       L.acc -= 1;
       const u = this.lr(), s = (this.lr() - 0.5) * L.w, hot = this.lr();
       const x = L.ax + dx * u + nx * s, z = L.az + dz * u + nz * s;
-      fx._blob(x, 0.7 + this.lr() * 0.2, z, (this.lr() - 0.5) * 0.4, (0.8 + hot * 1.0) * (0.6 + 0.4 * k), (this.lr() - 0.5) * 0.4,
-        0.28 + this.lr() * 0.3, (0.8 + hot * 0.5) * (0.7 + 0.3 * k), 0.25, 0.44 + hot * 0.14, 0, K_FIRE, 1.2, 0);
+      if (look === 'a') {
+        // short tongues (born 0.7 m up: lower, the field's depth fade eats them), small and cool so
+        // they print as a fringe of red / orange strokes, not a wall
+        fx._blob(x, 0.7 + this.lr() * 0.1, z, (this.lr() - 0.5) * 0.3, (0.35 + hot * 0.5) * (0.6 + 0.4 * k), (this.lr() - 0.5) * 0.3,
+          0.18 + this.lr() * 0.16, (0.38 + hot * 0.22) * (0.7 + 0.3 * k), 0.12, 0.4 + hot * 0.1, 0, K_FIRE, 1.6, 0);
+      }
       // (a wisp of smoke now and then over the older fire)
-      if (hot < 0.1 && L.age > 1) fx._blob(x, 1.0, z, 0, 0.6, 0, 0.9, 0.5, 1.0, 0.3, 0, K_SMOKE, 0.6, 0);
+      if ((look === 'b' ? hot < 0.4 : hot < 0.08) && L.age > 0.8) fx._blob(x, 0.95, z, 0, 0.5, 0, 0.8, 0.4, 0.9, 0.28, 0, K_SMOKE, 0.6, 0);
     }
     if (L.acc > 6) L.acc = 0;
     // embers: a letter now and then, rising off it
-    L.emb += dt * 5 * k;
+    L.emb += dt * (look === 'b' ? 12 : 5) * k;
     if (L.emb >= 1 && fx.add) {
       L.emb -= 1;
       const u = this.lr();
