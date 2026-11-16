@@ -131,7 +131,7 @@ export const BREAK = Object.freeze({
    * throws per metre of its size (x quality). `shakeMax`: range pieces (the forest's trees) that may
    * shudder at once (their vertices are rewritten each frame; x quality; the rest only chip).
    */
-  wear: Object.freeze({ at: Object.freeze([0.82, 0.5, 0.22]), lean: 0.2, leanTime: 0.6, burn: 0.85, debris: 14, shakeMax: 10 }),
+  wear: Object.freeze({ at: Object.freeze([0.82, 0.5, 0.22]), lean: 0.32, leanTime: 0.6, burn: 0.85, debris: 14, shakeMax: 10 }),
   /**
    * The tree wall round the clearing (2026-11-16): every tree of it breaks, out to the forest's edge
    * (74 m). A tree whose base is beyond `from` m is the wall's: `hp` x the structure of a tree of its
