@@ -58,6 +58,16 @@ export const CONFIG = {
     portraitMaxFov: 68,
     portraitDistance: 1.2,
     portraitLead: 1.5,
+    // The letters follow the zoom (?zoomArt=a|b|c; render/pipeline.js, wyrmGlyphs.js zoomArtStep):
+    // past the default distance the art cell (the wyrm, prop art, the fire field) and the screen grid
+    // (trees, the bonfire) step down the font ladder so an object keeps about the letters it has at
+    // the default distance. `strength` per option: 0 = today's fixed letters, 1 = the letters
+    // shrink as the picture does, 0.5 = half of that (log). `hyst`: how far (log of the cell height)
+    // past the midpoint between two steps the wanted size must go before the font steps (a wheel
+    // notch or the fight's breathing camera must not flicker it). `minPitch`: the camera must look
+    // down at least this steeply (sine) for its distance to count (a Lab shot along the ground does
+    // not). Desktop only: a phone (cameraRig.mobile) keeps its letters.
+    zoomArt: { strength: { a: 0, b: 1, c: 0.5 }, hyst: 0.1, minPitch: 0.35 },
   },
 
   // Touch controls (src/ui/touch.js). Sizes in CSS px.

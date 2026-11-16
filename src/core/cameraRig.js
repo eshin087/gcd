@@ -232,6 +232,13 @@ export class CameraRig {
     }
     this.camera.lookAt(this._look);
     this.camera.updateMatrixWorld();
+    // for the letters that follow the zoom (pipeline.js, ?zoomArt): the distance the letters were
+    // picked for, and none on a phone (its letters are already the smallest)
+    const ud = this.camera.userData;
+    if (ud) {
+      ud.zoomRef = this.defaultDistance;
+      ud.zoomArtOff = this.mobile;
+    }
     this._stepKick(dt);
     this.trauma = Math.max(0, this.trauma - dt * 1.6);
     this._n = 0; // keep() requests last one frame
