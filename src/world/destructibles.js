@@ -1237,6 +1237,8 @@ export class Destructibles {
       this._free(b);
       this._showStub(b);
       this._crumble(b, 0, 0, false, true);
+      // the ground it burned on lies black (from above a burnt stretch of the wall reads as one)
+      this.world.scorch?.burnCircle?.(b.x, b.z, b.r + BREAK.burn.char, 0.75, 0.25);
       b.state = BROKEN;
       b.hp = 0;
       if (b.wrecks && b.mat === 'wood' && b.h >= 1.5) {

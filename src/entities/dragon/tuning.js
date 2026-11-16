@@ -73,7 +73,7 @@ export const TUNING = {
     // leaves off everywhere, boughs here and there far off (a flat falloff, a ragged front) and near it
     wind: {
       roar: [0.3, 32, 0], // a roar (x its strength: the wake 1, the nova 1.3, a flight's 0.6)
-      phaseRoar: [0.25, 58, 0, 1.0], // the phase roars (phase 3 x 1.5 / 1.3)
+      phaseRoar: [0.22, 58, 0, 1.0], // the phase roars (phase 3 x 1.5 / 1.3)
       shock: [0.35, 26, 0], // the roar's damaging shock ring
       takeoff: [0.4, 26, 0], landing: [0.5, 28, 0], downbeat: [0.16, 20, 26], // its wings (x the beat's strength)
       buffet: [0.4, 26, 0], // a wing buffet's downstroke, a wing rend

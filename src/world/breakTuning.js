@@ -92,12 +92,12 @@ export const BREAK = Object.freeze({
   thrown: Object.freeze({ gravity: 22, spin: 5.5, blast: 1.2, shake: 0.4 }),
   /** cover: a piece stops a projectile and pays for it */
   cover: Object.freeze({ minH: 1.1, bullet: 0.12, bolt: 1.5, stone: 0.7, crescent: 0.35 }),
-  /** burning wood: seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's.
+  /** burning wood (`char`: m round its trunk the ground lies black once it has burned through): seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's.
    *  `glow`: its light is a LOCAL glow (radius m, intensity; it was ~16 m and 2.6, a yellow flood that
    *  buried the fire on the ground the hero must read): a piece that catches within `share` m of one
    *  already lit shares that light (it is kept on for as long as either burns); at most `lights` at once
    *  (only 8 reach the shaders) */
-  burn: Object.freeze({ time: 7, pad: 1.0, light: [3.2, 1.1, 0.25], lights: 4, glow: Object.freeze({ radius: 5, intensity: 1.5, share: 8 }) }),
+  burn: Object.freeze({ char: 2.2, time: 7, pad: 1.0, light: [3.2, 1.1, 0.25], lights: 4, glow: Object.freeze({ radius: 5, intensity: 1.5, share: 8 }) }),
   /** the spatial grid every query walks (strike, sweep, stop, coverAt, ignite, nearest): cell size, m */
   grid: Object.freeze({ cell: 4 }),
   /**
@@ -148,7 +148,7 @@ export const BREAK = Object.freeze({
   // in the wall at once (x quality); `width` m either side of a ray that carries fire
   wall: Object.freeze({
     from: 32, hp: 1.15, out: 0.55, domino: 1.4, gens: 0,
-    fire: Object.freeze({ perSec: 0.17, bank: 2, maxBurning: 6, spreadPerSec: 0.08, spreadBank: 2, chance: 0.45, width: 1.2 }),
+    fire: Object.freeze({ perSec: 0.15, bank: 2, maxBurning: 6, spreadPerSec: 0.08, spreadBank: 2, chance: 0.45, width: 1.2 }),
   }),
   /**
    * Wind and shock on wood (destructibles.wind, 2026-11-16): a front rolls out at `speed` m/s; a tree
