@@ -9558,6 +9558,155 @@ async function scenarioMusic() {
   return G;
 }
 
+async function scenarioZoomArt() {
+  out('\n== scenario ZOOMART (?zoomArt: the letters follow the zoom; the cell per option, frame height and distance) ==');
+  const { Pipeline } = await imp('src/render/pipeline.js');
+  const { wyrmArtFont, wyrmArtLadder, zoomArtStep } = await imp('src/render/wyrmGlyphs.js');
+  const { ShedDigits } = await imp('src/render/shedDigits.js');
+  const G = build();
+  const { game } = G;
+  const U = game.U, cam = game.camera, Z = CONFIG.camera.zoomArt, P58 = CONFIG.camera.pitch;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true, _dpr: 1,
+    setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+    setPixelRatio(d) { this._dpr = d; }, getPixelRatio() { return this._dpr; }, setSize() {},
+  };
+  const pipe = new Pipeline(renderer, game.scene, game.fxScene, cam, U);
+  const fire = new FireField(U, { max: 64 });
+  pipe.registerFire(fire);
+  // the game camera's geometry at distance D, without the rig (its userData.zoomRatio cleared: the
+  // pipeline then measures the camera's own distance)
+  delete cam.userData.zoomRatio;
+  const at = (D) => {
+    cam.position.set(0, Math.sin(P58) * D, Math.cos(P58) * D);
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld();
+  };
+  // the step after the camera settles at D (a few frames: the decision is taken after each frame)
+  const settle = (D, n = 3) => { at(D); for (let i = 0; i < n; i++) pipe.updateZoomArt(); return pipe.artCell.toArray(); };
+  const size = (mode, H) => { pipe.setZoomArt(mode); pipe.setSize(Math.round((H * 16) / 9), H, 1); at(36); pipe.zoomStep = 0; pipe._applyZoomStep(0); };
+
+  assert(Z && Z.strength.a === 0 && Z.strength.b === 1 && Z.strength.c > 0 && Z.strength.c < 1 && Z.hyst > 0 && Z.hyst < 0.3,
+    `CONFIG.camera.zoomArt: strength a ${Z.strength.a} / b ${Z.strength.b} / c ${Z.strength.c}, hysteresis ${Z.hyst} (log)`);
+  at(36);
+  assert(Math.abs(pipe.zoomDistance() - 36) < 1e-6, `the camera's distance to the ground along its view: ${pipe.zoomDistance().toFixed(3)} m at the 36 m rig`);
+  cam.position.set(0, 2, 30);
+  cam.lookAt(0, 2, 0);
+  cam.updateMatrixWorld();
+  assert(pipe.zoomDistance() === 0, 'a camera looking along the ground does not count (0)');
+
+  // the cell per option, frame height and distance
+  const Ds = [24, 30, 36, 45, 54, 65];
+  const table = {};
+  for (const H of [720, 1080, 1440, 2160]) {
+    const base = wyrmArtFont(H).cell;
+    for (const mode of ['a', 'b', 'c']) {
+      size(mode, H);
+      const row = Ds.map((D) => settle(D)[1]);
+      table[`${H} ${mode}`] = row;
+      const bD = Ds.indexOf(36);
+      assert(row.slice(0, bD + 1).every((h) => h === base[1]), `${H}p ${mode}: at 24 - 36 m the frame's own cell (${base.join('x')})`);
+      assert(row.every((h, i) => i === 0 || h <= row[i - 1]), `${H}p ${mode}: the cell never grows as the camera pulls back (${row.join(' ')})`);
+      if (mode === 'a') assert(row.every((h) => h === base[1]) && pipe.zoomLadder.length === 1, `${H}p a: one font at every distance (today's)`);
+    }
+    const [a, b, c] = ['a', 'b', 'c'].map((m) => table[`${H} ${m}`]);
+    assert(b.every((h, i) => h <= c[i] && c[i] <= a[i]), `${H}p: b's cell <= c's <= a's at every distance`);
+    // b keeps the letters: at 54 m the cell is within one ladder step of 36/54 of the default
+    const want = (base[1] * 36) / 54, lad = wyrmArtLadder(H).map((f) => f.cell[1]);
+    const nearest = lad.reduce((m, h) => (Math.abs(Math.log(h / want)) < Math.abs(Math.log(m / want)) ? h : m), lad[0]);
+    assert(b[Ds.indexOf(54)] === nearest || b[Ds.indexOf(54)] === lad[lad.length - 1], `${H}p b at 54 m: cell height ${b[Ds.indexOf(54)]} px (wanted ${want.toFixed(1)}, nearest on the ladder ${nearest})`);
+  }
+  out(`   cell height px at ${Ds.join(' / ')} m:`);
+  for (const [k, row] of Object.entries(table)) out(`     ${k.padEnd(7)} ${row.join(' ')}`);
+
+  // hysteresis: find where b steps out at 1080p, then wobble the distance round it
+  size('b', 1080);
+  let Dout = 0;
+  for (let D = 36; D < 60 && !Dout; D += 0.05) { at(D); pipe.updateZoomArt(); if (pipe.zoomStep > 0) Dout = D; }
+  let Din = 0;
+  for (let D = Dout; D > 30 && !Din; D -= 0.05) { at(D); pipe.updateZoomArt(); if (pipe.zoomStep === 0) Din = D; }
+  assert(Dout > 37 && Din > 34 && Dout - Din > 1.5, `1080p b: the first step out at ${Dout.toFixed(2)} m, back in only at ${Din.toFixed(2)} m (a ${(Dout - Din).toFixed(2)} m band)`);
+  const mid = (Dout + Din) / 2, amp = (Dout - Din) * 0.45;
+  settle(Dout + 0.5);
+  const s0 = pipe.zoomStep;
+  let flips = 0;
+  for (let i = 0; i < 300; i++) { at(mid + amp * Math.sin(i * 0.37)); const k = pipe.zoomStep; pipe.updateZoomArt(); if (pipe.zoomStep !== k) flips++; }
+  assert(flips === 0 && pipe.zoomStep === s0, `a distance wobbling +-${amp.toFixed(2)} m round the threshold for 300 frames never flips the font (${flips} flips)`);
+  // the pure rule: no flip within the band, one step past it
+  const hs = [9, 8, 6];
+  assert(zoomArtStep(hs, 1, 1, 0) === 0 && zoomArtStep(hs, 3, 1, 0) === 2 && zoomArtStep(hs, NaN, 1, 1) === 0 && zoomArtStep(hs, 2, 0, 2) === 0 && zoomArtStep([], 2, 1, 0) === 0,
+    'zoomArtStep: 1x stays, 3x goes to the smallest, NaN / strength 0 go back to the default, an empty ladder is step 0');
+
+  // every reader of the cell sees a step in the same frame
+  game.pipeline = pipe;
+  const shed = new ShedDigits(game);
+  size('b', 1080);
+  const heat0 = fire.heatRT, tex0 = fire.heatRT.texture, alloc0 = fire.alloc.toArray().join('x');
+  at(65);
+  pipe.render();
+  const A = pipe.asciiMat.uniforms;
+  pipe._updateWyrmGrid();
+  const c = pipe.artCell;
+  assert(pipe.zoomStep > 0 && c.x === 4 && c.y === 6, `after a frame at 65 m the next frame is drawn in ${c.toArray().join('x')} cells (step ${pipe.zoomStep}, ${pipe.zoomStepMs?.toFixed(3)} ms)`);
+  assert(A.uArtCell.value === c && A.tArt.value === pipe.art.texture && A.uWyrmAtlas.value.w === pipe.art.total, 'the art pass: its cell is artCell itself, its atlas the step\'s');
+  const ink0 = pipe.zoomLadder[0].atlas.ink, inkS = pipe.art.ink;
+  assert(ink0 > 0.2 && inkS > ink0 && Math.abs(A.uArtInk.value - ink0 / inkS) < 1e-6 && A.uArtInk.value < 1,
+    `... and its letters' brightness x${A.uArtInk.value.toFixed(3)} (the 6x9 font covers ${(ink0 * 100).toFixed(1)} % of its cell, the 4x6 ${(inkS * 100).toFixed(1)} %): the tone holds`);
+  assert(shed.uniforms.uArtCell === A.uArtCell && shed.uniforms.tArt === A.tArt && shed.uniforms.uWyrmAtlas === A.uWyrmAtlas, 'shed digits share the art pass\'s uniform objects');
+  assert(U.uWyrmGrid?.value.x === c.x && U.uWyrmGrid.value.y === c.y, `the let-go grid (uWyrmGrid) counts the same cells (${U.uWyrmGrid?.value.x}x${U.uWyrmGrid?.value.y})`);
+  const fu = fire.printMat.uniforms;
+  assert(fu.uCell.value.x === c.x && fu.uCell.value.y === c.y && fu.tArt.value === pipe.art.texture && fire.cells.x === Math.ceil(pipe.width / c.x) && fire.cells.y === Math.ceil(pipe.height / c.y),
+    `the fire field prints in the same cells (${fire.cells.toArray().join('x')} cells)`);
+  assert(fire.heatRT === heat0 && fire.heatRT.texture === tex0 && fire.alloc.toArray().join('x') === alloc0 && fire.heatRT.viewport.z === fire.cells.x,
+    `... into the same targets (allocated ${alloc0} for the finest step; it draws ${fire.heatRT.viewport.z}x${fire.heatRT.viewport.w})`);
+  assert(fu.uScreen.value.x === fire.alloc.x * c.x && A.uFlame.value.x === fire.alloc.x, 'the print pass and the heat haze look the cells up in the allocated texture');
+  assert(A.uCell.value === pipe.cell && A.tGrid.value === pipe.grid.texture && pipe.cell.y < 12 && pipe.cell.y >= 9, `the screen grid steps too (${pipe.cell.toArray().join('x')})`);
+  const dragonCell = [game.pipeline.artCell.x, game.pipeline.artCell.y].join('x');
+  assert(dragonCell === '4x6', 'dragon.js / the duelists\' flare read pipeline.artCell: the same cell in the next update');
+  // back at 36 m: the default again
+  at(36);
+  pipe.render();
+  assert(pipe.zoomStep === 0 && c.x === 6 && c.y === 9 && fire.cells.x === Math.ceil(pipe.width / 6) && A.uCell.value.y === 12 && A.uArtInk.value === 1, 'back at 36 m: 6x9, the 7x12 grid and the letters\' own brightness again');
+
+  // option a and the phone: unchanged
+  size('a', 1080);
+  at(65);
+  pipe.render();
+  assert(pipe.zoomStep === 0 && c.x === 6 && c.y === 9 && fire.alloc.x === Math.ceil(pipe.width / 6), 'option a at 65 m: today\'s 6x9, the fire field allocated for it alone');
+  size('b', 393);
+  cam.userData.zoomArtOff = true;
+  const phone = settle(34)[1];
+  delete cam.userData.zoomArtOff;
+  assert(phone === 6 && pipe.zoomLadder[0].cell[1] === 6, 'the phone (852x393, its rig mobile) keeps its 4x6 letters at its farthest zoom');
+  // the camera rig: the player's own zoom counts, the game's framing does not
+  const rig = game.cameraRig, ud = rig.camera.userData, o = new THREE.Vector3();
+  rig.setMobile(true);
+  rig.update(1 / 60, o);
+  const mob = ud.zoomArtOff === true;
+  rig.setMobile(false);
+  rig.snap(o);
+  assert(mob && ud.zoomArtOff === false && Math.abs(ud.zoomRatio - 1) < 1e-9, `the rig tells the pipeline a phone keeps its letters; at the default zoom the ratio is ${ud.zoomRatio}`);
+  size('b', 1080);
+  rig.extraZoom = 8; // the boss framing pulls back 8 m
+  for (let i = 0; i < 120; i++) rig.update(1 / 60, o);
+  const framed = ud.zoomRatio, framedD = rig.distance;
+  assert(Math.abs(framed - 1) < 1e-9 && framedD > 43, `the boss framing (${framedD.toFixed(1)} m) leaves the ratio at ${framed}: the fight's look at the default zoom is today's`);
+  pipe.render();
+  assert(pipe.zoomStep === 0 && pipe.artCell.y === 9, `... and option b draws it in today's 6x9 (the camera ${pipe.zoomDistance().toFixed(1)} m out)`);
+  rig.zoom(7.2); // the wheel to its farthest (54 m)
+  const ratios = [];
+  for (let i = 0; i < 90; i++) { rig.update(1 / 60, o); ratios.push(ud.zoomRatio); }
+  assert(ratios.every((r, i) => i === 0 || r >= ratios[i - 1]) && Math.abs(ratios[89] - 1.5) < 0.01 && ratios[3] < 1.3, `the wheel to 54 m: the ratio eases like the distance (${ratios[3].toFixed(2)} after 4 frames, ${ratios[89].toFixed(3)} after 1.5 s)`);
+  pipe.render();
+  pipe.render();
+  assert(pipe.artCell.y === 6, `... and option b steps to the 4x6 letters (the camera ${pipe.zoomDistance().toFixed(1)} m out with the framing)`);
+  rig.extraZoom = 0;
+  rig.targetDistance = CONFIG.camera.distance;
+  rig.snap(o);
+  delete ud.zoomRatio;
+  return G;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -9565,6 +9714,7 @@ const SCENARIOS = {
   hero: scenarioHero,
   batch: scenarioBatch,
   seen: scenarioSeen,
+  zoomart: scenarioZoomArt,
   breath: scenarioBreath,
   parry: scenarioParry,
   block: scenarioBlock,

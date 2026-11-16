@@ -60,6 +60,9 @@ export class CameraRig {
     this.maxExtraZoom = Infinity;
     this.distance = c.distance;
     this.targetDistance = c.distance;
+    // the player's own zoom (the wheel / pinch, targetDistance) eased like the distance, without the
+    // framing, cinematics and punches the game adds on top: what the letters follow (?zoomArt)
+    this.wheelDistance = c.distance;
     /** The focus the camera looks at this frame (the damped follow focus + the keep-in-view pan). */
     this.focus = new THREE.Vector3();
     this.trauma = 0;
@@ -113,6 +116,7 @@ export class CameraRig {
     this.kickX = this.kickY = this.kickVX = this.kickVY = 0;
     this._n = 0;
     this.distance = this.targetDistance + this._extra();
+    this.wheelDistance = this.targetDistance;
     this.update(0, focus);
   }
 
@@ -201,6 +205,8 @@ export class CameraRig {
     b.y = damp(b.y, desiredFocus.y, c.followLambda, dt);
     b.z = damp(b.z, desiredFocus.z, c.followLambda, dt);
     this.distance = damp(this.distance, this.targetDistance + this._extra(), 4, dt);
+    this.wheelDistance = damp(this.wheelDistance, this.targetDistance, 4, dt);
+    if (!Number.isFinite(this.wheelDistance)) this.wheelDistance = this.targetDistance;
     this._fit(dt);
     this.focus.set(b.x + this.fitX, b.y, b.z + this.fitZ + this.lead);
     this.punchZ = damp(this.punchZ, 0, PUNCH.lambda, dt);
@@ -232,6 +238,15 @@ export class CameraRig {
     }
     this.camera.lookAt(this._look);
     this.camera.updateMatrixWorld();
+    // for the letters that follow the zoom (pipeline.js, ?zoomArt): how far the player has zoomed out
+    // from the default (the game's own framing does not count: the fight's look at the default zoom
+    // is the owner's pick, whatever the boss framing adds), and none on a phone (its letters are
+    // already the smallest)
+    const ud = this.camera.userData;
+    if (ud) {
+      ud.zoomRatio = this.wheelDistance / this.defaultDistance;
+      ud.zoomArtOff = this.mobile;
+    }
     this._stepKick(dt);
     this.trauma = Math.max(0, this.trauma - dt * 1.6);
     this._n = 0; // keep() requests last one frame
