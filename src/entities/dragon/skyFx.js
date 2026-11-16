@@ -145,7 +145,7 @@ function updateBolts(fx, s, dt) {
     const k = b.k;
     if (life) {
       // the head: cooler blobs tumbling round a small hot heart (never one white disc)
-      fx._blob(b.x, b.y, b.z, 0, 0, 0, life, 0.8 * k, 0.8 * k, 0.55, 0.55);
+      fx._blob(b.x, b.y, b.z, 0, 0, 0, life, 0.8 * k, 0.8 * k, 0.42, 0.42);
       for (let i = 0; i < 5; i++) {
         const a = b.age * 9 + b.seed + i * 1.257, r = 0.45 * k;
         fx._blob(b.x + Math.cos(a) * r - ux * i * 0.35, b.y + Math.sin(a * 1.3) * r - uy * i * 0.35, b.z + Math.sin(a) * r - uz * i * 0.35, 0, 0, 0, life, (1.3 - i * 0.1) * k, (1.3 - i * 0.1) * k, 0.3, 0.3);
@@ -160,7 +160,7 @@ function updateBolts(fx, s, dt) {
       fx._blob(
         b.x - ux * back + rand(-0.25, 0.25), b.y - uy * back + rand(-0.25, 0.25), b.z - uz * back + rand(-0.25, 0.25),
         rand(-0.8, 0.8), rand(0.5, 3), rand(-0.8, 0.8),
-        rand(0.45, 0.85), rand(0.8, 1.1) * k, rand(1.8, 2.6) * k, 0.3, 0, 1.2, 1.5,
+        rand(0.45, 0.85), rand(0.8, 1.1) * k, rand(1.8, 2.6) * k, 0.22, 0, 1.2, 1.5,
       );
     }
   }
@@ -189,7 +189,7 @@ export function skyPillar(fx, dt, mouth, k = 1) {
   n = Math.min(5, Math.floor(s.accCore));
   s.accCore -= n;
   while (n-- > 0) {
-    fx._blob(mouth.x + rand(-0.08, 0.08), mouth.y + 0.3, mouth.z + rand(-0.08, 0.08), rand(-0.3, 0.3), rand(44, 52), rand(-0.3, 0.3), rand(0.35, 0.55), 0.6, 1.2, 0.55, 0.1, 0.2, 0);
+    fx._blob(mouth.x + rand(-0.08, 0.08), mouth.y + 0.3, mouth.z + rand(-0.08, 0.08), rand(-0.3, 0.3), rand(44, 52), rand(-0.3, 0.3), rand(0.35, 0.55), 0.6, 1.2, 0.42, 0.08, 0.2, 0);
   }
   // spray off the jaws
   if (Math.random() < dt * 40) {
@@ -290,14 +290,14 @@ function updateDeck(fx, s, dt) {
     fx._blob(s.ray.x, s.ray.y, s.ray.z, rand(-1, 1), rand(-0.2, 0.3), rand(-1, 1), rand(2.4, 3.4), rand(4, 6), rand(6, 8), 0.55, 0.3, 0.2, 0, 1);
   }
   // fire rolling under it: cool (red strokes, orange digits), a few hotter knots
-  s.accFire += dt * 80 * k;
-  n = Math.min(10, Math.floor(s.accFire));
+  s.accFire += dt * 150 * k;
+  n = Math.min(16, Math.floor(s.accFire));
   s.accFire -= n;
   while (n-- > 0) {
-    if (!rayAt(fx, s, rand(-1.25, 1.25), rand(0.66, 1.1), H + rand(-1.5, 0.5))) continue;
+    if (!rayAt(fx, s, rand(-1.25, 1.25), rand(0.74, 1.1), H + rand(-1.5, 0.5))) continue;
     if (Math.hypot(s.ray.x - s.cx, s.ray.z - s.cz) > reach) continue;
     const hot = Math.random() < 0.15;
-    fx._blob(s.ray.x, s.ray.y, s.ray.z, rand(-1.5, 1.5), rand(-0.6, 0.4), rand(-1.5, 1.5), rand(1.2, 2.2), rand(2.4, 3.6), rand(3.6, 5), (hot ? 0.42 : 0.24) * (0.6 + 0.4 * k), 0, 0.3, 0);
+    fx._blob(s.ray.x, s.ray.y, s.ray.z, rand(-1.5, 1.5), rand(-0.6, 0.4), rand(-1.5, 1.5), rand(1.2, 2.2), rand(1.6, 2.6), rand(2.6, 3.8), (hot ? 0.36 : 0.19) * (0.6 + 0.4 * k), 0, 0.3, 0);
   }
   // rents of light: a seam tears open, a jagged line of hot blobs that flares and closes
   s.rentT -= dt;
@@ -336,10 +336,10 @@ function updateDeck(fx, s, dt) {
   }
   // the light of it over the clearing (one big warm flickering light, from above)
   if (s.light?.dead) s.light = null;
-  if (!s.light) s.light = fx._light({ x: s.cx, y: 18, z: s.cz, color: [1, 0.45, 0.14], intensity: 0, radius: 60, flicker: 0.35 });
+  if (!s.light) s.light = fx._light({ x: s.cx, y: 18, z: s.cz, color: [1, 0.32, 0.07], intensity: 0, radius: 45, flicker: 0.35 });
   if (s.light) {
     s.light.set?.(s.cx, 18, s.cz);
-    s.light.intensity = 2.6 * k;
+    s.light.intensity = 1.1 * k;
   }
 }
 
@@ -369,13 +369,13 @@ export function skyMeteor(fx, life, h, dt, x, y, z, vx, vy, vz, size = 1) {
   const vl = Math.hypot(vx, vy, vz) || 1;
   const ux = vx / vl, uy = vy / vl, uz = vz / vl;
   if (life) {
-    fx._blob(x, y, z, 0, 0, 0, life, 1.0 * s, 1.0 * s, 0.6, 0.6);
+    fx._blob(x, y, z, 0, 0, 0, life, 0.9 * s, 0.9 * s, 0.42, 0.42);
     for (let i = 0; i < 7; i++) {
       const a = h.t * 6.5 + h.seed + i * 0.898, r = (0.5 + 0.12 * (i % 3)) * s;
       const back = i * 0.3 * s;
       fx._blob(
         x + Math.cos(a) * r - ux * back, y + Math.sin(a * 1.7) * r * 0.8 - uy * back, z + Math.sin(a) * r - uz * back,
-        0, 0, 0, life, (1.6 - i * 0.08) * s, (1.6 - i * 0.08) * s, 0.3 - i * 0.015, 0.3 - i * 0.015,
+        0, 0, 0, life, (1.5 - i * 0.08) * s, (1.5 - i * 0.08) * s, 0.24 - i * 0.012, 0.24 - i * 0.012,
       );
     }
   }

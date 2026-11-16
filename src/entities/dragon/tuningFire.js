@@ -109,6 +109,7 @@ export const FIRE_ATTACKS = {
     label: 'Armageddon (meteor salvo)', tell: TELL.RED, phase: 2,
     windup: 1.4, cast: 1.6, recovery: 0.9, hush: 0.8,
     missiles: [12, 12, 16], missileEvery: 0.11, missileCone: 0.15, missileSpeed: 45, // rad half-cone, m/s
+    missileLean: 0.22, skyRoom: 9, // the bolts lean toward the camera (x speed); the camera keeps this many m above the jaws in view through the cast
     waves: [3, 3, 5], perWave: [8, 8, 10], // (P3 was 4 waves: more fire each phase) waveGap: 1.6, stagger: 0.12, // (P1: Lab only)
     warn: 1.5, warnLed: 1.2, ledEvery: 3, ledGap: 0.5, lead: 0.5, // s of heat warning; led: s of velocity lead
     fall: 0.9, fallHeight: 34, size: 1.3, // visible fall (s) from above the wyrm; drawn size x the old meteor
@@ -121,7 +122,7 @@ export const FIRE_ATTACKS = {
     // share of the windup it holds low and still, glaring, before it rears; `drop` = the share of the
     // recovery its forefeet take to come down (then the slam). c: the flight's own timings and height
     looks: {
-      a: { deckAt: 1.6, deckGrow: 0.8, menace: 0.22, drop: 0.38 },
+      a: { deckAt: 1.6, deckGrow: 0.8, menace: 0.22, drop: 0.38, cone: 0.32 }, // (cone: the salvo fans wider than missileCone: a dozen columns, not one)
       b: { deckAt: 0.35, deckGrow: 2.6, menace: 0.22, drop: 0.38 },
       c: { deckAt: 0.5, deckGrow: 1.2, windup: 0.9, rise: 0.9, alt: 10, descend: 0.75, recovery: 0.55, cone: 0.45 },
     },

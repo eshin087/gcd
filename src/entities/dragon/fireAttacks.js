@@ -1221,10 +1221,11 @@ const AIR_APOC = APOC_LOOK === 'c';
 
 function fireBolt(d, a) {
   const m = d.rig.pt.mouth;
-  const cone = AIR_APOC ? APOC.cone ?? 0.45 : MR.missileCone;
+  const cone = APOC.cone ?? MR.missileCone;
   const ang = Math.random() * Math.PI * 2, tilt = Math.random() * cone, sp = MR.missileSpeed;
-  // (a little back over the body, away from the camera side: the column climbs up the frame)
-  skyBolt(d.fx, m.x, m.y, m.z, Math.sin(tilt) * Math.cos(ang) * sp, Math.cos(tilt) * sp, Math.sin(tilt) * Math.sin(ang) * sp - 4, AIR_APOC ? 0.9 : 1);
+  // (leaning a little toward the camera (+z): the game camera looks north and down, so a column
+  // climbing straight up leaves the top of the frame at once; this one stays in view longer)
+  skyBolt(d.fx, m.x, m.y, m.z, Math.sin(tilt) * Math.cos(ang) * sp, Math.cos(tilt) * sp, Math.sin(tilt) * Math.sin(ang) * sp + MR.missileLean * sp, AIR_APOC ? 0.9 : 1);
   a.fired++;
   a.kick = 1;
   d.game.shake?.(0.07);
@@ -1312,6 +1313,11 @@ const meteorRain = {
   update(d, a, dt) {
     const pose = d.pose, pt = d.rig.pt, k = a.k;
     a.kick = Math.max(0, a.kick - dt * 8);
+    // the camera makes room above the jaws for the fire going up (cameraRig keep-in-view)
+    if ((a.phase === 'windup' && k > 0.5) || a.phase === 'cast' || (a.phase === 'recovery' && k < 0.5) || a.phase === 'rise') {
+      const m = pt.mouth;
+      d.game.cameraRig?.keep?.(m.x, m.y + MR.skyRoom, m.z, 2);
+    }
     if (AIR_APOC) return this.updateAir(d, a, dt);
     if (a.phase === 'windup') {
       this.rearUp(d, a, dt);
