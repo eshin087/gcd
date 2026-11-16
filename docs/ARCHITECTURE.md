@@ -1711,7 +1711,7 @@ wall `walls` [1, 1, 2] (the second from the hero's side, square to the first), e
   shell plunges, the wyrm crashes, and `hazards.cancel` takes back what that combo had not breathed
   or spat yet. Each part emits `dragon:spell {name: key, part, x, z}`.
 - **Armageddon** (`meteorRain`; 2026-11-15 rework): the performance and the sky come in three looks,
-  `skyFx.APOC_LOOK` from `?apoc=a|b|c` (read once at load; default `a`; the owner has not picked yet):
+  `skyFx.APOC_LOOK` from `?apoc=a|b|c` (read once at load; default `a`, the look the owner kept, 2026-11-16):
   `a` the salvo of columns from the ground, `b` one sustained pillar roared up, `c` cast from the air
   (its own `windup`, `rise`, `descend`, `recovery`, `alt`). `meteorRain.looks[k]` holds `deckAt`,
   `deckGrow`, `menace`, `drop`, `cone` per look. Through the cast it asks `game.cameraRig.keep(...)`
@@ -1744,9 +1744,10 @@ most of what the wyrm does, and a new effect should go through them.
   every stream the wyrm breathes (the breath, the fire snap through `meleeFx.snapFire`, the strafe and
   the combos' passes), shaped to reach R m within ±HA rad, at k × the breath's rate; the caller adds
   its own lights, smoke, sparks and scorch (`breathEmit` = `breathBody` + the breath's own).
-- **Looks the owner picks from** (read once from the URL; headless runs have no location): `?ring=a|b|c`
+- **Looks the owner picked from** (read once from the URL; headless runs have no location): `?ring=a|b|c`
   (`ringLook()` / `setRingLook(k)`) and `?breath=a|b|c` (`breathLook()` / `setBreathLook(k)`),
-  plus `?apoc=` above. `a` is the default of each; the pick is pending (ADR-119).
+  plus `?apoc=` above. `a` is the default of each and the look the owner kept for all three
+  (2026-11-16, ADR-119); `b` and `c` stay behind the switches and in the FXLOOKS scenario.
 
 **Bullets** (ADR-039; `src/entities/dragon/bullets.js` `class Bullets`, internal to the dragon
 module: `dragon.bullets`; rules in COMBAT.md "Bullets"): the pooled bullet field (360 records, 8

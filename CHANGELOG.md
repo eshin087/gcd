@@ -21,8 +21,8 @@ Forty-nine pieces of work since 0.4.0:
   trees by charging, sweeping its tail, landing and flying low, wreckage stays on the ground for the
   rest of the fight, and fire spreads from tree to tree. *Removed:* the blue homing wisps, and the
   spinning in the Scouring breath (now fire that crawls along the ground in tongues) and the Ember
-  torrent. `?ring=`, `?breath=` and `?apoc=` (a, b or c) show two other looks each for the shock
-  ring, the fire breath and the apocalypse.
+  torrent. The shock ring, the fire breath and the apocalypse are the owner's pick of three looks
+  each (a for all three); `?ring=`, `?breath=` and `?apoc=` (b or c) show the two turned down.
 - **Red, blue and black flashes: dodge, parry, and a charged blow** (2026-11-15, ADR-118). *Changed:*
   a boss's dodge-only attack no longer glows red while it winds up and no longer draws a red ring on
   the floor. Its only sign is **a red flash**: a wide streak of light through the weapon, across the

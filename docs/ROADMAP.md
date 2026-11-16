@@ -188,7 +188,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Terrain moves in 1.3 - 1.8 s with a whole-body grab and no landing mark
 - [x] 183 breakables; the wyrm's body wrecks what it meets; wreckage stays; fire spreads within limits
 - [ ] Follow-ups:
-  - [ ] The owner picks the look of the shock ring, the fire breath and the apocalypse (`?ring=`, `?breath=`, `?apoc=`)
+  - [x] The owner picks the look of the shock ring, the fire breath and the apocalypse: `a` for all three, 2026-11-16 (the rolling front of fire, the torrent, the salvo; b and c stay behind `?ring=`, `?breath=`, `?apoc=`)
   - [ ] A human playtest: the pace per phase, the fairness of layered fire, how fast the clearing wrecks
   - [ ] Phase 1 and phase 3 under their cue-rate targets on some seeds; the wing sweep's misses in three strings
   - [ ] The grabbed tree read from the side; white knots in shell and fireball impacts and in the torrent breath

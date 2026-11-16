@@ -3345,7 +3345,7 @@ ADR-092).
      scorch, echoes) behind every ring; one breath (`fx.breathBody`) behind every stream of fire the
      wyrm makes; a sky that answers the apocalypse; no stacked white discs. Three looks each for the
      ring, the breath and the apocalypse behind `?ring=`, `?breath=`, `?apoc=` (the owner's pick is
-     recorded below when made).
+     recorded below).
   7. **Terrain throws are fast and unmarked:** 1.3 - 1.6 s from tell to blow (firebrand 1.8 s), a
      whole-body grab (a foreleg pins, a tug, the tear, a whip), nothing drawn on the ground; the flare
      is drawn on the flying piece 0.35 s before it lands and a roll at it always dodges. **This
@@ -3385,3 +3385,13 @@ ADR-092).
   beside it; shell and fireball impacts still show bright white knots; the breath's torrent look
   shows two or three hot knots; the wreckage left depends on how the fight went; the render time was
   measured on a desktop GPU at the phone's size (about 5 % over main), not on the phone.
+- **The owner's pick of the three looks (2026-11-16):** "Keep a for all", from one sheet each on the
+  final build (the roar at four moments; the breath at ignition, full stream and just after, alone
+  with the old breath above it and again in play with the grass catching; the apocalypse at the
+  rear-up, the cast's peak, the sky answering and the first impacts). So the shock ring is the
+  rolling front of fire with dust behind it, the breath is the torrent, the apocalypse is the salvo
+  of columns from the ground. These were already the defaults: nothing in the game changed with the
+  pick. The looks turned down (ring b: crisp pressure strokes, c: the ground heaves; breath b:
+  lashing tongues, c: liquid fire; apocalypse b: one pillar, c: cast from the air) stay behind the
+  switches and in the FXLOOKS scenario, as the flare's did (ADR-118); they can be removed later.
+  The white knots in breath look a are still open.

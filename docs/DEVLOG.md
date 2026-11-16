@@ -81,8 +81,11 @@ effects and of a rampage through the clearing. Numbers: ADR-119 "Measured".
 - The phone: render time measured on a desktop GPU at 852 x 393 (0.60 ms against main's 0.57 ms);
   the iPhone itself is the owner's to check.
 
-**Next:** the owner picks the three looks and plays the preview; then the same pass for the Ash
-Disciple and the Starless Lord.
+**The owner's pick (2026-11-16, on the pull request's sheets):** "Keep a for all": the rolling front of
+fire for the shock ring, the torrent for the breath, the salvo for the apocalypse. They were the
+defaults, so the game did not change; b and c stay behind the switches (ADR-119 has the note).
+
+**Next:** the owner plays the preview; then the same pass for the Ash Disciple and the Starless Lord.
 
 ---
 

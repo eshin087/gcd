@@ -584,7 +584,8 @@ section), `player/fx.js` (the plunge).
   (the great one 2.4×) and fall on a slant from the sky above the wyrm. **Three looks** behind
   `?apoc=a|b|c` (`skyFx.APOC_LOOK`): a the salvo of columns (the default), b one sustained pillar
   roared straight up with the ceiling spreading from its top (`skyPillar`), c it takes off and tears
-  the salvo up from the air in a wider fan, the deck right over it. **The owner has not picked yet.**
+  the salvo up from the air in a wider fan, the deck right over it. **The owner kept a** (2026-11-16;
+  b and c stay behind the switch).
 - **Lava pillars:** before the eruption the ground cracks glow and spit sparks (`~ ^ ,`), faster as
   it nears; then a column of molten `# % @ & ! |`, droplets (`. o •`) and a `~` splash ring.
 - **Flames** on strips, rings and walls are heat in the fire field: a bed of blobs that overlap into
@@ -667,7 +668,7 @@ engines in `dragon/fx.js` draw them all, in the fire field, and new effects go t
 - **Three looks of the ring** behind `?ring=a|b|c`: a a rolling wall of fire with a wall of dust behind
   it (the default); b a pressure front written in crisp strokes on the ground, a dust skirt and echo
   ripples; c the ground heaves: a ring of thrown earth, clods and stones running out, no fire but
-  where it started. **The owner has not picked yet.**
+  where it started. **The owner kept a** (2026-11-16; b and c stay behind the switch).
 - **One breath** (`breathBody`) for every fire the wyrm breathes: the breath, the fire snap of its
   strings, the strafe and the flying combos' passes (only the reach, the cone and the rate differ). It
   fills its hit cone: a rod of small hot blobs at the jaws (the white heart, kept small), a body that
@@ -677,7 +678,8 @@ engines in `dragon/fx.js` draw them all, in the fire field, and new effects go t
   beads. While it burns, the grass fire under the cone is hushed (`world.fire.hush`): the two fires
   added up into white knots. **Three looks** behind `?breath=a|b|c`: a a torrent (the default), b
   five lashing tongues that whip across the cone, c liquid fire: an arc that rains down onto the
-  ground and spreads there as a carpet of flame. **The owner has not picked yet.**
+  ground and spreads there as a carpet of flame. **The owner kept a** (2026-11-16; b and c stay
+  behind the switch).
 - **The sky** of the apocalypse (`skyFx.js`): the columns, the burning deck and the meteors (above,
   *Fire, hazards and the plunge* → Armageddon). Like the eclipse of a charged blow, it is drawn by
   what is lit, never by a flat overlay.

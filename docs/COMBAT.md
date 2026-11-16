@@ -721,7 +721,7 @@ on 124 of 174; the tail slam's raised arch barely reads.
   contact ticks, never while rolling: walk out). 1.2 s after the last wave one great meteor falls on
   you (r 7, a 2 s warning). **Three looks** of the move exist behind `?apoc=a|b|c` (a: the salvo of
   columns from the ground, the default; b: one sustained pillar roared up; c: cast from the air, out of
-  reach); **the owner has not picked yet**. **Fire eruptions** (lava pillars in a line toward you; in
+  reach); **the owner kept `a`** (2026-11-16; b and c stay behind the switch). **Fire eruptions** (lava pillars in a line toward you; in
   phase 3 they may chase you instead; from phase 2 every pillar leaves a burning pool, r 1.9 m, for
   [–, 2.2, 3.2] s: 3 per 0.25 s, blockable, never while rolling), **Flame ring** (expands from the
   wyrm: roll through it or be beyond 20 m; **[1, 2, 3] rings by phase, one behind the other 0.95 s
