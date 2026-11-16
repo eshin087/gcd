@@ -12,6 +12,7 @@ import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, STREAKS,
 import { TUNING } from './tuning.js';
 import { LordFx } from './fx.js';
 import { LordTerrain } from './terrain.js';
+import { LINKS } from './links.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
 // crater of the Obsidian Throne, who fills the boss slot of the Starless level. A duelist (duelist/duelist.js:
@@ -809,5 +810,11 @@ export class StarlessLord extends Duelist {
     this.yaw = Math.atan2(s.p.x - this.position.x, s.p.z - this.position.z);
     this.anim.teleported?.();
     this.fx.blinkTrail(x0, z0, this.position.x, this.position.z);
+  }
+
+  // ---------------------------------------------------------------- the second pass (core)
+  /** His combo links (links.js; duelist/brain.js reads `d.LINKS`). */
+  get LINKS() {
+    return LINKS;
   }
 }

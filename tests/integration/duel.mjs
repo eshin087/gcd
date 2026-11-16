@@ -1205,6 +1205,190 @@ async function scenarioFlow() {
   return G;
 }
 
+// ================================================================== scenario: pace (the director's meter)
+// A god-mode defender that never attacks, driven by combat:flash (his thrown things send no tell):
+// the guard held through a normal / blue blow, a roll 0.28 s before a red / black one (out of a
+// hazard's ring: away from its centre). The hero roams between standoffs (2.5 / 5 / 9 m, a new one
+// every 4 s), on the REAL courtyard (the terrain moves are in). Per seed and per phase (every phase
+// the kit has), ABYSS_PSECS s each (default 120), seeds ABYSS_PSEEDS (default 4242,7,99): cues a
+// minute (combat:flash from 'dragon' or 'world'), the longest gap between cues (a black blow's charge
+// counts as activity), the mix by category, the moves chained (started straight out of another, no
+// footwork between) and the longest chain, conflicts (two flashes under 0.3 s apart needing
+// different answers, from different attacks; same attack: "inner"), the share of time something of
+// his is live on the floor, the blade holds and strike delays the fairness guard made. With a
+// `pressure` block in tuning.js it asserts pressure.meter; without one it only measures.
+function paceDefender(G) {
+  const pend = [];
+  const stats = { flashes: 0, rolls: 0, guards: 0 };
+  let guardUntil = -1;
+  const leadOf = (src) => (src === 'world' ? 0.3 : TUNING.flashLead);
+  return {
+    stats,
+    onEvent(n, e) {
+      if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
+      stats.flashes++;
+      pend.push({ tell: e.tell, at: G.game.time + leadOf(e.source), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false });
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.5) pend.splice(i, 1);
+      let rolled = false;
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - t - DT;
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK) {
+          if (left <= 0.28) {
+            e.done = true;
+            input.up(1);
+            guardUntil = -1;
+            const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
+            const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: -dz / l, y: -dx / l };
+            input.tap('Space');
+            rolled = true;
+            stats.rolls++;
+          }
+        } else {
+          e.done = true;
+          guardUntil = Math.max(guardUntil, e.at + 0.2);
+          stats.guards++;
+        }
+      }
+      if (guardUntil > t) input.press(1);
+      else if (guardUntil > 0) { guardUntil = -1; input.up(1); }
+      return rolled;
+    },
+  };
+}
+
+async function scenarioPace() {
+  out('\n== scenario PACE (a steady defender in god mode vs his AI, per phase: cues, gaps, mix, chains, conflicts) ==');
+  const DIR = await imp('src/entities/enemies/duelist/director.js');
+  const P = TUNING.pressure ?? null;
+  const SECS = Number(process.env.ABYSS_PSECS ?? 120);
+  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
+  const CATS = DIR.CATEGORIES;
+  const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
+  const skip = (name) => !MOVES[name] || MOVES[name].transition || MOVES[name].counter;
+  const rows = [];
+  let lastG = null, NPH = 0;
+  for (const seed of SEEDS) {
+    for (let ph = 1; ; ph++) {
+      const G = (lastG = build({ seed, real: true }));
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      NPH = d.kit.maxPhase ?? TUNING.phaseAt.length;
+      if (ph > NPH) break;
+      duel(G, { dist: 3, ai: true });
+      p.debug.god = true;
+      p.debug.noRiposte = true;
+      G.defend = paceDefender(G);
+      // into the phase through its real transition(s)
+      for (let n = 2; n <= ph; n++) {
+        d.brain.forcePhase(n);
+        run(G, 8, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); }, () => d.phase === n && d.mode !== 'act');
+      }
+      Math.random = mulberry32(seed * 7 + ph);
+      const flashes = [], acts = [], cats = {}, busyT = [];
+      const modeT = {}, spent = {};
+      let hurt = 0, frames = 0, busy = 0, chained = 0, chainLen = 0, chainMax = 0, prevAct = null, prevMode = d.mode;
+      const s0 = { ...(d.brain.stats ?? {}) };
+      const dbg = [];
+      G.watch = (n, e) => {
+        if (process.env.ABYSS_PDBG && /dragon:windup|combat:flash|combat:tell|dragon:parried|dragon:guard/.test(n)) dbg.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''} ${e?.tell ?? ''}${n === 'combat:tell' ? ` in ${e.impactIn?.toFixed(2)}` : ''} [${d.mode} ${d.brain.act?.name ?? ''} h${d.brain.stats?.holds} d${d.brain.stats?.delays}]`]);
+        if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashes.push([game.time, e.tell, e.attack, e.source]);
+        if (n === 'combat:charge' && Number.isFinite(e?.dur)) for (let k = 0; k < e.dur; k += 0.1) busyT.push(game.time + k);
+        if (n === 'dragon:windup' && !skip(e?.name)) { acts.push([game.time, e.name]); const c = DIR.categoryOf(MOVES[e.name]); cats[c] = (cats[c] || 0) + 1; }
+      };
+      const roam = mulberry32(seed * 31 + ph), goal = { r: 2.5, a: 0, until: -1 };
+      const t0 = game.time;
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        const rolled = G.defend.act();
+        if (game.time > goal.until) {
+          goal.r = [2.5, 5, 9][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+          goal.until = game.time + 4;
+        }
+        if (!rolled && p.state !== 'roll') {
+          const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+          const k = Math.hypot(gx, gz) > 11 ? 11 / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 0.6 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        game.mouseGround.set(d.position.x, 0, d.position.z);
+        G.tick(DT);
+        if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+        frames++;
+        { const k = d.mode === 'react' ? `react:${d.brain.react?.kind}` : d.mode === 'act' ? (d.brain.act && d.brain.act.t >= d.brain.act.recoveryStart ? 'act:recovery' : 'act') : d.mode === 'foot' ? (Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z) > TUNING.move.band[1] + 0.3 ? 'foot:closing' : 'foot') : d.mode; modeT[k] = (modeT[k] || 0) + game.dt; if (d.mode === 'act' && d.brain.act) spent[d.brain.act.name] = (spent[d.brain.act.name] || 0) + game.dt; }
+        // chained: a move that starts straight out of another (no footwork, no reaction between)
+        const a = d.brain.act;
+        if (d.mode === 'act' && a && a !== prevAct && !a.def.transition && !a.def.counter) {
+          if (prevMode === 'act' && prevAct) { chained++; chainLen++; chainMax = Math.max(chainMax, chainLen); } else chainLen = 0;
+        }
+        if (d.mode !== 'act') chainLen = 0;
+        prevAct = d.mode === 'act' ? a : null;
+        prevMode = d.mode;
+        if (d.fx.crescentsAlive || d.terrain?.busy) busy++;
+      }
+      G.watch = null;
+      G.defend = null;
+      const T = game.time - t0;
+      hurt = G.hits.filter((h) => h.t > t0 && h.r === RESULT.HIT).length;
+      const ts = [t0, ...flashes.map((f) => f[0]), ...busyT.filter((x) => x > t0 && x < t0 + T), t0 + T].sort((x, y) => x - y);
+      let gapMax = 0, gapAt = '';
+      for (let i = 1; i < ts.length; i++) {
+        const g = ts[i] - ts[i - 1];
+        if (g > gapMax) { gapMax = g; gapAt = `${(ts[i - 1] - t0).toFixed(0)} s: ${acts.filter((w) => w[0] > ts[i - 1] - 0.5 && w[0] < ts[i]).map((w) => w[1]).join(', ') || 'no move'}`; }
+      }
+      let conflicts = 0, inner = 0;
+      const conflictAt = [], innerAt = new Set();
+      for (let i = 0; i < flashes.length; i++) {
+        for (let j = i + 1; j < flashes.length && flashes[j][0] - flashes[i][0] < 0.3; j++) {
+          if (answer(flashes[i][1]) === answer(flashes[j][1])) continue;
+          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.add(flashes[i][2]); } else {
+            conflicts++;
+            conflictAt.push(`${flashes[i][2]}/${flashes[j][2]} @${(flashes[i][0] - t0).toFixed(1)}`);
+            // ABYSS_PDBG=1: what happened round each conflict
+            if (process.env.ABYSS_PDBG) out(`      CONFLICT P${ph} ${(flashes[i][0] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > flashes[i][0] - 2.5 && x[0] < flashes[j][0] + 0.4).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
+          }
+        }
+      }
+      const st = d.brain.stats ?? {};
+      const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
+      rows.push({ seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, chained, chainMax, conflicts, conflictAt, inner, innerAt: [...innerAt], busy: busy / frames, holds: dlt('holds'), feints: dlt('feints'), delays: dlt('delays'), links: dlt('links'), cuts: dlt('cuts'), rests: dlt('rests'), hurt, modeT });
+      // ABYSS_PATT=1: where the phase's time went, move by move (s in it, picks, its cues, cues a second)
+      if (process.env.ABYSS_PATT) {
+        const fl = {}, pk = {};
+        for (const f of flashes) fl[f[2]] = (fl[f[2]] || 0) + 1;
+        for (const w of acts) pk[w[1]] = (pk[w[1]] || 0) + 1;
+        out(`      P${ph} seed ${seed}: ${Object.entries(spent).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v.toFixed(0)}s/${pk[k] ?? 0}x/${fl[k] ?? 0}c (${((fl[k] ?? 0) / v).toFixed(2)})`).join(' · ')}`);
+      }
+    }
+  }
+  out(`   ${SECS} s per phase, seeds ${SEEDS.join(', ')} · cues/min · longest gap (s) · moves · chained · longest chain · links · cuts · rests · conflicts · inner · field busy % · holds / feints · delays · hits taken · category shares %`);
+  out(`   seed ph cue/min gapMax moves chain cMax links cuts rest clash inner busy% hold/f delay hurt  ${CATS.map((c) => c.slice(0, 7).padStart(8)).join('')}`);
+  for (const r of rows) {
+    out(`   ${String(r.seed).padStart(4)}  ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.chained).padStart(5)} ${String(r.chainMax).padStart(4)} ${String(r.links).padStart(5)} ${String(r.cuts).padStart(4)} ${String(r.rests).padStart(4)} ${String(r.conflicts).padStart(5)} ${String(r.inner).padStart(5)} ${(r.busy * 100).toFixed(0).padStart(5)} ${`${r.holds}/${r.feints}`.padStart(5)} ${String(r.delays).padStart(5)} ${String(r.hurt).padStart(4)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / (r.picks || 1)).toFixed(0).padStart(8)).join('')}`);
+    out(`         time: ${Object.entries(r.modeT).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${((v * 100) / r.T).toFixed(0)}%`).join(' · ')}`);
+    out(`         longest gap at ${r.gapAt}${r.conflicts ? ` · CONFLICTS ${r.conflictAt.slice(0, 6).join(' · ')}` : ''}${r.inner ? ` · inner: ${r.innerAt.join(', ')}` : ''}`);
+  }
+  const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
+  for (let ph = 1; ph <= NPH; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s (mean ${mean(ph, 'gapMax').toFixed(2)}) · ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)}`);
+  if (!P?.meter) { out('   (no TUNING.pressure.meter: measured only, nothing asserted)'); return lastG; }
+  const A = P.meter;
+  for (const seed of SEEDS) {
+    const r = rows.filter((x) => x.seed === seed).sort((x, y) => x.ph - y.ph);
+    for (let i = 1; i < r.length; i++) assert(r[i].perMin >= r[i - 1].perMin * pp(A.ramp, r[i].ph), `seed ${seed}: P${r[i].ph} at least x${pp(A.ramp, r[i].ph)} P${r[i - 1].ph}'s cues a minute (${r[i - 1].perMin.toFixed(1)} → ${r[i].perMin.toFixed(1)} cues/min)`);
+    for (const x of r) {
+      assert(x.perMin >= pp(A.minRate, x.ph), `seed ${seed} P${x.ph}: ${x.perMin.toFixed(1)} cues a minute >= ${pp(A.minRate, x.ph)}`);
+      assert(x.gapMax <= pp(A.maxGap, x.ph), `seed ${seed} P${x.ph}: longest gap between cues ${x.gapMax.toFixed(2)} s <= ${pp(A.maxGap, x.ph)} s (${x.gapAt})`);
+      assert(x.conflicts === 0, `seed ${seed} P${x.ph}: no two cues of different sources needing different answers within 0.3 s (${x.conflicts}: ${x.conflictAt.slice(0, 4).join(' · ')})`);
+    }
+  }
+  return lastG;
+}
+
 // ================================================================== scenario: win
 async function scenarioWin() {
   out('\n== scenario WIN (a fencing bot in god mode: parries, rolls, cuts in his openings) ==');
@@ -2635,6 +2819,7 @@ const SCENARIOS = {
   phase: scenarioPhase,
   flow: scenarioFlow,
   win: scenarioWin,
+  pace: scenarioPace,
   cutfx: scenarioCutFx,
 };
 const runs = [];

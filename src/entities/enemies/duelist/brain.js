@@ -3,6 +3,50 @@ import { TELL, TELL_STYLE, RESULT, DEFENSE, dodgeOnly, isFlare } from '../../../
 import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
 import { DUEL_WORLD } from './worldTuning.js';
+import { CueLedger, throwsAt } from './ledger.js';
+import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsable } from './director.js';
+
+// ---------------------------------------------------------------------------------------------------
+// THE SECOND PASS: the director, the links, the cue ledger and the fairness guard. The API other
+// modules code against (all on `d.brain`):
+//
+//   brain.expect(timeFromNow, tell, source) → handle | null
+//       Something of his (a thing that flies, falls or lingers) will land on the hero `timeFromNow`
+//       s from now, needing the answer `tell` asks (normal / blue: a guard; red / black: a dodge).
+//       `source`: its attack name. The handle: `retime(timeFromNow)`, `cancel()`, `alive`, `left`;
+//       it expires by itself 0.3 s after its impact. Call it as the thing is made (and retime it if
+//       its arrival changes), so the director and the fairness guard see it before its cue. What
+//       flies in the existing pools (fx.crescents, fx.shots, fx.strikes, the Starless Sky, both
+//       terrain objects' pieces / rings / marks) and the world's felled pieces are seen without it.
+//         const h = d.brain.expect(flight, TELL.NORMAL, 'emberFan');   // a projectile
+//         ... h.retime(newFlight); on a parry / a fizzle: h.cancel();
+//         const m = d.brain.expect(burnAt - now, TELL.RED, 'burningLine'); // a lingering mark
+//   brain.fairDelay(timeFromNow, tell, max = pressure.guard.maxDelay) → s
+//       For a strike that is CALLED (its time is his to choose): how long to wait so it lands clear
+//       (>= pressure.guard.sep + margin s) of every known impact needing the other answer, the
+//       running move's beats included: 0 = now is clear, -1 = no wait up to `max` clears it (call it
+//       later or not at all). Count a delay you made with brain.stats.delays++.
+//   brain.stats  { picks, links, chains, cuts, rests, holds, holdTime, feints, delays, fizzles, floors, seeks }
+//       picks: AI picks · links: moves started from a LINKS entry · chains: moves started by the old
+//       flow roll (`chain`) · cuts: of those, started before the recovery's end (`cut`) · rests:
+//       breathers after pressure.chainDepth moves in a row · holds / holdTime: blade blows held at
+//       the cock by the fairness guard (s in all) · feints: blows it could not clear by a hold, not
+//       thrown (a feint: no glint, no hit) · delays: called strikes / torn stones moved later (or faded) ·
+//       fizzles: things in flight that gave way to a falling piece of the world · floors:
+//       picks a floor forced · seeks: footwork sent to another range for an absent category.
+//   brain.ledger  the CueLedger (ledger.js): conflict / clearShift / pending queries.
+//
+// LINKS (kit.LINKS or the actor's `LINKS`, from <boss>/links.js):
+//   { from: [ { to, when, chance, force, band, cut }, ... ] }   the first whose `when` holds (any /
+//   near / mid / far / front / side / behind / away / guarding: director.js whenHolds), whose
+//   `chance` roll passes (a number or one per phase) and whose target is usable (phase, weight,
+//   cooldown unless `force: true`, its band unless `band: false`) starts with no footwork between,
+//   at `cut` of the recovery (default pressure.linkCut: the first part stays the punish window).
+//   Only a move that ended on its own links (a recoil, a stagger, a flurry or a counter took it).
+//   pressure.chainDepth moves in a row at most, then pressure.chainRest of footwork.
+//
+// A kit without TUNING.pressure picks, links and paces exactly as before (the ledger only listens).
+// ---------------------------------------------------------------------------------------------------
 
 const FLOOR = !!TELL_STYLE.red.floor; // a red area rings the floor through its windup (rules.js: no)
 
@@ -26,10 +70,17 @@ const FLOOR = !!TELL_STYLE.red.floor; // a red area rings the floor through its 
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const ease = (u) => u * u * (3 - 2 * u);
-/** The windup fraction u (0..1, 1..2 in the active frames) of beat b at move time t (holds included). */
+/** The windup fraction u (0..1, 1..2 in the active frames) of beat b at move time t (holds included;
+ *  a fairness hold, `hf` / `hl`: u stands still through it, as in an authored hold). */
 function uAt(b, t) {
-  const W = b.W, H = b.H, cock = b.def.cock ?? 0.8, s = t - b.start;
-  if (t >= b.impact) return 1 + clamp((t - b.impact) / Math.max(1e-4, b.A), 0, 1);
+  const W = b.W, H = b.H, cock = b.def.cock ?? 0.8;
+  let impact = b.impact;
+  if (b.hl > 0) {
+    t -= clamp(t - b.hf, 0, b.hl);
+    impact -= b.hl;
+  }
+  const s = t - b.start;
+  if (t >= impact) return 1 + clamp((t - impact) / Math.max(1e-4, b.A), 0, 1);
   if (s <= cock * W) return clamp(s / Math.max(1e-4, W), 0, 1);
   if (s <= cock * W + H) return cock;
   return clamp(cock + (s - cock * W - H) / Math.max(1e-4, W), 0, 1);
@@ -80,10 +131,30 @@ export class DuelBrain {
     this.open = new Set([...OPEN, ...(K.OPEN ?? [])]);
     this.aiEnabled = true;
     this._ld = { dx: 0, dz: 0, dist: 0, ang: 0 };
+    /** the impacts he knows are coming (ledger.js) */
+    this.ledger = new CueLedger(this);
     this.reset();
   }
 
+  /** The boss's pressure block (TUNING.pressure), or null: the director, the links' depth and the
+   *  fairness guard are off without it. */
+  get P() {
+    return this.T.pressure ?? null;
+  }
+
   reset() {
+    this.clock = 0;
+    this.chainN = 0; // moves in a row with no footwork between (links and the flow)
+    this.catRun = 0;
+    this.lastCat = null;
+    this.catSeen = {};
+    this.floorT0 = 0;
+    this.forceCat = null;
+    this.seek = null;
+    this.seekNext = 0;
+    this._phaseSeen = 0;
+    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0 };
+    this.ledger?.reset();
     this.cooldowns = {};
     this.last = [null, null];
     this.gapT = 1.2;
@@ -173,8 +244,11 @@ export class DuelBrain {
   // ---------------------------------------------------------------- frame
   update(dt) {
     const d = this.d;
+    this.clock += dt;
     this.modeT += dt;
     this.clipT += dt;
+    this.ledger.update();
+    if (this.P?.guard) this._fairStrikes(dt);
     if (this.raiseT > 0) this.raiseT -= dt;
     if (this.backCool > 0) this.backCool -= dt;
     if (this.sideCool > 0) this.sideCool -= dt;
@@ -223,6 +297,177 @@ export class DuelBrain {
         break;
     }
     d.brainFrame?.(dt);
+  }
+
+  /** A random value in [lo, hi] of a per-phase [[lo, hi], ...] (a breather's length). */
+  _gap(v) {
+    const G = perPhase(v, this.d.phase);
+    return G[0] + (G[1] - G[0]) * Math.random();
+  }
+
+  // ---------------------------------------------------------------- the ledger's public face
+  /** Something of his will land `timeFromNow` s from now, needing what `tell` asks (see the header). */
+  expect(timeFromNow, tell, source = '') {
+    return this.ledger.expect(timeFromNow, tell, source);
+  }
+
+  /** How long a CALLED strike landing `timeFromNow` s from now must wait to land clear of every
+   *  known impact needing the other answer (0: clear now; -1: no wait up to `max` clears it). */
+  fairDelay(timeFromNow, tell, max = this.P?.guard?.maxDelay ?? 0.6) {
+    const G = this.P?.guard;
+    if (!G || !Number.isFinite(timeFromNow)) return 0;
+    const L = this.ledger;
+    return L.clearShift(L.now + timeFromNow, answerOf(tell), (G.sep ?? 0.3) + (G.margin ?? 0), max);
+  }
+
+  /**
+   * The fairness guard on called strikes (his marks, the Dark Star: fx.strikes): one about to give
+   * its cue this frame whose impact would land within sep + margin of a known impact needing a guard
+   * waits (its `at` moves later) until it is clear, `maxDelay` s at most in all; if no wait clears
+   * it, the mark fades out unstruck. A torn stone about to leave the Void's grip (fx.shots, 'hang')
+   * waits in it the same way.
+   */
+  _fairStrikes(dt) {
+    const S = this.d.fx?.strikes;
+    if (!S) return;
+    const G = this.P.guard, L = this.ledger, lead = perPhase(this.T.flashLead, this.d.phase);
+    const sep = (G.sep ?? 0.3) + (G.margin ?? 0);
+    let moved = false;
+    for (const s of S) {
+      if (!s.alive || s.flashed || s.t + dt < s.at - lead - 1e-4) continue;
+      // (the pool's records are reused: `at` not the one written here = a new strike)
+      if (s._fairAt !== s.at) s._fairDelayed = 0;
+      const left = Math.max(0, G.maxDelay - s._fairDelayed);
+      const sh = L.clearShift(L.now + (s.at - s.t), DODGE, sep, left, false, false, s);
+      if (sh > 0) {
+        s.at += sh;
+        s._fairAt = s.at;
+        s._fairDelayed += sh;
+        this.stats.delays++;
+        moved = true;
+      } else if (sh < 0) {
+        // no wait up to maxDelay clears it: the mark fades out unstruck (never two answers at once)
+        s.alive = false;
+        this.stats.delays++;
+        moved = true;
+      }
+    }
+    // the Lord's torn stones hanging in the Void's grip: one about to be thrown waits in the grip
+    // until where it will reach the hero is clear (its flight: from where it hangs, at its speed)
+    const H = this.d.fx?.shots, p = this.d.game.player?.position;
+    if (H && p) {
+      for (const s of H) {
+        if (!s.alive || s.phase !== 'hang' || s.age + dt < s.delay - 1e-4) continue;
+        if (s._fairD !== s.delay) s._fairDelayed = 0;
+        const left = Math.max(0, G.maxDelay - s._fairDelayed);
+        const fly = Math.max(0, Math.hypot(p.x - s.x, p.z - s.z) - (s.radius ?? 0.8) - 0.45) / Math.max(1, s.speed);
+        const sh = L.clearShift(L.now + Math.max(0, s.delay - s.age) + fly, answerOf(s.tell), sep + (G.pad ?? 0), left);
+        if (sh > 0) {
+          s.delay += sh;
+          s._fairD = s.delay;
+          s._fairDelayed += sh;
+          this.stats.delays++;
+          moved = true;
+        }
+      }
+    }
+    // (what it predicted for them is stale now: the blades decide on the fresh times this frame)
+    if (moved) this.ledger.update();
+  }
+
+  /**
+   * The world warns of a falling piece landing at `at` (ledger time) needing `ans` (a felled pillar,
+   * a wrenched shard: no one can move it). What of his is in flight, not cued yet, and would land
+   * within sep + margin + pad of it needing the other answer gives way: a crescent / push / fissure
+   * fizzles, a torn stone shatters in the air (never two answers at once).
+   */
+  _worldCue(at, ans) {
+    const G = this.P?.guard, d = this.d, p = d.game.player, pp = p?.position;
+    if (!G || !pp) return;
+    const L = this.ledger, sep = (G.sep ?? 0.3) + (G.margin ?? 0) + (G.pad ?? 0), pr = p.radius ?? 0.45;
+    const C = d.T.crescent;
+    if (d.fx?.crescents && C) {
+      for (const c of d.fx.crescents) {
+        if (!c.alive || c.done || c.flashed >= 0 || answerOf(c.tell) === ans) continue;
+        const speed = c.speed ?? C.speed, rx = pp.x - c.x, rz = pp.z - c.z, along = rx * c.dx + rz * c.dz;
+        const t = L.now + Math.max(0, along - (c.radius ?? C.radius) - pr) / Math.max(1, speed);
+        if (Math.abs(t - at) >= sep) continue;
+        d.fx._fizzle?.(c);
+        c.alive = false;
+        this.stats.fizzles++;
+      }
+    }
+    if (d.fx?.shots) {
+      for (const s of d.fx.shots) {
+        if (!s.alive || s.done || s.flashed >= 0 || answerOf(s.tell) === ans) continue;
+        const speed = s.phase === 'back' ? s.back : s.speed;
+        const fly = Math.max(0, Math.hypot(pp.x - s.x, pp.z - s.z) - (s.radius ?? 0.8) - pr) / Math.max(1, speed);
+        const t = L.now + (s.phase === 'hang' ? Math.max(0, s.delay - s.age) : Math.max(0, s.wait ?? 0)) + fly;
+        if (Math.abs(t - at) >= sep) continue;
+        // (the thrown blade goes on past him this pass, uncued and harmless; it still comes home)
+        if (s.kind !== 'stone') s.done = true;
+        else if (d.fx._shatter) d.fx._shatter(s);
+        else s.alive = false;
+        this.stats.fizzles++;
+      }
+    }
+  }
+
+  /**
+   * The fairness guard on a blade's blow (_act, the frame its cue is due): if it would land within
+   * sep + margin of a known impact needing the other answer (a cue already given, a thing in flight,
+   * an expected one), it waits at the cock, as an authored bait hold waits: the beat's cue, impact
+   * and end and everything after them in the move move later together, the pose stands at the cock
+   * (or, past it, where it is) and u stands still (uAt), `maxHold` s at most per blow. Only if the
+   * wait clears it. True: held (no cue this frame).
+   */
+  _holdBeat(a, b, t) {
+    const G = this.P?.guard;
+    if (!G || a.def.transition || b.feint || (b.def.cast && !throwsAt(b))) return false;
+    // (a `fixed` beat keeps its timing: it is never held, only, at worst, not thrown)
+    const room = b.def.fixed ? 0 : Math.max(0, G.maxHold - (b.hl ?? 0));
+    const L = this.ledger, ans = answerOf(b.def.tell), sep = (G.sep ?? 0.3) + (G.margin ?? 0);
+    // (a release: what it throws lands when it reaches the hero, `pad` more room for his moving)
+    const th = throwsAt(b), fly = th ? L.travel(b) : 0, pad = th ? G.pad ?? 0 : 0;
+    const sh = L.clearShift(L.now + (b.impact - t) + fly, ans, sep + pad, room, true, true);
+    if (sh === 0) return false;
+    if (sh < 0) {
+      // no wait he may take clears it (a felled piece, a thing in flight lands too near): the blow
+      // is not thrown. It becomes a feint (the swing goes on, no glint, no hit: a feint never
+      // glints), so the hero is never asked two answers at once. Not in his flurry (it counts blows)
+      if (a.streak) return false;
+      b.feint = true;
+      this.stats.feints++;
+      return true;
+    }
+    if (b.hl > 0) b.hl += sh;
+    else {
+      b.hf = Math.max(t, b.start + (b.def.cock ?? 0.8) * b.W + b.H);
+      b.hl = sh;
+    }
+    a.hb = b;
+    b.flash += sh;
+    b.impact += sh;
+    b.end += sh;
+    let after = false;
+    for (const x of a.beats) {
+      if (x === b) {
+        after = true;
+        continue;
+      }
+      if (!after) continue;
+      x.start += sh;
+      x.tellAt += sh;
+      x.flash += sh;
+      x.impact += sh;
+      x.end += sh;
+    }
+    a.recoveryStart += sh;
+    a.end += sh;
+    if (a.next) a.next.at += sh;
+    this.stats.holds++;
+    this.stats.holdTime += sh;
+    return true;
   }
 
   /** After the pose (the blade's points are fresh): the actor's swing trails and body FX. */
@@ -302,9 +547,9 @@ export class DuelBrain {
     this.leap = null;
     d.position.y = 0;
     this.modeT = 0;
+    this.chainN = 0;
     this.raiseT = this.T.guard.raiseDelay;
-    const G = perPhase(this.T.idleGap, d.phase);
-    this.gapT = gap ?? G[0] + (G[1] - G[0]) * Math.random();
+    this.gapT = gap ?? this._gap(this.T.idleGap);
     this.clip = null;
     this.clipT = 0;
     this.back.off = this.back.t = 0;
@@ -363,6 +608,7 @@ export class DuelBrain {
     if (!clip) return false;
     if (d.mode === 'act' && this.act?.def?.transition && kind !== 'executed') return false; // the kindling holds
     this.act = null;
+    this.chainN = 0;
     this.leap = null;
     d.position.y = 0;
     d.mode = 'react';
@@ -480,22 +726,32 @@ export class DuelBrain {
     if (this.gapT <= 0) {
       const name = this._choose(s.dist, punish);
       if (name) {
-        this.startAct(name);
+        if (this.startAct(name) && this.P) booked(this, name);
         return;
       }
     }
     // movement: inside striking range he circles (guard up) while the breather runs; outside it he
-    // closes: a run, and past sprintAt a sprint (faster than the hero's): kiting him doesn't work
+    // closes: a run, and past sprintAt a sprint (faster than the hero's): kiting him doesn't work.
+    // (the director's seek: for a while he keeps to another range, where an absent kind of move can
+    // be used: director.js prepareChoose)
+    if (this.seek && (this.clock > this.seek.until || punish)) this.seek = null;
+    const SK = this.seek;
+    const band = SK ? SK.band : M.band, sprintAt = SK ? Math.max(M.sprintAt, SK.band[1] + 2) : M.sprintAt;
     let speed = 0, dirX = 0, dirZ = 0;
     const fx = s.dx / (s.dist || 1), fz = s.dz / (s.dist || 1);
-    if (s.dist > M.sprintAt || (punish && s.dist > M.band[1])) {
+    if (s.dist > sprintAt || (punish && s.dist > band[1])) {
       speed = M.sprint;
       dirX = fx;
       dirZ = fz;
-    } else if (s.dist > M.band[1]) {
+    } else if (s.dist > band[1]) {
       speed = M.run;
       dirX = fx;
       dirZ = fz;
+    } else if (SK && s.dist < band[0]) {
+      // seeking a longer range: he gives ground, still facing the hero
+      speed = M.run;
+      dirX = -fx;
+      dirZ = -fz;
     } else if (s.dist < M.near && this.backCool <= 0) {
       this.backCool = 2.4;
       if (Math.random() < M.backChance) {
@@ -509,7 +765,7 @@ export class DuelBrain {
         this.strafeT = M.strafeSwitch[0] + (M.strafeSwitch[1] - M.strafeSwitch[0]) * Math.random();
       }
       // circling, drifting in or out toward the middle of the band
-      const mid = (M.band[0] + M.band[1]) / 2, inward = clamp((s.dist - mid) / 0.8, -1, 1) * 0.6;
+      const mid = (band[0] + band[1]) / 2, inward = clamp((s.dist - mid) / 0.8, -1, 1) * 0.6;
       speed = M.walk;
       dirX = -fz * this.strafeDir + fx * inward;
       dirZ = fx * this.strafeDir + fz * inward;
@@ -542,7 +798,9 @@ export class DuelBrain {
   /** A weighted pick of the moves he can use from `dist` (phase, band, cooldown; recent picks damped).
    *  `punish` (the hero drinks): the moves that cover ground (a dash, a leap, the qi) weigh more. */
   _choose(dist, punish = false) {
-    const d = this.d;
+    const d = this.d, P = this.P;
+    // (the director, with a pressure block: the floors first; then each weight is its say)
+    if (P) prepareChoose(this, dist);
     let total = 0;
     const pool = [];
     for (const name of this.names) {
@@ -558,6 +816,8 @@ export class DuelBrain {
       if (this.last[0] === name) w *= 0.3;
       else if (this.last[1] === name) w *= 0.65;
       if (punish && (def.gapCloser || def.beats.some((b) => b.dash?.max >= 3 || b.leap || b.release))) w *= this.T.punish.weight;
+      if (P) w = directWeight(this, name, def, w, dist);
+      if (!(w > 0)) continue;
       pool.push([name, w]);
       total += w;
     }
@@ -576,6 +836,13 @@ export class DuelBrain {
     a.t += dt;
     const t = a.t;
     const s = this._sense();
+    // a blow the fairness guard holds: through its hold the pose stands still (the clip lags behind
+    // the move's clock by what the hold has run)
+    const hb = a.hb;
+    if (hb?.hl > 0) {
+      const lag = clamp(t - hb.hf, 0, hb.hl) - clamp(t - dt - hb.hf, 0, hb.hl);
+      if (lag > 0) this.clipT -= lag;
+    }
     // the beat that owns this moment (its windup or active frames), else the next one
     let cur = null;
     for (const b of a.beats) {
@@ -588,12 +855,20 @@ export class DuelBrain {
     // tells: the announcement at each real beat's windup start, the glint flashLead before its impact
     for (const b of a.beats) {
       if (b.feint) continue;
+      // (a release's throw: the fairness guard looks at it where its cue would be, flashLead before
+      // the release, by when it will reach the hero)
+      if (this.P && throwsAt(b) && !b.relChecked && t >= b.flash) {
+        if (this._holdBeat(a, b, t)) continue;
+        b.relChecked = true;
+      }
       if (!b.announced && t >= b.tellAt) {
         b.announced = true;
         const p = d.tellPoint(b.def.part, d._v2);
         d.emit('combat:tell', { source: 'dragon', attack: a.name, tell: b.def.tell, impactIn: Math.max(0.05, b.impact - t), x: p.x, z: p.z, flare: isFlare(b.def.tell, b.def.flare) });
       }
       if (!b.flashed && t >= b.flash && !b.def.release && !b.def.cast?.selfCue) {
+        // (the fairness guard: a blow that would land within 0.3 s of one needing the other answer waits)
+        if (this.P && this._holdBeat(a, b, t)) continue;
         b.flashed = true;
         const p = d.tellPoint(b.def.part, d._v2);
         // perilous: a thrust a mikiri answers (its own read: the deep low coil, the held beat)
@@ -634,6 +909,8 @@ export class DuelBrain {
     if (cur && !cur.checked && cur.hit > 0 && t >= cur.start && s && this.aiEnabled) {
       cur.checked = true;
       if (s.dist > this._reach(cur) + 0.5) {
+        // (with a pressure block: a `far` / `away` link of the string is his pursuit)
+        if (this.P && this._linkNow(a, s, true)) return;
         this._toFoot(0);
         return;
       }
@@ -689,8 +966,30 @@ export class DuelBrain {
         if (this.act !== a) return; // a parry recoiled him
       }
     }
+    if (this.P && this.act === a && !a.def.transition) {
+      // the director's flow (a pressure block): as the recovery starts, what comes next is decided
+      // once (a link, the old flow roll, or the breather after chainDepth moves in a row); it starts
+      // at its `cut` of the recovery
+      if (!a.planned && t >= a.recoveryStart) {
+        a.planned = true;
+        this._planNext(a, s);
+      }
+      const N = a.next;
+      if (N && t >= N.at && s) {
+        a.next = null;
+        if (this._startNext(a, N, s, t < a.end - 1e-4)) return;
+      }
+    }
     if (this.act === a && t >= a.end) {
       if (a.def.transition) d.onTransitionEnd?.(a);
+      if (this.P && !a.def.transition) {
+        if (a.rest) {
+          // chainDepth moves in a row: a breather of footwork
+          this._toFoot(this._gap(this.P.chainRest ?? this.T.idleGap));
+          this.stats.rests++;
+        } else this._toFoot();
+        return;
+      }
       // PBZ pace: he often flows straight into another move (TUNING.chain), no footwork between
       if (!a.def.transition && !a.def.counter && this.aiEnabled && !this.pendingPhase && s && Math.random() < perPhase(this.T.chain, d.phase)) {
         const next = this._choose(s.dist);
@@ -698,6 +997,58 @@ export class DuelBrain {
       }
       this._toFoot();
     }
+  }
+
+  /** Links and the flow are his own: not with the AI off, a phase change waiting, a test or the Lab
+   *  holding him (a breather set over `pressure.holdGap`, 5 s), or the hero drinking (the punish). */
+  _mayFlow(s) {
+    return !!s && this.aiEnabled && !this.pendingPhase && !(this.gapT > (this.P?.holdGap ?? 5)) && this.d.game.player?.state !== 'heal';
+  }
+
+  /** As move `a`'s recovery starts: its link, else the old flow roll, else nothing (footwork);
+   *  after pressure.chainDepth moves in a row, the breather instead (a.rest). */
+  _planNext(a, s) {
+    const P = this.P, ph = this.d.phase;
+    if (!this._mayFlow(s)) return;
+    if (this.chainN + 1 >= perPhase(P.chainDepth ?? 99, ph)) {
+      a.rest = true;
+      return;
+    }
+    const span = a.end - a.recoveryStart;
+    const L = linkFor(this, a, s);
+    if (L) {
+      a.next = { to: L.to, link: L, at: a.recoveryStart + clamp(L.cut ?? P.linkCut ?? 1, 0, 1) * span };
+      return;
+    }
+    if (!a.def.counter && Math.random() < perPhase(this.T.chain, ph)) a.next = { to: null, link: null, at: a.recoveryStart + clamp(P.chainCut ?? 1, 0, 1) * span };
+  }
+
+  /** Start what _planNext decided (`cut`: before the recovery's end). False: nothing started (the
+   *  link's target stopped being usable, the flow found nothing), the move ends as usual. */
+  _startNext(a, N, s, cut) {
+    if (!this._mayFlow(s)) return false;
+    let name = N.to;
+    if (N.link) {
+      if (!linkUsable(this, N.link, s)) return false;
+    } else {
+      name = this._choose(s.dist);
+      if (!name || name === a.name) return false;
+    }
+    const n = this.chainN + 1;
+    if (!this.startAct(name)) return false;
+    this.chainN = n;
+    booked(this, name);
+    if (N.link) this.stats.links++;
+    else this.stats.chains++;
+    if (cut) this.stats.cuts++;
+    return true;
+  }
+
+  /** A link out of a string the hero left (its pursuit: `far` / `away` links only), now. */
+  _linkNow(a, s, pursuit) {
+    if (!this._mayFlow(s) || this.chainN + 1 >= perPhase(this.P.chainDepth ?? 99, this.d.phase)) return false;
+    const L = linkFor(this, a, s, pursuit);
+    return !!L && this._startNext(a, { to: L.to, link: L, at: 0 }, s, false);
   }
 
   /** Root motion of the current beat: tracking the hero in the windup, travel, dash, leap. */
@@ -909,7 +1260,9 @@ export class DuelBrain {
       // (on a streak of guards the counter is his flurry: as many blows as the streak counts)
       if (R.kind === 'deflect' && R.flurry && this.startStreak()) return;
       if (R.kind === 'deflect' && this.aiEnabled && this.startAct(this.K.counterMove?.(d.phase) ?? 'riposte')) return;
-      this._toFoot(guard || R.kind === 'backstep' || R.kind === 'sidestep' ? 0.25 : null);
+      // (a reaction that left him open: the hero's punish window keeps its length whatever his pace,
+      // TUNING.openingGap; without one, the breather between moves)
+      this._toFoot(guard || R.kind === 'backstep' || R.kind === 'sidestep' ? 0.25 : this.open.has(R.kind) && this.T.openingGap ? this._gap(this.T.openingGap) : null);
       // a ward or a flinch: the guard is straight back up (a cut does not open him for the next one)
       if (guard || R.kind === 'flinch' || R.kind === 'backstep' || R.kind === 'sidestep') this.raiseT = 0;
       if (guard) this.wardK = 1; // (the ward's clip ends raised: his footwork carries it on)
@@ -990,7 +1343,7 @@ export class DuelBrain {
     d.groundVelSet(0, 0);
     if (this.modeT >= this.T.posture.breakTime) {
       d.endBreak();
-      this._toFoot(0.4);
+      this._toFoot(this.T.openingGap ? Math.max(0.4, this._gap(this.T.openingGap)) : 0.4);
     }
   }
 

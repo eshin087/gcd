@@ -90,8 +90,37 @@ export const TUNING = {
     backstep: { dist: 2.2, time: 0.36 },
     strafeSwitch: [0.9, 2.0],
   },
-  idleGap: [[0.14, 0.4], [0.1, 0.32], [0.08, 0.26], [0.05, 0.18]], // s of footwork between moves per form
-  chain: [0.4, 0.5, 0.55, 0.65], // the chance a move flows straight into the next
+  idleGap: [[0.1, 0.3], [0.07, 0.22], [0.05, 0.16], [0.03, 0.1]], // s of footwork between moves per form (the second pass: shorter)
+  // a reaction that leaves him open and a break end in this much footwork, whatever idleGap is: the
+  // hero's punish window (the old idleGap; a break: 0.4 s at least)
+  openingGap: [[0.14, 0.4], [0.1, 0.32], [0.08, 0.26], [0.05, 0.18]],
+  chain: [0.55, 0.62, 0.7, 0.78], // the chance a move flows straight into the next
+  // the director (duelist/brain.js header, director.js; the Ash Disciple's tuning.js explains each
+  // key). Per-form arrays [1, 2, 3, 4]
+  pressure: {
+    chainDepth: [4, 4, 5, 6],
+    chainRest: [[0.45, 0.75], [0.4, 0.65], [0.3, 0.55], [0.25, 0.45]],
+    linkCut: 0.5,
+    chainCut: 0.5,
+    near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
+    maxRun: [2, 2, 3, 3], overRun: 0.1, sameCat: 0.7,
+    floorAfter: [16, 14, 12, 10], floorBoost: 1.8, floorForce: 2,
+    seek: { max: 2.5, every: 9 },
+    farDist: 6, closerBoost: 1.8,
+    maxLive: [1, 2, 2, 3],
+    bias: { string: [1.3, 1.3, 2, 1.6], hazard: [1, 1, 0.6, 1], terrain: [1, 1, 0.7, 1] },
+    density: [1, 1.1, 2.2, 2], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
+    mixed: 0.1,
+    holdGap: 5,
+    guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
+    // what tests/integration/lord.mjs PACE asserts (the Ash Disciple's tuning.js says how). (core,
+    // 2026-11-16, five seeds x 120 s with today's moves: cues/min F1 75.5 - 83.2 (70.6 before the
+    // pass), F2 86.1 - 92.0 (79.6), F3 82.2 - 88.1 (75.2), F4 86.2 - 96.6 (84.9); longest gap 3.44 /
+    // 3.49 / 3.78 / 3.13 s. Form 3 is not yet busier than form 2: its staff strings give 1.55 cues a
+    // second against the twin blades' 1.6 - 2.0 (ramp 0.85 there until its moves are redone). Over
+    // eleven seeds form 2 averaged x1.11 form 1, one seed x0.99: its ramp floor is 0.97
+    meter: { ramp: [1, 0.97, 0.85, 0.98], minRate: [70, 78, 76, 80], maxGap: [4, 4, 4.3, 4.3] },
+  },
   punish: { weight: 4 }, // a hero drinking a flask: the moves that close distance × this
 
   // ---- the duel's moments (as the Ash Disciple's, ADR-062)

@@ -6,6 +6,7 @@ import { DUEL_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, realise } from './moves.js';
 import { TUNING } from './tuning.js';
 import { TerrainMoves } from './terrain.js';
+import { LINKS } from './links.js';
 
 // The Ash Disciple (docs/specs/ash-disciple.md): a grey-robed jian swordsman who fills the boss slot
 // of the Ashfall level. A duelist (duelist/duelist.js: the body, the contract, the guard, posture,
@@ -162,6 +163,12 @@ export class AshDisciple extends Duelist {
       const sx = this.position.x + Math.sin(a) * 1.0, sz = this.position.z + Math.cos(a) * 1.0;
       this.fx.throwCrescent(sx, sz, Math.sin(a), Math.cos(a), { tell: b.def.tell, damage: b.def.damage, knockback: b.def.knockback, attack: act?.name ?? 'ashCrescent' });
     }
+  }
+
+  // ---------------------------------------------------------------- the second pass (core)
+  /** His combo links (links.js; duelist/brain.js reads `d.LINKS`). */
+  get LINKS() {
+    return LINKS;
   }
 }
 
