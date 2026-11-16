@@ -216,10 +216,21 @@ export class LordFx extends DuelFx {
     if (o.light !== false) this._light({ x, y: 1.2, z, color: [0.8, 0.35, 1], intensity: 6 * (o.power ?? 1), radius: r * 1.6, life: 0.4, fade: 0.35 });
   }
 
-  /** A big shock in the Void: the shared DuelFx.shock (fxash) when it exists, else _bodyShock. */
+  /** A big shock in the Void (the ignitions, the Dark Star's burst, his death): the shared front
+   *  (DuelFx.shock, kind 'void': violet fire low over the floor, grey dust behind it, the crisp echo)
+   *  when it exists, else _bodyShock. o: { k (its strength), fire (how much of it burns, 0..1), r0
+   *  (where it starts: wide, so its first frame is not a white-hot ring of overlapping heat) }.
+   *  The small ones (a strike, the crush, the blink, the deathblow) stay on _bodyShock / _shock:
+   *  cheap, and they do not take one of the shared fronts. */
   _voidShock(x, z, r, o = {}) {
-    if (typeof this.shock === 'function') this.shock(x, z, r, { kind: K_VOID, heat: o.heat ?? 0.8, power: o.power ?? 1, dust: o.dust });
-    else this._bodyShock(x, z, r, o);
+    if (typeof this.shock === 'function') {
+      const q = (this._vso ??= { k: 1, fire: 0.8, kind: 'void', echo: true, r0: 0.9, T: undefined, delay: 0 });
+      q.k = o.k ?? 1;
+      q.fire = o.fire ?? 0.7;
+      q.r0 = o.r0 ?? Math.max(0.9, r * 0.3);
+      q.echo = o.echo ?? true;
+      this.shock(x, z, r, q);
+    } else this._bodyShock(x, z, r, o);
   }
 
   /** A disc of blobs in the camera's plane round (x, y, z) (a body seen face on), this frame only. */
@@ -1370,7 +1381,7 @@ export class LordFx extends DuelFx {
       const a = this.rnd() * TAU, sp = this.rand(0.5, 4);
       this._blob(s.x, y + this.rand(-0.3, 0.3), s.z, Math.cos(a) * sp, this.rand(0, 3), Math.sin(a) * sp, this.rand(0.28, 0.45), 0.7, 1.3, 0.5, 0, K_VOID, 2, 1);
     }
-    this._voidShock(s.x, s.z, s.r, { heat: 0.85, power: 1.3, n: 40, dust: 14 });
+    this._voidShock(s.x, s.z, s.r, { k: 1.1, fire: 0.75, r0: Math.max(0.7, s.r * 0.25), heat: 0.85, power: 1.3, n: 40, dust: 14 });
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * TAU + this.rnd(), r = s.r * this.rand(0.8, 1.05);
       this.lightning(s.x, y, s.z, s.x + Math.cos(a) * r, GROUND_Y, s.z + Math.sin(a) * r, 0.7, false);
@@ -1584,7 +1595,7 @@ export class LordFx extends DuelFx {
    *  red sparks thrown up, a light. Once, as the dying starts. ~320 blobs. */
   deathBurst(x, y, z) {
     if (!Number.isFinite(x + y + z)) return;
-    this._voidShock(x, z, 4.5, { heat: 0.58, power: 0.9, n: 46, dust: 18 });
+    this._voidShock(x, z, 4.5, { k: 1.0, fire: 0.6, r0: 1.3, heat: 0.58, power: 0.9, n: 46, dust: 18 });
     for (let i = 0; i < 26; i++) {
       const a = this.rnd() * TAU, rr = this.rand(0, 0.5);
       this._blob(x + Math.cos(a) * rr, this.rand(0.3, 2.4), z + Math.sin(a) * rr, 0, this.rand(5, 12), 0, this.rand(0.3, 0.6), 0.55, 0.3, 0.5, 0, K_VOID, 1);
@@ -1630,10 +1641,18 @@ export class LordFx extends DuelFx {
   _craterAnswers(x, z, p) {
     const amb = this.game.world?.forest?.ambience;
     if (typeof amb?.flare !== 'function') return;
-    for (const [vx, vz] of VENTS) {
-      for (let i = 0; i < Math.round(12 * p); i++) this._blob(vx + this.rand(-0.4, 0.4), 0.5, vz + this.rand(-0.4, 0.4), this.rand(-0.4, 0.4), this.rand(4, 9) * p, this.rand(-0.4, 0.4), this.rand(0.35, 0.6), 0.6, 0.3, 0.55, 0, K_FIRE, 1.2);
-    }
     const L = this.game.world?.destructibles?.list;
+    // the vents: the world's breakable `vent` pieces (a vent burns on when its rim is broken), or the
+    // mirror of their places when the world has no list
+    const gout = (vx, vz) => {
+      for (let i = 0; i < Math.round(12 * p); i++) this._blob(vx + this.rand(-0.4, 0.4), 0.5, vz + this.rand(-0.4, 0.4), this.rand(-0.4, 0.4), this.rand(4, 9) * p, this.rand(-0.4, 0.4), this.rand(0.35, 0.6), 0.6, 0.3, 0.55, 0, K_FIRE, 1.2);
+    };
+    let vents = 0;
+    if (L) for (const o of L) if (o.kind === 'vent') {
+      gout(o.x, o.z);
+      vents++;
+    }
+    if (!vents) for (const [vx, vz] of VENTS) gout(vx, vz);
     if (!L) return;
     let m = 0;
     for (const o of L) {
@@ -1655,7 +1674,7 @@ export class LordFx extends DuelFx {
    */
   _igniteA(x, z, r, form, escalate) {
     const s = form >= 4 ? 1.6 : form === 3 ? 1.25 : 1, yaw = this.d.yaw ?? 0, fx = Math.sin(yaw), fz = Math.cos(yaw);
-    this._voidShock(x, z, r, { heat: 0.62 * Math.min(1.2, s), power: s, n: Math.round(50 * Math.min(1.3, s)), dust: Math.round(20 * s) });
+    this._voidShock(x, z, r, { k: 0.85 * s, fire: 0.7, heat: 0.62 * Math.min(1.2, s), power: s, n: Math.round(50 * Math.min(1.3, s)), dust: Math.round(20 * s) });
     // the pillar
     const ph = escalate ? 3 * s : form >= 4 ? 5 : 3;
     for (let i = 0; i < Math.round(26 * s); i++) {
