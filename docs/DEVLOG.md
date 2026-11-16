@@ -5,6 +5,43 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 58: `npm test` runs its suites side by side; repo merge settings
+
+**Owner:** asked why every PR here is a squash merge, then whether any GitHub settings would make
+things smoother, and said yes to all three proposals. No game code changed.
+
+**Repo settings (GitHub, not in the tree):** auto-merge is allowed now (a PR can be set to merge by
+itself when the check passes), and a squash commit defaults to the PR's title and description
+(was: the branch's commit messages). Unchanged: squash / rebase only, linear history, up-to-date
+branches, the rules apply to admins. A merge queue would remove the "update branch, wait, merge"
+round, but GitHub only offers it on repos owned by an organisation.
+
+**Why CI took 5 minutes:** `npm test` was 4.5 of them, six commands one after another. Measured here:
+`integ` 226 s, `lord` 40 s, `duel` 20 s, `world` 3 s. Inside `integ`, TIMING (a grid of placements
+per wyrm attack) is about 85 s and the other 37 scenarios about 140 s.
+
+**`tests/run.mjs`** (what `npm test` runs now): one process per task, as many at a time as the
+machine has cores (`--jobs N`, `--serial`), each task's output printed whole when it ends, a summary
+with every task's time, exit 1 if any failed. Ten tasks: `integ` (`all` without the scenarios
+below), `integ hero + world` (11 scenarios as a comma list), TIMING in three parts, `lord`, `duel`,
+`world`, the glyph check, the changelog check. `integ.mjs` gained three options for it: a comma
+list of scenarios, `ABYSS_SKIP` (left out of `all`) and `ABYSS_TM_SHARD=k/n` (every n-th attack of
+TIMING's own list). A new scenario or a new attack is covered without touching the runner; a name
+the runner lists that no longer exists fails the run.
+
+**CI** (`.github/workflows/ci.yml`): a new push to a PR cancels that PR's run still in progress.
+
+**Verification:** the split run passes the same number of checks per scenario as the single run
+(compared scenario by scenario; TIMING's four and the five end-of-run checks repeat per process).
+`npm test` green four at a time, `npm run build` green. Bad values (`ABYSS_TM_SHARD=4/3`, an unknown
+name in a list or in `ABYSS_SKIP`) fail.
+
+**Open:** the check across scenarios (the event catalogue's "every event has a consumer") runs in
+the `integ` task only; if a new event's only consumer lives in a scenario of the second
+part, that check fails and the scenario moves back (drop it from `INTEG_2` in `tests/run.mjs`).
+
+---
+
 ## 2026-11-15 — Session 55: the flare (red, blue, black); the counter; a charged blow for every boss
 
 **Owner:** "lets add more perfect parry / perfect dodge moments into the game from the bosses. instead

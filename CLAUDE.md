@@ -24,7 +24,8 @@ Read this file first, every session.
 ## Commands
 ```bash
 npm run dev      # http://localhost:5173 (zero-dependency static server, no build step)
-npm test         # headless integration sims (real game modules, mocked DOM/WebGL) + glyph check
+npm test         # headless integration sims (real game modules, mocked DOM/WebGL) + glyph check,
+                 # side by side (tests/run.mjs; --serial or --jobs N after `npm test --`)
                  # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
@@ -86,7 +87,9 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   required check `test-and-build` = `npm test` + `npm run build` on an up-to-date branch; linear
   history, squash/rebase merge, branches auto-delete). Flow: branch → push → `gh pr create` → CI +
   Vercel preview deployment on the PR → squash-merge → Vercel deploys `main` to production
-  (gcdabyss.vercel.app). Never bypass the protection.
+  (gcdabyss.vercel.app). Never bypass the protection. The squash commit takes the PR's title and
+  description, so write them as the commit message. Auto-merge is allowed on the repo; set it on a
+  PR only when the owner asks.
 - **Deployment hygiene (Vercel storage):** the project keeps deployments 30 days (preview,
   production, canceled, errored). `vercel.json` `ignoreCommand` skips deployments for commits that
   only touch docs / *.md / tests / .github / .claude — keep doc-only work in its own commits.
