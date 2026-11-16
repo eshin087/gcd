@@ -4,6 +4,8 @@ import {
   shellGeometry, skirtSheet, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb,
   gripFist, looseHand, sheetOffset, ring, orient,
 } from '../../player/heroGeo.js';
+import { ASH_ART, toDragonLook } from './bodyArt.js';
+import { ashLookNow, dressHat, dressSleeves, dressSkirt } from './look.js';
 
 // The Ash Disciple's outfit (docs/specs/ash-disciple.md §3): gear items on the hero's skeleton, so
 // he is built by the same buildHero(U, loadout) and driven by the same animator. A small straw douli
@@ -289,14 +291,39 @@ function buildJian({ sword, M, mesh, joint }) {
   return { streamers: [{ segs: [s0, s1], len: [cord, fringe], out: 0.05, lag: 0.9, max: 2.6 }] };
 }
 
+// ---------------------------------------------------------------- look options (the owner picks)
+/**
+ * `?ashLook=` (duelist/lookSwitch.js; read when his rig is built): '0' today's figure (the default,
+ * built exactly as before), 'a' the same figure in the dragon look (bodyArt.js), 'b' today's drawing
+ * dressed by phase (look.js), 'c' both. Each item's build goes through here: the first one turns the
+ * rig's materials to the art path, and the dressing adds its pieces beside the item's own.
+ */
+function opted(build, dress = null) {
+  return (ctx) => {
+    const L = ashLookNow();
+    if (L.art) toDragonLook(ctx, ASH_ART);
+    if (!L.dress || !dress) return build(ctx);
+    // (the meshes the item hangs, for a dressing that shows or hides them)
+    const made = [];
+    const mesh = (...a) => {
+      const m = ctx.mesh(...a);
+      made.push(m);
+      return m;
+    };
+    const out = build({ ...ctx, mesh });
+    return dress(ctx, out, made);
+  };
+}
+const merge = (a, b) => ({ ...a, ...b, keep: [...(a?.keep ?? []), ...(b?.keep ?? [])], streamers: [...(a?.streamers ?? []), ...(b?.streamers ?? [])] });
+
 /** The set (registered into the hero's gear registry on import: gear/index.js registerItem). */
 export const ASH_ITEMS = [
-  { id: 'ash.hat', slot: 'head', name: 'Ash-Grey Douli', hidesHair: true, build: buildHat },
-  { id: 'ash.robe', slot: 'chest', name: 'Sect Robe', build: buildRobe },
-  { id: 'ash.sleeves', slot: 'arms', name: 'Bracer and Sleeve', build: buildSleeves },
-  { id: 'ash.legs', slot: 'legs', name: 'Wrapped Trousers', build: buildLegs },
-  { id: 'ash.skirt', slot: 'waist', name: 'Robe Skirt', build: buildRobeSkirt },
-  { id: 'ash.jian', slot: 'weapon', name: 'Ashen Jian', dims: JIAN, build: buildJian },
+  { id: 'ash.hat', slot: 'head', name: 'Ash-Grey Douli', hidesHair: true, build: opted(buildHat, (ctx, out, made) => merge(out, dressHat(ctx, made))) },
+  { id: 'ash.robe', slot: 'chest', name: 'Sect Robe', build: opted(buildRobe) },
+  { id: 'ash.sleeves', slot: 'arms', name: 'Bracer and Sleeve', build: opted(buildSleeves, (ctx, out) => merge(out, dressSleeves(ctx))) },
+  { id: 'ash.legs', slot: 'legs', name: 'Wrapped Trousers', build: opted(buildLegs) },
+  { id: 'ash.skirt', slot: 'waist', name: 'Robe Skirt', build: opted(buildRobeSkirt, (ctx, out) => dressSkirt(ctx, out)) },
+  { id: 'ash.jian', slot: 'weapon', name: 'Ashen Jian', dims: JIAN, build: opted(buildJian) },
 ];
 for (const item of ASH_ITEMS) registerItem(item);
 
