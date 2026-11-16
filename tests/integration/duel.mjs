@@ -2760,12 +2760,12 @@ async function scenarioFxLooks() {
   const SW = { kindle: ['a', 'b', 'c'], ashp3: ['a', 'b', 'c'], qi: ['0', 'a', 'b', 'c'], flit: ['0', 'a'] };
   const clear = () => { for (const k of Object.keys(SW)) setLook(k, null); };
   // the most the field may gain while one effect plays, the whole scene counted (the hero, his
-  // trails, the cues). HEADLESS has no camera, so every crisp line (_ink: the trails, the qi's
-  // edge) falls back to a blob every 0.1 m instead of one per letter cell: these counts run 1.3 -
-  // 1.6x the real page's (qi=a phase 3: 631 here, ~430 on the page). Measured 2026-11-16: the
-  // Kindling 371 - 382, ash on the wind 485 - 609, the qi's phase-3 fans 468 ('0') - 637 ('b'),
-  // the flurry 512 ('0') - 576 ('a'). A cap with headroom, not a target.
-  const FX_CAP = 720;
+  // trails, the cues, the flares). HEADLESS has no camera, so every crisp line (_ink: the trails, the
+  // qi's edge, a flare's streak) falls back to a blob every 0.1 m instead of one per letter cell:
+  // these counts run 1.4 - 2.5x the real page's (the storm with '0': 1111 here, 453 on the page;
+  // ash on the wind a: 848 here, ~700 on the page). Measured 2026-11-16 (second round): the Kindling
+  // 363 - 385, ash on the wind 631 - 968, the flurry 625 - 672. A cap with headroom, not a target.
+  const FX_CAP = 1000;
   const peakOf = (G, secs, step = null) => {
     const f = G.game.fx.fire, base = f.count;
     let peak = 0;
@@ -2808,17 +2808,45 @@ async function scenarioFxLooks() {
     run(G, 0.9);
     assert(d.kindle < 0.75 && d.brain.act?.def?.transition, `the kneel: the blade is still catching 0.9 s in (kindle ${d.kindle.toFixed(2)} < 0.75)`);
   }
+  // phase 3's change on the REAL transition (ashWind, from phase 2) when the kit has a third phase
+  const toPhase3 = (d) => {
+    if (d.kit.transitions?.[3] && d.T.phaseAt.length >= 3) {
+      d.phase = 2;
+      d.kindle = 1;
+      return d.debug.phase3();
+    }
+    d.phase = 3; // (a kit without one: driven by hand)
+    d.fx.phaseBurst(3, d.position.x, d.position.z);
+    return false;
+  };
   for (const L of SW.ashp3) {
     clear(); setLook('ashp3', L);
-    const G = build(); duel(G, { dist: 4 });
+    const G = build(); duel(G, { dist: 4.5 });
     const d = G.game.dragon;
-    d.phase = 3; // (the third phase's move is the moves agent's: driven by hand here)
-    d.fx.phaseBurst(3, d.position.x, d.position.z);
-    let peak = peakOf(G, 2.5);
+    const real = toPhase3(d);
+    let peak = peakOf(G, 4);
     d.debug.trigger('swallow');
     peak = Math.max(peak, peakOf(G, 2.5));
     report.push(`ashp3=${L} ${peak}`);
-    assert(d._ashK > 0.9 && peak > 100 && peak < FX_CAP, `?ashp3=${L}: ash on the wind, its stream and the strikes' afterimages (ashK ${d._ashK?.toFixed(2)}), peak ${peak} blobs < ${FX_CAP}`);
+    assert(d.phase === 3 && d._ashK > 0.9 && peak > 250 && peak < FX_CAP, `?ashp3=${L}: ash on the wind ${real ? 'on the real transition' : 'by hand'}, a moment (peak ${peak} > 250), its stream after (ashK ${d._ashK?.toFixed(2)}), peak < ${FX_CAP}`);
+  }
+  {
+    // one afterimage per flit, whichever flit look: the string's (disciple.beatMotion) or the ash flit's own
+    for (const L of SW.flit) {
+      clear(); setLook('flit', L);
+      const G = build(); duel(G, { dist: 3.5 });
+      const d = G.game.dragon;
+      d.phase = 3;
+      let tick = 0;
+      const flits = [], ghosts = [];
+      const f0 = d.flit.bind(d), g0 = d.fx.ghost.bind(d.fx);
+      d.flit = (...a) => { flits.push(tick); return f0(...a); };
+      d.fx.ghost = (...a) => { ghosts.push(tick); return g0(...a); };
+      d.debug.trigger('ashFlurry');
+      run(G, 5, () => tick++);
+      const per = flits.map((t) => ghosts.filter((g) => g === t).length);
+      assert(flits.length >= 2 && per.every((n) => n === 1), `?flit=${L}: ashFlurry's ${flits.length} flits leave one afterimage each (${per.join(',')})`);
+    }
   }
   for (const L of SW.qi) for (const phase of [1, 2, 3]) {
     clear(); setLook('qi', L);
@@ -2829,6 +2857,23 @@ async function scenarioFxLooks() {
     const peak = peakOf(G, 2.2);
     report.push(`qi=${L}/p${phase} ${peak}`);
     assert(peak < FX_CAP, `?qi=${L} phase ${phase}: the crescents fly out, peak ${peak} blobs < ${FX_CAP}`);
+  }
+  // the qi with a crowd in the air: the storm's nine (phase 3) and the fans (phases 2, 3)
+  const crowd = {};
+  for (const L of SW.qi) for (const [mv, phase] of [['qiStorm', 3], ['emberFan', 2], ['emberFan', 3]]) {
+    clear(); setLook('qi', L);
+    const G = build(); duel(G, { dist: 9 });
+    const d = G.game.dragon;
+    d.phase = phase;
+    d.kindle = 1;
+    const ok = d.debug.trigger(mv);
+    let most = 0;
+    const peak = peakOf(G, 3, () => { most = Math.max(most, d.fx.crescents.filter((c) => c.alive).length); });
+    report.push(`qi=${L}/${mv}${phase} ${peak}`);
+    // (against today's look in the same crowd: a redraw costs at most 1.3x it; '0' sets the bar)
+    crowd[`${mv}${phase}`] ??= peak;
+    const bar = crowd[`${mv}${phase}`];
+    assert(ok && most >= 3 && peak <= bar * 1.3, `?qi=${L} ${mv} in phase ${phase}: ${most} in the air at once, peak ${peak} blobs <= 1.3 x today's ${bar}`);
   }
   for (const L of SW.flit) {
     clear(); setLook('flit', L);
@@ -2861,6 +2906,26 @@ async function scenarioFxLooks() {
     assert(gh > 60 && g2 === gh && g2 < 400, `an afterimage prints ${g2} blobs from his body (> 60, < 400)`);
     assert(du > 40 && du < 300, `a hard landing's dust has a body: ${du} blobs`);
   }
+  // a phase-3 fight with the AI on (burning lines, the storm, ghosts, the stream): the field's peak
+  // with the looks at their defaults and at 'a' (the report; a cap far under the field's 6000)
+  for (const looks of [{}, { kindle: 'a', ashp3: 'a', qi: 'a', flit: 'a' }]) {
+    clear();
+    for (const [k, v] of Object.entries(looks)) setLook(k, v);
+    const G = build(); duel(G, { dist: 4, ai: true });
+    G.defend = makeDefender(G);
+    const d = G.game.dragon;
+    toPhase3(d);
+    let peak = 0, sum = 0, n = 0;
+    const moves = {};
+    G.watch = (nm, e) => { if (nm === 'dragon:windup') moves[e.name] = (moves[e.name] ?? 0) + 1; };
+    // (the hero only defends, god mode: the fight runs the whole 40 s in phase 3)
+    run(G, 40, (g) => { const p = g.game.player; p.hp = p.maxHp; g.input.axis = { x: 0, y: 0 }; G.defend.act(); const c = g.game.fx.fire.count; peak = Math.max(peak, c); sum += c; n++; });
+    G.watch = null;
+    out(`     phase-3 fight: ${Object.entries(moves).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+    G.defend = null;
+    report.push(`fight p3 ${Object.keys(looks).length ? 'a' : 'defaults'}: peak ${peak} mean ${(sum / n).toFixed(0)}`);
+    assert(d.phase === 3 && peak < 2400, `a phase-3 fight, looks ${JSON.stringify(looks)}: the field peaks at ${peak} blobs (mean ${(sum / n).toFixed(0)}) < 2400 of its 6000`);
+  }
   out(`     blob peaks: ${report.join(' | ')}`);
   // 3. no look moves the fight: a fixed-seed fight (the AI on, phase 2, a defending bot) gives the
   // same hits, cues and positions with every option forced as with the defaults
@@ -2874,8 +2939,7 @@ async function scenarioFxLooks() {
     const cues = [];
     G.watch = (n, e) => { if (n === 'combat:flash') cues.push(`${e.attack}@${G.game.time.toFixed(2)}`); };
     run(G, 10, fencer);
-    d.phase = 3; // (by hand: the third phase's move is the moves agent's)
-    d.fx.phaseBurst(3, d.position.x, d.position.z);
+    toPhase3(d);
     run(G, 14, fencer);
     G.watch = null;
     G.defend = null;

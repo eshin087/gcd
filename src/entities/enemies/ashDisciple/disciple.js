@@ -166,6 +166,11 @@ export class AshDisciple extends Duelist {
       if (b0 && a.t < b0.impact) this.kindle = fx.kindleCharge?.(h0.x, h0.y, h0.z, t1.x, t1.y, t1.z, Math.max(0, Math.min(1, (a.t - b0.start) / Math.max(0.1, b0.impact - b0.start))), dt) ?? this.kindle;
       else this.kindle = 1;
     }
+    // phase 3's kneel (ash on the wind): on the blade only, its fire going out
+    if (a?.def?.transition && (a.def.phase ?? 2) === 3 && this._tipOk) {
+      const b0 = a.beats[0];
+      if (b0 && a.t < b0.impact) this.kindle = fx.ashCharge?.(h0.x, h0.y, h0.z, t1.x, t1.y, t1.z, Math.max(0, Math.min(1, (a.t - b0.start) / Math.max(0.1, b0.impact - b0.start))), dt, this.kindle) ?? this.kindle;
+    }
     // phase 3: the fire on the blade goes out into ash (a), burns white (b) or dies to cinders (c)
     if (ashLook === 'a' || ashLook === 'c') this.kindle = Math.max(ashLook === 'c' ? 0.15 : 0, this.kindle - dt * 2.3);
     if (this.kindle > 0.05 && this.mode !== 'dying') fx.emberBlade(h0.x, h0.y, h0.z, t1.x, t1.y, t1.z, dt, this.kindle);

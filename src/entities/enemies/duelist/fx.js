@@ -125,9 +125,11 @@ export class DuelFx {
     // (the second pass: shock fronts in flight, short emitters, scratch option records, the body's
     // points for an afterimage and the cells it is printed on, the phase 3 wind)
     this._fronts = Array.from({ length: FRONT_POOL }, () => ({ alive: false, spawned: false, x: 0, z: 0, r0: 0, r1: 0, T: 1, D: 1, v0: 0, t: 0, delay: 0, k: 1, fk: 0, kind: 'dust', echo: false, grit: 0, scorchT: 0, p1: 0, p2: 0, p3: 0, p4: 0 }));
-    this._emits = Array.from({ length: 6 }, () => ({ alive: false, kind: '', x: 0, z: 0, life: 1, k: 0, t: 0, acc: 0 }));
+    this._emits = Array.from({ length: 6 }, () => ({ alive: false, kind: '', x: 0, z: 0, life: 1, k: 0, k2: 0, t: 0, acc: 0 }));
+    // the wind's streaks (phase 3's gale): crisp lines written on the grid every frame, running downwind
+    this._streaks = Array.from({ length: 28 }, () => ({ alive: false, x: 0, y: 1, z: 0, len: 2, sp: 8, age: 0, life: 1, h: 0.8 }));
     this._shockOpt = { k: 1, fire: 0, kind: 'dust', delay: 0, echo: false, T: undefined, r0: undefined };
-    this._ghostO = { dx: 0, dz: 0, life: 0.6, light: 0, ox: 0, oz: 0, ember: 0 };
+    this._ghostO = { dx: 0, dz: 0, life: 0.6, light: 0, ox: 0, oz: 0, ember: 0, rise: 0, spread: 0 };
     this._gp = new Float32Array(GHOST_PTS * 3);
     this._gCells = new Set();
     this._gSrc = null;
@@ -370,6 +372,7 @@ export class DuelFx {
     for (const f of this.flares) f.alive = false;
     for (const w of this._fronts) w.alive = false;
     for (const e of this._emits) e.alive = false;
+    for (const w of this._streaks) w.alive = false;
   }
 
   // ---------------------------------------------------------------- tells
@@ -959,8 +962,10 @@ export class DuelFx {
     o.r0 = undefined;
     return o;
   }
-  _ghostOpt(dx, dz, life, light = 0, ox = 0, oz = 0, ember = 0) {
+  _ghostOpt(dx, dz, life, light = 0, ox = 0, oz = 0, ember = 0, rise = 0, spread = 0) {
     const o = this._ghostO;
+    o.rise = rise;
+    o.spread = spread;
     o.dx = dx;
     o.dz = dz;
     o.life = life;
@@ -1007,27 +1012,63 @@ export class DuelFx {
       return;
     }
     if (n === 3) {
-      const L = lookOf('ashp3', 'a'), r = 6.5;
+      // Three ideas, not three tints (the second round): the wind takes him (a), a column of ash
+      // climbs out of him (b), the fire burns out and ash falls like snow (c). Each: his whole
+      // figure comes apart (a dense afterimage that goes its own way) and he re-forms out of ash.
+      const L = lookOf('ashp3', 'a');
       // the wind that takes the yard from now on: from the gate's side, across the courtyard
       this._windA = 0.6 + this.lrand(-0.5, 0.5);
       const wx = Math.cos(this._windA), wz = Math.sin(this._windA);
       if (L === 'b') {
-        // white-hot: a front of pale pressure strokes, the fire round him burning down to white
-        this.shock(x, z, r, this._opt(1.2, 0.5, 'ash', 0, false));
-        this._emitter('whiteout', x, z, 0.8, 1);
+        // b: the ash storm: a whirling column climbs out of him and bursts over the yard
+        this._emitter('apart', x, z, 0.2, 0.12); // (his figure comes apart once the flare's dye is gone)
+        this._emitter('column', x, z, 1.5, 1);
+        this.shock(x, z, 4, this._opt(0.8, 0.1, 'dust', 0, false));
+        this.shock(x, z, 9, this._opt(1.6, 0.1, 'ash', 1.15, false)); // (the column's burst)
+        this._emitter('reform', x, z, 1.75, 1.25);
       } else if (L === 'c') {
-        // cinders: the fire on him goes out in a whirl of ash and dying embers the wind takes
-        this.shock(x, z, r * 0.8, this._opt(0.9, 0.2, 'dust', 0, false));
-        this._emitter('vortex', x, z, 1.4, 1);
-        this._embers(x, 1.2, z, 30, 1.5, 5);
+        // c: the fire burns out: a last flash of white fire runs out, then ash falls like snow
+        this._emitter('apart', x, z, 0.2, 0.12);
+        this.shock(x, z, 6, this._opt(0.95, 0.55, 'fire', 0, false));
+        this._airRipple(x, z, 0.85, 0.6, 7.5, 0.4, 0.5, 0.5, 0.28, 0.38);
+        this._emitter('snow', x, z, 2.4, 1);
+        this._emitter('reform', x, z, 1.4, 0.9);
+        this._embers(x, 1.2, z, 24, 1.5, 5);
       } else {
-        // a: ash on the wind: he comes apart into ash the wind tears away, and the yard's dust with it
-        this.shock(x, z, r, this._opt(1.1, 0.1, 'ash', 0, false));
-        if (d) this.ghost(d, this._ghostOpt(wx * 2.4, wz * 2.4, 1.0));
-        this._emitter('gale', x, z, 1.2, 1);
+        // a: ash on the wind: his figure is torn off downwind as ash, a band of ash and the yard's
+        // dust crosses the frame on the wind, and he re-forms out of what blows back in
+        this._emitter('apart', x, z, 0.2, 0.12);
+        this.shock(x, z, 7, this._opt(1.2, 0.1, 'ash', 0, false));
+        this._emitter('gale', x, z, 1.8, 1);
+        this._emitter('reform', x, z, 1.1, 0.6);
       }
-      this._lookLight({ x, y: 1.4, z, color: FRONT_LIGHT.ash, intensity: 2.5, radius: 9, life: 0.6, fade: 0.5 });
+      this._lookLight({ x, y: 1.4, z, color: FRONT_LIGHT.ash, intensity: L === 'c' ? 4 : 2.5, radius: 10, life: 0.7, fade: 0.6 });
     }
+  }
+
+  /**
+   * Phase 3's kneel (call every frame of the transition's windup, u 0..1): ON THE BLADE only
+   * (ADR-118): its fire goes out into ash (a), it whitens (b: the material, nothing drawn), its
+   * embers die (c). Returns the kindle the blade should show.
+   */
+  ashCharge(ax, ay, az, bx, by, bz, u, dt, kindle = 1) {
+    if (!Number.isFinite(ax + ay + az + bx + by + bz + u) || !(dt > 0)) return kindle;
+    const L = lookOf('ashp3', 'a');
+    u = Math.max(0, Math.min(1, u));
+    this.emberAcc += dt * (L === 'b' ? 0 : 22) * (0.4 + u);
+    let guard = 0;
+    while (this.emberAcc >= 1 && guard++ < 5) {
+      this.emberAcc -= 1;
+      const v = this.lr();
+      if (L === 'c') {
+        const o = this._rec(ax + (bx - ax) * v, ay + (by - ay) * v, az + (bz - az) * v, this.lrand(0.5, 1), this.lrand(0.12, 0.18), 0.03, "'.", EMBER, EMBER_END);
+        o.vy = this.lrand(-0.6, 0.2);
+        o.gravity = -2;
+        o.flicker = 0.7;
+        this._spawn(this.add, o);
+      } else this._blob(ax + (bx - ax) * v, ay + (by - ay) * v, az + (bz - az) * v, this.lrand(-0.15, 0.15), this.lrand(0.2, 0.6), this.lrand(-0.15, 0.15), this.lrand(0.4, 0.8), 0.2, 0.4, 0.4, 0, K_SMOKE, 0.6, 0.3);
+    }
+    return L === 'b' ? kindle : Math.max(L === 'c' ? 0.15 : 0, 1 - u);
   }
 
   /**
@@ -1107,6 +1148,7 @@ export class DuelFx {
     e.z = z;
     e.life = life;
     e.k = k;
+    e.k2 = 0;
     e.t = 0;
     e.acc = 0;
   }
@@ -1153,21 +1195,111 @@ export class DuelFx {
           if (this.lr() < 0.3) this._blob(e.x + Math.cos(a) * rr, this.lrand(0.8, 1.6), e.z + Math.sin(a) * rr, 0, this.lrand(0.5, 1.5), 0, this.lrand(0.5, 0.9), 0.5, 1.2, 0.4, 0, K_SMOKE, 0.8, 0.6);
         }
       } else if (e.kind === 'gale') {
-        // the wind takes the yard: dust and ash torn off the floor round him, streaming downwind
-        const wx = Math.cos(this._windA), wz = Math.sin(this._windA);
-        e.acc += dt * 55 * fade;
-        while (e.acc >= 1 && guard++ < 6) {
+        // the wind takes the yard: a band of ash and floor dust, 6 m wide, born upwind of him and
+        // across the yard round him, streaking downwind across a good part of the frame (pale ash
+        // in the field's steel at a low heat: grey-white digits; smoke under it; grit off the floor)
+        const wx = Math.cos(this._windA), wz = Math.sin(this._windA), px = -wz, pz = wx;
+        const k = u < 0.12 ? u / 0.12 : fade * fade;
+        // the wind itself: long crisp streaks running downwind through the yard
+        e.k2 += dt * 34 * k;
+        while (e.k2 >= 1) {
+          e.k2 -= 1;
+          this._streak(e.x + wx * this.lrand(-6, 1) + px * this.lrand(-5, 5), this.lrand(0.8, 2.6), e.z + wz * this.lrand(-6, 1) + pz * this.lrand(-5, 5), this.lrand(1.5, 3.2), this.lrand(9, 14), this.lrand(0.5, 0.9), this.lrand(0.75, 1.05));
+        }
+        e.acc += dt * 80 * k;
+        while (e.acc >= 1 && guard++ < 8) {
           e.acc -= 1;
-          const a = this.lr() * TAU, rr = this.lrand(0.5, 3), sp = this.lrand(3, 7);
-          this._blob(e.x + Math.cos(a) * rr, this.lrand(0.75, 1.6), e.z + Math.sin(a) * rr, wx * sp, this.lrand(0.2, 0.8), wz * sp, this.lrand(0.5, 1.0), 0.5, 1.3, 0.42, 0, K_SMOKE, 1.2, 0.3);
-          if (this.lr() < 0.35) {
-            const o = this._rec(e.x + Math.cos(a) * rr, this.lrand(0.2, 1.6), e.z + Math.sin(a) * rr, this.lrand(0.5, 1.0), this.lrand(0.16, 0.24), 0.06, GRIT, ASH, DUST_END);
-            o.vx = wx * sp * 1.2;
-            o.vy = this.lrand(0.2, 1.2);
-            o.vz = wz * sp * 1.2;
-            o.drag = 1;
+          const along = this.lrand(-5, 3), across = this.lrand(-3, 3) * (1 - 0.4 * Math.abs(along) / 5), sp = this.lrand(5, 9);
+          const bx = e.x + wx * along + px * across, bz = e.z + wz * along + pz * across, hy = this.lrand(0.75, 1.9);
+          if (this.lr() < 0.55) {
+            // a streak: three motes one behind the other along the wind
+            const vy = this.lrand(0.1, 0.6), lf = this.lrand(0.7, 1.2), hh = this.lrand(0.42, 0.58);
+            for (let j = 0; j < 3; j++) this._blob(bx - wx * 0.22 * j, hy, bz - wz * 0.22 * j, wx * sp, vy, wz * sp, lf, 0.32, 0.4, hh * (1 - 0.25 * j), 0, K_STEEL, 0.5);
+          }
+          else this._blob(bx, hy, bz, wx * sp * 0.8, this.lrand(0.2, 0.8), wz * sp * 0.8, this.lrand(0.8, 1.4), 0.5, 1.4, 0.55, 0, K_SMOKE, 0.6, 0.3);
+          if (this.lr() < 0.4) {
+            // the floor's dust lifting into it
+            const o = this._rec(bx, this.lrand(0.05, 0.4), bz, this.lrand(0.6, 1.2), this.lrand(0.2, 0.3), 0.08, GRIT, this.lr() < 0.5 ? ASH : DUST, DUST_END);
+            o.vx = wx * sp * 1.1;
+            o.vy = this.lrand(0.8, 2.4);
+            o.vz = wz * sp * 1.1;
+            o.drag = 0.8;
+            o.gravity = -1.5;
             o.spin = this.lrand(-3, 3);
             this._spawn(this.alpha, o);
+          }
+        }
+      } else if (e.kind === 'column') {
+        // a whirling column of ash climbs out of him (0.75 to 5 m, wider as it climbs), then bursts
+        const k = u < 0.1 ? u / 0.1 : u > 0.75 ? (1 - u) / 0.25 : 1;
+        // its body: two ribbons of pale ash twisting up round him, re-drawn every frame (one copy a
+        // frame: _frame), climbing as it grows, unwinding as it bursts
+        const fl = this._frame();
+        if (fl > 0 && u < 0.8) {
+          const top = 0.75 + 5.5 * Math.min(1, 0.3 + u * 1.8);
+          for (let arm = 0; arm < 3; arm++) for (let j = 0; j < 22; j++) {
+            const h = j / 21, y = 0.75 + (top - 0.75) * h, rr = 0.5 + 2.4 * h * h + 0.5 * u, a = e.t * 7.5 + arm * (TAU / 3) + h * 4.2;
+            this._blob(e.x + Math.cos(a) * rr, y, e.z + Math.sin(a) * rr, 0, 0, 0, fl, 0.5, 0.5, (0.8 - 0.25 * h) * k, 0, K_STEEL);
+          }
+        }
+        e.acc += dt * 160 * k;
+        while (e.acc >= 1 && guard++ < 8) {
+          e.acc -= 1;
+          const h = this.lrand(0, 1), y = 0.75 + h * 4.2 * Math.min(1, 0.4 + u * 1.2), rr = 0.5 + 1.8 * h + 0.6 * u, a = this.lr() * TAU, sp = 5 + 4 * h;
+          const ca = Math.cos(a), sa = Math.sin(a), burst = u > 0.75 ? 6 : 0;
+          if (this.lr() < 0.55) this._blob(e.x + ca * rr, y, e.z + sa * rr, -sa * sp + ca * burst, this.lrand(1.2, 2.6), ca * sp + sa * burst, this.lrand(0.3, 0.55), 0.36, 0.5, this.lrand(0.48, 0.66), 0, K_STEEL, 1.2);
+          else this._blob(e.x + ca * rr, y, e.z + sa * rr, -sa * sp * 0.8 + ca * burst, this.lrand(1, 2), ca * sp * 0.8 + sa * burst, this.lrand(0.6, 1.1), 0.5, 1.3, 0.55, 0, K_SMOKE, 1, 0.4);
+          if (this.lr() < 0.25) {
+            const o = this._rec(e.x + ca * rr, y, e.z + sa * rr, this.lrand(0.5, 1), this.lrand(0.18, 0.26), 0.06, GRIT, ASH, DUST_END);
+            o.vx = -sa * sp + ca * (burst + 2);
+            o.vy = this.lrand(1, 3);
+            o.vz = ca * sp + sa * (burst + 2);
+            o.drag = 1;
+            o.gravity = -3;
+            o.spin = this.lrand(-3, 3);
+            this._spawn(this.alpha, o);
+          }
+        }
+      } else if (e.kind === 'snow') {
+        // the fire has burnt out: ash falls like snow over the yard round him (9 m), thick, then thin
+        const k = u < 0.1 ? u / 0.1 : fade;
+        e.acc += dt * 70 * k;
+        while (e.acc >= 1 && guard++ < 8) {
+          e.acc -= 1;
+          const a = this.lr() * TAU, rr = 9 * Math.sqrt(this.lr()), y = this.lrand(2.5, 5.5), lf = this.lrand(1.2, 2.0);
+          const bx = e.x + Math.cos(a) * rr, bz = e.z + Math.sin(a) * rr;
+          if (this.lr() < 0.6) this._blob(bx, y, bz, this.lrand(-0.4, 0.4), -(y - 0.8) / lf, this.lrand(-0.4, 0.4), lf, 0.32, 0.32, this.lrand(0.45, 0.62), 0.25, K_STEEL, 0);
+          else {
+            const r = this.lr(), o = this._rec(bx, y, bz, lf, this.lrand(0.18, 0.26), 0.14, ".,'`", r < 0.15 ? EMBER : r < 0.6 ? PALE : ASH, DUST_END);
+            o.vx = this.lrand(-0.4, 0.4);
+            o.vy = -(y - 0.3) / lf;
+            o.vz = this.lrand(-0.4, 0.4);
+            o.spin = this.lrand(-2, 2);
+            o.alphaEnd = 0.3;
+            this._spawn(o.color === ASH ? this.alpha : this.add, o);
+          }
+        }
+      } else if (e.kind === 'apart') {
+        // phase 3's change: his whole figure comes apart, its own way per look (a downwind, b taken
+        // up into the column, c settling as it burns out)
+        if (e.t >= e.k && e.acc >= 0) {
+          e.acc = -1;
+          const d = this.d, L = lookOf('ashp3', 'a'), wx = Math.cos(this._windA), wz = Math.sin(this._windA);
+          if (d) {
+            if (L === 'b') this.ghost(d, this._ghostOpt(0, 0, 1.1, 0, 0, 0, 0, 2.6, 1.2));
+            else if (L === 'c') this.ghost(d, this._ghostOpt(0, 0, 1.3, 0, 0, 0, 1, -0.6, 0.5));
+            else this.ghost(d, this._ghostOpt(wx * 5, wz * 5, 1.2, 0, 0, 0, 0, 0.3, 1.6));
+          }
+        }
+      } else if (e.kind === 'reform') {
+        // after e.k s: ash drawn back in onto him from all round: he re-forms (on him as he is now)
+        const p = this.d?.position;
+        if (e.t >= e.k && p && Number.isFinite(p.x + p.z)) {
+          e.acc += dt * 110;
+          while (e.acc >= 1 && guard++ < 6) {
+            e.acc -= 1;
+            const a = this.lr() * TAU, r = this.lrand(1.2, 3), h = this.lrand(0.8, 2.6), lf = this.lrand(0.22, 0.4), ty = this.lrand(0.8, 1.9);
+            this._blob(p.x + Math.cos(a) * r, h, p.z + Math.sin(a) * r, (-Math.cos(a) * r) / lf, (ty - h) / lf, (-Math.sin(a) * r) / lf, lf, 0.28, 0.18, 0.3, 0.6, K_STEEL);
           }
         }
       }
@@ -1180,6 +1312,42 @@ export class DuelFx {
    * 0..1 its strength as it grows in). Look by `?ashp3=`: a grey ash and pale specks, b a little ash
    * and white sparks rising (white-hot), c dark ash and the odd dying ember. About 40 blobs alive.
    */
+  /** One wind streak: a crisp line `len` m long running downwind at `sp` m/s for `life` s. */
+  _streak(x, y, z, len, sp, life, h) {
+    let w = null;
+    for (const q of this._streaks) if (!q.alive) {
+      w = q;
+      break;
+    }
+    if (!w || !Number.isFinite(x + y + z)) return;
+    w.alive = true;
+    w.x = x;
+    w.y = y;
+    w.z = z;
+    w.len = len;
+    w.sp = sp;
+    w.age = 0;
+    w.life = life;
+    w.h = h;
+  }
+
+  _streaksUpdate(dt) {
+    if (!(dt > 0)) return;
+    const wx = Math.cos(this._windA), wz = Math.sin(this._windA);
+    for (const w of this._streaks) {
+      if (!w.alive) continue;
+      w.age += dt;
+      if (w.age >= w.life) {
+        w.alive = false;
+        continue;
+      }
+      w.x += wx * w.sp * dt;
+      w.z += wz * w.sp * dt;
+      const u = w.age / w.life, f = u < 0.15 ? u / 0.15 : (1 - u) / 0.85, l = w.len * (0.6 + 0.4 * f);
+      this._ink(w.x - wx * l, w.y, w.z - wz * l, w.x, w.y, w.z, 0, 0.25 * f, 0, w.h * f);
+    }
+  }
+
   /** The third phase's look in use ('a' | 'b' | 'c'; `?ashp3=`), for the actor's blade and trails. */
   ashLook() {
     const L = lookOf('ashp3', 'a');
@@ -1193,12 +1361,36 @@ export class DuelFx {
     const wa = this._windA + 0.35 * Math.sin(t * 0.23), wx = Math.cos(wa), wz = Math.sin(wa);
     this._windAcc += dt * (L === 'b' ? 22 : 42) * k;
     let guard = 0;
+    if (L === 'b') {
+      // b: the column's remnant: a low slow whirl of dust round his feet (kept under his knees: it
+      // never covers his blade or a flare)
+      const f = d.position, t2 = t * 2.2;
+      while (this._windAcc >= 1 && guard++ < 4) {
+        this._windAcc -= 1;
+        const a = t2 + this.lr() * TAU, rr = this.lrand(0.6, 1.2), sp = this.lrand(1.5, 2.5);
+        this._blob(f.x + Math.cos(a) * rr, this.lrand(0.75, 1.0), f.z + Math.sin(a) * rr, -Math.sin(a) * sp, 0.15, Math.cos(a) * sp, this.lrand(0.5, 0.8), 0.3, 0.7, 0.5, 0, K_SMOKE, 0.8, 0);
+      }
+      if (this._windAcc > 6) this._windAcc = 0;
+      return;
+    }
+    if (L === 'c' && this.lr() < dt * 10 * k) {
+      // c: a flake of ash still falling round him now and then
+      const f = d.position, a = this.lr() * TAU, rr = this.lrand(0.5, 3), lf = this.lrand(1.2, 1.8);
+      const o = this._rec(f.x + Math.cos(a) * rr, this.lrand(2.4, 3.4), f.z + Math.sin(a) * rr, lf, this.lrand(0.16, 0.22), 0.12, ".,'`", ASH, DUST_END);
+      o.vy = -2.2 / lf;
+      o.vx = wx * 0.4;
+      o.vz = wz * 0.4;
+      o.spin = this.lrand(-2, 2);
+      this._spawn(this.alpha, o);
+    }
     while (this._windAcc >= 1 && guard++ < 6) {
       this._windAcc -= 1;
       const p = hs[ASH_FROM[(this.lr() * ASH_FROM.length) | 0]];
       if (!p || !Number.isFinite(p.x + p.y + p.z)) continue;
       const x = p.x + this.lrand(-0.22, 0.22), y = p.y + this.lrand(-0.3, 0.3), z = p.z + this.lrand(-0.22, 0.22), sp = this.lrand(0.8, 1.8);
       this._blob(x, Math.max(0.75, y), z, wx * sp, this.lrand(0.25, 0.7), wz * sp, this.lrand(0.7, 1.3), 0.28, 0.8, L === 'c' ? 0.56 : 0.5, 0, K_SMOKE, 0.4, 0.3);
+      // (a: a pale speck of ash in it now and then, so the stream reads at the game camera)
+      if (L === 'a' && guard % 3 === 0) this._blob(x - wx * 0.3, Math.max(0.75, y), z - wz * 0.3, wx * sp * 1.3, this.lrand(0.1, 0.4), wz * sp * 1.3, this.lrand(0.5, 0.9), 0.24, 0.2, 0.3, 0, K_STEEL, 0.4);
       const r3 = this.lr();
       if (L === 'b' ? r3 < 0.45 : r3 < 0.3) {
         const o = this._rec(x, y, z, this.lrand(0.6, 1.2), this.lrand(0.12, 0.18), 0.04, L === 'b' ? "'." : ".,'`", L === 'b' ? PALE : L === 'c' && r3 < 0.08 ? EMBER : ASH, L === 'b' ? ASH : DUST_END);
@@ -1237,7 +1429,8 @@ export class DuelFx {
       const kind = ph >= 3 ? 'ash' : ph >= 2 ? 'fire' : 'dust';
       this.shock(x, z, ring * 1.3, this._opt(0.55 + fin(D.damage, 20) / 50, ph >= 3 ? 0.1 : ph >= 2 ? 0.5 : 0.12, kind, 0, ph === 2));
     }
-    if (ph >= 3 && !D.release && !D.cast && !D.noSweep && !D.feint) {
+    // (a beat that flits has its afterimage where he was already: disciple.beatMotion / flit 'a')
+    if (ph >= 3 && !D.release && !D.cast && !D.noSweep && !D.feint && !D.flit) {
       const L = lookOf('ashp3', 'a');
       this.ghost(d, this._ghostOpt(Math.cos(this._windA) * 1.2, Math.sin(this._windA) * 1.2, 0.5, 1, 0, 0, L === 'c' ? 1 : 0));
     }
@@ -1257,9 +1450,18 @@ export class DuelFx {
     if (n < 12) return 0;
     const S = this._screen(d.position.x, 1, d.position.z), mpp = S.mpp, cell = S.cw * mpp, D = 12 * mpp, A = this._axes();
     const q = 1 / Math.max(0.02, cell), cells = this._gCells, step = o.light ? 2 : 1, life0 = fin(o.life, 0.6);
-    const dx = fin(o.dx, 0), dz = fin(o.dz, 0), ox = fin(o.ox, 0), oz = fin(o.oz, 0);
-    let y0 = Infinity;
-    for (let i = 0; i < n; i++) y0 = Math.min(y0, P[i * 3 + 1]);
+    const dx = fin(o.dx, 0), dz = fin(o.dz, 0), ox = fin(o.ox, 0), oz = fin(o.oz, 0), rise = fin(o.rise, 0), spread = fin(o.spread, 0);
+    // (the second round, read at 30 m: a paler core down his middle, a little wider than his own
+    // cells so the figure prints solid, a beat longer, smoke under every third cell)
+    let y0 = Infinity, s0 = Infinity, s1 = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const k = i * 3;
+      y0 = Math.min(y0, P[k + 1]);
+      const sx = P[k] * A.rx + P[k + 1] * A.ry + P[k + 2] * A.rz;
+      s0 = Math.min(s0, sx);
+      s1 = Math.max(s1, sx);
+    }
+    const sMid = (s0 + s1) / 2, sHalf = Math.max(0.1, (s1 - s0) / 2);
     cells.clear();
     let spent = 0;
     for (let i = 0; i < n; i += step) {
@@ -1270,11 +1472,20 @@ export class DuelFx {
       if (cells.has(key)) continue;
       cells.add(key);
       const h = Math.min(1, Math.max(0, (py - y0) / 1.8)); // 0 his feet .. 1 his head
-      const lf = life0 * (0.4 + 0.6 * h) + this.lrand(0, 0.12);
-      this._blob(px, py, pz, dx * this.lrand(0.1, 0.45), this.lrand(0.05, 0.3), dz * this.lrand(0.1, 0.45), lf, D, D * 0.7, (o.light ? 0.34 : 0.42) * this.lrand(0.85, 1.2), 0, K_STEEL, 1);
+      const lf = life0 * (0.55 + 0.6 * h) + this.lrand(0.08, 0.2);
+      const core = Math.abs(sx - ox * A.rx - oz * A.rz - sMid) < 0.45 * sHalf;
+      // (spread: the figure comes apart as it goes; rise: it is taken up / settles)
+      let vx = dx * this.lrand(0.1, 0.45), vy = this.lrand(0.05, 0.3), vz = dz * this.lrand(0.1, 0.45);
+      if (spread > 0) {
+        vx = dx * this.lrand(0.5, 1.2) + this.lrand(-1, 1) * spread;
+        vy = rise * this.lrand(0.5, 1.3) + this.lrand(-0.3, 0.6) * spread;
+        vz = dz * this.lrand(0.5, 1.2) + this.lrand(-1, 1) * spread;
+      } else if (rise) vy = rise * this.lrand(0.5, 1.3);
+      const hh = (o.light ? 0.42 : 0.55) * (core ? 1.6 : 1) * this.lrand(0.9, 1.15);
+      this._blob(px, py, pz, vx, vy, vz, lf, D * 1.25, D * 0.8, hh, 0, K_STEEL, spread > 0 ? 0.6 : 1);
       spent++;
-      if ((spent & 3) === 0) {
-        this._blob(px, Math.max(0.75, py), pz, dx * 0.6, this.lrand(0.3, 0.7), dz * 0.6, lf * 1.4, 0.3, 0.75, 0.42, 0, K_SMOKE, 0.8, 0.4);
+      if (spent % 3 === 0) {
+        this._blob(px, Math.max(0.75, py), pz, vx * 0.7, vy + this.lrand(0.2, 0.5), vz * 0.7, lf * 1.5, 0.32, 0.8, 0.5, 0, K_SMOKE, 0.8, 0.4);
         spent++;
       }
       if (o.ember && spent % 9 === 0) {
@@ -1629,6 +1840,7 @@ export class DuelFx {
     const fdt = this.game.fxDt ?? dt;
     this._frontsUpdate(fdt);
     this._emittersUpdate(fdt);
+    this._streaksUpdate(fdt);
   }
 
   get crescentsAlive() {
@@ -1773,29 +1985,40 @@ export class DuelFx {
   _drawQi(c, L) {
     const ph = this.d?.phase ?? 1, p3 = ph >= 3, p2 = ph >= 2 && !p3;
     const edge = p3 ? 1.2 : 1.15, px = -c.dz, pz = c.dx;
+    this._frame();
+    if (this._qiFrame !== this._fNow) {
+      // (a crowd, a fan or the storm's nine, shares one budget: about 6 wake blobs a frame in all,
+      // and past three in the air the faintest bow of a is left out)
+      this._qiFrame = this._fNow;
+      let n = 0;
+      for (const q of this.crescents) if (q.alive) n++;
+      this._qiShare = Math.min(2, 6 / Math.max(1, n));
+    }
     if (L === 'b') {
       this._bow(c, 0.8, 0.5, 0.5, 0.05, 0.27, edge * 0.7, K_STEEL, 0.05);
       this._bow(c, 0.95, 0.6, 0.95, 0.1, 0.27, edge);
-      this._bow(c, 0.7, 0.45, 1.45, 0.05, 0.27, edge * 0.55, K_STEEL, 0.1);
+      if (this._qiShare >= 2) this._bow(c, 0.7, 0.45, 1.45, 0.05, 0.27, edge * 0.55, K_STEEL, 0.1);
     } else if (L === 'c') {
       this._bow(c, 1.0, 0.5, 0.5, 0.0, 0.27, edge);
       this._bow(c, 0.7, 0.4, 0.5, 0.0, 0.27, 0.42, K_STEEL, 0.5);
     } else {
       this._bow(c, 0.95, 0.58, 0.6, 0.12, 0.27, edge);
       this._bow(c, 0.78, 0.5, 0.6, 0.1, 0.27, 0.62, K_STEEL, 0.28);
-      this._bow(c, 0.6, 0.42, 0.6, 0.08, 0.27, 0.36, K_STEEL, 0.58);
+      if (this._qiShare >= 2) this._bow(c, 0.6, 0.42, 0.6, 0.08, 0.27, 0.36, K_STEEL, 0.58);
     }
-    // the wake: dust (phase 1), flame (phase 2), ash with pale specks (phase 3), torn off behind the edge
-    for (let i = 0; i < 2; i++) {
+    // the wake: dust (phase 1), flame (phase 2), ash with pale specks (phase 3), torn off behind the
+    // edge. A crowd (a fan, the storm's nine) shares one budget: about 6 wake blobs a frame in all
+    const nW = Math.floor(this._qiShare) + (this.lr() < this._qiShare % 1 ? 1 : 0);
+    for (let i = 0; i < nW; i++) {
       const u = this.lrand(-0.9, 0.9), bx = c.x + px * u - c.dx * this.lrand(0.2, 0.7), bz = c.z + pz * u - c.dz * this.lrand(0.2, 0.7);
       const hy = L === 'b' ? this.lrand(0.75, 1.4) : this.lrand(0.75, 0.95);
       if (p2) this._blob(bx, hy, bz, -c.dx * 1.5, this.lrand(0.3, 0.9), -c.dz * 1.5, this.lrand(0.22, 0.34), 0.44, 0.2, 0.38, 0, K_FIRE, 1.5, 1.5);
-      else this._blob(bx, hy, bz, -c.dx * 1.2 + px * u * 1.5, this.lrand(0.2, 0.6), -c.dz * 1.2 + pz * u * 1.5, this.lrand(0.4, 0.7), 0.4, 1.0, p3 ? 0.55 : 0.48, 0, K_SMOKE, 1.5, 0.3);
-      if (p3 && i === 0) this._blob(bx, hy, bz, -c.dx, this.lrand(0.2, 0.8), -c.dz, this.lrand(0.15, 0.3), 0.26, 0.14, 0.5, 0, K_STEEL, 1.5);
+      else this._blob(bx, hy, bz, -c.dx * 1.2 + px * u * 1.5, this.lrand(0.2, 0.6), -c.dz * 1.2 + pz * u * 1.5, this.lrand(0.4, 0.7) * Math.min(1, this._qiShare), 0.4, 1.0, p3 ? 0.55 : 0.48, 0, K_SMOKE, 1.5, 0.3);
+      if (p3 && i === 0 && this._qiShare >= 1) this._blob(bx, hy, bz, -c.dx, this.lrand(0.2, 0.8), -c.dz, this.lrand(0.15, 0.3), 0.26, 0.14, 0.5, 0, K_STEEL, 1.5);
     }
     // grit torn up off the floor: off both horns (a), thrown out to both sides (c), under it (b)
     const nG = L === 'c' ? 2 : 1;
-    for (let i = 0; i < nG; i++) if (this.lr() < 0.8) {
+    for (let i = 0; i < nG; i++) if (this.lr() < 0.4 * this._qiShare) {
       const sd = this.lr() < 0.5 ? -1 : 1, u = L === 'b' ? this.lrand(-0.6, 0.6) : sd * this.lrand(0.6, 1.0), out = L === 'c' ? this.lrand(2.5, 5) : this.lrand(0.5, 1.5);
       const o = this._rec(c.x + px * u, this.lrand(0.1, 0.3), c.z + pz * u, this.lrand(0.3, 0.6), this.lrand(0.18, 0.26), 0.06, GRIT, p3 ? ASH : DUST, DUST_END);
       o.vx = -c.dx * 2 + px * sd * out;
