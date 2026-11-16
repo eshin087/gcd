@@ -5,7 +5,10 @@
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
 //             timing | fire | music | herolook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
-//   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map)
+//             or a comma list of them (hero,looks,...)
+//   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
+//    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
+//   ABYSS_SKIP=name,name... leaves those scenarios out of `all` (tests/run.mjs runs `timing` beside it, in parts)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, fireWin, AUDIO, resetWindow, El } from './shim.mjs';
@@ -7619,7 +7622,15 @@ async function scenarioTiming() {
   const { attackWeight } = await imp('src/entities/dragon/ai.js');
   const lead = TUNING.flashLead, TOL = 0.085;
   // the strings, plus the single melee attacks they share performances with (unchanged numbers)
-  const names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,stormFlurry,wingRend,pivotLash,rearGuard,skyHammer,furnaceMaw,cinderRake,cataclysm,bite,swipe,tail,stomp').split(',');
+  let names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,stormFlurry,wingRend,pivotLash,rearGuard,skyHammer,furnaceMaw,cinderRake,cataclysm,bite,swipe,tail,stomp').split(',');
+  // one part of the list (tests/run.mjs runs the n parts side by side): every n-th name from the k-th
+  if (process.env.ABYSS_TM_SHARD) {
+    const m = /^(\d+)\/(\d+)$/.exec(process.env.ABYSS_TM_SHARD);
+    const k = m ? +m[1] : 0, n = m ? +m[2] : 0;
+    if (!(n >= 1 && k >= 1 && k <= n)) { assert(false, `ABYSS_TM_SHARD is k/n with 1 <= k <= n (${process.env.ABYSS_TM_SHARD})`); return G; }
+    names = names.filter((_, i) => i % n === k - 1);
+    out(`   part ${k} of ${n}: ${names.join(', ')}`);
+  }
   const DISTS = [2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 10, 12.5];
   const ANGS = [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2, 1.5, -1.5, 1.9, -1.9, 2.5, -2.5, Math.PI];
   const report = {};
@@ -9308,7 +9319,14 @@ async function scenarioMusic() {
 const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, melee: scenarioMelee, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
-for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
+// ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process
+const SKIP = new Set((process.env.ABYSS_SKIP || '').split(',').filter(Boolean));
+for (const name of SKIP) if (!SCENARIOS[name]) { out(`ABYSS_SKIP: unknown scenario '${name}'`); process.exit(2); }
+if (SCEN === 'all' && SKIP.size) out(`\n(not run here, ABYSS_SKIP: ${[...SKIP].join(', ')})`);
+// a scenario, `all`, or a comma list of scenarios (run in the order of SCENARIOS, as `all` does)
+const WANT = SCEN === 'all' ? [] : SCEN.split(',');
+if (WANT.length > 1) for (const name of WANT) if (!SCENARIOS[name]) { out(`unknown scenario '${name}' in '${SCEN}'`); process.exit(2); }
+for (const [name, fn] of Object.entries(SCENARIOS)) if (WANT.includes(name) || (SCEN === 'all' && !OPT_IN.has(name) && !SKIP.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 
 out('');

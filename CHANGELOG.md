@@ -571,6 +571,11 @@ Forty-eight pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **`npm test` runs its suites side by side** (2026-11-15): `tests/run.mjs` starts the four
+  integration suites and the two static checks as separate processes, with `integ` in five parts
+  (its TIMING scenario in three), and prints each task's output whole and a summary of times. The
+  same checks run. `integ.mjs` takes a comma list of scenarios, `ABYSS_SKIP` and `ABYSS_TM_SHARD`.
+  CI cancels a PR's superseded run.
 - **The sword arc** (ADR-074): `PlayerFx.trail` draws an edge line, a faint veil and motes, gated
   by how far the blade turned in the frame (was 4–5 rows of bright strokes under `A` / `8` letters
   with a `+` halftone, drawn for any blade movement); `arcGlint` once a swing.
