@@ -383,6 +383,239 @@ async function scenarioLevels() {
   return G;
 }
 
+// ================================================================== scenario: moves (the second pass)
+/**
+ * Shen Hui's second pass (wave 2): every new move in every phase it is in, answered by a parrying bot
+ * and by a rolling bot (no blow of it lands: each tell is answered by what it promises); the long
+ * string re-closes on a hero who stepped back; burning ground keeps the rule of fire on grass (its
+ * first burn after its grace, then one a tick, blockable, never while rolling) and its cap; the storm
+ * of qi leaves a way out (the straddling wave passes either side of a hero who stands, a rolling bot
+ * takes nothing); links fire by where the hero is.
+ */
+const NEW_MOVES = ['glideKick', 'leapSpin', 'mirrorFeint', 'chaseRain', 'windSpin', 'partingWind', 'burningCross', 'emberFan', 'zigzag', 'leapingString', 'kickBrand', 'ashString', 'ashFlurry', 'qiStorm', 'ghostDash', 'flitLotus'];
+async function scenarioMoves() {
+  out('\n== scenario MOVES (the second pass: every new move answered, the re-close, burning ground, the storm, links) ==');
+  const { linkFor } = await imp('src/entities/enemies/duelist/director.js');
+  assert(NEW_MOVES.every((n) => MOVES[n]), `the new moves exist (${NEW_MOVES.filter((n) => !MOVES[n]).join(', ') || 'all'})`);
+  const per = { 1: NEW_MOVES.filter((n) => MOVES[n].phase === 1).length, 2: NEW_MOVES.filter((n) => MOVES[n].phase === 2).length, 3: NEW_MOVES.filter((n) => MOVES[n].phase === 3).length };
+  assert(per[1] >= 5 && per[2] >= 5 && per[3] >= 5, `at least five new moves per phase (${per[1]} / ${per[2]} / ${per[3]})`);
+  // no new blow over today's worst (30 before the scale) and the bands: a string hit 10 - 15, blue 18 - 26, red 22 - 30
+  const band = { [TELL.NORMAL]: [10, 15], [TELL.BLUE]: [18, 26], [TELL.RED]: [22, 30] };
+  const off = [];
+  for (const n of NEW_MOVES) for (const b of MOVES[n].beats) if (!b.feint && b.tell !== TELL.BLACK) { const B = band[b.tell]; if (!(b.damage >= B[0] && b.damage <= B[1])) off.push(`${n} ${b.tell} ${b.damage}`); }
+  assert(!off.length, `every new blow's damage in its band (${off.join(', ') || 'all'})`);
+  const blacks = MOVE_NAMES.filter((n) => MOVES[n].beats.some((b) => b.tell === TELL.BLACK));
+  assert(blacks.length === 1, `still exactly one charged black move (${blacks.join(', ')})`);
+
+  // ---- every new move against a parrying bot and a rolling bot, in each phase it is in
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  p.debug.noRiposte = true;
+  const toPhase = (ph) => {
+    while (d.phase < ph) {
+      const n = d.phase + 1;
+      d.debug[`phase${n}`]();
+      run(G, 4, null, () => d.phase === n && d.mode === 'foot');
+    }
+  };
+  const tried = [];
+  for (const ph of [1, 2, 3]) {
+    toPhase(ph);
+    for (const name of NEW_MOVES) {
+      const def = MOVES[name];
+      if (def.phase > ph) continue;
+      for (const style of ['mixed', 'dodge']) {
+        settle(G, 8);
+        d.position.set(0, 0, -2);
+        d.yaw = 0;
+        place(G, (def.band[0] + Math.min(def.band[1], 9)) / 2);
+        run(G, 0.2);
+        d.brain.cooldowns = {};
+        G.defend = makeDefender(G, { style });
+        const h0 = G.hits.length;
+        d.debug.trigger(name);
+        run(G, 9, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+        G.defend = null;
+        input.up(1);
+        const landed = G.hits.slice(h0).filter((h) => h.attack === name && h.r === RESULT.HIT);
+        tried.push(`${name}/P${ph}/${style}:${landed.length}`);
+        if (landed.length) assert(false, `${name} P${ph}: answered by a ${style === 'dodge' ? 'rolling' : 'parrying'} bot, ${landed.length} blow(s) landed (${landed.map((h) => h.tell).join(',')})`);
+      }
+    }
+  }
+  assert(tried.every((t) => t.endsWith(':0')), `every new move in every phase it is in: no blow lands on a hero who answers its tells (parry / roll): ${tried.length} runs`);
+
+  // ---- the long string re-closes: the hero steps back 5.5 m as the glide comes; the string goes on and reaches him
+  {
+    const G2 = build();
+    duel(G2, { dist: 2 });
+    const d2 = G2.game.dragon, p2 = G2.game.player;
+    p2.debug.god = true;
+    p2.debug.noRiposte = true;
+    d2.debug.trigger('chaseRain');
+    const A = d2.brain.act, glideI = A.beats.findIndex((b) => b.def.dash?.max >= 5);
+    let moved = false, at = 0;
+    const h0 = G2.hits.length;
+    run(G2, 8, () => {
+      const t = d2.brain.act === A ? A.t : -1;
+      if (!moved && t >= A.beats[glideI].start - 0.12) {
+        moved = true;
+        at = G2.game.time;
+        const dx = p2.position.x - d2.position.x, dz = p2.position.z - d2.position.z, l = Math.hypot(dx, dz) || 1;
+        p2.debug.teleport(d2.position.x + (dx / l) * 5.5, d2.position.z + (dz / l) * 5.5);
+      }
+    }, () => d2.mode === 'foot');
+    const after = G2.hits.slice(h0).filter((h) => h.attack === 'chaseRain' && h.t > at);
+    assert(moved && glideI > 0 && after.length >= 1 && A.beats[glideI].done, `Chasing Rain re-closes: the hero 5.5 m back as its glide comes, the string goes on and ${after.length} of its blows reach him after it (glide beat ${glideI})`);
+  }
+
+  // ---- burning ground: the rule of fire on grass, its cap
+  {
+    const G3 = build();
+    duel(G3, { dist: 1.6 });
+    const d3 = G3.game.dragon, p3 = G3.game.player, F = d3.moveFx;
+    d3.debug.phase2();
+    run(G3, 4, null, () => d3.phase === 2 && d3.mode === 'foot');
+    settle(G3, 6);
+    place(G3, 1.6);
+    p3.debug.god = true;
+    p3.debug.noRiposte = true;
+    const T = TUNING.burn;
+    const made = [];
+    const add = F.add.bind(F);
+    F.add = (...a) => { const r = add(...a); if (r) made.push(G3.game.time); return r; };
+    const states = [];
+    const th = p3.takeHit.bind(p3);
+    p3.takeHit = (h) => { if (h?.attack === 'burningGround') states.push(p3.state); return th(h); };
+    const h0 = G3.hits.length;
+    d3.debug.trigger('burningCross');
+    run(G3, 4, null, () => d3.mode === 'foot');
+    run(G3, 1.5); // (the hero stays where he defended the string)
+    // (no burn while the string still had blows coming: he defends where he stands)
+    const lastBlow = Math.max(...G3.hits.slice(h0).filter((h) => h.attack === 'burningCross').map((h) => h.t));
+    const burns = G3.hits.slice(h0).filter((h) => h.attack === 'burningGround');
+    assert(made.length >= 2, `Cinder Cross leaves its lines of fire (${made.length})`);
+    const first = burns[0];
+    assert(first && first.t - made[0] >= T.grace - DT - 1e-6 && first.t >= lastBlow + T.armAfter - DT - 1e-6, `the first burn comes after the line's grace (${first ? (first.t - made[0]).toFixed(2) : '-'} s >= ${T.grace}) and after the string's last blow (${first ? (first.t - lastBlow).toFixed(2) : '-'} s >= ${T.armAfter})`);
+    // then the tick: a line laid under a hero who stands in it
+    settle(G3, 6);
+    F.reset();
+    const h2 = G3.hits.length, t2 = G3.game.time;
+    F.add(p3.position.x - 1.5, p3.position.z, p3.position.x + 1.5, p3.position.z, T.width, T.life);
+    run(G3, 2.2, (GG) => { GG.input.axis = { x: 0, y: 0 }; });
+    const ticks = G3.hits.slice(h2).filter((h) => h.attack === 'burningGround');
+    let minGap = Infinity;
+    for (let i = 1; i < ticks.length; i++) minGap = Math.min(minGap, ticks[i].t - ticks[i - 1].t);
+    assert(ticks.length >= 3 && ticks[0].t - t2 >= T.grace - DT - 1e-6 && minGap >= T.tick - DT - 1e-6 && ticks.every((h) => h.damage === T.damage), `standing in a line: the first burn ${ticks[0] ? (ticks[0].t - t2).toFixed(2) : '-'} s after it catches (>= ${T.grace}), then ${T.damage} every ${T.tick} s (${ticks.length} burns, the closest ${minGap.toFixed(2)} s apart)`);
+    // blockable: a hero who holds his guard in it loses nothing; rolling: never burned
+    settle(G3, 6);
+    F.reset();
+    p3.debug.god = false;
+    p3.debug.heal();
+    const hp0 = p3.hp;
+    F.add(p3.position.x - 1.5, p3.position.z, p3.position.x + 1.5, p3.position.z, T.width, T.life);
+    G3.input.press(1);
+    const h1 = G3.hits.length;
+    run(G3, 1.6, (GG) => { GG.input.axis = { x: 0, y: 0 }; });
+    G3.input.up(1);
+    const gb = G3.hits.slice(h1).filter((h) => h.attack === 'burningGround');
+    // (blocked as grass fire is: a contact tick keeps a fifth of its damage through the guard, player.js _block)
+    assert(gb.length >= 1 && gb.every((h) => h.r !== RESULT.HIT) && hp0 - p3.hp <= gb.length * T.damage * 0.2 + 1e-6, `blockable: guarding in it, ${gb.length} burns turned (${gb.map((h) => h.r).join(',')}), hp ${hp0} → ${p3.hp} (grass fire's chip)`);
+    p3.debug.heal();
+    states.length = 0;
+    F.reset();
+    F.add(p3.position.x - 2.5, p3.position.z, p3.position.x + 2.5, p3.position.z, T.width, T.life);
+    run(G3, 0.5);
+    for (let i = 0; i < 6; i++) {
+      G3.input.axis = { x: i % 2 ? 1 : -1, y: 0 };
+      G3.input.tap('Space');
+      run(G3, 0.45);
+    }
+    G3.input.axis = { x: 0, y: 0 };
+    assert(!states.includes('roll'), `never while he rolls (${states.length} burns, states: ${[...new Set(states)].join(',') || 'none'})`);
+    // the cap: more lines than the phase allows, the oldest go out
+    F.reset();
+    for (let i = 0; i < 12; i++) F.add(-6 + i, 8, -6 + i, 10, T.width, T.life);
+    const lit = F.lines.filter((L) => L.alive && L.age < L.life - T.fade).length;
+    assert(lit <= T.cap[1], `the cap: 12 lines asked in phase 2, ${lit} burn on (<= ${T.cap[1]})`);
+    run(G3, T.life + 0.2);
+    assert(F.alive === 0, `and they burn out in ${T.life} s (${F.alive} left)`);
+    p3.debug.god = true;
+  }
+
+  // ---- the storm leaves a way out
+  {
+    const G4 = build();
+    duel(G4, { dist: 4 });
+    const d4 = G4.game.dragon, p4 = G4.game.player;
+    p4.debug.god = true;
+    p4.debug.noRiposte = true;
+    d4.debug.phase2();
+    run(G4, 4, null, () => d4.phase === 2 && d4.mode === 'foot');
+    d4.debug.phase3();
+    run(G4, 4, null, () => d4.phase === 3 && d4.mode === 'foot');
+    settle(G4, 6);
+    const thrown = [];
+    const tc = d4.fx.throwCrescent.bind(d4.fx);
+    d4.fx.throwCrescent = (...a) => { const c = tc(...a); if (c) thrown.push(c); return c; };
+    const flashes = [];
+    G4.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'qiStorm') flashes.push(G4.game.time); };
+    d4.position.set(0, 0, -3);
+    d4.yaw = 0;
+    place(G4, 7);
+    run(G4, 0.2);
+    const h0 = G4.hits.length;
+    d4.debug.trigger('qiStorm');
+    run(G4, 6, (GG) => { GG.input.axis = { x: 0, y: 0 }; }, () => d4.mode === 'foot' && !d4.fx.crescentsAlive);
+    G4.watch = null;
+    const stood = G4.hits.slice(h0).filter((h) => h.attack === 'qiStorm');
+    let gapMin = Infinity;
+    for (let i = 1; i < flashes.length; i++) gapMin = Math.min(gapMin, flashes[i] - flashes[i - 1]);
+    assert(thrown.length === 9 && stood.length <= 3, `Storm of Ash: ${thrown.length} crescents in four waves, ${stood.length} of them reach a hero who stands still (the two that straddle him pass either side)`);
+    assert(MOVES.qiStorm.beats.every((b) => b.tell !== TELL.RED && b.tell !== TELL.BLACK) && gapMin >= 0.4, `every wave is guardable and the glints come ${gapMin.toFixed(2)} s apart at least (>= 0.4: a roll for each)`);
+    settle(G4, 6);
+    G4.defend = makeDefender(G4, { style: 'dodge' });
+    place(G4, 7);
+    const h1 = G4.hits.length;
+    d4.brain.cooldowns = {};
+    d4.debug.trigger('qiStorm');
+    run(G4, 6, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); }, () => d4.mode === 'foot' && !d4.fx.crescentsAlive);
+    G4.defend = null;
+    const rolledHits = G4.hits.slice(h1).filter((h) => h.attack === 'qiStorm' && h.r === RESULT.HIT);
+    assert(rolledHits.length === 0, `a hero who rolls each glint takes nothing (${rolledHits.length})`);
+  }
+
+  // ---- links fire by where the hero is (the roll forced to pass)
+  {
+    const br = d.brain;
+    const R0 = Math.random;
+    Math.random = () => 0;
+    const sense = (dist, bearing = 0, away = 0) => {
+      const a = d.yaw + bearing, dx = Math.sin(a) * dist, dz = Math.cos(a) * dist;
+      return { dx, dz, dist, ang: Math.atan2(dx, dz), p: { x: d.position.x + dx, z: d.position.z + dz }, vx: (dx / dist) * away, vz: (dz / dist) * away };
+    };
+    const pick = (from, s) => { br.cooldowns = {}; return linkFor(br, { name: from }, s)?.to ?? null; };
+    // (in phase 3 now)
+    const got = {
+      far: pick('ashRain', sense(9)),
+      behind: pick('ashRain', sense(2.2, Math.PI)),
+      side: pick('ashRain', sense(2.2, Math.PI / 2)),
+      near: pick('ashRain', sense(2.2)),
+      away: pick('partingWind', sense(4, 0, 4)),
+    };
+    Math.random = R0;
+    out(`     links out of Rain of Ashes in phase 3: far ${got.far}, behind ${got.behind}, at his side ${got.side}, near ${got.near}; out of Parting Wind at a hero backing off: ${got.away}`);
+    assert(got.far === 'qiStorm' && got.behind === 'flitLotus' && got.side === 'ashString' && got.near && got.near !== got.far && got.away === 'ghostDash', 'links by position: the storm at range, a sweep from behind, a flit string from the side, a close follow-up, the dash chain after a hero who backs off');
+    const all = new Set(Object.keys(d.LINKS));
+    const missing = MOVE_NAMES.filter((n) => !MOVES[n].counter && !MOVES[n].transition && !MOVES[n].terrain && !all.has(n));
+    assert(!missing.length, `every blade move has links (${missing.join(', ') || 'all'})`);
+  }
+  return G;
+}
+
 // ================================================================== scenario: data (the move rules)
 async function scenarioData() {
   out('\n== scenario DATA (move data rules, every phase, both ends of every random roll) ==');
@@ -2883,6 +3116,7 @@ const SCENARIOS = {
   levels: scenarioLevels,
   floor: scenarioFloor,
   data: scenarioData,
+  moves: scenarioMoves,
   timing: scenarioTiming,
   guard: scenarioGuard,
   clash: scenarioClash,

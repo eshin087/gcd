@@ -161,7 +161,9 @@ export const TUNING = {
   // `cap` lines alive per phase (one more puts the oldest out); `width` m, `life` s, `len` m (a line's
   // default), `ring` arcs' share of the circle; `flames` per metre a second (the fire field), `ignite`:
   // the wood it touches catches (world.ignite, k)
-  burn: { from: 2, cap: [0, 7, 9], width: 0.8, life: 3.0, len: 3.4, ring: 0.62, grace: 0.45, tick: 0.55, damage: 5, flames: 26, ignite: 0.8, fade: 0.6 },
+  // `armAfter`: a line laid by a string does not burn while that string still has blows coming (the
+  // hero defends where he stands), then from this long after its last blow (its grace at least)
+  burn: { from: 2, cap: [0, 7, 9], width: 0.8, life: 3.2, len: 3.4, ring: 0.62, grace: 0.45, armAfter: 0.35, tick: 0.55, damage: 5, flames: 26, ignite: 0.8, fade: 0.6 },
 
   // ---- the projectile (Ash Crescent)
   // (`minLead`: the second pass: a crescent that would reach the hero sooner than this after it is

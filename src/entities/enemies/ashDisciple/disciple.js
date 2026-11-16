@@ -113,7 +113,7 @@ export class AshDisciple extends Duelist {
     // the phase-3 change (ash on the wind): the burst is the effects' (fxash: DuelFx.phaseBurst)
     if (a?.def?.transition && (a.def.phase ?? 2) === 3) this.fx.phaseBurst?.(3, this.position.x, this.position.z);
     // what his blade cuts burns (phase 2 on: moveFx.js)
-    if (b.def.burn) this.moveFx?.burn(b, a?.name ?? '');
+    if (b.def.burn) this.moveFx?.burn(b, a);
   }
 
   /** An afterimage of him where he stands as last drawn (DuelFx.ghost), drifting on the ash wind. */

@@ -26,7 +26,7 @@ export class AshMoveFx {
   constructor(d) {
     this.d = d;
     this.game = d.game;
-    this.lines = Array.from({ length: POOL }, () => ({ alive: false, ax: 0, az: 0, bx: 0, bz: 0, len: 0, w: 0.8, life: 3, age: 0, acc: 0, emb: 0, attack: '', id: 0 }));
+    this.lines = Array.from({ length: POOL }, () => ({ alive: false, ax: 0, az: 0, bx: 0, bz: 0, len: 0, w: 0.8, life: 3, age: 0, acc: 0, emb: 0, attack: '', id: 0, act: null, arm: 0 }));
     this._seed = 0x3c6ef372;
     this._id = 0;
     this._tick = 0;
@@ -62,12 +62,24 @@ export class AshMoveFx {
 
   // ---------------------------------------------------------------- making lines
   /**
-   * Beat `b` (a realised beat whose def carries `burn`) has struck: its fire on the stones, from where
-   * he stands and faces now. Nothing before phase TUNING.burn.from.
+   * Beat `b` (a realised beat whose def carries `burn`) of move `act` has struck: its fire on the
+   * stones, from where he stands and faces now. Nothing before phase TUNING.burn.from. While `act`
+   * still has blows coming the line does not burn (the hero defends the string where he stands; then
+   * he has to move off the ground he defended: `arm` s after its last blow, its grace at least).
    */
-  burn(b, attack = '') {
+  burn(b, act = null) {
     const T = this.T, d = this.d, spec = b?.def?.burn;
     if (!T || !spec || !((d.phase ?? 1) >= (T.from ?? 2))) return 0;
+    this._act = act;
+    try {
+      return this._burn(b, spec, act?.name ?? '');
+    } finally {
+      this._act = null;
+    }
+  }
+
+  _burn(b, spec, attack) {
+    const T = this.T, d = this.d;
     const x = d.position.x, z = d.position.z, fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
     if (!Number.isFinite(x + z + fx + fz)) return 0;
     const len = spec.len ?? T.len, w = spec.w ?? T.width, life = spec.life ?? T.life;
@@ -112,25 +124,25 @@ export class AshMoveFx {
     if (!T || !Number.isFinite(ax + az + bx + bz + w + life)) return 0;
     const cap = perPhase(T.cap, d.phase ?? 1);
     if (!(cap > 0)) return 0;
-    let n = 0, oldest = null, free = null;
+    const fade = T.fade ?? 0.6;
+    const burning = (L) => L.alive && L.age < L.life - fade;
+    let n = 0, free = null, first = null;
     for (const L of this.lines) {
-      if (!L.alive) {
-        free ??= L;
-        continue;
-      }
-      if (L.age < L.life - (T.fade ?? 0.6)) n++;
-      if (!oldest || L.id < oldest.id) oldest = L;
+      if (!L.alive) free ??= L;
+      else if (!first || L.id < first.id) first = L;
+      if (burning(L)) n++;
     }
-    while (n >= cap && oldest) {
-      // (the cap: the oldest burns out now, in a short fade)
-      oldest.life = Math.min(oldest.life, oldest.age + (T.fade ?? 0.6) * 0.5);
+    while (n >= cap) {
+      // (the cap: the oldest still burning goes out now, in a short fade)
+      let oldest = null;
+      for (const L of this.lines) if (burning(L) && (!oldest || L.id < oldest.id)) oldest = L;
+      if (!oldest) break;
+      oldest.life = oldest.age + fade * 0.5;
       this.stats.capped++;
       n--;
-      let next = null;
-      for (const L of this.lines) if (L.alive && L !== oldest && L.age < L.life - (T.fade ?? 0.6) && (!next || L.id < next.id)) next = L;
-      oldest = next;
     }
-    const L = free ?? oldest ?? this.lines[0];
+    // (the pool full: the oldest line of all makes way)
+    const L = free ?? first ?? this.lines[0];
     L.alive = true;
     L.ax = ax;
     L.az = az;
@@ -143,6 +155,8 @@ export class AshMoveFx {
     L.acc = 0;
     L.emb = 0;
     L.attack = attack;
+    L.act = this._act ?? null;
+    L.arm = T.grace ?? 0.45;
     L.id = ++this._id;
     this.stats.lines++;
     this._catch(L);
@@ -182,6 +196,14 @@ export class AshMoveFx {
         continue;
       }
       any = true;
+      // (its move's blows are over: it burns from `armAfter` s on, its grace at least)
+      if (L.act) {
+        const A = this.d.brain?.act;
+        if (A !== L.act || !(A.t < A.recoveryStart)) {
+          L.act = null;
+          L.arm = Math.max(L.arm, L.age + (T.armAfter ?? 0.35));
+        }
+      }
       this._draw(L, dt);
     }
     if (any) this._hurt();
@@ -195,7 +217,7 @@ export class AshMoveFx {
     const px = p.position?.x, pz = p.position?.z, pr = (p.radius ?? 0.45) * 0.8;
     if (!Number.isFinite(px + pz)) return;
     for (const L of this.lines) {
-      if (!L.alive || L.age < (T.grace ?? 0.45) || L.age > L.life - (T.fade ?? 0.6) * 0.5) continue;
+      if (!L.alive || L.act || L.age < L.arm || L.age > L.life - (T.fade ?? 0.6) * 0.5) continue;
       const dx = L.bx - L.ax, dz = L.bz - L.az, l2 = dx * dx + dz * dz || 1;
       const u = Math.max(0, Math.min(1, ((px - L.ax) * dx + (pz - L.az) * dz) / l2));
       const cx = L.ax + dx * u, cz = L.az + dz * u;
