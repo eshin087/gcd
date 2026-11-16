@@ -98,7 +98,8 @@ export const TUNING = {
     // Tree's five boughs burn. Measured on seeds 1337, 7, 4242, 99, 2024: brk report)
     // (2026-11-16, the tuning pass: `wall`: the share of the wall's front rows (32 - 46 m) worn or down
     // at the end, `wallP1` at least that share marked by phase 1's end. Measured on seeds 1337, 7, 4242,
-    // 99, 2024 at 80 s a phase: 60, 50, 44, 44, 52 % (base 23, 33, 19, 34, 29 %); P1 6 - 28 %)
+    // 99, 2024 at 80 s a phase: 43, 41, 37, 45, 57 % (the merged build before it: 23, 33, 19, 34, 29 %);
+    // P1 8 - 18 %)
     meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 9, wall: [0.3, 0.75], wallP1: 0.03 },
   },
   // the root stays inside min(CONFIG.world.dragonBound, bound) (m). CONFIG's 26 was sized for the
