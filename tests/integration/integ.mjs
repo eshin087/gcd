@@ -2753,6 +2753,169 @@ async function scenarioLab() {
 }
 
 // ================================================================== scenario: fire / flight attacks + hazards (dragon-fire)
+// ================================================================== scenario: the flying combos (2nd pass)
+// Each combo in the phase it opens in: every part cued (one flash per blow, the blow within 2.5
+// frames of flash + lead), a standing hero hit by every part, a hero who rolls on each cue (early,
+// across the blow: i-frames, not a perfect dodge) untouched, the wyrm inside its bound and <= 16 m up,
+// back on the ground in 'combat' at the end; then a perfect dodge of a shell mid-combo plunges it out
+// of the air and ends the combo.
+async function scenarioFlight() {
+  out('\n== scenario FLIGHT (flying combos: every part cued and answerable, bounds, the plunge ends a combo) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, H = d.hazards, lead = TUNING.flashLead;
+  const COMBOS = { skyHunt: 1, skyFurnace: 2, skyCataclysm: 3 };
+  const { FLIGHT } = await imp('src/entities/dragon/tuningFire.js');
+  const listed = new Set(d.debug.abilities().map((a) => a.name));
+  /** Stage: the wyrm in the middle facing south, the hero `dist` m in front of it, phase `ph`. */
+  const stage = (ph, dist) => {
+    settle(G, 12);
+    H.clear();
+    d.phase = ph;
+    G.tick(DT);
+    H.clear();
+    d.position.set(0, 0, -8);
+    d.yaw = 0;
+    d.rig.snap();
+    run(G, 0.3, { passive: true });
+    p.debug.teleport(d.position.x, d.position.z + dist);
+    p.yaw = Math.PI;
+    p.debug.heal();
+    p.burnT = 0;
+    aimAt(G);
+  };
+  /** 1 if (x, z) is in the burning part of a strip (of `only`, or of any): the fire a walker must leave. */
+  const burning = (x, z, only = null) => {
+    for (const h of H.list) {
+      if (!h.alive || h.shape !== 1 || (only && h !== only)) continue;
+      const run = h.t - h.impact;
+      if (run <= -0.6) continue;
+      const f = Math.min(h.len, Math.max(0, run) * h.speed + 3), b0 = Math.max(0, (run - h.linger) * h.speed);
+      const ex = x - h.ax, ez = z - h.az, sAl = ex * h.dx + ez * h.dz, lat = Math.abs(ex * h.dz - ez * h.dx);
+      if (lat <= h.w / 2 + 1.0 && sAl >= b0 - 1 && sAl <= f + 1) return 1;
+    }
+    return 0;
+  };
+  const trial = (name, ph, answer) => {
+    stage(ph, 16);
+    p.debug.god = !answer;
+    const hp0 = p.hp, h0 = G.hits.length;
+    const flashes = [], tells = [], pend = [];
+    let maxAlt = 0, outB = 0, finite = true, parts = new Set();
+    G.watch = (n, dd) => {
+      if (dd?.attack !== name) return;
+      if (n === 'combat:tell') { tells.push(game.time); pend.push({ at: game.time + dd.impactIn, done: false }); }
+      if (n === 'combat:flash') {
+        flashes.push(game.time);
+        // the flash re-times the pending answer nearest to it
+        let best = null;
+        for (const e of pend) if (!e.done && (!best || Math.abs(e.at - game.time - lead) < Math.abs(best.at - game.time - lead))) best = e;
+        if (best) best.at = game.time + lead;
+      }
+    };
+    const trig = game.lab.trigger(name);
+    let done = false, rollT = 0;
+    for (let i = 0; i < Math.round(24 / DT) && !done; i++) {
+      input.axis = { x: 0, y: 0 };
+      if (answer) {
+        for (const e of pend) {
+          if (e.done || e.at - game.time - DT > 0.25) continue;
+          e.done = true;
+          // roll across the line from the hero to the wyrm, to the side that is not burning (toward
+          // the middle of the clearing when both are clear)
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+          let qx = -dz / l, qz = dx / l;
+          const bad = (sg) => burning(p.position.x + qx * sg * 4.2, p.position.z + qz * sg * 4.2) * 10 + (qx * sg * p.position.x + qz * sg * p.position.z > 0 ? 1 : 0) + (Math.hypot(p.position.x + qx * sg * 4.2, p.position.z + qz * sg * 4.2) > 27 ? 20 : 0);
+          if (bad(-1) < bad(1)) { qx = -qx; qz = -qz; }
+          input.axis = { x: qx, y: -qz };
+          input.tap('Space');
+          rollT = game.time;
+        }
+        // standing in burning ground (not rolling): walk straight out of it, as a player would
+        if (p.state !== 'roll' && game.time - rollT > 0.45) {
+          for (const h of H.list) if (h.alive && h.shape === 1 && h.attack === name && burning(p.position.x, p.position.z, h)) {
+            const ex = p.position.x - h.ax, ez = p.position.z - h.az, lat = ex * h.dz - ez * h.dx, sg = lat >= 0 ? 1 : -1;
+            input.axis = { x: h.dz * sg, y: h.dx * sg };
+          }
+        }
+      }
+      G.tick(DT);
+      const s = d.rig.s;
+      if (![d.position.x, d.position.z, s.alt, d.rig.pt.head.y, d.yaw].every(Number.isFinite)) finite = false;
+      maxAlt = Math.max(maxAlt, s.alt);
+      if (Math.hypot(d.position.x, d.position.z) > d.bound + 0.01) outB++;
+      if (d.brain.action?.name === name) parts.add(d.brain.action.phase);
+      done = !d.brain.action && d.state === 'combat' && !H.count(null);
+    }
+    G.watch = null;
+    input.axis = { x: 0, y: 0 };
+    const hits = G.hits.slice(h0).filter((h) => h.attack === name);
+    const red = hits.filter((h) => h.tell === TELL.RED);
+    let worst = 0;
+    for (const h of red) {
+      const f = flashes.filter((t) => t <= h.t + 1e-6).pop();
+      const err = f === undefined ? Infinity : h.t - (f + lead);
+      if (Math.abs(err) > Math.abs(worst)) worst = err;
+    }
+    return { trig, done, tells: tells.length, flashes: flashes.length, red, hurt: hp0 - p.hp, hits, worst, maxAlt, outB, finite, parts: [...parts].join(' '), alt: d.rig.s.alt, state: d.state };
+  };
+  for (const [name, ph] of Object.entries(COMBOS)) {
+    const C = TUNING.attacks[name];
+    assert(listed.has(name) && C?.tell === TELL.RED && Array.isArray(C.parts) && C.parts.at(-1) === 'dive', `${name}: a red Lab ability whose parts end in the dive`);
+    assert(C.parts.length === ph + 1 && C.phase === ph, `${name}: ${ph + 1} parts, opening in phase ${ph}`);
+    const want = C.parts.reduce((n, k) => n + (k === 'barrage' ? FLIGHT.barrage.shots[ph - 1] : 1), 0);
+    const st = trial(name, ph, false);
+    const blowsHit = new Set(st.red.filter((h) => h.r === RESULT.HIT).map((h) => h.kind));
+    out(`   P${ph} ${name.padEnd(12)} standing: phases [${st.parts}] tells ${st.tells}/${want} flashes ${st.flashes} · red hits ${st.red.length} (${[...blowsHit].join(', ')}) · worst hit-(flash+lead) ${(st.worst * 1000).toFixed(0)} ms · max alt ${st.maxAlt.toFixed(1)} · out ${st.outB} · end ${st.state} alt ${st.alt.toFixed(2)}`);
+    assert(st.trig === true && st.done && st.finite, `${name}: completes, finite, back to combat with its hazards gone`);
+    assert(st.tells === want && st.flashes === want, `${name}: one tell and one flash per blow (${st.tells} / ${st.flashes} of ${want})`);
+    assert(Math.abs(st.worst) <= 2.5 * DT, `${name}: every blow lands within 2.5 frames of its flash + lead (${(st.worst * 1000).toFixed(0)} ms)`);
+    assert(blowsHit.has('strip') === C.parts.includes('pass') && blowsHit.has('dive') && blowsHit.has('shell') === C.parts.includes('barrage'), `${name}: a standing hero is hit by every part (${[...blowsHit].join(', ')})`);
+    assert(st.maxAlt <= 16 && st.outB === 0, `${name}: <= 16 m up (${st.maxAlt.toFixed(1)}) and inside the bound (${st.outB} frames out)`);
+    assert(st.state === 'combat' && st.alt < 0.2, `${name}: ends on the ground in combat (${st.state}, alt ${st.alt.toFixed(2)})`);
+    const an = trial(name, ph, true);
+    out(`   P${ph} ${name.padEnd(12)} rolling on the cues: HP lost ${an.hurt} · results ${JSON.stringify(an.hits.map((h) => h.r + ':' + h.kind))}`);
+    assert(an.done && an.hurt === 0 && !an.hits.some((h) => h.r === RESULT.HIT), `${name}: a hero who rolls on every cue takes no damage (${an.hurt})`);
+  }
+  // ---- a perfect dodge of a shell mid-combo: the plunge, the crash, the combo is over
+  {
+    const name = 'skyCataclysm';
+    stage(3, 16);
+    p.debug.god = false;
+    p.debug.streak?.(0);
+    let shellAt = -1, plunged = false, rolled = false, crashed = false, back = false, after = 0;
+    const h0 = G.hits.length;
+    G.watch = (n, dd) => {
+      if (n === 'combat:flash' && dd?.attack === name && d.brain.action?.phase === 'barrage' && shellAt < 0) shellAt = game.time + lead;
+    };
+    game.lab.trigger(name);
+    for (let i = 0; i < Math.round(20 / DT); i++) {
+      input.axis = { x: 0, y: 0 };
+      if (shellAt > 0 && !rolled && shellAt - game.time - DT <= 0.1) {
+        rolled = true;
+        const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+        input.axis = { x: dx / l, y: -dz / l };
+        input.tap('Space');
+      }
+      G.tick(DT);
+      if (p.state === 'plunge') plunged = true;
+      if (d.brain.action?.name === 'plunged' && d.rig.s.alt < 0.2) crashed = true;
+      if (d.brain.action?.name === name && crashed) after++;
+      if (crashed && !d.brain.action && d.state === 'combat') { back = true; break; }
+    }
+    G.watch = null;
+    const res = G.hits.slice(h0).filter((h) => h.attack === name).map((h) => h.r);
+    out(`   plunge mid-combo: results ${JSON.stringify(res)} · plunge ${plunged} · crashed ${crashed} · combo frames after the crash ${after} · back in combat ${back} (alt ${d.rig.s.alt.toFixed(2)})`);
+    assert(res.includes(RESULT.PERFECT) && plunged && crashed && after === 0 && back && d.rig.s.alt < 0.2, 'a perfect dodge of a shell plunges the flying wyrm out of the combo: it crashes and fights on');
+    settle(G, 12);
+    assert(!H.count('strip') || [...H.list].every((h) => !h.alive || h.attack !== name || h.shape !== 1 || h.t >= h.impact), 'no strip of the broken combo is left to start burning');
+  }
+  d.phase = 1;
+  run(G, 0.5, { passive: true });
+  return G;
+}
+
 async function scenarioFire() {
   out('\n== scenario FIRE (flight attacks, spells, hazards: completion, flight bounds, flash timing, dodges, clear) ==');
   const G = build();
@@ -2760,9 +2923,11 @@ async function scenarioFire() {
   fightSetup(G);
   const d = game.dragon, p = game.player, H = d.hazards, lead = TUNING.flashLead;
   const ER_MAX_CHASE_HITS = TUNING.attacks.eruptions.chase.maxHits;
-  const FIRE_NAMES = ['skyStrafe', 'diveBomb', 'hoverBarrage', 'meteorRain', 'eruptions', 'flameRing', 'flameWall', 'nova'];
-  const AIR = new Set(['skyStrafe', 'diveBomb', 'hoverBarrage']);
-  const HIGH = { skyStrafe: ['pass'], diveBomb: ['hover'], hoverBarrage: ['barrage'] };
+  // (2nd pass: the three flying combos join the list; FLIGHT checks them part by part)
+  const FIRE_NAMES = ['skyStrafe', 'diveBomb', 'hoverBarrage', 'skyHunt', 'skyFurnace', 'skyCataclysm', 'meteorRain', 'eruptions', 'flameRing', 'flameWall', 'nova'];
+  const AIR = new Set(['skyStrafe', 'diveBomb', 'hoverBarrage', 'skyHunt', 'skyFurnace', 'skyCataclysm']);
+  const COMBO_HIGH = ['pass', 'barrage', 'hover'];
+  const HIGH = { skyStrafe: ['pass'], diveBomb: ['hover'], hoverBarrage: ['barrage'], skyHunt: COMBO_HIGH, skyFurnace: COMBO_HIGH, skyCataclysm: COMBO_HIGH };
   const listed = new Set(d.debug.abilities().map((a) => a.name));
   assert(FIRE_NAMES.every((n) => listed.has(n) && TUNING.attacks[n]?.tell === TELL.RED), 'every fire attack is a red Lab ability with tuning data');
   assert(H && typeof H.clear === 'function' && H.alive === 0, 'dragon.hazards exists, empty at the start');
@@ -2780,7 +2945,7 @@ async function scenarioFire() {
     p.debug.heal();
     aimAt(G);
   };
-  const PLACE = { skyStrafe: 18, diveBomb: 14, hoverBarrage: 14, meteorRain: 12, eruptions: 14, flameRing: 9, flameWall: 14, nova: 12 };
+  const PLACE = { skyStrafe: 18, diveBomb: 14, hoverBarrage: 14, skyHunt: 18, skyFurnace: 14, skyCataclysm: 18, meteorRain: 12, eruptions: 14, flameRing: 9, flameWall: 14, nova: 12 };
   const timing = [];
   for (const name of FIRE_NAMES) {
     settle(G);
@@ -8388,7 +8553,7 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

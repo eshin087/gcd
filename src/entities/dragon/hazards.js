@@ -524,6 +524,16 @@ export class Hazards {
     h.end = Math.min(h.end, h.t + h.linger);
   }
 
+  /**
+   * Take back a hazard that has not gone off yet (a flying combo knocked out of the air: the strip it
+   * had not started breathing, the shells it had not spat). A burning strip or a fired circle stays.
+   */
+  cancel(ref) {
+    const h = this.get(ref);
+    if (!h) return;
+    if ((h.shape === SHAPE.STRIP && h.t < h.impact) || (h.shape === SHAPE.CIRCLE && !h.fired)) this._kill(h);
+  }
+
   // ------------------------------------------------------------------ timing (attack beats re-time on this)
   /**
    * Seconds from now until hazard `ref` reaches the point (px, pz) moving at (vx, vz) (the hero), or

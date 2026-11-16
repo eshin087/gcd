@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
 import { clamp, lerp, smoothstep, easeOutCubic, easeInCubic, easeInOutSine, angleDiff } from '../../core/math.js';
 import { beat, roarFx, roarPose, GROUND_BLOW } from './attacks.js';
+import { FLIGHT } from './tuningFire.js';
 
 // Fire / flight attacks and spells (contract 3; numbers in tuningFire.js = TUNING.attacks.*). Same
 // shape as attacks.js (phases / beats / zone / weight / start / enter / update / hit / end, driven by
@@ -658,6 +659,545 @@ const hoverBarrage = {
   },
 };
 
+// ------------------------------------------------------------------ flying combos (second pass)
+// One take-off, several cued parts strung together in the air, a crash landing at the end (the last
+// blow and the opening after it). The list of phases is built from TUNING.attacks[key].parts:
+//   pass     [takeoff | swoop] pass       a low strafe along a line over the led hero breathing a
+//                                         burning strip (plunge: true), as the Burning pass
+//   barrage  [rise | wheel] barrage       hovering beside the hero, one shell a beat (plunge: true)
+//   dive     [rise | wheel] hover dive    wheels round to hover beside him, tracks him, dives: the
+//                                         crash (enter 'recovery') is the blow
+// A 'wheel' is a banking turn: a curve that leaves along the way it was flying (no snap), rolls the
+// body into the turn and climbs; a 'swoop' drops and turns onto the next pass's line. Each phase
+// entry carries its part's index as a third element ([name, s, part]): the runner reads only the
+// first two. Beats: one per blow, at the start of the move that leads into it (the first part's at
+// the windup), re-timed from the strip / the shells as the strafe and the barrage do.
+const FL = FLIGHT, FP = FL.pass, FB = FL.barrage, FD = FL.dive;
+const perPh = (v, d) => (Array.isArray(v) ? v[clamp((d.phase | 0) - 1, 0, v.length - 1)] : v);
+const _c = V(), _e = V();
+/** Quadratic Bezier on the ground plane (x, z) into `out`, and its tangent into `tan`. */
+function bez2(out, tan, p0, p1, p2, t) {
+  const u = 1 - t;
+  out.x = u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x;
+  out.z = u * u * p0.z + 2 * u * t * p1.z + t * t * p2.z;
+  tan.x = 2 * u * (p1.x - p0.x) + 2 * t * (p2.x - p1.x);
+  tan.z = 2 * u * (p1.z - p0.z) + 2 * t * (p2.z - p1.z);
+  return out;
+}
+
+function makeFlightCombo(key) {
+  const C = T[key];
+  const parts = C.parts;
+  const shots = (d) => Math.max(1, perPh(FB.shots, d) | 0);
+  const every = (d) => perPh(FB.interval, d);
+  return {
+    name: key,
+    cooldown: C.cooldown,
+    flight: true,
+    phases(d) {
+      const list = [['windup', wind(d, C.windup)]];
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts[i];
+        if (p === 'pass') {
+          list.push(i === 0 ? ['takeoff', FL.takeoff, i] : ['swoop', FL.swoop, i]);
+          list.push(['pass', FP.time, i]);
+        } else if (p === 'barrage') {
+          list.push(i === 0 ? ['rise', FL.rise, i] : ['wheel', FL.wheel, i]);
+          list.push(['barrage', FB.aim + shots(d) * every(d) + 0.25, i]);
+        } else {
+          list.push(i === 0 ? ['rise', FL.rise, i] : ['wheel', FL.wheel, i]);
+          list.push(['hover', perPh(FD.hover, d), i]);
+          list.push(['dive', FD.dive, i]);
+        }
+      }
+      list.push(['recovery', wind(d, C.recovery)]);
+      return list;
+    },
+    beats(d, a) {
+      const out = [];
+      let t = 0;
+      const L = a.list;
+      for (let i = 0; i < L.length; i++) {
+        const name = L[i][0], dur = L[i][1], seg = a.segs[L[i][2]];
+        if (seg) {
+          if (name === 'takeoff' || name === 'swoop') {
+            // (the first part's tell is the windup: the crouch, the throat charging)
+            const at = L[i][2] === 0 ? 0 : t;
+            const b = beat(key, at, t - at + dur + 0.6, C, 'mouth', { seg: L[i][2] });
+            seg.beats.push(b);
+            out.push(b);
+          } else if (name === 'barrage') {
+            for (let j = 0; j < a.n; j++) {
+              const b = beat(key, t + j * a.every, FB.aim + 0.75, C, 'shell', { seg: L[i][2], shot: j });
+              seg.beats.push(b);
+              out.push(b);
+            }
+          } else if ((name === 'rise' || name === 'wheel') && seg.kind === 'dive') {
+            const at = L[i][2] === 0 ? 0 : t;
+            const b = beat(key, at, t - at + dur + L[i + 1][1] + L[i + 2][1], C, 'chest', { seg: L[i][2] });
+            seg.beats.push(b);
+            out.push(b);
+          }
+        }
+        t += dur;
+      }
+      return out;
+    },
+    weight: (d, s) => (s.dist >= (C.minDist ?? 0) && s.dist <= (C.maxDist ?? 99) ? wPhase(C, d) : 0),
+    start(d, a) {
+      a.segs = parts.map((kind) => ({ kind, beats: [], strip: null, rings: [], aimed: 0, shot: 0 }));
+      a.n = shots(d);
+      a.every = every(d);
+      a.volley = NO_HIT_VOLLEY();
+      a.group = d.hazards.group(FB.maxHits);
+      a.target = V().copy(d.sense.pos);
+      a.target.y = 0;
+      a.from = V().copy(d.position);
+      a.p0 = V().copy(d.position);
+      a.goal = V();
+      a.ctrl = V();
+      a.dv0 = V();
+      a.dx = d.fwd.x;
+      a.dz = d.fwd.z;
+      a.yaw = d.yaw;
+      a.D = 20;
+      a.sEnd = 2;
+      a.alt0 = 0;
+      a.side = d.position.x >= d.sense.pos.x ? 1 : -1;
+      a.roll = 0;
+      a.lastYaw = d.yaw;
+      a.recoil = 0;
+      a.flapCos = 1;
+      a.breathing = false;
+      a.locked = false;
+      a.crashed = false;
+      a.landed = false;
+      a.seg = null;
+      a.strip = null;
+      a.flared = false;
+    },
+    /** The current part's record (the phase entry's third element). */
+    segOf(a) {
+      return a.segs[a.list[a.i]?.[2]] ?? null;
+    },
+    /** A pass's line from where the wyrm is now over the led hero; its strip starts burning `delay` s from now. */
+    planPass(d, a, seg, delay) {
+      const s = d.sense;
+      const tx = s.pos.x + s.vel.x * 0.4, tz = s.pos.z + s.vel.z * 0.4;
+      let dx = tx - d.position.x, dz = tz - d.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 1e-3) {
+        dx = d.fwd.x;
+        dz = d.fwd.z;
+      } else {
+        dx /= dist;
+        dz /= dist;
+      }
+      a.dx = dx;
+      a.dz = dz;
+      a.yaw = Math.atan2(dx, dz);
+      a.p0.copy(d.position);
+      a.p0.y = 0;
+      a.D = Math.max(14, Math.min(clamp(dist + 14, FP.reach[0], FP.reach[1]), maxRun(d.position.x, d.position.z, dx, dz, d.bound)));
+      const s0 = FP.start, s1 = Math.max(s0 + 4, a.D - 3);
+      a.vf = (s1 - s0) / Math.max(0.5, FP.time * 0.92);
+      a.sEnd = 2;
+      a.flared = false;
+      seg.strip = a.strip = d.hazards.strip({
+        kind: 'strip', attack: key, announce: false,
+        ax: a.p0.x + dx * s0, az: a.p0.z + dz * s0, bx: a.p0.x + dx * s1, bz: a.p0.z + dz * s1,
+        w: FP.width, delay, speed: a.vf, linger: perPh(FP.linger, d),
+        tick: FP.tick, tickDamage: FP.tickDamage, tickBurn: FP.tickBurn,
+        damage: FP.damage, burn: FP.burn, knockback: FP.knockback, plunge: true,
+      });
+    },
+    place(d, a, s) {
+      d.position.x = a.p0.x + a.dx * s;
+      d.position.z = a.p0.z + a.dz * s;
+      inBound(d.position, d.bound);
+    },
+    stopBreath(d, a) {
+      if (!a.breathing) return;
+      a.breathing = false;
+      d.fx.skyEnd();
+      d.emit('dragon:breathEnd');
+    },
+    /** Where the next hover is (into `out`): beside the dive target, or beside the hero for a barrage. */
+    hoverGoal(d, a, out, kind) {
+      const s = d.sense;
+      if (kind === 'dive') {
+        out.set(a.target.x + a.side * FD.hoverBack, 0, a.target.z - 1);
+        inBound(out, d.bound);
+        if (Math.abs(out.x - a.target.x) < FD.hoverBack * 0.5) out.set(a.target.x - a.side * FD.hoverBack, 0, a.target.z - 1);
+      } else {
+        out.set(s.pos.x + a.side * FB.standoff, 0, s.pos.z + 1.5);
+        inBound(out, d.bound);
+        if (Math.abs(out.x - s.pos.x) < FB.standoff * 0.5) out.set(s.pos.x - a.side * FB.standoff, 0, s.pos.z + 1.5);
+      }
+      return inBound(out, d.bound);
+    },
+    /** The dive target follows the (led) hero with a lag until the dive, clear of stones, in the bound. */
+    track(d, a, dt) {
+      const s = d.sense;
+      _a.copy(s.pos).addScaledVector(s.vel, FD.lead);
+      const k = 1 - Math.exp(-FD.track * dt);
+      a.target.x += (_a.x - a.target.x) * k;
+      a.target.z += (_a.z - a.target.z) * k;
+      const R = TUNING.radius;
+      d.game.world?.resolve?.(a.target, R, d.bound + R);
+      inBound(a.target, d.bound);
+      a.target.y = 0;
+    },
+    enter(d, a, phase) {
+      const seg = this.segOf(a);
+      a.seg = seg;
+      const alt = Number.isFinite(d.rig.s.alt) ? d.rig.s.alt : 0;
+      if (phase === 'takeoff') {
+        takeOff(d);
+        this.planPass(d, a, seg, FL.takeoff);
+      } else if (phase === 'swoop') {
+        this.stopBreath(d, a);
+        a.from.copy(d.position);
+        a.alt0 = alt;
+        this.planPass(d, a, seg, FL.swoop);
+      } else if (phase === 'pass') {
+        a.breathing = true;
+        d.emit('dragon:breathStart');
+        d.fx.skyBegin();
+        d.emit('dragon:spell', { name: key, x: d.position.x, z: d.position.z });
+      } else if (phase === 'rise' || phase === 'wheel') {
+        this.stopBreath(d, a);
+        if (phase === 'rise') takeOff(d);
+        a.from.copy(d.position);
+        a.alt0 = phase === 'rise' ? 0 : alt;
+        a.yaw0 = d.yaw;
+        a.side = d.position.x >= d.sense.pos.x ? 1 : -1;
+        if (seg?.kind === 'dive') {
+          a.target.copy(d.sense.pos);
+          a.target.y = 0;
+          a.locked = false;
+        }
+        // the curve leaves along the way it flies (a wheel) and reaches out at most 14 m
+        _b.set(d.fwd.x, 0, d.fwd.z);
+        this.hoverGoal(d, a, a.goal, seg?.kind);
+        const L = clamp(0.6 * Math.hypot(a.goal.x - a.from.x, a.goal.z - a.from.z), 5, 14);
+        a.ctrl.copy(a.from).addScaledVector(_b, phase === 'wheel' ? L : 0.5);
+        inBound(a.ctrl, d.bound - 1);
+      } else if (phase === 'barrage') {
+        seg.aimed = seg.shot = 0;
+        d.emit('dragon:spell', { name: key, x: d.position.x, z: d.position.z });
+      } else if (phase === 'dive') {
+        a.locked = true;
+        a.dv0.copy(d.position);
+        a.alt0 = Math.max(2, alt);
+        d.emit('dragon:spell', { name: key, x: a.target.x, z: a.target.z });
+      } else if (phase === 'recovery') {
+        this.crash(d, a);
+      }
+    },
+    crash(d, a) {
+      if (a.crashed) return;
+      a.crashed = true;
+      d.position.x = a.target.x;
+      d.position.z = a.target.z;
+      touchDown(d, true);
+      d.hitstop(0.09);
+      d.fx.crashWave(a.target.x, a.target.z, FD.radius);
+      d.game.world?.impact?.(a.target.x, a.target.z, FD.radius, TUNING.world.dive, GROUND_BLOW);
+      d.emit('dragon:hazard', { kind: 'crash', stage: 'hit', x: a.target.x, z: a.target.z, radius: FD.radius });
+      d.markHitbox?.(a.target.x, 0, a.target.z, FD.radius);
+      const p = d.game.player?.position;
+      if (p && Math.hypot(p.x - a.target.x, p.z - a.target.z) <= FD.radius + playerR(d.game)) {
+        d.strike(a, { damage: FD.damage, knockback: FD.knockback, knockdown: true, burn: FD.burn, kind: 'dive', from: a.target, point: a.target });
+      }
+    },
+    /** Shell i of the current barrage: its ring on the led hero (bracketing his dodge for the odd ones). */
+    aim(d, a, seg, i) {
+      const s = d.sense, g = d.game;
+      _a.copy(s.pos).addScaledVector(s.vel, FB.lead);
+      if (i > 0 && i % 2 === 1) {
+        const dx = _a.x - d.position.x, dz = _a.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+        const side = i % 4 === 1 ? 1 : -1;
+        _a.x += (-dz / l) * 2.6 * side;
+        _a.z += (dx / l) * 2.6 * side;
+      }
+      inBound(_a, 27);
+      g.world?.resolve?.(_a, 0.5, 30);
+      const b = seg.beats[i];
+      seg.rings[i] = d.hazards.circle({
+        kind: 'shell', attack: key, announce: false, x: _a.x, z: _a.z, r: FB.radius, delay: FB.aim + 0.75,
+        damage: FB.damage, burn: FB.burn, knockback: FB.knockback, group: a.group, active: 0.1, plunge: true,
+      });
+      if (b && !b.flashed) b.impactIn = Math.max(0.05, a.T - b.at + FB.aim + 0.75);
+    },
+    launch(d, a, seg, i) {
+      const h = d.hazards.get(seg.rings[i]);
+      if (!h) return;
+      const from = d.rig.pt.mouth;
+      _b.set(h.x, 0, h.z);
+      let flight = d.fx.launchFireball(from, _b, a.volley);
+      if (!(flight > 0)) {
+        flight = Math.min(1.3, Math.max(0.7, Math.hypot(h.x - from.x, h.z - from.z) / 18));
+        h.shell = true;
+        h.fall = flight;
+        h.ox = from.x;
+        h.oy = from.y;
+        h.oz = from.z;
+      }
+      h.impact = h.t + flight;
+      h.end = h.impact + h.active + 0.3;
+      const b = seg.beats[i];
+      if (b && !b.flashed) b.impactIn = Math.max(0.05, a.T - b.at + flight);
+      a.recoil = 1;
+    },
+    /** The body banks into a turn: roll eases toward the yaw rate (rad / s) x 0.2. */
+    bank(d, a, dt, gain = 0.2) {
+      const rate = angleDiff(a.lastYaw, d.yaw) / Math.max(1e-3, dt);
+      a.lastYaw = d.yaw;
+      const want = clamp(-rate * gain, -0.5, 0.5);
+      a.roll += (want - a.roll) * (1 - Math.exp(-6 * dt));
+      if (!Number.isFinite(a.roll)) a.roll = 0;
+      d.pose.roll = a.roll;
+    },
+    update(d, a, dt) {
+      const pose = d.pose, pt = d.rig.pt, s = d.sense, k = a.k, seg = a.seg ?? this.segOf(a);
+      a.recoil = Math.max(0, a.recoil - dt * 4);
+      if (!a.locked) this.track(d, a, dt);
+      // the strafe's beat follows its strip until it flashes
+      if (seg && a.strip && (a.phase === 'takeoff' || a.phase === 'swoop' || a.phase === 'pass')) {
+        const b = seg.beats[0];
+        retime(d, a, b, a.strip);
+        const h = d.hazards.get(a.strip);
+        if (h) {
+          const sp = clamp((s.pos.x - h.ax) * h.dx + (s.pos.z - h.az) * h.dz, 0, h.len);
+          flareOnFlash(d, a, b, h.ax + h.dx * sp, h.az + h.dz * sp, 2.4);
+        }
+      }
+      if (a.phase === 'windup') {
+        // crouched low on bunched legs, the wings opening for the first downstroke, the throat charging
+        d.turnToward(s.yawTo, d.turnRate * 1.4, dt);
+        pose.lower = 0.35 + 0.4 * smoothstep(0, 0.8, k);
+        pose.bodyRate = 6;
+        pose.pitch = 0.07;
+        pose.strideH = 0.5 * k;
+        pose.strideF = -0.4 * k;
+        pose.restep = 1;
+        pose.spread[0] = pose.spread[1] = k > 0.35 ? 1 : REST_SPREAD;
+        pose.spreadRate = 4.5;
+        pose.head = d.rootPt(pose.headTarget, 0, 4.0, 3.8);
+        pose.headRate = 5;
+        pose.jaw = 0.3 + 0.25 * k;
+        d.throat = k;
+        d.fx.mouthEmbers(dt, pt.mouth, 20 + 30 * k, pt.headFwd);
+        return;
+      }
+      if (a.phase === 'recovery') {
+        // the crash landing: slammed low on braced legs, the wings snapped open, then it rises
+        const e = 1 - smoothstep(0, 1, k);
+        pose.lower = 0.85 * e;
+        pose.pitch = 0.28 * e;
+        pose.bodyRate = k < 0.15 ? 16 : 4;
+        pose.elbowsOut = 0.5 * e;
+        pose.spread[0] = pose.spread[1] = k < 0.3 ? 1 : REST_SPREAD;
+        pose.spreadRate = k < 0.3 ? 16 : 3;
+        pose.jaw = k < 0.4 ? 0.7 : 0.15;
+        pose.restep = 1;
+        d.throat = 0;
+        return;
+      }
+      beatDust(d, a);
+      pose.vel.set(0, 0, 0);
+      const f = d.fwd;
+      if (a.phase === 'takeoff') {
+        // the launch: heavy downbeats, climbing steeply to the pass height along its line
+        d.yaw = a.yaw;
+        const e = easeOutCubic(k);
+        this.place(d, a, a.sEnd * k * k);
+        fly(pose, FP.alt * e, 0.9, 2.3);
+        pose.pitch = -0.22 * (1 - k) - 0.05;
+        pose.lower = 0.5 * (1 - e);
+        pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, 2.2 * S);
+        pose.head.y += 0.4 * S;
+        pose.headRate = 6;
+        d.rootPt(pose.look, 0, 0, 14);
+        pose.jaw = 0.5;
+        d.throat = 1;
+        pose.tailWave = 0.05;
+        a.lastYaw = d.yaw;
+      } else if (a.phase === 'swoop') {
+        // it tips over and drops onto the new line, wings half folded, turning as it falls
+        const e = easeInOutSine(k);
+        _c.set(a.p0.x + a.dx * a.sEnd, 0, a.p0.z + a.dz * a.sEnd);
+        d.position.x = lerp(a.from.x, _c.x, e);
+        d.position.z = lerp(a.from.z, _c.z, e);
+        inBound(d.position, d.bound);
+        d.turnToward(a.yaw, 7, dt);
+        this.bank(d, a, dt, 0.25);
+        fly(pose, lerp(a.alt0, FP.alt, e) + 0.6 * Math.sin(Math.PI * k), 0.55, 2.0);
+        pose.spread[0] = pose.spread[1] = lerp(1, 0.7, Math.sin(Math.PI * k));
+        pose.glide = 0.6;
+        pose.pitch = 0.05 + 0.2 * Math.sin(Math.PI * k);
+        pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, 2.4 * S);
+        pose.head.y -= 0.4 * S;
+        pose.headRate = 7;
+        d.rootPt(pose.look, 0, 0, 14);
+        pose.jaw = 0.4 + 0.4 * k;
+        d.throat = 0.6 + 0.4 * k;
+        d.fx.mouthEmbers(dt, pt.mouth, 30, pt.headFwd);
+      } else if (a.phase === 'pass') {
+        // gliding low and fast along the line, nose down, breathing fire onto the front
+        d.yaw = a.yaw;
+        a.roll *= Math.exp(-5 * dt);
+        pose.roll = a.roll;
+        a.lastYaw = d.yaw;
+        const h = d.hazards.get(a.strip);
+        const fr = h ? clamp((h.t - h.impact) * h.speed, 0, h.len) : 0;
+        const running = h && fr < h.len - 1e-3;
+        this.place(d, a, Math.max(a.sEnd, FP.start + fr - FP.frontLead));
+        if (h && running) {
+          const fx = h.ax + h.dx * fr, fz = h.az + h.dz * fr;
+          if (a.breathing) d.fx.skyStream(dt, pt.mouth, fx, fz);
+          pose.look.set(fx, 0, fz);
+        } else {
+          this.stopBreath(d, a);
+          d.rootPt(pose.look, 0, 0, 16);
+        }
+        fly(pose, FP.alt + 0.35 * Math.sin(a.t * 3.4), 0.42, 1.6);
+        pose.glide = 0.8;
+        pose.pitch = 0.17;
+        pose.headExact = true;
+        pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, 2.5 * S);
+        pose.head.y -= 0.8 * S;
+        pose.headRate = 8;
+        pose.lookDown = 1.25;
+        pose.lookRate = 14;
+        pose.jaw = a.breathing ? 0.95 : 0.4;
+        d.throat = a.breathing ? 1 : 0.3;
+        pose.tailWave = 0.03;
+      } else if (a.phase === 'rise' || a.phase === 'wheel') {
+        // a banking turn (or the climb off the ground) round to the next hover, beating hard
+        const kind = seg?.kind;
+        this.hoverGoal(d, a, a.goal, kind);
+        const e = easeInOutSine(k);
+        bez2(_c, _e, a.from, a.ctrl, a.goal, e);
+        d.position.x = _c.x;
+        d.position.z = _c.z;
+        inBound(d.position, d.bound);
+        const altGoal = kind === 'dive' ? FD.alt : FB.alt;
+        const alt = a.phase === 'rise' ? altGoal * easeOutCubic(k) : lerp(a.alt0, altGoal, smoothstep(0, 1, k)) + 1.4 * Math.sin(Math.PI * k);
+        fly(pose, Math.min(15.5, alt), 0.95, 2.2);
+        // flying along the curve, turning to face the hero as it arrives
+        const look = kind === 'dive' ? Math.atan2(a.target.x - d.position.x, a.target.z - d.position.z) : s.yawTo;
+        const along = Math.hypot(_e.x, _e.z) > 0.5 ? Math.atan2(_e.x, _e.z) : look;
+        const want = a.phase === 'wheel' && k < 0.7 ? along : look;
+        d.turnToward(want, a.phase === 'wheel' ? 4.5 : 3.2, dt);
+        this.bank(d, a, dt, 0.22);
+        pose.hover = smoothstep(0.4, 1, k);
+        pose.glide = 0.45 * (1 - k) + 0.2;
+        pose.pitch = -0.15 - 0.2 * k;
+        pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, 2.1 * S);
+        pose.head.y += 0.4 * S;
+        pose.headRate = 6;
+        pose.jaw = 0.4;
+        d.throat = 0.5;
+      } else if (a.phase === 'barrage') {
+        // hanging beside him on steady strokes, head down, spitting shell after shell
+        d.turnToward(s.yawTo, 2.6, dt);
+        this.bank(d, a, dt, 0.15);
+        this.hoverGoal(d, a, a.goal, 'barrage');
+        const kk = 1 - Math.exp(-2 * dt);
+        d.position.x += (a.goal.x - d.position.x) * kk;
+        d.position.z += (a.goal.z - d.position.z) * kk;
+        inBound(d.position, d.bound);
+        while (seg.aimed < a.n && a.t >= seg.aimed * a.every) this.aim(d, a, seg, seg.aimed++);
+        while (seg.shot < a.n && seg.shot < seg.aimed && a.t >= seg.shot * a.every + FB.aim) this.launch(d, a, seg, seg.shot++);
+        fly(pose, FB.alt + 0.4 * Math.sin(a.t * 3.3), 0.85, 2.0);
+        pose.hover = 1;
+        pose.pitch = -0.26;
+        pose.headExact = true;
+        pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, 2.2 * S);
+        pose.head.y -= 0.5 * S;
+        pose.headRate = 7;
+        pose.look.copy(s.chest);
+        pose.lookDown = 1.2;
+        pose.jaw = a.recoil > 0.3 ? 1 : 0.45;
+        pose.jawRate = 25;
+        d.throat = 0.8;
+        if (a.recoil > 0) {
+          pose.headOffset.x -= f.x * a.recoil * 0.8 * S;
+          pose.headOffset.z -= f.z * a.recoil * 0.8 * S;
+          pose.headOffset.y += a.recoil * 0.6 * S;
+        }
+        d.fx.mouthEmbers(dt, pt.mouth, 18, pt.headFwd);
+      } else if (a.phase === 'hover') {
+        // hanging high beside him on big strokes, glaring down at where it will land
+        pose.look.copy(a.target);
+        d.turnToward(Math.atan2(a.target.x - d.position.x, a.target.z - d.position.z), 3.2, dt);
+        this.bank(d, a, dt, 0.15);
+        this.hoverGoal(d, a, a.goal, 'dive');
+        const kk = 1 - Math.exp(-3 * dt);
+        d.position.x += (a.goal.x - d.position.x) * kk;
+        d.position.z += (a.goal.z - d.position.z) * kk;
+        inBound(d.position, d.bound);
+        fly(pose, FD.alt + 0.5 * Math.sin(a.t * 3.1), 0.95, 2.0);
+        pose.hover = 1;
+        pose.glide = 0.45;
+        pose.pitch = -0.42;
+        pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, 2.3 * S);
+        pose.head.y -= 0.3 * S;
+        pose.lookDown = 1.2;
+        pose.jaw = 0.5 + 0.3 * k;
+        d.throat = 0.6 * k;
+      } else if (a.phase === 'dive') {
+        // wings swept back, nose down, accelerating onto the spot; the legs reach for it
+        pose.look.copy(a.target);
+        d.turnToward(Math.atan2(a.target.x - d.position.x, a.target.z - d.position.z), 3.2, dt);
+        a.roll *= Math.exp(-8 * dt);
+        pose.roll = a.roll;
+        const kk = Math.min(1, k / 0.9);
+        const e = easeInCubic(kk) * 0.65 + kk * 0.35;
+        d.position.x = lerp(a.dv0.x, a.target.x, e);
+        d.position.z = lerp(a.dv0.z, a.target.z, e);
+        fly(pose, a.alt0 * (1 - e), 0, 2);
+        pose.altRate = 60;
+        pose.spread[0] = pose.spread[1] = 0.55;
+        pose.spreadRate = 10;
+        pose.dive = 1;
+        pose.pitch = 0.75 * smoothstep(0, 0.35, k) - 0.35 * smoothstep(0.7, 1, k);
+        pose.bodyRate = 10;
+        pose.airReach = smoothstep(0.35, 0.9, k);
+        pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, 2.4 * S);
+        pose.head.y -= 1.0 * S;
+        pose.headRate = 10;
+        pose.lookDown = 1.2;
+        pose.jaw = 1;
+        d.throat = 0.8;
+      }
+    },
+    end(d, a, interrupted) {
+      this.stopBreath(d, a);
+      if (interrupted) {
+        // knocked out of the air (a plunge, a death): what it had not yet breathed or spat is gone;
+        // the shells already in the air and the strip already burning finish what was cued
+        for (const seg of a.segs ?? []) {
+          if (seg.strip) {
+            const h = d.hazards.get(seg.strip);
+            if (h && h.t < h.impact) d.hazards.cancel(seg.strip);
+            else d.hazards.cutStrip(seg.strip);
+          }
+          for (let i = seg.shot; i < seg.rings.length; i++) d.hazards.cancel(seg.rings[i]);
+        }
+      }
+      d.throat = 0;
+      d.pose.roll = 0;
+      flightEnd(d, a, interrupted);
+    },
+  };
+}
+const skyHunt = makeFlightCombo('skyHunt');
+const skyFurnace = makeFlightCombo('skyFurnace');
+const skyCataclysm = makeFlightCombo('skyCataclysm');
+
 // ------------------------------------------------------------------ armageddon (key meteorRain)
 // ADR-053. Rears onto its hind legs, wings flared, the neck straight up, the throat white-hot, embers
 // streaming up off the jaws (the body glows red: TELL_STYLE.red.warn, d.bodyWarn); fires a salvo of
@@ -667,7 +1207,6 @@ const hoverBarrage = {
 // window. No beat of its own: the salvo deals nothing, every meteor heats its ground and announces
 // itself; the transition roar's clear ends the barrage.
 const MR = T.meteorRain;
-const perPh = (v, d) => (Array.isArray(v) ? v[clamp((d.phase | 0) - 1, 0, v.length - 1)] : v);
 
 function fireBolt(d, a) {
   const m = d.rig.pt.mouth;
@@ -1199,4 +1738,4 @@ const nova = {
 };
 
 /** Fire / flight attacks (spread into ATTACKS; order = Lab list order after the melee set). */
-export const FIRE = { skyStrafe, diveBomb, hoverBarrage, meteorRain, eruptions, flameRing, flameWall, nova };
+export const FIRE = { skyStrafe, diveBomb, hoverBarrage, skyHunt, skyFurnace, skyCataclysm, meteorRain, eruptions, flameRing, flameWall, nova };
