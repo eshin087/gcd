@@ -473,6 +473,7 @@ export function createThroneHall(U, colliders) {
           if (up > 0 && pc.body) {
             pc.body.position.y = up + 0.14 * Math.sin(game.time * 0.8 + pc.id * 1.7);
             pc.body.updateMatrix();
+            pc.body.updateMatrixWorld(); // (its node does not auto-update: destructibles.js _place)
           }
         }
         acc(b, 'fire', dt, vent ? 20 * (1 + 2.5 * Math.min(1, b.flare ?? 0)) : 5, () => {

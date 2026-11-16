@@ -115,6 +115,8 @@ export class Wreckage {
     this.D = owner;
     this.group = new THREE.Group();
     this.group.name = 'wreckage';
+    // (no per-frame matrix work: a piece is placed when it lies down or sinks, _place)
+    this.group.matrixAutoUpdate = false;
     root.add(this.group);
     /** every entry, by pool: { kind, mesh, on, t (born), x, z, dx, dz, len, r, burn, burnLife, flame, heatT, smoulder, sink, light, M } */
     this.pools = [[], [], [], [], []];
@@ -222,6 +224,7 @@ export class Wreckage {
       m.scale.set(e.len, e.r, e.r);
     }
     m.updateMatrix();
+    m.updateMatrixWorld();
   }
 
   _start(e, x, z) {
