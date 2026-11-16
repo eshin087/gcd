@@ -814,6 +814,7 @@ export class AudioEngine {
     on('world:impact', (d) => {
       const o = { x: d.x, z: d.z, mat: d.mat, power: num(d.power, 0.5) };
       if (d.kind === 'chip') this.play('chip', o);
+      else if (d.kind === 'wear') this.play('wear', o); // (a stage reached: quiet, not a crash)
       else if (d.kind === 'burn') this.play('sizzle', o);
       else if (d.kind === 'burnout') this.play('emberHiss', o);
       else this.play('crash', o);
