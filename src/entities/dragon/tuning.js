@@ -390,7 +390,7 @@ export const TUNING = {
           ground: { phase: 2, w: 1.2 * S, linger: 2.2, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.25 } },
         { kind: 'emberRake', side: -1, tell: TELL.NORMAL, windup: 0.42, active: 0.25, impact: 0.15, damage: 14, knockback: 1.2, turn: 0.8,
           ground: { phase: 2, w: 1.2 * S, linger: 2.2, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.25 } },
-        { kind: 'bite', tell: TELL.NORMAL, windup: 0.5, hold: [0.25, 0.6], active: 0.2, impact: 0.09, damage: 18, knockback: 2, reach: 5.4 * S },
+        { kind: 'bite', tell: TELL.NORMAL, windup: 0.65, hold: [0.25, 0.6], active: 0.2, impact: 0.09, damage: 18, knockback: 2, reach: 5.4 * S },
         { kind: 'wingSweep', side: 0, tell: TELL.NORMAL, windup: 0.55, active: 0.4, impact: 0.27, damage: 18, knockback: 4, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
         { kind: 'tailWhip', tell: TELL.RED, windup: 0.65, active: 0.3, impact: 0.24, damage: 22, knockback: 4, at: 1.7, back: 0.3, spin: 165 * DEG, pivotRate: 5.5, minReach: 2.0 * S, reach: 9.5 * S },
         { kind: 'fireSnap', tell: TELL.NORMAL, parryable: false, blockable: true, windup: 0.65, active: 0.6, impact: 0.12, tickDamage: 6, tick: 0.12, burn: 0.8, range: 7.5 * S, halfAngle: 24 * DEG, room: 3.6, backSpeed: 6, track: 0.7, turn: 5, fall: 0.2,
