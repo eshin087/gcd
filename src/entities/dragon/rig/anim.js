@@ -337,6 +337,11 @@ const NECK_SWING_REST = 0.03;
 const WING_SOFT_IK = 0.05;
 /** Deepest the tail's rest shape may dive under the ground clearance, in segments (Chain.buildRest sinkMax). */
 const TAIL_SINK = 0.55;
+/**
+ * The whiskers' springs (a sculpted head's whisker chains, heads.js): stiffness at the root / the tip
+ * (1/s²), damping ratio, and the speed of the slow wave that runs down them (rad/s).
+ */
+const WHISKER = { k: [160, 26], zeta: 0.32, wave: 1.6 };
 /** Tail segments swing at most this far from their rest direction (rad: soft from [0], capped at [1]). */
 const TAIL_DEV = [0.6, 1.2];
 
@@ -369,6 +374,18 @@ export class Rig {
     this._lookT = V();
     const tailMin = [0, ...model.tailRadii.map((r) => (r * 0.8 + 0.05) * S)];
     this.tail = new Chain(model.tail, A.tailLen * S, { minY: tailMin, maxBend: 0.56, baseBend: 0.8, groundGlide: true, stableTwist: true });
+    // a sculpted head's whiskers (the loong's, model.whiskers): springy chains that trail off the nose
+    // and lag behind the head's turns (_updateWhiskers); none for the other heads
+    this.whiskers = (model.whiskers ?? []).map((w) => ({
+      w,
+      chain: new Chain(w.joints, w.len * S, { minY: 0.05, maxBend: 0.55, baseBend: 0.7 }),
+      rest: { ...w.rest, wavePhase: 0 },
+      live: false,
+    }));
+    this._whiskerT = 0;
+    this._whiskerO = V();
+    this._whiskerQ = new THREE.Quaternion();
+    this._whiskerQE = new THREE.Quaternion();
     this.gait = new Gait((limb) => dragon.onStep?.(limb), S);
     this.s = {
       pitch: 0, roll: 0, lower: 0, twist: 0, alt: 0, airborne: 0, rear: 0, sleep: 0, dead: 0, stagger: 0,
@@ -650,6 +667,7 @@ export class Rig {
     pt.snout.copy(pt.head).addScaledVector(pt.headFwd, 1.05 * S);
     const qJaw = this._wq(m.jaw, this._q[1]);
     this._wp(m.jaw, pt.jawTip).addScaledVector(this._v[0].set(0, 0, 1).applyQuaternion(qJaw), 1.15 * S);
+    if (this.whiskers.length) this._updateWhiskers(dt, snap);
 
     // membranes (local to the root)
     this._rootInv.copy(m.root.matrixWorld).invert();
@@ -859,6 +877,29 @@ export class Rig {
     } else m.head.position.set(0, 0, A.neckLen);
     // idle: the jaw parts a little more on each exhale (embers in the maw breathe with it)
     m.jaw.rotation.x = (s.jaw + 0.06 * (0.5 - 0.5 * this._br) * s.idle) * 0.7;
+  }
+
+  /**
+   * The whiskers (a sculpted head's, heads.js): each a Chain whose rest shape trails back off the nose
+   * in the head's frame with a slow wave along it; damped springs pull the points toward it, so they
+   * lag and swing through the head's turns and lunges. Runs after the head is placed (matrices fresh).
+   */
+  _updateWhiskers(dt, snap) {
+    this._whiskerT += Number.isFinite(dt) ? dt : 0;
+    const t = this._whiskerT;
+    for (const W of this.whiskers) {
+      const j0 = W.w.joints[0], c = W.chain;
+      this._wp(j0, this._whiskerO);
+      this._wq(j0.parent, this._whiskerQ);
+      W.rest.wavePhase = t * WHISKER.wave + (W.w.side > 0 ? 0 : 1.7);
+      c.buildRest(this._whiskerO, this._whiskerQ, W.rest);
+      if (snap || !W.live) {
+        c.snap();
+        W.live = true;
+      } else c.spring(Math.min(dt, 1 / 20), WHISKER.k[0], WHISKER.k[1], WHISKER.zeta);
+      c.apply(this._whiskerQ, this._whiskerQE);
+      j0.updateMatrixWorld(true);
+    }
   }
 
   _updateTail(dt, snap, qTailBase, stiff = 1, legacy = false) {

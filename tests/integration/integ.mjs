@@ -4,10 +4,11 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | herolook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | herolook | wyrmface | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
+//   ABYSS_WYRMFACE=old|skull|loong|demon builds every wyrm with that head (?wyrmFace=; e.g. a timing run per head)
 //   ABYSS_SKIP=name,name... leaves those scenarios out of `all` (tests/run.mjs runs `timing` beside it, in parts)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -32,6 +33,8 @@ const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/com
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
 const { DIM: HERO_DIM, setHeroGlyphScale } = await imp('src/entities/player/model.js');
 const { Dragon } = await imp('src/entities/dragon/dragon.js');
+// ABYSS_WYRMFACE: every wyrm built in this run wears that head (?wyrmFace=, heads.js)
+if (process.env.ABYSS_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).setWyrmFace(process.env.ABYSS_WYRMFACE)) { process.stdout.write(`ABYSS_WYRMFACE: unknown head '${process.env.ABYSS_WYRMFACE}'\n`); process.exit(2); }
 const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
 const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
 const { attackWeight } = await imp('src/entities/dragon/ai.js');
@@ -4332,6 +4335,124 @@ function sheetHit(r, m, v) {
 }
 
 // ================================================================== scenario: two hands, the guard, the cloak, idle life
+/**
+ * The wyrm's heads (?wyrmFace=, entities/dragon/heads.js): today's ('old', the default) and three
+ * sculpted ones. Each builds headless, keeps every gameplay joint where the old head had it (the
+ * head, the mouth, the jaw hinge and its tip in the same pose, bit for bit; the drawn eyes and the
+ * nostrils within NEAR_EYE of the old ones), costs a bounded number of bones / draws / triangles, has
+ * no NaN in its geometry, keeps its lower teeth inside the skull with the jaw shut, and the loong's
+ * whiskers trail and swing through a turn.
+ */
+async function scenarioWyrmFace() {
+  out('\n== scenario WYRMFACE (three sculpted heads on the gameplay joints of the old one) ==');
+  const { setWyrmFace, wyrmFace, WYRM_FACES } = await imp('src/entities/dragon/heads.js');
+  const prev = wyrmFace();
+  const e0 = errors.length;
+  // the drawn eyes and nostrils may move this far (world m) with a head's anatomy: the eye glints and
+  // the snort smoke leave from them, nothing gameplay does (0.5 m = a quarter of the old eye spacing)
+  const NEAR_EYE = 0.5;
+  const v = () => new THREE.Vector3();
+  const res = {};
+  let G = null;
+  for (const face of WYRM_FACES) {
+    setWyrmFace(face);
+    G = build();
+    const { game } = G;
+    fightSetup(G);
+    const d = game.dragon, m = d.model, pt = d.rig.pt;
+    run(G, 1.0, { passive: true });
+    // the head's own meshes: everything under headVis
+    let tris = 0, meshes = 0, finite = true;
+    m.headVis.traverse((o) => {
+      if (!o.isMesh) return;
+      meshes++;
+      const pos = o.geometry.attributes.position, nrm = o.geometry.attributes.normal;
+      tris += (o.geometry.index ? o.geometry.index.count : pos.count) / 3;
+      for (let i = 0; i < pos.array.length; i++) if (!Number.isFinite(pos.array[i])) { finite = false; break; }
+      if (nrm) for (let i = 0; i < nrm.array.length; i++) if (!Number.isFinite(nrm.array[i])) { finite = false; break; }
+    });
+    const r = (res[face] = { tris: Math.round(tris), meshes, finite, bones: d.batch.bones, draws: d.batch.meshes.length });
+    r.rest = { head: pt.head.clone(), mouth: pt.mouth.clone(), jawTip: pt.jawTip.clone(), snout: pt.snout.clone(), eyes: pt.eyes.map((e) => e.clone()), nostrils: pt.nostrils.map((e) => e.clone()) };
+    r.names = ['head', 'headVis', 'jaw', 'mouth', 'nostrilL', 'nostrilR'].every((n) => !!m.root.getObjectByName(n)) && m.eyes.length === 2 && m.nostrils.length === 2;
+    r.face = m.face;
+    // the roar opens the jaw wide: the hinge's tip goes where it went
+    d.debug.trigger('roar');
+    let jmax = 0;
+    run(G, 3, { passive: true }, () => { jmax = Math.max(jmax, m.jaw.rotation.x); return m.jaw.rotation.x > 0.68; });
+    r.roar = { jaw: m.jaw.rotation.x, jawTip: pt.jawTip.clone(), mouth: pt.mouth.clone() };
+    // jaw shut: the lower teeth stay inside the upper skull (their tips under its hide, none through
+    // the top of the snout); jaw wide: nothing NaN
+    if (face !== 'old') {
+      const hide = m.headVis.children.find((o) => o.isMesh && o.name === 'face-head');
+      const teeth = m.jaw.children.find((o) => o.isMesh && o.name === 'face-teeth');
+      let worst = -Infinity;
+      if (hide && teeth) {
+        const hp = hide.geometry.attributes.position, tp = teeth.geometry.attributes.position;
+        const p = v();
+        for (let i = 0; i < tp.count; i++) {
+          // a lower tooth's vertex with the jaw shut (jaw frame -> headVis: the hinge offset only)
+          p.fromBufferAttribute(tp, i).add(m.jaw.position);
+          if (p.y < m.jaw.position.y + 0.08) continue; // roots and the tusks' lower half
+          // (only teeth inside the skull's footprint: tusks and fangs that rise outside the lips are meant to)
+          let top = -Infinity, half = 0;
+          for (let k = 0; k < hp.count; k++) {
+            const x = hp.getX(k), z = hp.getZ(k);
+            if (Math.abs(z - p.z) < 0.04) half = Math.max(half, Math.abs(x));
+            if (Math.abs(x - p.x) < 0.06 && Math.abs(z - p.z) < 0.06) top = Math.max(top, hp.getY(k));
+          }
+          if (top > -Infinity && Math.abs(p.x) < 0.85 * half) worst = Math.max(worst, p.y - top);
+        }
+      }
+      r.through = worst;
+    }
+    // the loong's whiskers: chains that trail off the nose, lag a turn, stay finite and near the head
+    if (m.whiskers?.length) {
+      const W = d.rig.whiskers;
+      const tip = (w) => w.chain.p[w.chain.n];
+      const before = W.map((w) => tip(w).clone());
+      const hp0 = pt.head.clone();
+      d.yaw += 1.2;
+      let lagMax = 0, far = 0, ok = true;
+      for (let i = 0; i < 40; i++) {
+        G.tick(DT);
+        for (const w of W) {
+          const t = tip(w);
+          if (!Number.isFinite(t.x + t.y + t.z)) ok = false;
+          far = Math.max(far, t.distanceTo(pt.head));
+          // the tip against where it would sit at rest (the chain's rest polyline end)
+          lagMax = Math.max(lagMax, t.distanceTo(w.chain.rest[w.chain.n]));
+        }
+      }
+      r.whiskers = { n: W.length, segs: W[0].chain.n, lagMax, far, ok, moved: before.some((b, k) => b.distanceTo(tip(W[k])) > 0.05) && hp0.distanceTo(pt.head) >= 0 };
+    }
+  }
+  setWyrmFace(prev);
+  const o = res.old;
+  for (const face of WYRM_FACES) {
+    const r = res[face];
+    out(`   ${face}: ${r.meshes} head meshes, ${r.tris} head triangles, ${r.bones} wyrm bones, ${r.draws} wyrm draws${r.through !== undefined ? `, lower teeth ${r.through > -Infinity ? (r.through * 1000).toFixed(0) + ' mm vs the hide over them' : 'n/a'}` : ''}`);
+    assert(r.face === face && r.names && r.finite, `${face}: builds, wears its head, every gameplay joint by name, no NaN in its geometry`);
+    if (face === 'old') continue;
+    const dHead = r.rest.head.distanceTo(o.rest.head), dMouth = r.rest.mouth.distanceTo(o.rest.mouth), dTip = r.rest.jawTip.distanceTo(o.rest.jawTip);
+    const dSnout = r.rest.snout.distanceTo(o.rest.snout), dRoar = r.roar.jawTip.distanceTo(o.roar.jawTip) + r.roar.mouth.distanceTo(o.roar.mouth);
+    assert(dHead < 1e-6 && dMouth < 1e-6 && dTip < 1e-6 && dSnout < 1e-6 && dRoar < 1e-6 && Math.abs(r.roar.jaw - o.roar.jaw) < 1e-9,
+      `${face}: head, mouth, snout and jaw tip where the old head has them, at rest and mid-roar (${[dHead, dMouth, dTip, dSnout, dRoar].map((x) => x.toExponential(1)).join(' / ')} m)`);
+    const dE = Math.max(...r.rest.eyes.map((e, k) => e.distanceTo(o.rest.eyes[k]))), dN = Math.max(...r.rest.nostrils.map((e, k) => e.distanceTo(o.rest.nostrils[k])));
+    assert(dE < NEAR_EYE && dN < NEAR_EYE * 1.6, `${face}: the drawn eyes ${dE.toFixed(2)} m and the nostrils ${dN.toFixed(2)} m from the old head's (eyes < ${NEAR_EYE}, nostrils < ${(NEAR_EYE * 1.6).toFixed(1)})`);
+    // the rigid batch: one bone per mesh; the sculpted heads draw no more materials than the wyrm has
+    // (the loong's whiskers and mane use the spine material it already draws)
+    assert(r.draws === o.draws && r.bones <= o.bones + 12 && r.tris <= 9000, `${face}: ${r.draws} draws (old ${o.draws}), ${r.bones} bones (old ${o.bones}, at most +12), ${r.tris} head triangles (<= 9000)`);
+    assert(r.through < 0, `${face}: jaw shut, every lower tooth stays under the skull's hide over it (worst ${(r.through * 1000).toFixed(0)} mm)`);
+    if (face === 'loong') {
+      const w = r.whiskers;
+      assert(!!w && w.n === 2 && w.ok && w.moved && w.lagMax > 0.1 && w.far < 8, `loong: two whisker chains (${w?.segs} segments) swing through a 1.2 rad turn (tip ${w?.lagMax.toFixed(2)} m off its rest), stay finite and within ${w?.far.toFixed(1)} m of the head`);
+    } else assert(!r.whiskers, `${face}: no whiskers`);
+  }
+  assert(wyrmFace() === prev, `the head in use is restored (${prev})`);
+  assert(errors.length === e0, `no errors through the heads (${errors.length - e0})`);
+  return G;
+}
+
 async function scenarioHeroLife() {
   out('\n== scenario HEROLIFE (one hand through the chain, two on the heavy blows, the cross ward, the cloak vs the charged blade, idle actions) ==');
   const { DIM: HD } = await imp('src/entities/player/model.js');
@@ -9741,6 +9862,7 @@ const SCENARIOS = {
   pad: scenarioPad,
   remap: scenarioRemap,
   herolook: scenarioHeroLook,
+  wyrmface: scenarioWyrmFace,
   herolife: scenarioHeroLife,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
