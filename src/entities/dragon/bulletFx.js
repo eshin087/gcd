@@ -68,7 +68,11 @@ export function drawBullet(fx, b, dt) {
       const sp = Math.hypot(b.vx, b.vz, b.vy) || 1;
       const bx = (-b.vx / sp) * 0.32 * s, by = (-b.vy / sp) * 0.32 * s, bz = (-b.vz / sp) * 0.32 * s;
       fx._blob(b.x, b.y, b.z, 0, 0, 0, life, (b.launched ? 0.95 : 0.8) * s * pulse, 0.95 * s * pulse, 1.05 * dim * k * fl, 1.05 * dim * k * fl);
-      if (b.launched) fx._blob(b.x + bx, b.y + by, b.z + bz, 0, 0, 0, life, 0.8 * s, 0.8 * s, 0.62 * dim * fl, 0.62 * dim * fl);
+      if (b.launched) {
+        // drawn out behind: in a stream the comets overlap into one body of fire with a hotter core
+        fx._blob(b.x + bx, b.y + by, b.z + bz, 0, 0, 0, life, 0.85 * s, 0.85 * s, 0.6 * dim * fl, 0.6 * dim * fl);
+        fx._blob(b.x + 2.4 * bx, b.y + 2.4 * by + 0.08, b.z + 2.4 * bz, 0, 0, 0, life, 0.75 * s, 0.75 * s, 0.34 * dim, 0.34 * dim);
+      }
       fx._col(GOLD, 0.85 * dim * k, GOLD, 0.85 * dim * k);
       o = fx._rec(b.x, b.y, b.z, life, 0.24 * s * pulse, 0.24 * s * pulse, EMBER_CORE);
       o.alphaEnd = 1;
@@ -407,13 +411,13 @@ export function tongueLive(fx, tg, dt) {
       const h = Math.pow(Math.max(0, 1 - u), 1.25) * nz * (ending ? 0.85 : 1);
       if (h < 0.06) continue;
       const wob = 0.34 * Math.sin(r * 0.8 + t * 6 + sd) + 0.16 * Math.sin(r * 2.3 - t * 9.5 + sd * 1.7);
-      fx._blob(tg.x + sx * r + qx * wob, 0.45 + 0.45 * h, tg.z + sz * r + qz * wob, 0, 0, 0, life, (0.85 + 0.55 * h) * W, (0.85 + 0.55 * h) * W, 0.56 * h, 0.56 * h);
+      fx._blob(tg.x + sx * r + qx * wob, 0.45 + 0.45 * h, tg.z + sz * r + qz * wob, 0, 0, 0, life, (0.8 + 0.5 * h) * W, (0.8 + 0.5 * h) * W, 0.72 * h, 0.72 * h);
     }
     if (!ending) {
       // the front: a clump of flame rolling forward, a lick ahead of it
       const fx0 = tg.x + sx * tg.front, fz0 = tg.z + sz * tg.front;
       const fw = 0.25 * Math.sin(t * 17 + sd);
-      fx._blob(fx0 + qx * fw, 0.85, fz0 + qz * fw, 0, 0, 0, life, 1.55 * W, 1.55 * W, 0.7, 0.7);
+      fx._blob(fx0 + qx * fw, 0.85, fz0 + qz * fw, 0, 0, 0, life, 1.55 * W, 1.55 * W, 0.85, 0.85);
       fx._blob(fx0 + sx * 0.55, 0.55, fz0 + sz * 0.55, 0, 0, 0, life, 1.0 * W, 1.0 * W, 0.42, 0.42);
     }
   }
@@ -451,11 +455,11 @@ export function tongueLive(fx, tg, dt) {
     tg.scT = 0.14;
     const w = fx.game.world;
     const r = tg.tail + Math.random() * span;
-    w?.scorch?.burnCircle?.(tg.x + sx * r, tg.z + sz * r, W * 0.8, 0.25, 0.9);
+    w?.scorch?.burnCircle?.(tg.x + sx * r, tg.z + sz * r, W * 0.8, 0.25, 0.4); // (char, a little heat: the lit lanes must read against the burnt ones)
     if (!ending) {
       const fxp = tg.x + sx * tg.front, fzp = tg.z + sz * tg.front;
-      w?.scorch?.burnCircle?.(fxp, fzp, W * 0.8, 0.2, 0.9);
-      w?.ignite?.(fxp, fzp, W * 0.7, fx.d?.bullets?.K?.world?.tongueFire ?? 1, true);
+      w?.scorch?.burnCircle?.(fxp, fzp, W * 0.8, 0.2, 0.5);
+      w?.ignite?.(fxp, fzp, W * 0.7, fx.d?.bullets?.K?.world?.tongueFire ?? 1, false); // (wood only: grass fire would bury the lines)
     }
   }
 }
