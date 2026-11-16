@@ -206,7 +206,7 @@ export const TUNING = {
     fan: {
       kind: 'flagstone', ahead: 1.6, reach: 2.6, count: 3, need: 2,
       heroMin: 3.5, heroMax: 13, stand: 0.45,
-      hang: 1.3, row: 0.95, rise: 1.15, spread: 0.42,
+      hang: 1.6, row: 1.75, rise: 1.0, spread: 0.42, // (a slab in his hands is a block ~1.7 m across: `row` keeps three apart)
       time: [0.5, 0.9], per: 19, lead: 0.12,
       power: 0.5, radius: 1.4, maxDelay: 0.4,
     },

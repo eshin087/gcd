@@ -817,7 +817,8 @@ export class TerrainMoves {
       L.t += dt;
       const k = ease(clamp(L.t / K.riseT, 0, 1));
       const bob = Math.sin(L.t * 9) * 0.04 * k;
-      W?.carry(pc, pc.x + (L.ox - pc.x) * k, 0.05 + (L.y - 0.05) * k + bob, pc.z + (L.oz - pc.z) * k, 0.4 + L.spin * L.t * 0.35, L.t * L.spin);
+      // (kept near flat, rocking: a slab stood on its edge is a wall of stone that hides him from the camera)
+      W?.carry(pc, pc.x + (L.ox - pc.x) * k, 0.05 + (L.y - 0.05) * k + bob, pc.z + (L.oz - pc.z) * k, (0.3 + 0.12 * Math.sin(L.t * 11)) * k, L.t * L.spin * 0.4);
     }
   }
 
@@ -985,8 +986,8 @@ export class TerrainMoves {
     if (!fx.fire) return;
     const life = fx._frame();
     if (!(life > 0)) return;
-    const r = R.r, fade = clamp(1.12 - r / K.range, 0, 1);
-    const heat = (R.heavy ? 1.05 : 0.82) * fade, tall = R.heavy ? 1.35 : 1;
+    const r = R.r, fade = clamp(1.35 - r / K.range, 0, 1);
+    const heat = (R.heavy ? 1.25 : 1.05) * fade, tall = R.heavy ? 1.35 : 1;
     const n = clamp(Math.round((TAU * r) / 0.3), 24, 150);
     const s0 = R.seed;
     for (let i = 0; i < n; i++) {
@@ -997,16 +998,16 @@ export class TerrainMoves {
       if (st < 0.3) continue;
       const rr = r * (1 + (j1 - 0.5) * 0.035), ca = Math.cos(a), sa = Math.sin(a);
       const x = R.x + ca * rr, z = R.z + sa * rr, h = heat * st;
-      fx._blob(x, 0.75 * tall, z, 0, 0, 0, life, 0.36, 0.36, h, h, K_STEEL);
+      fx._blob(x, 0.75 * tall, z, 0, 0, 0, life, 0.42, 0.42, h, h, K_STEEL);
       if (R.heavy && i % 2 === 0) fx._blob(x, 1.25, z, 0, 0, 0, life, 0.32, 0.32, h * 0.8, h * 0.8, K_STEEL);
       // the row that trails it
       if (i % 2 === 1) {
-        const rb = rr - 0.42, hb = h * 0.45;
+        const rb = rr - 0.42, hb = h * 0.6;
         fx._blob(R.x + ca * rb, 0.6 * tall, R.z + sa * rb, 0, 0, 0, life, 0.32, 0.32, hb, hb, K_STEEL);
       }
       if (bronze && i % 2 === 0) {
-        const hf = 0.22 * fade * st;
-        fx._blob(R.x + ca * (rr - 0.2), 0.5, R.z + sa * (rr - 0.2), 0, 0, 0, life, 0.5, 0.5, hf, hf, K_FIRE);
+        const hf = 0.4 * fade * st;
+        fx._blob(R.x + ca * (rr - 0.25), 0.55, R.z + sa * (rr - 0.25), 0, 0, 0, life, 0.6, 0.6, hf, hf, K_FIRE);
       }
     }
     // the hum it leaves: a few motes of dust lifted behind it (small glyphs)

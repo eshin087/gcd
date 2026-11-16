@@ -667,7 +667,7 @@ export const MOVES = {
    *  him toward the hero, plate after plate bursting up out of it. Red: the flare on the plate that
    *  would reach you; step off the line, or roll at the flare. */
   plateRupture: {
-    label: 'Rupture', phase: 2, weight: [0, 1.1, 0.9, 1.0], cooldown: 10, band: [3.5, 14], recovery: 0.5, terrain: 'rupture', cat: 'terrain',
+    label: 'Rupture', phase: 2, weight: [0, 0.75, 0.9, 1.0], cooldown: 10, band: [3.5, 14], recovery: 0.5, terrain: 'rupture', cat: 'terrain',
     beats: [{ tell: R, windup: 0.9, fixed: true, active: 0.1, damage: 22, knockback: 3.5, cast: { kind: 'rupture', selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: gripKeys() }],
   },
   /** Falling Halo (forms 3 and 4): the Void lifts a ring of plates round the hero, open on the side

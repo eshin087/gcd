@@ -1090,7 +1090,9 @@ async function scenarioTerrain() {
     d.brain.expect = ex0;
     const hits = G.hits.slice(h0).filter((h) => h.attack === 'plateRupture');
     assert(r.ok && thrown.length >= 4 && !d.terrain.busy, `it tears ${thrown.length} plates up out of the floor along the line, one after another`);
-    assert(hits.length === 1 && hits[0].r === RESULT.HIT && hits[0].tell === TELL.RED && G.flashes.length >= 1 && Math.abs(hits[0].t - G.flashes.filter((t) => t <= hits[0].t).pop() - TUNING.flashLead) < 0.06 && exp >= 1, `a hero who stands on the line is struck once (red), ${(hits[0] ? hits[0].t - G.flashes.filter((t) => t <= hits[0].t).pop() : NaN).toFixed(3)} s after the flare on the plate under him; told to the ledger (x${exp})`);
+    // (the plates race along the line 0.2 s apart: the flare of the one that struck is the one flashLead before it)
+    const off = hits[0] ? Math.min(...G.flashes.map((t) => Math.abs(hits[0].t - t - TUNING.flashLead))) : NaN;
+    assert(hits.length === 1 && hits[0].r === RESULT.HIT && hits[0].tell === TELL.RED && off < 0.06 && exp >= 1, `a hero who stands on the line is struck once (red), ${(off * 1000).toFixed(0)} ms off a flare + ${TUNING.flashLead} s (${G.flashes.length} flares for the plates that could reach him); told to the ledger (x${exp})`);
   }
   for (const [hx, hz, bx, bz] of [[0, 5, 0, -4], [6, 3, -2, -3], [-5, 8, 1, 0]]) {
     // off the line: he steps 3 m aside as the hand comes down; a roll at the flare

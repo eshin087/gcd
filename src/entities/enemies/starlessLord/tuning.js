@@ -175,19 +175,20 @@ export const TUNING = {
     fall: { min: 0.8, short: 0.2, lead: 0.3 },
     // (the second pass) Rupture (form 2 on): the floor tears open in a line from him toward the hero:
     // a plate every `step` m from `first` m out to `past` m beyond the hero (`max` at most), the first
-    // `delay` s after the cast, then one every `gap` s (per form). Each quivers `quiver` s before it
+    // `delay` s after the cast, then one every `gap` s (per form: a line racing at 7.5 - 9 m/s). Each quivers `quiver` s before it
     // goes and flares (red, on the plate) for a hero within `radius + cue` m of it; it bursts up out of
     // the floor (the plate within `take` m thrown `skid` m on in `pop` s) and strikes a hero within
     // `radius` m: one blow at most for the line. `power`: what it does to the pieces round it
-    rupture: { first: 1.8, step: 1.5, past: 2.5, max: 7, delay: 0.15, gap: [0.38, 0.38, 0.36, 0.34], radius: 1.25, cue: 2.0, quiver: 0.32, take: 1.8, pop: 0.5, skid: 0.6, power: 0.9, maxDelay: 0.6 },
+    rupture: { first: 1.8, step: 1.5, past: 2.5, max: 7, delay: 0.15, gap: [0.2, 0.2, 0.18, 0.16], radius: 1.25, cue: 2.0, quiver: 0.32, take: 1.8, pop: 0.5, skid: 0.6, power: 0.9, maxDelay: 0.6 },
     // Falling Halo (forms 3 and 4): `count` plates (per form) torn up `r0` .. `r1` m round where the
     // hero stands (`lead` s of his way on), none in the arc `gapArc` rad facing away from him (the way
     // out), rising to `hangY` m in `lift` s; from the cast one drops every `gap` s from `first`, aimed at
     // the hero but inside `inner` x the ring (out of it he is clear), falling in `drop` s (+ distance /
     // `per`). Each is a thrown piece: red, the flare on it, a hero within `radius` m. `need`: fewer, no move
     // (`gap` >= the hero's roll-to-roll 0.5 s less a little: a roll at each flare is through each;
-    // `inner` 0.7: a hero 4 m out of the ring's middle is out of every drop's reach)
-    halo: { count: [0, 0, 4, 5], need: 3, r0: 1.9, r1: 4.2, gapArc: 1.3, hangY: 2.7, lift: 0.7, first: 0.15, gap: [0.5, 0.5, 0.5, 0.46], drop: [0.45, 0.65], per: 10, lead: 0.12, inner: 0.7, radius: 1.4, power: 0.9, maxDelay: 0.5 },
+    // `inner` 0.6: a hero 4 m out of the ring's middle is out of every drop's reach; a plate in his
+    // grip is a block ~1.6 m across: `r0` keeps them off the hero's head)
+    halo: { count: [0, 0, 4, 5], need: 3, r0: 2.4, r1: 4.8, gapArc: 1.3, hangY: 2.7, lift: 0.7, first: 0.15, gap: [0.5, 0.5, 0.5, 0.46], drop: [0.45, 0.65], per: 10, lead: 0.12, inner: 0.6, radius: 1.4, power: 0.9, maxDelay: 0.5 },
   },
   // ---- the glide: past this speed he is carried, not running (lord.js; the root lifts `hover` m)
   glide: { on: 3.4, off: 2.8, hover: 0.22, back: 0.26 },
