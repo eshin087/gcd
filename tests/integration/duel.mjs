@@ -390,7 +390,8 @@ async function scenarioData() {
   let checked = 0;
   for (const name of MOVE_NAMES) {
     const def = MOVES[name];
-    for (const phase of [1, 2]) {
+    // (the second pass: three phases; phase 3's windups no faster than phase 2's)
+    for (const phase of [1, 2, 3]) {
       if (def.phase > phase) continue;
       for (const r of [0, 0.999]) {
         const A = realise(name, phase, () => r);
@@ -439,9 +440,11 @@ async function scenarioTiming() {
     const def = MOVES[name];
     if (def.transition || def.counter) continue;
     if (def.terrain) continue; // (a move of the courtyard needs its pieces: scenario TERRAIN, on the real set)
-    if (def.phase > d.phase) {
-      d.debug.phase2();
-      run(G, 3.5, null, () => d.mode === 'foot');
+    // (into the move's phase through its real transition(s): the kindling, ash on the wind)
+    while (def.phase > d.phase) {
+      const n = d.phase + 1;
+      d.debug[`phase${n}`]();
+      run(G, 4, null, () => d.phase === n && d.mode === 'foot');
     }
     settle(G);
     d.yaw = 0;
@@ -1214,6 +1217,38 @@ async function scenarioPhase() {
   }
   assert(picks.has('needles') && picks.has('emberWhirl'), `phase-2 moves join the pool at 3 m (${[...picks].join(', ')})`);
   assert(game.flow._text('phase2') === 'THE ASH KINDLES', 'the flow shows the level\'s phase-2 banner');
+  // (the second pass) the third phase, ash on the wind, at its own gate: one dragon:phase3, its own
+  // transition (a red ring blow), the phase-3 moves in the pool; phase 3 is no faster than phase 2
+  const gate3 = d.maxHp * TUNING.phaseAt[2];
+  assert(TUNING.phaseAt.length === 3 && TUNING.phaseAt[1] > TUNING.phaseAt[2] && TUNING.phaseAt[2] > 0, `three phases (phaseAt ${TUNING.phaseAt.join(', ')})`);
+  settle(G, 8);
+  d.hp = gate3 + 20;
+  d.mode = 'foot';
+  d.brain.act = null;
+  d.takeHit({ damage: 400, part: 'body', heavy: true, poise: 5, exact: true });
+  assert(d.hp === gate3 && d.brain.pendingPhase === 3, `damage stops at the third gate (${d.hp} = ${gate3}) until the transition`);
+  let p3 = 0, burst = 0;
+  const pb = d.fx.phaseBurst;
+  d.fx.phaseBurst = (n, ...rest) => { if (n === 3) burst++; return pb?.call(d.fx, n, ...rest); };
+  G.watch = (n) => { if (n === 'dragon:phase3') p3++; };
+  run(G, 1, null, () => d.brain.act?.name === 'ashWind');
+  const A3 = d.brain.act;
+  assert(A3?.name === 'ashWind' && d.phase === 3 && p3 === 1, `ash on the wind starts: phase ${d.phase}, ${p3} dragon:phase3`);
+  assert(A3?.beats[0]?.def.tell === TELL.RED && A3.beats[0].def.zone?.kind === 'ring' && A3.beats[0].def.damage <= TUNING.transition.damage, 'its blow is a red ring, the Kindling\'s damage');
+  run(G, 4, null, () => d.mode === 'foot');
+  G.watch = null;
+  d.fx.phaseBurst = pb;
+  assert(burst === 1, `its impact calls the phase-3 burst once (${burst})`);
+  const picks3 = new Set();
+  for (let i = 0; i < 300; i++) {
+    d.brain.cooldowns = {};
+    d.brain.last = [null, null];
+    const n = d.brain._choose(3);
+    if (n) picks3.add(n);
+  }
+  assert(picks3.has('ashString') && picks3.has('ashFlurry') && picks3.has('flitLotus'), `phase-3 moves join the pool at 3 m (${[...picks3].join(', ')})`);
+  assert(TUNING.windupScale[2] >= TUNING.windupScale[1] && TUNING.recoveryScale[2] >= TUNING.recoveryScale[1], 'phase 3 winds up and recovers no faster than phase 2');
+  assert(game.flow._text('phase3') === 'ASH ON THE WIND', 'the flow shows the level\'s phase-3 banner');
   return G;
 }
 
@@ -1459,7 +1494,8 @@ async function scenarioWin() {
   out(`     ${won ? 'won' : 'not won'} in ${secs.toFixed(0)} s: ${stats.parries} parries, ${stats.guards} guarded swings, ${stats.ghosteps} Ghosteps, ${stats.breaks} breaks, ${stats.execs} executions, ${taken} hits taken, ${G.defend.stats.flashes} flashes; phase ${d.phase}`);
   out(`     damage by his state: ${JSON.stringify(dmgBy)}`);
   assert(won, 'the fencing bot defeats the Ash Disciple within 6 minutes');
-  assert(d.phase === 2, 'the fight went through phase 2');
+  // (the second pass: three phases; the third, ash on the wind, from 30 %)
+  assert(d.phase === 3, `the fight went through phases 2 and 3 (phase ${d.phase})`);
   G.defend = null;
   return G;
 }

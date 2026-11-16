@@ -1,9 +1,10 @@
 // The Ash Disciple's numbers (docs/specs/ash-disciple.md; COMBAT.md → "The Ash Disciple"). Starting
-// values: tune them in the Lab. Per-phase values are [P1, P2]. Times in seconds, distances in metres.
+// values: tune them in the Lab. Per-phase values are [P1, P2, P3]. Times in seconds, distances in metres.
 export const TUNING = {
   name: 'SHEN HUI, THE ASH DISCIPLE',
   hp: 3000, // a near-perfect fencing bot (tests/integration/duel.mjs WIN) wins in about a minute
-  phaseAt: [1, 0.5], // HP fractions where each phase starts (the boss bar's ticks)
+  // (the second pass: three phases, the fencer / the kindled blade / ash on the wind)
+  phaseAt: [1, 0.62, 0.3], // HP fractions where each phase starts (the boss bar's ticks)
   radius: 0.42, // body circle (the hero is pushed out of it)
   bound: 12.5, // he stays this close to the courtyard's centre (min with CONFIG.world.dragonBound)
 
@@ -12,15 +13,16 @@ export const TUNING = {
   flashLead: 0.3, // the glint this long before every impact
   minFirstWindup: 0.42, // a move's first real hit, every phase
   minHitGap: 0.32, // impact to impact inside a move (>= flashLead: each flash after the hit before it)
-  windupScale: [1, 0.92], // the windups of later phases (moves are authored with first windups >= 0.46)
-  recoveryScale: [0.9, 0.8],
+  // (phase 3 is no faster than phase 2: the 0.42 s floor holds; its ramp is in what he does)
+  windupScale: [1, 0.92, 0.92], // the windups of later phases (moves are authored with first windups >= 0.46)
+  recoveryScale: [0.9, 0.8, 0.8], // (never below phase 2's: the first half of a recovery is the hero's)
   // the step-in through a windup (brain.js close-in): at most this far toward the hero, so the zone
   // reaches him at the impact (a move's first hit / its later hits; a beat's own `close` overrides)
   close: { first: 3.0, next: 1.4, speed: 12 },
 
   // ---- posture (POSTURE.parry in combat/rules.js for parries)
   posture: {
-    max: [320, 380],
+    max: [320, 380, 380],
     hit: { light: 5, heavy: 16 }, // weapon hits that land
     guard: { light: 8, heavy: 20 }, // weapon hits his guard deflects
     regenDelay: 2.5,
@@ -79,8 +81,8 @@ export const TUNING = {
     walk: 2.2, // circling with the guard up
     run: 5.6,
     sprint: 8.6,
-    turn: [8, 9.5], // rad/s while circling
-    trackTurn: [14, 16], // rad/s while tracking the hero in a windup
+    turn: [8, 9.5, 9.5], // rad/s while circling
+    trackTurn: [14, 16, 16], // rad/s while tracking the hero in a windup
     band: [1.8, 3.2], // he circles this far off (inside striking range)
     sprintAt: 5.5, // further than this: sprint
     near: 1.1, // closer than this: sometimes backsteps out
@@ -138,7 +140,7 @@ export const TUNING = {
   // `decay` per s (per phase); full wins, empty loses, and when `dur` s run out the hero wins if he
   // held it at `hold` or above (a tug of ~1.5 s at 8 presses a second; 5 a second just holds; none
   // loses in ~1.5 s). Won: he reels, +`posture`. Lost: he shoves the hero (`shove`) and counters.
-  lock: { start: 0.5, push: 0.085, decay: [0.32, 0.38], dur: 2.6, hold: 0.6, posture: 110, shove: { damage: 12, knockback: 2.6 }, camera: { zoom: -7, weight: 0.55 } },
+  lock: { start: 0.5, push: 0.085, decay: [0.32, 0.38, 0.38], dur: 2.6, hold: 0.6, posture: 110, shove: { damage: 12, knockback: 2.6 }, camera: { zoom: -7, weight: 0.55 } },
   // the mikiri: a roll INTO a perilous thrust (a beat marked `mikiri`) steps on his blade (player.js
   // _mikiri): he is pinned and stumbles (react 'trampled'), +`posture`
   mikiri: { posture: 130 },
@@ -149,11 +151,22 @@ export const TUNING = {
   // 70 % of the tells should be on the edge, one reading 85 % should win)
   damageScale: 1.15,
 
-  // ---- the phase-2 transition (the kindling)
+  // ---- the phase transitions (the kindling, phase 2; ash on the wind, phase 3): one red ring blow each
   transition: { ringRadius: 6, damage: 10, knockback: 6 },
 
+  // ---- burning ground (the second pass; moveFx.js BurnLines): a beat's `burn` (moves.js) leaves a line
+  // of fire on the stones. The rule of fire on grass (world/breakTuning.js FIRE; COMBAT.md "The world
+  // breaks"): `damage` every `tick` s to a hero standing in it, after its first `grace` s, blockable,
+  // never while he rolls. It is ground to step off, not a blow: no cue. From phase `from`; at most
+  // `cap` lines alive per phase (one more puts the oldest out); `width` m, `life` s, `len` m (a line's
+  // default), `ring` arcs' share of the circle; `flames` per metre a second (the fire field), `ignite`:
+  // the wood it touches catches (world.ignite, k)
+  burn: { from: 2, cap: [0, 7, 9], width: 0.8, life: 3.0, len: 3.4, ring: 0.62, grace: 0.45, tick: 0.55, damage: 5, flames: 26, ignite: 0.8, fade: 0.6 },
+
   // ---- the projectile (Ash Crescent)
-  crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25 },
+  // (`minLead`: the second pass: a crescent that would reach the hero sooner than this after it is
+  // thrown is not thrown at all; disciple.onRelease)
+  crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25, minLead: 0.27 },
 
   // ---- the terrain (ADR-111; terrain.js; COMBAT.md → "The Ash Disciple" → "He uses the courtyard").
   // Four moves on the pieces of the set (world.destructibles). Each is chosen only while a piece for
