@@ -511,10 +511,13 @@ async function scenarioData() {
 async function scenarioTiming() {
   out('\n== scenario TIMING (every move from inside its band: each glint is a blow, on time) ==');
   let worst = 0, moves = 0;
+  // (ABYSS_TMOVE=name: that move alone, its cues and contacts printed)
+  const only = process.env.ABYSS_TMOVE;
   for (const name of MOVE_NAMES) {
     const def = MOVES[name];
     if (def.transition) continue;
     if (def.terrain) continue; // (a move on the crater's pieces needs them: scenario TERRAIN, on the real set)
+    if (only && name !== only) continue;
     for (const f of formsOf(name)) {
       const G = build();
       const d = G.game.dragon;
@@ -523,11 +526,11 @@ async function scenarioTiming() {
       duel(G, { dist: at, form: f });
       G.game.player.debug.god = true;
       const flashes = [], contacts = [];
-      G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') flashes.push(G.game.time); };
+      G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') { flashes.push(G.game.time); if (only) out(`       ${G.game.time.toFixed(3)} flash ${e.attack} ${e.tell}`); } };
       const h0 = G.hits.length;
       if (!d.debug.trigger(name)) { assert(false, `${name} form ${f}: starts`); continue; }
-      run(G, 9, null, () => d.mode === 'foot' && !d.fx.shotsAlive && !d.fx.crescentsAlive && !d.fx.strikesAlive && d._storm.left === 0);
-      for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) contacts.push(h.t);
+      run(G, 9, null, () => d.mode === 'foot' && !d.fx.shotsAlive && !d.fx.crescentsAlive && !d.fx.strikesAlive && d._storm.left === 0 && !d.spells?.busy); // (the second pass: the wheeling blade, the orbit, Starless Night)
+      for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) { contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.kind} ${h.r}`); }
       // every contact was cued flashLead before it (± a frame and the hit-stop of the blow before)
       let w = 0;
       for (const c of contacts) {
@@ -542,6 +545,7 @@ async function scenarioTiming() {
       else out(`     ${name.padEnd(10)} form ${f} from ${at.toFixed(1)} m: ${flashes.length} flashes, ${contacts.length} contacts, worst ${(w * 1000).toFixed(0)} ms`);
     }
   }
+  if (only) return;
   assert(moves >= 30 && worst <= 0.09, `${moves} move × form runs: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${TUNING.flashLead} s, and every move's first hit lands`);
 }
 
@@ -618,7 +622,7 @@ async function scenarioSpells() {
     const d = G.game.dragon;
     const h0 = G.hits.length;
     const ok = d.debug.trigger(name);
-    run(G, secs, step, () => d.mode === 'foot' && !d.fx.shotsAlive && !d.fx.crescentsAlive && !d.fx.strikesAlive && d._storm.left === 0);
+    run(G, secs, step, () => d.mode === 'foot' && !d.fx.shotsAlive && !d.fx.crescentsAlive && !d.fx.strikesAlive && d._storm.left === 0 && !d.spells?.busy);
     return { ok, hits: G.hits.slice(h0) };
   };
   // ---- Void lightning
