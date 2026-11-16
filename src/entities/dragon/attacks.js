@@ -2295,7 +2295,8 @@ const TAIL_SLAM = {
     const ch = d.rig.tail, m = ch.p[Math.min(12, ch.n)];
     const ang = Math.atan2(m.x - d.position.x, m.z - d.position.z);
     const off = angleDiff(d.yaw + Math.PI, ang);
-    h.off = Number.isFinite(off) ? clamp(off, -0.5, 0.5) : 0;
+    // (half of it: raised and slammed, the tail hooks less than it rests)
+    h.off = Number.isFinite(off) ? clamp(off * 0.5, -0.3, 0.3) : 0;
   },
   windup(d, a, h, k, dt) {
     const pose = d.pose;
