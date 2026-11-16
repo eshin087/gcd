@@ -3,23 +3,29 @@ import { TERRAIN } from './tuningTerrain.js';
 import { TELL, RESULT } from '../../combat/rules.js';
 import { clamp, angleDiff } from '../../core/math.js';
 import { STATE } from '../../world/destructibles.js';
-import { BREAK } from '../../world/breakTuning.js';
+import { BREAK, BLOW } from '../../world/breakTuning.js';
+import * as TFX from './terrainFx.js';
 
-// The wyrm's hold on the world's pieces (ADR-110): which tree or boulder it can take, the piece in
-// its jaws, the piece in the air, where it will land (the mark), the blow when it lands, and the
-// burning wreck a firebrand leaves. The world owns the pieces (world/destructibles.js, ADR-107:
-// take / carry / throwTo / drop / stop); a thrown piece's blow at the hero is the thrower's, so it
-// is dealt here, with the move's own tell.
+// The wyrm's hold on the world's pieces (ADR-110, second pass): which tree or boulder it can take,
+// the piece in its jaws (rooted while the jaws tug, then hanging from them like a stiff pendulum), the
+// piece in the air (flown here, frame by frame: it tumbles on with the whip's swing and smashes what
+// stands in its path), the blow where it lands, and the burning wreck a firebrand leaves. NOTHING is
+// drawn on the ground before a piece arrives (the owner: "don't show exactly where the terrain will
+// land"): the cue is the flare on the flying piece, flashLead before it lands. The world owns the
+// pieces (world/destructibles.js, ADR-107: take / carry / throwTo / drop / stop / sweep); a thrown
+// piece's blow at the hero is the thrower's, so it is dealt here, with the move's own tell.
 //
-//   jawsPiece(d, wood, out, any)   the piece the jaws would take (and how far it must go for it)
+//   jawsPiece(d, wood, out, any)   the piece the jaws would take (and how long the lunge to it is)
 //   tailPiece(d, out, any)         the boulder the tail would bat (and which way the tail swings)
 //   dragon.terrain (class Terrain):
-//     grab(piece, x, y, z)         the jaws at (x, y, z) close on it: it is torn out and held
-//     carry(dt, x, y, z, tilt, yaw) every frame while held (after the rig): its grip point at the jaws
+//     grab(piece, x, y, z)         the jaws at (x, y, z) close on it: taken, but still ROOTED
+//     tear()                       it comes free (roots and dirt burst) and is yanked up into the jaws
+//     carry(dt, x, y, z, tilt, yaw, stiff)  every frame while held (after the rig): its grip point at
+//                                  the jaws; rooted, it shudders where it stands; free, it swings
+//                                  toward `tilt` (rad, + = its top toward heading `yaw`) as a pendulum
 //     blaze(dt, k)                 the held piece burns (a firebrand being lit)
-//     lob(tx, tz, spec, attack, a, b, burning) → its flight time: thrown in an arc, it lands and bursts
+//     lob(tx, tz, spec, attack, a, b, burning) → its flight time: thrown at (tx, tz) with the swing
 //     bat(piece, lane, speed, spec, attack, a, b) → true: batted along the ground (cover stops it)
-//     mark(dt, x, z, r, k, hot) / lane(dt, ...)   the landing spot / the line, before the throw
 //     stir(dt, piece)              the chosen piece sheds dust (the read: this is the one)
 //     drop()                       an interrupted hold: the piece falls where it is
 //     piecePos(out)                the piece held or in the air (the tell's flash sits on it)
@@ -28,17 +34,11 @@ import { BREAK } from '../../world/breakTuning.js';
 // then no move finds a piece. No per-frame allocation (pooled shots and pyres, reused records).
 
 const { INTACT, HELD } = STATE;
-const J = TERRAIN.jaws, TL = TERRAIN.tail;
-const G = BREAK.thrown.gravity, SPIN = BREAK.thrown.spin;
-const LEAVES = 'o0O8@&';
-const GRIT = ".,:'";
+const J = TERRAIN.jaws, TL = TERRAIN.tail, SW = J.sway;
+const G = BREAK.thrown.gravity;
 const DUST = ",.`:'";
-const FLAMES = "*^'`\"~%";
 const PALE_DIM = [0.2, 0.2, 0.19];
-const EARTH = [0.34, 0.27, 0.2];
-const EARTH_END = [0.12, 0.1, 0.08];
-const LEAF = [0.26, 0.42, 0.2];
-const LEAF_END = [0.07, 0.11, 0.06];
+const EARTH_LIT = [0.62, 0.48, 0.34];
 const rand = (a, b) => a + Math.random() * (b - a);
 
 /** world.destructibles when it can lift and throw (a test's world mock may have none). */
@@ -50,10 +50,10 @@ export function pieces(d) {
 const liftable = (b) => b && b.state === INTACT && b.lift > 0 && b.lift <= 1 && Number.isFinite(b.hpMax);
 
 /**
- * The piece the jaws would take: the liftable piece that costs the least to reach (a turn, a short
- * run), not one the hero stands against. `wood`: a tree only (it must burn). Writes the plan into
- * `out` ({ piece, time: s of turning and running before the bite, travel: m }) and returns the piece
- * or null. `any` (a forced move: the Lab, Training): a longer run is allowed.
+ * The piece the jaws would take: the liftable piece that costs the least to reach (a turn, a
+ * lunge), not one the hero stands against. `wood`: a tree only (it must burn). Writes the plan into
+ * `out` ({ piece, time: s of turning and lunging before the bite, travel: m }) and returns the piece
+ * or null. `any` (a forced move: the Lab, Training): a longer lunge is allowed.
  */
 export function jawsPiece(d, wood = false, out = null, any = false) {
   const W = pieces(d);
@@ -82,7 +82,9 @@ export function jawsPiece(d, wood = false, out = null, any = false) {
     }
     const travel = dist > J.far - 0.4 || dist < J.near + 0.2 ? Math.hypot(sx - px, sz - pz) : 0;
     const turn = Math.abs(angleDiff(d.yaw, Math.atan2(dx, dz)));
-    const time = Math.max(turn / J.turn, travel / J.fetchSpeed) + 0.12;
+    // the turn and the lunge overlap (it whips round as it springs): the longer of the two, and a
+    // gathering beat before a long spring
+    const time = Math.max(turn / J.turn, travel / J.fetchSpeed + (travel > 1 ? 0.08 : 0)) + 0.06;
     if (time > maxT) continue;
     const score = travel + turn * 3.5;
     if (score < bs) {
@@ -154,31 +156,38 @@ export function tailPiece(d, out = null, any = false) {
 
 const blankShot = (i) => ({
   i, on: false, piece: null, mode: 0, attack: '', spec: null, action: null, beat: null,
-  t: 0, T: 1, span: 1, pulsed: false, burning: false, hitDone: false,
-  // an arc (mode 0): where it left the jaws, its velocity, where it lands, the way it travels
-  x0: 0, y0: 0, z0: 0, vx: 0, vy: 0, vz: 0, tx: 0, tz: 0, dx: 0, dz: 1, r: 3,
+  t: 0, T: 1, burning: false, hitDone: false, src: -1,
+  // an arc (mode 0): its centre of mass at release, its velocity, where it lands, the way it travels,
+  // its tumble (angle about the throw's cross axis, rad/s), the centre's height up its axis
+  x0: 0, y0: 0, z0: 0, vx: 0, vy: 0, vz: 0, tx: 0, tz: 0, dx: 0, dz: 1, r: 3, yaw: 0, ang: 0, w: 0, hc: 1, pcy: 0,
+  cx: 0, cy: 0, cz: 0, // where its centre is now
   // a skim (mode 1): its line, how far along it is, where the hero stood on it, its speed, its tumble
-  ax: 0, az: 0, len: 0, s: 0, hitS: 0, speed: 20, ang: 0, x: 0, y: 0, z: 0,
-  mk: { hold: 0, acc4: 0, heatT: 0, seed: 1 }, acc: 0, light: null,
+  ax: 0, az: 0, len: 0, s: 0, hitS: 0, speed: 20, hop: 0, x: 0, y: 0, z: 0,
+  fire: { acc: 0, emb: 0 }, grit: { acc: 0 }, light: null,
 });
-const blankPyre = () => ({ on: false, x: 0, z: 0, r: 2, t: 0, T: 3, tickT: 0, acc: 0, heatT: 0, light: null, spec: null, attack: '' });
+const blankPyre = () => ({ on: false, x: 0, z: 0, r: 2, t: 0, T: 3, tickT: 0, acc: 0, smoke: 0, heatT: 0, light: null, spec: null, attack: '' });
 
 export class Terrain {
   constructor(d) {
     this.d = d;
     this.game = d.game;
-    /** the piece in the jaws */
-    this.hold = { piece: null, grip: 0, ox: 0, oy: 0, oz: 0, blend: 0, bx: 0, by: 0, bz: 0, ax: 0, ay: 1, az: 0, fire: 0, acc: 0, dirt: 0, shed: 0, light: null };
+    /** the piece in the jaws: rooted (the tug) or swinging from them (th / w: its tilt and tilt rate) */
+    this.hold = {
+      piece: null, rooted: false, grip: 0, ox: 0, oy: 0, oz: 0, blend: 0, bx: 0, by: 0, bz: 0, ax: 0, ay: 1, az: 0,
+      th: 0, w: 0, yaw: 0, jx: 0, jy: 0, jz: 0, jvx: 0, jvz: 0, jv: false, sh: 0,
+      fire: 0, flame: { acc: 0, emb: 0 }, dirt: 0, shed: { acc: 0 }, light: null, strain: { strain: 0 },
+    };
+    /** pieces the flying ones have smashed on their way (tests, the Lab) */
+    this.smashed = 0;
     this.shots = [blankShot(0), blankShot(1), blankShot(2)];
     this.pyres = [blankPyre(), blankPyre(), blankPyre()];
-    /** the mark before the throw (one move aims at a time) */
-    this.mk = { hold: 0, acc4: 0, heatT: 0, seed: 1, lastT: -9 };
     this._stir = 0;
     this._phase = 1;
     this._last = null; // the shot thrown last (piecePos)
-    this._landed = (piece, x, z) => this._onLand(piece, x, z);
     this._o = { damage: 0, from: { x: 0, z: 0 }, point: { x: 0, y: 0.8, z: 0 }, knockback: 0, knockdown: false, kind: 'crush', burn: 0, tell: TELL.RED, parryable: false, blockable: false, attack: '', plunge: false, perfect: undefined };
     this._stop = { kind: 'blunt', by: 'boss', y: 0.8, dx: 0, dz: 0 };
+    this._sweep = { kind: BLOW.BLUNT, by: 'boss', y: 1, dx: 0, dz: 0, src: -1 };
+    this._land = { kind: BLOW.BLAST, by: 'boss', dx: 0, dz: 0, src: -1, fire: 0 };
     this._throw = { time: 1, power: 1, radius: 2, by: 'boss', onLand: null };
   }
 
@@ -187,83 +196,131 @@ export class Terrain {
   }
 
   // ------------------------------------------------------------------ the piece in the jaws
-  /** The jaws at (x, y, z) close on `piece`: it is torn out of the ground and held. False = it is gone. */
+  /** The jaws at (x, y, z) close on `piece`: it is taken (out of the world's colliders) but still rooted. */
   grab(piece, x, y, z) {
     const W = this.W, h = this.hold;
     if (!W || !piece || h.piece) return false;
     if (!W.take(piece)) return false;
     const tall = piece.h >= BREAK.topple.minH;
     h.piece = piece;
+    h.rooted = true;
     h.grip = tall ? clamp(y, J.grip[0], Math.min(J.grip[1], piece.h * 0.38)) : piece.h * 0.5;
-    // where it stood, against where the jaws would hold it: the difference fades out (no jump)
-    h.ox = piece.x - x;
-    h.oy = 0 - (y - h.grip);
-    h.oz = piece.z - z;
-    h.blend = 1;
+    h.ox = h.oy = h.oz = 0;
+    h.blend = 0;
     h.bx = piece.x;
     h.by = 0;
     h.bz = piece.z;
     h.ax = 0;
     h.ay = 1;
     h.az = 0;
+    h.th = 0;
+    h.w = 0;
+    h.sh = 0;
+    h.jv = false;
     h.fire = 0;
-    h.acc = 0;
+    h.flame.acc = h.flame.emb = 0;
     return true;
   }
 
-  /** Every frame while it is held (after the rig): the grip point at (x, y, z), leaning `tilt` toward `yaw`. */
-  carry(dt, x, y, z, tilt = 0, yaw = 0) {
+  /** The tug wins: the piece tears out of the ground and is yanked up into the jaws (no jump: the gap fades). */
+  tear(dx = 0, dz = 0) {
+    const h = this.hold, b = h.piece;
+    if (!b || !h.rooted) return false;
+    h.rooted = false;
+    // its foot is where it stood; held, the foot hangs `grip` below the jaws: the gap is blended out
+    h.ox = h.bx - (h.jx - h.ax * h.grip);
+    h.oy = h.by - (h.jy - h.ay * h.grip);
+    h.oz = h.bz - (h.jz - h.az * h.grip);
+    h.blend = 1;
+    h.w = 0;
+    TFX.tearOut(this.d.fx, b, b.x, b.z, dx, dz);
+    this.game.world?.scars?.ground?.(b.x, b.z, 0.8 + 0.4 * (b.weight ?? 1));
+    return true;
+  }
+
+  /**
+   * Every frame while it is held (after the rig): the grip point at (x, y, z). Rooted, the piece stands
+   * where it stood and shudders as the jaws tug. Free, its tilt swings toward `tilt` (rad, + = the
+   * top toward heading `yaw`) as a stiff pendulum driven by the jaws' own acceleration (a jerk forward
+   * swings the top back); `stiff` scales the jaws' hold (the whip: tighter).
+   */
+  carry(dt, x, y, z, tilt = 0, yaw = 0, stiff = 1) {
     const W = this.W, h = this.hold, b = h.piece;
     if (!b) return;
-    if (!W || b.state !== HELD || !Number.isFinite(x + y + z + tilt + yaw)) {
+    if (!W || b.state !== HELD || !Number.isFinite(x + y + z + tilt + yaw + stiff)) {
       h.piece = null;
       return;
     }
-    const st = Math.sin(tilt);
-    h.ax = Math.sin(yaw) * st;
-    h.ay = Math.cos(tilt);
-    h.az = Math.cos(yaw) * st;
-    h.blend *= Math.exp(-J.blend * Math.max(0, dt));
+    const dtc = clamp(dt, 0, 0.05);
+    // the jaws' velocity along the heading (for the swing's drive), finite-differenced
+    const cy = Math.cos(yaw), sy = Math.sin(yaw);
+    let acc = 0;
+    if (h.jv && dtc > 1e-5) {
+      const vx = (x - h.jx) / dtc, vz = (z - h.jz) / dtc;
+      acc = ((vx - h.jvx) * sy + (vz - h.jvz) * cy) / dtc;
+      h.jvx = vx;
+      h.jvz = vz;
+    } else {
+      h.jvx = h.jvz = 0;
+    }
+    h.jv = true;
+    h.jx = x;
+    h.jy = y;
+    h.jz = z;
+    h.yaw = yaw;
+    if (h.rooted) {
+      // it holds: the trunk shudders toward the jaws and back (the tug against the roots)
+      h.sh += dtc * 31;
+      const a = Math.atan2(x - b.x, z - b.z);
+      const shk = J.shudder * (0.5 + 0.5 * Math.sin(h.sh)) * Math.min(1, b.h / 4);
+      h.th = shk;
+      h.ax = Math.sin(a) * Math.sin(shk);
+      h.ay = Math.cos(shk);
+      h.az = Math.cos(a) * Math.sin(shk);
+      h.bx = b.x;
+      h.by = 0;
+      h.bz = b.z;
+      W.carry(b, h.bx, 0, h.bz, shk, a);
+      TFX.catchLight(this.d.fx, b.x, 0, b.z, h.ax, h.ay, h.az, b, 0.7);
+      return;
+    }
+    // the swing: a damped spring toward the asked tilt, pushed by the jaws' acceleration
+    const k = SW.k * stiff, c = SW.c * Math.sqrt(stiff);
+    const drv = clamp(acc, -400, 400) * SW.drive;
+    h.w += (k * (tilt - h.th) - c * h.w - drv) * dtc;
+    h.w = clamp(h.w, -30, 30);
+    h.th += h.w * dtc;
+    const st = Math.sin(h.th);
+    h.ax = sy * st;
+    h.ay = Math.cos(h.th);
+    h.az = cy * st;
+    h.blend *= Math.exp(-J.blend * dtc);
     h.bx = x - h.ax * h.grip + h.ox * h.blend;
     h.by = y - h.ay * h.grip + h.oy * h.blend;
     h.bz = z - h.az * h.grip + h.oz * h.blend;
-    W.carry(b, h.bx, h.by, h.bz, tilt, yaw);
-    // earth falls from its foot: it was torn out, it is not standing there
-    h.dirt += dt * 30;
-    let n = Math.min(4, Math.floor(h.dirt));
-    h.dirt -= n;
+    W.carry(b, h.bx, h.by, h.bz, h.th, yaw);
+    TFX.catchLight(this.d.fx, h.bx, h.by, h.bz, h.ax, h.ay, h.az, b, h.fire > 0 ? 0 : 1);
+    // the throat's glow on it: a warm light rides the piece in the jaws (a dark trunk on dark grass
+    // reads at the game camera only lit), and flies with it
     const fx = this.d.fx;
+    const mx = h.bx + h.ax * b.h * 0.45, my = h.by + h.ay * b.h * 0.45, mz = h.bz + h.az * b.h * 0.45;
+    if (!h.light) h.light = fx._light({ x: mx, y: my, z: mz, color: [1, 0.5, 0.2], intensity: J.glow, radius: 4 + b.h * 0.4, fadeIn: 0.1, fade: 0.3, flicker: 0.25 });
+    h.light?.set?.(mx, my, mz);
+    // earth falls from its torn foot, and a tree sheds leaves and bark along its length
+    h.dirt += dtc * 46;
+    let n = Math.min(5, Math.floor(h.dirt));
+    h.dirt -= n;
     while (n-- > 0) {
-      const o = fx._rec(h.bx + rand(-0.5, 0.5) * b.r * 2, h.by + rand(-0.1, 0.5), h.bz + rand(-0.5, 0.5) * b.r * 2, rand(0.5, 0.9), rand(0.28, 0.42), 0.12, GRIT);
+      const o = fx._rec(h.bx + rand(-0.5, 0.5) * b.r * 2, h.by + rand(-0.1, 0.5), h.bz + rand(-0.5, 0.5) * b.r * 2, rand(0.5, 0.9), rand(0.28, 0.42), 0.12, ".,:'");
       o.vx = rand(-0.6, 0.6);
       o.vy = rand(-1, 0.5);
       o.vz = rand(-0.6, 0.6);
       o.gravity = -14;
       o.drag = 0.4;
-      fx._col(EARTH, 1, EARTH_END, 1);
+      fx._col(EARTH_LIT, 1, PALE_DIM, 1);
       fx._spawn(fx.alpha, o);
     }
-    // and it sheds: leaves and bark shaken off along its length (the read at the game camera: the
-    // dark tree in the jaws is the one trailing litter)
-    if (b.h >= BREAK.topple.minH) {
-      h.shed += dt * 26;
-      n = Math.min(3, Math.floor(h.shed));
-      h.shed -= n;
-      while (n-- > 0) {
-        const u = 0.25 + 0.75 * Math.random(), leaf = b.leafy > 0 && u > 0.45;
-        const o = fx._rec(h.bx + h.ax * b.h * u + rand(-0.5, 0.5), h.by + h.ay * b.h * u + rand(-0.3, 0.3), h.bz + h.az * b.h * u + rand(-0.5, 0.5), rand(0.6, 1.1), rand(0.3, 0.44), 0.12, leaf ? LEAVES : b.M?.chips ?? GRIT);
-        o.vx = rand(-0.8, 0.8);
-        o.vy = rand(-0.6, 0.8);
-        o.vz = rand(-0.8, 0.8);
-        o.gravity = leaf ? -3.5 : -11;
-        o.drag = leaf ? 1.4 : 0.5;
-        o.spin = rand(-5, 5);
-        o.rot = rand(0, 6.283);
-        if (leaf) fx._col(LEAF, 1.5, LEAF_END, 1);
-        else fx._col(b.M?.color ?? PALE_DIM, 1.3, b.M?.colorEnd ?? PALE_DIM, 1);
-        fx._spawn(fx.alpha, o);
-      }
-    }
+    if (b.h >= BREAK.topple.minH) TFX.trail(fx, h.shed, dtc, h.bx, h.by, h.bz, h.ax, h.ay, h.az, b, 0, 0, 0);
   }
 
   /** The held piece burns (k 0..1: how far the fire has run up it). */
@@ -271,7 +328,7 @@ export class Terrain {
     const h = this.hold, b = h.piece;
     if (!b || !(k > 0)) return;
     h.fire = k;
-    this._flames(h, dt, h.bx, h.by, h.bz, h.ax, h.ay, h.az, b, k);
+    TFX.burnTrunk(this.d.fx, h.flame, dt, h.bx, h.by, h.bz, h.ax, h.ay, h.az, b, k);
     const fx = this.d.fx;
     if (!h.light) h.light = fx._light({ x: h.bx, y: h.by + 2, z: h.bz, color: [1, 0.5, 0.16], intensity: 3.6, radius: 12, fadeIn: 0.2, fade: 0.4, flicker: 0.5 });
     h.light?.set?.(h.bx + h.ax * b.h * 0.5, h.by + h.ay * b.h * 0.5, h.bz + h.az * b.h * 0.5);
@@ -281,6 +338,7 @@ export class Terrain {
   drop() {
     const h = this.hold, b = h.piece;
     h.piece = null;
+    h.rooted = false;
     h.light?.kill?.();
     h.light = null;
     if (b && b.state === HELD) this.W?.drop?.(b);
@@ -293,8 +351,7 @@ export class Terrain {
     const s = this._last;
     if (s?.on) {
       if (s.mode === 1) return out.set(s.x, s.y + 0.6, s.z);
-      const t = s.t;
-      return out.set(s.x0 + s.vx * t, Math.max(0.5, s.y0 + s.vy * t - 0.5 * G * t * t + 1), s.z0 + s.vz * t);
+      return out.set(s.cx, Math.max(0.6, s.cy), s.cz);
     }
     return out.copy(this.d.rig.pt.mouth);
   }
@@ -306,21 +363,22 @@ export class Terrain {
   }
 
   /**
-   * The held piece is thrown in an arc at (tx, tz): the world flies it and bursts it there
-   * (throwTo); its blow at the hero is dealt here when it lands. `a` / `b`: the action and its tell
-   * beat (the flash still comes if the action is cut short). Returns the flight time, 0 = not thrown.
+   * The held piece leaves the jaws for (tx, tz): its centre flies a flat, fast arc (the world's
+   * gravity) and it tumbles on about the throw's cross axis at the swing it had in the jaws (at least
+   * spec.spin). It is flown here, frame by frame (the world's piece stays HELD in the air: carry), and
+   * handed back to the world where it lands. `a` / `b`: the action and its tell beat (the flash
+   * still comes if the action is cut short). Returns the flight time, 0 = not thrown.
    */
   lob(tx, tz, spec, attack, a = null, b = null, burning = false) {
     const W = this.W, h = this.hold, piece = h.piece, s = this._shot();
-    if (!W || !piece || !s || !Number.isFinite(tx + tz)) return 0;
-    const dist = Math.hypot(tx - h.bx, tz - h.bz);
-    const T = clamp(0.55 + dist / spec.flightPer, spec.flight[0], spec.flight[1]);
-    const o = this._throw;
-    o.time = T;
-    o.power = spec.power;
-    o.radius = spec.radius;
-    o.onLand = this._landed;
-    if (!W.throwTo(piece, tx, tz, o)) return 0;
+    if (!W || !piece || h.rooted || !s || !Number.isFinite(tx + tz)) return 0;
+    const tall = piece.h >= BREAK.topple.minH;
+    // its centre: halfway up a boulder, about the middle of a tree's length
+    const hc = tall ? piece.h * 0.45 : piece.h * 0.5;
+    const cx = h.bx + h.ax * hc, cy = h.by + h.ay * hc, cz = h.bz + h.az * hc;
+    const dist = Math.hypot(tx - cx, tz - cz);
+    const T = clamp((spec.flightBase ?? 0.22) + dist / spec.flightPer, spec.flight[0], spec.flight[1]);
+    const yLand = tall ? 0.9 : Math.max(0.4, piece.h * 0.5);
     s.on = true;
     s.piece = piece;
     s.mode = 0;
@@ -330,36 +388,55 @@ export class Terrain {
     s.beat = b;
     s.t = 0;
     s.T = T;
-    s.span = Math.max(T, b ? b.impactIn : T);
-    s.pulsed = false;
     s.burning = !!burning;
     s.hitDone = false;
-    s.x0 = h.bx;
-    s.y0 = h.by;
-    s.z0 = h.bz;
-    s.vx = (tx - h.bx) / T;
-    s.vz = (tz - h.bz) / T;
-    s.vy = (0 - h.by + 0.5 * G * T * T) / T;
+    s.src = typeof W.swing === 'function' ? W.swing() : -1;
+    s.x0 = s.cx = cx;
+    s.y0 = s.cy = s.pcy = cy;
+    s.z0 = s.cz = cz;
+    s.vx = (tx - cx) / T;
+    s.vz = (tz - cz) / T;
+    s.vy = (yLand - cy + 0.5 * G * T * T) / T;
     s.tx = tx;
     s.tz = tz;
     const l = dist > 1e-3 ? dist : 1;
-    s.dx = (tx - h.bx) / l;
-    s.dz = (tz - h.bz) / l;
+    s.dx = (tx - cx) / l;
+    s.dz = (tz - cz) / l;
+    s.yaw = Math.atan2(s.dx, s.dz);
     s.r = spec.radius;
-    s.mk.seed = this.mk.seed;
-    s.mk.hold = s.mk.acc4 = s.mk.heatT = 0;
-    s.acc = 0;
+    s.hc = hc;
+    // the tilt it leaves the jaws with, in the throw's own plane, and the swing it carries on
+    const rel = Math.cos(angleDiff(h.yaw, s.yaw));
+    s.ang = h.th * rel;
+    const min = (spec.spin ?? 8) * (tall ? 1 : 1.4);
+    s.w = clamp(h.w * rel, min, min * 1.6);
+    s.fire.acc = s.fire.emb = 0;
+    s.grit.acc = 0;
     s.light = h.light; // (a firebrand's light flies with it)
     h.light = null;
     h.piece = null;
     this._last = s;
+    this._place(s);
     return T;
+  }
+
+  /** Where the flying piece is at s.t: its centre on the arc, its axis tumbling, its foot below. */
+  _place(s) {
+    const t = Math.min(s.t, s.T), b = s.piece;
+    s.cx = s.x0 + s.vx * t;
+    s.cy = s.y0 + s.vy * t - 0.5 * G * t * t;
+    s.cz = s.z0 + s.vz * t;
+    const ang = s.ang + s.w * t, sa = Math.sin(ang);
+    const ax = s.dx * sa, ay = Math.cos(ang), az = s.dz * sa;
+    this.W?.carry?.(b, s.cx - ax * s.hc, s.cy - ay * s.hc, s.cz - az * s.hc, ang, s.yaw);
+    return ang;
   }
 
   /**
    * `piece` is batted along the ground: from where it stands along (dx, dz) for `len` m at `speed`;
-   * `hitS` = how far along the line the hero stood. It is carried here frame by frame (the first
-   * cover on its way stops it: world.stop), tests the hero as it passes and comes apart at the end.
+   * `hitS` = how far along the line the hero stood. It bursts up off the ground and skims; it is
+   * carried here frame by frame (the first cover on its way stops it: world.stop), tests the hero as
+   * it passes and comes apart at the end.
    */
   bat(piece, dx, dz, len, hitS, speed, spec, attack, a = null, b = null) {
     const W = this.W, s = this._shot();
@@ -374,8 +451,6 @@ export class Terrain {
     s.beat = b;
     s.t = 0;
     s.T = hitS / speed;
-    s.span = Math.max(s.T, 0.3);
-    s.pulsed = false;
     s.burning = false;
     s.hitDone = false;
     s.ax = piece.x;
@@ -386,27 +461,18 @@ export class Terrain {
     s.s = 0;
     s.hitS = hitS;
     s.speed = speed;
+    s.hop = spec.hop ?? 1;
     s.ang = 0;
     s.x = piece.x;
     s.y = 0.2;
     s.z = piece.z;
     s.r = piece.r;
-    s.mk.seed = this.mk.seed;
-    s.mk.hold = s.mk.acc4 = s.mk.heatT = 0;
-    s.acc = 0;
+    s.grit.acc = 0;
     s.light = null;
     this._last = s;
+    TFX.batBurst(this.d.fx, piece.x, piece.z, piece.r, dx, dz, piece.M);
+    this.game.world?.scars?.ground?.(piece.x, piece.z, 0.7, dx, dz);
     return true;
-  }
-
-  /** The world calls this where a thrown piece lands (throwTo's onLand). */
-  _onLand(piece, x, z) {
-    for (const s of this.shots) {
-      if (s.on && s.mode === 0 && s.piece === piece) {
-        this._impact(s, x, z);
-        return;
-      }
-    }
   }
 
   _blow(s, x, z, y = 0.8) {
@@ -428,19 +494,31 @@ export class Terrain {
     o.point.x = x;
     o.point.y = y;
     o.point.z = z;
-    return d.hitPlayer(o, null);
+    // the action that threw it, while it still runs and still holds this beat (a blue flare blow's
+    // parry is a parry MOMENT: hitPlayer reads it off the action's current beat)
+    const a = s.action && d.brain?.action === s.action && s.action.cur === s.beat ? s.action : null;
+    return d.hitPlayer(o, a);
   }
 
+  /** It lands at (x, z): the blow, the world takes the blast, the ground is torn; it skids on and comes apart. */
   _impact(s, x, z) {
-    const d = this.d, g = this.game, fx = d.fx, spec = s.spec;
-    s.on = false;
+    const d = this.d, g = this.game, fx = d.fx, spec = s.spec, b = s.piece;
     const p = g.player;
     const pp = p?.position;
     if (!s.hitDone && pp && Math.hypot(pp.x - x, pp.z - z) <= spec.radius + (p.radius ?? 0.45)) {
       s.hitDone = true;
       this._blow(s, x, z);
     }
-    fx.dustRing(x, z, spec.radius * 0.45, 30, 0.9);
+    // the world takes it: the blast on what stands round it, the floor cracked, the grass torn
+    const lo = this._land;
+    lo.dx = s.dx;
+    lo.dz = s.dz;
+    lo.src = typeof this.W?.swing === 'function' ? this.W.swing() : -1;
+    lo.fire = 0;
+    g.world?.impact?.(x, z, spec.radius, spec.power, lo);
+    g.world?.gust?.(x, z, 1.4, spec.radius + 5);
+    g.shake?.(clamp(0.3 + 0.12 * (b?.weight ?? 1), 0.3, 0.6));
+    TFX.landing(fx, x, z, spec.radius, s.dx, s.dz, b, s.burning);
     d.markHitbox?.(x, 0, z, spec.radius);
     if (s.burning) {
       // the burning tree bursts: a fire blast, the grass and wood round it catch, its wreck burns on
@@ -452,7 +530,22 @@ export class Terrain {
       if (ig) g.world?.ignite?.(x, z, spec.radius * ig[1], ig[0]);
       d.emit('dragon:explosion', { x, z, radius: spec.radius });
       this._pyre(x, z, spec, s.attack);
+    } else s.light?.kill?.();
+    // it carries on: one skid along the way it flew, tumbling, and comes apart there (the world's
+    // fall: its crumble, its scar, its rubble). Its tumble goes on from where it is
+    const W = this.W, o = this._throw;
+    if (b && b.state === HELD && W) {
+      o.time = spec.skidTime ?? 0.3;
+      o.power = 0.4;
+      o.radius = 1.6;
+      o.onLand = null;
+      const sk = spec.skid ?? 2;
+      // (its foot out of the ground first: a tumbling trunk may have it below, and the world's fall
+      // ends the moment the foot is under)
+      if (b.py < 0.2) W.carry(b, b.px, 0.2, b.pz, s.ang + s.w * s.T, s.yaw);
+      if (W.throwTo(b, x + s.dx * sk, z + s.dz * sk, o) && Number.isFinite(b.ang)) b.ang = s.ang + s.w * s.T;
     }
+    s.on = false;
     s.light = null;
     s.piece = null;
     s.action = s.beat = null;
@@ -469,46 +562,6 @@ export class Terrain {
     s.on = false;
     s.piece = null;
     s.action = s.beat = null;
-  }
-
-  // ------------------------------------------------------------------ marks (where it will land)
-  /** The landing spot before the throw: k 0..1 toward the impact, `hot` = its last flashLead s. */
-  mark(dt, x, z, r, k, hot) {
-    const st = this.mk, t = this.game.time ?? 0;
-    if (t - st.lastT > 0.3) {
-      st.seed = 1 + Math.random() * 97;
-      st.heatT = 0;
-    }
-    st.lastT = t;
-    this._disc(st, dt, x, z, r, k, hot);
-  }
-
-  /** The line a batted piece will take, before the lash: from (ax, az) along (dx, dz), s0..s1, half width hw. */
-  lane(dt, ax, az, dx, dz, s0, s1, hw, k, hot) {
-    const st = this.mk, t = this.game.time ?? 0;
-    if (t - st.lastT > 0.3) {
-      st.seed = 1 + Math.random() * 97;
-      st.heatT = 0;
-    }
-    st.lastT = t;
-    this._band(st, dt, ax, az, dx, dz, s0, s1, hw, k, hot);
-  }
-
-  _disc(st, dt, x, z, r, k, hot) {
-    const fx = this.d.fx;
-    const life = fx.holdLife(st, dt);
-    // the ground heats up over the footprint, as under every other blow from above (ADR-052)
-    fx.heatDisc(life, st, dt, x, z, r, k, hot, st.seed);
-  }
-
-  _band(st, dt, ax, az, dx, dz, s0, s1, hw, k, hot) {
-    const fx = this.d.fx;
-    fx.heatBand(fx.holdLife(st, dt), st, dt, ax, az, dx, dz, s0, s1, hw, k, hot, st.seed);
-  }
-
-  /** The flash of a landing (combat:flash): its mark flares. */
-  _pulse(x, z, r) {
-    this.d.fx.heatFlare(x, z, r);
   }
 
   /** The piece the wyrm has chosen sheds dust and grit before it is taken. */
@@ -532,33 +585,10 @@ export class Terrain {
     }
   }
 
-  /** Flames along a trunk: its foot at (bx, by, bz), its axis (ax, ay, az); k 0..1 = how much of it burns. */
-  _flames(st, dt, bx, by, bz, ax, ay, az, b, k) {
-    const fx = this.d.fx;
-    st.acc += dt * (70 + b.h * 34) * k;
-    let n = Math.min(22, Math.floor(st.acc));
-    st.acc -= n;
-    const wide = b.leafy > 0 ? b.r * 2.6 : b.r * 1.1;
-    while (n-- > 0) {
-      const u = Math.random() * k, hot = Math.random();
-      const rr = (u > 0.45 ? wide : b.r) * Math.sqrt(Math.random()), a = Math.random() * 6.283;
-      const o = fx._rec(bx + ax * b.h * u + Math.cos(a) * rr, by + ay * b.h * u + rand(-0.2, 0.2), bz + az * b.h * u + Math.sin(a) * rr, rand(0.35, 0.7), 0.7 + hot * 0.6, 0.1, FLAMES);
-      o.vx = rand(-0.5, 0.5);
-      o.vy = rand(1.4, 3.4);
-      o.vz = rand(-0.5, 0.5);
-      o.drag = 1;
-      o.flicker = 0.3;
-      o.spin = rand(-2, 2);
-      o.stretch = 0.5;
-      const c = fx._c0, e = fx._c1;
-      c[0] = 3.6;
-      c[1] = 1.1 + hot * 1.1;
-      c[2] = 0.24;
-      e[0] = 0.8;
-      e[1] = 0.05;
-      e[2] = 0.02;
-      fx._spawn(fx.add, o);
-    }
+  /** The tug: grit jumps round the rooted piece's foot (k 0..1 of the strain). */
+  strain(dt, k) {
+    const h = this.hold;
+    if (h.piece && h.rooted) TFX.strain(this.d.fx, h.strain, dt, h.piece, k);
   }
 
   // ------------------------------------------------------------------ the burning wreck
@@ -576,6 +606,7 @@ export class Terrain {
     p.T = P.time;
     p.tickT = P.tick;
     p.acc = 0;
+    p.smoke = 0;
     p.heatT = 0;
     p.spec = spec;
     p.attack = attack;
@@ -583,7 +614,7 @@ export class Terrain {
   }
 
   _burn(p, dt) {
-    const d = this.d, g = this.game, fx = d.fx, P = p.spec.pyre;
+    const d = this.d, g = this.game, P = p.spec.pyre;
     p.t += dt;
     const u = p.t / p.T; // 0 → 1 as it burns down
     if (u >= 1) {
@@ -591,28 +622,8 @@ export class Terrain {
       p.light = null;
       return;
     }
-    const live = 1 - u * u;
-    p.acc += dt * 34 * p.r * live;
-    let n = Math.min(16, Math.floor(p.acc));
-    p.acc -= n;
-    while (n-- > 0) {
-      const a = Math.random() * 6.283, rr = p.r * Math.sqrt(Math.random()), hot = Math.random();
-      const o = fx._rec(p.x + Math.cos(a) * rr, rand(0.15, 0.5), p.z + Math.sin(a) * rr, rand(0.4, 0.85), 0.55 + hot * 0.5, 0.08, FLAMES);
-      o.vx = rand(-0.4, 0.4);
-      o.vy = rand(1.6, 4.2) * (0.5 + 0.5 * live);
-      o.vz = rand(-0.4, 0.4);
-      o.drag = 1;
-      o.flicker = 0.3;
-      o.stretch = 0.5;
-      const c = fx._c0, e = fx._c1;
-      c[0] = 3.5;
-      c[1] = 1.0 + hot * 1.0;
-      c[2] = 0.22;
-      e[0] = 0.8;
-      e[1] = 0.05;
-      e[2] = 0.02;
-      fx._spawn(fx.add, o);
-    }
+    // heat in the fire field (ADR-113): the wreck burns as one body of flame, dying down
+    TFX.pyre(d.fx, p, dt, p.x, p.z, p.r, 1 - u * u);
     p.heatT -= dt;
     if (p.heatT <= 0) {
       p.heatT = 0.3;
@@ -674,63 +685,60 @@ export class Terrain {
     for (const p of this.pyres) if (p.on) this._burn(p, dt);
   }
 
-  /** The tell's flash, if the action that threw it is gone: flashLead before the piece arrives. */
-  _cue(s, left, x, z, r) {
+  /** The tell's flash, if the action that threw it is gone: flashLead before the piece arrives (on the piece). */
+  _cue(s, left) {
     const lead = TUNING.flashLead;
     if (left > lead + 1e-6) return false;
     const b = s.beat;
     if (b && !b.flashed) {
       b.flashed = true;
+      // the cue belongs to the flying piece: its flare, not the wyrm's body spike (flashTell skips
+      // the spike for a beat whose part is the piece)
       this.d.flashTell(s.action, b);
-    }
-    if (!s.pulsed) {
-      s.pulsed = true;
-      this._pulse(x, z, r);
     }
     return true;
   }
 
   _arc(s, dt) {
-    const fx = this.d.fx, b = s.piece;
-    s.t += dt;
-    if (!b || s.t > s.T + 0.6) {
-      // it never landed (the world was restored under it): nothing more to mark
+    const d = this.d, g = this.game, W = this.W, fx = d.fx, b = s.piece;
+    if (!W || !b || b.state !== HELD) {
+      // the world took it back under it (a reset): nothing more to fly
       s.on = false;
       s.light?.kill?.();
       s.light = null;
+      s.piece = null;
       return;
     }
-    const left = s.T - s.t;
-    const hot = this._cue(s, left, s.tx, s.tz, s.r);
-    if (left > 0) this._disc(s.mk, dt, s.tx, s.tz, s.r, clamp(1 - left / s.span, 0, 1), hot);
-    // where it is now (the world moves it: the same arc), its axis as it turns end over end
-    const t = Math.min(s.t, s.T);
-    const x = s.x0 + s.vx * t, y = Math.max(0, s.y0 + s.vy * t - 0.5 * G * t * t), z = s.z0 + s.vz * t;
-    const ang = SPIN * t, sa = Math.sin(ang);
-    const ax = s.dx * sa, ay = Math.cos(ang), az = s.dz * sa;
-    if (s.burning) {
-      this._flames(s, dt, x, y, z, ax, ay, az, b, 1);
-      s.light?.set?.(x + ax * b.h * 0.5, y + ay * b.h * 0.5, z + az * b.h * 0.5);
-    } else {
-      // it sheds leaves and grit as it flies
-      s.acc += dt * 34;
-      let n = Math.min(4, Math.floor(s.acc));
-      s.acc -= n;
-      while (n-- > 0) {
-        const u = Math.random(), leaf = b.leafy > 0 && u > 0.4;
-        const o = fx._rec(x + ax * b.h * u + rand(-0.4, 0.4), y + ay * b.h * u + rand(-0.4, 0.4), z + az * b.h * u + rand(-0.4, 0.4), rand(0.5, 0.9), rand(0.3, 0.45), 0.12, leaf ? LEAVES : b.M?.chips ?? GRIT);
-        o.vx = s.vx * 0.3 + rand(-1, 1);
-        o.vy = rand(-0.5, 1.5);
-        o.vz = s.vz * 0.3 + rand(-1, 1);
-        o.gravity = leaf ? -4 : -12;
-        o.drag = leaf ? 1.5 : 0.5;
-        o.spin = rand(-6, 6);
-        o.rot = rand(0, 6.283);
-        if (leaf) fx._col(LEAF, 1, LEAF_END, 1);
-        else fx._col(b.M?.color ?? PALE_DIM, 1, b.M?.colorEnd ?? PALE_DIM, 1);
-        fx._spawn(fx.alpha, o);
-      }
+    const px = s.cx, pz = s.cz;
+    s.t += dt;
+    this._cue(s, s.T - s.t);
+    const ang = this._place(s);
+    const sa = Math.sin(ang), ax = s.dx * sa, ay = Math.cos(ang), az = s.dz * sa;
+    const fx0 = s.cx - ax * s.hc, fy0 = s.cy - ay * s.hc, fz0 = s.cz - az * s.hc;
+    // what stands in its path is smashed (it flies on): a segment of this frame's travel, as wide as
+    // the piece; a piece flying over something low passes over it
+    const sw = this._sweep;
+    sw.dx = s.dx;
+    sw.dz = s.dz;
+    sw.y = Math.max(0.3, s.cy - (b.h >= BREAK.topple.minH ? b.h * 0.4 : b.r));
+    sw.src = s.src;
+    const n = W.sweep?.(px, pz, s.cx, s.cz, Math.max(0.6, b.r + 0.4), s.spec.smash ?? 1, sw) ?? 0;
+    if (n > 0) {
+      this.smashed += n;
+      g.shake?.(0.15);
+      TFX.smashOn(fx, s.cx, s.cy, s.cz, s.dx, s.dz, null);
+      if (s.burning && s.spec.trailIgnite) g.world?.ignite?.(s.cx, s.cz, b.r + 1.2, s.spec.trailIgnite, false);
     }
+    s.light?.set?.(s.cx, s.cy, s.cz);
+    if (s.burning) TFX.burnTrunk(fx, s.fire, dt, fx0, fy0, fz0, ax, ay, az, b, 1, s.vx, s.vz);
+    else {
+      TFX.trail(fx, s.grit, dt, fx0, fy0, fz0, ax, ay, az, b, s.vx, s.vy - G * s.t, s.vz);
+      TFX.catchLight(fx, fx0, fy0, fz0, ax, ay, az, b, 1);
+      // the wake: a streak of dust left hanging along its path (the throw is read in the half second it flies)
+      TFX.streak(fx, px, s.pcy ?? s.cy, pz, s.cx, s.cy, s.cz, b);
+    }
+    s.pcy = s.cy;
+    if (s.t >= s.T) this._impact(s, s.tx, s.tz);
   }
 
   _skim(s, dt) {
@@ -745,18 +753,17 @@ export class Terrain {
     s.s = Math.min(s.len, s.s + s.speed * dt);
     s.x = s.ax + s.dx * s.s;
     s.z = s.az + s.dz * s.s;
-    // a low skim: up off the ground at once, a shallow hop along the way
-    s.y = 0.25 + 0.5 * Math.sin(Math.PI * Math.min(1, s.s / Math.max(1, s.len))) + Math.min(0.3, s.t * 3);
-    s.ang += dt * 9;
+    // it bursts up off the ground (the tail's blow lifts it), drops into a low skim, a shallow hop on
+    const u = Math.min(1, s.s / Math.max(1, s.len));
+    s.y = 0.25 + s.hop * Math.exp(-s.t * 7) * Math.min(1, s.t * 14) + 0.4 * Math.sin(Math.PI * u);
+    s.ang += dt * 11;
     W.carry(b, s.x, s.y, s.z, s.ang, Math.atan2(s.dx, s.dz));
-    // the mark ahead of it; the flash, if the lash's action is gone
-    const left = (s.hitS - s.s) / s.speed;
-    const hot = !s.hitDone && this._cue(s, left, s.ax + s.dx * s.hitS, s.az + s.dz * s.hitS, 1.6);
-    if (s.s < s.len - 0.5) this._band(s.mk, dt, s.ax, s.az, s.dx, s.dz, s.s, s.len, spec.width, 1, hot || s.hitDone);
+    // the flash, if the lash's action is gone (on the boulder; nothing is drawn on the ground)
+    if (!s.hitDone) this._cue(s, (s.hitS - s.s) / s.speed);
     // its wake: dust torn off the ground, grit
-    s.acc += dt * 60;
-    let n = Math.min(6, Math.floor(s.acc));
-    s.acc -= n;
+    s.grit.acc += dt * 60;
+    let n = Math.min(6, Math.floor(s.grit.acc));
+    s.grit.acc -= n;
     while (n-- > 0) {
       const o = fx._rec(s.x + rand(-0.5, 0.5), rand(0.1, 0.5), s.z + rand(-0.5, 0.5), rand(0.5, 0.9), rand(0.4, 0.7), rand(1, 1.6), DUST);
       o.vx = -s.dx * rand(1, 4) + rand(-1, 1);
@@ -799,12 +806,12 @@ export class Terrain {
     if (s.s >= s.len) this._endSkim(s, s.x + s.dx * s.speed * 0.2, s.z + s.dz * s.speed * 0.2);
   }
 
-  /** The fight's reset (and a broken update): the held piece falls, nothing is tracked, no wreck burns. */
+  /** The fight's reset (and a broken update): the held piece falls, nothing is in the air, no wreck burns. */
   reset() {
     this.drop();
     const W = this.W;
     for (const s of this.shots) {
-      if (s.on && s.mode === 1 && s.piece?.state === HELD) W?.drop?.(s.piece);
+      if (s.on && s.piece?.state === HELD) W?.drop?.(s.piece);
       s.on = false;
       s.piece = null;
       s.action = s.beat = null;
@@ -816,7 +823,6 @@ export class Terrain {
     }
     this._last = null;
     this._stir = 0;
-    this.mk.lastT = -9;
     this._phase = this.d.phase ?? 1;
   }
 }

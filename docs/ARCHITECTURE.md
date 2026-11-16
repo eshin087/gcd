@@ -95,7 +95,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker})` → light (mutable `x,y,z`, `.set()`, `.kill()`) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
-| `world` | `resolve(pos, radius, bound)` circle collision; `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
+| `world` | `resolve(pos, radius, bound, soft = false)` circle collision (`soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
@@ -1208,7 +1208,8 @@ hurtSpheres: Array<{x,y,z,r,part,mult}>  // world space, refreshed every update;
 bodyCircles: Array<{x,z,r}>              // ground footprint for player push-out (empty while airborne):
                                         // chest, hips, neck base, loins, then each PLANTED foot (0..4 more)
 hazards: Hazards                        // the fire hazards (hazards.js, contract 3): see "Hazards" below
-bullets: Bullets                        // the bullet field + the fire wheel (bullets.js, ADR-039): see "Bullets" below
+bullets: Bullets                        // the bullet field + the ground tongues (bullets.js, ADR-039): see "Bullets" below
+terrain: Terrain                        // the piece in its jaws or in the air (terrain.js, ADR-110): see "Terrain moves" below
 crashing: boolean                       // true while a plunge stops a flight: that action's end() must not land it elsewhere
 isTargetable(): boolean                 // false while sleeping/dying/dead
 lockPoint(out): Vector3                  // chest/neck base, for lock-on + camera
@@ -1246,8 +1247,9 @@ hitstop(sec, scale)                     // game.hitstop that won't crush a runni
 reset()                                 // back to sleeping at the nest, full HP/posture, phase 1, FX/lights/hazards cleared
 update(dt)
 debug: {                                // used by the Lab (generic shape every future enemy implements)
-  abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (33: singles, strings, fire
-                                        // attacks, bullet patterns, terrain moves and 'roar', the transition shock ring)
+  abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (46: 8 singles, 17 strings, 11 fire
+                                        // attacks and flights, 6 bullet patterns, 3 terrain moves and 'roar', the
+                                        // transition shock ring)
   trigger(name): boolean,               // force an ability now (wakes/starts the fight if needed); false while busy
   setAI(enabled: boolean), aiEnabled: boolean,
   wake(), startFight(),                 // startFight skips the intro straight into combat (no-op if fighting)
@@ -1258,33 +1260,134 @@ debug: {                                // used by the Lab (generic shape every 
 }
 ```
 **Attacks and selection** (`attacks.js` `ATTACKS`: the singles, the strings, `roar` and, spread in,
-`FIRE` from `fireAttacks.js` and `BULLET_HELL` from `bulletAttacks.js`; their numbers are
-`TUNING.attacks`, into which `tuningFire.js` `FIRE_ATTACKS` and `tuningBullets.js` `BULLET_ATTACKS`
-are merged). `dragon.hitPlayer` multiplies every blow's damage by `TUNING.damageScale` (0.85), except
-hits flagged `bullet: true`. The AI picks any entry generically: `ai.js`
-`attackWeight(def, name, d, sense)` reads `phase` (first phase, on the def or `TUNING.attacks[name]`),
-`weight` (a number, `[P1, P2, P3]` or a function of `(dragon, sense)` returning either; per-phase
-arrays go through `perPhase(v, phase)`) and `air` (usable while airborne; no entry sets it today, as
-every flight runs inside one action). `Brain._choose` skips entries on `cooldown` and damps the last
-two picks (×0.3, ×0.65). Melee stays allowed while hazards burn. String and single attacks gate their
-weight on an AI band (`bandWeight`: `range` in model units × SCALE, `maxAng` / `minAng`); fire attacks
-gate on world-metre distances in their own `weight(d, s)`. `TUNING.openingCooldowns` hold the ranged
-singles back after the intro. `TUNING.unlockStagger` [first, step, jitter] ([2, 2.5, 2] s) staggers
-the abilities a new phase unlocks: in a random order, the i-th gets an opening cooldown of first +
-step × i + a random share of jitter (`enterPhase`; the nova opener is not delayed).
+`FIRE` from `fireAttacks.js`, `BULLET_HELL` from `bulletAttacks.js` and `TERRAIN_MOVES` from
+`terrainAttacks.js`; their numbers are `TUNING.attacks`, into which `tuningFire.js` `FIRE_ATTACKS`,
+`tuningBullets.js` `BULLET_ATTACKS` and `tuningTerrain.js` `TERRAIN_ATTACKS` are merged, and onto
+which `tuning.js` copies each move's combo links from `tuningLinks.js` `LINKS` as
+`TUNING.attacks[name].links`). `dragon.hitPlayer` multiplies every blow's damage by
+`TUNING.damageScale` (0.85), except hits flagged `bullet: true`. The AI weighs any entry generically:
+`ai.js` `attackWeight(def, name, d, sense)` reads `phase` (first phase, on the def or
+`TUNING.attacks[name]`), `weight` (a number, `[P1, P2, P3]` or a function of `(dragon, sense)`
+returning either; per-phase arrays go through `perPhase(v, phase)`) and `air` (usable while
+airborne; no entry sets it today, as every flight, the flying combos included, runs inside one
+action). String and single attacks gate their weight on an AI band (`bandWeight`: `range` in model
+units × SCALE, `maxAng` / `minAng`); fire attacks, bullet patterns and terrain moves gate on
+world-metre distances (`minDist` / `maxDist`) in their own `weight(d, s)`. `TUNING.openingCooldowns`
+hold the ranged singles back after the intro. `TUNING.unlockStagger` [first, step, jitter] ([1.5,
+1.6, 1.5] s) staggers the abilities a new phase unlocks: in a random order, the i-th gets an opening
+cooldown of first + step × i + a random share of jitter (`enterPhase`). Not staggered: the names in
+`TUNING.pressure.unlockSkip` (`['nova', 'roar']`: the phase-3 roar queues the nova itself) and any
+attack tuned `unlock: false`.
+
+**The director** (2026-11-15, ADR-119; `ai.js`, numbers `TUNING.pressure`): `Brain._choose` is a
+weighted pick over every `ATTACKS` entry off cooldown, steered by the director. A designer adding a
+move needs to know:
+- **Categories.** `ai.js` exports `CATEGORIES` (`melee`, `wing`, `tail`, `fire`, `flight`, `spell`,
+  `terrain`) and `categoryOf(name)` (cached): the tuning's or the def's own `category` wins, then
+  `TUNING.pressure.category` (tail → tail, stomp → melee, breath / fireball → fire, leap → flight,
+  roar → spell), then where it is tuned (a terrain move → terrain; a bullet pattern → fire; a fire
+  attack → flight when it has an `alt`, a flying combo's `parts` or `air`, else spell) and, for a
+  string, what its hits are: its tail (`tail*` kinds), wing (`wing*`) or fire (`fireSnap`,
+  `emberRake`, and any hit with a `burst`) hits make it that category when they are two or more or
+  a third of the string (most wins; a tie goes tail, wing, fire), else melee. Today: melee 13, wing 2
+  (the Wing buffet, the Sky hammer), tail 4, fire 11, flight 7, spell 6, terrain 3.
+- **The pick's weight:** × `repeat` [0.3, 0.65] for the last two picks; × `bias[cat]` per phase
+  (melee, wing and tail 1.25 – 1.3); the last pick's category × `sameCat` 0.7, × `overRun` 0.03 once
+  `maxRun` (2) picks of it ran in a row; a category absent past `floorAfter` [32, 15, 12] s ×
+  `floorBoost` 2.5 × min(3, absent / floorAfter); gap closers (`closers`: charge, pounce, leap,
+  skyStrafe, diveBomb, or a tuning `closer: true`) × `closerBoost` 2.2 past `farDist` 15 m; tail
+  moves × `behindBoost` 2.5 when the hero is behind it (beyond `behind` 1.75 rad off the nose);
+  flights × 0.05 once `maxAir` [0.18, 0.24, 0.3] of the last ~20 s was spent airborne
+  (`brain.airShare`); spells × 0.05 while `maxCast` [3, 5, 7] hazards burn. A category absent past
+  `floorAfter` × `floorForce` (3) that can be used from here becomes `brain.forceCat`: every other
+  category × 0.02 until one of its moves is picked. A category absent past its floor that nothing
+  can use from here makes the wyrm move for it (`_startSeek` / `_seeking`, `pressure.seek`: it only
+  closes in and turns; the backward bound was removed).
+- **Layering rules** (enforced, not weights you tune per move): a spell or a bullet pattern while
+  another spell's emitter or any bullet is live × `layer` (0); a move that asks for a guard (any
+  normal or blue blow) while a meteor / chase emitter or an ambient cinder is still to land, or a
+  move that asks for a dodge (any red or black blow, every flight and spell, a pattern's red orbs)
+  while bullets fly × `mixed` (0). What a move asks for is read from its data (each hit's tell, the
+  headline tell, `orbs` / `orbWave` / `barkOrbs`) and learned from the cues it really sends.
+- **Combo links.** `TUNING.attacks[name].links = [{ to, when, chance, band? }]` (all of them live in
+  `tuningLinks.js`, one table). When a move ends **on its own** (`stopAction(false)`, not
+  `aborted`), `Brain._link` takes the first link whose `when` holds for where the hero is now
+  (`linkWhen(when, sense)`, exported: `front` ≤ 0.9 rad off the nose, `side` 0.9 – 1.75, `behind`
+  beyond, `near` < 9 m from the root, `mid` 9 – 18, `far` > 18, `any`), whose `chance` (a number or
+  `[P1, P2, P3]`) rolls, and whose target is usable now (exists, off cooldown, weight > 0 from where
+  he stands; `band: false` clamps the hero into the target's own band first) and passes the
+  layering rules. It goes into `brain.queued` and starts with no pause, booked like a pick. At most
+  `chainDepth` [3, 3, 5] links in a row, then a breather of `chainRest` [0.7 – 1.0, 0.8 – 1.1, 0.4 –
+  0.65] s. A move that ended interrupted (parried into a recoil, staggered, broken, plunged) or one
+  the hero answered with his own art (`player:flurry`, `player:flareCounter`, `player:counter` set
+  `action.answered`) never links: the pause is `pressure.openingGap` (the old idle gap: [1.0 – 1.7,
+  0.7 – 1.2, 0.35 – 0.7] s). Otherwise the pause is `TUNING.idleGap` ([0.25 – 0.5, 0.25 – 0.5, 0.05
+  – 0.25] s). `brain.queued` is also how a P3 Cinder burst runs into an Ember torrent.
+- **The fairness guard** (`pressure.guard`: `sep` 0.3, `margin` 0.05, `maxHold` 0.5, `safeMin` 6,
+  `horizon` 1.4, `roll` 4.2). The brain subscribes to `combat:tell` and `combat:flash` (sources
+  'dragon' and 'world') and keeps a ring of 32 upcoming impacts with the answer each asks for (the
+  cue ledger: a tell's `impactIn`, re-timed by its flash; `_forget(name)` drops a move's own when it
+  ends cut short). `Brain._hold(a, dt)`: a melee blow (the strings, bite, swipe, tail, stomp) whose
+  flash is due this frame waits, its windup clock held (the pose keeps tracking), while an impact of
+  another source that asks for the other answer is due within `sep` + `margin` of its own, at most
+  `maxHold` s per blow and only when the wait clears it (`stats.holds`). Live hazard circles are read
+  directly too (a blast the hero cannot reach in a roll is no clash).
+- **Ambient cinders** (`pressure.ambient`, from phase 2): `_ambient(dt)` drops small red blasts
+  (hazard circles, kind 'shell', attack name `'cinders'`, which has no `TUNING.attacks` entry: it
+  appears in cues and in `player.takeHit`'s `attack`) from a wing's wrist or the jaws while a ground
+  move runs with time left: every `every` [0, 1.4, 0.7] s, `n` [1 – 2, 2 – 3] at a time, `warn`
+  [1.2, 1.2, 1.05] s of heated ground, 1.5 – 4.8 m round the hero (`onHero` [0, 0.25, 0.4] of them on
+  his led spot), radius [1.6, 1.6, 1.9] m, 14 damage, burn 1, kb 2, at most `alive` [0, 3, 6] near
+  him. A cinder never lands within `sep` of a known blow (the ledger, a hazard, the running move's
+  beats), never after the running move ends, never during a guard-tell bullet pattern, the breath,
+  a string that scatters embers, or while bullets fly, and only where at least `safeMin` of 17 spots
+  (his and 16 a roll away) stay clear of every blast due within `horizon` s (`_freeSpots`). When none
+  may fall near him they fall `far` (8 – 13 m + their radius) from him with `noBlow`: fire on the
+  field, no cue, no blow.
+- **Between moves** (`_combat`): it walks at the hero's spot `lead` 0.6 s ahead when he is farther
+  than `approach` [12, 11, 10] m, turns at `turnSpeed` × `pressure.turn` [1.15, 1.1, 1.05], and
+  through a longer pause near him sidesteps at `strafe` [1.2, 1.5, 1.7] m/s.
+- `brain.stats` = `{ links, ambient, holds, picks, floors, seeks?, ambientFar? }` (the PRESSURE
+  scenario's meter reads them; its bounds are `pressure.meter`: `ramp` 1.12, `maxGap`, `minRate`).
+
 **Strings** (contract 1, `makeString(name)`): `TUNING.attacks[name].hits` = N hits, each `{ kind,
-side?, tell, windup, hold?: [min, max], active, impact, damage, knockback, chance?, ...kind extras }`
-(`side` ±1 = the limb on the hero's side at the string's start / the other one; `hold` = a random
-extra windup hold that baits an early parry; `chance` < 1 = rolled at the string's start), plus the
-string's `recovery`, `cooldown`, `weight`, `phase`, AI band `range` [min, max] and `maxAng` /
-`minAng`. The phase list is per hit `windup{N}` (windup × `tScale` + hold) and `active{N}`, then
-`recovery`. Every realised hit gets a beat (`combat:tell` at its windup start, `combat:flash`
-`flashLead` before its impact, holds included) carrying `{ hit, wi }`; the kinds (`KINDS`: claw,
-overhead, bite, rearBite, lungeBite, wing, tailJab, tailSweep, hop, stomp) perform them through pose
-fields (`init`, `windup`, `aim`, `active`, `endActive`, `recover`, `hit`, `zone`, `noBreakActive`).
-A string def carries `string: true`, `melee: true` and `noBreak(a)` (a break waits out the pounce's
-hop). Data rules (STRINGS / TIMING scenarios): a tell per hit, the first windup ≥ 0.7 s, ≥
-`TUNING.minHitGap` 0.45 s from one impact to the next, each contact within ±85 ms of its flash + lead.
+side?, tell, flare?, windup, hold?: [min, max], active, impact, damage, knockback, knockdown?,
+chance?, parryable?, blockable?, burst?, ground?, ...kind extras }` (`side` ±1 = the limb on the
+hero's side at the string's start / the other one, **`side: 0`** = the side he is on as THIS hit's
+windup starts (a string that spun round with a tail blow strikes from where he is now); `hold` = a
+random extra windup hold that baits an early parry; `chance` < 1 = rolled at the string's start;
+`burst: { phase?, n, wait, stagger, speed }` = embers scattered where the hit lands
+(`bullets.burst`, from `phase` on); `ground: { phase?, w, linger, tick, tickDamage, burn, delay }` =
+the burning ground a fire blow leaves: a hazards strip of kind `'meleeFire'` with `noBlow: true`,
+contact ticks only), plus the string's `recovery`, `cooldown`, `weight`, `phase`, AI band `range`
+[min, max] and `maxAng` / `minAng`. The phase list is per hit `windup{N}` (windup × `tScale` + hold)
+and `active{N}`, then `recovery`. Every realised hit gets a beat (`combat:tell` at its windup start,
+`combat:flash` `flashLead` before its impact, holds included) carrying `{ hit, wi }`. **The KIND
+contract** (`KINDS`, attacks.js): a kind is an object with `part` (the striking part for the flash,
+`Dragon.partPos`; `wi` picks a paw or a wing) and optional hooks: `init(d, a, h)` once at the
+string's start (per-hit scratch on `h`), `enterWindup(d, a, h)` at the hit's windup start, before its
+`combat:tell` (it may re-time `a.beats[h.idx]`; `side: 0` is resolved here), `windup(d, a, h, k, dt)`
+(k over the base windup, held at 1 through the hold; `h.holdK` through the hold), `aim(d, a, h)` as
+its active starts, `active(d, a, h, k, dt)`, `endActive(d, a, h)` (slams that land at the end: stomp,
+hop), `recover(d, a, h, k, dt)` (blended into the next hit's windup, or the recovery), `hit(d, a, h,
+stage, k, dt)` after the rig every frame of the hit, `zone(d, a, h, out)`, `noBreakActive`, `end(d,
+a, h, interrupted)`. The kinds: claw, overhead, bite, rearBite, lungeBite, wing, tailJab, tailSweep,
+hop, stomp and, since ADR-119, `wingSweep` (a wing scythed down and across the front while the body
+pivots: `face`, `sweep`, `amp`, `spread`, `room`, `backSpeed`; part 'wing'), `wingSlam` (both wings
+brought down in front: `radius` round the slam point, locked `near` .. `far` model units ahead;
+part 'wings'), `tailWhip` (a pivot puts the hero `at` rad off the nose, then a short `spin`;
+`pivotRate`, `minReach`, `reach`), `tailSlam` (the tail raised `lift` × its arch and brought down
+along a line `width` model units either side), `fireSnap` (jaws open into a gout of fire: ticks of
+`tickDamage` every `tick` from `impact` over a cone of `range` / `halfAngle`, tracked at `track`
+rad/s after a `turn` rad/s whirl in its windup; set `parryable: false, blockable: true`) and
+`emberRake` (a claw whose raked arc burns from `ground.phase`). The string's `hit()` skips a hit
+whose beat is not the current one (the next hit's beat may arm a float hair early on the last frame
+of this active). A string def carries `string: true`, `melee: true` and `noBreak(a)` (a break waits
+out the pounce's hop). Their effects are `meleeFx.js` (`snapFire` and the slams' dust and fire, plain
+functions over `d.fx`). Data rules (STRINGS / TIMING scenarios): a tell per hit, the first windup ≥
+0.7 s, ≥ `TUNING.minHitGap` 0.45 s from one impact to the next, each contact within ±85 ms of its
+flash + lead (the TIMING verifier probes 20 attacks: 16 strings, every one but the Cinder flurry,
+and the bite, swipe, tail and stomp; MELEE checks the six new kinds).
 **Deflect chain** (contract 1, `onParried`): a parry of the running action's own hit (`attack` null
 or the action's name) reads `hit` from the current beat; `last` = not a string, or its last realised
 hit. It emits `dragon:parried {attack, tell, hit, last}`; in a string it counts `action.chain` and
@@ -1317,9 +1420,10 @@ timings): `start` calls `enterPhase(toPhase)` and `hazards.clear()`, the roar an
 `dragon:phase2` / `dragon:phase3` + `dragon:phase {n}` and sets the crack glow (`TUNING.phaseGlow`);
 the shock ring is red; `end` queues `ATTACKS.nova` after the phase-3 roar when the AI runs.
 `enterPhase(n)` queues the next transition at once if the HP is already past its gate (Lab, AI off).
-Per-phase tuning (`[P1, P2, P3]`, read with `perPhase`): `turnSpeed`, `walkSpeed`, `phaseTimeScale`
-(windups and recoveries; `tScale`), `idleGap`, `phaseGlow`, `phaseEmbers` (body embers / s),
-`posture.max`, `rest.jaw`, attack weights. Phase-2 values of the singles (`activeP2`, `sweepP2`, the
+Per-phase tuning (`[P1, P2, P3]`, read with `perPhase`): `turnSpeed`, `walkSpeed` [3.6, 4.6, 5.3],
+`phaseTimeScale` [1, 0.82, 0.7] (windups and recoveries; `tScale`), `idleGap`, `phaseGlow`,
+`phaseEmbers` (body embers / s), `posture.max`, `rest.jaw`, attack weights and link chances, and most
+of `TUNING.pressure` (the director above). Phase-2 values of the singles (`activeP2`, `sweepP2`, the
 3-shell volley, the leap) apply from phase 2 on. `phase2At` / `phase3At` / `phase2TimeScale` are kept
 for older readers.
 **Flights** (contract 3, short flights inside one action, ADR-030): `takeOff` sets `state =
@@ -1327,6 +1431,21 @@ for older readers.
 'combat' (`dragon:land`). Flights stay ≤ 16 m up (the tests see ≤ 13.5 m) and inside the bound; the
 hurt spheres ride the drawn body, so a flying wyrm is out of sword reach (lowest sphere 5.3–10.1 m in
 the tests) and only the plunge reaches its head.
+**The body against the world** (2026-11-15, ADR-119; it replaced ADR-107's trample round the root,
+which never reached a trunk): `dragon._wreck(dt)` runs every frame after `_refreshHurt`. Each hurt
+sphere that moved faster than `TUNING.world.body.minSpeed` (1.6 m/s) sweeps the pieces it passed
+through (`destructibles.sweepRec`, a segment from where it was to where it is, at its height:
+a sphere whose bottom is above `maxY` 12 m, or above a low piece, passes over), with power (speed −
+minSpeed) × `perSpeed` 0.17 × its part's `mass` (head 0.7, neck 0.8, body 1.9, tail 1.1, wing 0.8,
+leg 0.9), at most `max` 2.2. Every such sweep is a **brush** (`o.brush`, `BREAK.brush`) and
+**incidental** (`o.incidental`: a piece reserved with `destructibles.reserve`, or the running
+action's own `action.piece`, passed as `o.spare`, is left alone). On top: the wings' blast as it
+leaves the ground (`takeoff`: wood only), each downbeat under `downbeat.maxAlt` 11 m (wood only,
+weaker the higher), and the landing after a flight at least `landing.minFall` 2.5 m high (its weight:
+stone too). A frame that moved a sphere more than `body.jump` 6 m is a teleport; after the root is
+teleported the body settles `body.settle` 0.6 s first. `_collide` resolves the root with `soft:
+true`, so breakable wood never turns it (it is felled as the body goes); stone still does. No
+per-frame allocation (one reused record per kind of blow; world.mjs BUDGET checks it).
 Size: the model is authored in model units and the root is scaled by `SCALE` (tuning.js, 1.875
 since v0.3); every world-space number (reaches, radii, hurt spheres, body circles, AI ranges, FX,
 pushers, pose targets via `rootPt`) is multiplied by it. The hero does not scale, so 3D hit volumes
@@ -1382,7 +1501,11 @@ model-left (+X) side. Gait contacts (`rig.gait.limbs`): footL, footR, handL, han
 walk (LH → LF → RH → RF) up to 5 m/s, diagonal trot to 8, bound above.
 Striking-part names for tells (`partPos`): 'snout', 'head', 'mouth', 'claw' (a front paw, `b.wi`),
 'forefeet' (front-paw midpoint; flashes at both paws; 'wrists' is the v0.3 alias), 'wing' (a wing's
-middle knuckle, `b.wi`: the wing buffet), 'tailTip', 'shell', 'piece' (the tree or boulder a terrain move holds or has thrown), default chest. The stomp's red ground ring is centred between the two forefeet's landing
+middle knuckle, `b.wi`: the wing buffet, the wing scythe), 'wings' (between both wings' middle
+knuckles: the wing slam), 'tailTip', 'shell', 'bullet', 'piece' (the tree or boulder a terrain move
+holds or has thrown), default chest. `flashTell` spikes the body's red / black `uWarn` for a dodge-only
+blow except when the part is 'piece': a thrown piece's flare is on the piece, the body that threw it is
+not the blow. The stomp's red ground ring is centred between the two forefeet's landing
 spots (root frame (±1.2, 0, 2.9) model units); the slam presses the paws there (dust + a heavy
 `dragon:step` at each), holds them for 0.3 of the recovery, then plants them and steps home.
 
@@ -1522,11 +1645,31 @@ event scratch).
   cz, hx, hz, safeR, cover)` (a led meteor takes the hero's led position only if both rules
   still hold), `coverage()`, `overlapShare()`, `ARENA_R`.
 - `circle()` also takes `size` (drawn scale), `great` (the biggest impact), `dark` (no light of
-  its own) and, for meteors, `craterBurn` s + `tickDamage` / `tickBurn`: the crater burns on with
-  contact ticks like a burning strip (blockable, never while rolling). The pool holds 64 hazards.
-- Also: `cutStrip(ref)` (a knocked-out pass stops its front; the burnt part lingers), `timeTo(ref,
-  px, pz, vx, vz, pr)` (s until the hazard reaches a moving point: the spawning attack re-times its
-  own flash with it), `count(kind?)`, `clear()`.
+  its own) and, for meteors and lava pillars, `craterBurn` s + `tickDamage` / `tickBurn`: the crater
+  or the pillar's ground burns on with contact ticks like a burning strip (blockable, never while
+  rolling). A circle of kind **`'pool'`** is only that: burning ground with no blow of its own
+  (eruption pools). The pool holds 64 hazards.
+- **`noBlow: true`** (circle, strip; 2026-11-15): the hazard deals no blow and sends no cue
+  (`announce` is forced off), its fire is drawn as ever and a strip still deals its contact ticks.
+  Used for the ground a fire blow of a string leaves burning (kind `'meleeFire'`, from the hit's
+  `ground` data: the blow was the string's own) and for ambient cinders that fall out of the hero's
+  reach. A `noBlow` strip lights one low light instead of two. `Brain._clash` and `_freeSpots` skip
+  `noBlow` hazards.
+- `line()` and `chase()` take `pool` (s each pillar's ground burns on; `line` also `poolR`, its
+  radius, default 0.8 × r), `tickDamage`, `tickBurn`: the eruptions' burning pools from phase 2.
+- `barrage()` also takes `deckAt` (s after the cast when the sky deck starts; default `glowAt`),
+  `deckGrow` (s to spread over the frame) and `cx`, `cz` (where it spreads from: over the wyrm's
+  cast): it calls `skyFx.skyDeck` every frame from `deckAt`.
+- Also: `cutStrip(ref)` (a knocked-out pass stops its front; the burnt part lingers), **`cancel(ref)`**
+  (takes back a hazard that has not gone off: a strip not yet started, a circle not yet fired; a
+  flying combo knocked out of the air drops its unbreathed strip and its unspat shells; a burning
+  strip or a fired circle stays), `timeTo(ref, px, pz, vx, vz, pr)` (s until the hazard reaches a
+  moving point: the spawning attack re-times its own flash with it), `count(kind?)`, `clear()`
+  (also `skyFx.skyReset`).
+- `hazards.update(dt)` first calls `skyFx.skyUpdate(d.fx, dt)` (the salvo's columns and the sky deck;
+  guarded on its own). Meteors are drawn by `skyFx` (`skyMeteor`, `skyImpact`, `skyCrater`); barrage
+  shells and the ambient cinders still by `fx.meteor` / `fx.shellImpact`, pillars' pools and `'pool'`
+  circles by `fx.crater`.
 - Every hazard heats the ground under it until it goes off (ADR-052: `fx.heatDisc` / `heatBand`,
   no red rings; the edge shows in the last `flashLead` s), then deals its one blow through
   `dragon.hitPlayer({ ..., tell: 'red', parryable: false, blockable: false, plunge })`: i-frames or
@@ -1547,31 +1690,81 @@ event scratch).
 `dragon.hitPlayer(o, action)` forwards `plunge` (`o.plunge ?? the current beat's plunge`) to
 `player.takeHit`; without it `plunge: false` never reaches the hero.
 
-**Fire attacks** (`fireAttacks.js` `FIRE`, numbers `tuningFire.js` `FIRE_ATTACKS`; the same action
-shape as attacks.js: phases / beats / zone / weight / start / enter / update / hit / end): flights
-`skyStrafe`, `diveBomb`, `hoverBarrage`; spells `meteorRain`, `eruptions`, `flameRing`,
-`flameWall`, `nova`. Every blow is red; each attack has one tell beat per blow unless its hazards
-announce themselves (the meteor cast has no beat: each meteor rings and flashes). Hazard-dealt blows
-pass `plunge: false`, except the burning pass's strip front and the hover barrage's shells (spawned
-with `plunge: true`: the airborne plunge); the dive's crash and the nova pass the default (a perfect
-dodge may plunge).
+**Fire attacks** (`fireAttacks.js` `FIRE`, numbers `tuningFire.js` `FIRE_ATTACKS` and `FLIGHT`; the
+same action shape as attacks.js: phases / beats / zone / weight / start / enter / update / hit /
+end): single flights `skyStrafe`, `diveBomb`, `hoverBarrage`; flying combos `skyHunt`, `skyFurnace`,
+`skyCataclysm`; spells `meteorRain`, `eruptions`, `flameRing`, `flameWall`, `nova`. Every blow is
+red; each attack has one tell beat per blow unless its hazards announce themselves (the meteor cast
+has no beat: each meteor rings and flashes). Hazard-dealt blows pass `plunge: false`, except fire
+breathed or spat from the air (the strafe's and a combo pass's strip front, the barrage's shells:
+spawned with `plunge: true`, the airborne plunge); the dive's crash and the nova pass the default (a
+perfect dodge may plunge). The flame ring lays `rings` [1, 2, 3] rings `ringGap` s apart, the flame
+wall `walls` [1, 1, 2] (the second from the hero's side, square to the first), each its own beat.
+- **Flying combos** (2026-11-15, ADR-119; `makeFlightCombo(key)`): one take-off, then the parts of
+  `TUNING.attacks[key].parts` in order (`'pass'`, `'barrage'`, `'dive'`), joined by a `wheel`
+  (a banking turn) or a `swoop` (a drop onto the next pass's line), ending in a dive whose crash
+  landing (entering `recovery`) is the last blow. Each phase entry carries its part's index as a
+  third element (`[name, s, part]`; the runner reads only the first two). The parts' numbers are
+  `FLIGHT` (`takeoff`, `rise`, `swoop`, `wheel`, `pass`, `barrage`, `dive`); the combo's own tuning
+  only chooses the parts, the windup / recovery and the AI data. One beat per blow at the start of
+  the move that leads into it, re-timed from the strip / the shells. A perfect dodge of a pass or a
+  shell plunges, the wyrm crashes, and `hazards.cancel` takes back what that combo had not breathed
+  or spat yet. Each part emits `dragon:spell {name: key, part, x, z}`.
+- **Armageddon** (`meteorRain`; 2026-11-15 rework): the performance and the sky come in three looks,
+  `skyFx.APOC_LOOK` from `?apoc=a|b|c` (read once at load; default `a`, the look the owner kept, 2026-11-16):
+  `a` the salvo of columns from the ground, `b` one sustained pillar roared up, `c` cast from the air
+  (its own `windup`, `rise`, `descend`, `recovery`, `alt`). `meteorRain.looks[k]` holds `deckAt`,
+  `deckGrow`, `menace`, `drop`, `cone` per look. Through the cast it asks `game.cameraRig.keep(...)`
+  for a sphere `skyRoom` 9 m above the jaws, so the fire going up stays in view. It arms
+  `hazards.barrage` with `waves` [3, 3, 5] × `perWave` [8, 8, 10] (phase 1: the Lab only) and the deck
+  data. `dragon:hazard` 'launch' per bolt (look b: per pulse). `fx.launchBolt`, `fx.meteor`,
+  `fx.meteorImpact` and `fx.crater` are no longer used by it (`skyFx` draws its sky and its meteors).
+- **`skyFx.js`** (new, 2026-11-15): plain functions over the wyrm's `DragonFx` (`fx`), the pattern
+  `bulletFx.js` uses, with state made once on `fx._sky`: `skyBolt` (one column of the salvo),
+  `skyPillar` (look b), `skyThroat` (the chest and throat filling before a cast), `skyDeck(fx, k, cx,
+  cz, grow)`, `skyMeteor`, `skyImpact`, `skyCrater`, `skyUpdate(fx, dt)` (ticked from
+  `hazards.update`) and `skyReset(fx)` (from `hazards.clear`). It calls the fx internals `_blob`,
+  `_rec`, `_col`, `_spawn`, `_hold`, `_light` and `dustRing`: keep their signatures.
 Each emits `dragon:spell {name, x, z}` at its signature moment. `meteorRain` is not picked while a
 rain or meteors are still falling. The nova keeps its 2.5 s charge in every phase (it is the tell)
 and is the phase-3 opener. Numbers and gates: COMBAT.md "Current numbers".
 
+**Effects engine** (`fx.js` `DragonFx`; STYLE.md "Fire, hazards and the plunge"): two engines draw
+most of what the wyrm does, and a new effect should go through them.
+- **Shock fronts:** `_shock(x, z, r0, r1, T, k = 1, fk = 1, delay = 0, look)` rolls a ragged front out
+  from r0 to r1 in about T s, slowing (drag), with rows behind it, dust and grit, scorch, rocks, a
+  light and (k ≥ 0.9) an echo ripple; k = strength (1 a meteor, 2 the nova), fk = how much of it is
+  fire (0.2 = a landing: dust and a little heat). Its numbers per look are the `SHOCK` table. Behind
+  every ring: the roar's `shockRing`, `groundShock(x, z, r, k)` (a heavy body meets the ground:
+  landings, the stomp, the leap, the hop, the tail slam, a thrown piece; draws only), the crash
+  (`crashWave`), the nova, fireball and meteor blasts. `_ripple(x, z, y, r0, r1, T, heat, size, ...)`
+  is a thin crisp ripple (steel; r1 < r0 draws it in: a charge); `roarWave` is ripples plus a dust
+  front in look b.
+- **The breath:** `breathBody(dt, mouth, yaw, pitch, R, HA, k = 1)` is the one body of fire for
+  every stream the wyrm breathes (the breath, the fire snap through `meleeFx.snapFire`, the strafe and
+  the combos' passes), shaped to reach R m within ±HA rad, at k × the breath's rate; the caller adds
+  its own lights, smoke, sparks and scorch (`breathEmit` = `breathBody` + the breath's own).
+- **Looks the owner picked from** (read once from the URL; headless runs have no location): `?ring=a|b|c`
+  (`ringLook()` / `setRingLook(k)`) and `?breath=a|b|c` (`breathLook()` / `setBreathLook(k)`),
+  plus `?apoc=` above. `a` is the default of each and the look the owner kept for all three
+  (2026-11-16, ADR-119); `b` and `c` stay behind the switches and in the FXLOOKS scenario.
+
 **Bullets** (ADR-039; `src/entities/dragon/bullets.js` `class Bullets`, internal to the dragon
 module: `dragon.bullets`; rules in COMBAT.md "Bullets"): the pooled bullet field (360 records, 8
-hit-cap groups) and the fire wheel. `dragon.update` calls `bullets.update(dt)` after the hazards
-every frame (guarded: an error logs once and clears the field, never throws); cleared on `reset()`,
-on every phase change, when dying / dead, and fizzled by a posture break. No per-frame allocations.
-`bullets.js` must not import `attacks.js` (`attacks.js` → `bulletAttacks.js` → `bullets.js`).
-- Kinds `BULLET { EMBER, WISP, ORB }` (specs `TUNING.bullets.ember | wisp | orb`).
-  `spawn(kind, attack, x, y, z, yaw, speed, group = -1, life = 0)` → the record or null (pool full,
-  NaN or an unknown kind); `burst(attack, x, y, z, n, wait, stagger, speed, group)` (embers that hang
-  and drop on the hero one by one: the Cinder flurry's slam); `group(max, retMax =
-  TUNING.bullets.returnBudget)` → a group id: the pattern's hit cap and the HP its returned shots
-  may deal in all (past it a perfect parry is a plain deflect);
-  `count(kind?)`, `live`, `clear()`.
+hit-cap groups) and the ground tongues (48 alive at once, a plan of up to 64). `dragon.update` calls
+`bullets.update(dt)` after the hazards every frame (guarded: an error logs once and clears the field,
+never throws); cleared on `reset()`, on every phase change, when dying / dead, and fizzled by a
+posture break. No per-frame allocations. `bullets.js` must not import `attacks.js` (`attacks.js` →
+`bulletAttacks.js` → `bullets.js`).
+- Kinds `BULLET { EMBER: 0, ORB: 2 }` (specs `TUNING.bullets.ember | orb`; kind 1 was the homing wisp,
+  removed 2026-11-15, and stays unused). `spawn(kind, attack, x, y, z, yaw, speed, group = -1, life =
+  0)` → the record or null (pool full, NaN or an unknown kind); `lob(attack, x, y, z, tx, tz, T, group
+  = -1, life = 0, yAt = 0.5)` → an ember lobbed onto the ground point (tx, tz) in T s under
+  `TUNING.bullets.lobG` (the Ember rain; it bursts where it lands, its spot glowing as it falls);
+  `burst(attack, x, y, z, n, wait, stagger, speed, group)` (embers that hang and drop on the hero one
+  by one: a string hit's `burst`); `group(max, retMax = TUNING.bullets.returnBudget)` → a group id:
+  the pattern's hit cap and the HP its returned shots may deal in all (past it a perfect parry is a
+  plain deflect); `count(kind)`, `live`, `clear()`.
 - A pattern's headline beat follows its lead bullet: `setLead(b)`, `leadAlive()`, `leadPos(out)`,
   `leadTti()`; the beat part `'bullet'` in `dragon.partPos` resolves to it (the mouth when none).
   `headlined(kind, tti)`: the brain has flashed the headline, so the lead's impact is announced
@@ -1580,89 +1773,128 @@ on every phase change, when dying / dead, and fizzled by a posture break. No per
   flying): the field then calls `dragon.flashTell(a, beat)` `flashLead` before the lead's impact,
   at once if the lead dies or is deflected, and never after a clear / fizzle / the wyrm's death
   (the same as an interrupted pattern: a tell without a flash). One held flash at a time.
-- A bullet cue stands for one predicted impact (`cueAt`, in the bullet's own time). A homing wisp
-  still flying `TUNING.bullets.recue` s after that moment is cued again on its next approach, or
-  is a dud when that cue could only come too late.
-- The wheel: `startWheel({ attack, x, z, n, ang, dir, warn, dur, speed, r0, r1, width, damage, burn,
-  knockback, max, headline, offs })`, `stopWheel()`, `wheel` (the record: `on`, `lit`, `ang`, `offs`,
-  `hits`, ...). Spoke i lies at `ang + offs[i]`. With `offs` (≤ 8 angles) the spokes are the tongues
-  of a breath (the Scouring breath, ADR-050): the attack calls `aimWheel(x, z, ang, om, px, pz)` every
-  frame after the rig (root = the mouth's ground projection, `ang` = the head's yaw, `om` its turn
-  rate, `px / pz` the pivot the root swings round: the wyrm's root). Without it, `n` spokes evenly
-  round turn by themselves (`speed`, one reversal). A spoke's cue (`tt`) steps the wheel forward
-  (tongues turning at `om`, the root orbiting the pivot, the hero on his sensed velocity) to the
-  first touch: a breath's root moves, so a fixed-origin estimate came far too late.
+- The cue: `cue(kind, attack, tell, tti, x, y, z)` → `CUE.NEW` (glint + `combat:tell` +
+  `combat:flash` sent), `COVERED` (an announced impact of the same class within `cueGap` answers it),
+  `LATE` (too late to react to: the caller makes it a dud or lets it hit) or **`CLASH`** (an announced
+  impact of the other answer, an ember beside an orb, is within `clashSep` 0.35 s: not announced, the
+  caller makes the bullet a dud). `cover(kind, tti)` registers an impact something else announces.
+  A bullet cue stands for one predicted impact (`cueAt`, in the bullet's own time).
+- **The ground tongues** (2026-11-15; they replaced the fire wheel's `startWheel` / `stopWheel` /
+  `aimWheel` / `wheel`): `scour({ attack, x, z, times, angs, r0, r1, speed, hold, width, damage,
+  burn, knockback, grp, headline })` lays a plan: each tongue is released from the pivot (x, z) at its
+  time (s from now, ascending) along its world yaw, its front crawling out from r0 to r1 at `speed`
+  m/s, every spot it passed burning `hold` s; a new plan replaces the old (burning tongues burn on).
+  `movePlan(x, z)` shifts the pivot (the breath's body moved before the first tongue), `stopScour()`
+  drops the tongues still to come, `scourHeadlined()` (the attack's headline flash went out: from here
+  the field announces its own touches), `scouring` (getter: a plan or a tongue live), `planNext()`
+  (s to the next planned tongue), `tonguesLive`, `ttT` (s until a tongue, burning or still planned,
+  next touches the hero on his sensed velocity; Infinity: none within 2 s). A tongue is red
+  (`plunge: false`), only hurts a hero it announced within `tongue.cueHold` s, and after a hit the
+  field's tongues pause `tongue.cd` s (`cdDodge` after a roll through one). Its cue is `combat:tell`
+  / `combat:flash` with `{ hazard: true, bullet: true, tell: 'red' }` and the pattern's name as the
+  attack (`fireWheel` or `fireLanes`).
 - Hits go through `dragon.hitPlayer({ ..., bullet: true, perfect, plunge: false })`: the damage is
   final (no `TUNING.damageScale`), `player.takeHit` receives `light: true` and `perfect` (false for
-  embers and wisps: a roll is a plain dodge), and a parry does not call `dragon.onParried`.
+  embers: a roll is a plain dodge), and a parry does not call `dragon.onParried`.
 - Perfect parry → the return (ADR-051): on `RESULT.PARRIED` the field reads
   `game.player.deflect.perfect`. Normal: the bullet ricochets to `rig.pt.head` (`ricochet` m/s) and
-  the kind's `posture` applies at once. Perfect (embers and wisps; orbs are never parried): the bullet
-  is `returned`, flies at `returnSpeed` m/s drawn ×`returnSize` (`BFX.drawReturned`) and, on reaching
+  the kind's `posture` applies at once. Perfect (embers; orbs are never parried): the bullet is
+  `returned`, flies at `returnSpeed` m/s drawn ×`returnSize` (`BFX.drawReturned`) and, on reaching
   the head, deals the kind's `returnDamage` through `dragon.takeHit({ part: 'head', exact: true,
   posture: returnPosture })` (the phase gate holds, it may kill; the action is never interrupted;
   posture breaks are allowed), flinches the head and emits `dragon:returned {kind, damage, x, y,
-  z}`. Only the struck bullet returns (the clump it pops does not); returned shots in flight die
-  silently on a clear and fizzle on a posture break like any bullet.
-- Tells: a bullet (or an approaching wheel spoke) emits a paired `combat:tell` + `combat:flash` with
-  `hazard: true, bullet: true` `flashLead` before impact (`cue()`; `cover()` lets impacts within
-  `cueGap` ride on it). A deflect emits `dragon:parried {attack, tell, hit: 0, last: false, bullet:
-  true, perfect}` and adds the kind's `posture` (a perfect one: its `returnPosture` when it lands).
+  z}` (kind is 0 today). Only the struck bullet returns (the clump it pops does not); returned shots
+  in flight die silently on a clear and fizzle on a posture break like any bullet.
+- Tells: a bullet about to hit emits a paired `combat:tell` + `combat:flash` with `hazard: true,
+  bullet: true` `flashLead` before impact. A deflect emits `dragon:parried {attack, tell, hit: 0,
+  last: false, bullet: true, perfect}` and adds the kind's `posture` (a perfect one: its
+  `returnPosture` when it lands).
+- What the fire does to the world (`TUNING.bullets.world`): a landing ember strikes the pieces it
+  lands on (`land` 0.08: under `BREAK.scratch`, it marks and sets alight), a stopped bullet takes
+  `TUNING.world.bullet` 0.12 out of the cover (an orb × 3), and a tongue's front sets wood alight
+  (`world.ignite(..., grass = false)`: grass fire would bury the lines).
 - Reads the hero through `game.player`: `isSwinging()` + `sweep` (cutting), `radius`, the sensed
   velocity (`dragon.sense.vel`).
-- Look: `bulletFx.js` (glyph particles through `DragonFx`'s pools; STYLE.md "Bullets").
+- Look: `bulletFx.js` (STYLE.md "Bullets"): the embers and the tongues are heat in the fire field, the
+  orb a glyph mark.
 
 **Bullet patterns** (`bulletAttacks.js` `BULLET_HELL`, numbers `tuningBullets.js` `BULLET_ATTACKS`,
 spread into `ATTACKS` like `FIRE`; the same action shape): `emberStorm` (the Ember torrent),
-`fanVolley` (the Cinder burst), `wispSwarm`, `fireWheel` (the Scouring breath); the keys are the
-contract (audio, Lab, tests), the labels are display names. Each emits `dragon:spell {name, x, z}` at
-its cast; the torrent and the Scouring breath also emit `dragon:breathStart` / `dragon:breathEnd`
+`fanVolley` (the Cinder burst), `cinderSpit` (the Cinder spit), `emberRain` (the Ember rain),
+`fireWheel` (the Scouring breath) and `fireLanes` (the Fire lanes); the keys are the contract (audio,
+Lab, tests), the labels are display names. Each emits `dragon:spell {name, x, z}` at its cast; the
+torrent, the Scouring breath and the Fire lanes also emit `dragon:breathStart` / `dragon:breathEnd`
 (the breath loop). **Every bullet is breathed (ADR-050):** `spit(d, kind, attack, dyaw, speed, grp,
 life)` spawns it at `rig.pt.mouth` along the head's actual aim (`pt.headFwd`) + `dyaw`, with a
 `drop` scaled to the mouth-to-hero distance (`TUNING.bullets.dropK / dropMin / dropMax`: a close hero
 is not flown over); patterns emit from their `hit()` hook (after the rig, so from the jaws as drawn)
 and aim the head first (`aimHead`: reach out of the neck base, `headExact`, a look down the line).
-No pattern spawns from the body or the wings. The wisps are roared from the mouth in a spray (their
-initial headings fan out round the head). A P3 Cinder burst may queue an Ember torrent
-(`brain.queued`, `fanVolley.chain`). A string hit may carry `burst: { n, wait, stagger, speed }`
-(`cinderFlurry`'s overhead): embers scattered by its slam, rising out of a puff of flame.
+No pattern spawns from the body or the wings, and nothing homes. **No spinning** (2026-11-15): while a
+pattern breathes, the neck and the head do the aiming and the body never turns faster than its
+walking turn rate (`d.turnRate`; asserted per pattern and phase by the integration suite). The
+Scouring breath and the Fire lanes drive the breath into a strike point ahead of the jaws
+(`bulletFx.breathBeam`) and lay their tongues with `scour`. A P3 Cinder burst may queue an Ember
+torrent (`brain.queued`, `fanVolley.chain`).
 
-**Terrain moves** (ADR-110; `terrainAttacks.js` `TERRAIN_MOVES`, numbers `tuningTerrain.js`
-`TERRAIN_ATTACKS` + `TERRAIN`, spread into `ATTACKS` like `FIRE`; the same action shape): `hurl`
-(Uproot and hurl), `tailBat`, `fireBrand`. The pieces are the world's ("Destruction" below); the
-wyrm's side is `terrain.js`:
+**Terrain moves** (ADR-110; second pass 2026-11-15, ADR-119; `terrainAttacks.js` `TERRAIN_MOVES`,
+numbers `tuningTerrain.js` `TERRAIN_ATTACKS` + `TERRAIN`, spread into `ATTACKS` like `FIRE`; the same
+action shape): `hurl` (Uproot and hurl), `tailBat`, `fireBrand`. The pieces are the world's
+("Destruction" below); the wyrm's side is `terrain.js`. **Nothing is drawn on the ground before a
+piece arrives** (the owner's choice; it supersedes ADR-110 and ADR-118 for thrown pieces): one
+`combat:tell` at the start of the move, and the flare drawn on the flying piece `flashLead` s before
+it lands (the beat's part is `'piece'`). The aim is fixed at the release, on where the hero is
+heading then (`lead`). `mark(...)` / `lane(...)` (the landing glow before the throw) are gone.
 - `jawsPiece(d, wood, out, any)` → the liftable piece (lift 1) that costs the least to reach (a turn
-  at `TERRAIN.jaws.turn`, a run at `fetchSpeed` to stand `stand` m from it, inside the bound, within
-  `fetchTime`), never one within `clear` m of the hero; `wood` = a tree only. `tailPiece(d, out, any)`
-  → a boulder in the tail's ring whose line to the hero is clear of the body, with the lash's travel
-  pointing the hero's way and the hero out of the lash's arc; it writes which way the pivot turns.
-  `any` (a forced move) relaxes the gates. Each move's `weight` is 0 when its picker finds nothing,
-  so the AI never starts one without a piece; `phases()` picks again, and with nothing at all the
-  action is one `search` phase (no beat, no blow).
+  at `TERRAIN.jaws.turn`, one lunge at up to `fetchSpeed` to stand `stand` m from it, within
+  `fetchTime` s: there is no trot), never one within `clear` m of the hero; `wood` = a tree only.
+  `tailPiece(d, out, any)` → a boulder in the tail's ring whose line to the hero is clear of the body,
+  with the lash's travel pointing the hero's way and the hero out of the lash's arc; it writes which
+  way the pivot turns. `any` (a forced move) relaxes the gates. Each move's `weight` is 0 when its
+  picker finds nothing, so the AI never starts one without a piece; `phases()` picks again, and with
+  nothing at all the action is one `search` phase (no beat, no blow).
+- The chosen piece is **reserved** for the whole move (`reservePiece`: `destructibles.reserve(piece,
+  the move's length + 0.5 s)`; it is also the action's `a.piece`): the wyrm's own body walking and
+  lunging (`_wreck`, incidental blows) leaves it alone.
 - `dragon.terrain` (`class Terrain`; `dragon.update` calls `terrain.update(dt)` after the bullets,
   guarded; `reset()` drops a held piece and forgets what flies): `grab(piece, x, y, z)` (the jaws
-  there: `take`), `carry(dt, x, y, z, tilt, yaw)` every frame after the rig (the grip point at the
-  mouth; earth and litter fall from it), `blaze(dt, k)`, `drop()`, `lob(tx, tz, spec, attack, a, b,
-  burning)` → the flight time (`throwTo`; the blow at the hero is dealt in its `onLand`, red, `plunge:
-  false`; a burning piece also bursts, calls `world.ignite` and leaves a pyre: contact ticks like a
-  burning strip, put out by a phase change), `bat(piece, dx, dz, len, hitS, speed, spec, attack, a,
-  b)` (the piece stays HELD and is carried along its line here, so `world.destructibles.stop` can
-  end it at the first cover; it tests the hero as it passes, with the spec's tell, and is let go
-  with a 0.25 s `throwTo` where it ends), `mark(dt, x, z, r, k, hot)` / `lane(...)` (the landing
-  before the throw: `fx.heatDisc` / `heatBand`; in the air the shot draws its own), `stir(dt,
-  piece)`, `piecePos(out)`.
+  close on it: `destructibles.take`, but it stays ROOTED and shudders as they tug), `strain(dt, k)`
+  (the tug: grit jumps round its foot), `tear(dx, dz)` (it comes free: roots and dirt burst, a scar,
+  and it is yanked up into the jaws without a jump), `carry(dt, x, y, z, tilt, yaw, stiff = 1)` every
+  frame after the rig (the grip point at the jaws; free, the piece hangs as a stiff pendulum,
+  `TERRAIN.jaws.sway`, driven by the jaws' own acceleration; `stiff` tightens it for the whip),
+  `blaze(dt, k)`, `drop()`, `lob(tx, tz, spec, attack, a, b, burning)` → the flight time,
+  `bat(piece, dx, dz, len, hitS, speed, spec, attack, a, b)` → true, `stir(dt, piece)`,
+  `piecePos(out)`, `smashed` (pieces the flying ones have smashed: tests, the Lab).
+- **In the air the piece stays HELD** in the world: `Terrain` flies it frame by frame (`_place` →
+  `destructibles.carry`) on a flat, fast arc (`flight` [0.4, 0.68] s for the hurl), tumbling on with
+  the whip's swing (at least `spin` rad/s, a boulder × 1.4). On its way it sweeps what stands in its
+  path (`destructibles.sweep`, power `smash`; a tree in the way goes down and it flies on; a burning
+  brand lights what it smashes, `trailIgnite`). Where it lands the blow at the hero is dealt here (red,
+  `plunge: false`, the move's tell), the world takes a blast of `power`, then the piece is handed to
+  `destructibles.throwTo` only for the skid (`skid` m in `skidTime` s, tumbling) and comes apart. A
+  burning piece also bursts, calls `world.ignite` and leaves a pyre (contact ticks like a burning
+  strip, put out by a phase change). A batted boulder (`bat`) is carried along its line here too, so
+  `destructibles.stop` ends it at the first cover; it tests the hero as it passes, with the spec's
+  tell, and is let go with a short `throwTo` where it ends.
 - A thrown piece carries its action's beat: if the action ends or is cut short after the release,
   `Terrain` sends the beat's flash (`dragon.flashTell`) `flashLead` before the piece arrives, once.
   An action cut short BEFORE the release drops the piece and sends no flash.
+- A throw at a hero far round its side is slower: past `whipArc` off its nose the neck's coil is
+  drawn out into a pivot of up to `pivotMax` s (his opening). A held piece is swung back and out
+  toward the camera's side by up to `showArc` so it stays seen.
 - Events: `dragon:spell {name}` at the throw / the kindling / the bat; `dragon:bite` at the bite;
   `dragon:breathStart` / `dragon:breathEnd` round the kindling; `dragon:explosion` where a firebrand
   lands; the world's own `world:impact` (`throw`, `crash`).
-- A tree is swung back over the shoulder before the whip (`cock` rad, the owner's pick) and leaves
-  the jaws upright: the world's flight starts every piece upright.
+- Effects: `terrainFx.js` (new; plain functions over `d.fx`: `strain`, `tearOut`, `pin`, `burnTrunk`,
+  `trail`, `smashOn`, `landing`, `batBurst`, `pyre`). Fire and smoke in the fire field; grit, clods,
+  roots, splinters and leaves are glyph particles.
 
 **Melee FX hooks** (`DragonFx`, called by `attacks.js` through optional calls): `clawTrail(wi, toe,
 heavy)` (a claw's burning wake, every active frame of a claw / overhead hit) and `slamBurst(x, z, r)`
-(the ground burst under a slam).
+(the ground burst under a slam). The whole-body kinds' effects are `meleeFx.js` (2026-11-15; plain
+functions over `d.fx`, the bulletFx pattern): `snapFire` (the fire snap's gout, through
+`fx.breathBody`) and the dust, fire and embers of the wing slam, the tail slam, the wing scythe and
+the ember rake. Their burning ground is the hazards' `'meleeFire'` strip.
 
 ### HUD — `src/ui/hud.js` exports `class Hud`
 ```
@@ -1847,10 +2079,13 @@ the fallback.
   optional 0..1 offset instead of Math.random).
 - `audio/fire.js` (`FIRE_SFX`, `subscribeFire(on, engine)`): `dragon:spell` → skyStrafe `skyRoar`,
   diveBomb `diveScream`, meteorRain `meteorCast`, eruptions `rumble`, flameRing / flameWall
-  `flameIgnite`, nova `novaCharge`; `dragon:hazard` → meteor fall `meteorFall`, hit `meteorHit`,
-  `pillar`, `crash`, `novaBlast`; a `combat:tell` with `hazard: true` → `hazardTell` (lighter than the
-  red brass sting, no music dip). Spatialised at the event's x / z. Bullet patterns reuse the
-  casts: emberStorm / fanVolley / fireWheel `flameIgnite`, wispSwarm `meteorCast`. A `combat:tell`
+  `flameIgnite`, nova `novaCharge`; the whole body's blows reuse sounds: wingSlam `land`, tailSlam
+  `crash`, tailWhip `takeoff`; a flying combo (`skyHunt`, `skyFurnace`, `skyCataclysm`) is played by
+  its `part`: pass `skyRoar`, barrage `meteorCast`, dive `diveScream` (`SPELL_PART`); `dragon:hazard` →
+  meteor fall `meteorFall`, hit `meteorHit`, `pillar`, `crash`, `novaBlast`; a `combat:tell` with
+  `hazard: true` → `hazardTell` (lighter than the red brass sting, no music dip). Spatialised at the
+  event's x / z. Bullet patterns reuse the casts: emberStorm / fanVolley / cinderSpit / fireWheel /
+  fireLanes `flameIgnite`, emberRain `meteorCast`. A `combat:tell`
   with `bullet: true` plays nothing, its `combat:flash` plays the ping without the music dip, and a
   `dragon:parried` with `bullet: true` plays no yelp (the clash is `player:parry`).
 - `dragon:phase3` replays the phase-2 sting and keeps 'boss2'; `dragon:plunged` → `dragonPain`
@@ -2085,61 +2320,91 @@ quality is still the default. Pointer Events with multi-touch (each control capt
 pointer); long-press menus, iOS gesture zoom and page panning are blocked while active (the Lab
 panel and the pause panel still scroll). Tuning: `CONFIG.touch`, sizes / look in `ui/touchStyle.js`.
 
-## Destruction (2026-11-14, ADR-107): the world breaks
-Files: `src/world/destructibles.js`, `fire.js`, `scars.js`, `breakTuning.js`. Every boss and the hero chip,
-break, fell and burn what stands in a level; cover stops projectiles until it gives way; a boss can lift
-a piece and throw it. The rules as the player meets them: COMBAT.md "The world breaks". Numbers:
-`world/breakTuning.js` (`BREAK`, `FIRE`, `SCAR`, `BLOW`).
+## Destruction (2026-11-14, ADR-107; the clearing breaks: 2026-11-15, ADR-119): the world breaks
+Files: `src/world/destructibles.js`, `wreckage.js`, `fire.js`, `scars.js`, `breakTuning.js`. Every boss
+and the hero chip, break, fell and burn what stands in a level; cover stops projectiles until it gives
+way; a boss can lift a piece and throw it; what falls lies as wreckage until the fight resets. The rules
+as the player meets them: COMBAT.md "The world breaks". Numbers: `world/breakTuning.js` (`BREAK`,
+`FIRE`, `SCAR`, `BLOW`, `QUALITY`).
 
 **POWER** is the one scale every blow is put on (0 a touch … 1 fells a tree): 0.12 a quick cut, 0.3 a
 duelist's cut, 0.5 a heavy cut, 0.8 a claw or the hero's charged cleave, 1.0 a tail / slam / thrown
 stone, 1.5 a meteor or a bolt of the Void, 2.5 the dive's crash. A piece loses power x its material's
 factor for that kind of blow (`BREAK.mats[mat].take[kind]`: a cut bites stone at 0.7, a blunt blow or a
-blast in full); below `BREAK.scratch` it only takes a mark.
+blast in full); below `BREAK.scratch` it only takes a mark. A **brush** (`o.brush`: a boss's body
+walking, turning, shouldering into a piece) only bites with what it has over `BREAK.brush` 0.55 x the
+piece's structure, but at least `brushMin` 0.4 of itself (a body that keeps pushing still fells a tree
+in a couple of seconds; a turn only shakes it), once per `brushRehit` 0.3 s, and a flat stone (a
+flagstone, lower than `brushFlat` 0.3 m) takes nothing from it.
 
 **A set's `breakables`** (built in the set builder; `forest.js` and `courtyard.js` are the examples). One entry:
 | field | what |
 |---|---|
-| `kind` | 'tree', 'deadTree', 'stone', 'boulder', 'pillar', 'lantern', 'stele', 'bell', … (free; boss AI and tests read it) |
+| `kind` | 'tree', 'deadTree', 'stone', 'boulder', 'pillar', 'lantern', 'stele', 'bell', 'flagstone', 'bone', 'helm', 'sword', … (free; boss AI and tests read it) |
 | `mat` | 'wood', 'stone', 'metal' or 'bone' (structure, what bites it, its debris and sound) |
-| `look` | 'grid' (geometries with `paint()` attributes: the screen grid, trees) or 'prop' (`carve()` attributes: prop art) |
+| `look` | 'grid' (geometries with `paint()` attributes: the screen grid, trees), 'prop' (`carve()` attributes: prop art) or 'range' (its body is a run of vertices in a static mesh of the set: the flagstones, whose carved material stays the set's) |
 | `x, z, r, h` | its base (world), footprint radius, height (`geosHeight(geos)`) |
 | `geos` | its geometries in WORLD space, as the builders return them (the system moves them to the base) |
-| `colliders` | the `Colliders` circles it stands on (`colliders.add` returns them): taken out when it goes, put back on reset |
-| `broken` | `{ geos, look?, r? }` or absent: what is left standing (`buildStump`, `buildRubble` in forest.js); r = its own smaller collider |
+| `range` | look 'range' only: `{ mesh, start, count }`, the vertices (non-indexed, world space) of its body in the set's merged mesh; hidden by folding them under the ground |
+| `colliders` | the `Colliders` circles it stands on (`colliders.add` returns them): taken out when it goes, put back on reset. The circles of breakable wood are marked `soft` (the wyrm's body passes through them) |
+| `broken` | `{ geos \| range, look?, r? }` or absent: what is left standing (`buildStump`, `buildRubble` in forest.js); r = its own smaller collider |
 | `hp` | structure in POWER units (default: the material's x its size); `Infinity` = it only chips (the bronze bell) |
 | `topples` | it falls over when it breaks (default: h >= `BREAK.topple.minH` 2.2 m); otherwise it shatters where it stands |
 | `burns` | fire lights it (default: the material's; wood) |
 | `cover` | it stops projectiles (default: h >= `BREAK.cover.minH` 1.1 m) |
 | `lift` | 0 nobody can lift it, 1 a boss's body can (the wyrm: trees, boulders), 2 only the Void (stones, pillars, lanterns) |
 | `leafy` | 0..1 share of its debris that is leaves |
+| `wreck` | false: it leaves no wreckage (default: a felled tree leaves its trunk, a stone its rubble) |
 
 A set draws its stumps, rubble and any breakables it adds from an rng stream of its own, so the rest of
-its layout does not move. Budget: each breakable is 1–2 bones of the rigid batch (1023 in all; the hero
-and a boss use ~320); the forest lists 81, the courtyard 72.
+its layout does not move. Budget: each breakable is 1–2 bones of the rigid batch (1023 in all), plus the
+wreckage pools' bones. Today (world.mjs SETS / BUDGET, 2026-11-15): the forest lists 183 (tree 102, dead
+tree 13, stone 10, boulder 20, bone 4, helm 5, sword 3, flagstone 26; it was 81) and takes 368 bones, 549
+with the wyrm; the courtyard 78, the throne 36. The Cinder Tree, the Elder Wyrm's skeleton and the
+bonfire stay whole (the owner's choice).
 
 **`world.destructibles`** (`class Destructibles`; `STATE` = INTACT 0, FALLING 1, BROKEN 2, HELD 3, FLYING 4, GONE 5):
 - `list` (every breakable: `{ id, kind, mat, x, z, r, h, hp, hpMax, state, weight, burn, lift, cover, topples, … }`),
-  `standing`, `active`, `root` (their group, under the set's), `batch`.
+  `standing`, `wreckage` (pieces of wreckage lying now), `burning` (pieces and logs alight now),
+  `active`, `root` (their group, under the set's), `batch`, `wreck` (the `Wreckage`).
+- Every query walks a **spatial grid** (`BREAK.grid.cell` 4 m), not the whole list.
 - `strike(x, z, r, power, o)` → how many it struck: a blow or blast over a disc.
-  `sweep(ax, az, bx, bz, r, power, o)`: along a segment (a blade's edge, a dash, a wall of force).
-  `o = { kind, by, dx, dz, y, src, only }`: kind = `BLOW.CUT / BLUNT / BLAST / FIRE`; by = 'player', 'boss' or
-  'world'; dx, dz = the blow's way (a piece falls along it; default: out from the disc's centre, or along
-  the segment); y = its height (a blow above a low piece passes over); src = one id per swing from
-  `swing()` (a piece takes a blow once per id; without it, once per `BREAK.rehit` 0.18 s); only = just that
-  material ('wood': the wyrm's body).
+  `sweep(ax, az, bx, bz, r, power, o)`: along a segment (a blade's edge, a dash, a body part's step).
+  `sweepRec(w, o)`: the same with the segment in a reused record `{ ax, az, bx, bz, r, power }` (no
+  numbers boxed per call: the wyrm's body sweeps a dozen spheres a frame).
+  `o = { kind, by, dx, dz, y, src, only, falloff, brush, spare, incidental }`: kind = `BLOW.CUT / BLUNT /
+  BLAST / FIRE`; by = 'player', 'boss' or 'world'; dx, dz = the blow's way (a piece falls along it;
+  default: out from the disc's centre, or along the segment); y = its height (a blow above a low piece
+  passes over); src = one id per swing from `swing()` (a piece takes a blow once per id; without it,
+  once per `BREAK.rehit` 0.18 s); only = just that material ('wood': the wings' wind); falloff 0..1 =
+  `strike` is weaker toward its rim (× 1 − falloff there; `TUNING.world.falloff` 0.6 for the wyrm's
+  ground blows); brush = a body walking (above); spare = one piece to leave alone; incidental = skip
+  reserved pieces.
+- `reserve(piece, sec = 1)`: incidental blows leave it alone for `sec` s (a terrain move's chosen piece).
 - `stop(ax, az, bx, bz, r, power, o)` → the piece or null: a projectile's step; the first cover on it takes
   `power` and is returned (the caller ends its projectile). `coverAt(ax, az, bx, bz, r)` → the first cover
   on a segment, no damage (`coverT` 0..1: where).
-- `ignite(x, z, r, k)` → wood in the disc catches (it burns `BREAK.burn.time` x k, then falls to embers and
-  its stump). `nearest(x, z, { maxDist, minDist, lift, kind, mat, from: { x, z, min } })` → the nearest intact
+- `ignite(x, z, r, k)` → wood in the disc catches (and logs lying there), within the cap on fire that
+  lands (`BREAK.light`: at most `perSec` 0.12 new fires a second banking `bank` 3, and only while fewer
+  than `maxBurning` 6 × the quality factor burn; past it the grass still burns and the wood is only
+  scorched). Alight it burns `BREAK.burn.time` × k, then falls to embers and its stump; its light is a
+  local glow (`burn.glow`: 5 m, shared by a piece that catches within `share` 8 m of one already lit,
+  at most `burn.lights` 4). **Fire spreads** (`BREAK.spread`; it reverses ADR-107's "it never
+  spreads"): a piece alight `after` 2.2 s tries every `every` 1.1 s to light one unburnt wood piece or
+  log within `reach` 5.2 m (+ both radii), with `chance` 0.45; at most `maxBurning` 7 × quality alight
+  at once, a level-wide budget of `perSec` 0.25 spreads a second (banking 2), and a fire passes on at
+  most `gens` 2 times from where fire landed.
+- `nearest(x, z, { maxDist, minDist, lift, kind, mat, from: { x, z, min } })` → the nearest intact
   piece or null (lift: at most that class).
 - Lifting and throwing (a boss's move): `take(piece)` → true: it is HELD (no collider);
-  `carry(piece, x, y, z, tilt, yaw)` every frame while held; `throwTo(piece, tx, tz, { time, power, radius, by,
-  onLand(piece, x, z, radius) })` → it flies there end over end and bursts: a blast on the other pieces, a
-  scar, and `onLand` for the thrower's own blow at the hero (the move's tell is the thrower's: the world
-  deals nothing to the hero for a thrown piece); `drop(piece)`. `topple(piece, dx, dz, by)`: fell it that way.
-- `reset()`, `update(dt)` (world.js calls it).
+  `carry(piece, x, y, z, tilt, yaw)` every frame while held (the wyrm flies its thrown pieces this way);
+  `throwTo(piece, tx, tz, { time, power, radius, by, onLand(piece, x, z, radius) })` → it flies there
+  end over end, smashing what stands in its way while it flies under `BREAK.flight.y` 7 m (power
+  `BREAK.flight.power` x its weight), and bursts: a blast on the other pieces, a scar, its wreckage,
+  and `onLand` for the thrower's own blow at the hero (the move's tell is the thrower's: the world
+  deals nothing to the hero for a thrown piece); `drop(piece)`. `topple(piece, dx, dz, by)`: fell it
+  that way.
+- `setQuality(k)`, `reset()`, `update(dt)` (world.js calls it).
 - A felled piece falls for `BREAK.topple.time` x sqrt(h / 5) s and lands on a strip h long: other pieces
   under it are struck. Under a piece a boss (or the world) felled, the HERO takes one red blow
   (`BREAK.topple.damage` x weight, unblockable, knockdown; i-frames dodge it; never a perfect dodge), with
@@ -2147,35 +2412,65 @@ and a boss use ~320); the forest lists 81, the courtyard 72.
   piece the HERO felled, the BOSS takes `boss.takeHit({ damage: BREAK.topple.bossDamage x weight, exact,
   heavy, posture })` (tested against `boss.bodyCircles`), and the hero is never hit by his own.
 
+**`world.destructibles.wreck`** (`class Wreckage`, `wreckage.js`, 2026-11-15; it reverses ADR-107's "a
+felled trunk comes apart where it lands"): what the fight leaves lying until it resets. A felled tree's
+trunk lies where it fell (`BREAK.wreck.trunk` [0.5, 0.85] of its height, a crowned tree / a bare one),
+a broken stone or boulder leaves a rubble pile, burnt wood lies black and smoulders (`smoulder` 30 s, at
+most `smoulderMax` 8 × quality at once), a thrown piece leaves its remains where it lands. **Scenery: no
+collider, it stops nothing, the hero walks over it.** Pools of prop-art meshes built once and batched
+with the breakables (no draw call of its own): `logs` 40, `chars` 18, `rubble` 30; past a pool's share
+(× quality) the oldest sinks into the ground in `sink` 1.4 s, past its size the oldest crumbles at once.
+A log can burn (`burn` 6 s; it fell burning, fire landed on it, or the spread reached it) and burns the
+hero beside it like a burning tree; a burnt-through log emits `world:impact` 'burnout' with `id` -1.
+API (internal to destructibles): `log(x, z, dx, dz, len, r, burn, charred)`, `rubble(x, z, r, M)`,
+`ignite(x, z, r, k)`, `count`, `burning`, `live`, `update(dt)`, `reset()`.
+
 **`world.fire`** (`class GroundFire`, on the scorch map's grid): `ignite(x, z, r, k)` → cells lit (grass
 density >= `FIRE.minFuel`, not ash, not alight), `burning(x, z)` → s left, `touch(x, z, r)` (a burning piece
-burns the hero beside it), `count`, `reset()`. A cell burns `FIRE.life` s and is ash after: fire never
-spreads and nothing catches twice. The hero in it takes `FIRE.damage` every `FIRE.tick` s after
-`FIRE.grace` (blockable contact ticks, skipped while he rolls or is invulnerable, like a burning crater).
+burns the hero beside it), `hush(x, z, r, sec = 0.3)` (a live fire body covers the disc: the grass's
+flames under it burn at `FIRE.hush.k` 0.45 of their heat, smaller and lower, for `sec` s; the wyrm's
+breath calls it every frame along its cone, so the two fires do not add up into white knots; at most
+`FIRE.hush.slots` 8 discs), `count`, `reset()`. A grass cell burns `FIRE.life` s and is ash after: grass
+fire never spreads and nothing catches twice (wood spreads: above). One local light per blaze
+(`FIRE.glow`: radius min(6, its radius + 2) m, intensity 1.5; it was r + 6 m at 2.2). The hero in it
+takes `FIRE.damage` every `FIRE.tick` s after `FIRE.grace` (blockable contact ticks, skipped while he
+rolls or is invulnerable, like a burning crater).
 
-**`world.scars`** (`class Scars`: glyphs that stay until the reset, one batch, the oldest go first at
-`SCAR.max`): `ground(x, z, power, dx, dz)` (a star of cracks; power >= `SCAR.ground.min`),
-`object(owner, x, y, z, power, M)`, `rubble(x, z, r, M, n, glyphs)`, `drop(owner)`, `reset()`, `count`.
+**`world.scars`** (`class Scars`: glyphs that stay until the reset, one batch): `ground(x, z, power, dx,
+dz)` (a star of cracks; power >= `SCAR.ground.min`), `crater(x, z, r, power)` (a rim of thrown-up
+earth), `object(owner, x, y, z, power, M)`, `rubble(x, z, r, M, n, glyphs)`, `drop(owner)`,
+`setQuality(k)` (at most `SCAR.max` 520 × k marks, never under 60), `reset()`, `count`. At the cap the
+oldest `SCAR.evict` 0.15 of the marks go in one step (one rebuild of the batch, not one per mark).
 
 **`world.impact(x, z, r, power, o)`** = `destructibles.strike` + a floor scar and torn grass for a hard blow
-(`o.scar: false` skips it) + `ignite` when `o.fire` is set. **`world.ignite(x, z, r, k, grass = true)`** =
-`fire.ignite` (unless grass is false: sweeping fire lights wood only) + `destructibles.ignite`.
-`Colliders` has `remove(c)`, `restore(c)` and a `version` that counts every change of the set (the minimap
-re-bakes its layer on it, so a felled tree leaves the map). **`world.restore()`** resets all three: flow calls it wherever it resets the scorch map; the Lab's Reset and
-its WORLD section (Burn ahead, Fell on me, Blast ahead, Restore) too.
+(`o.scar: false` skips it) + a **crater** for a blow of `SCAR.crater.min` 1.2 or more (`scars.crater`
+and a charred disc of radius min(r, 1.2 + power × 1.1) m) + `ignite` when `o.fire` is set.
+**`world.ignite(x, z, r, k, grass = true)`** = `fire.ignite` (unless grass is false: sweeping fire and
+the ground tongues light wood only) + `destructibles.ignite`. **`world.resolve(pos, radius, bound,
+soft = false)`** → `Colliders.resolve(pos, radius, bound, soft)`: `soft` passes through the circles
+marked `soft` (the wyrm's body). **`world.setQuality(k)`** (0.3 .. 1; `setGrassQuality` sets it from the
+quality preset: `QUALITY` LOW 0.5, MEDIUM 0.75, HIGH 1) scales the debris glyphs a break throws, the
+flames of burning wood, the wreckage lying at once, the fires and smouldering logs and the marks that
+stay (`destructibles.setQuality`, `scars.setQuality`). `Colliders` has `remove(c)`, `restore(c)` and a
+`version` that counts every change of the set (the minimap re-bakes its layer on it, so a felled tree
+leaves the map). **`world.restore()`** resets all of it (the pieces, the wreckage, the fire, the
+scars): flow calls it wherever it resets the scorch map; the Lab's Reset and its WORLD section (Burn
+ahead, Fell on me, Blast ahead, Restore) too.
 
 **Who hits the world** (each through `?.`; one `src` per swing or action):
 | who | where | numbers |
 |---|---|---|
 | the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
-| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop; `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall / wheel igniting; `terrain.js` (a thrown piece: `throwTo`'s blast; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_collide` (its body fells wood in its way); `bullets.js` (cover) | `TUNING.world` |
+| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop / the slams (`GROUND_BLOW`, with falloff); `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall igniting; `skyFx.js` the meteors' impacts; `bullets.js` (cover; a landing ember; the tongues lighting wood); `terrain.js` (a flying piece's `sweep` on its path, its blast where it lands, `throwTo` for the skid; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_wreck` (its body's spheres, the wings' blasts, the landing) | `TUNING.world` (`melee`, `stomp`, `leap`, `hop`, `dive`, `nova`, `falloff`, `explosion`, `meteor`, `pillar`, `body`, `takeoff`, `landing`, `downbeat`, `ignite`, `bullet`; `meter`: the WRECKAGE scenario's bounds) |
 | a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
 
 **Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with
 `rigidMatrix()`; built with `rigid: true` they are tagged for `batchRigid` (a set's static materials are
 not, so an actor's batch never picks them up). The breakables' two materials are twins of the set's (the
 prop twin takes the set's `uGain`): one draw call each however many pieces there are, plus one in the
-shadow pass. Debris, flames, the danger strip and the scars are glyph particles.
+shadow pass; the wreckage's pools ride the same batch. A 'range' piece (a flagstone) stays in the set's
+own mesh: it is hidden by folding its vertices under the ground. Debris, dust, the danger strip and the
+scars are glyph particles; the flames of burning wood and logs are heat in the fire field.
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
@@ -2505,13 +2800,13 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
 - `dragon:wake`, `dragon:roar {strength}`, `dragon:introDone`, `dragon:windup {name}`, `dragon:attack {name}`,
   `dragon:step {x, z, heavy}`, `dragon:wingFlap {strength}`, `dragon:takeoff`, `dragon:land {x, z}` (the leap,
   every flight, and the crash of a plunged flier),
-  `dragon:breathStart`, `dragon:breathEnd` (the breath and the sky strafe's pass), `dragon:fireball {x, y, z}`,
+  `dragon:breathStart`, `dragon:breathEnd` (the breath, the sky strafe's pass, the fire snap's gout, the breathed patterns and the firebrand's kindling), `dragon:fireball {x, y, z}`,
   `dragon:explosion {x, z, radius}`,
   `dragon:bite`, `dragon:hurt {damage, part, hp, crit}`, `dragon:parried {attack, tell, hit, last, bullet, perfect}` (hit = 0-based
   index in its string, last = the string's last hit or a single attack: only then a recoil; bullet: true = a
   deflected bullet, hit 0, last false: posture only, the wyrm is not interrupted and audio stays silent; perfect:
   true = the bullet is returned), `dragon:returned {kind, damage, x, y, z}` (a perfectly parried bullet's return
-  lands on the head: kind 0 ember / 1 wisp, damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
+  lands on the head: kind 0 ember (1 was the wisp, removed in ADR-119), damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
   flow counts it in the run stats like a sword hit),
   `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
   (his flurry starts: that many blows), `dragon:flurryEnd {count, answered}` (decided: every blow parried or blocked, or one missed),
@@ -2523,15 +2818,20 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   "GUARDED", audio a dry clack; deflect = he beat it away and the hero bounces: HUD "DEFLECTED", a harsh falling
   clang, a flicker of the frame), `dragon:deflected {count}` (every real hit of a long string parried:
   the full deflect; HUD "PERFECT DEFLECT"),
-  `dragon:spell {name, x, z}` (a fire attack's signature moment: the strafe's pass, the dive, the barrage's
-  rise, a spell's cast / the nova's charge start), `dragon:hazard {kind, stage, x, z, radius}` (a fire hazard:
+  `dragon:spell {name, x, z, part}` (a fire attack's signature moment: the strafe's pass, the dive, the barrage's
+  rise, a spell's cast / the nova's charge start, a bullet pattern's cast (cinderSpit, emberRain, fireLanes among
+  them), a terrain move's throw / kindling / bat; the whole body's blows that have a sound of their own: wingSlam,
+  tailSlam, tailWhip; a flying combo (skyHunt, skyFurnace, skyCataclysm) once per part, with the optional field
+  part = 'pass' | 'barrage' | 'dive', ADR-119), `dragon:hazard {kind, stage, x, z, radius}` (a fire hazard:
   stage 'fall' = a meteor starts its visible fall, 'hit' = a meteor / pillar / the dive's crash / the nova goes off,
   'launch' = a bolt of Armageddon's salvo leaves the jaws, 'sky' = the sky answers it: the barrage begins)
 - Hazard tells: a self-announcing hazard (meteors, chase pillars) emits combat:tell / combat:flash with
   source 'dragon', its spell as the attack, tell 'red' and hazard: true (audio plays a lighter cue)
-- Bullet tells: a bullet about to hit, or an approaching spoke of the fire wheel, emits combat:tell /
-  combat:flash with source 'dragon', its pattern as the attack, the bullet's tell (normal / blue / red),
-  hazard: true and bullet: true (audio: the flash ping alone, no tell sting, no music dip)
+- Bullet tells: a bullet about to hit, or a ground tongue about to reach the hero, emits combat:tell /
+  combat:flash with source 'dragon', its pattern as the attack (a tongue's: fireWheel or fireLanes), the
+  bullet's tell (normal for an ember, red for an orb or a tongue), hazard: true and bullet: true (audio: the
+  flash ping alone, no tell sting, no music dip)
+- Ambient cinders (ADR-119) are hazard circles: their cues carry the attack name cinders (no tuning entry)
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
   `game:cinematic {kind}` (flow.cinematic: slow motion and a close camera on a duel's big moment; kind
@@ -2541,8 +2841,9 @@ Flow → hud/audio:
 World → audio (destruction, ADR-107; see "Destruction" above):
 - `world:impact {kind, mat, x, y, z, power, by, id}` (a blow on a breakable. kind: 'chip' = it held, 'break' = it
   shattered where it stood, 'topple' = it starts to fall, 'crash' = it lands (or a thrown piece does), 'burn' = wood
-  catches, 'burnout' = it burned through, 'throw' = a boss tears it from the ground. mat: 'wood' / 'stone' / 'metal'
-  / 'bone'. power: on the POWER scale. by: 'player' / 'boss' / 'world'. id: its index in the breakables' list.
+  catches, 'burnout' = it burned through (also for a log of wreckage, with id -1), 'throw' = a boss tears it from
+  the ground. mat: 'wood' / 'stone' / 'metal' / 'bone'. power: on the POWER scale. by: 'player' / 'boss' / 'world'.
+  id: its index in the breakables' list.
   One reused payload: a subscriber must not keep it), `world:fire {x, z, radius, cells}` (grass catches)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
   and hazard: true (be out from under it; audio plays the hazard cue)

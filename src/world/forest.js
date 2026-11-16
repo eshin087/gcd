@@ -381,11 +381,19 @@ export function buildFlagstone(rng, x, z, w, d, yaw) {
   return { geo: g, outline };
 }
 
+/**
+ * The nest: the great ribcage and skull of an older wyrm (they stay: part of the set) and, loose round
+ * them, its vertebrae and the remains of fallen knights (helms, swords, long bones). Returns
+ * { parts: the fixed geometries, loose: [{ kind, mat?, geos, x, z, r }] } (the loose ones are
+ * breakables). The random sequence is the one this builder always drew (the layout does not move).
+ */
 function buildBones(rng, cx, cz) {
   const parts = [];
-  const add = (geo, colK = 1) => {
+  const loose = [];
+  const add = (geo, colK = 1, to = parts) => {
     paint(geo, { col: (px, py, pz) => mul(BONE, colK * (0.7 + 0.45 * hash2(px * 11, pz * 11 + py))), flag: FLAG.ART_PROP, ao: 0.9 });
-    parts.push(geo);
+    to.push(geo);
+    return geo;
   };
   // great ribcage of an older wyrm, half sunk into the earth
   const ribs = 7;
@@ -403,14 +411,20 @@ function buildBones(rng, cx, cz) {
       add(arc);
     }
   }
-  // spine vertebrae (gently curving, some missing)
+  // spine vertebrae (gently curving, some missing): loose, in three runs of the spine
+  const runs = [[], [], []];
   for (let i = -6; i < 7; i++) {
     if (rng() < 0.18) continue;
     const v = prep(new THREE.BoxGeometry(0.3, 0.22, 0.42));
     const bend = Math.sin(i * 0.35) * 0.6;
     v.rotateY(spineYaw + rng() * 0.5);
     v.translate(cx + dir.x * i * 0.62 + dir.y * bend, -0.02, cz + dir.y * i * 0.62 - dir.x * bend);
-    add(v, 0.8);
+    add(v, 0.8, runs[i < -2 ? 0 : i < 3 ? 1 : 2]);
+  }
+  for (let k = 0; k < 3; k++) {
+    if (!runs[k].length) continue;
+    const mid = (k - 1) * 3.1 + 0.3;
+    loose.push({ kind: 'bone', geos: runs[k], x: cx + dir.x * mid, z: cz + dir.y * mid, r: 1.5 });
   }
   // giant skull
   const skull = prep(new THREE.IcosahedronGeometry(1.0, 1));
@@ -428,7 +442,7 @@ function buildBones(rng, cx, cz) {
     g.translate(cx + dir.x * -5.6 + 1.2, 0.2, cz + dir.y * -5.6 - 0.4);
     add(g, 1.05);
   }
-  // remains of fallen knights: helms, swords, long bones
+  // remains of fallen knights: helms, swords, long bones (loose: each its own piece)
   for (let i = 0; i < 9; i++) {
     const a = rng() * TAU, r = range(rng, 2.5, 8);
     const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
@@ -436,7 +450,7 @@ function buildBones(rng, cx, cz) {
       const helm = prep(new THREE.SphereGeometry(0.24, 7, 5, 0, TAU, 0, Math.PI * 0.6));
       helm.translate(x, 0.0, z);
       paint(helm, { col: [0.2, 0.21, 0.23], flag: FLAG.ART_PROP, ao: 0.9 });
-      parts.push(helm);
+      loose.push({ kind: 'helm', mat: 'metal', geos: [helm], x, z, r: 0.3 });
     } else if (rng() < 0.5) {
       const sword = prep(new THREE.BoxGeometry(0.08, 1.15, 0.03));
       sword.translate(0, 0.45, 0);
@@ -444,16 +458,57 @@ function buildBones(rng, cx, cz) {
       sword.rotateY(rng() * TAU);
       sword.translate(x, 0, z);
       paint(sword, { col: [0.3, 0.31, 0.34], flag: FLAG.ART_PROP, ao: 1 });
-      parts.push(sword);
+      loose.push({ kind: 'sword', mat: 'metal', geos: [sword], x, z, r: 0.3 });
     } else {
       const bone = prep(new THREE.CylinderGeometry(0.05, 0.07, 0.9, 5));
       bone.rotateZ(Math.PI / 2);
       bone.rotateY(rng() * TAU);
       bone.translate(x, 0.05, z);
-      add(bone);
+      loose.push({ kind: 'bone', geos: [add(bone, 1, [])], x, z, r: 0.45 });
     }
   }
-  return parts;
+  return { parts, loose };
+}
+
+/**
+ * A flagstone broken into shards (what is left where one was smashed: its `broken` range). From its
+ * world outline: three or four wedges round its centre, each pulled in, pushed out a little, sunk at a
+ * tilt, carved like the slab. Draws on `rng` (the breakables' own stream).
+ */
+function buildFlagShards(rng, x, z, outline) {
+  const n = outline.length;
+  const cuts = 3 + Math.floor(rng() * 2);
+  const parts = [];
+  const a0 = Math.floor(rng() * n);
+  for (let c = 0; c < cuts; c++) {
+    const i0 = a0 + Math.floor((c * n) / cuts), i1 = a0 + Math.floor(((c + 1) * n) / cuts);
+    const pts = [[x, z]];
+    for (let i = i0; i <= i1; i++) pts.push(outline[i % n]);
+    let mx = 0, mz = 0;
+    for (const [px, pz] of pts) {
+      mx += px / pts.length;
+      mz += pz / pts.length;
+    }
+    // pulled in round its own middle (the cracks between them), pushed out from the slab's centre
+    const ox = mx - x, oz = mz - z, ol = Math.hypot(ox, oz) || 1;
+    const push = 0.05 + rng() * 0.1;
+    const local = pts.map(([px, pz]) => [(px - mx) * 0.86, (pz - mz) * 0.86]);
+    const g = slabGeometry(local, { top: range(rng, 0.01, 0.05), inset: 0.05, drop: 0.04 });
+    const tilt = new THREE.Vector3(rng() - 0.5, 0, rng() - 0.5).normalize();
+    g.applyMatrix4(new THREE.Matrix4().makeRotationAxis(tilt, range(rng, 0.04, 0.16)));
+    g.translate(mx + (ox / ol) * push, -range(rng, 0.0, 0.03), mz + (oz / ol) * push);
+    parts.push(g);
+  }
+  const g = mergeGeometries(parts);
+  let rad = 0.3;
+  for (const [px, pz] of outline) rad = Math.max(rad, Math.hypot(px - x, pz - z));
+  carve(g, {
+    col: (px, py, pz) => mul(STONE, 0.5 + 0.4 * fbm2(px * 2, pz * 2, 2)),
+    ao: 0.8,
+    moss: (px, py, pz) => 0.1 + 0.3 * Math.min(1, Math.hypot(px - x, pz - z) / rad),
+    edge: (px, py, pz, nx, ny) => (ny > 0.5 && ny < 0.95 ? 1 : 0),
+  });
+  return g;
 }
 
 export function buildBonfire(rng, x, z) {
@@ -546,8 +601,12 @@ export function geosHeight(geos) {
 }
 
 // ---------- assembly ----------
-/** Trees this close to the clearing's centre are breakables (they can be felled, burned, thrown). */
-const BREAK_R = 36.5;
+/**
+ * Trees and boulders this close to the clearing's centre are breakables (they can be felled, burned,
+ * thrown). The hero is held within 31 m and the wyrm's root within 24 m, its tail and wings reach ~12 m
+ * past that: 42 m is everything the fight can touch, with room for fire to spread (2026-11-15: was 36.5).
+ */
+const BREAK_R = 42;
 /** Where the forest's landmarks stand (landmarks.js): world x, z, yaw, scale. */
 export const FOREST_LANDMARKS = {
   elder: { x: 30.5, z: -6, yaw: -1.5, s: 1 },
@@ -610,9 +669,12 @@ export function createForest(U, colliders) {
   // added inside the clearing, draw on a stream of their own: the layout's sequence stays as it was
   const breakables = [];
   const br = mulberry32(CONFIG.seed + 4177);
-  const treeBreakable = (t, g, c) => ({
+  // (the trees past the old 36.5 m line draw their stumps from a stream of their own: br's sequence,
+  // and so the layout of what stands inside the clearing, stays as it was)
+  const brOut = mulberry32(CONFIG.seed + 9311);
+  const treeBreakable = (t, g, c, rng = br) => ({
     kind: t.type === 'dead' ? 'deadTree' : 'tree', mat: 'wood', look: 'grid', x: t.x, z: t.z, r: 0.45 * t.s, h: geosHeight(g), geos: g,
-    colliders: c ? [c] : [], broken: { geos: buildStump(br, t.x, t.z, t.s), r: 0.38 * t.s }, leafy: t.type === 'dead' ? 0 : 0.6, lift: 1,
+    colliders: c ? [c] : [], broken: { geos: buildStump(rng, t.x, t.z, t.s), r: 0.38 * t.s }, leafy: t.type === 'dead' ? 0 : 0.6, lift: 1,
   });
   for (const t of trees) {
     const g = t.type === 'pine' ? buildPine(rng, t.x, t.z, t.s) : t.type === 'dead' ? buildDeadTree(rng, t.x, t.z, t.s) : buildOak(rng, t.x, t.z, t.s);
@@ -620,7 +682,7 @@ export function createForest(U, colliders) {
     treeSpots.push({ x: t.x, z: t.z, r: t.type === 'pine' ? 2.2 * t.s : 3.0 * t.s });
     const rad = Math.hypot(t.x, t.z);
     const c = rad < 42 ? colliders.add(t.x, t.z, 0.45 * t.s, 'trunk') : null;
-    if (rad < BREAK_R) breakables.push(treeBreakable(t, g, c));
+    if (rad < BREAK_R) breakables.push(treeBreakable(t, g, c, rad < 36.5 ? br : brOut));
     else treeGeos.push(...g);
   }
 
@@ -668,7 +730,10 @@ export function createForest(U, colliders) {
     else stoneGeos.push(boulder);
   }
 
-  // flagstones around the centre (walkable)
+  // flagstones around the centre (walkable). Each is a breakable whose body is its run of vertices in
+  // the merged slab mesh (look 'range': the carved material stays the floor's own); smashed, it lies in
+  // shards (a second merged mesh, folded away until then)
+  const flags = [];
   for (let i = 0; i < 26; i++) {
     const a = rng() * TAU, r = Math.sqrt(rng()) * 9;
     const x = Math.cos(a) * r, z = Math.sin(a) * r + 1;
@@ -676,11 +741,16 @@ export function createForest(U, colliders) {
     const slab = buildFlagstone(rng, x, z, w, d, rng() * TAU);
     slabGeos.push(slab.geo);
     slabs.push({ x, z, r: Math.max(w, d) * 0.65, outline: slab.outline });
+    flags.push({ x, z, r: Math.max(w, d) * 0.5, geo: slab.geo, outline: slab.outline });
   }
 
-  // the nest: bones to the north
+  // the nest: bones to the north (the ribcage and skull stay; what lies loose round them breaks)
   const nest = { x: -3, z: -15.5 };
-  propGeos.push(...buildBones(rng, nest.x, nest.z));
+  const bones = buildBones(rng, nest.x, nest.z);
+  propGeos.push(...bones.parts);
+  for (const b of bones.loose) {
+    breakables.push({ kind: b.kind, mat: b.mat ?? 'bone', look: 'grid', x: b.x, z: b.z, r: b.r, h: Math.max(0.25, geosHeight(b.geos)), geos: b.geos, colliders: [], topples: false, cover: false, wreck: false });
+  }
   bare.push({ x: nest.x, z: nest.z, r: 3.2 });
 
   // bonfire at the southern entrance
@@ -760,7 +830,27 @@ export function createForest(U, colliders) {
   const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, viewPitch: pitch });
   const slabMesh = new THREE.Mesh(mergeGeometries(slabGeos), slabMat);
   slabMesh.name = 'flagstones';
-  group.add(treeMesh, propMesh, stoneMesh, slabMesh);
+  // the flagstones as breakables: their runs of vertices in the slab mesh, and their shards (folded away)
+  const shardGeos = flags.map((f) => buildFlagShards(br, f.x, f.z, f.outline));
+  const shardMesh = new THREE.Mesh(mergeGeometries(shardGeos), slabMat);
+  shardMesh.name = 'flagstoneShards';
+  {
+    let v = 0, w = 0;
+    flags.forEach((f, i) => {
+      const n = f.geo.attributes.position.count, m = shardGeos[i].attributes.position.count;
+      breakables.push({
+        // (hp 4.5: a stomp, a landing, a meteor crack it; it breaks under the heart of a dive, a leap or a
+        // few blasts in one place; the body's steps scrape over it (BREAK.brushFlat). Was 1.5: the
+        // paving was gone halfway through a fight)
+        kind: 'flagstone', mat: 'stone', look: 'range', x: f.x, z: f.z, r: f.r, h: 0.08, hp: 4.5,
+        range: { mesh: slabMesh, start: v, count: n }, broken: { range: { mesh: shardMesh, start: w, count: m } },
+        colliders: [], topples: false, cover: false, wreck: false, lift: 0,
+      });
+      v += n;
+      w += m;
+    });
+  }
+  group.add(treeMesh, propMesh, stoneMesh, slabMesh, shardMesh);
   markCaster(group);
 
   return {

@@ -5,6 +5,90 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 59: the Cinder Wyrm's second pass (planned by the lead, built by Opus agents)
+
+**Owner:** "i want to make the boss fights a bit more harder, more epic, more crazy combos and
+flurries of attacks from them. remove the dragons blue fire homing attacks as it looks bad. improve
+the visuals, animations, and effects overall ... his shock wave rings ... need to look realistic ...
+him breathing out a cone of fire and circling looks bad ... more cooler melee attacks mixed with wing
+attack, tail, and fire attacks ... each phase needs to ramp up the difficulty and chaos ... more
+flying attacks that are combos ... the terrain attack animations and speed need to be better ... don't
+show exactly where the terrain will land ... the terrain itself is barely destructible ... plan all
+the new stuff out with fable and have opus agents do the work." Six questions asked first (ADR-119
+lists the answers). Branch `dragon/wyrm-second-pass` from `main` (857611a), main's #60 merged in.
+ADR-119 / Session 59 / M1.44.
+
+**How it ran.** Three read-only agents mapped the attacks and AI, the effects, and the terrain moves
+and destruction. Seven agents then built at once, each in its own worktree on its own files, from one
+shared brief and a task each: **melee** (`attacks.js`, the attacks' tuning, `meleeFx.js`), **flight**
+(`fireAttacks.js`, `tuningFire.js`, `hazards.js`, `skyFx.js`), **fx** (`fx.js`), **bullets**
+(`bulletAttacks.js`, `bullets.js`, `bulletFx.js`, `tuningBullets.js`), **terrain** (`terrain.js`,
+`terrainAttacks.js`, `tuningTerrain.js`, `terrainFx.js`), **world** (`src/world/**`, the body against
+the world in `dragon.js`), **ai** (`ai.js`, the pacing keys). The lead looked at every film sheet and
+sent three back: the breath's option sheet could not be judged (the frame cut the cone), the ground
+tongues read as patches of fire and not as lines, the tree in the jaws could not be seen. Seven
+merges with one expected conflict each (the one-line scenario list in `integ.mjs`). On the merged
+code 7 checks failed, all where two pieces met; an **integration** agent fixed those and the edits
+each agent had left for another's file; a **tuning** agent then set the links, the pace, the
+wreckage and the motion on the whole fight.
+
+**What changed** (ADR-119 has the decisions; COMBAT.md the numbers):
+- **AI:** a director over the weighted pick (categories, floors, run limits), combo links for all 45
+  attacks in `tuningLinks.js`, shorter pauses, ambient cinders from phase 2, fairness guards (0.3 s
+  between cues that need different answers), the PRESSURE meter.
+- **Melee:** kinds `wingSweep`, `wingSlam`, `tailWhip`, `tailSlam`, `fireSnap`, `emberRake`; strings
+  `wingRend`, `pivotLash`, `rearGuard`, `skyHammer` (phase 1), `furnaceMaw`, `cinderRake` (phase 2),
+  `cataclysm` (phase 3, 7 - 9 hits); the breath's body is braced (a spring aim, the neck leads).
+- **Flight:** `skyHunt`, `skyFurnace`, `skyCataclysm` (2 / 3 / 4 parts); flame rings 1 / 2 / 3 and a
+  second flame wall in phase 3; eruption pools; the apocalypse reworked (`skyFx.js`: column bolts, a
+  burning deck in the sky, meteors with bodies), five waves in phase 3.
+- **Fire patterns:** the wisp swarm removed; the Scouring breath as ground tongues; the Ember torrent
+  in gusts with barks; `cinderSpit`, `emberRain`, `fireLanes`.
+- **Effects:** `_shock` behind every ring, `breathBody` behind every breath, `groundShock` at
+  landings, the stomp and the tail slam; dust, flares, rims, fireball heads redrawn.
+- **Terrain:** hurl 1.28 - 1.58 s, firebrand 1.80 s, tail bat 1.25 - 1.33 s from tell to blow; a
+  whole-body grab; no mark on the ground; the flare on the flying piece; the tail bat is a parry
+  moment.
+- **World:** 183 breakables with a spatial grid; `dragon._wreck` (the body brushes, shoves and
+  fells); wreckage pools (logs, burnt logs, rubble) with no collider; fire spreads within limits;
+  burning-wood lights 5 m instead of about 16 m; a quality factor for the LOW preset.
+
+**Look options for the owner:** `?ring=a|b|c`, `?breath=a|b|c`, `?apoc=a|b|c` (`a` is each agent's own
+pick and the default). Sheets: the scratch folder's `tune-OPTIONS-ring.png`, `tune-OPTIONS-breath.png`
+(with the grass catching) and the fx agent's `fx-SHEET2-breath-options.png` (the breath alone),
+`tune-OPTIONS-apoc.png` and the flight agent's `flight-apoc-compare.png`.
+
+**Verification:** `node tests/run.mjs .` ALL 10 PASSED and `npm run build` passes on the final
+commit, run by the lead. New scenarios: MELEE, FLIGHT, TONGUES, FXLOOKS, PRESSURE, BUDGET, WRECKAGE
+in `integ.mjs`; GRID, BODY, WRECK, SPREAD, BUDGET in `world.mjs`; TERRAIN and BULLETS rewritten for
+the new rules; 20 attacks in the TIMING verifier (16 strings and the four single blows). Filmed on headless Edge with the real GPU:
+every new string, flight, pattern and terrain move, the roar, the apocalypse, before / after of the
+effects and of a rampage through the clearing. Numbers: ADR-119 "Measured".
+
+**Not checked / open** (the agents' own lists, kept):
+- Nobody has played it. The pace, the fairness guards and the bots are measurements, not a fight.
+- Phase 1 is under its 34 cues-a-minute target on two of five seeds; phase 3 under 78 on three of
+  five (the same tuning gave 70 - 96 between runs).
+- The wing sweep misses on 25 - 60 % of placements in stormFlurry, cataclysm and frenzy (cause not
+  found); pivotLash's claw lands on 124 of 174.
+- The grabbed tree reads from in front of the wyrm, partly from behind, poorly from beside it.
+- Bright white-yellow knots remain in shell and fireball impacts and in the torrent look of the
+  breath.
+- The AI's slower turn and sidestep were measured alone, not judged over a whole fight; the tail
+  slam's raised arch barely reads; the flying combos' banking was not filmed from two sides.
+- The wreckage left after a fight depends on the fight (47 - 60 % alone, 24 % on one seed inside the
+  suite); late in a long fight few liftable pieces are left and terrain moves get rare.
+- The phone: render time measured on a desktop GPU at 852 x 393 (0.60 ms against main's 0.57 ms);
+  the iPhone itself is the owner's to check.
+
+**The owner's pick (2026-11-16, on the pull request's sheets):** "Keep a for all": the rolling front of
+fire for the shock ring, the torrent for the breath, the salvo for the apocalypse. They were the
+defaults, so the game did not change; b and c stay behind the switches (ADR-119 has the note).
+
+**Next:** the owner plays the preview; then the same pass for the Ash Disciple and the Starless Lord.
+
+---
+
 ## 2026-11-15 — Session 58: `npm test` runs its suites side by side; repo merge settings
 
 **Owner:** asked why every PR here is a squash merge, then whether any GitHub settings would make

@@ -268,9 +268,14 @@ export const FIRE_SFX = {
 };
 
 // (the bullet patterns keep their keys: emberStorm = the Ember torrent, fanVolley = the Cinder burst,
-// fireWheel = the Scouring breath; the torrent and the breath also run the breath loop through
-// dragon:breathStart / breathEnd, ADR-050)
-const SPELL = { skyStrafe: 'skyRoar', diveBomb: 'diveScream', meteorRain: 'meteorCast', eruptions: 'rumble', flameRing: 'flameIgnite', flameWall: 'flameIgnite', nova: 'novaCharge', emberStorm: 'flameIgnite', fanVolley: 'flameIgnite', fireWheel: 'flameIgnite', wispSwarm: 'meteorCast' };
+// cinderSpit = the Cinder spit, emberRain = the Ember rain, fireWheel = the Scouring breath, fireLanes
+// = the Fire lanes; the torrent and the breath also run the breath loop through dragon:breathStart /
+// breathEnd, ADR-050)
+// (tuning, 2026-11-15: the whole body's blows reuse sounds: the wing slam a landing's whump, the tail
+// slam the dive's crash, the tail whip a take-off's gust)
+const SPELL = { wingSlam: 'land', tailSlam: 'crash', tailWhip: 'takeoff', skyStrafe: 'skyRoar', diveBomb: 'diveScream', meteorRain: 'meteorCast', eruptions: 'rumble', flameRing: 'flameIgnite', flameWall: 'flameIgnite', nova: 'novaCharge', emberStorm: 'flameIgnite', fanVolley: 'flameIgnite', fireWheel: 'flameIgnite', emberRain: 'meteorCast', fireLanes: 'flameIgnite', cinderSpit: 'flameIgnite' };
+// the flying combos (skyHunt, skyFurnace, skyCataclysm) name their part: a pass roars, a barrage casts, a dive screams
+const SPELL_PART = { pass: 'skyRoar', barrage: 'meteorCast', dive: 'diveScream' };
 const SPELL_OPTS = { flameRing: { length: 1.6 }, flameWall: { length: 2.6 }, nova: { time: 2.5 } };
 const HIT = { meteor: 'meteorHit', pillar: 'pillar', crash: 'crash', nova: 'novaBlast' };
 
@@ -280,7 +285,7 @@ const HIT = { meteor: 'meteorHit', pillar: 'pillar', crash: 'crash', nova: 'nova
  */
 export function subscribeFire(on, E) {
   on('dragon:spell', (d) => {
-    const name = SPELL[d.name];
+    const name = SPELL[d.name] ?? (d.part ? SPELL_PART[d.part] : null);
     if (!name) return;
     const o = { ...(SPELL_OPTS[d.name] ?? null) };
     if (Number.isFinite(d.x) && Number.isFinite(d.z)) {

@@ -3294,3 +3294,104 @@ ADR-092).
   **Not measured:** the length and difficulty of the three fights after the change (the strategy
   bots of ADR-102 were not re-run), the flare on a phone screen, and the frame cost of a full-width
   streak (about 300 blobs a frame for 0.34 s).
+
+## ADR-119 — The Cinder Wyrm's second pass: pressure, whole-body combos, flying combos, a clearing that breaks (2026-11-15)
+- **Context:** the owner: "i want to make the boss fights a bit more harder, more epic, more crazy
+  combos and flurries of attacks ... remove the dragons blue fire homing attacks as it looks bad ...
+  his shock wave rings coming out looks really bad ... him breathing out a cone of fire and circling
+  looks bad because the fire doesn't look realistic and his animation circling around looks comedic
+  ... more cooler melee attacks mixed with wing attack, tail, and fire attacks instead of just using
+  his hands a few times ... each phase needs to ramp up the difficulty and chaos ... more flying
+  attacks that are combos instead of just 1 attack ... the terrain attack animations and speed need
+  to be better ... don't show exactly where the terrain will land ... the terrain itself is barely
+  destructible ... plan all the new stuff out with fable and have opus agents do the work." Three
+  read-only agents mapped the code first. What they found: the "circling" was the Scouring breath
+  (the whole body spun at 123 deg/s) and the Ember torrent's phase-3 pirouette; every shock ring was
+  one evenly spaced circle of blobs living 0.3 s; wings were in one string and the tail in one; the AI
+  could not act at all while airborne; a terrain throw took 2.9 - 3.2 s from tell to blow; 80 of about
+  620 objects in the clearing could break and the wyrm's trample never reached a trunk.
+- **The owner's answers** (asked before anything was built): this pass is the wyrm, the two duelists
+  follow; harder means **more pressure at the same damage**; thrown terrain shows **no landing mark**
+  (the flare only; meteors, pillars and fireballs keep their heated ground); the owner picks the look
+  of the shock ring, the fire breath and the apocalypse from rendered options; **the whole clearing
+  breaks** (the Cinder Tree, the Elder Wyrm's skeleton and the bonfire stay); **wreckage is scenery
+  you walk over**.
+- **Decision:**
+  1. **A director instead of a dice roll** (`ai.js`, `TUNING.pressure`): every attack has a category
+     (melee, wing, tail, fire, flight, spell, terrain); the weighted pick is steered by run limits,
+     floors that bring an absent category back (the wyrm repositions for it if it must), gap closers
+     when the hero is far and tail moves when he is behind, and ceilings on time in the air and on
+     live hazards. **Combo links** (`tuningLinks.js`): each attack lists follow-ups by where the hero
+     is as it ends (behind, side, front, near, mid, far) with a chance per phase; a link starts with no
+     pause, up to `chainDepth` [3, 3, 5] in a row, then a breather. The hero's openings (a recoil, a
+     stagger, a break, his flurry or counter) keep the old, longer pause. From phase 2 the wyrm also
+     drops small fire of its own ("cinders") near the hero.
+  2. **Fairness is enforced, not hoped for:** two cues that need different answers never land within
+     0.3 s of each other, across sources (a melee blow is held up to 0.5 s; a spell or bullet pattern
+     does not start on top of another's; a red move does not start while bullets fly) and inside one
+     pattern (an ember beside an orb fizzles); an ambient cinder only falls near the hero when at least
+     6 of 17 roll spots stay clear. The PRESSURE scenario measures it.
+  3. **The whole body fights:** six new attack kinds (wing sweep, wing slam, tail whip, tail slam, a
+     bite that ends in a gout of fire, a claw rake that leaves burning ground) and seven new strings
+     across the phases; old hands-only strings re-weighted and given wing beats. No new damage band.
+  4. **Flights are combos:** a composite action takes off once and strings a strafing pass, a shell
+     barrage and a dive (two, three and four parts by phase), ending in a crash landing. A perfect
+     dodge of a pass or a shell still plunges and ends the combo.
+  5. **No wisps, no spinning:** the homing wisp swarm is removed. The Scouring breath is fire driven
+     along the ground in tongues from a braced stance (its body no longer turns faster than its normal
+     turn rate, asserted); the Ember torrent ends in barks instead of a pirouette. New patterns: Cinder
+     spit, Ember rain, Fire lanes.
+  6. **Effects have bodies:** one shock engine (a ragged front that slows, rows behind it, dust, rocks,
+     scorch, echoes) behind every ring; one breath (`fx.breathBody`) behind every stream of fire the
+     wyrm makes; a sky that answers the apocalypse; no stacked white discs. Three looks each for the
+     ring, the breath and the apocalypse behind `?ring=`, `?breath=`, `?apoc=` (the owner's pick is
+     recorded below).
+  7. **Terrain throws are fast and unmarked:** 1.3 - 1.6 s from tell to blow (firebrand 1.8 s), a
+     whole-body grab (a foreleg pins, a tug, the tear, a whip), nothing drawn on the ground; the flare
+     is drawn on the flying piece 0.35 s before it lands and a roll at it always dodges. **This
+     supersedes ADR-110 and ADR-118 for thrown pieces**, by the owner's choice.
+  8. **The clearing breaks:** 183 breakables (80 before; flagstones, loose bones, helms and swords
+     among them), found through a spatial grid. The wyrm's body, tail and wings meet the world every
+     frame (`dragon._wreck`): a walk or a turn shoves and shakes (a "brush"), a charge, a tail sweep,
+     a landing, a low flight and a thrown piece fell what they hit; it passes through wood it can
+     break. Felled trunks, rubble and burnt logs stay as scenery with no collider until the fight
+     resets; fire spreads from tree to tree within limits and direct ignition is capped. **This
+     reverses three choices of ADR-107:** a felled trunk no longer comes apart, fire now spreads, and
+     the root-only trample is gone.
+- **Why pressure and not damage:** the owner's choice, and it matches ADR-095 (defensive play is not
+  punished): a mistake costs what it did, but the fight gives fewer pauses to recover in.
+- **Measured** (the PRESSURE scenario, five seeds, 120 s a phase, a bot that blocks and rolls; cues a
+  minute): `main` 24 - 28 / 26 - 51 / 37 - 54 by phase; this pass 31 - 37 / 53 - 63 / 72 - 86. Longest
+  gap between cues in phase 3: 2.2 - 3.2 s (main 5.6 - 10.3 s on three seeds). Chains per phase: 5 - 22
+  (main 0). Bots: a mortal defender that answers 95 % of cues wins all three runs (45 - 89 damage
+  taken; on main it died in one of three); one that answers 80 % dies in all three (main: in two of
+  three); the worst single blow is 34, as before. The fire field peaked at about 2600 of 6000 blobs
+  in a phase-3 fight (measured before the final tuning). A four-minute fight leaves 47 - 60 % of the
+  pieces inside the hero's bound standing (run alone; 24 % on one seed inside the whole suite).
+- **How it was built:** the lead planned and reviewed; Opus agents built. Three mapping agents, then
+  seven building at once in their own worktrees with disjoint files (melee, flight, fx, bullets,
+  terrain, world, ai) and a shared brief, each filming its own work; the lead looked at every sheet,
+  sent three back (the breath's sheet could not be judged, the ground tongues did not read as lines,
+  the grabbed tree could not be seen), merged, and handed the seams to an integration agent and the
+  pace to a tuning agent.
+- **Changed without being asked** (each agent's own call, surfaced for the owner): the three old
+  single flights are picked far less; the phase-3 apocalypse has five waves, not four; opening
+  cooldowns are shorter and the wyrm walks faster; a melee blow can be held up to 0.5 s for fairness;
+  fire patterns no longer overlap each other; the AI's backward bound was removed (it moonwalked) and
+  its idle turn and sidestep were slowed; phase-1 pauses are 0.25 - 0.5 s (the plan said 0.6 - 1.0).
+- **Not measured or not right:** nobody has played it. Phase 1 is under its target on two of five
+  seeds and phase 3 on three of five; the wing sweep still misses on a quarter to a half of the
+  placements in three strings; the grabbed tree reads from in front of the wyrm and poorly from
+  beside it; shell and fireball impacts still show bright white knots; the breath's torrent look
+  shows two or three hot knots; the wreckage left depends on how the fight went; the render time was
+  measured on a desktop GPU at the phone's size (about 5 % over main), not on the phone.
+- **The owner's pick of the three looks (2026-11-16):** "Keep a for all", from one sheet each on the
+  final build (the roar at four moments; the breath at ignition, full stream and just after, alone
+  with the old breath above it and again in play with the grass catching; the apocalypse at the
+  rear-up, the cast's peak, the sky answering and the first impacts). So the shock ring is the
+  rolling front of fire with dust behind it, the breath is the torrent, the apocalypse is the salvo
+  of columns from the ground. These were already the defaults: nothing in the game changed with the
+  pick. The looks turned down (ring b: crisp pressure strokes, c: the ground heaves; breath b:
+  lashing tongues, c: liquid fire; apocalypse b: one pillar, c: cast from the air) stay behind the
+  switches and in the FXLOOKS scenario, as the flare's did (ADR-118); they can be removed later.
+  The white knots in breath look a are still open.

@@ -1,12 +1,19 @@
-// The bullet-hell patterns (docs/COMBAT.md "Bullets", ADR-039, ADR-050): four spells built on bullets.js.
+// The breathed patterns (docs/COMBAT.md "Bullets", ADR-039, ADR-050): six spells built on bullets.js.
 //
-//   emberStorm  Ember torrent: the head sweeps a breathed stream of embers across the hero (P2+: red
-//               orbs coughed at the sweep's extremes, P3: a closing pirouette, one spiral arm)
-//   fanVolley   Cinder burst: the head snaps onto the hero and coughs shotgun cones (P2+: a red orb
-//               wave to finish, P3: double taps; P3 may run straight into a torrent)
-//   wispSwarm   blue homing wisps roared out of the maw, one after another (they outlive the roar)
-//   fireWheel   Scouring breath: a sustained breath strikes the ground before the snout and runs out
-//               as tongues of fire; the wyrm sweeps them round by turning, pausing once and reversing
+//   emberStorm   Ember torrent: the neck sweeps a living stream of embers across the hero (gusts,
+//                gaps, a core; P2+: red orbs coughed at the sweep's extremes, and it ends in barks:
+//                short dense cones snapped at him, P3's last one red)
+//   fanVolley    Cinder burst: the head snaps onto the hero and coughs shotgun cones (P2+: a red orb
+//                wave to finish, P3: double taps; P3 may run straight into a torrent)
+//   cinderSpit   Cinder spit: a quick snap of two or three fast embers (chained between other moves)
+//   emberRain    Ember rain: rears and coughs volleys high into the air; they rain down round the hero
+//   fireWheel    Scouring breath: braced, the neck rakes a breath across the ground; tongues of fire
+//                crawl out along it (the key is historical: nothing turns like a wheel any more)
+//   fireLanes  Fire lanes (P3): the breath driven into the ground again and again, each strike
+//                splitting into lanes of fire across the field; the lit lanes change every strike
+//
+// No spinning (2026-11-15): the wyrm never turns its body faster than its walking turn rate while it
+// breathes; the neck and the head do the aiming, the body is braced (plantPose).
 //
 // Every bullet is BREATHED (ADR-050): spit() spawns it at rig.pt.mouth along the head's actual aim
 // (pt.headFwd), from the action's hit() hook, which runs after the rig: the bullet leaves the jaws
@@ -14,7 +21,9 @@
 // base, look down the line, headExact) and the emission follows where it really points. A bullet
 // leaves at mouth height and descends to hit height over a drop scaled to the hero's distance, so a
 // close hero is not flown over. Every emission has a visible cause: the jaw open, the throat lit
-// (d.throat), a muzzle puff, a head kick per cough.
+// (d.throat), a muzzle flash, a head kick per cough. The ground tongues run out from where the
+// breath strikes the ground (bullets.scour: a plan the field releases on time, from a pivot under
+// the neck base, so the cue can see them coming).
 //
 // Same contract as fireAttacks.js: defs with { name, cooldown, phases, beats, weight, start, enter,
 // update, hit, end }; numbers in tuningBullets.js. Each pattern declares ONE headline beat (announced
@@ -29,20 +38,22 @@
 
 import { TUNING, SCALE } from './tuning.js';
 import { TELL } from '../../combat/rules.js';
-import { clamp, angleDiff, smoothstep, wrapAngle } from '../../core/math.js';
-import { beat, roarFx, roarPose, perPhase } from './attacks.js';
+import { clamp, angleDiff, easeInOutSine } from '../../core/math.js';
+import { beat, perPhase } from './attacks.js';
 import { BULLET } from './bullets.js';
 import * as BFX from './bulletFx.js';
 
 const T = TUNING.attacks;
 const BK = TUNING.bullets;
 const S = SCALE;
-const TAU = Math.PI * 2;
 const REST_SPREAD = TUNING.rest.spread;
-const ES = T.emberStorm, FV = T.fanVolley, WS = T.wispSwarm, FW = T.fireWheel;
+const ES = T.emberStorm, FV = T.fanVolley, CS = T.cinderSpit, ER = T.emberRain, FW = T.fireWheel, CL = T.fireLanes;
 const wind = (d, base) => base * (d.tScale ?? 1);
 const playerR = (g) => g.player?.radius ?? 0.45;
+const frac = (v) => v - Math.floor(v);
+const rand = (a, b) => a + Math.random() * (b - a);
 const LOOK_RATE = 24; // the head's look target smoothing while breathing (1 / s)
+const MOUTH_AHEAD = 1.0; // m the jaws reach past the head point (the strike point is measured from there)
 
 function wPhase(spec, d) {
   const ph = Math.max(1, d.phase | 0);
@@ -140,9 +151,9 @@ function headline(d, a, kind) {
 }
 
 /**
- * A pattern that ends without its flash. Its lead bullet still on its way (a far hero: the wisps
- * outlive the roar): the field flashes flashLead s before THAT lands (bullets.holdFlash). No lead
- * left (`kind` omitted, or it died): flash now, so tell / flash stay paired.
+ * A pattern that ends without its flash. Its lead bullet still on its way (a far hero): the field
+ * flashes flashLead s before THAT lands (bullets.holdFlash). No lead left (`kind` omitted, or it
+ * died): flash now, so tell / flash stay paired.
  */
 function flush(d, a, interrupted, kind) {
   const b = a.beats?.[0];
@@ -152,7 +163,7 @@ function flush(d, a, interrupted, kind) {
   d.flashTell(a, b);
 }
 
-/** Crouched over its own fire, wings raised and trembling, the chest swelling (the wisps' windup). */
+/** Settling after a breath: the body rises, the wings fold, the jaw closes, the throat dims. */
 function settlePose(d, k) {
   const pose = d.pose;
   pose.lower = 0.35 * (1 - k);
@@ -169,20 +180,61 @@ function charge(d, dt, k) {
   d.fx.mouthEmbers?.(dt, pt.mouth, 8 + 30 * k, pt.headFwd);
 }
 
+/**
+ * Cue a cone the jaws will cough `tFire` s from now with a bullet dead on the hero, for a hero it
+ * reaches in less than flashLead from the mouth (see the header). bullets.cue() de-duplicates.
+ */
+function coneCue(d, attack, kind, tFire, speed) {
+  const FL = TUNING.flashLead;
+  const G = mouthGeo(d, _geo);
+  if (!Number.isFinite(G.D + G.th)) return;
+  const orb = kind === BULLET.ORB;
+  const R = (orb ? BK.orb.r : BK.ember.r) + playerR(d.game);
+  const fl = Math.max(0, G.D - R) / speed;
+  if (fl >= FL) return;
+  const tt = Math.max(0, tFire) + fl;
+  if (tt > FL + (orb ? 0.04 : 0) || tt < BK.cueMin + (orb ? 0.03 : 0)) return;
+  const m = d.rig.pt.mouth;
+  d.bullets.cue(kind, attack, orb ? TELL.RED : TELL.NORMAL, tt, m.x, m.y, m.z);
+}
+
+/** A cone of n bullets coughed from the jaws, its q = 0 bullet dead on the head's aim (`off` in spacings). */
+function cone(d, attack, kind, n, half, speed, off, grp, life, lead = false) {
+  const spacing = n > 1 ? (2 * half) / (n - 1) : 0;
+  for (let j = 0; j < n; j++) {
+    const q = j - (n - 1) / 2 + off;
+    const b = spit(d, kind, attack, q * spacing, speed, grp, life);
+    if (lead && Math.abs(q) < 1e-6 && b) d.bullets.setLead(b);
+  }
+}
+
 // ------------------------------------------------------------------ ember torrent
 /** Yaw offset of lane j of n: a forked tongue, laneGap apart, centred on the head's aim. */
 const laneOff = (n, j) => (j - (n - 1) / 2) * ES.laneGap;
+/** The stream breathes in gusts: true while cast time `t` falls in a gust (not in a gap). */
+const gustOn = (a, t) => frac(a.gph + t * ES.gustHz) >= ES.gustGap;
 
-/** The torrent's target aim `te` s from now (sweep or pirouette; coughs aside). */
+/**
+ * Is the stream quiet for an ember leaving at cast time `t`, `D` m from the hero? It would reach him,
+ * or flash, within ES.orbSep s of the coughed orbs (a.orbAt / a.orbFlash, cast time): the stream has
+ * a gap there. (A bullet that reaches him in less than flashLead flashes as it leaves: the flashes are
+ * kept apart as well as the blows.)
+ */
+function nearOrb(a, t, D) {
+  if (!(a.orbAt > -1)) return false;
+  const fl = Math.max(0, D) / ES.speed, at = t + fl;
+  return Math.abs(at - a.orbAt) < ES.orbSep || Math.abs(at - Math.min(TUNING.flashLead, fl) - a.orbFlash) < ES.orbSep;
+}
+
+/** The torrent's target aim `te` s from now (the sweep; coughs and barks aside). */
 function torrentAim(a, te) {
-  if (a.spinning) return a.spinYaw + a.dir * a.spinRate * te;
-  return a.cy + a.dir * a.arc * Math.sin(a.ph + TAU * a.hz * te);
+  return a.cy + a.dir * a.arc * Math.sin(a.ph + 2 * Math.PI * a.hz * te);
 }
 
 /**
  * Cue the stream for a hero the bullets reach in less than flashLead from the mouth (see the header):
  * the next breaths' predicted aim (the head trails its target by ~1 / LOOK_RATE s) against his bearing.
- * A coming orb cough is cued the same way.
+ * A coming orb cough and the barks are cued the same way.
  */
 function streamCue(d, a) {
   const FL = TUNING.flashLead;
@@ -191,13 +243,13 @@ function streamCue(d, a) {
   const m = d.rig.pt.mouth;
   const R = BK.ember.r + playerR(d.game);
   const fl = Math.max(0, G.D - R) / ES.speed;
-  if (fl < FL) {
+  if (fl < FL && a.t < a.barkAt) {
     const half = Math.asin(Math.min(1, R / Math.max(G.D, 0.5)));
     for (let k = 0; k < 8; k++) {
       const te = Math.max(0, a.next + k * ES.every - a.t);
       const tt = te + fl;
-      if (tt > FL) break;
-      if (tt < BK.cueMin || a.cough > te) continue;
+      if (tt > FL || a.t + te >= a.barkAt) break;
+      if (tt < BK.cueMin || a.cough > te || !gustOn(a, a.t + te) || nearOrb(a, a.t + te, G.D - R)) continue;
       const y = torrentAim(a, te - 1 / LOOK_RATE);
       let hit = false;
       for (let j = 0; j < a.lanes && !hit; j++) hit = Math.abs(angleDiff(y + laneOff(a.lanes, j), G.th)) <= half;
@@ -211,6 +263,10 @@ function streamCue(d, a) {
     const Ro = BK.orb.r + playerR(d.game);
     const tt = Math.max(0, a.cough - ES.cough * 0.5) + Math.max(0, G.D - Ro) / ES.orbSpeed;
     if (tt <= FL + 0.04 && tt >= BK.cueMin + 0.03) d.bullets.cue(BULLET.ORB, 'emberStorm', TELL.RED, tt, m.x, m.y, m.z);
+  }
+  if (a.bi < a.nb) {
+    const orb = a.bi === a.nb - 1 && a.barkOrbs > 0;
+    coneCue(d, 'emberStorm', orb ? BULLET.ORB : BULLET.EMBER, a.barkAt + 0.25 + a.bi * ES.barkGap - a.t, orb ? ES.orbSpeed : ES.barkSpeed);
   }
 }
 
@@ -227,21 +283,27 @@ const emberStorm = {
     a.arc = perPhase(ES.arc, d.phase);
     a.hz = perPhase(ES.sweepHz, d.phase);
     a.orbs = perPhase(ES.orbs, d.phase) | 0;
-    a.pir = perPhase(ES.pirouette, d.phase) || 0;
+    // the closing barks: the last nb x barkGap (+ the snap) of the cast
+    a.nb = perPhase(ES.barks, d.phase) | 0;
+    a.barkN = Math.max(1, perPhase(ES.barkCount, d.phase) | 0) | 1; // (odd: one bullet dead on him)
+    a.barkOrbs = perPhase(ES.barkOrbs, d.phase) | 0;
+    const Tc = perPhase(ES.cast, d.phase);
+    a.barkAt = a.nb > 0 ? Tc - a.nb * ES.barkGap - 0.15 : Infinity;
+    a.bi = 0;
     // the lane nearest the middle points straight at the hero on the first breath (the lead ember)
     a.j0 = (a.lanes - 1) >> 1;
     a.ph = Math.asin(clamp(-laneOff(a.lanes, a.j0) / (a.dir * a.arc), -1, 1));
     a.cy = d.sense.yawTo;
+    a.gph = ES.gustGap; // a gust starts with the cast
     a.next = 0;
     a.first = true;
     a.covered = false;
     a.cough = 0;
     a.coughFired = true;
+    a.orbAt = a.orbFlash = -9; // cast time the last orbs reach the hero / flash (nearOrb)
     a.lastCos = Math.cos(a.ph);
-    a.spinning = false;
-    a.spinYaw = 0;
-    a.spinRate = a.pir > 0 ? TAU / a.pir : 0;
     a.kick = 0;
+    a.wasGust = false;
     a.breathing = false;
   },
   enter(d, a, phase) {
@@ -273,45 +335,41 @@ const emberStorm = {
         b0.impactIn = Math.max(0.05, a.list[0][1] + Math.max(0, G.D - BK.ember.r - playerR(d.game)) / ES.speed);
       }
     } else if (a.phase === 'cast') {
-      const Tc = a.list[1][1];
       plantPose(d, 1);
       pose.swell = 1;
-      pose.jaw = a.cough > 0 ? 1 : 0.9;
       pose.jawRate = 16;
       d.throat = 1;
-      if (!a.spinning && a.pir > 0 && a.t >= Tc - a.pir) {
-        a.spinning = true;
-        a.spinYaw = headYaw(d);
-        a.cough = 0;
-      }
+      // the neck sweeps the stream; the body only turns to re-centre on the hero, at a walk's turn
+      a.cy += clamp(angleDiff(a.cy, s.yawTo), -ES.recentre * dt, ES.recentre * dt);
+      d.turnToward(a.cy, d.turnRate * 0.7, dt);
       let aim;
-      if (a.spinning) {
-        // P3's closing pirouette: the whole body turns once, breathing: one spiral arm
-        a.spinYaw += a.dir * a.spinRate * dt;
-        d.yaw = wrapAngle(d.yaw + a.dir * a.spinRate * dt);
-        pose.bodyRate = 14;
-        aim = a.spinYaw;
+      if (a.t >= a.barkAt) {
+        // the barks: the neck stops, the head snaps onto him, the jaw shut between barks
+        aim = G.th;
+        const tb = a.bi < a.nb ? a.barkAt + 0.25 + a.bi * ES.barkGap - a.t : 9;
+        pose.jaw = tb < 0.08 || a.kick > 0.6 ? 1 : 0.35;
+        pose.jawRate = 26;
+      } else if (a.cough > 0) {
+        a.cough -= dt;
+        aim = G.th; // the head snaps round onto him for the cough
+        pose.jaw = 1;
       } else {
-        // the neck sweeps the stream; the body only turns to re-centre on the hero
-        a.cy += clamp(angleDiff(a.cy, s.yawTo), -ES.recentre * dt, ES.recentre * dt);
-        d.turnToward(a.cy, d.turnRate * 0.7, dt);
-        if (a.cough > 0) {
-          a.cough -= dt;
-          aim = G.th; // the head snaps round onto him for the cough
-        } else {
-          a.ph += TAU * a.hz * dt;
-          const c = Math.cos(a.ph);
-          // an extreme of the sweep: P2+ coughs a tight fan of red orbs at him (not into the pirouette)
-          if (a.orbs > 0 && c * a.lastCos < 0 && a.t > 0.3 && a.t < Tc - a.pir - 0.45) {
-            a.cough = ES.cough;
-            a.coughFired = false;
-          }
-          a.lastCos = c;
-          aim = a.cy + a.dir * a.arc * Math.sin(a.ph);
+        a.ph += 2 * Math.PI * a.hz * dt;
+        const c = Math.cos(a.ph);
+        // an extreme of the sweep: P2+ coughs a tight fan of red orbs at him (not into the barks: the
+        // orbs, slower, reach him orbSep s before the first bark does or they do not come)
+        const Dq = G.D - BK.orb.r - playerR(d.game);
+        const orbIn = a.t + ES.cough * 0.5 + Math.max(0, Dq) / ES.orbSpeed, barkIn = a.barkAt + 0.25 + Math.max(0, Dq) / ES.barkSpeed;
+        if (a.orbs > 0 && c * a.lastCos < 0 && a.t > 0.3 && a.t < a.barkAt - 0.45 && (!Number.isFinite(Dq) || orbIn < barkIn - ES.orbSep)) {
+          a.cough = ES.cough;
+          a.coughFired = false;
         }
+        a.lastCos = c;
+        aim = a.cy + a.dir * a.arc * Math.sin(a.ph);
+        pose.jaw = gustOn(a, a.t) ? 0.95 : 0.7; // (the jaw works with the gusts)
       }
-      aimHead(d, aim, a.spinning ? ES.reach : reachFor(d, ES.reach), ES.dy, G.D, a.cough > 0 ? s.pos : null);
-      pose.headOffset.y += a.kick * 0.25 * S;
+      aimHead(d, aim, reachFor(d, ES.reach), ES.dy, G.D, a.cough > 0 || a.t >= a.barkAt ? s.pos : null);
+      pose.headOffset.y += a.kick * 0.3 * S;
     } else {
       plantPose(d, 1 - k);
       settlePose(d, k);
@@ -322,27 +380,51 @@ const emberStorm = {
   hit(d, a) {
     if (a.phase !== 'cast') return;
     const pt = d.rig.pt, m = pt.mouth, f = pt.headFwd;
-    if (a.cough > 0) {
+    if (a.t >= a.barkAt) {
+      if (a.bi < a.nb && a.t >= a.barkAt + 0.25 + a.bi * ES.barkGap) {
+        const orb = a.bi === a.nb - 1 && a.barkOrbs > 0;
+        if (orb) cone(d, 'emberStorm', BULLET.ORB, a.barkOrbs | 1, ES.orbSpread * 2, ES.orbSpeed, 0, a.grp, 5);
+        else cone(d, 'emberStorm', BULLET.EMBER, a.barkN, ES.barkSpread, ES.barkSpeed, 0, a.grp, ES.life);
+        BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, orb ? 18 : 14);
+        a.kick = 1;
+        a.bi++;
+        d.game.shake?.(orb ? 0.3 : 0.2);
+      }
+    } else if (a.cough > 0) {
       if (!a.coughFired && a.cough <= ES.cough * 0.5) {
         a.coughFired = true;
         for (let j = 0; j < a.orbs; j++) spit(d, BULLET.ORB, 'emberStorm', (j - (a.orbs - 1) / 2) * ES.orbSpread, ES.orbSpeed, a.grp, 5);
-        BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, 14, false);
+        const Gm = mouthGeo(d, _geo);
+        if (Number.isFinite(Gm.D)) {
+          const fo = Math.max(0, Gm.D - BK.orb.r - playerR(d.game)) / ES.orbSpeed;
+          a.orbAt = a.t + fo;
+          a.orbFlash = a.orbAt - Math.min(TUNING.flashLead, fo);
+        }
+        BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, 14);
         a.kick = 1;
         d.game.shake?.(0.2);
       }
       a.next = Math.max(a.next, a.t); // the stream picks up again after the cough
     } else {
-      let n = 0;
+      let n = 0, gust = false;
+      const Dq = a.orbAt > -1 ? mouthGeo(d, _geo).D - BK.ember.r - playerR(d.game) : 0;
       while (a.t >= a.next && n++ < 4) {
-        for (let j = 0; j < a.lanes; j++) {
-          const b = spit(d, BULLET.EMBER, 'emberStorm', laneOff(a.lanes, j), ES.speed, a.grp, ES.life);
-          if (a.first && j === a.j0 && b) d.bullets.setLead(b);
+        if (gustOn(a, a.next) && !nearOrb(a, a.next, Dq)) {
+          gust = true;
+          for (let j = 0; j < a.lanes; j++) {
+            // the lead ember flies true; the rest stray a little in aim and speed (the stream's body)
+            const lead = a.first && j === a.j0;
+            const dy = lead ? 0 : rand(-ES.aimJit, ES.aimJit), sp = lead ? ES.speed : ES.speed * (1 + rand(-ES.speedJit, ES.speedJit));
+            const b = spit(d, BULLET.EMBER, 'emberStorm', laneOff(a.lanes, j) + dy, sp, a.grp, ES.life);
+            if (lead && b) d.bullets.setLead(b);
+          }
+          a.first = false;
         }
-        a.first = false;
         a.next += ES.every;
       }
       if (a.t >= a.next) a.next = a.t + ES.every; // (a long frame: no catch-up burst)
-      if (n > 0) BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, 2, false);
+      if (gust) BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, gust && !a.wasGust ? 7 : 2); // a gust bursts out, then pours
+      if (n > 0) a.wasGust = gust;
     }
     streamCue(d, a);
   },
@@ -392,7 +474,7 @@ function cough(d, a, e) {
     const b = spit(d, e.orb ? BULLET.ORB : BULLET.EMBER, 'fanVolley', q * spacing, speed, a.grp, e.orb ? 5 : FV.life);
     if (e.i === 0 && !e.tap && Math.abs(q) < 1e-6 && b) B.setLead(b);
   }
-  BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, e.orb ? 16 : 10, false);
+  BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, e.orb ? 16 : 10);
   a.last = a.t;
   a.kick = 1;
   d.game.shake?.(e.orb ? 0.3 : 0.14);
@@ -512,121 +594,262 @@ const fanVolley = {
   },
 };
 
-// ------------------------------------------------------------------ wisp swarm
-const wispSwarm = {
-  name: 'wispSwarm',
-  cooldown: WS.cooldown,
-  phases: (d) => [['windup', wind(d, WS.windup)], ['cast', WS.cast], ['recovery', wind(d, WS.recovery)]],
-  beats: (d, a) => [beat('wispSwarm', 0, a.list[0][1] + WS.first + 1, WS, 'bullet')],
-  weight: (d, s) => (s.dist <= WS.maxDist && d.bullets.count(BULLET.WISP) <= WS.maxAlive ? wPhase(WS, d) : 0),
+// ------------------------------------------------------------------ cinder spit
+const cinderSpit = {
+  name: 'cinderSpit',
+  cooldown: CS.cooldown,
+  phases: (d) => {
+    const two = perPhase(CS.twice, d.phase) > 0;
+    return [['windup', wind(d, CS.windup)], ['cast', CS.cast + (two ? CS.twiceGap : 0)], ['recovery', wind(d, CS.recovery)]];
+  },
+  beats: (d, a) => [beat('cinderSpit', 0, a.list[0][1] + Math.max(0, d.sense.dist - 4) / CS.speed, CS, 'bullet')],
+  weight: (d, s) =>
+    s.dist >= CS.minDist && s.dist <= CS.maxDist && Math.abs(angleDiff(d.yaw, s.yawTo)) <= CS.arcMax ? wPhase(CS, d) : 0,
   start(d, a) {
-    a.cx = d.position.x;
-    a.cz = d.position.z;
-    a.grp = d.bullets.group(WS.maxHits);
-    a.acc = 0;
+    a.grp = d.bullets.group(CS.maxHits);
+    a.n = Math.max(1, perPhase(CS.count, d.phase) | 0);
+    a.two = perPhase(CS.twice, d.phase) > 0;
+    a.shots = 0;
+    a.kick = 0;
     a.covered = false;
   },
   enter(d, a, phase) {
-    if (phase !== 'cast') return;
-    d.emit('dragon:spell', { name: 'wispSwarm', x: a.cx, z: a.cz });
-    roarFx(d, 0.5);
-    const B = d.bullets, m = d.rig.pt.mouth, spec = BK.wisp;
-    const n = perPhase(WS.count, d.phase) | 0;
-    for (let i = 0; i < n; i++) {
-      // alternating sides, ever wider: roared out of the jaws, they hang in an arc round the head
-      const yaw = d.yaw + (i & 1 ? -1 : 1) * (0.7 + 0.24 * (i >> 1));
-      const b = B.spawn(BULLET.WISP, 'wispSwarm', m.x, m.y, m.z, yaw, WS.out, a.grp, 0);
-      if (!b) break;
-      b.turn = spec.turn;
-      b.homeAt = WS.first + i * WS.stagger;
-      b.yH = 2.1;
-      b.drop = 0.6;
-      b.arm = b.homeAt + 0.15;
-      b.life = b.homeAt + spec.life;
-      if (i === 0) {
-        b.cruise = WS.leadSpeed;
-        b.turn = spec.turn * 2;
-        B.setLead(b);
-      }
-    }
-    BFX.muzzle(d.fx, m.x, m.y, m.z, Math.sin(d.yaw), Math.cos(d.yaw), 18, true);
+    if (phase === 'cast') d.emit('dragon:spell', { name: 'cinderSpit', x: d.position.x, z: d.position.z });
   },
   update(d, a, dt) {
-    const pose = d.pose, s = d.sense, pt = d.rig.pt, k = a.k, b0 = a.beats?.[0];
-    pose.look.copy(s.pos);
+    const pose = d.pose, s = d.sense, k = a.k, b0 = a.beats?.[0];
+    const G = mouthGeo(d, _geo);
+    a.kick = Math.max(0, a.kick - dt * 8);
+    if (a.phase !== 'recovery') d.turnToward(s.yawTo, d.turnRate, dt);
     if (a.phase === 'windup') {
-      // the head draws back and up, the jaws fill with a cold blue light
-      d.turnToward(s.yawTo, d.turnRate, dt);
-      pose.head = d.rootPt(pose.headTarget, 0, 4.6 + 0.6 * k, 2.6);
-      pose.headRate = 5;
-      pose.jaw = 0.2 + 0.6 * k;
-      pose.swell = k;
-      pose.spread[0] = pose.spread[1] = 0.7;
-      pose.spreadRate = 3;
-      pose.restep = 1;
-      d.throat = 0.5 * k;
-      a.acc += dt * (6 + 20 * k);
-      while (a.acc >= 1) {
-        a.acc -= 1;
-        BFX.muzzle(d.fx, pt.mouth.x, pt.mouth.y, pt.mouth.z, -pt.headFwd.x, -pt.headFwd.z, 1, true);
+      // a flick: the neck draws back and the head cocks, the jaw cracks, sparks in the teeth
+      aimHead(d, s.yawTo, Math.max(0.6, reachFor(d, 2.4) - 0.9 * k), 0.25 * k, G.D, s.pos);
+      pose.headRate = 12;
+      pose.jaw = 0.15 + 0.35 * k;
+      pose.swell = 0.5 * k;
+      d.throat = 0.8 * k;
+      charge(d, dt, 0.5 * k);
+      if (b0 && !b0.flashed && Number.isFinite(G.D)) {
+        b0.impactIn = Math.max(0.05, a.list[0][1] + Math.max(0, G.D - BK.ember.r - playerR(d.game)) / CS.speed);
       }
-      if (b0 && !b0.flashed && Number.isFinite(s.dist)) b0.impactIn = Math.max(0.05, a.list[0][1] + WS.first + s.dist / WS.leadSpeed);
     } else if (a.phase === 'cast') {
-      roarPose(d, a, 0.5);
-      d.throat = 0.6;
+      aimHead(d, s.yawTo, reachFor(d, 2.4), -0.1, G.D, s.pos);
+      pose.headRate = 16;
+      pose.jaw = 1;
+      pose.jawRate = 28;
+      d.throat = 1;
+      pose.headOffset.y += a.kick * 0.35 * S;
     } else {
-      pose.spread[0] = pose.spread[1] = REST_SPREAD;
-      pose.spreadRate = 3;
       pose.jaw = 0.3 * (1 - k);
-      d.throat = 0;
+      d.throat = Math.max(0, 0.6 - 2 * k);
+      pose.restep = 1;
     }
-    headline(d, a, BULLET.WISP);
+    headline(d, a, BULLET.EMBER);
+  },
+  hit(d, a) {
+    if (a.phase !== 'cast') return;
+    const pt = d.rig.pt, m = pt.mouth, f = pt.headFwd;
+    // even counts: one ember on him and one beside (q = 0, 1); the second spit half a spacing over
+    const even = !(a.n & 1);
+    if (a.shots === 0) {
+      a.shots = 1;
+      cone(d, 'cinderSpit', BULLET.EMBER, a.n, (CS.spread * (a.n - 1)) / 2, CS.speed, even ? 0.5 : 0, a.grp, CS.life, true);
+      BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, 9);
+      a.kick = 1;
+      d.game.shake?.(0.1);
+    } else if (a.shots === 1 && a.two && a.t >= CS.twiceGap) {
+      a.shots = 2;
+      cone(d, 'cinderSpit', BULLET.EMBER, a.n, (CS.spread * (a.n - 1)) / 2, CS.speed, even ? 0 : 0.5, a.grp, CS.life);
+      BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, 7);
+      a.kick = 1;
+    }
   },
   end(d, a, interrupted) {
     d.throat = 0;
-    flush(d, a, interrupted, BULLET.WISP);
+    flush(d, a, interrupted, BULLET.EMBER);
   },
 };
 
-// ------------------------------------------------------------------ scouring breath
-/** n tongue offsets evenly over [-spread, spread] round the head's aim. */
-function tongueOffs(n, spread) {
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(n > 1 ? -spread + (2 * spread * i) / (n - 1) : 0);
-  return out;
+// ------------------------------------------------------------------ ember rain
+const _land = { x: 0, z: 0 };
+
+const emberRain = {
+  name: 'emberRain',
+  cooldown: ER.cooldown,
+  phases: (d) => {
+    const n = perPhase(ER.volleys, d.phase) | 0;
+    return [['windup', wind(d, ER.windup)], ['cast', n * perPhase(ER.gap, d.phase) + 0.2], ['recovery', wind(d, ER.recovery)]];
+  },
+  beats: (d, a) => [beat('emberRain', 0, a.list[0][1] + perPhase(ER.flight, d.phase), ER, 'bullet')],
+  weight: (d, s) => (s.dist >= ER.minDist && s.dist <= ER.maxDist ? wPhase(ER, d) : 0),
+  start(d, a) {
+    a.grp = d.bullets.group(ER.maxHits);
+    a.n = perPhase(ER.volleys, d.phase) | 0;
+    a.gap = perPhase(ER.gap, d.phase);
+    a.ring = perPhase(ER.ring, d.phase) | 0;
+    a.ring2 = perPhase(ER.ring2, d.phase) | 0;
+    a.fl = perPhase(ER.flight, d.phase);
+    a.lead = perPhase(ER.lead, d.phase) || 0;
+    a.rot = Math.random() * Math.PI * 2;
+    a.vi = 0;
+    a.kick = 0;
+    a.covered = false;
+  },
+  enter(d, a, phase) {
+    if (phase === 'cast') d.emit('dragon:spell', { name: 'emberRain', x: d.position.x, z: d.position.z });
+  },
+  update(d, a, dt) {
+    const pose = d.pose, s = d.sense, k = a.k, b0 = a.beats?.[0], pt = d.rig.pt;
+    const G = mouthGeo(d, _geo);
+    a.kick = Math.max(0, a.kick - dt * 5);
+    if (a.phase !== 'recovery') d.turnToward(s.yawTo, d.turnRate, dt);
+    plantPose(d, 0.6);
+    if (a.phase === 'windup' || a.phase === 'cast') {
+      // reared on its haunches, the neck thrown up and back: it coughs at the sky over the hero
+      const up = a.phase === 'windup' ? k : 1;
+      aimHead(d, s.yawTo, 1.7 - 0.5 * up, 0.4 + 1.5 * up, G.D);
+      pose.look.set(pt.mouth.x + Math.sin(s.yawTo) * 4, pt.mouth.y + 6 + 4 * up, pt.mouth.z + Math.cos(s.yawTo) * 4);
+      pose.lookDown = 0;
+      pose.pitch = -0.1 * up;
+      pose.rear = 0.25 * up;
+      pose.headOffset.y += a.kick * 0.5 * S;
+      pose.jaw = a.phase === 'windup' ? 0.2 + 0.5 * k : a.kick > 0.4 ? 1 : 0.55;
+      pose.jawRate = 20;
+      pose.swell = a.phase === 'windup' ? k : 0.8 + 0.2 * a.kick;
+      d.throat = a.phase === 'windup' ? k : 0.8;
+      if (a.phase === 'windup') charge(d, dt, k);
+      if (b0 && !b0.flashed && a.phase === 'windup') b0.impactIn = Math.max(0.05, a.list[0][1] + a.fl - 0.05);
+    } else {
+      pose.rear = 0.25 * (1 - k);
+      settlePose(d, k);
+    }
+    headline(d, a, BULLET.EMBER);
+  },
+  hit(d, a) {
+    if (a.phase !== 'cast' || a.vi >= a.n || a.t < a.vi * a.gap) return;
+    const B = d.bullets, pt = d.rig.pt, m = pt.mouth, p = d.sense.pos, v = d.sense.vel;
+    const i = a.vi++;
+    // the middle one falls where he stands (P3: a little ahead along his run), the rings round it
+    const lx = Number.isFinite(v?.x) ? v.x * a.lead : 0, lz = Number.isFinite(v?.z) ? v.z * a.lead : 0;
+    const cx = p.x + lx, cz = p.z + lz;
+    const b = B.lob('emberRain', m.x, m.y, m.z, cx, cz, a.fl, a.grp);
+    if (i === 0 && b) B.setLead(b);
+    const rot = a.rot + i * 0.55;
+    for (let j = 0; j < a.ring; j++) {
+      const t = rot + (j / a.ring) * Math.PI * 2;
+      _land.x = cx + Math.sin(t) * ER.ringR;
+      _land.z = cz + Math.cos(t) * ER.ringR;
+      B.lob('emberRain', m.x, m.y, m.z, _land.x, _land.z, a.fl + rand(-0.04, 0.06), a.grp);
+    }
+    for (let j = 0; j < a.ring2; j++) {
+      const t = rot + ((j + 0.5) / a.ring2) * Math.PI * 2;
+      B.lob('emberRain', m.x, m.y, m.z, cx + Math.sin(t) * ER.ring2R, cz + Math.cos(t) * ER.ring2R, a.fl + rand(0, 0.1), a.grp);
+    }
+    const f = pt.headFwd;
+    BFX.muzzle(d.fx, m.x, m.y, m.z, f.x * 0.5, f.z * 0.5, 16);
+    a.kick = 1;
+    d.game.shake?.(0.16);
+  },
+  end(d, a, interrupted) {
+    d.throat = 0;
+    flush(d, a, interrupted, BULLET.EMBER);
+  },
+};
+
+// ------------------------------------------------------------------ ground tongues (shared)
+/** The pivot every tongue of a breath runs out from (under the neck base) and r0 (where it strikes). */
+function scourPivot(d, a, spec) {
+  const nb = d.rig.pt.neckBase;
+  a.px = nb.x;
+  a.pz = nb.z;
+  a.r0 = spec.reach * S + MOUTH_AHEAD + spec.strike;
 }
 
-/** Body turn rate (rad/s, signed) u s into the cast of `dur` s: ramp, sweep, pause + reversal, fade. */
-function scourRate(a, u, dur) {
-  const rv = FW.reverseAt * dur;
-  let om;
-  if (u < rv) om = a.dir * FW.speed * smoothstep(0, FW.ramp, u);
-  else if (u < rv + FW.pause) om = 0; // the head stops: the reversal's telegraph
-  else om = -a.dir * FW.speed * smoothstep(rv + FW.pause, rv + FW.pause + FW.ramp, u);
-  return om * (1 - smoothstep(dur - 0.4, dur, u));
+/** A first-touch estimate (s from now) of a plan against the standing hero, for the headline beat. */
+function planEstimate(d, a, times, angs, spec) {
+  const p = d.sense.pos, hr = playerR(d.game);
+  const dx = p.x - a.px, dz = p.z - a.pz, r = Math.hypot(dx, dz), th = Math.atan2(dx, dz);
+  if (!Number.isFinite(r + th) || r < a.r0 - hr) return times[0] + 1;
+  const half = Math.asin(Math.min(1, (spec.width / 2 + hr / 2) / Math.max(r, 0.5)));
+  for (let i = 0; i < times.length; i++) {
+    if (Math.abs(angleDiff(angs[i], th)) <= half) return times[i] + Math.max(0, r - hr - a.r0) / spec.speed;
+  }
+  return times[0] + 1;
 }
+
+/** The headline beat of a tongue pattern: re-timed from the field's look-ahead until it flashes. */
+function scourHeadline(d, a) {
+  const b0 = a.beats?.[0], B = d.bullets;
+  if (!b0) return;
+  if (!b0.flashed) {
+    if (Number.isFinite(B.ttT)) b0.impactIn = Math.max(0.05, a.T - b0.at + B.ttT);
+  } else if (!a.covered) {
+    a.covered = true;
+    B.scourHeadlined();
+  }
+}
+
+// ------------------------------------------------------------------ scouring breath
+/** The rake's aim `u` s into the cast: eased from side to side, held at each stop. */
+function rakeAim(a, u) {
+  const per = a.rt + FW.pause;
+  let k = Math.floor(Math.max(0, u) / per);
+  let s = Math.max(0, u) - k * per;
+  if (k >= a.n) {
+    k = a.n - 1;
+    s = a.rt;
+  }
+  const dk = k & 1 ? -a.dir : a.dir;
+  const from = a.c - (dk * FW.arc) / 2;
+  return from + dk * FW.arc * easeInOutSine(clamp(s / a.rt, 0, 1));
+}
+/** True while the head holds still between two rakes (the breath drawn in). */
+const rakePaused = (a, u) => {
+  const per = a.rt + FW.pause;
+  const s = u - Math.floor(u / per) * per;
+  return s > a.rt || u >= a.n * per - FW.pause; // (and the tail after the last rake)
+};
 
 const fireWheel = {
   name: 'fireWheel',
   cooldown: FW.cooldown,
-  phases: (d) => [['windup', wind(d, FW.windup)], ['cast', perPhase(FW.dur, d.phase)], ['recovery', wind(d, FW.recovery)]],
-  beats: (d, a) => [beat('fireWheel', 0, a.list[0][1] + 1, FW, 'mouth')],
-  weight: (d, s) => (s.dist <= FW.maxDist ? wPhase(FW, d) : 0),
+  phases: (d) => {
+    const n = perPhase(FW.rakes, d.phase) | 0, rt = perPhase(FW.rakeTime, d.phase);
+    return [['windup', wind(d, FW.windup)], ['cast', n * rt + (n - 1) * FW.pause + 0.3], ['recovery', wind(d, FW.recovery)]];
+  },
+  beats: (d, a) => [beat('fireWheel', 0, a.est ?? a.list[0][1] + 1, FW, 'mouth')],
+  weight: (d, s) => (s.dist >= FW.minDist && s.dist <= FW.maxDist ? wPhase(FW, d) : 0),
   start(d, a) {
-    const pt = d.rig.pt;
-    a.n = Math.max(1, perPhase(FW.tongues, d.phase) | 0);
-    a.spread = perPhase(FW.spread, d.phase);
+    a.n = Math.max(1, perPhase(FW.rakes, d.phase) | 0);
+    a.rt = perPhase(FW.rakeTime, d.phase);
     a.dir = Math.random() < 0.5 ? 1 : -1;
-    // the wedge catches beside the hero (its leading tongue FW.lead short of him) and sweeps onto him
-    a.yaw0 = d.sense.yawTo - a.dir * (a.spread + FW.lead);
-    a.om = 0;
+    scourPivot(d, a, FW);
+    const p = d.sense.pos;
+    a.c = Math.atan2(p.x - a.px, p.z - a.pz); // the arc is centred on the hero
+    if (!Number.isFinite(a.c)) a.c = d.yaw;
+    // the plan: a tongue every `every` s along each rake (the rake back shifted into the gaps)
+    // the plan: `tongues` lines evenly over the arc (the middle one on the hero), each released as
+    // the eased rake passes it; the rake back lays its tongues `interleave` of a step into the gaps
+    const W = a.list[0][1], m = Math.max(2, perPhase(FW.tongues, d.phase) | 0), il = perPhase(FW.interleave, d.phase);
+    const times = [], angs = [];
+    for (let k = 0; k < a.n; k++) {
+      const t0 = k * (a.rt + FW.pause), dk = k & 1 ? -a.dir : a.dir, from = a.c - (dk * FW.arc) / 2;
+      const sh = k & 1 ? il : 0;
+      for (let i = 0; i + sh <= m - 1 + 1e-6 && times.length < 64; i++) {
+        const u = (i + sh) / (m - 1); // share of the arc; the eased aim reaches it at s = rt x acos(1 - 2u) / pi
+        times.push(W + t0 + (a.rt * Math.acos(clamp(1 - 2 * u, -1, 1))) / Math.PI);
+        angs.push(from + dk * FW.arc * u);
+      }
+    }
+    a.est = planEstimate(d, a, times, angs, FW);
     a.u = 0;
-    a.swept = 0;
+    a.aim = rakeAim(a, 0);
+    a.covered = false;
     a.breathing = false;
-    d.bullets.startWheel({
-      attack: 'fireWheel', x: pt.mouth.x, z: pt.mouth.z, n: a.n, offs: tongueOffs(a.n, a.spread), ang: headYaw(d), dir: a.dir,
-      warn: a.list[0][1], dur: a.list[1][1], speed: FW.speed, r0: FW.r0, r1: FW.r1, width: FW.width,
-      damage: FW.damage, burn: FW.burn, knockback: FW.knockback, max: FW.maxHits, headline: true,
+    a.warm = { hold: 0, acc4: 0, heatT: 0 };
+    d.bullets.scour({
+      attack: 'fireWheel', x: a.px, z: a.pz, times, angs, r0: a.r0, r1: FW.r1, speed: FW.speed, hold: perPhase(FW.hold, d.phase),
+      width: FW.width, damage: FW.damage, burn: FW.burn, knockback: FW.knockback, grp: d.bullets.group(FW.maxHits), headline: true,
     });
   },
   enter(d, a, phase) {
@@ -641,61 +864,46 @@ const fireWheel = {
     }
   },
   update(d, a, dt) {
-    const pose = d.pose, k = a.k, b0 = a.beats?.[0], w = d.bullets.wheel;
-    const G = mouthGeo(d, _geo);
-    if (b0 && !b0.flashed) {
-      if (a.phase === 'windup') {
-        // the leading tongue's angle to run onto the hero, at the ramped speed
-        const lead = a.yaw0 + a.dir * a.spread;
-        if (Number.isFinite(G.D) && G.D > 0.5) {
-          const gap = a.dir * angleDiff(lead, G.th);
-          const half = Math.asin(Math.min(1, (FW.width / 2 + playerR(d.game) / 2) / G.D));
-          b0.impactIn = Math.max(0.05, a.list[0][1] + 0.5 * FW.ramp + Math.max(0.1, gap - half) / FW.speed);
-        }
-      } else if (w.on && Number.isFinite(w.tt) && w.tt >= 0) b0.impactIn = Math.max(0.05, a.T - b0.at + w.tt);
-    } else if (w.headline) {
-      w.headline = false; // from here on the wheel cues its own tongues
-      w.cueT = d.bullets.time;
-    }
+    const pose = d.pose, k = a.k;
+    scourHeadline(d, a);
     if (a.phase === 'windup') {
-      // turns to aim beside the hero, crouches, the head reaches low: the throat charges
-      d.turnToward(a.yaw0, d.turnRate, dt);
+      // braces facing the middle of the arc, crouches; the head swings low to where the rake starts:
+      // the throat charges, the ground there warms
+      d.turnToward(a.c, d.turnRate, dt);
       plantPose(d, k);
-      aimHead(d, a.yaw0, FW.reach - 0.6 * (1 - k), FW.dy + 0.3 * (1 - k), FW.strike);
+      a.aim = rakeAim(a, 0);
+      aimHead(d, a.aim, FW.reach - 0.6 * (1 - k), FW.dy + 0.3 * (1 - k), a.r0);
       pose.jaw = 0.3 + 0.5 * k;
       pose.swell = k;
       d.throat = k;
       charge(d, dt, k);
+      BFX.strikeWarn(d.fx, a.warm, dt, a.px + Math.sin(a.aim) * a.r0, a.pz + Math.cos(a.aim) * a.r0, 1.4, 0.3 + 0.6 * k);
     } else if (a.phase === 'cast') {
-      // the breath strikes the ground; the body turns it round (the head held straight on)
+      // braced: the neck rakes the breath across the ground, the body still
       a.u += dt;
-      a.om = scourRate(a, a.u, a.list[1][1]);
-      a.swept += Math.abs(a.om) * dt;
-      d.yaw = wrapAngle(d.yaw + a.om * dt);
-      pose.bodyRate = 12;
+      a.aim = rakeAim(a, a.u);
+      const held = rakePaused(a, a.u);
       plantPose(d, 1);
-      aimHead(d, d.yaw, FW.reach, FW.dy, FW.strike);
-      pose.jaw = 0.95;
-      pose.swell = 1;
+      aimHead(d, a.aim, FW.reach, FW.dy + (held ? 0.25 : 0), a.r0);
+      pose.jaw = held ? 0.55 : 0.95;
+      pose.jawRate = 14;
+      pose.swell = held ? 0.7 : 1;
       d.throat = 1;
     } else {
-      a.om = 0;
       plantPose(d, 1 - k);
       settlePose(d, k);
     }
   },
-  // (after the rig: the tongues ride the head as drawn; their root is the mouth's ground projection)
+  // (after the rig: the breath pours from the jaws as drawn down to the line its tongues run along)
   hit(d, a, dt) {
-    const pt = d.rig.pt, m = pt.mouth, f = pt.headFwd;
-    d.bullets.aimWheel(m.x, m.z, headYaw(d), a.phase === 'cast' ? a.om : 0, d.position.x, d.position.z);
-    if (a.phase === 'cast') {
-      const fl = Math.hypot(f.x, f.z) || 1;
-      BFX.breathBeam(d.fx, m, m.x + (f.x / fl) * FW.strike, m.z + (f.z / fl) * FW.strike, dt);
-    }
+    if (a.phase !== 'cast') return;
+    const m = d.rig.pt.mouth;
+    const held = rakePaused(a, a.u);
+    BFX.breathBeam(d.fx, m, a.px + Math.sin(a.aim) * a.r0, a.pz + Math.cos(a.aim) * a.r0, dt, held ? 0.3 : 1);
   },
   end(d, a, interrupted) {
     d.throat = 0;
-    d.bullets.stopWheel();
+    d.bullets.stopScour();
     if (a.breathing) {
       a.breathing = false;
       d.emit('dragon:breathEnd');
@@ -704,4 +912,106 @@ const fireWheel = {
   },
 };
 
-export const BULLET_HELL = { emberStorm, fanVolley, wispSwarm, fireWheel };
+// ------------------------------------------------------------------ cinder lanes
+const fireLanes = {
+  name: 'fireLanes',
+  cooldown: CL.cooldown,
+  phases: (d) => {
+    const n = perPhase(CL.strikes, d.phase) | 0, g = perPhase(CL.strikeGap, d.phase);
+    return [['windup', wind(d, CL.windup)], ['cast', (n - 1) * g + 0.55], ['recovery', wind(d, CL.recovery)]];
+  },
+  beats: (d, a) => [beat('fireLanes', 0, a.est ?? a.list[0][1] + 1, CL, 'mouth')],
+  weight: (d, s) => (s.dist >= CL.minDist && s.dist <= CL.maxDist ? wPhase(CL, d) : 0),
+  start(d, a) {
+    a.n = Math.max(1, perPhase(CL.strikes, d.phase) | 0);
+    a.g = perPhase(CL.strikeGap, d.phase);
+    scourPivot(d, a, CL);
+    const p = d.sense.pos;
+    a.c = Math.atan2(p.x - a.px, p.z - a.pz);
+    if (!Number.isFinite(a.c)) a.c = d.yaw;
+    a.flip = Math.random() < 0.5; // (the pattern read left to right or right to left)
+    const W = a.list[0][1], times = [], angs = [];
+    for (let j = 0; j < a.n; j++) {
+      const lit = CL.pattern[j % CL.pattern.length];
+      for (let i = 0; i < CL.lanes; i++) {
+        if (!((lit >> i) & 1)) continue;
+        const lane = a.c + (a.flip ? -1 : 1) * (i - (CL.lanes - 1) / 2) * CL.laneGap;
+        for (let b = 0; b < CL.band; b++) {
+          times.push(W + j * a.g);
+          angs.push(lane + (b - (CL.band - 1) / 2) * CL.bandGap);
+        }
+      }
+    }
+    a.est = planEstimate(d, a, times, angs, CL);
+    a.si = 0;
+    a.kick = 0;
+    a.covered = false;
+    a.warm = { hold: 0, acc4: 0, heatT: 0 };
+    d.bullets.scour({
+      attack: 'fireLanes', x: a.px, z: a.pz, times, angs, r0: a.r0, r1: CL.r1, speed: CL.speed, hold: CL.hold,
+      width: CL.width, damage: CL.damage, burn: CL.burn, knockback: CL.knockback, grp: d.bullets.group(CL.maxHits), headline: true,
+    });
+  },
+  enter(d, a, phase) {
+    if (phase === 'cast') {
+      d.emit('dragon:spell', { name: 'fireLanes', x: d.position.x, z: d.position.z });
+      d.emit('dragon:breathStart');
+      a.breathing = true;
+    } else if (phase === 'recovery' && a.breathing) {
+      a.breathing = false;
+      d.emit('dragon:breathEnd');
+    }
+  },
+  update(d, a, dt) {
+    const pose = d.pose, k = a.k;
+    scourHeadline(d, a);
+    a.kick = Math.max(0, a.kick - dt * 4);
+    const sx = a.px + Math.sin(a.c) * a.r0, sz = a.pz + Math.cos(a.c) * a.r0;
+    if (a.phase === 'windup') {
+      d.turnToward(a.c, d.turnRate, dt);
+      plantPose(d, k);
+      // the head drawn up and back, then down: it will drive the breath into the ground at its feet
+      aimHead(d, a.c, CL.reach - 0.4 * k, CL.dy + 1.4 * (1 - k) + 0.6 * Math.sin(Math.PI * k), a.r0);
+      pose.jaw = 0.3 + 0.5 * k;
+      pose.swell = k;
+      d.throat = k;
+      charge(d, dt, k);
+      BFX.strikeWarn(d.fx, a.warm, dt, sx, sz, 1.8, 0.3 + 0.6 * k);
+    } else if (a.phase === 'cast') {
+      // each strike: the head lifts (between) and slams the breath down (on the strike)
+      const next = a.si * a.g;
+      if (a.si < a.n && a.t >= next) {
+        a.si++;
+        a.kick = 1;
+        d.game.shake?.(0.35);
+      }
+      const until = a.si < a.n ? a.si * a.g - a.t : 9;
+      const lift = a.kick > 0.5 ? 0 : clamp(1 - until / 0.45, 0, 1) * 0.6 + (1 - a.kick) * 0.4;
+      plantPose(d, 1);
+      aimHead(d, a.c, CL.reach, CL.dy + 0.9 * lift, a.r0);
+      pose.jaw = a.kick > 0.3 ? 1 : 0.4 + 0.3 * lift;
+      pose.jawRate = 22;
+      pose.swell = 0.8 + 0.2 * a.kick;
+      d.throat = 1;
+    } else {
+      plantPose(d, 1 - k);
+      settlePose(d, k);
+    }
+  },
+  hit(d, a, dt) {
+    if (a.phase !== 'cast' || a.kick < 0.35) return;
+    const m = d.rig.pt.mouth;
+    BFX.breathBeam(d.fx, m, a.px + Math.sin(a.c) * a.r0, a.pz + Math.cos(a.c) * a.r0, dt, 1.4 * a.kick);
+  },
+  end(d, a, interrupted) {
+    d.throat = 0;
+    d.bullets.stopScour();
+    if (a.breathing) {
+      a.breathing = false;
+      d.emit('dragon:breathEnd');
+    }
+    flush(d, a, interrupted);
+  },
+};
+
+export const BULLET_HELL = { emberStorm, fanVolley, cinderSpit, emberRain, fireWheel, fireLanes };

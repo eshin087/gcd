@@ -4,7 +4,25 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty-eight pieces of work since 0.4.0:
+Forty-nine pieces of work since 0.4.0:
+- **The Cinder Wyrm fights harder, with its whole body** (2026-11-15, ADR-119). *Changed:* the wyrm
+  gives far fewer pauses and its attacks flow into each other: about 34 tells a minute in phase 1,
+  59 in phase 2 and 78 in phase 3 (26, 42 and 45 before), with the same damage per hit. It now picks
+  from a mix of claws, jaws, wings, tail, fire, flight and terrain, meets a hero who rolls behind it
+  with its tail, and drops small fire of its own from phase 2. The fire breath comes from a braced
+  stance and is redrawn as a widening torrent; the shock rings are rolling fronts of fire and dust
+  that slow and tear instead of thin circles; the apocalypse has columns of fire, a burning sky and
+  meteors with bodies. Thrown trees and boulders take about 1.5 s instead of 3, are torn out with the
+  whole body, and show no landing mark: the red flash on the flying piece is the cue. *Added:* six
+  attack types (wing sweep, wing slam, tail whip, tail slam, a bite that ends in fire, a burning claw
+  rake) in seven new combos, the longest nine hits in phase 3; three flying combos of two, three and
+  four attacks in one flight; Cinder spit, Ember rain and Fire lanes; more flame rings and a second
+  flame wall in later phases. The whole clearing breaks: 183 objects instead of 80, the wyrm fells
+  trees by charging, sweeping its tail, landing and flying low, wreckage stays on the ground for the
+  rest of the fight, and fire spreads from tree to tree. *Removed:* the blue homing wisps, and the
+  spinning in the Scouring breath (now fire that crawls along the ground in tongues) and the Ember
+  torrent. The shock ring, the fire breath and the apocalypse are the owner's pick of three looks
+  each (a for all three); `?ring=`, `?breath=` and `?apoc=` (b or c) show the two turned down.
 - **Red, blue and black flashes: dodge, parry, and a charged blow** (2026-11-15, ADR-118). *Changed:*
   a boss's dodge-only attack no longer glows red while it winds up and no longer draws a red ring on
   the floor. Its only sign is **a red flash**: a wide streak of light through the weapon, across the

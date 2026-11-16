@@ -8,6 +8,9 @@ import { TELL } from '../combat/rules.js';
 //   world.fire.ignite(x, z, r, k = 1)   light the grass in a disc; returns the cells that caught
 //   world.fire.burning(x, z)            seconds this spot still burns (0 = not alight)
 //   world.fire.count                    cells alight now
+//   world.fire.hush(x, z, r, sec)       a live fire body (the wyrm's breath) covers this disc: the grass's
+//                                       flames under it burn low for `sec` s (they would add up with it
+//                                       into white knots that bury its look); refreshed by the caller
 //   world.fire.reset()
 //
 // It lives on the scorch map's grid (world/scorch.js: 0.625 m cells): a burning cell holds the map's
@@ -40,6 +43,10 @@ export class GroundFire {
     this._tick = 0;
     this._lightT = 0;
     this._blob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.5, size: 1, sizeEnd: 0.3, heat: 0.5, heatEnd: 0, drag: 1.1, gravity: 0, kind: 'fire' }; // the fire field's reused record
+    // hushed discs (hush()): a small ring of { x, z, r2, until } in a flat array (no allocation)
+    this._hush = new Float32Array(FIRE.hush.slots * 4);
+    this._hushN = 0;
+    this._time = 0;
     this._hit = {
       damage: FIRE.damage, from: { x: 0, z: 0 }, knockback: 0, knockdown: false, kind: 'fire', burn: 0,
       tell: TELL.NORMAL, parryable: false, blockable: true, attack: 'groundFire', attacker: null,
@@ -87,11 +94,35 @@ export class GroundFire {
       // one light per blaze, not per cell (and not more often than every 0.25 s)
       if (this._lightT <= 0) {
         this._lightT = 0.25;
-        this.game.lights?.add?.({ x, y: 1.2, z, color: [1.0, 0.42, 0.1], intensity: 2.2, radius: r + 6, life: FIRE.life[1] * k, fade: 1.4, flicker: 0.5 });
+        // (a local glow over the blaze, FIRE.glow: it was r + 6 m at 2.2, a flood that washed out the
+        // burning cells' own pattern)
+        this.game.lights?.add?.({ x, y: 1.2, z, color: [1.0, 0.42, 0.1], intensity: FIRE.glow.intensity, radius: Math.min(FIRE.glow.max, r + FIRE.glow.pad), life: FIRE.life[1] * k, fade: 1.4, flicker: 0.5 });
       }
       this.game.events?.emit?.('world:fire', { x, z, radius: r, cells: lit });
     }
     return lit;
+  }
+
+  /** A live fire body covers the disc (x, z, r) for `sec` s: the grass's flames under it burn low. */
+  hush(x, z, r, sec = 0.3) {
+    if (!Number.isFinite(x + z + r + sec) || !(r > 0)) return;
+    const H = this._hush, k = (this._hushN++ % FIRE.hush.slots) * 4;
+    H[k] = x;
+    H[k + 1] = z;
+    H[k + 2] = r * r;
+    H[k + 3] = this._time + sec;
+  }
+
+  /** The flames' strength at (x, z): FIRE.hush.k under a hushed disc, else 1. */
+  _hushed(x, z) {
+    const H = this._hush, t = this._time, n = Math.min(this._hushN, FIRE.hush.slots);
+    for (let j = 0; j < n; j++) {
+      const k = j * 4;
+      if (H[k + 3] < t) continue;
+      const dx = x - H[k], dz = z - H[k + 1];
+      if (dx * dx + dz * dz <= H[k + 2]) return FIRE.hush.k;
+    }
+    return 1;
   }
 
   /**
@@ -127,9 +158,11 @@ export class GroundFire {
     this.count = 0;
     this._flame = 0;
     this._tick = 0;
+    this._hushN = 0;
   }
 
   update(dt) {
+    if (dt > 0) this._time += dt;
     if (this._lightT > 0) this._lightT -= dt;
     if (this._tick > 0) this._tick -= dt;
     if (!this.count) return;
@@ -176,6 +209,13 @@ export class GroundFire {
         b.size = (1.1 + hot * 0.7) * (0.7 + 0.3 * tall);
         b.sizeEnd = 0.3;
         b.heat = 0.46 + hot * 0.14;
+        // (under a live breath: low and cool, the breath's own fire is the body there)
+        const q = this._hushN ? this._hushed(b.x, b.z) : 1;
+        if (q < 1) {
+          b.heat *= q;
+          b.size *= 0.5 + 0.5 * q;
+          b.vy *= q;
+        }
         fx.spawn(b);
       }
     }

@@ -33,12 +33,17 @@ export class Colliders {
 
   /**
    * Push a moving circle (pos.x/pos.z, radius) out of all colliders and keep it within `bound`
-   * (radius around the origin). Mutates pos. Returns true if any correction happened.
+   * (radius around the origin). Mutates pos. Returns true if any correction happened. `soft`: pass
+   * through the circles marked `soft` (the trunks and stumps of breakable wood: the wyrm's body
+   * ploughs through them and fells them instead of being turned; world/destructibles.js marks them).
    */
-  resolve(pos, radius, bound = Infinity) {
+  resolve(pos, radius, bound = Infinity, soft = false) {
     let hit = false;
+    const C = this.circles;
     for (let iter = 0; iter < 2; iter++) {
-      for (const c of this.circles) {
+      for (let i = 0; i < C.length; i++) {
+        const c = C[i];
+        if (soft && c.soft) continue;
         const dx = pos.x - c.x, dz = pos.z - c.z;
         const min = radius + c.r;
         const d2 = dx * dx + dz * dz;

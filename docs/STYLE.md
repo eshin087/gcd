@@ -31,7 +31,8 @@ the wyrm next to it, it is wrong, however good it looks alone.
 | A background object: stone, metal, bone, a wall, a pillar, a statue, a building, a prop | `createPropArtMaterial` on geometry with `carve()` attributes; or `FLAG.ART_PROP` in `paint()` for a prop in a set's `props` mesh | `createCarvedGlyphMaterial`, `FLAG.STONE` |
 | A big set piece | a builder in `world/landmarks.js`, pushed through `carved()` into the set's `stones` | a new material |
 | A creature, a boss, a character | `createSurfaceGlyphMaterial` with an art source, `FLAG.ART` (the wyrm's pass) | a new pass, a new font |
-| An effect | glyph particles (`fx.add` / `fx.alpha`) | meshes |
+| An effect that burns, glows or strikes as a body (fire, a spell, a bolt, a shock front, a timing cue) | heat in the fire field (`game.fx.fire`; for the wyrm, `fx._blob` and its engines `_shock` / `breathBody`, below) | meshes, big glyph sprites |
+| Something small that flies on its own (an ember, a spark, dust, a chip) | glyph particles (`fx.add` / `fx.alpha`), about one letter cell | meshes |
 
 **What is NOT in this look, on purpose (do not "fix" it):**
 - **The hero and the two human bosses** keep their ink-line art on a 4 px dot matrix. The owner:
@@ -60,6 +61,13 @@ the wyrm next to it, it is wrong, however good it looks alone.
 - Debris, dust, embers, the red strip under a falling piece and the marks a blow leaves are
   **glyph particles** from the world atlas; the flames are heat in the fire field (below). No
   debris meshes, no decals, no textures.
+- **Wreckage** (2026-11-15, ADR-119: felled trunks, burnt logs, rubble piles that lie until the
+  reset) is solid, so it is drawn like every background object: prop art (`createPropArtMaterial`,
+  the breakables' prop twin), from fixed pools of meshes in the breakables' rigid batch. A burnt log
+  is black (its ember glow is the scorch map's under it) and smoulders in the fire field; when a pool
+  is full the oldest piece sinks into the ground. A crater (a blow of power 1.2 or more) is a rim of
+  thrown-up earth glyphs and a charred disc of the scorch map. Burning wood lights only a local glow
+  (5 m) so the fire on the ground stays readable.
 
 **Effects (ADR-113).** Anything that burns, glows or strikes as a body is HEAT IN THE FIRE FIELD
 (`game.fx.fire`), printed in the same small letters as the wyrm: never a big glyph sprite. Read
@@ -507,9 +515,10 @@ grid. Now (`render/fireField.js`, `render/firePalettes.js`):
 - **Timing cues, one design for every boss** (COMBAT.md "Tell presentation"): a white cross written
   on the grid; a larger eight-point star with a ring; a ragged red blaze with no straight line in it.
 - **What stays a glyph particle:** embers, sparks, dust, rocks, debris, about one cell in size (0.2
-  to 0.4) and few. Also, for now: the hero's effects, the wyrm's blue and red wisps and orbs (their
-  colours are signals), the Lord's red blade, `combat/clashFx.js`.
-- **Bullets:** an ember is a small ball of fire round a gold `*`, with a burning tail.
+  to 0.4) and few. Also, for now: the hero's effects, the wyrm's red orbs (their colour is a signal;
+  the blue wisps are gone, ADR-119), the Lord's red blade, `combat/clashFx.js`.
+- **Bullets:** an ember is a small ball of fire round a gold `*`, with a burning tail. A ground
+  tongue is one narrow line of fire (below, *Bullets, the ground tongues and the melee wakes*).
 
 ### Text effects (2026-11-15, ADR-113)
 Things only a world made of letters can do. One rule for all of them: **a loose letter is always
@@ -552,29 +561,47 @@ section), `player/fx.js` (the plunge).
   - **The edge comes late:** only in the last `flashLead` s a thin bright rim of `·`
     `[3.8,2.5,1.0]` sits on the true radius / band edge; on the flash the heat flares (hot sparks
     off the edge, a warm light). A lava pillar keeps a molten tint and shows a few `^` when hot.
-  - The live fire's leading edges (flame ring, wall) and the roar's `)` shock ring are fire orange,
-    not tell red.
-- **Meteors:** a white-hot `@` core in a `*` halo with `|` strokes laid along its screen motion, a
-  fire trail, smoke and its own light over a 0.75 s visible fall; the impact is a white flash, a
-  fire burst, flung rocks (`. , : ; o`), a ring of `)` shock strokes, dust, scorch and a smouldering
-  crater.
-- **Armageddon** (2026-11-11, ADR-053): the rear-up glows red on the body and streams embers up off
-  the jaws; the salvo is white-hot `@` bolts with long orange `|` trails shot straight up out of the
-  mouth until they leave the view (`fx.launchBolt`); then the sky answers: the shared ambient and fog
-  colours warm a little (`world.atmosphere.skyGlow`), kept subtle because at the phone camera the
-  fog fills most of the frame. Its meteors are drawn 1.3× (the great one 2.4×) and fall on a slant
-  from the sky above the wyrm; only every other one carries a light. P3 craters burn hard (twice the
-  flames) while they hurt. The great meteor's impact adds a second slow shock ring, a column of fire
-  and a 26 m white light.
+  - The live fire's leading edges (flame ring, wall) are a thin hot line in the fire field and the
+    roar's ring is a shock front (*Shock fronts, the breath and the sky*, below): fire orange and
+    dust, never tell red.
+  - **Thrown terrain shows nothing on the ground** (ADR-119, the owner's choice): its cue is the flare
+    drawn on the flying piece. Ambient cinders, eruption pools and every other hazard keep the heat.
+- **Meteors** (2026-11-15, `skyFx.js`): the head is a body of fire, cooler blobs tumbling round a
+  small heart, with a long hanging tail and smoke, over a visible fall; the strike is a ball of fire,
+  a ground wave (a shock front), a cone of rock and dirt thrown up, a column of smoke, and a crater
+  that smoulders (P3: burns hard while it hurts). Until then: a white-hot `@` core in a `*` halo with
+  `|` strokes and a ring of `)` shock strokes at the impact.
+- **Armageddon** (2026-11-11, ADR-053; reworked 2026-11-15, ADR-119, `skyFx.js`): a beat of menace
+  (low, still, glaring), then the weight goes back onto the haunches, the wings unfurl, the chest and
+  the throat fill with fire (`skyThroat`), and it tears a dozen **columns** of fire up into the sky,
+  each kicking through the whole body: a column is a tumbling head of fire whose tail hangs where it
+  passed, so the column stands for a moment (`skyBolt`; the white `@` bolts of `fx.launchBolt` are no
+  longer used). Then **the sky answers**: a burning cloud deck spreads along the top of the frame from
+  over the cast (`skyDeck`: drawn on a plane above the fight, placed along the camera's own rays so it
+  stays in view), rents of light tearing open in it, embers raining out of it, while the shared
+  ambient and fog colours warm a little (`world.atmosphere.skyGlow`, kept subtle: at the phone camera
+  the fog fills most of the frame). It drops onto its forefeet with a slam. Its meteors are drawn 1.3×
+  (the great one 2.4×) and fall on a slant from the sky above the wyrm. **Three looks** behind
+  `?apoc=a|b|c` (`skyFx.APOC_LOOK`): a the salvo of columns (the default), b one sustained pillar
+  roared straight up with the ceiling spreading from its top (`skyPillar`), c it takes off and tears
+  the salvo up from the air in a wider fan, the deck right over it. **The owner kept a** (2026-11-16;
+  b and c stay behind the switch).
 - **Lava pillars:** before the eruption the ground cracks glow and spit sparks (`~ ^ ,`), faster as
   it nears; then a column of molten `# % @ & ! |`, droplets (`. o •`) and a `~` splash ring.
-- **Flames** on strips, rings and walls: tall `^ * # % &` and low `^ ~ *` fire behind a red leading
-  edge; the fresh front burns tallest, and the ground scorches as it passes.
+- **Flames** on strips, rings and walls are heat in the fire field: a bed of blobs that overlap into
+  one body of fire as wide as it hurts; the fresh front burns tallest and hottest (a ring's and a
+  wall's leading edge a thin hot line) and scorches as it runs; smoke rolls off it, and a **hem** of
+  low red licks and embers stands where it passed and dies out (the smoulder). Until 2026-11-15: tall
+  `^ * # % &` glyphs behind a red leading edge. A pillar's pool and a fire blow's burning strip are
+  the same fire, smaller and lower.
 - **Casts and flight:** (the old meteor cast spat one fireball straight up: Armageddon's salvo above); fire swirls in round the wyrm
-  before a flame ring; the nova's 2.5 s charge sucks embers onto the chest with contracting `)`
-  rings and glowing cracks round its feet, then shock rings race out with a white flash and a fire
-  storm; the sky strafe streams fire from the mouth onto the ground ahead; low wingbeats blast dust
-  rings and flatten the grass; the dive's crash throws `)` shock strokes, fire, rocks and dust.
+  before a flame ring; the nova's 2.5 s charge sucks embers and flame onto the chest with rings of
+  air contracting onto it (crisp steel ripples, not `)` strokes) and glowing cracks round its feet,
+  then three shock fronts roll out behind a white flash and a fire storm; the sky strafe and the
+  flying combos' passes stream the breath's own fire (`breathBody`) from the mouth onto the ground
+  ahead; low wingbeats blow dust and flatten the grass; a landing, a stomp, a leap, a hop and the tail
+  slam send a ground shock of dust (`groundShock`); the dive's crash two fronts of fire, flames flung
+  out low, rocks and a big dust cloud.
 - **Phase 3** burns white-hot: crack glow 0.8 and 50 body embers / s (phase 2: 0.5 and 22), a
   white-hot boss bar.
 - **The plunge** speaks the hero's cold language: a blue-white afterimage of his pose at the dodge
@@ -623,42 +650,104 @@ it into its characters.) Against a duelist the flurry's flare, crescent, hanging
 - **The deflect chain:** each parry in rhythm clashes bigger and brighter, with a crossed pair of
   sparking streaks from the second one.
 
-### Bullets, the fire wheel and the melee wakes (2026-11-09, ADR-039)
-Code: `dragon/bulletFx.js` (bullets, the wheel), `dragon/fx.js` (`clawTrail`, `slamBurst`, the breath),
-all glyph particles in the dragon's `add` / `alpha` pools.
-- **The additive rule.** `fx.add` sums overlapping glyphs, and the ASCII pass clips the sum to
-  white. Anything drawn as many overlapping glyphs (a breath stream, a wall of fire, a clash on top
-  of the hero's own parry burst) keeps each glyph dim and warm (gold `[4.4,2.5,0.6]` at 0.5–0.9,
-  orange `[3.2,1.1,0.2]`), so the sum reads as a yellow heart in an orange skin. White-hot colours
-  are for single small glyphs only (a cue glint, a spark). Two rounds of this session's fire were
-  white blobs before this rule: the fire wheel's spokes and the bullet deflect.
-- **Embers** are a gold-orange `*` / `o` head with a short trail of cooling sparks; **wisps** a
-  blue head (`[1.6,2.6,4.4]`) with a pale `~` tail, the only cold thing the wyrm throws (blue =
-  parry it); **orbs** a big red `@` in a dark-red halo (red = dodge). Sizes follow the hit radii
-  (0.32 / 0.4 / 0.62 m), so what you see is what hits.
-- **The cue glint:** a crisp cross on a bullet in its tell colour (white on an ember, moon-blue on a
-  wisp, red on an orb or a wheel spoke) 0.35 s before it lands. It is the one crisp bright mark in the field on purpose: it is the timing cue.
+### Shock fronts, the breath and the sky (2026-11-15, ADR-119)
+The owner: "his shock wave rings coming out looks really bad ... need to look realistic" and "him
+breathing out a cone of fire ... looks bad because the fire doesn't look realistic". Every shock ring
+was one evenly spaced circle of blobs living 0.3 s, and every breath was drawn its own way. Now two
+engines in `dragon/fx.js` draw them all, in the fire field, and new effects go through them:
+- **A shock front has a body** (`_shock`; the numbers per look are the `SHOCK` table). It is ragged:
+  its radius wanders round the ring (two waves of 3 and 5 lobes) and a weak stretch of it is left out
+  (a gap). It is fast at first and **slows** as it runs out (drag), so it piles up at its edge. Rows
+  of cooler fire and smoke follow behind the leading row; dust and grit are torn off the ground behind
+  it (one-letter grains), rocks are thrown, the ground glows then chars where it passed, a light
+  flashes, and a strong one sends a thin crisp **echo** ripple after it (steel: it prints as the
+  stroke that runs along it). A front can be mostly dust with a little heat (a landing, a stomp:
+  `groundShock`) or fire (a meteor, the nova: three fronts one behind the other). The roar is
+  pressure, not fire: ragged crisp ripples running out along the ground from under the head and the
+  dust they lift.
+- **Three looks of the ring** behind `?ring=a|b|c`: a a rolling wall of fire with a wall of dust behind
+  it (the default); b a pressure front written in crisp strokes on the ground, a dust skirt and echo
+  ripples; c the ground heaves: a ring of thrown earth, clods and stones running out, no fire but
+  where it started. **The owner kept a** (2026-11-16; b and c stay behind the switch).
+- **One breath** (`breathBody`) for every fire the wyrm breathes: the breath, the fire snap of its
+  strings, the strafe and the flying combos' passes (only the reach, the cone and the rate differ). It
+  fills its hit cone: a rod of small hot blobs at the jaws (the white heart, kept small), a body that
+  widens, slows and swells to the cone's far end, licks curling up off its rim, **billows** that roll
+  up and over where the fire has slowed, smoke over it, and a **splash** of flame where it meets the
+  ground, the ground left glowing. Each blob is born part-way along this frame's path, so nothing
+  beads. While it burns, the grass fire under the cone is hushed (`world.fire.hush`): the two fires
+  added up into white knots. **Three looks** behind `?breath=a|b|c`: a a torrent (the default), b
+  five lashing tongues that whip across the cone, c liquid fire: an arc that rains down onto the
+  ground and spreads there as a carpet of flame. **The owner kept a** (2026-11-16; b and c stay
+  behind the switch).
+- **The sky** of the apocalypse (`skyFx.js`): the columns, the burning deck and the meteors (above,
+  *Fire, hazards and the plunge* → Armageddon). Like the eclipse of a charged blow, it is drawn by
+  what is lit, never by a flat overlay.
+- **Dust** is one-letter grains thrown from anywhere inside its ring at their own speeds (never a
+  circle of them) and a low cloud of smoke in the field under them (`dustRing`).
+- **Fireball heads** are a knot of small blobs re-dealt every frame round the shell, a hot heart that
+  boils inside an orange skin with a ragged edge (two stacked hot blobs were a featureless white disc).
+  **Not right yet:** bright white-yellow knots remain in shell and fireball impacts and in the
+  torrent look of the breath (ADR-119).
+- **The whole body's blows** (`meleeFx.js`): the fire snap is a short fat gout of the breath with a
+  few licks and smoke left at the maw as it dies; the wing slam throws a fan of dust ahead and to both
+  sides (from phase 2 a low licking wave of heat along the ground), the tail slam bursts dust up along
+  its length and cracks the ground under its tip (with fire, flames spit up along the line); a raking
+  claw tears sparks off the toe (from phase 2 they burn), and a gust off the wings throws dust in a
+  fan.
+- **Terrain** (`terrainFx.js`): the chosen piece stirs (dust and grit shed off it), the tug makes grit
+  jump round its foot, the tear bursts roots, clods and dust out of the ground, the flying piece sheds
+  grit and leaves and smashes what it meets into splinters, the landing throws a spray on along the
+  way it flew, and a firebrand burns along its trunk in the jaws, in the air and where its wreck lies.
+  Nothing is drawn on the ground before it lands.
+
+### Bullets, the ground tongues and the melee wakes (2026-11-09, ADR-039; 2026-11-15, ADR-119)
+Code: `dragon/bulletFx.js` (bullets, the tongues), `dragon/fx.js` (`clawTrail`, `slamBurst`, the breath).
+What burns is heat in the fire field (the embers, the muzzle flashes, the breath driven into the
+ground and the tongues, a lobbed ember's splash); the orb stays a glyph mark (its red is a combat
+signal the field has no kind for); sparks, peeling embers and motes are glyph particles.
+- **The additive rule** (still true of every glyph drawn in `fx.add`): it sums overlapping glyphs, and
+  the ASCII pass clips the sum to white. Anything drawn as many overlapping glyphs keeps each glyph
+  dim and warm (gold `[4.4,2.5,0.6]` at 0.5–0.9, orange `[3.2,1.1,0.2]`), so the sum reads as a yellow
+  heart in an orange skin. White-hot colours are for single small glyphs only (a cue glint, a spark).
+  In the fire field the same rule is many cool blobs, never one hot one.
+- **Embers** are a small ragged ball of fire round a gold `*`, a burning tail and embers peeling off;
+  **orbs** a big red `@` in a turning `O` ring with a `! #` tail (red = dodge). Sizes follow the hit
+  radii (0.32 / 0.62 m), so what you see is what hits. The blue wisps (a blue head with a pale `~`
+  tail, the only cold thing the wyrm threw) were removed with the swarm (ADR-119).
+- **The cue glint:** a crisp cross on a bullet in its tell colour (white on an ember, red on an orb or
+  at a tongue's front) 0.35 s before it lands. It is the one crisp bright mark in the field on
+  purpose: it is the timing cue.
 - **Deflect:** a small moon-blue star and a `+` at the blade, on top of the hero's own parry burst;
   the bullet flies back to the wyrm's head and bursts there. Bullets popped by the clash or cut by a
   swing leave a small `x` in their own colour.
 - **Breathed** (2026-11-11, ADR-050): every bullet appears at the jaws, never out of the air. Each
-  emission shows its cause: the jaw open, the throat lit, a small orange puff at the mouth (`muzzle`),
-  a head kick per cough. The torrent is a continuous stream that snakes as the neck sweeps; the burst
-  is a fan of embers spreading out of the jaws.
+  emission shows its cause: the jaw open, the throat lit, a small puff of flame at the mouth
+  (`muzzle`), a head kick per cough. The torrent is a living stream that comes in gusts and snakes as
+  the neck sweeps; the burst is a fan of embers spreading out of the jaws. A **lobbed** ember (the
+  Ember rain) heats the spot it will land on as it falls (`lobMark`) and lands in a low splash of
+  flame and sparks (`lobLand`).
 - **The returned shot** (ADR-051): a perfectly parried bullet goes back as a white-gold `*` core 1.8×
   a bullet's in a turning gold `O` halo with a long orange ember trail, launched by a gold flare over
   the clash; on the head a white-gold star, a gold ring, fire sparks and a warm light. The hero's
   blade throws a gold `* + '` spray (`player/fx.js` `perfectParry`); RETURN in gold.
-- **Scouring breath** (was the fire wheel): the windup heats the ground along where the tongues will
-  catch, growing out from the strike point as the throat charges; lit, a short stream of flame pours
-  from the jaws to the strike point (`breathBeam`) and each tongue is a gold core line under tall
-  `^ * # %` flames (240 glyphs / s per tongue) that lean back against the turn, the ground scorching
-  as they pass.
-- **Fire breath:** a dim orange stream with a yellow vein and a ragged tongue envelope, a small maw
-  flare (the old stream summed to a white bar). **Fireball:** a toned-down flash and blast core, so
-  the fire burst and flung rocks show.
+- **The ground tongues** (the Scouring breath, the Fire lanes; ADR-119): the windup heats the spot the
+  breath will strike (`strikeWarn`); lit, a sustained breath pours from the jaws to the strike point
+  and splashes there, rolling out and up (`breathBeam`). Each tongue must read from the game camera
+  as **one line of fire, no wider than it hurts, with dark ground beside it**: an unbroken hot core
+  line from its tail to its front (small held blobs close together: the field sums them into a
+  white-gold thread), a body as wide as the hit whose edge wavers a little along the line (it licks,
+  it never smears sideways), hottest just behind the front and dying toward the tail, a **bright
+  front** rolling forward, flames licking straight up off the line (most at the front), a few sparks
+  and a small light riding the fronts nearest the hero. No smoke, no flame thrown off the line, no
+  wide ground heat: the gaps between tongues stay dark (the first build read as patches of fire and
+  was sent back). The ground under it chars; wood its front crawls over catches. Until 2026-11-15
+  the Scouring breath's tongues were spokes of `^ * # %` glyphs turned round by the spinning body.
+- **Fire breath:** the one breath (`breathBody`, above). Until 2026-11-15: a dim orange stream with a
+  yellow vein and a ragged tongue envelope, then a toned-down fireball flash and blast core.
 - **Claw wakes** (`clawTrail`): a burning streak behind the toes on every active frame of a claw or
-  overhead; **slam burst** (`slamBurst`): fire and dust thrown up where an overhead lands.
+  overhead; **slam burst** (`slamBurst`): a low shock of fire, flames spat up and embers where an
+  overhead lands.
 
 ### The Obsidian Throne and the blades of red light (2026-11-13, ADR-069, ADR-070; the open crater: 2026-11-15, ADR-112)
 - **The crater** (the owner's pick "A, Starfall" of three rendered open arenas; it replaced a walled

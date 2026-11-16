@@ -27,7 +27,7 @@ const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Destructibles, STATE: PIECE } = await imp('src/world/destructibles.js');
-const { buildDeadTree, buildBoulder, buildStump, geosHeight } = await imp('src/world/forest.js');
+const { buildDeadTree, buildBoulder, buildStump, geosHeight, createForest } = await imp('src/world/forest.js');
 const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/combat/rules.js');
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
 const { DIM: HERO_DIM, setHeroGlyphScale } = await imp('src/entities/player/model.js');
@@ -139,6 +139,17 @@ function addTerrain(game, world, kind) {
     const b = buildBoulder(rng, x, z, 1.1);
     defs.push({ kind: 'boulder', mat: 'stone', look: 'prop', x, z, r: 0.94, h: geosHeight([b]), geos: [b], colliders: [], topples: false, lift: 1 });
   };
+  if (kind === 'forest') {
+    // the REAL Cinderwood clearing (world/forest.js), its breakables wired as world.js wires them
+    // (scenario WRECKAGE: what a whole fight leaves standing)
+    const set = createForest(game.U, world.colliders);
+    const D = (world.destructibles = new Destructibles(game, world, set));
+    const blow = { kind: 'blast', by: 'world' };
+    world.impact = (x, z, r, power, o) => { const n = D.strike(x, z, r, power, o ?? blow); if (o?.fire > 0) D.ignite(x, z, r, o.fire); return n; };
+    world.ignite = (x, z, r, k = 1) => D.ignite(x, z, r, k);
+    world.restore = () => D.reset();
+    return;
+  }
   if (kind === 'lab') {
     for (let i = -3; i <= 3; i++) {
       for (let j = -3; j <= 3; j++) {
@@ -589,6 +600,546 @@ function warnTrace(G, name, seconds, stop = null) {
   }
   G.watch = null;
   return tr;
+}
+
+// ================================================================== scenario: pressure (the director's meter)
+// A god-mode defender (answers every tell without punishing it: steadyDefender; never swings) against the live AI for `secs` s in each
+// phase, the wyrm's HP pinned inside the phase. Per phase: cues (combat:flash from the wyrm) per
+// minute, the mean and the longest gap between cues, the share of each move category, chains started
+// (combo links), ambient fire, time airborne, time with fire on the field, the least safe ground the
+// hero had (free spots of 17 within a roll of him that no blast due within 0.6 s, a roll, covers), and pairs of blows
+// needing different answers (dodge vs parry / block) landing within 0.3 s of each other. Seeds: three
+// (ABYSS_PSEEDS=a,b,c; ABYSS_PSECS=s per phase). It asserts the ramp (each phase busier than the
+// last), a longest gap under a stated maximum, and that every category a phase has is seen.
+// The meter's defender: a player who survives without punishing (the measure of the wyrm's own
+// pressure: a parried last blow recoils it and a perfect dodge plunges onto its head, both cut a chain
+// short). Blue / normal: the guard held through the impact (a stream: held through it); red / black: a
+// roll 0.28 s before impact (inside its i-frames, outside the perfect-dodge window), across the line
+// to the wyrm.
+function steadyDefender(G) {
+  const pend = [];
+  const stats = { tells: 0, rolls: 0, guards: 0 };
+  const lead = TUNING.flashLead;
+  let guardUntil = -1;
+  return {
+    stats,
+    onEvent(n, d) {
+      const t = G.game.time;
+      if (n === 'combat:tell' && Number.isFinite(d?.impactIn)) {
+        stats.tells++;
+        pend.push({ attack: d.attack, tell: d.tell, at: t + d.impactIn, done: false, stream: d.attack === 'breath' });
+      } else if (n === 'combat:flash') {
+        let best = null;
+        for (const e of pend) if (!e.done && e.attack === d.attack && (!best || Math.abs(e.at - t - lead) < Math.abs(best.at - t - lead))) best = e;
+        if (best && Math.abs(best.at - t - lead) < 0.6) best.at = t + lead;
+      }
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.5) pend.splice(i, 1);
+      for (const e of pend) {
+        const left = e.at - t - DT;
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK) {
+          if (left <= 0.28) {
+            e.done = true;
+            input.up(1);
+            guardUntil = -1;
+            const dd = g.dragon.position, p = g.player.position;
+            const dx = p.x - dd.x, dz = p.z - dd.z, l = Math.hypot(dx, dz) || 1;
+            input.axis = { x: -dz / l, y: -dx / l };
+            input.tap('Space');
+            stats.rolls++;
+          }
+        } else if (left <= 0.25) {
+          e.done = true;
+          guardUntil = Math.max(guardUntil, t + left + (e.stream ? 2.6 : 0.2));
+          stats.guards++;
+        }
+      }
+      if (guardUntil > t) input.press(1);
+      else if (guardUntil > 0) { guardUntil = -1; input.up(1); }
+      return guardUntil > t;
+    },
+  };
+}
+
+async function scenarioPressure() {
+  out('\n== scenario PRESSURE (defender bot in god mode vs the AI, per phase: cues, gaps, mix, chains, fire) ==');
+  const aiMod = await imp('src/entities/dragon/ai.js');
+  const P = TUNING.pressure ?? null;
+  const SECS = Number(process.env.ABYSS_PSECS ?? 120);
+  const SEEDS = (process.env.ABYSS_PSEEDS ?? '1337,7,4242').split(',').map(Number).filter(Number.isFinite);
+  const ROLL = TUNE_P.roll?.dist ?? 4.2;
+  // the director's own categories when it has them (a build without it: a plain derivation, for the
+  // "before" numbers only)
+  const catOf = aiMod.categoryOf ?? ((name) => {
+    const spec = TUNING.attacks[name] ?? {};
+    if (spec.category) return spec.category;
+    if (/^(hurl|tailBat|fireBrand)$/.test(name)) return 'terrain';
+    if (/^(skyStrafe|diveBomb|hoverBarrage|leap)$/.test(name)) return 'flight';
+    if (/^(meteorRain|eruptions|flameRing|flameWall|nova|roar)$/.test(name)) return 'spell';
+    if (/^(emberStorm|fanVolley|wispSwarm|fireWheel|breath|fireball)$/.test(name)) return 'fire';
+    const kinds = (spec.hits ?? []).map((h) => h.kind);
+    if (name === 'tail' || kinds.some((k) => /^tail/.test(k))) return 'tail';
+    if (kinds.some((k) => k === 'wing')) return 'wing';
+    return 'melee';
+  });
+  const perPhase = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, ph) - 1] : v);
+  const CATS_P = ['melee', 'wing', 'tail', 'fire', 'flight', 'spell', 'terrain'];
+  const answerOf = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
+  // ---- the link reader, white-box: bite -> stomp -> bite ... (cooldowns cleared every frame)
+  {
+    const P0 = TUNING.pressure;
+    const keep = { bite: TUNING.attacks.bite.links, stomp: TUNING.attacks.stomp.links };
+    TUNING.attacks.bite.links = [{ to: 'stomp', when: 'any', chance: 1 }];
+    TUNING.attacks.stomp.links = [{ to: 'bite', when: 'any', chance: 1 }];
+    const linkRun = (style) => {
+      const G = build();
+      const { game } = G;
+      G.defend = style === 'parry' ? makeDefender(G) : steadyDefender(G);
+      fightSetup(G, { ai: true });
+      const d = game.dragon;
+      place(G, 4.2, 0);
+      d.brain.cooldowns = {};
+      d.brain.idleTimer = 99;
+      const starts = [], ends = [];
+      G.watch = (n, e) => { if (n === 'dragon:windup') starts.push([game.time, e.name]); };
+      d.brain.startAction(ATTACKS.bite);
+      let last = 'bite';
+      for (let i = 0; i < Math.round(14 / DT); i++) { // (14 s: chainDepth 3 links and the breather)
+        bot(G, { god: true, defend: true, attack: false });
+        G.input.axis = { x: 0, y: 0 };
+        G.tick(DT);
+        for (const k in d.brain.cooldowns) d.brain.cooldowns[k] = 0;
+        const now = d.brain.action?.name ?? 'idle';
+        if (now !== last) { ends.push([game.time, last, now]); last = now; }
+      }
+      G.watch = null;
+      return { starts, ends, d };
+    };
+    // a block answers every blow: each move ends on its own and links into the next, chainDepth
+    // links in a row, then the breather (chainRest) before a fresh pick
+    const A = linkRun('steady');
+    const depth = P0.chainDepth[0];
+    const seq = A.starts.map((x) => x[1]);
+    const gapsAfter = [];
+    for (let i = 1; i < A.starts.length; i++) {
+      const endPrev = A.ends.find((e) => e[1] === A.starts[i - 1][1] && e[0] <= A.starts[i][0] + 1e-6 && e[0] >= A.starts[i - 1][0]);
+      gapsAfter.push(endPrev ? A.starts[i][0] - endPrev[0] : NaN);
+    }
+    out(`   links (block): ${seq.join(' > ')} · gaps ${gapsAfter.map((g) => g.toFixed(2)).join(', ')} s`);
+    assert(seq[0] === 'bite' && seq[1] === 'stomp' && seq[2] === 'bite', `a move that ends on its own starts its link (${seq.slice(0, 3).join(' > ')})`);
+    assert(gapsAfter.slice(0, depth).every((g) => g < 0.05), `with no pause (${gapsAfter.slice(0, depth).map((g) => g.toFixed(2)).join(', ')} s)`);
+    assert(gapsAfter[depth] >= P0.chainRest[0][0] - 0.05, `after ${depth} links (P1 chainDepth) a breather of chainRest >= ${P0.chainRest[0][0]} s (${gapsAfter[depth]?.toFixed(2)} s)`);
+    // a parry of the bite (its last blow) recoils it: no link, and the hero's opening is the old pause
+    const B = linkRun('parry');
+    const rec = B.ends.find((e) => e[2] === 'recoil');
+    const after = rec ? B.starts.find((s) => s[0] > rec[0]) : null;
+    const recEnd = rec ? B.ends.find((e) => e[1] === 'recoil' && e[0] > rec[0]) : null;
+    out(`   links (parry): ${B.starts.map((x) => x[1]).join(' > ')} · recoil at ${rec?.[0].toFixed(2)}, next move ${after?.[1]} ${after && recEnd ? (after[0] - recEnd[0]).toFixed(2) + ' s after it' : ''}`);
+    assert(!!rec && (!after || (recEnd && after[0] - recEnd[0] >= P0.openingGap[0][0] - 0.05)), `a parried (recoiled) move does not link: the opening keeps the old pause >= ${P0.openingGap[0][0]} s`);
+    TUNING.attacks.bite.links = keep.bite;
+    TUNING.attacks.stomp.links = keep.stomp;
+  }
+
+  // (every move carries its own links now: src/entities/dragon/tuningLinks.js; the test's stand-in table is gone)
+  const rows = [];
+  const pinAt = [0.83, 0.5, 0.17];
+  let lastG = null;
+  for (const seed of SEEDS) {
+    for (let ph = 1; ph <= 3; ph++) {
+      // (the Lab's grid of trees and boulders: a piece in reach wherever it stands, for the terrain moves)
+      const G = (lastG = build({ terrain: 'lab' }));
+      const { game } = G;
+      G.defend = steadyDefender(G);
+      fightSetup(G, { ai: true });
+      const d = game.dragon;
+      Math.random = mulberry32(seed * 7 + ph);
+      // into the phase through its real transition roar(s)
+      for (let n = 2; n <= ph; n++) {
+        d.debug.setHp(TUNING.phaseAt[n - 1] - 0.01);
+        run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === n && d.brain.action?.name !== `phase${n}`);
+      }
+      const pin = Math.round(d.maxHp * pinAt[ph - 1]);
+      const flashes = [], tellsOf = {}, cats = {}, winds = [], dbgLog = [];
+      let safeAt = '';
+      let air = 0, fire = 0, idle = 0, frames = 0, minSafe = 99, minSky = 99, safeLow = 0, hurt = 0, idleProbe = 0;
+      const avail = {}, seenNow = {}, streamT = [], spent = {}, endsAt = {}, linked = {};
+      let lastAn = 'idle';
+      const chains0 = d.brain.stats?.links ?? 0, amb0 = d.brain.stats?.ambient ?? 0;
+      G.watch = (n, e) => {
+        if (n === 'combat:flash' && e?.source === 'dragon') flashes.push([game.time, e.tell, e.attack]);
+        if (n === 'dragon:windup') { winds.push([game.time, e.name]); const c = catOf(e.name); cats[c] = (cats[c] || 0) + 1; tellsOf[e.name] = (tellsOf[e.name] || 0) + 1; }
+        if (n === 'player:hurt') hurt++;
+        if (process.env.ABYSS_PDBG && /dragon:windup|combat:flash|combat:tell|dragon:takeoff|dragon:land|dragon:attack/.test(n)) dbgLog.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''}${n === 'combat:tell' ? ` ${e.tell} in ${e.impactIn?.toFixed(2)}` : ''} [${d.brain.action?.name ?? 'idle'} ${d.brain.action?.phase ?? ''} amb${d.brain.stats.ambient} dist ${d.sense.dist.toFixed(1)}]`]);
+      };
+      const H = d.hazards.list;
+      const pr = game.player.radius ?? 0.45;
+      const covered = (x, z) => {
+        for (const h of H) {
+          if (!h.alive || h.noBlow) continue; // (a cinder falling out of his reach: no blow)
+          if (h.shape === 0) { // a circle that has not gone off yet, or is still hitting
+            const left = h.impact - h.t;
+            if (left < 0.6 && h.t - h.impact < h.active && Math.hypot(x - h.x, z - h.z) <= h.r + pr) return true;
+          }
+        }
+        return false;
+      };
+      // the hero roams like a player: every 5 s a new standoff (6, 10 or 15 m from the root) on a
+      // bearing near his own; the defender's rolls keep their own direction
+      const roam = mulberry32(seed * 31 + ph), goal = { r: 6, a: 0, until: -1 };
+      const t0 = game.time;
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        bot(G, { god: true, defend: true, attack: false });
+        if (game.time > goal.until) {
+          const p = game.player.position;
+          goal.r = [6, 10, 15][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.x - d.position.x, p.z - d.position.z) + (roam() - 0.5) * 1.4;
+          goal.until = game.time + 5;
+        }
+        if (!G.input.pressedKeys.has('Space') && game.player.state !== 'roll') {
+          const p = game.player.position, b = goal.a;
+          const gx = d.position.x + Math.sin(b) * goal.r, gz = d.position.z + Math.cos(b) * goal.r;
+          const k = Math.hypot(gx, gz) > 24 ? 24 / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.x, dz = gz * k - p.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 1 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        G.tick(DT);
+        if (d.hp < pin) d.hp = pin;
+        if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+        frames++;
+        if (process.env.ABYSS_PATT) {
+          const an = d.brain.action?.name ?? 'idle';
+          spent[an] = (spent[an] || 0) + DT;
+          // where the hero is as a move ends (what its links can ask for): bearing f / s / b, distance n / m / f
+          if (an !== lastAn && ATTACKS[lastAn]) {
+            const s = d.sense, P0 = TUNING.pressure;
+            const k = (s.absAng < P0.front ? 'F' : s.absAng > P0.behind ? 'B' : 'S') + (s.dist < P0.near ? 'n' : s.dist > P0.far ? 'f' : 'm');
+            (endsAt[lastAn] ??= {})[k] = (endsAt[lastAn][k] || 0) + 1;
+            if (an !== 'idle' && ATTACKS[an]) linked[`${lastAn}>${an}`] = (linked[`${lastAn}>${an}`] || 0) + 1;
+          }
+          lastAn = an;
+        }
+        if (d.state === 'airborne') air++;
+        // the breath's stream is one long answer (a guard held through it, or out of the cone): its
+        // active span counts as pressure for the longest gap (sampled every 0.1 s), not as cues
+        if (d.brain.action?.name === 'breath' && d.brain.action.phase.startsWith('active') && game.time - (streamT[streamT.length - 1] ?? -9) >= 0.1) streamT.push(game.time);
+        if (!d.brain.action) {
+          idle++;
+          // which categories it could pick from where it stands now (a terrain move needs a piece in
+          // reach: the wyrm's body and its fire wreck the field as the fight goes on)
+          if (d.state === 'combat' && i % 6 === 0) {
+            idleProbe++;
+            for (const c of CATS_P) seenNow[c] = false;
+            for (const name in ATTACKS) {
+              const c = catOf(name);
+              if (seenNow[c]) continue;
+              let w = 0;
+              try { w = attackWeight(ATTACKS[name], name, d, d.sense); } catch { w = 0; }
+              if (w > 0) seenNow[c] = true;
+            }
+            for (const c of CATS_P) if (seenNow[c]) avail[c] = (avail[c] || 0) + 1;
+          }
+        }
+        if (d.hazards.alive > 0 || d.bullets.count(0) + d.bullets.count(1) + d.bullets.count(2) > 0) fire++;
+        if (i % 15 === 0) {
+          const p = game.player.position;
+          let free = covered(p.x, p.z) ? 0 : 1;
+          for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2; if (!covered(p.x + Math.cos(a) * ROLL, p.z + Math.sin(a) * ROLL)) free++; }
+          // (Armageddon's barrage is apart: its meteors heat their ground 1.2 - 1.5 s ahead, a run
+          // away, not a roll; it is measured and printed, not asserted here)
+          if (H.some((h) => h.alive && h.shape === 7)) minSky = Math.min(minSky, free);
+          else {
+            if (free < minSafe) safeAt = [...new Set(H.filter((h) => h.alive && h.shape === 0 && h.impact - h.t < 0.6).map((h) => h.attack))].join('+');
+            minSafe = Math.min(minSafe, free);
+          }
+          if (free < 4) safeLow++;
+        }
+      }
+      G.watch = null;
+      const T = game.time - t0;
+      let gapMax = 0, gapSum = 0, conflicts = 0, inner = 0, gapAt = '';
+      const conflictAt = [], innerAt = [];
+      const ts = [t0, ...flashes.map((f) => f[0]), t0 + T];
+      for (let i = 1; i < ts.length; i++) gapSum += ts[i] - ts[i - 1];
+      // the longest gap: between cues or the breath's stream (integration, 2026-11-15: in phase 3 the
+      // longest gaps, 4.3 - 5.1 s on three seeds, were all after a breath: its one flash, then its
+      // 2.4 s stream, its 1.0 s recovery and the next move's windup; the stream is a held answer)
+      if (streamT.length) { ts.push(...streamT); ts.sort((a, b) => a - b); }
+      for (let i = 1; i < ts.length; i++) {
+        const g = ts[i] - ts[i - 1];
+        if (g > gapMax && process.env.ABYSS_PDBG) { out(`      gap ${g.toFixed(2)} from ${(ts[i - 1] - t0).toFixed(1)}: ${dbgLog.filter((x) => x[0] > ts[i - 1] - 1 && x[0] < ts[i] + 0.2).map((x) => `${(x[0] - t0).toFixed(1)} ${x[1]}`).join(' | ')}`); }
+        if (g > gapMax) { gapMax = g; gapAt = `${(ts[i - 1] - t0).toFixed(0)} s after ${streamT.includes(ts[i - 1]) ? 'breath (its stream)' : flashes.findLast((f) => f[0] <= ts[i - 1])?.[2] ?? 'start'}: ${winds.filter((w) => w[0] > ts[i - 1] - 0.5 && w[0] < ts[i]).map((w) => w[1]).join(', ') || 'no move'}`; }
+      }
+      for (let i = 0; i < flashes.length; i++) {
+        for (let j = i + 1; j < flashes.length && flashes[j][0] - flashes[i][0] < 0.3; j++) {
+          if (answerOf(flashes[i][1]) === answerOf(flashes[j][1])) continue;
+          // (within one pattern, e.g. a torrent's red orb inside its ember stream: the pattern's own
+          // design, counted apart; between two sources: the director's composition)
+          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.push(flashes[i][2]); if (process.env.ABYSS_PDBG) out(`      INNER ${flashes[i][2]} ${(flashes[i][0] - t0).toFixed(2)} ${flashes[i][1]} / ${(flashes[j][0] - t0).toFixed(2)} ${flashes[j][1]} (P${ph}) :: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 1.5 && x[0] < flashes[j][0] + 0.3).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(" | ")}`); } else { conflicts++; conflictAt.push(`${flashes[i][2]}/${flashes[j][2]}`); if (process.env.ABYSS_PDBG) out(`      CLASH at ${(flashes[i][0] - t0).toFixed(2)}: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 4 && x[0] < flashes[j][0] + 0.5).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`); }
+        }
+      }
+      const picks = Object.values(cats).reduce((a, b) => a + b, 0) || 1;
+      rows.push({
+        seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMean: gapSum / (ts.length - 1), gapMax,
+        cats, picks, chains: (d.brain.stats?.links ?? 0) - chains0, ambient: (d.brain.stats?.ambient ?? 0) - amb0,
+        air: air / frames, fire: fire / frames, idle: idle / frames, minSafe, safeLow, conflicts, conflictAt, inner, innerAt, hurt, tellsOf,
+        holds: d.brain.stats?.holds ?? 0, seeks: d.brain.stats?.seeks ?? 0, gapAt, safeAt, minSky, avail, idleProbe,
+      });
+      // ABYSS_PATT=1: where the phase's time went, move by move (s, picks, its cues, cues a second)
+      if (process.env.ABYSS_PATT) {
+        const fl = {};
+        for (const f of flashes) fl[f[2]] = (fl[f[2]] || 0) + 1;
+        out(`      P${ph} seed ${seed} time: ${Object.entries(spent).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}s/${tellsOf[k] ?? 0}x/${fl[k] ?? 0}c (${((fl[k] ?? 0) / v).toFixed(2)})`).join(' · ')}`);
+        const other = Object.entries(fl).filter(([k]) => !(k in spent)).map(([k, v]) => `${k} ${v}`).join(', ');
+        if (other) out(`      P${ph} cues from elsewhere: ${other}`);
+        out(`      P${ph} ends: ${Object.entries(endsAt).map(([k, v]) => `${k} ${Object.entries(v).map(([a, b]) => a + b).join('')}`).join(' · ')}`);
+        out(`      P${ph} straight into: ${Object.entries(linked).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+      }
+    }
+  }
+  const CATS = ['melee', 'wing', 'tail', 'fire', 'flight', 'spell', 'terrain'];
+  out(`   ${SECS} s per phase, seeds ${SEEDS.join(', ')} · columns: cues/min · mean gap · longest gap (s) · chains · ambient fire · airborne % · fire on field % · idle % · least safe spots /17 · 0.3 s answer clashes · hits taken · category shares %`);
+  out(`   seed ph  cue/min  gapMean gapMax chains amb  air%  fire% idle% safe clash hurt  ${CATS.map((c) => c.padStart(7)).join('')}`);
+  for (const r of rows) {
+    out(`   ${String(r.seed).padStart(4)}  ${r.ph}  ${r.perMin.toFixed(1).padStart(7)}  ${r.gapMean.toFixed(2).padStart(7)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.chains).padStart(6)} ${String(r.ambient).padStart(4)} ${(r.air * 100).toFixed(0).padStart(5)} ${(r.fire * 100).toFixed(0).padStart(6)} ${(r.idle * 100).toFixed(0).padStart(5)} ${String(r.minSafe).padStart(4)} ${String(r.conflicts).padStart(5)} ${String(r.hurt).padStart(4)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / r.picks).toFixed(0).padStart(7)).join('')}`);
+    if (r.conflicts) out(`         clashes between sources: ${r.conflictAt.slice(0, 8).join(' · ')}`);
+    out(`         usable at a pick (share of ${r.idleProbe} idle probes): ${CATS_P.map((c) => c + ' ' + Math.round(((r.avail[c] || 0) * 100) / (r.idleProbe || 1)) + '%').join(', ')}`);
+    out(`         longest gap ${r.gapAt}${r.minSafe < 3 ? ` · least safe under ${r.safeAt}` : ''}${r.minSky < 99 ? ` · least safe under Armageddon ${r.minSky}` : ''} · holds ${r.holds} · seeks ${r.seeks}`);
+    if (r.inner) out(`         inside one pattern: ${r.inner} (${[...new Set(r.innerAt)].join(', ')})`);
+  }
+  const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
+  out(`   mean  P1 ${mean(1, 'perMin').toFixed(1)} · P2 ${mean(2, 'perMin').toFixed(1)} · P3 ${mean(3, 'perMin').toFixed(1)} cues/min; longest gap P1 ${Math.max(...rows.filter((r) => r.ph === 1).map((r) => r.gapMax)).toFixed(2)} · P2 ${Math.max(...rows.filter((r) => r.ph === 2).map((r) => r.gapMax)).toFixed(2)} · P3 ${Math.max(...rows.filter((r) => r.ph === 3).map((r) => r.gapMax)).toFixed(2)} s`);
+  if (!P) { out('   (no TUNING.pressure: measured only, nothing asserted)'); return lastG; }
+  const A = P.meter;
+  for (const seed of SEEDS) {
+    const r = [1, 2, 3].map((ph) => rows.find((x) => x.seed === seed && x.ph === ph));
+    assert(r[1].perMin >= r[0].perMin * A.ramp && r[2].perMin >= r[1].perMin * A.ramp, `seed ${seed}: each phase busier than the last by x${A.ramp} (cues/min ${r.map((x) => x.perMin.toFixed(1)).join(' < ')})`);
+    for (const x of r) {
+      assert(x.gapMax <= perPhase(A.maxGap, x.ph), `seed ${seed} P${x.ph}: longest gap between cues ${x.gapMax.toFixed(2)} s <= ${perPhase(A.maxGap, x.ph)} s`);
+      if (A.minRate) assert(x.perMin >= perPhase(A.minRate, x.ph), `seed ${seed} P${x.ph}: ${x.perMin.toFixed(1)} cues a minute >= ${perPhase(A.minRate, x.ph)}`);
+      // the categories this phase has: attacks the AI may pick in it (tuning weight > 0 there)
+      const want = new Set();
+      for (const name in ATTACKS) {
+        const spec = TUNING.attacks[name] ?? {};
+        const raw = typeof ATTACKS[name].weight === 'function' || ATTACKS[name].weight === undefined ? spec.weight : ATTACKS[name].weight;
+        const w = perPhase(raw, x.ph);
+        if ((ATTACKS[name].phase ?? spec.phase ?? 1) <= x.ph && typeof w === 'number' && w > 0) want.add(catOf(name));
+      }
+      // (integration, 2026-11-15: a terrain move needs a piece in reach, and the wyrm's body, its
+      // flights and its fire now wreck the field as the fight goes on: on seed 7 the Lab's 36 liftable
+      // pieces were 35 at phase 3's start and 6 at its end, a terrain move usable at 26 - 47 % of the
+      // idle moments of phase 3 (52 - 91 % in phases 1 - 2). Every other category the director can
+      // reach by moving (its seek); terrain is asked for only where it was usable at half of them)
+      if (want.has('terrain') && (x.avail.terrain || 0) < 0.5 * x.idleProbe) want.delete('terrain');
+      const missing = [...want].filter((c) => !x.cats[c]);
+      assert(!missing.length, `seed ${seed} P${x.ph}: every category the phase has was picked (${[...want].join(', ')}; missing ${JSON.stringify(missing)})`);
+      assert(x.conflicts === 0, `seed ${seed} P${x.ph}: no two blows of different sources needing different answers within 0.3 s (${x.conflicts}: ${x.conflictAt.slice(0, 4).join(' · ')})`);
+      assert(x.minSafe >= 1, `seed ${seed} P${x.ph}: always ground within a roll that no blast due within 0.6 s covers (least ${x.minSafe} of 17 spots, Armageddon apart)`);
+    }
+    // (tuning pass, 2026-11-15: every move carries links now; measured 8 - 19 chains a 120 s phase in
+    // phases 2 and 3 on five seeds, was 1 - 5: at least 5)
+    assert(r[1].chains >= 5 && r[2].chains >= 5, `seed ${seed}: moves chain into each other from the links in phases 2 and 3 (${r.map((x) => x.chains).join(' / ')})`);
+    assert(r[0].ambient === 0 && r[2].ambient > 0, `seed ${seed}: ambient fire only from phase 2, and in phase 3 (${r.map((x) => x.ambient).join(' / ')})`);
+  }
+  return lastG;
+}
+
+// ================================================================== scenario: wreckage (a whole fight on the real clearing)
+// The REAL Cinderwood clearing (world/forest.js: its trees, stones, flagstones, bones) under a whole AI
+// fight: a god-mode hero that roams and answers like the pressure meter's, `secs` s in each phase (the
+// wyrm's HP pinned inside it, the real transition roars between). Counted: the pieces standing inside
+// the hero's bound (CONFIG.world.playerBound) at the start, as phase 3 starts and at the end, by kind;
+// the liftable ones (lift 1: what the terrain moves can take); trees burnt through; and what felled
+// each piece (the wyrm's move at the time, 'idle' = walking / turning between moves). The tuning
+// (tuning.js `world`, breakTuning.js) aims at a clearing that changes through a fight without being
+// flattened: between a third and two thirds standing at the end, and pieces left for the terrain moves
+// in phase 3. ABYSS_WSEEDS=a,b,c, ABYSS_WSECS=s per phase (the report's: three seeds, 80 s: a 4-minute
+// fight); the suite runs one seed.
+async function scenarioWreckage() {
+  out('\n== scenario WRECKAGE (a whole AI fight on the real clearing: what stands, what burns, what felled it) ==');
+  const SECS = Number(process.env.ABYSS_WSECS ?? 80);
+  const SEEDS = (process.env.ABYSS_WSEEDS ?? '1337').split(',').map(Number).filter(Number.isFinite);
+  const BOUND = CONFIG.world.playerBound ?? 31;
+  const rows = [];
+  let lastG = null;
+  for (const seed of SEEDS) {
+    const G = (lastG = build({ terrain: 'forest' }));
+    const { game } = G;
+    const D = game.world.destructibles;
+    G.defend = steadyDefender(G);
+    fightSetup(G, { ai: true });
+    const d = game.dragon;
+    Math.random = mulberry32(seed * 11 + 3);
+    const inside = D.list.filter((b) => Math.hypot(b.x, b.z) < BOUND);
+    const count = () => {
+      const by = {};
+      let n = 0, lift = 0, burnt = 0;
+      for (const b of inside) {
+        if (b.burnt) burnt++;
+        if (b.state !== PIECE.INTACT) continue;
+        n++;
+        by[b.kind] = (by[b.kind] || 0) + 1;
+        if (b.lift === 1) lift++;
+      }
+      // (the whole forest, the ring of trees beyond the bound too: the background that burns)
+      let wood = 0, burntAll = 0;
+      for (const b of D.list) {
+        if (b.mat !== 'wood') continue;
+        if (b.burnt) burntAll++;
+        if (b.state === PIECE.INTACT) wood++;
+      }
+      return { n, by, lift, burnt, wood, burntAll };
+    };
+    const wood0 = D.list.filter((b) => b.mat === 'wood').length;
+    const cause = {}, lit = {};
+    G.watch = (n, e) => {
+      if (n !== 'world:impact') return;
+      const act = d.brain.action?.name ?? (d.state === 'airborne' ? 'air' : 'idle');
+      if (!(Math.hypot(e.x, e.z) < BOUND + 2)) return;
+      if (e.kind === 'topple' || e.kind === 'break') cause[act] = (cause[act] || 0) + 1;
+      else if (e.kind === 'burnout') cause['(burnt)'] = (cause['(burnt)'] || 0) + 1;
+    };
+    // what lights wood anywhere (the forest's ring too) straight from a fire that landed (gen 0), and
+    // what fire spread from tree to tree
+    const light0 = D._light.bind(D);
+    D._light = (b, k, gen = 0) => {
+      const act = gen > 0 ? '(spread)' : d.brain.action?.name ?? (d.state === 'airborne' ? 'air' : 'idle');
+      lit[act] = (lit[act] || 0) + 1;
+      return light0(b, k, gen);
+    };
+    const c0 = count(), at = [c0];
+    const roam = mulberry32(seed * 31 + 5), goal = { r: 6, a: 0, until: -1 };
+    for (let ph = 1; ph <= 3; ph++) {
+      if (ph > 1) {
+        d.debug.setHp(TUNING.phaseAt[ph - 1] - 0.01);
+        run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === ph && d.brain.action?.name !== `phase${ph}`);
+        at.push(count());
+      }
+      const pin = Math.round(d.maxHp * [0.83, 0.5, 0.17][ph - 1]);
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        bot(G, { god: true, defend: true, attack: false });
+        if (game.time > goal.until) {
+          const p = game.player.position;
+          goal.r = [6, 10, 15][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.x - d.position.x, p.z - d.position.z) + (roam() - 0.5) * 1.4;
+          goal.until = game.time + 5;
+        }
+        if (!G.input.pressedKeys.has('Space') && game.player.state !== 'roll') {
+          const p = game.player.position, b = goal.a;
+          const gx = d.position.x + Math.sin(b) * goal.r, gz = d.position.z + Math.cos(b) * goal.r;
+          const k = Math.hypot(gx, gz) > 24 ? 24 / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.x, dz = gz * k - p.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 1 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        G.tick(DT);
+        if (d.hp < pin) d.hp = pin;
+        if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+      }
+      if (ph === 1) at.push(count()); // (P1's end, before the roar)
+    }
+    G.watch = null;
+    at.push(count());
+    rows.push({ seed, total: inside.length, at, cause, lit, wood0 });
+  }
+  const fmt = (c) => `${String(c.n).padStart(4)} (lift ${String(c.lift).padStart(2)}, burnt ${String(c.burnt).padStart(2)})`;
+  out(`   ${SECS} s per phase · pieces standing inside the hero's ${BOUND} m bound: start · end of P1 · P2 start · P3 start · end`);
+  for (const r of rows) {
+    out(`   seed ${String(r.seed).padStart(5)} of ${r.total}: ${r.at.map(fmt).join(' · ')}`);
+    const kinds = Object.keys(r.at[0].by);
+    out(`         by kind (start > P3 > end): ${kinds.map((k) => `${k} ${r.at[0].by[k]}>${r.at[3].by[k] ?? 0}>${r.at[4].by[k] ?? 0}`).join(', ')}`);
+    out(`         felled / broken by: ${Object.entries(r.cause).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+    out(`         the whole forest's ${r.wood0} trees: standing ${r.at.map((c) => c.wood).join(' > ')}, burnt through ${r.at[4].burntAll}`);
+    out(`         set alight by: ${Object.entries(r.lit).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  }
+  for (const r of rows) {
+    const end = r.at[4].n / r.total, p3 = r.at[3];
+    const W = TUNING.world.meter;
+    if (!W) continue;
+    assert(end >= W.endShare[0] && end <= W.endShare[1], `seed ${r.seed}: ${(end * 100).toFixed(0)} % of the clearing's ${r.total} pieces stand at the end of the fight (${W.endShare.map((x) => x * 100 + ' %').join(' .. ')}: changed, not flattened)`);
+    assert(p3.lift >= W.liftP3, `seed ${r.seed}: ${p3.lift} liftable pieces stand as phase 3 starts (>= ${W.liftP3}: the terrain moves go on)`);
+    assert(r.at[4].burnt <= W.burnt, `seed ${r.seed}: ${r.at[4].burnt} pieces burnt through in the fight (<= ${W.burnt})`);
+  }
+  return lastG;
+}
+
+// ================================================================== scenario: budget (one fight, one budget)
+// The whole wyrm with everything on (integration, 2026-11-15): a phase-3 fight with the AI on and a
+// hero bot in god mode that keeps moving (it roams like the pressure meter's and answers the tells).
+// Per seed: the peak of the fire field (it holds 6000 blobs), of both glyph pools (alpha 3000, add
+// 7000), and the worst and the mean frame time of dragon.update + world.update (headless node: the
+// CPU side only). Desktop settings, then the phone's (the world's LOW budget). It asserts the fire
+// field's peak stays under BUDGET_FIRE. ABYSS_BSEEDS=a,b,c ABYSS_BSECS=s for the full measurement
+// (the report's: three seeds, 180 s); the suite runs one seed for 60 s.
+async function scenarioBudget() {
+  out('\n== scenario BUDGET (a phase-3 fight, everything on: fire field, glyph pools, frame time of dragon + world) ==');
+  const SECS = Number(process.env.ABYSS_BSECS ?? 60);
+  const SEEDS = (process.env.ABYSS_BSEEDS ?? '4242').split(',').map(Number).filter(Number.isFinite);
+  const BUDGET_FIRE = 4500;
+  const rows = [];
+  let lastG = null;
+  for (const phone of [false, true]) {
+    for (const seed of SEEDS) {
+      const G = (lastG = build());
+      const { game } = G;
+      G.defend = steadyDefender(G);
+      fightSetup(G, { ai: true });
+      if (phone) game.world.setQuality?.(0.5); // (QUALITY.LOW: the touch preset)
+      const d = game.dragon;
+      Math.random = mulberry32(seed * 13 + (phone ? 1 : 0));
+      for (let n = 2; n <= 3; n++) {
+        d.debug.setHp(TUNING.phaseAt[n - 1] - 0.01);
+        run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === n && d.brain.action?.name !== `phase${n}`);
+      }
+      const pin = Math.round(d.maxHp * 0.17);
+      const fx = game.fx;
+      let fire = 0, add = 0, alpha = 0, worst = 0, sum = 0, n = 0, worstAt = '';
+      const dUp = d.update.bind(d), wUp = game.world.update.bind(game.world);
+      let tD = 0;
+      d.update = (dt) => { const t0 = performance.now(); dUp(dt); tD += performance.now() - t0; };
+      game.world.update = (dt) => { const t0 = performance.now(); wUp(dt); tD += performance.now() - t0; };
+      const roam = mulberry32(seed * 31 + 7), goal = { r: 6, a: 0, until: -1 };
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        bot(G, { god: true, defend: true, attack: false });
+        if (game.time > goal.until) {
+          const p = game.player.position;
+          goal.r = [6, 10, 15][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.x - d.position.x, p.z - d.position.z) + (roam() - 0.5) * 1.4;
+          goal.until = game.time + 5;
+        }
+        if (!G.input.pressedKeys.has('Space') && game.player.state !== 'roll') {
+          const p = game.player.position, b = goal.a;
+          const gx = d.position.x + Math.sin(b) * goal.r, gz = d.position.z + Math.cos(b) * goal.r;
+          const k = Math.hypot(gx, gz) > 24 ? 24 / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.x, dz = gz * k - p.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 1 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        tD = 0;
+        G.tick(DT);
+        if (d.hp < pin) d.hp = pin;
+        if (d.brain.pendingPhase > 3) d.brain.pendingPhase = 0;
+        if (i > 30) { // (the first frames compile and warm up)
+          sum += tD;
+          n++;
+          if (tD > worst) { worst = tD; worstAt = d.brain.action?.name ?? 'idle'; }
+        }
+        if (fx.fire.count > fire) fire = fx.fire.count;
+        if (fx.add.count > add) add = fx.add.count;
+        if (fx.alpha.count > alpha) alpha = fx.alpha.count;
+      }
+      d.update = dUp;
+      game.world.update = wUp;
+      rows.push({ phone, seed, fire, add, alpha, worst, mean: sum / Math.max(1, n), worstAt, phase: d.phase });
+    }
+  }
+  out(`   ${SECS} s of phase 3 per seed · peaks: fire field (of ${lastG?.game.fx.fire.max ?? 6000}), glyph pools add (of 7000) / alpha (of 3000) · dragon.update + world.update ms (worst, mean; node, CPU only)`);
+  out('   settings  seed   fire   add  alpha   worst ms  mean ms  worst during');
+  for (const r of rows) out(`   ${(r.phone ? 'phone' : 'desktop').padEnd(8)} ${String(r.seed).padStart(5)} ${String(r.fire).padStart(6)} ${String(r.add).padStart(5)} ${String(r.alpha).padStart(6)} ${r.worst.toFixed(2).padStart(10)} ${r.mean.toFixed(3).padStart(8)}  ${r.worstAt}`);
+  for (const r of rows) {
+    assert(r.phase === 3 && r.fire < BUDGET_FIRE, `budget (${r.phone ? 'phone' : 'desktop'}, seed ${r.seed}): the fire field's peak ${r.fire} < ${BUDGET_FIRE} of 6000 in a phase-3 fight`);
+    assert(r.add < 7000 && r.alpha < 3000, `budget (${r.phone ? 'phone' : 'desktop'}, seed ${r.seed}): the glyph pools never fill (add ${r.add} of 7000, alpha ${r.alpha} of 3000)`);
+  }
+  return lastG;
 }
 
 // ================================================================== scenario: win (god-mode bot that defends)
@@ -2114,7 +2665,107 @@ async function scenarioDeflect() {
 }
 
 // ================================================================== scenario: Lab + debug APIs
-// ---- BULLETS: the bullet field (bullets.js) and the four patterns (bulletAttacks.js), docs/COMBAT.md "Bullets"
+// ---- TONGUES: the ground tongues of the Scouring breath and Fire lanes (bullets.scour): a standing
+// hero under the first rake is always hit; between two first-rake tongues he is safe until the rake
+// back; a dark wedge of Fire lanes is safe through its strike
+async function scenarioTongues() {
+  out('\n== scenario TONGUES (Scouring breath: standing is hit, between two tongues is safe; Fire lanes: a dark wedge is safe) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, B = d.bullets;
+  const FW = TUNING.attacks.fireWheel, CL = TUNING.attacks.fireLanes;
+  const toPhase = (ph) => { settle(G, 12); if (d.phase !== ph) { d.enterPhase(ph); run(G, 0.2, { passive: true }); settle(G, 14); } B.clear(); run(G, 0.6, { passive: true }); };
+  /** Trigger `name` with the hero `dist` (model units) at `ang` off the facing; `move(a)` may re-place him once the plan is laid; tick to the end. */
+  const play = (name, dist, ang, move) => {
+    place(G, dist, ang);
+    G.tick(DT); // (the wyrm senses him where he now stands: the plan is centred on that)
+    d.posture = 0;
+    const h0 = G.hits.length;
+    const ok = game.lab.trigger(name);
+    const a = d.brain.action, t0 = game.time;
+    if (move && a) move(a);
+    const hits = [];
+    for (let i = 0; i < Math.round(12 / DT); i++) {
+      input.axis = { x: 0, y: 0 };
+      d.posture = 0;
+      p.hp = p.maxHp; // (he stands through it: every touch is counted, none ends the run)
+      G.tick(DT);
+      for (const h of G.hits.slice(h0 + hits.length)) hits.push({ ...h, at: h.t - t0 });
+      if (!d.brain.action && !B.scouring) break;
+    }
+    return { ok, a, hits: hits.filter((h) => h.attack === name && h.r === RESULT.HIT) };
+  };
+  // 1. standing still under the first rake: hit, every phase, every placement (the middle tongue of
+  //    the first rake runs over him)
+  for (const ph of [2, 3]) {
+    toPhase(ph);
+    let worst = 0, miss = [];
+    for (const [dist, ang] of [[9, 0], [10, 0.25], [11, -0.25], [12, 0.4], [9, -0.4]]) {
+      const r = play('fireWheel', dist, ang);
+      const rt = perPhaseT(FW.rakeTime, ph), W = r.a.list[0][1];
+      const first = r.hits[0]?.at ?? Infinity;
+      worst = Math.max(worst, first);
+      if (!(first <= W + rt + 0.5)) miss.push(`${dist}@${ang}: ${Number.isFinite(first) ? first.toFixed(2) : 'no hit'}`);
+      B.clear();
+      settle(G, 12);
+    }
+    out(`   P${ph} Scouring breath, hero standing at 5 placements: first hit ≤ ${worst.toFixed(2)} s after the trigger${miss.length ? ` · MISSED ${miss.join(', ')}` : ''}`);
+    assert(!miss.length, `P${ph} Scouring breath: a hero standing still is hit by the first rake, every placement (${miss.join(', ') || 'all hit'})`);
+  }
+  // (Fire lanes: the first strike lights the middle wedge: a hero standing on his spot is hit by it)
+  {
+    toPhase(3);
+    const miss = [];
+    for (const [dist, ang] of [[9, 0], [11, 0.25], [10, -0.3]]) {
+      const r = play('fireLanes', dist, ang);
+      const end1 = r.a.list[0][1] + r.a.g;
+      if (!(r.hits[0]?.at < end1)) miss.push(`${dist}@${ang}`);
+      B.clear();
+      settle(G, 12);
+    }
+    out(`   P3 Fire lanes, hero standing at 3 placements: ${miss.length ? `MISSED by the first strike at ${miss.join(', ')}` : 'hit by the first strike every time'}`);
+    assert(!miss.length, `P3 Fire lanes: a hero standing still is hit by the first strike (${miss.join(', ') || 'all hit'})`);
+  }
+  // 2. P2: between two first-rake tongues (half a step off the middle one, 12 m from the pivot) he is
+  //    safe until the rake back lays its tongue in that gap
+  {
+    toPhase(2);
+    const m = perPhaseT(FW.tongues, 2), step = FW.arc / (m - 1);
+    let backAt = 0;
+    const r = play('fireWheel', 10, 0, (a) => {
+      const th = a.c + step / 2, R = 12;
+      p.debug.teleport(a.px + Math.sin(th) * R, a.pz + Math.cos(th) * R);
+      backAt = a.list[0][1] + a.rt + FW.pause; // the rake back starts
+    });
+    const before = r.hits.filter((h) => h.at < backAt), after = r.hits.filter((h) => h.at >= backAt);
+    out(`   P2 between two first-rake tongues (step ${step.toFixed(3)} rad, 12 m out): hits before the rake back ${before.length} · after it ${after.length} (at ${after.map((h) => h.at.toFixed(2)).join(', ')} s; it starts at ${backAt.toFixed(2)} s)`);
+    assert(r.ok && before.length === 0, `P2 Scouring breath: standing between two first-rake tongues is safe until the rake back (${before.length} hits before ${backAt.toFixed(2)} s)`);
+    assert(after.length >= 1, `P2 Scouring breath: the rake back lays a tongue in that gap (${after.length} hits)`);
+    B.clear();
+  }
+  // 3. P3 Fire lanes: a dark wedge of the first strike (lane 1 of 10101) is safe through that strike;
+  //    the second strike (01010) lights it
+  {
+    toPhase(3);
+    let strike2 = 0;
+    const r = play('fireLanes', 10, 0, (a) => {
+      const th = a.c + (a.flip ? -1 : 1) * (1 - (CL.lanes - 1) / 2) * CL.laneGap, R = 12;
+      p.debug.teleport(a.px + Math.sin(th) * R, a.pz + Math.cos(th) * R);
+      strike2 = a.list[0][1] + a.g;
+    });
+    const before = r.hits.filter((h) => h.at < strike2), after = r.hits.filter((h) => h.at >= strike2);
+    out(`   P3 Fire lanes, hero in the dark wedge of strike 1 (12 m out): hits before strike 2 ${before.length} · after ${after.length} (strike 2 at ${strike2.toFixed(2)} s)`);
+    assert(r.ok && before.length === 0, `P3 Fire lanes: a dark wedge is safe through its strike (${before.length} hits before ${strike2.toFixed(2)} s)`);
+    assert(after.length >= 1, `P3 Fire lanes: the next strike lights that wedge (${after.length} hits)`);
+    B.clear();
+  }
+  out(`   console errors so far: ${errors.length}`);
+  return G;
+}
+const perPhaseT = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length - 1, ph - 1)] : v);
+
+// ---- BULLETS: the bullet field (bullets.js) and the six breathed patterns (bulletAttacks.js), docs/COMBAT.md "Bullets"
 async function scenarioBullets() {
   out('\n== scenario BULLETS (deflect / block / roll / cut the small ones, dodge the red ones; the cue, the caps, the clears) ==');
   const G = build();
@@ -2123,10 +2774,12 @@ async function scenarioBullets() {
   const d = game.dragon, p = game.player, B = d.bullets, K = TUNING.bullets;
   const lead = TUNING.flashLead;
   assert(B && K && typeof B.spawn === 'function' && B.live === 0, 'dragon.bullets exists, empty at the start');
-  const NAMES = ['emberStorm', 'fanVolley', 'wispSwarm', 'fireWheel'];
+  const NAMES = ['emberStorm', 'fanVolley', 'cinderSpit', 'emberRain', 'fireWheel', 'fireLanes'];
+  const TONGUES = new Set(['fireWheel', 'fireLanes']); // (fire on the ground, not bullets: red, roll through)
   const listed = new Set(d.debug.abilities().map((a) => a.name));
-  assert(NAMES.every((n) => listed.has(n) && TUNING.attacks[n]?.tell), 'the four patterns are Lab abilities with tuning data');
-  const KIND = { ember: 0, wisp: 1, orb: 2 };
+  assert(NAMES.every((n) => listed.has(n) && TUNING.attacks[n]?.tell), 'the six patterns are Lab abilities with tuning data');
+  assert(!listed.has('wispSwarm') && !TUNING.attacks.wispSwarm && !K.wisp, 'the homing wisp swarm is gone (2026-11-15)');
+  const KIND = { ember: 0, orb: 2 }; // (kind 1 was the wisp)
   /**
    * `n` bullets flown at the standing hero from `from` m (`gap` s apart), answered off the bullet's own
    * cue: answer = parry (RMB tap 0.12 s before impact) | roll (Space 0.1 s before) | swing (LMB on the
@@ -2206,9 +2859,6 @@ async function scenarioBullets() {
   assert(pa.light === true && pa.ev['player:parry'] === 1, 'player:parry { light: true }: a light clash');
   assert(pa.parried.length === 1 && pa.parried[0].bullet === true && pa.parried[0].attack === 'emberStorm', 'dragon:parried { bullet: true } once (the wyrm is not interrupted)');
   assert(pa.live === 0, 'the deflected ember flew back to the head and burst');
-  const wi = shot(KIND.wisp, { answer: 'parry' });
-  out(`   wisp, parried: ${wi.res.join(' ')} · posture ${wi.postureAtHit} · cue ${wi.cues[0]?.tell}`);
-  assert(wi.res[0] === RESULT.PARRIED && near(wi.postureAtHit, K.wisp.posture, 0.5) && wi.cues[0]?.tell === TELL.BLUE, 'a wisp is a blue tell: deflected for K.wisp.posture');
 
   // --- a PERFECT parry (RMB within DEFENSE.perfectParryWindow of the impact) returns the bullet:
   // HP damage + returnPosture on the head when the shot lands, dragon:returned; the wyrm goes on
@@ -2225,9 +2875,6 @@ async function scenarioBullets() {
   assert(near(pf.postureEnd, K.ember.returnPosture, 0.5), `the return adds returnPosture instead of the deflect's posture (${pf.postureEnd.toFixed(1)} / ${K.ember.returnPosture})`);
   assert(pf.live === 0 && d.brain.action === actBefore, 'the shot burst on the head; the wyrm was not interrupted');
   assert(stDealt === K.ember.returnDamage && stHits === 1, `the run stats count the return as the hero's hit (${stDealt} damage, ${stHits} hit)`);
-  const pw = shot(KIND.wisp, { answer: 'parry', parryLead: 0.05 });
-  out(`   wisp, RMB ${pw.gap.toFixed(3)} s before impact: perfect ${pw.perfect} · wyrm −${pw.dmg} HP · posture ${pw.postureEnd.toFixed(1)}`);
-  assert(pw.perfect === true && pw.dmg === K.wisp.returnDamage && near(pw.postureEnd, K.wisp.returnPosture, 0.5), `a perfectly parried wisp returns for ${K.wisp.returnDamage} HP + ${K.wisp.returnPosture} posture (${pw.dmg}, ${pw.postureEnd.toFixed(1)})`);
   const pn = shot(KIND.ember, { answer: 'parry', parryLead: 0.18 });
   out(`   ember, RMB ${pn.gap.toFixed(3)} s before impact: ${pn.res.join(' ')} · perfect ${pn.perfect} · wyrm −${pn.dmg} HP · posture ${pn.postureEnd.toFixed(1)}`);
   assert(pn.res[0] === RESULT.PARRIED && pn.perfect === false && pn.gap > PW, `a parry ${pn.gap.toFixed(3)} s before impact is a normal deflect`);
@@ -2343,17 +2990,17 @@ async function scenarioBullets() {
   // --- robustness and the clears
   settle(G);
   B.clear();
-  assert(B.spawn(KIND.ember, 'x', NaN, 1, 0, 0, 9) === null && B.spawn(7, 'x', 0, 1, 0, 0, 9) === null && B.live === 0, 'spawn rejects NaN / unknown kinds');
+  assert(B.spawn(KIND.ember, 'x', NaN, 1, 0, 0, 9) === null && B.spawn(7, 'x', 0, 1, 0, 0, 9) === null && B.spawn(1, 'x', 0, 1, 0, 0, 9) === null && B.live === 0, 'spawn rejects NaN / unknown kinds (1: the removed wisp)');
   B.update(NaN); B.update(0); B.update(-1);
   place(G, 9);
-  for (let i = 0; i < 40; i++) B.spawn(i % 3, 'emberStorm', d.position.x + Math.sin(i) * 6, 1.5, d.position.z + Math.cos(i) * 6, i * 0.7, 3);
-  B.startWheel({ attack: 'fireWheel', x: d.position.x, z: d.position.z, n: 4, ang: 0, dir: 1, warn: 0.5, dur: 4, speed: 1, r0: 3, r1: 26, width: 1.1, damage: 20, max: 2 });
+  for (let i = 0; i < 40; i++) B.spawn(i % 2 ? KIND.orb : KIND.ember, 'emberStorm', d.position.x + Math.sin(i) * 6, 1.5, d.position.z + Math.cos(i) * 6, i * 0.7, 3);
+  B.scour({ attack: 'fireWheel', x: d.position.x, z: d.position.z, times: [0, 0.1, 0.2, 2], angs: [0, 1.5, 3, 4.5], r0: 3, r1: 26, speed: 12, hold: 1.5, width: 1.1, damage: 20, grp: B.group(2) });
   run(G, 0.3, { passive: true });
-  const liveBefore = B.live;
+  const liveBefore = B.live, tonguesBefore = B.tonguesLive;
   d.enterPhase(2);
   run(G, 2 * DT, { passive: true });
-  out(`   phase change: ${liveBefore} bullets + wheel → ${B.live}, wheel ${B.wheel.on}`);
-  assert(liveBefore === 40 && B.live === 0 && B.wheel.on === false, 'a phase change clears the bullets and the wheel');
+  out(`   phase change: ${liveBefore} bullets + ${tonguesBefore} tongues (plan pending ${B.plan.on}) → ${B.live} + ${B.tonguesLive}, scouring ${B.scouring}`);
+  assert(liveBefore === 40 && tonguesBefore === 3 && B.live === 0 && B.scouring === false, 'a phase change clears the bullets, the tongues and the plan');
   settle(G, 12);
   for (let i = 0; i < 20; i++) B.spawn(0, 'emberStorm', d.position.x + Math.sin(i) * 7, 1.5, d.position.z + Math.cos(i) * 7, i * 0.7, 2);
   run(G, 0.2, { passive: true });
@@ -2378,19 +3025,27 @@ async function scenarioBullets() {
     let tells = 0, flashes = 0, peak = 0, bad = 0;
     // ADR-050: every bullet is breathed: born at pt.mouth, along the head's aim (a cone / fork round it)
     const born = { n: 0, far: 0, worst: 0, aimWorst: 0, offWorst: 0 };
-    const SPREAD = { emberStorm: TUNING.attacks.emberStorm.laneGap + TUNING.attacks.emberStorm.orbSpread * 1.5, fanVolley: TUNING.attacks.fanVolley.spread + 0.06 };
+    // (the widest emission off the head's aim: the forked stream / the orb cough / the barks; the
+    // cones; the spit's 2 - 3 embers; the rain's outer ring seen from the jaws at this range)
+        const SPREAD = { emberStorm: TUNING.attacks.emberStorm.laneGap + TUNING.attacks.emberStorm.orbSpread * 1.5, fanVolley: TUNING.attacks.fanVolley.spread + 0.06, cinderSpit: TUNING.attacks.cinderSpit.spread * 1.5 + 0.02, emberRain: Math.PI / 3 }; // (the rain's rings, 2.6 / 4.8 m round him, from jaws reared ~6 m short of him: up to 0.95 rad measured)
     G.watch = (n, e) => { def?.onEvent(n, e); if (n === 'combat:tell') tells++; if (n === 'combat:flash') flashes++; };
     const ok = game.lab.trigger(name);
     let ended = -1;
+    // the no-spinning rule (2026-11-15): the body never turns faster than its walking turn rate
+    let yawPrev = d.yaw, yawRate = 0, blobs = 0, tongues = 0;
     for (let i = 0; i < Math.round(16 / DT); i++) {
       aimAt(G);
       input.axis = { x: 0, y: 0 };
       def?.act();
       d.posture = 0; // (the meter would break the wyrm mid-pattern and clear the air; not under test here)
       G.tick(DT);
+      if (d.brain.action?.name === name) yawRate = Math.max(yawRate, Math.abs(angleDiffT(yawPrev, d.yaw)) / DT);
+      yawPrev = d.yaw;
       peak = Math.max(peak, B.live);
+      tongues = Math.max(tongues, B.tonguesLive);
+      blobs = Math.max(blobs, game.fx?.fire?.count ?? game.fx?.fire?.live ?? 0);
       for (let j = 0; j < B.pool.length; j++) { const b = B.pool[j]; if (b.alive && !Number.isFinite(b.x + b.y + b.z + b.vx + b.vz)) bad++; }
-      if (name !== 'fireWheel') {
+      if (!TONGUES.has(name)) {
         const m = d.rig.pt.mouth, f = d.rig.pt.headFwd, hy = Math.atan2(f.x, f.z);
         let sx = 0, sz = 0, cn = 0;
         for (let j = 0; j < B.pool.length; j++) {
@@ -2402,7 +3057,6 @@ async function scenarioBullets() {
           born.n++;
           born.worst = Math.max(born.worst, dm);
           if (dm > 0.6) born.far++;
-          if (b.kind === KIND.wisp) continue; // (a swarm is roared out in a spray round the head)
           const yb = Math.atan2(b.vx, b.vz);
           born.offWorst = Math.max(born.offWorst, Math.abs(angleDiffT(hy, yb)));
           sx += Math.sin(yb); sz += Math.cos(yb); cn++;
@@ -2410,20 +3064,19 @@ async function scenarioBullets() {
         if (cn > 0) born.aimWorst = Math.max(born.aimWorst, Math.abs(angleDiffT(hy, Math.atan2(sx, sz))));
       }
       if (ended < 0 && !d.brain.action) ended = i;
-      if (ended >= 0 && B.live === 0 && !B.wheel.on && i - ended > 30) break;
+      if (ended >= 0 && B.live === 0 && !B.scouring && i - ended > 30) break;
     }
     G.watch = null;
     input.up(1);
     const hs = G.hits.slice(h0).filter((h) => h.attack === name);
     const by = (r) => hs.filter((h) => h.r === r).length;
-    return { born, spread: SPREAD[name] ?? 0, ok, ended, tells, flashes, peak, bad, hit: by(RESULT.HIT), parried: by(RESULT.PARRIED), blocked: by(RESULT.BLOCKED), dodged: by(RESULT.DODGED) + by(RESULT.PERFECT), live: B.live, wheel: B.wheel.on, hurt: (G.counts['player:hurt'] || 0) - (c0['player:hurt'] || 0) };
+    return { born, spread: SPREAD[name] ?? 0, ok, ended, tells, flashes, peak, bad, yawRate, blobs, tongues, hit: by(RESULT.HIT), parried: by(RESULT.PARRIED), blocked: by(RESULT.BLOCKED), dodged: by(RESULT.DODGED) + by(RESULT.PERFECT), live: B.live, wheel: B.scouring, hurt: (G.counts['player:hurt'] || 0) - (c0['player:hurt'] || 0) };
   };
-  const DIST = { emberStorm: 9, fanVolley: 11, wispSwarm: 10, fireWheel: 9 };
+  const DIST = { emberStorm: 9, fanVolley: 11, cinderSpit: 8, emberRain: 9, fireWheel: 9, fireLanes: 9 };
 
-  // --- the cue in the corners (phase 2): an even-count fan, a wisp that misses and comes round, a
-  // swarm roared at a hero so far away that its lead wisp lands after the action has ended
+  // --- the cue in the corners (phase 2): an even-count fan
   const lateCues = () => {
-    const FV = TUNING.attacks.fanVolley, WS = TUNING.attacks.wispSwarm;
+    const FV = TUNING.attacks.fanVolley;
     const R = K.ember.r + (p.radius ?? 0.45);
     /** One pattern against a standing hero at `metres`: its headline tell / flash, hits, and `each(i)` per frame. */
     const watchPattern = (name, metres, each) => {
@@ -2484,49 +3137,6 @@ async function scenarioBullets() {
     assert(fvLag >= K.cueMin - DT && fvLag <= lead + 3 * DT, `even-count fan: the headline flash leads the first impact by ~flashLead (${fvLag.toFixed(3)} s)`);
     assert(fv.tells === fv.flashes, `even-count fan: one combat:flash per combat:tell (${fv.tells}/${fv.flashes})`);
 
-    // a homing wisp that the hero sidesteps after its cue comes round again: it has to announce the
-    // second pass too (or fizzle), never hit off the stale cue
-    settle(G, 12);
-    B.clear();
-    run(G, 0.8, { passive: true });
-    place(G, 7);
-    {
-      const h0 = G.hits.length, flashes = [];
-      G.watch = (n, e) => { if (n === 'combat:flash' && e?.bullet) flashes.push(game.time); };
-      const ux = (d.position.x - p.position.x), uz = (d.position.z - p.position.z), l = Math.hypot(ux, uz) || 1;
-      const w = B.spawn(KIND.wisp, 'wispSwarm', p.position.x + (ux / l) * 8, 1.0, p.position.z + (uz / l) * 8, Math.atan2(-ux, -uz), K.wisp.cruise);
-      w.turn = K.wisp.turn;
-      w.homeAt = 0;
-      let stepped = false, passes = 0, wasNear = false;
-      for (let i = 0; i < Math.round(7 / DT) && w.alive; i++) {
-        aimAt(G);
-        input.axis = { x: 0, y: 0 };
-        if (!stepped && flashes.length === 1 && game.time - flashes[0] >= 0.2) {
-          stepped = true; // out of its way, 0.15 s before it lands
-          p.debug.teleport(p.position.x - (uz / l) * 5, p.position.z + (ux / l) * 5);
-        }
-        G.tick(DT);
-        const near1 = Math.hypot(w.x - p.position.x, w.z - p.position.z) < 1.5;
-        if (near1 && !wasNear) passes++;
-        wasNear = near1;
-      }
-      G.watch = null;
-      const hs = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT);
-      const lag = hs[0] ? hs[0].t - flashes[flashes.length - 1] : NaN;
-      out(`   wisp sidestepped after its cue: cues ${flashes.length} · hits ${hs.length}${hs[0] ? ` (${lag.toFixed(3)} s after the last cue)` : ''} · dud ${w.dud} · came near ${passes}×`);
-      assert(stepped && flashes.length >= 1, 'the wisp was cued and sidestepped');
-      assert(hs.length === 0 ? w.dud || !w.alive : flashes.length >= 2 && lag >= K.cueMin - DT && lag <= lead + K.cueGap + 2 * DT, `a wisp that missed announces its second pass before it hits (cues ${flashes.length}, lag ${lag.toFixed(3)})`);
-      assert(flashes.length >= 2 || w.dud, `the second pass is cued again, or the wisp is a dud (cues ${flashes.length}, dud ${w.dud})`);
-    }
-
-    // a far hero: the lead wisp lands after the action is over; the headline flash waits for it
-    const ws = watchPattern('wispSwarm', 28);
-    const wsLag = ws.hits[0] && ws.headFlash !== null ? ws.hits[0].t - ws.headFlash : NaN;
-    out(`   P2 wisp swarm at ${ws.dist.toFixed(1)} m: tell at ${(ws.headTell ?? NaN).toFixed(2)} · action over at ${(ws.ended ?? NaN).toFixed(2)} · headline flash at ${(ws.headFlash ?? NaN).toFixed(2)} · first hit at ${(ws.hits[0]?.t ?? NaN).toFixed(2)} (${wsLag.toFixed(3)} s after the flash) · hits ${ws.hits.length}/${WS.maxHits} · tells ${ws.tells}/${ws.flashes}`);
-    assert(ws.ok && ws.dist > 26 && ws.headTell !== null && ws.headFlash !== null, 'far wisp swarm: headline tell and flash both go out');
-    assert(ws.headFlash > ws.ended, `far wisp swarm: the lead is still flying when the action ends; the flash waits for it (${(ws.headFlash - ws.ended).toFixed(2)} s after the end)`);
-    assert(wsLag >= K.cueMin - DT && wsLag <= lead + 3 * DT, `far wisp swarm: the headline flash leads the first impact by ~flashLead (${wsLag.toFixed(3)} s)`);
-    assert(ws.tells === ws.flashes && ws.hits.length >= 1 && ws.hits.length <= WS.maxHits, `far wisp swarm: one flash per tell, hits within the budget (${ws.tells}/${ws.flashes}, ${ws.hits.length})`);
   };
   const angleDiffT = (a, b) => { let x = (b - a) % (2 * Math.PI); if (x > Math.PI) x -= 2 * Math.PI; if (x < -Math.PI) x += 2 * Math.PI; return x; };
   const perPhaseOf = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length - 1, ph - 1)] : v);
@@ -2537,22 +3147,24 @@ async function scenarioBullets() {
       if ((spec.phase ?? 1) > phase) continue;
       const idle = pattern(name, phase, false, DIST[name]);
       const ans = pattern(name, phase, true, DIST[name]);
-      out(`   P${phase} ${name.padEnd(10)} standing: hit ${idle.hit}/${spec.maxHits} · peak ${String(idle.peak).padStart(3)} bullets · tells ${idle.tells}/${idle.flashes}   answering: hit ${ans.hit} parried ${ans.parried} dodged ${ans.dodged} blocked ${ans.blocked} · tells ${ans.tells}/${ans.flashes}`);
+      out(`   P${phase} ${name.padEnd(11)} standing: hit ${idle.hit}/${spec.maxHits} · peak ${String(idle.peak).padStart(3)} bullets ${String(idle.tongues).padStart(2)} tongues ${idle.blobs} fire blobs · tells ${idle.tells}/${idle.flashes} · body turn ≤ ${(idle.yawRate * 180 / Math.PI).toFixed(0)}°/s   answering: hit ${ans.hit} parried ${ans.parried} dodged ${ans.dodged} blocked ${ans.blocked} · tells ${ans.tells}/${ans.flashes}`);
+      // no spinning: never faster than the walking turn rate of this phase (TUNING.turnSpeed)
+      assert(Math.max(idle.yawRate, ans.yawRate) <= d.turnRate + 1e-3, `P${phase} ${name}: the body never turns faster than its walking turn rate while it breathes (${(Math.max(idle.yawRate, ans.yawRate) * 180 / Math.PI).toFixed(0)} ≤ ${(d.turnRate * 180 / Math.PI).toFixed(0)}°/s)`);
       assert(idle.ok && ans.ok && idle.ended >= 0 && ans.ended >= 0, `P${phase} ${name}: triggers and ends`);
       assert(idle.bad === 0 && ans.bad === 0 && idle.live === 0 && !idle.wheel && ans.live === 0, `P${phase} ${name}: no NaN, the field empties afterwards`);
       assert(idle.hit >= 1 && idle.hit <= spec.maxHits, `P${phase} ${name}: a standing hero is hit, at most maxHits times (${idle.hit}/${spec.maxHits})`);
       assert(idle.tells === idle.flashes && ans.tells === ans.flashes && idle.tells >= 1, `P${phase} ${name}: one combat:flash per combat:tell (${idle.tells}/${idle.flashes}, ${ans.tells}/${ans.flashes})`);
       // (the scripted defender answers one cue at a time: the phase-3 storm's crossing arms cost it a second hit)
       assert(ans.hit < idle.hit && ans.hit <= (name === 'emberStorm' ? 2 : 1), `P${phase} ${name}: answering the cues takes fewer hits than standing still (${ans.hit} < ${idle.hit})`);
-      if (name !== 'fireWheel') {
+      if (!TONGUES.has(name)) {
         const bo = idle.born;
         out(`      breathed: ${bo.n} bullets born ≤ ${bo.worst.toFixed(2)} m from pt.mouth · emission centre ≤ ${bo.aimWorst.toFixed(3)} rad off headFwd · widest ${bo.offWorst.toFixed(3)} rad`);
         assert(bo.n > 0 && bo.far === 0, `P${phase} ${name}: every bullet is born within 0.6 m of pt.mouth (worst ${bo.worst.toFixed(2)} m)`);
-        if (name !== 'wispSwarm') assert(bo.aimWorst <= 0.2 && bo.offWorst <= idle.spread + 0.2, `P${phase} ${name}: every emission leaves along the head's aim (centre ${bo.aimWorst.toFixed(3)} ≤ 0.2 rad, widest ${bo.offWorst.toFixed(3)} ≤ ${(idle.spread + 0.2).toFixed(2)})`);
+        assert(bo.aimWorst <= 0.2 && bo.offWorst <= idle.spread + 0.2, `P${phase} ${name}: every emission leaves along the head's aim (centre ${bo.aimWorst.toFixed(3)} ≤ 0.2 rad, widest ${bo.offWorst.toFixed(3)} ≤ ${(idle.spread + 0.2).toFixed(2)})`);
       }
       if (name === 'emberStorm') assert(ans.parried + ans.dodged >= 1, `P${phase} emberStorm: embers deflected / orbs rolled (${ans.parried} + ${ans.dodged})`);
-      else if (name !== 'fireWheel') assert(ans.parried >= 1, `P${phase} ${name}: bullets were deflected (${ans.parried})`);
-      else assert(ans.dodged >= 1, `P${phase} fireWheel: a spoke was rolled through (${ans.dodged})`);
+      else if (!TONGUES.has(name)) assert(ans.parried >= 1, `P${phase} ${name}: bullets were deflected (${ans.parried})`);
+      else assert(ans.dodged >= 1, `P${phase} ${name}: a tongue was rolled through (${ans.dodged})`);
     }
     if (phase === 2) lateCues();
   }
@@ -2584,6 +3196,89 @@ async function scenarioBullets() {
     assert(after === 'emberStorm' && gap <= DT + 1e-6, 'P3: a Cinder burst can run straight into an Ember torrent (brain.queued, no idle)');
   }
   out(`   console errors so far: ${errors.length}`);
+  return G;
+}
+
+async function scenarioFxLooks() {
+  out('\n== scenario FXLOOKS (the wyrm\'s shock fronts and breath in every look: shape, life, budget) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, fx = d.fx, F = game.fx.fire;
+  const M = await imp('src/entities/dragon/fx.js');
+  const { TUNING } = await imp('src/entities/dragon/tuning.js');
+  const step = (s) => {
+    for (let t = 0; t < s; t += DT) {
+      fx.update(DT);
+      F.update(DT);
+      game.fx.add?.update?.(DT);
+      game.fx.alpha?.update?.(DT);
+    }
+  };
+  const finite = () => {
+    for (let i = 0; i < F.count * 15; i++) if (!Number.isFinite(F.data[i])) return false;
+    return true;
+  };
+  const peakOf = (fire, s = 1.6) => {
+    let peak = 0;
+    fire();
+    for (let t = 0; t < s; t += DT) {
+      step(DT);
+      peak = Math.max(peak, F.count);
+    }
+    return peak;
+  };
+  const ignite0 = game.world?.ignite;
+  if (game.world) game.world.ignite = () => {}; // (count the effect's own blobs, not the grass it lights)
+  for (const L of ['a', 'b', 'c']) {
+    M.setRingLook(L);
+    assert(M.ringLook() === L, `?ring=${L} can be set`);
+    F.clear();
+    const ring = peakOf(() => fx.shockRing(0, 0, 7 * 1.875));
+    assert(ring >= 150 && ring <= 2000 && finite(), `ring ${L}: the phase roar's shock front is a body (${ring} blobs at its peak, old 124)`);
+    assert(fx._shocks.every((w) => !w.alive), `ring ${L}: every front it followed has ended`);
+    F.clear();
+    const nova = peakOf(() => fx.novaBlast(0, 4, 0, 22));
+    // the worst overlap the brief names: the nova during a flame wall (the wall's own peak ~1400)
+    assert(nova <= 3200 && nova + 1400 < F.max, `ring ${L}: the nova stays in the pool with a flame wall burning (${nova} + ~1400 of ${F.max})`);
+    F.clear();
+    const fire0 = game.world?.fire?.count ?? 0;
+    const g = peakOf(() => fx.groundShock(5, 5, 6, 1));
+    assert(g > 20 && finite() && (game.world?.fire?.count ?? 0) === fire0, `ring ${L}: groundShock draws a dust front (${g} blobs) and lights nothing`);
+  }
+  M.setRingLook('a');
+  // the breath: every look fills the hit cone and stays in it, reaching the far end
+  const T = TUNING.attacks.breath;
+  const mouth = { x: 0, y: 4, z: 0 };
+  for (const L of ['a', 'b', 'c']) {
+    M.setBreathLook(L);
+    F.clear();
+    fx.breathBegin();
+    let peak = 0;
+    for (let t = 0; t < 1.2; t += DT) {
+      fx.breathEmit(DT, mouth, 0, 0.17);
+      step(DT);
+      peak = Math.max(peak, F.count);
+    }
+    fx.breathEnd();
+    let n = 0, wide = 0, far = 0, out_ = 0;
+    for (let i = 0; i < F.count; i++) {
+      const k = i * 15, x = F.data[k], z = F.data[k + 2], kind = F.data[k + 12];
+      if (kind !== 0) continue;
+      const r = Math.hypot(x, z);
+      if (r < 2) continue;
+      n++;
+      const a = Math.abs(Math.atan2(x, z));
+      if (a > T.halfAngle + 0.15) out_++;
+      if (a > T.halfAngle * 0.6) wide++;
+      if (r > T.range * 0.8) far++;
+    }
+    assert(n > 40 && finite(), `breath ${L}: ${n} blobs of fire in flight (peak ${peak})`);
+    assert(out_ / n < 0.06, `breath ${L}: the fire stays in the +-${Math.round((T.halfAngle * 180) / Math.PI)} deg hit cone (${out_} of ${n} outside)`);
+    assert(wide / n > 0.1 && far / n > 0.05, `breath ${L}: it fills the cone (${wide} wide, ${far} near the far end)`);
+    assert(peak < 1500, `breath ${L}: within budget (${peak} blobs at its peak, old ~370)`);
+  }
+  M.setBreathLook('a');
+  if (game.world) game.world.ignite = ignite0;
   return G;
 }
 
@@ -2647,7 +3342,8 @@ async function scenarioLab() {
     const e0 = errors.length;
     // (Armageddon's meteors fall for ~12 s after the trigger: its window is longer; a background
     // hazard never spills into the next ability's count)
-    const r = forceAttack(G, a.name, { max: a.name === 'meteorRain' ? 17 : 9, settle: 600 });
+    // (a flying combo (flight, 2nd pass) runs 7 - 13 s to its crash: it gets the longer window too)
+    const r = forceAttack(G, a.name, { max: a.name === 'meteorRain' ? 17 : TUNING.attacks[a.name]?.parts ? 16 : 9, settle: 600 });
     run(G, 10, { passive: true, god: true }, () => !d.brain.action && d.state === 'combat');
     d.hazards.clear();
     const ok = r.trigger === true && evn(r, 'dragon:windup') >= 1 && r.tellT !== null && r.tells.includes(a.tell) && errors.length === e0; // multi-hit: abilities() lists the headline tell
@@ -2756,6 +3452,201 @@ async function scenarioLab() {
 }
 
 // ================================================================== scenario: fire / flight attacks + hazards (dragon-fire)
+// ================================================================== scenario: the flying combos (2nd pass)
+// Each combo in the phase it opens in: every part cued (one flash per blow, the blow within 2.5
+// frames of flash + lead), a standing hero hit by every part, a hero who rolls on each cue (early,
+// across the blow: i-frames, not a perfect dodge) untouched, the wyrm inside its bound and <= 16 m up,
+// back on the ground in 'combat' at the end; then a perfect dodge of a shell mid-combo plunges it out
+// of the air and ends the combo.
+async function scenarioFlight() {
+  out('\n== scenario FLIGHT (flying combos: every part cued and answerable, bounds, the plunge ends a combo) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, H = d.hazards, lead = TUNING.flashLead;
+  const COMBOS = { skyHunt: 1, skyFurnace: 2, skyCataclysm: 3 };
+  const { FLIGHT } = await imp('src/entities/dragon/tuningFire.js');
+  const listed = new Set(d.debug.abilities().map((a) => a.name));
+  /** Stage: the wyrm in the middle facing south, the hero `dist` m in front of it, phase `ph`. */
+  const stage = (ph, dist) => {
+    settle(G, 12);
+    H.clear();
+    d.phase = ph;
+    G.tick(DT);
+    H.clear();
+    d.position.set(0, 0, -8);
+    d.yaw = 0;
+    d.rig.snap();
+    run(G, 0.3, { passive: true });
+    p.debug.teleport(d.position.x, d.position.z + dist);
+    p.yaw = Math.PI;
+    p.debug.heal();
+    p.burnT = 0;
+    aimAt(G);
+  };
+  /** 1 if (x, z) is in the burning part of a strip (of `only`, or of any): the fire a walker must leave. */
+  const burning = (x, z, only = null) => {
+    for (const h of H.list) {
+      if (!h.alive || h.shape !== 1 || (only && h !== only)) continue;
+      const run = h.t - h.impact;
+      if (run <= -0.6) continue;
+      const f = Math.min(h.len, Math.max(0, run) * h.speed + 3), b0 = Math.max(0, (run - h.linger) * h.speed);
+      const ex = x - h.ax, ez = z - h.az, sAl = ex * h.dx + ez * h.dz, lat = Math.abs(ex * h.dz - ez * h.dx);
+      if (lat <= h.w / 2 + 1.0 && sAl >= b0 - 1 && sAl <= f + 1) return 1;
+    }
+    return 0;
+  };
+  const trial = (name, ph, answer) => {
+    stage(ph, 16);
+    p.debug.god = !answer;
+    const hp0 = p.hp, h0 = G.hits.length;
+    const flashes = [], tells = [], pend = [];
+    let maxAlt = 0, outB = 0, finite = true, parts = new Set();
+    G.watch = (n, dd) => {
+      if (dd?.attack !== name) return;
+      if (n === 'combat:tell') { tells.push(game.time); pend.push({ at: game.time + dd.impactIn, done: false }); }
+      if (n === 'combat:flash') {
+        flashes.push(game.time);
+        // the flash re-times the pending answer nearest to it
+        let best = null;
+        for (const e of pend) if (!e.done && (!best || Math.abs(e.at - game.time - lead) < Math.abs(best.at - game.time - lead))) best = e;
+        if (best) best.at = game.time + lead;
+      }
+    };
+    const trig = game.lab.trigger(name);
+    let done = false, rollT = 0;
+    for (let i = 0; i < Math.round(24 / DT) && !done; i++) {
+      input.axis = { x: 0, y: 0 };
+      if (answer) {
+        for (const e of pend) {
+          if (e.done || e.at - game.time - DT > 0.25) continue;
+          e.done = true;
+          // roll across the line from the hero to the wyrm, to the side that is not burning (toward
+          // the middle of the clearing when both are clear)
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+          let qx = -dz / l, qz = dx / l;
+          const bad = (sg) => burning(p.position.x + qx * sg * 4.2, p.position.z + qz * sg * 4.2) * 10 + (qx * sg * p.position.x + qz * sg * p.position.z > 0 ? 1 : 0) + (Math.hypot(p.position.x + qx * sg * 4.2, p.position.z + qz * sg * 4.2) > 27 ? 20 : 0);
+          if (bad(-1) < bad(1)) { qx = -qx; qz = -qz; }
+          input.axis = { x: qx, y: -qz };
+          input.tap('Space');
+          rollT = game.time;
+        }
+        // standing in burning ground (not rolling): walk straight out of it, as a player would
+        if (p.state !== 'roll' && game.time - rollT > 0.45) {
+          for (const h of H.list) if (h.alive && h.shape === 1 && h.attack === name && burning(p.position.x, p.position.z, h)) {
+            const ex = p.position.x - h.ax, ez = p.position.z - h.az, lat = ex * h.dz - ez * h.dx, sg = lat >= 0 ? 1 : -1;
+            input.axis = { x: h.dz * sg, y: h.dx * sg };
+          }
+        }
+      }
+      G.tick(DT);
+      const s = d.rig.s;
+      if (![d.position.x, d.position.z, s.alt, d.rig.pt.head.y, d.yaw].every(Number.isFinite)) finite = false;
+      maxAlt = Math.max(maxAlt, s.alt);
+      if (Math.hypot(d.position.x, d.position.z) > d.bound + 0.01) outB++;
+      if (d.brain.action?.name === name) parts.add(d.brain.action.phase);
+      done = !d.brain.action && d.state === 'combat' && !H.count(null);
+    }
+    G.watch = null;
+    input.axis = { x: 0, y: 0 };
+    const hits = G.hits.slice(h0).filter((h) => h.attack === name);
+    const red = hits.filter((h) => h.tell === TELL.RED);
+    let worst = 0;
+    for (const h of red) {
+      const f = flashes.filter((t) => t <= h.t + 1e-6).pop();
+      const err = f === undefined ? Infinity : h.t - (f + lead);
+      if (Math.abs(err) > Math.abs(worst)) worst = err;
+    }
+    return { trig, done, tells: tells.length, flashes: flashes.length, red, hurt: hp0 - p.hp, hits, worst, maxAlt, outB, finite, parts: [...parts].join(' '), alt: d.rig.s.alt, state: d.state };
+  };
+  for (const [name, ph] of Object.entries(COMBOS)) {
+    const C = TUNING.attacks[name];
+    assert(listed.has(name) && C?.tell === TELL.RED && Array.isArray(C.parts) && C.parts.at(-1) === 'dive', `${name}: a red Lab ability whose parts end in the dive`);
+    assert(C.parts.length === ph + 1 && C.phase === ph, `${name}: ${ph + 1} parts, opening in phase ${ph}`);
+    const want = C.parts.reduce((n, k) => n + (k === 'barrage' ? FLIGHT.barrage.shots[ph - 1] : 1), 0);
+    const st = trial(name, ph, false);
+    const blowsHit = new Set(st.red.filter((h) => h.r === RESULT.HIT).map((h) => h.kind));
+    out(`   P${ph} ${name.padEnd(12)} standing: phases [${st.parts}] tells ${st.tells}/${want} flashes ${st.flashes} · red hits ${st.red.length} (${[...blowsHit].join(', ')}) · worst hit-(flash+lead) ${(st.worst * 1000).toFixed(0)} ms · max alt ${st.maxAlt.toFixed(1)} · out ${st.outB} · end ${st.state} alt ${st.alt.toFixed(2)}`);
+    assert(st.trig === true && st.done && st.finite, `${name}: completes, finite, back to combat with its hazards gone`);
+    assert(st.tells === want && st.flashes === want, `${name}: one tell and one flash per blow (${st.tells} / ${st.flashes} of ${want})`);
+    assert(Math.abs(st.worst) <= 2.5 * DT, `${name}: every blow lands within 2.5 frames of its flash + lead (${(st.worst * 1000).toFixed(0)} ms)`);
+    assert(blowsHit.has('strip') === C.parts.includes('pass') && blowsHit.has('dive') && blowsHit.has('shell') === C.parts.includes('barrage'), `${name}: a standing hero is hit by every part (${[...blowsHit].join(', ')})`);
+    assert(st.maxAlt <= 16 && st.outB === 0, `${name}: <= 16 m up (${st.maxAlt.toFixed(1)}) and inside the bound (${st.outB} frames out)`);
+    assert(st.state === 'combat' && st.alt < 0.2, `${name}: ends on the ground in combat (${st.state}, alt ${st.alt.toFixed(2)})`);
+    const an = trial(name, ph, true);
+    out(`   P${ph} ${name.padEnd(12)} rolling on the cues: HP lost ${an.hurt} · results ${JSON.stringify(an.hits.map((h) => h.r + ':' + h.kind))}`);
+    assert(an.done && an.hurt === 0 && !an.hits.some((h) => h.r === RESULT.HIT), `${name}: a hero who rolls on every cue takes no damage (${an.hurt})`);
+  }
+  // ---- a perfect dodge of a shell mid-combo: the plunge, the crash, the combo is over
+  {
+    const name = 'skyCataclysm';
+    stage(3, 16);
+    p.debug.god = false;
+    p.debug.streak?.(0);
+    let shellAt = -1, plunged = false, rolled = false, crashed = false, back = false, after = 0;
+    const h0 = G.hits.length;
+    G.watch = (n, dd) => {
+      if (n === 'combat:flash' && dd?.attack === name && d.brain.action?.phase === 'barrage' && shellAt < 0) shellAt = game.time + lead;
+    };
+    game.lab.trigger(name);
+    for (let i = 0; i < Math.round(20 / DT); i++) {
+      input.axis = { x: 0, y: 0 };
+      if (shellAt > 0 && !rolled && shellAt - game.time - DT <= 0.1) {
+        rolled = true;
+        const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+        input.axis = { x: dx / l, y: -dz / l };
+        input.tap('Space');
+      }
+      G.tick(DT);
+      if (p.state === 'plunge') plunged = true;
+      if (d.brain.action?.name === 'plunged' && d.rig.s.alt < 0.2) crashed = true;
+      if (d.brain.action?.name === name && crashed) after++;
+      if (crashed && !d.brain.action && d.state === 'combat') { back = true; break; }
+    }
+    G.watch = null;
+    const res = G.hits.slice(h0).filter((h) => h.attack === name).map((h) => h.r);
+    out(`   plunge mid-combo: results ${JSON.stringify(res)} · plunge ${plunged} · crashed ${crashed} · combo frames after the crash ${after} · back in combat ${back} (alt ${d.rig.s.alt.toFixed(2)})`);
+    assert(res.includes(RESULT.PERFECT) && plunged && crashed && after === 0 && back && d.rig.s.alt < 0.2, 'a perfect dodge of a shell plunges the flying wyrm out of the combo: it crashes and fights on');
+    settle(G, 12);
+    assert(!H.count('strip') || [...H.list].every((h) => !h.alive || h.attack !== name || h.shape !== 1 || h.t >= h.impact), 'no strip of the broken combo is left to start burning');
+  }
+  // ---- more fire from the spells each phase: flame rings 1 / 2 / 3, flame walls (P3) 2, eruption pools
+  for (const [name, ph, want] of [['flameRing', 2, TUNING.attacks.flameRing.rings[1]], ['flameRing', 3, TUNING.attacks.flameRing.rings[2]], ['flameWall', 3, TUNING.attacks.flameWall.walls[2]]]) {
+    stage(ph, name === 'flameRing' ? 9 : 14);
+    p.debug.god = true;
+    const tl = [], fl = [], h0 = G.hits.length;
+    G.watch = (n, dd) => { if (dd?.attack !== name) return; if (n === 'combat:tell') tl.push(game.time); if (n === 'combat:flash') fl.push(game.time); };
+    game.lab.trigger(name);
+    run(G, 8, { passive: true }, () => !d.brain.action && !H.count(null));
+    G.watch = null;
+    const red = G.hits.slice(h0).filter((h) => h.attack === name && h.tell === TELL.RED);
+    let worst = 0, gap = Infinity;
+    red.forEach((h, i) => {
+      const f = fl.filter((t) => t <= h.t + 1e-6).pop();
+      const err = f === undefined ? Infinity : h.t - (f + lead);
+      if (Math.abs(err) > Math.abs(worst)) worst = err;
+      if (i) gap = Math.min(gap, h.t - red[i - 1].t);
+    });
+    out(`   P${ph} ${name}: tells ${tl.length} flashes ${fl.length} (want ${want}) · red hits on a standing hero ${red.length} · closest two ${gap.toFixed(2)} s · worst hit-(flash+lead) ${(worst * 1000).toFixed(0)} ms`);
+    assert(tl.length === want && fl.length === want && red.length === want, `P${ph} ${name}: ${want} of them, each cued and each hitting a standing hero (${tl.length} / ${fl.length} / ${red.length})`);
+    assert(Math.abs(worst) <= 2.5 * DT && gap >= 0.45, `P${ph} ${name}: each lands on its own flash + lead (${(worst * 1000).toFixed(0)} ms), >= 0.45 s apart (${gap.toFixed(2)} s)`);
+  }
+  {
+    stage(2, 14);
+    p.debug.god = true;
+    const h0 = G.hits.length;
+    game.lab.trigger('eruptions');
+    let pools = 0;
+    run(G, 6, { passive: true }, () => { pools = Math.max(pools, H.count('pool')); return false; });
+    const ticks = G.hits.slice(h0).filter((h) => h.attack === 'eruptions' && h.tell !== TELL.RED && h.kind === 'fire').length;
+    out(`   P2 eruptions: burning pools at once ${pools} · contact ticks on a hero standing in one ${ticks}`);
+    assert(pools >= 3 && ticks >= 1, `P2 eruptions: the pillars leave burning pools that tick a hero standing in them (${pools}, ${ticks})`);
+  }
+  d.phase = 1;
+  run(G, 0.5, { passive: true });
+  return G;
+}
+
 async function scenarioFire() {
   out('\n== scenario FIRE (flight attacks, spells, hazards: completion, flight bounds, flash timing, dodges, clear) ==');
   const G = build();
@@ -2763,9 +3654,11 @@ async function scenarioFire() {
   fightSetup(G);
   const d = game.dragon, p = game.player, H = d.hazards, lead = TUNING.flashLead;
   const ER_MAX_CHASE_HITS = TUNING.attacks.eruptions.chase.maxHits;
-  const FIRE_NAMES = ['skyStrafe', 'diveBomb', 'hoverBarrage', 'meteorRain', 'eruptions', 'flameRing', 'flameWall', 'nova'];
-  const AIR = new Set(['skyStrafe', 'diveBomb', 'hoverBarrage']);
-  const HIGH = { skyStrafe: ['pass'], diveBomb: ['hover'], hoverBarrage: ['barrage'] };
+  // (2nd pass: the three flying combos join the list; FLIGHT checks them part by part)
+  const FIRE_NAMES = ['skyStrafe', 'diveBomb', 'hoverBarrage', 'skyHunt', 'skyFurnace', 'skyCataclysm', 'meteorRain', 'eruptions', 'flameRing', 'flameWall', 'nova'];
+  const AIR = new Set(['skyStrafe', 'diveBomb', 'hoverBarrage', 'skyHunt', 'skyFurnace', 'skyCataclysm']);
+  const COMBO_HIGH = ['pass', 'barrage', 'hover'];
+  const HIGH = { skyStrafe: ['pass'], diveBomb: ['hover'], hoverBarrage: ['barrage'], skyHunt: COMBO_HIGH, skyFurnace: COMBO_HIGH, skyCataclysm: COMBO_HIGH };
   const listed = new Set(d.debug.abilities().map((a) => a.name));
   assert(FIRE_NAMES.every((n) => listed.has(n) && TUNING.attacks[n]?.tell === TELL.RED), 'every fire attack is a red Lab ability with tuning data');
   assert(H && typeof H.clear === 'function' && H.alive === 0, 'dragon.hazards exists, empty at the start');
@@ -2783,7 +3676,7 @@ async function scenarioFire() {
     p.debug.heal();
     aimAt(G);
   };
-  const PLACE = { skyStrafe: 18, diveBomb: 14, hoverBarrage: 14, meteorRain: 12, eruptions: 14, flameRing: 9, flameWall: 14, nova: 12 };
+  const PLACE = { skyStrafe: 18, diveBomb: 14, hoverBarrage: 14, skyHunt: 18, skyFurnace: 14, skyCataclysm: 18, meteorRain: 12, eruptions: 14, flameRing: 9, flameWall: 14, nova: 12 };
   const timing = [];
   for (const name of FIRE_NAMES) {
     settle(G);
@@ -3079,7 +3972,9 @@ async function scenarioFire() {
   }
   G.watch = null;
   input.axis = { x: 0, y: 0 };
-  const chits = G.hits.slice(ch0).filter((h) => h.attack === 'eruptions');
+  // (2nd pass: from phase 2 the pillars leave burning pools whose contact ticks are 'eruptions' hits
+  // too, tell normal: the cap and the live window are about the red blows)
+  const chits = G.hits.slice(ch0).filter((h) => h.attack === 'eruptions' && h.tell === TELL.RED);
   // each blow must fall inside SOME pillar's live window: flash + lead .. + active (a moving hero may
   // walk into a pillar that is still erupting, after the next pillar's flash: pairing every blow
   // with the latest flash read that as early)
@@ -6958,7 +7853,7 @@ async function scenarioTiming() {
   const { attackWeight } = await imp('src/entities/dragon/ai.js');
   const lead = TUNING.flashLead, TOL = 0.085;
   // the strings, plus the single melee attacks they share performances with (unchanged numbers)
-  let names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,bite,swipe,tail,stomp').split(',');
+  let names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,stormFlurry,wingRend,pivotLash,rearGuard,skyHammer,furnaceMaw,cinderRake,cataclysm,bite,swipe,tail,stomp').split(',');
   // one part of the list (tests/run.mjs runs the n parts side by side): every n-th name from the k-th
   if (process.env.ABYSS_TM_SHARD) {
     const m = /^(\d+)\/(\d+)$/.exec(process.env.ABYSS_TM_SHARD);
@@ -7044,6 +7939,186 @@ async function scenarioTiming() {
   assert(picks > 0, `string placements probed (${picks})`);
   assert(bad === 0, `every string contact within ±${TOL * 1000} ms of its flash + lead (worst ${Math.round(worst * 1000)} ms, ${bad} off)`);
   assert(firstMiss === 0, `every AI pick lands its first hit (${firstMiss} missed)`);
+  return G;
+}
+
+// ================================================================== scenario: the whole body (w2 melee)
+// The six whole-body kinds, each answered the way its tell promises, inside the strings that use
+// them (started through the AI's own path, the hero held at his spot, god mode): a white wing scythe
+// parried, red tail blows rolled (and a held guard broken), the wing slam's blue flare parried (it
+// ends the string: a recoil), the fire snap's ticks blocked (never parried) and the ground it reached
+// burning on, the burning rakes leaving fire; and the breath's body: the neck carries the P2 rake,
+// the body barely turns (it used to spin with the stream).
+async function scenarioMelee() {
+  out('\n== scenario MELEE (wing scythe / wing slam / tail whip / tail slam / fire snap / ember rake answered; the breath body) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  G.game.player.debug.noRiposte = true;
+  const d = game.dragon, p = game.player;
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  const lead = TUNING.flashLead;
+  /** Start string `name` from the AI's path with the hero `units` model units out, `ang` off the nose;
+   *  answer hit i with plan[i] (parry | dodge | block | none); returns per hit [results...] + the record. */
+  const play = (name, units, ang, plan, { phase = 1, hold = true, after = 0 } = {}) => {
+    settle(G);
+    if (d.phase !== phase) d.enterPhase(phase);
+    d.hazards?.clear?.();
+    place(G, (units * SCALE) / SIZE, ang);
+    const px = p.position.x, pz = p.position.z;
+    p.debug.god = true;
+    const flashes = [], res = {}, kinds = {};
+    const ft0 = d.flashTell.bind(d), hp0 = d.hitPlayer.bind(d);
+    d.flashTell = (a, b) => { if (a.name === name) flashes.push({ hit: b.hit ?? 0, at: game.time + lead, done: false }); return ft0(a, b); };
+    d.hitPlayer = (o, a) => {
+      const r = hp0(o, a);
+      if (a?.name === name && a.cur) { (res[a.cur.hit] ||= []).push(r); (kinds[a.cur.hit] ||= o.kind); }
+      return r;
+    };
+    const c0 = { ...G.counts };
+    d.brain.startAction(ATTACKS[name]);
+    let blockUntil = -1, ended = -1;
+    for (let i = 0; i < Math.round(12 / DT); i++) {
+      aimAt(G);
+      input.axis = { x: 0, y: 0 };
+      for (const f of flashes) {
+        if (f.done) continue;
+        const left = f.at - game.time - DT, how = plan[f.hit] ?? 'none';
+        if (how === 'parry' && left <= 0.12) { f.done = true; input.click(1); }
+        else if (how === 'block' && left <= 0.3) { f.done = true; input.press(1); blockUntil = f.at + 0.75; }
+        else if (how === 'dodge' && left <= 0.1) {
+          f.done = true;
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+          input.axis = { x: -dz / l, y: -dx / l }; // sideways (a slam along a line: roll aside)
+          input.tap('Space');
+        } else if (how === 'none' && left <= 0) f.done = true;
+      }
+      if (blockUntil > 0 && game.time >= blockUntil) { input.up(1); blockUntil = -1; }
+      G.tick(DT);
+      if (hold && p.state !== 'roll' && p.state !== 'plunge') p.debug.teleport(px, pz);
+      const a = d.brain.action;
+      if (ended < 0 && (!a || a.name !== name)) ended = game.time;
+      if (ended >= 0 && game.time - ended >= after) break;
+    }
+    if (blockUntil > 0) input.up(1);
+    d.flashTell = ft0;
+    d.hitPlayer = hp0;
+    const ev = {};
+    for (const k in G.counts) ev[k] = G.counts[k] - (c0[k] || 0);
+    p.debug.god = false;
+    return { res, kinds, ev, flashes: flashes.length, px, pz };
+  };
+  const first = (r, i) => r.res[i]?.[0] ?? 'none';
+
+  // 1) the wing scythe (white): parried inside Wing rend
+  const wr = play('wingRend', 4.0, 0, { 0: 'parry', 1: 'parry', 2: 'parry', 3: 'parry' });
+  out(`   wingRend parried: ${JSON.stringify(wr.res)} · dragon:parried ${wr.ev['dragon:parried'] || 0}`);
+  assert(first(wr, 1) === RESULT.PARRIED && wr.kinds[1] === 'wing', `the wing scythe (white) is parried (${first(wr, 1)}, ${wr.kinds[1]})`);
+
+  // 2) the tail whip (red): rolled (a perfect dodge) inside Pivot lash; a parry does not stop it
+  p.debug.streak?.(0);
+  const pl = play('pivotLash', 4.5, 1.5, { 0: 'dodge' }, { hold: false });
+  out(`   pivotLash rolled: ${JSON.stringify(pl.res)} · perfectDodge ${pl.ev['player:perfectDodge'] || 0}`);
+  assert(first(pl, 0) === RESULT.PERFECT && pl.kinds[0] === 'tail', `the tail whip (red) is rolled: a perfect dodge (${first(pl, 0)}, ${pl.kinds[0]})`);
+  const pp = play('pivotLash', 4.5, -1.5, { 0: 'parry' });
+  assert(first(pp, 0) === RESULT.HIT, `a parry does not answer the tail whip (${first(pp, 0)})`);
+
+  // 3) the tail slam (red): rolled aside; a held guard is broken
+  p.debug.streak?.(0);
+  const rg = play('rearGuard', 5.5, Math.PI, { 0: 'dodge' }, { hold: false });
+  out(`   rearGuard rolled: ${JSON.stringify(rg.res)}`);
+  assert(first(rg, 0) === RESULT.PERFECT && rg.kinds[0] === 'tail', `the tail slam (red) is rolled aside: a perfect dodge (${first(rg, 0)}, ${rg.kinds[0]})`);
+  const rb = play('rearGuard', 5.5, Math.PI, { 0: 'block' });
+  out(`   rearGuard blocked: ${JSON.stringify(rb.res)} · guardBreak ${rb.ev['player:guardBreak'] || 0}`);
+  assert(first(rb, 0) === RESULT.HIT && (rb.ev['player:guardBreak'] || 0) >= 1, `a held guard against the tail slam breaks (${first(rb, 0)})`);
+
+  // 4) the wing slam's blue flare: parried, it ends the string (a recoil), every earlier hit parried
+  const sh = play('skyHammer', 4.0, 0, { 0: 'parry', 1: 'parry', 2: 'parry' }, { after: 0.05 });
+  out(`   skyHammer parried: ${JSON.stringify(sh.res)} · recoil ${d.brain.action?.name ?? '-'} · dragon:parried ${sh.ev['dragon:parried'] || 0}`);
+  assert(first(sh, 2) === RESULT.PARRIED && sh.kinds[2] === 'slam', `the wing slam's blue flare is parried (${first(sh, 2)}, ${sh.kinds[2]})`);
+
+  // 5) the fire snap: its ticks blocked (chip, never parried), the ground it reached burns on
+  const fm = play('furnaceMaw', 4.0, 0, { 3: 'block' }, { phase: 2, after: 0 });
+  const ticks = fm.res[3] ?? [];
+  const burning = d.hazards.count('meleeFire');
+  out(`   furnaceMaw fire snap blocked: ticks ${JSON.stringify(ticks)} · burning ground strips ${burning}`);
+  assert(ticks.length >= 3 && ticks.every((r) => r === RESULT.BLOCKED) && fm.kinds[3] === 'fire', `the fire snap ticks, every tick blocked (${JSON.stringify(ticks)})`);
+  const fp = play('furnaceMaw', 4.0, 0, { 3: 'parry' }, { phase: 2 });
+  assert((fp.res[3] ?? []).every((r) => r !== RESULT.PARRIED) && (fp.res[3] ?? []).length > 0, `the fire snap is never parried (${JSON.stringify(fp.res[3])})`);
+  // standing in the burnt ground: contact ticks (fire, blockable) from the snap's strip
+  {
+    settle(G, 0.1);
+    d.hazards.clear();
+    if (d.phase !== 2) d.enterPhase(2);
+    place(G, (4.0 * SCALE) / SIZE, 0);
+    const px = p.position.x, pz = p.position.z;
+    p.debug.god = true;
+    // contact ticks of the burning strips (hazards.js _tick: only while he stands in the fire)
+    const tk0 = d.hazards._tick.bind(d.hazards);
+    let groundTicks = 0, strips = 0;
+    d.hazards._tick = (h, fx, fz) => { if (h.kind === 'meleeFire') groundTicks++; return tk0(h, fx, fz); };
+    d.brain.startAction(ATTACKS.furnaceMaw);
+    let snapEnd = -1;
+    for (let i = 0; i < Math.round(10 / DT); i++) {
+      aimAt(G);
+      input.axis = { x: 0, y: 0 };
+      G.tick(DT);
+      p.debug.teleport(px, pz);
+      const a = d.brain.action;
+      if (snapEnd < 0 && a?.name === 'furnaceMaw' && a.phase === 'windup5') { snapEnd = game.time; strips = d.hazards.count('meleeFire'); }
+      if (snapEnd >= 0 && (!a || a.name !== 'furnaceMaw')) break;
+    }
+    d.hazards._tick = tk0;
+    p.debug.god = false;
+    out(`   burning ground after the snap: ${strips} strip(s) as the gout ends · contact ticks ${groundTicks}`);
+    assert(strips >= 1 && groundTicks >= 2, `the ground the fire snap reached burns: contact ticks while he stands in it (${strips} strips, ${groundTicks} ticks)`);
+  }
+
+  // 6) the ember rake: white (parried); from phase 2 the arc it raked burns
+  const er = play('cinderRake', 4.0, 0, { 0: 'parry' }, { phase: 2 });
+  out(`   cinderRake: rake ${first(er, 0)}`);
+  assert(first(er, 0) === RESULT.PARRIED && er.kinds[0] === 'swipe', `the ember rake is parried (${first(er, 0)})`);
+  {
+    settle(G);
+    d.hazards.clear();
+    place(G, (4.0 * SCALE) / SIZE, 0);
+    d.brain.startAction(ATTACKS.cinderRake);
+    let n = 0;
+    for (let i = 0; i < Math.round(1.6 / DT); i++) { G.tick(DT); n = Math.max(n, d.hazards.count('meleeFire')); }
+    out(`   the rakes' burning arcs: ${n} strip(s)`);
+    assert(n >= 2, `the ember rake's arc burns in phase 2 (${n} strips)`);
+    settle(G);
+    d.enterPhase(1);
+    d.hazards.clear();
+  }
+
+  // 7) the breath's body (P2): the neck carries the rake, the body barely turns
+  {
+    settle(G);
+    d.enterPhase(2);
+    place(G, (9 * SCALE) / SIZE, 0);
+    p.debug.god = true;
+    d.brain.startAction(ATTACKS.breath);
+    let yaw0 = null, aMin = Infinity, aMax = -Infinity, yMin = Infinity, yMax = -Infinity, ok = true;
+    for (let i = 0; i < Math.round(6 / DT); i++) {
+      aimAt(G);
+      G.tick(DT);
+      const a = d.brain.action;
+      if (!a || a.name !== 'breath') break;
+      if (a.phase !== 'active') continue;
+      if (yaw0 === null) yaw0 = d.yaw;
+      const rel = (x) => Math.atan2(Math.sin(x - yaw0), Math.cos(x - yaw0));
+      aMin = Math.min(aMin, rel(a.aim)); aMax = Math.max(aMax, rel(a.aim));
+      yMin = Math.min(yMin, rel(d.yaw)); yMax = Math.max(yMax, rel(d.yaw));
+      ok &&= Number.isFinite(a.aim + d.yaw + a.aimV);
+    }
+    p.debug.god = false;
+    out(`   breath P2: the stream covers ${(aMax - aMin).toFixed(2)} rad, the body turns ${(yMax - yMin).toFixed(2)} rad`);
+    assert(ok && aMax - aMin >= 0.9, `the P2 breath still rakes a wide arc (${(aMax - aMin).toFixed(2)} rad)`);
+    assert(yMax - yMin <= 0.6 * (aMax - aMin), `the neck carries it: the body turns far less than the stream (${(yMax - yMin).toFixed(2)} of ${(aMax - aMin).toFixed(2)} rad)`);
+    settle(G);
+    d.enterPhase(1);
+  }
   return G;
 }
 
@@ -7931,7 +9006,7 @@ async function scenarioHeroStance() {
 // the blow only inside the mark and dodged like any red blow, the boulder parried / blocked / stepped
 // off / stopped by cover, nothing when no piece is in reach, and the reset.
 async function scenarioTerrain() {
-  out('\n== scenario TERRAIN (hurl, tail bat, firebrand: tell and flash, the piece taken / flown / landed on its mark, dodge, parry, cover, no piece, reset) ==');
+  out('\n== scenario TERRAIN (hurl, tail bat, firebrand: one tell, the flare on the flying piece, NOTHING on the ground before it lands, the tug and the tear, the path smashed, dodge, parry, cover, no piece, reset) ==');
   const lead = TUNING.flashLead;
   const X = TUNING.attacks;
   const { INTACT, HELD, FLYING, GONE } = PIECE;
@@ -8003,47 +9078,82 @@ async function scenarioTerrain() {
    */
   const follow = (G, name, each = null, max = 9) => {
     const { game } = G;
-    const d = game.dragon, D = game.world.destructibles;
-    const rec = { tells: [], flashes: [], states: new Set(), phases: [], piece: null, crash: null, taken: null, lx: NaN, lz: NaN, marks: 0, markAt: null, hit: null, hitT: NaN, spells: 0, explosions: 0, held: 0 };
+    const d = game.dragon, D = game.world.destructibles, fx = d.fx;
+    const rec = { tells: [], flashes: [], states: new Set(), phases: [], piece: null, crash: null, taken: null, land: null, lx: NaN, lz: NaN, marks: 0, hit: null, hitT: NaN, spells: 0, explosions: 0, held: 0, rooted: 0, smashed: d.terrain.smashed };
     const h0 = G.hits.length;
+    // (second pass, the owner: "don't show exactly where the terrain will land": every way the wyrm
+    // draws heat on the ground ahead of a blow is counted while the move runs or its piece flies)
+    const marked = ['heatDisc', 'heatBand', 'heatFlare', 'warnRing', 'ringPulse', 'hazardFlash'];
+    const saved = marked.map((k) => fx[k]);
+    marked.forEach((k, i) => { if (typeof saved[i] === 'function') fx[k] = (...args) => { rec.marks++; return saved[i].apply(fx, args); }; });
+    const imp = d.terrain._impact;
+    d.terrain._impact = (s, x, z) => { rec.land = { t: game.time, x, z, sx: s.x0, sz: s.z0 }; return imp.call(d.terrain, s, x, z); };
     G.watch = (n, dd) => {
       if (n === 'dragon:spell' && dd?.name === name) rec.spells++;
       if (n === 'dragon:explosion') rec.explosions++;
       if (n === 'world:impact' && dd.by === 'boss' && dd.kind === 'throw') rec.taken = { t: game.time, id: dd.id, x: dd.x, z: dd.z };
       if (n === 'world:impact' && dd.by === 'boss' && dd.kind === 'crash') rec.crash = { t: game.time, id: dd.id, x: dd.x, z: dd.z };
       if (dd?.attack !== name) return;
-      if (n === 'combat:tell') rec.tells.push({ t: game.time, tell: dd.tell, impactIn: dd.impactIn });
-      if (n === 'combat:flash') rec.flashes.push({ t: game.time, tell: dd.tell, x: dd.x, y: dd.y, z: dd.z });
+      if (n === 'combat:tell') rec.tells.push({ t: game.time, tell: dd.tell, impactIn: dd.impactIn, flare: dd.flare });
+      if (n === 'combat:flash') rec.flashes.push({ t: game.time, tell: dd.tell, x: dd.x, y: dd.y, z: dd.z, flare: dd.flare });
     };
     rec.trigger = game.lab.trigger(name);
     let started = false;
-    for (let i = 0; i < Math.round(max / DT); i++) {
-      G.input.axis = { x: 0, y: 0 };
-      aimAt(G);
-      const a = d.brain.action;
-      if (a?.name === name) {
-        started = true;
-        rec.a = a;
-        if (rec.phases[rec.phases.length - 1] !== a.phase) rec.phases.push(a.phase);
-        if (a.piece) rec.piece = a.piece;
-        if (Number.isFinite(a.lx) && (a.phase === 'active' || a.phase === 'recovery')) { rec.lx = a.lx; rec.lz = a.lz; }
-        if (d.terrain.hold.piece) rec.held++;
-        if (game.time - d.terrain.mk.lastT < 0.05) { rec.marks++; if (Number.isFinite(a.tx)) rec.markAt = { x: a.tx, z: a.tz }; }
+    try {
+      for (let i = 0; i < Math.round(max / DT); i++) {
+        G.input.axis = { x: 0, y: 0 };
+        aimAt(G);
+        const a = d.brain.action;
+        if (a?.name === name) {
+          started = true;
+          rec.a = a;
+          if (rec.phases[rec.phases.length - 1] !== a.phase) rec.phases.push(a.phase);
+          if (a.piece) rec.piece = a.piece;
+          if (Number.isFinite(a.lx) && a.thrown) { rec.lx = a.lx; rec.lz = a.lz; }
+          if (d.terrain.hold.piece) rec.held++;
+          if (d.terrain.hold.piece && d.terrain.hold.rooted) rec.rooted++;
+        }
+        if (rec.piece) rec.states.add(rec.piece.state);
+        each?.(rec, a);
+        G.tick(DT);
+        if (!rec.hit) {
+          const h = G.hits.slice(h0).find((x) => x.attack === name && !(x.kind === 'fire' && x.tell === TELL.NORMAL)); // (not a burning wreck's tick)
+          if (h) { rec.hit = h; rec.hitT = h.t; }
+        }
+        if (started && !d.brain.action && !d.terrain.shots.some((s) => s.on) && D.active.every((b) => b.state !== FLYING && b.state !== HELD)) break;
       }
-      if (rec.piece) rec.states.add(rec.piece.state);
-      each?.(rec, a);
-      G.tick(DT);
-      if (!rec.hit) {
-        const h = G.hits.slice(h0).find((x) => x.attack === name && !(x.kind === 'fire' && x.tell === TELL.NORMAL)); // (not a burning wreck's tick)
-        if (h) { rec.hit = h; rec.hitT = h.t; }
-      }
-      if (started && !d.brain.action && !d.terrain.shots.some((s) => s.on) && D.active.every((b) => b.state !== FLYING && b.state !== HELD)) break;
+    } finally {
+      marked.forEach((k, i) => { if (saved[i]) fx[k] = saved[i]; });
+      d.terrain._impact = imp;
     }
+    rec.smashed = d.terrain.smashed - rec.smashed;
     rec.fire = G.hits.slice(h0).filter((x) => x.attack === name && x.kind === 'fire' && x.tell === TELL.NORMAL);
+    rec.lead = rec.hit && rec.flashes.length ? rec.hitT - rec.flashes[0].t : NaN;
+    rec.t2b = rec.tells.length && rec.hit ? rec.hitT - rec.tells[0].t : rec.tells.length && rec.land ? rec.land.t - rec.tells[0].t : NaN;
     G.watch = null;
     return rec;
   };
   const timingOk = (rec) => rec.flashes.length === 1 && Number.isFinite(rec.hitT) && Math.abs(rec.hitT - rec.flashes[0].t - lead) <= 0.085;
+  // nothing on the ground before the blow: no heat drawn (0 frames) and no scorch stamped before it
+  // lands ON ITS LANDING GROUND (where it was aimed, its blast radius + 3 m). (Integration, 2026-11-15:
+  // the wyrm's body now wrecks what it meets (dragon.js _wreck): in the hurl its tail, swung round by
+  // the lunge, broke the boulder at (-10, -4), 22 m from the landing at (2, 18), and its rubble stamps
+  // the ground there. That is honest wreckage behind the wyrm, not a mark of where the piece will land.)
+  const landNear = (rec, s) => {
+    const x = Number.isFinite(rec.lx) ? rec.lx : rec.land?.x ?? rec.crash?.x, z = Number.isFinite(rec.lz) ? rec.lz : rec.land?.z ?? rec.crash?.z;
+    return !Number.isFinite(x + z) || Math.hypot(s.x - x, s.z - z) < (X[rec.a?.name]?.radius ?? X.hurl.radius) + 3 + s.r;
+  };
+  const unmarked = (G, rec) => rec.marks === 0 && !G.stamps.some((s) => s.t > (rec.tells[0]?.t ?? Infinity) && s.t < (rec.land?.t ?? rec.hitT) - 1e-6 && landNear(rec, s));
+  /** A roll pressed `after` s after the flash (sideways), the hero otherwise standing still. */
+  const rollAt = (G, after) => {
+    let rolled = false;
+    return (rec) => {
+      if (!rolled && rec.flashes.length && G.game.time >= rec.flashes[0].t + after - 1e-6) { rolled = true; G.input.axis = { x: 1, y: 0 }; G.input.tap('Space'); rec.rolled = G.game.time - rec.flashes[0].t; }
+    };
+  };
+  // the second pass's bands (tell to blow), phase 1: hurl 1.3 - 1.6 s (a throw behind it, the pivot,
+  // up to ~1.9), the firebrand under ~2.0 s in phase 2, the tail bat 1.0 - 1.4 s; quicker in later phases
+  const BAND = { hurl: [1.1, 1.75], fireBrand: [1.3, 2.05], tailBat: [0.9, 1.45] };
 
   // ================================================================ hurl
   {
@@ -8061,40 +9171,74 @@ async function scenarioTerrain() {
     p.debug.teleport(2, 3);
     G.tick(DT);
     assert(near(wNear, wFar * X.hurl.closeK, 1e-9) && attackWeight(ATTACKS.hurl, 'hurl', d, d.sense) === 0, `hurl: picked less with the hero 7 m away (${wNear.toFixed(2)}: it turns its back on him), never with him under its chest`);
-    // ---- the hero stands still: taken, flown, landed on its mark, one red blow
+    // ---- the hero stands still: taken (rooted, then torn out), flown, landed where it was aimed, one red blow
     stage(G, 2, 0, Math.PI / 2, 2, 18);
     const hp0 = p.hp;
     const r = follow(G, 'hurl');
-    assert(r.trigger && r.tells.length === 1 && r.tells[0].tell === TELL.RED && r.flashes.length === 1, `hurl: one red tell, one flash (tells ${r.tells.length}, flashes ${r.flashes.length}; phases ${r.phases.join(' > ')})`);
-    assert(r.piece === tree && r.taken?.id === tree.id && r.states.has(HELD) && r.states.has(FLYING) && tree.state === GONE && r.held > 30, `hurl: the nearest tree is torn out (held ${r.held} frames), flies and comes apart (state ${tree.state})`);
-    assert(r.crash && near(r.crash.x, r.lx, 0.05) && near(r.crash.z, r.lz, 0.05) && Math.hypot(r.lx - p.position.x, r.lz - 18) < 3.5, `hurl: it lands where the throw was aimed (${r.crash?.x.toFixed(1)}, ${r.crash?.z.toFixed(1)}), on the hero's ground`);
-    const stamped = G.stamps.some((s) => s.t > r.tells[0].t && s.t < r.hitT && Math.hypot(s.x - r.lx, s.z - r.lz) < 0.6 && near(s.r, X.hurl.radius, 1e-6));
-    assert(r.marks > 40 && stamped, `hurl: the landing is marked from the bite to the impact (${r.marks} frames before the throw, the ground heated at the spot in flight)`);
+    assert(r.trigger && r.tells.length === 1 && r.tells[0].tell === TELL.RED && r.flashes.length === 1 && r.flashes[0].flare === true, `hurl: one red tell, one flash, the red flare (tells ${r.tells.length}, flashes ${r.flashes.length}; phases ${r.phases.join(' > ')})`);
+    assert(r.piece === tree && r.taken?.id === tree.id && r.states.has(HELD) && r.states.has(FLYING) && tree.state === GONE && r.rooted >= 5 && r.held > r.rooted + 10, `hurl: the nearest tree is taken, holds against the tug (${r.rooted} frames rooted), is torn out and held (${r.held} frames in all), flies and comes apart (state ${tree.state}; states ${[...r.states].join(',')}, taken ${r.taken?.id === tree.id})`);
+    const fl = r.flashes[0];
+    assert(fl && Math.hypot(fl.x - r.lx, fl.z - r.lz) > 1 && fl.y > 0.5, `hurl: the flare is on the flying piece (${fl?.x.toFixed(1)}, ${fl?.y.toFixed(1)}, ${fl?.z.toFixed(1)}), not on the ground where it lands`);
+    assert(r.land && near(r.land.x, r.lx, 0.05) && near(r.land.z, r.lz, 0.05) && Math.hypot(r.lx - p.position.x, r.lz - 18) < 3.5, `hurl: it lands where the throw was aimed (${r.land?.x.toFixed(1)}, ${r.land?.z.toFixed(1)}), on the hero's ground`);
+    const skid = r.crash && r.land ? Math.hypot(r.crash.x - r.land.x, r.crash.z - r.land.z) : NaN;
+    assert(near(skid, X.hurl.skid, 0.3), `hurl: it skids on ${skid.toFixed(2)} m past the blow along its flight and comes apart there (skid ${X.hurl.skid})`);
+    assert(unmarked(G, r), `hurl: NOTHING is drawn on the ground before it lands (heat drawn ${r.marks} times; no scorch stamped before the blow)`);
     assert(r.hit?.r === RESULT.HIT && r.hit.tell === TELL.RED && near(r.hit.damage, X.hurl.damage * TUNING.damageScale, 1e-6) && near(hp0 - p.hp, r.hit.damage, 1e-6), `hurl: the hero under it takes one red blow of ${r.hit?.damage?.toFixed(1)} (${X.hurl.damage} x ${TUNING.damageScale})`);
-    assert(timingOk(r), `hurl: the blow lands ${(r.hitT - r.flashes[0]?.t).toFixed(3)} s after its flash (lead ${lead} +- 0.085)`);
-    assert(r.hitT - r.tells[0].t >= 2.0 && r.tells[0].impactIn >= 2.0, `hurl: ${(r.hitT - r.tells[0].t).toFixed(2)} s from the tell to the blow (>= 2: the bite, the lift, the aim, the flight)`);
+    assert(timingOk(r), `hurl: the blow lands ${r.lead.toFixed(3)} s after its flash (lead ${lead} +- 0.085)`);
+    out(`   hurl, phase 1: ${r.t2b.toFixed(2)} s from the tell to the blow (phases ${r.phases.join(' > ')})`);
+    assert(r.t2b >= BAND.hurl[0] && r.t2b <= BAND.hurl[1], `hurl: ${r.t2b.toFixed(2)} s from the tell to the blow, phase 1 (band ${BAND.hurl.join(' - ')}; was 2.85)`);
     assert(r.spells === 1, 'hurl: dragon:spell { name: hurl } once, at the throw');
-    // ---- out of the mark once the throw is committed: no blow
+    // ---- later phases: quicker
+    const t2b = { 1: r.t2b };
+    for (const ph of [2, 3]) {
+      stage(G, 2, 0, Math.PI / 2, 2, 18);
+      d.phase = ph;
+      const rp = follow(G, 'hurl');
+      t2b[ph] = rp.t2b;
+      d.phase = 1;
+    }
+    out(`   hurl, tell to blow by phase: ${[1, 2, 3].map((k) => `P${k} ${t2b[k].toFixed(2)} s`).join(', ')}`);
+    assert(t2b[2] < t2b[1] && t2b[3] < t2b[2], `hurl: quicker in later phases (${[1, 2, 3].map((k) => t2b[k].toFixed(2)).join(' > ')} s)`);
+    // ---- out of the blast once it is thrown: no blow
     stage(G, 2, 0, Math.PI / 2, 2, 18);
     let moved = false;
     const r2 = follow(G, 'hurl', (rec, a) => {
-      if (!moved && a?.thrown) { moved = true; p.debug.teleport(rec.lx + X.hurl.radius + 0.45 + 0.4, rec.lz); }
+      if (!moved && a?.thrown) { moved = true; p.debug.teleport(a.lx + X.hurl.radius + 0.45 + 0.4, a.lz); }
     });
-    assert(moved && r2.crash && !r2.hit && r2.flashes.length === 1, `hurl: ${(X.hurl.radius + 0.85).toFixed(2)} m from where it lands (radius ${X.hurl.radius} + the hero 0.45): no blow`);
-    // ---- a roll through it: i-frames dodge it; never a plunge (a thrown piece is no body)
-    stage(G, 2, 0, Math.PI / 2, 2, 18);
-    let rolled = false;
+    assert(moved && r2.land && !r2.hit && r2.flashes.length === 1, `hurl: ${(X.hurl.radius + 0.85).toFixed(2)} m from where it lands (radius ${X.hurl.radius} + the hero 0.45): no blow`);
+    // ---- a roll at the flare dodges it: pressed on the flash itself, and as late as 0.25 s after it;
+    // never a plunge (a thrown piece is no body)
     const pd0 = G.counts['player:plunge'] || 0;
-    const r3 = follow(G, 'hurl', (rec) => {
-      if (!rolled && rec.flashes.length && rec.flashes[0].t + lead - game.time - DT <= 0.1) { rolled = true; G.input.axis = { x: 1, y: 0 }; G.input.tap('Space'); }
-    });
-    assert(rolled && (r3.hit?.r === RESULT.DODGED || r3.hit?.r === RESULT.PERFECT) && (G.counts['player:plunge'] || 0) === pd0, `hurl: a roll timed on the flash dodges it (${r3.hit?.r}), with no plunge`);
+    const rolls = [];
+    for (const after of [0, 0.25]) {
+      stage(G, 2, 0, Math.PI / 2, 2, 18);
+      const r3 = follow(G, 'hurl', rollAt(G, after));
+      rolls.push(`${r3.rolled?.toFixed(2)} s: ${r3.hit?.r}`);
+      assert(Number.isFinite(r3.rolled) && (r3.hit?.r === RESULT.DODGED || r3.hit?.r === RESULT.PERFECT || (!r3.hit && r3.land)), `hurl: a roll ${after} s after the flare dodges it (${r3.hit?.r ?? 'rolled out of it'})`);
+    }
+    assert((G.counts['player:plunge'] || 0) === pd0, `hurl: a dodged throw never plunges (${rolls.join('; ')})`);
     // ---- a held guard does not stop it
     stage(G, 2, 0, Math.PI / 2, 2, 18);
     G.input.press(1);
     const r4 = follow(G, 'hurl');
     G.input.up(1);
     assert(r4.hit?.r === RESULT.HIT, `hurl: red, so a held guard fails (${r4.hit?.r})`);
+    // ---- a piece in its path is smashed and it flies on (a dead tree stood on the line as it is thrown)
+    stage(G, 2, 0, Math.PI / 2, 2, 18);
+    const post = D.list.find((b) => b.kind === 'deadTree' && Math.hypot(b.x + 14, b.z - 6) < 0.1);
+    let planted = false;
+    const r7 = follow(G, 'hurl', (rec, a) => {
+      if (!planted && a?.thrown) {
+        planted = true;
+        const s = d.terrain._last;
+        post.x = s.x0 + (s.tx - s.x0) * 0.6;
+        post.z = s.z0 + (s.tz - s.z0) * 0.6;
+        // (the world now finds its pieces through a spatial grid built once from where they stand:
+        // a piece moved by hand is re-filed, or no query (the flight's sweep, a strike) meets it)
+        D._buildGrid();
+      }
+    });
+    assert(planted && r7.smashed >= 1 && post.state !== INTACT && r7.hit?.r === RESULT.HIT && timingOk(r7), `hurl: a tree standing in its path is smashed (${r7.smashed}; the tree ${post.state === INTACT ? 'stands' : 'is down'}) and the throw flies on to its blow`);
     // ---- cut short with the piece in the jaws: it falls where it is, no blow, no late flash
     stage(G, 2, 0, Math.PI / 2, 2, 18);
     let cut = false;
@@ -8116,7 +9260,7 @@ async function scenarioTerrain() {
     // ---- a boulder is thrown too (the nearest piece, whatever it is)
     stage(G, 9, 0, 0, 9, 26);
     const r6 = follow(G, 'hurl');
-    assert(r6.piece?.kind === 'boulder' && r6.hit?.r === RESULT.HIT && timingOk(r6), `hurl: with a boulder nearest, the boulder is thrown (${r6.piece?.kind}; blow ${(r6.hitT - r6.flashes[0]?.t).toFixed(3)} s after its flash)`);
+    assert(r6.piece?.kind === 'boulder' && r6.hit?.r === RESULT.HIT && timingOk(r6) && unmarked(G, r6), `hurl: with a boulder nearest, the boulder is thrown (${r6.piece?.kind}; blow ${r6.lead.toFixed(3)} s after its flash, ${r6.t2b.toFixed(2)} s after its tell, nothing on the ground)`);
     // ---- every piece gone or out of reach: not picked
     for (const b of D.list) D.strike(b.x, b.z, 0.5, 99, { src: D.swing() });
     run(G, 3, { passive: true });
@@ -8143,18 +9287,26 @@ async function scenarioTerrain() {
     p.debug.teleport(-6, -9);
     G.tick(DT);
     assert(attackWeight(ATTACKS.tailBat, 'tailBat', d, d.sense) === 0, 'tail bat: not with the hero beside the boulder, in the way of the lash');
-    // ---- the hero stands still: batted, it skims to him, one blue blow
+    // ---- the hero stands still: batted, it bursts off the ground and skims to him, one blue blow
     stage(G, 0, 0, 0, -8, 16);
     const hp0 = p.hp;
     const r = follow(G, 'tailBat');
-    assert(r.trigger && r.tells.length === 1 && r.tells[0].tell === TELL.BLUE && r.flashes.length === 1, `tail bat: one blue tell, one flash (tells ${r.tells.length}, flashes ${r.flashes.length}; phases ${r.phases.join(' > ')})`);
+    assert(r.trigger && r.tells.length === 1 && r.tells[0].tell === TELL.BLUE && r.flashes.length === 1 && r.flashes[0].flare === true, `tail bat: one blue tell, one flash, the BLUE flare (a parry moment) (tells ${r.tells.length}, flashes ${r.flashes.length}; phases ${r.phases.join(' > ')})`);
     assert(r.piece === rock && r.taken?.id === rock.id && r.states.has(HELD) && rock.state === GONE, `tail bat: the boulder is batted and comes apart (state ${rock.state})`);
     assert(r.hit?.r === RESULT.HIT && r.hit.tell === TELL.BLUE && near(r.hit.damage, B.damage * TUNING.damageScale, 1e-6) && near(hp0 - p.hp, r.hit.damage, 1e-6), `tail bat: the hero on its line takes one blue blow of ${r.hit?.damage?.toFixed(1)}`);
-    assert(timingOk(r), `tail bat: the blow lands ${(r.hitT - r.flashes[0]?.t).toFixed(3)} s after its flash (lead ${lead} +- 0.085)`);
-    assert(r.hitT - r.tells[0].t >= 1.2, `tail bat: ${(r.hitT - r.tells[0].t).toFixed(2)} s from the tell to the blow (>= 1.2)`);
-    assert(r.marks > 30 && G.stamps.some((s) => s.t > r.tells[0].t && s.t < r.hitT), `tail bat: its line is marked through the windup (${r.marks} frames)`);
+    assert(timingOk(r), `tail bat: the blow lands ${r.lead.toFixed(3)} s after its flash (lead ${lead} +- 0.085)`);
+    assert(unmarked(G, r), `tail bat: its line is NOT drawn (heat drawn ${r.marks} times, no scorch before the blow)`);
+    const tb = { 1: r.t2b };
+    for (const ph of [2, 3]) {
+      stage(G, 0, 0, 0, -8, 16);
+      d.phase = ph;
+      tb[ph] = follow(G, 'tailBat').t2b;
+      d.phase = 1;
+    }
+    out(`   tail bat, tell to blow by phase: ${[1, 2, 3].map((k) => `P${k} ${tb[k].toFixed(2)} s`).join(', ')}`);
+    assert(r.t2b >= BAND.tailBat[0] && r.t2b <= BAND.tailBat[1] && tb[3] <= tb[1], `tail bat: ${r.t2b.toFixed(2)} s from the tell to the blow (band ${BAND.tailBat.join(' - ')}; was 1.83), quicker later (${tb[3].toFixed(2)})`);
     assert(r.crash && Math.hypot(r.crash.x + 8, r.crash.z - 16) < 3.5, 'tail bat: it breaks on him');
-    // ---- parried: cut out of the air (blue posture), no damage
+    // ---- parried: cut out of the air (blue posture), no damage; a parry moment
     stage(G, 0, 0, 0, -8, 16);
     const po0 = d.posture, hp1 = p.hp;
     let pressed = false;
@@ -8197,9 +9349,16 @@ async function scenarioTerrain() {
     const w2 = attackWeight(ATTACKS.fireBrand, 'fireBrand', d, d.sense);
     assert(w1 === 0 && w2 > 0, `firebrand: not in phase 1 (${w1}), from phase 2 on (${w2})`);
     const hp0 = p.hp;
+    const fireField = d.fx.fire, spawn0 = fireField?.spawn;
+    let heat = 0;
+    if (spawn0) fireField.spawn = (b) => { if (d.brain.action?.name === 'fireBrand' || d.terrain.shots.some((s) => s.on && s.burning)) heat++; return spawn0.call(fireField, b); };
     const r = follow(G, 'fireBrand', null, 12);
+    if (spawn0) fireField.spawn = spawn0;
     assert(r.piece?.mat === 'wood' && r.piece.kind === 'deadTree', `firebrand: a boulder is nearer, a tree is taken (${r.piece?.kind})`);
-    assert(r.tells.length === 1 && r.tells[0].tell === TELL.RED && r.flashes.length === 1 && r.phases.includes('kindle') && timingOk(r), `firebrand: one red tell, one flash, the blow ${(r.hitT - r.flashes[0]?.t).toFixed(3)} s after it (phases ${r.phases.join(' > ')})`);
+    assert(r.tells.length === 1 && r.tells[0].tell === TELL.RED && r.flashes.length === 1 && r.phases.includes('kindle') && timingOk(r) && unmarked(G, r), `firebrand: one red tell, one flash, the blow ${r.lead.toFixed(3)} s after it, nothing on the ground before (phases ${r.phases.join(' > ')})`);
+    out(`   firebrand, phase 2: ${r.t2b.toFixed(2)} s from the tell to the blow; ${heat} blobs of heat in the fire field (the burning tree in the jaws and in the air)`);
+    assert(r.t2b >= BAND.fireBrand[0] && r.t2b <= BAND.fireBrand[1], `firebrand: ${r.t2b.toFixed(2)} s from the tell to the blow in phase 2 (band ${BAND.fireBrand.join(' - ')}; was 3.4)`);
+    assert(heat > 40, `firebrand: the burning tree is heat in the fire field (${heat} blobs), not glyph sprites (ADR-113)`);
     assert(r.hit?.r === RESULT.HIT && near(r.hit.damage, F.damage * TUNING.damageScale, 1e-6) && r.hit.kind === 'fire' && near(hp0 - p.hp, r.hit.damage, 4), `firebrand: one red blow of ${r.hit?.damage?.toFixed(1)}, a burn`);
     assert(r.explosions === 1 && G.ignites.some((i) => Math.hypot(i.x - r.lx, i.z - r.lz) < 0.1 && near(i.r, F.radius * F.ignite[1], 1e-6)), 'firebrand: it bursts (dragon:explosion) and lights the grass and wood round it (world.ignite)');
     assert(d.terrain.pyres.some((q) => q.on && near(q.x, r.lx, 0.05) && near(q.z, r.lz, 0.05)), 'firebrand: its wreck burns on where it landed');
@@ -8208,7 +9367,7 @@ async function scenarioTerrain() {
     d.phase = 2;
     let away = false;
     const r2 = follow(G, 'fireBrand', (rec, a) => {
-      if (!away && a?.thrown) { away = true; p.debug.teleport(rec.lx + F.radius + 1.2, rec.lz); }
+      if (!away && a?.thrown) { away = true; p.debug.teleport(a.lx + F.radius + 1.2, a.lz); }
     }, 12);
     assert(away && !r2.hit && r2.fire.length === 0 && d.terrain.pyres.some((q) => q.on), 'firebrand: out of the blast and the wreck: no blow, no burn (the wreck burns on its own)');
     const n0 = G.hits.length;
@@ -8222,7 +9381,7 @@ async function scenarioTerrain() {
     // ---- a new phase puts it out (as the fire hazards)
     stage(G, 9, 3, 0, 9, -14);
     d.phase = 2;
-    follow(G, 'fireBrand', (rec, a) => { if (a?.thrown && Number.isFinite(rec.lx)) p.debug.teleport(rec.lx + F.radius + 1.2, rec.lz); }, 12);
+    follow(G, 'fireBrand', (rec, a) => { if (a?.thrown && Number.isFinite(a.lx)) p.debug.teleport(a.lx + F.radius + 1.2, a.lz); }, 12);
     const lit = d.terrain.pyres.some((q) => q.on);
     d.phase = 3;
     run(G, 0.2, { passive: true });
@@ -8399,7 +9558,7 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, melee: scenarioMelee, budget: scenarioBudget, wreckage: scenarioWreckage, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 // ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process
