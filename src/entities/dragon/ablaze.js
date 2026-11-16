@@ -145,12 +145,13 @@ export class Ablaze {
     this._crest = sites.filter((s) => s.kind === 'crest' || s.kind === 'horn');
     this._woodSites = sites.filter((s) => WOOD.has(s.kind));
 
-    // the ignition's paths: [points, the first point it draws from] (each wing's four finger paths
-    // share the arm: only the middle finger draws it)
+    // the ignition's paths, from where each limb leaves the body (inside it, the run was hidden):
+    // [points, the first point it draws from] (each wing's four finger paths share the arm: only the
+    // middle finger draws it)
     const paths = (this.paths = []);
-    for (const w of pt.wings) for (let f = 0; f < 4; f++) paths.push({ pts: [pt.chestC, w.root, w.elbow, w.wrist, w.knuckles[f], w.tips[f]], from: f === 1 ? 0 : 3, u: 0 });
-    for (const a of pt.arms) paths.push({ pts: [pt.chestC, a.shoulder, a.elbow, a.wrist, a.toe], from: 0, u: 0 });
-    for (const l of pt.legs) paths.push({ pts: [pt.hips, l.hip, l.knee, l.ankle, l.toe], from: 0, u: 0 });
+    for (const w of pt.wings) for (let f = 0; f < 4; f++) paths.push({ pts: [w.root, w.elbow, w.wrist, w.knuckles[f], w.tips[f]], from: f === 1 ? 0 : 2, u: 0 });
+    for (const a of pt.arms) paths.push({ pts: [a.shoulder, a.elbow, a.wrist, a.toe], from: 0, u: 0 });
+    for (const l of pt.legs) paths.push({ pts: [l.hip, l.knee, l.ankle, l.toe], from: 0, u: 0 });
     paths.push({ pts: [pt.chestC, pt.hips, ...tail], from: 0, u: 0 });
     this._len = new Float32Array(32);
   }
@@ -289,9 +290,9 @@ export class Ablaze {
     if (this.t < 0) return;
     const s0 = this.s;
     this.s = clamp01(this.t / this._time);
-    const u = Math.pow(this.s, 1.35); // the fire speeds up as it runs out
+    const u = Math.pow(this.s, 1.1); // the fire speeds up a little as it runs out
     for (const site of this.sites) if (!site.lit && u >= site.at && this._shows(site)) site.lit = true;
-    if (!this._fast) this._runners(Math.pow(s0, 1.35), u);
+    if (!this._fast) this._runners(Math.pow(s0, 1.1), u);
     if (this.s >= 1 && !this.flared) {
       this.flared = true;
       this._flare();
@@ -331,7 +332,7 @@ export class Ablaze {
         if (seg < p.from) continue;
         const v = this._v;
         const sz = R.size * rand(0.8, 1.2);
-        this._blob(v.x + rand(-0.2, 0.2), Math.max(A.minY, v.y + 0.2), v.z + rand(-0.2, 0.2), rand(-0.4, 0.4), rand(1.5, 3), rand(-0.4, 0.4), rand(R.life[0], R.life[1]), sz, sz * 0.4, R.heat, 0, 1.2, 2.2);
+        this._blob(v.x + rand(-0.2, 0.2), Math.max(A.minY, v.y + R.up), v.z + rand(-0.2, 0.2), rand(-0.4, 0.4), rand(1.5, 3), rand(-0.4, 0.4), rand(R.life[0], R.life[1]), sz, sz * 0.4, R.heat, 0, 1.2, 2.2);
         // what it passed smoulders a moment
         this._blob(v.x, Math.max(A.minY, v.y + 0.3), v.z, 0, rand(0.5, 1.2), 0, R.linger * rand(0.8, 1.2), sz * 0.7, sz * 0.5, R.lingerHeat, 0, 1, 1.2);
         if (rnd() < 0.3) this._ember(v.x, v.y, v.z, 1);
@@ -501,7 +502,8 @@ export class Ablaze {
           b.life = tr[0] * (0.75 + RT[ri++ & RM] * (1.2 - 0.75));
           b.size = tsz;
           b.sizeEnd = tsz * 0.55;
-          b.heat = T.heat * tr[1] * L.k * (0.4 + 0.6 * sp) * k;
+          // (the tail's joints lie close: their ribbons overlap, each burns at half)
+          b.heat = T.heat * tr[1] * L.k * (0.4 + 0.6 * sp) * k * (s.kind === 'tail' ? 0.5 : 1);
           b.heatEnd = 0;
           b.drag = 2;
           b.gravity = 0.8;
@@ -550,7 +552,7 @@ export class Ablaze {
     this._dragT = A.print.drag;
     for (const s of this.sites) {
       if ((s.kind !== 'tail' && s.kind !== 'tailTip') || s.on < 0.5) continue;
-      if (s.y < A.print.dragY && s.spd > 2) this._print(s.x, s.z, A.print.r[0] * 0.8, A.print.life * 0.6);
+      if (s.y < A.print.dragY && s.spd > A.print.dragSpeed) this._print(s.x, s.z, A.print.r[0] * 0.8, A.print.life * 0.6);
     }
   }
 
