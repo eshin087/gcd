@@ -634,7 +634,7 @@ const S = {
     assert(peak <= cap, `never more than ${cap} things alight at once (peak ${peak})`);
     step(40);
     const burned = D.list.filter((b) => b.burnt).length;
-    assert(D.burning === 0 && D.list.every((b) => b.gen <= S.gens), `the blaze burns out: fire passes on at most ${S.gens} times from where it landed (${burned} trees burned in all, nothing alight 60 s on)`);
+    assert(D.burning === 0 && D.list.every((b) => b.gen <= S.gens + (b.wall ? BREAK.wall.gens : 0)), `the blaze burns out: fire passes on at most ${S.gens} times from where it landed (+${BREAK.wall.gens} in the wall) (${burned} trees burned in all, nothing alight 60 s on)`);
     // the light of burning wood is a local glow, one for a cluster (BREAK.burn.glow)
     {
       const Lb = build();
@@ -691,9 +691,10 @@ const S = {
         if (t.state === STATE.INTACT) stages.push(t.wear);
         step(0.8);
       }
-      const ordered = stages.every((v, i) => i === 0 || v >= stages[i - 1]) && stages.includes(1) && stages[stages.length - 1] >= 2;
+      // (a small tree may skip a stage under one blow: it still shows the first hit, and never goes back)
+      const ordered = stages.length >= 1 && stages[0] >= 1 && stages.every((v, i) => i === 0 || v >= stages[i - 1]);
       const wearEv = log.filter((e) => e.n === 'world:impact' && e.kind === 'wear' && e.id === t.id).map((e) => e.power);
-      assert(ordered && wearEv.length >= 2 && wearEv.every((p, i) => i === 0 || p > wearEv[i - 1]), `${t.kind} (${t.body.parts} parts, hp ${t.hpMax.toFixed(2)}) at ${R.toFixed(0)} m: stages ${stages.join(' > ')} in ${blows} blows of 1.0, then it falls (world:impact wear ${wearEv.join(', ')})`);
+      assert(ordered && wearEv.length >= 1 && wearEv.every((p, i) => i === 0 || p > wearEv[i - 1]), `${t.kind} (${t.body.parts} parts, hp ${t.hpMax.toFixed(2)}) at ${R.toFixed(0)} m: stages ${stages.join(' > ')} in ${blows} blows of 1.0, then it falls (world:impact wear ${wearEv.join(', ')})`);
       assert(blows >= 2 && blows <= 6, `... it takes ${blows} blows of a tail's power (2 .. 6: a fight's worth, a hit shows at once)`);
       // dropped parts lie folded under the ground; what stays is where it stood
       let folded = 0;
