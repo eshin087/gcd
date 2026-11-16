@@ -22,6 +22,10 @@ const PRED = 40; // predicted impacts per frame
 const EXP = 24; // expect() handles alive at once
 const WORLD_LEAD = 0.3; // (world/destructibles.js FLASH_LEAD: a felled piece's cue)
 
+/** A beat that throws something straight at the hero from his hand (a release: crescents, the push,
+ *  fissures; the thrown blade): it lands a flight after the beat's impact. */
+export const throwsAt = (b) => !!(b.def.release || b.def.cast?.kind === 'glaive');
+
 /** One known impact. `fixed`: it cannot be moved (a cue already given, a thing in flight); a
  *  movable one (a called strike before its cue) yields instead. */
 const entry = () => ({ t: -99, ans: 0, attack: '', fixed: true, ref: null });
@@ -99,6 +103,8 @@ export class CueLedger {
     // release, not its arrival: only the world's warnings and the hazards' are taken here)
     if (!e || !Number.isFinite(e.impactIn) || !(e.source === 'world' || (e.source === 'dragon' && e.hazard))) return;
     this._push(this.d.time + e.impactIn, e.tell, e.attack);
+    // (the world's warning cannot wait: what of his is in flight and would land too near it gives way)
+    if (e.source === 'world') this.brain._worldCue?.(this.d.time + e.impactIn, answerOf(e.tell));
   }
 
   // ---------------------------------------------------------------- (d) expect
@@ -169,7 +175,9 @@ export class CueLedger {
       }
     }
     // marked ground: called lightning, the Dark Star (red; movable until its cue)
-    if (fx?.strikes) for (const s of fx.strikes) if (s.alive && !s.flashed) this._pred(now + (s.at - s.t), DODGE, s.attack, false, s);
+    // (one whose cue is due within a frame or two is committed: brain._fairStrikes has decided it)
+    const lead = perPhase(d.T.flashLead, d.phase);
+    if (fx?.strikes) for (const s of fx.strikes) if (s.alive && !s.flashed) this._pred(now + (s.at - s.t), DODGE, s.attack, s.at - s.t <= lead + 0.04, s);
     // the Starless Sky still to fall: one mark every gap, each `warn` s from its call
     const St = d._storm, ST = d.T.storm;
     if (St?.left > 0 && ST) for (let k = 0; k < St.left && k < 8; k++) this._pred(now + Math.max(0, St.t) + k * ST.gap + ST.warn, DODGE, 'storm', false);
@@ -186,8 +194,15 @@ export class CueLedger {
           if (gap > reach) this._pred(now + (gap - reach) / K.speed, R.tell, R.attack, true);
         }
       }
-      // the crater: where a thrown piece lands (red)
+      // the crater: where a thrown piece lands (red); the pieces of a Glass Rain still held, one
+      // thrown every `gap` s (each lands about a flight later)
       if (Tr.marks) for (const m of Tr.marks) if (m.alive && !m.flashed) this._pred(now + Math.max(0, m.at - m.t), DODGE, m.attack, true);
+      const TT = d.T.terrain;
+      if (Tr.held && Tr.cast && TT?.flight) {
+        let k = 0;
+        const fl = (TT.flight[0] + TT.flight[1]) / 2;
+        for (const h of Tr.held) if (h.piece) this._pred(now + Math.max(0, Tr.gapT ?? 0) + k++ * (TT.gap ?? 0.55) + fl, DODGE, Tr.hit?.attack ?? 'terrain', true);
+      }
     }
   }
 
@@ -200,22 +215,46 @@ export class CueLedger {
   conflict(at, ans, sep, fixedOnly = false, skipAct = false, self = null) {
     const now = this.now;
     for (const e of this.ring) if (e.t > now - 0.05 && e.ans !== ans && Math.abs(e.t - at) < sep) return true;
+    // (a thing in flight not cued yet: its arrival moves with the hero, a roll included: it is given
+    // `pad` s more room, pressure.guard.pad)
+    const pad = this.brain.P?.guard?.pad ?? 0;
     for (let i = 0; i < this.nPred; i++) {
       const e = this.pred[i];
       if (e.ans === ans || (fixedOnly && !e.fixed) || (self && e.ref === self)) continue;
-      if (Math.abs(e.t - at) < sep) return true;
+      if (Math.abs(e.t - at) < sep + (e.ref ? 0 : pad)) return true;
     }
     for (const e of this.exp) if (e.alive && e.ans !== ans && Math.abs(e.t - at) < sep) return true;
     if (!skipAct) {
+      // the running move's blows: those cued already, and those that cannot wait (`fixed`); one not
+      // cued yet will wait for what is set now when its own cue comes (brain._holdBeat)
       const a = this.brain.act;
       if (a && this.d.mode === 'act') {
         for (const b of a.beats) {
-          if (b.feint || b.done || b.def.release || b.def.cast || b.impact < a.t) continue;
+          if (b.feint || b.done || b.impact < a.t || (b.def.cast && !throwsAt(b))) continue;
+          if (throwsAt(b)) {
+            // what it throws: from its release to its estimated arrival (pad more room)
+            if (answerOf(b.def.tell) === ans) continue;
+            const t0 = now + (b.impact - a.t), t1 = t0 + this.travel(b);
+            if (at > t0 - sep - pad && at < t1 + sep + pad) return true;
+            continue;
+          }
+          if (!(b.flashed || b.def.fixed || a.def.transition)) continue;
           if (answerOf(b.def.tell) !== ans && Math.abs(now + (b.impact - a.t) - at) < sep) return true;
         }
       }
     }
     return false;
+  }
+
+  /** How long what a release beat throws takes to reach the hero (s; the crescent, the push, the
+   *  fissures: their own speed). */
+  travel(b) {
+    const d = this.d, R = b.def.release ?? {}, p = d.game?.player?.position;
+    if (!p) return 0;
+    const T = d.T, K = b.def.cast?.kind === 'glaive' ? T.glaive : R.style === 'push' ? T.push : R.style === 'rift' ? T.rift : T.crescent;
+    const speed = R.speed ?? K?.speed ?? 14;
+    const dist = Math.hypot(p.x - d.position.x, p.z - d.position.z) - (R.from ?? 1) - (K?.radius ?? 0.7) - 0.45;
+    return Math.max(0, dist) / Math.max(1, speed);
   }
 
   /** The least wait (s, a step of 0.02) after which an impact at `at` clears every conflict, up to

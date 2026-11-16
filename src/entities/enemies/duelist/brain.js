@@ -3,7 +3,7 @@ import { TELL, TELL_STYLE, RESULT, DEFENSE, dodgeOnly, isFlare } from '../../../
 import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
 import { DUEL_WORLD } from './worldTuning.js';
-import { CueLedger } from './ledger.js';
+import { CueLedger, throwsAt } from './ledger.js';
 import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsable } from './director.js';
 
 // ---------------------------------------------------------------------------------------------------
@@ -26,11 +26,13 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //       (>= pressure.guard.sep + margin s) of every known impact needing the other answer, the
 //       running move's beats included: 0 = now is clear, -1 = no wait up to `max` clears it (call it
 //       later or not at all). Count a delay you made with brain.stats.delays++.
-//   brain.stats  { picks, links, chains, cuts, rests, holds, holdTime, delays, floors, seeks }
+//   brain.stats  { picks, links, chains, cuts, rests, holds, holdTime, feints, delays, fizzles, floors, seeks }
 //       picks: AI picks · links: moves started from a LINKS entry · chains: moves started by the old
 //       flow roll (`chain`) · cuts: of those, started before the recovery's end (`cut`) · rests:
 //       breathers after pressure.chainDepth moves in a row · holds / holdTime: blade blows held at
-//       the cock by the fairness guard (s in all) · delays: called strikes moved later · floors:
+//       the cock by the fairness guard (s in all) · feints: blows it could not clear by a hold, not
+//       thrown (a feint: no glint, no hit) · delays: called strikes / torn stones moved later (or faded) ·
+//       fizzles: things in flight that gave way to a falling piece of the world · floors:
 //       picks a floor forced · seeks: footwork sent to another range for an absent category.
 //   brain.ledger  the CueLedger (ledger.js): conflict / clearShift / pending queries.
 //
@@ -151,7 +153,7 @@ export class DuelBrain {
     this.seek = null;
     this.seekNext = 0;
     this._phaseSeen = 0;
-    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, delays: 0, floors: 0, seeks: 0 };
+    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0 };
     this.ledger?.reset();
     this.cooldowns = {};
     this.last = [null, null];
@@ -321,25 +323,92 @@ export class DuelBrain {
   /**
    * The fairness guard on called strikes (his marks, the Dark Star: fx.strikes): one about to give
    * its cue this frame whose impact would land within sep + margin of a known impact needing a guard
-   * waits (its `at` moves later) until it is clear, `maxDelay` s at most in all.
+   * waits (its `at` moves later) until it is clear, `maxDelay` s at most in all; if no wait clears
+   * it, the mark fades out unstruck. A torn stone about to leave the Void's grip (fx.shots, 'hang')
+   * waits in it the same way.
    */
   _fairStrikes(dt) {
     const S = this.d.fx?.strikes;
     if (!S) return;
     const G = this.P.guard, L = this.ledger, lead = perPhase(this.T.flashLead, this.d.phase);
     const sep = (G.sep ?? 0.3) + (G.margin ?? 0);
+    let moved = false;
     for (const s of S) {
       if (!s.alive || s.flashed || s.t + dt < s.at - lead - 1e-4) continue;
       // (the pool's records are reused: `at` not the one written here = a new strike)
       if (s._fairAt !== s.at) s._fairDelayed = 0;
-      const left = G.maxDelay - s._fairDelayed;
-      if (!(left > 0.019)) continue;
+      const left = Math.max(0, G.maxDelay - s._fairDelayed);
       const sh = L.clearShift(L.now + (s.at - s.t), DODGE, sep, left, false, false, s);
       if (sh > 0) {
         s.at += sh;
         s._fairAt = s.at;
         s._fairDelayed += sh;
         this.stats.delays++;
+        moved = true;
+      } else if (sh < 0) {
+        // no wait up to maxDelay clears it: the mark fades out unstruck (never two answers at once)
+        s.alive = false;
+        this.stats.delays++;
+        moved = true;
+      }
+    }
+    // the Lord's torn stones hanging in the Void's grip: one about to be thrown waits in the grip
+    // until where it will reach the hero is clear (its flight: from where it hangs, at its speed)
+    const H = this.d.fx?.shots, p = this.d.game.player?.position;
+    if (H && p) {
+      for (const s of H) {
+        if (!s.alive || s.phase !== 'hang' || s.age + dt < s.delay - 1e-4) continue;
+        if (s._fairD !== s.delay) s._fairDelayed = 0;
+        const left = Math.max(0, G.maxDelay - s._fairDelayed);
+        const fly = Math.max(0, Math.hypot(p.x - s.x, p.z - s.z) - (s.radius ?? 0.8) - 0.45) / Math.max(1, s.speed);
+        const sh = L.clearShift(L.now + Math.max(0, s.delay - s.age) + fly, answerOf(s.tell), sep + (G.pad ?? 0), left);
+        if (sh > 0) {
+          s.delay += sh;
+          s._fairD = s.delay;
+          s._fairDelayed += sh;
+          this.stats.delays++;
+          moved = true;
+        }
+      }
+    }
+    // (what it predicted for them is stale now: the blades decide on the fresh times this frame)
+    if (moved) this.ledger.update();
+  }
+
+  /**
+   * The world warns of a falling piece landing at `at` (ledger time) needing `ans` (a felled pillar,
+   * a wrenched shard: no one can move it). What of his is in flight, not cued yet, and would land
+   * within sep + margin + pad of it needing the other answer gives way: a crescent / push / fissure
+   * fizzles, a torn stone shatters in the air (never two answers at once).
+   */
+  _worldCue(at, ans) {
+    const G = this.P?.guard, d = this.d, p = d.game.player, pp = p?.position;
+    if (!G || !pp) return;
+    const L = this.ledger, sep = (G.sep ?? 0.3) + (G.margin ?? 0) + (G.pad ?? 0), pr = p.radius ?? 0.45;
+    const C = d.T.crescent;
+    if (d.fx?.crescents && C) {
+      for (const c of d.fx.crescents) {
+        if (!c.alive || c.done || c.flashed >= 0 || answerOf(c.tell) === ans) continue;
+        const speed = c.speed ?? C.speed, rx = pp.x - c.x, rz = pp.z - c.z, along = rx * c.dx + rz * c.dz;
+        const t = L.now + Math.max(0, along - (c.radius ?? C.radius) - pr) / Math.max(1, speed);
+        if (Math.abs(t - at) >= sep) continue;
+        d.fx._fizzle?.(c);
+        c.alive = false;
+        this.stats.fizzles++;
+      }
+    }
+    if (d.fx?.shots) {
+      for (const s of d.fx.shots) {
+        if (!s.alive || s.done || s.flashed >= 0 || answerOf(s.tell) === ans) continue;
+        const speed = s.phase === 'back' ? s.back : s.speed;
+        const fly = Math.max(0, Math.hypot(pp.x - s.x, pp.z - s.z) - (s.radius ?? 0.8) - pr) / Math.max(1, speed);
+        const t = L.now + (s.phase === 'hang' ? Math.max(0, s.delay - s.age) : Math.max(0, s.wait ?? 0)) + fly;
+        if (Math.abs(t - at) >= sep) continue;
+        // (the thrown blade goes on past him this pass, uncued and harmless; it still comes home)
+        if (s.kind !== 'stone') s.done = true;
+        else if (d.fx._shatter) d.fx._shatter(s);
+        else s.alive = false;
+        this.stats.fizzles++;
       }
     }
   }
@@ -354,12 +423,23 @@ export class DuelBrain {
    */
   _holdBeat(a, b, t) {
     const G = this.P?.guard;
-    if (!G || a.def.transition || b.feint || b.def.fixed || b.def.release || b.def.cast) return false;
-    const room = G.maxHold - (b.hl ?? 0);
-    if (!(room > 0.019)) return false;
+    if (!G || a.def.transition || b.feint || (b.def.cast && !throwsAt(b))) return false;
+    // (a `fixed` beat keeps its timing: it is never held, only, at worst, not thrown)
+    const room = b.def.fixed ? 0 : Math.max(0, G.maxHold - (b.hl ?? 0));
     const L = this.ledger, ans = answerOf(b.def.tell), sep = (G.sep ?? 0.3) + (G.margin ?? 0);
-    const sh = L.clearShift(L.now + (b.impact - t), ans, sep, room, true, true);
-    if (!(sh > 0)) return false;
+    // (a release: what it throws lands when it reaches the hero, `pad` more room for his moving)
+    const th = throwsAt(b), fly = th ? L.travel(b) : 0, pad = th ? G.pad ?? 0 : 0;
+    const sh = L.clearShift(L.now + (b.impact - t) + fly, ans, sep + pad, room, true, true);
+    if (sh === 0) return false;
+    if (sh < 0) {
+      // no wait he may take clears it (a felled piece, a thing in flight lands too near): the blow
+      // is not thrown. It becomes a feint (the swing goes on, no glint, no hit: a feint never
+      // glints), so the hero is never asked two answers at once. Not in his flurry (it counts blows)
+      if (a.streak) return false;
+      b.feint = true;
+      this.stats.feints++;
+      return true;
+    }
     if (b.hl > 0) b.hl += sh;
     else {
       b.hf = Math.max(t, b.start + (b.def.cock ?? 0.8) * b.W + b.H);
@@ -775,6 +855,12 @@ export class DuelBrain {
     // tells: the announcement at each real beat's windup start, the glint flashLead before its impact
     for (const b of a.beats) {
       if (b.feint) continue;
+      // (a release's throw: the fairness guard looks at it where its cue would be, flashLead before
+      // the release, by when it will reach the hero)
+      if (this.P && throwsAt(b) && !b.relChecked && t >= b.flash) {
+        if (this._holdBeat(a, b, t)) continue;
+        b.relChecked = true;
+      }
       if (!b.announced && t >= b.tellAt) {
         b.announced = true;
         const p = d.tellPoint(b.def.part, d._v2);

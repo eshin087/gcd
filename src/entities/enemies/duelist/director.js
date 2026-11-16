@@ -160,6 +160,9 @@ export function directWeight(br, name, def, w, dist) {
   }
   const bias = P.bias?.[cat];
   if (bias !== undefined) w *= perPhase(bias, ph);
+  // the busier moves (cues a second as authored, against 1 a second) weigh more: × density^k
+  const k = perPhase(P.density ?? 0, ph);
+  if (k > 0) w *= Math.pow(Math.max(0.2, densityOf(def)), k);
   const after = perPhase(P.floorAfter ?? 0, ph);
   if (after > 0) {
     const abs = br.clock - (br.catSeen[cat] ?? br.floorT0);
@@ -175,6 +178,23 @@ export function directWeight(br, name, def, w, dist) {
     if (((ans & GUARD) && L.pending(DODGE, H)) || ((ans & DODGE) && L.pending(GUARD, H))) w *= mixed;
   }
   return w;
+}
+
+const _density = new WeakMap();
+/** A move's cues a second as authored (its real hits over its windups, active frames and recovery;
+ *  a `pick`: the first alternative; a thrown thing counts as one). */
+export function densityOf(def) {
+  let v = _density.get(def);
+  if (v !== undefined) return v;
+  let n = 0, T = def.recovery ?? 0.5;
+  for (const raw of def.beats ?? []) {
+    const b = Array.isArray(raw.pick) ? raw.pick[0] : raw;
+    T += (b.windup ?? 0.5) + (b.active ?? 0.1) + (Array.isArray(b.hold) ? (b.hold[0] + b.hold[1]) / 2 : 0);
+    if (!b.feint) n += b.chance !== undefined && b.chance < 1 ? b.chance : 1;
+  }
+  v = n / Math.max(0.3, T);
+  _density.set(def, v);
+  return v;
 }
 
 /** An AI pick was made (a footwork pick, a link, the flow): the run, the floors, the seek. */
@@ -239,6 +259,13 @@ export function linkUsable(br, L, s) {
   if (!L.force && (br.cooldowns[L.to] ?? 0) > 0) return false;
   if (L.band !== false && (s.dist < def.band[0] || s.dist > def.band[1])) return false;
   if (d.weigh && !(d.weigh(L.to, def, 1, s.dist) > 0)) return false;
+  // (the mixed-answers rule: no link into a move asking a guard while a dodge is due, or the other
+  // way round; the pick only damps such a move, a link is not taken)
+  const P = br.P;
+  if ((P?.mixed ?? 1) < 1) {
+    const ans = answersOf(def), H = P.guard?.horizon ?? 1.4, Lg = br.ledger;
+    if (((ans & GUARD) && Lg.pending(DODGE, H)) || ((ans & DODGE) && Lg.pending(GUARD, H))) return false;
+  }
   return true;
 }
 
