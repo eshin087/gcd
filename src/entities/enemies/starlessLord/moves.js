@@ -906,10 +906,12 @@ const REALISERS = FORM_POSES.map((K) => makeRealise({ TUNING, MOVES, compileClip
 /**
  * A move as it will play this time (duelist/realise.js), compiled round the stance of the form it is
  * used in; a form's ignition is compiled round the NEW form's stance, so it ends in that guard.
+ * `opts.count`: his flurry of that many blows (duelist/realise.js; until the second pass this wrapper
+ * dropped it and every flurry was the authored four).
  */
-export function realise(name, phase = 1, rnd = Math.random) {
+export function realise(name, phase = 1, rnd = Math.random, opts = null) {
   const def = MOVES[name];
   if (!def) return null;
   const form = def.transition ? def.phase : phase;
-  return REALISERS[Math.min(REALISERS.length, Math.max(1, form)) - 1](name, phase, rnd);
+  return REALISERS[Math.min(REALISERS.length, Math.max(1, form)) - 1](name, phase, rnd, opts);
 }

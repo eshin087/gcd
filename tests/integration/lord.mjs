@@ -1244,6 +1244,18 @@ async function scenarioPace() {
   const SECS = Number(process.env.ABYSS_PSECS ?? 120);
   const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
   const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
+  // his flurry is as long as its count (until the second pass the realise wrapper dropped `opts`:
+  // every flurry was the authored four blows, whatever DEFENSE.foeStreak counted)
+  {
+    const A = realise(STREAKS[0], 1, mulberry32(1), { count: 6 });
+    const G = build();
+    duel(G, { dist: 2.5, ai: false });
+    let cnt = null;
+    G.watch = (n, e) => { if (n === 'dragon:flurry') cnt = e.count; };
+    G.game.dragon.brain.startStreak(6);
+    G.watch = null;
+    assert(A?.hits === 6 && cnt === 6, `his flurry is as long as its count: realise with count 6 → ${A?.hits} blows, startStreak(6) → dragon:flurry count ${cnt}`);
+  }
   const CATS = DIR.CATEGORIES;
   const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
   const skip = (name) => !MOVES[name] || MOVES[name].transition || MOVES[name].counter;
