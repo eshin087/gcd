@@ -131,7 +131,9 @@ function wyrm() {
   W.place = (x, z, yaw) => {
     d.position.set(x, 0, z);
     d.yaw = yaw;
-    for (let i = 0; i < 3; i++) frame(() => { d.position.set(x, 0, z); d.yaw = yaw; });
+    // (held there while its body settles after the teleport: TUNING.world.body.settle)
+    const n = Math.ceil((WYRM.world.body.settle + 0.1) * 60);
+    for (let i = 0; i < n; i++) frame(() => { d.position.set(x, 0, z); d.yaw = yaw; });
   };
   let air = null;
   const up = d.brain.update.bind(d.brain);
