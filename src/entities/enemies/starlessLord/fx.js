@@ -3,6 +3,7 @@ import { DuelFx, K_FIRE, K_SMOKE, K_VOID, K_STEEL, GROUND_Y, GROUND_GAIN } from 
 import { perPhase } from '../duelist/realise.js';
 import { DUEL_WORLD } from '../duelist/worldTuning.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { THRONE } from '../../../world/throneHall.js';
 
 /** A thrown stone stopped by cover / a blast on the floor, as blows on the world (ADR-107). */
 const SHOT_BLOW = Object.freeze({ kind: 'blunt', by: 'boss', y: 0.95 });
@@ -48,8 +49,8 @@ const hash = (n) => {
   const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return s - Math.floor(s);
 };
-// the crater's vents (world/throneHall.js keeps them local; see the fxlord report)
-const VENTS = [[-8.6, -1.6], [8.8, 0.2], [-7.0, 10.2], [8.4, 6.4]];
+// the crater's vents (world/throneHall.js THRONE.vents)
+const VENTS = THRONE.vents;
 
 // Two random streams. Gameplay reads `fx.rand` from outside (the storm's scatter in lord.js, the
 // hurl's spread in terrain.js): that is the shared stream. Everything this class DRAWS reads its
@@ -113,23 +114,6 @@ export class LordFx extends DuelFx {
       return this._ds / 4294967296;
     }
     return super.rnd();
-  }
-
-  /** A pooled light. (render/lights.js seeds each light's flicker with Math.random, which the AI's
-   *  seeded rolls also read: a look that adds a light would move the fight. Its seed is taken from
-   *  the drawing stream instead; see the fxlord report for the lights.js fix.) */
-  _light(o) {
-    const R = Math.random;
-    this._lightRnd ??= () => {
-      this._ds = (Math.imul(this._ds, 1664525) + 1013904223) >>> 0;
-      return this._ds / 4294967296;
-    };
-    Math.random = this._lightRnd;
-    try {
-      return super._light(o);
-    } finally {
-      Math.random = R;
-    }
   }
 
   /** The look of switch `name` now (?star= ?sky= ?ignite= ?void= ?presence=). */
@@ -1658,7 +1642,8 @@ export class LordFx extends DuelFx {
     for (const o of L) {
       if (o.kind !== 'hover' || o.state !== 0 || m >= 6) continue;
       m++;
-      const hy = (Number(o.def?.hover) || 2) + (Number(o.h) || 1) * 0.5;
+      // (where the stone hangs: its centre's height, world/throneHall.js `cy`)
+      const hy = Number(o.def?.cy) || (Number(o.def?.hover) || 2) + (Number(o.h) || 1) * 0.5;
       this.lightning(x, 1.2, z, o.x, hy, o.z, 0.6, false);
     }
   }
