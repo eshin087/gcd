@@ -1476,6 +1476,11 @@ export class Pipeline {
       });
       this._zoomHs = this.zoomLadder.map((f) => f.cell[1]);
       this.zoomStep = 0;
+      // upload every step's atlases now: the first frame drawn after a step must not upload one
+      for (const f of this.zoomLadder) {
+        this.renderer.initTexture?.(f.atlas.texture);
+        this.renderer.initTexture?.(f.grid.texture);
+      }
     }
     const fin = this.zoomLadder[this.zoomLadder.length - 1].cell;
     this._minCell = (this._minCell ??= new THREE.Vector2()).set(fin[0], fin[1]);
