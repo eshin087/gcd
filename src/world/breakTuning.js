@@ -166,7 +166,7 @@ export const BREAK = Object.freeze({
    * The landmarks of Cinderwood (2026-11-16: the owner reversed ADR-119's "they stay whole"; the bonfire
    * stays): structure in POWER units by piece. The Elder Wyrm's skeleton comes apart rib by rib over a
    * fight (a tail blow takes a third to a half of a rib); the Cinder Tree loses its boughs first (each
-   * burns too), then its trunk falls to a charred stump; the bone nest's great ribcage and skull.
+   * burns too), then its trunk breaks where it stands and leaves a charred stump; the bone nest's great ribcage and skull.
    */
   landmark: Object.freeze({
     rib: 2.8, spine: 3.2, skull: 6, jaw: 3, horn: 2, hip: 3, mast: 2.6, fingers: 1.6, wing: 2.2,
