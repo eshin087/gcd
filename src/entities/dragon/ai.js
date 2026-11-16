@@ -706,7 +706,8 @@ export class Brain {
     this.catRun = 0;
     this.catSeen = {}; // category -> clock of its last pick
     this.airShare = 0; // ~20 s running share of time airborne
-    this.ambientT = 1.5; // s to the next ambient cinders
+    this.ambientT = 1.5; // s to the next ambient cinders (near the hero)
+    this.ambientFarT = 1.5; // (far from him)
     this.strafeSide = 1;
     this.strafeSpeed = 0;
     this.seek = { on: false, cat: '', dist: 0, absAng: 0, t: 0, max: 0, next: 0 };
@@ -1420,6 +1421,8 @@ export class Brain {
    * the red flash, a roll answers). Only while a ground move runs with time left: a cinder lands
    * before that move ends (so nothing that starts after it can land on top), never within guard.sep
    * of a known blow (its own beats, a blast, a bullet), and only where enough ground stays clear.
+   * When none may fall near him (a fire pattern runs, bullets fly, a pause), they fall FAR: beyond
+   * what he can reach before they land (ambient.far m), so they never cue nor hit: the field burns.
    */
   _ambient(dt) {
     const d = this.d, g = d.game, A = PR.ambient;
@@ -1428,19 +1431,27 @@ export class Brain {
     const every = perPhase(A.every, ph);
     if (!(every > 0) || !this.aiEnabled || g?.state !== 'boss' || g.player?.alive === false) return;
     this.ambientT -= dt;
-    if (this.ambientT > 0) return;
+    this.ambientFarT -= dt;
+    if (this.ambientT > 0 && this.ambientFarT > 0) return;
     const a = this.action;
     // a move with enough of it left (not a transition or a reaction). A cinder is red: it may land
     // among red blasts (the same answer), never where a guard is due. So not during a fire pattern
     // (embers, wisps, the breath's stream: guard cues that come late), not during a string that
     // scatters embers of its own, nothing while bullets fly; the running move's own blows are known
-    if (!a || !ATTACK_NAMES.has(a.name) || (d.state !== 'combat' && d.state !== 'airborne') || d.broken) return;
-    if ((a.name in BULLET_ATTACKS && guardTell(a.name)) || a.name === 'breath' || this._bursts(a.name) || this._bulletsLive()) return;
-    const warn = perPhase(A.warn, ph);
-    let left = a.dur - a.t;
-    for (let i = a.i + 1; i < a.list.length; i++) left += a.list[i][1];
-    if (left < warn + GUARD.sep + 0.1) return;
+    if ((a && !ATTACK_NAMES.has(a.name)) || (d.state !== 'combat' && d.state !== 'airborne') || d.broken) return;
     if (this._ambientAlive() >= perPhase(A.alive, ph)) return;
+    const warn = perPhase(A.warn, ph);
+    let left = 0;
+    if (a) {
+      left = a.dur - a.t;
+      for (let i = a.i + 1; i < a.list.length; i++) left += a.list[i][1];
+    }
+    const near = !!a && left >= warn + GUARD.sep + 0.1 && !((a.name in BULLET_ATTACKS && guardTell(a.name)) || a.name === 'breath' || this._bursts(a.name) || this._bulletsLive());
+    if (!near) {
+      if (this.ambientFarT <= 0) this._ambientFar(warn, ph);
+      return;
+    }
+    if (this.ambientT > 0) return;
     // retry soon if this frame does not suit; the next window otherwise
     this.ambientT = 0.15;
     const nr = perPhase(A.n, ph);
@@ -1474,20 +1485,48 @@ export class Brain {
       }
       if (!ok) continue;
       // it leaves a wing's wrist or the jaws
-      const pt = d.rig?.pt;
-      const src = !pt ? null : Math.random() < 0.6 ? pt.wings[Math.random() < 0.5 ? 0 : 1].wrist : pt.mouth;
-      const ref = d.hazards?.circle({
-        kind: 'shell', attack: 'cinders', drawShell: true, announce: true,
-        x: this._amb.x, z: this._amb.z, r: R, delay, fall: Math.min(A.fall, delay),
-        from: src && Number.isFinite(src.x + src.y + src.z) ? src : { x: d.position.x, y: 8, z: d.position.z },
-        damage: A.damage, burn: A.burn, knockback: A.knockback, active: 0.12,
-      });
-      if (ref) {
+      if (this._spawnCinder(this._amb.x, this._amb.z, R, delay)) {
         spawned++;
         this.stats.ambient++;
       }
     }
     if (spawned) this.ambientT = every * rand(0.6, 1.4);
+  }
+
+  /** Cinders that fall beyond the hero's reach (ambient.far [min, max] m from him): fire on the field, no cue, no hit. */
+  _ambientFar(warn, ph) {
+    const d = this.d, A = PR.ambient, p = d.game.player.position;
+    const F = A.far;
+    this.ambientFarT = 0.15;
+    if (!F) return;
+    const nr = perPhase(A.n, ph), R = perPhase(A.radius, ph);
+    const n = Math.max(1, Math.round(rand(nr[0], nr[1])));
+    let spawned = 0;
+    for (let k = 0; k < n; k++) {
+      for (let tries = 0; tries < 4; tries++) {
+        const ang = Math.random() * Math.PI * 2, rr = rand(F[0], F[1]) + R;
+        const cx = p.x + Math.cos(ang) * rr, cz = p.z + Math.sin(ang) * rr;
+        if (Math.hypot(cx, cz) > 25 || Math.hypot(cx - d.position.x, cz - d.position.z) < 4.5) continue;
+        if (this._spawnCinder(cx, cz, R, warn + k * 0.38)) spawned++;
+        break;
+      }
+    }
+    if (spawned) {
+      this.stats.ambientFar = (this.stats.ambientFar ?? 0) + spawned;
+      this.ambientFarT = perPhase(A.every, ph) * rand(0.8, 1.6);
+    }
+  }
+
+  /** One cinder (a self-announcing hazard circle) from a wing's wrist or the jaws onto (x, z). */
+  _spawnCinder(x, z, R, delay) {
+    const d = this.d, A = PR.ambient, pt = d.rig?.pt;
+    const src = !pt ? null : Math.random() < 0.6 ? pt.wings[Math.random() < 0.5 ? 0 : 1].wrist : pt.mouth;
+    return d.hazards?.circle({
+      kind: 'shell', attack: 'cinders', drawShell: true, announce: true,
+      x, z, r: R, delay, fall: Math.min(A.fall, delay),
+      from: src && Number.isFinite(src.x + src.y + src.z) ? src : { x: d.position.x, y: 8, z: d.position.z },
+      damage: A.damage, burn: A.burn, knockback: A.knockback, active: 0.12,
+    });
   }
 
   _bursts(name) {
@@ -1498,7 +1537,8 @@ export class Brain {
   _ambientAlive() {
     let n = 0;
     const H = this.d.hazards?.list;
-    if (H) for (const h of H) if (h.alive && h.attack === 'cinders' && !h.fired) n++;
+    const p = this.d.game?.player?.position, far = PR.ambient?.far?.[0] ?? 8;
+    if (H && p) for (const h of H) if (h.alive && h.attack === 'cinders' && !h.fired && Math.hypot(h.x - p.x, h.z - p.z) < far) n++;
     return n;
   }
 

@@ -136,6 +136,9 @@ export const TUNING = {
       radius: [1.6, 1.6, 1.9],
       damage: 14, burn: 1.0, knockback: 2,
       alive: [0, 3, 5],
+      // when none may fall near him (a fire pattern runs, bullets fly, a pause): they fall this far
+      // from him (m, + their radius: beyond a run and a roll before they land): no cue, no hit
+      far: [8, 13],
     },
     // FAIRNESS: blows that need different answers (dodge vs parry / guard) never land within `sep` s
     // of each other: a melee blow about to be cued waits (<= maxHold s, its windup held) for a blast or
