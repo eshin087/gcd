@@ -8903,8 +8903,16 @@ async function scenarioTerrain() {
     return rec;
   };
   const timingOk = (rec) => rec.flashes.length === 1 && Number.isFinite(rec.hitT) && Math.abs(rec.hitT - rec.flashes[0].t - lead) <= 0.085;
-  // nothing on the ground before the blow: no heat drawn (0 frames) and no scorch stamped before it lands
-  const unmarked = (G, rec) => rec.marks === 0 && !G.stamps.some((s) => s.t > (rec.tells[0]?.t ?? Infinity) && s.t < (rec.land?.t ?? rec.hitT) - 1e-6);
+  // nothing on the ground before the blow: no heat drawn (0 frames) and no scorch stamped before it
+  // lands ON ITS LANDING GROUND (where it was aimed, its blast radius + 3 m). (Integration, 2026-11-15:
+  // the wyrm's body now wrecks what it meets (dragon.js _wreck): in the hurl its tail, swung round by
+  // the lunge, broke the boulder at (-10, -4), 22 m from the landing at (2, 18), and its rubble stamps
+  // the ground there. That is honest wreckage behind the wyrm, not a mark of where the piece will land.)
+  const landNear = (rec, s) => {
+    const x = Number.isFinite(rec.lx) ? rec.lx : rec.land?.x ?? rec.crash?.x, z = Number.isFinite(rec.lz) ? rec.lz : rec.land?.z ?? rec.crash?.z;
+    return !Number.isFinite(x + z) || Math.hypot(s.x - x, s.z - z) < (X[rec.a?.name]?.radius ?? X.hurl.radius) + 3 + s.r;
+  };
+  const unmarked = (G, rec) => rec.marks === 0 && !G.stamps.some((s) => s.t > (rec.tells[0]?.t ?? Infinity) && s.t < (rec.land?.t ?? rec.hitT) - 1e-6 && landNear(rec, s));
   /** A roll pressed `after` s after the flash (sideways), the hero otherwise standing still. */
   const rollAt = (G, after) => {
     let rolled = false;
@@ -8994,6 +9002,9 @@ async function scenarioTerrain() {
         const s = d.terrain._last;
         post.x = s.x0 + (s.tx - s.x0) * 0.6;
         post.z = s.z0 + (s.tz - s.z0) * 0.6;
+        // (the world now finds its pieces through a spatial grid built once from where they stand:
+        // a piece moved by hand is re-filed, or no query (the flight's sweep, a strike) meets it)
+        D._buildGrid();
       }
     });
     assert(planted && r7.smashed >= 1 && post.state !== INTACT && r7.hit?.r === RESULT.HIT && timingOk(r7), `hurl: a tree standing in its path is smashed (${r7.smashed}; the tree ${post.state === INTACT ? 'stands' : 'is down'}) and the throw flies on to its blow`);

@@ -112,6 +112,18 @@ function aimAt(d, X, out, fromX, fromZ) {
 }
 
 /**
+ * The piece a move has chosen is its own from now until it leaves the jaws or the tail: the world's
+ * incidental blows (the wyrm's own body walking, turning, lunging: dragon.js _wreck) leave it alone
+ * for the whole move (its phases, plus a margin).
+ */
+function reservePiece(d, a) {
+  if (!a.piece) return;
+  let t = 0.5;
+  for (const e of a.list) t += e[1];
+  d.game.world?.destructibles?.reserve?.(a.piece, t);
+}
+
+/**
  * A move that takes a piece in the jaws and throws it. `wood`: a tree only; a spec with `kindle`
  * lights it first (the firebrand).
  */
@@ -151,6 +163,7 @@ function makeThrow(name, wood) {
     start(d, a) {
       a.none = a.list[0][0] === 'search';
       a.piece = a.none ? null : _jaws.piece;
+      reservePiece(d, a);
       a.tall = !!a.piece && a.piece.h >= BREAK.topple.minH;
       a.held = false;
       a.thrown = false;
@@ -586,6 +599,7 @@ const tailBat = {
   start(d, a) {
     a.none = a.list[0][0] === 'search';
     a.piece = a.none ? null : _tail.piece;
+    reservePiece(d, a);
     a.dir = _tail.dir;
     a.batted = false;
     a.yawW = d.yaw;
