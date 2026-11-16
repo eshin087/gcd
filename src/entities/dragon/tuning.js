@@ -111,7 +111,7 @@ export const TUNING = {
     sameCat: 0.7, // the last pick's category x this
     floorAfter: [20, 15, 12], // s: a category absent this long comes back ...
     floorBoost: 2.5, // ... its weight x this (x absent / floorAfter, up to x3 more)
-    floorForce: 2, // ... and absent past floorAfter x this, usable from where it stands: it is the pick
+    floorForce: 3, // ... and absent past floorAfter x this, usable from where it stands: it is the pick
     // a bias per category [P1, P2, P3]: the body moves (many cues, close) over the long casts
     bias: { melee: [1.25, 1.25, 1.3], wing: [1.25, 1.25, 1.3], tail: [1.25, 1.25, 1.3] },
     // gap closers when the hero is far (an attack's tuning `closer: true` adds one)
@@ -316,7 +316,7 @@ export const TUNING = {
     // phase 3: six or seven hits, a delayed claw, a blue bite and a red stomp to finish
     frenzy: {
       label: 'Frenzy (6-7 hits)', tell: TELL.RED, phase: 3,
-      links: [{ to: 'tail', when: 'behind', chance: [0, 0, 0.8] }, { to: 'pounce', when: 'far', chance: [0, 0, 0.7] }],
+      links: [{ to: 'tail', when: 'behind', chance: [0, 0, 0.8] }, { to: 'pounce', when: 'far', chance: [0, 0, 0.7] }, { to: 'cinderSpit', when: 'front', chance: [0, 0, 0.55] }],
       hits: [
         { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 16, knockback: 1.2, turn: 0.7 },
         { kind: 'claw', side: -1, tell: TELL.NORMAL, windup: 0.5, active: 0.25, impact: 0.15, damage: 16, knockback: 1.2, turn: 0.8 },
@@ -390,6 +390,7 @@ export const TUNING = {
       ],
       recovery: 1.0, cooldown: 7, weight: [2.6, 2.2, 1.6], range: [2.4, 5.4], maxAng: 0.9,
       links: [
+        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
         { to: 'tail', when: 'behind', chance: [0.5, 0.7, 0.9] },
         { to: 'pivotLash', when: 'side', chance: [0.3, 0.5, 0.6] },
         { to: 'pounce', when: 'far', chance: [0, 0.5, 0.7] },
@@ -438,6 +439,7 @@ export const TUNING = {
       ],
       recovery: 1.1, cooldown: 8, weight: [2.0, 1.8, 1.4], range: [2.4, 5.4], maxAng: 0.9,
       links: [
+        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
         { to: 'tail', when: 'behind', chance: [0.4, 0.6, 0.8] },
         { to: 'fireball', when: 'far', chance: [0.3, 0.5, 0.6] },
       ],
@@ -457,6 +459,7 @@ export const TUNING = {
       ],
       recovery: 1.2, cooldown: 9, weight: [0, 2.8, 2.4], range: [2.4, 5.4], maxAng: 0.9,
       links: [
+        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
         { to: 'tail', when: 'behind', chance: [0.6, 0.7, 0.9] },
         { to: 'breath', when: 'mid', chance: [0, 0.4, 0.6] },
         { to: 'pounce', when: 'far', chance: [0, 0.6, 0.8] },
@@ -479,6 +482,7 @@ export const TUNING = {
       ],
       recovery: 1.3, cooldown: 10, weight: [0, 2.6, 2.2], range: [2.4, 5.4], maxAng: 0.9,
       links: [
+        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
         { to: 'rearGuard', when: 'behind', chance: [0, 0.6, 0.8] },
         { to: 'fireball', when: 'far', chance: [0, 0.5, 0.7] },
       ],
@@ -505,6 +509,7 @@ export const TUNING = {
       ],
       recovery: 1.3, cooldown: 12, weight: [0, 0, 3.0], range: [2.4, 5.4], maxAng: 0.9,
       links: [
+        { to: 'cinderSpit', when: 'front', chance: [0.25, 0.4, 0.55] }, // (integration: the quick spit the bullet agent made to chain strings; a string most often ends with the hero in front)
         { to: 'tail', when: 'behind', chance: [0, 0, 0.9] },
         { to: 'breath', when: 'mid', chance: [0, 0, 0.6] },
         { to: 'pounce', when: 'far', chance: [0, 0, 0.8] },
