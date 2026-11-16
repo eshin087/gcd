@@ -131,10 +131,11 @@ export class Wreckage {
     for (let i = 0; i < LOG_LOOKS; i++) logs.push(logGeometry(r, false));
     for (let i = 0; i < CHAR_LOOKS; i++) chars.push(logGeometry(r, true));
     for (let i = 0; i < RUBBLE_LOOKS; i++) rocks.push(buildRubble(r, 0, 0, 1, { h: 0.55 })[0]);
-    // (after the older looks: their random sequence stays as it was)
+    // (after the older looks: their random sequence stays as it was; built only where the set needs
+    // them: a set without a statue or a floor to throw is built exactly as before, 2026-11-16)
     const blocks = [], shards = [];
-    for (let i = 0; i < BLOCK_LOOKS; i++) blocks.push(blockGeometry(r));
-    for (let i = 0; i < SHARD_LOOKS; i++) shards.push(shardsGeometry(r));
+    if (need.blocks) for (let i = 0; i < BLOCK_LOOKS; i++) blocks.push(blockGeometry(r));
+    if (need.shards) for (let i = 0; i < SHARD_LOOKS; i++) shards.push(shardsGeometry(r));
     const make = (kind, n, geos) => {
       for (let i = 0; i < n; i++) {
         const m = new THREE.Mesh(geos[i % geos.length], mat);
