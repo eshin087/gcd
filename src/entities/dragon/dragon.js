@@ -14,6 +14,7 @@ import { DragonFx } from './fx.js';
 import { Hazards } from './hazards.js';
 import { Bullets } from './bullets.js';
 import { Terrain } from './terrain.js';
+import { Ablaze, ablazeLook, setAblazeLook } from './ablaze.js';
 
 // VAELGRIM, THE CINDER WYRM — the boss. Public contract: see docs/ARCHITECTURE.md (Dragon).
 // Wiring: Brain (ai.js) writes pose targets + root motion and runs the attack tell beats, Rig
@@ -140,6 +141,7 @@ export class Dragon {
     this.hazards = new Hazards(this); // fire hazards (hazards.js): cleared by fx.reset(), death, phase changes
     this.bullets = new Bullets(this); // the bullet field + fire wheel (bullets.js): cleared like the hazards
     this.terrain = new Terrain(this); // the piece in its jaws / in the air, its mark and its blow (terrain.js, ADR-110)
+    this.ablaze = new Ablaze(this); // phase 3: it sets itself on fire (ablaze.js)
     this.brain = new Brain(this);
     this.debug = createDebug(this);
 
@@ -422,6 +424,7 @@ export class Dragon {
     }
     this.fx.reset();
     this.terrain.reset(); // (a piece still in the jaws falls; the world's own reset stands it up again)
+    this.ablaze.reset();
     this._clearWarn();
     this.state = 'sleeping';
     this.hp = this.maxHp;
@@ -742,6 +745,7 @@ export class Dragon {
   onStep(limb) {
     if (this.state === 'dead') return;
     this.emit('dragon:step', { x: limb.pos.x, z: limb.pos.z, heavy: !!limb.hind });
+    this.ablaze.step(limb.pos.x, limb.pos.z, !!limb.hind); // (phase 3: a burning footprint)
     const charging = this.brain.action?.name === 'charge' && this.brain.action.phase === 'active';
     if (charging && limb.hind) this.game.shake?.(0.07);
     const n = limb.hind ? 5 : 3;
@@ -789,6 +793,7 @@ export class Dragon {
     this._letGo.x = 0;
     this.broken = false;
     this._clearWarn();
+    this.ablaze.reset();
     this.object3d.visible = false;
     this.hurtSpheres.length = 0;
     this.bodyCircles.length = 0;
@@ -865,6 +870,7 @@ export class Dragon {
     this.hazards.update(dt); // (guarded inside: never throws)
     this.bullets.update(dt); // (guarded inside: never throws)
     this.terrain.update(dt); // (guarded inside: never throws)
+    this.ablaze.update(dt); // (phase 3's fire on its wings, claws and tail; goes out while it dies)
     if (this.state !== 'dying') {
       this.fx.eyeGlints(dt, this.rig.pt.eyes, this.rig.s.eyes);
       // phase 2 smoulders, phase 3 burns (TUNING.phaseEmbers)
@@ -1343,6 +1349,11 @@ function createDebug(d) {
     reset() {
       d.reset();
       return true;
+    },
+    /** Phase 3's fire (ablaze.js): its strength 'off' | 'a' | 'b' | 'c' (no argument: the one in use). */
+    ablaze(look) {
+      if (look !== undefined) setAblazeLook(look);
+      return ablazeLook();
     },
     setHp(fraction) {
       if (!alive()) return false;
