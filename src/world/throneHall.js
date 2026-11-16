@@ -8,6 +8,8 @@ import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
 import { prep, lumpy, carve, slabGeometry, mul, SLAB_LOOK, buildDeadTree, buildFlagstone, buildBonfire, buildRubble, geosHeight } from './forest.js';
 import { buildSpike, buildFallenStar, starCleft, facetCol, STAR_GLASS, STAR_COLLIDERS } from './landmarks.js';
+import { breakableFloor } from './floor.js';
+import { STONE } from './forest.js';
 
 // The Obsidian Throne: STARFALL (the Starless Lord's level; the owner's pick "A" of three rendered
 // open arenas, 2026-11-15, ADR-112; before it a walled hall, ADR-069). The crater where he fell out
@@ -23,7 +25,12 @@ import { buildSpike, buildFallenStar, starCleft, facetCol, STAR_GLASS, STAR_COLL
 //
 // Same output shape as createForest / createCourtyard (world.js reads it), plus
 //   breakables the shards, the rim's slabs and the hanging stones (ARCHITECTURE.md "Destruction"):
-//              world/destructibles.js builds and draws them, they are not in the static meshes
+//              world/destructibles.js builds and draws them, they are not in the static meshes. Since
+//              2026-11-16 everything but the landmarks breaks: the floor's plates and the path
+//              (world/floor.js), the rim's low slabs and its rubble, the vents' stonework (a vent whose
+//              rim breaks flares up), the stones of the south lip, the trunks thrown down near the
+//              crater. The throne and its dais, the fallen star, the seal's glow and the bonfire stay
+//              whole; the six hanging stones stay as they were (they only chip)
 //   scarInk    cracks in the black floor glow like embers
 //   sky        the crater's own night: world.js writes it into the shared uniforms
 //   ambience   { setup(game), update(dt, game), flare(k), setVisible(on) }: atmosphere.js runs it instead of the
@@ -51,6 +58,10 @@ export const THRONE = {
 };
 
 const SIN_PITCH = Math.sin(CONFIG.camera.pitch);
+/** The trunks thrown down this close to the seal are breakables (2026-11-16): the hero reaches them. */
+const NEAR_LOGS = 32;
+/** The path's flagstones (forest.js buildFlagstone's colour). */
+const flagCol = (px, py, pz) => mul(STONE, 0.6 + 0.4 * fbm2(px * 2, pz * 2, 2));
 const OBS = [0.075, 0.078, 0.105]; // obsidian
 const edgeBand = (px, py, pz, nx, ny) => (ny > 0.5 && ny < 0.95 ? 1 : 0);
 const obs = (k) => (px, py, pz) => mul(OBS, k * (0.72 + 0.5 * fbm2(px * 0.55 + 3, pz * 0.55 + py, 2)));
@@ -136,6 +147,10 @@ export function createThroneHall(U, colliders) {
   // three streams: the layout (its sequence is the picked render's: add nothing to it), the rubble
   // broken pieces leave (ADR-107), and whatever was added after the pick
   const rng = mulberry32(CONFIG.seed + 1311), br = mulberry32(CONFIG.seed + 8312), xr = mulberry32(CONFIG.seed + 10312);
+  // (and a fourth for the floor's remains, world/floor.js: 2026-11-16)
+  const fr = mulberry32(CONFIG.seed + 12312);
+  /** the floor's slabs: { geo, outline, x, z, r, col } (world/floor.js makes them breakable) */
+  const floor = [];
   const stoneGeos = [], slabGeos = [], propGeos = [], treeGeos = [], slabs = [], bare = [], treeSpots = [];
   /** the glowing inlay: { x, y, z, glyph, size, color, rot, flicker, seal } */
   const glow = [];
@@ -150,6 +165,7 @@ export function createThroneHall(U, colliders) {
    */
   const piece = (kind, x, z, r, geos, extra = {}) => {
     const { stub = true, ...rest } = extra;
+    // (a piece made breakable after 2026-11-16 has no stub: its stone becomes the wreckage's rubble)
     const cs = r > 0 ? [colliders.add(x, z, r, 'stone')] : [];
     const rr = r > 0 ? r : 0.6;
     breakables.push({
@@ -172,7 +188,9 @@ export function createThroneHall(U, colliders) {
     if (!walk) return;
     let r = 0;
     for (const [px, pz] of pts) r = Math.max(r, Math.hypot(px, pz));
-    slabs.push({ x, z, r, outline: pts.map(([px, pz]) => [x + px, z + pz]) });
+    const outline = pts.map(([px, pz]) => [x + px, z + pz]);
+    slabs.push({ x, z, r, outline });
+    floor.push({ geo: g, outline, x, z, r: r * 0.8, col });
   };
 
   // ---- the floor: rings of fused plates round the seal ([r0, r1, plates]; the first is one disc),
@@ -283,8 +301,13 @@ export function createThroneHall(U, colliders) {
       ? crystal(rng, x, z, { h: h * 1.1 + 0.6, r: 0.3 + h * 0.1, lean, yaw })
       : buildSpike(rng, x, -0.2, z, { h, w, d: dd, tip: range(rng, 0.1, 0.36), lean, yaw, col: facetCol(OBS, 1.3), lump: 0.1 });
     if (h > 1.3) piece(glass ? 'shard' : 'slab', x, z, 0.85, [g]);
-    else stoneGeos.push(g); // (the rim's low rubble: scenery)
-    if (rng() < 0.5) stoneGeos.push(...rubble(rng, x - Math.sin(a) * 1.2, z + Math.cos(a) * 1.2, 1.1, 3));
+    // the rim's low pieces and its rubble break too (2026-11-16; scenery before): no collider, as before,
+    // and nothing the Void lifts (lift 0: his choices among the tall pieces stay as they were)
+    else piece(glass ? 'shard' : 'slab', x, z, 0, [g], { stub: false, lift: 0, cover: false, r: 0.5 });
+    if (rng() < 0.5) {
+      const rx = x - Math.sin(a) * 1.2, rz = z + Math.cos(a) * 1.2;
+      piece('rubble', rx, rz, 0, rubble(rng, rx, rz, 1.1, 3), { stub: false, lift: 0, cover: false, r: 1.1 });
+    }
   }
 
   // ---- shards of the star standing in the floor: cover, and what he tears loose and throws.
@@ -310,9 +333,10 @@ export function createThroneHall(U, colliders) {
     fires.push({ x, y: 0.1, z, kind: 'wisp', r: r * 0.8, of: 'hover' });
   }
   // ---- vents: pits where the star still burns under the floor (the crater's light)
+  // (its ring of stones breaks: the vent burns on, and flares as its rim goes; 2026-11-16)
   for (const [x, z] of [[-8.6, -1.6], [8.8, 0.2], [-7.0, 10.2], [8.4, 6.4]]) {
-    stoneGeos.push(...rubble(rng, x, z, 0.85, 7, { size: [0.14, 0.3], k: 1.2 }));
-    fires.push({ x, y: 0.12, z, kind: 'vent' });
+    piece('vent', x, z, 0, rubble(rng, x, z, 0.85, 7, { size: [0.14, 0.3], k: 1.2 }), { stub: false, lift: 0, cover: false, topples: false, r: 1.0 });
+    fires.push({ x, y: 0.12, z, kind: 'vent', rim: 'vent' });
     bare.push({ x, z, r: 1 });
   }
 
@@ -322,6 +346,7 @@ export function createThroneHall(U, colliders) {
     const s = buildFlagstone(rng, x, z, w, d, rng() * TAU);
     slabGeos.push(s.geo);
     slabs.push({ x, z, r: Math.max(w, d) * 0.65, outline: s.outline });
+    floor.push({ geo: s.geo, outline: s.outline, x, z, r: Math.max(w, d) * 0.5, col: flagCol });
   }
   propGeos.push(...buildBonfire(rng, BF.x, BF.z));
   colliders.add(BF.x, BF.z, 0.75, 'bonfire');
@@ -334,9 +359,14 @@ export function createThroneHall(U, colliders) {
     const s = range(rng, 0.85, 1.35), flat = r < R + 24 || rng() < 0.3;
     if (flat) {
       const yaw = Math.atan2(x, z) + range(rng, -0.22, 0.22);
-      treeGeos.push(...fallenTree(rng, x, z, s, yaw));
+      const g = fallenTree(rng, x, z, s, yaw);
       // (a log is not walked through: two circles along it, where the hero can get to)
-      if (r < 38) for (const f of [1.1, 3.3]) colliders.add(x + Math.sin(yaw) * f * s, z + Math.cos(yaw) * f * s, 0.36 * s, 'trunk');
+      const cs = r < 38 ? [1.1, 3.3].map((f) => colliders.add(x + Math.sin(yaw) * f * s, z + Math.cos(yaw) * f * s, 0.36 * s, 'trunk')) : [];
+      // the trunks thrown down nearest the crater break and burn (2026-11-16): it lies, it does not fall
+      if (r < NEAR_LOGS) {
+        const mx = x + Math.sin(yaw) * 2.2 * s, mz = z + Math.cos(yaw) * 2.2 * s;
+        breakables.push({ kind: 'log', mat: 'wood', look: 'grid', x: mx, z: mz, r: 1.6 * s, h: 0.7 * s, geos: g, colliders: cs, topples: false, cover: false, lift: 1, wreck: false });
+      } else treeGeos.push(...g);
     } else {
       treeGeos.push(...buildDeadTree(rng, x, z, s));
       if (r < 46) colliders.add(x, z, 0.42 * s, 'trunk');
@@ -347,8 +377,8 @@ export function createThroneHall(U, colliders) {
   // ---- the south lip: two knee-high stones either side of the path mark where the floor begins
   for (const sx of [-1, 1]) {
     const x = sx * range(xr, 3.4, 3.9), z = L.entryZ + range(xr, 0.5, 1.1);
-    stoneGeos.push(buildSpike(xr, x, -0.15, z, { h: range(xr, 0.8, 1.1), w: 1.3, d: 0.6, tip: 0.45, lean: 0.3, yaw: sx * 1.2, col: facetCol(OBS, 1.3), lump: 0.1 }), ...rubble(xr, x + sx * 0.9, z + 0.4, 0.8, 3));
-    colliders.add(x, z, 0.6, 'stone');
+    // (a breakable since 2026-11-16: its collider is the one it always had)
+    piece('slab', x, z, 0.6, [buildSpike(xr, x, -0.15, z, { h: range(xr, 0.8, 1.1), w: 1.3, d: 0.6, tip: 0.45, lean: 0.3, yaw: sx * 1.2, col: facetCol(OBS, 1.3), lump: 0.1 }), ...rubble(xr, x + sx * 0.9, z + 0.4, 0.8, 3)], { stub: false, lift: 0 });
   }
 
   // ---- meshes
@@ -372,6 +402,12 @@ export function createThroneHall(U, colliders) {
   add(stoneGeos, stoneMat, 'stones');
   add(slabGeos, slabMat, 'paving');
   markCaster(group);
+  // the floor breaks (world/floor.js): each plate a breakable 'range' piece of the paving mesh (the dais
+  // is not one of them); the cracked and broken looks in two more meshes, hidden until first used
+  {
+    const slabMesh = group.children[group.children.length - 1];
+    breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group }).defs);
+  }
 
   // ---- the crater's life: the vents' flames and lights, wisps, motes, the inlay
   const st = { flare: 0, shown: -1 };
@@ -414,6 +450,16 @@ export function createThroneHall(U, colliders) {
       const D = game.world?.destructibles;
       for (const b of fires) {
         const vent = b.kind === 'vent';
+        if (b.rim && D?.list) {
+          // a vent burns on when its ring of stones breaks, and flares up as it goes (a burst of flame)
+          if (b.rimPiece === undefined) b.rimPiece = D.list.find((o) => o.kind === b.rim && Math.hypot(o.x - b.x, o.z - b.z) < 0.2) ?? null;
+          const open = !!b.rimPiece && b.rimPiece.state !== 0;
+          if (open && !b.flared) {
+            b.flared = true;
+            b.flare = 1.6;
+          } else if (!open) b.flared = false;
+        }
+        if (b.flare > 0) b.flare = Math.max(0, b.flare - dt);
         if (b.of && D?.list) {
           // a wisp rises under its stone only while the stone hangs there (bound once)
           if (b.piece === undefined) b.piece = D.list.find((o) => o.kind === b.of && Math.hypot(o.x - b.x, o.z - b.z) < 0.2) ?? null;
@@ -427,7 +473,7 @@ export function createThroneHall(U, colliders) {
             pc.body.updateMatrix();
           }
         }
-        acc(b, 'fire', dt, vent ? 20 : 5, () => {
+        acc(b, 'fire', dt, vent ? 20 * (1 + 2.5 * Math.min(1, b.flare ?? 0)) : 5, () => {
           const a = Math.random() * TAU, r = Math.random() * (vent ? 0.55 : b.r ?? 0.6), hot = Math.random();
           if (vent && fire) {
             // a vent's flame: heat in the fire field (render/fireField.js, ADR-113), cool blobs that
@@ -437,7 +483,7 @@ export function createThroneHall(U, colliders) {
             q.y = Math.max(0.7, b.y + 0.5 + Math.random() * 0.2);
             q.z = b.z + Math.sin(a) * r;
             q.vx = (Math.random() - 0.5) * 0.25;
-            q.vy = 0.6 + Math.random() * 0.8;
+            q.vy = 0.6 + Math.random() * 0.8 + 2.2 * Math.min(1, b.flare ?? 0);
             q.vz = (Math.random() - 0.5) * 0.25;
             q.life = 0.4 + Math.random() * 0.5;
             q.size = 0.7 + hot * 0.36;
@@ -485,6 +531,7 @@ export function createThroneHall(U, colliders) {
         return r < R + 3.2 ? 0 : 0.15 * (1 - smooth(42, 54, r));
       },
     },
+    floorCarry: mul(OBS, 1.8), // (a plate torn out of the floor, in a boss's hands: destructibles.js)
     sky: { moonColor: [0.2, 0.23, 0.37], ambient: [0.03, 0.021, 0.029], fogColor: [0.007, 0.003, 0.0045], fogNear: 30, fogFar: 60 },
     ambience,
   };
