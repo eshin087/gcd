@@ -1242,6 +1242,17 @@ async function scenarioFxlooks() {
     const none = !calls._drawStarA && !calls._drawMarkA && !calls._starBurstA && !calls._strikeA && !calls._drawCrescentA && !calls._bladeField && !calls.gather && !calls._igniteA;
     assert(today && none, `with no switch set, today's look is drawn (star ${calls._drawStar} frames + its burst, the sky's marks ${calls._drawMark}) and none of the redraws (${JSON.stringify(calls)})`);
   }
+  // 2b. a form-4 fight with the AI on, every look at today's and at 'a': the fire field's and the
+  //     additive pool's peaks (the room the fourth form's weather has to work in)
+  for (const lk of ['0', 'a']) {
+    force(Object.fromEntries(NAMES.map((n) => [n, lk])));
+    const G = build();
+    duel(G, { dist: 3, ai: true, form: 4 });
+    G.game.player.debug.god = true;
+    let fire = 0, add = 0, sum = 0, n = 0;
+    run(G, 60, () => { const c = G.game.fx.fire.count; fire = Math.max(fire, c); sum += c; n++; add = Math.max(add, G.game.fx.add.count); });
+    assert(fire < 5000 && add < 6500, `60 s of form 4, AI on, every look at '${lk}': the fire field peaks at ${fire} of 6000 blobs (mean ${(sum / Math.max(1, n)).toFixed(0)}), the additive pool at ${add} of 7000`);
+  }
   force({});
   // 3. no look moves the game: the SPELLS and TERRAIN scenarios print the same numbers (every
   //    damage, distance and count) with every look at '0', at 'a', and at 'b' where there is one
