@@ -612,6 +612,27 @@ async function scenarioMoves() {
     const r = G.hits.slice(h0).filter((h) => h.attack === 'starlessNight');
     assert(r.length >= 2 && !r.some((h) => h.r === RESULT.HIT), `a hero who rolls at each flare (a perfect dodge sends him into his counter: a wave over him then misses) comes through every wave (${r.map((h) => h.r).join(', ')})`);
   }
+  // ---- the budget: form 4 with everything of his live (the weather falling, Starless Night's waves,
+  // every look of it): the fire field under its 6000 blobs, the additive glyphs under 6500
+  for (const L of ['a', 'b', 'c']) {
+    const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+    setLook('great', L);
+    const G = build(SEED, true);
+    duel(G, { dist: 6, ai: true, form: 4 });
+    G.game.player.debug.god = true;
+    G.defend = makeDefender(G);
+    const d = G.game.dragon;
+    let fire = 0, nights = 0;
+    run(G, 40, () => {
+      G.defend.act();
+      d.brain.pendingPhase = 0;
+      if (d.mode === 'foot' && (d.brain.cooldowns.starlessNight ?? 0) <= 0 && !d.spells.night.alive) { d.debug.trigger('starlessNight'); nights++; }
+      fire = Math.max(fire, G.game.fx.fire.count);
+    });
+    setLook('great', null);
+    out(`     ?great=${L}: 40 s of form 4, ${nights} Starless Nights, ${d.spells.stats.skyCalls} weather strikes: fire field peak ${fire}, additive glyphs peak ${G.peakAdd}`);
+    assert(fire < 6000 && G.peakAdd < 6500 && nights >= 1, `?great=${L}: form 4 with the weather and the great spell fits the pools (fire ${fire} < 6000, glyphs ${G.peakAdd} < 6500)`);
+  }
   // ---- links by where the hero is
   {
     const DIR = await imp('src/entities/enemies/duelist/director.js');
