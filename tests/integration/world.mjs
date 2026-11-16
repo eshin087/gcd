@@ -619,6 +619,17 @@ const S = {
     step(40);
     const burned = D.list.filter((b) => b.burnt).length;
     assert(D.burning === 0 && D.list.every((b) => b.gen <= S.gens), `the blaze burns out: fire passes on at most ${S.gens} times from where it landed (${burned} trees burned in all, nothing alight 60 s on)`);
+    // the light of burning wood is a local glow, one for a cluster (BREAK.burn.glow)
+    {
+      const Lb = build();
+      const added = [];
+      const add = Lb.game.lights.add.bind(Lb.game.lights);
+      Lb.game.lights.add = (o) => { added.push(o); return add(o); };
+      const stand = Lb.D.list.filter((b) => b.mat === 'wood' && Math.hypot(b.x - t.x, b.z - t.z) < 7).slice(0, 5);
+      for (const b of stand) Lb.D.ignite(b.x, b.z, 0.2, 1);
+      const G = BREAK.burn.glow;
+      assert(stand.length >= 3 && added.length <= 2 && added.every((o) => o.radius <= 6 && o.intensity <= G.intensity), `${stand.length} trees alight within 7 m share ${added.length} light(s) of ${added.map((o) => o.radius.toFixed(1)).join(', ')} m (<= 6 m; it was ~16 m each)`);
+    }
     // the cap: everything lit at once, nothing spreads past it
     const W = build();
     W.D.setQuality(QUALITY.LOW);

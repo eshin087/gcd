@@ -69,9 +69,12 @@ export const BREAK = Object.freeze({
   thrown: Object.freeze({ gravity: 22, spin: 5.5, blast: 1.2, shake: 0.4 }),
   /** cover: a piece stops a projectile and pays for it */
   cover: Object.freeze({ minH: 1.1, bullet: 0.12, bolt: 1.5, stone: 0.7, crescent: 0.35 }),
-  /** burning wood: seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's;
-   *  `lights`: burning pieces that carry a light of their own at once (the light pool is finite) */
-  burn: Object.freeze({ time: 7, pad: 1.0, light: [3.2, 1.1, 0.25], lights: 6 }),
+  /** burning wood: seconds alight, the ring round the trunk that burns the hero, ticks as the ground fire's.
+   *  `glow`: its light is a LOCAL glow (radius m, intensity; it was ~16 m and 2.6, a yellow flood that
+   *  buried the fire on the ground the hero must read): a piece that catches within `share` m of one
+   *  already lit shares that light (it is kept on for as long as either burns); at most `lights` at once
+   *  (only 8 reach the shaders) */
+  burn: Object.freeze({ time: 7, pad: 1.0, light: [3.2, 1.1, 0.25], lights: 4, glow: Object.freeze({ radius: 5, intensity: 1.5, share: 8 }) }),
   /** the spatial grid every query walks (strike, sweep, stop, coverAt, ignite, nearest): cell size, m */
   grid: Object.freeze({ cell: 4 }),
   /**
@@ -120,6 +123,7 @@ export const FIRE = Object.freeze({
   flames: 46, // flame glyphs per second per burning square metre (capped below)
   maxFlames: 800, // … per second over the whole field
   maxCells: 2600, // burning cells at once (a hard cap: the oldest fires are simply left to finish)
+  glow: Object.freeze({ intensity: 1.5, pad: 2, max: 6 }), // a blaze's one light: radius min(max, its radius + pad) m
 });
 
 /** Impact marks (world/scars.js). */

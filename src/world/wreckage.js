@@ -239,7 +239,7 @@ export class Wreckage {
     e.gen = gen;
     this.burning++;
     const mx = e.x + e.dx * e.len * 0.5, mz = e.z + e.dz * e.len * 0.5;
-    e.light = this.D._lightAt(mx, 0.8, mz, 6 + e.len * 0.5, sec + 0.6);
+    e.light = this.D._lightAt(mx, 0.8, mz, BREAK.burn.glow.radius, sec + 0.6);
     return true;
   }
 

@@ -603,19 +603,36 @@ export class Destructibles {
     b.heatT = 0;
     b.spreadT = 0;
     this._burningN++;
-    b.light = this._lightAt(b.x, Math.min(3, b.h * 0.5), b.z, 9 + b.h, b.burn + 0.6);
+    b.light = this._lightAt(b.x, Math.min(2.5, b.h * 0.4), b.z, BREAK.burn.glow.radius, b.burn + 0.6);
     this._wake(b);
     this._emit('burn', b, b.x, b.h * 0.5, b.z, k, 'world');
   }
 
-  /** A light for something alight, while fewer than BREAK.burn.lights burn with one (the light pool is finite). */
+  /**
+   * A local glow for something alight (BREAK.burn.glow): within `share` m of a light already burning it
+   * shares that one (kept on for as long as either burns: one light for a cluster), else a new one while
+   * fewer than BREAK.burn.lights burn (the light pool is finite, and only 8 reach the shaders).
+   */
   _lightAt(x, y, z, radius, life) {
-    let lit = 0;
+    let lit = 0, near = null, nd = BREAK.burn.glow.share;
     const A = this.active, WL = this.wreck?.live;
-    for (let i = 0; i < A.length; i++) if (A[i].burn > 0 && A[i].light) lit++;
-    if (WL) for (let i = 0; i < WL.length; i++) if (WL[i].burn > 0 && WL[i].light) lit++;
+    const see = (L) => {
+      if (!L || L.dead) return;
+      lit++;
+      const d = Math.hypot(L.x - x, L.z - z);
+      if (d < nd) {
+        nd = d;
+        near = L;
+      }
+    };
+    for (let i = 0; i < A.length; i++) if (A[i].burn > 0) see(A[i].light);
+    if (WL) for (let i = 0; i < WL.length; i++) if (WL[i].burn > 0) see(WL[i].light);
+    if (near) {
+      if (Number.isFinite(near.age)) near.life = Math.max(near.life, near.age + life);
+      return null;
+    }
     if (lit >= BREAK.burn.lights) return null;
-    return this.game.lights?.add?.({ x, y, z, color: [1.0, 0.4, 0.1], intensity: 2.6, radius, life, fade: 1.2, flicker: 0.55 }) ?? null;
+    return this.game.lights?.add?.({ x, y, z, color: [1.0, 0.4, 0.1], intensity: BREAK.burn.glow.intensity, radius, life, fade: 1.2, flicker: 0.55 }) ?? null;
   }
 
   /** Room for one more fire that spreads (the cap: BREAK.spread.maxBurning x quality). */

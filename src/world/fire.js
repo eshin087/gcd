@@ -87,7 +87,9 @@ export class GroundFire {
       // one light per blaze, not per cell (and not more often than every 0.25 s)
       if (this._lightT <= 0) {
         this._lightT = 0.25;
-        this.game.lights?.add?.({ x, y: 1.2, z, color: [1.0, 0.42, 0.1], intensity: 2.2, radius: r + 6, life: FIRE.life[1] * k, fade: 1.4, flicker: 0.5 });
+        // (a local glow over the blaze, FIRE.glow: it was r + 6 m at 2.2, a flood that washed out the
+        // burning cells' own pattern)
+        this.game.lights?.add?.({ x, y: 1.2, z, color: [1.0, 0.42, 0.1], intensity: FIRE.glow.intensity, radius: Math.min(FIRE.glow.max, r + FIRE.glow.pad), life: FIRE.life[1] * k, fade: 1.4, flicker: 0.5 });
       }
       this.game.events?.emit?.('world:fire', { x, z, radius: r, cells: lit });
     }
