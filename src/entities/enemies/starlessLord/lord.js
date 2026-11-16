@@ -44,7 +44,16 @@ const beatNow = (a) => (a ? a.beats.find((b) => a.t < b.end + 1e-6) ?? null : nu
 const isCast = (D) => !!(D && (D.cast || D.bolt || D.pull || D.grip || D.release?.style === 'push' || D.release?.style === 'rift'));
 /** A beat that is the Void alone (no steel in it): it can be cast while his main blade is in the air. */
 const voidOnly = (D) => !!(D && (D.feint || D.bolt || D.pull || D.grip || D.left || D.release?.style === 'push' || (D.cast && D.cast.kind !== 'glaive' && D.cast.kind !== 'wheel')));
-const _needsBlade = new WeakMap();
+const _needsBlade = new WeakMap(), _asksGuard = new WeakMap();
+/** Does a move ask a guard anywhere (a white or blue beat, any alternative)? */
+const asksGuard = (def) => {
+  let v = _asksGuard.get(def);
+  if (v === undefined) {
+    v = (def.beats ?? []).some((b) => (Array.isArray(b.pick) ? b.pick : [b]).some((x) => !x.feint && (x.tell === TELL.NORMAL || x.tell === TELL.BLUE)));
+    _asksGuard.set(def, v);
+  }
+  return v;
+};
 /** Does a move swing his MAIN blade (any beat, any alternative)? Not while it is thrown. */
 const needsBlade = (def) => {
   let v = _needsBlade.get(def);
@@ -340,6 +349,9 @@ export class StarlessLord extends Duelist {
     // while his main blade is in the air (the Returning Blade, the wheeling blade) he works the Void
     // or the off-hand blade: nothing that swings the blade he threw
     if (this.glaiveOut && needsBlade(def)) return 0;
+    // while Starless Night's waves run over the crater, nothing that asks a guard (he stands in the
+    // eye of it: two answers are never asked at once)
+    if (this.spells?.nightLive && asksGuard(def)) return 0;
     return w;
   }
 

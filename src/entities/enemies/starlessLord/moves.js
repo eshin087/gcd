@@ -755,6 +755,7 @@ export const MOVES = {
       cut('aerial', B, 0.56, 20, { form: 2 }),
       cut('back', N, 0.36, 11, { form: 2 }),
       cut('diag', N, 0.34, 11, { form: 2, left: true }),
+      cut('flatBack', N, 0.34, 11, { form: 2 }),
       { pick: [peril(2), cut('aerial', B, 0.58, 22, { form: 2 })] },
     ],
   },
@@ -860,6 +861,7 @@ export const MOVES = {
       cut('flatBack', N, 0.36, 12, { form: 3, step: 'L', travel: walk(1.1) }),
       spin(N, 0.36, 12, { form: 3, cock: 0.55, travel: walk(1.2), close: 0 }),
       cut('rise', N, 0.36, 13, { form: 3, travel: walk(1.0) }),
+      cut('diag', N, 0.34, 13, { form: 3, step: 'L', travel: walk(0.9) }),
       rift(0.62, 3, { fixed: false, travel: [[0.08, 0], [0.7, -3.0]], lift: [[0.08, 0], [0.4, 0.8], [0.75, 0]], release: { style: 'rift', count: 3, spread: 0.32, speed: 10, from: 0.4 } }),
     ],
   },
@@ -872,8 +874,11 @@ export const MOVES = {
       // its contact before the next cut's glint)
       orbitCast(0.5),
       cut('flat', N, 0.5, 13, { form: 3 }),
+      cut('flatBack', N, 0.34, 13, { form: 3, step: 'L' }),
       spin(N, 0.74, 13, { form: 3, cock: 0.7 }),
+      cut('rise', N, 0.34, 13, { form: 3 }),
       cut('flatBack', N, 0.78, 13, { form: 3, step: 'L', cock: 0.76 }),
+      cut('diag', N, 0.34, 13, { form: 3 }),
       cut('thrust', B, 0.78, 21, { form: 3, cock: 0.8 }),
     ],
   },
@@ -888,6 +893,7 @@ export const MOVES = {
       starCast(0.46),
       spin(N, 0.38, 14, { form: 3, cock: 0.6 }),
       cut('rise', N, 0.36, 13, { form: 3 }),
+      cut('diag', N, 0.34, 13, { form: 3, step: 'L' }),
       cut('over', B, 0.44, 22, { form: 3, lock: true, hold: [0.05, 0.2], cock: 0.72 }),
     ],
   },
@@ -898,8 +904,10 @@ export const MOVES = {
     beats: [
       spin(N, 0.5, 13, { form: 3 }),
       cut('flatBack', N, 0.34, 13, { form: 3, step: 'L' }),
+      cut('flat', N, 0.34, 13, { form: 3 }),
       spin(N, 0.36, 13, { form: 3, cock: 0.6 }),
-      spin(R, 0.6, 22, { form: 3, low: true, cock: 0.62 }),
+      cut('back', N, 0.34, 13, { form: 3, step: 'L' }),
+      spin(R, 0.58, 22, { form: 3, low: true, cock: 0.62 }),
       { pick: [peril(3), cut('flip', B, 0.6, 24, { form: 3, lock: true })] },
     ],
   },
@@ -973,7 +981,7 @@ export const MOVES = {
     beats: [cut('diag', N, 0.5, 16, { form: 4, track: 0.7 }), cut('thrust', B, 0.36, 22, { form: 4 })],
   },
   // -------------------------------------------------------------- form 4, the second pass: the Void as weather
-  /** Void Waltz: five blinks, five cuts, each from a new side; the last a held chop (a lock). */
+  /** Void Waltz: six blinks, six cuts, each from a new side; the last a held chop (a lock). */
   voidWaltz: {
     label: 'Void Waltz', phase: 4, weight: W(4, 2.4), cooldown: 8, band: [0, 12], recovery: 0.7, recoveryKeys: FLOURISH[3], gapCloser: true,
     beats: [
@@ -981,6 +989,7 @@ export const MOVES = {
       cut('rise', N, 0.54, 13, { form: 4, blink: { behind: 2.0 }, close: 1.2 }),
       cut('flatBack', N, 0.54, 13, { form: 4, step: 'L', blink: { behind: 2.0 }, close: 1.2 }),
       cut('diag', N, 0.54, 13, { form: 4, blink: { behind: 2.0 }, close: 1.2 }),
+      cut('back', N, 0.54, 13, { form: 4, step: 'L', blink: { behind: 2.0 }, close: 1.2 }),
       cut('over', B, 0.6, 24, { form: 4, blink: { behind: 2.1 }, close: 1.2, lock: true }),
     ],
   },
@@ -990,11 +999,12 @@ export const MOVES = {
     label: 'Thunder Between', phase: 4, weight: W(4, 2.4), cooldown: 7, band: [0, 5], recovery: 0.75, recoveryKeys: FLOURISH[3],
     beats: [
       cut('flat', N, 0.6, 14, { form: 4 }),
-      bolt(0.5, 18, { cock: 0.6 }),
-      cut('back', N, 0.42, 13, { form: 4, step: 'L' }),
-      bolt(0.5, 18, { cock: 0.6 }),
-      cut('rise', N, 0.42, 13, { form: 4 }),
-      bolt(0.5, 20, { cock: 0.6 }),
+      bolt(0.44, 18, { cock: 0.6 }),
+      cut('back', N, 0.36, 13, { form: 4, step: 'L' }),
+      bolt(0.44, 18, { cock: 0.6 }),
+      cut('rise', N, 0.36, 13, { form: 4 }),
+      cut('flatBack', N, 0.36, 13, { form: 4, step: 'L' }),
+      bolt(0.44, 20, { cock: 0.6 }),
       { pick: [cut('thrust', B, 0.48, 22, { form: 4 }), cut('flip', B, 0.66, 26, { form: 4, lock: true })] },
     ],
   },
@@ -1008,6 +1018,7 @@ export const MOVES = {
       { ...cut('flat', R, 0.6, 22, { form: 4, cock: 0.76, blink: { behind: 2.2 }, close: 1.2 }), knockback: 2.2 },
       bolt(0.5, 18, { cock: 0.6 }),
       cut('rise', N, 0.48, 13, { form: 4, blink: { behind: 2.0 }, close: 1.2 }),
+      cut('flat', N, 0.36, 13, { form: 4 }),
       spin(R, 0.62, 24, { form: 4, low: true, cock: 0.62 }),
     ],
   },
@@ -1015,7 +1026,7 @@ export const MOVES = {
    *  feet, roll), and three waves of the Void run out over the whole crater from where he stands
    *  (red: roll through each as it reaches you). Once or twice a form. */
   starlessNight: {
-    label: 'Starless Night', phase: 4, weight: [0, 0, 0, 1.3], cooldown: 32, band: [0, 16], recovery: 1.6, cat: 'hazard',
+    label: 'Starless Night', phase: 4, weight: [0, 0, 0, 1.3], cooldown: 32, band: [0, 16], recovery: 2.0, cat: 'hazard',
     beats: [
       { tell: R, windup: 1.2, fixed: true, active: 0.15, damage: 24, knockback: 4, knockdown: true, zone: { kind: 'ring', r: 3.0 }, ring: 3.0, part: 'feet', close: 0, track: 0.3, keys: riftKeys() },
       { tell: R, windup: 0.42, fixed: true, active: 0.1, damage: 22, knockback: 3.5, cast: { kind: 'night', selfCue: true }, part: 'feet', close: 0, track: 0, keys: [[1.0, { ...riftKeys()[3][1] }], [2.0, { ...riftKeys()[3][1] }]] },

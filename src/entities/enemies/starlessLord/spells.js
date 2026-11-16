@@ -116,6 +116,14 @@ export class LordSpells {
     this._home(true);
   }
 
+  /** Starless Night's waves are still to reach the hero. */
+  get nightLive() {
+    const n = this.night;
+    if (!n.alive) return false;
+    for (let i = 0; i < n.n; i++) if (!n.waves[i].done) return true;
+    return false;
+  }
+
   /** Anything of the new Void still live (the tests wait for it). */
   get busy() {
     if (this.wheel.alive || this.night.alive) return true;
@@ -353,8 +361,11 @@ export class LordSpells {
     if (act) {
       const imp = [];
       for (const x of act.beats) if (x !== b && !x.feint && x.impact > act.t + 1e-4) imp.push(x.impact - act.t);
+      // (early in the pause: its glint after the cut before it has landed, its contact well before
+      // the next cut's glint, even if the hero is knocked back a little and it lands late)
+      const lead = this._lead;
       for (let k = 0; k + 1 < imp.length && at.length < n; k++) {
-        const m = (imp[k] + imp[k + 1]) / 2;
+        const m = Math.min((imp[k] + imp[k + 1]) / 2, imp[k] + lead + T.early);
         if (imp[k + 1] - imp[k] >= T.minGap && m - T.flight >= T.minDelay) at.push(m);
       }
       let last = imp.length ? imp[imp.length - 1] : 0;
@@ -585,8 +596,9 @@ export class LordSpells {
    * (?great=): a the dark tide: a wall of the Void along the floor, a red seam on its leading edge,
    * darkness left hanging behind it; b the sky's edge: a ring of standing white strokes, the Void at
    * their feet, lightning leaping up off it; c the floor answers: the floor thrown up in dust and chips
-   * along a red seam. Cost at the crater's edge (r 14): a ~260 blobs a frame live, b ~190 + 2 arcs,
-   * c ~170 + ~12 glyph chips a frame (life 0.35 s).
+   * along a red seam. Cost of one front at the crater's edge (r 14, 160 points): a ~480 frame blobs +
+   * ~32 a frame that live 0.25 - 0.42 s (~1000 live), b ~240 + 2 arcs, c ~160 frame blobs + ~80 a
+   * frame living 0.3 - 0.5 s (~3000 live at the peak) + ~12 glyph chips a frame (life 0.35 s).
    */
   _drawFront(x, z, r, k, seed, L) {
     const fx = this.d.fx, life = fx._frame?.() ?? 0;
@@ -597,10 +609,10 @@ export class LordSpells {
       for (let i = 0; i < n; i++) {
         const a = ((i + hash(seed + i) * 0.7) / n) * TAU + spin, rr = r + (hash(seed + i + 3.1) - 0.5) * 0.3;
         const bx = x + Math.cos(a) * rr, bz = z + Math.sin(a) * rr;
-        if (i % 2 === 0) fx._blob(bx, GROUND_Y, bz, 0, 0, 0, life, 0.4, 0.4, 0.46 * GROUND_GAIN * k, 0.46 * GROUND_GAIN * k, K_VOID);
-        if (i % 3 === 0) {
-          const hh = (0.7 + 1.5 * hash(seed + i * 1.7 + Math.floor(r * 3))) * k;
-          fx._ink(bx, 0.15, bz, bx, 0.15 + hh, bz, 0, 0.8 * k, 0.2, 0.8 * k);
+        fx._blob(bx, GROUND_Y, bz, 0, 0, 0, life, 0.4, 0.4, 0.5 * GROUND_GAIN * k, 0.5 * GROUND_GAIN * k, K_VOID);
+        if (i % 2 === 0) {
+          const hh = (1.0 + 1.8 * hash(seed + i * 1.7 + Math.floor(r * 3))) * k;
+          fx._ink(bx, 0.15, bz, bx, 0.15 + hh, bz, 0, 0.95 * k, 0.25, 0.95 * k);
         }
       }
       if (this.lr() < 0.12 * k) {
@@ -613,8 +625,8 @@ export class LordSpells {
       for (let i = 0; i < n; i++) {
         const a = ((i + hash(seed + i) * 0.7) / n) * TAU + spin, rr = r + (hash(seed + i + 3.1) - 0.5) * 0.3;
         const ca = Math.cos(a), sa = Math.sin(a), bx = x + ca * rr, bz = z + sa * rr;
-        if (i % 2 === 0) fx._blob(x + ca * (rr + 0.2), GROUND_Y, z + sa * (rr + 0.2), 0, 0, 0, life, 0.3, 0.3, 0.44 * GROUND_GAIN * k, 0.44 * GROUND_GAIN * k, K_FIRE);
-        if (i % 3 === 0) fx._blob(bx, 0.35, bz, ca * 0.8, this.lr(0.8, 2.2) * k, sa * 0.8, this.lr(0.25, 0.45), 0.5, 1.1, 0.6 * k, 0, K_SMOKE, 2);
+        fx._blob(x + ca * (rr + 0.2), GROUND_Y, z + sa * (rr + 0.2), 0, 0, 0, life, 0.3, 0.3, 0.5 * GROUND_GAIN * k, 0.5 * GROUND_GAIN * k, K_FIRE);
+        if (i % 2 === 0) fx._blob(bx, 0.35, bz, ca * 0.8, this.lr(0.8, 2.4) * k, sa * 0.8, this.lr(0.3, 0.5), 0.55, 1.2, 0.8 * k, 0, K_SMOKE, 2);
         if (i % 14 === 0 && fx.alpha) {
           fx._spawn(fx.alpha, { x: bx, y: 0.15, z: bz, vx: ca * this.lr(0.5, 2), vy: this.lr(2, 5) * k, vz: sa * this.lr(0.5, 2), life: this.lr(0.25, 0.4), size: 0.18, sizeEnd: 0.08, glyph: "#%,.'", color: STONE, alpha: 0.9, alphaEnd: 0, drag: 2, gravity: -9 });
         }
@@ -625,10 +637,11 @@ export class LordSpells {
     for (let i = 0; i < n; i++) {
       const a = ((i + hash(seed + i) * 0.7) / n) * TAU + spin, rr = r + (hash(seed + i + 3.1) - 0.5) * 0.35;
       const ca = Math.cos(a), sa = Math.sin(a), bx = x + ca * rr, bz = z + sa * rr;
-      const hh = (0.5 + 0.25 * hash(seed + i + 7.7)) * k;
-      fx._blob(bx, GROUND_Y + 0.22, bz, 0, 0, 0, life, 0.52, 0.52, hh, hh, K_VOID);
-      if (i % 2 === 0) fx._blob(x + ca * (rr + 0.3), GROUND_Y, z + sa * (rr + 0.3), 0, 0, 0, life, 0.3, 0.3, 0.42 * GROUND_GAIN * k, 0.42 * GROUND_GAIN * k, K_FIRE);
-      if (i % 6 === 0) fx._blob(bx, 0.55, bz, -ca * 0.7, this.lr(0.3, 1.2), -sa * 0.7, this.lr(0.25, 0.42), 0.55, 0.95, 0.42 * k, 0, K_VOID, 1.5);
+      const hh = (0.72 + 0.3 * hash(seed + i + 7.7)) * k;
+      fx._blob(bx, GROUND_Y + 0.22, bz, 0, 0, 0, life, 0.55, 0.55, hh, hh, K_VOID);
+      fx._blob(bx, GROUND_Y + 0.75, bz, 0, 0, 0, life, 0.45, 0.45, hh * 0.7, hh * 0.7, K_VOID);
+      fx._blob(x + ca * (rr + 0.32), GROUND_Y, z + sa * (rr + 0.32), 0, 0, 0, life, 0.3, 0.3, 0.5 * GROUND_GAIN * k, 0.5 * GROUND_GAIN * k, K_FIRE);
+      if (i % 5 === 0) fx._blob(bx, 0.55, bz, -ca * 0.7, this.lr(0.3, 1.2), -sa * 0.7, this.lr(0.25, 0.42), 0.6, 1.0, 0.5 * k, 0, K_VOID, 1.5);
     }
   }
 }
