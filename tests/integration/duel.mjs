@@ -516,14 +516,34 @@ async function scenarioMoves() {
     p3.debug.god = false;
     p3.debug.heal();
     const hp0 = p3.hp;
+    p3.guard = p3.maxGuard;
+    const x0 = p3.position.x, z0 = p3.position.z;
+    const tAdd = G3.game.time;
     F.add(p3.position.x - 1.5, p3.position.z, p3.position.x + 1.5, p3.position.z, T.width, T.life);
     G3.input.press(1);
     const h1 = G3.hits.length;
-    run(G3, 1.6, (GG) => { GG.input.axis = { x: 0, y: 0 }; });
+    // (the owner, 2026-11-16: "guard meter, no health": a guarded tick is a blocked blow of T.guard on
+    // the meter and 0 HP; the meter empty knocks the guard open; then the fire burns as unguarded)
+    const meter = [], opens = [];
+    let gOpenT = -1;
+    const w3 = G3.watch;
+    G3.watch = (n, e) => { w3?.(n, e); if (n === 'player:guardOpen' && gOpenT < 0) gOpenT = G3.game.time; };
+    let blockedRun = true, hpAtOpen = -1;
+    run(G3, 3.0, (GG) => {
+      GG.input.axis = { x: 0, y: 0 };
+      const hs = GG.hits.slice(h1).filter((h) => h.attack === 'burningGround');
+      if (hs.length > meter.length) { meter.push(p3.guard); opens.push(Math.hypot(p3.position.x - x0, p3.position.z - z0)); }
+      if (gOpenT < 0 && hs.some((h) => h.r === RESULT.HIT)) blockedRun = false;
+      if (gOpenT >= 0 && hpAtOpen < 0) hpAtOpen = p3.hp;
+    });
+    G3.watch = w3;
     G3.input.up(1);
     const gb = G3.hits.slice(h1).filter((h) => h.attack === 'burningGround');
-    // (blocked as grass fire is: a contact tick keeps a fifth of its damage through the guard, player.js _block)
-    assert(gb.length >= 1 && gb.every((h) => h.r !== RESULT.HIT) && hp0 - p3.hp <= gb.length * T.damage * 0.2 + 1e-6, `blockable: guarding in it, ${gb.length} burns turned (${gb.map((h) => h.r).join(',')}), hp ${hp0} → ${p3.hp} (grass fire's chip)`);
+    const pre = gOpenT < 0 ? gb : gb.filter((h) => h.t <= gOpenT + 1e-6);
+    const lasted = gOpenT < 0 ? Infinity : gOpenT - tAdd;
+    assert(pre.length >= 2 && pre.every((h) => h.r === RESULT.BLOCKED) && blockedRun && (hpAtOpen < 0 ? p3.hp : hpAtOpen) === hp0, `guarding in it: ${pre.length} ticks blocked, 0 HP lost until the guard opens (hp ${hp0} → ${hpAtOpen < 0 ? p3.hp : hpAtOpen}; ${pre.map((h) => h.r).join(',')})`);
+    assert(meter.length >= 2 && Math.abs(p3.maxGuard - T.guard - meter[0]) < 1e-6 && (meter.length < 2 || Math.abs(meter[0] - T.guard - meter[1]) < 1e-6 || meter[1] === 0) && Math.max(...opens.slice(0, pre.length)) < 0.1, `each guarded tick drains the guard meter ${T.guard} (${meter.map((g) => g.toFixed(0)).join(' → ')}), no shove (${opens.slice(0, pre.length).map((o) => o.toFixed(2)).join(', ')} m off where he stood)`);
+    assert(gOpenT >= 0 && lasted > T.life * 0.35 && lasted < T.life * 0.65 && gb.some((h) => h.t > gOpenT + 0.3 && h.r === RESULT.HIT && h.damage === T.damage), `the meter empties: the guard is knocked open ${lasted.toFixed(2)} s into the line (about half its ${T.life} s), then the fire burns ${T.damage} (${gb.filter((h) => h.t > gOpenT).map((h) => h.r).join(',')})`);
     p3.debug.heal();
     states.length = 0;
     F.reset();
@@ -1600,7 +1620,7 @@ async function scenarioPace() {
       Math.random = mulberry32(seed * 7 + ph);
       const flashes = [], acts = [], cats = {}, busyT = [];
       const modeT = {}, spent = {};
-      let hurt = 0, frames = 0, busy = 0, chained = 0, chainLen = 0, chainMax = 0, prevAct = null, prevMode = d.mode;
+      let hurt = 0, frames = 0, busy = 0, burnF = 0, chained = 0, chainLen = 0, chainMax = 0, prevAct = null, prevMode = d.mode;
       const s0 = { ...(d.brain.stats ?? {}) };
       const dbg = [];
       G.watch = (n, e) => {
@@ -1638,6 +1658,7 @@ async function scenarioPace() {
         prevAct = d.mode === 'act' ? a : null;
         prevMode = d.mode;
         if (d.fx.crescentsAlive || d.terrain?.busy) busy++;
+        if (d.moveFx?.alive) burnF++;
       }
       G.watch = null;
       G.defend = null;
@@ -1662,9 +1683,17 @@ async function scenarioPace() {
           }
         }
       }
+      // the answers asked: the share that asks a dodge, the longest run of one answer in a row
+      let dodges = 0, run1 = 0, runMax = 0;
+      for (let i = 0; i < flashes.length; i++) {
+        const a1 = answer(flashes[i][1]);
+        if (a1 === 'dodge') dodges++;
+        run1 = i && answer(flashes[i - 1][1]) === a1 ? run1 + 1 : 1;
+        runMax = Math.max(runMax, run1);
+      }
       const st = d.brain.stats ?? {};
       const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
-      rows.push({ seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, chained, chainMax, conflicts, conflictAt, inner, innerAt: [...innerAt], busy: busy / frames, holds: dlt('holds'), feints: dlt('feints'), told: dlt('toldFeints'), delays: dlt('delays'), links: dlt('links'), cuts: dlt('cuts'), rests: dlt('rests'), hurt, modeT });
+      rows.push({ seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, chained, chainMax, conflicts, conflictAt, inner, innerAt: [...innerAt], busy: busy / frames, burn: burnF / frames, dodge: dodges / (flashes.length || 1), runMax, holds: dlt('holds'), feints: dlt('feints'), told: dlt('toldFeints'), delays: dlt('delays'), links: dlt('links'), cuts: dlt('cuts'), rests: dlt('rests'), hurt, modeT });
       // ABYSS_PGUARD=1: what the fairness guard would not let through (feints, faded marks, strikes
       // not called), each with the impact it collided with (brain.guardLog)
       if (process.env.ABYSS_PGUARD) {
@@ -1685,11 +1714,12 @@ async function scenarioPace() {
   out(`   seed ph cue/min gapMax moves chain cMax links cuts rest clash inner busy% hold/f delay hurt  ${CATS.map((c) => c.slice(0, 7).padStart(8)).join('')}`);
   for (const r of rows) {
     out(`   ${String(r.seed).padStart(4)}  ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.chained).padStart(5)} ${String(r.chainMax).padStart(4)} ${String(r.links).padStart(5)} ${String(r.cuts).padStart(4)} ${String(r.rests).padStart(4)} ${String(r.conflicts).padStart(5)} ${String(r.inner).padStart(5)} ${(r.busy * 100).toFixed(0).padStart(5)} ${`${r.holds}/${r.feints}${r.told ? `!${r.told}` : ''}`.padStart(5)} ${String(r.delays).padStart(5)} ${String(r.hurt).padStart(4)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / (r.picks || 1)).toFixed(0).padStart(8)).join('')}`);
-    out(`         time: ${Object.entries(r.modeT).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${((v * 100) / r.T).toFixed(0)}%`).join(' · ')}`);
+    out(`         answers: dodge ${(r.dodge * 100).toFixed(0)} % of cues, longest run of one answer ${r.runMax} · burning ground alive ${(r.burn * 100).toFixed(0)} % of the time
+         time: ${Object.entries(r.modeT).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${((v * 100) / r.T).toFixed(0)}%`).join(' · ')}`);
     out(`         longest gap at ${r.gapAt}${r.conflicts ? ` · CONFLICTS ${r.conflictAt.slice(0, 6).join(' · ')}` : ''}${r.inner ? ` · inner: ${r.innerAt.join(', ')}` : ''}`);
   }
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
-  for (let ph = 1; ph <= NPH; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s (mean ${mean(ph, 'gapMax').toFixed(2)}) · ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)}`);
+  for (let ph = 1; ph <= NPH; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s (mean ${mean(ph, 'gapMax').toFixed(2)}) · ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)} · dodge ${(mean(ph, 'dodge') * 100).toFixed(0)} % · one-answer run max ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.runMax))} · burning ground ${(mean(ph, 'burn') * 100).toFixed(0)} %`);
   if (!P?.meter) { out('   (no TUNING.pressure.meter: measured only, nothing asserted)'); return lastG; }
   const A = P.meter;
   for (const seed of SEEDS) {
@@ -2712,6 +2742,173 @@ async function scenarioTerrain() {
   return G;
 }
 
+// ================================================================== scenario: bots (opt-in)
+/**
+ * The tuning pass's measuring bots (2026-11-16; not pass / fail: it measures). On the REAL set, mortal
+ * (no god mode), each its own random stream for what it misses (the AI's stream stays the seed's):
+ * - fencers that answer 95 / 85 / 70 % of the cues (ABYSS_BSKILLS) and cut in his openings, whole
+ *   fights (ABYSS_BSECS, default 420 s), three seeds (ABYSS_BSEEDS): won, the time, the time in each
+ *   phase, hits, damage, flasks, the worst blow and the worst second (damage inside any 1 s);
+ * - a pure defender (never attacks, answers 95 %), two minutes (ABYSS_BDSECS) in each phase, mortal,
+ *   drinking when low: survived, damage, flasks; and the same with its guard held in burning ground
+ *   (`stand`: it does not step off; the owner's question about the guard's 1 HP a tick).
+ * The bots answer the world's cues too (a felled piece, rolled out of its strip) and step off a burning
+ * line (the hero sees it), unless `stand`. ABYSS_BOTS=fight|defend|stand picks a part (default all).
+ */
+function probeDefender(G, { skill = 1, seed = 1 } = {}) {
+  const pend = [];
+  const roll = mulberry32(seed * 977 + Math.round(skill * 100));
+  const stats = { flashes: 0, missed: 0, parryTry: 0, dodgeTry: 0 };
+  return {
+    stats,
+    onEvent(n, e) {
+      if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
+      stats.flashes++;
+      if (roll() > skill) { stats.missed++; return; }
+      pend.push({ tell: e.tell, at: G.game.time + (e.source === 'world' ? 0.3 : TUNING.flashLead), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false });
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.4) pend.splice(i, 1);
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - t - DT;
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK) {
+          if (left <= (e.hazard ? 0.2 : 0.1)) {
+            e.done = true;
+            const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
+            const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: dz / l, y: dx / l };
+            input.tap('Space');
+            stats.dodgeTry++;
+          }
+        } else if (left <= 0.12) {
+          e.done = true;
+          input.up(1);
+          input.click(1);
+          stats.parryTry++;
+        }
+      }
+      return pend.some((e) => !e.done && e.at - t < 0.7);
+    },
+  };
+}
+/** Off a burning line the hero stands in or at the edge of (sets the move axis); true if it stepped. */
+function stepOffFire(G) {
+  const d = G.game.dragon, p = G.game.player;
+  if (!d.moveFx || p.state === 'roll') return false;
+  for (const L of d.moveFx.lines) {
+    if (!L.alive || L.age > L.life - 0.3) continue;
+    const dx = L.bx - L.ax, dz = L.bz - L.az, l2 = dx * dx + dz * dz || 1;
+    const u = Math.max(0, Math.min(1, ((p.position.x - L.ax) * dx + (p.position.z - L.az) * dz) / l2));
+    const cx = L.ax + dx * u, cz = L.az + dz * u, ox = p.position.x - cx, oz = p.position.z - cz, o = Math.hypot(ox, oz);
+    if (o > L.w / 2 + 0.75) continue;
+    const nx = o > 1e-3 ? ox / o : -dz / Math.sqrt(l2), nz = o > 1e-3 ? oz / o : dx / Math.sqrt(l2);
+    G.input.axis = { x: nx, y: -nz };
+    return true;
+  }
+  return false;
+}
+async function scenarioBots() {
+  out('\n== scenario BOTS (mortal fencers at 95 / 85 / 70 %, a pure defender per phase; the real set) ==');
+  const SEEDS = (process.env.ABYSS_BSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SKILLS = (process.env.ABYSS_BSKILLS ?? '0.95,0.85,0.7').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.ABYSS_BSECS ?? 420), DSECS = Number(process.env.ABYSS_BDSECS ?? 120);
+  const PART = process.env.ABYSS_BOTS ?? 'all';
+  let last = null;
+  const worst = (hits) => {
+    let blow = 0, sec = 0, blowBy = '', secBy = '';
+    for (let i = 0; i < hits.length; i++) {
+      if (hits[i].damage > blow) { blow = hits[i].damage; blowBy = hits[i].attack; }
+      let s = 0;
+      const by = [];
+      for (let j = i; j < hits.length && hits[j].t - hits[i].t < 1; j++) { s += hits[j].damage; by.push(hits[j].attack); }
+      if (s > sec) { sec = s; secBy = by.join('+'); }
+    }
+    return { blow, blowBy, sec, secBy };
+  };
+  const tally = (G, t0, p) => {
+    const hits = G.hits.filter((h) => h.t > t0 && h.r === RESULT.HIT && h.damage > 0);
+    const chip = G.hits.filter((h) => h.t > t0 && h.r !== RESULT.HIT && h.attack === 'burningGround');
+    const burn = hits.filter((h) => h.attack === 'burningGround');
+    const by = {};
+    for (const h of hits) by[h.attack] = (by[h.attack] || 0) + h.damage;
+    return { hits, burn, chip, by, w: worst(hits.filter((h) => h.attack !== 'burningGround')), dmg: hits.reduce((a, h) => a + h.damage, 0) };
+  };
+  if (PART === 'all' || PART === 'fight') {
+    out(`   whole fights, ${SECS} s at most (real time: hit-stops count) · skill · seed · result · time · P1 / P2 / P3 s (from the wake; P2 / P3 counted from their gate) · his HP · hits (blow dmg + burn dmg) · flasks drunk · worst blow · worst second · most damage by`);
+    for (const skill of SKILLS) {
+      for (const seed of SEEDS) {
+        const G = (last = build({ seed, real: true }));
+        const { game } = G;
+        duel(G, { dist: 4, ai: true });
+        const d = game.dragon, p = game.player;
+        G.defend = probeDefender(G, { skill, seed });
+        const t0 = game.time, r0 = game.realTime, enter = { 1: r0 };
+        let drunk = 0;
+        const n = { parries: 0, breaks: 0, execs: 0, dealt: 0 };
+        G.watch = (ev, e) => {
+          if (ev === 'player:heal') drunk++;
+          if (ev === 'player:parry') n.parries++;
+          if (ev === 'dragon:postureBreak') n.breaks++;
+          if (ev === 'player:plungeHit' && e?.execution) n.execs++;
+        };
+        run(G, SECS, (GG) => { fencer(GG, true); stepOffFire(GG); if (!enter[d.phase]) enter[d.phase] = game.realTime; }, () => d.state === 'dead' || !p.alive || game.state === 'victory');
+        G.watch = null;
+        const T = game.realTime - r0, won = d.state === 'dead' || game.state === 'victory';
+        const ph = [1, 2, 3].map((k) => (enter[k] ? ((enter[k + 1] ?? r0 + T) - enter[k]).toFixed(0) : '-')).join(' / ');
+        const r = tally(G, t0, p);
+        const top = Object.entries(r.by).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', ');
+        out(`   ${String(Math.round(skill * 100)).padStart(3)} % ${String(seed).padStart(4)} ${won ? 'WON ' : p.alive ? 'time' : 'DIED'} ${T.toFixed(0).padStart(4)} s  ${ph.padEnd(14)} HP ${String(Math.round(Math.max(0, d.hp))).padStart(4)} (P${d.phase})  hits ${String(r.hits.length).padStart(3)} (${(r.dmg - r.burn.reduce((a, h) => a + h.damage, 0)).toFixed(0)} + burn ${r.burn.reduce((a, h) => a + h.damage, 0).toFixed(0)})  flasks ${drunk}  worst ${r.w.blow.toFixed(1)} (${r.w.blowBy})  sec ${r.w.sec.toFixed(1)} (${r.w.secBy})  · parries ${n.parries} breaks ${n.breaks} execs ${n.execs} · ${top}`);
+        G.defend = null;
+      }
+    }
+  }
+  for (const stand of [false, true]) {
+    if (!(PART === 'all' || PART === (stand ? 'stand' : 'defend'))) continue;
+    out(`   a pure defender (never attacks, answers 95 %${stand ? ', its GUARD HELD and it never steps off a burning line' : ', steps off a burning line'}), mortal, ${DSECS} s a phase · phase · seed · survived · hits (blow dmg + burn dmg) · burn ticks on the guard (no HP) · guard knocked open (by fire) · flasks · worst blow · worst second`);
+    for (let ph = 1; ph <= 3; ph++) {
+      for (const seed of SEEDS) {
+        const G = (last = build({ seed, real: true }));
+        const { game } = G;
+        duel(G, { dist: 3, ai: true });
+        const d = game.dragon, p = game.player;
+        p.debug.noRiposte = true;
+        G.defend = probeDefender(G, { skill: 0.95, seed });
+        for (let n = 2; n <= ph; n++) {
+          p.debug.god = true;
+          d.brain.forcePhase(n);
+          run(G, 8, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); }, () => d.phase === n && d.mode !== 'act');
+        }
+        p.debug.god = false;
+        p.debug.heal();
+        const t0 = game.time;
+        let drunk = 0, fireOpens = 0, opens = 0;
+        G.watch = (n, e) => { if (n === 'player:heal') drunk++; if (n === 'player:guardOpen') { opens++; if (e?.attack === 'burningGround') fireOpens++; } };
+        run(G, DSECS, (GG) => {
+          const { input } = GG;
+          input.axis = { x: 0, y: 0 };
+          if (!p.alive || game.state !== 'boss') return;
+          if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+          d.hp = Math.max(d.hp, d.maxHp * (TUNING.phaseAt[ph] ?? 0) + 1);
+          const busy = GG.defend.act();
+          if (stand) { if (!busy && !input.down?.('Space')) input.press(1); }
+          else if (p.hp < 70 && p.flasks > 0 && !busy && ((game.realTime * 60) | 0) % 30 === 0) input.tap('KeyF');
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz);
+          if (!busy && l > 3.4) input.axis = { x: dx / l, y: -dz / l };
+          if (!stand) stepOffFire(GG);
+          game.mouseGround.set(d.position.x, 0, d.position.z);
+        }, () => !p.alive);
+        G.watch = null;
+        const r = tally(G, t0, p);
+        out(`   P${ph} ${String(seed).padStart(4)} ${p.alive ? 'ALIVE' : `DIED at ${(game.time - t0).toFixed(0)} s`}  hits ${String(r.hits.length).padStart(3)} (${(r.dmg - r.burn.reduce((a, h) => a + h.damage, 0)).toFixed(0)} + burn ${r.burn.reduce((a, h) => a + h.damage, 0).toFixed(0)})  burn ticks guarded ${r.chip.length}  guard knocked open ${opens} (by fire ${fireOpens})  flasks ${drunk}  HP ${Math.round(p.hp)}  worst ${r.w.blow.toFixed(1)} (${r.w.blowBy})  sec ${r.w.sec.toFixed(1)} (${r.w.secBy})`);
+        G.defend = null;
+      }
+    }
+  }
+  return last;
+}
+
 // ================================================================== scenario: probe (opt-in)
 /** A mortal fencer that reads only a share of the tells (ABYSS_SKILL, default 0.85). Not a pass /
  *  fail check: it measures how dangerous he is. node duel.mjs . probe */
@@ -3353,6 +3550,7 @@ const SCENARIOS = {
   terrain: scenarioTerrain,
   worldcue: scenarioWorldCue,
   probe: scenarioProbe,
+  bots: scenarioBots,
   perfect: scenarioPerfect,
   flare: scenarioFlare,
   fxlooks: scenarioFxLooks,
@@ -3381,7 +3579,7 @@ const SCENARIOS = {
   cutfx: scenarioCutFx,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'bots']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 

@@ -163,7 +163,12 @@ export const TUNING = {
   // the wood it touches catches (world.ignite, k)
   // `armAfter`: a line laid by a string does not burn while that string still has blows coming (the
   // hero defends where he stands), then from this long after its last blow (its grace at least)
-  burn: { from: 2, cap: [0, 7, 9], width: 0.8, life: 3.2, len: 3.4, ring: 0.62, grace: 0.45, armAfter: 0.35, tick: 0.55, damage: 5, flames: 26, ignite: 0.8, fade: 0.6 },
+  // `guard` (the owner, 2026-11-16: "guard meter, no health"): with his guard up a tick costs no health
+  // but this much of the guard meter (GUARD.max 100, no regen between ticks: GUARD.regenDelay 0.8 >
+  // tick; the first tick 0.45 s in, then every 0.55 s): a full meter holds 2 ticks and the 3rd (34 x 3
+  // > 100) knocks the guard open ~1.57 s into a line he stands on (half its life): he still has to step
+  // off. (A blocked light blow drains 11 - 17: the fire drains faster, to say "move".)
+  burn: { from: 2, cap: [0, 7, 9], width: 0.8, life: 3.2, len: 3.4, ring: 0.62, grace: 0.45, armAfter: 0.35, tick: 0.55, damage: 5, guard: 34, flames: 26, ignite: 0.8, fade: 0.6 },
 
   // ---- the projectile (Ash Crescent)
   // (`minLead`: the second pass: a crescent that would reach the hero sooner than this after it is

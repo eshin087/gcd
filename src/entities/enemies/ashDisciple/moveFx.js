@@ -1,4 +1,4 @@
-import { TELL } from '../../../combat/rules.js';
+import { TELL, RESULT } from '../../../combat/rules.js';
 import { K_FIRE, K_SMOKE, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 import { perPhase } from '../duelist/realise.js';
 import { lookOf } from '../duelist/lookSwitch.js';
@@ -8,7 +8,11 @@ import { lookOf } from '../duelist/lookSwitch.js';
 // across his front, a vertical cut or a thrust along it, a glide the way he came, the Heaven-Splitting
 // Fall a ring of arcs round where he lands. It is ground to step off, not a blow: it has no cue, and it
 // burns by the rule of fire on grass (world/fire.js; COMBAT.md "The world breaks"): TUNING.burn.damage
-// every `tick` s to a hero standing in it after its first `grace` s, blockable, never while he rolls.
+// every `tick` s to a hero standing in it after its first `grace` s, never while he rolls. With his guard
+// up a tick costs NO health (the owner, 2026-11-16: "guard meter, no health"): it is a blocked blow
+// (player._block: the guard meter drains TUNING.burn.guard, the block's HUD and sound), it shoves him
+// nowhere, and the meter empty knocks his guard open (GUARD.openDur) as any blocked blow does; then the
+// fire burns him as an unguarded hero. A hero who just holds his guard on a line lasts about half of it.
 // The wood it touches catches (world.ignite).
 //
 // Drawn as heat in the fire field (STYLE.md "The fire field"): a low seam of fire along the stones and
@@ -34,7 +38,7 @@ export class AshMoveFx {
     this._hit = {
       damage: 5, from: { x: 0, z: 0 }, knockback: 0, knockdown: false, kind: 'fire', burn: 0,
       tell: TELL.NORMAL, parryable: false, blockable: true, attack: 'burningGround', attacker: null,
-      plunge: false, perfect: false, light: true,
+      plunge: false, perfect: false, light: true, around: true,
     };
     this.stats = { lines: 0, burns: 0, capped: 0 };
   }
@@ -225,13 +229,22 @@ export class AshMoveFx {
       if (Math.hypot(px - cx, pz - cz) > L.w / 2 + pr) continue;
       this._tick = T.tick ?? 0.55;
       const h = this._hit;
-      h.damage = T.damage ?? 5;
+      // (guarded: a blocked blow of `guard` on the meter and no health; a blow, not a chip stream, so
+      // it needs a knockback > 0, which is taken back: fire shoves nobody off the line)
+      const guarded = !!p.blocking && (p.guard ?? 0) > 0;
+      h.damage = guarded ? (T.guard ?? 34) : (T.damage ?? 5);
+      h.knockback = guarded ? 0.01 : 0;
       h.from.x = cx;
       h.from.z = cz;
       if (Math.hypot(cx - px, cz - pz) < 1e-3) h.from.x += 0.01;
       this.stats.burns++;
+      const kx = p.kb?.x ?? 0, kz = p.kb?.z ?? 0;
       try {
-        p.takeHit(h);
+        const r = p.takeHit(h);
+        if (guarded && r === RESULT.BLOCKED) {
+          this.stats.guarded = (this.stats.guarded ?? 0) + 1;
+          if (p.kb) { p.kb.x = kx; p.kb.z = kz; }
+        }
       } catch (err) {
         console.error('[ash burn] player.takeHit failed', err);
       }
