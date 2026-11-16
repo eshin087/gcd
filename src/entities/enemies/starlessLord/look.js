@@ -23,7 +23,7 @@ import { lookOf } from '../duelist/lookSwitch.js';
 
 /** The option chosen: { art, dress }. */
 export function lordLookNow() {
-  const o = lookOf('lordLook', '0');
+  const o = lookOf('lordLook', '0', 'b');
   return { art: o === 'a' || o === 'c', dress: o === 'b' || o === 'c' };
 }
 

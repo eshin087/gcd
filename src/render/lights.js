@@ -7,6 +7,12 @@ import { MAX_PL } from './shaderLib.js';
 //                               life: 0.6, fade: 0.3, flicker: 0.4 });
 //   l.x = ...;      // move it any time (or l.set(x, y, z))
 //   l.kill();       // fade out over `fade` seconds
+//
+// The flicker's phase comes from this module's own stream (as particles.js does), never Math.random:
+// the seeded sims replay the AI from Math.random, and a light added or removed (a look option, one
+// more spark of fire) must never change his next move.
+let lseed = 0x51ed27a3;
+const lrnd = () => (lseed = (Math.imul(lseed, 1664525) + 1013904223) >>> 0) / 4294967296;
 export class LightPool {
   constructor(U) {
     this.U = U;
@@ -18,7 +24,7 @@ export class LightPool {
     const light = {
       x, y, z, color, intensity, radius, life, fade, fadeIn, flicker,
       age: 0,
-      seed: Math.random() * 100,
+      seed: lrnd() * 100,
       current: 0,
       dead: false,
       set(nx, ny, nz) {

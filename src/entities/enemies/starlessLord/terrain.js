@@ -517,9 +517,10 @@ export class LordTerrain {
         near = i;
       }
     }
-    // the fairness guard: the plate under the hero bursts clear of every cue that asks a guard (the
-    // whole line waits with it); if no wait clears it the line still tears open, uncued and harmless
-    const dl = d.brain?.fairDelay?.(R.at[near], TELL.RED, K.maxDelay) ?? 0;
+    // the fairness guard: every plate that may cue (near the hero, as the ledger is told below; the
+    // hero moves, so not only the one under him) bursts clear of every cue that asks a guard (the
+    // whole line waits with them); if no wait clears them the line still tears open, uncued and harmless
+    const dl = this._ruptDelay(R, n, near, p, K);
     R.quiet = dl < 0 ? 1 : 0;
     if (dl > 0) {
       for (let i = 0; i < n; i++) R.at[i] += dl;
@@ -529,6 +530,27 @@ export class LordTerrain {
     this.game.shake?.(0.14);
     // where it starts: the floor at his hand's feet splits
     d.fx.shock?.(me.x + dx * 0.8, me.z + dz * 0.8, 1.4, this._shockOpt(0.5));
+  }
+
+  /** The least wait (s) that clears every plate of the line that may cue; -1 when none up to
+   *  K.maxDelay does (brain.fairDelay per plate, the shift grown until all of them agree). */
+  _ruptDelay(R, n, near, p, K) {
+    const B = this.d.brain;
+    if (!B?.fairDelay) return 0;
+    let sh = 0;
+    for (let it = 0; it < 12; it++) {
+      let need = 0;
+      for (let i = 0; i < n; i++) {
+        if (i !== near && !(p && Math.hypot(p.x - R.x[i], p.z - R.z[i]) < K.radius + K.cue + 1.5)) continue;
+        const dl = B.fairDelay(R.at[i] + sh, TELL.RED, K.maxDelay - sh);
+        if (dl < 0) return -1;
+        if (dl > need) need = dl;
+      }
+      if (!(need > 0)) return sh;
+      sh += need;
+      if (sh > K.maxDelay + 1e-6) return -1;
+    }
+    return -1;
   }
 
   _endRupture() {

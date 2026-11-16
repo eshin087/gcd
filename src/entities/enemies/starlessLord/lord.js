@@ -14,6 +14,7 @@ import { LordFx } from './fx.js';
 import { LordTerrain } from './terrain.js';
 import { LINKS } from './links.js';
 import { LordSpells } from './spells.js';
+import { dressFrame as dressLord } from './look.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
 // crater of the Obsidian Throne, who fills the boss slot of the Starless level. A duelist (duelist/duelist.js:
@@ -76,6 +77,7 @@ export const LORD_KIT = Object.freeze({
   poses: POSES,
   blade: Object.freeze({ guard: SABER.guard, tip: SABER.tip }),
   scale: TUNING.scale,
+  dress: dressLord,
 });
 
 /** His mind: the duelist's, with each form's own reaction clips. */

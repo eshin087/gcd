@@ -55,6 +55,8 @@ export const THRONE = {
   // round the seal, south of the dais. A hero backed against the rim is still in his reach
   floor: { r: 13.6, zN: -10.6 },
   bonfire: { x: 0, z: 30 },
+  // the vents: pits where the star still burns under the floor ([x, z]; the Lord's effects read them)
+  vents: [[-8.6, -1.6], [8.8, 0.2], [-7.0, 10.2], [8.4, 6.4]],
 };
 
 const SIN_PITCH = Math.sin(CONFIG.camera.pitch);
@@ -329,12 +331,12 @@ export function createThroneHall(U, colliders) {
   // the floor: destructibles.js lands a piece where its pivot meets the ground
   for (const [x, y, z, r] of [[-12.6, 3.4, -3.0, 1.0], [13.4, 4.2, -5.8, 1.25], [-8.8, 5.2, -10.4, 0.9], [9.2, 4.6, -11.0, 1.1], [14.2, 2.8, 4.8, 0.8], [-14.0, 2.5, 4.2, 0.7]]) {
     const y0 = r * 1.5 + 0.25; // (its centre when it lies on the floor, its splinters under it)
-    piece('hover', x, z, 0, hoverRock(rng, x, y0, z, r), { hp: Infinity, cover: false, topples: false, stub: false, hover: y - y0, r: 0.3 });
+    piece('hover', x, z, 0, hoverRock(rng, x, y0, z, r), { hp: Infinity, cover: false, topples: false, stub: false, hover: y - y0, cy: y, r: 0.3 });
     fires.push({ x, y: 0.1, z, kind: 'wisp', r: r * 0.8, of: 'hover' });
   }
   // ---- vents: pits where the star still burns under the floor (the crater's light)
   // (its ring of stones breaks: the vent burns on, and flares as its rim goes; 2026-11-16)
-  for (const [x, z] of [[-8.6, -1.6], [8.8, 0.2], [-7.0, 10.2], [8.4, 6.4]]) {
+  for (const [x, z] of THRONE.vents) {
     piece('vent', x, z, 0, rubble(rng, x, z, 0.85, 7, { size: [0.14, 0.3], k: 1.2 }), { stub: false, lift: 0, cover: false, topples: false, r: 1.0 });
     fires.push({ x, y: 0.12, z, kind: 'vent', rim: 'vent' });
     bare.push({ x, z, r: 1 });

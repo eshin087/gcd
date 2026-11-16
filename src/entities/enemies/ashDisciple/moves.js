@@ -527,12 +527,14 @@ export const MOVES = {
   // A terrain beat: `go: [from, to, arc]` (windup fractions between which he crosses to the piece, the
   // height of the leap; none = a glide), `spring: { up: [from, to], off }` (up to the pillar, then off
   // it at `off`). He never tracks the hero or steps in by himself in one (track 0, close 0).
+  // (Their weights carry a phase-3 entry equal to phase 2's on purpose: the yard's pieces are as much
+  // his in phase 3; the tuning pass sets the numbers.)
 
   /** Severed Pillar: gone from the duel and behind the standing piece nearest the hero, he cuts it
    *  through. The cut is his (white: it reaches a hero who hugs the piece); the fall is the world's:
    *  red, the strip it lands on marked from the moment it goes. Be out of the strip. */
   pillarFall: {
-    label: 'Severed Pillar', phase: 1, terrain: 'fell', weight: [1.8, 2.0], cooldown: 9, band: [0, 18], recovery: 0.7,
+    label: 'Severed Pillar', phase: 1, terrain: 'fell', weight: [1.8, 2.0, 2.0], cooldown: 9, band: [0, 18], recovery: 0.7,
     beats: [{
       tell: N, windup: 0.66, active: 0.1, damage: 18, knockback: 1.4, zone: { kind: 'sector', r: 2.4, ang: 1.0 },
       close: 0, track: 0, go: [0.05, 0.45],
@@ -544,7 +546,7 @@ export const MOVES = {
   /** Flying Lantern: he is at a stone lantern (or a pillar's stump) and kicks it at the hero. It
    *  glints as it comes down: parry it and it bursts on the blade, or be gone from under it. */
   lanternKick: {
-    label: 'Flying Lantern', phase: 1, terrain: 'kick', cat: 'terrain', weight: [1.3, 1.5], cooldown: 10, band: [0, 18], recovery: 0.42,
+    label: 'Flying Lantern', phase: 1, terrain: 'kick', cat: 'terrain', weight: [1.3, 1.5, 1.5], cooldown: 10, band: [0, 18], recovery: 0.42,
     beats: [{
       tell: B, windup: 0.64, active: 0.1, damage: 22, knockback: 2.4, cast: { kind: 'lantern', selfCue: true }, noSweep: true,
       close: 0, track: 0, go: [0.05, 0.44],
@@ -563,7 +565,7 @@ export const MOVES = {
    *  sound across the courtyard that glints before it reaches the hero: parry the three in rhythm
    *  (the last is the heavy one) or roll through them. He stands at the bell with his back open. */
   bellToll: {
-    label: 'Three Tolls', phase: 1, terrain: 'toll', weight: [1.1, 1.5], cooldown: 14, band: [0, 22], recovery: 0.65,
+    label: 'Three Tolls', phase: 1, terrain: 'toll', weight: [1.1, 1.5, 1.5], cooldown: 14, band: [0, 22], recovery: 0.65,
     beats: [
       { tell: N, windup: 0.7, active: 0.1, damage: 12, knockback: 1.0, cast: { kind: 'toll', selfCue: true }, close: 0, track: 0, go: [0.05, 0.5, TUNING.terrain.toll.arc], keys: tollKeys([-2.0, 0.1], 0.8) },
       { tell: N, windup: 0.44, active: 0.1, damage: 12, knockback: 1.0, cast: { kind: 'toll', selfCue: true }, close: 0, track: 0, keys: tollKeys([1.8, 0.3], 0.62) },
@@ -576,7 +578,7 @@ export const MOVES = {
    *  springs off it into a diving cut from where the hero was not looking. The glint comes as he
    *  leaves the stone; the cut can be locked. */
   swallowReturn: {
-    label: "Swallow's Return", phase: 1, terrain: 'spring', weight: [1.3, 1.6], cooldown: 8, band: [0, 5.5], recovery: 0.55,
+    label: "Swallow's Return", phase: 1, terrain: 'spring', weight: [1.3, 1.6, 1.6], cooldown: 8, band: [0, 5.5], recovery: 0.55,
     beats: [{
       tell: B, flare: true, windup: 0.92, active: 0.1, damage: 24, knockback: 1.8, zone: { kind: 'sector', r: 2.5, ang: 0.6 }, lock: true,
       close: 0, track: 0, spring: { up: [0.04, 0.5], off: 0.64 },

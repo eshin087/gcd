@@ -21,6 +21,7 @@ const RING = 32; // given cues kept
 const PRED = 40; // predicted impacts per frame
 const EXP = 24; // expect() handles alive at once
 const WORLD_LEAD = 0.3; // (world/destructibles.js FLASH_LEAD: a felled piece's cue)
+const GLAIVE_WAIT = 0.32; // (starlessLord/fx.js updateShots: the thrown blade hangs where it turns)
 
 /** A beat that throws something straight at the hero from his hand (a release: crescents, the push,
  *  fissures; the thrown blade): it lands a flight after the beat's impact. */
@@ -68,6 +69,8 @@ export class CueLedger {
     this.pred = Array.from({ length: PRED }, entry);
     this.nPred = 0;
     this.exp = Array.from({ length: EXP }, () => ({ ...entry(), alive: false, gen: 0, src: '' }));
+    /** the attack of the impact the last conflict() found (the guard's diary names the pair) */
+    this.hit = '';
     const ev = this.d.game?.events;
     if (ev?.on) {
       ev.on('combat:flash', (e) => this._onFlash(e));
@@ -172,6 +175,15 @@ export class CueLedger {
         const speed = s.phase === 'back' ? s.back : s.speed;
         const rx = p.x - s.x, rz = p.z - s.z, along = rx * s.dx + rz * s.dz, across = Math.abs(-rx * s.dz + rz * s.dx);
         if (across < reach + 0.5 && along > reach && speed > 0) this._pred(now + Math.max(0, s.wait ?? 0) + (along - reach) / speed, s.tell, s.attack, true);
+        // the thrown blade still going out: its way home, from where it will turn to his hand, may pass
+        // the hero too (seen from the throw on, so a strike called now leaves it room)
+        if (s.kind === 'glaive' && s.phase === 'fly' && s.speed > 0) {
+          const rem = Math.max(0, (s.range ?? 12) - Math.hypot(s.x - s.ox, s.z - s.oz));
+          const tx = s.x + s.dx * rem, tz = s.z + s.dz * rem, H = d._hilt ?? d.position;
+          const hl = Math.hypot(H.x - tx, H.z - tz) || 1, ux = (H.x - tx) / hl, uz = (H.z - tz) / hl;
+          const qx = p.x - tx, qz = p.z - tz, al = qx * ux + qz * uz, ac = Math.abs(-qx * uz + qz * ux);
+          if (ac < reach + 0.5 && al > reach && al < hl) this._pred(now + rem / s.speed + GLAIVE_WAIT + (al - reach) / Math.max(1, s.back || s.speed), s.tell, s.attack, true);
+        }
       }
     }
     // marked ground: called lightning, the Dark Star (red; movable until its cue)
@@ -214,16 +226,16 @@ export class CueLedger {
    */
   conflict(at, ans, sep, fixedOnly = false, skipAct = false, self = null) {
     const now = this.now;
-    for (const e of this.ring) if (e.t > now - 0.05 && e.ans !== ans && Math.abs(e.t - at) < sep) return true;
+    for (const e of this.ring) if (e.t > now - 0.05 && e.ans !== ans && Math.abs(e.t - at) < sep) return this._hit(e.attack);
     // (a thing in flight not cued yet: its arrival moves with the hero, a roll included: it is given
     // `pad` s more room, pressure.guard.pad)
     const pad = this.brain.P?.guard?.pad ?? 0;
     for (let i = 0; i < this.nPred; i++) {
       const e = this.pred[i];
       if (e.ans === ans || (fixedOnly && !e.fixed) || (self && e.ref === self)) continue;
-      if (Math.abs(e.t - at) < sep + (e.ref ? 0 : pad)) return true;
+      if (Math.abs(e.t - at) < sep + (e.ref ? 0 : pad)) return this._hit(e.attack);
     }
-    for (const e of this.exp) if (e.alive && e.ans !== ans && Math.abs(e.t - at) < sep) return true;
+    for (const e of this.exp) if (e.alive && e.ans !== ans && Math.abs(e.t - at) < sep) return this._hit(e.attack);
     if (!skipAct) {
       // the running move's blows: those cued already, and those that cannot wait (`fixed`); one not
       // cued yet will wait for what is set now when its own cue comes (brain._holdBeat)
@@ -235,15 +247,20 @@ export class CueLedger {
             // what it throws: from its release to its estimated arrival (pad more room)
             if (answerOf(b.def.tell) === ans) continue;
             const t0 = now + (b.impact - a.t), t1 = t0 + this.travel(b);
-            if (at > t0 - sep - pad && at < t1 + sep + pad) return true;
+            if (at > t0 - sep - pad && at < t1 + sep + pad) return this._hit(a.name);
             continue;
           }
           if (!(b.flashed || b.def.fixed || a.def.transition)) continue;
-          if (answerOf(b.def.tell) !== ans && Math.abs(now + (b.impact - a.t) - at) < sep) return true;
+          if (answerOf(b.def.tell) !== ans && Math.abs(now + (b.impact - a.t) - at) < sep) return this._hit(a.name);
         }
       }
     }
     return false;
+  }
+
+  _hit(attack) {
+    this.hit = attack || '?';
+    return true;
   }
 
   /** How long what a release beat throws takes to reach the hero (s; the crescent, the push, the

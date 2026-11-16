@@ -172,19 +172,10 @@ export class DuelFx {
   _light(o) {
     return this.game.lights?.add?.(o) ?? null;
   }
-  /** A light of the second pass's looks. LightPool.add draws its flicker seed from Math.random, the
-   *  stream the seeded fights replay for the AI: a look's light (or one more of them) would change
-   *  his next move. So its seed is drawn from the looks' own stream (lr) instead. */
+  /** A light of the second pass's looks: the same as _light now (render/lights.js seeds the flicker
+   *  from its own stream, never Math.random); kept by name for its callers. */
   _lookLight(o) {
-    const add = this.game.lights?.add;
-    if (!add) return null;
-    const R = Math.random;
-    Math.random = () => this.lr();
-    try {
-      return add.call(this.game.lights, o) ?? null;
-    } finally {
-      Math.random = R;
-    }
+    return this._light(o);
   }
   /** The reused spawn record, every field reset. */
   _rec(x, y, z, life, size, sizeEnd, glyph, color, colorEnd = null) {
