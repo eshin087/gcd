@@ -616,6 +616,9 @@ const S = {
     const cap = Math.max(3, Math.round(S.maxBurning * D.q));
     assert(firstSpread >= S.after && burns >= 2, `a tree with ${nb(t)} neighbours in reach lights one ${firstSpread.toFixed(1)} s after it caught (>= ${S.after} s); ${burns} pieces burned in 20 s`);
     assert(peak <= cap, `never more than ${cap} things alight at once (peak ${peak})`);
+    step(40);
+    const burned = D.list.filter((b) => b.burnt).length;
+    assert(D.burning === 0 && D.list.every((b) => b.gen <= S.gens), `the blaze burns out: fire passes on at most ${S.gens} times from where it landed (${burned} trees burned in all, nothing alight 60 s on)`);
     // the cap: everything lit at once, nothing spreads past it
     const W = build();
     W.D.setQuality(QUALITY.LOW);

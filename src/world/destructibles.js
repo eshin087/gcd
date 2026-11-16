@@ -235,7 +235,7 @@ export class Destructibles {
       wrecks: def.wreck !== false,
       // dynamics
       t: 0, T: 1, dx: 0, dz: 1, by: 'world', src: -1, srcT: -1e9, spare: 0,
-      burn: 0, burnLife: 0, burnt: false, flame: 0, heatT: 0, light: null, carry: 0, spreadT: 0,
+      burn: 0, burnLife: 0, burnt: false, flame: 0, heatT: 0, light: null, carry: 0, spreadT: 0, gen: 0,
       shake: 0, shakeAmp: 0, mark: 0,
       told: false, flashed: false,
       // thrown
@@ -587,7 +587,7 @@ export class Destructibles {
           const b = L[g.items[kk]];
           if (b.state !== INTACT || !b.burns || b.burn > 0 || b.burnt) continue;
           if (Math.hypot(b.x - x, b.z - z) > r + b.r) continue;
-          this._light(b, k);
+          this._light(b, k, 0);
           n++;
         }
       }
@@ -595,8 +595,9 @@ export class Destructibles {
     return n;
   }
 
-  /** It catches: alight for BREAK.burn.time x k. */
-  _light(b, k) {
+  /** It catches: alight for BREAK.burn.time x k. `gen`: how many spreads away from fire that landed. */
+  _light(b, k, gen = 0) {
+    b.gen = gen;
     b.burn = b.burnLife = BREAK.burn.time * k * (0.85 + 0.3 * rnd());
     b.flame = 0;
     b.heatT = 0;
@@ -695,28 +696,28 @@ export class Destructibles {
     const A = this.active;
     for (let i = 0; i < A.length; i++) {
       const b = A[i];
-      if (b.burn <= 0 || b.spreadT < S.after + S.every) continue;
+      if (b.burn <= 0 || b.gen >= S.gens || b.spreadT < S.after + S.every) continue;
       b.spreadT = S.after;
       if (rnd() > S.chance) continue;
-      if (this._catchNear(b.x, b.z, b.r, b) && (this._tokens < 1 || !this._fireRoom())) return;
+      if (this._catchNear(b.x, b.z, b.r, b, null, b.gen + 1) && (this._tokens < 1 || !this._fireRoom())) return;
     }
     const W = this.wreck;
     if (!W) return;
     const WL = W.live;
     for (let i = 0; i < WL.length; i++) {
       const e = WL[i];
-      if (e.burn <= 0) continue;
+      if (e.burn <= 0 || e.gen >= S.gens) continue;
       e.spreadT += dt;
       if (e.spreadT < S.after + S.every) continue;
       e.spreadT = S.after;
       if (rnd() > S.chance) continue;
       const s = rnd() * e.len;
-      if (this._catchNear(e.x + e.dx * s, e.z + e.dz * s, e.r, null, e) && (this._tokens < 1 || !this._fireRoom())) return;
+      if (this._catchNear(e.x + e.dx * s, e.z + e.dz * s, e.r, null, e, e.gen + 1) && (this._tokens < 1 || !this._fireRoom())) return;
     }
   }
 
   /** Light one unburnt piece or log near (x, z) (picked at random among those in reach). True if one caught. */
-  _catchNear(x, z, r, self, selfLog = null) {
+  _catchNear(x, z, r, self, selfLog = null, gen = 1) {
     const S = BREAK.spread, reach = S.reach + r;
     let pick = null, seen = 0;
     if (this._cells(x - reach, z - reach, x + reach, z + reach)) {
@@ -743,12 +744,12 @@ export class Destructibles {
         if (rnd() * ++seen < 1) log = e;
       }
     }
-    if (log && this.wreck._light(log, BREAK.wreck.burn * S.k)) {
+    if (log && this.wreck._light(log, BREAK.wreck.burn * S.k, gen)) {
       this._tokens -= 1;
       return true;
     }
     if (pick && !log) {
-      this._light(pick, S.k);
+      this._light(pick, S.k, gen);
       this._tokens -= 1;
       return true;
     }

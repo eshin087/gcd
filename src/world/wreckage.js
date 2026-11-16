@@ -27,7 +27,7 @@ const LOG_LOOKS = 3;
 const CHAR_LOOKS = 2;
 const RUBBLE_LOOKS = 3;
 const KIND = Object.freeze({ LOG: 0, CHAR: 1, RUBBLE: 2 });
-const CHAR_COL = [0.05, 0.043, 0.038];
+const CHAR_COL = [0.03, 0.026, 0.024]; // (burnt black: the ember glow under it is the scorch map's)
 
 // cosmetic noise from this module's own stream (the seeded sims replay Math.random)
 let seed = 0x2b7e1516;
@@ -51,7 +51,7 @@ function logGeometry(r, charred) {
   carve(g, {
     col: charred
       ? (px, py, pz) => mul(CHAR_COL, 0.7 + 0.6 * hash2(px * 9 + s, py * 7 + pz * 5))
-      : (px, py, pz) => mul(BARK, 1.15 + 0.6 * hash2(px * 7 + s, py * 9 + pz * 3)),
+      : (px, py, pz) => mul(BARK, 0.75 + 0.45 * hash2(px * 7 + s, py * 9 + pz * 3)),
     ao: (px, py) => 0.55 + 0.45 * clamp(0.5 + py, 0, 1),
     edge: (px, py, pz, nx, ny) => (ny > 0.55 ? (charred ? 0.25 : 0.45) : 0),
   });
@@ -94,7 +94,7 @@ export class Wreckage {
         this.group.add(m);
         this.pools[kind].push({
           kind, mesh: m, on: false, t: 0, x: 0, z: 0, dx: 1, dz: 0, len: 1, r: 0.3, y0: 0,
-          burn: 0, burnLife: 0, flame: 0, heatT: 0, touchT: 0, smoulder: 0, sink: 0, light: null, spreadT: 0, M: null,
+          burn: 0, burnLife: 0, flame: 0, heatT: 0, touchT: 0, smoulder: 0, sink: 0, light: null, spreadT: 0, gen: 0, M: null,
         });
       }
     };
@@ -230,12 +230,13 @@ export class Wreckage {
 
   // ------------------------------------------------------------------ fire
   /** It catches (if it is a log not yet alight and the fires are under their cap): true if it did. */
-  _light(e, sec) {
+  _light(e, sec, gen = 0) {
     if (!e?.on || e.kind !== KIND.LOG || e.burn > 0 || e.sink > 0) return false;
     if (!this.D._fireRoom()) return false;
     e.burn = e.burnLife = sec;
     e.flame = 0;
     e.spreadT = 0;
+    e.gen = gen;
     this.burning++;
     const mx = e.x + e.dx * e.len * 0.5, mz = e.z + e.dz * e.len * 0.5;
     e.light = this.D._lightAt(mx, 0.8, mz, 6 + e.len * 0.5, sec + 0.6);
@@ -422,6 +423,12 @@ export class Wreckage {
         }
         this._place(e);
         continue;
+      }
+      // a log lying in burning grass catches (checked twice a second at a point along it)
+      if (e.kind === KIND.LOG && e.burn <= 0 && (e.touchT -= dt) <= 0) {
+        e.touchT = 0.5;
+        const s = rnd() * e.len;
+        if ((this.world.fire?.burning?.(e.x + e.dx * s, e.z + e.dz * s) ?? 0) > 0) this._light(e, W.burn * (0.85 + 0.3 * rnd()));
       }
       if (e.burn > 0) this._burnStep(e, dt);
       else if (e.smoulder > 0) this._smoulderStep(e, dt, lit++ < smoulderOn);

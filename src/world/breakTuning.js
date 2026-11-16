@@ -78,10 +78,11 @@ export const BREAK = Object.freeze({
    * Fire spreads (2026-11-15: the owner's "fire spreads from tree to tree"; ADR-107 had it burn where
    * it lands): a piece alight for `after` s tries every `every` s to light ONE unburnt wood piece (or a
    * log) whose base is within `reach` m of its own (+ both radii), with `chance`. Limits: at most
-   * `maxBurning` things alight at once (x the quality factor), and a budget of `perSec` spreads a
-   * second over the whole level (it banks up to `bank`). A log lying in burning grass catches too.
+   * `maxBurning` things alight at once (x the quality factor), a budget of `perSec` spreads a second
+   * over the whole level (it banks up to `bank`), and a fire passes on at most `gens` times from where
+   * fire landed (a blaze stays a stand, it never walks round the whole ring).
    */
-  spread: Object.freeze({ after: 2.2, every: 1.1, chance: 0.5, reach: 5.2, maxBurning: 9, perSec: 0.6, bank: 2, k: 0.9 }),
+  spread: Object.freeze({ after: 2.2, every: 1.1, chance: 0.45, reach: 5.2, maxBurning: 9, perSec: 0.3, bank: 2, k: 0.9, gens: 2 }),
   /**
    * Wreckage (world/wreckage.js): what a felled tree, a broken stone and a thrown piece leave lying,
    * scenery the hero walks over (no collider, it stops nothing). Pools of prop-art meshes: `logs` fallen
