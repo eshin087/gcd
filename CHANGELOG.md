@@ -714,8 +714,10 @@ Forty-seven pieces of work since 0.4.0:
 
 ### Unmerged experiments
 - 2026-11-15: **Tempered character study** (`/hero-study.html`, ADR-118): a separate A/B audition
-  with compact presentation proportions, an oblique guard and body-led motion accents. Awaiting
-  owner review; the playable game is unchanged. This is deliberately not a shipped WHAT'S NEW item.
+  with compact presentation proportions, an oblique guard and body-led motion accents. Also a
+  separate playable `/hero-play.html` preview (ADR-119): live A/B switching, all three levels,
+  closer camera, optional invulnerability and temporary storage. Awaiting owner review; the normal
+  game is unchanged. This is deliberately not a shipped WHAT'S NEW item.
 
 ## [0.4.0] - 2026-11-02
 The hero and the wyrm are drawn as classic ASCII art (the owner's reference images). The game is

@@ -5,6 +5,28 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 56: Playable Tempered preview (Codex, unapproved)
+
+**Owner:** see both previews in game; keep draft PR #58 unmerged. Added `/hero-play.html`, a separate
+bundle that boots the actual game with empty in-memory storage, then decorates only the player
+instance. Live Current / Tempered switching, all three levels, Explore / reset, Fight boss,
+closer camera and optional invulnerability. The studio now links to it.
+
+**Isolation:** normal `main.js`, player, boss and combat source untouched; normal build retains the
+base SHA-256. Instance-owned poses are shared with the studio. Drawing proportions are inverted
+before sword sweeps; switching invalidates sweep history. Storage shadowing happens before the
+game import and fails closed. No production deployment or merge.
+
+**Verification:** studio tests plus actual rig-point transform round trips at 36 headings, pose
+restoration / equipment rebuild and storage isolation pass. Real WebGL checks: both variants' run,
+attack, roll and boss entry in all three levels; A/B retains health / position; level switching,
+camera, invulnerability, mobile controls and native-storage sentinel pass. A separate real-time
+keyboard / mouse check lands five guarded attacks for each variant on the Ash Disciple; no browser
+errors. Build passes. Full regression and hosted preview verification are recorded in the PR.
+
+**Hold:** this is playable for review, not approved for adoption. Complete weapon reach / outfits /
+alternate moves and human feel calibration remain for Claude after the owner's choice (ADR-119).
+
 ## 2026-11-15 — Session 55: Tempered character audition (Codex, unapproved)
 
 **Owner:** improve the main character's model, animation, motion and poses, show a PR preview for

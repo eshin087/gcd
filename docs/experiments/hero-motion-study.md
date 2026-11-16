@@ -1,10 +1,33 @@
 # The Wanderer: Tempered (unapproved visual study)
 
-**Status:** draft experiment, awaiting owner review. Do not merge or integrate without the owner's
-choice. This is a view-only character audition, not a replacement for the playable hero.
+**Status:** draft experiment, awaiting owner review. Do not merge or adopt without the owner's
+choice. The motion studio and the playable preview are separate pages; the regular game is unchanged.
 
 Open `/hero-study.html` on this PR's Vercel preview, or run `npm run dev` and open
-`http://localhost:5173/hero-study.html`. The normal `/` URL is the existing game.
+`http://localhost:5173/hero-study.html`. For actual play, open
+`/hero-play.html?level=ash&hero=tempered` (or `hero=current`). The normal `/` URL is the existing game.
+
+## Play it in the game
+
+The owner requested an in-game preview after the side-by-side film. `/hero-play.html` boots the
+actual game and decorates only that page's player instance. Choose **Explore / reset** or **Fight
+boss**, then switch **A · Current / B · Tempered** during the same fight. The level selector offers
+Cinderwood, Ashfall and the Obsidian Throne. **Closer camera** helps inspect the character at the
+normal gameplay angle. **Invulnerable** starts on and can be switched off. On narrow screens, tap
+the collapsed preview panel to open the controls; the normal touch / controller inputs still work.
+
+The playable page replaces its own localStorage and sessionStorage with empty memory stores
+**before** importing the game. It does not read or write the browser's existing stores. Reloading
+discards settings and telemetry from the preview. It includes no analytics script.
+
+The adapter reuses the studio's exact pose functions. Its draw transform is removed during IK and
+inverted by `unlean` before SwordSweep uses blade points; `leanPoint` applies the matching forward
+transform. Switching resets sweep history so the different silhouettes cannot produce a phantom
+hit between them. It preserves player position, health, action clocks and boss state. Equipment
+rebuilds get their own candidate pose map. Shared prototypes, bosses and combat tuning are unchanged.
+
+This is a playable experiment, not final gameplay approval: the pose edits change the blade path.
+Complete reach / outfit / alternate-move calibration and human feel review remain for adoption.
 
 ## Direction
 
@@ -45,15 +68,17 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
 
 ## Isolation and verification
 
-Only `hero-study.html` imports `src/dev/heroStudy/`. `scripts/build.mjs` emits a separate bundled
-page. It adds no import or branch to the normal game. The build of `dist/index.html` using the
+Only `hero-study.html` and `hero-play.html` import `src/dev/heroStudy/`. `scripts/build.mjs` emits separate
+bundled pages. It adds no import or branch to the normal game. The build of `dist/index.html` using the
 original build script from `46e2c989` and the experimental build script matched byte-for-byte:
 SHA-256 `77146f1462407f64105582ca05e9eb0674b603cd3e8553f0f1c91eeb3355c342`.
 
 `npm run test:hero-study`: 4,361 paired frames across nine sequences check finite poses and rig
 matrices, the blade's floor clearance, synchronized root travel, repeatable seeking, private
 materials / pose maps, unchanged shared definitions, and removal of presentation scale for IK.
-This check is also appended to `npm test`.
+This check is also appended to `npm test`. The playable adapter additionally checks real blade
+points at 36 headings / leans, inverse / forward transforms, exact pose-map restoration, equipment
+rebuilds, sweep reset and storage isolation (including failure before game boot if isolation fails).
 
 The existing full integration suite (`npm test`), glyph and changelog checks, and `npm run build`
 pass locally. The new study check was rerun after the final recovery refinement.
@@ -62,12 +87,17 @@ Browser checks use real headless Edge / WebGL: front, side, back, three-quarter 
 13 sampled pose captures; playback, slow motion, pause, single-frame advance and scrub controls;
 390×844 portrait and 852×393 landscape layouts. No browser errors on the study. Desktop and phone
 screenshots are review evidence, not owner approval. A physical phone and human combat feel have
-not been validated.
+not been validated. Playable browser checks cover both variants' idle, run, attack and dodge in all
+three levels, live A/B health / position preservation, level navigation, camera and invulnerability
+controls, 390×844 layout, and native-storage sentinel preservation. A separate normal animation-loop
+check uses actual keyboard / mouse input: both variants land five guarded cuts on the Ash Disciple.
+No browser errors. The normal-game HTML hash still matches the base above.
 
 ## Handoff for Claude after the owner's choice
 
-The changes are self-contained in `actor.js` (candidate), `sequence.js` (audition pilot), and
-`study.js` / `study.css` / `hero-study.html` (review UI). No shared pose API or boss skeleton changed.
+The changes are self-contained in `src/dev/heroStudy/` and the two HTML preview entries. `actor.js`
+owns the shared candidate poses; `gameplayActor.js` adapts the real player on the playable page.
+No shared pose API or boss skeleton changed.
 
 If selected, first decide whether to keep a presentation transform or author actual per-hero
 dimensions. Then integrate **only the hero**, re-fit outfit variants and weapons, recheck transitions

@@ -7,6 +7,13 @@ the bullet-hell round of 2026-11-09 on top of v0.5's epic wyrm fight: strings an
 the plunge, three phases, fire hazards, keep-in-view camera, and now the bullet field).
 
 ## Conventions
+
+**Unmerged preview only (ADR-119):** `hero-play.html` boots the normal entry only after installing
+page-local memory storage. `src/dev/heroStudy/gameplayActor.js` decorates that player's private pose
+map and drawing transform, with matching `unlean` / `leanPoint` inverses for hit coordinates. A/B
+switches invalidate sword sweep history and preserve fight state. This is not imported by normal
+`main.js`; it changes no shared Player, animator or boss API. See `docs/experiments/hero-motion-study.md`.
+
 - Units: meters, seconds, radians. **Y up**, ground plane y = 0 (flat).
 - Camera looks north: **screen-up = world −Z**, screen-right = +X. Fixed yaw, ~58° pitch.
 - Models face local **+Z**. `yaw` rotates about Y; facing vector = `(sin yaw, 0, cos yaw)`;

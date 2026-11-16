@@ -43,6 +43,21 @@ const studyHtml = fs.readFileSync('hero-study.html', 'utf8')
 fs.writeFileSync('dist/hero-study.html', studyHtml);
 console.log(`Built dist/hero-study.html (${(studyHtml.length / 1024).toFixed(0)} KB)`);
 
+// The playable experiment is a third, separate entry. Normal main.js is unchanged.
+const playable = await build({
+  entryPoints: ['src/dev/heroStudy/gameplay.js'], bundle: true, format: 'esm',
+  minify: true, write: false, target: 'es2022', legalComments: 'none',
+});
+const playableJs = playable.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
+const playableCss = fs.readFileSync('src/dev/heroStudy/gameplay.css', 'utf8');
+const playableHtml = fs.readFileSync('hero-play.html', 'utf8')
+  .replace(/<script type="importmap">[\s\S]*?<\/script>\s*/, '')
+  .replace('<link rel="stylesheet" href="./src/style.css">', () => `<style>${css}</style>`)
+  .replace('<link rel="stylesheet" href="./src/dev/heroStudy/gameplay.css">', () => `<style>${playableCss}</style>`)
+  .replace('<script type="module" src="./src/dev/heroStudy/gameplay.js"></script>', () => `<script type="module">${playableJs}</script>`);
+fs.writeFileSync('dist/hero-play.html', playableHtml);
+console.log(`Built dist/hero-play.html (${(playableHtml.length / 1024).toFixed(0)} KB)`);
+
 // the recorded music (ADR-117) is fetched next to the page: dist/assets/audio/. Opened
 // from disk (file://) the game cannot fetch it and plays its synthesised score instead.
 fs.rmSync('dist/assets', { recursive: true, force: true });

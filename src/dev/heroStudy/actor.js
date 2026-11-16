@@ -1,4 +1,4 @@
-// A disposable visual study. Imported only by hero-study.html, never by the game.
+// A disposable visual study. Imported only by the two preview entries, never by the normal game.
 // Reuse Claude's rig, IK, foot planner and cloth. Each actor owns its pose functions;
 // shared DIM, BODY, SWINGS, materials and combat definitions are never edited.
 import * as THREE from 'three';
@@ -85,6 +85,42 @@ function attack(p, A) {
   p[P.bodyZ] += 0.016 * contact;
 }
 
+export function createTemperedPoses(source) {
+  const recovery = new Float32Array(N);
+  const poses = { ...source };
+  poses.loco = (p, A) => { source.loco(p, A); locomotion(p, A); };
+  poses.attack = (p, A) => {
+    // Re-time only the recovery in this audition. Windup / active boundaries
+    // are untouched, and A.t is restored before any other animator work.
+    const t = A.t, d = A.def;
+    if (d && t > d.windup + d.active) {
+      const r = clamp((t - d.windup - d.active) / d.recovery, 0, 1);
+      A.t -= STUDY.recoveryHold * d.recovery * Math.sin(Math.PI * r);
+    }
+    try { source.attack(p, A); } finally { A.t = t; }
+    attack(p, A);
+    // The original clip comes home to the original guard. Let its late
+    // recovery arrive in this candidate's stance, so the blade does not
+    // straighten and then pop back onto the oblique line between cuts.
+    if (d) {
+      const home = smoothstep(d.windup + d.active + d.recovery * 0.45, d.windup + d.active + d.recovery, t);
+      if (home > 0) {
+        recovery.set(p);
+        locomotion(recovery, A);
+        for (let i = 0; i < N; i++) p[i] += (recovery[i] - p[i]) * home;
+      }
+    }
+  };
+  poses.block = (p, A) => {
+    source.block(p, A);
+    p[P.bodyY] -= 0.025;
+    p[P.spX] += 0.025;
+    p[P.rF] -= 0.025;
+    p[P.lF] += 0.025;
+  };
+  return poses;
+}
+
 export function createStudyActor(U, candidate = false) {
   const rig = buildHero(U);
   const pilot = {
@@ -95,41 +131,7 @@ export function createStudyActor(U, candidate = false) {
     debug: { fightStance: false }, game: { state: 'explore', time: 0 },
   };
   const anim = new HeroAnimator(rig, pilot, null, { freeHand: true });
-  if (candidate) {
-    const source = anim.poses;
-    const recovery = new Float32Array(N);
-    anim.poses = { ...source };
-    anim.poses.loco = (p, A) => { source.loco(p, A); locomotion(p, A); };
-    anim.poses.attack = (p, A) => {
-      // Re-time only the recovery in this audition. Windup / active boundaries
-      // are untouched, and A.t is restored before any other animator work.
-      const t = A.t, d = A.def;
-      if (d && t > d.windup + d.active) {
-        const r = clamp((t - d.windup - d.active) / d.recovery, 0, 1);
-        A.t -= STUDY.recoveryHold * d.recovery * Math.sin(Math.PI * r);
-      }
-      try { source.attack(p, A); } finally { A.t = t; }
-      attack(p, A);
-      // The original clip comes home to the original guard. Let its late
-      // recovery arrive in this candidate's stance, so the blade does not
-      // straighten and then pop back onto the oblique line between cuts.
-      if (d) {
-        const home = smoothstep(d.windup + d.active + d.recovery * 0.45, d.windup + d.active + d.recovery, t);
-        if (home > 0) {
-          recovery.set(p);
-          locomotion(recovery, A);
-          for (let i = 0; i < N; i++) p[i] += (recovery[i] - p[i]) * home;
-        }
-      }
-    };
-    anim.poses.block = (p, A) => {
-      source.block(p, A);
-      p[P.bodyY] -= 0.025;
-      p[P.spX] += 0.025;
-      p[P.rF] -= 0.025;
-      p[P.lF] += 0.025;
-    };
-  }
+  if (candidate) anim.poses = createTemperedPoses(anim.poses);
   // Presentation proportions only. This matrix is OFF while the existing IK
   // and cloth solve in unscaled metres. No shared bone lengths are changed.
   const baseUpdate = rig.root.updateMatrix.bind(rig.root);

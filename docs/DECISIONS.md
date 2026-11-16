@@ -3257,3 +3257,19 @@ ADR-092).
   validate the swept blade, reach, hands, cloth and transitions in all levels. The review documents
   exact presentation scales and the controlled pilot's limitations. No player-facing WHAT'S NEW
   entry until there is an actual shipped change. See `docs/experiments/hero-motion-study.md`.
+
+## ADR-119 — Play the candidate in a separate, temporary game page (2026-11-15)
+- **Status:** experiment only; owner requested in-game preview, explicitly no merge.
+- **Context:** the owner reviewed the synchronized film and wants to compare inside the actual game.
+  This extends ADR-118's view-only scope without adopting its candidate in the normal game.
+- **Decision:** `/hero-play.html` is a third build entry. Before importing main, shadow this page's
+  localStorage / sessionStorage with empty memory stores. Use the existing `__game` debug context
+  to decorate only its player. Reuse the studio's candidate pose functions; apply proportions only
+  with draw lean enabled, invert them in `unlean`, and mirror them in `leanPoint`. Invalidate the
+  sword sweep on A/B changes. Preserve the original pose maps for exact return to Current.
+- **UI:** switch Current / Tempered in the same fight; pick any level; explore/reset or start the
+  boss, zoom closer, and toggle invulnerability. Nothing is saved across reloads. No analytics.
+- **Consequences:** normal main/player/boss code and normal output remain unchanged. The page is
+  a testing adapter, not the final implementation. Its changed pose paths still need complete
+  weapon / outfit / alternate move calibration and human review before adoption. The draft PR
+  remains unmerged and can be rejected without changing production or existing saves.
