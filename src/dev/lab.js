@@ -356,6 +356,10 @@ export class Lab {
    */
   _force(name, quiet) {
     const mark = this.trainer.seq;
+    // a duelist's move of a later phase / form: he is put into it first, without its change (as the
+    // Training's BOSS MOVES do); trigger() refuses a move above his phase
+    const mv = this.target?.kit?.MOVES?.[name];
+    if (mv && !mv.transition && Number.isFinite(mv.phase) && mv.phase > (this.target.phase ?? 1)) this._skipToPhase(mv.phase);
     const r = this._call(this.target, 'dragon', 'trigger', [name], quiet);
     if (r !== null && r !== false) this.trainer.dropPendingUpTo(mark);
     return r;
@@ -365,10 +369,27 @@ export class Lab {
   _fightAction(method) {
     if (method === 'kill') this.setLoop(false);
     this._prepareFlow();
+    // a duelist's change to phase / form N plays from N - 1 only: from further back he is put into
+    // N - 1 first (no change played), then the change to N plays
+    const pn = /^phase([2-4])$/.exec(method)?.[1];
+    if (pn && this.target?.kit && (this.target.phase ?? 1) < pn - 1) this._skipToPhase(pn - 1);
     const r = this._dragon(method);
     // these interrupt the current attack: its announced impacts will never land
     if (r !== null && r !== false) this.trainer.clearPending();
     return r;
+  }
+
+  /** A duelist straight into phase / form `n`, its change not played (the Lord's setForm dresses
+   *  the form; Shen Hui's enterPhase sets the phase). */
+  _skipToPhase(n) {
+    const d = this.target;
+    if (!d || !(n > (d.phase ?? 1))) return;
+    try {
+      if (typeof d.debug?.setForm === 'function') d.debug.setForm(n);
+      else d.enterPhase?.(n);
+    } catch (err) {
+      this._fail('skip to phase', err);
+    }
   }
 
   _flowTo(name, quiet = false) {
