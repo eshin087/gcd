@@ -7619,7 +7619,7 @@ async function scenarioTiming() {
   const { attackWeight } = await imp('src/entities/dragon/ai.js');
   const lead = TUNING.flashLead, TOL = 0.085;
   // the strings, plus the single melee attacks they share performances with (unchanged numbers)
-  const names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,bite,swipe,tail,stomp').split(',');
+  const names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,stormFlurry,wingRend,pivotLash,rearGuard,skyHammer,furnaceMaw,cinderRake,cataclysm,bite,swipe,tail,stomp').split(',');
   const DISTS = [2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 10, 12.5];
   const ANGS = [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2, 1.5, -1.5, 1.9, -1.9, 2.5, -2.5, Math.PI];
   const report = {};
@@ -7697,6 +7697,186 @@ async function scenarioTiming() {
   assert(picks > 0, `string placements probed (${picks})`);
   assert(bad === 0, `every string contact within ±${TOL * 1000} ms of its flash + lead (worst ${Math.round(worst * 1000)} ms, ${bad} off)`);
   assert(firstMiss === 0, `every AI pick lands its first hit (${firstMiss} missed)`);
+  return G;
+}
+
+// ================================================================== scenario: the whole body (w2 melee)
+// The six whole-body kinds, each answered the way its tell promises, inside the strings that use
+// them (started through the AI's own path, the hero held at his spot, god mode): a white wing scythe
+// parried, red tail blows rolled (and a held guard broken), the wing slam's blue flare parried (it
+// ends the string: a recoil), the fire snap's ticks blocked (never parried) and the ground it reached
+// burning on, the burning rakes leaving fire; and the breath's body: the neck carries the P2 rake,
+// the body barely turns (it used to spin with the stream).
+async function scenarioMelee() {
+  out('\n== scenario MELEE (wing scythe / wing slam / tail whip / tail slam / fire snap / ember rake answered; the breath body) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  G.game.player.debug.noRiposte = true;
+  const d = game.dragon, p = game.player;
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  const lead = TUNING.flashLead;
+  /** Start string `name` from the AI's path with the hero `units` model units out, `ang` off the nose;
+   *  answer hit i with plan[i] (parry | dodge | block | none); returns per hit [results...] + the record. */
+  const play = (name, units, ang, plan, { phase = 1, hold = true, after = 0 } = {}) => {
+    settle(G);
+    if (d.phase !== phase) d.enterPhase(phase);
+    d.hazards?.clear?.();
+    place(G, (units * SCALE) / SIZE, ang);
+    const px = p.position.x, pz = p.position.z;
+    p.debug.god = true;
+    const flashes = [], res = {}, kinds = {};
+    const ft0 = d.flashTell.bind(d), hp0 = d.hitPlayer.bind(d);
+    d.flashTell = (a, b) => { if (a.name === name) flashes.push({ hit: b.hit ?? 0, at: game.time + lead, done: false }); return ft0(a, b); };
+    d.hitPlayer = (o, a) => {
+      const r = hp0(o, a);
+      if (a?.name === name && a.cur) { (res[a.cur.hit] ||= []).push(r); (kinds[a.cur.hit] ||= o.kind); }
+      return r;
+    };
+    const c0 = { ...G.counts };
+    d.brain.startAction(ATTACKS[name]);
+    let blockUntil = -1, ended = -1;
+    for (let i = 0; i < Math.round(12 / DT); i++) {
+      aimAt(G);
+      input.axis = { x: 0, y: 0 };
+      for (const f of flashes) {
+        if (f.done) continue;
+        const left = f.at - game.time - DT, how = plan[f.hit] ?? 'none';
+        if (how === 'parry' && left <= 0.12) { f.done = true; input.click(1); }
+        else if (how === 'block' && left <= 0.3) { f.done = true; input.press(1); blockUntil = f.at + 0.75; }
+        else if (how === 'dodge' && left <= 0.1) {
+          f.done = true;
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+          input.axis = { x: -dz / l, y: -dx / l }; // sideways (a slam along a line: roll aside)
+          input.tap('Space');
+        } else if (how === 'none' && left <= 0) f.done = true;
+      }
+      if (blockUntil > 0 && game.time >= blockUntil) { input.up(1); blockUntil = -1; }
+      G.tick(DT);
+      if (hold && p.state !== 'roll' && p.state !== 'plunge') p.debug.teleport(px, pz);
+      const a = d.brain.action;
+      if (ended < 0 && (!a || a.name !== name)) ended = game.time;
+      if (ended >= 0 && game.time - ended >= after) break;
+    }
+    if (blockUntil > 0) input.up(1);
+    d.flashTell = ft0;
+    d.hitPlayer = hp0;
+    const ev = {};
+    for (const k in G.counts) ev[k] = G.counts[k] - (c0[k] || 0);
+    p.debug.god = false;
+    return { res, kinds, ev, flashes: flashes.length, px, pz };
+  };
+  const first = (r, i) => r.res[i]?.[0] ?? 'none';
+
+  // 1) the wing scythe (white): parried inside Wing rend
+  const wr = play('wingRend', 4.0, 0, { 0: 'parry', 1: 'parry', 2: 'parry', 3: 'parry' });
+  out(`   wingRend parried: ${JSON.stringify(wr.res)} · dragon:parried ${wr.ev['dragon:parried'] || 0}`);
+  assert(first(wr, 1) === RESULT.PARRIED && wr.kinds[1] === 'wing', `the wing scythe (white) is parried (${first(wr, 1)}, ${wr.kinds[1]})`);
+
+  // 2) the tail whip (red): rolled (a perfect dodge) inside Pivot lash; a parry does not stop it
+  p.debug.streak?.(0);
+  const pl = play('pivotLash', 4.5, 1.5, { 0: 'dodge' }, { hold: false });
+  out(`   pivotLash rolled: ${JSON.stringify(pl.res)} · perfectDodge ${pl.ev['player:perfectDodge'] || 0}`);
+  assert(first(pl, 0) === RESULT.PERFECT && pl.kinds[0] === 'tail', `the tail whip (red) is rolled: a perfect dodge (${first(pl, 0)}, ${pl.kinds[0]})`);
+  const pp = play('pivotLash', 4.5, -1.5, { 0: 'parry' });
+  assert(first(pp, 0) === RESULT.HIT, `a parry does not answer the tail whip (${first(pp, 0)})`);
+
+  // 3) the tail slam (red): rolled aside; a held guard is broken
+  p.debug.streak?.(0);
+  const rg = play('rearGuard', 5.5, Math.PI, { 0: 'dodge' }, { hold: false });
+  out(`   rearGuard rolled: ${JSON.stringify(rg.res)}`);
+  assert(first(rg, 0) === RESULT.PERFECT && rg.kinds[0] === 'tail', `the tail slam (red) is rolled aside: a perfect dodge (${first(rg, 0)}, ${rg.kinds[0]})`);
+  const rb = play('rearGuard', 5.5, Math.PI, { 0: 'block' });
+  out(`   rearGuard blocked: ${JSON.stringify(rb.res)} · guardBreak ${rb.ev['player:guardBreak'] || 0}`);
+  assert(first(rb, 0) === RESULT.HIT && (rb.ev['player:guardBreak'] || 0) >= 1, `a held guard against the tail slam breaks (${first(rb, 0)})`);
+
+  // 4) the wing slam's blue flare: parried, it ends the string (a recoil), every earlier hit parried
+  const sh = play('skyHammer', 4.0, 0, { 0: 'parry', 1: 'parry', 2: 'parry' }, { after: 0.05 });
+  out(`   skyHammer parried: ${JSON.stringify(sh.res)} · recoil ${d.brain.action?.name ?? '-'} · dragon:parried ${sh.ev['dragon:parried'] || 0}`);
+  assert(first(sh, 2) === RESULT.PARRIED && sh.kinds[2] === 'slam', `the wing slam's blue flare is parried (${first(sh, 2)}, ${sh.kinds[2]})`);
+
+  // 5) the fire snap: its ticks blocked (chip, never parried), the ground it reached burns on
+  const fm = play('furnaceMaw', 4.0, 0, { 3: 'block' }, { phase: 2, after: 0 });
+  const ticks = fm.res[3] ?? [];
+  const burning = d.hazards.count('meleeFire');
+  out(`   furnaceMaw fire snap blocked: ticks ${JSON.stringify(ticks)} · burning ground strips ${burning}`);
+  assert(ticks.length >= 3 && ticks.every((r) => r === RESULT.BLOCKED) && fm.kinds[3] === 'fire', `the fire snap ticks, every tick blocked (${JSON.stringify(ticks)})`);
+  const fp = play('furnaceMaw', 4.0, 0, { 3: 'parry' }, { phase: 2 });
+  assert((fp.res[3] ?? []).every((r) => r !== RESULT.PARRIED) && (fp.res[3] ?? []).length > 0, `the fire snap is never parried (${JSON.stringify(fp.res[3])})`);
+  // standing in the burnt ground: contact ticks (fire, blockable) from the snap's strip
+  {
+    settle(G, 0.1);
+    d.hazards.clear();
+    if (d.phase !== 2) d.enterPhase(2);
+    place(G, (4.0 * SCALE) / SIZE, 0);
+    const px = p.position.x, pz = p.position.z;
+    p.debug.god = true;
+    // contact ticks of the burning strips (hazards.js _tick: only while he stands in the fire)
+    const tk0 = d.hazards._tick.bind(d.hazards);
+    let groundTicks = 0, strips = 0;
+    d.hazards._tick = (h, fx, fz) => { if (h.kind === 'meleeFire') groundTicks++; return tk0(h, fx, fz); };
+    d.brain.startAction(ATTACKS.furnaceMaw);
+    let snapEnd = -1;
+    for (let i = 0; i < Math.round(10 / DT); i++) {
+      aimAt(G);
+      input.axis = { x: 0, y: 0 };
+      G.tick(DT);
+      p.debug.teleport(px, pz);
+      const a = d.brain.action;
+      if (snapEnd < 0 && a?.name === 'furnaceMaw' && a.phase === 'windup5') { snapEnd = game.time; strips = d.hazards.count('meleeFire'); }
+      if (snapEnd >= 0 && (!a || a.name !== 'furnaceMaw')) break;
+    }
+    d.hazards._tick = tk0;
+    p.debug.god = false;
+    out(`   burning ground after the snap: ${strips} strip(s) as the gout ends · contact ticks ${groundTicks}`);
+    assert(strips >= 1 && groundTicks >= 2, `the ground the fire snap reached burns: contact ticks while he stands in it (${strips} strips, ${groundTicks} ticks)`);
+  }
+
+  // 6) the ember rake: white (parried); from phase 2 the arc it raked burns
+  const er = play('cinderRake', 4.0, 0, { 0: 'parry' }, { phase: 2 });
+  out(`   cinderRake: rake ${first(er, 0)}`);
+  assert(first(er, 0) === RESULT.PARRIED && er.kinds[0] === 'swipe', `the ember rake is parried (${first(er, 0)})`);
+  {
+    settle(G);
+    d.hazards.clear();
+    place(G, (4.0 * SCALE) / SIZE, 0);
+    d.brain.startAction(ATTACKS.cinderRake);
+    let n = 0;
+    for (let i = 0; i < Math.round(1.6 / DT); i++) { G.tick(DT); n = Math.max(n, d.hazards.count('meleeFire')); }
+    out(`   the rakes' burning arcs: ${n} strip(s)`);
+    assert(n >= 2, `the ember rake's arc burns in phase 2 (${n} strips)`);
+    settle(G);
+    d.enterPhase(1);
+    d.hazards.clear();
+  }
+
+  // 7) the breath's body (P2): the neck carries the rake, the body barely turns
+  {
+    settle(G);
+    d.enterPhase(2);
+    place(G, (9 * SCALE) / SIZE, 0);
+    p.debug.god = true;
+    d.brain.startAction(ATTACKS.breath);
+    let yaw0 = null, aMin = Infinity, aMax = -Infinity, yMin = Infinity, yMax = -Infinity, ok = true;
+    for (let i = 0; i < Math.round(6 / DT); i++) {
+      aimAt(G);
+      G.tick(DT);
+      const a = d.brain.action;
+      if (!a || a.name !== 'breath') break;
+      if (a.phase !== 'active') continue;
+      if (yaw0 === null) yaw0 = d.yaw;
+      const rel = (x) => Math.atan2(Math.sin(x - yaw0), Math.cos(x - yaw0));
+      aMin = Math.min(aMin, rel(a.aim)); aMax = Math.max(aMax, rel(a.aim));
+      yMin = Math.min(yMin, rel(d.yaw)); yMax = Math.max(yMax, rel(d.yaw));
+      ok &&= Number.isFinite(a.aim + d.yaw + a.aimV);
+    }
+    p.debug.god = false;
+    out(`   breath P2: the stream covers ${(aMax - aMin).toFixed(2)} rad, the body turns ${(yMax - yMin).toFixed(2)} rad`);
+    assert(ok && aMax - aMin >= 0.9, `the P2 breath still rakes a wide arc (${(aMax - aMin).toFixed(2)} rad)`);
+    assert(yMax - yMin <= 0.6 * (aMax - aMin), `the neck carries it: the body turns far less than the stream (${(yMax - yMin).toFixed(2)} of ${(aMax - aMin).toFixed(2)} rad)`);
+    settle(G);
+    d.enterPhase(1);
+  }
   return G;
 }
 
@@ -9125,7 +9305,7 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, melee: scenarioMelee, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

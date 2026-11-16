@@ -240,7 +240,7 @@ export const TUNING = {
     swipe: {
       label: 'Claw swipe (foreleg rake)', tell: TELL.NORMAL,
       windup: 0.8, active: 0.25, impact: 0.15, recovery: 0.7,
-      damage: 20, knockback: 3, cooldown: 1.6, weight: 2.6,
+      damage: 20, knockback: 3, cooldown: 1.6, weight: 1.6, // (w2: 2.6: the hands-only feel)
     },
     // three hits: left claw, right claw, finishing lunge-bite (a string since v0.5)
     clawCombo: {
@@ -251,7 +251,7 @@ export const TUNING = {
         // reach: max head reach from the neck base; lunge: max root travel during the bite (m)
         { kind: 'lungeBite', tell: TELL.BLUE, flare: true, windup: 0.6, active: 0.24, impact: 0.05, damage: 22, knockback: 3, reach: 6.0 * S, lunge: 2.5 * S },
       ],
-      recovery: 1.0, cooldown: 5, weight: [2.4, 2.4, 2.0], range: [2.4, 5.4], maxAng: 0.9,
+      recovery: 1.0, cooldown: 5, weight: [1.4, 1.0, 0.6], range: [2.4, 5.4], maxAng: 0.9, // (w2: [2.4, 2.4, 2.0])
     },
     // claw, claw, an overhead smash and a lunging bite: parry, parry, PARRY, PARRY
     rendingFlurry: {
@@ -263,7 +263,7 @@ export const TUNING = {
         { kind: 'overhead', side: 1, tell: TELL.BLUE, windup: 0.62, active: 0.24, impact: 0.22, damage: 22, knockback: 3, lunge: 1.2 },
         { kind: 'lungeBite', tell: TELL.BLUE, windup: 0.55, active: 0.24, impact: 0.05, damage: 24, knockback: 3.5, reach: 6.0 * S, lunge: 2.5 * S },
       ],
-      recovery: 1.1, cooldown: 7, weight: [3.0, 2.8, 2.4], range: [2.4, 5.4], maxAng: 0.9,
+      recovery: 1.1, cooldown: 7, weight: [1.6, 1.2, 0.8], range: [2.4, 5.4], maxAng: 0.9, // (w2: [3.0, 2.8, 2.4])
     },
     // the head rears back and HOLDS (a random delay), then snaps; half the time a quick second snap
     hesitantMaw: {
@@ -315,17 +315,19 @@ export const TUNING = {
     // phase 3: six or seven hits, a delayed claw, a blue bite and a red stomp to finish
     frenzy: {
       label: 'Frenzy (6-7 hits)', tell: TELL.RED, phase: 3,
+      links: [{ to: 'tail', when: 'behind', chance: [0, 0, 0.8] }, { to: 'pounce', when: 'far', chance: [0, 0, 0.7] }],
       hits: [
         { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 16, knockback: 1.2, turn: 0.7 },
         { kind: 'claw', side: -1, tell: TELL.NORMAL, windup: 0.5, active: 0.25, impact: 0.15, damage: 16, knockback: 1.2, turn: 0.8 },
         // (a short windup leaves the neck half coiled: the snap lands a little later than the bite's)
         { kind: 'bite', tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.125, damage: 18, knockback: 1.5, reach: 5.4 * S },
-        { kind: 'claw', side: 1, chance: 0.6, tell: TELL.NORMAL, windup: 0.5, active: 0.25, impact: 0.15, damage: 16, knockback: 1.2, turn: 0.8 },
-        { kind: 'claw', side: -1, tell: TELL.NORMAL, windup: 0.5, hold: [0.3, 0.75], active: 0.25, impact: 0.15, damage: 18, knockback: 1.5, turn: 0.8 },
+        // (w2: was a claw; now the wing scythed across the front)
+        { kind: 'wingSweep', side: 0, chance: 0.6, tell: TELL.NORMAL, windup: 0.5, active: 0.4, impact: 0.27, damage: 16, knockback: 3, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
+        { kind: 'claw', side: 0, tell: TELL.NORMAL, windup: 0.5, hold: [0.3, 0.75], active: 0.25, impact: 0.15, damage: 18, knockback: 1.5, turn: 0.8 },
         { kind: 'bite', tell: TELL.BLUE, windup: 0.55, active: 0.2, impact: 0.12, damage: 24, knockback: 3, reach: 5.4 * S },
         { kind: 'stomp', tell: TELL.RED, windup: 0.85, active: 0.15, impact: 0.15, damage: 36, knockback: 4, radius: 4.5 * S },
       ],
-      recovery: 1.2, cooldown: 12, weight: [0, 0, 3.4], range: [2.4, 5.4], maxAng: 0.9,
+      recovery: 1.2, cooldown: 12, weight: [0, 0, 1.8], range: [2.4, 5.4], maxAng: 0.9, // (w2: [0, 0, 3.4])
     },
     // the long clash: three quick claws, the overhead, the lunging bite. Five parries in rhythm
     // (the deflect chain rings higher with each); lighter blows than the rending flurry's
@@ -334,11 +336,12 @@ export const TUNING = {
       hits: [
         { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 13, knockback: 1.2, turn: 0.7 },
         { kind: 'claw', side: -1, tell: TELL.NORMAL, windup: 0.42, active: 0.25, impact: 0.15, damage: 13, knockback: 1.2, turn: 0.8 },
-        { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.42, active: 0.25, impact: 0.15, damage: 13, knockback: 1.2, turn: 0.8 },
-        { kind: 'overhead', side: -1, tell: TELL.BLUE, windup: 0.6, active: 0.24, impact: 0.22, damage: 18, knockback: 2.5, lunge: 1.2 },
+        // (w2: was a third claw; now a wing scythed across)
+        { kind: 'wingSweep', side: 0, tell: TELL.NORMAL, windup: 0.55, active: 0.4, impact: 0.27, damage: 15, knockback: 3, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
+        { kind: 'overhead', side: 0, tell: TELL.BLUE, windup: 0.6, active: 0.24, impact: 0.22, damage: 18, knockback: 2.5, lunge: 2.4, turn: 2.2 }, // (w2: side -1, lunge 1.2; the scythe gives ground and turns it away)
         { kind: 'lungeBite', tell: TELL.BLUE, windup: 0.55, active: 0.24, impact: 0.05, damage: 20, knockback: 3.5, reach: 6.0 * S, lunge: 2.5 * S },
       ],
-      recovery: 1.1, cooldown: 9, weight: [1.6, 2.2, 2.4], range: [2.4, 5.4], maxAng: 0.9,
+      recovery: 1.1, cooldown: 9, weight: [1.2, 1.4, 1.2], range: [2.4, 5.4], maxAng: 0.9, // (w2: [1.6, 2.2, 2.4])
     },
     // claws, a bite, then an overhead whose slam scatters hanging embers (`burst`: n embers that
     // drop on the hero one by one, `wait` s after the slam and `stagger` s apart, at `speed` m/s):
@@ -351,7 +354,7 @@ export const TUNING = {
         { kind: 'bite', tell: TELL.BLUE, windup: 0.55, active: 0.2, impact: 0.06, damage: 20, knockback: 2.5, reach: 5.4 * S },
         { kind: 'overhead', side: 1, tell: TELL.BLUE, windup: 0.62, active: 0.24, impact: 0.22, damage: 18, knockback: 3, lunge: 1.2, burst: { n: 4, wait: 0.55, stagger: 0.34, speed: 11 } },
       ],
-      recovery: 1.5, cooldown: 11, weight: [0, 2.2, 2.6], range: [2.4, 5.4], maxAng: 0.9,
+      recovery: 1.5, cooldown: 11, weight: [0, 1.4, 1.4], range: [2.4, 5.4], maxAng: 0.9, // (w2: [0, 2.2, 2.6])
     },
     // THE CHARGED BLOW (ADR-118): the head rears and holds, darkness drawn into the jaws (a second
     // and a half and a held beat that is never the same), then the snap. Black: dodge it. A guard or a
@@ -362,6 +365,149 @@ export const TUNING = {
         { kind: 'rearBite', tell: TELL.BLACK, windup: 1.5, hold: [0.15, 0.6], active: 0.2, impact: 0.06, damage: 44, knockback: 5, reach: 5.6 * S },
       ],
       recovery: 1.2, cooldown: 14, weight: [1.3, 1.6, 1.8], range: [3.5, 6.5], maxAng: 0.65,
+    },
+    // ---- the whole body (w2 melee): strings of claws, jaws, wings, tail and fire. New kinds
+    // (attacks.js): wingSweep (a wing scythed down and across the front: face = rad off the nose the
+    // hero stands at on the wing's side as it starts, sweep = the body's pivot through it), wingSlam
+    // (both wings down in front: radius round the slam point, locked near..far model units ahead),
+    // tailWhip (a pivot puts the hero `at` rad off the nose, then a short `spin`), tailSlam (the tail
+    // raised `lift` x its arch and brought down along a line: width = its reach either side, model
+    // units), fireSnap (open jaws, a gout of fire: ticks of tickDamage every `tick` from `impact`, a
+    // cone of `range` / `halfAngle`, tracked at `track` rad/s, `turn` rad/s whirl in its windup),
+    // emberRake (a claw whose raked arc burns from ground.phase). `side: 0` = the side the hero is on
+    // as that hit's windup starts. `ground`: the burning ground a fire blow leaves (a hazards strip
+    // that only ticks: w m wide, linger s, tickDamage every tick s, blockable, never while rolling).
+    // `links`: follow-ups the AI may chain straight into (the brief's contract; ai.js reads them).
+    // a claw, a wing scythed across the front, a held claw (it may not come), a lunging bite (parry moment)
+    wingRend: {
+      label: 'Wing rend (3-4 hits)', tell: TELL.BLUE, phase: 1,
+      hits: [
+        { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 15, knockback: 1.5, turn: 0.7 },
+        { kind: 'wingSweep', side: 0, tell: TELL.NORMAL, windup: 0.65, active: 0.4, impact: 0.27, damage: 18, knockback: 4, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
+        { kind: 'claw', side: 0, chance: 0.7, tell: TELL.NORMAL, windup: 0.5, hold: [0.2, 0.6], active: 0.25, impact: 0.15, damage: 16, knockback: 1.5, turn: 1.0 },
+        { kind: 'lungeBite', tell: TELL.BLUE, flare: true, windup: 0.6, active: 0.24, impact: 0.05, damage: 22, knockback: 3, reach: 6.0 * S, lunge: 2.5 * S },
+      ],
+      recovery: 1.0, cooldown: 7, weight: [2.6, 2.2, 1.6], range: [2.4, 5.4], maxAng: 0.9,
+      links: [
+        { to: 'tail', when: 'behind', chance: [0.5, 0.7, 0.9] },
+        { to: 'pivotLash', when: 'side', chance: [0.3, 0.5, 0.6] },
+        { to: 'pounce', when: 'far', chance: [0, 0.5, 0.7] },
+      ],
+    },
+    // he stands at its flank: a pivot and a tail whip (roll), a wing scythed across, a claw, and maybe the tail
+    // back the other way
+    pivotLash: {
+      label: 'Pivot lash (3-4 hits)', tell: TELL.RED, phase: 1,
+      hits: [
+        { kind: 'tailWhip', tell: TELL.RED, windup: 0.85, active: 0.3, impact: 0.24, damage: 22, knockback: 4, at: 1.7, back: 0.3, spin: 165 * DEG, pivotRate: 5, minReach: 2.0 * S, reach: 9.5 * S },
+        { kind: 'wingSweep', side: 0, tell: TELL.NORMAL, windup: 0.8, active: 0.4, impact: 0.27, damage: 18, knockback: 4, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
+        { kind: 'claw', side: 0, tell: TELL.NORMAL, windup: 0.55, active: 0.25, impact: 0.15, damage: 16, knockback: 1.5, turn: 1.3 },
+        { kind: 'tailWhip', chance: 0.6, tell: TELL.RED, windup: 0.7, active: 0.3, impact: 0.24, damage: 22, knockback: 4, at: 1.7, back: 0.3, spin: 165 * DEG, pivotRate: 5, minReach: 2.0 * S, reach: 9.5 * S },
+      ],
+      recovery: 1.0, cooldown: 7, weight: [2.2, 2.2, 2.0], range: [2.4, 7.0], minAng: 1.0,
+      links: [
+        { to: 'wingRend', when: 'front', chance: [0.3, 0.5, 0.6] },
+        { to: 'rearGuard', when: 'behind', chance: [0.3, 0.5, 0.7] },
+      ],
+    },
+    // he stands behind it: the tail rises over its back and hammers down along a line (roll aside),
+    // whips round (roll), and a wing scythes across the front it has turned to him
+    rearGuard: {
+      label: 'Rear guard (3 hits)', tell: TELL.RED, phase: 1,
+      hits: [
+        { kind: 'tailSlam', tell: TELL.RED, windup: 1.0, hold: [0, 0.3], active: 0.34, impact: 0.34, damage: 32, knockback: 5, knockdown: true, width: 0.9, lift: 2.6, pivotRate: 3,
+          ground: { phase: 2, w: 1.0 * S, linger: 1.6, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.1 } },
+        { kind: 'tailWhip', tell: TELL.RED, windup: 0.75, active: 0.3, impact: 0.24, damage: 22, knockback: 4, at: 1.7, back: 0.3, spin: 165 * DEG, pivotRate: 5, minReach: 2.0 * S, reach: 9.5 * S },
+        { kind: 'wingSweep', side: 0, tell: TELL.NORMAL, windup: 0.7, active: 0.4, impact: 0.27, damage: 18, knockback: 4, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
+      ],
+      recovery: 1.0, cooldown: 8, weight: [2.2, 2.2, 2.0], range: [5.0, 6.0], minAng: 2.2,
+      links: [
+        { to: 'wingRend', when: 'front', chance: [0.3, 0.5, 0.6] },
+        { to: 'charge', when: 'far', chance: [0.3, 0.4, 0.5] },
+      ],
+    },
+    // an overhead smash, a bite, then both wings brought down on him: the blue flare (parry it, he counters)
+    skyHammer: {
+      label: 'Sky hammer (3 hits)', tell: TELL.BLUE, phase: 1,
+      hits: [
+        { kind: 'overhead', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.24, impact: 0.22, damage: 18, knockback: 2.5, lunge: 1.2 },
+        { kind: 'bite', tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.08, damage: 18, knockback: 2, reach: 5.4 * S },
+        { kind: 'wingSlam', tell: TELL.BLUE, flare: true, windup: 0.95, active: 0.3, impact: 0.3, damage: 30, knockback: 6, radius: 3.0 * S, near: 4.0, far: 7.0,
+          burst: { phase: 2, n: 4, wait: 0.55, stagger: 0.3, speed: 11 } },
+      ],
+      recovery: 1.1, cooldown: 8, weight: [2.0, 1.8, 1.4], range: [2.4, 5.4], maxAng: 0.9,
+      links: [
+        { to: 'tail', when: 'behind', chance: [0.4, 0.6, 0.8] },
+        { to: 'fireball', when: 'far', chance: [0.3, 0.5, 0.6] },
+      ],
+    },
+    // phase 2: claws, a bite, the jaws open into fire (block it or get out of the cone; the ground
+    // burns), and both wings brought down: red, roll (embers fly from the slam)
+    furnaceMaw: {
+      label: 'Furnace maw (5 hits + fire)', tell: TELL.RED, phase: 2,
+      hits: [
+        { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 15, knockback: 1.2, turn: 0.7 },
+        { kind: 'claw', side: -1, tell: TELL.NORMAL, windup: 0.45, active: 0.25, impact: 0.15, damage: 15, knockback: 1.2, turn: 0.8 },
+        { kind: 'bite', tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.09, damage: 18, knockback: 2, reach: 5.4 * S },
+        { kind: 'fireSnap', tell: TELL.NORMAL, parryable: false, blockable: true, windup: 0.6, active: 0.6, impact: 0.12, tickDamage: 6, tick: 0.12, burn: 0.8, range: 7.5 * S, halfAngle: 24 * DEG, room: 3.6, backSpeed: 6, track: 0.6, turn: 4, fall: 0.2,
+          ground: { w: 1.7 * S, linger: 1.4, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.1 } },
+        { kind: 'wingSlam', tell: TELL.RED, windup: 0.9, active: 0.3, impact: 0.3, damage: 32, knockback: 6, knockdown: true, radius: 3.0 * S, near: 4.0, far: 7.5,
+          burst: { phase: 2, n: 5, wait: 0.5, stagger: 0.28, speed: 12 } },
+      ],
+      recovery: 1.2, cooldown: 9, weight: [0, 2.8, 2.4], range: [2.4, 5.4], maxAng: 0.9,
+      links: [
+        { to: 'tail', when: 'behind', chance: [0.6, 0.7, 0.9] },
+        { to: 'breath', when: 'mid', chance: [0, 0.4, 0.6] },
+        { to: 'pounce', when: 'far', chance: [0, 0.6, 0.8] },
+      ],
+    },
+    // phase 2: two burning rakes (the arcs burn), a tail whip, a whirl into a fire snap, maybe a bite,
+    // an overhead that scatters embers: the parry moment
+    cinderRake: {
+      label: 'Cinder rake (5-6 hits + fire)', tell: TELL.BLUE, phase: 2,
+      hits: [
+        { kind: 'emberRake', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 15, knockback: 1.2, turn: 0.7,
+          ground: { phase: 2, w: 1.2 * S, linger: 1.8, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.25 } },
+        { kind: 'emberRake', side: -1, tell: TELL.NORMAL, windup: 0.45, active: 0.25, impact: 0.15, damage: 15, knockback: 1.2, turn: 0.8,
+          ground: { phase: 2, w: 1.2 * S, linger: 1.8, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.25 } },
+        { kind: 'tailWhip', tell: TELL.RED, windup: 0.7, active: 0.3, impact: 0.24, damage: 22, knockback: 4, at: 1.7, back: 0.3, spin: 165 * DEG, pivotRate: 5, minReach: 2.0 * S, reach: 9.5 * S },
+        { kind: 'fireSnap', tell: TELL.NORMAL, parryable: false, blockable: true, windup: 0.7, active: 0.6, impact: 0.12, tickDamage: 6, tick: 0.12, burn: 0.8, range: 7.5 * S, halfAngle: 24 * DEG, room: 3.6, backSpeed: 6, track: 0.6, turn: 4.5, fall: 0.2,
+          ground: { w: 1.7 * S, linger: 1.4, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.1 } },
+        { kind: 'bite', chance: 0.5, tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.06, damage: 18, knockback: 2, reach: 5.4 * S },
+        { kind: 'overhead', side: 1, tell: TELL.BLUE, flare: true, windup: 0.65, active: 0.24, impact: 0.22, damage: 22, knockback: 3, lunge: 1.2, burst: { n: 4, wait: 0.55, stagger: 0.32, speed: 11 } },
+      ],
+      recovery: 1.3, cooldown: 10, weight: [0, 2.6, 2.2], range: [2.4, 5.4], maxAng: 0.9,
+      links: [
+        { to: 'rearGuard', when: 'behind', chance: [0, 0.6, 0.8] },
+        { to: 'fireball', when: 'far', chance: [0, 0.5, 0.7] },
+      ],
+    },
+    // phase 3: the cataclysm. Burning rakes, a held bite, a wing scythe, a tail whip, a whirl into
+    // fire, a rake and a claw that may not come, and both wings down: the blue flare to end it
+    cataclysm: {
+      label: 'Cataclysm (7-9 hits + fire)', tell: TELL.BLUE, phase: 3,
+      hits: [
+        { kind: 'emberRake', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 14, knockback: 1.2, turn: 0.7,
+          ground: { phase: 2, w: 1.2 * S, linger: 2.2, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.25 } },
+        { kind: 'emberRake', side: -1, tell: TELL.NORMAL, windup: 0.42, active: 0.25, impact: 0.15, damage: 14, knockback: 1.2, turn: 0.8,
+          ground: { phase: 2, w: 1.2 * S, linger: 2.2, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.25 } },
+        { kind: 'bite', tell: TELL.NORMAL, windup: 0.65, hold: [0.25, 0.6], active: 0.2, impact: 0.09, damage: 18, knockback: 2, reach: 5.4 * S },
+        { kind: 'wingSweep', side: 0, tell: TELL.NORMAL, windup: 0.55, active: 0.4, impact: 0.27, damage: 18, knockback: 4, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
+        { kind: 'tailWhip', tell: TELL.RED, windup: 0.65, active: 0.3, impact: 0.24, damage: 22, knockback: 4, at: 1.7, back: 0.3, spin: 165 * DEG, pivotRate: 5.5, minReach: 2.0 * S, reach: 9.5 * S },
+        { kind: 'fireSnap', tell: TELL.NORMAL, parryable: false, blockable: true, windup: 0.65, active: 0.6, impact: 0.12, tickDamage: 6, tick: 0.12, burn: 0.8, range: 7.5 * S, halfAngle: 24 * DEG, room: 3.6, backSpeed: 6, track: 0.7, turn: 5, fall: 0.2,
+          ground: { w: 1.7 * S, linger: 1.6, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.1 } },
+        { kind: 'emberRake', side: 0, chance: 0.6, tell: TELL.NORMAL, windup: 0.45, active: 0.25, impact: 0.15, damage: 14, knockback: 1.2, turn: 1.2,
+          ground: { phase: 2, w: 1.2 * S, linger: 2.2, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.25 } },
+        { kind: 'claw', side: 0, chance: 0.6, tell: TELL.NORMAL, windup: 0.45, active: 0.25, impact: 0.15, damage: 15, knockback: 1.2, turn: 1.2 },
+        { kind: 'wingSlam', tell: TELL.BLUE, flare: true, windup: 0.85, active: 0.3, impact: 0.3, damage: 32, knockback: 6, radius: 3.0 * S, near: 4.0, far: 7.5,
+          burst: { phase: 2, n: 6, wait: 0.5, stagger: 0.26, speed: 12 } },
+      ],
+      recovery: 1.3, cooldown: 12, weight: [0, 0, 3.0], range: [2.4, 5.4], maxAng: 0.9,
+      links: [
+        { to: 'tail', when: 'behind', chance: [0, 0, 0.9] },
+        { to: 'breath', when: 'mid', chance: [0, 0, 0.6] },
+        { to: 'pounce', when: 'far', chance: [0, 0, 0.8] },
+      ],
     },
     tail: {
       label: 'Tail sweep', tell: TELL.RED,
@@ -385,6 +531,11 @@ export const TUNING = {
       windup: 1.1, active: 1.8, activeP2: 2.4, recovery: 1.0,
       tickDamage: 5, tick: 0.15, burn: 1.5, halfAngle: 28 * DEG, range: 11.5 * S, sweepP2: 70 * DEG,
       particlesPerSec: 200, cooldown: 8, weight: [2.2, 2.64, 2.64],
+      // the body while it breathes (w2): the aim is a heavy spring (k stiffness, c damping, acc rad/s²,
+      // capped at maxV rad/s: the old constant 32 deg/s track; maxVP2 for the P2 rake's eased arc); the neck carries it within neckArc rad
+      // of the facing, beyond that the body shuffles round at bodyTurn rad/s (was 1.2: a turntable);
+      // the fire's kick lasts ~recoil s; the breath surges `surge` times a second
+      track: { k: 9, c: 5, acc: 1.6, maxV: 32 * DEG, maxVP2: 50 * DEG }, neckArc: 0.45, bodyTurn: 0.7, recoil: 0.35, surge: 1.3,
     },
     // projectile blast radius is not body-linked: kept at the v0.1 size (approachable)
     fireball: {

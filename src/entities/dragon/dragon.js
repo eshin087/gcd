@@ -676,6 +676,9 @@ export class Dragon {
         return out.lerpVectors(pt.arms[0].toe, pt.arms[1].toe, 0.5);
       case 'wing': // a wing's mid knuckle (b.wi: 0 = left, 1 = right): the buffet
         return out.copy(pt.wings[b?.wi ?? 0]?.knuckles[1] ?? pt.chest);
+      case 'wings': // both wings (the wing slam): between their mid knuckles
+        if (!pt.wings?.[1]) return out.copy(pt.chest);
+        return out.lerpVectors(pt.wings[0].knuckles[1], pt.wings[1].knuckles[1], 0.5);
       case 'tailTip': {
         const t = this.rig.tail;
         return out.copy(t.p[t.n]);

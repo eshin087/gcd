@@ -5,6 +5,7 @@ import { clamp, lerp, smoothstep, easeInOutSine, easeOutCubic, easeInCubic, turn
 import { FIRE } from './fireAttacks.js';
 import { BULLET_HELL } from './bulletAttacks.js';
 import { TERRAIN_MOVES } from './terrainAttacks.js';
+import { snapFire, snapSmoke, rakeSparks, wingSlamBurst, tailSlamLine } from './meleeFx.js';
 
 /** Wing spread the actions return to (the mantled HALF sails, TUNING.rest). */
 const REST_SPREAD = TUNING.rest.spread;
@@ -721,6 +722,7 @@ const breath = {
     a.side = Math.random() < 0.5 ? -1 : 1;
     a.aim = d.sense.yawTo;
     a.aim0 = a.aim;
+    a.aimV = 0; // the aim's angular speed (rad/s): a heavy neck accelerates into a track and overshoots
     a.tick = 0;
     a.on = false;
   },
@@ -729,72 +731,115 @@ const breath = {
       a.on = true;
       d.emit('dragon:breathStart');
       d.fx.breathBegin();
-      // start within the snout's reach; P1 then tracks the player, P2 sweeps across them
+      // start within the snout's reach; P1 then tracks the player, P2 rakes across them
       const center = d.yaw + clamp(angleDiff(d.yaw, d.sense.yawTo), -0.6, 0.6);
       a.aim0 = center - (d.phase >= 2 ? (a.side * T.breath.sweepP2) / 2 : 0);
       a.aim = a.aim0;
+      a.aimV = 0;
       a.tick = 0;
     } else if (phase === 'recovery') this.end(d, a);
   },
+  /**
+   * The body while it breathes (w2): planted and braced, the chest and neck driving. The aim is a
+   * heavy spring (it accelerates into a track, lags, overshoots a little) capped at T.breath.track
+   * .maxV; the NECK carries it (the head and the chest twist lead) and the body only shuffles round
+   * once the aim leaves the neck's arc (`neckArc`), slowly (`bodyTurn` rad/s): no turntable. The
+   * fire's kick rocks the head and chest back as it starts (`recoil` s), then it leans into the stream,
+   * surging with each breath (`surge` Hz). P2 rakes the stream across him on an eased arc.
+   */
   update(d, a, dt) {
-    const pose = d.pose, s = d.sense, pt = d.rig.pt;
+    const pose = d.pose, s = d.sense, pt = d.rig.pt, B = T.breath, f = d.fwd;
     if (a.phase === 'windup') {
-      // plants all four feet wide, the chest swells, the throat-to-chest lava charges, the neck draws
-      // back and up, embers leak from the mouth; the wings start to open late in the windup
-      d.turnToward(s.yawTo, d.turnRate * 0.9, dt);
-      pose.head = d.rootPt(pose.headTarget, 0, 5.6, 2.6);
-      pose.headRate = 4;
-      pose.jaw = 0.25;
+      // turns to him early, then plants: the chest heaves up, the neck draws up and back in an S,
+      // the throat-to-chest lava charges; at the end it coils (head back, jaw cracking open, the
+      // shoulders sinking) the instant before the fire
+      const k = a.k, e = smoothstep(0, 0.7, k), c = smoothstep(0.72, 1, k);
+      if (k < 0.65) d.turnToward(s.yawTo, d.turnRate * 0.9, dt);
+      pose.head = d.rootPt(pose.headTarget, 0, 5.4 + 0.6 * e - 0.2 * c, 2.7 - 0.5 * e - 0.6 * c);
+      pose.headRate = 3.5 + 3 * c;
+      pose.jaw = 0.2 + 0.25 * c;
       pose.look.copy(s.chest);
-      pose.look.y += 3 * S;
-      pose.pitch = -0.08;
-      pose.lower = -0.1;
-      pose.stanceF = 0.3;
-      pose.stanceH = 0.2;
+      pose.look.y += (3 + 1.5 * e) * S;
+      pose.pitch = -0.06 - 0.12 * e + 0.06 * c;
+      pose.lower = -0.1 - 0.12 * e + 0.2 * c;
+      pose.bodyRate = 3 + 4 * c;
+      pose.stanceF = 0.35;
+      pose.stanceH = 0.25;
       pose.restep = 1;
-      pose.swell = a.k;
-      pose.spread[0] = pose.spread[1] = a.k > 0.55 ? 1 : REST_SPREAD;
-      pose.mantle = a.k > 0.55 ? 1 : 0;
+      pose.swell = Math.min(1, k * 1.2);
+      pose.spread[0] = pose.spread[1] = k > 0.5 ? 1 : REST_SPREAD;
+      pose.mantle = k > 0.5 ? 1 : 0;
       pose.spreadRate = 3;
-      d.throat = a.k;
-      d.fx.mouthEmbers(dt, pt.mouth, 30, pt.headFwd);
+      pose.tailWave = 0.05 + 0.1 * c; // the tail lashes as it gathers
+      d.throat = k;
+      d.fx.mouthEmbers(dt, pt.mouth, 30 + 40 * c, pt.headFwd);
     } else if (a.phase === 'active') {
       pose.headExact = true; // the stream leaves the mouth
-      if (d.phase >= 2) a.aim = a.aim0 + a.side * T.breath.sweepP2 * a.k;
-      else a.aim = turnToward(a.aim, s.yawTo, 32 * DEG * dt);
-      d.turnToward(a.aim, 1.2, dt);
+      // the aim: a damped spring toward the target (him, or the P2 rake's eased arc)
+      const Tr = B.track ?? {};
+      let want = s.yawTo;
+      // (the target runs a little ahead: the heavy neck lags it and must still finish the arc)
+      if (d.phase >= 2) want = a.aim0 + a.side * B.sweepP2 * easeInOutSine(Math.min(1, a.k * 1.2)) + clamp(angleDiff(a.aim0 + a.side * B.sweepP2 * a.k, s.yawTo), -0.2, 0.2) * 0.4;
+      const err = angleDiff(a.aim, want);
+      const acc = clamp((Tr.k ?? 7) * err - (Tr.c ?? 4.5) * a.aimV, -(Tr.acc ?? 1.6), Tr.acc ?? 1.6);
+      const vMax = d.phase >= 2 ? Tr.maxVP2 ?? Tr.maxV ?? 32 * DEG : Tr.maxV ?? 32 * DEG;
+      a.aimV = clamp(a.aimV + acc * dt, -vMax, vMax);
+      if (!Number.isFinite(a.aimV)) a.aimV = 0;
+      a.aim += a.aimV * dt;
+      // the body: planted while the neck can carry the aim, a heavy shuffle once it can't
+      const rel = angleDiff(d.yaw, a.aim), arc = B.neckArc ?? 0.45;
+      if (Math.abs(rel) > arc) d.turnToward(a.aim - Math.sign(rel) * arc * 0.6, B.bodyTurn ?? 0.7, dt);
       const sa = Math.sin(a.aim), ca = Math.cos(a.aim);
+      // the fire's kick (the first `recoil` s), then the lean and the surges of the breath
+      const rk = Math.exp(-a.t / Math.max(0.05, (B.recoil ?? 0.35) * 0.4)) * smoothstep(0, 0.04, a.t);
+      const surge = 0.5 - 0.5 * Math.cos(a.t * Math.PI * 2 * (B.surge ?? 1.3));
+      const lean = smoothstep(0, 0.6, a.t);
       // the ASCII panel's pose: front crouched low (chest toward the ground, hips higher), forelegs
-      // braced wide, neck stretched forward and DOWN (the stream angles at the ground; the head
-      // tracks / sweeps with the neck alone), wings fully spread and high, the tail lashing slowly
-      pose.head = pose.headTarget.set(pt.neckBase.x + sa * 2.7 * S, pt.neckBase.y - 0.4 * S, pt.neckBase.z + ca * 2.7 * S);
-      pose.headRate = 5;
+      // braced wide, neck stretched forward and DOWN at the stream, wings fully spread and high
+      const reach = (2.4 + 0.35 * lean + 0.2 * surge * lean - 0.7 * rk) * S;
+      pose.head = pose.headTarget.set(pt.neckBase.x + sa * reach, pt.neckBase.y + (-0.4 + 0.9 * rk - 0.1 * surge) * S, pt.neckBase.z + ca * reach);
+      pose.headRate = 6;
       pose.lookDown = 1.0;
       pose.spread[0] = pose.spread[1] = 1;
       pose.spreadRate = 3;
       pose.mantle = 1;
+      pose.flap = 0.06 * rk; // the sails jolt with the kick
+      pose.flapHz = 3;
       pose.look.set(pt.mouth.x + sa * 8 * S, 0, pt.mouth.z + ca * 8 * S);
       pose.lookRate = 12;
       pose.jaw = 0.95;
-      pose.pitch = BREATH_PITCH;
-      pose.lower = 0.15;
-      pose.bodyRate = 4;
-      pose.stanceF = 0.3;
-      pose.stanceH = 0.2;
-      pose.restep = 1; // a foot still short of the wide stance re-plants (and the slow aim turn shuffles)
-      pose.elbowsOut = 0.45;
-      pose.swell = 1;
+      pose.pitch = BREATH_PITCH * lean - 0.16 * rk + 0.04 * surge * lean;
+      pose.lower = 0.15 * lean + 0.1 * rk;
+      pose.twist = clamp(rel * 0.7, -0.45, 0.45); // the chest leads the neck round
+      pose.roll = clamp(-rel * 0.12, -0.08, 0.08);
+      pose.bodyRate = rk > 0.2 ? 9 : 4;
+      pose.headOffset.x -= f.x * 0.5 * S * rk;
+      pose.headOffset.z -= f.z * 0.5 * S * rk;
+      pose.stanceF = 0.35;
+      pose.stanceH = 0.25;
+      pose.restep = 1; // a foot still short of the wide stance re-plants (and the shuffle steps)
+      pose.elbowsOut = 0.45 + 0.2 * rk;
+      pose.swell = 1 - 0.25 * a.k + 0.1 * surge; // it empties as it burns
       pose.tailWave = 0.13;
       d.throat = 1;
       d.fx.breathEmit(dt, pt.mouth, a.aim, BREATH_FALL);
     } else {
-      pose.jaw = 0.2;
-      pose.pitch = BREATH_PITCH * (1 - a.k);
-      pose.lower = 0.15 * (1 - a.k);
-      pose.spread[0] = pose.spread[1] = a.k < 0.3 ? 1 : REST_SPREAD;
+      // spent: the head pulls up out of its own smoke and shakes it off, the chest sags, the sails
+      // come down last
+      const k = a.k;
+      pose.jaw = k < 0.4 ? 0.5 : 0.15;
+      pose.pitch = BREATH_PITCH * (1 - k);
+      pose.lower = 0.15 * (1 - k) + 0.1 * Math.sin(Math.PI * Math.min(1, k * 2));
+      pose.headOffset.y += Math.sin(Math.PI * Math.min(1, k * 1.6)) * 0.6 * S;
+      pose.headOffset.x += Math.sin(d.time * 19) * 0.07 * S * (1 - k);
+      pose.headRate = 4;
+      pose.twist *= 1 - k;
+      pose.swell = 0;
+      pose.spread[0] = pose.spread[1] = k < 0.35 ? 1 : REST_SPREAD;
+      pose.mantle = k < 0.35 ? 1 : 0;
       pose.spreadRate = 2.5;
       d.throat = 0;
-      if (a.k < 0.6) d.fx.mouthEmbers(dt, pt.mouth, 18, pt.headFwd);
+      if (k < 0.6) d.fx.mouthEmbers(dt, pt.mouth, 18, pt.headFwd);
     }
   },
   hit(d, a, dt) {
@@ -1339,8 +1384,14 @@ const _rxz = { x: 0, z: 0 };
 const CLAW = {
   part: 'claw',
   init(d, a, h) {
-    h.w = swipeCurve((h.spec.side ?? 1) * a.side0);
+    h.w = swipeCurve((h.spec.side || 1) * a.side0);
     h.wi = h.w.wi;
+  },
+  enterWindup(d, a, h) {
+    autoSide(d, a, h, (s) => {
+      h.w = swipeCurve(s);
+      h.wi = h.w.wi;
+    });
   },
   windup(d, a, h, k, dt) {
     swipeWindup(d, h.w, k, dt, h.spec.turn ?? 0.5);
@@ -1369,7 +1420,7 @@ const OVH_REACH = 4.2; // model units ahead of the root a planted foreleg smashe
 const OVERHEAD = {
   part: 'claw',
   init(d, a, h) {
-    h.w = swipeCurve((h.spec.side ?? 1) * a.side0);
+    h.w = swipeCurve((h.spec.side || 1) * a.side0);
     h.wi = h.w.wi;
     h.p0 = V();
     h.slam = V();
@@ -1378,9 +1429,15 @@ const OVERHEAD = {
     h.plant = null;
     h.planted = false;
   },
+  enterWindup(d, a, h) {
+    autoSide(d, a, h, (sd) => {
+      h.w = swipeCurve(sd);
+      h.wi = h.w.wi;
+    });
+  },
   windup(d, a, h, k, dt) {
     const pose = d.pose, side = h.w.side, ov = pose.pawOv[h.wi];
-    d.turnToward(d.sense.yawTo - side * 0.2, d.turnRate * 0.8, dt);
+    d.turnToward(d.sense.yawTo - side * 0.2, d.turnRate * (h.spec.turn ?? 0.8), dt);
     ov.w = 1;
     // up out of the stance beside the chest, then high over the shoulder, claws spread; the chest
     // lifts and twists toward the raised paw, the weight shifts onto the other three legs
@@ -1577,13 +1634,17 @@ function flapTo(d, ph, amp, dt) {
 const WING = {
   part: 'wing',
   init(d, a, h) {
-    h.side = (h.spec.side ?? 1) * a.side0;
+    h.side = (h.spec.side || 1) * a.side0;
     h.wi = h.side > 0 ? 0 : 1;
     h.ph0 = 0;
     h.top = 0;
     h.yaw0 = 0;
   },
   enterWindup(d, a, h) {
+    autoSide(d, a, h, (s) => {
+      h.side = s;
+      h.wi = s > 0 ? 0 : 1;
+    });
     // from wherever the beat stands now to the nearest top of the stroke (sin = 1)
     const ph = d.rig.s.flapPhase;
     h.ph0 = Number.isFinite(ph) ? ph : 0;
@@ -1902,6 +1963,577 @@ const STOMP = {
   },
 };
 
+// ================================================================== the whole body (w2 melee)
+// Six more performances so a string is claws, jaws, wings, tail and fire, not "his hands a few
+// times": wingSweep, wingSlam, tailWhip, tailSlam, fireSnap, emberRake. `side: 0` on a claw / wing /
+// wingSweep / emberRake hit = the side the hero stands on when ITS windup starts (a string that has
+// spun round with a tail blow strikes from wherever he is now, not from where he stood at its start).
+
+/** The hero's side now: +1 = model-left (+X), -1 = right. */
+const heroSide = (d) => (d.sense.ang >= 0 ? 1 : -1);
+/** Resolve a `side: 0` hit at its windup start; keeps the beat's paw / wing index for the flash. */
+function autoSide(d, a, h, apply) {
+  if (h.spec.side !== 0) return;
+  apply(heroSide(d));
+  const b = a.beats?.[h.idx];
+  if (b && !b.told) b.wi = h.wi;
+}
+
+/**
+ * Ground set burning by a fire blow: a hazards strip from A to B (world m) that only burns (blockable
+ * contact ticks while he stands in it, skipped while he rolls): its front's one blow is switched off,
+ * the blow was the attack's own. `G` = the hit's `ground` data {w, linger, tick, tickDamage, burn,
+ * delay, speed}. The world catches along it (ADR-107).
+ */
+function groundFire(d, a, ax, az, bx, bz, G) {
+  const H = d.hazards;
+  if (!G || !H?.strip || !Number.isFinite(ax + az + bx + bz)) return null;
+  const ref = H.strip({
+    kind: 'meleeFire', attack: a.name, ax, az, bx, bz, w: G.w, speed: G.speed ?? 45, linger: G.linger,
+    tick: G.tick, tickDamage: G.tickDamage, tickBurn: G.burn ?? 0, delay: G.delay ?? 0.05,
+  });
+  const h = H.get?.(ref);
+  if (h) h.hit = true; // contact fire only (the strip's front would be a second, red blow)
+  const W = d.game.world, ig = TUNING.world?.ignite?.strip ?? 1;
+  for (let i = 0; i <= 2; i++) {
+    const x = lerp(ax, bx, i / 2), z = lerp(az, bz, i / 2);
+    W?.scorch?.burnCircle?.(x, z, G.w * 0.6, 0.4, 0.9);
+    W?.ignite?.(x, z, G.w * 0.6, ig);
+  }
+  return ref;
+}
+
+// ---- wingSweep: the wing scythe. One wing is drawn up and back over the hero's side (the chest
+// twisting away, the wing at the top of a beat), then it comes down and ACROSS the front in one
+// stroke while the whole body pivots into it: the fingers rake through him low, from his side to
+// the far one. A wide arc to parry (white); not a buffet straight down beside the flank.
+const WING_SWEEP = {
+  part: 'wing',
+  init(d, a, h) {
+    h.side = (h.spec.side || 1) * a.side0;
+    h.wi = h.side > 0 ? 0 : 1;
+    h.ph0 = 0;
+    h.top = 0;
+    h.yaw0 = 0;
+  },
+  enterWindup(d, a, h) {
+    autoSide(d, a, h, (s) => {
+      h.side = s;
+      h.wi = s > 0 ? 0 : 1;
+    });
+    const ph = d.rig.s.flapPhase;
+    h.ph0 = Number.isFinite(ph) ? ph : 0;
+    h.top = h.ph0 + angleDiff(h.ph0, Math.PI / 2);
+  },
+  windup(d, a, h, k, dt) {
+    const pose = d.pose, side = h.side, W = h.spec;
+    // the hero sits `face` rad off the nose on the wing's side: the stroke starts behind him
+    d.turnToward(d.sense.yawTo - side * (W.face ?? 0.55), d.turnRate * 1.8, dt);
+    pose.speed = Math.max(pose.speed, 1.5);
+    // a hero inside the wing's arc: it gives ground, a heavy shuffle back to swing the sail at him
+    giveGround(d, W, k, dt);
+    const e = smoothstep(0, 0.8, k);
+    pose.spread[h.wi] = lerp(REST_SPREAD, W.spread ?? 0.85, e);
+    pose.spread[1 - h.wi] = 0.25;
+    pose.spreadRate = 7;
+    pose.mantle = 0;
+    flapTo(d, lerp(h.ph0, h.top, e), W.amp ?? 0.9, dt);
+    // wound up: the chest twists away (the wing drawn back), the body leans away and sinks a little
+    pose.twist = side * 0.4 * e;
+    pose.roll = -side * 0.14 * e;
+    pose.lower = 0.12 * e;
+    pose.pitch = -0.06 * e;
+    pose.jaw = 0.3 + 0.3 * e;
+    pose.stanceF = 0.25;
+    pose.stanceH = 0.3;
+    pose.restep = 1;
+    d.rootPt(pose.look, side * 6, 1.5, 6); // it watches the stroke's path
+    if (h.holdK > 0) pose.headOffset.y += Math.sin(d.time * 7) * 0.05 * S;
+  },
+  aim(d, a, h) {
+    h.yaw0 = d.yaw;
+  },
+  active(d, a, h, k, dt) {
+    const pose = d.pose, side = h.side, W = h.spec;
+    // down, then across: the beat's downstroke brings the wing low in the first part of the stroke,
+    // then the body pivots it over the ground to the far side (the fingers rake through him)
+    const u = smoothstep(0, W.drop ?? 0.4, k);
+    const sweep = easeInOutSine(clamp((k - (W.sweepAt ?? 0.2)) / (1 - (W.sweepAt ?? 0.2)), 0, 1));
+    flapTo(d, h.top + Math.PI * u, W.amp ?? 0.9, dt);
+    d.yaw = h.yaw0 - side * (W.sweep ?? 1.2) * sweep;
+    pose.spread[h.wi] = W.spread ?? 0.85;
+    pose.spread[1 - h.wi] = 0.25;
+    pose.spreadRate = 8;
+    pose.mantle = smoothstep(0.1, 0.6, k);
+    pose.twist = side * lerp(0.4, -0.5, sweep);
+    pose.roll = side * lerp(-0.14, 0.3, u);
+    pose.lower = 0.12 + 0.25 * u;
+    pose.pitch = 0.1 * u;
+    pose.bodyRate = 12;
+    pose.speed = 5;
+    pose.jaw = 0.8;
+  },
+  endActive(d, a, h) {
+    const w = d.rig.pt.wings[h.wi];
+    d.fx.dustRing(w.tips[1].x, w.tips[1].z, 0.6 * S, 14, 0.8);
+    d.game.world?.gust?.(w.knuckles[1].x, w.knuckles[1].z, 1.4, 9 * S);
+  },
+  recover(d, a, h, k) {
+    const pose = d.pose;
+    pose.flap = 0;
+    pose.flapHz = 0;
+    pose.spread[h.wi] = k < 0.4 ? h.spec.spread ?? 0.85 : REST_SPREAD;
+    pose.spreadRate = 3;
+    pose.mantle = k < 0.3 ? 1 - k / 0.3 : 0;
+    pose.twist = -h.side * 0.5 * (1 - k);
+    pose.roll = h.side * 0.3 * (1 - k);
+    pose.lower = 0.37 * (1 - k);
+    pose.restep = 1;
+  },
+  hit(d, a, h, stage) {
+    if (stage === 'active') wingBonesHit(d, a, h);
+  },
+};
+
+/** A hero closer than `spec.room` model units: a heavy shuffle back through the windup (backSpeed m/s). */
+function giveGround(d, spec, k, dt) {
+  const room = (spec.room ?? 0) * S - d.sense.dist;
+  if (room > 0 && k < 0.85) d.moveForward(-Math.min(spec.backSpeed ?? 5, room * 4), dt);
+}
+
+/** The wing's bones as swept spheres (wrist, knuckles, finger middles, tips): the buffet's test. */
+function wingBonesHit(d, a, h) {
+  if (a.hitDone) return;
+  const w = d.rig.pt.wings[h.wi];
+  let hit = sweepHit(d, a, 'ww', w.wrist, 0.75 * S);
+  for (let i = 0; i < 4 && !hit; i++) hit = sweepHit(d, a, WING_KEYS_K[i], w.knuckles[i], 0.7 * S);
+  for (let i = 0; i < 4 && !hit; i++) hit = sweepHit(d, a, WING_KEYS_M[i], _h.lerpVectors(w.knuckles[i], w.tips[i], 0.5), 0.65 * S);
+  for (let i = 0; i < 4 && !hit; i++) hit = sweepHit(d, a, WING_KEYS_T[i], w.tips[i], 0.55 * S);
+  if (hit) d.strike(a, { damage: h.spec.damage, knockback: h.spec.knockback, kind: 'wing', from: d.rig.pt.chest, point: w.knuckles[1] });
+}
+
+// ---- wingSlam: both wings. It rises on its haunches, both sails go up to the top of a beat and
+// open wide (the biggest shape it makes), then they are brought forward and down together in front
+// of it, the chest driving down after them: the air they slam into the ground throws dust (from phase
+// 2 the heat of its body) out in a fan, and `burst` scatters hanging embers. The blow is the ground
+// in front (a disc of `radius` round the slam point, locked as the stroke starts).
+const WING_SLAM = {
+  part: 'wings',
+  init(d, a, h) {
+    h.ph0 = 0;
+    h.top = 0;
+    h.slam = V();
+    h.done = false;
+  },
+  enterWindup(d, a, h) {
+    const ph = d.rig.s.flapPhase;
+    h.ph0 = Number.isFinite(ph) ? ph : 0;
+    h.top = h.ph0 + angleDiff(h.ph0, Math.PI / 2);
+  },
+  windup(d, a, h, k, dt) {
+    const pose = d.pose;
+    d.turnToward(d.sense.yawTo, d.turnRate * 1.2, dt);
+    const e = smoothstep(0, 0.75, k), c = smoothstep(0.7, 1, k);
+    // (raised only part way: fully up, the sails stand on edge to the game camera and vanish)
+    flapTo(d, lerp(h.ph0, h.top, e), h.spec.ampUp ?? 0.5, dt);
+    pose.spread[0] = pose.spread[1] = lerp(REST_SPREAD, 1, e);
+    pose.spreadRate = 6;
+    pose.mantle = 0.3 * e;
+    // up on the haunches, chest out, the head thrown back over the rising sails
+    pose.pitch = -0.28 * e - 0.06 * c;
+    pose.rear = 0.35 * e;
+    pose.lower = -0.15 * e;
+    pose.bodyRate = 4 + 3 * c;
+    pose.head = d.rootPt(pose.headTarget, 0, 5.7 + 0.3 * c, 2.4 - 0.4 * c);
+    pose.headRate = 5;
+    pose.jaw = 0.4 + 0.4 * c;
+    pose.swell = e;
+    pose.stanceH = 0.3;
+    pose.restep = 1;
+    if (h.holdK > 0) pose.headOffset.y += Math.sin(d.time * 6) * 0.06 * S;
+    if (d.phase >= 2) d.throat = 0.5 * e;
+  },
+  aim(d, a, h) {
+    // the slam point: where he stands (led a little), pulled into the stroke's band ahead of it
+    const s = d.sense, Sp = h.spec;
+    _h.copy(s.pos).addScaledVector(s.vel, 0.1);
+    const r = toRootXZ(d, _h, _rxz);
+    d.rootPt(h.slam, clamp(r.x, -1.6, 1.6), 0, clamp(r.z, Sp.near ?? 4.5, Sp.far ?? 7.5));
+    h.slam.y = 0;
+  },
+  active(d, a, h, k, dt) {
+    const pose = d.pose, u = k * k;
+    flapTo(d, h.top + Math.PI * u, lerp(h.spec.ampUp ?? 0.5, 1.0, Math.min(1, k * 2)), dt);
+    pose.spread[0] = pose.spread[1] = 1;
+    pose.spreadRate = 10;
+    pose.mantle = smoothstep(0, 0.7, k); // the sails come forward as they fall
+    pose.pitch = lerp(-0.34, 0.26, u);
+    pose.rear = 0.35 * (1 - u);
+    pose.lower = lerp(-0.15, 0.4, u);
+    pose.bodyRate = 14;
+    pose.head = d.rootPt(pose.headTarget, 0, lerp(6.0, 3.2, u), lerp(2.0, 4.6, u));
+    pose.headRate = 10;
+    pose.jaw = 0.9;
+  },
+  endActive(d, a, h) {
+    if (h.done) return;
+    h.done = true;
+    const g = d.game, c = h.slam, Sp = h.spec;
+    g.shake?.(0.4);
+    g.world?.gust?.(c.x, c.z, 2.0, 16 * S);
+    g.world?.impact?.(c.x, c.z, Sp.radius, TUNING.world.stomp, GROUND_BLOW);
+    wingSlamBurst(d.fx, c.x, c.z, Sp.radius, d.fwd.x, d.fwd.z, d.phase >= 2);
+    const W = d.rig.pt.wings;
+    for (let i = 0; i < 2; i++) d.emit('dragon:step', { x: W[i].tips[1].x, z: W[i].tips[1].z, heavy: true });
+    d.markHitbox?.(c.x, 0, c.z, Sp.radius);
+    const p = g.player?.position;
+    if (p && Math.hypot(p.x - c.x, p.z - c.z) <= Sp.radius + playerR(g)) {
+      d.strike(a, { damage: Sp.damage, knockback: Sp.knockback, knockdown: !!Sp.knockdown, kind: 'slam', from: d.rig.pt.chest, point: c });
+    }
+    const B = Sp.burst;
+    if (B && d.phase >= (B.phase ?? 1)) d.bullets?.burst(a.name, c.x, 0.6, c.z, B.n, B.wait, B.stagger, B.speed, -1);
+  },
+  recover(d, a, h, k) {
+    const pose = d.pose;
+    pose.flap = 0;
+    pose.flapHz = 0;
+    pose.spread[0] = pose.spread[1] = k < 0.35 ? 1 : REST_SPREAD;
+    pose.spreadRate = 3;
+    pose.mantle = k < 0.35 ? 1 : 0;
+    pose.pitch = 0.26 * (1 - k);
+    pose.lower = 0.4 * (1 - k);
+    pose.restep = 1;
+    d.throat = 0;
+  },
+};
+
+// ---- tailWhip: the flick. A fast pivot puts the hero at its flank (`at` rad off the nose), the tail
+// coils to the far side, the haunches drop; then a short, violent spin (`spin`) snaps the stiff tail
+// out through him and on past. Faster and shorter than the tail sweep, and it needs no hero behind it:
+// from the front quarter it pivots first. The hit is the sweep's (swept arc + tail spheres).
+const TAIL_WHIP = {
+  part: 'tailTip',
+  init(d, a, h) {
+    h.st = {};
+  },
+  enterWindup(d, a, h) {
+    const st = h.st, sp = h.spec, s = heroSide(d);
+    st.dir = -s; // spin so the tail comes round INTO him
+    st.at = s * (sp.at ?? 1.7);
+    st.back = sp.back ?? 0.3;
+    st.yawW = d.sense.yawTo - st.at - st.dir * st.back;
+    st.tailAng = undefined;
+  },
+  windup(d, a, h, k, dt) {
+    const pose = d.pose, st = h.st;
+    // the pivot tracks him until the last fifth (then it is set), capped so the tail isn't flung
+    if (k < 0.8) st.yawW = d.sense.yawTo - st.at - st.dir * st.back;
+    d.turnToward(st.yawW, h.spec.pivotRate ?? 5, dt);
+    pose.speed = Math.max(pose.speed, 4);
+    pose.tailLegacy = true;
+    pose.tailLift = 0;
+    pose.tailCurl = st.dir * 0.06; // coiled away from him
+    pose.tailStiff = 1.8;
+    pose.tailWave = 0;
+    const e = smoothstep(0.3, 1, k);
+    pose.lower = 0.3 * e;
+    pose.pitch = 0.1 * e;
+    pose.roll = st.dir * 0.08 * e;
+    pose.stanceH = 0.4;
+    pose.restep = 1;
+    pose.spread[0] = pose.spread[1] = 0;
+    pose.spreadRate = 6;
+    pose.lookRate = 7;
+  },
+  aim(d, a, h) {
+    h.st.yawW = d.yaw;
+  },
+  active(d, a, h, k, dt) {
+    const pose = d.pose, st = h.st;
+    d.yaw = st.yawW + st.dir * ((h.spec.spin ?? 2.1) + st.back) * easeInOutSine(k);
+    pose.tailLegacy = true;
+    pose.tailLift = 0;
+    pose.tailCurl = -st.dir * 0.03; // the whip: the tip trails, then cracks through
+    pose.tailStiff = 3;
+    pose.tailWave = 0;
+    pose.lower = 0.3;
+    pose.pitch = 0.12;
+    pose.roll = -st.dir * 0.1;
+    pose.bodyRate = 10;
+    pose.stanceH = 0.4;
+    pose.speed = 7;
+    pose.spread[0] = pose.spread[1] = 0;
+    d.rootPt(pose.look, st.dir * 7, 1, 3);
+  },
+  recover(d, a, h, k) {
+    const pose = d.pose;
+    pose.tailLegacy = true;
+    pose.tailLift = k > 0.4 ? 1 : 0;
+    pose.lower = 0.3 * (1 - k);
+    pose.pitch = 0.12 * (1 - k);
+    pose.speed = 2;
+    pose.spread[0] = pose.spread[1] = k > 0.5 ? REST_SPREAD : 0;
+    pose.restep = 1;
+  },
+  hit(d, a, h, stage, k) {
+    tailSweepHit(d, a, h.st, h.spec, stage, k);
+  },
+};
+
+// ---- tailSlam: the hammer. It turns its hindquarters on him, the tail rises high over its back (a
+// scorpion's arch, the tip quivering), holds; then it comes down along a line toward him like a
+// felled tree: dust along its length, the ground split under it. Red: roll aside. The blow is the
+// tail lying on the ground at the end of the stroke (its points, in 2-D, against the hero).
+const TAIL_SLAM = {
+  part: 'tailTip',
+  init(d, a, h) {
+    h.off = 0;
+    h.done = false;
+  },
+  enterWindup(d, a, h) {
+    // the resting tail hooks off the straight line behind: aim the hook, not the spine
+    const ch = d.rig.tail, m = ch.p[Math.min(12, ch.n)];
+    const ang = Math.atan2(m.x - d.position.x, m.z - d.position.z);
+    const off = angleDiff(d.yaw + Math.PI, ang);
+    // (half of it: raised and slammed, the tail hooks less than it rests)
+    h.off = Number.isFinite(off) ? clamp(off * 0.5, -0.3, 0.3) : 0;
+  },
+  windup(d, a, h, k, dt) {
+    const pose = d.pose;
+    // hindquarters to him (the tail's line on his spot), turning heavily on the forelegs
+    if (k < 0.85) d.turnToward(d.sense.yawTo + Math.PI - h.off, h.spec.pivotRate ?? 3, dt);
+    pose.speed = Math.max(pose.speed, 3);
+    const e = smoothstep(0, 0.7, k);
+    pose.tailLift = lerp(1, h.spec.lift ?? 2.6, e); // rises over the back (the rig eases it up)
+    pose.tailStiff = 2;
+    pose.tailWave = 0.02 + (h.holdK > 0 ? 0.04 : 0);
+    pose.tailCurl = 0;
+    // the rump lifts, the chest drops: all its weight goes into the tail
+    pose.pitch = 0.16 * e;
+    pose.lower = 0.1 * e;
+    pose.stanceF = 0.3;
+    pose.stanceH = 0.25;
+    pose.restep = 1;
+    pose.spread[0] = pose.spread[1] = 0.6;
+    pose.spreadRate = 4;
+    pose.jaw = 0.3;
+    pose.lookRate = 6; // over its shoulder at him
+  },
+  active(d, a, h, k) {
+    const pose = d.pose;
+    pose.tailLift = 0; // falls (the rig drops a tail fast: rate 7)
+    pose.tailStiff = 3;
+    pose.tailWave = 0;
+    pose.tailCurl = 0;
+    pose.pitch = lerp(0.16, -0.12, k * k);
+    pose.lower = lerp(0.1, 0.32, k);
+    pose.bodyRate = 12;
+    pose.spread[0] = pose.spread[1] = 0.7;
+    pose.spreadRate = 8;
+    pose.jaw = 0.7;
+  },
+  endActive(d, a, h) {
+    if (h.done) return;
+    h.done = true;
+    const g = d.game, ch = d.rig.tail, n = ch.n, Sp = h.spec;
+    g.shake?.(0.45);
+    tailSlamLine(d.fx, ch.p, 4, n, d.phase >= 2);
+    const tip = ch.p[n];
+    for (let i = 6; i <= n; i += 5) g.world?.impact?.(ch.p[i].x, ch.p[i].z, 1.6 * S, TUNING.world.hop, GROUND_BLOW);
+    d.emit('dragon:step', { x: tip.x, z: tip.z, heavy: true });
+    const p = g.player?.position;
+    if (!p) return;
+    const pr = playerR(g), radii = d.model.tailRadii;
+    let hit = false;
+    for (let i = 4; i <= n && !hit; i++) {
+      const A = ch.p[i - 1], B = ch.p[i];
+      const ex = B.x - A.x, ez = B.z - A.z, l2 = ex * ex + ez * ez || 1;
+      const t = clamp(((p.x - A.x) * ex + (p.z - A.z) * ez) / l2, 0, 1);
+      const r = ((radii[Math.min(i, radii.length - 1)] ?? 0.2) + (Sp.width ?? 0.9)) * S;
+      if (Math.hypot(p.x - (A.x + ex * t), p.z - (A.z + ez * t)) <= r + pr) hit = true;
+      d.markHitbox?.(B.x, 0, B.z, r);
+    }
+    if (hit) d.strike(a, { damage: Sp.damage, knockback: Sp.knockback, knockdown: !!Sp.knockdown, kind: 'tail', from: d.position, point: tip });
+    if (Sp.ground && d.phase >= (Sp.ground.phase ?? 1)) groundFire(d, a, ch.p[5].x, ch.p[5].z, tip.x, tip.z, Sp.ground);
+  },
+  recover(d, a, h, k) {
+    const pose = d.pose;
+    pose.tailLift = k > 0.5 ? 1 : 0;
+    pose.pitch = -0.12 * (1 - k);
+    pose.lower = 0.32 * (1 - k);
+    pose.spread[0] = pose.spread[1] = k > 0.5 ? REST_SPREAD : 0.7;
+    pose.restep = 1;
+  },
+};
+
+// ---- fireSnap: a bite that does not close. The neck coils as for a bite while the throat fills
+// (embers leak through the teeth), then the head drives forward and the jaws stay open: a short,
+// fat gout of fire (`active - impact` s) that ticks (blockable, never parryable: block it, or get
+// out of the cone), tracking him slowly; the ground it reached burns for a moment (`ground`). From
+// any side: the windup whirls it round to face him first (`turn` rad/s).
+const FIRE_SNAP = {
+  part: 'mouth',
+  init(d, a, h) {
+    h.aimYaw = 0;
+    h.next = 0;
+    h.fired = false;
+    h.goal = V();
+  },
+  windup(d, a, h, k, dt) {
+    const pose = d.pose, nb = d.rig.pt.neckBase, f = d.fwd, pt = d.rig.pt;
+    d.turnToward(d.sense.yawTo, h.spec.turn ?? 4, dt);
+    pose.speed = Math.max(pose.speed, 2);
+    giveGround(d, h.spec, k, dt); // under its chest he is out of the fire's way: it backs off him
+    const e = smoothstep(0, 0.8, k);
+    // the coil: drawn up and back, the chest swelling with the fire it holds
+    pose.head = pose.headTarget.set(nb.x + f.x * lerp(1.0, 0.5, e) * S, nb.y + lerp(1.7, 2.3, e) * S, nb.z + f.z * lerp(1.0, 0.5, e) * S);
+    pose.headRate = 7;
+    pose.look.copy(d.sense.chest);
+    pose.jaw = 0.25 + 0.2 * e;
+    pose.lower = 0.1 + 0.15 * e;
+    pose.pitch = -0.08 * e;
+    pose.swell = e;
+    pose.stanceF = 0.3;
+    pose.restep = 1;
+    pose.spread[0] = pose.spread[1] = REST_SPREAD + 0.2 * e;
+    pose.spreadRate = 5;
+    d.throat = 0.3 + 0.7 * e;
+    d.fx.mouthEmbers(dt, pt.mouth, 20 + 40 * e, pt.headFwd);
+  },
+  aim(d, a, h) {
+    // aimed from the neck base (the coiled head may stand past a hero close in)
+    const s = d.sense, nb = d.rig.pt.neckBase;
+    const tx = s.pos.x + s.vel.x * 0.15, tz = s.pos.z + s.vel.z * 0.15;
+    h.aimYaw = Math.atan2(tx - nb.x, tz - nb.z);
+    if (!Number.isFinite(h.aimYaw)) h.aimYaw = d.yaw;
+    // the thrust reaches to just short of him (model units from the neck base)
+    h.reach = clamp((Math.hypot(tx - nb.x, tz - nb.z) - 0.6 * S) / S, 1.3, 2.8);
+    h.next = h.spec.impact;
+    h.fired = false;
+  },
+  active(d, a, h, k, dt) {
+    const pose = d.pose, nb = d.rig.pt.neckBase, pt = d.rig.pt, Sp = h.spec;
+    // it keeps the gout on him, slowly (the neck leads, the body follows)
+    const m = pt.mouth, s = d.sense;
+    const want = Math.atan2(s.pos.x - nb.x, s.pos.z - nb.z);
+    if (Number.isFinite(want)) h.aimYaw = turnToward(h.aimYaw, want, (Sp.track ?? 0.6) * dt);
+    d.turnToward(h.aimYaw, 1.2, dt);
+    const sa = Math.sin(h.aimYaw), ca = Math.cos(h.aimYaw);
+    const fireOn = a.t >= Sp.impact - 1e-6;
+    // the thrust: the head drives forward and down; the gout's kick rocks it back a hand
+    const kick = fireOn ? Math.exp(-(a.t - Sp.impact) * 9) : 0;
+    const reach = lerp(Math.min(1.6, h.reach ?? 1.6), h.reach ?? 2.8, smoothstep(0, Sp.impact * 1.4, a.t)) - 0.35 * kick;
+    pose.headExact = true;
+    pose.head = pose.headTarget.set(nb.x + sa * reach * S, nb.y + (-0.1 + 0.3 * kick) * S, nb.z + ca * reach * S);
+    pose.headRate = 14;
+    pose.look.set(m.x + sa * 8 * S, 0, m.z + ca * 8 * S);
+    pose.lookRate = 14;
+    pose.lookDown = 1.0;
+    pose.jaw = 1;
+    pose.jawRate = 30;
+    pose.pitch = 0.16 - 0.06 * kick;
+    pose.lower = 0.25;
+    pose.bodyRate = 9;
+    pose.hindLock = true;
+    pose.stanceF = 0.3;
+    pose.elbowsOut = 0.35;
+    pose.swell = 1 - 0.6 * k;
+    pose.spread[0] = pose.spread[1] = REST_SPREAD + 0.25;
+    if (k < 0.3 && (h.reach ?? 0) >= 2.8) d.moveForward(1.2 * S, dt); // a far hero: it steps in
+    d.throat = fireOn ? 1 - 0.5 * k : 1;
+    if (fireOn) {
+      const dur = Math.max(0.05, a.dur - Sp.impact);
+      snapFire(d.fx, h, dt, m, h.aimYaw, Sp.fall ?? 0.2, Sp.range, clamp((a.t - Sp.impact) / dur, 0, 1), !h.fired);
+      if (!h.fired) {
+        h.fired = true;
+        // the fire's sound is the stream's (audio: the breath loop, for the gout's half second)
+        h.roaring = true;
+        d.emit('dragon:breathStart');
+        // the ground the gout reaches burns on for a moment
+        const G = Sp.ground;
+        // (from under the neck: the gout splashes back under the thrusting head)
+        if (G) groundFire(d, a, nb.x + sa * 0.5 * S, nb.z + ca * 0.5 * S, m.x + sa * Sp.range * 0.9, m.z + ca * Sp.range * 0.9, G);
+      }
+    }
+  },
+  endActive(d, a, h) {
+    FIRE_SNAP.end(d, a, h);
+  },
+  end(d, a, h) {
+    if (!h.roaring) return;
+    h.roaring = false;
+    d.emit('dragon:breathEnd');
+  },
+  recover(d, a, h, k, dt) {
+    const pose = d.pose, pt = d.rig.pt;
+    pose.jaw = k < 0.3 ? 0.7 : 0.15;
+    pose.pitch = 0.16 * (1 - k);
+    pose.lower = 0.25 * (1 - k);
+    // the head jerks up out of its own smoke and shakes it off
+    pose.headOffset.y += Math.sin(Math.PI * Math.min(1, k * 1.5)) * 0.5 * S;
+    pose.headOffset.x += Math.sin(d.time * 21) * 0.08 * S * (1 - k);
+    pose.restep = 1;
+    d.throat = 0.3 * (1 - k);
+    if (k < 0.6) snapSmoke(d.fx, h, dt, pt.mouth, pt.headFwd);
+  },
+  hit(d, a, h, stage) {
+    if (stage !== 'active') return;
+    const Sp = h.spec, m = d.rig.pt.mouth;
+    const dd = Sp.range * 0.5;
+    d.markHitbox?.(m.x + Math.sin(h.aimYaw) * dd, 1, m.z + Math.cos(h.aimYaw) * dd, dd * Math.tan(Sp.halfAngle));
+    if (a.t + 1e-6 < h.next) return;
+    h.next += Sp.tick;
+    const p = d.game.player?.position;
+    if (!p) return;
+    const dx = p.x - m.x, dz = p.z - m.z, dist = Math.hypot(dx, dz);
+    // (from the maw, and from the neck base for a hero in close under the thrusting head)
+    const nb = d.rig.pt.neckBase, nx = p.x - nb.x, nz = p.z - nb.z, nd = Math.hypot(nx, nz);
+    const inCone = dist < 2.0 * S || (dist <= Sp.range && Math.abs(angleDiff(h.aimYaw, Math.atan2(dx, dz))) <= Sp.halfAngle) ||
+      (nd <= 4.5 * S && Math.abs(angleDiff(h.aimYaw, Math.atan2(nx, nz))) <= Sp.halfAngle);
+    // a stream: every tick is its own (blockable, unparryable) hit
+    if (inCone) d.hitPlayer({ damage: Sp.tickDamage, from: { x: m.x, z: m.z }, knockback: 0, kind: 'fire', burn: Sp.burn ?? 0, point: m }, a);
+  },
+};
+
+// ---- emberRake: the claw rake, burning. From `ground.phase` the paw's wake catches: the arc it
+// raked across the ground burns for a moment (two strips along the swing's low half)
+const EMBER_RAKE = {
+  part: 'claw',
+  init: CLAW.init,
+  enterWindup(d, a, h) {
+    autoSide(d, a, h, (s) => {
+      h.w = swipeCurve(s);
+      h.wi = h.w.wi;
+    });
+    h.lastX = h.lastZ = NaN;
+  },
+  windup(d, a, h, k, dt) {
+    CLAW.windup(d, a, h, k, dt);
+    if (d.phase >= (h.spec.ground?.phase ?? 2)) d.fx.mouthEmbers(dt, d.rig.pt.arms[h.wi].toe, 14 * k, d.fwd); // the paw smoulders
+  },
+  active(d, a, h, k, dt) {
+    CLAW.active(d, a, h, k, dt);
+    const toe = d.rig.pt.arms[h.wi].toe;
+    if (Number.isFinite(h.lastX)) rakeSparks(d.fx, toe, toe.x - h.lastX, toe.z - h.lastZ, d.phase >= (h.spec.ground?.phase ?? 2));
+    h.lastX = toe.x;
+    h.lastZ = toe.z;
+  },
+  endActive(d, a, h) {
+    const G = h.spec.ground;
+    if (!G || d.phase < (G.phase ?? 2)) return;
+    const w = h.w;
+    // the swing's low half on the ground: from P1 (out wide) through the arc's 3/4 point to P2
+    const A = d.rootPt(_h, w.p1[0], 0, w.p1[2]);
+    const M = rootBezier(d, _h2, w.p0, w.p1, w.p2, 0.72);
+    groundFire(d, a, A.x, A.z, M.x, M.z, G);
+    const ax = M.x, az = M.z;
+    const B = d.rootPt(_h, w.p2[0], 0, w.p2[2]);
+    groundFire(d, a, ax, az, B.x, B.z, G);
+  },
+  recover: CLAW.recover,
+  hit: CLAW.hit,
+};
+
 /** The performances a string hit can use (TUNING.attacks[name].hits[i].kind). */
 export const KINDS = {
   claw: CLAW,
@@ -1914,6 +2546,12 @@ export const KINDS = {
   tailSweep: TAIL_SWEEP,
   hop: HOP,
   stomp: STOMP,
+  wingSweep: WING_SWEEP,
+  wingSlam: WING_SLAM,
+  tailWhip: TAIL_WHIP,
+  tailSlam: TAIL_SLAM,
+  fireSnap: FIRE_SNAP,
+  emberRake: EMBER_RAKE,
 };
 
 /** The hit (string scratch) the runner is in: its windup / active entry, or null in the recovery. */
@@ -2029,6 +2667,9 @@ export function makeString(name) {
     },
     hit(d, a, dt) {
       const h = curHit(a);
+      // (the next hit's beat may arm on the last frame of this active, a float hair early: this
+      // hit's test must not then spend the next hit's lock)
+      if (h && a.cur && Number.isFinite(a.cur.hit) && a.cur.hit !== h.idx) return;
       if (h) h.K.hit?.(d, a, h, stageOf(a), a.k, dt);
       else {
         const L = a.hits[a.hits.length - 1];
@@ -2052,11 +2693,19 @@ const frenzy = makeString('frenzy');
 const stormFlurry = makeString('stormFlurry');
 const cinderFlurry = makeString('cinderFlurry');
 const blackMaw = makeString('blackMaw');
+const wingRend = makeString('wingRend');
+const pivotLash = makeString('pivotLash');
+const rearGuard = makeString('rearGuard');
+const skyHammer = makeString('skyHammer');
+const furnaceMaw = makeString('furnaceMaw');
+const cinderRake = makeString('cinderRake');
+const cataclysm = makeString('cataclysm');
 
 /** Every ability (AI-selectable and Lab-triggerable). Order = Lab list order (keys 1-9 = the first nine). */
 export const ATTACKS = {
   bite, swipe, clawCombo, rendingFlurry, hesitantMaw, wingBuffet, tailLash, pounce, frenzy,
   tail, stomp, breath, fireball, charge, leap, roar, stormFlurry, cinderFlurry, blackMaw,
+  wingRend, pivotLash, rearGuard, skyHammer, furnaceMaw, cinderRake, cataclysm,
   ...FIRE, // fireAttacks.js: the short flights and the fire spells (contract 3)
   ...BULLET_HELL, // bulletAttacks.js: the bullet-hell patterns (ADR-039)
   ...TERRAIN_MOVES, // terrainAttacks.js: it takes a tree or a boulder and uses it (ADR-110)
