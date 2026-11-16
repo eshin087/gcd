@@ -9,7 +9,7 @@ import { Atmosphere } from './atmosphere.js';
 import { GroundFire } from './fire.js';
 import { Scars } from './scars.js';
 import { Destructibles } from './destructibles.js';
-import { BLOW, SCAR } from './breakTuning.js';
+import { BLOW, SCAR, QUALITY } from './breakTuning.js';
 
 // Owns the static environment and the shared environment-interaction APIs:
 //   world.resolve(pos, radius, bound)       circle collision vs stones/trunks + arena bound
@@ -23,6 +23,7 @@ import { BLOW, SCAR } from './breakTuning.js';
 //   world.ignite(x, z, r, k, grass = true)  fire lands: grass (unless grass = false) and wood catch
 //   world.destructibles / .fire / .scars    the systems behind them (destructibles.js, fire.js, scars.js)
 //   world.restore()                         everything stands and is unburnt again (the fight's reset)
+//   world.setQuality(k)                     the phone budget, 0.3 .. 1 (setGrassQuality sets it from the preset)
 export const PUSHER_SLOTS = MAX_PUSH;
 
 /** A set's own night (`sky: { moonColor, moonDir, ambient, fogColor, fogNear, fogFar }`, all optional):
@@ -126,6 +127,12 @@ export class World {
       this.scars.ground(x, z, power, o?.dx, o?.dz);
       // torn ground: the grass there is gone (char without heat)
       this.scorch.burnCircle(x, z, Math.min(r, 0.6 + power * 0.9), 0.5, 0);
+      // a big blow leaves a crater: a rim of thrown-up earth and a charred floor that stay till the reset
+      if (power >= SCAR.crater.min) {
+        const cr = Math.min(r, 1.2 + power * 1.1);
+        this.scars.crater(x, z, cr, power);
+        this.scorch.burnCircle(x, z, cr, SCAR.crater.char, 0);
+      }
     }
     if (o?.fire > 0) this.ignite(x, z, r, o.fire);
     return n;
@@ -144,8 +151,9 @@ export class World {
     this.destructibles.reset();
   }
 
-  resolve(pos, radius, bound = Infinity) {
-    return this.colliders.resolve(pos, radius, bound);
+  /** `soft`: pass through breakable wood (the wyrm's body: it fells what it walks into). */
+  resolve(pos, radius, bound = Infinity, soft = false) {
+    return this.colliders.resolve(pos, radius, bound, soft);
   }
 
   setPusher(slot, x, y, z, radius) {
@@ -164,6 +172,17 @@ export class World {
 
   setGrassQuality(count) {
     this.grass.setCount(count);
+    // the destruction's phone budget follows the same preset (CONFIG.quality: LOW, MEDIUM, HIGH)
+    const q = CONFIG.quality.find((p) => p.grass === count);
+    if (q && QUALITY[q.name] !== undefined) this.setQuality(QUALITY[q.name]);
+  }
+
+  /** The destruction's phone budget (0.3 .. 1): debris glyphs, flames, wreckage, fires, floor marks. */
+  setQuality(k) {
+    if (!Number.isFinite(k)) return;
+    this.quality = k;
+    this.destructibles?.setQuality?.(k);
+    this.scars?.setQuality?.(k);
   }
 
   update(dt) {

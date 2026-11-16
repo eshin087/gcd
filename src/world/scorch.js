@@ -26,6 +26,35 @@ export class Scorch {
     this.emberTimer = 0;
     // a wisp of smoke off hot ground (a reused fire-field record: no per-spawn object)
     this._smoke = { x: 0, y: 1.0, z: 0, vx: 0.2, vy: 0.8, vz: 0, life: 1.6, size: 1.0, sizeEnd: 2.4, heat: 0.25, heatEnd: 0, drag: 0.4, gravity: 0, kind: 'smoke' };
+    // an ember off hot ground (a reused glyph-particle record: spawn copies it)
+    this._ember = { x: 0, y: 0.15, z: 0, vx: 0, vy: 0, vz: 0, life: 1, size: 0.2, sizeEnd: 0.05, glyph: ".'`*", color: [1, 0.5, 0.1], colorEnd: [0.6, 0.06, 0.01], alpha: 1, alphaEnd: 0, drag: 0.6, flicker: 0.5 };
+    // the hot cells the embers are drawn from: a sample taken while the decay walks the active set
+    // (no array copied out of the Set each frame)
+    this._pick = new Int32Array(64);
+    this._picks = 0;
+    this._seen = 0;
+    this._dt = 0;
+    this._decay = 1;
+    this._step = (i) => this._cool(i); // (made once: Set.forEach with it allocates nothing per frame)
+  }
+
+  /** One active cell's frame: its heat decays, it chars under heat, it leaves the set when cold. */
+  _cool(i) {
+    this.heat[i] *= this._decay;
+    if (this.heat[i] > 0.4) this.burn[i] = Math.min(1, this.burn[i] + this._dt * 0.08);
+    if (this.heat[i] < 0.01) {
+      this.heat[i] = 0;
+      this.active.delete(i);
+    } else if (this.heat[i] >= 0.15) {
+      // reservoir sample of the hot cells
+      const n = ++this._seen, P = this._pick;
+      if (this._picks < P.length) P[this._picks++] = i;
+      else {
+        const j = Math.floor(Math.random() * n);
+        if (j < P.length) P[j] = i;
+      }
+    }
+    this._write(i);
   }
 
   _idx(x, z) {
@@ -82,17 +111,12 @@ export class Scorch {
   }
 
   update(dt) {
+    this._picks = 0;
+    this._seen = 0;
     if (this.active.size) {
-      const decay = Math.exp(-dt * 0.45);
-      for (const i of this.active) {
-        this.heat[i] *= decay;
-        if (this.heat[i] > 0.4) this.burn[i] = Math.min(1, this.burn[i] + dt * 0.08);
-        if (this.heat[i] < 0.01) {
-          this.heat[i] = 0;
-          this.active.delete(i);
-        }
-        this._write(i);
-      }
+      this._decay = Math.exp(-dt * 0.45);
+      this._dt = dt;
+      this.active.forEach(this._step);
       this.dirty = true;
     }
     if (this.dirty) {
@@ -104,10 +128,11 @@ export class Scorch {
     const fx = this.game.fx?.add, fire = this.game.fx?.fire;
     if (fx && this.active.size) {
       this.emberTimer += dt * Math.min(60, this.active.size * 0.25);
-      const arr = this.emberTimer >= 1 ? [...this.active] : null;
-      while (this.emberTimer >= 1 && arr) {
+      const P = this._pick, np = this._picks;
+      if (!np) this.emberTimer = Math.min(this.emberTimer, 1);
+      while (this.emberTimer >= 1 && np) {
         this.emberTimer -= 1;
-        const i = arr[Math.floor(Math.random() * arr.length)];
+        const i = P[Math.floor(Math.random() * np)];
         const h = this.heat[i];
         if (h < 0.15) continue;
         const cx = i % this.size, cz = Math.floor(i / this.size);
@@ -122,24 +147,18 @@ export class Scorch {
           s.heat = 0.2 + 0.14 * h;
           fire.spawn(s);
         }
-        fx.spawn({
-          x: this.min + (cx + Math.random()) * this.cellSize,
-          y: 0.15,
-          z: this.min + (cz + Math.random()) * this.cellSize,
-          vx: (Math.random() - 0.5) * 0.6,
-          vy: 0.8 + Math.random() * 1.6,
-          vz: (Math.random() - 0.5) * 0.6,
-          life: 0.6 + Math.random() * 1.2,
-          size: 0.16 + Math.random() * 0.12,
-          sizeEnd: 0.05,
-          glyph: ".'`*",
-          color: [2.6 * h + 0.6, 0.9 * h, 0.12],
-          colorEnd: [0.6, 0.06, 0.01],
-          alpha: 1,
-          alphaEnd: 0,
-          drag: 0.6,
-          flicker: 0.5,
-        });
+        const e = this._ember;
+        e.x = this.min + (cx + Math.random()) * this.cellSize;
+        e.z = this.min + (cz + Math.random()) * this.cellSize;
+        e.vx = (Math.random() - 0.5) * 0.6;
+        e.vy = 0.8 + Math.random() * 1.6;
+        e.vz = (Math.random() - 0.5) * 0.6;
+        e.life = 0.6 + Math.random() * 1.2;
+        e.size = 0.16 + Math.random() * 0.12;
+        e.color[0] = 2.6 * h + 0.6;
+        e.color[1] = 0.9 * h;
+        e.color[2] = 0.12;
+        fx.spawn(e);
       }
     }
   }
