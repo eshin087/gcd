@@ -992,6 +992,23 @@ export class Lab {
       b.title = `the wyrm wears the ${f} head (?wyrmFace=${f})`;
       if (f === wyrmFace()) b.classList?.add('on');
     }
+    // the zoom options (render/pipeline.js, ?zoomArt=): live, no reload
+    const P = this.game.pipeline;
+    if (typeof P?.setZoomArt === 'function') {
+      const zr = el('div', 'lab-row', null, body);
+      el('span', 'lab-lbl', 'zoom art', zr).title = 'the art letters as the camera pulls back (?zoomArt=a|b|c; a = today)';
+      const zg = el('div', 'lab-grid', null, zr);
+      zg.style.flex = '1';
+      const zb = ['a', 'b', 'c'].map((m) => {
+        const b = button(zg, m, () => {
+          P.setZoomArt(m);
+          for (const o of zb) o.classList?.toggle('on', o === b);
+        });
+        b.title = m === 'a' ? 'one letter size at every distance (today)' : m === 'b' ? 'smaller letters past the default distance: an object keeps its letters' : 'half of b';
+        if (P.zoomArt === m) b.classList?.add('on');
+        return b;
+      });
+    }
     // the flurry (player/flurry.js): a perfect dodge's answer at a streak of N, started on the boss
     // from where the hero stands; `art` pins the last blow's look (flurry.js ARTS) for the next ones
     const fr = el('div', 'lab-row', null, body);

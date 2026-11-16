@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ABLAZE as A } from './tuningAblaze.js';
 import { SCALE, TUNING } from './tuning.js';
+import { HORN_TIPS, wyrmFace } from './heads.js';
 
 // THE WYRM ABLAZE (phase 3). The Cinder Wyrm sets itself on fire: a beat of the phase-3 roar runs fire
 // out from the chest along the wing arms to the tips, down the legs to the claws and along the tail
@@ -75,6 +76,10 @@ export class Ablaze {
   constructor(dragon) {
     this.d = dragon;
     this.game = dragon.game;
+    // the horns' tips of the head it wears (heads.js HORN_TIPS, in headVis's frame: look c's horn fire)
+    this._hornTip = HORN_TIPS[wyrmFace()] ?? HORN_TIPS.old;
+    this._headVis = null;
+    this._hornV = new THREE.Vector3();
     /** 'off' | 'igniting' | 'burning' | 'dousing' */
     this.mode = 'off';
     this.t = 0; // the mode's clock
@@ -385,7 +390,18 @@ export class Ablaze {
   /** A site's point this frame into site.x / y / z. */
   _pos(s) {
     if (s.horn) {
-      // behind and above the head, out to each side, in the head's own frame
+      // on the horn's tip of the head it wears (heads.js HORN_TIPS), through the head's own matrix
+      const hv = (this._headVis ??= this.d.object3d?.getObjectByName?.('headVis') ?? false);
+      if (hv && hv.matrixWorld) {
+        const T = this._hornTip, v = this._hornV.set(T[0] * s.horn, T[1], T[2]).applyMatrix4(hv.matrixWorld);
+        if (Number.isFinite(v.x + v.y + v.z)) {
+          s.x = v.x;
+          s.y = v.y;
+          s.z = v.z;
+          return;
+        }
+      }
+      // (no head joint: behind and above the head, out to each side, in the head's own frame)
       const h = s.a, f = this.d.rig.pt.headFwd;
       let fx = f.x, fz = f.z;
       const l = Math.sqrt(fx * fx + fz * fz) || 1;
