@@ -3647,6 +3647,188 @@ async function scenarioFlight() {
   return G;
 }
 
+// ================================================================== scenario: ablaze (phase 3: the wyrm on fire)
+// dragon/ablaze.js: off in phases 1 and 2; lit by the phase-3 roar's ignition beat (and when phase 3
+// comes any other way); it gutters in a stagger; it goes out on death and on reset(); it burns wood
+// (world.ignite with grass false), never the hero; the attacks are unchanged (the table's numbers are
+// the base's, and a seeded phase-3 fight deals the very same hits with the fire on as with it off).
+async function scenarioAblaze() {
+  out('\n== scenario ABLAZE (phase 3: the wyrm sets itself on fire; it burns the world, not the hero) ==');
+  const M = await imp('src/entities/dragon/ablaze.js');
+  const { ABLAZE } = await imp('src/entities/dragon/tuningAblaze.js');
+  const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); };
+  // the attack table at the base (fc17317): every attack's damage, timings, tells and reach
+  const BASE_ATTACKS = '47e0a683';
+  const table0 = JSON.stringify(TUNING.attacks);
+  M.setAblazeLook('b');
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, B = d.ablaze, cap = ABLAZE.cap.perFrame;
+  assert(B && typeof B.update === 'function' && M.ablazeLook() === 'b', 'dragon.ablaze exists; the default strength is b');
+  // ---- phases 1 and 2: off
+  run(G, 2, { passive: true });
+  assert(!B.on && B.peak === 0, `phase 1: no fire on the body (mode ${B.mode}, ${B.peak} stamps)`);
+  d.debug.phase2();
+  settle(G, 10);
+  run(G, 1, { passive: true });
+  assert(d.phase === 2 && !B.on && B.peak === 0, `phase 2: still none (mode ${B.mode}, ${B.peak} stamps)`);
+  // ---- the phase-3 roar: dark through the windup, lit by its ignition beat, burning after it
+  let onInWindup = false, igniting = 0, worstIgn = 0, nanSite = false;
+  p.debug.teleport(d.position.x + 16, d.position.z);
+  d.debug.phase3();
+  run(G, 6, { passive: true }, () => {
+    const a = d.brain.action;
+    if (a?.name === 'phase3' && a.phase === 'windup' && B.on) onInWindup = true;
+    if (B.mode === 'igniting') { igniting++; worstIgn = Math.max(worstIgn, B.stamps); }
+    for (const s of B.sites) if (!Number.isFinite(s.x + s.y + s.z + s.on)) nanSite = true;
+    return !a && d.state === 'combat';
+  });
+  out(`   phase-3 roar: ignition ${(igniting * DT).toFixed(2)} s · most blobs in an ignition frame ${worstIgn} · now ${B.mode}, ${B.sites.filter((s) => s.on > 0.9).length} of ${B.sites.length} sites alight`);
+  assert(d.phase === 3 && !onInWindup, 'phase 3: the body is not alight through the roar\'s windup (its ring and red flare read first)');
+  assert(igniting * DT > 0.8 && B.flared && B.mode === 'burning', `the roar's ignition beat runs (${(igniting * DT).toFixed(2)} s) and flares; then it burns (${B.mode})`);
+  const lit = (k) => B.sites.filter((s) => s.kind === k && s.on > 0.9).length;
+  assert(lit('tip') === 8 && lit('claw') === 4 && lit('tailTip') === 1 && lit('tail') >= 3 && lit('horn') === 0 && lit('crest') === 0,
+    `b: the eight wing tips, four claws, the tail's last third and its tip burn; not the horns or the crest (${lit('tip')}, ${lit('claw')}, ${lit('tail')}, ${lit('tailTip')}, ${lit('horn')}, ${lit('crest')})`);
+  assert(worstIgn <= cap * 2 + 120 && !nanSite, `the ignition stays in its budget (${worstIgn} blobs in a frame; the flare's burst is outside the cap) and no site is NaN`);
+  // ---- burning: blobs a frame under the cap, rising with the motion
+  let worst = 0, sum = 0, n = 0;
+  run(G, 3, { passive: true }, () => { worst = Math.max(worst, B.stamps); sum += B.stamps; n++; return false; });
+  out(`   burning (standing): ${(sum / n).toFixed(1)} blobs a frame (most ${worst}, cap ${cap}) · fire field ${game.fx.fire.count}`);
+  assert(worst <= cap && sum / n > 3, `burning: the body's fire stamps ${(sum / n).toFixed(1)} blobs a frame, at most ${worst} <= the cap ${cap}`);
+  // ---- a stagger: it gutters low and comes back
+  d.debug.stagger();
+  let low = 1;
+  run(G, 1.2, { passive: true }, () => { low = Math.min(low, B.level); return false; });
+  settle(G, 8);
+  run(G, 1.5, { passive: true });
+  out(`   stagger: the fire's level fell to ${low.toFixed(2)}, back to ${B.level.toFixed(2)}`);
+  assert(low < 0.45 && B.level > 0.9 && B.mode === 'burning', `a stagger: it gutters (level ${low.toFixed(2)}) and comes back (${B.level.toFixed(2)})`);
+  // ---- wood: the burning parts call world.ignite with grass false (the world's caps decide); the tail's tip among them
+  const calls = [];
+  const tailTip = () => d.rig.tail.p[d.rig.tail.n];
+  // (no wood near: each call lights nothing; then every call lights one, and the budget holds)
+  let lights = 0;
+  game.world.ignite = (x, z, r, k, grass) => { const t = tailTip(); calls.push({ x, z, grass, tip: Math.hypot(x - t.x, z - t.z) }); return lights; };
+  run(G, 3, { passive: true });
+  const nearTip = calls.filter((c) => c.tip < 0.01).length, n0 = calls.length;
+  lights = 1;
+  const lit0 = B.lit;
+  run(G, 30, { passive: true });
+  out(`   wood: ${n0} ignite calls in 3 s with nothing to light (grass false: ${calls.filter((c) => c.grass === false).length} of ${calls.length}, at the tail's tip ${nearTip}) · with wood everywhere ${B.lit - lit0} lit in 30 s`);
+  assert(n0 > 0 && calls.every((c) => c.grass === false), `wood: the burning parts call world.ignite(x, z, r, k, false) (${calls.length} calls, never the grass)`);
+  assert(nearTip > 0 && B.lit - lit0 <= Math.ceil(ABLAZE.wood.perMin / 2) + 2, `wood at the tail's tip is tried (${nearTip} calls there); the per-minute budget holds (${B.lit - lit0} lit in 30 s, ${ABLAZE.wood.perMin} a minute)`);
+  delete game.world.ignite;
+  // ---- footprints: the hero standing in a burning one for 5 s takes no damage
+  let burns = 0;
+  const bc = game.world.scorch.burnCircle;
+  game.world.scorch.burnCircle = (...a) => { burns++; return bc.apply(game.world.scorch, a); };
+  const fx0 = d.position.x - 6, fz0 = d.position.z;
+  B.step(fx0, fz0, true);
+  p.debug.teleport(fx0, fz0);
+  p.debug.heal();
+  const hp0 = p.hp, h0 = G.hits.length;
+  run(G, 5, { passive: true }, () => { if (!B._prints.some((q) => q.t > 0)) B.step(fx0, fz0, true); return false; });
+  game.world.scorch.burnCircle = bc;
+  out(`   footprint: ${burns} burns stamped under the hero · hp ${hp0} -> ${p.hp} · hits ${G.hits.length - h0}`);
+  assert(burns >= 1 && p.hp === hp0 && G.hits.length === h0, `a hero standing in a burning footprint for 5 s takes no damage (hp ${hp0} -> ${p.hp}, ${G.hits.length - h0} hits)`);
+  // ---- no allocation a frame: the burning body's update (its parts moving) over a bare loop
+  {
+    const v8 = await import('node:v8'), vm = await import('node:vm');
+    v8.setFlagsFromString('--expose-gc');
+    const gc = vm.runInNewContext('gc');
+    const pts = [];
+    for (const w of d.rig.pt.wings) pts.push(...w.tips);
+    pts.push(...d.rig.tail.p);
+    const emit = game.events.emit;
+    // (the suite's NaN guards round the pools' spawn build a list of keys a call: the real spawns here)
+    const fs0 = game.fx.fire.spawn, as0 = game.fx.add.spawn;
+    game.fx.fire.spawn = FireField.prototype.spawn;
+    game.fx.add.spawn = GlyphParticles.prototype.spawn;
+    const FR = 2000;
+    // (one frame a call: the frame function is optimised after the warm-up; a loop run once at a time
+    // runs part of each pass unoptimised, and its double maths alone made kilobytes of noise)
+    const frame = (i, hot) => {
+      const step = i % 60 < 30 ? 0.25 : -0.25;
+      for (let j = 0; j < pts.length; j++) pts[j].x += step;
+      if (hot) {
+        B.update(DT);
+        game.fx.fire.update(DT);
+        game.fx.add.update(DT, game.time);
+      }
+    };
+    const loop = (frames, hot) => { for (let i = 0; i < frames; i++) frame(i, hot); };
+    loop(1500, true);
+    loop(1500, false);
+    gc();
+    let m0 = process.memoryUsage().heapUsed;
+    loop(FR, false);
+    const base = process.memoryUsage().heapUsed - m0;
+    gc();
+    m0 = process.memoryUsage().heapUsed;
+    loop(FR, true);
+    const grew = process.memoryUsage().heapUsed - m0 - base;
+    game.events.emit = emit;
+    game.fx.fire.spawn = fs0;
+    game.fx.add.spawn = as0;
+    out(`   allocation: ${(grew / FR).toFixed(0)} bytes a frame over the bare loop (the burning body's update, its parts swinging)`);
+    assert(grew / FR < 1024, `no allocation a frame: ${(grew / FR).toFixed(0)} bytes a frame (< 1 KB: no object, array or closure a frame)`);
+    settle(G, 4);
+  }
+  // ---- death: it goes out along the body before the body lets go; nothing after
+  let dousing = 0, outBefore = false;
+  d.debug.kill();
+  run(G, 7, { passive: true }, () => {
+    if (B.mode === 'dousing') dousing++;
+    if (d.state === 'dying' && d.dissolve > 0 && !B.on) outBefore = true;
+    return d.state === 'dead';
+  });
+  run(G, 0.5, { passive: true });
+  out(`   death: goes out in ${(dousing * DT).toFixed(2)} s · out before the letting go ${outBefore} · after: ${B.mode}`);
+  assert(dousing * DT > 0.8 && outBefore && !B.on && B.sites.every((s) => s.on === 0), `death: the fire goes out along the body (${(dousing * DT).toFixed(2)} s), before it lets go, and stays out`);
+  // ---- reset (and a forced phase 3 from low HP, without the Lab's roar button)
+  d.debug.reset();
+  assert(!B.on && B.level === 0 && B._lights.every((l) => !l), 'reset(): out at once, its lights gone');
+  game.flow.debug.toState('boss');
+  d.debug.setAI(false);
+  d.debug.startFight();
+  run(G, 0.5, { passive: true });
+  d.enterPhase(3); // (phase 3 entered without its roar: it lights by itself, quickly)
+  run(G, 1.2, { passive: true });
+  assert(B.mode === 'burning', `phase 3 entered without the roar: it lights by itself (${B.mode})`);
+  d.debug.reset();
+  run(G, 0.3, { passive: true });
+  assert(!B.on && B.peak === 0, `after reset(): nothing burns (${B.mode})`);
+  // ---- ?ablaze=off: no fire at all
+  M.setAblazeLook('off');
+  game.flow.debug.toState('boss');
+  d.debug.setAI(false);
+  d.debug.startFight();
+  d.enterPhase(3);
+  run(G, 1.5, { passive: true });
+  assert(!B.on && B.peak === 0, `?ablaze=off: phase 3 without fire (${B.mode})`);
+  M.setAblazeLook('b');
+  // ---- the attacks are unchanged: the table is the base's, and the same seeded phase-3 fight deals the
+  // very same hits with the fire on as with it off (its own random numbers, no hit volume of its own)
+  assert(JSON.stringify(TUNING.attacks) === table0 && fnv(table0) === BASE_ATTACKS, `the attack table is unchanged (hash ${fnv(table0)}, base ${BASE_ATTACKS})`);
+  const fight = (look) => {
+    M.setAblazeLook(look);
+    const F = build();
+    fightSetup(F, { ai: true });
+    const fd = F.game.dragon;
+    fd.debug.setHp(TUNING.phaseAt[2] - 0.01);
+    run(F, 20, { god: true, attack: false }, () => fd.phase === 3 && fd.brain.action?.name !== 'phase3');
+    run(F, 25, { god: true, attack: false });
+    return { hits: F.hits.map((h) => `${h.t.toFixed(3)} ${h.attack} ${h.damage} ${h.tell} ${h.r}`), on: fd.ablaze.on, peak: fd.ablaze.peak };
+  };
+  const off = fight('off'), on = fight('b');
+  M.setAblazeLook('b');
+  const same = off.hits.length === on.hits.length && off.hits.every((h, i) => h === on.hits[i]);
+  out(`   a seeded phase-3 fight, 25 s: ${off.hits.length} hits with the fire off, ${on.hits.length} with it on (b, peak ${on.peak} blobs a frame) · identical ${same}`);
+  assert(on.on && !off.on && off.hits.length > 3 && same, `the same seeded fight deals the same hits (time, attack, damage, tell) with the fire on as off (${off.hits.length} / ${on.hits.length})`);
+  return G;
+}
+
 async function scenarioFire() {
   out('\n== scenario FIRE (flight attacks, spells, hazards: completion, flight bounds, flash timing, dodges, clear) ==');
   const G = build();
@@ -9584,6 +9766,7 @@ const SCENARIOS = {
   plungeReact: scenarioPlungeReact,
   timing: scenarioTiming,
   fire: scenarioFire,
+  ablaze: scenarioAblaze,
   terrain: scenarioTerrain,
   win: scenarioWin,
   die: scenarioDie,

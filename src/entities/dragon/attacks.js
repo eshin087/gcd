@@ -1296,6 +1296,8 @@ function makeRoar(name, toPhase = 0) {
       if (toPhase === 3) {
         // phase 3: the heart catches: a burst of embers from the whole body with the roar
         d.fx.bodyEmbers(0.25, d.hurtSpheres, 240, true);
+        // ... and it sets itself on fire: the fire runs out along its wings, legs and tail (ablaze.js)
+        d.ablaze?.ignite();
       }
       if (p && Math.hypot(p.x - c.x, p.z - c.z) <= R.radius + playerR(g)) {
         d.strike(a, { damage: R.damage, knockback: R.knockback, kind: 'roar', from: c, point: c });
