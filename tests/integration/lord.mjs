@@ -996,14 +996,18 @@ async function scenarioTerrain() {
     run(G, 4, null, settled(G));
     assert(held && held.state === STATE.GONE && !d.terrain.busy && G.flashes.length === 0 && !G.hits.slice(h0).some((h) => h.attack === 'voidHurl'), 'staggered in the windup, the stone drops where it hung: no ring, no blow');
   }
-  // ---- with the stones gone he tears shards out of the floor
+  // ---- with the stones gone he tears a plate out of the floor at his feet (the second pass: the floor
+  // breaks and lifts; before it, he took the nearest standing shard, and the crater's cover went first)
   {
     const G = stage(1, 0, 4.5);
     const D = G.game.world.destructibles;
     for (const b of D.list) if (b.kind === 'hover') { D.take(b); D.drop(b); }
     run(G, 1.5);
+    const shards = D.list.filter((b) => b.kind === 'shard' && b.state === STATE.INTACT).length;
     const r = play(G, 'voidHurl');
-    assert(r.ok && r.held.length === 1 && r.held[0].kind !== 'hover' && r.held[0].colliders.length === 1 && !G.game.world.colliders.circles.includes(r.held[0].colliders[0]), `with no stone left in the air he tears a ${r.held[0]?.kind} out of the floor (its collider goes with it)`);
+    const lord = G.game.dragon.position, pc = r.held[0];
+    assert(r.ok && r.held.length === 1 && pc.floor && (pc.kind === 'plate' || pc.kind === 'flagstone') && pc.state === STATE.GONE && Math.hypot(pc.x - lord.x, pc.z - lord.z) <= TUNING.terrain.floorReach + 0.01, `with no stone left in the air he tears a ${pc?.kind} out of the floor ${pc ? Math.hypot(pc.x - lord.x, pc.z - lord.z).toFixed(1) : '-'} m from him and throws it`);
+    assert(D.list.filter((b) => b.kind === 'shard' && b.state === STATE.INTACT).length === shards, 'the crater\'s standing shards (its cover) are left standing');
   }
   // ---- Glass Rain
   {

@@ -182,6 +182,33 @@ export const TUNING = {
       hit: 1.5, // m round where it lands that it strikes the hero (+ his radius)
       power: 0.9, radius: 2.0, // its burst on the other pieces where it lands (POWER, m)
       parryPosture: 14, // a parry bursts it on the blade
+      maxDelay: 0.4, // s the fairness guard may lengthen its flight by (a cue of the other answer too near)
+    },
+    // (the second pass) the floor: a flagstone levered up out of the paving by the blade and kicked at
+    // the hero (Rising Flagstone: one; Flagstone Volley, phase 2: one a beat, two or three). Blue, the
+    // flare on the flying slab flashLead before it lands; nothing drawn where it lands
+    flag: {
+      kind: 'flagstone', // (world/floor.js: the courtyard's paving)
+      ahead: 1.5, reach: 2.2, // a whole slab within `reach` m of the point `ahead` m in front of him toward the hero
+      heroMin: 3.5, heroMax: 14, // the hero this far from him (his AI)
+      stand: 0.45, // m behind the slab's centre his foot is planted
+      rise: 0.8, riseT: 0.16, // m it jumps up out of the paving, in s
+      time: [0.45, 0.85], per: 20, // s in the air: time[0] + distance / per, at most time[1]
+      lead: 0.15, // s of the hero's own movement it is aimed ahead by
+      hit: 1.2, // m round where it lands that it strikes the hero (+ his radius)
+      power: 0.6, radius: 1.6, // its burst on what is round where it lands
+      parryPosture: 12,
+      maxDelay: 0.4,
+    },
+    // Scattered Flagstones (phase 3): `count` slabs levered at once, gathered into a row `hang` m in
+    // front of him (`row` m apart, `rise` m up) and cut through in the air: they leave as a fan, the
+    // middle one at the hero, the others `spread` rad to either side
+    fan: {
+      kind: 'flagstone', ahead: 1.6, reach: 2.6, count: 3, need: 2,
+      heroMin: 3.5, heroMax: 13, stand: 0.45,
+      hang: 1.3, row: 0.95, rise: 1.15, spread: 0.42,
+      time: [0.5, 0.9], per: 19, lead: 0.12,
+      power: 0.5, radius: 1.4, maxDelay: 0.4,
     },
     // Three Tolls: he strikes the fallen bell; each blow sends a ring of sound across the courtyard
     toll: {

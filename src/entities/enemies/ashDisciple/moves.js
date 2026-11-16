@@ -388,7 +388,7 @@ export const MOVES = {
   /** Flying Lantern: he is at a stone lantern (or a pillar's stump) and kicks it at the hero. It
    *  glints as it comes down: parry it and it bursts on the blade, or be gone from under it. */
   lanternKick: {
-    label: 'Flying Lantern', phase: 1, terrain: 'kick', weight: [1.3, 1.5], cooldown: 10, band: [0, 18], recovery: 0.55,
+    label: 'Flying Lantern', phase: 1, terrain: 'kick', cat: 'terrain', weight: [1.3, 1.5], cooldown: 10, band: [0, 18], recovery: 0.42,
     beats: [{
       tell: B, windup: 0.64, active: 0.1, damage: 22, knockback: 2.4, cast: { kind: 'lantern', selfCue: true }, noSweep: true,
       close: 0, track: 0, go: [0.05, 0.44],
@@ -433,6 +433,64 @@ export const MOVES = {
     }],
     recoveryKeys: [[0.45, { arm: 1, ext: 0.8, sw: [-0.3, -0.7], bY: -0.26, ...STEP_IN }]],
   },
+
+  // ---- the floor (the second pass): the paving breaks and lifts (world/floor.js), so the middle of
+  // the courtyard is terrain too. A beat here: `go` (he glides to stand behind a slab), `lever` (the
+  // windup fraction at which his blade's point levers it up out of the paving), and the cast at the
+  // impact (the kick: `flag`; the fan's cut: `fan`) sends it. Blue: the flare on the flying slab
+  // flashLead before it lands (a parry bursts it on the blade, a roll at the flare is through it).
+  ...(() => {
+    const REACH = { bY: -0.36, pitch: 0.26, yaw: 0.2, spX: 0.14, hdX: 0.2, rH: [0.02, -0.26, 0.4], rP: [-0.8, -0.3, 0], sw: [-0.25, -0.9], swF: [1, 0, 0], lH: [0.2, 0.0, 0.24], lP: [0.7, -0.3, 0.3], rF: [-0.12, 0.58], lF: [0.2, -0.32] };
+    const UNDER = { ...REACH, bY: -0.44, pitch: 0.34, rH: [0.0, -0.34, 0.46], sw: [-0.2, -1.2] };
+    const FLICK = { bY: -0.28, pitch: 0.04, yaw: 0.28, spX: 0.02, hdX: 0.0, rH: [0.02, 0.06, 0.36], rP: [-0.8, 0.2, -0.3], sw: [-0.35, 0.75], swF: [1, 0, 0], lH: [0.24, 0.0, 0.3], lP: [0.8, -0.2, 0.3], rF: [-0.12, 0.44], lF: [0.2, -0.3] };
+    // the lever, then the whole body into the kick: weight back on the left leg, the right driven out flat
+    const kickKeys = () => [
+      [0.22, { ...REACH }],
+      [0.44, { ...UNDER }],
+      [0.56, { ...FLICK }],
+      [0.82, { ...KICK_COIL }],
+      [1.0, { ...KICK_OUT, e: 'i' }],
+      [1.6, { ...KICK_OUT, e: 'o', bZ: -0.14, rF: [-0.04, 0.8, 0.98] }],
+      [2.0, { ...KICK_OUT, pitch: -0.12, rF: [-0.08, 0.3, 0.6] }],
+    ];
+    const kick = (windup, damage, o = {}) => ({
+      tell: B, windup, active: 0.1, damage, knockback: 2.0, cast: { kind: 'flag', selfCue: true }, noSweep: true,
+      close: 0, track: 0, go: [0.02, 0.3], lever: 0.5, keys: kickKeys(), ...o,
+    });
+    const rec = [[0.4, { bY: -0.22, pitch: 0.0, rH: [-0.2, -0.3, 0.05], sw: [-1.5, -0.3], lH: [0.2, 0.0, 0.3], rF: [-0.1, 0.5], lF: [0.18, -0.25] }]];
+    return {
+      /** Rising Flagstone: in the open, the hero backed off: the point of his jian under a flagstone, it
+       *  jumps up out of the paving and he kicks it at the hero. Blue: parry it, or roll at its flare. */
+      flagKick: {
+        label: 'Rising Flagstone', phase: 1, terrain: 'flag', cat: 'terrain', weight: [1.0, 0.6, 0.4], cooldown: 9, band: [3.5, 14], recovery: 0.45,
+        beats: [kick(0.6, 18)],
+        recoveryKeys: rec,
+      },
+      /** Flagstone Volley (phase 2): one flagstone levered and kicked a beat, two or three in a row, each
+       *  from where he stands after the last. */
+      flagVolley: {
+        label: 'Flagstone Volley', phase: 2, terrain: 'flag', cat: 'terrain', weight: [0, 1.1, 0.8], cooldown: 11, band: [3.5, 14], recovery: 0.5,
+        beats: [kick(0.6, 16), kick(0.48, 16, { go: [0.0, 0.3] }), kick(0.48, 18, { go: [0.0, 0.3], chance: 0.6 })],
+        recoveryKeys: rec,
+      },
+      /** Scattered Flagstones (phase 3): three flagstones jump up at once and hang in a row before him;
+       *  one level cut goes through them and the pieces come as a fan, each with its flare. */
+      flagFan: {
+        label: 'Scattered Flagstones', phase: 3, terrain: 'fan', cat: 'terrain', weight: [0, 0, 1.3], cooldown: 10, band: [3.5, 13], recovery: 0.5,
+        beats: [{
+          tell: B, windup: 0.75, active: 0.1, damage: 16, knockback: 1.8, cast: { kind: 'fan', selfCue: true },
+          close: 0, track: 0, go: [0.02, 0.28], lever: 0.4,
+          keys: [
+            [0.2, { ...REACH }],
+            [0.36, { ...UNDER }],
+            [0.48, { ...FLICK }],
+            ...slashKeys({ ...CUTS.flat, cock: 0.8 }).slice(1),
+          ],
+        }],
+        recoveryKeys: [[0.5, { arm: 1, ext: 0.85, sw: [1.4, 0.1], bY: -0.26, yaw: 0.9, ...STEP_IN }]],
+      },
+    };
+  })(),
 
   /**
    * Scattering Ash: his answer to a streak of guards (duelist.js `streak`, DEFENSE.foeStreak): as

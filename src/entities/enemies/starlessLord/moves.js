@@ -641,25 +641,41 @@ export const MOVES = {
   // ---------------------------------------------------------------- the crater (ADR-109, terrain.js)
   // Three moves on the pieces of the set (numbers: TUNING.terrain). `terrain: kind` marks one: his AI
   // picks it only while there is a piece for it, and it cannot start with none. Each is one long
-  // windup (the piece rising out of its place is the tell) and a cast: what is thrown cues itself
-  // (the ring where it lands, the glint flashLead before), what is pulled down is told by the world.
-  /** Void Hurl: a piece of the crater (a stone already in the air, else a shard or a slab torn out
-   *  of the floor) rises, hangs over his hand and is thrown. Red: be out of the ring. */
+  // windup (the piece rising out of its place is the tell, the Void gathering in his hand) and a cast:
+  // what is thrown cues itself (nothing where it lands: the flare on the flying piece flashLead before
+  // it lands, the owner's choice of 2026-11-16), what is pulled down is told by the world.
+  /** Void Hurl: a piece of the crater (a stone already in the air; once those are spent a plate torn
+   *  out of the floor near him; else a shard or a slab) rises, hangs over his hand and is thrown.
+   *  Red: roll at its flare, or do not be where it comes down. */
   voidHurl: {
-    label: 'Void Hurl', phase: 1, weight: [1.3, 1.1, 1.0, 1.2], cooldown: 9, band: [4.5, 16], recovery: 0.6, terrain: 'hurl',
-    beats: [{ tell: R, windup: 1.2, fixed: true, active: 0.1, damage: 26, knockback: 4, cast: { kind: 'hurl', selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: hurlKeys() }],
+    label: 'Void Hurl', phase: 1, weight: [1.3, 1.1, 1.0, 1.2], cooldown: 9, band: [4.5, 16], recovery: 0.45, terrain: 'hurl', cat: 'terrain',
+    beats: [{ tell: R, windup: 1.0, fixed: true, active: 0.1, damage: 26, knockback: 4, cast: { kind: 'hurl', selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: hurlKeys() }],
   },
   /** Glass Rain: three pieces at once, thrown one after another where the hero is going. */
   glassRain: {
-    label: 'Glass Rain', phase: 3, weight: [0, 0, 1.4, 1.6], cooldown: 13, band: [4.5, 16], recovery: 0.7, terrain: 'rain',
-    beats: [{ tell: R, windup: 1.4, fixed: true, active: 0.1, damage: 20, knockback: 3, cast: { kind: 'rain', count: 3, selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: stormKeys() }],
+    label: 'Glass Rain', phase: 3, weight: [0, 0, 1.4, 1.6], cooldown: 13, band: [4.5, 16], recovery: 0.6, terrain: 'rain', cat: 'terrain',
+    beats: [{ tell: R, windup: 1.2, fixed: true, active: 0.1, damage: 20, knockback: 3, cast: { kind: 'rain', count: 3, selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: stormKeys() }],
   },
   /** Crown Fall: the open hand closes on a tall slab or shard beside the hero and wrenches it down
    *  on him. The fall is the world's: red, its strip marked, about a second from the wrench
    *  (BREAK.topple: 22 damage x the piece's weight; `damage` here is not used). */
   crownFall: {
-    label: 'Crown Fall', phase: 2, weight: [0, 1.5, 1.4, 1.6], cooldown: 10, band: [2.5, 18], recovery: 0.55, terrain: 'fall',
+    label: 'Crown Fall', phase: 2, weight: [0, 1.5, 1.4, 1.6], cooldown: 10, band: [2.5, 18], recovery: 0.55, terrain: 'fall', cat: 'terrain',
     beats: [{ tell: R, windup: 0.85, fixed: true, active: 0.1, damage: 0, knockback: 0, cast: { kind: 'fall', selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: gripKeys() }],
+  },
+  /** Rupture (form 2 on): his hand closes and wrenches down, and the floor tears open in a line from
+   *  him toward the hero, plate after plate bursting up out of it. Red: the flare on the plate that
+   *  would reach you; step off the line, or roll at the flare. */
+  plateRupture: {
+    label: 'Rupture', phase: 2, weight: [0, 1.1, 0.9, 1.0], cooldown: 10, band: [3.5, 14], recovery: 0.5, terrain: 'rupture', cat: 'terrain',
+    beats: [{ tell: R, windup: 0.9, fixed: true, active: 0.1, damage: 22, knockback: 3.5, cast: { kind: 'rupture', selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: gripKeys() }],
+  },
+  /** Falling Halo (forms 3 and 4): the Void lifts a ring of plates round the hero, open on the side
+   *  away from him, and drops them on him one after another. Each is red, the flare on the falling
+   *  plate: roll at each, or run out through the opening. */
+  plateHalo: {
+    label: 'Falling Halo', phase: 3, weight: [0, 0, 1.0, 1.2], cooldown: 13, band: [2, 12], recovery: 0.6, terrain: 'halo', cat: 'terrain',
+    beats: [{ tell: R, windup: 1.0, fixed: true, active: 0.1, damage: 22, knockback: 3, cast: { kind: 'halo', count: [0, 0, 4, 5], selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: stormKeys() }],
   },
   /** Drawn Under: the pull, then the staff's low ring where you land. */
   undertow: {
