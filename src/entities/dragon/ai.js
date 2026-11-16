@@ -1374,7 +1374,7 @@ export class Brain {
     const layered = this._castLive();
     // blows that would land among cues of the other answer at times nobody knows yet wait: moves
     // that ask for a guard while meteors / a chase come down, moves that ask for a dodge while
-    // bullets (embers, wisps) fly
+    // bullets (embers, orbs) fly
     const sky = this._emitterLive(), shots = this._bulletsLive();
     // a category absent past floorForce x its floor that can be used from here is the pick (the floor
     // boost alone does not bring it back once every category is past its floor: with about fifty
@@ -1505,7 +1505,7 @@ export class Brain {
     const a = this.action;
     // a move with enough of it left (not a transition or a reaction). A cinder is red: it may land
     // among red blasts (the same answer), never where a guard is due. So not during a fire pattern
-    // (embers, wisps, the breath's stream: guard cues that come late), not during a string that
+    // (embers, orbs, the breath's stream: guard cues that come late), not during a string that
     // scatters embers of its own, nothing while bullets fly; the running move's own blows are known
     if ((a && !ATTACK_NAMES.has(a.name)) || (d.state !== 'combat' && d.state !== 'airborne') || d.broken) return;
     if (this._ambientAlive() >= perPhase(A.alive, ph)) return;

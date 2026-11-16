@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-15',
+        title: 'The Cinder Wyrm fights harder, with its whole body',
+        notes: [
+          'The wyrm gives far fewer pauses and chains its attacks: claws, jaws, wings, tail, fire and flight in one flow, busier in every phase. Each hit hurts as much as before.',
+          'New attacks: wing sweeps and slams, tail whips and slams, a bite that ends in fire, flying combos of up to four attacks, and fire that crawls along the ground. The blue homing wisps are gone.',
+          'Thrown trees and boulders come twice as fast with no mark on the ground: roll at the red flash. The whole clearing now breaks, and the wreckage stays.',
+        ],
+      },
+      {
+        date: '2026-11-15',
         title: 'Red, blue and black flashes: dodge, parry, and a charged blow',
         notes: [
           'A red flash across the screen is now the only sign of an attack you must dodge: no red glow, no red ring on the floor. Dodge at the flash and the hero answers with his flurry.',

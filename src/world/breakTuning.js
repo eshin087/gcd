@@ -135,7 +135,10 @@ export const QUALITY = Object.freeze({ LOW: 0.5, MEDIUM: 0.75, HIGH: 1 });
 // a shower of the characters it is drawn in. Chunks and shards were turned down: destructibles.js
 // `_crumble`.)
 
-/** Grass and ground fire (world/fire.js). Fire burns where it lands and never spreads (the owner's pick). */
+/**
+ * Grass and ground fire (world/fire.js). Grass fire burns where it lands and does not creep through
+ * the grass (the owner's pick); standing wood is another matter: it passes fire on, BREAK.spread.
+ */
 export const FIRE = Object.freeze({
   minFuel: 0.18, // grass density below this does not catch
   life: [3.2, 4.6], // s a cell burns: thin grass … a full meadow

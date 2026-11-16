@@ -29,7 +29,8 @@ const REST_SPREAD = TUNING.rest.spread;
 // function of (d, sense) that may return either), `cooldown`, `air` (usable while airborne).
 // STRINGS (makeString, contract 1): multi-hit attacks built from TUNING.attacks[name].hits; each hit
 // is a KIND (the performance below: claw, overhead, bite, rearBite, lungeBite, wing, tailJab,
-// tailSweep, hop, stomp) with its own windup (+ optional random hold), tell, flash and hit volume.
+// tailSweep, hop, stomp, and since ADR-119 wingSweep, wingSlam, tailWhip, tailSlam, fireSnap,
+// emberRake) with its own windup (+ optional random hold), tell, flash and hit volume.
 
 const T = TUNING.attacks;
 const S = SCALE;

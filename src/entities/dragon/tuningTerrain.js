@@ -15,7 +15,7 @@
 // land"): about twice as fast from the tell to the blow, a whole-body grab and throw, and NOTHING
 // drawn on the ground before the piece arrives. The cue is the flare on the flying piece, flashLead
 // (0.35 s) before it lands. Tell to blow, phase 1 (measured by scenario TERRAIN): hurl ~1.4 - 1.6 s
-// (was 2.9), firebrand ~1.8 s in phase 2 (was 3.4), tail bat ~1.1 - 1.3 s (was 1.8).
+// (was 2.9), firebrand ~1.8 s in phase 2 (was 3.4), tail bat ~1.25 - 1.35 s (was 1.8).
 
 import { TELL } from '../../combat/rules.js';
 
