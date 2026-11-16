@@ -25,8 +25,12 @@ const PURSUE = [
   far('rend', f4(0.45)),
   far('pushOpening', f1(0.45)),
   far('wingedPursuit', f2(0.5)),
+  // (the crater's pieces: one torn out and thrown at a hero who keeps his distance)
+  far('voidHurl', [0.25, 0.25, 0.35, 0.25]),
+  far('glassRain', [0, 0, 0.3, 0.25]),
   far('grasp', [0.35, 0.35, 0.35, 0.4]),
   far('voidBolt', [0.35, 0.4, 0.4, 0]),
+  mid('crownFall', [0, 0.25, 0.3, 0.25]),
   away('drawnIn', f1(0.45)),
   away('wingedPursuit', f2(0.5)),
   away('walkingMountain', f3(0.5)),
