@@ -1040,6 +1040,128 @@ async function scenarioTerrain() {
     const G2 = stage(2, 0, 2, 0, -5);
     assert(G2.game.dragon.weigh('crownFall', MOVES.crownFall, 1, 7) === 0 && G2.game.dragon.debug.trigger('crownFall') === false, 'with the hero in the open (no tall piece within its own height of him) Crown Fall weighs nothing and does not start');
   }
+  // ---- the second pass: thrown pieces show the flare only (the owner, 2026-11-16): nothing drawn on
+  // the ground where they will land, the flare on the flying piece flashLead before it lands. Every way
+  // his effects draw on the ground ahead of a blow is counted while the move runs or its pieces fly
+  const MARKED = ['warnRing', 'ringPulse', 'hazardFlash', 'shockRing'];
+  const spy = (G) => {
+    const fx = G.game.dragon.fx, rec = { n: 0, flares: [] }, saved = MARKED.map((k) => fx[k]);
+    MARKED.forEach((k, i) => { if (typeof saved[i] === 'function') fx[k] = (...a) => { rec.n++; return saved[i].apply(fx, a); }; });
+    const tf = fx.tellFlash;
+    fx.tellFlash = (tell, x, y, z, k, flare) => { rec.flares.push({ tell, x, y, z, flare, t: G.game.time }); return tf.call(fx, tell, x, y, z, k, flare); };
+    rec.off = () => { MARKED.forEach((k, i) => { fx[k] = saved[i]; }); fx.tellFlash = tf; };
+    return rec;
+  };
+  for (const [name, form] of [['voidHurl', 1], ['glassRain', 3], ['plateHalo', 3]]) {
+    const G = stage(form, 0, 4.5);
+    const rec = spy(G);
+    const D = G.game.world.destructibles;
+    const air = [];
+    play(G, name, () => { for (const b of D.list) if (b.state === STATE.FLYING && !air.includes(b)) air.push(b); });
+    rec.off();
+    // (each flare drawn where a piece was in the air, high off the floor: not where it lands)
+    assert(rec.n === 0 && rec.flares.length >= 1 && rec.flares.every((f) => f.tell === TELL.RED && f.flare && f.y >= 0.4) && G.flashes.length === rec.flares.length, `${name}: nothing drawn on the ground where it lands (${rec.n}); ${rec.flares.length} red flare(s) drawn on the flying piece${rec.flares.length > 1 ? 's' : ''} (${rec.flares.map((f) => f.y.toFixed(1)).join(' / ')} m up)`);
+  }
+  // ---- Void Hurl is quicker: the tell to the blow (1.0 s windup, 0.8 - 1.1 s in the air)
+  {
+    const G = stage(1, 0, 4.5);
+    const tells = [];
+    const w = G.watch;
+    G.watch = (n, e) => { w(n, e); if (n === 'combat:tell' && e?.attack === 'voidHurl' && !e.hazard) tells.push(G.game.time); };
+    const h0 = G.hits.length;
+    play(G, 'voidHurl');
+    const hit = G.hits.slice(h0).find((h) => h.attack === 'voidHurl');
+    assert(tells.length === 1 && hit && hit.t - tells[0] <= 2.15, `Void Hurl: ${(hit ? hit.t - tells[0] : NaN).toFixed(2)} s from his tell to the blow on a hero 8.5 m off (2.4 s before the second pass)`);
+  }
+
+  // ---- Rupture (form 2 on): the floor tears open in a line toward the hero
+  {
+    const G = stage(2, 0, 5, 0, -4);
+    const d = G.game.dragon, D = G.game.world.destructibles;
+    assert(d.weigh('plateRupture', MOVES.plateRupture, 1, 9) > 0, 'Rupture: on the crater\'s floor his AI may pick it (form 2)');
+    let exp = 0;
+    const ex0 = d.brain.expect;
+    d.brain.expect = (...a) => { exp++; return ex0.apply(d.brain, a); };
+    const thrown = [];
+    const w = G.watch;
+    G.watch = (n, e) => { w(n, e); if (n === 'world:impact' && e?.kind === 'throw' && e.by === 'boss') thrown.push(e.id); };
+    const h0 = G.hits.length;
+    const r = play(G, 'plateRupture');
+    d.brain.expect = ex0;
+    const hits = G.hits.slice(h0).filter((h) => h.attack === 'plateRupture');
+    assert(r.ok && thrown.length >= 4 && !d.terrain.busy, `it tears ${thrown.length} plates up out of the floor along the line, one after another`);
+    assert(hits.length === 1 && hits[0].r === RESULT.HIT && hits[0].tell === TELL.RED && G.flashes.length >= 1 && Math.abs(hits[0].t - G.flashes.filter((t) => t <= hits[0].t).pop() - TUNING.flashLead) < 0.06 && exp >= 1, `a hero who stands on the line is struck once (red), ${(hits[0] ? hits[0].t - G.flashes.filter((t) => t <= hits[0].t).pop() : NaN).toFixed(3)} s after the flare on the plate under him; told to the ledger (x${exp})`);
+  }
+  for (const [hx, hz, bx, bz] of [[0, 5, 0, -4], [6, 3, -2, -3], [-5, 8, 1, 0]]) {
+    // off the line: he steps 3 m aside as the hand comes down; a roll at the flare
+    for (const how of ['aside', 'roll']) {
+      const G = stage(2, hx, hz, bx, bz);
+      const d = G.game.dragon, p = G.game.player, inp = G.input;
+      const h0 = G.hits.length;
+      let done = false;
+      const w = G.watch;
+      let rollNow = false;
+      G.watch = (n, e) => { w(n, e); if (how === 'roll' && n === 'combat:flash' && e?.attack === 'plateRupture') rollNow = true; };
+      play(G, 'plateRupture', () => {
+        // (the roll pressed on the frame after the flare's event, as a player's would be)
+        if (rollNow) { rollNow = false; p.debug.god = false; const ax = hx - bx, az = hz - bz, l = Math.hypot(ax, az); inp.axis = { x: -az / l, y: -ax / l }; inp.tap('Space'); }
+        if (how === 'aside' && !done && d.terrain.rupt.live) {
+          done = true;
+          const ax = hx - bx, az = hz - bz, l = Math.hypot(ax, az);
+          p.debug.teleport(p.position.x - (az / l) * 3, p.position.z + (ax / l) * 3);
+        }
+      });
+      inp.axis = { x: 0, y: 0 };
+      const hits = G.hits.slice(h0).filter((h) => h.attack === 'plateRupture' && h.r === RESULT.HIT);
+      assert(hits.length === 0, `Rupture at a hero at (${hx}, ${hz}), him at (${bx}, ${bz}): ${how === 'aside' ? 'a hero 3 m off the line' : 'a roll at the flare'} is not struck`);
+    }
+  }
+
+  // ---- Falling Halo (forms 3 and 4): a ring of plates lifted round the hero, dropped on him in turn
+  {
+    const G = stage(3, 0, 4.5, 0, -4);
+    const d = G.game.dragon;
+    assert(d.weigh('plateHalo', MOVES.plateHalo, 1, 8.5) > 0, 'Falling Halo: his AI may pick it in form 3');
+    const thrown = [];
+    const w = G.watch;
+    G.watch = (n, e) => { w(n, e); if (n === 'world:impact' && e?.kind === 'throw' && e.by === 'boss') thrown.push(G.game.time); };
+    const h0 = G.hits.length;
+    let ring = null, top = 0;
+    const r = play(G, 'plateHalo', () => {
+      const H = d.terrain.halo;
+      if (H.live && !ring) ring = { cx: H.cx, cz: H.cz, n: H.n, away: Math.atan2(H.cx - d.position.x, H.cz - d.position.z), angs: H.p.slice(0, H.n).map((q) => Math.atan2(q.x0 - H.cx, q.z0 - H.cz)) };
+      top = Math.max(top, ...r0(d));
+    });
+    function r0(dd) { return dd.terrain.halo.p.map((q) => (q.piece ? q.piece.py : 0)); }
+    const hits = G.hits.slice(h0).filter((h) => h.attack === 'plateHalo');
+    const gapFree = ring ? ring.angs.every((a) => Math.abs(Math.atan2(Math.sin(a - ring.away), Math.cos(a - ring.away))) > TUNING.terrain.halo.gapArc / 2 - 0.05) : false;
+    assert(r.ok && ring && ring.n === 4 && thrown.length === 4 && top > 2.2 && G.flashes.length >= 1, `form 3: ${ring?.n} plates torn up round him, up to ${top.toFixed(1)} m, dropped in turn (${G.flashes.length} flares)`);
+    assert(gapFree, 'the ring is open on the side away from the Lord (his way out)');
+    assert(hits.length >= 1 && hits.every((h) => h.tell === TELL.RED), `a hero who stands is struck (${hits.length}, red)`);
+  }
+  for (const [hx, hz, bx, bz, form] of [[0, 4.5, 0, -4, 3], [5, 5, -1, -3, 4], [-6, 2, 1, -2, 4]]) {
+    for (const how of ['roll', 'run']) {
+      const G = stage(form, hx, hz, bx, bz);
+      const d = G.game.dragon, p = G.game.player, inp = G.input;
+      const h0 = G.hits.length;
+      let t0 = -1;
+      const w = G.watch;
+      const log = [];
+      G.watch = (n, e) => { w(n, e); if (n === 'combat:flash' && e?.attack === 'plateHalo') log.push(`F${G.game.time.toFixed(2)}@${p.position.x.toFixed(1)},${p.position.z.toFixed(1)}:${p.state}`); if (n === 'player:hurt') log.push(`H${G.game.time.toFixed(2)}`); if (how === 'roll' && n === 'combat:flash' && e?.attack === 'plateHalo') rollNow = true; };
+      let rollNow = false;
+      play(G, 'plateHalo', () => {
+        if (rollNow) { rollNow = false; p.debug.god = false; const ax = p.position.x - bx, az = p.position.z - bz, l = Math.hypot(ax, az) || 1; inp.axis = { x: ax / l, y: -az / l }; inp.tap('Space'); }
+        if (t0 < 0 && d.terrain.halo.live) t0 = G.game.time;
+        // run: out through the opening (away from him) a quarter second after the plates start to rise
+        if (how === 'run' && t0 >= 0 && G.game.time - t0 > 0.25) { const ax = hx - bx, az = hz - bz, l = Math.hypot(ax, az); inp.axis = { x: ax / l, y: -az / l }; }
+      });
+      inp.axis = { x: 0, y: 0 };
+      const hits = G.hits.slice(h0).filter((h) => h.attack === 'plateHalo' && h.r === RESULT.HIT);
+      assert(hits.length === 0, `Falling Halo (form ${form}) round a hero at (${hx}, ${hz}): ${how === 'roll' ? 'a roll at each flare' : 'running out through the opening as it rises'} is not struck (${hits.length})`);
+      if (hits.length && process.env.ABYSS_TDBG) out('       ', log.join(' '), 'hits', hits.map((h) => h.t.toFixed(2)).join(' '), 'ring', d.terrain.halo.cx.toFixed(1), d.terrain.halo.cz.toFixed(1));
+    }
+  }
+
   // ---- his AI uses them in a fight, and nothing breaks
   {
     const G = stage(3, 0, 5);
