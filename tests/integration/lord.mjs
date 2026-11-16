@@ -1116,6 +1116,128 @@ function terrainAnswers() {
 // ================================================================== scenario: flare (ADR-118)
 // His moments: the flare is the only sign; Severance parried is countered; Nightfall (the charged
 // blow) on a held guard; every form has the three new moves.
+async function scenarioFxlooks() {
+  out('\n== scenario FXLOOKS (his look options: ?star= ?sky= ?ignite= ?void= ?presence=; every option runs, its peak, and no look moves the game) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { LORD_LOOKS } = await imp('src/entities/enemies/starlessLord/fx.js');
+  const NAMES = Object.keys(LORD_LOOKS);
+  const OPTS = { star: ['0', 'a', 'b'], sky: ['0', 'a', 'b'], ignite: ['0', 'a', 'b'], void: ['0', 'a'], presence: ['0', 'a'] };
+  const force = (o) => { for (const n of NAMES) setLook(n, o?.[n] ?? null); };
+  assert(NAMES.every((n) => OPTS[n]) && LORD_LOOKS.star === '0' && LORD_LOOKS.sky === '0' && LORD_LOOKS.ignite === '0' && LORD_LOOKS.void === '0' && LORD_LOOKS.presence === 'a', `the switches and their defaults: ${JSON.stringify(LORD_LOOKS)} (a redraw keeps today's look '0' until the owner picks)`);
+  // 1. every option of every switch, through the moves it draws, for their whole life: no throw, no
+  //    NaN (the pools and G.tick throw on one), the fire field's and the additive pool's peaks
+  //    (caps: the measured peaks, 2026-11-16, with room; the field holds 6000, the pool 7000)
+  const CASES = {
+    star: [[4, 'star', 3.4]],
+    sky: [[4, 'storm', 5]],
+    void: [[4, 'tide', 3], [1, 'voidPush', 2.5], [3, 'rift', 2.5], [2, 'glaive', 4.5], [3, 'debris', 3.5], [1, 'grip', 3], [1, 'grasp', 3], [1, 'voidBolt', 2.5], [4, 'rend', 3], [4, 'storm', 5], [4, 'star', 3.4]],
+    presence: [[2, 'tempest', 4], [3, 'cyclone', 4]],
+  };
+  const CAP = { star: 2600, sky: 2600, ignite: 3600, void: 3200, presence: 1600 };
+  const peaks = {};
+  for (const name of NAMES) {
+    for (const opt of OPTS[name]) {
+      force({ [name]: opt });
+      let fire = 0, add = 0, ok = true;
+      try {
+        if (name === 'ignite') {
+          for (const f of [2, 3, 4]) {
+            const G = build();
+            duel(G, { dist: 3, form: f - 1 });
+            const d = G.game.dragon;
+            G.game.player.debug.god = true;
+            d.debug.postureBreak();
+            run(G, 0.1);
+            d.onExecute({});
+            run(G, 4.2, () => { fire = Math.max(fire, G.game.fx.fire.count); add = Math.max(add, G.game.fx.add.count); });
+            ok &&= d.phase === f && d.lit > 0.9;
+          }
+          // and his death (?void= draws it; here: the fourth deathblow in every ignite option too)
+          const G = build();
+          duel(G, { dist: 3, form: 4 });
+          G.game.dragon.debug.postureBreak();
+          run(G, 0.1);
+          G.game.dragon.onExecute({});
+          run(G, 3, () => { fire = Math.max(fire, G.game.fx.fire.count); });
+        } else {
+          for (const [f, mv, secs] of CASES[name]) {
+            const G = build();
+            duel(G, { dist: mv === 'storm' || mv === 'star' ? 3 : 6, form: f });
+            G.game.player.debug.god = true;
+            ok &&= G.game.dragon.debug.trigger(mv) !== false;
+            run(G, secs, () => { fire = Math.max(fire, G.game.fx.fire.count); add = Math.max(add, G.game.fx.add.count); });
+          }
+          if (name === 'void') {
+            const G = build();
+            duel(G, { dist: 3, form: 4 });
+            G.game.dragon.debug.postureBreak();
+            run(G, 0.1);
+            G.game.dragon.onExecute({});
+            run(G, 3.5, () => { fire = Math.max(fire, G.game.fx.fire.count); add = Math.max(add, G.game.fx.add.count); });
+            ok &&= G.game.dragon.mode === 'dying' || G.game.dragon.mode === 'dead';
+          }
+        }
+      } catch (e) {
+        ok = false;
+        out('   ', String(e?.stack ?? e).split('\n').slice(0, 3).join(' | '));
+      }
+      peaks[`${name}=${opt}`] = fire;
+      assert(ok && fire < CAP[name] && add < 6500, `?${name}=${opt}: runs its whole life clean; peaks: fire field ${fire} blobs (cap ${CAP[name]}), additive glyphs ${add}`);
+    }
+  }
+  // 2. '0' draws what main drew: today's functions run, the redraws do not (spied on one LordFx)
+  {
+    force({});
+    const G = build();
+    duel(G, { dist: 3, form: 4 });
+    G.game.player.debug.god = true;
+    const fx = G.game.dragon.fx, calls = {};
+    for (const k of ['_drawStar', '_drawStarA', '_drawMark', '_drawMarkA', '_starBurst', '_starBurstA', '_strikeA', '_drawCrescentA', '_bladeField', 'gather', '_igniteA']) {
+      const f = fx[k];
+      fx[k] = function (...a) { calls[k] = (calls[k] || 0) + 1; return f.apply(this, a); };
+    }
+    G.game.dragon.debug.trigger('star');
+    run(G, 3.4);
+    G.game.dragon.debug.trigger('storm');
+    run(G, 5);
+    G.game.dragon.debug.trigger('tide');
+    run(G, 2);
+    const today = calls._drawStar > 0 && calls._starBurst === 1 && calls._drawMark > 0;
+    const none = !calls._drawStarA && !calls._drawMarkA && !calls._starBurstA && !calls._strikeA && !calls._drawCrescentA && !calls._bladeField && !calls.gather && !calls._igniteA;
+    assert(today && none, `with no switch set, today's look is drawn (star ${calls._drawStar} frames + its burst, the sky's marks ${calls._drawMark}) and none of the redraws (${JSON.stringify(calls)})`);
+  }
+  force({});
+  // 3. no look moves the game: the SPELLS and TERRAIN scenarios print the same numbers (every
+  //    damage, distance and count) with every look at '0', at 'a', and at 'b' where there is one
+  const capture = async (o) => {
+    force(o);
+    const w = process.stdout.write.bind(process.stdout), f0 = fails;
+    let text = '';
+    process.stdout.write = (s) => { text += s; return true; };
+    try {
+      await scenarioSpells();
+      await scenarioTerrain();
+    } finally {
+      process.stdout.write = w;
+    }
+    const f = fails - f0;
+    fails = f0;
+    return { text, f };
+  };
+  const base = await capture(Object.fromEntries(NAMES.map((n) => [n, '0'])));
+  const allA = await capture(Object.fromEntries(NAMES.map((n) => [n, 'a'])));
+  const allB = await capture({ star: 'b', sky: 'b', ignite: 'b', void: 'a', presence: 'a' });
+  const diff = (x) => {
+    const A = base.text.split('\n'), B = x.text.split('\n');
+    const i = A.findIndex((l, k) => l !== B[k]);
+    return i < 0 ? 'same' : `first difference: "${A[i]}" / "${B[i]}"`;
+  };
+  assert(base.text.length > 500 && base.text === allA.text && base.text === allB.text, `SPELLS + TERRAIN print the same with every look at '0', at 'a' and at 'b' (${base.text.split('\n').length} lines; a: ${diff(allA)}; b: ${diff(allB)})`);
+  assert(base.f === 0 && allA.f === 0 && allB.f === 0, `and they pass under every look (${base.f} / ${allA.f} / ${allB.f} failed)`);
+  force({});
+  out(`    fire field peaks: ${JSON.stringify(peaks)}`);
+}
+
 async function scenarioFlare() {
   out('\n== scenario FLARE (his moments: the flare alone, the counter, the charged blow; every form) ==');
   const { DEFENSE, GUARD } = await imp('src/combat/rules.js');
@@ -1252,6 +1374,7 @@ const S = {
   win: scenarioWin,
   training: scenarioTraining,
   flare: scenarioFlare,
+  fxlooks: scenarioFxlooks,
 };
 const OPT_IN = { strategy: scenarioStrategy }; // run only when named
 if (OPT_IN[SCEN]) S[SCEN] = OPT_IN[SCEN];
