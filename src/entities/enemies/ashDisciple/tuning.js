@@ -90,8 +90,42 @@ export const TUNING = {
   },
   // PBZ pace (owner, 2026-11-12: "relentless"): short breathers, and after a move he often flows
   // straight into the next one without footwork (`chain`: the chance per move end, per phase)
-  idleGap: [[0.12, 0.38], [0.08, 0.26]], // s of footwork between moves [min, max] per phase
-  chain: [0.45, 0.6],
+  // (the second pass: shorter, phase by phase; the third phase is wave 2's)
+  idleGap: [[0.1, 0.3], [0.06, 0.2], [0.03, 0.12]], // s of footwork between moves [min, max] per phase
+  // a reaction that leaves him open (recoil, stagger, reeling, trampled, executed) and a break end in
+  // this much footwork, whatever idleGap is: the hero's punish window (the old idleGap; a break: 0.4 s
+  // at least)
+  openingGap: [[0.12, 0.38], [0.08, 0.26], [0.08, 0.26]],
+  chain: [0.6, 0.72, 0.82],
+  // the director (duelist/brain.js header, director.js; COMBAT.md "The duelists' pressure"). Per-phase
+  // arrays [P1, P2, P3]
+  pressure: {
+    chainDepth: [4, 5, 6], // moves in a row (links and the flow) before a breather ...
+    chainRest: [[0.45, 0.75], [0.35, 0.6], [0.25, 0.45]], // ... of this much footwork
+    linkCut: 0.5, // a link starts at this fraction of the recovery (the first part: the punish window)
+    chainCut: 0.5, // ... and the old flow roll (`chain`) at this one
+    // where the hero is as a move ends (a link's `when`): near / mid / far (m), front / behind (rad
+    // off his facing), away (m/s backing off)
+    near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
+    maxRun: [2, 3, 3], overRun: 0.1, sameCat: 0.7, // a category picked again: × sameCat; past maxRun in a row × overRun
+    floorAfter: [16, 13, 10], floorBoost: 1.8, floorForce: 2, // a category absent floorAfter s weighs more; × floorForce of it: forced
+    seek: { max: 2.5, every: 9 }, // the footwork keeps to another range for an absent category (s at most / at most every)
+    farDist: 6, closerBoost: 1.8, // past farDist m the gap closers × closerBoost
+    maxLive: [1, 2, 3], // hazards live at once before another hazard move is picked (× 0.05)
+    bias: { string: [1.5, 1.6, 1.7] }, // a category's weight × this (the strings: the most cues a second)
+    density: [1, 1.3, 1.6], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
+    mixed: 0.1, // a move asking a guard while a dodge is due within guard.horizon s (or the other way) × this
+    holdGap: 5, // a breather longer than this (a test, the Lab) holds the links and the flow too
+    // the fairness guard: two cues needing different answers never within `sep` s (+ `margin`): a
+    // blade's blow waits at the cock (maxHold s at most a blow), a called strike waits (maxDelay)
+    guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
+    // what tests/integration/duel.mjs PACE asserts (a steady defender, the hero roaming 2.5 - 9 m):
+    // each phase at least `ramp` × the one before (per phase), cues a minute at least `minRate`,
+    // the longest gap between cues at most `maxGap` s. (core, 2026-11-16, five seeds x 120 s with
+    // today's moves: P1 69.8 - 72.1 cues/min (60.2 before the pass), P2 87.4 - 93.0 (76.0), longest
+    // gap 2.87 / 2.87 s (2.49 / 2.43); phase 3 arrives in wave 2: its numbers are placeholders)
+    meter: { ramp: [1, 1.08, 1.05], minRate: [64, 78, 82], maxGap: [3.4, 3.4, 3.2] },
+  },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
 
