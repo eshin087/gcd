@@ -591,7 +591,7 @@ const SKULL = {
   ],
   brow: [[0.12, 0.31, 0.8], [0.25, 0.39, 0.64], [0.36, 0.45, 0.5], [0.46, 0.44, 0.35], [0.5, 0.36, 0.2]],
   cheek: [[0.36, 0.08, 0.68], [0.49, 0.06, 0.5], [0.55, 0.04, 0.3], [0.52, -0.01, 0.06]],
-  eye: { c: [0.355, 0.235, 0.51], r: [0.03, 0.034, 0.095], rot: [0.32, 0.5, 0.35] },
+  eye: { c: [0.36, 0.245, 0.51], r: [0.036, 0.04, 0.11], rot: [0.32, 0.5, 0.35] },
   nostril: [0.12, 0.3, 1.21],
 };
 
@@ -607,7 +607,7 @@ SKULL.extras = (S, up, jp) => {
   // the tips (rooted in the bosses), a lower pair under them, the jugal horns off the cheekbones, a
   // nape frill of blades between them, short supraorbital horns over the brow
   const L = [];
-  L.push(sweepTube(bentPath([0.21, 0.38, 0.02], [0.32, 0.36, -1], 1.85, { bend: -0.6, axis: [1, 0, 0], n: 9, bendPow: 1.4 }), (t) => 0.17 * Math.pow(1 - t, 0.9), { radial: 7, ridge: [5, 0.06] }));
+  L.push(sweepTube(bentPath([0.21, 0.38, 0.02], [0.42, 0.34, -1], 1.9, { bend: -0.62, axis: [1, 0, 0], n: 9, bendPow: 1.4 }), (t) => 0.17 * Math.pow(1 - t, 0.9), { radial: 7, ridge: [5, 0.06] }));
   L.push(sweepTube(bentPath([0.33, 0.2, -0.02], [0.6, 0.1, -1], 1.1, { bend: -0.35, axis: [1, 0, 0], n: 6 }), (t) => 0.11 * Math.pow(1 - t, 0.9), { radial: 6 }));
   L.push(sweepTube(bentPath([0.53, 0.02, 0.2], [0.75, -0.15, -1], 0.75, { bend: 0.2, axis: [0, 1, 0], n: 5 }), (t) => 0.08 * (1 - t), { radial: 5, flat: 0.6 }));
   for (let k = 0; k < 5; k++) {
@@ -643,9 +643,9 @@ const LOONG = {
     { z: 0.78, top: 0.255, wt: 0.12, w: 0.225, ys: 0.07, cheek: 0.0, gum: -0.13, wg: 0.225, pal: 0.085 },
     { z: 0.96, top: 0.235, wt: 0.11, w: 0.2, ys: 0.06, cheek: 0.0, gum: -0.125, wg: 0.205, pal: 0.08 },
     { z: 1.12, top: 0.23, wt: 0.14, w: 0.215, ys: 0.06, cheek: 0.0, gum: -0.13, wg: 0.21, pal: 0.075 },
-    { z: 1.24, top: 0.265, wt: 0.21, w: 0.28, ys: 0.08, cheek: 0.0, gum: -0.14, wg: 0.255, pal: 0.07 },
-    { z: 1.33, top: 0.245, wt: 0.21, w: 0.28, ys: 0.06, cheek: 0.0, gum: -0.15, wg: 0.245, pal: 0.06 },
-    { z: 1.39, top: 0.15, wt: 0.15, w: 0.21, ys: 0.0, cheek: 0.0, gum: -0.16, wg: 0.18, pal: 0.04 },
+    { z: 1.24, top: 0.265, wt: 0.15, w: 0.27, ys: 0.08, cheek: 0.0, gum: -0.14, wg: 0.255, pal: 0.07 },
+    { z: 1.33, top: 0.245, wt: 0.15, w: 0.27, ys: 0.06, cheek: 0.0, gum: -0.15, wg: 0.245, pal: 0.06 },
+    { z: 1.39, top: 0.15, wt: 0.1, w: 0.2, ys: 0.0, cheek: 0.0, gum: -0.16, wg: 0.18, pal: 0.04 },
     { z: 1.42, top: 0.02, wt: 0.06, w: 0.1, ys: -0.06, cheek: 0.0, gum: -0.15, wg: 0.08, pal: 0.02 },
   ],
   upperFeats: [
@@ -790,7 +790,7 @@ const DEMON = {
   ],
   upperFeats: [
     // deep sockets under the brow bar (the bar itself is its own mass, below)
-    { c: [0.36, 0.3, 0.56], r: [0.15, 0.11, 0.14], a: -0.17 },
+    { c: [0.38, 0.3, 0.56], r: [0.15, 0.11, 0.14], a: -0.13 },
     // the temples hollow under the horn roots, the cheekbones heavy
     { c: [0.48, 0.25, 0.2], r: [0.1, 0.1, 0.12], a: -0.07 },
     { c: [0.6, 0.04, 0.32], r: [0.07, 0.07, 0.24], a: 0.05 },
@@ -841,7 +841,7 @@ const DEMON = {
     [0.53, 0.1, 0.032],
     [0.43, 0.08, 0.028],
   ],
-  eye: { c: [0.31, 0.29, 0.58], r: [0.035, 0.03, 0.085], rot: [0.4, 0.42, 0.4] },
+  eye: { c: [0.345, 0.29, 0.58], r: [0.04, 0.034, 0.095], rot: [0.4, 0.42, 0.4] },
   nostril: [0.17, 0.34, 1.16],
 };
 DEMON.extras = (S, up, jp) => {
@@ -849,7 +849,7 @@ DEMON.extras = (S, up, jp) => {
   const bar = sweepTube([V(0.0, 0.46, 0.72), V(0.18, 0.5, 0.68), V(0.36, 0.52, 0.6), V(0.52, 0.48, 0.46), V(0.6, 0.38, 0.32)], (t) => 0.12 * (0.55 + 0.45 * Math.sin(Math.PI * Math.min(1, 0.1 + t * 0.95))), { radial: 6, flat: 0.62 });
   add(up, 'head', ...both(bar));
   // ram horns: from the temples, back, down round the ear and forward, spiralling out; ridged
-  const ram = sweepTube(bentPath([0.46, 0.42, 0.16], [0.1, 0.75, -0.55], 1.65, { bend: -4.4, axis: [1, 0, 0], drift: [0.32, -0.04, 0.0], n: 18 }), (t) => 0.2 * Math.pow(1 - t, 0.7) + 0.012, { radial: 7, ridge: [10, 0.08] });
+  const ram = sweepTube(bentPath([0.46, 0.42, 0.16], [0.1, 0.75, -0.55], 1.65, { bend: -4.4, axis: [1, 0, 0], drift: [0.32, -0.04, 0.0], n: 18 }), (t) => 0.16 * Math.pow(1 - t, 0.7) + 0.012, { radial: 7, ridge: [10, 0.08] });
   // a pair of horns off the crown, swept back like a bull's
   const crown = sweepTube(bentPath([0.22, 0.5, 0.08], [0.35, 1, -0.55], 1.2, { bend: -0.75, axis: [1, 0, 0], n: 8, bendPow: 1.3 }), (t) => 0.14 * Math.pow(1 - t, 0.85), { radial: 6, ridge: [6, 0.05] });
   // a row of short spikes behind the brow bar

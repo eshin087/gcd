@@ -7,6 +7,7 @@ import { HitboxOverlay } from './hitboxOverlay.js';
 import { TimingTrainer, tellName } from './timingTrainer.js';
 import { ModelViewer, VIEW_ANGLES, VIEW_LOOKS } from './modelView.js';
 import { Training } from './training.js';
+import { WYRM_FACES, wyrmFace } from '../entities/dragon/heads.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
@@ -935,6 +936,24 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
+    const wfr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads for the owner's pick (?wyrmFace=; reloads the page)";
+    const wfg = el('div', 'lab-grid', null, wfr);
+    wfg.style.flex = '1';
+    for (const f of WYRM_FACES) {
+      const b = button(wfg, f, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          u.searchParams.set('wyrmFace', f);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = `the wyrm wears the ${f} head (?wyrmFace=${f})`;
+      if (f === wyrmFace()) b.classList?.add('on');
+    }
     // the flurry (player/flurry.js): a perfect dodge's answer at a streak of N, started on the boss
     // from where the hero stands; `art` pins the last blow's look (flurry.js ARTS) for the next ones
     const fr = el('div', 'lab-row', null, body);
