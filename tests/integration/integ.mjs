@@ -2644,7 +2644,8 @@ async function scenarioLab() {
     const e0 = errors.length;
     // (Armageddon's meteors fall for ~12 s after the trigger: its window is longer; a background
     // hazard never spills into the next ability's count)
-    const r = forceAttack(G, a.name, { max: a.name === 'meteorRain' ? 17 : 9, settle: 600 });
+    // (a flying combo (flight, 2nd pass) runs 7 - 13 s to its crash: it gets the longer window too)
+    const r = forceAttack(G, a.name, { max: a.name === 'meteorRain' ? 17 : TUNING.attacks[a.name]?.parts ? 16 : 9, settle: 600 });
     run(G, 10, { passive: true, god: true }, () => !d.brain.action && d.state === 'combat');
     d.hazards.clear();
     const ok = r.trigger === true && evn(r, 'dragon:windup') >= 1 && r.tellT !== null && r.tells.includes(a.tell) && errors.length === e0; // multi-hit: abilities() lists the headline tell
