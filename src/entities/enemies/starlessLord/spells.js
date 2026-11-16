@@ -560,22 +560,30 @@ export class LordSpells {
         continue;
       }
       const gap = D - pr - v.r; // m until the front reaches him
-      if (gap > 0) {
+      if (!v.flashed) {
+        if (gap <= 0) {
+          // (he was inside it before it could be cued: in the eye, or he ran into it: it passes)
+          v.done = true;
+          v.h?.cancel?.();
+          v.h = null;
+          continue;
+        }
         const left = gap / N.speed;
         v.h?.retime?.(left);
-        if (!v.flashed && left <= lead) {
-          v.flashed = true;
-          v.flashT = d.time;
-          const a = Math.atan2(pl.position.z - n.z, pl.position.x - n.x);
-          this._cue(n.attack, TELL.RED, n.x + Math.cos(a) * (v.r + gap * 0.5), 0.6, n.z + Math.sin(a) * (v.r + gap * 0.5), true, false, left);
-        }
+        if (left > lead) continue;
+        v.flashed = true;
+        v.flashT = d.time;
+        const a = Math.atan2(pl.position.z - n.z, pl.position.x - n.x);
+        this._cue(n.attack, TELL.RED, n.x + Math.cos(a) * (v.r + gap * 0.5), 0.6, n.z + Math.sin(a) * (v.r + gap * 0.5), true, false, left);
         continue;
       }
-      // the front is on him (once: it runs on past)
+      // cued: it strikes him once, `lead` after its cue, if the front is on him then (a roll at the
+      // flare, whichever way, is under it then or has taken him out of its way)
+      if (d.time < v.flashT + lead - 1e-4) continue;
       v.done = true;
       v.h?.cancel?.();
       v.h = null;
-      if (!v.flashed || d.time - v.flashT < 0.2 || gap < -(N.width + 2 * pr)) continue;
+      if (Math.abs(gap) > N.width + pr) continue;
       const r = d.hitPlayer({ damage: n.damage, knockback: n.kb, knockdown: true, kind: 'void', tell: TELL.RED, parryable: false, blockable: false, attack: n.attack, from: { x: n.x, z: n.z }, extra: { plunge: false } });
       if (r === RESULT.HIT) {
         this.stats.nightHits++;

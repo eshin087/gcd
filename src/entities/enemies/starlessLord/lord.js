@@ -722,6 +722,9 @@ export class StarlessLord extends Duelist {
       const px = p.position.x, pz = p.position.z;
       o = { ...o, from: { x: px + (px - this.position.x), z: pz + (pz - this.position.z) }, kind: 'pull' };
     } else if (D?.bolt) o = { ...o, kind: 'lightning' };
+    // a blow out of a blink comes from wherever he appeared: a guard meets it from any side, as his
+    // flurry's (the hero cannot turn to it in the time its cue gives)
+    if (D?.blink) o = { ...o, extra: { ...(o.extra ?? null), around: true } };
     else if (D?.grip) o = { ...o, kind: 'grip', extra: { plunge: false } };
     const r = super.hitPlayer(o);
     if (D?.grip && r === RESULT.HIT && p?.position) {
