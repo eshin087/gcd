@@ -466,7 +466,7 @@ export class DragonFx {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.283, sp = (r * 0.82 * Math.sqrt(Math.random())) / 0.3;
       this._blob(
-        x, rand(0.8, 1.4), z, Math.cos(a) * sp, rand(0.5, 3.5) * q, Math.sin(a) * sp,
+        x + rand(-0.4, 0.4) * q, rand(0.8, 1.4), z + rand(-0.4, 0.4) * q, Math.cos(a) * sp, rand(0.5, 3.5) * q, Math.sin(a) * sp,
         rand(0.45, 0.8), rand(0.9, 1.3) * q, rand(1.9, 2.7) * q, 0.42, 0, 2.6, 2,
       );
     }
@@ -853,8 +853,14 @@ export class DragonFx {
       // orange skin (exactly one copy a frame, see _hold); behind it the heat it sheds, a burning tail
       const life = this._hold(pr, 'hold', dt);
       if (life > 0) {
-        this._blob(p.x, p.y, p.z, 0, 0, 0, life, 1.9, 1.9, 1.0, 1.0);
-        this._blob(p.x, p.y, p.z, 0, 0, 0, life, 1.0, 1.0, 1.2, 1.2);
+        // a knot of small blobs re-dealt every frame round the shell: a hot heart that boils, an
+        // orange skin with a ragged edge (two stacked hot blobs were a featureless white disc)
+        for (let i = 0; i < 7; i++) {
+          const j = i < 2 ? 0.15 : 0.42;
+          const ht = i < 2 ? 0.42 : rand(0.22, 0.32);
+          const sz = i < 2 ? rand(0.7, 0.9) : rand(0.8, 1.2);
+          this._blob(p.x + rand(-j, j), p.y + rand(-j, j), p.z + rand(-j, j), 0, 0, 0, life, sz, sz, ht, ht);
+        }
       }
       pr.trail += dt * 95;
       let tn = Math.min(8, Math.floor(pr.trail));
@@ -991,16 +997,32 @@ export class DragonFx {
   }
 
   // ---------------------------------------------------------------- shock / dust / roar
+  /**
+   * Dust thrown up off the ground round (x, z) out past r (a step, a landing, a blast): n grains of
+   * one letter each, from anywhere inside the ring at their own speeds (no circle of them), and a
+   * low cloud of dust in the field's smoke under them.
+   */
   dustRing(x, z, r, n = 36, strength = 1) {
+    if (!Number.isFinite(x + z + r + n + strength)) return;
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + rand(-0.1, 0.1);
-      const sp = rand(5, 10) * strength * S;
-      this._spawn(this.alpha, {
-        x: x + Math.cos(a) * r, y: rand(0.15, 0.6), z: z + Math.sin(a) * r,
-        vx: Math.cos(a) * sp, vy: rand(0.3, 2.2), vz: Math.sin(a) * sp,
-        life: rand(0.6, 1.1), size: rand(0.4, 0.7) * S, sizeEnd: rand(1.0, 1.6) * S, glyph: DUST,
-        color: [0.2, 0.19, 0.17], alpha: 0.75, alphaEnd: 0, drag: 2.8, gravity: -1.5, spin: rand(-2, 2),
-      });
+      const a = Math.random() * Math.PI * 2, rr = r * rand(0.35, 1.1), ca = Math.cos(a), sa = Math.sin(a);
+      const sp = rand(1.5, 10) * strength * S * rand(0.5, 1);
+      const o = this._rec(x + ca * rr, rand(0.12, 0.5), z + sa * rr, rand(0.5, 1.2), rand(0.3, 0.46), rand(0.36, 0.55), DUST);
+      o.vx = ca * sp;
+      o.vy = rand(0.3, 2.6) * Math.min(1.5, strength);
+      o.vz = sa * sp;
+      o.alpha = rand(0.5, 0.8);
+      o.drag = rand(2, 3.4);
+      o.gravity = -2;
+      o.spin = rand(-2, 2);
+      this._col(DUST_COL, rand(0.85, 1.35), DUST_COL, 0.8);
+      this._spawn(this.alpha, o);
+    }
+    const m = Math.min(10, Math.round((n / 7) * Math.min(1.6, strength)));
+    const sz = Math.max(0.9, Math.min(2.4, r * 0.55));
+    for (let i = 0; i < m; i++) {
+      const a = Math.random() * Math.PI * 2, rr = r * rand(0.3, 1), sp = rand(1, 4) * strength;
+      this._blob(x + Math.cos(a) * rr, rand(0.8, 1.1), z + Math.sin(a) * rr, Math.cos(a) * sp, rand(0.3, 1.2), Math.sin(a) * sp, rand(0.7, 1.3), sz, sz * rand(1.8, 2.6), rand(0.32, 0.45), 0, 2, 0.8, 1);
     }
   }
 
@@ -1483,10 +1505,12 @@ export class DragonFx {
     const add = this.add;
     const n = Math.max(14, Math.min(40, Math.round((Math.PI * 2 * r) / 0.9)));
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2;
-      const o = this._rec(x + Math.cos(a) * r, 0.25, z + Math.sin(a) * r, rand(0.25, 0.42), 0.5, 0.15, HEAT_SPARK);
-      o.vy = rand(2, 4.5);
-      o.drag = 3;
+      const a = Math.random() * Math.PI * 2, rr = r * rand(0.86, 1.04), out = rand(0, 1.6);
+      const o = this._rec(x + Math.cos(a) * rr, rand(0.15, 0.4), z + Math.sin(a) * rr, rand(0.2, 0.45), rand(0.3, 0.46), 0.12, HEAT_SPARK);
+      o.vx = Math.cos(a) * out;
+      o.vy = rand(1.5, 5);
+      o.vz = Math.sin(a) * out;
+      o.drag = rand(2, 3.5);
       o.flicker = 0.3;
       this._col(HEAT_EDGE, 1.1, HEAT_MID, 0.6);
       this._spawn(add, o);
@@ -1665,7 +1689,7 @@ export class DragonFx {
       const u = Math.random(), a = Math.random() * Math.PI * 2, rr = r * 0.34 * Math.sqrt(Math.random()) * (1 - 0.5 * u);
       this._blob(
         x + Math.cos(a) * rr, 0.8 + u * u * 6, z + Math.sin(a) * rr, Math.cos(a) * rand(0, 1), rand(5, 11) * (0.6 + u), Math.sin(a) * rand(0, 1),
-        rand(0.55, 0.95), rand(1.5, 2.0) * (1 - 0.45 * u), rand(0.7, 1.0), 0.62 * (1 - 0.4 * u), 0.1, 0.6, -10,
+        rand(0.55, 0.95), rand(1.2, 1.7) * (1 - 0.45 * u), rand(0.7, 1.0), 0.42 * (1 - 0.4 * u), 0.08, 0.6, -10,
       );
     }
     this._shock(x, z, r * 0.3, r * 0.95, 0.35, 0.4, 0.8);
@@ -1700,8 +1724,13 @@ export class DragonFx {
       const u = Math.random(), a = Math.random() * Math.PI * 2, rr = r * 0.34 * Math.sqrt(Math.random()) * (1 - 0.5 * u);
       this._blob(
         x + Math.cos(a) * rr, 0.8 + u * u * 5.5 * k, z + Math.sin(a) * rr, 0, rand(5, 11) * (0.5 + u) * (0.5 + 0.5 * k), 0,
-        rand(0.4, 0.65), rand(1.4, 1.9) * (1 - 0.45 * u), rand(0.7, 1.0), 0.56 * (1 - 0.4 * u) * (0.6 + 0.4 * k), 0.08, 0, -8,
+        rand(0.4, 0.65), rand(1.1, 1.6) * (1 - 0.45 * u), rand(0.7, 1.0), 0.38 * (1 - 0.4 * u) * (0.6 + 0.4 * k), 0.06, 0, -8,
       );
+      if (m % 2 === 0) {
+        // a lick torn off the side of the column: it leans out and climbs on its own
+        const la = Math.random() * Math.PI * 2, lo = r * rand(0.3, 0.5);
+        this._blob(x + Math.cos(la) * lo, rand(1, 3.5) * (0.5 + 0.5 * k), z + Math.sin(la) * lo, Math.cos(la) * rand(1, 2.5), rand(2, 5), Math.sin(la) * rand(1, 2.5), rand(0.35, 0.6), rand(0.7, 1.0), 0.3, rand(0.2, 0.3), 0, 0.8, 3);
+      }
       if (m % 3 === 0) {
         const o = this._rec(x + Math.cos(a) * rr, rand(1, 3), z + Math.sin(a) * rr, rand(0.5, 0.9), rand(0.2, 0.3), 0.06, LAVA_DROPS);
         o.vx = Math.cos(a) * rand(1, 4);
@@ -1756,9 +1785,10 @@ export class DragonFx {
         h.acc2 = 0.07;
         this.game.world?.scorch?.burnCircle?.(fx, fz, hw * 1.1, 0.16, 1);
         this.game.world?.ignite?.(fx, fz, hw, TUNING.world.ignite.strip); // the pass sets what it crosses alight
-        for (let i = 0; i < 3; i++) {
-          const l = (Math.random() * 2 - 1) * hw * 0.8;
-          this._blob(fx + qx * l, rand(0.8, 1.3), fz + qz * l, dx * rand(1, 4), rand(3, 7), dz * rand(1, 4), rand(0.4, 0.7), rand(1.6, 2.2), 0.6, 0.55, 0, 1.6, 1);
+        for (let i = 0; i < 4; i++) {
+          // the front: flames of every height, one leaning ahead now and then
+          const l = (Math.random() * 2 - 1) * hw * 0.9, tall = Math.random() < 0.3;
+          this._blob(fx + qx * l, rand(0.8, 1.3), fz + qz * l, dx * rand(1, 5), tall ? rand(6, 10) : rand(2, 5), dz * rand(1, 5), rand(0.35, 0.7), rand(1.0, 1.9), rand(0.4, 0.8), rand(0.38, 0.55), 0, 1.6, tall ? 3 : 1);
         }
         const l = (Math.random() * 2 - 1) * hw;
         const o = this._rec(fx + qx * l, 0.6, fz + qz * l, rand(0.5, 0.9), rand(0.2, 0.3), 0.05, EMBER_STAR);
@@ -1777,6 +1807,42 @@ export class DragonFx {
       h.acc3 -= 1;
       const s = b0 + Math.random() * L;
       this._blob(h.ax + dx * s, rand(2, 3.5), h.az + dz * s, 0, rand(0.8, 1.8), 0, rand(1.2, 1.8), 1.8, 4.2, 0.4, 0, 0.6, 0, 1);
+    }
+  }
+
+  /**
+   * What a moving fire leaves behind it: low red licks that stand where it passed and die out, and
+   * embers. ring: on the circle of radius `back` round (h.x, h.z); else behind the wall at
+   * (this._cx, this._cz), `back` behind its centre line, along +-half. Uses h.acc4.
+   */
+  _smoulder(h, dt, k, rate, ring, back, half) {
+    if (!(k > 0.3)) return;
+    h.acc4 = (h.acc4 || 0) + dt * rate * k;
+    let m = Math.min(5, Math.floor(h.acc4));
+    h.acc4 -= m;
+    while (m-- > 0) {
+      let x, z;
+      if (ring) {
+        const a = Math.random() * Math.PI * 2, rr = Math.max(0.5, back - rand(0, 2.2));
+        x = h.x + Math.cos(a) * rr;
+        z = h.z + Math.sin(a) * rr;
+      } else {
+        const l = rand(-half, half), b = back + rand(0, 2.4);
+        x = this._cx - h.dz * l - h.dx * b;
+        z = this._cz + h.dx * l - h.dz * b;
+      }
+      if (!Number.isFinite(x + z)) return;
+      this._blob(x, rand(0.8, 1.0), z, rand(-0.2, 0.2), rand(0.6, 1.4), rand(-0.2, 0.2), rand(0.8, 1.5), rand(0.9, 1.4), rand(0.5, 0.8), rand(0.2, 0.3), 0.04, 0.5, 1.2);
+      if (m % 2 === 0) {
+        const o = this._rec(x, 0.3, z, rand(0.6, 1.2), rand(0.22, 0.32), 0.05, EMBER);
+        o.vx = rand(-0.3, 0.3);
+        o.vy = rand(0.8, 2.4);
+        o.vz = rand(-0.3, 0.3);
+        o.drag = 0.8;
+        o.flicker = 0.5;
+        this._col(EMBER_COL, 0.9, DARK, 0.6);
+        this._spawn(this.add, o);
+      }
     }
   }
 
@@ -1857,27 +1923,29 @@ export class DragonFx {
       const ca = Math.cos(a), sa = Math.sin(a);
       if (m % 3 === 0) {
         // the heart of the band: smaller, hotter blobs down its middle (close enough to run together)
-        this._blob(h.x + ca * r, rand(0.8, 1.3), h.z + sa * r, ca * h.speed * 0.95, rand(1.5, 3.5), sa * h.speed * 0.95, rand(0.3, 0.45), rand(1.2, 1.5), 0.9, 0.44 * k, 0.24 * k, 0.2, 1);
+        this._blob(h.x + ca * r, rand(0.8, 1.3), h.z + sa * r, ca * h.speed * 0.95, rand(1.5, 3.5), sa * h.speed * 0.95, rand(0.3, 0.45), rand(1.1, 1.4), 0.9, 0.28 * k, 0.12 * k, 0.2, 1.5);
         continue;
       }
       this._blob(
         h.x + ca * rr, rand(0.7, 1.5), h.z + sa * rr, ca * h.speed * 0.9, rand(2, 5), sa * h.speed * 0.9,
-        rand(0.32, 0.52), rand(1.5, 2.0), rand(1.1, 1.4), 0.6 * k, 0.3 * k, 0.4, 2,
+        rand(0.32, 0.52), rand(1.4, 1.9), rand(1.1, 1.4), 0.44 * k, 0.16 * k, 0.4, 2.5,
       );
     }
-    if (life && add && k > 0.5) {
-      const re = r + hw + 0.7;
-      const n = Math.max(24, Math.min(110, Math.round((Math.PI * 2 * re) / 1.1)));
-      const o = this._rec(0, 0.3, 0, life, 0.45, 0.45, HEAT_RIM);
-      o.alphaEnd = 1;
-      this._col(HEAT_EDGE, 0.8, HEAT_EDGE, 0.8);
+    if (life && k > 0.5) {
+      // the leading edge: a ragged hem of small flames (held heat, one copy a frame), each its own
+      // size and strength, re-dealt a few times a second; no ruler-even line of dots
+      const re = r + hw * 0.85;
+      const n = Math.max(24, Math.min(220, Math.round((Math.PI * 2 * re) / 0.5)));
+      const beat = Math.floor((this.game.time ?? 0) * 7);
       for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2;
-        o.x = h.x + Math.cos(a) * re;
-        o.z = h.z + Math.sin(a) * re;
-        add.spawn(o);
+        const h1 = hash01(h.seed + beat, i), h2 = hash01(h.seed + 3.1, i + beat * 0.37);
+        if (h1 < 0.18) continue;
+        const a = ((i + h2 * 0.8) / n) * Math.PI * 2, rr = re + (h1 - 0.5) * 1.1;
+        const sz = 0.55 + 0.4 * h2, ht = (0.08 + 0.17 * h1) * k;
+        this._blob(h.x + Math.cos(a) * rr, 0.85, h.z + Math.sin(a) * rr, 0, 0, 0, life, sz, sz, ht, ht);
       }
     }
+    this._smoulder(h, dt, k, Math.min(70, r * 4), true, r - hw, 0);
     h.acc2 -= dt;
     if (h.acc2 <= 0 && k > 0.5) {
       h.acc2 = 0.12;
@@ -1916,26 +1984,30 @@ export class DragonFx {
       const l = (Math.random() * 2 - 1) * half, s = (Math.random() * 2 - 1) * hw * 0.6;
       if (m % 3 === 0) {
         // the heart of the wall: smaller, hotter blobs along its foot (close enough to run together)
-        this._blob(cx + qx * l, rand(0.8, 1.4), cz + qz * l, h.dx * h.speed * 0.95, rand(2, 4), h.dz * h.speed * 0.95, rand(0.3, 0.45), rand(1.3, 1.6), 1.0, 0.44 * k, 0.24 * k, 0.2, 1);
+        this._blob(cx + qx * l, rand(0.8, 1.4), cz + qz * l, h.dx * h.speed * 0.95, rand(2, 4), h.dz * h.speed * 0.95, rand(0.3, 0.45), rand(1.1, 1.4), 1.0, 0.32 * k, 0.14 * k, 0.2, 1.5);
         continue;
       }
       const high = Math.random() < 0.45;
       this._blob(
         cx + qx * l + h.dx * s, high ? rand(1.8, 3.6) : rand(0.7, 1.3), cz + qz * l + h.dz * s, h.dx * h.speed * 0.9, rand(3, 7), h.dz * h.speed * 0.9,
-        rand(0.35, 0.6), rand(1.7, 2.3), rand(1.2, 1.6), (high ? 0.5 : 0.62) * k, 0.3 * k, 0.4, 2,
+        rand(0.35, 0.6), rand(1.5, 2.1), rand(1.2, 1.6), (high ? 0.3 : 0.38) * k, 0.14 * k, 0.4, high ? 3 : 2,
       );
     }
-    if (life && add && k > 0.5) {
-      const o = this._rec(0, 0.3, 0, life, 0.45, 0.45, HEAT_RIM);
-      o.alphaEnd = 1;
-      this._col(HEAT_EDGE, 0.8, HEAT_EDGE, 0.8);
-      const ex = cx + h.dx * (hw + 0.8), ez = cz + h.dz * (hw + 0.8);
-      for (let l = -half; l <= half; l += 1.1) {
-        o.x = ex + qx * l;
-        o.z = ez + qz * l;
-        add.spawn(o);
+    if (life && k > 0.5) {
+      // the leading edge: a ragged hem of small flames (held heat, re-dealt a few times a second)
+      const ex = cx + h.dx * hw * 0.85, ez = cz + h.dz * hw * 0.85;
+      const beat = Math.floor((this.game.time ?? 0) * 7);
+      let i = 0;
+      for (let l = -half; l <= half; l += 0.5, i++) {
+        const h1 = hash01(h.seed + beat, i), h2 = hash01(h.seed + 3.1, i + beat * 0.37);
+        if (h1 < 0.18) continue;
+        const ll = l + h2 * 0.4, ff = (h1 - 0.5) * 1.1, sz = 0.55 + 0.4 * h2, ht = (0.08 + 0.17 * h1) * k;
+        this._blob(ex + qx * ll + h.dx * ff, 0.85, ez + qz * ll + h.dz * ff, 0, 0, 0, life, sz, sz, ht, ht);
       }
     }
+    this._cx = cx;
+    this._cz = cz;
+    this._smoulder(h, dt, k, Math.min(60, h.len * 1.5), false, hw, half);
     h.acc2 -= dt;
     if (h.acc2 <= 0 && k > 0.5) {
       h.acc2 = 0.12;
