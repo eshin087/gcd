@@ -4,7 +4,7 @@
 // so nothing here allocates per frame. Fire is heat in the fire field (docs/STYLE.md "The fire
 // field"); dust, sparks and embers are small glyph particles. Only atlas glyphs.
 //
-// Cost (fire-field blobs at the peak): a fire snap ~150 / s for 0.5 s (~90 alive), a slam ~40 at
+// Cost (fire-field blobs at the peak): a fire snap ~230 / s for 0.5 s (~130 alive), a slam ~40 at
 // once, a tail slam ~50 at once. The ground they set burning is the hazards' strip (hazards.js).
 
 import { SCALE } from './tuning.js';
@@ -18,7 +18,7 @@ const DUST_COL = [0.2, 0.19, 0.17];
 const rand = (a, b) => a + Math.random() * (b - a);
 
 /**
- * One frame of the fire snap's gout: a short, fat cone of fire from the open jaws along `yaw`,
+ * One frame of the fire snap's gout: a short, fat cone of the breath's fire from the open jaws along `yaw`,
  * pitched down by `pitch` (rad), reaching about `range` m. `st` keeps the accumulators (a string
  * hit's scratch); `u` 0..1 = progress through the gout (it thins at the end); `first` = the frame
  * it bursts out (a puff at the maw).
@@ -37,29 +37,12 @@ export function snapFire(fx, st, dt, mouth, yaw, pitch, range, u, first) {
     }
     fx._light({ x: mouth.x + sa * 3, y: 1.4, z: mouth.z + ca * 3, color: [1, 0.5, 0.16], intensity: 6, radius: 9 * S, life: 0.55, fadeIn: 0.05, fade: 0.3, flicker: 0.5 });
   }
-  st.fireAcc = (st.fireAcc ?? 0) + dt * 150 * fade;
-  let n = Math.min(10, Math.floor(st.fireAcc));
-  st.fireAcc -= n;
-  while (n-- > 0) {
-    const y = yaw + rand(-0.13, 0.13), pj = pitch + rand(-0.06, 0.07), cp = Math.cos(pj), sp = rand(0.8, 1.0) * vMax;
-    const hot = Math.random() < 0.45;
-    fx._blob(
-      mouth.x + rand(-0.1, 0.1), mouth.y + rand(-0.1, 0.1), mouth.z + rand(-0.1, 0.1),
-      Math.sin(y) * cp * sp, -Math.sin(pj) * sp, Math.cos(y) * cp * sp,
-      rand(0.45, 0.62), rand(0.6, 0.85) * S, rand(1.9, 2.7) * S, hot ? 0.36 : 0.24, 0, 1.5, 2.5,
-    );
-  }
-  // the ragged edge: slower tongues that lick out wide and curl up
-  st.tongueAcc = (st.tongueAcc ?? 0) + dt * 60 * fade;
-  n = Math.min(4, Math.floor(st.tongueAcc));
-  st.tongueAcc -= n;
-  while (n-- > 0) {
-    const y = yaw + rand(-0.4, 0.4), pj = pitch + rand(-0.15, 0.08), cp = Math.cos(pj), sp = rand(0.45, 0.75) * vMax;
-    fx._blob(mouth.x, mouth.y, mouth.z, Math.sin(y) * cp * sp, -Math.sin(pj) * sp, Math.cos(y) * cp * sp, rand(0.45, 0.7), rand(0.5, 0.75) * S, rand(1.2, 1.8) * S, 0.46, 0, 1.6, 4.5);
-  }
+  // the gout itself: the breath's body (fx.breathBody: the same fire as every breath of the wyrm, in
+  // the look in use), a short fat cone of about a third of the breath's rate
+  fx.breathBody?.(dt, mouth, yaw, pitch, range, 0.22, 0.35 * fade);
   // sparks thrown off it
   st.sparkAcc = (st.sparkAcc ?? 0) + dt * 40;
-  n = Math.min(3, Math.floor(st.sparkAcc));
+  let n = Math.min(3, Math.floor(st.sparkAcc));
   st.sparkAcc -= n;
   while (n-- > 0) {
     const dd = rand(1, range * 0.8), lat = rand(-6, 6);

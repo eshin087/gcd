@@ -124,6 +124,9 @@ export const FIRE = Object.freeze({
   maxFlames: 800, // … per second over the whole field
   maxCells: 2600, // burning cells at once (a hard cap: the oldest fires are simply left to finish)
   glow: Object.freeze({ intensity: 1.5, pad: 2, max: 6 }), // a blaze's one light: radius min(max, its radius + pad) m
+  // under a live breath (world.fire.hush): the grass's flames x k heat (and smaller, lower). At 1 they
+  // added up with the breath's own blobs into white-yellow knots along its cone (integration, 2026-11-15)
+  hush: Object.freeze({ k: 0.45, slots: 8 }),
 });
 
 /** Impact marks (world/scars.js). */

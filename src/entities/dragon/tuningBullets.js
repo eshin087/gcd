@@ -74,6 +74,10 @@ export const BULLET_ATTACKS = {
     gustHz: 1.7, gustGap: 0.24, // gusts / s; the share of each gust with no embers (the gaps)
     lanes: [1, 2, 3], laneGap: 0.22, // the stream split into a forked tongue (rad between lanes)
     orbs: [0, 3, 4], orbSpread: 0.18, orbSpeed: 6.5, cough: 0.3, // P2+: red orbs coughed at each extreme
+    // no ember of the stream reaches the hero within orbSep s of the orbs (red, a roll) reaching him: a
+    // gap opens in the stream there (integration, 2026-11-15: the orbs are slower; the sweep coming back
+    // across him put white embers on him within 0.3 s of them several times a cast at 12 - 26 m)
+    orbSep: 0.4,
     barks: [0, 2, 3], barkGap: 0.42, barkCount: [7, 7, 9], barkSpread: 0.3, barkSpeed: 11, // the closing barks
     barkOrbs: [0, 0, 5], // P3: the last bark is this many red orbs instead
     reach: 2.5, dy: -0.55, // the head's reach out of the neck base (model units) and its dip

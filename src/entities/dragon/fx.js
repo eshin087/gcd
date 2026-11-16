@@ -600,31 +600,44 @@ export class DragonFx {
   breathEmit(dt, mouth, aimYaw, pitch = 0.17) {
     if (!mouth || !(dt > 0) || !Number.isFinite(mouth.x + mouth.y + mouth.z + aimYaw + pitch)) return;
     const T = TUNING.attacks.breath;
-    const ca = Math.cos(aimYaw), sa = Math.sin(aimYaw);
     const R = T.range, HA = T.halfAngle;
+    this.breathBody(dt, mouth, aimYaw, pitch, R, HA, 1);
+    this._breathCommon(dt, mouth, aimYaw, pitch, Math.cos(aimYaw), Math.sin(aimYaw), R, HA);
+  }
+
+  /**
+   * The body of a breath, for every fire the wyrm breathes (the breath, the fire snap of its strings,
+   * the strafe of its flights): the same fire in the look in use (?breath=a|b|c), shaped to reach `R` m
+   * within +-`HA` rad of `aimYaw`, pitched down by `pitch`, at `k` x the full breath's rate (k 1 is
+   * about 650 blobs / s; the lights, smoke, sparks and scorch are the caller's: breathEmit adds the
+   * breath's own).
+   */
+  breathBody(dt, mouth, aimYaw, pitch, R, HA, k = 1) {
+    if (!mouth || !(dt > 0) || !(R > 0) || !(k > 0) || !Number.isFinite(mouth.x + mouth.y + mouth.z + aimYaw + pitch + R + HA)) return;
     this._brT += dt;
     const look = BREATH_LOOK;
-    if (look === 'c') this._breathLiquid(dt, mouth, aimYaw, pitch, R, HA);
-    else {
-      // the rod: small hot blobs close to the jaws (where they pile up: the white heart)
-      this._brStreams(dt, 0, look === 'b' ? 140 : 240, mouth, aimYaw, pitch, 0, 0.04, R * 0.2, R * 0.34, 0.3, 0.4, 2.6, 0.3, 0.75, 0.24, 0.08, 1);
-      if (look === 'b') {
-        // lashing tongues: five streams that whip across the cone, each drawing a curved lick
-        for (let i = 0; i < 5; i++) {
-          const t = this._brT, f = 1.3 + 0.45 * i;
-          let off = HA * 0.95 * Math.sin(t * f + i * 1.9);
-          off = Math.max(-HA, Math.min(HA, off));
-          const len = 0.78 + 0.22 * hash01(i, 3.7);
-          this._brStreams(dt, 6 + i, 46, mouth, aimYaw + off, pitch, 0, 0.025, R * 0.8 * len, R * len, 0.55, 0.7, 1.4, 0.3, 0.95, 0.62, 0.22, 2);
-        }
-      } else {
-        // the torrent: the body fills the cone (most of it near the axis), it slows and swells
-        this._brStreams(dt, 1, T.particlesPerSec * 1.5, mouth, aimYaw, pitch, 0, HA * 0.95, R * 0.5, R * 1.02, 0.6, 0.85, 1.6, 0.5, 3.0, 0.15, 0.19, 2.5, true);
+    if (look === 'c') {
+      this._breathLiquid(dt, mouth, aimYaw, pitch, R, HA, k);
+      return;
+    }
+    // the rod: small hot blobs close to the jaws (where they pile up: the white heart)
+    this._brStreams(dt, 0, (look === 'b' ? 140 : 240) * k, mouth, aimYaw, pitch, 0, Math.min(0.04, HA), R * 0.2, R * 0.34, 0.3, 0.4, 2.6, 0.3, 0.75, 0.24, 0.08, 1);
+    if (look === 'b') {
+      // lashing tongues: five streams that whip across the cone, each drawing a curved lick
+      for (let i = 0; i < 5; i++) {
+        const t = this._brT, f = 1.3 + 0.45 * i;
+        let off = HA * 0.95 * Math.sin(t * f + i * 1.9);
+        off = Math.max(-HA, Math.min(HA, off));
+        const len = 0.78 + 0.22 * hash01(i, 3.7);
+        this._brStreams(dt, 6 + i, 46 * k, mouth, aimYaw + off, pitch, 0, 0.025, R * 0.8 * len, R * len, 0.55, 0.7, 1.4, 0.3, 0.95, 0.62, 0.22, 2);
       }
+    } else {
+      // the torrent: the body fills the cone (most of it near the axis), it slows and swells
+      this._brStreams(dt, 1, TUNING.attacks.breath.particlesPerSec * 1.5 * k, mouth, aimYaw, pitch, 0, HA * 0.95, R * 0.5, R * 1.02, 0.6, 0.85, 1.6, 0.5, 3.0, 0.15, 0.19, 2.5, true);
       // licks along the edges: slower, cooler, they curl up off the rim of the cone
-      if (look !== 'b') this._brStreams(dt, 3, 90, mouth, aimYaw, pitch, HA * 0.72, HA, R * 0.55, R * 0.95, 0.5, 0.7, 2.0, 0.45, 1.8, 0.3, 0.08, 6);
+      this._brStreams(dt, 3, 90 * k, mouth, aimYaw, pitch, HA * 0.72, HA, R * 0.55, R * 0.95, 0.5, 0.7, 2.0, 0.45, 1.8, 0.3, 0.08, 6);
       // billows: at the far end the fire has slowed; it rolls up and over in big cool balls
-      this._brAcc[4] += dt * (look === 'b' ? 0 : 26);
+      this._brAcc[4] += dt * 26 * k;
       let n = Math.min(4, Math.floor(this._brAcc[4]));
       this._brAcc[4] -= n;
       while (n-- > 0) {
@@ -636,7 +649,6 @@ export class DragonFx {
         );
       }
     }
-    this._breathCommon(dt, mouth, aimYaw, pitch, ca, sa, R, HA);
   }
 
   /**
@@ -667,9 +679,9 @@ export class DragonFx {
   }
 
   /** Liquid fire (breath look c): an arc that rains down onto the ground and spreads there as a carpet of flame. */
-  _breathLiquid(dt, mouth, aim, pitch, R, HA) {
+  _breathLiquid(dt, mouth, aim, pitch, R, HA, k = 1) {
     // three jets (left, middle, right of the cone) of hot drops that arc down and rain onto the ground
-    this._brAcc[1] += dt * 165;
+    this._brAcc[1] += dt * 165 * k;
     let n = Math.min(12, Math.floor(this._brAcc[1]));
     this._brAcc[1] -= n;
     const g = 16, t = this._brT;
@@ -683,9 +695,9 @@ export class DragonFx {
       this._blob(mouth.x + vx * back, mouth.y + vy * back, mouth.z + vz * back, vx, vy, vz, tf, rand(0.22, 0.3) * S, rand(0.3, 0.42) * S, rand(0.6, 0.75), 0.5, 0, -g);
     }
     // the rod at the jaws before it splits into the jets
-    this._brStreams(dt, 0, 50, mouth, aim, pitch - 0.1, 0, 0.05, R * 0.15, R * 0.25, 0.2, 0.28, 2.0, 0.32, 0.7, 0.5, 0.15, -4);
+    this._brStreams(dt, 0, 50 * k, mouth, aim, pitch - 0.1, 0, 0.05, R * 0.15, R * 0.25, 0.2, 0.28, 2.0, 0.32, 0.7, 0.5, 0.15, -4);
     // the pool: where the jets land the fire lies low and flat and spreads, fed as long as it rains
-    this._brAcc[2] += dt * 170;
+    this._brAcc[2] += dt * 170 * k;
     n = Math.min(10, Math.floor(this._brAcc[2]));
     this._brAcc[2] -= n;
     while (n-- > 0) {
@@ -697,7 +709,7 @@ export class DragonFx {
       );
     }
     // drops splashing where the jets land: sparks thrown up off the pool
-    this._brAcc[11] += dt * 40;
+    this._brAcc[11] += dt * 40 * k;
     n = Math.min(4, Math.floor(this._brAcc[11]));
     this._brAcc[11] -= n;
     while (n-- > 0) {
@@ -785,6 +797,7 @@ export class DragonFx {
         const x = mouth.x + sa * dd + rand(-0.4, 0.4), z = mouth.z + ca * dd + rand(-0.4, 0.4);
         scorch?.burnCircle?.(x, z, r, 0.05, 0.9);
         this.game.world?.ignite?.(x, z, r, TUNING.world.ignite.breath); // what the breath lands on catches
+        this.game.world?.fire?.hush?.(x, z, r * 1.6, 0.3); // (and its flames burn low while the breath is on them)
       }
     }
   }
@@ -2061,36 +2074,16 @@ export class DragonFx {
   }
 
   /**
-   * One frame of fire streaming from the mouth down onto the ground front (fx, fz): the breath's
-   * body (blobs that swell as they fly, a thin hot vein down the middle), and the splash where it
-   * lands: flames thrown up off the ground front.
+   * One frame of fire streaming from the mouth down onto the ground front (fx, fz): the breath's body
+   * (breathBody: the same fire as the breath, in the look in use, a narrow cone reaching the ground
+   * front), and the splash where it lands: flames thrown up off the ground front.
    */
   skyStream(dt, mouth, fx, fz) {
     if (!mouth || !Number.isFinite(mouth.x + mouth.y + mouth.z + fx + fz)) return;
     const dx = fx - mouth.x, dy = 0.3 - mouth.y, dz = fz - mouth.z;
-    const L = Math.hypot(dx, dy, dz) || 1;
-    const ux = dx / L, uy = dy / L, uz = dz / L;
-    const sp = 34, j = 0.08;
-    this.skyAcc += dt * 120;
-    let n = Math.min(10, Math.floor(this.skyAcc));
-    this.skyAcc -= n;
-    while (n-- > 0) {
-      this._blob(
-        mouth.x + rand(-0.15, 0.15), mouth.y + rand(-0.15, 0.15), mouth.z + rand(-0.15, 0.15),
-        (ux + rand(-j, j)) * sp, (uy + rand(-j, j)) * sp, (uz + rand(-j, j)) * sp,
-        (L / sp) * rand(0.85, 1.05), rand(0.8, 1.1), rand(2.2, 3.0), Math.random() < 0.4 ? 0.36 : 0.24, 0.08, 0.3, 0,
-      );
-    }
-    this._coreAcc += dt * 45;
-    n = Math.min(3, Math.floor(this._coreAcc));
-    this._coreAcc -= n;
-    while (n-- > 0) {
-      this._blob(
-        mouth.x + rand(-0.05, 0.05), mouth.y + rand(-0.05, 0.05), mouth.z + rand(-0.05, 0.05),
-        (ux + rand(-0.02, 0.02)) * sp * 1.15, (uy + rand(-0.02, 0.02)) * sp * 1.15, (uz + rand(-0.02, 0.02)) * sp * 1.15,
-        (L / (sp * 1.15)) * rand(0.5, 0.8), rand(0.6, 0.8), rand(1.1, 1.5), 0.55, 0.1, 0.3, 0,
-      );
-    }
+    const hz = Math.hypot(dx, dz), L = Math.hypot(hz, dy) || 1;
+    this.breathBody(dt, mouth, Math.atan2(dx, dz), Math.atan2(-dy, Math.max(0.01, hz)), L, 0.1, 0.32);
+    let n;
     this._tongueAcc += dt * 45;
     n = Math.min(4, Math.floor(this._tongueAcc));
     this._tongueAcc -= n;

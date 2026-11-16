@@ -214,6 +214,14 @@ const laneOff = (n, j) => (j - (n - 1) / 2) * ES.laneGap;
 /** The stream breathes in gusts: true while cast time `t` falls in a gust (not in a gap). */
 const gustOn = (a, t) => frac(a.gph + t * ES.gustHz) >= ES.gustGap;
 
+/**
+ * Is the stream quiet for an ember leaving at cast time `t`, `D` m from the hero? It would reach him
+ * within ES.orbSep s of the coughed orbs (a.orbAt, cast time): the stream has a gap there.
+ */
+function nearOrb(a, t, D) {
+  return a.orbAt > -1 && Math.abs(t + Math.max(0, D) / ES.speed - a.orbAt) < ES.orbSep;
+}
+
 /** The torrent's target aim `te` s from now (the sweep; coughs and barks aside). */
 function torrentAim(a, te) {
   return a.cy + a.dir * a.arc * Math.sin(a.ph + 2 * Math.PI * a.hz * te);
@@ -237,7 +245,7 @@ function streamCue(d, a) {
       const te = Math.max(0, a.next + k * ES.every - a.t);
       const tt = te + fl;
       if (tt > FL || a.t + te >= a.barkAt) break;
-      if (tt < BK.cueMin || a.cough > te || !gustOn(a, a.t + te)) continue;
+      if (tt < BK.cueMin || a.cough > te || !gustOn(a, a.t + te) || nearOrb(a, a.t + te, G.D - R)) continue;
       const y = torrentAim(a, te - 1 / LOOK_RATE);
       let hit = false;
       for (let j = 0; j < a.lanes && !hit; j++) hit = Math.abs(angleDiff(y + laneOff(a.lanes, j), G.th)) <= half;
@@ -288,6 +296,7 @@ const emberStorm = {
     a.covered = false;
     a.cough = 0;
     a.coughFired = true;
+    a.orbAt = -9; // cast time the last orbs reach the hero (nearOrb)
     a.lastCos = Math.cos(a.ph);
     a.kick = 0;
     a.wasGust = false;
@@ -378,6 +387,8 @@ const emberStorm = {
       if (!a.coughFired && a.cough <= ES.cough * 0.5) {
         a.coughFired = true;
         for (let j = 0; j < a.orbs; j++) spit(d, BULLET.ORB, 'emberStorm', (j - (a.orbs - 1) / 2) * ES.orbSpread, ES.orbSpeed, a.grp, 5);
+        const Gm = mouthGeo(d, _geo);
+        if (Number.isFinite(Gm.D)) a.orbAt = a.t + Math.max(0, Gm.D - BK.orb.r - playerR(d.game)) / ES.orbSpeed;
         BFX.muzzle(d.fx, m.x, m.y, m.z, f.x, f.z, 14);
         a.kick = 1;
         d.game.shake?.(0.2);
@@ -385,8 +396,9 @@ const emberStorm = {
       a.next = Math.max(a.next, a.t); // the stream picks up again after the cough
     } else {
       let n = 0, gust = false;
+      const Dq = a.orbAt > -1 ? mouthGeo(d, _geo).D - BK.ember.r - playerR(d.game) : 0;
       while (a.t >= a.next && n++ < 4) {
-        if (gustOn(a, a.next)) {
+        if (gustOn(a, a.next) && !nearOrb(a, a.next, Dq)) {
           gust = true;
           for (let j = 0; j < a.lanes; j++) {
             // the lead ember flies true; the rest stray a little in aim and speed (the stream's body)
