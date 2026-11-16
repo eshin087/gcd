@@ -10,6 +10,7 @@ import { Training } from './training.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
+import { buildLooks } from './labLooks.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -693,6 +694,7 @@ export class Lab {
 
       this._buildLevel(root);
       this._buildOutfit(root);
+      this._buildLooks(root);
       this._buildFight(root);
       this._buildAbilities(root);
       this._buildPlayer(root);
@@ -760,6 +762,16 @@ export class Lab {
     this._syncOutfit();
   }
 
+  /** LOOKS: the duelists' look options (labLooks.js; ?kindle= ?star= ... ?looks=new), live or by a
+   *  reload. Only in a duelist's level; collapsed by default (it is long). */
+  _buildLooks(root) {
+    const id = this.game.level?.id;
+    if (id !== 'ash' && id !== 'starless') return;
+    if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
+    const { body } = this._section(root, 'looks', 'LOOKS');
+    this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
+  }
+
   _syncStanceBtns() {
     const v = this.game.player?.debug?.fightStance ?? null;
     for (const B of this.ui.stanceBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
@@ -778,7 +790,9 @@ export class Lab {
     button(grid, 'Phase 2', () => this._fightAction('phase2'));
     button(grid, 'Phase 3', () => this._fightAction('phase3')).title = 'the phase-3 transition roar: hotter, faster wyrm (opens with the nova when the AI runs)';
     // a boss with a fourth phase (the Starless Lord's blade forms)
-    if (typeof this.game.dragon?.debug?.phase4 === 'function') button(grid, 'Phase 4', () => this._fightAction('phase4')).title = 'the next blade form (each button works from the form before it)';
+    // (every duelist has debug.phase4; only one whose kit counts four forms uses it)
+    const D = this.game.dragon;
+    if (typeof D?.debug?.phase4 === 'function' && (D.kit ? (D.kit.maxPhase ?? 0) >= 4 : true)) button(grid, 'Phase 4', () => this._fightAction('phase4')).title = 'the next blade form (each button works from the form before it)';
     button(grid, 'Stagger', () => this._fightAction('stagger'));
     button(grid, 'Posture break', () => this._fightAction('postureBreak'));
     button(grid, 'Kill', () => this._fightAction('kill'), 'danger');

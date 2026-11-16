@@ -160,6 +160,7 @@ add('BOSS STATES', [
   { id: 'break', name: 'Posture break', boss: 'any', desc: 'His posture breaks: open to crits.', go: (T) => T.d.debug.postureBreak(), until: (T) => T.t > 3.6, expect: ['dragon:postureBreak'] },
   { id: 'phase2', name: 'Phase 2', boss: 'any', desc: 'The second phase begins (its transition).', go: (T) => T.d.debug.phase2(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase3', name: 'Phase 3', boss: 'wyrm', desc: 'The third phase: the wyrm burns white-hot.', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
+  { id: 'phase3a', name: 'Phase 3', boss: 'ash', desc: 'His third phase: ash on the wind (its change).', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase3l', name: 'Form 3', boss: 'lord', desc: 'His third blade form ignites.', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase4', name: 'Form 4', boss: 'lord', desc: 'His fourth form: the Void answers him.', go: (T) => T.d.debug.phase4(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'bossDeath', name: 'His death', boss: 'any', desc: 'The killing blow (the next situation wakes him again).', go: (T) => T.d.debug.kill(), until: (T) => T.t > 4, expect: [] },
