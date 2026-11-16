@@ -1,8 +1,10 @@
 import { clamp, wrapAngle, smoothstep, turnToward } from '../../../core/math.js';
-import { TELL, RESULT, DEFENSE } from '../../../combat/rules.js';
+import { TELL, TELL_STYLE, RESULT, DEFENSE, dodgeOnly, isFlare } from '../../../combat/rules.js';
 import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
 import { DUEL_WORLD } from './worldTuning.js';
+
+const FLOOR = !!TELL_STYLE.red.floor; // a red area rings the floor through its windup (rules.js: no)
 
 // A duelist's mind and timeline: the Ash Disciple's (docs/specs/ash-disciple.md §3), shared by every
 // human boss built on duelist.js. Everything it knows about one boss comes from the actor's kit
@@ -192,7 +194,8 @@ export class DuelBrain {
         if (d.mode === 'act') d.anim.play('duel', REBOUND.blend);
       }
     }
-    d.warn = Math.max(0, d.warn - dt * 6.4 * (d.warn > 0.4 ? 1 : 0));
+    // (the cue's spike on his body dies out in ~0.25 s; nothing glows through a windup: ADR-118)
+    d.warn = Math.max(0, d.warn - dt * 6.4);
     this.zone = null;
     switch (d.mode) {
       case 'sleep':
@@ -588,27 +591,42 @@ export class DuelBrain {
       if (!b.announced && t >= b.tellAt) {
         b.announced = true;
         const p = d.tellPoint(b.def.part, d._v2);
-        d.emit('combat:tell', { source: 'dragon', attack: a.name, tell: b.def.tell, impactIn: Math.max(0.05, b.impact - t), x: p.x, z: p.z });
-        if (b.def.tell === TELL.RED) d.warn = Math.max(d.warn, 0.1);
+        d.emit('combat:tell', { source: 'dragon', attack: a.name, tell: b.def.tell, impactIn: Math.max(0.05, b.impact - t), x: p.x, z: p.z, flare: isFlare(b.def.tell, b.def.flare) });
       }
       if (!b.flashed && t >= b.flash && !b.def.release && !b.def.cast?.selfCue) {
         b.flashed = true;
         const p = d.tellPoint(b.def.part, d._v2);
         // perilous: a thrust a mikiri answers (its own read: the deep low coil, the held beat)
-        d.emit('combat:flash', { source: 'dragon', attack: a.name, tell: b.def.tell, x: p.x, y: p.y, z: p.z, perilous: !!b.def.mikiri });
-        d.fx.tellFlash(b.def.tell, p.x, p.y, p.z);
-        if (b.def.tell === TELL.RED) d.warn = 1.6;
-        if (b.def.ring) d.fx.ringPulse(d.position.x, d.position.z, b.def.ring);
+        d.emit('combat:flash', { source: 'dragon', attack: a.name, tell: b.def.tell, x: p.x, y: p.y, z: p.z, perilous: !!b.def.mikiri, flare: isFlare(b.def.tell, b.def.flare) });
+        // the cue: a white glint, or THE FLARE of a moment (red / black: dodge; a blue blow marked
+        // `flare`: parry). It is the only sign: no glow through the windup and nothing drawn on the
+        // floor under his own blow (ADR-118; a red area used to ring the ground: `ring` is still its
+        // radius, for the shake as it lands)
+        d.fx.tellFlash(b.def.tell, p.x, p.y, p.z, 1, !!b.def.flare);
+        if (dodgeOnly(b.def.tell)) {
+          d.warnTell = b.def.tell;
+          d.warn = TELL_STYLE[b.def.tell].warn.spike;
+        }
+        if (FLOOR && b.def.ring) d.fx.ringPulse(d.position.x, d.position.z, b.def.ring);
       }
     }
-    if (cur && !cur.feint) {
-      // a red windup glows hotter toward its glint
-      if (cur.def.tell === TELL.RED && t < cur.flash) d.warn = Math.max(d.warn, 0.1 + 0.28 * smoothstep(cur.start, cur.flash, t));
-      // the red ground warning of an area, from the windup start to the impact
-      if (cur.def.ring && t < cur.impact) {
-        const k = clamp((t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1);
-        const c = this.leap?.beat === cur ? this.leap.target : d.position;
-        d.fx.warnRing(c.x, c.z, cur.def.ring, k, dt);
+    if (FLOOR && cur && !cur.feint && cur.def.ring && t < cur.impact) {
+      // (TELL_STYLE.red.floor: the red ground warning of an area, from the windup start to the impact)
+      const k = clamp((t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1);
+      const c = this.leap?.beat === cur ? this.leap.target : d.position;
+      d.fx.warnRing(c.x, c.z, cur.def.ring, k, dt);
+    }
+    if (cur && !cur.feint && cur.def.tell === TELL.BLACK && t < cur.flash) {
+      // a black blow CHARGES: darkness is drawn into the striking part through the windup, thicker
+      // toward the cue, and his body darkens with it
+      const W = TELL_STYLE.black.warn, k = smoothstep(cur.start, cur.flash, t);
+      const p = d.tellPoint(cur.def.part, d._v2);
+      d.fx.charge(p.x, p.y, p.z, k, dt);
+      d.warnTell = TELL.BLACK;
+      d.warn = Math.max(d.warn, W.from + (W.to - W.from) * k);
+      if (!cur._charging) {
+        cur._charging = true;
+        d.emit('combat:charge', { source: 'dragon', attack: a.name, dur: Math.max(0.05, cur.flash - t), x: p.x, z: p.z });
       }
     }
     // a string's next hit: if the hero is gone out of its reach (it can step in `close` m, dash its

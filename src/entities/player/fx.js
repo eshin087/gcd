@@ -684,6 +684,60 @@ export class PlayerFx {
     this._light({ x, y, z, color: [1.3, 0.95, 0.45], intensity: 5, radius: 7, life: 0.22, fade: 0.2 });
   }
 
+  /** A blue flare blow parried (the counter's opening, ADR-118): blue-white sparks thrown wide off
+   *  the crossing and a blue light, on top of the parry's own clash. Small sparks only. */
+  flareParry(x, y, z, dx = 0, dz = 0) {
+    const fx = this.add;
+    if (!fx || !Number.isFinite(x + y + z)) return;
+    y = Math.max(0.75, y);
+    const a0 = Math.atan2(Number.isFinite(dz) ? dz : 0, Number.isFinite(dx) ? dx : 0);
+    for (let i = 0; i < 22; i++) {
+      const a = a0 + R(-1.5, 1.5), sp = R(7, 15);
+      fx.spawn({
+        x, y, z,
+        vx: Math.cos(a) * sp, vy: R(-1, 5), vz: Math.sin(a) * sp,
+        life: R(0.2, 0.36), size: R(0.18, 0.28), sizeEnd: 0.04,
+        glyph: "-+'", color: [1.2, 2.6, 5.2], colorEnd: [0.1, 0.4, 1.6], alpha: 1, alphaEnd: 0, drag: 3.2, gravity: -4, stretch: 1.4,
+      });
+    }
+    this._light({ x, y, z, color: [0.3, 0.6, 1.0], intensity: 6, radius: 8, life: 0.26, fade: 0.22 });
+  }
+
+  /** A flare blow dodged in time (ADR-118; red or black): where he stood, a burst of small strokes in
+   *  the flare's colour thrown out flat and up, and a light: the moment the answer begins. */
+  flareDodge(x, y, z, black = false) {
+    const fx = this.add;
+    if (!fx || !Number.isFinite(x + y + z)) return;
+    const c0 = black ? [1.6, 0.5, 3.6] : [4.6, 0.5, 0.25], c1 = black ? [0.3, 0.05, 0.8] : [1.4, 0.08, 0.04];
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * Math.PI * 2 + R(-0.1, 0.1), sp = R(7, 15);
+      fx.spawn({
+        x, y: y + R(-0.3, 0.3), z,
+        vx: Math.cos(a) * sp, vy: R(-0.5, 3.5), vz: Math.sin(a) * sp,
+        life: R(0.16, 0.3), size: R(0.18, 0.26), sizeEnd: 0.04,
+        glyph: "-'|", color: c0, colorEnd: c1, alpha: 1, alphaEnd: 0, drag: 4.5, stretch: 1.6,
+      });
+    }
+    this._light({ x, y: Math.max(0.9, y), z, color: black ? [0.5, 0.2, 0.9] : [1.0, 0.18, 0.1], intensity: 5, radius: 7, life: 0.22, fade: 0.2 });
+  }
+
+  /** A black (charged) blow met on the guard (ADR-118): the guard's shards go dark, thrown back
+   *  with the hero (on top of guardBreak's). */
+  blackBreak(x, y, z, nx, nz) {
+    const fx = this.alpha ?? this.add;
+    if (!fx || !Number.isFinite(x + y + z)) return;
+    for (let i = 0; i < 20; i++) {
+      const sp = R(3, 8);
+      fx.spawn({
+        x, y, z,
+        vx: nx * sp + R(-3, 3), vy: R(0.5, 5), vz: nz * sp + R(-3, 3),
+        life: R(0.35, 0.7), size: R(0.18, 0.28), sizeEnd: 0.06,
+        glyph: '/\\#|', color: [0.03, 0.02, 0.05], colorEnd: [0.2, 0.05, 0.35], alpha: 1, alphaEnd: 0, gravity: -9, drag: 1.6, spin: R(-9, 9),
+      });
+    }
+    this._light({ x, y, z, color: [0.5, 0.2, 0.9], intensity: 3, radius: 5, life: 0.2, fade: 0.18 });
+  }
+
   /** Blocked blow: '#' sparks thrown off the guard, away from the attacker (nx, nz). */
   block(x, y, z, nx, nz, heavy) {
     const fx = this.add;

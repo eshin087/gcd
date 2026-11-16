@@ -4,15 +4,29 @@
 // Design + rationale: docs/COMBAT.md.
 
 /**
- * How an attack must be answered. Read from the attacker itself (no HUD text or icons): parryable
- * hits are read from the windup animation and glint white on the timing cue; dodge-only hits make
- * the attacker glow red through the windup and flash red on the cue. See docs/COMBAT.md.
+ * How an attack must be answered. Read from the attacker itself (no HUD text or icons): a blow is
+ * read from its windup animation and cued `flashLead` s before it lands. An ordinary blow glints
+ * white; a MOMENT is cued by THE FLARE (ADR-118): a wide streak of light through the striking part
+ * at the instant to act, red = dodge, blue = parry, black = dodge (a charged blow). Nothing glows
+ * and no ring is drawn on the floor through the windup. See docs/COMBAT.md "Tell presentation".
  */
 export const TELL = Object.freeze({
   NORMAL: 'normal', // white glint: block, parry or dodge — any defence works
-  BLUE: 'blue', // big white glint: a heavy blow you should PARRY (block works but chips hard)
-  RED: 'red', // red warning glow + flash: cannot be blocked or parried — PERFECT DODGE it (Ghostep)
+  BLUE: 'blue', // big white glint: a heavy blow you should PARRY (block works but costs guard).
+  //               With `flare: true` on the hit it is a parry MOMENT: the blue flare, and a parry is
+  //               answered with the counter (DEFENSE.flareCounter)
+  RED: 'red', // the red flare: cannot be blocked or parried — PERFECT DODGE it (the flurry answers)
+  BLACK: 'black', // a CHARGED blow (darkness gathers through a long windup, then the black flare):
+  //                 dodge it. A guard or a parry stops it but the whole guard meter is gone and he
+  //                 is knocked open (GUARD.black); a perfect dodge is answered as a red blow's is
 });
+
+/** A blow only a dodge answers cleanly (red, black). */
+export const dodgeOnly = (tell) => tell === TELL.RED || tell === TELL.BLACK;
+/** A known tell, else 'normal'. */
+export const tellOf = (tell) => (tell === TELL.BLUE || tell === TELL.RED || tell === TELL.BLACK ? tell : TELL.NORMAL);
+/** Is this blow cued by the flare (a moment)? Red and black always; a blue one when marked `flare`. */
+export const isFlare = (tell, flare = false) => dodgeOnly(tell) || (tell === TELL.BLUE && !!flare);
 
 /** Resolution of a hit from the defender's point of view (returned by takeHit). */
 export const RESULT = Object.freeze({
@@ -28,20 +42,38 @@ export const RESULT = Object.freeze({
 
 /**
  * Presentation for each tell. World side (linear HDR): `color` = the in-world timing flash —
- * white for the parryable tells (blue is the same white, only `glint`x larger and brighter), red
- * for dodge-only; `red.warn` = the attacker's red windup glow (creature material uniform uWarn:
- * strength ramps `from` → `to` between combat:tell and combat:flash, spikes to `spike` on the
- * flash, decays to 0 in `decay` s). `css` = the dev / UI colour (Lab chips, HUD red edge flash,
- * success call-outs); the HUD shows no per-tell colour coding during a windup.
+ * white for an ordinary parryable blow (blue is the same white, only `glint`x larger and brighter),
+ * red for dodge-only; `red.warn` = the attacker's body on a red cue (creature material uniform
+ * uWarn): NOTHING through the windup (`from` = `to` = 0: the flare is the only sign, ADR-118; until
+ * then it ramped 0.1 → 0.38), a spike to `spike` on the cue that decays to 0 in `decay` s.
+ * `black.warn` = the charge: the body darkens toward `to` through a black blow's windup.
+ * `flare` = the flare's own colours (`blue` only on a hit marked `flare`): `tint` what the streak's
+ * letters are dyed (render/fireField.js tint), `light` the light it throws.
+ * `css` = the dev / UI colour (Lab chips, the HUD's screen flash, success call-outs); the HUD shows
+ * no per-tell colour coding during a windup.
  */
 export const TELL_STYLE = Object.freeze({
   normal: { color: [3.2, 3.05, 2.8], glint: 1, css: '#f2ead8' },
-  blue: { color: [3.2, 3.05, 2.8], glint: 1.5, css: '#5fb4ff' },
+  blue: { color: [3.2, 3.05, 2.8], glint: 1.5, css: '#5fb4ff', flare: { tint: [0.16, 0.5, 2.6], light: [0.25, 0.55, 1.0] } },
   red: {
     color: [3.4, 0.35, 0.2],
     glint: 1,
     css: '#ff4a3a',
-    warn: { color: [1.0, 0.12, 0.05], from: 0.1, to: 0.38, spike: 1.6, decay: 0.25 },
+    warn: { color: [1.0, 0.12, 0.05], from: 0, to: 0, spike: 1.6, decay: 0.25 },
+    flare: { tint: [2.6, 0.12, 0.05], light: [1.0, 0.16, 0.08] },
+    // does a boss's OWN red blow mark the floor it will hit through its windup (a duelist's ring of
+    // red letters, the ground heating under the wyrm's stomp / leap / dive)? No (ADR-118: the flare
+    // is the sign). What lands away from the boss (a meteor, a bolt from the sky, a shell, a falling
+    // pillar) is a hazard and keeps its ground mark.
+    floor: false,
+  },
+  black: {
+    color: [0.5, 0.12, 0.7],
+    glint: 1,
+    css: '#1a1024',
+    warn: { color: [0.42, 0.07, 0.9], from: 0.2, to: 1.0, spike: 1.4, decay: 0.3 },
+    // (`dark`: the cells behind its letters are blacked out: a black bar with a white-hot thread)
+    flare: { tint: [0.3, 0.06, 0.52], light: [0.5, 0.2, 0.9], dark: 1 },
   },
 });
 
@@ -158,6 +190,13 @@ export const DEFENSE = Object.freeze({
   // posture damage x POSTURE.perfect, and the counter cut: the first light started within
   // `cutWindow` s winds up `cutSpeed` x as fast and crits
   perfectParry: { cutWindow: 0.9, cutSpeed: 2 },
+  // --- the counter (ADR-118): a parry (any parry, not only a perfect one) of a BLUE FLARE blow is
+  // answered by the hero himself, with no further press: the blow is beaten aside in a blue burst,
+  // the attacker's string ends there (he recoils as from a parried last blow), and once the parry's
+  // freeze is over the hero cuts: as many flash cuts as the streak counts (the riposte's), the last
+  // of them the COUNTER BLOW: `damage` (final) and `posture`, he reels. Only within the riposte's
+  // range. `posture`: on top of the parry's own (POSTURE.parry.blue)
+  flareCounter: { damage: 64, posture: 30 },
 });
 
 /**
@@ -188,6 +227,10 @@ export const GUARD = Object.freeze({
   perfect: 20,
   hit: { light: 4, heavy: 10 },
   low: 0.3, // fraction below which the HUD shows the meter as low
+  // a BLACK (charged) blow met on a guard or a parry (ADR-118): it is stopped and deals nothing, but
+  // the whole meter is gone and the guard is knocked open for `openDur` s (longer than a worn-out
+  // guard's: the charge was the warning), thrown back `push` m
+  black: { openDur: 0.8, push: 2.4 },
 });
 
 /** Attacker posture (enemy "break" meter, shown under the boss HP bar). */
@@ -205,6 +248,9 @@ export const POSTURE = Object.freeze({
 export function tellDefaults(tell) {
   switch (tell) {
     case TELL.RED:
+      return { parryable: false, blockable: false };
+    case TELL.BLACK:
+      // (neither holds it: a guard or a parry in its way is knocked open instead, player.js)
       return { parryable: false, blockable: false };
     case TELL.BLUE:
       return { parryable: true, blockable: true };

@@ -742,8 +742,13 @@ export class DragonFx {
    * (DuelFx.tellFlash, COMBAT.md "Tell presentation"): normal a white cross written on the letter
    * grid, blue a larger eight-point star with a ring, red a ragged red blaze.
    */
-  tellFlash(tell, x, y, z) {
-    this.tells.tellFlash(tell, x, y, z, TELL_K);
+  tellFlash(tell, x, y, z, flare = false) {
+    this.tells.tellFlash(tell, x, y, z, TELL_K, flare);
+  }
+
+  /** A black blow's charge (DuelFx.charge): darkness drawn into the striking part; `u` 0..1. */
+  charge(x, y, z, u, dt) {
+    this.tells.charge(x, y, z, u, dt, TELL_K * 1.6);
   }
 
   /** Impact cue for AoE tells (the zone's combat:flash): the heated ground flares (heatFlare). */
@@ -1864,6 +1869,7 @@ export class DragonFx {
 
   update(dt) {
     this.tells.updateGlints(dt);
+    this.tells.updateFlares(dt);
     this._updateProjectiles(dt);
     this._updateBolts(dt);
     this._pruneLights();

@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-15',
+        title: 'Red, blue and black flashes: dodge, parry, and a charged blow',
+        notes: [
+          'A red flash across the screen is now the only sign of an attack you must dodge: no red glow, no red ring on the floor. Dodge at the flash and the hero answers with his flurry.',
+          'A blue flash marks a blow to parry. Parry it and the boss\'s combo ends and the hero counters by himself.',
+          'Every boss has a black charged attack: darkness gathers on the weapon, then a black flash. Dodge it. Blocking it costs no health but empties the whole guard meter.',
+        ],
+      },
+      {
+        date: '2026-11-15',
         title: 'Dark music for every level and every boss phase',
         notes: [
           'Each level has its own dark music while you explore, and every boss phase has its own track that takes over when the phase changes: three for the Cinder Wyrm, two for the Ash Disciple, four for the Starless Lord.',

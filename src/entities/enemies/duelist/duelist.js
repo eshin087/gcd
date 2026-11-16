@@ -3,7 +3,7 @@ import { CONFIG } from '../../../core/config.js';
 import { clamp, wrapAngle } from '../../../core/math.js';
 import { markCaster } from '../../../render/pipeline.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
-import { TELL, RESULT, POSTURE, DEFENSE, tellDefaults } from '../../../combat/rules.js';
+import { TELL, TELL_STYLE, RESULT, POSTURE, DEFENSE, tellDefaults, dodgeOnly } from '../../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, LEAN, HERO_SCALE } from '../../player/model.js';
 import { HeroAnimator } from '../../player/anim.js';
 import { perPhase } from './realise.js';
@@ -48,6 +48,8 @@ const CONTACT = { max: 0.06, steps: 8, clear: 0.34, thrust: 0.022, aside: 0.4 };
 const CONTACT_D = new Float32Array(CONTACT.steps + 1);
 // the trade clash on his side (a kit's TUNING.trade overrides): guard posture × `posture`, he gives `push` m
 const TRADE = { posture: 1.5, push: 0.5 };
+// the glow on his body (uWarn, additive): a red cue's spike, a black blow's charge
+const WARN_RED = TELL_STYLE.red.warn.color, WARN_BLACK = TELL_STYLE.black.warn.color;
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 /** A move's first real hit's tell (a `pick` beat: its first alternative). */
 const firstTell = (def) => def.beats.map((b) => (Array.isArray(b.pick) ? b.pick[0] : b)).find((b) => !b.feint)?.tell ?? TELL.NORMAL;
@@ -83,7 +85,8 @@ export class Duelist {
     this.time = 0;
     this.flash = 0;
     this.dissolve = 0;
-    this.warn = 0; // red windup glow 0..1.6
+    this.warn = 0; // the glow on his body 0..1.6: a red cue's spike, a black blow's charge (ADR-118)
+    this.warnTell = TELL.RED; // which of the two it is (its colour: TELL_STYLE[tell].warn / WARN_RGB)
     this.execRange = TUNING.execRange;
     // the Ghostep (player.js) puts the hero this far behind him: within sword reach of his back
     this.ghostepBehind = TUNING.ghostepBehind;
@@ -398,8 +401,11 @@ export class Duelist {
     const b = a?.striking ?? null;
     const hit = Number.isFinite(b?.hit) ? b.hit : 0;
     const string = !!a && a.hits > 1;
-    const last = !a || !b || !!b.last;
-    this.emit('dragon:parried', { attack: attack ?? 'strike', tell, hit, last });
+    // a parry MOMENT (a blue flare blow, ADR-118) ends his string wherever in it the blow came: he
+    // recoils as from a parried last blow, and the hero's counter comes (player.js _tickRiposte)
+    const moment = !!b?.def?.flare && tell === TELL.BLUE;
+    const last = !a || !b || !!b.last || moment;
+    this.emit('dragon:parried', { attack: attack ?? 'strike', tell, hit, last, flare: moment });
     if (string && a) {
       a.chain = (a.chain ?? 0) + 1;
       if (a.chain >= 2) this.emit('combat:deflectChain', { count: a.chain });
@@ -435,7 +441,7 @@ export class Duelist {
     const br = this.brain, a = br.act, p = this.game.player;
     if (this.mode !== 'act' || !a || a.def.transition || typeof p?.onTrade !== 'function' || !p.canTrade?.() || !this._fromFront()) return false;
     const b = a.beats.find((x) => !x.done && !x.feint && a.t < x.impact);
-    if (!b || !b.def.zone || b.def.release || b.def.cast || b.def.tell === TELL.RED) return false;
+    if (!b || !b.def.zone || b.def.release || b.def.cast || dodgeOnly(b.def.tell)) return false;
     if (b.impact - a.t > DEFENSE.trade.window) return false;
     br.skipTo(b.impact);
     b.done = true;
@@ -896,7 +902,9 @@ export class Duelist {
         steel: !!o.beat && !o.crescent && !o.projectile,
         melee: !!o.beat && !o.crescent && !o.projectile, // (what the hero's riposte may answer)
         around: !!o.beat?.def?.flit, // a blow of his flurry: a guard meets it from any side
-        last: o.beat ? !!o.beat.last : true,
+        // (a parry moment ends the string: the hero's parry holds it as a last blow)
+        last: o.beat ? !!o.beat.last || (!!o.beat.def?.flare && tell === TELL.BLUE) : true,
+        flare: !!o.beat?.def?.flare || !!o.flare,
         ...(o.extra ?? null),
       });
     } catch (err) {
@@ -1036,7 +1044,8 @@ export class Duelist {
       if (!u) continue;
       u.uFlash.value = this.flash * 0.8;
       u.uDissolve.value = this.dissolve;
-      u.uWarn.value.set(1.0, 0.12, 0.05, w);
+      const wc = this.warnTell === TELL.BLACK ? WARN_BLACK : WARN_RED;
+      u.uWarn.value.set(wc[0], wc[1], wc[2], w);
     }
     this._bladeMaterials(dt, M);
   }

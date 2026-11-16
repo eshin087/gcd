@@ -11,7 +11,9 @@ import { GUARD_CLIPS } from '../duelist/guard.js';
 //   cooldown, band [min, max] (m to the hero for the AI to pick it), counter (only as a counter from
 //   his guard), recovery, recoveryKeys [[r 0..1, pose]], beats: [...] }
 // A BEAT (one hit, or a feint): {
-//   tell N|B|R (none on a feint), feint (no tell, no glint, no hit), windup, hold [min, max] (a random
+//   tell N|B|R|K (none on a feint; K = black: a charged blow, ADR-118), flare (on a B beat: a parry
+//   MOMENT: the blue flare cues it and a parry of it is answered by the hero's counter and ends the
+//   move; R and K always flare), feint (no tell, no glint, no hit), windup, hold [min, max] (a random
 //   extra pause at `cock` (0..1 of the windup, default 0.8) that baits an early parry), active,
 //   chance (< 1: rolled when the move starts), damage, knockback, knockdown,
 //   zone { kind: 'sector' (r, ang) | 'line' (r, w) | 'ring' (r) } (tested through the active frames:
@@ -30,7 +32,7 @@ import { GUARD_CLIPS } from '../duelist/guard.js';
 // real windup >= TUNING.minFirstWindup in every phase, impacts >= TUNING.minHitGap apart, feints
 // never flash.
 
-const N = TELL.NORMAL, B = TELL.BLUE, R = TELL.RED;
+const N = TELL.NORMAL, B = TELL.BLUE, R = TELL.RED, K = TELL.BLACK;
 const TAU = Math.PI * 2;
 
 // ---------------------------------------------------------------- pose fragments
@@ -189,7 +191,7 @@ export const MOVES = {
   fallingAsh: {
     label: 'Falling Ash', phase: 1, weight: [1.6, 1.4], cooldown: 3, band: [0, 3.8], recovery: 0.55,
     beats: [{
-      tell: B, windup: 0.6, active: 0.1, damage: 26, knockback: 1.6, zone: { kind: 'sector', r: 2.3, ang: 0.5 }, lock: true,
+      tell: B, flare: true, windup: 0.6, active: 0.1, damage: 26, knockback: 1.6, zone: { kind: 'sector', r: 2.3, ang: 0.5 }, lock: true,
       keys: overKeys(0.72),
     }],
     recoveryKeys: [[0.5, { ...CHOP, two: 0.4, bY: -0.24, sw: [-0.3, -0.5], rH: [0.0, -0.32, 0.4] }]],
@@ -199,7 +201,7 @@ export const MOVES = {
   fallingStar: {
     label: 'Falling Star', phase: 1, weight: [2.2, 1.8], cooldown: 3, band: [0, 4.2], recovery: 0.5,
     beats: [{
-      tell: B, windup: 0.5, active: 0.1, damage: 24, knockback: 1.6, zone: { kind: 'sector', r: 2.3, ang: 0.6 }, lock: true,
+      tell: B, flare: true, windup: 0.5, active: 0.1, damage: 24, knockback: 1.6, zone: { kind: 'sector', r: 2.3, ang: 0.6 }, lock: true,
       close: 2.8, lift: [[0.45, 0], [0.78, 0.32], [1.0, 0]],
       keys: slashKeys({ from: [-0.7, 1.45], through: [0.0, -0.1], to: [0.5, -1.0], yaw: [0.2, 0.45, 0.6], cock: 0.72, sink: 0.04 }),
     }],
@@ -237,7 +239,7 @@ export const MOVES = {
     beats: [
       cut('rise', N, 0.46, 14),
       cut('back', N, 0.34, 14),
-      cut('thrust', B, 0.4, 20),
+      cut('thrust', B, 0.4, 20, { flare: true }),
     ],
   },
 
@@ -248,7 +250,7 @@ export const MOVES = {
       { tell: N, windup: 0.5, active: 0.18, damage: 15, knockback: 0.9, zone: { kind: 'ring', r: 2.2 }, track: 0.7, keys: spinKeys(0.66) },
       { tell: N, windup: 0.36, active: 0.18, damage: 15, knockback: 0.9, zone: { kind: 'ring', r: 2.2 }, track: 0.6, keys: spinKeys(0.6) },
       {
-        tell: B, windup: 0.46, active: 0.1, damage: 24, knockback: 1.6, zone: { kind: 'sector', r: 2.4, ang: 0.55 }, lock: true,
+        tell: B, flare: true, windup: 0.46, active: 0.1, damage: 24, knockback: 1.6, zone: { kind: 'sector', r: 2.4, ang: 0.55 }, lock: true,
         dash: { from: 0.45, to: 1.0, stop: 1.2, max: 3.0 }, close: 0, lift: [[0.42, 0], [0.75, 0.9], [1.0, 0]],
         keys: [
           [0.42, { two: 1, yaw: 0.2, bY: -0.34, rH: [0.1, -0.2, 0.3], sw: [0.0, 0.3], hdY: -0.1, rF: [-0.1, 0.28], lF: [0.16, -0.22] }],
@@ -318,6 +320,51 @@ export const MOVES = {
     }],
   },
 
+  // ---------------------------------------------------------------- the moments (ADR-118)
+  /** Severing Wind: from mid range he is on you in one long step with a level two-handed cut. A parry
+   *  moment: the blue flare, and a parry of it is answered by the hero's counter. */
+  severingWind: {
+    label: 'Severing Wind', phase: 1, weight: [1.6, 1.8], cooldown: 6, band: [3.6, 10], recovery: 0.6, gapCloser: true,
+    beats: [{
+      tell: B, flare: true, windup: 0.64, active: 0.1, damage: 26, knockback: 2.0, zone: { kind: 'sector', r: 2.3, ang: 0.95 }, lock: true,
+      dash: { from: 0.5, to: 0.97, stop: 1.2, max: 8.5 }, close: 0, track: 0.55,
+      keys: slashKeys({ from: [1.95, 0.2], through: [0.0, 0.04], to: [-1.8, -0.1], yaw: [1.0, 0.55, 0.1], cock: 0.76, sink: 0.1, extra: { cocked: { pitch: 0.16, bY: -0.3 } } }),
+    }],
+    recoveryKeys: [[0.45, { arm: 1, ext: 0.85, sw: [-1.3, -0.25], bY: -0.28, yaw: 0.2, ...STEP_IN }]],
+  },
+
+  /** Twin Embers: two blows no guard holds, one after the other: a dashing cut across, then the low
+   *  sweep round him. Red, red: dodge, dodge (a perfect dodge of either is answered by the flurry). */
+  twinEmbers: {
+    label: 'Twin Embers', phase: 1, weight: [1.3, 1.7], cooldown: 8, band: [2.4, 8], recovery: 0.65, gapCloser: true,
+    beats: [
+      {
+        tell: R, windup: 0.66, active: 0.12, damage: 22, knockback: 2.2, zone: { kind: 'sector', r: 2.3, ang: 1.0 },
+        dash: { from: 0.55, to: 0.98, stop: 1.1, max: 6.5 }, close: 0, track: 0.6,
+        keys: slashKeys({ from: [-2.2, -0.3], through: [0.0, 0.02], to: [1.6, 0.1], yaw: [0.4, 0.4, 0.9], cock: 0.8, sink: 0.08, extra: { cocked: { pitch: 0.2, bY: -0.32 } } }),
+      },
+      {
+        tell: R, windup: 0.7, active: 0.22, damage: 24, knockback: 2.6, knockdown: true, zone: { kind: 'ring', r: 3.0 }, ring: 3.0, part: 'feet',
+        track: 0.6, close: 1.4, keys: spinKeys(0.62, true),
+      },
+    ],
+    recoveryKeys: [[0.4, { ...CROUCH, bY: -0.36, yaw: 0.7, arm: 1, ext: 0.8, sw: [-0.9, -0.3] }]],
+  },
+
+  /** Black Tide: the CHARGED blow. He draws the jian back low at his side and darkness gathers on
+   *  it (about a second and a half, and a held beat that is never the same), then one long dashing
+   *  cleave. Black: dodge it. A guard or a parry in its way stops the blow but is knocked wide open,
+   *  the whole guard meter gone. */
+  blackTide: {
+    label: 'Black Tide', phase: 1, weight: [1.1, 1.5], cooldown: 12, band: [2.4, 9], recovery: 0.8, gapCloser: true,
+    beats: [{
+      tell: K, windup: 1.45, fixed: true, hold: [0.1, 0.5], cock: 0.86, active: 0.14, damage: 38, knockback: 4, knockdown: true,
+      zone: { kind: 'sector', r: 2.8, ang: 1.05 }, dash: { from: 0.88, to: 1.0, stop: 1.2, max: 7.5 }, close: 0, track: 0.88,
+      keys: slashKeys({ from: [-2.3, -0.34], through: [0.0, 0.0], to: [1.9, 0.3], yaw: [0.3, 0.45, 0.95], cock: 0.86, sink: 0.14, extra: { cocked: { two: 1, pitch: 0.22, bY: -0.38 }, strike: { two: 1 }, follow: { two: 1 } } }),
+    }],
+    recoveryKeys: [[0.5, { arm: 1, ext: 0.85, sw: [1.4, 0.1], bY: -0.3, yaw: 0.9, ...STEP_IN }]],
+  },
+
   // ---------------------------------------------------------------- the courtyard (ADR-111)
   // Four moves on the pieces of the set (terrain.js; numbers: TUNING.terrain). `terrain: kind` marks
   // one: his AI picks it only while a piece for it is in reach, and it cannot start with none.
@@ -375,7 +422,7 @@ export const MOVES = {
   swallowReturn: {
     label: "Swallow's Return", phase: 1, terrain: 'spring', weight: [1.3, 1.6], cooldown: 8, band: [0, 5.5], recovery: 0.55,
     beats: [{
-      tell: B, windup: 0.92, active: 0.1, damage: 24, knockback: 1.8, zone: { kind: 'sector', r: 2.5, ang: 0.6 }, lock: true,
+      tell: B, flare: true, windup: 0.92, active: 0.1, damage: 24, knockback: 1.8, zone: { kind: 'sector', r: 2.5, ang: 0.6 }, lock: true,
       close: 0, track: 0, spring: { up: [0.04, 0.5], off: 0.64 },
       keys: [
         [0.28, { ...TUCK }],

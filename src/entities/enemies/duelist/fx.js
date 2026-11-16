@@ -1,4 +1,4 @@
-import { TELL, TELL_STYLE, RESULT } from '../../../combat/rules.js';
+import { TELL, TELL_STYLE, RESULT, isFlare } from '../../../combat/rules.js';
 import { perPhase } from './realise.js';
 import { CLASH, clashBurst } from '../../../combat/clashFx.js';
 import { FIRE_KIND } from '../../../render/firePalettes.js';
@@ -41,8 +41,47 @@ export const TELL_GLINT = Object.freeze({
   normal: { w: 6, h: 3, diag: 0, ring: 0, life: 0.2, heart: 2.3, arm: 1.17, tip: 0.6, light: 1.5 },
   blue: { w: 10, h: 5, diag: 4, ring: 1, life: 0.28, heart: 2.4, arm: 1.17, tip: 0.6, light: 2.4 },
 });
-// The red tell (dodge-only): a ragged blaze of red letters, no straight line in it. Metres.
+// The red tell before ADR-118 (kept: `?flare=blaze` draws it for comparison): a ragged blaze of red
+// letters, no straight line in it. Metres.
 export const TELL_BLAZE = Object.freeze({ rays: 12, reach: [1.4, 3.2, 5.0], drag: 7, size: 0.44, heat: 0.52, life: [0.22, 0.34], heart: 0.4, sparks: 8, light: 3.5 });
+// THE FLARE (ADR-118): the cue of a moment. A streak of light through the striking part, written on
+// the letter grid in steel and dyed by the fire field's tint: red = dodge, blue = parry, black =
+// dodge (a charged blow). Letter cells (5 x 8 px at 720p), at a human's size (x k for the wyrm):
+//   reach   half-length of the streak (cells; it is cut at the frame's edge)
+//   body    how far out the streak is three rows thick
+//   spike   half-height of the upright stroke through the heart
+//   halo    the cloud of letters round the heart: half-width, half-height (cells), its heat
+//   diag    reach of the four diagonal rays (0 = none)
+//   life    s; `hold`: the share of it the streak stays at full length before it draws in
+//   heart / arm / tip   the heat at the heart, next to it, at the streak's ends
+//   light   the light it throws; `sparks`: small strokes thrown out along the streak
+// Three looks to choose from (the owner picks: `?flare=streak|star|lance`); `streak` is the default.
+export const TELL_FLARE = Object.freeze({
+  streak: { reach: 150, body: 16, spike: 5, halo: [13, 4, 0.34], diag: 0, life: 0.34, hold: 0.3, heart: 2.4, arm: 1.16, tip: 0.5, light: 7, sparks: 10 },
+  star: { reach: 46, body: 12, spike: 9, halo: [10, 5, 0.34], diag: 9, life: 0.34, hold: 0.3, heart: 2.4, arm: 1.16, tip: 0.45, light: 7, sparks: 10 },
+  lance: { reach: 150, body: 6, spike: 2, halo: [5, 2, 0.3], diag: 0, life: 0.3, hold: 0.4, heart: 2.2, arm: 1.16, tip: 0.6, light: 6, sparks: 6 },
+});
+let FLARE_LOOK = 'streak';
+try {
+  const q = new URLSearchParams(globalThis.location?.search ?? '').get('flare');
+  if (q && (TELL_FLARE[q] || q === 'blaze')) FLARE_LOOK = q;
+} catch {
+  /* headless */
+}
+/** The flare's look in use ('streak' | 'star' | 'lance' | 'blaze' = the old red blaze, no flare). */
+export const flareLook = () => FLARE_LOOK;
+export const setFlareLook = (k) => {
+  if (TELL_FLARE[k] || k === 'blaze') FLARE_LOOK = k;
+};
+// The black charge (a black blow's windup): AN ECLIPSE on the weapon. The levels are dark, so black
+// is drawn by what rings it: a disc of blacked-out cells (steel inside a DARK tint zone: fireField.js
+// tint) with a thin pale corona round it, and motes of pale light pulled in from all round. `rate`
+// motes a second at u = 1, born `from` m out (x k), `life` s to arrive, `size` m across at birth / on
+// arrival, `heat` (past the dye: pale); `knot`: the disc, m across at u = 0 / 1; `corona`: its
+// ring's heat; `zone` m: the radius that is dyed; `sparks` violet strokes / s.
+export const TELL_CHARGE = Object.freeze({ rate: 70, from: [1.6, 3.4], life: [0.22, 0.38], size: [0.3, 0.16], heat: 1.5, knot: [0.7, 1.9], corona: 1.55, zone: 4.4, sparks: 16 });
+let FLARE_ID = 1;
+const FLARE_MARGIN = [0.06, 0.1]; // of the frame's width / height: a flare's heart is never nearer an edge
 
 export class DuelFx {
   constructor(d) {
@@ -63,6 +102,9 @@ export class DuelFx {
     this._scr = { mpp: 0.025, px: 0, py: 0, cw: 5, ch: 8, W: 0, H: 0, ok: false }; // _screen's result
     // the white glints alive (re-drawn on the letter grid every frame of their short life)
     this.glints = Array.from({ length: 6 }, () => ({ alive: false, x: 0, y: 0, z: 0, age: 0, k: 1, frame: -1, style: TELL_GLINT.normal }));
+    // the flares alive (the same: re-drawn on the letter grid every frame, and their tint zone kept)
+    this.flares = Array.from({ length: 4 }, () => ({ alive: false, x: 0, y: 0, z: 0, age: 0, k: 1, frame: -1, tell: TELL.RED, id: 0, look: TELL_FLARE.streak }));
+    this._chargeAcc = 0;
     // Ash Crescent projectiles (pooled)
     this.crescents = Array.from({ length: 6 }, () => ({ alive: false, x: 0, z: 0, dx: 0, dz: 1, age: 0, flashed: -1, done: false, tell: TELL.NORMAL, damage: 0, kb: 0, attack: '' }));
   }
@@ -274,6 +316,7 @@ export class DuelFx {
   reset() {
     for (const c of this.crescents) c.alive = false;
     for (const g of this.glints) g.alive = false;
+    for (const f of this.flares) f.alive = false;
   }
 
   // ---------------------------------------------------------------- tells
@@ -287,10 +330,229 @@ export class DuelFx {
    *   red     (dodge-only) a ragged BLAZE of red letters thrown out of the part, with no straight
    *           line in it, red sparks, a red light. ~0.3 s.
    */
-  tellFlash(tell, x, y, z, k = 1) {
+  tellFlash(tell, x, y, z, k = 1, flare = false) {
     if (!Number.isFinite(x + y + z)) return;
-    if (tell === TELL.RED) this._redFlash(x, y, z, k);
+    // a MOMENT (ADR-118): the flare. Red and black always; a blue blow when it is marked `flare`
+    if (isFlare(tell, flare) && (FLARE_LOOK !== 'blaze' || tell !== TELL.RED)) this._flare(tell, x, y, z, k);
+    else if (tell === TELL.RED) this._redFlash(x, y, z, k);
     else this._glint(x, y, z, tell === TELL.BLUE ? TELL_GLINT.blue : TELL_GLINT.normal, k);
+  }
+
+  /**
+   * The cue of a thing that lands AWAY from its thrower (sword qi, a kicked lantern, a toll's ring,
+   * a bolt from the sky, a thrown stone, a felled pillar): never the flare, which is a boss's own
+   * blow (ADR-118). Red keeps the ragged red blaze where it lands, the others their white glint.
+   */
+  hazardFlash(tell, x, y, z, k = 1) {
+    if (!Number.isFinite(x + y + z)) return;
+    if (tell === TELL.RED || tell === TELL.BLACK) this._redFlash(x, y, z, k);
+    else this._glint(x, y, z, tell === TELL.BLUE ? TELL_GLINT.blue : TELL_GLINT.normal, k);
+  }
+
+  /** The flare: a record, drawn now and on every frame of its life (_drawFlare), a light in its
+   *  colour and small strokes thrown out along the streak. */
+  _flare(tell, x0, y0, z0, k = 1) {
+    const P = this._toCamera(x0, y0, z0), look = TELL_FLARE[FLARE_LOOK] ?? TELL_FLARE.streak;
+    const st = TELL_STYLE[tell]?.flare ?? TELL_STYLE.red.flare;
+    // a cue must be SEEN: a striking part outside the frame (the wyrm's tail behind it, a blade past
+    // the screen's edge) has its flare drawn at the nearest point inside it (FLARE_MARGIN of the frame
+    // from each edge), moved in the screen's plane
+    const S = this._screen(P.x, P.y, P.z);
+    if (S.ok) {
+      const mx = S.W * FLARE_MARGIN[0], my = S.H * FLARE_MARGIN[1];
+      const cx = Math.min(S.W - mx, Math.max(mx, S.px)), cy = Math.min(S.H - my, Math.max(my, S.py));
+      if (cx !== S.px || cy !== S.py) {
+        const A0 = this._axes(), ox = (cx - S.px) * S.mpp, oy = (cy - S.py) * S.mpp;
+        P.x += A0.rx * ox + A0.ux * oy;
+        P.y += A0.ry * ox + A0.uy * oy;
+        P.z += A0.rz * ox + A0.uz * oy;
+      }
+    }
+    let f = this.flares[0];
+    for (const q of this.flares) {
+      if (!q.alive) {
+        f = q;
+        break;
+      }
+      if (q.age > f.age) f = q;
+    }
+    f.alive = true;
+    f.x = P.x;
+    f.y = P.y;
+    f.z = P.z;
+    f.age = 0;
+    f.k = k;
+    f.tell = tell;
+    f.look = look;
+    f.frame = -1;
+    f.id = FLARE_ID = (FLARE_ID % 100000) + 1;
+    this._drawFlare(f);
+    // strokes thrown out to both sides along the streak, in its colour (one letter cell each)
+    const A = this._axes(), c = st.light, col = [c[0] * 4.2, c[1] * 4.2, c[2] * 4.2];
+    for (let i = 0; i < look.sparks; i++) {
+      const sd = i & 1 ? 1 : -1, sp = this.rand(9, 22) * k, up = this.rand(-1.6, 1.6) * k;
+      const o = this._rec(P.x + A.rx * sd * 0.3 * k, P.y + A.ry * sd * 0.3 * k, P.z + A.rz * sd * 0.3 * k, this.rand(0.14, 0.26), 0.2, 0.05, '-', col, null);
+      o.vx = A.rx * sd * sp + A.ux * up;
+      o.vy = A.ry * sd * sp + A.uy * up;
+      o.vz = A.rz * sd * sp + A.uz * up;
+      o.stretch = 1.8;
+      o.drag = 7;
+      this._spawn(this.add, o);
+    }
+    this._light({ x: P.x, y: Math.max(0.9, P.y), z: P.z, color: st.light, intensity: look.light, radius: 9 * k, life: 0.3, fade: 0.26 });
+  }
+
+  /** Age the flares and re-draw them (update). */
+  updateFlares(dt) {
+    const step = this.game.fxDt ?? dt;
+    for (const f of this.flares) {
+      if (!f.alive) continue;
+      f.age += step;
+      if (!(f.age < f.look.life)) f.alive = false;
+      else this._drawFlare(f);
+    }
+  }
+
+  /**
+   * One frame of a flare: steel written cell by cell (as a glint is), and the tint zone that dyes
+   * it. It opens at full size on its first frame (a timing signal), holds, then the streak draws in
+   * toward the heart and dims.
+   */
+  _drawFlare(f) {
+    const life = this._frame();
+    if (!(life > 0)) return;
+    if (this._fNow !== undefined && f.frame === this._fNow) return;
+    f.frame = this._fNow;
+    const L = f.look, t = Math.min(1, f.age / L.life), A = this._axes(), S = this._screen(f.x, f.y, f.z);
+    const cw = S.cw * S.mpp, ch = S.ch * S.mpp, D = 12 * S.mpp;
+    let x = f.x, y = f.y, z = f.z;
+    if (S.ok) {
+      const ox = ((Math.floor(S.px / S.cw) + 0.5) * S.cw - S.px) * S.mpp, oy = ((Math.floor(S.py / S.ch) + 0.5) * S.ch - S.py) * S.mpp;
+      x += A.rx * ox + A.ux * oy;
+      y += A.ry * ox + A.uy * oy;
+      z += A.rz * ox + A.uz * oy;
+    }
+    const k = f.k, u = t <= L.hold ? 0 : (t - L.hold) / (1 - L.hold);
+    const fade = 1 - u * u, keep = 1 - 0.9 * u;
+    // the streak: cut where it leaves the frame (a cell is 5 px: a 1280 px frame is 256 cells across)
+    let nR = Math.round(L.reach * k), nL = nR;
+    if (S.ok) {
+      nR = Math.max(1, Math.min(nR, Math.ceil((S.W - S.px) / S.cw) + 1));
+      nL = Math.max(1, Math.min(nL, Math.ceil(S.px / S.cw) + 1));
+    } else nR = nL = Math.min(nR, 40);
+    const body = Math.max(2, Math.round(L.body * k));
+    // the black flare: a bar of blacked-out cells (rows of low heat: the dye darkens what is behind
+    // them) round a white-hot thread (heat past the dye: fireField keeps a heart white)
+    const dark = (TELL_STYLE[f.tell]?.flare?.dark ?? 0) > 0;
+    this._cell(A, x, y, z, 0, 0, life, D, L.heart * fade);
+    for (let sd = -1; sd <= 1; sd += 2) {
+      const N = sd > 0 ? nR : nL;
+      for (let n = 1; n <= N && n <= N * keep + 0.5; n++) {
+        const far = n / Math.max(L.reach * k, 1);
+        const h = (n <= 2 ? 1.9 : dark ? 1.9 - 1.05 * Math.min(1, n / (26 * k)) : L.arm + (L.tip - L.arm) * Math.min(1, far * 1.6)) * fade;
+        this._cell(A, x, y, z, sd * n * cw, 0, life, D, h);
+        if (dark) {
+          // the bar: two rows each side all along it, four near the heart
+          const rows = n <= body * keep ? 4 : 2;
+          for (let r = 1; r <= rows; r++) {
+            const hb = (r <= 2 ? 0.4 : 0.3) * (1 - 0.4 * Math.min(1, far * 1.4)) * (0.5 + 0.5 * fade);
+            this._cell(A, x, y, z, sd * n * cw, r * ch, life, D, hb);
+            this._cell(A, x, y, z, sd * n * cw, -r * ch, life, D, hb);
+          }
+          continue;
+        }
+        // three rows thick near the heart, tapering: the body of the light
+        if (n <= body * keep) {
+          const hb = 0.74 * (1 - n / body) * fade;
+          if (hb > 0.12) {
+            this._cell(A, x, y, z, sd * n * cw, ch, life, D, hb);
+            this._cell(A, x, y, z, sd * n * cw, -ch, life, D, hb);
+          }
+        }
+      }
+    }
+    const sp = Math.max(1, Math.round(L.spike * k));
+    for (let n = 1; n <= sp && n <= sp * keep + 0.5; n++) {
+      const h = (n === 1 ? 1.7 : 1.1 - 0.6 * (n / sp)) * fade;
+      this._cell(A, x, y, z, 0, n * ch, life, D, h);
+      this._cell(A, x, y, z, 0, -n * ch, life, D, h);
+    }
+    const dg = Math.round(L.diag * k);
+    for (let n = 1; n <= dg && n <= dg * keep + 0.5; n++) {
+      const h = (1.0 - 0.55 * (n / dg)) * fade;
+      this._cell(A, x, y, z, n * cw, n * ch, life, D, h);
+      this._cell(A, x, y, z, -n * cw, -n * ch, life, D, h);
+      this._cell(A, x, y, z, n * cw, -n * ch, life, D, h);
+      this._cell(A, x, y, z, -n * cw, n * ch, life, D, h);
+    }
+    // the halo: a soft cloud of letters round the heart (big soft blobs: they print as a body)
+    const hw = L.halo[0] * k * cw, hh = L.halo[1] * k * ch, hH = L.halo[2] * fade * (1 - 0.5 * u);
+    if (hH > 0.06) {
+      for (let i = -2; i <= 2; i++) this._blob(x + A.rx * (i / 2) * hw * 0.7, y + A.ry * (i / 2) * hw * 0.7, z + A.rz * (i / 2) * hw * 0.7, 0, 0, 0, life, hh * 2.4, hh * 2.4, hH * (1 - 0.25 * Math.abs(i)), hH, K_STEEL);
+    }
+    // the dye: an ellipse of the frame round the whole flare
+    const st = TELL_STYLE[f.tell]?.flare ?? TELL_STYLE.red.flare, F = this.fire;
+    if (F?.tint && S.ok) {
+      const rx = (Math.max(nR, nL) + 6) * S.cw, ry = (Math.max(sp, dg, L.halo[1] * k) + 5) * S.ch;
+      // (a dyed zone fades over the outer 30 % of its radius: it is drawn generously wide)
+      F.tint(f.id, S.px, S.py, rx * 1.5, ry * 1.8, st.tint, 1, st.dark ?? 0, 0.08);
+    }
+  }
+
+  /**
+   * The black charge: darkness drawn into (x, y, z) through a black blow's windup. Call every frame
+   * of it; `u` 0..1 how far the charge is (it thickens), `k` the scale. Smoke (dark letters on a
+   * dark backing) streaming inward, a few violet strokes with it.
+   */
+  charge(x0, y0, z0, u, dt, k = 1) {
+    if (!Number.isFinite(x0 + y0 + z0 + u) || !(dt > 0)) return;
+    const C = TELL_CHARGE, A = this._axes();
+    const P = this._toCamera(x0, y0, z0), x = P.x, y = P.y, z = P.z;
+    this._chargeAcc += dt * C.rate * (0.3 + 0.7 * u);
+    let guard = 0;
+    while (this._chargeAcc >= 1 && guard++ < 14) {
+      this._chargeAcc -= 1;
+      const a = this.rnd() * TAU, r = this.rand(C.from[0], C.from[1]) * k, lf = this.rand(C.life[0], C.life[1]);
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const dx = A.rx * ca + A.ux * sa, dy = A.ry * ca + A.uy * sa, dz = A.rz * ca + A.uz * sa;
+      // born on a circle round the point (in the screen's plane), it arrives as it dies: two blobs
+      // one behind the other, so each mote is a short streak
+      for (let j = 0; j < 2; j++) {
+        const rr = r * (1 + 0.1 * j);
+        this._blob(x + dx * rr, y + dy * rr, z + dz * rr, (-dx * rr) / lf, (-dy * rr) / lf, (-dz * rr) / lf, lf, C.size[0] * k, C.size[1] * k, C.heat * (0.7 + 0.3 * u) * (1 - 0.3 * j), C.heat * 0.6, K_STEEL);
+      }
+      if (this.rnd() < C.sparks / C.rate) {
+        const o = this._rec(x + dx * r, y + dy * r, z + dz * r, lf, 0.18, 0.06, '|', [1.3, 0.4, 3.0], [0.4, 0.06, 0.9]);
+        o.vx = (-dx * r) / lf;
+        o.vy = (-dy * r) / lf;
+        o.vz = (-dz * r) / lf;
+        o.rot = a - Math.PI / 2;
+        o.stretch = 1.6;
+        this._spawn(this.add, o);
+      }
+    }
+    if (this._chargeAcc > 14) this._chargeAcc = 0;
+    // the heart of it: a knot of darkness on the weapon that grows, a white-hot point inside it
+    // that flickers harder as the charge fills
+    // the eclipse: a disc of dark (low heat: dim letters on blacked-out cells) and its corona, a thin
+    // ring of pale cells that flickers; both grow with the charge
+    const kn = (C.knot[0] + (C.knot[1] - C.knot[0]) * u) * k;
+    const life = this._frame();
+    if (life > 0) {
+      const S0 = this._screen(x, y, z), D = 12 * S0.mpp, rr = kn * 0.42, n = Math.max(12, Math.round((TAU * rr) / (S0.cw * S0.mpp)));
+      this._blob(x, y, z, 0, 0, 0, life, kn, kn, 0.62, 0.62, K_STEEL);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * TAU, fl = 0.55 + 0.45 * this.rnd();
+        // (round on screen: a letter cell is taller than it is wide, the ring is laid in metres)
+        this._cell(A, x, y, z, Math.cos(a) * rr, Math.sin(a) * rr, life, D, C.corona * fl * (0.6 + 0.4 * u));
+      }
+    }
+    // the dye: everything steel within `zone` m of the weapon prints as dark (fireField.js tint)
+    const F = this.fire, S = this._screen(x, y, z);
+    if (F?.tint && S.ok) {
+      const rpx = (C.zone * k) / S.mpp;
+      F.tint((this._chargeId ??= 900000 + ((this.rnd() * 90000) | 0)), S.px, S.py, rpx, rpx, TELL_STYLE.black.flare.tint, 1, 1, 0.1);
+    }
   }
 
   /** The red tell: fire at a low heat prints red (strokes at the rim, digits in the body). */
@@ -674,6 +936,7 @@ export class DuelFx {
   /** Per frame (duelist.update): everything in flight, and the glints alive. */
   update(dt, d) {
     this.updateGlints(dt);
+    this.updateFlares(dt);
     this.updateCrescents(dt, d);
   }
 
@@ -734,7 +997,7 @@ export class DuelFx {
           c.flashed = c.age;
           const fy = 0.7;
           d.emit('combat:flash', { source: 'dragon', attack: c.attack, tell: c.tell, x: c.x, y: fy, z: c.z });
-          this.tellFlash(c.tell, c.x, fy, c.z);
+          this.hazardFlash(c.tell, c.x, fy, c.z);
         }
       }
       if (across < half && Math.abs(along) <= reach) {

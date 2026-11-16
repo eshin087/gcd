@@ -1,18 +1,22 @@
 import { TELL } from '../combat/rules.js';
 import { el, num } from './dom.js';
 
-// Screen-edge cues. The attack tells themselves live in the world (docs/COMBAT.md): the attacker
-// glows red through a dodge-only windup and glints white on a parryable hit's timing cue. The HUD
-// adds no text, icons or rings — only:
-//   red   a brief red vignette flash (~0.25 s, fading) on the timing cue ('combat:flash') of a red
-//         (dodge-only) hit, a little stronger on the attacker's side of the screen. Nothing during
-//         the windup, nothing for normal / blue hits.
+// Screen-edge cues. The attack tells themselves live in the world (docs/COMBAT.md): a blow is read
+// from its windup and cued by a white glint, or by THE FLARE of a moment (ADR-118). The HUD adds no
+// text, icons or rings — only:
+//   the flare's edge   a brief vignette flash (~0.25 s, fading) in the flare's colour on the timing
+//         cue ('combat:flash') of a moment: red (dodge), blue (parry: a blue blow marked `flare`),
+//         black (a charged blow: the edges go dark), a little stronger on the attacker's side.
+//         Nothing for an ordinary white glint.
+//   the charge   while a black blow charges ('combat:charge' { dur }) the edges darken slowly.
 //   cyan  the Ghostep pulse (driven by the HUD).
 // The red flash runs on game time, so slow-mo and the Lab time scale stretch it with the attack.
 // A cancelled windup (stagger / posture break / death) or a reset drops it.
 
 const RED_TIME = 0.25; // s (game time): the red flash fades out over this
 const RED_PEAK = 0.85; // edge opacity at the cue (x the per-side weight)
+const CHARGE_PEAK = 0.6; // ... and at the end of a black blow's charge
+const KIND_CLASS = { [TELL.RED]: '', [TELL.BLUE]: 'blue', [TELL.BLACK]: 'black' };
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -22,12 +26,19 @@ export class TellEdges {
     this.proj = projector;
     this.edges = new EdgeGlow(parent);
     this.p = { x: 0, y: 0, on: false, front: false };
-    this.redAt = -1; // game time of the last red timing cue (-1 = none showing)
+    this.redAt = -1; // game time of the last flare's timing cue (-1 = none showing)
+    this.kind = TELL.RED; // ... and its tell: the edges' colour
+    this.chargeAt = -1; // game time a black blow began to charge (-1 = none), and for how long
+    this.chargeDur = 1;
     this.rx = NaN; // its world position (the striking part): weights the edges toward the attacker
     this.ry = NaN;
     this.rz = NaN;
     const ev = game.events;
     ev?.on('combat:flash', (d) => this._onFlash(d));
+    ev?.on('combat:charge', (d) => {
+      this.chargeAt = num(this.game.time);
+      this.chargeDur = Math.max(0.2, num(d?.dur, 1));
+    });
     for (const name of ['dragon:stagger', 'dragon:postureBreak', 'dragon:death']) ev?.on(name, () => this.clear());
     ev?.on('game:retry', () => this.clear());
     ev?.on('state', (e) => {
@@ -39,12 +50,16 @@ export class TellEdges {
 
   clear() {
     this.redAt = -1;
+    this.chargeAt = -1;
   }
 
   _onFlash(d) {
     // self-announcing fire hazards (meteors, chase pillars: d.hazard) warn with their own ground rings;
     // flashing the screen edge for each one made a meteor rain pulse the whole HUD
-    if (!d || typeof d !== 'object' || d.tell !== TELL.RED || d.hazard) return;
+    if (!d || typeof d !== 'object' || d.hazard) return;
+    if (d.tell !== TELL.RED && d.tell !== TELL.BLACK && !(d.tell === TELL.BLUE && d.flare)) return;
+    this.kind = d.tell;
+    this.chargeAt = -1; // (a black blow's charge ends in its flare)
     this.redAt = num(this.game.time);
     this.rx = num(d.x, NaN);
     this.ry = num(d.y, 2);
@@ -71,7 +86,18 @@ export class TellEdges {
         }
       }
     }
-    this.edges.update(realDt, red, sx, sy, W, H);
+    // a black blow charging: the edges darken toward its cue (dropped a moment after it should have come)
+    if (this.chargeAt >= 0 && !(red > 0) && g.state !== 'paused') {
+      const age = num(g.time) - this.chargeAt;
+      if (!(age >= 0) || age > this.chargeDur + 0.4) this.chargeAt = -1;
+      else {
+        this.kind = TELL.BLACK;
+        red = CHARGE_PEAK * clamp01(age / this.chargeDur);
+        sx = W * 0.5;
+        sy = H * 0.5;
+      }
+    }
+    this.edges.update(realDt, red, sx, sy, W, H, this.kind);
   }
 
   /** Cool cyan edge pulse for Ghostep (driven by the HUD). */
@@ -89,6 +115,7 @@ class EdgeGlow {
     this.coolOp = -1;
     this.coolAmt = 0;
     this.red = 0;
+    this.kind = '';
     this.w = [0, 0, 0, 0]; // per-side weights l r t b (reused)
   }
 
@@ -96,8 +123,14 @@ class EdgeGlow {
     this.coolAmt = Math.max(this.coolAmt, clamp01(num(amount, 1)));
   }
 
-  update(dt, target, x, y, W, H) {
+  update(dt, target, x, y, W, H, kind = TELL.RED) {
     dt = num(dt, 0);
+    // the edges' colour: the flare's (set only while one shows: a fading one keeps its own)
+    const cls = KIND_CLASS[kind] ?? '';
+    if (num(target, 0) > 0 && cls !== this.kind) {
+      this.kind = cls;
+      this.root.className = cls ? `ab-edges ${cls}` : 'ab-edges';
+    }
     // instant attack; the release only smooths a clear / pause (the flash's own fade is slower)
     const t = clamp01(num(target, 0));
     this.red = t >= this.red ? t : Math.max(t, this.red - dt * 6);

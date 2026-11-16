@@ -409,7 +409,7 @@ function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
         const left = e.at - t - DT;
         if (e.stream) {
           if (left <= 0.3) { e.done = true; blockUntil = t + 2.6; input.press(1); stats.blockTry++; }
-        } else if (e.tell === TELL.RED || style === 'dodge') {
+        } else if (e.tell === TELL.RED || e.tell === TELL.BLACK || style === 'dodge') {
           if (left <= (style === 'parry' ? 0.3 : 0.1)) {
             e.done = true;
             const d = g.dragon.position, p = g.player.position;
@@ -1455,7 +1455,12 @@ async function scenarioRed() {
     settle(G);
     place(G, 16);
     const bt = warnTrace(G, 'bite', 3);
-    assert(bt.flashI >= 0 && Math.max(...bt.w) === 0 && Math.max(...bt.edge) === 0, `blue bite: no red glow / edge (flash@${bt.flashI} max ${Math.max(...bt.w)})`);
+    // (the bite is a parry moment since ADR-118: a blue flare, the screen edge in blue; an ordinary
+    // blow, the swipe, shows nothing on the body or the edge)
+    assert(bt.flashI >= 0 && Math.max(...bt.w) === 0 && bt.edge[bt.flashI] > 0.2 && /\bblue\b/.test(cls('ab-edges')?.className ?? ''), `blue bite (a parry moment): no glow on the body, the screen edge flashes blue (flash@${bt.flashI} edge ${bt.edge[bt.flashI]})`);
+    run(G, 2.5, { passive: true });
+    const sw = warnTrace(G, 'swipe', 3);
+    assert(sw.flashI >= 0 && Math.max(...sw.w) === 0 && Math.max(...sw.edge) === 0, `swipe (an ordinary blow): no glow / edge (flash@${sw.flashI})`);
     // a stagger mid-windup clears the glow at once
     settle(G);
     place(G, 16);
@@ -1921,9 +1926,91 @@ async function scenarioRiposte() {
   const moved = Math.hypot(p.position.x - at.x, p.position.z - at.z);
   out(`   bite parried: ${r.res} · streak ${p.streak} · answered by ${JSON.stringify(art)} · wyrm −${hp0 - d.hp} · ${maxY.toFixed(1)} m up · back ${moved.toFixed(2)} m from where he parried · crit ${p.critTimer.toFixed(2)} · ${p.state}`);
   assert(r.res === RESULT.PARRIED && p.streak === 3, `the parry counts in the streak (${p.streak})`);
-  assert(flurried && art?.art === 'riposte' && art?.strikes === 3 && end?.strikes === 3, 'a parried bite is answered by the riposte: three flash cuts for a streak of three');
-  assert(hp0 - d.hp === 3 * F.cut.damage && since(c0, 'player:plungeHit') === 0 && since(c0, 'player:perfectDodge') === 0, `${hp0 - d.hp} damage (3 x ${F.cut.damage}); no plunge, no perfect dodge`);
+  // (the bite is a parry moment since ADR-118: the riposte's cuts, the last one the counter blow)
+  assert(flurried && art?.art === 'counter' && art?.strikes === 3 && end?.strikes === 3, 'a parried bite is answered by the counter: three flash cuts for a streak of three');
+  assert(hp0 - d.hp === 2 * F.cut.damage + DEFENSE.flareCounter.damage && since(c0, 'player:plungeHit') === 0 && since(c0, 'player:perfectDodge') === 0, `${hp0 - d.hp} damage (2 x ${F.cut.damage} + the counter blow ${DEFENSE.flareCounter.damage}); no plunge, no perfect dodge`);
   assert(maxY > 1 && moved < 1.5 && p.position.y === 0 && p.critTimer === 0 && p.state !== 'flurry', `round the head (${maxY.toFixed(1)} m up), then back where he parried (${moved.toFixed(2)} m off), no crit window`);
+  return G;
+}
+
+// ================================================================== scenario: flare (ADR-118)
+// The wyrm's moments: the flare is the only sign of a red blow (no glow through the windup, no heat
+// on the ground under its own area); the bite is a parry moment (the counter round the head); the
+// Black maw (the charged blow).
+async function scenarioFlare() {
+  out('\n== scenario FLARE (the flare alone cues a red blow; the bite parried is countered; the Black maw) ==');
+  const { GUARD, isFlare } = await imp('src/combat/rules.js');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, A = TUNING.attacks;
+  const marked = Object.keys(A).filter((n) => A[n].flare || (A[n].hits ?? []).some((h) => h.flare));
+  const black = Object.keys(A).filter((n) => A[n].tell === TELL.BLACK || (A[n].hits ?? []).some((h) => h.tell === TELL.BLACK));
+  out(`   parry moments: ${marked.join(', ')}; charged: ${black.join(', ')}`);
+  assert(marked.length >= 4 && marked.every((n) => (A[n].flare ? A[n].tell === TELL.BLUE : A[n].hits.filter((h) => h.flare).every((h) => h.tell === TELL.BLUE))), `${marked.length} attacks hold a parry moment, each a blue blow`);
+  assert(black.length === 1 && black[0] === 'blackMaw' && A.blackMaw.hits[0].windup >= 1.2 && d.debug.abilities().some((a) => a.name === 'blackMaw'), 'one charged blow, Black maw, wound up at least 1.2 s, a Lab ability');
+  // --- a red area (the stomp): nothing on the ground, nothing on the body, until the flare
+  settle(G);
+  place(G, 4);
+  let heat = 0, flares = 0;
+  const fx = d.fx, wr = fx.warnRing, tf = fx.tellFlash;
+  fx.warnRing = (...a) => { heat++; return wr.apply(fx, a); };
+  fx.tellFlash = (...a) => { flares++; return tf.apply(fx, a); };
+  p.debug.god = true;
+  const st = warnTrace(G, 'stomp', 4);
+  p.debug.god = false;
+  fx.warnRing = wr;
+  fx.tellFlash = tf;
+  assert(st.flashI > st.tellI && st.w.slice(0, st.flashI).every((v) => v === 0) && heat === 0, `stomp (red): no glow on the body before the cue and no heat on the ground (${heat} frames)`);
+  assert(flares === 1 && st.w[st.flashI] > 1 && st.edge[st.flashI] > 0.2, `its cue is ONE flare (${flares}: not one on each forefoot), the body's spike and the screen edge`);
+  // --- the bite parried: the counter
+  settle(G);
+  place(G, 6);
+  p.debug.streak(1);
+  const hp0 = d.hp, c0 = { ...G.counts };
+  let cnt = null, end = null, par = null, dpar = null;
+  const r = forceAttack(G, 'bite', { answer: 'parry', settle: 1 });
+  G.watch = (n, e) => { if (n === 'player:flareCounter') cnt = e; if (n === 'player:flurryEnd') end = e; };
+  let flurried = false;
+  for (let i = 0; i < Math.round(5 / DT); i++) {
+    aimAt(G);
+    G.tick(DT);
+    if (p.state === 'flurry') flurried = true;
+    else if (flurried) break;
+  }
+  G.watch = null;
+  const F = DEFENSE.flurry, K = DEFENSE.flareCounter;
+  assert(r.res === RESULT.PARRIED && flurried && end?.art === 'counter' && end.strikes === 2 && !!cnt, `a parried bite (a blue flare) is answered by the counter: ${end?.strikes} cuts, art ${end?.art}`);
+  assert(hp0 - d.hp === F.cut.damage + K.damage, `${hp0 - d.hp} damage: one flash cut (${F.cut.damage}) and the counter blow (${K.damage})`);
+  // --- Black maw
+  const maw = (plan) => {
+    settle(G);
+    place(G, 6);
+    run(G, 0.3, { passive: true });
+    p.debug.heal();
+    p.guard = p.maxGuard;
+    p.streak = 0;
+    let charges = 0, open = null, chargeEv = 0, flare = null, wMax = 0;
+    const ch = fx.charge;
+    fx.charge = (...a) => { charges++; return ch.apply(fx, a); };
+    const w0 = G.watch;
+    const rec = forceAttack(G, 'blackMaw', { ...plan, max: 6, settle: 2 });
+    fx.charge = ch;
+    return { rec, charges };
+  };
+  const evs = [];
+  const emit0 = game.events.emit;
+  const held = maw({ hold: true });
+  assert(held.rec.tell === TELL.BLACK && held.rec.flashT !== null && held.charges > 30 && evn(held.rec, 'combat:charge') === 1, `Black maw: tell black, the charge drawn through its windup (${held.charges} frames), combat:charge once`);
+  assert(held.rec.res === RESULT.BLOCKED && near(held.rec.hpAtHit, held.rec.hp0, 1e-9) && evn(held.rec, 'player:guardOpen') === 1 && evn(held.rec, 'player:hurt') === 0, `on a held guard it is stopped (${held.rec.res}): no HP lost, GUARD DOWN`);
+  const tap = maw({ answer: 'parry' });
+  assert(tap.rec.res === RESULT.BLOCKED && evn(tap.rec, 'player:parry') === 0 && evn(tap.rec, 'player:guardOpen') === 1, `a parry pressed in time does not turn it (${tap.rec.res}): the guard is knocked open`);
+  const bare = maw({});
+  assert(bare.rec.res === RESULT.HIT && bare.rec.hp0 - bare.rec.hpAtHit > 30, `unanswered it lands: ${(bare.rec.hp0 - bare.rec.hpAtHit).toFixed(0)} HP`);
+  const roll = maw({ answer: 'dodge' });
+  assert(roll.rec.res === RESULT.PERFECT && evn(roll.rec, 'player:perfectDodge') === 1 && (evn(roll.rec, 'player:flurry') === 1 || evn(roll.rec, 'player:plunge') >= 1), `a perfect dodge of it is answered as a red blow's is (${roll.rec.res}; flurry ${evn(roll.rec, 'player:flurry')})`);
+  // (let the answer play out)
+  run(G, 4, { passive: true });
   return G;
 }
 
@@ -6868,7 +6955,7 @@ async function scenarioTiming() {
   const { attackWeight } = await imp('src/entities/dragon/ai.js');
   const lead = TUNING.flashLead, TOL = 0.085;
   // the strings, plus the single melee attacks they share performances with (unchanged numbers)
-  const names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,bite,swipe,tail,stomp').split(',');
+  const names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,bite,swipe,tail,stomp').split(',');
   const DISTS = [2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 10, 12.5];
   const ANGS = [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2, 1.5, -1.5, 1.9, -1.9, 2.5, -2.5, Math.PI];
   const report = {};
@@ -8301,7 +8388,7 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, probe: scenarioProbe };
+const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, probe: scenarioProbe };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

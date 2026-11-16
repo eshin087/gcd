@@ -543,7 +543,7 @@ export class TerrainMoves {
       f.y = y;
       f.z = pc.pz;
       d.emit('combat:flash', f);
-      fx.tellFlash(S.tell, f.x, f.y, f.z);
+      fx.hazardFlash(S.tell, f.x, f.y, f.z);
     }
   }
 
@@ -576,7 +576,7 @@ export class TerrainMoves {
           f.y = 0.9;
           f.z = R.z + (oz / D) * R.r;
           d.emit('combat:flash', f);
-          d.fx.tellFlash(R.tell, f.x, f.y, f.z);
+          d.fx.hazardFlash(R.tell, f.x, f.y, f.z);
         }
       }
       if (gap > reach) continue;
