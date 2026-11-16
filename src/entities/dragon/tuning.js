@@ -41,7 +41,20 @@ export const TUNING = {
     stomp: 1.0, leap: 1.7, hop: 1.2, dive: 2.5,
     nova: [2.2, 0.45, 0.45], // the blast: at its heart, at its rim; the heart's share of the radius
     explosion: 0.9, meteor: 1.5, pillar: 1.0,
-    trample: 1.2, // its body walks through wood: a tree in its way goes down ahead of it
+    trample: 1.2, // (ADR-107's trample round the root: replaced by `body` below; kept for older readers)
+    // the body against the world (dragon.js _wreck, 2026-11-15): each hurt sphere that moves faster
+    // than minSpeed m/s sweeps the pieces it passes through: power = (speed - minSpeed) x perSpeed x its
+    // part's mass, at most `max` (a walk's chest ~0.4 every 0.18 s: an oak goes down in about a second
+    // of pushing; the tail of a turn ~1.5; a charge or a dive ~2). `pad` m on each sphere; nothing
+    // above maxY m (a sphere's bottom) is near the treetops; a step over `jump` m is a teleport
+    body: { minSpeed: 1.6, perSpeed: 0.17, max: 2.2, pad: 0.15, maxY: 12, jump: 6, mass: { head: 0.7, neck: 0.8, body: 1.5, tail: 1.1, wing: 0.8, leg: 0.9 } },
+    // the wings' blasts on what stands round it: as it leaves the ground (alt rising through `alt` m),
+    // and each downbeat of its wings under maxAlt (weaker the higher it is): wood only, the wind bends
+    // trees; as it lands (alt falling through `alt` after a flight at least `minFall` high): its weight,
+    // stone too
+    takeoff: { alt: 1.0, radius: 9, power: 1.0 },
+    landing: { alt: 0.6, minFall: 2.5, radius: 8.5, power: 1.4 },
+    downbeat: { maxAlt: 11, radius: 7.5, power: 0.6 },
     // fire that lands sets the grass and the wood alight: how long (x FIRE.life / BREAK.burn.time)
     // and how much of the blast's radius catches
     ignite: { breath: 1, strip: 1, explosion: [1, 0.6], meteor: [0.7, 0.55], pillar: [0.8, 0.7], dive: [0.8, 0.5], nova: [1, 0.6] },

@@ -582,15 +582,9 @@ export class Dragon {
       const d = Math.hypot(this.position.x, this.position.z);
       if (d > B) this.position.multiplyScalar(B / d);
     } else {
-      // its body walks through wood (ADR-107): a tree in its way goes down ahead of it. Stone turns it
-      const W = this.game.world?.destructibles;
-      if (W?.strike && this.state !== 'sleeping') {
-        const o = (this._trample ??= { kind: 'blunt', by: 'boss', only: 'wood', dx: 0, dz: 0 });
-        o.dx = this.position.x - (this._lastX ?? this.position.x);
-        o.dz = this.position.z - (this._lastZ ?? this.position.z);
-        W.strike(this.position.x, this.position.z, R * 0.8, TUNING.world.trample, o);
-      }
-      this.game.world?.resolve?.(this.position, R, B + R);
+      // its body ploughs through wood: the trunks and stumps of breakable trees do not turn it (`soft`:
+      // they are felled by its body as it goes, _wreck). Stone turns it until it breaks
+      this.game.world?.resolve?.(this.position, R, B + R, true);
     }
     this._lastX = this.position.x;
     this._lastZ = this.position.z;
@@ -860,6 +854,7 @@ export class Dragon {
 
     this._refreshHurt();
     this._refreshPushers();
+    this._wreck(dt);
     this.fx.update(dt);
     this.hazards.update(dt); // (guarded inside: never throws)
     this.bullets.update(dt); // (guarded inside: never throws)
@@ -933,6 +928,84 @@ export class Dragon {
         C.push(c);
       }
     }
+  }
+
+  /**
+   * The body against the world (2026-11-15; it replaces ADR-107's trample, which never reached a
+   * trunk): every frame, each hurt sphere (head, neck, chest, waist, hips, tail, wings, legs) that
+   * moved faster than TUNING.world.body.minSpeed sweeps the pieces it passed through (a segment from
+   * where it was to where it is, at its height: a sphere above a piece passes over it). Its power is
+   * its speed over the threshold x perSpeed x its part's mass: a walk fells a tree in its way in a few
+   * steps, the tail of a turn sweeps through a stand, a low pass shears the crowns. On top: the blast
+   * of a take-off, of a landing, and of a wing's downbeat near the ground. Incidental blows: they
+   * leave alone the piece a move of its own is about to take (the action's `piece`, or one reserved
+   * with destructibles.reserve). A frame that moved a sphere more than `jump` m is a teleport: skipped.
+   * No per-frame allocation; each sweep walks the world's spatial grid, not every piece.
+   */
+  _wreck(dt) {
+    const D = this.game.world?.destructibles;
+    if (!D?.sweepRec || !(dt > 0)) return;
+    const T = TUNING.world, B = T.body, P = this._hurtPool, n = P.length;
+    const st = (this._trample ??= {
+      prev: new Float32Array(n * 3), ready: false, alt: 0, top: 0, flap: 1,
+      o: { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0, incidental: true, spare: null },
+      seg: { ax: 0.5, az: 0.5, bx: 0.5, bz: 0.5, r: 0.5, power: 0.5 }, // (sweepRec: no numbers boxed per call)
+      // (the wind of its wings bends wood; a landing's weight breaks stone too)
+      blast: { kind: 'blast', by: 'boss', dx: NaN, dz: NaN, incidental: true, spare: null, only: 'wood' },
+      land: { kind: 'blunt', by: 'boss', dx: NaN, dz: NaN, incidental: true, spare: null },
+    });
+    const prev = st.prev, s = this.rig.s;
+    const on = this.state !== 'sleeping' && this.state !== 'dead' && this.object3d.visible !== false;
+    if (on && st.ready) {
+      const o = st.o, act = this.brain?.action;
+      const spare = act && typeof act.piece === 'object' ? act.piece : null;
+      o.spare = st.blast.spare = st.land.spare = spare;
+      const M = B.mass, jump = B.jump * B.jump;
+      for (let i = 0; i < n; i++) {
+        const h = P[i], k = i * 3;
+        const ax = prev[k], ay = prev[k + 1], az = prev[k + 2];
+        const dx = h.x - ax, dy = h.y - ay, dz = h.z - az;
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 > jump || !Number.isFinite(d2)) continue;
+        const speed = Math.sqrt(d2) / dt;
+        if (speed <= B.minSpeed || h.y - h.r > B.maxY) continue;
+        const power = Math.min(B.max, (speed - B.minSpeed) * B.perSpeed * (M[h.part] ?? 1));
+        if (power < 0.04) continue;
+        o.dx = dx;
+        o.dz = dz;
+        o.y = h.y;
+        const w = st.seg;
+        w.ax = ax; w.az = az; w.bx = h.x; w.bz = h.z; w.r = h.r + B.pad; w.power = power;
+        D.sweepRec(w, o);
+      }
+      // the wings' blasts: a take-off, a landing, a downbeat near the ground
+      const alt = s.alt ?? 0, x = this.position.x, z = this.position.z;
+      const bl = st.blast;
+      if (alt >= T.takeoff.alt && st.alt < T.takeoff.alt) D.strike(x, z, T.takeoff.radius, T.takeoff.power, bl);
+      if (alt > st.top) st.top = alt;
+      if (alt <= T.landing.alt && st.alt > T.landing.alt) {
+        if (st.top >= T.landing.minFall) D.strike(x, z, T.landing.radius, T.landing.power, st.land);
+        st.top = 0;
+      }
+      const c = Math.cos(s.flapPhase ?? 0);
+      if (st.flap > 0 && c <= 0 && (s.flapAmp ?? 0) > 0.25 && alt < T.downbeat.maxAlt) {
+        const pt = this.rig.pt.chest;
+        D.strike(pt.x, pt.z, T.downbeat.radius, T.downbeat.power * (1 - alt / T.downbeat.maxAlt), bl);
+      }
+      st.flap = c;
+      st.alt = alt;
+    } else {
+      st.alt = s.alt ?? 0;
+      st.top = 0;
+      st.flap = 1;
+    }
+    for (let i = 0; i < n; i++) {
+      const h = P[i], k = i * 3;
+      prev[k] = h.x;
+      prev[k + 1] = h.y;
+      prev[k + 2] = h.z;
+    }
+    st.ready = on;
   }
 
   _refreshPushers() {
