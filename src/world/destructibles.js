@@ -82,6 +82,9 @@ const HOT_END = [0.5, 0.04, 0.02];
 // printed as pale yellow rings over the dark crowns. 2026-11-16, the tuning pass)
 const SHED_LEAF = [0.085, 0.15, 0.1], SHED_LEAF_END = [0.03, 0.05, 0.035];
 const SHED_WOOD = [0.16, 0.115, 0.075], SHED_WOOD_END = [0.06, 0.045, 0.03];
+// (a bone landmark coming apart: its digits in the bone's own dull hue; at BREAK.mats.bone.color a rib
+// broke in a white cloud brighter than the skeleton itself)
+const SHED_BONE = [0.17, 0.16, 0.14], SHED_BONE_END = [0.06, 0.055, 0.05];
 // a burning crown sheds: most of it charred leaves falling dark, a few small sparks (no yellow blobs)
 const CHAR = [0.12, 0.06, 0.03], CHAR_END = [0.03, 0.02, 0.015];
 const SPARK = [1.5, 0.5, 0.08], SPARK_END = [0.35, 0.04, 0.01], SPARKS = ".'`";
@@ -1079,11 +1082,9 @@ export class Destructibles {
   _boneHeap(b, dx, dz, len) {
     const W = this.wreck;
     if (!W) return;
+    // (one heap a piece, where the most of it came down; the skeleton and the nest are ~50 pieces)
     const r = clamp(b.r * 0.8, 0.5, 1.6);
-    if (len > 1.5) {
-      W.rubble(b.x + dx * len * 0.3, b.z + dz * len * 0.3, r, b.M);
-      W.rubble(b.x + dx * len * 0.7, b.z + dz * len * 0.7, r * 0.75, b.M);
-    } else W.rubble(b.x, b.z, r, b.M);
+    W.rubble(b.x + dx * len * 0.4, b.z + dz * len * 0.4, r, b.M);
   }
 
   /** Its colliders and nicks go. */
@@ -1699,6 +1700,11 @@ export class Destructibles {
     if (crown) n = Math.round(n * (b.leafy > 0 ? 0.7 : 0.35));
     // (a tree worn down has less of itself left to come apart)
     if (b.order.length) n = Math.round(n * (1 - 0.6 * (b.dropped / b.order.length)));
+    // (a bone landmark's piece: half as many, and all from the debris budget, BREAK.debris: a round of
+    // blows that broke twenty ribs at once threw a white cloud of digits)
+    if (b.mat === 'bone') n = Math.round(n * 0.5);
+    n = Math.max(Math.min(n, 6), Math.min(n, Math.floor(this._debris)));
+    this._debris -= n;
     const prop = b.digits;
     const wx = b.x + b.pivot.position.x, wy = b.pivot.position.y, wz = b.z + b.pivot.position.z;
     const q = b.pivot.quaternion, v = this._v;
@@ -1738,8 +1744,8 @@ export class Destructibles {
         p.color = CHAR;
         p.colorEnd = CHAR_END;
       } else {
-        p.color = leaf ? SHED_LEAF : b.mat === 'wood' && !prop ? SHED_WOOD : M.color;
-        p.colorEnd = leaf ? SHED_LEAF_END : b.mat === 'wood' && !prop ? SHED_WOOD_END : M.colorEnd;
+        p.color = leaf ? SHED_LEAF : b.mat === 'bone' ? SHED_BONE : b.mat === 'wood' && !prop ? SHED_WOOD : M.color;
+        p.colorEnd = leaf ? SHED_LEAF_END : b.mat === 'bone' ? SHED_BONE_END : b.mat === 'wood' && !prop ? SHED_WOOD_END : M.colorEnd;
       }
       p.alpha = 1;
       p.alphaEnd = 0;

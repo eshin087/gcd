@@ -45,7 +45,7 @@ export const BREAK = Object.freeze({
       take: Object.freeze({ cut: 0.8, blunt: 1.1, blast: 1.2, fire: 0 }),
       chips: "|/\\-:.'",
       dust: '.:',
-      color: [0.46, 0.43, 0.36],
+      color: [0.3, 0.285, 0.245], // (2026-11-16: 0.46, 0.43, 0.36 broke a rib in a white cloud; now the bone's own hue, landmarks.js BONE)
       colorEnd: [0.16, 0.15, 0.13],
       burns: false,
     }),
@@ -119,7 +119,7 @@ export const BREAK = Object.freeze({
    * not under them). A burnt log smoulders `smoulder` s (at most `smoulderMax` x quality at once: smoke and
    * embers, a warm patch of ground); a log that catches burns `burn` s.
    */
-  wreck: Object.freeze({ logs: 64, chars: 36, rubble: 30, bones: 20, sink: 1.4, trunk: Object.freeze([0.5, 0.85]), thick: 0.85, flatten: 0.4, smoulder: 30, smoulderMax: 8, burn: 6 }),
+  wreck: Object.freeze({ logs: 64, chars: 36, rubble: 30, bones: 48, sink: 1.4, trunk: Object.freeze([0.5, 0.85]), thick: 0.85, flatten: 0.4, smoulder: 30, smoulderMax: 8, burn: 6 }),
   /** a thrown piece smashes what stands in its way: power x its weight, while it flies under `y` m */
   flight: Object.freeze({ power: 0.8, y: 7 }),
   /**
