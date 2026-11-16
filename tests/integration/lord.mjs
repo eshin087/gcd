@@ -1561,7 +1561,10 @@ async function scenarioWin() {
     return;
   }
   assert(won && blows === 4, `the bot beats all four forms (${blows} deathblows)`);
-  assert(T > 55 && T < 300, `the fight takes a bot that answers every tell ${T.toFixed(0)} s`);
+  // (the second pass, 2026-11-16: 49 / 54 / 63 / 64 s on seeds 1337 / 4242 / 99 / 7; it was over 55 s.
+  // More blows to parry in his strings fill his posture sooner against a bot that parries them all;
+  // the lower bound moved from 55 to 40 s)
+  assert(T > 40 && T < 300, `the fight takes a bot that answers every tell ${T.toFixed(0)} s`);
 }
 
 // ================================================================== scenario: strategy (opt-in)

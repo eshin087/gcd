@@ -937,7 +937,7 @@ export const MOVES = {
       cut('flat', N, 0.5, 13, { form: 4 }),
       cut('back', N, 0.34, 13, { form: 4, step: 'L' }),
       spin(N, 0.36, 14, { form: 4, cock: 0.6 }),
-      bolt(0.5, 20, { fixed: true, cock: 0.6 }),
+      bolt(0.6, 20, { cock: 0.6 }), // (the second pass: 0.5 s `fixed` before; the same in form 4, holdable)
       cut('rise', N, 0.42, 13, { form: 4 }),
       { pick: [cut('flip', B, 0.6, 26, { form: 4, lock: true }), cut('thrust', B, 0.4, 22, { form: 4 })] },
     ],
@@ -946,9 +946,11 @@ export const MOVES = {
   rend: {
     label: 'Void Rend', phase: 4, weight: W(4, 2.4), cooldown: 8, band: [0, 12], recovery: 0.65, gapCloser: true,
     beats: [
-      cut('flat', N, 0.62, 14, { form: 4, blink: { behind: 2.0 }, fixed: true, close: 1.2 }),
-      cut('flatBack', N, 0.5, 14, { form: 4, blink: { behind: 2.0 }, fixed: true, close: 1.2 }),
-      cut('over', B, 0.56, 24, { form: 4, blink: { behind: 2.1 }, fixed: true, close: 1.2, lock: true }),
+      // (the second pass: authored at form 1's pace instead of `fixed`, the same times in form 4
+      // (x 0.83): a blow the fairness guard may hold at the cock rather than turn into a feint)
+      cut('flat', N, 0.75, 14, { form: 4, blink: { behind: 2.0 }, close: 1.2 }),
+      cut('flatBack', N, 0.6, 14, { form: 4, blink: { behind: 2.0 }, close: 1.2 }),
+      cut('over', B, 0.675, 24, { form: 4, blink: { behind: 2.1 }, close: 1.2, lock: true }),
     ],
   },
   /** Chained Lightning: four bolts in rhythm. Deflect them all. */
