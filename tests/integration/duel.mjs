@@ -319,6 +319,37 @@ function fencer(G, mortal = false) {
   if (!busy && dist < 3.2 && (open ? tick % 20 === 0 : tick % 70 === 0)) input.click(0);
 }
 
+// ================================================================== scenario: floor
+/**
+ * The floor breaks (2026-11-16, world/floor.js, BREAK.floor): a duel on the real set with his AI on
+ * against the fencing bot (god mode; his health kept over 15 % so the fight runs its length), the share
+ * of the floor inside his bound broken (and cracked) after 30 s, 1, 2 and 4 minutes. The owner's target:
+ * not all rubble early, never untouched after two minutes, 30 - 50 % broken after a whole duel.
+ */
+async function scenarioFloor() {
+  out('\n== scenario FLOOR (a courtyard duel breaks the floor: the share over time) ==');
+  const F = build({ real: true });
+  duel(F, { dist: 4, ai: true });
+  F.defend = makeDefender(F);
+  const fd = F.game.dragon, fp = F.game.player, W = F.game.world.destructibles;
+  fp.debug.god = true;
+  const inB = W.floor.filter((b) => Math.hypot(b.x, b.z) <= (fd.baseBound ?? 12.5));
+  const at = {};
+  let t = 0;
+  for (const s of [30, 60, 120, 240]) {
+    run(F, s - t, (GG) => { fd.hp = Math.max(fd.hp, fd.maxHp * 0.15); fencer(GG); }, () => fd.state === 'dead');
+    t = s;
+    const broken = inB.filter((b) => b.state !== STATE.INTACT).length, cracked = inB.filter((b) => b.state === STATE.INTACT && b.cracked).length;
+    at[s] = broken / inB.length;
+    out(`     ${s} s (${F.game.time.toFixed(0)} s): ${broken} of ${inB.length} slabs inside his bound broken (${(at[s] * 100).toFixed(0)} %; ${inB.filter((b) => b.state !== STATE.INTACT && b.by === "player").length} by the hero), ${cracked} cracked; phase ${fd.phase}; ${W.list.length - W.standing} pieces down in all`);
+  }
+  assert(at[30] < 0.25 && at[120] > 0, `not rubble early (${(at[30] * 100).toFixed(0)} % after 30 s, < 25 %), never untouched after two minutes (${(at[120] * 100).toFixed(0)} %)`);
+  // (the owner's target 30 - 50 % after a whole duel; the band allows for the seed)
+  assert(at[240] >= 0.22 && at[240] <= 0.6, `after 4 minutes ${(at[240] * 100).toFixed(0)} % of the floor inside his bound is broken (22 .. 60 %; the aim 30 - 50 %)`);
+  assert(!F.payload.size, `no non-finite payload in his events (${[...F.payload].join(', ')})`);
+  return F;
+}
+
 // ================================================================== scenario: levels
 async function scenarioLevels() {
   out('\n== scenario LEVELS (registry, URL, world overrides) ==');
@@ -341,6 +372,14 @@ async function scenarioLevels() {
   assert(d.batch.meshes.length > 0 && d.batch.meshes.length < 24, `he draws through rigid batches (${d.batch.meshes.length} meshes)`);
   const labLevel = ui.find?.((e) => e.textContent === 'LEVEL') ?? null;
   assert(G.game.lab && typeof G.game.pickLevel === 'function', 'the Lab and the title get the level list and pickLevel');
+  // the courtyard's breakables (2026-11-16: everything but the gate, the bell's bronze and the bonfire
+  // breaks: 78 → 456: its floor 293 slabs, the pillars 30 (a corner's second pillar joins its first),
+  // the colossi in two stages, the cauldron, the lintel, the trees and stumps out to 40 m)
+  const B = createCourtyard(createSharedUniforms(), new Colliders()).breakables, kinds = (k) => B.filter((b) => b.kind === k).length;
+  assert(B.length >= 380 && B.length <= 520 && kinds('flagstone') >= 250 && kinds('colossus') === 4 && kinds('cauldron') === 1 && kinds('lintel') === 1 && kinds('bell') === 1 && kinds('pillar') === 30 && kinds('lantern') === 4, `the courtyard's breakables: ${B.length} (flagstone ${kinds('flagstone')}, pillar ${kinds('pillar')}, colossus ${kinds('colossus')}, cauldron, lintel, deadTree ${kinds('deadTree')}, stump ${kinds('stump')}, boulder ${kinds('boulder')})`);
+  const at = new Map();
+  for (const b of B) if (b.kind === 'pillar' && b.topples !== false) { const k = `${b.x.toFixed(1)},${b.z.toFixed(1)}`; at.set(k, (at.get(k) ?? 0) + 1); }
+  assert([...at.values()].every((n) => n === 1), 'no standing pillar is listed twice');
   return G;
 }
 
@@ -2806,6 +2845,7 @@ const SCENARIOS = {
   pressure: scenarioPressure,
   impact: scenarioImpact,
   levels: scenarioLevels,
+  floor: scenarioFloor,
   data: scenarioData,
   timing: scenarioTiming,
   guard: scenarioGuard,

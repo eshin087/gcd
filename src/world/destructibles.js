@@ -6,6 +6,7 @@ import { batchRigid } from '../render/rigidBatch.js';
 import { TELL } from '../combat/rules.js';
 import { BREAK, BLOW } from './breakTuning.js';
 import { Wreckage } from './wreckage.js';
+import { prep, lumpy, carve, mul, STONE } from './forest.js';
 
 // Breakable objects (ADR-107): the trees, stones, pillars and props of a set that blows can chip,
 // break, fell, burn, lift and throw. A set lists them in its output (`breakables`) instead of merging
@@ -33,6 +34,16 @@ import { Wreckage } from './wreckage.js';
 //   lift      0 nobody can lift it · 1 a boss's body can (the wyrm's jaws) · 2 only the Void
 //   leafy     0..1 share of its debris that is leaves (a canopy)
 //   wreck     false: it leaves no wreckage (default: a felled tree leaves its trunk, a stone its rubble)
+//   floor     true: a slab of a floor (2026-11-16; BREAK.floor): a blow's power falls off from its centre,
+//             one sound per blow for all the slabs it strikes, no camera shake, no nicks, fewer chips;
+//             `cracked: { range }` is shown once its structure is under BREAK.floor.crack of itself;
+//             `broken.range` is its broken look (world/floor.js). In a boss's hands it shows as a block of
+//             prop art
+//   holds     (a two-stage piece: a colossus's legs) the def of the piece standing on it: while that one
+//             stands, every blow on this one goes to it; while it falls this one takes nothing
+//   y0        the height its node stands at (the upper half of a colossus: it falls from its cut, coming
+//             down to the ground as it goes over); `fallOff` m out from its base it lands; `fallT` s it falls
+//   blocks    how many big blocks of wreckage it leaves (a statue's), instead of a rubble pile
 //
 // The API (world.destructibles; every caller guards it with `?.`: the tests' world mocks lack it):
 //   strike(x, z, r, power, o)             a blow / blast over a disc → how many it struck
@@ -43,6 +54,9 @@ import { Wreckage } from './wreckage.js';
 //   coverAt(ax, az, bx, bz, r)            the first cover on a segment, no damage (`coverT`: where, 0..1)
 //   ignite(x, z, r, k)                    fire lands: wood in the disc catches (and logs lying there)
 //   nearest(x, z, o)                      the nearest intact piece ({ maxDist, minDist, lift, kind, mat })
+//   floorNear(x, z, r, out, o)            the intact floor slabs within r of (x, z), nearest first, into `out`
+//                                          (o: { kind, whole: true (not cracked), max }) → how many
+//   floor                                 the floor's slabs (pieces with `floor`)
 //   take(obj) / carry(obj, x, y, z, tilt, yaw) / throwTo(obj, tx, tz, o) / drop(obj)   lift and throw
 //   topple(obj, dx, dz, by)               fell it that way
 //   reserve(obj, sec)                     incidental blows (o.incidental: a body walking) leave it alone
@@ -50,7 +64,8 @@ import { Wreckage } from './wreckage.js';
 //   reset()                               everything stands again
 //   o = { kind: BLOW.*, by: 'player' | 'boss' | 'world', dx, dz (the blow's way), y (its height), src (one id per swing),
 //         falloff: 0..1 (strike: the blast x 1 - falloff at its rim), brush: true (a body walking: BREAK.brush),
-//         only: 'wood' | ... (just that material), spare: a piece to leave alone, incidental: true (skip reserved pieces) }
+//         only: 'wood' | ... (just that material), spare: a piece to leave alone, incidental: true (skip reserved pieces),
+//         down: true (a sweep that comes DOWN on the floor, a falling piece's strip: a slab takes it in full) }
 // Every query walks a spatial grid (BREAK.grid.cell m), not the whole list.
 // Events: 'world:impact' { kind: 'chip' | 'break' | 'topple' | 'crash' | 'burn' | 'burnout' | 'throw', mat, x, y, z, power, by }
 // (one reused payload: a subscriber must not keep it), and 'combat:tell' / 'combat:flash' for a
@@ -107,6 +122,10 @@ class RangeBody {
     this.x = x;
     this.z = z;
     this._on = true;
+    // a mesh of remains (a floor's cracked or broken slabs) is hidden while none of its runs shows:
+    // it costs no draw call until the first one does (range.mesh.userData.foldAway)
+    this.fold = !!range.mesh.userData?.foldAway;
+    if (this.fold) range.mesh.userData.shown = (range.mesh.userData.shown ?? 0) + 1;
   }
 
   get visible() {
@@ -128,6 +147,11 @@ class RangeBody {
     }
     pos.addUpdateRange?.(s, this.count * 3);
     pos.needsUpdate = true;
+    if (this.fold) {
+      const u = this.mesh.userData;
+      u.shown = Math.max(0, (u.shown ?? 0) + (v ? 1 : -1));
+      this.mesh.visible = u.shown > 0;
+    }
   }
 }
 
@@ -172,6 +196,11 @@ export class Destructibles {
     this._nb = { best: null, bd: 0 }; // nearest()'s running best
     this._g = null;
     this._maxR = 0;
+    /** the floor's slabs (pieces with `floor`) */
+    this.floor = [];
+    this._quiet = 0; // floor slabs struck by the current blow (one sound per blow)
+    this._carry = []; // meshes for floor slabs in a boss's hands (BREAK.floor.carry)
+    this._near = []; // floorNear's scratch
     this._burningN = 0;
     this._tokens = BREAK.spread.bank;
     this._litTokens = BREAK.light.bank; // (fire that lands: BREAK.light)
@@ -182,17 +211,27 @@ export class Destructibles {
     this.gridMat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide, rigid: true });
     this.propMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: set.stoneMaterial?.uniforms?.uGain?.value ?? 1, rigid: true });
     for (const def of defs) this._build(def);
+    // two-stage pieces: the one standing on another (a colossus's upper half on its legs)
+    for (const o of this.list) {
+      if (!o.def.holds) continue;
+      o.top = this.list.find((t) => t.def === o.def.holds) ?? null;
+      if (o.top) o.top.base = o;
+    }
     this._buildGrid();
+    if (this.floor.length) this._buildCarry(set);
     // what the fight leaves lying (wreckage.js): its pools share the breakables' batch
-    if (set.wreckage !== false) this.wreck = new Wreckage(game, world, this.root, this.propMat, this);
+    if (set.wreckage !== false) {
+      const need = { blocks: this.list.some((b) => b.blocks > 0), shards: this.floor.some((b) => b.lift > 0) };
+      this.wreck = new Wreckage(game, world, this.root, this.propMat, this, need);
+    }
     markCaster(this.root);
     set.group?.add(this.root);
     this.batch = batchRigid(U, this.root);
   }
 
   // ------------------------------------------------------------------ build
-  _mesh(geos, look, x, z) {
-    for (const g of geos) g.translate(-x, 0, -z);
+  _mesh(geos, look, x, z, y = 0) {
+    for (const g of geos) g.translate(-x, -y, -z);
     const geo = geos.length === 1 ? geos[0] : mergeGeometries(geos);
     if (!geo) return null;
     const m = new THREE.Mesh(geo, look === 'prop' ? this.propMat : this.gridMat);
@@ -208,19 +247,24 @@ export class Destructibles {
     const r = Math.max(0.1, Number(def.r) || 0.5), h = Math.max(ranged ? 0.02 : 0.2, Number(def.h) || 2);
     const size = clamp(r / 0.5, 0.6, 2.4) * clamp(h / 3, 0.5, 2);
     const hpMax = def.hp ?? M.hp * size;
-    const body = ranged ? new RangeBody(def.range, x, z) : this._mesh(def.geos, def.look, x, z);
+    const y0 = ranged ? 0 : Number(def.y0) || 0;
+    const body = ranged ? new RangeBody(def.range, x, z) : this._mesh(def.geos, def.look, x, z, y0);
     if (!body) return null;
     const node = new THREE.Group();
-    node.position.set(x, 0, z);
+    node.position.set(x, y0, z);
     const pivot = new THREE.Group();
     if (!ranged) pivot.add(body);
     node.add(pivot);
-    let stub = null;
+    let stub = null, crack = null;
+    if (ranged && def.cracked?.range?.mesh) {
+      crack = new RangeBody(def.cracked.range, x, z);
+      crack.visible = false;
+    }
     if (def.broken?.range?.mesh) {
       stub = new RangeBody(def.broken.range, x, z);
       stub.visible = false;
     } else if (def.broken?.geos?.length) {
-      stub = this._mesh(def.broken.geos, def.broken.look ?? def.look, x, z);
+      stub = this._mesh(def.broken.geos, def.broken.look ?? def.look, x, z, y0);
       if (stub) {
         stub.visible = false;
         node.add(stub);
@@ -235,7 +279,8 @@ export class Destructibles {
       id: this.list.length, def, kind: def.kind ?? 'thing', mat: BREAK.mats[def.mat] ? def.mat : 'stone', M,
       x, z, r, h, weight: def.weight ?? clamp(size, 0.5, 2.2),
       hp: hpMax, hpMax, state: INTACT,
-      node, pivot, body, stub,
+      node, pivot, body, stub, crack, cracked: false, held: null,
+      floor: !!def.floor, y0, fallOff: Number(def.fallOff) || 0, fallT: Number(def.fallT) || 0, blocks: def.blocks | 0, top: null, base: null,
       colliders,
       stubR: Number(def.broken?.r) || 0, stubCollider: null,
       burns: def.burns ?? !!M.burns,
@@ -254,7 +299,73 @@ export class Destructibles {
       on: false,
     };
     this.list.push(o);
+    if (o.floor) this.floor.push(o);
     return o;
+  }
+
+  /**
+   * Meshes for floor slabs in a boss's hands (BREAK.floor.carry): a slab's body is a run of vertices in
+   * the set's paving mesh and cannot move, so a slab torn out of the floor shows as a block of prop art
+   * (its hole shows the slab's broken look). Built once, batched with the rest.
+   */
+  _buildCarry(set) {
+    const col = set.floorCarry ?? STONE;
+    const g = prep(new THREE.BoxGeometry(1.5, 0.24, 1.5, 3, 1, 3));
+    g.translate(0, 0.12, 0);
+    lumpy(g, 0.05, 3, 7.7, new THREE.Vector3(0, 0.12, 0));
+    carve(g, {
+      col: (px, py, pz) => mul(col, 0.7 + 0.5 * Math.abs(Math.sin(px * 7.1 + pz * 5.3))),
+      ao: (px, py) => 0.6 + 1.6 * py,
+      edge: (px, py, pz, nx, ny) => (ny > 0.5 && ny < 0.95 ? 1 : 0),
+    });
+    for (let i = 0; i < BREAK.floor.carry; i++) {
+      const m = new THREE.Mesh(g, this.propMat);
+      m.matrixAutoUpdate = false;
+      m.visible = false;
+      m.name = 'floorCarry';
+      this.root.add(m);
+      this._carry.push(m);
+    }
+  }
+
+  /**
+   * The intact floor slabs within `r` of (x, z), nearest first, into `out` (cleared first): what a
+   * terrain move can tear up there. `o`: kind ('flagstone' | 'plate'), whole (true: not cracked),
+   * max (how many at most, default 8). Walks the grid. Returns how many.
+   */
+  floorNear(x, z, r, out, o = NONE) {
+    if (!Array.isArray(out)) return 0;
+    out.length = 0;
+    if (!this.floor.length || !Number.isFinite(x + z + r) || !this._cells(x - r, z - r, x + r, z + r)) return 0;
+    const max = o.max ?? 8, L = this.list, g = this._g, R = this._gr, near = this._near;
+    near.length = 0;
+    for (let cz = R.c; cz <= R.d; cz++) {
+      for (let cx = R.a; cx <= R.b; cx++) {
+        const c = cz * g.nx + cx;
+        for (let k = g.start[c]; k < g.start[c + 1]; k++) {
+          const b = L[g.items[k]];
+          if (!b.floor || b.state !== INTACT || (o.whole && b.cracked) || (o.kind !== undefined && b.kind !== o.kind)) continue;
+          const d = Math.hypot(b.x - x, b.z - z);
+          if (d > r) continue;
+          // (insertion by distance: a short list)
+          let i = out.length;
+          out.push(b);
+          near.push(d);
+          while (i > 0 && near[i - 1] > d) {
+            out[i] = out[i - 1];
+            near[i] = near[i - 1];
+            i--;
+          }
+          out[i] = b;
+          near[i] = d;
+          if (out.length > max) {
+            out.length = max;
+            near.length = max;
+          }
+        }
+      }
+    }
+    return out.length;
   }
 
   /** The spatial grid: each piece in the cell of its base; a query widens its box by the largest radius. */
@@ -315,6 +426,7 @@ export class Destructibles {
 
   _skip(b, o) {
     if (b.state !== INTACT) return true;
+    if (b.top !== null && b.top.state === FALLING) return true; // (the upper half coming off it)
     if (o.only !== undefined && b.mat !== o.only) return true;
     if (o.spare === b) return true;
     return o.incidental === true && b.spare > (this.game.time ?? 0);
@@ -349,6 +461,7 @@ export class Destructibles {
   _nearTest(b, x, z, o, st) {
     if (b.state !== INTACT || b.hpMax === Infinity) return;
     if (o.lift !== undefined && !(b.lift > 0 && b.lift <= o.lift)) return;
+    if (b.floor && o.kind === undefined && !(o.lift >= BREAK.floor.lift)) return; // (floor: asked for by kind or lift)
     if (o.kind !== undefined && b.kind !== o.kind) return;
     if (o.mat !== undefined && b.mat !== o.mat) return;
     const d = Math.hypot(b.x - x, b.z - z);
@@ -391,6 +504,7 @@ export class Destructibles {
     if (!Number.isFinite(x + z + r + power) || !(power > 0)) return 0;
     if (!this._cells(x - r, z - r, x + r, z + r)) return 0;
     let n = 0;
+    this._quiet = 0;
     const L = this.list, g = this._g, R = this._gr, ra = R.a, rb = R.b, rc = R.c, rd = R.d;
     for (let cz = rc; cz <= rd; cz++) {
       for (let cx = ra; cx <= rb; cx++) {
@@ -410,7 +524,13 @@ export class Destructibles {
           }
           const kk = d > 1e-3 ? Math.min(1, b.r / d) : 0;
           // o.falloff: a blast weaker toward its rim (x 1 - falloff at the edge)
-          const pw = o.falloff > 0 ? power * (1 - o.falloff * Math.min(1, d / (r + b.r))) : power;
+          let pw = o.falloff > 0 ? power * (1 - o.falloff * Math.min(1, d / (r + b.r))) : power;
+          // a floor slab: the blow's power falls off from its centre (BREAK.floor: the slab under a heavy
+          // blow breaks, its neighbours crack)
+          if (b.floor) {
+            const F = BREAK.floor;
+            if (d > F.core) pw *= 1 - (1 - F.rim) * Math.min(1, (d - F.core) / Math.max(0.05, r + b.r - F.core));
+          }
           if (this._hit(b, pw, o, b.x - ox * kk, clamp(o.y ?? 1, 0.2, b.h), b.z - oz * kk, dx, dz)) n++;
         }
       }
@@ -434,6 +554,7 @@ export class Destructibles {
     if (!Number.isFinite(ax + az + bx + bz + r + power) || !(power > 0)) return 0;
     if (!this._cells(Math.min(ax, bx) - r, Math.min(az, bz) - r, Math.max(ax, bx) + r, Math.max(az, bz) + r)) return 0;
     let n = 0;
+    this._quiet = 0;
     const L = this.list, s = this._seg2, g = this._g, R = this._gr, ra = R.a, rb = R.b, rc = R.c, rd = R.d;
     for (let cz = rc; cz <= rd; cz++) {
       for (let cx = ra; cx <= rb; cx++) {
@@ -451,7 +572,8 @@ export class Destructibles {
             dz = bz - az;
           }
           const px = ax + (bx - ax) * s.t, pz = az + (bz - az) * s.t;
-          if (this._hit(b, power, o, px, clamp(o.y ?? 1, 0.2, b.h), pz, dx, dz)) n++;
+          // (a floor slab under an edge drawn along it, not a blow landing on it: BREAK.floor.sweep of it)
+          if (this._hit(b, b.floor && o.down !== true ? power * BREAK.floor.sweep : power, o, px, clamp(o.y ?? 1, 0.2, b.h), pz, dx, dz)) n++;
         }
       }
     }
@@ -463,6 +585,7 @@ export class Destructibles {
     const b = this.coverAt(ax, az, bx, bz, r);
     if (!b) return null;
     const t = this.coverT;
+    this._quiet = 0;
     this._hit(b, power, o, ax + (bx - ax) * t, clamp(o.y ?? 1, 0.2, b.h), az + (bz - az) * t, bx - ax, bz - az);
     return b;
   }
@@ -482,6 +605,11 @@ export class Destructibles {
     if (Number.isFinite(k)) this.q = clamp(k, 0.3, 1);
   }
 
+  /** A floor slab speaks once per blow (the first the blow strikes); every other piece always. */
+  _loud(b) {
+    return !b.floor || this._quiet++ === 0;
+  }
+
   _emit(kind, b, x, y, z, power, by) {
     this._emitAt(kind, b.mat, x, y, z, power, by, b.id);
   }
@@ -493,6 +621,8 @@ export class Destructibles {
   }
 
   _hit(b, power, o, px, py, pz, dx, dz) {
+    // a two-stage piece: while the upper half stands, blows on the legs wear it down
+    if (b.top !== null && b.top.state === INTACT) b = b.top;
     const now = this.game.time ?? 0;
     const src = o.src ?? -1;
     if (src >= 0 ? b.src === src : now - b.srcT < (o.brush === true ? BREAK.brushRehit : BREAK.rehit)) return false;
@@ -510,14 +640,19 @@ export class Destructibles {
     const shove = brush && dmg < BREAK.scratch;
     if (!shove) this._chips(b, px, py, pz, dx, dz, brush ? dmg : power); // (a brush: splinters for what it bit)
     if (dmg < BREAK.scratch || b.hpMax === Infinity || (b.hp -= dmg) > 0) {
-      // it holds: a nick, a shudder
-      if (!shove) this.world.scars?.object(b.id, px, py, pz, power, b.M);
+      // it holds: a nick, a shudder (a floor slab: no nick; it shows cracked once it has taken enough)
+      if (!shove && !b.floor) this.world.scars?.object(b.id, px, py, pz, power, b.M);
+      if (b.floor && !b.cracked && b.crack && b.hp <= b.hpMax * BREAK.floor.crack) {
+        b.cracked = true;
+        b.body.visible = false;
+        b.crack.visible = true;
+      }
       b.shake = 0.28;
       b.shakeAmp = Math.min(0.09, 0.02 + power * 0.05) / Math.max(0.6, b.weight);
       b.dx = dx;
       b.dz = dz;
       this._wake(b);
-      if (!shove) this._emit('chip', b, px, py, pz, power, by);
+      if (!shove && this._loud(b)) this._emit('chip', b, px, py, pz, power, by);
       return true;
     }
     this._break(b, dx, dz, by, kind);
@@ -563,7 +698,7 @@ export class Destructibles {
     if ((b.topples || force) && kind !== BLOW.FIRE) {
       b.state = FALLING;
       b.t = 0;
-      b.T = clamp(BREAK.topple.time * Math.sqrt(b.h / 5), 0.55, 1.5);
+      b.T = b.fallT > 0 ? b.fallT : clamp(BREAK.topple.time * Math.sqrt(b.h / 5), 0.55, 1.5);
       b.told = b.flashed = false;
       b.mark = 0;
       this._wake(b);
@@ -572,11 +707,19 @@ export class Destructibles {
     } else {
       this._crumble(b, dx, dz, false);
       b.state = BROKEN;
-      this.world.scars?.rubble(b.x, b.z, b.r * 1.8 + 0.4, b.M, 6 + Math.round(b.weight * 6 * this.q), b.def.look === 'prop' ? DIGITS : '.,:o');
-      // a boulder leaves a pile of itself (a stone with a broken base of its own has that)
-      if (b.wrecks && !b.stub && b.mat === 'stone' && b.h >= 0.4) this.wreck?.rubble(b.x, b.z, b.r * 0.85, b.M);
-      this.game.shake?.(clamp(0.12 + 0.12 * b.weight, 0.1, 0.4));
-      this._emit('break', b, b.x, b.h * 0.5, b.z, b.weight, by);
+      const loud = this._loud(b);
+      // (a floor slab: a few marks of its own, and the blow that broke it shakes the camera, not each slab)
+      this.world.scars?.rubble(b.x, b.z, b.floor ? b.r : b.r * 1.8 + 0.4, b.M, b.floor ? 2 + Math.round(2 * this.q) : 6 + Math.round(b.weight * 6 * this.q), b.def.look === 'prop' ? DIGITS : '.,:o');
+      if (b.wrecks && b.blocks > 0) {
+        // a statue's legs: big blocks round where it stood
+        for (let i = 0; i < b.blocks; i++) {
+          const a = (i / b.blocks) * 6.283 + rnd() * 1.2, d = b.r * (0.9 + rnd() * 0.6);
+          this.wreck?.block(b.x + Math.cos(a) * d, b.z + Math.sin(a) * d, 0.6 + rnd() * 0.5, b.M);
+        }
+      } else if (b.wrecks && !b.stub && b.mat === 'stone' && b.h >= 0.4) this.wreck?.rubble(b.x, b.z, b.r * 0.85, b.M);
+      // (a boulder leaves a pile of itself; a stone with a broken base of its own has that)
+      if (!b.floor) this.game.shake?.(clamp(0.12 + 0.12 * b.weight, 0.1, 0.4));
+      if (loud) this._emit('break', b, b.x, b.h * 0.5, b.z, b.weight, by);
     }
   }
 
@@ -802,6 +945,21 @@ export class Destructibles {
     if (!b || b.state !== INTACT || !(b.lift > 0)) return false;
     this._free(b);
     this._stopBurn(b);
+    if (b.floor) {
+      // a slab torn out of the floor: its hole shows (its broken look), a block of prop art in his hands
+      b.body.visible = false;
+      if (b.crack) b.crack.visible = false;
+      this._showStub(b);
+      let m = null;
+      for (let i = 0; i < this._carry.length && !m; i++) if (!this._carry[i].visible) m = this._carry[i];
+      if (m) {
+        m.scale.set(b.r * 1.15, 1, b.r * 1.15);
+        m.updateMatrix();
+        m.visible = true;
+        b.pivot.add(m);
+        b.held = m;
+      }
+    }
     b.state = HELD;
     b.shake = 0;
     b.px = b.x;
@@ -896,6 +1054,7 @@ export class Destructibles {
     // what is left of it lies where it came down
     if (b.wrecks) {
       if (b.mat === 'wood' && b.h >= 1.5) this.wreck?.log(x - b.dx * b.h * 0.3, z - b.dz * b.h * 0.3, b.dx, b.dz, b.h * 0.5, b.r * BREAK.wreck.thick);
+      else if (b.floor) this.wreck?.shards(x, z, Math.max(0.5, b.r * 0.8), b.M);
       else if (b.mat === 'stone') this.wreck?.rubble(x, z, Math.max(0.5, b.r * 0.9), b.M);
     }
     this.world.gust?.(x, z, 1.2, b.blastR + 4);
@@ -918,7 +1077,10 @@ export class Destructibles {
     b.t += dt;
     const u = Math.min(1, b.t / b.T);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(b.dz, 0, -b.dx), (Math.PI / 2 - 0.06) * Math.pow(u, 2.4));
-    const mx = b.x + b.dx * b.h * 0.55, mz = b.z + b.dz * b.h * 0.55;
+    const off = b.fallOff;
+    // (a piece that stands on another, the upper half of a colossus: it comes off its cut, over and down)
+    if (b.y0 > 0 || off > 0) b.pivot.position.set(b.dx * off * u, -b.y0 * u * u, b.dz * off * u);
+    const mx = b.x + b.dx * (off + b.h * 0.55), mz = b.z + b.dz * (off + b.h * 0.55);
     if (b.by !== 'player') {
       // a boss felled it: red. Marked on the ground from the moment it starts to go
       const ev = this.game.events;
@@ -956,7 +1118,7 @@ export class Destructibles {
         p.flicker = 0;
         p.color = c0;
         p.colorEnd = c1;
-        for (let s = 0.9; s < b.h + 0.3; s += 0.45) {
+        for (let s = 0.9 + off; s < off + b.h + 0.3; s += 0.45) {
           const cx = b.x + b.dx * s, cz = b.z + b.dz * s;
           for (const side of SIDES) {
             p.x = cx - b.dz * side * w;
@@ -986,7 +1148,7 @@ export class Destructibles {
 
   _land(b) {
     const T = BREAK.topple;
-    const dx = b.dx, dz = b.dz, len = b.h;
+    const dx = b.dx, dz = b.dz, len = b.h, off = b.fallOff;
     const pad = T.pad + b.r * 0.6;
     const wood = b.mat === 'wood' && b.wrecks && !!this.wreck;
     // a tree's crown comes apart where it lands; its trunk stays lying there (wreckage.js). Stone breaks up
@@ -997,19 +1159,25 @@ export class Destructibles {
       const r = b.r * W.thick, off = b.stub ? 0.45 : 0;
       this.wreck.log(b.x + dx * off, b.z + dz * off, dx, dz, len * W.trunk[b.leafy > 0 ? 0 : 1], r, b.carry);
       b.carry = 0;
+    } else if (b.wrecks && b.blocks > 0) {
+      // a statue: big blocks along where it came down
+      for (let i = 0; i < b.blocks; i++) {
+        const s = off + (len * (i + 0.5)) / b.blocks, j = (rnd() - 0.5) * b.r;
+        this.wreck?.block(b.x + dx * s - dz * j, b.z + dz * s + dx * j, 0.7 + rnd() * 0.6, b.M);
+      }
     } else if (b.wrecks && b.mat === 'stone') {
       this.wreck?.rubble(b.x + dx * len * 0.35, b.z + dz * len * 0.35, Math.max(0.45, b.r * 0.8), b.M);
       this.wreck?.rubble(b.x + dx * len * 0.75, b.z + dz * len * 0.75, Math.max(0.4, b.r * 0.65), b.M);
     }
     const sc = this.world.scars;
-    sc?.ground(b.x + dx * len * 0.4, b.z + dz * len * 0.4, 0.5 + 0.35 * b.weight, dx, dz);
-    sc?.ground(b.x + dx * len * 0.85, b.z + dz * len * 0.85, 0.45 + 0.25 * b.weight, dx, dz);
-    for (let s = 0.2; s < 1; s += 0.2) sc?.rubble(b.x + dx * len * s, b.z + dz * len * s, pad + 0.3, b.M, 3, b.def.look === 'prop' ? DIGITS : '.,:o');
-    this.world.gust?.(b.x + dx * len * 0.5, b.z + dz * len * 0.5, 0.9, len * 0.7 + 3);
+    sc?.ground(b.x + dx * (off + len * 0.4), b.z + dz * (off + len * 0.4), 0.5 + 0.35 * b.weight, dx, dz);
+    sc?.ground(b.x + dx * (off + len * 0.85), b.z + dz * (off + len * 0.85), 0.45 + 0.25 * b.weight, dx, dz);
+    for (let s = 0.2; s < 1; s += 0.2) sc?.rubble(b.x + dx * (off + len * s), b.z + dz * (off + len * s), pad + 0.3, b.M, 3, b.def.look === 'prop' ? DIGITS : '.,:o');
+    this.world.gust?.(b.x + dx * (off + len * 0.5), b.z + dz * (off + len * 0.5), 0.9, len * 0.7 + 3);
     this.game.shake?.(clamp(T.shake * b.weight, 0.15, 0.6));
     // what stood under it
-    const ax = b.x + dx * 0.9, az = b.z + dz * 0.9, ex = b.x + dx * len, ez = b.z + dz * len;
-    this.sweep(ax, az, ex, ez, pad, 0.7 * b.weight, { kind: BLOW.BLUNT, by: b.by, dx, dz, src: this.swing() });
+    const ax = b.x + dx * (off + 0.9), az = b.z + dz * (off + 0.9), ex = b.x + dx * (off + len), ez = b.z + dz * (off + len);
+    this.sweep(ax, az, ex, ez, pad, 0.7 * b.weight, { kind: BLOW.BLUNT, by: b.by, dx, dz, src: this.swing(), down: true });
     // who stood under it: the hero under a piece a boss (or the world) felled, the boss under the hero's
     const s = this._seg, g = this.game;
     const w = clamp(b.weight, 0.6, 1.3);
@@ -1054,7 +1222,7 @@ export class Destructibles {
         }
       }
     }
-    this._emit('crash', b, b.x + dx * len * 0.5, 0.4, b.z + dz * len * 0.5, b.weight, b.by);
+    this._emit('crash', b, b.x + dx * (off + len * 0.5), 0.4, b.z + dz * (off + len * 0.5), b.weight, b.by);
   }
 
   // ------------------------------------------------------------------ debris (glyph particles)
@@ -1062,7 +1230,8 @@ export class Destructibles {
   _chips(b, x, y, z, dx, dz, power) {
     const fx = b.M.sparks ? this.game.fx?.add : this.game.fx?.alpha;
     if (!fx) return;
-    const n = Math.round(clamp(3 + power * 12, 3, 18) * this.q);
+    const fq = this.q * (b.floor ? BREAK.floor.debris : 1);
+    const n = Math.round(clamp(3 + power * 12, 3, 18) * fq);
     const M = b.M, p = this._p;
     p.glyph = M.chips;
     p.color = M.color;
@@ -1099,7 +1268,7 @@ export class Destructibles {
       p.sizeEnd = 0.5;
       p.spin = 0;
       p.rot = 0;
-      const m = Math.round((2 + power * 4) * this.q);
+      const m = Math.round((2 + power * 4) * fq);
       for (let i = 0; i < m; i++) {
         p.x = x + (rnd() - 0.5) * 0.4;
         p.y = y + (rnd() - 0.5) * 0.4;
@@ -1153,13 +1322,20 @@ export class Destructibles {
    */
   _crumble(b, dx, dz, fallen, ember = false, crown = false) {
     b.body.visible = false;
+    if (b.crack) b.crack.visible = false;
+    if (b.held) {
+      // (a slab carried out of the floor: its block goes back to the pool)
+      b.held.visible = false;
+      this.root.add(b.held);
+      b.held = null;
+    }
     const solid = this.game.fx?.alpha, glow = this.game.fx?.add;
     if (!solid) return;
     const M = b.M, p = this._p, c0 = this._c0;
-    let n = Math.round(clamp(b.r * b.h * 26, 26, 130) * this.q);
+    let n = Math.round(clamp(b.r * b.h * 26, 26, 130) * this.q * (b.floor ? BREAK.floor.debris : 1));
     if (crown) n = Math.round(n * (b.leafy > 0 ? 0.7 : 0.35));
     const prop = b.def.look === 'prop';
-    const wx = b.x + b.pivot.position.x, wy = b.pivot.position.y, wz = b.z + b.pivot.position.z;
+    const wx = b.x + b.pivot.position.x, wy = b.y0 + b.pivot.position.y, wz = b.z + b.pivot.position.z;
     const q = b.pivot.quaternion, v = this._v;
     const wide = b.leafy > 0 ? b.r * 3.4 : b.r * 1.1;
     for (let i = 0; i < n; i++) {
@@ -1213,7 +1389,7 @@ export class Destructibles {
     p.flicker = 0;
     p.size = 0.3;
     p.sizeEnd = 0.9;
-    const m = Math.round((6 + b.weight * 5) * this.q);
+    const m = Math.round((6 + b.weight * 5) * this.q * (b.floor ? BREAK.floor.debris : 1));
     for (let i = 0; i < m; i++) {
       const t = rnd();
       v.set((rnd() - 0.5) * b.r * 2, t * b.h, (rnd() - 0.5) * b.r * 2).applyQuaternion(q);
@@ -1286,6 +1462,13 @@ export class Destructibles {
       b.srcT = -1e9;
       b.onLand = null;
       b.on = false;
+      if (b.held) {
+        b.held.visible = false;
+        this.root.add(b.held);
+        b.held = null;
+      }
+      b.cracked = false;
+      if (b.crack) b.crack.visible = false;
       b.body.visible = true;
       if (b.stub) b.stub.visible = false;
       b.pivot.position.set(0, 0, 0);

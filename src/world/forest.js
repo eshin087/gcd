@@ -834,6 +834,7 @@ export function createForest(U, colliders) {
   const shardGeos = flags.map((f) => buildFlagShards(br, f.x, f.z, f.outline));
   const shardMesh = new THREE.Mesh(mergeGeometries(shardGeos), slabMat);
   shardMesh.name = 'flagstoneShards';
+  shardMesh.userData.foldAway = true; // (hidden until a flagstone is smashed: no draw call till then; destructibles.js RangeBody)
   {
     let v = 0, w = 0;
     flags.forEach((f, i) => {
