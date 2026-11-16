@@ -23,17 +23,17 @@ import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 export { LAYER_CASTER, LAYER_CASTER_RIGID };
 
 /**
- * The letters follow the zoom (?zoomArt=a|b|c, read once at load; CONFIG.camera.zoomArt): a today's
- * fixed letters (the default), b the art cell and the screen grid shrink as the camera pulls back
- * past its default distance so an object keeps its letters, c half of that. Pipeline.setZoomArt
- * switches it live (the Lab, tests).
+ * The letters follow the zoom (?zoomArt=a|b|c, read once at load; CONFIG.camera.zoomArt): b (the
+ * default, the owner's pick of the three, 2026-11-16) the art cell and the screen grid shrink as the
+ * camera pulls back past its default distance so an object keeps its letters, c half of that, a
+ * the fixed letters the game had before. Pipeline.setZoomArt switches it live (the Lab, tests).
  */
 export const ZOOM_ART = (() => {
   try {
     const v = new URLSearchParams(globalThis.location?.search ?? '').get('zoomArt');
-    return v === 'b' || v === 'c' ? v : 'a';
+    return v === 'a' || v === 'c' ? v : 'b';
   } catch {
-    return 'a';
+    return 'b';
   }
 })();
 /** World radius (m) round the hero's screen point inside which the art pass draws his dark halo. */
