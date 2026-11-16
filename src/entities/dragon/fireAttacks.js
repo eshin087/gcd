@@ -3,6 +3,7 @@ import { TUNING, SCALE } from './tuning.js';
 import { clamp, lerp, smoothstep, easeOutCubic, easeInCubic, easeInOutSine, angleDiff } from '../../core/math.js';
 import { beat, roarFx, roarPose, GROUND_BLOW } from './attacks.js';
 import { FLIGHT } from './tuningFire.js';
+import { APOC_LOOK, skyBolt, skyPillar, skyThroat } from './skyFx.js';
 
 // Fire / flight attacks and spells (contract 3; numbers in tuningFire.js = TUNING.attacks.*). Same
 // shape as attacks.js (phases / beats / zone / weight / start / enter / update / hit / end, driven by
@@ -1199,38 +1200,68 @@ const skyFurnace = makeFlightCombo('skyFurnace');
 const skyCataclysm = makeFlightCombo('skyCataclysm');
 
 // ------------------------------------------------------------------ armageddon (key meteorRain)
-// ADR-053. Rears onto its hind legs, wings flared, the neck straight up, the throat white-hot, embers
-// streaming up off the jaws (the body glows red: TELL_STYLE.red.warn, d.bodyWarn); fires a salvo of
-// bolts into the sky from the jaws (visual: fx.launchBolt; dragon:hazard stage 'launch' per bolt); the
-// barrage emitter (hazards.barrage) is armed with the salvo, the sky answers and the meteors come
-// down in waves while the wyrm, back on all fours, fights on. Windup + salvo (~3 s) is the punish
-// window. No beat of its own: the salvo deals nothing, every meteor heats its ground and announces
-// itself; the transition roar's clear ends the barrage.
+// ADR-053; the performance and the sky reworked in the second pass, in three looks the owner picks
+// from (?apoc=a|b|c, skyFx.APOC_LOOK; MR.looks):
+//   a  the salvo: a beat of menace (low, still, glaring), then the weight goes back onto the haunches,
+//      the wings unfurl, the neck arcs back and up, the chest and throat fill with fire; it tears a
+//      dozen columns of fire up into the sky, each one kicking through the whole body; the burning
+//      deck flares up over the clearing; it drops onto its forefeet with a slam and fights on
+//   b  the pillar: the same rear-up, then one sustained column roared straight up for the whole cast
+//      (pulsing `missiles` times), the burning ceiling spreading out from the top of it
+//   c  the flight: it takes off, hangs over the clearing and tears the salvo up from the air in a
+//      wider fan, the deck right over it, then drops back down with its weight
+// The barrage emitter (hazards.barrage) is armed at the cast and the meteors come down in waves
+// while the wyrm fights on. Windup + cast is the punish window (a: on the ground; c: in the air, out
+// of reach). No beat of its own: the salvo deals nothing, every meteor heats its ground and
+// announces itself; the transition roar's clear ends the barrage. dragon:hazard 'launch' per bolt
+// (b: per pulse).
 const MR = T.meteorRain;
+const APOC = MR.looks?.[APOC_LOOK] ?? MR.looks?.a ?? {};
+const AIR_APOC = APOC_LOOK === 'c';
 
 function fireBolt(d, a) {
   const m = d.rig.pt.mouth;
-  const ang = Math.random() * Math.PI * 2, tilt = Math.random() * MR.missileCone, sp = MR.missileSpeed;
-  d.fx.launchBolt(m.x, m.y, m.z, Math.sin(tilt) * Math.cos(ang) * sp, Math.cos(tilt) * sp, Math.sin(tilt) * Math.sin(ang) * sp);
+  const cone = AIR_APOC ? APOC.cone ?? 0.45 : MR.missileCone;
+  const ang = Math.random() * Math.PI * 2, tilt = Math.random() * cone, sp = MR.missileSpeed;
+  // (a little back over the body, away from the camera side: the column climbs up the frame)
+  skyBolt(d.fx, m.x, m.y, m.z, Math.sin(tilt) * Math.cos(ang) * sp, Math.cos(tilt) * sp, Math.sin(tilt) * Math.sin(ang) * sp - 4, AIR_APOC ? 0.9 : 1);
   a.fired++;
   a.kick = 1;
-  d.game.shake?.(0.06);
+  d.game.shake?.(0.07);
   d.emit('dragon:hazard', { kind: 'meteor', stage: 'launch', x: m.x, z: m.z, radius: 0 });
 }
 
 const meteorRain = {
   name: 'meteorRain',
   cooldown: MR.cooldown,
-  phases: (d) => [['windup', wind(d, MR.windup)], ['cast', MR.cast], ['recovery', wind(d, MR.recovery)]],
+  phases: (d) => {
+    if (AIR_APOC) {
+      return [['windup', wind(d, APOC.windup ?? 0.9)], ['rise', APOC.rise ?? 0.9], ['cast', MR.cast], ['descend', APOC.descend ?? 0.75], ['recovery', wind(d, APOC.recovery ?? 0.55)]];
+    }
+    return [['windup', wind(d, MR.windup)], ['cast', MR.cast], ['recovery', wind(d, MR.recovery)]];
+  },
   // not while a barrage or its meteors are still coming down
   weight: (d, s) => (d.hazards?.count('barrage') || d.hazards?.count('meteor') ? 0 : wPhase(MR, d)),
   start(d, a) {
     a.n = Math.max(1, perPh(MR.missiles, d) | 0);
     a.every = Math.min(MR.missileEvery, (MR.cast - 0.15) / a.n); // (all of them inside the salvo)
+    if (APOC_LOOK === 'b') a.every = (MR.cast - 0.1) / a.n; // (the pillar's pulses spread over the roar)
     a.fired = 0;
     a.kick = 0;
+    a.slammed = false;
+    a.landed = false;
+    a.p0 = V().copy(d.position);
+    a.flapCos = 1;
   },
   enter(d, a, phase) {
+    if (phase === 'rise') {
+      takeOff(d);
+      return;
+    }
+    if (phase === 'descend') {
+      a.alt0 = Math.max(0.5, d.rig.s.alt);
+      return;
+    }
     if (phase !== 'cast') return;
     roarFx(d, 0.6);
     d.emit('dragon:spell', { name: 'meteorRain', x: d.position.x, z: d.position.z });
@@ -1241,54 +1272,212 @@ const meteorRain = {
       damage: MR.damage, burn: MR.burn, knockback: MR.knockback, group: d.hazards.group(MR.maxHits),
       crater: perPh(MR.craterBurn, d), tickDamage: MR.tickDamage, tickBurn: MR.tickBurn,
       safeR: MR.safeR, cover: MR.safeCover, finale: MR.finale,
+      deckAt: APOC.deckAt ?? MR.cast, deckGrow: APOC.deckGrow ?? 0.8, cx: d.position.x, cz: d.position.z,
     });
+  },
+  /** The rear-up on the ground (looks a, b): menace, the weight back, the wings, the neck, the fire. */
+  rearUp(d, a, dt) {
+    const pose = d.pose, pt = d.rig.pt, k = a.k;
+    const men = APOC.menace ?? 0.22;
+    const up = smoothstep(men, 0.88, k);
+    d.turnToward(d.sense.yawTo, d.turnRate * (k < men ? 0.8 : 0.3), dt);
+    // the beat of menace: low and still on its forelegs, head down and out, glaring at him
+    // then the weight shifts back onto the haunches and it rears, the neck arcing back and up
+    pose.rear = 0.97 * up;
+    pose.pitch = 0.1 * (1 - up) - 0.22 * up;
+    pose.lower = 0.32 * (1 - up) - 0.18 * up;
+    pose.bodyRate = 3 + 2 * up;
+    pose.stanceH = 0.25;
+    pose.restep = 1;
+    const arc = Math.sin(Math.PI * up); // the neck swings back past upright as it rises
+    pose.head = d.rootPt(pose.headTarget, 0, 3.0 + 4.9 * up + 0.6 * arc, 4.6 - 3.7 * up - 0.9 * arc);
+    pose.headRate = k < men ? 7 : 3.5;
+    if (k < men) pose.look.copy(d.sense.chest);
+    else d.rootPt(pose.look, 0, 40, 5 - 4 * up);
+    pose.lookRate = 5;
+    // the wings unfurl from the mantle to their full span and tremble
+    const wing = smoothstep(men + 0.05, 0.75, k);
+    pose.spread[0] = pose.spread[1] = REST_SPREAD + (1 - REST_SPREAD) * wing;
+    pose.spreadRate = 3.5;
+    pose.flap = 0.13 * wing;
+    pose.flapHz = 5;
+    pose.swell = k;
+    pose.jaw = k < men ? 0.25 : 0.3 + 0.55 * up;
+    pose.jawRate = 12;
+    d.throat = k;
+    d.bodyWarn = smoothstep(0, men + 0.15, k); // the red tell on the body (TELL_STYLE.red.warn)
+    skyThroat(d.fx, dt, pt.chest, pt.mouth, k);
+    d.fx.mouthEmbers(dt, pt.mouth, 10 + 50 * up, pt.headFwd, 7 * up);
   },
   update(d, a, dt) {
     const pose = d.pose, pt = d.rig.pt, k = a.k;
-    a.kick = Math.max(0, a.kick - dt * 9);
-    if (a.phase === 'windup' || a.phase === 'cast') {
-      // reared up, wings flared, the neck straight up, looking at the sky
-      const up = a.phase === 'windup' ? smoothstep(0, 0.7, k) : 1;
-      if (a.phase === 'windup') d.turnToward(d.sense.yawTo, d.turnRate * 0.5, dt);
-      pose.rear = 0.9 * up;
-      pose.pitch = -0.16 * up;
-      pose.lower = -0.15 * up;
+    a.kick = Math.max(0, a.kick - dt * 8);
+    if (AIR_APOC) return this.updateAir(d, a, dt);
+    if (a.phase === 'windup') {
+      this.rearUp(d, a, dt);
+    } else if (a.phase === 'cast') {
+      // reared up, the wings full, the throat white-hot; each bolt kicks through the whole body:
+      // the head snaps down, the chest drops, the haunches give, the wings flick
+      const kk = APOC_LOOK === 'b' ? 0.45 * a.kick : a.kick;
+      pose.rear = 0.97 - 0.14 * kk;
+      pose.pitch = -0.22 + 0.08 * kk;
+      pose.lower = -0.18 + 0.16 * kk;
+      pose.bodyRate = 16;
       pose.stanceH = 0.25;
       pose.restep = 1;
-      pose.head = d.rootPt(pose.headTarget, 0, 6.0 + 1.6 * up, 2.2 - 0.8 * up);
-      pose.headRate = 4;
-      d.rootPt(pose.look, 0, 40, 5);
-      pose.lookRate = 6;
+      pose.head = d.rootPt(pose.headTarget, 0, 7.9 - 0.6 * kk, 0.9 + 0.5 * kk);
+      pose.headRate = 9;
+      d.rootPt(pose.look, 0, 40, 1);
+      pose.lookRate = 8;
       pose.spread[0] = pose.spread[1] = 1;
-      pose.spreadRate = 4;
-      pose.flap = 0.12 * up;
-      pose.flapHz = 4;
-      pose.swell = a.phase === 'windup' ? k : 1;
-      pose.jaw = a.phase === 'windup' ? 0.3 + 0.5 * k : a.kick > 0.3 ? 1 : 0.85;
-      pose.jawRate = 18;
-      // each bolt kicks the head back down a little
-      pose.headOffset.y -= a.kick * 0.3 * S;
-      d.throat = a.phase === 'windup' ? k : 1;
-      d.bodyWarn = a.phase === 'windup' ? k : 1; // the red tell on the body (TELL_STYLE.red.warn)
-      d.fx.mouthEmbers(dt, pt.mouth, a.phase === 'windup' ? 20 + 50 * k : 30, pt.headFwd, 7);
+      pose.spreadRate = 14;
+      pose.flap = 0.1 + 0.25 * kk;
+      pose.flapHz = 5;
+      pose.swell = 1;
+      pose.jaw = APOC_LOOK === 'b' ? 1 : a.kick > 0.3 ? 1 : 0.8;
+      pose.jawRate = 22;
+      pose.headOffset.y -= kk * 0.5 * S;
+      if (APOC_LOOK === 'b') {
+        // the roar: the whole body shudders with it
+        const j = (Math.sin(d.time * 41) * 0.07 + Math.sin(d.time * 23) * 0.05) * S;
+        pose.headOffset.x += j;
+        d.game.shake?.(0.35 * dt);
+      }
+      d.throat = 1;
+      d.bodyWarn = 1;
+      skyThroat(d.fx, dt, pt.chest, pt.mouth, 1);
+      d.fx.mouthEmbers(dt, pt.mouth, 30, pt.headFwd, 7);
     } else {
-      // drops back onto all fours and fights on (the barrage is a background hazard)
-      pose.rear = 0.9 * (1 - smoothstep(0, 0.6, k));
-      pose.jaw = 0.25;
-      pose.spreadRate = 3;
+      // it drops back onto its forefeet with all its weight, then fights on (the barrage is a
+      // background hazard)
+      const dr = APOC.drop ?? 0.38;
+      const u = clamp(k / dr, 0, 1);
+      pose.rear = 0.97 * (1 - u * u);
       pose.restep = 1;
+      if (u >= 1 && !a.slammed) {
+        a.slammed = true;
+        const g = d.game;
+        g.shake?.(0.5);
+        for (const arm of pt.arms) {
+          d.fx.dustRing(arm.toe.x, arm.toe.z, 0.9 * S, 18, 0.9);
+          d.emit('dragon:step', { x: arm.toe.x, z: arm.toe.z, heavy: true });
+        }
+        g.world?.gust?.(d.position.x, d.position.z, 1.4, 14 * S);
+      }
+      const v = a.slammed ? clamp((k - dr) / (1 - dr), 0, 1) : 0;
+      pose.lower = a.slammed ? 0.45 * (1 - smoothstep(0, 1, v)) : -0.1;
+      pose.pitch = a.slammed ? 0.18 * (1 - v) : -0.1 * (1 - u);
+      pose.bodyRate = a.slammed && v < 0.2 ? 18 : 6;
+      pose.elbowsOut = a.slammed ? 0.4 * (1 - v) : 0;
+      pose.spread[0] = pose.spread[1] = v < 0.35 ? 1 : REST_SPREAD;
+      pose.spreadRate = 3;
+      pose.jaw = 0.3;
       d.throat = Math.max(0, 1 - 2 * k);
-      if (k < 0.6) d.game.shake?.(0.25 * dt);
+    }
+  },
+  /** Look c: the flight. Crouch, rise, hang over the clearing tearing the salvo up, come down heavy. */
+  updateAir(d, a, dt) {
+    const pose = d.pose, pt = d.rig.pt, k = a.k, f = d.fwd;
+    const ALT = Math.min(15, APOC.alt ?? 10);
+    if (a.phase === 'windup') {
+      d.turnToward(d.sense.yawTo, d.turnRate, dt);
+      pose.lower = 0.7 * smoothstep(0, 0.7, k);
+      pose.bodyRate = 6;
+      pose.strideH = 0.55;
+      pose.strideF = -0.45;
+      pose.restep = 1;
+      pose.spread[0] = pose.spread[1] = REST_SPREAD + (1 - REST_SPREAD) * smoothstep(0.2, 0.8, k);
+      pose.spreadRate = 5;
+      pose.head = d.rootPt(pose.headTarget, 0, 3.4 + 1.5 * k, 4.0 - 1.0 * k);
+      pose.jaw = 0.4;
+      d.throat = k;
+      d.bodyWarn = k;
+      skyThroat(d.fx, dt, pt.chest, pt.mouth, k);
+      return;
+    }
+    if (a.phase === 'recovery') {
+      const e = 1 - smoothstep(0, 1, k);
+      pose.lower = 0.8 * e;
+      pose.pitch = 0.25 * e;
+      pose.bodyRate = k < 0.2 ? 16 : 4;
+      pose.elbowsOut = 0.5 * e;
+      pose.spread[0] = pose.spread[1] = k < 0.4 ? 1 : REST_SPREAD;
+      pose.spreadRate = k < 0.4 ? 14 : 3;
+      pose.restep = 1;
+      pose.jaw = 0.3;
+      d.throat = 0;
+      return;
+    }
+    beatDust(d, a);
+    pose.vel.set(0, 0, 0);
+    d.turnToward(d.sense.yawTo, 1.5, dt);
+    if (a.phase === 'rise') {
+      // heavy downbeats straight up, drifting a little toward the middle of the clearing
+      const e = easeOutCubic(k);
+      d.position.x = lerp(a.p0.x, a.p0.x * 0.75, e);
+      d.position.z = lerp(a.p0.z, a.p0.z * 0.75, e);
+      fly(pose, ALT * e, 1, 2.3);
+      pose.hover = smoothstep(0.2, 1, k);
+      pose.pitch = -0.25 - 0.2 * k;
+      pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, 1.8 * S);
+      pose.head.y += 1.0 * S;
+      pose.jaw = 0.5;
+      d.throat = 1;
+      d.bodyWarn = 1;
+      skyThroat(d.fx, dt, pt.chest, pt.mouth, 1);
+    } else if (a.phase === 'cast') {
+      // hanging on huge strokes, chest thrown out, the head back to the sky; every bolt kicks it down
+      fly(pose, ALT + 0.5 * Math.sin(a.t * 3) - 0.6 * a.kick, 0.95, 2.1);
+      pose.hover = 1;
+      pose.pitch = -0.55 + 0.12 * a.kick;
+      pose.bodyRate = 12;
+      pose.head = pose.headTarget.copy(pt.neckBase).addScaledVector(f, (0.8 + 0.6 * a.kick) * S);
+      pose.head.y += (2.4 - 0.7 * a.kick) * S;
+      pose.headRate = 9;
+      d.rootPt(pose.look, 0, 40, 2);
+      pose.jaw = a.kick > 0.3 ? 1 : 0.8;
+      pose.jawRate = 22;
+      d.throat = 1;
+      d.bodyWarn = 1;
+      skyThroat(d.fx, dt, pt.chest, pt.mouth, 1);
+      d.fx.mouthEmbers(dt, pt.mouth, 30, pt.headFwd, 7);
+    } else if (a.phase === 'descend') {
+      // it folds and drops, beating late to brake, the legs reaching for the ground
+      const u = smoothstep(0, 1, k);
+      fly(pose, a.alt0 * (1 - u * u * 0.4 - u * 0.6), 0.75, 2.6);
+      pose.altRate = 30;
+      pose.hover = 1 - k;
+      pose.airReach = smoothstep(0.2, 0.8, k);
+      pose.pitch = -0.2 * (1 - k);
+      d.throat = 0.5 * (1 - k);
+      if (k > 0.97 && !a.landed) {
+        a.landed = true;
+        touchDown(d, true);
+      }
     }
   },
   // (after the rig: the bolts leave the jaws where they are drawn)
-  hit(d, a) {
+  hit(d, a, dt) {
     if (a.phase !== 'cast') return;
-    while (a.fired < a.n && a.t >= a.fired * a.every) fireBolt(d, a);
+    if (APOC_LOOK === 'b') skyPillar(d.fx, dt, d.rig.pt.mouth, 1);
+    while (a.fired < a.n && a.t >= a.fired * a.every) {
+      if (APOC_LOOK === 'b') {
+        // a pulse of the roar (counted as a bolt: dragon:hazard launch)
+        const m = d.rig.pt.mouth;
+        a.fired++;
+        a.kick = 1;
+        d.game.shake?.(0.05);
+        d.emit('dragon:hazard', { kind: 'meteor', stage: 'launch', x: m.x, z: m.z, radius: 0 });
+      } else fireBolt(d, a);
+    }
   },
-  end(d) {
+  end(d, a, interrupted) {
     d.throat = 0;
     d.bodyWarn = 0;
+    if (AIR_APOC) {
+      if (!interrupted && !a.landed) touchDown(d, true);
+      flightEnd(d, a, interrupted);
+    }
   },
 };
 
@@ -1332,7 +1521,8 @@ const eruptions = {
       d.emit('dragon:step', { x: f.x, z: f.z, heavy: true });
     }
     d.emit('dragon:spell', { name: 'eruptions', x: c.x, z: c.z });
-    const common = { attack: 'eruptions', r: ER.radius, active: ER.active, damage: ER.damage, burn: ER.burn, knockback: ER.knockback };
+    // (2nd pass) from phase 2 every pillar leaves a burning pool (ER.pool s; blockable ticks, none while rolling)
+    const common = { attack: 'eruptions', r: ER.radius, active: ER.active, damage: ER.damage, burn: ER.burn, knockback: ER.knockback, pool: perPh(ER.pool, d), poolR: ER.radius * ER.poolR, tickDamage: ER.poolTick, tickBurn: ER.poolBurn };
     const b = a.beats[0];
     if (a.chase) {
       a.line = d.hazards.chase({ ...common, every: ER.chase.every, until: ER.chase.time, warn: ER.chase.warn, lead: ER.chase.lead, group: d.hazards.group(ER.chase.maxHits), linkFirst: true });
@@ -1459,15 +1649,24 @@ function lineEta(d) {
 // ------------------------------------------------------------------ flame ring
 const FR = T.flameRing;
 const ringTravel = () => (FR.r1 - FR.r0) / FR.speed;
+const ringCount = (d) => Math.max(1, perPh(FR.rings ?? 1, d) | 0);
 const flameRing = {
   name: 'flameRing',
   cooldown: FR.cooldown,
-  // the recovery lasts until the ring has run out (its flash may come late for a far hero)
-  phases: (d) => [['windup', wind(d, FR.windup)], ['cast', FR.cast], ['recovery', Math.max(wind(d, FR.recovery), ringTravel() + 0.15)]],
+  // the recovery lasts until the last ring has run out (its flash may come late for a far hero).
+  // (2nd pass) rings: 1 / 2 / 3 per phase, one behind the other `ringGap` s apart, a red beat each
+  phases: (d) => [['windup', wind(d, FR.windup)], ['cast', FR.cast], ['recovery', Math.max(wind(d, FR.recovery), ringTravel() + (ringCount(d) - 1) * FR.ringGap + 0.15)]],
   beats: (d, a) => {
-    const b = beat('flameRing', 0, a.list[0][1] + FR.cast + 0.5, FR, 'chest');
-    retime(d, a, b, a.ring);
-    return [b];
+    const out = [];
+    const t0 = a.list[0][1] + FR.cast;
+    for (let i = 0; i < a.rings.length; i++) {
+      // the next ring's tell as the one before it bursts out
+      const at = i === 0 ? 0 : t0 + (i - 1) * FR.ringGap;
+      const b = beat('flameRing', at, t0 + i * FR.ringGap + 0.5 - at, FR, 'chest', { ring: i });
+      retime(d, a, b, a.rings[i]);
+      out.push(b);
+    }
+    return out;
   },
   weight: (d, s) => (s.dist <= FR.maxDist ? wPhase(FR, d) : 0),
   start(d, a) {
@@ -1475,10 +1674,15 @@ const flameRing = {
     a.cx = d.position.x;
     a.cz = d.position.z;
     a.flared = false;
-    a.ring = d.hazards.ring({
-      kind: 'ring', attack: 'flameRing', announce: false, x: a.cx, z: a.cz, r0: FR.r0, r1: FR.r1, speed: FR.speed, w: FR.width,
-      delay: a.list[0][1] + FR.cast, damage: FR.damage, burn: FR.burn, knockback: FR.knockback,
-    });
+    a.rings = [];
+    const n = ringCount(d);
+    for (let i = 0; i < n; i++) {
+      a.rings.push(d.hazards.ring({
+        kind: 'ring', attack: 'flameRing', announce: false, x: a.cx, z: a.cz, r0: FR.r0, r1: FR.r1, speed: FR.speed, w: FR.width,
+        delay: a.list[0][1] + FR.cast + i * FR.ringGap, damage: FR.damage, burn: FR.burn, knockback: FR.knockback,
+      }));
+    }
+    a.ring = a.rings[0];
   },
   enter(d, a, phase) {
     if (phase === 'cast') {
@@ -1490,8 +1694,14 @@ const flameRing = {
   },
   update(d, a, dt) {
     const pose = d.pose, s = d.sense, pt = d.rig.pt, k = a.k;
-    retime(d, a, a.cur, a.ring);
-    flareOnFlash(d, a, a.cur, s.pos.x, s.pos.z, 2.4);
+    for (let i = 0; i < a.beats.length; i++) {
+      const b = a.beats[i];
+      retime(d, a, b, a.rings[b.ring ?? 0]);
+      if (b.flashed && !b.flaredFx) {
+        b.flaredFx = true;
+        d.fx.hazardFlash(s.pos.x, s.pos.z, 2.4);
+      }
+    }
     if (a.phase === 'windup') {
       // crouched over its own fire, wings raised and trembling, the chest swelling white-orange;
       // flames swirl in round it
@@ -1534,14 +1744,23 @@ const flameRing = {
 
 // ------------------------------------------------------------------ flame wall
 const FW = T.flameWall;
+const wallCount = (d) => Math.max(1, perPh(FW.walls ?? 1, d) | 0);
 const flameWall = {
   name: 'flameWall',
   cooldown: FW.cooldown,
-  phases: (d) => [['windup', wind(d, FW.windup)], ['cast', FW.cast], ['recovery', Math.max(wind(d, FW.recovery), FW.sweep / FW.speed + 0.15)]],
+  // (2nd pass) walls: 1 / 1 / 2 per phase: in phase 3 a second wall `wallGap` s later comes in from
+  // the hero's side, square to the first (a red beat each; roll through each one)
+  phases: (d) => [['windup', wind(d, FW.windup)], ['cast', FW.cast], ['recovery', Math.max(wind(d, FW.recovery), FW.sweep / FW.speed + (wallCount(d) - 1) * FW.wallGap + 0.15)]],
   beats: (d, a) => {
-    const b = beat('flameWall', 0, a.list[0][1] + FW.cast + 0.6, FW, 'mouth');
-    retime(d, a, b, a.wall);
-    return [b];
+    const out = [];
+    const t0 = a.list[0][1] + FW.cast;
+    for (let i = 0; i < a.walls.length; i++) {
+      const at = i === 0 ? 0 : t0 + (i - 1) * FW.wallGap;
+      const b = beat('flameWall', at, t0 + i * FW.wallGap + 0.6 - at, FW, 'mouth', { wall: i });
+      retime(d, a, b, a.walls[i]);
+      out.push(b);
+    }
+    return out;
   },
   weight: (d, s) => wPhase(FW, d),
   start(d, a) {
@@ -1561,11 +1780,19 @@ const flameWall = {
     a.yaw = Math.atan2(dx, dz);
     a.flared = false;
     const off = FW.start + 2.5 * S;
-    a.wall = d.hazards.wall({
-      kind: 'wall', attack: 'flameWall', announce: false, x: d.position.x + dx * off, z: d.position.z + dz * off, dx, dz,
-      len: FW.length, w: FW.width, speed: FW.speed, dist: FW.sweep, delay: a.list[0][1] + FW.cast,
-      damage: FW.damage, burn: FW.burn, knockback: FW.knockback,
-    });
+    const common = { kind: 'wall', attack: 'flameWall', announce: false, len: FW.length, w: FW.width, speed: FW.speed, dist: FW.sweep, damage: FW.damage, burn: FW.burn, knockback: FW.knockback };
+    a.walls = [d.hazards.wall({ ...common, x: d.position.x + dx * off, z: d.position.z + dz * off, dx, dz, delay: a.list[0][1] + FW.cast })];
+    if (wallCount(d) > 1) {
+      // the second: from beside the hero, square to the first, sweeping across him
+      let qx = -dz, qz = dx;
+      if (qx * s.pos.x + qz * s.pos.z > 0) {
+        qx = -qx;
+        qz = -qz;
+      }
+      // it starts on the middle's side of him and sweeps through him and on out
+      a.walls.push(d.hazards.wall({ ...common, x: s.pos.x + qx * 12, z: s.pos.z + qz * 12, dx: -qx, dz: -qz, delay: a.list[0][1] + FW.cast + FW.wallGap }));
+    }
+    a.wall = a.walls[0];
   },
   enter(d, a, phase) {
     if (phase === 'cast') {
@@ -1583,8 +1810,14 @@ const flameWall = {
   },
   update(d, a, dt) {
     const pose = d.pose, s = d.sense, pt = d.rig.pt, k = a.k;
-    retime(d, a, a.cur, a.wall);
-    flareOnFlash(d, a, a.cur, s.pos.x, s.pos.z, 2.4);
+    for (let i = 0; i < a.beats.length; i++) {
+      const b = a.beats[i];
+      retime(d, a, b, a.walls[b.wall ?? 0]);
+      if (b.flashed && !b.flaredFx) {
+        b.flaredFx = true;
+        d.fx.hazardFlash(s.pos.x, s.pos.z, 2.4);
+      }
+    }
     if (a.phase === 'windup') {
       // rears back, wings raised high and forward, the throat charging: a breath is coming
       d.turnToward(a.yaw, d.turnRate, dt);

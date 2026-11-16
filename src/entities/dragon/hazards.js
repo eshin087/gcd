@@ -1,6 +1,7 @@
 import { TUNING } from './tuning.js';
 import { TELL, RESULT } from '../../combat/rules.js';
 import { clamp, smoothstep } from '../../core/math.js';
+import { skyMeteor, skyImpact, skyCrater, skyDeck, skyUpdate, skyReset } from './skyFx.js';
 
 // Fire hazards (contract 3): pooled world-space threats that run on their own, independent of the
 // wyrm's current action, so it can fight while meteors fall. Dragon.update calls update(dt) every
@@ -220,9 +221,13 @@ function blank(i) {
     waves: 0, perWave: 0, waveGap: 0, glowAt: 0, crater: 0, wave: -1, ledLast: -9, skyDone: false,
     fin: null, finDone: false, finAt: 0, pts: null, spawned: null, ledMask: 0, rng: null,
     fallY: 0, lead2: 0, ledGap: 0, safeR: 12, cover: 0.45,
+    // the sky over it (skyFx.skyDeck): from deckAt s, spreading over the frame in deckGrow s from (dcx, dcz)
+    deckAt: 0, deckGrow: 0, dcx: 0, dcz: 0,
     // emitters
     count: 0, done: 0, first: 0, span: 0, warn: 0, warnLed: 0, ledEvery: 0, lo: 0, hi: 0, every: 0, until: 0,
     lead: 0, linkFirst: false,
+    // burning pools a line of pillars / a chase leaves (s, radius; ticks: tickDamage / tickBurn)
+    pool: 0, poolR: 0,
     // fx scratch (accumulators, held sprites, scorch-heat stamp timer, pillars burst bitmask, lights)
     hold: 0, acc: 0, acc2: 0, acc3: 0, acc4: 0, heatT: 0, seed: 0, mask: 0,
     l0: null, l1: null, l2: null,
@@ -278,6 +283,7 @@ export class Hazards {
 
   clear() {
     for (const h of this.list) if (h.alive) this._kill(h);
+    skyReset(this.d.fx);
     for (const g of this.groups) g.hits = 0;
     this.alive = 0;
   }
@@ -340,11 +346,13 @@ export class Hazards {
     h.great = !!o.great;
     h.dark = !!o.dark;
     // a meteor's crater may burn on (`craterBurn` s): blockable contact ticks like a burning strip
-    h.linger = h.kind === 'meteor' ? Math.max(0, num(o.craterBurn, 0)) : 0;
+    // (2nd pass: a pillar may leave a burning pool too, and a 'pool' is only that: no blow of its own)
+    h.linger = h.kind === 'meteor' || h.kind === 'pillar' || h.kind === 'pool' ? Math.max(0, num(o.craterBurn, 0)) : 0;
+    if (h.kind === 'pool') h.hit = true;
     h.tick = 0.25;
     h.tickDamage = num(o.tickDamage, 0);
     h.tickBurn = num(o.tickBurn, 0);
-    const linger = h.kind === 'pillar' ? PILLAR_BURN + 0.6 : h.kind === 'meteor' ? Math.max(CRATER, h.linger) : 0.3;
+    const linger = h.kind === 'pillar' ? Math.max(PILLAR_BURN + 0.6, h.linger) : h.kind === 'meteor' ? Math.max(CRATER, h.linger) : h.kind === 'pool' ? h.linger : 0.3;
     h.end = h.impact + h.active + linger;
     return this._ref(h);
   }
@@ -416,6 +424,10 @@ export class Hazards {
     h.r = Math.max(0.3, num(o.r, 2.4));
     h.delay = Math.max(0, num(o.stagger, 0.1));
     h.active = Math.max(1 / 60, num(o.active, 0.3));
+    h.pool = Math.max(0, num(o.pool, 0));
+    h.poolR = Math.max(0.3, num(o.poolR, h.r * 0.8));
+    h.tickDamage = num(o.tickDamage, 0);
+    h.tickBurn = num(o.tickBurn, 0);
     h.end = h.impact + (h.n - 1) * h.delay + PILLAR_BURN + 0.6;
     return this._ref(h);
   }
@@ -494,6 +506,10 @@ export class Hazards {
     h.fin = F ? { r: Math.max(0.5, num(F.radius, 7)), warn: Math.max(0.6, num(F.warn, 2)), damage: num(F.damage, 34), burn: num(F.burn, 2), knockback: num(F.knockback, 7), fall: Math.max(0.2, num(F.fall, 1.1)), size: Math.max(0.3, num(F.size, 2.4)) } : null;
     h.finAt = last + (F ? Math.max(0.3, num(F.delay, 1.2)) : 0);
     h.end = h.finAt + 1.0; // (the sky fades as the last one lands; the meteors live on their own)
+    h.deckAt = Math.max(0, num(o.deckAt, h.glowAt));
+    h.deckGrow = Math.max(0, num(o.deckGrow, 0.8));
+    h.dcx = num(o.cx, this.d.position.x);
+    h.dcz = num(o.cz, this.d.position.z);
     return this._ref(h);
   }
 
@@ -510,6 +526,9 @@ export class Hazards {
     h.active = Math.max(1 / 60, num(o.active, 0.3));
     h.group = Number.isInteger(o.group) ? o.group : -1;
     h.linkFirst = !!o.linkFirst; // the first pillar is covered by the attack's own beat
+    h.pool = Math.max(0, num(o.pool, 0)); // each pillar burns on this long (s)
+    h.tickDamage = num(o.tickDamage, 0);
+    h.tickBurn = num(o.tickBurn, 0);
     h.acc = 0; // s until the next pillar
     h.end = h.until + 0.05;
     return this._ref(h);
@@ -583,6 +602,7 @@ export class Hazards {
   // ------------------------------------------------------------------ frame
   update(dt) {
     if (!(dt > 0)) return;
+    skyUpdate(this.d.fx, dt); // (the salvo's columns and the sky deck: skyFx.js, guarded on its own)
     try {
       this._update(dt);
     } catch (err) {
@@ -744,14 +764,15 @@ export class Hazards {
         }
         const u = 1 - left / h.fall;
         const e = u * (0.75 + 0.25 * u); // a little acceleration
-        if (h.kind === 'meteor' || h.shell) fx.meteor(life, h, dt, h.ox + (h.x - h.ox) * e, h.oy * (1 - e), h.oz + (h.z - h.oz) * e, h.x - h.ox, -h.oy, h.z - h.oz, h.kind === 'meteor' ? h.size : false);
+        if (h.kind === 'meteor') skyMeteor(fx, life, h, dt, h.ox + (h.x - h.ox) * e, h.oy * (1 - e), h.oz + (h.z - h.oz) * e, h.x - h.ox, -h.oy, h.z - h.oz, h.size);
+        else if (h.shell) fx.meteor(life, h, dt, h.ox + (h.x - h.ox) * e, h.oy * (1 - e), h.oz + (h.z - h.oz) * e, h.x - h.ox, -h.oy, h.z - h.oz, false);
       }
       return;
     }
     if (!h.fired) {
       h.fired = true;
       if (h.announce && !h.flashed && h.told) this._announce(h, h.x, h.z, true); // (late tell: flash now)
-      if (h.kind === 'meteor') fx.meteorImpact(h, h.x, h.z, h.r);
+      if (h.kind === 'meteor') skyImpact(fx, h, h.x, h.z, h.r);
       else if (h.kind === 'pillar') fx.pillarBurst(h, h.x, h.z, h.r);
       else if (h.shell) fx.shellImpact(h.x, h.z, h.r);
       if (h.kind === 'meteor' || h.kind === 'pillar') this.d.emit('dragon:hazard', { kind: h.kind, stage: 'hit', x: h.x, z: h.z, radius: h.r });
@@ -767,8 +788,11 @@ export class Hazards {
         if (dist <= h.r * 0.8 + pr) this._tick(h, h.x, h.z);
       }
     }
-    if (h.kind === 'meteor') fx.crater(h, dt, h.x, h.z, h.r, clamp(1 - since / Math.max(CRATER, h.linger), 0, 1), burning);
-    else if (h.kind === 'pillar') fx.pillarBurn(h, dt, h.x, h.z, h.r, clamp(1 - since / PILLAR_BURN, 0, 1));
+    if (h.kind === 'meteor') skyCrater(fx, h, dt, h.x, h.z, h.r, clamp(1 - since / Math.max(CRATER, h.linger), 0, 1), burning);
+    else if (h.kind === 'pillar') {
+      if (since < PILLAR_BURN) fx.pillarBurn(h, dt, h.x, h.z, h.r, clamp(1 - since / PILLAR_BURN, 0, 1));
+      else if (burning) fx.crater(h, dt, h.x, h.z, h.r * 0.8, clamp(1 - since / h.linger, 0.3, 1), true);
+    } else if (h.kind === 'pool' && burning) fx.crater(h, dt, h.x, h.z, h.r, clamp(1 - since / h.linger, 0.3, 1), true);
   }
 
   _strip(h, dt, px, pz) {
@@ -902,6 +926,8 @@ export class Hazards {
         h.mask |= bit;
         fx.pillarBurst(h, x, z, h.r);
         burst = true;
+        // (2nd pass) the pillar's ground burns on: a pool, contact ticks, no blow
+        if (h.pool > 0) this.circle({ kind: 'pool', attack: h.attack, x, z, r: h.poolR, delay: PILLAR_BURN * 0.6, craterBurn: h.pool, tickDamage: h.tickDamage, tickBurn: h.tickBurn, announce: false });
       }
       const since = -left;
       if (!h.hit && since <= h.active + 1e-6 && Math.hypot(px - x, pz - z) <= h.r + pr) this._blow(h, x, z);
@@ -959,6 +985,11 @@ export class Hazards {
     // the sky answers: an orange glow over the clearing from the hush until the last one lands
     const glow = smoothstep(h.glowAt, h.glowAt + 0.8, h.t) * (1 - smoothstep(h.end - 1.0, h.end, h.t));
     this.game.world?.atmosphere?.skyGlow?.(glow);
+    // the burning deck over the clearing (skyFx): it spreads from over the wyrm's cast
+    if (h.t >= h.deckAt) {
+      const k = smoothstep(h.deckAt, h.deckAt + 0.6, h.t) * (1 - smoothstep(h.end - 1.0, h.end, h.t));
+      skyDeck(d.fx, k, h.dcx, h.dcz, h.deckGrow > 0 ? clamp((h.t - h.deckAt) / h.deckGrow, 0, 1) : 1);
+    }
     if (!h.skyDone && h.t >= h.glowAt) {
       h.skyDone = true;
       d.emit('dragon:hazard', { kind: 'meteor', stage: 'sky', x: d.position.x, z: d.position.z, radius: ARENA_R });
@@ -1038,6 +1069,7 @@ export class Hazards {
     this.circle({
       kind: 'pillar', attack: h.attack, x, z, r: h.r, delay: h.warn, damage: h.damage, burn: h.burn, knockback: h.knockback,
       group: h.group, active: h.active, announce: !(first && h.linkFirst),
+      craterBurn: h.pool, tickDamage: h.tickDamage, tickBurn: h.tickBurn,
     });
   }
 }

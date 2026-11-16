@@ -116,6 +116,15 @@ export const FIRE_ATTACKS = {
     craterBurn: [0, 0, 2.0], tickDamage: 4, tickBurn: 0.5,
     safeR: 12, safeCover: 0.45,
     finale: { delay: 1.2, radius: 7, warn: 2.0, damage: 34, burn: 2, knockback: 7, fall: 1.1, size: 2.4 },
+    // the three looks of the move (?apoc=a|b|c, skyFx.APOC_LOOK; the owner picks): when the sky deck
+    // starts (s after the cast starts) and how long it takes to spread over the frame; `menace` = the
+    // share of the windup it holds low and still, glaring, before it rears; `drop` = the share of the
+    // recovery its forefeet take to come down (then the slam). c: the flight's own timings and height
+    looks: {
+      a: { deckAt: 1.6, deckGrow: 0.8, menace: 0.22, drop: 0.38 },
+      b: { deckAt: 0.35, deckGrow: 2.6, menace: 0.22, drop: 0.38 },
+      c: { deckAt: 0.5, deckGrow: 1.2, windup: 0.9, rise: 0.9, alt: 10, descend: 0.75, recovery: 0.55, cone: 0.45 },
+    },
     weight: [0, 1.2, 1.5], cooldown: 28,
   },
   // slams the forefeet: lava pillars erupt in a line toward the player one after another (each

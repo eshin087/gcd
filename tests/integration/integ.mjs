@@ -2911,6 +2911,38 @@ async function scenarioFlight() {
     settle(G, 12);
     assert(!H.count('strip') || [...H.list].every((h) => !h.alive || h.attack !== name || h.shape !== 1 || h.t >= h.impact), 'no strip of the broken combo is left to start burning');
   }
+  // ---- more fire from the spells each phase: flame rings 1 / 2 / 3, flame walls (P3) 2, eruption pools
+  for (const [name, ph, want] of [['flameRing', 2, TUNING.attacks.flameRing.rings[1]], ['flameRing', 3, TUNING.attacks.flameRing.rings[2]], ['flameWall', 3, TUNING.attacks.flameWall.walls[2]]]) {
+    stage(ph, name === 'flameRing' ? 9 : 14);
+    p.debug.god = true;
+    const tl = [], fl = [], h0 = G.hits.length;
+    G.watch = (n, dd) => { if (dd?.attack !== name) return; if (n === 'combat:tell') tl.push(game.time); if (n === 'combat:flash') fl.push(game.time); };
+    game.lab.trigger(name);
+    run(G, 8, { passive: true }, () => !d.brain.action && !H.count(null));
+    G.watch = null;
+    const red = G.hits.slice(h0).filter((h) => h.attack === name && h.tell === TELL.RED);
+    let worst = 0, gap = Infinity;
+    red.forEach((h, i) => {
+      const f = fl.filter((t) => t <= h.t + 1e-6).pop();
+      const err = f === undefined ? Infinity : h.t - (f + lead);
+      if (Math.abs(err) > Math.abs(worst)) worst = err;
+      if (i) gap = Math.min(gap, h.t - red[i - 1].t);
+    });
+    out(`   P${ph} ${name}: tells ${tl.length} flashes ${fl.length} (want ${want}) · red hits on a standing hero ${red.length} · closest two ${gap.toFixed(2)} s · worst hit-(flash+lead) ${(worst * 1000).toFixed(0)} ms`);
+    assert(tl.length === want && fl.length === want && red.length === want, `P${ph} ${name}: ${want} of them, each cued and each hitting a standing hero (${tl.length} / ${fl.length} / ${red.length})`);
+    assert(Math.abs(worst) <= 2.5 * DT && gap >= 0.45, `P${ph} ${name}: each lands on its own flash + lead (${(worst * 1000).toFixed(0)} ms), >= 0.45 s apart (${gap.toFixed(2)} s)`);
+  }
+  {
+    stage(2, 14);
+    p.debug.god = true;
+    const h0 = G.hits.length;
+    game.lab.trigger('eruptions');
+    let pools = 0;
+    run(G, 6, { passive: true }, () => { pools = Math.max(pools, H.count('pool')); return false; });
+    const ticks = G.hits.slice(h0).filter((h) => h.attack === 'eruptions' && h.tell !== TELL.RED && h.kind === 'fire').length;
+    out(`   P2 eruptions: burning pools at once ${pools} · contact ticks on a hero standing in one ${ticks}`);
+    assert(pools >= 3 && ticks >= 1, `P2 eruptions: the pillars leave burning pools that tick a hero standing in them (${pools}, ${ticks})`);
+  }
   d.phase = 1;
   run(G, 0.5, { passive: true });
   return G;
@@ -3241,7 +3273,9 @@ async function scenarioFire() {
   }
   G.watch = null;
   input.axis = { x: 0, y: 0 };
-  const chits = G.hits.slice(ch0).filter((h) => h.attack === 'eruptions');
+  // (2nd pass: from phase 2 the pillars leave burning pools whose contact ticks are 'eruptions' hits
+  // too, tell normal: the cap and the live window are about the red blows)
+  const chits = G.hits.slice(ch0).filter((h) => h.attack === 'eruptions' && h.tell === TELL.RED);
   // each blow must fall inside SOME pillar's live window: flash + lead .. + active (a moving hero may
   // walk into a pillar that is still erupting, after the next pillar's flash: pairing every blow
   // with the latest flash read that as early)
