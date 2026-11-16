@@ -58,6 +58,8 @@ async function boot() {
       location.assign(levelUrl(id, location.href));
     },
     heroLook,
+    // the move set under review (`?moves=ref`: the reference string, combat.js LIGHT_REF)
+    heroMoves: new URLSearchParams(location.search).get('moves') === 'ref' ? 'ref' : null,
     // the outfit options (gear/looks.js; `?heroLook=`, kept by pickLevel): the Lab's OUTFIT row; live
     // (the rig is rebuilt)
     heroLooks: LOOK_IDS.map((id) => ({ id, name: HERO_LOOKS[id].name })),

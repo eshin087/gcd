@@ -130,6 +130,51 @@ export const LIGHT = [
 ];
 
 /**
+ * THE REFERENCE STRING (a second light chain, under review: `?moves=ref`, the Lab's "moves" row,
+ * `player.debug.moves`). The owner's reference film of a wuxia sword string, hit for hit:
+ *   1 the wrap cut        the blade swings out and up his right side, round behind the head, and
+ *                         falls on the long diagonal to low left; the free arm is thrown out left
+ *   2 the neck backhand   drawn back over the left shoulder with a skip, then level at shoulder
+ *                         height, left to right, the arm thrown all the way out
+ *   3 the upright whirl   a full turn off the ground with the blade carried upright at arm's
+ *                         length, chopped down to his right as the turn closes
+ *   4 the crane cut       a leap with the knees drawn up, the blade cocked high over the left
+ *                         shoulder, one falling diagonal to low right
+ *   5 the whirling thrust the finisher: a second full turn, the blade trailing, driven out of it
+ *                         into a long low lunge with the point up, and held
+ * Each hit keeps the damage and posture of the hit it replaces; the finisher has no ground shards
+ * (those stay on the Earthbreaker, L-L-L-L-H). The windups are a little longer than today's lights:
+ * the turns and the leaps need the frames to read (a first pass: the Lab's atk slider tries paces).
+ */
+export const LIGHT_REF = [
+  {
+    ...LIGHT[0], name: 'wrapCut', windup: 0.17, recovery: 0.26,
+    anim: { kind: 'clip', clip: 'refWrapCut' }, variants: undefined,
+  },
+  {
+    ...LIGHT[1], name: 'neckBackhand', windup: 0.14, recovery: 0.26,
+    anim: { kind: 'clip', clip: 'refNeckBackhand', turn: -0.4, hop: 0.06 }, variants: undefined,
+  },
+  {
+    ...LIGHT[2], name: 'uprightWhirl', windup: 0.15, active: 0.16, recovery: 0.28,
+    anim: { kind: 'clip', clip: 'refUprightWhirl', spin: -1, spinFeet: 'hop' }, variants: undefined,
+  },
+  {
+    ...LIGHT[3], name: 'craneCut', windup: 0.2, active: 0.12, recovery: 0.26, lunge: 0.7, reach: 2.2,
+    hitstop: 0.065, shake: 0.16, contact: 'light', punch: 0.45, glint: undefined,
+    anim: { kind: 'clip', clip: 'refCraneCut', hop: 0.2, tuck: 1.25 }, variants: undefined,
+  },
+  {
+    ...LIGHT[4], name: 'whirlThrust', kind: 'light', windup: 0.26, active: 0.16, recovery: 0.46, lunge: 0.9, reach: 2.4,
+    contact: 'point', glint: 'ridge', shards: undefined, up: undefined,
+    anim: { kind: 'clip', clip: 'refWhirlThrust', spin: -1, spinFeet: 'hop' }, variants: undefined,
+  },
+];
+
+/** The light chain in play: today's (`LIGHT`), or the reference string (`set` 'ref'). */
+export const lightChain = (set) => (set === 'ref' ? LIGHT_REF : LIGHT);
+
+/**
  * The heavy BRANCHES (ADR-115; owner: "Heavy branches"): HEAVY[0] is the heavy pressed on its own,
  * HEAVY[n] the heavy pressed after the n-th light of the chain (in that light's recovery, from its
  * `chain`, or buffered through its cut). Each is a two-handed blow with its own job:

@@ -765,6 +765,11 @@ export class Lab {
     for (const B of this.ui.stanceBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
   }
 
+  _syncMoveBtns() {
+    const v = this.game.player?.debug?.moves ?? null;
+    for (const B of this.ui.moveBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
+  }
+
   _syncOutfit() {
     for (const B of this.ui.lookBtns ?? []) B.el.classList?.toggle?.('on', B.id === this.game.player?.look);
   }
@@ -893,6 +898,22 @@ export class Lab {
       return { v, el: btn };
     });
     this._syncStanceBtns();
+    // the move set under review (combat.js LIGHT_REF, stances.js REF_EASE; player.debug.moves; also
+    // `?moves=ref`): today's light chain and carry, or the reference string
+    const mvs = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'moves', mvs).title = 'the light chain and the carry at ease: today\'s, or the reference string (under review)';
+    const mvGrid = el('div', 'lab-grid', null, mvs);
+    mvGrid.style.flex = '1';
+    this.ui.moveBtns = [['today', null, 'today\'s light chain and at-ease carry'], ['reference', 'ref', 'the reference string: wrap cut, neck backhand, upright whirl, crane cut, whirling thrust; the blade carried flatter']].map(([name, v, tip]) => {
+      const btn = button(mvGrid, name, () => {
+        const pd = this.game.player?.debug;
+        if (pd) pd.moves = v;
+        this._syncMoveBtns();
+      });
+      btn.title = tip;
+      return { v, el: btn };
+    });
+    this._syncMoveBtns();
     // the look of a landed cut (combat/cutFx.js; the owner's pick): the slash line, or a fan of sparks
     const cut = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'cut', cut).title = 'the look of a landed cut (combat/cutFx.js)';

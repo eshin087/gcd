@@ -83,6 +83,10 @@ function onTheBelt(p, P, m, yaw) {
   p[P.offAt] = 0;
 }
 
+/** The reference's carry at ease (`player.debug.moves` 'ref'): the hand from the sword shoulder, the
+ *  elbow's side, the blade's [azimuth, elevation] in degrees. */
+export const REF_EASE = { h: [-0.2, -0.445, 0.1], p: [0.5, -0.3, -0.8], a: [-66, -38] };
+
 /** AT EASE (see the header). P = anim.js's channel map; A = the animator (its time). */
 export function atEase(p, P, A) {
   const m = oscillate(A.time, STAND_LIFE.breath[0]);
@@ -105,6 +109,13 @@ export function atEase(p, P, A) {
   // the blade: down and out to his front-right, the point a hand above the grass; it drifts in a
   // slow lazy figure and lifts a little as the chest fills
   dir(p, P.swD, -56 + 3.2 * m.tipA, -55 + 2.4 * m.tipB + 1.2 * m.brL);
+  if (A.player?.debug?.moves === 'ref') {
+    // THE REFERENCE'S CARRY (under review, combat.js LIGHT_REF): the grip a little forward of the
+    // hip and the blade lying flatter and further out to his side, a long low line
+    set3(p, P.rH, REF_EASE.h[0] + 0.006 * m.tipB, REF_EASE.h[1] + 0.012 * m.brL, REF_EASE.h[2] + 0.01 * m.tipA);
+    set3(p, P.rP, REF_EASE.p[0], REF_EASE.p[1], REF_EASE.p[2]);
+    dir(p, P.swD, REF_EASE.a[0] + 3.2 * m.tipA, REF_EASE.a[1] + 2.4 * m.tipB + 1.2 * m.brL);
+  }
   // the flat to the front and the back, square to the blade: as broad as a blade this steep can be
   // to the game camera on all four sides of him (≥ 0.29 of its width; tipped 6° it showed 0.19 to one)
   set3(p, P.swF, 0.62, -0.05, 0.79);

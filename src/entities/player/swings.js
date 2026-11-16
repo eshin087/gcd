@@ -427,6 +427,97 @@ export const SWINGS = {
     ],
   },
 
+  // ---- the reference string (combat.js LIGHT_REF; under review) --------------------------------
+  /** The wrap cut (hit 1): the blade swings out and up his right side and tips back over the
+   *  shoulder, behind the head; then the long falling diagonal to low left, sunk deep into the step,
+   *  the free arm thrown out to his left. */
+  refWrapCut: {
+    line: 'right',
+    lF: [0.16, 0.52], rF: [-0.18, -0.47], fy: [0.15, -0.75], drag: 0.14,
+    keys: [
+      { u: 0.38, h: [-0.3, -0.1, 0.1], a: [-100, 10] },
+      { u: 0.6, by: -0.08, bz: -0.09, bx: -0.06, hip: -0.5, sy: -0.56, sx: -0.1 },
+      { u: 0.7, h: [-0.22, 0.18, 0.02], a: [-148, 60] },
+      { u: 1.0, h: [-0.09, 0.23, -0.02], a: [-158, 32], by: -0.13, bz: -0.08, bx: -0.05, hip: -0.42, sy: -0.5, sx: -0.04, sz: 0.05, fh: 'aim' },
+      { u: 1.25, h: [0.03, 0.14, 0.24], a: [-104, 30] },
+      { u: 1.5, h: [0.15, -0.06, 0.47], a: [-30, 10], by: -0.25, bz: 0.1, bx: 0.01, hip: 0.18, sy: 0.0, sx: 0.32, l: [0.34, -0.1, 0.1], lp: [0.3, -0.8, -0.5], ld: [80, 5], pn: [0, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.26, -0.24, 0.4], a: [32, -18] },
+      { u: 2.0, h: [0.32, -0.35, 0.28], a: [74, -36], by: -0.32, bz: 0.15, bx: 0.05, hip: 0.4, sy: 0.42, sx: 0.44, sz: -0.07, fh: 'wing', l: [0.46, -0.12, 0.0] },
+      { u: 2.15, by: -0.34, bz: 0.17, bx: 0.06, hip: 0.5, sy: 0.56, sx: 0.49 },
+      { u: 2.45, h: [0.34, -0.38, 0.12], a: [128, -30], by: -0.29, bz: 0.12, bx: 0.04, hip: 0.45, sy: 0.49, sx: 0.4, sz: -0.06, fh: 'wing' },
+    ],
+  },
+  /** The neck backhand (hit 2): the grip drawn up to the left shoulder with the blade back over it,
+   *  behind the neck, the free arm folded in before the chest; then level at shoulder height, left to
+   *  right, the whole body pivoting with it and the arm thrown all the way out. */
+  refNeckBackhand: {
+    line: 'flat',
+    lF: [0.2, 0.38], fy: [0.7, -0.55],
+    keys: [
+      { u: 0.6, by: -0.1, bz: -0.07, bx: -0.06, hip: 0.5, sy: 0.6, sx: 0.08, fh: 'chest' },
+      { u: 1.0, h: [0.31, 0.05, 0.15], a: [152, 16], by: -0.09, bz: -0.06, bx: -0.05, hip: 0.42, sy: 0.54, sx: 0.06, fh: 'chest', l: [-0.08, -0.2, 0.27] },
+      { u: 1.12, l: [0.2, -0.12, 0.2], lp: [0.3, -0.8, -0.4], ld: [70, 0], pn: [0, -1, 0], lk: 0 },
+      { u: 1.25, h: [0.26, 0.05, 0.34], a: [102, 10] },
+      { u: 1.5, h: [0.08, 0.03, 0.47], a: [32, 6], by: -0.17, bz: 0.08, bx: 0.01, hip: -0.06, sy: 0.04, sx: 0.16, l: [0.4, -0.1, 0.02], lp: [0.15, -0.65, -0.75], ld: [95, 5], pn: [0, -1, 0], lk: 0 },
+      { u: 1.75, h: [-0.18, 0.03, 0.42], a: [-36, 6] },
+      { u: 2.0, h: [-0.34, 0.03, 0.24], a: [-96, 8], by: -0.15, bz: 0.11, bx: 0.05, hip: -0.4, sy: -0.42, sx: 0.06, fh: 'wing', l: [0.45, -0.16, -0.13] },
+      { u: 2.15, by: -0.16, bz: 0.12, bx: 0.06, hip: -0.51, sy: -0.54, sx: 0.08 },
+      { u: 2.4, h: [-0.38, 0.04, 0.06], a: [-140, 12], by: -0.12, bz: 0.08, bx: 0.04, hip: -0.47, sy: -0.5, sx: 0.04, fh: 'wing' },
+    ],
+  },
+  /** The upright whirl (hit 3): a full turn to his right off the ground (combat.js `spin`, 'hop')
+   *  with the arm out and the blade stood upright, carried round like a standard; it is chopped down
+   *  as the turn closes (it crosses his front falling) and ends low on his right. */
+  refUprightWhirl: {
+    line: 'down',
+    keys: [
+      { u: 0.5, by: -0.16, sx: 0.12 },
+      { u: 1.0, h: [-0.34, 0.02, 0.06], a: [-110, 72], by: -0.1, hip: -0.16, sy: -0.24, sx: 0.04, fh: 'chest', bx: -0.04 },
+      { u: 1.35, h: [-0.36, 0.08, 0.12], a: [-95, 50], by: -0.06, hip: -0.1, sy: -0.12, sx: 0.06, fh: 'chest', l: [-0.06, -0.24, 0.24] },
+      { u: 1.7, h: [-0.34, 0.0, 0.26], a: [-64, 12], by: -0.16, bz: 0.04, hip: -0.1, sy: -0.14, sx: 0.2 },
+      { u: 2.0, h: [-0.3, -0.2, 0.3], a: [-56, -34], by: -0.28, bz: 0.06, hip: -0.12, sy: -0.2, sx: 0.34, fh: 'wing', l: [0.45, -0.16, -0.1], bx: 0.05 },
+      { u: 2.35, h: [-0.3, -0.3, 0.16], a: [-84, -44], by: -0.26, bz: 0.05, hip: -0.3, sy: -0.38, sx: 0.3, fh: 'wing' },
+    ],
+  },
+  /** The crane cut (hit 4): out of the low finish on his right the blade swings up across his front
+   *  to a cock high over the left shoulder as he leaves the ground with the knees drawn up (combat.js
+   *  `hop`, `tuck`); he comes down on one falling diagonal across his chest to the right hip. */
+  refCraneCut: {
+    line: 'left',
+    lF: [0.15, 0.5], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
+    keys: [
+      { u: 0.35, h: [0.02, -0.16, 0.36], a: [-20, 20] },
+      { u: 0.6, by: 0.0, bz: -0.08, bx: -0.06, hip: 0.44, sy: 0.53, sx: -0.1 },
+      { u: 0.68, h: [0.24, 0.08, 0.28], a: [70, 58] },
+      { u: 1.0, h: [0.36, 0.2, 0.12], a: [154, 46], by: -0.03, bz: -0.06, bx: -0.05, hip: 0.36, sy: 0.47, sx: -0.04, sz: -0.05, fh: 'chest', l: [-0.06, -0.2, 0.26], ld: [15, 55] },
+      { u: 1.25, h: [0.24, 0.12, 0.32], a: [104, 36] },
+      { u: 1.5, h: [0.1, -0.06, 0.46], a: [30, 12], by: -0.24, bz: 0.1, bx: 0.01, hip: -0.06, sy: 0.0, sx: 0.32, l: [0.22, -0.1, 0.12], lp: [0.4, -0.85, -0.3], ld: [60, 40], pn: [-0.4, -1, 0], lk: 0 },
+      { u: 1.75, h: [-0.12, -0.26, 0.4], a: [-30, -18] },
+      { u: 2.0, h: [-0.24, -0.36, 0.26], a: [-70, -38], by: -0.32, bz: 0.14, bx: 0.05, hip: -0.36, sy: -0.4, sx: 0.44, sz: 0.07, fh: 'highWing', l: [0.32, 0.04, -0.2] },
+      { u: 2.15, by: -0.34, bz: 0.16, bx: 0.06, hip: -0.47, sy: -0.52, sx: 0.49 },
+      { u: 2.45, h: [-0.26, -0.4, 0.1], a: [-120, -30], by: -0.29, bz: 0.11, bx: 0.04, hip: -0.43, sy: -0.47, sx: 0.4, sz: 0.06, fh: 'highWing' },
+    ],
+  },
+  /** The whirling thrust (hit 5, the finisher): the blade lifts on his right and the arms fold in;
+   *  a second full turn to his right (combat.js `spin`) carries it round trailing behind him, the grip
+   *  drawn back to the ribs; he drives out of the turn into a long low lunge, one line from the rear
+   *  heel to the point, up into the target, the free arm thrown back, and holds it. */
+  refWhirlThrust: {
+    line: 'point',
+    home: 0.385,
+    rF: [-0.17, -0.52], fy: [0.1, -0.8], drag: 0.12,
+    lF: [0.14, 0.6],
+    keys: [
+      { u: 0.45, h: [-0.2, -0.1, 0.16], a: [-110, 40], by: -0.1, sx: 0.06, fh: 'chest' },
+      { u: 1.0, h: [-0.06, -0.2, -0.04], a: [-150, 8], by: -0.2, bz: -0.06, hip: -0.3, sy: -0.44, sx: 0.14, fh: 'chest', l: [-0.06, -0.24, 0.24], bx: -0.04 },
+      { u: 1.4, h: [-0.03, -0.24, -0.02], a: [-70, 6], by: -0.26, bz: 0.0, hip: -0.2, sy: -0.3, sx: 0.24 },
+      { u: 1.7, h: [0.07, -0.12, 0.26], a: [-4, 26], by: -0.28, bz: 0.1, hip: 0.0, sy: 0.0, sx: 0.32, l: [0.2, -0.36, 0.02], lp: [0.6, -0.7, -0.3], ld: [100, -60], pn: [-1, 0, 0], lk: 0 },
+      { u: 2.0, h: [0.15, 0.1, 0.5], a: [0, 36], by: -0.32, bz: 0.18, hip: 0.24, sy: 0.34, sx: 0.42, fh: 'tail', l: [0.24, -0.34, -0.26], ld: [170, -58], bx: 0.04 },
+      { u: 2.12, by: -0.34, bz: 0.2, bx: 0.04, hip: 0.28, sy: 0.38, sx: 0.46 },
+      { u: 2.6, h: [0.14, 0.08, 0.46], a: [0, 34], by: -0.3, bz: 0.15, hip: 0.24, sy: 0.32, sx: 0.4, fh: 'tail', bx: 0.03 },
+    ],
+  },
+
   // ---- out of a sprint / a roll ----------------------------------------------------------------
   /** The sprint slash: on the run, from behind the right knee up across his front to high left. */
   sprintSlash: {

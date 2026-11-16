@@ -7,7 +7,7 @@ import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tel
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
-import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { lightChain, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
@@ -301,6 +301,9 @@ export class Player {
       // a multiplier on the attack clock: every swing's windup, cut and recovery run this much
       // faster (its lunge covers the same ground). 1 in play; the Lab's slider tries other paces
       attackSpeed: 1,
+      // the light chain and the at-ease stance under review (combat.js LIGHT_REF, stances.js): 'ref' =
+      // the reference string; null = today's. `?moves=ref` (main.js) and the Lab's moves row set it
+      moves: game.heroMoves === 'ref' ? 'ref' : null,
       heal: () => this._debugHeal(),
       teleport: (x, z) => this._teleport(x, z),
       kill: () => this._debugKill(), // used by flow.debug.toState('dead') when present
@@ -1116,7 +1119,7 @@ export class Player {
       // out of a sprint: the bounding slash; out of a forward roll: the low rising cut
       if (this.state === 'sprint' && Math.hypot(fin(this.groundVel.x), fin(this.groundVel.z)) > TUNE.runSpeed * 1.05) return this._startAttack(SPRINT_ATK);
       if (this.state === 'roll' && !this.rollBack) return this._startAttack(ROLL_ATK);
-      return this._startAttack(LIGHT[0]);
+      return this._startAttack(lightChain(this.debug.moves)[0]);
     }
     // a heavy on its own (out of a sprint or a roll too): the gap-closing thrust, HEAVY[0]
     if (a === 'heavy' && allowAttack) {
@@ -2707,7 +2710,8 @@ export class Player {
       if (b === 'light' && r >= fin(d.chain, 0)) {
         this.buf.action = null;
         if (this._tryExecution()) return;
-        const next = d.kind === 'light' ? LIGHT[d.combo % LIGHT.length] : LIGHT[0];
+        const chain = lightChain(this.debug.moves);
+        const next = d.kind === 'light' ? chain[d.combo % chain.length] : chain[0];
         if (this._startAttack(next)) return;
       } else if (b === 'heavy' && r >= fin(d.chain, 0)) {
         // the heavy branch: after the n-th light its own heavy (combat.js HEAVY); it ends the chain
