@@ -939,7 +939,8 @@ export class Dragon {
    * steps, the tail of a turn sweeps through a stand, a low pass shears the crowns. On top: the blast
    * of a take-off, of a landing, and of a wing's downbeat near the ground. Incidental blows: they
    * leave alone the piece a move of its own is about to take (the action's `piece`, or one reserved
-   * with destructibles.reserve). A frame that moved a sphere more than `jump` m is a teleport: skipped.
+   * with destructibles.reserve). A frame that moved a sphere more than `jump` m is a teleport: skipped,
+   * and after its root is teleported it settles for `settle` s first.
    * No per-frame allocation; each sweep walks the world's spatial grid, not every piece.
    */
   _wreck(dt) {
@@ -947,7 +948,7 @@ export class Dragon {
     if (!D?.sweepRec || !(dt > 0)) return;
     const T = TUNING.world, B = T.body, P = this._hurtPool, n = P.length;
     const st = (this._trample ??= {
-      prev: new Float32Array(n * 3), ready: false, alt: 0, top: 0, flap: 1,
+      prev: new Float32Array(n * 3), ready: false, alt: 0, top: 0, flap: 1, rx: this.position.x, rz: this.position.z, settle: 0,
       o: { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0, incidental: true, spare: null },
       seg: { ax: 0.5, az: 0.5, bx: 0.5, bz: 0.5, r: 0.5, power: 0.5 }, // (sweepRec: no numbers boxed per call)
       // (the wind of its wings bends wood; a landing's weight breaks stone too)
@@ -956,7 +957,14 @@ export class Dragon {
     });
     const prev = st.prev, s = this.rig.s;
     const on = this.state !== 'sleeping' && this.state !== 'dead' && this.object3d.visible !== false;
-    if (on && st.ready) {
+    // a teleport (the root moved more than `jump` m in a frame: a reset, the Lab, a phase's placing):
+    // its body settles for `settle` s before it meets the world again (it lands on what it was put by)
+    const rx = this.position.x - st.rx, rz = this.position.z - st.rz;
+    st.rx = this.position.x;
+    st.rz = this.position.z;
+    if (rx * rx + rz * rz > B.jump * B.jump) st.settle = B.settle;
+    else if (st.settle > 0) st.settle -= dt;
+    if (on && st.ready && !(st.settle > 0)) {
       const o = st.o, act = this.brain?.action;
       const spare = act && typeof act.piece === 'object' ? act.piece : null;
       o.spare = st.blast.spare = st.land.spare = spare;

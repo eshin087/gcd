@@ -46,8 +46,9 @@ export const TUNING = {
     // than minSpeed m/s sweeps the pieces it passes through: power = (speed - minSpeed) x perSpeed x its
     // part's mass, at most `max` (a walk's chest ~0.4 every 0.18 s: an oak goes down in about a second
     // of pushing; the tail of a turn ~1.5; a charge or a dive ~2). `pad` m on each sphere; nothing
-    // above maxY m (a sphere's bottom) is near the treetops; a step over `jump` m is a teleport
-    body: { minSpeed: 1.6, perSpeed: 0.17, max: 2.2, pad: 0.15, maxY: 12, jump: 6, mass: { head: 0.7, neck: 0.8, body: 1.5, tail: 1.1, wing: 0.8, leg: 0.9 } },
+    // above maxY m (a sphere's bottom) is near the treetops; a step over `jump` m is a teleport, after
+    // which it settles `settle` s before its body meets the world again
+    body: { minSpeed: 1.6, perSpeed: 0.17, max: 2.2, pad: 0.15, maxY: 12, jump: 6, settle: 0.6, mass: { head: 0.7, neck: 0.8, body: 1.5, tail: 1.1, wing: 0.8, leg: 0.9 } },
     // the wings' blasts on what stands round it: as it leaves the ground (alt rising through `alt` m),
     // and each downbeat of its wings under maxAlt (weaker the higher it is): wood only, the wind bends
     // trees; as it lands (alt falling through `alt` after a flight at least `minFall` high): its weight,
