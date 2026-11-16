@@ -13,6 +13,9 @@ page-local memory storage. `src/dev/heroStudy/gameplayActor.js` decorates that p
 map and drawing transform, with matching `unlean` / `leanPoint` inverses for hit coordinates. A/B
 switches invalidate sword sweep history and preserve fight state. This is not imported by normal
 `main.js`; it changes no shared Player, animator or boss API. See `docs/experiments/hero-motion-study.md`.
+V2 (ADR-120) also wraps that animator's `_arm` / `_wristL` in `hands.js` for elbow guidance and
+comfortable free-wrist targets. Current bypasses the wrappers. Contacts retain the original solver;
+temporary pose overrides restore before returning. These private hooks are preview-only.
 
 - Units: meters, seconds, radians. **Y up**, ground plane y = 0 (flat).
 - Camera looks north: **screen-up = world −Z**, screen-right = +X. Fixed yaw, ~58° pitch.

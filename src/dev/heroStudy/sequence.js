@@ -22,7 +22,7 @@ export const SEQUENCES = {
   sprint: { label: 'Sprint → stop', description: 'Acceleration, forward intent and a weighted stop.', steps: [ease(0.7), walk(7.2, 3.5, 'Sprint', true), ease(2)] },
   combo: { label: 'Five-hit chain', description: 'The hips drive the cuts; the finish has time to read.', steps: [guard(0.8), ...LIGHT.map((d, i) => cut(d, `Light ${i + 1}`)), guard(1.3)] },
   heavy: { label: 'Heavy attacks', description: 'Thrust, rising cut, sweep, falling cut and earthbreaker.', steps: HEAVY.flatMap((d, i) => [guard(0.5), cut(d, `Heavy ${i + 1}`)]).concat(guard(1)) },
-  charge: { label: 'Charged cleave', description: 'Gather into a coiled pose, commit, then settle.', steps: [guard(0.8), charge, cut(CLEAVE, 'Charged cleave'), guard(1.4)] },
+  charge: { label: 'Charged cleave', description: 'Gather, hold a quiet breath, commit, then settle.', steps: [guard(0.8), { ...charge, label: 'Gather & hold', duration: 3, chargeDuration: 1.5 }, cut(CLEAVE, 'Charged cleave'), guard(1.4)] },
   defense: { label: 'Block & dodge', description: 'A braced guard followed by the existing roll and recovery.', steps: [guard(0.8), block, roll, guard(1.5)] },
 };
 for (const s of Object.values(SEQUENCES)) s.duration = s.steps.reduce((n, step) => n + step.duration, 0);
@@ -68,7 +68,7 @@ export class StudySequence {
     for (const a of this.actors) {
       const p = a.pilot;
       p.animT = p.stateT = t;
-      p.chargeK = s.key === 'charge' ? clamp(t / s.duration, 0, 1) : 0;
+      p.chargeK = s.key === 'charge' ? clamp(t / (s.chargeDuration ?? s.duration), 0, 1) : 0;
       let speed = s.speed ?? 0;
       if (s.def) {
         const d = s.def;

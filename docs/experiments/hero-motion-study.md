@@ -1,6 +1,7 @@
 # The Wanderer: Tempered (unapproved visual study)
 
-**Status:** draft experiment, awaiting owner review. Do not merge or adopt without the owner's
+**Status:** Tempered v2, draft experiment. The owner likes the look; refined hands and motion await
+another review. Do not merge or adopt without the owner's
 choice. The motion studio and the playable preview are separate pages; the regular game is unchanged.
 
 Open `/hero-study.html` on this PR's Vercel preview, or run `npm run dev` and open
@@ -41,11 +42,12 @@ is untouched; this is an additional option, based on main `46e2c989` (PR #57).
 | --- | --- | --- |
 | Presentation proportions | 1:1 | width 1.08, height 0.94, depth 1.04 |
 | Rest / readiness | approved at-ease / fencer poses | 3.5 cm lower centre, 3.5 cm wider foot target on each side |
-| Ready blade | near-horizontal point | oblique line, roughly 28° to the sword side / 29° up before wrist constraints |
-| Free hand in guard | on belt | open sword fingers beside the chest |
-| Walk / run | existing speed-matched stride | same feet, lower centre, quieter vertical bounce and counterbalanced shoulders |
-| Cuts | existing keyframed clips | per-cut hip, chest and compression accents; recovery releases more slowly |
-| Roll, charge, hair, cloth | existing animation / springs | retained, with the candidate's presentation proportions |
+| Ready blade | near-horizontal point | oblique line, roughly 28° to the sword side / 22° up before wrist constraints; straighter grip |
+| Free hand in guard | on belt | open sword fingers in front of the chest, relaxed wrist |
+| Walk / run | existing speed-matched stride | same feet, lower centre, quieter bounce, counterbalanced shoulders and relaxed free hand |
+| Cuts | existing keyframed clips | hip/chest accents, eased gather, faster middle cut, controlled recovery and free-arm counterbalance |
+| Held charge | high-frequency shake | small, slow held breath; existing release and combat timing |
+| Roll, hair, cloth | existing animation / springs | retained, with the candidate's presentation proportions |
 
 The scale is a **drawing transform**, removed while IK and cloth solve. It compresses the entire
 rendered actor, including its weapon. It is not a new anatomically re-authored skeleton. All data in
@@ -66,6 +68,30 @@ rendered actor, including its weapon. It is not a new anatomically re-authored s
 
 ![Current and Tempered, ready guard](hero-motion-study-v01.png)
 
+### V2 hand and motion refinement
+
+The v1 guard held the free wrist against its original angle limit throughout the sampled guard.
+V2 brings that hand forward, lowers the blade slightly and guides the sword elbow when the wrist
+would fold hard. Free-hand targets are bounded in forearm space and still settle through the
+original spring. Running fingers follow the forearm more closely. Supporting fists, wrist links,
+braced palms and ground contacts retain the original solver.
+
+Attack windups gather slightly longer, accelerate through the middle of the cut, then settle into
+guard. The off hand gathers before a cut and counterbalances its finish. High windups gain a little
+elbow space. Full charge uses a small slow breath instead of rapid vibration. The studio's charged
+cleave selection includes a continuous held portion, without restarting the gather.
+
+At 120 Hz in the standard studio sequences, the v1-to-v2 guard diagnostic changed from 100% of
+frames hitting the free-wrist limit to 0%. Standard combo peak sword/forearm bend changed from
+about 128° to 79°, and the standard heavy sequence from 128° to 81°. These are sequence-specific
+measurements: some alternate moves still approach the original 128° safety limit. They do not
+replace visual review or establish an anatomical limit.
+
+![Tempered v2 ready pose, three-quarter view](hero-motion-study-v02.png)
+
+The v1 image above and [v1 playable deployment](https://gcdabyss-4gu8z054o-eshin087s-projects.vercel.app/hero-play.html?level=ash&hero=tempered)
+are preserved for comparison. V2 is labeled in both preview pages.
+
 ## Isolation and verification
 
 Only `hero-study.html` and `hero-play.html` import `src/dev/heroStudy/`. `scripts/build.mjs` emits separate
@@ -73,21 +99,26 @@ bundled pages. It adds no import or branch to the normal game. The build of `dis
 original build script from `46e2c989` and the experimental build script matched byte-for-byte:
 SHA-256 `77146f1462407f64105582ca05e9eb0674b603cd3e8553f0f1c91eeb3355c342`.
 
-`npm run test:hero-study`: 4,361 paired frames across nine sequences check finite poses and rig
+`npm run test:hero-study`: 4,451 paired frames across nine sequences check finite poses and rig
 matrices, the blade's floor clearance, synchronized root travel, repeatable seeking, private
 materials / pose maps, unchanged shared definitions, and removal of presentation scale for IK.
 This check is also appended to `npm test`. The playable adapter additionally checks real blade
 points at 36 headings / leans, inverse / forward transforms, exact pose-map restoration, equipment
 rebuilds, sweep reset and storage isolation (including failure before game boot if isolation fails).
+V2 adds 6,675 frames covering 21 attack variants at 30 / 60 / 120 Hz: finite poses, hand-to-sword
+attachment, visible supporting grip, blade floor clearance, relaxed ready wrist and exact original
+arm/wrist results with the hooks bypassed. The widest sampled supporting-hand gap is 7.9 cm;
+full outfit / weapon contact fitting remains for adoption.
 
 The existing full integration suite (`npm test`), glyph and changelog checks, and `npm run build`
-pass locally. The new study check was rerun after the final recovery refinement.
+pass locally. The focused hand checks are included in the same test command.
 
 Browser checks use real headless Edge / WebGL: front, side, back, three-quarter and game angles;
 13 sampled pose captures; playback, slow motion, pause, single-frame advance and scrub controls;
 390×844 portrait and 852×393 landscape layouts. No browser errors on the study. Desktop and phone
 screenshots are review evidence, not owner approval. A physical phone and human combat feel have
-not been validated. Playable browser checks cover both variants' idle, run, attack and dodge in all
+not been validated. Playable browser checks cover both variants' idle, run, attack, full charge,
+charged release and dodge in all
 three levels, live A/B health / position preservation, level navigation, camera and invulnerability
 controls, 390×844 layout, and native-storage sentinel preservation. A separate normal animation-loop
 check uses actual keyboard / mouse input: both variants land five guarded cuts on the Ash Disciple.
@@ -97,13 +128,15 @@ No browser errors. The normal-game HTML hash still matches the base above.
 
 The changes are self-contained in `src/dev/heroStudy/` and the two HTML preview entries. `actor.js`
 owns the shared candidate poses; `gameplayActor.js` adapts the real player on the playable page.
+`hands.js` owns the instance-only elbow / free-wrist guidance. It wraps private animator methods,
+so adoption should define an explicit integration point rather than copying the preview decorator.
 No shared pose API or boss skeleton changed.
 
 If selected, first decide whether to keep a presentation transform or author actual per-hero
 dimensions. Then integrate **only the hero**, re-fit outfit variants and weapons, recheck transitions
 from all combat states / variants, and run the blade reach, contact, grip, planted-foot and coat
-clearance tests in all three levels. Recovery timing in this study preserves the windup / active
-boundaries; changed transforms still need gameplay hit-sweep validation before adoption.
+clearance tests in all three levels. Visual timing in this study preserves every phase boundary;
+changed transforms still need complete gameplay hit-sweep validation before adoption.
 
 If rejected, close this draft PR. Nothing was merged, no production deployment was requested, and
 Claude's current checkout / PR remains usable. The worktree is disposable after review.

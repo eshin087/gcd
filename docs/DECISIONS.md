@@ -3273,3 +3273,20 @@ ADR-092).
   a testing adapter, not the final implementation. Its changed pose paths still need complete
   weapon / outfit / alternate move calibration and human review before adoption. The draft PR
   remains unmerged and can be rejected without changing production or existing saves.
+
+## ADR-120 — Tempered v2 guides hands within the preview instance (2026-11-15)
+- **Status:** owner likes the direction; refined motion still awaits review. No merge authorized.
+- **Context:** the v1 ready hand presses against the original wrist limit, while some cuts bend the
+  sword wrist sharply. Pose targets alone cannot keep the forearm following the blade throughout.
+- **Decision:** `src/dev/heroStudy/hands.js` decorates only the candidate animator's `_arm` and
+  `_wristL`. Guide the sword elbow around its existing shoulder/hand circle when predicted wrist
+  bend is high. Bound free-hand targets in forearm space, then use the original wrist spring.
+  Preserve original hand endpoints, reach, supporting-hand contact, ground braces and sword limits.
+  Temporary pose-channel overrides restore in `finally`; shared definitions and prototypes stay
+  untouched. The playable Current toggle bypasses both hooks, including after equipment rebuilds.
+- **Motion:** a lower ready blade and closer free hand, relaxed running wrists, eased windups,
+  faster middle cuts and controlled recovery. Visual retiming keeps all phase boundaries fixed
+  and restores the animator clock. Full charge replaces high-frequency shake with a small breath.
+- **Consequences:** these are private preview hooks, not a proposed shared animator API. Tests
+  cover all 21 ordinary attack variants at 30/60/120 Hz and exact bypass; full combat/outfit reach
+  and human feel review remain adoption work. No player-facing WHAT'S NEW item until shipped.

@@ -5,6 +5,29 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 57: Tempered v2 hands and attack motion (Codex, review pending)
+
+**Owner:** likes Tempered's look and requests natural hand angles, poses and attack animation for
+another in-game preview. Draft PR #58 stays unmerged; liking the direction is not adoption approval.
+
+**Changed:** straighten the ready grip, bring the free hand in front of the chest and relax its
+running wrist. Instance-only elbow guidance follows the sword when the wrist would fold sharply;
+the free wrist eases toward comfortable targets through the existing spring. Two-handed contacts,
+braced palms and ground contacts retain their original solver. Cuts gather slightly longer,
+accelerate through their middle, then settle; the free arm gathers and counterbalances. Full charge
+holds a quiet breath instead of vibrating. The studio's charge selection now includes a hold.
+
+**Verification:** 4,451 paired sequence frames plus 6,675 frames covering 21 attack variants at
+30 / 60 / 120 Hz pass grip, floor, finite-transform and exact Current-bypass checks. Guard wrist
+clamping fell from every sampled v1 frame to none; this is a focused pose diagnostic, not a claim
+that every variant has an ideal wrist angle. The normal game build retains the base SHA-256.
+Full regression and actual-game / hosted checks are recorded in the PR. Versioned v1 evidence is
+preserved; a v2 ready-pose capture is in the review note.
+
+**Hold:** human review of motion and combat feel; weapon/outfit reach calibration before adoption.
+No shared rig, game rules, saved settings or production code changed. ADR-120 records the private
+solver hooks for Claude's eventual handoff, if the owner chooses this candidate.
+
 ## 2026-11-15 — Session 56: Playable Tempered preview (Codex, unapproved)
 
 **Owner:** see both previews in game; keep draft PR #58 unmerged. Added `/hero-play.html`, a separate

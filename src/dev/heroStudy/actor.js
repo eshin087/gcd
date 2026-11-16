@@ -5,15 +5,16 @@ import * as THREE from 'three';
 import { buildHero } from '../../entities/player/model.js';
 import { HeroAnimator, P, N } from '../../entities/player/anim.js';
 import { clamp, smoothstep } from '../../core/math.js';
+import { installTemperedHands } from './hands.js';
 
 export const STUDY = Object.freeze({
   scale: Object.freeze([1.08, 0.94, 1.04]),
   stanceSink: 0.035,
   stanceWidth: 0.035,
   guardAzimuth: -28,
-  guardElevation: 29,
+  guardElevation: 22,
   runSink: 0.026,
-  recoveryHold: 0.14,
+  recoveryHold: 0.11,
 });
 
 // Different cuts get different accents. The heavy downstroke settles; the rising
@@ -46,16 +47,16 @@ function locomotion(p, A) {
   // horizontal pointer. The free hand opens beside the chest for balance.
   const guard = fight * (1 - A.sprintW) * (1 - 0.3 * move);
   if (guard > 0.001) {
-    set(p, P.rH, -0.14, -0.245 + 0.009 * breath, 0.29, guard);
-    set(p, P.rP, 0.02, -0.95, -0.3, guard);
+    set(p, P.rH, -0.14, -0.215 + 0.009 * breath, 0.33, guard);
+    set(p, P.rP, 0.02, -0.95, -0.34, guard);
     const az = (STUDY.guardAzimuth + 1.4 * Math.sin(A.time * 1.1)) * Math.PI / 180;
     const el = (STUDY.guardElevation + 1.1 * breath) * Math.PI / 180;
     set(p, P.swD, Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el), guard);
     set(p, P.swF, 0.2, 1, -0.25, guard);
-    set(p, P.lH, 0.10, -0.19 + 0.006 * breath, 0.20, guard * still);
-    set(p, P.lP, 0.4, -0.8, -0.5, guard * still);
-    set(p, P.lD, 0.35, 0.55, 0.5, guard * still);
-    set(p, P.lN, -0.65, 0, 0.35, guard * still);
+    set(p, P.lH, -0.04, -0.19 + 0.006 * breath, 0.27, guard * still);
+    set(p, P.lP, 0.4, -0.86, -0.3, guard * still);
+    set(p, P.lD, -0.06, 0.25, 0.96, guard * still);
+    set(p, P.lN, -0.9, -0.35, 0, guard * still);
     p[P.hs] += (1 - p[P.hs]) * guard * still;
   }
   // Preserve the speed-matched feet; give the run a steadier upper body.
@@ -64,6 +65,12 @@ function locomotion(p, A) {
     p[P.bodyY] += 0.009 * contact * move;
     p[P.spY] -= 0.035 * Math.cos(Math.PI * 2 * A.phase) * move;
     p[P.hdY] += 0.024 * Math.cos(Math.PI * 2 * A.phase) * move;
+    // Let a running hand travel with its forearm; keep the deliberate fingers
+    // for stillness and cuts, rather than carrying a bent wrist through a sprint.
+    for (let i = 0; i < 3; i++) {
+      p[P.lD + i] *= 1 - 0.6 * move;
+      p[P.lN + i] *= 1 - 0.7 * move;
+    }
   }
 }
 
@@ -83,6 +90,20 @@ function attack(p, A) {
   p[P.spX] += fold * contact;
   p[P.hdX] -= fold * contact * 0.45;
   p[P.bodyZ] += 0.016 * contact;
+  const coil = smoothstep(0, d.windup * 0.7, A.t) * (1 - smoothstep(d.windup, d.windup + d.active * 0.35, A.t));
+  // A little space in front of a high windup lets the elbow open naturally.
+  const high = smoothstep(0.04, 0.22, p[P.rH + 1]);
+  p[P.rH + 2] += 0.035 * coil * high;
+  p[P.rH + 1] -= 0.025 * coil * high;
+  // The free arm gathers, opens against the cut, then comes home. Keep all
+  // two-handed and wrist-contact choreography in the original contact solver.
+  const free = (1 - smoothstep(0.02, 0.5, p[P.twoHand])) * (1 - smoothstep(0.05, 0.5, p[P.lk]));
+  const gather = coil * free * 0.24;
+  set(p, P.lH, -0.035, -0.22, 0.29, gather);
+  set(p, P.lP, 0.45, -0.8, -0.3, gather);
+  const finish = smoothstep(d.windup + d.active * 0.5, d.windup + d.active, A.t) * leave * free;
+  if (p[P.lH + 1] > -0.08) p[P.lH + 1] += (-0.08 - p[P.lH + 1]) * 0.4 * finish;
+  p[P.hdY] -= p[P.pelvY] * 0.06 * w;
 }
 
 export function createTemperedPoses(source) {
@@ -90,10 +111,16 @@ export function createTemperedPoses(source) {
   const poses = { ...source };
   poses.loco = (p, A) => { source.loco(p, A); locomotion(p, A); };
   poses.attack = (p, A) => {
-    // Re-time only the recovery in this audition. Windup / active boundaries
-    // are untouched, and A.t is restored before any other animator work.
+    // Ease the gather, accelerate through the middle of the cut, then settle.
+    // Every phase boundary stays fixed; restore A.t before other animator work.
     const t = A.t, d = A.def;
-    if (d && t > d.windup + d.active) {
+    if (d && t < d.windup) {
+      const u = clamp(t / d.windup, 0, 1);
+      A.t -= 0.06 * d.windup * Math.sin(Math.PI * u);
+    } else if (d && t <= d.windup + d.active) {
+      const u = clamp((t - d.windup) / d.active, 0, 1);
+      A.t -= 0.045 * d.active * Math.sin(Math.PI * 2 * u);
+    } else if (d) {
       const r = clamp((t - d.windup - d.active) / d.recovery, 0, 1);
       A.t -= STUDY.recoveryHold * d.recovery * Math.sin(Math.PI * r);
     }
@@ -118,6 +145,16 @@ export function createTemperedPoses(source) {
     p[P.rF] -= 0.025;
     p[P.lF] += 0.025;
   };
+  poses.charge = (p, A) => {
+    source.charge(p, A);
+    // Replace the high-frequency full-charge shake with a small held breath.
+    if (A.chargeK >= 0.999) {
+      const old = Math.sin(A.time * 47) * 0.012;
+      const strain = Math.sin(A.time * 4.5) * 0.0025;
+      p[P.bodyX] += strain - old;
+      p[P.swD] += 2 * (strain - old);
+    }
+  };
   return poses;
 }
 
@@ -131,7 +168,10 @@ export function createStudyActor(U, candidate = false) {
     debug: { fightStance: false }, game: { state: 'explore', time: 0 },
   };
   const anim = new HeroAnimator(rig, pilot, null, { freeHand: true });
-  if (candidate) anim.poses = createTemperedPoses(anim.poses);
+  if (candidate) {
+    anim.poses = createTemperedPoses(anim.poses);
+    installTemperedHands(anim);
+  }
   // Presentation proportions only. This matrix is OFF while the existing IK
   // and cloth solve in unscaled metres. No shared bone lengths are changed.
   const baseUpdate = rig.root.updateMatrix.bind(rig.root);

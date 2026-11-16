@@ -1,5 +1,6 @@
 // Instance-only adapter for hero-play.html. No Player prototype or shared rig data changes.
 import { createTemperedPoses, STUDY } from './actor.js';
+import { installTemperedHands } from './hands.js';
 
 export function installGameplayStudy(player, initial = 'tempered') {
   let enabled = initial !== 'current', animator, source, tempered;
@@ -13,6 +14,7 @@ export function installGameplayStudy(player, initial = 'tempered') {
       animator = player.anim;
       source = animator.poses;
       tempered = createTemperedPoses(source);
+      installTemperedHands(animator, () => enabled);
     }
     animator.poses = enabled ? tempered : source;
   };

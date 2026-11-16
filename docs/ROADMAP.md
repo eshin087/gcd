@@ -15,6 +15,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Isolated current / Tempered audition: model presentation, poses, locomotion and cut accents
 - [x] Synchronized playback, slow motion, frame stepping, camera angles and responsive comparison
 - [x] Separate playable A/B preview in all three levels, with temporary settings / telemetry (ADR-119)
+- [x] Tempered v2 hand alignment, relaxed wrists, attack phrasing and quiet charge hold (ADR-120)
 - [ ] Owner chooses or rejects the direction in the draft PR
 - [ ] Only if chosen: Claude integrates the hero and validates combat / outfits in all three levels
 
