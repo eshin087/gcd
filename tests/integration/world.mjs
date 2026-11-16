@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | budget | all
+//   scenario: sets | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | landmarks | budget | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -158,14 +158,19 @@ const S = {
     for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
-      // (Cinderwood: 183 since the whole clearing breaks, 2026-11-15; it was 80)
-      assert(L.length >= 20 && L.length <= 240, `${name}: ${L.length} breakables (20..240)`);
+      // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15)
+      const most = name === 'forest' ? 760 : 240;
+      assert(L.length >= 20 && L.length <= most, `${name}: ${L.length} breakables (20..${most})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
-        // everything the fight can reach: no tree within 42 m of the centre is left in the static meshes
-        const trees = L.filter((b) => b.mat === 'wood');
-        assert(trees.some((b) => Math.hypot(b.x, b.z) > 40) && trees.every((b) => Math.hypot(b.x, b.z) < 42), `forest: the trees out to 42 m break (${trees.length}; the farthest ${Math.max(...trees.map((b) => Math.hypot(b.x, b.z))).toFixed(1)} m)`);
-        assert(L.every((b) => b.mat !== 'wood' || b.colliders.every((c) => c.soft === true)), 'forest: the trunks of breakable wood are soft colliders (the wyrm ploughs through them)');
+        // every tree of the forest breaks, out to its edge (2026-11-16: it was those within 42 m): the tree
+        // mesh holds nothing but the trees' and the Cinder Tree's runs
+        const trees = L.filter((b) => b.kind === 'tree' || b.kind === 'deadTree');
+        const treeMesh = set.group.getObjectByName('trees');
+        const inRuns = L.filter((b) => b.ranged && b.body.mesh === treeMesh).reduce((a, b) => a + b.body.count, 0);
+        assert(trees.length >= 500 && Math.max(...trees.map((b) => Math.hypot(b.x, b.z))) > 72 && inRuns === treeMesh.geometry.attributes.position.count, `forest: every tree breaks (${trees.length}; the farthest ${Math.max(...trees.map((b) => Math.hypot(b.x, b.z))).toFixed(1)} m), all ${inRuns} vertices of the tree mesh are pieces'`);
+        assert(trees.every((b) => b.ranged && b.body.parts >= 2 && b.order.length >= 1) && trees.filter((b) => b.wall).length >= 440, `forest: a tree is a range piece in parts that wears down; ${trees.filter((b) => b.wall).length} of them are the wall's (beyond ${BREAK.wall.from} m)`);
+        assert(L.every((b) => b.mat !== 'wood' || b.def.soft === false || b.colliders.every((c) => c.soft === true)), 'forest: the trunks of breakable wood are soft colliders (the wyrm ploughs through them; not the Cinder Tree\'s)');
       }
       assert(L.every((b) => Number.isFinite(b.x + b.z + b.r + b.h) && b.r > 0 && b.h > 0 && b.hp > 0), `${name}: every breakable has a footprint, a height and structure`);
       assert(L.every((b) => b.colliders.every((c) => colliders.circles.includes(c))), `${name}: their colliders are the world's own circles`);
@@ -173,10 +178,11 @@ const S = {
       assert(D.root.parent === set.group, `${name}: the breakables hang under the set's group (the Lab hides them with it)`);
       const bones = rigidBones(U);
       // (the pieces, their stumps and the wreckage pools, BREAK.wreck: 88 bones; with the hero ~140 and a
-      // boss ~180 the 1023 slots keep ~200 spare. Cinderwood measured 368 on 2026-11-15; it was 144)
+      // boss ~180 the 1023 slots keep ~200 spare. Cinderwood measured 368 on 2026-11-15, 144 before; its
+      // trees and landmarks are range pieces since 2026-11-16 and take none: 140)
       assert(D.batch.meshes.length >= 1 && D.batch.meshes.length <= 2 && bones.count <= 460, `${name}: drawn in ${D.batch.meshes.length} batch(es), ${bones.count} bones (<= 460 of 1023)`);
-      // a body's geometry sits round its own base: the node carries the place
-      const b = L.find((o) => o.topples);
+      // a body's geometry sits round its own base: the node carries the place (a rigid piece's)
+      const b = L.find((o) => o.topples && !o.ranged);
       b.body.geometry.computeBoundingBox();
       const bb = b.body.geometry.boundingBox;
       assert(Math.abs((bb.min.x + bb.max.x) / 2) < 3 && Math.abs((bb.min.z + bb.max.z) / 2) < 3 && bb.min.y > -0.6, `${name}: a body's geometry is laid out round its base`);
@@ -221,7 +227,8 @@ const S = {
   // ---------------------------------------------------------------- a tall piece falls; what is under it is hit
   fell() {
     const { D, world, log, game, hits, colliders, step } = build();
-    const t = D.list.find((b) => b.kind === 'deadTree');
+    // (one inside the clearing: a tree of the wall falls away from the arena, the `wall` scenario)
+    const t = D.list.find((b) => b.kind === 'deadTree' && !b.wall);
     const dx = 0.6, dz = 0.8;
     // the hero stands where it will land
     game.player.position.set(t.x + dx * t.h * 0.6, 0, t.z + dz * t.h * 0.6);
@@ -246,13 +253,13 @@ const S = {
     assert(log.some((e) => e.n === 'world:impact' && e.kind === 'topple') && log.some((e) => e.n === 'world:impact' && e.kind === 'crash'), 'world:impact topple, then crash');
     assert(world.scars.count > 4 && game.shakes > 0 && world.gusts > 0, `the ground is cracked and littered (${world.scars.count} marks), the camera shakes, the grass is blown`);
     // out from under it: nothing
-    const t2 = D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT);
+    const t2 = D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT && !b.wall);
     game.player.position.set(t2.x - 8, 0, t2.z);
     D.topple(t2, 1, 0, 'boss');
     step(2);
     assert(t2.state === STATE.BROKEN && hits.length === 1, 'a hero out from under it is not hit');
     // the hero fells one onto the boss: the boss is hit, the hero never
-    const t3 = D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT);
+    const t3 = D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT && !b.wall);
     game.boss.position.set(t3.x + t3.h * 0.6, 0, t3.z);
     game.player.position.set(t3.x + t3.h * 0.5, 0, t3.z + 0.3);
     D.strike(t3.x - 0.3, t3.z, 0.5, 9, { kind: BLOW.BLUNT, by: 'player', dx: 1, dz: 0, src: D.swing() });
@@ -552,7 +559,7 @@ const S = {
   // ---------------------------------------------------------------- wreckage stays, stops nothing, sinks at the cap
   wreck() {
     const { D, world, game, colliders, step } = build();
-    const t = D.list.find((b) => b.kind === 'deadTree');
+    const t = D.list.find((b) => b.kind === 'deadTree' && !b.wall);
     const n0 = colliders.circles.length;
     const ml = 0.6 * t.h * BREAK.wreck.trunk[1];
     const coverBefore = D.coverAt(t.x + ml, t.z - 4, t.x + ml, t.z + 4, 0.2);
@@ -672,7 +679,8 @@ const S = {
     const by = {};
     for (const b of D.list) by[b.kind] = (by[b.kind] ?? 0) + 1;
     out(`     forest: ${D.list.length} pieces (${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(', ')}); wreckage pools ${D.wreck.pools.map((p) => p.length).join(' / ')}`);
-    assert(D.list.length >= 150 && D.list.length <= 240, `${D.list.length} breakables in Cinderwood (150..240; 80 before this pass)`);
+    // (664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15, 80 before)
+    assert(D.list.length >= 600 && D.list.length <= 760, `${D.list.length} breakables in Cinderwood (600..760)`);
     assert(bones <= 1023 - 60, `${bones} bones in all with the wyrm (${D.batch.bones} the world's), under the 1023 slots with room for the hero (~140)`);
     // debris by quality: one boulder's break
     const one = (q) => {
@@ -735,7 +743,9 @@ const S = {
     // frame, measured 2026-11-15; the body's 23 sweeps go through sweepRec, which took 2.6 KB down to it),
     // not objects this code makes.
     const B = wyrm();
-    const tr = B.D.list.filter((b) => b.mat === 'wood' && b.state === STATE.INTACT).slice(0, 3);
+    // (three trees inside the clearing: in the wall's dense stands the fire spreads and trees burn through
+    // and smoulder in the measure, events, not a steady frame; the wall's cost is the rampage's above)
+    const tr = B.D.list.filter((b) => b.mat === 'wood' && b.state === STATE.INTACT && Math.hypot(b.x, b.z) < 30).slice(0, 3);
     for (const b of tr) B.D.ignite(b.x, b.z, 0.2, 40); // (burning for the whole measure; the fire field takes the flames)
     B.D.topple(B.D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT), 1, 0, 'world');
     B.step(3);

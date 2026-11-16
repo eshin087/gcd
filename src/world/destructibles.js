@@ -5,6 +5,7 @@ import { markCaster } from '../render/pipeline.js';
 import { batchRigid } from '../render/rigidBatch.js';
 import { TELL } from '../combat/rules.js';
 import { BREAK, BLOW } from './breakTuning.js';
+import { CONFIG } from '../core/config.js';
 import { Wreckage } from './wreckage.js';
 
 // Breakable objects (ADR-107): the trees, stones, pillars and props of a set that blows can chip,
@@ -92,9 +93,14 @@ function segDist(px, pz, ax, az, bx, bz, out) {
 }
 
 /**
- * The body of a 'range' piece: a run of vertices in a static mesh of the set. `visible = false`
- * folds them into a point under the ground; `true` puts them back. Duck-types what this module and
- * the tests read of a mesh (`visible`, `geometry`).
+ * The body of a 'range' piece: a run of vertices in a static mesh of the set (the flagstones, every
+ * tree of the forest, the landmarks' pieces). `visible = false` folds them into a point under the
+ * ground; `true` puts them back. It may be split into PARTS (`range.parts`: vertex counts in order, a
+ * tree's trunk and crown blobs): `show(i, on)` drops one part or puts it back (a tree that wears
+ * down). And it may be POSED (`pose(q, px, py, pz)`: turned by a quaternion about its base and moved;
+ * a tree that shudders, leans, falls or is carried): its vertices (and normals) are rewritten from
+ * their home copy, so a range moves like a rigid piece without a bone of the rigid batch. Duck-types
+ * what this module and the tests read of a mesh (`visible`, `geometry`). No allocation after build.
  */
 class RangeBody {
   constructor(range, x, z) {
@@ -102,11 +108,51 @@ class RangeBody {
     this.geometry = range.mesh.geometry;
     this.start = range.start | 0;
     this.count = range.count | 0;
-    const pos = this.geometry.attributes.position;
-    this.home = pos.array.slice(this.start * 3, (this.start + this.count) * 3);
+    const pos = this.geometry.attributes.position, nrm = this.geometry.attributes.normal;
+    const s = this.start * 3, e = (this.start + this.count) * 3;
+    this.home = pos.array.slice(s, e);
+    this.nhome = nrm && nrm.itemSize === 3 && nrm.array.length >= e ? nrm.array.slice(s, e) : null;
     this.x = x;
     this.z = z;
     this._on = true;
+    // parts: cumulative ends (relative), shown flags, leafy flags, and each part's centre and size
+    let P = Array.isArray(range.parts) ? range.parts.map((n) => n | 0) : null;
+    if (!P || !P.length || P.reduce((a, n) => a + n, 0) !== this.count || P.some((n) => n < 0)) P = [this.count];
+    this.ends = new Int32Array(P.length);
+    let acc = 0;
+    for (let i = 0; i < P.length; i++) this.ends[i] = acc += P[i];
+    this.shown = new Uint8Array(P.length).fill(1);
+    this.leaf = new Uint8Array(P.length);
+    if (Array.isArray(range.leaf)) for (let i = 0; i < P.length; i++) this.leaf[i] = range.leaf[i] ? 1 : 0;
+    this.centre = new Float32Array(P.length * 4); // x, y, z, radius (world, at home)
+    for (let i = 0, a = 0; i < P.length; i++) {
+      const b = this.ends[i];
+      let cx = 0, cy = 0, cz = 0;
+      const n = Math.max(1, b - a);
+      for (let v = a; v < b; v++) {
+        cx += this.home[v * 3];
+        cy += this.home[v * 3 + 1];
+        cz += this.home[v * 3 + 2];
+      }
+      cx /= n; cy /= n; cz /= n;
+      let r = 0;
+      for (let v = a; v < b; v++) r = Math.max(r, Math.hypot(this.home[v * 3] - cx, this.home[v * 3 + 1] - cy, this.home[v * 3 + 2] - cz));
+      this.centre.set([cx, cy, cz, r], i * 4);
+      a = b;
+    }
+    // the pose: R (3x3, row-major) about the base (x, 0, z), then moved by t
+    this.R = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+    this.t = new Float32Array(3);
+    this.posed = false;
+    this._wasPosed = false;
+    this._pend = false;
+    this._nDirty = false;
+    this._urP = { start: this.start * 3, count: this.count * 3 };
+    this._urN = { start: this.start * 3, count: this.count * 3 };
+  }
+
+  get parts() {
+    return this.ends.length;
   }
 
   get visible() {
@@ -117,18 +163,106 @@ class RangeBody {
     v = !!v;
     if (v === this._on) return;
     this._on = v;
-    const pos = this.geometry.attributes.position, a = pos.array, s = this.start * 3;
-    if (v) a.set(this.home, s);
-    else {
-      for (let i = 0; i < this.count; i++) {
-        a[s + i * 3] = this.x;
-        a[s + i * 3 + 1] = -3;
-        a[s + i * 3 + 2] = this.z;
-      }
-    }
-    pos.addUpdateRange?.(s, this.count * 3);
-    pos.needsUpdate = true;
+    this.write();
   }
+
+  /** Show / drop part i (no write: call write() after a batch of changes). True if it changed. */
+  show(i, on) {
+    const v = on ? 1 : 0;
+    if (i < 0 || i >= this.shown.length || this.shown[i] === v) return false;
+    this.shown[i] = v;
+    return true;
+  }
+
+  /** Every part back, upright, where it stood (no write). */
+  home0() {
+    this.shown.fill(1);
+    this.R.set(IDENT3);
+    this.t.fill(0);
+    this.posed = false;
+  }
+
+  /** Turned by the quaternion q about its base and moved by (px, py, pz); writes. */
+  pose(q, px = 0, py = 0, pz = 0) {
+    const x = q.x, y = q.y, z = q.z, w = q.w;
+    const R = this.R;
+    R[0] = 1 - 2 * (y * y + z * z); R[1] = 2 * (x * y - z * w); R[2] = 2 * (x * z + y * w);
+    R[3] = 2 * (x * y + z * w); R[4] = 1 - 2 * (x * x + z * z); R[5] = 2 * (y * z - x * w);
+    R[6] = 2 * (x * z - y * w); R[7] = 2 * (y * z + x * w); R[8] = 1 - 2 * (x * x + y * y);
+    this.t[0] = px; this.t[1] = py; this.t[2] = pz;
+    this.posed = !(Math.abs(1 - Math.abs(w)) < 1e-7 && px === 0 && py === 0 && pz === 0);
+    this.write();
+  }
+
+  /** Rewrite its vertices: each shown part posed, the rest (or all of it, hidden) folded under the ground. */
+  write() {
+    const pos = this.geometry.attributes.position, a = pos.array, s = this.start * 3, H = this.home;
+    const nrm = this.nhome ? this.geometry.attributes.normal : null, na = nrm?.array, NH = this.nhome;
+    const R = this.R, posed = this.posed, bx = this.x, bz = this.z, tx = this.t[0] + bx, ty = this.t[1], tz = this.t[2] + bz;
+    const nWrite = !!NH && (posed || this._wasPosed);
+    for (let p = 0, v0 = 0; p < this.ends.length; p++) {
+      const v1 = this.ends[p];
+      if (!this._on || !this.shown[p]) {
+        for (let v = v0; v < v1; v++) {
+          const k = s + v * 3;
+          a[k] = bx;
+          a[k + 1] = -3;
+          a[k + 2] = bz;
+        }
+      } else if (!posed) {
+        // (a copy loop, not set(subarray): no view object made per part)
+        for (let k = v0 * 3, e = v1 * 3; k < e; k++) a[s + k] = H[k];
+        if (nWrite) for (let k = v0 * 3, e = v1 * 3; k < e; k++) na[s + k] = NH[k];
+      } else {
+        for (let v = v0; v < v1; v++) {
+          const h = v * 3, k = s + h;
+          const x = H[h] - bx, y = H[h + 1], z = H[h + 2] - bz;
+          a[k] = R[0] * x + R[1] * y + R[2] * z + tx;
+          a[k + 1] = R[3] * x + R[4] * y + R[5] * z + ty;
+          a[k + 2] = R[6] * x + R[7] * y + R[8] * z + tz;
+          if (nWrite) {
+            const nx = NH[h], ny = NH[h + 1], nz = NH[h + 2];
+            na[k] = R[0] * nx + R[1] * ny + R[2] * nz;
+            na[k + 1] = R[3] * nx + R[4] * ny + R[5] * nz;
+            na[k + 2] = R[6] * nx + R[7] * ny + R[8] * nz;
+          }
+        }
+      }
+      v0 = v1;
+    }
+    // (uploaded at the next flushRanges(): once a frame, one range per body however often it was written)
+    if (nWrite) this._nDirty = true;
+    if (!this._pend) {
+      this._pend = true;
+      PENDING.push(this);
+    }
+    this._wasPosed = posed;
+  }
+
+  /** Queue its run for upload (flushRanges). Its range records are its own: nothing is made per frame. */
+  _flush() {
+    this._pend = false;
+    queueRange(this.geometry.attributes.position, this._urP);
+    if (this._nDirty) {
+      this._nDirty = false;
+      const nrm = this.geometry.attributes.normal;
+      if (nrm) queueRange(nrm, this._urN);
+    }
+  }
+}
+const IDENT3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+/** Range bodies written since the last flush. */
+const PENDING = [];
+/** An attribute's run to upload: its own record (pushed once while three has not taken it yet). */
+function queueRange(attr, rec) {
+  const R = attr.updateRanges;
+  if (R && !R.includes(rec)) R.push(rec);
+  attr.needsUpdate = true;
+}
+/** Hand every range body written since the last call to three (Destructibles.update / reset call it). */
+export function flushRanges() {
+  for (let i = 0; i < PENDING.length; i++) PENDING[i]._flush();
+  PENDING.length = 0;
 }
 
 export class Destructibles {
@@ -158,6 +292,9 @@ export class Destructibles {
     this._axis = new THREE.Vector3();
     this._v = new THREE.Vector3();
     this._q = new THREE.Quaternion();
+    this._q2 = new THREE.Quaternion();
+    this._way = { dx: 0, dz: 1 };
+    this._rShake = 0; // range pieces shuddering now (their vertices are rewritten: BREAK.wear.shakeMax)
     this._ev = { kind: '', mat: '', x: 0, y: 0, z: 0, power: 0, by: '', id: -1 };
     this._tell = { source: 'world', attack: 'fallingDebris', tell: TELL.RED, impactIn: 0, x: 0, z: 0, hazard: true };
     this._flash = { source: 'world', attack: 'fallingDebris', tell: TELL.RED, x: 0, y: 0.6, z: 0, hazard: true };
@@ -182,12 +319,16 @@ export class Destructibles {
     this.gridMat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide, rigid: true });
     this.propMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: set.stoneMaterial?.uniforms?.uGain?.value ?? 1, rigid: true });
     for (const def of defs) this._build(def);
+    // (a piece's `guard`: the definitions of the pieces that must go first)
+    const byDef = new Map(this.list.map((o) => [o.def, o]));
+    for (const o of this.list) if (Array.isArray(o.def.guard)) o.guards = o.def.guard.map((g) => byDef.get(g)).filter(Boolean);
     this._buildGrid();
     // what the fight leaves lying (wreckage.js): its pools share the breakables' batch
     if (set.wreckage !== false) this.wreck = new Wreckage(game, world, this.root, this.propMat, this);
     markCaster(this.root);
     set.group?.add(this.root);
     this.batch = batchRigid(U, this.root);
+    flushRanges();
   }
 
   // ------------------------------------------------------------------ build
@@ -207,7 +348,7 @@ export class Destructibles {
     const M = BREAK.mats[def.mat] ?? BREAK.mats.stone;
     const r = Math.max(0.1, Number(def.r) || 0.5), h = Math.max(ranged ? 0.02 : 0.2, Number(def.h) || 2);
     const size = clamp(r / 0.5, 0.6, 2.4) * clamp(h / 3, 0.5, 2);
-    const hpMax = def.hp ?? M.hp * size;
+    const hpMax = def.hp ?? M.hp * size * (Number(def.hpK) > 0 ? Number(def.hpK) : 1);
     const body = ranged ? new RangeBody(def.range, x, z) : this._mesh(def.geos, def.look, x, z);
     if (!body) return null;
     const node = new THREE.Group();
@@ -230,7 +371,11 @@ export class Destructibles {
     const wood = BREAK.mats[def.mat] && def.mat === 'wood';
     const colliders = Array.isArray(def.colliders) ? def.colliders.filter(Boolean) : [];
     // the wyrm's body ploughs through wood (Colliders.resolve(..., soft)): it fells it instead of being turned
-    if (wood) for (const c of colliders) c.soft = true;
+    // (`soft: false`: a colossal trunk, the Cinder Tree's, turns it like stone)
+    if (wood && def.soft !== false) for (const c of colliders) c.soft = true;
+    // wearing down (a tree): the parts it drops, in order, and how many are gone by each stage
+    const W = def.wear && ranged && body.parts > 1 ? def.wear : null;
+    const order = W && Array.isArray(W.order) ? W.order.filter((i) => i > 0 && i < body.parts) : [];
     const o = {
       id: this.list.length, def, kind: def.kind ?? 'thing', mat: BREAK.mats[def.mat] ? def.mat : 'stone', M,
       x, z, r, h, weight: def.weight ?? clamp(size, 0.5, 2.2),
@@ -244,6 +389,17 @@ export class Destructibles {
       lift: def.lift ?? 0,
       leafy: clamp(Number(def.leafy) || 0, 0, 1),
       wrecks: def.wreck !== false,
+      // its debris and marks print in prop art's digits (a landmark's bones and boughs: they are drawn so)
+      digits: def.look === 'prop' || def.digits === true,
+      ranged,
+      // stages (BREAK.wear): `order` the parts it drops, `cut[k]` how many of them are gone at stage k + 1;
+      // `wear` the stage it is at (0 whole .. 3 leaning); the lean, and its way
+      order: Int16Array.from(order), cut: Int16Array.from(W && Array.isArray(W.cut) ? W.cut : []), wear: 0, dropped: 0,
+      lean: 0, leanTo: 0, ldx: 0, ldz: 1, touched: false, quiet: false,
+      // a tree of the wall (beyond BREAK.wall.from): it falls mostly away from the arena
+      wall: def.wall === true,
+      // pieces that must be down before this one takes more than chips (the Cinder Tree's boughs guard its trunk)
+      guards: null,
       // dynamics
       t: 0, T: 1, dx: 0, dz: 1, by: 'world', src: -1, srcT: -1e9, spare: 0,
       burn: 0, burnLife: 0, burnt: false, flame: 0, heatT: 0, light: null, carry: 0, spreadT: 0, gen: 0,
@@ -509,19 +665,136 @@ export class Destructibles {
     // rubbing past a stone would chip it every rehit)
     const shove = brush && dmg < BREAK.scratch;
     if (!shove) this._chips(b, px, py, pz, dx, dz, brush ? dmg : power); // (a brush: splinters for what it bit)
-    if (dmg < BREAK.scratch || b.hpMax === Infinity || (b.hp -= dmg) > 0) {
-      // it holds: a nick, a shudder
+    if (dmg < BREAK.scratch || b.hpMax === Infinity || (b.hp -= this._guarded(b, dmg)) > 0) {
+      // it holds: a nick, a shudder (a range piece's shudder rewrites its vertices: at most
+      // BREAK.wear.shakeMax x quality of them at once, the rest only chip)
       if (!shove) this.world.scars?.object(b.id, px, py, pz, power, b.M);
-      b.shake = 0.28;
-      b.shakeAmp = Math.min(0.09, 0.02 + power * 0.05) / Math.max(0.6, b.weight);
+      if (!b.ranged || (b.order.length > 0 && (b.shake > 0 || this._rShake < Math.max(2, Math.round(BREAK.wear.shakeMax * this.q))))) {
+        if (b.ranged && !(b.shake > 0)) this._rShake++;
+        b.shake = 0.28;
+        b.shakeAmp = Math.min(0.09, 0.02 + power * 0.05) / Math.max(0.6, b.weight);
+      }
       b.dx = dx;
       b.dz = dz;
+      if (!shove) this._wearTo(b, dx, dz, by);
       this._wake(b);
       if (!shove) this._emit('chip', b, px, py, pz, power, by);
       return true;
     }
     this._break(b, dx, dz, by, kind);
     return true;
+  }
+
+  /** What a blow takes from a piece some of whose `guards` still stand (BREAK.guarded of it). */
+  _guarded(b, dmg) {
+    const G = b.guards;
+    if (G) for (let i = 0; i < G.length; i++) if (G[i].state === INTACT) return dmg * BREAK.guarded;
+    return dmg;
+  }
+
+  /**
+   * Wearing down (BREAK.wear): as a piece with stages loses its structure it drops its parts in order
+   * (`cut`: how many by each stage), each in a burst of what it is drawn in, and at the last stage it
+   * leans along the blow. A stage reached emits world:impact 'wear' (power = its stage, 1 .. 3).
+   */
+  _wearTo(b, dx, dz, by = 'world') {
+    if (!b.order.length || !(b.hpMax < Infinity)) return;
+    const A = BREAK.wear.at, f = b.hp / b.hpMax;
+    let st = 0;
+    while (st < A.length && f <= A[st]) st++;
+    if (st <= b.wear) return;
+    for (let k = b.wear; k < st; k++) {
+      const n = Math.min(b.order.length - 1, k < b.cut.length ? b.cut[k] : b.dropped);
+      while (b.dropped < n) this._shed(b, b.order[b.dropped++], dx, dz, false);
+      if (k === A.length - 1 && b.topples) {
+        // the last stage: it leans along the blow (and so falls on that side of its crown)
+        b.leanTo = BREAK.wear.lean * (0.75 + 0.5 * rnd());
+        if (b.wall) {
+          this._wallWay(b, dx, dz);
+          b.ldx = this._way.dx;
+          b.ldz = this._way.dz;
+        } else {
+          const l = Math.hypot(dx, dz) || 1;
+          b.ldx = dx / l;
+          b.ldz = dz / l;
+        }
+      }
+    }
+    b.wear = st;
+    this._pose(b);
+    this._emit('wear', b, b.x, b.h * 0.6, b.z, st, by);
+  }
+
+  /** Part i of a range piece drops away: a burst of its leaves (or splinters), embers when it burns. */
+  _shed(b, i, dx, dz, ember) {
+    if (!b.body.show?.(i, false)) return;
+    b.touched = true;
+    const fx = this.game.fx?.alpha, glow = this.game.fx?.add;
+    if (!fx) return;
+    const C = b.body.centre, cx = C[i * 4], cy = C[i * 4 + 1], cz = C[i * 4 + 2], cr = Math.max(0.3, C[i * 4 + 3]);
+    const leaf = b.body.leaf[i] === 1, M = b.M, p = this._p, c0 = this._c0;
+    const n = Math.round(clamp(cr * BREAK.wear.debris, 8, 44) * this.q);
+    for (let k = 0; k < n; k++) {
+      const a = rnd() * 6.283, rr = cr * Math.sqrt(rnd()) * 0.8;
+      p.x = cx + Math.cos(a) * rr;
+      p.y = Math.max(0.2, cy + (rnd() - 0.5) * cr);
+      p.z = cz + Math.sin(a) * rr;
+      const out = 0.4 + rnd() * 1.8;
+      p.vx = Math.cos(a) * out + dx * 1.4;
+      p.vy = 0.3 + rnd() * 2.2;
+      p.vz = Math.sin(a) * out + dz * 1.4;
+      p.life = clamp(Math.sqrt((2 * p.y) / 15) + 0.4 + rnd() * 0.5, 0.6, 1.9);
+      p.size = (leaf ? 0.46 : 0.4) + rnd() * 0.22;
+      p.sizeEnd = 0.2;
+      p.glyph = leaf ? LEAVES : b.digits ? DIGITS : M.chips;
+      if (ember) {
+        c0[0] = 2.8; c0[1] = 0.9 + rnd() * 0.6; c0[2] = 0.18;
+        p.color = c0;
+        p.colorEnd = HOT_END;
+      } else {
+        p.color = leaf ? LEAF_COL : M.color;
+        p.colorEnd = leaf ? LEAF_END : M.colorEnd;
+      }
+      p.alpha = 1;
+      p.alphaEnd = 0;
+      p.gravity = leaf ? -5 : -15;
+      p.drag = leaf ? 1.6 : 0.4;
+      p.spin = (rnd() - 0.5) * (leaf ? 4 : 9);
+      p.rot = rnd() * 6.283;
+      p.flicker = ember ? 0.4 : 0;
+      (ember && glow ? glow : fx).spawn(p);
+    }
+  }
+
+  /** A wall tree's way to fall: (dx, dz) turned out of the arena until at least BREAK.wall.out of it points out; into this._way. */
+  _wallWay(b, dx, dz) {
+    const R = Math.hypot(b.x, b.z) || 1, ox = b.x / R, oz = b.z / R, O = BREAK.wall.out;
+    let d = dx * ox + dz * oz;
+    if (d < 0) {
+      dx -= 2 * d * ox;
+      dz -= 2 * d * oz;
+      d = -d;
+    }
+    if (d < O) {
+      dx += ox * (O - d) * 2;
+      dz += oz * (O - d) * 2;
+    }
+    const m = Math.hypot(dx, dz) || 1;
+    this._way.dx = dx / m;
+    this._way.dz = dz / m;
+  }
+
+  /** A range piece's vertices follow its pivot (and its lean): rewritten from home. */
+  _pose(b) {
+    if (!b.ranged || !b.body.pose) return;
+    b.touched = true;
+    let q = b.pivot.quaternion;
+    if (b.lean > 1e-4) {
+      this._q.setFromAxisAngle(this._axis.set(b.ldz, 0, -b.ldx), b.lean);
+      q = this._q2.copy(q).multiply(this._q);
+    }
+    const p = b.pivot.position;
+    b.body.pose(q, p.x, p.y, p.z);
   }
 
   /** Fell a piece along (dx, dz) (a boss pulls a pillar down; a test). */
@@ -558,6 +831,16 @@ export class Destructibles {
       dx /= l;
       dz /= l;
     }
+    // a tree of the wall falls mostly away from the arena (BREAK.wall.out); one already leaning goes
+    // the way it leans (that way was turned outward when it leaned)
+    if (b.wall && b.lean > 0.02) {
+      dx = b.ldx;
+      dz = b.ldz;
+    } else if (b.wall) {
+      this._wallWay(b, dx, dz);
+      dx = this._way.dx;
+      dz = this._way.dz;
+    }
     b.dx = dx;
     b.dz = dz;
     if ((b.topples || force) && kind !== BLOW.FIRE) {
@@ -566,13 +849,17 @@ export class Destructibles {
       b.T = clamp(BREAK.topple.time * Math.sqrt(b.h / 5), 0.55, 1.5);
       b.told = b.flashed = false;
       b.mark = 0;
+      // a piece whose fall cannot reach the hero's ground tells nothing and marks nothing (the wall's
+      // trees falling outward): only one that can land inside his bound is a red blow
+      const pad = BREAK.topple.pad + b.r * 0.6 + 0.6, hb = CONFIG.world.playerBound ?? 31;
+      b.quiet = segDist(0, 0, b.x, b.z, b.x + dx * (b.h + pad), b.z + dz * (b.h + pad), this._seg) > hb + pad;
       this._wake(b);
       this._burst(b, b.x, 0.4, b.z, dx, dz, 10, 0.4);
       this._emit('topple', b, b.x, 0.5, b.z, b.weight, by);
     } else {
       this._crumble(b, dx, dz, false);
       b.state = BROKEN;
-      this.world.scars?.rubble(b.x, b.z, b.r * 1.8 + 0.4, b.M, 6 + Math.round(b.weight * 6 * this.q), b.def.look === 'prop' ? DIGITS : '.,:o');
+      this.world.scars?.rubble(b.x, b.z, b.r * 1.8 + 0.4, b.M, 6 + Math.round(b.weight * 6 * this.q), b.digits ? DIGITS : '.,:o');
       // a boulder leaves a pile of itself (a stone with a broken base of its own has that)
       if (b.wrecks && !b.stub && b.mat === 'stone' && b.h >= 0.4) this.wreck?.rubble(b.x, b.z, b.r * 0.85, b.M);
       this.game.shake?.(clamp(0.12 + 0.12 * b.weight, 0.1, 0.4));
@@ -676,6 +963,14 @@ export class Destructibles {
     b.burn -= dt;
     b.spreadT += dt;
     const u = 1 - b.burn / b.burnLife; // 0 → 1 as it burns down
+    // it burns down part by part (a tree's crown, BREAK.wear.burn: all of it gone by that share of its burn)
+    if (b.order.length && b.dropped < b.order.length) {
+      const want = Math.min(b.order.length, Math.floor((u / BREAK.wear.burn) * (b.order.length + 1)));
+      if (want > b.dropped) {
+        while (b.dropped < want) this._shed(b, b.order[b.dropped++], 0, 0, true);
+        this._pose(b);
+      }
+    }
     // flames up the trunk and through the crown: heat in the fire field (render/fireField.js)
     const fx = this.game.fx?.fire;
     if (fx) {
@@ -804,10 +1099,12 @@ export class Destructibles {
     this._stopBurn(b);
     b.state = HELD;
     b.shake = 0;
+    b.lean = b.leanTo = 0;
     b.px = b.x;
     b.py = 0;
     b.pz = b.z;
     b.pivot.rotation.set(0, 0, 0);
+    this._pose(b);
     this._burst(b, b.x, 0.3, b.z, 0, 0, 12, 0.5); // torn out of the ground
     this.world.scars?.ground(b.x, b.z, 0.6 + 0.3 * b.weight);
     this._wake(b);
@@ -823,6 +1120,7 @@ export class Destructibles {
     b.pz = z;
     b.pivot.position.set(x - b.x, y, z - b.z);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(Math.cos(yaw), 0, -Math.sin(yaw)), tilt);
+    this._pose(b);
   }
 
   /**
@@ -873,6 +1171,7 @@ export class Destructibles {
     b.ang += BREAK.thrown.spin * dt;
     b.pivot.position.set(b.px - b.x, Math.max(0, b.py), b.pz - b.z);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(b.dz, 0, -b.dx), b.ang);
+    this._pose(b);
     // low enough, it smashes what stands in its way (once each per throw)
     const F = BREAK.flight;
     if (b.py < F.y && b.t < b.T) {
@@ -892,7 +1191,7 @@ export class Destructibles {
     this._crumble(b, b.dx, b.dz, false);
     b.state = GONE;
     this.world.scars?.ground(x, z, 0.7 + 0.5 * b.weight, b.dx, b.dz);
-    this.world.scars?.rubble(x, z, b.blastR, b.M, 8 + Math.round(b.weight * 6 * this.q), b.def.look === 'prop' ? DIGITS : '.,:o');
+    this.world.scars?.rubble(x, z, b.blastR, b.M, 8 + Math.round(b.weight * 6 * this.q), b.digits ? DIGITS : '.,:o');
     // what is left of it lies where it came down
     if (b.wrecks) {
       if (b.mat === 'wood' && b.h >= 1.5) this.wreck?.log(x - b.dx * b.h * 0.3, z - b.dz * b.h * 0.3, b.dx, b.dz, b.h * 0.5, b.r * BREAK.wreck.thick);
@@ -918,8 +1217,13 @@ export class Destructibles {
     b.t += dt;
     const u = Math.min(1, b.t / b.T);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(b.dz, 0, -b.dx), (Math.PI / 2 - 0.06) * Math.pow(u, 2.4));
+    if (b.ranged) {
+      // (a tree that leaned goes on from its lean, which hands over to the fall)
+      b.lean = b.leanTo * (1 - u);
+      this._pose(b);
+    }
     const mx = b.x + b.dx * b.h * 0.55, mz = b.z + b.dz * b.h * 0.55;
-    if (b.by !== 'player') {
+    if (b.by !== 'player' && !b.quiet) {
       // a boss felled it: red. Marked on the ground from the moment it starts to go
       const ev = this.game.events;
       if (!b.told) {
@@ -1004,7 +1308,7 @@ export class Destructibles {
     const sc = this.world.scars;
     sc?.ground(b.x + dx * len * 0.4, b.z + dz * len * 0.4, 0.5 + 0.35 * b.weight, dx, dz);
     sc?.ground(b.x + dx * len * 0.85, b.z + dz * len * 0.85, 0.45 + 0.25 * b.weight, dx, dz);
-    for (let s = 0.2; s < 1; s += 0.2) sc?.rubble(b.x + dx * len * s, b.z + dz * len * s, pad + 0.3, b.M, 3, b.def.look === 'prop' ? DIGITS : '.,:o');
+    for (let s = 0.2; s < 1; s += 0.2) sc?.rubble(b.x + dx * len * s, b.z + dz * len * s, pad + 0.3, b.M, 3, b.digits ? DIGITS : '.,:o');
     this.world.gust?.(b.x + dx * len * 0.5, b.z + dz * len * 0.5, 0.9, len * 0.7 + 3);
     this.game.shake?.(clamp(T.shake * b.weight, 0.15, 0.6));
     // what stood under it
@@ -1039,7 +1343,7 @@ export class Destructibles {
           }
         }
       }
-    } else {
+    } else if (!b.quiet) {
       const p = g.player;
       if (p?.takeHit && p.alive !== false && g.state === 'boss' && segDist(p.position.x, p.position.z, ax, az, ex, ez, s) <= pad + (p.radius ?? 0.45)) {
         const h = this._heroHit;
@@ -1153,12 +1457,15 @@ export class Destructibles {
    */
   _crumble(b, dx, dz, fallen, ember = false, crown = false) {
     b.body.visible = false;
+    if (b.ranged) b.touched = true;
     const solid = this.game.fx?.alpha, glow = this.game.fx?.add;
     if (!solid) return;
     const M = b.M, p = this._p, c0 = this._c0;
     let n = Math.round(clamp(b.r * b.h * 26, 26, 130) * this.q);
     if (crown) n = Math.round(n * (b.leafy > 0 ? 0.7 : 0.35));
-    const prop = b.def.look === 'prop';
+    // (a tree worn down has less of itself left to come apart)
+    if (b.order.length) n = Math.round(n * (1 - 0.6 * (b.dropped / b.order.length)));
+    const prop = b.digits;
     const wx = b.x + b.pivot.position.x, wy = b.pivot.position.y, wz = b.z + b.pivot.position.z;
     const q = b.pivot.quaternion, v = this._v;
     const wide = b.leafy > 0 ? b.r * 3.4 : b.r * 1.1;
@@ -1232,6 +1539,7 @@ export class Destructibles {
   update(dt) {
     if (!(dt > 0)) return;
     const A = this.active;
+    let rShake = 0;
     if (A.length) {
       const time = this.game.time ?? 0;
       for (let i = A.length - 1; i >= 0; i--) {
@@ -1249,13 +1557,22 @@ export class Destructibles {
             this._burnStep(b, dt);
             busy = b.burn > 0;
           }
+          let moved = false;
+          if (b.state === INTACT && b.lean < b.leanTo) {
+            // the last stage: it creaks over (BREAK.wear.leanTime)
+            b.lean = Math.min(b.leanTo, b.lean + (dt * b.leanTo) / BREAK.wear.leanTime);
+            moved = busy = true;
+          }
           if (b.state === INTACT && b.shake > 0) {
             // a struck piece shudders along the blow
             b.shake = Math.max(0, b.shake - dt);
             const k = Math.sin(time * 58) * b.shakeAmp * (b.shake / 0.28);
             b.pivot.rotation.set(b.dz * k, 0, -b.dx * k);
             busy = busy || b.shake > 0;
+            moved = true;
+            if (b.ranged && b.shake > 0) rShake++;
           }
+          if (moved) this._pose(b);
         }
         if (!busy) {
           b.on = false;
@@ -1264,9 +1581,11 @@ export class Destructibles {
         }
       }
     }
+    this._rShake = rShake;
     if (this.burning > 0) this._spread(dt);
     this._litTokens = Math.min(BREAK.light.bank, this._litTokens + dt * BREAK.light.perSec);
     this.wreck?.update(dt);
+    flushRanges();
   }
 
   /** Everything stands again (the fight's reset: flow.js, the Lab). */
@@ -1286,15 +1605,26 @@ export class Destructibles {
       b.srcT = -1e9;
       b.onLand = null;
       b.on = false;
-      b.body.visible = true;
-      if (b.stub) b.stub.visible = false;
+      b.wear = b.dropped = 0;
+      b.lean = b.leanTo = 0;
+      b.quiet = false;
       b.pivot.position.set(0, 0, 0);
       b.pivot.quaternion.identity();
+      if (b.ranged && b.touched) {
+        // (only what was touched is rewritten: the forest is one mesh of ~600k vertices)
+        b.body.home0();
+        b.body._on = true;
+        b.body.write();
+        b.touched = false;
+      } else b.body.visible = true;
+      if (b.stub) b.stub.visible = false;
     }
+    this._rShake = 0;
     this.active.length = 0;
     this._burningN = 0;
     this._tokens = BREAK.spread.bank;
     this._litTokens = BREAK.light.bank; // (fire that lands: BREAK.light)
     this.wreck?.reset();
+    flushRanges();
   }
 }

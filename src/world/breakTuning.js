@@ -122,6 +122,37 @@ export const BREAK = Object.freeze({
   wreck: Object.freeze({ logs: 40, chars: 18, rubble: 30, sink: 1.4, trunk: Object.freeze([0.5, 0.85]), thick: 0.85, flatten: 0.4, smoulder: 30, smoulderMax: 8, burn: 6 }),
   /** a thrown piece smashes what stands in its way: power x its weight, while it flies under `y` m */
   flight: Object.freeze({ power: 0.8, y: 7 }),
+  /**
+   * Wearing down (2026-11-16, the owner's "slowly crumble and break"): a tree loses itself in stages
+   * before it falls. At each share of its structure in `at` it reaches the next stage: 1 a burst of
+   * leaves and a thinner crown, 2 boughs snapped and half the crown gone, 3 it leans `lean` rad (x 0.75
+   * .. 1.25) along the blow, over `leanTime` s. Which parts go by each stage is the set's (forest.js
+   * `wear`). A burning tree's crown is all gone by `burn` of its burn. `debris`: glyphs a dropped part
+   * throws per metre of its size (x quality). `shakeMax`: range pieces (the forest's trees) that may
+   * shudder at once (their vertices are rewritten each frame; x quality; the rest only chip).
+   */
+  wear: Object.freeze({ at: Object.freeze([0.75, 0.48, 0.22]), lean: 0.2, leanTime: 0.6, burn: 0.85, debris: 14, shakeMax: 10 }),
+  /**
+   * The tree wall round the clearing (2026-11-16): every tree of it breaks, out to the forest's edge
+   * (74 m). A tree whose base is beyond `from` m is the wall's: `hp` x the structure of a tree of its
+   * size (it takes a fight's worth of blows, a hit shows at once as a stage), and it falls mostly AWAY
+   * from the arena: at least `out` of its way points out (a fall that cannot reach the hero's bound tells
+   * nothing: there is nothing to dodge).
+   */
+  wall: Object.freeze({ from: 32, hp: 1.6, out: 0.55 }),
+  /** a piece some of whose `guards` stand (the Cinder Tree's trunk under its boughs) takes this share of a blow */
+  guarded: 0.2,
+  /**
+   * The landmarks of Cinderwood (2026-11-16: the owner reversed ADR-119's "they stay whole"; the bonfire
+   * stays): structure in POWER units by piece. The Elder Wyrm's skeleton comes apart rib by rib over a
+   * fight (a tail blow takes a third to a half of a rib); the Cinder Tree loses its boughs first (each
+   * burns too), then its trunk falls to a charred stump; the bone nest's great ribcage and skull.
+   */
+  landmark: Object.freeze({
+    rib: 2.4, spine: 3.2, skull: 6, jaw: 3, horn: 2, hip: 3, mast: 2.6, fingers: 1.6, wing: 2.2,
+    bough: 2.6, trunk: 7,
+    nestRib: 1.6, nestSkull: 3.5,
+  }),
 });
 
 /**
