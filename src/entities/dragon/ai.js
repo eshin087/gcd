@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
-import { ATTACKS, PHASE2_ROAR, PHASE3_ROAR, roarFx, roarPose, perPhase } from './attacks.js';
+import { ATTACKS, MELEE, PHASE2_ROAR, PHASE3_ROAR, roarFx, roarPose, perPhase } from './attacks.js';
+import { FIRE_ATTACKS } from './tuningFire.js';
+import { BULLET_ATTACKS } from './tuningBullets.js';
+import { TERRAIN_ATTACKS } from './tuningTerrain.js';
 import { resetPose } from './rig/anim.js';
 import { POSTURE, TELL, TELL_STYLE } from '../../combat/rules.js';
 import { clamp, damp, angleDiff, lerp, smoothstep } from '../../core/math.js';
@@ -505,6 +508,94 @@ export function attackWeight(def, name, d, s) {
   return Number.isFinite(w) && w > 0 ? w : 0;
 }
 
+// ------------------------------------------------------------------ the director (TUNING.pressure)
+const PR = TUNING.pressure ?? {};
+const GUARD = PR.guard ?? { sep: 0.3, margin: 0.05, maxHold: 0.5, safeMin: 6, horizon: 1.4, roll: 4.2 };
+export const CATEGORIES = Object.freeze(['melee', 'wing', 'tail', 'fire', 'flight', 'spell', 'terrain']);
+const _cat = new Map();
+/**
+ * The move category of an attack (melee / wing / tail / fire / flight / spell / terrain), for the
+ * director's mix: its tuning's (or definition's) `category`, else TUNING.pressure.category, else where
+ * it is tuned (terrain moves; bullet patterns = fire; fire attacks = flight when they fly at an `alt`,
+ * else spell) and what its hits are (any tail hit = tail, else any wing hit = wing), else melee.
+ */
+export function categoryOf(name) {
+  let c = _cat.get(name);
+  if (c) return c;
+  const spec = TUNING.attacks[name] ?? {}, def = ATTACKS[name] ?? {};
+  c = spec.category ?? def.category ?? PR.category?.[name];
+  if (!c) {
+    const kinds = Array.isArray(spec.hits) ? spec.hits.map((h) => h?.kind ?? '') : [];
+    if (name in TERRAIN_ATTACKS) c = 'terrain';
+    else if (name in BULLET_ATTACKS) c = 'fire';
+    else if (name in FIRE_ATTACKS) c = spec.alt > 0 || def.air ? 'flight' : 'spell';
+    else if (kinds.some((k) => k.startsWith('tail'))) c = 'tail';
+    else if (kinds.includes('wing')) c = 'wing';
+    else if (def.air) c = 'flight';
+    else c = 'melee';
+  }
+  if (CATEGORIES.indexOf(c) < 0) c = 'melee';
+  _cat.set(name, c);
+  return c;
+}
+
+/** The answer a tell asks for: 'dodge' (red, black) or 'guard' (blue parry, normal parry / block). */
+const answerOf = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
+
+/** Does the link condition `when` hold for the sensed hero (TUNING.pressure front / behind / near / far)? */
+export function linkWhen(when, s) {
+  switch (when ?? 'any') {
+    case 'any':
+      return true;
+    case 'front':
+      return s.absAng <= (PR.front ?? 0.9);
+    case 'side':
+      return s.absAng > (PR.front ?? 0.9) && s.absAng <= (PR.behind ?? 1.75);
+    case 'behind':
+      return s.absAng > (PR.behind ?? 1.75);
+    case 'near':
+      return s.dist < (PR.near ?? 9);
+    case 'mid':
+      return s.dist >= (PR.near ?? 9) && s.dist <= (PR.far ?? 18);
+    case 'far':
+      return s.dist > (PR.far ?? 18);
+    default:
+      return false;
+  }
+}
+
+const _guardTell = new Map();
+/** Does any blow of the attack ask for a guard (a blue or normal tell: a parry, a block)? */
+function guardTell(name) {
+  let g = _guardTell.get(name);
+  if (g !== undefined) return g;
+  const spec = TUNING.attacks[name] ?? {};
+  const tells = Array.isArray(spec.hits) ? spec.hits.map((h) => h?.tell) : [spec.tell ?? ATTACKS[name]?.tell];
+  g = tells.some((t) => t === TELL.BLUE || t === TELL.NORMAL || t === undefined);
+  _guardTell.set(name, g);
+  return g;
+}
+
+const _redTell = new Map();
+/** Does any blow of the attack ask for a dodge (red, black; every flight and spell)? */
+function redTell(name) {
+  let r = _redTell.get(name);
+  if (r !== undefined) return r;
+  const spec = TUNING.attacks[name] ?? {};
+  const tells = Array.isArray(spec.hits) ? spec.hits.map((h) => h?.tell) : [spec.tell ?? ATTACKS[name]?.tell];
+  const cat = categoryOf(name);
+  r = cat === 'flight' || cat === 'spell' || tells.some((t) => t === TELL.RED || t === TELL.BLACK);
+  _redTell.set(name, r);
+  return r;
+}
+
+// actions after which the hero keeps the old (longer) opening (TUNING.pressure.openingGap)
+const OPENINGS = new Set(['recoil', 'stagger', 'postureBreak', 'plunged']);
+// blows whose impact the brain may hold back a little (their timing is their own phases: a held
+// windup moves the flash and the impact together)
+const HOLDABLE = (name) => MELEE.has(name) || name === 'tail' || name === 'stomp';
+const LEDGER = 32;
+
 export class Brain {
   constructor(d) {
     this.d = d;
@@ -512,7 +603,84 @@ export class Brain {
     this.aiEnabled = true; // Lab: off = stays in combat, tracks the player, never attacks by itself
     this._cands = [];
     this._zone = new THREE.Vector3();
+    // the director's counters (the pressure meter reads them)
+    this.stats = { links: 0, ambient: 0, holds: 0, picks: 0, floors: 0 };
+    // upcoming impacts announced by other sources (combat:tell / combat:flash): a ring of records
+    this._ledger = Array.from({ length: LEDGER }, () => ({ t: -1, ans: '', attack: '' }));
+    this._li = 0;
+    this._fake = { pos: null, chest: null, vel: null, dist: 0, ang: 0, absAng: 0, yawTo: 0 };
+    this._amb = { x: 0, z: 0 };
+    const ev = d.game?.events;
+    if (ev?.on) {
+      ev.on('combat:tell', (e) => this._onCue(e, false));
+      ev.on('combat:flash', (e) => this._onCue(e, true));
+      // the hero answered with his own art: his opening is kept (no link, the old pause)
+      const answered = () => {
+        if (this.action) this.action.answered = true;
+      };
+      ev.on('player:flurry', answered);
+      ev.on('player:flareCounter', answered);
+      ev.on('player:counter', answered);
+    }
     this.reset();
+  }
+
+  /** A cue from anywhere (bullets, hazards, the world, the running move): kept as an upcoming impact. */
+  _onCue(e, flash) {
+    if (!e || (e.source !== 'dragon' && e.source !== 'world')) return;
+    const now = this.d.game?.time ?? 0;
+    const lead = TUNING.flashLead;
+    const L = this._ledger;
+    if (flash) {
+      // the flash is authoritative: re-time the matching record (or add one)
+      let best = null;
+      for (const r of L) if (r.attack === e.attack && r.t > now - 0.2 && Math.abs(r.t - now - lead) < 0.6 && (!best || Math.abs(r.t - now - lead) < Math.abs(best.t - now - lead))) best = r;
+      if (best) {
+        best.t = now + lead;
+        best.ans = answerOf(e.tell);
+        return;
+      }
+    } else if (!Number.isFinite(e.impactIn)) return;
+    const r = L[this._li];
+    this._li = (this._li + 1) % LEDGER;
+    r.t = now + (flash ? lead : e.impactIn);
+    r.ans = answerOf(e.tell);
+    r.attack = e.attack ?? '';
+  }
+
+  /**
+   * Is an impact of another source due within `sep` s of time `t` (game time) that asks for a
+   * different answer than `ans` (any answer when `ans` is null)? Hazard circles are read directly
+   * (also those not announced yet), the rest from the cue ledger. `skip` = the running move's name.
+   */
+  _clash(t, ans, sep, skip) {
+    const now = this.d.game?.time ?? 0;
+    let hit = null;
+    this._clashT = -1e9;
+    for (const r of this._ledger) {
+      if (r.t < now - 0.1 || r.attack === skip) continue;
+      if (Math.abs(r.t - t) < sep && (ans === null || r.ans !== ans)) {
+        hit = r.attack || 'cue';
+        this._clashT = Math.max(this._clashT, r.t);
+      }
+    }
+    if (ans !== 'dodge') {
+      const H = this.d.hazards?.list;
+      if (H) {
+        const p = this.d.game?.player?.position;
+        for (const h of H) {
+          if (!h.alive || h.shape !== 0 || h.fired) continue;
+          // (a blast he cannot reach in a roll is no clash)
+          if (p && Math.hypot(p.x - h.x, p.z - h.z) > h.r + GUARD.roll + 1.5) continue;
+          const ht = now + (h.impact - h.t);
+          if (Math.abs(ht - t) < sep) {
+            hit = h.attack || 'hazard';
+            this._clashT = Math.max(this._clashT, ht);
+          }
+        }
+      }
+    }
+    return hit;
   }
 
   reset() {
@@ -531,6 +699,21 @@ export class Brain {
     this.tauntDone = false;
     this.wakeFallback = -1;
     this.walkSpeed = 0;
+    // the director
+    this.clock = 0; // s of fight (the brain's own clock: category floors)
+    this.chain = 0; // links started in a row
+    this.lastCat = '';
+    this.catRun = 0;
+    this.catSeen = {}; // category -> clock of its last pick
+    this.airShare = 0; // ~20 s running share of time airborne
+    this.ambientT = 1.5; // s to the next ambient cinders (near the hero)
+    this.ambientFarT = 1.5; // (far from him)
+    this.strafeSide = 1;
+    this.strafeSpeed = 0;
+    this.seek = { on: false, cat: '', dist: 0, absAng: 0, t: 0, max: 0, next: 0 };
+    this.forceCat = '';
+    this._clashT = -1e9;
+    for (const r of this._ledger) r.t = -1;
   }
 
   // ---------------------------------------------------------------- action runner
@@ -563,19 +746,102 @@ export class Brain {
       console.error('[dragon] action end failed', err);
     }
     if (interrupted && a.name === 'face') this.queued = null;
-    if (ATTACK_NAMES.has(a.name)) {
+    const isAttack = ATTACK_NAMES.has(a.name);
+    if (isAttack) {
       this.cooldowns[a.name] = a.def.cooldown ?? 0;
       this.history.unshift(a.name);
       if (this.history.length > 3) this.history.length = 3;
     }
     if (!interrupted) {
-      const gap = perPhase(TUNING.idleGap, this.d.phase);
-      this.idleTimer = rand(gap[0], gap[1]);
+      const ph = this.d.phase;
+      let gap = TUNING.idleGap;
+      if (OPENINGS.has(a.name) || a.answered) {
+        // the hero's opening stays what it was (a recoil, a break, his flurry / counter)
+        gap = PR.openingGap ?? gap;
+        this.chain = 0;
+      } else if (isAttack) {
+        const link = this.queued ? null : this._link(a);
+        if (link) {
+          this.queued = link;
+          this.chain++;
+          this.stats.links++;
+          this._picked(link.name);
+          this.idleTimer = 0;
+          return;
+        }
+        if (this.chain > 0 && this.chain >= perPhase(PR.chainDepth ?? 2, ph)) gap = PR.chainRest ?? gap;
+        this.chain = 0;
+      }
+      const g = perPhase(gap, ph);
+      this.idleTimer = rand(g[0], g[1]);
+      this.strafeSide = Math.random() < 0.5 ? -1 : 1;
     }
+  }
+
+  /**
+   * Combo links (TUNING.attacks[name].links, data any attack may carry): the first link whose `when`
+   * holds for where the hero is now, whose roll for this phase passes and whose target is usable
+   * right now (exists, its phase reached, off cooldown, weight > 0: `band: false` on a link skips the
+   * target's distance / angle band) starts with no pause. Only for a move that ended on its own (not
+   * parried, staggered, broken or plunged: those end interrupted) and below the chain cap.
+   */
+  _link(a) {
+    const d = this.d, g = d.game;
+    const links = TUNING.attacks[a.name]?.links ?? a.def.links;
+    if (!Array.isArray(links) || !links.length) return null;
+    if (!this.aiEnabled || g?.state !== 'boss' || g.player?.alive === false) return null;
+    if (d.state !== 'combat' || d.broken || this.pendingBreak || this.pendingPhase > d.phase) return null;
+    if (this.chain >= perPhase(PR.chainDepth ?? 2, d.phase)) return null;
+    const s = d.sense;
+    const sky = this._emitterLive(), shots = this._bulletsLive();
+    for (const L of links) {
+      const def = L && ATTACKS[L.to];
+      if (!def || !linkWhen(L.when, s)) continue;
+      const ch = perPhase(L.chance ?? 1, d.phase);
+      if (!(Number.isFinite(ch) && ch > 0 && Math.random() < ch)) continue;
+      if ((this.cooldowns[L.to] ?? 0) > 0) continue;
+      if ((sky && guardTell(L.to)) || (shots && redTell(L.to))) continue; // (the director's rule: see _choose)
+      let w = 0;
+      try {
+        w = attackWeight(def, L.to, d, L.band === false ? this._inBand(L.to, s) : s);
+      } catch (err) {
+        console.error('[dragon] link weight failed', L.to, err);
+      }
+      if (w > 0) return def;
+    }
+    return null;
+  }
+
+  /** The sensed hero moved inside an attack's tuned band (range / maxAng / minAng): a link's `band: false`. */
+  _inBand(name, s) {
+    const spec = TUNING.attacks[name] ?? {}, f = this._fake;
+    f.pos = s.pos;
+    f.chest = s.chest;
+    f.vel = s.vel;
+    f.yawTo = s.yawTo;
+    f.dist = s.dist;
+    f.ang = s.ang;
+    f.absAng = s.absAng;
+    const r = spec.range;
+    if (Array.isArray(r)) f.dist = clamp(s.dist, r[0] * S + 0.01, r[1] * S - 0.01);
+    if (Number.isFinite(spec.minDist)) f.dist = Math.max(f.dist, spec.minDist + 0.01);
+    if (Number.isFinite(spec.maxDist)) f.dist = Math.min(f.dist, spec.maxDist - 0.01);
+    let lo = 0, hi = Math.PI;
+    if (Number.isFinite(spec.minAng)) lo = spec.minAng + 0.01;
+    if (Number.isFinite(spec.maxAng)) hi = spec.maxAng - 0.01;
+    f.absAng = clamp(s.absAng, lo, Math.max(lo, hi));
+    f.ang = (s.ang < 0 ? -1 : 1) * f.absAng;
+    return f;
   }
 
   _tick(dt) {
     const a = this.action, d = this.d;
+    if (this._hold(a, dt)) {
+      // FAIRNESS: the blow about to be cued waits (its windup held) for a blast / bullet that asks
+      // for a different answer: the pose keeps updating (and tracking), the action's clock does not
+      a.def.update?.(d, a, dt);
+      return;
+    }
     a.t += dt;
     a.T += dt;
     if (a.finish) {
@@ -600,6 +866,29 @@ export class Brain {
     this._warnZone(a, dt);
     this._charge(a, dt);
     a.def.update?.(d, a, dt);
+  }
+
+  /**
+   * FAIRNESS guard: a melee blow (HOLDABLE) whose flash is due this frame waits while an impact of
+   * another source that asks for a different answer is due within guard.sep (+ margin) of its own.
+   * At most guard.maxHold s per blow; only in a windup (the flash and the impact move together).
+   */
+  _hold(a, dt) {
+    if (!a.phase.startsWith('windup') || !HOLDABLE(a.name)) return false;
+    const b = a.cur;
+    if (!b || !b.told || b.flashed) return false;
+    const lead = TUNING.flashLead;
+    const toFlash = b.at + b.impactIn - lead - a.T;
+    if (toFlash > dt + 1e-6) return false;
+    if ((b.held ?? 0) >= GUARD.maxHold) return false;
+    const now = this.d.game?.time ?? 0;
+    const sep = GUARD.sep + GUARD.margin, at = now + lead + Math.max(0, toFlash);
+    if (!this._clash(at, answerOf(b.tell), sep, a.name)) return false;
+    // (only a wait that clears it: one that would end inside the other blow's window is worse)
+    if (this._clashT + sep - at > GUARD.maxHold - (b.held ?? 0)) return false;
+    if (!b.held) this.stats.holds++;
+    b.held = (b.held ?? 0) + dt;
+    return true;
   }
 
   /**
@@ -761,6 +1050,8 @@ export class Brain {
       pose.spread[0] = pose.spread[1] = REST.spread;
     }
     for (const k in this.cooldowns) this.cooldowns[k] = Math.max(0, this.cooldowns[k] - dt);
+    this.clock += dt;
+    this.airShare += ((d.state === 'airborne' ? 1 : 0) - this.airShare) * Math.min(1, dt / 20);
 
     // a full posture meter breaks as soon as allowed (e.g. right after landing a leap)
     if (this.pendingBreak && !d.broken && this.canStagger()) this.startAction(SEQ.postureBreak);
@@ -794,6 +1085,7 @@ export class Brain {
           this.startAction(q);
         }
         if (!this.action && d.state === 'combat') this._combat(dt);
+        this._ambient(dt);
     }
     // a deflected (parried, not last) string hit: the struck part is knocked back (visual only)
     d.applyDeflectKnock?.(dt);
@@ -855,20 +1147,42 @@ export class Brain {
     }
 
     this.idleTimer -= dt;
-    // approach when far, turn in place otherwise
-    const far = s.dist > 8.5 * S;
-    const ws = perPhase(TUNING.walkSpeed, d.phase);
-    const want = far && s.absAng < 1.2 ? ws * (s.dist > 14 * S ? 1 : 0.75) : 0;
+    // the director repositions for a category that has been absent too long (a bound back to open
+    // the range for a wing, a turn that brings the tail round, a few strides in)
+    if (this.seek.on) {
+      this._seeking(dt, s);
+      if (this.seek.on) {
+        this._idleLife(dt);
+        return;
+      }
+    }
+    // a predator between its moves: it walks at where the hero is going (cuts him off) when he is
+    // farther than `approach`, turns fast (turnSpeed x pressure.turn: rolling behind it is a moment,
+    // not a place to stay), and through a longer pause circles him, sidestepping as it turns
+    const ph = d.phase;
+    const lead = PR.lead ?? 0.6;
+    const tx = s.pos.x + s.vel.x * lead, tz = s.pos.z + s.vel.z * lead;
+    const cut = Math.atan2(tx - d.position.x, tz - d.position.z);
+    const yawGoal = Number.isFinite(cut) && s.dist > 6 ? cut : s.yawTo;
+    const far = s.dist > perPhase(PR.approach ?? 16, ph);
+    const ws = perPhase(TUNING.walkSpeed, ph);
+    const offNose = Math.abs(angleDiff(d.yaw, yawGoal));
+    const want = far && offNose < 1.2 ? ws * (s.dist > 14 * S ? 1 : 0.8) : 0;
     this.walkSpeed = damp(this.walkSpeed, want, 3, dt);
-    d.turnToward(s.yawTo, d.turnRate, dt);
+    d.turnToward(yawGoal, d.turnRate * perPhase(PR.turn ?? 1, ph), dt);
     if (this.walkSpeed > 0.05) d.moveForward(this.walkSpeed, dt);
     else pose.speed = Math.max(pose.speed, 1);
+    // the sidestep: only through a pause long enough to read as one (a chain's breather), near him
+    const strafe = !far && this.idleTimer > 0.3 && s.dist < 14 && offNose < 0.6 ? perPhase(PR.strafe ?? 0, ph) : 0;
+    this.strafeSpeed = damp(this.strafeSpeed, strafe, 4, dt);
+    if (this.strafeSpeed > 0.05 && this.walkSpeed < 0.3) this._sidestep(this.strafeSide * this.strafeSpeed, dt);
     pose.tailWave = 0.08 + this.walkSpeed * 0.02;
     pose.lower = d.phase >= 2 ? 0.03 : 0.15; // combat idle a little lower than standing tall; phases 2-3 stand tall
     if (this.walkSpeed > 0.5) pose.spread[0] = pose.spread[1] = Math.min(pose.spread[0], REST.walkSpread); // tucked while walking
     this._idleLife(dt);
 
     if (this.idleTimer <= 0) {
+      if (this._startSeek(s)) return;
       const def = this._choose(s);
       if (def) {
         this.walkSpeed = 0;
@@ -892,14 +1206,139 @@ export class Brain {
     }
   }
 
+  /** Is any attack of category `cat` usable now (off cooldown, weight > 0)? */
+  _catUsable(cat, s) {
+    const d = this.d;
+    for (const name in ATTACKS) {
+      if (categoryOf(name) !== cat || (this.cooldowns[name] ?? 0) > 0) continue;
+      let w = 0;
+      try {
+        w = attackWeight(ATTACKS[name], name, d, s);
+      } catch {
+        w = 0;
+      }
+      if (w > 0) return true;
+    }
+    return false;
+  }
+
   /**
-   * Weighted pick over every ATTACKS entry (attackWeight: phase, weight, air; cooldowns; the last two
-   * picks are damped). Melee stays allowed while hazards burn: the fight layers.
+   * A category absent past its floor that nothing can use from here: find the smallest change of
+   * place (distance from the hero, his bearing off the nose) from which one of its attacks could be
+   * picked, and go there (pressure.seek: at most `max` s, then the pick goes on as it is).
+   */
+  _startSeek(s) {
+    const K = PR.seek, d = this.d, ph = d.phase, sk = this.seek;
+    if (!K || this.clock < sk.next) return false;
+    const floor = perPhase(PR.floorAfter ?? 1e9, ph);
+    const ws = perPhase(TUNING.walkSpeed, ph) * (K.back ?? 1), tr = d.turnRate * perPhase(PR.turn ?? 1, ph);
+    const f = this._fake;
+    let best = null, cost = perPhase(K.max, ph);
+    for (const cat of CATEGORIES) {
+      if (this.clock - (this.catSeen[cat] ?? 0) <= floor || this._catUsable(cat, s)) continue;
+      for (const name in ATTACKS) {
+        if (categoryOf(name) !== cat || (this.cooldowns[name] ?? 0) > 0) continue;
+        for (const dd of K.dist) {
+          for (const aa of K.ang) {
+            const nd = s.dist + dd, na = aa < 0 ? s.absAng : aa;
+            if (nd < 3) continue;
+            const c = Math.abs(dd) / ws + Math.abs(na - s.absAng) / tr;
+            if (c >= cost) continue;
+            f.pos = s.pos;
+            f.chest = s.chest;
+            f.vel = s.vel;
+            f.yawTo = s.yawTo;
+            f.dist = nd;
+            f.absAng = na;
+            f.ang = (s.ang < 0 ? -1 : 1) * na;
+            let w = 0;
+            try {
+              w = attackWeight(ATTACKS[name], name, d, f);
+            } catch {
+              w = 0;
+            }
+            if (w > 0) {
+              cost = c;
+              best = cat;
+              sk.dist = nd;
+              sk.absAng = na;
+            }
+          }
+        }
+      }
+    }
+    sk.next = this.clock + (K.every ?? 4);
+    if (!best) return false;
+    sk.on = true;
+    sk.cat = best;
+    sk.t = 0;
+    sk.max = cost + 0.4;
+    this.stats.seeks = (this.stats.seeks ?? 0) + 1;
+    return true;
+  }
+
+  /** Moving for the seek: back off / close in along the facing, turn to put the hero at the bearing. */
+  _seeking(dt, s) {
+    const d = this.d, sk = this.seek, ph = d.phase, pose = d.pose;
+    sk.t += dt;
+    if (sk.t > sk.max || this._catUsable(sk.cat, s)) {
+      // in place: the next pick is of that category (the floor brings it back)
+      if (sk.t <= sk.max) this.forceCat = sk.cat;
+      sk.on = false;
+      this.idleTimer = Math.min(this.idleTimer, 0);
+      this.walkSpeed = 0;
+      return;
+    }
+    const side = s.ang < 0 ? -1 : 1;
+    d.turnToward(s.yawTo - side * sk.absAng, d.turnRate * perPhase(PR.turn ?? 1, ph), dt);
+    const ws = perPhase(TUNING.walkSpeed, ph);
+    const dd = sk.dist - s.dist;
+    // (it backs off at a bound, nose on the hero; it closes in at a walk)
+    const v = Math.abs(dd) < 0.4 ? 0 : dd > 0 ? -ws * (PR.seek.back ?? 1) : ws;
+    this.walkSpeed = damp(this.walkSpeed, v, 5, dt);
+    if (Math.abs(this.walkSpeed) > 0.05) d.moveForward(this.walkSpeed, dt);
+    else pose.speed = Math.max(pose.speed, 1.2);
+    if (this.walkSpeed < -0.5) {
+      pose.lower = 0.2; // crouched, gathering as it springs back
+      pose.spread[0] = pose.spread[1] = 0.7;
+    }
+  }
+
+  /** Model-left (+1) / right (-1) step of the root at `v` m/s (collides like a walk). */
+  _sidestep(v, dt) {
+    const d = this.d, c = Math.cos(d.yaw), s = Math.sin(d.yaw);
+    const x0 = d.position.x, z0 = d.position.z;
+    d.position.x += c * v * dt;
+    d.position.z -= s * v * dt;
+    d._collide?.();
+    if (dt > 0) d.pose.vel.set((d.position.x - x0) / dt, 0, (d.position.z - z0) / dt);
+    d.pose.speed = Math.max(d.pose.speed, Math.abs(v));
+  }
+
+  /**
+   * THE DIRECTOR: a weighted pick over every ATTACKS entry (attackWeight: phase, weight, air;
+   * cooldowns), steered by TUNING.pressure: the last two picks damped (`repeat`), no more than
+   * `maxRun` of one category in a row, the last category damped (`sameCat`), a category absent for
+   * `floorAfter` s boosted (`floorBoost`), gap closers when the hero is far, tail moves when he is
+   * behind, flights held back past `maxAir` of the recent time airborne, spells while `maxCast`
+   * hazards burn. Melee stays allowed while hazards burn: the fight layers.
    */
   _choose(s) {
-    const d = this.d, c = this._cands;
+    const d = this.d, c = this._cands, ph = d.phase;
     c.length = 0;
     let total = 0;
+    const rep = PR.repeat ?? [0.3, 0.65];
+    const maxRun = perPhase(PR.maxRun ?? 99, ph), floor = perPhase(PR.floorAfter ?? 1e9, ph);
+    const far = s.dist > (PR.farDist ?? 1e9), behind = s.absAng > (PR.behind ?? 1.75);
+    const airFull = this.airShare >= perPhase(PR.maxAir ?? 1, ph);
+    const castFull = (d.hazards?.alive ?? 0) >= perPhase(PR.maxCast ?? 99, ph);
+    // spells and bullet patterns do not layer on each other (a barrage of meteors over a cone of
+    // embers asks for a roll and a parry in the same breath): one waits while the other is live
+    const layered = this._castLive();
+    // blows that would land among cues of the other answer at times nobody knows yet wait: moves
+    // that ask for a guard while meteors / a chase come down, moves that ask for a dodge while
+    // bullets (embers, wisps) fly
+    const sky = this._emitterLive(), shots = this._bulletsLive();
     for (const name in ATTACKS) {
       const def = ATTACKS[name];
       if (!def || (this.cooldowns[name] ?? 0) > 0) continue;
@@ -911,17 +1350,247 @@ export class Brain {
         w = 0;
       }
       if (!(w > 0)) continue;
-      if (this.history[0] === name) w *= 0.3;
-      else if (this.history[1] === name) w *= 0.65;
+      if (this.history[0] === name) w *= rep[0];
+      else if (this.history[1] === name) w *= rep[1];
+      const cat = categoryOf(name);
+      const bias = PR.bias?.[cat];
+      if (bias !== undefined) w *= perPhase(bias, ph);
+      if (cat === this.lastCat) w *= this.catRun >= maxRun ? (PR.overRun ?? 0.03) : (PR.sameCat ?? 1);
+      const absent = this.clock - (this.catSeen[cat] ?? 0);
+      const due = absent > floor;
+      // (the longer it has been away, the stronger it comes back: up to x3 the boost)
+      if (due) w *= (PR.floorBoost ?? 1) * Math.min(3, absent / floor);
+      if (far && (TUNING.attacks[name]?.closer || PR.closers?.includes(name))) w *= PR.closerBoost ?? 1;
+      if (behind && cat === 'tail') w *= PR.behindBoost ?? 1;
+      if (airFull && cat === 'flight') w *= 0.05;
+      if (castFull && cat === 'spell') w *= 0.05;
+      if (layered && (cat === 'spell' || name in BULLET_ATTACKS)) w *= PR.layer ?? 0.05;
+      if ((sky && guardTell(name)) || (shots && redTell(name))) w *= PR.mixed ?? 0;
+      if (this.forceCat && cat !== this.forceCat) w *= 0.02;
       c.push(def, w);
       total += w;
     }
     if (total <= 0) return null;
-    let r = Math.random() * total;
+    let r = Math.random() * total, pick = c[c.length - 2];
     for (let i = 0; i < c.length; i += 2) {
       r -= c[i + 1];
-      if (r <= 0) return c[i];
+      if (r <= 0) {
+        pick = c[i];
+        break;
+      }
     }
-    return c[c.length - 2];
+    this._picked(pick.name);
+    this.forceCat = '';
+    return pick;
+  }
+
+  _bulletsLive() {
+    const B = this.d.bullets;
+    return !!B && B.count(0) + B.count(1) + B.count(2) > 0;
+  }
+
+  /** A spell's emitter (a meteor barrage, a rain, a chase of pillars) still dropping blasts? */
+  _emitterLive() {
+    const H = this.d.hazards?.list;
+    if (H) for (const h of H) if (h.alive && h.shape >= 5) return true;
+    return false;
+  }
+
+  /** Is a spell's emitter (meteors, a chase, a rain) or a bullet still live on the field? */
+  _castLive() {
+    const d = this.d, H = d.hazards?.list;
+    if (H) for (const h of H) if (h.alive && h.shape >= 5) return true;
+    const B = d.bullets;
+    return !!B && B.count(0) + B.count(1) + B.count(2) > 0;
+  }
+
+  /** Book a pick for the director (category run, the floors). Links are booked too. */
+  _picked(name) {
+    const cat = categoryOf(name);
+    if (this.clock - (this.catSeen[cat] ?? 0) > perPhase(PR.floorAfter ?? 1e9, this.d.phase)) this.stats.floors++;
+    this.catRun = cat === this.lastCat ? this.catRun + 1 : 1;
+    this.lastCat = cat;
+    this.catSeen[cat] = this.clock;
+    this.stats.picks++;
+  }
+
+  // ---------------------------------------------------------------- ambient fire (from phase 2)
+  /**
+   * Cinders shaken from the wings / spat from the jaws, falling near the hero while it fights
+   * (TUNING.pressure.ambient): self-announcing small blasts through d.hazards (their ground heats,
+   * the red flash, a roll answers). Only while a ground move runs with time left: a cinder lands
+   * before that move ends (so nothing that starts after it can land on top), never within guard.sep
+   * of a known blow (its own beats, a blast, a bullet), and only where enough ground stays clear.
+   * When none may fall near him (a fire pattern runs, bullets fly, a pause), they fall FAR: beyond
+   * what he can reach before they land (ambient.far m), so they never cue nor hit: the field burns.
+   */
+  _ambient(dt) {
+    const d = this.d, g = d.game, A = PR.ambient;
+    if (!A || !(dt > 0)) return;
+    const ph = d.phase;
+    const every = perPhase(A.every, ph);
+    if (!(every > 0) || !this.aiEnabled || g?.state !== 'boss' || g.player?.alive === false) return;
+    this.ambientT -= dt;
+    this.ambientFarT -= dt;
+    if (this.ambientT > 0 && this.ambientFarT > 0) return;
+    const a = this.action;
+    // a move with enough of it left (not a transition or a reaction). A cinder is red: it may land
+    // among red blasts (the same answer), never where a guard is due. So not during a fire pattern
+    // (embers, wisps, the breath's stream: guard cues that come late), not during a string that
+    // scatters embers of its own, nothing while bullets fly; the running move's own blows are known
+    if ((a && !ATTACK_NAMES.has(a.name)) || (d.state !== 'combat' && d.state !== 'airborne') || d.broken) return;
+    if (this._ambientAlive() >= perPhase(A.alive, ph)) return;
+    const warn = perPhase(A.warn, ph);
+    let left = 0;
+    if (a) {
+      left = a.dur - a.t;
+      for (let i = a.i + 1; i < a.list.length; i++) left += a.list[i][1];
+    }
+    const near = !!a && left >= warn + GUARD.sep + 0.1 && !((a.name in BULLET_ATTACKS && guardTell(a.name)) || a.name === 'breath' || this._bursts(a.name) || this._bulletsLive());
+    if (!near) {
+      if (this.ambientFarT <= 0) this._ambientFar(warn, ph);
+      return;
+    }
+    if (this.ambientT > 0) return;
+    // retry soon if this frame does not suit; the next window otherwise
+    this.ambientT = 0.15;
+    const nr = perPhase(A.n, ph);
+    const n = Math.max(1, Math.round(rand(nr[0], nr[1])));
+    const now = g.time;
+    const p = g.player.position, s = d.sense;
+    const R = perPhase(A.radius, ph);
+    let spawned = 0;
+    for (let k = 0; k < n; k++) {
+      // each one a little later than the one before (a scatter, not a volley)
+      const delay = warn + k * 0.38;
+      if (delay > left - GUARD.sep - 0.05) break;
+      const t = now + delay;
+      if (this._clash(t, null, GUARD.sep + GUARD.margin, null) || this._beatClash(a, delay)) continue;
+      // a melee move's blows may still be held later (never earlier): a cinder lands before its next one
+      if (HOLDABLE(a.name) && delay > this._nextImpact(a) - GUARD.sep - GUARD.margin) break;
+      let ok = false;
+      for (let tries = 0; tries < 6 && !ok; tries++) {
+        if (Math.random() < perPhase(A.onHero, ph)) {
+          this._amb.x = p.x + s.vel.x * A.lead;
+          this._amb.z = p.z + s.vel.z * A.lead;
+        } else {
+          const ang = Math.random() * Math.PI * 2, rr = rand(A.spread[0], A.spread[1]);
+          this._amb.x = p.x + Math.cos(ang) * rr;
+          this._amb.z = p.z + Math.sin(ang) * rr;
+        }
+        // inside the clearing, not under the wyrm's own body
+        const cx = this._amb.x, cz = this._amb.z;
+        if (Math.hypot(cx, cz) > 25 || Math.hypot(cx - d.position.x, cz - d.position.z) < 4.5) continue;
+        ok = this._freeSpots(p.x, p.z, cx, cz, R) >= GUARD.safeMin;
+      }
+      if (!ok) continue;
+      // it leaves a wing's wrist or the jaws
+      if (this._spawnCinder(this._amb.x, this._amb.z, R, delay)) {
+        spawned++;
+        this.stats.ambient++;
+      }
+    }
+    if (spawned) this.ambientT = every * rand(0.6, 1.4);
+  }
+
+  /** Cinders that fall beyond the hero's reach (ambient.far [min, max] m from him): fire on the field, no cue, no hit. */
+  _ambientFar(warn, ph) {
+    const d = this.d, A = PR.ambient, p = d.game.player.position;
+    const F = A.far;
+    this.ambientFarT = 0.15;
+    if (!F) return;
+    const nr = perPhase(A.n, ph), R = perPhase(A.radius, ph);
+    const n = Math.max(1, Math.round(rand(nr[0], nr[1])));
+    let spawned = 0;
+    for (let k = 0; k < n; k++) {
+      for (let tries = 0; tries < 4; tries++) {
+        const ang = Math.random() * Math.PI * 2, rr = rand(F[0], F[1]) + R;
+        const cx = p.x + Math.cos(ang) * rr, cz = p.z + Math.sin(ang) * rr;
+        if (Math.hypot(cx, cz) > 25 || Math.hypot(cx - d.position.x, cz - d.position.z) < 4.5) continue;
+        if (this._spawnCinder(cx, cz, R, warn + k * 0.38)) spawned++;
+        break;
+      }
+    }
+    if (spawned) {
+      this.stats.ambientFar = (this.stats.ambientFar ?? 0) + spawned;
+      this.ambientFarT = perPhase(A.every, ph) * rand(0.8, 1.6);
+    }
+  }
+
+  /** One cinder (a self-announcing hazard circle) from a wing's wrist or the jaws onto (x, z). */
+  _spawnCinder(x, z, R, delay) {
+    const d = this.d, A = PR.ambient, pt = d.rig?.pt;
+    const src = !pt ? null : Math.random() < 0.6 ? pt.wings[Math.random() < 0.5 ? 0 : 1].wrist : pt.mouth;
+    return d.hazards?.circle({
+      kind: 'shell', attack: 'cinders', drawShell: true, announce: true,
+      x, z, r: R, delay, fall: Math.min(A.fall, delay),
+      from: src && Number.isFinite(src.x + src.y + src.z) ? src : { x: d.position.x, y: 8, z: d.position.z },
+      damage: A.damage, burn: A.burn, knockback: A.knockback, active: 0.12,
+    });
+  }
+
+  _bursts(name) {
+    const hits = TUNING.attacks[name]?.hits;
+    return Array.isArray(hits) && hits.some((h) => h?.burst);
+  }
+
+  _ambientAlive() {
+    let n = 0;
+    const H = this.d.hazards?.list;
+    const p = this.d.game?.player?.position, far = PR.ambient?.far?.[0] ?? 8;
+    if (H && p) for (const h of H) if (h.alive && h.attack === 'cinders' && !h.fired && Math.hypot(h.x - p.x, h.z - p.z) < far) n++;
+    return n;
+  }
+
+  /** s from now to the next blow of the running move that has not landed (Infinity: none left). */
+  _nextImpact(a) {
+    const B = a.beats;
+    for (let i = 0; i < B.length; i++) {
+      const at = B[i].at + B[i].impactIn - a.T;
+      if (at > -0.05) return at;
+    }
+    return Infinity;
+  }
+
+  /** Would a cinder landing `delay` s from now fall within guard.sep of a blow of the running move (or its active)? */
+  _beatClash(a, delay) {
+    const B = a.beats;
+    const sep = GUARD.sep + GUARD.margin;
+    for (let i = 0; i < B.length; i++) {
+      const b = B[i];
+      const at = b.at + b.impactIn - a.T; // s from now (a held windup holds a.T too)
+      if (at < -0.4) continue;
+      if (delay > at - sep && delay < at + Math.max(sep, 0.3)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Free spots of 17 (the hero's own and 16 a roll away round him) that no blast due within
+   * guard.horizon s covers, with one more blast of radius r at (cx, cz) counted.
+   */
+  _freeSpots(px, pz, cx, cz, r) {
+    const H = this.d.hazards?.list, pr = this.d.game?.player?.radius ?? 0.45, R = GUARD.roll;
+    let free = 0;
+    for (let k = -1; k < 16; k++) {
+      const x = k < 0 ? px : px + Math.cos((k / 16) * Math.PI * 2) * R;
+      const z = k < 0 ? pz : pz + Math.sin((k / 16) * Math.PI * 2) * R;
+      if (Math.hypot(x, z) > 27) continue; // out of the clearing is no refuge
+      if (Math.hypot(x - cx, z - cz) <= r + pr) continue;
+      let hit = false;
+      if (H) {
+        for (const h of H) {
+          if (!h.alive || h.shape !== 0) continue;
+          const left = h.impact - h.t;
+          if (left > GUARD.horizon || h.t - h.impact > h.active) continue;
+          if (Math.hypot(x - h.x, z - h.z) <= h.r + pr) {
+            hit = true;
+            break;
+          }
+        }
+      }
+      if (!hit) free++;
+    }
+    return free;
   }
 }

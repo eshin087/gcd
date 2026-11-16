@@ -52,18 +52,105 @@ export const TUNING = {
   // the 30 m clearing and pin the hero against its edge. 24 keeps them inside.
   bound: 24,
   // per phase [P1, P2, P3] below
-  turnSpeed: [70 * DEG, 110 * DEG, 125 * DEG], // rad/s
-  walkSpeed: [3.0, 4.1, 4.6],
+  turnSpeed: [70 * DEG, 110 * DEG, 125 * DEG], // rad/s (inside attacks; between them x pressure.turn)
+  walkSpeed: [3.6, 4.6, 5.3], // (v0.6: 3.0, 4.1, 4.6) it closes on the hero between moves
   // later phases speed the fight up: windups + recoveries x this (the swings themselves keep their speed)
   phaseTimeScale: [1, 0.85, 0.78],
   phase2TimeScale: 0.85, // = phaseTimeScale[1] (kept for older readers)
   // pause between attacks (walking / turning / snorting) — the main "breathing room" knob; phase 3
-  // keeps the pressure on
+  // keeps the pressure on (v0.6: 1.0-1.7, 0.7-1.2, 0.35-0.7 s: now pressure.openingGap)
   idleGap: [
-    [1.0, 1.7],
-    [0.7, 1.2],
-    [0.35, 0.7],
+    [0.6, 1.0],
+    [0.3, 0.6],
+    [0.1, 0.35],
   ],
+  // THE DIRECTOR (ai.js): how the pick between moves is steered, how moves chain into each other,
+  // the small fire it adds on its own and the fairness guards. Per phase [P1, P2, P3].
+  pressure: {
+    // the hero's opening is kept as it was: after a parry recoil, a stagger, a posture break, a
+    // plunge reaction, or a move he answered with his flurry / counter, the pause is the old one
+    openingGap: [
+      [1.0, 1.7],
+      [0.7, 1.2],
+      [0.35, 0.7],
+    ],
+    // COMBO LINKS (an attack's tuning `links: [{ to, when, chance }]`, read when it ends on its own):
+    // at most this many links in a row, then a breather of chainRest s
+    chainDepth: [2, 3, 4],
+    chainRest: [
+      [1.1, 1.5],
+      [0.8, 1.1],
+      [0.55, 0.8],
+    ],
+    // `when` of a link: the hero's bearing off the nose (rad) and distance from the root (m)
+    front: 0.9, behind: 1.75, near: 9, far: 18,
+    // the weighted pick: the last pick x repeat[0], the one before x repeat[1]
+    repeat: [0.3, 0.65],
+    // categories (melee / wing / tail / fire / flight / spell / terrain): derived from where an attack
+    // is tuned and what its hits are; an attack's own tuning `category` wins, then this map
+    category: { tail: 'tail', stomp: 'melee', breath: 'fire', fireball: 'fire', leap: 'flight', roar: 'spell' },
+    // a new phase staggers the first use of its attacks (TUNING.unlockStagger), except these (the
+    // phase-3 roar queues the nova itself)
+    unlockSkip: ['nova', 'roar'],
+    maxRun: [2, 2, 2], // no more than this many picks of one category in a row ...
+    overRun: 0.03, // ... (a category past it: its weight x this; 0 would stall a lone candidate)
+    sameCat: 0.7, // the last pick's category x this
+    floorAfter: [20, 15, 12], // s: a category absent this long comes back ...
+    floorBoost: 2.5, // ... its weight x this (x absent / floorAfter, up to x3 more)
+    // a bias per category [P1, P2, P3]: the body moves (many cues, close) over the long casts
+    bias: { melee: [1.25, 1.25, 1.3], wing: [1.25, 1.25, 1.3], tail: [1.25, 1.25, 1.3] },
+    // gap closers when the hero is far (an attack's tuning `closer: true` adds one)
+    closers: ['charge', 'pounce', 'leap', 'skyStrafe', 'diveBomb'],
+    farDist: 15, closerBoost: 2.2,
+    behindBoost: 2.5, // tail moves when the hero stands behind it (beyond `behind`)
+    // the ceiling: share of the last ~20 s spent airborne, and live hazards at once (spells wait)
+    maxAir: [0.18, 0.24, 0.3],
+    maxCast: [3, 5, 7],
+    layer: 0, // a spell / bullet pattern while another's emitter or bullets are live: weight x this
+    // a move asking for a guard while meteors / a chase fall, or for a dodge while bullets fly
+    // (cues of the other answer at times nobody knows yet): weight x this
+    mixed: 0,
+    // MOVEMENT between moves: the idle turn is the attacks' turnSpeed x this; it walks at the hero's
+    // spot `lead` s ahead when he is farther than `approach` m (cuts him off), circles him
+    // (`strafe` m/s) through a longer pause
+    turn: [1.6, 1.7, 1.8],
+    // the director repositions for a category absent past floorAfter that nothing can use from where
+    // it stands: tries these changes of the hero's distance (m) and bearing (rad; -1 = as now), takes
+    // the cheapest under `max` s (backing off at walkSpeed x back), at most once every `every` s
+    seek: { dist: [0, -3, 3, 6, 9], ang: [-1, 0, 1.3, 2.2], max: [1.3, 1.1, 0.9], back: 1.5, every: 6 },
+    approach: [12, 11, 10],
+    lead: 0.6,
+    strafe: [2.2, 2.8, 3.2],
+    // AMBIENT FIRE (from phase 2): cinders shaken from its wings and spat from its jaws, falling near
+    // the hero while it fights: self-announcing small blasts (their ground heats, red flash, roll).
+    // Every `every` s on average (n of them), `warn` s of heated ground, landing `spread` m round the
+    // hero (onHero: the share aimed where he will be); at most `alive` of them at once
+    ambient: {
+      every: [0, 2.0, 1.1],
+      n: [[0, 0], [1, 2], [2, 3]],
+      warn: [1.2, 1.2, 1.05],
+      fall: 0.75, // s of the visible fall at the end of the warning
+      spread: [1.5, 4.8],
+      onHero: [0, 0.25, 0.4],
+      lead: 0.5, // s of the hero's velocity
+      radius: [1.6, 1.6, 1.9],
+      damage: 14, burn: 1.0, knockback: 2,
+      alive: [0, 3, 5],
+      // when none may fall near him (a fire pattern runs, bullets fly, a pause): they fall this far
+      // from him (m, + their radius: beyond a run and a roll before they land): no cue, no hit
+      far: [8, 13],
+    },
+    // FAIRNESS: blows that need different answers (dodge vs parry / guard) never land within `sep` s
+    // of each other: a melee blow about to be cued waits (<= maxHold s, its windup held) for a blast or
+    // a bullet already on its way; an ambient cinder never lands within sep of a known blow nor after
+    // the running move ends. A cinder is only dropped where at least `safeMin` of 17 spots (the hero's
+    // and 16 a roll away) stay clear of every blast due within `horizon` s
+    guard: { sep: 0.3, margin: 0.05, maxHold: 0.5, safeMin: 6, horizon: 1.4, roll: 4.2 },
+    // the pressure meter's bounds (integ.mjs scenario PRESSURE): each phase's cues per minute at least
+    // x ramp the last's; the longest gap between cues (s). Measured on three seeds before the director
+    // (v0.6 numbers): P1 6.6 - 7.2, P2 6.7 - 7.7, P3 5.6 - 10.3 s; with it: 5.7 - 7.6, 3.6 - 6.5, 3.5 - 4.5
+    meter: { ramp: 1.12, maxGap: [8, 7, 5] },
+  },
   // the wyrm's heat per phase: crack glow (glowTarget) and body embers per second (phase 3 burns
   // white-hot)
   phaseGlow: [0, 0.5, 0.8],
@@ -88,7 +175,7 @@ export const TUNING = {
   },
   // a new phase's abilities unlock one by one: opening cooldown = first + step x i + jitter (s), in a
   // random order (Dragon.enterPhase). The phase-3 opener (nova) is queued by the roar and not delayed.
-  unlockStagger: [2, 2.5, 2],
+  unlockStagger: [1.5, 1.6, 1.5], // (v0.6: 2, 2.5, 2) the new moves arrive faster
   // the tell's timing cue: combat:flash + in-world flash this many seconds before impact (COMBAT.md)
   flashLead: 0.35,
   // strings (contract 1): a follow-up hit lands at least this long after the previous one (the
@@ -98,7 +185,7 @@ export const TUNING = {
   forceTurn: { rate: 7, maxTime: 0.5 },
   partMult: { head: 1.5, neck: 1.15, body: 1.0, tail: 0.8, wing: 0.9, leg: 1.0 },
   // seconds before each attack is first allowed once the fight starts (the intro roar)
-  openingCooldowns: { breath: 7, fireball: 5, charge: 4, leap: 10 },
+  openingCooldowns: { breath: 5, fireball: 4, charge: 3, leap: 8 }, // (v0.6: 7, 5, 4, 10)
   flashDecay: 9,
   // resting body language while awake (ai.js baseline; attacks return to it): wings mantled HALF
   // (0 FOLD, 0.5 HALF, 1 SPREAD: the painting's tall sails, the biggest shapes at the game camera),

@@ -506,10 +506,12 @@ export class Dragon {
     this.emitPosture(true);
     // the abilities this phase unlocks come in one by one, not all at once after the roar: each gets a
     // staggered opening cooldown (TUNING.unlockStagger [first, step, jitter] s) in a random order. The
-    // phase-3 opener (the nova) is queued by the roar itself and is not delayed.
+    // phase-3 opener (the nova) is queued by the roar itself and is not delayed; neither is anything in
+    // TUNING.pressure.unlockSkip (or an attack tuned `unlock: false`)
     const U = TUNING.unlockStagger;
     if (U && n > 1 && this.brain?.cooldowns) {
-      const fresh = Object.keys(TUNING.attacks).filter((k) => TUNING.attacks[k]?.phase === n && k !== 'nova' && k !== 'roar');
+      const skip = TUNING.pressure?.unlockSkip ?? ['nova', 'roar'];
+      const fresh = Object.keys(TUNING.attacks).filter((k) => TUNING.attacks[k]?.phase === n && TUNING.attacks[k]?.unlock !== false && !skip.includes(k));
       for (let i = fresh.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         const t = fresh[i];
