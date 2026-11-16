@@ -102,7 +102,7 @@ export const FIRE_ATTACKS = {
     craterBurn: [0, 0, 2.0], tickDamage: 4, tickBurn: 0.5,
     safeR: 12, safeCover: 0.45,
     finale: { delay: 1.2, radius: 7, warn: 2.0, damage: 34, burn: 2, knockback: 7, fall: 1.1, size: 2.4 },
-    // the three looks of the move (?apoc=a|b|c, skyFx.APOC_LOOK; the owner picks): when the sky deck
+    // the three looks of the move (?apoc=a|b|c, skyFx.APOC_LOOK; the owner kept a): when the sky deck
     // starts (s after the cast starts) and how long it takes to spread over the frame; `menace` = the
     // share of the windup it holds low and still, glaring, before it rears; `drop` = the share of the
     // recovery its forefeet take to come down (then the slam). c: the flight's own timings and height

@@ -1201,8 +1201,8 @@ const skyFurnace = makeFlightCombo('skyFurnace');
 const skyCataclysm = makeFlightCombo('skyCataclysm');
 
 // ------------------------------------------------------------------ armageddon (key meteorRain)
-// ADR-053; the performance and the sky reworked in the second pass, in three looks the owner picks
-// from (?apoc=a|b|c, skyFx.APOC_LOOK; MR.looks):
+// ADR-053; the performance and the sky reworked in the second pass, in three looks the owner picked
+// from (?apoc=a|b|c, skyFx.APOC_LOOK; MR.looks; the owner kept a, 2026-11-16):
 //   a  the salvo: a beat of menace (low, still, glaring), then the weight goes back onto the haunches,
 //      the wings unfurl, the neck arcs back and up, the chest and throat fill with fire; it tears a
 //      dozen columns of fire up into the sky, each one kicking through the whole body; the burning

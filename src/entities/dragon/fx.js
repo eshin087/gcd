@@ -68,8 +68,9 @@ const hash01 = (a, b) => {
   return s - Math.floor(s);
 };
 
-// ---------------------------------------------------------------- the looks the owner picks from
-// (?ring=a|b|c, ?breath=a|b|c; `a` is the default; read once, headless runs have no location)
+// ---------------------------------------------------------------- the looks the owner picked from
+// (?ring=a|b|c, ?breath=a|b|c; `a` is the default and the look the owner kept for both, 2026-11-16,
+// ADR-119; b and c stay behind the switches; read once, headless runs have no location)
 //   ring  a: a rolling wall of fire with a dust wall behind it      b: a pressure front written in
 //            crisp strokes on the ground, a dust skirt, echo ripples  c: the ground heaves: a ring of
 //            thrown earth, clods and stones running out, no fire but where it started
