@@ -143,6 +143,10 @@ export const LINKS = {
   voidHurl: AFTER_SPELL,
   glassRain: AFTER_SPELL,
   crownFall: AFTER_SPELL,
+  // (the floor's plates, terrain.js: a gap closer behind the rupture's line, a string inside the halo;
+  // the terrain agent's suggestions, modest chances: the tuning pass sets them)
+  plateRupture: [mid('wingedPursuit', f2(0.35)), mid('walkingMountain', f3(0.35)), mid('voidWaltz', f4(0.35)), far('severance', [0, 0.3, 0.3, 0.35]), ...AFTER_SPELL],
+  plateHalo: AFTER_SPELL,
   parting: [far('voidBolt', f2(0.35)), far('voidBolt', f3(0.4)), far('tide', f4(0.45)), mid('wingedPursuit', f2(0.4)), mid('walkingMountain', f3(0.4)), mid('voidWaltz', f4(0.4)), mid('voidPush', [0, 0.3, 0.35, 0.4])],
   // (the waves are still running over the crater: the mixed-answer rule keeps his blade back until they are past)
   starlessNight: [near('redEclipse', f4(0.45)), far('voidWaltz', f4(0.4)), near('thunderVerse', f4(0.35))],

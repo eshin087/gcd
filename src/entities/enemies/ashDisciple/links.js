@@ -24,6 +24,8 @@ const PURSUE = [
   far('zigzag', [0, 0.35, 0.3]),
   far('windStep', [0.45, 0.5, 0.55]),
   far('ashCrescent', [0.35, 0.4, 0.4]),
+  // (a flagstone kicked at a hero who keeps his distance; terrain agent's suggestion)
+  far('flagKick', [0.2, 0.2, 0.2]),
   away('ghostDash', [0, 0, 0.6]),
   away('glideKick', [0.4, 0.45, 0.5]),
   away('piercingAsh', [0.3, 0.4, 0.45]),
@@ -51,6 +53,16 @@ const STRINGS = [
   guarding('mirrorFeint', [0.35, 0.4, 0.4]),
 ];
 const single = (...close) => [...PURSUE, ...ROUND, ...STRINGS, ...close];
+/** After a thrown piece of the yard: he closes in behind it while it flies (as after his sword qi). */
+const THROWN = [
+  far('windStep', [0.4, 0.45, 0.45]),
+  far('ghostDash', [0, 0, 0.5]),
+  mid('glideKick', [0.4, 0.4, 0.45]),
+  mid('leapingString', [0, 0.4, 0.4]),
+  near('swallow', [0.35, 0.35, 0.3]),
+  near('burningCross', [0, 0.4, 0.35]),
+  near('ashString', [0, 0, 0.45]),
+];
 
 export const LINKS = {
   // ---- the strings and the blade's close moves: a pursuit, the round, else a close follow-up
@@ -91,4 +103,10 @@ export const LINKS = {
   ashCrescent: [far('windStep', [0.45, 0.5, 0.5]), far('ghostDash', [0, 0, 0.5]), mid('glideKick', [0.45, 0.45, 0.45]), mid('plumThrust', [0.35, 0.4, 0.4]), near('swallow', [0.35, 0.4, 0.4])],
   emberFan: [far('zigzag', [0, 0.55, 0.45]), far('windStep', [0, 0.45, 0.45]), mid('leapingString', [0, 0.5, 0.45]), mid('glideKick', [0, 0.4, 0.4]), near('burningCross', [0, 0.45, 0.4])],
   qiStorm: [far('ghostDash', [0, 0, 0.6]), far('windStep', [0, 0, 0.45]), mid('ghostDash', [0, 0, 0.55]), mid('leapSpin', [0, 0, 0.45]), near('ashString', [0, 0, 0.5])],
+  // ---- the thrown pieces (terrain.js): he comes in behind the piece, or kicks another at a hero who
+  // backs away (the terrain agent's suggestions; modest chances, the tuning pass sets them)
+  lanternKick: [away('flagKick', 0.25), ...THROWN],
+  flagKick: [away('flagKick', 0.2), ...THROWN],
+  flagVolley: THROWN,
+  flagFan: THROWN,
 };
