@@ -36,8 +36,10 @@ export const TERRAIN = {
     // of the jaws' own acceleration: a jerk forward swings the top back)
     sway: { k: 150, c: 12, drive: 0.05, whipK: 3.2 },
     heldTurn: 4.5, // rad/s the body turns toward the hero with a piece in the jaws (the neck does the rest)
+    showArc: 0.8, // rad: a held piece is swung back and out toward the camera's side by up to this much (it stays seen)
     whipArc: 0.6, // rad off its nose the neck's whip can still throw at; farther round, the coil
     pivotMax: 0.4, // ... is drawn out into a pivot by up to this many s (a throw behind it is slower: his opening)
+    glow: 3.2, // intensity of the throat's light riding a held / thrown piece (radius 4 m + 0.4 of its height)
     shudder: 0.07, // rad a rooted piece shakes as the jaws tug at it
   },
   tail: {

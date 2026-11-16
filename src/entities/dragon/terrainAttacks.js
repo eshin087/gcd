@@ -349,7 +349,7 @@ function makeThrow(name, wood) {
           pose.bodyRate = 12;
           pose.stanceF = 0.3;
           pose.stanceH = 0.25;
-          pose.spread[0] = pose.spread[1] = 0.55 + 0.15 * u;
+          pose.spread[0] = pose.spread[1] = 0.35 + 0.1 * u;
           pose.spreadRate = 9;
           pose.tailLift = 0.3;
           pose.tailStiff = 2;
@@ -374,7 +374,7 @@ function makeThrow(name, wood) {
           pose.rear = 0.25 * Math.sin(Math.PI * u);
           pose.bodyRate = 10;
           pose.stanceH = 0.25;
-          pose.spread[0] = pose.spread[1] = 0.65;
+          pose.spread[0] = pose.spread[1] = 0.3; // (folded back: the wings do not hide the piece)
           pose.spreadRate = 8;
           pose.tailLift = 1;
           pose.tailStiff = 1.6;
@@ -390,7 +390,7 @@ function makeThrow(name, wood) {
         pose.jaw = 0.5;
         pose.swell = 1;
         pose.pitch = -0.08;
-        pose.spread[0] = pose.spread[1] = 0.9;
+        pose.spread[0] = pose.spread[1] = 0.45;
         pose.tailLift = 1;
         a.tiltT = 0.35 * lean;
         a.stiff = 1;
@@ -414,7 +414,7 @@ function makeThrow(name, wood) {
         pose.roll = -sd * 0.05 * e;
         pose.bodyRate = 10;
         pose.swell = e;
-        pose.spread[0] = pose.spread[1] = 0.6;
+        pose.spread[0] = pose.spread[1] = 0.28;
         pose.spreadRate = 8;
         pose.tailLift = 1;
         pose.tailCurl = sd * 0.07 * e;
@@ -439,7 +439,7 @@ function makeThrow(name, wood) {
         pose.lower = lerp(-0.06, 0.32, u);
         pose.roll = sd * 0.07 * u;
         pose.bodyRate = 16;
-        pose.spread[0] = pose.spread[1] = lerp(0.6, 0.3, u);
+        pose.spread[0] = pose.spread[1] = lerp(0.28, 0.5, u);
         pose.spreadRate = 20;
         pose.tailLift = 1;
         pose.tailCurl = lerp(sd * 0.07, -sd * 0.09, u);
@@ -486,7 +486,19 @@ function makeThrow(name, wood) {
     hit(d, a, dt) {
       if (!a.held || a.thrown || a.aborted) return;
       const m = d.rig.pt.mouth, Tn = d.terrain, g = d.game;
-      Tn.carry(dt, m.x, m.y, m.z, a.tiltT, a.yawT, a.stiff);
+      // the plane the piece swings in. Swung straight back it lies over the wyrm's own back, under the
+      // raised wing, where the game camera cannot see it: it is swung back and OUT toward the side the
+      // camera looks from (up to J.showArc), and the whip brings the plane round to the throw by the release
+      let yS = a.yawT;
+      const cam = g.camera?.position;
+      if (cam && (a.phase === 'lift' || a.phase === 'aim' || a.phase === 'active')) {
+        const back = a.yawT + Math.PI;
+        const cy = Math.atan2(cam.x - d.position.x, cam.z - d.position.z);
+        yS = back + clamp(angleDiff(back, cy), -J.showArc, J.showArc) - Math.PI;
+        if (a.phase === 'active') yS += angleDiff(yS, a.yawT) * smoothstep(0, 1, a.k / X.release);
+      }
+      a.yS = Number.isFinite(a.yS) ? a.yS + angleDiff(a.yS, yS) * (1 - Math.exp(-12 * dt)) : yS;
+      Tn.carry(dt, m.x, m.y, m.z, a.tiltT, a.phase === 'active' && a.k >= X.release * 0.9 ? a.yawT : a.yS, a.stiff);
       if (!Tn.hold.piece) {
         // the world took it back (a reset under the hold)
         abort(a);
@@ -511,6 +523,9 @@ function makeThrow(name, wood) {
         a.thrown = true;
         if (fl > 0) {
           if (b && !b.flashed) b.impactIn = Math.max(0.05, a.T - b.at + fl);
+          // the beat leaves with the piece: the piece sends its own cue (terrain._cue), so the cue is
+          // the flare on the piece alone, never the body's red spike of the wyrm's own blows
+          a.beats = [];
           g.shake?.(0.2);
           g.world?.gust?.(m.x, m.z, 1.2, 9 * S);
         } else {

@@ -80,8 +80,17 @@ export function tearOut(fx, b, x, z, dx = 0, dz = 0) {
     for (let i = 0; i < 8; i++) chip(fx, fx.alpha, x + rand(-0.4, 0.4), rand(0.8, 2.2), z + rand(-0.4, 0.4), rand(-2.5, 2.5), rand(1, 4), rand(-2.5, 2.5), rand(0.4, 0.7), rand(0.3, 0.42), SPLINTERS, b.M?.color ?? PALE, 1.4, b.M?.colorEnd ?? PALE_END, 1);
   }
   fx.dustRing?.(x, z, r + 0.6, 26, 0.85);
-  // a puff of earth-smoke where it stood (the fire field's grey)
-  for (let i = 0; i < 6; i++) fx._blob(x + rand(-1, 1) * r, rand(0.3, 0.9), z + rand(-1, 1) * r, rand(-0.8, 0.8), rand(0.6, 1.6), rand(-0.8, 0.8), rand(0.8, 1.3), 1.2, 2.8, 0.42, 0, 1.2, 0, 1);
+  // a cloud of earth-smoke thrown up where it stood (the fire field's grey): it climbs with the
+  // piece and hangs for a moment, a pale column the eye finds at the game camera
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * 6.283, up = rand(0, 1);
+    fx._blob(x + Math.cos(a) * r * rand(0.2, 1.1), rand(0.3, 1.2) + up * 2.5, z + Math.sin(a) * r * rand(0.2, 1.1), Math.cos(a) * rand(0.6, 2) - dx * 1.2, rand(1.2, 4.5) * (0.4 + up), Math.sin(a) * rand(0.6, 2) - dz * 1.2, rand(1.3, 2.1), rand(1.2, 1.8), rand(3, 4.2), 0.5, 0, 2.2, 0, 1);
+  }
+  // and a ring of clods flung wide that bounce out from it
+  for (let i = 0; i < 12; i++) {
+    const a = Math.random() * 6.283, sp = rand(4, 8);
+    chip(fx, fx.alpha, x + Math.cos(a) * r * 0.6, 0.3, z + Math.sin(a) * r * 0.6, Math.cos(a) * sp, rand(2, 5), Math.sin(a) * sp, rand(0.6, 1.0), rand(0.4, 0.52), CLODS, EARTH, 1.8, EARTH_END, 1, -18, 0.3);
+  }
 }
 
 /** A foreleg slams down to brace against the pull. */
@@ -136,6 +145,44 @@ export function trail(fx, st, dt, x, y, z, ax, ay, az, b, vx, vy, vz) {
       vx * 0.25 + rand(-1, 1), vy * 0.2 + rand(-0.5, 1.5), vz * 0.25 + rand(-1, 1), rand(0.5, 0.9), rand(0.3, 0.44),
       leaf ? LEAVES : b.M?.chips ?? GRIT, leaf ? LEAF : b.M?.color ?? PALE, leaf ? 1 : 1, leaf ? LEAF_END : b.M?.colorEnd ?? PALE_END, 1, leaf ? -4 : -12, leaf ? 1.5 : 0.5,
     );
+  }
+}
+
+/**
+ * The wake of a thrown piece: grey dust left hanging along its path this frame (the fire field's
+ * smoke kind, lagging and spreading as it fades), from (x0, y0, z0) to (x1, y1, z1). The throw is
+ * read as a line through the air for the half second it flies.
+ */
+export function streak(fx, x0, y0, z0, x1, y1, z1, b) {
+  const l = Math.hypot(x1 - x0, y1 - y0, z1 - z0);
+  const n = Math.min(4, Math.max(1, Math.round(l / 0.6)));
+  const w = Math.max(0.5, Math.min(1.4, (b?.r ?? 0.5) * 1.6));
+  for (let i = 0; i < n; i++) {
+    const u = (i + Math.random()) / n;
+    fx._blob(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, z0 + (z1 - z0) * u, rand(-0.3, 0.3), rand(-0.2, 0.4), rand(-0.3, 0.3), rand(0.45, 0.7), w, w * 2.2, 0.5, 0, 1.5, 0, 1);
+  }
+}
+
+/**
+ * Light catching the piece in the jaws / in the air: a thin line of heat along its axis in the fire
+ * field's steel (crisp: a thin line prints as the stroke that runs along it), born and gone within a
+ * frame or two, so the trunk prints in pale digits on its dark body ("brighter digits only where
+ * light catches"). A boulder: a few round its middle. k scales it (0..1).
+ */
+export function catchLight(fx, bx, by, bz, ax, ay, az, b, k = 1) {
+  if (!b || !(k > 0)) return;
+  if (b.h >= 3) {
+    const n = Math.min(12, Math.max(3, Math.round(b.h / 0.7)));
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n;
+      fx._blob(bx + ax * b.h * u, by + ay * b.h * u, bz + az * b.h * u, 0, 0, 0, 0.09, 0.8, 0.6, 0.42 * k, 0.3 * k, 0, 0, 3);
+    }
+  } else {
+    const c = b.h * 0.5;
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * 6.283;
+      fx._blob(bx + ax * c + Math.cos(a) * b.r * 0.6, by + ay * c, bz + az * c + Math.sin(a) * b.r * 0.6, 0, 0, 0, 0.09, 0.9, 0.7, 0.38 * k, 0.28 * k, 0, 0, 3);
+    }
   }
 }
 

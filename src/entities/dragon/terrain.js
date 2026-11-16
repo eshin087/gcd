@@ -38,6 +38,7 @@ const J = TERRAIN.jaws, TL = TERRAIN.tail, SW = J.sway;
 const G = BREAK.thrown.gravity;
 const DUST = ",.`:'";
 const PALE_DIM = [0.2, 0.2, 0.19];
+const EARTH_LIT = [0.62, 0.48, 0.34];
 const rand = (a, b) => a + Math.random() * (b - a);
 
 /** world.destructibles when it can lift and throw (a test's world mock may have none). */
@@ -158,7 +159,7 @@ const blankShot = (i) => ({
   t: 0, T: 1, burning: false, hitDone: false, src: -1,
   // an arc (mode 0): its centre of mass at release, its velocity, where it lands, the way it travels,
   // its tumble (angle about the throw's cross axis, rad/s), the centre's height up its axis
-  x0: 0, y0: 0, z0: 0, vx: 0, vy: 0, vz: 0, tx: 0, tz: 0, dx: 0, dz: 1, r: 3, yaw: 0, ang: 0, w: 0, hc: 1,
+  x0: 0, y0: 0, z0: 0, vx: 0, vy: 0, vz: 0, tx: 0, tz: 0, dx: 0, dz: 1, r: 3, yaw: 0, ang: 0, w: 0, hc: 1, pcy: 0,
   cx: 0, cy: 0, cz: 0, // where its centre is now
   // a skim (mode 1): its line, how far along it is, where the hero stood on it, its speed, its tumble
   ax: 0, az: 0, len: 0, s: 0, hitS: 0, speed: 20, hop: 0, x: 0, y: 0, z: 0,
@@ -280,6 +281,7 @@ export class Terrain {
       h.by = 0;
       h.bz = b.z;
       W.carry(b, h.bx, 0, h.bz, shk, a);
+      TFX.catchLight(this.d.fx, b.x, 0, b.z, h.ax, h.ay, h.az, b, 0.7);
       return;
     }
     // the swing: a damped spring toward the asked tilt, pushed by the jaws' acceleration
@@ -297,10 +299,16 @@ export class Terrain {
     h.by = y - h.ay * h.grip + h.oy * h.blend;
     h.bz = z - h.az * h.grip + h.oz * h.blend;
     W.carry(b, h.bx, h.by, h.bz, h.th, yaw);
-    // earth falls from its torn foot, and a tree sheds leaves and bark along its length
+    TFX.catchLight(this.d.fx, h.bx, h.by, h.bz, h.ax, h.ay, h.az, b, h.fire > 0 ? 0 : 1);
+    // the throat's glow on it: a warm light rides the piece in the jaws (a dark trunk on dark grass
+    // reads at the game camera only lit), and flies with it
     const fx = this.d.fx;
-    h.dirt += dtc * 26;
-    let n = Math.min(4, Math.floor(h.dirt));
+    const mx = h.bx + h.ax * b.h * 0.45, my = h.by + h.ay * b.h * 0.45, mz = h.bz + h.az * b.h * 0.45;
+    if (!h.light) h.light = fx._light({ x: mx, y: my, z: mz, color: [1, 0.5, 0.2], intensity: J.glow, radius: 4 + b.h * 0.4, fadeIn: 0.1, fade: 0.3, flicker: 0.25 });
+    h.light?.set?.(mx, my, mz);
+    // earth falls from its torn foot, and a tree sheds leaves and bark along its length
+    h.dirt += dtc * 46;
+    let n = Math.min(5, Math.floor(h.dirt));
     h.dirt -= n;
     while (n-- > 0) {
       const o = fx._rec(h.bx + rand(-0.5, 0.5) * b.r * 2, h.by + rand(-0.1, 0.5), h.bz + rand(-0.5, 0.5) * b.r * 2, rand(0.5, 0.9), rand(0.28, 0.42), 0.12, ".,:'");
@@ -309,7 +317,7 @@ export class Terrain {
       o.vz = rand(-0.6, 0.6);
       o.gravity = -14;
       o.drag = 0.4;
-      fx._col(b.M?.colorEnd ?? PALE_DIM, 1.6, PALE_DIM, 1);
+      fx._col(EARTH_LIT, 1, PALE_DIM, 1);
       fx._spawn(fx.alpha, o);
     }
     if (b.h >= BREAK.topple.minH) TFX.trail(fx, h.shed, dtc, h.bx, h.by, h.bz, h.ax, h.ay, h.az, b, 0, 0, 0);
@@ -384,7 +392,7 @@ export class Terrain {
     s.hitDone = false;
     s.src = typeof W.swing === 'function' ? W.swing() : -1;
     s.x0 = s.cx = cx;
-    s.y0 = s.cy = cy;
+    s.y0 = s.cy = s.pcy = cy;
     s.z0 = s.cz = cz;
     s.vx = (tx - cx) / T;
     s.vz = (tz - cz) / T;
@@ -684,7 +692,12 @@ export class Terrain {
     const b = s.beat;
     if (b && !b.flashed) {
       b.flashed = true;
-      this.d.flashTell(s.action, b);
+      // the cue belongs to the flying piece: its flare, and not the wyrm's body spike (flashTell
+      // arms that for any red blow; it is put back as it was)
+      const d = this.d, w = d._warnAt, wa = d._warnAction;
+      d.flashTell(s.action, b);
+      d._warnAt = w;
+      d._warnAction = wa;
     }
     return true;
   }
@@ -719,10 +732,15 @@ export class Terrain {
       TFX.smashOn(fx, s.cx, s.cy, s.cz, s.dx, s.dz, null);
       if (s.burning && s.spec.trailIgnite) g.world?.ignite?.(s.cx, s.cz, b.r + 1.2, s.spec.trailIgnite, false);
     }
-    if (s.burning) {
-      TFX.burnTrunk(fx, s.fire, dt, fx0, fy0, fz0, ax, ay, az, b, 1, s.vx, s.vz);
-      s.light?.set?.(s.cx, s.cy, s.cz);
-    } else TFX.trail(fx, s.grit, dt, fx0, fy0, fz0, ax, ay, az, b, s.vx, s.vy - G * s.t, s.vz);
+    s.light?.set?.(s.cx, s.cy, s.cz);
+    if (s.burning) TFX.burnTrunk(fx, s.fire, dt, fx0, fy0, fz0, ax, ay, az, b, 1, s.vx, s.vz);
+    else {
+      TFX.trail(fx, s.grit, dt, fx0, fy0, fz0, ax, ay, az, b, s.vx, s.vy - G * s.t, s.vz);
+      TFX.catchLight(fx, fx0, fy0, fz0, ax, ay, az, b, 1);
+      // the wake: a streak of dust left hanging along its path (the throw is read in the half second it flies)
+      TFX.streak(fx, px, s.pcy ?? s.cy, pz, s.cx, s.cy, s.cz, b);
+    }
+    s.pcy = s.cy;
     if (s.t >= s.T) this._impact(s, s.tx, s.tz);
   }
 
