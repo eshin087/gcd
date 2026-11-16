@@ -297,6 +297,9 @@ export class Pipeline {
         // b a letter roll, a kind + stroke), and uFlame = cells x, cells y, 1 while something burns
         tFlame: { value: null },
         uFlame: { value: new THREE.Vector4(1, 1, 0, 0) },
+        // the fire field's cells drawn this frame (its texture may be larger: the zoom ladder's
+        // finest step); the haze clamps its look-ups to them
+        uFlameCells: { value: new THREE.Vector2(1, 1) },
         // HEAT HAZE: the letters of the wyrm and the background objects re-roll and shimmer where the
         // fire field is hot at, under or beside their cell, as if the heat boiled the text (read only
         // while something burns: uFlame.z). x / y = the heat (as the fire field counts it: ~0.4 a
@@ -406,6 +409,7 @@ export class Pipeline {
         uniform vec2 uPropAnchor;
         uniform sampler2D tFlame;
         uniform vec4 uFlame;
+        uniform vec2 uFlameCells;
         uniform vec4 uHaze;
         uniform vec3 uHazeRoll;
         uniform float uTime;
@@ -543,13 +547,13 @@ export class Pipeline {
         // counted from the screen's lower-left corner. A cell is in the haze when the field is hot at
         // it, in the cells under it (heat climbs) or beside it. Steel (sparks, glints) makes none.
         vec2 flameHeat(vec2 fc) {
-          vec4 f = texture2D(tFlame, (fc + 0.5) / uFlame.xy);
+          vec4 f = texture2D(tFlame, (clamp(fc, vec2(0.0), uFlameCells - 1.0) + 0.5) / uFlame.xy);
           float kind = floor(f.a * 4.0 + 0.01);
           return vec2(kind < 1.5 ? f.r * 2.5 : 0.0, kind);
         }
         void hazeCell(vec2 cpx, vec2 acell) {
           vec2 fc = floor(cpx / uArtCell);
-          vec4 f0 = texture2D(tFlame, (fc + 0.5) / uFlame.xy);
+          vec4 f0 = texture2D(tFlame, (clamp(fc, vec2(0.0), uFlameCells - 1.0) + 0.5) / uFlame.xy);
           float k0 = floor(f0.a * 4.0 + 0.01);
           vec2 best = vec2(k0 < 1.5 ? f0.r * 2.5 : 0.0, k0);
           vec2 t;
@@ -1660,6 +1664,7 @@ export class Pipeline {
     if (this.fire) {
       this.fire.render(r, this.camera, this.fs);
       this.asciiMat.uniforms.uFlame.value.set(this.fire.alloc?.x ?? this.fire.cells.x, this.fire.alloc?.y ?? this.fire.cells.y, this.fire.active ? 1 : 0, 0);
+      this.asciiMat.uniforms.uFlameCells.value.copy(this.fire.cells);
     }
 
     // 3. ASCII grid

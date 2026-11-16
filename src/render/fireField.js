@@ -56,6 +56,8 @@ export class FireField {
     // the heat / flame targets' texel size: `cells` at the finest cell the frame may step to (the
     // zoom ladder, setSize's `minCell`); the passes draw into the lower-left `cells` of it
     this.alloc = new THREE.Vector2(4, 4);
+    // (the flame pass clamps its look-ups to `cells`: what lies past them in the targets is cleared
+    // heat or a stale flame from a finer step, and the frame's edge reads as it would at alloc = cells)
     // the tint zones: [x, y, rx, ry] frame px, [r, g, b, strength], [dark, 0, 0, 0]; ttl s, age rank
     this._tintA = Array.from({ length: TINTS }, () => new THREE.Vector4(0, 0, 1, 1));
     this._tintC = Array.from({ length: TINTS }, () => new THREE.Vector4(1, 1, 1, 0));
@@ -143,17 +145,18 @@ export class FireField {
     });
     this.flameMat = new THREE.ShaderMaterial({
       uniforms: {
-        tHeat: { value: null }, uAlloc: { value: this.alloc }, uTime: U.uTime, uGain: { value: 1 }, uTurb: { value: turb },
+        tHeat: { value: null }, uAlloc: { value: this.alloc }, uCells: { value: this.cells }, uTime: U.uTime, uGain: { value: 1 }, uTurb: { value: turb },
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
         uniform sampler2D tHeat;
         uniform vec2 uAlloc;   // the heat target's size, texels (cells at the finest step)
+        uniform vec2 uCells;   // the part of it drawn this frame
         uniform float uTime;
         uniform float uGain;
         uniform vec4 uTurb[3]; // per kind (fire, void, steel): lick, erode, boil, warp
         ${NOISE}
-        vec4 field(vec2 c) { return texture2D(tHeat, (c + 0.5) / uAlloc) * ${(1 / HEAT_ENC).toFixed(2)}; }
+        vec4 field(vec2 c) { return texture2D(tHeat, (clamp(c, vec2(0.0), uCells - 1.0) + 0.5) / uAlloc) * ${(1 / HEAT_ENC).toFixed(2)}; }
         void main() {
           vec2 cell = floor(gl_FragCoord.xy);
           float t = uTime;
