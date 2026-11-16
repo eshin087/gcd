@@ -319,7 +319,7 @@ export const TUNING = {
         { kind: 'tailWhip', tell: TELL.RED, windup: 0.75, active: 0.3, impact: 0.24, damage: 22, knockback: 4, at: 1.7, back: 0.3, spin: 165 * DEG, pivotRate: 5, minReach: 2.0 * S, reach: 9.5 * S },
         { kind: 'wingSweep', side: 0, tell: TELL.NORMAL, windup: 0.7, active: 0.4, impact: 0.27, damage: 18, knockback: 4, face: 0.55, sweep: 1.2, amp: 0.9, spread: 0.85, room: 5.0, backSpeed: 7 },
       ],
-      recovery: 1.0, cooldown: 8, weight: [2.2, 2.2, 2.0], range: [4.5, 6.0], minAng: 2.2,
+      recovery: 1.0, cooldown: 8, weight: [2.2, 2.2, 2.0], range: [5.0, 6.0], minAng: 2.2,
       links: [
         { to: 'wingRend', when: 'front', chance: [0.3, 0.5, 0.6] },
         { to: 'charge', when: 'far', chance: [0.3, 0.4, 0.5] },
@@ -330,7 +330,7 @@ export const TUNING = {
       label: 'Sky hammer (3 hits)', tell: TELL.BLUE, phase: 1,
       hits: [
         { kind: 'overhead', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.24, impact: 0.22, damage: 18, knockback: 2.5, lunge: 1.2 },
-        { kind: 'bite', tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.06, damage: 18, knockback: 2, reach: 5.4 * S },
+        { kind: 'bite', tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.08, damage: 18, knockback: 2, reach: 5.4 * S },
         { kind: 'wingSlam', tell: TELL.BLUE, flare: true, windup: 0.95, active: 0.3, impact: 0.3, damage: 30, knockback: 6, radius: 3.0 * S, near: 4.0, far: 7.0,
           burst: { phase: 2, n: 4, wait: 0.55, stagger: 0.3, speed: 11 } },
       ],

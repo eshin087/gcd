@@ -2134,10 +2134,11 @@ const WING_SLAM = {
     const pose = d.pose;
     d.turnToward(d.sense.yawTo, d.turnRate * 1.2, dt);
     const e = smoothstep(0, 0.75, k), c = smoothstep(0.7, 1, k);
-    flapTo(d, lerp(h.ph0, h.top, e), 1.0, dt);
+    // (raised only part way: fully up, the sails stand on edge to the game camera and vanish)
+    flapTo(d, lerp(h.ph0, h.top, e), h.spec.ampUp ?? 0.5, dt);
     pose.spread[0] = pose.spread[1] = lerp(REST_SPREAD, 1, e);
     pose.spreadRate = 6;
-    pose.mantle = 0;
+    pose.mantle = 0.3 * e;
     // up on the haunches, chest out, the head thrown back over the rising sails
     pose.pitch = -0.28 * e - 0.06 * c;
     pose.rear = 0.35 * e;
@@ -2162,7 +2163,7 @@ const WING_SLAM = {
   },
   active(d, a, h, k, dt) {
     const pose = d.pose, u = k * k;
-    flapTo(d, h.top + Math.PI * u, 1.0, dt);
+    flapTo(d, h.top + Math.PI * u, lerp(h.spec.ampUp ?? 0.5, 1.0, Math.min(1, k * 2)), dt);
     pose.spread[0] = pose.spread[1] = 1;
     pose.spreadRate = 10;
     pose.mantle = smoothstep(0, 0.7, k); // the sails come forward as they fall
