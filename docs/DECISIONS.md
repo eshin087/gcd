@@ -3272,6 +3272,9 @@ ADR-092).
   4. **New moves**, composed from each boss's existing key poses: Shen Hui's Severing Wind (blue
      flare), Twin Embers (red, red) and Black Tide; the Lord's Severance, Red Meridian and Nightfall
      (every form); the wyrm's Black maw. Twelve existing heavy blows are marked as parry moments.
+- **The look:** shown a streak (a full-width line with a thick heart), a star (a shorter line with
+  rays) and a lance (a full-width hairline), the owner picked the streak. The other two stay in
+  `TELL_FLARE` behind `?flare=`.
 - **Why a tint zone and not a new kind of fire:** the fire field's heat buffer has four channels and
   all four are taken (fire, smoke, void, steel). A zone of the frame in which steel prints in another
   colour costs two uniforms and no render target, and the flare is steel anyway (strokes along a

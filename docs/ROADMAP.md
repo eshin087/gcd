@@ -186,7 +186,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] One charged blow per boss (Black maw, Black Tide, Nightfall); Severing Wind, Twin Embers, Severance, Red Meridian
 - [x] Twelve existing heavy blows marked as parry moments
 - [ ] Follow-ups:
-  - [ ] The owner picks the flare's look (`?flare=streak|star|lance`) and judges the black charge on screen
+  - [x] The owner picks the flare's look: the streak (shown beside the star and the lance; those stay behind `?flare=`)
+  - [ ] The owner judges the black charge and the black flare on screen
   - [ ] A human playtest: how the three fights' length and difficulty moved (the ADR-102 bots not re-run)
   - [ ] The flare on the phone: readable at 852 x 393? Its frame cost?
   - [ ] More moments in the long strings (a marked blow mid-string ends it: tune which)

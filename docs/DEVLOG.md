@@ -66,7 +66,11 @@ dark violet bar with a white thread rather than as pure black: on these dark lev
 cannot be seen, so it is drawn by its rim; the owner should judge it. The flare's frame cost on the
 phone is not measured. The Training catalogue has no entries for the new moves.
 
-**Next:** the owner picks the flare's look and plays the Vercel preview; tune from that.
+**Follow-up:** shown the three looks side by side (red and blue, the cue frame on the Ashfall
+Courtyard), the owner picked "A, the streak": the default as merged. The star and the lance stay
+behind `?flare=` (kept for later use, as the hero's looks are).
+
+**Next:** the owner plays the Vercel preview (the black charge above all); tune from that.
 
 ---
 

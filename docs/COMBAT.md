@@ -218,7 +218,7 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   `TELL_STYLE[tell].flare`): **red** = dodge, **blue** = parry, **black** = dodge (the cells behind its
   letters are blacked out: a dark bar round a white-hot thread). A light in its colour, small strokes
   thrown out along it, the HUD's screen edge in its colour for 0.25 s. Data: `TELL_FLARE` in
-  `enemies/duelist/fx.js` (three looks behind `?flare=streak|star|lance`; `?flare=blaze` draws the
+  `enemies/duelist/fx.js` (the owner picked the streak from a sheet of three; the star and the lance stay behind `?flare=star|lance`; `?flare=blaze` draws the
   old red blaze); the wyrm draws it 1.5x as big, and one streak for a blow of both forefeet.
 - **Nothing before the cue.** A red blow no longer glows through its windup (`TELL_STYLE.red.warn`
   `from` = `to` = 0; it ramped 0.1 → 0.38) and a boss's own red area no longer marks the floor
