@@ -46,7 +46,7 @@ wreckage and the motion on the whole fight.
   in gusts with barks; `cinderSpit`, `emberRain`, `fireLanes`.
 - **Effects:** `_shock` behind every ring, `breathBody` behind every breath, `groundShock` at
   landings, the stomp and the tail slam; dust, flares, rims, fireball heads redrawn.
-- **Terrain:** hurl 1.33 - 1.58 s, firebrand 1.83 s, tail bat 1.25 - 1.33 s from tell to blow; a
+- **Terrain:** hurl 1.28 - 1.58 s, firebrand 1.80 s, tail bat 1.25 - 1.33 s from tell to blow; a
   whole-body grab; no mark on the ground; the flare on the flying piece; the tail bat is a parry
   moment.
 - **World:** 183 breakables with a spatial grid; `dragon._wreck` (the body brushes, shoves and
@@ -61,7 +61,7 @@ pick and the default). Sheets: the scratch folder's `tune-OPTIONS-ring.png`, `tu
 **Verification:** `node tests/run.mjs .` ALL 10 PASSED and `npm run build` passes on the final
 commit, run by the lead. New scenarios: MELEE, FLIGHT, TONGUES, FXLOOKS, PRESSURE, BUDGET, WRECKAGE
 in `integ.mjs`; GRID, BODY, WRECK, SPREAD, BUDGET in `world.mjs`; TERRAIN and BULLETS rewritten for
-the new rules; all 20 strings in the TIMING verifier. Filmed on headless Edge with the real GPU:
+the new rules; 20 attacks in the TIMING verifier (16 strings and the four single blows). Filmed on headless Edge with the real GPU:
 every new string, flight, pattern and terrain move, the roar, the apocalypse, before / after of the
 effects and of a rampage through the clearing. Numbers: ADR-119 "Measured".
 
