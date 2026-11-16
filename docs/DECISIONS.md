@@ -3241,3 +3241,19 @@ ADR-092).
   track starts a moment after the first tap (prefetched, decoded on demand). Each level now sounds
   different, and the Starless Lord's four forms each get their own music. Not checked on the
   iPhone: memory and decode time with three decoded tracks.
+
+## ADR-118 — A separate, unapproved character audition (2026-11-15)
+- **Status:** experiment only, awaiting owner review; no gameplay adoption authorized.
+- **Context:** the owner wants a better model, motion and poses, a PR preview to approve, and no
+  permanent effects if they reject it. Claude authored the game and has a separate style draft (#56).
+- **Decision:** add `/hero-study.html` as a separate build entry. Compare current and candidate
+  actors with the existing renderer and animator. Candidate poses are instance-owned; presentation
+  proportions apply only during drawing, never to shared dimensions or during IK. The normal game
+  entry and all game source remain unchanged. No settings, saves or game flow in the audition.
+- **Why:** approval can be based on synchronized moving renders, and rejection requires only closing
+  the draft. Both the existing hero and Claude's parallel work remain intact. An in-game switch
+  would couple a visual experiment to swept-hit geometry and the shared human-boss rig prematurely.
+- **Consequences:** the candidate is not gameplay-validated. If chosen, integrate it separately and
+  validate the swept blade, reach, hands, cloth and transitions in all levels. The review documents
+  exact presentation scales and the controlled pilot's limitations. No player-facing WHAT'S NEW
+  entry until there is an actual shipped change. See `docs/experiments/hero-motion-study.md`.

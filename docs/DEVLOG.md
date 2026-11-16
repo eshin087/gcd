@@ -5,6 +5,35 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-15 — Session 55: Tempered character audition (Codex, unapproved)
+
+**Owner:** improve the main character's model, animation, motion and poses, show a PR preview for
+review, and ensure the experiment has no permanent effect. Claude is the game's primary author.
+Isolated branch `codex/hero-motion-study`, worktree `.claude/worktrees/codex-hero-motion-study`,
+based on main `46e2c989`. Claude's existing three-style draft PR #56 is untouched.
+
+**Direction:** a compact, grounded swordsman, preserving the existing ASCII art and all shared
+game data. A dedicated `/hero-study.html` compares the original rig with an instance-only
+candidate: drawing proportions 1.08 / 0.94 / 1.04, a soft and wider stance, an oblique ready blade,
+an active free hand, per-cut hip / chest accents and a slower recovery release. Nine sequences,
+equal-scale A/B and solo views, five camera views, turntable, slow motion, scrubbing and frame step.
+
+**Verification:** `npm test` (all existing integration suites, glyph and changelog checks) and
+`npm run build` pass. The new isolated test passes 4,361 paired frames, including finite transforms,
+blade floor clearance, repeatable seeks and no mutations of shared bone / swing / combat data.
+Real Edge/WebGL checks: thirteen pose / camera captures, controls, portrait 390×844 and landscape
+852×393 without horizontal overflow or console errors. The original build script and modified
+script produce byte-identical normal game HTML (SHA in the review note).
+
+**Review status / limits:** not approved, not merged, not integrated. The audition is a deterministic
+pilot, not actual combat; the model changes are a drawing transform, including the sword. It uses
+no saves or game settings. Adoption needs per-hero dimensions or a rendering contract plus swept-hit,
+grip, outfit, cloth, transition and three-level verification. Physical phone and human feel pending.
+The regular WHAT'S NEW data stays unchanged because this is an unshipped experiment (recorded in
+CHANGELOG's experiment subsection). See [review and Claude handoff](experiments/hero-motion-study.md).
+
+---
+
 ## 2026-11-15 — Session 54: dark music per level and per boss phase
 
 **Owner:** "Lets update all the sound effects and music to the game. Browse and pick the best cc0

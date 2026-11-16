@@ -712,6 +712,11 @@ Forty-seven pieces of work since 0.4.0:
 - The red crack "worms" over the wyrm's back and the dash outlines along its wings and tail.
 - Dead code in the ASCII pass (the generic `artCell` letter path and `uArtCount`).
 
+### Unmerged experiments
+- 2026-11-15: **Tempered character study** (`/hero-study.html`, ADR-118): a separate A/B audition
+  with compact presentation proportions, an oblique guard and body-led motion accents. Awaiting
+  owner review; the playable game is unchanged. This is deliberately not a shipped WHAT'S NEW item.
+
 ## [0.4.0] - 2026-11-02
 The hero and the wyrm are drawn as classic ASCII art (the owner's reference images). The game is
 playable on phones.

@@ -29,6 +29,20 @@ fs.mkdirSync('dist', { recursive: true });
 fs.writeFileSync('dist/index.html', html);
 console.log(`Built dist/index.html (${(html.length / 1024).toFixed(0)} KB)`);
 
+// Isolated character audition. The normal game bundle never imports this code.
+const study = await build({
+  entryPoints: ['src/dev/heroStudy/study.js'], bundle: true, format: 'esm',
+  minify: true, write: false, target: 'es2022', legalComments: 'none',
+});
+const studyJs = study.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
+const studyCss = fs.readFileSync('src/dev/heroStudy/study.css', 'utf8');
+const studyHtml = fs.readFileSync('hero-study.html', 'utf8')
+  .replace(/<script type="importmap">[\s\S]*?<\/script>\s*/, '')
+  .replace('<link rel="stylesheet" href="./src/dev/heroStudy/study.css">', () => `<style>${studyCss}</style>`)
+  .replace('<script type="module" src="./src/dev/heroStudy/study.js"></script>', () => `<script type="module">${studyJs}</script>`);
+fs.writeFileSync('dist/hero-study.html', studyHtml);
+console.log(`Built dist/hero-study.html (${(studyHtml.length / 1024).toFixed(0)} KB)`);
+
 // the recorded music (ADR-117) is fetched next to the page: dist/assets/audio/. Opened
 // from disk (file://) the game cannot fetch it and plays its synthesised score instead.
 fs.rmSync('dist/assets', { recursive: true, force: true });

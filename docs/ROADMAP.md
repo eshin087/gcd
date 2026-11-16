@@ -11,6 +11,14 @@ earlier vision, an open-world RPG with MMO-style systems, survives as the online
 
 Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 
+## Unmerged character study — owner review pending (2026-11-15, ADR-118)
+- [x] Isolated current / Tempered audition: model presentation, poses, locomotion and cut accents
+- [x] Synchronized playback, slow motion, frame stepping, camera angles and responsive comparison
+- [ ] Owner chooses or rejects the direction in the draft PR
+- [ ] Only if chosen: Claude integrates the hero and validates combat / outfits in all three levels
+
+This is an experiment, not a shipped character update. [Review / handoff](experiments/hero-motion-study.md).
+
 ## M0 — Vertical slice: the Cinder Wyrm (v0.1)
 - [x] ASCII rendering foundation (grid props, surface glyph creatures, glyph particles, fire light)
 - [x] Forest clearing zone, bonfire, boss arena
