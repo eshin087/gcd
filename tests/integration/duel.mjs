@@ -2116,6 +2116,148 @@ async function scenarioPerfect() {
 // ================================================================== scenario: flare (ADR-118)
 // The flare is the only sign of a moment (no glow through the windup, no ring on the floor); a parry
 // of a blue flare blow is answered by the hero's counter; the black (charged) blow.
+// ================================================================== scenario: fxlooks (the second pass's effects)
+// Every option of fxash's switches (?kindle= ?ashp3= ?qi= ?flit=) runs for its whole life headless:
+// no error, no NaN (build's guards throw), the field's blob peak under FX_CAP; '0' of the qi redraw
+// draws exactly what main drew; and no look moves the fight (the looks draw from their own stream).
+async function scenarioFxLooks() {
+  out('\n== scenario FXLOOKS (the shock, the Kindling, ash on the wind, the qi, the flit: every option) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { DuelFx } = await imp('src/entities/enemies/duelist/fx.js');
+  const SW = { kindle: ['a', 'b', 'c'], ashp3: ['a', 'b', 'c'], qi: ['0', 'a', 'b', 'c'], flit: ['0', 'a'] };
+  const clear = () => { for (const k of Object.keys(SW)) setLook(k, null); };
+  // the most the field may gain while one effect plays, the whole scene counted (the hero, his
+  // trails, the cues). HEADLESS has no camera, so every crisp line (_ink: the trails, the qi's
+  // edge) falls back to a blob every 0.1 m instead of one per letter cell: these counts run 1.3 -
+  // 1.6x the real page's (qi=a phase 3: 631 here, ~430 on the page). Measured 2026-11-16: the
+  // Kindling 371 - 382, ash on the wind 485 - 609, the qi's phase-3 fans 468 ('0') - 637 ('b'),
+  // the flurry 512 ('0') - 576 ('a'). A cap with headroom, not a target.
+  const FX_CAP = 720;
+  const peakOf = (G, secs, step = null) => {
+    const f = G.game.fx.fire, base = f.count;
+    let peak = 0;
+    run(G, secs, (g) => { step?.(g); peak = Math.max(peak, f.count - base); });
+    return peak;
+  };
+  const report = [];
+  // 1. the qi's '0' = main, call for call (one crescent flown 90 frames into a counting mock field;
+  // the numbers were measured on f4e199d, before the redraw)
+  {
+    setLook('qi', '0');
+    const want = { 1: [6174, 0, 54], 2: [6210, 0, 51] };
+    for (const phase of [1, 2]) {
+      const c = [0, 0, 0];
+      const game = { time: 0, realTime: 0, dt: DT, fxDt: DT, lights: null, fx: { fire: { spawn: () => c[0]++ }, add: { spawn: () => c[1]++ }, alpha: { spawn: () => c[2]++ } }, player: { position: { x: 30, y: 0, z: 0.3 }, alive: true, radius: 0.45 } };
+      const d = { game, T: TUNING, phase, emit() {}, hitPlayer: () => RESULT.HIT };
+      const fx = new DuelFx(d);
+      fx.throwCrescent(0, 0, 1, 0, { tell: TELL.NORMAL, damage: 14 });
+      for (let i = 0; i < 90; i++) { game.time += DT; game.realTime += DT; fx.updateCrescents(DT, d); }
+      assert(c.join() === want[phase].join(), `qi '0' draws what main drew in phase ${phase} (fire, add, alpha ${c.join()} = ${want[phase].join()})`);
+    }
+    clear();
+  }
+  // 2. every option of every switch, its whole life
+  for (const L of SW.kindle) {
+    clear(); setLook('kindle', L);
+    const G = build(); duel(G, { dist: 4.5 });
+    const d = G.game.dragon;
+    d.debug.trigger('kindle');
+    const peak = peakOf(G, 3.5);
+    report.push(`kindle=${L} ${peak}`);
+    assert(d.phase === 2 && d.kindle > 0.9 && peak > 150 && peak < FX_CAP, `?kindle=${L}: the Kindling lands and the blade burns (phase ${d.phase}, kindle ${d.kindle.toFixed(2)}), peak ${peak} blobs < ${FX_CAP}`);
+  }
+  {
+    // the kneel draws on the blade only and keeps the blade from burning before the impact
+    clear();
+    const G = build(); duel(G, { dist: 4.5 });
+    const d = G.game.dragon;
+    d.debug.trigger('kindle');
+    run(G, 0.9);
+    assert(d.kindle < 0.75 && d.brain.act?.def?.transition, `the kneel: the blade is still catching 0.9 s in (kindle ${d.kindle.toFixed(2)} < 0.75)`);
+  }
+  for (const L of SW.ashp3) {
+    clear(); setLook('ashp3', L);
+    const G = build(); duel(G, { dist: 4 });
+    const d = G.game.dragon;
+    d.phase = 3; // (the third phase's move is the moves agent's: driven by hand here)
+    d.fx.phaseBurst(3, d.position.x, d.position.z);
+    let peak = peakOf(G, 2.5);
+    d.debug.trigger('swallow');
+    peak = Math.max(peak, peakOf(G, 2.5));
+    report.push(`ashp3=${L} ${peak}`);
+    assert(d._ashK > 0.9 && peak > 100 && peak < FX_CAP, `?ashp3=${L}: ash on the wind, its stream and the strikes' afterimages (ashK ${d._ashK?.toFixed(2)}), peak ${peak} blobs < ${FX_CAP}`);
+  }
+  for (const L of SW.qi) for (const phase of [1, 2, 3]) {
+    clear(); setLook('qi', L);
+    const G = build(); duel(G, { dist: 10 });
+    const d = G.game.dragon;
+    d.phase = phase;
+    d.debug.trigger('ashCrescent');
+    const peak = peakOf(G, 2.2);
+    report.push(`qi=${L}/p${phase} ${peak}`);
+    assert(peak < FX_CAP, `?qi=${L} phase ${phase}: the crescents fly out, peak ${peak} blobs < ${FX_CAP}`);
+  }
+  for (const L of SW.flit) {
+    clear(); setLook('flit', L);
+    const G = build(); duel(G, { dist: 3 });
+    const d = G.game.dragon;
+    d.debug.flurry(5);
+    const peak = peakOf(G, 4);
+    report.push(`flit=${L} ${peak}`);
+    assert(peak > 30 && peak < FX_CAP, `?flit=${L}: the flurry's flits, peak ${peak} blobs < ${FX_CAP}`);
+  }
+  {
+    // the engines alone: a 6 m front of fire, an afterimage, a hard landing's dust, the break
+    clear();
+    const G = build(); duel(G, { dist: 6 });
+    const d = G.game.dragon, fx = d.fx, f = G.game.fx.fire;
+    let b = f.count;
+    fx.shock(d.position.x, d.position.z, 6, { k: 1.25, fire: 1, kind: 'fire' });
+    const s = f.count - b;
+    run(G, 1.2);
+    b = f.count;
+    const gh = fx.ghost(d, { dx: 1, dz: 0, life: 0.6 });
+    const g2 = f.count - b;
+    run(G, 1.2);
+    b = f.count;
+    fx.dust(d.position.x, d.position.z, 1.6);
+    run(G, 0.1);
+    const du = f.count - b;
+    report.push(`shock6=${s} ghost=${g2} dust1.6=${du}`);
+    assert(s > 120 && s < 400, `a 6 m front of fire spawns ${s} blobs (a body: > 120, < 400)`);
+    assert(gh > 60 && g2 === gh && g2 < 400, `an afterimage prints ${g2} blobs from his body (> 60, < 400)`);
+    assert(du > 40 && du < 300, `a hard landing's dust has a body: ${du} blobs`);
+  }
+  out(`     blob peaks: ${report.join(' | ')}`);
+  // 3. no look moves the fight: a fixed-seed fight (the AI on, phase 2, a defending bot) gives the
+  // same hits, cues and positions with every option forced as with the defaults
+  const fight = (looks) => {
+    clear();
+    for (const [k, v] of Object.entries(looks)) setLook(k, v);
+    const G = build(); duel(G, { dist: 4, ai: true });
+    G.defend = makeDefender(G);
+    const d = G.game.dragon;
+    d.debug.trigger('kindle');
+    const cues = [];
+    G.watch = (n, e) => { if (n === 'combat:flash') cues.push(`${e.attack}@${G.game.time.toFixed(2)}`); };
+    run(G, 10, fencer);
+    d.phase = 3; // (by hand: the third phase's move is the moves agent's)
+    d.fx.phaseBurst(3, d.position.x, d.position.z);
+    run(G, 14, fencer);
+    G.watch = null;
+    G.defend = null;
+    return `${G.hits.map((h) => `${h.attack}:${h.r}@${h.t.toFixed(2)}`).join(',')}|${cues.join(',')}|${d.position.x.toFixed(3)},${d.position.z.toFixed(3)},${d.hp.toFixed(1)}|${G.game.player.position.x.toFixed(3)}`;
+  };
+  const ref = fight({});
+  for (const looks of [{ kindle: 'b', qi: 'a', flit: 'a', ashp3: 'b' }, { kindle: 'c', qi: 'c', flit: 'a', ashp3: 'c' }, { qi: 'b', ashp3: 'a' }]) {
+    const got = fight(looks);
+    if (got !== ref) { let i = 0; while (got[i] === ref[i]) i++; out(`     differs at ${i}: ...${ref.slice(Math.max(0, i - 80), i + 60)} vs ...${got.slice(Math.max(0, i - 80), i + 60)}`); }
+    assert(got === ref, `the looks ${JSON.stringify(looks)} do not move the fight (same hits, cues, positions as the defaults)`);
+  }
+  clear();
+  return build();
+}
+
 async function scenarioFlare() {
   out('\n== scenario FLARE (the flare is the only sign; a parried blue flare is countered; the black charged blow) ==');
   const { GUARD, TELL_STYLE, isFlare, dodgeOnly, tellDefaults } = await imp('src/combat/rules.js');
@@ -2473,6 +2615,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
   perfect: scenarioPerfect,
   flare: scenarioFlare,
+  fxlooks: scenarioFxLooks,
   telemetry: scenarioTelemetry,
   heavy: scenarioHeavy,
   moments: scenarioMoments,
