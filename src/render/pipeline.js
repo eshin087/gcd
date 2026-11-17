@@ -39,7 +39,35 @@ export const ZOOM_ART = (() => {
 /** World radius (m) round the hero's screen point inside which the art pass draws his dark halo. */
 const HERO_HALO_R = 2.1;
 /** GLSL: alpha `a` is one of the hero's part ids (materials.js HERO_ART; FLAG.ART_HERO = 0.48, FLAG.ART = 0.5). */
-const IS_HERO_GLSL = 'bool isHero(float a) { return a > 0.46 && a < 0.49; }';
+// (from 0.4386: the player's own bank of part ids, HERO_ART.ownA0 0.4392, sits below the shared one;
+// the creature codes end at 0.4379)
+const IS_HERO_GLSL = 'bool isHero(float a) { return a > 0.4386 && a < 0.49; }';
+/** GLSL: alpha `a` (a hero id) is in the PLAYER's own bank (materials.js HERO_ART.ownA0). */
+const HERO_OWN_GLSL = `bool heroOwn(float a) { return a < ${(HERO_ART.a0 - HERO_ART.step * 0.5).toFixed(5)}; }`;
+
+/**
+ * The hero's ink line, options for the owner (`?heroLine=a|b|c`; '0' or none = the line as it was).
+ * An option draws the PLAYER in his own bank of part ids (HERO_ART.ownA0): his silhouette, inner
+ * lines and letter fill follow the option's numbers below; the bosses (built with the same materials)
+ * stay in the shared bank and are never touched. Read once at load; pipeline.setHeroLine switches it.
+ *   sil   [width (font px) up close, gain, gain of the band's innermost px (its soft inner edge), width at the game camera]
+ *   inner [width (font px, 1 or 2), depth-step gain, part-edge gain, share kept at the game camera]
+ *   fill  [letter gain (0: solid black), lavender share of the letters, piece-edge gain, unused]
+ *   glow  [r, g, b, radius (font px) of the soft ring OUTSIDE his silhouette (0: none)]
+ */
+export const HERO_LINES = Object.freeze({
+  a: Object.freeze({ sil: [2, 0.55, 0.75, 1], inner: [1, 0.32, 0.28, 0.3], fill: [0.35, 0.0, 0.2, 0], glow: [0, 0, 0, 0] }),
+  b: Object.freeze({ sil: [3, 0.8, 0.6, 2], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.0, 0], glow: [0.05, 0.05, 0.09, 2] }),
+  c: Object.freeze({ sil: [2, 0.65, 0.8, 2], inner: [1, 0.38, 0.32, 0.35], fill: [0.65, 0.85, 0.2, 0], glow: [0.035, 0.035, 0.06, 2] }),
+});
+export const HERO_LINE = (() => {
+  try {
+    const v = new URLSearchParams(globalThis.location?.search ?? '').get('heroLine');
+    return v && HERO_LINES[v] ? v : '0';
+  } catch {
+    return '0';
+  }
+})();
 /**
  * Make an object (and children) cast moon shadows. Works before or after rigid batching
  * (rigidBatch.js): a batched source keeps its layer mask without being drawn, and its actor's
@@ -257,6 +285,16 @@ export class Pipeline {
         // ... and each part's silhouette ink (where it borders the world): rgb tint × gain (a). The
         // reference's cloth has a dim blue-lavender dotted outline, its armour a white one
         uHeroPartRim: U.uHeroPartRim ?? { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+        // the PLAYER's own bank of those three tables (shaderLib.js), read for his pixels in the own
+        // bank of part ids (HERO_ART.ownA0, a `?heroLine` option) ...
+        uHeroOwnInk: U.uHeroOwnInk ?? { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+        uHeroOwnFill: U.uHeroOwnFill ?? { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 0, 0, 1)) },
+        uHeroOwnRim: U.uHeroOwnRim ?? { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+        // ... and his line (HERO_LINES: sil, inner, fill, glow)
+        uHeroOwnSil: { value: new THREE.Vector4(2, 1, 0.75, 0) },
+        uHeroOwnIn: { value: new THREE.Vector4(1, 0.6, 0.5, 0.6) },
+        uHeroOwnFillK: { value: new THREE.Vector4(0.4, 0, 0.3, 0) },
+        uHeroOwnGlow: { value: new THREE.Vector4(0, 0, 0, 0) },
         // per creature kind: x = hero (FLAG.ART_HERO), y = wyrm / other (FLAG.ART)
         // hero: uArtLum.x / uArtBlack.x map his flat art fill (HERO_INK) to the light value v that picks
         // his fill letters and brightness (uHeroFill); uArtMin.x is unused since the ink-line pass
@@ -389,6 +427,13 @@ export class Pipeline {
         uniform vec4 uHeroPartInk[${HERO_PARTS}];
         uniform vec4 uHeroPartFill[${HERO_PARTS}];
         uniform vec4 uHeroPartRim[${HERO_PARTS}];
+        uniform vec4 uHeroOwnInk[${HERO_PARTS}];
+        uniform vec4 uHeroOwnFill[${HERO_PARTS}];
+        uniform vec4 uHeroOwnRim[${HERO_PARTS}];
+        uniform vec4 uHeroOwnSil;
+        uniform vec4 uHeroOwnIn;
+        uniform vec4 uHeroOwnFillK;
+        uniform vec4 uHeroOwnGlow;
         uniform vec2 uArtLum;
         uniform vec2 uArtBlack;
         uniform vec2 uArtMin;
@@ -492,8 +537,9 @@ export class Pipeline {
           return mix(c.rgb * uCreatureBg, c.rgb * uCreatureGain, m);
         }
 
-        bool isArt(float a) { return a > 0.46 && a < 0.55; }
+        bool isArt(float a) { return a > 0.4386 && a < 0.55; }
         ${IS_HERO_GLSL}
+        ${HERO_OWN_GLSL}
         bool isProp(float a) { return a > 0.555 && a < 0.585; } // FLAG.ART_PROP = 0.57
 
         // ---- the wyrm (FLAG.ART): fine pixel-font digits on black (wyrmGlyphs.js atlas in tArt; ADR-093).
@@ -616,6 +662,23 @@ export class Pipeline {
           }
           return uHeroHalo.w * uHeroHaloShape.z * max(step(0.5, n1), 0.55 * step(0.5, n2));
         }
+        // the own line's soft glow OUTSIDE his silhouette (uHeroOwnGlow: rgb, radius in font px; 0 none):
+        // 8 taps on each of two rings round this off-him pixel, inside the circle round his screen point
+        vec3 heroOwnGlow(vec2 px) {
+          if (uHeroOwnGlow.w <= 0.0) return vec3(0.0);
+          vec2 d = px - uHeroHalo.xy * uRes;
+          if (dot(d, d) > uHeroHalo.z * uHeroHalo.z) return vec3(0.0);
+          float r = uHeroOwnGlow.w * uHeroPx.x;
+          float n1 = 0.0, n2 = 0.0;
+          for (int i = 0; i < 8; i++) {
+            float a = float(i) * 0.7853982;
+            vec2 o = vec2(cos(a), sin(a));
+            float a1 = texture2D(tScene, (px + o * max(1.0, r * 0.5)) / uRes).a, a2 = texture2D(tScene, (px + o * r) / uRes).a;
+            n1 += isHero(a1) && heroOwn(a1) ? 1.0 : 0.0;
+            n2 += isHero(a2) && heroOwn(a2) ? 1.0 : 0.0;
+          }
+          return uHeroOwnGlow.rgb * max(min(n1 * 0.5, 1.0), 0.45 * min(n2 * 0.5, 1.0));
+        }
         // ---- the hero seen through what covers him (ADR-106). tSeen holds only the pixels of him
         // that something stands in front of, inside the box round his screen position (outside it
         // the texture is stale: never read)
@@ -725,6 +788,7 @@ export class Pipeline {
             vec3 col = vec3(0.0);
             float lineC = 0.0;
             float inkP = 0.0; // the ink line this pixel draws: 1 his silhouette, 0.6 an inner line, 0 none
+            bool ownC = false; // the cell is the player's, in his own bank (a ?heroLine option)
             if (hCell) {
               // the cell's part = its centre (else its nearest hero sample)
               float dC = cHero ? linDepth(cuvH) : dN;
@@ -745,8 +809,9 @@ export class Pipeline {
               float v = 1.0 - exp(-max(luma(c) - uArtBlack.x, 0.0) * uArtLum.x);
               // the blade / gem keep their glow (capped far away: uHeroFar.w)
               float hdr = mix(1.0, clamp(mx, 1.0, mix(64.0, uHeroFar.w, far)), smoothstep(0.25, 0.6, sat));
-              int pid = int(clamp(heroPartOf(aC), 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
-              vec4 pf = uHeroPartFill[pid];
+              ownC = heroOwn(aC);
+              int pid = int(clamp(heroPartOf(aC) + (ownC ? ${HERO_PARTS.toFixed(1)} : 0.0), 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
+              vec4 pf = ownC ? uHeroOwnFill[pid] : uHeroPartFill[pid];
               if (uHeroDebug > 0.5 && uHeroDebug < 1.5) {
                 col = c; // look-dev: the raw art source
               } else if (uHeroDebug < 1.5) {
@@ -763,12 +828,87 @@ export class Pipeline {
                 // charcoal with a hint of its tint), brightness LINEAR in the light value
                 vec3 tone = mix(vec3(dot(hue, vec3(0.3333))), hue, mix(0.8, 1.0, smoothstep(0.25, 0.6, sat)));
                 col = tone * mix(uHeroFill.x, uHeroFill.y, v) * pf.x * hdr * mix(1.0, uHeroInk.w, gap) * mix(1.0, uHeroLod.z * pf.w, far) * chan * heroGlyph(idx, local);
+                if (ownC) {
+                  // the own line's fill (uHeroOwnFillK): the cloth's letters scaled (0: solid black) and
+                  // turned lavender; the face (open), a flat part (pf.y + 16: one smooth tone, no
+                  // letters) and the glowing parts (blade, star) keep theirs
+                  float flatP = step(15.5, pf.y);
+                  float keep = max(max(open, flatP), smoothstep(1.05, 1.5, hdr));
+                  vec3 lav = vec3(0.7, 0.68, 1.0) * dot(col, vec3(0.3333)) * 1.3;
+                  col = mix(mix(col, lav, uHeroOwnFillK.y) * uHeroOwnFillK.x, col, keep);
+                  if (flatP > 0.5) {
+                    vec3 sp = pHero ? sP.rgb : c;
+                    float vf = 1.0 - exp(-max(luma(sp) - uArtBlack.x, 0.0) * uArtLum.x);
+                    col = tone * (uHeroFill.y * mix(0.55, 1.0, vf)) * pf.x * mix(1.0, uHeroLod.z * pf.w, far);
+                  }
+                }
               }
             }
+            // the own line: the pixels of his cells that are off him print black (the band of dark he
+            // carries) and the soft glow ring round him
+            if (ownC && !pHero && uHeroDebug < 0.5) col = heroOwnGlow(px);
             // ---- this pixel's ink line: exact, one pixel wide, following every curve; drawn as one
             // stroke per letter cell (a gap where the stroke crosses the cell's letter spacing), so a
             // contour reads as a chain of stroke glyphs, not a vector line
-            if (pHero && uHeroDebug < 0.5 || pHero && uHeroDebug > 1.5) {
+            if (pHero && heroOwn(sP.a) && (uHeroDebug < 0.5 || uHeroDebug > 1.5)) {
+              // ---- HIS OWN LINE (a ?heroLine option, HERO_LINES): the silhouette a solid band
+              // uHeroOwnSil.x font px wide, inside his outline (every pixel within that many px of
+              // the world, 8 directions), white-bright; inner lines (depth steps, part edges, pieces up
+              // close) solid, uHeroOwnIn.x px, dimmer; never dotted, never dimmed with distance
+              vec2 o = uHeroPx.x / uRes;
+              int pidP = int(clamp(heroPartOf(sP.a) + ${HERO_PARTS.toFixed(1)}, 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
+              vec4 pInk = uHeroOwnInk[pidP], pRim = uHeroOwnRim[pidP];
+              float dS = 0.0, silW = floor(mix(uHeroOwnSil.x, uHeroOwnSil.w, far) + 0.5);
+              for (int r = 1; r <= 4; r++) {
+                float fr = float(r);
+                if (fr > silW + 0.01) break;
+                float dg = max(1.0, floor(fr * 0.7072 + 0.5));
+                float hit = 0.0;
+                hit += isHero(texture2D(tScene, uvP + vec2(o.x * fr, 0.0)).a) ? 0.0 : 1.0;
+                hit += isHero(texture2D(tScene, uvP - vec2(o.x * fr, 0.0)).a) ? 0.0 : 1.0;
+                hit += isHero(texture2D(tScene, uvP + vec2(0.0, o.y * fr)).a) ? 0.0 : 1.0;
+                hit += isHero(texture2D(tScene, uvP - vec2(0.0, o.y * fr)).a) ? 0.0 : 1.0;
+                hit += isHero(texture2D(tScene, uvP + o * dg).a) ? 0.0 : 1.0;
+                hit += isHero(texture2D(tScene, uvP - o * dg).a) ? 0.0 : 1.0;
+                hit += isHero(texture2D(tScene, uvP + vec2(o.x, -o.y) * dg).a) ? 0.0 : 1.0;
+                hit += isHero(texture2D(tScene, uvP + vec2(-o.x, o.y) * dg).a) ? 0.0 : 1.0;
+                if (hit > 0.5) { dS = fr; break; }
+              }
+              float pl = 0.0;
+              if (dS < 0.5) {
+                vec2 uL = uvP - vec2(o.x, 0.0), uR = uvP + vec2(o.x, 0.0), uD = uvP - vec2(0.0, o.y), uU = uvP + vec2(0.0, o.y);
+                float aL = texture2D(tScene, uL).a, aR = texture2D(tScene, uR).a, aD = texture2D(tScene, uD).a, aU = texture2D(tScene, uU).a;
+                float dL = isHero(aL) ? linDepth(uL) : -1.0, dR = isHero(aR) ? linDepth(uR) : -1.0;
+                float dD = isHero(aD) ? linDepth(uD) : -1.0, dU = isHero(aU) ? linDepth(uU) : -1.0;
+                float thP = max(uHeroPx.y, 1e-5) * dP;
+                pl = max(max(heroPxEdge(aL, dL, sP.a, dP, dR, thP, fine), heroPxEdge(aR, dR, sP.a, dP, dL, thP, fine)),
+                         max(heroPxEdge(aD, dD, sP.a, dP, dU, thP, fine), heroPxEdge(aU, dU, sP.a, dP, dD, thP, fine)));
+                if (pl < 0.1 && uHeroOwnIn.x > 1.5) {
+                  vec2 o2 = o * 2.0;
+                  vec2 vL = uvP - vec2(o2.x, 0.0), vR = uvP + vec2(o2.x, 0.0), vD = uvP - vec2(0.0, o2.y), vU = uvP + vec2(0.0, o2.y);
+                  float bL = texture2D(tScene, vL).a, bR = texture2D(tScene, vR).a, bD = texture2D(tScene, vD).a, bU = texture2D(tScene, vU).a;
+                  float gL = isHero(bL) ? linDepth(vL) : -1.0, gR = isHero(bR) ? linDepth(vR) : -1.0;
+                  float gD = isHero(bD) ? linDepth(vD) : -1.0, gU = isHero(bU) ? linDepth(vU) : -1.0;
+                  pl = max(max(heroPxEdge(bL, gL, sP.a, dP, gR, thP * 2.0, fine), heroPxEdge(bR, gR, sP.a, dP, gL, thP * 2.0, fine)),
+                           max(heroPxEdge(bD, gD, sP.a, dP, gU, thP * 2.0, fine), heroPxEdge(bU, gU, sP.a, dP, gD, thP * 2.0, fine)));
+                }
+              }
+              vec3 s = sP.rgb;
+              float mxP = max(max(s.r, s.g), s.b);
+              float satP = (mxP - min(min(s.r, s.g), s.b)) / max(mxP, 1e-4);
+              float hdrP = mix(1.0, clamp(mxP, 1.0, mix(64.0, uHeroFar.w, far)), smoothstep(0.25, 0.6, satP));
+              if (dS > 0.5) {
+                float t = silW > 1.5 ? (dS - 1.0) / (silW - 1.0) : 0.0;
+                col = pRim.rgb * (pRim.a * uHeroOwnSil.y * mix(1.0, uHeroOwnSil.z, t) * hdrP);
+                if (uHeroDebug > 2.5) col = vec3(0.5);
+                inkP = 1.0;
+              } else if (pl > 0.1) {
+                float k = (pl > 0.7 ? uHeroOwnIn.y : pl > 0.5 ? uHeroOwnIn.z : uHeroOwnFillK.z) * mix(1.0, uHeroOwnIn.w, far);
+                col = pInk.rgb * (pInk.a * k * hdrP);
+                if (uHeroDebug > 2.5) col = 0.5 * (pl > 0.7 ? vec3(1.0, 0.08, 0.05) : pl > 0.5 ? vec3(0.1, 1.0, 0.15) : vec3(1.0, 0.85, 0.05));
+                inkP = 0.6;
+              } else if (uHeroDebug > 1.5) col = vec3(0.0);
+            } else if (pHero && uHeroDebug < 0.5 || pHero && uHeroDebug > 1.5) {
               vec2 o = uHeroPx.x / uRes;
               vec2 uL = uvP - vec2(o.x, 0.0), uR = uvP + vec2(o.x, 0.0), uD = uvP - vec2(0.0, o.y), uU = uvP + vec2(0.0, o.y);
               float aL = texture2D(tScene, uL).a, aR = texture2D(tScene, uR).a, aD = texture2D(tScene, uD).a, aU = texture2D(tScene, uU).a;
@@ -977,7 +1117,7 @@ export class Pipeline {
           vec3 col;
           if (a < 0.03) {
             col = texture2D(tScene, px / uRes).rgb; // untagged: pass through
-          } else if (a < 0.46) {
+          } else if (a < 0.4386) {
             col = creatureCell(c, cell, local);
           } else if (isArt(a) || isProp(a)) {
             col = texture2D(tScene, px / uRes).rgb; // world cell centred on a creature / prop edge: raw pixel
@@ -989,7 +1129,7 @@ export class Pipeline {
           } else {
             col = stoneCell(c, cell, local);
           }
-          gl_FragColor = vec4(col * (1.0 - heroHalo(px)), 1.0);
+          gl_FragColor = vec4(col * (1.0 - heroHalo(px)) + heroOwnGlow(px), 1.0);
         }
 
         // ---- letting go (letGo.js; only while the wyrm dissolves): the letter of a cell that has
@@ -1241,6 +1381,9 @@ export class Pipeline {
 
     this.width = 1;
     this.height = 1;
+    // the hero's ink line (`?heroLine`, HERO_LINES; '0' = as it was)
+    this.heroLine = '0';
+    this.setHeroLine(HERO_LINE);
   }
 
   /** Camera-dependent uniforms of the ASCII pass (world reconstruction for stone outlines). */
@@ -1307,6 +1450,39 @@ export class Pipeline {
    */
   setSeenThrough(root) {
     this.seenRoot = root ?? null;
+  }
+
+  /**
+   * The hero's ink line (`?heroLine`, HERO_LINES): '0' (or anything unknown) the line as it was, the
+   * player in the shared bank of part ids; 'a' | 'b' | 'c' an option, drawn on the player only (the
+   * seen-through object, setSeenThrough: his materials go to his own bank every frame, so a rebuilt
+   * outfit follows). Returns the option now drawn.
+   */
+  setHeroLine(opt) {
+    const o = HERO_LINES[opt] ?? null;
+    this.heroLine = o ? String(opt) : '0';
+    const u = this.asciiMat.uniforms;
+    if (o) {
+      u.uHeroOwnSil.value.set(o.sil[0], o.sil[1], o.sil[2], o.sil[3] ?? o.sil[0]);
+      u.uHeroOwnIn.value.set(o.inner[0], o.inner[1], o.inner[2], o.inner[3]);
+      u.uHeroOwnFillK.value.set(o.fill[0], o.fill[1], o.fill[2], o.fill[3]);
+      u.uHeroOwnGlow.value.set(o.glow[0], o.glow[1], o.glow[2], o.glow[3]);
+    } else u.uHeroOwnGlow.value.set(0, 0, 0, 0);
+    this._markHeroBank(!!o);
+    return this.heroLine;
+  }
+
+  /** Put the seen-through object's hero materials in the own bank (or back in the shared one). A
+   *  walk of his tree with one bound callback: no allocation. */
+  _markHeroBank(own) {
+    const root = this.seenRoot;
+    if (!root) return;
+    this._bankV = own ? 1 : 0;
+    this._bankFn ??= (ob) => {
+      const m = ob.material, u = m && !Array.isArray(m) ? m.uniforms?.uArtBank : null;
+      if (u) u.value = this._bankV;
+    };
+    root.traverse(this._bankFn);
   }
 
   /**
@@ -1626,6 +1802,7 @@ export class Pipeline {
     // is on by now)
     const prevAutoUpdate = scene.matrixWorldAutoUpdate;
     this._updateWyrmGrid();
+    if (this.heroLine !== '0') this._markHeroBank(true); // (a rebuilt outfit: new materials)
     scene.updateMatrixWorld();
     this.rigid.sync();
     scene.matrixWorldAutoUpdate = false;

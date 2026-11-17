@@ -203,10 +203,13 @@ export const ART_GAIN = 1.1;
 // game-camera depth pull: the sword showed through his back and legs).
 // the cloth's silhouette ink: the reference's dim blue-lavender dotted outline
 const CLOTH_RIM = [0.6, 0.64, 1.0, 0.8];
+/** The player's own line (the concept sheet's outline / trim: white, a cool tint): every part's ink in
+ *  his own bank (createHeroMaterials) unless the part glows or says otherwise (`own`). */
+export const OWN_LINE = [0.9, 0.93, 1.0, 1.0];
 export const HERO_INK = {
   // (Session 14: a warmer, less pale face and brown eyes; framed by the hood, the white face with
   // two dark violet-rimmed eyes read "like death")
-  skin: { part: 1, fill: [0.95, 0.62, 0.44], rim: 0.3, line: [0.7, 0.42, 0.3, 0.75], rimLine: [0.95, 0.72, 0.55, 0.85], fillGain: 2.2, farFill: 0.6, open: true },
+  skin: { part: 1, fill: [0.95, 0.62, 0.44], rim: 0.3, line: [0.7, 0.42, 0.3, 0.75], rimLine: [0.95, 0.72, 0.55, 0.85], fillGain: 2.2, farFill: 0.6, open: true, own: { flat: true } },
   eye: { part: 2, fill: [0.16, 0.1, 0.08], rim: 0, line: [0.55, 0.36, 0.22, 0.8] },
   shirt: { part: 3, fill: [0.07, 0.07, 0.085], line: [1, 1, 1, 0.45], rimLine: CLOTH_RIM, rimDotted: true, farFill: 0.35 },
   lining: { part: 4, fill: [0.05, 0.048, 0.07], line: [0.8, 0.78, 1.0, 0.7], rimLine: CLOTH_RIM, rimDotted: true, farFill: 0.6 },
@@ -390,6 +393,19 @@ export function createHeroMaterials(U) {
       partFill?.[h.part]?.set(h.fillGain ?? 1, (h.dotted ? 1 : h.solid ? 2 : 0) + (h.open ? 4 : 0) + (h.rimDotted ? 8 : 0), h.farLine ?? 0, h.farFill ?? 1);
       const rl = h.rimLine ?? l;
       partRim?.[h.part]?.set(rl[0], rl[1], rl[2], rl[3]);
+  }
+  // ... and the PLAYER's own bank of the same tables (render/materials.js HERO_ART.ownA0; the art pass
+  // reads it once pipeline.setHeroLine puts his materials there; the bosses never read it): the
+  // concept's line, white with a cool tint on every part, the glowing parts (line gain > 1.5) keeping
+  // their own; `own` overrides any field; `own.flat` prints the part as one smooth tone (no letters)
+  const ownInk = U.uHeroOwnInk?.value, ownFill = U.uHeroOwnFill?.value, ownRim = U.uHeroOwnRim?.value;
+  for (const h0 of Object.values(HERO_INK)) {
+    const h = h0.own ? { ...h0, ...h0.own } : h0;
+    const l = h.line ?? [1, 1, 1, 1], glows = l[3] > 1.5;
+    const ol = h0.own?.line ?? (glows ? l : OWN_LINE), orl = h0.own?.rimLine ?? (glows ? h.rimLine ?? l : OWN_LINE);
+    ownInk?.[h.part]?.set(ol[0], ol[1], ol[2], ol[3]);
+    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0), h.farLine ?? 0, h.farFill ?? 1);
+    ownRim?.[h.part]?.set(orl[0], orl[1], orl[2], orl[3]);
   }
   return Object.fromEntries(Object.entries(specs).map(([name, s]) => [name, make(name, s.o, s.opts)]));
 }
