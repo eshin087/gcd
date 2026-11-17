@@ -2783,8 +2783,9 @@ const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_
 //             only lying, where the cloth lies round his knees and boots)
 //   tuck      the roll (and the backstep): the cloth is drawn in round him while he is rolled up,
 //             eased in at tuckIn and out at tuckOut (/s): the swing limit (sheet, panel [upper,
-//             lower]) and × the lag and the flare
-const CLOTH = { panelOut: 0.85, kneeOut: 0.5, share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.3, tuckPanel: [-0.3, -0.25], tuckLag: 0.8, tuckFlare: 0.8, tuckLying: 0 };
+//             lower]) and × the lag and the flare; tuckShrink [sheets, panels]: how much shorter the
+//             cloth is drawn up while he is rolled up (scale along the sheet)
+const CLOTH = { panelOut: 0.85, kneeOut: 0.5, share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.08, tuckPanel: [-0.12, -0.06], tuckLag: 1, tuckFlare: 1, tuckShrink: [0.45, 0.4], tuckLying: 0 };
 const BLADE_LOCO_RATE = 0.09; // rad per 60 fps frame (apply(): the blade on the move)
 const _vm = new THREE.Vector3(), _vmS = new THREE.Vector3();
 // the coat's neighbours (gear's panel order: front-left, front-right, left side, right side)
@@ -4429,6 +4430,7 @@ export class HeroAnimator {
       this.tuck = clamp(fin(this.tuck + (want - this.tuck) * k, 0), 0, 1);
     }
     const T = this.tuck;
+    const curl = smoothstep(0.9, 0.45, _e.set(0, 1, 0).applyQuaternion(r.chest.getWorldQuaternion(_q1)).y); // (as _streamers)
     // every panel's anchor velocity, then the garment's mean (CLOTH.share)
     _vm.set(0, 0, 0);
     for (let i = 0; i < r.coat.length; i++) {
@@ -4696,6 +4698,7 @@ export class HeroAnimator {
       }
       C.segs[0].rotation.set(s0.x, 0, s0.z);
       C.segs[1].rotation.set(s1.x, 0, s1.z);
+      if (this.freeHand) C.segs[0].scale.y = C.segs[1].scale.y = 1 - CLOTH.tuckShrink[1] * T * curl; // (the roll: drawn up short as he goes over)
       if (C.strips.length) {
         // the lower segment's world frame: origin _e0, rotation _q0
         _q0.copy(_qA).multiply(_qs.setFromEuler(_eul.set(s0.x, 0, s0.z, 'YXZ')));
@@ -4834,6 +4837,9 @@ export class HeroAnimator {
     const tumble = smoothstep(0.75, 0.3, _e.set(0, 1, 0).applyQuaternion(r.chest.getWorldQuaternion(_q1)).y);
     const lying = tumble >= 1 && LYING_KEYS.has(this.key);
     const T = this.tuck ?? 0;
+    // (how far he is curled over: the tuck draws the cloth up only as the body goes over, so it never
+    // shortens round a man still on his feet)
+    const curl = smoothstep(0.9, 0.45, _e.y);
     // every sheet's root velocity first, and the wrapping sheets' mean (CLOTH.share: the cloak is
     // one garment; a turn spun its side sheets' roots opposite ways)
     _vmS.set(0, 0, 0);
@@ -4895,7 +4901,7 @@ export class HeroAnimator {
           // reaching for the world's down, which stood every sheet out like a spine
           _v.x *= 1 - tumble;
           _v.y += (-1 - _v.y) * tumble;
-          _v.z += (0.25 * so - _v.z) * tumble;
+          _v.z += ((wrap ? 1 - T : 1) * 0.25 * so - _v.z) * tumble; // (the tuck: a wrapping sheet along the body's axis)
           _v.normalize();
         }
         // the steel and the arms hold the sheet out (or in): the swing allowed, in [−mA, mA]
@@ -4962,6 +4968,9 @@ export class HeroAnimator {
         }
         c.z = clamp(c.z, -sB, sB);
         j.rotation.set(c.x, 0, c.z);
+        // (the hero, rolled up: the cloak gathered in round him, its sheets drawn up short, so the roll
+        // reads as one dark ball, not a fan of hem points; it lets out as the tuck eases)
+        if (wrap && this.freeHand) j.scale.y = 1 - CLOTH.tuckShrink[0] * T * curl;
         _q0.multiply(_qs.setFromEuler(_eul.set(c.x, 0, c.z, 'YXZ')));
         _so.add(_cq.set(0, -S.len[s], 0).applyQuaternion(_q0)); // the next segment's root
         if (fl) _sf.add(_cf.set(0, -S.len[s] * ws, 0).applyQuaternion(_q0));
