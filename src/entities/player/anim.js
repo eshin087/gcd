@@ -286,7 +286,7 @@ const LD_FOE = unitAzEl(0, 0); // straight at the foe
 // the sword arm on the move in a fight (loco): the grip before the right ribs, the elbow back
 // beside them (pointed out to the side it flared 0.52, as the run's once did), the blade ahead and
 // level, a little out to the sword side: the fencer's guard, carried
-const FIGHT_RUN = { h: [-0.09, -0.26, 0.33], p: [-0.22, -0.7, -0.68], d: unitAzEl(-11, 3) };
+const FIGHT_RUN = { h: [-0.09, -0.26, 0.33], p: [0.3, -0.7, -0.5], d: unitAzEl(-28, 3) };
 export function guard(p, A) {
   const ph = A.time * (TAU / IDLE_LOOP);
   const br = Math.sin(ph), sw = Math.sin(ph * 0.5 + 1.1); // breath, and a slower weight sway

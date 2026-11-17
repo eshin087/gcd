@@ -136,10 +136,11 @@ export function fencerGuard(p, P, A) {
   p[P.hdY] = -0.44; // the eyes stay on the foe over the sword shoulder
   p[P.hdZ] = 0.02;
   set3(p, P.rH, -0.1 + 0.005 * m.tipB, -0.215 + 0.012 * m.brL, 0.35 + 0.008 * m.tipA);
-  set3(p, P.rP, 0.06, -0.9, -0.45); // the elbow down under the hand, in beside the ribs: the forearm on the blade's line
-  // (a little out to the sword side and up: straight ahead, the blade stood behind his own head
-  // from the game camera behind him)
-  dir(p, P.swD, -9 + 2.4 * m.tipA, 13 + 2.2 * m.tipB + 1.2 * m.brL);
+  set3(p, P.rP, 0.4, -0.85, -0.35); // the elbow down under the hand, in beside the ribs: the forearm on the blade's line
+  // (out to the sword side, ~32 deg, and a little up: from the game camera behind him a blade held
+  // nearer straight ahead stood as a vertical bar over his hood; cocked out it reads as a sword held
+  // ready, clear of the hood, 2026-11-17)
+  dir(p, P.swD, -32 + 2.4 * m.tipA, 6 + 2.2 * m.tipB + 1.2 * m.brL);
   // the flat up: broad to the game camera from every side (edge up, it vanished from behind)
   set3(p, P.swF, 0.25, 1, 0);
   onTheBelt(p, P, m, p[P.pelvY] + p[P.spY]);
