@@ -98,18 +98,18 @@ export const TUNING = {
   // the director (duelist/brain.js header, director.js; the Ash Disciple's tuning.js explains each
   // key). Per-form arrays [1, 2, 3, 4]
   pressure: {
-    chainDepth: [4, 4, 6, 6],
-    chainRest: [[0.45, 0.75], [0.4, 0.65], [0.3, 0.55], [0.2, 0.4]],
+    chainDepth: [4, 4, 7, 7],
+    chainRest: [[0.45, 0.75], [0.4, 0.65], [0.25, 0.45], [0.2, 0.4]],
     linkCut: 0.5,
     chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
     maxRun: [2, 2, 3, 3], overRun: 0.1, sameCat: 0.7,
-    floorAfter: [16, 14, 12, 10], floorBoost: 1.8, floorForce: 2,
+    floorAfter: [16, 14, 18, 10], floorBoost: 1.8, floorForce: 2,
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2, 3],
     bias: { string: [1.3, 1.3, 2, 1.9], hazard: [1, 1, 0.8, 1], terrain: [1, 1.2, 1.3, 1.1] },
-    density: [1, 1.1, 2.4, 2.6], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
+    density: [1, 1.1, 2.8, 2.6], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
     mixed: 0.1,
     holdGap: 5,
     // (the tuning pass: `horizon` 1.4 → 0.8: a dodge due further off than that no longer blocks a link
@@ -120,15 +120,18 @@ export const TUNING = {
     // 0.4 s after a red one landed on a hero who had answered both (a 95 % bot died to it on one seed
     // of three, and a pure defender in form 4); the 0.3 s rule the tests assert still holds)
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
-    // what tests/integration/lord.mjs PACE asserts (the Ash Disciple's tuning.js says how). The tuning
-    // pass (2026-11-16), five seeds (4242, 7, 99, 1337, 2024) x 120 s: cues a minute F1 82.9 - 88.6
-    // (mean 84.9; 70.6 before the pass), F2 87.0 - 93.1 (89.7; 79.6), F3 95.8 - 103.0 (100.2; 75.2),
-    // F4 104.5 - 111.7 (109.0; 84.9); the worst seed's step F2 / F1 1.01 (seed 7; the others 1.05 -
-    // 1.09), F3 / F2 1.06, F4 / F3 1.03; longest gap 3.32 / 2.89 / 3.50 / 2.61 s. A seed's outcome
-    // shifts between builds (three.js draws object ids from the AI's Math.random), so the floors are
-    // set over all five seeds: ramp 0.97 / 1 / 0.98, minRate ~9 % under the slowest seed, maxGap
-    // ~0.8 - 1 s over the longest
-    meter: { ramp: [1, 0.97, 1, 0.98], minRate: [75, 79, 87, 95], maxGap: [4.2, 4.2, 4.3, 3.6] },
+    // what tests/integration/lord.mjs PACE asserts (the Ash Disciple's tuning.js says how): each form at
+    // least `ramp` x the one before on every seed and `rampMean` x in the seeds' mean, `minRate` cues a
+    // minute, no gap over `maxGap` s. Measured on the final build (2026-11-16, the tuning pass's second
+    // round), ten seeds (4242, 7, 99, 1337, 2024, 11, 23, 555, 808, 31337) x 120 s: cues a minute
+    // (min / mean / max) F1 81.1 / 85.1 / 87.1, F2 84.5 / 90.6 / 97.9, F3 91.1 / 100.4 / 107.6, F4
+    // 104.2 / 109.7 / 115.8; the mean's step x1.065 / 1.108 / 1.093; the worst seed's step 0.993
+    // (555) / 0.987 (1337) / 1.016 (31337); longest gap 3.22 / 3.05 / 2.82 / 2.70 s. The default three
+    // seeds: steps of the mean 1.056 / 1.116 / 1.066, per seed at least 1.038 / 1.09 / 1.051. A seed
+    // moves 5 - 15 % between builds, the mean of ten far less. Margins: ramp ~6 % under the worst seed,
+    // rampMean 3.5 / 5.8 / 5.3 % under the ten-seed mean (2.5 % on the default seeds' F4 / F3), minRate
+    // ~10 % under the slowest seed, maxGap 0.8 - 0.95 s over the longest
+    meter: { ramp: [1, 0.93, 0.93, 0.95], rampMean: [1, 1.03, 1.05, 1.04], minRate: [72, 76, 82, 93], maxGap: [4.0, 4.0, 3.8, 3.6] },
   },
   punish: { weight: 4 }, // a hero drinking a flask: the moves that close distance × this
 
