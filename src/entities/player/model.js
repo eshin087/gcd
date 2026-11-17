@@ -674,7 +674,10 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, opts = {}) {
       const k = 1 - 0.45 * Math.max(0, z / 0.056) * Math.max(0, -y / 0.04 + 0.3);
       jp.setX(i, jp.getX(i) * k);
     }
-    if (fW !== 1) jaw.scale(fW, 1, 1);
+    // (a narrowed face, `faceScale`: the jaw a V to a pointed chin as well)
+    if (fW !== 1) {
+      for (let i = 0; i < jp.count; i++) jp.setX(i, jp.getX(i) * fW * (1 - 0.45 * Math.min(1, Math.max(0, -jp.getY(i) / 0.04 + 0.2))));
+    }
     jaw.computeVertexNormals();
     mesh(head, jaw, faceMat, sx, sy - 0.066, sz + 0.016);
     // the right ear shows below the swept-back locks

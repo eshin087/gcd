@@ -137,14 +137,16 @@ const curve = (P) => (a) => {
  * back centre. Measured (SPEC.md): 0.38 m wide, 0.36 m deep, the point 0.37 above the joint.
  */
 export const HOOD_RINGS = [
-  { y: -0.01, pts: [[0.07, 0.085], [0.15, 0.055], [0.18, -0.05], [0.162, -0.152], [0, -0.178]] },
-  { y: 0.06, pts: [[0.135, 0.075], [0.178, 0.035], [0.19, -0.055], [0.158, -0.164], [0, -0.187]] },
-  { y: 0.125, pts: [[0.16, 0.062], [0.19, 0.02], [0.192, -0.062], [0.156, -0.168], [0, -0.19]] },
-  { y: 0.185, pts: [[0.122, 0.105], [0.18, 0.05], [0.186, -0.062], [0.15, -0.162], [0, -0.19]] },
-  { y: 0.232, pts: [[0.068, 0.142], [0.158, 0.075], [0.166, -0.052], [0.134, -0.152], [0, -0.178]] },
-  { y: 0.27, pts: [[0, 0.172], [0.13, 0.085], [0.138, -0.044], [0.11, -0.13], [0, -0.158]] },
-  { y: 0.302, pts: [[0, 0.112], [0.098, 0.058], [0.102, -0.04], [0.082, -0.108], [0, -0.128]] },
-  { y: 0.37, pts: [[0, -0.018], [0.006, -0.024], [0.007, -0.03], [0.005, -0.036], [0, -0.04]] },
+  // (round 4: lower (the point 0.335), as wide as it is tall, pinched in toward the neck so the cowl
+  // steps out below it; the opening wider, so dark hood shows round the hair)
+  { y: -0.01, pts: [[0.07, 0.085], [0.13, 0.05], [0.15, -0.05], [0.125, -0.14], [0, -0.155]] },
+  { y: 0.06, pts: [[0.14, 0.075], [0.18, 0.035], [0.188, -0.055], [0.152, -0.16], [0, -0.18]] },
+  { y: 0.13, pts: [[0.178, 0.06], [0.198, 0.02], [0.2, -0.062], [0.162, -0.168], [0, -0.19]] },
+  { y: 0.19, pts: [[0.15, 0.1], [0.19, 0.05], [0.194, -0.062], [0.156, -0.162], [0, -0.188]] },
+  { y: 0.235, pts: [[0.1, 0.14], [0.17, 0.075], [0.176, -0.052], [0.14, -0.148], [0, -0.172]] },
+  { y: 0.27, pts: [[0, 0.175], [0.14, 0.082], [0.146, -0.044], [0.114, -0.124], [0, -0.15]] },
+  { y: 0.29, pts: [[0, 0.13], [0.11, 0.062], [0.112, -0.036], [0.088, -0.098], [0, -0.118]] },
+  { y: 0.335, pts: [[0, -0.01], [0.006, -0.016], [0.007, -0.022], [0.005, -0.028], [0, -0.032]] },
 ];
 
 /** One half of the hood (side +1: his left, −1: his right) through HOOD_RINGS: straight between
@@ -177,7 +179,7 @@ function hoodAt(rings, side, s, t, o) {
 /** The opening's TRIM on hood half `side`: a band `w` wide on the cloth along the front edge, from
  *  the hood's lower edge up to the brow's V (ring `kV`), standing 3 mm proud (the concept draws the
  *  opening as a bold bright band). */
-function hoodTrim(rings, side, kV, w = 0.016) {
+function hoodTrim(rings, side, kV, w = 0.007) {
   const nP = rings[0].pts.length, tV = kV / (rings.length - 1), P = [0, 0, 0], Q = [0, 0, 0];
   return gridGeometry(1, kV * 4, (s, tt, o) => {
     const t = tt * tV;
@@ -197,7 +199,7 @@ function hoodTrim(rings, side, kV, w = 0.016) {
 
 /** The RIDGE's trim: a band `w` wide straddling the seam from the brow's V (ring `kV`) up to the
  *  point, 3 mm proud: the concept's bold line from the point down to the brow. */
-function hoodRidge(rings, kV, w = 0.012) {
+function hoodRidge(rings, kV, w = 0.007) {
   const nP = rings[0].pts.length, tV = kV / (rings.length - 1), P = [0, 0, 0], Q = [0, 0, 0];
   return gridGeometry(2, (rings.length - 1 - kV) * 3, (s, tt, o) => {
     const t = lerp(tV, 0.985, tt), side = s < 0.5 ? -1 : 1, k = Math.abs(s - 0.5) * 2;
@@ -222,12 +224,14 @@ function hoodRidge(rings, kV, w = 0.012) {
 //  [x, y, z of its root, direction x, y, z, length, half-width, curl, ink sub-id]. Neighbours carry
 //  different sub-ids (and stand at different depths), so a dark line parts every lock from the next.
 const SPIKES = [
-  // the fringe: five chunky locks over the brow, the middle ones to about the nose
-  [0.002, 0.226, 0.072, 0.04, -1, 0.36, 0.128, 0.027, 0.16, 0],
-  [0.034, 0.222, 0.068, 0.32, -1, 0.34, 0.118, 0.025, 0.14, 1],
-  [-0.032, 0.223, 0.07, -0.26, -1, 0.36, 0.122, 0.026, 0.15, 1],
-  [0.062, 0.212, 0.052, 0.56, -1, 0.3, 0.1, 0.023, 0.12, 0],
-  [-0.062, 0.212, 0.054, -0.52, -1, 0.3, 0.104, 0.023, 0.12, 0],
+  // the fringe: six chunky locks over the brow, falling to the nose (only the lower face shows,
+  // with a glimpse between them)
+  [0.002, 0.222, 0.074, 0.04, -1, 0.3, 0.152, 0.026, 0.14, 0],
+  [0.036, 0.218, 0.07, 0.26, -1, 0.3, 0.142, 0.025, 0.12, 1],
+  [-0.034, 0.219, 0.072, -0.2, -1, 0.3, 0.146, 0.025, 0.13, 1],
+  [0.064, 0.208, 0.054, 0.46, -1, 0.26, 0.124, 0.023, 0.1, 0],
+  [-0.064, 0.208, 0.056, -0.42, -1, 0.26, 0.128, 0.023, 0.1, 0],
+  [0.018, 0.224, 0.076, 0.12, -1, 0.34, 0.13, 0.02, 0.15, 1],
   // the temples: locks splayed down and out over the cheeks (the face shows small between them)
   [0.082, 0.196, 0.036, 0.42, -1, 0.22, 0.112, 0.022, 0.1, 1],
   [-0.082, 0.196, 0.036, -0.42, -1, 0.22, 0.112, 0.022, 0.1, 1],
@@ -244,7 +248,7 @@ function buildHood({ head, M, mesh }) {
   const kV = HOOD_RINGS.findIndex((r) => r.pts[0][0] === 0);
   mesh(head, mergeGeometries([hoodTrim(HOOD_RINGS, 1, kV), hoodTrim(HOOD_RINGS, -1, kV), hoodRidge(HOOD_RINGS, kV)]), M.abBand);
   // the hair: a cap and the locks (alternate ink sub-ids: a dark line between neighbours)
-  const locks = [sub(orient.up(ellipsoidGeometry(0.088, 0.1, 0.096, { widthSegs: 12, heightSegs: 8 })).translate(0, 0.166, -0.01), 0)];
+  const locks = [sub(orient.up(ellipsoidGeometry(0.086, 0.092, 0.094, { widthSegs: 12, heightSegs: 8 })).translate(0, 0.16, -0.01), 0)];
   SPIKES.forEach(([x, y, z, dx, dy, dz, L, w, curl, k]) => {
     locks.push(sub(orientTo(clumpGeometry(L, w, w * 0.5, { curl, taper: 0.8, cols: 6, rows: 3 }), [x, y, z], [dx, dy, dz], [x * 3, 0.2, 1]), k));
   });
@@ -527,7 +531,7 @@ function buildSword({ sword, M, mesh, joint }) {
 }
 
 export const ABYSS_ITEMS = [
-  { id: 'abyss.hood', slot: 'head', name: 'Hood', hidesHair: true, blankFace: true, face: 'abSkin', faceScale: 0.88, neck: 'abPants', build: buildHood },
+  { id: 'abyss.hood', slot: 'head', name: 'Hood', hidesHair: true, blankFace: true, face: 'abSkin', faceScale: 0.8, neck: 'abPants', build: buildHood },
   { id: 'abyss.robe', slot: 'chest', name: 'Robe and Cowl', build: buildRobe },
   { id: 'abyss.arms', slot: 'arms', name: 'Bell Sleeve and Gloves', build: buildArms },
   { id: 'abyss.legs', slot: 'legs', name: 'Boots', build: buildLegs },
