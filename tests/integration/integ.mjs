@@ -9763,6 +9763,16 @@ async function scenarioMotionAudit() {
   const { HEAVY, LIGHT, SPRINT_ATK, ROLL_ATK } = await imp('src/entities/player/combat.js');
   const { DIM } = await imp('src/entities/player/model.js');
   const { closestOnSegments } = await imp('src/combat/clashFx.js');
+  // (ABYSS_SHIELDKEY=clip:k:x,y,z[;...]: try a shield-arm key's fist before the clips compile, a
+  // search tool for the shield keys)
+  if (process.env.ABYSS_SHIELDKEY) {
+    const { SHIELD_ARM } = await imp('src/entities/player/shieldPoses.js');
+    for (const e of process.env.ABYSS_SHIELDKEY.split(';')) {
+      const [c, k, v] = e.split(':');
+      const key = SHIELD_ARM[c]?.[Number(k)];
+      if (key) key.l = v.split(',').map(Number);
+    }
+  }
   const G = build();
   fightSetup(G);
   const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim, S = r.shield, J = S?.joint;
@@ -9882,6 +9892,7 @@ async function scenarioMotionAudit() {
           if (prevD[k]) {
             const jk = c0.subVectors(dv, prevD[k]).length();
             if (jk > st.jerk[k]) { st.jerk[k] = jk; st.jerkAt[k] = i; }
+            if (process.env.ABYSS_AUDIT_D && k === 'plate' && jk > 0.05) out(`      pop ${i} plate jerk ${(jk * 100).toFixed(0)} cm, push ${A.shieldPush?.toArray().map((x) => x.toFixed(2))}, state ${p.state}`);
             prevD[k].copy(dv);
           } else prevD[k] = dv.clone();
           prev[k].copy(now[k]);

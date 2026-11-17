@@ -260,6 +260,8 @@ function dirSet(p, i, az, el) {
  * the windup, and goes the other way from the blade as the cut lands (never across the steel's
  * path); a heavy holds its finish, so the last key is a pose worth holding.
  */
+// (2026-11-17, round 2: the flat backhand's hang, Rising Crescent's lift and Mountain Splitter's
+// first tuck were searched on a grid (rig-motion keysearch.mjs) for >= 5 cm between steel and plate)
 const K = (u, at, o = null) => ({ u, l: (o?.l ?? SHIELD_AT[at].l).slice(), lp: (o?.lp ?? SHIELD_AT[at].lp).slice() });
 export const SHIELD_ARM = {
   // Piercing Gale: the shield leads the dash; as the arm drives the point out it is thrown back
@@ -269,7 +271,7 @@ export const SHIELD_ARM = {
   heavyThrust: [K(0.6, 'ready', { l: [-0.08, -0.18, 0.32] }), K(1.0, 'block', { l: [-0.03, -0.12, 0.34] }), K(1.45, 'tuck', { l: [-0.06, -0.2, 0.22] }), K(1.9, 'back'), K(2.55, 'back', { l: [0.2, -0.36, -0.2] })],
   // Rising Crescent: the blade sinks to the left hip under the lifted shield, then rises to the
   // right as the shield arm is flung down and out to the left
-  heavyRise: [K(0.6, 'block', { l: [-0.04, 0.02, 0.3] }), K(1.0, 'high', { l: [0.1, 0.1, 0.24] }), K(1.15, 'out', { l: [0.24, 0.0, 0.16] }), K(1.5, 'out', { l: [0.24, -0.16, 0.12] }), K(2.0, 'out', { l: [0.34, -0.3, -0.08] }), K(2.55, 'back', { l: [0.3, -0.34, -0.14] })],
+  heavyRise: [K(0.6, 'block', { l: [-0.04, 0.02, 0.3] }), K(1.0, 'high', { l: [0.0, 0.2, 0.14] }), K(1.15, 'out', { l: [0.24, 0.0, 0.16] }), K(1.5, 'out', { l: [0.24, -0.16, 0.12] }), K(2.0, 'out', { l: [0.34, -0.3, -0.08] }), K(2.55, 'back', { l: [0.3, -0.34, -0.14] })],
   // Whirling Tempest: tucked to the chest through the turn, thrown wide as the brake
   heavySpin: [K(0.5, 'tuck'), K(1.0, 'tuck'), K(1.5, 'tuck', { l: [-0.14, -0.22, 0.22] }), K(2.0, 'out'), K(2.45, 'out', { l: [0.3, -0.26, -0.08] })],
   // Mountain Splitter: the blade goes up over the LEFT shoulder, so the shield drops low before
@@ -277,7 +279,7 @@ export const SHIELD_ARM = {
   // (the windup's first key is the SWORD's, for the shield only: the blade is carried up and over to
   // the left shoulder. Without it the steel swept level across his front at chest height on its way
   // there, through the shield he holds before him, for four frames. The cut itself is untouched)
-  heavyCrush: [{ u: 0.22, h: [0.0, -0.1, 0.24], a: [40, 62] }, K(0.3, 'tuck', { l: [-0.18, -0.2, 0.2] }), K(0.6, 'tuck', { l: [-0.14, -0.24, 0.22] }), K(1.0, 'hang', { l: [0.02, -0.44, 0.12] }), K(1.5, 'carry', { l: [0.1, -0.36, 0.14] }), K(2.0, 'back'), K(2.55, 'back')],
+  heavyCrush: [{ u: 0.22, h: [0.0, -0.1, 0.24], a: [40, 62] }, K(0.3, 'tuck', { l: [-0.28, -0.1, 0.1] }), K(0.6, 'tuck', { l: [-0.14, -0.24, 0.22] }), K(1.0, 'hang', { l: [0.02, -0.44, 0.12] }), K(1.5, 'carry', { l: [0.1, -0.36, 0.14] }), K(2.0, 'back'), K(2.55, 'back')],
   // the slam: the shield lifts before the brow with the leap and is swept down and out as the blade
   // comes down
   slam: [K(0.3, 'ready'), K(0.7, 'high'), K(1.0, 'high', { l: [-0.08, 0.1, 0.3] }), K(1.5, 'out', { l: [0.22, -0.1, 0.14] }), K(2.0, 'out', { l: [0.32, -0.3, 0.0] }), K(2.55, 'out', { l: [0.32, -0.32, -0.02] })],
@@ -289,5 +291,5 @@ export const SHIELD_ARM = {
   // the hip) or drops under it (the flat one, coiled at the chest), and is flung out to his left as
   // the cut goes out to the right
   risingBackhand: [K(0.3, 'high', { l: [0.06, 0.06, 0.26] }), K(0.6, 'high', { l: [0.08, 0.14, 0.24] }), K(1.0, 'high', { l: [0.12, 0.16, 0.2] }), K(1.18, 'out', { l: [0.32, 0.0, 0.06] }), K(2.0, 'out', { l: [0.36, -0.3, -0.1] }), K(2.4, 'out', { l: [0.36, -0.3, -0.1] })],
-  flatBackhand: [K(0.6, 'hang', { l: [0.08, -0.52, 0.02] }), K(1.0, 'hang', { l: [0.1, -0.52, -0.02] }), K(1.5, 'out', { l: [0.3, -0.3, 0.0] }), K(2.0, 'out'), K(2.4, 'out')],
+  flatBackhand: [K(0.6, 'hang', { l: [0.02, -0.52, -0.08] }), K(1.0, 'hang', { l: [0.0, -0.52, -0.12] }), K(1.5, 'out', { l: [0.3, -0.3, 0.0] }), K(2.0, 'out'), K(2.4, 'out')],
 };

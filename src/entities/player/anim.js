@@ -2805,7 +2805,7 @@ const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, low: [0.28, 0.58] };
 // `torso` / `head` / `thigh` m from those bones' lines (the body's own radius and the cloth over it,
 // plus the plate's rim) and `ground` m above the grass. A pose that asks for less gets the fist moved
 // out by the gap, eased in at `rise` and out at `fall` (/s) so a clip that brushes past never pops.
-const SHIELD_CLEAR = { torso: 0.2, head: 0.19, thigh: 0.16, ground: 0.04, rise: 60, fall: 9 };
+const SHIELD_CLEAR = { torso: 0.2, head: 0.19, thigh: 0.16, ground: 0.04, rise: 60, fall: 9, step: 0.02 };
 const SHIELD_PTS = [[0, 0], [-1, 0], [1, 0], [0, 1], [0, -1], [-0.5, 0.8], [-0.5, -0.8], [0.5, 0.5], [0.5, -0.5]];
 const _sT0 = new THREE.Vector3(), _sP = new THREE.Vector3(), _sA = new THREE.Vector3(), _sB = new THREE.Vector3();
 const _sC = new THREE.Vector3(), _sN = new THREE.Vector3(), _sPush = new THREE.Vector3(), _sQ = new THREE.Quaternion();
@@ -3904,10 +3904,16 @@ export class HeroAnimator {
     ch.worldToLocal(r.legs.R.shin.getWorldPosition(_sTh[3]));
     this._shieldMeasure(r);
     // ease toward it: in quickly, out slowly (a single frame jumps to it: a pose posed at once)
-    if (!(dt > 0)) st.copy(_sPush);
+    // (lying down the body falls faster than the push eases in: there it lands at once)
+    if (!(dt > 0) || LYING_KEYS.has(this.key)) st.copy(_sPush);
     else {
       const k = 1 - Math.exp(-(_sPush.lengthSq() > st.lengthSq() ? C.rise : C.fall) * dt);
-      st.lerp(_sPush, k);
+      // (and never more than C.step a frame: two bones pushing opposite ways in turn, a striding
+      // thigh and the torso, flipped it 10 cm a frame in a strafe)
+      _sN.copy(_sPush).sub(st).multiplyScalar(k);
+      const mx = C.step * dt * 60;
+      if (_sN.lengthSq() > mx * mx) _sN.setLength(mx);
+      st.add(_sN);
     }
     if (!Number.isFinite(st.x + st.y + st.z)) st.set(0, 0, 0);
     if (st.lengthSq() < 1e-6) return;
