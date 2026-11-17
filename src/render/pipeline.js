@@ -50,15 +50,17 @@ const HERO_OWN_GLSL = `bool heroOwn(float a) { return a < ${(HERO_ART.a0 - HERO_
  * An option draws the PLAYER in his own bank of part ids (HERO_ART.ownA0): his silhouette, inner
  * lines and letter fill follow the option's numbers below; the bosses (built with the same materials)
  * stay in the shared bank and are never touched. Read once at load; pipeline.setHeroLine switches it.
- *   sil   [width (font px) up close, gain, gain of the band's innermost px (its soft inner edge), width at the game camera]
+ *   sil   [widest (font px), gain, gain of the band's innermost px (its soft inner edge), screen px of his
+ *          metre per font px of width (the band follows his drawn size: ~24 px/m at the desktop game
+ *          camera, ~10 on a phone, 100+ in a close-up)]
  *   inner [width (font px, 1 or 2), depth-step gain, part-edge gain, share kept at the game camera]
  *   fill  [letter gain (0: solid black), lavender share of the letters, piece-edge gain, unused]
  *   glow  [r, g, b, radius (font px) of the soft ring OUTSIDE his silhouette (0: none)]
  */
 export const HERO_LINES = Object.freeze({
-  a: Object.freeze({ sil: [2, 0.55, 0.75, 1], inner: [1, 0.32, 0.28, 0.3], fill: [0.35, 0.0, 0.2, 0], glow: [0, 0, 0, 0] }),
-  b: Object.freeze({ sil: [3, 0.8, 0.6, 2], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.0, 0], glow: [0.05, 0.05, 0.09, 2] }),
-  c: Object.freeze({ sil: [2, 0.65, 0.8, 2], inner: [1, 0.38, 0.32, 0.35], fill: [0.65, 0.85, 0.2, 0], glow: [0.035, 0.035, 0.06, 2] }),
+  a: Object.freeze({ sil: [2, 0.7, 0.75, 12], inner: [1, 0.32, 0.28, 0.3], fill: [0.35, 0.0, 0.2, 0], glow: [0, 0, 0, 0] }),
+  b: Object.freeze({ sil: [3, 0.85, 0.6, 8], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.0, 0], glow: [0.05, 0.05, 0.09, 2] }),
+  c: Object.freeze({ sil: [2, 0.75, 0.8, 12], inner: [1, 0.38, 0.32, 0.35], fill: [0.65, 0.85, 0.2, 0], glow: [0.035, 0.035, 0.06, 2] }),
 });
 export const HERO_LINE = (() => {
   try {
@@ -295,6 +297,9 @@ export class Pipeline {
         uHeroOwnIn: { value: new THREE.Vector4(1, 0.6, 0.5, 0.6) },
         uHeroOwnFillK: { value: new THREE.Vector4(0.4, 0, 0.3, 0) },
         uHeroOwnGlow: { value: new THREE.Vector4(0, 0, 0, 0) },
+        // his drawn size: screen px per metre at his depth, in font px (set per frame from
+        // U.uPlayerScreen; large when unknown, so the line takes its widest)
+        uHeroOwnPxM: { value: 1000 },
         // per creature kind: x = hero (FLAG.ART_HERO), y = wyrm / other (FLAG.ART)
         // hero: uArtLum.x / uArtBlack.x map his flat art fill (HERO_INK) to the light value v that picks
         // his fill letters and brightness (uHeroFill); uArtMin.x is unused since the ink-line pass
@@ -434,6 +439,7 @@ export class Pipeline {
         uniform vec4 uHeroOwnIn;
         uniform vec4 uHeroOwnFillK;
         uniform vec4 uHeroOwnGlow;
+        uniform float uHeroOwnPxM;
         uniform vec2 uArtLum;
         uniform vec2 uArtBlack;
         uniform vec2 uArtMin;
@@ -668,7 +674,7 @@ export class Pipeline {
           if (uHeroOwnGlow.w <= 0.0) return vec3(0.0);
           vec2 d = px - uHeroHalo.xy * uRes;
           if (dot(d, d) > uHeroHalo.z * uHeroHalo.z) return vec3(0.0);
-          float r = uHeroOwnGlow.w * uHeroPx.x;
+          float r = uHeroOwnGlow.w * uHeroPx.x * clamp(uHeroOwnPxM / (uHeroOwnSil.w * uHeroOwnSil.x), 0.5, 1.0);
           float n1 = 0.0, n2 = 0.0;
           for (int i = 0; i < 8; i++) {
             float a = float(i) * 0.7853982;
@@ -858,7 +864,9 @@ export class Pipeline {
               vec2 o = uHeroPx.x / uRes;
               int pidP = int(clamp(heroPartOf(sP.a) + ${HERO_PARTS.toFixed(1)}, 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
               vec4 pInk = uHeroOwnInk[pidP], pRim = uHeroOwnRim[pidP];
-              float dS = 0.0, silW = floor(mix(uHeroOwnSil.x, uHeroOwnSil.w, far) + 0.5);
+              // (the band's width follows his drawn size: a font px per uHeroOwnSil.w px of his metre,
+              // 1 .. uHeroOwnSil.x: bold in a close-up, 2 - 3 px at the desktop camera, 1 on a phone)
+              float dS = 0.0, silW = clamp(floor(uHeroOwnPxM / max(uHeroOwnSil.w, 1.0) + 0.5), 1.0, uHeroOwnSil.x);
               for (int r = 1; r <= 4; r++) {
                 float fr = float(r);
                 if (fr > silW + 0.01) break;
@@ -1402,7 +1410,11 @@ export class Pipeline {
       const rPx = (HERO_HALO_R * 0.5 * this.height * cam.projectionMatrix.elements[5]) / ps.z;
       const k = Math.min(1, Math.max(0, (ps.z - hs.w * 0.4) / (hs.w * 0.6)));
       h.set(ps.x, ps.y, rPx, k * k * (3 - 2 * k));
-    } else h.w = 0;
+      u.uHeroOwnPxM.value = rPx / HERO_HALO_R / Math.max(1, u.uHeroPx.value.x);
+    } else {
+      h.w = 0;
+      u.uHeroOwnPxM.value = 1000;
+    }
     // (the wyrm's grid anchor: _updateWyrmGrid, before the scene pass)
     // the props' grid anchor: where the world's ground origin would be on screen if the whole ground
     // moved like the ground at the focus (the screen position of the focus, minus the focus's world
@@ -1463,7 +1475,7 @@ export class Pipeline {
     this.heroLine = o ? String(opt) : '0';
     const u = this.asciiMat.uniforms;
     if (o) {
-      u.uHeroOwnSil.value.set(o.sil[0], o.sil[1], o.sil[2], o.sil[3] ?? o.sil[0]);
+      u.uHeroOwnSil.value.set(o.sil[0], o.sil[1], o.sil[2], o.sil[3]);
       u.uHeroOwnIn.value.set(o.inner[0], o.inner[1], o.inner[2], o.inner[3]);
       u.uHeroOwnFillK.value.set(o.fill[0], o.fill[1], o.fill[2], o.fill[3]);
       u.uHeroOwnGlow.value.set(o.glow[0], o.glow[1], o.glow[2], o.glow[3]);
