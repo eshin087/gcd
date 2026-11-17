@@ -301,6 +301,11 @@ function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed', rng = null,
       }
       return pend.some((e) => !e.done && e.at - t < 0.7);
     },
+    /** Is a cue it means to answer due within `s` seconds? */
+    dueWithin(s) {
+      const t = G.game.time;
+      return pend.some((e) => !e.done && e.at - t < s);
+    },
   };
 }
 
@@ -1968,7 +1973,10 @@ function mortalFencer(G, { attack = true, drinkAt = 60, execute = true } = {}) {
   }
   const busy = G.defend.act();
   const tick = (game.realTime * 60) | 0;
-  if (p.hp < drinkAt && p.flasks > 0 && !busy && ['idle', 'run', 'block'].includes(p.state) && tick % 6 === 0) { input.up(1); input.tap('KeyF'); return; }
+  // (it drinks as a player would: in his openings (a reaction, a break) or out of his reach (over 6 m),
+  // with nothing cued; a drink takes 0.85 s, and a blow it cannot see coming yet may still catch it)
+  const opening = d.broken || d.mode === 'react';
+  if (p.hp < drinkAt && p.flasks > 0 && (opening || dist > 6) && !G.defend.dueWithin(0.7) && ['idle', 'run', 'block'].includes(p.state) && tick % 6 === 0) { input.up(1); input.tap('KeyF'); return; }
   if (dist > 2.6 && !busy) input.axis = { x: dx / dist, y: -dz / dist };
   if (!attack) {
     // (a pure defender still gives the deathblow: a broken lord left alone rises with a fifth of his bar)
@@ -1985,8 +1993,10 @@ function mortalRun(seed, { skill, form = 1, secs = 600, attack = true, oneForm =
   const G = build(seed, true);
   const { game } = G;
   const d = game.dragon, p = game.player;
-  duel(G, { dist: 3, ai: true, form });
+  // (his AI starts once the bot is watching: a blow already on its way as the duel is staged is not cued to it)
+  duel(G, { dist: 3, ai: false, form });
   G.defend = makeDefender(G, { skill, rng: mulberry32(seed * 977 + Math.round(skill * 100)), world: true });
+  d.debug.setAI(true);
   const formAt = [game.time];
   const hurt = [], flashT = [], breaks = [];
   let curAtk = null;
