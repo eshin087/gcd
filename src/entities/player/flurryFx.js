@@ -19,21 +19,22 @@
 const R = (a, b) => a + Math.random() * (b - a);
 
 const COL = {
-  core: [2.7, 3.3, 4.5], // a hanging cut's line: ice white
-  veil: [0.28, 0.85, 2.1],
-  last: [3.3, 2.5, 4.6], // the art's own line: the gem's violet in it
-  lastVeil: [1.0, 0.4, 2.3],
+  // (the hooded hero, 2026-11-17: the crystal's lavender-white; it was ice blue and the gem's violet)
+  core: [3.0, 2.95, 4.3], // a hanging cut's line: crystal white
+  veil: [0.85, 0.8, 1.9],
+  last: [3.4, 3.2, 4.6], // the art's own line
+  lastVeil: [1.1, 0.95, 2.2],
   hot: [4.4, 4.2, 4.0], // the white of a blow landing
-  ice: [1.3, 2.3, 3.9],
-  iceEnd: [0.1, 0.3, 1.0],
-  spark: [2.4, 3.0, 4.3],
-  sparkEnd: [0.2, 0.45, 1.4],
+  ice: [2.0, 1.95, 3.5],
+  iceEnd: [0.25, 0.22, 0.7],
+  spark: [3.0, 2.95, 4.2],
+  sparkEnd: [0.5, 0.45, 1.2],
   gold: [4.2, 3.0, 1.1], // a long flurry's last cuts run hot
   goldEnd: [1.3, 0.45, 0.08],
-  shard: [0.9, 1.9, 4.2],
-  shardEnd: [0.1, 0.25, 1.0],
-  mote: [0.7, 1.7, 3.0],
-  moteEnd: [0.2, 0.5, 1.6],
+  shard: [1.9, 1.85, 3.6],
+  shardEnd: [0.3, 0.28, 0.8],
+  mote: [1.5, 1.45, 2.8],
+  moteEnd: [0.45, 0.4, 1.3],
 };
 // screen axes of the fixed game camera (pitch 58°), used when there is no camera matrix (tests)
 const UP_Y = 0.53, UP_Z = -0.85;

@@ -80,7 +80,7 @@ export const BODY = {
   ],
   hips: { c: [0, 0.012, -0.005], r: [0.142, 0.1, 0.106] }, // pelvis ellipsoid (pelvis space, x y z)
   head: { c: [0, 0.154, -0.007], r: [0.105, 0.118, 0.112] }, // the hair cap round the skull (head space)
-  headScale: 1.08, // the head joint's scale (skull, face, hair): 7.3 heads tall instead of 7.8
+  headScale: 1.0, // the head joint's scale (skull, face, hair): 7.3 heads tall instead of 7.8
   neck: [0.05, 0.046], // neck radius at the collar / under the jaw (head space, before headScale)
   deltoid: [0.074, 0.07, 0.078], // shoulder cap on each upper arm (x out, y, z)
   upperArm: [0.066, 0.056], // sleeve radius at the shoulder / the elbow

@@ -1503,6 +1503,8 @@ export class Pipeline {
    */
   setSeenThrough(root) {
     this.seenRoot = root ?? null;
+    // (the player's rig is built in his own bank, buildHero opts.own; ?heroLine=0 puts it back)
+    if (this.heroLine === '0') this._markHeroBank(false);
   }
 
   /**
@@ -1855,7 +1857,6 @@ export class Pipeline {
     // is on by now)
     const prevAutoUpdate = scene.matrixWorldAutoUpdate;
     this._updateWyrmGrid();
-    if (this.heroLine !== '0') this._markHeroBank(true); // (a rebuilt outfit: new materials)
     scene.updateMatrixWorld();
     this.rigid.sync();
     scene.matrixWorldAutoUpdate = false;

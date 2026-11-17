@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createSurfaceGlyphMaterial, FLAG } from '../../render/materials.js';
+import { createSurfaceGlyphMaterial, FLAG, setHeroBank } from '../../render/materials.js';
 import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
 import { DIM, BODY, REST, HAIR_CLUSTERS, legDims } from './heroDims.js';
 import { mergeGeometries, sub, partGeometry, orient, limb, swordTip } from './heroGeo.js';
@@ -412,10 +412,10 @@ export function createHeroMaterials(U) {
     abPants: S({ ...cloth, cell: [0.11, 0.18], seed: 41.1 }, { zoomNear: Z }),
     abBoot: S({ ...cloth, cell: [0.08, 0.1], seed: 41.7 }, { max: [0.05, 0.06], zoomNear: Z }),
     abBand: S({ ...silver, glyphs: '-=-=', cell: [0.04, 0.03], seed: 42.3 }, { max: [0.03, 0.025] }),
-    abRobeL: S({ ...abCloth, seed: 43.1 }, { zoomNear: Z }),
-    abRobeR: S({ ...abCloth, seed: 43.9 }, { zoomNear: Z }),
+    abRobeL: S({ ...abCloth, side: THREE.DoubleSide, seed: 43.1 }, { zoomNear: Z }),
+    abRobeR: S({ ...abCloth, side: THREE.DoubleSide, seed: 43.9 }, { zoomNear: Z }),
     abRobe: S({ ...abCloth, side: THREE.DoubleSide, seed: 44.7 }, { zoomNear: Z }),
-    abSleeve: S({ ...abCloth, cell: [0.09, 0.14], seed: 45.3 }, { zoomNear: Z }),
+    abSleeve: S({ ...abCloth, cell: [0.09, 0.14], side: THREE.DoubleSide, seed: 45.3 }, { zoomNear: Z }),
     abCuff: S({ ...abCloth, cell: [0.06, 0.08], side: THREE.DoubleSide, seed: 45.9 }, { max: [0.04, 0.05], zoomNear: Z }),
     abCowl: S({ ...abCloth, cell: [0.08, 0.1], side: THREE.DoubleSide, seed: 46.5 }, { max: [0.05, 0.06], zoomNear: Z }),
     abCowl2: S({ ...abCloth, cell: [0.08, 0.1], side: THREE.DoubleSide, seed: 47.1 }, { max: [0.05, 0.06], zoomNear: Z }),
@@ -711,6 +711,10 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, opts = {}) {
   });
 
   const mats = Object.values(M);
+  // the player's materials write their ink-line part ids into his OWN bank (render/materials.js
+  // HERO_ART.ownA0): the art pass then draws his line (pipeline HERO_LINES) from his own per-part
+  // tables, never the bosses' (they are built here too, opts.own unset)
+  if (opts.own) setHeroBank(mats, true);
   return {
     root, body, pelvis, spine, chest, head, hair, arms, legs, coat, streamers, sword, gem, pauldron, flask,
     // { open, grip, fingers? } | null: the free hand open, the same hand closed on the grip below the
