@@ -4,7 +4,9 @@ export const TUNING = {
   name: 'SHEN HUI, THE ASH DISCIPLE',
   hp: 3000, // a near-perfect fencing bot (tests/integration/duel.mjs WIN) wins in about a minute
   // (the second pass: three phases, the fencer / the kindled blade / ash on the wind)
-  phaseAt: [1, 0.62, 0.3], // HP fractions where each phase starts (the boss bar's ticks)
+  // (the tuning pass: 0.62 / 0.3 → 0.64 / 0.36: the bots that play well spent 21 - 26 / 16 - 20 / 17 - 21 s
+  // in the three; phase 3, the busiest and the new one, gets the biggest share of his health)
+  phaseAt: [1, 0.64, 0.36], // HP fractions where each phase starts (the boss bar's ticks)
   radius: 0.42, // body circle (the hero is pushed out of it)
   bound: 12.5, // he stays this close to the courtyard's centre (min with CONFIG.world.dragonBound)
 

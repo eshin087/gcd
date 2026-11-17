@@ -2781,13 +2781,15 @@ async function scenarioTerrain() {
 function probeDefender(G, { skill = 1, seed = 1 } = {}) {
   const pend = [];
   const roll = mulberry32(seed * 977 + Math.round(skill * 100));
-  const stats = { flashes: 0, missed: 0, parryTry: 0, dodgeTry: 0 };
+  const stats = { flashes: 0, missed: 0, parryTry: 0, dodgeTry: 0, missedAt: [] };
   return {
     stats,
     onEvent(n, e) {
       if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
       stats.flashes++;
-      if (roll() > skill) { stats.missed++; return; }
+      (stats.hist ??= []).push([G.game.time, e.attack, e.tell]);
+      if (stats.hist.length > 12) stats.hist.shift();
+      if (roll() > skill) { stats.missed++; stats.missedAt.push([G.game.time, e.attack]); return; }
       pend.push({ tell: e.tell, at: G.game.time + (e.source === 'world' ? 0.3 : TUNING.flashLead), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false });
     },
     act() {
@@ -2911,7 +2913,12 @@ async function scenarioBots() {
         const t0 = game.time;
         let drunk = 0, fireOpens = 0, opens = 0;
         G.watch = (n, e) => { if (n === 'player:heal') drunk++; if (n === 'player:guardOpen') { opens++; if (e?.attack === 'burningGround') fireOpens++; } };
+        const st = [], hitState = [];
+        const th0 = p.takeHit.bind(p);
+        p.takeHit = (h) => { const was = p.state, r = th0(h); if (r === RESULT.HIT && h?.attack !== 'burningGround') hitState.push([game.time, h.attack, h.tell, was, st.slice(-25).map((x) => x[1]).filter((x, i, A) => x !== A[i - 1]).join('>') + ' | cues ' + (G.defend.stats.hist ?? []).filter((f) => f[0] > game.time - 1.5).map((f) => `${f[1]}:${f[2][0]}@${(f[0] - game.time).toFixed(2)}`).join(' ')]); return r; };
         run(G, DSECS, (GG) => {
+          st.push([game.time, p.state]);
+          if (st.length > 90) st.shift();
           const { input } = GG;
           input.axis = { x: 0, y: 0 };
           if (!p.alive || game.state !== 'boss') return;
@@ -2919,7 +2926,8 @@ async function scenarioBots() {
           d.hp = Math.max(d.hp, d.maxHp * (TUNING.phaseAt[ph] ?? 0) + 1);
           const busy = GG.defend.act();
           if (stand) { if (!busy && !input.down?.('Space')) input.press(1); }
-          else if (p.hp < 70 && p.flasks > 0 && !busy && ((game.realTime * 60) | 0) % 30 === 0) input.tap('KeyF');
+          // (it drinks in a lull: no move of his running, or one in its recovery)
+          else if (p.hp < 70 && p.flasks > 0 && !busy && (d.mode !== 'act' || d.brain.act?.t > d.brain.act?.recoveryStart) && ((game.realTime * 60) | 0) % 30 === 0) input.tap('KeyF');
           const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz);
           if (!busy && l > 3.4) input.axis = { x: dx / l, y: -dz / l };
           if (!stand) stepOffFire(GG);
@@ -2927,6 +2935,9 @@ async function scenarioBots() {
         }, () => !p.alive);
         G.watch = null;
         const r = tally(G, t0, p);
+        // a blow that landed with no missed cue of it in the 1.2 s before it: the bot answered and was hit
+        const ans = hitState.filter((h) => !G.defend.stats.missedAt.some((m) => m[1] === h[1] && h[0] - m[0] < 1.2 && h[0] >= m[0]));
+        if (ans.length) out(`      answered and hit anyway: ${ans.map((h) => `${h[1]} ${h[2]} (${h[3]}; ${h[4]})`).join(' · ')}`);
         out(`   P${ph} ${String(seed).padStart(4)} ${p.alive ? 'ALIVE' : `DIED at ${(game.time - t0).toFixed(0)} s`}  hits ${String(r.hits.length).padStart(3)} (${(r.dmg - r.burn.reduce((a, h) => a + h.damage, 0)).toFixed(0)} + burn ${r.burn.reduce((a, h) => a + h.damage, 0).toFixed(0)})  burn ticks guarded ${r.chip.length}  guard knocked open ${opens} (by fire ${fireOpens})  flasks ${drunk}  HP ${Math.round(p.hp)}  worst ${r.w.blow.toFixed(1)} (${r.w.blowBy})  sec ${r.w.sec.toFixed(1)} (${r.w.secBy})`);
         G.defend = null;
       }
@@ -2934,6 +2945,58 @@ async function scenarioBots() {
   }
   return last;
 }
+
+// ================================================================== scenario: answer (opt-in)
+/** The fairness sweep of the tuning pass: every AI move (or ABYSS_AMOVES) in every phase it is in,
+ *  triggered from 5 distances across its band (left and right of his facing), against the parrying
+ *  bot (white / blue parried, red / black rolled across) with the hero standing, or walking in at him
+ *  (ABYSS_AWALK=1: what the pure defender does past 3.4 m). Prints every blow that lands. */
+async function scenarioAnswer() {
+  out('\n== scenario ANSWER (every move from across its band against the parrying bot) ==');
+  const pick = process.env.ABYSS_AMOVES ? process.env.ABYSS_AMOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].counter && !MOVES[n].transition && !MOVES[n].terrain);
+  const walk = !!process.env.ABYSS_AWALK;
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  p.debug.noRiposte = true;
+  let bad = 0, runs = 0;
+  for (const ph of [1, 2, 3]) {
+    while (d.phase < ph) { const n = d.phase + 1; d.debug[`phase${n}`](); run(G, 4, null, () => d.phase === n && d.mode === 'foot'); }
+    for (const name of pick) {
+      const def = MOVES[name];
+      if (!def || def.phase > ph || !(perPhaseW(def.weight, ph) > 0)) continue;
+      const lo = def.band[0], hi = Math.min(def.band[1], 12);
+      for (let k = 0; k < 5; k++) for (const ang of [-0.5, 0.5]) {
+        settle(G, 8);
+        d.moveFx?.reset();
+        d.position.set(0, 0, -2); d.yaw = 0;
+        place(G, Math.max(0.8, lo + ((hi - lo) * k) / 4), ang);
+        run(G, 0.2);
+        d.brain.cooldowns = {};
+        G.defend = makeDefender(G);
+        const h0 = G.hits.length;
+        d.debug.trigger(name);
+        runs++;
+        run(G, 9, (GG) => {
+          GG.input.axis = { x: 0, y: 0 };
+          const busy = GG.defend.act();
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz);
+          if (walk && !busy && l > 3.4) GG.input.axis = { x: dx / l, y: -dz / l };
+          GG.game.mouseGround.set(d.position.x, 0, d.position.z);
+        }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+        G.defend = null;
+        input.up(1);
+        const landed = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT && h.attack === name);
+        if (landed.length) { bad++; out(`   P${ph} ${name} from ${(lo + ((hi - lo) * k) / 4).toFixed(1)} m (${ang > 0 ? 'left' : 'right'}): ${landed.map((h) => `${h.tell} ${h.damage}`).join(', ')}`); }
+      }
+    }
+  }
+  out(`   ${runs} runs, ${bad} with a blow that landed${walk ? ' (the hero walking in)' : ''}`);
+  return G;
+}
+const perPhaseW = (w, ph) => (Array.isArray(w) ? w[Math.min(w.length, ph) - 1] : w);
 
 // ================================================================== scenario: ranged (opt-in)
 /** The sword qi moves at each range of their band (a standing, guarding hero): the cues they give and
@@ -3617,6 +3680,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
   bots: scenarioBots,
   ranged: scenarioRanged,
+  answer: scenarioAnswer,
   perfect: scenarioPerfect,
   flare: scenarioFlare,
   fxlooks: scenarioFxLooks,
@@ -3645,7 +3709,7 @@ const SCENARIOS = {
   cutfx: scenarioCutFx,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 

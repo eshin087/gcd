@@ -57,11 +57,13 @@ const single = (...close) => [...PURSUE, ...ROUND, ...STRINGS, ...close];
 /** After a thrown piece of the yard: he closes in behind it while it flies (as after his sword qi).
  *  (tuning pass: the integration's placeholders 0.35 - 0.5 raised: the run to the piece and its flight
  *  were the fight's longest gaps; he now comes in behind most of them) */
+// (`cut: 1`: from the end of the throw's recovery, so his first blow lands after the piece, not with
+// it: a glide that arrived with the kicked lantern was two blows in one instant, one parry for both)
 const THROWN = [
-  far('windStep', [0.65, 0.7, 0.7]),
-  far('ghostDash', [0, 0, 0.7]),
-  mid('glideKick', [0.6, 0.65, 0.65]),
-  mid('leapingString', [0, 0.6, 0.6]),
+  far('windStep', [0.55, 0.6, 0.6], { cut: 1 }),
+  far('ghostDash', [0, 0, 0.6], { cut: 1 }),
+  mid('glideKick', [0.55, 0.6, 0.6], { cut: 1 }),
+  mid('leapingString', [0, 0.55, 0.55], { cut: 1 }),
   near('swallow', [0.55, 0.5, 0.4]),
   near('burningCross', [0, 0.55, 0.5]),
   near('ashString', [0, 0, 0.6]),
