@@ -587,8 +587,18 @@ export class Player {
     L.dz = fz / h;
   }
 
-  /** World point on the drawn body (leaned, drawScale) → the same point on the upright 1.85 m
-   *  gameplay body. */
+  /** How much higher the gameplay body stands than the drawn one (model metres): the hero is drawn
+   *  on legs of his own (rig.bodyDims, heroDims.js HERO_LEGS), but every number of the fight (his
+   *  chest the wyrm aims at, his blade's sweep) reads the body on DIM's legs, as it always has. The
+   *  body above the hips is the same; only its pivot moves (anim.js poses r.body at bodyDims.pivot). */
+  get legLift() {
+    const bd = this.rig?.bodyDims;
+    const d = bd ? DIM.pivot - bd.pivot : 0;
+    return Number.isFinite(d) ? d : 0;
+  }
+
+  /** World point on the drawn body (leaned, drawScale, its own legs) → the same point on the
+   *  upright 1.85 m gameplay body (DIM's legs: legLift). */
   unlean(v) {
     const L = this.lean, p = this.position;
     const k = L?.k || 0;
@@ -596,16 +606,17 @@ export class Player {
     x -= k * L.dx * y;
     z -= k * L.dz * y;
     const S = this.drawScale;
-    v.set(p.x + x / S, p.y + y / S, p.z + z / S);
+    v.set(p.x + x / S, p.y + y / S + this.legLift, p.z + z / S);
     return v;
   }
 
-  /** Point on the upright gameplay body → where it is drawn (leaned, drawScale): the name tag. */
+  /** Point on the upright gameplay body → where it is drawn (leaned, drawScale, its own legs): the
+   *  name tag. */
   leanPoint(v) {
     const L = this.lean, p = this.position;
     const k = L?.k || 0;
     const S = this.drawScale;
-    const x = (v.x - p.x) * S, y = (v.y - p.y) * S, z = (v.z - p.z) * S;
+    const x = (v.x - p.x) * S, y = (v.y - p.y - this.legLift) * S, z = (v.z - p.z) * S;
     v.set(p.x + x + k * (L?.dx || 0) * y, p.y + y, p.z + z + k * (L?.dz || 0) * y);
     return v;
   }
