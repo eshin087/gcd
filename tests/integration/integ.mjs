@@ -4321,9 +4321,13 @@ async function scenarioHero() {
   const strips = r.coat.reduce((n, c) => n + c.strips.length, 0);
   // the robe's skirt (the default set, gear/abyss.js): panels on the coat springs, the back pair past
   // the sides; every panel is a skirt panel (no flap), each with its torn strips
+  // (2026-11-17, the hooded hero: the cloak-robe's BACK is on the streamer springs (its sheets), the
+  // coat panels are its front and sides; the torn hem is the sheets' own shape. What is asked: a
+  // skirt on springs all round him, the back covered by a sheet on springs)
   const tails = r.coat.filter((C) => Math.abs(C.def.az) > 2.2);
-  assert(r.coat.length >= 2 && r.coat.length <= 6 && tails.length >= 1 && strips >= r.coat.length && r.coat.every((C) => !C.def.flap),
-    `coat: ${r.coat.length} panels (${tails.length} behind), ${strips} torn strips`);
+  const backSheets = (r.streamers ?? []).filter((S) => !S.weapon);
+  assert(r.coat.length >= 2 && r.coat.length <= 6 && tails.length + backSheets.length >= 1 && r.coat.every((C) => !C.def.flap),
+    `coat: ${r.coat.length} panels (${tails.length} behind) and ${backSheets.length} back sheets on springs, ${strips} torn strips`);
   // the one hero (gear/index.js DEFAULT_LOADOUT): a head item (the hood), the body's five hair joints
   // (springs) with the clusters the head item keeps built on them, a lit face (no shadowsFace), the
   // cloak's sheets on the streamer springs, no shoulder item, the shield on the free forearm; his
@@ -4337,11 +4341,14 @@ async function scenarioHero() {
     const keep = hi?.hidesHair ? 0 : Array.isArray(hi?.hair) ? Object.keys(r.hair).filter((n) => hi.hair.includes(n)).length : 5;
     let skin = 0;
     r.head.traverse((o) => { if (o.isMesh && o.material === r.materials.skin) skin++; });
-    assert(r.streamers?.filter((S) => !S.weapon).length >= 1 && r.streamers.every((S) => S.lag == null || (S.lag > 0 && S.lag <= 1)) && Object.keys(r.hair).length === 5 && built.length === keep && skin > 0 && r.slots.head.length > 0 && r.slots.shoulders.length === 0
+    // (a head item may give the face its own skin material: abyss.hood `face`)
+    let faceN = 0;
+    r.head.traverse((o) => { if (o.isMesh && hi?.face && o.material === r.materials[hi.face]) faceN++; });
+    assert(r.streamers?.filter((S) => !S.weapon).length >= 1 && r.streamers.every((S) => S.lag == null || (S.lag > 0 && S.lag <= 1)) && Object.keys(r.hair).length === 5 && built.length === keep && (skin > 0 || (hi?.face && r.materials[hi.face] && faceN > 0)) && r.slots.head.length > 0 && r.slots.shoulders.length === 0
       && !!r.shield?.joint && r.shield.joint.parent === r.arms.L.fore && p.anim.shield === true
-      && r.weaponDims.drawnTip === 0.9 && r.weaponDims.steelTip === 1.0 && r.weaponDims.bladeBase === HERO_DIM.bladeBase && r.weaponDims.bladeTip === HERO_DIM.bladeTip
+      && (await imp('src/entities/player/gear/abyss.js')).ABYSS_SWORD_DIMS.drawnTip === r.weaponDims.drawnTip && r.weaponDims.drawnTip >= 0.7 && r.weaponDims.drawnTip < r.weaponDims.steelTip && r.weaponDims.steelTip <= 1.0 && r.weaponDims.bladeBase === HERO_DIM.bladeBase && r.weaponDims.bladeTip === HERO_DIM.bladeTip
       && r.bodyDims.thigh === HERO_LEGS.thigh && r.bodyDims.shin === HERO_LEGS.shin && HERO_LEGS.thigh === 0.385 && HERO_LEGS.shin === 0.38,
-      `the hero: ${r.streamers?.length} cloak sheets on springs, ${built.length} of 5 hair clusters built (the hood keeps ${keep}), ${skin} skin meshes on the head (lit), the shield on the free forearm; the sword to ${r.weaponDims.drawnTip} m drawn (the hit segment unchanged, ${r.weaponDims.bladeBase} … ${r.weaponDims.bladeTip}); legs ${r.bodyDims.thigh} / ${r.bodyDims.shin}`);
+      `the hero: ${r.streamers?.length} cloak sheets on springs, ${built.length} of 5 hair clusters built (the hood keeps ${keep}), ${skin + faceN} skin meshes on the head (lit), the shield on the free forearm; the sword to ${r.weaponDims.drawnTip} m drawn (the hit segment unchanged, ${r.weaponDims.bladeBase} … ${r.weaponDims.bladeTip}); legs ${r.bodyDims.thigh} / ${r.bodyDims.shin}`);
   }
   // clear of the wyrm (AI off): run, sprint, roll, light / backhand / slam, charge + cleave
   p.debug.teleport(d.position.x + 14, d.position.z + 14);
@@ -4887,7 +4894,10 @@ async function scenarioHeroLife() {
       const bite = made.splice(0);
       const le = edge(turned), se = edge(slam), be = bite.filter((o) => o.glyph === '|');
       const same = (c, ref) => Array.isArray(c) && c.length === 3 && c.every((v, i) => v === ref[i]);
-      assert(le.length > 0 && le.every((o) => o.color === ARC_TONE.light.core && same(o.colorEnd, [0.14, 0.1, 0.8])), `a light's arc is as it was: white-hot edge cooling to indigo (${le.length} strokes)`);
+      // (2026-11-17, the hooded hero: his arc is the crystal's lavender-white, fx.js COL.arcEnd; the
+      // intent: a light's edge is the light tone's core cooling to the light tone's own end, apart from
+      // the heavy blows' violet)
+      assert(le.length > 0 && le.every((o) => o.color === ARC_TONE.light.core && same(o.colorEnd, ARC_TONE.light.end)) && !same(ARC_TONE.light.end, ARC_TONE.heavy.end), `a light's arc: the white-hot edge cooling to the light tone's end, not the heavies' violet (${le.length} strokes)`);
       assert(se.length > 0 && se.every((o) => same(o.colorEnd, ARC_TONE.heavy.end)), `the slam's arc cools to the gem's violet (${se.length} strokes)`);
       assert(be.length > 0 && Math.max(...be.map((o) => o.size)) <= 0.14 && !bite.some((o) => /[A-Za-z0-9+]/.test(o.glyph)), `the bite: a slightly thicker white edge, still at most 0.14 m, no letters (${Math.max(...be.map((o) => o.size)).toFixed(3)} m)`);
     } finally {
@@ -5004,7 +5014,12 @@ async function scenarioHeroLife() {
   // fill and both lines): exactly the base at rest, a landed cut's flare held through the freeze and
   // gone 0.4 s later, the slam's stronger, a whiff only the strike's; the far strike ink above rest
   {
-    const PF = game.U.uHeroPartFill.value[17], PR = game.U.uHeroPartRim.value[17], bu = r.materials.blade.uniforms;
+    // (2026-11-17, the hooded hero: his crystal, the blade and the shield's star, flares in the player's
+    // OWN bank of the per-part tables, U.uHeroOwn*, its part from HERO_INK.abCrystal: player.js)
+    const { HERO_INK: HI_ } = await imp('src/entities/player/model.js'), OB_ = { ...HI_.abCrystal, ...HI_.abCrystal.own }, OWN_ = OB_.part;
+    // (the gains below are × his base: OB_.fillGain, the rim line's own width)
+    const F0 = OB_.fillGain ?? 1, R0 = (OB_.rimLine ?? OB_.line)[3];
+    const PF = game.U.uHeroOwnFill.value[OWN_], PR = game.U.uHeroOwnRim.value[OWN_], bu = r.materials.blade.uniforms;
     const fx0 = Math.sin(d.yaw), fz0 = Math.cos(d.yaw);
     const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx0 + (h.z - d.position.z) * fz0 > (a.x - d.position.x) * fx0 + (a.z - d.position.z) * fz0 ? h : a));
     const front = () => { const c = chest(); p.debug.teleport(c.x + fx0 * (c.r + 1), c.z + fz0 * (c.r + 1)); p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z); aimAt(G); };
@@ -5042,9 +5057,9 @@ async function scenarioHeroLife() {
     A.forceVariant = null;
     G.watch = null;
     out(`   blade flare: rest ${idle[0]} / ${idle[1]}, a landed light ${lit?.toFixed(2)} → ${held?.toFixed(2)} three frames on → ${cooled.toFixed(2)} 0.4 s later; the slam ${slamPeak.toFixed(2)}; a whiff ${whiff.toFixed(2)}; far strike ink ${farInk.toFixed(2)} at ${p.viewDist.toFixed(0)} m`);
-    assert(idle[0] === 1 && idle[1] === 1.7, `at rest the blade's part is exactly its HERO_INK base (fill ${idle[0]}, rim ${idle[1]})`);
-    assert(lit >= 1.5 && held >= 1.35 && cooled <= 1.02, `a landed cut flares the blade (fill ${lit?.toFixed(2)} ≥ 1.5), held through the freeze (${held?.toFixed(2)} ≥ 1.35), gone 0.4 s later (${cooled.toFixed(2)} ≤ 1.02)`);
-    assert(slamPeak >= 1.8 && whiff <= 1.15, `the slam flares further (${slamPeak.toFixed(2)} ≥ 1.8); a whiff only takes the strike's gain (${whiff.toFixed(2)} ≤ 1.15)`);
+    assert(Math.abs(idle[0] - F0) < 1e-6 && Math.abs(idle[1] - R0) < 1e-6, `at rest the blade's part is exactly its HERO_INK base (fill ${idle[0]}, rim ${idle[1]})`);
+    assert(lit / F0 >= 1.5 && held / F0 >= 1.35 && cooled / F0 <= 1.02, `a landed cut flares the blade (fill ${lit?.toFixed(2)} ≥ 1.5), held through the freeze (${held?.toFixed(2)} ≥ 1.35), gone 0.4 s later (${cooled.toFixed(2)} ≤ 1.02)`);
+    assert(slamPeak / F0 >= 1.8 && whiff / F0 <= 1.15, `the slam flares further (${slamPeak.toFixed(2)} ≥ 1.8); a whiff only takes the strike's gain (${whiff.toFixed(2)} ≤ 1.15)`);
     assert(p.viewDist >= 30 && farInk >= 1.85, `at the game camera (${p.viewDist.toFixed(0)} m) a light strike's ink rises above the rest ink (${farInk.toFixed(2)} ≥ 1.85; it was a flat 1.6)`);
     // dead: the base again
     p.debug.kill();
@@ -5058,14 +5073,14 @@ async function scenarioHeroLife() {
     d.hp = d.maxHp;
     d.posture = 0;
     go(1.0);
-    assert(dead === 1, `a dead hero's blade is the base (${dead})`);
+    assert(Math.abs(dead - F0) < 1e-6, `a dead hero's blade is the base (${dead})`);
   }
 
   // (1e3) the edge glint runs up the LEADING edge as a cut comes in (fx.edgeGlint, EDGE_GLINT): on the
   // steel, rising to the point; on the ridge for a thrust; never at rest, at a run, at the coil or in
   // the execution's thrust; a landed cut stops it and flashes the steel instead (fx.edgeFlash)
   {
-    const { EDGE_GLINT, hwAt, leadSide } = await imp('src/entities/player/fx.js');
+    const { EDGE_GLINT, hwAt, leadSide, bladeStretch } = await imp('src/entities/player/fx.js');
     const { SWINGS } = await imp('src/entities/player/swings.js');
     const { THRUST, CHARGE, chargeStats } = await imp('src/entities/player/combat.js');
     const fxa = p.fx.add, spawn0 = fxa.spawn, eg0 = p.fx.edgeGlint, ef0 = p.fx.edgeFlash;
@@ -5117,7 +5132,8 @@ async function scenarioHeroLife() {
           if (list.some((g) => Math.abs(g.x) > 0.01)) bad.push(`${key}: a thrust's glint off the ridge`);
         } else {
           nCut++;
-          const onEdge = list.filter((g) => Math.abs(g.x) >= 0.6 * hwAt(g.z) && Math.sign(g.x) === g.side).length;
+          // (hwAt on the drawn blade: stretched to this sword, fx.js bladeStretch, as the glint itself is)
+          const onEdge = list.filter((g) => Math.abs(g.x) >= 0.6 * hwAt(g.z, bladeStretch(r.weaponDims)) && Math.sign(g.x) === g.side).length;
           if (onEdge < 0.8 * list.length) bad.push(`${key}: ${onEdge} of ${list.length} on the leading edge`);
         }
       }

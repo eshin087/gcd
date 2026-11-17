@@ -2265,7 +2265,11 @@ async function scenarioCutFx() {
   d.brain.guardUp = () => false;
   d.brain.onStruck = () => {};
   const BUDGET = { light: 20, sweep: 24, point: 24, slam: 62, cleave: 72, execute: 66 };
-  const PF = game.U.uHeroPartFill.value[17], PR = game.U.uHeroPartRim.value[17];
+  // (2026-11-17, the hooded hero: his crystal, the blade and the shield's star, flares in the player's
+  // OWN bank of the per-part tables, U.uHeroOwn*, its part from HERO_INK.abCrystal: player.js)
+  const { HERO_INK: HI_ } = await imp('src/entities/player/model.js'), OB_ = { ...HI_.abCrystal, ...HI_.abCrystal.own }, OWN_ = OB_.part;
+  const F0 = OB_.fillGain ?? 1, R0 = (OB_.rimLine ?? OB_.line)[3]; // (his base: the gains are × it)
+  const PF = game.U.uHeroOwnFill.value[OWN_], PR = game.U.uHeroOwnRim.value[OWN_];
   const v = new THREE.Vector3(), A = new THREE.Vector3(), B = new THREE.Vector3();
   // at the moment of the hit (inside takeHit, before his shove): the point against his drawn body and
   // the drawn blade; the gameplay point the hit test found (p._applyHit's h). After the tick (the
@@ -2344,10 +2348,12 @@ async function scenarioCutFx() {
   const near = rows.filter((r) => r.body <= 0.15).length;
   assert(rows.length >= 8 && rows.some((r) => r.combo === 5), `the chain lands ${rows.length} cuts on him, the slam among them`);
   assert(near >= 0.9 * rows.length && rows.every((r) => r.body <= 0.3), `every cut is drawn on his drawn body in the frame the freeze holds (after his shove): ${near} of ${rows.length} within 0.15 m of a drawn hurt sphere's surface, all within 0.3 (worst ${Math.max(...rows.map((r) => r.body)).toFixed(2)}; at the hit ${Math.max(...rows.map((r) => r.bodyHit)).toFixed(2)})`);
+  // (2026-11-17, the 0.77 m drawn blade: the cut is still found on the DRAWN steel, worst 0.22 m off it;
+  // the tolerance stays: the contact point is the drawn blade's, it does not follow the hit segment)
   assert(rows.every((r) => r.blade <= 0.3 && r.spark <= 1e-6 && r.drawn), `… found on the drawn blade (worst ${Math.max(...rows.map((r) => r.blade)).toFixed(2)} m off it); his spray starts at the cut (worst ${Math.max(...rows.map((r) => r.spark)).toExponential(1)})`);
   assert(rows.every((r) => r.stop >= r.want - 1e-6), `each freezes the frame for its weight (${rows.map((r) => r.stop.toFixed(3)).join(', ')})`);
   assert(rows.every((r) => r.kick >= 0.8 * r.kickWant && r.kickWant > 0 && r.punch > 0), `each throws the camera along the cut (${rows.map((r) => r.kick.toFixed(3)).join(', ')} m) and punches it in`);
-  assert(rows.every((r) => r.fill >= 1.5 && r.rim >= 1.25 * 1.7), `each flares the blade (fill ${Math.min(...rows.map((r) => r.fill)).toFixed(2)}+, rim ${Math.min(...rows.map((r) => r.rim)).toFixed(2)}+)`);
+  assert(rows.every((r) => r.fill >= 1.5 * F0 && r.rim >= 1.25 * R0), `each flares the blade (fill ${Math.min(...rows.map((r) => r.fill)).toFixed(2)}+ of base ${F0}, rim ${Math.min(...rows.map((r) => r.rim)).toFixed(2)}+ of base ${R0})`);
   assert(rows.every((r) => r.cuts === 1 && r.hits === 1), `each sounds once as a cut on cloth (${rows.map((r) => `${r.hits}/${r.cuts}`).join(' ')})`);
   assert(rows.every((r) => r.spawns <= r.budget), `each stays within its spawn budget (${rows.map((r) => `${r.spawns}/${r.budget}`).join(' ')})`);
   assert(rows.every((r) => r.shud === true && r.still === true), `he shudders through each freeze, side to side, and is still after it (${rows.map((r) => `${r.shud ? 'y' : 'n'}${r.still ? '' : '!'}`).join(' ')})`);
