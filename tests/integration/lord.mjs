@@ -1866,8 +1866,11 @@ async function scenarioPace() {
   const skip = (name) => !MOVES[name] || MOVES[name].transition || MOVES[name].counter;
   const rows = [];
   let lastG = null, NPH = 0;
+  // (ABYSS_PFORMS=3 or 2,3: only those forms, measured, nothing asserted)
+  const ONLY = process.env.ABYSS_PFORMS ? process.env.ABYSS_PFORMS.split(',').map(Number) : null;
   for (const seed of SEEDS) {
     for (let ph = 1; ; ph++) {
+      if (ONLY && ph <= TUNING.forms && !ONLY.includes(ph)) continue;
       const G = (lastG = build(seed, true));
       const { game } = G;
       const d = game.dragon, p = game.player;
@@ -1972,8 +1975,16 @@ async function scenarioPace() {
   }
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
   for (let ph = 1; ph <= NPH; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min (${(mean(ph, 'perMin') * (1 - mean(ph, 'dodge'))).toFixed(1)} to guard or parry, ${(mean(ph, 'perMin') * mean(ph, 'dodge')).toFixed(1)} to dodge: ${(mean(ph, 'dodge') * 100).toFixed(0)} %) · field busy ${(mean(ph, 'busy') * 100).toFixed(0)} % · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s (mean ${mean(ph, 'gapMax').toFixed(2)}) · ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)}`);
-  if (!P?.meter) { out('   (no TUNING.pressure.meter: measured only, nothing asserted)'); return lastG; }
+  if (!P?.meter || ONLY) { out(`   (${ONLY ? 'ABYSS_PFORMS: some forms only' : 'no TUNING.pressure.meter'}: measured only, nothing asserted)`); return lastG; }
   const A = P.meter;
+  // (as Shen Hui's meter: `rampMean`, the ramp of the seeds' mean; per seed the floor `ramp` is looser:
+  // one seed's form swings 5 - 15 % between builds, the mean of several far less)
+  if (A.rampMean) {
+    for (let ph = 2; ph <= NPH; ph++) {
+      const a0 = mean(ph - 1, 'perMin'), a1 = mean(ph, 'perMin');
+      assert(a1 >= a0 * pp(A.rampMean, ph), `the seeds' mean: P${ph} at least x${pp(A.rampMean, ph)} P${ph - 1}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)}, x${(a1 / a0).toFixed(3)})`);
+    }
+  }
   for (const seed of SEEDS) {
     const r = rows.filter((x) => x.seed === seed).sort((x, y) => x.ph - y.ph);
     for (let i = 1; i < r.length; i++) assert(r[i].perMin >= r[i - 1].perMin * pp(A.ramp, r[i].ph), `seed ${seed}: P${r[i].ph} at least x${pp(A.ramp, r[i].ph)} P${r[i - 1].ph}'s cues a minute (${r[i - 1].perMin.toFixed(1)} → ${r[i].perMin.toFixed(1)} cues/min)`);
