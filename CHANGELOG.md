@@ -4,7 +4,19 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty pieces of work since 0.4.0:
+Fifty-one pieces of work since 0.4.0:
+- **Sword and shield: two new looks for the hero, to pick from** (2026-11-16, ADR-123).
+  *Added:* the hero can carry a shield on his left arm, and two new looks wear one, built from the
+  owner's two concept sheets: A "Abyss" (a deep pointed hood, a blank face under silver hair, a long
+  black robe and cloak outlined in white, a tall kite shield with a star) and B "Wanderer" (a round
+  hood with the face in shadow, a ring clasp, a short jagged cloak, bracers, strapped boots, a heater
+  shield). They are options until one is picked: `?heroLook=abyss` or `?heroLook=traveler` (the Lab's
+  OUTFIT row switches them); today's look is still the default. *Changed, for a hero with a shield
+  only:* holding block raises the shield before him with the sword cocked behind it; a parry is a
+  swat of the shield, and its sparks are on the shield; the five heavy attacks, the slam and the
+  charged attack are swung in one hand while the shield arm balances them; running, he carries the
+  shield at his side. The light attacks are as they were. No rule of the fight changes: timings,
+  damage, reach, the guard meter and the parry windows are the same with or without a shield.
 - **The wyrm burns in phase 3, the forest breaks, the letters follow the zoom** (2026-11-16, ADR-120).
   *Added:* in its third phase the Cinder Wyrm sets itself on fire. The phase 3 roar ends with fire
   running out along its wings, legs and tail; from then on its wing tips, claws and tail burn, and

@@ -3453,3 +3453,89 @@ ADR-092).
   its own sound. With zoom b the trees' letters step as well, and far stone prints denser. The wall
   after a fight is damaged over 37 - 57 % of its front rows in one to three long stretches, not the
   four separate ones aimed for.
+
+## ADR-123 — Sword and shield: an offhand slot, the shield is the guard and the parry, the heavies in one hand (2026-11-16)
+- **Context:** the owner sent two concept sheets of the main character ("GCD Abyss, main character
+  concept" and "The Wanderer: hooded traveler, sword & shield, minimal silhouette") and asked:
+  "make the 2 variations of the main character for these 2 reference images for me to review and
+  approve ... we are adding the shield and also adjust the block / guard animation and heavy attack
+  to look good with the sword and shield look"; the attack motions are fine as they are. Until now
+  the free hand held sword fingers, the held guard was a two-handed cross ward, a parry a flick of
+  the blade, and the five heavies, the slam, the charge and its cleave were two-handed. Four
+  questions were asked first; the owner took the recommended answer to each: the heavies one-handed
+  with the shield as the counterweight (not shield strikes, not two hands kept on the sword), the
+  shield blocks AND parries (the blade lock and the trade clash stay sword on sword), a look only
+  (no rule or number of blocking changes), silver hair as drawn (the gold was the owner's own pick
+  of 2026-11-12).
+- **Decision:**
+  1. **An `offhand` slot and a shield joint.** `gear/index.js` `SLOTS` ends in `offhand`; the
+     skeleton gives the free forearm a joint for it (`rig.arms.L.shield`, `DIM.shieldAt` below the
+     elbow: Y the forearm, +Z the shield's face, −X its top; built only on a rig that wears one: an
+     object more on every rig drew one more uuid from the seeded random numbers and moved a wyrm
+     string's contact in scenario TIMING by 33 ms). A shield item (`gear/shield.js`:
+     `shield.kite`, `shield.heater`) hangs the plate, the strap and the closed fist on it and returns
+     the handle `rig.shield` = `{ joint, half, off, top, foot }`. A rig with one makes the hero's
+     animator play the shield's clips (`HeroAnimator.shield`); a rig without one plays everything as
+     before, and so does every duelist.
+  2. **The plate faces away from him, by itself.** `HeroAnimator._shield` turns the joint about the
+     forearm only: its face looks out from the body's upright axis through the chest, a little toward
+     his front, square to the forearm; where the forearm points straight out from him the elbow's own
+     outside decides; under 0.58 m the face turns up to the sky, so in a roll, a fall or a death the
+     plate lies on the grass and never stands in it. Through a spring (20 / s, at most 0.5 rad a
+     frame). No pose channel was added: the pose still has 61, and no clip had to say where the
+     shield looks.
+  3. **The poses are data in `shieldPoses.js`.** `SHIELD_AT`: the carry (at his left side, the plate
+     standing off the hip so the camera behind him sees it), the ready (before the left of his chest
+     in the fight stance), the block, a tuck, out, back, high and a straight hang. `guard()` rests
+     the arm in the carry, so every clip written over it holds a shield sensibly; `stand()`, `loco()`
+     (a third of a bare arm's swing), `blockPose`, `deflectPose`, `lockPose` and `chargePose` call
+     into the file when `A.shield`.
+  4. **The guard.** Held: the block's own stance and body, the shield raised before the chest a
+     little to his left (its left half and its top show past his shoulder from behind), the sword
+     hand drawn back by the right ribs with the point up past the shield's edge. Parried: the shield
+     swats, across for a blow on his right, out for one on his left, up before the brow or down past
+     the knee by `deflect.high`; `player._meetShield` nudges the fist until the middle of the plate
+     lies on the foe's steel and draws the clash there. A blocked blow's sparks and a broken guard's
+     burst sit on the plate too (`player._guardPoint`).
+  5. **The heavies in one hand.** The sword hand's keys of every swing are unchanged, so the blade
+     cuts where it cut and every reach holds. A clip compiled for a shield (`swingClip(name, true)`)
+     drops `two`, `offAt` and `lk`, and a clip with an entry in `SHIELD_ARM` takes those keys in
+     place of its free hand's: the six that were two-handed (the shield leads the windup and goes the
+     other way from the blade as the blow lands), and the two backhands of the light chain, whose
+     coil lies where the shield hangs. One sword key was added for the shield only: the Mountain
+     Splitter's windup carries the blade up and over to the left shoulder (it swept level across his
+     front, through the shield, for four frames).
+  6. **Two looks behind the switch, for the owner's pick** (`?heroLook=abyss`, `?heroLook=traveler`;
+     `HERO_LOOKS` entries with `shield: true`, the Lab's OUTFIT row). A, "Abyss" (sheet 1): a deep
+     pointed hood with a white rim, a lit face with no features under a silver fringe (a head item's
+     `blankFace`), a layered cowl, a long robe with a white-edged front panel, a long tattered cloak,
+     tall boots, the kite shield, a pale narrow sword. B, "Wanderer" (sheet 2): a round hood with the
+     face in shadow and a row of silver fringe, a mantle closed by a ring clasp, a short jagged cloak,
+     bracers, a belted tunic, strapped boots, the heater shield, a straight sword. Neither cloak hangs
+     a sheet on the shield arm. The white outline needs no new ink-line part (all 20 are taken, and a
+     look may not write the shared part ink): the cloth that carries it is built from `armor` and
+     `spike`, which the art pass already draws with a solid white silhouette, tinted black with no
+     glint; the silver hair and the thin edge lines are `bevel`. Today's look stays the default.
+- **Why:** a shield strapped to the forearm has one honest degree of freedom left once the arm is
+  solved, and one rule ("the face looks away from the body") gave a sensible plate in every clip
+  that was never written for a shield, the lights' free-hand choreography included. Keeping the
+  sword's keys kept the fight: nothing about reach, timing or damage had to be measured again.
+- **Rejected:** the plate fixed to the elbow's hinge, as a real strap holds it (raised across his
+  front it faced the sky); a pose channel for the facing (every clip would need it); a second set
+  of swing clips (the six would drift from the originals); shield strikes and a sword parry (the
+  owner's answers); dropping the shield for the lights.
+- **Measured** (headless, both looks, 1490 frames through stand, run, sprint, roll, backstep, heal,
+  the chain, the five heavies, the sprint slash, the charge and cleave, a stagger, a guard break and
+  a knockdown): the rig finite; the plate's corners never under 0.058 m (in the knockdown); its
+  centre never inside the ribs; its fastest turn 0.31 rad a frame; the steel through the plate on 1
+  frame (A) and 4 (B), from 31 before the shield arm's keys were moved. The held guard: the plate
+  0.38 m before him, its face 0.99 to the foe, the sword hand 0.39 m behind it. A parry's clash 2 cm
+  from the middle of the plate. The five heavies and the cleave connect from 2.5 m.
+- **Consequences:** `SLOTS` has nine entries. The free hand's meshes are hidden while a shield is
+  worn (the fist on the handle is the shield's). `player.setLook` wears a look's own sword unless
+  another was swapped in. The scenario LOOKS judges the three outfit options only; the shield looks
+  have scenario SHIELD. Open, and waiting for the owner's pick: the new looks' cloth is a first pass
+  (LOOKS' rules for hems above the grass on a body lying down and for cloth out of the body are not
+  met yet); the heal lifts the shield arm before his face; the plate's centre moves up to 25 cm in a
+  frame as some clips begin; the free-hand choreography of the lights is carried by a shield arm
+  without having been re-authored; nothing was judged in play or on the phone.

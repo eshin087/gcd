@@ -886,7 +886,7 @@ four entries (the streamer springs and the `herolook` test).
 **Gear slots** (ADR-042, `player/gear/`, contract in `gear/README.md`): `model.js` builds the
 skeleton and the body (neck, head, face, hair, the flask); everything worn or held is an item
 `{ id, slot, name, build(ctx) }` in one of `SLOTS` = head, chest, shoulders, arms, legs, waist, back,
-weapon. `DEFAULT_LOADOUT` is the Shrouded set (ADR-043: `shroud.hood`, `shroud.tunic`,
+weapon, offhand. `DEFAULT_LOADOUT` is the Shrouded set (ADR-043: `shroud.hood`, `shroud.tunic`,
 `shroud.arms`, `shroud.cloak` over `wanderer.legs`, `wanderer.skirt`, `wanderer.sword`; no shoulder
 item); `WANDERER_LOADOUT` is the outfit before it. A head item may keep only part of the hair:
 `hair: [...]` lists the pieces built under it (`'cap'` and `HAIR_CLUSTERS` names; the hood keeps
@@ -929,6 +929,31 @@ three also as `<id>-shade`, "<look> (shaded)": the same loadout and tint with th
 look's tint. Nothing in `gear/` imports `looks.js`. Limits: the animator, `combat.js` and `fx.js` read the sword's
 numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values (unless
 a panel overrides it with `idleFlare`); the pauldron joint is the right shoulder only.
+**Sword and shield** (ADR-123): the `offhand` slot holds a shield. The skeleton gives the free
+forearm a joint for it, `rig.arms.L.shield` (on `arms.L.fore`, `DIM.shieldAt` 0.15 m below the elbow;
+Y = the forearm's line, +Z = the way the shield faces, −X = its top; built only when the loadout has an
+`offhand` item: one more object on every rig moved the seeded random numbers of a whole fight). A
+shield item (`gear/shield.js`: `shield.kite`, `shield.heater`, shapes in `SHIELD_SHAPES`) hangs the
+plate, its strap and the closed fist on that joint and returns `shield: { half: [halfWidth,
+halfHeight], off, top, foot }` (m: `off` = the face's distance from the forearm, `top` / `foot` =
+the plate above / below it); the rig carries it as `rig.shield` (+ `joint`), null without one. A hero
+rig with one sets `HeroAnimator.shield` (`anim.shieldS` = the plate's turn about the forearm: `a`,
+`v`, `t`): `apply()` treats `twoHand` and `lk` as 0, hides `rig.offHand`'s three meshes, leaves the
+free wrist rigid, and `_shield(rig)` turns the joint about Y so the face looks away from the body
+(out from the body's upright axis through the chest plus `SHIELD_TURN.fore` of his front, square to
+the forearm; the elbow's outside where that has no answer; up to the sky under `SHIELD_TURN.low`).
+`player/shieldPoses.js` holds the poses: `SHIELD_AT` (carry, ready, block, tuck, out, back, hang,
+high: `{ l, lp }` as the chest stands square), `shieldRest` (called by `guard()`), `shieldStand`
+(`stand()`), `shieldRun` (`loco()`), `shieldBlock` (`blockPose`), `shieldParry` (`deflectPose`; reads
+`player.deflect` `side / high / nx / ny / nz`), `shieldLock`, `shieldCharge`, and `SHIELD_ARM` (clip
+name → extra keys: `swingClip(name, shield)` compiles a clip for a shield without `two` / `offAt` /
+`lk`, and with the clip's own free-hand fields replaced by these keys when it has an entry).
+`player._guardPoint(f, out)` is where a blow meets his guard (the middle of the shield's face, else
+`_bladePoint(f)`); `player._meetShield(B, M, nx, nz)` is `_meetBlade`'s end for a shield (the fist
+nudged onto the foe's steel, the clash's point in `player._v`). `HERO_LOOKS` entries with `shield:
+true` (`abyss`, `traveler`: `gear/abyss.js`, `gear/traveler.js`) are the looks that carry one; a head
+item's `blankFace: true` builds a lit face without eyes. `player.setLook(id)` wears the look's own
+weapon unless another was swapped in over the old look's.
 **The sword looks** (for the owner's pick, 2026-11-14;
 `gear/moonblade.js`): weapon items `moon.sheet`, `moon.ribbon`, `moon.crescent` (the longsword's
 `dims` and materials; `wanderer.js` exports `SWORD_DIMS` and `swordHilt(D, opts)`, the longsword's

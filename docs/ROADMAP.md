@@ -27,6 +27,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Anime-style (SAO-inspired) black-coat swordsman protagonist
 - [x] ASCII-ify creatures and grass; more detailed stone ASCII; bigger dragon (×1.25)
 
+## M1.48 — Sword and shield: two looks to pick from (2026-11-16, `player/sword-and-shield`, ADR-123)
+- [x] An `offhand` gear slot, a shield joint on the free forearm, `rig.shield`
+- [x] The shield's motion: it faces away from him by itself; carry, ready, run, block, parry, charge
+- [x] The heavies, the slam, the charge and the cleave in one hand; the sword's keys unchanged
+- [x] A parry's clash, a block's sparks and a guard break drawn on the shield
+- [x] Look A "Abyss" and look B "Wanderer" behind `?heroLook=`; a kite and a heater shield
+- [x] Scenario SHIELD
+- [ ] Follow-ups:
+  - [ ] The owner's pick; the pick becomes the default, the other look and the two-handed paths go
+  - [ ] Cloth polish for the pick: hems on a lying body, cloth out of the body (LOOKS' rules)
+  - [ ] The lights' free-hand keys re-authored for a shield arm; the heal; the plate's speed as clips begin
+  - [ ] A look in play and on the phone
+
 ## M1.5 — Look pass from the v0.2 review
 - [x] Calm, world-anchored v0.1-style grass (no swimming ground)
 - [x] Crisp surface-glyph hero and wyrm; moonlit outline on the hero

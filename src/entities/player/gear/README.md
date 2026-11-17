@@ -25,6 +25,8 @@ buildHero(U, {});                                         // the plain undersuit
 | `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls (one hand for every outfit) |
 | `sheet.js` | `hangSheet(ctx, parent, d, mats)`: one cloth sheet or ribbon on the streamer springs, from data; `panelSkirt(ctx, PANELS, { seed })`: a skirt of coat panels on the pelvis |
 | `looks.js` | the outfit options (kept for later use: the owner, 2026-11-14, keeps today's look as the default): `HERO_LOOKS` (id → `{ id, name, loadout, tint, of? }`; each new look also as `<id>-shade`, its face in shadow, `of` = the lit look), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
+| `shield.js` | the shields (`offhand`): `shield.kite`, `shield.heater`, `SHIELD_SHAPES` |
+| `abyss.js`, `traveler.js` | the two sword-and-shield looks (the owner's concept sheets, 2026-11-16; `HERO_LOOKS` `abyss` / `traveler`, `shield: true`): their items, loadouts and tints, and the builders they share (hood rim, locks, cloak, robe panels, plain legs, sleeves, a plain sword) |
 | `moon.js`, `swallow.js`, `warden.js` | the three outfit options' items, loadouts (`MOON_LOADOUT`, ...) and colours (`MOON_TINT`, ...): the Moonlit Robe, the Swallow, the Moon Warden |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |
@@ -58,6 +60,7 @@ gets the `base.*` item for it. Any other slot may be empty.
 | `waist` | cloth hanging from the belt line: skirt panels, tassets | `pelvis` | `wanderer.skirt` |
 | `back` | cloaks and capes | `chest`, and `arms.{R,L}.upper` for sheets draped over an arm | `shroud.cloak` |
 | `weapon` | the weapon in the right hand: blade, grip, guard, pommel, gem | `sword` | `wanderer.sword` |
+| `offhand` | a shield on the free (left) forearm: the plate, its strap, the fist closed on its handle | `arms.L.shield` | none (`shield.kite` / `shield.heater` in the two shield looks) |
 
 `arms` and `legs` own the limb itself (there is no skin mesh under the sleeves or the pants), so an
 item for those slots must draw the whole limb, hands and feet included. `chest` likewise owns the
@@ -119,6 +122,7 @@ The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 
 | `offHand` | `arms` | `{ open, grip, fingers? }`: the free hand open, the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint), and (optional) the sword fingers (`swordFingers`). Hang `open` and `fingers` on `arms.L.wrist` in wrist space (the hero's animator turns that joint) and put all three in `keep`; the animator shows one of them (`twoHand` and the hand's distance from the grip, the pose's `hs`). Build it with `buildFreeHand(ctx)` (`hands.js`): it does all of that |
 | `gem` | `weapon` | an Object3D on the weapon whose world position is where the gem glows |
 | `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`) |
+| `shield` | `offhand` | `{ half: [halfWidth, halfHeight], off, top, foot }` (m): the plate's size, how far its face stands off the forearm, and how far it reaches above / below the forearm. The rig carries it as `rig.shield` (with `joint`); with one the animator plays the sword-and-shield clips (below) |
 | `keep` | any | meshes of yours that must not be merged (see "Merging") |
 
 Handles left out default to what an empty slot means: `coat: []`, `streamers: []`, a `gem` marker
@@ -204,6 +208,14 @@ any item:
   builds its own geometry from it, but nothing else reads the copy yet: a weapon of another length
   would be drawn at its own size while it is swung, clamped and hit-tested as the longsword. The
   poses were authored for this sword in the right hand.
+- **A shield** (`offhand`, `gear/shield.js`; ADR-123). Hang everything on `ctx.arms.L.shield`: its Y is the
+  forearm's line (−Y toward the wrist), +Z the way the shield faces, −X the shield's top; model the
+  shield upright (x across, y up, z out of its face) and turn it on with `rotateZ(π / 2)` (the
+  `onArm` helper), standing off the arm by the handle's `off`. The animator turns that joint about Y
+  only, by itself (the face looks away from his body); it hides the free hand's meshes, so the
+  item draws the fist on the handle. Keep the shield arm slim and hang no cloak sheet on it. With a
+  shield no hand joins the grip: the guard, the parry, the heavies and the charge play their shield
+  versions (`../shieldPoses.js`).
 - **Empty slots.** `coat: []` and `streamers: []` are fine. Without a weapon the sword joint is
   still posed and attacks still hit (the hit segment is `DIM`'s); only the mesh is gone.
 

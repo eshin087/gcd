@@ -5,6 +5,61 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-16 — Session 63: sword and shield: two looks to pick from, the shield as the guard
+
+**Owner:** two concept sheets of the main character and "make the 2 variations of the main character
+for these 2 reference images for me to review and approve. ignore the attack animations in the 2nd
+image ... we are adding the shield and also adjust the block / guard animation and heavy attack to
+look good with the sword and shield look now. ask me any questions". Four questions, the recommended
+answer taken to each: heavies one-handed with the shield as the counterweight, the shield blocks and
+parries, a look only, silver hair. Branch `player/sword-and-shield` from `main` (627917b). ADR-123 / Session
+63 / M1.48. The looks were built by a second agent in the same worktree while the lead wrote
+the animation.
+
+**The rig:** a ninth gear slot, `offhand`; a shield joint on the free forearm; `rig.shield`. A rig
+with a shield switches the hero's animator to the shield's clips (`HeroAnimator.shield`); without
+one nothing changes (today's look, both duelists).
+
+**The shield's motion** (`shieldPoses.js`, `anim.js`): the plate turns about the forearm by itself
+so its face looks away from his body, and up near the ground. Carry, ready, run, block (the shield
+raised, the sword cocked behind it), parry (a swat by side and height, the fist nudged onto the
+foe's steel, the clash drawn on the plate), the charge (the shield leads), and shield-arm keys for
+the six clips that were two-handed and the two backhands. The sword's keys are untouched except one
+windup key of the Mountain Splitter for the shield.
+
+**The looks** (`gear/abyss.js`, `gear/traveler.js`, `gear/shield.js`): A "Abyss" and B "Wanderer",
+behind `?heroLook=abyss|traveler` and the Lab's OUTFIT row. Black cloth with a white outline from the
+parts that already draw one (`armor`, `spike`, tinted black), silver hair and edge lines in `bevel`,
+a `blankFace` head-item flag for A's featureless lit face.
+
+**What the checks found on the way:** the blade passed through the shield in four clips (the two
+backhands coil where it hangs; the Gale's and the charge's shield stood in the blade's line because
+the chest winds a radian to the right; the Mountain Splitter swept level through it): 31 frames
+down to 1 - 4. A shield held square before the chest was hidden by his own back from the game
+camera: the block and the carry moved to his left.
+
+**Verification:** scenario SHIELD (new, in `npm test`): the data, today's look untouched, and per
+look the build, 1490 frames of every clip (finite, no free hand drawn, the plate out of the ground,
+the ribs and the blade), the held guard, the parry's clash on the plate, the heavies and the cleave
+connecting from 2.5 m. Three rendered sheets (each look beside its reference; today, A and B at the game
+camera) and two clips (both looks side by side, from behind and from the front) sent to the owner. `npm test` green (10 of 10 tasks), `npm run build` green.
+
+**A seeded test that moved:** the first full run failed `integ timing 2/3` on a wyrm string
+(`furnaceMaw`, its third hit 100 ms after the flash + lead, tolerance 85) though nothing of the wyrm
+or of today's hero had changed. Bisected against an extracted `main`: the new shield joint. Every
+object three.js builds draws its uuid from `Math.random`, which the harness seeds once per build, so
+one more joint on every rig moved every later roll. The joint is now built only on a rig that wears
+a shield, and today's hero builds exactly the objects he did. The check itself is fragile on `main`:
+`ABYSS_TM=furnaceMaw node tests/integration/integ.mjs . timing` fails there too (3 placements at
+100 ms); it passes only in the shard's order. Not touched here.
+
+**Open / next:** the owner's pick of A or B (or neither); then the pick becomes the default loadout
+and the other look, today's two-handed paths and the switch go. Cloth polish for the pick (hems on
+a lying body, cloth in the body), the heal with a shield arm, the lights' free-hand keys re-authored
+for a shield, the plate's speed as clips begin, a look on the phone.
+
+---
+
 ## 2026-11-16 — Session 60: the wyrm ablaze, a forest that breaks, letters that follow the zoom (planned by the lead, built by Opus agents)
 
 **Owner:** "lets improve the dragon's face to look more menacing and realistic. right now it seems like

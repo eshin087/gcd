@@ -181,6 +181,26 @@ bosses.
   maw). **Not measured:** how the fights' length and difficulty moved (the bots of *The reward order*
   were not re-run), and how readable the flare is on a phone.
 
+## Sword and shield (2026-11-16, ADR-123)
+
+A hero who carries a shield (an `offhand` item: today the two looks behind `?heroLook=abyss` and
+`?heroLook=traveler`) fights by the same rules and numbers; only what is drawn changes
+(`src/entities/player/shieldPoses.js`).
+
+| | Without a shield | With a shield |
+|---|---|---|
+| Standing | the free hand on the belt | the shield at his left side (at ease), before the left of his chest (fight stance) |
+| Block held | a two-handed cross ward | the shield raised before him, a little to his left; the sword hand back by the right ribs, the point up past the shield's edge |
+| Parry | the blade flicks onto the blow | the shield swats: across (a blow on his right), out (on his left), up (from above), down (a low cut); the fist is moved until the middle of the plate lies on the foe's steel, and the clash is drawn there |
+| A blocked blow, a broken guard | sparks on the blade | on the shield |
+| Light chain | one-handed, sword fingers | the same cuts; the shield arm goes where the free hand went (the two backhands: it lifts over, or hangs under, the coiled blade) |
+| Heavies, slam, charge, cleave | two-handed | one-handed; the shield leads the windup and swings the other way from the blade as the blow lands |
+| Blade lock, trade clash | sword on sword | sword on sword |
+
+The sword hand's keys of every swing are the same in both columns, so every reach, timing and hit
+segment holds; `npm test` → scenario SHIELD swings the five heavies and the cleave with a shield from
+2.5 m.
+
 ## The guard meter (2026-11-14, ADR-095)
 The hero has a guard meter of 100 (`GUARD` in `rules.js`; a thin steel bar under his HP bar, and a
 gauge along the foot of the touch BLOCK tile). It makes a held guard something to manage without
