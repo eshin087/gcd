@@ -169,7 +169,7 @@ export function shieldParry(p, P, A, D, t) {
   const hi = Number.isFinite(D?.high) ? D.high : 0;
   const h = Math.min(1, Math.max(0, hi)) * f, lo = Math.min(1, Math.max(0, -hi)) * f;
   if (h > 0.001) {
-    turned(p, P.lH, [-0.16, 0.16, 0.34], yaw0, h);
+    turned(p, P.lH, [-0.1, 0.3, 0.36], yaw0, h);
     turned(p, P.lP, [0.85, -0.4, 0.2], yaw0, h);
     p[P.spX] -= 0.1 * h;
     p[P.hdX] -= 0.1 * h;
@@ -185,11 +185,11 @@ export function shieldParry(p, P, A, D, t) {
   const nx = (Number.isFinite(D?.nx) ? D.nx : 0) * f, ny = (Number.isFinite(D?.ny) ? D.ny : 0) * f, nz = (Number.isFinite(D?.nz) ? D.nz : 0) * f;
   if (nx || ny || nz) {
     let x = p[P.lH] + nx, y = p[P.lH + 1] + ny, z = p[P.lH + 2] + nz;
-    const l = Math.hypot(x, y, z);
-    if (l > 0.53) {
-      x *= 0.53 / l;
-      y *= 0.53 / l;
-      z *= 0.53 / l;
+    const l = Math.hypot(x, y, z), R = 0.54;
+    if (l > R) {
+      x *= R / l;
+      y *= R / l;
+      z *= R / l;
     }
     p[P.lH] = x;
     p[P.lH + 1] = y;
@@ -205,6 +205,14 @@ export function shieldParry(p, P, A, D, t) {
   p[P.hdX] -= 0.06 * push;
   freeHandOff(p, P);
 }
+
+/**
+ * How a parry finds the blow with the plate (player.js _meetShield): `passes` nudges of the fist by
+ * the gap between the plate's middle and his steel, each clamped to `nudge` ([±x, ±y, z min, z max],
+ * body axes, model metres); a blow still further than `far` from the plate is met by the SWORD
+ * (deflect.sword: anim.js deflectPose poses the blade's parry, the plate held in the guard).
+ */
+export const SHIELD_MEET = { passes: 3, nudge: [0.45, 0.4, -0.45, 0.35], far: 0.2 };
 
 /** Blades locked (anim.js lockPose): the sword is his alone; the shield braces behind it, its rim
  *  under the sword forearm. */

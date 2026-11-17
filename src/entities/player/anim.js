@@ -2249,7 +2249,9 @@ function plungePose(p, A) {
  *  parry's own hit-stop, the freeze-frame showed the guard it started from and no contact.) */
 function deflectPose(p, A) {
   blockPose(p, A);
-  if (A.shield) {
+  // (a shield hero swats with the plate; a blow out of its reach is met by the blade, the plate held
+  // up in the guard: player.js _meetShield sets deflect.sword)
+  if (A.shield && !A.player?.deflect?.sword) {
     shieldParry(p, P, A, A.player?.deflect, A.t);
     return;
   }
@@ -2304,8 +2306,10 @@ function deflectPose(p, A) {
     v3(p, P.rH, x, y, z);
   }
   to3(p, P.swF, 0, 0.3, 1, f);
-  to3(p, P.lH, side > 0 ? 0.22 : 0.3, -0.32, side > 0 ? 0.02 : -0.05, f * (1 - h));
-  to3(p, P.lD, LD_FOE[0], LD_FOE[1], LD_FOE[2], f * (1 - h)); // the fingers at the foe
+  if (!A.shield) {
+    to3(p, P.lH, side > 0 ? 0.22 : 0.3, -0.32, side > 0 ? 0.02 : -0.05, f * (1 - h));
+    to3(p, P.lD, LD_FOE[0], LD_FOE[1], LD_FOE[2], f * (1 - h)); // the fingers at the foe
+  }
   p[P.spX] -= 0.05 * f;
   // the rock back: the chest gives with the blow, the weight onto the back foot
   const push = 1 - smoothstep(0.02, 0.22, t);

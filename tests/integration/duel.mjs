@@ -863,6 +863,15 @@ async function scenarioGuard() {
 // (2026-11-14) Steel on steel: his guard read from him (raised as the hero swings, a ward on the
 // strike's side, the deflect that throws the hero's blade back and brings the Riposte), the hero's
 // cancels (a guard or a dodge out of any point of a swing), the blades meeting in a parry, the lock.
+function dbgParry(G, mv) {
+  const p = G.game.player, d = G.game.dragon, D = p.deflect, c = Math.cos(p.yaw), sn = Math.sin(p.yaw), P = p.position;
+  const loc = (v) => { const x = v.x - P.x, z = v.z - P.z; return [(x * c - z * sn).toFixed(2), v.y.toFixed(2), (x * sn + z * c).toFixed(2)].join(','); };
+  const g = p._guardPoint(0.5, new p._v.constructor());
+  const h = d._hilt, t = d._tip;
+  const m = h.clone().lerp(t, 0.7);
+  out(`   DBG ${mv} sword ${D.sword} side ${D.side} high ${D.high.toFixed(2)} gap0 ${D.gap0?.toFixed(2)} gap ${D.gap.toFixed(2)} plate ${D.gapS?.toFixed(2)} n ${D.nx.toFixed(2)},${D.ny.toFixed(2)},${D.nz.toFixed(2)} | shield ${loc(g)} | blade hilt ${loc(h)} tip ${loc(t)} (body x left, y, z ahead)`);
+}
+
 async function scenarioClash() {
   out('\n== scenario CLASH (the guard read from him, the deflect and the bounce, cancels, blades that meet) ==');
   const G = build();
@@ -945,12 +954,12 @@ async function scenarioClash() {
   input.up(1);
   settle(G);
   // (4) the blades meet: every blow of two strings parried, the hero's blade lies on his
-  const gaps = [], backs = [], stops = [];
+  const gaps = [], backs = [], stops = [], plates = [];
   for (const mv of ['swallow', 'ashRain']) {
     home(G);
     place(G, 2.2);
     run(G, 0.3);
-    G.watch = (n) => { if (n === 'player:parry') { gaps.push(p.deflect.gap); backs.push(d.brain.back.off); stops.push(game.hitstopTimer); } };
+    G.watch = (n) => { if (n === 'player:parry') { plates.push(p.anim.shield && !p.deflect.sword ? p.deflect.gap : Infinity); gaps.push(p.deflect.gap); backs.push(d.brain.back.off); stops.push(game.hitstopTimer); if (process.env.ABYSS_DBG) dbgParry(G, mv); } };
     G.defend = makeDefender(G);
     d.brain.trigger(mv);
     run(G, 5, (GG) => { GG.game.mouseGround.set(d.position.x, 0, d.position.z); GG.defend.act(); }, () => d.mode !== 'act');
@@ -959,12 +968,13 @@ async function scenarioClash() {
     settle(G, 8);
   }
   const met = gaps.filter((g) => g <= 0.2).length;
-  // (with the hero's shield, 2026-11-17, the plate meets his blade: player.js _meetShield nudges
-  // the swat until the plate's middle lies on his steel; two of these blows are out of the shield
-  // arm's reach: 6 of 10, was 8 of 10 blade on blade. The motion pass may win them back:
-  // shieldPoses.js shieldParry)
-  const need = p.anim.shield ? 6 : 7;
-  assert(gaps.length === 10 && met >= need, `the blades meet: ${met} of ${gaps.length} parried blows end with his blade on the hero's guard (blade or shield) within 0.2 m (>= ${need}; ${gaps.map((g) => g.toFixed(2)).join(', ')})`);
+  assert(gaps.length === 10 && met >= 7, `the blades meet: ${met} of ${gaps.length} parried blows end with the two blades within 0.2 m (${gaps.map((g) => g.toFixed(2)).join(', ')})`);
+  // (with a shield the plate meets the blow: player.js _meetShield; a blow out of the shield arm's
+  // reach is met by the blade, as without one)
+  if (p.anim.shield) {
+    const plate = plates.filter((g) => g <= 0.2).length;
+    assert(plate >= 6, `the shield meets most of them: the plate's middle within 0.2 m of his blade on ${plate} of ${plates.length} (the sword met ${met - plate})`);
+  }
   assert(backs.filter((b) => b > 0).length >= 6, `his blade is held where it met the guard, not through the hero (stepped back on ${backs.filter((b) => b > 0).length} of ${backs.length} blows)`);
   // (a string's blows freeze the frame briefly; its last, the one that recoils him, for longer)
   assert(Math.max(...stops.slice(0, 2)) <= 0.08 && stops[2] >= 0.1, `the freeze is short inside a string and long on its last blow (${stops.slice(0, 3).map((x) => x.toFixed(3)).join(', ')} s)`);

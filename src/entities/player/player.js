@@ -6,6 +6,7 @@ import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LEGS } from './heroDims.js';
+import { SHIELD_MEET } from './shieldPoses.js';
 import { DEFAULT_LOADOUT, HERO_TINT } from './gear/index.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
@@ -275,7 +276,7 @@ export class Player {
     // side / high / nudge: where the deflect pose puts the blade (anim.js deflectPose): on the side
     // the blow's steel is, raised for a blow from above (high > 0) or hung point-down for a low cut
     // (high < 0), the grip moved (nx, ny, nz, body axes, model metres) until the two blades touch
-    this.deflect = { n: 0, t: -Infinity, side: 1, perfect: false, high: 0, nx: 0, ny: 0, nz: 0, gap0: 0, gap: 0 };
+    this.deflect = { n: 0, t: -Infinity, side: 1, perfect: false, high: 0, nx: 0, ny: 0, nz: 0, gap0: 0, gap: 0, sword: 0 };
     this._cp = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     this.tradeT = -Infinity; // when the last trade clash was (DEFENSE.trade.rearm)
     this.quickUntil = -Infinity; // a light started before this is the counter cut (DEFENSE.perfectParry)
@@ -1215,6 +1216,7 @@ export class Player {
     D.side = D.n & 1 ? 1 : -1;
     D.high = 0;
     D.nx = D.ny = D.nz = 0;
+    D.sword = 0;
     D.perfect = !!perfect;
     this.atk = null;
     this.chargeK = 0;
@@ -1366,31 +1368,7 @@ export class Player {
     // the clash: on the crossing of the two blades; without his blade, in front of the guard toward
     // the blow, on the side the blade snapped to
     if (B && this.sweep.valid) {
-      const sw = this.sweep;
-      let gap = closestOnSegments(sw.a, sw.b, C[0], C[1], C[2], C[3]);
-      D.gap0 = gap;
-      if (gap > 0.04) {
-        // move the grip by the gap (body axes: x his left, z ahead; model metres) and pose again
-        const S = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
-        const gx = C[3].x - C[2].x, gy = C[3].y - C[2].y, gz = C[3].z - C[2].z;
-        D.nx = clamp((gx * c - gz * sn) / S, -0.34, 0.34);
-        D.ny = clamp(gy / S, -0.34, 0.34);
-        D.nz = clamp((gx * sn + gz * c) / S, -0.3, 0.34);
-        this._poseNow();
-        gap = closestOnSegments(sw.a, sw.b, C[0], C[1], C[2], C[3]);
-      }
-      D.gap = gap; // (gap0 → gap: how far apart the blades were before / after the nudge, m)
-      // (still apart: his blade is out of the arm's reach; the sparks sit on the hero's steel)
-      const w = gap < 0.5 ? 0.5 : 0;
-      cv.set(C[2].x + (C[3].x - C[2].x) * w, C[2].y + (C[3].y - C[2].y) * w, C[2].z + (C[3].z - C[2].z) * w);
-      M.e1 = C[0].set(sw.b.x - sw.a.x, sw.b.y - sw.a.y, sw.b.z - sw.a.z);
-      M.e2 = C[1].set(B.bx - B.ax, B.by - B.ay, B.bz - B.az);
-      // the turned blade's way: where its point was going, thrown back off the guard and up
-      if (Number.isFinite(B.vx + B.vy + B.vz) && B.vx * B.vx + B.vy * B.vy + B.vz * B.vz > 1e-6) {
-        const vl = Math.hypot(B.vx, B.vy, B.vz);
-        M.spray = C[2].set(B.vx / vl + nx * 0.6, B.vy / vl + 0.25, B.vz / vl + nz * 0.6);
-      }
-      M.met = true;
+      this._meetSword(B, M, nx, nz);
     } else {
       cv.x += -nx * 0.42 + nz * D.side * 0.12;
       cv.z += -nz * 0.42 - nx * D.side * 0.12;
@@ -1409,17 +1387,49 @@ export class Player {
    */
   _meetShield(B, M, nx, nz) {
     const D = this.deflect, C = this._cp, cv = this._v, J = this.rig.shield?.joint;
+    D.sword = 0;
     this._guardPoint(0.5, cv);
     if (!B || !J) return M;
+    const S = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
     let gap = closestOnSegments(C[0], C[1], cv, cv, C[2], C[3]);
     D.gap0 = gap;
-    if (gap > 0.04) {
-      // move the fist by the gap (body axes: x his left, z ahead; model metres) and pose again
-      const S = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+    // move the fist by the gap (body axes: x his left, z ahead; model metres) and pose again; the arm
+    // bends and the chest turns under it, so a few passes (shieldPoses.js shieldParry keeps the fist
+    // inside the arm's reach)
+    for (let i = 0; i < SHIELD_MEET.passes && gap > 0.04; i++) {
       const gx = C[2].x - cv.x, gy = C[2].y - cv.y, gz = C[2].z - cv.z;
-      D.nx = clamp((gx * c - gz * sn) / S, -0.3, 0.3);
-      D.ny = clamp(gy / S, -0.3, 0.3);
-      D.nz = clamp((gx * sn + gz * c) / S, -0.2, 0.3);
+      const N = SHIELD_MEET.nudge;
+      D.nx = clamp(D.nx + (gx * c - gz * sn) / S, -N[0], N[0]);
+      D.ny = clamp(D.ny + gy / S, -N[1], N[1]);
+      D.nz = clamp(D.nz + (gx * sn + gz * c) / S, N[2], N[3]);
+      this._poseNow();
+      this._guardPoint(0.5, cv);
+      gap = closestOnSegments(C[0], C[1], cv, cv, C[2], C[3]);
+    }
+    D.gapS = gap; // (the plate's own best)
+    // his steel out of the shield arm's reach (far to the hero's sword side, or past his left side
+    // behind him): the SWORD meets it, as before the shield, the plate held up in the guard
+    if (gap > SHIELD_MEET.far && this.sweep.valid) {
+      const keep = this._keepNudge ?? (this._keepNudge = [0, 0, 0]);
+      keep[0] = D.nx;
+      keep[1] = D.ny;
+      keep[2] = D.nz;
+      const K2 = this._cpKeep ?? (this._cpKeep = [C[0].clone(), C[1].clone()]);
+      K2[0].copy(C[0]);
+      K2[1].copy(C[1]);
+      D.sword = 1;
+      D.nx = D.ny = D.nz = 0;
+      this._poseNow();
+      this._meetSword(B, M, nx, nz);
+      if (D.gap < gap) return M;
+      // (the blade could not do better: back to the shield)
+      C[0].copy(K2[0]);
+      C[1].copy(K2[1]);
+      M.spray = null;
+      D.sword = 0;
+      D.nx = keep[0];
+      D.ny = keep[1];
+      D.nz = keep[2];
       this._poseNow();
       this._guardPoint(0.5, cv);
       gap = closestOnSegments(C[0], C[1], cv, cv, C[2], C[3]);
@@ -1429,6 +1439,38 @@ export class Player {
     if (gap < 0.5) cv.copy(C[2]);
     M.e1 = C[0].set(-1, 0, 0).transformDirection(J.matrixWorld);
     M.e2 = C[1].set(B.bx - B.ax, B.by - B.ay, B.bz - B.az);
+    if (Number.isFinite(B.vx + B.vy + B.vz) && B.vx * B.vx + B.vy * B.vy + B.vz * B.vz > 1e-6) {
+      const vl = Math.hypot(B.vx, B.vy, B.vz);
+      M.spray = C[2].set(B.vx / vl + nx * 0.6, B.vy / vl + 0.25, B.vz / vl + nz * 0.6);
+    }
+    M.met = true;
+    return M;
+  }
+
+  /** The hero's BLADE laid on the blow's (_meetBlade; a shield hero's blow out of the plate's reach):
+   *  the grip nudged by the gap between the two blades, posed again, the clash drawn on the crossing.
+   *  `B`: his blade (parryContact); this._cp[0..1] hold its outer part. Leaves the point in this._v. */
+  _meetSword(B, M, nx, nz) {
+    const D = this.deflect, C = this._cp, cv = this._v, sw = this.sweep;
+    let gap = closestOnSegments(sw.a, sw.b, C[0], C[1], C[2], C[3]);
+    if (!D.sword) D.gap0 = gap;
+    if (gap > 0.04) {
+      // move the grip by the gap (body axes: x his left, z ahead; model metres) and pose again
+      const S = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+      const gx = C[3].x - C[2].x, gy = C[3].y - C[2].y, gz = C[3].z - C[2].z;
+      D.nx = clamp((gx * c - gz * sn) / S, -0.34, 0.34);
+      D.ny = clamp(gy / S, -0.34, 0.34);
+      D.nz = clamp((gx * sn + gz * c) / S, -0.3, 0.34);
+      this._poseNow();
+      gap = closestOnSegments(sw.a, sw.b, C[0], C[1], C[2], C[3]);
+    }
+    D.gap = gap; // (gap0 → gap: how far apart the blades were before / after the nudge, m)
+    // (still apart: his blade is out of the arm's reach; the sparks sit on the hero's steel)
+    const w = gap < 0.5 ? 0.5 : 0;
+    cv.set(C[2].x + (C[3].x - C[2].x) * w, C[2].y + (C[3].y - C[2].y) * w, C[2].z + (C[3].z - C[2].z) * w);
+    M.e1 = C[0].set(sw.b.x - sw.a.x, sw.b.y - sw.a.y, sw.b.z - sw.a.z);
+    M.e2 = C[1].set(B.bx - B.ax, B.by - B.ay, B.bz - B.az);
+    // the turned blade's way: where its point was going, thrown back off the guard and up
     if (Number.isFinite(B.vx + B.vy + B.vz) && B.vx * B.vx + B.vy * B.vy + B.vz * B.vz > 1e-6) {
       const vl = Math.hypot(B.vx, B.vy, B.vz);
       M.spray = C[2].set(B.vx / vl + nx * 0.6, B.vy / vl + 0.25, B.vz / vl + nz * 0.6);
@@ -1557,7 +1599,7 @@ export class Player {
       // in their swing poses the two were 0.7 m apart in the frozen frame.)
       this.yaw = Math.atan2(-nx, -nz);
       D.side = 1;
-      D.high = D.nx = D.ny = D.nz = 0;
+      D.high = D.nx = D.ny = D.nz = D.sword = 0;
       const M = this._meetBlade(att, o.last !== false, nx, nz);
       e1 = M.e1;
       e2 = M.e2;
@@ -1882,7 +1924,7 @@ export class Player {
     this.hb.held = false;
     // (the cross-fade runs after the perfect parry's freeze, which holds the contact it was won on)
     const D = this.deflect;
-    D.high = D.nx = D.ny = D.nz = 0;
+    D.high = D.nx = D.ny = D.nz = D.sword = 0;
     this.bladeLock.slid = this.bladeLock.meter;
     this.bladeLock.cross = new THREE.Vector3(NaN, NaN, NaN);
     this._enter('lock', 'lock', 0.1);
