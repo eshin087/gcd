@@ -9891,6 +9891,23 @@ async function scenarioMotionAudit() {
       // the cloth: each coat panel's two sheets (seg-local: x across, y down its length, +z out);
       // a leg or the sword arm OUTSIDE a sheet it lies across = the sheet stands through it; the
       // plate's outline on both sides of a sheet = through the plate
+      // the cloth's motion: each back sheet's swing (A out from hanging, B sideways; the root
+      // segment and the hem's sum), its angular speed, the spread between neighbours (the cloak is
+      // one garment: the centre sheet against each side sheet; the coat's front panels against the
+      // side panel next to them), the hem's swing on a run
+      {
+        const SS = A.streamState ?? [], CS = A.coatState ?? [], cm = st.cm ?? (st.cm = { aMax: 0, bMax: 0, spd: 0, spread: 0, cSpread: 0, cOut: 0, aSum: 0, n: 0, prev: null });
+        const ang = SS.map((q) => [q.segs[0].x + q.segs[1].x, q.segs[0].z + q.segs[1].z]);
+        for (const [a, b] of ang) { cm.aMax = Math.max(cm.aMax, Math.abs(a)); cm.bMax = Math.max(cm.bMax, Math.abs(b)); }
+        if (ang.length) { cm.aSum += ang[0][0]; cm.n++; }
+        if (cm.prev) ang.forEach(([a, b], k) => { cm.spd = Math.max(cm.spd, Math.hypot(a - cm.prev[k][0], b - cm.prev[k][1])); });
+        cm.prev = ang;
+        for (let k = 1; k < ang.length; k++) cm.spread = Math.max(cm.spread, Math.hypot(ang[k][0] - ang[0][0], ang[k][1] - ang[0][1]));
+        const ca = CS.map((q) => [q[0].x + q[1].x, q[0].z + q[1].z]);
+        for (const [a] of ca) cm.cOut = Math.max(cm.cOut, -a);
+        // (panels 0 / 2 and 1 / 3: a front panel and the side next to it)
+        for (const [x, y] of [[0, 2], [1, 3]]) if (ca[x] && ca[y]) cm.cSpread = Math.max(cm.cSpread, Math.hypot(ca[x][0] - ca[y][0], ca[x][1] - ca[y][1]));
+      }
       if (r.coat?.length) {
         const body = [knL, knR, ftL, ftR, q1.copy(thL).lerp(knL, 0.5).clone(), c0.copy(thR).lerp(knR, 0.5).clone()];
         const plate = [];
@@ -9924,14 +9941,17 @@ async function scenarioMotionAudit() {
   clip('fight', 3);
   clip('ease>fight', 1.2, () => { p.debug.fightStance = true; }, null, false);
   clip('fight>ease', 2.5, () => { p.debug.fightStance = false; });
-  const walk = (k, fight = true, sprint = false) => (i) => { if (i === 0) { input.hold(k); if (sprint) input.hold('ShiftLeft'); } if (i === 72) { input.release(k); input.release('ShiftLeft'); } };
+  // (the mock's movement is input.axis, x right / y forward; keys only for the sprint)
+  const AX = { KeyW: [0, 1], KeyS: [0, -1], KeyD: [1, 0], KeyA: [-1, 0] };
+  const walk = (k, fight = true, sprint = false) => (i) => { if (i === 0) { input.axis = { x: AX[k][0], y: AX[k][1] }; if (sprint) input.hold('ShiftLeft'); } if (i === 72) { input.axis = { x: 0, y: 0 }; input.release('ShiftLeft'); } };
   clip('run', 1.8, null, walk('KeyW'), false);
   clip('run fight', 1.8, null, walk('KeyW'));
   clip('sprint', 2, null, walk('KeyW', false, true), false);
   clip('strafe', 1.8, null, walk('KeyD'));
   clip('backpedal', 1.8, null, walk('KeyS'));
-  clip('turn run', 2, null, (i) => { if (i === 0) input.hold('KeyW'); if (i === 40) { input.release('KeyW'); input.hold('KeyS'); } if (i === 90) input.release('KeyS'); }, false);
-  clip('roll', 1.1, null, (i) => { if (i === 0) { input.hold('KeyW'); p._buffer('roll'); } if (i === 6) input.release('KeyW'); });
+  clip('turn run', 2, null, (i) => { if (i === 0) input.axis = { x: 0, y: 1 }; if (i === 40) input.axis = { x: 0, y: -1 }; if (i === 90) input.axis = { x: 0, y: 0 }; }, false);
+  clip('turn side', 2, null, (i) => { if (i === 0) input.axis = { x: 1, y: 0 }; if (i === 40) input.axis = { x: -1, y: 0 }; if (i === 90) input.axis = { x: 0, y: 0 }; }, false);
+  clip('roll', 1.1, null, (i) => { if (i === 0) { input.axis = { x: 0, y: 1 }; p._buffer('roll'); } if (i === 6) input.axis = { x: 0, y: 0 }; });
   clip('backstep', 0.9, null, (i) => { if (i === 0) p._buffer('roll'); });
   // every look of every swing (anim.forceVariant: 0 = its `anim`, then its `variants`)
   const looks = (D) => [D.anim, ...(D.variants ?? [])].map((a, v) => [a?.clip ?? D.name, v]);
@@ -9961,6 +9981,9 @@ async function scenarioMotionAudit() {
   for (const s of rows) {
     out(`   ${s.name.padEnd(18)} ${f2(s.steel).padStart(5)} ${s.steelAt.padEnd(12)} ${f2(s.plateSteel).padStart(6)} ${String(s.pierce).padStart(5)}  ${f2(s.plateBody).padStart(5)} ${s.plateBodyAt.padEnd(12)} ${s.elbowMin.map((x) => x.toFixed(0).padStart(3)).join('/')}  ${s.elbowBack.map((x) => String(x).padStart(2)).join('/')}  ${s.wrist.map((x) => x.toFixed(0).padStart(3)).join('-')}  ${f2(s.gripGap)}  ${track.map((k) => cm(s.jump[k])).join(' ')}   ${track.map((k) => cm(s.jerk[k])).join(' ')}   ${f2(s.point)} ${f2(s.plateLow)}  cloth ${String(s.clothLeg ?? 0).padStart(3)}/${String(s.clothPlate ?? 0).padStart(3)} of ${s.frames}${s.bad ? `  BAD ${s.bad}` : ''}${process.env.ABYSS_AUDIT_V ? `  [steel-plate @${s.psAt}${s.pierceAt ? ` pierce${s.pierceAt}` : ''}]` : ''}`);
   }
+  const dg = (x) => String(Math.round((x * 180) / Math.PI)).padStart(4);
+  out('   cloth motion (deg; back = the cloak back sheets, root + hem segment): clip / back A max / back B max / back fastest a frame / back spread centre-side / back A mean / coat panel out max / coat spread front-side');
+  for (const s of rows) if (s.cm) out(`   ${s.name.padEnd(18)} ${dg(s.cm.aMax)} ${dg(s.cm.bMax)} ${dg(s.cm.spd)} ${dg(s.cm.spread)} ${dg(s.cm.aSum / Math.max(1, s.cm.n))} ${dg(s.cm.cOut)} ${dg(s.cm.cSpread)}`);
   assert(rows.every((s) => s.bad === 0), `the rig finite through every clip (${rows.filter((s) => s.bad).map((s) => s.name).join(', ') || 'ok'})`);
   return G;
 }
