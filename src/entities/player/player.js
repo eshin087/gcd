@@ -5,7 +5,7 @@ import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
-import { HERO_LEGS } from './heroDims.js';
+import { HERO_LEGS, HERO_HEAD_SCALE } from './heroDims.js';
 import { DEFAULT_LOADOUT, HERO_TINT } from './gear/index.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
@@ -163,7 +163,7 @@ export class Player {
     this.drawScale = PLAYER_SCALE;
     // his gear (gear/index.js DEFAULT_LOADOUT: the abyss set, sword and kite shield), on his own legs
     // (heroDims.js HERO_LEGS), in his colours (HERO_TINT, on this rig's own materials)
-    this.rig = buildHero(game.U, DEFAULT_LOADOUT, { legs: HERO_LEGS, own: true }); // (own: his own ink bank)
+    this.rig = buildHero(game.U, DEFAULT_LOADOUT, { legs: HERO_LEGS, headScale: HERO_HEAD_SCALE, own: true }); // (own: his own ink bank)
     tintHero(this.rig.materials, HERO_TINT);
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
@@ -711,7 +711,7 @@ export class Player {
     const U = this.game.U, saved = PART_UNIFORMS.map((k) => U[k]?.value?.map((v) => v.clone()) ?? null);
     let rig;
     try {
-      rig = buildHero(U, loadout, { legs: HERO_LEGS, own: true });
+      rig = buildHero(U, loadout, { legs: HERO_LEGS, headScale: HERO_HEAD_SCALE, own: true });
     } finally {
       saved.forEach((a, i) => a && U[PART_UNIFORMS[i]].value.forEach((v, j) => a[j] && v.copy(a[j])));
     }

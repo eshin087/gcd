@@ -43,7 +43,7 @@ import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
 // Everything about the hero model is imported from this file (anim.js, player.js, combat.js, fx.js,
 // the tests, scripts/blender/build-hero-parts.mjs): the measurements and the one geometry helper
 // the animator shares with the coat builders.
-export { DIM, BODY, REST, HAIR_CLUSTERS, HERO_LEGS, legDims } from './heroDims.js';
+export { DIM, BODY, REST, HAIR_CLUSTERS, HERO_LEGS, HERO_HEAD_SCALE, legDims } from './heroDims.js';
 export { sheetOffset } from './heroGeo.js';
 
 // Glyph ramps (hero.md §3): `levels` dark → bright, each a set of per-cell variants; spaces are
@@ -599,7 +599,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, opts = {}) {
   // (anim.js PAULDRON_FOLLOW)
   const pauldron = joint(chest, -DIM.shoulder[0], DIM.shoulder[1], DIM.shoulder[2]);
   const head = joint(chest, ...DIM.neck);
-  head.scale.setScalar(BODY.headScale);
+  head.scale.setScalar(Number.isFinite(opts.headScale) ? opts.headScale : BODY.headScale);
   const hair = {};
   for (const c of HAIR_CLUSTERS) hair[c.name] = joint(head, ...c.pivot);
   const arms = {};
