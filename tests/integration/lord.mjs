@@ -179,7 +179,13 @@ function build(seed = SEED, real = false) {
   }
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
+  // (his rig is built on a stream of its own: every THREE object draws Math.random for its uuid, so a
+  // body look with more pieces (?lordLook=b, the owner's pick) would otherwise shift the AI's seeded
+  // stream and replay every fight with another seed. The picks, 2026-11-16)
+  const R0 = Math.random;
+  Math.random = mulberry32(seed + 0x5eed);
   game.dragon = LVL.createBoss(game);
+  Math.random = R0;
   game.boss = game.dragon;
   game.hud = new Hud(game);
   game.touch = new TouchControls(game);
@@ -1512,13 +1518,21 @@ function terrainAnswers() {
 // His moments: the flare is the only sign; Severance parried is countered; Nightfall (the charged
 // blow) on a held guard; every form has the three new moves.
 async function scenarioFxlooks() {
-  out('\n== scenario FXLOOKS (his look options: ?star= ?sky= ?ignite= ?void= ?presence=; every option runs, its peak, and no look moves the game) ==');
-  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  out('\n== scenario FXLOOKS (his look options: ?star= ?sky= ?ignite= ?void= ?presence=; every option runs, its peak, and no look moves the game; the picks as the defaults) ==');
+  const { setLook, lookOf, PICKED } = await imp('src/entities/enemies/duelist/lookSwitch.js');
   const { LORD_LOOKS } = await imp('src/entities/enemies/starlessLord/fx.js');
   const NAMES = Object.keys(LORD_LOOKS);
   const OPTS = { star: ['0', 'a', 'b'], sky: ['0', 'a', 'b'], ignite: ['0', 'a', 'b'], void: ['0', 'a'], presence: ['0', 'a'] };
-  const force = (o) => { for (const n of NAMES) setLook(n, o?.[n] ?? null); };
-  assert(NAMES.every((n) => OPTS[n]) && LORD_LOOKS.star === '0' && LORD_LOOKS.sky === '0' && LORD_LOOKS.ignite === '0' && LORD_LOOKS.void === '0' && LORD_LOOKS.presence === 'a', `the switches and their defaults: ${JSON.stringify(LORD_LOOKS)} (a redraw keeps today's look '0' until the owner picks)`);
+  // (forced together with his: the crescents' qi (fxash's, drawn by him too) and his body (read when his rig is built))
+  const force = (o) => { for (const n of [...NAMES, 'qi', 'lordLook']) setLook(n, o?.[n] ?? null); };
+  // the crater as it was before this pass (what main drew): every redraw '0'
+  const BEFORE = { star: '0', sky: '0', ignite: '0', void: '0', presence: '0', qi: '0', lordLook: '0' };
+  force({});
+  // LORD_LOOKS is each call site's `def` ('0': a redraw, what main drew; presence is new); with nothing
+  // set every one draws the owner's pick (lookSwitch PICKED, 2026-11-16)
+  const now = Object.fromEntries(NAMES.map((n) => [n, lookOf(n, LORD_LOOKS[n])]));
+  assert(NAMES.every((n) => OPTS[n] && OPTS[n].includes(PICKED[n])) && LORD_LOOKS.star === '0' && LORD_LOOKS.sky === '0' && LORD_LOOKS.ignite === '0' && LORD_LOOKS.void === '0' && LORD_LOOKS.presence === 'a' && NAMES.every((n) => now[n] === PICKED[n]) && lookOf('lordLook', '0', 'b') === PICKED.lordLook,
+    `the switches, their call sites' defaults ${JSON.stringify(LORD_LOOKS)} (a redraw: '0'), and what is drawn with nothing set: the picks ${JSON.stringify(now)}, body ${lookOf('lordLook', '0', 'b')}`);
   // 1. every option of every switch, through the moves it draws, for their whole life: no throw, no
   //    NaN (the pools and G.tick throw on one), the fire field's and the additive pool's peaks
   //    (caps: the measured peaks, 2026-11-16, with room; the field holds 6000, the pool 7000)
@@ -1529,6 +1543,9 @@ async function scenarioFxlooks() {
     presence: [[2, 'tempest', 4], [3, 'cyclone', 4]],
   };
   const CAP = { star: 2600, sky: 2600, ignite: 3600, void: 3200, presence: 1600 };
+  // the shipped option (the owner's pick) under its own cap: re-measured 2026-11-16 on the picks,
+  // star a 544, sky a 1211, ignite a 1504, void a 1211, presence a 952; about 1.5x each
+  const CAP_SHIPPED = { star: 900, sky: 1900, ignite: 2300, void: 1900, presence: 1450 };
   const peaks = {};
   for (const name of NAMES) {
     for (const opt of OPTS[name]) {
@@ -1577,12 +1594,14 @@ async function scenarioFxlooks() {
         out('   ', String(e?.stack ?? e).split('\n').slice(0, 3).join(' | '));
       }
       peaks[`${name}=${opt}`] = fire;
-      assert(ok && fire < CAP[name] && add < 6500, `?${name}=${opt}: runs its whole life clean; peaks: fire field ${fire} blobs (cap ${CAP[name]}), additive glyphs ${add}`);
+      const cap = opt === PICKED[name] ? CAP_SHIPPED[name] : CAP[name];
+      assert(ok && fire < cap && add < 6500, `?${name}=${opt}${opt === PICKED[name] ? ' (shipped)' : ''}: runs its whole life clean; peaks: fire field ${fire} blobs (cap ${cap}), additive glyphs ${add}`);
     }
   }
-  // 2. '0' draws what main drew: today's functions run, the redraws do not (spied on one LordFx)
-  {
-    force({});
+  // 2. '0' (?looks=old) draws what main drew: today's functions run, the redraws do not; with nothing
+  //    set the picks are drawn: the redraws run, today's functions do not (spied on one LordFx)
+  const spy = (o) => {
+    force(o);
     const G = build();
     duel(G, { dist: 3, form: 4 });
     G.game.player.debug.god = true;
@@ -1597,20 +1616,31 @@ async function scenarioFxlooks() {
     run(G, 5);
     G.game.dragon.debug.trigger('tide');
     run(G, 2);
+    return calls;
+  };
+  {
+    const calls = spy(BEFORE);
     const today = calls._drawStar > 0 && calls._starBurst === 1 && calls._drawMark > 0;
     const none = !calls._drawStarA && !calls._drawMarkA && !calls._starBurstA && !calls._strikeA && !calls._drawCrescentA && !calls._bladeField && !calls.gather && !calls._igniteA;
-    assert(today && none, `with no switch set, today's look is drawn (star ${calls._drawStar} frames + its burst, the sky's marks ${calls._drawMark}) and none of the redraws (${JSON.stringify(calls)})`);
+    assert(today && none, `every look at '0' (?looks=old): main's look is drawn (star ${calls._drawStar} frames + its burst, the sky's marks ${calls._drawMark}) and none of the redraws (${JSON.stringify(calls)})`);
+    const ship = spy({});
+    const picks = ship._drawStarA > 0 && ship._starBurstA === 1 && ship._drawMarkA > 0 && ship._strikeA > 0 && ship._drawCrescentA > 0 && ship._bladeField > 0;
+    const old = !ship._drawStar && !ship._drawMark && !ship._starBurst;
+    assert(picks && old, `with nothing set the picks are drawn (the starless sun ${ship._drawStarA} frames + its burst, the sky's marks ${ship._drawMarkA}, ${ship._strikeA} strikes, crescents, blades of light) and none of main's star / marks (${JSON.stringify(ship)})`);
   }
-  // 2b. a form-4 fight with the AI on, every look at today's and at 'a': the fire field's and the
-  //     additive pool's peaks (the room the fourth form's weather has to work in)
-  for (const lk of ['0', 'a']) {
-    force(Object.fromEntries(NAMES.map((n) => [n, lk])));
+  // 2b. a form-4 fight with the AI on, every look before this pass and as shipped: the fire field's
+  //     and the additive pool's peaks (the room the fourth form's weather has to work in)
+  for (const lk of ['before', 'shipped']) {
+    force(lk === 'before' ? BEFORE : {});
     const G = build();
     duel(G, { dist: 3, ai: true, form: 4 });
     G.game.player.debug.god = true;
     let fire = 0, add = 0, sum = 0, n = 0;
     run(G, 60, () => { const c = G.game.fx.fire.count; fire = Math.max(fire, c); sum += c; n++; add = Math.max(add, G.game.fx.add.count); });
-    assert(fire < 5000 && add < 6500, `60 s of form 4, AI on, every look at '${lk}': the fire field peaks at ${fire} of 6000 blobs (mean ${(sum / Math.max(1, n)).toFixed(0)}), the additive pool at ${add} of 7000`);
+    // (caps re-measured 2026-11-16: shipped 2292 (mean 337), before 3631 - 4303 (seed stream); the
+    // shipped cap 3400 = about 1.5x its measurement, the old looks keep 5000)
+    const cap = lk === 'before' ? 5000 : 3400;
+    assert(fire < cap && add < 6500, `60 s of form 4, AI on, every look ${lk === 'before' ? 'as before this pass' : 'as shipped (the picks)'}: the fire field peaks at ${fire} < ${cap} of 6000 blobs (mean ${(sum / Math.max(1, n)).toFixed(0)}), the additive pool at ${add} of 7000`);
   }
   force({});
   // 3. no look moves the game: the SPELLS and TERRAIN scenarios print the same numbers (every
@@ -1630,16 +1660,17 @@ async function scenarioFxlooks() {
     fails = f0;
     return { text, f };
   };
-  const base = await capture(Object.fromEntries(NAMES.map((n) => [n, '0'])));
-  const allA = await capture(Object.fromEntries(NAMES.map((n) => [n, 'a'])));
-  const allB = await capture({ star: 'b', sky: 'b', ignite: 'b', void: 'a', presence: 'a' });
+  const base = await capture(BEFORE);
+  const allA = await capture({ ...Object.fromEntries(NAMES.map((n) => [n, 'a'])), qi: 'b', lordLook: 'c' });
+  const allB = await capture({ star: 'b', sky: 'b', ignite: 'b', void: 'a', presence: 'a', qi: 'c', lordLook: 'a' });
+  const ship = await capture({});
   const diff = (x) => {
     const A = base.text.split('\n'), B = x.text.split('\n');
     const i = A.findIndex((l, k) => l !== B[k]);
     return i < 0 ? 'same' : `first difference: "${A[i]}" / "${B[i]}"`;
   };
-  assert(base.text.length > 500 && base.text === allA.text && base.text === allB.text, `SPELLS + TERRAIN print the same with every look at '0', at 'a' and at 'b' (${base.text.split('\n').length} lines; a: ${diff(allA)}; b: ${diff(allB)})`);
-  assert(base.f === 0 && allA.f === 0 && allB.f === 0, `and they pass under every look (${base.f} / ${allA.f} / ${allB.f} failed)`);
+  assert(base.text.length > 500 && base.text === allA.text && base.text === allB.text && base.text === ship.text, `SPELLS + TERRAIN print the same before this pass ('0'), as shipped, and at 'a' / 'b' (his body and the qi too) (${base.text.split('\n').length} lines; a: ${diff(allA)}; b: ${diff(allB)}; shipped: ${diff(ship)})`);
+  assert(base.f === 0 && allA.f === 0 && allB.f === 0 && ship.f === 0, `and they pass under every look (${base.f} / ${allA.f} / ${allB.f} / ${ship.f} failed)`);
   force({});
   out(`    fire field peaks: ${JSON.stringify(peaks)}`);
 }
