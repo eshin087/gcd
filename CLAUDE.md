@@ -4,7 +4,7 @@ ABYSS is a long-term browser game: a **wuxia skill boss rush** in the vein of Ph
 with some exploring and RPG elements and fixed rewards (techniques, weapons, abilities; ADR-059),
 rendered in its own ASCII look. Today: three levels, each its own
 page load (`?level=`): Cinderwood Hollow (the Cinder Wyrm), the Ashfall Courtyard (the Ash Disciple,
-a human duelist) and the Obsidian Throne (the Starless Lord, a four-form duelist with Void spells).
+a three-phase human duelist) and the Obsidian Throne (the Starless Lord, a four-form duelist with Void spells).
 Read this file first, every session.
 
 - Repo: https://github.com/eshin087/gcdAbyss · Live: https://gcdabyss.vercel.app (auto-deploys `main`)
@@ -26,13 +26,17 @@ Read this file first, every session.
 npm run dev      # http://localhost:5173 (zero-dependency static server, no build step)
 npm test         # headless integration sims (real game modules, mocked DOM/WebGL) + glyph check,
                  # side by side (tests/run.mjs; --serial or --jobs N after `npm test --`)
-                 # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs)
+                 # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs;
+                 #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, ABYSS_PSEEDS / ABYSS_PSECS)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
 ```
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne (default:
 Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
-(`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword). In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
+(`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword).
+The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no
+parameter draws the owner's picks, `?looks=old` the looks before that pass, one switch its option
+(Lab: LOOKS); the table is STYLE.md → "The look switches". In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
 ability / phase / transition, god mode, time scale, hitbox overlay. Console: `__game` (everything),
 `__tick(dt, frames)` (step the sim even when the tab is hidden), `__inspect(x, y, w, h)` (magnify).
 In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
