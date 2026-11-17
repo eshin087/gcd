@@ -51,10 +51,11 @@ const HERO_OWN_GLSL = `bool heroOwn(float a) { return a < ${(HERO_ART.a0 - HERO_
  * lines and letter fill follow the option's numbers below; the bosses (built with the same materials)
  * stay in the shared bank and are never touched. Read once at load; pipeline.setHeroLine switches it.
  *   sil   [widest (font px), gain, gain of the band's innermost px (its soft inner edge), screen px of his
- *          metre per font px of width (the band follows his drawn size: ~24 px/m at the desktop game
+ *          metre per font px of width (the band follows his drawn size: ~43 px/m at the desktop game
  *          camera, ~10 on a phone, 100+ in a close-up)]
  *   inner [width (font px, 1 or 2), depth-step gain, part-edge gain, share kept at the game camera]
- *   fill  [letter gain (0: solid black), lavender share of the letters, piece-edge gain, unused]
+ *   fill  [letter gain (0: solid black), lavender share of the letters, piece-edge gain, the share of the
+ *          letters that fades out toward the game camera (1: plain black there)]
  *   glow  [r, g, b, radius (font px) of the soft ring OUTSIDE his silhouette (0: none)]
  */
 export const HERO_LINES = Object.freeze({
@@ -62,7 +63,9 @@ export const HERO_LINES = Object.freeze({
   // phone, the full width only in close-ups; the outer glow halved: there the SHAPE must win)
   a: Object.freeze({ sil: [2, 0.7, 0.75, 29], inner: [1, 0.32, 0.28, 0.3], fill: [0.35, 0.0, 0.2, 0], glow: [0, 0, 0, 0] }),
   b: Object.freeze({ sil: [3, 0.85, 0.6, 29], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.3, 0], glow: [0.025, 0.025, 0.045, 2] }),
-  c: Object.freeze({ sil: [3, 0.8, 0.7, 29], inner: [1, 0.38, 0.32, 0.35], fill: [0.65, 0.85, 0.2, 0], glow: [0.018, 0.018, 0.03, 2] }),
+  // (c: a faint fine lavender-grey letter field inside the black up close, fading to plain black
+  // toward the game camera: fill.w 1)
+  c: Object.freeze({ sil: [3, 0.8, 0.7, 29], inner: [1, 0.38, 0.32, 0.35], fill: [0.85, 0.85, 0.2, 1], glow: [0.018, 0.018, 0.03, 2] }),
 });
 export const HERO_LINE = (() => {
   try {
@@ -857,7 +860,9 @@ export class Pipeline {
                   float flatP = mod(floor(pf.y / 16.0), 2.0);
                   float keep = max(max(open, flatP), smoothstep(1.05, 1.5, hdr));
                   vec3 lav = vec3(0.7, 0.68, 1.0) * dot(col, vec3(0.3333)) * 1.3;
-                  col = mix(mix(col, lav, uHeroOwnFillK.y) * uHeroOwnFillK.x, col, keep);
+                  // (fill .w: how much of the letters fade out toward the game camera: there a
+                  // 12-letter-wide figure's letters turn to grey noise, the black must stay black)
+                  col = mix(mix(col, lav, uHeroOwnFillK.y) * (uHeroOwnFillK.x * mix(1.0, 1.0 - uHeroOwnFillK.w, far)), col, keep);
                   if (flatP > 0.5) {
                     vec3 sp = pHero ? sP.rgb : c;
                     float vf = 1.0 - exp(-max(luma(sp) - uArtBlack.x, 0.0) * uArtLum.x);
