@@ -303,6 +303,13 @@ function build(opts = {}) {
   // free-hand scenarios use NO_SHIELD: the animator's free hand and two-handed grip run only on a hero
   // without a shield
   if (opts.loadout) game.player.setLoadout(opts.loadout);
+  // the seeded stream starts again after the hero, before the wyrm: the wyrm's brain rolls its first
+  // timers in its constructor (ai.js: the sleep puff, the snort, ...), and those rolls came after the
+  // hero's own uuid draws, so every part added to or cut from the hero's outfit moved the wyrm's first
+  // timers and with them a whole seeded fight (2026-11-17: the hooded hero's trims, facets and braces
+  // moved WRECKAGE seed 1337 from 18 % to 37 % standing and back; with this the hooded hero's build
+  // and the one before its last look commits replay the same fight to the piece)
+  Math.random = mulberry32(SEED + 2);
   game.dragon = new Dragon(game);
   game.hud = new Hud(game);
   game.gamepad = new GamepadControls(game); // inert without navigator.getGamepads (the pad scenario fakes one)
