@@ -20,6 +20,9 @@ export const DIM = {
   skull: [0, 0.14, 0.005], // skull centre above the head joint (1.675 m; chin 1.57, crown 1.775)
   upperArm: 0.28,
   foreArm: 0.27, // elbow → grip centre
+  // the shield joint on the LEFT forearm, this far below the elbow (rig.arms.L.shield: a shield's
+  // centre; the fist on its handle is at the wrist, the strap by the elbow)
+  shieldAt: 0.15,
   thigh: 0.43,
   shin: 0.42,
   ankle: 0.07, // ankle height with the foot flat on the ground
@@ -95,8 +98,10 @@ export const BODY = {
  * upper body and its gear are built in the design frame (REST) and hang on the pelvis, so only the
  * legs, the pivot and the drawn height change.
  */
-/** The hero's own legs (buildHero opts.legs; the Player builds with them). */
-export const HERO_LEGS = Object.freeze({ thigh: DIM.thigh, shin: DIM.shin });
+/** The hero's own legs (buildHero opts.legs; the Player builds with them): about 10 % shorter than
+ *  DIM's 0.43 / 0.42 (the owner, 2026-11-17: "legs too long"); his pivot drops by the 0.085 m they
+ *  lost (legDims). Every duelist stands on DIM's. */
+export const HERO_LEGS = Object.freeze({ thigh: 0.385, shin: 0.38 });
 
 export function legDims(legs) {
   const thigh = legs?.thigh ?? DIM.thigh, shin = legs?.shin ?? DIM.shin;

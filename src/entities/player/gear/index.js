@@ -1,10 +1,6 @@
-import { WANDERER_ITEMS } from './wanderer.js';
-import { SHROUD_ITEMS } from './shroud.js';
-import { MOON_ITEMS } from './moon.js';
-import { SWALLOW_ITEMS } from './swallow.js';
-import { WARDEN_ITEMS } from './warden.js';
 import { BASE_ITEMS, BASE_LOADOUT } from './base.js';
-import { MOONBLADE_ITEMS, SWORD_PARAM } from './moonblade.js';
+import { SHIELD_ITEMS } from './shield.js';
+import { ABYSS_ITEMS, ABYSS_LOADOUT, ABYSS_TINT } from './abyss.js';
 
 // The hero's equipment, as data. A LOADOUT maps each slot to the id of the item worn there (or
 // nothing); buildHero(U, loadout) in model.js builds the skeleton and the body, then lets each
@@ -12,7 +8,7 @@ import { MOONBLADE_ITEMS, SWORD_PARAM } from './moonblade.js';
 // animator needs from one.
 
 /** The equipment slots, in the order their items are built. */
-export const SLOTS = Object.freeze(['head', 'chest', 'shoulders', 'arms', 'legs', 'waist', 'back', 'weapon']);
+export const SLOTS = Object.freeze(['head', 'chest', 'shoulders', 'arms', 'legs', 'waist', 'back', 'weapon', 'offhand']);
 
 /** Every known item: id → { id, slot, name, build(ctx) } (+ `dims` on a weapon). */
 export const GEAR = {};
@@ -32,55 +28,16 @@ export function getItem(id) {
   return typeof id === 'string' && Object.hasOwn(GEAR, id) ? GEAR[id] : null;
 }
 
-// (the outfit options' items, moon / swallow / warden: gear/looks.js; the sword looks:
-// gear/moonblade.js. Both are kept for later use: the owner, 2026-11-14, keeps today's look and sword
-// as the default)
-for (const item of [...WANDERER_ITEMS, ...SHROUD_ITEMS, ...MOON_ITEMS, ...SWALLOW_ITEMS, ...WARDEN_ITEMS, ...BASE_ITEMS, ...MOONBLADE_ITEMS]) registerItem(item);
+for (const item of [...BASE_ITEMS, ...ABYSS_ITEMS, ...SHIELD_ITEMS]) registerItem(item);
 
-/** ?sword= (the owner's pick of the sword looks, gear/moonblade.js): value → weapon item id. */
-export { SWORD_PARAM };
+/** What the hero wears (the one hero outfit, gear/abyss.js): the hood, the robe and cowl, the bell
+ *  sleeve, the boots, the robe's skirt, the cloak, the one-handed sword and the kite shield
+ *  (gear/shield.js). Every duelist brings its own loadout. */
+export const DEFAULT_LOADOUT = ABYSS_LOADOUT;
 
-/** The weapon item the page's ?sword= asks for (today | sheet | ribbon | crescent), or null (none,
- *  an unknown value, no location: the tests). */
-export function swordFromUrl() {
-  try {
-    const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('sword') : null;
-    return SWORD_PARAM[q] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** The Wanderer's set (gear/wanderer.js): the open greatcoat, the spiked pauldron on the sword
- *  shoulder, the half-cape, bare-headed under spiky dark hair. What the hero wears: the owner,
- *  2026-11-16, brought back the look of 2026-11-09 ("make the hero look like this, this is one of
- *  the older versions of the character"; ADR-123). It was the default until ADR-043 too. */
-export const WANDERER_LOADOUT = Object.freeze({
-  head: null,
-  chest: 'wanderer.coat',
-  shoulders: 'wanderer.pauldron',
-  arms: 'wanderer.arms',
-  legs: 'wanderer.legs',
-  waist: 'wanderer.skirt',
-  back: 'wanderer.cape',
-  weapon: 'wanderer.sword',
-});
-/** What the hero wears by default: the Wanderer's set. */
-export const DEFAULT_LOADOUT = WANDERER_LOADOUT;
-
-/** The Shrouded set (gear/shroud.js, ADR-043: a hood, a wrap tunic, bound sleeves and the tattered
- *  cloak) over the Wanderer's boots, coat tails and sword: the default from 2026-11-11 to 11-16,
- *  kept as an outfit option (gear/looks.js `shroud`). */
-export const SHROUD_LOADOUT = Object.freeze({
-  head: 'shroud.hood',
-  chest: 'shroud.tunic',
-  shoulders: null,
-  arms: 'shroud.arms',
-  legs: 'wanderer.legs',
-  waist: 'wanderer.skirt',
-  back: 'shroud.cloak',
-  weapon: 'wanderer.sword',
-});
+/** The hero's colours (model.js tintHero, on his own rig's materials only): the Player applies them
+ *  to every rig it builds. A duelist never gets them. */
+export const HERO_TINT = ABYSS_TINT;
 
 /** The slots that are never left bare: an empty one gets the plain undersuit (gear/base.js). */
 export { BASE_LOADOUT };

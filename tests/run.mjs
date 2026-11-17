@@ -24,7 +24,7 @@ const INTEG = 'tests/integration/integ.mjs';
 // The rest of integ is still the longest task, so these scenarios (the hero's model and the world:
 // about half of it) run as a second process. `integ` runs `all` without them, so a new scenario
 // lands there by itself, and it keeps the checks across scenarios (the event catalogue).
-const INTEG_2 = ['hero', 'herolife', 'herolook', 'herohand', 'heroweight', 'heroarms', 'herostance', 'looks', 'terrain', 'fire', 'bullets'];
+const INTEG_2 = ['hero', 'herolife', 'herolook', 'herohand', 'heroweight', 'heroarms', 'herostance', 'shield', 'terrain', 'fire', 'bullets'];
 
 // [name, node args, env]. Slowest first, so the long ones start at once when there are fewer cores
 // than tasks.
