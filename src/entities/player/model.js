@@ -576,7 +576,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   for (const { slot, item } of worn) {
     equipped[slot] = item ? item.id : null;
     if (!item) continue;
-    const h = item.build({ ...skeleton, M, DIM, BODY, REST, slot, item, ...helpers(slot) });
+    const h = item.build({ ...skeleton, M, U, DIM, BODY, REST, slot, item, ...helpers(slot) });
     if (h?.coat) handles.coat.push(...h.coat);
     if (h?.streamers) handles.streamers.push(...h.streamers);
     if (h?.keep) handles.keep.push(...h.keep);

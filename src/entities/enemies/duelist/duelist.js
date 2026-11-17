@@ -1048,6 +1048,8 @@ export class Duelist {
       u.uWarn.value.set(wc[0], wc[1], wc[2], w);
     }
     this._bladeMaterials(dt, M);
+    // (the body's dressing by phase / form, ?ashLook= / ?lordLook= b or c: a few flags, cheap)
+    this.kit.dress?.(this, dt);
   }
 
   // ---------------------------------------------------------------- helpers

@@ -169,7 +169,13 @@ function build(opt = SEED) {
   }
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
+  // (his rig is built on a stream of its own: every THREE object draws Math.random for its uuid, so a
+  // body look with more pieces (?ashLook=b, the owner's pick) would otherwise shift the AI's seeded
+  // stream and replay every fight with another seed. The picks, 2026-11-16)
+  const R0 = Math.random;
+  Math.random = mulberry32(seed + 0x5eed);
   game.dragon = ASH.createBoss(game);
+  Math.random = R0;
   game.boss = game.dragon;
   game.hud = new Hud(game);
   game.touch = new TouchControls(game);
@@ -319,6 +325,37 @@ function fencer(G, mortal = false) {
   if (!busy && dist < 3.2 && (open ? tick % 20 === 0 : tick % 70 === 0)) input.click(0);
 }
 
+// ================================================================== scenario: floor
+/**
+ * The floor breaks (2026-11-16, world/floor.js, BREAK.floor): a duel on the real set with his AI on
+ * against the fencing bot (god mode; his health kept over 15 % so the fight runs its length), the share
+ * of the floor inside his bound broken (and cracked) after 30 s, 1, 2 and 4 minutes. The owner's target:
+ * not all rubble early, never untouched after two minutes, 30 - 50 % broken after a whole duel.
+ */
+async function scenarioFloor() {
+  out('\n== scenario FLOOR (a courtyard duel breaks the floor: the share over time) ==');
+  const F = build({ real: true });
+  duel(F, { dist: 4, ai: true });
+  F.defend = makeDefender(F);
+  const fd = F.game.dragon, fp = F.game.player, W = F.game.world.destructibles;
+  fp.debug.god = true;
+  const inB = W.floor.filter((b) => Math.hypot(b.x, b.z) <= (fd.baseBound ?? 12.5));
+  const at = {};
+  let t = 0;
+  for (const s of [30, 60, 120, 240]) {
+    run(F, s - t, (GG) => { fd.hp = Math.max(fd.hp, fd.maxHp * 0.15); fencer(GG); }, () => fd.state === 'dead');
+    t = s;
+    const broken = inB.filter((b) => b.state !== STATE.INTACT).length, cracked = inB.filter((b) => b.state === STATE.INTACT && b.cracked).length;
+    at[s] = broken / inB.length;
+    out(`     ${s} s (${F.game.time.toFixed(0)} s): ${broken} of ${inB.length} slabs inside his bound broken (${(at[s] * 100).toFixed(0)} %; ${inB.filter((b) => b.state !== STATE.INTACT && b.by === "player").length} by the hero), ${cracked} cracked; phase ${fd.phase}; ${W.list.length - W.standing} pieces down in all`);
+  }
+  assert(at[30] < 0.25 && at[120] > 0, `not rubble early (${(at[30] * 100).toFixed(0)} % after 30 s, < 25 %), never untouched after two minutes (${(at[120] * 100).toFixed(0)} %)`);
+  // (the owner's target 30 - 50 % after a whole duel; the band allows for the seed)
+  assert(at[240] >= 0.22 && at[240] <= 0.6, `after 4 minutes ${(at[240] * 100).toFixed(0)} % of the floor inside his bound is broken (22 .. 60 %; the aim 30 - 50 %)`);
+  assert(!F.payload.size, `no non-finite payload in his events (${[...F.payload].join(', ')})`);
+  return F;
+}
+
 // ================================================================== scenario: levels
 async function scenarioLevels() {
   out('\n== scenario LEVELS (registry, URL, world overrides) ==');
@@ -341,6 +378,314 @@ async function scenarioLevels() {
   assert(d.batch.meshes.length > 0 && d.batch.meshes.length < 24, `he draws through rigid batches (${d.batch.meshes.length} meshes)`);
   const labLevel = ui.find?.((e) => e.textContent === 'LEVEL') ?? null;
   assert(G.game.lab && typeof G.game.pickLevel === 'function', 'the Lab and the title get the level list and pickLevel');
+  // the courtyard's breakables (2026-11-16: everything but the gate, the bell's bronze and the bonfire
+  // breaks: 78 → 456: its floor 293 slabs, the pillars 30 (a corner's second pillar joins its first),
+  // the colossi in two stages, the cauldron, the lintel, the trees and stumps out to 40 m)
+  const B = createCourtyard(createSharedUniforms(), new Colliders()).breakables, kinds = (k) => B.filter((b) => b.kind === k).length;
+  assert(B.length >= 380 && B.length <= 520 && kinds('flagstone') >= 250 && kinds('colossus') === 4 && kinds('cauldron') === 1 && kinds('lintel') === 1 && kinds('bell') === 1 && kinds('pillar') === 30 && kinds('lantern') === 4, `the courtyard's breakables: ${B.length} (flagstone ${kinds('flagstone')}, pillar ${kinds('pillar')}, colossus ${kinds('colossus')}, cauldron, lintel, deadTree ${kinds('deadTree')}, stump ${kinds('stump')}, boulder ${kinds('boulder')})`);
+  const at = new Map();
+  for (const b of B) if (b.kind === 'pillar' && b.topples !== false) { const k = `${b.x.toFixed(1)},${b.z.toFixed(1)}`; at.set(k, (at.get(k) ?? 0) + 1); }
+  assert([...at.values()].every((n) => n === 1), 'no standing pillar is listed twice');
+  return G;
+}
+
+// ================================================================== scenario: moves (the second pass)
+/**
+ * Shen Hui's second pass (wave 2): every new move in every phase it is in, answered by a parrying bot
+ * and by a rolling bot (no blow of it lands: each tell is answered by what it promises); the long
+ * string re-closes on a hero who stepped back; burning ground keeps the rule of fire on grass (its
+ * first burn after its grace, then one a tick, blockable, never while rolling) and its cap; the storm
+ * of qi leaves a way out (the straddling wave passes either side of a hero who stands, a rolling bot
+ * takes nothing); links fire by where the hero is.
+ */
+const NEW_MOVES = ['glideKick', 'leapSpin', 'mirrorFeint', 'chaseRain', 'windSpin', 'partingWind', 'burningCross', 'emberFan', 'zigzag', 'leapingString', 'kickBrand', 'ashString', 'ashFlurry', 'qiStorm', 'ghostDash', 'flitLotus'];
+async function scenarioMoves() {
+  out('\n== scenario MOVES (the second pass: every new move answered, the re-close, burning ground, the storm, links) ==');
+  const { linkFor } = await imp('src/entities/enemies/duelist/director.js');
+  assert(NEW_MOVES.every((n) => MOVES[n]), `the new moves exist (${NEW_MOVES.filter((n) => !MOVES[n]).join(', ') || 'all'})`);
+  const per = { 1: NEW_MOVES.filter((n) => MOVES[n].phase === 1).length, 2: NEW_MOVES.filter((n) => MOVES[n].phase === 2).length, 3: NEW_MOVES.filter((n) => MOVES[n].phase === 3).length };
+  assert(per[1] >= 5 && per[2] >= 5 && per[3] >= 5, `at least five new moves per phase (${per[1]} / ${per[2]} / ${per[3]})`);
+  // no new blow over today's worst (30 before the scale) and the bands: a string hit 10 - 15, blue 18 - 26, red 22 - 30
+  const band = { [TELL.NORMAL]: [10, 15], [TELL.BLUE]: [18, 26], [TELL.RED]: [22, 30] };
+  const off = [];
+  for (const n of NEW_MOVES) for (const b of MOVES[n].beats) if (!b.feint && b.tell !== TELL.BLACK) { const B = band[b.tell]; if (!(b.damage >= B[0] && b.damage <= B[1])) off.push(`${n} ${b.tell} ${b.damage}`); }
+  assert(!off.length, `every new blow's damage in its band (${off.join(', ') || 'all'})`);
+  const blacks = MOVE_NAMES.filter((n) => MOVES[n].beats.some((b) => b.tell === TELL.BLACK));
+  assert(blacks.length === 1, `still exactly one charged black move (${blacks.join(', ')})`);
+
+  // ---- every new move against a parrying bot and a rolling bot, in each phase it is in
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  p.debug.noRiposte = true;
+  const toPhase = (ph) => {
+    while (d.phase < ph) {
+      const n = d.phase + 1;
+      d.debug[`phase${n}`]();
+      run(G, 4, null, () => d.phase === n && d.mode === 'foot');
+    }
+  };
+  const tried = [];
+  for (const ph of [1, 2, 3]) {
+    toPhase(ph);
+    for (const name of NEW_MOVES) {
+      const def = MOVES[name];
+      if (def.phase > ph) continue;
+      for (const style of ['mixed', 'dodge']) {
+        settle(G, 8);
+        d.position.set(0, 0, -2);
+        d.yaw = 0;
+        place(G, (def.band[0] + Math.min(def.band[1], 9)) / 2);
+        run(G, 0.2);
+        d.brain.cooldowns = {};
+        // (each run on clean stones: a line left by the run before burns where the hero now stands)
+        d.moveFx?.reset();
+        G.defend = makeDefender(G, { style });
+        const h0 = G.hits.length;
+        d.debug.trigger(name);
+        const mtrace = [];
+        run(G, 9, (GG) => { if (process.env.ABYSS_MTRACE) mtrace.push([+GG.game.time.toFixed(2), `${p.state}/${d.brain.act?.beats?.findIndex((b) => d.brain.act.t < b.end) ?? '-'}`]); GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+        G.defend = null;
+        input.up(1);
+        const landed = G.hits.slice(h0).filter((h) => h.attack === name && h.r === RESULT.HIT);
+        if (process.env.ABYSS_MTRACE && landed.length) out('     trace', name, JSON.stringify(G.hits.slice(h0).map((h) => [h.attack, h.r, h.tell, +(h.t).toFixed(2)])), JSON.stringify(mtrace.filter((x, i, A) => i === 0 || x[1] !== A[i - 1][1])));
+        tried.push(`${name}/P${ph}/${style}:${landed.length}`);
+        if (landed.length) assert(false, `${name} P${ph}: answered by a ${style === 'dodge' ? 'rolling' : 'parrying'} bot, ${landed.length} blow(s) landed (${landed.map((h) => h.tell).join(',')})`);
+      }
+    }
+  }
+  assert(tried.every((t) => t.endsWith(':0')), `every new move in every phase it is in: no blow lands on a hero who answers its tells (parry / roll): ${tried.length} runs`);
+
+  // ---- the long string re-closes: the hero steps back 5.5 m as the glide comes; the string goes on and reaches him
+  {
+    const G2 = build();
+    duel(G2, { dist: 2 });
+    const d2 = G2.game.dragon, p2 = G2.game.player;
+    p2.debug.god = true;
+    p2.debug.noRiposte = true;
+    d2.debug.trigger('chaseRain');
+    const A = d2.brain.act, glideI = A.beats.findIndex((b) => b.def.dash?.max >= 5);
+    let moved = false, at = 0;
+    const h0 = G2.hits.length;
+    run(G2, 8, () => {
+      const t = d2.brain.act === A ? A.t : -1;
+      if (!moved && t >= A.beats[glideI].start - 0.12) {
+        moved = true;
+        at = G2.game.time;
+        const dx = p2.position.x - d2.position.x, dz = p2.position.z - d2.position.z, l = Math.hypot(dx, dz) || 1;
+        p2.debug.teleport(d2.position.x + (dx / l) * 5.5, d2.position.z + (dz / l) * 5.5);
+      }
+    }, () => d2.mode === 'foot');
+    const after = G2.hits.slice(h0).filter((h) => h.attack === 'chaseRain' && h.t > at);
+    assert(moved && glideI > 0 && after.length >= 1 && A.beats[glideI].done, `Chasing Rain re-closes: the hero 5.5 m back as its glide comes, the string goes on and ${after.length} of its blows reach him after it (glide beat ${glideI})`);
+  }
+
+  // ---- the qi as a string's last word (the engine pass): a release beat with a `zone` is the cut
+  // itself on a hero still inside that reach as its cue comes due (cued, flashed, it lands; no qi),
+  // and throws its sword qi at a hero who stepped back (the crescents as before)
+  for (const name of ['chaseRain', 'partingWind']) {
+    for (const back of [false, true]) {
+      const G5 = build();
+      duel(G5, { dist: 1.8 });
+      const d5 = G5.game.dragon, p5 = G5.game.player;
+      p5.debug.god = true;
+      p5.debug.noRiposte = true;
+      const thrown = [];
+      const tc = d5.fx.throwCrescent.bind(d5.fx);
+      d5.fx.throwCrescent = (...a) => { const c = tc(...a); if (c) thrown.push(c); return c; };
+      const flashes = [];
+      G5.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === name && e.source === 'dragon' && !e.hazard) flashes.push(G5.game.time); };
+      d5.debug.trigger(name);
+      const A = d5.brain.act, B = A.beats[A.beats.length - 1];
+      const h0 = G5.hits.length;
+      let moved = false, impactAt = -1;
+      // (the hero stands where the string's last cut finds him: put back in front of him at 1.8 m
+      // as its windup starts, or 5.5 m back)
+      run(G5, 12, () => {
+        if (d5.brain.act !== A) return;
+        if (!moved && A.t >= B.start) {
+          moved = true;
+          place(G5, back ? 5.5 : 1.8);
+        }
+        if (impactAt < 0 && A.t >= B.impact) impactAt = G5.game.time;
+      }, () => d5.mode === 'foot' && !d5.fx.crescentsAlive);
+      G5.watch = null;
+      const lead = Array.isArray(TUNING.flashLead) ? TUNING.flashLead[0] : TUNING.flashLead;
+      const last = G5.hits.slice(h0).filter((h) => h.attack === name && h.t >= impactAt - 1e-6);
+      const cue = flashes.filter((t) => Math.abs(t + lead - impactAt) < DT * 1.5);
+      if (!back) assert(B.cut === true && cue.length === 1 && last.length >= 1 && last[0].t - impactAt < 0.12 && !thrown.length, `${MOVES[name].label}: its last beat on a hero 1.8 m off is the cut (cut ${B.cut}): cued ${lead} s before (${cue.length} flash), it lands on him (${last.map((h) => h.r).join(',') || 'nothing'}), ${thrown.length} qi thrown`);
+      else assert(B.cut === false && thrown.length >= 1 && last.length >= 1, `${MOVES[name].label}: its last beat at a hero 5.5 m back throws its qi (${thrown.length} crescent(s), cut ${B.cut}), and it reaches him (${last.map((h) => h.r).join(',') || 'nothing'})`);
+    }
+  }
+
+  // ---- burning ground: the rule of fire on grass, its cap
+  {
+    const G3 = build();
+    duel(G3, { dist: 1.6 });
+    const d3 = G3.game.dragon, p3 = G3.game.player, F = d3.moveFx;
+    d3.debug.phase2();
+    run(G3, 4, null, () => d3.phase === 2 && d3.mode === 'foot');
+    settle(G3, 6);
+    place(G3, 1.6);
+    p3.debug.god = true;
+    p3.debug.noRiposte = true;
+    const T = TUNING.burn;
+    const made = [];
+    const add = F.add.bind(F);
+    F.add = (...a) => { const r = add(...a); if (r) made.push(G3.game.time); return r; };
+    const states = [];
+    const th = p3.takeHit.bind(p3);
+    p3.takeHit = (h) => { if (h?.attack === 'burningGround') states.push(p3.state); return th(h); };
+    const h0 = G3.hits.length;
+    d3.debug.trigger('burningCross');
+    // (the hero stays where he defended the string: held there, as its red cut throws him back since
+    // the tuning pass)
+    const hx = p3.position.x, hz = p3.position.z;
+    const hold = () => { if (Math.hypot(p3.position.x - hx, p3.position.z - hz) > 0.05) p3.debug.teleport(hx, hz); };
+    run(G3, 4, hold, () => d3.mode === 'foot');
+    run(G3, 1.5, hold);
+    // (no burn while the string still had blows coming: he defends where he stands)
+    const lastBlow = Math.max(...G3.hits.slice(h0).filter((h) => h.attack === 'burningCross').map((h) => h.t));
+    const burns = G3.hits.slice(h0).filter((h) => h.attack === 'burningGround');
+    assert(made.length >= 2, `Cinder Cross leaves its lines of fire (${made.length})`);
+    const first = burns[0];
+    assert(first && first.t - made[0] >= T.grace - DT - 1e-6 && first.t >= lastBlow + T.armAfter - DT - 1e-6, `the first burn comes after the line's grace (${first ? (first.t - made[0]).toFixed(2) : '-'} s >= ${T.grace}) and after the string's last blow (${first ? (first.t - lastBlow).toFixed(2) : '-'} s >= ${T.armAfter})`);
+    // then the tick: a line laid under a hero who stands in it
+    settle(G3, 6);
+    F.reset();
+    const h2 = G3.hits.length, t2 = G3.game.time;
+    F.add(p3.position.x - 1.5, p3.position.z, p3.position.x + 1.5, p3.position.z, T.width, T.life);
+    run(G3, 2.2, (GG) => { GG.input.axis = { x: 0, y: 0 }; });
+    const ticks = G3.hits.slice(h2).filter((h) => h.attack === 'burningGround');
+    let minGap = Infinity;
+    for (let i = 1; i < ticks.length; i++) minGap = Math.min(minGap, ticks[i].t - ticks[i - 1].t);
+    assert(ticks.length >= 3 && ticks[0].t - t2 >= T.grace - DT - 1e-6 && minGap >= T.tick - DT - 1e-6 && ticks.every((h) => h.damage === T.damage), `standing in a line: the first burn ${ticks[0] ? (ticks[0].t - t2).toFixed(2) : '-'} s after it catches (>= ${T.grace}), then ${T.damage} every ${T.tick} s (${ticks.length} burns, the closest ${minGap.toFixed(2)} s apart)`);
+    // blockable: a hero who holds his guard in it loses nothing; rolling: never burned
+    settle(G3, 6);
+    F.reset();
+    p3.debug.god = false;
+    p3.debug.heal();
+    const hp0 = p3.hp;
+    p3.guard = p3.maxGuard;
+    const x0 = p3.position.x, z0 = p3.position.z;
+    const tAdd = G3.game.time;
+    F.add(p3.position.x - 1.5, p3.position.z, p3.position.x + 1.5, p3.position.z, T.width, T.life);
+    G3.input.press(1);
+    const h1 = G3.hits.length;
+    // (the owner, 2026-11-16: "guard meter, no health": a guarded tick is a blocked blow of T.guard on
+    // the meter and 0 HP; the meter empty knocks the guard open; then the fire burns as unguarded)
+    const meter = [], opens = [];
+    let gOpenT = -1;
+    const w3 = G3.watch;
+    G3.watch = (n, e) => { w3?.(n, e); if (n === 'player:guardOpen' && gOpenT < 0) gOpenT = G3.game.time; };
+    let blockedRun = true, hpAtOpen = -1;
+    run(G3, 3.0, (GG) => {
+      GG.input.axis = { x: 0, y: 0 };
+      const hs = GG.hits.slice(h1).filter((h) => h.attack === 'burningGround');
+      if (hs.length > meter.length) { meter.push(p3.guard); opens.push(Math.hypot(p3.position.x - x0, p3.position.z - z0)); }
+      if (gOpenT < 0 && hs.some((h) => h.r === RESULT.HIT)) blockedRun = false;
+      if (gOpenT >= 0 && hpAtOpen < 0) hpAtOpen = p3.hp;
+    });
+    G3.watch = w3;
+    G3.input.up(1);
+    const gb = G3.hits.slice(h1).filter((h) => h.attack === 'burningGround');
+    const pre = gOpenT < 0 ? gb : gb.filter((h) => h.t <= gOpenT + 1e-6);
+    const lasted = gOpenT < 0 ? Infinity : gOpenT - tAdd;
+    assert(pre.length >= 2 && pre.every((h) => h.r === RESULT.BLOCKED) && blockedRun && (hpAtOpen < 0 ? p3.hp : hpAtOpen) === hp0, `guarding in it: ${pre.length} ticks blocked, 0 HP lost until the guard opens (hp ${hp0} → ${hpAtOpen < 0 ? p3.hp : hpAtOpen}; ${pre.map((h) => h.r).join(',')})`);
+    assert(meter.length >= 2 && Math.abs(p3.maxGuard - T.guard - meter[0]) < 1e-6 && (meter.length < 2 || Math.abs(meter[0] - T.guard - meter[1]) < 1e-6 || meter[1] === 0) && Math.max(...opens.slice(0, pre.length)) < 0.1, `each guarded tick drains the guard meter ${T.guard} (${meter.map((g) => g.toFixed(0)).join(' → ')}), no shove (${opens.slice(0, pre.length).map((o) => o.toFixed(2)).join(', ')} m off where he stood)`);
+    assert(gOpenT >= 0 && lasted > T.life * 0.35 && lasted < T.life * 0.65 && gb.some((h) => h.t > gOpenT + 0.3 && h.r === RESULT.HIT && h.damage === T.damage), `the meter empties: the guard is knocked open ${lasted.toFixed(2)} s into the line (about half its ${T.life} s), then the fire burns ${T.damage} (${gb.filter((h) => h.t > gOpenT).map((h) => h.r).join(',')})`);
+    p3.debug.heal();
+    states.length = 0;
+    F.reset();
+    F.add(p3.position.x - 2.5, p3.position.z, p3.position.x + 2.5, p3.position.z, T.width, T.life);
+    run(G3, 0.5);
+    for (let i = 0; i < 6; i++) {
+      G3.input.axis = { x: i % 2 ? 1 : -1, y: 0 };
+      G3.input.tap('Space');
+      run(G3, 0.45);
+    }
+    G3.input.axis = { x: 0, y: 0 };
+    assert(!states.includes('roll'), `never while he rolls (${states.length} burns, states: ${[...new Set(states)].join(',') || 'none'})`);
+    // the cap: more lines than the phase allows, the oldest go out
+    F.reset();
+    for (let i = 0; i < 12; i++) F.add(-6 + i, 8, -6 + i, 10, T.width, T.life);
+    const lit = F.lines.filter((L) => L.alive && L.age < L.life - T.fade).length;
+    assert(lit <= T.cap[1], `the cap: 12 lines asked in phase 2, ${lit} burn on (<= ${T.cap[1]})`);
+    run(G3, T.life + 0.2);
+    assert(F.alive === 0, `and they burn out in ${T.life} s (${F.alive} left)`);
+    p3.debug.god = true;
+  }
+
+  // ---- the storm leaves a way out
+  {
+    const G4 = build();
+    duel(G4, { dist: 4 });
+    const d4 = G4.game.dragon, p4 = G4.game.player;
+    p4.debug.god = true;
+    p4.debug.noRiposte = true;
+    d4.debug.phase2();
+    run(G4, 4, null, () => d4.phase === 2 && d4.mode === 'foot');
+    d4.debug.phase3();
+    run(G4, 4, null, () => d4.phase === 3 && d4.mode === 'foot');
+    settle(G4, 6);
+    const thrown = [];
+    const tc = d4.fx.throwCrescent.bind(d4.fx);
+    d4.fx.throwCrescent = (...a) => { const c = tc(...a); if (c) thrown.push(c); return c; };
+    const flashes = [];
+    G4.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'qiStorm') flashes.push(G4.game.time); };
+    d4.position.set(0, 0, -3);
+    d4.yaw = 0;
+    place(G4, 7);
+    run(G4, 0.2);
+    const h0 = G4.hits.length;
+    d4.debug.trigger('qiStorm');
+    run(G4, 6, (GG) => { GG.input.axis = { x: 0, y: 0 }; }, () => d4.mode === 'foot' && !d4.fx.crescentsAlive);
+    G4.watch = null;
+    const stood = G4.hits.slice(h0).filter((h) => h.attack === 'qiStorm');
+    let gapMin = Infinity;
+    for (let i = 1; i < flashes.length; i++) gapMin = Math.min(gapMin, flashes[i] - flashes[i - 1]);
+    // (nine crescents in four waves: the fans' middles and the heavy one reach a hero who stands; the straddling two pass him)
+    assert(thrown.length === 9 && stood.length <= 3, `Storm of Ash: ${thrown.length} crescents in four waves, ${stood.length} of them reach a hero who stands still (the two that straddle him pass either side)`);
+    assert(MOVES.qiStorm.beats.every((b) => b.tell !== TELL.RED && b.tell !== TELL.BLACK) && gapMin >= 0.4, `every wave is guardable and the glints come ${gapMin.toFixed(2)} s apart at least (>= 0.4: a roll for each)`);
+    settle(G4, 6);
+    G4.defend = makeDefender(G4, { style: 'dodge' });
+    place(G4, 7);
+    const h1 = G4.hits.length;
+    d4.brain.cooldowns = {};
+    d4.debug.trigger('qiStorm');
+    run(G4, 6, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); }, () => d4.mode === 'foot' && !d4.fx.crescentsAlive);
+    G4.defend = null;
+    const rolledHits = G4.hits.slice(h1).filter((h) => h.attack === 'qiStorm' && h.r === RESULT.HIT);
+    assert(rolledHits.length === 0, `a hero who rolls each glint takes nothing (${rolledHits.length})`);
+  }
+
+  // ---- links fire by where the hero is (the roll forced to pass)
+  {
+    const br = d.brain;
+    const R0 = Math.random;
+    Math.random = () => 0;
+    const sense = (dist, bearing = 0, away = 0) => {
+      const a = d.yaw + bearing, dx = Math.sin(a) * dist, dz = Math.cos(a) * dist;
+      return { dx, dz, dist, ang: Math.atan2(dx, dz), p: { x: d.position.x + dx, z: d.position.z + dz }, vx: (dx / dist) * away, vz: (dz / dist) * away };
+    };
+    const pick = (from, s) => { br.cooldowns = {}; return linkFor(br, { name: from }, s)?.to ?? null; };
+    // (in phase 3 now)
+    const got = {
+      far: pick('ashRain', sense(9)),
+      behind: pick('ashRain', sense(2.2, Math.PI)),
+      side: pick('ashRain', sense(2.2, Math.PI / 2)),
+      near: pick('ashRain', sense(2.2)),
+      away: pick('partingWind', sense(4, 0, 4)),
+    };
+    Math.random = R0;
+    out(`     links out of Rain of Ashes in phase 3: far ${got.far}, behind ${got.behind}, at his side ${got.side}, near ${got.near}; out of Parting Wind at a hero backing off: ${got.away}`);
+    assert(got.far === 'qiStorm' && got.behind === 'flitLotus' && got.side === 'ashString' && got.near && got.near !== got.far && got.away === 'ghostDash', 'links by position: the storm at range, a sweep from behind, a flit string from the side, a close follow-up, the dash chain after a hero who backs off');
+    const all = new Set(Object.keys(d.LINKS));
+    const missing = MOVE_NAMES.filter((n) => !MOVES[n].counter && !MOVES[n].transition && !MOVES[n].terrain && !all.has(n));
+    assert(!missing.length, `every blade move has links (${missing.join(', ') || 'all'})`);
+  }
   return G;
 }
 
@@ -351,7 +696,8 @@ async function scenarioData() {
   let checked = 0;
   for (const name of MOVE_NAMES) {
     const def = MOVES[name];
-    for (const phase of [1, 2]) {
+    // (the second pass: three phases; phase 3's windups no faster than phase 2's)
+    for (const phase of [1, 2, 3]) {
       if (def.phase > phase) continue;
       for (const r of [0, 0.999]) {
         const A = realise(name, phase, () => r);
@@ -400,9 +746,11 @@ async function scenarioTiming() {
     const def = MOVES[name];
     if (def.transition || def.counter) continue;
     if (def.terrain) continue; // (a move of the courtyard needs its pieces: scenario TERRAIN, on the real set)
-    if (def.phase > d.phase) {
-      d.debug.phase2();
-      run(G, 3.5, null, () => d.mode === 'foot');
+    // (into the move's phase through its real transition(s): the kindling, ash on the wind)
+    while (def.phase > d.phase) {
+      const n = d.phase + 1;
+      d.debug[`phase${n}`]();
+      run(G, 4, null, () => d.phase === n && d.mode === 'foot');
     }
     settle(G);
     d.yaw = 0;
@@ -1113,6 +1461,19 @@ async function scenarioTraining() {
   }
   T.stop();
   assert(L.length >= 20 && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+  // phase 3's change from phase 1 (no phase 2 run first): the runner puts him in phase 2 first (the
+  // review of PR 64: phase3() did nothing from phase 1, and an empty `expect` let the situation pass)
+  {
+    const G2 = build({ real: true });
+    duel(G2, { dist: 4 });
+    const T2 = G2.game.lab.training, d2 = G2.game.dragon, from = d2.phase;
+    T2.run('phase3a');
+    let f = 0;
+    while (T2.ph !== 'done' && f < Math.round(20 / DT)) { G2.tick(DT); f++; }
+    const r = T2.lastResult, done = T2.ph === 'done';
+    T2.stop();
+    assert(from === 1 && done && !!r?.ok && d2.phase === 3, `Training's Phase 3 plays from phase 1: phase ${from} → ${d2.phase}, ${r?.ok ? 'shown' : `missing ${JSON.stringify(r?.missing ?? '?')}`}`);
+  }
   return G;
 }
 
@@ -1175,6 +1536,38 @@ async function scenarioPhase() {
   }
   assert(picks.has('needles') && picks.has('emberWhirl'), `phase-2 moves join the pool at 3 m (${[...picks].join(', ')})`);
   assert(game.flow._text('phase2') === 'THE ASH KINDLES', 'the flow shows the level\'s phase-2 banner');
+  // (the second pass) the third phase, ash on the wind, at its own gate: one dragon:phase3, its own
+  // transition (a red ring blow), the phase-3 moves in the pool; phase 3 is no faster than phase 2
+  const gate3 = d.maxHp * TUNING.phaseAt[2];
+  assert(TUNING.phaseAt.length === 3 && TUNING.phaseAt[1] > TUNING.phaseAt[2] && TUNING.phaseAt[2] > 0, `three phases (phaseAt ${TUNING.phaseAt.join(', ')})`);
+  settle(G, 8);
+  d.hp = gate3 + 20;
+  d.mode = 'foot';
+  d.brain.act = null;
+  d.takeHit({ damage: 400, part: 'body', heavy: true, poise: 5, exact: true });
+  assert(d.hp === gate3 && d.brain.pendingPhase === 3, `damage stops at the third gate (${d.hp} = ${gate3}) until the transition`);
+  let p3 = 0, burst = 0;
+  const pb = d.fx.phaseBurst;
+  d.fx.phaseBurst = (n, ...rest) => { if (n === 3) burst++; return pb?.call(d.fx, n, ...rest); };
+  G.watch = (n) => { if (n === 'dragon:phase3') p3++; };
+  run(G, 1, null, () => d.brain.act?.name === 'ashWind');
+  const A3 = d.brain.act;
+  assert(A3?.name === 'ashWind' && d.phase === 3 && p3 === 1, `ash on the wind starts: phase ${d.phase}, ${p3} dragon:phase3`);
+  assert(A3?.beats[0]?.def.tell === TELL.RED && A3.beats[0].def.zone?.kind === 'ring' && A3.beats[0].def.damage <= TUNING.transition.damage, 'its blow is a red ring, the Kindling\'s damage');
+  run(G, 4, null, () => d.mode === 'foot');
+  G.watch = null;
+  d.fx.phaseBurst = pb;
+  assert(burst === 1, `its impact calls the phase-3 burst once (${burst})`);
+  const picks3 = new Set();
+  for (let i = 0; i < 300; i++) {
+    d.brain.cooldowns = {};
+    d.brain.last = [null, null];
+    const n = d.brain._choose(3);
+    if (n) picks3.add(n);
+  }
+  assert(picks3.has('ashString') && picks3.has('ashFlurry') && picks3.has('flitLotus'), `phase-3 moves join the pool at 3 m (${[...picks3].join(', ')})`);
+  assert(TUNING.windupScale[2] >= TUNING.windupScale[1] && TUNING.recoveryScale[2] >= TUNING.recoveryScale[1], 'phase 3 winds up and recovers no faster than phase 2');
+  assert(game.flow._text('phase3') === 'ASH ON THE WIND', 'the flow shows the level\'s phase-3 banner');
   return G;
 }
 
@@ -1203,6 +1596,218 @@ async function scenarioFlow() {
   assert(d.state === 'dead' && game.state === 'victory', `defeated, he turns to ash: victory (${game.state})`);
   assert(game.flow._text('victory') === 'DISCIPLE DEFEATED', 'the level\'s victory banner');
   return G;
+}
+
+// ================================================================== scenario: pace (the director's meter)
+// A god-mode defender that never attacks, driven by combat:flash (his thrown things send no tell):
+// the guard held through a normal / blue blow, a roll 0.28 s before a red / black one (out of a
+// hazard's ring: away from its centre). The hero roams between standoffs (2.5 / 5 / 9 m, a new one
+// every 4 s), on the REAL courtyard (the terrain moves are in). Per seed and per phase (every phase
+// the kit has), ABYSS_PSECS s each (default 120), seeds ABYSS_PSEEDS (default 4242,7,99): cues a
+// minute (combat:flash from 'dragon' or 'world'), the longest gap between cues (a black blow's charge
+// counts as activity), the mix by category, the moves chained (started straight out of another, no
+// footwork between) and the longest chain, conflicts (two flashes under 0.3 s apart needing
+// different answers, from different attacks; same attack: "inner"), the share of time something of
+// his is live on the floor, the blade holds and strike delays the fairness guard made. With a
+// `pressure` block in tuning.js it asserts pressure.meter; without one it only measures.
+function paceDefender(G) {
+  const pend = [];
+  const stats = { flashes: 0, rolls: 0, guards: 0 };
+  let guardUntil = -1;
+  const leadOf = (src) => (src === 'world' ? 0.3 : TUNING.flashLead);
+  return {
+    stats,
+    onEvent(n, e) {
+      if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
+      stats.flashes++;
+      pend.push({ tell: e.tell, at: G.game.time + leadOf(e.source), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false });
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.5) pend.splice(i, 1);
+      let rolled = false;
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - t - DT;
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK) {
+          if (left <= 0.28) {
+            e.done = true;
+            input.up(1);
+            guardUntil = -1;
+            const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
+            const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: -dz / l, y: -dx / l };
+            input.tap('Space');
+            rolled = true;
+            stats.rolls++;
+          }
+        } else {
+          e.done = true;
+          guardUntil = Math.max(guardUntil, e.at + 0.2);
+          stats.guards++;
+        }
+      }
+      if (guardUntil > t) input.press(1);
+      else if (guardUntil > 0) { guardUntil = -1; input.up(1); }
+      return rolled;
+    },
+  };
+}
+
+async function scenarioPace() {
+  out('\n== scenario PACE (a steady defender in god mode vs his AI, per phase: cues, gaps, mix, chains, conflicts) ==');
+  const DIR = await imp('src/entities/enemies/duelist/director.js');
+  const P = TUNING.pressure ?? null;
+  const SECS = Number(process.env.ABYSS_PSECS ?? 120);
+  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
+  const CATS = DIR.CATEGORIES;
+  const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
+  const skip = (name) => !MOVES[name] || MOVES[name].transition || MOVES[name].counter;
+  const rows = [];
+  let lastG = null, NPH = 0;
+  for (const seed of SEEDS) {
+    for (let ph = 1; ; ph++) {
+      const G = (lastG = build({ seed, real: true }));
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      NPH = d.kit.maxPhase ?? TUNING.phaseAt.length;
+      if (ph > NPH) break;
+      duel(G, { dist: 3, ai: true });
+      p.debug.god = true;
+      p.debug.noRiposte = true;
+      G.defend = paceDefender(G);
+      // into the phase through its real transition(s)
+      for (let n = 2; n <= ph; n++) {
+        d.brain.forcePhase(n);
+        run(G, 8, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); }, () => d.phase === n && d.mode !== 'act');
+      }
+      Math.random = mulberry32(seed * 7 + ph);
+      const flashes = [], acts = [], cats = {}, busyT = [];
+      const modeT = {}, spent = {};
+      let hurt = 0, frames = 0, busy = 0, burnF = 0, chained = 0, chainLen = 0, chainMax = 0, prevAct = null, prevMode = d.mode;
+      const s0 = { ...(d.brain.stats ?? {}) };
+      const dbg = [];
+      G.watch = (n, e) => {
+        if ((process.env.ABYSS_PDBG || process.env.ABYSS_PGAP) && /dragon:windup|combat:flash|combat:tell|dragon:parried|dragon:guard/.test(n)) dbg.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''} ${e?.tell ?? ''}${n === 'combat:tell' ? ` in ${e.impactIn?.toFixed(2)}` : ''} [${d.mode} ${d.brain.act?.name ?? ''} h${d.brain.stats?.holds} d${d.brain.stats?.delays}]`]);
+        if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashes.push([game.time, e.tell, e.attack, e.source]);
+        if (n === 'combat:charge' && Number.isFinite(e?.dur)) for (let k = 0; k < e.dur; k += 0.1) busyT.push(game.time + k);
+        if (n === 'dragon:windup' && !skip(e?.name)) { acts.push([game.time, e.name]); const c = DIR.categoryOf(MOVES[e.name]); cats[c] = (cats[c] || 0) + 1; }
+      };
+      const roam = mulberry32(seed * 31 + ph), goal = { r: 2.5, a: 0, until: -1 };
+      const t0 = game.time;
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        const rolled = G.defend.act();
+        if (game.time > goal.until) {
+          goal.r = [2.5, 5, 9][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+          goal.until = game.time + 4;
+        }
+        if (!rolled && p.state !== 'roll') {
+          const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+          const k = Math.hypot(gx, gz) > 11 ? 11 / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 0.6 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        game.mouseGround.set(d.position.x, 0, d.position.z);
+        G.tick(DT);
+        if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+        frames++;
+        { const k = d.mode === 'react' ? `react:${d.brain.react?.kind}` : d.mode === 'act' ? (d.brain.act && d.brain.act.t >= d.brain.act.recoveryStart ? 'act:recovery' : 'act') : d.mode === 'foot' ? (d.brain.seek ? 'foot:seek' : Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z) > TUNING.move.band[1] + 0.3 ? 'foot:closing' : 'foot') : d.mode; modeT[k] = (modeT[k] || 0) + game.dt; if (d.mode === 'act' && d.brain.act) spent[d.brain.act.name] = (spent[d.brain.act.name] || 0) + game.dt; }
+        // chained: a move that starts straight out of another (no footwork, no reaction between)
+        const a = d.brain.act;
+        if (d.mode === 'act' && a && a !== prevAct && !a.def.transition && !a.def.counter) {
+          if (prevMode === 'act' && prevAct) { chained++; chainLen++; chainMax = Math.max(chainMax, chainLen); } else chainLen = 0;
+        }
+        if (d.mode !== 'act') chainLen = 0;
+        prevAct = d.mode === 'act' ? a : null;
+        prevMode = d.mode;
+        if (d.fx.crescentsAlive || d.terrain?.busy) busy++;
+        if (d.moveFx?.alive) burnF++;
+      }
+      G.watch = null;
+      G.defend = null;
+      const T = game.time - t0;
+      hurt = G.hits.filter((h) => h.t > t0 && h.r === RESULT.HIT).length;
+      const ts = [t0, ...flashes.map((f) => f[0]), ...busyT.filter((x) => x > t0 && x < t0 + T), t0 + T].sort((x, y) => x - y);
+      let gapMax = 0, gapAt = '';
+      for (let i = 1; i < ts.length; i++) {
+        const g = ts[i] - ts[i - 1];
+        if (g > gapMax) { gapMax = g; gapAt = `${(ts[i - 1] - t0).toFixed(0)} s: ${acts.filter((w) => w[0] > ts[i - 1] - 0.5 && w[0] < ts[i]).map((w) => w[1]).join(', ') || 'no move'}`; }
+        // ABYSS_PGAP=1: the event log through each gap over 2.8 s
+        if (process.env.ABYSS_PGAP && g > 2.8) out(`      GAP P${ph} seed ${seed} ${g.toFixed(2)} s at ${(ts[i - 1] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > ts[i - 1] - 0.3 && x[0] < ts[i] + 0.1).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
+      }
+      let conflicts = 0, inner = 0;
+      const conflictAt = [], innerAt = new Set();
+      for (let i = 0; i < flashes.length; i++) {
+        for (let j = i + 1; j < flashes.length && flashes[j][0] - flashes[i][0] < 0.3; j++) {
+          if (answer(flashes[i][1]) === answer(flashes[j][1])) continue;
+          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.add(flashes[i][2]); } else {
+            conflicts++;
+            conflictAt.push(`${flashes[i][2]}/${flashes[j][2]} @${(flashes[i][0] - t0).toFixed(1)}`);
+            // ABYSS_PDBG=1: what happened round each conflict
+            if (process.env.ABYSS_PDBG) out(`      CONFLICT P${ph} ${(flashes[i][0] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > flashes[i][0] - 2.5 && x[0] < flashes[j][0] + 0.4).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
+          }
+        }
+      }
+      // the answers asked: the share that asks a dodge, the longest run of one answer in a row
+      let dodges = 0, run1 = 0, runMax = 0;
+      for (let i = 0; i < flashes.length; i++) {
+        const a1 = answer(flashes[i][1]);
+        if (a1 === 'dodge') dodges++;
+        run1 = i && answer(flashes[i - 1][1]) === a1 ? run1 + 1 : 1;
+        runMax = Math.max(runMax, run1);
+      }
+      const st = d.brain.stats ?? {};
+      const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
+      rows.push({ seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, chained, chainMax, conflicts, conflictAt, inner, innerAt: [...innerAt], busy: busy / frames, burn: burnF / frames, dodge: dodges / (flashes.length || 1), runMax, holds: dlt('holds'), feints: dlt('feints'), told: dlt('toldFeints'), delays: dlt('delays'), links: dlt('links'), cuts: dlt('cuts'), rests: dlt('rests'), hurt, modeT });
+      // ABYSS_PGUARD=1: what the fairness guard would not let through (feints, faded marks, strikes
+      // not called), each with the impact it collided with (brain.guardLog)
+      if (process.env.ABYSS_PGUARD) {
+        const tally = {};
+        for (const e of d.brain.guardLog ?? []) if (e.t >= t0) tally[`${e.kind} ${e.what} x ${e.with}`] = (tally[`${e.kind} ${e.what} x ${e.with}`] || 0) + 1;
+        out(`      P${ph} seed ${seed} guard: ${Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(' · ') || '-'}`);
+      }
+      // ABYSS_PATT=1: where the phase's time went, move by move (s in it, picks, its cues, cues a second)
+      if (process.env.ABYSS_PATT) {
+        const fl = {}, pk = {};
+        for (const f of flashes) fl[f[2]] = (fl[f[2]] || 0) + 1;
+        for (const w of acts) pk[w[1]] = (pk[w[1]] || 0) + 1;
+        out(`      P${ph} seed ${seed}: ${Object.entries(spent).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v.toFixed(0)}s/${pk[k] ?? 0}x/${fl[k] ?? 0}c (${((fl[k] ?? 0) / v).toFixed(2)})`).join(' · ')}`);
+      }
+    }
+  }
+  out(`   ${SECS} s per phase, seeds ${SEEDS.join(', ')} · cues/min · longest gap (s) · moves · chained · longest chain · links · cuts · rests · conflicts · inner · field busy % · holds / feints (!n: told before the guard turned them) · delays · hits taken · category shares %`);
+  out(`   seed ph cue/min gapMax moves chain cMax links cuts rest clash inner busy% hold/f delay hurt  ${CATS.map((c) => c.slice(0, 7).padStart(8)).join('')}`);
+  for (const r of rows) {
+    out(`   ${String(r.seed).padStart(4)}  ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.chained).padStart(5)} ${String(r.chainMax).padStart(4)} ${String(r.links).padStart(5)} ${String(r.cuts).padStart(4)} ${String(r.rests).padStart(4)} ${String(r.conflicts).padStart(5)} ${String(r.inner).padStart(5)} ${(r.busy * 100).toFixed(0).padStart(5)} ${`${r.holds}/${r.feints}${r.told ? `!${r.told}` : ''}`.padStart(5)} ${String(r.delays).padStart(5)} ${String(r.hurt).padStart(4)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / (r.picks || 1)).toFixed(0).padStart(8)).join('')}`);
+    out(`         answers: dodge ${(r.dodge * 100).toFixed(0)} % of cues, longest run of one answer ${r.runMax} · burning ground alive ${(r.burn * 100).toFixed(0)} % of the time
+         time: ${Object.entries(r.modeT).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${((v * 100) / r.T).toFixed(0)}%`).join(' · ')}`);
+    out(`         longest gap at ${r.gapAt}${r.conflicts ? ` · CONFLICTS ${r.conflictAt.slice(0, 6).join(' · ')}` : ''}${r.inner ? ` · inner: ${r.innerAt.join(', ')}` : ''}`);
+  }
+  const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
+  for (let ph = 1; ph <= NPH; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s (mean ${mean(ph, 'gapMax').toFixed(2)}) · ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)} · dodge ${(mean(ph, 'dodge') * 100).toFixed(0)} % · one-answer run max ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.runMax))} · burning ground ${(mean(ph, 'burn') * 100).toFixed(0)} %`);
+  if (!P?.meter) { out('   (no TUNING.pressure.meter: measured only, nothing asserted)'); return lastG; }
+  const A = P.meter;
+  // (the tuning pass: `rampMean`, the ramp of the seeds' mean; per seed the floor is lower: phase 3 runs
+  // at the 0.42 s / 0.32 s floors (~100 cues a minute) and one seed's phase 2 swings +-4 % about its
+  // mean, so ten seeds held P3 / P2 at 1.04 - 1.15 per seed, 1.10 - 1.11 in the mean)
+  if (A.rampMean) {
+    for (let ph = 2; ph <= NPH; ph++) {
+      const a0 = mean(ph - 1, 'perMin'), a1 = mean(ph, 'perMin');
+      assert(a1 >= a0 * pp(A.rampMean, ph), `the seeds' mean: P${ph} at least x${pp(A.rampMean, ph)} P${ph - 1}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)}, x${(a1 / a0).toFixed(3)})`);
+    }
+  }
+  for (const seed of SEEDS) {
+    const r = rows.filter((x) => x.seed === seed).sort((x, y) => x.ph - y.ph);
+    for (let i = 1; i < r.length; i++) assert(r[i].perMin >= r[i - 1].perMin * pp(A.ramp, r[i].ph), `seed ${seed}: P${r[i].ph} at least x${pp(A.ramp, r[i].ph)} P${r[i - 1].ph}'s cues a minute (${r[i - 1].perMin.toFixed(1)} → ${r[i].perMin.toFixed(1)} cues/min)`);
+    for (const x of r) {
+      assert(x.perMin >= pp(A.minRate, x.ph), `seed ${seed} P${x.ph}: ${x.perMin.toFixed(1)} cues a minute >= ${pp(A.minRate, x.ph)}`);
+      assert(x.gapMax <= pp(A.maxGap, x.ph), `seed ${seed} P${x.ph}: longest gap between cues ${x.gapMax.toFixed(2)} s <= ${pp(A.maxGap, x.ph)} s (${x.gapAt})`);
+      assert(x.conflicts === 0, `seed ${seed} P${x.ph}: no two cues of different sources needing different answers within 0.3 s (${x.conflicts}: ${x.conflictAt.slice(0, 4).join(' · ')})`);
+    }
+  }
+  return lastG;
 }
 
 // ================================================================== scenario: win
@@ -1236,7 +1841,8 @@ async function scenarioWin() {
   out(`     ${won ? 'won' : 'not won'} in ${secs.toFixed(0)} s: ${stats.parries} parries, ${stats.guards} guarded swings, ${stats.ghosteps} Ghosteps, ${stats.breaks} breaks, ${stats.execs} executions, ${taken} hits taken, ${G.defend.stats.flashes} flashes; phase ${d.phase}`);
   out(`     damage by his state: ${JSON.stringify(dmgBy)}`);
   assert(won, 'the fencing bot defeats the Ash Disciple within 6 minutes');
-  assert(d.phase === 2, 'the fight went through phase 2');
+  // (the second pass: three phases; the third, ash on the wind, from 30 %)
+  assert(d.phase === 3, `the fight went through phases 2 and 3 (phase ${d.phase})`);
   G.defend = null;
   return G;
 }
@@ -1806,6 +2412,41 @@ async function scenarioCutFx() {
 // timing, the piece it uses and where that ends, that the hero is hit only where it is marked and has
 // the answer the tell promises, that none is chosen without a piece in reach, and that the fight's
 // reset puts every piece back.
+// ================================================================== scenario: a world warning over a thrown piece
+// The integration pass: the world's falling piece wins over the courtyard's thrown pieces as it does
+// over his crescents (brain._worldCue): a kicked lantern / flagstone in the air whose landing would
+// fall within the guard's separation of a world warning needing the other answer lands uncued and
+// harmless (quiet: no flare, no blow).
+async function scenarioWorldCue() {
+  out('\n== scenario WORLDCUE (a world warning: his thrown pieces in the air give way) ==');
+  const G = build({ real: true });
+  const { game } = G;
+  duel(G, { dist: 7 });
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  for (const [move, kind] of [['lanternKick', 'shot'], ['flagKick', 'kick']]) {
+    game.world.restore();
+    d.debug.reset();
+    game.flow.debug.toState('boss');
+    d.debug.setAI(false);
+    run(G, 0.4);
+    settle(G);
+    place(G, 7);
+    const ok = d.debug.trigger(move);
+    const live = () => (kind === 'shot' ? (d.terrain.shot.live ? d.terrain.shot : null) : d.terrain.kicks.find((k) => k.live));
+    run(G, 6, null, () => !!live());
+    const R = live();
+    if (!R) { assert(false, `${move}: started (${ok}) and a piece flew`); continue; }
+    const left = R.piece.T - R.piece.t, f0 = d.brain.stats.fizzles;
+    game.events.emit('combat:tell', { source: 'world', attack: 'fallingDebris', tell: TELL.RED, impactIn: left + 0.05, x: 0, z: 0, hazard: true });
+    let flashed = false;
+    run(G, 2, () => { if (R.flashed === true) flashed = true; });
+    out(`   ${move}: landing in ${left.toFixed(2)} s, a red world warning 0.05 s after it: quiet ${R.quiet}, flared ${flashed}, fizzles +${d.brain.stats.fizzles - f0}`);
+    assert(R.quiet && !flashed && d.brain.stats.fizzles - f0 === 1, `${move}: the piece in the air gives way to the world's warning (lands uncued and harmless)`);
+  }
+  return G;
+}
+
 async function scenarioTerrain() {
   out('\n== scenario TERRAIN (Severed Pillar, Flying Lantern, Three Tolls, Swallow\'s Return on the real courtyard) ==');
   const G = build({ real: true });
@@ -2002,6 +2643,144 @@ async function scenarioTerrain() {
   stage(-10.5, 0, -13.5, 0);
   assert(d.terrain.find('spring') !== west, 'a pillar on the hero\'s side of him is not his way out');
 
+  // ---------------------------------------------------------------- the second pass: thrown pieces show the flare only
+  // (the owner, 2026-11-16: "flare only": nothing drawn where a thrown piece will land; the flare on the
+  // flying piece flashLead before it lands; a roll at the flare always dodges). Every way the duelist's
+  // effects draw on the ground ahead of a blow is counted while a thrown piece's move runs or flies.
+  const fx = d.fx;
+  const MARKED = ['warnRing', 'ringPulse', 'hazardFlash', 'shockRing'];
+  const marks = { n: 0 };
+  const saved = MARKED.map((k) => fx[k]);
+  const spyMarks = (on) => MARKED.forEach((k, i) => { fx[k] = on && typeof saved[i] === 'function' ? (...a) => { marks.n++; return saved[i].apply(fx, a); } : saved[i]; });
+  /** The answers to a thrown piece: `stand`, `parry` (0.12 s before the impact), `roll` at its flare
+   *  (across its way). Returns the hits it dealt that landed (RESULT.HIT) and the results. */
+  const answer = (name, how, bx, bz, hx, hz, phase = 1, pin = false) => {
+    stage(bx, bz, hx, hz);
+    if (phase > 1) d.phase = phase;
+    marks.n = 0;
+    spyMarks(true);
+    const e = play(name, (GG, ev) => {
+      // (`pin`: he stays on his spot whatever knocks him: each slab of a string is aimed at where he stands)
+      if (pin) { p.position.x = hx; p.position.z = hz; }
+      GG.game.mouseGround.set(d.position.x, 0, d.position.z); // (he faces the boss, as a locked-on hero)
+      if (how === 'parry') parryOn(ev, GG);
+      if (how === 'roll') for (const f of ev.flashes) if (!f.used) {
+        f.used = true;
+        p.debug.god = false;
+        const ax = p.position.x - d.position.x, az = p.position.z - d.position.z, l = Math.hypot(ax, az) || 1;
+        GG.input.axis = { x: -az / l, y: -ax / l };
+        GG.input.tap('Space');
+      }
+    });
+    spyMarks(false);
+    input.axis = { x: 0, y: 0 };
+    p.debug.god = true;
+    e.marks = marks.n;
+    e.landed = e.hits.filter((h) => h.attack === name && h.r === RESULT.HIT).length;
+    return e;
+  };
+  // Flying Lantern: the flare on the piece, nothing on the ground
+  ev = answer('lanternKick', 'stand', 8, 8, 0, 0);
+  assert(ev.marks === 0 && ev.flashes.length === 1 && ev.flashes[0].tell === TELL.BLUE && lan.state === STATE.GONE, `Flying Lantern: nothing is drawn on the ground where it lands (${ev.marks} ground marks); one blue cue`);
+  for (const [hx, hz] of [[0, 0], [3, -4], [-2, 4]]) {
+    const r = answer('lanternKick', 'roll', 8, 8, hx, hz);
+    assert(r.flashes.length === 1 && r.landed === 0 && p.hp === p.maxHp, `Flying Lantern at a hero at (${hx}, ${hz}): a roll at its flare is through it (${r.hits.filter((h) => h.attack === 'lanternKick').map((h) => h.r).join(', ') || 'no contact'})`);
+  }
+
+  // ---------------------------------------------------------------- the floor: Rising Flagstone
+  const flagNames = ['flagKick', 'flagVolley', 'flagFan'];
+  assert(flagNames.every((n) => MOVES[n]?.terrain && d.debug.abilities().some((a) => a.name === n)), 'the floor\'s three moves are in his abilities');
+  stage(0, -3, 0, 5);
+  const wFlag = weight('flagKick'), flagPick = d.terrain.pick.flag;
+  assert(wFlag > 0 && flagPick?.kind === 'flagstone' && flagPick.floor && Math.hypot(flagPick.x, flagPick.z + 3) < 4, `Rising Flagstone: in the middle of the courtyard, the hero 8 m off: his AI may pick it, for a flagstone ${flagPick ? Math.hypot(flagPick.x, flagPick.z + 3).toFixed(1) : '-'} m from him`);
+  stage(0, -3, 0, -1);
+  assert(weight('flagKick') === 0, 'with the hero 2 m from him (inside his blade\'s reach) it is not chosen');
+  let exp = 0;
+  const ex0 = d.brain.expect;
+  d.brain.expect = (...a) => { exp++; return ex0.apply(d.brain, a); };
+  const standing0 = W.floor.filter((b) => b.state === STATE.INTACT).length;
+  ev = answer('flagKick', 'stand', 0, -3, 0, 5);
+  d.brain.expect = ex0;
+  hit = ev.hits.filter((h) => h.attack === 'flagKick');
+  assert(ev.ok && ev.tells.length === 1 && ev.tells[0].tell === TELL.BLUE && ev.flashes.length === 1 && ev.flashes[0].tell === TELL.BLUE, `it tells blue once and its slab flares once (${ev.tells.length} tell, ${ev.flashes.length} flare)`);
+  assert(W.floor.filter((b) => b.state === STATE.INTACT).length < standing0 && ev.impacts.some((e) => e.kind === 'throw') && ev.impacts.some((e) => e.kind === 'crash'), 'a flagstone left the paving, flew and burst (world:impact throw, then crash)');
+  assert(ev.marks === 0 && exp >= 1, `nothing is drawn where it lands (${ev.marks}); it was told to the cue ledger (brain.expect x${exp})`);
+  assert(hit.length === 1 && hit[0].r === RESULT.HIT && worst(ev, 'flagKick') <= 0.085, `it strikes a hero who stands once, ${ms(worst(ev, 'flagKick'))} ms off its flare + ${TUNING.flashLead} s`);
+  ev = answer('flagKick', 'parry', 0, -3, 0, 5);
+  hit = ev.hits.filter((h) => h.attack === 'flagKick');
+  assert(hit.length === 1 && hit[0].r === RESULT.PARRIED, `blue: a parry bursts it on the blade (${hit.map((h) => h.r).join(', ')})`);
+  for (const [bx, bz, hx, hz] of [[0, -3, 0, 5], [2, -2, 9, 4], [-4, 3, -9, -6]]) {
+    const r = answer('flagKick', 'roll', bx, bz, hx, hz);
+    assert(r.flashes.length === 1 && r.landed === 0 && p.hp === p.maxHp, `him at (${bx}, ${bz}), the hero at (${hx}, ${hz}): a roll at its flare is through it (${r.hits.filter((h) => h.attack === 'flagKick').map((h) => h.r).join(', ') || 'no contact'})`);
+  }
+  stage(0, -3, 0, 5);
+  ev = play('flagKick', (GG, e) => { if (e.flashes.length && !e.moved) { e.moved = true; p.debug.teleport(3.2, 5); } });
+  assert(!ev.hits.some((h) => h.attack === 'flagKick'), 'a hero 3.2 m from where it lands when it flares is not hit');
+
+  // ---------------------------------------------------------------- Flagstone Volley (phase 2), Scattered Flagstones (phase 3)
+  ev = answer('flagVolley', 'stand', 0, -3, 0, 5, 2, true);
+  hit = ev.hits.filter((h) => h.attack === 'flagVolley');
+  const nV = ev.tells.length;
+  if (process.env.ABYSS_TDBG) out('     volley', JSON.stringify({ hits: ev.hits.map((h) => [h.attack, h.r, +h.t.toFixed(2)]), flashes: ev.flashes.map((f) => +f.t.toFixed(2)), tells: ev.tells.map((f) => +f.t.toFixed(2)), impacts: ev.impacts.filter((e) => e.kind === 'throw' || e.kind === 'crash').map((e) => [e.kind, e.id, +e.t.toFixed(2)]) }));
+  assert(ev.ok && nV >= 2 && nV <= 3 && ev.tells.every((t) => t.tell === TELL.BLUE) && ev.flashes.length === nV && ev.marks === 0, `Flagstone Volley (phase 2): ${nV} slabs, each levered and kicked, each with its flare; nothing on the ground`);
+  assert(hit.length === nV && hit.every((h) => h.r === RESULT.HIT) && worst(ev, 'flagVolley') <= 0.085 && hit.slice(1).every((h, i) => h.t - hit[i].t >= TUNING.minHitGap), `each strikes a hero who stands, ${ms(worst(ev, 'flagVolley'))} ms off its flare + lead, ${hit.slice(1).map((h, i) => (h.t - hit[i].t).toFixed(2)).join(' / ')} s apart`);
+  ev = answer('flagVolley', 'parry', 0, -3, 0, 5, 2, true);
+  assert(ev.hits.filter((h) => h.attack === 'flagVolley').every((h) => h.r === RESULT.PARRIED) && ev.hits.some((h) => h.attack === 'flagVolley'), `parried in turn, every slab bursts on the blade (${ev.hits.filter((h) => h.attack === 'flagVolley').map((h) => h.r + ' ' + h.t.toFixed(2)).join(', ')}; flares ${ev.flashes.map((f) => f.t.toFixed(2)).join(' ')})`);
+  ev = answer('flagVolley', 'roll', 0, -3, 0, 6, 2);
+  assert(ev.landed === 0, `a roll at each flare is through each (${ev.hits.filter((h) => h.attack === 'flagVolley').map((h) => h.r).join(', ') || 'no contact'})`);
+  ev = answer('flagFan', 'stand', 0, -3, 0, 6, 3);
+  const fanTaken = ev.impacts.filter((e) => e.kind === 'throw').length;
+  hit = ev.hits.filter((h) => h.attack === 'flagFan');
+  assert(ev.ok && ev.tells.length === 1 && fanTaken >= 2 && ev.flashes.length >= 1 && ev.marks === 0, `Scattered Flagstones (phase 3): ${fanTaken} slabs levered at once and cut into a fan; ${ev.flashes.length} flare(s), nothing on the ground`);
+  assert(hit.length === 1 && hit[0].r === RESULT.HIT && worst(ev, 'flagFan') <= 0.085, `the middle one strikes a hero who stands, once, ${ms(worst(ev, 'flagFan'))} ms off its flare + lead (the others land to either side)`);
+  for (const [bx, bz, hx, hz] of [[0, -3, 0, 6], [3, 0, -5, 6]]) {
+    const r = answer('flagFan', 'roll', bx, bz, hx, hz, 3);
+    assert(r.landed === 0, `the fan at a hero at (${hx}, ${hz}): a roll at the flare is through it`);
+  }
+
+  // ---------------------------------------------------------------- a colossus: the Severed Pillar's rule, its strip from fallOff
+  const colo = W.list.filter((b) => b.kind === 'colossus' && b.base).sort((a, b) => Math.hypot(a.x + 15.6, a.z + 2.6) - Math.hypot(b.x + 15.6, b.z + 2.6))[0];
+  if (colo) {
+    // (the pillars beside it would be picked first, being nearer the hero: they stand aside for this check)
+    const others = W.list.filter((b) => b !== colo && b.topples && !b.floor);
+    const tp = others.map((b) => b.topples);
+    for (const b of others) b.topples = false;
+    const ux = -colo.x / Math.hypot(colo.x, colo.z), uz = -colo.z / Math.hypot(colo.x, colo.z);
+    const inStrip = colo.fallOff + 2.6, under = colo.fallOff * 0.5;
+    stage(colo.x + ux * 9, colo.z + uz * 9, colo.x + ux * under, colo.z + uz * under);
+    const wUnder = weight('pillarFall');
+    stage(colo.x + ux * 9, colo.z + uz * 9, colo.x + ux * inStrip, colo.z + uz * inStrip);
+    assert(colo.fallOff > 1 && wUnder === 0 && weight('pillarFall') > 0 && d.terrain.pick.fell === colo, `a colossus: the hero ${under.toFixed(1)} m from its base (under its legs, short of where its upper half lands) is not in its strip; ${inStrip.toFixed(1)} m out he is, and his AI may cut it down on him`);
+    ev = play('pillarFall');
+    fall = ev.hits.filter((h) => h.attack === 'fallingDebris');
+    assert(colo.state === STATE.BROKEN && ev.worldTells.length >= 1 && fall.length === 1 && fall[0].r === RESULT.HIT, `its upper half comes down on the hero (the world's red, marked strip): ${fall.map((h) => h.r).join(', ') || 'no contact'}`);
+    others.forEach((b, i) => { b.topples = tp[i]; });
+  } else assert(false, 'the courtyard has a colossus');
+
+  // ---------------------------------------------------------------- the bell's ring of sound: its looks (?toll=)
+  {
+    const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+    const res = {};
+    for (const L of ['0', 'a', 'b']) {
+      setLook('toll', L);
+      const cnt = { old: 0, field: 0, blobs: 0 };
+      const T = d.terrain, o0 = T._drawRing, o1 = T._drawRingField, sp = game.fx.fire?.spawn;
+      T._drawRing = (...a) => { cnt.old++; return o0.apply(T, a); };
+      T._drawRingField = (...a) => { cnt.field++; return o1.apply(T, a); };
+      if (sp) game.fx.fire.spawn = (b) => { cnt.blobs++; return sp.call(game.fx.fire, b); };
+      stage(-4, -5, 4, 4);
+      const e = play('bellToll');
+      T._drawRing = o0;
+      T._drawRingField = o1;
+      if (sp) game.fx.fire.spawn = sp;
+      res[L] = { ...cnt, hits: e.hits.filter((h) => h.attack === 'bellToll' && h.r === RESULT.HIT).length };
+    }
+    setLook('toll', null);
+    out(`     the toll's looks: ${Object.entries(res).map(([k, v]) => `${k}: drawn ${v.old} / ${v.field} frames, ${v.blobs} field blobs, ${v.hits} hits`).join(' · ')}`);
+    assert(res['0'].old > 0 && res['0'].field === 0 && res.a.field > 0 && res.a.old === 0 && res.b.field > 0 && res.a.blobs > res['0'].blobs, 'the toll\'s ring: the bronze arcs main drew under ?toll=0 (?looks=old), a front of steel in the fire field under a (the owner\'s pick, shipped) and b');
+    assert(res['0'].hits === 3 && res.a.hits === 3 && res.b.hits === 3, 'whatever its look, each of the three rings strikes a hero who stands once');
+  }
+
   // ---------------------------------------------------------------- the reset; a world without pieces
   stage(8, 8, 0, 0);
   play('lanternKick');
@@ -2016,24 +2795,302 @@ async function scenarioTerrain() {
   const M = build();
   duel(M, { dist: 4 });
   const dm = M.game.dragon;
-  assert(['pillarFall', 'lanternKick', 'bellToll', 'swallowReturn'].every((n) => dm.weigh(n, MOVES[n], 1, 4) === 0 && dm.debug.trigger(n) === false) && dm.mode === 'foot', 'in a world without pieces (the other scenarios\' mock) none is chosen and none starts');
+  assert(['pillarFall', 'lanternKick', 'bellToll', 'swallowReturn', 'flagKick'].every((n) => dm.weigh(n, MOVES[n], 1, 4) === 0 && dm.debug.trigger(n) === false) && dm.mode === 'foot', 'in a world without pieces (the other scenarios\' mock) none is chosen and none starts');
+  dm.phase = 3;
+  assert(['flagVolley', 'flagFan'].every((n) => dm.weigh(n, MOVES[n], 1, 6) === 0 && dm.debug.trigger(n) === false), '... nor the floor\'s later ones');
 
   // ---------------------------------------------------------------- a duel on the real set: they come up, they do not crowd out his strings
-  const F = build({ real: true });
-  duel(F, { dist: 4, ai: true });
-  F.defend = makeDefender(F);
+  // (the tuning pass: three seeds added up; one seed's 150 s held 1 - 5 of them by chance, at HEAD as
+  // after the tuning: 4242 / 7 / 99 / 1337 / 2024 gave 4, 1, 3, 3, 1 before it and 1, 1, 3, 3, 3 after)
   const used = {};
-  let moves = 0;
-  F.watch = (n, e) => { if (n === 'dragon:windup' && e?.name) { moves++; if (MOVES[e.name]?.terrain) used[e.name] = (used[e.name] || 0) + 1; } };
-  const fd = F.game.dragon, fp = F.game.player;
-  fp.debug.god = true;
-  run(F, 150, (GG) => { fd.hp = Math.max(fd.hp, fd.maxHp * 0.6); fencer(GG); }, () => fd.state === 'dead');
-  F.watch = null;
+  let moves = 0, down = 0, F = null;
+  for (const seed of [SEED, 7, 99]) {
+    F = build({ seed, real: true });
+    duel(F, { dist: 4, ai: true });
+    F.defend = makeDefender(F);
+    F.watch = (n, e) => { if (n === 'dragon:windup' && e?.name) { moves++; if (MOVES[e.name]?.terrain) used[e.name] = (used[e.name] || 0) + 1; } };
+    const fd = F.game.dragon, fp = F.game.player;
+    fp.debug.god = true;
+    run(F, 150, (GG) => { fd.hp = Math.max(fd.hp, fd.maxHp * 0.6); fencer(GG); }, () => fd.state === 'dead');
+    F.watch = null;
+    down += F.game.world.destructibles.list.length - F.game.world.destructibles.standing;
+  }
   const nT = Object.values(used).reduce((a, b) => a + b, 0);
-  out(`     150 s against the fencing bot: ${moves} moves, ${nT} of the courtyard ${JSON.stringify(used)}; ${F.game.world.destructibles.list.length - F.game.world.destructibles.standing} pieces down`);
-  // (<= 30 % until ADR-118: the hero's counters and flurries hold the world, so 150 s hold fewer moves; seeds 4242 / 7 / 99: 32, 17, 18 %)
-  assert(nT >= 2 && nT <= moves * 0.35, `they come up in a duel (${nT}) without crowding out his strings (${((nT / Math.max(1, moves)) * 100).toFixed(0)} % of ${moves} moves, <= 35 %)`);
+  out(`     3 x 150 s against the fencing bot: ${moves} moves, ${nT} of the courtyard ${JSON.stringify(used)}; ${down} pieces down`);
+  assert(nT >= 5 && nT <= moves * 0.35, `they come up in a duel (${nT}) without crowding out his strings (${((nT / Math.max(1, moves)) * 100).toFixed(0)} % of ${moves} moves, >= 5 in three duels, <= 35 %)`);
   assert(!F.payload.size, `no non-finite payload in his events (${[...F.payload].join(', ')})`);
+  return G;
+}
+
+// ================================================================== scenario: bots (opt-in)
+/**
+ * The tuning pass's measuring bots (2026-11-16; not pass / fail: it measures). On the REAL set, mortal
+ * (no god mode), each its own random stream for what it misses (the AI's stream stays the seed's):
+ * - fencers that answer 95 / 85 / 70 % of the cues (ABYSS_BSKILLS) and cut in his openings, whole
+ *   fights (ABYSS_BSECS, default 420 s), three seeds (ABYSS_BSEEDS): won, the time, the time in each
+ *   phase, hits, damage, flasks, the worst blow and the worst second (damage inside any 1 s);
+ * - a pure defender (never attacks, answers 95 %), two minutes (ABYSS_BDSECS) in each phase, mortal,
+ *   drinking when low: survived, damage, flasks; and the same with its guard held in burning ground
+ *   (`stand`: it does not step off; the owner's question about the guard's 1 HP a tick).
+ * The bots answer the world's cues too (a felled piece, rolled out of its strip) and step off a burning
+ * line (the hero sees it), unless `stand`. ABYSS_BOTS=fight|defend|stand picks a part (default all).
+ */
+function probeDefender(G, { skill = 1, seed = 1 } = {}) {
+  const pend = [];
+  const roll = mulberry32(seed * 977 + Math.round(skill * 100));
+  const stats = { flashes: 0, missed: 0, parryTry: 0, dodgeTry: 0, missedAt: [] };
+  return {
+    stats,
+    onEvent(n, e) {
+      if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
+      stats.flashes++;
+      (stats.hist ??= []).push([G.game.time, e.attack, e.tell]);
+      if (stats.hist.length > 12) stats.hist.shift();
+      if (roll() > skill) { stats.missed++; stats.missedAt.push([G.game.time, e.attack]); return; }
+      pend.push({ tell: e.tell, at: G.game.time + (e.source === 'world' ? 0.3 : TUNING.flashLead), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false });
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.4) pend.splice(i, 1);
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - t - DT;
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK) {
+          if (left <= (e.hazard ? 0.2 : 0.1)) {
+            e.done = true;
+            const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
+            const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: dz / l, y: dx / l };
+            input.tap('Space');
+            stats.dodgeTry++;
+          }
+        } else if (left <= 0.12) {
+          e.done = true;
+          input.up(1);
+          input.click(1);
+          stats.parryTry++;
+        }
+      }
+      return pend.some((e) => !e.done && e.at - t < 0.7);
+    },
+  };
+}
+/** Off a burning line the hero stands in or at the edge of (sets the move axis); true if it stepped. */
+function stepOffFire(G) {
+  const d = G.game.dragon, p = G.game.player;
+  if (!d.moveFx || p.state === 'roll') return false;
+  for (const L of d.moveFx.lines) {
+    if (!L.alive || L.age > L.life - 0.3) continue;
+    const dx = L.bx - L.ax, dz = L.bz - L.az, l2 = dx * dx + dz * dz || 1;
+    const u = Math.max(0, Math.min(1, ((p.position.x - L.ax) * dx + (p.position.z - L.az) * dz) / l2));
+    const cx = L.ax + dx * u, cz = L.az + dz * u, ox = p.position.x - cx, oz = p.position.z - cz, o = Math.hypot(ox, oz);
+    if (o > L.w / 2 + 0.75) continue;
+    const nx = o > 1e-3 ? ox / o : -dz / Math.sqrt(l2), nz = o > 1e-3 ? oz / o : dx / Math.sqrt(l2);
+    G.input.axis = { x: nx, y: -nz };
+    return true;
+  }
+  return false;
+}
+async function scenarioBots() {
+  out('\n== scenario BOTS (mortal fencers at 95 / 85 / 70 %, a pure defender per phase; the real set) ==');
+  const SEEDS = (process.env.ABYSS_BSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SKILLS = (process.env.ABYSS_BSKILLS ?? '0.95,0.85,0.7').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.ABYSS_BSECS ?? 420), DSECS = Number(process.env.ABYSS_BDSECS ?? 120);
+  const PART = process.env.ABYSS_BOTS ?? 'all';
+  let last = null;
+  const worst = (hits) => {
+    let blow = 0, sec = 0, blowBy = '', secBy = '';
+    for (let i = 0; i < hits.length; i++) {
+      if (hits[i].damage > blow) { blow = hits[i].damage; blowBy = hits[i].attack; }
+      let s = 0;
+      const by = [];
+      for (let j = i; j < hits.length && hits[j].t - hits[i].t < 1; j++) { s += hits[j].damage; by.push(hits[j].attack); }
+      if (s > sec) { sec = s; secBy = by.join('+'); }
+    }
+    return { blow, blowBy, sec, secBy };
+  };
+  const tally = (G, t0, p) => {
+    const hits = G.hits.filter((h) => h.t > t0 && h.r === RESULT.HIT && h.damage > 0);
+    const chip = G.hits.filter((h) => h.t > t0 && h.r !== RESULT.HIT && h.attack === 'burningGround');
+    const burn = hits.filter((h) => h.attack === 'burningGround');
+    const by = {};
+    for (const h of hits) by[h.attack] = (by[h.attack] || 0) + h.damage;
+    return { hits, burn, chip, by, w: worst(hits.filter((h) => h.attack !== 'burningGround')), dmg: hits.reduce((a, h) => a + h.damage, 0) };
+  };
+  if (PART === 'all' || PART === 'fight') {
+    out(`   whole fights, ${SECS} s at most (real time: hit-stops count) · skill · seed · result · time · P1 / P2 / P3 s (from the wake; P2 / P3 counted from their gate) · his HP · hits (blow dmg + burn dmg) · flasks drunk · worst blow · worst second · most damage by`);
+    for (const skill of SKILLS) {
+      for (const seed of SEEDS) {
+        const G = (last = build({ seed, real: true }));
+        const { game } = G;
+        duel(G, { dist: 4, ai: true });
+        const d = game.dragon, p = game.player;
+        G.defend = probeDefender(G, { skill, seed });
+        const t0 = game.time, r0 = game.realTime, enter = { 1: r0 };
+        let drunk = 0;
+        const n = { parries: 0, breaks: 0, execs: 0, dealt: 0 };
+        const src = {};
+        G.watch = (ev, e) => {
+          if (ev === 'player:heal') drunk++;
+          if (ev === 'player:parry') n.parries++;
+          if (ev === 'dragon:postureBreak') n.breaks++;
+          if (ev === 'player:plungeHit' && e?.execution) n.execs++;
+          if (ev === 'dragon:hurt') { const k = d.broken ? 'broken' : p.state; src[k] = (src[k] || 0) + (e?.damage ?? 0); }
+        };
+        run(G, SECS, (GG) => { fencer(GG, true); stepOffFire(GG); if (!enter[d.phase]) enter[d.phase] = game.realTime; }, () => d.state === 'dead' || !p.alive || game.state === 'victory');
+        G.watch = null;
+        const T = game.realTime - r0, won = d.state === 'dead' || game.state === 'victory';
+        const ph = [1, 2, 3].map((k) => (enter[k] ? ((enter[k + 1] ?? r0 + T) - enter[k]).toFixed(0) : '-')).join(' / ');
+        const r = tally(G, t0, p);
+        const top = Object.entries(r.by).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', ');
+        out(`   ${String(Math.round(skill * 100)).padStart(3)} % ${String(seed).padStart(4)} ${won ? 'WON ' : p.alive ? 'time' : 'DIED'} ${T.toFixed(0).padStart(4)} s  ${ph.padEnd(14)} HP ${String(Math.round(Math.max(0, d.hp))).padStart(4)} (P${d.phase})  hits ${String(r.hits.length).padStart(3)} (${(r.dmg - r.burn.reduce((a, h) => a + h.damage, 0)).toFixed(0)} + burn ${r.burn.reduce((a, h) => a + h.damage, 0).toFixed(0)})  flasks ${drunk}  worst ${r.w.blow.toFixed(1)} (${r.w.blowBy})  sec ${r.w.sec.toFixed(1)} (${r.w.secBy})  · parries ${n.parries} breaks ${n.breaks} execs ${n.execs} · ${top}`);
+        out(`        his damage by the hero's state: ${Object.entries(src).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', ')}`);
+        G.defend = null;
+      }
+    }
+  }
+  for (const stand of [false, true]) {
+    if (!(PART === 'all' || PART === (stand ? 'stand' : 'defend'))) continue;
+    out(`   a pure defender (never attacks, answers 95 %${stand ? ', its GUARD HELD and it never steps off a burning line' : ', steps off a burning line'}), mortal, ${DSECS} s a phase · phase · seed · survived · hits (blow dmg + burn dmg) · burn ticks on the guard (no HP) · guard knocked open (by fire) · flasks · worst blow · worst second`);
+    for (let ph = 1; ph <= 3; ph++) {
+      for (const seed of SEEDS) {
+        const G = (last = build({ seed, real: true }));
+        const { game } = G;
+        duel(G, { dist: 3, ai: true });
+        const d = game.dragon, p = game.player;
+        p.debug.noRiposte = true;
+        G.defend = probeDefender(G, { skill: 0.95, seed });
+        for (let n = 2; n <= ph; n++) {
+          p.debug.god = true;
+          d.brain.forcePhase(n);
+          run(G, 8, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); }, () => d.phase === n && d.mode !== 'act');
+        }
+        p.debug.god = false;
+        p.debug.heal();
+        const t0 = game.time;
+        let drunk = 0, fireOpens = 0, opens = 0;
+        G.watch = (n, e) => { if (n === 'player:heal') drunk++; if (n === 'player:guardOpen') { opens++; if (e?.attack === 'burningGround') fireOpens++; } };
+        const st = [], hitState = [];
+        const th0 = p.takeHit.bind(p);
+        p.takeHit = (h) => { const was = p.state, r = th0(h); if (r === RESULT.HIT && h?.attack !== 'burningGround') hitState.push([game.time, h.attack, h.tell, was, st.slice(-25).map((x) => x[1]).filter((x, i, A) => x !== A[i - 1]).join('>') + ' | cues ' + (G.defend.stats.hist ?? []).filter((f) => f[0] > game.time - 1.5).map((f) => `${f[1]}:${f[2][0]}@${(f[0] - game.time).toFixed(2)}`).join(' ')]); return r; };
+        run(G, DSECS, (GG) => {
+          st.push([game.time, p.state]);
+          if (st.length > 90) st.shift();
+          const { input } = GG;
+          input.axis = { x: 0, y: 0 };
+          if (!p.alive || game.state !== 'boss') return;
+          if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+          d.hp = Math.max(d.hp, d.maxHp * (TUNING.phaseAt[ph] ?? 0) + 1);
+          const busy = GG.defend.act();
+          if (stand) { if (!busy && !input.down?.('Space')) input.press(1); }
+          // (it drinks in a lull: no move of his running, or one in its recovery)
+          else if (p.hp < 70 && p.flasks > 0 && !busy && (d.mode !== 'act' || d.brain.act?.t > d.brain.act?.recoveryStart) && ((game.realTime * 60) | 0) % 30 === 0) input.tap('KeyF');
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz);
+          if (!busy && l > 3.4) input.axis = { x: dx / l, y: -dz / l };
+          if (!stand) stepOffFire(GG);
+          game.mouseGround.set(d.position.x, 0, d.position.z);
+        }, () => !p.alive);
+        G.watch = null;
+        const r = tally(G, t0, p);
+        // a blow that landed with no missed cue of it in the 1.2 s before it: the bot answered and was hit
+        const ans = hitState.filter((h) => !G.defend.stats.missedAt.some((m) => m[1] === h[1] && h[0] - m[0] < 1.2 && h[0] >= m[0]));
+        if (ans.length) out(`      answered and hit anyway: ${ans.map((h) => `${h[1]} ${h[2]} (${h[3]}; ${h[4]})`).join(' · ')}`);
+        out(`   P${ph} ${String(seed).padStart(4)} ${p.alive ? 'ALIVE' : `DIED at ${(game.time - t0).toFixed(0)} s`}  hits ${String(r.hits.length).padStart(3)} (${(r.dmg - r.burn.reduce((a, h) => a + h.damage, 0)).toFixed(0)} + burn ${r.burn.reduce((a, h) => a + h.damage, 0).toFixed(0)})  burn ticks guarded ${r.chip.length}  guard knocked open ${opens} (by fire ${fireOpens})  flasks ${drunk}  HP ${Math.round(p.hp)}  worst ${r.w.blow.toFixed(1)} (${r.w.blowBy})  sec ${r.w.sec.toFixed(1)} (${r.w.secBy})`);
+        G.defend = null;
+      }
+    }
+  }
+  return last;
+}
+
+// ================================================================== scenario: answer (opt-in)
+/** The fairness sweep of the tuning pass: every AI move (or ABYSS_AMOVES) in every phase it is in,
+ *  triggered from 5 distances across its band (left and right of his facing), against the parrying
+ *  bot (white / blue parried, red / black rolled across) with the hero standing, or walking in at him
+ *  (ABYSS_AWALK=1: what the pure defender does past 3.4 m). Prints every blow that lands. */
+async function scenarioAnswer() {
+  out('\n== scenario ANSWER (every move from across its band against the parrying bot) ==');
+  const pick = process.env.ABYSS_AMOVES ? process.env.ABYSS_AMOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].counter && !MOVES[n].transition && !MOVES[n].terrain);
+  const walk = !!process.env.ABYSS_AWALK;
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  p.debug.noRiposte = true;
+  let bad = 0, runs = 0;
+  for (const ph of [1, 2, 3]) {
+    while (d.phase < ph) { const n = d.phase + 1; d.debug[`phase${n}`](); run(G, 4, null, () => d.phase === n && d.mode === 'foot'); }
+    for (const name of pick) {
+      const def = MOVES[name];
+      if (!def || def.phase > ph || !(perPhaseW(def.weight, ph) > 0)) continue;
+      const lo = def.band[0], hi = Math.min(def.band[1], 12);
+      for (let k = 0; k < 5; k++) for (const ang of [-0.5, 0.5]) {
+        settle(G, 8);
+        d.moveFx?.reset();
+        d.position.set(0, 0, -2); d.yaw = 0;
+        place(G, Math.max(0.8, lo + ((hi - lo) * k) / 4), ang);
+        run(G, 0.2);
+        d.brain.cooldowns = {};
+        G.defend = makeDefender(G);
+        const h0 = G.hits.length;
+        d.debug.trigger(name);
+        runs++;
+        run(G, 9, (GG) => {
+          GG.input.axis = { x: 0, y: 0 };
+          const busy = GG.defend.act();
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz);
+          if (walk && !busy && l > 3.4) GG.input.axis = { x: dx / l, y: -dz / l };
+          GG.game.mouseGround.set(d.position.x, 0, d.position.z);
+        }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+        G.defend = null;
+        input.up(1);
+        const landed = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT && h.attack === name);
+        if (landed.length) { bad++; out(`   P${ph} ${name} from ${(lo + ((hi - lo) * k) / 4).toFixed(1)} m (${ang > 0 ? 'left' : 'right'}): ${landed.map((h) => `${h.tell} ${h.damage}`).join(', ')}`); }
+      }
+    }
+  }
+  out(`   ${runs} runs, ${bad} with a blow that landed${walk ? ' (the hero walking in)' : ''}`);
+  return G;
+}
+const perPhaseW = (w, ph) => (Array.isArray(w) ? w[Math.min(w.length, ph) - 1] : w);
+
+// ================================================================== scenario: ranged (opt-in)
+/** The sword qi moves at each range of their band (a standing, guarding hero): the cues they give and
+ *  the crescents thrown / fizzled. ABYSS_RMOVES picks the moves. */
+async function scenarioRanged() {
+  out('\n== scenario RANGED (the qi moves: cues by range) ==');
+  const names = (process.env.ABYSS_RMOVES ?? 'ashCrescent,emberFan,qiStorm,partingWind,chaseRain').split(',');
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  p.debug.noRiposte = true;
+  for (const ph of [1, 2, 3]) {
+    while (d.phase < ph) { const n = d.phase + 1; d.debug[`phase${n}`](); run(G, 4, null, () => d.phase === n && d.mode === 'foot'); }
+    for (const name of names) {
+      const def = MOVES[name];
+      if (!def || def.phase > ph) continue;
+      const res = [];
+      for (const dist of [def.band[0], (def.band[0] + def.band[1]) / 2, Math.min(def.band[1], 12)]) {
+        settle(G, 8);
+        d.position.set(0, 0, -2); d.yaw = 0;
+        place(G, dist);
+        run(G, 0.2);
+        d.brain.cooldowns = {};
+        let fl = 0;
+        G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === name) fl++; };
+        const f0 = d.brain.stats?.fizzles ?? 0;
+        d.debug.trigger(name);
+        run(G, 8, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.input.press(1); GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+        input.up(1);
+        G.watch = null;
+        res.push(`${dist.toFixed(1)} m: ${fl} cues${(d.brain.stats?.fizzles ?? 0) - f0 ? ` (${(d.brain.stats?.fizzles ?? 0) - f0} fizzled)` : ''}`);
+      }
+      out(`   P${ph} ${name}: ${res.join(' · ')}`);
+    }
+  }
   return G;
 }
 
@@ -2116,6 +3173,259 @@ async function scenarioPerfect() {
 // ================================================================== scenario: flare (ADR-118)
 // The flare is the only sign of a moment (no glow through the windup, no ring on the floor); a parry
 // of a blue flare blow is answered by the hero's counter; the black (charged) blow.
+// ================================================================== scenario: fxlooks (the second pass's effects)
+// Every option of fxash's switches (?kindle= ?ashp3= ?qi= ?flit=) runs for its whole life headless:
+// no error, no NaN (build's guards throw), the field's blob peak under FX_CAP; '0' of the qi redraw
+// draws exactly what main drew; and no look moves the fight (the looks draw from their own stream).
+// The owner's picks (2026-11-16) are the defaults: the table (lookSwitch PICKED) against the Lab's
+// switches, what lookOf returns with nothing set, under ?looks=old and ?looks=new.
+async function scenarioFxLooks() {
+  out('\n== scenario FXLOOKS (the shock, the Kindling, ash on the wind, the qi, the flit: every option; the picks as the defaults) ==');
+  const { setLook, lookOf, PICKED, pickedOf, allOld, readLookUrl } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { LOOK_SWITCHES } = await imp('src/dev/labLooks.js');
+  const { DuelFx } = await imp('src/entities/enemies/duelist/fx.js');
+  const SW = { kindle: ['a', 'b', 'c'], ashp3: ['a', 'b', 'c'], qi: ['0', 'a', 'b', 'c'], flit: ['0', 'a'] };
+  // the look as it was before this pass (what `main` drew), every switch of the courtyard
+  const BEFORE = { qi: '0', flit: '0', toll: '0', ashLook: '0' };
+  const clear = () => { for (const k of [...Object.keys(SW), 'toll', 'ashLook']) setLook(k, null); };
+  // 0. the picks: one table, every key a real switch and its value a real option; what lookOf
+  //    returns at each call site's default (the Lab's rows carry it) with nothing set, under
+  //    ?looks=old (a redraw: '0'; a new thing keeps its pick) and ?looks=new (= the default)
+  {
+    clear();
+    const row = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s]));
+    const bad = Object.entries(PICKED).filter(([k, v]) => !row[k] || !row[k][1].includes(v));
+    const missing = LOOK_SWITCHES.filter((s) => pickedOf(s[0]) == null).map((s) => s[0]);
+    assert(Object.isFrozen(PICKED) && !bad.length && !missing.length && Object.keys(PICKED).length === LOOK_SWITCHES.length, `PICKED: ${Object.keys(PICKED).length} switches, each a real switch of the Lab with a real option (${bad.map(([k, v]) => `${k}=${v}`).join(', ') || 'ok'}; not picked: ${missing.join(', ') || 'none'})`);
+    const owner = { kindle: 'a', ashp3: 'a', qi: 'a', flit: 'a', burn: 'a', toll: 'a', star: 'a', sky: 'a', ignite: 'a', void: 'a', presence: 'a', great: 'a', floor: 'a', ashLook: 'b', lordLook: 'b' };
+    assert(JSON.stringify(Object.keys(owner).sort().map((k) => `${k}=${PICKED[k]}`)) === JSON.stringify(Object.keys(owner).sort().map((k) => `${k}=${owner[k]}`)), 'the table is the owner\'s answer of 2026-11-16: every author\'s pick (a), the bodies b');
+    const at = (search) => {
+      readLookUrl(search);
+      const o = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], lookOf(s[0], s[2], s[3])]));
+      readLookUrl('');
+      return o;
+    };
+    const none = at(''), old = at('?looks=old'), neu = at('?looks=new'), one = at('?looks=old&star=b'), url = at('?qi=c');
+    const wantOld = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s[2] === '0' ? '0' : PICKED[s[0]]]));
+    assert(JSON.stringify(none) === JSON.stringify(Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], PICKED[s[0]]]))) && JSON.stringify(neu) === JSON.stringify(none), `with nothing set (and under ?looks=new) every call site draws the pick: ${JSON.stringify(none)}`);
+    assert(JSON.stringify(old) === JSON.stringify(wantOld) && !allOld(), `?looks=old: every redraw '0' (what main drew), a new thing its pick: ${JSON.stringify(old)}`);
+    assert(one.star === 'b' && one.qi === '0' && url.qi === 'c' && url.star === 'a', `the URL's own parameter beats ?looks=old and the pick (?looks=old&star=b: star ${one.star}, qi ${one.qi}; ?qi=c: qi ${url.qi})`);
+    setLook('qi', 'b');
+    readLookUrl('?qi=c');
+    const forcedWins = lookOf('qi', '0');
+    readLookUrl('');
+    setLook('qi', null);
+    assert(forcedWins === 'b' && lookOf('qi', '0') === 'a', `a look forced live (setLook) beats the URL (${forcedWins}); null gives the pick back (${lookOf('qi', '0')})`);
+  }
+  // the most the field may gain while one effect plays, the whole scene counted (the hero, his
+  // trails, the cues, the flares). HEADLESS has no camera, so every crisp line (_ink: the trails, the
+  // qi's edge, a flare's streak) falls back to a blob every 0.1 m instead of one per letter cell:
+  // these counts run 1.4 - 2.5x the real page's (the storm with '0': 1111 here, 453 on the page;
+  // ash on the wind a: 848 here, ~700 on the page). Measured 2026-11-16 (second round): the Kindling
+  // 363 - 385, ash on the wind 631 - 968, the flurry 625 - 672. A cap with headroom, not a target.
+  // Re-measured on the shipped looks (the picks, 2026-11-16): kindle a 374, ashp3 a 837, qi a 331 /
+  // 540 / 632 (phases 1 - 3), flit a 592: every pick under 1000, the cap kept (it binds every option).
+  const FX_CAP = 1000;
+  const peakOf = (G, secs, step = null) => {
+    const f = G.game.fx.fire, base = f.count;
+    let peak = 0;
+    run(G, secs, (g) => { step?.(g); peak = Math.max(peak, f.count - base); });
+    return peak;
+  };
+  const report = [];
+  // 1. the qi's '0' = main, call for call (one crescent flown 90 frames into a counting mock field;
+  // the numbers were measured on f4e199d, before the redraw)
+  {
+    const want = { 1: [6174, 0, 54], 2: [6210, 0, 51] };
+    const fly = (phase) => {
+      const c = [0, 0, 0];
+      const game = { time: 0, realTime: 0, dt: DT, fxDt: DT, lights: null, fx: { fire: { spawn: () => c[0]++ }, add: { spawn: () => c[1]++ }, alpha: { spawn: () => c[2]++ } }, player: { position: { x: 30, y: 0, z: 0.3 }, alive: true, radius: 0.45 } };
+      const d = { game, T: TUNING, phase, emit() {}, hitPlayer: () => RESULT.HIT };
+      const fx = new DuelFx(d);
+      fx.throwCrescent(0, 0, 1, 0, { tell: TELL.NORMAL, damage: 14 });
+      for (let i = 0; i < 90; i++) { game.time += DT; game.realTime += DT; fx.updateCrescents(DT, d); }
+      return c;
+    };
+    for (const phase of [1, 2]) {
+      setLook('qi', '0');
+      const c = fly(phase);
+      assert(c.join() === want[phase].join(), `qi '0' (?looks=old) draws what main drew in phase ${phase} (fire, add, alpha ${c.join()} = ${want[phase].join()})`);
+      // with nothing set: the owner's pick, the redraw (another count than main's)
+      clear();
+      const s = fly(phase);
+      assert(lookOf('qi', '0') === PICKED.qi && s.join() !== want[phase].join() && s[0] > 0, `with nothing set the qi draws the pick (${PICKED.qi}) in phase ${phase}, not main's look (fire, add, alpha ${s.join()})`);
+    }
+    clear();
+  }
+  // 2. every option of every switch, its whole life
+  for (const L of SW.kindle) {
+    clear(); setLook('kindle', L);
+    const G = build(); duel(G, { dist: 4.5 });
+    const d = G.game.dragon;
+    d.debug.trigger('kindle');
+    const peak = peakOf(G, 3.5);
+    report.push(`kindle=${L} ${peak}`);
+    assert(d.phase === 2 && d.kindle > 0.9 && peak > 150 && peak < FX_CAP, `?kindle=${L}: the Kindling lands and the blade burns (phase ${d.phase}, kindle ${d.kindle.toFixed(2)}), peak ${peak} blobs < ${FX_CAP}`);
+  }
+  {
+    // the kneel draws on the blade only and keeps the blade from burning before the impact
+    clear();
+    const G = build(); duel(G, { dist: 4.5 });
+    const d = G.game.dragon;
+    d.debug.trigger('kindle');
+    run(G, 0.9);
+    assert(d.kindle < 0.75 && d.brain.act?.def?.transition, `the kneel: the blade is still catching 0.9 s in (kindle ${d.kindle.toFixed(2)} < 0.75)`);
+  }
+  // phase 3's change on the REAL transition (ashWind, from phase 2) when the kit has a third phase
+  const toPhase3 = (d) => {
+    if (d.kit.transitions?.[3] && d.T.phaseAt.length >= 3) {
+      d.phase = 2;
+      d.kindle = 1;
+      return d.debug.phase3();
+    }
+    d.phase = 3; // (a kit without one: driven by hand)
+    d.fx.phaseBurst(3, d.position.x, d.position.z);
+    return false;
+  };
+  for (const L of SW.ashp3) {
+    clear(); setLook('ashp3', L);
+    const G = build(); duel(G, { dist: 4.5 });
+    const d = G.game.dragon;
+    const real = toPhase3(d);
+    let peak = peakOf(G, 4);
+    d.debug.trigger('swallow');
+    peak = Math.max(peak, peakOf(G, 2.5));
+    report.push(`ashp3=${L} ${peak}`);
+    assert(d.phase === 3 && d._ashK > 0.9 && peak > 250 && peak < FX_CAP, `?ashp3=${L}: ash on the wind ${real ? 'on the real transition' : 'by hand'}, a moment (peak ${peak} > 250), its stream after (ashK ${d._ashK?.toFixed(2)}), peak < ${FX_CAP}`);
+  }
+  {
+    // one afterimage per flit, whichever flit look: the string's (disciple.beatMotion) or the ash flit's own
+    for (const L of SW.flit) {
+      clear(); setLook('flit', L);
+      const G = build(); duel(G, { dist: 3.5 });
+      const d = G.game.dragon;
+      d.phase = 3;
+      let tick = 0;
+      const flits = [], ghosts = [];
+      const f0 = d.flit.bind(d), g0 = d.fx.ghost.bind(d.fx);
+      d.flit = (...a) => { flits.push(tick); return f0(...a); };
+      d.fx.ghost = (...a) => { ghosts.push(tick); return g0(...a); };
+      d.debug.trigger('ashFlurry');
+      run(G, 5, () => tick++);
+      const per = flits.map((t) => ghosts.filter((g) => g === t).length);
+      assert(flits.length >= 2 && per.every((n) => n === 1), `?flit=${L}: ashFlurry's ${flits.length} flits leave one afterimage each (${per.join(',')})`);
+    }
+  }
+  for (const L of SW.qi) for (const phase of [1, 2, 3]) {
+    clear(); setLook('qi', L);
+    const G = build(); duel(G, { dist: 10 });
+    const d = G.game.dragon;
+    d.phase = phase;
+    d.debug.trigger('ashCrescent');
+    const peak = peakOf(G, 2.2);
+    report.push(`qi=${L}/p${phase} ${peak}`);
+    assert(peak < FX_CAP, `?qi=${L} phase ${phase}: the crescents fly out, peak ${peak} blobs < ${FX_CAP}`);
+  }
+  // the qi with a crowd in the air: the storm's nine (phase 3) and the fans (phases 2, 3)
+  const crowd = {};
+  for (const L of SW.qi) for (const [mv, phase] of [['qiStorm', 3], ['emberFan', 2], ['emberFan', 3]]) {
+    clear(); setLook('qi', L);
+    const G = build(); duel(G, { dist: 9 });
+    const d = G.game.dragon;
+    d.phase = phase;
+    d.kindle = 1;
+    const ok = d.debug.trigger(mv);
+    let most = 0;
+    const peak = peakOf(G, 3, () => { most = Math.max(most, d.fx.crescents.filter((c) => c.alive).length); });
+    report.push(`qi=${L}/${mv}${phase} ${peak}`);
+    // (against today's look in the same crowd: a redraw costs at most 1.3x it; '0' sets the bar)
+    crowd[`${mv}${phase}`] ??= peak;
+    const bar = crowd[`${mv}${phase}`];
+    assert(ok && most >= 3 && peak <= bar * 1.3, `?qi=${L} ${mv} in phase ${phase}: ${most} in the air at once, peak ${peak} blobs <= 1.3 x today's ${bar}`);
+  }
+  for (const L of SW.flit) {
+    clear(); setLook('flit', L);
+    const G = build(); duel(G, { dist: 3 });
+    const d = G.game.dragon;
+    d.debug.flurry(5);
+    const peak = peakOf(G, 4);
+    report.push(`flit=${L} ${peak}`);
+    assert(peak > 30 && peak < FX_CAP, `?flit=${L}: the flurry's flits, peak ${peak} blobs < ${FX_CAP}`);
+  }
+  {
+    // the engines alone: a 6 m front of fire, an afterimage, a hard landing's dust, the break
+    clear();
+    const G = build(); duel(G, { dist: 6 });
+    const d = G.game.dragon, fx = d.fx, f = G.game.fx.fire;
+    let b = f.count;
+    fx.shock(d.position.x, d.position.z, 6, { k: 1.25, fire: 1, kind: 'fire' });
+    const s = f.count - b;
+    run(G, 1.2);
+    b = f.count;
+    const gh = fx.ghost(d, { dx: 1, dz: 0, life: 0.6 });
+    const g2 = f.count - b;
+    run(G, 1.2);
+    b = f.count;
+    fx.dust(d.position.x, d.position.z, 1.6);
+    run(G, 0.1);
+    const du = f.count - b;
+    report.push(`shock6=${s} ghost=${g2} dust1.6=${du}`);
+    assert(s > 120 && s < 400, `a 6 m front of fire spawns ${s} blobs (a body: > 120, < 400)`);
+    assert(gh > 60 && g2 === gh && g2 < 400, `an afterimage prints ${g2} blobs from his body (> 60, < 400)`);
+    assert(du > 40 && du < 300, `a hard landing's dust has a body: ${du} blobs`);
+  }
+  // a phase-3 fight with the AI on (burning lines, the storm, ghosts, the stream): the field's peak
+  // as shipped (the picks: nothing set) and before this pass (BEFORE) (the report; a cap far under the field's 6000)
+  for (const looks of [{}, BEFORE]) {
+    clear();
+    for (const [k, v] of Object.entries(looks)) setLook(k, v);
+    const G = build(); duel(G, { dist: 4, ai: true });
+    G.defend = makeDefender(G);
+    const d = G.game.dragon;
+    toPhase3(d);
+    let peak = 0, sum = 0, n = 0;
+    const moves = {};
+    G.watch = (nm, e) => { if (nm === 'dragon:windup') moves[e.name] = (moves[e.name] ?? 0) + 1; };
+    // (the hero only defends, god mode: the fight runs the whole 40 s in phase 3)
+    run(G, 40, (g) => { const p = g.game.player; p.hp = p.maxHp; g.input.axis = { x: 0, y: 0 }; G.defend.act(); const c = g.game.fx.fire.count; peak = Math.max(peak, c); sum += c; n++; });
+    G.watch = null;
+    out(`     phase-3 fight: ${Object.entries(moves).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+    G.defend = null;
+    report.push(`fight p3 ${Object.keys(looks).length ? 'before' : 'shipped'}: peak ${peak} mean ${(sum / n).toFixed(0)}`);
+    // (the cap, re-measured on the shipped looks 2026-11-16 (the picks): 907 shipped, 919 before
+    // this pass (mean 248 / 256); 1400 = about 1.5x the measurement, was 2400)
+    assert(d.phase === 3 && peak < 1400, `a phase-3 fight, looks ${Object.keys(looks).length ? `before this pass ${JSON.stringify(looks)}` : 'as shipped (the picks)'}: the field peaks at ${peak} blobs (mean ${(sum / n).toFixed(0)}) < 1400 of its 6000`);
+  }
+  out(`     blob peaks: ${report.join(' | ')}`);
+  // 3. no look moves the fight: a fixed-seed fight (the AI on, phase 2, a defending bot) gives the
+  // same hits, cues and positions with every option forced as with the defaults
+  const fight = (looks) => {
+    clear();
+    for (const [k, v] of Object.entries(looks)) setLook(k, v);
+    const G = build(); duel(G, { dist: 4, ai: true });
+    G.defend = makeDefender(G);
+    const d = G.game.dragon;
+    d.debug.trigger('kindle');
+    const cues = [];
+    G.watch = (n, e) => { if (n === 'combat:flash') cues.push(`${e.attack}@${G.game.time.toFixed(2)}`); };
+    run(G, 10, fencer);
+    toPhase3(d);
+    run(G, 14, fencer);
+    G.watch = null;
+    G.defend = null;
+    return `${G.hits.map((h) => `${h.attack}:${h.r}@${h.t.toFixed(2)}`).join(',')}|${cues.join(',')}|${d.position.x.toFixed(3)},${d.position.z.toFixed(3)},${d.hp.toFixed(1)}|${G.game.player.position.x.toFixed(3)}`;
+  };
+  // (the reference is the fight as shipped; BEFORE (his body '0' too: a build-time look) must play the same)
+  const ref = fight({});
+  for (const looks of [{ kindle: 'b', qi: 'a', flit: 'a', ashp3: 'b' }, { kindle: 'c', qi: 'c', flit: 'a', ashp3: 'c' }, { qi: 'b', ashp3: 'a' }, BEFORE, { ashLook: 'c', qi: '0' }]) {
+    const got = fight(looks);
+    if (got !== ref) { let i = 0; while (got[i] === ref[i]) i++; out(`     differs at ${i}: ...${ref.slice(Math.max(0, i - 80), i + 60)} vs ...${got.slice(Math.max(0, i - 80), i + 60)}`); }
+    assert(got === ref, `the looks ${JSON.stringify(looks)} do not move the fight (same hits, cues, positions as shipped)`);
+  }
+  clear();
+  return build();
+}
+
 async function scenarioFlare() {
   out('\n== scenario FLARE (the flare is the only sign; a parried blue flare is countered; the black charged blow) ==');
   const { GUARD, TELL_STYLE, isFlare, dodgeOnly, tellDefaults } = await imp('src/combat/rules.js');
@@ -2470,16 +3780,23 @@ async function scenarioStrategy() {
 const SCENARIOS = {
   strategy: scenarioStrategy,
   terrain: scenarioTerrain,
+  worldcue: scenarioWorldCue,
   probe: scenarioProbe,
+  bots: scenarioBots,
+  ranged: scenarioRanged,
+  answer: scenarioAnswer,
   perfect: scenarioPerfect,
   flare: scenarioFlare,
+  fxlooks: scenarioFxLooks,
   telemetry: scenarioTelemetry,
   heavy: scenarioHeavy,
   moments: scenarioMoments,
   pressure: scenarioPressure,
   impact: scenarioImpact,
   levels: scenarioLevels,
+  floor: scenarioFloor,
   data: scenarioData,
+  moves: scenarioMoves,
   timing: scenarioTiming,
   guard: scenarioGuard,
   clash: scenarioClash,
@@ -2492,10 +3809,11 @@ const SCENARIOS = {
   phase: scenarioPhase,
   flow: scenarioFlow,
   win: scenarioWin,
+  pace: scenarioPace,
   cutfx: scenarioCutFx,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 

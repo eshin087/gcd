@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | budget | all
+//   scenario: sets | floor | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | budget | placed | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -36,6 +36,7 @@ const { TELL, RESULT } = await imp('src/combat/rules.js');
 const { Dragon } = await imp('src/entities/dragon/dragon.js');
 const { TUNING: WYRM } = await imp('src/entities/dragon/tuning.js');
 const { QUALITY } = await imp('src/world/breakTuning.js');
+const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
 v8.setFlagsFromString('--expose-gc');
 const gc = vm.runInNewContext('gc');
 
@@ -160,9 +161,11 @@ const S = {
     for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
-      // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15)
-      const most = name === 'forest' ? 760 : 240;
-      assert(L.length >= 20 && L.length <= most, `${name}: ${L.length} breakables (20..${most})`);
+      // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
+      // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
+      // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates))
+      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280] }[name];
+      assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
         // every tree of the forest breaks, out to its edge (2026-11-16: it was those within 42 m): the tree
@@ -176,12 +179,25 @@ const S = {
       }
       assert(L.every((b) => Number.isFinite(b.x + b.z + b.r + b.h) && b.r > 0 && b.h > 0 && b.hp > 0), `${name}: every breakable has a footprint, a height and structure`);
       assert(L.every((b) => b.colliders.every((c) => colliders.circles.includes(c))), `${name}: their colliders are the world's own circles`);
-      assert(L.every((b) => b.node.parent === D.root && b.body.geometry.attributes.position.count > 0), `${name}: each has its own node and body`);
+      // (a floor slab or flagstone, a 'range' piece, is no scene node until a boss lifts it: 2026-11-16, the scene graph's per-frame cost)
+      assert(L.every((b) => (b.def.look === 'range' ? !b.node.parent : b.node.parent === D.pieces) && b.body.geometry.attributes.position.count > 0), `${name}: each has its own node and body (a floor slab's node joins the pieces' tree only when lifted)`);
+      // nothing standing costs the scene graph a frame: the pieces are a tree outside the scene (the
+      // batch reads their matrices), only the batch's draw meshes hang in it
+      let inScene = 0, auto = 0;
+      D.root.traverse(() => inScene++);
+      D.pieces.traverse((o) => { if (o !== D.pieces && o.matrixAutoUpdate) auto++; });
+      assert(!D.pieces.parent && inScene <= 4 && auto === 0, `${name}: the breakables put ${inScene} node(s) in the scene (the batch's meshes); their own tree is outside it and none of its nodes auto-updates (${auto})`);
       assert(D.root.parent === set.group, `${name}: the breakables hang under the set's group (the Lab hides them with it)`);
+      // nothing breakable is lost from the spatial grid: every piece sits in exactly one cell
+      const seen = new Int32Array(L.length);
+      for (const i of D._g.items) seen[i]++;
+      assert(seen.every((k) => k === 1), `${name}: every one of the ${L.length} pieces is in the grid once`);
       const bones = rigidBones(U);
       // (the pieces, their stumps and the wreckage pools, BREAK.wreck: 88 bones; with the hero ~140 and a
       // boss ~180 the 1023 slots keep ~200 spare. Cinderwood measured 368 on 2026-11-15, 144 before; its
       // trees and landmarks are range pieces since 2026-11-16 and take none: 140)
+      // (2026-11-16, the arenas break: the courtyard 401 (its far trees and stumps, the colossi, the big
+      // blocks' pool), the crater 257; a floor slab is no bone: it is a run of its set's paving mesh)
       assert(D.batch.meshes.length >= 1 && D.batch.meshes.length <= 2 && bones.count <= 460, `${name}: drawn in ${D.batch.meshes.length} batch(es), ${bones.count} bones (<= 460 of 1023)`);
       // a body's geometry sits round its own base: the node carries the place (a rigid piece's)
       const b = L.find((o) => o.topples && !o.ranged);
@@ -190,6 +206,117 @@ const S = {
       assert(Math.abs((bb.min.x + bb.max.x) / 2) < 3 && Math.abs((bb.min.z + bb.max.z) / 2) < 3 && bb.min.y > -0.6, `${name}: a body's geometry is laid out round its base`);
       out(`     ${name}: ${L.length} breakables: ` + [...new Set(L.map((o) => o.kind))].map((k) => `${k} ${L.filter((o) => o.kind === k).length}`).join(', ') + `; ${colliders.circles.length} colliders`);
     }
+  },
+
+  // ---------------------------------------------------------------- the duelists' floors break (world/floor.js, BREAK.floor)
+  floor() {
+    const C = build(createCourtyard);
+    const { D, log, game, step } = C;
+    const F = D.floor, FL = BREAK.floor;
+    const crackMesh = C.set.group.getObjectByName('pavingCracked'), brokenMesh = C.set.group.getObjectByName('pavingBroken');
+    assert(F.length >= 250 && F.every((b) => b.def.look === 'range' && b.kind === 'flagstone' && b.lift === FL.lift && !b.colliders.length && !b.cover && !b.topples && b.crack && b.stub), `the courtyard's paving, steps and path: ${F.length} slabs, each a range piece with a cracked and a broken look, lift ${FL.lift}, no collider, no cover`);
+    assert(crackMesh && brokenMesh && !crackMesh.visible && !brokenMesh.visible && !crackMesh.layers.isEnabled(1), 'whole, the floor draws as it did: the cracked and the broken meshes are hidden (no draw call) and cast no shadow');
+    // a cut cracks the slab under it
+    const s = F.reduce((a, b) => (Math.hypot(b.x, b.z - 2) < Math.hypot(a.x, a.z - 2) ? b : a));
+    const pos = s.body.geometry.attributes.position;
+    D.strike(s.x, s.z, 1.3, 0.3, { kind: BLOW.CUT, by: 'boss', src: D.swing() });
+    assert(s.state === STATE.INTACT && s.cracked && !s.body.visible && s.crack.visible && crackMesh.visible && pos.array[s.body.start * 3 + 1] < -1, `a duelist's cut (0.3) on it: it holds (${s.hp.toFixed(2)} of ${s.hpMax}) and shows cracked (its slab folds away, its pieces show)`);
+    // a heavy blow breaks the slab under it and cracks its neighbours, in one sound and no shake
+    const s2 = F.reduce((a, b) => (Math.hypot(b.x - 6, b.z + 4) < Math.hypot(a.x - 6, a.z + 4) ? b : a));
+    const n0 = log.length, sh = game.shakes;
+    const hit = D.strike(s2.x, s2.z, 1.3, 0.9, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() }); // (a red overhead: 24 x 1.25 / 40 = 0.75 .. 0.94)
+    const near = F.filter((b) => b !== s2 && Math.hypot(b.x - s2.x, b.z - s2.z) < 1.3 + b.r);
+    const ev = log.slice(n0).filter((x) => x.n === 'world:impact');
+    assert(s2.state === STATE.BROKEN && s2.stub.visible && brokenMesh.visible && near.some((b) => b.cracked) && near.filter((b) => b.state === STATE.BROKEN).length <= 2, `a heavy red blow (0.9 blunt, r 1.3) breaks the slab under it and cracks ${near.filter((b) => b.cracked).length} of its ${near.length} neighbours (${near.filter((b) => b.state === STATE.BROKEN).length} broken)`);
+    assert(hit >= 3 && ev.length === 1 && game.shakes === sh, `it struck ${hit} slabs: one world:impact for them all (${ev.length}), no camera shake of their own`);
+    // a blade's edge above the floor passes over it; one drawn along it bites less
+    const s3 = F.reduce((a, b) => (Math.hypot(b.x + 6, b.z + 6) < Math.hypot(a.x + 6, a.z + 6) ? b : a));
+    assert(D.strike(s3.x, s3.z, 0.5, 0.5, { y: 1, src: D.swing() }) === 0, 'a blow at waist height over a slab misses it');
+    const h3 = s3.hp;
+    D.sweep(s3.x - 1, s3.z, s3.x + 1, s3.z, 0.3, 0.5, { kind: BLOW.BLUNT, y: 0, src: D.swing() });
+    assert(near0(h3 - s3.hp, 0.5 * FL.sweep), `an edge drawn along it takes ${FL.sweep} of the blow (${(h3 - s3.hp).toFixed(2)})`);
+    // where a terrain move finds floor to tear up: the grid, nearest first; the Void's and the wyrm's picks never see it
+    const out = [];
+    const n = D.floorNear(0, 0, 4, out, { max: 6 });
+    const scan = F.filter((b) => b.state === STATE.INTACT && Math.hypot(b.x, b.z) <= 4).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z)).slice(0, 6);
+    assert(n === scan.length && out.every((b, i) => b === scan[i]), `floorNear(0, 0, 4) gives the ${n} intact slabs nearest the point, as a full scan does`);
+    D.floorNear(0, 0, 4, out, { whole: true });
+    assert(out.every((b) => !b.cracked) && D.nearest(0, 0, { maxDist: 30, lift: 2 })?.floor !== true && D.nearest(0, 0, { maxDist: 30 })?.floor !== true && D.nearest(0, 0, { maxDist: 30, lift: 3 })?.floor === true, '`whole` leaves the cracked out; nearest() gives floor only to a caller that asks for lift 3 (or its kind)');
+    // a slab torn out: its hole shows, a block of prop art in the hands, shards where it lands
+    const t = out[0];
+    // (wreckage.js KIND.SHARDS: 5 since the merge with ADR-120, whose bone heaps took 3, which its REACH check reads)
+    const w0 = D.wreck.live.filter((x) => x.kind === 5).length;
+    assert(D.take(t) && t.state === STATE.HELD && !t.body.visible && t.stub.visible && t.held?.visible && t.held.parent === t.pivot, 'take(): a slab torn out of the floor leaves its hole; a block of prop art is what he holds');
+    D.carry(t, t.x, 2, t.z);
+    D.throwTo(t, t.x + 6, t.z, { time: 0.5 });
+    step(1);
+    assert(t.state === STATE.GONE && !t.held && D.wreck.live.filter((x) => x.kind === 5).length === w0 + 1, 'thrown, it lands as flat shards (wreckage); its block goes back to the pool');
+    // the reset: every slab whole again, the meshes of remains hidden
+    D.reset();
+    assert(F.every((b) => b.state === STATE.INTACT && b.body.visible && !b.cracked && !b.crack.visible && !b.stub.visible) && !crackMesh.visible && !brokenMesh.visible && D._carry.every((m) => !m.visible), 'the reset: every slab whole, nothing cracked, the meshes of remains hidden again');
+    // the other look builds the same pieces
+    setLook('floor', 'b');
+    const B2 = build(createCourtyard);
+    setLook('floor', null);
+    assert(B2.D.floor.length === F.length && B2.set.group.getObjectByName('pavingBroken'), `?floor=b: the same ${B2.D.floor.length} slabs, broken into tilted shards`);
+    // the crater: its plates
+    const T = build(createThroneHall);
+    const TF = T.D.floor;
+    assert(TF.length >= 90 && TF.some((b) => b.kind === 'plate' && b.hpMax === FL.plate) && TF.some((b) => b.kind === 'flagstone' && b.hpMax === FL.hp), `the crater: ${TF.length} plates (${TF.filter((b) => b.kind === 'plate').length} big ones 'plate', hp ${FL.plate}; the rest 'flagstone', hp ${FL.hp})`);
+    // Cinderwood's flagstone shards: hidden until one is smashed (a draw call less, nothing else changes)
+    const Fo = build();
+    assert(!Fo.set.group.getObjectByName('flagstoneShards').visible, "Cinderwood's flagstone shards are hidden until one is smashed");
+  },
+
+  // ---------------------------------------------------------------- a colossus comes down in two stages
+  colossus() {
+    const C = build(createCourtyard);
+    const { D, log, game, hits, step, colliders } = C;
+    const tops = D.list.filter((b) => b.kind === 'colossus' && b.base), legs = D.list.filter((b) => b.kind === 'colossus' && b.top);
+    const CO = BREAK.colossus;
+    assert(tops.length === 2 && legs.length === 2 && legs.every((l) => l.top?.base === l && l.cover && !l.topples && l.colliders.length >= 1) && tops.every((t) => t.topples && t.y0 > 4 && !t.colliders.length && t.hpMax === CO.top), `two colossi, each an upper half (stands ${tops[0]?.y0.toFixed(1)} m up, ${tops[0]?.h.toFixed(1)} m tall, structure ${CO.top}) on its legs (cover, its plinth's collider)`);
+    const head = D.list.find((b) => b.kind === 'boulder' && Math.hypot(b.x - 15.6, b.z - 7.8) < 4);
+    assert(head && head.lift === 1 && head.colliders.length === 1, 'the fallen head of the broken one is a boulder');
+    const top = tops[0], leg = top.base;
+    // blows on the legs wear the upper half down
+    const hp0 = top.hp, lhp0 = leg.hp;
+    D.strike(leg.x + 1.6, leg.z, 0.5, 0.6, { kind: BLOW.BLUNT, by: 'player', src: D.swing() });
+    assert(top.hp < hp0 && leg.hp === lhp0, `a blow at its feet takes from the upper half (${hp0.toFixed(1)} → ${top.hp.toFixed(1)}); the legs take nothing while it stands`);
+    // it falls: the world's falling rule, from its cut, out past the plinth
+    const dx = 1, dz = 0, mid = CO.off + top.h * 0.5;
+    game.player.position.set(top.x + dx * mid, 0, top.z + 0.3);
+    game.boss.position.set(top.x - 20, 0, top.z);
+    const n0 = log.length;
+    D.topple(top, dx, dz, 'boss');
+    step(1 / 60);
+    const tell = log.slice(n0).find((x) => x.n === 'combat:tell');
+    assert(tell && tell.source === 'world' && tell.tell === TELL.RED && near0(tell.impactIn, CO.fall - 1 / 60, 0.05) && Math.hypot(tell.x - (top.x + dx * (CO.off + top.h * 0.55)), tell.z - top.z) < 0.5, `it tells red (the world's falling piece), ${tell?.impactIn?.toFixed(2)} s before it lands, at the middle of its strip`);
+    D.strike(leg.x + 1.6, leg.z, 0.5, 9, { kind: BLOW.BLUNT, by: 'player', src: D.swing() });
+    assert(leg.state === STATE.INTACT && leg.hp === lhp0, 'while it falls the legs take nothing');
+    let tFlash = -1;
+    for (let i = 0; i < 200 && top.state === STATE.FALLING; i++) {
+      step(1 / 60);
+      if (tFlash < 0 && log.slice(n0).some((x) => x.n === 'combat:flash')) tFlash = game.time;
+    }
+    const h = hits.find((x) => x.who === 'hero');
+    assert(top.state === STATE.BROKEN && game.time - tFlash >= 0.25 && game.time - tFlash <= 0.36 && h && h.tell === TELL.RED && h.blockable === false && h.damage <= BREAK.topple.damage * 1.3 + 1e-6, `it lands ${CO.fall} s on (its flash ${(game.time - tFlash).toFixed(2)} s before); the hero under it takes one red blow of ${h?.damage?.toFixed(1)}`);
+    // (wreckage.js KIND.BLOCK: 4 since the merge with ADR-120, whose bone heaps took 3, which its REACH check reads)
+    const blocks = D.wreck.live.filter((x) => x.kind === 4);
+    assert(blocks.length >= CO.blocks - 1 && blocks.every((b) => b.x > top.x + CO.off - 1 && b.x < top.x + CO.off + top.h + 1.5), `it lies as ${blocks.length} big blocks along where it fell (wreckage, no collider)`);
+    assert(leg.state === STATE.INTACT && D.coverAt(leg.x - 4, leg.z, leg.x + 4, leg.z, 0.2) === leg, 'its legs stand: cover');
+    // then the legs
+    const c0 = colliders.circles.length;
+    D.strike(leg.x + 1.6, leg.z, 0.6, 9, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    assert(leg.state === STATE.BROKEN && leg.stub.visible && colliders.circles.includes(leg.stubCollider) && D.wreck.live.filter((x) => x.kind === 4).length > blocks.length, `the legs break in their turn: the plinth is left (its own collider), more blocks round it (${colliders.circles.length - c0 + leg.colliders.length} circle(s) changed)`);
+    // the hero fells the other one onto the boss
+    const t2 = tops[1];
+    game.boss.position.set(t2.x + (CO.off + t2.h * 0.5), 0, t2.z);
+    D.topple(t2, 1, 0, 'player');
+    step(2);
+    const bh = hits.find((x) => x.who === 'boss');
+    assert(bh && bh.damage >= BREAK.topple.bossDamage * 0.6, `felled by the hero onto the boss: ${bh?.damage?.toFixed(0)} damage`);
+    D.reset();
+    assert(tops.every((t) => t.state === STATE.INTACT && t.body.visible && t.node.position.y === t.y0 && t.pivot.position.lengthSq() === 0) && legs.every((l) => l.state === STATE.INTACT && !l.stub.visible), 'the reset: both stand whole again');
   },
 
   // ---------------------------------------------------------------- a blow chips; a hard one breaks
@@ -892,6 +1019,7 @@ const S = {
     // a 60 s rampage: the wyrm runs circles through the clearing, turning, while meteors land and the wood burns
     gc();
     let worst = 0, sum = 0, frames = 0, peakFx = 0, peakFire = 0, peakBurn = 0;
+    const frameMs = new Float64Array(60 * 60);
     let a = 0;
     const R = 19;
     W.place(R, 0, Math.PI);
@@ -921,6 +1049,7 @@ const S = {
       game.fx.add.update(1 / 60, game.time);
       game.fx.fire.update(1 / 60);
       worst = Math.max(worst, ms);
+      frameMs[frames] = ms;
       sum += ms;
       frames++;
       peakFx = Math.max(peakFx, game.fx.alpha.count + game.fx.add.count);
@@ -930,7 +1059,16 @@ const S = {
     const down = D.list.length - D.standing;
     out(`     rampage 60 s: ${down} pieces down, ${D.wreckage} wreckage, ${world.scars.count} marks; destructibles.update avg ${(sum / frames).toFixed(3)} ms, worst ${worst.toFixed(2)} ms; peak glyphs ${peakFx}, fire blobs ${peakFire}, alight ${peakBurn}`);
     assert(down >= 20, `the rampage wrecks the clearing (${down} pieces down)`);
-    assert(worst < 4 && sum / frames < 0.5, `destructibles.update: avg ${(sum / frames).toFixed(3)} ms, worst ${worst.toFixed(2)} ms a frame (budget: avg < 0.5, worst < 4 in node)`);
+    // (the budget of a frame is read on the 99.9th percentile, the 4th slowest of the 3600 frames, and the
+    // single slowest frame gets a ceiling of its own: one frame's wall-clock time is the machine's as much
+    // as the code's. Measured 2026-11-16, alone and with four suites beside it: avg 0.010 - 0.012 ms,
+    // p99.9 0.37 - 0.71 ms, the slowest frame 1.1 - 1.8 ms, every time frame 83 (the first trees to fall:
+    // their code's first run), on this build and on `main` alike; CI, its four suites on one shared
+    // runner, put that one frame at 4.06 ms against the old `worst < 4`. A hitch of the code's own (a
+    // whole mesh rebuilt in a frame) costs tens of ms and still fails the ceiling; many slow frames fail
+    // the percentile.)
+    const p999 = Float64Array.from(frameMs.subarray(0, frames)).sort()[Math.floor(frames * 0.999) - 1];
+    assert(sum / frames < 0.5 && p999 < 1.5 && worst < 8, `destructibles.update: avg ${(sum / frames).toFixed(3)} ms, 99.9th percentile ${p999.toFixed(2)} ms, worst ${worst.toFixed(2)} ms a frame (budget: avg < 0.5, p99.9 < 1.5, worst < 8 in node)`);
     assert(peakBurn <= Math.max(3, Math.round(BREAK.spread.maxBurning)) + 6, `fires alight at the peak: ${peakBurn}`);
     // allocation in the hot paths this owns: a steady frame (the body sweeping, wood burning, logs
     // smouldering, hot ground, the marks) creates no object, array or closure. Measured as heap growth
@@ -974,8 +1112,148 @@ const S = {
     const grew = process.memoryUsage().heapUsed - h0 - base;
     assert(grew / 2000 < 2048, `2000 frames of the body sweeping, wood burning, logs smouldering: ${(grew / 2000).toFixed(0)} bytes a frame over the bare loop (< 2 KB: no object, array or closure a frame; the rest is V8 boxing call arguments)`);
   },
+  // ---------------------------------------------------------------- a piece draws where it is (its matrices are placed, not auto-updated)
+  // (last: it draws on the destructibles' cosmetic stream, which the scenarios after it would see)
+  placed() {
+    // (2026-11-16: the pieces are a tree outside the scene, their nodes do not auto-update; destructibles
+    // `_place` puts a piece's world matrices right when it moves. The batch draws each body from its
+    // matrixWorld: here every body's must equal what three would compute from the transforms, in every
+    // state a piece can be in)
+    const C = build(createCourtyard);
+    const { D, step } = C;
+    const m = new THREE.Matrix4();
+    const wrong = () => {
+      let bad = 0;
+      for (const b of D.list) {
+        if (b.def.look === 'range' && !b.node.parent) continue;
+        for (const o of [b.body, b.stub, b.held]) {
+          if (!o?.isMesh || !o.visible) continue;
+          // what three would make of it: the chain's local matrices, freshly composed
+          m.identity();
+          for (let n = o; n && n !== D.pieces; n = n.parent) {
+            const L = new THREE.Matrix4().compose(n.position, n.quaternion, n.scale);
+            m.premultiply(L);
+          }
+          const a = o.matrixWorld.elements, e2 = m.elements;
+          if (e2.some((v, i) => Math.abs(v - a[i]) > 1e-4)) bad++;
+        }
+      }
+      return bad;
+    };
+    assert(wrong() === 0, 'built: every body draws where it stands');
+    const pil = D.list.filter((b) => b.kind === 'pillar' && b.topples && b.state === STATE.INTACT);
+    D.strike(pil[0].x, pil[0].z, 0.3, 0.2, { kind: BLOW.CUT, dx: 1, dz: 0, src: D.swing() });
+    step(4 / 60);
+    assert(pil[0].shake > 0 && wrong() === 0, 'shaken: mid-shudder it draws where its pivot is');
+    D.topple(pil[1], 1, 0, 'world');
+    step(0.4);
+    assert(pil[1].state === STATE.FALLING && wrong() === 0, 'toppling: mid-fall it draws where it is going over');
+    const top = D.list.find((b) => b.kind === 'colossus' && b.base);
+    D.topple(top, 1, 0, 'world');
+    step(0.7);
+    assert(top.state === STATE.FALLING && wrong() === 0, 'a colossus coming off its cut: drawn where it is');
+    const bo = D.list.find((b) => b.kind === 'boulder' && b.lift > 0 && b.state === STATE.INTACT);
+    D.take(bo);
+    D.carry(bo, bo.x + 1, 2.5, bo.z, 0.6, 1.2);
+    const fl = D.floor.find((b) => b.state === STATE.INTACT);
+    D.take(fl);
+    D.carry(fl, fl.x, 1.8, fl.z, 0.3, 0.5);
+    assert(wrong() === 0, 'carried: a boulder and a slab in a boss\'s hands are drawn there');
+    D.throwTo(bo, bo.x + 6, bo.z, { time: 0.8 });
+    step(0.3);
+    assert(bo.state === STATE.FLYING && wrong() === 0, 'thrown: drawn in the air where it flies');
+    step(3);
+    D.reset();
+    assert(wrong() === 0 && D.list.every((b) => b.pivot.position.lengthSq() === 0), 'restored: every piece drawn where it stood');
+    const w = D.wreck.pools.flat().every((e) => e.mesh.matrixWorld.equals(e.mesh.matrix));
+    assert(w, 'the wreckage\'s meshes are placed as they lie down (their world matrix is their own)');
+
+    // (2026-11-16, the merge with ADR-120: Cinderwood's trees and landmarks are 'range' pieces POSED by
+    // rewriting their vertices (destructibles RangeBody.pose), never nodes. In each state ADR-120 added
+    // (a stage reached, the lean, a tree falling, carried, thrown, its crown burning down, the reset)
+    // every shown vertex must be its home turned by the pivot (and the lean) about the base, no tree may
+    // join the pieces' tree, nothing may join the scene, and the rigid pieces beside it still draw where
+    // they are)
+    const F = build();
+    const FD = F.D;
+    const qL = new THREE.Quaternion(), ax = new THREE.Vector3(), v = new THREE.Vector3(), qq = new THREE.Quaternion();
+    const off = (b) => {
+      const body = b.body, a = body.geometry.attributes.position.array, s = body.start * 3, H = body.home;
+      qq.copy(b.pivot.quaternion);
+      if (b.lean > 1e-4) qq.multiply(qL.setFromAxisAngle(ax.set(b.ldz, 0, -b.ldx), b.lean));
+      const p = b.pivot.position;
+      let worst = 0;
+      for (let part = 0, v0 = 0; part < body.ends.length; part++) {
+        const v1 = body.ends[part];
+        if (body.visible && body.shown[part]) {
+          for (let k = v0; k < v1; k += 5) {
+            v.set(H[k * 3] - b.x, H[k * 3 + 1], H[k * 3 + 2] - b.z).applyQuaternion(qq);
+            worst = Math.max(worst, Math.abs(v.x + b.x + p.x - a[s + k * 3]), Math.abs(v.y + p.y - a[s + k * 3 + 1]), Math.abs(v.z + b.z + p.z - a[s + k * 3 + 2]));
+          }
+        }
+        v0 = v1;
+      }
+      return worst;
+    };
+    const scene = () => {
+      let inScene = 0, auto = 0, ranged = 0;
+      FD.root.traverse(() => inScene++);
+      FD.pieces.traverse((o) => { if (o !== FD.pieces && o.matrixAutoUpdate) auto++; });
+      for (const b of FD.list) if (b.ranged && b.node.parent) ranged++;
+      return inScene <= 4 && auto === 0 && ranged === 0;
+    };
+    const fwrong = () => {
+      let bad = 0;
+      for (const b of FD.list) {
+        if (b.ranged) continue;
+        for (const o of [b.body, b.stub]) {
+          if (!o?.isMesh || !o.visible) continue;
+          m.identity();
+          for (let n = o; n && n !== FD.pieces; n = n.parent) m.premultiply(new THREE.Matrix4().compose(n.position, n.quaternion, n.scale));
+          if (m.elements.some((x, i) => Math.abs(x - o.matrixWorld.elements[i]) > 1e-4)) bad++;
+        }
+      }
+      return bad;
+    };
+    const TOL = 2e-3; // (float32 vertices 70 m out)
+    const trees = FD.list.filter((b) => b.kind === 'tree' && !b.wall && b.state === STATE.INTACT && b.order.length > 1 && b.topples && b.lift > 0).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z));
+    const [t1, t2, t3, t4] = trees;
+    // a stage and the lean (its last stage: it creaks over along the blow)
+    t1.hp = t1.hpMax * (BREAK.wear.at[2] - 0.02);
+    FD._wearTo(t1, 1, 0, 'boss');
+    FD._wake(t1);
+    F.step(BREAK.wear.leanTime * 0.5);
+    assert(t1.wear === 3 && t1.lean > 0.02 && t1.dropped >= 1 && off(t1) < TOL && scene(), `a tree at its last stage: ${t1.dropped} parts dropped, leaning ${t1.lean.toFixed(2)} rad, its vertices where its pose puts them (off ${off(t1).toExponential(1)} m); no node of it anywhere`);
+    // a rigid piece shuddering beside it, and a tree falling
+    const st = FD.list.find((b) => !b.ranged && b.topples && b.state === STATE.INTACT && b.mat === 'stone');
+    FD.strike(st.x, st.z, 0.3, 0.2, { kind: BLOW.CUT, dx: 1, dz: 0, src: FD.swing() });
+    FD.topple(t2, 0, 1, 'world');
+    F.step(4 / 60);
+    assert(st.shake > 0 && fwrong() === 0 && scene(), 'a stone of the circle mid-shudder draws where its pivot is, while a tree goes over beside it');
+    F.step(0.3);
+    assert(t2.state === STATE.FALLING && off(t2) < TOL && scene(), `a tree mid-fall is posed where it is going over (off ${off(t2).toExponential(1)} m)`);
+    // a tree in the wyrm's jaws, then thrown
+    FD.take(t3);
+    FD.carry(t3, t3.x + 1, 2, t3.z, 0.5, 1);
+    const carried = off(t3);
+    FD.throwTo(t3, t3.x + 8, t3.z, { time: 0.8 });
+    F.step(0.3);
+    assert(carried < TOL && t3.state === STATE.FLYING && off(t3) < TOL && scene(), `a tree carried, then thrown: posed where it is held (off ${carried.toExponential(1)} m) and where it flies (${off(t3).toExponential(1)} m)`);
+    // a crown burning down
+    FD.ignite(t4.x, t4.z, 0.3, 1);
+    F.step(t4.burnLife * 0.5);
+    assert(t4.burn > 0 && t4.dropped >= 1 && off(t4) < TOL && scene(), `a burning tree drops its crown part by part (${t4.dropped} gone), what is left where it stands`);
+    F.step(4);
+    FD.reset();
+    const back = [t1, t2, t3, t4].every((b) => b.body.visible && b.body.shown.every((x) => x === 1) && off(b) < 1e-6);
+    assert(back && fwrong() === 0 && scene(), 'restored: the trees stand whole where they stood, every rigid piece drawn where it stood, nothing joined the scene');
+  },
+
 };
 const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;
+function near0(a, b, eps = 1e-6) {
+  return near(a, b, eps);
+}
 
 const names = SCEN === 'all' ? Object.keys(S) : [SCEN];
 for (const n of names) {

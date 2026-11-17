@@ -179,6 +179,25 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.47 — The duelists' second pass: a director and a fairness guard, Shen Hui's third phase, the Lord's spells in his strings, two arenas that break (2026-11-16, `enemies/duelist-second-pass`, ADR-122)
+- [x] A director over a duelist's pick, combo links from half the recovery, chain depth and rest, the openings kept
+- [x] A cue ledger and a fairness guard: no two cues needing different answers within 0.3 s (132 before, 0 now); the `pace` meter
+- [x] Shen Hui: three phases, sixteen new blade moves, three on the floor, burning ground, a red blow in eight strings
+- [x] The Starless Lord: nineteen new moves, the wheeling blade, orbit stones, the Sky as weather, Starless Night, Rupture, the Falling Halo
+- [x] Thrown pieces show the flare only (supersedes the landing marks of ADR-109 and ADR-111)
+- [x] Both arenas break: courtyard 456 breakables, crater 222; floors whole / cracked / broken; two-stage colossi; pieces outside the scene graph
+- [x] Effects with bodies (the shock front, the Kindling, ash on the wind, afterimages, the qi, the Lord's spells, each ignition); look-only random streams
+- [x] The owner's picks of every look (2026-11-16): the authors' picks for the effects, the bodies dressed by phase, rubble on earth; the Lab's LOOKS section
+- [ ] Follow-ups:
+  - [ ] A human playtest of both fights; whether they should be longer or deadlier (posture per parry, health: untouched here)
+  - [ ] The cheese spot behind the Obsidian Throne (nothing of the Lord's reaches it)
+  - [ ] A missed blow in a long string costing most of the string; two guard cues from different sources 0.1 - 0.25 s apart
+  - [ ] The guard stepping in 1 - 4 times a minute in the Lord's fourth form (world pieces his own blows fell)
+  - [ ] Music for Shen Hui's third phase (picked by ear); sounds for the new moves and spells
+  - [ ] A joint-by-joint audit of the new poses; a palm strike for Shen Hui's free hand
+  - [ ] On the iPhone: frame rate in the Lord's fourth form with the weather and Starless Night
+  - [ ] Remove the looks that were turned down and their switches, once the picks have been played
+
 ## M1.45 — The wyrm ablaze, a forest that breaks, letters that follow the zoom (2026-11-16, `dragon/menace-and-ruin`, ADR-120)
 - [x] Every tree of Cinderwood is a breakable that wears down in stages (664 breakables on 228 bones)
 - [x] The Elder Wyrm's skeleton, the Cinder Tree and the bone nest break in pieces; bone heaps; the bonfire stays
@@ -207,7 +226,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Phase 1 and phase 3 under their cue-rate targets on some seeds; the wing sweep's misses in three strings
   - [ ] The grabbed tree read from the side; white knots in shell and fireball impacts and in the torrent breath
   - [ ] On the iPhone: frame rate in a phase-3 fight, the sky deck, the flare
-  - [ ] The same pass for the Ash Disciple and the Starless Lord
+  - [x] The same pass for the Ash Disciple and the Starless Lord (M1.47, ADR-122)
 
 ## M1.43 — The flare: red, blue and black flashes; the counter; the charged blow (2026-11-15, `combat/flash-tells`, ADR-118)
 - [x] The flare replaces the red windup glow and a boss's own red floor ring (hazards keep their ground mark)

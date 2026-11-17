@@ -463,14 +463,20 @@ const OLD_BRONZE = [0.2, 0.15, 0.07];
  * hue down the dark robe. `head`: 'hat' (a bamboo hat: the sword sect's guardians), 'hood' (a
  * cowl: the throne's wardens) or 'none' (broken off; it lies at his feet, hat and all).
  * Faces +z. ~10 m tall at s = 1.
+ * `split` (the courtyard's colossi break in two stages, 2026-11-16): returns the same parts sorted
+ * { lower (plinth, robe, belt, the sword's guard and blade), upper (chest, arms, hands, pommel, neck,
+ * head), head (the fallen head of 'none'), plinth (the plinth's two steps, cloned), cut (the height
+ * the upper half stands on, m) } instead of one list. The geometry is the same either way.
  */
-export function buildColossus(rng, x, z, yaw = 0, s = 1, { col = GREY, head = 'hat', blade = OLD_BRONZE, tall = 1.25, lo = 0.22, hi = 1.5 } = {}) {
+export function buildColossus(rng, x, z, yaw = 0, s = 1, { col = GREY, head = 'hat', blade = OLD_BRONZE, tall = 1.25, lo = 0.22, hi = 1.5, split = false } = {}) {
   const parts = [];
+  const mark = {};
   const ao = caught(lo, hi);
   const add = (g, k = 1, o = {}) => parts.push(part(g, mul(col, k), { ao, vary: 0.15, freq: 0.9, ...o }));
   // ---- the plinth: two round steps
   add(frustum(0, 0.5, 1.8, 1.8, 1.74, 1.74, 8, Math.PI / 8), 0.5);
   add(frustum(0.5, 0.45, 1.5, 1.5, 1.44, 1.44, 8, Math.PI / 8), 0.62);
+  mark.plinth = parts.length;
   const Y0 = 0.95;
   // ---- the robe: six flat folds, a corner to the front (one side takes the moon, the other does
   // not), flaring to a hem that catches the light
@@ -478,6 +484,7 @@ export function buildColossus(rng, x, z, yaw = 0, s = 1, { col = GREY, head = 'h
   add(frustum(Y0, 0.75, 1.62, 1.34, 1.18, 0.98, 6), 0.95);
   // the belt: one pale line round the waist
   add(frustum(Y0 + 3.3, 0.38, 0.95, 0.78, 0.95, 0.78, 6), 1.5);
+  mark.lower = parts.length;
   // ---- the chest: a wedge widening from the waist to the shoulders
   add(frustum(Y0 + 3.6, 1.7, 0.8, 0.6, 1.5, 0.8, 6), 0.8);
   // ---- shoulders, arms, hands
@@ -506,6 +513,7 @@ export function buildColossus(rng, x, z, yaw = 0, s = 1, { col = GREY, head = 'h
   const pommel = prep(new THREE.IcosahedronGeometry(0.28, 0));
   pommel.translate(0, SH - 0.6, SZ);
   sw(pommel, 1.6);
+  mark.pommel = parts.length;
   const guard = prep(new THREE.BoxGeometry(2.6, 0.3, 0.4));
   guard.translate(0, GY, SZ);
   sw(guard, 1.6);
@@ -529,6 +537,7 @@ export function buildColossus(rng, x, z, yaw = 0, s = 1, { col = GREY, head = 'h
     bl.translate(0, Y0 - 0.15 + L / 2, SZ);
     sw(bl, 1.5);
   }
+  mark.sword = parts.length;
   // ---- neck and head
   const NY = SH + 0.35;
   add(frustum(NY - 0.3, 0.6, 0.38, 0.36, 0.32, 0.32, 6), 0.7);
@@ -548,6 +557,7 @@ export function buildColossus(rng, x, z, yaw = 0, s = 1, { col = GREY, head = 'h
     }
     return [[h, 0.8], [hat, 0.42], [brim, 1.6]];
   };
+  mark.neck = parts.length;
   if (head === 'none') {
     // snapped at the neck: the head lies before the plinth on its side, the hat still on it
     const [hx, hz] = COLOSSUS_FALLEN_HEAD;
@@ -577,9 +587,19 @@ export function buildColossus(rng, x, z, yaw = 0, s = 1, { col = GREY, head = 'h
     parts.push(part(face, [0.008, 0.008, 0.01], { vary: 0, ao: 0.3 }));
     add(frustum(NY - 0.6, 0.8, 1.8, 1.0, 0.62, 0.52, 6), 1.0);
   }
+  mark.head = parts.length;
   // drawn taller than built: the camera looks down at 58 degrees and squashes anything upright
   for (const g of parts) g.scale(1, tall, 1);
-  return place(parts, x, z, yaw, s);
+  place(parts, x, z, yaw, s);
+  if (!split) return parts;
+  const M = mark, fallen = head === 'none';
+  return {
+    lower: [...parts.slice(0, M.lower), ...parts.slice(M.pommel, M.sword)],
+    upper: [...parts.slice(M.lower, M.pommel), ...parts.slice(M.sword, M.neck), ...(fallen ? [] : parts.slice(M.neck, M.head))],
+    head: fallen ? parts.slice(M.neck, M.head) : [],
+    plinth: parts.slice(0, M.plinth).map((g) => g.clone()),
+    cut: (Y0 + 3.6) * tall * s,
+  };
 }
 /** The plinth of a colossus in local space ([lx, lz, r]): for the set's colliders. */
 export const COLOSSUS_COLLIDERS = [[0, 0, 1.8]];
