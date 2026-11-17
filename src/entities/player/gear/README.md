@@ -57,7 +57,7 @@ gets the `base.*` item for it. Any other slot may be empty.
 | `legs` | hips, thighs, shins, feet, and what is strapped to them: hip straps, knee straps, boots, greaves, knee guards | `pelvis`, `legs.{R,L}.{thigh,shin,foot}` | `wanderer.legs` |
 | `waist` | cloth hanging from the belt line: skirt panels, tassets | `pelvis` | `wanderer.skirt` |
 | `back` | cloaks and capes | `chest`, and `arms.{R,L}.upper` for sheets draped over an arm | `shroud.cloak` |
-| `weapon` | the weapon in the right hand: blade, grip, guard, pommel, gem | `sword` | `wanderer.sword` |
+| `weapon` | the weapon in the right hand: blade, grip, guard, pommel, gem | `sword` | `wanderer.sword` (the 1.64 m longsword) |
 
 `arms` and `legs` own the limb itself (there is no skin mesh under the sleeves or the pants), so an
 item for those slots must draw the whole limb, hands and feet included. `chest` likewise owns the
@@ -201,9 +201,11 @@ any item:
   `drawnTip`), the hit segment in `combat.js` (`bladeBase`, `bladeTip`) and the sword FX in `fx.js`
   (`forte`, `drawnTip`) read the sword's numbers from `DIM`. The weapon item carries a copy of
   them in `dims` (`gripBack, guard, gem, forte, steelTip, drawnTip, bladeBase, bladeTip`) and
-  builds its own geometry from it, but nothing else reads the copy yet: a weapon of another length
-  would be drawn at its own size while it is swung, clamped and hit-tested as the longsword. The
-  poses were authored for this sword in the right hand.
+  builds its own geometry from it. The rig carries the worn weapon's numbers as `rig.weaponDims`
+  (ADR-123): the hero's animator (ground clamp, blade clearance, cloth), the sword FX and the drawn
+  contact read them, so a weapon of another length is drawn, clamped and lit at its own length; the
+  hit segment stays `DIM`'s (gameplay), and duelists' animators use `DIM`'s. The hero's own sword is
+  the 1.64 m longsword (`LONGSWORD_DIMS`).
 - **Empty slots.** `coat: []` and `streamers: []` are fine. Without a weapon the sword joint is
   still posed and attacks still hit (the hit segment is `DIM`'s); only the mesh is gone.
 
@@ -223,9 +225,9 @@ any item:
   the animator, so the pose restarts from the ready stance (equip out of combat). A per-slot swap
   (remove `rig.slots[slot]`, dispose, build that one item, re-merge) that keeps the animator and
   only rebuilds its coat / strip / streamer spring state is not built.
-- **Weapons of other sizes.** `anim.js`, `combat.js` and `fx.js` read the sword's numbers from
-  `DIM`; they should read the equipped weapon's `dims` (through the rig) instead, with `DIM` as the
-  fallback for an empty hand.
+- **Weapons of other sizes.** Done for the drawn blade (ADR-123): a weapon item's `dims` reach the
+  rig as `rig.weaponDims`, and the hero's animator, FX and drawn contact read them. Still open: the
+  hit segment stays `DIM`'s (gameplay), and every duelist's animator keeps `DIM`'s numbers.
 - **Helmets.** `hidesHair: true` on a head item leaves all the hair out (the hood). Trimming
   only part of it under an open helm is not built.
 - **Stats and inventory.** Items carry only `id`, `slot`, `name` and geometry today.

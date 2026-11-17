@@ -3645,3 +3645,64 @@ ADR-092).
   block of digits); the broken floor **"a: rubble on earth"**. The looks turned down stay behind
   their switches (`kindle`, `ashp3`, `qi`, `flit`, `burn`, `toll`, `ashLook`; `star`, `sky`,
   `ignite`, `void`, `presence`, `great`, `lordLook`; `floor`), as ADR-118's and ADR-119's did.
+
+## ADR-123 — The Wanderer of 2026-11-09 is the hero again, with his 1.64 m sword; a weapon's length is its own (2026-11-16)
+- **Context:** the owner scrapped the sword-and-shield looks built the same day (PR #65, closed) and
+  sent a screenshot of an older hero: "lets scrap everything. can you try to make the hero look liek
+  this, this is one of the older versions of the character". The early builds were rendered side by
+  side and the screenshot matched `566b452` (2026-11-09): spiky dark violet-black hair, a tall collar,
+  the open greatcoat, the spiked pauldron and plated sword arm, the half-cape, a long glowing sword.
+  The rebuilt look was shown with today's 1.12 m sword and athletic build kept (the owner had asked
+  for both since: "make the sword a little bit shorter", "he is a bit too lanky"); asked whether to
+  bring back the screenshot's long sword and slimmer build too, the owner answered "Long sword too".
+- **Decision:**
+  1. **The default is the Wanderer's set again** (`gear/index.js` `DEFAULT_LOADOUT` =
+     `WANDERER_LOADOUT`; `DEFAULT_LOOK` `wanderer`). The Shrouded set stays as the outfit option
+     `shroud` (`SHROUD_LOADOUT`). The motions, the rules and every number of the fight are today's.
+  2. **The hair is 566b452's dark violet-black** with pale lavender edges (`HERO_INK.hair`, `hairTip`
+     and the `hair` material: that build's exact values). It was gold since Session 14 (ADR-049).
+  3. **The free hand is the shared one.** The Wanderer's arms ended in a rigid glove on the forearm;
+     they call `buildFreeHand(ctx, M.pants)` now, so the sword fingers, the wrist and the fist on the
+     grip (ADR-086) work with this outfit.
+  4. **The longsword: 1.64 m again** (`wanderer.sword`, `LONGSWORD_DIMS`: `drawnTip` 1.45, `steelTip`
+     1.56). The blade is the sculpt's own 1.45 m profile (`hero_parts.py` builds `bladeLong.*` beside
+     the short `blade.*`; the short one stays for the moon looks). The hit segment (`bladeBase` …
+     `bladeTip` 1.5 + 0.4) is gameplay and is unchanged: every reach, timing and damage is the same.
+  5. **A weapon's length is its own.** `buildHero` returns `rig.weaponDims` (the weapon item's `dims`
+     over `DIM`'s). The hero's animator clamps the point off the grass, keeps the blade out of his
+     legs and lays the cloth against the steel with it (`HeroAnimator.wd`); the edge glint and flash,
+     the halo and the drawn contact read it too, stretching their profiles along the longer blade
+     (`fx.js` `bladeStretch`). Every duelist keeps `DIM`'s (their blades were posed with it).
+  6. **At ease with a long blade** (`stances.js` `EASE_LONG`, blended in by the blade's length): the
+     hand a little forward, the blade flatter (29° down instead of 55°) and on the forearm's line, its
+     point 15 cm above the grass, the flat turned to stay broad to the camera. Hung at 55° the long
+     point went into the grass and the clamp bent it 25° off the forearm.
+  7. **The half-cape keeps out of the grass:** `floor` (its ends over the grass in a roll or a fall),
+     a little heavier (`lag` 0.7, `max` 1.6), pushed out of the grass at 30 rad/s (a streamer's own
+     `push`), and its three back sheets 8-13 cm shorter (0.84-0.87 m): through a forward roll the
+     1.0 m sheet lay 18 cm into the grass whatever way it swung.
+- **Also fixed in the tests** (each was hiding or faking a result): the integration harness seeds
+  `Math.random` again once the scene is built (three.js draws a uuid from it for every object, so a
+  different hero moved every roll of the fight after it); PRESSURE seeds each phase before its setup's
+  0.9 s of AI, not after; TIMING gives every placement the same random start; HEROARMS and HEROSTANCE
+  measure the wrist on the body the animator posed (they meant to, but the player turns the drawn
+  lean back on after every step, and through the shear the angle swung 10-40° with his facing); the
+  hero's tests measure his own blade (`rig.weaponDims`); `lord.mjs` and `duel.mjs` seed the stream
+  after their build the same way.
+- **Also fixed in the duelists' fairness guard** (found by the reseeded stream, a gap in ADR-122's
+  guard): a falling piece of the world warned after the Lord's Void Push was cued but before the wall
+  was thrown; `_worldCue` had nothing in flight to ground, and the two cues came 0.3 s apart needing a
+  guard and a roll (seed 4242, form 4). A crescent about to give its cue now asks `brain.giveWay`: if a
+  cue already given (or an impact that cannot move) from another attack needs the other answer within
+  `sep + margin` of its arrival, it fizzles uncued, as one already in flight would have.
+- **Why:** the owner chose the look from a screenshot of the game, so the closest match is that
+  build's own outfit, hair and sword, on today's skeleton and motions. Reading the blade's length
+  from the weapon (the README's "next step" since ADR-042) was the only way to a longer sword that
+  neither digs into the grass nor moves any boss.
+- **Rejected:** the slimmer build of 566b452 (the owner answered for the sword only; the athletic
+  build of ADR-040 stays, and the outfit's parts are fitted to it); a longer `DIM.steelTip` for
+  everyone (the duelists' poses would change); stretching today's blade mesh (its letters stretch).
+- **Consequences:** today's hero costs more: about 29k triangles in 23 draws (the Shrouded set: 26.6k
+  in 19). The drawn point reaches 1.45 m, near the gameplay reach's 1.5. The LOOKS test treats the
+  two former defaults as originals and the options made for a pick as new. Not judged in play or on
+  the phone; the owner's look at the preview is the check.

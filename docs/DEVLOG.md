@@ -5,6 +5,41 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-16 — Session 63: the Wanderer of November 9 again, his long sword included
+
+**Owner:** after the sword-and-shield looks (PR #65), "lets scrap everything. can you try to make the
+hero look liek this, this is one of the older versions of the character", with a screenshot. Then,
+shown the rebuild with today's sword: "Long sword too". Branch `player/old-wanderer` from `main` (627917b),
+`main` merged in after #64. ADR-123 / Session 63 / M1.48. PR #65 closed, its branch deleted.
+
+**Finding the build:** six early builds extracted with `git archive` and rendered side by side
+(turnaround, game camera, phone camera): the screenshot is `566b452`, 2026-11-09.
+
+**What changed:** the default outfit is the Wanderer's set again (the Shrouded set is the option
+`shroud`); the hair is that build's dark violet-black; the Wanderer's arms end in the shared free hand;
+the sword is 1.64 m again (`wanderer.sword`, Blender's `bladeLong.*`) and the hero's animator, FX and
+drawn contact read its length from `rig.weaponDims`; at ease the long blade is held flatter and on the
+forearm's line (`EASE_LONG`); the half-cape keeps out of the grass (floor, push, 8-13 cm shorter).
+
+**Tests:** the scenarios written for the Shrouded set as the default now test the Wanderer and keep
+the Shrouded set as an option that still builds. Four test fixes that were hiding or faking results
+(ADR-123: the seeded stream after the build, PRESSURE's seeding, TIMING's per-placement start, the
+wrist measured on the posed body). The furnaceMaw bite flash was found late by the same fragile check
+that #64 fixed (impact 0.118); `main`'s value kept. `lord.mjs` and `duel.mjs` seed their stream after
+the build too; on the new stream the Lord's PACE found a real gap in #64's fairness guard (a falling
+piece warned between his push's cue and its throw, the two cues 0.3 s apart): a crescent about to cue
+now gives way to a cue already given that needs the other answer (`brain.giveWay`).
+
+**Verification:** `npm test` and `npm run build` green on the merged branch. Rendered: the old build,
+the rebuild and today at the same cameras; a 20 s clip from behind and from the front (walk, guard,
+parry, the chain, the five heavies, the charge, a roll) sent to the owner with the preview link.
+
+**Open / next:** the owner's look in play and on the phone; the slimmer build of 566b452 if wanted
+(the outfit's parts would be refitted in Blender); the long blade beyond 0.95 m is not in the cloth's
+collision spheres (`COL_BLADE`).
+
+---
+
 ## 2026-11-16 — Session 62: the duelists' second pass (planned by the lead, built by Opus agents)
 
 **Owner:** the request made for all boss fights ("more harder, more epic, more crazy combos and

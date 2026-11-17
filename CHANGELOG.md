@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-one pieces of work since 0.4.0:
+Fifty-two pieces of work since 0.4.0:
+- **The hero looks like the Wanderer of November 9 again, his long sword included** (2026-11-16, ADR-123). *Changed:* the hero
+  wears the outfit of 2026-11-09 again, by the owner's wish: spiky dark hair, a tall collar, the open
+  greatcoat, the spiked pauldron and plated sword arm, the half-cape. His sword is 1.64 m again, held
+  flatter at ease so its point stays off the grass. How far a blow reaches, its timing and its damage
+  are unchanged. The hooded look stays as an option (`?heroLook=shroud`). *Fixed:* the cape's ends no
+  longer sink into the grass in a roll or when he lies dead. The Starless Lord's Void Push no longer
+  reaches you a moment after a falling pillar has called for a roll: it fizzles instead.
 - **The Ash Disciple and the Starless Lord fight harder, in arenas that break** (2026-11-16, ADR-122). *Changed:* both human bosses give far fewer pauses and
   their moves flow into each other, at the same damage per hit: against a hero who only defends,
   Shen Hui gives about 78 / 92 / 99 tells a minute by phase (60 / 76 before, in two

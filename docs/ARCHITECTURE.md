@@ -886,14 +886,16 @@ four entries (the streamer springs and the `herolook` test).
 **Gear slots** (ADR-042, `player/gear/`, contract in `gear/README.md`): `model.js` builds the
 skeleton and the body (neck, head, face, hair, the flask); everything worn or held is an item
 `{ id, slot, name, build(ctx) }` in one of `SLOTS` = head, chest, shoulders, arms, legs, waist, back,
-weapon. `DEFAULT_LOADOUT` is the Shrouded set (ADR-043: `shroud.hood`, `shroud.tunic`,
-`shroud.arms`, `shroud.cloak` over `wanderer.legs`, `wanderer.skirt`, `wanderer.sword`; no shoulder
-item); `WANDERER_LOADOUT` is the outfit before it. A head item may keep only part of the hair:
+weapon. `DEFAULT_LOADOUT` is `WANDERER_LOADOUT`, the Wanderer's set (ADR-123: the look of
+2026-11-09 again: no head item, `wanderer.coat`, `wanderer.pauldron`, `wanderer.arms`, `wanderer.legs`,
+`wanderer.skirt`, `wanderer.cape`, `wanderer.sword`); `SHROUD_LOADOUT` is the Shrouded set, the default
+from ADR-043 to ADR-123 (`shroud.hood`, `shroud.tunic`, `shroud.arms`, `shroud.cloak` over the
+Wanderer's legs, skirt and sword). A head item may keep only part of the hair:
 `hair: [...]` lists the pieces built under it (`'cap'` and `HAIR_CLUSTERS` names; the hood keeps
 only the cap and builds its own gold strands, `HOOD_HAIR` in `gear/shroud.js`: a spiky fringe, cheek
 locks and a strand a side onto the collarbone), `hidesHair: true` builds none; the five hair joints
 stay either way. `shadowsFace: true` on a head item (the hood, ADR-056) builds the face, ears and neck
-in the shirt's near-black and leaves the eyes out. The hair is gold (ADR-049). `buildHero(U, loadout = DEFAULT_LOADOUT)`
+in the shirt's near-black and leaves the eyes out. The hair is dark violet-black (ADR-123; gold from ADR-049 to it). `buildHero(U, loadout = DEFAULT_LOADOUT)`
 builds each slot's item (an empty chest / arms /
 legs slot gets the `base.*` undersuit), merges static meshes per joint + material + slot, and
 returns the usual rig plus `rig.loadout` (slot → id or null) and `rig.slots` (slot → the objects it
@@ -923,12 +925,23 @@ the Starless Lord's body: STYLE.md "The look switches"): `player/gear/looks.js` 
 "Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`; each of the
 three also as `<id>-shade`, "<look> (shaded)": the same loadout and tint with the head item's
 `shadowsFace` twin, `of` = the lit look's id, so the owner picks the face from renders), `LOOK_IDS`,
-`DEFAULT_LOOK`, `getLook(id)`, `heroLookFromSearch(search)`, `heroLookUrl(id, href)`. The Player wears
+`DEFAULT_LOOK`, `getLook(id)`, `heroLookFromSearch(search)`, `heroLookUrl(id, href)`. Since ADR-123 the
+default look is `wanderer` "Wanderer" (`DEFAULT_LOADOUT`) and `shroud` is "Shrouded (2026-11-11)"
+(`SHROUD_LOADOUT`), first among the options. The Player wears
 `game.heroLook` (`player.look`; unknown or absent: the default) and tints its rig with the look's
 `tint`; `player.setLook(id)` wears another one live (its loadout with the equipped weapon kept, through
 `setLoadout`; throws on an unknown id and changes nothing), and every later `setLoadout` keeps the
-look's tint. Nothing in `gear/` imports `looks.js`. Limits: the animator, `combat.js` and `fx.js` read the sword's
-numbers from `DIM`, not from the weapon item's `dims`; `IDLE_FLARE` has six per-panel values (unless
+look's tint. Nothing in `gear/` imports `looks.js`. **A weapon's numbers** (ADR-123): `buildHero`
+returns `rig.weaponDims` (`gripBack, guard, gem, forte, steelTip, drawnTip, bladeBase, bladeTip`: the
+weapon item's `dims` over `DIM`'s). The hero's animator reads `steelTip`, `forte` and `drawnTip` there
+(`HeroAnimator.wd`: the tip floor, the blade clearance, the cloth's blade points; `DIM` for every
+duelist), and so do `fx.js` (the edge glint and flash, `bladeStretch(wd)` stretching `EDGE_GLINT`'s
+profile along a longer blade, the halo) and `player._edgeFlash`; the hit segment (`combat.js`) is
+gameplay and stays `DIM`'s. The hero's `wanderer.sword` is the 1.64 m longsword (`LONGSWORD_DIMS`:
+`drawnTip` 1.45, `steelTip` 1.56; the sculpted `bladeLong.*`); `SWORD_DIMS` is `DIM`'s (the moon
+looks). `stances.js` `EASE_LONG` is the at-ease hold for a long blade, blended in by its length. A
+streamer may carry `push` (rad/s: how fast the grass pushes its lagging end out; the half-cape: 30).
+Limits: `IDLE_FLARE` has six per-panel values (unless
 a panel overrides it with `idleFlare`); the pauldron joint is the right shoulder only.
 **The sword looks** (for the owner's pick, 2026-11-14;
 `gear/moonblade.js`): weapon items `moon.sheet`, `moon.ribbon`, `moon.crescent` (the longsword's
@@ -2845,8 +2858,13 @@ a subclass with a few hooks.
     CALLS lands at least `guard.sep + margin` from every known impact needing the other answer (the running
     move's beats included): 0 now is clear, -1 nothing up to `max` clears it (do not call it). Count a
     delay with `stats.delays++`.
+  - `giveWay(timeFromNow, tell, source = '')` → bool: a thing of his in flight about to give its cue asks
+    it; true when a cue already given (or an impact that cannot move) from another attack needs the other
+    answer within `guard.sep + margin` of its arrival, and then it fizzles uncued (`stats.fizzles`). The
+    crescents ask it (`duelist/fx.js`): a falling piece warned after his push was cued but before it was
+    thrown found nothing in flight for `_worldCue` to ground.
   - `stats` `{ picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors,
-    seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled', what, with }`
+    seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled' | 'fizzled', what, with }`
     (what the guard stepped in for; `ABYSS_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
   - Internals the tests and the Lab read: `_announce` / `_tellRisk` (a blow at risk keeps its
     `combat:tell` until the guard clears it at its cue, then tell and flash go out together; a blow that
