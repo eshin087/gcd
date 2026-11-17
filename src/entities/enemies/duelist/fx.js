@@ -1888,6 +1888,14 @@ export class DuelFx {
       if (across < half && along > 0 && c.flashed < 0) {
         const tti = (along - reach) / speed;
         if (tti <= perPhase(T.flashLead, d.phase)) {
+          // (the fairness guard: a cue given since it was thrown that needs the other answer too
+          // near its arrival, a falling piece of the world: it gives way uncued, brain.giveWay)
+          if (d.brain?.giveWay?.(tti, c.tell, c.attack)) {
+            c.done = true;
+            this._fizzle(c);
+            c.alive = false;
+            continue;
+          }
           c.flashed = c.age;
           const fy = 0.7;
           d.emit('combat:flash', { source: 'dragon', attack: c.attack, tell: c.tell, x: c.x, y: fy, z: c.z });

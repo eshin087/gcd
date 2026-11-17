@@ -26,6 +26,10 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //       (>= pressure.guard.sep + margin s) of every known impact needing the other answer, the
 //       running move's beats included: 0 = now is clear, -1 = no wait up to `max` clears it (call it
 //       later or not at all). Count a delay you made with brain.stats.delays++.
+//   brain.giveWay(timeFromNow, tell, source) → bool
+//       For a thing of his in flight about to give its cue: true when a cue already given (or an
+//       impact that cannot move) from another attack needs the other answer too near its arrival;
+//       then it fizzles uncued (counted in stats.fizzles). The crescents ask it (duelist/fx.js).
 //   brain.stats  { picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors, seeks }
 //       picks: AI picks · links: moves started from a LINKS entry · chains: moves started by the old
 //       flow roll (`chain`) · cuts: of those, started before the recovery's end (`cut`) · rests:
@@ -33,7 +37,7 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //       the cock by the fairness guard (s in all) · feints: blows it could not clear by a hold, not
 //       thrown (a feint: no glint, no hit) · toldFeints: of those, ones whose combat:tell had gone out (a
 //       blow at risk is announced only once the guard clears it at its cue: _tellRisk) · delays: called strikes / torn stones moved later (or faded) ·
-//       fizzles: things in flight that gave way to a falling piece of the world · floors:
+//       fizzles: things in flight that gave way to a falling piece of the world (giveWay) · floors:
 //       picks a floor forced · seeks: footwork sent to another range for an absent category.
 //   brain.ledger  the CueLedger (ledger.js): conflict / clearShift / pending queries.
 //
@@ -326,6 +330,21 @@ export class DuelBrain {
     const sh = L.clearShift(L.now + timeFromNow, answerOf(tell), (G.sep ?? 0.3) + (G.margin ?? 0), max);
     if (sh < 0 && max > 0) this._note('uncalled', source || this.act?.name || '?');
     return sh;
+  }
+
+  /** A thing of his in flight about to give its cue, landing `timeFromNow` s from now: true when a
+   *  cue already given (or an impact that cannot move) from another attack needs the other answer
+   *  within sep + margin of it. Then it gives way (fizzles uncued), as _worldCue makes one in flight
+   *  give way. (A falling piece of the world warned after his push was cued and before it was
+   *  thrown: _worldCue had nothing in flight to see; the flashes came 0.3 s apart, seed 4242 form 4.) */
+  giveWay(timeFromNow, tell, source = '') {
+    const G = this.P?.guard;
+    if (!G || !Number.isFinite(timeFromNow)) return false;
+    const L = this.ledger;
+    if (!L.conflict(L.now + Math.max(0, timeFromNow), answerOf(tell), (G.sep ?? 0.3) + (G.margin ?? 0), true, true) || L.hit === source) return false;
+    this.stats.fizzles++;
+    this._note('fizzled', source || '?');
+    return true;
   }
 
   /** The guard's diary: what it would not let through, and the impact it collided with (a ring of

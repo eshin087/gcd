@@ -217,6 +217,10 @@ function build(opt = SEED) {
     if (![d.position.x, d.position.y, d.position.z, d.hp, d.yaw, d.posture, d.maxPosture].every(Number.isFinite)) throw new Error('disciple NaN');
     for (const h of d.hurtSpheres) if (![h.x, h.y, h.z, h.r].every(Number.isFinite)) throw new Error('hurtSphere NaN');
   };
+  // the seeded stream starts again once everything is built: three.js draws a uuid from Math.random
+  // for every object it makes, so how many the build made (the hero's outfit, his sword) moved every
+  // roll of the fight after it (ADR-123; integ.mjs build() too)
+  Math.random = mulberry32(seed + 1);
   return G;
 }
 

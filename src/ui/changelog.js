@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-16',
+        title: 'The hero looks like the Wanderer of November 9 again, his long sword included',
+        notes: [
+          'The hero wears the outfit of November 9 again: spiky dark hair, a tall collar, the open greatcoat, the spiked shoulder and the half-cape.',
+          'His sword is long again (1.64 m). Its reach, timing and damage are the same as before.',
+          'The hooded look is still there as an option.',
+        ],
+      },
+      {
+        date: '2026-11-16',
         title: 'The Ash Disciple and the Starless Lord fight harder, in arenas that break',
         notes: [
           'Both human bosses give far fewer pauses and chain their moves by where you stand, busier in every phase. Each hit hurts as much as before, and two attacks that need different answers never land at the same moment.',
