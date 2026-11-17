@@ -458,14 +458,14 @@ async function scenarioLevel() {
     const heads = LORD_ITEMS.filter((it) => it.slot === 'head');
     assert(heads.length === 1 && heads[0].id === 'lord.hood' && heads[0].hidesHair && heads[0].shadowsFace && LORD_LOADOUT.head === 'lord.hood', `one head item: ${heads.map((h) => `${h.id} "${h.name}"`).join(', ')}`);
   }
-  // the hero's outfit switch (gear/looks.js) rebuilds his rig, which rewrites the shared per-part ink:
+  // a rebuild of the hero's rig (player.setLoadout: a gear change) rewrites the shared per-part ink:
   // the Lord's red part-19 line (his blades) is put back
   {
     const U = G.game.U, pl = G.game.player, snap = () => ['uHeroPartInk', 'uHeroPartFill', 'uHeroPartRim'].map((k) => U[k].value[19].toArray().join());
-    const s0 = snap();
-    pl.setLook('robe');
-    pl.setLook('shroud');
-    assert(snap().join('|') === s0.join('|') && U.uHeroPartInk.value[19].x > 1.5 && pl.look === 'shroud', "a hero outfit switch keeps the Lord's red part-19 line");
+    const s0 = snap(), lo = { ...pl.loadout };
+    pl.equip('offhand', null);
+    pl.setLoadout(lo);
+    assert(snap().join('|') === s0.join('|') && U.uHeroPartInk.value[19].x > 1.5 && pl.loadout.offhand === lo.offhand, "a rebuild of the hero's rig keeps the Lord's red part-19 line");
   }
   bad = 0;
   d.object3d.traverse((m) => { const pos = m.geometry?.attributes?.position; if (pos) for (const v of pos.array) if (!Number.isFinite(v)) bad++; });

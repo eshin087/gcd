@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { ellipsoidGeometry, limbGeometry } from '../../../render/glyphGeometry.js';
-import { registerItem, getItem } from '../../player/gear/index.js';
+import { registerItem } from '../../player/gear/index.js';
 import {
   gridGeometry, shellGeometry, skirtSheet, arcPlate, boxGeometry, bandGeometry, kiteGeometry, mergeGeometries, sub, foldLines, spike, wedge,
   limb, gripFist, looseHand, lerp, sheetOffset, sheetEdge, ring,
 } from '../../player/heroGeo.js';
 import { toDragonLook } from '../ashDisciple/bodyArt.js';
 import { LORD_ART } from './bodyArt.js';
+import { buildArmouredBoots } from './boots.js';
 import { lordLookNow, dressHood, dressPlate, dressCape } from './look.js';
 
 // The Starless Lord's outfit: gear items on the hero's skeleton, so he is built by the same
@@ -311,10 +312,10 @@ function buildArms({ arms, sword, M, DIM, BODY, mesh }) {
 }
 
 // ---------------------------------------------------------------- legs: the Wanderer's boots under thigh plates
-/** The armoured boots, knee guards and greaves are the Wanderer's (gear/wanderer.js); over each
- *  thigh a cuisse of two lames. */
+/** The armoured boots, knee guards and greaves are the old Wanderer's (boots.js); over each thigh
+ *  a cuisse of two lames. */
 function buildLegs(ctx) {
-  const out = getItem('wanderer.legs').build(ctx);
+  const out = buildArmouredBoots(ctx);
   const { legs, M, DIM, BODY, mesh } = ctx;
   const [th0, th1] = BODY.thigh;
   for (const side of [-1, 1]) {
@@ -335,7 +336,7 @@ function buildLegs(ctx) {
 // ---------------------------------------------------------------- waist: hip plates over a war-skirt
 /** The war-skirt, on the coat springs (anim.js _coat): two narrow lappets in front (his legs show
  *  between and beside them), a panel at each side, two long tails behind; the same fields and the
- *  same order as the Wanderer's COAT_PANELS (gear/wanderer.js). */
+ *  same order as the old Wanderer's coat panels (anim.js reads a waist item's `coat` handles). */
 export const LORD_PANELS = [
   { az: 0.5, w: [0.11, 0.135, 0.16], len: [0.29, 0.3], strips: [], fork: [], out: 0.006, flare: 0.07, skew: 0.5 }, // front-left
   { az: -0.5, w: [0.11, 0.135, 0.16], len: [0.29, 0.3], strips: [], fork: [], out: 0.006, flare: 0.07, skew: -0.5 }, // front-right

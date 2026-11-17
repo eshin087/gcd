@@ -539,3 +539,75 @@ export function looseHand(len, side, k = 1) {
   const thumb = sub(place(ellipsoidGeometry(0.0115 * k, 0.028 * k, 0.0125 * k, { widthSegs: 6, heightSegs: 5 }), inX * 0.01 * k, -len - 0.05 * k, 0.047 * k, 0.35, 0, inX * 0.2), 1);
   return { palm, fingers: mergeGeometries(fingers), tips: mergeGeometries(tips), thumb };
 }
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+/** Piecewise-linear lookup in [[z, v], ...] (held flat past the ends). */
+function poly(pts, z) {
+  if (z <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (z <= pts[i][0]) {
+      const [z0, v0] = pts[i - 1], [z1, v1] = pts[i];
+      return z1 > z0 ? v0 + ((v1 - v0) * (z - z0)) / (z1 - z0) : v1;
+    }
+  }
+  return pts[pts.length - 1][1];
+}
+
+/**
+ * A blade built in code from a profile, as three geometries { forte, core, edge } (sword space, the
+ * blade along +Z, its width on X, the flats facing ±Y), up to the weapon's drawn point `tip` with
+ * its forte ending at `forteZ` (the weapon item's dims: drawnTip, forte). `spec`: { profile: [[z,
+ * half width], ...], notches: [[z, side], ...], notch: { depth, lead, len }, ridge (m proud of the
+ * flats), core (the dark flats' share of the half width) }. Across each half, fr 0 = the ridge …
+ * 0.5 = where the dark core ends … 1 = the cutting edge. aGUV = (x, z); the two halves carry ink
+ * sub-ids 0 / 1 (the ridge prints as a line). Each grid computes its own normals (hard facets).
+ * (Was gear/moonblade.js, a JS port of hero_parts.py build_blade.)
+ */
+export function bladeGeometry(spec, tip, forteZ) {
+  const P = spec.profile, N = spec.notch;
+  const z0 = P[0][0];
+  const hw0 = (z) => poly(P, z);
+  const hw = (z, side) => {
+    let w = hw0(z);
+    for (const [zn, s] of spec.notches) {
+      if (s !== side || z <= zn || z >= zn + N.len) continue;
+      const t = z < zn + N.lead ? (z - zn) / N.lead : 1 - (z - zn - N.lead) / (N.len - N.lead);
+      w -= N.depth * clamp01(t);
+    }
+    return Math.max(0, w);
+  };
+  const pt = (fr, z, top, side, o) => {
+    const h = hw(z, side);
+    const th = spec.ridge * Math.pow(clamp01((tip - z) / 0.2), 0.7);
+    const inner = Math.min(h, hw0(z)) * spec.core * clamp01((tip - z) / 0.12);
+    const x = fr <= 0.5 ? lerp(0, inner, fr / 0.5) : lerp(inner, h, (fr - 0.5) / 0.5);
+    const y = h > 1e-6 ? th * (1 - x / h) : 0;
+    o[0] = side * x;
+    o[1] = top ? y : -y;
+    o[2] = z;
+    o[3] = side * x;
+    o[4] = z;
+  };
+  // rows: the profile's and the notches' heights, the point, every 0.04 m over its last 0.2 m
+  const uniq = (zs) => [...new Set(zs.map((z) => Math.round(z * 1e6) / 1e6))].sort((a, b) => a - b);
+  const Z = uniq([
+    ...P.map(([z]) => z).filter((z) => z >= forteZ && z <= tip),
+    ...spec.notches.flatMap(([zn]) => [zn, zn + N.lead, zn + N.len]),
+    forteZ, tip,
+    ...Array.from({ length: 6 }, (_, i) => tip - 0.2 + i * 0.04),
+  ]).filter((z) => z >= forteZ && z <= tip);
+  const Zf = uniq([...P.map(([z]) => z).filter((z) => z >= z0 && z <= forteZ), z0, forteZ]);
+  const row = (rows, t) => rows[Math.round(t * (rows.length - 1))];
+  const forte = [], core = [], edge = [];
+  for (const side of [-1, 1]) {
+    const k0 = side < 0 ? 0 : 1, k1 = 1 - k0;
+    // the forte: plain halves, the ridge (top) → the edge → the ridge (bottom)
+    forte.push(sub(gridGeometry(2, Zf.length - 1, (u, t, o) => pt(1 - Math.abs(2 * u - 1), row(Zf, t), u < 0.5, side, o), side > 0), k0));
+    // the steel: a dark core either side of the ridge (top and bottom faces) …
+    core.push(sub(gridGeometry(1, Z.length - 1, (u, t, o) => pt(0.5 * u, row(Z, t), true, side, o), side > 0), k0));
+    core.push(sub(gridGeometry(1, Z.length - 1, (u, t, o) => pt(0.5 * u, row(Z, t), false, side, o), side < 0), k0));
+    // … and a bright band out to the edge
+    edge.push(sub(gridGeometry(2, Z.length - 1, (u, t, o) => pt(1 - 0.5 * Math.abs(2 * u - 1), row(Z, t), u < 0.5, side, o), side > 0), k1));
+  }
+  return { forte: mergeGeometries(forte), core: mergeGeometries(core), edge: mergeGeometries(edge) };
+}

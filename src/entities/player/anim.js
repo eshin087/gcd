@@ -3,6 +3,7 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
+import { shieldRest, shieldStand, shieldRun, shieldBlock, shieldParry, shieldLock, shieldCharge, SHIELD_ARM } from './shieldPoses.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -334,6 +335,8 @@ export function guard(p, A) {
   v3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2]);
   p[P.hs] = 1;
   p[P.lk] = 0;
+  // sword and shield (shieldPoses.js): the free arm carries the shield, in every clip written over this
+  if (A.shield) shieldRest(p, P);
 }
 
 const SCR_FIGHT = new Float32Array(N);
@@ -362,6 +365,7 @@ export function stand(p, A) {
     to3(p, P.lD, REST_LD[0], REST_LD[1], REST_LD[2], mv);
     to3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2], mv);
   }
+  if (A.shield) shieldStand(p, P, A, f);
 }
 
 /** The hero's blade (and, `arm`, the sword hand and its elbow) leaves where it was as this clip
@@ -558,7 +562,9 @@ export function loco(p, A) {
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (the run's back swing reaches further down and back, so the elbow opens behind him and folds as
   // the hand comes forward: it was one rigid 87° crook swinging from the shoulder)
-  if (hero) {
+  if (A.shield) {
+    shieldRun(p, P, A, k, w, s);
+  } else if (hero) {
     to3(p, P.lH, lerp(0.0, -0.06, s) * k + 0.07 * (1 - k), lerp(lerp(-0.485, -0.3, k), lerp(-0.4, -0.04, k), s), lerp(lerp(-0.17, 0.24, k), lerp(-0.18, 0.32, k), s), w);
     to3(p, P.lP, lerp(0.36, 0.42, s), -0.5, -0.8, w);
   } else {
@@ -694,19 +700,36 @@ const SW_LEAD_FADE = 18; // 1/s: a held light's hips settle back out of their le
 const SW_HIPS = new Set([P.bodyX, P.bodyY, P.bodyZ, P.pelvY, P.pelvX, P.pelvZ]);
 const SW_CHEST = new Set([P.spX, P.spY, P.spZ]);
 const SW_CACHE = new Map();
+// a key's fields left out of a clip compiled for a shield (swingClip): always, and (ALL) when the
+// clip has shield-arm keys of its own
+const SHIELD_DROP = ['two', 'offAt', 'lk'];
+const SHIELD_DROP_ALL = [...SHIELD_DROP, 'l', 'lp', 'ld', 'lw', 'pn', 'hs', 'fh'];
 const SW_V = new Float32Array(6);
 const SW_UP = [0, 1, 0];
 const SW_PICK = new Uint8Array(8); // _pickVariant: the looks it may choose from
 
 /** Compile a swings.js clip into tracks (slot 0 of each = the entry pose, filled at play time). */
-function swingClip(name) {
-  let C = SW_CACHE.get(name);
+function swingClip(name, shield = false) {
+  const ck = shield ? `${name}|shield` : name;
+  let C = SW_CACHE.get(ck);
   if (C !== undefined) return C;
   const def = SWINGS[name];
   C = null;
   if (def && Array.isArray(def.keys)) {
     // (a key's free-hand preset, swings.js FH `fh: 'aim'`, lies under the key's own fields)
-    const keys = def.keys.filter((k) => k && Number.isFinite(k.u) && k.u > 0).map((k) => (k.fh && FH[k.fh] ? { ...FH[k.fh], ...k } : k)).sort((a, b) => a.u - b.u);
+    let keys = def.keys.filter((k) => k && Number.isFinite(k.u) && k.u > 0).map((k) => (k.fh && FH[k.fh] ? { ...FH[k.fh], ...k } : k));
+    if (shield) {
+      // sword and shield (shieldPoses.js): no hand joins the grip or rests on the sword wrist; a clip
+      // with shield-arm keys of its own (SHIELD_ARM: the clips that were two-handed, and the cuts
+      // whose coil lies where the shield hangs) takes those in place of its free hand's
+      const own = SHIELD_ARM[name] ?? null;
+      keys = keys.map((k) => {
+        const o = { ...k };
+        for (const f of own ? SHIELD_DROP_ALL : SHIELD_DROP) delete o[f];
+        return o;
+      }).concat(own ?? []);
+    }
+    keys.sort((a, b) => a.u - b.u);
     const track = (ch, n, get) => {
       const ks = keys.filter((k) => get(k) != null);
       if (!ks.length) return null;
@@ -776,7 +799,7 @@ function swingClip(name) {
       if (T.ch === P.bodyX) T.Vk = T.V.slice(); // the keyed values, mirrored per swing (swingPose)
     }
   }
-  SW_CACHE.set(name, C);
+  SW_CACHE.set(ck, C);
   return C;
 }
 
@@ -898,7 +921,7 @@ function swingPhase(t, W, Ac, R) {
 
 /** A swings.js clip at attack time t (windup W, active Ac, recovery R). */
 function swingPose(p, A, k, t, W, Ac, R) {
-  const C = swingClip(k.clip);
+  const C = swingClip(k.clip, A.shield === true);
   const act = clamp((t - W) / Ac, 0, 1), lunge = t < W ? 0 : act * act * (3 - 2 * act);
   stance(p, A, lunge);
   if (!C) return;
@@ -1500,6 +1523,7 @@ function chargePose(p, A) {
   p[P.twoHand] = smoothstep(0.1, 0.7, s);
   v3(p, P.lP, 0.8, -0.45, 0.35);
   p[P.hs] = 0; // an open hand to the grip
+  if (A.shield) shieldCharge(p, P, A, k, s);
   if (k >= 0.999) {
     const q = Math.sin(A.time * 47) * 0.012;
     p[P.bodyX] += q;
@@ -1561,6 +1585,18 @@ function blockPose(p, A) {
   p[P.lFy] = lerp(E[7], 0.1, fw);
   p[P.footFlat] = 0.92;
   const r = A.recoil;
+  if (A.shield) {
+    // sword and shield: the shield is the guard, the sword cocked behind it (shieldPoses.js)
+    if (r > 0.001) {
+      p[P.spX] -= 0.2 * r;
+      p[P.hdX] -= 0.12 * r;
+      p[P.bodyZ] -= 0.06 * r;
+      p[P.bodyY] -= 0.03 * r;
+    }
+    shieldBlock(p, P, A, r);
+    walkLegs(p, A);
+    return;
+  }
   if (r > 0.001) {
     p[P.spX] -= 0.28 * r;
     p[P.hdX] -= 0.15 * r;
@@ -2213,6 +2249,10 @@ function plungePose(p, A) {
  *  parry's own hit-stop, the freeze-frame showed the guard it started from and no contact.) */
 function deflectPose(p, A) {
   blockPose(p, A);
+  if (A.shield) {
+    shieldParry(p, P, A, A.player?.deflect, A.t);
+    return;
+  }
   const t = A.t, D = A.player?.deflect;
   const n = fin(D?.n, 1), side = D?.side < 0 ? -1 : 1;
   const f = 1 - smoothstep(0.07, 0.2, t);
@@ -2302,6 +2342,7 @@ function lockPose(p, A) {
   p[P.pelvY] = -0.2;
   p[P.hdX] = -0.12;
   p[P.hdY] = 0.2;
+  if (A.shield) shieldLock(p, P, A, r);
 }
 
 /** Bounced: his strike thrown back off a guard that deflected it (player.js onGuarded): the sword
@@ -2472,6 +2513,7 @@ function fidgetInspect(p, A, u, e) {
   const d = lerp(0.14, 0.7, smoothstep(0.36, 0.68, u));
   const lx = p[P.swD], ly = p[P.swD + 1], lz = p[P.swD + 2];
   const ll = Math.hypot(lx, ly, lz) || 1;
+  if (A.shield) return; // (the shield arm keeps its carry: no hand to run along the flat)
   to3(p, P.lH, p[P.rH] + (lx / ll) * d + LEFT_FROM_RIGHT, p[P.rH + 1] + (ly / ll) * d + 0.035, p[P.rH + 2] + (lz / ll) * d, wipe * e);
   to3(p, P.lP, 0.6, -0.7, -0.3, wipe * e);
   // the sword fingers trace the flat: along the blade, the palm on the steel
@@ -2512,9 +2554,11 @@ function fidgetLean(p, A, u, e) {
   to3(p, P.rP, -0.75, -0.5, -0.35, e);
   dirTo(p, P.swD, -0.06, -0.99, 0.12, e);
   to3(p, P.swF, 0, 0.1, 1, e);
-  to3(p, P.lH, 0.08 + LEFT_FROM_RIGHT + 0.02, -0.18, 0.33, e);
-  to3(p, P.lP, 0.75, -0.5, -0.35, e);
-  freeLimp(p, e); // the free hand open on the pommel
+  if (!A.shield) {
+    to3(p, P.lH, 0.08 + LEFT_FROM_RIGHT + 0.02, -0.18, 0.33, e);
+    to3(p, P.lP, 0.75, -0.5, -0.35, e);
+    freeLimp(p, e); // the free hand open on the pommel
+  }
   p[P.spX] += (0.12 + br) * e;
   p[P.hdX] += 0.12 * e;
   p[P.bodyY] -= 0.02 * e;
@@ -2711,6 +2755,10 @@ const WRIST_COS = Math.cos(WRIST_BACK), WRIST_SIN = Math.sin(WRIST_BACK);
 const WRIST_CLEAR_COS = Math.cos(70 * (Math.PI / 180)); // … and, there, the least angle round the forearm between the steel and the upper arm
 const ELBOW_RATE = 14; // rad/s: the most an elbow swings round its shoulder → hand line (~13° a frame)
 const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vector3(), _eC = new THREE.Vector3();
+// the shield's turn about the forearm (_shield): the spring's rate (1/s, critically damped), the most
+// it turns in a frame (rad), how much of his front is mixed into "away from the body", and the
+// heights (m, the plate's centre) between which its face turns up to the sky
+const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, low: [0.28, 0.58] };
 const TWO_HAND_GRIP = DIM.offGrip; // m down the grip from the sword hand to the off hand (two-handed)
 // THE FREE HAND (the hero only: opts.freeHand). Its wrist's range (rad: radial / ulnar deviation,
 // pronation / supination from the IK's neutral, flexion / extension), its spring (ω, ζ for the
@@ -2803,6 +2851,10 @@ export class HeroAnimator {
     // … and the legs it stands on (the hero's own, rig.bodyDims: thigh, shin, pivot; DIM's for a duelist)
     this.bd = this.freeHand && rig.bodyDims ? rig.bodyDims : DIM;
     this.legNear = legNear(this.bd);
+    // sword and shield: an `offhand` shield on the hero's free forearm (rig.shield; shieldPoses.js).
+    // shieldS: the plate's turn about the forearm (a spring: a = angle, v = rate, t = its target)
+    this.shield = this.freeHand && !!rig.shield?.joint;
+    this.shieldS = { a: 0, v: 0, t: 0, ok: false };
     this.rig = rig;
     this.player = player;
     this.poses = poses ? { ...POSES, ...poses } : POSES;
@@ -3553,8 +3605,9 @@ export class HeroAnimator {
       if (lk > 0.001 && S.ok) _T.lerp(_hG, lk);
       else lk = 0;
     }
+    if (this.shield) lk = 0;
     this.lkEff = lk;
-    const two = clamp(p[P.twoHand], 0, 1);
+    const two = this.shield ? 0 : clamp(p[P.twoHand], 0, 1);
     if (two > 0.001) {
       _TL.copy(_T);
       _bz.set(p[P.swD], p[P.swD + 1], p[P.swD + 2]);
@@ -3569,7 +3622,8 @@ export class HeroAnimator {
     // (before _wristLimit, which reuses _G) how far the free hand is from its place on the grip
     // (chest local, model metres: the measure of the tests' offGap)
     this.gripGap = two > 0.001 ? _end.distanceTo(_G) : 1;
-    if (this.freeHand) this._wristL(r, p, two, lk);
+    if (this.shield) this._shield(r);
+    else if (this.freeHand) this._wristL(r, p, two, lk);
     // the pauldron rides on the shoulder, following part of the sword arm's swing
     r.pauldron.quaternion.slerpQuaternions(_qId, r.arms.R.upper.quaternion, PAULDRON_FOLLOW);
     this._leg(r.legs.R, p, P.rF, P.rK, P.rFy, P.rFf);
@@ -3602,7 +3656,11 @@ export class HeroAnimator {
     r.sword.quaternion.setFromRotationMatrix(_m4);
 
     if (r.offHand?.open && r.offHand.grip) {
-      if (this.freeHand) {
+      if (this.shield) {
+        // (the fist on the shield's handle is the shield item's own)
+        r.offHand.open.visible = r.offHand.grip.visible = false;
+        if (r.offHand.fingers) r.offHand.fingers.visible = false;
+      } else if (this.freeHand) {
         // the free hand closes round the grip once it is there (within OFF_SNAP of its place, with
         // hysteresis, wider while fully two-handed), never while it is still on its way; off the grip
         // it shows the sword fingers or the open hand by the pose's shape (hs, with hysteresis)
@@ -3760,6 +3818,72 @@ export class HeroAnimator {
       S.ok = false;
     }
     W.rotation.set(S.x, S.y, S.z);
+  }
+
+  /**
+   * The shield's turn about the free forearm (rig.shield.joint: Y = the forearm, +Z = its face, −X
+   * its top). The face looks away from his body: out from the body's upright axis through the chest
+   * (and a little to the foe), square to the forearm; where the forearm itself points out from him
+   * that has no answer, and the elbow's own outside decides. Near the ground (a roll, a fall, lying)
+   * the face turns up, so the plate lies on the grass instead of standing in it. Through a spring
+   * (SHIELD_TURN), on the scaled frame time. Allocates nothing, never throws.
+   */
+  _shield(r) {
+    const J = r.shield?.joint, L = r.arms.L, S = this.shieldS;
+    if (!J) return;
+    r.arms.L.wrist?.rotation.set(0, 0, 0);
+    // chest space: the forearm's line and the plate's centre
+    _hq1.copy(L.upper.quaternion).multiply(L.fore.quaternion);
+    _hd.set(0, -1, 0).applyQuaternion(_hq1); // elbow → wrist
+    _hy.set(0, -1, 0).applyQuaternion(L.upper.quaternion); // shoulder → elbow
+    _hG.copy(_hy).multiplyScalar(DIM.upperArm).add(L.upper.position).addScaledVector(_hd, DIM.shieldAt);
+    // "away from the body": the centre from the chest's origin, in body axes, flattened, plus a
+    // little of his front (the foe's side)
+    _hn.copy(_hG).applyQuaternion(_hqs.copy(_qBC).invert());
+    _hn.y = 0;
+    const ol = _hn.length();
+    if (ol > 1e-4) _hn.multiplyScalar(1 / ol);
+    _hn.z += SHIELD_TURN.fore;
+    // near the ground: up (the world's, in body axes)
+    r.chest.localToWorld(_hp.copy(_hG));
+    const up = 1 - smoothstep(SHIELD_TURN.low[0], SHIELD_TURN.low[1], _hp.y);
+    if (up > 0.001) {
+      _hz.set(0, 1, 0).applyQuaternion(_hqs.copy(_qBody).invert());
+      _hn.normalize().lerp(_hz, up);
+    }
+    _hn.applyQuaternion(_qBC); // → chest space
+    if (_hn.lengthSq() < 1e-8) _hn.set(0, 0, 1);
+    _hn.normalize();
+    _hn.addScaledVector(_hd, -_hn.dot(_hd)); // square to the forearm
+    const w = _hn.length();
+    // the elbow's outside (the forearm's back when the arm is bent): forearm × upper arm
+    _hz.crossVectors(_hd, _hy);
+    const zl = _hz.length();
+    if (zl > 0.05) _hn.addScaledVector(_hz, ((1 - smoothstep(0.15, 0.5, w)) * 0.6) / zl);
+    if (_hn.lengthSq() > 1e-6) {
+      _hn.normalize().applyQuaternion(_hqs.copy(_hq1).invert()); // → the forearm's own axes
+      S.t = Math.atan2(_hn.x, _hn.z);
+    }
+    if (!Number.isFinite(S.t)) S.t = 0;
+    const dt = Math.min(this.frameDt, 1 / 30);
+    if (!S.ok) {
+      S.a = S.t;
+      S.v = 0;
+      S.ok = true;
+    } else if (dt > 0) {
+      const W = SHIELD_TURN.w, n = Math.min(4, Math.max(1, Math.ceil(dt * 120 - 1e-6))), h = dt / n, a0 = S.a;
+      for (let i = 0; i < n; i++) {
+        S.v += (W * W * wrapAngle(S.t - S.a) - 2 * W * S.v) * h;
+        S.a += S.v * h;
+      }
+      S.a = a0 + clamp(S.a - a0, -SHIELD_TURN.cap, SHIELD_TURN.cap);
+    }
+    if (!Number.isFinite(S.a + S.v)) {
+      S.a = S.v = 0;
+      S.ok = false;
+    }
+    S.a = wrapAngle(S.a);
+    J.rotation.set(0, S.a, 0);
   }
 
   /** Keep the blade tip out of the ground: raise _bz's world pitch just enough. */

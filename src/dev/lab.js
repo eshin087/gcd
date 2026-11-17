@@ -10,7 +10,6 @@ import { Training } from './training.js';
 import { WYRM_FACES, wyrmFace } from '../entities/dragon/heads.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
-import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
@@ -715,7 +714,6 @@ export class Lab {
       this.ui.status = el('div', 'lab-status', 'ready', root);
 
       this._buildLevel(root);
-      this._buildOutfit(root);
       this._buildLooks(root);
       this._buildFight(root);
       this._buildAbilities(root);
@@ -756,34 +754,6 @@ export class Lab {
     }
   }
 
-  /** OUTFIT: the hero's outfit options (game.heroLooks / game.pickHeroLook, main.js; `?heroLook=`;
-   *  kept for later use; today's look is the default). Live: the rig is rebuilt, the pose restarts. */
-  _buildOutfit(root) {
-    const looks = this.game.heroLooks;
-    if (!Array.isArray(looks) || looks.length < 2) return;
-    const { body } = this._section(root, 'outfit', 'OUTFIT');
-    // two columns (each look beside its shaded-face twin, `looks.js` order), today's look across both
-    const grid = el('div', 'lab-grid', null, body);
-    if (grid.style) grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
-    this.ui.lookBtns = looks.map((L, i) => {
-      const b = button(grid, L.name, () => {
-        try {
-          this.game.pickHeroLook?.(L.id);
-          this._status(`outfit: ${L.name}`, 'ok');
-        } catch (err) {
-          this._status(`error: outfit ${L.id}: ${err?.message ?? err}`, 'err');
-          this._fail('outfit', err);
-        }
-        this._syncOutfit();
-        this._mvSync?.();
-      });
-      b.title = `wear ${L.name} (?heroLook=${L.id}; the rig is rebuilt, the pose restarts)`;
-      if (i === 0 && b.style) b.style.gridColumn = '1 / -1';
-      return { id: L.id, el: b };
-    });
-    this._syncOutfit();
-  }
-
   /** LOOKS: the duelists' look options (labLooks.js; ?kindle= ?star= ... ?looks=new), live or by a
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
@@ -797,10 +767,6 @@ export class Lab {
   _syncStanceBtns() {
     const v = this.game.player?.debug?.fightStance ?? null;
     for (const B of this.ui.stanceBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
-  }
-
-  _syncOutfit() {
-    for (const B of this.ui.lookBtns ?? []) B.el.classList?.toggle?.('on', B.id === this.game.player?.look);
   }
 
   _buildFight(root) {
@@ -987,28 +953,6 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.shudBtn.title = 'a struck duelist flickers along the cut through the freeze (on / off)';
-    // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
-    // cost, Lab only)
-    const swr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'sword', swr).title = "the sword looks for the owner's pick (?sword=)";
-    const swGrid = el('div', 'lab-grid', null, swr);
-    swGrid.style.flex = '1';
-    this.ui.swordBtns = Object.keys(SWORD_PARAM).map((k) => {
-      const b = button(swGrid, k, () => {
-        const p = this.game.player;
-        if (typeof p?.equip !== 'function') return this._status('n/a: player.equip()', 'warn');
-        try {
-          p.equip('weapon', SWORD_PARAM[k]);
-          this._status(`player.equip(weapon, ${SWORD_PARAM[k]})`, 'ok');
-        } catch (err) {
-          console.error('[lab] player.equip failed', err);
-          this._status(`error: player.equip: ${err?.message ?? err}`, 'err');
-        }
-        this._syncCutBtns();
-      });
-      b.title = `equip ${SWORD_PARAM[k]}`;
-      return { k, el: b };
-    });
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads for the owner's pick (?wyrmFace=; reloads the page)";
@@ -1067,8 +1011,6 @@ export class Lab {
     for (const { s, el: b } of this.ui.cutBtns ?? []) setClass(b, 'on', cutStyle() === s);
     const d = this.game.dragon;
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
-    const w = this.game.player?.loadout?.weapon;
-    for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
   }
 
   /** A flurry of `n` blows on the boss now (player.debug.flurry). */

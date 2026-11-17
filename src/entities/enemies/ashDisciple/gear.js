@@ -156,8 +156,8 @@ function buildLegs({ pelvis, legs, M, DIM, BODY, mesh }) {
 
 // ---------------------------------------------------------------- waist: the robe's skirt
 /** The robe below the sash, on the coat springs (anim.js _coat): two front panels that overlap (the
- *  wrap), slits at the sides, two back panels, to mid-calf. Same fields as the Wanderer's
- *  COAT_PANELS (gear/wanderer.js). */
+ *  wrap), slits at the sides, two back panels, to mid-calf. Same fields as every coat panel the
+ *  animator springs (gear/README.md: `coat`). */
 export const ROBE_PANELS = [
   { az: 0.42, w: [0.17, 0.22, 0.28], len: [0.34, 0.36], strips: [], fork: [], out: 0.006, flare: 0.08, skew: 0.6 },
   { az: -0.42, w: [0.17, 0.22, 0.28], len: [0.34, 0.36], strips: [], fork: [], out: 0, flare: 0.08, skew: -0.6 },
