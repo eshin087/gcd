@@ -91,7 +91,16 @@ export const EDGE_GLINT = {
   flash: { n: 4, step: 0.05, size: 0.12, stretch: 1.6, life: 0.1, lifeMin: 0.03, holdEnd: 0.35, alpha: 0.9, heavy: 1.25 },
 };
 /** The drawn blade's half width at sword-space height z (EDGE_GLINT.hw). */
-export function hwAt(z) {
+/** How much longer a weapon's blade is than DIM's, past the forte (1 for DIM's: the profiles below
+ *  are drawn for it; the hero's longsword stretches them, rig.weaponDims). */
+export function bladeStretch(wd) {
+  const t = wd?.drawnTip;
+  return Number.isFinite(t) && t > DIM.forte + 0.1 ? (t - DIM.forte) / (DIM.drawnTip - DIM.forte) : 1;
+}
+
+/** The blade's half-width at z (sword space), for a blade `k` times DIM's past the forte. */
+export function hwAt(z, k = 1) {
+  if (k !== 1) z = DIM.forte + (z - DIM.forte) / k;
   const T = EDGE_GLINT.hw;
   if (!(z > T[0][0])) return T[0][1];
   for (let i = 1; i < T.length; i++) {
@@ -359,7 +368,7 @@ export class PlayerFx {
     const life = Math.min(G.life[1], Math.max(G.life[0], 1.6 * (Number.isFinite(realDt) ? realDt : 1 / 60)));
     const zl = Math.hypot(e[8], e[9], e[10]) || 1, rot = alongRot(e[8] / zl, e[9] / zl, e[10] / zl);
     for (let i = 1; i <= n; i++) {
-      const z = z0 + ((z1 - z0) * i) / n, xx = side * G.inset * hwAt(z);
+      const z = z0 + ((z1 - z0) * i) / n, xx = side * G.inset * hwAt(z, bladeStretch(this.rig?.weaponDims));
       const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], wz = e[2] * xx + e[10] * z + e[14];
       if (!Number.isFinite(x + y + wz) || y < 0.02) continue;
       if (i === n) {
@@ -387,9 +396,10 @@ export class PlayerFx {
     const size = F.size * (heavy || crit ? F.heavy : 1);
     const held = Number.isFinite(hold) && hold > 0, life = held ? Math.min(F.life, Math.max(F.lifeMin, hold)) : F.life;
     const aEnd = held ? F.alpha * F.holdEnd : 0;
-    const zTop = DIM.drawnTip - 0.02, z0 = Math.max(DIM.forte, Math.min(zc, zTop - (F.n - 1) * F.step));
+    const WD = this.rig?.weaponDims ?? DIM;
+    const zTop = WD.drawnTip - 0.02, z0 = Math.max(WD.forte, Math.min(zc, zTop - (F.n - 1) * F.step));
     for (let i = 0; i < F.n; i++) {
-      const z = Math.min(zTop, z0 + i * F.step), xx = side * G.inset * hwAt(z);
+      const z = Math.min(zTop, z0 + i * F.step), xx = side * G.inset * hwAt(z, bladeStretch(WD));
       const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], wz = e[2] * xx + e[10] * z + e[14];
       if (!Number.isFinite(x + y + wz)) continue;
       fx.spawn({ x, y, z: wz, life, size, sizeEnd: size * 0.5, glyph: '|', rot, stretch: F.stretch, color: COL.arcGlint, colorEnd: COL.arcEnd, alpha: F.alpha, alphaEnd: aEnd });
@@ -1179,7 +1189,8 @@ export class PlayerFx {
     const sw = this.rig?.sword;
     if (!fx || !sw || !(k > 0)) return;
     const e = sw.matrixWorld.elements;
-    const tip = DIM.drawnTip ?? DIM.steelTip; // the drawn point (model.js), not anim's grass-clamp point
+    const WD = this.rig?.weaponDims ?? DIM;
+    const tip = WD.drawnTip ?? WD.steelTip; // the drawn point (rig.weaponDims), not anim's grass-clamp point
     // the edge-wave: a short bright streak laid along the blade at the drawn point (it sat 0.06–0.26 m
     // past it, × HERO_SCALE: a dash floating off the sword, left behind by every roll and swing)
     this.tipAcc += dt * 14;
@@ -1201,7 +1212,7 @@ export class PlayerFx {
     while (this.haloAcc >= 1) {
       this.haloAcc -= 1;
       const past = rnd() < 0.3;
-      const zz = past ? tip + R(0.0, 0.1) : R(DIM.forte, tip);
+      const zz = past ? tip + R(0.0, 0.1) : R(WD.forte, tip);
       const xx = past ? R(-0.02, 0.02) : (rnd() < 0.5 ? -1 : 1) * R(HALO_X[0], HALO_X[1]);
       // sword space (xx, 0, zz) → world
       const x = e[0] * xx + e[8] * zz + e[12], y = e[1] * xx + e[9] * zz + e[13], z = e[2] * xx + e[10] * zz + e[14];

@@ -8,7 +8,7 @@ import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
-import { PlayerFx, EDGE_GLINT } from './fx.js';
+import { PlayerFx, EDGE_GLINT, bladeStretch } from './fx.js';
 import { swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
@@ -2119,7 +2119,8 @@ export class Player {
    *  out in the arc, past the drawn steel, flashes at the point). */
   _edgeFlash(C, heavy, crit, ridge = false) {
     if (!this.rig.loadout?.weapon) return;
-    const z = clamp(DIM.bladeBase + C.f * (DIM.bladeTip + REACH.tipExt - DIM.bladeBase), DIM.forte, DIM.drawnTip - 0.02);
+    const WD = this.rig.weaponDims ?? DIM;
+    const z = clamp(DIM.bladeBase + C.f * (DIM.bladeTip + REACH.tipExt - DIM.bladeBase), WD.forte, WD.drawnTip - 0.02);
     // the frames the freeze holds, in fx time (main.js: this frame at the full rate, the freeze at
     // fxLive, whole frames: one more of margin): the mark is gone as the blade swings on
     const g = this.game, rd = fin(g.realDt, 1 / 60), k = fin(g.timeScale, 1) * fin(g.debugTimeScale, 1);
@@ -3043,8 +3044,10 @@ export class Player {
       if (armed && !a.hit && d.kind !== 'thrust') {
         const G = EDGE_GLINT, g0 = W - G.lead, g1 = W + d.active * (d.kind === 'cleave' ? G.atCleave : G.at);
         if (t >= g0 && prevT <= g1) {
-          const u = clamp((t - g0) / (g1 - g0), 0, 1), z = lerp(G.z[0], G.z[1], u ** G.ease);
-          this.fx.edgeGlint(sw, a.glintZ ?? G.z[0], z, this.bladeFar, crit, fin(this.game.realDt, 1 / 60), d.glint === 'ridge');
+          // (G.z is drawn for DIM's blade: stretched up the hero's longer one, rig.weaponDims)
+          const k = bladeStretch(this.rig.weaponDims), zs = (v) => DIM.forte + (v - DIM.forte) * k;
+          const u = clamp((t - g0) / (g1 - g0), 0, 1), z = zs(lerp(G.z[0], G.z[1], u ** G.ease));
+          this.fx.edgeGlint(sw, a.glintZ ?? zs(G.z[0]), z, this.bladeFar, crit, fin(this.game.realDt, 1 / 60), d.glint === 'ridge');
           a.glintZ = z;
         }
       }

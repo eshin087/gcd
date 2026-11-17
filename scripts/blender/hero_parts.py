@@ -435,10 +435,22 @@ def build_lapels():
 # Origin = grip centre, the blade along +Z, its width on X, the flats facing ±Y. A broad dark blade
 # with a centre ridge, three raking barbs up each edge (staggered left / right), an arrowhead point.
 # The two halves either side of the ridge carry sub-ids 0 / 1, so the ridge prints as a line.
-# The profile was drawn for a 1.45 m point; BK rescales everything past the forte to DIM.drawnTip.
-BK = (DIM['drawnTip'] - 0.2) / 1.25
+# The profile was drawn for a 1.45 m point; BK rescales everything past the forte to the blade's
+# drawn point. Two blades are built: `blade.*` at DIM.drawnTip (the short sword the moon looks and
+# the shared numbers use) and `bladeLong.*` at LONG_TIP, the hero's longsword (the sword of
+# 2026-11-09, back by the owner's wish on 2026-11-16: gear/wanderer.js LONGSWORD_DIMS.drawnTip)
+LONG_TIP = 1.45
+BK = 1.0
 bz = lambda z: 0.2 + (z - 0.2) * BK
-BLADE = {'z0': 0.11, 'zT': bz(1.2), 'ridge': 0.012, 'core': 0.66}
+BLADE = {'z0': 0.11, 'zT': 1.2, 'ridge': 0.012, 'core': 0.66, 'tip': 1.45}
+
+
+def blade_set(tip):
+    """Point the blade's profile at `tip` (BK and the taper's start follow)."""
+    global BK
+    BK = (tip - 0.2) / 1.25
+    BLADE['zT'] = bz(1.2)
+    BLADE['tip'] = tip
 
 
 def blade_base(z):
@@ -447,7 +459,7 @@ def blade_base(z):
 
 
 def blade_profile(side):
-    z0, zT, tip = BLADE['z0'], BLADE['zT'], DIM['drawnTip']
+    z0, zT, tip = BLADE['z0'], BLADE['zT'], BLADE['tip']
     base = blade_base
     pts = [(z0, 0.034), (0.132, 0.064), (0.15, 0.05), (0.17, base(0.17))]
     for j, zb in enumerate((0.38, 0.63, 0.88)):
@@ -458,8 +470,9 @@ def blade_profile(side):
     return pts
 
 
-def build_blade():
-    tip = DIM['drawnTip']
+def build_blade(name='blade', tip=None):
+    tip = DIM['drawnTip'] if tip is None else tip
+    blade_set(tip)
     forte, core, edge = Geo(), Geo(), Geo()
     for side in (-1, 1):
         pr = blade_profile(side)
@@ -485,9 +498,9 @@ def build_blade():
         core.grid(1, 1, lambda s, z: pt(0.5 * s, z, True), k=k0, flip=side > 0, ts=zs(za, zb), ss=[0, 1])
         core.grid(1, 1, lambda s, z: pt(0.5 * s, z, False), k=k0, flip=side < 0, ts=zs(za, zb), ss=[0, 1])
         edge.grid(2, 1, lambda s, z: pt(1 - 0.5 * abs(2 * s - 1), z, s < 0.5), k=k1, flip=side > 0, ts=zs(za, zb), ss=[0, 0.5, 1])
-    emit('blade.forte', forte, sharp=25)
-    emit('blade.core', core, sharp=25)
-    emit('blade.edge', edge, sharp=25)
+    emit(f'{name}.forte', forte, sharp=25)
+    emit(f'{name}.core', core, sharp=25)
+    emit(f'{name}.edge', edge, sharp=25)
 
 
 # ------------------------------------------------------------------ cape (streamer-segment space)
@@ -615,6 +628,7 @@ build_hair()
 build_collar()
 build_lapels()
 build_blade()
+build_blade('bladeLong', LONG_TIP)
 build_cape()
 build_pauldron()
 

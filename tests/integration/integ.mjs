@@ -381,6 +381,11 @@ function build(opts = {}) {
     for (const k of ['uHurt', 'uFade', 'uDesat', 'uWarm']) if (!Number.isFinite(finalU[k].value)) throw new Error('grade NaN ' + k);
     if (![game.timeScale, game.time, game.debugTimeScale].every(Number.isFinite)) throw new Error('clock NaN');
   };
+  // the seeded stream starts again once everything is built: three.js draws a uuid from Math.random
+  // for every object, geometry and material it makes, so how many the scene's build made (one joint
+  // more on the hero, another outfit) moved every roll of the fight that followed, and checks of the
+  // wyrm's timing failed after changes to the hero's model alone (2026-11-16, ADR-123)
+  Math.random = mulberry32(SEED + 1);
   return G;
 }
 
@@ -756,9 +761,11 @@ async function scenarioPressure() {
       const G = (lastG = build({ terrain: 'lab' }));
       const { game } = G;
       G.defend = steadyDefender(G);
+      // (seeded before the setup's 0.9 s of the AI, not after it: those first picks drew on whatever the
+      // build left in the stream, so the phase's fight moved with the hero's model. ADR-123)
+      Math.random = mulberry32(seed * 7 + ph);
       fightSetup(G, { ai: true });
       const d = game.dragon;
-      Math.random = mulberry32(seed * 7 + ph);
       // into the phase through its real transition roar(s)
       for (let n = 2; n <= ph; n++) {
         d.debug.setHp(TUNING.phaseAt[n - 1] - 0.01);
@@ -3723,7 +3730,8 @@ async function scenarioAblaze() {
   const { ABLAZE } = await imp('src/entities/dragon/tuningAblaze.js');
   const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); };
   // the attack table at the base (fc17317): every attack's damage, timings, tells and reach
-  const BASE_ATTACKS = '47e0a683';
+  // (c287063d since ADR-123: furnaceMaw's bite flashes at 0.115 s into its active, not 0.09)
+  const BASE_ATTACKS = 'c287063d';
   const table0 = JSON.stringify(TUNING.attacks);
   M.setAblazeLook('b');
   const G = build();
@@ -4308,20 +4316,17 @@ async function scenarioHero() {
   const tails = r.coat.filter((C) => Math.abs(C.def.az) > 2.2);
   assert(r.coat.length === 6 && tails.length === 2 && strips === 12 && r.coat.every((C) => !C.def.flap),
     `coat: 6 panels (2 back tails split by a vent, 2 side, 2 front), ${strips} torn strips`);
-  // the Shrouded set (ADR-043): the cloak's sheets ride the streamer springs (heavier than a ribbon:
-  // lag < 1); under the hood none of the body's hair clusters is built (they poked through the cloth
-  // or massed over the face); the hood builds its own gold strands, and the face is in its shadow
-  // (Session 16); the five spring joints stay for the animator
+  // the Wanderer's set, the default again (ADR-123: the look of 2026-11-09): bare-headed, all five of
+  // the body's hair clusters built on their spring joints, a lit face; the half-cape's four sheets on
+  // the streamer springs (a light cape: the default lag); the spiked pauldron; the longsword (its
+  // own numbers, rig.weaponDims: the point at 1.45 m)
   {
     const built = Object.entries(r.hair).filter(([, j]) => j.children.some((o) => o.isMesh)).map(([n]) => n);
-    let strands = 0, skin = 0;
-    r.head.traverse((o) => {
-      if (!o.isMesh) return;
-      if (o.userData.slot === 'head' && (o.material === r.materials.hair || o.material === r.materials.hairTip)) strands++;
-      if (o.material === r.materials.skin) skin++;
-    });
-    assert(r.streamers?.filter((S) => !S.weapon).length === 5 && r.streamers.every((S) => S.lag > 0 && S.lag < 1) && Object.keys(r.hair).length === 5 && built.length === 0 && strands >= 2 && skin === 0 && r.slots.head.length > 0,
-      `the cloak: ${r.streamers?.length} sheets on springs; under the hood ${built.length} body hair clusters, ${strands} gold strand meshes of the hood's own, ${skin} skin meshes on the head (the face in shadow)`);
+    let skin = 0;
+    r.head.traverse((o) => { if (o.isMesh && o.material === r.materials.skin) skin++; });
+    assert(r.streamers?.filter((S) => !S.weapon).length === 4 && r.streamers.every((S) => S.lag == null || (S.lag > 0 && S.lag <= 1)) && Object.keys(r.hair).length === 5 && built.length === 5 && skin > 0 && r.slots.head.length === 0 && r.slots.shoulders.length > 0
+      && r.weaponDims.drawnTip === 1.45 && r.weaponDims.steelTip === 1.56 && r.weaponDims.bladeTip === HERO_DIM.bladeTip,
+      `the Wanderer: ${r.streamers?.length} cape sheets on springs, ${built.length} of 5 hair clusters built, ${skin} skin meshes on the head (lit), the pauldron; the longsword to ${r.weaponDims.drawnTip} m drawn (the hit segment unchanged, to ${r.weaponDims.bladeTip})`);
   }
   // clear of the wyrm (AI off): run, sprint, roll, light / backhand / slam, charge + cleave
   p.debug.teleport(d.position.x + 14, d.position.z + 14);
@@ -4336,7 +4341,7 @@ async function scenarioHero() {
     if (p.anim.cur[45] < 0.05) bendL = Math.min(bendL, -r.arms.L.fore.rotation.x);
     p.object3d.traverse((o) => { const e = o.matrixWorld.elements; for (let i = 0; i < 16; i++) if (!Number.isFinite(e[i])) { bad++; break; } });
     for (const C of r.coat) for (const S of C.strips) { v.set(0, -S.len, 0).applyMatrix4(S.joint.matrixWorld); low = Math.min(low, v.y); }
-    v.set(0, 0, HERO_DIM.steelTip).applyMatrix4(r.sword.matrixWorld);
+    v.set(0, 0, r.weaponDims.steelTip).applyMatrix4(r.sword.matrixWorld);
     tipLow = Math.min(tipLow, v.y);
   };
   const go = (s) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); probe(); } };
@@ -4449,18 +4454,25 @@ async function scenarioHero() {
     assert(threw && p.loadout.back === null, 'an unknown item id throws and changes nothing');
     p.setLoadout(DEFAULT_LOADOUT);
     drive();
-    assert(meshes() === n0 && p.rig.coat.length === 6 && p.rig.streamers.filter((S) => !S.weapon).length === 5 && p.sweep.sword === p.rig.sword && finite(), `back in the default set: ${meshes()} meshes, 6 coat panels, 5 cloak sheets`);
-    // the outfit before ADR-043 is still a loadout: bare-headed (the hair is built again), the
-    // pauldron, the half-cape
-    const { WANDERER_LOADOUT } = await imp('src/entities/player/gear/index.js');
-    p.setLoadout(WANDERER_LOADOUT);
+    assert(meshes() === n0 && p.rig.coat.length === 6 && p.rig.streamers.filter((S) => !S.weapon).length === 4 && p.sweep.sword === p.rig.sword && finite(), `back in the default set: ${meshes()} meshes, 6 coat panels, 4 cape sheets`);
+    // the Shrouded set (ADR-043, the default from 2026-11-11 to 11-16) is still a loadout: the hood
+    // (none of the body's hair clusters under it, its own strands, the face in its shadow), the
+    // cloak's five sheets, no shoulder item
+    const { SHROUD_LOADOUT } = await imp('src/entities/player/gear/index.js');
+    p.setLoadout(SHROUD_LOADOUT);
     drive();
     const hair = Object.values(p.rig.hair).reduce((n, j) => n + j.children.filter((o) => o.isMesh).length, 0);
-    assert(p.rig.streamers.filter((S) => !S.weapon).length === 4 && hair > 0 && p.rig.slots.shoulders.length > 0 && p.rig.slots.head.length === 0 && finite(),
-      `the Wanderer's set still builds: 4 cape sheets, ${hair} hair meshes, the pauldron, no hood`);
+    let strands = 0, skin = 0;
+    p.rig.head.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.userData.slot === 'head' && (o.material === p.rig.materials.hair || o.material === p.rig.materials.hairTip)) strands++;
+      if (o.material === p.rig.materials.skin) skin++;
+    });
+    assert(p.rig.streamers.filter((S) => !S.weapon).length === 5 && hair === 0 && strands >= 2 && skin === 0 && p.rig.slots.shoulders.length === 0 && p.rig.slots.head.length > 0 && finite(),
+      `the Shrouded set still builds: 5 cloak sheets, the hood with ${strands} strand meshes of its own and no body hair (${hair}), the face in shadow (${skin} skin)`);
     p.setLoadout(DEFAULT_LOADOUT);
     drive();
-    assert(meshes() === n0 && finite(), `and back to the Shrouded set (${meshes()} meshes)`);
+    assert(meshes() === n0 && finite(), `and back to the Wanderer's set (${meshes()} meshes)`);
     // the sword looks (gear/moonblade.js; the owner's pick behind ?sword= and the Lab): each is built
     // to the drawn point from its profile (no arrowhead: the point's width never grows), its pommel
     // ends where the longsword's does, its blade keeps aGUV = (x, z) (its glyph columns), the rig
@@ -5187,9 +5199,9 @@ async function scenarioHeroLife() {
         const { key, line } = list[0];
         const heads = list.filter((g) => g.head);
         if (list.length < 4) bad.push(`${key}: ${list.length} glint spawns`);
-        if (list.some((g) => g.z < HERO_DIM.forte - 0.01 || g.z > HERO_DIM.drawnTip + 0.01 || Math.abs(g.y) > 0.02)) bad.push(`${key}: a glint off the steel`);
+        if (list.some((g) => g.z < r.weaponDims.forte - 0.01 || g.z > r.weaponDims.drawnTip + 0.01 || Math.abs(g.y) > 0.02)) bad.push(`${key}: a glint off the steel`);
         if (heads.some((g, i) => i && g.z < heads[i - 1].z - 1e-4)) bad.push(`${key}: the head ran back down`);
-        if (!(Math.max(...heads.map((g) => g.z)) >= 0.85 * HERO_DIM.drawnTip)) bad.push(`${key}: the head stopped at ${Math.max(...heads.map((g) => g.z)).toFixed(2)}`);
+        if (!(Math.max(...heads.map((g) => g.z)) >= 0.85 * r.weaponDims.drawnTip)) bad.push(`${key}: the head stopped at ${Math.max(...heads.map((g) => g.z)).toFixed(2)}`);
         if (line === 'point') {
           nPoint++;
           if (list.some((g) => Math.abs(g.x) > 0.01)) bad.push(`${key}: a thrust's glint off the ridge`);
@@ -5241,7 +5253,7 @@ async function scenarioHeroLife() {
       for (let h = stopAt ?? 0; h > 0; h -= DT) held++;
       const ageLast = DT + held * DT * CONFIG.render.fxLive, life = inTick[0]?.life;
       out(`   a landed light: ${glints.length} glint spawns before the contact, ${late} after; ${inTick.length} flash strokes on the steel (z ${inTick.map((f) => f.z.toFixed(2)).join(', ')}), living ${life?.toFixed(3)} fx s (the freeze ${stopAt?.toFixed(3)} s holds ${held} frames: ${ageLast.toFixed(3)} fx s old on its last)`);
-      if (hitT === null || late || inTick.length !== 4 || flashes.length !== 4 || inTick.some((f) => f.glyph !== '|' || f.z < HERO_DIM.forte - 1e-3 || f.z > HERO_DIM.drawnTip + 1e-3)) bad.push(`landed: ${late} glints after the contact, ${inTick.length} of ${flashes.length} flash strokes in its frame`);
+      if (hitT === null || late || inTick.length !== 4 || flashes.length !== 4 || inTick.some((f) => f.glyph !== '|' || f.z < r.weaponDims.forte - 1e-3 || f.z > r.weaponDims.drawnTip + 1e-3)) bad.push(`landed: ${late} glints after the contact, ${inTick.length} of ${flashes.length} flash strokes in its frame`);
       if (!(held >= 2 && inTick.every((f) => f.life > ageLast && f.life <= ageLast + DT))) bad.push(`the flash lives ${life} fx s: not the ${held} held frames (${ageLast.toFixed(3)} … ${(ageLast + DT).toFixed(3)})`);
     } finally {
       fxa.spawn = spawn0;
@@ -5538,7 +5550,7 @@ async function scenarioHeroLife() {
     let tipLow = Infinity, bad = 0;
     go(45, () => {
       if (A.fidget.name) names.add(A.fidget.name);
-      v.set(0, 0, HD.steelTip).applyMatrix4(r.sword.matrixWorld);
+      v.set(0, 0, r.weaponDims.steelTip).applyMatrix4(r.sword.matrixWorld);
       tipLow = Math.min(tipLow, v.y);
       if (!finite()) bad++;
     });
@@ -5841,7 +5853,7 @@ async function scenarioHeroLook() {
       [`shin ${s}`, r.legs[s].shin, (q) => cap(q, -0.02, D.shin - 0.04, BODY.shin[0], BODY.shin[1])],
     ]),
   ];
-  const tip = D.drawnTip ?? D.steelTip;
+  const tip = (r.weaponDims ?? D).drawnTip; // (his own blade, rig.weaponDims: the longsword's whole length)
   let worst = -1, worstAt = '', hand = -1, handAt = '';
   const bodyPen = () => {
     for (let z = 0.2; z <= tip + 1e-6; z += 0.05) {
@@ -6897,7 +6909,7 @@ async function scenarioHeroArms() {
   // the blade's nearest pass to the head's axis between the chin and the crown (head local, model m)
   const bladeHead = () => {
     let best = Infinity;
-    for (let z = 0.12; z <= (HD.drawnTip ?? HD.steelTip) + 1e-6; z += 0.02) {
+    for (let z = 0.12; z <= (r.weaponDims ?? HD).drawnTip + 1e-6; z += 0.02) {
       r.head.worldToLocal(v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld));
       if (v.y < -0.06 || v.y > 0.32) continue;
       best = Math.min(best, Math.hypot(v.x, v.z));
@@ -6917,9 +6929,15 @@ async function scenarioHeroArms() {
   // and out behind it: a hand on the hip (so no flare limit for the free arm).
   const qa = new THREE.Quaternion();
   const kink = () => {
-    // the forearm (elbow → grip) against the blade
+    // the forearm (elbow → grip) against the blade, on the body the animator posed: the player turns
+    // the drawn lean back on after every step (player.update), and read through the shear the angle
+    // swung 10-40° with his facing (ADR-123)
+    p.lean.on = false;
+    p.object3d.updateMatrixWorld(true);
     v.set(0, -1, 0).applyQuaternion(r.arms.R.fore.getWorldQuaternion(qa));
     w.set(0, 0, 1).applyQuaternion(r.sword.getWorldQuaternion(qa));
+    p.lean.on = true;
+    p.object3d.updateMatrixWorld(true);
     return Math.acos(clamp(v.normalize().dot(w.normalize()), -1, 1)) * DEG;
   };
   const restOf = () => ({ R: elbow('R'), L: elbow('L'), fR: flare('R'), fL: flare('L'), kink: kink(), open: r.offHand.open.visible && !r.offHand.fingers?.visible && !r.offHand.grip.visible });
@@ -7132,7 +7150,7 @@ async function scenarioLooks() {
   {
     const f = heroLookFromSearch;
     const u1 = new URL(heroLookUrl('robe', 'http://x/?level=ash&lab'));
-    const u2 = new URL(heroLookUrl('shroud', u1.toString()));
+    const u2 = new URL(heroLookUrl(DEFAULT_LOOK, u1.toString()));
     assert(f('?heroLook=robe') === 'robe' && f('?level=ash&heroLook=SWALLOW&lab') === 'swallow' && f('?herolook=warden') === 'warden' && f('?heroLook=Warden-Shade') === 'warden-shade'
       && ['?heroLook=nope', '', undefined, '%%%'].every((s) => f(s) === DEFAULT_LOOK)
       && u1.searchParams.get('heroLook') === 'robe' && u1.searchParams.get('level') === 'ash' && u1.searchParams.has('lab') && !u2.searchParams.has('heroLook') && u2.searchParams.get('level') === 'ash',
@@ -7164,14 +7182,16 @@ async function scenarioLooks() {
         for (const k of ['rim', 'sub', 'inkGlow', 'glowK']) if (t[k] != null && !Number.isFinite(t[k])) bad.push(`${id}: ${name}.${k}`);
       }
     }
-    assert(!bad.length && HERO_LOOKS.shroud.loadout === DEFAULT_LOADOUT && HERO_LOOKS.shroud.tint === null && LOOK_IDS.join() === 'shroud,robe,robe-shade,swallow,swallow-shade,warden,warden-shade' && DEFAULT_LOOK === 'shroud',
+    assert(!bad.length && HERO_LOOKS.wanderer.loadout === DEFAULT_LOADOUT && HERO_LOOKS.wanderer.tint === null && HERO_LOOKS.shroud.tint === null && LOOK_IDS.join() === 'wanderer,shroud,robe,robe-shade,swallow,swallow-shade,warden,warden-shade' && DEFAULT_LOOK === 'wanderer',
       `the outfit options: ${LOOK_IDS.map((id) => `${id} "${HERO_LOOKS[id].name}"`).join(', ')}; every loadout resolves and every tint is a cloth / metal part (${bad.join('; ') || 'ok'})`);
   }
 
   let n0 = 0, offKeys0 = '', cape0 = null;
   const rates = {}, headSlot = {};
   for (const id of LOOK_IDS) {
-    const L = HERO_LOOKS[id], isNew = id !== DEFAULT_LOOK;
+    // (the two looks that were each the default, the Wanderer since 2026-11-16 and the Shrouded set
+    // before it, are held to the rules they were built under; `isNew`: the options made for the pick)
+    const L = HERO_LOOKS[id], isNew = id !== DEFAULT_LOOK && id !== 'shroud';
     const G = setup(id);
     const { game } = G, p = game.player, r = p.rig, M = r.materials;
     // (C) built as asked: the look's loadout, its colours on this rig's own materials, no shared
@@ -7187,13 +7207,14 @@ async function scenarioLooks() {
       const tris = src.reduce((s, o) => s + (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3, 0);
       const mats = new Set(src.map((o) => o.material)).size;
       const strips = r.coat.reduce((s, C) => s + C.strips.length, 0);
-      if (!isNew) n0 = src.length;
+      if (id === DEFAULT_LOOK) n0 = src.length;
       out(`   ${id}: ${src.length} meshes, ${tris} triangles, ${mats} materials, ${p.batch.meshes.length} batches, ${r.streamers.length} streamers, ${r.coat.length} panels, ${strips} strips`);
-      // (27k: today's look with the sword fingers and the closed fists draws ~26.6k triangles)
-      assert(src.length <= n0 && tris <= 27000 && mats <= 21 && p.batch.meshes.length <= 21 && r.streamers.length <= 6 && r.coat.length <= 6 && strips <= 12,
-        `${id}: costs no more than today (${src.length} meshes of ${n0}, ${tris} triangles ≤ 27000, ${mats} materials and ${p.batch.meshes.length} draws ≤ 21)`);
+      // (30k / 23: today's look, the Wanderer with the longsword, draws ~29k triangles in 23 batches; the
+      // Shrouded set drew ~26.6k in 19. The options made for the pick cost no more meshes than today)
+      assert((!isNew || src.length <= n0) && tris <= 30000 && mats <= 23 && p.batch.meshes.length <= 23 && r.streamers.length <= 6 && r.coat.length <= 6 && strips <= 12,
+        `${id}: costs no more than today (${src.length} meshes of ${n0}, ${tris} triangles ≤ 30000, ${mats} materials and ${p.batch.meshes.length} draws ≤ 23)`);
       const keys = Object.keys(r.offHand ?? {}).filter((k) => r.offHand[k]).sort().join();
-      if (!isNew) offKeys0 = keys;
+      if (id === DEFAULT_LOOK) offKeys0 = keys;
       const fist = r.sword.children.some((o) => o.isMesh && o.userData.slot === 'arms');
       assert(keys === offKeys0 && keys.includes('open') && fist, `${id}: the free hand (${keys}) as today's, the sword hand's fist on the grip`);
     }
@@ -7368,7 +7389,7 @@ async function scenarioLooks() {
     const sInv = r.streamers.flatMap(() => [new THREE.Matrix4(), new THREE.Matrix4()]);
     const headHung = r.streamers.map((S) => under(rootOf(S), r.head));
     const penBy = r.streamers.map(() => 0), handBy = r.streamers.map(() => 0), penPh = {};
-    const tip = D.drawnTip ?? D.steelTip, palm = new THREE.Vector3();
+    const tip = (r.weaponDims ?? D).drawnTip, palm = new THREE.Vector3();
     const finiteRig = () => { let ok = true; p.object3d.traverse((o) => { const e = o.matrixWorld.elements; for (let i = 0; i < 16; i++) if (!Number.isFinite(e[i])) ok = false; }); return ok; };
     const each = () => {
       frames++;
@@ -7482,7 +7503,9 @@ async function scenarioLooks() {
     // … and killed lying in a knockdown (the 'deadDown' clip: he dies where he lies), once the clip has
     // settled (DD_T after the kill: before it, today's arm drape dips 17 cm into the grass, the robe's wing
     // and a scarf tail 3-4 cm, as the body sinks under springs that lag; printed only)
-    const DD_T = 1.2;
+    // (1.3, not 1.2: the Wanderer's longer, lighter half-cape lands a tenth of a second later than the
+    // Shrouded cloak; at 1.21 s its ends were still 2 cm under the grass, from 1.37 s above it. ADR-123)
+    const DD_T = 1.3;
     let ddFrames = 0, hemDD = Infinity, tipDD = Infinity, tipSettle = Infinity;
     {
       game.flow.debug.toState('boss');
@@ -7527,7 +7550,7 @@ async function scenarioLooks() {
     }
     if (shoulderCloth.length) {
       out(`   ${id}: the cloth over the sword shoulder in the right upper arm: ${(capeIdle * 100).toFixed(1)} cm standing, deepest ${(capeWorst * 100).toFixed(1)} cm (${capeAt}), ${capeDeep} of ${counted} frames > 2 cm`);
-      if (id === DEFAULT_LOOK) cape0 = { worst: capeWorst, deep: capeDeep };
+      if (id === 'shroud') cape0 = { worst: capeWorst, deep: capeDeep }; // (the Shrouded set's mantle: the reference the capelet was built against)
     }
     if (id === 'warden') {
       out(`   warden: the drawn blade ${(plate * 100).toFixed(1)} cm into the cuirass's plates at most (${plateAt || 'never'})`);
@@ -7559,7 +7582,7 @@ async function scenarioLooks() {
     const fillIs = (c) => ['r', 'g', 'b'].every((k, i) => Math.abs(p.rig.materials.coat.uniforms.uArtFill.value[k] - c[i]) < 1e-6);
     p.setLoadout(p.loadout);
     const keeps = fillIs(SWALLOW_TINT.coat.fill);
-    p.setLook('shroud');
+    p.setLook(DEFAULT_LOOK);
     const back = fillIs(HERO_INK.coat.fill) && SLOTS.every((sl) => p.loadout[sl] === (DEFAULT_LOADOUT[sl] ?? null));
     p.equip('weapon', null);
     p.setLook('warden');
@@ -8251,7 +8274,10 @@ async function scenarioTiming() {
     const coarse = !def.string;
     for (const phase of [first, 3].filter((v, i, a) => a.indexOf(v) === i)) {
       for (const dist of coarse ? DISTS.filter((v, i) => i % 2 === 0) : DISTS) for (const ang of coarse ? ANGS.filter((v, i) => i % 4 < 2 || v === Math.PI) : ANGS) {
-        // a fresh, idle wyrm at the origin facing +Z, in this phase
+        // a fresh, idle wyrm at the origin facing +Z, in this phase, and the same random numbers for
+        // every placement: each probe is its own trial (an order of the attacks, or the hero's model,
+        // moved the stream and with it which placements of furnaceMaw's bite landed late)
+        Math.random = mulberry32(SEED + 101);
         d.debug.reset();
         d.debug.startFight();
         d.debug.setAI(false);
@@ -9204,10 +9230,15 @@ async function scenarioHeroStance() {
   const v = new THREE.Vector3(), w = new THREE.Vector3(), qa = new THREE.Quaternion();
   const aim = { x: 0, z: -60 };
   const go = (sec, each) => { for (let i = 0, n = Math.round(sec / DT); i < n; i++) { game.mouseGround.set(p.position.x + aim.x, 0, p.position.z + aim.z); G.tick(DT); each?.(); } };
-  const tipOf = (o) => o.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+  const tipOf = (o) => o.set(0, 0, (r.weaponDims ?? HD).drawnTip).applyMatrix4(r.sword.matrixWorld); // (his own blade: rig.weaponDims)
   const kink = () => {
+    // (on the body the animator posed, not through the drawn lean the player turns back on: HEROARMS)
+    p.lean.on = false;
+    p.object3d.updateMatrixWorld(true);
     v.set(0, -1, 0).applyQuaternion(r.arms.R.fore.getWorldQuaternion(qa));
     w.set(0, 0, 1).applyQuaternion(r.sword.getWorldQuaternion(qa));
+    p.lean.on = true;
+    p.object3d.updateMatrixWorld(true);
     return Math.acos(clamp(v.normalize().dot(w.normalize()), -1, 1)) * DEG;
   };
   const elbow = (s) => 180 - Math.abs(r.arms[s].fore.rotation.x) * DEG;
@@ -9312,7 +9343,9 @@ async function scenarioHeroStance() {
     const was = new THREE.Vector3();
     go(sec, () => {
       before?.(n);
-      tipOf(v).sub(p.position);
+      // (at DIM's blade length, the one these bounds were set for: on the longsword the point is
+      // further out and moves more for the same turn of the blade, ADR-123)
+      v.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld).sub(p.position);
       if (n++) best = Math.max(best, v.distanceTo(was));
       was.copy(v);
     });

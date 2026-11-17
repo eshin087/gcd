@@ -2794,6 +2794,9 @@ export class HeroAnimator {
     this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
     this.lkEff = 0;
     this.gripGap = 1;
+    // the blade's numbers this animator clamps and clears with: the hero's own weapon (rig.weaponDims:
+    // his longsword), DIM's for every duelist (their blades were posed with these)
+    this.wd = this.freeHand && rig.weaponDims ? rig.weaponDims : DIM;
     this.rig = rig;
     this.player = player;
     this.poses = poses ? { ...POSES, ...poses } : POSES;
@@ -3756,7 +3759,7 @@ export class HeroAnimator {
   _tipFloor(r) {
     r.body.localToWorld(_w.copy(r.sword.position));
     _v.copy(_bz).applyQuaternion(_qBody);
-    const need = (TIP_FLOOR - _w.y) / DIM.steelTip;
+    const need = (TIP_FLOOR - _w.y) / this.wd.steelTip;
     if (_v.y < need && need < 0.95) {
       const h = Math.sqrt(1 - need * need);
       let hl = Math.hypot(_v.x, _v.z);
@@ -3798,7 +3801,7 @@ export class HeroAnimator {
    *  across them, behind when it trails) until it clears: one consistent side, so a leg swinging
    *  through the blade's line pushes it along instead of flipping it front / back frame to frame. */
   _clearSeg(G, a, b, R) {
-    const L = DIM.steelTip;
+    const L = this.wd.steelTip;
     _cD.copy(_bz).multiplyScalar(L); // blade segment G → G + _cD
     _cE.subVectors(b, a); // limb segment
     _cP.subVectors(G, a);
@@ -4046,7 +4049,7 @@ export class HeroAnimator {
     const r = this.rig;
     r.sword.updateWorldMatrix(true, false);
     _mC.copy(r.pelvis.matrixWorld).invert().multiply(r.sword.matrixWorld);
-    const n = BLADE_PTS.length, z0 = DIM.forte, z1 = DIM.drawnTip ?? DIM.steelTip;
+    const n = BLADE_PTS.length, z0 = this.wd.forte, z1 = this.wd.drawnTip ?? this.wd.steelTip;
     BLADE_PTS[0].set(0, 0, 0).applyMatrix4(_mC);
     for (let k = 1; k < n; k++) BLADE_PTS[k].set(0, 0, z0 + ((z1 - z0) * (k - 1)) / (n - 2)).applyMatrix4(_mC);
     const e = BLADE_PTS[n - 1];
@@ -4476,7 +4479,8 @@ export class HeroAnimator {
               if (this._floorY(mid, L) >= STREAM_FLOOR) b = mid;
               else a = mid;
             }
-            const push = clamp(b - c.x, -STREAM_PUSH * dt, STREAM_PUSH * dt);
+            // (a streamer's own `push`, rad/s: the Wanderer's long half-cape, ADR-123)
+            const pr = S.push ?? STREAM_PUSH, push = clamp(b - c.x, -pr * dt, pr * dt);
             c.x += push;
             if (c.vx * push < 0) c.vx = 0; // no swing left driving it back into the grass
           }

@@ -453,6 +453,15 @@ function mergeStatic(root, keep) {
   }
 }
 
+const SWORD_KEYS = ['gripBack', 'guard', 'gem', 'forte', 'steelTip', 'drawnTip', 'bladeBase', 'bladeTip'];
+/** The worn weapon's numbers over DIM's (rig.weaponDims). */
+function weaponDims(worn) {
+  const d = worn.find(({ slot }) => slot === 'weapon')?.item?.dims ?? null;
+  const o = {};
+  for (const k of SWORD_KEYS) o[k] = Number.isFinite(d?.[k]) ? d[k] : DIM[k];
+  return Object.freeze(o);
+}
+
 /**
  * Build the hero: the skeleton and the body, then the gear in `loadout` (slot → item id, see
  * gear/index.js; default: the Wanderer's set). An empty `chest`, `arms` or `legs` slot gets the
@@ -611,6 +620,11 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     // sword hand, and (optional) the sword fingers; open and fingers hang on arms.L.wrist. The
     // animator shows one of them (`twoHand` and the grip gap, `hs`; gear/README.md)
     offHand: handles.offHand,
+    // the drawn sword's numbers (sword space, m): the weapon item's `dims` over DIM's (gripBack,
+    // guard, gem, forte, steelTip, drawnTip, bladeBase, bladeTip). The hero's animator, FX and drawn
+    // contact read the blade's length here (the hero's longsword is longer than DIM's); the hit
+    // segment and every duelist keep DIM's
+    weaponDims: weaponDims(worn),
     loadout: equipped,
     slots,
     materials: M,

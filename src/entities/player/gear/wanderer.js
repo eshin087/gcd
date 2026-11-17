@@ -51,10 +51,12 @@ export const COAT_PANELS = [
 // (ADR-041, the side view: the sheets used to fly out BEHIND him, the hem 0.75 m behind his heels: a
 // sail in profile. The outer sheets now turn to his right side (`ry`), where the spread shows from
 // the front and the back like the reference's wide cloak, and the sheets down his back hang close.)
+// (ADR-123: the three back sheets 8-13 cm shorter than in 2026-11-09's build, 0.84-0.87 m: through a
+// forward roll the 1.0 m sheet lay 18 cm into the grass whatever way it swung, and lying dead 4 cm)
 export const CAPE_SHEETS = [
-  { at: [-0.225, 0.17, -0.062], ry: Math.PI + 0.95, w: [0.18, 0.4], len: [0.44, 0.5], out: 0.8, cup: 0.05, seed: 11 },
-  { at: [-0.135, 0.18, -0.102], ry: Math.PI + 0.45, w: [0.2, 0.42], len: [0.48, 0.52], out: 0.5, cup: 0.06, seed: 23 },
-  { at: [-0.03, 0.185, -0.119], ry: Math.PI + 0.05, w: [0.2, 0.36], len: [0.46, 0.46], out: 0.24, cup: 0.06, seed: 37 },
+  { at: [-0.225, 0.17, -0.062], ry: Math.PI + 0.95, w: [0.18, 0.4], len: [0.42, 0.42], out: 0.8, cup: 0.05, seed: 11 },
+  { at: [-0.135, 0.18, -0.102], ry: Math.PI + 0.45, w: [0.2, 0.42], len: [0.43, 0.44], out: 0.5, cup: 0.06, seed: 23 },
+  { at: [-0.03, 0.185, -0.119], ry: Math.PI + 0.05, w: [0.2, 0.36], len: [0.44, 0.42], out: 0.24, cup: 0.06, seed: 37 },
   { at: [0.06, 0.185, -0.113], ry: Math.PI - 0.35, w: [0.16, 0.24], len: [0.36, 0.34], out: 0.2, cup: 0.05, seed: 41 },
 ];
 
@@ -494,7 +496,11 @@ function buildCape({ chest, M, mesh, joint }) {
       mesh(s1, g1, M.coat);
       mesh(s1, g1, M.lining);
       mesh(s1, partGeometry(`cape.${i}.c`), M.hem);
-      streamers.push({ segs: [s0, s1], len: d.len, out: d.out });
+      // (ADR-123, the default again: its ends kept over the grass in a roll or a fall (`floor`, eased
+      // out of it fast: `push`; at 6 rad/s the long sheets lay 15-20 cm into the grass through a roll),
+      // a little heavier than a ribbon (`lag`, `max`: it stood up past level in a whirl), its widths
+      // for the animator's cloth-vs-steel bound (`w`: root, seam, hem), as the hooded cloak's)
+      streamers.push({ segs: [s0, s1], len: d.len, out: d.out, floor: true, lag: 0.7, max: 1.6, push: 30, w: [d.w[0], (d.w[0] + d.w[1]) / 2, d.w[1]] });
     });
   }
   return { streamers };
@@ -510,10 +516,16 @@ export const SWORD_DIMS = {
   steelTip: HERO_DIM.steelTip, drawnTip: HERO_DIM.drawnTip, bladeBase: HERO_DIM.bladeBase, bladeTip: HERO_DIM.bladeTip,
 };
 
-/** The longsword on the sword joint. Returns `gem`: the marker joint for the gem's glow sprite and
- *  glints (player.js). */
-function buildSword({ sword, M, mesh, joint }) {
-  const D = SWORD_DIMS;
+/** The hero's sword (2026-11-16, ADR-123: the owner brought back the look of 2026-11-09, its 1.64 m
+ *  sword included): the same hilt, the blade to a point at 1.45 m. The animator's ground clamp
+ *  and blade clearance, the FX and the drawn contact read these through `rig.weaponDims` (model.js);
+ *  the hit segment (bladeBase … bladeTip) is the gameplay reach and stays the shared one. `steelTip`
+ *  is a little past the drawn point, as DIM's is, so the drawn steel never touches the grass. */
+export const LONGSWORD_DIMS = Object.freeze({ ...SWORD_DIMS, drawnTip: 1.45, steelTip: 1.56 });
+
+/** The longsword on the sword joint (`blade`: the sculpted blade's part prefix, `D` its numbers).
+ *  Returns `gem`: the marker joint for the gem's glow sprite and glints (player.js). */
+function buildSword({ sword, M, mesh, joint }, D = LONGSWORD_DIMS, blade = 'bladeLong') {
   // origin at the grip centre, blade along +Z (width on X, flat faces ±Y). The reference's sword
   // (the owner's single-figure image): a broad blade at the guard tapering in one long straight line
   // to a sharp point; dark faceted steel between cyan edges with a bright centre ridge; a dark
@@ -522,9 +534,9 @@ function buildSword({ sword, M, mesh, joint }) {
   {
     // the blade is sculpted (heroParts.js): a dark gunmetal forte, the barbed cyan-edged steel, the
     // arrowhead point; its two halves either side of the ridge carry ink sub-ids 0 / 1
-    mesh(sword, partGeometry('blade.forte'), M.armor);
-    mesh(sword, partGeometry('blade.core'), M.blade);
-    mesh(sword, partGeometry('blade.edge'), M.bladeTip);
+    mesh(sword, partGeometry(`${blade}.forte`), M.armor);
+    mesh(sword, partGeometry(`${blade}.core`), M.blade);
+    mesh(sword, partGeometry(`${blade}.edge`), M.bladeTip);
   }
   mesh(sword, limbGeometry({ length: 0.16, r0: 0.016, r1: 0.017, radial: 6, rings: 3 }), M.leather, 0, 0, -D.gripBack); // grip
   {
@@ -583,5 +595,5 @@ export const WANDERER_ITEMS = [
   { id: 'wanderer.legs', slot: 'legs', name: 'Armoured Boots', build: buildLegs },
   { id: 'wanderer.skirt', slot: 'waist', name: 'Torn Coat Tails', build: buildSkirt },
   { id: 'wanderer.cape', slot: 'back', name: 'Torn Half-Cape', build: buildCape },
-  { id: 'wanderer.sword', slot: 'weapon', name: 'Moonlit Longsword', dims: SWORD_DIMS, build: buildSword },
+  { id: 'wanderer.sword', slot: 'weapon', name: 'Moonlit Longsword', dims: LONGSWORD_DIMS, build: (ctx) => buildSword(ctx) },
 ];

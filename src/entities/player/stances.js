@@ -83,9 +83,21 @@ function onTheBelt(p, P, m, yaw) {
   p[P.offAt] = 0;
 }
 
+/** How far the hero's blade is from DIM's toward the longsword's (0 … 1): a longer blade is held
+ *  flatter at ease, its point still a hand above the grass (ADR-123, the 1.64 m sword). */
+const LONG = [DIM.steelTip, 1.56];
+const longK = (A) => {
+  const L = A.wd?.steelTip;
+  return Number.isFinite(L) ? Math.min(1, Math.max(0, (L - LONG[0]) / (LONG[1] - LONG[0]))) : 0;
+};
+const mix = (a, b, t) => a + (b - a) * t;
+/** At ease with the longsword (blended in by longK): the sword hand (from its shoulder), the
+ *  blade's [azimuth, elevation] (degrees) and the flat's normal (body axes). */
+export const EASE_LONG = { h: [-0.18, -0.43, 0.25], a: [-37, -29], f: [0.765, -0.639, 0.087] };
+
 /** AT EASE (see the header). P = anim.js's channel map; A = the animator (its time). */
 export function atEase(p, P, A) {
-  const m = oscillate(A.time, STAND_LIFE.breath[0]);
+  const m = oscillate(A.time, STAND_LIFE.breath[0]), lk = longK(A);
   p[P.bodyX] = -0.028 - 0.022 * m.sw; // the hips over the rear (right) leg; the weight settles
   p[P.bodyY] = -0.012 + 0.007 * m.br;
   p[P.bodyZ] = -0.012;
@@ -100,14 +112,18 @@ export function atEase(p, P, A) {
   p[P.hdZ] = -0.03 - 0.01 * m.sw;
   // the sword arm: the upper arm hangs a little out and back, the elbow soft (~137°), and the
   // forearm lies on the blade's own line (about 6° between them; the old stance: 27°)
-  set3(p, P.rH, -0.172 + 0.006 * m.tipB, -0.478 + 0.012 * m.brL, 0.04 + 0.01 * m.tipA);
+  // (the longsword: the hand a little forward and higher, the forearm and the blade flatter, so the
+  // blade stays on the forearm's line and its point a hand above the grass)
+  set3(p, P.rH, mix(-0.172, EASE_LONG.h[0], lk) + 0.006 * m.tipB, mix(-0.478, EASE_LONG.h[1], lk) + 0.012 * m.brL, mix(0.04, EASE_LONG.h[2], lk) + 0.01 * m.tipA);
   set3(p, P.rP, 0.55, -0.25, -0.8);
   // the blade: down and out to his front-right, the point a hand above the grass; it drifts in a
   // slow lazy figure and lifts a little as the chest fills
-  dir(p, P.swD, -56 + 3.2 * m.tipA, -55 + 2.4 * m.tipB + 1.2 * m.brL);
+  // (the longsword's heading follows the raised forearm: 44° out instead of 56°)
+  dir(p, P.swD, mix(-56, EASE_LONG.a[0], lk) + 3.2 * m.tipA, mix(-55, EASE_LONG.a[1], lk) + 2.4 * m.tipB + 1.2 * m.brL);
   // the flat to the front and the back, square to the blade: as broad as a blade this steep can be
-  // to the game camera on all four sides of him (≥ 0.29 of its width; tipped 6° it showed 0.19 to one)
-  set3(p, P.swF, 0.62, -0.05, 0.79);
+  // to the game camera on all four sides of him (≥ 0.29 of its width; tipped 6° it showed 0.19 to one;
+  // the flatter longsword turned for the same: 0.28)
+  set3(p, P.swF, mix(0.62, EASE_LONG.f[0], lk), mix(-0.05, EASE_LONG.f[1], lk), mix(0.79, EASE_LONG.f[2], lk));
   onTheBelt(p, P, m, p[P.pelvY] + p[P.spY]);
   set3(p, P.rF, -0.135, ANK, -0.09); // the weight leg under the hips, the toes out
   set3(p, P.lF, 0.13, ANK, 0.15); // the left foot ahead, the knee soft

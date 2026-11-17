@@ -484,7 +484,10 @@ export const TUNING = {
       hits: [
         { kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.75, active: 0.25, impact: 0.15, damage: 15, knockback: 1.2, turn: 0.7 },
         { kind: 'claw', side: -1, tell: TELL.NORMAL, windup: 0.45, active: 0.25, impact: 0.15, damage: 15, knockback: 1.2, turn: 0.8 },
-        { kind: 'bite', tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.09, damage: 18, knockback: 2, reach: 5.4 * S },
+        // (impact 0.115, not 0.09: up close, the hero still reeling from the two claws, the jaws reach
+        // him at the end of the lunge, and the contact came up to 100 ms after the flash + lead; the
+        // flash now sits in the middle of the contacts' spread, -75 … 75 ms. 2026-11-16)
+        { kind: 'bite', tell: TELL.NORMAL, windup: 0.55, active: 0.2, impact: 0.115, damage: 18, knockback: 2, reach: 5.4 * S },
         { kind: 'fireSnap', tell: TELL.NORMAL, parryable: false, blockable: true, windup: 0.6, active: 0.6, impact: 0.12, tickDamage: 6, tick: 0.12, burn: 0.8, range: 7.5 * S, halfAngle: 24 * DEG, room: 3.6, backSpeed: 6, track: 0.6, turn: 4, fall: 0.2,
           ground: { w: 1.7 * S, linger: 1.4, tick: 0.3, tickDamage: 3, burn: 0.5, delay: 0.1 } },
         { kind: 'wingSlam', tell: TELL.RED, windup: 0.9, active: 0.3, impact: 0.3, damage: 32, knockback: 6, knockdown: true, radius: 3.0 * S, near: 4.0, far: 7.5,
