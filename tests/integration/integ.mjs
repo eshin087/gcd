@@ -929,11 +929,6 @@ async function scenarioPressure() {
   out(`   mean  P1 ${mean(1, 'perMin').toFixed(1)} · P2 ${mean(2, 'perMin').toFixed(1)} · P3 ${mean(3, 'perMin').toFixed(1)} cues/min; longest gap P1 ${Math.max(...rows.filter((r) => r.ph === 1).map((r) => r.gapMax)).toFixed(2)} · P2 ${Math.max(...rows.filter((r) => r.ph === 2).map((r) => r.gapMax)).toFixed(2)} · P3 ${Math.max(...rows.filter((r) => r.ph === 3).map((r) => r.gapMax)).toFixed(2)} s`);
   if (!P) { out('   (no TUNING.pressure: measured only, nothing asserted)'); return lastG; }
   const A = P.meter;
-  // (2026-11-17: with the hero's shorter legs one seed's phase 3, run after the scenarios before it,
-  // picked no terrain move in 120 s though one was usable at 62 % of its idle moments; run alone it
-  // picks one. A terrain move missing from ONE seed-phase is tolerated and printed; anything else,
-  // or terrain missing twice, fails)
-  let terrainMiss = 0;
   for (const seed of SEEDS) {
     const r = [1, 2, 3].map((ph) => rows.find((x) => x.seed === seed && x.ph === ph));
     assert(r[1].perMin >= r[0].perMin * A.ramp && r[2].perMin >= r[1].perMin * A.ramp, `seed ${seed}: each phase busier than the last by x${A.ramp} (cues/min ${r.map((x) => x.perMin.toFixed(1)).join(' < ')})`);
@@ -954,12 +949,8 @@ async function scenarioPressure() {
       // idle moments of phase 3 (52 - 91 % in phases 1 - 2). Every other category the director can
       // reach by moving (its seek); terrain is asked for only where it was usable at half of them)
       if (want.has('terrain') && (x.avail.terrain || 0) < 0.5 * x.idleProbe) want.delete('terrain');
-      let missing = [...want].filter((c) => !x.cats[c]);
-      if (missing.length === 1 && missing[0] === 'terrain' && terrainMiss++ === 0) {
-        out(`   (seed ${seed} P${x.ph}: no terrain move picked; terrain usable at ${x.avail.terrain || 0} of ${x.idleProbe} idle moments. Tolerated once)`);
-        missing = [];
-      }
-      assert(!missing.length, `seed ${seed} P${x.ph}: every category the phase has was picked (${[...want].join(', ')}; missing ${JSON.stringify(missing)}; terrain usable at ${x.avail.terrain || 0} of ${x.idleProbe} idle moments)`);
+      const missing = [...want].filter((c) => !x.cats[c]);
+      assert(!missing.length, `seed ${seed} P${x.ph}: every category the phase has was picked (${[...want].join(', ')}; missing ${JSON.stringify(missing)})`);
       assert(x.conflicts === 0, `seed ${seed} P${x.ph}: no two blows of different sources needing different answers within 0.3 s (${x.conflicts}: ${x.conflictAt.slice(0, 4).join(' · ')})`);
       assert(x.minSafe >= 1, `seed ${seed} P${x.ph}: always ground within a roll that no blast due within 0.6 s covers (least ${x.minSafe} of 17 spots, Armageddon apart)`);
     }
@@ -4330,9 +4321,13 @@ async function scenarioHero() {
   const strips = r.coat.reduce((n, c) => n + c.strips.length, 0);
   // the robe's skirt (the default set, gear/abyss.js): panels on the coat springs, the back pair past
   // the sides; every panel is a skirt panel (no flap), each with its torn strips
+  // (2026-11-17, the hooded hero: the cloak-robe's BACK is on the streamer springs (its sheets), the
+  // coat panels are its front and sides; the torn hem is the sheets' own shape. What is asked: a
+  // skirt on springs all round him, the back covered by a sheet on springs)
   const tails = r.coat.filter((C) => Math.abs(C.def.az) > 2.2);
-  assert(r.coat.length >= 2 && r.coat.length <= 6 && tails.length >= 1 && strips >= r.coat.length && r.coat.every((C) => !C.def.flap),
-    `coat: ${r.coat.length} panels (${tails.length} behind), ${strips} torn strips`);
+  const backSheets = (r.streamers ?? []).filter((S) => !S.weapon);
+  assert(r.coat.length >= 2 && r.coat.length <= 6 && tails.length + backSheets.length >= 1 && r.coat.every((C) => !C.def.flap),
+    `coat: ${r.coat.length} panels (${tails.length} behind) and ${backSheets.length} back sheets on springs, ${strips} torn strips`);
   // the one hero (gear/index.js DEFAULT_LOADOUT): a head item (the hood), the body's five hair joints
   // (springs) with the clusters the head item keeps built on them, a lit face (no shadowsFace), the
   // cloak's sheets on the streamer springs, no shoulder item, the shield on the free forearm; his
@@ -4346,11 +4341,14 @@ async function scenarioHero() {
     const keep = hi?.hidesHair ? 0 : Array.isArray(hi?.hair) ? Object.keys(r.hair).filter((n) => hi.hair.includes(n)).length : 5;
     let skin = 0;
     r.head.traverse((o) => { if (o.isMesh && o.material === r.materials.skin) skin++; });
-    assert(r.streamers?.filter((S) => !S.weapon).length >= 1 && r.streamers.every((S) => S.lag == null || (S.lag > 0 && S.lag <= 1)) && Object.keys(r.hair).length === 5 && built.length === keep && skin > 0 && r.slots.head.length > 0 && r.slots.shoulders.length === 0
+    // (a head item may give the face its own skin material: abyss.hood `face`)
+    let faceN = 0;
+    r.head.traverse((o) => { if (o.isMesh && hi?.face && o.material === r.materials[hi.face]) faceN++; });
+    assert(r.streamers?.filter((S) => !S.weapon).length >= 1 && r.streamers.every((S) => S.lag == null || (S.lag > 0 && S.lag <= 1)) && Object.keys(r.hair).length === 5 && built.length === keep && (skin > 0 || (hi?.face && r.materials[hi.face] && faceN > 0)) && r.slots.head.length > 0 && r.slots.shoulders.length === 0
       && !!r.shield?.joint && r.shield.joint.parent === r.arms.L.fore && p.anim.shield === true
-      && r.weaponDims.drawnTip === 0.9 && r.weaponDims.steelTip === 1.0 && r.weaponDims.bladeBase === HERO_DIM.bladeBase && r.weaponDims.bladeTip === HERO_DIM.bladeTip
+      && (await imp('src/entities/player/gear/abyss.js')).ABYSS_SWORD_DIMS.drawnTip === r.weaponDims.drawnTip && r.weaponDims.drawnTip >= 0.7 && r.weaponDims.drawnTip < r.weaponDims.steelTip && r.weaponDims.steelTip <= 1.0 && r.weaponDims.bladeBase === HERO_DIM.bladeBase && r.weaponDims.bladeTip === HERO_DIM.bladeTip
       && r.bodyDims.thigh === HERO_LEGS.thigh && r.bodyDims.shin === HERO_LEGS.shin && HERO_LEGS.thigh === 0.385 && HERO_LEGS.shin === 0.38,
-      `the hero: ${r.streamers?.length} cloak sheets on springs, ${built.length} of 5 hair clusters built (the hood keeps ${keep}), ${skin} skin meshes on the head (lit), the shield on the free forearm; the sword to ${r.weaponDims.drawnTip} m drawn (the hit segment unchanged, ${r.weaponDims.bladeBase} … ${r.weaponDims.bladeTip}); legs ${r.bodyDims.thigh} / ${r.bodyDims.shin}`);
+      `the hero: ${r.streamers?.length} cloak sheets on springs, ${built.length} of 5 hair clusters built (the hood keeps ${keep}), ${skin + faceN} skin meshes on the head (lit), the shield on the free forearm; the sword to ${r.weaponDims.drawnTip} m drawn (the hit segment unchanged, ${r.weaponDims.bladeBase} … ${r.weaponDims.bladeTip}); legs ${r.bodyDims.thigh} / ${r.bodyDims.shin}`);
   }
   // clear of the wyrm (AI off): run, sprint, roll, light / backhand / slam, charge + cleave
   p.debug.teleport(d.position.x + 14, d.position.z + 14);
@@ -4896,7 +4894,10 @@ async function scenarioHeroLife() {
       const bite = made.splice(0);
       const le = edge(turned), se = edge(slam), be = bite.filter((o) => o.glyph === '|');
       const same = (c, ref) => Array.isArray(c) && c.length === 3 && c.every((v, i) => v === ref[i]);
-      assert(le.length > 0 && le.every((o) => o.color === ARC_TONE.light.core && same(o.colorEnd, [0.14, 0.1, 0.8])), `a light's arc is as it was: white-hot edge cooling to indigo (${le.length} strokes)`);
+      // (2026-11-17, the hooded hero: his arc is the crystal's lavender-white, fx.js COL.arcEnd; the
+      // intent: a light's edge is the light tone's core cooling to the light tone's own end, apart from
+      // the heavy blows' violet)
+      assert(le.length > 0 && le.every((o) => o.color === ARC_TONE.light.core && same(o.colorEnd, ARC_TONE.light.end)) && !same(ARC_TONE.light.end, ARC_TONE.heavy.end), `a light's arc: the white-hot edge cooling to the light tone's end, not the heavies' violet (${le.length} strokes)`);
       assert(se.length > 0 && se.every((o) => same(o.colorEnd, ARC_TONE.heavy.end)), `the slam's arc cools to the gem's violet (${se.length} strokes)`);
       assert(be.length > 0 && Math.max(...be.map((o) => o.size)) <= 0.14 && !bite.some((o) => /[A-Za-z0-9+]/.test(o.glyph)), `the bite: a slightly thicker white edge, still at most 0.14 m, no letters (${Math.max(...be.map((o) => o.size)).toFixed(3)} m)`);
     } finally {
@@ -5013,7 +5014,12 @@ async function scenarioHeroLife() {
   // fill and both lines): exactly the base at rest, a landed cut's flare held through the freeze and
   // gone 0.4 s later, the slam's stronger, a whiff only the strike's; the far strike ink above rest
   {
-    const PF = game.U.uHeroPartFill.value[17], PR = game.U.uHeroPartRim.value[17], bu = r.materials.blade.uniforms;
+    // (2026-11-17, the hooded hero: his crystal, the blade and the shield's star, flares in the player's
+    // OWN bank of the per-part tables, U.uHeroOwn*, its part from HERO_INK.abCrystal: player.js)
+    const { HERO_INK: HI_ } = await imp('src/entities/player/model.js'), OB_ = { ...HI_.abCrystal, ...HI_.abCrystal.own }, OWN_ = OB_.part;
+    // (the gains below are × his base: OB_.fillGain, the rim line's own width)
+    const F0 = OB_.fillGain ?? 1, R0 = (OB_.rimLine ?? OB_.line)[3];
+    const PF = game.U.uHeroOwnFill.value[OWN_], PR = game.U.uHeroOwnRim.value[OWN_], bu = r.materials.blade.uniforms;
     const fx0 = Math.sin(d.yaw), fz0 = Math.cos(d.yaw);
     const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx0 + (h.z - d.position.z) * fz0 > (a.x - d.position.x) * fx0 + (a.z - d.position.z) * fz0 ? h : a));
     const front = () => { const c = chest(); p.debug.teleport(c.x + fx0 * (c.r + 1), c.z + fz0 * (c.r + 1)); p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z); aimAt(G); };
@@ -5051,9 +5057,9 @@ async function scenarioHeroLife() {
     A.forceVariant = null;
     G.watch = null;
     out(`   blade flare: rest ${idle[0]} / ${idle[1]}, a landed light ${lit?.toFixed(2)} → ${held?.toFixed(2)} three frames on → ${cooled.toFixed(2)} 0.4 s later; the slam ${slamPeak.toFixed(2)}; a whiff ${whiff.toFixed(2)}; far strike ink ${farInk.toFixed(2)} at ${p.viewDist.toFixed(0)} m`);
-    assert(idle[0] === 1 && idle[1] === 1.7, `at rest the blade's part is exactly its HERO_INK base (fill ${idle[0]}, rim ${idle[1]})`);
-    assert(lit >= 1.5 && held >= 1.35 && cooled <= 1.02, `a landed cut flares the blade (fill ${lit?.toFixed(2)} ≥ 1.5), held through the freeze (${held?.toFixed(2)} ≥ 1.35), gone 0.4 s later (${cooled.toFixed(2)} ≤ 1.02)`);
-    assert(slamPeak >= 1.8 && whiff <= 1.15, `the slam flares further (${slamPeak.toFixed(2)} ≥ 1.8); a whiff only takes the strike's gain (${whiff.toFixed(2)} ≤ 1.15)`);
+    assert(Math.abs(idle[0] - F0) < 1e-6 && Math.abs(idle[1] - R0) < 1e-6, `at rest the blade's part is exactly its HERO_INK base (fill ${idle[0]}, rim ${idle[1]})`);
+    assert(lit / F0 >= 1.5 && held / F0 >= 1.35 && cooled / F0 <= 1.02, `a landed cut flares the blade (fill ${lit?.toFixed(2)} ≥ 1.5), held through the freeze (${held?.toFixed(2)} ≥ 1.35), gone 0.4 s later (${cooled.toFixed(2)} ≤ 1.02)`);
+    assert(slamPeak / F0 >= 1.8 && whiff / F0 <= 1.15, `the slam flares further (${slamPeak.toFixed(2)} ≥ 1.8); a whiff only takes the strike's gain (${whiff.toFixed(2)} ≤ 1.15)`);
     assert(p.viewDist >= 30 && farInk >= 1.85, `at the game camera (${p.viewDist.toFixed(0)} m) a light strike's ink rises above the rest ink (${farInk.toFixed(2)} ≥ 1.85; it was a flat 1.6)`);
     // dead: the base again
     p.debug.kill();
@@ -5067,14 +5073,14 @@ async function scenarioHeroLife() {
     d.hp = d.maxHp;
     d.posture = 0;
     go(1.0);
-    assert(dead === 1, `a dead hero's blade is the base (${dead})`);
+    assert(Math.abs(dead - F0) < 1e-6, `a dead hero's blade is the base (${dead})`);
   }
 
   // (1e3) the edge glint runs up the LEADING edge as a cut comes in (fx.edgeGlint, EDGE_GLINT): on the
   // steel, rising to the point; on the ridge for a thrust; never at rest, at a run, at the coil or in
   // the execution's thrust; a landed cut stops it and flashes the steel instead (fx.edgeFlash)
   {
-    const { EDGE_GLINT, hwAt, leadSide } = await imp('src/entities/player/fx.js');
+    const { EDGE_GLINT, hwAt, leadSide, bladeStretch } = await imp('src/entities/player/fx.js');
     const { SWINGS } = await imp('src/entities/player/swings.js');
     const { THRUST, CHARGE, chargeStats } = await imp('src/entities/player/combat.js');
     const fxa = p.fx.add, spawn0 = fxa.spawn, eg0 = p.fx.edgeGlint, ef0 = p.fx.edgeFlash;
@@ -5126,7 +5132,8 @@ async function scenarioHeroLife() {
           if (list.some((g) => Math.abs(g.x) > 0.01)) bad.push(`${key}: a thrust's glint off the ridge`);
         } else {
           nCut++;
-          const onEdge = list.filter((g) => Math.abs(g.x) >= 0.6 * hwAt(g.z) && Math.sign(g.x) === g.side).length;
+          // (hwAt on the drawn blade: stretched to this sword, fx.js bladeStretch, as the glint itself is)
+          const onEdge = list.filter((g) => Math.abs(g.x) >= 0.6 * hwAt(g.z, bladeStretch(r.weaponDims)) && Math.sign(g.x) === g.side).length;
           if (onEdge < 0.8 * list.length) bad.push(`${key}: ${onEdge} of ${list.length} on the leading edge`);
         }
       }
@@ -7643,19 +7650,16 @@ async function scenarioRemap() {
 // The verifier for the melee strings (contract 1): every hit of every string, started through the
 // AI's own start path (no Lab face-turn) from placements the AI would pick it at (its band), the hero
 // standing still (god mode, held at his spot). Per hit: first contact - (its combat:flash + flashLead).
-// Every contact must land within ±90 ms of its flash; the first hit must land from every AI pick.
+// Every contact must land within ±85 ms of its flash; the first hit must land from every AI pick.
 async function scenarioTiming() {
-  out('\n== scenario TIMING (strings: each hit lands within ±90 ms of its flash + lead, AI picks, phases 1-3) ==');
+  out('\n== scenario TIMING (strings: each hit lands within ±85 ms of its flash + lead, AI picks, phases 1-3) ==');
   const G = build();
   const { game } = G;
   fightSetup(G);
   const d = game.dragon, p = game.player;
   const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
   const { attackWeight } = await imp('src/entities/dragon/ai.js');
-  // (TOL 0.09, was 0.085: the hero's shorter legs, heroDims.js HERO_LEGS, 2026-11-17, put his body
-  // 8.5 cm lower and cataclysm's third blow at P3 reached him 85 ms after its flash on two placements;
-  // with DIM's legs every contact is as before, worst 67 ms in this part)
-  const lead = TUNING.flashLead, TOL = 0.09;
+  const lead = TUNING.flashLead, TOL = 0.085;
   // the strings, plus the single melee attacks they share performances with (unchanged numbers)
   let names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,stormFlurry,wingRend,pivotLash,rearGuard,skyHammer,furnaceMaw,cinderRake,cataclysm,bite,swipe,tail,stomp').split(',');
   // one part of the list (tests/run.mjs runs the n parts side by side): every n-th name from the k-th
@@ -9745,6 +9749,256 @@ async function scenarioShield() {
   return last;
 }
 
+// The hero's motion audit (opt-in: `node tests/integration/integ.mjs . motionaudit`): every clip
+// he plays, measured frame by frame on the drawn, upright body (root space, model metres). Per clip:
+// the steel's least clearance from the body's silhouette (capsules round the bones: the hood, the
+// torso, the thighs, the shins, the shield arm) and from the plate; the plate's least clearance from
+// the torso, the thighs and the head; the elbows' least angle and any that bends backward; the
+// sword's angle to the forearm (the wrist); the grip's distance from the hand; the largest one-frame
+// moves (cm) and jerks (the change of a move from one frame to the next: a pop) of the grip, the
+// point, the plate, the elbows and the head; the point and the plate's foot above the grass.
+// ABYSS_AUDIT=name,name runs only those clips; ABYSS_AUDIT_V=1 prints the worst frame of each.
+async function scenarioMotionAudit() {
+  out('\n== scenario MOTIONAUDIT (the hero, every clip: steel, plate, joints, pops, ground) ==');
+  const { HEAVY, LIGHT, SPRINT_ATK, ROLL_ATK } = await imp('src/entities/player/combat.js');
+  const { DIM } = await imp('src/entities/player/model.js');
+  const { closestOnSegments } = await imp('src/combat/clashFx.js');
+  // (ABYSS_SHIELDKEY=clip:k:x,y,z[;...]: try a shield-arm key's fist before the clips compile, a
+  // search tool for the shield keys)
+  if (process.env.ABYSS_SHIELDKEY) {
+    const { SHIELD_ARM } = await imp('src/entities/player/shieldPoses.js');
+    for (const e of process.env.ABYSS_SHIELDKEY.split(';')) {
+      const [c, k, v] = e.split(':');
+      const key = SHIELD_ARM[c]?.[Number(k)];
+      if (key) key.l = v.split(',').map(Number);
+    }
+  }
+  const G = build();
+  fightSetup(G);
+  const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim, S = r.shield, J = S?.joint;
+  p.debug.god = true;
+  const root = p.object3d, WD = r.weaponDims ?? DIM;
+  const V = () => new THREE.Vector3();
+  const tmp = V(), q0 = V(), q1 = V(), c0 = V(), c1 = V();
+  // the silhouette, by bone (radii: the body's own and the clothes over it, m)
+  const R = { hood: 0.16, torso: 0.17, thigh: 0.1, shin: 0.08, armL: 0.065 };
+  const W = (o, x = 0, y = 0, z = 0, out = V()) => { out.set(x, y, z); o.localToWorld(out); return root.worldToLocal(out); };
+  const segDist = (p0, p1, a, b) => { // least distance between segments p0p1 and ab
+    const e = closestOnSegments(p0, p1, a, b, c0, c1);
+    return e;
+  };
+  const far = () => { p.debug.teleport(d.position.x + 16, d.position.z + 16); p.yaw = 0; root.rotation.y = 0; };
+  const idle = (fight = true) => {
+    input.up(1); input.up(2); input.release('KeyW'); input.release('KeyS'); input.release('KeyA'); input.release('KeyD'); input.release('ShiftLeft');
+    input.axis = { x: 0, y: 0 };
+    p.debug.fightStance = fight;
+    p.hp = p.maxHp;
+    if (!p.alive) p.respawn(0, 0);
+    p.atk = null;
+    p._enter('idle', 'loco', 0.05);
+    far();
+    for (let i = 0; i < 40; i++) G.tick(DT);
+  };
+  const rows = [];
+  const only = (process.env.ABYSS_AUDIT || '').split(',').filter(Boolean);
+  const track = ['grip', 'point', 'plate', 'elbowR', 'elbowL', 'head'];
+  /** One clip: `start` once, `each(i)` before every tick, `s` seconds. */
+  function clip(name, s, start, each, fight = true) {
+    if (only.length && !only.includes(name)) return;
+    idle(fight);
+    start?.();
+    const st = { name, frames: 0, steel: Infinity, steelAt: '', plateSteel: Infinity, pierce: 0, plateBody: Infinity, plateBodyAt: '', elbowMin: [180, 180], elbowBack: [0, 0], wrist: [180, 0], gripGap: 0, jump: {}, jerk: {}, jerkAt: {}, point: Infinity, plateLow: Infinity, bad: 0 };
+    const prev = {}, prevD = {};
+    for (const k of track) { st.jump[k] = 0; st.jerk[k] = 0; st.jerkAt[k] = 0; }
+    for (let i = 0, n = Math.round(s / DT); i < n; i++) {
+      each?.(i);
+      G.tick(DT);
+      root.updateMatrixWorld(true);
+      st.frames++;
+      if (!A.cur.every(Number.isFinite)) { st.bad++; continue; }
+      // the bones (root space)
+      const head = W(r.head, DIM.skull[0], DIM.skull[1], DIM.skull[2]);
+      const pel = W(r.pelvis), neck = W(r.chest, 0, 0.2, 0);
+      const L = r.legs, thL = W(L.L.thigh), knL = W(L.L.shin), ftL = W(L.L.foot), thR = W(L.R.thigh), knR = W(L.R.shin), ftR = W(L.R.foot);
+      const shL = W(r.arms.L.upper), elL = W(r.arms.L.fore), wrL = W(r.arms.L.fore, 0, -DIM.foreArm, 0);
+      const shR = W(r.arms.R.upper), elR = W(r.arms.R.fore), wrR = W(r.arms.R.fore, 0, -DIM.foreArm, 0);
+      const grip = W(r.sword), guard = W(r.sword, 0, 0, WD.guard), tip = W(r.sword, 0, 0, WD.drawnTip);
+      const caps = [['hood', head, head, R.hood], ['torso', pel, neck, R.torso], ['thighL', thL, knL, R.thigh], ['thighR', thR, knR, R.thigh], ['shinL', knL, ftL, R.shin], ['shinR', knR, ftR, R.shin]];
+      if (S) caps.push(['armL', shL, elL, R.armL], ['foreL', elL, wrL, R.armL]);
+      // the steel (from a hand's width past the guard: the hilt sits in the hand by the body)
+      const s0 = q0.copy(guard).lerp(tip, 0.1);
+      for (const [nm, a, b, rad] of caps) {
+        const e = segDist(s0, tip, a, b) - rad;
+        if (e < st.steel) { st.steel = e; st.steelAt = `${nm}@${i}`; }
+      }
+      // the plate: its outline (centre, 4 corners, 4 edge midpoints) in root space
+      if (S && J) {
+        const pts = [[0, 0], [-S.top, 0], [S.foot, 0], [0, S.half[0]], [0, -S.half[0]], [-S.top / 2, S.half[0] * 0.8], [-S.top / 2, -S.half[0] * 0.8], [S.foot / 2, S.half[0] * 0.5], [S.foot / 2, -S.half[0] * 0.5]];
+        let low = Infinity;
+        for (const [x, y] of pts) {
+          W(J, x, y, S.off, tmp);
+          low = Math.min(low, tmp.y);
+          for (const [nm, a, b, rad] of caps) {
+            if (nm === 'armL' || nm === 'foreL') continue;
+            const e = segDist(tmp, tmp, a, b) - rad;
+            if (e < st.plateBody) { st.plateBody = e; st.plateBodyAt = `${nm}@${i}`; }
+          }
+        }
+        st.plateLow = Math.min(st.plateLow, low);
+        // the steel against the plate: blade points in the plate's frame, the distance to its face
+        // inside the outline (or to the outline's nearest edge), and a crossing of the face inside it
+        let pz = null;
+        for (let k = 0; k <= 16; k++) {
+          tmp.set(0, 0, WD.guard + (WD.drawnTip - WD.guard) * (k / 16));
+          r.sword.localToWorld(tmp);
+          J.worldToLocal(tmp);
+          const x = tmp.x, y = tmp.y, z = tmp.z - S.off;
+          const hw = S.half[0] * (x > 0 ? Math.max(0.15, 1 - (x / S.foot) ** 1.5) : 1);
+          const cx = Math.min(Math.max(x, -S.top), S.foot), cy = Math.min(Math.max(y, -hw), hw);
+          const e = Math.hypot(x - cx, y - cy, z) - 0.015;
+          if (e < st.plateSteel) { st.plateSteel = e; st.psAt = `${i}:${(k / 16).toFixed(2)}${p.atk ? ` ${p.atk.def.name}#${A.variant ?? A.varK ?? "?"} u${(p.atk.t / p.atk.def.windup).toFixed(2)}` : ''}`; }
+          if (pz != null && (pz > 0) !== (z > 0) && x > -S.top + 0.02 && x < S.foot - 0.03 && Math.abs(y) < hw - 0.02) { st.pierce++; st.pierceAt = (st.pierceAt ?? '') + ` ${i}`; break; }
+          pz = z;
+        }
+      }
+      // the elbows: the least angle, and a bend the wrong way (the forearm folding behind the upper
+      // arm's own back: the elbow's hinge seen against the upper arm's local X)
+      for (const [j, sh, el, wr, up] of [[0, shR, elR, wrR, r.arms.R.upper], [1, shL, elL, wrL, r.arms.L.upper]]) {
+        const u = c0.subVectors(el, sh).normalize(), f = c1.subVectors(wr, el).normalize();
+        const ang = 180 - (Math.acos(Math.min(1, Math.max(-1, u.dot(f)))) * 180) / Math.PI;
+        st.elbowMin[j] = Math.min(st.elbowMin[j], ang);
+        // the hinge: in the upper arm's frame the forearm should swing toward +Z (ahead of the arm)
+        tmp.copy(wr);
+        root.localToWorld(tmp);
+        up.worldToLocal(tmp);
+        if (ang < 165 && tmp.z < -0.03) st.elbowBack[j]++;
+      }
+      // the wrist: the blade's angle to the forearm's line, and the grip off the hand
+      {
+        const f = c0.subVectors(wrR, elR).normalize();
+        const b = c1.subVectors(tip, grip).normalize();
+        const ang = (Math.acos(Math.min(1, Math.max(-1, f.dot(b)))) * 180) / Math.PI;
+        st.wrist[0] = Math.min(st.wrist[0], ang);
+        st.wrist[1] = Math.max(st.wrist[1], ang);
+        st.gripGap = Math.max(st.gripGap, grip.distanceTo(wrR));
+      }
+      // the pops
+      const now = { grip, point: tip, plate: S && J ? W(J, 0, 0, S.off) : grip, elbowR: elR, elbowL: elL, head };
+      for (const k of track) {
+        if (prev[k]) {
+          const dv = tmp.subVectors(now[k], prev[k]);
+          const m = dv.length();
+          st.jump[k] = Math.max(st.jump[k], m);
+          if (prevD[k]) {
+            const jk = c0.subVectors(dv, prevD[k]).length();
+            if (jk > st.jerk[k]) { st.jerk[k] = jk; st.jerkAt[k] = i; }
+            if (process.env.ABYSS_AUDIT_D && k === (process.env.ABYSS_AUDIT_K || 'plate') && jk > 0.05) out(`      pop ${i} plate jerk ${(jk * 100).toFixed(0)} cm, push ${A.shieldPush?.toArray().map((x) => x.toFixed(2))}, state ${p.state}`);
+            prevD[k].copy(dv);
+          } else prevD[k] = dv.clone();
+          prev[k].copy(now[k]);
+        } else prev[k] = now[k].clone();
+      }
+      st.point = Math.min(st.point, tip.y);
+      // the cloth: each coat panel's two sheets (seg-local: x across, y down its length, +z out);
+      // a leg or the sword arm OUTSIDE a sheet it lies across = the sheet stands through it; the
+      // plate's outline on both sides of a sheet = through the plate
+      // the cloth's motion: each back sheet's swing (A out from hanging, B sideways; the root
+      // segment and the hem's sum), its angular speed, the spread between neighbours (the cloak is
+      // one garment: the centre sheet against each side sheet; the coat's front panels against the
+      // side panel next to them), the hem's swing on a run
+      {
+        const SS = A.streamState ?? [], CS = A.coatState ?? [], cm = st.cm ?? (st.cm = { aMax: 0, bMax: 0, spd: 0, spread: 0, cSpread: 0, cOut: 0, aSum: 0, n: 0, prev: null });
+        const ang = SS.map((q) => [q.segs[0].x + q.segs[1].x, q.segs[0].z + q.segs[1].z]);
+        for (const [a, b] of ang) { cm.aMax = Math.max(cm.aMax, Math.abs(a)); cm.bMax = Math.max(cm.bMax, Math.abs(b)); }
+        if (ang.length) { cm.aSum += ang[0][0]; cm.n++; }
+        if (cm.prev) ang.forEach(([a, b], k) => { cm.spd = Math.max(cm.spd, Math.hypot(a - cm.prev[k][0], b - cm.prev[k][1])); });
+        cm.prev = ang;
+        for (let k = 1; k < ang.length; k++) cm.spread = Math.max(cm.spread, Math.hypot(ang[k][0] - ang[0][0], ang[k][1] - ang[0][1]));
+        const ca = CS.map((q) => [q[0].x + q[1].x, q[0].z + q[1].z]);
+        for (const [a] of ca) cm.cOut = Math.max(cm.cOut, -a);
+        // (panels 0 / 2 and 1 / 3: a front panel and the side next to it)
+        for (const [x, y] of [[0, 2], [1, 3]]) if (ca[x] && ca[y]) cm.cSpread = Math.max(cm.cSpread, Math.hypot(ca[x][0] - ca[y][0], ca[x][1] - ca[y][1]));
+      }
+      if (r.coat?.length) {
+        const body = [knL, knR, ftL, ftR, q1.copy(thL).lerp(knL, 0.5).clone(), c0.copy(thR).lerp(knR, 0.5).clone()];
+        const plate = [];
+        if (S && J) for (const [x, y] of [[0, 0], [-S.top, 0], [S.foot * 0.8, 0], [0, S.half[0]], [0, -S.half[0]]]) plate.push(W(J, x, y, S.off));
+        let leg = 0, pl = 0;
+        for (const Cp of r.coat) {
+          for (let sg = 0; sg < 2; sg++) {
+            const j = Cp.segs[sg], hw = (Cp.def.w?.[sg] ?? 0.2) * 0.5, len = Cp.def.len?.[sg] ?? 0.3;
+            const loc = (v) => j.worldToLocal(root.localToWorld(tmp.copy(v)));
+            for (const v of body) {
+              const l = loc(v);
+              if (Math.abs(l.x) < hw && l.y < -0.03 && l.y > -len && l.z > 0.03) leg++;
+            }
+            let pos = 0, neg = 0;
+            for (const v of plate) {
+              const l = loc(v);
+              if (Math.abs(l.x) < hw && l.y < 0 && l.y > -len) { if (l.z > 0.015) pos++; else if (l.z < -0.015) neg++; }
+            }
+            if (pos && neg) { pl++; if (process.env.ABYSS_AUDIT_D) out(`      cloth-plate ${i} panel ${r.coat.indexOf(Cp)} seg ${sg} +${pos} -${neg}`); }
+          }
+        }
+        if (leg) st.clothLeg = (st.clothLeg ?? 0) + 1;
+        if (pl) st.clothPlate = (st.clothPlate ?? 0) + 1;
+      }
+    }
+    rows.push(st);
+  }
+  far();
+  // ---- the route
+  clip('ease', 3, null, null, false);
+  clip('fight', 3);
+  clip('ease>fight', 1.2, () => { p.debug.fightStance = true; }, null, false);
+  clip('fight>ease', 2.5, () => { p.debug.fightStance = false; });
+  // (the mock's movement is input.axis, x right / y forward; keys only for the sprint)
+  const AX = { KeyW: [0, 1], KeyS: [0, -1], KeyD: [1, 0], KeyA: [-1, 0] };
+  const walk = (k, fight = true, sprint = false) => (i) => { if (i === 0) { input.axis = { x: AX[k][0], y: AX[k][1] }; if (sprint) input.hold('ShiftLeft'); } if (i === 72) { input.axis = { x: 0, y: 0 }; input.release('ShiftLeft'); } };
+  clip('run', 1.8, null, walk('KeyW'), false);
+  clip('run fight', 1.8, null, walk('KeyW'));
+  clip('sprint', 2, null, walk('KeyW', false, true), false);
+  clip('strafe', 1.8, null, walk('KeyD'));
+  clip('backpedal', 1.8, null, walk('KeyS'));
+  clip('turn run', 2, null, (i) => { if (i === 0) input.axis = { x: 0, y: 1 }; if (i === 40) input.axis = { x: 0, y: -1 }; if (i === 90) input.axis = { x: 0, y: 0 }; }, false);
+  clip('turn side', 2, null, (i) => { if (i === 0) input.axis = { x: 1, y: 0 }; if (i === 40) input.axis = { x: -1, y: 0 }; if (i === 90) input.axis = { x: 0, y: 0 }; }, false);
+  clip('roll', 1.1, null, (i) => { if (i === 0) { input.axis = { x: 0, y: 1 }; p._buffer('roll'); } if (i === 6) input.axis = { x: 0, y: 0 }; });
+  clip('backstep', 0.9, null, (i) => { if (i === 0) p._buffer('roll'); });
+  // every look of every swing (anim.forceVariant: 0 = its `anim`, then its `variants`)
+  const looks = (D) => [D.anim, ...(D.variants ?? [])].map((a, v) => [a?.clip ?? D.name, v]);
+  for (const L of LIGHT) for (const [cn, v] of looks(L)) clip(`${cn}`, L.windup + L.active + L.recovery + 0.3, () => { A.forceVariant = v; p._startAttack(L); });
+  A.forceVariant = null;
+  clip('light chain', 3.4, null, (i) => { if (i % 6 === 0 && i < 170) p._buffer('light'); });
+  for (const H of HEAVY) for (const [cn, v] of looks(H)) clip(`${cn}`, H.windup + H.active + H.recovery + 0.35, () => { A.forceVariant = v; p._startAttack(H); });
+  A.forceVariant = null;
+  clip('sprintSlash', 1.0, () => p._startAttack(SPRINT_ATK));
+  if (ROLL_ATK) clip('rollCut', 1.0, () => p._startAttack(ROLL_ATK));
+  clip('charge+cleave', 2.8, null, (i) => { if (i === 0) input.press(2); if (i === 90) input.up(2); });
+  clip('guard', 1.4, null, (i) => { if (i === 0) input.press(1); if (i === 60) input.up(1); });
+  clip('guard hits', 1.6, null, (i) => { if (i === 0) input.press(1); if (i === 20 || i === 50) p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 1.5 }); if (i === 85) input.up(1); });
+  for (const side of [1, -1]) for (const high of [0, 1, -1]) clip(`parry ${side > 0 ? 'R' : 'L'}${high > 0 ? ' high' : high < 0 ? ' low' : ''}`, 0.8, () => { const D = p.deflect; D.side = side; D.high = high; D.n = 1; D.nx = D.ny = D.nz = 0; D.sword = 0; p._enter('parry', 'parry', 0); });
+  clip('heal', 1.9, null, (i) => { if (i === 0) { p.flasks = p.maxFlasks; p.hp = 1; p._buffer('heal'); } });
+  clip('stagger', 0.9, null, (i) => { if (i === 0) p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 2 }); });
+  clip('stagger back', 0.9, null, (i) => { if (i === 0) p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z - 3 }, attacker: d, knockback: 2 }); });
+  clip('guard break', 1.2, null, (i) => { if (i === 0) p._guardOpen('bite', 0, -1); });
+  clip('knockdown+up', 2.2, null, (i) => { if (i === 0) p.takeHit({ damage: 10, tell: TELL.RED, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 3, knockdown: true }); });
+  clip('knockdown prone', 2.2, null, (i) => { if (i === 0) p.takeHit({ damage: 10, tell: TELL.RED, attack: 'bite', from: { x: p.position.x, z: p.position.z - 3 }, attacker: d, knockback: 3, knockdown: true }); });
+  clip('death', 3, null, (i) => { if (i === 0) { p.debug.god = false; p.hp = 1; p.takeHit({ damage: 999, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 2 }); } });
+  p.debug.god = true;
+  // ---- the table
+  const f2 = (x) => (Number.isFinite(x) ? x.toFixed(2) : '  - ');
+  const cm = (x) => String(Math.round(x * 100)).padStart(3);
+  out('   clip               steel gap (where)    plate-steel pierce  plate-body (where)   elbow min R/L back R/L  wrist      grip  jump cm grip/pt/plate/elR/elL/head  jerk cm (same)         point plateLow  cloth: frames a sheet through a leg or the sword arm / the plate');
+  for (const s of rows) {
+    out(`   ${s.name.padEnd(18)} ${f2(s.steel).padStart(5)} ${s.steelAt.padEnd(12)} ${f2(s.plateSteel).padStart(6)} ${String(s.pierce).padStart(5)}  ${f2(s.plateBody).padStart(5)} ${s.plateBodyAt.padEnd(12)} ${s.elbowMin.map((x) => x.toFixed(0).padStart(3)).join('/')}  ${s.elbowBack.map((x) => String(x).padStart(2)).join('/')}  ${s.wrist.map((x) => x.toFixed(0).padStart(3)).join('-')}  ${f2(s.gripGap)}  ${track.map((k) => cm(s.jump[k])).join(' ')}   ${track.map((k) => cm(s.jerk[k])).join(' ')}   ${f2(s.point)} ${f2(s.plateLow)}  cloth ${String(s.clothLeg ?? 0).padStart(3)}/${String(s.clothPlate ?? 0).padStart(3)} of ${s.frames}${s.bad ? `  BAD ${s.bad}` : ''}${process.env.ABYSS_AUDIT_V ? `  [steel-plate @${s.psAt}${s.pierceAt ? ` pierce${s.pierceAt}` : ''}]` : ''}`);
+  }
+  const dg = (x) => String(Math.round((x * 180) / Math.PI)).padStart(4);
+  out('   cloth motion (deg; back = the cloak back sheets, root + hem segment): clip / back A max / back B max / back fastest a frame / back spread centre-side / back A mean / coat panel out max / coat spread front-side');
+  for (const s of rows) if (s.cm) out(`   ${s.name.padEnd(18)} ${dg(s.cm.aMax)} ${dg(s.cm.bMax)} ${dg(s.cm.spd)} ${dg(s.cm.spread)} ${dg(s.cm.aSum / Math.max(1, s.cm.n))} ${dg(s.cm.cOut)} ${dg(s.cm.cSpread)}`);
+  assert(rows.every((s) => s.bad === 0), `the rig finite through every clip (${rows.filter((s) => s.bad).map((s) => s.name).join(', ') || 'ok'})`);
+  return G;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -9796,9 +10050,10 @@ const SCENARIOS = {
   budget: scenarioBudget,
   wreckage: scenarioWreckage,
   probe: scenarioProbe,
+  motionaudit: scenarioMotionAudit,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'motionaudit']); // run only when named
 // ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.ABYSS_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`ABYSS_SKIP: unknown scenario '${name}'`); process.exit(2); }

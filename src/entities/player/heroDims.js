@@ -80,7 +80,7 @@ export const BODY = {
   ],
   hips: { c: [0, 0.012, -0.005], r: [0.142, 0.1, 0.106] }, // pelvis ellipsoid (pelvis space, x y z)
   head: { c: [0, 0.154, -0.007], r: [0.105, 0.118, 0.112] }, // the hair cap round the skull (head space)
-  headScale: 1.08, // the head joint's scale (skull, face, hair): 7.3 heads tall instead of 7.8
+  headScale: 1.08, // the head joint's scale (skull, face, hair): 7.3 heads tall instead of 7.8 (the duelists'; the hero's: HERO_HEAD_SCALE)
   neck: [0.05, 0.046], // neck radius at the collar / under the jaw (head space, before headScale)
   deltoid: [0.074, 0.07, 0.078], // shoulder cap on each upper arm (x out, y, z)
   upperArm: [0.066, 0.056], // sleeve radius at the shoulder / the elbow
@@ -102,6 +102,9 @@ export const BODY = {
  *  DIM's 0.43 / 0.42 (the owner, 2026-11-17: "legs too long"); his pivot drops by the 0.085 m they
  *  lost (legDims). Every duelist stands on DIM's. */
 export const HERO_LEGS = Object.freeze({ thigh: 0.385, shin: 0.38 });
+/** The hooded hero's head scale (buildHero opts.headScale; the Player builds with it): 1.0, settled by
+ *  laying his silhouette over the concept's turnaround. Every duelist keeps BODY.headScale. */
+export const HERO_HEAD_SCALE = 1.0;
 
 export function legDims(legs) {
   const thigh = legs?.thigh ?? DIM.thigh, shin = legs?.shin ?? DIM.shin;

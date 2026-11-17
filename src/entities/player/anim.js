@@ -1825,6 +1825,20 @@ function healPose(p, A) {
   const t = A.t;
   const raise = smoothstep(0.02, 0.27, t) * (1 - smoothstep(0.66, 0.84, t));
   const drink = smoothstep(0.27, 0.38, t) * (1 - smoothstep(0.56, 0.68, t));
+  if (A.shield) {
+    // the flask hangs on the SHIELD arm: the forearm comes up beside his face from the left, the
+    // elbow high and out, so the plate stands off his left cheek facing out (raised before his face
+    // it hid the drink and his head); the head turns and tips to the flask
+    to3(p, P.lH, -0.02, -0.06, 0.3, raise);
+    to3(p, P.lH, -0.06, 0.12, 0.2, drink);
+    to3(p, P.lP, 0.8, -0.45, -0.2, raise);
+    to3(p, P.lP, 1, 0.3, 0.1, drink);
+    p[P.hdX] = lerp(p[P.hdX], -0.3, drink);
+    p[P.hdY] = lerp(lerp(p[P.hdY], 0, raise), 0.3, drink);
+    p[P.spX] = lerp(p[P.spX], -0.02, drink);
+    p[P.flask] = smoothstep(0.0, 0.1, t) * (1 - smoothstep(0.74, 0.85, t));
+    return;
+  }
   to3(p, P.lH, -0.15, 0.08, 0.28, raise);
   to3(p, P.lH, -0.18, 0.15, 0.19, drink);
   to3(p, P.lP, 0.7, -0.5, -0.3, raise);
@@ -2249,7 +2263,9 @@ function plungePose(p, A) {
  *  parry's own hit-stop, the freeze-frame showed the guard it started from and no contact.) */
 function deflectPose(p, A) {
   blockPose(p, A);
-  if (A.shield) {
+  // (a shield hero swats with the plate; a blow out of its reach is met by the blade, the plate held
+  // up in the guard: player.js _meetShield sets deflect.sword)
+  if (A.shield && !A.player?.deflect?.sword) {
     shieldParry(p, P, A, A.player?.deflect, A.t);
     return;
   }
@@ -2304,8 +2320,10 @@ function deflectPose(p, A) {
     v3(p, P.rH, x, y, z);
   }
   to3(p, P.swF, 0, 0.3, 1, f);
-  to3(p, P.lH, side > 0 ? 0.22 : 0.3, -0.32, side > 0 ? 0.02 : -0.05, f * (1 - h));
-  to3(p, P.lD, LD_FOE[0], LD_FOE[1], LD_FOE[2], f * (1 - h)); // the fingers at the foe
+  if (!A.shield) {
+    to3(p, P.lH, side > 0 ? 0.22 : 0.3, -0.32, side > 0 ? 0.02 : -0.05, f * (1 - h));
+    to3(p, P.lD, LD_FOE[0], LD_FOE[1], LD_FOE[2], f * (1 - h)); // the fingers at the foe
+  }
   p[P.spX] -= 0.05 * f;
   // the rock back: the chest gives with the blow, the weight onto the back foot
   const push = 1 - smoothstep(0.02, 0.22, t);
@@ -2697,6 +2715,10 @@ const LEG_R = BODY.thigh[0] + 0.004; // thigh / knee radius used to push the pan
 // tumbling, the floor contact rules instead. COAT_BLADE_R / COAT_HAND_R = the blade's half-width /
 // the gauntlet, + the cloth's margin.
 const COAT_BLADE_R = 0.07, COAT_HAND_R = 0.06;
+// the shield's plate against the coat (_coat): its outline points (as SHIELD_PTS: −top … +foot,
+// ± half width) cap a panel's upper sheet from outside, COAT_PLATE_M m inside them
+const COAT_PLATE = [[0, 0], [1, 0], [0.5, 0.6], [0.5, -0.6], [0, 1], [0, -1]];
+const COAT_PLATE_M = 0.03;
 const COAT_STEEL_JUMP = 0.12; // rad per 60 fps frame: the most the steel moves a coat segment at once
 const BLADE_PTS = Array.from({ length: 13 }, () => new THREE.Vector3()); // [0] = the grip
 const _mC = new THREE.Matrix4();
@@ -2728,6 +2750,28 @@ const STRIP_K = 75, STRIP_C = 7.5, STRIP_LAG = 0.08, STRIP_FLARE = 0.42;
 const STRIP_A = [-1.5, 0.8], STRIP_B = 0.8, STRIP_FLOOR = 0.03;
 // sleeve streamers: two-segment springs that stream back almost horizontally when running
 const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_OUT = 0.36;
+// (the hero's animator only, `freeHand`: the duelists' coats and blades move as they did)
+// The cloak is ONE garment (2026-11-17, the hooded hero: the owner's "weak in game" was mostly his
+// cloak: boards in a turn, a star in a roll, dead on a run). For the sheets that wrap him (a
+// streamer with `wrap`: the cloak's back) and the coat's panels:
+//   share     how much of each sheet's / panel's own root velocity is replaced by the garment's mean
+//             (a turn spun the side sheets' roots opposite ways and threw them apart like boards)
+//   couple    /s: a front panel and the side panel next to it are pulled toward each other's swing;
+//             coupleSheet the same for the cloak's sheets (0: with one shared velocity each sheet's
+//             own target already is the garment's; pulling them to one angle fanned their edges apart)
+//   root      a wrapping sheet's root segment takes this share of its swing, the hem the rest (a
+//             curved sheet; both at the full swing turned it out as one flat board)
+//   sheetB    rad: the most a wrapping sheet swings sideways (its neighbours are sewn to it)
+//   rate      rad per 60 fps frame: the most a wrapping sheet's or a panel's swing changes at once
+//   hemLag    × the hem segment's lag on a wrapping sheet: on a run the hem streams back and lifts
+//   tuck      the roll (and the backstep): the cloth is drawn in round him while he is rolled up,
+//             eased in at tuckIn and out at tuckOut (/s): the swing limit (sheet, panel [upper,
+//             lower]) and × the lag and the flare
+const CLOTH = { share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.3, tuckPanel: [-0.3, -0.25], tuckLag: 0.8, tuckFlare: 0.8, tuckLying: 0 };
+const BLADE_LOCO_RATE = 0.09; // rad per 60 fps frame (apply(): the blade on the move)
+const _vm = new THREE.Vector3(), _vmS = new THREE.Vector3();
+// the coat's neighbours (gear's panel order: front-left, front-right, left side, right side)
+const COAT_PAIRS = [[0, 2], [1, 3]];
 const STREAM_A = 2.6, STREAM_B = 1.3;
 // a streamer with `floor` (a head ribbon, a long scarf) keeps its segments' ends this high (m, world)
 // while he rolls or falls: the forward roll puts his crown at the grass
@@ -2759,6 +2803,16 @@ const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vect
 // it turns in a frame (rad), how much of his front is mixed into "away from the body", and the
 // heights (m, the plate's centre) between which its face turns up to the sky
 const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, low: [0.28, 0.58] };
+// The plate never passes through his body, his hood or the ground (_shieldClear): its outline is kept
+// `torso` / `head` / `thigh` m from those bones' lines (the body's own radius and the cloth over it,
+// plus the plate's rim) and `ground` m above the grass. A pose that asks for less gets the fist moved
+// out by the gap, eased in at `rise` and out at `fall` (/s) so a clip that brushes past never pops.
+const SHIELD_CLEAR = { torso: 0.2, head: 0.19, thigh: 0.16, ground: 0.04, rise: 60, fall: 9, step: 0.02, stepLying: 0.1 };
+const SHIELD_PTS = [[0, 0], [-1, 0], [1, 0], [0, 1], [0, -1], [-0.5, 0.8], [-0.5, -0.8], [0.5, 0.5], [0.5, -0.5]];
+const _sT0 = new THREE.Vector3(), _sP = new THREE.Vector3(), _sA = new THREE.Vector3(), _sB = new THREE.Vector3();
+const _sC = new THREE.Vector3(), _sN = new THREE.Vector3(), _sPush = new THREE.Vector3(), _sQ = new THREE.Quaternion();
+const _sHead = new THREE.Vector3(), _sPel = new THREE.Vector3(), _sTop = new THREE.Vector3(), _sUp = new THREE.Vector3();
+const _sTh = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
 const TWO_HAND_GRIP = DIM.offGrip; // m down the grip from the sword hand to the off hand (two-handed)
 // THE FREE HAND (the hero only: opts.freeHand). Its wrist's range (rad: radial / ulnar deviation,
 // pronation / supination from the IK's neutral, flexion / extension), its spring (ω, ζ for the
@@ -2855,6 +2909,7 @@ export class HeroAnimator {
     // shieldS: the plate's turn about the forearm (a spring: a = angle, v = rate, t = its target)
     this.shield = this.freeHand && !!rig.shield?.joint;
     this.shieldS = { a: 0, v: 0, t: 0, ok: false };
+    this.shieldPush = new THREE.Vector3(); // chest space: _shieldClear's eased push of the fist
     this.rig = rig;
     this.player = player;
     this.poses = poses ? { ...POSES, ...poses } : POSES;
@@ -2961,6 +3016,9 @@ export class HeroAnimator {
       side: new Int8Array(2 * COL_N), // per segment and collision sphere: 1 came from inside, −1 from outside, 0 away
     }));
     this.streamInit = false;
+    this.bzPrev = new THREE.Vector3(0, 0, 1); // apply(): last frame's blade direction (body space)
+    this.bzOk = false;
+    this.tuck = 0; // 0..1: the cloth drawn in round him (CLOTH.tuck)
     this.coatPrev = rig.coat.map(() => new THREE.Vector3());
     this.coatVel = rig.coat.map(() => new THREE.Vector3());
     this.coatInit = false;
@@ -2969,6 +3027,7 @@ export class HeroAnimator {
     }));
     this.hairInit = false;
     this.legPts = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    this.platePts = [0, 0, 0, 0, 0, 0].map(() => new THREE.Vector3()); // _coat: the shield's outline, pelvis space
     // sphere proxies (joint-local centre + radius) kept above the ground by apply(); the torso ones
     // follow the lean chest / hip depth (model.js BODY, ADR-034)
     this.proxies = [
@@ -3618,7 +3677,9 @@ export class HeroAnimator {
       r.chest.worldToLocal(_G);
       _T.copy(_TL).lerp(_G, two);
     }
+    if (this.shield) _sT0.copy(_T); // (the fist's own target: _shieldClear solves again from it)
     this._arm(r.arms.L, _T, p, P.lP, false, two);
+    if (this.shield) this._shieldClear(r, p);
     // (before _wristLimit, which reuses _G) how far the free hand is from its place on the grip
     // (chest local, model metres: the measure of the tests' offGap)
     this.gripGap = two > 0.001 ? _end.distanceTo(_G) : 1;
@@ -3644,6 +3705,24 @@ export class HeroAnimator {
     }
     this._wristLimit(r);
     this._tipFloor(r);
+    // on the move (loco) the blade turns at most BLADE_LOCO_RATE a frame: a reversal at a run
+    // swung its point 17 cm in one frame (the leg clearance taking the other side of a crossing leg)
+    {
+      const B = this.bzPrev;
+      if (this.freeHand && this.key === 'loco' && this.bzOk && this.frameDt > 0) {
+        const c = clamp(B.dot(_bz), -1, 1), a = Math.acos(c), mx = BLADE_LOCO_RATE * this.frameDt * 60;
+        if (a > mx && a < 3.1) {
+          _cD.copy(_bz).addScaledVector(B, -c);
+          const l = _cD.length();
+          if (l > 1e-6) {
+            _bz.copy(B).multiplyScalar(Math.cos(mx)).addScaledVector(_cD, Math.sin(mx) / l).normalize();
+            this._wristLimit(r); // (the wrist still wins)
+          }
+        }
+      }
+      B.copy(_bz);
+      this.bzOk = Number.isFinite(_bz.x + _bz.y + _bz.z);
+    }
     _by.set(p[P.swF], p[P.swF + 1], p[P.swF + 2]);
     _by.addScaledVector(_bz, -_by.dot(_bz));
     if (_by.lengthSq() < 1e-6) {
@@ -3828,6 +3907,105 @@ export class HeroAnimator {
    * the face turns up, so the plate lies on the grass instead of standing in it. Through a spring
    * (SHIELD_TURN), on the scaled frame time. Allocates nothing, never throws.
    */
+  /** Push the shield arm out of his body, his hood and the ground (SHIELD_CLEAR): after the free arm
+   *  is solved for its pose (_T, chest space; _sT0 its own target), the plate's outline is measured
+   *  against the torso's, the head's and the thighs' lines and the grass; the push it needs eases in,
+   *  and the arm is solved again from its target moved by it. Allocates nothing, never throws. */
+  _shieldClear(r, p) {
+    const S = r.shield, L = r.arms.L, C = SHIELD_CLEAR, st = this.shieldPush, dt = this.frameDt;
+    if (!S?.joint) return;
+    const ch = r.chest;
+    // the bones, chest space (their world matrices are this frame's above the arms; the legs' last)
+    ch.worldToLocal(r.pelvis.getWorldPosition(_sPel));
+    _sTop.set(0, 0.2, 0);
+    r.head.localToWorld(_sHead.set(DIM.skull[0], DIM.skull[1], DIM.skull[2]));
+    ch.worldToLocal(_sHead);
+    ch.worldToLocal(r.legs.L.thigh.getWorldPosition(_sTh[0]));
+    ch.worldToLocal(r.legs.L.shin.getWorldPosition(_sTh[1]));
+    ch.worldToLocal(r.legs.R.thigh.getWorldPosition(_sTh[2]));
+    ch.worldToLocal(r.legs.R.shin.getWorldPosition(_sTh[3]));
+    this._shieldMeasure(r);
+    // ease toward it: in quickly, out slowly (a single frame jumps to it: a pose posed at once)
+    // (lying down the body falls faster than the push eases in: there it is quicker, C.stepLying)
+    const lyingNow = LYING_KEYS.has(this.key);
+    if (!(dt > 0)) st.copy(_sPush);
+    else {
+      const k = lyingNow ? 1 : 1 - Math.exp(-(_sPush.lengthSq() > st.lengthSq() ? C.rise : C.fall) * dt);
+      // (and never more than C.step a frame: two bones pushing opposite ways in turn, a striding
+      // thigh and the torso, flipped it 10 cm a frame in a strafe)
+      _sN.copy(_sPush).sub(st).multiplyScalar(k);
+      const mx = (lyingNow ? C.stepLying : C.step) * dt * 60;
+      if (_sN.lengthSq() > mx * mx) _sN.setLength(mx);
+      st.add(_sN);
+    }
+    if (!Number.isFinite(st.x + st.y + st.z)) st.set(0, 0, 0);
+    if (st.lengthSq() < 1e-6) return;
+    _T.copy(_sT0).add(st);
+    this._arm(L, _T, p, P.lP, false, 0);
+    // (the arm bends as the fist moves: what is still inside is pushed out at once, unless it is the
+    // eased push still on its way in)
+    if (_sPush.lengthSq() > 1e-6 && st.distanceToSquared(_sPush) < 1e-4) {
+      this._shieldMeasure(r);
+      if (_sPush.lengthSq() > 1e-4) {
+        st.add(_sPush);
+        _T.copy(_sT0).add(st);
+        this._arm(L, _T, p, P.lP, false, 0);
+      }
+    }
+  }
+
+  /** The push the plate needs this frame (_shieldClear: the bones in _sPel / _sTop / _sHead / _sTh,
+   *  the arm as solved) → _sPush, chest space. */
+  _shieldMeasure(r) {
+    const S = r.shield, L = r.arms.L, C = SHIELD_CLEAR, e = r.chest.matrixWorld.elements;
+    _sUp.set(e[1], e[5], e[9]);
+    const ul = _sUp.lengthSq(), us = Math.sqrt(ul);
+    _sPush.set(0, 0, 0);
+    const a = this.shieldS.a, ca = Math.cos(a), sa = Math.sin(a);
+    for (const [u, v] of SHIELD_PTS) {
+      // the outline point in the shield joint's frame (x: −top … +foot, y: ± half width), then chest
+      const x = u < 0 ? u * S.top : u * S.foot, y = v * S.half[0] * (u > 0.4 ? 0.6 : 1), z = S.off;
+      _sP.set(x * ca + z * sa, y, -x * sa + z * ca);
+      _sP.y -= DIM.shieldAt;
+      _sP.applyQuaternion(L.fore.quaternion);
+      _sP.y -= DIM.upperArm;
+      _sP.applyQuaternion(L.upper.quaternion).add(L.upper.position);
+      _sP.add(_sPush); // (as the push so far moves it)
+      this._clearCap(_sP, _sPel, _sTop, C.torso);
+      this._clearCap(_sP, _sHead, _sHead, C.head);
+      this._clearCap(_sP, _sTh[0], _sTh[1], C.thigh);
+      this._clearCap(_sP, _sTh[2], _sTh[3], C.thigh);
+      if (ul > 1e-8) {
+        // world height (the chest's scale: e's columns carry it)
+        const h = (e[1] * _sP.x + e[5] * _sP.y + e[9] * _sP.z + e[13]) / us;
+        const need = C.ground / us - h / us;
+        if (need > 0) {
+          _sN.copy(_sUp).multiplyScalar(1 / us);
+          _sPush.addScaledVector(_sN, need);
+        }
+      }
+    }
+    if (!Number.isFinite(_sPush.x + _sPush.y + _sPush.z)) _sPush.set(0, 0, 0);
+    if (_sPush.lengthSq() > 0.25) _sPush.setLength(0.5);
+  }
+
+  /** _shieldClear's push for one point `q` (chest space; moved by it): out of the capsule a → b of
+   *  radius `rad` along the shortest way, added to _sPush. */
+  _clearCap(q, a, b, rad) {
+    _sA.subVectors(b, a);
+    const l2 = _sA.lengthSq();
+    const t = l2 > 1e-8 ? clamp(_sB.subVectors(q, a).dot(_sA) / l2, 0, 1) : 0;
+    _sC.copy(a).addScaledVector(_sA, t);
+    _sN.subVectors(q, _sC);
+    const d = _sN.length();
+    if (!(d < rad)) return;
+    if (d > 1e-5) _sN.multiplyScalar(1 / d);
+    else _sN.set(1, 0, 0);
+    const need = rad - d;
+    _sPush.addScaledVector(_sN, need);
+    q.addScaledVector(_sN, need);
+  }
+
   _shield(r) {
     const J = r.shield?.joint, L = r.arms.L, S = this.shieldS;
     if (!J) return;
@@ -4210,6 +4388,40 @@ export class HeroAnimator {
       r.pelvis.worldToLocal(lp[li * 2].copy(_S).add(_T).multiplyScalar(0.5));
       r.pelvis.worldToLocal(lp[li * 2 + 1].copy(_T));
     }
+    // the shield's plate (pelvis space): a panel's upper sheet hangs INSIDE it (the cloth falls behind
+    // a shield carried at his side, never through it); the legs win a conflict
+    let np = 0;
+    const SJ = this.shield ? r.shield?.joint : null;
+    if (SJ) {
+      const S = r.shield;
+      for (const [x, y] of COAT_PLATE) {
+        const q = this.platePts[np++];
+        q.set(x < 0 ? x * S.top : x * S.foot, y * S.half[0], S.off);
+        SJ.localToWorld(q);
+        r.pelvis.worldToLocal(q);
+      }
+    }
+    // the tuck (CLOTH): in while he rolls, out slowly after, so the cloth settles back
+    {
+      // (lying down part of it: the panels lay out round him like a star)
+      const want = !this.freeHand ? 0 : this.key === 'roll' || this.key === 'backstep' ? 1 : LYING_KEYS.has(this.key) ? CLOTH.tuckLying : 0;
+      const k = dt > 0 ? 1 - Math.exp(-(want > this.tuck ? CLOTH.tuckIn : CLOTH.tuckOut) * dt) : 1;
+      this.tuck = clamp(fin(this.tuck + (want - this.tuck) * k, 0), 0, 1);
+    }
+    const T = this.tuck;
+    // every panel's anchor velocity, then the garment's mean (CLOTH.share)
+    _vm.set(0, 0, 0);
+    for (let i = 0; i < r.coat.length; i++) {
+      _pa.setFromMatrixPosition(r.coat[i].anchor.matrixWorld);
+      if (this.coatInit && dt > 1e-4) {
+        _v.subVectors(_pa, this.coatPrev[i]).divideScalar(dt);
+        if (_v.lengthSq() > 625) _v.setLength(25);
+        this.coatVel[i].lerp(_v, 1 - Math.exp(-14 * dt));
+      }
+      this.coatPrev[i].copy(_pa);
+      _vm.add(this.coatVel[i]);
+    }
+    if (r.coat.length) _vm.multiplyScalar(1 / r.coat.length);
     const still = 1 - clamp(this.speed / 2.5, 0, 1); // the idle breeze fades out once moving
     // (not while he lies down or tumbles: there the hem's floor contact rules the cloth)
     const nb = Math.abs(wrapAngle(this.cur[P.pitch])) < 1.0 ? this._bladePts() : 0;
@@ -4217,13 +4429,8 @@ export class HeroAnimator {
     for (let i = 0; i < r.coat.length; i++) {
       const C = r.coat[i], D = C.def, st = this.coatState[i], LEN = C.len;
       _pa.setFromMatrixPosition(C.anchor.matrixWorld); // anchors are rigid on the pelvis: current since apply()
-      if (this.coatInit && dt > 1e-4) {
-        _v.subVectors(_pa, this.coatPrev[i]).divideScalar(dt);
-        if (_v.lengthSq() > 625) _v.setLength(25);
-        this.coatVel[i].lerp(_v, 1 - Math.exp(-14 * dt));
-      }
-      this.coatPrev[i].copy(_pa);
-      _v.copy(this.coatVel[i]).applyQuaternion(_qInv); // anchor velocity, pelvis space
+      // anchor velocity (mostly the garment's: CLOTH.share), pelvis space; drawn in by the tuck
+      _v.copy(this.coatVel[i]).lerp(_vm, this.freeHand ? CLOTH.share : 0).multiplyScalar(1 - CLOTH.tuckLag * T).applyQuaternion(_qInv);
       const vs = Math.hypot(_v.x, _v.y, _v.z);
       const nx = Math.sin(D.az), nz = Math.cos(D.az); // outward
       const tx = Math.cos(D.az), tz = -Math.sin(D.az); // tangent (anchor +X)
@@ -4269,9 +4476,10 @@ export class HeroAnimator {
         const c = st[s];
         const lag = COAT_LAG[s] * (1 + COAT_LAG_V * vs);
         const fl = (D.flap ? 0.05 : D.flare ?? COAT_FLARE) + (breeze + (D.idleFlare ?? IDLE_FLARE[i] ?? 0) * (s ? 0.7 : 1)) * still + Math.sin(this.time * 9 + i * 1.7 + s * 1.3) * 0.07 * flut + UPDRAFT_COAT * this.updraft * (s ? 1.3 : 1);
-        let hx = _g.x + nx * fl - _v.x * lag;
+        const flT = fl * (1 - CLOTH.tuckFlare * T);
+        let hx = _g.x + nx * flT - _v.x * lag;
         let hy = _g.y - _v.y * lag * 0.5;
-        let hz = _g.z + nz * fl - _v.z * lag;
+        let hz = _g.z + nz * flT - _v.z * lag;
         const hl = Math.hypot(hx, hy, hz) || 1;
         hx /= hl;
         hy /= hl;
@@ -4290,6 +4498,16 @@ export class HeroAnimator {
             if (need < lim) lim = need;
           }
           absA = Math.min(absA, lim);
+          // … and the plate caps it from outside (the sheet stays in under it)
+          for (let k = 0; k < np; k++) {
+            const K = this.platePts[k], dx = K.x - ap.x, dy = ap.y - K.y, dz = K.z - ap.z;
+            if (dy < 0.05 || dy > D.len[0] + 0.1) continue;
+            if (Math.abs(dx * tx + dz * tz) > halfW + 0.04) continue;
+            const out = dx * nx + dz * nz - COAT_PLATE_M;
+            if (out < 0.02) continue; // (the plate in at the body: the cloth is the legs')
+            const need = -Math.atan2(out, dy);
+            if (need > absA && need <= lim) absA = need;
+          }
         }
         // the steel, from this segment's parent frame (the anchor's, or the swung upper segment's for
         // the lower one): inside it, the grip and every blade point over the sheet cap the swing out
@@ -4320,8 +4538,9 @@ export class HeroAnimator {
           if (s === 0 && bl > lim) bl = lim; // the legs win
           if (bl > absA) absA = bl;
         }
-        const [aMin, aMax] = COAT_A[s];
+        const aMax = COAT_A[s][1], aMin = Math.min(lerp(COAT_A[s][0], CLOTH.tuckPanel[s], T), s === 0 ? lim : aMax); // (the legs win over the tuck)
         const tA = clamp(absA - parentA, aMin, aMax);
+        const x0 = c.x, z0 = c.z;
         const tB = clamp(absB - parentB, -COAT_B[s], COAT_B[s]);
         for (let k = 0; k < steps; k++) {
           c.vx += (COAT_K[s] * (tA - c.x) - COAT_C[s] * c.vx) * h;
@@ -4333,6 +4552,12 @@ export class HeroAnimator {
           c.x = tA;
           c.z = tB;
           c.vx = c.vz = 0;
+        }
+        // (no faster than CLOTH.rate a frame: a pose that turned at once flipped panels in one)
+        if (this.freeHand && this.coatInit && dt > 0) {
+          const R = CLOTH.rate * dtk;
+          c.x = x0 + clamp(c.x - x0, -R, R);
+          c.z = z0 + clamp(c.z - z0, -R, R);
         }
         c.x = clamp(c.x, aMin, aMax);
         c.z = clamp(c.z, -COAT_B[s], COAT_B[s]);
@@ -4433,6 +4658,26 @@ export class HeroAnimator {
         this._strips(C, this.stripState[i], this.coatVel[i], steps, h, still);
       }
     }
+    // neighbours move together (CLOTH.couple): a front panel and the side panel next to it. Not
+    // tumbling (there the floor rules each panel)
+    if (this.freeHand && CLOTH.couple > 0 && dt > 0 && r.coat.length >= 4 && Math.abs(wrapAngle(this.cur[P.pitch])) < 0.6) {
+      const k = 0.5 * (1 - Math.exp(-CLOTH.couple * dt));
+      for (const [a, b] of COAT_PAIRS) {
+        const A = this.coatState[a], B = this.coatState[b];
+        for (let s = 0; s < 2; s++) {
+          const dx = (B[s].x - A[s].x) * k, dz = (B[s].z - A[s].z) * k;
+          A[s].x += dx;
+          B[s].x -= dx;
+          A[s].z += dz;
+          B[s].z -= dz;
+        }
+        for (const q of [a, b]) {
+          const C = r.coat[q], st = this.coatState[q];
+          C.segs[0].rotation.set(st[0].x, 0, st[0].z);
+          C.segs[1].rotation.set(st[1].x, 0, st[1].z);
+        }
+      }
+    }
     this.coatInit = true;
   }
 
@@ -4518,10 +4763,14 @@ export class HeroAnimator {
     // how far the torso is from upright (0 standing … 1 at 70° or more)
     const tumble = smoothstep(0.75, 0.3, _e.set(0, 1, 0).applyQuaternion(r.chest.getWorldQuaternion(_q1)).y);
     const lying = tumble >= 1 && LYING_KEYS.has(this.key);
+    const T = this.tuck ?? 0;
+    // every sheet's root velocity first, and the wrapping sheets' mean (CLOTH.share: the cloak is
+    // one garment; a turn spun its side sheets' roots opposite ways)
+    _vmS.set(0, 0, 0);
+    let nW = 0;
     for (let i = 0; i < r.streamers.length; i++) {
-      const S = r.streamers[i], st = this.streamState[i];
-      const j0 = S.segs[0];
-      j0.parent.getWorldQuaternion(_q0); // also refreshes the arm's matrixWorld
+      const S = r.streamers[i], st = this.streamState[i], j0 = S.segs[0];
+      j0.parent.updateWorldMatrix(true, false);
       _w.copy(j0.position).applyMatrix4(j0.parent.matrixWorld);
       if (this.streamInit && dt > 1e-4) {
         _v.subVectors(_w, st.prev).divideScalar(dt);
@@ -4529,8 +4778,21 @@ export class HeroAnimator {
         st.vel.lerp(_v, 1 - Math.exp(-12 * dt));
       }
       st.prev.copy(_w);
-      const vel = st.vel;
-      const sp = Math.hypot(vel.x, vel.z);
+      if (S.wrap != null) {
+        _vmS.add(st.vel);
+        nW++;
+      }
+    }
+    if (nW) _vmS.multiplyScalar(1 / nW);
+    for (let i = 0; i < r.streamers.length; i++) {
+      const S = r.streamers[i], st = this.streamState[i];
+      const j0 = S.segs[0];
+      j0.parent.getWorldQuaternion(_q0); // also refreshes the arm's matrixWorld
+      _w.copy(j0.position).applyMatrix4(j0.parent.matrixWorld);
+      const wrap = S.wrap != null;
+      const vel = wrap ? _cq.copy(st.vel).lerp(_vmS, CLOTH.share).multiplyScalar(1 - CLOTH.tuckLag * T) : st.vel;
+      const velX = vel.x, velY = vel.y, velZ = vel.z;
+      const sp = Math.hypot(velX, velZ);
       // outward from the chest, horizontal
       let ox = _w.x - _G.x, oz = _w.z - _G.z;
       const ol = Math.hypot(ox, oz) || 1;
@@ -4545,7 +4807,7 @@ export class HeroAnimator {
       const lg = S.lag ?? 1;
       // … and its own swing limit: `max` rad from hanging (a ribbon may whip up past level, 2.6;
       // the cloak stops near level, so a whirl or a lunge never stands a sheet up over his head)
-      const mA = S.max ?? STREAM_A;
+      const mA = wrap ? lerp(S.max ?? STREAM_A, CLOTH.tuckSheet, T) : S.max ?? STREAM_A;
       _so.copy(_w); // this segment's root (world)
       // `floor`: rolling or falling (not lying: _layFlat), the segments' ends stay over the grass. In
       // drawn metres (the root's world scale: the hero is drawn larger than his model)
@@ -4554,9 +4816,9 @@ export class HeroAnimator {
       if (fl) _sf.copy(_w);
       for (let s = 0; s < 2; s++) {
         const c = st.segs[s], j = S.segs[s];
-        const lag = STREAM_LAG[s] * lg * (1 + 0.08 * sp);
+        const lag = STREAM_LAG[s] * lg * (1 + 0.08 * sp) * (wrap && s === 1 ? CLOTH.hemLag : 1);
         const wob = (0.08 + 0.12 * Math.min(1, sp / 4)) * Math.sin(ph + s * 1.4);
-        _v.set(ox * so - vel.x * lag - oz * wob, -1 - vel.y * lag * 0.5 + Math.abs(wob) * 0.5, oz * so - vel.z * lag + ox * wob);
+        _v.set(ox * so - velX * lag - oz * wob, -1 - velY * lag * 0.5 + Math.abs(wob) * 0.5, oz * so - velZ * lag + ox * wob);
         _v.normalize().applyQuaternion(_qInv2.copy(_q0).invert());
         if (tumble > 0) {
           // tumbling (a roll, a fall, lying down): the cloth stays wrapped along the body instead of
@@ -4574,12 +4836,17 @@ export class HeroAnimator {
         // (no `inMax`: the bound as it was, exactly; COL_BND is float32, so min(…, mA) would move it)
         const im = lying ? undefined : S.inMax?.[s];
         const hi = im === undefined ? COL_BND[1] : Math.min(COL_BND[1], im), lo = im === undefined ? COL_BND[0] : Math.min(COL_BND[0], hi);
-        let tA = Math.min(Math.max(clamp(Math.atan2(-_v.z, -_v.y), -mA, mA), lo), hi);
+        // (a wrapping sheet's root segment takes only CLOTH.root of the swing; the hem, swung from
+        // it, the rest: the sheet curves back from the shoulders instead of turning as one board)
+        const rk = wrap && s === 0 ? CLOTH.root : 1;
+        let tA = Math.min(Math.max(clamp(rk * Math.atan2(-_v.z, -_v.y), -mA, mA), lo), hi);
         // lying on the ground (knocked down, dead) a sheet obeys gravity (ADR-083): "wrapped along
         // the body" stood a sleeve's sheet up in the air with an upper arm that pointed up
         if (lying) tA = this._layFlat(tA, S.len[s], mA);
         else if (fl) tA = this._offFloor(tA, S.len[s] * ws, lo, hi);
-        const tB = clamp(Math.asin(clamp(_v.x, -1, 1)), -STREAM_B, STREAM_B);
+        const sB = wrap ? CLOTH.sheetB : STREAM_B;
+        const tB = clamp(rk * Math.asin(clamp(_v.x, -1, 1)), -sB, sB);
+        const x0 = c.x, z0 = c.z;
         const K = STREAM_K[s], Cd = STREAM_C[s];
         for (let n = 0; n < steps; n++) {
           c.vx += (K * (tA - c.x) - Cd * c.vx) * h;
@@ -4591,6 +4858,12 @@ export class HeroAnimator {
           c.x = tA;
           c.z = tB;
           c.vx = c.vz = 0;
+        }
+        // (a wrapping sheet no faster than CLOTH.rate a frame)
+        if (wrap && this.streamInit && dt > 0) {
+          const R = CLOTH.rate * dt * 60;
+          c.x = x0 + clamp(c.x - x0, -R, R);
+          c.z = z0 + clamp(c.z - z0, -R, R);
         }
         c.x = clamp(c.x, -mA, mA);
         if (c.x > hi) {
@@ -4617,11 +4890,35 @@ export class HeroAnimator {
             if (c.vx * push < 0) c.vx = 0; // no swing left driving it back into the grass
           }
         }
-        c.z = clamp(c.z, -STREAM_B, STREAM_B);
+        c.z = clamp(c.z, -sB, sB);
         j.rotation.set(c.x, 0, c.z);
         _q0.multiply(_qs.setFromEuler(_eul.set(c.x, 0, c.z, 'YXZ')));
         _so.add(_cq.set(0, -S.len[s], 0).applyQuaternion(_q0)); // the next segment's root
         if (fl) _sf.add(_cf.set(0, -S.len[s] * ws, 0).applyQuaternion(_q0));
+      }
+    }
+    // the wrapping sheets move together (CLOTH.couple): each pulled toward the centre sheet's swing
+    // (the first wrapping one), the centre toward theirs. Not lying (gravity rules each sheet there)
+    if (dt > 0 && nW > 1 && !lying && CLOTH.coupleSheet > 0) {
+      const k = 1 - Math.exp(-CLOTH.coupleSheet * dt);
+      let c0 = -1;
+      for (let i = 0; i < r.streamers.length; i++) {
+        if (r.streamers[i].wrap == null) continue;
+        if (c0 < 0) { c0 = i; continue; }
+        const A = this.streamState[c0].segs, B = this.streamState[i].segs;
+        for (let s = 0; s < 2; s++) {
+          const dx = (A[s].x - B[s].x) * k, dz = (A[s].z - B[s].z) * k;
+          B[s].x += 0.7 * dx;
+          A[s].x -= 0.3 * dx;
+          B[s].z += 0.7 * dz;
+          A[s].z -= 0.3 * dz;
+        }
+      }
+      for (let i = 0; i < r.streamers.length; i++) {
+        const S = r.streamers[i];
+        if (S.wrap == null) continue;
+        const st = this.streamState[i].segs;
+        for (let s = 0; s < 2; s++) S.segs[s].rotation.set(st[s].x, 0, st[s].z);
       }
     }
     this.streamInit = true;

@@ -16,12 +16,14 @@ const rnd = () => (fseed = (Math.imul(fseed, 1664525) + 1013904223) >>> 0) / 429
 const R = (a, b) => a + rnd() * (b - a);
 
 const COL = {
-  trail: [0.4, 1.25, 2.3], trailEnd: [0.02, 0.14, 0.45], // icy cyan arcs
-  trailHeavy: [0.55, 1.6, 2.9], trailCore: [1.1, 2.1, 3.1],
-  arcCore: [1.5, 2.1, 2.8], arcGlint: [3.0, 3.5, 4.3], // the sword arc's edge line (white-hot) and its glint
-  arcVeil: [0.3, 0.95, 2.2], arcEnd: [0.14, 0.1, 0.8], // its veil, and the indigo everything cools to as it fades
-  shard: [0.9, 1.9, 4.2], shardEnd: [0.1, 0.25, 1.0], // blue crystal burst
-  gem: [1.7, 0.5, 3.4], gemEnd: [0.45, 0.08, 0.9], gemCore: [3.4, 2.2, 4.6], // violet
+  // (the hooded hero, 2026-11-17: the sword's light is the crystal's lavender-white, the concept
+  // sheet's palette; it was icy cyan and the gem's violet)
+  trail: [1.25, 1.2, 2.1], trailEnd: [0.12, 0.1, 0.32], // lavender-white arcs
+  trailHeavy: [1.6, 1.55, 2.7], trailCore: [2.2, 2.15, 3.1],
+  arcCore: [2.1, 2.05, 2.8], arcGlint: [3.6, 3.5, 4.4], // the sword arc's edge line (white-hot) and its glint
+  arcVeil: [0.85, 0.8, 1.9], arcEnd: [0.22, 0.18, 0.6], // its veil, and the dusk lavender everything cools to as it fades
+  shard: [1.9, 1.85, 3.6], shardEnd: [0.3, 0.28, 0.8], // crystal burst
+  gem: [2.0, 1.9, 3.0], gemEnd: [0.4, 0.36, 0.8], gemCore: [3.6, 3.5, 4.4], // the hilt's crystal light
   spark: [3.4, 2.7, 1.6], sparkEnd: [1.4, 0.45, 0.1],
   crit: [2.2, 2.8, 4.2], critEnd: [0.3, 0.55, 1.4],
   flash: [4.2, 3.6, 2.6],
@@ -33,15 +35,15 @@ const COL = {
   hurt: [2.2, 1.8, 1.6], hurtEnd: [0.6, 0.15, 0.08],
   parry: [4.0, 3.4, 2.2], parryEnd: [1.6, 0.9, 0.25],
   parryBlue: [1.6, 2.6, 4.6], parryBlueEnd: [0.25, 0.6, 1.8],
-  moon: [2.6, 3.4, 4.8], moonEnd: [0.3, 0.7, 1.9], // the moonlit blade's steel light (deflect slash)
+  moon: [3.0, 2.95, 4.4], moonEnd: [0.55, 0.5, 1.5], // the crystal blade's light (deflect slash)
   block: [2.3, 2.0, 1.5], blockEnd: [0.7, 0.35, 0.1],
   break: [1.5, 1.5, 1.6], breakEnd: [0.3, 0.3, 0.38],
   ghost: [1.3, 1.75, 2.6], ghostEnd: [0.12, 0.25, 0.75], ghostDim: [0.42, 0.68, 1.3],
   ghostCore: [2.6, 3.0, 3.8],
-  charge: [0.7, 1.7, 3.0], chargeEnd: [0.2, 0.5, 1.6],
-  halo: [0.2, 0.6, 1.0], haloEnd: [0.02, 0.1, 0.25], // the blade's dot halo
-  tipStreak: [0.4, 1.1, 1.9], // the edge-wave past the point
-  gemGlow: [0.6, 0.15, 1.4], // the gem's always-on glow point
+  charge: [1.5, 1.45, 2.8], chargeEnd: [0.45, 0.4, 1.3],
+  halo: [0.55, 0.52, 0.95], haloEnd: [0.08, 0.07, 0.22], // the blade's dot halo
+  tipStreak: [1.1, 1.05, 1.9], // the edge-wave past the point
+  gemGlow: [0.32, 0.3, 0.55], // the hilt's always-on glow point (faint: the concept's sword has no gem)
 };
 
 // The sword arc's look (ADR-077): a thin crescent, pointed at both ends. The arc is drawn off the
@@ -62,7 +64,7 @@ const ARC_HEAVY = 1.22; // the slam's and the cleave's arc reaches this much fur
  *  at a glance (the gem already burns brighter through them); a crit stays the crit's cold blue. */
 export const ARC_TONE = {
   light: { core: COL.arcCore, veil: COL.arcVeil, end: COL.arcEnd },
-  heavy: { core: [1.9, 2.45, 3.1], veil: [0.42, 0.8, 2.3], end: [0.3, 0.07, 0.85] },
+  heavy: { core: [2.6, 2.5, 3.4], veil: [1.0, 0.92, 2.2], end: [0.32, 0.22, 0.75] },
   crit: { core: COL.crit, veil: COL.crit, end: COL.critEnd },
 };
 
@@ -85,9 +87,11 @@ export const ARC_TONE = {
  */
 export const EDGE_GLINT = {
   lead: 0.03, at: 0.6, atCleave: 0.82, z: [0.24, 0.9], ease: 2, step: 0.08, maxSub: 4,
-  hw: [[0.2, 0.042], [0.79, 0.034], [0.93, 0]], inset: 0.9, ridge: 0.35,
+  // (the hooded hero's crystal blade, gear/abyss.js: 0.058 m wide at the guard, a straight taper, its
+  // point over the last 0.1 m; written in DIM's blade frame, stretched by bladeStretch)
+  hw: [[0.2, 0.029], [0.8, 0.023], [0.93, 0]], inset: 0.9, ridge: 0.35,
   head: { glyph: '+', rot: 0.785, size: 0.07, sizeFar: 0.1 }, tail: { glyph: '|', size: 0.1, len: 0.16 },
-  color: [2.6, 3.2, 4.2], colorEnd: [0.4, 1.1, 2.2], alpha: 0.9, tailAlpha: 0.55, life: [0.03, 0.08],
+  color: [3.2, 3.1, 4.2], colorEnd: [0.9, 0.85, 1.9], alpha: 0.9, tailAlpha: 0.55, life: [0.03, 0.08],
   flash: { n: 4, step: 0.05, size: 0.12, stretch: 1.6, life: 0.1, lifeMin: 0.03, holdEnd: 0.35, alpha: 0.9, heavy: 1.25 },
 };
 /** The drawn blade's half width at sword-space height z (EDGE_GLINT.hw). */
@@ -500,7 +504,7 @@ export class PlayerFx {
       }
     }
     this.dust(x, z, 10, 1.3);
-    this._light({ x, y: 0.6, z, color: [0.35, 0.75, 1.5], intensity: 4.5, radius: 7, life: 0.35, fade: 0.3 });
+    this._light({ x, y: 0.6, z, color: [0.85, 0.82, 1.4], intensity: 4.5, radius: 7, life: 0.35, fade: 0.3 });
   }
 
   /** A small violet four-point glint ON the gem (s 0..1 = size / brightness): a white-hot core
@@ -522,7 +526,8 @@ export class PlayerFx {
     this.gemGlowAcc += dt;
     if (this.gemGlowAcc >= 0.03) {
       this.gemGlowAcc = 0;
-      const s = 0.22 + 0.04 * Math.min(1, k);
+      // (the hooded hero's hilt: a small point of the crystal's light, not a glowing blob)
+      const s = 0.07 + 0.03 * Math.min(1, k);
       fx.spawn({ x, y, z, vx, vy, vz, life: 0.06, size: s, sizeEnd: s, glyph: '•', color: COL.gemGlow, colorEnd: COL.gemGlow, alpha: 0.5, alphaEnd: 0.35 });
     }
     this.gemAcc += dt * (8 + 30 * k);
