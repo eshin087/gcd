@@ -246,8 +246,12 @@ export const HERO_INK = {
   abCowl2: { part: 11, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
   abHood: { part: 12, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
   abHood2: { part: 13, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
-  // the silver-white spikes: one bright smooth tone (no letters), thin grey lines between them
-  abHair: { part: 14, ownOnly: true, fill: [0.72, 0.72, 0.8], rim: 0, own: { flat: true, fillGain: 2.1, line: [0.55, 0.55, 0.68, 0.8] } },
+  // the blank face: a small muted tan, darker and greyer than the old skin (the hood item's `face`;
+  // part 1 like `skin`: the player never wears both, and his own table takes this one's numbers)
+  abSkin: { part: 1, ownOnly: true, fill: [0.86, 0.6, 0.48], rim: 0.2, open: true, own: { flat: true, fillGain: 0.8, line: [0.16, 0.12, 0.12, 1.0] } },
+  // the silver locks: one smooth light grey-lavender (no letters), each parted from the next by a
+  // DARK line (the concept's inked hair); every other lock (sub-id 1) a shade greyer
+  abHair: { part: 14, ownOnly: true, fill: [0.66, 0.66, 0.8], rim: 0, own: { flat: true, fillGain: 1.3, subShade: 0.3, line: [0.08, 0.08, 0.12, 1.0] } },
   // the shield: a dark crystal face with faint facets, a silver double-line rim
   abShield: { part: 15, ownOnly: true, fill: [0.09, 0.09, 0.12], spec: 0.9, rim: 0.3, own: { fillGain: 1.6, line: [0.6, 0.6, 0.75, 0.55] } },
   abRim: { part: 16, ownOnly: true, fill: [0.62, 0.63, 0.72], spec: 1.0, rim: 0, own: { bold: true, flat: true, fillGain: 0.75 } },
@@ -421,6 +425,10 @@ export function createHeroMaterials(U) {
     abCowl2: S({ ...abCloth, cell: [0.08, 0.1], side: THREE.DoubleSide, seed: 47.1 }, { max: [0.05, 0.06], zoomNear: Z }),
     abHood: S({ ...abCloth, cell: [0.07, 0.09], side: THREE.DoubleSide, seed: 47.7 }, { max: [0.045, 0.055], zoomNear: Z }),
     abHood2: S({ ...abCloth, cell: [0.07, 0.09], side: THREE.DoubleSide, seed: 48.3 }, { max: [0.045, 0.055], zoomNear: Z }),
+    abSkin: S({
+      levels: [":o", "o:", "oo0", "o0o"], cell: [0.016, 0.016], rowShift: 0.5, base: [0.1, 0.085, 0.085],
+      ink: [0.62, 0.55, 0.52], gain: 0.65, rim: 0.1, outline: 0.06, inkGlow: 0.3, lumScale: 3, glowMask: 0, glyphZoom: 0.5, seed: 52.1,
+    }, { fixed: true }),
     abHair: S({ ...hair, ink: [0.75, 0.75, 0.85], levelInk: [[0.6, 0.6, 0.7], [0.7, 0.7, 0.8], [0.8, 0.8, 0.9]], seed: 48.9 }, { max: [0.045, 0.055], zoomNear: 0.85 }),
     abShield: S({ ...silver, glyphs: "'^AA", ink: [0.45, 0.45, 0.6], cell: [0.06, 0.06], side: THREE.DoubleSide, gain: 0.9, rim: 0.1, outline: 0.08, inkGlow: 0.2, seed: 49.5 }, { max: [0.04, 0.04] }),
     abRim: S({ ...silver, cell: [0.04, 0.04], side: THREE.DoubleSide, gain: 0.9, rim: 0.12, outline: 0.1, inkGlow: 0.3, seed: 50.1 }, { max: [0.03, 0.03] }),
@@ -454,7 +462,9 @@ export function createHeroMaterials(U) {
     const l = h.line ?? [1, 1, 1, 1], glows = l[3] > 1.5;
     const ol = h0.own?.line ?? (glows ? l : OWN_LINE), orl = h0.own?.rimLine ?? (glows ? h.rimLine ?? l : OWN_LINE);
     ownInk?.[h.part]?.set(ol[0], ol[1], ol[2], ol[3]);
-    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0), h.farLine ?? 0, h.farFill ?? 1);
+    // (own .z: a flat part's shade on its sub-id 1 pieces, `own.subShade`: alternate hair locks
+    // one lit, the next in shade; the own pass reads no farLine)
+    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0), h0.own?.subShade ?? 0, h.farFill ?? 1);
     ownRim?.[h.part]?.set(orl[0], orl[1], orl[2], orl[3]);
   }
   const M = {};
@@ -643,11 +653,16 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, opts = {}) {
   // shirt and the eyes are left out (at the game camera the ASCII never resolves a face; a pale one
   // under gold hair read as a gold mask)
   const shade = !!headItem?.shadowsFace;
-  const faceMat = shade ? M.shirt : M.skin;
+  // (`face` on a head item: its own skin material, e.g. the hooded hero's muted tan in his own bank;
+  // `faceScale`: the face's width, so a small face sits in a roomy hood)
+  const faceMat = shade ? M.shirt : headItem?.face ? M[headItem.face] : M.skin;
+  const fW = Number.isFinite(headItem?.faceScale) ? headItem.faceScale : 1;
   {
     const [sx, sy, sz] = DIM.skull;
-    mesh(head, limb({ length: 0.12, r0: BODY.neck[0], r1: BODY.neck[1], radial: 8, rings: 2, capSegs: 1 }), faceMat, 0, 0.1, 0.0);
-    mesh(head, orient.up(ellipsoidGeometry(0.078, 0.09, 0.1)), faceMat, sx, sy, sz);
+    // (`neck` on a head item: the neck's own material, e.g. a turtleneck up to the jaw)
+    mesh(head, limb({ length: 0.12, r0: BODY.neck[0], r1: BODY.neck[1], radial: 8, rings: 2, capSegs: 1 }), headItem?.neck ? M[headItem.neck] : faceMat, 0, 0.1, 0.0);
+    const skullG = orient.up(ellipsoidGeometry(0.078, 0.09, 0.1));
+    mesh(head, fW !== 1 ? skullG.scale(fW, 1, 1) : skullG, faceMat, sx, sy, sz);
     // slim V-jaw with a pointed chin (chin at ~1.57 m)
     const jaw = ellipsoidGeometry(0.05, 0.04, 0.056, { widthSegs: 10, heightSegs: 6 });
     const jp = jaw.attributes.position;
@@ -656,10 +671,11 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, opts = {}) {
       const k = 1 - 0.45 * Math.max(0, z / 0.056) * Math.max(0, -y / 0.04 + 0.3);
       jp.setX(i, jp.getX(i) * k);
     }
+    if (fW !== 1) jaw.scale(fW, 1, 1);
     jaw.computeVertexNormals();
     mesh(head, jaw, faceMat, sx, sy - 0.066, sz + 0.016);
     // the right ear shows below the swept-back locks
-    mesh(head, ellipsoidGeometry(0.012, 0.024, 0.018, { widthSegs: 6, heightSegs: 4 }), faceMat, sx - 0.08, sy - 0.014, sz - 0.008);
+    mesh(head, ellipsoidGeometry(0.012, 0.024, 0.018, { widthSegs: 6, heightSegs: 4 }), faceMat, sx - 0.08 * fW, sy - 0.014, sz - 0.008);
     // the eyes: half-lidded almonds (smaller since Session 14: two large dark holes in a pale face
     // under the hood read as a skull's sockets)
     // (`blankFace` on a head item: a lit face with no features, the abyss look's: no eyes either)

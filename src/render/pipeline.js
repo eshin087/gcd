@@ -859,7 +859,9 @@ export class Pipeline {
                   if (flatP > 0.5) {
                     vec3 sp = pHero ? sP.rgb : c;
                     float vf = 1.0 - exp(-max(luma(sp) - uArtBlack.x, 0.0) * uArtLum.x);
-                    col = tone * (uHeroFill.y * mix(0.8, 1.0, vf)) * pf.x * mix(1.0, uHeroLod.z * pf.w, far);
+                    // (own fill .z: the shade of the part's sub-id 1 pieces: alternate hair locks)
+                    float subK = mod(heroIdOf(pHero ? sP.a : aC), 2.0) * pf.z;
+                    col = tone * (uHeroFill.y * mix(0.8, 1.0, vf) * (1.0 - subK)) * pf.x * mix(1.0, uHeroLod.z * pf.w, far);
                   }
                 }
               }

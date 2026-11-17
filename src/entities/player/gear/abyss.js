@@ -120,63 +120,130 @@ const curve = (P) => (a) => {
 
 // ================================================================ head: the hood, the hair
 /**
- * Hood rings in head space (y above the neck-base joint; × BODY.headScale): half-width rx,
- * half-depth rz, centre offset cz, the face opening's half-chord `gap`. Measured (SPEC.md): 0.36 m
- * wide, 0.35 m deep, its lower edge on the cowl, the opening widest at the cheeks and closing to the
- * brow's V, then a short flat run back over the top to a soft point ~0.11 m above the crown and a
- * few cm back; from behind a smooth dome. (Not a cone: the rejected build's was.)
+ * The hood, built from flat PLANES (the concept's head sheet): each ring is the half-section at
+ * height y (head space: above the neck-base joint) as a polyline of [x, z] corners from the front
+ * edge round to the back's centre line, his left half (+X; the right half is its mirror). Between
+ * the corners and between the rings the cloth is straight, so every view sees a hard-cornered
+ * outline: from the front a soft point, a shallow slope to the upper corners, a steeper one to the
+ * cheeks, near-straight sides and a turn in to the neck; from the side a brow tip reaching forward
+ * past the face, a short slope up to the point (a few cm back), a long fall down the back; from
+ * behind a pointed arch. The front edge: above the brow the two halves meet in the RIDGE (x = 0,
+ * a bold part edge down from the point); below it the edges part into the wide angular opening (a V
+ * at the brow, widest at the cheeks, closing under the chin into the cowl). The back's centre line
+ * is the seam. Corners: E the front edge, F the front corner, S the side, K the back corner, B the
+ * back centre. Measured (SPEC.md): 0.38 m wide, 0.36 m deep, the point 0.37 above the joint.
  */
 export const HOOD_RINGS = [
-  { y: 0.0, rx: 0.19, rz: 0.165, cz: -0.03, gap: 0.075 },
-  { y: 0.06, rx: 0.185, rz: 0.168, cz: -0.02, gap: 0.112 },
-  { y: 0.13, rx: 0.18, rz: 0.172, cz: -0.008, gap: 0.135 },
-  { y: 0.2, rx: 0.172, rz: 0.17, cz: -0.004, gap: 0.112 },
-  { y: 0.25, rx: 0.158, rz: 0.17, cz: 0.01, gap: 0.06 },
-  { y: 0.29, rx: 0.13, rz: 0.158, cz: 0.004, gap: 0.004 },
-  { y: 0.322, rx: 0.094, rz: 0.13, cz: -0.01, gap: 0.002 },
-  { y: 0.348, rx: 0.056, rz: 0.092, cz: -0.028, gap: 0.001 },
-  { y: 0.366, rx: 0.022, rz: 0.044, cz: -0.05, gap: 0.001 },
-  { y: 0.372, rx: 0.003, rz: 0.006, cz: -0.056, gap: 0.0005 },
+  { y: -0.01, pts: [[0.07, 0.085], [0.15, 0.055], [0.18, -0.05], [0.162, -0.152], [0, -0.178]] },
+  { y: 0.06, pts: [[0.135, 0.075], [0.178, 0.035], [0.19, -0.055], [0.158, -0.164], [0, -0.187]] },
+  { y: 0.125, pts: [[0.16, 0.062], [0.19, 0.02], [0.192, -0.062], [0.156, -0.168], [0, -0.19]] },
+  { y: 0.185, pts: [[0.122, 0.105], [0.18, 0.05], [0.186, -0.062], [0.15, -0.162], [0, -0.19]] },
+  { y: 0.232, pts: [[0.068, 0.142], [0.158, 0.075], [0.166, -0.052], [0.134, -0.152], [0, -0.178]] },
+  { y: 0.27, pts: [[0, 0.172], [0.13, 0.085], [0.138, -0.044], [0.11, -0.13], [0, -0.158]] },
+  { y: 0.302, pts: [[0, 0.112], [0.098, 0.058], [0.102, -0.04], [0.082, -0.108], [0, -0.128]] },
+  { y: 0.37, pts: [[0, -0.018], [0.006, -0.024], [0.007, -0.03], [0.005, -0.036], [0, -0.04]] },
 ];
 
-/** One half of the hood (side +1: his left, −1: his right): from the opening's edge round to the
- *  back's centre line. The two halves meet in the ridge (front, above the opening) and the back
- *  seam: a part edge, drawn bold. */
-function hoodHalf(rings, side, { cols = 14, sub: sb = 3 } = {}) {
-  const rows = (rings.length - 1) * sb;
-  return gridGeometry(cols, rows, (s, t, o) => {
-    const f = t * (rings.length - 1), k = Math.min(rings.length - 2, Math.floor(f)), u = f - k;
-    const A = rings[k], B = rings[k + 1];
-    const y = lerp(A.y, B.y, u), rx = lerp(A.rx, B.rx, u), rz = lerp(A.rz, B.rz, u), cz = lerp(A.cz, B.cz, u), gap = lerp(A.gap, B.gap, u);
-    const a0 = Math.asin(Math.min(0.95, Math.max(0.0004, gap) / Math.max(rx, 1e-4)));
-    const a = side * lerp(a0, Math.PI, s);
-    o[0] = Math.sin(a) * rx;
-    o[1] = y;
-    o[2] = Math.cos(a) * rz + cz;
-    o[3] = a * 0.15;
-    o[4] = y;
+/** One half of the hood (side +1: his left, −1: his right) through HOOD_RINGS: straight between
+ *  the corners (`cs` columns each) and between the rings (`rs` rows each). The two halves meet in
+ *  the ridge and the back seam (a part edge, drawn bold). */
+function hoodHalf(rings, side, { cs = 2, rs = 2 } = {}) {
+  const nP = rings[0].pts.length;
+  return gridGeometry((nP - 1) * cs, (rings.length - 1) * rs, (s, t, o) => {
+    hoodAt(rings, side, s, t, o);
+    o[3] = side * s * 0.4;
+    o[4] = o[1];
   }, side < 0);
+}
+
+/** The point of hood half `side` at s (0 the front edge .. 1 the back's centre) and t (0 the lowest
+ *  ring .. 1 the point) into o[0..2]. */
+function hoodAt(rings, side, s, t, o) {
+  const nP = rings[0].pts.length;
+  const f = t * (rings.length - 1), k = Math.min(rings.length - 2, Math.floor(f)), u = f - k;
+  const g = s * (nP - 1), i = Math.min(nP - 2, Math.floor(g)), w = g - i;
+  const A = rings[k], B = rings[k + 1];
+  const xa = lerp(A.pts[i][0], A.pts[i + 1][0], w), za = lerp(A.pts[i][1], A.pts[i + 1][1], w);
+  const xb = lerp(B.pts[i][0], B.pts[i + 1][0], w), zb = lerp(B.pts[i][1], B.pts[i + 1][1], w);
+  o[0] = side * lerp(xa, xb, u);
+  o[1] = lerp(A.y, B.y, u);
+  o[2] = lerp(za, zb, u);
+  return o;
+}
+
+/** The opening's TRIM on hood half `side`: a band `w` wide on the cloth along the front edge, from
+ *  the hood's lower edge up to the brow's V (ring `kV`), standing 3 mm proud (the concept draws the
+ *  opening as a bold bright band). */
+function hoodTrim(rings, side, kV, w = 0.016) {
+  const nP = rings[0].pts.length, tV = kV / (rings.length - 1), P = [0, 0, 0], Q = [0, 0, 0];
+  return gridGeometry(1, kV * 4, (s, tt, o) => {
+    const t = tt * tV;
+    hoodAt(rings, side, 0, t, P);
+    hoodAt(rings, side, 1 / (nP - 1), t, Q);
+    const L = Math.hypot(Q[0] - P[0], Q[2] - P[2]) || 1;
+    const a = (s * w) / L;
+    const x = lerp(P[0], Q[0], a), z = lerp(P[2], Q[2], a);
+    const r = Math.hypot(x, z + 0.01) || 1;
+    o[0] = x + (x / r) * 0.003;
+    o[1] = P[1];
+    o[2] = z + ((z + 0.01) / r) * 0.003;
+    o[3] = s * w;
+    o[4] = P[1];
+  }, side < 0);
+}
+
+/** The RIDGE's trim: a band `w` wide straddling the seam from the brow's V (ring `kV`) up to the
+ *  point, 3 mm proud: the concept's bold line from the point down to the brow. */
+function hoodRidge(rings, kV, w = 0.012) {
+  const nP = rings[0].pts.length, tV = kV / (rings.length - 1), P = [0, 0, 0], Q = [0, 0, 0];
+  return gridGeometry(2, (rings.length - 1 - kV) * 3, (s, tt, o) => {
+    const t = lerp(tV, 0.985, tt), side = s < 0.5 ? -1 : 1, k = Math.abs(s - 0.5) * 2;
+    hoodAt(rings, side, 0, t, P);
+    hoodAt(rings, side, 1 / (nP - 1), t, Q);
+    const L = Math.hypot(Q[0] - P[0], Q[2] - P[2]) || 1;
+    const a = Math.min(1, (k * w * 0.5) / L);
+    const x = lerp(P[0], Q[0], a), z = lerp(P[2], Q[2], a);
+    // (outward: along the ridge's own normal, roughly forward-up from the hood's centre)
+    const ny = P[1] - 0.2, nz = z + 0.01, r = Math.hypot(ny, nz) || 1;
+    o[0] = x;
+    o[1] = P[1] + (ny / r) * 0.003;
+    o[2] = z + (nz / r) * 0.003;
+    o[3] = (s - 0.5) * w;
+    o[4] = P[1];
+  });
 }
 
 /** The silver hair under the hood (head space): four chunky spikes over the brow down to about the
  *  nose, one at each temple; a cap over the skull so the hood's opening shows hair, not a bald
  *  brow. Each lock: [x, y, z of its root, direction x, y, z, length, half-width, curl]. */
+//  [x, y, z of its root, direction x, y, z, length, half-width, curl, ink sub-id]. Neighbours carry
+//  different sub-ids (and stand at different depths), so a dark line parts every lock from the next.
 const SPIKES = [
-  [-0.05, 0.212, 0.062, -0.42, -1, 0.42, 0.105, 0.024, 0.15],
-  [-0.016, 0.222, 0.076, -0.14, -1, 0.45, 0.125, 0.026, 0.15],
-  [0.02, 0.222, 0.076, 0.12, -1, 0.45, 0.118, 0.026, 0.15],
-  [0.054, 0.21, 0.06, 0.4, -1, 0.42, 0.1, 0.024, 0.15],
-  [-0.08, 0.185, 0.03, -0.35, -1, 0.15, 0.095, 0.02, 0.12],
-  [0.08, 0.185, 0.03, 0.35, -1, 0.15, 0.095, 0.02, 0.12],
+  // the fringe: five chunky locks over the brow, the middle ones to about the nose
+  [0.002, 0.226, 0.072, 0.04, -1, 0.36, 0.128, 0.027, 0.16, 0],
+  [0.034, 0.222, 0.068, 0.32, -1, 0.34, 0.118, 0.025, 0.14, 1],
+  [-0.032, 0.223, 0.07, -0.26, -1, 0.36, 0.122, 0.026, 0.15, 1],
+  [0.062, 0.212, 0.052, 0.56, -1, 0.3, 0.1, 0.023, 0.12, 0],
+  [-0.062, 0.212, 0.054, -0.52, -1, 0.3, 0.104, 0.023, 0.12, 0],
+  // the temples: locks splayed down and out over the cheeks (the face shows small between them)
+  [0.082, 0.196, 0.036, 0.42, -1, 0.22, 0.112, 0.022, 0.1, 1],
+  [-0.082, 0.196, 0.036, -0.42, -1, 0.22, 0.112, 0.022, 0.1, 1],
+  [0.092, 0.168, 0.0, 0.62, -1, 0.05, 0.088, 0.019, 0.08, 0],
+  [-0.092, 0.168, 0.0, -0.62, -1, 0.05, 0.088, 0.019, 0.08, 0],
+  // over the crown, swept forward (the 3/4 and side views under the hood's brow)
+  [0.045, 0.252, -0.01, 0.25, -0.55, 1, 0.1, 0.026, 0.12, 1],
+  [-0.04, 0.255, -0.01, -0.22, -0.55, 1, 0.1, 0.026, 0.12, 0],
 ];
 
 function buildHood({ head, M, mesh }) {
   mesh(head, hoodHalf(HOOD_RINGS, 1), M.abHood);
   mesh(head, hoodHalf(HOOD_RINGS, -1), M.abHood2);
-  // the hair: a cap and the spikes (alternate ink sub-ids: a thin line between neighbours)
+  const kV = HOOD_RINGS.findIndex((r) => r.pts[0][0] === 0);
+  mesh(head, mergeGeometries([hoodTrim(HOOD_RINGS, 1, kV), hoodTrim(HOOD_RINGS, -1, kV), hoodRidge(HOOD_RINGS, kV)]), M.abRim);
+  // the hair: a cap and the locks (alternate ink sub-ids: a dark line between neighbours)
   const locks = [sub(orient.up(ellipsoidGeometry(0.088, 0.1, 0.096, { widthSegs: 12, heightSegs: 8 })).translate(0, 0.166, -0.01), 0)];
-  SPIKES.forEach(([x, y, z, dx, dy, dz, L, w, curl], k) => {
-    locks.push(sub(orientTo(clumpGeometry(L, w, w * 0.55, { curl, taper: 0.85, cols: 5, rows: 3 }), [x, y, z], [dx, dy, dz], [x * 3, 0.2, 1]), (k & 1) ^ 1));
+  SPIKES.forEach(([x, y, z, dx, dy, dz, L, w, curl, k]) => {
+    locks.push(sub(orientTo(clumpGeometry(L, w, w * 0.5, { curl, taper: 0.8, cols: 6, rows: 3 }), [x, y, z], [dx, dy, dz], [x * 3, 0.2, 1]), k));
   });
   mesh(head, mergeGeometries(locks), M.abHair);
 }
@@ -190,8 +257,8 @@ const COWL_PROF = [
   [1.45, 0.282, 0.186, -0.014],
   [1.5, 0.252, 0.168, -0.012],
   [1.53, 0.17, 0.136, -0.004],
-  [1.565, 0.11, 0.1, 0.006],
-  [1.585, 0.112, 0.118, 0.012],
+  [1.568, 0.09, 0.088, 0.008],
+  [1.6, 0.064, 0.07, 0.014],
 ];
 /** The outer wrap's lower edge by angle (design m): a diagonal from low on his right side (1.235 d =
  *  1.15 m) up over his left shoulder (1.47 d), round the sides at the top of the arms, a V between
@@ -223,7 +290,7 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh }) {
   const outer = loftBetween(-Math.PI, Math.PI, COWL_LO, () => 1.55, cp, { cols: 40, rows: 7 });
   outer.translate(0, -REST.chest, 0);
   mesh(chest, outer, M.abCowl);
-  const scarf = loftBetween(-Math.PI, Math.PI, SCARF_LO, () => 1.585, (y) => {
+  const scarf = loftBetween(-Math.PI, Math.PI, SCARF_LO, () => 1.6, (y) => {
     const [rx, rz, cz] = cp(y);
     return [rx + 0.018, rz + 0.016, cz];
   }, { cols: 40, rows: 5 });
@@ -433,7 +500,7 @@ function buildSword({ sword, M, mesh, joint }) {
 }
 
 export const ABYSS_ITEMS = [
-  { id: 'abyss.hood', slot: 'head', name: 'Hood', hidesHair: true, blankFace: true, build: buildHood },
+  { id: 'abyss.hood', slot: 'head', name: 'Hood', hidesHair: true, blankFace: true, face: 'abSkin', faceScale: 0.88, neck: 'abPants', build: buildHood },
   { id: 'abyss.robe', slot: 'chest', name: 'Robe and Cowl', build: buildRobe },
   { id: 'abyss.arms', slot: 'arms', name: 'Bell Sleeve and Gloves', build: buildArms },
   { id: 'abyss.legs', slot: 'legs', name: 'Boots', build: buildLegs },
