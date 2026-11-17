@@ -2830,7 +2830,7 @@ const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vect
 // the shield's turn about the forearm (_shield): the spring's rate (1/s, critically damped), the most
 // it turns in a frame (rad), how much of his front is mixed into "away from the body", and the
 // heights (m, the plate's centre) between which its face turns up to the sky
-const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, low: [0.28, 0.58] };
+const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, carryFore: 2.2, low: [0.28, 0.58] };
 // The plate never passes through his body, his hood or the ground (_shieldClear): its outline is kept
 // `torso` / `head` / `thigh` m from those bones' lines (the body's own radius and the cloth over it,
 // plus the plate's rim) and `ground` m above the grass. A pose that asks for less gets the fist moved
@@ -4053,7 +4053,10 @@ export class HeroAnimator {
     _hn.y = 0;
     const ol = _hn.length();
     if (ol > 1e-4) _hn.multiplyScalar(1 / ol);
-    _hn.z += SHIELD_TURN.fore;
+    // (carried at ease on the move or standing, its face turns further to his front: its back shows
+    // to the game camera behind him, the concept's BACK view; the fight stance and every other clip
+    // keep SHIELD_TURN.fore)
+    _hn.z += SHIELD_TURN.fore + (this.key === 'loco' ? SHIELD_TURN.carryFore * (1 - clamp(fin(this.fightW), 0, 1)) : 0);
     // near the ground: up (the world's, in body axes)
     r.chest.localToWorld(_hp.copy(_hG));
     const up = 1 - smoothstep(SHIELD_TURN.low[0], SHIELD_TURN.low[1], _hp.y);

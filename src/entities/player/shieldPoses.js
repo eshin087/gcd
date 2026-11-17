@@ -50,7 +50,10 @@ export const SHIELD_AT = {
   // beside the hip, its face out to his left and ahead
   // (the fist a little OUT from the shoulder's line: the plate stands off his hip and turns its
   // back a little to the game camera behind him, which saw none of a shield held in across his front)
-  carry: { l: [0.07, -0.33, 0.19], lp: [0.6, -0.2, -0.78] },
+  // (2026-11-17, round 2: further out and back, [0.15, -0.32, 0.1], its face turned to his front
+  // (anim.js SHIELD_TURN.carryFore): from behind its rim and back stand out at his left, the concept's
+  // BACK view; at [0.07, -0.33, 0.19] the cloak hid all of it)
+  carry: { l: [0.12, -0.31, 0.16], lp: [0.6, -0.2, -0.78] },
   // in a fight: before the left of his chest, the forearm across, the face to the foe
   ready: { l: [-0.1, -0.2, 0.31], lp: [0.66, -0.72, -0.1] },
   // the held guard: raised before the chest and the chin, the face square to the foe
