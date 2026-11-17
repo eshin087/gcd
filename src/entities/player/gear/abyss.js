@@ -51,7 +51,7 @@ const SD = ABYSS_SWORD_DIMS;
  * Rows stretch with the hem, so a point is a long smooth wedge of cloth, not a strip stuck on.
  * Local +Z = outward. aGUV: x across, y down it.
  */
-function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7 } = {}) {
+function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap = 0 } = {}) {
   const hemAt = (s) => {
     for (let i = 0; i < hem.length - 1; i++) {
       const [s0, e0] = hem[i], [s1, e1] = hem[i + 1];
@@ -59,13 +59,16 @@ function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7 } = {
     }
     return hem[hem.length - 1][1];
   };
+  // (`lap`: the sheet starts that far ABOVE its joint, under the segment above it, so a kink where
+  // two spring segments meet never opens a notch in the cloth)
   return gridGeometry(cols, rows, (s, t, o) => {
-    const L = len + hemAt(s);
-    const w = lerp(wTop, wBot, t);
+    const L = len + hemAt(s) + lap;
+    const d = t * L - lap;
+    const w = lerp(wTop, wBot, Math.max(0, d) / (L - lap));
     const u = (s - 0.5) * w;
-    const R = R0 + flare * t * L;
+    const R = R0 + flare * Math.max(0, d);
     const a = u / R;
-    const y = -t * L;
+    const y = -d;
     o[0] = Math.sin(a) * R;
     o[1] = y;
     o[2] = (Math.cos(a) - 1) * R;
@@ -251,20 +254,23 @@ function buildHood({ head, M, mesh }) {
 // ================================================================ chest: the robe's body, the cowl
 /** The cowl's two wraps (chest space via yCh; design-frame heights). Profile [y, rx, rz, cz]: the
  *  cloth from the chest up over the shoulders to a thick collar under the chin. */
+// (round 3: wider and flatter over the shoulders, so the silhouette steps out from the hood to the
+// shoulders before the cloak flares: 0.60 m across, the top a shallow slope)
 const COWL_PROF = [
-  [1.2, 0.235, 0.17, 0.006],
-  [1.36, 0.262, 0.182, -0.006],
-  [1.45, 0.282, 0.186, -0.014],
-  [1.5, 0.252, 0.168, -0.012],
-  [1.53, 0.17, 0.136, -0.004],
-  [1.568, 0.09, 0.088, 0.008],
+  [1.2, 0.24, 0.17, 0.006],
+  [1.34, 0.275, 0.186, -0.006],
+  [1.43, 0.302, 0.194, -0.014],
+  [1.485, 0.298, 0.186, -0.014],
+  [1.515, 0.25, 0.168, -0.01],
+  [1.545, 0.16, 0.13, -0.002],
+  [1.57, 0.09, 0.088, 0.008],
   [1.6, 0.064, 0.07, 0.014],
 ];
 /** The outer wrap's lower edge by angle (design m): a diagonal from low on his right side (1.235 d =
  *  1.15 m) up over his left shoulder (1.47 d), round the sides at the top of the arms, a V between
  *  the shoulder blades (1.385 d = 1.30 m). */
 const COWL_LO = curve([
-  [-Math.PI, 1.385], [-2.6, 1.43], [-2.0, 1.435], [-1.55, 1.42], [-1.15, 1.28], [-0.8, 1.235], [-0.3, 1.29], [0.2, 1.35], [0.7, 1.42], [1.2, 1.47], [1.6, 1.455], [2.0, 1.435], [2.6, 1.43], [Math.PI, 1.385],
+  [-Math.PI, 1.385], [-2.6, 1.415], [-2.0, 1.4], [-1.55, 1.37], [-1.15, 1.27], [-0.8, 1.235], [-0.3, 1.29], [0.2, 1.35], [0.7, 1.41], [1.2, 1.44], [1.6, 1.405], [2.0, 1.405], [2.6, 1.415], [Math.PI, 1.385],
 ]);
 /** The inner wrap (the scarf round the neck, over the outer one): its lower edge a hand higher and
  *  on the same diagonal, a shallower V behind. */
@@ -392,10 +398,12 @@ function buildLegs({ pelvis, legs, M, DIM: D, BODY, mesh }) {
  * Widths no wider at the top than the old coat panels' (the animator's leg push was tuned there).
  */
 export const ABYSS_PANELS = [
-  { az: 0.36, w: [0.16, 0.25, 0.34], len: [0.34, 0.31], out: 0.012, flare: 0.22, mat: 'abRobeL', breeze: 0.025, idleFlare: 0.03, hem: [[0, 0.09], [0.18, 0.1], [0.55, 0.0], [0.85, 0.05], [1, 0.02]] },
-  { az: -0.36, w: [0.16, 0.25, 0.34], len: [0.34, 0.31], out: 0.012, flare: 0.22, mat: 'abRobeR', breeze: 0.03, idleFlare: 0.04, hem: [[0, 0.02], [0.15, 0.05], [0.45, 0.0], [0.82, 0.1], [1, 0.09]] },
-  { az: 1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.3], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.08, hem: [[0, 0.0], [0.3, 0.05], [0.62, 0.0], [0.85, 0.07], [1, 0.03]] },
-  { az: -1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.3], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.09, hem: [[0, 0.03], [0.15, 0.07], [0.38, 0.0], [0.7, 0.05], [1, 0.0]] },
+  // (round 3: the hem TORN, the concept's: a long point at each front edge, small tatters between
+  // the front points, a big uneven point on every side; notch to point 0.10 - 0.16 m)
+  { az: 0.36, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeL', breeze: 0.025, idleFlare: 0.03, hem: [[0, 0.17], [0.1, 0.12], [0.2, 0.03], [0.3, 0.08], [0.42, 0.0], [0.6, 0.11], [0.76, 0.01], [0.88, 0.06], [1, 0.0]] },
+  { az: -0.36, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeR', breeze: 0.03, idleFlare: 0.04, hem: [[0, 0.0], [0.1, 0.07], [0.22, 0.01], [0.4, 0.12], [0.56, 0.0], [0.67, 0.05], [0.79, 0.02], [0.9, 0.12], [1, 0.155]] },
+  { az: 1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.28], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.08, hem: [[0, 0.02], [0.26, 0.14], [0.46, 0.0], [0.72, 0.11], [1, 0.0]] },
+  { az: -1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.28], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.09, hem: [[0, 0.0], [0.3, 0.12], [0.54, 0.0], [0.8, 0.15], [1, 0.03]] },
 ];
 
 function buildSkirt({ pelvis, M, DIM: D, mesh, joint }) {
@@ -410,7 +418,7 @@ function buildSkirt({ pelvis, M, DIM: D, mesh, joint }) {
     mesh(s0, pointSheet(L0, Pn.w[0], Pn.w[1], R0, Pn.flare, [[0, 0], [1, 0]], { rows: 4 }), mat);
     const s1 = joint(s0, 0, -L0, 0);
     const R1 = R0 + Pn.flare * L0;
-    mesh(s1, pointSheet(L1, Pn.w[1], Pn.w[2], R1, Pn.flare, Pn.hem, { rows: 6 }), mat);
+    mesh(s1, pointSheet(L1, Pn.w[1], Pn.w[2], R1, Pn.flare, Pn.hem, { rows: 7, cols: 32, lap: 0.04 }), mat);
     coat.push({ anchor, segs: [s0, s1], def: { ...Pn, strips: [], fork: [] }, strips: [], len: [L0, L1 + hemMax(Pn.hem) * 0.8], r0: R0 });
   });
   return { coat };
@@ -418,27 +426,33 @@ function buildSkirt({ pelvis, M, DIM: D, mesh, joint }) {
 
 // ================================================================ back: the robe's back (streamers)
 /**
- * Three sheets from under the cowl's back, round his back to the hem: one broad shape closed behind
- * him (SPEC: 0.78 m across, 0.64 m deep at the hem). The centre sheet ends in the deep V point between
- * the boots (0.195 m), the sides in points at 0.35 m. On the streamer springs (anim.js _streamers).
+ * Three sheets from under the cowl's back, round his back to the hem, cut from ONE cone (round
+ * CLOAK_C, radius CLOAK_R0 at the top, flaring 0.25 m per metre down): at rest they meet edge to
+ * edge, the sides tucked 4 mm under the centre's edges, so his back is one broad shape with no line
+ * on it (round 2's sheets crossed and drew stray lines). Each sheet `a` rad round from his front, `span`
+ * rad wide (its width follows the cone's radius down it). The centre ends in the deep V between the
+ * boots, the sides in big uneven points. On the streamer springs (anim.js _streamers), the same
+ * length, lean and lag each, so they swing together and part only when the cloth is thrown.
  */
+const CLOAK_C = [0, 0.25, 0], CLOAK_R0 = 0.2, CLOAK_FL = 0.25;
 export const ABYSS_SHEETS = [
-  { at: [0, 0.255, -0.15], ry: Math.PI, w: [0.32, 0.46, 0.6], len: [0.58, 0.5], out: 0.17, wrap: 0.3, hem: [[0, 0.0], [0.22, 0.04], [0.5, 0.115], [0.78, 0.04], [1, 0.0]] },
-  { at: [0.15, 0.24, -0.1], ry: Math.PI - 1.0, w: [0.2, 0.32, 0.44], len: [0.55, 0.42], out: 0.2, wrap: 0.26, hem: [[0, 0.02], [0.35, 0.0], [0.65, 0.07], [1, 0.0]] },
-  { at: [-0.15, 0.24, -0.1], ry: Math.PI + 1.0, w: [0.2, 0.32, 0.44], len: [0.55, 0.42], out: 0.2, wrap: 0.26, hem: [[0, 0.0], [0.35, 0.07], [0.65, 0.0], [1, 0.02]] },
+  { a: Math.PI, span: 1.2, tuck: 0, len: [0.57, 0.42], hem: [[0, 0.03], [0.13, 0.12], [0.26, 0.0], [0.5, 0.2], [0.74, 0.01], [0.87, 0.1], [1, 0.03]] },
+  { a: Math.PI - 1.02, span: 0.94, tuck: 0.004, len: [0.57, 0.37], hem: [[0, 0.0], [0.18, 0.04], [0.36, 0.15], [0.56, 0.01], [0.8, 0.12], [1, 0.03]] },
+  { a: Math.PI + 1.02, span: 0.94, tuck: 0.004, len: [0.57, 0.37], hem: [[0, 0.04], [0.2, 0.13], [0.42, 0.0], [0.64, 0.16], [0.82, 0.03], [1, 0.0]] },
 ];
 
 function buildCloak({ chest, M, mesh, joint }) {
   const streamers = [];
   for (const d of ABYSS_SHEETS) {
-    const base = joint(chest, ...d.at);
-    base.rotation.y = d.ry; // local +Z = the sheet's outer face, +X = across it
-    const [w0, w1, w2] = d.w, [L0, L1] = d.len;
+    const R0 = CLOAK_R0 - d.tuck, [L0, L1] = d.len, R1 = R0 + CLOAK_FL * L0, R2 = R1 + CLOAK_FL * L1;
+    const base = joint(chest, CLOAK_C[0] + Math.sin(d.a) * R0, CLOAK_C[1], CLOAK_C[2] + Math.cos(d.a) * R0);
+    base.rotation.y = d.a; // local +Z = the sheet's outer face, +X = across it
+    const w = [d.span * R0, d.span * R1, d.span * R2];
     const s0 = joint(base);
-    mesh(s0, pointSheet(L0, w0, w1, d.wrap, 0.25, [[0, 0], [1, 0]], { rows: 5 }), M.abRobe);
+    mesh(s0, pointSheet(L0, w[0], w[1], R0, CLOAK_FL, [[0, 0], [1, 0]], { rows: 5, cols: 20 }), M.abRobe);
     const s1 = joint(s0, 0, -L0, 0);
-    mesh(s1, pointSheet(L1, w1, w2, d.wrap + 0.25 * L0, 0.25, d.hem, { rows: 6 }), M.abRobe);
-    streamers.push({ segs: [s0, s1], len: [L0, L1 + hemMax(d.hem) * 0.8], out: d.out, lag: 0.45, max: 1.15, floor: true, push: 30, w: d.w, arm: 0, wrap: d.wrap });
+    mesh(s1, pointSheet(L1, w[1], w[2], R1, CLOAK_FL, d.hem, { rows: 7, cols: 36, lap: 0.05 }), M.abRobe);
+    streamers.push({ segs: [s0, s1], len: [L0, L1 + hemMax(d.hem) * 0.8], out: CLOAK_FL, lag: 0.45, max: 1.15, floor: true, push: 30, w, arm: 0, wrap: R0 });
   }
   void sheetOffset;
   return { streamers };

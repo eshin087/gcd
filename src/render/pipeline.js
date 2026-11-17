@@ -58,9 +58,11 @@ const HERO_OWN_GLSL = `bool heroOwn(float a) { return a < ${(HERO_ART.a0 - HERO_
  *   glow  [r, g, b, radius (font px) of the soft ring OUTSIDE his silhouette (0: none)]
  */
 export const HERO_LINES = Object.freeze({
-  a: Object.freeze({ sil: [2, 0.7, 0.75, 12], inner: [1, 0.32, 0.28, 0.3], fill: [0.35, 0.0, 0.2, 0], glow: [0, 0, 0, 0] }),
-  b: Object.freeze({ sil: [3, 0.85, 0.6, 8], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.3, 0], glow: [0.05, 0.05, 0.09, 2] }),
-  c: Object.freeze({ sil: [2, 0.75, 0.8, 12], inner: [1, 0.38, 0.32, 0.35], fill: [0.65, 0.85, 0.2, 0], glow: [0.035, 0.035, 0.06, 2] }),
+  // (round 3: the band's px per metre 29: 1.5 px at the desktop game camera (~43 px/m), 1 on a
+  // phone, the full width only in close-ups; the outer glow halved: there the SHAPE must win)
+  a: Object.freeze({ sil: [2, 0.7, 0.75, 29], inner: [1, 0.32, 0.28, 0.3], fill: [0.35, 0.0, 0.2, 0], glow: [0, 0, 0, 0] }),
+  b: Object.freeze({ sil: [3, 0.85, 0.6, 29], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.3, 0], glow: [0.025, 0.025, 0.045, 2] }),
+  c: Object.freeze({ sil: [3, 0.8, 0.7, 29], inner: [1, 0.38, 0.32, 0.35], fill: [0.65, 0.85, 0.2, 0], glow: [0.018, 0.018, 0.03, 2] }),
 });
 export const HERO_LINE = (() => {
   try {
@@ -882,7 +884,10 @@ export class Pipeline {
               vec4 pInk = uHeroOwnInk[pidP], pRim = uHeroOwnRim[pidP];
               // (the band's width follows his drawn size: a font px per uHeroOwnSil.w px of his metre,
               // 1 .. uHeroOwnSil.x: bold in a close-up, 2 - 3 px at the desktop camera, 1 on a phone)
-              float dS = 0.0, silW = clamp(floor(uHeroOwnPxM / max(uHeroOwnSil.w, 1.0) + 0.5), 1.0, uHeroOwnSil.x);
+              // (a fractional width: its last px at that share of the gain, so the band can be 1.5 px
+              // wide at the desktop game camera: the shape wins there, the line serves it)
+              float silF = clamp(uHeroOwnPxM / max(uHeroOwnSil.w, 1.0), 1.0, uHeroOwnSil.x);
+              float dS = 0.0, silW = ceil(silF - 0.05), silFr = silF - floor(silF);
               for (int r = 1; r <= 4; r++) {
                 float fr = float(r);
                 if (fr > silW + 0.01) break;
@@ -950,7 +955,8 @@ export class Pipeline {
                 inkP = 0.9;
               } else if (dS > 0.5) {
                 float t = silW > 1.5 ? (dS - 1.0) / (silW - 1.0) : 0.0;
-                col = pRim.rgb * (pRim.a * uHeroOwnSil.y * mix(1.0, uHeroOwnSil.z, t) * hdrP);
+                float part = dS > floor(silF) + 0.5 ? max(silFr, 0.05) : 1.0;
+                col = pRim.rgb * (pRim.a * uHeroOwnSil.y * mix(1.0, uHeroOwnSil.z, t) * part * hdrP);
                 if (uHeroDebug > 2.5) col = vec3(0.5);
                 inkP = 1.0;
               } else if (pl > 0.1) {
