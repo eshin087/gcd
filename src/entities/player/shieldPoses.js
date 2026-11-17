@@ -56,7 +56,10 @@ export const SHIELD_AT = {
   // the held guard: raised before the chest and the chin, the face square to the foe
   // (a little to his LEFT of his middle: from the game camera behind him its left half and its top
   // show past his shoulder; square before the chest his own back hid all of it)
-  block: { l: [-0.07, -0.04, 0.31], lp: [0.6, -0.78, 0.0] },
+  // (2026-11-17, the motion pass: higher and further left again, [0.06, 0.08, 0.28]; at
+  // [-0.07, -0.04, 0.31] the game camera behind him saw a sliver of the rim; now its top and its left
+  // edge stand past the shoulder and the hood, and from the front it still covers the chest and chin)
+  block: { l: [0.06, 0.08, 0.28], lp: [0.8, -0.55, 0.1] },
   // tucked hard against the chest (a windup, a turn)
   tuck: { l: [-0.18, -0.2, 0.2], lp: [0.7, -0.7, -0.05] },
   // swung out to his left, a little behind the shoulder line: the counterweight to a cut
