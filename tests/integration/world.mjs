@@ -773,6 +773,19 @@ const S = {
     step(2);
     const heaps = D.wreck.pools[3].filter((e) => e.on).length;
     assert(rib && rib.state !== STATE.INTACT && heaps > heaps0, `a broken ${rib?.kind ?? 'bone'} leaves a heap of bone (heaps lying: ${heaps0} -> ${heaps}; the strike broke its neighbours too)`);
+    // the bone heaps keep to their share like every other pool: break every bone piece, drop the
+    // quality, and the heaps over the lower cap sink (update() walks all four pools)
+    for (const b of D.list) if (b.mat === 'bone' && b.state === STATE.INTACT) D.strike(b.x, b.z, b.r + 0.3, 50, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    step(2);
+    const bonePool = D.wreck.pools[3];
+    const lying = () => bonePool.filter((e) => e.on && !(e.sink > 0)).length;
+    const full = lying();
+    D.setQuality(0.3);
+    const cap = D.wreck._cap(3);
+    step(8);
+    const after = lying();
+    assert(full > cap && after <= cap, `bone heaps over a lowered cap sink: ${full} lying at full quality, ${after} after the quality drops (its cap ${cap})`);
+    D.setQuality(1);
     D.reset();
     assert(D._wq.n === 0 && D._wallBurning === 0 && D.list.every((b) => b.state === STATE.INTACT && b.wear === 0) && D.wreck.pools[3].every((e) => !e.on), 'reset(): no front waiting, nothing alight, the wall and the bones whole again');
   },

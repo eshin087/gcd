@@ -439,8 +439,8 @@ export class Wreckage {
     const L = this.live;
     if (!L.length || !(dt > 0)) return;
     const W = BREAK.wreck;
-    // a pool over its share: its oldest sinks into the ground
-    for (let k = 0; k < 3; k++) {
+    // a pool over its share: its oldest sinks into the ground (every pool, the bone heaps included)
+    for (let k = 0; k < this.pools.length; k++) {
       const cap = this._cap(k);
       let used = 0, sinking = 0, oldest = null;
       for (let i = 0; i < L.length; i++) {
