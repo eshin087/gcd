@@ -1,13 +1,15 @@
-import { lookOf, setLook, allProposals } from '../entities/enemies/duelist/lookSwitch.js';
+import { lookOf, setLook, allOld, pickedOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { el, button, setClass } from './labDom.js';
 
 // The Lab's LOOKS section: every look switch of the duelists' second pass (duelist/lookSwitch.js),
 // so the owner can flip each option on a phone and judge it in the fight. A switch read at draw time
 // changes live (setLook); one read when the level or his rig is built (`build`) reloads the page with
-// its URL parameter. "all proposals" = `?looks=new` (every redraw as its author would ship it),
-// "as shipped" = no look parameter at all.
+// its URL parameter. "as shipped" = no look parameter at all = the owner's picks (lookSwitch PICKED);
+// "before this pass" = `?looks=old` (every redraw as `main` drew it before the second pass; a new
+// thing keeps its pick). The option each switch ships with is marked `*`.
 //
-// [name, options, default, pick (what ?looks=new shows), build-time, levels, what it is]
+// [name, options, the call site's default (`def`: '0' = a redraw), pick (what ?looks=new showed),
+//  build-time, levels, what it is]
 export const LOOK_SWITCHES = Object.freeze([
   ['kindle', ['a', 'b', 'c'], 'a', 'a', false, ['ash'], 'the Kindling (phase 2)'],
   ['ashp3', ['a', 'b', 'c'], 'a', 'a', false, ['ash'], 'the third phase\'s change'],
@@ -56,10 +58,11 @@ export function buildLooks(body, levelId, status) {
   if (!rows.length) return null;
   const btns = [];
   const top = el('div', 'lab-grid c2', null, body);
-  button(top, 'all proposals', () => reloadWith({ looks: 'new' }, true)).title = 'every look as its author would ship it (?looks=new; a reload)';
-  button(top, 'as shipped', () => reloadWith({}, true)).title = 'every look as it ships today (no look parameter; a reload)';
+  button(top, 'as shipped', () => reloadWith({}, true)).title = 'every look as it ships: the owner\'s picks (no look parameter; a reload)';
+  button(top, 'before this pass', () => reloadWith({ looks: 'old' }, true)).title = 'every redraw as it was before the duelists\' second pass (?looks=old; a new thing keeps its pick; a reload)';
   for (const s of rows) {
     const [name, opts, , , build, , what] = s;
+    const shipped = pickedOf(name);
     const row = el('div', 'lab-row', null, body);
     const lbl = el('span', 'lab-lbl', name, row);
     lbl.title = `${what} (?${name}=)`;
@@ -67,7 +70,7 @@ export function buildLooks(body, levelId, status) {
     const grid = el('div', `lab-grid c${Math.max(2, opts.length)}`, null, row);
     if (grid.style) grid.style.flex = '1';
     for (const v of opts) {
-      const b = button(grid, v === '0' ? 'today' : v, () => {
+      const b = button(grid, `${v === '0' ? 'old' : v}${v === shipped ? '*' : ''}`, () => {
         if (build) {
           reloadWith({ [name]: v });
           return;
@@ -76,11 +79,11 @@ export function buildLooks(body, levelId, status) {
         status?.(`look ${name} = ${v}`);
         sync();
       });
-      b.title = `${what}: ${v === '0' ? 'as it ships today' : `option ${v}`}${v === s[3] && v !== s[2] ? ' (its author\'s pick)' : ''}${build ? ' (a reload)' : ''}`;
+      b.title = `${what}: ${v === '0' ? 'as it was before this pass' : `option ${v}`}${v === shipped ? ' (as shipped: the owner\'s pick)' : ''}${build ? ' (a reload)' : ''}`;
       btns.push({ s, v, el: b });
     }
   }
-  el('div', 'lab-note', `${allProposals() ? 'showing every proposal (?looks=new) · ' : ''}today = as it ships · a, b, c = the options · body / floor: a reload`, body);
+  el('div', 'lab-note', `${allOld() ? 'showing the looks before this pass (?looks=old) · ' : ''}* = as shipped (the owner's pick) · old = before this pass · body / floor: a reload`, body);
   const sync = () => {
     for (const B of btns) setClass(B.el, 'on', now(B.s) === B.v);
   };
