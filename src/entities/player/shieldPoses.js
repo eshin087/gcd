@@ -138,7 +138,7 @@ export function shieldBlock(p, P, A, r) {
   p[P.rP] = -0.5;
   p[P.rP + 1] = -0.45;
   p[P.rP + 2] = -0.75;
-  dirSet(p, P.swD, -24, 30);
+  dirSet(p, P.swD, -42, 16);
   p[P.swF] = 0.3;
   p[P.swF + 1] = 1;
   p[P.swF + 2] = 0;
