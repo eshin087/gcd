@@ -162,7 +162,9 @@ export class TerrainMoves {
       let score;
       if (kind === 'toll') {
         if (b.kind !== 'bell') continue;
-        if (!forced && (dd > K.reach || dh > K.heroMax)) continue;
+        // (`heroMin`, the tuning pass: a hero standing at the bell is inside its rings as they ring:
+        // three tolls that cue nothing)
+        if (!forced && (dd > K.reach || dh > K.heroMax || dh < (K.heroMin ?? 0))) continue;
         score = dd;
       } else {
         if (b.mat !== 'stone' || b.hpMax === Infinity) continue;
