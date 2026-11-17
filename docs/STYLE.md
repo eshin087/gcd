@@ -906,13 +906,15 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
-switch that has one (the game as it looked before this pass; a new thing with no `0` keeps its pick);
-else the owner's pick (the `PICKED` table); else the author's default. **`?looks=new`** (every
+REDRAW (`qi`, `flit`, `toll`, `star`, `sky`, `ignite`, `void`, `ashLook`, `lordLook`: the game as it looked
+before this pass); the things that are new in this pass (`kindle`, `ashp3`, `burn`, `presence`, `great`,
+`floor`) keep their pick, although `presence`, for one, was simply absent before (its `0` is "off",
+reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else the author's default. **`?looks=new`** (every
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
 **The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard and the Obsidian Throne) has a row of
 buttons per switch: a switch read at draw time flips live, one read at build time (`ashLook`,
 `lordLook`, `floor`) reloads the page with its parameter; "as shipped" clears every look parameter (the
-picks), "before this pass" reloads with `?looks=old`. Older switches of the same kind: `?flare=`
+picks), "before this pass" reloads with `?looks=old`; there is no "all proposals" button any more. Older switches of the same kind: `?flare=`
 (ADR-118), the wyrm's `?ring=` and `?breath=` (ADR-119).
 
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)

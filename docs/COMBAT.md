@@ -929,16 +929,20 @@ into a line; from then on it burns him as an unguarded hero. Wood it touches cat
 (`world.ignite`). Measured (a pure defender, 120 s a phase, three seeds): one who steps off the lines
 loses 0 / 5 / 0 HP to fire in phase 2 and 0 / 15 / 5 in phase 3; one who holds his guard and stays on
 them loses 10 / 5 / 10 in phase 2 and died on one seed in phase 3 (the fire opened his guard four
-times and blades came in through the opening). Burning ground is alive 32 % of phase 2 and 19 % of
-phase 3. The wyrm's grass fire keeps its own rule (a blockable chip).
+times and blades came in through the opening). Burning ground is alive 32 % of phase 2 and 20 % of
+phase 3 (the final build, ten seeds). The wyrm's grass fire keeps its own rule (a blockable chip).
 
 **Sword qi** (Ash Crescent, a string's last word, the fans, the storm): each crescent cues itself
 0.3 s before it reaches the hero; one that would reach him sooner than `TUNING.crescent.minLead`
 0.27 s after it is thrown is not thrown at all (it used to glint and fizzle on him). Ember Fan and
 Storm of Ash are only picked from 6.5 m (closer, every wave arrived too soon to cue). **The qi that
-ends Chasing Rain and Parting Wind is a cut at close range**: a `release` beat that carries a zone
-strikes as a cut when the hero stands inside that zone, and throws its qi otherwise (until this pass
-it was thrown at nothing when he was close: phase 1's longest gap, about 1.5 s with no cue).
+ends Chasing Rain and Parting Wind is a cut at close range**: their last beat carries the diagonal
+cut's zone (sector 2.15 m), and a `release` beat that carries a zone strikes as a cut when the hero
+stands inside it as its cue comes due (decided once, then cued, held by the guard and answered as a
+white blade blow; no qi is thrown), and throws its qi otherwise (until this pass it was thrown at
+nothing when he was close: phase 1's longest gap, about 1.5 s with no cue). **Still open:** between
+about 2.6 m and 4.85 m the qi is not thrown (too close to cue) and the cut does not reach; a trade
+clash cannot meet that cut; the phase-3 afterimage skips it.
 
 ### He uses the courtyard (2026-11-15, ADR-111; the floor, the colossi and thrown pieces: 2026-11-16, ADR-122)
 Seven moves on the pieces of the set (*The world breaks*, below). His AI picks one only while a piece
@@ -1214,27 +1218,32 @@ these changed in the second pass. **His body, dressed by phase** (the owner's pi
 STYLE.md "The look switches"): in phase 2 the robe's hem and the free sleeve's cuff smoulder; in phase 3
 the hat is gone, his hair hangs loose and the robe is burnt pale with a frayed hem.
 
-**Measured (the tuning pass, 2026-11-16; `tests/integration/duel.mjs`).** What was measured is what
-bots do, not what a person feels: **no human has played the second pass yet.**
+**Measured (the tuning pass and the final build, 2026-11-16; `tests/integration/duel.mjs`).** What was
+measured is what bots do, not what a person feels: **no human has played the second pass yet.**
 - **Pace** (PACE: a god-mode defender that guards and rolls and never attacks, roaming 2.5 – 9 m from
-  him, five seeds × 120 s a phase): **76.7 / 91.6 / 99.2 cues a minute** in phases 1 / 2 / 3 (ranges
-  75.4 – 78.6 / 88.8 – 94.8 / 95.6 – 102.5); before the pass 60.2 / 76.0 (no phase 3). Longest gap
-  between two cues 3.24 / 2.85 / 2.54 s. A dodge for 13 / 16 / 18 % of the cues (5 / 6 / 9 % before the
-  tuning pass); the longest run of one answer 25 / 24 / 17 cues (was 76 / 46 / 36). Conflicts (two cues
-  under 0.3 s apart needing different answers) 0; the guard held 2 blows and made no feint in fifteen
-  runs. Phase 3 runs at the speed floors: he is inside a move most of the time, and about 100 cues a
-  minute is what 0.42 s / 0.32 s allow. The meter `pressure.meter` asserts each phase ≥ [1, 1.08, 1.0] ×
-  the one before per seed and [1, 1.12, 1.06] × in the seeds' mean, at least 70 / 82 / 92 cues a minute
-  and no gap over 3.4 / 3.2 / 2.9 s.
+  him; the final build, ten seeds (4242, 7, 99, 1337, 2024, 11, 23, 555, 808, 31337) × 120 s a phase):
+  cues a minute (min / mean / max) **phase 1 73.5 / 77.8 / 81.2, phase 2 89.7 / 92.9 / 95.9, phase 3
+  97.4 / 100.0 / 104.3**; before the pass 60.2 / 76.0 (no phase 3). Each phase busier than the one
+  before on every seed (phase 2 / phase 1 at least × 1.134, × 1.194 in the mean; phase 3 / phase 2 at
+  least × 1.018, × 1.078 in the mean). Longest gap between two cues (max / mean of the seeds) 3.07 /
+  2.70, 2.92 / 2.16, 2.65 / 2.12 s. A dodge for 13 / 17 / 19 % of the cues (5 / 6 / 9 % before the
+  tuning pass); burning ground alive 0 / 32 / 20 % of the time. Conflicts (two cues under 0.3 s apart
+  needing different answers) 0. Phase 3 runs at the speed floors: about 100 cues a minute is what
+  0.42 s / 0.32 s allow. The meter `pressure.meter` asserts each phase ≥ [1, 1.05, 0.95] × the one
+  before per seed and [1, 1.14, 1.035] × in the seeds' mean, at least 68 / 82 / 90 cues a minute and no
+  gap over 3.6 / 3.4 / 3.15 s: set about 8 % under the worst seed's ramp, 4 % under the mean's, 7 – 9 %
+  under the slowest seed's rate and half a second over the longest gap, because the same seed
+  replayed a different fight after each merge (a phase's rate moved by up to 5 %).
 - **Mortal bots** (whole fights on the real set, seeds 4242 / 7 / 99; `node tests/integration/duel.mjs
-  . bots`, opt-in): the 95 % bot wins all three in 52 – 58 s (16 – 25 / 13 – 14 / 20 – 22 s per
-  phase; on `main` 50 – 63 s); the 85 % bot wins all three in 53 – 61 s with 0 – 70 damage taken and no
-  flask; the 70 % bot wins two of three (died on seed 7 at 58 s; on `main` the same). Worst blow taken
-  20.7 / 16.1 / 25.3; worst second 50.6 (57.5 on `main`). A pure defender (answers 95 %, never swings)
-  survives 8 of 9 phase runs. **The bot targets are not met**: the 85 % bot is in no danger and the
-  70 % bot does not die. Each fight sees 2 – 4 posture breaks with executions of 260 each, and the
-  hero's counter flurries deal about a third of the damage: at the same health and damage a one-minute
-  fight cannot kill a 70 % bot. The levers are health and posture, which this pass left alone.
+  . bots`, opt-in; the tuning pass): the 95 % bot wins all three in 52 – 58 s (16 – 25 / 13 – 14 / 20 –
+  22 s per phase; on `main` 50 – 63 s); the 85 % bot wins all three in 53 – 61 s with 0 – 70 damage taken
+  and no flask. **On the final build the 70 % bot dies in one or two of three** (two of three in one run,
+  one of three in another: these outcomes move by a whole fight between builds, as each merge replays
+  the seeds differently). Worst blow taken 20.7 / 16.1 / 25.3 (tuning pass); worst second 50.6 (57.5 on
+  `main`). A pure defender (answers 95 %, never swings) survives 8 of 9 phase runs. **The bot targets
+  are not met**: the 85 % bot is in no danger. Each fight sees 2 – 4 posture breaks with executions of
+  260 each, and the hero's counter flurries deal about a third of the damage. The levers are health and
+  posture, which this pass left alone.
 - **Fairness sweep** (`duel.mjs . answer`, opt-in): every AI move in every phase it is in, from five
   distances across its band, both sides, against the parrying bot: 830 runs standing and 830 walking
   in, no blow lands.
@@ -1278,8 +1287,8 @@ the fairness guard*, below), with these differences.
   (his `flashLead`; Shen Hui's is 0.3 s) and never before the blow ahead of it has landed. Breathers
   (`idleGap`) [0.1 – 0.3, 0.07 – 0.22, 0.05 – 0.16, 0.03 – 0.1] s, after an opening of the hero's the
   old [0.14 – 0.4, 0.1 – 0.32, 0.08 – 0.26, 0.05 – 0.18] s (`openingGap`); the flow roll [0.55, 0.62,
-  0.7, 0.78] (it was [0.4, 0.5, 0.55, 0.65]), at most [4, 4, 6, 6] moves in a row, then a breather of
-  [0.45 – 0.75, 0.4 – 0.65, 0.3 – 0.55, 0.2 – 0.4] s (ADR-122; *The duelists' pressure and the fairness
+  0.7, 0.78] (it was [0.4, 0.5, 0.55, 0.65]), at most [4, 4, 7, 7] moves in a row, then a breather of
+  [0.45 – 0.75, 0.4 – 0.65, 0.25 – 0.45, 0.2 – 0.4] s (ADR-122; *The duelists' pressure and the fairness
   guard*, below). **For him a red and a white cue are at least 0.4 s apart** (`pressure.guard.sep`
   0.4, the rule's 0.3 s plus room: a roll allows no guard until 0.52 s after it starts, and a white
   blow 0.3 – 0.4 s after a red one killed a 95 % bot on one seed).
@@ -1310,11 +1319,12 @@ black move of each form; a perilous thrust (mikiri) is in every form.
 - **Form 3, the staff:** strings that walk the hero down and end in fissures (Walking Mountain);
   torn stones that orbit him and fire into the gaps of the string he is cutting (Wheel of Stones); a
   Dark Star cast inside a string (Star in the Hand); Grinding Wheel; the Falling Halo. The floor is
-  rarely empty (something of his lingers on it 26 % of the time).
+  rarely empty (something of his lingers on it about a quarter of the time: the first tuning round).
+  Wheel of Stones is picked only within 4.4 m (it was 6 m: from there its cuts could not reach).
 - **Form 4, the Void:** blink strings (Void Waltz: six blows, each out of a blink), lightning between
   cuts (Thunder Between), Hollow Crown, Crimson Eclipse (four red blows), the **Starless Sky as
-  weather**, and the great spell, **Starless Night**. Something lingers on the floor 48 % of the time;
-  40 % of his cues ask for a dodge.
+  weather**, and the great spell, **Starless Night**. Something lingers on the floor about half the
+  time (the first tuning round); 39 % of his cues ask for a dodge.
 - **After a red spell or a thrown piece he follows with a red blow** (`links.js` `AFTER_RED`: Reaping
   Arc, Red Meridian, Hollow Step, Crimson Eclipse, Starfall, Nightfall), not a guard string the
   fairness guard would then have to feint. **A blow out of a blink meets a guard from any side** (until
@@ -1388,16 +1398,16 @@ spell or a thrown piece, `AFTER_SPELL` after Rupture and the Halo).
 | **Crimson Litany** `litany` | 1 (2.6 / - / - / -) · 0–3.8 · 6 · string | N 0.48 (13) · N 0.34 (12) · one of { N 0.38 (13) [ring 2.3 m] / N 0.34 (12) } · one of { B 0.42 (20) [lock, hold 0.1-0.3] / B 0.4 (19) [line 2.05 m, dash <=2.4 m] } · N 0.36 (12) · one of { B 0.6 (24) [lock, lift] / B 0.58 (22) [lift] / N 0.34 (12) } · B 0.4 (19) [line 2.05 m, 50 %, dash <=2.4 m] |
 | **Void Cadence** `cadence` | 1 (2.4 / - / - / -) · 0–4.2 · 7 · string | N 0.5 (13) · N 0.34 (12) · N 0.55 (15) [release push, fixed] · N 0.46 (12) · N 0.34 (12) · one of { B 0.4 (20) [line 2.05 m, dash <=2.4 m] / B 0.62 (20) [bolt, line 17 m, fixed] } |
 | **Starless Dirge** `dirge` | 1 (2.2 / - / - / -) · 1.6–6 · 7 · string | N 0.5 (15) [line 2.05 m, dash <=3.8 m] · N 0.36 (12) · B 0.58 (22) [lift] · N 0.36 (12) · one of { R 0.62 (22) [ring 2.9 m, knockdown] / B 0.56 (20) [bolt, line 17 m, fixed] } |
-| **Starless Lunge** `lunge` | 1, 4 (2 / - / - / 1.4) · 2.6–7 · 2.5 · closer | N 0.5 (17) [line 2.05 m, dash <=5 m] |
-| **Falling Star** `skyfall` | 1, 2, 4 (2 / 1.6 / - / 2) · 2.2–7.5 · 4 · closer | B 0.72 (26) [lock, FLARE, dash <=5.5 m, lift] |
+| **Starless Lunge** `lunge` | 1, 4 (2 / - / - / 0.8) · 2.6–7 · 2.5 · closer | N 0.5 (17) [line 2.05 m, dash <=5 m] |
+| **Falling Star** `skyfall` | 1, 2, 4 (2 / 1.6 / - / 1.2) · 2.2–7.5 · 4 · closer | B 0.72 (26) [lock, FLARE, dash <=5.5 m, lift] |
 | **Reaping Arc** `reap` | 1 (1.5 / - / - / -) · 0–3.4 · 6 · area | R 0.62 (22) [ring 2.9 m, knockdown] |
-| **Void Lightning** `voidBolt` | 1, 2, 3 (1 / 0.8 / 0.8 / -) · 4.5–16 · 5 · spell | B 0.78 (24) [bolt, line 17 m] · B 0.5 (22) [bolt, line 17 m, 50 %] |
-| **Void Push** `voidPush` | 1, 2, 3, 4 (1 / 0.8 / 0.8 / 0.7) · 2.5–11 · 5 · spell | N 0.62 (15) [release push] |
-| **Grasp and Sever** `grasp` | 1, 2, 3, 4 (1.4 / 1 / 1.2 / 1.6) · 4.5–10.5 · 8 · spell | R 0.8 (5) [pull, line 11 m, fixed] · B 0.62 (24) [lock, FLARE, fixed] |
+| **Void Lightning** `voidBolt` | 1, 2, 3 (1 / 0.8 / 0.5 / -) · 4.5–16 · 5 · spell | B 0.78 (24) [bolt, line 17 m] · B 0.5 (22) [bolt, line 17 m, 50 %] |
+| **Void Push** `voidPush` | 1, 2, 3, 4 (1 / 0.8 / 0.5 / 0.7) · 2.5–11 · 5 · spell | N 0.62 (15) [release push] |
+| **Grasp and Sever** `grasp` | 1, 2, 3, 4 (1.4 / 1 / 1.2 / 1) · 4.5–10.5 · 8 · spell | R 0.8 (5) [pull, line 11 m, fixed] · B 0.62 (24) [lock, FLARE, fixed] |
 | **Crushing Dark** `grip` | 1, 4 (0.9 / - / - / 0.8) · 3–9 · 10 · spell | R 0.95 (30) [Crushing Dark, line 9.5 m, knockdown, fixed] |
-| **Severance** `severance` | 1, 2, 3, 4 (1.5 / 1.3 / 1.3 / 1.5) · 3.4–9.5 · 6 · closer | B 0.66 (26) [lock, FLARE, dash <=7.5 m] |
-| **Red Meridian** `meridian` | 1, 2, 3, 4 (1.5 / 1.8 / 1.6 / 1.5) · 2.4–8 · 8 · closer | R 0.66 (22) [dash <=6 m] · R 0.72 (24) [ring 2.9 m, knockdown] |
-| **Nightfall** `nightfall` | 1, 2, 3, 4 (1.1 / 1.1 / 1.2 / 1.2) · 2.4–9 · 12 · closer | K 1.45 (36) [knockdown, fixed, hold 0.1-0.5, dash <=7.5 m] |
+| **Severance** `severance` | 1, 2, 3, 4 (1.5 / 1.3 / 1 / 1) · 3.4–9.5 · 6 · closer | B 0.66 (26) [lock, FLARE, dash <=7.5 m] |
+| **Red Meridian** `meridian` | 1, 2, 3, 4 (1.5 / 1.8 / 1.2 / 1.5) · 2.4–8 · 8 · closer | R 0.66 (22) [dash <=6 m] · R 0.72 (24) [ring 2.9 m, knockdown] |
+| **Nightfall** `nightfall` | 1, 2, 3, 4 (1.1 / 1.1 / 1 / 1) · 2.4–9 · 12 · closer | K 1.45 (36) [knockdown, fixed, hold 0.1-0.5, dash <=7.5 m] |
 | **Veiled Hand** `veiledHand` | 1 (2.2 / - / - / -) · 0–4 · 7 · string | N 0.48 (13) · N 0.34 (12) · FEINT 0.28 · N 0.36 (12) · N 0.34 (12) · one of { R 0.62 (26) [line 2.4 m, MIKIRI, dash <=2.8 m] / B 0.42 (20) [lock, FLARE, hold 0.1-0.25] } |
 | **Lightning Verse** `voidVerse` | 1 (2.4 / - / - / -) · 0–4.4 · 7 · string | N 0.48 (13) · B 0.42 (18) [bolt, line 17 m] · N 0.34 (12) · N 0.34 (12) · B 0.42 (18) [bolt, line 17 m] · one of { B 0.4 (19) [line 2.05 m, dash <=2.4 m] / B 0.6 (24) [lock, lift] } |
 | **Drawn to the Blade** `drawnIn` | 1 (2 / - / - / -) · 0–6 · 8 · string | N 0.48 (13) · N 0.34 (12) · R 0.5 (5) [pull, line 11 m] · N 0.4 (13) · B 0.44 (22) [lock, FLARE] |
@@ -1414,7 +1424,7 @@ spell or a thrown piece, `AFTER_SPELL` after Rupture and the Halo).
 | **Bladed Gale** `gale` | 2 (- / 2.4 / - / -) · 0–3.8 · 7 · string | N 0.5 (13) [ring 2.3 m] · N 0.36 (13) [ring 2.3 m] · N 0.36 (11) · N 0.34 (11) · one of { B 0.6 (24) [lock, lift] / R 0.62 (22) [ring 2.9 m, knockdown] } · N 0.66 (14) [release crescent x2, fixed, 60 %, walks -4 m, lift] |
 | **Pinwheel** `pinwheel` | 2 (- / 2.2 / - / -) · 1.5–6.5 · 7 · string | B 0.62 (22) [lift] · N 0.34 (11) · N 0.34 (11) · N 0.46 (14) [release crescent x2] |
 | **Scissor** `scissor` | 2 (- / 2 / - / -) · 2.6–7 · 3 · closer | B 0.52 (22) [line 2.1 m, lock, FLARE, dash <=5 m] |
-| **Returning Blade** `glaive` | 2, 3 (- / 1.2 / 1 / -) · 4–13 · 9 · ranged | N 0.6 (16) [cast glaive] |
+| **Returning Blade** `glaive` | 2, 3 (- / 1.2 / 0.6 / -) · 4–13 · 9 · ranged | N 0.6 (16) [cast glaive] |
 | **Reaping Arcs** `reap2` | 2 (- / 2 / - / -) · 0–3.4 · 6 · single | N 0.5 (13) [ring 2.3 m] · R 0.6 (22) [ring 2.9 m, knockdown] |
 | **Wheeling Blade** `wheelingBlade` | 2 (- / 2.6 / - / -) · 0–4 · 8 · string | N 0.48 (11) · N 0.34 (11) · N 0.46 (14) [cast wheel] · N 0.36 (11) · N 0.34 (11) · catch (feint) 0.3 · B 0.44 (20) [lock, FLARE] |
 | **Hunting Wings** `wingedPursuit` | 2 (- / 2 / - / -) · 1.5–8 · 7 · string | N 0.5 (14) [line 2.05 m, dash <=4.5 m] · N 0.36 (11) [dash <=3 m] · N 0.36 (11) [dash <=3 m] · N 0.36 (11) [dash <=3 m] · B 0.5 (22) [line 2.1 m, lock, FLARE, dash <=4 m] |
@@ -1429,18 +1439,18 @@ spell or a thrown piece, `AFTER_SPELL` after Rupture and the Halo).
 | Move | Forms (weight per form) · band m · cooldown s · cat | Hits (tell windup (damage) [extras]; `one of { a / b }`) |
 |---|---|---|
 | **Cyclone** `cyclone` | 3 (- / - / 2.4 / -) · 0–4.4 · 6 · string | N 0.5 (13) · N 0.34 (13) · N 0.38 (14) [ring 2.95 m] · N 0.36 (14) [ring 2.95 m] · one of { B 0.44 (22) [lock, hold 0.1-0.3] / B 0.4 (20) [line 2.7 m, dash <=2.4 m] } · one of { R 0.62 (24) [ring 3.55 m, knockdown] / B 0.6 (26) [lock, lift] } |
-| **Turning Mill** `mill` | 3 (- / - / 2 / -) · 1.5–6.5 · 7 · string | N 0.52 (12) [ring 2.95 m, walks 1.9 m] · N 0.34 (12) [ring 2.95 m, walks 1.5 m] · N 0.34 (12) [ring 2.95 m, walks 1.5 m] · N 0.34 (12) [ring 2.95 m, walks 1.5 m] · B 0.42 (21) [line 2.7 m, dash <=2.4 m] |
-| **Starfall** `starfall` | 3, 4 (- / - / 1.5 / 0.6) · 4.2–14 · 9 · area | R 1.15 (30) [ring 2.8 m, knockdown, leap apex 3.8 m] |
+| **Turning Mill** `mill` | 3 (- / - / 1.3 / -) · 1.5–6.5 · 7 · string | N 0.52 (12) [ring 2.95 m, walks 1.9 m] · N 0.34 (12) [ring 2.95 m, walks 1.5 m] · N 0.34 (12) [ring 2.95 m, walks 1.5 m] · N 0.34 (12) [ring 2.95 m, walks 1.5 m] · B 0.42 (21) [line 2.7 m, dash <=2.4 m] |
+| **Starfall** `starfall` | 3, 4 (- / - / 1 / 0.6) · 4.2–14 · 9 · area | R 1.15 (30) [ring 2.8 m, knockdown, leap apex 3.8 m] |
 | **Torn Stone** `debris` | 3, 4 (- / - / 1.2 / 0.9) · 5–15 · 10 · ranged | N 0.95 (14) [cast debris x3, fixed] |
-| **Glass Rain** `glassRain` | 3, 4 (- / - / 1.4 / 1.6) · 4.5–16 · 13 · terrain | R 1.2 (20) [cast rain x3, fixed] |
-| **Falling Halo** `plateHalo` | 3, 4 (- / - / 1.4 / 1.2) · 2–12 · 13 · terrain | R 1 (22) [cast halo x0/0/4/5, fixed] |
-| **Drawn Under** `undertow` | 3 (- / - / 1.4 / -) · 4.5–10.5 · 8 · spell | R 0.8 (5) [pull, line 11 m, fixed] · N 0.62 (16) [ring 2.95 m, fixed] · B 0.42 (22) [lock] |
+| **Glass Rain** `glassRain` | 3, 4 (- / - / 1.6 / 1.6) · 4.5–16 · 13 · terrain | R 1.2 (20) [cast rain x3, fixed] |
+| **Falling Halo** `plateHalo` | 3, 4 (- / - / 1.6 / 1.2) · 2–12 · 13 · terrain | R 1 (22) [cast halo x0/0/4/5, fixed] |
+| **Drawn Under** `undertow` | 3 (- / - / 1 / -) · 4.5–10.5 · 8 · spell | R 0.8 (5) [pull, line 11 m, fixed] · N 0.62 (16) [ring 2.95 m, fixed] · B 0.42 (22) [lock] |
 | **The Rift** `rift` | 3, 4 (- / - / 1.1 / 0.9) · 3–14 · 9 · spell | N 0.9 (16) [release rift x3/3/3/5, fixed] |
-| **Walking Mountain** `walkingMountain` | 3 (- / - / 3 / -) · 0–5.5 · 7 · string | N 0.5 (12) [ring 2.95 m, walks 1.6 m] · N 0.36 (12) [walks 1.1 m] · N 0.36 (12) [walks 1.1 m] · N 0.36 (12) [ring 2.95 m, walks 1.2 m] · N 0.36 (13) [walks 1 m] · N 0.34 (13) [walks 0.9 m] · N 0.62 (16) [release rift x3, walks -3 m, lift] |
-| **Wheel of Stones** `stoneWheel` | 3 (- / - / 2.4 / -) · 0–6 · 9 · string | N 0.5 (14) [cast debris (orbit) x3, fixed] · N 0.5 (13) · N 0.34 (13) · N 0.74 (13) [ring 2.95 m] · N 0.34 (13) · N 0.78 (13) · N 0.34 (13) · B 0.78 (21) [line 2.7 m, dash <=2.4 m] |
-| **Star in the Hand** `starHand` | 3 (- / - / 1.8 / -) · 0–4.4 · 11 · string | N 0.5 (13) · N 0.34 (13) · R 0.46 (26) [cast star] · N 0.38 (14) [ring 2.95 m] · N 0.36 (13) · N 0.34 (13) · B 0.44 (22) [lock, hold 0.05-0.2] |
-| **Grinding Wheel** `grindingWheel` | 3 (- / - / 2.4 / -) · 0–4.4 · 7 · string | N 0.5 (13) [ring 2.95 m] · N 0.34 (13) · N 0.34 (13) · N 0.36 (13) [ring 2.95 m] · N 0.34 (13) · R 0.58 (22) [ring 3.55 m, knockdown] · one of { R 0.62 (26) [line 2.95 m, MIKIRI, dash <=2.8 m] / B 0.6 (24) [lock, lift] } |
-| **Dark Star** `star` | 3, 4 (- / - / 0.8 / 0.9) · 0–16 · 12 · hazard | R 0.9 (30) [cast star, fixed] |
+| **Walking Mountain** `walkingMountain` | 3 (- / - / 3.4 / -) · 0–5.5 · 7 · string | N 0.5 (12) [ring 2.95 m, walks 1.6 m] · N 0.36 (12) [walks 1.1 m] · N 0.36 (12) [walks 1.1 m] · N 0.36 (12) [ring 2.95 m, walks 1.2 m] · N 0.36 (13) [walks 1 m] · N 0.34 (13) [walks 0.9 m] · N 0.62 (16) [release rift x3, walks -3 m, lift] |
+| **Wheel of Stones** `stoneWheel` | 3 (- / - / 2.4 / -) · 0–4.4 · 9 · string | N 0.5 (14) [cast debris (orbit) x3, fixed] · N 0.5 (13) · N 0.34 (13) · N 0.74 (13) [ring 2.95 m] · N 0.34 (13) · N 0.78 (13) · N 0.34 (13) · B 0.78 (21) [line 2.7 m, dash <=2.4 m] |
+| **Star in the Hand** `starHand` | 3 (- / - / 2.2 / -) · 0–4.4 · 11 · string | N 0.5 (13) · N 0.34 (13) · R 0.46 (26) [cast star] · N 0.38 (14) [ring 2.95 m] · N 0.36 (13) · N 0.34 (13) · B 0.44 (22) [lock, hold 0.05-0.2] |
+| **Grinding Wheel** `grindingWheel` | 3 (- / - / 2.8 / -) · 0–4.4 · 7 · string | N 0.5 (13) [ring 2.95 m] · N 0.34 (13) · N 0.34 (13) · N 0.36 (13) [ring 2.95 m] · N 0.34 (13) · R 0.58 (22) [ring 3.55 m, knockdown] · one of { R 0.62 (26) [line 2.95 m, MIKIRI, dash <=2.8 m] / B 0.6 (24) [lock, lift] } |
+| **Dark Star** `star` | 3, 4 (- / - / 0.6 / 0.9) · 0–16 · 12 · hazard | R 0.9 (30) [cast star, fixed] |
 
 *Form 4, the Void*
 
@@ -1448,7 +1458,7 @@ spell or a thrown piece, `AFTER_SPELL` after Rupture and the Halo).
 |---|---|---|
 | **Judgment** `judgment` | 4 (- / - / - / 2.8) · 0–4 · 6 · string | N 0.5 (14) · N 0.34 (13) · N 0.34 (13) · B 0.44 (22) [lock, hold 0.1-0.32] · one of { N 0.36 (13) / N 0.36 (13) } · one of { R 0.62 (28) [line 2.4 m, MIKIRI, dash <=2.8 m] / B 0.6 (26) [lock, lift] / B 0.58 (24) [lift] } |
 | **Eclipse** `eclipse` | 4 (- / - / - / 2.4) · 0–4 · 7 · string | N 0.5 (13) · N 0.34 (13) · N 0.36 (14) [ring 2.6 m] · B 0.6 (20) [bolt, line 17 m] · N 0.42 (13) · one of { B 0.6 (26) [lock, lift] / B 0.4 (22) [line 2.35 m, dash <=2.4 m] } |
-| **Void Rend** `rend` | 4 (- / - / - / 2.4) · 0–12 · 8 · string | N 0.75 (14) [blink behind 2 m] · N 0.6 (14) [blink behind 2 m] · B 0.68 (24) [lock, blink behind 2.1 m] |
+| **Void Rend** `rend` | 4 (- / - / - / 2) · 0–12 · 8 · string | N 0.75 (14) [blink behind 2 m] · N 0.6 (14) [blink behind 2 m] · B 0.68 (24) [lock, blink behind 2.1 m] |
 | **Chained Lightning** `chain` | 4 (- / - / - / 1.6) · 4–16 · 9 · spell | B 0.8 (20) [bolt, line 17 m] · B 0.46 (20) [bolt, line 17 m] · B 0.46 (20) [bolt, line 17 m] · B 0.46 (24) [bolt, line 17 m] |
 | **Red Tide** `tide` | 4 (- / - / - / 0.9) · 6–16 · 8 · ranged | N 0.5 (14) [release crescent x1] · N 0.44 (14) [release crescent x3] · N 0.44 (14) [release crescent x1] |
 | **The Starless Sky** `storm` | 4 (- / - / - / 1) · 0–16 · 14 · hazard | R 0.95 (26) [cast storm x6, fixed] |
@@ -1476,8 +1486,8 @@ Starless Storm is his flurry; an ignition starts each form after a deathblow)
 | **Ignition (form 4)** `ignite4` | R 2.1 (12) [ring 6.5 m, fixed] |
 
 The form's pool (weights summed, share by category): form 1 20 moves, 51 % strings, 29 % closers, 12 %
-spells; form 2 21, 46 % strings, 23 % closers, 12 % terrain; form 3 24, 40 % strings, 19 % terrain,
-15 % spells; form 4 29, 39 % strings, 18 % closers, 16 % terrain, 13 % spells.
+spells; form 2 21, 46 % strings, 23 % closers, 12 % terrain; form 3 24, 44 % strings, 21 % terrain,
+13 % spells, 10 % closers; form 4 29, 41 % strings, 17 % terrain, 14 % closers, 13 % spells, 8 % hazards.
 
 **How a string moves** (ADR-085): its cuts alternate the foot that drives them, so he walks through
 it; a spin is a hop that carries the whole body round; the somersault, the cartwheel and the backflip
@@ -1495,36 +1505,39 @@ answer in the tables above, the glide, the wheeling blade, the orbit, the weathe
 the returning blade giving way at its turn), MOVES (every new move), TERRAIN, PACE, BOUNDS (never off
 the floor), FLOW (the south lip, the throne intro, a death and the reset), WIN.
 
-**Measured (the tuning pass, 2026-11-16; `tests/integration/lord.mjs`).** Bots, not people: **no human
+**Measured (the final build, 2026-11-16; `tests/integration/lord.mjs`).** Bots, not people: **no human
 has played the second pass yet.**
-- **Pace** (PACE: a god-mode defender that guards and rolls and never attacks, kept to the crater,
-  five seeds × 120 s a form): **84.9 / 89.7 / 100.2 / 109.0 cues a minute** in forms 1 – 4 (ranges
-  82.9 – 88.6 / 87.0 – 93.1 / 95.8 – 103.0 / 104.5 – 111.7); before the pass 70.6 / 79.6 / 75.2 / 84.9
-  (form 3 was LESS busy than form 2). Longest gap between cues 3.32 / 2.89 / 3.50 / 2.61 s. The worst
-  seed's step from form to form: 1.01 / 1.06 / 1.03. Conflicts 0. The answer mix: a guard or parry for
-  84 / 86 / 85 / 60 % of the cues, a dodge for 16 / 14 / 15 / 40 %; something of his lingers on the
-  floor to step out of 2 / 7 / 26 / 48 % of the time. The fairness guard per 120 s: holds 0 – 8, feints
-  0 – 4 in forms 1 – 3 and 2 – 9 in form 4 (most against world pieces his own blows felled, the rest
-  against the storm and Glass Rain: the price of his 0.4 s rule); a told blow turned into a feint
-  about 8 times in 100 fight-minutes. The meter asserts each form ≥ [1, 0.97, 1, 0.98] × the one before,
-  at least 75 / 79 / 87 / 95 cues a minute, no gap over 4.2 / 4.2 / 4.3 / 3.6 s.
+- **Pace** (PACE: a god-mode defender that guards and rolls and never attacks, kept to the crater; ten
+  seeds (4242, 7, 99, 1337, 2024, 11, 23, 555, 808, 31337) × 120 s a form): cues a minute (min / mean /
+  max) **form 1 81.1 / 85.1 / 87.1, form 2 84.5 / 90.6 / 97.9, form 3 91.1 / 100.4 / 107.6, form 4
+  104.2 / 109.7 / 115.8**; before the pass 70.6 / 79.6 / 75.2 / 84.9 (form 3 was LESS busy than form 2).
+  Form over form × 1.065 / 1.108 / 1.093 in the mean of the seeds; on the worst seed × 0.993 / 0.987 /
+  1.016: each form is busier than the one before in the mean, and within 1.3 % of it on the worst
+  seed. Longest gap between cues (max / mean) 3.22 / 2.52, 3.05 / 2.65, 2.82 / 2.49, 2.70 / 2.23 s. A
+  dodge for 15 / 15 / 18 / 39 % of the cues. Conflicts 0. The fairness guard's feints per 120 s: 0 – 4
+  in form 3 on nine seeds (8 on one), 0 – 7 in form 4 (most against world pieces his own blows felled,
+  the rest against the storm and Glass Rain: the price of his 0.4 s rule). Where a slow seed's time
+  went in form 3: to slow one-cue moves (Starfall, Nightfall, the returning blade, the Dark Star,
+  Severance), not to footwork. The meter asserts each form ≥ [1, 0.93, 0.93, 0.95] × the one before on
+  every seed and [1, 1.03, 1.05, 1.04] × in the seeds' mean, at least 72 / 76 / 82 / 93 cues a minute,
+  no gap over 4.0 / 4.0 / 3.8 / 3.6 s.
 - **Mortal bots** (whole fights, seeds 4242 / 7 / 99; `lord.mjs . probe`, opt-in; they drink below 60
-  HP in his openings): the 95 % bot wins all three in 52 / 84 / 63 s (on `main` 73 / 67 / 42 s); the
-  85 % bot wins all three in 75 / 87 / 76 s with 0 – 1 flasks (on `main` 89 / 79 / 71 s, 1 – 2 flasks);
-  the 70 % bot dies in all three (51 s and 48 s in form 3, 68 s in form 4; on `main` too, sooner). Each
-  form lasts 8 – 25 s and ends by a POSTURE BREAK at 0 – 80 % of its bar: against a bot that parries in
-  a frame his offence is mostly reactions (each string ends in the hero's riposte, then a flinch, a
-  recoil or a reel). **The 3 – 5 minute target is not met**; the levers are posture and health, which
-  this pass left alone. The 85 % bot is in no real danger.
+  HP in his openings): the 95 % bot wins all three (64 / 79 / 63 s; on `main` 73 / 67 / 42 s); the 85 %
+  bot wins two (77 s, 64 s) and dies at 49 s in form 3 on the third (on `main` it won all three); the
+  70 % bot dies on all three (on `main` too). Each form ends by a POSTURE BREAK, not an empty bar:
+  against a bot that parries in a frame his offence is mostly reactions (each string ends in the
+  hero's riposte, then a flinch, a recoil or a reel), and the whole fight is about a minute. **The 3 – 5
+  minute target is not met**; the levers are posture and health, which this pass left alone.
 - **A pure defender** (95 %, never swings, drinks in his openings; `lord.mjs . defend`, opt-in; 120 s
-  of play a form): alive at the end of every form on all three seeds (lowest 70 HP, at most 2 flasks).
-  On `main` it died in form 4 on one seed.
-- **The worst blow** taken 28.6 (Falling Star, Twin Cartwheel, Veiled Hand's thrust; on `main` 39.6,
-  Nightfall), the worst second 50.6 (two Grinding Wheel blows; on `main` 57.2).
-- **Not measured / not fixed:** a human's fight; a phone's frame rate; the string-lock (one missed
-  blow in a long string often costs the rest of it: his stagger is 0.4 s, his blows 0.36 – 0.42 s
-  apart; already true on `main`); the hiding place behind the throne. The bots never use the blade
-  lock or the mikiri.
+  of play a form): alive at the end of all twelve form runs (lowest 66 HP, at most 2 flasks). On `main`
+  it died in form 4 on one seed.
+- **The worst blow** taken 33.0 (the Dark Star's burst; 33.0 on `main` too). **The worst second is
+  worse than before: 59.4 (57.2 on `main`)**: four Wheel of Stones blows on a defender who missed one.
+  That is the string-lock: one missed blow in a long string often costs the rest of it (the hero's
+  stagger is 0.4 s, his blows come 0.36 – 0.42 s apart); already true on `main`, and the longer form-3
+  strings make it cost more. Not fixed.
+- **Not measured / not fixed:** a human's fight; a phone's frame rate; the string-lock (above); the
+  hiding place behind the throne. The bots never use the blade lock or the mikiri.
 
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 Both human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
@@ -1546,8 +1559,8 @@ each boss's section above).
   window. A linked move's first blow lands 0.7 – 1.7 s after the last blow of the move before
   (medians 0.88 – 1.05 s; 1.1 – 1.4 s when it waited for the recovery's end). A string the hero left
   can link into its far / away pursuit.
-- **Chain depth and rest.** At most `chainDepth` moves in a row (Shen Hui 4 / 5 / 7, the Lord 4 / 4 / 6
-  / 6), then a breather (`chainRest`, 0.15 – 0.75 s).
+- **Chain depth and rest.** At most `chainDepth` moves in a row (Shen Hui 4 / 5 / 7, the Lord 4 / 4 / 7
+  / 7), then a breather (`chainRest`, 0.15 – 0.75 s).
 - **A director over the dice** (`director.js`): every move has a category (string, single, closer,
   area, ranged, spell, terrain, hazard; a move may name its own with `cat`); the same category again
   weighs less, past `maxRun` in a row much less; strings are favoured (`bias`), and so are the busier
@@ -1575,8 +1588,8 @@ each boss's section above).
   guard clears it at its cue (its tell and its glint go out together), so a blow that turns into a
   feint was never announced; only something that appears after the tell (a world piece felled in the
   windup) can still feint a told blow (the Lord: about 8 in 100 fight-minutes; Shen Hui 0). Shen Hui
-  almost never feints this way (once in 75 fight-minutes); the Lord 0 – 4 times per 120 s in forms
-  1 – 3 and 2 – 9 in form 4.
+  almost never feints this way (once in 75 fight-minutes); the Lord 0 – 4 times per 120 s in form 3
+  (8 on one seed of ten) and 0 – 7 in form 4.
 - **A called strike may come late or fade.** A strike he calls down (a marked ring of the Starless
   Sky, the Dark Star, a halo's plate, the Rupture) waits up to 0.9 s past its time if it must, or
   fades unstruck; its ground mark (where it has one) stays honest about where. A torn stone may wait in
@@ -1588,8 +1601,8 @@ each boss's section above).
 - **Every cue is honest.** Each blow keeps its tell and its timing (`flashLead` before the impact; a
   move's first windup and a string's spacing at their floors); only WHEN it comes moves.
 
-**Measured** (the PACE scenario of both suites; five seeds, 120 s a phase or form): 0 conflicts for
-both bosses in every phase and form (before the pass the Lord had 8 / 5 / 32 / 86 over five seeds,
+**Measured** (the PACE scenario of both suites; ten seeds, 120 s a phase or form, the final build): 0
+conflicts for both bosses in every phase and form (before the pass the Lord had 8 / 5 / 32 / 86 over five seeds,
 mostly the Starless Sky and the Dark Star against his strings and falling pieces against his cuts).
 **Not filmed:** a feint made by the guard, a strike fading, a stone shattering on a world warning, the
 blade hanging at its turn, the footwork's seek. **Not measured:** how a person reads a held blow.
