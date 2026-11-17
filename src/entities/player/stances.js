@@ -100,11 +100,11 @@ export function atEase(p, P, A) {
   p[P.hdZ] = -0.03 - 0.01 * m.sw;
   // the sword arm: the upper arm hangs a little out and back, the elbow soft (~137°), and the
   // forearm lies on the blade's own line (about 6° between them; the old stance: 27°)
-  set3(p, P.rH, -0.172 + 0.006 * m.tipB, -0.478 + 0.012 * m.brL, 0.04 + 0.01 * m.tipA);
+  set3(p, P.rH, -0.172 + 0.006 * m.tipB, -0.47 + 0.012 * m.brL, 0.04 + 0.01 * m.tipA);
   set3(p, P.rP, 0.55, -0.25, -0.8);
   // the blade: down and out to his front-right, the point a hand above the grass; it drifts in a
   // slow lazy figure and lifts a little as the chest fills
-  dir(p, P.swD, -56 + 3.2 * m.tipA, -55 + 2.4 * m.tipB + 1.2 * m.brL);
+  dir(p, P.swD, -56 + 3.2 * m.tipA, -46 + 2.4 * m.tipB + 1.2 * m.brL);
   // the flat to the front and the back, square to the blade: as broad as a blade this steep can be
   // to the game camera on all four sides of him (≥ 0.29 of its width; tipped 6° it showed 0.19 to one)
   set3(p, P.swF, 0.62, -0.05, 0.79);
