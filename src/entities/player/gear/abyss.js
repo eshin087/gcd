@@ -379,7 +379,11 @@ function buildArms(ctx) {
       ]), M.abSleeve);
     }
   }
-  return buildFreeHand(ctx, M.abPants);
+  // the flask he drinks from, on the SWORD hand's wrist (its inside, held with the hilt): a small
+  // crystal vial, lavender like the blade (the body's own flask hung on the shield arm, so every
+  // drink raised the shield before his face); shown only while he drinks (anim.js P.flask)
+  const flask = mesh(arms.R.fore, orient.up(ellipsoidGeometry(0.03, 0.03, 0.05, { widthSegs: 10, heightSegs: 6 })), M.abCrystal, 0, -D.foreArm - 0.03, -0.068);
+  return { ...buildFreeHand(ctx, M.abPants), flask };
 }
 
 // ================================================================ legs: trousers, boots

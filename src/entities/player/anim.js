@@ -1819,6 +1819,11 @@ function backstepPose(p, A) {
   swordFromEntry(p, A, SWORD_ENTRY);
 }
 
+// the hooded hero's drink (healPose, a shield worn): the sword hand's offsets from its shoulder (body
+// axes, +x his left, +z ahead) as it comes up and at the mouth, its elbow pole, the blade's direction
+// as the hand comes up (out to his right) and at the swig (laid back behind his right shoulder), and
+// its flat's normal while the hand is up
+const HEAL_R = { raise: [0.1, 0.0, 0.3], drink: [0.16, 0.14, 0.2], poleRaise: [-1, -0.4, 0.1], pole: [-1, 0.2, 0.1], side: [-0.95, 0.1, 0.25], blade: [-0.9, 0.12, -0.42], flat: [0, 1, 0] };
 /** Drink: legs keep walking (slowly), the free hand raises the flask, head tips back. */
 function healPose(p, A) {
   loco(p, A);
@@ -1826,16 +1831,23 @@ function healPose(p, A) {
   const raise = smoothstep(0.02, 0.27, t) * (1 - smoothstep(0.66, 0.84, t));
   const drink = smoothstep(0.27, 0.38, t) * (1 - smoothstep(0.56, 0.68, t));
   if (A.shield) {
-    // the flask hangs on the SHIELD arm: the forearm comes up beside his face from the left, the
-    // elbow high and out, so the plate stands off his left cheek facing out (raised before his face
-    // it hid the drink and his head); the head turns and tips to the flask
-    to3(p, P.lH, -0.02, -0.06, 0.3, raise);
-    to3(p, P.lH, -0.06, 0.12, 0.2, drink);
-    to3(p, P.lP, 0.8, -0.45, -0.2, raise);
-    to3(p, P.lP, 1, 0.3, 0.1, drink);
-    p[P.hdX] = lerp(p[P.hdX], -0.3, drink);
-    p[P.hdY] = lerp(lerp(p[P.hdY], 0, raise), 0.3, drink);
-    p[P.spX] = lerp(p[P.spX], -0.02, drink);
+    // the hooded hero: the flask is on the SWORD hand's wrist (gear abyss.arms). The sword hand comes
+    // up to his mouth under the hood, the blade laid back over his right shoulder, point up and
+    // behind, clear of the hood; the shield stays low at his side (the walk's carry); the head tips
+    // back for the swig
+    to3(p, P.rH, HEAL_R.raise[0], HEAL_R.raise[1], HEAL_R.raise[2], raise);
+    to3(p, P.rH, HEAL_R.drink[0], HEAL_R.drink[1], HEAL_R.drink[2], drink);
+    to3(p, P.rP, HEAL_R.poleRaise[0], HEAL_R.poleRaise[1], HEAL_R.poleRaise[2], raise);
+    to3(p, P.rP, HEAL_R.pole[0], HEAL_R.pole[1], HEAL_R.pole[2], drink);
+    // (the blade goes round the outside: out to his right as the hand comes up, then back behind the
+    // shoulder for the swig; straight from the guard it swept over the hood with a pop)
+    dirTo(p, P.swD, HEAL_R.side[0], HEAL_R.side[1], HEAL_R.side[2], raise);
+    const back = smoothstep(0.1, 0.36, t) * (1 - smoothstep(0.58, 0.82, t)); // (slower than the swig: ~10 cm a frame at the point)
+    dirTo(p, P.swD, HEAL_R.blade[0], HEAL_R.blade[1], HEAL_R.blade[2], back);
+    to3(p, P.swF, HEAL_R.flat[0], HEAL_R.flat[1], HEAL_R.flat[2], raise);
+    p[P.hdX] = lerp(p[P.hdX], -0.32, drink);
+    p[P.hdY] = lerp(p[P.hdY], 0, raise);
+    p[P.spX] = lerp(p[P.spX], -0.03, drink);
     p[P.flask] = smoothstep(0.0, 0.1, t) * (1 - smoothstep(0.74, 0.85, t));
     return;
   }
