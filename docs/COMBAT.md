@@ -832,7 +832,7 @@ shows: a human playtest is owed.
 
 ## The Ash Disciple (2026-11-12, ADR-060 – ADR-063; the second pass: 2026-11-16, ADR-122; `?level=ash`)
 A duelist at **PBZ-boss speed** (owner, 2026-11-12): a move's first hit winds up 0.42–0.6 s (red
-0.52–0.7 s), the hits of a string 0.31–0.37 s apart, every strike a ~0.1 s snap out of its cock. The
+0.52–0.7 s), a string's later hits wind up 0.30–0.37 s, every strike a ~0.1 s snap out of its cock. The
 tell rules hold at that speed: every hit cued by its flash `flashLead` 0.3 s before impact, a move's
 first windup ≥ 0.42 s in every phase, a string's impacts ≥ 0.32 s apart (so each flash comes after
 the hit before it); a red or black blow shows nothing before its flare (no ground ring, no body glow:
