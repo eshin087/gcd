@@ -2715,6 +2715,10 @@ const LEG_R = BODY.thigh[0] + 0.004; // thigh / knee radius used to push the pan
 // tumbling, the floor contact rules instead. COAT_BLADE_R / COAT_HAND_R = the blade's half-width /
 // the gauntlet, + the cloth's margin.
 const COAT_BLADE_R = 0.07, COAT_HAND_R = 0.06;
+// the shield's plate against the coat (_coat): its outline points (as SHIELD_PTS: −top … +foot,
+// ± half width) cap a panel's upper sheet from outside, COAT_PLATE_M m inside them
+const COAT_PLATE = [[0, 0], [1, 0], [0.5, 0.6], [0.5, -0.6], [0, 1], [0, -1]];
+const COAT_PLATE_M = 0.03;
 const COAT_STEEL_JUMP = 0.12; // rad per 60 fps frame: the most the steel moves a coat segment at once
 const BLADE_PTS = Array.from({ length: 13 }, () => new THREE.Vector3()); // [0] = the grip
 const _mC = new THREE.Matrix4();
@@ -2781,7 +2785,7 @@ const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, low: [0.28, 0.58] };
 // `torso` / `head` / `thigh` m from those bones' lines (the body's own radius and the cloth over it,
 // plus the plate's rim) and `ground` m above the grass. A pose that asks for less gets the fist moved
 // out by the gap, eased in at `rise` and out at `fall` (/s) so a clip that brushes past never pops.
-const SHIELD_CLEAR = { torso: 0.2, head: 0.19, thigh: 0.12, ground: 0.04, rise: 60, fall: 9 };
+const SHIELD_CLEAR = { torso: 0.2, head: 0.19, thigh: 0.16, ground: 0.04, rise: 60, fall: 9 };
 const SHIELD_PTS = [[0, 0], [-1, 0], [1, 0], [0, 1], [0, -1], [-0.5, 0.8], [-0.5, -0.8], [0.5, 0.5], [0.5, -0.5]];
 const _sT0 = new THREE.Vector3(), _sP = new THREE.Vector3(), _sA = new THREE.Vector3(), _sB = new THREE.Vector3();
 const _sC = new THREE.Vector3(), _sN = new THREE.Vector3(), _sPush = new THREE.Vector3(), _sQ = new THREE.Quaternion();
@@ -2998,6 +3002,7 @@ export class HeroAnimator {
     }));
     this.hairInit = false;
     this.legPts = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    this.platePts = [0, 0, 0, 0, 0, 0].map(() => new THREE.Vector3()); // _coat: the shield's outline, pelvis space
     // sphere proxies (joint-local centre + radius) kept above the ground by apply(); the torso ones
     // follow the lean chest / hip depth (model.js BODY, ADR-034)
     this.proxies = [
@@ -4333,6 +4338,19 @@ export class HeroAnimator {
       r.pelvis.worldToLocal(lp[li * 2].copy(_S).add(_T).multiplyScalar(0.5));
       r.pelvis.worldToLocal(lp[li * 2 + 1].copy(_T));
     }
+    // the shield's plate (pelvis space): a panel's upper sheet hangs INSIDE it (the cloth falls behind
+    // a shield carried at his side, never through it); the legs win a conflict
+    let np = 0;
+    const SJ = this.shield ? r.shield?.joint : null;
+    if (SJ) {
+      const S = r.shield;
+      for (const [x, y] of COAT_PLATE) {
+        const q = this.platePts[np++];
+        q.set(x < 0 ? x * S.top : x * S.foot, y * S.half[0], S.off);
+        SJ.localToWorld(q);
+        r.pelvis.worldToLocal(q);
+      }
+    }
     const still = 1 - clamp(this.speed / 2.5, 0, 1); // the idle breeze fades out once moving
     // (not while he lies down or tumbles: there the hem's floor contact rules the cloth)
     const nb = Math.abs(wrapAngle(this.cur[P.pitch])) < 1.0 ? this._bladePts() : 0;
@@ -4413,6 +4431,16 @@ export class HeroAnimator {
             if (need < lim) lim = need;
           }
           absA = Math.min(absA, lim);
+          // … and the plate caps it from outside (the sheet stays in under it)
+          for (let k = 0; k < np; k++) {
+            const K = this.platePts[k], dx = K.x - ap.x, dy = ap.y - K.y, dz = K.z - ap.z;
+            if (dy < 0.05 || dy > D.len[0] + 0.1) continue;
+            if (Math.abs(dx * tx + dz * tz) > halfW + 0.04) continue;
+            const out = dx * nx + dz * nz - COAT_PLATE_M;
+            if (out < 0.02) continue; // (the plate in at the body: the cloth is the legs')
+            const need = -Math.atan2(out, dy);
+            if (need > absA && need <= lim) absA = need;
+          }
         }
         // the steel, from this segment's parent frame (the anchor's, or the swung upper segment's for
         // the lower one): inside it, the grip and every blade point over the sheet cap the swing out

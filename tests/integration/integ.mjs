@@ -9872,6 +9872,33 @@ async function scenarioMotionAudit() {
         } else prev[k] = now[k].clone();
       }
       st.point = Math.min(st.point, tip.y);
+      // the cloth: each coat panel's two sheets (seg-local: x across, y down its length, +z out);
+      // a leg or the sword arm OUTSIDE a sheet it lies across = the sheet stands through it; the
+      // plate's outline on both sides of a sheet = through the plate
+      if (r.coat?.length) {
+        const body = [knL, knR, ftL, ftR, q1.copy(thL).lerp(knL, 0.5).clone(), c0.copy(thR).lerp(knR, 0.5).clone()];
+        const plate = [];
+        if (S && J) for (const [x, y] of [[0, 0], [-S.top, 0], [S.foot * 0.8, 0], [0, S.half[0]], [0, -S.half[0]]]) plate.push(W(J, x, y, S.off));
+        let leg = 0, pl = 0;
+        for (const Cp of r.coat) {
+          for (let sg = 0; sg < 2; sg++) {
+            const j = Cp.segs[sg], hw = (Cp.def.w?.[sg] ?? 0.2) * 0.5, len = Cp.def.len?.[sg] ?? 0.3;
+            const loc = (v) => j.worldToLocal(root.localToWorld(tmp.copy(v)));
+            for (const v of body) {
+              const l = loc(v);
+              if (Math.abs(l.x) < hw && l.y < -0.03 && l.y > -len && l.z > 0.03) leg++;
+            }
+            let pos = 0, neg = 0;
+            for (const v of plate) {
+              const l = loc(v);
+              if (Math.abs(l.x) < hw && l.y < 0 && l.y > -len) { if (l.z > 0.015) pos++; else if (l.z < -0.015) neg++; }
+            }
+            if (pos && neg) { pl++; if (process.env.ABYSS_AUDIT_D) out(`      cloth-plate ${i} panel ${r.coat.indexOf(Cp)} seg ${sg} +${pos} -${neg}`); }
+          }
+        }
+        if (leg) st.clothLeg = (st.clothLeg ?? 0) + 1;
+        if (pl) st.clothPlate = (st.clothPlate ?? 0) + 1;
+      }
       if (process.env.ABYSS_AUDIT_D && S && i >= 34 && i <= 39) {
         const La = r.arms.L, a = A.shieldS.a, x = S.foot, z = S.off;
         const g = new THREE.Vector3(x * Math.cos(a) + z * Math.sin(a), 0, -x * Math.sin(a) + z * Math.cos(a));
@@ -9923,9 +9950,9 @@ async function scenarioMotionAudit() {
   // ---- the table
   const f2 = (x) => (Number.isFinite(x) ? x.toFixed(2) : '  - ');
   const cm = (x) => String(Math.round(x * 100)).padStart(3);
-  out('   clip               steel gap (where)    plate-steel pierce  plate-body (where)   elbow min R/L back R/L  wrist      grip  jump cm grip/pt/plate/elR/elL/head  jerk cm (same)         point plateLow');
+  out('   clip               steel gap (where)    plate-steel pierce  plate-body (where)   elbow min R/L back R/L  wrist      grip  jump cm grip/pt/plate/elR/elL/head  jerk cm (same)         point plateLow  cloth: frames a sheet through a leg or the sword arm / the plate');
   for (const s of rows) {
-    out(`   ${s.name.padEnd(18)} ${f2(s.steel).padStart(5)} ${s.steelAt.padEnd(12)} ${f2(s.plateSteel).padStart(6)} ${String(s.pierce).padStart(5)}  ${f2(s.plateBody).padStart(5)} ${s.plateBodyAt.padEnd(12)} ${s.elbowMin.map((x) => x.toFixed(0).padStart(3)).join('/')}  ${s.elbowBack.map((x) => String(x).padStart(2)).join('/')}  ${s.wrist.map((x) => x.toFixed(0).padStart(3)).join('-')}  ${f2(s.gripGap)}  ${track.map((k) => cm(s.jump[k])).join(' ')}   ${track.map((k) => cm(s.jerk[k])).join(' ')}   ${f2(s.point)} ${f2(s.plateLow)}${s.bad ? `  BAD ${s.bad}` : ''}${process.env.ABYSS_AUDIT_V ? `  [steel-plate @${s.psAt}${s.pierceAt ? ` pierce${s.pierceAt}` : ''}]` : ''}`);
+    out(`   ${s.name.padEnd(18)} ${f2(s.steel).padStart(5)} ${s.steelAt.padEnd(12)} ${f2(s.plateSteel).padStart(6)} ${String(s.pierce).padStart(5)}  ${f2(s.plateBody).padStart(5)} ${s.plateBodyAt.padEnd(12)} ${s.elbowMin.map((x) => x.toFixed(0).padStart(3)).join('/')}  ${s.elbowBack.map((x) => String(x).padStart(2)).join('/')}  ${s.wrist.map((x) => x.toFixed(0).padStart(3)).join('-')}  ${f2(s.gripGap)}  ${track.map((k) => cm(s.jump[k])).join(' ')}   ${track.map((k) => cm(s.jerk[k])).join(' ')}   ${f2(s.point)} ${f2(s.plateLow)}  cloth ${String(s.clothLeg ?? 0).padStart(3)}/${String(s.clothPlate ?? 0).padStart(3)} of ${s.frames}${s.bad ? `  BAD ${s.bad}` : ''}${process.env.ABYSS_AUDIT_V ? `  [steel-plate @${s.psAt}${s.pierceAt ? ` pierce${s.pierceAt}` : ''}]` : ''}`);
   }
   assert(rows.every((s) => s.bad === 0), `the rig finite through every clip (${rows.filter((s) => s.bad).map((s) => s.name).join(', ') || 'ok'})`);
   return G;
