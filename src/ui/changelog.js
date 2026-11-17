@@ -18,6 +18,16 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-16',
+        title: 'The Ash Disciple and the Starless Lord fight harder, in arenas that break',
+        notes: [
+          'Both human bosses give far fewer pauses and chain their moves by where you stand, busier in every phase. Each hit hurts as much as before, and two attacks that need different answers never land at the same moment.',
+          'Shen Hui has a third phase: he vanishes into ash and strikes from another side. Sixteen new moves, and from phase 2 his cuts leave lines of fire on the stones. Step off them: fire drains your guard, never your health.',
+          'The Starless Lord casts inside his strings and has nineteen new moves. In his last form strikes keep falling from the sky, and Starless Night sends three waves across the whole crater.',
+          'Both arenas break: floors crack and shatter, statues come down, and both bosses throw the floor at you. Thrown pieces show no mark on the ground: answer the flash on the flying piece.',
+        ],
+      },
+      {
         date: '2026-11-15',
         title: 'The Cinder Wyrm fights harder, with its whole body',
         notes: [

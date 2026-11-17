@@ -3395,3 +3395,193 @@ ADR-092).
   lashing tongues, c: liquid fire; apocalypse b: one pillar, c: cast from the air) stay behind the
   switches and in the FXLOOKS scenario, as the flare's did (ADR-118); they can be removed later.
   The white knots in breath look a are still open.
+
+## ADR-122 — The duelists' second pass: a director, links and a fairness guard; Shen Hui's third phase; the Lord's spells inside his strings; two arenas that break (2026-11-16)
+- **Context:** the owner's request was made for all boss fights and the wyrm went first (ADR-119):
+  "i want to make the boss fights a bit more harder, more epic, more crazy combos and flurries of
+  attacks from them. ... improve the visuals, animations, and effects overall in general. ... each
+  phase needs to ramp up the difficulty and chaos. ... i want the player to be constantly being
+  forced to dodge, parry, move as the fight goes on. ... these fights should put the player in awe
+  in terms of combat depth, visuals, skill, animation etc. plan all the new stuff out with fable and
+  have opus agents do the work." Three read-only agents mapped the shared engine and both bosses
+  first. What they found: a duelist's pick was a plain weighted roll with a flat chance to flow into
+  another random move (no authored follow-ups, no depth cap, the same pause after a recoil as after
+  any move); Shen Hui had 24 moves of which 14 were single blows, his long strings were cuts in
+  place, phase 2 was a reskin plus four moves, the Kindling had no effect of its own and nothing of
+  his stayed on the ground; the Starless Lord's big spells always came alone (one beat of 0.85 -
+  1.4 s), his third form measured LESS busy than his second, and he fought on through the Starless
+  Sky and the Dark Star with nothing spacing them from his blade. A pace meter written before any
+  change gave the baseline, against a defender that only guards, five seeds, 120 s a phase: Shen Hui
+  60 / 76 cues a minute by phase, the Lord 71 / 80 / 75 / 85 by form (the wyrm had 24 - 28
+  before its pass: the duelists were already dense), and **132 pairs of cues that need different
+  answers landing within 0.3 s of each other** (the Lord 8 / 5 / 32 / 86 by form, Shen Hui 1). The
+  courtyard had 78 breakables and the crater 36; both floors were static meshes.
+- **The owner's answers** (asked before anything was planned): the wyrm's recipe as it is; harder
+  means **more pressure at the same damage**; **thrown pieces show the flare only** (pieces that
+  topple and strikes called from the sky keep their mark); the owner picks every big new look from
+  rendered options; **"everything but landmarks" breaks** in both arenas (the gate, the bell, the
+  throne with its dais stay); and, against CLAUDE.md's standing rule for the human bosses, **"bodies
+  may change"** (options first).
+- **Decision:**
+  1. **A director over a duelist's pick** (`duelist/director.js`, numbers in each boss's
+     `TUNING.pressure`): every move has a category (string, single, closer, area, ranged, spell,
+     terrain, hazard; declared with `cat` or derived from its beats); the weighted roll is steered by
+     run limits, floors that bring an absent category back (his footwork seeks the range it needs),
+     gap closers when the hero is far, a ceiling on live hazards, a `density` weight (moves that carry
+     more cues a second are picked more) and a mixed-answers rule (nothing that asks a guard while a
+     dodge is due, or the reverse). A kit without a `pressure` block behaves as before.
+  2. **Combo links** (`<boss>/links.js`): each move lists follow-ups by where the hero is as it ends
+     (near, mid, far, front, side, behind, away, guarding) with a chance per phase. A link, and the
+     old flow roll, now start at HALF the recovery: the first half of every recovery stays the
+     hero's punish window, the half in which he used to return to his guard is where the next move
+     begins (the gap between two linked moves' blows fell from a median 1.1 - 1.4 s to 0.9 - 1.05 s).
+     Up to `chainDepth` moves in a row, then a short rest. **The hero's openings keep their length**
+     (`openingGap`): a recoil, a stagger, reeling, trampled and a break are still what they were.
+  3. **A cue ledger and a fairness guard** (`duelist/ledger.js`): the brain keeps the impacts it
+     knows are coming (the running move's beats exactly; crescents, the returning blade, torn
+     stones, called strikes, thrown pieces, rings of sound and the world's falling pieces from a
+     predictor; new things through `brain.expect`) and never lets two cues that need different
+     answers land within 0.3 s (0.4 s for the Lord: a roll allows no guard for 0.52 s). A blade blow
+     waits at its cock like an authored bait hold (at most 0.5 s; the cue and the blow move
+     together); if no hold clears it the blow becomes a feint; a called strike comes up to 0.9 s
+     later or fades unstruck; a thrown piece that cannot be cleared lands uncued and harmless; the
+     world's falling pieces win over his own things in flight. A blow at risk is announced only once
+     the guard has cleared it, so a feint made this way cannot be told from an authored one.
+  4. **Shen Hui has three phases** (gates at 64 % and 36 % of his health; the lead's decision, put to
+     the owner afterwards: "Keep three phases"). Phase 1, the fencer: strings that move (a glide, a
+     kick, a spin that travels, a feint from the other side, a nine-blow string that re-closes on a
+     hero who stepped back, sword qi as a string's last word). Phase 2, the kindled blade (the
+     Kindling now has a body): his big cuts leave lines of fire on the stones, fans of qi, a zig-zag
+     of burning dashes, leaps that land in a ring of fire. Phase 3, ash on the wind (a new change,
+     `ashWind`): he is gone into ash between blows and strikes from another side inside his normal
+     strings, leaves afterimages, an eleven-blow flurry, a storm of nine crescents. Sixteen new
+     blade moves and three on the floor's slabs; no blow is faster than phase 2's (the 0.42 s first
+     windup and 0.32 s between impacts stand): there are more of them, from more places.
+  5. **The Starless Lord's spells sit inside his strings.** Nineteen new moves: in form 1 the hand
+     feints, bolts fall between cuts, a pull drags the hero into the string, the Crushing Dark ends
+     one; in form 2 the off blade is thrown as a wheel in the middle of a string and caught before
+     its last blow; in form 3 strings walk the hero down and end in fissures, torn stones orbit him
+     and fire in the string's pauses, the Dark Star is cast inside a string; in form 4 blink strings,
+     lightning as a rhythm, **the Starless Sky as weather** (a strike every 3.2 s with a full bar
+     down to 1.8 s with an empty one, at most two live, called into his moves' pauses, never into
+     the hero's opening) and **Starless Night**, a great spell of three waves across the crater.
+     A perilous thrust is in every form; after a red spell he follows with a red blow.
+  6. **Thrown pieces show the flare only**, drawn on the flying piece one `flashLead` before it
+     lands (the kicked lantern and flagstones; Void Hurl, Glass Rain, the Falling Halo). **This
+     supersedes ADR-109's and ADR-111's landing marks for thrown pieces**, as ADR-119 did for the
+     wyrm; a felled pillar or colossus, a wrenched shard and a strike of the Sky keep their mark.
+  7. **Both arenas break.** The courtyard has 456 breakables (78 before), the crater 222 (36): both
+     floors (293 flagstones; 81 plates and 24 flagstones), the colossi in two stages (the upper half
+     topples by the world's falling-piece rule, the legs stand as cover), the cauldron, the lintel,
+     stumps, the rim's low stones, the vents' stonework. A floor slab is whole, cracked or broken and
+     an intact floor costs no extra draw call (the slabs are ranges of the set's paving mesh, the
+     cracked and broken looks two meshes hidden until first used). A slab can be lifted (a new lift
+     class that today's pickers ignore) and both bosses have moves on it. The pieces live in a tree
+     OUTSIDE the scene graph (three walks every scene node every frame: on the phone preset the
+     courtyard had cost 21 % more than `main` and measures within 4 % now).
+  8. **Effects have bodies, and looks never touch gameplay's dice.** One shock front for both
+     duelists (ragged, slowing, dust that hangs), the Kindling, ash on the wind, afterimages, sword
+     qi, burning ground, the Lord's spells redrawn in the fire field. Look-only jitter draws from
+     its own random streams, a light no longer seeds its flicker from `Math.random`, and a test in
+     each suite proves that no look option changes a fight.
+  9. **Look options behind one switch helper** (`duelist/lookSwitch.js`): a redraw kept the look as
+     it shipped behind option `0` until the owner had picked; the picks are a table in that file;
+     `?looks=old` shows every redraw as it was before this pass; the Lab has a LOOKS section that
+     flips each one (for judging on the phone). The owner's picks are recorded below.
+  10. **Burning ground against a held guard drains the guard meter, never health** (the owner's
+      choice of three: the fire is ground to step off, and a block must not cost health, ADR-095).
+- **Why a guard in code and not careful authoring:** the Lord already had 131 unfair overlaps before
+  a single move was added, from things that are each fair alone (a string, a strike called a second
+  earlier, a piece his own blow felled). More moves and weather for a whole form would have made it
+  worse; a ledger makes it a property of the engine that a test can assert at zero.
+- **Why links cut the late half of a recovery:** the pace meter showed him inside a move 95 % of the
+  time already. Shorter pauses had almost nothing left to give; the dead time was the half of each
+  recovery in which he only returned to his guard, and the first windup of the next move.
+- **Why a third phase for Shen Hui:** "each phase needs to ramp up" with two phases is one step. His
+  blows could not get faster (the tell rules), so the third phase ramps in kind: where the blow
+  comes from, and how much of the yard is ash and fire.
+- **Measured** (the PACE scenario of `duel.mjs` / `lord.mjs` on the final build: ten seeds, 120 s a
+  phase, a defender in god mode that only guards and rolls; cues a minute, the mean of the seeds;
+  the baseline was five seeds): Shen Hui 60 / 76 (two phases) → **78 / 93 / 100**; the Lord
+  71 / 80 / 75 / 85 → **85 / 91 / 100 / 110**. Each phase busier than the one before: Shen Hui on every
+  seed, the Lord in the mean of the seeds (+6.5 %, +10.8 %, +9.3 % form over form) and to within 1.3 % on his worst seed. Longest gap between cues: Shen Hui 3.1 / 2.9 / 2.7 s, the Lord 3.2 / 3.1 / 2.8 / 2.7 s.
+  **Conflicts: 132 → 0.** The share of cues that ask for a dodge: Shen Hui 13 / 17 / 19 % (it was
+  5 / 6 / 9 % before his tuning), the Lord 15 / 15 / 18 / 39 %.
+  Mortal bots on three seeds: one that answers 95 % of cues wins every fight against both (as on
+  `main`); 85 % wins every fight against Shen Hui and two of three against the Lord (all three on
+  `main`); 70 % dies in all three against the Lord and in one or two of three against Shen Hui (one
+  of three on `main`; these outcomes move by a fight between builds). A pure defender that never
+  attacks survives two minutes of every phase and form (on `main` it died in the Lord's fourth form
+  on one seed). The worst second of damage a bot took: Shen Hui 50.6 (57.5 before); the Lord 59.4
+  (57.2 before: four blows of one string on a defender who missed one). A four-minute duel leaves
+  33 - 48 % of the courtyard's floor inside his bound broken; the crater 25 - 40 % in about a minute.
+  Frame, paired against `main` on a desktop GPU: phone preset 852 x 393 courtyard -4 %, crater +4 %;
+  1280 x 720 -4 % / +2 %; the fire field peaks at 3000 - 3500 of 6000 blobs in the Lord's fourth form
+  with the weather and Starless Night (1500 on `main`).
+- **How it was built:** the lead planned, reviewed every sheet and merged; Opus agents built, each
+  in its own worktree on its own files. Three mapping agents; then core (the director, links, the
+  ledger and guard, the pace meter), world, the shared and Ash effects, the Lord's effects and the
+  bodies at once; then the two bosses' moves and both bosses' terrain on top of the merged core;
+  an integration agent for the seams; a tuning agent per boss; a picks, an engine and a docs agent.
+  Sent back by the lead: the third phase's change (three options too faint and too alike), the
+  broken floor (it printed as blank holes; cracked slabs could not be seen), the Lord's shocks
+  (drawn by a fallback until the shared front existed) and the scene-graph cost on the phone.
+- **Changed without being asked** (each agent's own call, surfaced for the owner):
+  - one number of the WYRM: Furnace Maw's bite is cued 28 ms later (`impact` 0.09 → 0.118 s): on
+    `main` it landed up to 100 ms after its cue on one mirrored side, which a seeded test had been
+    hiding;
+  - Shen Hui: individual blow damage moved inside eight strings (one blow became a red 22, the
+    others gave that damage back: every string's total is unchanged, no blow is above 26); the
+    phase gates are 64 % / 36 % (62 / 30 as first built); every old move was re-weighted (his
+    single blows are openers and link targets now); a crescent that would arrive too soon to be cued
+    is not thrown at all; the bell is not rung with the hero beside it;
+  - the Lord: a white or blue blow out of a blink now meets a guard from any side (a guard or parry
+    of a blow that arrived behind the hero used to fail); his own separation is 0.4 s; his lone slow
+    spells are picked far less; Wheel of Stones is no longer picked from beyond its cuts' reach;
+    while his blade is in the air he starts no blade move; Void Hurl and
+    Glass Rain wind up 0.2 s faster, land in a smaller reach (1.8 m, 2.1 before) and take floor
+    plates before the crater's shards;
+  - both: a blow may become a feint or a strike may fade when the guard cannot clear it; pauses
+    (`idleGap`) are shorter and the flow chance higher; red ring blows throw a ground shock as they
+    land; the posture break's ring and the dust puffs were redrawn with no option;
+  - the world: the hero can fell a colossus onto the boss (286 damage) and his own low sweeps and
+    slams break floor; 49 more dead trees and 32 stumps round the courtyard are breakable; a vent
+    flares when its stones break; Cinderwood's flagstone shards are hidden until one breaks;
+  - `render/lights.js` seeds a light's flicker from its own stream: every seeded test outcome
+    differs from before.
+- **Not measured or not right:**
+  - nobody has played it; pace, fairness and the bots are measurements, not a fight;
+  - **the fights are hardly deadlier for a bot than before**: a bot with a fixed answer rate wins
+    or dies almost as on `main` (the one change: the 85 % bot now dies on one seed of three against
+    the Lord), and both fights last about a minute for a bot that plays well (each phase or form
+    ends by a posture break in 8 - 25 s). The pass made them busier, more varied and fair; how much
+    harder that is for a person is the owner's to feel. The levers for a longer or deadlier fight
+    are posture and health, which this pass did not touch;
+  - a cheese spot that was already there: behind the Obsidian Throne the hero is out of reach of
+    everything the Lord has;
+  - a missed blow inside a long string often costs most of the string (the hero's stagger is as long
+    as the gap between blows); already true on `main`, and the strings are longer now: it is why the
+    Lord's worst second is 59.4 where it was 57.2;
+  - the fairness guard still steps in 1 - 4 times a minute in the Lord's fourth form (mostly world
+    pieces his own blows fell), and two GUARD cues from different sources can land 0.1 - 0.25 s
+    apart (a held guard takes both, two parries cannot);
+  - the Lord's new keys (the vault back into the Rift, the wheel's catch) were looked at from four
+    sides at game scale but no joint or hand speed was measured; Shen Hui's new poses from two
+    sides; no palm strike was authored (his free hand still never strikes);
+  - phase 3 has no music of its own (phase 2's plays on); no new sound was made for any new move;
+  - the iPhone itself: the frame was measured on a desktop GPU at the phone's size;
+  - three.js draws object ids from `Math.random`, so a seeded test's outcome still shifts when the
+    world builds one object more or less: the pace meters were set over five to ten seeds for that.
+- **The owner's picks (2026-11-16, from one sheet per switch, the look as shipped on top):** "Authors'
+  picks" for Shen Hui's effects (the Kindling as a front of fire with a gout off the blade, phase 3
+  as the wind taking him, sword qi with a body and a wake, the flit as a ghost and a stream of ash,
+  burning ground as a glowing seam, the bell's rings as ragged fronts of steel) and for the Lord's
+  (the Dark Star as a starless sun, a strike of the Sky answered inside the frame, each form's
+  ignition with its own sign, his smaller spells and blades with bodies, a quiet presence for forms
+  2 and 3, Starless Night as the dark tide); the bodies **"b: dressed by phase"** (Shen Hui's hem
+  smoulders in phase 2, in phase 3 the hat is gone and his hair loose; the Lord's cape tears form by
+  form, cracks of red light open in his harness, in form 4 the hood is back and the faceplate split;
+  the dragon look was shown and turned down: at the duel camera a man in the wyrm's digits is a
+  block of digits); the broken floor **"a: rubble on earth"**. The looks turned down stay behind
+  their switches (`kindle`, `ashp3`, `qi`, `flit`, `burn`, `toll`, `ashLook`; `star`, `sky`,
+  `ignite`, `void`, `presence`, `great`, `lordLook`; `floor`), as ADR-118's and ADR-119's did.
