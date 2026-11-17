@@ -3,7 +3,7 @@ import { TELL, TELL_STYLE, RESULT, DEFENSE, dodgeOnly, isFlare } from '../../../
 import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
 import { DUEL_WORLD } from './worldTuning.js';
-import { CueLedger, throwsAt } from './ledger.js';
+import { CueLedger, throwsAt, glaiveHome } from './ledger.js';
 import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsable } from './director.js';
 
 // ---------------------------------------------------------------------------------------------------
@@ -251,7 +251,10 @@ export class DuelBrain {
     this.modeT += dt;
     this.clipT += dt;
     this.ledger.update();
-    if (this.P?.guard) this._fairStrikes(dt);
+    if (this.P?.guard) {
+      this._fairStrikes(dt);
+      this._glaiveTurn();
+    }
     if (this.raiseT > 0) this.raiseT -= dt;
     if (this.backCool > 0) this.backCool -= dt;
     if (this.sideCool > 0) this.sideCool -= dt;
@@ -393,6 +396,36 @@ export class DuelBrain {
   }
 
   /**
+   * The thrown blade's way home against a world warning given while it still flew out (_worldCue
+   * kept it on the blade: `_homeWarn`, the warning's time, `_homeSep` its room). The frame after it
+   * turns (its hang there, 0.32 s and more, keeps its cue some frames off): the blade has asked
+   * fairDelay at the turn (starlessLord/fx.js) and may hang longer; if its way home still lands
+   * within that room of the warning, it comes home uncued and harmless this pass, as a thing in
+   * flight gives way to the world's warning.
+   */
+  _glaiveTurn() {
+    const S = this.d.fx?.shots, pp = this.d.game.player?.position;
+    if (!S) return;
+    const L = this.ledger, pr = this.d.game.player?.radius ?? 0.45;
+    for (const s of S) {
+      if (s._homeWarn === undefined || Number.isNaN(s._homeWarn)) continue;
+      // (a record of the pool thrown again, or a warning long past: forget it)
+      if (!s.alive || s.kind !== 'glaive' || s._homeWarn < L.now - 0.3) {
+        s._homeWarn = NaN;
+        continue;
+      }
+      if (s.phase !== 'back') continue;
+      const at = s._homeWarn;
+      s._homeWarn = NaN;
+      if (s.done || s.flashed >= 0 || !pp) continue;
+      const home = Math.max(0, s.wait ?? 0) + Math.max(0, Math.hypot(pp.x - s.x, pp.z - s.z) - (s.radius ?? 0.8) - pr) / Math.max(1, s.back || s.speed);
+      if (Math.abs(L.now + home - at) >= s._homeSep) continue;
+      s.done = true;
+      this.stats.fizzles++;
+    }
+  }
+
+  /**
    * The world warns of a falling piece landing at `at` (ledger time) needing `ans` (a felled pillar,
    * a wrenched shard: no one can move it). What of his is in flight, not cued yet, and would land
    * within sep + margin + pad of it needing the other answer gives way: a crescent / push / fissure
@@ -416,7 +449,28 @@ export class DuelBrain {
     }
     if (d.fx?.shots) {
       for (const s of d.fx.shots) {
-        if (!s.alive || s.done || s.flashed >= 0 || answerOf(s.tell) === ans) continue;
+        if (!s.alive || answerOf(s.tell) === ans) continue;
+        if (s.kind === 'glaive' && s.phase === 'fly') {
+          // the thrown blade still going AWAY: two crossings, estimated as the ledger estimates them
+          // (it used to be timed as if it came straight at the hero, so the turn was never seen).
+          // Its outward pass (not cued yet, the hero ahead on its line): it goes on past him uncued
+          // and harmless this pass. Its way home (to the turn, the hang there, back to his hand:
+          // ledger.glaiveHome; whatever the outward pass did): the turn starts a fresh pass, so the
+          // verdict is kept on the blade (`_homeWarn`) and given at the turn (_glaiveTurn)
+          const reach = (s.radius ?? 0.8) + pr, rx = pp.x - s.x, rz = pp.z - s.z;
+          const along = rx * s.dx + rz * s.dz, across = Math.abs(-rx * s.dz + rz * s.dx);
+          if (!s.done && s.flashed < 0 && s.speed > 0 && across < reach + 0.5 && along > reach && Math.abs(L.now + (along - reach) / s.speed - at) < sep) {
+            s.done = true;
+            this.stats.fizzles++;
+          }
+          const home = glaiveHome(s, pp, reach, d._hilt ?? d.position);
+          if (home >= 0 && Math.abs(L.now + home - at) < sep) {
+            s._homeWarn = at;
+            s._homeSep = sep;
+          }
+          continue;
+        }
+        if (s.done || s.flashed >= 0) continue;
         const speed = s.phase === 'back' ? s.back : s.speed;
         const fly = Math.max(0, Math.hypot(pp.x - s.x, pp.z - s.z) - (s.radius ?? 0.8) - pr) / Math.max(1, speed);
         const t = L.now + (s.phase === 'hang' ? Math.max(0, s.delay - s.age) : Math.max(0, s.wait ?? 0)) + fly;
@@ -914,6 +968,11 @@ export class DuelBrain {
     // tells: the announcement at each real beat's windup start, the glint flashLead before its impact
     for (const b of a.beats) {
       if (b.feint) continue;
+      // a release that carries a `zone` (the sword qi as a string's last word): with the hero inside
+      // that reach as its cue comes due, the cut that would have thrown the qi lands on him instead
+      // (b.cut: cued, flashed, held by the guard, timed and answered as a blade's blow of its tell; no
+      // qi is thrown); outside it, a release as any other. Decided once.
+      if (b.cut === undefined && b.def.release && b.def.zone && t >= b.flash) b.cut = !!s && this._inZone(b.def.zone, s);
       // (a release's throw: the fairness guard looks at it where its cue would be, flashLead before
       // the release, by when it will reach the hero)
       if (this.P && throwsAt(b) && !b.relChecked && t >= b.flash) {
@@ -928,7 +987,7 @@ export class DuelBrain {
         if (this.P && this._tellRisk(a, b, t)) b.tellHeld = true;
         else this._announce(a, b, t);
       }
-      if (!b.flashed && t >= b.flash && !b.def.release && !b.def.cast?.selfCue) {
+      if (!b.flashed && t >= b.flash && (!b.def.release || b.cut) && !b.def.cast?.selfCue) {
         // (the fairness guard: a blow that would land within 0.3 s of one needing the other answer waits)
         if (this.P && this._holdBeat(a, b, t)) continue;
         if (b.tellHeld && !b.announced) this._announce(a, b, t);
@@ -989,9 +1048,9 @@ export class DuelBrain {
         // (the cover the hero stands behind, for a line of the Void: found first, the FX draw to it)
         b.cover = this._coverFor(b, s);
         d.onImpact?.(b, s, a);
-        if (!b.def.release && !b.def.cast) this._worldBlow(b);
+        if ((!b.def.release || b.cut) && !b.def.cast) this._worldBlow(b);
       }
-      if (b.def.release) {
+      if (b.def.release && !b.cut) {
         b.done = true;
         d.onRelease?.(b, s, a);
         continue;
@@ -1171,7 +1230,7 @@ export class DuelBrain {
 
   /** The furthest the hero can be at beat b's windup start and still be hit (zone + step-in + dash). */
   _reach(b) {
-    if (b.def.release || b.def.cast) return Infinity; // a thrown thing reaches him wherever he is
+    if ((b.def.release && !b.cut) || b.def.cast) return Infinity; // a thrown thing reaches him wherever he is
     const z = b.def.zone, pr = this.d.game.player?.radius ?? 0.45;
     return (z?.r ?? 2) + pr + (b.close ?? 0) + (b.def.dash?.max ?? 0);
   }

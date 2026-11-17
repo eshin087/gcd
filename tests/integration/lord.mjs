@@ -29,6 +29,7 @@ const { Scars } = await imp('src/world/scars.js');
 const { Player } = await imp('src/entities/player/player.js');
 const { StarlessLord } = await imp('src/entities/enemies/starlessLord/lord.js');
 const { Duelist } = await imp('src/entities/enemies/duelist/duelist.js');
+const { glaiveHome } = await imp('src/entities/enemies/duelist/ledger.js');
 const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, STREAKS, TRANSITIONS, realise } = await imp('src/entities/enemies/starlessLord/moves.js');
 const { TUNING } = await imp('src/entities/enemies/starlessLord/tuning.js');
 const { LORD_ITEMS, LORD_LOADOUT, LORD_CAPE, LORD_PANELS } = await imp('src/entities/enemies/starlessLord/gear.js');
@@ -917,6 +918,40 @@ async function scenarioSpells() {
     }, () => redAt > 0 && !d.glaiveOut && d.mode === 'foot');
     const near = cues.filter((t) => t > redAt - 1.5 && Math.abs(t - redAt) < 0.3);
     assert(redAt > 0 && !near.length, `the blade's way home is not cued within 0.3 s of a red impact told while it flew away (red at ${(redAt % 100).toFixed(2)}, its cues land at ${cues.map((t) => (t % 100).toFixed(2)).join(', ')})`);
+  }
+  // ---- its twin (the engine pass): the WORLD's red warning (a falling piece: brain._worldCue) given
+  // just after the throw, while the blade is still on its way out, landing where its way home will
+  // cross the hero (and `off` s after that). _worldCue reads the way home as the ledger does
+  // (ledger.glaiveHome) instead of timing the blade as if it came straight at him: the outward pass
+  // keeps its cue, and the way home is not cued within the room a thing in flight gives the world's
+  // warning (guard sep + margin + pad: 0.64 s; at the turn fairDelay alone clears sep + margin, 0.46:
+  // with off 0.55 the blade came home cued 0.55 s from the warning before this pass)
+  {
+    const GG = TUNING.pressure.guard, room = GG.sep + GG.margin + GG.pad;
+    for (const off of [0, 0.55]) {
+      const G = stage(2, 8, { god: true });
+      const d = G.game.dragon, p = G.game.player;
+      const cues = [];
+      let redAt = -1, outAt = -1;
+      G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'glaive') cues.push(G.game.time + TUNING.flashLead); };
+      d.debug.trigger('glaive');
+      run(G, 5, () => {
+        const s = d.fx.shots?.find((x) => x.alive && x.kind === 'glaive');
+        if (redAt < 0 && s?.phase === 'fly' && s.age > 0.02) {
+          const reach = s.radius + (p.radius ?? 0.45);
+          const home = glaiveHome(s, p.position, reach, d._hilt ?? d.position);
+          const along = (p.position.x - s.x) * s.dx + (p.position.z - s.z) * s.dz;
+          outAt = G.game.time + Math.max(0, along - reach) / s.speed;
+          if (home >= 0) {
+            G.game.events.emit('combat:tell', { source: 'world', attack: 'fallingDebris', tell: TELL.RED, impactIn: home + off, x: p.position.x, z: p.position.z, hazard: true });
+            redAt = G.game.time + home + off;
+          }
+        }
+      }, () => redAt > 0 && !d.glaiveOut && d.mode === 'foot');
+      const near = cues.filter((t) => Math.abs(t - redAt) < room);
+      const out = cues.filter((t) => Math.abs(t - outAt) < 0.15);
+      assert(redAt > 0 && !near.length && out.length === 1, `a world warning told as the blade leaves his hand, landing ${off} s after its way home crosses the hero: its outward pass keeps its cue (${out.length}), its way home is not cued within ${room.toFixed(2)} s of it (red at ${(redAt % 100).toFixed(2)}, its cues land at ${cues.map((t) => (t % 100).toFixed(2)).join(', ')})`);
+    }
   }
   // ---- torn stone
   {

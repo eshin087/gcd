@@ -476,6 +476,44 @@ async function scenarioMoves() {
     assert(moved && glideI > 0 && after.length >= 1 && A.beats[glideI].done, `Chasing Rain re-closes: the hero 5.5 m back as its glide comes, the string goes on and ${after.length} of its blows reach him after it (glide beat ${glideI})`);
   }
 
+  // ---- the qi as a string's last word (the engine pass): a release beat with a `zone` is the cut
+  // itself on a hero still inside that reach as its cue comes due (cued, flashed, it lands; no qi),
+  // and throws its sword qi at a hero who stepped back (the crescents as before)
+  for (const name of ['chaseRain', 'partingWind']) {
+    for (const back of [false, true]) {
+      const G5 = build();
+      duel(G5, { dist: 1.8 });
+      const d5 = G5.game.dragon, p5 = G5.game.player;
+      p5.debug.god = true;
+      p5.debug.noRiposte = true;
+      const thrown = [];
+      const tc = d5.fx.throwCrescent.bind(d5.fx);
+      d5.fx.throwCrescent = (...a) => { const c = tc(...a); if (c) thrown.push(c); return c; };
+      const flashes = [];
+      G5.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === name && e.source === 'dragon' && !e.hazard) flashes.push(G5.game.time); };
+      d5.debug.trigger(name);
+      const A = d5.brain.act, B = A.beats[A.beats.length - 1];
+      const h0 = G5.hits.length;
+      let moved = false, impactAt = -1;
+      // (the hero stands where the string's last cut finds him: put back in front of him at 1.8 m
+      // as its windup starts, or 5.5 m back)
+      run(G5, 12, () => {
+        if (d5.brain.act !== A) return;
+        if (!moved && A.t >= B.start) {
+          moved = true;
+          place(G5, back ? 5.5 : 1.8);
+        }
+        if (impactAt < 0 && A.t >= B.impact) impactAt = G5.game.time;
+      }, () => d5.mode === 'foot' && !d5.fx.crescentsAlive);
+      G5.watch = null;
+      const lead = Array.isArray(TUNING.flashLead) ? TUNING.flashLead[0] : TUNING.flashLead;
+      const last = G5.hits.slice(h0).filter((h) => h.attack === name && h.t >= impactAt - 1e-6);
+      const cue = flashes.filter((t) => Math.abs(t + lead - impactAt) < DT * 1.5);
+      if (!back) assert(B.cut === true && cue.length === 1 && last.length >= 1 && last[0].t - impactAt < 0.12 && !thrown.length, `${MOVES[name].label}: its last beat on a hero 1.8 m off is the cut (cut ${B.cut}): cued ${lead} s before (${cue.length} flash), it lands on him (${last.map((h) => h.r).join(',') || 'nothing'}), ${thrown.length} qi thrown`);
+      else assert(B.cut === false && thrown.length >= 1 && last.length >= 1, `${MOVES[name].label}: its last beat at a hero 5.5 m back throws its qi (${thrown.length} crescent(s), cut ${B.cut}), and it reaches him (${last.map((h) => h.r).join(',') || 'nothing'})`);
+    }
+  }
+
   // ---- burning ground: the rule of fire on grass, its cap
   {
     const G3 = build();
