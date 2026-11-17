@@ -22,21 +22,27 @@ are built by the same `buildHero` from their own items (`enemies/ashDisciple/gea
 | File | What it holds |
 | --- | --- |
 | `index.js` | `SLOTS`, the `GEAR` registry, `registerItem`, `getItem`, `DEFAULT_LOADOUT` (the hero's set), `HERO_TINT` (his colours), `BASE_LOADOUT`, `resolveLoadout` |
-| `abyss.js` | the hero's set: `abyss.hood`, `abyss.robe`, `abyss.arms`, `abyss.legs`, `abyss.skirt`, `abyss.cloak`, `abyss.sword`; `ABYSS_LOADOUT`, `ABYSS_TINT`, `ABYSS_SWORD_DIMS` (the sword's own numbers), `ABYSS_PANELS`, `ABYSS_SHEETS`. (A placeholder look today: PR #65's, rebuilt from the concept sheet next.) |
+| `abyss.js` | the hero's set: `abyss.hood`, `abyss.robe`, `abyss.arms`, `abyss.legs`, `abyss.skirt`, `abyss.cloak`, `abyss.sword`; `ABYSS_LOADOUT`, `ABYSS_TINT`, `ABYSS_SWORD_DIMS` (the sword's own numbers), `HOOD_RINGS` (the hood's planes), `ABYSS_PANELS` (the skirt), `ABYSS_SHEETS` (the robe's back). Built from the concept sheet's measurements; its materials are the `ab*` entries of `HERO_INK` |
 | `shield.js` | `offhand` items: `shield.kite` (the hero's), `SHIELD_SHAPES`, `SHIELD_OFF` |
 | `base.js` | the undersuit: fallback items for `chest`, `arms`, `legs` |
 | `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls |
 | `../heroGeo.js` | the geometry builders every item is made of (`bladeGeometry(spec, tip, forte)`: a blade from a profile) |
-| `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS`, `HERO_LEGS`, `legDims` (the body's measurements) |
+| `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS`, `HERO_LEGS`, `HERO_HEAD_SCALE`, `legDims` (the body's measurements) |
 
 ### His colours
 
-The hero's colours are a `tint` (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, sub?,
-inkGlow?, glowK? } }`, `HERO_TINT` = `ABYSS_TINT`) that `tintHero(rig.materials, tint)`
-(`model.js`) writes on ONE rig's material instances: the Player applies it to every rig it builds
-(`player.js`: the constructor and `setLoadout`). A tint never touches the shared `U.*` (the
-per-part ink every rig on the page reads; the bosses build from `HERO_INK` too), so a boss never
-gets the hero's colours.
+His colours live in his own materials: the `ab*` entries of `HERO_INK` (`model.js`), marked
+`ownOnly`, three colours (black cloth, the white / silver line, the lavender-white crystal) and a
+muted skin. They are drawn only in the player's own bank of part ids, with his own line
+(`docs/STYLE.md` "The hooded hero"; `docs/ARCHITECTURE.md` "The hero's own line"), and never write
+the shared per-part tables the bosses read. A gear item for him uses those materials (`M.abRobe`,
+`M.abBand`, ...); an `ownOnly` material is made the first time an item asks for it.
+
+`HERO_TINT` (= `ABYSS_TINT`, empty today) is kept as the contract for a tint over them: `{ <HERO_INK
+name>: { fill?, ink?, emissive?, spec?, rim?, sub?, inkGlow?, glowK? } }`, which
+`tintHero(rig.materials, tint)` (`model.js`) writes on ONE rig's material instances; the Player
+applies it to every rig it builds (`player.js`: the constructor and `setLoadout`). A tint never
+touches the shared `U.*`, so a boss never gets the hero's colours.
 
 ## Slots
 
@@ -45,14 +51,14 @@ gets the `base.*` item for it. Any other slot may be empty.
 
 | Slot | Covers | Hangs on | Default item |
 | --- | --- | --- | --- |
-| `head` | helmets, hoods, masks. Hair, face and neck are the body, not gear; an item with `hair: [...]` keeps only those pieces of the hair (`'cap'` and `HAIR_CLUSTERS` names), `hidesHair: true` none of it; `shadowsFace: true` puts the face and neck in the item's shadow (near-black, no eyes); `blankFace: true` keeps the face lit but leaves the eyes out (a featureless face) | `head` | `abyss.hood` (`hidesHair`, `blankFace`) |
+| `head` | helmets, hoods, masks. Hair, face and neck are the body, not gear; an item with `hair: [...]` keeps only those pieces of the hair (`'cap'` and `HAIR_CLUSTERS` names), `hidesHair: true` none of it; `shadowsFace: true` puts the face and neck in the item's shadow (near-black, no eyes); `blankFace: true` keeps the face lit but leaves the eyes out (a featureless face); `face: '<material>'` draws the face in that material of `M`, `faceScale` sets its width (not 1: the jaw also tapers to a V), `neck: '<material>'` the neck's | `head` | `abyss.hood` (`hidesHair`, `blankFace`, `face: 'abSkin'`, `faceScale` 0.8, `neck: 'abPants'`; builds its own silver hair on `head`) |
 | `chest` | the torso from the hips' top (1.09 m) to the collar: shell, shirt, belts, cowl, collar, emblem | `spine`, `chest` | `abyss.robe` |
 | `shoulders` | shoulder armour: the pauldron on its own joint, and any lames riding on the upper arms | `pauldron`, `arms.R.upper`, `arms.L.upper` | none |
 | `arms` | both arms from the shoulder joint to the hand: sleeves, deltoid caps, vambrace / bracer, gauntlet / glove (the hands), elbow and wrist points. The SWORD hand's fist (`gripFist`) hangs on the `sword` joint, the grip's own frame, so it closes round the grip in every pose; it belongs to this slot, not to `weapon` | `arms.{R,L}.{upper,fore}`, `arms.L.wrist` (the free hand), `sword` (the fist) | `abyss.arms` |
 | `legs` | hips, thighs, shins, feet, and what is strapped to them: hip straps, knee straps, boots, greaves, knee guards | `pelvis`, `legs.{R,L}.{thigh,shin,foot}` | `abyss.legs` |
 | `waist` | cloth hanging from the belt line: skirt panels, tassets | `pelvis` | `abyss.skirt` |
 | `back` | cloaks and capes | `chest`, and `arms.{R,L}.upper` for sheets draped over an arm | `abyss.cloak` |
-| `weapon` | the weapon in the right hand: blade, grip, guard, pommel, gem | `sword` | `abyss.sword` (one-handed, about 1.09 m) |
+| `weapon` | the weapon in the right hand: blade, grip, guard, pommel, gem | `sword` | `abyss.sword` (one-handed, 0.92 m from the pommel to the point) |
 | `offhand` | a shield on the free forearm (the fist on its handle is the item's own) | `arms.L.shield` (built only when an `offhand` item is worn: its Y is the forearm's line, +Z the way the shield faces, −X its top; the animator turns it about Y) | `shield.kite` |
 
 `arms` and `legs` own the limb itself (there is no skin mesh under the sleeves or the pants), so an
@@ -104,7 +110,10 @@ Axes: the hero faces +Z, Y is up, his RIGHT is −X. Limb joints point down −Y
 from `y = 0` to `−DIM.upperArm`, the forearm to `−DIM.foreArm` (the grip centre), the thigh to
 `−DIM.thigh`, the shin to `−DIM.shin`; the foot joint is the ankle, `DIM.ankle` above the sole. The
 weapon joint's origin is the grip centre, the blade runs along +Z with its flats facing ±Y.
-The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 and grows with it.
+The `head` joint is scaled by the rig's head scale (`buildHero(U, loadout, { headScale })`: the hero's
+`HERO_HEAD_SCALE` 1.0; default `BODY.headScale` 1.08, the duelists'), so head gear is modelled at 1.0
+and grows with it. `ctx.DIM` carries the rig's own legs (`thigh`, `shin`, `pivot`): build legs and
+anything placed by height from it, not from the imported `DIM`.
 
 `build` may return handles the animator and the player need:
 
@@ -114,12 +123,12 @@ The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 
 | `streamers` | any (a weapon's own: `weapon`) | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm?, wrap?, inMax?, floor?, weapon? }` (below) |
 | `offHand` | `arms` | `{ open, grip, fingers? }`: the free hand open, the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint), and (optional) the sword fingers (`swordFingers`). Hang `open` and `fingers` on `arms.L.wrist` in wrist space (the hero's animator turns that joint) and put all three in `keep`; the animator shows one of them (`twoHand` and the hand's distance from the grip, the pose's `hs`). Build it with `buildFreeHand(ctx)` (`hands.js`): it does all of that |
 | `shield` | `offhand` | `{ half: [half width, half height], off, top, foot }` (m): the plate's size, how far it stands off the forearm's axis, how far it reaches above / below the forearm. The rig carries it as `rig.shield` (with `joint`: `arms.L.shield`); with it the hero's animator plays the sword-and-shield clips (`shieldPoses.js`: no hand joins the grip, the guard and the parry are the shield's) and the player draws a block's sparks, a parry's clash and a guard break on the plate |
-| `gem` | `weapon` | an Object3D on the weapon whose world position is where the gem glows |
-| `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`) |
+| `gem` | `weapon` | an Object3D on the weapon whose world position is where the hilt glows (the crystal sword has no gem: its marker sits at the guard's heart) |
+| `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`). The hero's (`abyss.arms`) hangs on the SWORD forearm, `arms.R.fore`: with a shield he drinks from the sword hand |
 | `keep` | any | meshes of yours that must not be merged (see "Merging") |
 
 Handles left out default to what an empty slot means: `coat: []`, `streamers: []`, a `gem` marker
-on the weapon joint at `DIM.gem`, and the body's own flask in the left hand. `coat` and `streamers`
+on the weapon joint at `DIM.gem`, and the body's own flask in the left hand (every boss). `coat` and `streamers`
 from several items are concatenated.
 
 ## What the look needs
@@ -127,7 +136,10 @@ from several items are concatenated.
 - **Glyph materials only.** Every mesh uses a material from `M`. No plain shaded meshes (see
   `docs/STYLE.md`). A new material needs an entry in `HERO_INK` and a spec in
   `createHeroMaterials` (`model.js`); ink-line part ids are limited to `HERO_PARTS` (20, in
-  `render/shaderLib.js`), and materials sharing a part id must share its ink settings.
+  `render/shaderLib.js`), and materials sharing a part id must share its ink settings. A material
+  for the hero is `ownOnly` with an `own: { bold?, merge?, flat?, subShade?, glow?, haloOn?, line?,
+  rimLine?, fillGain? }` block (`docs/STYLE.md` "The hooded hero": adding a part); the higher part id
+  draws a shared edge (legs < robe < sleeves < cowl < hood < hair < shield < crystal).
 - **Geometry attributes.** `position`, `normal` and `aGUV` (the glyph grid's coordinates, +y up
   the body so letters stand upright) are required; `aPart` (the ink-line sub-id) is added as 0 if
   missing. The builders in `heroGeo.js` and `render/glyphGeometry.js` set them. `sub(g, 1)` gives a
@@ -168,21 +180,28 @@ rig every frame, so these hold for any item:
   spring lengths, `r0` the anchor's distance from the pelvis axis; each strip is
   `{ joint, len, rest, phase }`. The idle breeze has per-panel values for the first six panels
   (`BREEZE` / `IDLE_FLARE`); later ones get none unless they set their own. `ABYSS_PANELS` in
-  `abyss.js` (built by its `robeSkirt`) and the bosses' `LORD_PANELS` / the Ash Disciple's robe
-  are worked examples.
+  `abyss.js` (built by its `buildSkirt`: `open` turns a front panel round its own curve so the two
+  fronts part, `hem` cuts its points, `mat` picks its material) and the bosses' `LORD_PANELS` / the
+  Ash Disciple's robe are worked examples. For the hero the panels are one garment (`anim.js`
+  `CLOTH`): they share the garment's velocity, swing out no more than `panelOut` standing, are drawn
+  in through a roll and are kept outside the shield's plate and his legs.
 - **Streamers** (`streamers`). Two-segment springs: `segs[0]` at the root, `segs[1]` at
   `−len[0]` below it; `out` is the resting outward flare; `lag` (default 1) scales how far the
-  sheet trails the motion: 1 is a light ribbon that streams out level at a run, the cloak uses 0.5;
-  `max` (default 2.6 rad) is how far a segment may swing from hanging, the cloak uses 1.45;
+  sheet trails the motion: 1 is a light ribbon that streams out level at a run, the robe's back uses
+  0.45; `max` (default 2.6 rad) is how far a segment may swing from hanging, the robe's back uses 0.95;
   `inMax` ([root, tip] rad, + = toward the wearer) caps how far each segment may swing IN (a head
   ribbon or a scarf off the back that must not swing into him; negative = always at least that far
   out; not applied while he lies down); `wrap` is the radius the sheet curves round at its root
-  (the tests model the sheet with it); `floor: true` keeps its ends over the grass while he rolls or
+  (the tests model the sheet with it), and a sheet with `wrap` is a WRAPPING sheet of one garment
+  (`anim.js` `CLOTH`: the garment's shared velocity, a curved swing from root to hem, a hem that
+  streams on a run, drawn in through a roll; no boss's sheet sets it); `push` (rad/s) is how fast the
+  grass pushes a lagging end back out (the robe's back: 30); `floor: true` keeps its ends over the grass while he rolls or
   falls (a head ribbon: the forward roll puts his crown at the grass; a lagging end is eased back
   out, never snapped). Any slot may return streamers.
   `weapon: true` marks a weapon's own streamer (a ribbon off the pommel): the tests count the
   cloak's sheets without it.
-  The root may hang on any joint (the cloak drapes one sheet over each upper arm). Give `w` (the
+  The root may hang on any joint (the robe's back hangs on `chest`; a sheet may drape over an upper
+  arm). Give `w` (the
   widths [root, seam, hem]) so the animator can keep the sheet off the blade (ADR-048: spheres along
   the steel), and `arm` (1 / 2 for a sheet on the right / left upper arm). The arms do not push the
   cloth: a cloak hangs over its wearer's arms (holding the sheets out round them made the figure
@@ -192,7 +211,9 @@ rig every frame, so these hold for any item:
   further, ~20-30°, ADR-090): model sleeves and hands for a bent arm, and do not rely on a pose
   locking the elbow. Without a shield the heavy blows, the charge and the block are two-handed
   (ADR-071): the free hand spends time on the grip, so return `offHand` if the item draws hands.
-  With a shield (`offhand`) they are swung in one hand and the free arm carries the shield.
+  With a shield (`offhand`) they are swung in one hand and the free arm carries the shield; the
+  animator pushes the fist out until the plate's outline clears the torso, the hood, the thighs and
+  the grass (`SHIELD_CLEAR`), so a bulky chest or head item may need a wider margin there.
   The free hand turns on its wrist (`arms.L.wrist`: sword fingers, a point, a palm braced on the
   grass): hang the open hand and the sword fingers there, keep the forearm's own meshes on
   `arms.L.fore` (a flask or a bracer stays on the forearm), and keep the left wrist clear of a
@@ -205,7 +226,8 @@ rig every frame, so these hold for any item:
   (ADR-123): the hero's animator (ground clamp, blade clearance, cloth), the sword FX and the drawn
   contact read them, so a weapon of another length is drawn, clamped and lit at its own length; the
   hit segment stays `DIM`'s (gameplay), and duelists' animators use `DIM`'s. The hero's own sword is
-  one-handed and short (`ABYSS_SWORD_DIMS`: drawn to 0.90 m, the steel to 1.00 m).
+  one-handed and short (`ABYSS_SWORD_DIMS`: drawn to 0.77 m from the grip's centre, the steel to
+  0.87 m; 0.92 m from the pommel's tip to the point).
 - **Empty slots.** `coat: []` and `streamers: []` are fine. Without a weapon the sword joint is
   still posed and attacks still hit (the hit segment is `DIM`'s); only the mesh is gone.
 
@@ -216,7 +238,16 @@ rig every frame, so these hold for any item:
 - `rig.loadout`: slot → the id of the item built there, `null` for an empty slot (fallbacks show
   as their `base.*` id);
 - `rig.slots`: slot → the Object3Ds that slot hung on the skeleton (top level only: each one's
-  subtree is the slot's too, and every object in it has `userData.slot`).
+  subtree is the slot's too, and every object in it has `userData.slot`);
+- `rig.bodyDims`: the legs it stands on (`{ thigh, shin, pivot }`, `legDims(opts.legs)`);
+- `rig.weaponDims`: the worn weapon's numbers (its `dims` over `DIM`'s);
+- `rig.shield`: `{ joint, half, off, top, foot }` with an `offhand` item worn (the joint
+  `arms.L.shield` exists only then), else `null`;
+- `rig.offHand`: the `arms` item's `{ open, grip, fingers }`, else `null`.
+
+`buildHero(U, loadout, opts)`: `opts.legs` (`{ thigh, shin }`, default `DIM`'s; the Player passes
+`HERO_LEGS`), `opts.headScale` (default `BODY.headScale`; the Player passes `HERO_HEAD_SCALE`) and
+`opts.own` (true: the materials write the player's own bank of part ids; only the Player sets it).
 
 ## Next steps (not built yet)
 

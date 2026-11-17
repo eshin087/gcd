@@ -40,9 +40,11 @@ the wyrm next to it, it is wrong, however good it looks alone.
 | Something small that flies on its own (an ember, a spark, dust, a chip) | glyph particles (`fx.add` / `fx.alpha`), about one letter cell | meshes |
 
 **What is NOT in this look, on purpose (do not "fix" it):**
-- **The hero and the two human bosses** keep their ink-line art on a 4 px dot matrix. The owner:
+- **The hero and the two human bosses** stay in the hero art pass, not the wyrm's. The owner:
   "Lets not touch the floor character and bosses" (2026-11-15). A sheet of them in larger letters
-  was shown and not taken up.
+  was shown and not taken up. The two bosses keep their ink-line art on a 4 px dot matrix; the hero
+  (since 2026-11-17, ADR-123) is drawn in the same pass with a line of his own: a bold white line
+  round solid black shapes (*The hooded hero: a line of his own*, below).
 - **The floors** (flagstones, the courtyard's paving, the crater's plates) keep carved glyphs
   (`createCarvedGlyphMaterial`): the ground must stay calm under the fight.
 - **The trees** keep the screen grid's bigger round letters (`FLAG.LEAF`, trunks `FLAG.STONE`): the
@@ -196,7 +198,7 @@ History matters here:
 | Trunks (the Cinder Tree's wood is prop art since ADR-113) | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
 | Canopies | screen-grid `LEAF` 0.6: blobby ramp `. : o 0 O 8 @` | same |
 | Grass | ~260k instanced quads, each ONE glyph stroke (`\| / \ ' Y V v l i`) **anchored in the world** (no shimmer when the camera moves); gentle slow wind, trample pushers, wing gusts, burnt to ash glyphs; dim world-space soil glyphs between | `world/grass.js`, `world/ground.js` |
-| Hero, wyrm | **classic ASCII art** of a shaded SOURCE image (v0.4), matched to the owner's two reference images on 2026-11-08: the **wyrm** as fine pixel-font digits (5x8 px cells at 720p since 2026-11-15, ADR-093) whose brightness draws charcoal scales, molten cracks and crimson torn sails; the **hero** as ink-line art, dim dense letters inside bright one-pixel ink lines. Rules and numbers: "Creature ASCII art" below | `createSurfaceGlyphMaterial` (`wyrm` / `heroArt` sources) → `render/pipeline.js` (hero branch, `wyrmCell`), `render/wyrmGlyphs.js`, `createPixelArtAtlas` |
+| Hero, wyrm | **classic ASCII art** of a shaded SOURCE image (v0.4), matched to the owner's two reference images on 2026-11-08: the **wyrm** as fine pixel-font digits (5x8 px cells at 720p since 2026-11-15, ADR-093) whose brightness draws charcoal scales, molten cracks and crimson torn sails; the **human bosses** as ink-line art, dim dense letters inside bright one-pixel ink lines; the **hero** (ADR-123) as solid black shapes closed by a bold white line of his own. Rules and numbers: "Creature ASCII art" below | `createSurfaceGlyphMaterial` (`wyrm` / `heroArt` sources) → `render/pipeline.js` (hero branch, `wyrmCell`), `render/wyrmGlyphs.js`, `createPixelArtAtlas` |
 | FX | camera-facing glyph particles, additive HDR (bloom) or alpha, drawn after the grid pass; the fire spells' ground warnings, meteors, lava, flame walls and the plunge's bursts are made of them too ("Fire, hazards and the plunge" below) | `render/particles.js`, `dragon/fx.js`, `player/fx.js` |
 | Fire light | pooled point lights (8 visible) lighting every shader | `render/lights.js` |
 | Shadows | moon orthographic shadow map, casters on layer 1 (`markCaster`) | `render/pipeline.js` |
@@ -223,10 +225,11 @@ Rules of thumb:
   shimmer when the camera moves or zooms; it faces the default camera, so glyphs stay upright and
   the same size on every facet. Use flat facets: each one is a carved plane with its own light
   level, and on low-poly boulders that is what makes them read as rock, not a ball of text.
-- **Silhouette first.** Hero hair spikes, coat flare and wing outlines carry identity at ~50 px.
-  At the game camera the hero is a dark figure cut out of the grass by a dark halo, with a dim cool
-  rim (since 2026-11-08; the moonlit `outline` only matters for the `uArtSolid` 0 render). Large
-  bodies use no outline: on them it reads as plastic shading.
+- **Silhouette first.** The hero's hood, cloak and shield and the wyrm's wing outlines carry
+  identity at ~50 px. At the game camera the hero is a black figure closed by a white band, cut out
+  of the grass by a dark halo (ADR-123; a dim cool rim from 2026-11-08 until then; the moonlit
+  `outline` only matters for the `uArtSolid` 0 render). Large bodies use no outline: on them it
+  reads as plastic shading.
 - **Shapes survive the text.** In creature art a bright edge (a scale rim, an ink line) must cut
   through the letters at pixel precision, not be averaged into the cell: the wyrm's strokes take
   their own source pixel's brightness, the hero's ink lines are traced per pixel.
@@ -257,7 +260,8 @@ Rules of thumb:
   lavender torn zone (`hem` `[0.3,0.28,0.42]`), dark steel armour with white edges and glints, a pale
   face; white ink lines tinted per part (violet-white on hair, lavender on the tails, cyan × 1.7 on
   the blade edges, violet × 2 on the gem). Cyan stays on the blade and its FX, violet on the gem and
-  the hair tips.
+  the hair tips. These are the shared entries (the bosses build from them); the hooded hero since
+  ADR-123 wears only the `ab*` entries, in three colours (*The hooded hero*, below).
 
 ### Glyph choice rules
 - Creatures: pick the `ascii` set per part. It sets the default ramp and cell (`SURFACE_SETS` in
@@ -369,7 +373,7 @@ Rules of thumb:
   brow ridges and cheekbones, drawn with flat facets and smaller scales (`FACE_ART`) so the form
   prints through the key light. The owner: "lets pass on the remake of the dragon head for now". The
   wyrm wears today's head; the three stay behind `?wyrmFace=skull|loong|demon` (and the Lab's head
-  row), like the hero's looks (ADR-089). Seen on them and not fixed: the teeth print as a solid white
+  row), as the hero's outfits were until ADR-123 deleted them (ADR-089). Seen on them and not fixed: the teeth print as a solid white
   wall from the side, the scale texture fights the sculpted form up close, and at 36 – 54 m the heads
   differ only a little.
 - **Targets at the reference view (1080p; measured for the thin 4x6 digits of 2026-11-08):** the
@@ -377,7 +381,11 @@ Rules of thumb:
   ≈ 22 % ink pixels and ≈ 9 % bright ones (round 1 measured 30 / 23 / 11); its lit ink is white 41 /
   orange 22 / red 37 % (round 2 measured 43 / 23 / 35).
 
-**The hero (the "Shadow Swordsman" line-art reference).**
+**The hero until 2026-11-17 (the "Shadow Swordsman" line-art reference; history since ADR-123).**
+The first four items (the ink lines, the fill and the two sets of targets) are still how the hero
+art pass draws the two human bosses, from the shared bank, and how it would draw the player under
+`?heroLine=0`. Everything after them describes the outfit he wore then (the Wanderer and the
+Shrouded set, both deleted) and is kept as history; the hero today is *The hooded hero*, below.
 - **Ink lines, traced per pixel:** bright one-pixel lines on his silhouette, on the nearer side of
   every depth step and on part edges (the higher part draws), plus piece edges up close; a dimmer
   second pixel up close gives the reference's ~2 px anti-aliased ink. A line breaks at the letter
@@ -419,7 +427,8 @@ Rules of thumb:
     rate): x1.12 through a light strike's window, x1.2 a heavy's, +0.5 on a landed cut (+0.75 heavy
     or crit), held through the freeze and cooling in 0.12 s; exactly the `HERO_INK` base at rest.
     The strike's ink and glow are relative to rest (a flat 1.6 / 1.25 left a light strike no
-    brighter than the idle blade at 36 m, its seams dimmer).
+    brighter than the idle blade at 36 m, its seams dimmer). The same flare now lights the hooded
+    hero's crystal (below).
   - **The edge glint** (`EDGE_GLINT`, fx.js): from 0.03 s before the active frames a 9 px cold `+`
     runs up the LEADING edge (the ridge for the stab's point-first drive) from the forte to the point,
     easing in, two or three `|` strokes behind it; on a whiff it reaches the point as the arc's glint
@@ -467,6 +476,70 @@ Rules of thumb:
   game camera it reads lighter than the black coat (far fill 0.8).
 - **Scale:** at the 36 m game camera ~25 rows of 4x6 px letters (~15 on a phone at LOW); drawn 1.2×
   and leaned toward the camera (ADR-017). Close-ups (Lab model viewer) show the full reference look.
+
+### The hooded hero: a line of his own (2026-11-17, ADR-123)
+The owner sent the concept sheet "GCD ABYSS, main character concept" (a hooded figure in a long
+black cloak drawn in white outlines, silver hair over a blank face, a crystal sword, a kite shield
+with a star) after turning down three hero looks in two days, and asked for those to be deleted. The
+four things wrong with the earlier attempts were one thing: a figure that did not read. The sheet
+reads because it is a black mass closed by a bright line, so the hero is now exactly that: few, big
+black shapes, each closed by a bold white line that the pass draws on purpose, sized to the figure.
+He is the ONLY hero outfit (`gear/abyss.js`, `gear/shield.js`); there is no outfit or sword switch.
+- **Three colours.** Black cloth (fills 0.055 – 0.07, near-neutral); the white / silver line
+  (`OWN_LINE` [0.9, 0.93, 1.0]: every part's line unless it says otherwise) and the silver of the
+  hair, the boot and trim bands, the shield's rim and the hilt; the lavender-white crystal (the
+  blade, the shield's star, the flask: fill [0.74, 0.72, 1.0], its own line and a tight lavender halo).
+  A muted skin on the blank face is the only other tone. No belt, no gem, no leather, no cyan, no
+  violet. His FX follow: the swing arc, the trail, the hilt's point of light and the blade's flare are
+  lavender-white (`player/fx.js` `COL`); the tells are unchanged.
+- **The shapes** (measured off the sheet's turnaround; the build was settled by laying his
+  silhouette over the sheet's): a roomy hood built from flat planes (a soft point set a little back,
+  a ridge from the point to the brow, a wide angular opening), four or five chunky silver spikes of
+  hair over a lit face with no features; the cowl, two thick wraps on a diagonal from his right side
+  up over the left shoulder, dipping to a V between the shoulder blades; the robe's body in two halves
+  (the bold line down his front); a wide bell sleeve with a bold cuff on the sword arm, a plain sleeve
+  on the shield arm, black gloves; trousers and boots to mid-shin with a bold band at the top and the
+  ankle; the robe's skirt (four panels on the coat springs, the hem torn into big angular points, the
+  two fronts carrying the robe's bold front edges) and its back (three sheets cut from one cone, one
+  broad shape with no line on it, its centre to a deep V point between the boots); the crystal sword
+  (0.92 m pommel to point: a pale blade with a centre ridge, a plain angular guard, a diamond pommel);
+  the kite shield (0.78 × 0.45 m: a top point, straight shoulders, one long taper to the foot; a
+  thick silver rim drawn bold on both edges, since the carry shows its back; a dark crystal face cut
+  in faint facets; a slender four-point star with a long vertical ray). His legs are 10 % shorter
+  than the skeleton's and his head is drawn at 1.0 (ARCHITECTURE.md: the fight never sees either).
+- **The line** (the hero art pass, for his own bank of part ids only; ARCHITECTURE.md "The hero's own
+  line"): a solid **silhouette band** inside his outline whose width follows his drawn size (about
+  1.5 px at the desktop game camera, 1 px on the phone, 3 px close up: at the game camera the shape
+  wins and the line serves it); **bold inner lines** where a flagged part (`own.bold`: the hood's halves
+  and ridge, the cowl, the sleeve and cuff, the bands, the shield's rim) meets a lower part or steps
+  down to something behind it, nearly as wide as the band and kept at the game camera (the sheet's main
+  inner lines); **thin inner lines** elsewhere, dimmer, partly kept far away; a soft **glow ring** a
+  couple of font px outside his silhouette, half as strong where the band is 1 px; a tight **halo**
+  round the glowing parts (the blade, the star), which the shield's face also takes round its star
+  (`own.haloOn`); and the **merge**: pieces of one garment (`own.merge`, the robe's) closer than
+  12 cm in depth draw no line between them, so the robe is one shape. Inside the line he is solid
+  black: the fill letters are scaled to 0, except the face, the flat parts (`own.flat`: one smooth
+  tone, the hair's alternate locks a shade apart) and the glowing ones.
+- **The options** (`?heroLine=`, temporary, for the owner's pick; `pipeline.js` `HERO_LINES`): **b**
+  (the default) the bold line, solid black, the soft glow; **a** a thinner line, faint grey letters
+  inside, no glow; **c** faint fine lavender letters inside up close, fading to plain black toward
+  the game camera; **0** the shared bank's line of before (the old hero's ink lines on a figure that
+  was never drawn for them). Live from the console: `__game.pipeline.setHeroLine('c')`. The switch
+  and the losing options go once the owner has picked.
+- **Beside the house style.** He is not in the dragon look and must not be moved into it: the sheet
+  is line art, and the owner keeps the hero and the human bosses out of that look. He uses no new
+  pass, font or letter size: the line is a branch of the hero art pass, his own bank keeps his pixels
+  apart, and the bosses' pixels are identical to before (the shared bank and its tables are
+  untouched; checked with seeded before / after renders and a hash of each boss rig).
+- **Adding a part to him.** A material is an entry in `HERO_INK` (`player/model.js`) with
+  `ownOnly: true` and a spec in `createHeroMaterials`; give it an `own: { … }` block: `bold` for an
+  edge the sheet draws as a main line, `merge` for pieces of one garment, `flat` for a smooth tone
+  (with `subShade` for its `sub(g, 1)` pieces), `glow` for crystal light, `haloOn` for a flat part that
+  should catch the halo, `line` / `rimLine` / `fillGain` to set its own. Part ids run 0..19 and the
+  part order decides who draws a shared edge (the higher id: legs < robe < sleeves < cowl < hood <
+  hair < shield < crystal); materials that share an id share its settings. Keep to the three colours,
+  keep the shape big enough to survive at ~50 px, and look at it at the game camera, 720p and the
+  phone's 852x393, from all four sides, before showing the owner options.
 
 ### Background objects in the dragon's look (2026-11-15, ADR-100)
 The owner: "all 3 levels need all the background objects like the pillars and structures to look
