@@ -87,6 +87,23 @@ function brushed(b, dmg) {
   return over > least ? over : least;
 }
 
+/**
+ * A Group made without drawing on Math.random (three names every object with a random uuid): the
+ * seeded sims replay Math.random, and one object more at the world's build shifted everything after
+ * it (the wyrm's WRECKAGE fight on seed 1337 went 32 % → 28 % standing). Its uuid is from a stream
+ * of its own.
+ */
+let uuidSeed = 0x51ed2701;
+function quietGroup() {
+  const r = Math.random;
+  Math.random = () => (uuidSeed = (Math.imul(uuidSeed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  try {
+    return new THREE.Group();
+  } finally {
+    Math.random = r;
+  }
+}
+
 export const STATE = Object.freeze({ INTACT: 0, FALLING: 1, BROKEN: 2, HELD: 3, FLYING: 4, GONE: 5 });
 const { INTACT, FALLING, BROKEN, HELD, FLYING, GONE } = STATE;
 
@@ -182,7 +199,7 @@ export class Destructibles {
      * for the arenas' 456 / 222 pieces). Only the rigid batch's meshes hang in `root`, in the scene;
      * the batch reads the pieces' world matrices, which `_place` keeps right whenever a piece moves.
      */
-    this.pieces = new THREE.Group();
+    this.pieces = quietGroup();
     this.pieces.name = 'breakablePieces';
     this.batch = null;
     this.wreck = null;
