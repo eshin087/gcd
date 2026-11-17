@@ -169,7 +169,13 @@ function build(opt = SEED) {
   }
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
+  // (his rig is built on a stream of its own: every THREE object draws Math.random for its uuid, so a
+  // body look with more pieces (?ashLook=b, the owner's pick) would otherwise shift the AI's seeded
+  // stream and replay every fight with another seed. The picks, 2026-11-16)
+  const R0 = Math.random;
+  Math.random = mulberry32(seed + 0x5eed);
   game.dragon = ASH.createBoss(game);
+  Math.random = R0;
   game.boss = game.dragon;
   game.hud = new Hud(game);
   game.touch = new TouchControls(game);
@@ -2758,7 +2764,7 @@ async function scenarioTerrain() {
     }
     setLook('toll', null);
     out(`     the toll's looks: ${Object.entries(res).map(([k, v]) => `${k}: drawn ${v.old} / ${v.field} frames, ${v.blobs} field blobs, ${v.hits} hits`).join(' · ')}`);
-    assert(res['0'].old > 0 && res['0'].field === 0 && res.a.field > 0 && res.a.old === 0 && res.b.field > 0 && res.a.blobs > res['0'].blobs, 'the toll\'s ring: today\'s bronze arcs by default (?toll=0), a front of steel in the fire field under a and b');
+    assert(res['0'].old > 0 && res['0'].field === 0 && res.a.field > 0 && res.a.old === 0 && res.b.field > 0 && res.a.blobs > res['0'].blobs, 'the toll\'s ring: the bronze arcs main drew under ?toll=0 (?looks=old), a front of steel in the fire field under a (the owner\'s pick, shipped) and b');
     assert(res['0'].hits === 3 && res.a.hits === 3 && res.b.hits === 3, 'whatever its look, each of the three rings strikes a hero who stands once');
   }
 
@@ -3158,18 +3164,54 @@ async function scenarioPerfect() {
 // Every option of fxash's switches (?kindle= ?ashp3= ?qi= ?flit=) runs for its whole life headless:
 // no error, no NaN (build's guards throw), the field's blob peak under FX_CAP; '0' of the qi redraw
 // draws exactly what main drew; and no look moves the fight (the looks draw from their own stream).
+// The owner's picks (2026-11-16) are the defaults: the table (lookSwitch PICKED) against the Lab's
+// switches, what lookOf returns with nothing set, under ?looks=old and ?looks=new.
 async function scenarioFxLooks() {
-  out('\n== scenario FXLOOKS (the shock, the Kindling, ash on the wind, the qi, the flit: every option) ==');
-  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  out('\n== scenario FXLOOKS (the shock, the Kindling, ash on the wind, the qi, the flit: every option; the picks as the defaults) ==');
+  const { setLook, lookOf, PICKED, pickedOf, allOld, readLookUrl } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { LOOK_SWITCHES } = await imp('src/dev/labLooks.js');
   const { DuelFx } = await imp('src/entities/enemies/duelist/fx.js');
   const SW = { kindle: ['a', 'b', 'c'], ashp3: ['a', 'b', 'c'], qi: ['0', 'a', 'b', 'c'], flit: ['0', 'a'] };
-  const clear = () => { for (const k of Object.keys(SW)) setLook(k, null); };
+  // the look as it was before this pass (what `main` drew), every switch of the courtyard
+  const BEFORE = { qi: '0', flit: '0', toll: '0', ashLook: '0' };
+  const clear = () => { for (const k of [...Object.keys(SW), 'toll', 'ashLook']) setLook(k, null); };
+  // 0. the picks: one table, every key a real switch and its value a real option; what lookOf
+  //    returns at each call site's default (the Lab's rows carry it) with nothing set, under
+  //    ?looks=old (a redraw: '0'; a new thing keeps its pick) and ?looks=new (= the default)
+  {
+    clear();
+    const row = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s]));
+    const bad = Object.entries(PICKED).filter(([k, v]) => !row[k] || !row[k][1].includes(v));
+    const missing = LOOK_SWITCHES.filter((s) => pickedOf(s[0]) == null).map((s) => s[0]);
+    assert(Object.isFrozen(PICKED) && !bad.length && !missing.length && Object.keys(PICKED).length === LOOK_SWITCHES.length, `PICKED: ${Object.keys(PICKED).length} switches, each a real switch of the Lab with a real option (${bad.map(([k, v]) => `${k}=${v}`).join(', ') || 'ok'}; not picked: ${missing.join(', ') || 'none'})`);
+    const owner = { kindle: 'a', ashp3: 'a', qi: 'a', flit: 'a', burn: 'a', toll: 'a', star: 'a', sky: 'a', ignite: 'a', void: 'a', presence: 'a', great: 'a', floor: 'a', ashLook: 'b', lordLook: 'b' };
+    assert(JSON.stringify(Object.keys(owner).sort().map((k) => `${k}=${PICKED[k]}`)) === JSON.stringify(Object.keys(owner).sort().map((k) => `${k}=${owner[k]}`)), 'the table is the owner\'s answer of 2026-11-16: every author\'s pick (a), the bodies b');
+    const at = (search) => {
+      readLookUrl(search);
+      const o = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], lookOf(s[0], s[2], s[3])]));
+      readLookUrl('');
+      return o;
+    };
+    const none = at(''), old = at('?looks=old'), neu = at('?looks=new'), one = at('?looks=old&star=b'), url = at('?qi=c');
+    const wantOld = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s[2] === '0' ? '0' : PICKED[s[0]]]));
+    assert(JSON.stringify(none) === JSON.stringify(Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], PICKED[s[0]]]))) && JSON.stringify(neu) === JSON.stringify(none), `with nothing set (and under ?looks=new) every call site draws the pick: ${JSON.stringify(none)}`);
+    assert(JSON.stringify(old) === JSON.stringify(wantOld) && !allOld(), `?looks=old: every redraw '0' (what main drew), a new thing its pick: ${JSON.stringify(old)}`);
+    assert(one.star === 'b' && one.qi === '0' && url.qi === 'c' && url.star === 'a', `the URL's own parameter beats ?looks=old and the pick (?looks=old&star=b: star ${one.star}, qi ${one.qi}; ?qi=c: qi ${url.qi})`);
+    setLook('qi', 'b');
+    readLookUrl('?qi=c');
+    const forcedWins = lookOf('qi', '0');
+    readLookUrl('');
+    setLook('qi', null);
+    assert(forcedWins === 'b' && lookOf('qi', '0') === 'a', `a look forced live (setLook) beats the URL (${forcedWins}); null gives the pick back (${lookOf('qi', '0')})`);
+  }
   // the most the field may gain while one effect plays, the whole scene counted (the hero, his
   // trails, the cues, the flares). HEADLESS has no camera, so every crisp line (_ink: the trails, the
   // qi's edge, a flare's streak) falls back to a blob every 0.1 m instead of one per letter cell:
   // these counts run 1.4 - 2.5x the real page's (the storm with '0': 1111 here, 453 on the page;
   // ash on the wind a: 848 here, ~700 on the page). Measured 2026-11-16 (second round): the Kindling
   // 363 - 385, ash on the wind 631 - 968, the flurry 625 - 672. A cap with headroom, not a target.
+  // Re-measured on the shipped looks (the picks, 2026-11-16): kindle a 374, ashp3 a 837, qi a 331 /
+  // 540 / 632 (phases 1 - 3), flit a 592: every pick under 1000, the cap kept (it binds every option).
   const FX_CAP = 1000;
   const peakOf = (G, secs, step = null) => {
     const f = G.game.fx.fire, base = f.count;
@@ -3181,16 +3223,24 @@ async function scenarioFxLooks() {
   // 1. the qi's '0' = main, call for call (one crescent flown 90 frames into a counting mock field;
   // the numbers were measured on f4e199d, before the redraw)
   {
-    setLook('qi', '0');
     const want = { 1: [6174, 0, 54], 2: [6210, 0, 51] };
-    for (const phase of [1, 2]) {
+    const fly = (phase) => {
       const c = [0, 0, 0];
       const game = { time: 0, realTime: 0, dt: DT, fxDt: DT, lights: null, fx: { fire: { spawn: () => c[0]++ }, add: { spawn: () => c[1]++ }, alpha: { spawn: () => c[2]++ } }, player: { position: { x: 30, y: 0, z: 0.3 }, alive: true, radius: 0.45 } };
       const d = { game, T: TUNING, phase, emit() {}, hitPlayer: () => RESULT.HIT };
       const fx = new DuelFx(d);
       fx.throwCrescent(0, 0, 1, 0, { tell: TELL.NORMAL, damage: 14 });
       for (let i = 0; i < 90; i++) { game.time += DT; game.realTime += DT; fx.updateCrescents(DT, d); }
-      assert(c.join() === want[phase].join(), `qi '0' draws what main drew in phase ${phase} (fire, add, alpha ${c.join()} = ${want[phase].join()})`);
+      return c;
+    };
+    for (const phase of [1, 2]) {
+      setLook('qi', '0');
+      const c = fly(phase);
+      assert(c.join() === want[phase].join(), `qi '0' (?looks=old) draws what main drew in phase ${phase} (fire, add, alpha ${c.join()} = ${want[phase].join()})`);
+      // with nothing set: the owner's pick, the redraw (another count than main's)
+      clear();
+      const s = fly(phase);
+      assert(lookOf('qi', '0') === PICKED.qi && s.join() !== want[phase].join() && s[0] > 0, `with nothing set the qi draws the pick (${PICKED.qi}) in phase ${phase}, not main's look (fire, add, alpha ${s.join()})`);
     }
     clear();
   }
@@ -3312,8 +3362,8 @@ async function scenarioFxLooks() {
     assert(du > 40 && du < 300, `a hard landing's dust has a body: ${du} blobs`);
   }
   // a phase-3 fight with the AI on (burning lines, the storm, ghosts, the stream): the field's peak
-  // with the looks at their defaults and at 'a' (the report; a cap far under the field's 6000)
-  for (const looks of [{}, { kindle: 'a', ashp3: 'a', qi: 'a', flit: 'a' }]) {
+  // as shipped (the picks: nothing set) and before this pass (BEFORE) (the report; a cap far under the field's 6000)
+  for (const looks of [{}, BEFORE]) {
     clear();
     for (const [k, v] of Object.entries(looks)) setLook(k, v);
     const G = build(); duel(G, { dist: 4, ai: true });
@@ -3328,8 +3378,10 @@ async function scenarioFxLooks() {
     G.watch = null;
     out(`     phase-3 fight: ${Object.entries(moves).map(([k, v]) => `${k} ${v}`).join(', ')}`);
     G.defend = null;
-    report.push(`fight p3 ${Object.keys(looks).length ? 'a' : 'defaults'}: peak ${peak} mean ${(sum / n).toFixed(0)}`);
-    assert(d.phase === 3 && peak < 2400, `a phase-3 fight, looks ${JSON.stringify(looks)}: the field peaks at ${peak} blobs (mean ${(sum / n).toFixed(0)}) < 2400 of its 6000`);
+    report.push(`fight p3 ${Object.keys(looks).length ? 'before' : 'shipped'}: peak ${peak} mean ${(sum / n).toFixed(0)}`);
+    // (the cap, re-measured on the shipped looks 2026-11-16 (the picks): 907 shipped, 919 before
+    // this pass (mean 248 / 256); 1400 = about 1.5x the measurement, was 2400)
+    assert(d.phase === 3 && peak < 1400, `a phase-3 fight, looks ${Object.keys(looks).length ? `before this pass ${JSON.stringify(looks)}` : 'as shipped (the picks)'}: the field peaks at ${peak} blobs (mean ${(sum / n).toFixed(0)}) < 1400 of its 6000`);
   }
   out(`     blob peaks: ${report.join(' | ')}`);
   // 3. no look moves the fight: a fixed-seed fight (the AI on, phase 2, a defending bot) gives the
@@ -3350,11 +3402,12 @@ async function scenarioFxLooks() {
     G.defend = null;
     return `${G.hits.map((h) => `${h.attack}:${h.r}@${h.t.toFixed(2)}`).join(',')}|${cues.join(',')}|${d.position.x.toFixed(3)},${d.position.z.toFixed(3)},${d.hp.toFixed(1)}|${G.game.player.position.x.toFixed(3)}`;
   };
+  // (the reference is the fight as shipped; BEFORE (his body '0' too: a build-time look) must play the same)
   const ref = fight({});
-  for (const looks of [{ kindle: 'b', qi: 'a', flit: 'a', ashp3: 'b' }, { kindle: 'c', qi: 'c', flit: 'a', ashp3: 'c' }, { qi: 'b', ashp3: 'a' }]) {
+  for (const looks of [{ kindle: 'b', qi: 'a', flit: 'a', ashp3: 'b' }, { kindle: 'c', qi: 'c', flit: 'a', ashp3: 'c' }, { qi: 'b', ashp3: 'a' }, BEFORE, { ashLook: 'c', qi: '0' }]) {
     const got = fight(looks);
     if (got !== ref) { let i = 0; while (got[i] === ref[i]) i++; out(`     differs at ${i}: ...${ref.slice(Math.max(0, i - 80), i + 60)} vs ...${got.slice(Math.max(0, i - 80), i + 60)}`); }
-    assert(got === ref, `the looks ${JSON.stringify(looks)} do not move the fight (same hits, cues, positions as the defaults)`);
+    assert(got === ref, `the looks ${JSON.stringify(looks)} do not move the fight (same hits, cues, positions as shipped)`);
   }
   clear();
   return build();
