@@ -101,7 +101,6 @@ ADR-120).
 | `world` | `resolve(pos, radius, bound, soft = false)` circle collision (`soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
-| `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
 | `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks (`dt` / `realDt` / `fxDt`: of the running simulation step) |
 | `frameDt`, `simSteps` | the rendered frame's real time and the number of simulation steps it was cut into (Frame order) |
@@ -120,16 +119,20 @@ Render helpers for creature modules:
   surface render, a look-dev A/B). `artGain` (default 1) scales the generic smooth source. The pass
   tests the hero's grid first, then the wyrm's, then the background props' (`FLAG.ART_PROP` 0.57,
   window 0.555–0.585, ADR-100), then the world grid. Two creature paths, told
-  apart by the **alpha contract** (no other material may write alpha in 0.46–0.55, and none but
+  apart by the **alpha contract** (no other material may write alpha in 0.4386–0.55, and none but
   prop art in 0.555–0.585):
 
   | alpha written | by | meaning |
   |---|---|---|
   | `0.5 + 0.01 × code` (0.50 … 0.54) | the wyrm (materials with `wyrm`) | `FLAG.ART` plus a **stroke code** from `wyrmMain`: 0 none, 1 `-`, 2 `/`, 3 `\|`, 4 `\` (the screen direction of a thin part's outline or a scale rim at that pixel). The pass decodes `floor((a − 0.5) × 100 + 0.5)` |
-  | `HERO_ART.a0 + (part × 2 + aPart) × HERO_ART.step` (0.4632 … 0.4866) | the hero (materials with `heroArt`) | a **part id** inside the hero window (0.46, 0.49) that `isHero` tests (`FLAG.ART_HERO` 0.48 marks the window): `part` 0..19 from the material, `aPart` 0 / 1 the geometry's sub-id |
+  | `HERO_ART.a0 + (part × 2 + aPart) × HERO_ART.step` (0.4632 … 0.4866) | every rig `buildHero` makes (materials with `heroArt`, `uArtBank` 0): the two human bosses | a **part id** in the shared bank, inside the hero window (0.4386, 0.49) that `isHero` tests (`FLAG.ART_HERO` 0.48 marks the window): `part` 0..19 from the material, `aPart` 0 / 1 the geometry's sub-id |
+  | the same id less `2 × HERO_ART.parts` steps: `HERO_ART.ownA0` 0.4392 … 0.4626 | the player (his materials with `uArtBank` 1; ADR-123) | a part id in the player's **own bank**; `heroOwn(a)` (a < `a0` − half a step) tells it from the shared one, and the pass draws it with the player's own line and tables (*The hero's own line*, below) |
 
-  `HERO_ART = { a0: 0.4632, step: 0.0006, parts: 20 }` is exported from `materials.js` (`HERO_PARTS`
-  20 from `shaderLib.js`). The step is ≥ 2 half-float ulps there, so part ids need the half-float
+  `HERO_ART = { a0: 0.4632, step: 0.0006, parts: 20, ownA0: 0.4392 }` is exported from `materials.js`
+  (`HERO_PARTS` 20 from `shaderLib.js`). The hero window starts at 0.4386, just above the v0.2
+  creature-grid codes (they end at 0.4379; `isArt` in the pass uses the same floor). `setHeroBank(mats,
+  own)` (`materials.js`) writes `uArtBank` (1 own, 0 shared) on a rig's materials; `buildHero(…, { own:
+  true })` calls it, and the shader subtracts `uArtBank × HERO_BANK` (= 2 × parts) from the id. The step is ≥ 2 half-float ulps there, so part ids need the half-float
   scene target; on the 8-bit fallback they collapse to ~7 levels (silhouette and depth lines still
   draw, part tints and fill gains come out wrong). Every hero material must pass `heroArt`
   (`createHeroMaterials` throws without a `HERO_INK` entry).
@@ -236,11 +239,27 @@ Render helpers for creature modules:
   1 dotted (`dotted`), 2 unbroken (`solid`), + 4 when `open`: no dark channel or depth-step gap, the
   face), z `farLine` (share of inner-line light kept at the game camera: 0 a dark seam (cloth) … 1
   bright (armour, blade)), w `farFill` (fill gain there). Materials that share a `part` must share
-  these fields. Part 17 = the player's blade (`HERO_INK.blade` / `bladeTip`, only gear/wanderer.js's
-  sword uses `M.blade` / `M.bladeTip`): `player.js` rewrites its fill .x, ink .w and rim .w every
-  frame (`TUNE.bladeFlare`: the strike and contact flare; absolute values, the `HERO_INK` base at
-  rest). Nothing else may use part 17 (a boss blade on `M.blade` would flare with the hero's: give it
-  a new part).
+  these fields. An entry marked `ownOnly` (the hooded hero's `ab*` parts) never writes these shared
+  tables: the bosses read them, and every `buildHero` rewrites them. Part 17 in the shared tables is
+  `HERO_INK.blade` / `bladeTip`, worn by nobody since ADR-123 (keep it off a boss blade all the same:
+  give a new blade a new part). The player's own tables are filled in the same call (next item);
+  `player.js` rewrites the own fill .x, ink .w and rim .w of `HERO_INK.abCrystal`'s part (18: the
+  blade and the shield's star) every frame (`TUNE.bladeFlare`: the strike and contact flare; absolute
+  values, the `own` base at rest).
+- **The player's own tables** (ADR-123; `U.uHeroOwnInk[20]`, `U.uHeroOwnFill[20]`, `U.uHeroOwnRim[20]`,
+  vec4, shared uniforms read only for own-bank pixels): filled by `createHeroMaterials` from every
+  `HERO_INK` entry merged with its `own` overrides, the `ownOnly` entries last (they win a part id
+  they share with an older entry: `abSkin` takes part 1 from `skin`). Ink and rim: `own.line` /
+  `own.rimLine`, else the entry's own line when it glows (gain > 1.5), else `OWN_LINE` [0.9, 0.93,
+  1.0, 1.0] (`model.js`, the sheet's white). Fill: x `fillGain`; y a sum of bits: 2 (base), + 4
+  `open`, + 16 `flat` (one smooth tone, no letters), + 32 `bold` (its edges drawn as a bold band),
+  + 64 `glow` (a glowing part: the halo looks for it), + 128 `merge` (no line between two such pieces
+  closer than 12 cm in depth: one garment), + 256 `haloOn` (a flat part that takes a halo from the
+  glowing parts on it: the shield's face round its star); z `own.subShade` (a flat part's shade on its
+  sub-id 1 pieces: alternate hair locks); w `farFill`. The `own` fields per `HERO_INK` entry: `bold,
+  glow, flat, line, rimLine, fillGain, subShade, merge, haloOn` (any other field of the entry may be
+  overridden there too). The `ownOnly` materials are made on first use (`M.abRobe` …), so a boss
+  rig never compiles them.
 - **The hero's letters and lines** (pass, hero branch):
   - Grid (ADR-036): `createPixelArtAtlas(hs)` (`glyphs.js`; hs = max(1, floor(H / 1080))) →
     `{ texture, count, cols }`: one row, the 3x3 micro-font `PIXEL_3X3` (29 marks) sorted sparse →
@@ -277,6 +296,32 @@ Render helpers for creature modules:
     (x / y tap radii 2 / 4 px × hs, z darkening 0.72). Two rings of 8 taps darken **world-grid**
     pixels round him (grass, stones, trees, bonfire); the wyrm's letters are not darkened, except
     round the parts of him it covers (`seenHalo`, next item).
+  - **The hero's own line** (ADR-123; STYLE.md "The hooded hero"). Pixels in the player's own bank
+    (`heroOwn`) are drawn from the own tables (above) and the option's numbers instead of the shared
+    line: a solid silhouette **band** inside his outline (8 directions, up to `uHeroOwnSil.x` font px;
+    its width follows his drawn size, one font px per `uHeroOwnSil.w` (29) screen px of his metre,
+    so about 1.5 px at the desktop game camera, 1 on a phone and the full width close up; a fractional
+    last px; gain `.y`, the innermost px at `.z`; where the band is one px wide, the phone, it and the
+    bold lines print at `HERO_THIN` (0.55) of their gain, back to full by 1.4 px, so a one-px line stays
+    crisp under the bloom); **bold** inner lines for parts with fill bit 32
+    (their edges against a lower part or a step down, a band nearly as wide as the silhouette's, kept
+    at the game camera); thin inner lines elsewhere (`uHeroOwnIn`: width 1 / 2 font px, depth-step
+    gain, part-edge gain, share kept at the game camera; piece edges at `uHeroOwnFillK.z`); the fill
+    (`uHeroOwnFillK`: letter gain, 0 = plain black; lavender share; piece-edge gain; how much of the
+    letters fades out toward the game camera), with `open`, `flat` and glowing parts keeping theirs; a
+    soft **glow ring** outside his silhouette (`uHeroOwnGlow`: rgb, radius in font px; 0 none) on the
+    off-him pixels of his cells, inside the halo's circle; a tight **halo** round the glowing parts
+    (`uHeroOwnHalo`, rgb × w) in that ring and on `haloOn` parts. `uHeroOwnPxM` (screen px per metre
+    of him per font px; 1000 when he is off screen) is set in `_updateAsciiCamera` from the halo's
+    radius. Exports (`pipeline.js`): `HERO_THIN`, `HERO_LINES` (frozen options `a`, `b`, `c`: `{ sil: [width, gain,
+    inner-edge gain, px per metre], inner: [width, depth gain, part gain, far share], fill: [gain,
+    lavender, piece gain, far fade], glow: [r, g, b, radius] }`), `HERO_LINE` (the option read once
+    from `?heroLine=`: `b` by default, `0` the shared line, an unknown value `b`).
+    `Pipeline#setHeroLine(opt)` writes the four uniforms and moves the seen-through object's
+    materials into the own bank (`_markHeroBank`; `'0'` or an unknown option: back to the shared
+    bank, the glow off) and returns the option drawn; `Pipeline#heroLine` is it. The player's rig is
+    built in the own bank (`buildHero(…, { own: true })`); `setSeenThrough` puts it back in the
+    shared one under `?heroLine=0`. The switch is temporary: it goes once the owner has picked.
 - **The hero seen through what covers him** (ADR-106; `pipeline.js`). When something stands
   between the camera and the hero (the wyrm's body or a wing, a tree, a pillar, a landmark), the
   covered parts of him are printed through it: his own ink-line art in the blade's cyan, with a
@@ -573,7 +618,8 @@ critTimer: number                      // > 0 while the crit window is open (aft
 bladeFlare: number                     // 0..0.75: the steel's flare at a landed cut (TUNE.bladeFlare.hit: 0.5, heavy / crit 0.75;
                                        // not a slam's shards-only hit). Any area may raise it (Math.max), never lower it; it
                                        // decays by 1 / TUNE.bladeFlare.fall per s of GAME time (held through the freeze) and
-                                       // drives part 17's fill / lines and the blade halo
+                                       // drives the own fill / lines of HERO_INK.abCrystal's part (the
+                                       // blade and the shield's star) and the blade halo
 lockOn: boolean                        // toggled by Tab (the middle click is the guard since ADR-115); facing tracks dragon.lockPoint
 get alive(): boolean
 isInvulnerable(): boolean              // roll i-frames, the whole plunge, Ghostep / plunge-landing i-frames, get-up, the blade lock, dead
@@ -587,6 +633,14 @@ isInvulnerable(): boolean              // roll i-frames, the whole plunge, Ghost
 // same call (_poseNow: the freeze holds it) and the grip nudged (deflect.nx / ny / nz) onto his
 // steel; fx.parry (combat/clashFx.js) draws one clash on the crossing. deflect.gap0 / gap = how far
 // apart the blades were before / after the nudge.
+// With a shield (rig.shield, anim.shield; ADR-123) the PLATE meets the blow (_meetShield): the swat's
+// pose is taken the same way, then the fist is nudged by the gap between the plate's middle and his
+// steel (shieldPoses.js SHIELD_MEET: up to `passes` 3 nudges, each clamped to `nudge`); a blow still
+// more than `far` 0.2 m from the plate (far to the sword side, or past his left side behind him) is
+// met by the SWORD as before (deflect.sword = 1, _meetSword; kept only when the blade gets closer).
+// deflect.gapS = the plate's own best gap. _guardPoint(f, out): where a blow meets his guard, the
+// middle of the shield's face with a shield (else point f along the blade): a block's sparks, a
+// parry's clash and a guard break are drawn there.
 canTrade(): boolean                    // swinging (not the execution) and DEFENSE.trade.rearm s past the last trade
 onTrade(att, { tell, attack, last }): { heavy, crush } | null
                                        // the trade clash, resolved by the attacker (ADR-082: the hero's cut connected
@@ -631,9 +685,12 @@ takeHit({ damage, from:{x,z}, knockback=0, knockdown=false, kind='hit', burn=0,
                                        // plunge: false = a perfect dodge of this hit never becomes the plunge
                                        // (fire hazards); while the plunge runs every hit returns 'ignored'
 getChestPos(out: Vector3, visual = false): Vector3   // upright gameplay body; visual = the drawn one (FX)
-unlean(v: Vector3): Vector3            // drawn (leaned, drawScale) world point → upright gameplay body
+unlean(v: Vector3): Vector3            // drawn (leaned, drawScale, his own legs) world point → upright gameplay body
+                                       // (on DIM's legs: + legLift)
 drawScale: number                      // his drawn size, PLAYER_SCALE (1.08; ADR-064)
-leanPoint(v: Vector3): Vector3         // upright gameplay point → where it is drawn (name tag)
+leanPoint(v: Vector3): Vector3         // upright gameplay point → where it is drawn (name tag; − legLift)
+get legLift(): number                  // DIM.pivot − rig.bodyDims.pivot (model m; 0.085 on HERO_LEGS, 0 on DIM's):
+                                       // how much higher the gameplay body stands than the drawn one
 respawn(x, z)                          // full restore, idle, facing north, clears burn/lock/crit/plunge/deflect chain
 restAtBonfire()                        // refill hp/flasks (no teleport)
 update(dt)
@@ -646,8 +703,10 @@ debug: { god: boolean, infiniteFlasks: boolean, heal(), teleport(x, z), kill(), 
 ```
 Module-private state the animator reads (anim.js): `plungeAnim { phase, u, t, exec, h }` (the plunge
 phase from the exported `PL` enum `{ VANISH, HANG, DIVE, RIDE, FLIP, LAND }`, progress through it,
-the lift), `deflect { n, t, side, perfect }` (the parry chain; `perfect` = the last parry was pressed
-within `DEFENSE.perfectParryWindow`, read by an attacker that answers a perfect parry: bullets.js), `guardHold` 0..1 (the guard lingering between
+the lift), `deflect { n, t, side, perfect, high, nx, ny, nz, gap0, gap, sword, gapS }` (the parry chain; `perfect` = the last parry was pressed
+within `DEFENSE.perfectParryWindow`, read by an attacker that answers a perfect parry: bullets.js;
+`high`, the nudge and the gaps: the blades meet, above; `sword` 1 = a shield hero's parry met by
+the blade, so `deflectPose` poses the blade's parry and holds the plate in the guard), `guardHold` 0..1 (the guard lingering between
 parries), `rmb { held, upT, parryT, edge, chain }`.
 Controls (only while `game.state` ∈ {`explore`,`bossIntro`,`boss`}): WASD move · mouse aim · LMB tap =
 light chain of five (a cut from the right → a backhand → a whirl → a lunge → the two-handed slam finisher,
@@ -669,7 +728,12 @@ the figure's scale as `anim.drawScale` (its owner's `drawScale`, else `HERO_SCAL
 ground speed of the gait and the foot planner's world spots. The animator runs with `lean.on = false`
 (plain upright 1.85 m body, so IK and ground clamps work in metres); the drawn transform is applied
 after it. FX read the drawn joints; the sword sweep's hit test, `getChestPos()` (the dragon's aim)
-and the hurt cylinder use the upright body (`SwordSweep(sword, unlean)`).
+and the hurt cylinder use the upright body (`SwordSweep(sword, unlean)`). **Gameplay reads the body
+on DIM's legs** (ADR-123): the hero is drawn on legs of his own (`HERO_LEGS`, `rig.bodyDims`; the
+animator poses `r.body` at `bodyDims.pivot`), but every number of the fight reads the body as it
+always stood: `unlean` adds `legLift` after taking off the lean and the scale, `leanPoint` takes it
+off before putting them on. (Before this the wyrm aimed at, and the hero's sweep was tested from,
+the drawn, lower chest.) Only the hips' height moves; the body above them is the same.
 **The drawn contact** (`_contactPoint(dr, kind, out)`): the hit test runs on the upright
 gameplay bodies, so its point floats off both drawn figures; a landed cut is DRAWN where the drawn
 blade (`CUT_LOOK.from` … `fx.arcAt(kind)` of the hit segment) meets the boss's drawn hurt spheres
@@ -797,66 +861,96 @@ RMB cancels a charge (the LMB press is consumed); an RMB press during one's own 
 raises the guard when recovery starts. Streams (breath) only count as a perfect dodge when the roll
 starts into them.
 
-Model (`player/model.js`, built to `docs/art/hero.md`, the Shadow Swordsman): private to the player
-module (nothing outside reads the rig). It is drawn as ink-line ASCII art (ADR-019): every material
-carries a `HERO_INK` entry (the `heroArt` source and its per-part pass data, see Render helpers).
+Model (`player/model.js`; since 2026-11-17 the hooded swordsman of the owner's concept sheet "GCD
+ABYSS, main character concept", ADR-123): private to the player module (nothing outside reads the
+rig). It is drawn as ink-line ASCII art (ADR-019): every material carries a `HERO_INK` entry (the
+`heroArt` source and its per-part pass data, see Render helpers); the player's are the `ab*` entries,
+drawn only in his own bank with his own line. He is ONE outfit: every older outfit, the outfit
+switch and the sword switch were deleted (ADR-123; ADR-089's "kept for later use" no longer holds).
 Three sword lengths (sword space, m from the grip centre):
-- `DIM.bladeBase → DIM.bladeTip` (0.16 → 1.5, + `REACH.tipExt`): the **hit segment** (gameplay).
-- `DIM.steelTip` 1.04: the point the **animator** poses with. `anim.js` keeps it off the grass and out
-  of the legs, and the `hero` integration scenario checks it. It lies a little past the drawn point
-  and moves with it; the hit segment does not.
-- `DIM.drawnTip` 0.93: the **drawn** point (a 1.12 m sword with the pommel, ADR-073; was 1.25 m,
-  ADR-038, and 1.45 / 1.64 m before; visual only, inside the hit segment). FX that sit on the point use `DIM.drawnTip ??
-  DIM.steelTip` (`PlayerFx.bladeHalo`'s dots and tip streak); the swing crescent and the dot halo
-  past the point carry the rest of the reach. The blade parts in `heroParts.js` are built to this
-  length (`npm run hero-parts`). `BLADE_BASE` (exported) is the blade core's unlit colour;
-  `player.js` lifts it with camera distance.
+- `DIM.bladeBase → DIM.bladeTip` (0.16 → 1.5, + `REACH.tipExt`): the **hit segment** (gameplay),
+  the same for every weapon and every fighter.
+- `steelTip`: the point the **animator** poses with. `anim.js` keeps it off the grass and out of the
+  legs, and the `hero` integration scenario checks it. It lies a little past the drawn point and
+  moves with it; the hit segment does not.
+- `drawnTip`: the **drawn** point (visual only, inside the hit segment). FX that sit on the point
+  use it (`PlayerFx.bladeHalo`'s dots and tip streak); the swing crescent and the dot halo past the
+  point carry the rest of the reach.
 
-**Build (the lean reference match, 2026-11-09, ADR-034; supersedes round 3's broad build, ADR-031):**
-the lean anime swordsman of the owner's six-view sheet on the same bones. `model.js` exports `BODY`,
-the girth table (metres): `shell` (torso rings: height `y`, half-width `rx`, half-depth `rz`, forward
-offset `cz`, the open coat front's `gap`; chest 0.34 m over a 0.23 m waist), `hips` and `head`
-ellipsoids, `deltoid`, `upperArm`, `foreArm`, `thigh`, `shin` (radii along the limb + bulge) and
-`foot`. The meshes are built from it; `anim.js` sizes the blade's leg clearance (`BLADE_CLEAR`), the
-coat's leg push (`LEG_R`) and the ground-clamp spheres from it; the `herolook` test checks the lean
-proportions and measures blade-in-body against it. No bone length changed (IK, the foot planner and
-the hit segment run on bones). Joints: `DIM.shoulder` ±0.16 (round 3 ±0.21), `DIM.hip` ±0.1,
-`DIM.coatR` 0.132 (round 3 0.163). The sword hand's pose targets are offsets from `DIM.gripShoulder`
-[0.17, 0.215, 0] (`rig.arms.R.anchor`; `_handTarget` uses `arm.anchor ?? arm.upper.position`), so
-every grip the arm reaches is unchanged by the narrower frame. The sword: `DIM.gem` 0.116 (the
-violet star gem at the guard's heart), `DIM.forte` 0.2 (the cyan glyph blade from here; the coat-vs-
-steel test and the blade halo start here); the three lengths above are unchanged.
-**Coat** (`COAT_PANELS`, six panels; no front flap since ADR-034): two back tails split by a vent
-(az ±2.5), narrow side panels (±1.66), two front panels (±0.86). Per panel: `az`, widths `w` [top,
-join, tear line], segment lengths `len`, torn `strips` (lengths; 12 in all), `fork`, `out`, the
-resting `flare`, `folds`, and optionally `edge` (±1: piping down its +X / −X edge), `skew` (the width
-it gains below `w[0]` goes to one side, so the vent / front edge hangs straight or drifts out:
-`skew` ±1 … ±1.35) and `slant` (m: the hem runs that much longer at the outer edge). `model.js`
-exports `sheetOffset(w, w0, skew)` (where a skewed sheet of width w is centred along its tangent);
-the animator's cloth-vs-steel coverage treats a skewed sheet as covering `|x| ≤ w/2 + |offset|`
-(`coatHW`), and `herolook` uses the same offset. Coat records carry `r0` (the sheet's radius round
-the hips at the anchor) and `len[1]` includes the slant.
+The last two are the worn weapon's (`rig.weaponDims`, below): the hero's crystal sword
+(`ABYSS_SWORD_DIMS`, `gear/abyss.js`) has `steelTip` 0.87 and `drawnTip` 0.77 (0.92 m from the
+pommel's tip to the point) on `DIM`'s hilt and hit segment; `DIM`'s own (`steelTip` 1.04, `drawnTip`
+0.93) are what every duelist's animator uses. `BLADE_BASE` (exported) is the old blade core's unlit
+colour; `player.js` still lifts `M.blade` with camera distance, which no worn sword uses today.
 
-The animator (`player/anim.js`) drives: `coat` = 6 panels (`COAT_PANELS`, above), each two spring
-segments (the lower one is two meshes: `coat` above, the lavender torn zone `hem` over its last
-60 %) plus `strips` (12 torn strips, one spring each, kept above the grass; per-panel `BREEZE` /
-`IDLE_FLARE` follow the panel order, unless a panel carries its own `breeze?` / `idleFlare?`);
-`streamers` (two-segment spring sheets: the Shrouded set's
-cloak, five sheets on the chest and the upper arms (a narrow cape, ADR-073), `SHROUD_SHEETS` in `gear/shroud.js`, ADR-043;
-or the Wanderer's torn cape, four sheets behind the right shoulder, `CAPE_SHEETS`, ADR-037; any
-slot's item may return them (a head ribbon, a sleeve wing, a sash tail); each record
-`{ segs, len, out, lag?, max?, w?, arm?, wrap?, inMax?, floor? }`, `out` = its own outward flare, `lag` = how much
-it trails the motion (default 1 = a light ribbon, the cloak 0.5), `max` = how far it may swing from
-hanging (rad; default 2.6, the cloak 1.45), `w` = its widths [root, seam, hem] (default 0.3 m
-across), `arm` = 1 / 2 when it hangs on the right / left upper arm (0: the chest), `wrap` = the
-radius the sheet curves round at its root (read by the tests' sheet model, not by the animator),
-`inMax` = [root, tip] how far each segment may swing IN toward its wearer (rad, + = in; negative =
-always at least that far out; default its `max`; not applied lying, ADR-083) so a head ribbon or a
-scarf off the back never swings into the body, `floor` = while he rolls or falls (not lying: there
-`_layFlat` rules) the segments' ends stay `STREAM_FLOOR` (2 cm) over the grass: the target swings to
-the nearest angle that clears it and a lagging spring is eased out toward the least swing that clears
-it, at most `STREAM_PUSH` (6 rad/s, so it never pops) (a head ribbon in the forward roll, where his
-crown meets the grass; default off, today's cloak and every boss's cape go without)).
+**The body** (`heroDims.js`; the athletic build of ADR-040 on the lean match's bones, ADR-034):
+`BODY` is the girth table (metres): `shell` (torso rings: height `y`, half-width `rx`, half-depth
+`rz`, forward offset `cz`, the open coat front's `gap`), `hips` and `head` ellipsoids, `deltoid`,
+`upperArm`, `foreArm`, `thigh`, `shin` (radii along the limb + bulge) and `foot`. `anim.js` sizes the
+blade's leg clearance (`BLADE_CLEAR`), the coat's leg push (`LEG_R`) and the ground-clamp spheres from
+it. The bones are `DIM`'s, except the legs: `buildHero(U, loadout, { legs, headScale, own })` takes
+`opts.legs` (`{ thigh, shin }`; default `DIM`'s 0.43 / 0.42) and builds the skeleton and the gear's
+legs on them; `legDims(legs)` → `{ thigh, shin, pivot }` (the pivot `DIM.pivot` less what the legs
+lost) is returned as `rig.bodyDims`, and the gear's build context gets a `DIM` with those legs. The
+Player builds on `HERO_LEGS` (thigh 0.385, shin 0.38: pivot 0.955, 0.085 m under `DIM`'s 1.04) with
+`headScale` `HERO_HEAD_SCALE` 1.0 (default `BODY.headScale` 1.08, the duelists'); every duelist
+stands on `DIM`'s legs. The fight does not see the shorter legs (`Player.legLift`, above). The sword
+hand's pose targets are offsets from `DIM.gripShoulder` [0.17, 0.215, 0] (`rig.arms.R.anchor`;
+`_handTarget` uses `arm.anchor ?? arm.upper.position`). `opts.own` puts the rig's materials in the
+player's own bank of part ids (`setHeroBank`; the Player passes `own: true`, a boss never does).
+
+**Coat** (`waist` items' `coat` panels: the hero's robe skirt, `ABYSS_PANELS` in `gear/abyss.js`,
+four panels; the Lord's skirt; the Ash Disciple's robe). Per panel: `az`, widths `w` [top, join,
+hem], segment lengths `len`, `out`, the resting `flare`, optionally `strips` (torn strips; the
+abyss panels have none), `fork`, `edge`, `skew`, `slant`, `open` (the sheet turned that far round
+its own curve: the two front panels part in an opening widening downward), `breeze?` / `idleFlare?`,
+and the abyss panels' `hem` (the points the hem is cut into) and `mat`. `model.js` exports
+`sheetOffset(w, w0, skew)` (where a skewed sheet of width w is centred along its tangent); the
+animator's cloth-vs-steel coverage treats a skewed sheet as covering `|x| ≤ w/2 + |offset|`
+(`coatHW`). Coat records carry `r0` (the sheet's radius round the hips at the anchor) and `len[1]`
+includes the hem's reach.
+
+The animator (`player/anim.js`) drives: `coat` = the panels above, each two spring segments plus
+their `strips` (one spring each, kept above the grass; per-panel `BREEZE` / `IDLE_FLARE` follow the
+panel order, unless a panel carries its own `breeze?` / `idleFlare?`); `streamers` (two-segment
+spring sheets: the hero's robe back, three sheets cut from one cone, `ABYSS_SHEETS` in
+`gear/abyss.js`; a boss's cape; any slot's item may return them: a head ribbon, a sleeve wing, a sash
+tail); each record `{ segs, len, out, lag?, max?, w?, arm?, wrap?, inMax?, floor?, push? }`, `out` =
+its own outward flare, `lag` = how much it trails the motion (default 1 = a light ribbon; the robe's
+back 0.45), `max` = how far it may swing from hanging (rad; default 2.6; the robe's back 0.95), `w` =
+its widths [root, seam, hem] (default 0.3 m across), `arm` = 1 / 2 when it hangs on the right / left
+upper arm (0: the chest), `wrap` = the radius the sheet curves round at its root (the tests' sheet
+model reads it, and a sheet WITH `wrap` is a **wrapping sheet** of one garment for the cloth rules
+below; no boss's sheet carries it), `inMax` = [root, tip] how far each segment may swing IN toward
+its wearer (rad, + = in; negative = always at least that far out; default its `max`; not applied
+lying, ADR-083) so a head ribbon or a scarf off the back never swings into the body, `floor` = while
+he rolls or falls (not lying: there `_layFlat` rules) the segments' ends stay `STREAM_FLOOR` (2 cm)
+over the grass: the target swings to the nearest angle that clears it and a lagging spring is eased
+out toward the least swing that clears it, at most `STREAM_PUSH` (6 rad/s, so it never pops), `push`
+= that rate for this sheet (rad/s; the robe's back: 30).
+**The cloth is one garment** (ADR-123; the hero's animator only, `opts.freeHand`, and the wrapping
+sheets: the bosses' cloth moves as before). `CLOTH` (anim.js, documented field by field there):
+every panel's and every wrapping sheet's root velocity is mostly the garment's mean (`share`), so a
+turn no longer spins the side sheets apart; a wrapping sheet's root segment takes `root` of its swing
+and the hem the rest (it curves instead of turning out as one board), swings sideways at most
+`sheetB`, changes its swing at most `rate` a frame, and its hem trails `hemLag` × on a run (it
+streams back); standing, a panel swings out at most `panelOut` in all (root + hem) and a knee swings
+a hem out at most `kneeOut`; in a roll or a backstep the cloth is drawn in round him (`anim.tuck`
+0..1, eased in at `tuckIn` and out slowly at `tuckOut`, so the cloth settles back: the swing limits
+`tuckSheet` / `tuckPanel` [upper, lower], the lag and the flare taken off by `tuckLag` / `tuckFlare`,
+and `tuckShrink` [sheets, panels]: the sheets and panels drawn up short, their segments' `scale.y`
+animated below 1 while he is rolled up; at every other time it is 1). **Lying** (`LAY`,
+`HeroAnimator._layCloth`, after the springs): once his body is near level each panel and wrapping
+sheet eases (`anim.layW` 0..1, in at `LAY.in`, out at `LAY.out2` /s) toward a calm fixed fan on the
+ground: toward his feet (`feet`), out from where it hangs (`out`), to its side of the body (`side`),
+sloping to `floor` m over the grass. The blend is written back into the spring state, so as he rises
+the springs take over from where the cloth lies, without a snap.
+`COAT_PAIRS` names the front / side neighbours, `COAT_PLATE` the points of the shield's outline
+(`anim.platePts`, pelvis space) a panel's upper sheet is kept outside of (`COAT_PLATE_M` 3 cm),
+`anim.footPts` the ankles; `_lowerLegLim` limits how far a panel's lower sheet swings in, so no
+knee, thigh or (lying) ankle comes out through it.
+`BLADE_LOCO_RATE` (0.09 rad a frame): on the move the hero's blade turns no faster (`anim.bzPrev`,
+`anim.bzOk`), so a reversal at a run does not whip it through the cloth.
 **Cloth vs steel**
 (ADR-048): every frame `_colliders` places spheres along the blade (`COL_BLADE`; the arm lists
 `COL_FORE` / `COL_UPPER` are empty: holding the sheets out round the arms widened his back), and
@@ -866,91 +960,91 @@ cloth drapes over a drawn-back sword), from outside it holds it in; the inside w
 sheet ignores the arm it hangs on (`arm`, for arm spheres). `UPDRAFT_STREAM` (a charge's lift of the
 sheets) is 0. Coat panels and strips have their own steel rules (below); hair has none;
 `hair` = 5 spring clusters (`HAIR_CLUSTERS`: fringe, left, right, crown, nape), each with a dark-root
-mesh (`hair`) and a sheened-tip mesh (`hairTip`); since ADR-034 the locks are layered pointed
-blades (crown spikes, top, two back layers, nape, sides, a jagged fringe, cowlicks). Static meshes
-that share a joint and a material are merged at build time (fewer draw calls; 123 meshes, ~19.7k
-triangles since the lean build); only the flask stays separate.
-**Blender-built parts** (ADR-037): the hair (scalp cap + per-cluster `mass` / `tip`), the collar and
-its rim, the lapels, the blade (`forte`, `core`, `edge`), the cape sheets (`cape.N.a` / `.b` / `.c`)
-and the pauldron (`plate`, `bevel`, `spike`) are not built in JS. `scripts/blender/hero_parts.py`
-sculpts them in a headless Blender, fitted to `DIM` / `BODY` / `REST` / `HAIR_CLUSTERS` /
-`CAPE_SHEETS` dumped from `model.js`, and `npm run hero-parts` writes them to the generated,
-committed `player/heroParts.js` (`HERO_PARTS[name] = { n, p, nrm, uv, k, i }`, base64: positions and
-`aGUV` Int16 / 8192, normals Int8 / 127, `aPart` Uint8 / 200, Uint16 indices). `partGeometry(key)` in
-`heroGeo.js` decodes one into a BufferGeometry with the usual hero attributes; a part is in the space
-of the joint it hangs on, and the body (`model.js`) or the gear item that uses it picks that joint
-and the material. Never edit `heroParts.js`
-by hand; rerun the script after changing a dimension the parts are fitted to. `CAPE_SHEETS` (per
-sheet: `at` on the chest, `ry`, widths `w`, segment lengths `len`, `out`, `cup`, `seed`) must stay
-four entries (the streamer springs and the `herolook` test).
+mesh (`hair`) and a sheened-tip mesh (`hairTip`) when the head item keeps them (the hero's hood
+builds none: `hidesHair`, its own silver locks hang on the `head` joint; the joints stay). Static
+meshes that share a joint, a material and an owner are merged at build time (fewer draw calls; the
+hero is 76 meshes, ~45.8k triangles); the flask and the `keep` meshes stay separate.
+**Blender-built parts** (ADR-037): the hair (scalp cap + per-cluster `mass` / `tip`, `hair.*`) is
+the only sculpted part left; the old blades, collar, lapels, cape sheets and pauldron went with their
+outfits. `scripts/blender/hero_parts.py` sculpts them in a headless Blender, fitted to `DIM` /
+`BODY` / `REST` / `HAIR_CLUSTERS` dumped from `model.js`, and `npm run hero-parts` writes them to the
+generated, committed `player/heroParts.js` (`HERO_PARTS[name] = { n, p, nrm, uv, k, i }`, base64:
+positions and `aGUV` Int16 / 8192, normals Int8 / 127, `aPart` Uint8 / 200, Uint16 indices).
+`partGeometry(key)` in `heroGeo.js` decodes one into a BufferGeometry with the usual hero
+attributes; a part is in the space of the joint it hangs on, and the body (`model.js`) or the gear
+item that uses it picks that joint and the material. Never edit `heroParts.js` by hand; rerun the
+script after changing a dimension the parts are fitted to.
 **Gear slots** (ADR-042, `player/gear/`, contract in `gear/README.md`): `model.js` builds the
-skeleton and the body (neck, head, face, hair, the flask); everything worn or held is an item
-`{ id, slot, name, build(ctx) }` in one of `SLOTS` = head, chest, shoulders, arms, legs, waist, back,
-weapon. `DEFAULT_LOADOUT` is `WANDERER_LOADOUT`, the Wanderer's set (ADR-123: the look of
-2026-11-09 again: no head item, `wanderer.coat`, `wanderer.pauldron`, `wanderer.arms`, `wanderer.legs`,
-`wanderer.skirt`, `wanderer.cape`, `wanderer.sword`); `SHROUD_LOADOUT` is the Shrouded set, the default
-from ADR-043 to ADR-123 (`shroud.hood`, `shroud.tunic`, `shroud.arms`, `shroud.cloak` over the
-Wanderer's legs, skirt and sword). A head item may keep only part of the hair:
-`hair: [...]` lists the pieces built under it (`'cap'` and `HAIR_CLUSTERS` names; the hood keeps
-only the cap and builds its own gold strands, `HOOD_HAIR` in `gear/shroud.js`: a spiky fringe, cheek
-locks and a strand a side onto the collarbone), `hidesHair: true` builds none; the five hair joints
-stay either way. `shadowsFace: true` on a head item (the hood, ADR-056) builds the face, ears and neck
-in the shirt's near-black and leaves the eyes out. The hair is dark violet-black (ADR-123; gold from ADR-049 to it). `buildHero(U, loadout = DEFAULT_LOADOUT)`
-builds each slot's item (an empty chest / arms /
-legs slot gets the `base.*` undersuit), merges static meshes per joint + material + slot, and
-returns the usual rig plus `rig.loadout` (slot → id or null) and `rig.slots` (slot → the objects it
-hung on the skeleton). Geometry builders live in `player/heroGeo.js`, the body's measurements in
-`player/heroDims.js` (`model.js` re-exports them). `player.loadout`, `player.equip(slot, id | null)`
-and `player.setLoadout(loadout)` swap gear at runtime: the rig is rebuilt under the same root
-(`object3d` and `position` stay the same objects), the animator is recreated (the pose restarts from
-the ready stance), old geometries and materials are disposed, and the rig's rigid batches
-(`player.batch`, `render/rigidBatch.js`) are disposed and rebuilt, reusing their bone slots; an
-unknown id throws before anything changes. No event is emitted. Shared builders (`gear/`):
+skeleton and the body (neck, head, face, ears, eyes, hair, the flask); everything worn or held is an
+item `{ id, slot, name, build(ctx) }` in one of `SLOTS` = head, chest, shoulders, arms, legs, waist,
+back, weapon, offhand (the ninth, ADR-123). `gear/` holds `index.js` (`SLOTS`, the `GEAR` registry,
+`registerItem`, `getItem`, `DEFAULT_LOADOUT`, `HERO_TINT`, `BASE_LOADOUT`, `resolveLoadout`),
+`base.js` (the undersuit), `hands.js` (`buildFreeHand`), `abyss.js` (the hero's set) and `shield.js`
+(`offhand` items). `DEFAULT_LOADOUT` = `ABYSS_LOADOUT`: `abyss.hood`, `abyss.robe`, no shoulder item,
+`abyss.arms`, `abyss.legs`, `abyss.skirt`, `abyss.cloak`, `abyss.sword`, `shield.kite`. `HERO_TINT` =
+`ABYSS_TINT` (`{}`: his own materials carry his colours; the contract stays). The bosses register
+their own items (`enemies/*/gear.js`); the Starless Lord's armoured boots, the one piece a boss took
+from an old outfit, live in `enemies/starlessLord/boots.js` (`buildArmouredBoots`). **Head-item
+fields:** `hair: [...]` lists the pieces of the body's hair built under it (`'cap'` and
+`HAIR_CLUSTERS` names), `hidesHair: true` builds none (the five hair joints stay either way);
+`shadowsFace: true` builds the face, ears and neck in the shirt's near-black and leaves the eyes
+out; `blankFace: true` keeps a lit face with no features (no eyes); `face` names a material in `M`
+for the face (the hood: `abSkin`, in his own bank); `faceScale` the face's width (≠ 1 also tapers the
+jaw to a V; the hood: 0.8); `neck` names the neck's material (the hood: `abPants`). **Arms-item
+handles:** `offHand` (below) and `flask`: a mesh shown only while he drinks; the hero's hangs on the
+SWORD forearm (`arms.R.fore`), the body's own default on `arms.L.fore` (every boss). An `offhand` item
+returns `shield: { half: [w/2, h/2], off, top, foot }` (m: the plate's size, how far it stands off the
+forearm's axis, how far it reaches above / below it); the skeleton builds the shield joint
+`arms.L.shield` (on `arms.L.fore`, `DIM.shieldAt` 0.15 m down it) ONLY when an `offhand` item is
+worn (every object made draws a uuid from `Math.random`; one more on every rig moved the seeded
+fights), and the rig carries `rig.shield` = `{ joint, half, off, top, foot }` or null. `shield.kite`:
+0.78 × 0.45 m, an angular kite (`SHIELD_SHAPES.kite`), a thick silver rim (`abRim`), a dark crystal
+face cut in one faint facet per side of the outline and the back (`abShield`), braces in the face's
+dark, a four-point star (`abCrystal`), the straps, the handle and the gloved fist (`abPants`). `buildHero(U, loadout =
+DEFAULT_LOADOUT, opts)` builds each slot's item (an empty chest / arms / legs slot gets the `base.*`
+undersuit), merges static meshes per joint + material + slot, and returns the usual rig plus
+`rig.loadout` (slot → id or null), `rig.slots` (slot → the objects it hung on the skeleton),
+`rig.bodyDims`, `rig.weaponDims` and `rig.shield`. Geometry builders live in `player/heroGeo.js`
+(among them `bladeGeometry(spec, tip, forteZ)`, kept for a blade from a profile), the body's
+measurements in `player/heroDims.js` (`model.js` re-exports them, `HERO_LEGS` and `HERO_HEAD_SCALE`
+included). `player.loadout`, `player.equip(slot, id | null)` and `player.setLoadout(loadout)` swap
+gear at runtime (the tests' shieldless hero): the rig is rebuilt under the same root (`object3d` and
+`position` stay the same objects, on `HERO_LEGS`, in the own bank, `HERO_TINT` applied), the animator
+is recreated (the pose restarts from the ready stance), old geometries and materials are disposed,
+and the rig's rigid batches (`player.batch`, `render/rigidBatch.js`) are disposed and rebuilt,
+reusing their bone slots; an unknown id throws before anything changes. No event is emitted.
 `hands.js` `buildFreeHand(ctx, mat = M.skin)` is the free hand every `arms` item that draws hands
-calls (the skin wrist on the forearm, the open hand and the sword fingers on `arms.L.wrist ??
-arms.L.fore`, the grip hand on the `sword` joint; returns `{ offHand, keep }`: every outfit gets the
-sword fingers); `sheet.js` `hangSheet(ctx, parent, d, mats)`
-builds one streamer sheet (or a ribbon) from data and returns its record, `panelSkirt(ctx, PANELS,
-{ seed })` a skirt of coat panels (returns `{ coat }`; a panel's `hemFrom` puts the pale `hem` over
-the end of its lower sheet). `heroGeo.js` `shellGeometry(rings, { arc: [a0, a1] })` builds one arc
-of a shell (rad: 0 = his front, + = his left). `model.js` `tintHero(M, tint)` recolours ONE rig's
-material instances (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, sub?, inkGlow?,
-glowK? } }`), never the shared `U.*`. `player.setLoadout` puts the shared per-part ink
-(`U.uHeroPartInk` / `uHeroPartFill` / `uHeroPartRim`, rewritten by every `buildHero`) back as it was
-after the build, also when the build throws: a boss's own part ink (the Starless Lord's red part 19)
-survives a hero rebuild. **Outfit options** (kept for later use: the owner, 2026-11-14, keeps today's look as the default; the URL switch
-`?heroLook=`; the old head switch `?lordLook=` of ADR-084 is gone, and since ADR-122 that name switches
-the Starless Lord's body: STYLE.md "The look switches"): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint, of? }` (`shroud`
-"Wanderer (today)" = `DEFAULT_LOADOUT`, no tint, the default; `robe` "Moonlit Robe", `swallow`
-"Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`; each of the
-three also as `<id>-shade`, "<look> (shaded)": the same loadout and tint with the head item's
-`shadowsFace` twin, `of` = the lit look's id, so the owner picks the face from renders), `LOOK_IDS`,
-`DEFAULT_LOOK`, `getLook(id)`, `heroLookFromSearch(search)`, `heroLookUrl(id, href)`. Since ADR-123 the
-default look is `wanderer` "Wanderer" (`DEFAULT_LOADOUT`) and `shroud` is "Shrouded (2026-11-11)"
-(`SHROUD_LOADOUT`), first among the options. The Player wears
-`game.heroLook` (`player.look`; unknown or absent: the default) and tints its rig with the look's
-`tint`; `player.setLook(id)` wears another one live (its loadout with the equipped weapon kept, through
-`setLoadout`; throws on an unknown id and changes nothing), and every later `setLoadout` keeps the
-look's tint. Nothing in `gear/` imports `looks.js`. **A weapon's numbers** (ADR-123): `buildHero`
-returns `rig.weaponDims` (`gripBack, guard, gem, forte, steelTip, drawnTip, bladeBase, bladeTip`: the
-weapon item's `dims` over `DIM`'s). The hero's animator reads `steelTip`, `forte` and `drawnTip` there
-(`HeroAnimator.wd`: the tip floor, the blade clearance, the cloth's blade points; `DIM` for every
-duelist), and so do `fx.js` (the edge glint and flash, `bladeStretch(wd)` stretching `EDGE_GLINT`'s
-profile along a longer blade, the halo) and `player._edgeFlash`; the hit segment (`combat.js`) is
-gameplay and stays `DIM`'s. The hero's `wanderer.sword` is the 1.64 m longsword (`LONGSWORD_DIMS`:
-`drawnTip` 1.45, `steelTip` 1.56; the sculpted `bladeLong.*`); `SWORD_DIMS` is `DIM`'s (the moon
-looks). `stances.js` `EASE_LONG` is the at-ease hold for a long blade, blended in by its length. A
-streamer may carry `push` (rad/s: how fast the grass pushes its lagging end out; the half-cape: 30).
-Limits: `IDLE_FLARE` has six per-panel values (unless
-a panel overrides it with `idleFlare`); the pauldron joint is the right shoulder only.
-**The sword looks** (for the owner's pick, 2026-11-14;
-`gear/moonblade.js`): weapon items `moon.sheet`, `moon.ribbon`, `moon.crescent` (the longsword's
-`dims` and materials; `wanderer.js` exports `SWORD_DIMS` and `swordHilt(D, opts)`, the longsword's
-own hilt unchanged without options). `gear/index.js` exports `SWORD_PARAM` (today, sheet, ribbon,
-crescent → item id) and `swordFromUrl()`: the Player's constructor wears `?sword=`'s weapon over
-the outfit's loadout (none, or no `location`: the outfit's sword); the Lab's 'sword' row equips one. A
-weapon's own streamer (the ribbon) carries `weapon: true`. Kept as options like the outfits (the owner, 2026-11-14): today's sword is the
-default. If one is picked later it becomes `wanderer.sword` and the switch can go.
+calls (the hand on `arms.L.wrist ?? arms.L.fore`, the grip hand on the `sword` joint; returns
+`{ offHand, keep }`; `abyss.arms` calls it in `abPants`, the black glove). `heroGeo.js`
+`shellGeometry(rings, { arc: [a0, a1] })` builds one arc of a shell (rad: 0 = his front, + = his
+left). `model.js` `tintHero(M, tint)` recolours ONE rig's material instances (`{ <HERO_INK name>:
+{ fill?, ink?, emissive?, spec?, rim?, sub?, inkGlow?, glowK? } }`), never the shared `U.*`.
+`player.setLoadout` puts the shared per-part ink (`U.uHeroPartInk` / `uHeroPartFill` /
+`uHeroPartRim`, rewritten by every `buildHero`) back as it was after the build, also when the build
+throws: a boss's own part ink (the Starless Lord's red part 19) survives a hero rebuild.
+**A weapon's numbers**: `buildHero` returns `rig.weaponDims` (`gripBack, guard, gem, forte, steelTip,
+drawnTip, bladeBase, bladeTip`: the weapon item's `dims` over `DIM`'s). The hero's animator reads
+`steelTip`, `forte` and `drawnTip` there (`HeroAnimator.wd`: the tip floor, the blade clearance, the
+cloth's blade points; `DIM` for every duelist; `HeroAnimator.bd` likewise holds `rig.bodyDims` for
+the hero, `DIM` for a duelist), and so do `fx.js` (the edge glint and flash, `bladeStretch(wd)`
+stretching `EDGE_GLINT`'s profile along another length, the halo) and `player._edgeFlash`; the hit
+segment (`combat.js`) is gameplay and stays `DIM`'s. The crystal sword has no gem: its `gem` handle
+is a marker at the guard's heart (the hilt glow and glints sit there). A weapon's own streamer
+carries `weapon: true`. Limits: `IDLE_FLARE` has six per-panel values (unless a panel overrides it
+with `idleFlare`); the pauldron joint is the right shoulder only (the hero wears nothing there).
+**Tests of the hero** (`tests/integration/integ.mjs`): `build({ loadout })` builds the hero in
+another loadout (`player.setLoadout`); `NO_SHIELD` (`DEFAULT_LOADOUT` with `offhand: null`) is the
+one the free-hand scenarios use (HEROLIFE, HEROHAND, HEROARMS, HEROSTANCE, HEROWEIGHT: the free hand
+and the two-handed grip never run with a shield); HERO and SHIELD test the one hero. `build()`
+seeds `Math.random` with `SEED`, re-seeds it to `SEED + 2` after the player and before the Dragon
+(the wyrm's brain rolls its first timers in its constructor, so a part added to or cut from the
+hero's outfit would move a whole seeded fight) and to `SEED + 1` once everything is built.
+`node tests/integration/integ.mjs . motionaudit` (opt-in) measures every clip he plays frame by frame
+on the drawn, upright body: the steel's and the plate's clearance from the body and from each other,
+the elbows, the wrist, the grip, one-frame jumps and jerks (pops), the point and the plate's foot over
+the grass, the cloth against the legs and the plate (`ABYSS_AUDIT=name,…` some clips,
+`ABYSS_AUDIT_V=1` the worst frame of each, `ABYSS_AUDIT_K` / `ABYSS_AUDIT_D` / `ABYSS_AUDIT_L`
+more detail, `ABYSS_SHIELDKEY=clip:k:x,y,z[;…]` tries a shield-arm key before the clips compile).
 **Hands** (ADR-041, `heroGeo.js`): the sword hand is `gripFist`, four finger rolls, a thumb and a
 knuckle ridge round the grip, hung on the `sword` joint by the `arms` item so it closes round the
 grip in every pose (with no weapon it is a closed fist); the free hand is `looseHand` on the left
@@ -961,8 +1055,9 @@ forearm (palm, four curled fingers, thumb), built with the sword fingers and the
 item may return `offHand: { open, grip, fingers? }` (`rig.offHand`, else null; all three in `keep`):
 the free hand open, the same hand closed round the grip `DIM.offGrip` (0.08 m) below the sword hand
 on the `sword` joint, and (optional) the sword fingers (jian jue, `swordFingers`: index and middle
-straight, `BODY.fingerEx` 1.15 long); `open` and `fingers` hang on `arms.L.wrist` in wrist space (the
-Shrouded set's bare hands do; the Wanderer's arms return no `offHand`). For a duelist `apply()` shows
+straight, `BODY.fingerEx` 1.15 long); `open` and `fingers` hang on `arms.L.wrist` in wrist space
+(`abyss.arms` returns them in the black glove; with the shield worn the shield's own fist holds its
+handle and the free hand's channels are not played, below). For a duelist `apply()` shows
 `grip` while the pose's `twoHand` > 0.6 and `open` otherwise. For the hero (`HeroAnimator` with
 `opts.freeHand`) `grip` shows only once the hand is THERE: `twoHand` > 0.6 and `anim.gripGap` (the IK
 end to its place on the grip, chest local, model metres) under `OFF_SNAP[0]` 3.5 cm, kept until it
@@ -1092,6 +1187,35 @@ the hero's rest (sword fingers low by the left hip, pointing ahead and down), so
 animator carries the hero's values in them too and ignores them; `locoGuard` carries them in
 `GUARD_CH`. A hit, a fall, the drink and the lean on the pommel open the hand and make the wrist
 rigid (`freeLimp`); the charge, the block and the plunge (`plBase`) open it to the grip (`hs` 0).
+All of this paragraph is the hero WITHOUT a shield (the tests' `NO_SHIELD`); the hero as he ships
+carries one.
+**Sword and shield** (ADR-123; PR #65's mechanics; `shieldPoses.js`): `HeroAnimator.shield` is true
+for the hero's animator when `rig.shield` has a joint. Then no hand ever joins the grip and the free
+arm carries the shield: `swingClip(name, shield)` compiles a clip without its two-handed keys
+(`SHIELD_DROP`: `two`, `offAt`, `lk`; a clip the shield arm keys itself also drops the free-hand
+channels) and lays the shield arm's own keys over it (`SHIELD_ARM`: the heavies, the slam, the
+cleave, the backhands' coil; the sword hand's keys are untouched, so the blade cuts where it cut);
+`SHIELD_BLADE` (`{ clip: { u: key fields } }`) is merged over a clip's RECOVERY keys only (u > 2), so
+a recovery that stood the blade up as a bar over the hood from behind settles it out to the sword
+side; the windup's and the cut's paths, the timings and the hit segment are the clip's own;
+the shield takes over the free arm in the carry, the ready stance, the run, the block, the parry,
+the lock, the charge and two of the fidgets (`shieldRest`, `shieldStand`, `shieldRun`, `shieldBlock`,
+`shieldParry`, `shieldLock`, `shieldCharge`; named arm places in `SHIELD_AT`: `carry` holds the plate
+out beside the hip, where the cloak does not hide it from behind). `shieldCharge` also sets the held
+charge's blade (`CHARGE_BLADE`: held up out to the sword side and back, not straight up). The held guard
+(`shieldBlock`) is the shield raised before him with the sword cocked low behind it, out to the
+sword side; the parry (`deflectPose` → `shieldParry`, unless `deflect.sword`) swats the plate onto
+the blow on the blade's side, high or low, nudged by `deflect.nx / ny / nz` (player.js
+`_meetShield`). `_shield()` turns the plate about the forearm so its face looks away from his body
+(a critically damped spring, `anim.shieldS { a, v, t, ok }`, `SHIELD_TURN`; low, its face turns up
+to the sky; at ease in the loco clip `carryFore` turns the face further to his front, by the share
+the fight stance has not taken, so from behind its rim and part of its back show at his left). `_shieldClear` / `_shieldMeasure` / `_clearCap` (`SHIELD_CLEAR`: margins from the
+torso, the head and the thighs, above the grass; eased in at `rise`, out at `fall`; searched in
+`step` m, `stepLying` lying) push the fist out until the plate's outline (`SHIELD_PTS`) clears his
+body, the hood and the ground (`anim.shieldPush`, chest space). The heal (`healPose` with a shield)
+drinks from the flask on the SWORD forearm (`HEAL_R`: the sword hand comes up under the hood, the
+blade laid back over the right shoulder), the shield kept low in the walk's carry. Animator code
+only a hero without a shield reaches stays (`_wristL`, the grip gap, the `lk` / `hs` channels).
 **The two stances** (ADR-114, `stances.js`): where the hero stands. `stand(pose, A)` (anim.js) is
 `guard()`'s ready stance, and for the hero's animator (`A.freeHand`) the stance written over it:
 `atEase` (the blade on the forearm's line down at his front-right, the free hand open on the belt)
@@ -2254,7 +2378,9 @@ Since 2026-11-16 (ADR-120): FIGHT → **Ablaze** cycles the phase-3 fire off / a
 (`dragon.debug.ablaze`); WORLD → **Wear wall** (a tail's blow, power 1, on the nearest standing wall
 tree or landmark piece: watch its stages) and **Wreck wall** (blasts and fire in the wall straight
 out behind the hero); PLAYER → a **head** row (`?wyrmFace=`, reloads the page) and a **zoom art**
-row (`pipeline.setZoomArt('a' | 'b' | 'c')`, live).
+row (`pipeline.setZoomArt('a' | 'b' | 'c')`, live). The hero's OUTFIT section and the PLAYER
+section's **sword** row went with the outfits (ADR-123); the hero's line options have no row (the
+console: `__game.pipeline.setHeroLine('a' | 'b' | 'c' | '0')`, or `?heroLine=`).
 **LOOKS** (ADR-122; `dev/labLooks.js`, only in `ash` / `starless`, collapsed until opened): a row per look
 switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pick, build-time, levels,
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
@@ -3089,7 +3215,8 @@ form), `bodyArt.js` (`?lordLook=a|c`).
 **His gear** (gear.js, ADR-084): `lord.*` items registered into the hero's gear registry: `lord.hood`
 (a deep hood over a faceplate with one slit of red light: `HOOD_RINGS`; `hidesHair`, `shadowsFace`;
 the owner's pick of three heads), `lord.plate` (cuirass, gorget, the sigil), `lord.yoke` (a plate yoke on the chest
-joint, a pauldron on each upper arm), `lord.arms`, `lord.legs` (the Wanderer's boots under cuisses),
+joint, a pauldron on each upper arm), `lord.arms`, `lord.legs` (the old Wanderer's armoured boots, knee guards and greaves under cuisses: `boots.js`
+`buildArmouredBoots`, moved byte for byte from the hero's deleted outfit, ADR-123),
 `lord.skirt` (hip plates; `LORD_PANELS` on the coat springs), `lord.cape` (`LORD_CAPE`: five sheets
 on the streamer springs), `lord.saber`. `LORD_LOADOUT` is what he wears; `TUNING.scale` 1.32.
 Four stances (poses.js `GUARDS`, one pose set each; the animator's pilot carries `form`) and

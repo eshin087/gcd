@@ -206,6 +206,37 @@ making defence a chore: it is not stamina.
 So: holding the guard through one string is safe, holding it through two in a row without a parry
 or a cut of your own gets it knocked open, and a parry or a hit between them resets the count.
 
+## Sword and shield (2026-11-17, ADR-123)
+The hero fights with the sword in his right hand and a kite shield on his left forearm (the owner's
+concept sheet; asked first: the shield guards and parries, the attack motions and every number stay).
+**It is a look, not a rule: no number of the fight changed** (reach, timings, damage, posture, the
+guard meter, the parry and dodge windows, the rules above). What the defence does and shows now:
+- **The held guard** is the shield raised before him with the sword cocked low behind it, out to the
+  sword side so the game camera behind him still sees the blade. A blocked blow drives the shield
+  back into his chest; its sparks are drawn on the middle of the shield's face.
+- **The parry** is a swat of the shield onto the blow: on the side the attacker's steel is on, thrown
+  up before the brow for a blow from above, punched down past the knee for a low cut, the body
+  turning into it and rocking back. Against a blade the fist is nudged (up to three times, inside the
+  arm's reach) until the middle of the plate lies on the attacker's steel, and the clash is drawn
+  there. A blow out of the shield arm's reach (more than 0.2 m from the plate after the nudges: far
+  to his sword side, or past his left side behind him) is met by the **sword** instead, as before
+  the shield, with the plate held up in the guard. Claws and bullets have no blade to meet: the clash
+  sits on the shield's face. The deflect chain, the perfect parry, the counter and the riposte are
+  unchanged.
+- **A guard break** (a red blow on the guard, a black blow, the guard meter emptied) plays the same
+  poses and timings; its burst is drawn on the plate.
+- **The swings** are the same clips with the same timing, reach and damage, all one-handed: the
+  keys that put the free hand on the grip are dropped, and in the heavies, the slam, the charge and
+  the cleave the shield arm answers the blade (led in, thrown out or tucked, never across the steel's
+  path).
+- **The heal** drinks from a crystal flask on the sword hand: the hand comes up under the hood with
+  the blade laid back over his right shoulder, and the shield stays low at his side (it used to come
+  up before his face). The flask's numbers (5 of +70 HP, 0.85 s, the 35 % of a recovery it waits for)
+  are unchanged.
+- **The shield is never a wall:** it is not a collider and adds no hurt or guard area; the hit test
+  is still the upright body on the skeleton's own legs (the drawn hero stands on shorter ones;
+  ARCHITECTURE.md, Player).
+
 ## Tell presentation
 ```
        windup start (combat:tell)            timing cue (combat:flash), 0.35 s before impact
@@ -312,7 +343,11 @@ in sword fingers (jian jue) answering the sword hand: it points at the foe in th
 the sword wrist before a backhand and splits from it as the cut goes out, and ends each cut in one
 line through the body against the blade, out of its path (swings.js `FH`); he walks through them:
 the lead foot changes with every hit. The slam and the charged cleave are two-handed, the free fist
-shown on the grip only once the hand is there (`OFF_SNAP`).
+shown on the grip only once the hand is there (`OFF_SNAP`). That is the hero without a shield (the
+clips are written for him, and the tests still play him); as he ships he carries the kite shield, so
+the free hand never joins the grip and the shield arm answers the blade instead (*Sword and shield*,
+above). Where the table and the heavy branches say "two-handed" or "sword fingers", read the sword
+hand alone and the shield.
 
 | Move | Input | Timing (windup / active / recovery) | Damage | Posture | Notes |
 |---|---|---|---|---|---|
