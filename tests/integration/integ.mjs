@@ -9733,6 +9733,191 @@ async function scenarioShield() {
   return last;
 }
 
+// The hero's motion audit (opt-in: `node tests/integration/integ.mjs . motionaudit`): every clip
+// he plays, measured frame by frame on the drawn, upright body (root space, model metres). Per clip:
+// the steel's least clearance from the body's silhouette (capsules round the bones: the hood, the
+// torso, the thighs, the shins, the shield arm) and from the plate; the plate's least clearance from
+// the torso, the thighs and the head; the elbows' least angle and any that bends backward; the
+// sword's angle to the forearm (the wrist); the grip's distance from the hand; the largest one-frame
+// moves (cm) and jerks (the change of a move from one frame to the next: a pop) of the grip, the
+// point, the plate, the elbows and the head; the point and the plate's foot above the grass.
+// ABYSS_AUDIT=name,name runs only those clips; ABYSS_AUDIT_V=1 prints the worst frame of each.
+async function scenarioMotionAudit() {
+  out('\n== scenario MOTIONAUDIT (the hero, every clip: steel, plate, joints, pops, ground) ==');
+  const { HEAVY, LIGHT, SPRINT_ATK, ROLL_ATK } = await imp('src/entities/player/combat.js');
+  const { DIM } = await imp('src/entities/player/model.js');
+  const { closestOnSegments } = await imp('src/combat/clashFx.js');
+  const G = build();
+  fightSetup(G);
+  const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim, S = r.shield, J = S?.joint;
+  p.debug.god = true;
+  const root = p.object3d, WD = r.weaponDims ?? DIM;
+  const V = () => new THREE.Vector3();
+  const tmp = V(), q0 = V(), q1 = V(), c0 = V(), c1 = V();
+  // the silhouette, by bone (radii: the body's own and the clothes over it, m)
+  const R = { hood: 0.16, torso: 0.17, thigh: 0.1, shin: 0.08, armL: 0.065 };
+  const W = (o, x = 0, y = 0, z = 0, out = V()) => { out.set(x, y, z); o.localToWorld(out); return root.worldToLocal(out); };
+  const segDist = (p0, p1, a, b) => { // least distance between segments p0p1 and ab
+    const e = closestOnSegments(p0, p1, a, b, c0, c1);
+    return e;
+  };
+  const far = () => { p.debug.teleport(d.position.x + 16, d.position.z + 16); p.yaw = 0; root.rotation.y = 0; };
+  const idle = (fight = true) => {
+    input.up(1); input.up(2); input.release('KeyW'); input.release('KeyS'); input.release('KeyA'); input.release('KeyD'); input.release('ShiftLeft');
+    input.axis = { x: 0, y: 0 };
+    p.debug.fightStance = fight;
+    p.hp = p.maxHp;
+    if (!p.alive) p.respawn(0, 0);
+    p.atk = null;
+    p._enter('idle', 'loco', 0.05);
+    far();
+    for (let i = 0; i < 40; i++) G.tick(DT);
+  };
+  const rows = [];
+  const only = (process.env.ABYSS_AUDIT || '').split(',').filter(Boolean);
+  const track = ['grip', 'point', 'plate', 'elbowR', 'elbowL', 'head'];
+  /** One clip: `start` once, `each(i)` before every tick, `s` seconds. */
+  function clip(name, s, start, each, fight = true) {
+    if (only.length && !only.includes(name)) return;
+    idle(fight);
+    start?.();
+    const st = { name, frames: 0, steel: Infinity, steelAt: '', plateSteel: Infinity, pierce: 0, plateBody: Infinity, plateBodyAt: '', elbowMin: [180, 180], elbowBack: [0, 0], wrist: [180, 0], gripGap: 0, jump: {}, jerk: {}, jerkAt: {}, point: Infinity, plateLow: Infinity, bad: 0 };
+    const prev = {}, prevD = {};
+    for (const k of track) { st.jump[k] = 0; st.jerk[k] = 0; st.jerkAt[k] = 0; }
+    for (let i = 0, n = Math.round(s / DT); i < n; i++) {
+      each?.(i);
+      G.tick(DT);
+      root.updateMatrixWorld(true);
+      st.frames++;
+      if (!A.cur.every(Number.isFinite)) { st.bad++; continue; }
+      // the bones (root space)
+      const head = W(r.head, DIM.skull[0], DIM.skull[1], DIM.skull[2]);
+      const pel = W(r.pelvis), neck = W(r.chest, 0, 0.2, 0);
+      const L = r.legs, thL = W(L.L.thigh), knL = W(L.L.shin), ftL = W(L.L.foot), thR = W(L.R.thigh), knR = W(L.R.shin), ftR = W(L.R.foot);
+      const shL = W(r.arms.L.upper), elL = W(r.arms.L.fore), wrL = W(r.arms.L.fore, 0, -DIM.foreArm, 0);
+      const shR = W(r.arms.R.upper), elR = W(r.arms.R.fore), wrR = W(r.arms.R.fore, 0, -DIM.foreArm, 0);
+      const grip = W(r.sword), guard = W(r.sword, 0, 0, WD.guard), tip = W(r.sword, 0, 0, WD.drawnTip);
+      const caps = [['hood', head, head, R.hood], ['torso', pel, neck, R.torso], ['thighL', thL, knL, R.thigh], ['thighR', thR, knR, R.thigh], ['shinL', knL, ftL, R.shin], ['shinR', knR, ftR, R.shin]];
+      if (S) caps.push(['armL', shL, elL, R.armL], ['foreL', elL, wrL, R.armL]);
+      // the steel (from a hand's width past the guard: the hilt sits in the hand by the body)
+      const s0 = q0.copy(guard).lerp(tip, 0.1);
+      for (const [nm, a, b, rad] of caps) {
+        const e = segDist(s0, tip, a, b) - rad;
+        if (e < st.steel) { st.steel = e; st.steelAt = `${nm}@${i}`; }
+      }
+      // the plate: its outline (centre, 4 corners, 4 edge midpoints) in root space
+      if (S && J) {
+        const pts = [[0, 0], [-S.top, 0], [S.foot, 0], [0, S.half[0]], [0, -S.half[0]], [-S.top / 2, S.half[0] * 0.8], [-S.top / 2, -S.half[0] * 0.8], [S.foot / 2, S.half[0] * 0.5], [S.foot / 2, -S.half[0] * 0.5]];
+        let low = Infinity;
+        for (const [x, y] of pts) {
+          W(J, x, y, S.off, tmp);
+          low = Math.min(low, tmp.y);
+          for (const [nm, a, b, rad] of caps) {
+            if (nm === 'armL' || nm === 'foreL') continue;
+            const e = segDist(tmp, tmp, a, b) - rad;
+            if (e < st.plateBody) { st.plateBody = e; st.plateBodyAt = `${nm}@${i}`; }
+          }
+        }
+        st.plateLow = Math.min(st.plateLow, low);
+        // the steel against the plate: blade points in the plate's frame, the distance to its face
+        // inside the outline (or to the outline's nearest edge), and a crossing of the face inside it
+        let pz = null;
+        for (let k = 0; k <= 16; k++) {
+          tmp.set(0, 0, WD.guard + (WD.drawnTip - WD.guard) * (k / 16));
+          r.sword.localToWorld(tmp);
+          J.worldToLocal(tmp);
+          const x = tmp.x, y = tmp.y, z = tmp.z - S.off;
+          const hw = S.half[0] * (x > 0 ? Math.max(0.15, 1 - (x / S.foot) ** 1.5) : 1);
+          const cx = Math.min(Math.max(x, -S.top), S.foot), cy = Math.min(Math.max(y, -hw), hw);
+          const e = Math.hypot(x - cx, y - cy, z) - 0.015;
+          if (e < st.plateSteel) st.plateSteel = e;
+          if (pz != null && (pz > 0) !== (z > 0) && x > -S.top + 0.02 && x < S.foot - 0.03 && Math.abs(y) < hw - 0.02) { st.pierce++; break; }
+          pz = z;
+        }
+      }
+      // the elbows: the least angle, and a bend the wrong way (the forearm folding behind the upper
+      // arm's own back: the elbow's hinge seen against the upper arm's local X)
+      for (const [j, sh, el, wr, up] of [[0, shR, elR, wrR, r.arms.R.upper], [1, shL, elL, wrL, r.arms.L.upper]]) {
+        const u = c0.subVectors(el, sh).normalize(), f = c1.subVectors(wr, el).normalize();
+        const ang = 180 - (Math.acos(Math.min(1, Math.max(-1, u.dot(f)))) * 180) / Math.PI;
+        st.elbowMin[j] = Math.min(st.elbowMin[j], ang);
+        // the hinge: in the upper arm's frame the forearm should swing toward +Z (ahead of the arm)
+        tmp.copy(wr);
+        root.localToWorld(tmp);
+        up.worldToLocal(tmp);
+        if (ang < 165 && tmp.z < -0.03) st.elbowBack[j]++;
+      }
+      // the wrist: the blade's angle to the forearm's line, and the grip off the hand
+      {
+        const f = c0.subVectors(wrR, elR).normalize();
+        const b = c1.subVectors(tip, grip).normalize();
+        const ang = (Math.acos(Math.min(1, Math.max(-1, f.dot(b)))) * 180) / Math.PI;
+        st.wrist[0] = Math.min(st.wrist[0], ang);
+        st.wrist[1] = Math.max(st.wrist[1], ang);
+        st.gripGap = Math.max(st.gripGap, grip.distanceTo(wrR));
+      }
+      // the pops
+      const now = { grip, point: tip, plate: S && J ? W(J, 0, 0, S.off) : grip, elbowR: elR, elbowL: elL, head };
+      for (const k of track) {
+        if (prev[k]) {
+          const dv = tmp.subVectors(now[k], prev[k]);
+          const m = dv.length();
+          st.jump[k] = Math.max(st.jump[k], m);
+          if (prevD[k]) {
+            const jk = c0.subVectors(dv, prevD[k]).length();
+            if (jk > st.jerk[k]) { st.jerk[k] = jk; st.jerkAt[k] = i; }
+            prevD[k].copy(dv);
+          } else prevD[k] = dv.clone();
+          prev[k].copy(now[k]);
+        } else prev[k] = now[k].clone();
+      }
+      st.point = Math.min(st.point, tip.y);
+    }
+    rows.push(st);
+  }
+  far();
+  // ---- the route
+  clip('ease', 3, null, null, false);
+  clip('fight', 3);
+  clip('ease>fight', 1.2, () => { p.debug.fightStance = true; }, null, false);
+  clip('fight>ease', 2.5, () => { p.debug.fightStance = false; });
+  const walk = (k, fight = true, sprint = false) => (i) => { if (i === 0) { input.hold(k); if (sprint) input.hold('ShiftLeft'); } if (i === 72) { input.release(k); input.release('ShiftLeft'); } };
+  clip('run', 1.8, null, walk('KeyW'), false);
+  clip('run fight', 1.8, null, walk('KeyW'));
+  clip('sprint', 2, null, walk('KeyW', false, true), false);
+  clip('strafe', 1.8, null, walk('KeyD'));
+  clip('backpedal', 1.8, null, walk('KeyS'));
+  clip('turn run', 2, null, (i) => { if (i === 0) input.hold('KeyW'); if (i === 40) { input.release('KeyW'); input.hold('KeyS'); } if (i === 90) input.release('KeyS'); }, false);
+  clip('roll', 1.1, null, (i) => { if (i === 0) { input.hold('KeyW'); p._buffer('roll'); } if (i === 6) input.release('KeyW'); });
+  clip('backstep', 0.9, null, (i) => { if (i === 0) p._buffer('roll'); });
+  for (const L of LIGHT) clip(`light ${L.name}`, L.windup + L.active + L.recovery + 0.3, () => p._startAttack(L));
+  clip('light chain', 3.4, null, (i) => { if (i % 6 === 0 && i < 170) p._buffer('light'); });
+  for (const H of HEAVY) clip(`heavy ${H.name}`, H.windup + H.active + H.recovery + 0.35, () => p._startAttack(H));
+  clip('sprint slash', 1.0, () => p._startAttack(SPRINT_ATK));
+  if (ROLL_ATK) clip('roll slash', 1.0, () => p._startAttack(ROLL_ATK));
+  clip('charge+cleave', 2.8, null, (i) => { if (i === 0) input.press(2); if (i === 90) input.up(2); });
+  clip('guard', 1.4, null, (i) => { if (i === 0) input.press(1); if (i === 60) input.up(1); });
+  clip('guard hits', 1.6, null, (i) => { if (i === 0) input.press(1); if (i === 20 || i === 50) p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 1.5 }); if (i === 85) input.up(1); });
+  for (const side of [1, -1]) for (const high of [0, 1, -1]) clip(`parry ${side > 0 ? 'R' : 'L'}${high > 0 ? ' high' : high < 0 ? ' low' : ''}`, 0.8, () => { const D = p.deflect; D.side = side; D.high = high; D.n = 1; D.nx = D.ny = D.nz = 0; D.sword = 0; p._enter('parry', 'parry', 0); });
+  clip('heal', 1.9, null, (i) => { if (i === 0) { p.flasks = p.maxFlasks; p.hp = 1; p._buffer('heal'); } });
+  clip('stagger', 0.9, null, (i) => { if (i === 0) p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 2 }); });
+  clip('stagger back', 0.9, null, (i) => { if (i === 0) p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z - 3 }, attacker: d, knockback: 2 }); });
+  clip('guard break', 1.2, null, (i) => { if (i === 0) p._guardOpen('bite', 0, -1); });
+  clip('knockdown+up', 2.2, null, (i) => { if (i === 0) p.takeHit({ damage: 10, tell: TELL.RED, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 3, knockdown: true }); });
+  clip('knockdown prone', 2.2, null, (i) => { if (i === 0) p.takeHit({ damage: 10, tell: TELL.RED, attack: 'bite', from: { x: p.position.x, z: p.position.z - 3 }, attacker: d, knockback: 3, knockdown: true }); });
+  clip('death', 3, null, (i) => { if (i === 0) { p.debug.god = false; p.hp = 1; p.takeHit({ damage: 999, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 2 }); } });
+  p.debug.god = true;
+  // ---- the table
+  const f2 = (x) => (Number.isFinite(x) ? x.toFixed(2) : '  - ');
+  const cm = (x) => String(Math.round(x * 100)).padStart(3);
+  out('   clip               steel gap (where)    plate-steel pierce  plate-body (where)   elbow min R/L back R/L  wrist      grip  jump cm grip/pt/plate/elR/elL/head  jerk cm (same)         point plateLow');
+  for (const s of rows) {
+    out(`   ${s.name.padEnd(18)} ${f2(s.steel).padStart(5)} ${s.steelAt.padEnd(12)} ${f2(s.plateSteel).padStart(6)} ${String(s.pierce).padStart(5)}  ${f2(s.plateBody).padStart(5)} ${s.plateBodyAt.padEnd(12)} ${s.elbowMin.map((x) => x.toFixed(0).padStart(3)).join('/')}  ${s.elbowBack.map((x) => String(x).padStart(2)).join('/')}  ${s.wrist.map((x) => x.toFixed(0).padStart(3)).join('-')}  ${f2(s.gripGap)}  ${track.map((k) => cm(s.jump[k])).join(' ')}   ${track.map((k) => cm(s.jerk[k])).join(' ')}   ${f2(s.point)} ${f2(s.plateLow)}${s.bad ? `  BAD ${s.bad}` : ''}`);
+  }
+  assert(rows.every((s) => s.bad === 0), `the rig finite through every clip (${rows.filter((s) => s.bad).map((s) => s.name).join(', ') || 'ok'})`);
+  return G;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -9784,9 +9969,10 @@ const SCENARIOS = {
   budget: scenarioBudget,
   wreckage: scenarioWreckage,
   probe: scenarioProbe,
+  motionaudit: scenarioMotionAudit,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'motionaudit']); // run only when named
 // ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.ABYSS_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`ABYSS_SKIP: unknown scenario '${name}'`); process.exit(2); }
