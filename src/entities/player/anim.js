@@ -2750,6 +2750,7 @@ const STRIP_K = 75, STRIP_C = 7.5, STRIP_LAG = 0.08, STRIP_FLARE = 0.42;
 const STRIP_A = [-1.5, 0.8], STRIP_B = 0.8, STRIP_FLOOR = 0.03;
 // sleeve streamers: two-segment springs that stream back almost horizontally when running
 const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_OUT = 0.36;
+// (the hero's animator only, `freeHand`: the duelists' coats and blades move as they did)
 // The cloak is ONE garment (2026-11-17, the hooded hero: the owner's "weak in game" was mostly his
 // cloak: boards in a turn, a star in a roll, dead on a run). For the sheets that wrap him (a
 // streamer with `wrap`: the cloak's back) and the coat's panels:
@@ -3708,7 +3709,7 @@ export class HeroAnimator {
     // swung its point 17 cm in one frame (the leg clearance taking the other side of a crossing leg)
     {
       const B = this.bzPrev;
-      if (this.key === 'loco' && this.bzOk && this.frameDt > 0) {
+      if (this.freeHand && this.key === 'loco' && this.bzOk && this.frameDt > 0) {
         const c = clamp(B.dot(_bz), -1, 1), a = Math.acos(c), mx = BLADE_LOCO_RATE * this.frameDt * 60;
         if (a > mx && a < 3.1) {
           _cD.copy(_bz).addScaledVector(B, -c);
@@ -4403,7 +4404,7 @@ export class HeroAnimator {
     // the tuck (CLOTH): in while he rolls, out slowly after, so the cloth settles back
     {
       // (lying down part of it: the panels lay out round him like a star)
-      const want = this.key === 'roll' || this.key === 'backstep' ? 1 : LYING_KEYS.has(this.key) ? CLOTH.tuckLying : 0;
+      const want = !this.freeHand ? 0 : this.key === 'roll' || this.key === 'backstep' ? 1 : LYING_KEYS.has(this.key) ? CLOTH.tuckLying : 0;
       const k = dt > 0 ? 1 - Math.exp(-(want > this.tuck ? CLOTH.tuckIn : CLOTH.tuckOut) * dt) : 1;
       this.tuck = clamp(fin(this.tuck + (want - this.tuck) * k, 0), 0, 1);
     }
@@ -4429,7 +4430,7 @@ export class HeroAnimator {
       const C = r.coat[i], D = C.def, st = this.coatState[i], LEN = C.len;
       _pa.setFromMatrixPosition(C.anchor.matrixWorld); // anchors are rigid on the pelvis: current since apply()
       // anchor velocity (mostly the garment's: CLOTH.share), pelvis space; drawn in by the tuck
-      _v.copy(this.coatVel[i]).lerp(_vm, CLOTH.share).multiplyScalar(1 - CLOTH.tuckLag * T).applyQuaternion(_qInv);
+      _v.copy(this.coatVel[i]).lerp(_vm, this.freeHand ? CLOTH.share : 0).multiplyScalar(1 - CLOTH.tuckLag * T).applyQuaternion(_qInv);
       const vs = Math.hypot(_v.x, _v.y, _v.z);
       const nx = Math.sin(D.az), nz = Math.cos(D.az); // outward
       const tx = Math.cos(D.az), tz = -Math.sin(D.az); // tangent (anchor +X)
@@ -4553,7 +4554,7 @@ export class HeroAnimator {
           c.vx = c.vz = 0;
         }
         // (no faster than CLOTH.rate a frame: a pose that turned at once flipped panels in one)
-        if (this.coatInit && dt > 0) {
+        if (this.freeHand && this.coatInit && dt > 0) {
           const R = CLOTH.rate * dtk;
           c.x = x0 + clamp(c.x - x0, -R, R);
           c.z = z0 + clamp(c.z - z0, -R, R);
@@ -4659,7 +4660,7 @@ export class HeroAnimator {
     }
     // neighbours move together (CLOTH.couple): a front panel and the side panel next to it. Not
     // tumbling (there the floor rules each panel)
-    if (dt > 0 && r.coat.length >= 4 && Math.abs(wrapAngle(this.cur[P.pitch])) < 0.6) {
+    if (this.freeHand && CLOTH.couple > 0 && dt > 0 && r.coat.length >= 4 && Math.abs(wrapAngle(this.cur[P.pitch])) < 0.6) {
       const k = 0.5 * (1 - Math.exp(-CLOTH.couple * dt));
       for (const [a, b] of COAT_PAIRS) {
         const A = this.coatState[a], B = this.coatState[b];
