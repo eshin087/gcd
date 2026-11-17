@@ -87,7 +87,9 @@ export const ARC_TONE = {
  */
 export const EDGE_GLINT = {
   lead: 0.03, at: 0.6, atCleave: 0.82, z: [0.24, 0.9], ease: 2, step: 0.08, maxSub: 4,
-  hw: [[0.2, 0.042], [0.79, 0.034], [0.93, 0]], inset: 0.9, ridge: 0.35,
+  // (the hooded hero's crystal blade, gear/abyss.js: 0.058 m wide at the guard, a straight taper, its
+  // point over the last 0.1 m; written in DIM's blade frame, stretched by bladeStretch)
+  hw: [[0.2, 0.029], [0.8, 0.023], [0.93, 0]], inset: 0.9, ridge: 0.35,
   head: { glyph: '+', rot: 0.785, size: 0.07, sizeFar: 0.1 }, tail: { glyph: '|', size: 0.1, len: 0.16 },
   color: [3.2, 3.1, 4.2], colorEnd: [0.9, 0.85, 1.9], alpha: 0.9, tailAlpha: 0.55, life: [0.03, 0.08],
   flash: { n: 4, step: 0.05, size: 0.12, stretch: 1.6, life: 0.1, lifeMin: 0.03, holdEnd: 0.35, alpha: 0.9, heavy: 1.25 },
