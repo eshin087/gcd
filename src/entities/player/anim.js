@@ -2706,6 +2706,7 @@ const COAT_JUMP = 0.2; // rad per frame: the most a lying-down floor fix may swi
 const COAT_A = [[-1.5, 0.3], [-1.0, 0.6]]; // outward (−) / inward (+) swing limits per segment
 const COAT_B = [0.7, 0.55]; // sideways swing limit per segment
 const LEG_R = BODY.thigh[0] + 0.004; // thigh / knee radius used to push the panels out
+const FOOT_R = 0.07; // the boot round the ankle (the hero's lower panel segments)
 // the blade vs the coat (round 3): the cloth never passes through the steel (it used to come out
 // through the tails behind a run). Every frame the grip and points along the drawn blade (BLADE_PTS,
 // pelvis space) are tested against each panel segment's sheet: with the sword hand outside the cloth
@@ -2764,10 +2765,14 @@ const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_
 //   sheetB    rad: the most a wrapping sheet swings sideways (its neighbours are sewn to it)
 //   rate      rad per 60 fps frame: the most a wrapping sheet's or a panel's swing changes at once
 //   hemLag    × the hem segment's lag on a wrapping sheet: on a run the hem streams back and lifts
+//   panelOut  rad: the most a coat panel swings out in all (root + hem) while he stands (2026-11-17:
+//             a turn threw the front panels out to ~90 deg, the back sheets were already held to ~45)
+//   kneeOut   rad: standing, the most a knee swings a panel's hem out from its upper segment (more
+//             only lying, where the cloth lies round his knees and boots)
 //   tuck      the roll (and the backstep): the cloth is drawn in round him while he is rolled up,
 //             eased in at tuckIn and out at tuckOut (/s): the swing limit (sheet, panel [upper,
 //             lower]) and × the lag and the flare
-const CLOTH = { share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.3, tuckPanel: [-0.3, -0.25], tuckLag: 0.8, tuckFlare: 0.8, tuckLying: 0 };
+const CLOTH = { panelOut: 0.85, kneeOut: 0.5, share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.3, tuckPanel: [-0.3, -0.25], tuckLag: 0.8, tuckFlare: 0.8, tuckLying: 0 };
 const BLADE_LOCO_RATE = 0.09; // rad per 60 fps frame (apply(): the blade on the move)
 const _vm = new THREE.Vector3(), _vmS = new THREE.Vector3();
 // the coat's neighbours (gear's panel order: front-left, front-right, left side, right side)
@@ -3028,6 +3033,7 @@ export class HeroAnimator {
     this.hairInit = false;
     this.legPts = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     this.platePts = [0, 0, 0, 0, 0, 0].map(() => new THREE.Vector3()); // _coat: the shield's outline, pelvis space
+    this.footPts = [new THREE.Vector3(), new THREE.Vector3()]; // _coat: the ankles, pelvis space
     // sphere proxies (joint-local centre + radius) kept above the ground by apply(); the torso ones
     // follow the lean chest / hip depth (model.js BODY, ADR-034)
     this.proxies = [
@@ -4387,6 +4393,8 @@ export class HeroAnimator {
       leg.shin.getWorldPosition(_T); // knee (after this frame's IK)
       r.pelvis.worldToLocal(lp[li * 2].copy(_S).add(_T).multiplyScalar(0.5));
       r.pelvis.worldToLocal(lp[li * 2 + 1].copy(_T));
+      leg.foot.getWorldPosition(_S);
+      r.pelvis.worldToLocal(this.footPts[li].copy(_S));
     }
     // the shield's plate (pelvis space): a panel's upper sheet hangs INSIDE it (the cloth falls behind
     // a shield carried at his side, never through it); the legs win a conflict
@@ -4425,6 +4433,7 @@ export class HeroAnimator {
     const still = 1 - clamp(this.speed / 2.5, 0, 1); // the idle breeze fades out once moving
     // (not while he lies down or tumbles: there the hem's floor contact rules the cloth)
     const nb = Math.abs(wrapAngle(this.cur[P.pitch])) < 1.0 ? this._bladePts() : 0;
+    const upright = Math.abs(wrapAngle(this.cur[P.pitch])) < 0.6 && !LYING_KEYS.has(this.key);
 
     for (let i = 0; i < r.coat.length; i++) {
       const C = r.coat[i], D = C.def, st = this.coatState[i], LEN = C.len;
@@ -4471,7 +4480,7 @@ export class HeroAnimator {
       }
       const over = steel && this.coatSide[i] === 2;
       const J = COAT_STEEL_JUMP * dtk; // the most the steel moves a segment in one frame
-      let parentA = 0, parentB = 0;
+      let parentA = 0, parentB = 0, legLim0 = Infinity, legLim1 = Infinity;
       for (let s = 0; s < 2; s++) {
         const c = st[s];
         const lag = COAT_LAG[s] * (1 + COAT_LAG_V * vs);
@@ -4487,7 +4496,7 @@ export class HeroAnimator {
         let absA = Math.atan2(-(hx * nx + hz * nz), -hy);
         const absB = Math.asin(clamp(hx * tx + hz * tz, -1, 1));
         // the legs push the upper segment out (front panels kick out with the knees)
-        let lim = COAT_A[0][1];
+        let lim = COAT_A[0][1], lim1 = COAT_A[1][1];
         if (s === 0) {
           const halfW = (coatHW(D, 0) + coatHW(D, 1)) * 0.5;
           for (const K of lp) {
@@ -4498,6 +4507,7 @@ export class HeroAnimator {
             if (need < lim) lim = need;
           }
           absA = Math.min(absA, lim);
+          legLim0 = lim;
           // … and the plate caps it from outside (the sheet stays in under it)
           for (let k = 0; k < np; k++) {
             const K = this.platePts[k], dx = K.x - ap.x, dy = ap.y - K.y, dz = K.z - ap.z;
@@ -4508,6 +4518,13 @@ export class HeroAnimator {
             const need = -Math.atan2(out, dy);
             if (need > absA && need <= lim) absA = need;
           }
+        } else if (this.freeHand) {
+          // (the hero) … and the lower segment too, from the swung upper one: a knee or a foot that
+          // came out through the hem (a run's knee, lying with a knee up, the side panels over the legs
+          // on the grass) pushes it out instead (lim1: relative to the upper segment)
+          lim1 = this._lowerLegLim(D, ap, tx, tz, nx, nz, st[0].x, st[0].z, !upright);
+          absA = Math.min(absA, lim1 + parentA);
+          legLim1 = lim1;
         }
         // the steel, from this segment's parent frame (the anchor's, or the swung upper segment's for
         // the lower one): inside it, the grip and every blade point over the sheet cap the swing out
@@ -4538,7 +4555,10 @@ export class HeroAnimator {
           if (s === 0 && bl > lim) bl = lim; // the legs win
           if (bl > absA) absA = bl;
         }
-        const aMax = COAT_A[s][1], aMin = Math.min(lerp(COAT_A[s][0], CLOTH.tuckPanel[s], T), s === 0 ? lim : aMax); // (the legs win over the tuck)
+        // (standing, the hero's panels swing out no further than CLOTH.panelOut in all, root + hem: a
+        // turn threw them out to ~90 deg like boards; the legs win)
+        const cap = this.freeHand && upright ? -CLOTH.panelOut - (s ? parentA : 0) : -Infinity;
+        const aMax = COAT_A[s][1], aMin = Math.min(Math.max(lerp(COAT_A[s][0], CLOTH.tuckPanel[s], T), cap), s === 0 ? lim : Math.min(aMax, lim1)); // (the legs win over the tuck)
         const tA = clamp(absA - parentA, aMin, aMax);
         const x0 = c.x, z0 = c.z;
         const tB = clamp(absB - parentB, -COAT_B[s], COAT_B[s]);
@@ -4564,6 +4584,9 @@ export class HeroAnimator {
         if (s === 0 && c.x > lim) {
           c.x = Math.max(aMin, lim);
           if (c.vx > 0) c.vx = 0;
+        } else if (s === 1 && c.x > lim1) {
+          c.x = Math.max(aMin, lim1);
+          if (c.vx > 0) c.vx = 0;
         }
         // the steel is rigid: a segment the spring would carry through it is held at it, eased in
         // at J per frame (a blade sweeping into the cloth pushes it aside over 2-3 frames, no pop)
@@ -4586,11 +4609,15 @@ export class HeroAnimator {
       if (this._hemY(LEN, s0.x, s0.z, s1.x, s1.z) < COAT_FLOOR) {
         const [b0, b1] = COAT_A[1];
         let best1 = s1.x, bestD = Infinity;
-        for (let k = 0; k <= 16; k++) {
-          const a1 = b0 + ((b1 - b0) * k) / 16;
-          if (this._hemY(LEN, s0.x, s0.z, a1, s1.z) >= COAT_FLOOR && Math.abs(a1 - s1.x) < bestD) {
-            bestD = Math.abs(a1 - s1.x);
-            best1 = a1;
+        // (the hero: a hem that clears the grass stays outside his knees and boots too, if one can)
+        for (let pass = legLim1 < Infinity ? 0 : 1; pass < 2 && bestD === Infinity; pass++) {
+          for (let k = 0; k <= 16; k++) {
+            const a1 = b0 + ((b1 - b0) * k) / 16;
+            if (pass === 0 && a1 > legLim1) continue;
+            if (this._hemY(LEN, s0.x, s0.z, a1, s1.z) >= COAT_FLOOR && Math.abs(a1 - s1.x) < bestD) {
+              bestD = Math.abs(a1 - s1.x);
+              best1 = a1;
+            }
           }
         }
         if (bestD < Infinity) {
@@ -4611,11 +4638,18 @@ export class HeroAnimator {
           const aMin = COAT_A[0][0], aMax = COAT_A[0][1] + 1.3;
           let pa = s0.x, pb = s1.x, pz = 1, hiA = s0.x, hiB = s1.x, hiZ = 1, hiY = -Infinity;
           bestD = Infinity;
+          // (the hero: first only the swings that keep his knees and boots inside the cloth, so it
+          // lies on the grass round his legs, not through them; then any)
+          const hero = this.freeHand && legLim1 < Infinity;
+          for (let pass = hero ? 0 : 1; pass < 2 && bestD === Infinity; pass++)
           for (let zk = 1; zk >= 0; zk--) {
             for (let k = 0; k <= 12; k++) {
               const a0 = aMin + ((aMax - aMin) * k) / 12;
+              if (pass === 0 && a0 > legLim0) continue;
+              const ll = pass === 0 ? this._lowerLegLim(D, C.anchor.position, Math.cos(D.az), -Math.sin(D.az), Math.sin(D.az), Math.cos(D.az), a0, s0.z * zk, true) : Infinity;
               for (let m = 0; m <= 4; m++) {
                 const a1 = b0 + ((b1 - b0) * m) / 4;
+                if (a1 > ll) continue;
                 const y = this._hemY(LEN, a0, s0.z * zk, a1, s1.z * zk);
                 const dd = Math.abs(a0 - s0.x) + 0.5 * Math.abs(a1 - s1.x) + (1 - zk) * 0.6;
                 if (y >= COAT_FLOOR && dd < bestD) {
@@ -4679,6 +4713,30 @@ export class HeroAnimator {
       }
     }
     this.coatInit = true;
+  }
+
+  /** (the hero) The most a coat panel's LOWER segment may swing in (rad, relative to its upper
+   *  segment swung (a, b)) so that no knee, thigh middle (this.legPts) or ankle (this.footPts) comes
+   *  out through it (the ankles only with `feet`: lying; standing a boot kicked the panel level); COAT_A[1][1] if none is over it. ap: the panel's anchor (pelvis space); t / n:
+   *  its tangent and outward (x, z). */
+  _lowerLegLim(D, ap, tx, tz, nx, nz, a, b, feet) {
+    const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b);
+    const halfW = (coatHW(D, 1) + coatHW(D, 2)) * 0.5;
+    let lim = COAT_A[1][1];
+    for (let k = 0, n = feet ? 6 : 4; k < n; k++) {
+      const K = k < 4 ? this.legPts[k] : this.footPts[k - 4], rad = k < 4 ? LEG_R : FOOT_R;
+      const dx = K.x - ap.x, qy = K.y - ap.y, dz = K.z - ap.z;
+      const qx = dx * tx + dz * tz, qz = dx * nx + dz * nz;
+      const y1 = qy * ca + qz * sa, z1 = -qy * sa + qz * ca;
+      const x2 = qx * cb + y1 * sb, dy = -(-qx * sb + y1 * cb + D.len[0]);
+      if (dy < (feet ? 0.03 : 0.1) || dy > D.len[1] + 0.12) continue;
+      if (Math.abs(x2) > halfW + rad) continue;
+      const need = -Math.atan2(z1 + rad, dy);
+      if (need < lim) lim = need;
+    }
+    // (standing: a knee only nudges the hem out, at most CLOTH.kneeOut from its upper segment; a knee
+    // at the seam swung the hem out level)
+    return feet ? lim : Math.max(lim, -CLOTH.kneeOut);
   }
 
   /** Torn strips of one panel. _q0 / _e0 = the lower segment's world rotation / origin. Each strip

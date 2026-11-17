@@ -422,8 +422,8 @@ function buildLegs({ pelvis, legs, M, DIM: D, BODY, mesh }) {
 export const ABYSS_PANELS = [
   // (round 3: the hem TORN, the concept's: a long point at each front edge, small tatters between
   // the front points, a big uneven point on every side; notch to point 0.10 - 0.16 m)
-  { az: 0.36, open: 0.3, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeL', breeze: 0.025, idleFlare: 0.03, hem: [[0, 0.17], [0.1, 0.12], [0.2, 0.03], [0.3, 0.08], [0.42, 0.0], [0.6, 0.11], [0.76, 0.01], [0.88, 0.06], [1, 0.0]] },
-  { az: -0.36, open: 0.3, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeR', breeze: 0.03, idleFlare: 0.04, hem: [[0, 0.0], [0.1, 0.07], [0.22, 0.01], [0.4, 0.12], [0.56, 0.0], [0.67, 0.05], [0.79, 0.02], [0.9, 0.12], [1, 0.155]] },
+  { az: 0.36, open: 0.3, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.26, mat: 'abRobeL', breeze: 0.025, idleFlare: 0.03, hem: [[0, 0.17], [0.1, 0.12], [0.2, 0.03], [0.3, 0.08], [0.42, 0.0], [0.6, 0.11], [0.76, 0.01], [0.88, 0.06], [1, 0.0]] },
+  { az: -0.36, open: 0.3, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.26, mat: 'abRobeR', breeze: 0.03, idleFlare: 0.04, hem: [[0, 0.0], [0.1, 0.07], [0.22, 0.01], [0.4, 0.12], [0.56, 0.0], [0.67, 0.05], [0.79, 0.02], [0.9, 0.12], [1, 0.155]] },
   { az: 1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.28], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.08, hem: [[0, 0.02], [0.26, 0.14], [0.46, 0.0], [0.72, 0.11], [1, 0.0]] },
   { az: -1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.28], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.09, hem: [[0, 0.0], [0.3, 0.12], [0.54, 0.0], [0.8, 0.15], [1, 0.03]] },
 ];
@@ -485,7 +485,7 @@ function buildCloak({ chest, M, mesh, joint }) {
     mesh(s0, pointSheet(L0, w[0], w[1], R0, CLOAK_FL, [[0, 0], [1, 0]], { rows: 5, cols: 20 }), M.abRobe);
     const s1 = joint(s0, 0, -L0, 0);
     mesh(s1, pointSheet(L1, w[1], w[2], R1, CLOAK_FL, d.hem, { rows: 7, cols: 36, lap: 0.05 }), M.abRobe);
-    streamers.push({ segs: [s0, s1], len: [L0, L1 + hemMax(d.hem) * 0.8], out: CLOAK_FL, lag: 0.45, max: 1.15, floor: true, push: 30, w, arm: 0, wrap: R0 });
+    streamers.push({ segs: [s0, s1], len: [L0, L1 + hemMax(d.hem) * 0.8], out: CLOAK_FL, lag: 0.45, max: 0.95, floor: true, push: 30, w, arm: 0, wrap: R0 });
   }
   void sheetOffset;
   return { streamers };

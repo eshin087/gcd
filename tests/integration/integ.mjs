@@ -9937,7 +9937,8 @@ async function scenarioMotionAudit() {
             const loc = (v) => j.worldToLocal(root.localToWorld(tmp.copy(v)));
             for (const v of body) {
               const l = loc(v);
-              if (Math.abs(l.x) < hw && l.y < -0.03 && l.y > -len && l.z > 0.03) leg++;
+              // (ABYSS_AUDIT_L=1: print each such frame: the panel, the segment and the body point)
+              if (Math.abs(l.x) < hw && l.y < -0.03 && l.y > -len && l.z > 0.03) { leg++; if (process.env.ABYSS_AUDIT_L) out(`      cloth-leg ${i} ${p.anim.key} panel ${r.coat.indexOf(Cp)} seg ${sg} pt ${body.indexOf(v)} z ${l.z.toFixed(2)} y ${l.y.toFixed(2)}`); }
             }
             let pos = 0, neg = 0;
             for (const v of plate) {
