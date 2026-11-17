@@ -238,9 +238,10 @@ export const HERO_INK = {
   abBoot: { part: 3, ownOnly: true, fill: [0.06, 0.06, 0.07], spec: 0.5, rim: 0.3, own: {} },
   // the bright trims: the boot bands and soles, the hood's opening and ridge (one smooth light silver)
   abBand: { part: 4, ownOnly: true, fill: [0.7, 0.71, 0.8], rim: 0, own: { bold: true, flat: true, fillGain: 0.9 } },
-  abRobeL: { part: 5, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
-  abRobeR: { part: 6, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
-  abRobe: { part: 7, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: {} },
+  abRobeL: { part: 5, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { merge: true } },
+  abRobeR: { part: 6, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { merge: true } },
+  // (`merge`: the robe is ONE garment: no line where its pieces overlap closely, own fill y + 128)
+  abRobe: { part: 7, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { merge: true } },
   abSleeve: { part: 8, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
   abCuff: { part: 9, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
   abCowl: { part: 10, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
@@ -467,7 +468,7 @@ export function createHeroMaterials(U) {
     ownInk?.[h.part]?.set(ol[0], ol[1], ol[2], ol[3]);
     // (own .z: a flat part's shade on its sub-id 1 pieces, `own.subShade`: alternate hair locks
     // one lit, the next in shade; the own pass reads no farLine)
-    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0), h0.own?.subShade ?? 0, h.farFill ?? 1);
+    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0) + (h.merge ? 128 : 0), h0.own?.subShade ?? 0, h.farFill ?? 1);
     ownRim?.[h.part]?.set(orl[0], orl[1], orl[2], orl[3]);
   }
   const M = {};

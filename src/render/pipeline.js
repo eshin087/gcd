@@ -683,6 +683,12 @@ export class Pipeline {
           int p = int(clamp(floor((a - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25) + ${HERO_PARTS.toFixed(1)}, 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
           return mod(floor(uHeroOwnFill[p].y / 64.0), 2.0) > 0.5;
         }
+        // one of his own parts that MERGES with its kind (own fill y + 128: the robe's pieces, one garment)
+        bool heroOwnMerge(float a) {
+          if (!heroOwn(a)) return false;
+          int p = int(clamp(floor((a - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25) + ${HERO_PARTS.toFixed(1)}, 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
+          return mod(floor(uHeroOwnFill[p].y / 128.0), 2.0) > 0.5;
+        }
         // the own line's soft glow OUTSIDE his silhouette (uHeroOwnGlow: rgb, radius in font px; 0 none):
         // 8 taps on each of two rings round this off-him pixel, inside the circle round his screen point
         vec3 heroOwnGlow(vec2 px) {
@@ -742,6 +748,8 @@ export class Pipeline {
         // fine), 0 none. Each edge is drawn once, one pixel wide, on one side.
         float heroPxEdge(float aN, float dN, float aP, float dP, float dO, float th, bool fine) {
           if (dN < 0.0) return 1.0;
+          // (two pieces of one merging garment that overlap closely: no line between them)
+          if (abs(dN - dP) < 0.12 && heroOwnMerge(aN) && heroOwnMerge(aP)) return 0.0;
           float pred = dO > 0.0 && abs(dP - dO) < th * 4.0 ? 2.0 * dP - dO : dP;
           float d = dN - pred;
           if (d > th) return 0.8;
@@ -934,6 +942,7 @@ export class Pipeline {
               float dB = 0.0, bW = max(1.0, silW - 1.0);
               if (dS < 0.5 && mod(floor(uHeroOwnFill[pidP].y / 32.0), 2.0) > 0.5) {
                 float pp = heroPartOf(sP.a), thB = max(uHeroPx.y, 1e-5) * dP;
+                bool mergeP = heroOwnMerge(sP.a);
                 for (int r = 1; r <= 3; r++) {
                   float fr = float(r);
                   if (fr > bW + 0.01) break;
@@ -944,7 +953,7 @@ export class Pipeline {
                       : k == 4 ? vec2(dg, dg) : k == 5 ? vec2(-dg, -dg) : k == 6 ? vec2(dg, -dg) : vec2(-dg, dg);
                     vec2 uvB = uvP + o * dir;
                     float aB = texture2D(tScene, uvB).a;
-                    if (isHero(aB) && (heroPartOf(aB) < pp - 0.5 || linDepth(uvB) > dP + thB * (3.0 + 2.0 * fr))) hit = 1.0;
+                    if (isHero(aB) && (heroPartOf(aB) < pp - 0.5 || linDepth(uvB) > dP + thB * (3.0 + 2.0 * fr)) && !(mergeP && heroOwnMerge(aB) && linDepth(uvB) - dP < 0.12)) hit = 1.0;
                   }
                   if (hit > 0.5) { dB = fr; break; }
                 }

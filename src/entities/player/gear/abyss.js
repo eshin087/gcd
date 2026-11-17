@@ -51,7 +51,7 @@ const SD = ABYSS_SWORD_DIMS;
  * Rows stretch with the hem, so a point is a long smooth wedge of cloth, not a strip stuck on.
  * Local +Z = outward. aGUV: x across, y down it.
  */
-function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap = 0 } = {}) {
+function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap = 0, strip = null, lift = 0 } = {}) {
   const hemAt = (s) => {
     for (let i = 0; i < hem.length - 1; i++) {
       const [s0, e0] = hem[i], [s1, e1] = hem[i + 1];
@@ -61,7 +61,9 @@ function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap 
   };
   // (`lap`: the sheet starts that far ABOVE its joint, under the segment above it, so a kink where
   // two spring segments meet never opens a notch in the cloth)
-  return gridGeometry(cols, rows, (s, t, o) => {
+  // (`strip` [s0, s1]: only that stretch across the sheet, `lift` m proud of it: a trim along an edge)
+  return gridGeometry(cols, rows, (s0, t, o) => {
+    const s = strip ? lerp(strip[0], strip[1], s0) : s0;
     const L = len + hemAt(s) + lap;
     const d = t * L - lap;
     const w = lerp(wTop, wBot, Math.max(0, d) / (L - lap));
@@ -69,9 +71,9 @@ function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap 
     const R = R0 + flare * Math.max(0, d);
     const a = u / R;
     const y = -d;
-    o[0] = Math.sin(a) * R;
+    o[0] = Math.sin(a) * (R + lift);
     o[1] = y;
-    o[2] = (Math.cos(a) - 1) * R;
+    o[2] = Math.cos(a) * (R + lift) - R;
     o[3] = u;
     o[4] = y;
   }, true);
@@ -291,9 +293,13 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh }) {
   P.push([1.5, 0.13, 0.1, 0.0]);
   const prof = profile(P);
   for (const side of [1, -1]) {
-    const g = loftBetween(side > 0 ? 0 : -Math.PI, side > 0 ? Math.PI : 0, () => SH[0].y - 0.04, () => 1.5, prof, { cols: 14, rows: 8 });
+    const g = loftBetween(side > 0 ? 0.035 : -Math.PI, side > 0 ? Math.PI : -0.035, () => SH[0].y - 0.04, () => 1.5, prof, { cols: 14, rows: 8 });
     g.translate(0, -REST.spine, 0); // (heights → spine space: the loft was built in world idle heights)
     mesh(spine, g, side > 0 ? M.abRobeL : M.abRobeR);
+    // its front edge's trim, down from the cowl to the waist
+    const e = loftBetween(side > 0 ? 0.035 : -0.085, side > 0 ? 0.085 : -0.035, () => SH[0].y - 0.04, () => 1.5, prof, { cols: 1, rows: 8, out: 0.003 });
+    e.translate(0, -REST.spine, 0);
+    mesh(spine, e, M.abBand);
   }
   // the cowl: the outer wrap, then the scarf over it (each its own part: its lower edge a bold fold)
   const cp = profile(COWL_PROF);
@@ -404,8 +410,8 @@ function buildLegs({ pelvis, legs, M, DIM: D, BODY, mesh }) {
 export const ABYSS_PANELS = [
   // (round 3: the hem TORN, the concept's: a long point at each front edge, small tatters between
   // the front points, a big uneven point on every side; notch to point 0.10 - 0.16 m)
-  { az: 0.36, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeL', breeze: 0.025, idleFlare: 0.03, hem: [[0, 0.17], [0.1, 0.12], [0.2, 0.03], [0.3, 0.08], [0.42, 0.0], [0.6, 0.11], [0.76, 0.01], [0.88, 0.06], [1, 0.0]] },
-  { az: -0.36, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeR', breeze: 0.03, idleFlare: 0.04, hem: [[0, 0.0], [0.1, 0.07], [0.22, 0.01], [0.4, 0.12], [0.56, 0.0], [0.67, 0.05], [0.79, 0.02], [0.9, 0.12], [1, 0.155]] },
+  { az: 0.36, open: 0.3, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeL', breeze: 0.025, idleFlare: 0.03, hem: [[0, 0.17], [0.1, 0.12], [0.2, 0.03], [0.3, 0.08], [0.42, 0.0], [0.6, 0.11], [0.76, 0.01], [0.88, 0.06], [1, 0.0]] },
+  { az: -0.36, open: 0.3, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeR', breeze: 0.03, idleFlare: 0.04, hem: [[0, 0.0], [0.1, 0.07], [0.22, 0.01], [0.4, 0.12], [0.56, 0.0], [0.67, 0.05], [0.79, 0.02], [0.9, 0.12], [1, 0.155]] },
   { az: 1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.28], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.08, hem: [[0, 0.02], [0.26, 0.14], [0.46, 0.0], [0.72, 0.11], [1, 0.0]] },
   { az: -1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.28], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.09, hem: [[0, 0.0], [0.3, 0.12], [0.54, 0.0], [0.8, 0.15], [1, 0.03]] },
 ];
@@ -419,10 +425,21 @@ function buildSkirt({ pelvis, M, DIM: D, mesh, joint }) {
     anchor.rotation.y = Pn.az; // local +Z = outward, +X = tangent
     const s0 = joint(anchor);
     const [L0, L1] = Pn.len, mat = M[Pn.mat];
-    mesh(s0, pointSheet(L0, Pn.w[0], Pn.w[1], R0, Pn.flare, [[0, 0], [1, 0]], { rows: 4 }), mat);
+    // (`open`: the sheet turned that far round its own curve, away from his front's centre line, so
+    // the two front panels part in a narrow opening widening downward instead of crossing; their
+    // joints, and so the springs, stay where they were)
+    const turn = (g, R) => (Pn.open ? g.translate(0, 0, R).rotateY(Math.sign(Pn.az) * Pn.open).translate(0, 0, -R) : g);
+    mesh(s0, turn(pointSheet(L0, Pn.w[0], Pn.w[1], R0, Pn.flare, [[0, 0], [1, 0]], { rows: 4 }), R0), mat);
     const s1 = joint(s0, 0, -L0, 0);
     const R1 = R0 + Pn.flare * L0;
-    mesh(s1, pointSheet(L1, Pn.w[1], Pn.w[2], R1, Pn.flare, Pn.hem, { rows: 7, cols: 32, lap: 0.04 }), mat);
+    mesh(s1, turn(pointSheet(L1, Pn.w[1], Pn.w[2], R1, Pn.flare, Pn.hem, { rows: 7, cols: 32, lap: 0.04 }), R1), mat);
+    if (Pn.open) {
+      // the robe's FRONT EDGE: a bright trim down the panel's inner edge to its point (the concept's two
+      // bold lines from the cowl to the hem; the panels themselves draw no bold line now)
+      const se = Pn.az > 0 ? [0, 0.025] : [0.975, 1];
+      mesh(s0, turn(pointSheet(L0, Pn.w[0], Pn.w[1], R0, Pn.flare, [[0, 0], [1, 0]], { rows: 4, cols: 1, strip: se, lift: 0.003 }), R0), M.abBand);
+      mesh(s1, turn(pointSheet(L1, Pn.w[1], Pn.w[2], R1, Pn.flare, Pn.hem, { rows: 7, cols: 1, strip: se, lift: 0.003, lap: 0.04 }), R1), M.abBand);
+    }
     coat.push({ anchor, segs: [s0, s1], def: { ...Pn, strips: [], fork: [] }, strips: [], len: [L0, L1 + hemMax(Pn.hem) * 0.8], r0: R0 });
   });
   return { coat };
