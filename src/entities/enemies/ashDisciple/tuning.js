@@ -4,7 +4,9 @@ export const TUNING = {
   name: 'SHEN HUI, THE ASH DISCIPLE',
   hp: 3000, // a near-perfect fencing bot (tests/integration/duel.mjs WIN) wins in about a minute
   // (the second pass: three phases, the fencer / the kindled blade / ash on the wind)
-  phaseAt: [1, 0.62, 0.3], // HP fractions where each phase starts (the boss bar's ticks)
+  // (the tuning pass: 0.62 / 0.3 → 0.64 / 0.36: the bots that play well spent 21 - 26 / 16 - 20 / 17 - 21 s
+  // in the three; phase 3, the busiest and the new one, gets the biggest share of his health)
+  phaseAt: [1, 0.64, 0.36], // HP fractions where each phase starts (the boss bar's ticks)
   radius: 0.42, // body circle (the hero is pushed out of it)
   bound: 12.5, // he stays this close to the courtyard's centre (min with CONFIG.world.dragonBound)
 
@@ -102,8 +104,8 @@ export const TUNING = {
   // the director (duelist/brain.js header, director.js; COMBAT.md "The duelists' pressure"). Per-phase
   // arrays [P1, P2, P3]
   pressure: {
-    chainDepth: [4, 5, 6], // moves in a row (links and the flow) before a breather ...
-    chainRest: [[0.45, 0.75], [0.35, 0.6], [0.25, 0.45]], // ... of this much footwork
+    chainDepth: [4, 5, 7], // moves in a row (links and the flow) before a breather ...
+    chainRest: [[0.45, 0.75], [0.25, 0.45], [0.15, 0.35]], // ... of this much footwork
     linkCut: 0.5, // a link starts at this fraction of the recovery (the first part: the punish window)
     chainCut: 0.5, // ... and the old flow roll (`chain`) at this one
     // where the hero is as a move ends (a link's `when`): near / mid / far (m), front / behind (rad
@@ -115,18 +117,21 @@ export const TUNING = {
     farDist: 6, closerBoost: 1.8, // past farDist m the gap closers × closerBoost
     maxLive: [1, 2, 3], // hazards live at once before another hazard move is picked (× 0.05)
     bias: { string: [1.5, 1.6, 1.7] }, // a category's weight × this (the strings: the most cues a second)
-    density: [1, 1.3, 1.6], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
+    density: [1, 1.5, 1.8], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
     mixed: 0.1, // a move asking a guard while a dodge is due within guard.horizon s (or the other way) × this
     holdGap: 5, // a breather longer than this (a test, the Lab) holds the links and the flow too
     // the fairness guard: two cues needing different answers never within `sep` s (+ `margin`): a
     // blade's blow waits at the cock (maxHold s at most a blow), a called strike waits (maxDelay)
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
     // what tests/integration/duel.mjs PACE asserts (a steady defender, the hero roaming 2.5 - 9 m):
-    // each phase at least `ramp` × the one before (per phase), cues a minute at least `minRate`,
-    // the longest gap between cues at most `maxGap` s. (core, 2026-11-16, five seeds x 120 s with
-    // today's moves: P1 69.8 - 72.1 cues/min (60.2 before the pass), P2 87.4 - 93.0 (76.0), longest
-    // gap 2.87 / 2.87 s (2.49 / 2.43); phase 3 arrives in wave 2: its numbers are placeholders)
-    meter: { ramp: [1, 1.08, 1.05], minRate: [64, 78, 82], maxGap: [3.4, 3.4, 3.2] },
+    // each phase at least `ramp` × the one before on every seed and `rampMean` × in the seeds' mean,
+    // cues a minute at least `minRate`, the longest gap between cues at most `maxGap` s.
+    // (the tuning pass, 2026-11-16, ten seeds x 120 s (4242, 7, 99, 1337, 2024, 11, 23, 555, 808,
+    // 31337): P1 73.4 - 78.7 cues a minute (mean 76.6), P2 86.1 - 94.8 (90.4), P3 98.0 - 103.5 (99.9);
+    // P2 / P1 1.12 - 1.25 per seed, P3 / P2 1.04 - 1.15 per seed and 1.10 in the mean (phase 3 sits at
+    // the 0.42 s / 0.32 s floors: its ramp is also in what it asks: 13 / 18 / 19 % of the cues a dodge);
+    // longest gap 3.24 / 2.95 / 2.54 s. Before the pass: 60.2 / 76.0, no phase 3)
+    meter: { ramp: [1, 1.08, 1.0], rampMean: [1, 1.12, 1.06], minRate: [70, 82, 92], maxGap: [3.4, 3.2, 2.9] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
@@ -163,7 +168,12 @@ export const TUNING = {
   // the wood it touches catches (world.ignite, k)
   // `armAfter`: a line laid by a string does not burn while that string still has blows coming (the
   // hero defends where he stands), then from this long after its last blow (its grace at least)
-  burn: { from: 2, cap: [0, 7, 9], width: 0.8, life: 3.2, len: 3.4, ring: 0.62, grace: 0.45, armAfter: 0.35, tick: 0.55, damage: 5, flames: 26, ignite: 0.8, fade: 0.6 },
+  // `guard` (the owner, 2026-11-16: "guard meter, no health"): with his guard up a tick costs no health
+  // but this much of the guard meter (GUARD.max 100, no regen between ticks: GUARD.regenDelay 0.8 >
+  // tick; the first tick 0.45 s in, then every 0.55 s): a full meter holds 2 ticks and the 3rd (34 x 3
+  // > 100) knocks the guard open ~1.57 s into a line he stands on (half its life): he still has to step
+  // off. (A blocked light blow drains 11 - 17: the fire drains faster, to say "move".)
+  burn: { from: 2, cap: [0, 7, 9], width: 0.8, life: 3.2, len: 3.4, ring: 0.62, grace: 0.45, armAfter: 0.35, tick: 0.55, damage: 5, guard: 34, flames: 26, ignite: 0.8, fade: 0.6 },
 
   // ---- the projectile (Ash Crescent)
   // (`minLead`: the second pass: a crescent that would reach the hero sooner than this after it is
@@ -229,6 +239,7 @@ export const TUNING = {
     toll: {
       reach: 15,
       heroMax: 23, // the hero this far from the bell at most
+      heroMin: 3.2, // ... and this far at least (tuning pass: nearer, the rings pass him before they can cue)
       stand: 0.3,
       arc: 1.3, // m: the height of his leap to it
       from: 1.5, speed: 12, range: 26, // the ring: born this wide (m), m/s, where it dies

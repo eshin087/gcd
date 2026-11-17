@@ -341,7 +341,7 @@ export const MOVES = {
 
   /** Hesitating Blade: a feint (it never glints), a thrust held back a moment, maybe a flick after. */
   hesitate: {
-    label: 'Hesitating Blade', phase: 1, weight: [1.0, 0.9, 0.3], cooldown: 5, band: [0, 4.6], recovery: 0.6,
+    label: 'Hesitating Blade', phase: 1, weight: [1.0, 0.9, 0.15], cooldown: 5, band: [0, 4.6], recovery: 0.6,
     beats: [
       {
         feint: true, windup: 0.4, active: 0.1, close: 1.0,
@@ -411,7 +411,7 @@ export const MOVES = {
   /** Twin Embers: two blows no guard holds, one after the other: a dashing cut across, then the low
    *  sweep round him. Red, red: dodge, dodge (a perfect dodge of either is answered by the flurry). */
   twinEmbers: {
-    label: 'Twin Embers', phase: 1, weight: [1.3, 1.2, 0.8], cooldown: 8, band: [2.4, 8], recovery: 0.65, gapCloser: true,
+    label: 'Twin Embers', phase: 1, weight: [1.3, 1.5, 0.8], cooldown: 8, band: [2.4, 8], recovery: 0.65, gapCloser: true,
     beats: [
       {
         tell: R, windup: 0.66, active: 0.12, damage: 22, knockback: 2.2, zone: { kind: 'sector', r: 2.3, ang: 1.0 },
@@ -431,7 +431,7 @@ export const MOVES = {
    *  cleave. Black: dodge it. A guard or a parry in its way stops the blow but is knocked wide open,
    *  the whole guard meter gone. */
   blackTide: {
-    label: 'Black Tide', phase: 1, weight: [1.1, 1.0, 0.8], cooldown: 12, band: [2.4, 9], recovery: 0.8, gapCloser: true,
+    label: 'Black Tide', phase: 1, weight: [1.1, 0.8, 0.6], cooldown: 12, band: [2.4, 9], recovery: 0.8, gapCloser: true,
     beats: [{
       tell: K, windup: 1.45, fixed: true, hold: [0.1, 0.5], cock: 0.86, active: 0.14, damage: 38, knockback: 4, knockdown: true,
       zone: { kind: 'sector', r: 2.8, ang: 1.05 }, dash: { from: 0.88, to: 1.0, stop: 1.2, max: 7.5 }, close: 0, track: 0.88,
@@ -447,12 +447,14 @@ export const MOVES = {
   /** Drifting Cloud: he glides in cutting, a backhand, then a kick that shoves you back a step and a
    *  thrust that comes after you. White, white, white, blue. */
   glideKick: {
-    label: 'Drifting Cloud', phase: 1, weight: [2.4, 2.0, 1.4], cooldown: 6, band: [2.4, 7.5], recovery: 0.6, cat: 'string',
+    label: 'Drifting Cloud', phase: 1, weight: [2.4, 2.0, 1.0], cooldown: 6, band: [2.4, 7.5], recovery: 0.6, cat: 'string',
     beats: [
-      glide(N, 0.56, 14, 5.2),
-      cut('back', N, 0.36, 13),
-      kick(N, 0.4, 14),
-      cut('thrust', B, 0.46, 20, { dash: { from: 0.6, to: 1.0, stop: 1.0, max: 3.4 }, close: 0 }),
+      // (tuning pass: the kick is red, a foot no guard stops: the string asks a roll in its middle; it
+      // hits as a red blow (22) and the others give it back: the string's total stays 61)
+      glide(N, 0.56, 10, 5.2),
+      cut('back', N, 0.36, 11),
+      kick(R, 0.56, 22),
+      cut('thrust', B, 0.46, 18, { dash: { from: 0.6, to: 1.0, stop: 1.0, max: 3.4 }, close: 0 }),
     ],
     recoveryKeys: [[0.45, { ...LUNGE, bY: -0.22, rH: [0.04, -0.1, 0.45], lH: [0.1, 0.12, -0.25] }]],
   },
@@ -460,7 +462,7 @@ export const MOVES = {
   /** Crane Descends: a leaping cut from mid range, a spin that carries him on through you, then the
    *  thrust: a parry moment (the blue flare). */
   leapSpin: {
-    label: 'Crane Descends', phase: 1, weight: [2.2, 1.8, 1.0], cooldown: 7, band: [2.8, 7], recovery: 0.6, cat: 'string',
+    label: 'Crane Descends', phase: 1, weight: [2.2, 1.8, 0.7], cooldown: 7, band: [2.8, 7], recovery: 0.6, cat: 'string',
     beats: [
       leapCut(N, 0.52, 15, 5.0, 0.8),
       spin(N, 0.4, 14, 1.0),
@@ -484,35 +486,39 @@ export const MOVES = {
   /** Chasing Rain: nine blows. Four cuts, a glide that comes after a hero who stepped back, three
    *  more, and the last cut throws sword qi after you (a fan of three from phase 2). */
   chaseRain: {
-    label: 'Chasing Rain', phase: 1, weight: [2.2, 2.0, 1.8], cooldown: 9, band: [0, 3.8], recovery: 0.7, cat: 'string',
+    label: 'Chasing Rain', phase: 1, weight: [1.6, 1.5, 1.4], cooldown: 12, // (tuning pass: 2.2 / 2.0 / 1.8, 9 s: it took a quarter of phase 1)
+    band: [0, 3.8], recovery: 0.7, cat: 'string',
     beats: [
-      cut('rise', N, 0.46, 13),
-      cut('back', N, 0.34, 12),
-      cut('flat', N, 0.34, 12),
-      cut('thrust', N, 0.38, 12),
-      glide(N, 0.5, 14, 5.5, { back: true }),
-      cut('diag', N, 0.36, 12),
-      cut('flatBack', N, 0.34, 12),
+      // (tuning pass: the glide after a hero who stepped back is red (22): roll across it; the other
+      // blows give the 8 back, the string's total stays 123)
+      cut('rise', N, 0.46, 11),
+      cut('back', N, 0.34, 11),
+      cut('flat', N, 0.34, 11),
+      cut('thrust', N, 0.38, 11),
+      glide(R, 0.56, 22, 5.5, { back: true }),
+      cut('diag', N, 0.36, 11),
+      cut('flatBack', N, 0.34, 11),
       cut('over', B, 0.42, 20, { hold: [0.08, 0.25], cock: 0.72, lock: true }),
-      qi(N, 0.42, 14, [1, 3, 3], 0.36, { speed: 10 }), // (slower: it can catch a hero only a step or two back)
+      qi(N, 0.42, 13, [1, 3, 3], 0.36, { speed: 10 }), // (slower: it can catch a hero only a step or two back)
     ],
   },
 
   /** Whirling Step: two spins that carry him round and on toward you, and a high diagonal to end:
    *  a parry moment. */
   windSpin: {
-    label: 'Whirling Step', phase: 1, weight: [2.0, 1.8, 1.0], cooldown: 7, band: [0, 4.2], recovery: 0.6,
+    label: 'Whirling Step', phase: 1, weight: [2.0, 1.8, 0.8], cooldown: 7, band: [0, 4.2], recovery: 0.6,
     beats: [
-      spin(N, 0.5, 15, 1.2),
-      spin(N, 0.38, 14, 1.2),
-      cut('diag', B, 0.42, 22, { flare: true, lock: true }),
+      // (tuning pass: the second spin is red (22): roll through it, then parry the diagonal; total 51)
+      spin(N, 0.5, 11, 1.2),
+      spin(R, 0.56, 22, 1.2),
+      cut('diag', B, 0.42, 18, { flare: true, lock: true }),
     ],
   },
 
   /** Parting Wind: a rising cut, a level backhand, a diagonal, and the last cut throws sword qi after
    *  a hero who backs off (from phase 2 a fan of three). */
   partingWind: {
-    label: 'Parting Wind', phase: 1, weight: [1.8, 1.6, 0.7], cooldown: 6, band: [0, 4.4], recovery: 0.55,
+    label: 'Parting Wind', phase: 1, weight: [1.8, 1.6, 0.5], cooldown: 6, band: [0, 4.4], recovery: 0.55,
     beats: [
       cut('rise', N, 0.46, 13),
       cut('flatBack', N, 0.34, 12),
@@ -527,14 +533,14 @@ export const MOVES = {
   // A terrain beat: `go: [from, to, arc]` (windup fractions between which he crosses to the piece, the
   // height of the leap; none = a glide), `spring: { up: [from, to], off }` (up to the pillar, then off
   // it at `off`). He never tracks the hero or steps in by himself in one (track 0, close 0).
-  // (Their weights carry a phase-3 entry equal to phase 2's on purpose: the yard's pieces are as much
-  // his in phase 3; the tuning pass sets the numbers.)
+  // (Phase 3: the tuning pass lowered the four old ones (one slow cue each, they ate phase 3's pace);
+  // the yard stays his through Scattered Flagstones and the felled pieces.)
 
   /** Severed Pillar: gone from the duel and behind the standing piece nearest the hero, he cuts it
    *  through. The cut is his (white: it reaches a hero who hugs the piece); the fall is the world's:
    *  red, the strip it lands on marked from the moment it goes. Be out of the strip. */
   pillarFall: {
-    label: 'Severed Pillar', phase: 1, terrain: 'fell', weight: [1.8, 2.0, 2.0], cooldown: 9, band: [0, 18], recovery: 0.7,
+    label: 'Severed Pillar', phase: 1, terrain: 'fell', weight: [1.8, 2.0, 1.4], cooldown: 9, band: [0, 18], recovery: 0.7,
     beats: [{
       tell: N, windup: 0.66, active: 0.1, damage: 18, knockback: 1.4, zone: { kind: 'sector', r: 2.4, ang: 1.0 },
       close: 0, track: 0, go: [0.05, 0.45],
@@ -546,7 +552,7 @@ export const MOVES = {
   /** Flying Lantern: he is at a stone lantern (or a pillar's stump) and kicks it at the hero. It
    *  glints as it comes down: parry it and it bursts on the blade, or be gone from under it. */
   lanternKick: {
-    label: 'Flying Lantern', phase: 1, terrain: 'kick', cat: 'terrain', weight: [1.3, 1.5, 1.5], cooldown: 10, band: [0, 18], recovery: 0.42,
+    label: 'Flying Lantern', phase: 1, terrain: 'kick', cat: 'terrain', weight: [1.3, 1.5, 1.0], cooldown: 10, band: [0, 18], recovery: 0.42,
     beats: [{
       tell: B, windup: 0.64, active: 0.1, damage: 22, knockback: 2.4, cast: { kind: 'lantern', selfCue: true }, noSweep: true,
       close: 0, track: 0, go: [0.05, 0.44],
@@ -565,7 +571,7 @@ export const MOVES = {
    *  sound across the courtyard that glints before it reaches the hero: parry the three in rhythm
    *  (the last is the heavy one) or roll through them. He stands at the bell with his back open. */
   bellToll: {
-    label: 'Three Tolls', phase: 1, terrain: 'toll', weight: [1.1, 1.5, 1.5], cooldown: 14, band: [0, 22], recovery: 0.65,
+    label: 'Three Tolls', phase: 1, terrain: 'toll', weight: [1.1, 1.5, 1.2], cooldown: 14, band: [0, 22], recovery: 0.65,
     beats: [
       { tell: N, windup: 0.7, active: 0.1, damage: 12, knockback: 1.0, cast: { kind: 'toll', selfCue: true }, close: 0, track: 0, go: [0.05, 0.5, TUNING.terrain.toll.arc], keys: tollKeys([-2.0, 0.1], 0.8) },
       { tell: N, windup: 0.44, active: 0.1, damage: 12, knockback: 1.0, cast: { kind: 'toll', selfCue: true }, close: 0, track: 0, keys: tollKeys([1.8, 0.3], 0.62) },
@@ -578,7 +584,7 @@ export const MOVES = {
    *  springs off it into a diving cut from where the hero was not looking. The glint comes as he
    *  leaves the stone; the cut can be locked. */
   swallowReturn: {
-    label: "Swallow's Return", phase: 1, terrain: 'spring', weight: [1.3, 1.6, 1.6], cooldown: 8, band: [0, 5.5], recovery: 0.55,
+    label: "Swallow's Return", phase: 1, terrain: 'spring', weight: [1.3, 1.6, 1.1], cooldown: 8, band: [0, 5.5], recovery: 0.55,
     beats: [{
       tell: B, flare: true, windup: 0.92, active: 0.1, damage: 24, knockback: 1.8, zone: { kind: 'sector', r: 2.5, ang: 0.6 }, lock: true,
       close: 0, track: 0, spring: { up: [0.04, 0.5], off: 0.64 },
@@ -679,7 +685,7 @@ export const MOVES = {
   // ---------------------------------------------------------------- phase 2
   /** Thousand Needles: a flurry of five thrusts, the last one heavy. */
   needles: {
-    label: 'Thousand Needles', phase: 2, weight: [0, 2.6, 2.6], cooldown: 6, band: [0, 3.8], recovery: 0.7,
+    label: 'Thousand Needles', phase: 2, weight: [0, 2.6, 3.0], cooldown: 6, band: [0, 3.8], recovery: 0.7,
     beats: [0.5, 0.34, 0.34, 0.34, 0.38].map((w, i, all) => {
       const last = i === all.length - 1, side = i % 2 ? 1 : -1;
       return {
@@ -731,7 +737,7 @@ export const MOVES = {
   /** Heaven-Splitting Fall: a great leap; the red ring follows the hero, locks, and he comes down
    *  on it two-handed. Red: get out of the ring or roll as he lands. */
   heavenFall: {
-    label: 'Heaven-Splitting Fall', phase: 2, weight: [0, 1.8, 1.4], cooldown: 9, band: [4.2, 14], recovery: 0.75,
+    label: 'Heaven-Splitting Fall', phase: 2, weight: [0, 2.2, 1.4], cooldown: 9, band: [4.2, 14], recovery: 0.75,
     beats: [{
       tell: R, windup: 1.15, active: 0.12, damage: 30, knockback: 4, knockdown: true, zone: { kind: 'ring', r: 2.6 }, ring: 2.6, part: 'feet',
       leap: { from: 0.36, lock: 0.66, apex: 3.6 }, track: 0.36, close: 0,
@@ -758,17 +764,20 @@ export const MOVES = {
   burningCross: {
     label: 'Cinder Cross', phase: 2, weight: [0, 2.4, 1.8], cooldown: 6, band: [0, 3.8], recovery: 0.6, cat: 'string',
     beats: [
-      cut('diag', N, 0.5, 14, { burn: BURN_ALONG }),
-      cut('flatBack', N, 0.36, 14, { burn: BURN_ACROSS }),
-      cut('rise', N, 0.36, 12),
-      cut('thrust', B, 0.42, 20, { flare: true }),
+      // (tuning pass: the level cut that lays the line across your front is red (22): roll; the others
+      // give it back, the string's total stays 60)
+      cut('diag', N, 0.5, 10, { burn: BURN_ALONG }),
+      cut('flatBack', R, 0.56, 22, { burn: BURN_ACROSS }),
+      cut('rise', N, 0.36, 10),
+      cut('thrust', B, 0.42, 18, { flare: true }),
     ],
   },
 
   /** Ember Fan: two waves of sword qi, a fan of three and then two that pass either side of where
    *  you stood (stand still and guard, or roll), and he comes in behind them. */
   emberFan: {
-    label: 'Ember Fan', phase: 2, weight: [0, 1.6, 0.6], cooldown: 7, band: [5, 16], recovery: 0.55,
+    label: 'Ember Fan', phase: 2, weight: [0, 1.6, 0.4], cooldown: 7, band: [6.5, 16], // (tuning pass: 5 → 6.5 m: from 5 m every wave fizzled, too near to cue)
+    recovery: 0.55,
     beats: [
       qi(N, 0.5, 14, 3, 0.36),
       qi(N, 0.44, 14, 2, 0.6),
@@ -779,7 +788,7 @@ export const MOVES = {
   /** Zig-Zag Embers: three glides in, each from a new side, each leaving a line of fire the way he
    *  came; the last one a parry moment. */
   zigzag: {
-    label: 'Zig-Zag Embers', phase: 2, weight: [0, 2.2, 1.2], cooldown: 8, band: [3, 10], recovery: 0.6, cat: 'hazard',
+    label: 'Zig-Zag Embers', phase: 2, weight: [0, 2.2, 0.9], cooldown: 8, band: [3, 10], recovery: 0.6, cat: 'hazard',
     beats: [
       glide(N, 0.52, 14, 4.5, { zig: 1.4, burn: BURN_PATH }),
       glide(N, 0.48, 14, 4.5, { zig: -2.2, back: true, burn: BURN_PATH }),
@@ -792,10 +801,11 @@ export const MOVES = {
   leapingString: {
     label: 'Falling Embers', phase: 2, weight: [0, 2.2, 1.8], cooldown: 8, band: [2.5, 8], recovery: 0.65, cat: 'string',
     beats: [
-      leapCut(N, 0.5, 14, 4.5, 0.7),
-      leapCut(N, 0.42, 14, 3.0, 0.6),
+      // (tuning pass: the second leap red (22): roll from under it; total 50)
+      leapCut(N, 0.5, 10, 4.5, 0.7),
+      leapCut(R, 0.54, 22, 3.0, 0.6),
       {
-        tell: B, windup: 0.5, active: 0.1, damage: 22, knockback: 1.6, zone: { kind: 'sector', r: 2.4, ang: 0.55 }, lock: true,
+        tell: B, windup: 0.5, active: 0.1, damage: 18, knockback: 1.6, zone: { kind: 'sector', r: 2.4, ang: 0.55 }, lock: true,
         dash: { from: 0.4, to: 1.0, stop: 1.2, max: 3.0 }, close: 0, lift: [[0.4, 0], [0.75, 0.9], [1.0, 0]], track: 0.6, burn: BURN_ALONG,
         keys: [
           [0.4, { two: 1, yaw: 0.2, bY: -0.34, rH: [0.1, -0.2, 0.3], sw: [0.0, 0.3], hdY: -0.1, rF: [-0.1, 0.28], lF: [0.16, -0.22] }],
@@ -814,10 +824,11 @@ export const MOVES = {
   kickBrand: {
     label: 'Brand and Kick', phase: 2, weight: [0, 2.2, 1.2], cooldown: 7, band: [0, 4.2], recovery: 0.6, cat: 'string',
     beats: [
-      cut('thrust', N, 0.48, 14, { burn: BURN_ALONG }),
-      kick(N, 0.4, 14),
+      // (tuning pass: red (22): the kick that throws you onto the fire is rolled, not guarded; total 50)
+      cut('thrust', N, 0.48, 10, { burn: BURN_ALONG }),
+      kick(R, 0.56, 22),
       {
-        tell: B, flare: true, windup: 0.48, active: 0.1, damage: 22, knockback: 1.6, zone: { kind: 'sector', r: 2.4, ang: 0.55 }, lock: true,
+        tell: B, flare: true, windup: 0.48, active: 0.1, damage: 18, knockback: 1.6, zone: { kind: 'sector', r: 2.4, ang: 0.55 }, lock: true,
         dash: { from: 0.42, to: 1.0, stop: 1.2, max: 3.4 }, close: 0, lift: [[0.42, 0], [0.75, 0.8], [1.0, 0]], track: 0.6,
         keys: [
           [0.42, { two: 1, yaw: 0.2, bY: -0.34, rH: [0.1, -0.2, 0.3], sw: [0.0, 0.3], hdY: -0.1, rF: [-0.1, 0.28], lF: [0.16, -0.22] }],
@@ -870,13 +881,14 @@ export const MOVES = {
   /** Scattered Petals: five cuts, and before three of them he is gone into ash and at another side of
    *  you; the last a thrust: a parry moment. */
   ashString: {
-    label: 'Scattered Petals', phase: 3, weight: [0, 0, 3.0], cooldown: 5, band: [0, 4.2], recovery: 0.6,
+    label: 'Scattered Petals', phase: 3, weight: [0, 0, 3.0], cooldown: 4, band: [0, 4.2], recovery: 0.6,
     beats: [
-      cut('rise', N, 0.46, 13),
-      cut('back', N, 0.33, 12, { flit: { r: 2.6 } }),
-      cut('flat', N, 0.36, 13),
-      cut('diag', N, 0.33, 12, { flit: { r: 2.6 } }),
-      cut('thrust', B, 0.42, 20, { flare: true, flit: { r: 2.8 } }),
+      // (tuning pass: from his new side, red (22): roll, then parry the thrust; total 70)
+      cut('rise', N, 0.46, 10),
+      cut('back', N, 0.33, 10, { flit: { r: 2.6 } }),
+      cut('flat', N, 0.36, 10),
+      cut('diag', R, 0.56, 22, { flit: { r: 2.6 } }),
+      cut('thrust', B, 0.42, 18, { flare: true, flit: { r: 2.8 } }),
     ],
   },
 
@@ -884,18 +896,20 @@ export const MOVES = {
    *  side, a held overhead in the middle (it can be locked), and a perilous thrust to end: parry ten,
    *  then dodge into the last. */
   ashFlurry: {
-    label: 'Ten Thousand Ashes', phase: 3, weight: [0, 0, 2.8], cooldown: 9, band: [0, 4.0], recovery: 0.75,
+    label: 'Ten Thousand Ashes', phase: 3, weight: [0, 0, 3.2], cooldown: 9, band: [0, 4.0], recovery: 0.75,
     beats: [
-      cut('diag', N, 0.46, 13),
-      cut('flat', N, 0.33, 12, { flit: { r: 2.6 } }),
-      cut('rise', N, 0.33, 12),
-      cut('back', N, 0.33, 12, { flit: { r: 2.6 } }),
-      cut('thrust', N, 0.36, 12),
-      cut('flatBack', N, 0.33, 12, { flit: { r: 2.6 } }),
-      cut('over', B, 0.4, 18, { hold: [0.1, 0.25], cock: 0.72, lock: true }),
-      cut('diag', N, 0.36, 11, { flit: { r: 2.6 } }),
-      cut('rise', N, 0.33, 11),
+      // (tuning pass: the fourth blow, from a new side, red (22): a roll inside the flurry; the others
+      // give it back, the flurry's total stays 150)
+      cut('diag', N, 0.46, 11),
       cut('flat', N, 0.33, 11, { flit: { r: 2.6 } }),
+      cut('rise', N, 0.33, 11),
+      cut('back', R, 0.56, 22, { flit: { r: 2.6 } }),
+      cut('thrust', N, 0.36, 10),
+      cut('flatBack', N, 0.33, 11, { flit: { r: 2.6 } }),
+      cut('over', B, 0.4, 18, { hold: [0.1, 0.25], cock: 0.72, lock: true }),
+      cut('diag', N, 0.36, 10, { flit: { r: 2.6 } }),
+      cut('rise', N, 0.33, 10),
+      cut('flat', N, 0.33, 10, { flit: { r: 2.6 } }),
       { tell: R, windup: 0.62, active: 0.12, damage: 26, knockback: 2.5, zone: { kind: 'line', r: 2.1, w: 0.7 }, mikiri: true, dash: { from: 0.84, to: 1.0, stop: 0.8, max: 2.6 }, close: 0, track: 0.7, keys: perilKeys() },
     ],
   },
@@ -904,7 +918,8 @@ export const MOVES = {
    *  side of where you stood, three again, and one heavy (blue); he comes in behind them (its links).
    *  Every crescent glints as it comes: guard or roll each wave, or stand in the gap. */
   qiStorm: {
-    label: 'Storm of Ash', phase: 3, weight: [0, 0, 1.8], cooldown: 9, band: [5, 16], recovery: 0.6,
+    label: 'Storm of Ash', phase: 3, weight: [0, 0, 0.9], cooldown: 9, band: [6.5, 16], // (tuning pass: 5 → 6.5 m, as Ember Fan)
+    recovery: 0.6,
     beats: [
       qi(N, 0.5, 14, 3, 0.36),
       qi(N, 0.44, 14, 2, 0.6),
@@ -916,7 +931,7 @@ export const MOVES = {
   /** Ash Shadows: four glides in, and before each of the last three he is gone into ash and comes from
    *  another side, further off; the last a red cut no guard holds. */
   ghostDash: {
-    label: 'Ash Shadows', phase: 3, weight: [0, 0, 2.0], cooldown: 8, band: [2.5, 9], recovery: 0.65, cat: 'string',
+    label: 'Ash Shadows', phase: 3, weight: [0, 0, 1.7], cooldown: 8, band: [2.5, 9], recovery: 0.65, cat: 'string',
     beats: [
       glide(N, 0.52, 14, 4.5),
       glide(N, 0.46, 14, 4.5, { flit: { r: 4.2 }, back: true }),

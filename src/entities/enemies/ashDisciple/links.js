@@ -19,7 +19,7 @@ const guarding = (to, chance, o) => ({ to, when: 'guarding', chance, ...o });
 /** The pursuit after any blade move: sword qi or the storm at range, the glides and the dash chain,
  *  the thrust at a hero who backed off. */
 const PURSUE = [
-  far('qiStorm', [0, 0, 0.45]),
+  far('qiStorm', [0, 0, 0.3]),
   far('emberFan', [0, 0.4, 0.3]),
   far('zigzag', [0, 0.35, 0.3]),
   far('windStep', [0.45, 0.5, 0.55]),
@@ -49,27 +49,44 @@ const melee = (...close) => [...PURSUE, ...ROUND, ...close];
 const STRINGS = [
   guarding('ashFlurry', [0, 0, 0.45]),
   guarding('burningCross', [0, 0.5, 0.4]),
+  guarding('petals', [0, 0.45, 0.3]), // (tuning pass: the dense strings came up only by chance)
   guarding('chaseRain', [0.45, 0.45, 0.45]),
   guarding('mirrorFeint', [0.35, 0.4, 0.4]),
 ];
 const single = (...close) => [...PURSUE, ...ROUND, ...STRINGS, ...close];
-/** After a thrown piece of the yard: he closes in behind it while it flies (as after his sword qi). */
+/** After a thrown piece of the yard: he closes in behind it while it flies (as after his sword qi).
+ *  (tuning pass: the integration's placeholders 0.35 - 0.5 raised: the run to the piece and its flight
+ *  were the fight's longest gaps; he now comes in behind most of them) */
+// (`cut: 1`: from the end of the throw's recovery, so his first blow lands after the piece, not with
+// it: a glide that arrived with the kicked lantern was two blows in one instant, one parry for both)
 const THROWN = [
-  far('windStep', [0.4, 0.45, 0.45]),
-  far('ghostDash', [0, 0, 0.5]),
-  mid('glideKick', [0.4, 0.4, 0.45]),
-  mid('leapingString', [0, 0.4, 0.4]),
-  near('swallow', [0.35, 0.35, 0.3]),
-  near('burningCross', [0, 0.4, 0.35]),
-  near('ashString', [0, 0, 0.45]),
+  far('windStep', [0.55, 0.6, 0.6], { cut: 1 }),
+  far('ghostDash', [0, 0, 0.6], { cut: 1 }),
+  mid('glideKick', [0.55, 0.6, 0.6], { cut: 1 }),
+  mid('leapingString', [0, 0.55, 0.55], { cut: 1 }),
+  near('swallow', [0.55, 0.5, 0.4]),
+  near('burningCross', [0, 0.55, 0.5]),
+  near('ashString', [0, 0, 0.6]),
+];
+/** After the bell, a felled pillar or the spring off one: he comes down after the hero (tuning pass:
+ *  these had no links, and a long move with one or three cues then waited on the footwork). */
+const YARD = [
+  far('windStep', [0.6, 0.65, 0.65]),
+  far('zigzag', [0, 0.45, 0.4]),
+  far('ghostDash', [0, 0, 0.6]),
+  mid('glideKick', [0.55, 0.6, 0.6]),
+  mid('leapingString', [0, 0.55, 0.55]),
+  near('swallow', [0.5, 0.45, 0.4]),
+  near('kickBrand', [0, 0.5, 0.45]),
+  near('ashString', [0, 0, 0.6]),
 ];
 
 export const LINKS = {
   // ---- the strings and the blade's close moves: a pursuit, the round, else a close follow-up
   ashRain: melee(near('lotus', [0.3, 0.35, 0.3]), near('flitLotus', [0, 0, 0.5])),
   swallow: melee(near('mirrorFeint', [0.35, 0.4, 0.4]), near('kickBrand', [0, 0.45, 0.4]), near('ashString', [0, 0, 0.5]), near('lotus', [0.3, 0.4, 0.4])),
-  crane: melee(near('hesitate', [0.3, 0.35, 0.3]), near('kickBrand', [0, 0.45, 0.4]), near('ashString', [0, 0, 0.5])),
-  hesitate: melee(near('fallingAsh', [0.35, 0.4, 0.4]), near('swallow', [0.3, 0.4, 0.4])),
+  crane: melee(near('hesitate', [0.3, 0.35, 0]), near('petals', [0, 0.4, 0.3]), near('kickBrand', [0, 0.45, 0.4]), near('ashString', [0, 0, 0.5])),
+  hesitate: melee(near('needles', [0, 0.45, 0.45]), near('fallingAsh', [0.35, 0.4, 0.4]), near('swallow', [0.3, 0.4, 0.4])),
   needles: melee(near('emberWhirl', [0, 0.45, 0.4]), near('flitLotus', [0, 0, 0.5])),
   petals: melee(near('fallingStar', [0, 0.45, 0.45]), near('ashString', [0, 0, 0.5])),
   emberWhirl: melee(near('needles', [0, 0.45, 0.4]), near('ashString', [0, 0, 0.5])),
@@ -80,7 +97,7 @@ export const LINKS = {
   windSpin: melee(near('partingWind', [0.45, 0.45, 0.4]), near('ashFlurry', [0, 0, 0.45]), near('needles', [0, 0.4, 0.3])),
   partingWind: [away('ghostDash', [0, 0, 0.6]), away('glideKick', [0.5, 0.5, 0.5]), ...melee(near('windSpin', [0.4, 0.45, 0.45]), near('ashString', [0, 0, 0.5]))],
   burningCross: melee(near('kickBrand', [0, 0.45, 0.4]), near('emberWhirl', [0, 0.4, 0.35]), near('ashString', [0, 0, 0.5])),
-  kickBrand: melee(near('burningCross', [0, 0.45, 0.4]), near('ashFlurry', [0, 0, 0.45])),
+  kickBrand: melee(near('petals', [0, 0.4, 0.3]), near('burningCross', [0, 0.45, 0.4]), near('ashFlurry', [0, 0, 0.45])),
   ashString: melee(near('ashFlurry', [0, 0, 0.5]), near('flitLotus', [0, 0, 0.45])),
   ashFlurry: melee(near('flitLotus', [0, 0, 0.5])),
   flitLotus: melee(near('ashString', [0, 0, 0.55]), near('ashFlurry', [0, 0, 0.45])),
@@ -109,4 +126,7 @@ export const LINKS = {
   flagKick: [away('flagKick', 0.2), ...THROWN],
   flagVolley: THROWN,
   flagFan: THROWN,
+  bellToll: YARD,
+  pillarFall: YARD,
+  swallowReturn: YARD,
 };
