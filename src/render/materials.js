@@ -42,8 +42,25 @@ export const FLAG = { NONE: 0.0, ART_HERO: 0.48, ART: 0.5, ART_PROP: 0.57, LEAF:
  * hero window (0.46, 0.49). The art pass draws a bright ink line wherever two neighbouring cells
  * show different parts (the higher id draws it) or a depth step (the nearer side draws it). Step 0.0006
  * is ≥ 2 half-float ulps there; parts 0..19 (each part's line tint: U.uHeroPartInk).
+ *
+ * Two BANKS of those ids. The shared bank (from a0) is what every rig built by buildHero writes: the
+ * two human bosses, and the hero by default. The PLAYER's own bank sits right below it (from ownA0 =
+ * a0 - 2 × parts × step, 0.4392: above the creature codes' 0.438), written by a material whose
+ * uArtBank is 1 (pipeline.setHeroLine marks the player's). The art pass reads the own bank's
+ * per-part tables (U.uHeroOwnInk / Fill / Rim) and line style (pipeline uHeroOwn*), so the hero's
+ * line can change without a pixel of the bosses changing.
  */
-export const HERO_ART = { a0: 0.4632, step: 0.0006, parts: HERO_PARTS };
+export const HERO_ART = { a0: 0.4632, step: 0.0006, parts: HERO_PARTS, ownA0: 0.4632 - 2 * HERO_PARTS * 0.0006 };
+
+/** Put hero materials (a rig's `materials`, an object or an array) in the player's own bank (1) or
+ *  the shared one (0). Cheap (a uniform write per material); safe on anything. */
+export function setHeroBank(mats, own) {
+  const v = own ? 1 : 0;
+  for (const m of mats ? Object.values(mats) : []) {
+    const u = m?.uniforms?.uArtBank;
+    if (u) u.value = v;
+  }
+}
 export const ASCII_SETS = { scales: 0, strands: 1, plates: 2, smooth: 3 };
 /**
  * Surface-glyph defaults per `ascii` set: 4-glyph ramp (dark → bright) and cell size in aGUV
@@ -175,12 +192,14 @@ function surfaceFeatures(o, cell) {
     defines.SG_HERO_ART = '';
     defines.HERO_A0 = HERO_ART.a0.toFixed(4);
     defines.HERO_AS = HERO_ART.step.toFixed(4);
+    defines.HERO_BANK = (2 * HERO_ART.parts).toFixed(1);
     uniforms.uArtFill = { value: new THREE.Color(...(h.fill ?? [0.1, 0.1, 0.11])) };
     uniforms.uArtSpec = { value: new THREE.Vector2(h.spec ?? 0, h.specPow ?? 20) };
     uniforms.uArtRim = { value: h.rim ?? 1 };
     uniforms.uArtGlowK = { value: h.glow ?? 0 };
     uniforms.uArtSub = { value: h.sub ?? 0 }; // shade of a fold field's shadow side (model.js foldLines)
     uniforms.uArtPart = { value: part * 2 };
+    uniforms.uArtBank = { value: 0 }; // 1: the player's own bank of part ids (HERO_ART.ownA0)
     // cloth folds: [bands per metre across aGUV x (rad), depth 0..1, wander down aGUV y]
     if (h.folds != null) {
       const [fq, fd, fw] = h.folds;
@@ -570,6 +589,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
       uniform float uArtGlowK;
       uniform float uArtSub;
       uniform float uArtPart;
+      uniform float uArtBank;
       uniform vec3 uCamRight;
       uniform vec3 uCamUp;
       uniform vec4 uArtHeroLight;
@@ -1038,7 +1058,8 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         col += uWarn.rgb * uWarn.a * (0.08 + 0.9 * m + rim * 2.5);
         col = applyFog(col, vW);
 #ifdef SG_HERO_ART
-        gl_FragColor = vec4(col, HERO_A0 + (uArtPart + floor(vPart + 0.5)) * HERO_AS);
+        // (the player's own bank, uArtBank 1: the same ids 2 x HERO_PARTS steps lower; 0: exactly as before)
+        gl_FragColor = vec4(col, HERO_A0 + (uArtPart + floor(vPart + 0.5) - uArtBank * HERO_BANK) * HERO_AS);
 #else
         gl_FragColor = vec4(col, uFlag);
 #endif

@@ -98,6 +98,14 @@ export function createSharedUniforms() {
     // ... and each part's SILHOUETTE ink, where it borders the world: rgb tint × a gain (the
     // reference: a dim blue-lavender dotted outline round the cloth and hair, white round the armour)
     uHeroPartRim: { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+    // The PLAYER's own bank of the same three tables (materials.js HERO_ART.ownA0: his materials
+    // write their part ids into an alpha range of their own once the pipeline marks them his,
+    // pipeline.setHeroLine). The two human bosses are built with the same materials and part ids and
+    // keep reading the shared tables above, so a change for the hero here never touches their pixels.
+    // Filled by player/model.js createHeroMaterials (HERO_INK, its `own` overrides).
+    uHeroOwnInk: { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+    uHeroOwnFill: { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 0, 0, 1)) },
+    uHeroOwnRim: { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
     // the hero's cel shading (materials with `heroArt`): the key light steps from shadow to lit
     // between x and y (the reference's two-tone anime shading), z = how much of the step replaces
     // the smooth falloff

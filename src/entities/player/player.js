@@ -5,7 +5,7 @@ import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
-import { HERO_LEGS } from './heroDims.js';
+import { HERO_LEGS, HERO_HEAD_SCALE } from './heroDims.js';
 import { SHIELD_MEET } from './shieldPoses.js';
 import { DEFAULT_LOADOUT, HERO_TINT } from './gear/index.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
@@ -164,7 +164,7 @@ export class Player {
     this.drawScale = PLAYER_SCALE;
     // his gear (gear/index.js DEFAULT_LOADOUT: the abyss set, sword and kite shield), on his own legs
     // (heroDims.js HERO_LEGS), in his colours (HERO_TINT, on this rig's own materials)
-    this.rig = buildHero(game.U, DEFAULT_LOADOUT, { legs: HERO_LEGS });
+    this.rig = buildHero(game.U, DEFAULT_LOADOUT, { legs: HERO_LEGS, headScale: HERO_HEAD_SCALE, own: true }); // (own: his own ink bank)
     tintHero(this.rig.materials, HERO_TINT);
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
@@ -723,7 +723,7 @@ export class Player {
     const U = this.game.U, saved = PART_UNIFORMS.map((k) => U[k]?.value?.map((v) => v.clone()) ?? null);
     let rig;
     try {
-      rig = buildHero(U, loadout, { legs: HERO_LEGS });
+      rig = buildHero(U, loadout, { legs: HERO_LEGS, headScale: HERO_HEAD_SCALE, own: true });
     } finally {
       saved.forEach((a, i) => a && U[PART_UNIFORMS[i]].value.forEach((v, j) => a[j] && v.copy(a[j])));
     }
@@ -3614,12 +3614,14 @@ export class Player {
       // Part 17 is only the hero's sword (M.blade / M.bladeTip, HERO_INK.bladeTip writes it last) and
       // the star on his shield (gear/shield.js: it flares with the blade). ABSOLUTE values every frame: another buildHero (the boss's, setLoadout) resets
       // the shared arrays; at g = 1 this writes exactly the HERO_INK base
-      const F = TUNE.bladeFlare, B = HERO_INK.bladeTip, P = B.part;
+      // (the hooded hero: his crystal, HERO_INK.abCrystal, the blade and the shield's star, in the
+      // player's OWN bank of the per-part tables: the bosses never read it)
+      const C = HERO_INK.abCrystal, B = { ...C, ...C.own }, P = B.part, F = TUNE.bladeFlare;
       const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.06 && a.t <= a.def.windup + a.def.active + 0.12;
       const g = this.alive ? 1 + (inStrike ? (a.def.heavy ? F.strike[1] : F.strike[0]) : 0) + this.bladeFlare : 1;
       if (Number.isFinite(g)) {
         const U = this.game.U, lk = 1 + F.line * (g - 1), rl = B.rimLine ?? B.line;
-        const pf = U?.uHeroPartFill?.value?.[P], pi = U?.uHeroPartInk?.value?.[P], pr = U?.uHeroPartRim?.value?.[P];
+        const pf = U?.uHeroOwnFill?.value?.[P], pi = U?.uHeroOwnInk?.value?.[P], pr = U?.uHeroOwnRim?.value?.[P];
         if (pf) pf.x = (B.fillGain ?? 1) * g;
         if (pi) pi.w = B.line[3] * lk;
         if (pr) pr.w = rl[3] * lk;
