@@ -2130,7 +2130,8 @@ the model viewer. The timing trainer also logs `combat:deflectChain`, `dragon:ph
 switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pick, build-time, levels,
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
 `lordLook`, `floor`) reloads the page with its parameter. "as shipped" clears every look parameter (the
-owner's picks), "before this pass" reloads with `?looks=old`. A later phase's or form's move, and the
+owner's picks), "before this pass" reloads with `?looks=old` ("all proposals" is gone: `?looks=new` now
+equals the default). A later phase's or form's move, and the
 phase / form buttons, play from any phase (the Lab skips there first, without playing the change).
 
 **Model viewer** (`src/dev/modelView.js`, Lab → VIEW → MODEL VIEW) renders an actor from the angles
@@ -2642,7 +2643,11 @@ a subclass with a few hooks.
   beat → a shock; in phase 3 an afterimage per blade beat), `kindleCharge`, `ashWind(d, dt, k)`, `ashLook()`.
   The fields the fairness guard writes keep their meaning: `strikes[].at`, `shots[].delay` / `.done`,
   `crescents[].alive`. **Look code draws from its own seeded stream** (`lr()` or a hash), never from `rnd()` /
-  `rand()` (game code reads that stream) nor `Math.random` (the seeded suites replay it).
+  `rand()` (game code reads that stream) nor `Math.random` (the seeded suites replay it). Two more
+  guards of the seeded fights (ADR-122): `render/lights.js` seeds a light's flicker from a stream of
+  its own, and `duel.mjs` / `lord.mjs` `build()` build the boss on a stream of its own (`seed + 0x5eed`,
+  then `Math.random` is put back): three.js draws `Math.random` for every object's uuid, so a body look
+  with more pieces would otherwise replay every fight with another seed.
 - **The second pass (ADR-122): the director, the links, the cue ledger and the fairness guard.** A kit
   whose `TUNING` has a `pressure` block gets them (without one a duelist picks, links and paces as
   before; the ledger only listens). The rules as the player meets them: COMBAT.md "The duelists' pressure
@@ -2664,7 +2669,10 @@ a subclass with a few hooks.
     `combat:tell` until the guard clears it at its cue, then tell and flash go out together; a blow that
     becomes a feint sends neither), `_worldCue(at, ans)` (a world warning grounds his uncued things in
     flight: a crescent fizzles, a stone shatters, the blade passes uncued, Shen Hui's kicked pieces are
-    grounded `quiet`; for a returning blade still flying OUT it estimates the homeward crossing too).
+    grounded `quiet`; for a returning blade still flying OUT it estimates the homeward crossing too, with
+    `ledger.js` `glaiveHome(s, p, reach, H)` (s from now, or -1), keeps its verdict on the blade
+    (`_homeWarn`) and gives it at the turn: `_glaiveTurn()` the frame after the blade turns brings it home
+    uncued and harmless if its way home still lands too near the warning).
   - **The guard** (`pressure.guard { sep, margin, maxHold, maxDelay, horizon, pad }`): a blade blow is
     checked the frame its cue is due; within `sep + margin` of a fixed impact of the other answer it waits
     at the cock like an authored bait hold (the beat's `hf` / `hl`: flash, impact, later beats and the
@@ -2692,8 +2700,11 @@ a subclass with a few hooks.
     maxGap } }` (`meter`: what the PACE scenario asserts).
   - **New beat fields** (any duelist): `cat` (on a move), `hazard` (a beat that leaves something lingering),
     `release.speed` (its crescents' own speed), `flit` inside a string (he comes apart and strikes from
-    another side, as in his flurry). A `release` beat that carries a `zone` is a cut when the hero stands
-    inside that zone and a release otherwise. Each boss's own: below.
+    another side, as in his flurry). A `release` beat that carries a `zone` is decided once, as its cue
+    comes due: with the hero inside the zone it is a cut (`b.cut` true: cued, flashed, held by the guard,
+    timed and answered as a blade blow of its tell, its zone struck, nothing thrown), else a release as
+    any other (`ledger.js` `throwsAt(b)`: a release, or the thrown blade, that is not a cut). Each boss's
+    own: below.
 - `director.js`: the pure helpers the brain, the PACE meter and the Lab share (above).
 - `ledger.js` `class CueLedger(brain)`: the impacts he knows are coming and what each asks. Fed from (a) the
   running move's beats (exact), (b) `combat:flash` from any source and `combat:tell` from 'world' or a
@@ -2702,10 +2713,14 @@ a subclass with a few hooks.
   ...)`, `clearShift(at, ans, sep, max, ...)`, `pending(ans, horizon)`, `liveHazards()`, `travel(b)`. Fixed
   pools; nothing allocated per frame.
 - `lookSwitch.js` (ADR-122): the look options behind URL switches (STYLE.md "The look switches").
-  `lookOf(name, def = '0', pick = 'a')` → the option to draw: a look forced by `setLook(name, v)` (the Lab,
-  the tests, the film rig; null gives it back); else the URL's own parameter; else `'0'` under `?looks=old`
-  (the look before this pass, for a redraw); else the owner's pick from the `PICKED` table; else `def`.
-  `allProposals()`, `looksNow(names)`. Read at draw time (a Map lookup); a switch read when the rig or the
+  `PICKED` (the owner's picks, 2026-11-16: name → option). `lookOf(name, def = '0', pick = 'a')` → the
+  option to draw, in this order: a look forced by `setLook(name, v)` (the Lab, the tests, the film rig;
+  null gives it back); the URL's own parameter; `'0'` under `?looks=old` when the call site's `def` is
+  `'0'` (a REDRAW: the look before this pass; a thing new in this pass keeps its pick, even one with a
+  `'0'` option such as `presence`); the pick from `PICKED`; under `?looks=new` `pick` for a redraw no one
+  has picked (none today); else `def`. Also `pickedOf(name)` (the pick or null), `allOld()`,
+  `allProposals()`, `readLookUrl(search)` (read once at load; the tests call it to play a URL, `''` to
+  go back), `looksNow(names)`. Read at draw time (a Map lookup); a switch read when the rig or the
   level is built (`ashLook`, `lordLook`, `floor`) needs a reload. The Lab's LOOKS section
   (`dev/labLooks.js` `LOOK_SWITCHES`) lists them.
 
