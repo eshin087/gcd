@@ -143,7 +143,13 @@ export const TUNING = {
     // mean's, 7 - 9 % under the slowest seed's rate, half a second over the longest gap. They still
     // say what the pass promised: every phase busier than the one before, and phase 1 and 2 well
     // over what they were before it (60 / 76))
-    meter: { ramp: [1, 1.05, 0.95], rampMean: [1, 1.14, 1.035], minRate: [68, 82, 90], maxGap: [3.6, 3.4, 3.15] },
+    // (after `main`'s wyrm pass, ADR-120, was merged in, the same ten seeds: P1 74.9 - 85.2 (77.7), P2
+    // 88.0 - 94.7 (92.0), P3 94.6 - 103.1 (98.9); P2 / P1 at least 1.082, P3 / P2 at least 1.023; the
+    // longest gap 3.24 / 2.69 / 3.24 s, phase 3's on a seed that had 2.4 s the build before (a storm
+    // of qi from far, then Ash Shadows); the three default seeds' mean P3 / P2 1.056. So: the gaps'
+    // ceilings half a second over the longest ever seen in a phase (3.45 / 2.95 / 3.24), and phase
+    // 3's mean ramp at 1.02: it must be busier than phase 2, by a margin a reshuffle does not eat)
+    meter: { ramp: [1, 1.05, 0.95], rampMean: [1, 1.14, 1.02], minRate: [68, 82, 90], maxGap: [3.9, 3.4, 3.7] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },

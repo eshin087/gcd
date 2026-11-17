@@ -1613,6 +1613,12 @@ each boss's section above).
 **Measured** (the PACE scenario of both suites; ten seeds, 120 s a phase or form, the final build): 0
 conflicts for both bosses in every phase and form (before the pass the Lord had 8 / 5 / 32 / 86 over five seeds,
 mostly the Starless Sky and the Dark Star against his strings and falling pieces against his cuts).
+("The final build" in the two bosses' sections is this pass's last build before `main`'s wyrm pass,
+ADR-120, was merged into it. A seed replays a different fight on every build, so the same ten seeds
+were run once more after that merge: Shen Hui 77.7 / 92.0 / 98.9 cues a minute by phase (the slowest
+seed 74.9 / 88.0 / 94.6; the longest gap 3.24 / 2.69 / 3.24 s), the Lord 82.7 / 90.8 / 98.2 / 109.3 by
+form (78.5 / 88.2 / 93.9 / 104.3; 2.92 / 2.80 / 3.32 / 2.60 s), 0 conflicts, and every phase and form
+busier than the one before it on every seed: within about 2 % of the tables above.)
 **Not filmed:** a feint made by the guard, a strike fading, a stone shattering on a world warning, the
 blade hanging at its turn, the footwork's seek. **Not measured:** how a person reads a held blow.
 
