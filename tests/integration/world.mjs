@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | floor | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | budget | all
+//   scenario: sets | floor | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | budget | placed | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -173,7 +173,14 @@ const S = {
       }
       assert(L.every((b) => Number.isFinite(b.x + b.z + b.r + b.h) && b.r > 0 && b.h > 0 && b.hp > 0), `${name}: every breakable has a footprint, a height and structure`);
       assert(L.every((b) => b.colliders.every((c) => colliders.circles.includes(c))), `${name}: their colliders are the world's own circles`);
-      assert(L.every((b) => b.node.parent === D.root && b.body.geometry.attributes.position.count > 0), `${name}: each has its own node and body`);
+      // (a floor slab or flagstone, a 'range' piece, is no scene node until a boss lifts it: 2026-11-16, the scene graph's per-frame cost)
+      assert(L.every((b) => (b.def.look === 'range' ? !b.node.parent : b.node.parent === D.pieces) && b.body.geometry.attributes.position.count > 0), `${name}: each has its own node and body (a floor slab's node joins the pieces' tree only when lifted)`);
+      // nothing standing costs the scene graph a frame: the pieces are a tree outside the scene (the
+      // batch reads their matrices), only the batch's draw meshes hang in it
+      let inScene = 0, auto = 0;
+      D.root.traverse(() => inScene++);
+      D.pieces.traverse((o) => { if (o !== D.pieces && o.matrixAutoUpdate) auto++; });
+      assert(!D.pieces.parent && inScene <= 4 && auto === 0, `${name}: the breakables put ${inScene} node(s) in the scene (the batch's meshes); their own tree is outside it and none of its nodes auto-updates (${auto})`);
       assert(D.root.parent === set.group, `${name}: the breakables hang under the set's group (the Lab hides them with it)`);
       // nothing breakable is lost from the spatial grid: every piece sits in exactly one cell
       const seen = new Int32Array(L.length);
@@ -887,6 +894,63 @@ const S = {
     const grew = process.memoryUsage().heapUsed - h0 - base;
     assert(grew / 2000 < 2048, `2000 frames of the body sweeping, wood burning, logs smouldering: ${(grew / 2000).toFixed(0)} bytes a frame over the bare loop (< 2 KB: no object, array or closure a frame; the rest is V8 boxing call arguments)`);
   },
+  // ---------------------------------------------------------------- a piece draws where it is (its matrices are placed, not auto-updated)
+  // (last: it draws on the destructibles' cosmetic stream, which the scenarios after it would see)
+  placed() {
+    // (2026-11-16: the pieces are a tree outside the scene, their nodes do not auto-update; destructibles
+    // `_place` puts a piece's world matrices right when it moves. The batch draws each body from its
+    // matrixWorld: here every body's must equal what three would compute from the transforms, in every
+    // state a piece can be in)
+    const C = build(createCourtyard);
+    const { D, step } = C;
+    const m = new THREE.Matrix4();
+    const wrong = () => {
+      let bad = 0;
+      for (const b of D.list) {
+        if (b.def.look === 'range' && !b.node.parent) continue;
+        for (const o of [b.body, b.stub, b.held]) {
+          if (!o?.isMesh || !o.visible) continue;
+          // what three would make of it: the chain's local matrices, freshly composed
+          m.identity();
+          for (let n = o; n && n !== D.pieces; n = n.parent) {
+            const L = new THREE.Matrix4().compose(n.position, n.quaternion, n.scale);
+            m.premultiply(L);
+          }
+          const a = o.matrixWorld.elements, e2 = m.elements;
+          if (e2.some((v, i) => Math.abs(v - a[i]) > 1e-4)) bad++;
+        }
+      }
+      return bad;
+    };
+    assert(wrong() === 0, 'built: every body draws where it stands');
+    const pil = D.list.filter((b) => b.kind === 'pillar' && b.topples && b.state === STATE.INTACT);
+    D.strike(pil[0].x, pil[0].z, 0.3, 0.2, { kind: BLOW.CUT, dx: 1, dz: 0, src: D.swing() });
+    step(4 / 60);
+    assert(pil[0].shake > 0 && wrong() === 0, 'shaken: mid-shudder it draws where its pivot is');
+    D.topple(pil[1], 1, 0, 'world');
+    step(0.4);
+    assert(pil[1].state === STATE.FALLING && wrong() === 0, 'toppling: mid-fall it draws where it is going over');
+    const top = D.list.find((b) => b.kind === 'colossus' && b.base);
+    D.topple(top, 1, 0, 'world');
+    step(0.7);
+    assert(top.state === STATE.FALLING && wrong() === 0, 'a colossus coming off its cut: drawn where it is');
+    const bo = D.list.find((b) => b.kind === 'boulder' && b.lift > 0 && b.state === STATE.INTACT);
+    D.take(bo);
+    D.carry(bo, bo.x + 1, 2.5, bo.z, 0.6, 1.2);
+    const fl = D.floor.find((b) => b.state === STATE.INTACT);
+    D.take(fl);
+    D.carry(fl, fl.x, 1.8, fl.z, 0.3, 0.5);
+    assert(wrong() === 0, 'carried: a boulder and a slab in a boss\'s hands are drawn there');
+    D.throwTo(bo, bo.x + 6, bo.z, { time: 0.8 });
+    step(0.3);
+    assert(bo.state === STATE.FLYING && wrong() === 0, 'thrown: drawn in the air where it flies');
+    step(3);
+    D.reset();
+    assert(wrong() === 0 && D.list.every((b) => b.pivot.position.lengthSq() === 0), 'restored: every piece drawn where it stood');
+    const w = D.wreck.pools.flat().every((e) => e.mesh.matrixWorld.equals(e.mesh.matrix));
+    assert(w, 'the wreckage\'s meshes are placed as they lie down (their world matrix is their own)');
+  },
+
 };
 const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;
 function near0(a, b, eps = 1e-6) {

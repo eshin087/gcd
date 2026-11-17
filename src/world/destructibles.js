@@ -6,7 +6,7 @@ import { batchRigid } from '../render/rigidBatch.js';
 import { TELL } from '../combat/rules.js';
 import { BREAK, BLOW } from './breakTuning.js';
 import { Wreckage } from './wreckage.js';
-import { prep, lumpy, carve, mul, STONE } from './forest.js';
+import { lumpy, carve, mul, slabGeometry, STONE } from './forest.js';
 
 // Breakable objects (ADR-107): the trees, stones, pillars and props of a set that blows can chip,
 // break, fell, burn, lift and throw. A set lists them in its output (`breakables`) instead of merging
@@ -71,6 +71,12 @@ import { prep, lumpy, carve, mul, STONE } from './forest.js';
 // (one reused payload: a subscriber must not keep it), and 'combat:tell' / 'combat:flash' for a
 // piece a boss felled (source 'world', red: be out from under it).
 // No per-frame allocation: scratch vectors, reused hit, event and particle records.
+// No per-frame scene-graph work for a piece that does not move (2026-11-16: the arenas' 456 / 222
+// pieces cost the phone ~0.7 ms a frame in three.js's matrix updates): the pieces live in a tree
+// outside the scene graph (`pieces`; only the batch's draw meshes are in the scene, under `root`),
+// their nodes and pivots do not auto-update, and `_place` puts a piece's world matrices right
+// whenever it moves (a break, a shudder, a fall, a carry, a throw, the reset). A floor slab (look
+// 'range') has no node in that tree until a boss lifts it.
 
 /** A brush's bite (BREAK.brush): what a blow `dmg` has over a share of the piece's structure, at least
  *  brushMin of it; a flat stone takes nothing. */
@@ -79,6 +85,23 @@ function brushed(b, dmg) {
   if (b.mat === 'stone' && b.h < BREAK.brushFlat) return 0;
   const over = dmg - BREAK.brush * b.hpMax, least = dmg * BREAK.brushMin;
   return over > least ? over : least;
+}
+
+/**
+ * A Group made without drawing on Math.random (three names every object with a random uuid): the
+ * seeded sims replay Math.random, and one object more at the world's build shifted everything after
+ * it (the wyrm's WRECKAGE fight on seed 1337 went 32 % → 28 % standing). Its uuid is from a stream
+ * of its own.
+ */
+let uuidSeed = 0x51ed2701;
+function quietGroup() {
+  const r = Math.random;
+  Math.random = () => (uuidSeed = (Math.imul(uuidSeed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  try {
+    return new THREE.Group();
+  } finally {
+    Math.random = r;
+  }
 }
 
 export const STATE = Object.freeze({ INTACT: 0, FALLING: 1, BROKEN: 2, HELD: 3, FLYING: 4, GONE: 5 });
@@ -170,6 +193,14 @@ export class Destructibles {
     this.active = [];
     this.root = new THREE.Group();
     this.root.name = 'breakables';
+    /**
+     * The pieces themselves (their nodes, pivots and meshes, the wreckage's pools, the carry pool): a
+     * tree OUTSIDE the scene graph (three walks every node of the scene each frame, ~0.7 ms on a phone
+     * for the arenas' 456 / 222 pieces). Only the rigid batch's meshes hang in `root`, in the scene;
+     * the batch reads the pieces' world matrices, which `_place` keeps right whenever a piece moves.
+     */
+    this.pieces = quietGroup();
+    this.pieces.name = 'breakablePieces';
     this.batch = null;
     this.wreck = null;
     /** the phone budget (setQuality): debris, flames, wreckage, fires */
@@ -222,11 +253,16 @@ export class Destructibles {
     // what the fight leaves lying (wreckage.js): its pools share the breakables' batch
     if (set.wreckage !== false) {
       const need = { blocks: this.list.some((b) => b.blocks > 0), shards: this.floor.some((b) => b.lift > 0) };
-      this.wreck = new Wreckage(game, world, this.root, this.propMat, this, need);
+      this.wreck = new Wreckage(game, world, this.pieces, this.propMat, this, need);
     }
-    markCaster(this.root);
+    markCaster(this.pieces);
     set.group?.add(this.root);
-    this.batch = batchRigid(U, this.root);
+    this.batch = batchRigid(U, this.pieces);
+    // (the batch's draw meshes into the scene; the pieces' tree stays out of it)
+    for (const m of [...this.pieces.children]) if (m.isMesh && (m.name === 'rigidBatch' || m.name === 'rigidShadow')) this.root.add(m);
+    // every piece's world matrices from its static node, once (the sets stand at the world's origin:
+    // nothing above the root moves); after that only a piece that moves is placed again (_place)
+    this.pieces.updateMatrixWorld(true);
   }
 
   // ------------------------------------------------------------------ build
@@ -252,7 +288,11 @@ export class Destructibles {
     if (!body) return null;
     const node = new THREE.Group();
     node.position.set(x, y0, z);
+    // (static until it moves: _place)
+    node.matrixAutoUpdate = false;
+    node.updateMatrix();
     const pivot = new THREE.Group();
+    pivot.matrixAutoUpdate = false;
     if (!ranged) pivot.add(body);
     node.add(pivot);
     let stub = null, crack = null;
@@ -270,7 +310,8 @@ export class Destructibles {
         node.add(stub);
       }
     }
-    this.root.add(node);
+    // (a floor slab's body is a run of the set's paving mesh: its node joins the graph only when lifted)
+    if (!ranged) this.pieces.add(node);
     const wood = BREAK.mats[def.mat] && def.mat === 'wood';
     const colliders = Array.isArray(def.colliders) ? def.colliders.filter(Boolean) : [];
     // the wyrm's body ploughs through wood (Colliders.resolve(..., soft)): it fells it instead of being turned
@@ -310,9 +351,15 @@ export class Destructibles {
    */
   _buildCarry(set) {
     const col = set.floorCarry ?? STONE;
-    const g = prep(new THREE.BoxGeometry(1.5, 0.24, 1.5, 3, 1, 3));
-    g.translate(0, 0.12, 0);
-    lumpy(g, 0.05, 3, 7.7, new THREE.Vector3(0, 0.12, 0));
+    // a CHUNK of the slab, ~0.85 m across (a plate's 1.2 x that): never a sheet as tall as a man held
+    // before him (2026-11-16, the owner's rule: nothing covers the fight)
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * 6.283 + Math.sin(i * 2.3) * 0.35, r = 0.42 * (0.8 + 0.25 * Math.abs(Math.sin(i * 1.7 + 0.4)));
+      pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    const g = slabGeometry(pts, { top: 0.2, inset: 0.05, drop: 0.04, bottom: 0 });
+    lumpy(g, 0.03, 4, 7.7, new THREE.Vector3(0, 0.1, 0));
     carve(g, {
       col: (px, py, pz) => mul(col, 0.7 + 0.5 * Math.abs(Math.sin(px * 7.1 + pz * 5.3))),
       ao: (px, py) => 0.6 + 1.6 * py,
@@ -323,7 +370,7 @@ export class Destructibles {
       m.matrixAutoUpdate = false;
       m.visible = false;
       m.name = 'floorCarry';
-      this.root.add(m);
+      this.pieces.add(m);
       this._carry.push(m);
     }
   }
@@ -683,6 +730,7 @@ export class Destructibles {
     b.by = by;
     b.shake = 0;
     b.pivot.rotation.set(0, 0, 0);
+    this._place(b);
     this._showStub(b);
     const l = Math.hypot(dx, dz);
     if (l < 1e-4) {
@@ -730,6 +778,15 @@ export class Destructibles {
     const C = this.world.colliders;
     for (const c of b.colliders) C?.remove?.(c);
     this.world.scars?.drop(b.id);
+  }
+
+  /**
+   * Put a piece's matrices right after it moved (its pivot changed): its node does not auto-update,
+   * so this is the only place its world matrices (and its meshes', which the rigid batch reads) are made.
+   */
+  _place(b) {
+    b.pivot.updateMatrix();
+    if (b.node.parent) b.node.updateMatrixWorld(true);
   }
 
   _wake(b) {
@@ -955,12 +1012,14 @@ export class Destructibles {
       let m = null;
       for (let i = 0; i < this._carry.length && !m; i++) if (!this._carry[i].visible) m = this._carry[i];
       if (m) {
-        m.scale.set(b.r * 1.15, 1, b.r * 1.15);
+        const k = b.kind === 'plate' ? 1.2 : 1;
+        m.scale.set(k, k, k);
         m.updateMatrix();
         m.visible = true;
         b.pivot.add(m);
         b.held = m;
       }
+      if (!b.node.parent) this.pieces.add(b.node);
     }
     b.state = HELD;
     b.shake = 0;
@@ -968,6 +1027,7 @@ export class Destructibles {
     b.py = 0;
     b.pz = b.z;
     b.pivot.rotation.set(0, 0, 0);
+    this._place(b);
     this._burst(b, b.x, 0.3, b.z, 0, 0, 12, 0.5); // torn out of the ground
     this.world.scars?.ground(b.x, b.z, 0.6 + 0.3 * b.weight);
     this._wake(b);
@@ -983,6 +1043,7 @@ export class Destructibles {
     b.pz = z;
     b.pivot.position.set(x - b.x, y, z - b.z);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(Math.cos(yaw), 0, -Math.sin(yaw)), tilt);
+    this._place(b);
   }
 
   /**
@@ -1033,6 +1094,7 @@ export class Destructibles {
     b.ang += BREAK.thrown.spin * dt;
     b.pivot.position.set(b.px - b.x, Math.max(0, b.py), b.pz - b.z);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(b.dz, 0, -b.dx), b.ang);
+    this._place(b);
     // low enough, it smashes what stands in its way (once each per throw)
     const F = BREAK.flight;
     if (b.py < F.y && b.t < b.T) {
@@ -1049,6 +1111,7 @@ export class Destructibles {
     // it lands
     const x = b.tx, z = b.tz;
     b.pivot.position.set(x - b.x, 0, z - b.z);
+    this._place(b);
     this._crumble(b, b.dx, b.dz, false);
     b.state = GONE;
     this.world.scars?.ground(x, z, 0.7 + 0.5 * b.weight, b.dx, b.dz);
@@ -1082,6 +1145,7 @@ export class Destructibles {
     const off = b.fallOff;
     // (a piece that stands on another, the upper half of a colossus: it comes off its cut, over and down)
     if (b.y0 > 0 || off > 0) b.pivot.position.set(b.dx * off * u, -b.y0 * u * u, b.dz * off * u);
+    this._place(b);
     const mx = b.x + b.dx * (off + b.h * 0.55), mz = b.z + b.dz * (off + b.h * 0.55);
     if (b.by !== 'player') {
       // a boss felled it: red. Marked on the ground from the moment it starts to go
@@ -1328,7 +1392,7 @@ export class Destructibles {
     if (b.held) {
       // (a slab carried out of the floor: its block goes back to the pool)
       b.held.visible = false;
-      this.root.add(b.held);
+      this.pieces.add(b.held);
       b.held = null;
     }
     const solid = this.game.fx?.alpha, glow = this.game.fx?.add;
@@ -1432,6 +1496,7 @@ export class Destructibles {
             b.shake = Math.max(0, b.shake - dt);
             const k = Math.sin(time * 58) * b.shakeAmp * (b.shake / 0.28);
             b.pivot.rotation.set(b.dz * k, 0, -b.dx * k);
+            this._place(b);
             busy = busy || b.shake > 0;
           }
         }
@@ -1466,7 +1531,7 @@ export class Destructibles {
       b.on = false;
       if (b.held) {
         b.held.visible = false;
-        this.root.add(b.held);
+        this.pieces.add(b.held);
         b.held = null;
       }
       b.cracked = false;
@@ -1475,6 +1540,9 @@ export class Destructibles {
       if (b.stub) b.stub.visible = false;
       b.pivot.position.set(0, 0, 0);
       b.pivot.quaternion.identity();
+      // (a lifted slab leaves the graph again; every other piece's matrices are put back)
+      if (b.floor && b.node.parent) this.pieces.remove(b.node);
+      else this._place(b);
     }
     this.active.length = 0;
     this._burningN = 0;
