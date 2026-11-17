@@ -3646,63 +3646,66 @@ ADR-092).
   their switches (`kindle`, `ashp3`, `qi`, `flit`, `burn`, `toll`, `ashLook`; `star`, `sky`,
   `ignite`, `void`, `presence`, `great`, `lordLook`; `floor`), as ADR-118's and ADR-119's did.
 
-## ADR-123 — The Wanderer of 2026-11-09 is the hero again, with his 1.64 m sword; a weapon's length is its own (2026-11-16)
-- **Context:** the owner scrapped the sword-and-shield looks built the same day (PR #65, closed) and
-  sent a screenshot of an older hero: "lets scrap everything. can you try to make the hero look liek
-  this, this is one of the older versions of the character". The early builds were rendered side by
-  side and the screenshot matched `566b452` (2026-11-09): spiky dark violet-black hair, a tall collar,
-  the open greatcoat, the spiked pauldron and plated sword arm, the half-cape, a long glowing sword.
-  The rebuilt look was shown with today's 1.12 m sword and athletic build kept (the owner had asked
-  for both since: "make the sword a little bit shorter", "he is a bit too lanky"); asked whether to
-  bring back the screenshot's long sword and slimmer build too, the owner answered "Long sword too".
+## ADR-123 — The hooded hero: one outfit from the owner's concept sheet, sword and shield, a line of his own; the fight never reads the drawn body (2026-11-17)
+- **Context:** in two days the owner turned down three hero looks (two sword-and-shield looks, PR
+  #65; the Wanderer of 2026-11-09 rebuilt, PR #66; two shorter variants of it) and then sent the
+  first concept sheet again: "lets try making the character like this. delete and get rid of the
+  other attempts ... make sure the character looks good and awesome in all angles". Asked first:
+  delete every old hero outfit; the shield guards and parries, with the attack motions and every
+  number as they are; and the earlier attempts failed on all four counts offered: proportions, too
+  busy, colours, weak in game. The sheet: a hooded figure in a long black cloak drawn in bold
+  white outlines, silver hair over a blank face, a crystal sword, a kite shield with a star, three
+  colours. An earlier build of the same sheet (PR #65's look A) had drawn it with the hero's
+  one-dot dotted line and read as a faint wireframe.
 - **Decision:**
-  1. **The default is the Wanderer's set again** (`gear/index.js` `DEFAULT_LOADOUT` =
-     `WANDERER_LOADOUT`; `DEFAULT_LOOK` `wanderer`). The Shrouded set stays as the outfit option
-     `shroud` (`SHROUD_LOADOUT`). The motions, the rules and every number of the fight are today's.
-  2. **The hair is 566b452's dark violet-black** with pale lavender edges (`HERO_INK.hair`, `hairTip`
-     and the `hair` material: that build's exact values). It was gold since Session 14 (ADR-049).
-  3. **The free hand is the shared one.** The Wanderer's arms ended in a rigid glove on the forearm;
-     they call `buildFreeHand(ctx, M.pants)` now, so the sword fingers, the wrist and the fist on the
-     grip (ADR-086) work with this outfit.
-  4. **The longsword: 1.64 m again** (`wanderer.sword`, `LONGSWORD_DIMS`: `drawnTip` 1.45, `steelTip`
-     1.56). The blade is the sculpt's own 1.45 m profile (`hero_parts.py` builds `bladeLong.*` beside
-     the short `blade.*`; the short one stays for the moon looks). The hit segment (`bladeBase` …
-     `bladeTip` 1.5 + 0.4) is gameplay and is unchanged: every reach, timing and damage is the same.
-  5. **A weapon's length is its own.** `buildHero` returns `rig.weaponDims` (the weapon item's `dims`
-     over `DIM`'s). The hero's animator clamps the point off the grass, keeps the blade out of his
-     legs and lays the cloth against the steel with it (`HeroAnimator.wd`); the edge glint and flash,
-     the halo and the drawn contact read it too, stretching their profiles along the longer blade
-     (`fx.js` `bladeStretch`). Every duelist keeps `DIM`'s (their blades were posed with it).
-  6. **At ease with a long blade** (`stances.js` `EASE_LONG`, blended in by the blade's length): the
-     hand a little forward, the blade flatter (29° down instead of 55°) and on the forearm's line, its
-     point 15 cm above the grass, the flat turned to stay broad to the camera. Hung at 55° the long
-     point went into the grass and the clamp bent it 25° off the forearm.
-  7. **The half-cape keeps out of the grass:** `floor` (its ends over the grass in a roll or a fall),
-     a little heavier (`lag` 0.7, `max` 1.6), pushed out of the grass at 30 rad/s (a streamer's own
-     `push`), and its three back sheets 8-13 cm shorter (0.84-0.87 m): through a forward roll the
-     1.0 m sheet lay 18 cm into the grass whatever way it swung.
-- **Also fixed in the tests** (each was hiding or faking a result): the integration harness seeds
-  `Math.random` again once the scene is built (three.js draws a uuid from it for every object, so a
-  different hero moved every roll of the fight after it); PRESSURE seeds each phase before its setup's
-  0.9 s of AI, not after; TIMING gives every placement the same random start; HEROARMS and HEROSTANCE
-  measure the wrist on the body the animator posed (they meant to, but the player turns the drawn
-  lean back on after every step, and through the shear the angle swung 10-40° with his facing); the
-  hero's tests measure his own blade (`rig.weaponDims`); `lord.mjs` and `duel.mjs` seed the stream
-  after their build the same way.
-- **Also fixed in the duelists' fairness guard** (found by the reseeded stream, a gap in ADR-122's
-  guard): a falling piece of the world warned after the Lord's Void Push was cued but before the wall
-  was thrown; `_worldCue` had nothing in flight to ground, and the two cues came 0.3 s apart needing a
-  guard and a roll (seed 4242, form 4). A crescent about to give its cue now asks `brain.giveWay`: if a
-  cue already given (or an impact that cannot move) from another attack needs the other answer within
-  `sep + margin` of its arrival, it fizzles uncued, as one already in flight would have.
-- **Why:** the owner chose the look from a screenshot of the game, so the closest match is that
-  build's own outfit, hair and sword, on today's skeleton and motions. Reading the blade's length
-  from the weapon (the README's "next step" since ADR-042) was the only way to a longer sword that
-  neither digs into the grass nor moves any boss.
-- **Rejected:** the slimmer build of 566b452 (the owner answered for the sword only; the athletic
-  build of ADR-040 stays, and the outfit's parts are fitted to it); a longer `DIM.steelTip` for
-  everyone (the duelists' poses would change); stretching today's blade mesh (its letters stretch).
-- **Consequences:** today's hero costs more: about 29k triangles in 23 draws (the Shrouded set: 26.6k
-  in 19). The drawn point reaches 1.45 m, near the gameplay reach's 1.5. The LOOKS test treats the
-  two former defaults as originals and the options made for a pick as new. Not judged in play or on
-  the phone; the owner's look at the preview is the check.
+  1. **One hero, one outfit.** `DEFAULT_LOADOUT` is the abyss set (`gear/abyss.js`) with
+     `shield.kite` (`gear/shield.js`) in a ninth slot, `offhand`. Every other outfit and every
+     switch between outfits is deleted (`wanderer`, `shroud`, `moon`, `swallow`, `warden`,
+     `moonblade`, `looks.js`, `?heroLook=`, `?sword=`, the Lab's OUTFIT and sword rows). What a
+     boss borrowed from an old outfit moved to the boss (the Starless Lord's armoured boots).
+     This supersedes ADR-089's "kept for later use".
+  2. **Built to the sheet's measurements.** The sheet's turnaround was measured (heights, widths,
+     the shield, the sword, the hem) and the build was settled by laying its silhouette over the
+     sheet's. The legs are 10 % shorter (`HERO_LEGS`, thigh 0.385, shin 0.38), the cloak hangs to
+     mid-shin over mid-shin boots, the head scale is his own (`HERO_HEAD_SCALE` 1.0), the sword is
+     0.92 m from pommel to point, the shield 0.78 x 0.45 m. Few big shapes, three colours (black,
+     a white line, a lavender-white crystal glow), no belt, no gem, no leather.
+  3. **A line of his own, inside the hero's art pass.** The player's materials write their part
+     ids into a bank of their own in the art source (`setHeroBank`, `uArtBank`), with tables of
+     their own (`U.uHeroOwn*`). For those pixels the pass draws a solid band inside the
+     silhouette whose width follows his drawn size, bold inner lines for flagged parts that stay
+     at the game camera, thin lines elsewhere, a soft glow ring and a tight halo on glowing
+     parts, over a fill that is plain black. The shared tables and the shared bank are untouched,
+     so the bosses' pixels are identical. No new pass, no new font.
+  4. **Sword and shield.** The mechanics of PR #65 (a shield joint on the free forearm built only
+     for a rig that wears one, `rig.shield`, `shieldPoses.js`) with what its review lacked: the
+     plate meets every blow the blade met (`_meetShield`, the sword taking a blow far to the sword
+     side), its outline is pushed out of his torso, hood, thighs and the ground (`_shieldClear`),
+     the heal drinks from the sword hand, the cloak is one garment on springs that curves, tucks
+     and streams (`CLOTH`). All of it runs for the hero's animator only.
+  5. **The fight never reads the drawn body.** Gameplay reads the hero on the skeleton's own legs:
+     `Player.legLift` (the drawn pivot's drop) is added in `unlean` and removed in `leanPoint`.
+     Reach, timings, damage, stamina and the hurt cylinder are unchanged, and a seeded fight is the
+     same fight whatever he wears: the test harness re-seeds `Math.random` before the wyrm is
+     built as well as after the build.
+  6. **Kept from the abandoned branch:** `rig.weaponDims` (a weapon's own lengths),
+     `buildHero`'s `opts.legs` and `rig.bodyDims`, the duelists' fairness-guard fix
+     (`brain.giveWay`: a crescent about to give its cue fizzles when a cue already given needs the
+     other answer within `sep + margin`; the Lord's Void Push after a falling pillar, seed 4242),
+     and the suites' seeding after their build.
+- **Why:** the owner's four complaints were one complaint seen four ways: a figure that did not
+  read. The sheet reads because it is a black mass closed by a bright line, so the line had to
+  become a thing the pass draws on purpose, sized to the figure, and the shapes had to be few and
+  large enough to survive at 50 px. The bank split was the only clean way to change the hero's
+  line: the line is drawn in the screen pass from part ids the bosses share.
+- **Rejected:** drawing him in the dragon look (`FLAG.ART`): the sheet is line art, and the owner
+  keeps the hero and the human bosses out of that look; per-material uniforms for the line (the
+  pass sees only part ids); sculpting the hood, hair and cowl in Blender (parameters were faster
+  to fit to the sheet; they can be ported); a head scaled to the sheet's skull estimate (the
+  overlay decided, at 1.0); keeping the old outfits behind a switch (the owner asked for them
+  gone); widening the bands of the checks that moved (each had a cause).
+- **Consequences:** the hero is cheaper than before (76 meshes, 45.8k triangles; main: 143,
+  78.5k). Inside he is black, not a field of letters: the owner picks between that and faint
+  letters up close (`?heroLine=b|c`); the switch and the losing options go after the pick.
+  Animator paths that only a hero without a shield reaches (the free hand, the two-handed grip)
+  stay and are tested with a shieldless build. Not yet judged in play or on the phone.

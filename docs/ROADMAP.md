@@ -179,17 +179,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.48 — The Wanderer of November 9 again, his long sword included (2026-11-16, `player/old-wanderer`, ADR-123)
-- [x] The default outfit is the Wanderer's set again; the Shrouded set is the option `shroud`
-- [x] 566b452's dark violet-black hair; the shared free hand on the Wanderer's arms
-- [x] The 1.64 m sword (`bladeLong.*`); a weapon's length read from `rig.weaponDims` by the animator and the FX
-- [x] At ease with the long blade (`EASE_LONG`); the half-cape out of the grass
-- [x] Tests: the Wanderer as the default; the seeded stream after the build, PRESSURE, TIMING, the wrist on the posed body
+## M1.48 — The hooded hero: one outfit, sword and shield, a line of his own (2026-11-17, `player/abyss-hero`, ADR-123)
+- [x] One hero: the abyss set and the kite shield (a ninth slot, `offhand`); every older outfit and outfit switch deleted
+- [x] The character to the concept sheet's measurements: planed hood, silver locks, cowl, torn cloak, mid-shin boots, crystal sword, star shield; legs 10 % shorter
+- [x] A line of his own in the hero's art pass (the player's own part-id bank): bold silhouette band, bold inner lines, glow, solid black; the bosses' pixels identical
+- [x] Sword and shield: the plate meets guard, parry and guard break; kept out of his body and the ground; the heal from the sword hand
+- [x] The cloak as one garment on springs: curves in a turn, tucks in a roll, streams on a run
+- [x] Gameplay reads the body on the skeleton's own legs (`Player.legLift`); a seeded fight is independent of the outfit (re-seed before the wyrm)
 - [x] The fairness guard: a crescent about to cue gives way to a cue already given needing the other answer (`brain.giveWay`)
 - [ ] Follow-ups:
-  - [ ] The owner's look in play and on the phone
-  - [ ] The slimmer build of 566b452, if wanted (refit the outfit's parts)
-  - [ ] The cloth's collision spheres along the whole long blade (`COL_BLADE` stops at 0.95 m)
+  - [ ] The owner's look in play and on the phone; the pick of the line (`?heroLine=b|c`), then the switch and the losing options go
+  - [ ] The roll's mid-tumble and the cloak lying down, if they still read badly in play
+  - [ ] Delete the animator paths only a shieldless hero reaches, if a shieldless hero is never wanted
+  - [ ] The seeded wyrm meter (WRECKAGE) reads differently by scenario order (module state)
 
 ## M1.47 — The duelists' second pass: a director and a fairness guard, Shen Hui's third phase, the Lord's spells in his strings, two arenas that break (2026-11-16, `enemies/duelist-second-pass`, ADR-122)
 - [x] A director over a duelist's pick, combo links from half the recovery, chain depth and rest, the openings kept

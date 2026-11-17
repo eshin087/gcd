@@ -32,8 +32,8 @@ npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
 ```
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne (default:
-Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
-(`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
+Cinderwood); the title screen and the Lab pick one too. The hero is one character with one outfit
+(ADR-123); `?heroLine=a|c` shows two other outlines for him until the owner picks (b is the default);
 `?wyrmFace=skull|loong|demon` gives the wyrm one of three sculpted heads the owner passed on for now
 (ADR-120). The owner's picks with the options turned down behind them: `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire).

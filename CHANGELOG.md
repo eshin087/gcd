@@ -5,13 +5,19 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Fifty-two pieces of work since 0.4.0:
-- **The hero looks like the Wanderer of November 9 again, his long sword included** (2026-11-16, ADR-123). *Changed:* the hero
-  wears the outfit of 2026-11-09 again, by the owner's wish: spiky dark hair, a tall collar, the open
-  greatcoat, the spiked pauldron and plated sword arm, the half-cape. His sword is 1.64 m again, held
-  flatter at ease so its point stays off the grass. How far a blow reaches, its timing and its damage
-  are unchanged. The hooded look stays as an option (`?heroLook=shroud`). *Fixed:* the cape's ends no
-  longer sink into the grass in a roll or when he lies dead. The Starless Lord's Void Push no longer
-  reaches you a moment after a falling pillar has called for a roll: it fizzles instead.
+- **A new hero: the hooded swordsman, with a sword and a shield** (2026-11-17, ADR-123). *Changed:* the hero is a new
+  character, from the owner's concept sheet: a hood, silver hair over a blank face, a draped cowl,
+  a long black cloak with a torn hem, tall boots, a pale crystal sword and a kite shield with a
+  star. He is drawn as a solid black figure with a bold white outline, so he stands out on every
+  level and on a phone. His legs are a little shorter and his sword is 0.92 m. How far a blow
+  reaches, its timing and its damage are unchanged. *Added:* he fights with the sword in one hand
+  and a shield on his left arm: holding guard raises the shield, and a block, a parry and a guard
+  break land on it. His cloak moves: it trails through a turn, wraps in a roll and streams on a
+  run. He drinks from his sword hand, the shield low. *Removed:* every older hero outfit and the
+  options to switch outfit or sword (`?heroLook=`, `?sword=`, the Lab's OUTFIT and sword rows).
+  *Fixed:* the Starless Lord's Void Push no longer reaches you a moment after a falling pillar has
+  called for a roll: it fizzles instead. `?heroLine=a|c` shows two other outlines (c has faint
+  letters inside the black up close) until the owner picks.
 - **The Ash Disciple and the Starless Lord fight harder, in arenas that break** (2026-11-16, ADR-122). *Changed:* both human bosses give far fewer pauses and
   their moves flow into each other, at the same damage per hit: against a hero who only defends,
   Shen Hui gives about 78 / 92 / 99 tells a minute by phase (60 / 76 before, in two

@@ -5,38 +5,95 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-16 — Session 63: the Wanderer of November 9 again, his long sword included
+## 2026-11-17 — Session 63: the hooded hero from the owner's concept sheet: one outfit, sword and shield, a line of his own (planned by the lead, built by Opus agents)
 
-**Owner:** after the sword-and-shield looks (PR #65), "lets scrap everything. can you try to make the
-hero look liek this, this is one of the older versions of the character", with a screenshot. Then,
-shown the rebuild with today's sword: "Long sword too". Branch `player/old-wanderer` from `main` (627917b),
-`main` merged in after #64. ADR-123 / Session 63 / M1.48. PR #65 closed, its branch deleted.
+**Owner:** three rounds in two days. 2026-11-16: two concept sheets, "make the 2 variations of the
+main character ... we are adding the shield" (two looks with a working shield, PR #65), then "lets
+scrap everything. can you try to make the hero look liek this, this is one of the older versions of
+the character" (the Wanderer of 2026-11-09 rebuilt, PR #66), then "make the sword a bit shorter and
+same with the character. the legs are too long and put a hood on" (two options shown). 2026-11-17,
+with the first concept sheet again ("GCD ABYSS, main character concept"): "i dont like any of
+these. lets try making the character like this. delete and get rid of the other attempts. plan
+this out with fable and have opus 5.5 agents do the building. make sure the character looks good
+and awesome in all angles. ask me any questions". Three questions, answered: delete every old hero
+outfit; the shield guards and parries; and of the earlier attempts all four dislikes ticked:
+proportions, too busy, colours, weak in game. Branch `player/abyss-hero`, PR #67 (#65 and #66
+closed, their branches deleted). ADR-123 / Session 63 / M1.48.
 
-**Finding the build:** six early builds extracted with `git archive` and rendered side by side
-(turnaround, game camera, phone camera): the screenshot is `566b452`, 2026-11-09.
+**Why the first build of this sheet (PR #65's look A) failed**, the lead's reading before any work:
+its line was one dot wide, dotted and dim, so the figure was a faint wireframe and a grey ghost at
+the game camera; its hood was a tall cone, its cowl a round bib, its shield a fan of wireframe
+lines; it had a belt and a violet gem the sheet does not; and it was judged in close-up stills,
+while in play the hero is about 50 px tall and seen from above and behind.
 
-**What changed:** the default outfit is the Wanderer's set again (the Shrouded set is the option
-`shroud`); the hair is that build's dark violet-black; the Wanderer's arms end in the shared free hand;
-the sword is 1.64 m again (`wanderer.sword`, Blender's `bladeLong.*`) and the hero's animator, FX and
-drawn contact read its length from `rig.weaponDims`; at ease the long blade is held flatter and on the
-forearm's line (`EASE_LONG`); the half-cape keeps out of the grass (floor, push, 8-13 cm shorter).
+**How it was run:** a shared brief, one task file per agent and the concept sheet cut into crops
+in the scratchpad; one hand-made worktree per agent (`hk-look`, `hk-motion`, `hk-docs`, the lead's
+own), each with its own headless Edge and capture server; the lead reviewed every sheet and sent
+work back. In order: a FOUNDATION agent (the shield mechanics of PR #65 ported, the purge, shorter
+legs), in parallel a LOOK agent (the line as three options, then the concept measured into a
+spec); the same look agent built the character; a second look agent took over with fresh eyes for
+two rounds (the lead's nine-point review, then seven); a MOTION agent for two rounds (the checks
+the foundation had loosened, the shield's reach, the audit, then the tests and the cloak on the
+real character); an INTEGRATION agent on the merged branch for two rounds; a DOCS agent for the
+reference docs. Three branches merged without a conflict beyond one import line.
 
-**Tests:** the scenarios written for the Shrouded set as the default now test the Wanderer and keep
-the Shrouded set as an option that still builds. Four test fixes that were hiding or faking results
-(ADR-123: the seeded stream after the build, PRESSURE's seeding, TIMING's per-placement start, the
-wrist measured on the posed body). The furnaceMaw bite flash was found late by the same fragile check
-that #64 fixed (impact 0.118); `main`'s value kept. `lord.mjs` and `duel.mjs` seed their stream after
-the build too; on the new stream the Lord's PACE found a real gap in #64's fairness guard (a falling
-piece warned between his push's cue and its throw, the two cues 0.3 s apart): a crescent about to cue
-now gives way to a cue already given that needs the other answer (`brain.giveWay`).
+**What changed:**
+- **One hero.** `DEFAULT_LOADOUT` is the abyss set with the kite shield in a ninth slot,
+  `offhand`. Every other outfit, `?heroLook=`, `?sword=` and the Lab's OUTFIT and sword rows are
+  gone. The Starless Lord's armoured boots, the one thing a boss borrowed, moved to his own files
+  unchanged.
+- **The character** (`gear/abyss.js`, `gear/shield.js`): a hood of flat planes with a ridge and
+  a back seam, eleven silver locks over a small blank face, a two-wrap cowl on a diagonal with a
+  V behind, a cloak-robe whose back is cut from one cone and whose hem is torn into big uneven
+  points, a bell cuff on the sword arm, mid-shin boots, a 0.92 m crystal sword, a 0.78 x 0.45 m
+  angular kite with a silver frame, six facets and a star. Measured from the sheet and settled by
+  laying his silhouette over the sheet's turnaround. Legs 10 % shorter (`HERO_LEGS`), a head scale
+  of his own (`HERO_HEAD_SCALE`).
+- **A line of his own** (`render/pipeline.js`, `render/materials.js`, `HERO_INK`'s `ab*` entries):
+  the player's materials write their part ids into a bank of their own, so the pass can draw him
+  differently without touching what the bosses read: a solid white band inside his silhouette
+  whose width follows his drawn size (about 1.5 px at the desktop game camera, 1 px on the phone,
+  3 px close up), bold inner lines for the few lines the sheet draws bold, a soft glow ring, a
+  tight halo on the blade and the star, solid black inside. `?heroLine=a|b|c` keeps the three
+  options for the owner's comparison (b is the default; c has faint letters inside up close).
+- **Sword and shield** (`shieldPoses.js`, `anim.js`, `player.js`): the sword in one hand; the
+  held guard, the parry and a guard break are met and drawn on the plate, the sword covering a
+  blow far to his sword side; the plate's outline is pushed out of his torso, hood, thighs and
+  the grass; the heal drinks from the sword hand with the shield low; the stance and the guard
+  hold the blade out to the sword side so it does not stand over his hood from behind.
+- **The cloak moves** (`anim.js` `CLOTH`): it curves in a turn with the hem trailing, tucks in a
+  roll and settles after, streams back on a run, and keeps outside his legs.
+- **The hero's effects** (arc, trail, hilt glow, blade flare) are the crystal's lavender-white.
 
-**Verification:** `npm test` and `npm run build` green on the merged branch. Rendered: the old build,
-the rebuild and today at the same cameras; a 20 s clip from behind and from the front (walk, guard,
-parry, the chain, the five heavies, the charge, a roll) sent to the owner with the preview link.
+**What the checks found on the way:**
+- With the shorter legs a wyrm timing check, a director check and the duel's "the blades meet"
+  moved, and the foundation loosened them. The motion agent found the cause instead: two gameplay
+  reads came off the DRAWN rig (`getChestPos` for the wyrm's aim, `unlean` for the hero's hit
+  test), 8.5 cm low. `Player.legLift` puts gameplay back on the skeleton's own legs; all three
+  checks are back at their old limits.
+- The merged build failed one seeded wyrm meter (19 % of the clearing standing, band 20 - 70 %).
+  Cause: the wyrm's brain rolls its first timers in its constructor, after the hero's objects drew
+  their ids from `Math.random` and before the end-of-build re-seed, so a different outfit played a
+  different fight. The harness now re-seeds before the wyrm is built; the band was not widened.
+- The duelists share the animator: the first cloth and blade-rate changes moved the Ash
+  Disciple's guard and failed a duel check. They run for the hero's animator only now.
+- Setting `BODY.headScale` for the hero shrank both bosses' heads; caught by the before / after
+  boss render, and the head scale became per rig.
+- Every round re-proved the bosses: seeded renders with 0 differing pixels and an identical rig
+  hash (object tree, geometry, uniforms, the shared part ink).
 
-**Open / next:** the owner's look in play and on the phone; the slimmer build of 566b452 if wanted
-(the outfit's parts would be refitted in Blender); the long blade beyond 0.95 m is not in the cloth's
-collision spheres (`COL_BLADE`).
+**Verification:** `npm test` (10 of 10) and `npm run build` green on the merged branch. Sheets per
+round beside the concept (turnaround at eye level and from 35 degrees above, the head, the
+equipment, the silhouette overlay, the game camera on three levels and the phone build, strips of
+the cloak and of each pose, a duel film). The hero costs 76 meshes and 45.8k triangles (main: 143
+and 78.5k); the frame is a tie with main within noise. The draft's preview went to the owner as
+soon as the merge was whole.
+
+**Open / next:** the owner's look in play and on the phone, and their pick of the line (b or c);
+after it, `?heroLine` and the losing options go. Known: lying on his back after a knockdown the torn hem still reads spiky from the high camera (prone and dead it lies calm); thin depth lines remain where the cloak meets the arms and trousers (the pass needs a per-part rule to drop them); at ease the shield shows from behind as a diagonal band, not the sheet's upright plate; the heal's blade passes 6 cm from the hood. Animator code reachable only
+without a shield is kept (the tests build a hero without one to exercise it). The seeded wyrm
+meter still reads differently by scenario order (module state, not the hero). `CLAUDE.md` still
+describes `?heroLook` / `?sword` as kept for later: the owner's call.
 
 ---
 
