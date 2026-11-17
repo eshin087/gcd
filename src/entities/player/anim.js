@@ -3,7 +3,7 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
-import { shieldRest, shieldStand, shieldRun, shieldBlock, shieldParry, shieldLock, shieldCharge, SHIELD_ARM } from './shieldPoses.js';
+import { shieldRest, shieldStand, shieldRun, shieldBlock, shieldParry, shieldLock, shieldCharge, SHIELD_ARM, SHIELD_BLADE } from './shieldPoses.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -726,6 +726,8 @@ function swingClip(name, shield = false) {
       keys = keys.map((k) => {
         const o = { ...k };
         for (const f of own ? SHIELD_DROP_ALL : SHIELD_DROP) delete o[f];
+        const bl = k.u > 2 ? SHIELD_BLADE[name]?.[k.u] : null; // (the recovery's blade only)
+        if (bl) Object.assign(o, bl);
         return o;
       }).concat(own ?? []);
     }
