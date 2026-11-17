@@ -179,6 +179,20 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.45 — The wyrm ablaze, a forest that breaks, letters that follow the zoom (2026-11-16, `dragon/menace-and-ruin`, ADR-120)
+- [x] Every tree of Cinderwood is a breakable that wears down in stages (664 breakables on 228 bones)
+- [x] The Elder Wyrm's skeleton, the Cinder Tree and the bone nest break in pieces; bone heaps; the bonfire stays
+- [x] The wyrm reaches the tree wall: wind from roars, rings, wings and landings; fire that carries on into the trees
+- [x] Phase 3: the ignition in the roar, wing tips, claws and tail ablaze, trailing fire, harmless footprints
+- [x] The letters follow the player's zoom past the default distance (the owner's pick: b)
+- [x] Three sculpted heads behind `?wyrmFace=`: shown, and passed on for now by the owner
+- [ ] Follow-ups:
+  - [ ] A human playtest: how fast the wall goes, the fire's strength in a real fight, the zoom on the owner's monitor
+  - [ ] Frame cost: 16 - 22 % more render time than before at 1080p, mostly the trees' mesh; measure on the iPhone
+  - [ ] The wall's damage in more, shorter stretches (it clumps into one to three); a dead tree's stages seen in the canopy
+  - [ ] A head for the wyrm, when the owner comes back to it: separate fangs, deeper sockets, calmer scales on the face
+  - [ ] The same destruction for the Ashfall Courtyard's and the Obsidian Throne's backgrounds
+
 ## M1.44 — The Cinder Wyrm's second pass: pressure, whole-body combos, flying combos, a clearing that breaks (2026-11-15, `dragon/wyrm-second-pass`, ADR-119)
 - [x] A director over the wyrm's pick; combo links for every attack; fairness guards; the pressure meter
 - [x] Six whole-body attack kinds, seven new strings; the breath's body braced

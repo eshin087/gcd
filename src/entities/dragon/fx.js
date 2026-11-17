@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
+import { wallWind, carryFire } from './wallReach.js';
 import { DuelFx } from '../enemies/duelist/fx.js';
 
 /** A blast as a blow on the world (world.impact). */
@@ -191,8 +192,9 @@ export class DragonFx {
     // record follows the front to kick dust and rocks off the ground, scorch it, send the echoes
     this._shocks = Array.from({ length: SHOCK_POOL }, () => ({
       alive: false, spawned: false, x: 0, z: 0, y: 1, r0: 0, r1: 0, T: 1, D: 1, v0: 0, t: 0, delay: 0,
-      k: 1, fk: 1, look: 'a', dust: 0, rock: 0, scorchT: 0, echo: 0, p1: 0, p2: 0, p3: 0, p4: 0,
+      k: 1, fk: 1, look: 'a', dust: 0, rock: 0, scorchT: 0, echo: 0, p1: 0, p2: 0, p3: 0, p4: 0, calm: false,
     }));
+    this._calmNext = false;
     this._brT = 0; // the breath's own clock (tongues, billows)
     this._brAcc = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // the breath's emitters' accumulators
   }
@@ -278,6 +280,8 @@ export class DragonFx {
     w.k = k;
     w.fk = fk;
     w.look = look;
+    w.calm = this._calmNext === true; // (shockRing(..., calm): its ground barely glows)
+    this._calmNext = false;
     w.dust = w.rock = w.scorchT = 0;
     w.echo = k >= 0.9 ? 0 : 99; // (weak fronts send no echo)
     w.p1 = Math.random() * 6.283;
@@ -435,7 +439,7 @@ export class DragonFx {
         const pts = Math.min(10, Math.ceil(circ / 5));
         for (let i = 0; i < pts; i++) {
           const a = Math.random() * 6.283, rr = rc * rand(0.85, 1.0);
-          sc.burnCircle?.(w.x + Math.cos(a) * rr, w.z + Math.sin(a) * rr, sr, L.scorch[0] * w.fk, L.scorch[1] * (0.3 + 0.7 * w.fk));
+          sc.burnCircle?.(w.x + Math.cos(a) * rr, w.z + Math.sin(a) * rr, sr, L.scorch[0] * w.fk, L.scorch[1] * (0.3 + 0.7 * w.fk) * (w.calm ? 0.15 : 1));
         }
       }
     }
@@ -802,6 +806,9 @@ export class DragonFx {
         this.game.world?.ignite?.(x, z, r, TUNING.world.ignite.breath); // what the breath lands on catches
         this.game.world?.fire?.hush?.(x, z, r * 1.6, 0.3); // (and its flames burn low while the breath is on them)
       }
+      // ... and it does not stop there: on along its way to the first wood, which catches (wallReach.js)
+      const end = SCORCH_STEPS[SCORCH_STEPS.length - 1][0] * S;
+      carryFire(this.d, mouth.x + sa * end, mouth.z + ca * end, sa, ca, 'breath');
     }
   }
 
@@ -1193,11 +1200,16 @@ export class DragonFx {
    * The roar's damaging shock ring (an effect, not a tell): a shock front in the look in use rolls
    * out to the ring's edge and slows there, a second, weaker one behind it, the grass thrown flat.
    */
-  shockRing(x, z, r) {
+  shockRing(x, z, r, calm = false) {
     if (!(r > 0) || !Number.isFinite(x + z)) return;
-    this._shock(x, z, 1.5 * S, r, 0.6, 1.3, 1);
-    this._shock(x, z, 1.2 * S, r * 0.78, 0.7, 0.6, 0.7, 0.12);
+    // `calm` (the phase 3 roar): its front's fire and the glow it leaves on the ground are held low, so
+    // the fire running out along the wyrm's limbs (ablaze.js) is what reads (2026-11-16)
+    this._calmNext = calm;
+    this._shock(x, z, 1.5 * S, r, 0.6, 1.3, calm ? 0.45 : 1);
+    this._calmNext = calm;
+    this._shock(x, z, 1.2 * S, r * 0.78, 0.7, 0.6, calm ? 0.3 : 0.7, 0.12);
     this.game.world?.gust?.(x, z, 2, r * 1.3);
+    wallWind(this.d, x, z, 'shock');
   }
 
   /**
@@ -1210,6 +1222,7 @@ export class DragonFx {
     k = Math.max(0.2, Math.min(2, k));
     this._shock(x, z, Math.min(1.2 * S, r * 0.25), r, 0.45 + 0.1 * k, k, 0.22);
     this.game.world?.gust?.(x, z, 0.8 + 0.8 * k, r * 1.6);
+    wallWind(this.d, x, z, 'ground', k);
   }
 
   /** Parry: a hard white/gold spark burst where the blow was turned aside (blue: bigger, still white/gold). */
@@ -1826,6 +1839,7 @@ export class DragonFx {
         h.acc2 = 0.07;
         this.game.world?.scorch?.burnCircle?.(fx, fz, hw * 1.1, 0.16, 1);
         this.game.world?.ignite?.(fx, fz, hw, TUNING.world.ignite.strip); // the pass sets what it crosses alight
+        carryFire(this.d, fx, fz, dx, dz, 'strip'); // (and its fire runs on ahead of it into the trees)
         for (let i = 0; i < 4; i++) {
           // the front: flames of every height, one leaning ahead now and then
           const l = (Math.random() * 2 - 1) * hw * 0.9, tall = Math.random() < 0.3;
@@ -1997,6 +2011,9 @@ export class DragonFx {
         // (a sweeping ring lights the wood it crosses, not the whole field's grass)
         this.game.world?.ignite?.(h.x + Math.cos(a) * r, h.z + Math.sin(a) * r, hw * 1.4, 1, false);
       }
+      // (its heat rolls on outward past the ring into the trees)
+      const a = Math.random() * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+      carryFire(this.d, h.x + ca * r, h.z + sa * r, ca, sa, 'ring');
     }
   }
 
@@ -2058,6 +2075,9 @@ export class DragonFx {
         sc?.burnCircle?.(cx + qx * l, cz + qz * l, hw * 1.6, 0.15, 0.9);
         this.game.world?.ignite?.(cx + qx * l, cz + qz * l, hw * 1.6, 1, false); // (wood only, as the ring)
       }
+      // (and its heat rolls on ahead of it into the trees)
+      const l = (Math.random() * 2 - 1) * half;
+      carryFire(this.d, cx + qx * l, cz + qz * l, h.dx, h.dz, 'wall');
     }
   }
 

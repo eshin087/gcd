@@ -5,6 +5,107 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-16 — Session 60: the wyrm ablaze, a forest that breaks, letters that follow the zoom (planned by the lead, built by Opus agents)
+
+**Owner:** "lets improve the dragon's face to look more menacing and realistic. right now it seems like
+a lego block dragon face. i also want to make the dragon be able to destroy more of the terrain in
+the background, especially the tree walls surrounding the map. the dragons melee and fire attacks
+that happens to hit the trees should slowly crumble and break them. every background object needs to
+be destructible, not just the objects in the ground. i also noticed as you zoom out more, the ascii
+detail and graphics of the objects gets less quality? ... on the 3rd phase of the dragon, i want the
+dragon to also set himself on fire like its wing tips, claws, and tail ... use fable to do the
+planning and use opus subagents to do the work." Four questions first; the answers: render all
+three faces (a predator skull, an Eastern loong, a horned demon); all of Cinderwood breaks, the two
+landmarks and the nest included, the bonfire stays; the zoom is noticed on desktop; the phase 3 fire
+burns the world and adds no damage to the hero. Branch `dragon/menace-and-ruin` from `main`
+(ba9a838). ADR-120 / Session 60 / M1.45.
+
+**How it was run:** the lead (Fable) mapped the code, wrote a shared brief and a task file per agent,
+and tested a capture rig first (a scratch server per worktree, headless Edge on the real GPU, a CDP
+client, a helper that freezes the page and posts contact sheets). Four `general-purpose` agents on
+Opus, one hand-made worktree and branch each (`w3/face`, `w3/break`, `w3/zoom`, `w3/ablaze`), file
+lists that do not overlap. The suites' one-line `SCENARIOS` registries were split one entry per line
+first, and each agent was told where to insert its scenario: the four branches merged with no
+conflict and the merge was green at once. A fifth agent (`w3/tune`) then owned the merged build, and
+a sixth wrote the reference docs. The lead looked at every sheet before it went to the owner.
+
+**The forest breaks** (`w3/break`, then `w3/tune`): every tree of Cinderwood (539, out to 74 m) is a
+'range' piece of one static tree mesh. `RangeBody` has parts (the trunk, each crown blob or bough is
+a run of vertices) and can be posed by rewriting its vertices from a home copy, so a tree shudders,
+leans, falls, is carried and resets with no bone of the rigid batch (the forest went from 368 bones
+to 228 (the wreckage pools included) while its breakables went from 183 to 664). A tree wears down in stages at 0.82 / 0.5 / 0.22
+of its structure: its outer crown bursts off, half the crown goes, it leans, it falls. Trees past
+32 m are the wall: they fall outward, and a fall that cannot reach the hero's ground gives no tell.
+The Elder Wyrm's skeleton is 36 bone pieces, the Cinder Tree five boughs and a trunk that is guarded
+while a bough stands, the nest 14 ribs and a skull; each broken bone leaves a heap. The bonfire stays.
+
+**The wyrm reaches the wall** (`w3/tune`): the first pass left the wall mostly standing (28 % of its
+front rows damaged after a fight) because the wyrm fights inside the clearing and its fire never
+landed past 32 m. Two means, both with numbers in tuning and neither touching an attack: wind
+(`destructibles.wind`: the roars, the shock rings, the wing buffets, take-off and landing send a
+front that wears wall trees to their second stage at most, never felling one) and carried fire
+(`carryFire`: a breath, a strafing pass, a flame ring or wall, a missed shot carries on and lights
+the first wall tree in its way), on a fire budget of the wall's own.
+
+**The wyrm ablaze** (`w3/ablaze`): `entities/dragon/ablaze.js`. The phase 3 roar ends in an ignition
+that runs out along the wings, the legs and the tail and flares at the ends; then the wing tips,
+the claws and the last third of the tail burn for the rest of the fight as heat in the fire field,
+keeping 18 % of their part's speed so a sweep leaves an arc and a tail whip a ribbon. Wood a
+burning part passes catches (5 a minute at most); footprints are a harmless scorch with small
+flames, never `world.fire`. The fire dims round every flash, under the body's warning glow and near
+the hero. It gutters in a stagger, goes out along the body on death, and uses its own random
+numbers, so a seeded fight is identical with it off or on.
+
+**The letters follow the zoom** (`w3/zoom`): the diagnosis first. Only what is drawn in screen-fixed
+cells loses detail when the camera pulls back (the art pass, prop art, the trees' screen grid, the
+fire field: 5.8 letter rows a metre at 36 m, 3.9 at 54 m, at 1080p); the grass and the floors are
+world-anchored and do not. Past the default wheel distance the art cell now steps down a ladder of
+the existing pixel fonts, the screen grid with it. The font follows the player's wheel, not the
+measured camera distance (the boss framing sits 5 - 9 m further out and would have changed the
+default look). All atlases are built ahead, a step swaps uniforms, the fire field draws into a
+sub-viewport of targets sized for the finest step, and the letters' tone is held by ink coverage.
+
+**Three heads, not taken up** (`w3/face`): `entities/dragon/heads.js` sculpts a predator skull, a
+loong and a horned demon as lofts with real sockets, cheekbones, gums and varied teeth; gameplay
+joints are identical to the old head's to the millimetre.
+
+**The owner's picks** (from rendered sheets and clips, 2026-11-16): the face: "lets pass on the
+remake of the dragon head for now"; the zoom: b (the letters fully follow); the fire: b (trailing
+fire). So the head is unchanged and the three stay behind `?wyrmFace=` for later; `?zoomArt=b` and
+`?ablaze=b` are the defaults.
+
+**Verification:** `npm test` and `npm run build`: see the PR. New scenarios: world `wear`, `wall`,
+`landmarks`, `reach`; integ `zoomart`, `wyrmface`, `ablaze`; WRECKAGE reports and bounds the wall's
+front rows. Measured over five seeds, 80 s a phase: the wall's front rows (153 trees, 32 - 46 m)
+worn or down at the end 43 / 41 / 37 / 45 / 57 %, phase 1 alone 8 - 18 %; falling trees on the hero
+0 on every seed. On screen (headless Edge on the real GPU, 1280 x 720): the stages of the three
+tree types, the landmarks coming apart, the ignition, the three fire strengths, the flares on the
+burning wyrm, the zoom options at four distances and three resolutions, and by the lead on the
+merged build: phase 3 burning, a roar's wind reaching 212 wall trees, the cell stepping 5x8 to 4x6
+at the furthest wheel.
+
+**Not checked / open:**
+- **Frame cost.** Paired against the base at 1080p the merged build renders 16 - 22 % slower with
+  the wall intact and 14 - 21 % in phase 3 (7 - 10 % wrecked and burning); at the phone preset's
+  size on the desktop GPU 15 - 26 %. Most of it is the trees' new representation, not the fire or
+  the zoom. Nobody has run it on the iPhone.
+- The wall's damage clumps into one to three long stretches (the fight stays on one side); the
+  target of four separate stretches was not met. From above it reads as thinned and burnt more than
+  torn open. Fights in the browser ran harsher than the headless meter (61 - 74 %).
+- A dead tree's stages cannot be seen inside the canopy until it falls; many ribs breaking in one
+  frame are still a pale mass; the wind's leaves are faint at the game camera.
+- With zoom b the trees' letters step too (the trees were the owner's look), and stone pillars at
+  the furthest zoom print denser and flatter (seen in the Ashfall Courtyard).
+- The new `wear` sound has not been heard by anyone. Nobody has played any of it.
+- The unsharded TIMING run fails one placement (furnaceMaw P3, hit 3 at 0.6: 100 ms) on the base
+  too; the sharded run in `npm test` does not show it.
+
+**Next:** the owner plays the Vercel preview (the wall's rate of ruin, the fire's strength in a real
+fight, the zoom on their monitor, the frame rate on the phone). If the phone suffers, the tree mesh
+is the place to look. The heads wait behind `?wyrmFace=`.
+
+---
+
 ## 2026-11-15 — Session 59: the Cinder Wyrm's second pass (planned by the lead, built by Opus agents)
 
 **Owner:** "i want to make the boss fights a bit more harder, more epic, more crazy combos and

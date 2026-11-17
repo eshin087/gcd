@@ -4,7 +4,27 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Forty-nine pieces of work since 0.4.0:
+Fifty pieces of work since 0.4.0:
+- **The wyrm burns in phase 3, the forest breaks, the letters follow the zoom** (2026-11-16, ADR-120).
+  *Added:* in its third phase the Cinder Wyrm sets itself on fire. The phase 3 roar ends with fire
+  running out along its wings, legs and tail; from then on its wing tips, claws and tail burn, and
+  the flames trail behind fast moves: a wing sweep leaves an arc of fire, a tail whip a ribbon. Trees
+  it passes can catch. Its footprints smoulder with small flames that do not hurt; its attacks, their
+  damage and their cues are unchanged, and the fire dims round every flash. Every tree of Cinderwood
+  can now break, out to the edge of the forest (664 breakable things instead of 183), and a tree
+  wears down in stages: leaves burst off, the crown thins, it leans, it falls and leaves a log and a
+  stump. The Elder Wyrm's skeleton comes apart bone by bone, the Cinder Tree bough by bough, and the
+  bone nest breaks; broken bones leave heaps. The bonfire stays. The wyrm reaches the tree wall from
+  inside the clearing: its roars, shock rings, wing beats, take-offs and landings send wind that
+  strips the wall's crowns, and fire that misses the hero carries on into the trees; after a full
+  fight about two fifths of the wall's front rows are worn, felled or burnt. Trees of the wall fall
+  outward, away from the fight. A sound for a tree wearing down. *Changed:* when you zoom out on a
+  desktop, the small letters of the wyrm, the stones and the trees get smaller with the picture, so
+  things keep their detail at the furthest zoom (they lost about a third of their letters before).
+  Nothing changes at the default zoom or on a phone. The owner's pick of three options each for the
+  zoom and for the fire (b for both); `?zoomArt=a|c` and `?ablaze=off|a|c` show the others. Three
+  new heads for the wyrm were built and shown (a predator skull, an Eastern loong, a horned demon);
+  the owner passed on them for now, so the head is unchanged and they wait behind `?wyrmFace=`.
 - **The Cinder Wyrm fights harder, with its whole body** (2026-11-15, ADR-119). *Changed:* the wyrm
   gives far fewer pauses and its attacks flow into each other: about 34 tells a minute in phase 1,
   59 in phase 2 and 78 in phase 3 (26, 42 and 45 before), with the same damage per hit. It now picks

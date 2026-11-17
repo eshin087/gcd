@@ -6,6 +6,7 @@ import { FIRE } from './fireAttacks.js';
 import { BULLET_HELL } from './bulletAttacks.js';
 import { TERRAIN_MOVES } from './terrainAttacks.js';
 import { snapFire, snapSmoke, rakeSparks, wingSlamBurst, tailSlamLine } from './meleeFx.js';
+import { wallWind } from './wallReach.js';
 
 /** Wing spread the actions return to (the mantled HALF sails, TUNING.rest). */
 const REST_SPREAD = TUNING.rest.spread;
@@ -134,11 +135,13 @@ function rootBezier(d, out, p0, p1, p2, t) {
 }
 
 // ------------------------------------------------------------------ roar helpers (also used by ai.js)
-export function roarFx(d, strength) {
+export function roarFx(d, strength, wind = 'roar') {
   const g = d.game, pt = d.rig.pt;
   d.emit('dragon:roar', { strength });
   g.shake?.(0.5 * strength);
   g.world?.gust?.(d.position.x, d.position.z, 1.6 * strength, 22 * S);
+  // its breath reaches the trees round the clearing: a front of wind tears leaves off the wall (wallReach.js)
+  wallWind(d, d.position.x, d.position.z, wind, strength);
   d.fx.roarWave(pt.mouth.x, pt.mouth.y, pt.mouth.z, strength);
 }
 
@@ -1284,9 +1287,9 @@ function makeRoar(name, toPhase = 0) {
       if (phase !== 'roar') return;
       const g = d.game;
       if (scripted) announcePhase(d, a, toPhase);
-      roarFx(d, toPhase === 3 ? 1.5 : scripted ? 1.3 : 1.1);
+      roarFx(d, toPhase === 3 ? 1.5 : scripted ? 1.3 : 1.1, 'phaseRoar');
       const c = d.rig.pt.chest, p = g.player?.position;
-      d.fx.shockRing(c.x, c.z, R.radius);
+      d.fx.shockRing(c.x, c.z, R.radius, toPhase === 3);
       d.markHitbox?.(c.x, 0, c.z, R.radius);
       // the forefeet stamp down with the ring
       for (const arm of d.rig.pt.arms) {
@@ -1296,6 +1299,8 @@ function makeRoar(name, toPhase = 0) {
       if (toPhase === 3) {
         // phase 3: the heart catches: a burst of embers from the whole body with the roar
         d.fx.bodyEmbers(0.25, d.hurtSpheres, 240, true);
+        // ... and it sets itself on fire: the fire runs out along its wings, legs and tail (ablaze.js)
+        d.ablaze?.ignite();
       }
       if (p && Math.hypot(p.x - c.x, p.z - c.z) <= R.radius + playerR(g)) {
         d.strike(a, { damage: R.damage, knockback: R.knockback, kind: 'roar', from: c, point: c });
@@ -1701,6 +1706,7 @@ const WING = {
     const w = d.rig.pt.wings[h.wi];
     for (let i = 1; i < 3; i++) d.fx.dustRing(w.tips[i].x, w.tips[i].z, 0.7 * S, 16, 0.9);
     d.game.world?.gust?.(w.knuckles[1].x, w.knuckles[1].z, 1.8, 10 * S);
+    wallWind(d, w.knuckles[1].x, w.knuckles[1].z, 'buffet');
     d.game.shake?.(0.2);
   },
   recover(d, a, h, k) {
@@ -2081,6 +2087,7 @@ const WING_SWEEP = {
     const w = d.rig.pt.wings[h.wi];
     d.fx.dustRing(w.tips[1].x, w.tips[1].z, 0.6 * S, 14, 0.8);
     d.game.world?.gust?.(w.knuckles[1].x, w.knuckles[1].z, 1.4, 9 * S);
+    wallWind(d, w.knuckles[1].x, w.knuckles[1].z, 'buffet', 0.75);
   },
   recover(d, a, h, k) {
     const pose = d.pose;

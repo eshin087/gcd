@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32, hash2 } from '../core/rng.js';
 import { prep, lumpy, carve, mul, buildRubble, BARK } from './forest.js';
 import { BREAK } from './breakTuning.js';
@@ -26,7 +27,11 @@ import { BREAK } from './breakTuning.js';
 const LOG_LOOKS = 3;
 const CHAR_LOOKS = 2;
 const RUBBLE_LOOKS = 3;
-const KIND = Object.freeze({ LOG: 0, CHAR: 1, RUBBLE: 2 });
+const BONE_LOOKS = 3;
+// (BONES: what a broken rib, a run of vertebrae, a skull leaves lying: a heap of shards in the bone's own
+// hue, 2026-11-16; it lies and sinks as a rubble pile does)
+const KIND = Object.freeze({ LOG: 0, CHAR: 1, RUBBLE: 2, BONES: 3 });
+const BONE_COL = [0.3, 0.285, 0.245], OLD_BONE_COL = [0.2, 0.19, 0.17]; // (landmarks.js BONE, OLD_BONE)
 const CHAR_COL = [0.03, 0.026, 0.024]; // (burnt black: the ember glow under it is the scorch map's)
 
 // cosmetic noise from this module's own stream (the seeded sims replay Math.random)
@@ -58,6 +63,43 @@ function logGeometry(r, charred) {
   return g;
 }
 
+/** A heap of broken bone round 0, about 1 across (scaled per use): rib shards lying crossed, knuckles, splinters. */
+function boneGeometry(r) {
+  const parts = [];
+  const n = 4 + Math.floor(r() * 3);
+  for (let i = 0; i < n; i++) {
+    const len = 0.7 + r() * 0.9, rad = 0.06 + r() * 0.07;
+    const g = prep(new THREE.CylinderGeometry(rad * 0.7, rad, len, 5, 3));
+    // a rib's curve: bent along its length
+    const p = g.attributes.position;
+    for (let k = 0; k < p.count; k++) {
+      const y = p.getY(k) / len;
+      p.setX(k, p.getX(k) + (0.25 - y * y) * 0.5 * (0.5 + r()));
+    }
+    g.rotateZ(Math.PI / 2 + (r() - 0.5) * 0.3);
+    g.rotateY(r() * Math.PI * 2);
+    const a = r() * Math.PI * 2, d = r() * 0.45;
+    g.translate(Math.cos(a) * d, rad * 0.8 + i * 0.03, Math.sin(a) * d);
+    parts.push(g);
+  }
+  for (let i = 0; i < 3; i++) {
+    const s = 0.12 + r() * 0.12;
+    const g = prep(new THREE.IcosahedronGeometry(s, 0));
+    lumpy(g, s * 0.35, 1.6 / s, r() * 99);
+    const a = r() * Math.PI * 2, d = 0.2 + r() * 0.5;
+    g.translate(Math.cos(a) * d, s * 0.5, Math.sin(a) * d);
+    parts.push(g);
+  }
+  const g = mergeGeometries(parts);
+  const sd = r() * 50;
+  carve(g, {
+    col: (px, py, pz) => mul(hash2(px * 3 + sd, pz * 3) < 0.35 ? OLD_BONE_COL : BONE_COL, 0.75 + 0.45 * hash2(px * 9 + sd, py * 7 + pz * 5)),
+    ao: (px, py) => 0.55 + 0.45 * clamp(py / 0.3, 0, 1),
+    edge: (px, py, pz, nx, ny) => (ny > 0.5 ? 0.4 : 0),
+  });
+  return g;
+}
+
 export class Wreckage {
   /**
    * `root`: the group it hangs under (the breakables' root: one batch for both); `mat`: the prop art
@@ -71,7 +113,7 @@ export class Wreckage {
     this.group.name = 'wreckage';
     root.add(this.group);
     /** every entry, by pool: { kind, mesh, on, t (born), x, z, dx, dz, len, r, burn, burnLife, flame, heatT, smoulder, sink, light, M } */
-    this.pools = [[], [], []];
+    this.pools = [[], [], [], []];
     /** the entries lying now, oldest first per pool (unordered across pools) */
     this.live = [];
     this.burning = 0;
@@ -81,10 +123,11 @@ export class Wreckage {
     if (!mat) return;
     const W = BREAK.wreck;
     const r = mulberry32(0x5eed1e5);
-    const logs = [], chars = [], rocks = [];
+    const logs = [], chars = [], rocks = [], bones = [];
     for (let i = 0; i < LOG_LOOKS; i++) logs.push(logGeometry(r, false));
     for (let i = 0; i < CHAR_LOOKS; i++) chars.push(logGeometry(r, true));
     for (let i = 0; i < RUBBLE_LOOKS; i++) rocks.push(buildRubble(r, 0, 0, 1, { h: 0.55 })[0]);
+    for (let i = 0; i < BONE_LOOKS; i++) bones.push(boneGeometry(r));
     const make = (kind, n, geos) => {
       for (let i = 0; i < n; i++) {
         const m = new THREE.Mesh(geos[i % geos.length], mat);
@@ -101,6 +144,7 @@ export class Wreckage {
     make(KIND.LOG, W.logs, logs);
     make(KIND.CHAR, W.chars, chars);
     make(KIND.RUBBLE, W.rubble, rocks);
+    make(KIND.BONES, W.bones ?? 0, bones);
   }
 
   get count() {
@@ -158,7 +202,7 @@ export class Wreckage {
 
   _place(e) {
     const m = e.mesh;
-    if (e.kind === KIND.RUBBLE) {
+    if (e.kind === KIND.RUBBLE || e.kind === KIND.BONES) {
       m.position.set(e.x, e.y0 - e.sink * (e.r * 0.7 + 0.2), e.z);
       m.rotation.set(0, e.yaw, 0);
       m.scale.set(e.r, e.r * 0.8, e.r);
@@ -216,7 +260,8 @@ export class Wreckage {
   /** A pile of rubble at (x, z), `r` across (a broken stone, a boulder, a thrown one's remains). */
   rubble(x, z, r, M = BREAK.mats.stone) {
     if (!Number.isFinite(x + z + r) || !(r > 0.1)) return null;
-    const e = this._take(KIND.RUBBLE);
+    // (bone: a heap of shards, its own pool; stone and anything else: a rubble pile)
+    const e = this._take(M === BREAK.mats.bone && this.pools[KIND.BONES].length ? KIND.BONES : KIND.RUBBLE);
     if (!e) return null;
     this._start(e, x, z);
     e.r = clamp(r, 0.3, 1.8);
@@ -259,7 +304,7 @@ export class Wreckage {
 
   /** Distance from (x, z) to the log's axis (a pile: to its centre). */
   _dist(e, x, z) {
-    if (e.kind === KIND.RUBBLE) return Math.hypot(x - e.x, z - e.z);
+    if (e.kind >= KIND.RUBBLE) return Math.hypot(x - e.x, z - e.z);
     const t = clamp((x - e.x) * e.dx + (z - e.z) * e.dz, 0, e.len);
     return Math.hypot(e.x + e.dx * t - x, e.z + e.dz * t - z);
   }
@@ -364,12 +409,12 @@ export class Wreckage {
     const fx = this.game.fx?.alpha;
     if (!fx) return;
     const M = e.M ?? BREAK.mats.wood, p = this._p;
-    const mx = e.kind === KIND.RUBBLE ? e.x : e.x + e.dx * e.len * 0.5, mz = e.kind === KIND.RUBBLE ? e.z : e.z + e.dz * e.len * 0.5;
+    const mx = e.kind >= KIND.RUBBLE ? e.x : e.x + e.dx * e.len * 0.5, mz = e.kind >= KIND.RUBBLE ? e.z : e.z + e.dz * e.len * 0.5;
     n = Math.max(2, Math.round(n * (this.D?.q ?? 1)));
     for (let i = 0; i < n; i++) {
-      p.x = mx + (rnd() - 0.5) * (e.kind === KIND.RUBBLE ? e.r * 2 : e.len);
+      p.x = mx + (rnd() - 0.5) * (e.kind >= KIND.RUBBLE ? e.r * 2 : e.len);
       p.y = 0.2 + rnd() * 0.3;
-      p.z = mz + (rnd() - 0.5) * (e.kind === KIND.RUBBLE ? e.r * 2 : e.len * 0.4);
+      p.z = mz + (rnd() - 0.5) * (e.kind >= KIND.RUBBLE ? e.r * 2 : e.len * 0.4);
       p.vx = (rnd() - 0.5) * 1.2;
       p.vy = 0.3 + rnd() * 0.8;
       p.vz = (rnd() - 0.5) * 1.2;
@@ -394,8 +439,8 @@ export class Wreckage {
     const L = this.live;
     if (!L.length || !(dt > 0)) return;
     const W = BREAK.wreck;
-    // a pool over its share: its oldest sinks into the ground
-    for (let k = 0; k < 3; k++) {
+    // a pool over its share: its oldest sinks into the ground (every pool, the bone heaps included)
+    for (let k = 0; k < this.pools.length; k++) {
       const cap = this._cap(k);
       let used = 0, sinking = 0, oldest = null;
       for (let i = 0; i < L.length; i++) {

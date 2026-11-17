@@ -2467,7 +2467,33 @@ async function scenarioStrategy() {
   return last;
 }
 
-const SCENARIOS = { strategy: scenarioStrategy, terrain: scenarioTerrain, probe: scenarioProbe, perfect: scenarioPerfect, flare: scenarioFlare, telemetry: scenarioTelemetry, heavy: scenarioHeavy, moments: scenarioMoments, pressure: scenarioPressure, impact: scenarioImpact, levels: scenarioLevels, data: scenarioData, timing: scenarioTiming, guard: scenarioGuard, clash: scenarioClash, trade: scenarioTrade, deflect: scenarioDeflect, ghostep: scenarioGhostep, streak: scenarioStreak, training: scenarioTraining, execute: scenarioExecute, phase: scenarioPhase, flow: scenarioFlow, win: scenarioWin, cutfx: scenarioCutFx };
+const SCENARIOS = {
+  strategy: scenarioStrategy,
+  terrain: scenarioTerrain,
+  probe: scenarioProbe,
+  perfect: scenarioPerfect,
+  flare: scenarioFlare,
+  telemetry: scenarioTelemetry,
+  heavy: scenarioHeavy,
+  moments: scenarioMoments,
+  pressure: scenarioPressure,
+  impact: scenarioImpact,
+  levels: scenarioLevels,
+  data: scenarioData,
+  timing: scenarioTiming,
+  guard: scenarioGuard,
+  clash: scenarioClash,
+  trade: scenarioTrade,
+  deflect: scenarioDeflect,
+  ghostep: scenarioGhostep,
+  streak: scenarioStreak,
+  training: scenarioTraining,
+  execute: scenarioExecute,
+  phase: scenarioPhase,
+  flow: scenarioFlow,
+  win: scenarioWin,
+  cutfx: scenarioCutFx,
+};
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());

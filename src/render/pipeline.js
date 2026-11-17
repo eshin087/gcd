@@ -3,7 +3,7 @@ import { CONFIG } from '../core/config.js';
 import { FS_VERT, HERO_PARTS, LAYER_CASTER, LAYER_CASTER_RIGID, RIGID_VERT_GLSL } from './shaderLib.js';
 import { rigidBones } from './rigidBatch.js';
 import { createGridAtlas, createPixelArtAtlas, pixelArtCell, GRID_COLS, GRID_ROW } from './glyphs.js';
-import { createWyrmArtAtlas, wyrmArtFont } from './wyrmGlyphs.js';
+import { createWyrmArtAtlas, wyrmArtLadder, zoomArtStep } from './wyrmGlyphs.js';
 import { HERO_ART } from './materials.js';
 import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 
@@ -21,6 +21,21 @@ import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 //   5. bloom + tone map + grade + vignette + feedback overlays             -> screen
 
 export { LAYER_CASTER, LAYER_CASTER_RIGID };
+
+/**
+ * The letters follow the zoom (?zoomArt=a|b|c, read once at load; CONFIG.camera.zoomArt): b (the
+ * default, the owner's pick of the three, 2026-11-16) the art cell and the screen grid shrink as the
+ * camera pulls back past its default distance so an object keeps its letters, c half of that, a
+ * the fixed letters the game had before. Pipeline.setZoomArt switches it live (the Lab, tests).
+ */
+export const ZOOM_ART = (() => {
+  try {
+    const v = new URLSearchParams(globalThis.location?.search ?? '').get('zoomArt');
+    return v === 'a' || v === 'c' ? v : 'b';
+  } catch {
+    return 'b';
+  }
+})();
 /** World radius (m) round the hero's screen point inside which the art pass draws his dark halo. */
 const HERO_HALO_R = 2.1;
 /** GLSL: alpha `a` is one of the hero's part ids (materials.js HERO_ART; FLAG.ART_HERO = 0.48, FLAG.ART = 0.5). */
@@ -151,6 +166,13 @@ export class Pipeline {
     this.artCell = new THREE.Vector2(5, 8);
     this.artFont = '';
     this.art = null;
+    // the zoom ladder (?zoomArt): the art fonts / grid cells this frame size may step down to, built
+    // in setSize (atlases ahead of time: a step only swaps uniforms), and the step drawn now
+    this.zoomArt = ZOOM_ART;
+    this.zoomLadder = [];
+    this.zoomStep = 0;
+    this._zoomHs = [];
+    this._gridCache = new Map();
     // the hero's own, finer grid: a 3x3 micro-font in square 4x4 cells (x2 from 2160 px tall): the
     // reference's dot matrix, and ~28 rows of it down his figure at the game camera
     this.heroCell = new THREE.Vector2(4, 4);
@@ -262,6 +284,10 @@ export class Pipeline {
         uWyrmGlyph: { value: new THREE.Vector4(0.12, 0.42, 0.08, 1) },
         // atlas columns (wyrmGlyphs.js): mid set start, bright set start, stroke start, glyphs in the row
         uWyrmAtlas: { value: new THREE.Vector4(10, 20, 28, 32) },
+        // the art letters' brightness at a zoom ladder step (?zoomArt): the frame size's own font's ink
+        // over this font's (a smaller font fills more of its cell), so an object keeps its tone as its
+        // letters shrink; 1 at step 0 (option a, the default zoom)
+        uArtInk: { value: 1 },
         uWyrmOutline: { value: 1 }, // 1: silhouette cells draw their edge as a stroke glyph
         // the wyrm's grid is anchored to its own screen position (px, set per frame from
         // U.uBossScreen): its letters travel with it when the camera pans or it walks, instead of
@@ -271,6 +297,9 @@ export class Pipeline {
         // b a letter roll, a kind + stroke), and uFlame = cells x, cells y, 1 while something burns
         tFlame: { value: null },
         uFlame: { value: new THREE.Vector4(1, 1, 0, 0) },
+        // the fire field's cells drawn this frame (its texture may be larger: the zoom ladder's
+        // finest step); the haze clamps its look-ups to them
+        uFlameCells: { value: new THREE.Vector2(1, 1) },
         // HEAT HAZE: the letters of the wyrm and the background objects re-roll and shimmer where the
         // fire field is hot at, under or beside their cell, as if the heat boiled the text (read only
         // while something burns: uFlame.z). x / y = the heat (as the fire field counts it: ~0.4 a
@@ -369,6 +398,7 @@ export class Pipeline {
         uniform vec4 uWyrmTone;
         uniform vec4 uWyrmGlyph;
         uniform vec4 uWyrmAtlas;
+        uniform float uArtInk;
         uniform float uWyrmOutline;
         uniform vec2 uWyrmAnchor;
         uniform float uWyrmTaps;
@@ -379,6 +409,7 @@ export class Pipeline {
         uniform vec2 uPropAnchor;
         uniform sampler2D tFlame;
         uniform vec4 uFlame;
+        uniform vec2 uFlameCells;
         uniform vec4 uHaze;
         uniform vec3 uHazeRoll;
         uniform float uTime;
@@ -510,19 +541,19 @@ export class Pipeline {
             float fl = boil ? 1.0 + (gHaze.y - 0.5) * 2.0 * uHazeRoll.y : 1.0;
             ink = mix(ink, warm * (luma(ink) * 1.25 + uHazeRoll.z), hz * uHaze.z) * fl;
           }
-          return ink * m;
+          return ink * (m * uArtInk);
         }
         // heat haze (uFlame.z > 0 only): the fire field's flame texture has one texel per art cell
         // counted from the screen's lower-left corner. A cell is in the haze when the field is hot at
         // it, in the cells under it (heat climbs) or beside it. Steel (sparks, glints) makes none.
         vec2 flameHeat(vec2 fc) {
-          vec4 f = texture2D(tFlame, (fc + 0.5) / uFlame.xy);
+          vec4 f = texture2D(tFlame, (clamp(fc, vec2(0.0), uFlameCells - 1.0) + 0.5) / uFlame.xy);
           float kind = floor(f.a * 4.0 + 0.01);
           return vec2(kind < 1.5 ? f.r * 2.5 : 0.0, kind);
         }
         void hazeCell(vec2 cpx, vec2 acell) {
           vec2 fc = floor(cpx / uArtCell);
-          vec4 f0 = texture2D(tFlame, (fc + 0.5) / uFlame.xy);
+          vec4 f0 = texture2D(tFlame, (clamp(fc, vec2(0.0), uFlameCells - 1.0) + 0.5) / uFlame.xy);
           float k0 = floor(f0.a * 4.0 + 0.01);
           vec2 best = vec2(k0 < 1.5 ? f0.r * 2.5 : 0.0, k0);
           vec2 t;
@@ -1267,7 +1298,7 @@ export class Pipeline {
     field.init(this.rtType, this.sceneRT.depthTexture);
     this.fxScene.add(field.mesh);
     this.asciiMat.uniforms.tFlame.value = field.flameRT.texture;
-    if (this.art) field.setSize(this.width, this.height, this.artCell, this.art);
+    if (this.art) field.setSize(this.width, this.height, this.artCell, this.art, this._minCell ?? this.artCell);
   }
 
   /**
@@ -1431,25 +1462,38 @@ export class Pipeline {
     // character cell scales with vertical resolution (terminal-sized glyphs at 1080p)
     const cellH = Math.max(9, Math.min(24, Math.round(H / 90)));
     const cellW = Math.max(5, Math.round(cellH * 0.6));
-    if (!this.grid || cellW !== this.cell.x || cellH !== this.cell.y) {
-      this.grid?.texture.dispose();
-      this.cell.set(cellW, cellH);
-      this.grid = createGridAtlas(cellW, cellH);
-      this.asciiMat.uniforms.tGrid.value = this.grid.texture;
-    }
     // the wyrm's ASCII art: pixel-font digits in cells ~1/90 of the height (5x8 px at 720p, 6x9 at
-    // 1080p, 4x6 on a phone; wyrmGlyphs.js wyrmArtFont)
-    const wf = wyrmArtFont(H);
-    const fontKey = `${wf.font}x${wf.s}`;
-    if (!this.art || fontKey !== this.artFont) {
-      this.art?.texture.dispose();
-      this.artFont = fontKey;
-      this.artCell.set(...wf.cell);
-      this.art = createWyrmArtAtlas(wf.font, wf.s);
-      this.asciiMat.uniforms.tArt.value = this.art.texture;
-      this.asciiMat.uniforms.uWyrmAtlas.value.set(...this.art.sets, this.art.total);
+    // 1080p, 4x6 on a phone; wyrmGlyphs.js wyrmArtFont), and below it the zoom ladder (?zoomArt):
+    // every smaller font, each with its own atlas and a screen-grid cell scaled alike (9 px tall at
+    // least: the grid's canvas letters stop reading below it). Option a builds the first step only.
+    const ladder = this.zoomArt === 'a' ? wyrmArtLadder(H).slice(0, 1) : wyrmArtLadder(H);
+    const key = ladder.map((f) => `${f.font}x${f.s}`).join(',') + `|${cellW}x${cellH}`;
+    if (key !== this._ladderKey) {
+      for (const f of this.zoomLadder) f.atlas?.texture.dispose();
+      for (const g of this._gridCache.values()) g.texture.dispose();
+      this._gridCache.clear();
+      this.grid = null;
+      this.art = null;
+      this._ladderKey = key;
+      const ch0 = ladder[0].cell[1];
+      this.zoomLadder = ladder.map((f, i) => {
+        const gh = i === 0 ? cellH : Math.max(9, Math.min(cellH, Math.round((cellH * f.cell[1]) / ch0)));
+        const gw = i === 0 ? cellW : Math.max(5, Math.round(gh * 0.6));
+        const gk = `${gw}x${gh}`;
+        if (!this._gridCache.has(gk)) this._gridCache.set(gk, createGridAtlas(gw, gh));
+        return { key: `${f.font}x${f.s}`, cell: f.cell, atlas: createWyrmArtAtlas(f.font, f.s), gridCell: [gw, gh], grid: this._gridCache.get(gk) };
+      });
+      this._zoomHs = this.zoomLadder.map((f) => f.cell[1]);
+      this.zoomStep = 0;
+      // upload every step's atlases now: the first frame drawn after a step must not upload one
+      for (const f of this.zoomLadder) {
+        this.renderer.initTexture?.(f.atlas.texture);
+        this.renderer.initTexture?.(f.grid.texture);
+      }
     }
-    this.fire?.setSize(W, H, this.artCell, this.art);
+    const fin = this.zoomLadder[this.zoomLadder.length - 1].cell;
+    this._minCell = (this._minCell ??= new THREE.Vector2()).set(fin[0], fin[1]);
+    this._applyZoomStep(Math.min(this.zoomStep, this.zoomLadder.length - 1), true);
     const hs = Math.max(1, Math.floor(H / 1080));
     const [heroW, heroH] = pixelArtCell(hs);
     if (!this.heroArt || heroW !== this.heroCell.x || heroH !== this.heroCell.y) {
@@ -1485,6 +1529,92 @@ export class Pipeline {
       .copy(this.shadowBias)
       .multiply(this.shadowCam.projectionMatrix)
       .multiply(this.shadowCam.matrixWorldInverse);
+  }
+
+  /**
+   * Draw the art cell and the screen grid at zoom ladder step `i` (0 = the frame size's own font):
+   * every reader of the cell switches together (the ASCII pass's uniforms, shed digits and the let-go
+   * share them; the fire field's print and passes; artCell for dragon.js and the duelists' flare,
+   * read in the next frame's update, before this cell is drawn). `resized`: the frame size changed
+   * (the fire field re-allocates for the ladder's finest cell). No allocation.
+   */
+  _applyZoomStep(i, resized = false) {
+    const f = this.zoomLadder[i];
+    if (!f) return;
+    const u = this.asciiMat.uniforms;
+    this.zoomStep = i;
+    if (this.art !== f.atlas) {
+      this.artFont = f.key;
+      this.art = f.atlas;
+      this.artCell.set(f.cell[0], f.cell[1]);
+      u.tArt.value = f.atlas.texture;
+      u.uWyrmAtlas.value.set(f.atlas.sets[0], f.atlas.sets[1], f.atlas.sets[2], f.atlas.total);
+      const k = i > 0 && f.atlas.ink > 0 ? this.zoomLadder[0].atlas.ink / f.atlas.ink : 1;
+      u.uArtInk.value = Number.isFinite(k) ? Math.min(1.25, Math.max(0.75, k)) : 1;
+    }
+    if (this.grid !== f.grid) {
+      this.grid = f.grid;
+      this.cell.set(f.gridCell[0], f.gridCell[1]);
+      u.tGrid.value = f.grid.texture;
+    }
+    if (resized) this.fire?.setSize(this.width, this.height, this.artCell, this.art, this._minCell);
+    else this.fire?.setCell(this.artCell, this.art);
+  }
+
+  /** Switch the zoom option live: 'a' | 'b' | 'c' (rebuilds the ladder for this frame size). */
+  setZoomArt(mode) {
+    const m = mode === 'b' || mode === 'c' ? mode : 'a';
+    if (m === this.zoomArt) return;
+    this.zoomArt = m;
+    this._ladderKey = '';
+    this.zoomStep = 0;
+    const dpr = this.renderer.getPixelRatio?.() || 1;
+    if (this.width > 0 && this.height > 0) this.setSize(this.width / dpr, this.height / dpr, dpr);
+  }
+
+  /**
+   * The camera's distance to the ground along its view axis (m): the rig's own distance at its
+   * focus. 0 when it does not look down steeply enough to count (CONFIG.camera.zoomArt.minPitch).
+   */
+  zoomDistance(cam = this.camera) {
+    const e = cam?.matrixWorld?.elements;
+    if (!e) return 0;
+    // the camera looks along -z: its world direction is -(e[8], e[9], e[10])
+    const len = Math.hypot(e[8], e[9], e[10]);
+    const sn = len > 1e-6 ? e[9] / len : 0; // the sine of the look-down angle
+    const y = e[13];
+    if (!(sn >= (CONFIG.camera.zoomArt?.minPitch ?? 0.35)) || !(y > 0)) return 0;
+    const D = y / sn;
+    return Number.isFinite(D) ? D : 0;
+  }
+
+  /**
+   * After a frame: pick the zoom ladder step for the zoom that drew it (wyrmGlyphs.js zoomArtStep,
+   * with its hysteresis) and switch to it for the next frame. The zoom is the player's own:
+   * camera.userData.zoomRatio, the rig's eased wheel distance over its default (cameraRig.js); a
+   * camera without a rig (tests, tools): its distance to the ground over CONFIG.camera.distance.
+   * Option a, a phone (camera.userData.zoomArtOff) and a camera that does not look down stay on
+   * step 0.
+   */
+  updateZoomArt() {
+    if (this._zoomHs.length < 2) return;
+    const Z = CONFIG.camera.zoomArt ?? {}, ud = this.camera?.userData;
+    const p = this.zoomArt === 'a' || ud?.zoomArtOff ? 0 : Z.strength?.[this.zoomArt] ?? 0;
+    let r = 1;
+    if (p > 0) {
+      if (ud?.zoomRatio > 0 && Number.isFinite(ud.zoomRatio)) r = ud.zoomRatio;
+      else {
+        const D = this.zoomDistance();
+        if (D > 0) r = D / CONFIG.camera.distance;
+      }
+    }
+    const i = zoomArtStep(this._zoomHs, r, p, this.zoomStep, Z.hyst ?? 0.1);
+    if (i !== this.zoomStep) {
+      const t0 = performance.now();
+      this._applyZoomStep(i);
+      this.zoomStepMs = performance.now() - t0;
+      this.zoomSteps = (this.zoomSteps ?? 0) + 1;
+    }
   }
 
   render() {
@@ -1533,7 +1663,8 @@ export class Pipeline {
     // 2b. the fire field: blobs -> heat -> flame texture (reads the scene depth)
     if (this.fire) {
       this.fire.render(r, this.camera, this.fs);
-      this.asciiMat.uniforms.uFlame.value.set(this.fire.cells.x, this.fire.cells.y, this.fire.active ? 1 : 0, 0);
+      this.asciiMat.uniforms.uFlame.value.set(this.fire.alloc?.x ?? this.fire.cells.x, this.fire.alloc?.y ?? this.fire.cells.y, this.fire.active ? 1 : 0, 0);
+      this.asciiMat.uniforms.uFlameCells.value.copy(this.fire.cells);
     }
 
     // 3. ASCII grid
@@ -1565,5 +1696,8 @@ export class Pipeline {
 
     // 6. final
     this.fs.render(r, this.finalMat, null);
+
+    // the letters for the next frame (?zoomArt): every reader sees a step from the same frame on
+    this.updateZoomArt();
   }
 }

@@ -32,7 +32,10 @@ npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender
 ```
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne (default:
 Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
-(`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword). In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
+(`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
+`?wyrmFace=skull|loong|demon` gives the wyrm one of three sculpted heads the owner passed on for now
+(ADR-120). The owner's picks with the options turned down behind them: `?zoomArt=a|c` (b: the letters
+follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
 ability / phase / transition, god mode, time scale, hitbox overlay. Console: `__game` (everything),
 `__tick(dt, frames)` (step the sim even when the tab is hidden), `__inspect(x, y, w, h)` (magnify).
 In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).

@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-16',
+        title: 'The wyrm burns in phase 3, the forest breaks, the letters follow the zoom',
+        notes: [
+          'In its third phase the Cinder Wyrm sets itself on fire: wing tips, claws and tail burn, and fast moves leave arcs and ribbons of flame. Its attacks hurt as much as before, and its burning footprints do not hurt at all.',
+          'Every tree in Cinderwood can break now, and wears down first: leaves burst off, the crown thins, it leans, it falls. The wyrm tears into the tree wall with wind and stray fire. The great skeleton and the Cinder Tree come apart too.',
+          'Zooming out on a desktop keeps the detail: the small letters shrink with the picture instead of getting scarce.',
+        ],
+      },
+      {
         date: '2026-11-15',
         title: 'The Cinder Wyrm fights harder, with its whole body',
         notes: [
