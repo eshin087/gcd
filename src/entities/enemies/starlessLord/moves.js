@@ -515,7 +515,7 @@ export const MOVES = {
   },
   /** Reaping Arc: dropping low, the blade swept round at the ankles. Red: roll through it. */
   reap: {
-    label: 'Reaping Arc', phase: 1, weight: [1.2, 0, 0, 0], cooldown: 6, band: [0, 3.4], recovery: 0.6,
+    label: 'Reaping Arc', phase: 1, weight: [1.5, 0, 0, 0], cooldown: 6, band: [0, 3.4], recovery: 0.6,
     beats: [spin(R, 0.62, 22, { low: true, form: 1, cock: 0.62 })],
   },
   /** Void Lightning: levelled from the free hand. Parry it; a perfect parry sends it back. */
@@ -536,7 +536,7 @@ export const MOVES = {
   /** Crushing Dark: his open hand lifts, and the Void closes on whoever stands before it (red: roll
    *  through it or get out of its line). Caught, the hero is thrown to the floor and crushed. */
   grip: {
-    label: 'Crushing Dark', phase: 1, weight: [0.7, 0, 0, 0.8], cooldown: 10, band: [3, 9], recovery: 0.7,
+    label: 'Crushing Dark', phase: 1, weight: [0.9, 0, 0, 0.8], cooldown: 10, band: [3, 9], recovery: 0.7,
     beats: [grip(0.95)],
   },
   // -------------------------------------------------------------- the moments (ADR-118; every form)
@@ -549,7 +549,7 @@ export const MOVES = {
   /** Red Meridian: two blows no guard holds: a dashing level cut, then the blade swept round at the
    *  ankles. Red, red: dodge, dodge. */
   meridian: {
-    label: 'Red Meridian', phase: 1, weight: [1.3, 1.2, 1.2, 1.5], cooldown: 8, band: [2.4, 8], recovery: 0.65, gapCloser: true,
+    label: 'Red Meridian', phase: 1, weight: [1.5, 1.8, 1.6, 1.5], cooldown: 8, band: [2.4, 8], recovery: 0.65, gapCloser: true,
     beats: [
       { ...cut('flat', R, 0.66, 22, { cock: 0.76 }), knockback: 2.2, dash: { from: 0.55, to: 0.98, stop: 1.1, max: 6.0 }, close: 0, track: 0.6 },
       spin(R, 0.72, 24, { low: true, form: 1, cock: 0.62, close: 1.4 }),
@@ -559,7 +559,7 @@ export const MOVES = {
    *  half, and a held beat that is never the same), then one long dashing cleave. Black: dodge it. A
    *  guard or a parry in its way is knocked wide open, the whole guard meter gone. */
   nightfall: {
-    label: 'Nightfall', phase: 1, weight: [1.1, 1.1, 1.2, 1.5], cooldown: 12, band: [2.4, 9], recovery: 0.8, gapCloser: true,
+    label: 'Nightfall', phase: 1, weight: [1.1, 1.1, 1.2, 1.2], cooldown: 12, band: [2.4, 9], recovery: 0.8, gapCloser: true,
     beats: [{
       ...cut('diag', K, 1.45, 36, { cock: 0.86 }), fixed: true, hold: [0.1, 0.5], active: 0.14, knockback: 4, knockdown: true,
       zone: { kind: 'sector', r: 2.9, ang: 1.05 }, dash: { from: 0.88, to: 1.0, stop: 1.2, max: 7.5 }, close: 0, track: 0.88,
@@ -636,14 +636,14 @@ export const MOVES = {
   },
   /** Hollow Step: he is gone, and behind the hero: one red cut out of the dark (roll). */
   hollowStep: {
-    label: 'Hollow Step', phase: 1, weight: [1.4, 0, 0, 0], cooldown: 7, band: [2.0, 9], recovery: 0.6, gapCloser: true,
+    label: 'Hollow Step', phase: 1, weight: [1.8, 0, 0, 0], cooldown: 7, band: [2.0, 9], recovery: 0.6, gapCloser: true,
     beats: [{ ...cut('flat', R, 0.66, 24, { cock: 0.74, blink: { behind: 2.0 }, close: 1.2, track: 0.7 }), fixed: true, knockback: 2.4, knockdown: true }],
   },
 
   // ============================================================== form 2: twin blades
   /** Twin Tempest: the blades alternate, seven cuts in a breath; the fifth is both at once. */
   tempest: {
-    label: 'Twin Tempest', phase: 2, weight: W(2, 2.8), cooldown: 6, band: [0, 3.8], recovery: 0.78, recoveryKeys: FLOURISH[1],
+    label: 'Twin Tempest', phase: 2, weight: W(2, 2.4), cooldown: 6, band: [0, 3.8], recovery: 0.78, recoveryKeys: FLOURISH[1],
     beats: [
       cut('rise', N, 0.48, 11, { form: 2 }),
       cut('rise', N, 0.34, 11, { form: 2, left: true }),
@@ -697,7 +697,7 @@ export const MOVES = {
   },
   /** Low double sweep (form 2's red). */
   reap2: {
-    label: 'Reaping Arcs', phase: 2, weight: W(2, 1.4), cooldown: 6, band: [0, 3.4], recovery: 0.6,
+    label: 'Reaping Arcs', phase: 2, weight: W(2, 2.0), cooldown: 6, band: [0, 3.4], recovery: 0.6,
     beats: [spin(N, 0.5, 13, { form: 2 }), spin(R, 0.6, 22, { form: 2, low: true, cock: 0.62 })],
   },
   riposte2: {
@@ -763,7 +763,7 @@ export const MOVES = {
   // ============================================================== form 3: the staff
   /** Cyclone: the long blades sweep wide; two level cuts, two full turns, a held overhead, a low red ring. */
   cyclone: {
-    label: 'Cyclone', phase: 3, weight: W(3, 2.8), cooldown: 6, band: [0, 4.4], recovery: 0.8, recoveryKeys: FLOURISH[2],
+    label: 'Cyclone', phase: 3, weight: W(3, 2.4), cooldown: 6, band: [0, 4.4], recovery: 0.8, recoveryKeys: FLOURISH[2],
     beats: [
       cut('flat', N, 0.5, 13, { form: 3 }),
       cut('flatBack', N, 0.34, 13, { form: 3, step: 'L' }),
@@ -775,7 +775,7 @@ export const MOVES = {
   },
   /** Turning Mill: he walks forward inside the turning staff: four rings, then a thrust. */
   mill: {
-    label: 'Turning Mill', phase: 3, weight: W(3, 2.4), cooldown: 7, band: [1.5, 6.5], recovery: 0.8, recoveryKeys: FLOURISH[2], gapCloser: true,
+    label: 'Turning Mill', phase: 3, weight: W(3, 2.0), cooldown: 7, band: [1.5, 6.5], recovery: 0.8, recoveryKeys: FLOURISH[2], gapCloser: true,
     beats: [
       spin(N, 0.52, 12, { form: 3, travel: [[0.2, 0], [1.0, 1.2], [2.0, 1.9]], close: 0 }),
       spin(N, 0.34, 12, { form: 3, cock: 0.55, travel: [[0, 0], [1.0, 0.9], [2.0, 1.5]], close: 0 }),
@@ -786,7 +786,7 @@ export const MOVES = {
   },
   /** Starfall: a great leap; the red ring follows the hero, locks, and he comes down on it. */
   starfall: {
-    label: 'Starfall', phase: 3, weight: [0, 0, 2.0, 1.1], cooldown: 9, band: [4.2, 14], recovery: 0.75, gapCloser: true,
+    label: 'Starfall', phase: 3, weight: [0, 0, 1.5, 0.6], cooldown: 9, band: [4.2, 14], recovery: 0.75, gapCloser: true,
     beats: [{
       tell: R, windup: 1.15, active: 0.12, damage: 30, knockback: 4, knockdown: true, zone: { kind: 'ring', r: 2.8 }, ring: 2.8, part: 'feet',
       leap: { from: 0.36, lock: 0.66, apex: 3.8 }, track: 0.36, close: 0,
@@ -835,14 +835,14 @@ export const MOVES = {
    *  him toward the hero, plate after plate bursting up out of it. Red: the flare on the plate that
    *  would reach you; step off the line, or roll at the flare. */
   plateRupture: {
-    label: 'Rupture', phase: 2, weight: [0, 0.75, 0.9, 1.0], cooldown: 10, band: [3.5, 14], recovery: 0.5, terrain: 'rupture', cat: 'terrain',
+    label: 'Rupture', phase: 2, weight: [0, 1.5, 1.4, 1.1], cooldown: 10, band: [3.5, 14], recovery: 0.5, terrain: 'rupture', cat: 'terrain',
     beats: [{ tell: R, windup: 0.9, fixed: true, active: 0.1, damage: 22, knockback: 3.5, cast: { kind: 'rupture', selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: gripKeys() }],
   },
   /** Falling Halo (forms 3 and 4): the Void lifts a ring of plates round the hero, open on the side
    *  away from him, and drops them on him one after another. Each is red, the flare on the falling
    *  plate: roll at each, or run out through the opening. */
   plateHalo: {
-    label: 'Falling Halo', phase: 3, weight: [0, 0, 1.0, 1.2], cooldown: 13, band: [2, 12], recovery: 0.6, terrain: 'halo', cat: 'terrain',
+    label: 'Falling Halo', phase: 3, weight: [0, 0, 1.4, 1.2], cooldown: 13, band: [2, 12], recovery: 0.6, terrain: 'halo', cat: 'terrain',
     beats: [{ tell: R, windup: 1.0, fixed: true, active: 0.1, damage: 22, knockback: 3, cast: { kind: 'halo', count: [0, 0, 4, 5], selfCue: true }, part: 'hand', close: 0, track: 0.9, keys: stormKeys() }],
   },
   /** Drawn Under: the pull, then the staff's low ring where you land. */
@@ -870,7 +870,7 @@ export const MOVES = {
    *  each a stride on), then vaults back on it and drives it into the floor: fissures race out
    *  (parry the one that comes for you, or step between them). */
   walkingMountain: {
-    label: 'Walking Mountain', phase: 3, weight: W(3, 2.6), cooldown: 7, band: [0, 5.5], recovery: 0.75, recoveryKeys: FLOURISH[2], gapCloser: true,
+    label: 'Walking Mountain', phase: 3, weight: W(3, 3.0), cooldown: 7, band: [0, 5.5], recovery: 0.75, recoveryKeys: FLOURISH[2], gapCloser: true,
     beats: [
       spin(N, 0.5, 12, { form: 3, travel: walk(1.6), close: 0 }),
       cut('flat', N, 0.36, 12, { form: 3, travel: walk(1.1) }),
@@ -884,7 +884,7 @@ export const MOVES = {
   /** Wheel of Stones: he tears three stones out of the floor; they turn round him while he cuts,
    *  and one flies at the hero in each pause of the string (white: parry each). */
   stoneWheel: {
-    label: 'Wheel of Stones', phase: 3, weight: W(3, 2.2), cooldown: 9, band: [0, 6], recovery: 0.75, recoveryKeys: FLOURISH[2], cat: 'string',
+    label: 'Wheel of Stones', phase: 3, weight: W(3, 2.4), cooldown: 9, band: [0, 6], recovery: 0.75, recoveryKeys: FLOURISH[2], cat: 'string',
     beats: [
       // (the cuts a stone's flight apart: each stone's glint after the cut before it has landed,
       // its contact before the next cut's glint)
@@ -916,7 +916,7 @@ export const MOVES = {
   /** Grinding Wheel: two rings and a cut, the low red ring at the ankles, and the perilous thrust
    *  (a mikiri) or the somersault. */
   grindingWheel: {
-    label: 'Grinding Wheel', phase: 3, weight: W(3, 2.0), cooldown: 7, band: [0, 4.4], recovery: 0.75, recoveryKeys: FLOURISH[2],
+    label: 'Grinding Wheel', phase: 3, weight: W(3, 2.4), cooldown: 7, band: [0, 4.4], recovery: 0.75, recoveryKeys: FLOURISH[2],
     beats: [
       spin(N, 0.5, 13, { form: 3 }),
       cut('flatBack', N, 0.34, 13, { form: 3, step: 'L' }),
@@ -971,12 +971,12 @@ export const MOVES = {
   },
   /** Chained Lightning: four bolts in rhythm. Deflect them all. */
   chain: {
-    label: 'Chained Lightning', phase: 4, weight: W(4, 2.0), cooldown: 9, band: [4, 16], recovery: 0.6,
+    label: 'Chained Lightning', phase: 4, weight: W(4, 1.6), cooldown: 9, band: [4, 16], recovery: 0.6,
     beats: [bolt(0.8, 20), bolt(0.46, 20, { cock: 0.5 }), bolt(0.46, 20, { cock: 0.5 }), bolt(0.46, 24, { cock: 0.5 })],
   },
   /** Red Tide: three cuts that each throw a crescent of red light. */
   tide: {
-    label: 'Red Tide', phase: 4, weight: W(4, 1.2), cooldown: 8, band: [6, 16], recovery: 0.55,
+    label: 'Red Tide', phase: 4, weight: W(4, 0.9), cooldown: 8, band: [6, 16], recovery: 0.55,
     beats: [
       { ...cut('flat', N, 0.5, 14, { form: 4 }), zone: undefined, release: { style: 'crescent', count: 1 }, close: 0 },
       { ...cut('flatBack', N, 0.44, 14, { form: 4 }), zone: undefined, release: { style: 'crescent', count: 3, spread: 0.34 }, close: 0 },
@@ -991,7 +991,7 @@ export const MOVES = {
   /** Dark Star: a starless sun that drifts after the hero, drinking the light, and bursts (red: be
    *  out of its ring when it does). He does not wait for it. */
   star: {
-    label: 'Dark Star', phase: 3, weight: [0, 0, 0.6, 0.9], cooldown: 12, band: [0, 16], recovery: 0.4,
+    label: 'Dark Star', phase: 3, weight: [0, 0, 0.8, 0.9], cooldown: 12, band: [0, 16], recovery: 0.4,
     beats: [{ tell: R, windup: 0.9, fixed: true, active: 0.1, damage: 30, knockback: 3.5, cast: { kind: 'star', selfCue: true }, part: 'hand', close: 0, track: 0.5, keys: starKeys() }],
   },
   riposte4: {
@@ -1001,7 +1001,7 @@ export const MOVES = {
   // -------------------------------------------------------------- form 4, the second pass: the Void as weather
   /** Void Waltz: six blinks, six cuts, each from a new side; the last a held chop (a lock). */
   voidWaltz: {
-    label: 'Void Waltz', phase: 4, weight: W(4, 2.4), cooldown: 8, band: [0, 12], recovery: 0.7, recoveryKeys: FLOURISH[3], gapCloser: true,
+    label: 'Void Waltz', phase: 4, weight: W(4, 2.8), cooldown: 8, band: [0, 12], recovery: 0.7, recoveryKeys: FLOURISH[3], gapCloser: true,
     beats: [
       cut('flat', N, 0.6, 14, { form: 4, blink: { behind: 2.0 }, close: 1.2 }),
       cut('rise', N, 0.54, 13, { form: 4, blink: { behind: 2.0 }, close: 1.2 }),
