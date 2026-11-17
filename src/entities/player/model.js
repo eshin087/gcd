@@ -237,6 +237,34 @@ export const HERO_INK = {
   bladeTip: { part: 17, fill: [0.62, 0.86, 1.05], glow: 0.8, line: [1.0, 1.2, 1.4, 1.7], fillGain: 1.0, solid: true, farLine: 1, farFill: 1.5 },
   gem: { part: 18, fill: [0.3, 0.06, 0.7], glow: 1, rim: 0, line: [1.1, 0.45, 1.8, 2.0], solid: true, farLine: 1 },
   flask: { part: 19, fill: [0.6, 0.45, 0.15], glow: 1, rim: 0, line: [1.2, 0.9, 0.4, 1.5], solid: true, farLine: 1 },
+  // ---- the hooded hero (gear/abyss.js, gear/shield.js; the concept sheet "GCD ABYSS"): drawn ONLY
+  // in the player's own bank (`ownOnly`: they never touch the shared tables the bosses read, and
+  // their materials are made on first use, so a rig that does not wear them draws no more uuids).
+  // Three colours: black cloth, the white / silver line, the lavender-white crystal; a muted skin on
+  // the blank face (`skin`, own.flat). The part order decides who draws a shared edge (the higher):
+  // legs < robe < sleeves < cowl < hood < hair < shield < crystal. `own.bold`: its edges are drawn
+  // nearly as bold as the silhouette and kept at the game camera (the concept's main inner lines).
+  abPants: { part: 2, ownOnly: true, fill: [0.05, 0.05, 0.06], rim: 0.3, own: {} },
+  abBoot: { part: 3, ownOnly: true, fill: [0.06, 0.06, 0.07], spec: 0.5, rim: 0.3, own: {} },
+  abBand: { part: 4, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
+  abRobeL: { part: 5, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
+  abRobeR: { part: 6, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
+  abRobe: { part: 7, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: {} },
+  abSleeve: { part: 8, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
+  abCuff: { part: 9, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
+  abCowl: { part: 10, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
+  abCowl2: { part: 11, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
+  abHood: { part: 12, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
+  abHood2: { part: 13, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
+  // the silver-white spikes: one bright smooth tone (no letters), thin grey lines between them
+  abHair: { part: 14, ownOnly: true, fill: [0.72, 0.72, 0.8], rim: 0, own: { flat: true, fillGain: 2.1, line: [0.55, 0.55, 0.68, 0.8] } },
+  // the shield: a dark crystal face with faint facets, a silver double-line rim
+  abShield: { part: 15, ownOnly: true, fill: [0.09, 0.09, 0.12], spec: 0.9, rim: 0.3, own: { fillGain: 1.6, line: [0.6, 0.6, 0.75, 0.55] } },
+  abRim: { part: 16, ownOnly: true, fill: [0.62, 0.63, 0.72], spec: 1.0, rim: 0, own: { bold: true, flat: true, fillGain: 1.5 } },
+  // the hilt's metal (guard, pommel, the shield's boss): silver
+  abMetal: { part: 17, ownOnly: true, fill: [0.6, 0.6, 0.7], spec: 1.0, rim: 0, own: { flat: true, fillGain: 1.4 } },
+  // the crystal (the blade, the shield's star): lavender-white light, a tight halo (own.glow)
+  abCrystal: { part: 18, ownOnly: true, fill: [0.82, 0.8, 1.0], rim: 0, glow: 0.6, own: { flat: true, glow: true, fillGain: 2.3, line: [0.95, 0.93, 1.05, 1.15], rimLine: [0.95, 0.93, 1.05, 1.15] } },
 };
 
 export function createHeroMaterials(U) {
@@ -385,9 +413,39 @@ export function createHeroMaterials(U) {
       ink: [1.1, 0.85, 0.3], gain: 1.4, rim: 0.3, outline: 0.4, inkGlow: 1.4, glowMask: 0, seed: 3.1,
     }, { fixed: true }),
   };
+  // the hooded hero's materials (HERO_INK `ownOnly`): black cloth in the coat's letters, silver and
+  // crystal in the plates' / blade's. Made on first use (a getter on M that turns into the material),
+  // so a rig that never wears them makes none (each material draws a uuid from Math.random: the
+  // seeded tests' random rolls must not move for a rig that does not change)
+  const abCloth = { ...cloth, cell: [0.12, 0.19] };
+  Object.assign(specs, {
+    abPants: S({ ...cloth, cell: [0.11, 0.18], seed: 41.1 }, { zoomNear: Z }),
+    abBoot: S({ ...cloth, cell: [0.08, 0.1], seed: 41.7 }, { max: [0.05, 0.06], zoomNear: Z }),
+    abBand: S({ ...silver, glyphs: '-=-=', cell: [0.04, 0.03], seed: 42.3 }, { max: [0.03, 0.025] }),
+    abRobeL: S({ ...abCloth, seed: 43.1 }, { zoomNear: Z }),
+    abRobeR: S({ ...abCloth, seed: 43.9 }, { zoomNear: Z }),
+    abRobe: S({ ...abCloth, side: THREE.DoubleSide, seed: 44.7 }, { zoomNear: Z }),
+    abSleeve: S({ ...abCloth, cell: [0.09, 0.14], seed: 45.3 }, { zoomNear: Z }),
+    abCuff: S({ ...abCloth, cell: [0.06, 0.08], side: THREE.DoubleSide, seed: 45.9 }, { max: [0.04, 0.05], zoomNear: Z }),
+    abCowl: S({ ...abCloth, cell: [0.08, 0.1], side: THREE.DoubleSide, seed: 46.5 }, { max: [0.05, 0.06], zoomNear: Z }),
+    abCowl2: S({ ...abCloth, cell: [0.08, 0.1], side: THREE.DoubleSide, seed: 47.1 }, { max: [0.05, 0.06], zoomNear: Z }),
+    abHood: S({ ...abCloth, cell: [0.07, 0.09], side: THREE.DoubleSide, seed: 47.7 }, { max: [0.045, 0.055], zoomNear: Z }),
+    abHood2: S({ ...abCloth, cell: [0.07, 0.09], side: THREE.DoubleSide, seed: 48.3 }, { max: [0.045, 0.055], zoomNear: Z }),
+    abHair: S({ ...hair, ink: [0.75, 0.75, 0.85], levelInk: [[0.6, 0.6, 0.7], [0.7, 0.7, 0.8], [0.8, 0.8, 0.9]], seed: 48.9 }, { max: [0.045, 0.055], zoomNear: 0.85 }),
+    abShield: S({ ...silver, glyphs: "'^AA", ink: [0.45, 0.45, 0.6], cell: [0.06, 0.06], side: THREE.DoubleSide, gain: 0.9, rim: 0.1, outline: 0.08, inkGlow: 0.2, seed: 49.5 }, { max: [0.04, 0.04] }),
+    abRim: S({ ...silver, cell: [0.04, 0.04], side: THREE.DoubleSide, gain: 0.9, rim: 0.12, outline: 0.1, inkGlow: 0.3, seed: 50.1 }, { max: [0.03, 0.03] }),
+    abMetal: S({ ...silver, cell: [0.04, 0.04], gain: 0.9, rim: 0.12, outline: 0.1, inkGlow: 0.3, seed: 50.7 }, { max: [0.03, 0.03] }),
+    abCrystal: S({
+      levels: ["^A", "A^", "AA"], cell: [0.045, 0.09], rowShift: 0, base: [0.3, 0.28, 0.45],
+      levelInk: [[0.8, 0.78, 1.0], [0.9, 0.88, 1.05], [1.0, 0.98, 1.1]], ink: [1.0, 0.98, 1.1],
+      lumScale: 3, glyphZoom: 0.72, side: THREE.DoubleSide,
+      gain: 1.0, rim: 0.3, outline: 0.4, inkGlow: 0.8, emissive: [0.9, 0.85, 1.4], glowMask: 1, seed: 51.3,
+    }, { lockX: true }),
+  });
   // each part's ink-line tint, letter-fill brightness and dotted-edge flag for the art pass
   const partInk = U.uHeroPartInk?.value, partFill = U.uHeroPartFill?.value, partRim = U.uHeroPartRim?.value;
   for (const h of Object.values(HERO_INK)) {
+    if (h.ownOnly) continue; // (the hooded hero's parts are his own bank's only)
     const l = h.line ?? [1, 1, 1, 1];
     partInk?.[h.part]?.set(l[0], l[1], l[2], l[3]);
       partFill?.[h.part]?.set(h.fillGain ?? 1, (h.dotted ? 1 : h.solid ? 2 : 0) + (h.open ? 4 : 0) + (h.rimDotted ? 8 : 0), h.farLine ?? 0, h.farFill ?? 1);
@@ -399,15 +457,34 @@ export function createHeroMaterials(U) {
   // concept's line, white with a cool tint on every part, the glowing parts (line gain > 1.5) keeping
   // their own; `own` overrides any field; `own.flat` prints the part as one smooth tone (no letters)
   const ownInk = U.uHeroOwnInk?.value, ownFill = U.uHeroOwnFill?.value, ownRim = U.uHeroOwnRim?.value;
-  for (const h0 of Object.values(HERO_INK)) {
+  // (the hooded hero's own parts last: they win the ids they share with the old outfits' parts)
+  const inkOrder = Object.values(HERO_INK).sort((a, b) => (a.ownOnly ? 1 : 0) - (b.ownOnly ? 1 : 0));
+  for (const h0 of inkOrder) {
     const h = h0.own ? { ...h0, ...h0.own } : h0;
     const l = h.line ?? [1, 1, 1, 1], glows = l[3] > 1.5;
     const ol = h0.own?.line ?? (glows ? l : OWN_LINE), orl = h0.own?.rimLine ?? (glows ? h.rimLine ?? l : OWN_LINE);
     ownInk?.[h.part]?.set(ol[0], ol[1], ol[2], ol[3]);
-    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0), h.farLine ?? 0, h.farFill ?? 1);
+    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0), h.farLine ?? 0, h.farFill ?? 1);
     ownRim?.[h.part]?.set(orl[0], orl[1], orl[2], orl[3]);
   }
-  return Object.fromEntries(Object.entries(specs).map(([name, s]) => [name, make(name, s.o, s.opts)]));
+  const M = {};
+  for (const [name, sp] of Object.entries(specs)) {
+    if (!HERO_INK[name]?.ownOnly) {
+      M[name] = make(name, sp.o, sp.opts);
+      continue;
+    }
+    // made on first use; then an ordinary (enumerable) property, so rig.mats lists it
+    Object.defineProperty(M, name, {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const m = make(name, sp.o, sp.opts);
+        Object.defineProperty(M, name, { value: m, writable: true, enumerable: true, configurable: true });
+        return m;
+      },
+    });
+  }
+  return M;
 }
 
 /**

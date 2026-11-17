@@ -65,9 +65,10 @@ export const HERO_LINES = Object.freeze({
 export const HERO_LINE = (() => {
   try {
     const v = new URLSearchParams(globalThis.location?.search ?? '').get('heroLine');
-    return v && HERO_LINES[v] ? v : '0';
+    // (b, the lead's pick of round 1, unless the URL asks: ?heroLine=0 = the line as it was)
+    return v === '0' ? '0' : v && HERO_LINES[v] ? v : 'b';
   } catch {
-    return '0';
+    return 'b';
   }
 })();
 /**
@@ -300,6 +301,9 @@ export class Pipeline {
         // his drawn size: screen px per metre at his depth, in font px (set per frame from
         // U.uPlayerScreen; large when unknown, so the line takes its widest)
         uHeroOwnPxM: { value: 1000 },
+        // the tight halo round his GLOWING parts (own fill y + 64: the crystal blade, the shield's
+        // star): rgb x gain, over the world and his own black cloth within the glow ring's radius
+        uHeroOwnHalo: { value: new THREE.Vector4(0.42, 0.4, 0.75, 1) },
         // per creature kind: x = hero (FLAG.ART_HERO), y = wyrm / other (FLAG.ART)
         // hero: uArtLum.x / uArtBlack.x map his flat art fill (HERO_INK) to the light value v that picks
         // his fill letters and brightness (uHeroFill); uArtMin.x is unused since the ink-line pass
@@ -440,6 +444,7 @@ export class Pipeline {
         uniform vec4 uHeroOwnFillK;
         uniform vec4 uHeroOwnGlow;
         uniform float uHeroOwnPxM;
+        uniform vec4 uHeroOwnHalo;
         uniform vec2 uArtLum;
         uniform vec2 uArtBlack;
         uniform vec2 uArtMin;
@@ -668,6 +673,11 @@ export class Pipeline {
           }
           return uHeroHalo.w * uHeroHaloShape.z * max(step(0.5, n1), 0.55 * step(0.5, n2));
         }
+        // one of his own parts that glows (own fill y + 64)
+        bool heroOwnGlows(float a) {
+          int p = int(clamp(floor((a - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25) + ${HERO_PARTS.toFixed(1)}, 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
+          return mod(floor(uHeroOwnFill[p].y / 64.0), 2.0) > 0.5;
+        }
         // the own line's soft glow OUTSIDE his silhouette (uHeroOwnGlow: rgb, radius in font px; 0 none):
         // 8 taps on each of two rings round this off-him pixel, inside the circle round his screen point
         vec3 heroOwnGlow(vec2 px) {
@@ -675,15 +685,19 @@ export class Pipeline {
           vec2 d = px - uHeroHalo.xy * uRes;
           if (dot(d, d) > uHeroHalo.z * uHeroHalo.z) return vec3(0.0);
           float r = uHeroOwnGlow.w * uHeroPx.x * clamp(uHeroOwnPxM / (uHeroOwnSil.w * uHeroOwnSil.x), 0.5, 1.0);
-          float n1 = 0.0, n2 = 0.0;
+          float n1 = 0.0, n2 = 0.0, c1 = 0.0, c2 = 0.0;
           for (int i = 0; i < 8; i++) {
             float a = float(i) * 0.7853982;
             vec2 o = vec2(cos(a), sin(a));
             float a1 = texture2D(tScene, (px + o * max(1.0, r * 0.5)) / uRes).a, a2 = texture2D(tScene, (px + o * r) / uRes).a;
-            n1 += isHero(a1) && heroOwn(a1) ? 1.0 : 0.0;
-            n2 += isHero(a2) && heroOwn(a2) ? 1.0 : 0.0;
+            bool o1 = isHero(a1) && heroOwn(a1), o2 = isHero(a2) && heroOwn(a2);
+            n1 += o1 ? 1.0 : 0.0;
+            n2 += o2 ? 1.0 : 0.0;
+            if (o1 && heroOwnGlows(a1)) c1 += 1.0;
+            if (o2 && heroOwnGlows(a2)) c2 += 1.0;
           }
-          return uHeroOwnGlow.rgb * max(min(n1 * 0.5, 1.0), 0.45 * min(n2 * 0.5, 1.0));
+          return uHeroOwnGlow.rgb * max(min(n1 * 0.5, 1.0), 0.45 * min(n2 * 0.5, 1.0))
+            + uHeroOwnHalo.rgb * (uHeroOwnHalo.w * max(min(c1 * 0.4, 1.0), 0.4 * min(c2 * 0.4, 1.0)));
         }
         // ---- the hero seen through what covers him (ADR-106). tSeen holds only the pixels of him
         // that something stands in front of, inside the box round his screen position (outside it
@@ -838,7 +852,7 @@ export class Pipeline {
                   // the own line's fill (uHeroOwnFillK): the cloth's letters scaled (0: solid black) and
                   // turned lavender; the face (open), a flat part (pf.y + 16: one smooth tone, no
                   // letters) and the glowing parts (blade, star) keep theirs
-                  float flatP = step(15.5, pf.y);
+                  float flatP = mod(floor(pf.y / 16.0), 2.0);
                   float keep = max(max(open, flatP), smoothstep(1.05, 1.5, hdr));
                   vec3 lav = vec3(0.7, 0.68, 1.0) * dot(col, vec3(0.3333)) * 1.3;
                   col = mix(mix(col, lav, uHeroOwnFillK.y) * uHeroOwnFillK.x, col, keep);
@@ -901,11 +915,38 @@ export class Pipeline {
                            max(heroPxEdge(bD, gD, sP.a, dP, gU, thP * 2.0, fine), heroPxEdge(bU, gU, sP.a, dP, gD, thP * 2.0, fine)));
                 }
               }
+              // a BOLD part (own fill y + 32: the hood's seam, the cowl's folds, the robe's front edges,
+              // the cuff, the boot band, the shield's rim): its edges against a lower part or a step
+              // down to something behind are a band nearly as wide and bright as the silhouette, kept
+              // at the game camera
+              float dB = 0.0, bW = max(1.0, silW - 1.0);
+              if (dS < 0.5 && mod(floor(uHeroOwnFill[pidP].y / 32.0), 2.0) > 0.5) {
+                float pp = heroPartOf(sP.a), thB = max(uHeroPx.y, 1e-5) * dP;
+                for (int r = 1; r <= 3; r++) {
+                  float fr = float(r);
+                  if (fr > bW + 0.01) break;
+                  float dg = max(1.0, floor(fr * 0.7072 + 0.5));
+                  float hit = 0.0;
+                  for (int k = 0; k < 8; k++) {
+                    vec2 dir = k == 0 ? vec2(fr, 0.0) : k == 1 ? vec2(-fr, 0.0) : k == 2 ? vec2(0.0, fr) : k == 3 ? vec2(0.0, -fr)
+                      : k == 4 ? vec2(dg, dg) : k == 5 ? vec2(-dg, -dg) : k == 6 ? vec2(dg, -dg) : vec2(-dg, dg);
+                    vec2 uvB = uvP + o * dir;
+                    float aB = texture2D(tScene, uvB).a;
+                    if (isHero(aB) && (heroPartOf(aB) < pp - 0.5 || linDepth(uvB) > dP + thB * (3.0 + 2.0 * fr))) hit = 1.0;
+                  }
+                  if (hit > 0.5) { dB = fr; break; }
+                }
+              }
               vec3 s = sP.rgb;
               float mxP = max(max(s.r, s.g), s.b);
               float satP = (mxP - min(min(s.r, s.g), s.b)) / max(mxP, 1e-4);
               float hdrP = mix(1.0, clamp(mxP, 1.0, mix(64.0, uHeroFar.w, far)), smoothstep(0.25, 0.6, satP));
-              if (dS > 0.5) {
+              if (dB > 0.5) {
+                float t = bW > 1.5 ? (dB - 1.0) / (bW - 1.0) : 0.0;
+                col = pInk.rgb * (pInk.a * uHeroOwnSil.y * 0.92 * mix(1.0, uHeroOwnSil.z, t));
+                if (uHeroDebug > 2.5) col = vec3(0.1, 0.3, 1.0);
+                inkP = 0.9;
+              } else if (dS > 0.5) {
                 float t = silW > 1.5 ? (dS - 1.0) / (silW - 1.0) : 0.0;
                 col = pRim.rgb * (pRim.a * uHeroOwnSil.y * mix(1.0, uHeroOwnSil.z, t) * hdrP);
                 if (uHeroDebug > 2.5) col = vec3(0.5);
