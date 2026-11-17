@@ -3,8 +3,8 @@ import { DIM } from './model.js';
 import { CLASH, clashBurst } from '../../combat/clashFx.js';
 import { cutBurst } from '../../combat/cutFx.js';
 
-// Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
-// cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
+// Glyph-particle effects owned by the hero: lavender-white slash arcs (the light swings, the slam, the
+// cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the hilt's glow + glints, impact
 // sparks, dust, heal glow, burn flames, hurt spray, and the defence set — parry burst, block
 // sparks, guard-break shards, Ghostep afterimage + streak, charge gather / ready glint, crit-window
 // motes. Every glyph used here is in the world atlas.
@@ -59,9 +59,10 @@ const COL = {
 // this crescent and afterimages of the blade; the owner picked the crescent and the others went.)
 export const ARC_LOOK = { at: 0.64, edge: 0.11, life: [0.2, 0.27], veil: [[0.94, 0.3], [0.88, 0.2], [0.82, 0.12], [0.76, 0.06]], motes: 1 };
 const ARC_HEAVY = 1.22; // the slam's and the cleave's arc reaches this much further out
-/** The arc's colours (trail): the lights cool from white-hot to indigo; the heavy blows (the slam, the
- *  cleave, the thrusts, the plunge's dive) to the gem's violet, so a heavy reads apart from a light
- *  at a glance (the gem already burns brighter through them); a crit stays the crit's cold blue. */
+/** The arc's colours (trail), the crystal's lavender-white since ADR-123: the lights cool from
+ *  white-hot to a pale lavender; the heavy blows (the slam, the cleave, the thrusts, the plunge's
+ *  dive) to a dusk lavender, so a heavy reads apart from a light at a glance; a crit stays the
+ *  crit's cold blue. */
 export const ARC_TONE = {
   light: { core: COL.arcCore, veil: COL.arcVeil, end: COL.arcEnd },
   heavy: { core: [2.6, 2.5, 3.4], veil: [1.0, 0.92, 2.2], end: [0.32, 0.22, 0.75] },
@@ -410,8 +411,8 @@ export class PlayerFx {
     }
   }
 
-  /** A thrust's (the execution's, the plunge's) long cyan beam along the point's path (from → to, world): a thin
-   *  white-cyan core of '-' / '=' laid along the line with a '·' halo, lingering as one line behind
+  /** A thrust's (the execution's, the plunge's) long lavender-white beam along the point's path (from → to,
+   *  world): a thin bright core of '-' / '=' laid along the line with a '·' halo, lingering as one line behind
    *  the lunge; k = charge 0..1. */
   thrustStreak(from, to, k = 0, crit = false) {
     const fx = this.add;

@@ -35,10 +35,11 @@ import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
 // DIM / BODY / REST / HAIR_CLUSTERS. partGeometry(key) decodes one; the body or the gear item that
 // uses it picks its joint and material.
 //
-// Readability (hero.md §3): the ASCII panel's light-grey 'A'-family glyph field on near-black
-// gaps, no heavy outline; upright glyphs (aGUV +y = up the body; limbs use flip), whole glyphs
-// (`levels`, picked per cell), neutral grey ink, violet only at the gem / hair sheen / collar
-// inside / torn edges, cyan only on the blade.
+// Readability: the PLAYER is drawn by a line of his own (ADR-123; docs/STYLE.md "The hooded hero"):
+// solid black inside a bold white silhouette band, a few bold inner lines, a lavender-white glow on
+// the crystal blade and the shield's star (HERO_INK's `ab*` entries, his own bank of part ids). The
+// duelists built here keep the shared ink line: a light-grey 'A'-family glyph field on near-black
+// gaps, upright glyphs (aGUV +y = up the body; limbs use flip), whole glyphs (`levels`, per cell).
 
 // Everything about the hero model is imported from this file (anim.js, player.js, combat.js, fx.js,
 // the tests, scripts/blender/build-hero-parts.mjs): the measurements and the one geometry helper

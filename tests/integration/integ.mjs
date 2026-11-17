@@ -4,8 +4,8 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | herolook | wyrmface | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
-//             or a comma list of them (hero,looks,...)
+//             timing | fire | music | herolook | wyrmface | herolife | herohand | heroweight | heroarms | herostance | shield | win | die | touch | pad | remap | all (default all)
+//             or a comma list of them (hero,shield,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
 //   ABYSS_WYRMFACE=old|skull|loong|demon builds every wyrm with that head (?wyrmFace=; e.g. a timing run per head)

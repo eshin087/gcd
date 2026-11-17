@@ -1554,8 +1554,8 @@ export class Pipeline {
   /**
    * The hero's ink line (`?heroLine`, HERO_LINES): '0' (or anything unknown) the line as it was, the
    * player in the shared bank of part ids; 'a' | 'b' | 'c' an option, drawn on the player only (the
-   * seen-through object, setSeenThrough: his materials go to his own bank every frame, so a rebuilt
-   * outfit follows). Returns the option now drawn.
+   * seen-through object, setSeenThrough: his materials are put in his own bank here and whenever
+   * setSeenThrough is given an object, so a rebuilt outfit follows). Returns the option now drawn.
    */
   setHeroLine(opt) {
     const o = HERO_LINES[opt] ?? null;

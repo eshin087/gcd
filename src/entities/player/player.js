@@ -3608,14 +3608,13 @@ export class Player {
     bu.uBase.value.setRGB(BLADE_BASE[0] + 0.2 * far, BLADE_BASE[1] + 0.36 * far, BLADE_BASE[2] + 0.5 * far);
     this.bladeFar = far;
     {
-      // the flare where the game camera sees it: part 17's pass gains (the art pass compresses luma, so
-      // uInkGlow alone does not read at 36 m; the fill gain is linear past the far HDR cap, and the
-      // blade there is one 4 px cell of mostly silhouette line, so its ink AND rim lines flare too).
-      // Part 17 is only the hero's sword (M.blade / M.bladeTip, HERO_INK.bladeTip writes it last) and
-      // the star on his shield (gear/shield.js: it flares with the blade). ABSOLUTE values every frame: another buildHero (the boss's, setLoadout) resets
-      // the shared arrays; at g = 1 this writes exactly the HERO_INK base
-      // (the hooded hero: his crystal, HERO_INK.abCrystal, the blade and the shield's star, in the
-      // player's OWN bank of the per-part tables: the bosses never read it)
+      // the flare where the game camera sees it: the crystal's pass gains (the art pass compresses
+      // luma, so uInkGlow alone does not read at 36 m; the fill gain is linear past the far HDR cap,
+      // and the blade there is a cell or two of mostly silhouette line, so its ink AND rim lines
+      // flare too). The crystal (HERO_INK.abCrystal) is the hero's blade and the star on his shield
+      // (gear/shield.js: it flares with the blade), in the player's OWN bank of the per-part tables:
+      // the bosses never read it. ABSOLUTE values every frame: another buildHero (setLoadout) resets
+      // the tables; at g = 1 this writes exactly the HERO_INK base
       const C = HERO_INK.abCrystal, B = { ...C, ...C.own }, P = B.part, F = TUNE.bladeFlare;
       const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.06 && a.t <= a.def.windup + a.def.active + 0.12;
       const g = this.alive ? 1 + (inStrike ? (a.def.heavy ? F.strike[1] : F.strike[0]) : 0) + this.bladeFlare : 1;

@@ -18,12 +18,13 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
-        date: '2026-11-16',
-        title: 'The hero looks like the Wanderer of November 9 again, his long sword included',
+        date: '2026-11-17',
+        title: 'A new hero: the hooded swordsman, with a sword and a shield',
         notes: [
-          'The hero wears the outfit of November 9 again: spiky dark hair, a tall collar, the open greatcoat, the spiked shoulder and the half-cape.',
-          'His sword is long again (1.64 m). Its reach, timing and damage are the same as before.',
-          'The hooded look is still there as an option.',
+          'The hero is a new character: a hooded swordsman in a long black cloak, drawn as a solid black figure with a bold white outline, with silver hair, a pale crystal sword and a kite shield with a star.',
+          'He fights with the sword in one hand and the shield on his left arm. Hold guard to raise the shield; blocks and parries land on it.',
+          'His cloak moves with him: it trails through a turn, wraps in a roll and streams on a run.',
+          'Reach, timing and damage are the same as before. The older outfits are gone.',
         ],
       },
       {

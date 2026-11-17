@@ -10,8 +10,8 @@ import { boxGeometry, gripFist, mergeGeometries, strapGeometry } from '../heroGe
 //
 //   shield.kite    the hooded hero's (the concept sheet's): a tall kite with a point at the top and
 //                  at the foot, a thick silver rim (a bold line on both its edges, front AND back: the
-//                  carry shows him the back most of the time), a dark crystal face cut in four faint
-//                  facets, a bright four-point star with a long vertical ray and a tight glow
+//                  carry shows him the back most of the time), a dark crystal face cut in faint
+//                  facets (one per side of its outline), a bright four-point star with a long vertical ray and a tight glow
 //
 // Materials (HERO_INK, the player's own bank): the rim `abRim` (silver, bold lines), the face and
 // the back `abShield` (dark crystal), the star `abCrystal` (the blade's light, own glow), the straps
@@ -100,7 +100,7 @@ function starPlate(rx, ru, rd, w, th, peak) {
 
 /**
  * Shield `S` as upright-frame geometries: `rim` (the silver band between the outline and the face,
- * its outer wall, and the same band on the back), `face` (four flat facets meeting at the star's
+ * its outer wall, and the same band on the back), `face` (one flat facet per side of the outline, meeting at the star's
  * centre: alternate ink sub-ids, faint lines), `back` (the plate seen from behind, inside its rim)
  * and `star`.
  */
