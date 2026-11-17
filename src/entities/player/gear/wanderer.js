@@ -4,8 +4,9 @@ import { DIM as HERO_DIM } from '../heroDims.js';
 import {
   gridGeometry, shellGeometry, skirtSheet, tatterStrip, arcPlate, strapGeometry, boxGeometry, kiteGeometry, sheetEdge, starGeometry,
   mergeGeometries, sub, partGeometry, foldLines, ribbonCrease, spike, bandGeometry, place, sheetOffset, lerp, orient, ring, limb, wedge,
-  gripFist, looseHand,
+  gripFist,
 } from '../heroGeo.js';
+import { buildFreeHand } from './hands.js';
 
 // The Wanderer's outfit, "Shadow Swordsman": the default gear set (gear/index.js DEFAULT_LOADOUT),
 // one item per slot, the look described at the top of model.js. Each item's build(ctx) hangs its
@@ -248,8 +249,10 @@ function buildPauldron({ pauldron, arms, M, BODY, mesh }) {
 // ---------------------------------------------------------------- arms (asymmetric)
 /** Coat sleeves with deltoid caps on both arms; a plate vambrace and gauntlet on the right (the
  *  sword arm), a leather bracer and a fingerless glove on the left. */
-function buildArms({ arms, sword, M, DIM, BODY, mesh }) {
+function buildArms(ctx) {
+  const { arms, sword, M, DIM, BODY, mesh } = ctx;
   const [ua0, ua1] = BODY.upperArm, [fa0, fa1] = BODY.foreArm, HK = BODY.hand;
+  let hand = null;
   // the sword hand: an articulated gauntlet closed round the grip. It hangs on the `sword` joint
   // (the grip's own frame), so the fingers wrap the grip in every pose; the back-of-the-hand plate
   // and the cuff below stay on the forearm and meet it at the wrist
@@ -298,12 +301,13 @@ function buildArms({ arms, sword, M, DIM, BODY, mesh }) {
       mesh(fore, limb({ length: 0.18, r0: fa0, r1: fa1, radial: 10, rings: 3 }), M.pants, 0, -0.05, 0);
       mesh(fore, bandGeometry(fa1 + 0.002, fa1 + 0.002, 0.025, 14).translate(0, -0.236, 0), M.trim);
       mesh(fore, wedge(0.05, 0.018, [out * (fa0 - 0.015), -0.05, -0.02], [out * 0.3, 1, -0.5], [0, 0, -1], 0.12), M.spike);
-      // the free hand: a loosely closed fingerless glove, skin at the last finger joints
-      const H = looseHand(DIM.foreArm - 0.03, side, HK);
-      mesh(fore, mergeGeometries([H.palm, H.fingers, H.thumb]), M.pants);
-      mesh(fore, H.tips, M.skin);
+      // the free hand: the gloved hand every outfit shares (hands.js: open, sword fingers, the fist
+      // on the grip; the animator shows one). It was a rigid loosely closed glove on the forearm
+      // until the default came back to this set (ADR-123): the motions since then need the wrist
+      hand = buildFreeHand(ctx, M.pants);
     }
   }
+  return hand;
 }
 
 // ---------------------------------------------------------------- legs

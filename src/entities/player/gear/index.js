@@ -51,21 +51,10 @@ export function swordFromUrl() {
   }
 }
 
-/** What the hero wears today: the Shrouded set (gear/shroud.js, ADR-043: a hood, a wrap tunic,
- *  bound sleeves and the tattered cloak) over the Wanderer's boots, coat tails and sword. No
- *  shoulder armour: the mantle carries the shoulders. */
-export const DEFAULT_LOADOUT = Object.freeze({
-  head: 'shroud.hood',
-  chest: 'shroud.tunic',
-  shoulders: null,
-  arms: 'shroud.arms',
-  legs: 'wanderer.legs',
-  waist: 'wanderer.skirt',
-  back: 'shroud.cloak',
-  weapon: 'wanderer.sword',
-});
-
-/** The outfit before ADR-043: the Wanderer's greatcoat, pauldron and half-cape, bare-headed. */
+/** The Wanderer's set (gear/wanderer.js): the open greatcoat, the spiked pauldron on the sword
+ *  shoulder, the half-cape, bare-headed under spiky dark hair. What the hero wears: the owner,
+ *  2026-11-16, brought back the look of 2026-11-09 ("make the hero look like this, this is one of
+ *  the older versions of the character"; ADR-123). It was the default until ADR-043 too. */
 export const WANDERER_LOADOUT = Object.freeze({
   head: null,
   chest: 'wanderer.coat',
@@ -74,6 +63,22 @@ export const WANDERER_LOADOUT = Object.freeze({
   legs: 'wanderer.legs',
   waist: 'wanderer.skirt',
   back: 'wanderer.cape',
+  weapon: 'wanderer.sword',
+});
+/** What the hero wears by default: the Wanderer's set. */
+export const DEFAULT_LOADOUT = WANDERER_LOADOUT;
+
+/** The Shrouded set (gear/shroud.js, ADR-043: a hood, a wrap tunic, bound sleeves and the tattered
+ *  cloak) over the Wanderer's boots, coat tails and sword: the default from 2026-11-11 to 11-16,
+ *  kept as an outfit option (gear/looks.js `shroud`). */
+export const SHROUD_LOADOUT = Object.freeze({
+  head: 'shroud.hood',
+  chest: 'shroud.tunic',
+  shoulders: null,
+  arms: 'shroud.arms',
+  legs: 'wanderer.legs',
+  waist: 'wanderer.skirt',
+  back: 'shroud.cloak',
   weapon: 'wanderer.sword',
 });
 

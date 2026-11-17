@@ -220,10 +220,11 @@ export const HERO_INK = {
   hem: { part: 8, fill: [0.32, 0.3, 0.44], sub: 0.6, rim: 1.2, line: [0.8, 0.78, 1.0, 0.75], rimLine: [0.72, 0.72, 1.0, 0.95], dotted: true, rimDotted: true, farFill: 1.1 },
   piping: { part: 9, fill: [0.3, 0.28, 0.36], line: [0.95, 0.93, 1.0, 0.95], farFill: 0.6 },
   leather: { part: 10, fill: [0.34, 0.23, 0.17], line: [1.0, 0.93, 0.85, 0.9], farFill: 0.8 },
-  // gold hair (Session 14, owner: "make his hair colored gold to stand out"): warm gold letters
-  // with brighter tips, lines under the bloom threshold (the blade and the gem keep the glow)
-  hair: { part: 11, fill: [0.62, 0.42, 0.1], rim: 0.9, line: [1.25, 0.92, 0.38, 0.85], rimLine: [1.3, 1.0, 0.45, 0.95], fillGain: 1.3, rimDotted: true, farFill: 1.0 },
-  hairTip: { part: 11, fill: [0.85, 0.62, 0.2], rim: 0.9, line: [1.25, 0.92, 0.38, 0.85], rimLine: [1.3, 1.0, 0.45, 0.95], fillGain: 1.3, rimDotted: true, farFill: 1.0 },
+  // dark violet-black hair with pale lavender edges (2026-11-16, ADR-123: the owner brought back the
+  // look of 2026-11-09, these values exactly. It was gold from Session 14, "make his hair colored
+  // gold to stand out", until then)
+  hair: { part: 11, fill: [0.085, 0.08, 0.14], rim: 0.9, line: [0.5, 0.48, 0.8, 0.3], rimLine: [0.6, 0.58, 0.95, 0.7], fillGain: 1.3, rimDotted: true, farFill: 0.5 },
+  hairTip: { part: 11, fill: [0.14, 0.12, 0.28], rim: 0.9, line: [0.5, 0.48, 0.8, 0.3], rimLine: [0.6, 0.58, 0.95, 0.7], fillGain: 1.3, rimDotted: true, farFill: 0.5 },
   armor: { part: 12, fill: [0.17, 0.17, 0.2], spec: 1.1, specPow: 18, line: [1, 1, 1, 0.8], rimLine: [1, 1, 1, 0.95], fillGain: 1.0, farLine: 0.45, farFill: 0.78 },
   spike: { part: 13, fill: [0.2, 0.2, 0.24], spec: 0.8, specPow: 16, line: [1, 1, 1, 0.9], rimLine: [1, 1, 1, 1.0], fillGain: 1.05, farLine: 0.55, farFill: 0.9 },
   bevel: { part: 14, fill: [0.3, 0.31, 0.38], spec: 0.5, line: [1, 1, 1, 0.8], fillGain: 1.1, farLine: 0.5, farFill: 0.85 },
@@ -255,8 +256,8 @@ export function createHeroMaterials(U) {
   const Z = 1.0; // close-up glyph zoom for cloth / plates (> GLYPH_SCALE.farZoom: smaller glyphs, more black)
   const hair = {
     levels: HAIR_LEVELS, cell: [0.09, 0.1], rowShift: 0.5, base: [0.005, 0.005, 0.01],
-    levelInk: [[0.36, 0.25, 0.08], [0.46, 0.33, 0.1], [0.58, 0.42, 0.14]], ink: [0.52, 0.38, 0.12],
-    inkAlt: [0.85, 0.66, 0.26], altChance: 0, lumScale: 3.5, gain: 1.1, rim: 0.1, outline: 0.06, inkGlow: 0.26, glowMask: 0,
+    levelInk: [[0.16, 0.16, 0.21], [0.2, 0.2, 0.26], [0.25, 0.25, 0.32]], ink: [0.22, 0.22, 0.3],
+    inkAlt: [0.55, 0.42, 0.95], altChance: 0, lumScale: 3.5, gain: 1.1, rim: 0.1, outline: 0.06, inkGlow: 0.26, glowMask: 0,
   };
   const cloth = {
     levels: CLOTH_LEVELS, rowShift: 0, base: [0.007, 0.007, 0.011],
