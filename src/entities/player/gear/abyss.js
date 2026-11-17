@@ -266,9 +266,9 @@ const COWL_PROF = [
   [1.2, 0.24, 0.17, 0.006],
   [1.34, 0.275, 0.186, -0.006],
   [1.43, 0.302, 0.194, -0.014],
-  [1.485, 0.298, 0.186, -0.014],
-  [1.515, 0.25, 0.168, -0.01],
-  [1.545, 0.16, 0.13, -0.002],
+  [1.5, 0.306, 0.188, -0.014],
+  [1.526, 0.268, 0.172, -0.01],
+  [1.552, 0.17, 0.134, -0.002],
   [1.57, 0.09, 0.088, 0.008],
   [1.6, 0.064, 0.07, 0.014],
 ];
@@ -276,7 +276,12 @@ const COWL_PROF = [
  *  1.15 m) up over his left shoulder (1.47 d), round the sides at the top of the arms, a V between
  *  the shoulder blades (1.385 d = 1.30 m). */
 const COWL_LO = curve([
-  [-Math.PI, 1.385], [-2.6, 1.415], [-2.0, 1.4], [-1.55, 1.37], [-1.15, 1.27], [-0.8, 1.235], [-0.3, 1.29], [0.2, 1.35], [0.7, 1.41], [1.2, 1.44], [1.6, 1.405], [2.0, 1.405], [2.6, 1.415], [Math.PI, 1.385],
+  [-Math.PI, 1.33], [-2.6, 1.4], [-2.0, 1.45], [-1.55, 1.39], [-1.15, 1.27], [-0.8, 1.235], [-0.3, 1.29], [0.2, 1.35], [0.7, 1.41], [1.2, 1.44], [1.6, 1.405], [2.0, 1.45], [2.6, 1.4], [Math.PI, 1.33],
+]);
+/** The middle fold of the front drape (round 4): between the outer wrap's edge and the scarf's, on
+ *  the same diagonal; behind, under the outer wrap. Its edge is a fold line (an ink sub-id). */
+const MID_LO = curve([
+  [-Math.PI, 1.44], [-2.2, 1.46], [-1.5, 1.42], [-1.1, 1.33], [-0.7, 1.3], [-0.2, 1.34], [0.3, 1.4], [0.8, 1.45], [1.3, 1.48], [1.8, 1.47], [2.4, 1.46], [Math.PI, 1.44],
 ]);
 /** The inner wrap (the scarf round the neck, over the outer one): its lower edge a hand higher and
  *  on the same diagonal, a shallower V behind. */
@@ -305,7 +310,12 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh }) {
   const cp = profile(COWL_PROF);
   const outer = loftBetween(-Math.PI, Math.PI, COWL_LO, () => 1.55, cp, { cols: 40, rows: 7 });
   outer.translate(0, -REST.chest, 0);
-  mesh(chest, outer, M.abCowl);
+  const mid = loftBetween(-1.9, 1.9, MID_LO, () => 1.57, (y) => {
+    const [rx, rz, cz] = cp(y);
+    return [rx + 0.009, rz + 0.008, cz];
+  }, { cols: 40, rows: 5 });
+  mid.translate(0, -REST.chest, 0);
+  mesh(chest, mergeGeometries([sub(outer, 0), sub(mid, 1)]), M.abCowl);
   const scarf = loftBetween(-Math.PI, Math.PI, SCARF_LO, () => 1.6, (y) => {
     const [rx, rz, cz] = cp(y);
     return [rx + 0.018, rz + 0.016, cz];
