@@ -11,6 +11,7 @@ import { WYRM_FACES, wyrmFace } from '../entities/dragon/heads.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
+import { buildLooks } from './labLooks.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -356,6 +357,10 @@ export class Lab {
    */
   _force(name, quiet) {
     const mark = this.trainer.seq;
+    // a duelist's move of a later phase / form: he is put into it first, without its change (as the
+    // Training's BOSS MOVES do); trigger() refuses a move above his phase
+    const mv = this.target?.kit?.MOVES?.[name];
+    if (mv && !mv.transition && Number.isFinite(mv.phase) && mv.phase > (this.target.phase ?? 1)) this._skipToPhase(mv.phase);
     const r = this._call(this.target, 'dragon', 'trigger', [name], quiet);
     if (r !== null && r !== false) this.trainer.dropPendingUpTo(mark);
     return r;
@@ -365,10 +370,27 @@ export class Lab {
   _fightAction(method) {
     if (method === 'kill') this.setLoop(false);
     this._prepareFlow();
+    // a duelist's change to phase / form N plays from N - 1 only: from further back he is put into
+    // N - 1 first (no change played), then the change to N plays
+    const pn = /^phase([2-4])$/.exec(method)?.[1];
+    if (pn && this.target?.kit && (this.target.phase ?? 1) < pn - 1) this._skipToPhase(pn - 1);
     const r = this._dragon(method);
     // these interrupt the current attack: its announced impacts will never land
     if (r !== null && r !== false) this.trainer.clearPending();
     return r;
+  }
+
+  /** A duelist straight into phase / form `n`, its change not played (the Lord's setForm dresses
+   *  the form; Shen Hui's enterPhase sets the phase). */
+  _skipToPhase(n) {
+    const d = this.target;
+    if (!d || !(n > (d.phase ?? 1))) return;
+    try {
+      if (typeof d.debug?.setForm === 'function') d.debug.setForm(n);
+      else d.enterPhase?.(n);
+    } catch (err) {
+      this._fail('skip to phase', err);
+    }
   }
 
   _flowTo(name, quiet = false) {
@@ -694,6 +716,7 @@ export class Lab {
 
       this._buildLevel(root);
       this._buildOutfit(root);
+      this._buildLooks(root);
       this._buildFight(root);
       this._buildAbilities(root);
       this._buildPlayer(root);
@@ -761,6 +784,16 @@ export class Lab {
     this._syncOutfit();
   }
 
+  /** LOOKS: the duelists' look options (labLooks.js; ?kindle= ?star= ... ?looks=new), live or by a
+   *  reload. Only in a duelist's level; collapsed by default (it is long). */
+  _buildLooks(root) {
+    const id = this.game.level?.id;
+    if (id !== 'ash' && id !== 'starless') return;
+    if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
+    const { body } = this._section(root, 'looks', 'LOOKS');
+    this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
+  }
+
   _syncStanceBtns() {
     const v = this.game.player?.debug?.fightStance ?? null;
     for (const B of this.ui.stanceBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
@@ -779,7 +812,9 @@ export class Lab {
     button(grid, 'Phase 2', () => this._fightAction('phase2'));
     button(grid, 'Phase 3', () => this._fightAction('phase3')).title = 'the phase-3 transition roar: hotter, faster wyrm (opens with the nova when the AI runs)';
     // a boss with a fourth phase (the Starless Lord's blade forms)
-    if (typeof this.game.dragon?.debug?.phase4 === 'function') button(grid, 'Phase 4', () => this._fightAction('phase4')).title = 'the next blade form (each button works from the form before it)';
+    // (every duelist has debug.phase4; only one whose kit counts four forms uses it)
+    const D = this.game.dragon;
+    if (typeof D?.debug?.phase4 === 'function' && (D.kit ? (D.kit.maxPhase ?? 0) >= 4 : true)) button(grid, 'Phase 4', () => this._fightAction('phase4')).title = 'the next blade form (each button works from the form before it)';
     button(grid, 'Stagger', () => this._fightAction('stagger'));
     button(grid, 'Posture break', () => this._fightAction('postureBreak'));
     button(grid, 'Kill', () => this._fightAction('kill'), 'danger');

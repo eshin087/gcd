@@ -5,6 +5,9 @@ import {
   gridGeometry, shellGeometry, skirtSheet, arcPlate, boxGeometry, bandGeometry, kiteGeometry, mergeGeometries, sub, foldLines, spike, wedge,
   limb, gripFist, looseHand, lerp, sheetOffset, sheetEdge, ring,
 } from '../../player/heroGeo.js';
+import { toDragonLook } from '../ashDisciple/bodyArt.js';
+import { LORD_ART } from './bodyArt.js';
+import { lordLookNow, dressHood, dressPlate, dressCape } from './look.js';
 
 // The Starless Lord's outfit: gear items on the hero's skeleton, so he is built by the same
 // buildHero(U, loadout) and driven by the same animator. An armoured dark lord (the owner: black
@@ -157,6 +160,16 @@ function buildHood({ head, M, DIM, mesh }) {
 }
 
 // ---------------------------------------------------------------- chest: the cuirass
+/** The cuirass's rings (heights in m standing; look.js lays its cracks over them). */
+const CUIRASS = [
+  { y: 1.262, rx: 0.158, rz: 0.12, cz: 0.006 },
+  { y: 1.31, rx: 0.178, rz: 0.134, cz: 0.012 },
+  { y: 1.37, rx: 0.203, rz: 0.146, cz: 0.02 },
+  { y: 1.43, rx: 0.212, rz: 0.14, cz: 0.014 },
+  { y: 1.476, rx: 0.186, rz: 0.12, cz: 0.005 },
+  { y: 1.51, rx: 0.1, rz: 0.088, cz: 0 },
+];
+
 /** A black cuirass with a drawn chevron across the chest and the shoulder blades, three lames down
  *  the belly, a gorget, a belt, and the sigil: a ring of red light. */
 function buildPlate({ spine, chest, M, BODY, REST, mesh }) {
@@ -171,14 +184,7 @@ function buildPlate({ spine, chest, M, BODY, REST, mesh }) {
   // the undersuit: one closed black shell from the hips to the neck
   mesh(spine, shellGeometry([...SHELL, { y: top.y + 0.02, rx: 0.058, rz: 0.056 }].map((r) => ({ ...r, gap: 0, y: ySp(r.y) })), { sub: 2, cols: 24 }), M.shirt);
   // the cuirass: a barrel of plate over the ribs; its seam down the front is the shell's own hairline
-  const CU = [
-    { y: 1.262, rx: 0.158, rz: 0.12, cz: 0.006 },
-    { y: 1.31, rx: 0.178, rz: 0.134, cz: 0.012 },
-    { y: 1.37, rx: 0.203, rz: 0.146, cz: 0.02 },
-    { y: 1.43, rx: 0.212, rz: 0.14, cz: 0.014 },
-    { y: 1.476, rx: 0.186, rz: 0.12, cz: 0.005 },
-    { y: 1.51, rx: 0.1, rz: 0.088, cz: 0 },
-  ];
+  const CU = CUIRASS;
   // two drawn lines following a chevron: from the breastbone up to the armpits in front, from the
   // spine up to the shoulders behind
   const chev = (x) => ySp(1.352) + 0.36 * Math.abs(x);
@@ -492,16 +498,41 @@ export function buildOffSaber(M) {
   return { root, blade };
 }
 
+// ---------------------------------------------------------------- look options (the owner picks)
+/**
+ * `?lordLook=` (duelist/lookSwitch.js; read when his rig is built): '0' today's figure (the default,
+ * built exactly as before), 'a' the same figure in the dragon look (bodyArt.js), 'b' today's drawing
+ * worn down form by form (look.js), 'c' both. Each item's build goes through here: the first one turns
+ * the rig's materials to the art path, and the dressing adds its pieces beside the item's own.
+ */
+function opted(build, dress = null) {
+  return (ctx) => {
+    const L = lordLookNow();
+    if (L.art) toDragonLook(ctx, LORD_ART);
+    if (!L.dress || !dress) return build(ctx);
+    // (the meshes the item hangs, for a dressing that shows or hides them)
+    const made = [];
+    const mesh = (...a) => {
+      const m = ctx.mesh(...a);
+      made.push(m);
+      return m;
+    };
+    const out = build({ ...ctx, mesh });
+    return dress(ctx, out, made);
+  };
+}
+const merge = (a, b) => ({ ...a, ...b, keep: [...(a?.keep ?? []), ...(b?.keep ?? [])] });
+
 /** The set (registered into the hero's gear registry on import: gear/index.js registerItem). */
 export const LORD_ITEMS = [
-  { id: 'lord.hood', slot: 'head', name: 'Starless Hood', hidesHair: true, shadowsFace: true, build: buildHood },
-  { id: 'lord.plate', slot: 'chest', name: 'Void Cuirass', build: buildPlate },
-  { id: 'lord.yoke', slot: 'shoulders', name: 'Plate Yoke', build: buildYoke },
-  { id: 'lord.arms', slot: 'arms', name: 'Void Gauntlets', build: buildArms },
-  { id: 'lord.legs', slot: 'legs', name: 'Void Greaves', build: buildLegs },
-  { id: 'lord.skirt', slot: 'waist', name: 'War-Skirt', build: buildSkirt },
-  { id: 'lord.cape', slot: 'back', name: 'Starless Cape', build: buildCape },
-  { id: 'lord.saber', slot: 'weapon', name: 'Blade of Red Light', dims: SABER, build: buildSaber },
+  { id: 'lord.hood', slot: 'head', name: 'Starless Hood', hidesHair: true, shadowsFace: true, build: opted(buildHood, (ctx, out, made) => merge(out, dressHood(ctx, made, (...a) => maskStrip(ctx.DIM, ...a)))) },
+  { id: 'lord.plate', slot: 'chest', name: 'Void Cuirass', build: opted(buildPlate, (ctx, out) => merge(out, dressPlate(ctx, CUIRASS))) },
+  { id: 'lord.yoke', slot: 'shoulders', name: 'Plate Yoke', build: opted(buildYoke) },
+  { id: 'lord.arms', slot: 'arms', name: 'Void Gauntlets', build: opted(buildArms) },
+  { id: 'lord.legs', slot: 'legs', name: 'Void Greaves', build: opted(buildLegs) },
+  { id: 'lord.skirt', slot: 'waist', name: 'War-Skirt', build: opted(buildSkirt) },
+  { id: 'lord.cape', slot: 'back', name: 'Starless Cape', build: opted(buildCape, (ctx, out, made) => dressCape(ctx, out, made, LORD_CAPE)) },
+  { id: 'lord.saber', slot: 'weapon', name: 'Blade of Red Light', dims: SABER, build: opted(buildSaber) },
 ];
 for (const item of LORD_ITEMS) registerItem(item);
 

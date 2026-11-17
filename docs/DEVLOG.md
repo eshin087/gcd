@@ -5,6 +5,96 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-16 — Session 62: the duelists' second pass (planned by the lead, built by Opus agents)
+
+**Owner:** the request made for all boss fights ("more harder, more epic, more crazy combos and
+flurries ... each phase needs to ramp up the difficulty and chaos ... constantly being forced to
+dodge, parry, move ... plan all the new stuff out with fable and have opus agents do the work"); the
+wyrm went first (Session 59). Four questions asked before planning and six after the sheets
+(ADR-122 lists the answers). Branch `enemies/duelist-second-pass` from `main` (ba9a838), `main`'s #63 merged in at
+the end. ADR-122 / Session 62 / M1.47 (121, 61 and M1.46 left free for a session that was
+running beside this one).
+
+**How it ran.** Three read-only agents mapped the duelist engine against the wyrm's director, the
+Ash Disciple and the Starless Lord (the maps gave every later agent `file:line`). Wave 1, five at
+once: **core** (`duelist/brain.js`, new `director.js` and `ledger.js`, the links files, the
+`pressure` blocks, the `pace` scenario, measured first on the untouched engine), **world**
+(`src/world/**`), **fxash** (`duelist/fx.js`), **fxlord** (`starlessLord/fx.js`), **looks** (both
+`gear.js`). Wave 2 on the merged core: **ashmoves**, **lordmoves** (new `moveFx.js`, `spells.js`),
+**terrain** (both `terrain.js`). Then **integration** (the seams, the Lab's LOOKS section, the
+frame cost against `main`, a walk through both levels), **tune-ash** and **tune-lord** (each the
+first to see a whole fight: films, weights, links, the meters, mortal bots), and at the end
+**picks**, **engine** and **docs**, plus a second tuning round for the Lord's third form after the
+final ten-seed measurement showed it no busier than his second on three seeds. Twenty-odd merges
+of the agents' branches with no conflict (the scenario registries had been split one key per line
+first; each agent inserted after a different key). Then `main` gained the wyrm's third pass (#63,
+ADR-120) while the last full run was going: it had reworked the same destruction code, so a
+**merge** agent merged `main` in (thirteen conflicted files) and the lead re-applied this history
+on top.
+
+**What went wrong on the way.** The lead session entered its own worktree with `EnterWorktree`,
+which pinned every agent's write access to that worktree: four of five wave-1 agents stopped after
+ten minutes (one worked round it with a mirror folder). Leaving the worktree and resuming each
+agent fixed it. The first +30 % target for cues a minute was written before the baseline existed:
+the duelists were already at 60 - 85 a minute, inside a move 95 % of the time, so the gain had to
+come from denser moves, not shorter pauses.
+
+**Sent back by the lead** (from the sheets): the third phase's change (three options too faint and
+too alike: redone on the real transition), the broken floor (blank holes, invisible cracks, an
+option b nobody could tell from whole), the Lord's shocks (never seen with the shared front), the
+phone's frame cost (+21 % / +23 % from breakables in the scene graph: the pieces now live outside
+it), the slab in a boss's hands (it hid him: now a chunk).
+
+**What changed** (ADR-122 has the decisions; COMBAT.md the numbers):
+- **Engine:** a director over the pick, combo links from half the recovery, chain depth and rest,
+  `openingGap`, the cue ledger and the fairness guard (holds, feints, delays, fades), `brain.expect`
+  / `fairDelay`, the `pace` meter; a string that ends in sword qi cuts a hero who stayed close; the
+  Lord's flurry is as long as its count (it was always four).
+- **Shen Hui:** three phases (64 % / 36 %), the transition `ashWind`, sixteen new blade moves and
+  three on the floor, a red blow in eight strings, burning ground (it drains a held guard's meter,
+  never health), the Kindling and "ash on the wind" drawn, afterimages, the qi with a body.
+- **The Lord:** nineteen new moves, the wheeling blade, orbit stones, the Starless Sky as weather,
+  Starless Night, Rupture and the Falling Halo; a blow out of a blink meets a guard from any side;
+  his spells and blades redrawn in the fire field; each form's ignition its own.
+- **Both:** thrown pieces show the flare only; bodies dressed by phase / form.
+- **World:** courtyard 456 breakables (78), crater 222 (36); floors whole / cracked / broken at no
+  draw cost while whole; two-stage colossi; BLOCK and SHARDS wreckage; pieces outside the scene
+  graph; `floorNear`, lift class 3.
+- **Lab:** a LOOKS section; later phases and their moves from any phase; Shen Hui's phase 3 in
+  Training.
+
+**The owner's picks (2026-11-16):** every author's pick for both bosses' effects (option a), the
+bodies "b: dressed by phase", the broken floor "a: rubble on earth", "Guard meter, no health" for
+burning ground, "Keep three phases". The picks are a table in `duelist/lookSwitch.js`;
+`?looks=old` shows every redraw as it was.
+
+**Verification:** `node tests/run.mjs .` ALL 10 PASSED and `npm run build` passes on the final
+commit, run by the lead. New scenarios: `pace`, `fxlooks`, `moves`, `floor`, `worldcue` and the
+opt-in `bots`, `answer`, `ranged` in `duel.mjs`; `pace`, `fxlooks`, `moves`, `floor` and the opt-in
+`probe`, `defend` in `lord.mjs`; `floor`, `colossus`, `placed` in `world.mjs`. Measured: cues a
+minute (ten seeds on the final build) Shen Hui 60 / 76 → 78 / 92 / 99, the Lord
+71 / 80 / 75 / 85 → 83 / 91 / 98 / 109; conflicts 132 → 0; a 95 % bot wins every fight, a pure defender
+survives every phase and form.
+Filmed on headless Edge with the real GPU: every new move from two sides, every look option on one
+sheet per switch, a 20 s stretch of each phase and form with the picks on, both levels from the
+title to the victory with a death and a reset.
+
+**Not checked / open** (the agents' own lists, kept; ADR-122 "Not measured or not right"):
+- Nobody has played it. For a bot with a fixed answer rate the fights are busier and fairer but
+  hardly deadlier than on `main` (the 85 % bot now dies on one seed of three against the Lord), and
+  both last about a minute for a bot that plays well.
+- The cheese spot behind the throne; a missed blow in a long string costing most of it (the Lord's
+  worst second is 59.4, 57.2 before); two guard cues from different sources 0.1 - 0.25 s apart.
+- The guard steps in 1 - 4 times a minute in the Lord's fourth form.
+- New poses measured inside today's envelope but not audited joint by joint; no palm strike.
+- No music for phase 3, no new sounds. The iPhone itself.
+- One wyrm number changed (Furnace Maw's bite cued 28 ms later: a fault that was on `main`).
+
+**Next:** the owner plays the preview (the Lab's LOOKS section flips every option on the phone).
+If the fights should be longer or deadlier: posture gained per parry and health are the levers.
+
+---
+
 ## 2026-11-16 — Session 60: the wyrm ablaze, a forest that breaks, letters that follow the zoom (planned by the lead, built by Opus agents)
 
 **Owner:** "lets improve the dragon's face to look more menacing and realistic. right now it seems like

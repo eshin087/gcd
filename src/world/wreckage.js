@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32, hash2 } from '../core/rng.js';
-import { prep, lumpy, carve, mul, buildRubble, BARK } from './forest.js';
+import { prep, lumpy, carve, mul, slabGeometry, buildRubble, BARK, STONE } from './forest.js';
 import { BREAK } from './breakTuning.js';
 
 // Wreckage (2026-11-15; it reverses ADR-107's "a felled trunk comes apart where it lands"): what the
@@ -28,9 +28,11 @@ const LOG_LOOKS = 3;
 const CHAR_LOOKS = 2;
 const RUBBLE_LOOKS = 3;
 const BONE_LOOKS = 3;
+const BLOCK_LOOKS = 3;
+const SHARD_LOOKS = 3;
 // (BONES: what a broken rib, a run of vertebrae, a skull leaves lying: a heap of shards in the bone's own
 // hue, 2026-11-16; it lies and sinks as a rubble pile does)
-const KIND = Object.freeze({ LOG: 0, CHAR: 1, RUBBLE: 2, BONES: 3 });
+const KIND = Object.freeze({ LOG: 0, CHAR: 1, RUBBLE: 2, BONES: 3, BLOCK: 4, SHARDS: 5 });
 const BONE_COL = [0.3, 0.285, 0.245], OLD_BONE_COL = [0.2, 0.19, 0.17]; // (landmarks.js BONE, OLD_BONE)
 const CHAR_COL = [0.03, 0.026, 0.024]; // (burnt black: the ember glow under it is the scorch map's)
 
@@ -100,20 +102,65 @@ function boneGeometry(r) {
   return g;
 }
 
+/** A big carved block (a colossus's): a chipped box ~1 m across, its base at 0 (scaled per use). */
+function blockGeometry(r) {
+  const g = prep(new THREE.BoxGeometry(1.1, 0.75, 0.85, 2, 2, 2));
+  g.translate(0, 0.32, 0);
+  const s = r() * 50;
+  lumpy(g, 0.16, 2.4, s, new THREE.Vector3(0, 0.35, 0));
+  g.rotateZ((r() - 0.5) * 0.5);
+  g.rotateX((r() - 0.5) * 0.4);
+  carve(g, {
+    col: (px, py, pz) => mul(STONE, 0.55 + 0.45 * hash2(px * 5 + s, py * 7 + pz * 3)),
+    ao: (px, py) => 0.55 + 0.45 * clamp(py / 0.7, 0, 1),
+    edge: (px, py, pz, nx, ny) => (ny > 0.55 ? 0.4 : 0),
+  });
+  return g;
+}
+
+/** A slab torn out of a floor, broken where it was thrown: three or four flat shards, ~1 m across. */
+function shardsGeometry(r) {
+  const parts = [];
+  const n = 3 + Math.floor(r() * 2);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 6.283 + r() * 0.8, d = 0.15 + r() * 0.35;
+    const k = 3 + Math.floor(r() * 3), pts = [];
+    for (let j = 0; j < k; j++) {
+      const b = (j / k) * 6.283 + (r() - 0.5) * 0.6, rr = 0.18 + r() * 0.2;
+      pts.push([Math.cos(b) * rr, Math.sin(b) * rr]);
+    }
+    const g = slabGeometry(pts, { top: 0.05, inset: 0.04, drop: 0.03, bottom: -0.08 });
+    g.rotateX((r() - 0.5) * 0.5);
+    g.rotateZ((r() - 0.5) * 0.5);
+    g.translate(Math.cos(a) * d, 0.03, Math.sin(a) * d);
+    parts.push(g);
+  }
+  const g = mergeGeometries(parts);
+  carve(g, {
+    col: (px, py, pz) => mul(STONE, 0.5 + 0.4 * hash2(px * 9, pz * 9)),
+    ao: 0.85,
+    edge: (px, py, pz, nx, ny) => (ny > 0.5 && ny < 0.95 ? 1 : 0),
+  });
+  return g;
+}
+
 export class Wreckage {
   /**
    * `root`: the group it hangs under (the breakables' root: one batch for both); `mat`: the prop art
-   * twin; `owner`: the Destructibles (lights, quality, events).
+   * twin; `owner`: the Destructibles (lights, quality, events). `need`: { bones, blocks, shards } (the pools
+   * only a set with bone pieces / a statue / a floor that can be thrown uses: no bones for them elsewhere).
    */
-  constructor(game, world, root, mat, owner) {
+  constructor(game, world, root, mat, owner, need = {}) {
     this.game = game;
     this.world = world;
     this.D = owner;
     this.group = new THREE.Group();
     this.group.name = 'wreckage';
+    // (no per-frame matrix work: a piece is placed when it lies down or sinks, _place)
+    this.group.matrixAutoUpdate = false;
     root.add(this.group);
     /** every entry, by pool: { kind, mesh, on, t (born), x, z, dx, dz, len, r, burn, burnLife, flame, heatT, smoulder, sink, light, M } */
-    this.pools = [[], [], [], []];
+    this.pools = [[], [], [], [], [], []];
     /** the entries lying now, oldest first per pool (unordered across pools) */
     this.live = [];
     this.burning = 0;
@@ -127,7 +174,14 @@ export class Wreckage {
     for (let i = 0; i < LOG_LOOKS; i++) logs.push(logGeometry(r, false));
     for (let i = 0; i < CHAR_LOOKS; i++) chars.push(logGeometry(r, true));
     for (let i = 0; i < RUBBLE_LOOKS; i++) rocks.push(buildRubble(r, 0, 0, 1, { h: 0.55 })[0]);
-    for (let i = 0; i < BONE_LOOKS; i++) bones.push(boneGeometry(r));
+    // (the bone heaps: only where the set has bone pieces, Cinderwood's landmarks; elsewhere a set is
+    // built without them, as the pools below)
+    if (need.bones) for (let i = 0; i < BONE_LOOKS; i++) bones.push(boneGeometry(r));
+    // (after the older looks: their random sequence stays as it was; built only where the set needs
+    // them: a set without a statue or a floor to throw is built exactly as before, 2026-11-16)
+    const blocks = [], shards = [];
+    if (need.blocks) for (let i = 0; i < BLOCK_LOOKS; i++) blocks.push(blockGeometry(r));
+    if (need.shards) for (let i = 0; i < SHARD_LOOKS; i++) shards.push(shardsGeometry(r));
     const make = (kind, n, geos) => {
       for (let i = 0; i < n; i++) {
         const m = new THREE.Mesh(geos[i % geos.length], mat);
@@ -144,7 +198,9 @@ export class Wreckage {
     make(KIND.LOG, W.logs, logs);
     make(KIND.CHAR, W.chars, chars);
     make(KIND.RUBBLE, W.rubble, rocks);
-    make(KIND.BONES, W.bones ?? 0, bones);
+    make(KIND.BONES, need.bones ? W.bones ?? 0 : 0, bones);
+    make(KIND.BLOCK, need.blocks ? W.blocks : 0, blocks);
+    make(KIND.SHARDS, need.shards ? W.shards : 0, shards);
   }
 
   get count() {
@@ -202,16 +258,18 @@ export class Wreckage {
 
   _place(e) {
     const m = e.mesh;
-    if (e.kind === KIND.RUBBLE || e.kind === KIND.BONES) {
+    if (e.kind >= KIND.RUBBLE) {
       m.position.set(e.x, e.y0 - e.sink * (e.r * 0.7 + 0.2), e.z);
       m.rotation.set(0, e.yaw, 0);
-      m.scale.set(e.r, e.r * 0.8, e.r);
+      if (e.kind === KIND.SHARDS) m.scale.set(e.r, 1, e.r);
+      else m.scale.set(e.r, e.r * 0.8, e.r);
     } else {
       m.position.set(e.x, e.y0 - e.sink * (e.r * 2 + 0.25), e.z);
       m.rotation.set(e.roll, Math.atan2(-e.dz, e.dx), 0, 'YXZ');
       m.scale.set(e.len, e.r, e.r);
     }
     m.updateMatrix();
+    m.updateMatrixWorld();
   }
 
   _start(e, x, z) {
@@ -270,6 +328,35 @@ export class Wreckage {
     e.M = M;
     this._place(e);
     this.world.scorch?.burnCircle?.(x, z, e.r * 1.3, BREAK.wreck.flatten, 0);
+    return e;
+  }
+
+  /** A big carved block at (x, z), `r` across (what a colossus leaves: its upper half where it lands, its legs). */
+  block(x, z, r, M = BREAK.mats.stone) {
+    if (!Number.isFinite(x + z + r) || !(r > 0.1)) return null;
+    const e = this._take(KIND.BLOCK);
+    if (!e) return null;
+    this._start(e, x, z);
+    e.r = clamp(r, 0.4, 1.6);
+    e.y0 = 0;
+    e.yaw = rnd() * 6.283;
+    e.M = M;
+    this._place(e);
+    this.world.scorch?.burnCircle?.(x, z, e.r * 1.2, BREAK.wreck.flatten, 0);
+    return e;
+  }
+
+  /** Flat shards at (x, z), `r` across (a slab torn out of a floor, where it is thrown). */
+  shards(x, z, r, M = BREAK.mats.stone) {
+    if (!Number.isFinite(x + z + r) || !(r > 0.1)) return null;
+    const e = this._take(KIND.SHARDS);
+    if (!e) return null;
+    this._start(e, x, z);
+    e.r = clamp(r, 0.4, 1.4);
+    e.y0 = 0;
+    e.yaw = rnd() * 6.283;
+    e.M = M;
+    this._place(e);
     return e;
   }
 
@@ -409,12 +496,13 @@ export class Wreckage {
     const fx = this.game.fx?.alpha;
     if (!fx) return;
     const M = e.M ?? BREAK.mats.wood, p = this._p;
-    const mx = e.kind >= KIND.RUBBLE ? e.x : e.x + e.dx * e.len * 0.5, mz = e.kind >= KIND.RUBBLE ? e.z : e.z + e.dz * e.len * 0.5;
+    const pile = e.kind >= KIND.RUBBLE;
+    const mx = pile ? e.x : e.x + e.dx * e.len * 0.5, mz = pile ? e.z : e.z + e.dz * e.len * 0.5;
     n = Math.max(2, Math.round(n * (this.D?.q ?? 1)));
     for (let i = 0; i < n; i++) {
-      p.x = mx + (rnd() - 0.5) * (e.kind >= KIND.RUBBLE ? e.r * 2 : e.len);
+      p.x = mx + (rnd() - 0.5) * (pile ? e.r * 2 : e.len);
       p.y = 0.2 + rnd() * 0.3;
-      p.z = mz + (rnd() - 0.5) * (e.kind >= KIND.RUBBLE ? e.r * 2 : e.len * 0.4);
+      p.z = mz + (rnd() - 0.5) * (pile ? e.r * 2 : e.len * 0.4);
       p.vx = (rnd() - 0.5) * 1.2;
       p.vy = 0.3 + rnd() * 0.8;
       p.vz = (rnd() - 0.5) * 1.2;
@@ -439,7 +527,7 @@ export class Wreckage {
     const L = this.live;
     if (!L.length || !(dt > 0)) return;
     const W = BREAK.wreck;
-    // a pool over its share: its oldest sinks into the ground (every pool, the bone heaps included)
+    // a pool over its share: its oldest sinks into the ground (every pool, the bone heaps, blocks and shards included)
     for (let k = 0; k < this.pools.length; k++) {
       const cap = this._cap(k);
       let used = 0, sinking = 0, oldest = null;

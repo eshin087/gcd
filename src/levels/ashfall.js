@@ -27,7 +27,7 @@ export const ASHFALL = Object.freeze({
     arrive: ['Ash falls without end on the ruined sect. Above the steps, someone kneels in the courtyard.', 'Rest at the bonfire to restore your flasks.'],
     stir: 'The kneeling figure lifts his head…',
     phase2: 'THE ASH KINDLES',
-    phase3: null,
+    phase3: 'ASH ON THE WIND',
     victory: 'DISCIPLE DEFEATED',
     fallen: 'The ash settles. The courtyard is silent.',
     restReset: 'The disciple returns to his vigil.',

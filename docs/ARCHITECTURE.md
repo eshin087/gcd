@@ -916,8 +916,9 @@ material instances (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, s
 glowK? } }`), never the shared `U.*`. `player.setLoadout` puts the shared per-part ink
 (`U.uHeroPartInk` / `uHeroPartFill` / `uHeroPartRim`, rewritten by every `buildHero`) back as it was
 after the build, also when the build throws: a boss's own part ink (the Starless Lord's red part 19)
-survives a hero rebuild. **Outfit options** (kept for later use: the owner, 2026-11-14, keeps today's look as the default; a URL switch like the old
-`?lordLook=`): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint, of? }` (`shroud`
+survives a hero rebuild. **Outfit options** (kept for later use: the owner, 2026-11-14, keeps today's look as the default; the URL switch
+`?heroLook=`; the old head switch `?lordLook=` of ADR-084 is gone, and since ADR-122 that name switches
+the Starless Lord's body: STYLE.md "The look switches"): `player/gear/looks.js` `HERO_LOOKS` = id → `{ id, name, loadout, tint, of? }` (`shroud`
 "Wanderer (today)" = `DEFAULT_LOADOUT`, no tint, the default; `robe` "Moonlit Robe", `swallow`
 "Swallow", `warden` "Moon Warden": `gear/moon.js`, `gear/swallow.js`, `gear/warden.js`; each of the
 three also as `<id>-shade`, "<look> (shaded)": the same loadout and tint with the head item's
@@ -2241,6 +2242,13 @@ Since 2026-11-16 (ADR-120): FIGHT → **Ablaze** cycles the phase-3 fire off / a
 tree or landmark piece: watch its stages) and **Wreck wall** (blasts and fire in the wall straight
 out behind the hero); PLAYER → a **head** row (`?wyrmFace=`, reloads the page) and a **zoom art**
 row (`pipeline.setZoomArt('a' | 'b' | 'c')`, live).
+**LOOKS** (ADR-122; `dev/labLooks.js`, only in `ash` / `starless`, collapsed until opened): a row per look
+switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pick, build-time, levels,
+label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
+`lordLook`, `floor`) reloads the page with its parameter. "as shipped" clears every look parameter (the
+owner's picks), "before this pass" reloads with `?looks=old` ("all proposals" is gone: `?looks=new` now
+equals the default). A later phase's or form's move, and the
+phase / form buttons, play from any phase (the Lab skips there first, without playing the change).
 
 **Model viewer** (`src/dev/modelView.js`, Lab → VIEW → MODEL VIEW) renders an actor from the angles
 of a character sheet (the game camera is a fixed 58° top-down view):
@@ -2436,12 +2444,12 @@ quality is still the default. Pointer Events with multi-touch (each control capt
 pointer); long-press menus, iOS gesture zoom and page panning are blocked while active (the Lab
 panel and the pause panel still scroll). Tuning: `CONFIG.touch`, sizes / look in `ui/touchStyle.js`.
 
-## Destruction (2026-11-14, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120): the world breaks
-Files: `src/world/destructibles.js`, `wreckage.js`, `fire.js`, `scars.js`, `breakTuning.js`. Every boss
+## Destruction (2026-11-14, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas and their floors: 2026-11-16, ADR-122): the world breaks
+Files: `src/world/destructibles.js`, `wreckage.js`, `fire.js`, `scars.js`, `floor.js`, `breakTuning.js`. Every boss
 and the hero chip, break, fell and burn what stands in a level; cover stops projectiles until it gives
 way; a boss can lift a piece and throw it; what falls lies as wreckage until the fight resets. The rules
 as the player meets them: COMBAT.md "The world breaks". Numbers: `world/breakTuning.js` (`BREAK`,
-`FIRE`, `SCAR`, `BLOW`, `QUALITY`).
+`FIRE`, `SCAR`, `BLOW`, `QUALITY`; `BREAK.floor` and `BREAK.colossus` since ADR-122).
 
 **POWER** is the one scale every blow is put on (0 a touch … 1 fells a tree): 0.12 a quick cut, 0.3 a
 duelist's cut, 0.5 a heavy cut, 0.8 a claw or the hero's charged cleave, 1.0 a tail / slam / thrown
@@ -2474,46 +2482,74 @@ flagstone, lower than `brushFlat` 0.3 m) takes nothing from it.
 | `topples` | it falls over when it breaks (default: h >= `BREAK.topple.minH` 2.2 m); otherwise it shatters where it stands |
 | `burns` | fire lights it (default: the material's; wood) |
 | `cover` | it stops projectiles (default: h >= `BREAK.cover.minH` 1.1 m) |
-| `lift` | 0 nobody can lift it, 1 a boss's body can (the wyrm: trees, boulders), 2 only the Void (stones, pillars, lanterns) |
+| `lift` | 0 nobody can lift it, 1 a boss's body can (the wyrm: trees, boulders), 2 only the Void (stones, pillars, lanterns), 3 a floor slab: only a move that asks for floor takes it (`nearest` / `floorNear` with lift 3; the wyrm's and the Void's choices never see it) |
 | `leafy` | 0..1 share of its debris that is leaves |
 | `wreck` | false: it leaves no wreckage (default: a felled tree leaves its trunk, a stone its rubble) |
+| `floor` | true: a slab of a floor (ADR-122; `BREAK.floor`; look 'range'): a blow's power falls off from its centre (full within `core` 0.8 m, `rim` 0.35 of it at the edge; a blow drawn ALONG the floor bites at `sweep` 0.6), one sound per blow for all the slabs it strikes, no camera shake, no nicks, fewer chips (`debris` 0.45); structure `hp` 0.85, a big plate (over `big` 5 m²) `plate` 1.3; `lift` 3. `world/floor.js` `breakableFloor({ slabs, slabGeos, slabMesh, mat, rng, group, earth, look })` makes a set's paving into such pieces |
+| `cracked` | `{ range }`: a floor slab's cracked look (two to four pieces over a dark seam), shown once its structure is under `BREAK.floor.crack` 0.8 of itself (`piece.cracked` true); `broken.range` is its broken look (`?floor=a` rubble on printed earth, `b` heaved shards: `floor.js`). Each look is one more merged mesh of the set's carved material, hidden until its first slab shows (an intact floor costs no draw call more) |
+| `holds` | a two-stage piece (a colossus's legs): the def of the piece standing on it. While that one stands, every blow on this one goes to it (`piece.top`; the upper half's `piece.base`); while it falls this one takes nothing (`BREAK.colossus`: top 6, legs 4.5, weight 2.2, fall 1.4 s, off 1.6 m, blocks 4) |
+| `y0` | the height its node stands at (a colossus's upper half: it falls from its cut, coming down to the ground as it goes over) |
+| `fallOff`, `fallT` | m out from its base where a felled piece starts to land (its strip starts there), s it falls |
+| `blocks` | how many big carved blocks of wreckage it leaves (a statue's) instead of a rubble pile |
+| `cy` | (a crater's hanging stone) its height in the air, exact (ADR-122; the Lord's effects read it) |
 
 A set draws its stumps, rubble and any breakables it adds from an rng stream of its own, so the rest of
 its layout does not move. Budget: each breakable that is not a 'range' piece is 1–2 bones of the rigid
 batch (1023 in all), plus the wreckage pools' bones; a 'range' piece takes none. Today (world.mjs SETS /
-BUDGET, 2026-11-16): the forest lists 664 (tree 502, dead tree 37, stone 10, boulder 20, flagstone 26,
-bone 4, helm 5, sword 3, the nest's 14 ribs and skull, the Elder Wyrm's 36 bones: 18 ribs, 10 runs of
-the spine, the hip, the mast, the fingers, the fallen wing, the skull, the jaw, 2 horns; the Cinder
-Tree's 5 boughs and trunk; it was 183 on 2026-11-15) and takes 228 bones, 409 with the wyrm; the
-courtyard 78, the throne 36. **Every tree of Cinderwood breaks**, out to the forest's edge (74 m; it was
-those within 42 m), and the Elder Wyrm's skeleton, the Cinder Tree and the nest break in pieces (ADR-120
-reverses ADR-119's "they stay whole"); the bonfire stays whole. In `forest.js` the trees and the Cinder
-Tree are runs of the `trees` mesh, their stumps runs of a `stumps` mesh (drawn only while one shows:
-`userData.autoHide`), the landmarks' bones runs of the `props` mesh; each landmark tag group
-(`userData.piece`) is one piece, and each of `ELDER_COLLIDERS` goes with the piece whose footprint is
-nearest. Their structure is `BREAK.landmark` (rib 2.8, spine 3.2, skull 6, jaw 3, horn 2, hip 3, mast
-2.6, fingers 1.6, wing 2.2, bough 2.6, trunk 7, nestRib 2.6, nestSkull 5); none of them topples, lifts,
-stops a projectile (but the Cinder Tree's trunk) or leaves logs and rubble (`wreck: false`). The Cinder
-Tree's boughs go first (they burn too; `leafy` 0.25); its trunk (collider 3.0 m, `soft: false`,
-`guard`: the boughs, weight 2.2) breaks where it stands and leaves `buildCinderStump` (collider 2.3 m).
+BUDGET, 2026-11-16, after the merge of ADR-120 and ADR-122): the forest lists 664 (tree 502, dead tree 37,
+stone 10, boulder 20, flagstone 26, bone 4, helm 5, sword 3, the nest's 14 ribs and skull, the Elder
+Wyrm's 36 bones: 18 ribs, 10 runs of the spine, the hip, the mast, the fingers, the fallen wing, the
+skull, the jaw, 2 horns; the Cinder Tree's 5 boughs and trunk; it was 183 on 2026-11-15) and takes 228
+bones, 409 with the wyrm; the courtyard 456 (it was 78: flagstone 293, pillar 30, lintel 1, lantern 4,
+stele 1, bell 1, stump 32, deadTree 80, boulder 9, cauldron 1, colossus 4: two colossi of two pieces) in
+443 bones; the throne 222 (it was 36: plate 81, flagstone 24, shard 25, slab 27, rubble 20, vent 4, log
+35, hover 6) in 299 (ADR-120's bigger log and char pools are built in every set: +42 bones in each arena).
+**Every tree of Cinderwood breaks**, out to the forest's edge (74 m; it was those within 42 m), and the
+Elder Wyrm's skeleton, the Cinder Tree and the nest break in pieces (ADR-120 reverses ADR-119's "they
+stay whole"); the bonfire stays whole. In `forest.js` the trees and the Cinder Tree are runs of the
+`trees` mesh, their stumps runs of a `stumps` mesh (drawn only while one shows: `userData.autoHide`),
+the landmarks' bones runs of the `props` mesh; each landmark tag group (`userData.piece`) is one piece,
+and each of `ELDER_COLLIDERS` goes with the piece whose footprint is nearest. Their structure is
+`BREAK.landmark` (rib 2.8, spine 3.2, skull 6, jaw 3, horn 2, hip 3, mast 2.6, fingers 1.6, wing 2.2,
+bough 2.6, trunk 7, nestRib 2.6, nestSkull 5); none of them topples, lifts, stops a projectile (but the
+Cinder Tree's trunk) or leaves logs and rubble (`wreck: false`). The Cinder Tree's boughs go first
+(they burn too; `leafy` 0.25); its trunk (collider 3.0 m, `soft: false`, `guard`: the boughs, weight
+2.2) breaks where it stands and leaves `buildCinderStump` (collider 2.3 m). Cinderwood's flagstone shard
+mesh is hidden until a flagstone breaks (`userData.foldAway`: one draw call fewer). **Everything but the
+landmarks breaks in the two duel arenas** (ADR-122): the courtyard keeps the sect gate, the bell (it only
+rings) and the bonfire whole, the crater the throne and its dais, the fallen star, the seal and the
+bonfire. The colossi's, the cauldron's and the lintel's geometry moved out of the set's static mesh into
+the breakables. `THRONE.vents` is exported (the Lord's effects read the vents' places); a vent's ring of
+stones is a breakable 'vent' and the vent flares as it breaks.
 
 **`world.destructibles`** (`class Destructibles`; `STATE` = INTACT 0, FALLING 1, BROKEN 2, HELD 3, FLYING 4, GONE 5):
-- `list` (every breakable: `{ id, kind, mat, x, z, r, h, hp, hpMax, state, weight, burn, lift, cover, topples, … }`),
-  `standing`, `wreckage` (pieces of wreckage lying now), `burning` (pieces and logs alight now),
-  `active`, `root` (their group, under the set's), `batch`, `wreck` (the `Wreckage`).
+- `list` (every breakable: `{ id, kind, mat, x, z, r, h, hp, hpMax, state, weight, burn, lift, cover, topples, floor,
+  cracked, top, base, … }`), `floor` (the floor's slabs: pieces with `floor`), `standing`, `wreckage` (pieces of
+  wreckage lying now), `burning` (pieces and logs alight now), `active`, `root` (under the set's group: only the
+  rigid batch's draw meshes), `pieces`, `batch`, `wreck` (the `Wreckage`).
+- **The pieces live outside the scene graph** (2026-11-16: the arenas' 456 / 222 pieces cost a phone about
+  0.7 ms a frame in three.js's matrix walk): their nodes, pivots and meshes hang in `pieces`, a tree that is not
+  in the scene and does not auto-update; only the batch's draw meshes hang in `root`. `_place(b)` recomputes a
+  piece's world matrices whenever it moves (a break, a shudder, a fall, a carry, a throw, the reset). A 'range'
+  piece (a floor slab, a tree of Cinderwood, a landmark's bone or bough) has no node in that tree: it moves by
+  rewriting its vertices (`_pose`, "Range pieces" below); a floor slab joins the tree only when a boss lifts it, and in his hands it shows as one of
+  `BREAK.floor.carry` 6 blocks of prop art, a chunk about 0.85 m across (a crater plate's 1.2 x), never the
+  whole slab.
 - Every query walks a **spatial grid** (`BREAK.grid.cell` 4 m), not the whole list.
 - `strike(x, z, r, power, o)` → how many it struck: a blow or blast over a disc.
   `sweep(ax, az, bx, bz, r, power, o)`: along a segment (a blade's edge, a dash, a body part's step).
   `sweepRec(w, o)`: the same with the segment in a reused record `{ ax, az, bx, bz, r, power }` (no
   numbers boxed per call: the wyrm's body sweeps a dozen spheres a frame).
-  `o = { kind, by, dx, dz, y, src, only, falloff, brush, spare, incidental }`: kind = `BLOW.CUT / BLUNT /
+  `o = { kind, by, dx, dz, y, src, only, falloff, brush, spare, incidental, down }`: kind = `BLOW.CUT / BLUNT /
   BLAST / FIRE`; by = 'player', 'boss' or 'world'; dx, dz = the blow's way (a piece falls along it;
   default: out from the disc's centre, or along the segment); y = its height (a blow above a low piece
   passes over); src = one id per swing from `swing()` (a piece takes a blow once per id; without it,
   once per `BREAK.rehit` 0.18 s); only = just that material ('wood': the wings' wind); falloff 0..1 =
   `strike` is weaker toward its rim (× 1 − falloff there; `TUNING.world.falloff` 0.6 for the wyrm's
   ground blows); brush = a body walking (above); spare = one piece to leave alone; incidental = skip
-  reserved pieces.
+  reserved pieces; down = a sweep that comes DOWN on the floor (a falling piece's strip): a floor slab takes it in
+  full, not at `BREAK.floor.sweep`. A blade's blow struck at y = 1 passes over a 0.08 m slab; arcs, landings,
+  spells and falling pieces reach it.
 - `reserve(piece, sec = 1)`: incidental blows leave it alone for `sec` s (a terrain move's chosen piece).
 - `stop(ax, az, bx, bz, r, power, o)` → the piece or null: a projectile's step; the first cover on it takes
   `power` and is returned (the caller ends its projectile). `coverAt(ax, az, bx, bz, r)` → the first cover
@@ -2546,7 +2582,10 @@ Tree's boughs go first (they burn too; `leafy` 0.25); its trunk (collider 3.0 m,
   it passes over the clearing's pieces. `_carryHit` `{ x, z, piece }` holds where it met it.
 - `stat` `{ wind, windTrees, carry, reached, lit }`: counts since the reset (the tests' wall report).
 - `nearest(x, z, { maxDist, minDist, lift, kind, mat, from: { x, z, min } })` → the nearest intact
-  piece or null (lift: at most that class).
+  piece or null (lift: at most that class; floor slabs only with lift 3).
+  `floorNear(x, z, r, out, { kind, whole, max })` → how many intact floor slabs lie within r of (x, z), nearest
+  first, written into `out` (cleared first; kind 'flagstone' | 'plate'; whole: not cracked): what a floor move
+  can tear up there.
 - Lifting and throwing (a boss's move): `take(piece)` → true: it is HELD (no collider);
   `carry(piece, x, y, z, tilt, yaw)` every frame while held (the wyrm flies its thrown pieces this way);
   `throwTo(piece, tx, tz, { time, power, radius, by, onLand(piece, x, z, radius) })` → it flies there
@@ -2599,8 +2638,12 @@ where the most of it came down, even a landmark's with `wreck: false`; `rubble(x
 (× quality) the oldest sinks into the ground in `sink` 1.4 s, past its size the oldest crumbles at once.
 A log can burn (`burn` 6 s; it fell burning, fire landed on it, or the spread reached it) and burns the
 hero beside it like a burning tree; a burnt-through log emits `world:impact` 'burnout' with `id` -1.
+Two more kinds since ADR-122 (`KIND` LOG, CHAR, RUBBLE, BONES, BLOCK, SHARDS; the bones, blocks and shards pools
+are only built for a set that needs them: bone pieces, a statue, a floor that can be thrown): `blocks` 12, big carved blocks (a colossus's stages, where its upper half lands and its legs),
+and `shards` 16, flat shards (a floor slab torn out, where it is thrown).
 API (internal to destructibles): `log(x, z, dx, dz, len, r, burn, charred)`, `rubble(x, z, r, M)`,
-`ignite(x, z, r, k)`, `count`, `burning`, `live`, `update(dt)`, `reset()`.
+`block(x, z, r, M)`, `shards(x, z, r, M)`, `ignite(x, z, r, k)`, `count`, `burning`, `live`, `update(dt)`,
+`reset()`.
 
 **`world.fire`** (`class GroundFire`, on the scorch map's grid): `ignite(x, z, r, k)` → cells lit (grass
 density >= `FIRE.minFuel`, not ash, not alight), `burning(x, z)` → s left, `touch(x, z, r)` (a burning piece
@@ -2639,7 +2682,7 @@ ahead, Fell on me, Blast ahead, Restore) too.
 |---|---|---|
 | the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
 | the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop / the slams (`GROUND_BLOW`, with falloff); `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall igniting; `skyFx.js` the meteors' impacts; `bullets.js` (cover; a landing ember; the tongues lighting wood); `terrain.js` (a flying piece's `sweep` on its path, its blast where it lands, `throwTo` for the skid; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_wreck` (its body's spheres, the wings' blasts, the landing); `wallReach.js` (`wallWind` → `destructibles.wind` from the roars, the shock ring, `groundShock`, the wing buffet and sweep, the take-off, the landing, low downbeats; `carryFire` → `destructibles.carryFire` from the breath, the strip, flame rings and walls, missed shots; ADR-120); `ablaze.js` (phase 3: `world.ignite(..., false)` from a burning part, the scorch map under its feet) | `TUNING.world` (`melee`, `stomp`, `leap`, `hop`, `dive`, `nova`, `falloff`, `explosion`, `meteor`, `pillar`, `body`, `takeoff`, `landing`, `downbeat`, `ignite`, `bullet`, `wind`, `carry`; `meter`: the WRECKAGE scenario's bounds, with `wall` [0.3, 0.75] and `wallP1` 0.03: the share of the wall's front rows, 32 – 46 m, worn or down at the end and by phase 1's end); `tuningAblaze.js` `ABLAZE.wood` |
-| a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
+| a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush; `starlessLord/spells.js` the wheeling blade, the weather's strikes, Starless Night's waves; `ashDisciple/moveFx.js` burning ground (`world.ignite`); both `terrain.js` (`take` / `carry` / `throwTo` / `topple`, `floorNear` for the floor moves) | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
 
 **Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with
 `rigidMatrix()`; built with `rigid: true` they are tagged for `batchRigid` (a set's static materials are
@@ -2708,13 +2751,14 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   offers `lives: { total, left }` (the Starless Lord's blade forms): `hp` / `maxHp` are then the
   CURRENT bar, the HUD draws one pip per bar, and the execution's call-out reads DEATHBLOW.
 
-### Duelists — `src/entities/enemies/duelist/` (ADR-068)
+### Duelists — `src/entities/enemies/duelist/` (ADR-068; the second pass: ADR-122)
 The engine every human boss runs on (the Ash Disciple, the Starless Lord); a boss is a KIT of data and
 a subclass with a few hooks.
 - `duelist.js` `class Duelist(game, kit)`: the boss slot's surface, the guard, posture, the break and
   the execution, the deflect chain, the blade lock, the mikiri, the full deflect, hit stun, `hitPlayer`.
   `kit = { id, TUNING, MOVES, MOVE_NAMES, CLIP, realise, transitions {phase: move}, counterMove(phase),
-  maxPhase, loadout, poses, blade {guard, tip}, scale, REACT, OPEN }` (`scale`: his drawn size, model
+  maxPhase, loadout, poses, blade {guard, tip}, scale, REACT, OPEN, dress }` (`dress(d, dt)`: ADR-122, the
+  body's look by phase, called once a frame from `_materials` after `_bladeMaterials`; `scale`: his drawn size, model
   metres → world, default `HERO_SCALE`; visual only, as the hero's: it is `d.drawScale` and the
   pilot's `drawScale`, so the animator's gait matches it). `reset()` resets the animator before the
   brain, then poses one short step: he waits in his waiting clip (kneeling, enthroned), not in the
@@ -2741,7 +2785,8 @@ a subclass with a few hooks.
   (`sector` / `line` / `ring`; `hitPlayer` gets `beat`), a `release` or a `cast` (the actor's, at the
   impact; a string never stops for want of reach on one). `def.manual` / `def.counter` / a weight of
   0 keep a move out of the AI's pick; `def.gapCloser` is favoured against a hero who drinks.
-- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip })` → `realise(name, phase, rnd)`; `perPhase`.
+- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip })` → `realise(name, phase, rnd, opts)` (`opts.count`:
+  a `streak` move, his flurry, plays that many beats); `perPhase`.
   Beat extras: `{ pick: [beat, ...] }` (one alternative drawn as the move starts), `fixed: true` (its
   windup is not scaled by the phase). `TUNING.flashLead` may be per phase.
 - `poses.js`: `createDuelPoses(GUARD, opt)` → `{ duelStance, duelLoco, compileClip, evalClip, duelClip,
@@ -2772,11 +2817,100 @@ a subclass with a few hooks.
   e1, e2, spray })` (his guard's clash: dull steel, or hot orange for a deflect; `clash` / `parrySpark`
   are the old names), sparks, the sweep trail
   (`sweep(.., ember)`: false steel, true ember, or a colour key such as 'red'), the Ash Crescent's
-  projectiles (each may carry its own `speed`, `radius`, `half`, `life`, `style`), `update(dt, d)`.
+  projectiles (each may carry its own `speed`, `radius`, `half`, `life`, `style`), `update(dt, d)`. The
+  second pass (ADR-122; STYLE.md "The duelists' effects"): `shock(x, z, r, { k, fire, kind: 'dust' | 'fire' |
+  'ash' | 'void', T, delay, echo, r0 })` (a ragged ground shock; the Lord's big shocks too),
+  `groundShock(x, z, r, k, delay)`, `phaseBurst(n, x, z)` (the Kindling for n 2, the third phase's change for
+  n 3), `ghost(d, { dx, dz, life, light, ox, oz, ember, rise, spread })` (an afterimage), `dust(x, z, k)`,
+  `onBlow(b, s, a)` (the impact hook: a phase-2 transition → the Kindling; a red / black or knockdown ring
+  beat → a shock; in phase 3 an afterimage per blade beat), `kindleCharge`, `ashWind(d, dt, k)`, `ashLook()`.
+  The fields the fairness guard writes keep their meaning: `strikes[].at`, `shots[].delay` / `.done`,
+  `crescents[].alive`. **Look code draws from its own seeded stream** (`lr()` or a hash), never from `rnd()` /
+  `rand()` (game code reads that stream) nor `Math.random` (the seeded suites replay it). Two more
+  guards of the seeded fights (ADR-122): `render/lights.js` seeds a light's flicker from a stream of
+  its own, and `duel.mjs` / `lord.mjs` `build()` build the boss on a stream of its own (`seed + 0x5eed`,
+  then `Math.random` is put back): three.js draws `Math.random` for every object's uuid, so a body look
+  with more pieces would otherwise replay every fight with another seed.
+- **The second pass (ADR-122): the director, the links, the cue ledger and the fairness guard.** A kit
+  whose `TUNING` has a `pressure` block gets them (without one a duelist picks, links and paces as
+  before; the ledger only listens). The rules as the player meets them: COMBAT.md "The duelists' pressure
+  and the fairness guard". The API, all on `d.brain` (documented again at the top of `brain.js`):
+  - `expect(timeFromNow, tell, source)` → a handle `{ retime(timeFromNow), cancel(), alive, left }`, or null
+    when the pool of 24 is full: something of his that flies, falls or lingers will land on the hero then,
+    needing the answer `tell` asks (normal / blue: a guard; red / black: a dodge). Call it as the thing is
+    made, retime it if its arrival changes, cancel it on a parry or a fizzle; it expires 0.3 s after its
+    impact. What flies in the existing pools (`fx.crescents`, `fx.shots`, `fx.strikes`, the Starless Sky,
+    both terrain objects' pieces, rings and marks) and the world's felled pieces are seen without it.
+  - `fairDelay(timeFromNow, tell, max = pressure.guard.maxDelay, source = '')` → s to wait so a strike he
+    CALLS lands at least `guard.sep + margin` from every known impact needing the other answer (the running
+    move's beats included): 0 now is clear, -1 nothing up to `max` clears it (do not call it). Count a
+    delay with `stats.delays++`.
+  - `stats` `{ picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors,
+    seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled', what, with }`
+    (what the guard stepped in for; `ABYSS_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
+  - Internals the tests and the Lab read: `_announce` / `_tellRisk` (a blow at risk keeps its
+    `combat:tell` until the guard clears it at its cue, then tell and flash go out together; a blow that
+    becomes a feint sends neither), `_worldCue(at, ans)` (a world warning grounds his uncued things in
+    flight: a crescent fizzles, a stone shatters, the blade passes uncued, Shen Hui's kicked pieces are
+    grounded `quiet`; for a returning blade still flying OUT it estimates the homeward crossing too, with
+    `ledger.js` `glaiveHome(s, p, reach, H)` (s from now, or -1), keeps its verdict on the blade
+    (`_homeWarn`) and gives it at the turn: `_glaiveTurn()` the frame after the blade turns brings it home
+    uncued and harmless if its way home still lands too near the warning).
+  - **The guard** (`pressure.guard { sep, margin, maxHold, maxDelay, horizon, pad }`): a blade blow is
+    checked the frame its cue is due; within `sep + margin` of a fixed impact of the other answer it waits
+    at the cock like an authored bait hold (the beat's `hf` / `hl`: flash, impact, later beats and the
+    recovery move with it), at most `maxHold` 0.5 s; no hold clears it → a FEINT (no glint, no hit; never in
+    his flurry; a `fixed` beat is never held, only feinted). A release / the thrown blade: the same at its
+    arrival with `pad` more room. A called strike: its `at` moves later before its cue, up to `maxDelay`,
+    else it fades. Shen Hui `sep` 0.3, the Lord 0.4.
+  - **Links** (`<boss>/links.js` `LINKS`, read as `d.LINKS`): `{ from: [{ to, when, chance, force, band, cut },
+    ...] }`; `when` 'any' | 'near' | 'mid' | 'far' | 'front' | 'side' | 'behind' | 'away' | 'guarding'
+    (`director.js` `whenHolds`, the distances and angles in `pressure`); `chance` a number or one per phase;
+    `force` ignores the target's cooldown, `band: false` its band; `cut` the fraction of the recovery it
+    starts at (default `pressure.linkCut`). The first entry whose `when` holds, whose roll passes and whose
+    target is usable wins. Decided once, as the recovery starts; only a move that ended on its own links;
+    held while the AI is off, a phase change waits, `gapT > pressure.holdGap` (a test or the Lab holding
+    him) or the hero drinks.
+  - **Categories** (`director.js` `CATEGORIES`, `categoryOf`): 'string' | 'single' | 'closer' | 'area' |
+    'ranged' | 'spell' | 'terrain' | 'hazard'; a move's `cat` overrides the derivation (terrain → hazard (a
+    cast storm / star, a beat marked `hazard` or `burn`) → string (3+ blade hits) → spell → ranged → area →
+    closer → single). Also `answerOf(tell)`, `directWeight`, `linkFor`, `linkUsable`, `densityOf`.
+  - **Tuning keys** (both bosses' `tuning.js`, per phase where an array): `idleGap`, `chain` (the old flow
+    roll), `openingGap` (the footwork after a recoil, stagger, reeling, trampled, executed and a break,
+    whatever `idleGap` is), and `pressure.{ chainDepth, chainRest, linkCut, chainCut, near, far, front,
+    behind, away, maxRun, overRun, sameCat, bias, density, floorAfter, floorBoost, floorForce, seek { max,
+    every }, farDist, closerBoost, maxLive, mixed, holdGap, guard {...}, meter { ramp, rampMean, minRate,
+    maxGap } }` (`meter`: what the PACE scenario asserts).
+  - **New beat fields** (any duelist): `cat` (on a move), `hazard` (a beat that leaves something lingering),
+    `release.speed` (its crescents' own speed), `flit` inside a string (he comes apart and strikes from
+    another side, as in his flurry). A `release` beat that carries a `zone` is decided once, as its cue
+    comes due: with the hero inside the zone it is a cut (`b.cut` true: cued, flashed, held by the guard,
+    timed and answered as a blade blow of its tell, its zone struck, nothing thrown), else a release as
+    any other (`ledger.js` `throwsAt(b)`: a release, or the thrown blade, that is not a cut). Each boss's
+    own: below.
+- `director.js`: the pure helpers the brain, the PACE meter and the Lab share (above).
+- `ledger.js` `class CueLedger(brain)`: the impacts he knows are coming and what each asks. Fed from (a) the
+  running move's beats (exact), (b) `combat:flash` from any source and `combat:tell` from 'world' or a
+  hazard, (c) a predictor every frame over the effect pools and the terrain objects (read only; the thrown
+  blade's way home is predicted while it still flies out), (d) `expect`. Queries: `conflict(at, ans, sep,
+  ...)`, `clearShift(at, ans, sep, max, ...)`, `pending(ans, horizon)`, `liveHazards()`, `travel(b)`. Fixed
+  pools; nothing allocated per frame.
+- `lookSwitch.js` (ADR-122): the look options behind URL switches (STYLE.md "The look switches").
+  `PICKED` (the owner's picks, 2026-11-16: name → option). `lookOf(name, def = '0', pick = 'a')` → the
+  option to draw, in this order: a look forced by `setLook(name, v)` (the Lab, the tests, the film rig;
+  null gives it back); the URL's own parameter; `'0'` under `?looks=old` when the call site's `def` is
+  `'0'` (a REDRAW: the look before this pass; a thing new in this pass keeps its pick, even one with a
+  `'0'` option such as `presence`); the pick from `PICKED`; under `?looks=new` `pick` for a redraw no one
+  has picked (none today); else `def`. Also `pickedOf(name)` (the pick or null), `allOld()`,
+  `allProposals()`, `readLookUrl(search)` (read once at load; the tests call it to play a URL, `''` to
+  go back), `looksNow(names)`. Read at draw time (a Map lookup); a switch read when the rig or the
+  level is built (`ashLook`, `lordLook`, `floor`) needs a reload. The Lab's LOOKS section
+  (`dev/labLooks.js` `LOOK_SWITCHES`) lists them.
 
 ### Ash Disciple — `src/entities/enemies/ashDisciple/disciple.js` exports `class AshDisciple`
-A `Duelist` with `ASH_KIT` (moves.js, tuning.js, gear.js, poses.js): his colours, the kindled blade
-of phase 2 and the Ash Crescent are his own. The boss slot's surface above (no plunge), plus:
+A `Duelist` with `ASH_KIT` (moves.js, tuning.js, gear.js, poses.js; `transitions { 2: 'kindle', 3: 'ashWind' }`,
+`dress` from look.js): his colours, the kindled blade of phase 2 and the Ash Crescent are his own. Three
+phases since ADR-122 (`TUNING.phaseAt` [1, 0.64, 0.36]). The boss slot's surface above (no plunge), plus:
 ```
 kind = 'duelist';  name = 'SHEN HUI, THE ASH DISCIPLE';  execRange = 3.2;  ghostepBehind = 1.5
 mode: 'sleep'|'intro'|'foot'|'act'|'react'|'broken'|'dying'|'dead'   // brain.js (state follows it)
@@ -2807,7 +2941,7 @@ onMikiri({ attack })     // the hero rolled into a beat marked `mikiri` (player.
                          // posture, 'dragon:stagger', a cinematic, react 'trampled'
 hitPlayer(o): RESULT     // his blows (and the Ash Crescents) through player.takeHit
 debug: the Dragon shape (abilities, trigger, setAI, wake, startFight, phase2, stagger, postureBreak,
-       kill, reset, setHp, hitboxes, currentAction); phase3() → false (two phases)
+       kill, reset, setHp, hitboxes, currentAction, phase3)   // phase3(): brain.forcePhase(3)
 ```
 Built by `buildHero(U, ASH_LOADOUT)` (gear.js: `ash.*` items registered into the hero's gear registry)
 and driven by `HeroAnimator(rig, pilot, DUEL_POSES)` (poses.js: `loco` = his guard on the hero's gait,
@@ -2847,6 +2981,26 @@ the fall's tell, strip and blow are the world's), `onCast` → `terrain.cast` (a
 of sound), `brainFrame` → `terrain.frame(dt)` (the piece in the air and the rings: each emits its own
 `combat:flash` { source: 'dragon', attack, tell } `flashLead` before it reaches the hero and deals
 through `hitPlayer({ projectile: true })`). `terrain.busy`: something of his is still in the air.
+Since ADR-122 also `terrain: 'flag'` (`flagKick`, `flagVolley`: a flagstone levered out of the paving with
+`destructibles.floorNear` and kicked, one a beat) and `'fan'` (`flagFan`: three at once, cut through in the
+air); a kicked piece's flash carries `flare: true`, nothing is drawn where it lands, each is told to the
+ledger (`brain.expect`) and its flight lengthened by `brain.fairDelay` (at most `maxDelay` 0.4 s; -1: it
+lands uncued and harmless); `terrain.shot` / `terrain.kicks` carry `quiet` when a world warning grounds
+them. `pillarFall` takes a colossus's upper half too (its strip starts `fallOff` out). Two random streams
+of its own (`_g` gameplay, `_l` looks), never `fx.rnd`.
+**His second pass (ADR-122).** `links.js` `LINKS` (read through the `LINKS` getter; shared lists `PURSUE`,
+`THROWN`, `YARD`). `moveFx.js` `class AshMoveFx(d)` (`d.moveFx`): BURNING GROUND. A beat's `burn: { kind:
+'across' | 'along' | 'path' | 'ring', at, from, len, w, life, r, arcs }` (moves.js) lays a line of fire
+from phase `TUNING.burn.from` (`onImpact` → `moveFx.burn(b, act)`; `brainFrame` → `moveFx.frame(dt)`): a
+pool of 12 `lines` (at most `burn.cap` alive per phase), `alive`, `add()`, `burn(b, act)`, `reset()`,
+`stats { lines, burns, capped }`. A tick on a hero standing in it is a contact blow (`attack`
+'burningGround', blockable, never parryable): through `player._block` on a raised guard (no health,
+`burn.guard` 34 off the guard meter), else `burn.damage`. Drawn as fire-field heat (`?burn=`). Other beat
+fields of his: `zig` (m: before its dash he steps this far aside, + his left), `flit` inside strings,
+`release.speed`, `TUNING.crescent.minLead` (a crescent that would reach the hero sooner is not thrown).
+`look.js` `dressFrame(d, dt)` (the kit's `dress`: `?ashLook=b`, the body dressed by phase) and `bodyArt.js`
+(the converter to the wyrm's art path that `?ashLook=a|c` and `?lordLook=a|c` use) are look modules: built
+only when their option is chosen at build time; the default rig is as before.
 `d.baseBound` is the level's bound; `d.bound` adds `terrain.slack` (he may stand out past his bound
 for a piece; it shrinks at `TUNING.terrain.leash` m/s once the move is over). A beat's `noSweep` keeps
 the blade's sweep trail off a blow that is not the blade's (the kick). `reset()` clears it all.
@@ -2889,7 +3043,31 @@ terrain                        // LordTerrain (terrain.js): begin(A), onCast(b, 
                                // (`marks`), Crown Fall's pick (`fall`). Uses world.destructibles: take,
                                // carry, throwTo (his blow in onLand), drop, topple
 debug.phase4(), debug.setForm(n), debug.form
+spells                         // LordSpells (spells.js, ADR-122): busy, nightLive, clear(), recall(), catch(),
+                               // onForm(n), stats, rand() (its gameplay stream), lr() (its look stream)
 ```
+**His second pass (ADR-122).** `links.js` `LINKS` (shared lists for the strings' pursuits, `AFTER_RED`
+after a red spell or a thrown piece, `AFTER_SPELL` after Rupture and the Halo). `spells.js` `class
+LordSpells(d)` (`d.spells`, stepped from `brainFrame`): what flies, waits or falls while he fights on, each
+reported to the ledger (`expect` / `fairDelay`): the WHEELING BLADE (form 2; `cast.kind 'wheel'`; while
+it flies `d.glaiveOut` and he starts no blade move; its cues carry `bullet`), the ORBIT (form 3), the
+STARLESS SKY as weather (form 4, `TUNING.weather`: called in his moves' pauses, never in the hero's
+opening), STARLESS NIGHT (form 4's great spell, `cast.kind 'night'`, `TUNING.night`; `nightLive`: while
+its waves run `weigh` gives 0 to every move that asks a guard). Attack names (`SPELL_ATTACK`):
+'wheelingBlade', 'starlessSky', 'starlessNight' (the last two are hazards). Two streams of its own
+(`rand` gameplay, `lr` looks). `terrain.js` (`LordTerrain`) gains `rupture` (`plateRupture`: plates burst
+up along a line; `_ruptDelay` clears every plate that may cue in one go) and `halo` (`plateHalo`: a ring
+of plates dropped on the hero), both on `destructibles.floorNear`; Void Hurl and Glass Rain take floor
+plates once the hanging stones are spent; a thrown piece shows nothing where it lands. `fx.js`
+(`LordFx`) gains `gather(kind, hand, k, dt)`, `presence(form, dt)`, `igniteGather(x, z, k, dt, form)`,
+`deathBurst(x, y, z)`, `unravel(segs, n, k, dt)`, `look(name)`, `igniteNova(x, z, r, form = 2)`; its big
+shocks go through `DuelFx.shock` (`kind: 'void'`), its vents from `THRONE.vents`, and every drawing
+method is wrapped onto its own stream (`DRAW_METHODS`) so `fx.rand` stays the gameplay stream. On its
+way home the returning blade asks `brain.fairDelay(home, tell, TUNING.glaive.homeWait, 'glaive')` at its
+turn: a positive delay hangs it longer, -1 brings it home uncued and harmless. A white or blue blow out
+of a blink meets a guard from any side. `look.js` `dressFrame` (`dress`: `?lordLook=b`, dressed by
+form), `bodyArt.js` (`?lordLook=a|c`).
+
 **His gear** (gear.js, ADR-084): `lord.*` items registered into the hero's gear registry: `lord.hood`
 (a deep hood over a faceplate with one slit of red light: `HOOD_RINGS`; `hidesHair`, `shadowsFace`;
 the owner's pick of three heads), `lord.plate` (cuirass, gorget, the sigil), `lord.yoke` (a plate yoke on the chest
@@ -2907,7 +3085,10 @@ hit's `from` is put on the hero's far side: he is dragged in), `grip` (the Crush
 from his hand; a hit is `kind: 'grip'`, a knockdown, and `fx.gripCrush` where the hero lies), `blink:
 { behind }` (he reappears behind the hero as the windup starts), `left` (the off-hand blade cuts),
 `release: { style: 'push' | 'crescent' | 'rift', count, spread, speed, from }`, `cast: { kind:
-'glaive' | 'debris' | 'storm' | 'star' }`. fx.js `LordFx extends DuelFx`: the blades' glow and red
+'glaive' | 'debris' | 'storm' | 'star' | 'wheel' | 'night', orbit, after }` (ADR-122: `wheel` the wheeling
+blade, `night` Starless Night, `orbit: true` torn stones that turn round him and fly into the string's
+gaps, `after` s before what is cast goes), `catch` (ADR-122: the beat his thrown blade comes home on: no
+hit). fx.js `LordFx extends DuelFx`: the blades' glow and red
 light, lightning (`lightning`, `arc`, `crackle`), the push's wall and burst, the pull's vortex, the
 grip (`gripClaw`, `gripSnap`, `gripCrush`), thrown things (`throwShot`: the blade that returns, torn
 stone that turns round him until thrown; each cues itself flashLead before it reaches the hero, or
@@ -2968,7 +3149,9 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `combat:flash {source:'dragon', attack, tell, x, y, z, perilous, flare}` (~0.35 s before impact — the **authoritative**
   timing cue: moving targets (charge, fireball) and hazard-dealt blows re-time it after the tell; perilous:
   a duelist's mikiri thrust, roll into it; flare as above: the HUD flashes the screen edge in the flare's colour;
-  the wyrm's phase-3 fire, ablaze.js, dims round it, ADR-120),
+  since ADR-122 a duelist's thrown terrain piece, kicked or hurled, cues itself with flare too, drawn on the piece,
+  nothing drawn where it lands; a blow the duelists' fairness guard may still feint sends its tell only together
+  with its flash, and a blow it turns into a feint sends neither; the wyrm's phase-3 fire, ablaze.js, dims round it, ADR-120),
   `combat:charge {source:'dragon', attack, dur, x, z}` (a black blow begins to charge: darkness gathers on the
   striking part for dur game seconds, until its cue; the HUD darkens the screen edge through it, audio plays
   the charge's swell),
@@ -3013,6 +3196,10 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   bullet's tell (normal for an ember, red for an orb or a tongue), hazard: true and bullet: true (audio: the
   flash ping alone, no tell sting, no music dip)
 - Ambient cinders (ADR-119) are hazard circles: their cues carry the attack name cinders (no tuning entry)
+- A duelist's things that fly, wait or fall while he fights (ADR-122) cue themselves with source 'dragon':
+  the Starless Sky's strikes (attack starlessSky) and Starless Night's waves (starlessNight) with hazard: true,
+  the wheeling blade (wheelingBlade) with bullet: true; Shen Hui's burning ground has no cue (ground to step
+  off, not a blow). No event and no payload field was added by the duelists' second pass.
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
   `game:cinematic {kind}` (flow.cinematic: slow motion and a close camera on a duel's big moment; kind

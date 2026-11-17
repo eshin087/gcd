@@ -541,7 +541,10 @@ grid. Now (`render/fireField.js`, `render/firePalettes.js`):
   every frame goes through the one-copy frame clock (`_frame` / `_dot`), or it stacks in slow
   motion. Fire spawned behind a figure (as the camera sees it) wreathes it without covering it.
 - **Warnings are not fire.** Ground warnings stay glyph specks on the ground (ADR-052) and draw over
-  the field; air and sound rings (the roar, the nova's charge) are `steel`.
+  the field; air and sound rings (the roar, the nova's charge, the bell's tolls) are `steel`.
+- **Look code has its own random stream** (ADR-122): an effect's jitter comes from a seeded stream or a
+  hash of its own, never from a stream game code reads (an fx object's `rnd()` / `rand()`) or
+  `Math.random`, so a look can never move where something lands (*The duelists' effects*, below).
 - **Timing cues, one design for every boss** (COMBAT.md "Tell presentation"): a white cross written
   on the grid; a larger eight-point star with a ring; a ragged red blaze with no straight line in it.
 - **What stays a glyph particle:** embers, sparks, dust, rocks, debris, about one cell in size (0.2
@@ -830,8 +833,10 @@ signal the field has no kind for); sparks, peeling embers and motes are glyph pa
   fixed camera shows them. A set piece on the north rim is off the top of the frame until the hero
   walks up to it: the star is seen from the dais's foot, and in the intro.
 - **A piece in his grip** (ADR-109) is the piece itself, carried: it comes up out of its place,
-  crosses to hang beside him turning slowly, and a thread of red arcs runs to it from his casting
-  hand. Where it will land is the tells' red ring, drawn strong from the moment it leaves him.
+  crosses to hang beside him turning slowly, wrapped in void heat, and a thread of red arcs runs to it
+  from his casting hand. Nothing is drawn where it will land (ADR-122; until then a red ring, drawn
+  strong from the moment it left him): the cue is the flare on the flying piece. A floor plate in his
+  hands is a chunk about 0.85 m across (a crater plate's 1.2 x), never the whole plate.
 - **Outside** the forest lies flat, every trunk pointing away from the crater (the dead trees' own
   screen-grid look, laid down); far out a few still stand.
 - **A blade of light** is three things: a thin mesh in the hero-art pass (red fill, red-white ink
@@ -857,6 +862,116 @@ signal the field has no kind for); sparks, peeling embers and motes are glyph pa
   is lost on it. Lightning is a white-violet core inside a dimmer sheath that outlives it, two thin
   strands wound round it and forks that die in the air: one stroke per segment, laid along it on
   screen and stretched to its length (`LordFx._stroke`).
+
+### The duelists' effects (2026-11-16, ADR-122)
+The two human bosses' second pass redrew what they do in the house style: everything that strikes,
+burns, glows or breaks as a body is heat in the fire field, in the small letters; glyph particles
+only for one-cell things that fly on their own (embers, sparks, ash, grit). Code: `duelist/fx.js`
+(`DuelFx`, both bosses), `ashDisciple/moveFx.js`, `ashDisciple/terrain.js`, `starlessLord/fx.js`
+(`LordFx`), `starlessLord/spells.js`, `starlessLord/terrain.js`, `world/floor.js`. Which option of
+each is drawn: *The look switches*, below.
+- **The shock front** (`DuelFx.shock(x, z, r, { k, fire, kind, T, delay, echo, r0 })`, `groundShock`):
+  the wyrm's recipe for a duelist's size. A ragged front (its radius wanders round the ring, a weak
+  stretch left out) that is fast at first and slows as it runs out, rows of cooler heat behind it,
+  dust that hangs, grit torn off the ground. Kinds `dust`, `fire`, `ash`, `void` (the Lord's big
+  shocks: the nova, the ignitions, Starless Night's slam). A crisp steel ripple prints as an even
+  polygon at a duelist's size, so the pale fronts carry no echo. Red ring blows (Lotus Sweep, Ember
+  Whirl's last spin, Twin Embers' second blow, Heaven-Splitting Fall) throw a ground shock as they land;
+  the posture break is ragged strokes and a dust shock (no longer an even ring); `dust()` has a body,
+  rises higher and from k 1.2 sends a shock. The Lord's own rings (`LordFx._ring`, `_shock`: the Dark
+  Star's rim, the aura wheel, the grip and crush rings, the blink ring) are ragged too.
+- **The phase changes** (`DuelFx.phaseBurst(n, x, z)`; the Lord: `igniteNova`, `igniteGather`). The
+  Kindling (phase 2): a front of fire and a gout off the blade; the kindle value is held while the
+  transition runs and driven through the kneel. Ash on the Wind (phase 3): the wind takes him, he is
+  torn off downwind as ash and re-forms; the kneel charges the blade only (`fx.ashCharge`). The Lord's
+  ignitions: each form its own sign (form 2 two blades torn apart, form 3 the staff's two ends lit as
+  pillars, form 4 the Void opened behind him and bolts) round a ragged shock, the crater answering
+  (the vents, the seal); the burst light is dimmer than before (4.5, not 8: it washed the frame violet).
+- **Afterimages and the flit** (`DuelFx.ghost(d, { ..., rise, spread })`): in phase 3 every blade beat
+  of Shen Hui's leaves a faint afterimage; a flit leaves a ghost where he left (one a flit), a stream
+  of ash crossing to where he comes in, and motes drawn in there. Built to read at 30 m; still faint.
+- **Sword qi** (both bosses' crescents): a body with a wake behind it, in steel; in a crowd (a fan, the
+  storm of qi) the crescents share one wake budget.
+- **Burning ground** (`moveFx.js`): a low glowing seam on the stones along the line, embers off it and
+  a wisp of smoke: the grass fire's recipe, kept under his knees so the blades and the flare read over
+  it (tall flames hid both fighters). About 25 blobs alive a line plus 20 a frame for the seam; the cap
+  of 9 lines holds it near 400 of the field's 6000.
+- **Rings of sound are steel**: the bell's tolls are a ragged front of steel at waist height with a
+  trailing row (no bronze glyph arcs).
+- **The Lord's spells have bodies.** The Dark Star is a starless sun: a dark heart of letters, a
+  ragged violet corona, the floor dimmed under it, dust drawn in, a real shock when it bursts. A strike
+  of the Starless Sky: a knot of the Void over the mark inside the frame, a stepped leader, the bolt
+  from the knot, a ragged burst, the floor left smouldering (40 % fewer blobs than the old strike).
+  Starless Night's waves are a dark tide: a wall of violet digits with a red seam on its leading edge,
+  fire-field heat. The smaller things (`?void=a`): the blades as light in the field, the crescents,
+  the push, the fissures, the returning blade, the torn stones, the Crushing Dark, a gather of the Void
+  in his hand for each spell, the blink, the deathblow and his death. Forms 2 and 3 carry a quiet
+  presence (the off blade's light and embers; the staff's two ends trailing as it turns). The Void's
+  colours are unchanged: red from his blades and his will, violet-white from the sky and the dark.
+- **Terrain.** The Lord's terrain windups gather the Void in his hand, a held piece is wrapped in void
+  heat and each throw leaves a stroke of it; Shen Hui's cut through a pillar, his kick's fan and a
+  piece's crossing streak are heat in the field; dust and grit are one-cell glyphs. **A thrown piece
+  draws nothing where it will land**: its cue is the flare on the piece (COMBAT.md "Core rules").
+- **The floors** (`world/floor.js`): a cracked slab is two to four pieces pulled apart over a dark
+  seam of earth, each a little tilted and a tone apart, a moonlit chamfer along every seam; a broken
+  slab is bare earth that prints (dim warm letters as dense as the paving, a tone darker), a ragged
+  edge eating into the gaps round it and chunks of stone lying on it. In the crater it is
+  deliberately dark and reads less. Each state is one more merged mesh of the set's carved material,
+  hidden until its first slab shows.
+- **The bodies** (`?ashLook=`, `?lordLook=`; `look.js`, the kit's `dress`): today's figures, dressed
+  by phase / form. Shen Hui: in phase 2 the robe's hem and the free sleeve's cuff smoulder; in phase 3
+  the hat is gone, his hair hangs loose, the robe is burnt pale with a frayed, still smouldering hem.
+  Varr Nihil: the cape torn away sheet by sheet, cracks of red light, in form 4 the hood back and the
+  faceplate split. One big, certain change a step (a missing hat reads at 30 m; a trim would not); no
+  new material (the ember is the rig's unused flask instance). Option `a`, the same figure through the
+  wyrm's art path (`bodyArt.js`), read as a block of digits at 30 m and was not picked.
+- **Look code draws from its own random stream** (a seeded `lr()` or a steady hash), never from the
+  fx object's `rnd()` / `rand()` (game code reads that stream: the storm's scatter, a throw's spread)
+  nor `Math.random` (the seeded suites replay the AI from it). A look option, a blob count or an extra
+  light can never move where something lands or a test's outcome. `LordFx` wraps every drawing method
+  onto its own stream (`DRAW_METHODS`); lights seed their flicker from a stream of their own.
+- **Cost** (headless, a shared GPU: frame rates were not measured): the fire field's peak in the
+  Lord's form 4 with Starless Night is about 3000 of 6000 (main about 1500): the thing to watch on a
+  phone; without the great spell, with the picks on, 518 / 1642 / 1033 / 698 per form; Shen Hui's
+  phase 3 about 700 – 1400.
+
+### The look switches (2026-11-16, ADR-122)
+Every new look and every redraw of this pass was shown to the owner as two or three options on one
+rendered sheet, behind a URL switch (`duelist/lookSwitch.js` `lookOf`; COMBAT.md / ARCHITECTURE.md
+name the code). **The owner picked on 2026-11-16, and with no parameter the game draws the picks.**
+The losing options stay behind their switches (as ADR-118 and ADR-119 left theirs). By convention `0`
+is the look as it was before the option existed, `a` its author's proposal, `b` and `c` the others.
+
+| Switch | What | `0` | `a` | `b` | `c` | Shipped (the owner's pick) |
+|---|---|---|---|---|---|---|
+| `?kindle=` | the Kindling (Shen Hui, phase 2) | - | a fire front and a gout off the blade | an ember storm | an air ripple, then fire | **a** |
+| `?ashp3=` | the change into phase 3 (Shen Hui) | - | the wind takes him: torn off downwind as ash and re-formed | a whirling column of ash that bursts over the yard | the fire burns out: a last ring of fire, then ash like snow | **a** |
+| `?qi=` | sword qi, the crescents (both bosses) | as before | a body and a wake | a standing blade of wind | low along the floor | **a** |
+| `?flit=` | the flit (Shen Hui) | as before | a ghost where he left, a stream of ash crossing, motes drawn in | - | - | **a** |
+| `?burn=` | burning ground (Shen Hui) | - | a glowing seam on the stones, embers, a wisp of smoke | a thinner seam with a fringe of short red tongues | - | **a** |
+| `?toll=` | the bell's rings of sound | bronze `)` arcs | a ragged front of steel at waist height, a trailing row | the same over a low warm heat | - | **a** |
+| `?star=` | the Dark Star | as before | a starless sun (dark heart, ragged violet corona, dust drawn in) | a hole of blacked-out cells (takes a tint zone) | - | **a** |
+| `?sky=` | a strike of the Starless Sky | as before | the sky answers inside the frame (a knot of the Void, a stepped leader, the bolt) | the floor answers (streamers climb to a bolt from the top of the frame) | - | **a** |
+| `?ignite=` | a form's ignition (the Lord) | as before | each form its own sign, the crater answering | one nova, three strengths | - | **a** |
+| `?void=` | the Lord's smaller things (blades of light, crescents, push, fissures, the blade, stones, Crushing Dark, gathers, blink, deathblow, death) | as before | redrawn in the field | - | - | **a** |
+| `?presence=` | forms 2 and 3: a quiet presence | off | the off blade's light and embers; the staff's ends trailing | - | - | **a** |
+| `?great=` | Starless Night's waves | - | the dark tide (a violet wall, a red seam on its front) | the sky's edge (standing white strokes, lightning off it) | the floor answers (dust and chips along a red seam; the costliest: fire field peak 4942 of 6000) | **a** |
+| `?floor=` | a broken floor slab (both arenas; read when the level is built) | - | rubble on printed earth | heaved into a low mound of brighter shards | - | **a** |
+| `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
+| `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
+
+How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
+the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
+REDRAW (`qi`, `flit`, `toll`, `star`, `sky`, `ignite`, `void`, `ashLook`, `lordLook`: the game as it looked
+before this pass); the things that are new in this pass (`kindle`, `ashp3`, `burn`, `presence`, `great`,
+`floor`) keep their pick, although `presence`, for one, was simply absent before (its `0` is "off",
+reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else the author's default. **`?looks=new`** (every
+proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
+**The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard and the Obsidian Throne) has a row of
+buttons per switch: a switch read at draw time flips live, one read at build time (`ashLook`,
+`lordLook`, `floor`) reloads the page with its parameter; "as shipped" clears every look parameter (the
+picks), "before this pass" reloads with `?looks=old`; there is no "all proposals" button any more. Older switches of the same kind: `?flare=`
+(ADR-118), the wyrm's `?ring=` and `?breath=` (ADR-119).
 
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a

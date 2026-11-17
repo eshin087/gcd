@@ -1,9 +1,12 @@
 // The Ash Disciple's numbers (docs/specs/ash-disciple.md; COMBAT.md → "The Ash Disciple"). Starting
-// values: tune them in the Lab. Per-phase values are [P1, P2]. Times in seconds, distances in metres.
+// values: tune them in the Lab. Per-phase values are [P1, P2, P3]. Times in seconds, distances in metres.
 export const TUNING = {
   name: 'SHEN HUI, THE ASH DISCIPLE',
   hp: 3000, // a near-perfect fencing bot (tests/integration/duel.mjs WIN) wins in about a minute
-  phaseAt: [1, 0.5], // HP fractions where each phase starts (the boss bar's ticks)
+  // (the second pass: three phases, the fencer / the kindled blade / ash on the wind)
+  // (the tuning pass: 0.62 / 0.3 → 0.64 / 0.36: the bots that play well spent 21 - 26 / 16 - 20 / 17 - 21 s
+  // in the three; phase 3, the busiest and the new one, gets the biggest share of his health)
+  phaseAt: [1, 0.64, 0.36], // HP fractions where each phase starts (the boss bar's ticks)
   radius: 0.42, // body circle (the hero is pushed out of it)
   bound: 12.5, // he stays this close to the courtyard's centre (min with CONFIG.world.dragonBound)
 
@@ -12,15 +15,16 @@ export const TUNING = {
   flashLead: 0.3, // the glint this long before every impact
   minFirstWindup: 0.42, // a move's first real hit, every phase
   minHitGap: 0.32, // impact to impact inside a move (>= flashLead: each flash after the hit before it)
-  windupScale: [1, 0.92], // the windups of later phases (moves are authored with first windups >= 0.46)
-  recoveryScale: [0.9, 0.8],
+  // (phase 3 is no faster than phase 2: the 0.42 s floor holds; its ramp is in what he does)
+  windupScale: [1, 0.92, 0.92], // the windups of later phases (moves are authored with first windups >= 0.46)
+  recoveryScale: [0.9, 0.8, 0.8], // (never below phase 2's: the first half of a recovery is the hero's)
   // the step-in through a windup (brain.js close-in): at most this far toward the hero, so the zone
   // reaches him at the impact (a move's first hit / its later hits; a beat's own `close` overrides)
   close: { first: 3.0, next: 1.4, speed: 12 },
 
   // ---- posture (POSTURE.parry in combat/rules.js for parries)
   posture: {
-    max: [320, 380],
+    max: [320, 380, 380],
     hit: { light: 5, heavy: 16 }, // weapon hits that land
     guard: { light: 8, heavy: 20 }, // weapon hits his guard deflects
     regenDelay: 2.5,
@@ -79,8 +83,8 @@ export const TUNING = {
     walk: 2.2, // circling with the guard up
     run: 5.6,
     sprint: 8.6,
-    turn: [8, 9.5], // rad/s while circling
-    trackTurn: [14, 16], // rad/s while tracking the hero in a windup
+    turn: [8, 9.5, 9.5], // rad/s while circling
+    trackTurn: [14, 16, 16], // rad/s while tracking the hero in a windup
     band: [1.8, 3.2], // he circles this far off (inside striking range)
     sprintAt: 5.5, // further than this: sprint
     near: 1.1, // closer than this: sometimes backsteps out
@@ -90,8 +94,63 @@ export const TUNING = {
   },
   // PBZ pace (owner, 2026-11-12: "relentless"): short breathers, and after a move he often flows
   // straight into the next one without footwork (`chain`: the chance per move end, per phase)
-  idleGap: [[0.12, 0.38], [0.08, 0.26]], // s of footwork between moves [min, max] per phase
-  chain: [0.45, 0.6],
+  // (the second pass: shorter, phase by phase; the third phase is wave 2's)
+  idleGap: [[0.1, 0.3], [0.06, 0.2], [0.03, 0.12]], // s of footwork between moves [min, max] per phase
+  // a reaction that leaves him open (recoil, stagger, reeling, trampled, executed) and a break end in
+  // this much footwork, whatever idleGap is: the hero's punish window (the old idleGap; a break: 0.4 s
+  // at least)
+  openingGap: [[0.12, 0.38], [0.08, 0.26], [0.08, 0.26]],
+  chain: [0.6, 0.72, 0.82],
+  // the director (duelist/brain.js header, director.js; COMBAT.md "The duelists' pressure"). Per-phase
+  // arrays [P1, P2, P3]
+  pressure: {
+    chainDepth: [4, 5, 7], // moves in a row (links and the flow) before a breather ...
+    chainRest: [[0.45, 0.75], [0.25, 0.45], [0.15, 0.35]], // ... of this much footwork
+    linkCut: 0.5, // a link starts at this fraction of the recovery (the first part: the punish window)
+    chainCut: 0.5, // ... and the old flow roll (`chain`) at this one
+    // where the hero is as a move ends (a link's `when`): near / mid / far (m), front / behind (rad
+    // off his facing), away (m/s backing off)
+    near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
+    maxRun: [2, 3, 3], overRun: 0.1, sameCat: 0.7, // a category picked again: × sameCat; past maxRun in a row × overRun
+    floorAfter: [16, 13, 10], floorBoost: 1.8, floorForce: 2, // a category absent floorAfter s weighs more; × floorForce of it: forced
+    seek: { max: 2.5, every: 9 }, // the footwork keeps to another range for an absent category (s at most / at most every)
+    farDist: 6, closerBoost: 1.8, // past farDist m the gap closers × closerBoost
+    maxLive: [1, 2, 3], // hazards live at once before another hazard move is picked (× 0.05)
+    bias: { string: [1.5, 1.6, 1.7] }, // a category's weight × this (the strings: the most cues a second)
+    density: [1, 1.5, 1.8], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
+    mixed: 0.1, // a move asking a guard while a dodge is due within guard.horizon s (or the other way) × this
+    holdGap: 5, // a breather longer than this (a test, the Lab) holds the links and the flow too
+    // the fairness guard: two cues needing different answers never within `sep` s (+ `margin`): a
+    // blade's blow waits at the cock (maxHold s at most a blow), a called strike waits (maxDelay)
+    guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
+    // what tests/integration/duel.mjs PACE asserts (a steady defender, the hero roaming 2.5 - 9 m):
+    // each phase at least `ramp` × the one before on every seed and `rampMean` × in the seeds' mean,
+    // cues a minute at least `minRate`, the longest gap between cues at most `maxGap` s.
+    // (the tuning pass, 2026-11-16, ten seeds x 120 s (4242, 7, 99, 1337, 2024, 11, 23, 555, 808,
+    // 31337): P1 73.4 - 78.7 cues a minute (mean 76.6), P2 86.1 - 94.8 (90.4), P3 98.0 - 103.5 (99.9);
+    // P2 / P1 1.12 - 1.25 per seed, P3 / P2 1.04 - 1.15 per seed and 1.10 in the mean (phase 3 sits at
+    // the 0.42 s / 0.32 s floors: its ramp is also in what it asks: 13 / 18 / 19 % of the cues a dodge);
+    // longest gap 3.24 / 2.95 / 2.54 s. Before the pass: 60.2 / 76.0, no phase 3)
+    // (the engine pass: the qi's last beat is the cut on a close hero (brain.js `b.cut`): Chasing Rain
+    // and Parting Wind now cue 1.8 - 2.0 a second and are picked more; seed 99 replays another fight:
+    // P2 95.6 → 96.6, P3 98.7 → 95.9 cues a minute, P3 / P2 0.993: the per-seed P3 floor 1.0 → 0.99.
+    // Five seeds' mean P3 / P2 1.073 → 1.067, still over rampMean)
+    // (the final build, ten seeds again: P1 73.5 - 81.2 (mean 77.8), P2 89.7 - 95.9 (92.9), P3 97.4 -
+    // 104.3 (100.0); P2 / P1 at least 1.134 per seed, 1.194 in the mean; P3 / P2 at least 1.018, 1.078
+    // in the mean; longest gap 3.07 / 2.92 / 2.65 s. The same seed replayed a different fight after
+    // each of three merges that day (a seed's phase moved by up to 5 %, one longest gap from 3.20 to
+    // 3.45 s), so the margins are set for that: about 8 % under the worst seed's ramp, 4 % under the
+    // mean's, 7 - 9 % under the slowest seed's rate, half a second over the longest gap. They still
+    // say what the pass promised: every phase busier than the one before, and phase 1 and 2 well
+    // over what they were before it (60 / 76))
+    // (after `main`'s wyrm pass, ADR-120, was merged in, the same ten seeds: P1 74.9 - 85.2 (77.7), P2
+    // 88.0 - 94.7 (92.0), P3 94.6 - 103.1 (98.9); P2 / P1 at least 1.082, P3 / P2 at least 1.023; the
+    // longest gap 3.24 / 2.69 / 3.24 s, phase 3's on a seed that had 2.4 s the build before (a storm
+    // of qi from far, then Ash Shadows); the three default seeds' mean P3 / P2 1.056. So: the gaps'
+    // ceilings half a second over the longest ever seen in a phase (3.45 / 2.95 / 3.24), and phase
+    // 3's mean ramp at 1.02: it must be busier than phase 2, by a margin a reshuffle does not eat)
+    meter: { ramp: [1, 1.05, 0.95], rampMean: [1, 1.14, 1.02], minRate: [68, 82, 90], maxGap: [3.9, 3.4, 3.7] },
+  },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
 
@@ -104,7 +163,7 @@ export const TUNING = {
   // `decay` per s (per phase); full wins, empty loses, and when `dur` s run out the hero wins if he
   // held it at `hold` or above (a tug of ~1.5 s at 8 presses a second; 5 a second just holds; none
   // loses in ~1.5 s). Won: he reels, +`posture`. Lost: he shoves the hero (`shove`) and counters.
-  lock: { start: 0.5, push: 0.085, decay: [0.32, 0.38], dur: 2.6, hold: 0.6, posture: 110, shove: { damage: 12, knockback: 2.6 }, camera: { zoom: -7, weight: 0.55 } },
+  lock: { start: 0.5, push: 0.085, decay: [0.32, 0.38, 0.38], dur: 2.6, hold: 0.6, posture: 110, shove: { damage: 12, knockback: 2.6 }, camera: { zoom: -7, weight: 0.55 } },
   // the mikiri: a roll INTO a perilous thrust (a beat marked `mikiri`) steps on his blade (player.js
   // _mikiri): he is pinned and stumbles (react 'trampled'), +`posture`
   mikiri: { posture: 130 },
@@ -115,11 +174,29 @@ export const TUNING = {
   // 70 % of the tells should be on the edge, one reading 85 % should win)
   damageScale: 1.15,
 
-  // ---- the phase-2 transition (the kindling)
+  // ---- the phase transitions (the kindling, phase 2; ash on the wind, phase 3): one red ring blow each
   transition: { ringRadius: 6, damage: 10, knockback: 6 },
 
+  // ---- burning ground (the second pass; moveFx.js BurnLines): a beat's `burn` (moves.js) leaves a line
+  // of fire on the stones. The rule of fire on grass (world/breakTuning.js FIRE; COMBAT.md "The world
+  // breaks"): `damage` every `tick` s to a hero standing in it, after its first `grace` s, blockable,
+  // never while he rolls. It is ground to step off, not a blow: no cue. From phase `from`; at most
+  // `cap` lines alive per phase (one more puts the oldest out); `width` m, `life` s, `len` m (a line's
+  // default), `ring` arcs' share of the circle; `flames` per metre a second (the fire field), `ignite`:
+  // the wood it touches catches (world.ignite, k)
+  // `armAfter`: a line laid by a string does not burn while that string still has blows coming (the
+  // hero defends where he stands), then from this long after its last blow (its grace at least)
+  // `guard` (the owner, 2026-11-16: "guard meter, no health"): with his guard up a tick costs no health
+  // but this much of the guard meter (GUARD.max 100, no regen between ticks: GUARD.regenDelay 0.8 >
+  // tick; the first tick 0.45 s in, then every 0.55 s): a full meter holds 2 ticks and the 3rd (34 x 3
+  // > 100) knocks the guard open ~1.57 s into a line he stands on (half its life): he still has to step
+  // off. (A blocked light blow drains 11 - 17: the fire drains faster, to say "move".)
+  burn: { from: 2, cap: [0, 7, 9], width: 0.8, life: 3.2, len: 3.4, ring: 0.62, grace: 0.45, armAfter: 0.35, tick: 0.55, damage: 5, guard: 34, flames: 26, ignite: 0.8, fade: 0.6 },
+
   // ---- the projectile (Ash Crescent)
-  crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25 },
+  // (`minLead`: the second pass: a crescent that would reach the hero sooner than this after it is
+  // thrown is not thrown at all; disciple.onRelease)
+  crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25, minLead: 0.27 },
 
   // ---- the terrain (ADR-111; terrain.js; COMBAT.md → "The Ash Disciple" → "He uses the courtyard").
   // Four moves on the pieces of the set (world.destructibles). Each is chosen only while a piece for
@@ -148,11 +225,39 @@ export const TUNING = {
       hit: 1.5, // m round where it lands that it strikes the hero (+ his radius)
       power: 0.9, radius: 2.0, // its burst on the other pieces where it lands (POWER, m)
       parryPosture: 14, // a parry bursts it on the blade
+      maxDelay: 0.4, // s the fairness guard may lengthen its flight by (a cue of the other answer too near)
+    },
+    // (the second pass) the floor: a flagstone levered up out of the paving by the blade and kicked at
+    // the hero (Rising Flagstone: one; Flagstone Volley, phase 2: one a beat, two or three). Blue, the
+    // flare on the flying slab flashLead before it lands; nothing drawn where it lands
+    flag: {
+      kind: 'flagstone', // (world/floor.js: the courtyard's paving)
+      ahead: 1.5, reach: 2.2, // a whole slab within `reach` m of the point `ahead` m in front of him toward the hero
+      heroMin: 3.5, heroMax: 14, // the hero this far from him (his AI)
+      stand: 0.45, // m behind the slab's centre his foot is planted
+      rise: 0.8, riseT: 0.16, // m it jumps up out of the paving, in s
+      time: [0.45, 0.85], per: 20, // s in the air: time[0] + distance / per, at most time[1]
+      lead: 0.15, // s of the hero's own movement it is aimed ahead by
+      hit: 1.2, // m round where it lands that it strikes the hero (+ his radius)
+      power: 0.6, radius: 1.6, // its burst on what is round where it lands
+      parryPosture: 12,
+      maxDelay: 0.4,
+    },
+    // Scattered Flagstones (phase 3): `count` slabs levered at once, gathered into a row `hang` m in
+    // front of him (`row` m apart, `rise` m up) and cut through in the air: they leave as a fan, the
+    // middle one at the hero, the others `spread` rad to either side
+    fan: {
+      kind: 'flagstone', ahead: 1.6, reach: 2.6, count: 3, need: 2,
+      heroMin: 3.5, heroMax: 13, stand: 0.45,
+      hang: 1.6, row: 1.75, rise: 1.0, spread: 0.42, // (`row` keeps three levered slabs apart; what he lifts is a chunk ~0.85 m across)
+      time: [0.5, 0.9], per: 19, lead: 0.12,
+      power: 0.5, radius: 1.4, maxDelay: 0.4,
     },
     // Three Tolls: he strikes the fallen bell; each blow sends a ring of sound across the courtyard
     toll: {
       reach: 15,
       heroMax: 23, // the hero this far from the bell at most
+      heroMin: 3.2, // ... and this far at least (tuning pass: nearer, the rings pass him before they can cue)
       stand: 0.3,
       arc: 1.3, // m: the height of his leap to it
       from: 1.5, speed: 12, range: 26, // the ring: born this wide (m), m/s, where it dies
