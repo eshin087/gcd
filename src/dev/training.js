@@ -155,14 +155,26 @@ add('TERRAIN', [
   { id: 'lord-fall', name: 'Crown Fall · under the shard', boss: 'lord', pieces: true, answer: 'none', desc: 'You stand beside a tall shard. His hand closes on it and wrenches it down: the strip it falls on is marked red from the moment it goes. You stay, and it lands on you.', go: (T) => crater(T, 2, 2, -2, 8.6, 4.4, 'crownFall'), until: craterDone, max: 9, expect: ['combat:flash'] },
 ]);
 
+// A duelist's change to phase / form n plays only from n - 1 (brain.forcePhase): from anywhere else
+// he is put into n - 1 first, that change not played, as the Lab's `_skipToPhase` does (the Lord's
+// setForm dresses the form; Shen Hui's enterPhase sets the phase), then the change to n plays.
+const duelChange = (T, n) => {
+  const d = T.d;
+  if ((d.phase ?? 1) !== n - 1) {
+    if (typeof d.debug?.setForm === 'function') d.debug.setForm(n - 1);
+    else d.enterPhase?.(n - 1);
+  }
+  return d.debug[`phase${n}`]?.();
+};
+
 add('BOSS STATES', [
   { id: 'stagger', name: 'Stagger', boss: 'any', desc: 'His stagger.', go: (T) => T.d.debug.stagger(), until: (T) => T.t > 1.2 && !T.moving(), expect: [] },
   { id: 'break', name: 'Posture break', boss: 'any', desc: 'His posture breaks: open to crits.', go: (T) => T.d.debug.postureBreak(), until: (T) => T.t > 3.6, expect: ['dragon:postureBreak'] },
   { id: 'phase2', name: 'Phase 2', boss: 'any', desc: 'The second phase begins (its transition).', go: (T) => T.d.debug.phase2(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase3', name: 'Phase 3', boss: 'wyrm', desc: 'The third phase: the wyrm burns white-hot.', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
-  { id: 'phase3a', name: 'Phase 3', boss: 'ash', desc: 'His third phase: ash on the wind (its change).', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
-  { id: 'phase3l', name: 'Form 3', boss: 'lord', desc: 'His third blade form ignites.', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
-  { id: 'phase4', name: 'Form 4', boss: 'lord', desc: 'His fourth form: the Void answers him.', go: (T) => T.d.debug.phase4(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
+  { id: 'phase3a', name: 'Phase 3', boss: 'ash', desc: 'His third phase: ash on the wind (its change).', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
+  { id: 'phase3l', name: 'Form 3', boss: 'lord', desc: 'His third blade form ignites.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
+  { id: 'phase4', name: 'Form 4', boss: 'lord', desc: 'His fourth form: the Void answers him.', go: (T) => duelChange(T, 4), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase4'] },
   { id: 'bossDeath', name: 'His death', boss: 'any', desc: 'The killing blow (the next situation wakes him again).', go: (T) => T.d.debug.kill(), until: (T) => T.t > 4, expect: [] },
 ]);
 
@@ -512,7 +524,7 @@ export class Training {
     const watch = (n) => ev.on(n, (e) => this._event(n, e));
     for (const n of ['player:parry', 'player:block', 'player:perfectDodge', 'player:flurry', 'player:flurryEnd', 'player:hurt', 'player:streak',
       'player:guardBreak', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
-      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'combat:flash']) watch(n);
+      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
   }
 
   _event(n, e) {

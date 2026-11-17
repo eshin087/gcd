@@ -558,6 +558,25 @@ async function scenarioMoves() {
     const between = thrown.filter((t) => hits.some((h, i) => i + 1 < hits.length && t + TUNING.flashLead > h && t + TUNING.flashLead < hits[i + 1])).length;
     assert(thrown.length >= 2 && Math.abs(rMin - TUNING.orbit.r) < 0.15 && Math.abs(rMax - TUNING.orbit.r) < 0.15 && between >= 2, `the orbit: stones turn round him at ${rMin.toFixed(2)} - ${rMax.toFixed(2)} m and fly one at a time (${thrown.length} cued, ${between} landing in a pause of his string)`);
   }
+  // ---- his death puts out the orbit's stones and the weather's marks (the review of PR 64: they are
+  // records of the fx's own pools that fly and strike on their own loops, and a death left them
+  // cueing and breaking the crater after him)
+  {
+    const G = build(SEED, true);
+    duel(G, { dist: 2.6, form: 3 });
+    G.game.player.debug.god = true;
+    const d = G.game.dragon, W = TUNING.weather;
+    d.debug.trigger('stoneWheel');
+    run(G, 3, null, () => d.spells.orbit.some((o) => o.s.alive && o.s.phase === 'hang'));
+    const mark = d.fx.callStrike?.(d.position.x + 4, d.position.z, W.radius, 1.2, { damage: W.damage, knockback: W.knockback, attack: 'starlessSky' });
+    const before = { stones: d.fx.shots.filter((s) => s.alive && s._mine).length, marks: d.fx.strikes.filter((s) => s.alive && s.attack === 'starlessSky').length };
+    let after = 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && (e?.attack === 'stoneWheel' || e?.attack === 'starlessSky')) after++; };
+    d.debug.kill();
+    run(G, 3);
+    const left = { stones: d.fx.shots.filter((s) => s.alive && s._mine).length, marks: d.fx.strikes.filter((s) => s.alive && s.attack === 'starlessSky').length };
+    assert(!!mark && before.stones >= 1 && before.marks >= 1 && left.stones === 0 && left.marks === 0 && after === 0, `his death puts out the Void still in the air: ${before.stones} orbit stones and ${before.marks} weather mark before it, ${left.stones} and ${left.marks} after, ${after} cues after it`);
+  }
   // ---- the weather (form 4)
   {
     const G = build(SEED, true);
@@ -1184,6 +1203,20 @@ async function scenarioTraining() {
   }
   T.stop();
   assert(L.length >= 20 && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+  // a form's change from form 1 (no form before it run first): the runner puts him in the form
+  // before it (the review of PR 64: phase3() / phase4() did nothing from further back, and an empty
+  // `expect` let the situation pass)
+  for (const [id, n] of [['phase3l', 3], ['phase4', 4]]) {
+    const G2 = build(SEED, true);
+    duel(G2, { dist: 4 });
+    const T2 = G2.game.lab.training, d2 = G2.game.dragon, from = d2.phase;
+    T2.run(id);
+    let f = 0;
+    while (T2.ph !== 'done' && f < Math.round(20 / DT)) { G2.tick(DT); f++; }
+    const r = T2.lastResult, done = T2.ph === 'done';
+    T2.stop();
+    assert(from === 1 && done && !!r?.ok && d2.phase === n, `Training's ${id} plays from form 1: form ${from} → ${d2.phase}, ${r?.ok ? 'shown' : `missing ${JSON.stringify(r?.missing ?? '?')}`}`);
+  }
   return G;
 }
 

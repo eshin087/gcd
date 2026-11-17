@@ -100,7 +100,12 @@ export class LordSpells {
       w.alive = false;
       if (this.d.glaiveOut) this.d.onGlaiveBack?.();
     }
+    // his orbiting stones and the weather's marks are records of the fx's own pools that fly and
+    // strike on their own loops: they go out with him, or a death would leave them cueing and
+    // breaking the crater after him (a reset clears the pools anyway)
+    for (const o of this.orbit) if (o.s.alive && o.s._mine === o.gen) o.s.alive = false;
     this.orbit.length = 0;
+    for (const s of this.d.fx?.strikes ?? []) if (s.alive && s.attack === SPELL_ATTACK.sky) s.alive = false;
     const n = this.night;
     n.alive = false;
     for (const v of n.waves) {

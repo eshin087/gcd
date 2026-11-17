@@ -1461,6 +1461,19 @@ async function scenarioTraining() {
   }
   T.stop();
   assert(L.length >= 20 && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+  // phase 3's change from phase 1 (no phase 2 run first): the runner puts him in phase 2 first (the
+  // review of PR 64: phase3() did nothing from phase 1, and an empty `expect` let the situation pass)
+  {
+    const G2 = build({ real: true });
+    duel(G2, { dist: 4 });
+    const T2 = G2.game.lab.training, d2 = G2.game.dragon, from = d2.phase;
+    T2.run('phase3a');
+    let f = 0;
+    while (T2.ph !== 'done' && f < Math.round(20 / DT)) { G2.tick(DT); f++; }
+    const r = T2.lastResult, done = T2.ph === 'done';
+    T2.stop();
+    assert(from === 1 && done && !!r?.ok && d2.phase === 3, `Training's Phase 3 plays from phase 1: phase ${from} → ${d2.phase}, ${r?.ok ? 'shown' : `missing ${JSON.stringify(r?.missing ?? '?')}`}`);
+  }
   return G;
 }
 
