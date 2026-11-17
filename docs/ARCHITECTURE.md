@@ -301,7 +301,9 @@ Render helpers for creature modules:
     line: a solid silhouette **band** inside his outline (8 directions, up to `uHeroOwnSil.x` font px;
     its width follows his drawn size, one font px per `uHeroOwnSil.w` (29) screen px of his metre,
     so about 1.5 px at the desktop game camera, 1 on a phone and the full width close up; a fractional
-    last px; gain `.y`, the innermost px at `.z`); **bold** inner lines for parts with fill bit 32
+    last px; gain `.y`, the innermost px at `.z`; where the band is one px wide, the phone, it and the
+    bold lines print at `HERO_THIN` (0.55) of their gain, back to full by 1.4 px, so a one-px line stays
+    crisp under the bloom); **bold** inner lines for parts with fill bit 32
     (their edges against a lower part or a step down, a band nearly as wide as the silhouette's, kept
     at the game camera); thin inner lines elsewhere (`uHeroOwnIn`: width 1 / 2 font px, depth-step
     gain, part-edge gain, share kept at the game camera; piece edges at `uHeroOwnFillK.z`); the fill
@@ -311,7 +313,7 @@ Render helpers for creature modules:
     off-him pixels of his cells, inside the halo's circle; a tight **halo** round the glowing parts
     (`uHeroOwnHalo`, rgb × w) in that ring and on `haloOn` parts. `uHeroOwnPxM` (screen px per metre
     of him per font px; 1000 when he is off screen) is set in `_updateAsciiCamera` from the halo's
-    radius. Exports (`pipeline.js`): `HERO_LINES` (frozen options `a`, `b`, `c`: `{ sil: [width, gain,
+    radius. Exports (`pipeline.js`): `HERO_THIN`, `HERO_LINES` (frozen options `a`, `b`, `c`: `{ sil: [width, gain,
     inner-edge gain, px per metre], inner: [width, depth gain, part gain, far share], fill: [gain,
     lavender, piece gain, far fade], glow: [r, g, b, radius] }`), `HERO_LINE` (the option read once
     from `?heroLine=`: `b` by default, `0` the shared line, an unknown value `b`).
@@ -934,7 +936,15 @@ and the hem the rest (it curves instead of turning out as one board), swings sid
 `sheetB`, changes its swing at most `rate` a frame, and its hem trails `hemLag` × on a run (it
 streams back); standing, a panel swings out at most `panelOut` in all (root + hem) and a knee swings
 a hem out at most `kneeOut`; in a roll or a backstep the cloth is drawn in round him (`anim.tuck`
-0..1, eased in at `tuckIn` and out at `tuckOut`: a smaller swing limit and less lag and flare).
+0..1, eased in at `tuckIn` and out slowly at `tuckOut`, so the cloth settles back: the swing limits
+`tuckSheet` / `tuckPanel` [upper, lower], the lag and the flare taken off by `tuckLag` / `tuckFlare`,
+and `tuckShrink` [sheets, panels]: the sheets and panels drawn up short, their segments' `scale.y`
+animated below 1 while he is rolled up; at every other time it is 1). **Lying** (`LAY`,
+`HeroAnimator._layCloth`, after the springs): once his body is near level each panel and wrapping
+sheet eases (`anim.layW` 0..1, in at `LAY.in`, out at `LAY.out2` /s) toward a calm fixed fan on the
+ground: toward his feet (`feet`), out from where it hangs (`out`), to its side of the body (`side`),
+sloping to `floor` m over the grass. The blend is written back into the spring state, so as he rises
+the springs take over from where the cloth lies, without a snap.
 `COAT_PAIRS` names the front / side neighbours, `COAT_PLATE` the points of the shield's outline
 (`anim.platePts`, pelvis space) a panel's upper sheet is kept outside of (`COAT_PLATE_M` 3 cm),
 `anim.footPts` the ankles; `_lowerLegLim` limits how far a panel's lower sheet swings in, so no
@@ -1185,15 +1195,21 @@ arm carries the shield: `swingClip(name, shield)` compiles a clip without its tw
 (`SHIELD_DROP`: `two`, `offAt`, `lk`; a clip the shield arm keys itself also drops the free-hand
 channels) and lays the shield arm's own keys over it (`SHIELD_ARM`: the heavies, the slam, the
 cleave, the backhands' coil; the sword hand's keys are untouched, so the blade cuts where it cut);
+`SHIELD_BLADE` (`{ clip: { u: key fields } }`) is merged over a clip's RECOVERY keys only (u > 2), so
+a recovery that stood the blade up as a bar over the hood from behind settles it out to the sword
+side; the windup's and the cut's paths, the timings and the hit segment are the clip's own;
 the shield takes over the free arm in the carry, the ready stance, the run, the block, the parry,
 the lock, the charge and two of the fidgets (`shieldRest`, `shieldStand`, `shieldRun`, `shieldBlock`,
-`shieldParry`, `shieldLock`, `shieldCharge`; named arm places in `SHIELD_AT`). The held guard
+`shieldParry`, `shieldLock`, `shieldCharge`; named arm places in `SHIELD_AT`: `carry` holds the plate
+out beside the hip, where the cloak does not hide it from behind). `shieldCharge` also sets the held
+charge's blade (`CHARGE_BLADE`: held up out to the sword side and back, not straight up). The held guard
 (`shieldBlock`) is the shield raised before him with the sword cocked low behind it, out to the
 sword side; the parry (`deflectPose` → `shieldParry`, unless `deflect.sword`) swats the plate onto
 the blow on the blade's side, high or low, nudged by `deflect.nx / ny / nz` (player.js
 `_meetShield`). `_shield()` turns the plate about the forearm so its face looks away from his body
 (a critically damped spring, `anim.shieldS { a, v, t, ok }`, `SHIELD_TURN`; low, its face turns up
-to the sky). `_shieldClear` / `_shieldMeasure` / `_clearCap` (`SHIELD_CLEAR`: margins from the
+to the sky; at ease in the loco clip `carryFore` turns the face further to his front, by the share
+the fight stance has not taken, so from behind its rim and part of its back show at his left). `_shieldClear` / `_shieldMeasure` / `_clearCap` (`SHIELD_CLEAR`: margins from the
 torso, the head and the thighs, above the grass; eased in at `rise`, out at `fall`; searched in
 `step` m, `stepLying` lying) push the fist out until the plate's outline (`SHIELD_PTS`) clears his
 body, the hood and the ground (`anim.shieldPush`, chest space). The heal (`healPose` with a shield)

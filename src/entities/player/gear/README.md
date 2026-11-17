@@ -22,7 +22,7 @@ are built by the same `buildHero` from their own items (`enemies/ashDisciple/gea
 | File | What it holds |
 | --- | --- |
 | `index.js` | `SLOTS`, the `GEAR` registry, `registerItem`, `getItem`, `DEFAULT_LOADOUT` (the hero's set), `HERO_TINT` (his colours), `BASE_LOADOUT`, `resolveLoadout` |
-| `abyss.js` | the hero's set: `abyss.hood`, `abyss.robe`, `abyss.arms`, `abyss.legs`, `abyss.skirt`, `abyss.cloak`, `abyss.sword`; `ABYSS_LOADOUT`, `ABYSS_TINT`, `ABYSS_SWORD_DIMS` (the sword's own numbers), `HOOD_RINGS` (the hood's planes), `ABYSS_PANELS` (the skirt), `ABYSS_SHEETS` (the robe's back). Built from the concept sheet's measurements; its materials are the `ab*` entries of `HERO_INK` |
+| `abyss.js` | the hero's set: `abyss.hood`, `abyss.robe`, `abyss.arms`, `abyss.legs`, `abyss.skirt`, `abyss.cloak`, `abyss.sword`; `ABYSS_LOADOUT`, `ABYSS_TINT`, `ABYSS_SWORD_DIMS` (the sword's own numbers), `HOOD_RINGS` (the hood's planes; the top ring a sliver, so the halves meet in a point), `ABYSS_PANELS` (the skirt), `ABYSS_SHEETS` (the robe's back). Built from the concept sheet's measurements; its materials are the `ab*` entries of `HERO_INK` |
 | `shield.js` | `offhand` items: `shield.kite` (the hero's), `SHIELD_SHAPES`, `SHIELD_OFF` |
 | `base.js` | the undersuit: fallback items for `chest`, `arms`, `legs` |
 | `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls |
@@ -184,7 +184,9 @@ rig every frame, so these hold for any item:
   fronts part, `hem` cuts its points, `mat` picks its material) and the bosses' `LORD_PANELS` / the
   Ash Disciple's robe are worked examples. For the hero the panels are one garment (`anim.js`
   `CLOTH`): they share the garment's velocity, swing out no more than `panelOut` standing, are drawn
-  in through a roll and are kept outside the shield's plate and his legs.
+  in and drawn up short through a roll (`tuckShrink`: their segments' `scale.y` animates, so do not
+  rely on it staying 1), kept outside the shield's plate and his legs, and laid flat in a fan on the
+  ground while he lies (`LAY`, `_layCloth`).
 - **Streamers** (`streamers`). Two-segment springs: `segs[0]` at the root, `segs[1]` at
   `−len[0]` below it; `out` is the resting outward flare; `lag` (default 1) scales how far the
   sheet trails the motion: 1 is a light ribbon that streams out level at a run, the robe's back uses
