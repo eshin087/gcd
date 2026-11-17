@@ -748,9 +748,13 @@ export class Player {
     const L = getLook(id);
     if (!L) throw new Error(`no hero look "${id}" (${LOOK_IDS.join(', ')})`);
     const prev = this.look;
+    // the equipped weapon is kept when it was swapped in over the old look's own (?sword=, equip);
+    // a look that brings its own sword (the sword-and-shield looks) is worn with it
+    const cur = this.rig.loadout.weapon ?? null, own = HERO_LOOKS[prev]?.loadout.weapon ?? null;
+    const weapon = cur !== own ? cur : L.loadout.weapon ?? null;
     this.look = L.id;
     try {
-      return this.setLoadout({ ...L.loadout, weapon: this.rig.loadout.weapon });
+      return this.setLoadout({ ...L.loadout, weapon });
     } catch (e) {
       this.look = prev;
       throw e;
@@ -1312,7 +1316,7 @@ export class Player {
     const g = this.game;
     if (!(black && this.debug.god)) this.guard = 0;
     this.guardWait = GUARD.openDelay;
-    this._bladePoint(0.4, this._v);
+    this._guardPoint(0.4, this._v);
     this.fx.guardBreak(this._v.x, this._v.y, this._v.z, nx, nz);
     if (black) this.fx.blackBreak?.(this._v.x, this._v.y, this._v.z, nx, nz);
     this._emit('player:guardOpen', { attack, black });
@@ -1369,6 +1373,7 @@ export class Player {
     this.object3d.rotation.y = this.yaw;
     this._enter('parry', 'parry', 0); // no cross-fade: the contact pose IS this frame (it is frozen)
     this._poseNow();
+    if (this.anim.shield) return this._meetShield(B, M, nx, nz);
     // the clash: on the crossing of the two blades; without his blade, in front of the guard toward
     // the blow, on the side the blade snapped to
     if (B && this.sweep.valid) {
@@ -1402,6 +1407,44 @@ export class Player {
       cv.z += -nz * 0.42 - nx * D.side * 0.12;
       if (!Number.isFinite(cv.x + cv.y + cv.z)) this._bladePoint(0.62, cv);
     }
+    return M;
+  }
+
+  /**
+   * _meetBlade for a hero who carries a shield (the shield parries: anim.js shieldParry). The swat's
+   * pose is taken as a blade's would be (deflect.side / high, already posed), then the fist is nudged
+   * (deflect.nx / ny / nz) until the middle of the plate lies on his steel, and the clash is drawn
+   * there (e1: the plate's long axis, e2: his blade). Without his blade (claws, a bullet) the clash
+   * sits on the shield's face. `B`: his blade (parryContact) or null; this._cp[0..1] hold its outer
+   * part (set by _meetBlade). Leaves the clash's point in this._v.
+   */
+  _meetShield(B, M, nx, nz) {
+    const D = this.deflect, C = this._cp, cv = this._v, J = this.rig.shield?.joint;
+    this._guardPoint(0.5, cv);
+    if (!B || !J) return M;
+    let gap = closestOnSegments(C[0], C[1], cv, cv, C[2], C[3]);
+    D.gap0 = gap;
+    if (gap > 0.04) {
+      // move the fist by the gap (body axes: x his left, z ahead; model metres) and pose again
+      const S = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+      const gx = C[2].x - cv.x, gy = C[2].y - cv.y, gz = C[2].z - cv.z;
+      D.nx = clamp((gx * c - gz * sn) / S, -0.3, 0.3);
+      D.ny = clamp(gy / S, -0.3, 0.3);
+      D.nz = clamp((gx * sn + gz * c) / S, -0.2, 0.3);
+      this._poseNow();
+      this._guardPoint(0.5, cv);
+      gap = closestOnSegments(C[0], C[1], cv, cv, C[2], C[3]);
+    }
+    D.gap = gap;
+    // (still apart: his blade is out of the arm's reach; the sparks sit on the shield)
+    if (gap < 0.5) cv.copy(C[2]);
+    M.e1 = C[0].set(-1, 0, 0).transformDirection(J.matrixWorld);
+    M.e2 = C[1].set(B.bx - B.ax, B.by - B.ay, B.bz - B.az);
+    if (Number.isFinite(B.vx + B.vy + B.vz) && B.vx * B.vx + B.vy * B.vy + B.vz * B.vz > 1e-6) {
+      const vl = Math.hypot(B.vx, B.vy, B.vz);
+      M.spray = C[2].set(B.vx / vl + nx * 0.6, B.vy / vl + 0.25, B.vz / vl + nz * 0.6);
+    }
+    M.met = true;
     return M;
   }
 
@@ -1588,7 +1631,7 @@ export class Player {
     const push = (DEFENSE.blockPushback[tell] ?? DEFENSE.blockPushback.normal) * (chip ? TUNE.chipPush : 1);
     this._setKb(nx, nz, Math.max(fin(this.kb.x * nx + this.kb.z * nz) / TUNE.knockbackDecay, push));
     const heavy = tell === TELL.BLUE && !chip;
-    this._bladePoint(0.45, this._v);
+    this._guardPoint(0.45, this._v);
     if (chip) this.chipGuard = TUNE.chipGuard; // standing in a stream: rolling out of it is no perfect dodge
     if (chip) {
       this.recoil = Math.max(this.recoil, 0.35);
@@ -1623,7 +1666,7 @@ export class Player {
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
     this.flash = 1;
-    this._bladePoint(0.4, this._v);
+    this._guardPoint(0.4, this._v);
     this.fx.guardBreak(this._v.x, this._v.y, this._v.z, nx, nz);
     this._emit('player:hurt', { damage: dmg, kind, hp: this.hp });
     this._emit('player:guardBreak', { attack });
@@ -3002,6 +3045,18 @@ export class Player {
     return this.getChestPos(out, true);
   }
 
+  /** Where a blow meets his GUARD, world space: the middle of the shield's face when he carries one
+   *  (the shield is the guard: shieldPoses.js), else point `f` along the blade. */
+  _guardPoint(f, out) {
+    const S = this.rig.shield;
+    if (S?.joint && this.anim?.shield) {
+      out.set(0, 0, fin(S.off) + 0.02);
+      S.joint.localToWorld(out);
+      if (Number.isFinite(out.x + out.y + out.z)) return out;
+    }
+    return this._bladePoint(f, out);
+  }
+
   _combat() {
     const sw = this.sweep;
     if (!sw.sample()) return;
@@ -3522,7 +3577,8 @@ export class Player {
       // the flare where the game camera sees it: part 17's pass gains (the art pass compresses luma, so
       // uInkGlow alone does not read at 36 m; the fill gain is linear past the far HDR cap, and the
       // blade there is one 4 px cell of mostly silhouette line, so its ink AND rim lines flare too).
-      // Part 17 is only the hero's sword (gear/wanderer.js M.blade / M.bladeTip; HERO_INK.bladeTip
+      // Part 17 is only the hero's sword (gear/wanderer.js M.blade / M.bladeTip; HERO_INK.bladeTip;
+      // and the star on a shield, gear/shield.js: it flares with the blade)
       // writes it last). ABSOLUTE values every frame: another buildHero (the boss's, setLoadout) resets
       // the shared arrays; at g = 1 this writes exactly the HERO_INK base
       const F = TUNE.bladeFlare, B = HERO_INK.bladeTip, P = B.part;

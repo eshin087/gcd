@@ -4422,7 +4422,7 @@ async function scenarioHero() {
     const meshes = () => { let n = 0; root.traverse((o) => { if (o.isMesh) n++; }); return n; };
     const finite = () => { let ok = true; root.traverse((o) => { const e = o.matrixWorld.elements; for (let i = 0; i < 16; i++) if (!Number.isFinite(e[i])) ok = false; }); return ok; };
     const n0 = meshes();
-    assert(SLOTS.join() === 'head,chest,shoulders,arms,legs,waist,back,weapon' && SLOTS.every((sl) => DEFAULT_LOADOUT[sl] == null || getItem(DEFAULT_LOADOUT[sl])?.slot === sl) && SLOTS.every((sl) => p.loadout[sl] === (DEFAULT_LOADOUT[sl] ?? null)),
+    assert(SLOTS.join() === 'head,chest,shoulders,arms,legs,waist,back,weapon,offhand' && SLOTS.every((sl) => DEFAULT_LOADOUT[sl] == null || getItem(DEFAULT_LOADOUT[sl])?.slot === sl) && SLOTS.every((sl) => p.loadout[sl] === (DEFAULT_LOADOUT[sl] ?? null)),
       `gear slots: ${SLOTS.join(', ')}; the default loadout fills ${SLOTS.filter((sl) => DEFAULT_LOADOUT[sl]).length} of them`);
     // the sword hand is a fist on the grip's own frame, owned by the arms slot (not by the weapon)
     const fist = p.rig.sword.children.filter((o) => o.isMesh && o.userData.slot === 'arms');
@@ -7086,7 +7086,9 @@ async function scenarioHeroArms() {
 // hand by design).
 async function scenarioLooks() {
   out('\n== scenario LOOKS (outfit options behind ?heroLook=: switch, registry, each look built and worn through the route, the Lab row) ==');
-  const { HERO_LOOKS, LOOK_IDS, DEFAULT_LOOK, heroLookFromSearch, heroLookUrl } = await imp('src/entities/player/gear/looks.js');
+  const { HERO_LOOKS, LOOK_IDS: ALL_LOOK_IDS, DEFAULT_LOOK, heroLookFromSearch, heroLookUrl } = await imp('src/entities/player/gear/looks.js');
+  // (the sword-and-shield looks, `shield: true`, bring their own sword, face and cloth: scenario SHIELD)
+  const LOOK_IDS = ALL_LOOK_IDS.filter((id) => !HERO_LOOKS[id].shield);
   const { DEFAULT_LOADOUT, BASE_LOADOUT, SLOTS, resolveLoadout, getItem } = await imp('src/entities/player/gear/index.js');
   const { BODY, HERO_INK, sheetOffset, tintHero } = await imp('src/entities/player/model.js');
   const { SWALLOW_TINT } = await imp('src/entities/player/gear/swallow.js');
@@ -10077,11 +10079,209 @@ async function scenarioZoomArt() {
   return G;
 }
 
+// ------------------------------------------------------------------ scenario: SHIELD
+// Sword and shield (ADR-121): the looks that carry a shield (gear/looks.js `shield: true`; an
+// `offhand` item on the free forearm's shield joint). With one, the animator plays the shield's
+// clips (anim.js `shield`, shieldPoses.js): no hand joins the grip, the held guard and the parry are
+// the shield's, the heavies and the charge are swung in one hand. The rules of the fight are unchanged.
+async function scenarioShield() {
+  out('\n== scenario SHIELD (the sword-and-shield looks: the offhand slot, the shield as the guard and the parry, one-handed heavies, the plate out of the ground, the body and the blade) ==');
+  const { HERO_LOOKS, LOOK_IDS } = await imp('src/entities/player/gear/looks.js');
+  const { SLOTS, DEFAULT_LOADOUT, getItem, resolveLoadout } = await imp('src/entities/player/gear/index.js');
+  const { DIM } = await imp('src/entities/player/model.js');
+  const { HEAVY, SPRINT_ATK } = await imp('src/entities/player/combat.js');
+  const { SHIELD_ARM, SHIELD_AT } = await imp('src/entities/player/shieldPoses.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const ids = LOOK_IDS.filter((id) => HERO_LOOKS[id].shield);
+  const v = new THREE.Vector3(), w = new THREE.Vector3(), m4 = new THREE.Matrix4();
+  // (A) the data
+  {
+    const bad = [];
+    for (const id of ids) {
+      const L = HERO_LOOKS[id];
+      try { resolveLoadout(L.loadout); } catch (e) { bad.push(`${id}: ${e.message}`); }
+      if (getItem(L.loadout.offhand)?.slot !== 'offhand') bad.push(`${id}: no offhand item`);
+    }
+    const two = Object.keys(SWINGS).filter((k) => SWINGS[k].keys.some((q) => q.two));
+    const noKeys = two.filter((k) => !SHIELD_ARM[k]);
+    const badKeys = Object.entries(SHIELD_ARM).flatMap(([k, a]) => (!SWINGS[k] ? [`${k}: no such clip`] : a.filter((q) => !(q.u > 0) || (q.l && Math.hypot(...q.l) > 0.56)).map((q) => `${k}@${q.u}`)));
+    assert(ids.join() === 'abyss,traveler' && !bad.length && SLOTS.includes('offhand') && DEFAULT_LOADOUT.offhand == null && !noKeys.length && !badKeys.length && Object.values(SHIELD_AT).every((q) => Math.hypot(...q.l) <= 0.56),
+      `the shield looks: ${ids.join(', ')}; today's look carries none; every two-handed clip (${two.join(', ')}) has shield-arm keys, each within the arm's reach (${[...bad, ...noKeys, ...badKeys].join('; ') || 'ok'})`);
+  }
+  // today's hero: no shield, the animator as it was
+  {
+    const G = build();
+    fightSetup(G);
+    const p = G.game.player;
+    assert(p.rig.shield === null && p.anim.shield === false && p.rig.slots.offhand.length === 0 && p.rig.arms.L.shield === undefined, 'today\'s look: no shield and no shield joint on the rig (its build draws the random numbers it always drew), the animator plays the two-handed clips');
+  }
+  let last = null;
+  for (const id of ids) {
+    const G = build({ heroLook: id });
+    last = G;
+    fightSetup(G);
+    const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, S = r.shield, A = p.anim;
+    p.debug.god = true;
+    // (B) built: the handle, the joint, the slot
+    {
+      const J = S?.joint;
+      const ok = !!J && J === r.arms.L.shield && J.parent === r.arms.L.fore && [S.half?.[0], S.half?.[1], S.off, S.top, S.foot].every((x) => Number.isFinite(x) && x > 0)
+        && r.slots.offhand.length > 0 && r.slots.offhand.every((o) => o.userData.slot === 'offhand') && A.shield === true;
+      assert(ok, `${id}: the shield hangs on the free forearm's joint (${S ? `${(S.half[0] * 2).toFixed(2)} x ${(S.top + S.foot).toFixed(2)} m, ${S.off.toFixed(3)} m off the arm` : 'none'}), and the animator plays the shield's clips`);
+      if (!ok) continue;
+    }
+    const J = S.joint;
+    const far = () => { p.debug.teleport(d.position.x + 16, d.position.z + 16); p.yaw = 0; };
+    const corners = [[-S.top, 0], [S.foot, 0], [0, S.half[0]], [0, -S.half[0]]];
+    const st = { frames: 0, bad: 0, low: Infinity, lowIn: '', pierce: 0, pierceBy: {}, inBody: 0, turn: 0, fist: 0, clip: '' };
+    /** One frame's checks (after the tick). */
+    const check = () => {
+      st.frames++;
+      p.object3d.updateMatrixWorld(true);
+      if (!A.cur.every(Number.isFinite) || !Number.isFinite(A.shieldS.a)) st.bad++;
+      if (r.offHand?.grip?.visible || r.offHand?.open?.visible || r.offHand?.fingers?.visible) st.fist++;
+      for (const k of corners) {
+        v.set(k[0], k[1], S.off);
+        J.localToWorld(v);
+        const y = p.object3d.worldToLocal(v).y;
+        if (y < st.low) { st.low = y; st.lowIn = st.clip; }
+      }
+      // the plate's centre against the ribs (chest local: the animator's TORSO_R ellipse)
+      v.set(0, 0, S.off);
+      J.localToWorld(v);
+      r.chest.worldToLocal(v);
+      if (Math.hypot(v.x / 0.15, v.z / 0.115) < 1 && v.y > -0.3 && v.y < 0.25) st.inBody++;
+      // the steel through the plate: the blade's points in the plate's frame, a sign change of z
+      // inside its outline (a little in from the edge; the foot narrows)
+      let prev = null, hit = false;
+      for (let i = 0; i <= 14; i++) {
+        v.set(0, 0, DIM.guard + (DIM.drawnTip - DIM.guard) * (i / 14));
+        r.sword.localToWorld(v);
+        J.worldToLocal(v);
+        const z = v.z - S.off;
+        if (prev && (prev.z > 0) !== (z > 0)) {
+          const t = prev.z / (prev.z - z), x = prev.x + (v.x - prev.x) * t, y = prev.y + (v.y - prev.y) * t;
+          const hw = S.half[0] * (x > 0 ? Math.max(0.15, 1 - (x / S.foot) ** 1.5) : 1) - 0.02;
+          if (x > -S.top + 0.02 && x < S.foot - 0.03 && Math.abs(y) < hw) hit = true;
+        }
+        prev = { x: v.x, y: v.y, z };
+      }
+      if (hit) { st.pierce++; st.pierceBy[st.clip] = (st.pierceBy[st.clip] ?? 0) + 1; }
+    };
+    let prevA = A.shieldS.a;
+    const go = (name, s, each) => {
+      st.clip = name;
+      for (let i = 0, n = Math.round(s / DT); i < n; i++) {
+        each?.(i);
+        G.tick(DT);
+        const da = Math.abs(Math.atan2(Math.sin(A.shieldS.a - prevA), Math.cos(A.shieldS.a - prevA)));
+        prevA = A.shieldS.a;
+        st.turn = Math.max(st.turn, da);
+        check();
+      }
+    };
+    const idle = () => { input.up(1); input.up(2); input.release('KeyW'); input.release('ShiftLeft'); p.atk = null; p._enter('idle', 'loco', 0.05); far(); for (let i = 0; i < 30; i++) G.tick(DT); prevA = A.shieldS.a; };
+    // (C) the route: every clip the shield changes, and the ones it rides through
+    far();
+    go('stand', 1.0);
+    idle(); go('run', 1.4, (i) => { if (i === 0) input.hold('KeyW'); if (i === 60) input.release('KeyW'); });
+    idle(); go('sprint', 1.4, (i) => { if (i === 0) { input.hold('KeyW'); input.hold('ShiftLeft'); } if (i === 60) { input.release('KeyW'); input.release('ShiftLeft'); } });
+    idle(); go('roll', 1.0, (i) => { if (i === 0) { input.hold('KeyW'); p._buffer('roll'); } if (i === 6) input.release('KeyW'); });
+    idle(); go('backstep', 0.9, (i) => { if (i === 0) p._buffer('roll'); });
+    idle(); go('heal', 1.8, (i) => { if (i === 0) { p.flasks = p.maxFlasks; p.hp = 1; p._buffer('heal'); } });
+    idle(); go('chain', 3.4, (i) => { if (i % 6 === 0 && i < 170) p._buffer('light'); });
+    for (const h of HEAVY) { idle(); go(h.name, h.windup + h.active + h.recovery + 0.35, (i) => { if (i === 0) p._startAttack(h); }); }
+    idle(); go('sprintSlash', 1.0, (i) => { if (i === 0) p._startAttack(SPRINT_ATK); });
+    idle(); go('charge', 2.8, (i) => { if (i === 0) input.press(2); if (i === 80) input.up(2); });
+    idle(); go('stagger', 0.8, (i) => { if (i === 0) p._enter('stagger', 'stagger', 0.05); });
+    idle(); go('guardBreak', 1.1, (i) => { if (i === 0) p._enter('stagger', 'guardBreak', 0.07); });
+    idle(); go('knockdown', 2.0, (i) => { if (i === 0) p._enter('knockdown', 'knockdown', 0.05); });
+    const kinds = Object.entries(st.pierceBy).map(([k, n]) => `${k} ${n}`).join(', ');
+    assert(st.bad === 0 && st.fist === 0 && st.inBody === 0 && st.low >= -0.01 && st.turn <= 0.51,
+      `${id} through ${st.frames} frames (stand, run, sprint, roll, backstep, heal, the chain, five heavies, the sprint slash, the charge and its cleave, a stagger, a guard break, a knockdown): the rig finite (${st.bad} bad), no free hand drawn and none on the grip (${st.fist}), the plate's centre never in his ribs (${st.inBody}), its corners above the grass (lowest ${st.low.toFixed(3)} m in ${st.lowIn} ≥ -0.01), its turn ≤ ${st.turn.toFixed(2)} rad a frame (≤ 0.51)`);
+    assert(st.pierce <= 12 && Object.values(st.pierceBy).every((n) => n <= 5), `${id}: the steel passes through the plate on ${st.pierce} of ${st.frames} frames (≤ 12, ≤ 5 in one clip${kinds ? `: ${kinds}` : ''})`);
+    // (D) the held guard: the shield before him, its face to the foe, the sword hand behind it
+    {
+      idle();
+      input.press(1);
+      for (let i = 0; i < 40; i++) G.tick(DT);
+      p.object3d.updateMatrixWorld(true);
+      v.set(0, 0, S.off);
+      J.localToWorld(v);
+      p.object3d.worldToLocal(v);
+      w.set(0, 0, 1).transformDirection(J.matrixWorld).transformDirection(m4.copy(p.object3d.matrixWorld).invert());
+      const grip = new THREE.Vector3().setFromMatrixPosition(r.sword.matrixWorld);
+      p.object3d.worldToLocal(grip);
+      const blocking = p.state === 'block';
+      input.up(1);
+      assert(blocking && v.z >= 0.2 && v.y >= 1.0 && v.y <= 1.6 && Math.abs(v.x) <= 0.2 && w.z >= 0.6 && grip.z < v.z - 0.12,
+        `${id}: the held guard is the shield: the plate ${v.z.toFixed(2)} m before him (≥ 0.2) at ${v.y.toFixed(2)} m, ${v.x.toFixed(2)} m off his middle (≤ 0.2), its face to the foe (${w.z.toFixed(2)} ≥ 0.6), the sword hand ${(v.z - grip.z).toFixed(2)} m behind it (≥ 0.12)`);
+    }
+    // (E) the parry: the clash is drawn on the shield (no blade to meet: the wyrm's claw)
+    {
+      idle();
+      const fx0 = Math.sin(p.yaw), fz0 = Math.cos(p.yaw);
+      let ev = null;
+      G.watch = (n, dd) => { if (n === 'player:parry') ev = dd; };
+      const g0 = p.guard = Math.max(1, p.maxGuard - 30);
+      p._parry('normal', 'test', p.position.x + fx0 * 2, p.position.z + fz0 * 2, false, false, null);
+      const state = p.state, clash = p._v.clone();
+      p.object3d.updateMatrixWorld(true);
+      v.set(0, 0, S.off);
+      J.localToWorld(v);
+      const gap = clash.distanceTo(v);
+      G.watch = null;
+      for (let i = 0; i < 40; i++) G.tick(DT);
+      assert(state === 'parry' && !!ev && gap <= 0.12 && p.guard > g0, `${id}: a parry is the shield's: state ${state}, the clash ${gap.toFixed(2)} m from the plate's middle (≤ 0.12), guard given back as before (${g0.toFixed(0)} → ${p.guard.toFixed(0)})`);
+    }
+    // (F) the heavies and the charged cleave still connect, in one hand, from 2.5 m
+    {
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      const stand = (gap) => {
+        const c = chest();
+        p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+        p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+        aimAt(G);
+      };
+      const miss = [];
+      p.debug.god = true;
+      for (const h of [...HEAVY, null]) {
+        d.hp = d.maxHp;
+        d.posture = 0;
+        input.up(2);
+        p.atk = null;
+        p._enter('idle', 'loco', 0.05);
+        run(G, 0.6, { passive: true });
+        settle(G);
+        stand(2.5);
+        let hit = false;
+        G.watch = (n) => { if (n === 'player:hitDragon') hit = true; };
+        if (h) {
+          p._startAttack(h);
+          run(G, 1.4, { passive: true });
+        } else {
+          input.press(2);
+          run(G, 1.3, { passive: true });
+          aimAt(G);
+          input.up(2);
+          run(G, 1.0, { passive: true });
+        }
+        G.watch = null;
+        if (!hit) miss.push(h ? h.name : 'cleave');
+      }
+      assert(!miss.length, `${id}: the five heavies and the charged cleave connect from 2.5 m, swung in one hand (missed: ${miss.join(', ') || 'none'})`);
+    }
+  }
+  return last;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
   gate: scenarioGate,
   hero: scenarioHero,
+  shield: scenarioShield,
   batch: scenarioBatch,
   seen: scenarioSeen,
   zoomart: scenarioZoomArt,

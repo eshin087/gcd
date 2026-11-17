@@ -531,6 +531,12 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   // HAIR_CLUSTERS names; the hood keeps the cap and the fringe), `hidesHair` = none of it (a
   // closed helm). The hair joints stay either way (the animator springs them)
   const worn = resolveLoadout(loadout);
+  // the shield joint on the free forearm, for an `offhand` item to hang a shield on (gear/README.md):
+  // its Y is the forearm's own line, +Z the way the shield faces, −X the shield's top; the animator
+  // turns it about Y only (anim.js _shield). Built only when something is worn there: every object
+  // made here draws its uuid from Math.random, and one more on every rig moved the seeded random
+  // numbers of the whole fight (a wyrm string's contact in scenario TIMING landed 33 ms later)
+  if (worn.some(({ slot, item }) => slot === 'offhand' && item)) arms.L.shield = joint(arms.L.fore, 0, -DIM.shieldAt, 0);
   const headItem = worn.find(({ slot }) => slot === 'head')?.item;
   const hairKeep = headItem?.hidesHair ? new Set() : Array.isArray(headItem?.hair) ? new Set(headItem.hair) : null;
   const hairOn = (name) => !hairKeep || hairKeep.has(name);
@@ -557,7 +563,8 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     mesh(head, ellipsoidGeometry(0.012, 0.024, 0.018, { widthSegs: 6, heightSegs: 4 }), faceMat, sx - 0.08, sy - 0.014, sz - 0.008);
     // the eyes: half-lidded almonds (smaller since Session 14: two large dark holes in a pale face
     // under the hood read as a skull's sockets)
-    if (!shade) for (const ex of [0.032, -0.032]) mesh(head, ellipsoidGeometry(0.014, 0.0065, 0.005, { widthSegs: 8, heightSegs: 4 }), M.eye, sx + ex, sy - 0.012, sz + 0.09);
+    // (`blankFace` on a head item: a lit face with no features, the abyss look's: no eyes either)
+    if (!shade && !headItem?.blankFace) for (const ex of [0.032, -0.032]) mesh(head, ellipsoidGeometry(0.014, 0.0065, 0.005, { widthSegs: 8, heightSegs: 4 }), M.eye, sx + ex, sy - 0.012, sz + 0.09);
     if (hairOn('cap')) mesh(head, partGeometry('hair.cap'), M.hair);
   }
   for (const c of HAIR_CLUSTERS) {
@@ -571,7 +578,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   // each equipped item hangs its meshes on the skeleton (gear/README.md: the item contract) and
   // may hand back the handles the animator needs
   const skeleton = { root, body, pelvis, spine, chest, head, arms, legs, pauldron, sword };
-  const handles = { coat: [], streamers: [], keep: [], gem: null, flask: null, offHand: null };
+  const handles = { coat: [], streamers: [], keep: [], gem: null, flask: null, offHand: null, shield: null };
   const equipped = {};
   for (const { slot, item } of worn) {
     equipped[slot] = item ? item.id : null;
@@ -583,6 +590,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     if (h?.gem) handles.gem = h.gem;
     if (h?.flask) handles.flask = h.flask;
     if (h?.offHand) handles.offHand = h.offHand;
+    if (h?.shield) handles.shield = h.shield;
   }
   // what an empty slot leaves the animator and the player (they read these every frame): no coat
   // panels, no streamers, the gem's marker joint at its usual spot on the weapon joint (its glow
@@ -610,6 +618,10 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     // sword hand, and (optional) the sword fingers; open and fingers hang on arms.L.wrist. The
     // animator shows one of them (`twoHand` and the grip gap, `hs`; gear/README.md)
     offHand: handles.offHand,
+    // { joint, half: [w, h], off } | null: the shield on the free forearm (an `offhand` item's
+    // handle). With one the animator plays the sword-and-shield clips (anim.js `shield`): no hand
+    // joins the grip, the guard and the parry are the shield's
+    shield: handles.shield && arms.L.shield ? { ...handles.shield, joint: arms.L.shield } : null,
     loadout: equipped,
     slots,
     materials: M,

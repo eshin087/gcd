@@ -2,6 +2,8 @@ import { DEFAULT_LOADOUT } from './index.js';
 import { MOON_LOADOUT, MOON_SHADED_LOADOUT, MOON_TINT } from './moon.js';
 import { SWALLOW_LOADOUT, SWALLOW_SHADED_LOADOUT, SWALLOW_TINT } from './swallow.js';
 import { WARDEN_LOADOUT, WARDEN_SHADED_LOADOUT, WARDEN_TINT } from './warden.js';
+import { ABYSS_LOADOUT, ABYSS_TINT } from './abyss.js';
+import { TRAVELER_LOADOUT, TRAVELER_TINT } from './traveler.js';
 
 // The hero's OUTFIT OPTIONS (ADR-089; kept for later use: the owner, 2026-11-14, "keep the new skins
 // for now to be used in the future", with today's look as the default): each look is a
@@ -22,6 +24,10 @@ export const HERO_LOOKS = Object.freeze({
   'swallow-shade': Object.freeze({ id: 'swallow-shade', name: 'Swallow (shaded)', loadout: SWALLOW_SHADED_LOADOUT, tint: SWALLOW_TINT, of: 'swallow' }),
   warden: Object.freeze({ id: 'warden', name: 'Moon Warden', loadout: WARDEN_LOADOUT, tint: WARDEN_TINT }),
   'warden-shade': Object.freeze({ id: 'warden-shade', name: 'Warden (shaded)', loadout: WARDEN_SHADED_LOADOUT, tint: WARDEN_TINT, of: 'warden' }),
+  // the sword-and-shield looks (the owner's two concept sheets, 2026-11-16; for review: the pick
+  // becomes the default). `?heroLook=abyss` / `?heroLook=traveler`
+  abyss: Object.freeze({ id: 'abyss', name: 'A · Abyss (shield)', loadout: ABYSS_LOADOUT, tint: ABYSS_TINT, shield: true }),
+  traveler: Object.freeze({ id: 'traveler', name: 'B · Wanderer (shield)', loadout: TRAVELER_LOADOUT, tint: TRAVELER_TINT, shield: true }),
 });
 export const DEFAULT_LOOK = 'shroud';
 export const LOOK_IDS = Object.keys(HERO_LOOKS);

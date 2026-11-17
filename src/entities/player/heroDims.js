@@ -20,6 +20,9 @@ export const DIM = {
   skull: [0, 0.14, 0.005], // skull centre above the head joint (1.675 m; chin 1.57, crown 1.775)
   upperArm: 0.28,
   foreArm: 0.27, // elbow → grip centre
+  // the shield joint on the LEFT forearm, this far below the elbow (rig.arms.L.shield: a shield's
+  // centre; the fist on its handle is at the wrist, the strap by the elbow)
+  shieldAt: 0.15,
   thigh: 0.43,
   shin: 0.42,
   ankle: 0.07, // ankle height with the foot flat on the ground

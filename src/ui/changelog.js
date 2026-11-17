@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-16',
+        title: 'Sword and shield: two new looks for the hero, to pick from',
+        notes: [
+          'The hero can carry a shield. Two new looks wear one: a robed figure with a blank face, silver hair and a tall kite shield, and a hooded wanderer with a short cloak and a heater shield. Today\'s look is still the default while one is picked.',
+          'With a shield, holding block raises it in front of you, and a parry is a swat of the shield. Heavy attacks and the charged attack are swung in one hand.',
+          'Nothing about the fight changes: timings, damage, reach and the guard meter are the same.',
+        ],
+      },
+      {
+        date: '2026-11-16',
         title: 'The wyrm burns in phase 3, the forest breaks, the letters follow the zoom',
         notes: [
           'In its third phase the Cinder Wyrm sets itself on fire: wing tips, claws and tail burn, and fast moves leave arcs and ribbons of flame. Its attacks hurt as much as before, and its burning footprints do not hurt at all.',
