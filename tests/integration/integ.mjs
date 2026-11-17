@@ -9815,7 +9815,7 @@ async function scenarioMotionAudit() {
           for (const [nm, a, b, rad] of caps) {
             if (nm === 'armL' || nm === 'foreL') continue;
             const e = segDist(tmp, tmp, a, b) - rad;
-            if (e < st.plateBody) { st.plateBody = e; st.plateBodyAt = `${nm}@${i}`; }
+            if (e < st.plateBody) { st.plateBody = e; st.plateBodyAt = `${nm}@${i}`; if (process.env.ABYSS_AUDIT_D) out(`      worst ${i} ${nm} pt ${x.toFixed(2)},${y.toFixed(2)} a ${A.shieldS.a.toFixed(2)} e ${e.toFixed(2)}`); }
           }
         }
         st.plateLow = Math.min(st.plateLow, low);
@@ -9830,8 +9830,8 @@ async function scenarioMotionAudit() {
           const hw = S.half[0] * (x > 0 ? Math.max(0.15, 1 - (x / S.foot) ** 1.5) : 1);
           const cx = Math.min(Math.max(x, -S.top), S.foot), cy = Math.min(Math.max(y, -hw), hw);
           const e = Math.hypot(x - cx, y - cy, z) - 0.015;
-          if (e < st.plateSteel) st.plateSteel = e;
-          if (pz != null && (pz > 0) !== (z > 0) && x > -S.top + 0.02 && x < S.foot - 0.03 && Math.abs(y) < hw - 0.02) { st.pierce++; break; }
+          if (e < st.plateSteel) { st.plateSteel = e; st.psAt = `${i}:${(k / 16).toFixed(2)}${p.atk ? ` ${p.atk.def.name}#${A.variant ?? A.varK ?? "?"} u${(p.atk.t / p.atk.def.windup).toFixed(2)}` : ''}`; }
+          if (pz != null && (pz > 0) !== (z > 0) && x > -S.top + 0.02 && x < S.foot - 0.03 && Math.abs(y) < hw - 0.02) { st.pierce++; st.pierceAt = (st.pierceAt ?? '') + ` ${i}`; break; }
           pz = z;
         }
       }
@@ -9872,6 +9872,15 @@ async function scenarioMotionAudit() {
         } else prev[k] = now[k].clone();
       }
       st.point = Math.min(st.point, tip.y);
+      if (process.env.ABYSS_AUDIT_D && S && i >= 34 && i <= 39) {
+        const La = r.arms.L, a = A.shieldS.a, x = S.foot, z = S.off;
+        const g = new THREE.Vector3(x * Math.cos(a) + z * Math.sin(a), 0, -x * Math.sin(a) + z * Math.cos(a));
+        g.y -= DIM.shieldAt; g.applyQuaternion(La.fore.quaternion); g.y -= DIM.upperArm; g.applyQuaternion(La.upper.quaternion).add(La.upper.position);
+        const w = new THREE.Vector3(x, 0, z); J.localToWorld(w); r.chest.worldToLocal(w);
+        const pe = r.chest.worldToLocal(r.pelvis.getWorldPosition(new THREE.Vector3()));
+        out(`      cmp ${i} guard ${g.toArray().map((v) => v.toFixed(2))} real ${w.toArray().map((v) => v.toFixed(2))} pelvis ${pe.toArray().map((v) => v.toFixed(2))} push ${A.shieldPush.toArray().map((v) => v.toFixed(2))}`);
+      }
+      if (process.env.ABYSS_AUDIT_D && i % 4 === 0) out(`      ${i} push ${A.shieldPush?.toArray().map((x) => x.toFixed(2))} plateBody ${st.plateBody.toFixed(2)} ${st.plateBodyAt}`);
     }
     rows.push(st);
   }
@@ -9890,11 +9899,15 @@ async function scenarioMotionAudit() {
   clip('turn run', 2, null, (i) => { if (i === 0) input.hold('KeyW'); if (i === 40) { input.release('KeyW'); input.hold('KeyS'); } if (i === 90) input.release('KeyS'); }, false);
   clip('roll', 1.1, null, (i) => { if (i === 0) { input.hold('KeyW'); p._buffer('roll'); } if (i === 6) input.release('KeyW'); });
   clip('backstep', 0.9, null, (i) => { if (i === 0) p._buffer('roll'); });
-  for (const L of LIGHT) clip(`light ${L.name}`, L.windup + L.active + L.recovery + 0.3, () => p._startAttack(L));
+  // every look of every swing (anim.forceVariant: 0 = its `anim`, then its `variants`)
+  const looks = (D) => [D.anim, ...(D.variants ?? [])].map((a, v) => [a?.clip ?? D.name, v]);
+  for (const L of LIGHT) for (const [cn, v] of looks(L)) clip(`${cn}`, L.windup + L.active + L.recovery + 0.3, () => { A.forceVariant = v; p._startAttack(L); });
+  A.forceVariant = null;
   clip('light chain', 3.4, null, (i) => { if (i % 6 === 0 && i < 170) p._buffer('light'); });
-  for (const H of HEAVY) clip(`heavy ${H.name}`, H.windup + H.active + H.recovery + 0.35, () => p._startAttack(H));
-  clip('sprint slash', 1.0, () => p._startAttack(SPRINT_ATK));
-  if (ROLL_ATK) clip('roll slash', 1.0, () => p._startAttack(ROLL_ATK));
+  for (const H of HEAVY) for (const [cn, v] of looks(H)) clip(`${cn}`, H.windup + H.active + H.recovery + 0.35, () => { A.forceVariant = v; p._startAttack(H); });
+  A.forceVariant = null;
+  clip('sprintSlash', 1.0, () => p._startAttack(SPRINT_ATK));
+  if (ROLL_ATK) clip('rollCut', 1.0, () => p._startAttack(ROLL_ATK));
   clip('charge+cleave', 2.8, null, (i) => { if (i === 0) input.press(2); if (i === 90) input.up(2); });
   clip('guard', 1.4, null, (i) => { if (i === 0) input.press(1); if (i === 60) input.up(1); });
   clip('guard hits', 1.6, null, (i) => { if (i === 0) input.press(1); if (i === 20 || i === 50) p.takeHit({ damage: 10, tell: TELL.NORMAL, attack: 'bite', from: { x: p.position.x, z: p.position.z + 3 }, attacker: d, knockback: 1.5 }); if (i === 85) input.up(1); });
@@ -9912,7 +9925,7 @@ async function scenarioMotionAudit() {
   const cm = (x) => String(Math.round(x * 100)).padStart(3);
   out('   clip               steel gap (where)    plate-steel pierce  plate-body (where)   elbow min R/L back R/L  wrist      grip  jump cm grip/pt/plate/elR/elL/head  jerk cm (same)         point plateLow');
   for (const s of rows) {
-    out(`   ${s.name.padEnd(18)} ${f2(s.steel).padStart(5)} ${s.steelAt.padEnd(12)} ${f2(s.plateSteel).padStart(6)} ${String(s.pierce).padStart(5)}  ${f2(s.plateBody).padStart(5)} ${s.plateBodyAt.padEnd(12)} ${s.elbowMin.map((x) => x.toFixed(0).padStart(3)).join('/')}  ${s.elbowBack.map((x) => String(x).padStart(2)).join('/')}  ${s.wrist.map((x) => x.toFixed(0).padStart(3)).join('-')}  ${f2(s.gripGap)}  ${track.map((k) => cm(s.jump[k])).join(' ')}   ${track.map((k) => cm(s.jerk[k])).join(' ')}   ${f2(s.point)} ${f2(s.plateLow)}${s.bad ? `  BAD ${s.bad}` : ''}`);
+    out(`   ${s.name.padEnd(18)} ${f2(s.steel).padStart(5)} ${s.steelAt.padEnd(12)} ${f2(s.plateSteel).padStart(6)} ${String(s.pierce).padStart(5)}  ${f2(s.plateBody).padStart(5)} ${s.plateBodyAt.padEnd(12)} ${s.elbowMin.map((x) => x.toFixed(0).padStart(3)).join('/')}  ${s.elbowBack.map((x) => String(x).padStart(2)).join('/')}  ${s.wrist.map((x) => x.toFixed(0).padStart(3)).join('-')}  ${f2(s.gripGap)}  ${track.map((k) => cm(s.jump[k])).join(' ')}   ${track.map((k) => cm(s.jerk[k])).join(' ')}   ${f2(s.point)} ${f2(s.plateLow)}${s.bad ? `  BAD ${s.bad}` : ''}${process.env.ABYSS_AUDIT_V ? `  [steel-plate @${s.psAt}${s.pierceAt ? ` pierce${s.pierceAt}` : ''}]` : ''}`);
   }
   assert(rows.every((s) => s.bad === 0), `the rig finite through every clip (${rows.filter((s) => s.bad).map((s) => s.name).join(', ') || 'ok'})`);
   return G;

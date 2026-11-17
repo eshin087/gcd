@@ -1825,6 +1825,20 @@ function healPose(p, A) {
   const t = A.t;
   const raise = smoothstep(0.02, 0.27, t) * (1 - smoothstep(0.66, 0.84, t));
   const drink = smoothstep(0.27, 0.38, t) * (1 - smoothstep(0.56, 0.68, t));
+  if (A.shield) {
+    // the flask hangs on the SHIELD arm: the forearm comes up beside his face from the left, the
+    // elbow high and out, so the plate stands off his left cheek facing out (raised before his face
+    // it hid the drink and his head); the head turns and tips to the flask
+    to3(p, P.lH, -0.02, -0.06, 0.3, raise);
+    to3(p, P.lH, -0.06, 0.12, 0.2, drink);
+    to3(p, P.lP, 0.8, -0.45, -0.2, raise);
+    to3(p, P.lP, 1, 0.3, 0.1, drink);
+    p[P.hdX] = lerp(p[P.hdX], -0.3, drink);
+    p[P.hdY] = lerp(lerp(p[P.hdY], 0, raise), 0.3, drink);
+    p[P.spX] = lerp(p[P.spX], -0.02, drink);
+    p[P.flask] = smoothstep(0.0, 0.1, t) * (1 - smoothstep(0.74, 0.85, t));
+    return;
+  }
   to3(p, P.lH, -0.15, 0.08, 0.28, raise);
   to3(p, P.lH, -0.18, 0.15, 0.19, drink);
   to3(p, P.lP, 0.7, -0.5, -0.3, raise);
@@ -2763,6 +2777,16 @@ const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vect
 // it turns in a frame (rad), how much of his front is mixed into "away from the body", and the
 // heights (m, the plate's centre) between which its face turns up to the sky
 const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, low: [0.28, 0.58] };
+// The plate never passes through his body, his hood or the ground (_shieldClear): its outline is kept
+// `torso` / `head` / `thigh` m from those bones' lines (the body's own radius and the cloth over it,
+// plus the plate's rim) and `ground` m above the grass. A pose that asks for less gets the fist moved
+// out by the gap, eased in at `rise` and out at `fall` (/s) so a clip that brushes past never pops.
+const SHIELD_CLEAR = { torso: 0.2, head: 0.19, thigh: 0.12, ground: 0.04, rise: 60, fall: 9 };
+const SHIELD_PTS = [[0, 0], [-1, 0], [1, 0], [0, 1], [0, -1], [-0.5, 0.8], [-0.5, -0.8], [0.5, 0.5], [0.5, -0.5]];
+const _sT0 = new THREE.Vector3(), _sP = new THREE.Vector3(), _sA = new THREE.Vector3(), _sB = new THREE.Vector3();
+const _sC = new THREE.Vector3(), _sN = new THREE.Vector3(), _sPush = new THREE.Vector3(), _sQ = new THREE.Quaternion();
+const _sHead = new THREE.Vector3(), _sPel = new THREE.Vector3(), _sTop = new THREE.Vector3(), _sUp = new THREE.Vector3();
+const _sTh = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
 const TWO_HAND_GRIP = DIM.offGrip; // m down the grip from the sword hand to the off hand (two-handed)
 // THE FREE HAND (the hero only: opts.freeHand). Its wrist's range (rad: radial / ulnar deviation,
 // pronation / supination from the IK's neutral, flexion / extension), its spring (ω, ζ for the
@@ -2859,6 +2883,7 @@ export class HeroAnimator {
     // shieldS: the plate's turn about the forearm (a spring: a = angle, v = rate, t = its target)
     this.shield = this.freeHand && !!rig.shield?.joint;
     this.shieldS = { a: 0, v: 0, t: 0, ok: false };
+    this.shieldPush = new THREE.Vector3(); // chest space: _shieldClear's eased push of the fist
     this.rig = rig;
     this.player = player;
     this.poses = poses ? { ...POSES, ...poses } : POSES;
@@ -3622,7 +3647,9 @@ export class HeroAnimator {
       r.chest.worldToLocal(_G);
       _T.copy(_TL).lerp(_G, two);
     }
+    if (this.shield) _sT0.copy(_T); // (the fist's own target: _shieldClear solves again from it)
     this._arm(r.arms.L, _T, p, P.lP, false, two);
+    if (this.shield) this._shieldClear(r, p);
     // (before _wristLimit, which reuses _G) how far the free hand is from its place on the grip
     // (chest local, model metres: the measure of the tests' offGap)
     this.gripGap = two > 0.001 ? _end.distanceTo(_G) : 1;
@@ -3832,6 +3859,98 @@ export class HeroAnimator {
    * the face turns up, so the plate lies on the grass instead of standing in it. Through a spring
    * (SHIELD_TURN), on the scaled frame time. Allocates nothing, never throws.
    */
+  /** Push the shield arm out of his body, his hood and the ground (SHIELD_CLEAR): after the free arm
+   *  is solved for its pose (_T, chest space; _sT0 its own target), the plate's outline is measured
+   *  against the torso's, the head's and the thighs' lines and the grass; the push it needs eases in,
+   *  and the arm is solved again from its target moved by it. Allocates nothing, never throws. */
+  _shieldClear(r, p) {
+    const S = r.shield, L = r.arms.L, C = SHIELD_CLEAR, st = this.shieldPush, dt = this.frameDt;
+    if (!S?.joint) return;
+    const ch = r.chest;
+    // the bones, chest space (their world matrices are this frame's above the arms; the legs' last)
+    ch.worldToLocal(r.pelvis.getWorldPosition(_sPel));
+    _sTop.set(0, 0.2, 0);
+    r.head.localToWorld(_sHead.set(DIM.skull[0], DIM.skull[1], DIM.skull[2]));
+    ch.worldToLocal(_sHead);
+    ch.worldToLocal(r.legs.L.thigh.getWorldPosition(_sTh[0]));
+    ch.worldToLocal(r.legs.L.shin.getWorldPosition(_sTh[1]));
+    ch.worldToLocal(r.legs.R.thigh.getWorldPosition(_sTh[2]));
+    ch.worldToLocal(r.legs.R.shin.getWorldPosition(_sTh[3]));
+    this._shieldMeasure(r);
+    // ease toward it: in quickly, out slowly (a single frame jumps to it: a pose posed at once)
+    if (!(dt > 0)) st.copy(_sPush);
+    else {
+      const k = 1 - Math.exp(-(_sPush.lengthSq() > st.lengthSq() ? C.rise : C.fall) * dt);
+      st.lerp(_sPush, k);
+    }
+    if (!Number.isFinite(st.x + st.y + st.z)) st.set(0, 0, 0);
+    if (st.lengthSq() < 1e-6) return;
+    _T.copy(_sT0).add(st);
+    this._arm(L, _T, p, P.lP, false, 0);
+    // (the arm bends as the fist moves: what is still inside is pushed out at once, unless it is the
+    // eased push still on its way in)
+    if (_sPush.lengthSq() > 1e-6 && st.distanceToSquared(_sPush) < 1e-4) {
+      this._shieldMeasure(r);
+      if (_sPush.lengthSq() > 1e-4) {
+        st.add(_sPush);
+        _T.copy(_sT0).add(st);
+        this._arm(L, _T, p, P.lP, false, 0);
+      }
+    }
+  }
+
+  /** The push the plate needs this frame (_shieldClear: the bones in _sPel / _sTop / _sHead / _sTh,
+   *  the arm as solved) → _sPush, chest space. */
+  _shieldMeasure(r) {
+    const S = r.shield, L = r.arms.L, C = SHIELD_CLEAR, e = r.chest.matrixWorld.elements;
+    _sUp.set(e[1], e[5], e[9]);
+    const ul = _sUp.lengthSq(), us = Math.sqrt(ul);
+    _sPush.set(0, 0, 0);
+    const a = this.shieldS.a, ca = Math.cos(a), sa = Math.sin(a);
+    for (const [u, v] of SHIELD_PTS) {
+      // the outline point in the shield joint's frame (x: −top … +foot, y: ± half width), then chest
+      const x = u < 0 ? u * S.top : u * S.foot, y = v * S.half[0] * (u > 0.4 ? 0.6 : 1), z = S.off;
+      _sP.set(x * ca + z * sa, y, -x * sa + z * ca);
+      _sP.y -= DIM.shieldAt;
+      _sP.applyQuaternion(L.fore.quaternion);
+      _sP.y -= DIM.upperArm;
+      _sP.applyQuaternion(L.upper.quaternion).add(L.upper.position);
+      _sP.add(_sPush); // (as the push so far moves it)
+      this._clearCap(_sP, _sPel, _sTop, C.torso);
+      this._clearCap(_sP, _sHead, _sHead, C.head);
+      this._clearCap(_sP, _sTh[0], _sTh[1], C.thigh);
+      this._clearCap(_sP, _sTh[2], _sTh[3], C.thigh);
+      if (ul > 1e-8) {
+        // world height (the chest's scale: e's columns carry it)
+        const h = (e[1] * _sP.x + e[5] * _sP.y + e[9] * _sP.z + e[13]) / us;
+        const need = C.ground / us - h / us;
+        if (need > 0) {
+          _sN.copy(_sUp).multiplyScalar(1 / us);
+          _sPush.addScaledVector(_sN, need);
+        }
+      }
+    }
+    if (!Number.isFinite(_sPush.x + _sPush.y + _sPush.z)) _sPush.set(0, 0, 0);
+    if (_sPush.lengthSq() > 0.25) _sPush.setLength(0.5);
+  }
+
+  /** _shieldClear's push for one point `q` (chest space; moved by it): out of the capsule a → b of
+   *  radius `rad` along the shortest way, added to _sPush. */
+  _clearCap(q, a, b, rad) {
+    _sA.subVectors(b, a);
+    const l2 = _sA.lengthSq();
+    const t = l2 > 1e-8 ? clamp(_sB.subVectors(q, a).dot(_sA) / l2, 0, 1) : 0;
+    _sC.copy(a).addScaledVector(_sA, t);
+    _sN.subVectors(q, _sC);
+    const d = _sN.length();
+    if (!(d < rad)) return;
+    if (d > 1e-5) _sN.multiplyScalar(1 / d);
+    else _sN.set(1, 0, 0);
+    const need = rad - d;
+    _sPush.addScaledVector(_sN, need);
+    q.addScaledVector(_sN, need);
+  }
+
   _shield(r) {
     const J = r.shield?.joint, L = r.arms.L, S = this.shieldS;
     if (!J) return;
