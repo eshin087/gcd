@@ -4,7 +4,38 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty pieces of work since 0.4.0:
+Fifty-one pieces of work since 0.4.0:
+- **The Ash Disciple and the Starless Lord fight harder, in arenas that break** (2026-11-16, ADR-122). *Changed:* both human bosses give far fewer pauses and
+  their moves flow into each other, at the same damage per hit: against a hero who only defends,
+  Shen Hui gives about 78 / 92 / 99 tells a minute by phase (60 / 76 before, in two
+  phases) and the Starless Lord 83 / 91 / 98 / 109 by form (71 / 80 / 75 / 85). A move now follows the last
+  one by where you are standing, and starts while he would have been walking back to his guard;
+  your own openings (after a parried last blow, a stagger, a break) are as long as before. Two
+  attacks that need different answers never land within a third of a second of each other: a blow
+  waits at its cock, or a strike comes late, instead (the Lord had about three such overlaps a
+  minute before). Thrown pieces (the kicked lantern, Void Hurl, Glass Rain) show no mark on the
+  ground: the flash on the flying piece is the cue. A white or blue blow out of the Lord's blink
+  can be guarded from any side. *Added:* **Shen Hui has a third phase**, from 36 % health: ash on
+  the wind. He vanishes into ash between blows and strikes from another side, leaves afterimages,
+  has an eleven-blow flurry and a storm of sword qi. Sixteen new moves across his phases: strings
+  with a glide, a kick or a spin that travels, a feint from the other side, a nine-blow string that
+  catches a hero who steps back, and in phase 2 cuts that leave lines of fire on the stones (step
+  off them: a held guard holds for about a second and a half, then opens; it never costs health).
+  **The Starless Lord casts inside his strings:** bolts between cuts, a pull into the string, the
+  off blade thrown as a wheel and caught, stones that orbit him and fire in the string's pauses,
+  blink strings, and in his last form strikes of the Starless Sky that keep falling in ones and twos
+  and Starless Night, three waves across the whole crater. Nineteen new moves across his forms.
+  Both bosses use the floor: flagstones levered up and kicked, plates torn up in a line, a ring of
+  plates lifted and dropped. **Both arenas break:** the paving and the crater's plates crack and
+  shatter under heavy blows, the courtyard's two colossi can be cut down (onto either fighter), and
+  the wreckage stays for the rest of the fight. Effects with bodies: the Kindling, ground shocks,
+  sword qi, the Dark Star, each form's ignition. The bosses' bodies show the fight: Shen Hui's hem
+  smoulders in phase 2 and he loses his hat in phase 3; the Lord's cape tears form by form and his
+  faceplate splits in the last. The Lab has a LOOKS section. *Fixed:* the Lord's flurry was always
+  four blows whatever its count; one bite of the wyrm (Furnace Maw) was cued up to a tenth of a
+  second early on one side. Every look is the owner's pick from rendered options; `?looks=old`
+  shows the effects and floors as they were, and each switch (`?qi=`, `?star=`, `?ashLook=` and the
+  others in docs/STYLE.md) shows a look that was turned down.
 - **The wyrm burns in phase 3, the forest breaks, the letters follow the zoom** (2026-11-16, ADR-120).
   *Added:* in its third phase the Cinder Wyrm sets itself on fire. The phase 3 roar ends with fire
   running out along its wings, legs and tail; from then on its wing tips, claws and tail burn, and
