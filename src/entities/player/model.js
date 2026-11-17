@@ -257,7 +257,7 @@ export const HERO_INK = {
   // the shield: a dark crystal face with faint facets, a silver double-line rim
   // (round 3: the face one smooth dark grey-lavender per facet, alternate facets a shade apart, faint
   // facet lines; the frame a mid-grey silver band between two bright lines, its bevel darker)
-  abShield: { part: 15, ownOnly: true, fill: [0.42, 0.42, 0.5], spec: 0.9, rim: 0.3, own: { flat: true, fillGain: 0.13, subShade: 0.35, line: [0.62, 0.62, 0.8, 0.7] } },
+  abShield: { part: 15, ownOnly: true, fill: [0.42, 0.42, 0.5], spec: 0.9, rim: 0.3, own: { flat: true, fillGain: 0.07, subShade: 0.35, haloOn: true, line: [0.62, 0.62, 0.8, 0.7] } },
   abRim: { part: 16, ownOnly: true, fill: [0.62, 0.63, 0.72], spec: 1.0, rim: 0, own: { bold: true, flat: true, fillGain: 0.42, subShade: 0.4 } },
   // the hilt's metal (guard, pommel, the shield's boss): silver
   abMetal: { part: 17, ownOnly: true, fill: [0.6, 0.6, 0.7], spec: 1.0, rim: 0, own: { flat: true, fillGain: 1.4 } },
@@ -468,7 +468,7 @@ export function createHeroMaterials(U) {
     ownInk?.[h.part]?.set(ol[0], ol[1], ol[2], ol[3]);
     // (own .z: a flat part's shade on its sub-id 1 pieces, `own.subShade`: alternate hair locks
     // one lit, the next in shade; the own pass reads no farLine)
-    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0) + (h.merge ? 128 : 0), h0.own?.subShade ?? 0, h.farFill ?? 1);
+    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0) + (h.merge ? 128 : 0) + (h.haloOn ? 256 : 0), h0.own?.subShade ?? 0, h.farFill ?? 1);
     ownRim?.[h.part]?.set(orl[0], orl[1], orl[2], orl[3]);
   }
   const M = {};

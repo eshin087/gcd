@@ -707,7 +707,9 @@ export class Pipeline {
             if (o1 && heroOwnGlows(a1)) c1 += 1.0;
             if (o2 && heroOwnGlows(a2)) c2 += 1.0;
           }
-          return uHeroOwnGlow.rgb * max(min(n1 * 0.5, 1.0), 0.45 * min(n2 * 0.5, 1.0))
+          // (where the band is 1 px, a phone, the ring is half as strong again)
+          float thin = mix(0.5, 1.0, clamp((clamp(uHeroOwnPxM / max(uHeroOwnSil.w, 1.0), 1.0, uHeroOwnSil.x) - 1.0) / 0.4, 0.0, 1.0));
+          return uHeroOwnGlow.rgb * (thin * max(min(n1 * 0.5, 1.0), 0.45 * min(n2 * 0.5, 1.0)))
             + uHeroOwnHalo.rgb * (uHeroOwnHalo.w * max(min(c1 * 0.4, 1.0), 0.4 * min(c2 * 0.4, 1.0)));
         }
         // ---- the hero seen through what covers him (ADR-106). tSeen holds only the pixels of him
@@ -877,6 +879,20 @@ export class Pipeline {
                     // (own fill .z: the shade of the part's sub-id 1 pieces: alternate hair locks)
                     float subK = mod(heroIdOf(pHero ? sP.a : aC), 2.0) * pf.z;
                     col = tone * (uHeroFill.y * mix(0.8, 1.0, vf) * (1.0 - subK)) * pf.x * mix(1.0, uHeroLod.z * pf.w, far);
+                    // (own fill y + 256: the part takes a soft halo from the glowing parts on it: the
+                    // shield's face round its star; two rings of 8 taps, sized in metres on him)
+                    if (mod(floor(pf.y / 256.0), 2.0) > 0.5 && pHero) {
+                      float rr = max(1.0, 0.035 * uHeroOwnPxM * uHeroPx.x);
+                      float c1 = 0.0, c2 = 0.0;
+                      for (int i = 0; i < 8; i++) {
+                        float an = float(i) * 0.7853982;
+                        vec2 ov = vec2(cos(an), sin(an));
+                        float a1 = texture2D(tScene, (px + ov * rr) / uRes).a, a2 = texture2D(tScene, (px + ov * rr * 2.5) / uRes).a;
+                        if (isHero(a1) && heroOwn(a1) && heroOwnGlows(a1)) c1 += 1.0;
+                        if (isHero(a2) && heroOwn(a2) && heroOwnGlows(a2)) c2 += 1.0;
+                      }
+                      col += uHeroOwnHalo.rgb * (0.4 * min(c1 * 0.25, 1.0) + 0.22 * min(c2 * 0.2, 1.0));
+                    }
                   }
                 }
               }

@@ -30,7 +30,7 @@ export const SHIELD_SHAPES = {
   // straight side to the widest point, then one long straight taper to the foot; a slender star)
   kite: {
     h: 0.78, w: 0.45, at: 0.56, rim: 0.036,
-    star: { at: 0.6, r: [0.165, 0.23, 0.33], waist: 0.016 },
+    star: { at: 0.6, r: [0.19, 0.26, 0.37], waist: 0.02 },
     pts: [[0, 0.78], [0.2, 0.618], [0.225, 0.52], [0, 0]],
   },
 };
@@ -156,16 +156,16 @@ export function shieldGeometry(S) {
     }
   };
   const top = S.h * (1 - S.at), foot = -S.h * S.at, seg = (x0, y0, x1, y1, m) => Array.from({ length: m + 1 }, (_, k) => [lerp(x0, x1, k / m), lerp(y0, y1, k / m)]);
-  brace(seg(0, top - 0.07, 0, foot + 0.09, 8), 0.03);
-  brace(seg(-half + 0.06, cy, half - 0.06, cy, 8), 0.026);
+  brace(seg(0, top - 0.07, 0, foot + 0.09, 8), 0.014);
+  brace(seg(-half + 0.06, cy, half - 0.06, cy, 8), 0.012);
   const k = S.star.r;
   // the star: slender tapered rays (a long one down), four short diagonal rays and a bright core
   const star = mergeGeometries([
     starPlate(k[0], k[1], k[2], S.star.waist, 0.005, 0.012),
     starPlate(0.09, 0.09, 0.09, 0.008, 0.004, 0.006).rotateZ(Math.PI / 4).translate(0, 0, 0.001),
-    starPlate(0.04, 0.04, 0.04, 0.022, 0.006, 0.01).translate(0, 0, 0.002),
+    starPlate(0.055, 0.055, 0.055, 0.028, 0.006, 0.01).translate(0, 0, 0.002),
   ]).translate(0, cy, z(0, cy) + 0.022);
-  const g = { rim: soup(rim, (i) => rimSub[i]), face: soup(face, (i) => facet[i]), back: soup(back), braces: soup(braces), star };
+  const g = { rim: soup(rim, (i) => rimSub[i]), face: soup(face, (i) => facet[i]), back: soup(back), braces: soup(braces, () => 1), star };
   return g;
 }
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -181,7 +181,8 @@ function buildShield({ arms, M, DIM, BODY, mesh }, S) {
   mesh(J, onArm(G.rim), M.abRim);
   mesh(J, onArm(G.face), M.abShield);
   mesh(J, onArm(G.back), M.abShield);
-  mesh(J, onArm(G.braces), M.abMetal);
+  // (the braces in the plate's own dark, a shade apart: from behind they never read as a white bar)
+  mesh(J, onArm(G.braces), M.abShield);
   mesh(J, onArm(G.star), M.abCrystal);
   // the strap round the forearm by the elbow (joint space: +Y = toward the elbow) …
   const yE = 0.095, yW = -(DIM.foreArm - DIM.shieldAt) + 0.012, zb = SHIELD_OFF - TH - 0.006;
