@@ -9892,7 +9892,7 @@ async function scenarioMotionAudit() {
           if (prevD[k]) {
             const jk = c0.subVectors(dv, prevD[k]).length();
             if (jk > st.jerk[k]) { st.jerk[k] = jk; st.jerkAt[k] = i; }
-            if (process.env.ABYSS_AUDIT_D && k === 'plate' && jk > 0.05) out(`      pop ${i} plate jerk ${(jk * 100).toFixed(0)} cm, push ${A.shieldPush?.toArray().map((x) => x.toFixed(2))}, state ${p.state}`);
+            if (process.env.ABYSS_AUDIT_D && k === (process.env.ABYSS_AUDIT_K || 'plate') && jk > 0.05) out(`      pop ${i} plate jerk ${(jk * 100).toFixed(0)} cm, push ${A.shieldPush?.toArray().map((x) => x.toFixed(2))}, state ${p.state}`);
             prevD[k].copy(dv);
           } else prevD[k] = dv.clone();
           prev[k].copy(now[k]);

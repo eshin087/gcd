@@ -2767,6 +2767,7 @@ const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_
 //             eased in at tuckIn and out at tuckOut (/s): the swing limit (sheet, panel [upper,
 //             lower]) and × the lag and the flare
 const CLOTH = { share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.3, tuckPanel: [-0.3, -0.25], tuckLag: 0.8, tuckFlare: 0.8, tuckLying: 0 };
+const BLADE_LOCO_RATE = 0.09; // rad per 60 fps frame (apply(): the blade on the move)
 const _vm = new THREE.Vector3(), _vmS = new THREE.Vector3();
 // the coat's neighbours (gear's panel order: front-left, front-right, left side, right side)
 const COAT_PAIRS = [[0, 2], [1, 3]];
@@ -2805,7 +2806,7 @@ const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, low: [0.28, 0.58] };
 // `torso` / `head` / `thigh` m from those bones' lines (the body's own radius and the cloth over it,
 // plus the plate's rim) and `ground` m above the grass. A pose that asks for less gets the fist moved
 // out by the gap, eased in at `rise` and out at `fall` (/s) so a clip that brushes past never pops.
-const SHIELD_CLEAR = { torso: 0.2, head: 0.19, thigh: 0.16, ground: 0.04, rise: 60, fall: 9, step: 0.02 };
+const SHIELD_CLEAR = { torso: 0.2, head: 0.19, thigh: 0.16, ground: 0.04, rise: 60, fall: 9, step: 0.02, stepLying: 0.1 };
 const SHIELD_PTS = [[0, 0], [-1, 0], [1, 0], [0, 1], [0, -1], [-0.5, 0.8], [-0.5, -0.8], [0.5, 0.5], [0.5, -0.5]];
 const _sT0 = new THREE.Vector3(), _sP = new THREE.Vector3(), _sA = new THREE.Vector3(), _sB = new THREE.Vector3();
 const _sC = new THREE.Vector3(), _sN = new THREE.Vector3(), _sPush = new THREE.Vector3(), _sQ = new THREE.Quaternion();
@@ -3014,6 +3015,8 @@ export class HeroAnimator {
       side: new Int8Array(2 * COL_N), // per segment and collision sphere: 1 came from inside, −1 from outside, 0 away
     }));
     this.streamInit = false;
+    this.bzPrev = new THREE.Vector3(0, 0, 1); // apply(): last frame's blade direction (body space)
+    this.bzOk = false;
     this.tuck = 0; // 0..1: the cloth drawn in round him (CLOTH.tuck)
     this.coatPrev = rig.coat.map(() => new THREE.Vector3());
     this.coatVel = rig.coat.map(() => new THREE.Vector3());
@@ -3701,6 +3704,24 @@ export class HeroAnimator {
     }
     this._wristLimit(r);
     this._tipFloor(r);
+    // on the move (loco) the blade turns at most BLADE_LOCO_RATE a frame: a reversal at a run
+    // swung its point 17 cm in one frame (the leg clearance taking the other side of a crossing leg)
+    {
+      const B = this.bzPrev;
+      if (this.key === 'loco' && this.bzOk && this.frameDt > 0) {
+        const c = clamp(B.dot(_bz), -1, 1), a = Math.acos(c), mx = BLADE_LOCO_RATE * this.frameDt * 60;
+        if (a > mx && a < 3.1) {
+          _cD.copy(_bz).addScaledVector(B, -c);
+          const l = _cD.length();
+          if (l > 1e-6) {
+            _bz.copy(B).multiplyScalar(Math.cos(mx)).addScaledVector(_cD, Math.sin(mx) / l).normalize();
+            this._wristLimit(r); // (the wrist still wins)
+          }
+        }
+      }
+      B.copy(_bz);
+      this.bzOk = Number.isFinite(_bz.x + _bz.y + _bz.z);
+    }
     _by.set(p[P.swF], p[P.swF + 1], p[P.swF + 2]);
     _by.addScaledVector(_bz, -_by.dot(_bz));
     if (_by.lengthSq() < 1e-6) {
@@ -3904,14 +3925,15 @@ export class HeroAnimator {
     ch.worldToLocal(r.legs.R.shin.getWorldPosition(_sTh[3]));
     this._shieldMeasure(r);
     // ease toward it: in quickly, out slowly (a single frame jumps to it: a pose posed at once)
-    // (lying down the body falls faster than the push eases in: there it lands at once)
-    if (!(dt > 0) || LYING_KEYS.has(this.key)) st.copy(_sPush);
+    // (lying down the body falls faster than the push eases in: there it is quicker, C.stepLying)
+    const lyingNow = LYING_KEYS.has(this.key);
+    if (!(dt > 0)) st.copy(_sPush);
     else {
-      const k = 1 - Math.exp(-(_sPush.lengthSq() > st.lengthSq() ? C.rise : C.fall) * dt);
+      const k = lyingNow ? 1 : 1 - Math.exp(-(_sPush.lengthSq() > st.lengthSq() ? C.rise : C.fall) * dt);
       // (and never more than C.step a frame: two bones pushing opposite ways in turn, a striding
       // thigh and the torso, flipped it 10 cm a frame in a strafe)
       _sN.copy(_sPush).sub(st).multiplyScalar(k);
-      const mx = C.step * dt * 60;
+      const mx = (lyingNow ? C.stepLying : C.step) * dt * 60;
       if (_sN.lengthSq() > mx * mx) _sN.setLength(mx);
       st.add(_sN);
     }
