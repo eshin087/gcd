@@ -9815,7 +9815,7 @@ async function scenarioMotionAudit() {
           for (const [nm, a, b, rad] of caps) {
             if (nm === 'armL' || nm === 'foreL') continue;
             const e = segDist(tmp, tmp, a, b) - rad;
-            if (e < st.plateBody) { st.plateBody = e; st.plateBodyAt = `${nm}@${i}`; if (process.env.ABYSS_AUDIT_D) out(`      worst ${i} ${nm} pt ${x.toFixed(2)},${y.toFixed(2)} a ${A.shieldS.a.toFixed(2)} e ${e.toFixed(2)}`); }
+            if (e < st.plateBody) { st.plateBody = e; st.plateBodyAt = `${nm}@${i}`; }
           }
         }
         st.plateLow = Math.min(st.plateLow, low);
@@ -9899,15 +9899,6 @@ async function scenarioMotionAudit() {
         if (leg) st.clothLeg = (st.clothLeg ?? 0) + 1;
         if (pl) st.clothPlate = (st.clothPlate ?? 0) + 1;
       }
-      if (process.env.ABYSS_AUDIT_D && S && i >= 34 && i <= 39) {
-        const La = r.arms.L, a = A.shieldS.a, x = S.foot, z = S.off;
-        const g = new THREE.Vector3(x * Math.cos(a) + z * Math.sin(a), 0, -x * Math.sin(a) + z * Math.cos(a));
-        g.y -= DIM.shieldAt; g.applyQuaternion(La.fore.quaternion); g.y -= DIM.upperArm; g.applyQuaternion(La.upper.quaternion).add(La.upper.position);
-        const w = new THREE.Vector3(x, 0, z); J.localToWorld(w); r.chest.worldToLocal(w);
-        const pe = r.chest.worldToLocal(r.pelvis.getWorldPosition(new THREE.Vector3()));
-        out(`      cmp ${i} guard ${g.toArray().map((v) => v.toFixed(2))} real ${w.toArray().map((v) => v.toFixed(2))} pelvis ${pe.toArray().map((v) => v.toFixed(2))} push ${A.shieldPush.toArray().map((v) => v.toFixed(2))}`);
-      }
-      if (process.env.ABYSS_AUDIT_D && i % 4 === 0) out(`      ${i} push ${A.shieldPush?.toArray().map((x) => x.toFixed(2))} plateBody ${st.plateBody.toFixed(2)} ${st.plateBodyAt}`);
     }
     rows.push(st);
   }
