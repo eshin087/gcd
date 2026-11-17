@@ -135,7 +135,15 @@ export const TUNING = {
     // and Parting Wind now cue 1.8 - 2.0 a second and are picked more; seed 99 replays another fight:
     // P2 95.6 → 96.6, P3 98.7 → 95.9 cues a minute, P3 / P2 0.993: the per-seed P3 floor 1.0 → 0.99.
     // Five seeds' mean P3 / P2 1.073 → 1.067, still over rampMean)
-    meter: { ramp: [1, 1.08, 0.99], rampMean: [1, 1.12, 1.06], minRate: [70, 82, 92], maxGap: [3.4, 3.2, 2.9] },
+    // (the final build, ten seeds again: P1 73.5 - 81.2 (mean 77.8), P2 89.7 - 95.9 (92.9), P3 97.4 -
+    // 104.3 (100.0); P2 / P1 at least 1.134 per seed, 1.194 in the mean; P3 / P2 at least 1.018, 1.078
+    // in the mean; longest gap 3.07 / 2.92 / 2.65 s. The same seed replayed a different fight after
+    // each of three merges that day (a seed's phase moved by up to 5 %, one longest gap from 3.20 to
+    // 3.45 s), so the margins are set for that: about 8 % under the worst seed's ramp, 4 % under the
+    // mean's, 7 - 9 % under the slowest seed's rate, half a second over the longest gap. They still
+    // say what the pass promised: every phase busier than the one before, and phase 1 and 2 well
+    // over what they were before it (60 / 76))
+    meter: { ramp: [1, 1.05, 0.95], rampMean: [1, 1.14, 1.035], minRate: [68, 82, 90], maxGap: [3.6, 3.4, 3.15] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
@@ -235,7 +243,7 @@ export const TUNING = {
     fan: {
       kind: 'flagstone', ahead: 1.6, reach: 2.6, count: 3, need: 2,
       heroMin: 3.5, heroMax: 13, stand: 0.45,
-      hang: 1.6, row: 1.75, rise: 1.0, spread: 0.42, // (a slab in his hands is a block ~1.7 m across: `row` keeps three apart)
+      hang: 1.6, row: 1.75, rise: 1.0, spread: 0.42, // (`row` keeps three levered slabs apart; what he lifts is a chunk ~0.85 m across)
       time: [0.5, 0.9], per: 19, lead: 0.12,
       power: 0.5, radius: 1.4, maxDelay: 0.4,
     },
