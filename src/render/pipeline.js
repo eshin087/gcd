@@ -51,10 +51,11 @@ const HERO_OWN_GLSL = `bool heroOwn(float a) { return a < ${(HERO_ART.a0 - HERO_
  * lines and letter fill follow the option's numbers below; the bosses (built with the same materials)
  * stay in the shared bank and are never touched. Read once at load; pipeline.setHeroLine switches it.
  *   sil   [widest (font px), gain, gain of the band's innermost px (its soft inner edge), screen px of his
- *          metre per font px of width (the band follows his drawn size: ~24 px/m at the desktop game
+ *          metre per font px of width (the band follows his drawn size: ~43 px/m at the desktop game
  *          camera, ~10 on a phone, 100+ in a close-up)]
  *   inner [width (font px, 1 or 2), depth-step gain, part-edge gain, share kept at the game camera]
- *   fill  [letter gain (0: solid black), lavender share of the letters, piece-edge gain, unused]
+ *   fill  [letter gain (0: solid black), lavender share of the letters, piece-edge gain, the share of the
+ *          letters that fades out toward the game camera (1: plain black there)]
  *   glow  [r, g, b, radius (font px) of the soft ring OUTSIDE his silhouette (0: none)]
  */
 export const HERO_LINES = Object.freeze({
@@ -62,7 +63,9 @@ export const HERO_LINES = Object.freeze({
   // phone, the full width only in close-ups; the outer glow halved: there the SHAPE must win)
   a: Object.freeze({ sil: [2, 0.7, 0.75, 29], inner: [1, 0.32, 0.28, 0.3], fill: [0.35, 0.0, 0.2, 0], glow: [0, 0, 0, 0] }),
   b: Object.freeze({ sil: [3, 0.85, 0.6, 29], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.3, 0], glow: [0.025, 0.025, 0.045, 2] }),
-  c: Object.freeze({ sil: [3, 0.8, 0.7, 29], inner: [1, 0.38, 0.32, 0.35], fill: [0.65, 0.85, 0.2, 0], glow: [0.018, 0.018, 0.03, 2] }),
+  // (c: a faint fine lavender-grey letter field inside the black up close, fading to plain black
+  // toward the game camera: fill.w 1)
+  c: Object.freeze({ sil: [3, 0.8, 0.7, 29], inner: [1, 0.38, 0.32, 0.35], fill: [0.85, 0.85, 0.2, 1], glow: [0.018, 0.018, 0.03, 2] }),
 });
 export const HERO_LINE = (() => {
   try {
@@ -680,6 +683,12 @@ export class Pipeline {
           int p = int(clamp(floor((a - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25) + ${HERO_PARTS.toFixed(1)}, 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
           return mod(floor(uHeroOwnFill[p].y / 64.0), 2.0) > 0.5;
         }
+        // one of his own parts that MERGES with its kind (own fill y + 128: the robe's pieces, one garment)
+        bool heroOwnMerge(float a) {
+          if (!heroOwn(a)) return false;
+          int p = int(clamp(floor((a - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25) + ${HERO_PARTS.toFixed(1)}, 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
+          return mod(floor(uHeroOwnFill[p].y / 128.0), 2.0) > 0.5;
+        }
         // the own line's soft glow OUTSIDE his silhouette (uHeroOwnGlow: rgb, radius in font px; 0 none):
         // 8 taps on each of two rings round this off-him pixel, inside the circle round his screen point
         vec3 heroOwnGlow(vec2 px) {
@@ -698,7 +707,9 @@ export class Pipeline {
             if (o1 && heroOwnGlows(a1)) c1 += 1.0;
             if (o2 && heroOwnGlows(a2)) c2 += 1.0;
           }
-          return uHeroOwnGlow.rgb * max(min(n1 * 0.5, 1.0), 0.45 * min(n2 * 0.5, 1.0))
+          // (where the band is 1 px, a phone, the ring is half as strong again)
+          float thin = mix(0.5, 1.0, clamp((clamp(uHeroOwnPxM / max(uHeroOwnSil.w, 1.0), 1.0, uHeroOwnSil.x) - 1.0) / 0.4, 0.0, 1.0));
+          return uHeroOwnGlow.rgb * (thin * max(min(n1 * 0.5, 1.0), 0.45 * min(n2 * 0.5, 1.0)))
             + uHeroOwnHalo.rgb * (uHeroOwnHalo.w * max(min(c1 * 0.4, 1.0), 0.4 * min(c2 * 0.4, 1.0)));
         }
         // ---- the hero seen through what covers him (ADR-106). tSeen holds only the pixels of him
@@ -739,6 +750,8 @@ export class Pipeline {
         // fine), 0 none. Each edge is drawn once, one pixel wide, on one side.
         float heroPxEdge(float aN, float dN, float aP, float dP, float dO, float th, bool fine) {
           if (dN < 0.0) return 1.0;
+          // (two pieces of one merging garment that overlap closely: no line between them)
+          if (abs(dN - dP) < 0.12 && heroOwnMerge(aN) && heroOwnMerge(aP)) return 0.0;
           float pred = dO > 0.0 && abs(dP - dO) < th * 4.0 ? 2.0 * dP - dO : dP;
           float d = dN - pred;
           if (d > th) return 0.8;
@@ -857,13 +870,29 @@ export class Pipeline {
                   float flatP = mod(floor(pf.y / 16.0), 2.0);
                   float keep = max(max(open, flatP), smoothstep(1.05, 1.5, hdr));
                   vec3 lav = vec3(0.7, 0.68, 1.0) * dot(col, vec3(0.3333)) * 1.3;
-                  col = mix(mix(col, lav, uHeroOwnFillK.y) * uHeroOwnFillK.x, col, keep);
+                  // (fill .w: how much of the letters fade out toward the game camera: there a
+                  // 12-letter-wide figure's letters turn to grey noise, the black must stay black)
+                  col = mix(mix(col, lav, uHeroOwnFillK.y) * (uHeroOwnFillK.x * mix(1.0, 1.0 - uHeroOwnFillK.w, far)), col, keep);
                   if (flatP > 0.5) {
                     vec3 sp = pHero ? sP.rgb : c;
                     float vf = 1.0 - exp(-max(luma(sp) - uArtBlack.x, 0.0) * uArtLum.x);
                     // (own fill .z: the shade of the part's sub-id 1 pieces: alternate hair locks)
                     float subK = mod(heroIdOf(pHero ? sP.a : aC), 2.0) * pf.z;
                     col = tone * (uHeroFill.y * mix(0.8, 1.0, vf) * (1.0 - subK)) * pf.x * mix(1.0, uHeroLod.z * pf.w, far);
+                    // (own fill y + 256: the part takes a soft halo from the glowing parts on it: the
+                    // shield's face round its star; two rings of 8 taps, sized in metres on him)
+                    if (mod(floor(pf.y / 256.0), 2.0) > 0.5 && pHero) {
+                      float rr = max(1.0, 0.035 * uHeroOwnPxM * uHeroPx.x);
+                      float c1 = 0.0, c2 = 0.0;
+                      for (int i = 0; i < 8; i++) {
+                        float an = float(i) * 0.7853982;
+                        vec2 ov = vec2(cos(an), sin(an));
+                        float a1 = texture2D(tScene, (px + ov * rr) / uRes).a, a2 = texture2D(tScene, (px + ov * rr * 2.5) / uRes).a;
+                        if (isHero(a1) && heroOwn(a1) && heroOwnGlows(a1)) c1 += 1.0;
+                        if (isHero(a2) && heroOwn(a2) && heroOwnGlows(a2)) c2 += 1.0;
+                      }
+                      col += uHeroOwnHalo.rgb * (0.4 * min(c1 * 0.25, 1.0) + 0.22 * min(c2 * 0.2, 1.0));
+                    }
                   }
                 }
               }
@@ -929,6 +958,7 @@ export class Pipeline {
               float dB = 0.0, bW = max(1.0, silW - 1.0);
               if (dS < 0.5 && mod(floor(uHeroOwnFill[pidP].y / 32.0), 2.0) > 0.5) {
                 float pp = heroPartOf(sP.a), thB = max(uHeroPx.y, 1e-5) * dP;
+                bool mergeP = heroOwnMerge(sP.a);
                 for (int r = 1; r <= 3; r++) {
                   float fr = float(r);
                   if (fr > bW + 0.01) break;
@@ -939,7 +969,7 @@ export class Pipeline {
                       : k == 4 ? vec2(dg, dg) : k == 5 ? vec2(-dg, -dg) : k == 6 ? vec2(dg, -dg) : vec2(-dg, dg);
                     vec2 uvB = uvP + o * dir;
                     float aB = texture2D(tScene, uvB).a;
-                    if (isHero(aB) && (heroPartOf(aB) < pp - 0.5 || linDepth(uvB) > dP + thB * (3.0 + 2.0 * fr))) hit = 1.0;
+                    if (isHero(aB) && (heroPartOf(aB) < pp - 0.5 || linDepth(uvB) > dP + thB * (3.0 + 2.0 * fr)) && !(mergeP && heroOwnMerge(aB) && linDepth(uvB) - dP < 0.12)) hit = 1.0;
                   }
                   if (hit > 0.5) { dB = fr; break; }
                 }

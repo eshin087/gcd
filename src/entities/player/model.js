@@ -236,10 +236,12 @@ export const HERO_INK = {
   // nearly as bold as the silhouette and kept at the game camera (the concept's main inner lines).
   abPants: { part: 2, ownOnly: true, fill: [0.05, 0.05, 0.06], rim: 0.3, own: {} },
   abBoot: { part: 3, ownOnly: true, fill: [0.06, 0.06, 0.07], spec: 0.5, rim: 0.3, own: {} },
-  abBand: { part: 4, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
-  abRobeL: { part: 5, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
-  abRobeR: { part: 6, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
-  abRobe: { part: 7, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: {} },
+  // the bright trims: the boot bands and soles, the hood's opening and ridge (one smooth light silver)
+  abBand: { part: 4, ownOnly: true, fill: [0.7, 0.71, 0.8], rim: 0, own: { bold: true, flat: true, fillGain: 0.9 } },
+  abRobeL: { part: 5, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { merge: true } },
+  abRobeR: { part: 6, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { merge: true } },
+  // (`merge`: the robe is ONE garment: no line where its pieces overlap closely, own fill y + 128)
+  abRobe: { part: 7, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { merge: true } },
   abSleeve: { part: 8, ownOnly: true, fill: [0.055, 0.055, 0.065], rim: 0.3, own: { bold: true } },
   abCuff: { part: 9, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
   abCowl: { part: 10, ownOnly: true, fill: [0.06, 0.06, 0.07], rim: 0.3, own: { bold: true } },
@@ -253,12 +255,14 @@ export const HERO_INK = {
   // DARK line (the concept's inked hair); every other lock (sub-id 1) a shade greyer
   abHair: { part: 14, ownOnly: true, fill: [0.66, 0.66, 0.8], rim: 0, own: { flat: true, fillGain: 1.3, subShade: 0.3, line: [0.08, 0.08, 0.12, 1.0] } },
   // the shield: a dark crystal face with faint facets, a silver double-line rim
-  abShield: { part: 15, ownOnly: true, fill: [0.09, 0.09, 0.12], spec: 0.9, rim: 0.3, own: { fillGain: 1.6, line: [0.6, 0.6, 0.75, 0.55] } },
-  abRim: { part: 16, ownOnly: true, fill: [0.62, 0.63, 0.72], spec: 1.0, rim: 0, own: { bold: true, flat: true, fillGain: 0.75 } },
+  // (round 3: the face one smooth dark grey-lavender per facet, alternate facets a shade apart, faint
+  // facet lines; the frame a mid-grey silver band between two bright lines, its bevel darker)
+  abShield: { part: 15, ownOnly: true, fill: [0.42, 0.42, 0.5], spec: 0.9, rim: 0.3, own: { flat: true, fillGain: 0.07, subShade: 0.35, haloOn: true, line: [0.62, 0.62, 0.8, 0.7] } },
+  abRim: { part: 16, ownOnly: true, fill: [0.62, 0.63, 0.72], spec: 1.0, rim: 0, own: { bold: true, flat: true, fillGain: 0.42, subShade: 0.4 } },
   // the hilt's metal (guard, pommel, the shield's boss): silver
   abMetal: { part: 17, ownOnly: true, fill: [0.6, 0.6, 0.7], spec: 1.0, rim: 0, own: { flat: true, fillGain: 1.4 } },
   // the crystal (the blade, the shield's star): lavender-white light, a tight halo (own.glow)
-  abCrystal: { part: 18, ownOnly: true, fill: [0.74, 0.72, 1.0], rim: 0, glow: 0.6, own: { flat: true, glow: true, fillGain: 1.05, line: [0.92, 0.9, 1.05, 1.0], rimLine: [0.92, 0.9, 1.05, 1.0] } },
+  abCrystal: { part: 18, ownOnly: true, fill: [0.74, 0.72, 1.0], rim: 0, glow: 0.6, own: { flat: true, glow: true, fillGain: 0.9, subShade: 0.35, line: [0.92, 0.9, 1.05, 1.0], rimLine: [0.92, 0.9, 1.05, 1.0] } },
 };
 
 export function createHeroMaterials(U) {
@@ -432,7 +436,7 @@ export function createHeroMaterials(U) {
     abHair: S({ ...hair, ink: [0.75, 0.75, 0.85], levelInk: [[0.6, 0.6, 0.7], [0.7, 0.7, 0.8], [0.8, 0.8, 0.9]], seed: 48.9 }, { max: [0.045, 0.055], zoomNear: 0.85 }),
     abShield: S({ ...silver, glyphs: "'^AA", ink: [0.45, 0.45, 0.6], cell: [0.06, 0.06], side: THREE.DoubleSide, gain: 0.9, rim: 0.1, outline: 0.08, inkGlow: 0.2, seed: 49.5 }, { max: [0.04, 0.04] }),
     abRim: S({ ...silver, cell: [0.04, 0.04], side: THREE.DoubleSide, gain: 0.9, rim: 0.12, outline: 0.1, inkGlow: 0.3, seed: 50.1 }, { max: [0.03, 0.03] }),
-    abMetal: S({ ...silver, cell: [0.04, 0.04], gain: 0.9, rim: 0.12, outline: 0.1, inkGlow: 0.3, seed: 50.7 }, { max: [0.03, 0.03] }),
+    abMetal: S({ ...silver, cell: [0.04, 0.04], side: THREE.DoubleSide, gain: 0.9, rim: 0.12, outline: 0.1, inkGlow: 0.3, seed: 50.7 }, { max: [0.03, 0.03] }),
     abCrystal: S({
       levels: ["^A", "A^", "AA"], cell: [0.045, 0.09], rowShift: 0, base: [0.3, 0.28, 0.45],
       levelInk: [[0.8, 0.78, 1.0], [0.9, 0.88, 1.05], [1.0, 0.98, 1.1]], ink: [1.0, 0.98, 1.1],
@@ -464,7 +468,7 @@ export function createHeroMaterials(U) {
     ownInk?.[h.part]?.set(ol[0], ol[1], ol[2], ol[3]);
     // (own .z: a flat part's shade on its sub-id 1 pieces, `own.subShade`: alternate hair locks
     // one lit, the next in shade; the own pass reads no farLine)
-    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0), h0.own?.subShade ?? 0, h.farFill ?? 1);
+    ownFill?.[h.part]?.set(h.fillGain ?? 1, 2 + (h.open ? 4 : 0) + (h.flat ? 16 : 0) + (h.bold ? 32 : 0) + (h.glow === true ? 64 : 0) + (h.merge ? 128 : 0) + (h.haloOn ? 256 : 0), h0.own?.subShade ?? 0, h.farFill ?? 1);
     ownRim?.[h.part]?.set(orl[0], orl[1], orl[2], orl[3]);
   }
   const M = {};
@@ -671,7 +675,10 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, opts = {}) {
       const k = 1 - 0.45 * Math.max(0, z / 0.056) * Math.max(0, -y / 0.04 + 0.3);
       jp.setX(i, jp.getX(i) * k);
     }
-    if (fW !== 1) jaw.scale(fW, 1, 1);
+    // (a narrowed face, `faceScale`: the jaw a V to a pointed chin as well)
+    if (fW !== 1) {
+      for (let i = 0; i < jp.count; i++) jp.setX(i, jp.getX(i) * fW * (1 - 0.45 * Math.min(1, Math.max(0, -jp.getY(i) / 0.04 + 0.2))));
+    }
     jaw.computeVertexNormals();
     mesh(head, jaw, faceMat, sx, sy - 0.066, sz + 0.016);
     // the right ear shows below the swept-back locks

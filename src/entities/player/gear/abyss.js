@@ -51,7 +51,7 @@ const SD = ABYSS_SWORD_DIMS;
  * Rows stretch with the hem, so a point is a long smooth wedge of cloth, not a strip stuck on.
  * Local +Z = outward. aGUV: x across, y down it.
  */
-function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap = 0 } = {}) {
+function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap = 0, strip = null, lift = 0 } = {}) {
   const hemAt = (s) => {
     for (let i = 0; i < hem.length - 1; i++) {
       const [s0, e0] = hem[i], [s1, e1] = hem[i + 1];
@@ -61,7 +61,9 @@ function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap 
   };
   // (`lap`: the sheet starts that far ABOVE its joint, under the segment above it, so a kink where
   // two spring segments meet never opens a notch in the cloth)
-  return gridGeometry(cols, rows, (s, t, o) => {
+  // (`strip` [s0, s1]: only that stretch across the sheet, `lift` m proud of it: a trim along an edge)
+  return gridGeometry(cols, rows, (s0, t, o) => {
+    const s = strip ? lerp(strip[0], strip[1], s0) : s0;
     const L = len + hemAt(s) + lap;
     const d = t * L - lap;
     const w = lerp(wTop, wBot, Math.max(0, d) / (L - lap));
@@ -69,9 +71,9 @@ function pointSheet(len, wTop, wBot, R0, flare, hem, { cols = 18, rows = 7, lap 
     const R = R0 + flare * Math.max(0, d);
     const a = u / R;
     const y = -d;
-    o[0] = Math.sin(a) * R;
+    o[0] = Math.sin(a) * (R + lift);
     o[1] = y;
-    o[2] = (Math.cos(a) - 1) * R;
+    o[2] = Math.cos(a) * (R + lift) - R;
     o[3] = u;
     o[4] = y;
   }, true);
@@ -137,14 +139,16 @@ const curve = (P) => (a) => {
  * back centre. Measured (SPEC.md): 0.38 m wide, 0.36 m deep, the point 0.37 above the joint.
  */
 export const HOOD_RINGS = [
-  { y: -0.01, pts: [[0.07, 0.085], [0.15, 0.055], [0.18, -0.05], [0.162, -0.152], [0, -0.178]] },
-  { y: 0.06, pts: [[0.135, 0.075], [0.178, 0.035], [0.19, -0.055], [0.158, -0.164], [0, -0.187]] },
-  { y: 0.125, pts: [[0.16, 0.062], [0.19, 0.02], [0.192, -0.062], [0.156, -0.168], [0, -0.19]] },
-  { y: 0.185, pts: [[0.122, 0.105], [0.18, 0.05], [0.186, -0.062], [0.15, -0.162], [0, -0.19]] },
-  { y: 0.232, pts: [[0.068, 0.142], [0.158, 0.075], [0.166, -0.052], [0.134, -0.152], [0, -0.178]] },
-  { y: 0.27, pts: [[0, 0.172], [0.13, 0.085], [0.138, -0.044], [0.11, -0.13], [0, -0.158]] },
-  { y: 0.302, pts: [[0, 0.112], [0.098, 0.058], [0.102, -0.04], [0.082, -0.108], [0, -0.128]] },
-  { y: 0.37, pts: [[0, -0.018], [0.006, -0.024], [0.007, -0.03], [0.005, -0.036], [0, -0.04]] },
+  // (round 4: lower (the point 0.335), as wide as it is tall, pinched in toward the neck so the cowl
+  // steps out below it; the opening wider, so dark hood shows round the hair)
+  { y: -0.01, pts: [[0.07, 0.085], [0.13, 0.05], [0.15, -0.05], [0.125, -0.14], [0, -0.155]] },
+  { y: 0.06, pts: [[0.14, 0.075], [0.18, 0.035], [0.188, -0.055], [0.152, -0.16], [0, -0.18]] },
+  { y: 0.13, pts: [[0.178, 0.06], [0.198, 0.02], [0.2, -0.062], [0.162, -0.168], [0, -0.19]] },
+  { y: 0.19, pts: [[0.15, 0.1], [0.19, 0.05], [0.194, -0.062], [0.156, -0.162], [0, -0.188]] },
+  { y: 0.235, pts: [[0.1, 0.14], [0.17, 0.075], [0.176, -0.052], [0.14, -0.148], [0, -0.172]] },
+  { y: 0.27, pts: [[0, 0.175], [0.14, 0.082], [0.146, -0.044], [0.114, -0.124], [0, -0.15]] },
+  { y: 0.29, pts: [[0, 0.13], [0.11, 0.062], [0.112, -0.036], [0.088, -0.098], [0, -0.118]] },
+  { y: 0.335, pts: [[0, -0.01], [0.006, -0.016], [0.007, -0.022], [0.005, -0.028], [0, -0.032]] },
 ];
 
 /** One half of the hood (side +1: his left, −1: his right) through HOOD_RINGS: straight between
@@ -177,7 +181,7 @@ function hoodAt(rings, side, s, t, o) {
 /** The opening's TRIM on hood half `side`: a band `w` wide on the cloth along the front edge, from
  *  the hood's lower edge up to the brow's V (ring `kV`), standing 3 mm proud (the concept draws the
  *  opening as a bold bright band). */
-function hoodTrim(rings, side, kV, w = 0.016) {
+function hoodTrim(rings, side, kV, w = 0.007) {
   const nP = rings[0].pts.length, tV = kV / (rings.length - 1), P = [0, 0, 0], Q = [0, 0, 0];
   return gridGeometry(1, kV * 4, (s, tt, o) => {
     const t = tt * tV;
@@ -197,7 +201,7 @@ function hoodTrim(rings, side, kV, w = 0.016) {
 
 /** The RIDGE's trim: a band `w` wide straddling the seam from the brow's V (ring `kV`) up to the
  *  point, 3 mm proud: the concept's bold line from the point down to the brow. */
-function hoodRidge(rings, kV, w = 0.012) {
+function hoodRidge(rings, kV, w = 0.007) {
   const nP = rings[0].pts.length, tV = kV / (rings.length - 1), P = [0, 0, 0], Q = [0, 0, 0];
   return gridGeometry(2, (rings.length - 1 - kV) * 3, (s, tt, o) => {
     const t = lerp(tV, 0.985, tt), side = s < 0.5 ? -1 : 1, k = Math.abs(s - 0.5) * 2;
@@ -222,12 +226,14 @@ function hoodRidge(rings, kV, w = 0.012) {
 //  [x, y, z of its root, direction x, y, z, length, half-width, curl, ink sub-id]. Neighbours carry
 //  different sub-ids (and stand at different depths), so a dark line parts every lock from the next.
 const SPIKES = [
-  // the fringe: five chunky locks over the brow, the middle ones to about the nose
-  [0.002, 0.226, 0.072, 0.04, -1, 0.36, 0.128, 0.027, 0.16, 0],
-  [0.034, 0.222, 0.068, 0.32, -1, 0.34, 0.118, 0.025, 0.14, 1],
-  [-0.032, 0.223, 0.07, -0.26, -1, 0.36, 0.122, 0.026, 0.15, 1],
-  [0.062, 0.212, 0.052, 0.56, -1, 0.3, 0.1, 0.023, 0.12, 0],
-  [-0.062, 0.212, 0.054, -0.52, -1, 0.3, 0.104, 0.023, 0.12, 0],
+  // the fringe: six chunky locks over the brow, falling to the nose (only the lower face shows,
+  // with a glimpse between them)
+  [0.002, 0.222, 0.074, 0.04, -1, 0.3, 0.152, 0.026, 0.14, 0],
+  [0.036, 0.218, 0.07, 0.26, -1, 0.3, 0.142, 0.025, 0.12, 1],
+  [-0.034, 0.219, 0.072, -0.2, -1, 0.3, 0.146, 0.025, 0.13, 1],
+  [0.064, 0.208, 0.054, 0.46, -1, 0.26, 0.124, 0.023, 0.1, 0],
+  [-0.064, 0.208, 0.056, -0.42, -1, 0.26, 0.128, 0.023, 0.1, 0],
+  [0.018, 0.224, 0.076, 0.12, -1, 0.34, 0.13, 0.02, 0.15, 1],
   // the temples: locks splayed down and out over the cheeks (the face shows small between them)
   [0.082, 0.196, 0.036, 0.42, -1, 0.22, 0.112, 0.022, 0.1, 1],
   [-0.082, 0.196, 0.036, -0.42, -1, 0.22, 0.112, 0.022, 0.1, 1],
@@ -242,9 +248,9 @@ function buildHood({ head, M, mesh }) {
   mesh(head, hoodHalf(HOOD_RINGS, 1), M.abHood);
   mesh(head, hoodHalf(HOOD_RINGS, -1), M.abHood2);
   const kV = HOOD_RINGS.findIndex((r) => r.pts[0][0] === 0);
-  mesh(head, mergeGeometries([hoodTrim(HOOD_RINGS, 1, kV), hoodTrim(HOOD_RINGS, -1, kV), hoodRidge(HOOD_RINGS, kV)]), M.abRim);
+  mesh(head, mergeGeometries([hoodTrim(HOOD_RINGS, 1, kV), hoodTrim(HOOD_RINGS, -1, kV), hoodRidge(HOOD_RINGS, kV)]), M.abBand);
   // the hair: a cap and the locks (alternate ink sub-ids: a dark line between neighbours)
-  const locks = [sub(orient.up(ellipsoidGeometry(0.088, 0.1, 0.096, { widthSegs: 12, heightSegs: 8 })).translate(0, 0.166, -0.01), 0)];
+  const locks = [sub(orient.up(ellipsoidGeometry(0.086, 0.092, 0.094, { widthSegs: 12, heightSegs: 8 })).translate(0, 0.16, -0.01), 0)];
   SPIKES.forEach(([x, y, z, dx, dy, dz, L, w, curl, k]) => {
     locks.push(sub(orientTo(clumpGeometry(L, w, w * 0.5, { curl, taper: 0.8, cols: 6, rows: 3 }), [x, y, z], [dx, dy, dz], [x * 3, 0.2, 1]), k));
   });
@@ -260,9 +266,9 @@ const COWL_PROF = [
   [1.2, 0.24, 0.17, 0.006],
   [1.34, 0.275, 0.186, -0.006],
   [1.43, 0.302, 0.194, -0.014],
-  [1.485, 0.298, 0.186, -0.014],
-  [1.515, 0.25, 0.168, -0.01],
-  [1.545, 0.16, 0.13, -0.002],
+  [1.5, 0.306, 0.188, -0.014],
+  [1.526, 0.268, 0.172, -0.01],
+  [1.552, 0.17, 0.134, -0.002],
   [1.57, 0.09, 0.088, 0.008],
   [1.6, 0.064, 0.07, 0.014],
 ];
@@ -270,7 +276,12 @@ const COWL_PROF = [
  *  1.15 m) up over his left shoulder (1.47 d), round the sides at the top of the arms, a V between
  *  the shoulder blades (1.385 d = 1.30 m). */
 const COWL_LO = curve([
-  [-Math.PI, 1.385], [-2.6, 1.415], [-2.0, 1.4], [-1.55, 1.37], [-1.15, 1.27], [-0.8, 1.235], [-0.3, 1.29], [0.2, 1.35], [0.7, 1.41], [1.2, 1.44], [1.6, 1.405], [2.0, 1.405], [2.6, 1.415], [Math.PI, 1.385],
+  [-Math.PI, 1.33], [-2.6, 1.395], [-2.0, 1.415], [-1.55, 1.37], [-1.15, 1.27], [-0.8, 1.235], [-0.3, 1.29], [0.2, 1.35], [0.7, 1.41], [1.2, 1.44], [1.6, 1.405], [2.0, 1.415], [2.6, 1.395], [Math.PI, 1.33],
+]);
+/** The middle fold of the front drape (round 4): between the outer wrap's edge and the scarf's, on
+ *  the same diagonal, front only, its ends rising into the collar. Its edge is a fold line (an ink sub-id). */
+const MID_LO = curve([
+  [-1.35, 1.48], [-1.1, 1.34], [-0.7, 1.3], [-0.2, 1.34], [0.3, 1.4], [0.8, 1.45], [1.35, 1.5],
 ]);
 /** The inner wrap (the scarf round the neck, over the outer one): its lower edge a hand higher and
  *  on the same diagonal, a shallower V behind. */
@@ -287,15 +298,26 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh }) {
   P.push([1.5, 0.13, 0.1, 0.0]);
   const prof = profile(P);
   for (const side of [1, -1]) {
-    const g = loftBetween(side > 0 ? 0 : -Math.PI, side > 0 ? Math.PI : 0, () => SH[0].y - 0.04, () => 1.5, prof, { cols: 14, rows: 8 });
+    const g = loftBetween(side > 0 ? 0.035 : -Math.PI, side > 0 ? Math.PI : -0.035, () => SH[0].y - 0.04, () => 1.5, prof, { cols: 14, rows: 8 });
     g.translate(0, -REST.spine, 0); // (heights → spine space: the loft was built in world idle heights)
     mesh(spine, g, side > 0 ? M.abRobeL : M.abRobeR);
+    // its front edge's trim, down from the cowl to the waist
+    const e = loftBetween(side > 0 ? 0.035 : -0.085, side > 0 ? 0.085 : -0.035, () => SH[0].y - 0.04, () => 1.5, prof, { cols: 1, rows: 8, out: 0.003 });
+    e.translate(0, -REST.spine, 0);
+    mesh(spine, e, M.abBand);
   }
   // the cowl: the outer wrap, then the scarf over it (each its own part: its lower edge a bold fold)
   const cp = profile(COWL_PROF);
   const outer = loftBetween(-Math.PI, Math.PI, COWL_LO, () => 1.55, cp, { cols: 40, rows: 7 });
   outer.translate(0, -REST.chest, 0);
-  mesh(chest, outer, M.abCowl);
+  // (its top stays under the scarf and below the shoulders' bend, where rows sampled at other
+  // heights would cut through the wraps over it)
+  const mid = loftBetween(-1.35, 1.35, MID_LO, (a) => Math.max(MID_LO(a) + 0.015, 1.465), (y) => {
+    const [rx, rz, cz] = cp(y);
+    return [rx + 0.01, rz + 0.009, cz];
+  }, { cols: 30, rows: 5 });
+  mid.translate(0, -REST.chest, 0);
+  mesh(chest, mergeGeometries([sub(outer, 0), sub(mid, 1)]), M.abCowl);
   const scarf = loftBetween(-Math.PI, Math.PI, SCARF_LO, () => 1.6, (y) => {
     const [rx, rz, cz] = cp(y);
     return [rx + 0.018, rz + 0.016, cz];
@@ -400,8 +422,8 @@ function buildLegs({ pelvis, legs, M, DIM: D, BODY, mesh }) {
 export const ABYSS_PANELS = [
   // (round 3: the hem TORN, the concept's: a long point at each front edge, small tatters between
   // the front points, a big uneven point on every side; notch to point 0.10 - 0.16 m)
-  { az: 0.36, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeL', breeze: 0.025, idleFlare: 0.03, hem: [[0, 0.17], [0.1, 0.12], [0.2, 0.03], [0.3, 0.08], [0.42, 0.0], [0.6, 0.11], [0.76, 0.01], [0.88, 0.06], [1, 0.0]] },
-  { az: -0.36, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeR', breeze: 0.03, idleFlare: 0.04, hem: [[0, 0.0], [0.1, 0.07], [0.22, 0.01], [0.4, 0.12], [0.56, 0.0], [0.67, 0.05], [0.79, 0.02], [0.9, 0.12], [1, 0.155]] },
+  { az: 0.36, open: 0.3, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeL', breeze: 0.025, idleFlare: 0.03, hem: [[0, 0.17], [0.1, 0.12], [0.2, 0.03], [0.3, 0.08], [0.42, 0.0], [0.6, 0.11], [0.76, 0.01], [0.88, 0.06], [1, 0.0]] },
+  { az: -0.36, open: 0.3, w: [0.16, 0.25, 0.34], len: [0.34, 0.29], out: 0.012, flare: 0.22, mat: 'abRobeR', breeze: 0.03, idleFlare: 0.04, hem: [[0, 0.0], [0.1, 0.07], [0.22, 0.01], [0.4, 0.12], [0.56, 0.0], [0.67, 0.05], [0.79, 0.02], [0.9, 0.12], [1, 0.155]] },
   { az: 1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.28], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.08, hem: [[0, 0.02], [0.26, 0.14], [0.46, 0.0], [0.72, 0.11], [1, 0.0]] },
   { az: -1.4, w: [0.16, 0.27, 0.4], len: [0.34, 0.28], out: 0.01, flare: 0.3, mat: 'abRobe', breeze: 0.05, idleFlare: 0.09, hem: [[0, 0.0], [0.3, 0.12], [0.54, 0.0], [0.8, 0.15], [1, 0.03]] },
 ];
@@ -415,10 +437,21 @@ function buildSkirt({ pelvis, M, DIM: D, mesh, joint }) {
     anchor.rotation.y = Pn.az; // local +Z = outward, +X = tangent
     const s0 = joint(anchor);
     const [L0, L1] = Pn.len, mat = M[Pn.mat];
-    mesh(s0, pointSheet(L0, Pn.w[0], Pn.w[1], R0, Pn.flare, [[0, 0], [1, 0]], { rows: 4 }), mat);
+    // (`open`: the sheet turned that far round its own curve, away from his front's centre line, so
+    // the two front panels part in a narrow opening widening downward instead of crossing; their
+    // joints, and so the springs, stay where they were)
+    const turn = (g, R) => (Pn.open ? g.translate(0, 0, R).rotateY(Math.sign(Pn.az) * Pn.open).translate(0, 0, -R) : g);
+    mesh(s0, turn(pointSheet(L0, Pn.w[0], Pn.w[1], R0, Pn.flare, [[0, 0], [1, 0]], { rows: 4 }), R0), mat);
     const s1 = joint(s0, 0, -L0, 0);
     const R1 = R0 + Pn.flare * L0;
-    mesh(s1, pointSheet(L1, Pn.w[1], Pn.w[2], R1, Pn.flare, Pn.hem, { rows: 7, cols: 32, lap: 0.04 }), mat);
+    mesh(s1, turn(pointSheet(L1, Pn.w[1], Pn.w[2], R1, Pn.flare, Pn.hem, { rows: 7, cols: 32, lap: 0.04 }), R1), mat);
+    if (Pn.open) {
+      // the robe's FRONT EDGE: a bright trim down the panel's inner edge to its point (the concept's two
+      // bold lines from the cowl to the hem; the panels themselves draw no bold line now)
+      const se = Pn.az > 0 ? [0, 0.025] : [0.975, 1];
+      mesh(s0, turn(pointSheet(L0, Pn.w[0], Pn.w[1], R0, Pn.flare, [[0, 0], [1, 0]], { rows: 4, cols: 1, strip: se, lift: 0.003 }), R0), M.abBand);
+      mesh(s1, turn(pointSheet(L1, Pn.w[1], Pn.w[2], R1, Pn.flare, Pn.hem, { rows: 7, cols: 1, strip: se, lift: 0.003, lap: 0.04 }), R1), M.abBand);
+    }
     coat.push({ anchor, segs: [s0, s1], def: { ...Pn, strips: [], fork: [] }, strips: [], len: [L0, L1 + hemMax(Pn.hem) * 0.8], r0: R0 });
   });
   return { coat };
@@ -486,7 +519,7 @@ function buildSword({ sword, M, mesh, joint }) {
   const faces = [];
   for (const side of [-1, 1]) {
     for (const flat of [1, -1]) {
-      const g = bladeHalf(side, zG, zT, 0.058, 0.044, 0.1, 0.008);
+      const g = bladeHalf(side, zG, zT, 0.06, 0.05, 0.11, 0.009);
       if (flat < 0) {
         g.scale(1, -1, 1);
         const idx = g.index.array;
@@ -497,13 +530,26 @@ function buildSword({ sword, M, mesh, joint }) {
     }
   }
   mesh(sword, mergeGeometries(faces), M.abCrystal);
-  // the guard: a bar with arms swept a little toward the blade, angular ends; a collar at its heart
-  const guard = [boxGeometry(0.11, 0.022, 0.026, 0, 0, zG)];
+  // the guard: STRAIGHT and angular (round 2's arms hooked toward the blade): a bar 0.15 m across,
+  // tapering to its ends, each end a small point swept a little toward the blade; a diamond at its
+  // heart where the blade's ridge starts. 0.18 m span with the tips.
+  const guard = [boxGeometry(0.036, 0.024, 0.034, 0, 0, zG)];
   for (const s of [-1, 1]) {
-    guard.push(boxGeometry(0.05, 0.02, 0.022, s * 0.074, 0, zG + 0.012, 0, s * -0.42, 0));
-    guard.push(kiteGeometry(0.016, 0.012, 0.02).translate(s * 0.094, 0, zG + 0.028));
+    const arm = gridGeometry(4, 4, (u, v, o) => {
+      // u along the arm (0 at the block, 1 at the end), v round its section (a flattened diamond)
+      const x = s * lerp(0.016, 0.078, u), th = lerp(0.011, 0.007, u), dp = lerp(0.014, 0.009, u);
+      const a = v * Math.PI * 2;
+      o[0] = x;
+      o[1] = Math.sin(a) * th;
+      o[2] = zG + Math.cos(a) * dp + 0.012 * u * u;
+      o[3] = x;
+      o[4] = a * 0.01;
+    }, s > 0);
+    guard.push(arm);
+    // the tip: a small point, angled 35° toward the blade
+    guard.push(kiteGeometry(0.008, 0.008, 0.022).rotateY(s * -0.6).translate(s * 0.086, 0, zG + 0.024));
   }
-  guard.push(kiteGeometry(0.02, 0.016, 0.03).translate(0, 0, zG + 0.012));
+  guard.push(kiteGeometry(0.014, 0.014, 0.026, { zNeg: 0.6 }).translate(0, 0, zG + 0.02));
   // the pommel: a small diamond past the grip's end (its tip 0.15 m behind the grip's centre)
   guard.push(kiteGeometry(0.02, 0.014, 0.032, { zNeg: 1.2 }).translate(0, 0, -0.112));
   mesh(sword, mergeGeometries(guard), M.abMetal);
@@ -514,7 +560,7 @@ function buildSword({ sword, M, mesh, joint }) {
 }
 
 export const ABYSS_ITEMS = [
-  { id: 'abyss.hood', slot: 'head', name: 'Hood', hidesHair: true, blankFace: true, face: 'abSkin', faceScale: 0.88, neck: 'abPants', build: buildHood },
+  { id: 'abyss.hood', slot: 'head', name: 'Hood', hidesHair: true, blankFace: true, face: 'abSkin', faceScale: 0.8, neck: 'abPants', build: buildHood },
   { id: 'abyss.robe', slot: 'chest', name: 'Robe and Cowl', build: buildRobe },
   { id: 'abyss.arms', slot: 'arms', name: 'Bell Sleeve and Gloves', build: buildArms },
   { id: 'abyss.legs', slot: 'legs', name: 'Boots', build: buildLegs },
