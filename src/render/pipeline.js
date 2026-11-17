@@ -58,6 +58,9 @@ const HERO_OWN_GLSL = `bool heroOwn(float a) { return a < ${(HERO_ART.a0 - HERO_
  *          letters that fades out toward the game camera (1: plain black there)]
  *   glow  [r, g, b, radius (font px) of the soft ring OUTSIDE his silhouette (0: none)]
  */
+/** The own line's gain where its band is ONE px (a phone: ~10 px per metre): the band and the bold
+ *  inner lines at this share, so the 1 px line stays crisp under the bloom (2026-11-17, round 2). */
+export const HERO_THIN = 0.55;
 export const HERO_LINES = Object.freeze({
   // (round 3: the band's px per metre 29: 1.5 px at the desktop game camera (~43 px/m), 1 on a
   // phone, the full width only in close-ups; the outer glow halved: there the SHAPE must win)
@@ -916,6 +919,9 @@ export class Pipeline {
               // (a fractional width: its last px at that share of the gain, so the band can be 1.5 px
               // wide at the desktop game camera: the shape wins there, the line serves it)
               float silF = clamp(uHeroOwnPxM / max(uHeroOwnSil.w, 1.0), 1.0, uHeroOwnSil.x);
+              // (where the band is a single px, a phone: the line at HERO_THIN of its gain, a crisp line
+              // under the bloom's threshold; at full gain one px bloomed into a soft blur round him)
+              float thinK = mix(${HERO_THIN.toFixed(3)}, 1.0, clamp((uHeroOwnPxM / max(uHeroOwnSil.w, 1.0) - 1.0) / 0.4, 0.0, 1.0));
               float dS = 0.0, silW = ceil(silF - 0.05), silFr = silF - floor(silF);
               for (int r = 1; r <= 4; r++) {
                 float fr = float(r);
@@ -980,13 +986,13 @@ export class Pipeline {
               float hdrP = mix(1.0, clamp(mxP, 1.0, mix(64.0, uHeroFar.w, far)), smoothstep(0.25, 0.6, satP));
               if (dB > 0.5) {
                 float t = bW > 1.5 ? (dB - 1.0) / (bW - 1.0) : 0.0;
-                col = pInk.rgb * (pInk.a * uHeroOwnSil.y * 0.92 * mix(1.0, uHeroOwnSil.z, t));
+                col = pInk.rgb * (pInk.a * uHeroOwnSil.y * 0.92 * mix(1.0, uHeroOwnSil.z, t) * thinK);
                 if (uHeroDebug > 2.5) col = vec3(0.1, 0.3, 1.0);
                 inkP = 0.9;
               } else if (dS > 0.5) {
                 float t = silW > 1.5 ? (dS - 1.0) / (silW - 1.0) : 0.0;
                 float part = dS > floor(silF) + 0.5 ? max(silFr, 0.05) : 1.0;
-                col = pRim.rgb * (pRim.a * uHeroOwnSil.y * mix(1.0, uHeroOwnSil.z, t) * part * hdrP);
+                col = pRim.rgb * (pRim.a * uHeroOwnSil.y * mix(1.0, uHeroOwnSil.z, t) * part * hdrP * thinK);
                 if (uHeroDebug > 2.5) col = vec3(0.5);
                 inkP = 1.0;
               } else if (pl > 0.1) {

@@ -50,7 +50,10 @@ export const SHIELD_AT = {
   // beside the hip, its face out to his left and ahead
   // (the fist a little OUT from the shoulder's line: the plate stands off his hip and turns its
   // back a little to the game camera behind him, which saw none of a shield held in across his front)
-  carry: { l: [0.07, -0.33, 0.19], lp: [0.6, -0.2, -0.78] },
+  // (2026-11-17, round 2: further out and back, [0.15, -0.32, 0.1], its face turned to his front
+  // (anim.js SHIELD_TURN.carryFore): from behind its rim and back stand out at his left, the concept's
+  // BACK view; at [0.07, -0.33, 0.19] the cloak hid all of it)
+  carry: { l: [0.12, -0.31, 0.16], lp: [0.6, -0.2, -0.78] },
   // in a fight: before the left of his chest, the forearm across, the face to the foe
   ready: { l: [-0.1, -0.2, 0.31], lp: [0.66, -0.72, -0.1] },
   // the held guard: raised before the chest and the chin, the face square to the foe
@@ -243,8 +246,13 @@ export function shieldCharge(p, P, A, k, s) {
   p[P.rH] += (-0.16 - p[P.rH]) * s;
   p[P.rH + 1] += (-0.04 + 0.02 * k - p[P.rH + 1]) * s;
   p[P.rH + 2] += (0.16 - p[P.rH + 2]) * s;
+  // the blade held up out to the sword side and back, not straight up: from the game camera behind
+  // him the upright charge stood as a bar over the hood (2026-11-17, round 2)
+  const az = -82 + (CHARGE_BLADE[0] + 82) * s, el = 77 + (CHARGE_BLADE[1] - 77) * s;
+  dirSet(p, P.swD, az, el + CHARGE_BLADE[2] * k);
   freeHandOff(p, P);
 }
+const CHARGE_BLADE = [-112, 44, 6]; // azimuth, elevation (deg), + this much more elevation at a full charge
 
 function dirSet(p, i, az, el) {
   const a = (az * Math.PI) / 180, e = (el * Math.PI) / 180, c = Math.cos(e);
@@ -263,6 +271,17 @@ function dirSet(p, i, az, el) {
 // (2026-11-17, round 2: the flat backhand's hang, Rising Crescent's lift and Mountain Splitter's
 // first tuck were searched on a grid (rig-motion keysearch.mjs) for >= 5 cm between steel and plate)
 const K = (u, at, o = null) => ({ u, l: (o?.l ?? SHIELD_AT[at].l).slice(), lp: (o?.lp ?? SHIELD_AT[at].lp).slice() });
+/**
+ * The sword-and-shield hero's own blade in a clip's RECOVERY keys (u > 2: after the cut; the windup's
+ * and the cut's blade paths, the timings and the hit segments are the clip's own): { clip: { u: key
+ * fields } } merged over that key (swingClip, shield). From the game camera behind him a recovery that
+ * held the blade straight ahead and up stood it as a vertical bar over the hood (2026-11-17, round 2):
+ * these settle it out to the sword side, angled.
+ */
+export const SHIELD_BLADE = {
+  heavyThrust: { 2.55: { a: [-58, 10] } },
+};
+
 export const SHIELD_ARM = {
   // Piercing Gale: the shield leads the dash; as the arm drives the point out it is thrown back
   // behind the left hip, one line through the shoulders from the rim to the point

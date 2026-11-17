@@ -3,7 +3,7 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
-import { shieldRest, shieldStand, shieldRun, shieldBlock, shieldParry, shieldLock, shieldCharge, SHIELD_ARM } from './shieldPoses.js';
+import { shieldRest, shieldStand, shieldRun, shieldBlock, shieldParry, shieldLock, shieldCharge, SHIELD_ARM, SHIELD_BLADE } from './shieldPoses.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -726,6 +726,8 @@ function swingClip(name, shield = false) {
       keys = keys.map((k) => {
         const o = { ...k };
         for (const f of own ? SHIELD_DROP_ALL : SHIELD_DROP) delete o[f];
+        const bl = k.u > 2 ? SHIELD_BLADE[name]?.[k.u] : null; // (the recovery's blade only)
+        if (bl) Object.assign(o, bl);
         return o;
       }).concat(own ?? []);
     }
@@ -2783,8 +2785,17 @@ const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_
 //             only lying, where the cloth lies round his knees and boots)
 //   tuck      the roll (and the backstep): the cloth is drawn in round him while he is rolled up,
 //             eased in at tuckIn and out at tuckOut (/s): the swing limit (sheet, panel [upper,
-//             lower]) and × the lag and the flare
-const CLOTH = { panelOut: 0.85, kneeOut: 0.5, share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.3, tuckPanel: [-0.3, -0.25], tuckLag: 0.8, tuckFlare: 0.8, tuckLying: 0 };
+//             lower]) and × the lag and the flare; tuckShrink [sheets, panels]: how much shorter the
+//             cloth is drawn up while he is rolled up (scale along the sheet)
+const CLOTH = { panelOut: 0.85, kneeOut: 0.5, share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.08, tuckPanel: [-0.12, -0.06], tuckLag: 1, tuckFlare: 1, tuckShrink: [0.45, 0.4], tuckLying: 0 };
+// (the hero) lying on the grass (knocked down, dead) the cloak and the skirt's panels are laid flat on
+// the ground round him in a calm fixed fan (2026-11-17, round 2: the springs' floor rules stood their
+// torn hems up round him like a spiky star). Each sheet and panel points along the ground: toward his
+// feet (`feet`), out from where it hangs (`out`) and to its side of the body (`side`), sloping down to
+// reach the grass (`floor` m over it); its hem lies straight on. Eased in at `in` /s once his body is
+// near level, out at `out2` /s as he rises, so the cloth gathers back into the springs without a snap.
+const LAY = { feet: 1, out: 0.25, side: 0.35, floor: 0.03, in: 5, out2: 3.5 };
+const _ly = new THREE.Vector3(), _lf = new THREE.Vector3(), _lb = new THREE.Vector3(), _lq = new THREE.Quaternion();
 const BLADE_LOCO_RATE = 0.09; // rad per 60 fps frame (apply(): the blade on the move)
 const _vm = new THREE.Vector3(), _vmS = new THREE.Vector3();
 // the coat's neighbours (gear's panel order: front-left, front-right, left side, right side)
@@ -2819,7 +2830,7 @@ const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vect
 // the shield's turn about the forearm (_shield): the spring's rate (1/s, critically damped), the most
 // it turns in a frame (rad), how much of his front is mixed into "away from the body", and the
 // heights (m, the plate's centre) between which its face turns up to the sky
-const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, low: [0.28, 0.58] };
+const SHIELD_TURN = { w: 20, cap: 0.5, fore: 0.3, carryFore: 2.2, low: [0.28, 0.58] };
 // The plate never passes through his body, his hood or the ground (_shieldClear): its outline is kept
 // `torso` / `head` / `thigh` m from those bones' lines (the body's own radius and the cloth over it,
 // plus the plate's rim) and `ground` m above the grass. A pose that asks for less gets the fist moved
@@ -3036,6 +3047,7 @@ export class HeroAnimator {
     this.bzPrev = new THREE.Vector3(0, 0, 1); // apply(): last frame's blade direction (body space)
     this.bzOk = false;
     this.tuck = 0; // 0..1: the cloth drawn in round him (CLOTH.tuck)
+    this.layW = 0; // 0..1: the cloth laid flat on the ground round him (LAY, _layCloth)
     this.coatPrev = rig.coat.map(() => new THREE.Vector3());
     this.coatVel = rig.coat.map(() => new THREE.Vector3());
     this.coatInit = false;
@@ -3197,6 +3209,7 @@ export class HeroAnimator {
     this._coat(0);
     this._hair(0);
     this._streamers(0);
+    this.layW = 0;
     this.rig.root.updateMatrixWorld(true);
   }
 
@@ -3392,6 +3405,7 @@ export class HeroAnimator {
     this._coat(dt);
     this._hair(dt);
     this._streamers(dt);
+    this._layCloth(dt);
     this.rig.root.updateMatrixWorld(true);
   }
 
@@ -4039,7 +4053,10 @@ export class HeroAnimator {
     _hn.y = 0;
     const ol = _hn.length();
     if (ol > 1e-4) _hn.multiplyScalar(1 / ol);
-    _hn.z += SHIELD_TURN.fore;
+    // (carried at ease on the move or standing, its face turns further to his front: its back shows
+    // to the game camera behind him, the concept's BACK view; the fight stance and every other clip
+    // keep SHIELD_TURN.fore)
+    _hn.z += SHIELD_TURN.fore + (this.key === 'loco' ? SHIELD_TURN.carryFore * (1 - clamp(fin(this.fightW), 0, 1)) : 0);
     // near the ground: up (the world's, in body axes)
     r.chest.localToWorld(_hp.copy(_hG));
     const up = 1 - smoothstep(SHIELD_TURN.low[0], SHIELD_TURN.low[1], _hp.y);
@@ -4429,6 +4446,7 @@ export class HeroAnimator {
       this.tuck = clamp(fin(this.tuck + (want - this.tuck) * k, 0), 0, 1);
     }
     const T = this.tuck;
+    const curl = smoothstep(0.9, 0.45, _e.set(0, 1, 0).applyQuaternion(r.chest.getWorldQuaternion(_q1)).y); // (as _streamers)
     // every panel's anchor velocity, then the garment's mean (CLOTH.share)
     _vm.set(0, 0, 0);
     for (let i = 0; i < r.coat.length; i++) {
@@ -4696,6 +4714,7 @@ export class HeroAnimator {
       }
       C.segs[0].rotation.set(s0.x, 0, s0.z);
       C.segs[1].rotation.set(s1.x, 0, s1.z);
+      if (this.freeHand) C.segs[0].scale.y = C.segs[1].scale.y = 1 - CLOTH.tuckShrink[1] * T * curl; // (the roll: drawn up short as he goes over)
       if (C.strips.length) {
         // the lower segment's world frame: origin _e0, rotation _q0
         _q0.copy(_qA).multiply(_qs.setFromEuler(_eul.set(s0.x, 0, s0.z, 'YXZ')));
@@ -4749,6 +4768,67 @@ export class HeroAnimator {
     // (standing: a knee only nudges the hem out, at most CLOTH.kneeOut from its upper segment; a knee
     // at the seam swung the hem out level)
     return feet ? lim : Math.max(lim, -CLOTH.kneeOut);
+  }
+
+  /** (the hero) The cloth laid flat on the ground while he lies (LAY): the coat panels' and the cloak
+   *  sheets' swings blended toward a fixed fan by this.layW, written back into their spring state (so
+   *  the springs take over from where the cloth lies when he gets up). Allocates nothing. */
+  _layCloth(dt) {
+    if (!this.freeHand) return;
+    const r = this.rig;
+    _e.set(0, 1, 0).applyQuaternion(r.body.getWorldQuaternion(_q1));
+    const flat = smoothstep(0.55, 0.25, Math.abs(_e.y));
+    const want = LYING_KEYS.has(this.key) ? flat : 0;
+    const k = dt > 0 ? 1 - Math.exp(-(want > this.layW ? LAY.in : LAY.out2) * dt) : 1;
+    this.layW = clamp(fin(this.layW + (want - this.layW) * k, 0), 0, 1);
+    const w = this.layW;
+    if (w < 1e-3) return;
+    // toward his feet (the body's down, flat on the ground) and his left (the body's +x, flat)
+    _lf.set(0, -1, 0).applyQuaternion(_q1);
+    _lf.y = 0;
+    if (_lf.lengthSq() < 1e-6) _lf.set(0, 0, -1).applyQuaternion(_q1).setY(0);
+    _lf.normalize();
+    _lb.set(1, 0, 0).applyQuaternion(_q1);
+    _lb.y = 0;
+    if (_lb.lengthSq() > 1e-6) _lb.normalize();
+    const lay = (seg0, len, st0, st1) => {
+      const P = seg0.parent;
+      P.updateWorldMatrix(true, false);
+      P.getWorldQuaternion(_lq);
+      _w.copy(seg0.position).applyMatrix4(P.matrixWorld); // the root (world)
+      _ly.set(0, 0, 1).applyQuaternion(_lq); // where it hangs out from (world)
+      const sx = _ly.dot(_lb);
+      _ly.y = 0;
+      _ly.multiplyScalar(LAY.out).addScaledVector(_lf, LAY.feet).addScaledVector(_lb, sx * LAY.side);
+      if (_ly.lengthSq() < 1e-6) _ly.copy(_lf);
+      _ly.normalize();
+      const dy = -clamp((_w.y - LAY.floor) / Math.max(0.1, len), 0, 0.95);
+      _ly.multiplyScalar(Math.sqrt(1 - dy * dy)).setY(dy).applyQuaternion(_lq.invert());
+      const b = Math.asin(clamp(_ly.x, -1, 1)), a = Math.atan2(-_ly.z, -_ly.y);
+      if (!Number.isFinite(a + b)) return;
+      st0.x += (a - st0.x) * w;
+      st0.z += (b - st0.z) * w;
+      st1.x += (0 - st1.x) * w;
+      st1.z += (0 - st1.z) * w;
+      st0.vx *= 1 - w;
+      st0.vz *= 1 - w;
+      st1.vx *= 1 - w;
+      st1.vz *= 1 - w;
+    };
+    for (let i = 0; i < r.coat.length; i++) {
+      const C = r.coat[i], st = this.coatState[i];
+      lay(C.segs[0], C.def.len[0] + C.def.len[1], st[0], st[1]);
+      C.segs[0].rotation.set(st[0].x, 0, st[0].z);
+      C.segs[1].rotation.set(st[1].x, 0, st[1].z);
+    }
+    for (let i = 0; i < (r.streamers?.length ?? 0); i++) {
+      const S = r.streamers[i];
+      if (S.wrap == null) continue;
+      const st = this.streamState[i].segs;
+      lay(S.segs[0], S.len[0] + S.len[1], st[0], st[1]);
+      S.segs[0].rotation.set(st[0].x, 0, st[0].z);
+      S.segs[1].rotation.set(st[1].x, 0, st[1].z);
+    }
   }
 
   /** Torn strips of one panel. _q0 / _e0 = the lower segment's world rotation / origin. Each strip
@@ -4834,6 +4914,9 @@ export class HeroAnimator {
     const tumble = smoothstep(0.75, 0.3, _e.set(0, 1, 0).applyQuaternion(r.chest.getWorldQuaternion(_q1)).y);
     const lying = tumble >= 1 && LYING_KEYS.has(this.key);
     const T = this.tuck ?? 0;
+    // (how far he is curled over: the tuck draws the cloth up only as the body goes over, so it never
+    // shortens round a man still on his feet)
+    const curl = smoothstep(0.9, 0.45, _e.y);
     // every sheet's root velocity first, and the wrapping sheets' mean (CLOTH.share: the cloak is
     // one garment; a turn spun its side sheets' roots opposite ways)
     _vmS.set(0, 0, 0);
@@ -4895,7 +4978,7 @@ export class HeroAnimator {
           // reaching for the world's down, which stood every sheet out like a spine
           _v.x *= 1 - tumble;
           _v.y += (-1 - _v.y) * tumble;
-          _v.z += (0.25 * so - _v.z) * tumble;
+          _v.z += ((wrap ? 1 - T : 1) * 0.25 * so - _v.z) * tumble; // (the tuck: a wrapping sheet along the body's axis)
           _v.normalize();
         }
         // the steel and the arms hold the sheet out (or in): the swing allowed, in [−mA, mA]
@@ -4962,6 +5045,9 @@ export class HeroAnimator {
         }
         c.z = clamp(c.z, -sB, sB);
         j.rotation.set(c.x, 0, c.z);
+        // (the hero, rolled up: the cloak gathered in round him, its sheets drawn up short, so the roll
+        // reads as one dark ball, not a fan of hem points; it lets out as the tuck eases)
+        if (wrap && this.freeHand) j.scale.y = 1 - CLOTH.tuckShrink[0] * T * curl;
         _q0.multiply(_qs.setFromEuler(_eul.set(c.x, 0, c.z, 'YXZ')));
         _so.add(_cq.set(0, -S.len[s], 0).applyQuaternion(_q0)); // the next segment's root
         if (fl) _sf.add(_cf.set(0, -S.len[s] * ws, 0).applyQuaternion(_q0));
