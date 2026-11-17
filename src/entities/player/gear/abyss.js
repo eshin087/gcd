@@ -242,7 +242,7 @@ function buildHood({ head, M, mesh }) {
   mesh(head, hoodHalf(HOOD_RINGS, 1), M.abHood);
   mesh(head, hoodHalf(HOOD_RINGS, -1), M.abHood2);
   const kV = HOOD_RINGS.findIndex((r) => r.pts[0][0] === 0);
-  mesh(head, mergeGeometries([hoodTrim(HOOD_RINGS, 1, kV), hoodTrim(HOOD_RINGS, -1, kV), hoodRidge(HOOD_RINGS, kV)]), M.abRim);
+  mesh(head, mergeGeometries([hoodTrim(HOOD_RINGS, 1, kV), hoodTrim(HOOD_RINGS, -1, kV), hoodRidge(HOOD_RINGS, kV)]), M.abBand);
   // the hair: a cap and the locks (alternate ink sub-ids: a dark line between neighbours)
   const locks = [sub(orient.up(ellipsoidGeometry(0.088, 0.1, 0.096, { widthSegs: 12, heightSegs: 8 })).translate(0, 0.166, -0.01), 0)];
   SPIKES.forEach(([x, y, z, dx, dy, dz, L, w, curl, k]) => {
@@ -486,7 +486,7 @@ function buildSword({ sword, M, mesh, joint }) {
   const faces = [];
   for (const side of [-1, 1]) {
     for (const flat of [1, -1]) {
-      const g = bladeHalf(side, zG, zT, 0.058, 0.044, 0.1, 0.008);
+      const g = bladeHalf(side, zG, zT, 0.06, 0.05, 0.11, 0.009);
       if (flat < 0) {
         g.scale(1, -1, 1);
         const idx = g.index.array;
@@ -497,13 +497,26 @@ function buildSword({ sword, M, mesh, joint }) {
     }
   }
   mesh(sword, mergeGeometries(faces), M.abCrystal);
-  // the guard: a bar with arms swept a little toward the blade, angular ends; a collar at its heart
-  const guard = [boxGeometry(0.11, 0.022, 0.026, 0, 0, zG)];
+  // the guard: STRAIGHT and angular (round 2's arms hooked toward the blade): a bar 0.15 m across,
+  // tapering to its ends, each end a small point swept a little toward the blade; a diamond at its
+  // heart where the blade's ridge starts. 0.18 m span with the tips.
+  const guard = [boxGeometry(0.036, 0.024, 0.034, 0, 0, zG)];
   for (const s of [-1, 1]) {
-    guard.push(boxGeometry(0.05, 0.02, 0.022, s * 0.074, 0, zG + 0.012, 0, s * -0.42, 0));
-    guard.push(kiteGeometry(0.016, 0.012, 0.02).translate(s * 0.094, 0, zG + 0.028));
+    const arm = gridGeometry(4, 4, (u, v, o) => {
+      // u along the arm (0 at the block, 1 at the end), v round its section (a flattened diamond)
+      const x = s * lerp(0.016, 0.078, u), th = lerp(0.011, 0.007, u), dp = lerp(0.014, 0.009, u);
+      const a = v * Math.PI * 2;
+      o[0] = x;
+      o[1] = Math.sin(a) * th;
+      o[2] = zG + Math.cos(a) * dp + 0.012 * u * u;
+      o[3] = x;
+      o[4] = a * 0.01;
+    }, s > 0);
+    guard.push(arm);
+    // the tip: a small point, angled 35° toward the blade
+    guard.push(kiteGeometry(0.008, 0.008, 0.022).rotateY(s * -0.6).translate(s * 0.086, 0, zG + 0.024));
   }
-  guard.push(kiteGeometry(0.02, 0.016, 0.03).translate(0, 0, zG + 0.012));
+  guard.push(kiteGeometry(0.014, 0.014, 0.026, { zNeg: 0.6 }).translate(0, 0, zG + 0.02));
   // the pommel: a small diamond past the grip's end (its tip 0.15 m behind the grip's centre)
   guard.push(kiteGeometry(0.02, 0.014, 0.032, { zNeg: 1.2 }).translate(0, 0, -0.112));
   mesh(sword, mergeGeometries(guard), M.abMetal);

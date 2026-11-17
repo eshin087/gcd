@@ -26,10 +26,12 @@ import { boxGeometry, gripFist, mergeGeometries, strapGeometry } from '../heroGe
  * sides tapering to the foot; the star 42 % down, its vertical ray ~68 % of the height.
  */
 export const SHIELD_SHAPES = {
+  // (round 3: ANGULAR, the concept's: a top point, straight shoulders to the upper corners, a short
+  // straight side to the widest point, then one long straight taper to the foot; a slender star)
   kite: {
-    h: 0.78, w: 0.45, at: 0.56, rim: 0.035,
-    star: { at: 0.58, r: [0.13, 0.2, 0.33], waist: 0.017 },
-    pts: [[0, 0.78], [0.165, 0.665], [0.225, 0.585], [0.225, 0.44], [0.16, 0.24], [0.07, 0.09], [0, 0]],
+    h: 0.78, w: 0.45, at: 0.56, rim: 0.036,
+    star: { at: 0.6, r: [0.165, 0.23, 0.33], waist: 0.016 },
+    pts: [[0, 0.78], [0.2, 0.618], [0.225, 0.52], [0, 0]],
   },
 };
 
@@ -103,39 +105,70 @@ function starPlate(rx, ru, rd, w, th, peak) {
  * and `star`.
  */
 export function shieldGeometry(S) {
-  const half = S.w / 2, O = refine(loop(S), 3), n = O.length;
+  const half = S.w / 2, RF = 3, O = refine(loop(S), RF), n = O.length;
   const z = (x, y) => -WRAP * (x / half) ** 2 - 0.01 * (y / (S.h / 2)) ** 2;
   const cy = (S.star.at - S.at) * S.h;
-  // the inner outline: the rim's width inside the shield's own (along the normal of the outline)
-  const I = O.map(([x, y], i) => {
+  // an outline `d` inside the shield's own (along the normal of the outline)
+  const inset = (d) => O.map(([x, y], i) => {
     const A = O[(i - 1 + n) % n], B = O[(i + 1) % n];
     let tx = B[0] - A[0], ty = B[1] - A[1];
     const l = Math.hypot(tx, ty) || 1;
     tx /= l;
     ty /= l;
     // the loop runs counter-clockwise: inward is the tangent turned left
-    return [x - ty * S.rim, y + tx * S.rim];
+    return [x - ty * d, y + tx * d];
   });
+  const I = inset(S.rim), Mi = inset(S.rim * 0.58);
   const P = (p, dz = 0) => [p[0], p[1], z(p[0], p[1]) + dz];
-  const C = [0, cy, z(0, cy) + 0.02]; // the face rises a little to the star's centre
-  const rim = [], face = [], back = [], quad = [];
+  const C = [0, cy, z(0, cy) + 0.018]; // the face rises a little to the star's centre
+  const rim = [], rimSub = [], face = [], facet = [], back = [];
+  const quadR = (a, b, c, d, k) => {
+    rim.push([a, b, c], [a, c, d]);
+    rimSub.push(k, k);
+  };
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    rim.push([P(O[i], 0.004), P(O[j], 0.004), P(I[j], 0.008)], [P(O[i], 0.004), P(I[j], 0.008), P(I[i], 0.008)]);
-    rim.push([P(O[i], -TH), P(O[j], -TH), P(O[j], 0.004)], [P(O[i], -TH), P(O[j], 0.004), P(O[i], 0.004)]);
-    // the rim on the back: the same band, so the plate seen from behind has its bold outline too
-    rim.push([P(O[j], -TH), P(O[i], -TH), P(I[j], -TH - 0.004)], [P(I[j], -TH - 0.004), P(O[i], -TH), P(I[i], -TH - 0.004)]);
-    face.push([P(I[i], 0.006), P(I[j], 0.006), C]);
-    // the facet a triangle belongs to: the quadrant of its middle round the star's centre (four
-    // facets: their meeting lines are the star's cross, faint)
-    const mx = (I[i][0] + I[j][0]) / 2, my = (I[i][1] + I[j][1]) / 2 - cy;
-    quad.push((mx >= 0) !== (my >= 0));
+    // the slim BEVELLED frame: a flat silver band (sub 0) and its bevel down to the face (sub 1, a
+    // shade darker: a faint line between them), its outer wall, and the same band on the back
+    quadR(P(O[i], 0.004), P(O[j], 0.004), P(Mi[j], 0.009), P(Mi[i], 0.009), 0);
+    quadR(P(Mi[i], 0.009), P(Mi[j], 0.009), P(I[j], 0.003), P(I[i], 0.003), 1);
+    quadR(P(O[i], -TH), P(O[j], -TH), P(O[j], 0.004), P(O[i], 0.004), 0);
+    quadR(P(O[j], -TH), P(O[i], -TH), P(I[i], -TH - 0.004), P(I[j], -TH - 0.004), 0);
+    // the dark crystal face: one facet per side of the outline (a fan to the centre), so the faint
+    // facet lines run from the centre to the frame's corners; alternate facets a shade apart
+    face.push([P(I[i], 0.002), P(I[j], 0.002), C]);
+    facet.push(Math.floor(i / RF) % 2);
     back.push([P(I[j], -TH - 0.003), P(I[i], -TH - 0.003), [0, cy, z(0, cy) - TH - 0.012]]);
   }
+  // the back's braces: a spine from the top to the foot and a bar across at the star's height, on
+  // the plate's curve (the carry shows him the back of it most of the time)
+  const braces = [];
+  const brace = (path, bw) => {
+    for (let k = 0; k < path.length - 1; k++) {
+      const [ax, ay] = path[k], [bx, by] = path[k + 1];
+      let nx = -(by - ay), ny = bx - ax;
+      const l = Math.hypot(nx, ny) || 1;
+      nx *= bw / 2 / l;
+      ny *= bw / 2 / l;
+      const q = (x, y) => [x, y, z(x, y) - TH - 0.012];
+      const a = q(ax - nx, ay - ny), b = q(bx - nx, by - ny), c = q(bx + nx, by + ny), d = q(ax + nx, ay + ny);
+      braces.push([a, c, b], [a, d, c]);
+    }
+  };
+  const top = S.h * (1 - S.at), foot = -S.h * S.at, seg = (x0, y0, x1, y1, m) => Array.from({ length: m + 1 }, (_, k) => [lerp(x0, x1, k / m), lerp(y0, y1, k / m)]);
+  brace(seg(0, top - 0.07, 0, foot + 0.09, 8), 0.03);
+  brace(seg(-half + 0.06, cy, half - 0.06, cy, 8), 0.026);
   const k = S.star.r;
-  const star = starPlate(k[0], k[1], k[2], S.star.waist, 0.006, 0.016).translate(0, cy, z(0, cy) + 0.026);
-  return { rim: soup(rim), face: soup(face, (i) => quad[i]), back: soup(back), star };
+  // the star: slender tapered rays (a long one down), four short diagonal rays and a bright core
+  const star = mergeGeometries([
+    starPlate(k[0], k[1], k[2], S.star.waist, 0.005, 0.012),
+    starPlate(0.09, 0.09, 0.09, 0.008, 0.004, 0.006).rotateZ(Math.PI / 4).translate(0, 0, 0.001),
+    starPlate(0.04, 0.04, 0.04, 0.022, 0.006, 0.01).translate(0, 0, 0.002),
+  ]).translate(0, cy, z(0, cy) + 0.022);
+  const g = { rim: soup(rim, (i) => rimSub[i]), face: soup(face, (i) => facet[i]), back: soup(back), braces: soup(braces), star };
+  return g;
 }
+const lerp = (a, b, t) => a + (b - a) * t;
 
 /**
  * Build shield `S` (a SHIELD_SHAPES entry) on the shield joint: the rim, the faceted face, the
@@ -148,6 +181,7 @@ function buildShield({ arms, M, DIM, BODY, mesh }, S) {
   mesh(J, onArm(G.rim), M.abRim);
   mesh(J, onArm(G.face), M.abShield);
   mesh(J, onArm(G.back), M.abShield);
+  mesh(J, onArm(G.braces), M.abMetal);
   mesh(J, onArm(G.star), M.abCrystal);
   // the strap round the forearm by the elbow (joint space: +Y = toward the elbow) …
   const yE = 0.095, yW = -(DIM.foreArm - DIM.shieldAt) + 0.012, zb = SHIELD_OFF - TH - 0.006;
