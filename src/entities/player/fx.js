@@ -43,7 +43,7 @@ const COL = {
   charge: [1.5, 1.45, 2.8], chargeEnd: [0.45, 0.4, 1.3],
   halo: [0.55, 0.52, 0.95], haloEnd: [0.08, 0.07, 0.22], // the blade's dot halo
   tipStreak: [1.1, 1.05, 1.9], // the edge-wave past the point
-  gemGlow: [0.7, 0.66, 1.1], // the hilt's always-on glow point
+  gemGlow: [0.32, 0.3, 0.55], // the hilt's always-on glow point (faint: the concept's sword has no gem)
 };
 
 // The sword arc's look (ADR-077): a thin crescent, pointed at both ends. The arc is drawn off the
@@ -524,7 +524,8 @@ export class PlayerFx {
     this.gemGlowAcc += dt;
     if (this.gemGlowAcc >= 0.03) {
       this.gemGlowAcc = 0;
-      const s = 0.22 + 0.04 * Math.min(1, k);
+      // (the hooded hero's hilt: a small point of the crystal's light, not a glowing blob)
+      const s = 0.07 + 0.03 * Math.min(1, k);
       fx.spawn({ x, y, z, vx, vy, vz, life: 0.06, size: s, sizeEnd: s, glyph: '•', color: COL.gemGlow, colorEnd: COL.gemGlow, alpha: 0.5, alphaEnd: 0.35 });
     }
     this.gemAcc += dt * (8 + 30 * k);

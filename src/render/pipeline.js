@@ -59,7 +59,7 @@ const HERO_OWN_GLSL = `bool heroOwn(float a) { return a < ${(HERO_ART.a0 - HERO_
  */
 export const HERO_LINES = Object.freeze({
   a: Object.freeze({ sil: [2, 0.7, 0.75, 12], inner: [1, 0.32, 0.28, 0.3], fill: [0.35, 0.0, 0.2, 0], glow: [0, 0, 0, 0] }),
-  b: Object.freeze({ sil: [3, 0.85, 0.6, 8], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.0, 0], glow: [0.05, 0.05, 0.09, 2] }),
+  b: Object.freeze({ sil: [3, 0.85, 0.6, 8], inner: [1, 0.4, 0.34, 0.35], fill: [0.0, 0.0, 0.3, 0], glow: [0.05, 0.05, 0.09, 2] }),
   c: Object.freeze({ sil: [2, 0.75, 0.8, 12], inner: [1, 0.38, 0.32, 0.35], fill: [0.65, 0.85, 0.2, 0], glow: [0.035, 0.035, 0.06, 2] }),
 });
 export const HERO_LINE = (() => {
@@ -859,7 +859,7 @@ export class Pipeline {
                   if (flatP > 0.5) {
                     vec3 sp = pHero ? sP.rgb : c;
                     float vf = 1.0 - exp(-max(luma(sp) - uArtBlack.x, 0.0) * uArtLum.x);
-                    col = tone * (uHeroFill.y * mix(0.55, 1.0, vf)) * pf.x * mix(1.0, uHeroLod.z * pf.w, far);
+                    col = tone * (uHeroFill.y * mix(0.8, 1.0, vf)) * pf.x * mix(1.0, uHeroLod.z * pf.w, far);
                   }
                 }
               }

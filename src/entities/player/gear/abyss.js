@@ -191,6 +191,7 @@ const COWL_PROF = [
   [1.5, 0.252, 0.168, -0.012],
   [1.53, 0.17, 0.136, -0.004],
   [1.565, 0.11, 0.1, 0.006],
+  [1.585, 0.112, 0.118, 0.012],
 ];
 /** The outer wrap's lower edge by angle (design m): a diagonal from low on his right side (1.235 d =
  *  1.15 m) up over his left shoulder (1.47 d), round the sides at the top of the arms, a V between
@@ -222,7 +223,7 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh }) {
   const outer = loftBetween(-Math.PI, Math.PI, COWL_LO, () => 1.55, cp, { cols: 40, rows: 7 });
   outer.translate(0, -REST.chest, 0);
   mesh(chest, outer, M.abCowl);
-  const scarf = loftBetween(-Math.PI, Math.PI, SCARF_LO, () => 1.565, (y) => {
+  const scarf = loftBetween(-Math.PI, Math.PI, SCARF_LO, () => 1.585, (y) => {
     const [rx, rz, cz] = cp(y);
     return [rx + 0.018, rz + 0.016, cz];
   }, { cols: 40, rows: 5 });
@@ -370,7 +371,7 @@ function buildCloak({ chest, M, mesh, joint }) {
     mesh(s0, pointSheet(L0, w0, w1, d.wrap, 0.25, [[0, 0], [1, 0]], { rows: 5 }), M.abRobe);
     const s1 = joint(s0, 0, -L0, 0);
     mesh(s1, pointSheet(L1, w1, w2, d.wrap + 0.25 * L0, 0.25, d.hem, { rows: 6 }), M.abRobe);
-    streamers.push({ segs: [s0, s1], len: [L0, L1 + hemMax(d.hem) * 0.8], out: d.out, lag: 0.55, max: 1.45, floor: true, push: 30, w: d.w, arm: 0, wrap: d.wrap });
+    streamers.push({ segs: [s0, s1], len: [L0, L1 + hemMax(d.hem) * 0.8], out: d.out, lag: 0.45, max: 1.15, floor: true, push: 30, w: d.w, arm: 0, wrap: d.wrap });
   }
   void sheetOffset;
   return { streamers };

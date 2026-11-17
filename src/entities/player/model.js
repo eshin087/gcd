@@ -250,11 +250,11 @@ export const HERO_INK = {
   abHair: { part: 14, ownOnly: true, fill: [0.72, 0.72, 0.8], rim: 0, own: { flat: true, fillGain: 2.1, line: [0.55, 0.55, 0.68, 0.8] } },
   // the shield: a dark crystal face with faint facets, a silver double-line rim
   abShield: { part: 15, ownOnly: true, fill: [0.09, 0.09, 0.12], spec: 0.9, rim: 0.3, own: { fillGain: 1.6, line: [0.6, 0.6, 0.75, 0.55] } },
-  abRim: { part: 16, ownOnly: true, fill: [0.62, 0.63, 0.72], spec: 1.0, rim: 0, own: { bold: true, flat: true, fillGain: 1.5 } },
+  abRim: { part: 16, ownOnly: true, fill: [0.62, 0.63, 0.72], spec: 1.0, rim: 0, own: { bold: true, flat: true, fillGain: 0.75 } },
   // the hilt's metal (guard, pommel, the shield's boss): silver
   abMetal: { part: 17, ownOnly: true, fill: [0.6, 0.6, 0.7], spec: 1.0, rim: 0, own: { flat: true, fillGain: 1.4 } },
   // the crystal (the blade, the shield's star): lavender-white light, a tight halo (own.glow)
-  abCrystal: { part: 18, ownOnly: true, fill: [0.82, 0.8, 1.0], rim: 0, glow: 0.6, own: { flat: true, glow: true, fillGain: 2.3, line: [0.95, 0.93, 1.05, 1.15], rimLine: [0.95, 0.93, 1.05, 1.15] } },
+  abCrystal: { part: 18, ownOnly: true, fill: [0.74, 0.72, 1.0], rim: 0, glow: 0.6, own: { flat: true, glow: true, fillGain: 1.05, line: [0.92, 0.9, 1.05, 1.0], rimLine: [0.92, 0.9, 1.05, 1.0] } },
 };
 
 export function createHeroMaterials(U) {
