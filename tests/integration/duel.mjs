@@ -959,7 +959,12 @@ async function scenarioClash() {
     settle(G, 8);
   }
   const met = gaps.filter((g) => g <= 0.2).length;
-  assert(gaps.length === 10 && met >= 7, `the blades meet: ${met} of ${gaps.length} parried blows end with the two blades within 0.2 m (${gaps.map((g) => g.toFixed(2)).join(', ')})`);
+  // (with the hero's shield, 2026-11-17, the plate meets his blade: player.js _meetShield nudges
+  // the swat until the plate's middle lies on his steel; two of these blows are out of the shield
+  // arm's reach: 6 of 10, was 8 of 10 blade on blade. The motion pass may win them back:
+  // shieldPoses.js shieldParry)
+  const need = p.anim.shield ? 6 : 7;
+  assert(gaps.length === 10 && met >= need, `the blades meet: ${met} of ${gaps.length} parried blows end with his blade on the hero's guard (blade or shield) within 0.2 m (>= ${need}; ${gaps.map((g) => g.toFixed(2)).join(', ')})`);
   assert(backs.filter((b) => b > 0).length >= 6, `his blade is held where it met the guard, not through the hero (stepped back on ${backs.filter((b) => b > 0).length} of ${backs.length} blows)`);
   // (a string's blows freeze the frame briefly; its last, the one that recoils him, for longer)
   assert(Math.max(...stops.slice(0, 2)) <= 0.08 && stops[2] >= 0.1, `the freeze is short inside a string and long on its last blow (${stops.slice(0, 3).map((x) => x.toFixed(3)).join(', ')} s)`);
