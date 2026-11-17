@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createSurfaceGlyphMaterial, FLAG } from '../../render/materials.js';
 import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
-import { DIM, BODY, REST, HAIR_CLUSTERS } from './heroDims.js';
+import { DIM, BODY, REST, HAIR_CLUSTERS, legDims } from './heroDims.js';
 import { mergeGeometries, sub, partGeometry, orient, limb, swordTip } from './heroGeo.js';
 import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
 
@@ -52,7 +52,7 @@ import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
 // Everything about the hero model is imported from this file (anim.js, player.js, combat.js, fx.js,
 // the tests, scripts/blender/build-hero-parts.mjs): the measurements, the default outfit's coat and
 // cape data, and the one geometry helper the animator shares with the coat builder.
-export { DIM, BODY, REST, HAIR_CLUSTERS } from './heroDims.js';
+export { DIM, BODY, REST, HAIR_CLUSTERS, legDims } from './heroDims.js';
 export { COAT_PANELS, CAPE_SHEETS } from './gear/wanderer.js';
 export { sheetOffset } from './heroGeo.js';
 
@@ -472,9 +472,15 @@ function weaponDims(worn) {
  *   loadout  slot → the id of the item built there (null: empty), every slot listed
  *   slots    slot → the Object3Ds that slot hung on the skeleton (each with its whole subtree, all
  *            tagged userData.slot), so a slot can be emptied and rebuilt without touching the rest
+ *   bodyDims the legs it stands on ({ thigh, shin, pivot }: heroDims.js legDims)
+ * opts.legs: { thigh, shin } of this rig's own (the hero's, HERO_LEGS; default DIM's, as every
+ * duelist): the skeleton and the gear's legs are built on them, the upper body as designed.
  */
-export function buildHero(U, loadout = DEFAULT_LOADOUT) {
+export function buildHero(U, loadout = DEFAULT_LOADOUT, opts = {}) {
   const M = createHeroMaterials(U);
+  const LD = legDims(opts.legs);
+  // the measurements the skeleton and the gear are built with: DIM's, the legs this rig's own
+  const D = LD.thigh === DIM.thigh && LD.shin === DIM.shin ? DIM : Object.freeze({ ...DIM, ...LD });
 
   // joint / mesh helpers for one owner: a gear slot, or null for the skeleton and the body
   const helpers = (slot) => ({
@@ -502,7 +508,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   // joints) on these
   const root = new THREE.Group();
   root.name = 'player';
-  const body = joint(root, 0, DIM.pivot, 0);
+  const body = joint(root, 0, D.pivot, 0);
   const pelvis = joint(body, ...DIM.pelvis);
   const spine = joint(pelvis, ...DIM.spine);
   const chest = joint(spine, ...DIM.chest);
@@ -529,8 +535,8 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   const legs = {};
   for (const side of [-1, 1]) {
     const thigh = joint(pelvis, side * DIM.hip[0], DIM.hip[1], DIM.hip[2]);
-    const shin = joint(thigh, 0, -DIM.thigh, 0);
-    const foot = joint(shin, 0, -DIM.shin, 0);
+    const shin = joint(thigh, 0, -D.thigh, 0);
+    const foot = joint(shin, 0, -D.shin, 0);
     legs[side < 0 ? 'R' : 'L'] = { thigh, shin, foot };
   }
   // the weapon joint: posed directly in body space (anim.js); origin = grip centre, blade along +Z
@@ -586,7 +592,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
   for (const { slot, item } of worn) {
     equipped[slot] = item ? item.id : null;
     if (!item) continue;
-    const h = item.build({ ...skeleton, M, U, DIM, BODY, REST, slot, item, ...helpers(slot) });
+    const h = item.build({ ...skeleton, M, U, DIM: D, BODY, REST, slot, item, ...helpers(slot) });
     if (h?.coat) handles.coat.push(...h.coat);
     if (h?.streamers) handles.streamers.push(...h.streamers);
     if (h?.keep) handles.keep.push(...h.keep);
@@ -625,6 +631,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT) {
     // contact read the blade's length here (the hero's longsword is longer than DIM's); the hit
     // segment and every duelist keep DIM's
     weaponDims: weaponDims(worn),
+    bodyDims: LD,
     loadout: equipped,
     slots,
     materials: M,

@@ -71,7 +71,7 @@ const HOOD_RINGS = [
   { y: 0.322, rx: 0.012, rz: 0.022, cz: -0.062, gap: 0.003 },
 ];
 
-function buildHood({ head, M, mesh }) {
+function buildHood({ head, M, mesh }, hair = HOOD_HAIR) {
   // the cloth: the outside in the coat's black, the inside in the lining (a dark cavity round the
   // face); folds drawn down it from the point (foldLines)
   const g = foldLines(shellGeometry(HOOD_RINGS, { sub: 2, cols: 26 }), (x, y, z, u) => 0.5 + 0.6 * Math.sin(u * 62 + y * 9) - 1.4 * Math.max(0, (y - 0.22) / 0.1));
@@ -98,7 +98,7 @@ function buildHood({ head, M, mesh }) {
     }));
   }
   mesh(head, mergeGeometries(rim), M.hem);
-  buildHoodHair(head, M, mesh, HOOD_HAIR);
+  if (hair) buildHoodHair(head, M, mesh, hair);
 }
 
 /** Gold strands out of the hood (head space): each lock is [x, y, z of its root, direction x, y, z,
@@ -278,6 +278,9 @@ function buildCloak({ chest, arms, M, REST, mesh, joint }) {
  *  strands (HOOD_HAIR); the body's clusters poked through the cloth or massed over the face. */
 export const SHROUD_ITEMS = [
   { id: 'shroud.hood', slot: 'head', name: 'Tattered Hood', hair: ['cap'], shadowsFace: true, build: buildHood },
+  // (a prototype for the owner's pick, 2026-11-17: the same hood up over the Wanderer's own spiky
+  // fringe and side locks, instead of the strands it brings)
+  { id: 'shroud.hoodOwnHair', slot: 'head', name: 'Tattered Hood (his own fringe)', hair: ['cap', 'fringe', 'left', 'right'], build: (ctx) => buildHood(ctx, null) },
   { id: 'shroud.tunic', slot: 'chest', name: 'Wrap Tunic', build: buildTunic },
   { id: 'shroud.arms', slot: 'arms', name: 'Bound Sleeves', build: buildArms },
   { id: 'shroud.cloak', slot: 'back', name: 'Tattered Shroud', build: buildCloak },

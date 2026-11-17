@@ -89,7 +89,21 @@ export const BODY = {
   foot: { c: [0, -0.02, 0.052], r: [0.056, 0.048, 0.146] }, // boot foot ellipsoid (foot space)
 };
 
-/** Idle-stance reference heights (m) of the joints the meshes hang on. */
+/**
+ * A rig's own leg lengths (the hero's: buildHero's `opts.legs`; every duelist stands on DIM's): the
+ * thigh and the shin, and the body pivot they put him at (DIM.pivot less what the legs lost). The
+ * upper body and its gear are built in the design frame (REST) and hang on the pelvis, so only the
+ * legs, the pivot and the drawn height change.
+ */
+/** The hero's own legs (buildHero opts.legs; the Player builds with them). */
+export const HERO_LEGS = Object.freeze({ thigh: DIM.thigh, shin: DIM.shin });
+
+export function legDims(legs) {
+  const thigh = legs?.thigh ?? DIM.thigh, shin = legs?.shin ?? DIM.shin;
+  return { thigh, shin, pivot: DIM.pivot - (DIM.thigh + DIM.shin - thigh - shin) };
+}
+
+/** Idle-stance reference heights (m) of the joints the meshes hang on (the design frame: DIM's legs). */
 export const REST = (() => {
   const body = DIM.pivot + 0.015;
   const pelvis = body + DIM.pelvis[1];

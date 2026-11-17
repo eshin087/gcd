@@ -360,27 +360,30 @@ function buildLegs({ pelvis, legs, M, DIM, BODY, REST, mesh }) {
     // shows banded calves). The boot follows the lean leg (BODY.shin)
     mesh(shin, limb({ length: DIM.shin - 0.02, r0: sh0, r1: sh1, bulge: shB }), M.armor, 0, -0.02, 0);
     const b = sh0 - 0.058; // how far the boot's plates stand in / out with the shin's radius
-    mesh(shin, mergeGeometries([
+    // (the plates are placed down a shin of DIM's length: a rig with its own legs, the hero's, gets
+    // them down its shin by the same fractions; buildHero's opts.legs)
+    const ky = DIM.shin / HERO_DIM.shin, alongShin = (g) => (ky === 1 ? g : g.scale(1, ky, 1));
+    mesh(shin, alongShin(mergeGeometries([
       sub(arcPlate(-0.045, -0.09, 0.067 + b, 0.065 + b, 0, 1.4, 6), 1),
       sub(arcPlate(-0.33, -0.375, 0.054 + b * 0.9, 0.052 + b * 0.9, 0, 1.5, 6), 1),
       sub(arcPlate(-0.13, -0.19, sh0 + 0.016, sh0 + 0.012, Math.PI, 1.35, 8), 1),
       arcPlate(-0.2, -0.26, sh0 + 0.011, sh1 + 0.012, Math.PI, 1.3, 8),
-    ]), M.armor);
-    mesh(shin, mergeGeometries([
+    ])), M.armor);
+    mesh(shin, alongShin(mergeGeometries([
       arcPlate(-0.183, -0.192, sh0 + 0.0165, sh0 + 0.0165, Math.PI, 1.35, 8),
       arcPlate(-0.252, -0.261, sh1 + 0.0125, sh1 + 0.0125, Math.PI, 1.3, 8),
-    ]), M.bevel);
+    ])), M.bevel);
     {
       const T = [0, -0.06, 0.069 + b], Rt = [0.058 + b, -0.16, 0.058 + b], B = [0, -0.355, 0.051 + b * 0.9], Lf = [-0.058 - b, -0.16, 0.058 + b], C = [0, -0.16, 0.08 + b * 1.3];
       const kg = new THREE.BufferGeometry();
       kg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([...T, ...C, ...Rt, ...T, ...Lf, ...C, ...C, ...Lf, ...B, ...C, ...B, ...Rt]), 3));
       kg.computeVertexNormals();
       planarGUV(kg, new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0));
-      mesh(shin, kg, M.armor);
-      mesh(shin, mergeGeometries([
+      mesh(shin, alongShin(kg), M.armor);
+      mesh(shin, alongShin(mergeGeometries([
         arcPlate(-0.083, -0.092, 0.0675 + b, 0.0675 + b, 0, 1.4, 6),
         arcPlate(-0.366, -0.375, 0.0535 + b * 0.9, 0.0535 + b * 0.9, 0, 1.5, 6),
-      ]), M.bevel);
+      ])), M.bevel);
     }
     // kite knee guard (poleyn): 0.1 W × 0.14 H standing 0.02 m off the knee, a ridge down the
     // middle, silver bevels on all four edges, wings wrapping the sides; its point leans 15° out
@@ -522,6 +525,8 @@ export const SWORD_DIMS = {
  *  the hit segment (bladeBase … bladeTip) is the gameplay reach and stays the shared one. `steelTip`
  *  is a little past the drawn point, as DIM's is, so the drawn steel never touches the grass. */
 export const LONGSWORD_DIMS = Object.freeze({ ...SWORD_DIMS, drawnTip: 1.45, steelTip: 1.56 });
+const PROTO_A = Object.freeze({ ...SWORD_DIMS, drawnTip: 1.33, steelTip: 1.44 });
+const PROTO_B = Object.freeze({ ...SWORD_DIMS, drawnTip: 1.23, steelTip: 1.34 });
 
 /** The longsword on the sword joint (`blade`: the sculpted blade's part prefix, `D` its numbers).
  *  Returns `gem`: the marker joint for the gem's glow sprite and glints (player.js). */
@@ -596,4 +601,7 @@ export const WANDERER_ITEMS = [
   { id: 'wanderer.skirt', slot: 'waist', name: 'Torn Coat Tails', build: buildSkirt },
   { id: 'wanderer.cape', slot: 'back', name: 'Torn Half-Cape', build: buildCape },
   { id: 'wanderer.sword', slot: 'weapon', name: 'Moonlit Longsword', dims: LONGSWORD_DIMS, build: (ctx) => buildSword(ctx) },
+  // (prototypes for the owner's pick, 2026-11-17: "make the sword a bit shorter": 1.52 m and 1.42 m)
+  { id: 'wanderer.swordA', slot: 'weapon', name: 'Longsword 1.52 m', dims: PROTO_A, build: (ctx) => buildSword(ctx, PROTO_A, 'bladeA') },
+  { id: 'wanderer.swordB', slot: 'weapon', name: 'Longsword 1.42 m', dims: PROTO_B, build: (ctx) => buildSword(ctx, PROTO_B, 'bladeB') },
 ];

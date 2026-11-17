@@ -195,12 +195,15 @@ export function kf(t, k) {
 }
 const _eul = new THREE.Euler(0, 0, 0, 'YXZ');
 const _bv = new THREE.Vector3();
+/** The body pivot of the animator whose clips are running (each one sets it as its update starts:
+ *  the hero stands on legs of his own, rig.bodyDims; every duelist on DIM's). */
+let PIVOT = DIM.pivot;
 /** Blend foot target p[i] toward a BODY-space point mapped through this pose's body transform. */
 function bodyPointTo(p, i, x, y, z, t) {
   if (t <= 0) return;
   _eul.set(p[P.pitch], p[P.yaw], p[P.roll], 'YXZ');
   _bv.set(x, y, z).applyEuler(_eul);
-  to3(p, i, _bv.x + p[P.bodyX], _bv.y + DIM.pivot + p[P.bodyY], _bv.z + p[P.bodyZ], t);
+  to3(p, i, _bv.x + p[P.bodyX], _bv.y + PIVOT + p[P.bodyY], _bv.z + p[P.bodyZ], t);
 }
 
 const SCRATCH = new Float32Array(N);
@@ -1317,8 +1320,8 @@ function lungeFeet(p, A, t0, t1, drag, plant, follow = true) {
     // up after the hips instead, and stays where it was dragged to
     const a = fin(p[P.yaw], 0) + fin(p[P.pelvY], 0), hs = -sg * DIM.hip[0];
     const ax = fin(p[P.bodyX], 0) + hs * Math.cos(a), az = fin(p[P.bodyZ], 0) - hs * Math.sin(a);
-    const dy = DIM.pivot + DIM.pelvis[1] + DIM.hip[1] + fin(p[P.bodyY], 0) - hy;
-    const reach = HOLD_REACH * (DIM.thigh + DIM.shin), room = Math.sqrt(Math.max(0, reach * reach - dy * dy));
+    const L = A.bd ?? DIM, dy = L.pivot + DIM.pelvis[1] + DIM.hip[1] + fin(p[P.bodyY], 0) - hy;
+    const reach = HOLD_REACH * (L.thigh + L.shin), room = Math.sqrt(Math.max(0, reach * reach - dy * dy));
     const dx = hx - ax, dz = hz - az, dh = Math.hypot(dx, dz);
     if (dh > room + 1e-4 && dh > 1e-6) {
       const k = room / dh, nx = ax + dx * k, nz = az + dz * k;
@@ -2701,7 +2704,7 @@ const HERO_SOFT = [0.93, 0.99];
 // may come to its shoulder / hip (the law of cosines on the two bones)
 const ARM_FOLD = 40 * (Math.PI / 180), LEG_FOLD = 32 * (Math.PI / 180);
 const ARM_NEAR = Math.sqrt(DIM.upperArm ** 2 + DIM.foreArm ** 2 - 2 * DIM.upperArm * DIM.foreArm * Math.cos(ARM_FOLD));
-const LEG_NEAR = Math.sqrt(DIM.thigh ** 2 + DIM.shin ** 2 - 2 * DIM.thigh * DIM.shin * Math.cos(LEG_FOLD));
+const legNear = (L) => Math.sqrt(L.thigh ** 2 + L.shin ** 2 - 2 * L.thigh * L.shin * Math.cos(LEG_FOLD));
 const TORSO_R = [0.15, 0.115]; // m: the ribs' half-width and half-depth round the chest's axis (a hand stays outside)
 const WRIST_BACK = 128 * (Math.PI / 180); // the most the blade folds back from the forearm's line (0 = in line with it, a point)
 const WRIST_COS = Math.cos(WRIST_BACK), WRIST_SIN = Math.sin(WRIST_BACK);
@@ -2797,6 +2800,9 @@ export class HeroAnimator {
     // the blade's numbers this animator clamps and clears with: the hero's own weapon (rig.weaponDims:
     // his longsword), DIM's for every duelist (their blades were posed with these)
     this.wd = this.freeHand && rig.weaponDims ? rig.weaponDims : DIM;
+    // … and the legs it stands on (the hero's own, rig.bodyDims: thigh, shin, pivot; DIM's for a duelist)
+    this.bd = this.freeHand && rig.bodyDims ? rig.bodyDims : DIM;
+    this.legNear = legNear(this.bd);
     this.rig = rig;
     this.player = player;
     this.poses = poses ? { ...POSES, ...poses } : POSES;
@@ -3103,6 +3109,7 @@ export class HeroAnimator {
   }
 
   update(dt) {
+    PIVOT = this.bd.pivot;
     const pl = this.player;
     this.frameDt = dt;
     this.time += dt;
@@ -3496,7 +3503,7 @@ export class HeroAnimator {
 
   apply(p) {
     const r = this.rig;
-    r.body.position.set(p[P.bodyX], DIM.pivot + p[P.bodyY], p[P.bodyZ]);
+    r.body.position.set(p[P.bodyX], this.bd.pivot + p[P.bodyY], p[P.bodyZ]);
     r.body.rotation.set(p[P.pitch], p[P.yaw], p[P.roll]);
     r.pelvis.rotation.set(p[P.pelvX], p[P.pelvY], p[P.pelvZ]);
     r.spine.rotation.set(p[P.spX], p[P.spY], p[P.spZ]);
@@ -4001,13 +4008,14 @@ export class HeroAnimator {
     // a knee never closes past LEG_FOLD (the roll's tuck asked for a heel against the hip, 10°)
     _v.subVectors(_T, _S);
     const dl = _v.length();
-    if (dl < LEG_NEAR && dl > 1e-4) _T.copy(_S).addScaledVector(_v, LEG_NEAR / dl);
+    if (dl < this.legNear && dl > 1e-4) _T.copy(_S).addScaledVector(_v, this.legNear / dl);
     _pole.set(p[ki], p[ki + 1], p[ki + 2]).applyQuaternion(_qBP);
-    let beta = solveTwoBone(_S, _T, _pole, DIM.thigh, DIM.shin, -1, leg.thigh.quaternion, _end);
+    const BD = this.bd;
+    let beta = solveTwoBone(_S, _T, _pole, BD.thigh, BD.shin, -1, leg.thigh.quaternion, _end);
     // … and a knee never sinks into the ground
-    _hK.set(0, -DIM.thigh, 0).applyQuaternion(leg.thigh.quaternion).add(_S);
+    _hK.set(0, -BD.thigh, 0).applyQuaternion(leg.thigh.quaternion).add(_S);
     if (this._hingeFloor(r.pelvis, _S, _end, _hK, KNEE_FLOOR, _pole, leg === r.legs.L ? 1 : -1)) {
-      beta = solveTwoBone(_S, _T, _pole, DIM.thigh, DIM.shin, -1, leg.thigh.quaternion, _end);
+      beta = solveTwoBone(_S, _T, _pole, BD.thigh, BD.shin, -1, leg.thigh.quaternion, _end);
     }
     leg.shin.rotation.set(beta, 0, 0);
     // ankle: keep the sole level with the ground by footFlat (0 = rigid with the shin)

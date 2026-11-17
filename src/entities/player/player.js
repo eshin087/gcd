@@ -5,6 +5,7 @@ import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
+import { HERO_LEGS } from './heroDims.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
@@ -166,7 +167,7 @@ export class Player {
     // outfit's weapon
     this.look = getLook(game.heroLook)?.id ?? DEFAULT_LOOK;
     const sword = swordFromUrl(), lo = HERO_LOOKS[this.look].loadout;
-    this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo);
+    this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo, { legs: this._legs() });
     tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
@@ -714,7 +715,7 @@ export class Player {
     const U = this.game.U, saved = PART_UNIFORMS.map((k) => U[k]?.value?.map((v) => v.clone()) ?? null);
     let rig;
     try {
-      rig = buildHero(U, loadout);
+      rig = buildHero(U, loadout, { legs: this._legs() });
     } finally {
       saved.forEach((a, i) => a && U[PART_UNIFORMS[i]].value.forEach((v, j) => a[j] && v.copy(a[j])));
     }
@@ -744,13 +745,18 @@ export class Player {
 
   /** Wear outfit option `id` (gear/looks.js): its loadout (the equipped weapon kept) and its colours.
    *  Throws on an unknown id and changes nothing. Build-time cost (setLoadout). */
+  /** The legs he stands on: his look's own (a prototype's), else the hero's (heroDims.js HERO_LEGS). */
+  _legs() {
+    return HERO_LOOKS[this.look]?.legs ?? HERO_LEGS;
+  }
+
   setLook(id) {
     const L = getLook(id);
     if (!L) throw new Error(`no hero look "${id}" (${LOOK_IDS.join(', ')})`);
     const prev = this.look;
     this.look = L.id;
     try {
-      return this.setLoadout({ ...L.loadout, weapon: this.rig.loadout.weapon });
+      return this.setLoadout({ ...L.loadout, weapon: L.ownWeapon ? L.loadout.weapon : this.rig.loadout.weapon });
     } catch (e) {
       this.look = prev;
       throw e;

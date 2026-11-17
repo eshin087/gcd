@@ -18,6 +18,11 @@ import { WARDEN_LOADOUT, WARDEN_SHADED_LOADOUT, WARDEN_TINT } from './warden.js'
 export const HERO_LOOKS = Object.freeze({
   wanderer: Object.freeze({ id: 'wanderer', name: 'Wanderer', loadout: DEFAULT_LOADOUT, tint: null }),
   shroud: Object.freeze({ id: 'shroud', name: 'Shrouded (2026-11-11)', loadout: SHROUD_LOADOUT, tint: null }),
+  // (prototypes for the owner's pick, 2026-11-17: "make the sword a bit shorter and same with the
+  // character. the legs are too long and put a hood on". `legs`: his own thigh and shin (DIM's 0.43 /
+  // 0.42); `ownWeapon`: switching to it live brings its sword too)
+  'proto-a': Object.freeze({ id: 'proto-a', name: 'Option A: legs -6%, sword 1.52 m, hood', loadout: Object.freeze({ ...DEFAULT_LOADOUT, head: 'shroud.hood', weapon: 'wanderer.swordA' }), tint: null, legs: Object.freeze({ thigh: 0.404, shin: 0.395 }), ownWeapon: true }),
+  'proto-b': Object.freeze({ id: 'proto-b', name: 'Option B: legs -12%, sword 1.42 m, hood, his fringe, face lit', loadout: Object.freeze({ ...DEFAULT_LOADOUT, head: 'shroud.hoodOwnHair', weapon: 'wanderer.swordB' }), tint: null, legs: Object.freeze({ thigh: 0.378, shin: 0.37 }), ownWeapon: true }),
   robe: Object.freeze({ id: 'robe', name: 'Moonlit Robe', loadout: MOON_LOADOUT, tint: MOON_TINT }),
   'robe-shade': Object.freeze({ id: 'robe-shade', name: 'Robe (shaded)', loadout: MOON_SHADED_LOADOUT, tint: MOON_TINT, of: 'robe' }),
   swallow: Object.freeze({ id: 'swallow', name: 'Swallow', loadout: SWALLOW_LOADOUT, tint: SWALLOW_TINT }),
