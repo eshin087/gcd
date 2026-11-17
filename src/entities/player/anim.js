@@ -2786,6 +2786,14 @@ const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_
 //             lower]) and × the lag and the flare; tuckShrink [sheets, panels]: how much shorter the
 //             cloth is drawn up while he is rolled up (scale along the sheet)
 const CLOTH = { panelOut: 0.85, kneeOut: 0.5, share: 0.75, couple: 0, coupleSheet: 0, root: 0.5, sheetB: 0.45, rate: 0.16, hemLag: 1.6, tuckIn: 22, tuckOut: 4, tuckSheet: 0.08, tuckPanel: [-0.12, -0.06], tuckLag: 1, tuckFlare: 1, tuckShrink: [0.45, 0.4], tuckLying: 0 };
+// (the hero) lying on the grass (knocked down, dead) the cloak and the skirt's panels are laid flat on
+// the ground round him in a calm fixed fan (2026-11-17, round 2: the springs' floor rules stood their
+// torn hems up round him like a spiky star). Each sheet and panel points along the ground: toward his
+// feet (`feet`), out from where it hangs (`out`) and to its side of the body (`side`), sloping down to
+// reach the grass (`floor` m over it); its hem lies straight on. Eased in at `in` /s once his body is
+// near level, out at `out2` /s as he rises, so the cloth gathers back into the springs without a snap.
+const LAY = { feet: 1, out: 0.25, side: 0.35, floor: 0.03, in: 5, out2: 3.5 };
+const _ly = new THREE.Vector3(), _lf = new THREE.Vector3(), _lb = new THREE.Vector3(), _lq = new THREE.Quaternion();
 const BLADE_LOCO_RATE = 0.09; // rad per 60 fps frame (apply(): the blade on the move)
 const _vm = new THREE.Vector3(), _vmS = new THREE.Vector3();
 // the coat's neighbours (gear's panel order: front-left, front-right, left side, right side)
@@ -3037,6 +3045,7 @@ export class HeroAnimator {
     this.bzPrev = new THREE.Vector3(0, 0, 1); // apply(): last frame's blade direction (body space)
     this.bzOk = false;
     this.tuck = 0; // 0..1: the cloth drawn in round him (CLOTH.tuck)
+    this.layW = 0; // 0..1: the cloth laid flat on the ground round him (LAY, _layCloth)
     this.coatPrev = rig.coat.map(() => new THREE.Vector3());
     this.coatVel = rig.coat.map(() => new THREE.Vector3());
     this.coatInit = false;
@@ -3198,6 +3207,7 @@ export class HeroAnimator {
     this._coat(0);
     this._hair(0);
     this._streamers(0);
+    this.layW = 0;
     this.rig.root.updateMatrixWorld(true);
   }
 
@@ -3393,6 +3403,7 @@ export class HeroAnimator {
     this._coat(dt);
     this._hair(dt);
     this._streamers(dt);
+    this._layCloth(dt);
     this.rig.root.updateMatrixWorld(true);
   }
 
@@ -4752,6 +4763,67 @@ export class HeroAnimator {
     // (standing: a knee only nudges the hem out, at most CLOTH.kneeOut from its upper segment; a knee
     // at the seam swung the hem out level)
     return feet ? lim : Math.max(lim, -CLOTH.kneeOut);
+  }
+
+  /** (the hero) The cloth laid flat on the ground while he lies (LAY): the coat panels' and the cloak
+   *  sheets' swings blended toward a fixed fan by this.layW, written back into their spring state (so
+   *  the springs take over from where the cloth lies when he gets up). Allocates nothing. */
+  _layCloth(dt) {
+    if (!this.freeHand) return;
+    const r = this.rig;
+    _e.set(0, 1, 0).applyQuaternion(r.body.getWorldQuaternion(_q1));
+    const flat = smoothstep(0.55, 0.25, Math.abs(_e.y));
+    const want = LYING_KEYS.has(this.key) ? flat : 0;
+    const k = dt > 0 ? 1 - Math.exp(-(want > this.layW ? LAY.in : LAY.out2) * dt) : 1;
+    this.layW = clamp(fin(this.layW + (want - this.layW) * k, 0), 0, 1);
+    const w = this.layW;
+    if (w < 1e-3) return;
+    // toward his feet (the body's down, flat on the ground) and his left (the body's +x, flat)
+    _lf.set(0, -1, 0).applyQuaternion(_q1);
+    _lf.y = 0;
+    if (_lf.lengthSq() < 1e-6) _lf.set(0, 0, -1).applyQuaternion(_q1).setY(0);
+    _lf.normalize();
+    _lb.set(1, 0, 0).applyQuaternion(_q1);
+    _lb.y = 0;
+    if (_lb.lengthSq() > 1e-6) _lb.normalize();
+    const lay = (seg0, len, st0, st1) => {
+      const P = seg0.parent;
+      P.updateWorldMatrix(true, false);
+      P.getWorldQuaternion(_lq);
+      _w.copy(seg0.position).applyMatrix4(P.matrixWorld); // the root (world)
+      _ly.set(0, 0, 1).applyQuaternion(_lq); // where it hangs out from (world)
+      const sx = _ly.dot(_lb);
+      _ly.y = 0;
+      _ly.multiplyScalar(LAY.out).addScaledVector(_lf, LAY.feet).addScaledVector(_lb, sx * LAY.side);
+      if (_ly.lengthSq() < 1e-6) _ly.copy(_lf);
+      _ly.normalize();
+      const dy = -clamp((_w.y - LAY.floor) / Math.max(0.1, len), 0, 0.95);
+      _ly.multiplyScalar(Math.sqrt(1 - dy * dy)).setY(dy).applyQuaternion(_lq.invert());
+      const b = Math.asin(clamp(_ly.x, -1, 1)), a = Math.atan2(-_ly.z, -_ly.y);
+      if (!Number.isFinite(a + b)) return;
+      st0.x += (a - st0.x) * w;
+      st0.z += (b - st0.z) * w;
+      st1.x += (0 - st1.x) * w;
+      st1.z += (0 - st1.z) * w;
+      st0.vx *= 1 - w;
+      st0.vz *= 1 - w;
+      st1.vx *= 1 - w;
+      st1.vz *= 1 - w;
+    };
+    for (let i = 0; i < r.coat.length; i++) {
+      const C = r.coat[i], st = this.coatState[i];
+      lay(C.segs[0], C.def.len[0] + C.def.len[1], st[0], st[1]);
+      C.segs[0].rotation.set(st[0].x, 0, st[0].z);
+      C.segs[1].rotation.set(st[1].x, 0, st[1].z);
+    }
+    for (let i = 0; i < (r.streamers?.length ?? 0); i++) {
+      const S = r.streamers[i];
+      if (S.wrap == null) continue;
+      const st = this.streamState[i].segs;
+      lay(S.segs[0], S.len[0] + S.len[1], st[0], st[1]);
+      S.segs[0].rotation.set(st[0].x, 0, st[0].z);
+      S.segs[1].rotation.set(st[1].x, 0, st[1].z);
+    }
   }
 
   /** Torn strips of one panel. _q0 / _e0 = the lower segment's world rotation / origin. Each strip
