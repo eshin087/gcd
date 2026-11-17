@@ -131,7 +131,11 @@ export const TUNING = {
     // P2 / P1 1.12 - 1.25 per seed, P3 / P2 1.04 - 1.15 per seed and 1.10 in the mean (phase 3 sits at
     // the 0.42 s / 0.32 s floors: its ramp is also in what it asks: 13 / 18 / 19 % of the cues a dodge);
     // longest gap 3.24 / 2.95 / 2.54 s. Before the pass: 60.2 / 76.0, no phase 3)
-    meter: { ramp: [1, 1.08, 1.0], rampMean: [1, 1.12, 1.06], minRate: [70, 82, 92], maxGap: [3.4, 3.2, 2.9] },
+    // (the engine pass: the qi's last beat is the cut on a close hero (brain.js `b.cut`): Chasing Rain
+    // and Parting Wind now cue 1.8 - 2.0 a second and are picked more; seed 99 replays another fight:
+    // P2 95.6 → 96.6, P3 98.7 → 95.9 cues a minute, P3 / P2 0.993: the per-seed P3 floor 1.0 → 0.99.
+    // Five seeds' mean P3 / P2 1.073 → 1.067, still over rampMean)
+    meter: { ramp: [1, 1.08, 0.99], rampMean: [1, 1.12, 1.06], minRate: [70, 82, 92], maxGap: [3.4, 3.2, 2.9] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },

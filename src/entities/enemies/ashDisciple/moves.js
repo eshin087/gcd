@@ -499,7 +499,9 @@ export const MOVES = {
       cut('diag', N, 0.36, 11),
       cut('flatBack', N, 0.34, 11),
       cut('over', B, 0.42, 20, { hold: [0.08, 0.25], cock: 0.72, lock: true }),
-      qi(N, 0.42, 13, [1, 3, 3], 0.36, { speed: 10 }), // (slower: it can catch a hero only a step or two back)
+      // (`zone`: the downward cut's own reach (CUTS.diag's: the qi's keys are its path): a hero still
+      // inside it as the cue comes due takes the cut instead, no qi thrown; duelist/brain.js `b.cut`)
+      qi(N, 0.42, 13, [1, 3, 3], 0.36, { speed: 10, zone: CUTS.diag.zone }), // (slower: it can catch a hero only a step or two back)
     ],
   },
 
@@ -523,7 +525,9 @@ export const MOVES = {
       cut('rise', N, 0.46, 13),
       cut('flatBack', N, 0.34, 12),
       cut('diag', N, 0.36, 12),
-      qi(N, 0.42, 14, [1, 3, 3], 0.36, { speed: 10 }), // (slower: it can catch a hero only a step or two back)
+      // (`zone`: the downward cut's own reach (CUTS.diag's: the qi's keys are its path): a hero still
+      // inside it as the cue comes due takes the cut instead, no qi thrown; duelist/brain.js `b.cut`)
+      qi(N, 0.42, 14, [1, 3, 3], 0.36, { speed: 10, zone: CUTS.diag.zone }), // (slower: it can catch a hero only a step or two back)
     ],
   },
 

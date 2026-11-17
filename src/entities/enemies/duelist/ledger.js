@@ -24,8 +24,25 @@ const WORLD_LEAD = 0.3; // (world/destructibles.js FLASH_LEAD: a felled piece's 
 const GLAIVE_WAIT = 0.32; // (starlessLord/fx.js updateShots: the thrown blade hangs where it turns)
 
 /** A beat that throws something straight at the hero from his hand (a release: crescents, the push,
- *  fissures; the thrown blade): it lands a flight after the beat's impact. */
-export const throwsAt = (b) => !!(b.def.release || b.def.cast?.kind === 'glaive');
+ *  fissures; the thrown blade): it lands a flight after the beat's impact. A release with a `zone`
+ *  that the brain turned into a cut (`b.cut`: the hero stood inside its reach as its cue came due)
+ *  throws nothing: it is a blade's blow from then on. */
+export const throwsAt = (b) => !b.cut && !!(b.def.release || b.def.cast?.kind === 'glaive');
+
+/**
+ * The thrown blade still going out (`s.phase` 'fly'): when its way home, from where it will turn to
+ * his hand (`H`), crosses the hero at `p`, in s from now; -1 if that way does not pass him. `reach`:
+ * the blade's radius + the hero's. The ledger's predictor and brain._worldCue both read it.
+ */
+export function glaiveHome(s, p, reach, H) {
+  if (!(s.speed > 0) || !H) return -1;
+  const rem = Math.max(0, (s.range ?? 12) - Math.hypot(s.x - s.ox, s.z - s.oz));
+  const tx = s.x + s.dx * rem, tz = s.z + s.dz * rem;
+  const hl = Math.hypot(H.x - tx, H.z - tz) || 1, ux = (H.x - tx) / hl, uz = (H.z - tz) / hl;
+  const qx = p.x - tx, qz = p.z - tz, al = qx * ux + qz * uz, ac = Math.abs(-qx * uz + qz * ux);
+  if (!(ac < reach + 0.5 && al > reach && al < hl)) return -1;
+  return rem / s.speed + GLAIVE_WAIT + (al - reach) / Math.max(1, s.back || s.speed);
+}
 
 /** One known impact. `fixed`: it cannot be moved (a cue already given, a thing in flight); a
  *  movable one (a called strike before its cue) yields instead. */
@@ -177,12 +194,9 @@ export class CueLedger {
         if (across < reach + 0.5 && along > reach && speed > 0) this._pred(now + Math.max(0, s.wait ?? 0) + (along - reach) / speed, s.tell, s.attack, true);
         // the thrown blade still going out: its way home, from where it will turn to his hand, may pass
         // the hero too (seen from the throw on, so a strike called now leaves it room)
-        if (s.kind === 'glaive' && s.phase === 'fly' && s.speed > 0) {
-          const rem = Math.max(0, (s.range ?? 12) - Math.hypot(s.x - s.ox, s.z - s.oz));
-          const tx = s.x + s.dx * rem, tz = s.z + s.dz * rem, H = d._hilt ?? d.position;
-          const hl = Math.hypot(H.x - tx, H.z - tz) || 1, ux = (H.x - tx) / hl, uz = (H.z - tz) / hl;
-          const qx = p.x - tx, qz = p.z - tz, al = qx * ux + qz * uz, ac = Math.abs(-qx * uz + qz * ux);
-          if (ac < reach + 0.5 && al > reach && al < hl) this._pred(now + rem / s.speed + GLAIVE_WAIT + (al - reach) / Math.max(1, s.back || s.speed), s.tell, s.attack, true);
+        if (s.kind === 'glaive' && s.phase === 'fly') {
+          const home = glaiveHome(s, p, reach, d._hilt ?? d.position);
+          if (home >= 0) this._pred(now + home, s.tell, s.attack, true);
         }
       }
     }
