@@ -5,37 +5,26 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Fifty pieces of work since 0.4.0:
-- **The Ash Disciple and the Starless Lord fight harder, in arenas that break** (2026-11-16, ADR-122). *Changed:* both human bosses give far fewer pauses and
-  their moves flow into each other, at the same damage per hit: against a hero who only defends,
-  Shen Hui gives about 78 / 93 / 100 tells a minute by phase (60 / 76 before, in two
-  phases) and the Starless Lord 85 / 91 / 100 / 110 by form (71 / 80 / 75 / 85). A move now follows the last
-  one by where you are standing, and starts while he would have been walking back to his guard;
-  your own openings (after a parried last blow, a stagger, a break) are as long as before. Two
-  attacks that need different answers never land within a third of a second of each other: a blow
-  waits at its cock, or a strike comes late, instead (the Lord had about three such overlaps a
-  minute before). Thrown pieces (the kicked lantern, Void Hurl, Glass Rain) show no mark on the
-  ground: the flash on the flying piece is the cue. A white or blue blow out of the Lord's blink
-  can be guarded from any side. *Added:* **Shen Hui has a third phase**, from 36 % health: ash on
-  the wind. He vanishes into ash between blows and strikes from another side, leaves afterimages,
-  has an eleven-blow flurry and a storm of sword qi. Sixteen new moves across his phases: strings
-  with a glide, a kick or a spin that travels, a feint from the other side, a nine-blow string that
-  catches a hero who steps back, and in phase 2 cuts that leave lines of fire on the stones (step
-  off them: a held guard holds for about a second and a half, then opens; it never costs health).
-  **The Starless Lord casts inside his strings:** bolts between cuts, a pull into the string, the
-  off blade thrown as a wheel and caught, stones that orbit him and fire in the string's pauses,
-  blink strings, and in his last form strikes of the Starless Sky that keep falling in ones and twos
-  and Starless Night, three waves across the whole crater. Nineteen new moves across his forms.
-  Both bosses use the floor: flagstones levered up and kicked, plates torn up in a line, a ring of
-  plates lifted and dropped. **Both arenas break:** the paving and the crater's plates crack and
-  shatter under heavy blows, the courtyard's two colossi can be cut down (onto either fighter), and
-  the wreckage stays for the rest of the fight. Effects with bodies: the Kindling, ground shocks,
-  sword qi, the Dark Star, each form's ignition. The bosses' bodies show the fight: Shen Hui's hem
-  smoulders in phase 2 and he loses his hat in phase 3; the Lord's cape tears form by form and his
-  faceplate splits in the last. The Lab has a LOOKS section. *Fixed:* the Lord's flurry was always
-  four blows whatever its count; one bite of the wyrm (Furnace Maw) was cued up to a tenth of a
-  second early on one side. Every look is the owner's pick from rendered options; `?looks=old`
-  shows the effects and floors as they were, and each switch (`?qi=`, `?star=`, `?ashLook=` and the
-  others in docs/STYLE.md) shows a look that was turned down.
+- **The wyrm burns in phase 3, the forest breaks, the letters follow the zoom** (2026-11-16, ADR-120).
+  *Added:* in its third phase the Cinder Wyrm sets itself on fire. The phase 3 roar ends with fire
+  running out along its wings, legs and tail; from then on its wing tips, claws and tail burn, and
+  the flames trail behind fast moves: a wing sweep leaves an arc of fire, a tail whip a ribbon. Trees
+  it passes can catch. Its footprints smoulder with small flames that do not hurt; its attacks, their
+  damage and their cues are unchanged, and the fire dims round every flash. Every tree of Cinderwood
+  can now break, out to the edge of the forest (664 breakable things instead of 183), and a tree
+  wears down in stages: leaves burst off, the crown thins, it leans, it falls and leaves a log and a
+  stump. The Elder Wyrm's skeleton comes apart bone by bone, the Cinder Tree bough by bough, and the
+  bone nest breaks; broken bones leave heaps. The bonfire stays. The wyrm reaches the tree wall from
+  inside the clearing: its roars, shock rings, wing beats, take-offs and landings send wind that
+  strips the wall's crowns, and fire that misses the hero carries on into the trees; after a full
+  fight about two fifths of the wall's front rows are worn, felled or burnt. Trees of the wall fall
+  outward, away from the fight. A sound for a tree wearing down. *Changed:* when you zoom out on a
+  desktop, the small letters of the wyrm, the stones and the trees get smaller with the picture, so
+  things keep their detail at the furthest zoom (they lost about a third of their letters before).
+  Nothing changes at the default zoom or on a phone. The owner's pick of three options each for the
+  zoom and for the fire (b for both); `?zoomArt=a|c` and `?ablaze=off|a|c` show the others. Three
+  new heads for the wyrm were built and shown (a predator skull, an Eastern loong, a horned demon);
+  the owner passed on them for now, so the head is unchanged and they wait behind `?wyrmFace=`.
 - **The Cinder Wyrm fights harder, with its whole body** (2026-11-15, ADR-119). *Changed:* the wyrm
   gives far fewer pauses and its attacks flow into each other: about 34 tells a minute in phase 1,
   59 in phase 2 and 78 in phase 3 (26, 42 and 45 before), with the same damage per hit. It now picks

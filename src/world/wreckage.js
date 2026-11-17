@@ -27,9 +27,13 @@ import { BREAK } from './breakTuning.js';
 const LOG_LOOKS = 3;
 const CHAR_LOOKS = 2;
 const RUBBLE_LOOKS = 3;
+const BONE_LOOKS = 3;
 const BLOCK_LOOKS = 3;
 const SHARD_LOOKS = 3;
-const KIND = Object.freeze({ LOG: 0, CHAR: 1, RUBBLE: 2, BLOCK: 3, SHARDS: 4 });
+// (BONES: what a broken rib, a run of vertebrae, a skull leaves lying: a heap of shards in the bone's own
+// hue, 2026-11-16; it lies and sinks as a rubble pile does)
+const KIND = Object.freeze({ LOG: 0, CHAR: 1, RUBBLE: 2, BONES: 3, BLOCK: 4, SHARDS: 5 });
+const BONE_COL = [0.3, 0.285, 0.245], OLD_BONE_COL = [0.2, 0.19, 0.17]; // (landmarks.js BONE, OLD_BONE)
 const CHAR_COL = [0.03, 0.026, 0.024]; // (burnt black: the ember glow under it is the scorch map's)
 
 // cosmetic noise from this module's own stream (the seeded sims replay Math.random)
@@ -57,6 +61,43 @@ function logGeometry(r, charred) {
       : (px, py, pz) => mul(BARK, 0.75 + 0.45 * hash2(px * 7 + s, py * 9 + pz * 3)),
     ao: (px, py) => 0.55 + 0.45 * clamp(0.5 + py, 0, 1),
     edge: (px, py, pz, nx, ny) => (ny > 0.55 ? (charred ? 0.25 : 0.45) : 0),
+  });
+  return g;
+}
+
+/** A heap of broken bone round 0, about 1 across (scaled per use): rib shards lying crossed, knuckles, splinters. */
+function boneGeometry(r) {
+  const parts = [];
+  const n = 4 + Math.floor(r() * 3);
+  for (let i = 0; i < n; i++) {
+    const len = 0.7 + r() * 0.9, rad = 0.06 + r() * 0.07;
+    const g = prep(new THREE.CylinderGeometry(rad * 0.7, rad, len, 5, 3));
+    // a rib's curve: bent along its length
+    const p = g.attributes.position;
+    for (let k = 0; k < p.count; k++) {
+      const y = p.getY(k) / len;
+      p.setX(k, p.getX(k) + (0.25 - y * y) * 0.5 * (0.5 + r()));
+    }
+    g.rotateZ(Math.PI / 2 + (r() - 0.5) * 0.3);
+    g.rotateY(r() * Math.PI * 2);
+    const a = r() * Math.PI * 2, d = r() * 0.45;
+    g.translate(Math.cos(a) * d, rad * 0.8 + i * 0.03, Math.sin(a) * d);
+    parts.push(g);
+  }
+  for (let i = 0; i < 3; i++) {
+    const s = 0.12 + r() * 0.12;
+    const g = prep(new THREE.IcosahedronGeometry(s, 0));
+    lumpy(g, s * 0.35, 1.6 / s, r() * 99);
+    const a = r() * Math.PI * 2, d = 0.2 + r() * 0.5;
+    g.translate(Math.cos(a) * d, s * 0.5, Math.sin(a) * d);
+    parts.push(g);
+  }
+  const g = mergeGeometries(parts);
+  const sd = r() * 50;
+  carve(g, {
+    col: (px, py, pz) => mul(hash2(px * 3 + sd, pz * 3) < 0.35 ? OLD_BONE_COL : BONE_COL, 0.75 + 0.45 * hash2(px * 9 + sd, py * 7 + pz * 5)),
+    ao: (px, py) => 0.55 + 0.45 * clamp(py / 0.3, 0, 1),
+    edge: (px, py, pz, nx, ny) => (ny > 0.5 ? 0.4 : 0),
   });
   return g;
 }
@@ -106,8 +147,8 @@ function shardsGeometry(r) {
 export class Wreckage {
   /**
    * `root`: the group it hangs under (the breakables' root: one batch for both); `mat`: the prop art
-   * twin; `owner`: the Destructibles (lights, quality, events). `need`: { blocks, shards } (the pools
-   * only a set with a statue / a floor that can be thrown uses: no bones for them elsewhere).
+   * twin; `owner`: the Destructibles (lights, quality, events). `need`: { bones, blocks, shards } (the pools
+   * only a set with bone pieces / a statue / a floor that can be thrown uses: no bones for them elsewhere).
    */
   constructor(game, world, root, mat, owner, need = {}) {
     this.game = game;
@@ -119,7 +160,7 @@ export class Wreckage {
     this.group.matrixAutoUpdate = false;
     root.add(this.group);
     /** every entry, by pool: { kind, mesh, on, t (born), x, z, dx, dz, len, r, burn, burnLife, flame, heatT, smoulder, sink, light, M } */
-    this.pools = [[], [], [], [], []];
+    this.pools = [[], [], [], [], [], []];
     /** the entries lying now, oldest first per pool (unordered across pools) */
     this.live = [];
     this.burning = 0;
@@ -129,10 +170,13 @@ export class Wreckage {
     if (!mat) return;
     const W = BREAK.wreck;
     const r = mulberry32(0x5eed1e5);
-    const logs = [], chars = [], rocks = [];
+    const logs = [], chars = [], rocks = [], bones = [];
     for (let i = 0; i < LOG_LOOKS; i++) logs.push(logGeometry(r, false));
     for (let i = 0; i < CHAR_LOOKS; i++) chars.push(logGeometry(r, true));
     for (let i = 0; i < RUBBLE_LOOKS; i++) rocks.push(buildRubble(r, 0, 0, 1, { h: 0.55 })[0]);
+    // (the bone heaps: only where the set has bone pieces, Cinderwood's landmarks; elsewhere a set is
+    // built without them, as the pools below)
+    if (need.bones) for (let i = 0; i < BONE_LOOKS; i++) bones.push(boneGeometry(r));
     // (after the older looks: their random sequence stays as it was; built only where the set needs
     // them: a set without a statue or a floor to throw is built exactly as before, 2026-11-16)
     const blocks = [], shards = [];
@@ -154,6 +198,7 @@ export class Wreckage {
     make(KIND.LOG, W.logs, logs);
     make(KIND.CHAR, W.chars, chars);
     make(KIND.RUBBLE, W.rubble, rocks);
+    make(KIND.BONES, need.bones ? W.bones ?? 0 : 0, bones);
     make(KIND.BLOCK, need.blocks ? W.blocks : 0, blocks);
     make(KIND.SHARDS, need.shards ? W.shards : 0, shards);
   }
@@ -273,7 +318,8 @@ export class Wreckage {
   /** A pile of rubble at (x, z), `r` across (a broken stone, a boulder, a thrown one's remains). */
   rubble(x, z, r, M = BREAK.mats.stone) {
     if (!Number.isFinite(x + z + r) || !(r > 0.1)) return null;
-    const e = this._take(KIND.RUBBLE);
+    // (bone: a heap of shards, its own pool; stone and anything else: a rubble pile)
+    const e = this._take(M === BREAK.mats.bone && this.pools[KIND.BONES].length ? KIND.BONES : KIND.RUBBLE);
     if (!e) return null;
     this._start(e, x, z);
     e.r = clamp(r, 0.3, 1.8);
@@ -481,7 +527,7 @@ export class Wreckage {
     const L = this.live;
     if (!L.length || !(dt > 0)) return;
     const W = BREAK.wreck;
-    // a pool over its share: its oldest sinks into the ground
+    // a pool over its share: its oldest sinks into the ground (every pool, the bone heaps, blocks and shards included)
     for (let k = 0; k < this.pools.length; k++) {
       const cap = this._cap(k);
       let used = 0, sinking = 0, oldest = null;

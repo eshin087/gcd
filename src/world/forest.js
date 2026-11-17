@@ -5,7 +5,8 @@ import { markCaster } from '../render/pipeline.js';
 import { mulberry32, range, hash2, fbm2 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
-import { buildElderWyrm, buildCinderTree, landmarkPoint, ELDER_COLLIDERS } from './landmarks.js';
+import { buildElderWyrm, buildCinderTree, buildCinderStump, landmarkPoint, ELDER_COLLIDERS } from './landmarks.js';
+import { BREAK } from './breakTuning.js';
 
 // Procedural forest ring around a moonlit clearing: blob oaks and pines (leaf-ramp ASCII),
 // a broken standing-stone circle, boulders, flagstones, the bones of past challengers near
@@ -382,7 +383,8 @@ export function buildFlagstone(rng, x, z, w, d, yaw) {
 }
 
 /**
- * The nest: the great ribcage and skull of an older wyrm (they stay: part of the set) and, loose round
+ * The nest: the great ribcage and skull of an older wyrm (each rib and the skull tagged `userData.piece`:
+ * forest.js makes them breakables, 2026-11-16) and, loose round
  * them, its vertebrae and the remains of fallen knights (helms, swords, long bones). Returns
  * { parts: the fixed geometries, loose: [{ kind, mat?, geos, x, z, r }] } (the loose ones are
  * breakables). The random sequence is the one this builder always drew (the layout does not move).
@@ -408,7 +410,7 @@ function buildBones(rng, cx, cz) {
       arc.rotateY(spineYaw); // rib plane perpendicular to the spine
       const along = (i - ribs / 2) * 0.95;
       arc.translate(cx + dir.x * along, -0.35, cz + dir.y * along);
-      add(arc);
+      add(arc).userData.piece = `nestRib${i}${side > 0 ? 'R' : 'L'}`;
     }
   }
   // spine vertebrae (gently curving, some missing): loose, in three runs of the spine
@@ -440,7 +442,7 @@ function buildBones(rng, cx, cz) {
   for (const g of [skull, snout, hornL, hornR]) {
     g.rotateY(spineYaw + 2.6);
     g.translate(cx + dir.x * -5.6 + 1.2, 0.2, cz + dir.y * -5.6 - 0.4);
-    add(g, 1.05);
+    add(g, 1.05).userData.piece = 'nestSkull';
   }
   // remains of fallen knights: helms, swords, long bones (loose: each its own piece)
   for (let i = 0; i < 9; i++) {
@@ -600,6 +602,75 @@ export function geosHeight(geos) {
   return h;
 }
 
+// ---------- runs of a static mesh: the breakables whose bodies stay in it ('range' pieces) ----------
+/**
+ * Collects geometries for one merged mesh and hands out the run of vertices each breakable's go to:
+ * `add(geos, leaf?)` -> `{ mesh (filled by finish), start, count, parts, leaf }` (parts: each geometry's
+ * vertex count, the pieces a tree drops as it wears down; leaf(i): that part is foliage);
+ * `finish(extra, material, name)` merges them (then `extra`, whole) and fills in the mesh.
+ */
+class Runs {
+  constructor() {
+    this.list = [];
+    this.ranges = [];
+    this.v = 0;
+  }
+
+  add(geos, leaf = null) {
+    const parts = geos.map((g) => g.attributes.position.count);
+    const r = { mesh: null, start: this.v, count: parts.reduce((a, n) => a + n, 0), parts, leaf: leaf ? geos.map((g, i) => (leaf(i) ? 1 : 0)) : null };
+    this.list.push(...geos);
+    this.v += r.count;
+    this.ranges.push(r);
+    return r;
+  }
+
+  finish(extra, material, name) {
+    const all = [...this.list, ...extra];
+    const mesh = new THREE.Mesh(all.length ? mergeGeometries(all) : new THREE.BufferGeometry(), material);
+    mesh.name = name;
+    for (const k of ['position', 'normal']) mesh.geometry.attributes[k]?.setUsage(THREE.DynamicDrawUsage);
+    for (const r of this.ranges) r.mesh = mesh;
+    return mesh;
+  }
+}
+
+/** A builder's parts grouped by their `userData.piece` tag, in the order the tags first come: [[tag, geos], ...]. */
+function groupParts(parts) {
+  const m = new Map();
+  for (const g of parts) {
+    const k = g.userData?.piece || 'rest';
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(g);
+  }
+  return [...m];
+}
+
+/** Where a group of world-space geometries stands: the centre of its vertices (x, z), a footprint radius, its top. */
+function footprint(geos) {
+  let n = 0, x = 0, z = 0, h = 0;
+  for (const g of geos) {
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      x += p.getX(i);
+      z += p.getZ(i);
+      h = Math.max(h, p.getY(i));
+      n++;
+    }
+  }
+  x /= n || 1;
+  z /= n || 1;
+  let r2 = 0;
+  for (const g of geos) {
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) r2 += (p.getX(i) - x) ** 2 + (p.getZ(i) - z) ** 2;
+  }
+  // (the vertices' spread, not their farthest: a rib's arc should not claim a 3 m disc)
+  // (at most 1.8 m: the spatial grid widens every query by the largest piece's radius)
+  const r = Math.min(1.8, Math.max(0.35, Math.sqrt(r2 / (n || 1)) * 1.2));
+  return { x, z, r, h: Math.max(0.3, h) };
+}
+
 // ---------- assembly ----------
 /**
  * Trees and boulders this close to the clearing's centre are breakables (they can be felled, burned,
@@ -672,18 +743,42 @@ export function createForest(U, colliders) {
   // (the trees past the old 36.5 m line draw their stumps from a stream of their own: br's sequence,
   // and so the layout of what stands inside the clearing, stays as it was)
   const brOut = mulberry32(CONFIG.seed + 9311);
-  const treeBreakable = (t, g, c, rng = br) => ({
-    kind: t.type === 'dead' ? 'deadTree' : 'tree', mat: 'wood', look: 'grid', x: t.x, z: t.z, r: 0.45 * t.s, h: geosHeight(g), geos: g,
-    colliders: c ? [c] : [], broken: { geos: buildStump(rng, t.x, t.z, t.s), r: 0.38 * t.s }, leafy: t.type === 'dead' ? 0 : 0.6, lift: 1,
-  });
+  // Every tree is a breakable (2026-11-16: the whole wall wears down; it was only those within 42 m).
+  // A tree is a 'range' piece: its trunk and crown blobs are runs of vertices in the ONE static tree
+  // mesh (no bone of the rigid batch: 560 trees would not fit), dropped part by part as it wears down
+  // and rewritten as it shudders, leans, falls or is carried (destructibles.js RangeBody). Its stump is a
+  // run of the stump mesh, folded away until it shows.
+  const treeRuns = new Runs(), stumpRuns = new Runs(), propRuns = new Runs();
+  const brFar = mulberry32(CONFIG.seed + 6007); // (the stumps of the trees past the old 42 m line)
+  const WALL = BREAK.wall;
+  /** The parts a tree drops as it wears down (its crown from the outside in) and how many by each stage. */
+  const wearOf = (type, n) => {
+    const order = [];
+    for (let i = n - 1; i >= 1; i--) order.push(i); // (part 0 the trunk; an oak's part 1 its core blob: last)
+    const c = n - 1;
+    // (a pine: its top snaps off first, two tiers at once, then all but the lowest skirt: one tier at a time
+    // hid inside the canopy and its stages barely read, 2026-11-16)
+    const cut = type === 'pine' ? [Math.min(2, c), Math.min(3, c)] : type === 'dead' ? [Math.ceil(c / 3), Math.ceil((2 * c) / 3)] : [Math.ceil(c * 0.4), Math.ceil(c * 0.8)]; // (an oak: 2026-11-16 a quarter and three fifths of its crown read as nothing from above)
+    return { order, cut };
+  };
+  const treeBreakable = (t, g, c, rng = br) => {
+    const rad = Math.hypot(t.x, t.z), h = geosHeight(g);
+    return {
+      kind: t.type === 'dead' ? 'deadTree' : 'tree', mat: 'wood', look: 'range', x: t.x, z: t.z, r: 0.45 * t.s, h,
+      range: treeRuns.add(g, t.type === 'dead' ? null : (i) => i > 0),
+      colliders: c ? [c] : [], broken: { range: stumpRuns.add(buildStump(rng, t.x, t.z, t.s)), r: c ? 0.38 * t.s : 0 },
+      leafy: t.type === 'dead' ? 0 : 0.6, lift: 1, wear: wearOf(t.type, g.length),
+      // (the wall: tougher, and it falls away from the arena; BREAK.wall)
+      wall: rad > WALL.from, hpK: rad > WALL.from ? WALL.hp : 1,
+    };
+  };
   for (const t of trees) {
     const g = t.type === 'pine' ? buildPine(rng, t.x, t.z, t.s) : t.type === 'dead' ? buildDeadTree(rng, t.x, t.z, t.s) : buildOak(rng, t.x, t.z, t.s);
     if (inLandmark(t.x, t.z)) continue;
     treeSpots.push({ x: t.x, z: t.z, r: t.type === 'pine' ? 2.2 * t.s : 3.0 * t.s });
     const rad = Math.hypot(t.x, t.z);
     const c = rad < 42 ? colliders.add(t.x, t.z, 0.45 * t.s, 'trunk') : null;
-    if (rad < BREAK_R) breakables.push(treeBreakable(t, g, c, rad < 36.5 ? br : brOut));
-    else treeGeos.push(...g);
+    breakables.push(treeBreakable(t, g, c, rad < 36.5 ? br : rad < BREAK_R ? brOut : brFar));
   }
 
   // broken stone circle (gap to the south for the entrance)
@@ -747,7 +842,14 @@ export function createForest(U, colliders) {
   // the nest: bones to the north (the ribcage and skull stay; what lies loose round them breaks)
   const nest = { x: -3, z: -15.5 };
   const bones = buildBones(rng, nest.x, nest.z);
-  propGeos.push(...bones.parts);
+  for (const [tag, geos] of groupParts(bones.parts)) {
+    const f = footprint(geos);
+    const skull = tag === 'nestSkull';
+    breakables.push({
+      kind: skull ? 'nestSkull' : 'nestRib', mat: 'bone', look: 'range', digits: true, x: f.x, z: f.z, r: f.r, h: Math.max(0.4, f.h),
+      range: propRuns.add(geos), colliders: [], hp: skull ? BREAK.landmark.nestSkull : BREAK.landmark.nestRib, topples: false, cover: false, lift: 0, wreck: false,
+    });
+  }
   for (const b of bones.loose) {
     breakables.push({ kind: b.kind, mat: b.mat ?? 'bone', look: 'grid', x: b.x, z: b.z, r: b.r, h: Math.max(0.25, geosHeight(b.geos)), geos: b.geos, colliders: [], topples: false, cover: false, wreck: false });
   }
@@ -803,25 +905,77 @@ export function createForest(U, colliders) {
   }
 
   // landmarks: the elder wyrm's skeleton along the east rim (head to the south: at the side of the
-  // frame it is seen side-on, ribs and all), the Cinder Tree on the west rim
+  // frame it is seen side-on, ribs and all), the Cinder Tree on the west rim. Both break in pieces
+  // (2026-11-16, the owner's call; it reverses ADR-119's "they stay whole"): each tagged part group
+  // of their builders is a 'range' piece of the prop / tree mesh, so whole they look as they did
   {
     const lr = mulberry32(CONFIG.seed + 977);
-    const e = LM.elder, t = LM.tree;
-    propGeos.push(...buildElderWyrm(lr, e.x, e.z, e.yaw, e.s));
-    for (const [lx, lz, r] of ELDER_COLLIDERS) {
+    const e = LM.elder, t = LM.tree, LK = BREAK.landmark;
+    const elder = groupParts(buildElderWyrm(lr, e.x, e.z, e.yaw, e.s));
+    const elderCs = ELDER_COLLIDERS.map(([lx, lz, r]) => {
       const p = landmarkPoint(e.x, e.z, e.yaw, e.s, lx, lz);
-      colliders.add(p.x, p.z, r * e.s, 'stone');
+      return { x: p.x, z: p.z, c: colliders.add(p.x, p.z, r * e.s, 'stone') };
+    });
+    const elderDefs = [];
+    for (const [tag, geos] of elder) {
+      const f = footprint(geos);
+      const kind = tag.startsWith('spine') ? 'spine' : tag.startsWith('rib') ? 'rib' : tag.startsWith('horn') ? 'horn' : tag;
+      const def = {
+        kind: `elder${kind[0].toUpperCase()}${kind.slice(1)}`, mat: 'bone', look: 'range', digits: true, x: f.x, z: f.z, r: f.r, h: f.h,
+        range: propRuns.add(geos), colliders: [], hp: LK[kind] ?? LK.spine, topples: false, cover: false, lift: 0, wreck: false,
+      };
+      elderDefs.push(def);
+      breakables.push(def);
     }
-    treeGeos.push(...buildCinderTree(lr, t.x, t.z, t.yaw, t.s));
-    colliders.add(t.x, t.z, 3.0 * t.s, 'trunk');
+    // each collider goes with the piece whose footprint is nearest
+    for (const k of elderCs) {
+      let best = null, bd = Infinity;
+      for (const d of elderDefs) {
+        const dd = Math.hypot(d.x - k.x, d.z - k.z) - d.r;
+        if (dd < bd) {
+          bd = dd;
+          best = d;
+        }
+      }
+      best?.colliders.push(k.c);
+    }
+    const cinder = groupParts(buildCinderTree(lr, t.x, t.z, t.yaw, t.s));
+    const boughs = [];
+    let trunkGeos = null;
+    for (const [tag, geos] of cinder) {
+      if (tag === 'trunk') {
+        trunkGeos = geos;
+        continue;
+      }
+      const f = footprint(geos);
+      const def = {
+        kind: 'cinderBough', mat: 'wood', look: 'range', digits: true, x: f.x, z: f.z, r: f.r, h: f.h,
+        range: treeRuns.add(geos, (i) => geos[i].attributes.aFlag.array[0] === FLAG.LEAF), colliders: [], hp: LK.bough, topples: false,
+        cover: false, lift: 0, wreck: false, leafy: 0.25,
+      };
+      boughs.push(def);
+      breakables.push(def);
+    }
+    if (trunkGeos) {
+      const f = footprint(trunkGeos);
+      breakables.push({
+        kind: 'cinderTrunk', mat: 'wood', look: 'range', digits: true, x: t.x, z: t.z, r: 1.8 * t.s, h: f.h,
+        range: treeRuns.add(trunkGeos), colliders: [colliders.add(t.x, t.z, 3.0 * t.s, 'trunk')], soft: false,
+        broken: { range: stumpRuns.add(buildCinderStump(lr, t.x, t.z, t.yaw, t.s)), r: 2.3 * t.s },
+        hp: LK.trunk, guard: boughs, topples: false, cover: true, lift: 0, wreck: false, weight: 2.2,
+      });
+    }
     treeSpots.push({ x: t.x, z: t.z, r: 5 });
   }
 
   const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
-  const treeMesh = new THREE.Mesh(mergeGeometries(treeGeos), mat);
-  treeMesh.name = 'trees';
-  const propMesh = new THREE.Mesh(mergeGeometries(propGeos), mat);
-  propMesh.name = 'props';
+  // (the trees, their stumps, the landmarks' pieces: runs of these meshes, rewritten as they break, so
+  // their positions and normals are uploaded in ranges: dynamic buffers)
+  const treeMesh = treeRuns.finish(treeGeos, mat, 'trees');
+  const propMesh = propRuns.finish(propGeos, mat, 'props'); // (the bonfire: whole, after the pieces)
+  const stumpMesh = stumpRuns.finish([], mat, 'stumps');
+  stumpMesh.userData.autoHide = true; // (drawn only while a stump shows: RangeBody counts them)
+  stumpMesh.visible = false;
   const pitch = CONFIG.camera.pitch;
   // standing stones and boulders are printed like the wyrm (prop art, ADR-100); flagstones stay carved
   const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true });
@@ -851,7 +1005,7 @@ export function createForest(U, colliders) {
       w += m;
     });
   }
-  group.add(treeMesh, propMesh, stoneMesh, slabMesh, shardMesh);
+  group.add(treeMesh, propMesh, stumpMesh, stoneMesh, slabMesh, shardMesh);
   markCaster(group);
 
   return {

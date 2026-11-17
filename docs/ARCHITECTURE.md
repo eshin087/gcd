@@ -65,6 +65,7 @@ scene.updateMatrixWorld()            once for both scene passes (scene.matrixWor
 → the fire field                    heat blobs → a heat buffer → a flame texture, one texel per art cell
                                      (render/fireField.js, ADR-113; skipped while it holds no blob)
 → ASCII pass → FX pass (fxScene: the fire field's letters first, then the glyph particles) → bloom → final grade
+→ updateZoomArt()                    picks the zoom ladder step the NEXT frame draws at (?zoomArt; ADR-120)
 ```
 World matrices are therefore final when `render` starts: anything that moves an object after the
 actors' updates must do so before `pipeline.render()` (a transform changed between the two scene
@@ -73,7 +74,9 @@ themselves (`shadowCam` in `updateShadowCamera`, the main camera by the rig / vi
 **Keep-in-view:** during their update, flow (a flying or rearing wyrm) and the player (the plunge)
 may call `cameraRig.keep(...)` for world spheres that must stay on screen; the rig consumes the
 requests in its update the same frame (requests last one frame). `dragon.update` also runs the fire
-hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, both guarded).
+hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, both guarded), then
+the thrown piece (`dragon.terrain.update`) and the phase-3 fire on its body (`dragon.ablaze.update`,
+ADR-120).
 
 ## The `game` context (passed to every constructor)
 | field | what |
@@ -83,7 +86,7 @@ hazards and the bullet field (`dragon.hazards.update`, `dragon.bullets.update`, 
 | `events` | pub/sub: `on(name, fn)` → unsubscribe fn, `emit(name, data)` |
 | `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
 | `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame (the ray from the camera without the kick's translation, `cameraRig.kickOff`); with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
-| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; distance profile `setMobile(bool, portrait = false)` / `mobile` / `portrait` / `lead`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default; a phone held upright (`portrait`) stands `CONFIG.camera.portraitDistance` (1.2) × further back and looks `portraitLead` (1.5 m) south of the focus, so the hero stands above the middle of the screen (ADR-097). `fovFor(aspect)` (exported by `core/cameraRig.js`, applied by main.js on every resize): the vertical field of view, `CONFIG.camera.fov` in landscape, opened in a window taller than wide until the view is as wide as a square window's (`portraitMaxFov` 68 at most). `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance at the desktop distance, scaled by `defaultDistance / CONFIG.camera.distance` on the phone like the punch; negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
+| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; `wheelDistance` (2026-11-16, ADR-120: the player's own zoom, `targetDistance` eased at 4/s without the framing, the cinematics and the punches the game adds; every update writes `camera.userData.zoomRatio` = `wheelDistance / defaultDistance` and `camera.userData.zoomArtOff` = `mobile`: what the letters follow, see "The letters follow the zoom"); distance profile `setMobile(bool, portrait = false)` / `mobile` / `portrait` / `lead`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default; a phone held upright (`portrait`) stands `CONFIG.camera.portraitDistance` (1.2) × further back and looks `portraitLead` (1.5 m) south of the focus, so the hero stands above the middle of the screen (ADR-097). `fovFor(aspect)` (exported by `core/cameraRig.js`, applied by main.js on every resize): the vertical field of view, `CONFIG.camera.fov` in landscape, opened in a window taller than wide until the view is as wide as a square window's (`portraitMaxFov` 68 at most). `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance at the desktop distance, scaled by `defaultDistance / CONFIG.camera.distance` on the phone like the punch; negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
 | `touch` | touch controls (`ui/touch.js`, below): `active`, `phone`, `portrait`, `autoAim`, `setActive(bool)`, `update(realDt)` |
 | `gamepad` | gamepad controls (`ui/gamepad.js`, below): `active`, `connected`, `layout` (`'xbox'`/`'ps'`), `autoAim`, `focus`, `label(token)`, `rumble([ms, strong, weak])`, `update(realDt)` |
 | `shake(a)` | camera trauma (0.15 light hit … 0.7 huge slam) |
@@ -163,9 +166,37 @@ Render helpers for creature modules:
     `wyrmArtFont(H)` → `{ font, s, cell: [cw, ch] }`: the font and integer scale whose cell height is
     nearest H / 90, ties to the smaller (4x6 cells on a 393 px phone, 5x8 at 720p, 6x9 at 1080p,
     10x16 at 1440p, 15x24 at 2160p). `wyrmArtCell(H)` is its `cell`. `createWyrmArtAtlas(font, s)` →
-    `{ texture, sets: [mid start, bright start, stroke start], total }`: one row, column 0 blank, then
+    `{ texture, sets: [mid start, bright start, stroke start], total, ink }`: one row, column 0 blank, then
     `WYRM_SETS.dim / mid / bright`, then `WYRM_STROKES` (`- / | \`), each glyph with a soft 0.24
-    halo. `setSize` rebuilds it when the font or scale changes (`tArt`, `uArtCell`, `uWyrmAtlas`).
+    halo; `ink` = the set letters' mean coverage of their cell (0..1). `setSize` rebuilds it when the
+    font or scale changes (`tArt`, `uArtCell`, `uWyrmAtlas`).
+  - **The letters follow the zoom** (2026-11-16, ADR-120; `?zoomArt=a|b|c`, read once into
+    `pipeline.js` `ZOOM_ART`, default `b`, the owner's pick; `a` the fixed letters of before, `c` half
+    way): past the player's default zoom the art cell (the wyrm, prop art, the fire field) and the
+    screen grid (the trees) step down a **ladder** of fonts so an object keeps about the letters it has
+    at the default distance; zooming in never grows them. `wyrmArtLadder(H)` → `[{ font, s, cell }]`:
+    `wyrmArtFont(H)` first, then every smaller cell of the font / scale pairs (plus the 3x5 font
+    doubled, 8 x 12), largest first, one per cell height. `zoomArtStep(hs, r, p, cur, hyst)` → the
+    step for a zoom `r` times the default (r ≤ 1: step 0) at strength `p` (log terms: 1 the letters
+    shrink as the picture does, 0.5 half of that), moving off the current step only once the wanted
+    cell height is `hyst` (log) nearer the new one. `CONFIG.camera.zoomArt = { strength: { a: 0, b: 1,
+    c: 0.5 }, hyst: 0.1, minPitch: 0.35 }`. The pipeline: `zoomArt`, `zoomLadder` (per step `{ key,
+    cell, atlas, gridCell, grid }`; built in `setSize`, every step's atlases uploaded at once, option a
+    builds step 0 only; a grid step is scaled like the art cell and never under 9 px tall),
+    `zoomStep`, `_applyZoomStep(i, resized)` (swaps `tArt`, `uWyrmAtlas`, `artCell`, `tGrid`, `cell`
+    and calls the fire field's `setCell`; no allocation), `setZoomArt(mode)` (live: the Lab),
+    `zoomDistance(cam)` (the camera's distance to the ground along its view; 0 when it looks down less
+    steeply than `minPitch`) and `updateZoomArt()`, run at the end of `render()` so every reader of the
+    cell (the pass, shed digits, the let-go, the fire field, `artCell` read by dragon.js and the
+    duelists' flare) sees a step from the same frame on. The zoom it follows is the player's own:
+    `camera.userData.zoomRatio` (`cameraRig.wheelDistance / defaultDistance`, written by the rig), not
+    the measured camera distance (the boss framing adds 5 – 9 m and would have changed the default
+    look); a camera without a rig falls back to `zoomDistance() / CONFIG.camera.distance`. A phone
+    (`camera.userData.zoomArtOff`, from `cameraRig.mobile`) stays on step 0. `uArtInk` (ASCII pass)
+    multiplies the art letters by the step-0 font's `ink` over this font's (clamped 0.75 – 1.25), so an
+    object keeps its tone as its letters shrink. Cell heights at wheel 24 / 36 / 54 m, option b: 1080p
+    9 / 9 / 6 px, 1440p 16 / 16 / 12, 2160p 24 / 24 / 16; 1080p steps out at a wheel distance of
+    40.15 m and back at 36.30 m.
   - The grid is anchored to the boss (ADR-092): `main.js` writes his root's screen position into
     `U.uBossScreen` (uv x, uv y, view depth, 1 while there is a boss) every frame, the pass rounds it
     to whole px (`uWyrmAnchor`) and counts cells from there, so the letters travel with the wyrm.
@@ -363,6 +394,13 @@ Render helpers for creature modules:
   (Ashfall; opts `{ col, head, blade, tall, lo, hi }`), `buildWarden`, `buildGreatSword` (opts `{ lean,
   tilt, col, steel, edge }`; built for the Obsidian Throne's first hall; not placed since ADR-113),
   all `(rng, x, z, yaw, s, opts?)`.
+  `buildElderWyrm` and `buildCinderTree` tag every part with the piece it breaks with
+  (`userData.piece`, 2026-11-16, ADR-120; no draw on the random stream, the look is unchanged): the
+  skeleton `spine0` … (`ELDER_PIECES.spineRun` 5 vertebrae a run), `rib<i>L` / `rib<i>R`, `hip`,
+  `mast`, `fingers`, `wing`, `skull`, `jaw`, `hornL` / `hornR`; the tree `trunk` (roots, hollow,
+  stub) and `bough0` … `bough4` (each with its forks, twigs and leaves). `buildCinderStump(rng, x, z,
+  yaw, s)`: the charred foot left when its trunk breaks. `forest.js` turns each tag into a breakable
+  (see Destruction).
   `carved(parts)` converts painted parts to the carved attribute set for a set's `stones` mesh;
   For the Obsidian Throne's crater (ADR-112): `buildFallenStar(rng, x, z)` (the split star behind the
   seat and its crown of splinters), `buildSpike(rng, x, y, z, { h, w, d, tip, lean, yaw, roll, col,
@@ -386,18 +424,26 @@ Render helpers for creature modules:
     `heat`; the last sixth of its life it fades out); `kind` `'fire'` (default) | `'void'` |
     `'steel'` | `'smoke'` or a `FIRE_KIND` number; `gravity` > 0 rises. NaN positions are dropped.
     `clear()`, `update(dt)` (main.js, with `fxDt`), `count`, `max` (6000), `active`.
-  - Pipeline side: `init(type, depthTexture)`, `setSize(W, H, cell, art)`, `render(renderer, camera,
+  - Pipeline side: `init(type, depthTexture)`, `setSize(W, H, cell, art, minCell = cell)`,
+    `setCell(cell, art)`, `render(renderer, camera,
     fs)` (blobs, soft depth-tested against the scene, into `heatRT`: r fire, g smoke, b void, a
     steel, all x 0.4; then the flame pass into `flameRT`: r heat x 0.4, g smoke, b the letter's
     roll, a (kind + (stroke + 1) / 8) / 4), `mesh` (the print quad, `renderOrder` -10 in the FX
-    scene), `cells` (the buffers' size). `Pipeline.registerFire(field)` wires it. The ASCII pass
-    has `tFlame` and `uFlame` (cells x, cells y, 1 while something burns): the heat haze reads them.
+    scene), `alloc` (the buffers' size: the frame in cells of `minCell`, the zoom ladder's finest
+    step) and `cells` (the part of them drawn this frame, in cells of `cell`). Since 2026-11-16
+    (ADR-120) `setSize` allocates the targets once for `minCell` and `setCell` (a zoom ladder step)
+    only moves their viewport to `ceil(W / cell)` x `ceil(H / cell)` texels: no re-allocation; the
+    flame pass (`uAlloc`, `uCells`) clamps its look-ups to `cells`. Spawn and tint are unchanged.
+    `Pipeline.registerFire(field)` wires it. The ASCII pass has `tFlame`, `uFlame` (alloc x, alloc y,
+    1 while something burns) and `uFlameCells` (`cells`): the heat haze reads them, clamped to the
+    cells drawn.
   - Looks are data: `render/firePalettes.js` exports `FIRE_PALETTES` (`fire`, `void`, `steel`: five
     colour stops, `hdr`, `fill`, `back`, `lick`, `erode`, `boil`, `warp`), `FIRE_SMOKE`, `FIRE_KIND`.
   - Who spawns: `DragonFx` (`_blob`, `_wave`, `_fireBlast`), `BulletFx`, `DuelFx` / `LordFx` (`_blob`,
     `_dot` and `_frame`: heat re-drawn every frame shows exactly one copy; `_line`; `_ink`: a line
     written on the letter grid, one steel blob per cell it crosses), `Atmosphere` (the bonfire),
-    `Scorch`, the throne hall's braziers, `GroundFire`, `Destructibles` (a burning tree). All read
+    `Scorch`, the throne hall's braziers, `GroundFire`, `Destructibles` (a burning tree), `Ablaze`
+    (the wyrm's phase-3 fire) and `wallReach.js` `carryFire` (its streak). All read
     `game.fx?.fire` guarded. The test harnesses carry a `FireField` with the glyph pools' NaN guard.
   - `tint(id, px, py, rx, ry, rgb, k = 1, dark = 0, ttl = 0.05)` (ADR-118): for `ttl` s, steel
     printed inside that ellipse of the frame (frame pixels, origin bottom-left) is dyed `rgb` (its
@@ -1211,6 +1257,7 @@ bodyCircles: Array<{x,z,r}>              // ground footprint for player push-out
 hazards: Hazards                        // the fire hazards (hazards.js, contract 3): see "Hazards" below
 bullets: Bullets                        // the bullet field + the ground tongues (bullets.js, ADR-039): see "Bullets" below
 terrain: Terrain                        // the piece in its jaws or in the air (terrain.js, ADR-110): see "Terrain moves" below
+ablaze: Ablaze                          // phase 3: it sets itself on fire (ablaze.js, ADR-120): see "The wyrm ablaze" below
 crashing: boolean                       // true while a plunge stops a flight: that action's end() must not land it elsewhere
 isTargetable(): boolean                 // false while sleeping/dying/dead
 lockPoint(out): Vector3                  // chest/neck base, for lock-on + camera
@@ -1257,7 +1304,8 @@ debug: {                                // used by the Lab (generic shape every 
   phase2(), phase3(), stagger(), postureBreak(), kill(), reset(), setHp(fraction 0..1),
                                         // phase3: straight into the phase-3 transition (from phase 1 or 2)
   hitboxes(): Array<{ x, y, z, r, kind: 'hurt'|'attack' }>,  // for the Lab overlay
-  currentAction?(): object|string|null  // optional, Lab readout (the running action)
+  currentAction?(): object|string|null, // optional, Lab readout (the running action)
+  ablaze(look?): string                 // the wyrm only: phase 3's fire 'off'|'a'|'b'|'c' (sets it when given; returns the one in use)
 }
 ```
 **Attacks and selection** (`attacks.js` `ATTACKS`: the singles, the strings, `roar` and, spread in,
@@ -1419,7 +1467,9 @@ staggered, not broken, the AI is on and the running action is not in `NO_TRANSIT
 transitions, death, plunged). The transitions are `makeRoar(name, toPhase)` (attacks.js; always P1
 timings): `start` calls `enterPhase(toPhase)` and `hazards.clear()`, the roar announces
 `dragon:phase2` / `dragon:phase3` + `dragon:phase {n}` and sets the crack glow (`TUNING.phaseGlow`);
-the shock ring is red; `end` queues `ATTACKS.nova` after the phase-3 roar when the AI runs.
+the shock ring is red (the phase-3 roar's `shockRing(x, z, r, calm = true)`: its front's fire and the
+glow it leaves on the ground held low so the ignition reads) and the phase-3 roar calls
+`d.ablaze?.ignite()`; `end` queues `ATTACKS.nova` after the phase-3 roar when the AI runs.
 `enterPhase(n)` queues the next transition at once if the HP is already past its gate (Lab, AI off).
 Per-phase tuning (`[P1, P2, P3]`, read with `perPhase`): `turnSpeed`, `walkSpeed` [3.6, 4.6, 5.3],
 `phaseTimeScale` [1, 0.82, 0.7] (windups and recoveries; `tScale`), `idleGap`, `phaseGlow`,
@@ -1447,6 +1497,52 @@ stone too). A frame that moved a sphere more than `body.jump` 6 m is a teleport;
 teleported the body settles `body.settle` 0.6 s first. `_collide` resolves the root with `soft:
 true`, so breakable wood never turns it (it is felled as the body goes); stone still does. No
 per-frame allocation (one reused record per kind of blow; world.mjs BUDGET checks it).
+**Its reach into the tree wall** (2026-11-16, ADR-120; `wallReach.js`, numbers `TUNING.world.wind` /
+`TUNING.world.carry`): the wyrm fights inside the clearing; two calls carry what it does out to the
+trees round it, through the world's own API, guarded and allocation-free. Neither touches the hero (no
+blow, no fire on his ground, no tell; every attack's hit, damage, timing and tell is unchanged).
+- `wallWind(d, x, z, key, k = 1)` → `destructibles.wind(x, z, power × k, reach, { from, fall })` from
+  `TUNING.world.wind[key]` = [power, reach m, from m, falloff (0: `BREAK.wind.fall`)]: `roar` [0.3, 32,
+  0] (`roarFx(d, strength, wind = 'roar')`, × its strength), `phaseRoar` [0.22, 58, 0, 1.0] (the
+  transition roars), `shock` [0.35, 26, 0] (`fx.shockRing`), `takeoff` [0.4, 26, 0], `landing` [0.5,
+  28, 0], `downbeat` [0.16, 20, 26] (`dragon._wreck`, × the beat's strength), `buffet` [0.4, 26, 0]
+  (the wing buffet's downstroke; the wing sweep × 0.75), `ground` [0.22, 22, 0] (`fx.groundShock`, × its k).
+- `carryFire(d, x, z, dx, dz, key, y = 1.2)` → the piece or null: `destructibles.carryFire(x, z, dx,
+  dz, len, k)` from `TUNING.world.carry[key]` = [length m, at most every s (per key, `d._carryT`), burn
+  k, streak blobs]: `breath` [24, 0.35, 0.9, 10] (past the end of the breath's cone), `strip` [20, 0.3,
+  0.9, 6] (the burning pass's front), `wall` [18, 0.25, 0.8, 6] (a flame wall, forward), `ring` [16,
+  0.3, 0.8, 4] (a flame ring, outward), `shot` [22, 0.2, 0.7, 4] (a launched bullet that times out or
+  leaves the bound, `bullets.js`), `meteor` [0, 0, 0, 0] (none). When a tree is reached, a streak of
+  heat runs to it in the fire field.
+**The wyrm ablaze** (phase 3; 2026-11-16, ADR-120; `ablaze.js` `class Ablaze`, `dragon.ablaze`,
+numbers `tuningAblaze.js` `ABLAZE`; COMBAT.md "Three phases"): the phase-3 roar's beat runs fire out
+from the chest along the wing arms, the legs and the tail, it flares at every end, and from then on
+flames stand on its wing tips (8), the trailing edge between them (6), its four claws and the last
+third of its tail (`tailFrom` 0.66) with a larger flame at its tip; look c adds both horns (read
+from `heads.js` `HORN_TIPS` through `headVis.matrixWorld`) and the spine's crest. Every flame is heat
+in the fire field (`game.fx.fire.spawn`, keeping `inherit` 0.18 of the part's velocity, so a fast
+move leaves fire along its path); embers are glyph particles.
+- Looks: `?ablaze=off|a|b|c` (read once; default `b`, the owner's pick), `ablazeLook()`,
+  `setAblazeLook(k)`, `dragon.debug.ablaze(look)`, the Lab's "Ablaze" button (FIGHT section). `ABLAZE.looks[k]` holds
+  `k`, `rate`, `size`, `life`, `rise`, `trail` (b, c: extra fire along a part moving faster than 7 /
+  6 m/s), `prints` (b, c: burning footprints and the tail's drag), `horns`, `crest`, `embers`, `light`.
+- Life cycle (`mode`: 'off' | 'igniting' | 'burning' | 'dousing'): `ignite(fast = false)` (the roar:
+  `ignite.delay` 0.45 s after the ring, a run of `time` 1.1 s, then the flare: 70 embers, shake 0.32,
+  punch 0.6, a pooled light); a phase 3 entered any other way lights by itself in `fast` 0.45 s; it
+  gutters to `gutter.level` 0.28 through a stagger, a posture break and the plunge's reaction;
+  `douse()` on dying (1.5 s, the ends first); `reset()` puts it out (`dragon.reset()` and
+  `finishDeath()` call it).
+- The world: wood a burning part passes below `wood.maxY` 6.5 m while moving at least 3 m/s catches
+  (`world.ignite(x, z, 0.9, 0.7, false)`: wood only, 6 sites tried a frame, each at most every 0.12
+  s, at most `perMin` 5 a minute, inside the world's caps); `dragon.onStep` → `ablaze.step(x, z,
+  hind)`: in looks b and c a planted claw alight chars the scorch map (`burnCircle`, r 0.6 / 0.8 m)
+  and a few small low flames flicker there 1.6 s (10 slots). It never calls `world.fire`.
+- Readable: it subscribes to `combat:flash` (source dragon): for 0.55 s the fire within 3.5 m of the
+  cue burns at 8 %, rising to 65 % at 8 m, and the dim starts 0.15 s before each told beat; a red / black body glow dims all of it by
+  up to 50 %; a flame within 3 m of the hero burns at 40 %.
+- Budget: at most `cap.perFrame` 90 blobs a frame (180 while it ignites); past 3300 blobs in the field
+  the body's fire scales down, to none at 4200. Its own random stream (a seeded fight is the same
+  with it off or on); no allocation per frame.
 Size: the model is authored in model units and the root is scaled by `SCALE` (tuning.js, 1.875
 since v0.3); every world-space number (reaches, radii, hurt spheres, body circles, AI ranges, FX,
 pushers, pose targets via `rootPt`) is multiplied by it. The hero does not scale, so 3D hit volumes
@@ -1472,6 +1568,17 @@ Visual-only geometry on gameplay joints: every head mesh hangs on `model.headVis
 charge spheres, the breath / fireball origin) are unscaled; `rig.pt.eyes`, `pt.nostrils` and
 `pt.jawTip` follow the drawn head. The drawn tail radius (`tailRV`) is thicker than
 `model.tailRadii`, which stays the chain's ground clearance (read by the rig and the tail sweep).
+**Heads kept for later** (2026-11-16, ADR-120; `heads.js`): `?wyrmFace=old|skull|loong|demon` (read
+once; default `old`, today's head, `model.js` `buildOldHead(headVis, mats)`, unchanged). The owner
+passed on a new head for now; the three sculpted ones stay behind the switch, like the hero's looks
+(ADR-089). Exports: `WYRM_FACES`, `wyrmFace()`, `setWyrmFace(k)` (the NEXT built wyrm; tests, the
+Lab's "head" row, which reloads the page), `FACE_ART` (per head, art entries merged over `WYRM_ART`
+for its parts), `JAW_PIVOT` [0, -0.15, 0.05], `HORN_TIPS` (per head, the main horn's tip in
+headVis's frame: ablaze look c's horn fire), `sculptLoft`, `bentPath`, `sweepTube` and
+`buildHead(face, headVis, mats)` → `{ eyes, nostrils, jaw, whiskers }`. `buildDrake` returns `face`
+and `whiskers`; the loong's two whiskers are `Chain`s sprung by `rig/anim.js` `_updateWhiskers`
+(`WHISKER`), none for the other heads. The gameplay joints `head`, `mouth`, `snout` and `jawTip` sit
+where the old head's are for every head; the drawn eyes and nostrils follow each head's anatomy.
 Wing membrane (membrane.js): `new WingMembrane(material, side, restKey)` — 4 Coons panels rebuilt
 from the bones every frame (allocation-free); `aGUV` is laid out once from `restKey`
 (`WING_KEYS.HALF`, so changing that key re-lays the membrane's texture), so the grid is even in the
@@ -1737,7 +1844,8 @@ most of what the wyrm does, and a new effect should go through them.
   light and (k ≥ 0.9) an echo ripple; k = strength (1 a meteor, 2 the nova), fk = how much of it is
   fire (0.2 = a landing: dust and a little heat). Its numbers per look are the `SHOCK` table. Behind
   every ring: the roar's `shockRing`, `groundShock(x, z, r, k)` (a heavy body meets the ground:
-  landings, the stomp, the leap, the hop, the tail slam, a thrown piece; draws only), the crash
+  landings, the stomp, the leap, the hop, the tail slam, a thrown piece; draws only, plus its wind on
+  the tree wall, `wallWind` 'ground', ADR-120), the crash
   (`crashWave`), the nova, fireball and meteor blasts. `_ripple(x, z, y, r0, r1, T, heat, size, ...)`
   is a thin crisp ripple (steel; r1 < r0 draws it in: a charge); `roarWave` is ripples plus a dust
   front in look b.
@@ -2091,6 +2199,9 @@ the fallback.
   `dragon:parried` with `bullet: true` plays no yelp (the clash is `player:parry`).
 - `dragon:phase3` replays the phase-2 sting and keeps 'boss2'; `dragon:plunged` → `dragonPain`
   (an execution: the `postureBreak` roar).
+- `world:impact` by kind: 'chip' `chip`, 'wear' `wear` (2026-11-16, ADR-120: a quiet leaf hiss, a dry
+  crack from stage 2, a low creak for the lean; gain 0.45, `gap` 0.14 s so a roar's front sets off a
+  few, not hundreds), 'burn' `sizzle`, 'burnout' `emberHiss`, any other `crash`.
 
 **A flurry's blow on a duelist (ADR-101).** `takeHit({ ..., exact, reel, away })`: `reel` 1 (a flash
 cut) flinches him where he stands whatever he was doing (`brain.startReact('flinch')`, travel 0) and
@@ -2126,6 +2237,11 @@ jump flow states, god mode, infinite flasks, time scale, AI on/off, hitbox overl
 only to the `debug` APIs above, plus the `game.viewOverride` and `world.debug.setVisible` hooks for
 the model viewer. The timing trainer also logs `combat:deflectChain`, `dragon:phase3`,
 `dragon:phase` and `dragon:plunged`. Captures start the plunge with `player.debug.plunge(execution)`.
+Since 2026-11-16 (ADR-120): FIGHT → **Ablaze** cycles the phase-3 fire off / a / b / c
+(`dragon.debug.ablaze`); WORLD → **Wear wall** (a tail's blow, power 1, on the nearest standing wall
+tree or landmark piece: watch its stages) and **Wreck wall** (blasts and fire in the wall straight
+out behind the hero); PLAYER → a **head** row (`?wyrmFace=`, reloads the page) and a **zoom art**
+row (`pipeline.setZoomArt('a' | 'b' | 'c')`, live).
 **LOOKS** (ADR-122; `dev/labLooks.js`, only in `ash` / `starless`, collapsed until opened): a row per look
 switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pick, build-time, levels,
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
@@ -2328,7 +2444,7 @@ quality is still the default. Pointer Events with multi-touch (each control capt
 pointer); long-press menus, iOS gesture zoom and page panning are blocked while active (the Lab
 panel and the pause panel still scroll). Tuning: `CONFIG.touch`, sizes / look in `ui/touchStyle.js`.
 
-## Destruction (2026-11-14, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the duel arenas and their floors: 2026-11-16, ADR-122): the world breaks
+## Destruction (2026-11-14, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas and their floors: 2026-11-16, ADR-122): the world breaks
 Files: `src/world/destructibles.js`, `wreckage.js`, `fire.js`, `scars.js`, `floor.js`, `breakTuning.js`. Every boss
 and the hero chip, break, fell and burn what stands in a level; cover stops projectiles until it gives
 way; a boss can lift a piece and throw it; what falls lies as wreckage until the fight resets. The rules
@@ -2348,15 +2464,21 @@ flagstone, lower than `brushFlat` 0.3 m) takes nothing from it.
 **A set's `breakables`** (built in the set builder; `forest.js` and `courtyard.js` are the examples). One entry:
 | field | what |
 |---|---|
-| `kind` | 'tree', 'deadTree', 'stone', 'boulder', 'pillar', 'lantern', 'stele', 'bell', 'flagstone', 'bone', 'helm', 'sword', … (free; boss AI and tests read it) |
+| `kind` | 'tree', 'deadTree', 'stone', 'boulder', 'pillar', 'lantern', 'stele', 'bell', 'flagstone', 'bone', 'helm', 'sword', 'elderRib', 'elderSpine', 'cinderBough', 'cinderTrunk', 'nestRib', 'nestSkull', … (free; boss AI and tests read it) |
 | `mat` | 'wood', 'stone', 'metal' or 'bone' (structure, what bites it, its debris and sound) |
-| `look` | 'grid' (geometries with `paint()` attributes: the screen grid, trees), 'prop' (`carve()` attributes: prop art) or 'range' (its body is a run of vertices in a static mesh of the set: the flagstones, whose carved material stays the set's) |
+| `look` | 'grid' (geometries with `paint()` attributes: the screen grid), 'prop' (`carve()` attributes: prop art) or 'range' (its body is a run of vertices in a static mesh of the set, drawn by the set's own material: the flagstones; since 2026-11-16 every tree of Cinderwood, the Cinder Tree's boughs and trunk, the Elder Wyrm's bones and the nest's ribcage and skull) |
 | `x, z, r, h` | its base (world), footprint radius, height (`geosHeight(geos)`) |
 | `geos` | its geometries in WORLD space, as the builders return them (the system moves them to the base) |
-| `range` | look 'range' only: `{ mesh, start, count }`, the vertices (non-indexed, world space) of its body in the set's merged mesh; hidden by folding them under the ground |
-| `colliders` | the `Colliders` circles it stands on (`colliders.add` returns them): taken out when it goes, put back on reset. The circles of breakable wood are marked `soft` (the wyrm's body passes through them) |
-| `broken` | `{ geos \| range, look?, r? }` or absent: what is left standing (`buildStump`, `buildRubble` in forest.js); r = its own smaller collider |
-| `hp` | structure in POWER units (default: the material's x its size); `Infinity` = it only chips (the bronze bell) |
+| `range` | look 'range' only: `{ mesh, start, count, parts?, leaf? }`, the vertices (non-indexed, world space) of its body in the set's merged mesh; hidden by folding them under the ground. `parts`: the vertex counts of its parts in order (a tree's trunk, then each crown blob or bough), the pieces it drops as it wears down; `leaf`: per part, 1 = foliage (its debris is leaves). `forest.js` `Runs.add(geos, leaf?)` hands these out and `finish(extra, material, name)` merges the mesh (positions and normals `DynamicDrawUsage`) |
+| `colliders` | the `Colliders` circles it stands on (`colliders.add` returns them): taken out when it goes, put back on reset. The circles of breakable wood are marked `soft` (the wyrm's body passes through them) unless `soft: false` |
+| `soft` | false: its wood colliders stay hard (the Cinder Tree's trunk turns the wyrm like stone) |
+| `broken` | `{ geos \| range, look?, r? }` or absent: what is left standing (`buildStump`, `buildRubble` in forest.js, `buildCinderStump`); r = its own smaller collider |
+| `hp` | structure in POWER units (default: the material's x its size x `hpK`); `Infinity` = it only chips (the bronze bell) |
+| `hpK` | multiplies the default structure (a tree of the wall: `BREAK.wall.hp` 1.15) |
+| `wear` | `{ order, cut }`: it wears down in stages (a 'range' piece with parts; see "Wearing down"): `order` the parts it drops (never 0, the trunk), `cut[k]` how many of them are gone by stage k + 1. `forest.js` `wearOf(type, n)`: a pine [2, 3] (its top two tiers, then all but its skirt), a dead tree a third and two thirds of its boughs, an oak 0.4 and 0.8 of its crown |
+| `wall` | true: a tree of the wall round the clearing (beyond `BREAK.wall.from` 32 m; below) |
+| `guard` | the definitions of the pieces that must go first: while one of them stands it takes `BREAK.guarded` 0.2 of a blow (the Cinder Tree's boughs guard its trunk) |
+| `digits` | true: its debris and marks print in prop art's digits (a landmark's bones and boughs; default for look 'prop') |
 | `topples` | it falls over when it breaks (default: h >= `BREAK.topple.minH` 2.2 m); otherwise it shatters where it stands |
 | `burns` | fire lights it (default: the material's; wood) |
 | `cover` | it stops projectiles (default: h >= `BREAK.cover.minH` 1.1 m) |
@@ -2372,19 +2494,33 @@ flagstone, lower than `brushFlat` 0.3 m) takes nothing from it.
 | `cy` | (a crater's hanging stone) its height in the air, exact (ADR-122; the Lord's effects read it) |
 
 A set draws its stumps, rubble and any breakables it adds from an rng stream of its own, so the rest of
-its layout does not move. Budget: each breakable is 1–2 bones of the rigid batch (1023 in all), plus the
-wreckage pools' bones. Today (world.mjs SETS / BUDGET, 2026-11-16): the forest lists 183 (tree 102, dead
-tree 13, stone 10, boulder 20, bone 4, helm 5, sword 3, flagstone 26; it was 81) and takes 368 bones, 549
-with the wyrm; the courtyard 456 (it was 78: flagstone 293, pillar 30, lintel 1, lantern 4, stele 1, bell 1,
-stump 32, deadTree 80, boulder 9, cauldron 1, colossus 4: two colossi of two pieces) in 401 bones; the
-throne 222 (it was 36: plate 81, flagstone 24, shard 25, slab 27, rubble 20, vent 4, log 35, hover 6) in
-257. Everything but the landmarks breaks in the two duel arenas (ADR-122): the courtyard keeps the sect
-gate, the bell (it only rings) and the bonfire whole, the crater the throne and its dais, the fallen
-star, the seal and the bonfire. The colossi's, the cauldron's and the lintel's geometry moved out of the
-set's static mesh into the breakables. Cinderwood's flagstone shard mesh is hidden until a flagstone
-breaks (`userData.foldAway`: one draw call fewer). `THRONE.vents` is exported (the Lord's effects read
-the vents' places); a vent's ring of stones is a breakable 'vent' and the vent flares as it breaks. The Cinder Tree, the Elder Wyrm's skeleton and the
-bonfire stay whole (the owner's choice).
+its layout does not move. Budget: each breakable that is not a 'range' piece is 1–2 bones of the rigid
+batch (1023 in all), plus the wreckage pools' bones; a 'range' piece takes none. Today (world.mjs SETS /
+BUDGET, 2026-11-16, after the merge of ADR-120 and ADR-122): the forest lists 664 (tree 502, dead tree 37,
+stone 10, boulder 20, flagstone 26, bone 4, helm 5, sword 3, the nest's 14 ribs and skull, the Elder
+Wyrm's 36 bones: 18 ribs, 10 runs of the spine, the hip, the mast, the fingers, the fallen wing, the
+skull, the jaw, 2 horns; the Cinder Tree's 5 boughs and trunk; it was 183 on 2026-11-15) and takes 228
+bones, 409 with the wyrm; the courtyard 456 (it was 78: flagstone 293, pillar 30, lintel 1, lantern 4,
+stele 1, bell 1, stump 32, deadTree 80, boulder 9, cauldron 1, colossus 4: two colossi of two pieces) in
+443 bones; the throne 222 (it was 36: plate 81, flagstone 24, shard 25, slab 27, rubble 20, vent 4, log
+35, hover 6) in 299 (ADR-120's bigger log and char pools are built in every set: +42 bones in each arena).
+**Every tree of Cinderwood breaks**, out to the forest's edge (74 m; it was those within 42 m), and the
+Elder Wyrm's skeleton, the Cinder Tree and the nest break in pieces (ADR-120 reverses ADR-119's "they
+stay whole"); the bonfire stays whole. In `forest.js` the trees and the Cinder Tree are runs of the
+`trees` mesh, their stumps runs of a `stumps` mesh (drawn only while one shows: `userData.autoHide`),
+the landmarks' bones runs of the `props` mesh; each landmark tag group (`userData.piece`) is one piece,
+and each of `ELDER_COLLIDERS` goes with the piece whose footprint is nearest. Their structure is
+`BREAK.landmark` (rib 2.8, spine 3.2, skull 6, jaw 3, horn 2, hip 3, mast 2.6, fingers 1.6, wing 2.2,
+bough 2.6, trunk 7, nestRib 2.6, nestSkull 5); none of them topples, lifts, stops a projectile (but the
+Cinder Tree's trunk) or leaves logs and rubble (`wreck: false`). The Cinder Tree's boughs go first
+(they burn too; `leafy` 0.25); its trunk (collider 3.0 m, `soft: false`, `guard`: the boughs, weight
+2.2) breaks where it stands and leaves `buildCinderStump` (collider 2.3 m). Cinderwood's flagstone shard
+mesh is hidden until a flagstone breaks (`userData.foldAway`: one draw call fewer). **Everything but the
+landmarks breaks in the two duel arenas** (ADR-122): the courtyard keeps the sect gate, the bell (it only
+rings) and the bonfire whole, the crater the throne and its dais, the fallen star, the seal and the
+bonfire. The colossi's, the cauldron's and the lintel's geometry moved out of the set's static mesh into
+the breakables. `THRONE.vents` is exported (the Lord's effects read the vents' places); a vent's ring of
+stones is a breakable 'vent' and the vent flares as it breaks.
 
 **`world.destructibles`** (`class Destructibles`; `STATE` = INTACT 0, FALLING 1, BROKEN 2, HELD 3, FLYING 4, GONE 5):
 - `list` (every breakable: `{ id, kind, mat, x, z, r, h, hp, hpMax, state, weight, burn, lift, cover, topples, floor,
@@ -2394,8 +2530,9 @@ bonfire stay whole (the owner's choice).
 - **The pieces live outside the scene graph** (2026-11-16: the arenas' 456 / 222 pieces cost a phone about
   0.7 ms a frame in three.js's matrix walk): their nodes, pivots and meshes hang in `pieces`, a tree that is not
   in the scene and does not auto-update; only the batch's draw meshes hang in `root`. `_place(b)` recomputes a
-  piece's world matrices whenever it moves (a break, a shudder, a fall, a carry, a throw, the reset). A floor
-  slab (look 'range') has no node in that tree until a boss lifts it; in his hands it shows as one of
+  piece's world matrices whenever it moves (a break, a shudder, a fall, a carry, a throw, the reset). A 'range'
+  piece (a floor slab, a tree of Cinderwood, a landmark's bone or bough) has no node in that tree: it moves by
+  rewriting its vertices (`_pose`, "Range pieces" below); a floor slab joins the tree only when a boss lifts it, and in his hands it shows as one of
   `BREAK.floor.carry` 6 blocks of prop art, a chunk about 0.85 m across (a crater plate's 1.2 x), never the
   whole slab.
 - Every query walks a **spatial grid** (`BREAK.grid.cell` 4 m), not the whole list.
@@ -2426,7 +2563,24 @@ bonfire stay whole (the owner's choice).
   spreads"): a piece alight `after` 2.2 s tries every `every` 1.1 s to light one unburnt wood piece or
   log within `reach` 5.2 m (+ both radii), with `chance` 0.45; at most `maxBurning` 7 × quality alight
   at once, a level-wide budget of `perSec` 0.25 spreads a second (banking 2), and a fire passes on at
-  most `gens` 2 times from where fire landed.
+  most `gens` 2 times from where fire landed. These caps count only the fires inside the clearing:
+  **the wall burns on budgets of its own** (`BREAK.wall.fire`, 2026-11-16, ADR-120): fire that lands
+  on a wall tree `perSec` 0.15 a second (banking `bank` 2), at most `maxBurning` 6 × quality alight in
+  the wall at once; a wall fire spreads only into wall trees, `spreadPerSec` 0.08 × quality a second
+  (banking `spreadBank` 2) with `chance` 0.45, and `BREAK.wall.gens` 0 more generations than the
+  clearing's. A tree that burns through chars the ground `BREAK.burn.char` 2.2 m round its trunk.
+- `wind(x, z, power, reach, o = { from, fall })` → how many trees the front will reach (2026-11-16,
+  ADR-120): a front of wind rolls out at `BREAK.wind.speed` 30 m/s (a queue of up to `queue` 1400 trees
+  in preallocated typed arrays); each standing WALL tree it reaches (beyond `o.from` m of the centre)
+  takes power × (1 − d / reach)^fall (`o.fall`, else `BREAK.wind.fall` 1.3) × the blast factor, × 1 ±
+  `vary` 0.45 at random, nothing under `min` 0.04, at most once each `rehit` 0.35 s, never below
+  `floor` 0.3 of its structure (wind takes a tree to its second stage at most, never to its lean or its
+  fall), shudders and loses a few leaves (`leaves` 5 × the power). The clearing's pieces are untouched.
+- `carryFire(ax, az, dx, dz, len, k = 1)` → the piece or null (2026-11-16, ADR-120): along the ray the
+  first standing wall tree that burns, 1.5 m or taller, within `BREAK.wall.fire.width` 1.2 m (+ its
+  radius and leaves) catches for `BREAK.burn.time` × k on the wall's budget (past it: a scorched disc);
+  it passes over the clearing's pieces. `_carryHit` `{ x, z, piece }` holds where it met it.
+- `stat` `{ wind, windTrees, carry, reached, lit }`: counts since the reset (the tests' wall report).
 - `nearest(x, z, { maxDist, minDist, lift, kind, mat, from: { x, z, min } })` → the nearest intact
   piece or null (lift: at most that class; floor slabs only with lift 3).
   `floorNear(x, z, r, out, { kind, whole, max })` → how many intact floor slabs lie within r of (x, z), nearest
@@ -2446,7 +2600,30 @@ bonfire stay whole (the owner's choice).
   (`BREAK.topple.damage` x weight, unblockable, knockdown; i-frames dodge it; never a perfect dodge), with
   combat:tell at the start, combat:flash 0.3 s before it lands and the strip marked in red glyphs. Under a
   piece the HERO felled, the BOSS takes `boss.takeHit({ damage: BREAK.topple.bossDamage x weight, exact,
-  heavy, posture })` (tested against `boss.bodyCircles`), and the hero is never hit by his own.
+  heavy, posture })` (tested against `boss.bodyCircles`), and the hero is never hit by his own. A fall
+  whose strip cannot reach the hero's bound (`CONFIG.world.playerBound`) is **quiet** (2026-11-16,
+  ADR-120): no tell, no flash, no strip, no hero test.
+
+**Wearing down** (2026-11-16, ADR-120; `BREAK.wear`): a piece with stages (`def.wear`) drops its parts
+as its structure falls: at each share in `at` [0.82, 0.5, 0.22] it reaches the next stage (1 outer
+crown parts gone, 2 half the crown, 3 it leans `lean` 0.32 rad × 0.75 – 1.25 along the blow over
+`leanTime` 0.6 s), then it falls from its lean. A dropped part bursts into the glyphs it is drawn in
+(leaves, splinters, a landmark's digits; `debris` 14 glyphs per metre of its size × quality, 8 – 44)
+from a level-wide debris budget (`BREAK.debris` 1500 glyphs / s, banking 900, × quality). A stage
+reached emits `world:impact` kind 'wear' (power = the stage, 1 – 3; audio's quiet `wear` sound). A
+burning tree drops its crown with charred leaves and a few sparks, all of it gone by `burn` 0.85 of its
+burn. At most `shakeMax` 10 × quality range pieces shudder at once (their vertices are rewritten every
+frame); the rest only chip. **The wall** (`BREAK.wall`): a tree beyond `from` 32 m has `hp` 1.15 × the
+structure of a tree its size, falls with at least `out` 0.55 of its way pointing out of the arena (a
+leaning one the way it leans, which was turned outward when it leaned), and where it lands strikes the
+trees behind at `domino` 1.4 × its weight (0.7 elsewhere).
+
+**Range pieces** (`RangeBody`, internal): its `visible` folds or restores its whole run; `show(i, on)`
+drops or restores part i; `pose(q, px, py, pz)` turns it by a quaternion about its base and moves it,
+rewriting positions (and normals) from a home copy, so a tree shudders, leans, falls, is carried and
+flies without a bone of the rigid batch. Writes are queued and uploaded once a frame, one update range
+per body: `flushRanges()` (exported; `Destructibles.update` and `reset` call it). `reset()` rewrites only
+the pieces that were touched. No allocation after the build.
 
 **`world.destructibles.wreck`** (`class Wreckage`, `wreckage.js`, 2026-11-15; it reverses ADR-107's "a
 felled trunk comes apart where it lands"): what the fight leaves lying until it resets. A felled tree's
@@ -2454,12 +2631,15 @@ trunk lies where it fell (`BREAK.wreck.trunk` [0.5, 0.85] of its height, a crown
 a broken stone or boulder leaves a rubble pile, burnt wood lies black and smoulders (`smoulder` 30 s, at
 most `smoulderMax` 8 × quality at once), a thrown piece leaves its remains where it lands. **Scenery: no
 collider, it stops nothing, the hero walks over it.** Pools of prop-art meshes built once and batched
-with the breakables (no draw call of its own): `logs` 40, `chars` 18, `rubble` 30; past a pool's share
+with the breakables (no draw call of its own): `logs` 64, `chars` 36, `rubble` 30, `bones` 48 (2026-11-16,
+ADR-120: heaps of bone shards in the bone's own hue; every broken bone piece 0.4 m or taller leaves one
+where the most of it came down, even a landmark's with `wreck: false`; `rubble(x, z, r, M)` with
+`M = BREAK.mats.bone` takes a heap); past a pool's share
 (× quality) the oldest sinks into the ground in `sink` 1.4 s, past its size the oldest crumbles at once.
 A log can burn (`burn` 6 s; it fell burning, fire landed on it, or the spread reached it) and burns the
 hero beside it like a burning tree; a burnt-through log emits `world:impact` 'burnout' with `id` -1.
-Two more kinds since ADR-122 (`KIND` LOG, CHAR, RUBBLE, BLOCK, SHARDS; a pool is only built for a set that
-needs it): `blocks` 12, big carved blocks (a colossus's stages, where its upper half lands and its legs),
+Two more kinds since ADR-122 (`KIND` LOG, CHAR, RUBBLE, BONES, BLOCK, SHARDS; the bones, blocks and shards pools
+are only built for a set that needs them: bone pieces, a statue, a floor that can be thrown): `blocks` 12, big carved blocks (a colossus's stages, where its upper half lands and its legs),
 and `shards` 16, flat shards (a floor slab torn out, where it is thrown).
 API (internal to destructibles): `log(x, z, dx, dz, len, r, burn, charred)`, `rubble(x, z, r, M)`,
 `block(x, z, r, M)`, `shards(x, z, r, M)`, `ignite(x, z, r, k)`, `count`, `burning`, `live`, `update(dt)`,
@@ -2501,16 +2681,19 @@ ahead, Fell on me, Blast ahead, Restore) too.
 | who | where | numbers |
 |---|---|---|
 | the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
-| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop / the slams (`GROUND_BLOW`, with falloff); `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall igniting; `skyFx.js` the meteors' impacts; `bullets.js` (cover; a landing ember; the tongues lighting wood); `terrain.js` (a flying piece's `sweep` on its path, its blast where it lands, `throwTo` for the skid; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_wreck` (its body's spheres, the wings' blasts, the landing) | `TUNING.world` (`melee`, `stomp`, `leap`, `hop`, `dive`, `nova`, `falloff`, `explosion`, `meteor`, `pillar`, `body`, `takeoff`, `landing`, `downbeat`, `ignite`, `bullet`; `meter`: the WRECKAGE scenario's bounds) |
+| the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop / the slams (`GROUND_BLOW`, with falloff); `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall igniting; `skyFx.js` the meteors' impacts; `bullets.js` (cover; a landing ember; the tongues lighting wood); `terrain.js` (a flying piece's `sweep` on its path, its blast where it lands, `throwTo` for the skid; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_wreck` (its body's spheres, the wings' blasts, the landing); `wallReach.js` (`wallWind` → `destructibles.wind` from the roars, the shock ring, `groundShock`, the wing buffet and sweep, the take-off, the landing, low downbeats; `carryFire` → `destructibles.carryFire` from the breath, the strip, flame rings and walls, missed shots; ADR-120); `ablaze.js` (phase 3: `world.ignite(..., false)` from a burning part, the scorch map under its feet) | `TUNING.world` (`melee`, `stomp`, `leap`, `hop`, `dive`, `nova`, `falloff`, `explosion`, `meteor`, `pillar`, `body`, `takeoff`, `landing`, `downbeat`, `ignite`, `bullet`, `wind`, `carry`; `meter`: the WRECKAGE scenario's bounds, with `wall` [0.3, 0.75] and `wallP1` 0.03: the share of the wall's front rows, 32 – 46 m, worn or down at the end and by phase 1's end); `tuningAblaze.js` `ABLAZE.wood` |
 | a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush; `starlessLord/spells.js` the wheeling blade, the weather's strikes, Starless Night's waves; `ashDisciple/moveFx.js` burning ground (`world.ignite`); both `terrain.js` (`take` / `carry` / `throwTo` / `topple`, `floorNear` for the floor moves) | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
 
 **Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with
 `rigidMatrix()`; built with `rigid: true` they are tagged for `batchRigid` (a set's static materials are
 not, so an actor's batch never picks them up). The breakables' two materials are twins of the set's (the
 prop twin takes the set's `uGain`): one draw call each however many pieces there are, plus one in the
-shadow pass; the wreckage's pools ride the same batch. A 'range' piece (a flagstone) stays in the set's
-own mesh: it is hidden by folding its vertices under the ground. Debris, dust, the danger strip and the
-scars are glyph particles; the flames of burning wood and logs are heat in the fire field.
+shadow pass; the wreckage's pools ride the same batch. A 'range' piece (a flagstone, a tree of
+Cinderwood, a landmark's bone or bough) stays in the set's own mesh: it is hidden by folding its
+vertices under the ground and moved by rewriting them ("Range pieces" above). Debris, dust, the danger
+strip and the scars are glyph particles (a wearing crown's in the canopy's dim hue, a bone's in its own
+dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
+are heat in the fire field.
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
@@ -2968,7 +3151,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   a duelist's mikiri thrust, roll into it; flare as above: the HUD flashes the screen edge in the flare's colour;
   since ADR-122 a duelist's thrown terrain piece, kicked or hurled, cues itself with flare too, drawn on the piece,
   nothing drawn where it lands; a blow the duelists' fairness guard may still feint sends its tell only together
-  with its flash, and a blow it turns into a feint sends neither),
+  with its flash, and a blow it turns into a feint sends neither; the wyrm's phase-3 fire, ablaze.js, dims round it, ADR-120),
   `combat:charge {source:'dragon', attack, dur, x, z}` (a black blow begins to charge: darkness gathers on the
   striking part for dur game seconds, until its cue; the HUD darkens the screen edge through it, audio plays
   the charge's swell),
@@ -3027,7 +3210,7 @@ World → audio (destruction, ADR-107; see "Destruction" above):
 - `world:impact {kind, mat, x, y, z, power, by, id}` (a blow on a breakable. kind: 'chip' = it held, 'break' = it
   shattered where it stood, 'topple' = it starts to fall, 'crash' = it lands (or a thrown piece does), 'burn' = wood
   catches, 'burnout' = it burned through (also for a log of wreckage, with id -1), 'throw' = a boss tears it from
-  the ground. mat: 'wood' / 'stone' / 'metal' / 'bone'. power: on the POWER scale. by: 'player' / 'boss' / 'world'.
+  the ground, 'wear' = it reached a stage of wearing down (power = the stage, 1 – 3; ADR-120). mat: 'wood' / 'stone' / 'metal' / 'bone'. power: on the POWER scale. by: 'player' / 'boss' / 'world'.
   id: its index in the breakables' list.
   One reused payload: a subscriber must not keep it), `world:fire {x, z, radius, cells}` (grass catches)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'

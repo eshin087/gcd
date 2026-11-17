@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | floor | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | budget | placed | all
+//   scenario: sets | floor | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | budget | placed | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -28,6 +28,8 @@ const { Scars } = await imp('src/world/scars.js');
 const { Destructibles, STATE } = await imp('src/world/destructibles.js');
 const { BREAK, BLOW, FIRE, SCAR } = await imp('src/world/breakTuning.js');
 const { createForest } = await imp('src/world/forest.js');
+const { ELDER_COLLIDERS } = await imp('src/world/landmarks.js');
+const ELDER_N = ELDER_COLLIDERS.length;
 const { createCourtyard } = await imp('src/world/courtyard.js');
 const { createThroneHall } = await imp('src/world/throneHall.js');
 const { TELL, RESULT } = await imp('src/combat/rules.js');
@@ -159,17 +161,21 @@ const S = {
     for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
-      // (Cinderwood: 183 since the whole clearing breaks, 2026-11-15; it was 80. The duelists' arenas
-      // break everything but their landmarks since 2026-11-16: the courtyard 78 → 456 (293 of them its
-      // floor's slabs), the crater 36 → 222 (105 of its floor's plates))
-      const [lo, hi] = { forest: [150, 240], courtyard: [380, 520], throne: [180, 280] }[name];
+      // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
+      // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
+      // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates))
+      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280] }[name];
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
-        // everything the fight can reach: no tree within 42 m of the centre is left in the static meshes
-        const trees = L.filter((b) => b.mat === 'wood');
-        assert(trees.some((b) => Math.hypot(b.x, b.z) > 40) && trees.every((b) => Math.hypot(b.x, b.z) < 42), `forest: the trees out to 42 m break (${trees.length}; the farthest ${Math.max(...trees.map((b) => Math.hypot(b.x, b.z))).toFixed(1)} m)`);
-        assert(L.every((b) => b.mat !== 'wood' || b.colliders.every((c) => c.soft === true)), 'forest: the trunks of breakable wood are soft colliders (the wyrm ploughs through them)');
+        // every tree of the forest breaks, out to its edge (2026-11-16: it was those within 42 m): the tree
+        // mesh holds nothing but the trees' and the Cinder Tree's runs
+        const trees = L.filter((b) => b.kind === 'tree' || b.kind === 'deadTree');
+        const treeMesh = set.group.getObjectByName('trees');
+        const inRuns = L.filter((b) => b.ranged && b.body.mesh === treeMesh).reduce((a, b) => a + b.body.count, 0);
+        assert(trees.length >= 500 && Math.max(...trees.map((b) => Math.hypot(b.x, b.z))) > 72 && inRuns === treeMesh.geometry.attributes.position.count, `forest: every tree breaks (${trees.length}; the farthest ${Math.max(...trees.map((b) => Math.hypot(b.x, b.z))).toFixed(1)} m), all ${inRuns} vertices of the tree mesh are pieces'`);
+        assert(trees.every((b) => b.ranged && b.body.parts >= 2 && b.order.length >= 1) && trees.filter((b) => b.wall).length >= 440, `forest: a tree is a range piece in parts that wears down; ${trees.filter((b) => b.wall).length} of them are the wall's (beyond ${BREAK.wall.from} m)`);
+        assert(L.every((b) => b.mat !== 'wood' || b.def.soft === false || b.colliders.every((c) => c.soft === true)), 'forest: the trunks of breakable wood are soft colliders (the wyrm ploughs through them; not the Cinder Tree\'s)');
       }
       assert(L.every((b) => Number.isFinite(b.x + b.z + b.r + b.h) && b.r > 0 && b.h > 0 && b.hp > 0), `${name}: every breakable has a footprint, a height and structure`);
       assert(L.every((b) => b.colliders.every((c) => colliders.circles.includes(c))), `${name}: their colliders are the world's own circles`);
@@ -188,12 +194,13 @@ const S = {
       assert(seen.every((k) => k === 1), `${name}: every one of the ${L.length} pieces is in the grid once`);
       const bones = rigidBones(U);
       // (the pieces, their stumps and the wreckage pools, BREAK.wreck: 88 bones; with the hero ~140 and a
-      // boss ~180 the 1023 slots keep ~200 spare. Cinderwood measured 368 on 2026-11-15; it was 144)
+      // boss ~180 the 1023 slots keep ~200 spare. Cinderwood measured 368 on 2026-11-15, 144 before; its
+      // trees and landmarks are range pieces since 2026-11-16 and take none: 140)
       // (2026-11-16, the arenas break: the courtyard 401 (its far trees and stumps, the colossi, the big
       // blocks' pool), the crater 257; a floor slab is no bone: it is a run of its set's paving mesh)
       assert(D.batch.meshes.length >= 1 && D.batch.meshes.length <= 2 && bones.count <= 460, `${name}: drawn in ${D.batch.meshes.length} batch(es), ${bones.count} bones (<= 460 of 1023)`);
-      // a body's geometry sits round its own base: the node carries the place
-      const b = L.find((o) => o.topples);
+      // a body's geometry sits round its own base: the node carries the place (a rigid piece's)
+      const b = L.find((o) => o.topples && !o.ranged);
       b.body.geometry.computeBoundingBox();
       const bb = b.body.geometry.boundingBox;
       assert(Math.abs((bb.min.x + bb.max.x) / 2) < 3 && Math.abs((bb.min.z + bb.max.z) / 2) < 3 && bb.min.y > -0.6, `${name}: a body's geometry is laid out round its base`);
@@ -237,12 +244,13 @@ const S = {
     assert(out.every((b) => !b.cracked) && D.nearest(0, 0, { maxDist: 30, lift: 2 })?.floor !== true && D.nearest(0, 0, { maxDist: 30 })?.floor !== true && D.nearest(0, 0, { maxDist: 30, lift: 3 })?.floor === true, '`whole` leaves the cracked out; nearest() gives floor only to a caller that asks for lift 3 (or its kind)');
     // a slab torn out: its hole shows, a block of prop art in the hands, shards where it lands
     const t = out[0];
-    const w0 = D.wreck.live.filter((x) => x.kind === 4).length;
+    // (wreckage.js KIND.SHARDS: 5 since the merge with ADR-120, whose bone heaps took 3, which its REACH check reads)
+    const w0 = D.wreck.live.filter((x) => x.kind === 5).length;
     assert(D.take(t) && t.state === STATE.HELD && !t.body.visible && t.stub.visible && t.held?.visible && t.held.parent === t.pivot, 'take(): a slab torn out of the floor leaves its hole; a block of prop art is what he holds');
     D.carry(t, t.x, 2, t.z);
     D.throwTo(t, t.x + 6, t.z, { time: 0.5 });
     step(1);
-    assert(t.state === STATE.GONE && !t.held && D.wreck.live.filter((x) => x.kind === 4).length === w0 + 1, 'thrown, it lands as flat shards (wreckage); its block goes back to the pool');
+    assert(t.state === STATE.GONE && !t.held && D.wreck.live.filter((x) => x.kind === 5).length === w0 + 1, 'thrown, it lands as flat shards (wreckage); its block goes back to the pool');
     // the reset: every slab whole again, the meshes of remains hidden
     D.reset();
     assert(F.every((b) => b.state === STATE.INTACT && b.body.visible && !b.cracked && !b.crack.visible && !b.stub.visible) && !crackMesh.visible && !brokenMesh.visible && D._carry.every((m) => !m.visible), 'the reset: every slab whole, nothing cracked, the meshes of remains hidden again');
@@ -292,13 +300,14 @@ const S = {
     }
     const h = hits.find((x) => x.who === 'hero');
     assert(top.state === STATE.BROKEN && game.time - tFlash >= 0.25 && game.time - tFlash <= 0.36 && h && h.tell === TELL.RED && h.blockable === false && h.damage <= BREAK.topple.damage * 1.3 + 1e-6, `it lands ${CO.fall} s on (its flash ${(game.time - tFlash).toFixed(2)} s before); the hero under it takes one red blow of ${h?.damage?.toFixed(1)}`);
-    const blocks = D.wreck.live.filter((x) => x.kind === 3);
+    // (wreckage.js KIND.BLOCK: 4 since the merge with ADR-120, whose bone heaps took 3, which its REACH check reads)
+    const blocks = D.wreck.live.filter((x) => x.kind === 4);
     assert(blocks.length >= CO.blocks - 1 && blocks.every((b) => b.x > top.x + CO.off - 1 && b.x < top.x + CO.off + top.h + 1.5), `it lies as ${blocks.length} big blocks along where it fell (wreckage, no collider)`);
     assert(leg.state === STATE.INTACT && D.coverAt(leg.x - 4, leg.z, leg.x + 4, leg.z, 0.2) === leg, 'its legs stand: cover');
     // then the legs
     const c0 = colliders.circles.length;
     D.strike(leg.x + 1.6, leg.z, 0.6, 9, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
-    assert(leg.state === STATE.BROKEN && leg.stub.visible && colliders.circles.includes(leg.stubCollider) && D.wreck.live.filter((x) => x.kind === 3).length > blocks.length, `the legs break in their turn: the plinth is left (its own collider), more blocks round it (${colliders.circles.length - c0 + leg.colliders.length} circle(s) changed)`);
+    assert(leg.state === STATE.BROKEN && leg.stub.visible && colliders.circles.includes(leg.stubCollider) && D.wreck.live.filter((x) => x.kind === 4).length > blocks.length, `the legs break in their turn: the plinth is left (its own collider), more blocks round it (${colliders.circles.length - c0 + leg.colliders.length} circle(s) changed)`);
     // the hero fells the other one onto the boss
     const t2 = tops[1];
     game.boss.position.set(t2.x + (CO.off + t2.h * 0.5), 0, t2.z);
@@ -347,7 +356,8 @@ const S = {
   // ---------------------------------------------------------------- a tall piece falls; what is under it is hit
   fell() {
     const { D, world, log, game, hits, colliders, step } = build();
-    const t = D.list.find((b) => b.kind === 'deadTree');
+    // (one inside the clearing: a tree of the wall falls away from the arena, the `wall` scenario)
+    const t = D.list.find((b) => b.kind === 'deadTree' && !b.wall);
     const dx = 0.6, dz = 0.8;
     // the hero stands where it will land
     game.player.position.set(t.x + dx * t.h * 0.6, 0, t.z + dz * t.h * 0.6);
@@ -372,13 +382,13 @@ const S = {
     assert(log.some((e) => e.n === 'world:impact' && e.kind === 'topple') && log.some((e) => e.n === 'world:impact' && e.kind === 'crash'), 'world:impact topple, then crash');
     assert(world.scars.count > 4 && game.shakes > 0 && world.gusts > 0, `the ground is cracked and littered (${world.scars.count} marks), the camera shakes, the grass is blown`);
     // out from under it: nothing
-    const t2 = D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT);
+    const t2 = D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT && !b.wall);
     game.player.position.set(t2.x - 8, 0, t2.z);
     D.topple(t2, 1, 0, 'boss');
     step(2);
     assert(t2.state === STATE.BROKEN && hits.length === 1, 'a hero out from under it is not hit');
     // the hero fells one onto the boss: the boss is hit, the hero never
-    const t3 = D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT);
+    const t3 = D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT && !b.wall);
     game.boss.position.set(t3.x + t3.h * 0.6, 0, t3.z);
     game.player.position.set(t3.x + t3.h * 0.5, 0, t3.z + 0.3);
     D.strike(t3.x - 0.3, t3.z, 0.5, 9, { kind: BLOW.BLUNT, by: 'player', dx: 1, dz: 0, src: D.swing() });
@@ -678,7 +688,7 @@ const S = {
   // ---------------------------------------------------------------- wreckage stays, stops nothing, sinks at the cap
   wreck() {
     const { D, world, game, colliders, step } = build();
-    const t = D.list.find((b) => b.kind === 'deadTree');
+    const t = D.list.find((b) => b.kind === 'deadTree' && !b.wall);
     const n0 = colliders.circles.length;
     const ml = 0.6 * t.h * BREAK.wreck.trunk[1];
     const coverBefore = D.coverAt(t.x + ml, t.z - 4, t.x + ml, t.z + 4, 0.2);
@@ -751,7 +761,7 @@ const S = {
     assert(peak <= cap, `never more than ${cap} things alight at once (peak ${peak})`);
     step(40);
     const burned = D.list.filter((b) => b.burnt).length;
-    assert(D.burning === 0 && D.list.every((b) => b.gen <= S.gens), `the blaze burns out: fire passes on at most ${S.gens} times from where it landed (${burned} trees burned in all, nothing alight 60 s on)`);
+    assert(D.burning === 0 && D.list.every((b) => b.gen <= S.gens + (b.wall ? BREAK.wall.gens : 0)), `the blaze burns out: fire passes on at most ${S.gens} times from where it landed (+${BREAK.wall.gens} in the wall) (${burned} trees burned in all, nothing alight 60 s on)`);
     // the light of burning wood is a local glow, one for a cluster (BREAK.burn.glow)
     {
       const Lb = build();
@@ -790,6 +800,200 @@ const S = {
     assert(lg.on === false && B.D.wreck.live.some((w) => w.kind === 1), 'it burns through and lies black');
   },
 
+  // ---------------------------------------------------------------- a tree wears down in stages (2026-11-16)
+  wear() {
+    const { D, log, step, game } = build();
+    game.player.position.set(0, 0, 0);
+    const A = BREAK.wear.at;
+    // an oak, a pine and a dead tree of the wall, struck again and again with a tail's power along the way out
+    const pick = (fn) => D.list.filter((b) => b.wall && b.state === STATE.INTACT && fn(b)).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0];
+    const trees = [pick((b) => b.kind === 'tree' && b.body.parts > 5), pick((b) => b.kind === 'tree' && b.cut[0] === 2 && b.body.parts === 5), pick((b) => b.kind === 'deadTree')];
+    for (const t of trees) {
+      const R = Math.hypot(t.x, t.z), ox = t.x / R, oz = t.z / R;
+      const pos = t.body.geometry.attributes.position.array, s = t.body.start * 3;
+      const stages = [];
+      let blows = 0;
+      for (; blows < 12 && t.state === STATE.INTACT; blows++) {
+        D.strike(t.x - ox * 0.6, t.z - oz * 0.6, 0.8, 1, { kind: BLOW.BLUNT, by: 'boss', dx: ox, dz: oz, y: 1.5, src: D.swing() });
+        if (t.state === STATE.INTACT) stages.push(t.wear);
+        step(0.8);
+      }
+      // (a small tree may skip a stage under one blow: it still shows the first hit, and never goes back)
+      const ordered = stages.length >= 1 && stages[0] >= 1 && stages.every((v, i) => i === 0 || v >= stages[i - 1]);
+      const wearEv = log.filter((e) => e.n === 'world:impact' && e.kind === 'wear' && e.id === t.id).map((e) => e.power);
+      assert(ordered && wearEv.length >= 1 && wearEv.every((p, i) => i === 0 || p > wearEv[i - 1]), `${t.kind} (${t.body.parts} parts, hp ${t.hpMax.toFixed(2)}) at ${R.toFixed(0)} m: stages ${stages.join(' > ')} in ${blows} blows of 1.0, then it falls (world:impact wear ${wearEv.join(', ')})`);
+      assert(blows >= 2 && blows <= 6, `... it takes ${blows} blows of a tail's power (2 .. 6: a fight's worth, a hit shows at once)`);
+      // dropped parts lie folded under the ground; what stays is where it stood
+      let folded = 0;
+      for (let p = 0, v0 = 0; p < t.body.parts; p++) {
+        const v1 = t.body.ends[p];
+        if (!t.body.shown[p]) folded += pos[s + v0 * 3 + 1] < -2 ? 1 : 0;
+        v0 = v1;
+      }
+      assert(folded === t.dropped && t.dropped >= Math.min(t.order.length, t.cut[1] ?? 1), `... ${t.dropped} of its ${t.order.length} crown parts dropped before it fell, their vertices folded away`);
+      step(2.5);
+      assert(t.state === STATE.BROKEN && !t.body.visible && t.stub.visible, '... it lies felled, its stump stands');
+    }
+    // a burning tree loses its crown as it burns
+    const b = pick((o) => o.kind === 'tree' && o.body.parts > 5);
+    D.ignite(b.x, b.z, 0.3, 1);
+    const life = b.burnLife;
+    step(life * 0.5);
+    const mid = b.dropped;
+    step(life * 0.6);
+    assert(mid >= 1 && mid < b.order.length && b.burnt && b.state === STATE.BROKEN, `a burning oak drops its crown as it burns (${mid} of ${b.order.length} parts gone halfway), then burns to its stump`);
+    // inside the clearing trees wear down too, with the toughness they had
+    const inner = D.list.find((o) => o.kind === 'deadTree' && !o.wall && o.state === STATE.INTACT);
+    const hp = inner.hpMax;
+    D.strike(inner.x, inner.z, 0.6, hp * (1 - A[0]) + 0.05, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    assert(inner.state === STATE.INTACT && inner.wear >= 1 && inner.dropped >= 1, `a dead tree inside the clearing (hp ${hp.toFixed(2)}: unchanged) wears down too (stage ${inner.wear})`);
+  },
+
+  // ---------------------------------------------------------------- the wyrm's reach into the wall (2026-11-16, the tuning pass)
+  // destructibles.wind: a front of wind wears the wall's trees, in the order it reaches them, never past
+  // BREAK.wind.floor (wind alone fells nothing), nothing inside the clearing. destructibles.carryFire:
+  // fire carried along a ray lights the first tree of the wall, on the wall's own budget (the clearing's
+  // is untouched). A broken bone leaves a heap of bone (wreckage.js). reset() forgets all of it.
+  reach() {
+    const { D, log, step, game, world } = build();
+    game.player.position.set(0, 0, 0);
+    const wall = D.list.filter((b) => b.wall && b.order.length > 0);
+    const inner = D.list.filter((b) => !b.wall);
+    const hp0 = new Map(inner.map((b) => [b, b.hp]));
+    const L0 = log.length;
+    const n = D.wind(-10, 0, 1.4, 50, {});
+    step(0.3);
+    const early = log.slice(L0).filter((e) => e.n === 'world:impact' && e.kind === 'wear').length;
+    step(2.5);
+    const worn = wall.filter((b) => b.wear > 0);
+    const wearEv = log.slice(L0).filter((e) => e.n === 'world:impact' && e.kind === 'wear');
+    const near = worn.filter((b) => Math.hypot(b.x + 10, b.z) < 30).length, far = worn.filter((b) => Math.hypot(b.x + 10, b.z) > 42).length;
+    assert(n > 50 && worn.length > 20 && wearEv.length === worn.length && early < wearEv.length, `a front of wind (1.4 from (-10, 0), 50 m) reached ${n} trees of the wall, wore ${worn.length} (world:impact 'wear' ${wearEv.length}; ${early} in its first 0.3 s: it rolls out at ${BREAK.wind.speed} m/s)`);
+    assert(near > far, `... more of them near it than far (${near} within 30 m, ${far} past 42 m)`);
+    assert(wall.every((b) => b.state === STATE.INTACT && b.hp >= BREAK.wind.floor * b.hpMax - 1e-9) && inner.every((b) => b.hp === hp0.get(b)), `... none felled, none below ${BREAK.wind.floor} of its structure; the clearing's pieces untouched`);
+    // again at once: within rehit nothing more
+    const h1 = wall.map((b) => b.hp);
+    D.wind(-10, 0, 1.4, 50, {});
+    step(0.2);
+    assert(wall.every((b, i) => b.hp === h1[i] || Math.hypot(b.x + 10, b.z) > 0.2 * BREAK.wind.speed), `... a second front within ${BREAK.wind.rehit} s takes nothing more from the trees it reached`);
+    // fire carried along a ray: the first tree of the wall catches, on the wall's budget
+    D.reset();
+    const lit0 = D._litTokens;
+    const b = D.carryFire(0, 0, 1, 0.05, 60, 1);
+    assert(b && b.wall && b.burn > 0 && D._wallBurning === 1 && D._litTokens === lit0 && Math.hypot(b.x, b.z) > BREAK.wall.from, `carryFire along +x lit the wall's first tree in its way (${b ? Math.hypot(b.x, b.z).toFixed(1) : '-'} m; the clearing's budget untouched)`);
+    let lit = 1;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * 6.283;
+      const c = D.carryFire(0, 0, Math.cos(a), Math.sin(a), 60, 1);
+      if (c && c.burn > 0 && c !== b) lit++;
+    }
+    assert(lit <= BREAK.wall.fire.bank + 1 && D._wallBurning <= BREAK.wall.fire.maxBurning, `... at once twelve more lit ${lit - 1} (its bank ${BREAK.wall.fire.bank}); ${D._wallBurning} alight in the wall (<= ${BREAK.wall.fire.maxBurning})`);
+    const counted = () => D.list.filter((o) => o.wall && o.burn > 0).length;
+    step(BREAK.burn.time * 0.5);
+    const mid = [D._wallBurning, counted()];
+    step(60);
+    assert(mid[0] === mid[1] && D._wallBurning === 0 && counted() === 0, `... the wall's count of fires matches what burns (${mid[0]} = ${mid[1]}), and when they have burned out (spread included) it is 0`);
+    // a broken bone leaves a heap
+    const rib = D.list.find((o) => o.kind === 'elderRib');
+    const heaps0 = D.wreck.pools[3].filter((e) => e.on).length;
+    if (rib) D.strike(rib.x, rib.z, rib.r + 0.5, 50, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    step(2);
+    const heaps = D.wreck.pools[3].filter((e) => e.on).length;
+    assert(rib && rib.state !== STATE.INTACT && heaps > heaps0, `a broken ${rib?.kind ?? 'bone'} leaves a heap of bone (heaps lying: ${heaps0} -> ${heaps}; the strike broke its neighbours too)`);
+    // the bone heaps keep to their share like every other pool: break every bone piece, drop the
+    // quality, and the heaps over the lower cap sink (update() walks all four pools)
+    for (const b of D.list) if (b.mat === 'bone' && b.state === STATE.INTACT) D.strike(b.x, b.z, b.r + 0.3, 50, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    step(2);
+    const bonePool = D.wreck.pools[3];
+    const lying = () => bonePool.filter((e) => e.on && !(e.sink > 0)).length;
+    const full = lying();
+    D.setQuality(0.3);
+    const cap = D.wreck._cap(3);
+    step(8);
+    const after = lying();
+    assert(full > cap && after <= cap, `bone heaps over a lowered cap sink: ${full} lying at full quality, ${after} after the quality drops (its cap ${cap})`);
+    D.setQuality(1);
+    D.reset();
+    assert(D._wq.n === 0 && D._wallBurning === 0 && D.list.every((b) => b.state === STATE.INTACT && b.wear === 0) && D.wreck.pools[3].every((e) => !e.on), 'reset(): no front waiting, nothing alight, the wall and the bones whole again');
+  },
+
+  // ---------------------------------------------------------------- the wall falls away from the arena; it is restored whole
+  wall() {
+    const { D, log, step, game, hits, colliders } = build();
+    const treeMesh = D.list.find((b) => b.kind === 'tree').body.mesh;
+    const home = treeMesh.geometry.attributes.position.array.slice();
+    const n0 = colliders.circles.length;
+    // a far tree (60 m) felled by a blow from the arena's side: falls outward, tells nothing, leaves its log
+    const far = D.list.filter((b) => b.wall && b.kind === 'tree' && Math.hypot(b.x, b.z) > 58)[0];
+    const tells0 = log.filter((e) => e.n === 'combat:tell').length;
+    const R = Math.hypot(far.x, far.z), ox = far.x / R, oz = far.z / R;
+    D.strike(far.x, far.z, 0.6, 20, { kind: BLOW.BLUNT, by: 'boss', dx: -ox, dz: -oz, src: D.swing() });
+    assert(far.state === STATE.FALLING && far.dx * ox + far.dz * oz >= BREAK.wall.out - 1e-6, `a wall tree at ${R.toFixed(0)} m struck toward the arena falls OUT of it (its way · out = ${(far.dx * ox + far.dz * oz).toFixed(2)} >= ${BREAK.wall.out})`);
+    step(2.5);
+    assert(far.state === STATE.BROKEN && far.quiet && log.filter((e) => e.n === 'combat:tell').length === tells0 && D.wreck.live.some((e) => e.kind === 0 && Math.hypot(e.x - far.x, e.z - far.z) < 1.5), 'it cannot reach the hero\'s ground: no tell, no strip; its trunk lies where it fell');
+    // the rim: a tree whose fall can reach the bound still tells red; most fall outward
+    const rim = D.list.filter((b) => b.wall && b.kind !== 'cinderBough' && (b.kind === 'tree' || b.kind === 'deadTree') && Math.hypot(b.x, b.z) < 34);
+    let out = 0;
+    for (const b of rim) {
+      const r = Math.hypot(b.x, b.z);
+      D.strike(b.x, b.z, 0.5, 20, { kind: BLOW.BLUNT, by: 'boss', dx: -b.x / r + 0.3, dz: -b.z / r, src: D.swing() });
+      if (b.dx * b.x + b.dz * b.z > 0) out++;
+    }
+    step(3);
+    assert(rim.length >= 6 && out === rim.length, `the wall's first row (${rim.length} trees within 34 m), all struck inward: every one falls out of the arena`);
+    // a burning stand, a worn tree: then the reset puts every vertex of the tree mesh back
+    const w = D.list.find((b) => b.wall && b.kind === 'tree' && b.state === STATE.INTACT && Math.hypot(b.x, b.z) > 45);
+    D.strike(w.x, w.z, 0.5, w.hpMax * 0.6, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    D.ignite(w.x + 6, w.z, 2, 1);
+    D.take(D.list.find((b) => b.wall && b.kind === 'tree' && b.state === STATE.INTACT));
+    step(1);
+    D.reset();
+    const pos = treeMesh.geometry.attributes.position.array;
+    let diff = 0;
+    for (let i = 0; i < pos.length; i++) if (pos[i] !== home[i]) diff++;
+    assert(diff === 0 && colliders.circles.length === n0 && D.list.every((b) => b.wear === 0 && b.lean === 0 && (!b.stub || !b.stub.visible)), `world.restore(): every one of the tree mesh's ${pos.length / 3} vertices is back where it was (${diff} differ), the stumps are folded away, the colliders the same ${n0}`);
+    // fairness: a boss blow inside the clearing still fells a tree there with its red tell (unchanged)
+    assert(hits.length === 0, 'none of it touched the hero at the centre');
+  },
+
+  // ---------------------------------------------------------------- the Elder Wyrm's skeleton, the Cinder Tree, the nest break in pieces
+  landmarks() {
+    const { D, set, colliders, log, step } = build();
+    const kinds = (re) => D.list.filter((b) => re.test(b.kind));
+    const elder = kinds(/^elder/), ribs = kinds(/^elderRib$/), cinder = kinds(/^cinder/), nest = kinds(/^nest/);
+    assert(elder.length >= 30 && ribs.length === 18 && elder.every((b) => b.mat === 'bone' && b.ranged && b.digits), `the Elder Wyrm's skeleton is ${elder.length} bone pieces (${ribs.length} ribs, ${kinds(/^elderSpine$/).length} runs of the spine, the skull, the jaw, the horns, the tail ...)`);
+    assert(elder.reduce((a, b) => a + b.colliders.length, 0) === ELDER_N, `its ${ELDER_N} colliders are shared out among its pieces`);
+    assert(cinder.length === 6 && kinds(/^cinderBough$/).length === 5 && nest.length === 15, `the Cinder Tree: ${cinder.length} pieces (5 boughs, the trunk); the nest: ${nest.length} (14 ribs, the skull)`);
+    const bf = set.bonfire;
+    assert(!D.list.some((b) => Math.hypot(b.x - bf.x, b.z - bf.z) < 2), 'the bonfire is no piece: it stays');
+    // a rib comes apart over a few tail blows, not one
+    const rib = ribs.find((b) => b.colliders.length > 0) ?? ribs[0];
+    let n = 0;
+    while (rib.state === STATE.INTACT && n < 12) {
+      D.strike(rib.x, rib.z, 0.8, 1, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+      n++;
+      step(0.3);
+    }
+    assert(n >= 2 && n <= 5 && rib.state === STATE.BROKEN && !rib.body.visible && rib.colliders.every((c) => !colliders.circles.includes(c)), `a rib of the elder wyrm breaks under ${n} tail blows (2 .. 5); its range folds away, its colliders go`);
+    assert(log.some((e) => e.n === 'world:impact' && e.kind === 'break' && e.mat === 'bone' && e.id === rib.id), "world:impact { kind: 'break', mat: 'bone' }");
+    // the Cinder Tree's trunk holds while its boughs stand
+    const trunk = cinder.find((b) => b.kind === 'cinderTrunk');
+    D.strike(trunk.x, trunk.z, 1, 3, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    const took = trunk.hpMax - trunk.hp;
+    assert(Math.abs(took - 3 * BREAK.mats.wood.take.blunt * BREAK.guarded) < 1e-6, `with its boughs standing its trunk takes ${BREAK.guarded} of a blow (${took.toFixed(2)} of 3 x ${BREAK.mats.wood.take.blunt})`);
+    for (const b of cinder) if (b !== trunk) D.strike(b.x, b.z, 0.5, 20, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    D.strike(trunk.x, trunk.z, 1, 20, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    step(0.5);
+    assert(cinder.every((b) => b.state === STATE.BROKEN) && trunk.stub.visible && colliders.circles.includes(trunk.stubCollider), 'its boughs gone, the trunk breaks to its charred stump (with a collider)');
+    // bough fire: a bough catches like wood
+    D.reset();
+    const bough = cinder.find((b) => b.kind === 'cinderBough');
+    assert(D.ignite(bough.x, bough.z, 1, 1) >= 1 && bough.burn > 0, 'a bough of the Cinder Tree catches fire');
+    const skull = nest.find((b) => b.kind === 'nestSkull');
+    D.strike(skull.x, skull.z, 1, 20, { kind: BLOW.BLAST, by: 'boss', src: D.swing() });
+    assert(skull.state === STATE.BROKEN, "the nest's great skull breaks");
+  },
+
   // ---------------------------------------------------------------- counts, bones, debris by quality, and a rampage's cost
   budget() {
     const W = wyrm();
@@ -798,7 +1002,8 @@ const S = {
     const by = {};
     for (const b of D.list) by[b.kind] = (by[b.kind] ?? 0) + 1;
     out(`     forest: ${D.list.length} pieces (${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(', ')}); wreckage pools ${D.wreck.pools.map((p) => p.length).join(' / ')}`);
-    assert(D.list.length >= 150 && D.list.length <= 240, `${D.list.length} breakables in Cinderwood (150..240; 80 before this pass)`);
+    // (664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15, 80 before)
+    assert(D.list.length >= 600 && D.list.length <= 760, `${D.list.length} breakables in Cinderwood (600..760)`);
     assert(bones <= 1023 - 60, `${bones} bones in all with the wyrm (${D.batch.bones} the world's), under the 1023 slots with room for the hero (~140)`);
     // debris by quality: one boulder's break
     const one = (q) => {
@@ -861,7 +1066,9 @@ const S = {
     // frame, measured 2026-11-15; the body's 23 sweeps go through sweepRec, which took 2.6 KB down to it),
     // not objects this code makes.
     const B = wyrm();
-    const tr = B.D.list.filter((b) => b.mat === 'wood' && b.state === STATE.INTACT).slice(0, 3);
+    // (three trees inside the clearing: in the wall's dense stands the fire spreads and trees burn through
+    // and smoulder in the measure, events, not a steady frame; the wall's cost is the rampage's above)
+    const tr = B.D.list.filter((b) => b.mat === 'wood' && b.state === STATE.INTACT && Math.hypot(b.x, b.z) < 30).slice(0, 3);
     for (const b of tr) B.D.ignite(b.x, b.z, 0.2, 40); // (burning for the whole measure; the fire field takes the flames)
     B.D.topple(B.D.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT), 1, 0, 'world');
     B.step(3);
@@ -949,6 +1156,86 @@ const S = {
     assert(wrong() === 0 && D.list.every((b) => b.pivot.position.lengthSq() === 0), 'restored: every piece drawn where it stood');
     const w = D.wreck.pools.flat().every((e) => e.mesh.matrixWorld.equals(e.mesh.matrix));
     assert(w, 'the wreckage\'s meshes are placed as they lie down (their world matrix is their own)');
+
+    // (2026-11-16, the merge with ADR-120: Cinderwood's trees and landmarks are 'range' pieces POSED by
+    // rewriting their vertices (destructibles RangeBody.pose), never nodes. In each state ADR-120 added
+    // (a stage reached, the lean, a tree falling, carried, thrown, its crown burning down, the reset)
+    // every shown vertex must be its home turned by the pivot (and the lean) about the base, no tree may
+    // join the pieces' tree, nothing may join the scene, and the rigid pieces beside it still draw where
+    // they are)
+    const F = build();
+    const FD = F.D;
+    const qL = new THREE.Quaternion(), ax = new THREE.Vector3(), v = new THREE.Vector3(), qq = new THREE.Quaternion();
+    const off = (b) => {
+      const body = b.body, a = body.geometry.attributes.position.array, s = body.start * 3, H = body.home;
+      qq.copy(b.pivot.quaternion);
+      if (b.lean > 1e-4) qq.multiply(qL.setFromAxisAngle(ax.set(b.ldz, 0, -b.ldx), b.lean));
+      const p = b.pivot.position;
+      let worst = 0;
+      for (let part = 0, v0 = 0; part < body.ends.length; part++) {
+        const v1 = body.ends[part];
+        if (body.visible && body.shown[part]) {
+          for (let k = v0; k < v1; k += 5) {
+            v.set(H[k * 3] - b.x, H[k * 3 + 1], H[k * 3 + 2] - b.z).applyQuaternion(qq);
+            worst = Math.max(worst, Math.abs(v.x + b.x + p.x - a[s + k * 3]), Math.abs(v.y + p.y - a[s + k * 3 + 1]), Math.abs(v.z + b.z + p.z - a[s + k * 3 + 2]));
+          }
+        }
+        v0 = v1;
+      }
+      return worst;
+    };
+    const scene = () => {
+      let inScene = 0, auto = 0, ranged = 0;
+      FD.root.traverse(() => inScene++);
+      FD.pieces.traverse((o) => { if (o !== FD.pieces && o.matrixAutoUpdate) auto++; });
+      for (const b of FD.list) if (b.ranged && b.node.parent) ranged++;
+      return inScene <= 4 && auto === 0 && ranged === 0;
+    };
+    const fwrong = () => {
+      let bad = 0;
+      for (const b of FD.list) {
+        if (b.ranged) continue;
+        for (const o of [b.body, b.stub]) {
+          if (!o?.isMesh || !o.visible) continue;
+          m.identity();
+          for (let n = o; n && n !== FD.pieces; n = n.parent) m.premultiply(new THREE.Matrix4().compose(n.position, n.quaternion, n.scale));
+          if (m.elements.some((x, i) => Math.abs(x - o.matrixWorld.elements[i]) > 1e-4)) bad++;
+        }
+      }
+      return bad;
+    };
+    const TOL = 2e-3; // (float32 vertices 70 m out)
+    const trees = FD.list.filter((b) => b.kind === 'tree' && !b.wall && b.state === STATE.INTACT && b.order.length > 1 && b.topples && b.lift > 0).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z));
+    const [t1, t2, t3, t4] = trees;
+    // a stage and the lean (its last stage: it creaks over along the blow)
+    t1.hp = t1.hpMax * (BREAK.wear.at[2] - 0.02);
+    FD._wearTo(t1, 1, 0, 'boss');
+    FD._wake(t1);
+    F.step(BREAK.wear.leanTime * 0.5);
+    assert(t1.wear === 3 && t1.lean > 0.02 && t1.dropped >= 1 && off(t1) < TOL && scene(), `a tree at its last stage: ${t1.dropped} parts dropped, leaning ${t1.lean.toFixed(2)} rad, its vertices where its pose puts them (off ${off(t1).toExponential(1)} m); no node of it anywhere`);
+    // a rigid piece shuddering beside it, and a tree falling
+    const st = FD.list.find((b) => !b.ranged && b.topples && b.state === STATE.INTACT && b.mat === 'stone');
+    FD.strike(st.x, st.z, 0.3, 0.2, { kind: BLOW.CUT, dx: 1, dz: 0, src: FD.swing() });
+    FD.topple(t2, 0, 1, 'world');
+    F.step(4 / 60);
+    assert(st.shake > 0 && fwrong() === 0 && scene(), 'a stone of the circle mid-shudder draws where its pivot is, while a tree goes over beside it');
+    F.step(0.3);
+    assert(t2.state === STATE.FALLING && off(t2) < TOL && scene(), `a tree mid-fall is posed where it is going over (off ${off(t2).toExponential(1)} m)`);
+    // a tree in the wyrm's jaws, then thrown
+    FD.take(t3);
+    FD.carry(t3, t3.x + 1, 2, t3.z, 0.5, 1);
+    const carried = off(t3);
+    FD.throwTo(t3, t3.x + 8, t3.z, { time: 0.8 });
+    F.step(0.3);
+    assert(carried < TOL && t3.state === STATE.FLYING && off(t3) < TOL && scene(), `a tree carried, then thrown: posed where it is held (off ${carried.toExponential(1)} m) and where it flies (${off(t3).toExponential(1)} m)`);
+    // a crown burning down
+    FD.ignite(t4.x, t4.z, 0.3, 1);
+    F.step(t4.burnLife * 0.5);
+    assert(t4.burn > 0 && t4.dropped >= 1 && off(t4) < TOL && scene(), `a burning tree drops its crown part by part (${t4.dropped} gone), what is left where it stands`);
+    F.step(4);
+    FD.reset();
+    const back = [t1, t2, t3, t4].every((b) => b.body.visible && b.body.shown.every((x) => x === 1) && off(b) < 1e-6);
+    assert(back && fwrong() === 0 && scene(), 'restored: the trees stand whole where they stood, every rigid piece drawn where it stood, nothing joined the scene');
   },
 
 };

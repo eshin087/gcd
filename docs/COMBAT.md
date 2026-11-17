@@ -561,7 +561,16 @@ P1 100–66 %, P2 66–33 %, P3 33–0 % of 4500 HP, each threshold a gate until
 (always phase-1 timings; the red shock ring, 12 damage, which also clears the hazards). Later phases
 speed the windups and recoveries up (× `phaseTimeScale` [1, 0.82, 0.7]; the swings keep their speed),
 turn and walk faster, pause less, link more, grow the posture meter and glow hotter: phase 3 burns
-white-hot (crack glow 0.8, 50 body embers / s) and opens with the Inferno nova. A pending transition
+white-hot (crack glow 0.8, 50 body embers / s) and opens with the Inferno nova. **In phase 3 the wyrm
+is ablaze** (2026-11-16, ADR-120; ARCHITECTURE.md "The wyrm ablaze"): 0.45 s after the transition
+roar's ring, fire runs out from its chest along its wings, legs and tail and flares at every end, and
+from then on flames stand on its wing tips, claws and the last third of its tail. **It adds no
+damage, no tell, no hit volume and no timing**: every attack hits, hurts and is told exactly as
+before, nothing of the body's fire touches the hero, and its burning footprints in the grass are
+scenery (stand in them). Wood a burning part sweeps past catches (the world's fire under its usual
+caps: a tree alight burns the hero beside its trunk as any burning tree does). A timing cue dims the
+body's fire round it, a red or black glow dims all of it, and a flame next to the hero burns low, so
+the cues stay readable. A pending transition
 waits for a plunge reaction to finish. A new phase's abilities unlock one by one (opening cooldowns
 1.5 + 1.6 × i + 0–1.5 s, in a random order; not the nova, not the roar: `pressure.unlockSkip`, nor an
 attack tuned `unlock: false`), not all at once after the roar.
@@ -1607,12 +1616,16 @@ mostly the Starless Sky and the Dark Star against his strings and falling pieces
 **Not filmed:** a feint made by the guard, a strike fading, a stone shattering on a world warning, the
 blade hanging at its turn, the footwork's seek. **Not measured:** how a person reads a held blow.
 
-## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the duel arenas: 2026-11-16, ADR-122)
+## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas: 2026-11-16, ADR-122)
 What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood **the whole
-clearing breaks** (the owner, ADR-119: "the terrain itself is barely destructible"): 183 breakables
-(80 before): 102 trees, 13 dead trees, 10 stones of the circle, 20 boulders, 26 flagstones and the loose
-remains of past challengers (4 long bones, 5 helms, 3 swords). The Cinder Tree, the Elder Wyrm's
-skeleton and the bonfire stay whole (the owner's choice). **In both duel arenas everything but the
+clearing breaks** (the owner, ADR-119: "the terrain itself is barely destructible"), and since
+2026-11-16 **the whole forest round it** (ADR-120): 664 breakables (183 before): 502 trees and 37 dead
+trees out to the forest's edge (74 m; it was those within 42 m), 10 stones of the circle, 20 boulders,
+26 flagstones, the loose remains of past challengers (4 long bones, 5 helms, 3 swords), and the
+landmarks in pieces: the Elder Wyrm's skeleton (36: 18 ribs, 10 runs of the spine, the hip, the mast,
+the fingers, the fallen wing, the skull, the jaw, two horns), the Cinder Tree (5 boughs and its trunk)
+and the nest (14 ribs and the skull). ADR-120 reverses ADR-119's "the Cinder Tree and the Elder Wyrm's
+skeleton stay whole"; the bonfire stays whole. **In both duel arenas everything but the
 landmarks breaks** (the owner, ADR-122): the **Ashfall Courtyard** lists 456 breakables (78 before):
 293 slabs of its floor (the paving, the steps and the path), 30 pillars, 4 lanterns, the stele, the
 fallen lintel, the incense cauldron, the two stone colossi (two pieces each), 80 dead trees and 32
@@ -1643,7 +1656,7 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   tail swept hard, a landing, a low flight and a thrown piece **fell** what they hit. Its wings bend
   the wood round it as it takes off and on every downbeat near the ground; a landing after a flight
   breaks stone too. **It passes through wood it can break** (it no longer stops at a trunk); stone
-  still turns it until it breaks.
+  and the Cinder Tree's great trunk (ADR-120) still turn it until they break.
 - **Tall pieces fall.** A piece 2.2 m or taller falls the way the blow drove it (the hero's: away
   from him) in about a second, and lands on a strip as long as it is tall. **Under a piece a boss
   felled, the hero takes one red blow** (22 x its weight 0.6 – 1.3, unblockable, knocked down): the
@@ -1651,7 +1664,27 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   lands. Roll through it or be out of the strip. **A piece the hero fells onto a boss deals 220 x
   weight damage and 90 x weight posture**, and never hurts the hero: put the tree or the pillar
   between you and him. What a falling piece lands on is struck too. Shorter pieces shatter where
-  they stand.
+  they stand. A fall that cannot reach the hero's ground (a tree of the wall falling outward) tells
+  nothing and marks nothing: there is nothing to dodge.
+- **Things wear down before they go** (2026-11-16, ADR-120). A tree loses itself in stages as its
+  structure drops (at 82 %, 50 % and 22 % left): its outer crown, then half of it, then it leans
+  (about 0.32 rad, over 0.6 s) the way the blow drove it, and when it breaks it falls from that lean.
+  A burning tree loses its crown as it burns. The skeleton comes apart rib by rib (a tail blow takes a
+  third to a half of a rib), the Cinder Tree loses its five boughs first (while one stands its trunk
+  takes a fifth of a blow, and the trunk turns the wyrm like stone) and then breaks to a charred
+  stump, the nest loses its ribs and skull. A broken bone leaves a heap of shards (wreckage).
+- **The wall** (the trees beyond 32 m of the centre, outside the hero's ground): a little tougher
+  (x 1.15), it falls mostly away from the arena, and where it lands it strikes the trees behind
+  harder (x 1.4 its weight), so a felled stretch tears into the wall. The wyrm reaches it although it
+  fights inside the clearing: **wind** from its roars (a phase roar's front runs round the whole ring,
+  58 m), the roar's shock ring, a landing, a take-off, low wingbeats, the wing buffet and its heavy
+  body on the ground tears leaves off the wall and snaps boughs (never more than its second stage:
+  wind alone never fells a tree); and **fire carries on** past where it lands: past the end of the
+  breath, ahead of the burning pass, outward from a flame ring, ahead of a flame wall and from a shot
+  that leaves the clearing, to the first wall tree on its way, which catches. **None of it touches the
+  hero** (no blow, no fire on his ground, no tell; every attack is unchanged). Measured (headless, five
+  seeds, 80 s a phase): the wall's front rows (32 – 46 m) worn or down at the end 37 – 57 % (mean
+  45 %), 8 – 18 % by phase 1's end; falling trees struck the hero on none of the five.
 - **The floors break** (ADR-122; `BREAK.floor`, `world/floor.js`). Each slab of the courtyard's paving
   and each plate of the crater is a breakable piece with three states that read at the game camera:
   **whole**; **cracked** (its structure under 0.8 of itself: the slab drawn split into two to four
@@ -1682,8 +1715,9 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   a colossus leaves big carved blocks and a slab torn out of a floor leaves flat shards where it is
   thrown (ADR-122; the same rule in all three levels).
   None of it has a collider: it stops nothing and blocks nobody. It lies until the fight resets; when
-  too much lies at once (40 logs, 18 burnt ones, 30 rubble piles, 12 blocks, 16 heaps of shards,
-  fewer on a phone) the oldest sinks into the ground. A log can catch and burn (6 s).
+  too much lies at once (64 logs, 36 burnt ones, 30 rubble piles; where a level has them 48 heaps of
+  bone, 12 blocks, 16 heaps of shards; fewer on a phone) the oldest sinks into the ground. A log can
+  catch and burn (6 s).
 - **Cover.** A piece 1.1 m or taller stops the wyrm's bullets (each takes 0.12 out of it, an orb
   three times that), a duelist's crescents and torn stones, the wyrm's batted boulder, and stands for
   the hero against the Void's lines: a bolt blasts the cover (1.5), the pull drags it down toward the
@@ -1704,7 +1738,11 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   to light one unburnt tree or log within 5.2 m (45 % a try), at most 7 alight at once, a level-wide
   budget of one spread every 4 s, and at most two steps from where fire landed (a blaze stays a stand,
   it never walks round the clearing). Its light is a local glow of 5 m (it was ~16 m: a yellow flood
-  that buried the fire on the ground the hero must read).
+  that buried the fire on the ground the hero must read). These caps are the clearing's: **the wall
+  burns on budgets of its own** (ADR-120): fire landing there at most one tree every ~7 s (banking 2),
+  at most 6 alight in the wall at once, a wall fire spreads only through the wall (one spread every
+  ~12 s, banking 2, 45 % a try) and never back into the clearing. A tree that burns through leaves the
+  ground black round its stump.
   Shen Hui's burning ground (from phase 2) lights the courtyard's wood; on a held guard it drains
   the guard meter instead of health (*The Ash Disciple* → *Three phases*).
 - **The bosses use it.** The Ash Disciple cuts the pillar (or a colossus) you stand under down on
@@ -1774,13 +1812,18 @@ Checked by `npm test` → `tests/integration/world.mjs`: SETS (the courtyard 380
 PLACED (a piece that moves is drawn where it is), CHIP, FELL, COVER, FIRE, THROW, RESET,
 GRID (the spatial grid answers as the whole list did), BODY (the walk, the turn, the charge, the
 wings, the landing against the clearing), WRECK (what falls lies and is walked over), SPREAD (the
-spread's limits) and BUDGET (183 pieces in 368 bones, 549 with the wyrm, of 1023; the courtyard 401, the
-crater 257; a 60 s rampage costs
-destructibles.update 0.003 ms on average and allocates nothing) (139 checks on the real forest,
-courtyard and throne). And integ WRECKAGE: a whole AI fight on the real clearing, 80 s a phase, must
-leave it changed, not flattened (`TUNING.world.meter`: 20 – 70 % of the pieces inside the hero's
-bound standing at the end, at least 8 liftable as phase 3 starts). Measured (ADR-119): a four-minute
-fight leaves 47 – 60 % standing (run alone; 24 % on one seed inside the whole suite). **Not
+spread's limits), WEAR (the stages), WALL (the wall's toughness, its outward and quiet falls, its
+fire), REACH (the wind and the fire that carries), LANDMARKS (the skeleton, the Cinder Tree and the
+nest in pieces) and BUDGET (664 pieces in 228 bones, 409 with the wyrm, of 1023: the trees and
+landmarks are range pieces and take none; the courtyard 443, the crater 299; a 60 s rampage costs
+destructibles.update about 0.01 ms on
+average and allocates nothing) (225 checks on the real forest, courtyard and throne, 2026-11-16, after the merge of ADR-120 and ADR-122). And
+integ WRECKAGE: a whole AI fight on the real clearing, 80 s a phase, must leave it changed, not
+flattened (`TUNING.world.meter`: 20 – 70 % of the pieces inside the hero's bound standing at the
+end, at least 8 liftable as phase 3 starts, at most 9 burnt through (6 before ADR-120: the Cinder
+Tree's boughs burn), and since ADR-120 30 – 75 % of
+the wall's front rows worn or down at the end, at least 3 % by phase 1's end). Measured (ADR-119): a
+four-minute fight leaves 47 – 60 % standing (run alone; 24 % on one seed inside the whole suite). **Not
 measured:** what breakables, the spread and the wreckage do to the fights' difficulty; no human has
 played with them yet.
 

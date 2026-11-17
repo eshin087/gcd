@@ -7,6 +7,7 @@ import { HitboxOverlay } from './hitboxOverlay.js';
 import { TimingTrainer, tellName } from './timingTrainer.js';
 import { ModelViewer, VIEW_ANGLES, VIEW_LOOKS } from './modelView.js';
 import { Training } from './training.js';
+import { WYRM_FACES, wyrmFace } from '../entities/dragon/heads.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
@@ -817,6 +818,14 @@ export class Lab {
     button(grid, 'Stagger', () => this._fightAction('stagger'));
     button(grid, 'Posture break', () => this._fightAction('postureBreak'));
     button(grid, 'Kill', () => this._fightAction('kill'), 'danger');
+    // the wyrm's phase-3 fire (dragon/ablaze.js): cycle its strength off / a / b / c
+    if (typeof this.game.dragon?.debug?.ablaze === 'function') {
+      const b = button(grid, `Ablaze ${this.game.dragon.debug.ablaze()}`, () => {
+        const L = ['off', 'a', 'b', 'c'], d = this.game.dragon.debug;
+        b.textContent = `Ablaze ${d.ablaze(L[(L.indexOf(d.ablaze()) + 1) % L.length])}`;
+      });
+      b.title = 'phase 3 sets the wyrm on fire: its strength (?ablaze=off|a|b|c)';
+    }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);
     this.ui.hp = slider(row, { min: 0, max: 100, step: 1, value: 100 }, (v) => {
@@ -883,6 +892,36 @@ export class Lab {
       const n = a ? w()?.impact?.(a.x, a.z, 3, 3, { kind: 'blast', by: 'boss' }) : 0;
       this._status(`a blast 4 m ahead struck ${n ?? 0} piece(s)`, 'ok');
     }).title = 'a hard blast 4 m in front of the hero: what stands there breaks, the floor cracks';
+    // (2026-11-16: the tree wall wears down in stages; the landmarks break in pieces)
+    const nearestWall = (at) => {
+      let best = null, bd = 1e9;
+      for (const b of w()?.destructibles?.list ?? []) {
+        if (b.state !== 0 || !(b.wall || /^(elder|cinder|nest)/.test(b.kind))) continue;
+        const d = Math.hypot(b.x - at.x, b.z - at.z);
+        if (d < bd) {
+          best = b;
+          bd = d;
+        }
+      }
+      return best;
+    };
+    button(grid, 'Wear wall', () => {
+      const D = w()?.destructibles, at = p();
+      const b = at && D ? nearestWall(at) : null;
+      if (!b) return this._status('no wall tree or landmark piece standing', '');
+      const l = Math.hypot(b.x - at.x, b.z - at.z) || 1, dx = (b.x - at.x) / l, dz = (b.z - at.z) / l;
+      D.strike(b.x - dx * 0.6, b.z - dz * 0.6, 0.8, 1, { kind: 'blunt', by: 'boss', dx, dz, y: 1.5, src: D.swing() });
+      this._status(`a tail's blow (power 1) on a ${b.kind} ${l.toFixed(1)} m away: stage ${b.wear ?? 0}, ${b.hp.toFixed(2)} of ${b.hpMax.toFixed(2)} left`, 'ok');
+    }).title = 'the nearest tree of the wall (or landmark piece) takes a blow of a tail\'s power: watch it wear down stage by stage';
+    button(grid, 'Wreck wall', () => {
+      const D = w()?.destructibles, at = p();
+      if (!D || !at) return;
+      const R = Math.hypot(at.x, at.z) || 1, ox = at.x / R, oz = at.z / R;
+      let n = 0;
+      for (let k = 0; k < 4; k++) n += D.strike(ox * (34 + k * 4), oz * (34 + k * 4), 5, 2.5, { kind: 'blast', by: 'boss', dx: ox, dz: oz, src: D.swing() });
+      w()?.ignite?.(ox * 40, oz * 40, 4, 1, false);
+      this._status(`the wall behind the hero: ${n} blows, and fire`, 'ok');
+    }).title = 'blasts and fire in the wall straight out behind the hero (a stretch torn open)';
     button(grid, 'Restore', () => {
       w()?.scorch?.reset?.();
       w()?.restore?.();
@@ -970,6 +1009,41 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
+    const wfr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads for the owner's pick (?wyrmFace=; reloads the page)";
+    const wfg = el('div', 'lab-grid', null, wfr);
+    wfg.style.flex = '1';
+    for (const f of WYRM_FACES) {
+      const b = button(wfg, f, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          u.searchParams.set('wyrmFace', f);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = `the wyrm wears the ${f} head (?wyrmFace=${f})`;
+      if (f === wyrmFace()) b.classList?.add('on');
+    }
+    // the zoom options (render/pipeline.js, ?zoomArt=): live, no reload
+    const P = this.game.pipeline;
+    if (typeof P?.setZoomArt === 'function') {
+      const zr = el('div', 'lab-row', null, body);
+      el('span', 'lab-lbl', 'zoom art', zr).title = 'the art letters as the camera pulls back (?zoomArt=a|b|c; a = today)';
+      const zg = el('div', 'lab-grid', null, zr);
+      zg.style.flex = '1';
+      const zb = ['a', 'b', 'c'].map((m) => {
+        const b = button(zg, m, () => {
+          P.setZoomArt(m);
+          for (const o of zb) o.classList?.toggle('on', o === b);
+        });
+        b.title = m === 'a' ? 'one letter size at every distance (today)' : m === 'b' ? 'smaller letters past the default distance: an object keeps its letters' : 'half of b';
+        if (P.zoomArt === m) b.classList?.add('on');
+        return b;
+      });
+    }
     // the flurry (player/flurry.js): a perfect dodge's answer at a streak of N, started on the boss
     // from where the hero stands; `art` pins the last blow's look (flurry.js ARTS) for the next ones
     const fr = el('div', 'lab-row', null, body);

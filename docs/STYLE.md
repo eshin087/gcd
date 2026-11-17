@@ -12,7 +12,12 @@ the wyrm next to it, it is wrong, however good it looks alone.
 
 **What the look is** (ADR-093 for the wyrm, ADR-100 for objects):
 1. **Small, fine digits.** A pixel font in cells about 1/90 of the screen height (5x8 px at 720p,
-   6x9 at 1080p, 4x6 on a phone; `wyrmArtFont`). One letter size for everything in this look.
+   6x9 at 1080p, 4x6 on a phone; `wyrmArtFont`). One letter size for everything in this look at
+   a given zoom: when the player zooms out past the default, every art letter (and the trees'
+   screen grid) steps down the same ladder of fonts together, so an object keeps about the letters
+   it has at the default distance (`?zoomArt=b`, the owner's pick of three, 2026-11-16, ADR-120;
+   `a` the fixed letters of before, `c` half way). Zooming in never grows them; a phone keeps its
+   4x6 letters.
 2. **Brightness draws the shape, not letter density.** The same three letter sets everywhere
    (`WYRM_SETS`); a cell's brightness picks the set and how bright its digit is.
 3. **A dark body, light only where it is caught.** Most of a shape is dim; brighter digits sit on
@@ -57,12 +62,26 @@ the wyrm next to it, it is wrong, however good it looks alone.
 
 **How things break (ADR-107).** Destruction is drawn with the same means, never with new ones:
 - A breakable piece is the same geometry through the same two set materials (the screen grid for
-  trees, prop art for stone and metal), drawn from a rigid batch so it can fall, fly or vanish.
+  trees, prop art for stone and metal), drawn from a rigid batch so it can fall, fly or vanish. In
+  Cinderwood every tree, the Cinder Tree and the Elder Wyrm's and the nest's bones stay in the set's
+  own meshes (2026-11-16, ADR-120): a piece is a run of their vertices, rewritten to drop a part, to
+  shudder, lean, fall or fly; whole, they look exactly as they did.
+- **Things wear down before they go** (2026-11-16, ADR-120; the owner: "slowly crumble and break"):
+  a tree sheds its outer crown, then half of it (a pine its top first), then leans, then falls; the
+  Elder Wyrm's skeleton comes apart rib by rib and run by run of its spine, the Cinder Tree loses its
+  boughs and then breaks to a charred stump, the nest loses its ribs and skull. Wind from the wyrm
+  (a roar, a wingbeat, a landing) tears leaves off the tree wall and snaps boughs, never fells a tree.
+  A tree that burns through leaves black ground round its stump, so a burnt stretch of the wall reads
+  as one from above. The bonfire stays whole.
+- **Debris keeps the dim hue of what it came from:** a wearing crown sheds leaves in the canopy's own
+  dark green and splinters in bark brown, a bone in its own dull bone (not white), a burning crown
+  charred leaves with a few small sparks (no yellow blobs). A broken bone leaves a heap of shards in
+  the bone's hue (wreckage, below).
 - Debris, dust, embers, the red strip under a falling piece and the marks a blow leaves are
   **glyph particles** from the world atlas; the flames are heat in the fire field (below). No
   debris meshes, no decals, no textures.
-- **Wreckage** (2026-11-15, ADR-119: felled trunks, burnt logs, rubble piles that lie until the
-  reset) is solid, so it is drawn like every background object: prop art (`createPropArtMaterial`,
+- **Wreckage** (2026-11-15, ADR-119: felled trunks, burnt logs, rubble piles and, since ADR-120,
+  heaps of bone shards that lie until the reset) is solid, so it is drawn like every background object: prop art (`createPropArtMaterial`,
   the breakables' prop twin), from fixed pools of meshes in the breakables' rigid batch. A burnt log
   is black (its ember glow is the scorch map's under it) and smoulders in the fire field; when a pool
   is full the oldest piece sinks into the ground. A crater (a blow of power 1.2 or more) is a rim of
@@ -314,7 +333,10 @@ Rules of thumb:
 - **Letters:** fine pixel-font digits, each glyph one pixel wide with a soft 0.24 halo and a black gap
   round it, in cells about 1/90 of the screen height: a 4x6 font in 5x8 px cells at 720p (the owner's
   pick "B, medium" of three sizes, 2026-11-15), a 5x7 font in 6x9 cells at 1080p, 3x5 in 4x6 on a
-  393 px phone, the 4x6 font doubled at 1440p (`wyrmArtFont`). Never a bold browser font.
+  393 px phone, the 4x6 font doubled at 1440p (`wyrmArtFont`). Never a bold browser font. Zoomed
+  out past the default, the cell steps down to the next smaller of these fonts (at 1080p 6x9 → 5x8
+  → 4x6 px; `wyrmArtLadder`, ADR-120), each step's letters brightened by the ink they lose
+  (`uArtInk`) so the body keeps its tone.
   *Superseded:* large bold symbols in 8x13 px cells (ADR-092): every character could be read, but
   live it was "way too flashy" and "too big", and the scales were gone; before that, 3x5 digits in
   4x6 cells at 720p.
@@ -342,6 +364,14 @@ Rules of thumb:
   they light the letters over them; orange-lit chest and throat scales with gold rims; crimson
   mottled sails with torn edges, holes, orange bone streaks and ember specks; spikes dark at the root,
   bright at the tip.
+- **Heads kept for later** (2026-11-16, ADR-120): three sculpted heads (`skull`, `loong` with two
+  springy whiskers, `demon`; `dragon/heads.js`) were built and filmed: lofted skulls with sockets,
+  brow ridges and cheekbones, drawn with flat facets and smaller scales (`FACE_ART`) so the form
+  prints through the key light. The owner: "lets pass on the remake of the dragon head for now". The
+  wyrm wears today's head; the three stay behind `?wyrmFace=skull|loong|demon` (and the Lab's head
+  row), like the hero's looks (ADR-089). Seen on them and not fixed: the teeth print as a solid white
+  wall from the side, the scale texture fights the sculpted form up close, and at 36 – 54 m the heads
+  differ only a little.
 - **Targets at the reference view (1080p; measured for the thin 4x6 digits of 2026-11-08):** the
   reference's body region has mean brightness ≈ 29,
   ≈ 22 % ink pixels and ≈ 9 % bright ones (round 1 measured 30 / 23 / 11); its lit ink is white 41 /
@@ -522,6 +552,9 @@ grid. Now (`render/fireField.js`, `render/firePalettes.js`):
   the blue wisps are gone, ADR-119), the Lord's red blade, `combat/clashFx.js`.
 - **Bullets:** an ember is a small ball of fire round a gold `*`, with a burning tail. A ground
   tongue is one narrow line of fire (below, *Bullets, the ground tongues and the melee wakes*).
+- **It follows the zoom** (2026-11-16, ADR-120): one texel per art cell, so when the letters step
+  down with the zoom the fire's letters do too. Its tongues are counted in cells, so at a smaller
+  step they are smaller; not yet looked at in phase 3.
 
 ### Text effects (2026-11-15, ADR-113)
 Things only a world made of letters can do. One rule for all of them: **a loose letter is always
@@ -606,7 +639,7 @@ section), `player/fx.js` (the plunge).
   slam send a ground shock of dust (`groundShock`); the dive's crash two fronts of fire, flames flung
   out low, rocks and a big dust cloud.
 - **Phase 3** burns white-hot: crack glow 0.8 and 50 body embers / s (phase 2: 0.5 and 22), a
-  white-hot boss bar.
+  white-hot boss bar, and since 2026-11-16 the wyrm is ablaze (*The wyrm ablaze*, below).
 - **The plunge** speaks the hero's cold language: a blue-white afterimage of his pose at the dodge
   spot and a cold streak up to the hang point; cold motes drawn in at the apex; on impact a
   white-cyan flash, cold crystal shards fanned out, molten blood thrown up from the wound and a shock
@@ -703,6 +736,29 @@ engines in `dragon/fx.js` draw them all, in the fire field, and new effects go t
   grit and leaves and smashes what it meets into splinters, the landing throws a spray on along the
   way it flew, and a firebrand burns along its trunk in the jaws, in the air and where its wreck lies.
   Nothing is drawn on the ground before it lands.
+
+### The wyrm ablaze (2026-11-16, ADR-120; `dragon/ablaze.js`, `tuningAblaze.js`)
+In phase 3 the Cinder Wyrm sets itself on fire. Three strengths were filmed behind `?ablaze=a|b|c`;
+the owner picked **b** (trailing fire), the default (`?ablaze=off`: none).
+- **The ignition** is a beat of the phase-3 roar: 0.45 s after the ring (calm in this roar: its
+  front's fire and its ground glow held low, so the ignition reads) fire runs from the chest along the
+  wing arms to the tips, down the legs to the claws and along the tail in 1.1 s, then flares at every
+  end (embers, a shake, a punch, a light).
+- **Then it burns:** flames stand on the wing tips and the trailing edge between them, the four claws
+  and the last third of the tail, with a larger flame at its tip. Every flame is heat in the fire field
+  (small blobs that keep only 18 % of the part's speed): at rest they stand and climb, a fast move
+  leaves fire along its path (a wing sweep paints an arc, a tail whip a ribbon, a dive a comet's
+  tail); b and c also lay extra fire along a part moving fast. Embers are glyph particles. Look c
+  adds the horns and the spine's crest and brighter fire; a is barely seen at the game camera.
+- **It marks the world, not the hero:** in b and c a planted claw chars the grass and leaves a few
+  small, low flames for 1.6 s, and the dragging tail does the same; they never use the ground fire
+  that hurts, so they read as safe. Wood a burning part sweeps past catches.
+- **The cues stay readable:** a timing cue dims the fire round it (near it to 8 %), a red or black
+  body glow dims all of it, a flame next to the hero burns low.
+- It gutters low through a stagger, a posture break and the plunge's reaction, and goes out along the
+  body, the ends first, as it dies.
+- **Seen and not fixed:** c's tail ribbons have a hot white core (near "too flashy"); smoke on death barely reads; the fire has no
+  sound of its own.
 
 ### Bullets, the ground tongues and the melee wakes (2026-11-09, ADR-039; 2026-11-15, ADR-119)
 Code: `dragon/bulletFx.js` (bullets, the tongues), `dragon/fx.js` (`clawTrail`, `slamBurst`, the breath).

@@ -4,10 +4,11 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | herolook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | herolook | wyrmface | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
+//   ABYSS_WYRMFACE=old|skull|loong|demon builds every wyrm with that head (?wyrmFace=; e.g. a timing run per head)
 //   ABYSS_SKIP=name,name... leaves those scenarios out of `all` (tests/run.mjs runs `timing` beside it, in parts)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -27,11 +28,14 @@ const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Destructibles, STATE: PIECE } = await imp('src/world/destructibles.js');
+const { BREAK } = await imp('src/world/breakTuning.js');
 const { buildDeadTree, buildBoulder, buildStump, geosHeight, createForest } = await imp('src/world/forest.js');
 const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/combat/rules.js');
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
 const { DIM: HERO_DIM, setHeroGlyphScale } = await imp('src/entities/player/model.js');
 const { Dragon } = await imp('src/entities/dragon/dragon.js');
+// ABYSS_WYRMFACE: every wyrm built in this run wears that head (?wyrmFace=, heads.js)
+if (process.env.ABYSS_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).setWyrmFace(process.env.ABYSS_WYRMFACE)) { process.stdout.write(`ABYSS_WYRMFACE: unknown head '${process.env.ABYSS_WYRMFACE}'\n`); process.exit(2); }
 const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
 const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
 const { attackWeight } = await imp('src/entities/dragon/ai.js');
@@ -956,6 +960,19 @@ async function scenarioPressure() {
 // flattened: between a third and two thirds standing at the end, and pieces left for the terrain moves
 // in phase 3. ABYSS_WSEEDS=a,b,c, ABYSS_WSECS=s per phase (the report's: three seeds, 80 s: a 4-minute
 // fight); the suite runs one seed.
+// (the wall report: its front rows out to WALL_FRONT m, the ring cut in WALL_SECTORS; a stretch is a run
+// of sectors at least WALL_HURT damaged (torn) or at most WALL_WHOLE (standing))
+const WALL_FRONT = 46, WALL_SECTORS = 24, WALL_HURT = 0.4, WALL_WHOLE = 0.15;
+function wallStretches(sec) {
+  const runs = (ok) => {
+    const n = sec.length;
+    if (sec.every(ok)) return 1;
+    let start = sec.findIndex((v) => !ok(v)), k = 0;
+    for (let i = 1; i <= n; i++) if (ok(sec[(start + i) % n]) && !ok(sec[(start + i - 1) % n])) k++;
+    return k;
+  };
+  return { hurt: runs((v) => v >= WALL_HURT), whole: runs((v) => v <= WALL_WHOLE) };
+}
 async function scenarioWreckage() {
   out('\n== scenario WRECKAGE (a whole AI fight on the real clearing: what stands, what burns, what felled it) ==');
   const SECS = Number(process.env.ABYSS_WSECS ?? 80);
@@ -995,6 +1012,7 @@ async function scenarioWreckage() {
     const cause = {}, lit = {};
     G.watch = (n, e) => {
       if (n !== 'world:impact') return;
+      wallWatch?.(n, e);
       const act = d.brain.action?.name ?? (d.state === 'airborne' ? 'air' : 'idle');
       if (!(Math.hypot(e.x, e.z) < BOUND + 2)) return;
       if (e.kind === 'topple' || e.kind === 'break') cause[act] = (cause[act] || 0) + 1;
@@ -1008,13 +1026,43 @@ async function scenarioWreckage() {
       lit[act] = (lit[act] || 0) + 1;
       return light0(b, k, gen);
     };
+    // the wall's front rows (the trees between BREAK.wall.from and WALL_FRONT m: what the camera sees of
+    // it from the clearing): worn (a stage reached, standing), down (felled, broken, burnt through), by
+    // sector of the ring, and what wore / felled / lit them (2026-11-16, the tuning pass: the owner's
+    // "destroy more of ... the tree walls surrounding the map")
+    const front = D.list.filter((b) => (b.kind === 'tree' || b.kind === 'deadTree') && b.wall && Math.hypot(b.x, b.z) <= WALL_FRONT);
+    const wallNow = () => {
+      const sec = new Int16Array(WALL_SECTORS), secN = new Int16Array(WALL_SECTORS);
+      let worn = 0, down = 0, burnt = 0;
+      for (const b of front) {
+        const s = Math.floor(((Math.atan2(b.z, b.x) + Math.PI) / (2 * Math.PI)) * WALL_SECTORS) % WALL_SECTORS;
+        secN[s]++;
+        const hurt = b.state !== PIECE.INTACT || b.wear > 0;
+        if (b.state !== PIECE.INTACT) down++;
+        else if (b.wear > 0) worn++;
+        if (b.burnt) burnt++;
+        if (hurt) sec[s]++;
+      }
+      return { worn, down, burnt, share: (worn + down) / Math.max(1, front.length), sec: Array.from(sec, (v, i) => v / Math.max(1, secN[i])) };
+    };
+    const wallBy = {};
+    const heroFall0 = G.hits.filter((h) => h.attack === 'fallingDebris').length;
+    const wallWatch = (n, e) => {
+      if (n !== 'world:impact' || !(e.id >= 0) || !D.list[e.id]?.wall) return;
+      if (!['wear', 'topple', 'break', 'burn'].includes(e.kind)) return;
+      const act = d.brain.action?.name ?? (d.state === 'airborne' ? 'air' : 'idle');
+      const k = `${e.kind}:${act}`;
+      wallBy[k] = (wallBy[k] || 0) + 1;
+    };
     const c0 = count(), at = [c0];
+    const walls = [wallNow()];
     const roam = mulberry32(seed * 31 + 5), goal = { r: 6, a: 0, until: -1 };
     for (let ph = 1; ph <= 3; ph++) {
       if (ph > 1) {
         d.debug.setHp(TUNING.phaseAt[ph - 1] - 0.01);
         run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === ph && d.brain.action?.name !== `phase${ph}`);
         at.push(count());
+        walls.push(wallNow());
       }
       const pin = Math.round(d.maxHp * [0.83, 0.5, 0.17][ph - 1]);
       for (let i = 0; i < Math.round(SECS / DT); i++) {
@@ -1036,11 +1084,17 @@ async function scenarioWreckage() {
         if (d.hp < pin) d.hp = pin;
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
       }
-      if (ph === 1) at.push(count()); // (P1's end, before the roar)
+      if (ph === 1) {
+        at.push(count()); // (P1's end, before the roar)
+        walls.push(wallNow());
+      }
     }
     G.watch = null;
     at.push(count());
-    rows.push({ seed, total: inside.length, at, cause, lit, wood0 });
+    walls.push(wallNow());
+    const falls = G.hits.filter((h) => h.attack === 'fallingDebris').slice(heroFall0);
+    const heroFall = `${falls.length}${falls.length ? ` (at ${falls.map((h) => Math.hypot(h.fx, h.fz).toFixed(1)).join(', ')} m from the centre)` : ''}`;
+    rows.push({ seed, total: inside.length, at, cause, lit, wood0, walls, front: front.length, wallBy, heroFall, stat: { ...(D.stat ?? {}) } });
   }
   const fmt = (c) => `${String(c.n).padStart(4)} (lift ${String(c.lift).padStart(2)}, burnt ${String(c.burnt).padStart(2)})`;
   out(`   ${SECS} s per phase · pieces standing inside the hero's ${BOUND} m bound: start · end of P1 · P2 start · P3 start · end`);
@@ -1051,6 +1105,13 @@ async function scenarioWreckage() {
     out(`         felled / broken by: ${Object.entries(r.cause).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
     out(`         the whole forest's ${r.wood0} trees: standing ${r.at.map((c) => c.wood).join(' > ')}, burnt through ${r.at[4].burntAll}`);
     out(`         set alight by: ${Object.entries(r.lit).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+    const ws = (w) => `${(w.share * 100).toFixed(0).padStart(2)} % (worn ${w.worn}, down ${w.down}, burnt ${w.burnt})`;
+    out(`         the wall's front rows (${r.front} trees, ${BREAK.wall.from} - ${WALL_FRONT} m) damaged: ${r.walls.map(ws).join(' · ')}`);
+    const end = r.walls[r.walls.length - 1], st = wallStretches(end.sec);
+    out(`         by sector (${WALL_SECTORS} x ${360 / WALL_SECTORS} deg, % damaged): ${end.sec.map((v) => String(Math.round(v * 100)).padStart(3)).join('')}`);
+    out(`         reach: ${JSON.stringify(r.stat)}`);
+    out(`         stretches: ${st.hurt} torn (>= ${WALL_HURT * 100} %), ${st.whole} standing (<= ${WALL_WHOLE * 100} %) · falling trees on the hero: ${r.heroFall}`);
+    out(`         the wall worn / felled / lit by: ${Object.entries(r.wallBy).sort((a, b) => b[1] - a[1]).slice(0, 24).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   }
   for (const r of rows) {
     const end = r.at[4].n / r.total, p3 = r.at[3];
@@ -1059,6 +1120,10 @@ async function scenarioWreckage() {
     assert(end >= W.endShare[0] && end <= W.endShare[1], `seed ${r.seed}: ${(end * 100).toFixed(0)} % of the clearing's ${r.total} pieces stand at the end of the fight (${W.endShare.map((x) => x * 100 + ' %').join(' .. ')}: changed, not flattened)`);
     assert(p3.lift >= W.liftP3, `seed ${r.seed}: ${p3.lift} liftable pieces stand as phase 3 starts (>= ${W.liftP3}: the terrain moves go on)`);
     assert(r.at[4].burnt <= W.burnt, `seed ${r.seed}: ${r.at[4].burnt} pieces burnt through in the fight (<= ${W.burnt})`);
+    if (W.wall) {
+      const we = r.walls[r.walls.length - 1].share, w1 = r.walls[1].share;
+      assert(we >= W.wall[0] && we <= W.wall[1] && w1 >= W.wallP1 && we > r.walls[3].share - 1e-9, `seed ${r.seed}: the wall's front rows ${(we * 100).toFixed(0)} % worn or down at the end (${W.wall.map((x) => x * 100 + ' %').join(' .. ')}), ${(w1 * 100).toFixed(0)} % by phase 1's end (>= ${W.wallP1 * 100} %): the wyrm reaches the wall, the arena keeps it`);
+    }
   }
   return lastG;
 }
@@ -3647,6 +3712,195 @@ async function scenarioFlight() {
   return G;
 }
 
+// ================================================================== scenario: ablaze (phase 3: the wyrm on fire)
+// dragon/ablaze.js: off in phases 1 and 2; lit by the phase-3 roar's ignition beat (and when phase 3
+// comes any other way); it gutters in a stagger; it goes out on death and on reset(); it burns wood
+// (world.ignite with grass false), never the hero; the attacks are unchanged (the table's numbers are
+// the base's, and a seeded phase-3 fight deals the very same hits with the fire on as with it off).
+async function scenarioAblaze() {
+  out('\n== scenario ABLAZE (phase 3: the wyrm sets itself on fire; it burns the world, not the hero) ==');
+  const M = await imp('src/entities/dragon/ablaze.js');
+  const { ABLAZE } = await imp('src/entities/dragon/tuningAblaze.js');
+  const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); };
+  // the attack table at the base (fc17317): every attack's damage, timings, tells and reach
+  // (103cbc42 since the merge with the duelists' second pass, ADR-122: furnaceMaw's bite impact 0.09 → 0.118,
+  // the lead's timing fix for its mirrored side; ADR-120 alone left 47e0a683. Nothing of ablaze changes it)
+  const BASE_ATTACKS = '103cbc42';
+  const table0 = JSON.stringify(TUNING.attacks);
+  M.setAblazeLook('b');
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, B = d.ablaze, cap = ABLAZE.cap.perFrame;
+  assert(B && typeof B.update === 'function' && M.ablazeLook() === 'b', 'dragon.ablaze exists; the default strength is b');
+  // ---- phases 1 and 2: off
+  run(G, 2, { passive: true });
+  assert(!B.on && B.peak === 0, `phase 1: no fire on the body (mode ${B.mode}, ${B.peak} stamps)`);
+  d.debug.phase2();
+  settle(G, 10);
+  run(G, 1, { passive: true });
+  assert(d.phase === 2 && !B.on && B.peak === 0, `phase 2: still none (mode ${B.mode}, ${B.peak} stamps)`);
+  // ---- the phase-3 roar: dark through the windup, lit by its ignition beat, burning after it
+  let onInWindup = false, igniting = 0, worstIgn = 0, nanSite = false;
+  p.debug.teleport(d.position.x + 16, d.position.z);
+  d.debug.phase3();
+  run(G, 6, { passive: true }, () => {
+    const a = d.brain.action;
+    if (a?.name === 'phase3' && a.phase === 'windup' && B.on) onInWindup = true;
+    if (B.mode === 'igniting') { igniting++; worstIgn = Math.max(worstIgn, B.stamps); }
+    for (const s of B.sites) if (!Number.isFinite(s.x + s.y + s.z + s.on)) nanSite = true;
+    return !a && d.state === 'combat';
+  });
+  out(`   phase-3 roar: ignition ${(igniting * DT).toFixed(2)} s · most blobs in an ignition frame ${worstIgn} · now ${B.mode}, ${B.sites.filter((s) => s.on > 0.9).length} of ${B.sites.length} sites alight`);
+  assert(d.phase === 3 && !onInWindup, 'phase 3: the body is not alight through the roar\'s windup (its ring and red flare read first)');
+  assert(igniting * DT > 0.8 && B.flared && B.mode === 'burning', `the roar's ignition beat runs (${(igniting * DT).toFixed(2)} s) and flares; then it burns (${B.mode})`);
+  const lit = (k) => B.sites.filter((s) => s.kind === k && s.on > 0.9).length;
+  assert(lit('tip') === 8 && lit('claw') === 4 && lit('tailTip') === 1 && lit('tail') >= 3 && lit('horn') === 0 && lit('crest') === 0,
+    `b: the eight wing tips, four claws, the tail's last third and its tip burn; not the horns or the crest (${lit('tip')}, ${lit('claw')}, ${lit('tail')}, ${lit('tailTip')}, ${lit('horn')}, ${lit('crest')})`);
+  assert(worstIgn <= cap * 2 + 120 && !nanSite, `the ignition stays in its budget (${worstIgn} blobs in a frame; the flare's burst is outside the cap) and no site is NaN`);
+  // ---- burning: blobs a frame under the cap, rising with the motion
+  let worst = 0, sum = 0, n = 0;
+  run(G, 3, { passive: true }, () => { worst = Math.max(worst, B.stamps); sum += B.stamps; n++; return false; });
+  out(`   burning (standing): ${(sum / n).toFixed(1)} blobs a frame (most ${worst}, cap ${cap}) · fire field ${game.fx.fire.count}`);
+  assert(worst <= cap && sum / n > 3, `burning: the body's fire stamps ${(sum / n).toFixed(1)} blobs a frame, at most ${worst} <= the cap ${cap}`);
+  // ---- a stagger: it gutters low and comes back
+  d.debug.stagger();
+  let low = 1;
+  run(G, 1.2, { passive: true }, () => { low = Math.min(low, B.level); return false; });
+  settle(G, 8);
+  run(G, 1.5, { passive: true });
+  out(`   stagger: the fire's level fell to ${low.toFixed(2)}, back to ${B.level.toFixed(2)}`);
+  assert(low < 0.45 && B.level > 0.9 && B.mode === 'burning', `a stagger: it gutters (level ${low.toFixed(2)}) and comes back (${B.level.toFixed(2)})`);
+  // ---- wood: the burning parts call world.ignite with grass false (the world's caps decide); the tail's tip among them
+  const calls = [];
+  const tailTip = () => d.rig.tail.p[d.rig.tail.n];
+  // (no wood near: each call lights nothing; then every call lights one, and the budget holds)
+  let lights = 0;
+  game.world.ignite = (x, z, r, k, grass) => { const t = tailTip(); calls.push({ x, z, grass, tip: Math.hypot(x - t.x, z - t.z) }); return lights; };
+  // (a burning part lights wood only as it passes: the tail lashes, again and again)
+  const lash = () => { if (!d.brain.action && d.state === 'combat') d.debug.trigger('tail'); return false; };
+  run(G, 3, { passive: true }, lash);
+  const nearTip = calls.filter((c) => c.tip < 0.01).length, n0 = calls.length;
+  lights = 1;
+  const lit0 = B.lit;
+  run(G, 30, { passive: true }, lash);
+  out(`   wood: ${n0} ignite calls in 3 s of a lashing tail with nothing to light (grass false: ${calls.filter((c) => c.grass === false).length} of ${calls.length}, at the tail's tip ${nearTip}) · with wood everywhere ${B.lit - lit0} lit in 30 s`);
+  assert(n0 > 0 && calls.every((c) => c.grass === false), `wood: the burning parts call world.ignite(x, z, r, k, false) as they pass (${calls.length} calls, never the grass)`);
+  assert(nearTip > 0 && B.lit - lit0 <= Math.ceil(ABLAZE.wood.perMin / 2) + 2, `wood at the tail's tip is tried (${nearTip} calls there); the per-minute budget holds (${B.lit - lit0} lit in 30 s, ${ABLAZE.wood.perMin} a minute)`);
+  delete game.world.ignite;
+  settle(G, 8); // (the last lash over)
+  // ---- footprints: the hero standing in a burning one for 5 s takes no damage
+  let burns = 0;
+  const bc = game.world.scorch.burnCircle;
+  game.world.scorch.burnCircle = (...a) => { burns++; return bc.apply(game.world.scorch, a); };
+  let own = 0; const pr0 = B._print.bind(B); B._print = (...a) => { own++; return pr0(...a); };
+  const fx0 = d.position.x - 6, fz0 = d.position.z;
+  B.step(fx0, fz0, true);
+  p.debug.teleport(fx0, fz0);
+  p.debug.heal();
+  const hp0 = p.hp, h0 = G.hits.length;
+  run(G, 5, { passive: true }, () => { if (!B._prints.some((q) => q.t > 0)) B.step(fx0, fz0, true); return false; });
+  game.world.scorch.burnCircle = bc;
+  B._print = pr0;
+  out(`   footprint: ${burns} scorch stamps in 5 s (${own} of them the body's footprints and drags) · hp ${hp0} -> ${p.hp} · hits ${G.hits.length - h0}`);
+  assert(burns >= 1 && p.hp === hp0 && G.hits.length === h0, `a hero standing in a burning footprint for 5 s takes no damage (hp ${hp0} -> ${p.hp}, ${G.hits.length - h0} hits)`);
+  // ---- no allocation a frame: the burning body's update (its parts moving) over a bare loop
+  {
+    const v8 = await import('node:v8'), vm = await import('node:vm');
+    v8.setFlagsFromString('--expose-gc');
+    const gc = vm.runInNewContext('gc');
+    const pts = [];
+    for (const w of d.rig.pt.wings) pts.push(...w.tips);
+    pts.push(...d.rig.tail.p);
+    const emit = game.events.emit;
+    // (the suite's NaN guards round the pools' spawn build a list of keys a call: the real spawns here)
+    const fs0 = game.fx.fire.spawn, as0 = game.fx.add.spawn;
+    game.fx.fire.spawn = FireField.prototype.spawn;
+    game.fx.add.spawn = GlyphParticles.prototype.spawn;
+    const FR = 2000;
+    // (one frame a call: the frame function is optimised after the warm-up; a loop run once at a time
+    // runs part of each pass unoptimised, and its double maths alone made kilobytes of noise)
+    const frame = (i, hot) => {
+      const step = i % 60 < 30 ? 0.25 : -0.25;
+      for (let j = 0; j < pts.length; j++) pts[j].x += step;
+      if (hot) {
+        B.update(DT);
+        game.fx.fire.update(DT);
+        game.fx.add.update(DT, game.time);
+      }
+    };
+    const loop = (frames, hot) => { for (let i = 0; i < frames; i++) frame(i, hot); };
+    loop(1500, true);
+    loop(1500, false);
+    gc();
+    let m0 = process.memoryUsage().heapUsed;
+    loop(FR, false);
+    const base = process.memoryUsage().heapUsed - m0;
+    gc();
+    m0 = process.memoryUsage().heapUsed;
+    loop(FR, true);
+    const grew = process.memoryUsage().heapUsed - m0 - base;
+    game.events.emit = emit;
+    game.fx.fire.spawn = fs0;
+    game.fx.add.spawn = as0;
+    out(`   allocation: ${(grew / FR).toFixed(0)} bytes a frame over the bare loop (the burning body's update, its parts swinging)`);
+    assert(grew / FR < 1024, `no allocation a frame: ${(grew / FR).toFixed(0)} bytes a frame (< 1 KB: no object, array or closure a frame)`);
+    settle(G, 4);
+  }
+  // ---- death: it goes out along the body before the body lets go; nothing after
+  let dousing = 0, outBefore = false;
+  d.debug.kill();
+  run(G, 7, { passive: true }, () => {
+    if (B.mode === 'dousing') dousing++;
+    if (d.state === 'dying' && d.dissolve > 0 && !B.on) outBefore = true;
+    return d.state === 'dead';
+  });
+  run(G, 0.5, { passive: true });
+  out(`   death: goes out in ${(dousing * DT).toFixed(2)} s · out before the letting go ${outBefore} · after: ${B.mode}`);
+  assert(dousing * DT > 0.8 && outBefore && !B.on && B.sites.every((s) => s.on === 0), `death: the fire goes out along the body (${(dousing * DT).toFixed(2)} s), before it lets go, and stays out`);
+  // ---- reset (and a forced phase 3 from low HP, without the Lab's roar button)
+  d.debug.reset();
+  assert(!B.on && B.level === 0 && B._lights.every((l) => !l), 'reset(): out at once, its lights gone');
+  game.flow.debug.toState('boss');
+  d.debug.setAI(false);
+  d.debug.startFight();
+  run(G, 0.5, { passive: true });
+  d.enterPhase(3); // (phase 3 entered without its roar: it lights by itself, quickly)
+  run(G, 1.2, { passive: true });
+  assert(B.mode === 'burning', `phase 3 entered without the roar: it lights by itself (${B.mode})`);
+  d.debug.reset();
+  run(G, 0.3, { passive: true });
+  assert(!B.on && B.peak === 0, `after reset(): nothing burns (${B.mode})`);
+  // ---- ?ablaze=off: no fire at all
+  M.setAblazeLook('off');
+  game.flow.debug.toState('boss');
+  d.debug.setAI(false);
+  d.debug.startFight();
+  d.enterPhase(3);
+  run(G, 1.5, { passive: true });
+  assert(!B.on && B.peak === 0, `?ablaze=off: phase 3 without fire (${B.mode})`);
+  M.setAblazeLook('b');
+  // ---- the attacks are unchanged: the table is the base's, and the same seeded phase-3 fight deals the
+  // very same hits with the fire on as with it off (its own random numbers, no hit volume of its own)
+  assert(JSON.stringify(TUNING.attacks) === table0 && fnv(table0) === BASE_ATTACKS, `the attack table is unchanged (hash ${fnv(table0)}, base ${BASE_ATTACKS})`);
+  const fight = (look) => {
+    M.setAblazeLook(look);
+    const F = build();
+    fightSetup(F, { ai: true });
+    const fd = F.game.dragon;
+    fd.debug.setHp(TUNING.phaseAt[2] - 0.01);
+    run(F, 20, { god: true, attack: false }, () => fd.phase === 3 && fd.brain.action?.name !== 'phase3');
+    run(F, 25, { god: true, attack: false });
+    return { hits: F.hits.map((h) => `${h.t.toFixed(3)} ${h.attack} ${h.damage} ${h.tell} ${h.r}`), on: fd.ablaze.on, peak: fd.ablaze.peak };
+  };
+  const off = fight('off'), on = fight('b');
+  M.setAblazeLook('b');
+  const same = off.hits.length === on.hits.length && off.hits.every((h, i) => h === on.hits[i]);
+  out(`   a seeded phase-3 fight, 25 s: ${off.hits.length} hits with the fire off, ${on.hits.length} with it on (b, peak ${on.peak} blobs a frame) · identical ${same}`);
+  assert(on.on && !off.on && off.hits.length > 3 && same, `the same seeded fight deals the same hits (time, attack, damage, tell) with the fire on as off (${off.hits.length} / ${on.hits.length})`);
+  return G;
+}
+
 async function scenarioFire() {
   out('\n== scenario FIRE (flight attacks, spells, hazards: completion, flight bounds, flash timing, dodges, clear) ==');
   const G = build();
@@ -4332,6 +4586,124 @@ function sheetHit(r, m, v) {
 }
 
 // ================================================================== scenario: two hands, the guard, the cloak, idle life
+/**
+ * The wyrm's heads (?wyrmFace=, entities/dragon/heads.js): today's ('old', the default) and three
+ * sculpted ones. Each builds headless, keeps every gameplay joint where the old head had it (the
+ * head, the mouth, the jaw hinge and its tip in the same pose, bit for bit; the drawn eyes and the
+ * nostrils within NEAR_EYE of the old ones), costs a bounded number of bones / draws / triangles, has
+ * no NaN in its geometry, keeps its lower teeth inside the skull with the jaw shut, and the loong's
+ * whiskers trail and swing through a turn.
+ */
+async function scenarioWyrmFace() {
+  out('\n== scenario WYRMFACE (three sculpted heads on the gameplay joints of the old one) ==');
+  const { setWyrmFace, wyrmFace, WYRM_FACES } = await imp('src/entities/dragon/heads.js');
+  const prev = wyrmFace();
+  const e0 = errors.length;
+  // the drawn eyes and nostrils may move this far (world m) with a head's anatomy: the eye glints and
+  // the snort smoke leave from them, nothing gameplay does (0.5 m = a quarter of the old eye spacing)
+  const NEAR_EYE = 0.5;
+  const v = () => new THREE.Vector3();
+  const res = {};
+  let G = null;
+  for (const face of WYRM_FACES) {
+    setWyrmFace(face);
+    G = build();
+    const { game } = G;
+    fightSetup(G);
+    const d = game.dragon, m = d.model, pt = d.rig.pt;
+    run(G, 1.0, { passive: true });
+    // the head's own meshes: everything under headVis
+    let tris = 0, meshes = 0, finite = true;
+    m.headVis.traverse((o) => {
+      if (!o.isMesh) return;
+      meshes++;
+      const pos = o.geometry.attributes.position, nrm = o.geometry.attributes.normal;
+      tris += (o.geometry.index ? o.geometry.index.count : pos.count) / 3;
+      for (let i = 0; i < pos.array.length; i++) if (!Number.isFinite(pos.array[i])) { finite = false; break; }
+      if (nrm) for (let i = 0; i < nrm.array.length; i++) if (!Number.isFinite(nrm.array[i])) { finite = false; break; }
+    });
+    const r = (res[face] = { tris: Math.round(tris), meshes, finite, bones: d.batch.bones, draws: d.batch.meshes.length });
+    r.rest = { head: pt.head.clone(), mouth: pt.mouth.clone(), jawTip: pt.jawTip.clone(), snout: pt.snout.clone(), eyes: pt.eyes.map((e) => e.clone()), nostrils: pt.nostrils.map((e) => e.clone()) };
+    r.names = ['head', 'headVis', 'jaw', 'mouth', 'nostrilL', 'nostrilR'].every((n) => !!m.root.getObjectByName(n)) && m.eyes.length === 2 && m.nostrils.length === 2;
+    r.face = m.face;
+    // the roar opens the jaw wide: the hinge's tip goes where it went
+    d.debug.trigger('roar');
+    let jmax = 0;
+    run(G, 3, { passive: true }, () => { jmax = Math.max(jmax, m.jaw.rotation.x); return m.jaw.rotation.x > 0.68; });
+    r.roar = { jaw: m.jaw.rotation.x, jawTip: pt.jawTip.clone(), mouth: pt.mouth.clone() };
+    // jaw shut: the lower teeth stay inside the upper skull (their tips under its hide, none through
+    // the top of the snout); jaw wide: nothing NaN
+    if (face !== 'old') {
+      const hide = m.headVis.children.find((o) => o.isMesh && o.name === 'face-head');
+      const teeth = m.jaw.children.find((o) => o.isMesh && o.name === 'face-teeth');
+      let worst = -Infinity;
+      if (hide && teeth) {
+        const hp = hide.geometry.attributes.position, tp = teeth.geometry.attributes.position;
+        const p = v();
+        for (let i = 0; i < tp.count; i++) {
+          // a lower tooth's vertex with the jaw shut (jaw frame -> headVis: the hinge offset only)
+          p.fromBufferAttribute(tp, i).add(m.jaw.position);
+          if (p.y < m.jaw.position.y + 0.08) continue; // roots and the tusks' lower half
+          // (only teeth inside the skull's footprint: tusks and fangs that rise outside the lips are meant to)
+          let top = -Infinity, half = 0;
+          for (let k = 0; k < hp.count; k++) {
+            const x = hp.getX(k), z = hp.getZ(k);
+            if (Math.abs(z - p.z) < 0.04) half = Math.max(half, Math.abs(x));
+            if (Math.abs(x - p.x) < 0.06 && Math.abs(z - p.z) < 0.06) top = Math.max(top, hp.getY(k));
+          }
+          if (top > -Infinity && Math.abs(p.x) < 0.85 * half) worst = Math.max(worst, p.y - top);
+        }
+      }
+      r.through = worst;
+    }
+    // the loong's whiskers: chains that trail off the nose, lag a turn, stay finite and near the head
+    if (m.whiskers?.length) {
+      const W = d.rig.whiskers;
+      const tip = (w) => w.chain.p[w.chain.n];
+      const before = W.map((w) => tip(w).clone());
+      const hp0 = pt.head.clone();
+      d.yaw += 1.2;
+      let lagMax = 0, far = 0, ok = true;
+      for (let i = 0; i < 40; i++) {
+        G.tick(DT);
+        for (const w of W) {
+          const t = tip(w);
+          if (!Number.isFinite(t.x + t.y + t.z)) ok = false;
+          far = Math.max(far, t.distanceTo(pt.head));
+          // the tip against where it would sit at rest (the chain's rest polyline end)
+          lagMax = Math.max(lagMax, t.distanceTo(w.chain.rest[w.chain.n]));
+        }
+      }
+      r.whiskers = { n: W.length, segs: W[0].chain.n, lagMax, far, ok, moved: before.some((b, k) => b.distanceTo(tip(W[k])) > 0.05) && hp0.distanceTo(pt.head) >= 0 };
+    }
+  }
+  setWyrmFace(prev);
+  const o = res.old;
+  for (const face of WYRM_FACES) {
+    const r = res[face];
+    out(`   ${face}: ${r.meshes} head meshes, ${r.tris} head triangles, ${r.bones} wyrm bones, ${r.draws} wyrm draws${r.through !== undefined ? `, lower teeth ${r.through > -Infinity ? (r.through * 1000).toFixed(0) + ' mm vs the hide over them' : 'n/a'}` : ''}`);
+    assert(r.face === face && r.names && r.finite, `${face}: builds, wears its head, every gameplay joint by name, no NaN in its geometry`);
+    if (face === 'old') continue;
+    const dHead = r.rest.head.distanceTo(o.rest.head), dMouth = r.rest.mouth.distanceTo(o.rest.mouth), dTip = r.rest.jawTip.distanceTo(o.rest.jawTip);
+    const dSnout = r.rest.snout.distanceTo(o.rest.snout), dRoar = r.roar.jawTip.distanceTo(o.roar.jawTip) + r.roar.mouth.distanceTo(o.roar.mouth);
+    assert(dHead < 1e-6 && dMouth < 1e-6 && dTip < 1e-6 && dSnout < 1e-6 && dRoar < 1e-6 && Math.abs(r.roar.jaw - o.roar.jaw) < 1e-9,
+      `${face}: head, mouth, snout and jaw tip where the old head has them, at rest and mid-roar (${[dHead, dMouth, dTip, dSnout, dRoar].map((x) => x.toExponential(1)).join(' / ')} m)`);
+    const dE = Math.max(...r.rest.eyes.map((e, k) => e.distanceTo(o.rest.eyes[k]))), dN = Math.max(...r.rest.nostrils.map((e, k) => e.distanceTo(o.rest.nostrils[k])));
+    assert(dE < NEAR_EYE && dN < NEAR_EYE * 1.6, `${face}: the drawn eyes ${dE.toFixed(2)} m and the nostrils ${dN.toFixed(2)} m from the old head's (eyes < ${NEAR_EYE}, nostrils < ${(NEAR_EYE * 1.6).toFixed(1)})`);
+    // the rigid batch: one bone per mesh; the sculpted heads draw no more materials than the wyrm has
+    // (the loong's whiskers and mane use the spine material it already draws)
+    assert(r.draws === o.draws && r.bones <= o.bones + 12 && r.tris <= 9000, `${face}: ${r.draws} draws (old ${o.draws}), ${r.bones} bones (old ${o.bones}, at most +12), ${r.tris} head triangles (<= 9000)`);
+    assert(r.through < 0, `${face}: jaw shut, every lower tooth stays under the skull's hide over it (worst ${(r.through * 1000).toFixed(0)} mm)`);
+    if (face === 'loong') {
+      const w = r.whiskers;
+      assert(!!w && w.n === 2 && w.ok && w.moved && w.lagMax > 0.1 && w.far < 8, `loong: two whisker chains (${w?.segs} segments) swing through a 1.2 rad turn (tip ${w?.lagMax.toFixed(2)} m off its rest), stay finite and within ${w?.far.toFixed(1)} m of the head`);
+    } else assert(!r.whiskers, `${face}: no whiskers`);
+  }
+  assert(wyrmFace() === prev, `the head in use is restored (${prev})`);
+  assert(errors.length === e0, `no errors through the heads (${errors.length - e0})`);
+  return G;
+}
+
 async function scenarioHeroLife() {
   out('\n== scenario HEROLIFE (one hand through the chain, two on the heavy blows, the cross ward, the cloak vs the charged blade, idle actions) ==');
   const { DIM: HD } = await imp('src/entities/player/model.js');
@@ -9558,7 +9930,207 @@ async function scenarioMusic() {
   return G;
 }
 
-const SCENARIOS = { timestep: scenarioTimestep, strategy: scenarioStrategy, gate: scenarioGate, hero: scenarioHero, batch: scenarioBatch, seen: scenarioSeen, breath: scenarioBreath, parry: scenarioParry, block: scenarioBlock, guard: scenarioGuard, asciihud: scenarioAsciiHud, reach: scenarioReach, red: scenarioRed, plunge: scenarioPlunge, flurry: scenarioFlurry, riposte: scenarioRiposte, flare: scenarioFlare, training: scenarioTraining, deflect: scenarioDeflect, lab: scenarioLab, bullets: scenarioBullets, strings: scenarioStrings, plungeReact: scenarioPlungeReact, timing: scenarioTiming, fire: scenarioFire, terrain: scenarioTerrain, win: scenarioWin, die: scenarioDie, touch: scenarioTouch, pad: scenarioPad, remap: scenarioRemap, herolook: scenarioHeroLook, herolife: scenarioHeroLife, herohand: scenarioHeroHand, heroweight: scenarioHeroWeight, heroarms: scenarioHeroArms, herostance: scenarioHeroStance, looks: scenarioLooks, music: scenarioMusic, flight: scenarioFlight, tongues: scenarioTongues, fxlooks: scenarioFxLooks, pressure: scenarioPressure, melee: scenarioMelee, budget: scenarioBudget, wreckage: scenarioWreckage, probe: scenarioProbe };
+async function scenarioZoomArt() {
+  out('\n== scenario ZOOMART (?zoomArt: the letters follow the zoom; the cell per option, frame height and distance) ==');
+  const { Pipeline } = await imp('src/render/pipeline.js');
+  const { wyrmArtFont, wyrmArtLadder, zoomArtStep } = await imp('src/render/wyrmGlyphs.js');
+  const { ShedDigits } = await imp('src/render/shedDigits.js');
+  const G = build();
+  const { game } = G;
+  const U = game.U, cam = game.camera, Z = CONFIG.camera.zoomArt, P58 = CONFIG.camera.pitch;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true, _dpr: 1,
+    setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+    setPixelRatio(d) { this._dpr = d; }, getPixelRatio() { return this._dpr; }, setSize() {},
+  };
+  const pipe = new Pipeline(renderer, game.scene, game.fxScene, cam, U);
+  const fire = new FireField(U, { max: 64 });
+  pipe.registerFire(fire);
+  // the game camera's geometry at distance D, without the rig (its userData.zoomRatio cleared: the
+  // pipeline then measures the camera's own distance)
+  delete cam.userData.zoomRatio;
+  const at = (D) => {
+    cam.position.set(0, Math.sin(P58) * D, Math.cos(P58) * D);
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld();
+  };
+  // the step after the camera settles at D (a few frames: the decision is taken after each frame)
+  const settle = (D, n = 3) => { at(D); for (let i = 0; i < n; i++) pipe.updateZoomArt(); return pipe.artCell.toArray(); };
+  const size = (mode, H) => { pipe.setZoomArt(mode); pipe.setSize(Math.round((H * 16) / 9), H, 1); at(36); pipe.zoomStep = 0; pipe._applyZoomStep(0); };
+
+  assert(Z && Z.strength.a === 0 && Z.strength.b === 1 && Z.strength.c > 0 && Z.strength.c < 1 && Z.hyst > 0 && Z.hyst < 0.3,
+    `CONFIG.camera.zoomArt: strength a ${Z.strength.a} / b ${Z.strength.b} / c ${Z.strength.c}, hysteresis ${Z.hyst} (log)`);
+  at(36);
+  assert(Math.abs(pipe.zoomDistance() - 36) < 1e-6, `the camera's distance to the ground along its view: ${pipe.zoomDistance().toFixed(3)} m at the 36 m rig`);
+  cam.position.set(0, 2, 30);
+  cam.lookAt(0, 2, 0);
+  cam.updateMatrixWorld();
+  assert(pipe.zoomDistance() === 0, 'a camera looking along the ground does not count (0)');
+
+  // the cell per option, frame height and distance
+  const Ds = [24, 30, 36, 45, 54, 65];
+  const table = {};
+  for (const H of [720, 1080, 1440, 2160]) {
+    const base = wyrmArtFont(H).cell;
+    for (const mode of ['a', 'b', 'c']) {
+      size(mode, H);
+      const row = Ds.map((D) => settle(D)[1]);
+      table[`${H} ${mode}`] = row;
+      const bD = Ds.indexOf(36);
+      assert(row.slice(0, bD + 1).every((h) => h === base[1]), `${H}p ${mode}: at 24 - 36 m the frame's own cell (${base.join('x')})`);
+      assert(row.every((h, i) => i === 0 || h <= row[i - 1]), `${H}p ${mode}: the cell never grows as the camera pulls back (${row.join(' ')})`);
+      if (mode === 'a') assert(row.every((h) => h === base[1]) && pipe.zoomLadder.length === 1, `${H}p a: one font at every distance (today's)`);
+    }
+    const [a, b, c] = ['a', 'b', 'c'].map((m) => table[`${H} ${m}`]);
+    assert(b.every((h, i) => h <= c[i] && c[i] <= a[i]), `${H}p: b's cell <= c's <= a's at every distance`);
+    // b keeps the letters: at 54 m the cell is within one ladder step of 36/54 of the default
+    const want = (base[1] * 36) / 54, lad = wyrmArtLadder(H).map((f) => f.cell[1]);
+    const nearest = lad.reduce((m, h) => (Math.abs(Math.log(h / want)) < Math.abs(Math.log(m / want)) ? h : m), lad[0]);
+    assert(b[Ds.indexOf(54)] === nearest || b[Ds.indexOf(54)] === lad[lad.length - 1], `${H}p b at 54 m: cell height ${b[Ds.indexOf(54)]} px (wanted ${want.toFixed(1)}, nearest on the ladder ${nearest})`);
+  }
+  out(`   cell height px at ${Ds.join(' / ')} m:`);
+  for (const [k, row] of Object.entries(table)) out(`     ${k.padEnd(7)} ${row.join(' ')}`);
+
+  // hysteresis: find where b steps out at 1080p, then wobble the distance round it
+  size('b', 1080);
+  let Dout = 0;
+  for (let D = 36; D < 60 && !Dout; D += 0.05) { at(D); pipe.updateZoomArt(); if (pipe.zoomStep > 0) Dout = D; }
+  let Din = 0;
+  for (let D = Dout; D > 30 && !Din; D -= 0.05) { at(D); pipe.updateZoomArt(); if (pipe.zoomStep === 0) Din = D; }
+  assert(Dout > 37 && Din > 34 && Dout - Din > 1.5, `1080p b: the first step out at ${Dout.toFixed(2)} m, back in only at ${Din.toFixed(2)} m (a ${(Dout - Din).toFixed(2)} m band)`);
+  const mid = (Dout + Din) / 2, amp = (Dout - Din) * 0.45;
+  settle(Dout + 0.5);
+  const s0 = pipe.zoomStep;
+  let flips = 0;
+  for (let i = 0; i < 300; i++) { at(mid + amp * Math.sin(i * 0.37)); const k = pipe.zoomStep; pipe.updateZoomArt(); if (pipe.zoomStep !== k) flips++; }
+  assert(flips === 0 && pipe.zoomStep === s0, `a distance wobbling +-${amp.toFixed(2)} m round the threshold for 300 frames never flips the font (${flips} flips)`);
+  // the pure rule: no flip within the band, one step past it
+  const hs = [9, 8, 6];
+  assert(zoomArtStep(hs, 1, 1, 0) === 0 && zoomArtStep(hs, 3, 1, 0) === 2 && zoomArtStep(hs, NaN, 1, 1) === 0 && zoomArtStep(hs, 2, 0, 2) === 0 && zoomArtStep([], 2, 1, 0) === 0,
+    'zoomArtStep: 1x stays, 3x goes to the smallest, NaN / strength 0 go back to the default, an empty ladder is step 0');
+
+  // every reader of the cell sees a step in the same frame
+  game.pipeline = pipe;
+  const shed = new ShedDigits(game);
+  size('b', 1080);
+  const heat0 = fire.heatRT, tex0 = fire.heatRT.texture, alloc0 = fire.alloc.toArray().join('x');
+  at(65);
+  pipe.render();
+  const A = pipe.asciiMat.uniforms;
+  pipe._updateWyrmGrid();
+  const c = pipe.artCell;
+  assert(pipe.zoomStep > 0 && c.x === 4 && c.y === 6, `after a frame at 65 m the next frame is drawn in ${c.toArray().join('x')} cells (step ${pipe.zoomStep}, ${pipe.zoomStepMs?.toFixed(3)} ms)`);
+  assert(A.uArtCell.value === c && A.tArt.value === pipe.art.texture && A.uWyrmAtlas.value.w === pipe.art.total, 'the art pass: its cell is artCell itself, its atlas the step\'s');
+  const ink0 = pipe.zoomLadder[0].atlas.ink, inkS = pipe.art.ink;
+  assert(ink0 > 0.2 && inkS > ink0 && Math.abs(A.uArtInk.value - ink0 / inkS) < 1e-6 && A.uArtInk.value < 1,
+    `... and its letters' brightness x${A.uArtInk.value.toFixed(3)} (the 6x9 font covers ${(ink0 * 100).toFixed(1)} % of its cell, the 4x6 ${(inkS * 100).toFixed(1)} %): the tone holds`);
+  assert(shed.uniforms.uArtCell === A.uArtCell && shed.uniforms.tArt === A.tArt && shed.uniforms.uWyrmAtlas === A.uWyrmAtlas, 'shed digits share the art pass\'s uniform objects');
+  assert(U.uWyrmGrid?.value.x === c.x && U.uWyrmGrid.value.y === c.y, `the let-go grid (uWyrmGrid) counts the same cells (${U.uWyrmGrid?.value.x}x${U.uWyrmGrid?.value.y})`);
+  const fu = fire.printMat.uniforms;
+  assert(fu.uCell.value.x === c.x && fu.uCell.value.y === c.y && fu.tArt.value === pipe.art.texture && fire.cells.x === Math.ceil(pipe.width / c.x) && fire.cells.y === Math.ceil(pipe.height / c.y),
+    `the fire field prints in the same cells (${fire.cells.toArray().join('x')} cells)`);
+  assert(fire.heatRT === heat0 && fire.heatRT.texture === tex0 && fire.alloc.toArray().join('x') === alloc0 && fire.heatRT.viewport.z === fire.cells.x,
+    `... into the same targets (allocated ${alloc0} for the finest step; it draws ${fire.heatRT.viewport.z}x${fire.heatRT.viewport.w})`);
+  assert(fu.uScreen.value.x === fire.alloc.x * c.x && A.uFlame.value.x === fire.alloc.x, 'the print pass and the heat haze look the cells up in the allocated texture');
+  assert(A.uCell.value === pipe.cell && A.tGrid.value === pipe.grid.texture && pipe.cell.y < 12 && pipe.cell.y >= 9, `the screen grid steps too (${pipe.cell.toArray().join('x')})`);
+  const dragonCell = [game.pipeline.artCell.x, game.pipeline.artCell.y].join('x');
+  assert(dragonCell === '4x6', 'dragon.js / the duelists\' flare read pipeline.artCell: the same cell in the next update');
+  // back at 36 m: the default again
+  at(36);
+  pipe.render();
+  assert(pipe.zoomStep === 0 && c.x === 6 && c.y === 9 && fire.cells.x === Math.ceil(pipe.width / 6) && A.uCell.value.y === 12 && A.uArtInk.value === 1, 'back at 36 m: 6x9, the 7x12 grid and the letters\' own brightness again');
+
+  // option a and the phone: unchanged
+  size('a', 1080);
+  at(65);
+  pipe.render();
+  assert(pipe.zoomStep === 0 && c.x === 6 && c.y === 9 && fire.alloc.x === Math.ceil(pipe.width / 6), 'option a at 65 m: today\'s 6x9, the fire field allocated for it alone');
+  size('b', 393);
+  cam.userData.zoomArtOff = true;
+  const phone = settle(34)[1];
+  delete cam.userData.zoomArtOff;
+  assert(phone === 6 && pipe.zoomLadder[0].cell[1] === 6, 'the phone (852x393, its rig mobile) keeps its 4x6 letters at its farthest zoom');
+  // the camera rig: the player's own zoom counts, the game's framing does not
+  const rig = game.cameraRig, ud = rig.camera.userData, o = new THREE.Vector3();
+  rig.setMobile(true);
+  rig.update(1 / 60, o);
+  const mob = ud.zoomArtOff === true;
+  rig.setMobile(false);
+  rig.snap(o);
+  assert(mob && ud.zoomArtOff === false && Math.abs(ud.zoomRatio - 1) < 1e-9, `the rig tells the pipeline a phone keeps its letters; at the default zoom the ratio is ${ud.zoomRatio}`);
+  size('b', 1080);
+  rig.extraZoom = 8; // the boss framing pulls back 8 m
+  for (let i = 0; i < 120; i++) rig.update(1 / 60, o);
+  const framed = ud.zoomRatio, framedD = rig.distance;
+  assert(Math.abs(framed - 1) < 1e-9 && framedD > 43, `the boss framing (${framedD.toFixed(1)} m) leaves the ratio at ${framed}: the fight's look at the default zoom is today's`);
+  pipe.render();
+  assert(pipe.zoomStep === 0 && pipe.artCell.y === 9, `... and option b draws it in today's 6x9 (the camera ${pipe.zoomDistance().toFixed(1)} m out)`);
+  rig.zoom(7.2); // the wheel to its farthest (54 m)
+  const ratios = [];
+  for (let i = 0; i < 90; i++) { rig.update(1 / 60, o); ratios.push(ud.zoomRatio); }
+  assert(ratios.every((r, i) => i === 0 || r >= ratios[i - 1]) && Math.abs(ratios[89] - 1.5) < 0.01 && ratios[3] < 1.3, `the wheel to 54 m: the ratio eases like the distance (${ratios[3].toFixed(2)} after 4 frames, ${ratios[89].toFixed(3)} after 1.5 s)`);
+  pipe.render();
+  pipe.render();
+  assert(pipe.artCell.y === 6, `... and option b steps to the 4x6 letters (the camera ${pipe.zoomDistance().toFixed(1)} m out with the framing)`);
+  rig.extraZoom = 0;
+  rig.targetDistance = CONFIG.camera.distance;
+  rig.snap(o);
+  delete ud.zoomRatio;
+  return G;
+}
+
+const SCENARIOS = {
+  timestep: scenarioTimestep,
+  strategy: scenarioStrategy,
+  gate: scenarioGate,
+  hero: scenarioHero,
+  batch: scenarioBatch,
+  seen: scenarioSeen,
+  zoomart: scenarioZoomArt,
+  breath: scenarioBreath,
+  parry: scenarioParry,
+  block: scenarioBlock,
+  guard: scenarioGuard,
+  asciihud: scenarioAsciiHud,
+  reach: scenarioReach,
+  red: scenarioRed,
+  plunge: scenarioPlunge,
+  flurry: scenarioFlurry,
+  riposte: scenarioRiposte,
+  flare: scenarioFlare,
+  training: scenarioTraining,
+  deflect: scenarioDeflect,
+  lab: scenarioLab,
+  bullets: scenarioBullets,
+  strings: scenarioStrings,
+  plungeReact: scenarioPlungeReact,
+  timing: scenarioTiming,
+  fire: scenarioFire,
+  ablaze: scenarioAblaze,
+  terrain: scenarioTerrain,
+  win: scenarioWin,
+  die: scenarioDie,
+  touch: scenarioTouch,
+  pad: scenarioPad,
+  remap: scenarioRemap,
+  herolook: scenarioHeroLook,
+  wyrmface: scenarioWyrmFace,
+  herolife: scenarioHeroLife,
+  herohand: scenarioHeroHand,
+  heroweight: scenarioHeroWeight,
+  heroarms: scenarioHeroArms,
+  herostance: scenarioHeroStance,
+  looks: scenarioLooks,
+  music: scenarioMusic,
+  flight: scenarioFlight,
+  tongues: scenarioTongues,
+  fxlooks: scenarioFxLooks,
+  pressure: scenarioPressure,
+  melee: scenarioMelee,
+  budget: scenarioBudget,
+  wreckage: scenarioWreckage,
+  probe: scenarioProbe,
+};
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
 // ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process

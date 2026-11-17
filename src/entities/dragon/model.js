@@ -5,6 +5,7 @@ import { limbGeometry, ellipsoidGeometry, hornGeometry, cylindricalGUV } from '.
 import { ANATOMY as A, SCALE } from './tuning.js';
 import { WingMembrane } from './membrane.js';
 import { WING_KEYS } from './rig/anim.js';
+import { wyrmFace, buildHead, FACE_ART } from './heads.js';
 
 // Procedural four-legged drake ("Obsidian Drake", owner concept sheet; build spec docs/art/dragon.md):
 // a hierarchy of Object3D joints carrying rigid glyph-skinned meshes. Every bone joint points its
@@ -223,7 +224,9 @@ export const ART_GAIN = 0.28;
 
 export function createDragonMaterials(U) {
   // every part also carries its ASCII-art source (WYRM_ART): what the letters are made from
-  const mat = (key, o) => createSurfaceGlyphMaterial(U, { ...o, wyrm: WYRM_ART[key] });
+  // (a sculpted head (?wyrmFace=, heads.js) tunes its own parts' art entries: FACE_ART)
+  const faceArt = FACE_ART[wyrmFace()] ?? {};
+  const mat = (key, o) => createSurfaceGlyphMaterial(U, { ...o, wyrm: faceArt[key] ? { ...WYRM_ART[key], ...faceArt[key] } : WYRM_ART[key] });
   const mats = {
     // back / flanks / shoulders / haunches: mixed blocky glyphs over obsidian
     scales: mat('scales', { ...OBSIDIAN, seed: 11.3 }),
@@ -595,6 +598,100 @@ function shingle(len, w, r, ang, z, lift = 0.26, sy = 1, flat = 0.35) {
   return g;
 }
 
+/**
+ * Today's head (?wyrmFace=old, the default): a tapered tube skull and jaw with brow shelves, horns, a
+ * crown, needle teeth, eyes and the glowing maw stuck on. Built on headVis (see buildDrake).
+ */
+function buildOldHead(headVis, mats) {
+  // long wedge skull: flat-topped snout, broad occiput
+  mesh(headVis, limbGeometry({ length: SKULL.len, r0: SKULL.r0, r1: SKULL.r1, sx: 1.0, sy: SKULL.sy, bulge: SKULL.bulge, radial: 16, rings: 7 }), mats.head, 0, SKULL.y0, SKULL.z0);
+  const skullTop = (z) => SKULL.y0 + skullR(z) * SKULL.sy;
+  const skullBot = (z) => SKULL.y0 - skullR(z) * SKULL.sy;
+  const browG = [], hornsG = [], teethG = [];
+  for (const s of [1, -1]) {
+    // heavy brow shelves overhanging the eyes
+    browG.push(place(ellipsoidGeometry(0.16, 0.1, 0.42, { widthSegs: 8, heightSegs: 6 }), s * 0.25, 0.25, 0.45, 0, s * 0.2, 0, 'YXZ'));
+    // main horns: sabres back along the skull line, tips curving up (~26° above it overall; a
+    // steeper root made two vertical posts from the front)
+    hornsG.push(horn(1.7, 0.15, s * 0.2, 0.3, -0.02, -0.24, Math.PI - s * 0.3, 0.34, 7)); // a V from the front, not two posts
+    // secondary horns
+    hornsG.push(horn(1.0, 0.1, s * 0.3, 0.12, 0.0, -0.12, Math.PI - s * 0.45, 0.18, 6));
+    // cheek (jugal) horns: straight back, behind and below the eye
+    hornsG.push(horn(0.75, 0.09, s * 0.38, -0.02, 0.3, 0.08, Math.PI - s * 0.5, 0, 6));
+    // nape frill: 6 blades per side fanning back from the occiput, top to cheek (the reference's
+    // crest of back-swept spikes)
+    for (let k = 0; k < 6; k++) {
+      hornsG.push(horn(0.78 - k * 0.07, 0.075, s * (0.18 + 0.055 * k), 0.12 - 0.075 * k, -0.08, -0.32 + 0.17 * k, Math.PI - s * (0.28 + 0.16 * k), 0.16, 5, 0.55));
+    }
+    // brow spikes over the eye and a cheek frill down to the jaw hinge, all swept back
+    hornsG.push(horn(0.34, 0.05, s * 0.29, 0.3, 0.6, -0.45, Math.PI - s * 0.22, 0.12, 5, 0.6));
+    hornsG.push(horn(0.26, 0.04, s * 0.3, 0.27, 0.8, -0.4, Math.PI - s * 0.2, 0.1, 5, 0.6));
+    [
+      [0.5, 0.42, -0.1, 0.42],
+      [0.42, 0.4, -0.2, 0.28],
+      [0.34, 0.37, -0.28, 0.14],
+    ].forEach(([len, x, y, z]) => hornsG.push(horn(len, 0.06, s * x, y, z, 0.25, Math.PI - s * 0.62, 0.08, 5, 0.55)));
+    // upper teeth: 9 per side, long separate needles, irregular, hooked slightly back (fang in front;
+    // x1.4 the sheet's lengths so each fang reads against the lit maw)
+    const UP = [0.22, 0.14, 0.11, 0.13, 0.1, 0.11, 0.085, 0.1, 0.085];
+    UP.forEach((len, k) => {
+      const z = 1.15 - k * 0.1;
+      const r = skullR(z);
+      const L = len * (1 + 0.25 * jit(k * 2 + (s > 0 ? 0 : 1)));
+      teethG.push(horn(L, k === 0 ? 0.05 : 0.035, s * r * 0.78, skullBot(z) + 0.03, z, Math.PI / 2 + 0.14, 0, 0, 4));
+    });
+  }
+  // crown: 6 midline spikes snout -> occiput, plus a nose horn
+  [
+    [0.14, 0.04, 0.95],
+    [0.22, 0.05, 0.76],
+    [0.32, 0.06, 0.57],
+    [0.44, 0.08, 0.38],
+    [0.58, 0.09, 0.18],
+    [0.66, 0.1, -0.02],
+  ].forEach(([len, r, z]) => hornsG.push(spike(len, r, 0, skullTop(z) - 0.02, z, 0.95, 0, 0.14, 5, 0.55)));
+  hornsG.push(spike(0.24, 0.06, 0, 0.14, 1.18, 0.5, 0, 0.1));
+  batch(headVis, mats.head, browG);
+  batch(headVis, mats.bone, hornsG);
+  batch(headVis, mats.teeth, teethG);
+  // the maw: glowing roof of the mouth (shows through the teeth: the jaw rests a little open)
+  batch(headVis, mats.maw, [place(ellipsoidGeometry(0.24, 0.06, 0.6, { widthSegs: 10, heightSegs: 6 }), 0, -0.12, 0.62)]);
+  // eyes: small amber slits tucked under the brow shelf, outer corner tilted ~20° up
+  const eyes = [];
+  for (const s of [1, -1]) {
+    const e = mesh(headVis, ellipsoidGeometry(0.07, 0.045, 0.11, { widthSegs: 8, heightSegs: 6 }), mats.eye, s * 0.27, 0.12, 0.55);
+    e.rotation.set(0.35, s * 0.3, 0, 'YXZ');
+    eyes.push(e);
+  }
+  // nostrils (snort smoke) follow the drawn snout; the mouth is the gameplay joint
+  const nostrils = [joint(headVis, 0.1, 0.1, 1.2, 'nostrilL'), joint(headVis, -0.1, 0.1, 1.2, 'nostrilR')];
+  // hinged lower jaw: lower teeth, jaw-line spikes, chin spike, the glowing floor of the mouth
+  const jaw = joint(headVis, 0, -0.15, 0.05, 'jaw');
+  mesh(jaw, limbGeometry({ length: JAW.len, r0: JAW.r0, r1: JAW.r1, sx: JAW.sx, sy: JAW.sy, radial: 12, rings: 5 }), mats.head, 0, JAW.y0, 0);
+  const lowTeeth = [], jawSpikes = [];
+  for (const s of [1, -1]) {
+    const LOW = [0.18, 0.13, 0.11, 0.1, 0.1, 0.085, 0.085, 0.07];
+    LOW.forEach((len, k) => {
+      const z = 1.02 - k * 0.095;
+      const L = len * (1 + 0.25 * jit(k * 3 + (s > 0 ? 7 : 11)));
+      lowTeeth.push(horn(L, k === 0 ? 0.045 : 0.032, s * jawR(z) * JAW.sx * 0.78, JAW.y0 + jawR(z) * JAW.sy - 0.02, z, -(Math.PI / 2 + 0.1), 0, 0, 4));
+    });
+    // jaw-line spikes: down and back, growing toward the hinge (a spiky jaw frill)
+    [
+      [0.2, 0.75],
+      [0.28, 0.56],
+      [0.36, 0.38],
+      [0.44, 0.2],
+      [0.5, 0.02],
+    ].forEach(([len, z]) => jawSpikes.push(horn(len, 0.055, s * jawR(z) * JAW.sx * 0.9, JAW.y0 - jawR(z) * JAW.sy * 0.6, z, 0.85, Math.PI - s * 0.3, 0.06, 5, 0.6)));
+  }
+  jawSpikes.push(horn(0.2, 0.05, 0, JAW.y0 - 0.08, 1.0, 1.3, 0, 0, 5));
+  batch(jaw, mats.teeth, lowTeeth);
+  batch(jaw, mats.bone, jawSpikes);
+  batch(jaw, mats.maw, [place(ellipsoidGeometry(0.19, 0.05, 0.52, { widthSegs: 10, heightSegs: 6 }), 0, 0.02, 0.55)]);
+  return { eyes, nostrils, jaw, whiskers: [] };
+}
+
 export function buildDrake(U) {
   const mats = createDragonMaterials(U);
   const root = new THREE.Group();
@@ -725,93 +822,18 @@ export function buildDrake(U) {
   const head = joint(parent, 0, 0, A.neckLen, 'head');
   const headVis = joint(head, MOUTH[0] * (1 - HEAD_VIS), MOUTH[1] * (1 - HEAD_VIS), MOUTH[2] * (1 - HEAD_VIS), 'headVis');
   headVis.scale.setScalar(HEAD_VIS);
-  // long wedge skull: flat-topped snout, broad occiput
-  mesh(headVis, limbGeometry({ length: SKULL.len, r0: SKULL.r0, r1: SKULL.r1, sx: 1.0, sy: SKULL.sy, bulge: SKULL.bulge, radial: 16, rings: 7 }), mats.head, 0, SKULL.y0, SKULL.z0);
-  const skullTop = (z) => SKULL.y0 + skullR(z) * SKULL.sy;
-  const skullBot = (z) => SKULL.y0 - skullR(z) * SKULL.sy;
-  const browG = [], hornsG = [], teethG = [];
-  for (const s of [1, -1]) {
-    // heavy brow shelves overhanging the eyes
-    browG.push(place(ellipsoidGeometry(0.16, 0.1, 0.42, { widthSegs: 8, heightSegs: 6 }), s * 0.25, 0.25, 0.45, 0, s * 0.2, 0, 'YXZ'));
-    // main horns: sabres back along the skull line, tips curving up (~26° above it overall; a
-    // steeper root made two vertical posts from the front)
-    hornsG.push(horn(1.7, 0.15, s * 0.2, 0.3, -0.02, -0.24, Math.PI - s * 0.3, 0.34, 7)); // a V from the front, not two posts
-    // secondary horns
-    hornsG.push(horn(1.0, 0.1, s * 0.3, 0.12, 0.0, -0.12, Math.PI - s * 0.45, 0.18, 6));
-    // cheek (jugal) horns: straight back, behind and below the eye
-    hornsG.push(horn(0.75, 0.09, s * 0.38, -0.02, 0.3, 0.08, Math.PI - s * 0.5, 0, 6));
-    // nape frill: 6 blades per side fanning back from the occiput, top to cheek (the reference's
-    // crest of back-swept spikes)
-    for (let k = 0; k < 6; k++) {
-      hornsG.push(horn(0.78 - k * 0.07, 0.075, s * (0.18 + 0.055 * k), 0.12 - 0.075 * k, -0.08, -0.32 + 0.17 * k, Math.PI - s * (0.28 + 0.16 * k), 0.16, 5, 0.55));
-    }
-    // brow spikes over the eye and a cheek frill down to the jaw hinge, all swept back
-    hornsG.push(horn(0.34, 0.05, s * 0.29, 0.3, 0.6, -0.45, Math.PI - s * 0.22, 0.12, 5, 0.6));
-    hornsG.push(horn(0.26, 0.04, s * 0.3, 0.27, 0.8, -0.4, Math.PI - s * 0.2, 0.1, 5, 0.6));
-    [
-      [0.5, 0.42, -0.1, 0.42],
-      [0.42, 0.4, -0.2, 0.28],
-      [0.34, 0.37, -0.28, 0.14],
-    ].forEach(([len, x, y, z]) => hornsG.push(horn(len, 0.06, s * x, y, z, 0.25, Math.PI - s * 0.62, 0.08, 5, 0.55)));
-    // upper teeth: 9 per side, long separate needles, irregular, hooked slightly back (fang in front;
-    // x1.4 the sheet's lengths so each fang reads against the lit maw)
-    const UP = [0.22, 0.14, 0.11, 0.13, 0.1, 0.11, 0.085, 0.1, 0.085];
-    UP.forEach((len, k) => {
-      const z = 1.15 - k * 0.1;
-      const r = skullR(z);
-      const L = len * (1 + 0.25 * jit(k * 2 + (s > 0 ? 0 : 1)));
-      teethG.push(horn(L, k === 0 ? 0.05 : 0.035, s * r * 0.78, skullBot(z) + 0.03, z, Math.PI / 2 + 0.14, 0, 0, 4));
-    });
+  // the head the owner is choosing between (?wyrmFace=, heads.js): today's ('old', built here) or a
+  // sculpted one (skull / loong / demon). The gameplay joints are the same for all of them
+  const face = wyrmFace();
+  const sculpted = face !== 'old' ? buildHead(face, headVis, mats) : null;
+  let eyes, nostrils, jaw, whiskers;
+  if (sculpted) {
+    ({ eyes, nostrils, jaw } = sculpted);
+    // whisker chains (the loong's): segment length in root model units for rig/anim.js
+    whiskers = sculpted.whiskers.map((w) => ({ ...w, len: w.segLen * HEAD_VIS }));
   }
-  // crown: 6 midline spikes snout -> occiput, plus a nose horn
-  [
-    [0.14, 0.04, 0.95],
-    [0.22, 0.05, 0.76],
-    [0.32, 0.06, 0.57],
-    [0.44, 0.08, 0.38],
-    [0.58, 0.09, 0.18],
-    [0.66, 0.1, -0.02],
-  ].forEach(([len, r, z]) => hornsG.push(spike(len, r, 0, skullTop(z) - 0.02, z, 0.95, 0, 0.14, 5, 0.55)));
-  hornsG.push(spike(0.24, 0.06, 0, 0.14, 1.18, 0.5, 0, 0.1));
-  batch(headVis, mats.head, browG);
-  batch(headVis, mats.bone, hornsG);
-  batch(headVis, mats.teeth, teethG);
-  // the maw: glowing roof of the mouth (shows through the teeth: the jaw rests a little open)
-  batch(headVis, mats.maw, [place(ellipsoidGeometry(0.24, 0.06, 0.6, { widthSegs: 10, heightSegs: 6 }), 0, -0.12, 0.62)]);
-  // eyes: small amber slits tucked under the brow shelf, outer corner tilted ~20° up
-  const eyes = [];
-  for (const s of [1, -1]) {
-    const e = mesh(headVis, ellipsoidGeometry(0.07, 0.045, 0.11, { widthSegs: 8, heightSegs: 6 }), mats.eye, s * 0.27, 0.12, 0.55);
-    e.rotation.set(0.35, s * 0.3, 0, 'YXZ');
-    eyes.push(e);
-  }
-  // nostrils (snort smoke) follow the drawn snout; the mouth is the gameplay joint
-  const nostrils = [joint(headVis, 0.1, 0.1, 1.2, 'nostrilL'), joint(headVis, -0.1, 0.1, 1.2, 'nostrilR')];
+  else ({ eyes, nostrils, jaw, whiskers } = buildOldHead(headVis, mats));
   const mouth = joint(head, MOUTH[0], MOUTH[1], MOUTH[2], 'mouth');
-  // hinged lower jaw: lower teeth, jaw-line spikes, chin spike, the glowing floor of the mouth
-  const jaw = joint(headVis, 0, -0.15, 0.05, 'jaw');
-  mesh(jaw, limbGeometry({ length: JAW.len, r0: JAW.r0, r1: JAW.r1, sx: JAW.sx, sy: JAW.sy, radial: 12, rings: 5 }), mats.head, 0, JAW.y0, 0);
-  const lowTeeth = [], jawSpikes = [];
-  for (const s of [1, -1]) {
-    const LOW = [0.18, 0.13, 0.11, 0.1, 0.1, 0.085, 0.085, 0.07];
-    LOW.forEach((len, k) => {
-      const z = 1.02 - k * 0.095;
-      const L = len * (1 + 0.25 * jit(k * 3 + (s > 0 ? 7 : 11)));
-      lowTeeth.push(horn(L, k === 0 ? 0.045 : 0.032, s * jawR(z) * JAW.sx * 0.78, JAW.y0 + jawR(z) * JAW.sy - 0.02, z, -(Math.PI / 2 + 0.1), 0, 0, 4));
-    });
-    // jaw-line spikes: down and back, growing toward the hinge (a spiky jaw frill)
-    [
-      [0.2, 0.75],
-      [0.28, 0.56],
-      [0.36, 0.38],
-      [0.44, 0.2],
-      [0.5, 0.02],
-    ].forEach(([len, z]) => jawSpikes.push(horn(len, 0.055, s * jawR(z) * JAW.sx * 0.9, JAW.y0 - jawR(z) * JAW.sy * 0.6, z, 0.85, Math.PI - s * 0.3, 0.06, 5, 0.6)));
-  }
-  jawSpikes.push(horn(0.2, 0.05, 0, JAW.y0 - 0.08, 1.0, 1.3, 0, 0, 5));
-  batch(jaw, mats.teeth, lowTeeth);
-  batch(jaw, mats.bone, jawSpikes);
-  batch(jaw, mats.maw, [place(ellipsoidGeometry(0.19, 0.05, 0.52, { widthSegs: 10, heightSegs: 6 }), 0, 0.02, 0.55)]);
 
   // ============================================================ tail (spec §2.7)
   // 16 x 0.52, tapering to a point (no mace); flat orange saw-blades on top, small silver blades
@@ -988,7 +1010,7 @@ export function buildDrake(U) {
   }
 
   return {
-    root, mats, glow: GLOW, hips, torso, chest, chestMesh, neckBase, neck, head, headVis, jaw, eyes, nostrils, mouth,
+    root, mats, glow: GLOW, hips, torso, chest, chestMesh, neckBase, neck, head, headVis, jaw, eyes, nostrils, mouth, face, whiskers,
     tailBase, tail, tailRadii, tailTip, legs, arms, wings,
   };
 }

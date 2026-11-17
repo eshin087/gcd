@@ -151,7 +151,14 @@ function elderSpine(t) {
 export function buildElderWyrm(rng, x, z, yaw = 0, s = 1) {
   const parts = [];
   const hi = (px, py) => 0.5 + 0.5 * Math.min(1, py / 2.4);
-  const add = (g, col = BONE, o = {}) => parts.push(part(g, col, { ao: hi, vary: 0.5, freq: 1.8, facet: 0.3, flag: FLAG.ART_PROP, ...o }));
+  // every part is tagged with the piece it breaks with (`userData.piece`: forest.js splits the skeleton
+  // into breakables by it; nothing here draws on the random stream for it, the look is unchanged)
+  let tag = '';
+  const add = (g, col = BONE, o = {}) => {
+    const out = part(g, col, { ao: hi, vary: 0.5, freq: 1.8, facet: 0.3, flag: FLAG.ART_PROP, ...o });
+    out.userData.piece = tag;
+    return parts.push(out);
+  };
   const top = caught(0.4, 1.1); // the big bones: pale on top, dim down their flanks
 
   // ---- the spine: vertebrae with dorsal spines, bigger over the chest
@@ -161,6 +168,7 @@ export function buildElderWyrm(rng, x, z, yaw = 0, s = 1) {
     if (t > 0.05 && t < 0.3 && rng() < 0.16) continue; // gaps in the tail
     const p = elderSpine(t), q = elderSpine(Math.min(1, t + 0.01));
     const k = 0.45 + 0.75 * Math.sin(Math.PI * Math.min(1, t * 1.15)); // girth along the body
+    tag = `spine${Math.floor(i / ELDER_PIECES.spineRun)}`;
     const v = prep(new THREE.BoxGeometry(0.5, 0.52 * k + 0.12, 0.62 * k + 0.14));
     v.rotateZ(Math.atan2(q.y - p.y, q.x - p.x));
     v.rotateY(-Math.atan2(q.z - p.z, q.x - p.x));
@@ -183,6 +191,7 @@ export function buildElderWyrm(rng, x, z, yaw = 0, s = 1) {
     for (const side of [-1, 1]) {
       const snapped = hash2(i * 5.3 + side, 2.7) < 0.2;
       const arc = snapped ? 1.0 : Math.PI / 2 + 0.55;
+      tag = `rib${i}${side > 0 ? 'R' : 'L'}`;
       const g = prep(new THREE.TorusGeometry(R, 0.17 - i * 0.004, 5, 14, arc));
       g.rotateZ(Math.PI / 2 - arc); // the arc ends at the top, where it meets the spine
       g.scale(1.25, 1, 1); // ribs spread wider than they are tall
@@ -194,24 +203,33 @@ export function buildElderWyrm(rng, x, z, yaw = 0, s = 1) {
   }
   // ---- the pelvis and a hind leg folded under
   const hip = elderSpine(0.36);
+  tag = 'hip';
   add(limb(V(hip.x, hip.y, 0.3), V(hip.x - 1.6, 0.9, 2.6), 0.3, 0.2), OLD_BONE);
   add(limb(V(hip.x - 1.6, 0.9, 2.6), V(hip.x + 0.8, 0.1, 3.6), 0.2, 0.14), OLD_BONE);
   // ---- a wing arm standing like a broken mast, three finger bones fanned from its wrist
   const sh = elderSpine(0.7);
   const elbow = V(sh.x - 1.2, sh.y + 4.2, -2.4), wrist = V(sh.x + 1.0, sh.y + 7.6, -4.6);
+  tag = 'mast';
   add(limb(V(sh.x, sh.y - 0.2, -0.4), elbow, 0.34, 0.24, 6, 2));
   add(limb(elbow, wrist, 0.24, 0.16, 6, 2));
+  tag = 'fingers';
   for (const [dx, dy, dz, len] of [[-3.2, -1.0, -1.6, 1], [-4.4, -3.6, -1.0, 1], [-3.0, -6.2, 0.2, 0.9]]) {
     const tip = V(wrist.x + dx * len, wrist.y + dy * len, wrist.z + dz * len);
     add(limb(wrist, tip, 0.13, 0.04, 5, 2));
   }
   // the other wing fallen: long bones lying in the grass on the far side
+  tag = 'wing';
   add(limb(V(sh.x - 0.5, 0.25, 2.2), V(sh.x - 5.5, 0.3, 5.2), 0.26, 0.18), OLD_BONE);
   add(limb(V(sh.x - 5.5, 0.3, 5.2), V(sh.x - 10.5, 0.2, 4.4), 0.18, 0.1), OLD_BONE);
 
   // ---- the skull, resting on its jaw, turned a little toward the clearing
   const skull = [];
-  const sadd = (g, col = BONE, o = {}) => skull.push(part(g, col, { ao: caught(0.36, 1.1), vary: 0.3, freq: 2.2, flag: FLAG.ART_PROP, ...o }));
+  const sadd = (g, col = BONE, o = {}) => {
+    const out = part(g, col, { ao: caught(0.36, 1.1), vary: 0.3, freq: 2.2, flag: FLAG.ART_PROP, ...o });
+    out.userData.piece = tag;
+    return skull.push(out);
+  };
+  tag = 'skull';
   const cran = prep(new THREE.IcosahedronGeometry(1.25, 1));
   cran.scale(1.25, 0.9, 1.05);
   lumpy(cran, 0.3, 1.6, 4);
@@ -235,8 +253,10 @@ export function buildElderWyrm(rng, x, z, yaw = 0, s = 1) {
   }
   jaw.rotateZ(-0.2); // hanging open
   jaw.translate(2.2, 0.32, 0);
+  tag = 'jaw';
   sadd(jaw, OLD_BONE);
   for (const sz of [-1, 1]) {
+    tag = 'skull';
     // eye sockets (wide and on top: the skull is seen from above), nostrils, brow ridges
     const eye = prep(new THREE.IcosahedronGeometry(0.56, 1));
     eye.scale(1.3, 0.62, 0.84);
@@ -251,17 +271,20 @@ export function buildElderWyrm(rng, x, z, yaw = 0, s = 1) {
     brow.translate(0.75, 2.36, sz * 0.74);
     sadd(brow);
     // great horns swept up and back, a smaller pair below
+    tag = sz > 0 ? 'hornR' : 'hornL';
     sadd(limb(V(-0.6, 2.0, sz * 0.7), V(-2.4, 3.6, sz * 1.5), 0.36, 0.2, 6, 2));
     sadd(limb(V(-2.4, 3.6, sz * 1.5), V(-4.6, 4.3, sz * 1.25), 0.2, 0.03, 6, 2));
     sadd(limb(V(-0.7, 1.3, sz * 0.95), V(-2.3, 1.7, sz * 1.9), 0.2, 0.03, 5, 2));
-    // teeth along both jaws
+    // teeth along both jaws (the upper row is the skull's, the lower the jaw's)
     for (let i = 0; i < 7; i++) {
+      tag = 'skull';
       const tx = 1.25 + i * 0.4, tz = sz * (0.62 - i * 0.045);
       const up = prep(new THREE.ConeGeometry(0.085, 0.5 - i * 0.02, 4));
       up.rotateX(Math.PI);
       up.translate(tx, 0.72, tz);
       sadd(up, [0.36, 0.35, 0.31], { vary: 0.1, ao: 1 });
       if (i % 2 === 0) {
+        tag = 'jaw';
         const lo = prep(new THREE.ConeGeometry(0.075, 0.36, 4));
         lo.translate(tx + 0.1, 0.62 - (tx - 2.2) * 0.2, tz * 0.92);
         sadd(lo, [0.36, 0.35, 0.31], { vary: 0.1, ao: 1 });
@@ -278,6 +301,8 @@ export function buildElderWyrm(rng, x, z, yaw = 0, s = 1) {
   }
   return place(parts, x, z, yaw, s);
 }
+/** How the elder wyrm's skeleton is split into breakables (forest.js): vertebrae per run of the spine. */
+export const ELDER_PIECES = { spineRun: 5 };
 /** Colliders of the elder wyrm in local space: [lx, lz, r]. The nave between the ribs stays open. */
 export const ELDER_COLLIDERS = [
   [12.6, 1.4, 2.6], [9.2, 0.2, 1.4], [15.4, 2.8, 1.3],
@@ -305,6 +330,14 @@ const DEADWOOD = [0.3, 0.25, 0.19];
 export function buildCinderTree(rng, x, z, yaw = 0, s = 1) {
   const parts = [];
   const H = 7.5;
+  // (tags, as the elder wyrm's: 'trunk' with its roots, hollow and stub, 'bough0' .. 'bough4' with their
+  // forks, twigs and leaves; parts.push is wrapped so every push is tagged)
+  let tag = 'trunk';
+  const push = parts.push.bind(parts);
+  parts.push = (...gs) => {
+    for (const g of gs) g.userData.piece = tag;
+    return push(...gs);
+  };
   const wood = (g, col, o = {}) => parts.push(part(g, col, { vary: 0.35, freq: 0.9, ao: caught(0.5, 1.5), flag: FLAG.ART_PROP, sway: 0, ...o }));
   // ---- the trunk: nine flat flutes, flared at the foot, twisted a quarter turn on the way up
   const trunk = prep(new THREE.CylinderGeometry(1.4, 2.3, H, 9, 5));
@@ -351,12 +384,16 @@ export function buildCinderTree(rng, x, z, yaw = 0, s = 1) {
   }
   // ---- five great boughs, each forking twice; the wood pales toward the twigs
   const twigs = [];
+  const twigOf = [];
   const tone = [mul(DEADWOOD, 0.62), mul(DEADWOOD, 0.5), mul(CINDER_BARK, 0.95)]; // by depth: twig, branch, bough
   const bough = (from, dir, len, r, depth) => {
     const to = from.clone().addScaledVector(dir, len);
     to.y += len * 0.1;
     wood(limb(from, to, r, r * 0.6, depth > 1 ? 6 : 5, 2), tone[depth], { ao: caught(0.5, 1.1) });
-    if (depth === 0) return twigs.push(to);
+    if (depth === 0) {
+      twigOf.push(tag);
+      return twigs.push(to);
+    }
     const forks = depth > 1 ? 2 : 3;
     for (let k = 0; k < forks; k++) {
       const d = dir.clone().applyAxisAngle(UP, (k - (forks - 1) / 2) * 0.85 + range(rng, -0.25, 0.25));
@@ -368,10 +405,12 @@ export function buildCinderTree(rng, x, z, yaw = 0, s = 1) {
     const a = (i / 5) * TAU + 0.3 + range(rng, -0.2, 0.2);
     // (toward +z, the clearing's side, the boughs are shorter and climb: nothing hangs over the fight)
     const w = 0.5 + 0.5 * Math.sin(a);
+    tag = `bough${i}`;
     const dir = V(Math.cos(a) * 0.9, 0.3 + 0.55 * w, Math.sin(a) * 0.9).normalize();
     bough(V(Math.cos(a) * 0.6, H - 1.0, Math.sin(a) * 0.6), dir, range(rng, 5.6, 7.0) * (1 - 0.42 * w), 0.9, 2);
   }
   // a broken stub where the sixth bough tore away
+  tag = 'trunk';
   wood(limb(V(0, H - 0.5, 0), V(0.5, H + 2.4, -0.4), 0.95, 0.5, 6), mul(CINDER_BARK, 1.3));
   // ---- the last leaves: small ember-red clumps on some twig ends (leaf ramp, they sway)
   twigs.forEach((t, i) => {
@@ -381,9 +420,34 @@ export function buildCinderTree(rng, x, z, yaw = 0, s = 1) {
     leaf.scale(1, 0.7, 1);
     lumpy(leaf, r * 0.45, 1.5, i);
     leaf.translate(t.x, t.y + 0.2, t.z);
+    tag = twigOf[i];
     parts.push(part(leaf, EMBER_LEAF, { flag: FLAG.LEAF, vary: 0.8, freq: 1.4, sway: 0.7, ao: (px, py) => 0.6 + 0.4 * Math.min(1, (py - t.y + r) / (2 * r)) }));
   });
+  parts.push = push;
   return place(parts, x, z, yaw, s);
+}
+
+/**
+ * What is left of the Cinder Tree when its trunk breaks: the charred foot of it, torn off a few metres
+ * up, on its roots (the same wood and print, FLAG.ART_PROP). World space, like the tree's parts.
+ */
+export function buildCinderStump(rng, x, z, yaw = 0, s = 1) {
+  const H = 3.4;
+  const g = prep(new THREE.CylinderGeometry(1.7, 2.3, H, 9, 3));
+  g.translate(0, H / 2, 0);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const px = p.getX(i), py = p.getY(i), pz = p.getZ(i);
+    const r = Math.hypot(px, pz) * (1 + 0.75 * Math.pow(Math.max(0, 1 - py / 2.6), 2.2));
+    const a = Math.atan2(pz, px) + py * 0.17;
+    // a jagged top: torn, not cut
+    const top = py > H * 0.9 ? hash2(Math.round(a * 4) * 3.1, 7.7) * 1.6 : 0;
+    p.setX(i, Math.cos(a) * r);
+    p.setZ(i, Math.sin(a) * r);
+    p.setY(i, py - top);
+  }
+  const out = [part(g, mul(CINDER_BARK, 0.7), { vary: 0.5, freq: 0.9, ao: caught(0.45, 1.3), flag: FLAG.ART_PROP, facet: 0.25 })];
+  return place(out, x, z, yaw, s);
 }
 
 // ---------------------------------------------------------------- shared: the stone swordsman

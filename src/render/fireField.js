@@ -53,6 +53,11 @@ export class FireField {
     this._broken = false;
     this._clear = new THREE.Color();
     this.cells = new THREE.Vector2(4, 4);
+    // the heat / flame targets' texel size: `cells` at the finest cell the frame may step to (the
+    // zoom ladder, setSize's `minCell`); the passes draw into the lower-left `cells` of it
+    this.alloc = new THREE.Vector2(4, 4);
+    // (the flame pass clamps its look-ups to `cells`: what lies past them in the targets is cleared
+    // heat or a stale flame from a finer step, and the frame's edge reads as it would at alloc = cells)
     // the tint zones: [x, y, rx, ry] frame px, [r, g, b, strength], [dark, 0, 0, 0]; ttl s, age rank
     this._tintA = Array.from({ length: TINTS }, () => new THREE.Vector4(0, 0, 1, 1));
     this._tintC = Array.from({ length: TINTS }, () => new THREE.Vector4(1, 1, 1, 0));
@@ -140,17 +145,18 @@ export class FireField {
     });
     this.flameMat = new THREE.ShaderMaterial({
       uniforms: {
-        tHeat: { value: null }, uCells: { value: this.cells }, uTime: U.uTime, uGain: { value: 1 }, uTurb: { value: turb },
+        tHeat: { value: null }, uAlloc: { value: this.alloc }, uCells: { value: this.cells }, uTime: U.uTime, uGain: { value: 1 }, uTurb: { value: turb },
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
         uniform sampler2D tHeat;
-        uniform vec2 uCells;
+        uniform vec2 uAlloc;   // the heat target's size, texels (cells at the finest step)
+        uniform vec2 uCells;   // the part of it drawn this frame
         uniform float uTime;
         uniform float uGain;
         uniform vec4 uTurb[3]; // per kind (fire, void, steel): lick, erode, boil, warp
         ${NOISE}
-        vec4 field(vec2 c) { return texture2D(tHeat, (c + 0.5) / uCells) * ${(1 / HEAT_ENC).toFixed(2)}; }
+        vec4 field(vec2 c) { return texture2D(tHeat, (clamp(c, vec2(0.0), uCells - 1.0) + 0.5) / uAlloc) * ${(1 / HEAT_ENC).toFixed(2)}; }
         void main() {
           vec2 cell = floor(gl_FragCoord.xy);
           float t = uTime;
@@ -323,20 +329,42 @@ export class FireField {
     this.printMat.uniforms.tFlame.value = this.flameRT.texture;
   }
 
-  /** Pipeline: the frame is W x H px, the art cell `cell` px, `art` the wyrm's letter atlas. */
-  setSize(W, H, cell, art) {
+  /**
+   * Pipeline: the frame is W x H px, the art cell `cell` px, `art` the wyrm's letter atlas. `minCell`
+   * (optional, default `cell`): the finest cell setCell may switch to before the next setSize; the
+   * targets are allocated for it once, so a step never re-allocates them.
+   */
+  setSize(W, H, cell, art, minCell = cell) {
     if (!this.heatRT) return;
-    const w = Math.max(1, Math.ceil(W / cell.x)), h = Math.max(1, Math.ceil(H / cell.y));
+    this._W = W;
+    this._H = H;
+    const aw = Math.max(1, Math.ceil(W / Math.min(cell.x, minCell.x))), ah = Math.max(1, Math.ceil(H / Math.min(cell.y, minCell.y)));
+    this.alloc.set(aw, ah);
+    this.heatRT.setSize(aw, ah);
+    this.flameRT.setSize(aw, ah);
+    this.setCell(cell, art);
+  }
+
+  /**
+   * Pipeline: the art cell changed (the zoom ladder) within the frame setSize gave: the passes draw
+   * `ceil(W / cell)` texels of the allocated targets. No allocation. Same frame for every reader.
+   */
+  setCell(cell, art) {
+    if (!this.heatRT || !(cell?.x > 0 && cell?.y > 0)) return;
+    const w = Math.min(this.alloc.x, Math.max(1, Math.ceil((this._W ?? 1) / cell.x)));
+    const h = Math.min(this.alloc.y, Math.max(1, Math.ceil((this._H ?? 1) / cell.y)));
     this.cells.set(w, h);
-    this.heatRT.setSize(w, h);
-    this.flameRT.setSize(w, h);
+    this.heatRT.viewport.set(0, 0, w, h);
+    this.flameRT.viewport.set(0, 0, w, h);
     this.blobMat.uniforms.uRes.value.set(w, h);
     const u = this.printMat.uniforms;
     u.uCell.value.copy(cell);
-    // the texel grid covers w * cell px: the print pass looks its cell up in that frame
-    u.uScreen.value.set(w * cell.x, h * cell.y);
-    u.tArt.value = art.texture;
-    u.uAtlas.value.set(art.sets[0], art.sets[1], art.sets[2], art.total);
+    // the texel grid covers alloc * cell px: the print pass looks its cell up in that frame
+    u.uScreen.value.set(this.alloc.x * cell.x, this.alloc.y * cell.y);
+    if (art) {
+      u.tArt.value = art.texture;
+      u.uAtlas.value.set(art.sets[0], art.sets[1], art.sets[2], art.total);
+    }
     this._stale = true;
   }
 

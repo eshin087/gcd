@@ -5,88 +5,104 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-16 — Session 62: the duelists' second pass (planned by the lead, built by Opus agents)
+## 2026-11-16 — Session 60: the wyrm ablaze, a forest that breaks, letters that follow the zoom (planned by the lead, built by Opus agents)
 
-**Owner:** the request made for all boss fights ("more harder, more epic, more crazy combos and
-flurries ... each phase needs to ramp up the difficulty and chaos ... constantly being forced to
-dodge, parry, move ... plan all the new stuff out with fable and have opus agents do the work"); the
-wyrm went first (Session 59). Four questions asked before planning and six after the sheets
-(ADR-122 lists the answers). Branch `enemies/duelist-second-pass` from `main` (ba9a838). ADR-122 / Session
-62 / M1.47.
+**Owner:** "lets improve the dragon's face to look more menacing and realistic. right now it seems like
+a lego block dragon face. i also want to make the dragon be able to destroy more of the terrain in
+the background, especially the tree walls surrounding the map. the dragons melee and fire attacks
+that happens to hit the trees should slowly crumble and break them. every background object needs to
+be destructible, not just the objects in the ground. i also noticed as you zoom out more, the ascii
+detail and graphics of the objects gets less quality? ... on the 3rd phase of the dragon, i want the
+dragon to also set himself on fire like its wing tips, claws, and tail ... use fable to do the
+planning and use opus subagents to do the work." Four questions first; the answers: render all
+three faces (a predator skull, an Eastern loong, a horned demon); all of Cinderwood breaks, the two
+landmarks and the nest included, the bonfire stays; the zoom is noticed on desktop; the phase 3 fire
+burns the world and adds no damage to the hero. Branch `dragon/menace-and-ruin` from `main`
+(ba9a838). ADR-120 / Session 60 / M1.45.
 
-**How it ran.** Three read-only agents mapped the duelist engine against the wyrm's director, the
-Ash Disciple and the Starless Lord (the maps gave every later agent `file:line`). Wave 1, five at
-once: **core** (`duelist/brain.js`, new `director.js` and `ledger.js`, the links files, the
-`pressure` blocks, the `pace` scenario, measured first on the untouched engine), **world**
-(`src/world/**`), **fxash** (`duelist/fx.js`), **fxlord** (`starlessLord/fx.js`), **looks** (both
-`gear.js`). Wave 2 on the merged core: **ashmoves**, **lordmoves** (new `moveFx.js`, `spells.js`),
-**terrain** (both `terrain.js`). Then **integration** (the seams, the Lab's LOOKS section, the
-frame cost against `main`, a walk through both levels), **tune-ash** and **tune-lord** (each the
-first to see a whole fight: films, weights, links, the meters, mortal bots), and at the end
-**picks**, **engine** and **docs**, plus a second tuning round for the Lord's third form after the
-final ten-seed measurement showed it no busier than his second on three seeds. Fourteen merges, no conflict (the scenario registries had been
-split one key per line first; each agent inserted after a different key).
+**How it was run:** the lead (Fable) mapped the code, wrote a shared brief and a task file per agent,
+and tested a capture rig first (a scratch server per worktree, headless Edge on the real GPU, a CDP
+client, a helper that freezes the page and posts contact sheets). Four `general-purpose` agents on
+Opus, one hand-made worktree and branch each (`w3/face`, `w3/break`, `w3/zoom`, `w3/ablaze`), file
+lists that do not overlap. The suites' one-line `SCENARIOS` registries were split one entry per line
+first, and each agent was told where to insert its scenario: the four branches merged with no
+conflict and the merge was green at once. A fifth agent (`w3/tune`) then owned the merged build, and
+a sixth wrote the reference docs. The lead looked at every sheet before it went to the owner.
 
-**What went wrong on the way.** The lead session entered its own worktree with `EnterWorktree`,
-which pinned every agent's write access to that worktree: four of five wave-1 agents stopped after
-ten minutes (one worked round it with a mirror folder). Leaving the worktree and resuming each
-agent fixed it. The first +30 % target for cues a minute was written before the baseline existed:
-the duelists were already at 60 - 85 a minute, inside a move 95 % of the time, so the gain had to
-come from denser moves, not shorter pauses.
+**The forest breaks** (`w3/break`, then `w3/tune`): every tree of Cinderwood (539, out to 74 m) is a
+'range' piece of one static tree mesh. `RangeBody` has parts (the trunk, each crown blob or bough is
+a run of vertices) and can be posed by rewriting its vertices from a home copy, so a tree shudders,
+leans, falls, is carried and resets with no bone of the rigid batch (the forest went from 368 bones
+to 228 (the wreckage pools included) while its breakables went from 183 to 664). A tree wears down in stages at 0.82 / 0.5 / 0.22
+of its structure: its outer crown bursts off, half the crown goes, it leans, it falls. Trees past
+32 m are the wall: they fall outward, and a fall that cannot reach the hero's ground gives no tell.
+The Elder Wyrm's skeleton is 36 bone pieces, the Cinder Tree five boughs and a trunk that is guarded
+while a bough stands, the nest 14 ribs and a skull; each broken bone leaves a heap. The bonfire stays.
 
-**Sent back by the lead** (from the sheets): the third phase's change (three options too faint and
-too alike: redone on the real transition), the broken floor (blank holes, invisible cracks, an
-option b nobody could tell from whole), the Lord's shocks (never seen with the shared front), the
-phone's frame cost (+21 % / +23 % from breakables in the scene graph: the pieces now live outside
-it), the slab in a boss's hands (it hid him: now a chunk).
+**The wyrm reaches the wall** (`w3/tune`): the first pass left the wall mostly standing (28 % of its
+front rows damaged after a fight) because the wyrm fights inside the clearing and its fire never
+landed past 32 m. Two means, both with numbers in tuning and neither touching an attack: wind
+(`destructibles.wind`: the roars, the shock rings, the wing buffets, take-off and landing send a
+front that wears wall trees to their second stage at most, never felling one) and carried fire
+(`carryFire`: a breath, a strafing pass, a flame ring or wall, a missed shot carries on and lights
+the first wall tree in its way), on a fire budget of the wall's own.
 
-**What changed** (ADR-122 has the decisions; COMBAT.md the numbers):
-- **Engine:** a director over the pick, combo links from half the recovery, chain depth and rest,
-  `openingGap`, the cue ledger and the fairness guard (holds, feints, delays, fades), `brain.expect`
-  / `fairDelay`, the `pace` meter; a string that ends in sword qi cuts a hero who stayed close; the
-  Lord's flurry is as long as its count (it was always four).
-- **Shen Hui:** three phases (64 % / 36 %), the transition `ashWind`, sixteen new blade moves and
-  three on the floor, a red blow in eight strings, burning ground (it drains a held guard's meter,
-  never health), the Kindling and "ash on the wind" drawn, afterimages, the qi with a body.
-- **The Lord:** nineteen new moves, the wheeling blade, orbit stones, the Starless Sky as weather,
-  Starless Night, Rupture and the Falling Halo; a blow out of a blink meets a guard from any side;
-  his spells and blades redrawn in the fire field; each form's ignition its own.
-- **Both:** thrown pieces show the flare only; bodies dressed by phase / form.
-- **World:** courtyard 456 breakables (78), crater 222 (36); floors whole / cracked / broken at no
-  draw cost while whole; two-stage colossi; BLOCK and SHARDS wreckage; pieces outside the scene
-  graph; `floorNear`, lift class 3.
-- **Lab:** a LOOKS section; later phases and their moves from any phase; Shen Hui's phase 3 in
-  Training.
+**The wyrm ablaze** (`w3/ablaze`): `entities/dragon/ablaze.js`. The phase 3 roar ends in an ignition
+that runs out along the wings, the legs and the tail and flares at the ends; then the wing tips,
+the claws and the last third of the tail burn for the rest of the fight as heat in the fire field,
+keeping 18 % of their part's speed so a sweep leaves an arc and a tail whip a ribbon. Wood a
+burning part passes catches (5 a minute at most); footprints are a harmless scorch with small
+flames, never `world.fire`. The fire dims round every flash, under the body's warning glow and near
+the hero. It gutters in a stagger, goes out along the body on death, and uses its own random
+numbers, so a seeded fight is identical with it off or on.
 
-**The owner's picks (2026-11-16):** every author's pick for both bosses' effects (option a), the
-bodies "b: dressed by phase", the broken floor "a: rubble on earth", "Guard meter, no health" for
-burning ground, "Keep three phases". The picks are a table in `duelist/lookSwitch.js`;
-`?looks=old` shows every redraw as it was.
+**The letters follow the zoom** (`w3/zoom`): the diagnosis first. Only what is drawn in screen-fixed
+cells loses detail when the camera pulls back (the art pass, prop art, the trees' screen grid, the
+fire field: 5.8 letter rows a metre at 36 m, 3.9 at 54 m, at 1080p); the grass and the floors are
+world-anchored and do not. Past the default wheel distance the art cell now steps down a ladder of
+the existing pixel fonts, the screen grid with it. The font follows the player's wheel, not the
+measured camera distance (the boss framing sits 5 - 9 m further out and would have changed the
+default look). All atlases are built ahead, a step swaps uniforms, the fire field draws into a
+sub-viewport of targets sized for the finest step, and the letters' tone is held by ink coverage.
 
-**Verification:** `node tests/run.mjs .` ALL 10 PASSED and `npm run build` passes on the final
-commit, run by the lead. New scenarios: `pace`, `fxlooks`, `moves`, `floor`, `worldcue` and the
-opt-in `bots`, `answer`, `ranged` in `duel.mjs`; `pace`, `fxlooks`, `moves`, `floor` and the opt-in
-`probe`, `defend` in `lord.mjs`; `floor`, `colossus`, `placed` in `world.mjs`. Measured: cues a
-minute (ten seeds on the final build) Shen Hui 60 / 76 → 78 / 93 / 100, the Lord
-71 / 80 / 75 / 85 → 85 / 91 / 100 / 110; conflicts 132 → 0; a 95 % bot wins every fight, a pure defender
-survives every phase and form.
-Filmed on headless Edge with the real GPU: every new move from two sides, every look option on one
-sheet per switch, a 20 s stretch of each phase and form with the picks on, both levels from the
-title to the victory with a death and a reset.
+**Three heads, not taken up** (`w3/face`): `entities/dragon/heads.js` sculpts a predator skull, a
+loong and a horned demon as lofts with real sockets, cheekbones, gums and varied teeth; gameplay
+joints are identical to the old head's to the millimetre.
 
-**Not checked / open** (the agents' own lists, kept; ADR-122 "Not measured or not right"):
-- Nobody has played it. For a bot with a fixed answer rate the fights are busier and fairer but
-  hardly deadlier than on `main` (the 85 % bot now dies on one seed of three against the Lord), and
-  both last about a minute for a bot that plays well.
-- The cheese spot behind the throne; a missed blow in a long string costing most of it (the Lord's
-  worst second is 59.4, 57.2 before); two guard cues from different sources 0.1 - 0.25 s apart.
-- The guard steps in 1 - 4 times a minute in the Lord's fourth form.
-- New poses measured inside today's envelope but not audited joint by joint; no palm strike.
-- No music for phase 3, no new sounds. The iPhone itself.
-- One wyrm number changed (Furnace Maw's bite cued 28 ms later: a fault that was on `main`).
+**The owner's picks** (from rendered sheets and clips, 2026-11-16): the face: "lets pass on the
+remake of the dragon head for now"; the zoom: b (the letters fully follow); the fire: b (trailing
+fire). So the head is unchanged and the three stay behind `?wyrmFace=` for later; `?zoomArt=b` and
+`?ablaze=b` are the defaults.
 
-**Next:** the owner plays the preview (the Lab's LOOKS section flips every option on the phone).
-If the fights should be longer or deadlier: posture gained per parry and health are the levers.
+**Verification:** `npm test` and `npm run build`: see the PR. New scenarios: world `wear`, `wall`,
+`landmarks`, `reach`; integ `zoomart`, `wyrmface`, `ablaze`; WRECKAGE reports and bounds the wall's
+front rows. Measured over five seeds, 80 s a phase: the wall's front rows (153 trees, 32 - 46 m)
+worn or down at the end 43 / 41 / 37 / 45 / 57 %, phase 1 alone 8 - 18 %; falling trees on the hero
+0 on every seed. On screen (headless Edge on the real GPU, 1280 x 720): the stages of the three
+tree types, the landmarks coming apart, the ignition, the three fire strengths, the flares on the
+burning wyrm, the zoom options at four distances and three resolutions, and by the lead on the
+merged build: phase 3 burning, a roar's wind reaching 212 wall trees, the cell stepping 5x8 to 4x6
+at the furthest wheel.
+
+**Not checked / open:**
+- **Frame cost.** Paired against the base at 1080p the merged build renders 16 - 22 % slower with
+  the wall intact and 14 - 21 % in phase 3 (7 - 10 % wrecked and burning); at the phone preset's
+  size on the desktop GPU 15 - 26 %. Most of it is the trees' new representation, not the fire or
+  the zoom. Nobody has run it on the iPhone.
+- The wall's damage clumps into one to three long stretches (the fight stays on one side); the
+  target of four separate stretches was not met. From above it reads as thinned and burnt more than
+  torn open. Fights in the browser ran harsher than the headless meter (61 - 74 %).
+- A dead tree's stages cannot be seen inside the canopy until it falls; many ribs breaking in one
+  frame are still a pale mass; the wind's leaves are faint at the game camera.
+- With zoom b the trees' letters step too (the trees were the owner's look), and stone pillars at
+  the furthest zoom print denser and flatter (seen in the Ashfall Courtyard).
+- The new `wear` sound has not been heard by anyone. Nobody has played any of it.
+- The unsharded TIMING run fails one placement (furnaceMaw P3, hit 3 at 0.6: 100 ms) on the base
+  too; the sharded run in `npm test` does not show it.
+
+**Next:** the owner plays the Vercel preview (the wall's rate of ruin, the fire's strength in a real
+fight, the zoom on their monitor, the frame rate on the phone). If the phone suffers, the tree mesh
+is the place to look. The heads wait behind `?wyrmFace=`.
 
 ---
 

@@ -19,12 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-16',
-        title: 'The Ash Disciple and the Starless Lord fight harder, in arenas that break',
+        title: 'The wyrm burns in phase 3, the forest breaks, the letters follow the zoom',
         notes: [
-          'Both human bosses give far fewer pauses and chain their moves by where you stand, busier in every phase. Each hit hurts as much as before, and two attacks that need different answers never land at the same moment.',
-          'Shen Hui has a third phase: he vanishes into ash and strikes from another side. Sixteen new moves, and from phase 2 his cuts leave lines of fire on the stones. Step off them: fire drains your guard, never your health.',
-          'The Starless Lord casts inside his strings and has nineteen new moves. In his last form strikes keep falling from the sky, and Starless Night sends three waves across the whole crater.',
-          'Both arenas break: floors crack and shatter, statues come down, and both bosses throw the floor at you. Thrown pieces show no mark on the ground: answer the flash on the flying piece.',
+          'In its third phase the Cinder Wyrm sets itself on fire: wing tips, claws and tail burn, and fast moves leave arcs and ribbons of flame. Its attacks hurt as much as before, and its burning footprints do not hurt at all.',
+          'Every tree in Cinderwood can break now, and wears down first: leaves burst off, the crown thins, it leans, it falls. The wyrm tears into the tree wall with wind and stray fire. The great skeleton and the Cinder Tree come apart too.',
+          'Zooming out on a desktop keeps the detail: the small letters shrink with the picture instead of getting scarce.',
         ],
       },
       {

@@ -14,6 +14,8 @@ import { DragonFx } from './fx.js';
 import { Hazards } from './hazards.js';
 import { Bullets } from './bullets.js';
 import { Terrain } from './terrain.js';
+import { Ablaze, ablazeLook, setAblazeLook } from './ablaze.js';
+import { wallWind } from './wallReach.js';
 
 // VAELGRIM, THE CINDER WYRM — the boss. Public contract: see docs/ARCHITECTURE.md (Dragon).
 // Wiring: Brain (ai.js) writes pose targets + root motion and runs the attack tell beats, Rig
@@ -140,6 +142,7 @@ export class Dragon {
     this.hazards = new Hazards(this); // fire hazards (hazards.js): cleared by fx.reset(), death, phase changes
     this.bullets = new Bullets(this); // the bullet field + fire wheel (bullets.js): cleared like the hazards
     this.terrain = new Terrain(this); // the piece in its jaws / in the air, its mark and its blow (terrain.js, ADR-110)
+    this.ablaze = new Ablaze(this); // phase 3: it sets itself on fire (ablaze.js)
     this.brain = new Brain(this);
     this.debug = createDebug(this);
 
@@ -422,6 +425,7 @@ export class Dragon {
     }
     this.fx.reset();
     this.terrain.reset(); // (a piece still in the jaws falls; the world's own reset stands it up again)
+    this.ablaze.reset();
     this._clearWarn();
     this.state = 'sleeping';
     this.hp = this.maxHp;
@@ -742,6 +746,7 @@ export class Dragon {
   onStep(limb) {
     if (this.state === 'dead') return;
     this.emit('dragon:step', { x: limb.pos.x, z: limb.pos.z, heavy: !!limb.hind });
+    this.ablaze.step(limb.pos.x, limb.pos.z, !!limb.hind); // (phase 3: a burning footprint)
     const charging = this.brain.action?.name === 'charge' && this.brain.action.phase === 'active';
     if (charging && limb.hind) this.game.shake?.(0.07);
     const n = limb.hind ? 5 : 3;
@@ -789,6 +794,7 @@ export class Dragon {
     this._letGo.x = 0;
     this.broken = false;
     this._clearWarn();
+    this.ablaze.reset();
     this.object3d.visible = false;
     this.hurtSpheres.length = 0;
     this.bodyCircles.length = 0;
@@ -865,6 +871,7 @@ export class Dragon {
     this.hazards.update(dt); // (guarded inside: never throws)
     this.bullets.update(dt); // (guarded inside: never throws)
     this.terrain.update(dt); // (guarded inside: never throws)
+    this.ablaze.update(dt); // (phase 3's fire on its wings, claws and tail; goes out while it dies)
     if (this.state !== 'dying') {
       this.fx.eyeGlints(dt, this.rig.pt.eyes, this.rig.s.eyes);
       // phase 2 smoulders, phase 3 burns (TUNING.phaseEmbers)
@@ -998,16 +1005,24 @@ export class Dragon {
       // the wings' blasts: a take-off, a landing, a downbeat near the ground
       const alt = s.alt ?? 0, x = this.position.x, z = this.position.z;
       const bl = st.blast;
-      if (alt >= T.takeoff.alt && st.alt < T.takeoff.alt) D.strike(x, z, T.takeoff.radius, T.takeoff.power, bl);
+      // (and their wind carries on into the trees round the clearing: wallReach.js, TUNING.world.wind)
+      if (alt >= T.takeoff.alt && st.alt < T.takeoff.alt) {
+        D.strike(x, z, T.takeoff.radius, T.takeoff.power, bl);
+        wallWind(this, x, z, 'takeoff');
+      }
       if (alt > st.top) st.top = alt;
       if (alt <= T.landing.alt && st.alt > T.landing.alt) {
-        if (st.top >= T.landing.minFall) D.strike(x, z, T.landing.radius, T.landing.power, st.land);
+        if (st.top >= T.landing.minFall) {
+          D.strike(x, z, T.landing.radius, T.landing.power, st.land);
+          wallWind(this, x, z, 'landing');
+        }
         st.top = 0;
       }
       const c = Math.cos(s.flapPhase ?? 0);
       if (st.flap > 0 && c <= 0 && (s.flapAmp ?? 0) > 0.25 && alt < T.downbeat.maxAlt) {
-        const pt = this.rig.pt.chest;
-        D.strike(pt.x, pt.z, T.downbeat.radius, T.downbeat.power * (1 - alt / T.downbeat.maxAlt), bl);
+        const pt = this.rig.pt.chest, k = 1 - alt / T.downbeat.maxAlt;
+        D.strike(pt.x, pt.z, T.downbeat.radius, T.downbeat.power * k, bl);
+        wallWind(this, pt.x, pt.z, 'downbeat', k * (s.flapAmp ?? 1));
       }
       st.flap = c;
       st.alt = alt;
@@ -1343,6 +1358,11 @@ function createDebug(d) {
     reset() {
       d.reset();
       return true;
+    },
+    /** Phase 3's fire (ablaze.js): its strength 'off' | 'a' | 'b' | 'c' (no argument: the one in use). */
+    ablaze(look) {
+      if (look !== undefined) setAblazeLook(look);
+      return ablazeLook();
     },
     setHp(fraction) {
       if (!alive()) return false;

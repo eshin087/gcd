@@ -133,6 +133,7 @@ const CHOICES = [['f3x5', 1], ['f4x6', 1], ['f5x7', 1], ['f4x6', 2], ['f5x7', 2]
  * ties to the smaller. Returns { font, s, cell: [cw, ch] }.
  */
 export function wyrmArtFont(H) {
+  // (CHOICES only: the zoom ladder's extra step below is never a default)
   const want = Math.max(1, H) / 90;
   let best = CHOICES[0], bd = Infinity;
   for (const c of CHOICES) {
@@ -148,11 +149,59 @@ export function wyrmArtFont(H) {
 /** Letter cell [w, h] in device px for a canvas H px tall (wyrmArtFont). */
 export const wyrmArtCell = (H) => wyrmArtFont(H).cell;
 
+// The zoom ladder (?zoomArt, pipeline.js): the fonts a pulled-back camera may step down to so an
+// object keeps about the letters it has at the default distance. Every font / scale pair of CHOICES
+// plus the 3x5 letters doubled (8 x 12: the step between 6 x 9 and 10 x 16 at 1440p and 2160p).
+const LADDER = [...CHOICES, ['f3x5', 2]];
+
+/**
+ * The zoom ladder for a canvas H px tall: wyrmArtFont(H) first, then every smaller cell, largest
+ * first (one per cell height), down to the 3x5 letters in 4 x 6 cells. [{ font, s, cell }].
+ */
+export function wyrmArtLadder(H) {
+  const base = wyrmArtFont(H), out = [base], seen = new Set([base.cell[1]]);
+  const rest = LADDER.map(([font, s]) => ({ font, s, cell: [WYRM_FONTS[font].cw * s, WYRM_FONTS[font].ch * s] }))
+    .filter((f) => f.cell[1] < base.cell[1])
+    .sort((a, b) => b.cell[1] - a.cell[1] || b.cell[0] - a.cell[0]);
+  for (const f of rest) {
+    if (seen.has(f.cell[1])) continue;
+    seen.add(f.cell[1]);
+    out.push(f);
+  }
+  return out;
+}
+
+/**
+ * The ladder step to draw at for a camera `r` times its default distance (r <= 1: step 0, the
+ * default; zooming in never grows the letters). `p` is the strength (1: the letters shrink as the
+ * picture does, so an object keeps its letters; 0.5: half of that, in log terms). `cur` is the step
+ * drawn now: a step is taken only once the wanted cell height is `hyst` (log) nearer the new step
+ * than the current one, so a distance wobbling round a threshold never flips the font.
+ * `hs` are the ladder's cell heights, largest first.
+ */
+export function zoomArtStep(hs, r, p, cur = 0, hyst = 0.06) {
+  if (!hs?.length) return 0;
+  cur = Math.max(0, Math.min(hs.length - 1, cur | 0));
+  if (!(r > 1) || !(p > 0) || !Number.isFinite(r)) r = 1;
+  const want = Math.log(hs[0]) - p * Math.log(r);
+  let best = 0, bd = Infinity;
+  for (let i = 0; i < hs.length; i++) {
+    const d = Math.abs(Math.log(hs[i]) - want);
+    if (d < bd - 1e-9) {
+      bd = d;
+      best = i;
+    }
+  }
+  if (best === cur) return cur;
+  return bd + hyst < Math.abs(Math.log(hs[cur]) - want) ? best : cur;
+}
+
 /**
  * Pixel-exact single-row atlas of font `key` at integer scale `s`: a blank, the WYRM_SETS dim / mid /
  * bright letters, then the 4 WYRM_STROKES, each glyph `top` px down from its cell's top-left with a
  * soft 0.24 halo on its neighbours (never into the gap column, so letters stay apart). Returns
- * { texture, sets: [mid start, bright start, stroke start] (atlas columns; dim starts at 1), total }.
+ * { texture, sets: [mid start, bright start, stroke start] (atlas columns; dim starts at 1), total,
+ * ink: the set letters' mean coverage of their cell, 0..1 }.
  */
 export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
   const F = WYRM_FONTS[key] ?? WYRM_FONTS.f4x6;
@@ -167,6 +216,10 @@ export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
   canvas.height = ch;
   const ctx = canvas.getContext('2d');
   const on = (rows, x, y) => y >= 0 && y < gh && x >= 0 && x < gw && (rows[y] & (msb >> x)) !== 0;
+  // ink: the letters' mean coverage of their cell (lit pixels, halo pixels at 0.24), the set letters
+  // only: smaller fonts fill more of a smaller cell (the zoom ladder evens it out, pipeline.js uArtInk)
+  let ink = 0;
+  const letters = dim.length + mid.length + bright.length;
   glyphs.forEach((rows, col) => {
     // a soft halo on the stroke's neighbours (the reference's letters are anti-aliased, not 1 px
     // hairlines: at 0.12 the hide read as sparse wire text, at 0.24 as the reference's soft digit field)
@@ -174,12 +227,19 @@ export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
     for (let y = -top; y <= gh; y++) {
       for (let x = 0; x < gw; x++) {
         if (on(rows, x, y) || y + top >= F.ch) continue;
-        if (on(rows, x - 1, y) || on(rows, x + 1, y) || on(rows, x, y - 1) || on(rows, x, y + 1)) ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+        if (on(rows, x - 1, y) || on(rows, x + 1, y) || on(rows, x, y - 1) || on(rows, x, y + 1)) {
+          ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+          if (col >= 1 && col <= letters) ink += 0.24;
+        }
       }
     }
     ctx.fillStyle = '#fff';
     rows.forEach((b, y) => {
-      for (let x = 0; x < gw; x++) if (b & (msb >> x)) ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+      for (let x = 0; x < gw; x++) {
+        if (!(b & (msb >> x))) continue;
+        ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+        if (col >= 1 && col <= letters) ink += 1;
+      }
     });
   });
   const tex = new THREE.CanvasTexture(canvas);
@@ -188,5 +248,5 @@ export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
   tex.minFilter = THREE.NearestFilter;
   tex.magFilter = THREE.NearestFilter;
   tex.needsUpdate = true;
-  return { texture: tex, sets, total: glyphs.length };
+  return { texture: tex, sets, total: glyphs.length, ink: ink / (letters * F.cw * F.ch) };
 }
