@@ -264,16 +264,17 @@ const dist2 = (G) => Math.hypot(G.game.player.position.x - G.game.dragon.positio
 // ---- the defender bot: answers his tells from the flash (parry normal / blue, roll through red)
 // style (the STRATEGY measurement): 'mixed' = the above; 'dodge' = a perfect dodge of every tell, never a
 // parry; 'parry' = parries, and a red blow rolled early (i-frames, outside the perfect window)
-function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed' } = {}) {
+function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed', rng = null, world = false } = {}) {
   const pend = [];
-  const stats = { flashes: 0, parryTry: 0, dodgeTry: 0 };
+  const stats = { flashes: 0, parryTry: 0, dodgeTry: 0, skipped: [] };
   return {
     stats,
     onEvent(n, d) {
-      if (n === 'combat:flash' && d?.source === 'dragon') {
+      if (n === 'combat:flash' && (d?.source === 'dragon' || (world && d?.source === 'world'))) {
         stats.flashes++;
-        if (skill < 1 && Math.random() > skill) return;
-        pend.push({ tell: d.tell, at: G.game.time + TUNING.flashLead, x: d.x, z: d.z, hazard: !!d.hazard && !d.bullet, done: false });
+        // (`rng`: the probe's own stream, so a bot's misses do not move the AI's seeded stream)
+        if (skill < 1 && (rng ?? Math.random)() > skill) { stats.skipped?.push([G.game.time, d.attack]); return; }
+        pend.push({ tell: d.tell, at: G.game.time + (d.source === 'world' ? 0.3 : TUNING.flashLead), x: d.x, z: d.z, hazard: !!d.hazard && !d.bullet, done: false });
       }
     },
     act() {
@@ -887,6 +888,30 @@ async function scenarioSpells() {
     run(G, 0.1);
     const passes = G.hits.filter((h) => h.attack === 'glaive' && h.r !== RESULT.IGNORED).length;
     assert(out0 && !d.glaiveOut && d.blades.A.visible && flashes === 2 && passes === 2, `the blade leaves his hand, passes the hero twice (${flashes} cues, ${passes} contacts) and comes home`);
+  }
+  // ---- the thrown blade's way home against a red warning told while it flew away (the tuning pass,
+  // 2026-11-16: a falling piece's warning given while the blade flew out, landing as it came back
+  // through the hero: a white cue and a red one 0.2 s apart, once in a PACE run). Just before it
+  // turns, a red impact is expected where its way home would cross the hero: it must not be cued
+  // within 0.3 s of that (it waits at the turn, or comes home uncued)
+  {
+    const G = stage(2, 8, { god: true });
+    const d = G.game.dragon, p = G.game.player;
+    const cues = [];
+    let redAt = -1;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'glaive') cues.push(G.game.time + TUNING.flashLead); };
+    d.debug.trigger('glaive');
+    run(G, 5, () => {
+      const s = d.fx.shots?.find((x) => x.alive && x.kind === 'glaive');
+      if (redAt < 0 && s?.phase === 'fly' && Math.hypot(s.x - s.ox, s.z - s.oz) >= TUNING.glaive.range - 0.4) {
+        const rem = (TUNING.glaive.range - Math.hypot(s.x - s.ox, s.z - s.oz)) / s.speed;
+        const home = rem + 0.32 + Math.max(0, Math.hypot(p.position.x - s.x, p.position.z - s.z) - s.radius - 0.45) / s.back;
+        d.brain.expect(home, TELL.RED, 'test');
+        redAt = G.game.time + home;
+      }
+    }, () => redAt > 0 && !d.glaiveOut && d.mode === 'foot');
+    const near = cues.filter((t) => t > redAt - 1.5 && Math.abs(t - redAt) < 0.3);
+    assert(redAt > 0 && !near.length, `the blade's way home is not cued within 0.3 s of a red impact told while it flew away (red at ${(redAt % 100).toFixed(2)}, its cues land at ${cues.map((t) => (t % 100).toFixed(2)).join(', ')})`);
   }
   // ---- torn stone
   {
@@ -1717,7 +1742,18 @@ function paceDefender(G) {
             guardUntil = -1;
             const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
             const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
-            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: -dz / l, y: -dx / l };
+            // (a roll keeps him in the crater, as a player keeps to the arena: a roll that would end
+            // past the boss's floor (12 m round the seal, or north of the dais's edge) goes the other
+            // way across. The tuning pass, 2026-11-16: the hero used to roll out behind the throne,
+            // where nothing of his reaches (up to a fifth of form 4 spent there))
+            let wx = e.hazard ? dx / l : -dz / l, wz = e.hazard ? dz / l : dx / l;
+            const out = (ax, az) => Math.hypot(p.x + ax * 3, p.z + az * 3) > 12 || p.z + az * 3 < -9.5;
+            if (out(wx, wz)) {
+              const k = (-p.x * -wz + -p.z * wx) >= 0 ? 1 : -1;
+              const sx = -wz * k, sz = wx * k;
+              if (!out(sx, sz)) { wx = sx; wz = sz; } else if (!out(-wx, -wz)) { wx = -wx; wz = -wz; }
+            }
+            input.axis = { x: wx, y: -wz };
             input.tap('Space');
             rolled = true;
             stats.rolls++;
@@ -1794,14 +1830,15 @@ async function scenarioPace() {
         if (!rolled && p.state !== 'roll') {
           const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
           const k = Math.hypot(gx, gz) > 12 ? 12 / Math.hypot(gx, gz) : 1;
-          const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+          const dx = gx * k - p.position.x, dz = Math.max(-9.5, gz * k) - p.position.z, l = Math.hypot(dx, dz);
           G.input.axis = l > 0.6 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
         }
         game.mouseGround.set(d.position.x, 0, d.position.z);
         G.tick(DT);
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
         frames++;
-        { const k = d.mode === 'react' ? `react:${d.brain.react?.kind}` : d.mode === 'act' ? (d.brain.act && d.brain.act.t >= d.brain.act.recoveryStart ? 'act:recovery' : 'act') : d.mode === 'foot' ? (Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z) > TUNING.move.band[1] + 0.3 ? 'foot:closing' : 'foot') : d.mode; modeT[k] = (modeT[k] || 0) + game.dt; if (d.mode === 'act' && d.brain.act) spent[d.brain.act.name] = (spent[d.brain.act.name] || 0) + game.dt; }
+        if (process.env.ABYSS_PFOOT && ph === 4 && d.mode === 'foot' && frames % 60 === 0 && Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z) > 15) out(`      far ${(game.time - t0).toFixed(1)} boss ${d.position.x.toFixed(1)},${d.position.z.toFixed(1)} hero ${p.position.x.toFixed(1)},${p.position.z.toFixed(1)} ${p.state} vel ${d.groundVel?.x?.toFixed?.(1)} ${d.state ?? ''} ${d.brain.seek ? 'seek' : ''}`);
+        { const k = d.mode === 'react' ? `react:${d.brain.react?.kind}` : d.mode === 'act' ? (d.brain.act && d.brain.act.t >= d.brain.act.recoveryStart ? 'act:recovery' : 'act') : d.mode === 'foot' ? (Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z) > TUNING.move.band[1] + 0.3 ? `foot:closing${process.env.ABYSS_PFOOT ? `:${d.spells?.nightLive ? 'night' : d.brain.gapT > 0 ? 'gap' : 'none'}:${Math.min(16, Math.floor(Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z) / 4) * 4)}m` : ''}` : 'foot') : d.mode; modeT[k] = (modeT[k] || 0) + game.dt; if (d.mode === 'act' && d.brain.act) spent[d.brain.act.name] = (spent[d.brain.act.name] || 0) + game.dt; }
         // chained: a move that starts straight out of another (no footwork, no reaction between)
         const a = d.brain.act;
         if (d.mode === 'act' && a && a !== prevAct && !a.def.transition && !a.def.counter) {
@@ -1837,7 +1874,8 @@ async function scenarioPace() {
       }
       const st = d.brain.stats ?? {};
       const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
-      rows.push({ seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, chained, chainMax, conflicts, conflictAt, inner, innerAt: [...innerAt], busy: busy / frames, holds: dlt('holds'), feints: dlt('feints'), told: dlt('toldFeints'), delays: dlt('delays'), links: dlt('links'), cuts: dlt('cuts'), rests: dlt('rests'), hurt, modeT });
+      const dodgeCues = flashes.filter((f) => answer(f[1]) === 'dodge').length;
+      rows.push({ seed, ph, T, cues: flashes.length, dodge: dodgeCues / (flashes.length || 1), perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, chained, chainMax, conflicts, conflictAt, inner, innerAt: [...innerAt], busy: busy / frames, holds: dlt('holds'), feints: dlt('feints'), told: dlt('toldFeints'), delays: dlt('delays'), links: dlt('links'), cuts: dlt('cuts'), rests: dlt('rests'), hurt, modeT });
       // ABYSS_PGUARD=1: what the fairness guard would not let through (feints, faded marks, strikes
       // not called), each with the impact it collided with (brain.guardLog)
       if (process.env.ABYSS_PGUARD) {
@@ -1862,7 +1900,7 @@ async function scenarioPace() {
     out(`         longest gap at ${r.gapAt}${r.conflicts ? ` · CONFLICTS ${r.conflictAt.slice(0, 6).join(' · ')}` : ''}${r.inner ? ` · inner: ${r.innerAt.join(', ')}` : ''}`);
   }
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
-  for (let ph = 1; ph <= NPH; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s (mean ${mean(ph, 'gapMax').toFixed(2)}) · ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)}`);
+  for (let ph = 1; ph <= NPH; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min (${(mean(ph, 'perMin') * (1 - mean(ph, 'dodge'))).toFixed(1)} to guard or parry, ${(mean(ph, 'perMin') * mean(ph, 'dodge')).toFixed(1)} to dodge: ${(mean(ph, 'dodge') * 100).toFixed(0)} %) · field busy ${(mean(ph, 'busy') * 100).toFixed(0)} % · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s (mean ${mean(ph, 'gapMax').toFixed(2)}) · ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)}`);
   if (!P?.meter) { out('   (no TUNING.pressure.meter: measured only, nothing asserted)'); return lastG; }
   const A = P.meter;
   for (const seed of SEEDS) {
@@ -1910,6 +1948,134 @@ async function scenarioWin() {
   assert(T > 40 && T < 300, `the fight takes a bot that answers every tell ${T.toFixed(0)} s`);
 }
 
+// ================================================================== scenarios: probe / defend (opt-in)
+/** A mortal fencer (no god mode): it answers a share of his cues (makeDefender's skill, its own
+ *  random stream), cuts in his openings, gives the deathblows, and drinks a flask below `drinkAt` HP
+ *  when nothing is due within 0.9 s. `attack: false`: a pure defender (it never swings; the riposte
+ *  of a parried last blow still answers by itself). */
+function mortalFencer(G, { attack = true, drinkAt = 60, execute = true } = {}) {
+  const { game, input } = G;
+  const p = game.player, d = game.dragon;
+  input.axis = { x: 0, y: 0 };
+  if (!p.alive || game.state !== 'boss') return;
+  const tgt = new THREE.Vector3();
+  d.lockPoint(tgt);
+  game.mouseGround.set(tgt.x, 0, tgt.z);
+  const dx = tgt.x - p.position.x, dz = tgt.z - p.position.z, dist = Math.hypot(dx, dz);
+  if (p.state === 'lock') {
+    if (((game.realTime * 60) | 0) % 5 === 0) input.click(0);
+    return;
+  }
+  const busy = G.defend.act();
+  const tick = (game.realTime * 60) | 0;
+  if (p.hp < drinkAt && p.flasks > 0 && !busy && ['idle', 'run', 'block'].includes(p.state) && tick % 6 === 0) { input.up(1); input.tap('KeyF'); return; }
+  if (dist > 2.6 && !busy) input.axis = { x: dx / dist, y: -dz / dist };
+  if (!attack) {
+    // (a pure defender still gives the deathblow: a broken lord left alone rises with a fifth of his bar)
+    if (execute && d.broken && dist < 3.2 && tick % 12 === 0) input.click(0);
+    return;
+  }
+  const a = d.brain.act;
+  const open = d.broken || (d.mode === 'react' && ['recoil', 'stagger', 'flinch', 'reeling', 'trampled'].includes(d.brain.react?.kind)) || (a && a.t > a.recoveryStart) || p.critTimer > 0;
+  if (!busy && dist < 3.2 && (open ? tick % 20 === 0 : tick % 70 === 0)) input.click(0);
+}
+
+/** One mortal run: returns what it measured (hurt from player:hurt, so after the hero's own rules). */
+function mortalRun(seed, { skill, form = 1, secs = 600, attack = true, oneForm = false, execute = true } = {}) {
+  const G = build(seed, true);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 3, ai: true, form });
+  G.defend = makeDefender(G, { skill, rng: mulberry32(seed * 977 + Math.round(skill * 100)), world: true });
+  const formAt = [game.time];
+  const hurt = [], flashT = [], breaks = [];
+  let curAtk = null;
+  const th = p.takeHit.bind(p);
+  p.takeHit = (h) => { curAtk = h?.attack ?? null; const r = th(h); curAtk = null; return r; };
+  const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blows: 0 };
+  G.watch = (ev, e) => {
+    if (ev === 'player:hurt' && e?.damage > 0) {
+      // why it landed: a cue the bot chose to miss ('missed'), a cue it answered ('ANSWERED': a bug
+      // or the bot's own fault: look), or no cue of that attack in the 1.5 s before ('uncued')
+      const atk = curAtk ?? '';
+      const t = game.time;
+      const why = G.defend?.stats.skipped.some((x) => x[0] > t - 1.5 && x[1] === atk) ? 'missed' : flashT.some((x) => x[0] > t - 1.5 && x[1] === atk) ? 'ANSWERED' : 'uncued';
+      hurt.push([t, e.damage, atk || d.brain.act?.name || d.mode, form + formAt.length - 1, why]);
+    }
+    if (ev === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashT.push([game.time, e.attack]);
+    if (ev === 'dragon:postureBreak') breaks.push(`posture@${(d.hp / TUNING.hp * 100).toFixed(0)}%`);
+    if (ev === 'player:parry') { n.parries++; if (e?.perfect) n.perfect++; }
+    if (ev === 'player:perfectDodge') n.dodges++;
+    if (ev === 'player:heal') n.heals++;
+    if (ev === 'dragon:plunged') n.blows++;
+    if (/^dragon:phase[234]$/.test(ev)) formAt.push(game.time);
+  };
+  const t0 = game.time;
+  let outcome = 'time';
+  run(G, secs, () => {
+    mortalFencer(G, { attack, execute });
+    if (oneForm && d.brain.pendingPhase > form) d.brain.pendingPhase = 0;
+  }, () => {
+    if (d.mode === 'dead') { outcome = 'won'; return true; }
+    if (!p.alive) { outcome = 'died'; return true; }
+    return false;
+  });
+  G.watch = null;
+  G.defend = null;
+  const T = game.time - t0;
+  // the worst second: the most damage inside any 1 s window
+  let worst1 = 0, worst1At = '';
+  for (let i = 0; i < hurt.length; i++) {
+    let s = 0;
+    const at = [];
+    for (let j = i; j < hurt.length && hurt[j][0] - hurt[i][0] <= 1; j++) { s += hurt[j][1]; at.push(hurt[j][2]); }
+    if (s > worst1) { worst1 = s; worst1At = at.join('+'); }
+  }
+  const worst = hurt.reduce((m, h) => (h[1] > m[1] ? h : m), [0, 0, '']);
+  const perForm = formAt.map((t, i) => ((formAt[i + 1] ?? game.time) - t));
+  const why = hurt.reduce((m, h) => ((m[h[4]] = (m[h[4]] || 0) + h[1]), m), {});
+  const answered = hurt.filter((h) => h[4] !== 'missed').map((h) => `${h[2]} ${h[1].toFixed(0)} ${h[4]} @${(h[0] - t0).toFixed(1)}`);
+  return { seed, skill, outcome, T, why, answered, breaks, form: d.phase, bar: d.hp / TUNING.hp, hp: p.hp, flasks: p.maxFlasks - p.flasks, heals: n.heals, hits: hurt.length, dmg: hurt.reduce((a, h) => a + h[1], 0), worst: worst[1], worstBy: worst[2], worst1, worst1At, perForm, ...n, byMove: hurt.reduce((m, h) => ((m[h[2]] = (m[h[2]] || 0) + h[1]), m), {}) };
+}
+
+/** PROBE: mortal bots that answer 95 / 85 / 70 % of his cues (ABYSS_PSKILLS), three seeds each
+ *  (ABYSS_PRSEEDS), whole fights (10 minutes at most): wins, the fight's length and each form's,
+ *  hits and damage taken, flasks, the worst blow and the worst second. Reported, not asserted. */
+async function scenarioProbe() {
+  out('\n== scenario PROBE (mortal bots, whole fights: answer a share of his cues, cut in his openings, drink below 60 HP) ==');
+  const skills = (process.env.ABYSS_PSKILLS ?? '0.95,0.85,0.7').split(',').map(Number);
+  const seeds = (process.env.ABYSS_PRSEEDS ?? '4242,7,99').split(',').map(Number);
+  const all = [];
+  for (const skill of skills) {
+    for (const seed of seeds) {
+      const r = mortalRun(seed, { skill });
+      all.push(r);
+      out(`   skill ${skill} seed ${String(seed).padEnd(4)} ${r.outcome.padEnd(4)} ${r.T.toFixed(0).padStart(4)} s · form ${r.form} bar ${(r.bar * 100).toFixed(0)} % · forms ${r.perForm.map((x) => x.toFixed(0)).join(' / ')} s · breaks ${r.breaks.join(' ') || '-'} · damage missed / answered / uncued ${['missed', 'ANSWERED', 'uncued'].map((k) => (r.why[k] ?? 0).toFixed(0)).join(' / ')} · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst blow ${r.worst.toFixed(1)} (${r.worstBy}) · worst second ${r.worst1.toFixed(1)} (${r.worst1At}) · parries ${r.parries} (perfect ${r.perfect}) · perfect dodges ${r.dodges} · deathblows ${r.blows}`);
+      if (process.env.ABYSS_PRMOVES) out(`        damage by move: ${Object.entries(r.byMove).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · ')}${r.answered.length ? `
+        not missed by choice: ${r.answered.join(' · ')}` : ''}`);
+    }
+  }
+  return all;
+}
+
+/** DEFEND: a mortal pure defender (answers 95 %, never swings, drinks its flasks) against each form
+ *  for ABYSS_DSECS s (default 120; the form is held). The owner's rule: defensive play must not be
+ *  punished: it must live through two minutes of every form. */
+async function scenarioDefend() {
+  out('\n== scenario DEFEND (a mortal pure defender, 95 %, two minutes of each form) ==');
+  const secs = Number(process.env.ABYSS_DSECS ?? 120);
+  const seeds = (process.env.ABYSS_PRSEEDS ?? '4242,7,99').split(',').map(Number);
+  const skill = Number(process.env.ABYSS_DSKILL ?? 0.95);
+  for (const seed of seeds) {
+    for (let form = 1; form <= FORMS; form++) {
+      const r = mortalRun(seed, { skill, form, secs, attack: false, oneForm: true, execute: false });
+      out(`   seed ${String(seed).padEnd(4)} form ${form}: ${r.outcome === 'died' ? `DIED at ${r.T.toFixed(0)} s` : `alive after ${r.T.toFixed(0)} s, ${r.hp.toFixed(0)} HP`} · damage missed / answered / uncued ${['missed', 'ANSWERED', 'uncued'].map((k) => (r.why[k] ?? 0).toFixed(0)).join(' / ')} · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst blow ${r.worst.toFixed(1)} (${r.worstBy}) · worst second ${r.worst1.toFixed(1)} (${r.worst1At}) · parries ${r.parries} · his bar ${(r.bar * 100).toFixed(0)} %`);
+      if (process.env.ABYSS_PRMOVES) out(`        damage by move: ${Object.entries(r.byMove).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · ')}${r.answered.length ? `
+        not missed by choice: ${r.answered.join(' · ')}` : ''}`);
+    }
+  }
+}
+
 // ================================================================== scenario: strategy (opt-in)
 /** Which defence wins? Three god-mode fencers that differ only in how they answer a tell. Not a
  *  pass / fail check: node lord.mjs . strategy */
@@ -1955,7 +2121,7 @@ const S = {
   flare: scenarioFlare,
   fxlooks: scenarioFxlooks,
 };
-const OPT_IN = { strategy: scenarioStrategy }; // run only when named
+const OPT_IN = { strategy: scenarioStrategy, probe: scenarioProbe, defend: scenarioDefend }; // run only when named
 if (OPT_IN[SCEN]) S[SCEN] = OPT_IN[SCEN];
 const list = SCEN === 'all' ? Object.keys(S) : [SCEN];
 for (const k of list) {
