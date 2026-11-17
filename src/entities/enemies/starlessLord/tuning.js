@@ -98,8 +98,8 @@ export const TUNING = {
   // the director (duelist/brain.js header, director.js; the Ash Disciple's tuning.js explains each
   // key). Per-form arrays [1, 2, 3, 4]
   pressure: {
-    chainDepth: [4, 4, 5, 6],
-    chainRest: [[0.45, 0.75], [0.4, 0.65], [0.3, 0.55], [0.25, 0.45]],
+    chainDepth: [4, 4, 6, 6],
+    chainRest: [[0.45, 0.75], [0.4, 0.65], [0.3, 0.55], [0.2, 0.4]],
     linkCut: 0.5,
     chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
@@ -108,18 +108,27 @@ export const TUNING = {
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2, 3],
-    bias: { string: [1.3, 1.3, 2, 1.6], hazard: [1, 1, 0.6, 1], terrain: [1, 1, 0.7, 1] },
-    density: [1, 1.1, 2.2, 2], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
+    bias: { string: [1.3, 1.3, 2, 1.9], hazard: [1, 1, 0.8, 1], terrain: [1, 1.2, 1.3, 1.1] },
+    density: [1, 1.1, 2.4, 2.6], // the busier moves weigh more: × (their cues a second as authored)^density (director.js densityOf)
     mixed: 0.1,
     holdGap: 5,
-    guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
-    // what tests/integration/lord.mjs PACE asserts (the Ash Disciple's tuning.js says how). (core,
-    // 2026-11-16, five seeds x 120 s with today's moves: cues/min F1 75.5 - 83.2 (70.6 before the
-    // pass), F2 86.1 - 92.0 (79.6), F3 82.2 - 88.1 (75.2), F4 86.2 - 96.6 (84.9); longest gap 3.44 /
-    // 3.49 / 3.78 / 3.13 s. Form 3 is not yet busier than form 2: its staff strings give 1.55 cues a
-    // second against the twin blades' 1.6 - 2.0 (ramp 0.85 there until its moves are redone). Over
-    // eleven seeds form 2 averaged x1.11 form 1, one seed x0.99: its ramp floor is 0.97
-    meter: { ramp: [1, 0.97, 0.85, 0.98], minRate: [70, 78, 76, 80], maxGap: [4, 4, 4.3, 4.3] },
+    // (the tuning pass: `horizon` 1.4 → 0.8: a dodge due further off than that no longer blocks a link
+    // into a string that asks a guard (form 4's weather blocked most links and pushed his picks toward
+    // the slow red moves); `pad` 0.12 → 0.18: a torn stone's arrival estimate was 0.2 s off a falling
+    // piece's once (the hero rolling), a conflict); `sep` 0.3 → 0.4: a hero who rolls at a red cue
+    // cannot raise his guard until the roll is over (0.52 s from its start), so a white blow 0.3 -
+    // 0.4 s after a red one landed on a hero who had answered both (a 95 % bot died to it on one seed
+    // of three, and a pure defender in form 4); the 0.3 s rule the tests assert still holds)
+    guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
+    // what tests/integration/lord.mjs PACE asserts (the Ash Disciple's tuning.js says how). The tuning
+    // pass (2026-11-16), five seeds (4242, 7, 99, 1337, 2024) x 120 s: cues a minute F1 82.9 - 88.6
+    // (mean 84.9; 70.6 before the pass), F2 87.0 - 93.1 (89.7; 79.6), F3 95.8 - 103.0 (100.2; 75.2),
+    // F4 104.5 - 111.7 (109.0; 84.9); the worst seed's step F2 / F1 1.01 (seed 7; the others 1.05 -
+    // 1.09), F3 / F2 1.06, F4 / F3 1.03; longest gap 3.32 / 2.89 / 3.50 / 2.61 s. A seed's outcome
+    // shifts between builds (three.js draws object ids from the AI's Math.random), so the floors are
+    // set over all five seeds: ramp 0.97 / 1 / 0.98, minRate ~9 % under the slowest seed, maxGap
+    // ~0.8 - 1 s over the longest
+    meter: { ramp: [1, 0.97, 1, 0.98], minRate: [75, 79, 87, 95], maxGap: [4.2, 4.2, 4.3, 3.6] },
   },
   punish: { weight: 4 }, // a hero drinking a flask: the moves that close distance × this
 
@@ -140,7 +149,7 @@ export const TUNING = {
   push: { speed: 12.5, radius: 0.8, half: 2.4, life: 1.9 }, // the Void push: a wall of force along the ground
   bolt: { range: 17, width: 1.7, returnDamage: 55, returnPosture: 34 }, // Void lightning (a perfect parry sends it back)
   pull: { range: 11, drag: 5.5 }, // the Void pull: dragged this far toward him
-  glaive: { speed: 15, back: 17, range: 12.5, radius: 0.9, life: 3.2 }, // the thrown blade: out, then back to his hand
+  glaive: { speed: 15, back: 17, range: 12.5, radius: 0.9, life: 3.2, homeWait: 0.4 }, // the thrown blade: out, then back to his hand (`homeWait`: s more it may hang at the turn for the fairness guard)
   debris: { speed: 16, radius: 0.8, life: 2.4, gap: 0.42, rise: 1.9 }, // hurled stones, `gap` s apart
   storm: { radius: 2.3, warn: 0.95, gap: 0.5, lead: 0.5 }, // called lightning: marked ground, then the strike
   // ---- the second pass's Void (spells.js): what flies, waits or falls while he fights on

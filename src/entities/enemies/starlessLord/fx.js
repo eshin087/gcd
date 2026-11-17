@@ -972,6 +972,23 @@ export class LordFx extends DuelFx {
         s.wait = 0.32;
         s.flashed = -1;
         s.done = false;
+        // (the tuning pass, 2026-11-16) the fairness guard on its way home: a falling piece of the world
+        // (or anything else told) that needs the other answer near the moment it would come back
+        // through the hero: it hangs a little longer at the turn, or, if no wait clears it, comes
+        // home uncued and harmless this pass (the world's warning was given while it flew away, when
+        // brain._worldCue could not see it would turn: a conflict seen once, seed 4242 form 2)
+        const br = d.brain, hp = this.game.player?.position;
+        if (br?.fairDelay && hp && s.tell) {
+          const home = s.wait + Math.max(0, Math.hypot(hp.x - s.x, hp.z - s.z) - s.radius - (p?.radius ?? 0.45)) / Math.max(1, s.back);
+          const w = br.fairDelay(home, s.tell, d.T.glaive?.homeWait ?? 0.4, 'glaive');
+          if (w > 0) {
+            s.wait += w;
+            br.stats.delays++;
+          } else if (w < 0) {
+            s.done = true;
+            br.stats.fizzles++;
+          }
+        }
       }
       if (s.age > s.life + (s.kind === 'glaive' ? 3 : 0) || Math.hypot(s.x, s.z) > 60) {
         s.alive = false;

@@ -37,6 +37,9 @@ const PURSUE = [
   away('voidWaltz', f4(0.5)),
   away('voidPush', [0.3, 0.35, 0.4, 0.4]),
   mid('hollowStep', f1(0.35)),
+  // (the tuning pass: the twin blades' strings are all guard; a dashing red pair after a hero who
+  // stepped off is their dodge)
+  mid('meridian', f2(0.4)),
   mid('severance', [0.3, 0.3, 0.35, 0.4]),
   mid('lunge', [0.3, 0, 0, 0.4]),
   mid('wingedPursuit', f2(0.45)),
@@ -46,13 +49,14 @@ const PURSUE = [
   mid('mill', f3(0.35)),
   mid('voidWaltz', f4(0.4)),
 ];
-/** Close: the form's red sweep, the backflip away. */
+/** Close: the form's red sweep, the backflip away. (The tuning pass: tried before the move's own
+ *  close strings, so a string asks a dodge after it more often: forms 1 and 2 were 84 - 90 % guard.) */
 const CLOSE = [
-  near('reap', f1(0.2)),
-  near('reap2', f2(0.25)),
+  near('reap', f1(0.3)),
+  near('reap2', f2(0.35)),
   near('parting', [0, 0.15, 0.2, 0.2]),
 ];
-const melee = (...close) => [...PURSUE, ...close, ...CLOSE];
+const melee = (...close) => [...PURSUE, ...CLOSE, ...close];
 /** Close in, each form's strings (one of them, in turn): what waits where a closer lands. */
 const STRINGS = [
   near('voidVerse', f1(0.35)), near('litany', f1(0.35)), near('veiledHand', f1(0.35)),
@@ -78,6 +82,16 @@ const AFTER_SPELL = [
   far('voidWaltz', f4(0.45)),
   far('severance', [0.3, 0.3, 0.35, 0.4]),
   far('rend', f4(0.4)),
+];
+
+/** After a red spell or a red thrown piece (the Crushing Dark, the sky, the Dark Star, the crater's
+ *  pieces, the floor torn up): its dodge is still to come, so what follows asks a dodge too (a string
+ *  that asks a guard would have to be held or feinted round it: the tuning pass, 2026-11-16). */
+const AFTER_RED = [
+  near('reap', f1(0.35)), near('reap2', f2(0.35)), near('redEclipse', f4(0.45)),
+  near('meridian', [0.3, 0.3, 0.35, 0.3]),
+  mid('hollowStep', f1(0.4)), mid('redEclipse', f4(0.45)), mid('meridian', [0.35, 0.35, 0.4, 0.35]),
+  far('hollowStep', f1(0.35)), far('starfall', [0, 0, 0.4, 0.3]), far('nightfall', [0.25, 0.25, 0.25, 0.25]),
 ];
 
 export const LINKS = {
@@ -132,21 +146,21 @@ export const LINKS = {
   // ---- the spells and the thrown things: a string while it is still in the air
   voidBolt: AFTER_SPELL,
   voidPush: AFTER_SPELL,
-  grip: AFTER_SPELL,
+  grip: AFTER_RED,
   glaive: AFTER_SPELL,
-  debris: AFTER_SPELL,
+  debris: AFTER_RED,
   rift: AFTER_SPELL,
   chain: AFTER_SPELL,
   tide: AFTER_SPELL,
-  storm: AFTER_SPELL,
-  star: AFTER_SPELL,
-  voidHurl: AFTER_SPELL,
-  glassRain: AFTER_SPELL,
-  crownFall: AFTER_SPELL,
+  storm: AFTER_RED,
+  star: AFTER_RED,
+  voidHurl: AFTER_RED,
+  glassRain: AFTER_RED,
+  crownFall: AFTER_RED,
   // (the floor's plates, terrain.js: a gap closer behind the rupture's line, a string inside the halo;
   // the terrain agent's suggestions, modest chances: the tuning pass sets them)
-  plateRupture: [mid('wingedPursuit', f2(0.35)), mid('walkingMountain', f3(0.35)), mid('voidWaltz', f4(0.35)), far('severance', [0, 0.3, 0.3, 0.35]), ...AFTER_SPELL],
-  plateHalo: AFTER_SPELL,
+  plateRupture: [mid('wingedPursuit', f2(0.35)), mid('walkingMountain', f3(0.35)), mid('voidWaltz', f4(0.35)), far('severance', [0, 0.3, 0.3, 0.35]), ...AFTER_RED],
+  plateHalo: [far('starfall', [0, 0, 0.4, 0.3]), mid('meridian', [0, 0, 0.4, 0.35]), near('meridian', [0, 0, 0.35, 0.3]), mid('redEclipse', f4(0.4)), near('redEclipse', f4(0.4))],
   parting: [far('voidBolt', f2(0.35)), far('voidBolt', f3(0.4)), far('tide', f4(0.45)), mid('wingedPursuit', f2(0.4)), mid('walkingMountain', f3(0.4)), mid('voidWaltz', f4(0.4)), mid('voidPush', [0, 0.3, 0.35, 0.4])],
   // (the waves are still running over the crater: the mixed-answer rule keeps his blade back until they are past)
   starlessNight: [near('redEclipse', f4(0.45)), far('voidWaltz', f4(0.4)), near('thunderVerse', f4(0.35))],
