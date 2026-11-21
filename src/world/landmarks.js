@@ -932,7 +932,7 @@ export function starCleft(rng, x, z) {
 // ring's corner posts with their bronze braziers. Built for prop art directly (carve() attributes, flat
 // facets): a set pushes them into its `stones` mesh or its breakables as they are.
 /** Badlands rock: a dull red ochre (its bands lighter and darker), and the ring's bronze. */
-export const BADLAND = [0.19, 0.115, 0.075];
+export const BADLAND = [0.165, 0.098, 0.064];
 export const RING_BRONZE = [0.2, 0.135, 0.06];
 
 /**

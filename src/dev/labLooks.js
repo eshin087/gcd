@@ -28,6 +28,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['floor', ['a', 'b'], 'a', 'a', true, ['ash', 'starless'], 'a broken floor slab (a reload)'],
   // The Skybreak Ring (levels: ['ring']). Each group's rows go directly under its own heading line.
   // --- ring: the set (the arena, its buttes, its light)
+  ['ring', ['a', 'b', 'c'], 'a', 'a', true, ['ring'], 'the arena: flats, quarry, crown (a reload)'],
   //
   //
   // --- ring: Tian Lei's body (his outfit, his hair by form)

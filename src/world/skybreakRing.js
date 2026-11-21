@@ -56,7 +56,7 @@ export const ringOption = () => {
 
 const HALF = 15; // the ring: |x|, |z| <= HALF
 const CELL = 1.5; // its tile pitch (20 x 20)
-const CROWN_DROP = 24; // c: how far below the crown the badlands lie
+const CROWN_DROP = 40; // c: how far below the crown the badlands lie
 
 /**
  * Per arena: where the bonfire is, the hero's bound (round the origin), the ground's height, and the
@@ -65,17 +65,18 @@ const CROWN_DROP = 24; // c: how far below the crown the badlands lie
 const LAYOUT = {
   a: {
     bonfireZ: 33, bound: 40, groundY: 0,
-    buttes: [[23.5, -7, 11, 4.4, 6.6], [27.5, -19.5, 9, 4, 5.4], [-23, -10.5, 12, 4.6, 7.2], [-27.5, 1.5, 8, 3.7, 4.8], [5.5, -28.5, 10, 5, 6], [-13.5, -27.5, 8.5, 3.9, 5.1]],
-    hoodoos: [[19.6, 3.6, 4.6, 0.95], [-19.4, 5.2, 4.2, 0.9], [-18.8, -19.6, 5.6, 1.05], [17.2, -21.5, 4.8, 0.95]],
+    buttes: [[21, -8.5, 10.5, 3.8, 6.4], [26.5, -19.5, 9, 4, 5.4], [-21.2, -10.5, 11.5, 4.1, 7], [-27.5, 0.5, 8, 3.7, 4.8], [5.5, -27.5, 10, 5, 6], [-13.5, -26.5, 8.5, 3.9, 5.1]],
+    hoodoos: [[23.6, 1.2, 4.6, 0.95], [-22.6, 5.4, 4.2, 0.9], [-17.4, -20.6, 5.6, 1.05], [16.2, -21.8, 4.8, 0.95]],
   },
   b: {
     bonfireZ: 33, bound: 40, groundY: 0,
-    buttes: [[30.5, -9.5, 13, 5, 7.8], [-30.5, -6.5, 12, 4.8, 7.2], [-21.5, -30.5, 10, 4.6, 6], [21.5, -31, 11, 4.8, 6.6]],
-    hoodoos: [[27.5, 3.8, 5.2, 1.0], [-27.6, 4.6, 4.6, 0.95]],
+    // (the quarry is cut into the feet of the buttes east and west: they stand on its terraces)
+    buttes: [[21.4, -6, 10.5, 3.9, 6.4], [-21.6, -7.5, 11, 4.1, 6.6], [-7, -27.5, 10, 4.6, 6], [12.5, -28, 11, 4.6, 6.6]],
+    hoodoos: [[27.5, 5.2, 5.0, 1.0], [-27.6, 4.6, 4.6, 0.95]],
   },
   c: {
     bonfireZ: 29.5, bound: 40, groundY: -CROWN_DROP,
-    buttes: [[35.5, -8.5, 8, 6.5, 3.5, CROWN_DROP], [-36, -3.5, 9, 7, 4.2, CROWN_DROP], [15, -38, 6.5, 6, 2.8, CROWN_DROP], [-19, -37, 7.5, 6, 3.4, CROWN_DROP]],
+    buttes: [[24.6, -4.5, 8.5, 3.8, 3.8, CROWN_DROP], [-24.8, -2, 9.5, 4, 4.4, CROWN_DROP], [12.5, -31, 6.5, 4.6, 2.8, CROWN_DROP], [-16, -30.5, 7.5, 4.6, 3.4, CROWN_DROP]],
     hoodoos: [],
   },
 };
@@ -105,7 +106,7 @@ const TILE = [0.2, 0.172, 0.138]; // the ring's sandstone tiles
 const KERB = [0.14, 0.115, 0.098]; // its kerb, darker
 const CENTRE = [0.18, 0.158, 0.135];
 const CLAY = [0.22, 0.18, 0.14]; // the dry lake bed's plates
-const CUT = [0.17, 0.15, 0.13]; // the quarry's cut stone
+const CUT = [0.14, 0.12, 0.1]; // the quarry's cut stone
 const WOOD = [0.11, 0.08, 0.058];
 const CLOTH = [0.25, 0.05, 0.036]; // the banners: a deep red
 const SKIN = [0.3, 0.265, 0.2]; // a drum's head
@@ -336,16 +337,19 @@ function inside(poly, x, z) {
   return c;
 }
 
-/** Each point's outward normal on a closed polygon (the mean of its two edges' normals). */
+/** Each point's outward normal on a closed polygon (the mean of its two edges' normals, turned out). */
 function normals(poly) {
   const n = poly.length, out = [];
-  let area = 0;
-  for (let i = 0; i < n; i++) area += poly[i][0] * poly[(i + 1) % n][1] - poly[(i + 1) % n][0] * poly[i][1];
-  const s = area > 0 ? -1 : 1;
   for (let i = 0; i < n; i++) {
     const a = poly[(i + n - 1) % n], b = poly[(i + 1) % n];
     const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
-    out.push([(s * dz) / l, (-s * dx) / l]);
+    let nx = dz / l, nz = -dx / l;
+    // (whichever way the outline runs: a step out along it leaves the polygon)
+    if (inside(poly, poly[i][0] + nx * 0.4, poly[i][1] + nz * 0.4)) {
+      nx = -nx;
+      nz = -nz;
+    }
+    out.push([nx, nz]);
   }
   return out;
 }
@@ -524,13 +528,13 @@ export function createSkybreakRing(U, colliders) {
   if (OPT === 'a') {
     // ---- banners east and west, the war drum and the gong, the judges' dais to the north
     for (const sx of [-1, 1]) {
-      for (const z of [-11, -4, 3]) {
-        const x = sx * (HALF + 2.7);
+      for (const z of [-1.5, 4.5]) {
+        const x = sx * (HALF + 2.8);
         piece('banner', x, z, 0.3, buildBanner(pr, x, z, 5.6), { mat: 'wood', cr: 0.25, stub: false, lift: 1, cover: false, hp: BUTTE.banner });
       }
     }
-    piece('drum', 19.2, -14.2, 1.15, buildDrum(pr, 19.2, -14.2, -0.35), { mat: 'wood', cr: 1.0, stub: false, lift: 1, topples: false, hp: BUTTE.drum });
-    piece('gong', -19.4, -13.6, 1.0, buildGong(pr, -19.4, -13.6), { mat: 'metal', cr: 0.6, stub: false, hp: Infinity, topples: false });
+    piece('drum', 17.8, -15.8, 1.15, buildDrum(pr, 17.8, -15.8, -0.35), { mat: 'wood', cr: 1.0, stub: false, lift: 1, topples: false, hp: BUTTE.drum });
+    piece('gong', -18.4, -16.4, 1.0, buildGong(pr, -18.4, -16.4), { mat: 'metal', cr: 0.6, stub: false, hp: Infinity, topples: false });
     {
       const z = -HALF - 4.6, geos = [stoneBox(pr, 0, 0, z, 10, 0.32, 3.4, { col: KERB, lump: 0.02 }), stoneBox(pr, 0, 0.32, z - 0.35, 8.4, 0.3, 2.4, { col: KERB, lump: 0.02 })];
       for (const x of [-2.6, 0, 2.6]) geos.push(stoneBox(pr, x, 0.62, z - 0.7, 1.0, 0.55, 0.7, { col: CENTRE, lump: 0.03 }));
@@ -591,7 +595,8 @@ export function createSkybreakRing(U, colliders) {
     };
     for (let tier = 0; tier < 3; tier++) {
       for (const b of course(tier)) {
-        const geo = stoneBox(rng, b.x, 0, b.z, b.w, b.top, b.d, { col: CUT, k: 1.3, lump: 0.05 });
+        if (LY.buttes.some(([bx, bz, , br2]) => Math.hypot(b.x - bx, b.z - bz) < br2 + 0.6)) continue; // (the butte stands there)
+        const geo = stoneBox(rng, b.x, 0, b.z, b.w, b.top, b.d, { col: CUT, k: 0.95, lump: 0.05 });
         if (tier === 0) {
           // the lowest course breaks (the hero reaches it, his blows and the boss's beam do)
           const r = Math.min(b.w, b.d) * 0.5;
@@ -660,8 +665,8 @@ export function createSkybreakRing(U, colliders) {
     // rock spires rising out of the depths past the rim (east, west and north; none to the south)
     for (let i = 0; i < rim.length; i++) {
       const [x, z] = rim[i];
-      if (z > 14 || hash2(i * 2.9, 4.1) < 0.6) continue;
-      const out = range(br, 2.2, 6.5), h = range(br, 3, 9.5) + (z < -10 ? 3 : 0), r = range(br, 0.9, 1.7);
+      if (z > 14 || hash2(i * 2.9, 4.1) < 0.78) continue;
+      const out = range(br, 3, 7.5), h = range(br, 3, 9.5) + (z < -10 ? 3 : 0), r = range(br, 0.9, 1.7);
       const sx = x + N[i][0] * out, sz = z + N[i][1] * out;
       const geo = buildHoodoo(br, sx, sz, { h, r, below: CROWN_DROP + 2, lean: range(br, 0.04, 0.16), yaw: Math.atan2(N[i][0], N[i][1]) });
       breakables.push({ kind: 'spire', mat: 'stone', look: 'prop', x: sx, z: sz, r, h, geos: [geo], colliders: [], hp: BUTTE.hoodoo, topples: false, cover: false, lift: 0, wreck: false });
@@ -680,7 +685,7 @@ export function createSkybreakRing(U, colliders) {
   if (OPT !== 'c') {
     for (let i = 0, k = 0; i < 600 && k < 9; i++) {
       const a = br() * TAU, r = range(br, 26, 46), x = Math.cos(a) * r, z = Math.sin(a) * r + 4;
-      if (!free(x, z, 2.5) || (z > HALF && Math.abs(x) < 7)) continue;
+      if (!free(x, z, 2.5) || (z > 6 && Math.abs(x) < 26)) continue; // (nothing tall on the near side)
       const s = range(br, 0.75, 1.15), geos = buildDeadTree(br, x, z, s);
       for (const geo of geos) {
         const col = geo.attributes.aCol;
@@ -738,7 +743,7 @@ export function createSkybreakRing(U, colliders) {
     },
     floorCarry: mul(TILE, 1.4), // (a tile torn up, in his hands)
     sky: { ...PALETTE[0], moonDir: PALETTE[0].dir, moonColor: PALETTE[0].moon },
-    ambience: makeAmbience(braziers),
+    ambience: makeAmbience(braziers, { haze: OPT === 'c' }),
   };
 }
 
@@ -762,7 +767,7 @@ export const BUTTE = Object.freeze({
  */
 const PALETTE = [
   { moon: [0.86, 0.5, 0.28], dir: [-0.82, 0.46, 0.3], ambient: [0.07, 0.045, 0.048], fogColor: [0.026, 0.014, 0.013], fogNear: 32, fogFar: 64 },
-  { moon: [1.0, 0.74, 0.3], dir: [-0.62, 0.58, 0.3], ambient: [0.075, 0.052, 0.026], fogColor: [0.034, 0.022, 0.009], fogNear: 32, fogFar: 64 },
+  { moon: [1.0, 0.74, 0.3], dir: [-0.62, 0.58, 0.3], ambient: [0.092, 0.066, 0.032], fogColor: [0.034, 0.022, 0.009], fogNear: 32, fogFar: 64 },
   { moon: [0.26, 0.32, 0.48], dir: [-0.3, 0.88, 0.36], ambient: [0.02, 0.024, 0.036], fogColor: [0.006, 0.008, 0.012], fogNear: 26, fogFar: 56 },
 ];
 /** The weather's numbers: lightning, dust, motes, rain. */
@@ -773,6 +778,7 @@ const WEATHER = Object.freeze({
   dust: Object.freeze([9, 12, 26]), // a second, by form
   motes: 14, // golden motes round him a second (form 2)
   rain: 90, // streaks a second (form 3)
+  haze: 5, // c: strokes of haze a second in the depths round the crown
   glow: Object.freeze({ color: [1.0, 0.72, 0.25], intensity: 1.3, radius: 9 }), // the light round him in form 2
   brazier: Object.freeze({ rate: 12, light: [1.0, 0.5, 0.18], intensity: 1.4, radius: 6 }),
 });
@@ -782,15 +788,16 @@ const flameBlob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.5, size: 0.6,
 const part = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, size: 0.15, sizeEnd: 0.1, glyph: '.', color: [1, 1, 1], colorEnd: [0, 0, 0], alpha: 1, alphaEnd: 0, drag: 0, flicker: 0, spin: 0, rot: 0, gravity: 0 };
 const DUST = [0.3, 0.24, 0.19], DUST_END = [0.12, 0.09, 0.07];
 const GOLD = [2.2, 1.5, 0.45], GOLD_END = [0.5, 0.28, 0.05];
-const RAIN = [0.32, 0.36, 0.46], RAIN_END = [0.16, 0.18, 0.24];
+const RAIN = [0.48, 0.54, 0.68], RAIN_END = [0.2, 0.22, 0.3];
 const STORM_DUST = [0.16, 0.16, 0.18];
+const HAZE = [0.2, 0.13, 0.11];
 
 /**
  * The ring's weather (atmosphere.js runs it instead of the fireflies / mist / leaves): the light by
  * the boss's form, lightning, wind-blown dust, golden motes, rain, the braziers' flames and lights.
  * Its own random stream (never Math.random: the seeded sims replay the AI from it).
  */
-function makeAmbience(braziers) {
+function makeAmbience(braziers, { haze = false } = {}) {
   let seed = 0x2b7e1516;
   const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
   const st = {
@@ -801,7 +808,7 @@ function makeAmbience(braziers) {
     next: 4, // s to the next bolt (form 3)
     again: -1, // a bolt's second flicker
     dim: 0, dimWant: 0, dimHold: 0,
-    dust: 0, motes: 0, rain: 0,
+    dust: 0, motes: 0, rain: 0, haze: 0,
     glow: null,
   };
   const cur = { moon: [0, 0, 0], dir: [0, 0, 0], ambient: [0, 0, 0], fogColor: [0, 0, 0], fogNear: 0, fogFar: 0 };
@@ -953,6 +960,35 @@ function makeAmbience(braziers) {
         part.gravity = 0;
         spawn(fxA);
       }
+      // c: haze drifting in the depths below the crown's rim (wide faint strokes)
+      if (haze) {
+        st.haze += dt * WEATHER.haze;
+        while (st.haze >= 1) {
+          st.haze -= 1;
+          const x = f.x + (rnd() - 0.5) * 56, z = f.z + (rnd() - 0.5) * 40 - 4;
+          if (inside(CROWN, x, z)) continue;
+          part.x = x;
+          part.z = z;
+          part.y = -2 - rnd() * 7;
+          part.vx = 0.4 + 1.2 * storm + rnd() * 0.3;
+          part.vy = 0;
+          part.vz = (rnd() - 0.5) * 0.2;
+          part.life = 7 + rnd() * 5;
+          part.size = 2.4 + rnd() * 2;
+          part.sizeEnd = 4.5;
+          part.glyph = '~-';
+          part.color = HAZE;
+          part.colorEnd = HAZE;
+          part.alpha = 0.09;
+          part.alphaEnd = 0;
+          part.drag = 0;
+          part.flicker = 0;
+          part.spin = 0;
+          part.rot = (rnd() - 0.5) * 0.15;
+          part.gravity = 0;
+          spawn(fxA);
+        }
+      }
       // golden motes rising round him (form 2)
       const p = boss?.position;
       if (p && gold > 0.05 && !dead) {
@@ -993,8 +1029,8 @@ function makeAmbience(braziers) {
           part.vy = -14 - rnd() * 4;
           part.vz = 0.4;
           part.life = 0.55 + rnd() * 0.2;
-          part.size = 0.3;
-          part.sizeEnd = 0.3;
+          part.size = 0.42;
+          part.sizeEnd = 0.42;
           part.glyph = '/';
           part.color = RAIN;
           part.colorEnd = RAIN_END;
