@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-21',
+        title: 'The Cinder Wyrm glares from every side',
+        notes: [
+          'The wyrm\'s eyes are slanted slits of fire under a heavy brow, so it glares at you from the side, from the front and from below, not only from one angle.',
+          'The fight is unchanged.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'The Ash Disciple and the Starless Lord move like swordsmen',
         notes: [
           'Shen Hui and the Starless Lord swing their blades now: a cut speeds up into the blow, follows through and flows into the next one. Before, they jumped from one held pose to the next.',

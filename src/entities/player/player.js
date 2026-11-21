@@ -167,6 +167,7 @@ export class Player {
     this.look = getLook(game.heroLook)?.id ?? DEFAULT_LOOK;
     const sword = swordFromUrl(), lo = HERO_LOOKS[this.look].loadout;
     this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo);
+    game.onModelBuilt?.('player'); // (see Dragon: the headless sims reseed their random stream here)
     tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
