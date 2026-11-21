@@ -299,6 +299,11 @@ function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed', rng = null,
       }
       return pend.some((e) => !e.done && e.at - t < 0.7);
     },
+    /** Is a cue it means to answer due within `s` seconds? */
+    dueWithin(s) {
+      const t = G.game.time;
+      return pend.some((e) => !e.done && e.at - t < s);
+    },
   };
 }
 
@@ -820,13 +825,13 @@ async function scenarioPace() {
       p.debug.noRiposte = true;
       G.defend = paceDefender(G);
       Math.random = mulberry32(seed * 7 + ph);
-      const flashes = [], acts = [], cats = {}, busyT = [];
-      let chained = 0, prevAct = null, prevMode = d.mode;
+      const flashes = [], acts = [], cats = {}, busyT = [], moves = {};
+      let chained = 0, prevAct = null, prevMode = d.mode, linger = 0, frames = 0;
       const s0 = { ...(d.brain.stats ?? {}) };
       G.watch = (n, e) => {
         if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashes.push([game.time, e.tell, e.attack]);
         if (n === 'combat:charge' && Number.isFinite(e?.dur)) for (let k = 0; k < e.dur; k += 0.1) busyT.push(game.time + k);
-        if (n === 'dragon:windup' && !skip(e?.name)) { acts.push([game.time, e.name]); const c = DIR.categoryOf(MOVES[e.name]); cats[c] = (cats[c] || 0) + 1; }
+        if (n === 'dragon:windup' && !skip(e?.name)) { acts.push([game.time, e.name]); moves[e.name] = (moves[e.name] || 0) + 1; const c = DIR.categoryOf(MOVES[e.name]); cats[c] = (cats[c] || 0) + 1; }
       };
       const roam = mulberry32(seed * 31 + ph), goal = { r: 2.5, a: 0, until: -1 };
       const t0 = game.time;
@@ -850,11 +855,14 @@ async function scenarioPace() {
         if (d.mode === 'act' && a && a !== prevAct && !a.def.transition && !a.def.counter && prevMode === 'act' && prevAct) chained++;
         prevAct = d.mode === 'act' ? a : null;
         prevMode = d.mode;
+        frames++;
+        if (d.fx.shotsAlive || d.fx.strikesAlive || d.ki?.busy || d.terrain?.busy) linger++;
       }
       G.watch = null;
       G.defend = null;
       const T = game.time - t0;
       const hurt = G.hits.filter((h) => h.t > t0 && h.r === RESULT.HIT).length;
+      const sky = flashes.filter((f) => f[2] === 'thunderfall').length;
       const ts = [t0, ...flashes.map((f) => f[0]), ...busyT.filter((x) => x > t0 && x < t0 + T), t0 + T].sort((x, y) => x - y);
       let gapMax = 0;
       for (let i = 1; i < ts.length; i++) gapMax = Math.max(gapMax, ts[i] - ts[i - 1]);
@@ -870,15 +878,17 @@ async function scenarioPace() {
       const st = d.brain.stats ?? {};
       const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
       const dodge = flashes.filter((f) => answer(f[1]) === 'dodge').length / (flashes.length || 1);
-      rows.push({ seed, ph, perMin: (flashes.length * 60) / T, dodge, gapMax, picks: acts.length, chained, conflicts, conflictAt, holds: dlt('holds'), feints: dlt('feints'), links: dlt('links'), hurt, cats });
+      rows.push({ seed, ph, perMin: (flashes.length * 60) / T, dodge, gapMax, picks: acts.length, chained, conflicts, conflictAt, holds: dlt('holds'), feints: dlt('feints'), links: dlt('links'), hurt, cats, moves, linger: linger / (frames || 1), sky: (sky * 60) / T, skySkips: d.ki?.shots?.stats?.skySkips ?? 0 });
     }
   }
+  PACE_ROWS.push(...rows);
   const CATS = DIR.CATEGORIES;
   out(`   ${SECS} s per form, seeds ${SEEDS.join(', ')}`);
   out(`   seed ph cue/min dodge% gapMax moves chain links hold/f clash hurt  ${CATS.map((c) => c.slice(0, 7).padStart(8)).join('')}`);
   for (const r of rows) out(`   ${String(r.seed).padStart(4)}  ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${(r.dodge * 100).toFixed(0).padStart(6)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.chained).padStart(5)} ${String(r.links).padStart(5)} ${`${r.holds}/${r.feints}`.padStart(6)} ${String(r.conflicts).padStart(5)} ${String(r.hurt).padStart(4)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / (r.picks || 1)).toFixed(0).padStart(8)).join('')}${r.conflicts ? `  CONFLICTS ${r.conflictAt.slice(0, 4).join(' · ')}` : ''}`);
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
   for (let ph = 1; ph <= FORMS; ph++) out(`   mean F${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min, ${(mean(ph, 'dodge') * 100).toFixed(0)} % to dodge, longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s, ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves`);
+  paceSummary(rows, CATS);
   if (process.env.ABYSS_PFORMS) return;
   // (TUNING.pressure.meter: each form busier than the one before in the seeds' mean (rampMean), on
   // every seed at least `ramp` x, `minRate` cues a minute, no gap over `maxGap` s)
@@ -2115,6 +2125,266 @@ async function scenarioInteg() {
   assert(thrown === 10 && peak > 0 && peak < 3500, `the fire field's peak with everything at once: ${peak} < 3500 blobs`);
   assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
 }
+
+// --- tune
+// The tuning pass's meters (opt-in, reported, not asserted): PACE's summary over the seeds, the pick
+// table (how often each move is picked per form at fixed hero distances), and the Lord suite's mortal
+// bots (`probe`: whole fights at 95 / 85 / 70 %; `defend`: a pure defender, two minutes a form).
+// Ten seeds for the tables: ABYSS_PSEEDS=4242,7,99,1337,2024,11,23,555,808,31337 (PACE, picks) and
+// ABYSS_PRSEEDS=... (probe, defend).
+const PACE_ROWS = [];
+const TEN = '4242,7,99,1337,2024,11,23,555,808,31337';
+const stat = (v) => ({ min: Math.min(...v), mean: v.reduce((a, x) => a + x, 0) / (v.length || 1), max: Math.max(...v) });
+const f1s = (x) => x.toFixed(1);
+
+/** PACE over the seeds, one line per form, and (ABYSS_PMOVES) each move's picks per 120 s. */
+function paceSummary(rows, CATS) {
+  out('   -- summary over the seeds (min / mean / max) --');
+  for (let ph = 1; ph <= FORMS; ph++) {
+    const rs = rows.filter((r) => r.ph === ph);
+    if (!rs.length) continue;
+    const c = stat(rs.map((r) => r.perMin)), g = stat(rs.map((r) => r.gapMax)), dg = stat(rs.map((r) => r.dodge * 100)), lg = stat(rs.map((r) => r.linger * 100));
+    const prev = rows.filter((r) => r.ph === ph - 1);
+    let ramp = '';
+    if (prev.length) {
+      const m0 = stat(prev.map((r) => r.perMin)).mean;
+      const worst = Math.min(...rs.map((r) => { const p = prev.find((x) => x.seed === r.seed); return p ? r.perMin / p.perMin : 9; }));
+      ramp = ` · x${(c.mean / m0).toFixed(3)} the form before (worst seed x${worst.toFixed(3)})`;
+    }
+    const picks = rs.reduce((a, r) => a + r.picks, 0) || 1;
+    const mix = CATS.map((k) => [k, rs.reduce((a, r) => a + (r.cats[k] || 0), 0) / picks]).filter((x) => x[1] > 0).map(([k, v]) => `${k} ${(v * 100).toFixed(0)}`).join(' ');
+    const sum = (k) => rs.reduce((a, r) => a + r[k], 0);
+    out(`   F${ph}: cues/min ${f1s(c.min)} / ${f1s(c.mean)} / ${f1s(c.max)}${ramp} · longest gap max ${g.max.toFixed(2)} mean ${g.mean.toFixed(2)} s · dodge ${dg.min.toFixed(0)} / ${dg.mean.toFixed(0)} / ${dg.max.toFixed(0)} % · lingers ${lg.mean.toFixed(0)} % (${lg.min.toFixed(0)} - ${lg.max.toFixed(0)}) · conflicts ${sum('conflicts')} · holds ${sum('holds')} feints ${sum('feints')} · mix ${mix}${ph >= (TUNING.shots?.weather?.form ?? 3) ? ` · Thunderfall ${stat(rs.map((r) => r.sky)).mean.toFixed(1)}/min (every ${(60 / Math.max(0.01, stat(rs.map((r) => r.sky)).mean)).toFixed(1)} s; ${stat(rs.map((r) => r.sky)).min.toFixed(1)} - ${stat(rs.map((r) => r.sky)).max.toFixed(1)}), slot misses ${sum('skySkips')}` : ''}`);
+  }
+  if (!process.env.ABYSS_PMOVES) return;
+  out('   -- picks per 120 s (mean of the seeds) by form --');
+  const names = MOVE_NAMES.filter((n) => !MOVES[n].transition && !MOVES[n].counter);
+  for (const n of names) {
+    const v = [1, 2, 3].map((ph) => { const rs = rows.filter((r) => r.ph === ph); return rs.length ? rs.reduce((a, r) => a + (r.moves[n] || 0), 0) / rs.length : 0; });
+    out(`   ${n.padEnd(14)} w ${[1, 2, 3].map((f) => String(weightIn(MOVES[n], f)).padStart(4)).join('')} │ ${v.map((x, i) => (weightIn(MOVES[n], i + 1) > 0 ? x.toFixed(1) : '-').padStart(6)).join('')}`);
+  }
+}
+
+/** A god-mode defender PINNED `r` m from him (the footwork cannot close it: after each frame the hero is
+ *  set back on that circle, its bearing drifting slowly; not while he rolls, is down or thrown);
+ *  r 'away': 14 m off. */
+function holdAt(G, r, roam, goal) {
+  const { game } = G, d = game.dragon, p = game.player;
+  if (['roll', 'knockdown', 'stagger', 'guardBreak', 'lock', 'bounce'].includes(p.state) || p.kb?.lengthSq?.() > 1) return;
+  if (game.time > goal.until) {
+    goal.da = (roam() - 0.5) * 0.5;
+    goal.until = game.time + 4;
+  }
+  const R = r === 'away' ? 14 : r;
+  const a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + goal.da * DT;
+  let gx = d.position.x + Math.sin(a) * R, gz = d.position.z + Math.cos(a) * R;
+  const lim = 34;
+  const k = Math.hypot(gx, gz) > lim ? lim / Math.hypot(gx, gz) : 1;
+  p.position.x = gx * k;
+  p.position.z = gz * k;
+  G.input.axis = { x: 0, y: 0 };
+}
+
+/** PICKS: how often each move is picked per form with the hero held 2.5 / 5 / 9 m from him, and kept
+ *  away (14 m). Seeds ABYSS_PSEEDS (default three), ABYSS_PSECS s a run (default 120). */
+async function scenarioPicks() {
+  out('\n== scenario PICKS (each move\'s picks per form, the hero held 2.5 / 5 / 9 m off and kept away) ==');
+  const DIR = await imp('src/entities/enemies/duelist/director.js');
+  const SECS = Number(process.env.ABYSS_PSECS ?? 120);
+  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const DISTS = (process.env.ABYSS_PDISTS ?? '2.5,5,9,away').split(',').map((x) => (x === 'away' ? x : Number(x)));
+  const skip = (name) => !MOVES[name] || MOVES[name].transition || MOVES[name].counter;
+  const tab = {}; // tab[form][dist] = { moves: {}, cats: {}, picks, secs, flashes, dodge }
+  for (const seed of SEEDS) {
+    for (let ph = 1; ph <= FORMS; ph++) {
+      for (const r of DISTS) {
+        const G = build(seed, true);
+        const { game } = G;
+        const d = game.dragon, p = game.player;
+        duel(G, { dist: r === 'away' ? 9 : r, ai: true, form: ph });
+        p.debug.god = true;
+        p.debug.noRiposte = true;
+        G.defend = paceDefender(G);
+        Math.random = mulberry32(seed * 7 + ph);
+        const cell = ((tab[ph] ??= {})[r] ??= { moves: {}, cats: {}, picks: 0, secs: 0, flashes: 0, dodge: 0, dist: 0, n: 0 });
+        G.watch = (n, e) => {
+          if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) { cell.flashes++; if (e.tell === TELL.RED || e.tell === TELL.BLACK) cell.dodge++; }
+          if (n === 'dragon:windup' && !skip(e?.name)) { cell.picks++; cell.moves[e.name] = (cell.moves[e.name] || 0) + 1; const c = DIR.categoryOf(MOVES[e.name]); cell.cats[c] = (cell.cats[c] || 0) + 1; }
+        };
+        const roam = mulberry32(seed * 31 + ph), goal = { a: 0, until: -1 };
+        const t0 = game.time;
+        for (let i = 0; i < Math.round(SECS / DT); i++) {
+          const rolled = G.defend.act();
+          if (!rolled && p.state !== 'roll') holdAt(G, r, roam, goal);
+          game.mouseGround.set(d.position.x, 0, d.position.z);
+          G.tick(DT);
+          if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+          if ((i & 15) === 0) { cell.dist += Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z); cell.n++; }
+        }
+        cell.secs += game.time - t0;
+        G.watch = null;
+        G.defend = null;
+      }
+    }
+  }
+  const names = MOVE_NAMES.filter((n) => !skip(n));
+  out(`   ${SECS} s a run, seeds ${SEEDS.join(', ')}; picks per 120 s (mean of the seeds); columns per form: ${DISTS.join(' / ')} m`);
+  out(`   ${'move'.padEnd(14)} ${'weights'.padEnd(14)}${[1, 2, 3].map((f) => `│ F${f} ${DISTS.map((x) => String(x).padStart(5)).join('')} `).join('')}`);
+  for (const n of names) {
+    const cells = [1, 2, 3].map((ph) => DISTS.map((r) => { const c = tab[ph]?.[r]; if (!c || !(weightIn(MOVES[n], ph) > 0)) return '    -'; return ((c.moves[n] || 0) * 120 / c.secs).toFixed(1).padStart(5); }).join(''));
+    out(`   ${n.padEnd(14)} ${[1, 2, 3].map((f) => String(weightIn(MOVES[n], f))).join('/').padEnd(14)}${cells.map((c) => `│    ${c} `).join('')}`);
+  }
+  for (let ph = 1; ph <= FORMS; ph++) {
+    for (const r of DISTS) {
+      const c = tab[ph][r];
+      const mix = DIR.CATEGORIES.filter((k) => c.cats[k]).map((k) => `${k} ${((c.cats[k] * 100) / (c.picks || 1)).toFixed(0)}`).join(' ');
+      const terr = names.filter((n) => MOVES[n].terrain).reduce((a, n) => a + (c.moves[n] || 0), 0);
+      const zero = names.filter((n) => weightIn(MOVES[n], ph) > 0 && !(c.moves[n] > 0));
+      out(`   F${ph} at ${String(r).padStart(4)} (held at ${(c.dist / (c.n || 1)).toFixed(1)} m): ${((c.flashes * 60) / c.secs).toFixed(1)} cues/min, dodge ${((c.dodge * 100) / (c.flashes || 1)).toFixed(0)} %, ${((c.picks * 120) / c.secs).toFixed(1)} picks/120 s · ${mix} · terrain ${((terr * 75) / c.secs).toFixed(1)} per 75 s${zero.length ? ` · never picked: ${zero.join(', ')}` : ''}`);
+    }
+  }
+}
+
+/** A mortal fencer (no god mode; lord.mjs's): it answers a share of his cues, cuts in his openings,
+ *  gives the deathblows, and drinks below `drinkAt` HP in his openings or out of reach. `attack: false`:
+ *  a pure defender (it never swings). */
+function mortalFencer(G, { attack = true, drinkAt = 60, execute = true } = {}) {
+  const { game, input } = G;
+  const p = game.player, d = game.dragon;
+  input.axis = { x: 0, y: 0 };
+  if (!p.alive || game.state !== 'boss') return;
+  const tgt = new THREE.Vector3();
+  d.lockPoint(tgt);
+  game.mouseGround.set(tgt.x, 0, tgt.z);
+  const dx = tgt.x - p.position.x, dz = tgt.z - p.position.z, dist = Math.hypot(dx, dz);
+  if (p.state === 'lock') {
+    if (((game.realTime * 60) | 0) % 5 === 0) input.click(0);
+    return;
+  }
+  const busy = G.defend.act();
+  const tick = (game.realTime * 60) | 0;
+  const opening = d.broken || d.mode === 'react';
+  if (p.hp < drinkAt && p.flasks > 0 && (opening || dist > 6) && !G.defend.dueWithin(0.7) && ['idle', 'run', 'block'].includes(p.state) && tick % 6 === 0) { input.up(1); input.tap('KeyF'); return; }
+  if (dist > 2.6 && !busy) input.axis = { x: dx / dist, y: -dz / dist };
+  if (!attack) {
+    if (execute && d.broken && dist < 3.2 && tick % 12 === 0) input.click(0);
+    return;
+  }
+  const a = d.brain.act;
+  const open = d.broken || (d.mode === 'react' && ['recoil', 'stagger', 'flinch', 'reeling', 'trampled'].includes(d.brain.react?.kind)) || (a && a.t > a.recoveryStart) || p.critTimer > 0;
+  if (!busy && dist < 3.2 && (open ? tick % 20 === 0 : tick % 70 === 0)) input.click(0);
+}
+
+/** One mortal run: what it measured (hurt from player:hurt, so after the hero's own rules). */
+function mortalRun(seed, { skill, form = 1, secs = 600, attack = true, oneForm = false, execute = true } = {}) {
+  const G = build(seed, true);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 3, ai: false, form });
+  G.defend = makeDefender(G, { skill, rng: mulberry32(seed * 977 + Math.round(skill * 100)), world: true });
+  d.debug.setAI(true);
+  const formAt = [game.time];
+  const hurt = [], flashT = [], breaks = [];
+  let curAtk = null;
+  const th = p.takeHit.bind(p);
+  p.takeHit = (h) => { curAtk = h?.attack ?? null; const r = th(h); curAtk = null; return r; };
+  const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blows: 0 };
+  G.watch = (ev, e) => {
+    if (ev === 'player:hurt' && e?.damage > 0) {
+      const atk = curAtk ?? '';
+      const t = game.time;
+      const why = G.defend?.stats.skipped.some((x) => x[0] > t - 1.5 && x[1] === atk) ? 'missed' : flashT.some((x) => x[0] > t - 1.5 && x[1] === atk) ? 'ANSWERED' : 'uncued';
+      hurt.push([t, e.damage, atk || d.brain.act?.name || d.mode, form + formAt.length - 1, why]);
+    }
+    if (ev === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashT.push([game.time, e.attack]);
+    if (ev === 'dragon:postureBreak') breaks.push({ form: form + formAt.length - 1, bar: d.hp <= 0, at: d.hp / TUNING.hp });
+    if (ev === 'player:parry') { n.parries++; if (e?.perfect) n.perfect++; }
+    if (ev === 'player:perfectDodge') n.dodges++;
+    if (ev === 'player:heal') n.heals++;
+    if (ev === 'dragon:plunged') n.blows++;
+    if (/^dragon:phase[23]$/.test(ev)) formAt.push(game.time);
+  };
+  const t0 = game.time;
+  let outcome = 'time';
+  run(G, secs, () => {
+    mortalFencer(G, { attack, execute });
+    if (oneForm && d.brain.pendingPhase > form) d.brain.pendingPhase = 0;
+  }, () => {
+    if (d.mode === 'dead') { outcome = 'won'; return true; }
+    if (!p.alive) { outcome = 'died'; return true; }
+    return false;
+  });
+  G.watch = null;
+  G.defend = null;
+  const T = game.time - t0;
+  let worst1 = 0, worst1At = '';
+  for (let i = 0; i < hurt.length; i++) {
+    let s = 0;
+    const at = [];
+    for (let j = i; j < hurt.length && hurt[j][0] - hurt[i][0] <= 1; j++) { s += hurt[j][1]; at.push(hurt[j][2]); }
+    if (s > worst1) { worst1 = s; worst1At = at.join('+'); }
+  }
+  const worst = hurt.reduce((m, h) => (h[1] > m[1] ? h : m), [0, 0, '']);
+  const perForm = formAt.map((t, i) => ((formAt[i + 1] ?? game.time) - t));
+  const lostByForm = [1, 2, 3].map((f) => hurt.filter((h) => h[3] === f).reduce((a, h) => a + h[1], 0));
+  const why = hurt.reduce((m, h) => ((m[h[4]] = (m[h[4]] || 0) + h[1]), m), {});
+  const answered = hurt.filter((h) => h[4] !== 'missed').map((h) => `${h[2]} ${h[1].toFixed(0)} ${h[4]} @${(h[0] - t0).toFixed(1)}`);
+  const killer = outcome === 'died' ? hurt[hurt.length - 1]?.[2] ?? '?' : null;
+  return { seed, skill, outcome, T, why, answered, breaks, form: d.phase, bar: d.hp / TUNING.hp, hp: p.hp, flasks: p.maxFlasks - p.flasks, heals: n.heals, hits: hurt.length, dmg: hurt.reduce((a, h) => a + h[1], 0), worst: worst[1], worstBy: worst[2], worst1, worst1At, perForm, lostByForm, killer, ...n, byMove: hurt.reduce((m, h) => ((m[h[2]] = (m[h[2]] || 0) + h[1]), m), {}) };
+}
+
+const ends = (r) => r.breaks.map((b) => `F${b.form}:${b.bar ? 'bar' : `posture@${(b.at * 100).toFixed(0)}%`}`).join(' ') || '-';
+
+/** PROBE: mortal bots that answer 95 / 85 / 70 % of his cues (ABYSS_PSKILLS), seeds ABYSS_PRSEEDS,
+ *  whole fights (10 minutes at most). Reported, not asserted. */
+async function scenarioProbe() {
+  out('\n== scenario PROBE (mortal bots, whole fights: answer a share of his cues, cut in his openings, drink below 60 HP) ==');
+  const skills = (process.env.ABYSS_PSKILLS ?? '0.95,0.85,0.7').split(',').map(Number);
+  const seeds = (process.env.ABYSS_PRSEEDS ?? '4242,7,99').split(',').map(Number);
+  const all = [];
+  for (const skill of skills) {
+    for (const seed of seeds) {
+      const r = mortalRun(seed, { skill });
+      all.push(r);
+      out(`   skill ${skill} seed ${String(seed).padEnd(5)} ${r.outcome.padEnd(4)} ${r.T.toFixed(0).padStart(4)} s · form ${r.form} bar ${(r.bar * 100).toFixed(0)} % · forms ${r.perForm.map((x) => x.toFixed(0)).join(' / ')} s · ends ${ends(r)} · HP lost by form ${r.lostByForm.map((x) => x.toFixed(0)).join(' / ')} · damage missed / answered / uncued ${['missed', 'ANSWERED', 'uncued'].map((k) => (r.why[k] ?? 0).toFixed(0)).join(' / ')} · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst blow ${r.worst.toFixed(1)} (${r.worstBy}) · worst second ${r.worst1.toFixed(1)} (${r.worst1At}) · parries ${r.parries} (perfect ${r.perfect}) · perfect dodges ${r.dodges} · deathblows ${r.blows}${r.killer ? ` · killed by ${r.killer}` : ''}`);
+      if (process.env.ABYSS_PRMOVES) out(`        damage by move: ${Object.entries(r.byMove).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · ')}${r.answered.length ? `\n        not missed by choice: ${r.answered.join(' · ')}` : ''}`);
+    }
+  }
+  out('   -- summary by skill --');
+  for (const skill of skills) {
+    const rs = all.filter((r) => r.skill === skill), won = rs.filter((r) => r.outcome === 'won');
+    const T = won.length ? stat(won.map((r) => r.T)) : null;
+    const pf = [0, 1, 2].map((i) => won.length ? stat(won.map((r) => r.perForm[i] ?? 0)) : null);
+    const kills = rs.filter((r) => r.killer).reduce((m, r) => ((m[r.killer] = (m[r.killer] || 0) + 1), m), {});
+    const bars = rs.flatMap((r) => r.breaks).reduce((m, b) => ((m[b.bar ? 'bar' : 'posture'] += 1), m), { bar: 0, posture: 0 });
+    const w = rs.reduce((m, r) => (r.worst > m.worst ? r : m), rs[0]), w1 = rs.reduce((m, r) => (r.worst1 > m.worst1 ? r : m), rs[0]);
+    out(`   skill ${skill}: won ${won.length} / ${rs.length}${T ? ` in ${T.min.toFixed(0)} / ${T.mean.toFixed(0)} / ${T.max.toFixed(0)} s (forms ${pf.map((s) => (s ? `${s.min.toFixed(0)}-${s.mean.toFixed(0)}-${s.max.toFixed(0)}` : '-')).join(' / ')} s)` : ''} · forms ended by bar ${bars.bar}, by posture ${bars.posture} · HP lost by form (mean) ${[0, 1, 2].map((i) => stat(rs.map((r) => r.lostByForm[i])).mean.toFixed(0)).join(' / ')} · worst blow ${w.worst.toFixed(1)} (${w.worstBy}) · worst second ${w1.worst1.toFixed(1)} (${w1.worst1At}, seed ${w1.seed})${Object.keys(kills).length ? ` · deaths by ${Object.entries(kills).map(([k, v]) => `${k} ${v}`).join(', ')}` : ''}`);
+  }
+  return all;
+}
+
+/** DEFEND: a mortal pure defender (95 %, never swings, drinks its flasks) against each form for
+ *  ABYSS_DSECS s (default 120; the form is held). Defensive play must not be punished. */
+async function scenarioDefend() {
+  out('\n== scenario DEFEND (a mortal pure defender, 95 %, two minutes of each form) ==');
+  const secs = Number(process.env.ABYSS_DSECS ?? 120);
+  const seeds = (process.env.ABYSS_PRSEEDS ?? '4242,7,99').split(',').map(Number);
+  const skill = Number(process.env.ABYSS_DSKILL ?? 0.95);
+  const all = [];
+  for (const seed of seeds) {
+    for (let form = 1; form <= FORMS; form++) {
+      const r = mortalRun(seed, { skill, form, secs, attack: false, oneForm: true, execute: false });
+      all.push({ ...r, f: form });
+      out(`   seed ${String(seed).padEnd(5)} form ${form}: ${r.outcome === 'died' ? `DIED at ${r.T.toFixed(0)} s (${r.killer})` : `alive after ${r.T.toFixed(0)} s, ${r.hp.toFixed(0)} HP`} · damage missed / answered / uncued ${['missed', 'ANSWERED', 'uncued'].map((k) => (r.why[k] ?? 0).toFixed(0)).join(' / ')} · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst blow ${r.worst.toFixed(1)} (${r.worstBy}) · worst second ${r.worst1.toFixed(1)} (${r.worst1At}) · parries ${r.parries} · his bar ${(r.bar * 100).toFixed(0)} %`);
+      if (process.env.ABYSS_PRMOVES) out(`        damage by move: ${Object.entries(r.byMove).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · ')}${r.answered.length ? `\n        not missed by choice: ${r.answered.join(' · ')}` : ''}`);
+    }
+  }
+  for (let form = 1; form <= FORMS; form++) {
+    const rs = all.filter((r) => r.f === form);
+    const w = rs.reduce((m, r) => (r.worst > m.worst ? r : m), rs[0]), w1 = rs.reduce((m, r) => (r.worst1 > m.worst1 ? r : m), rs[0]);
+    out(`   form ${form}: alive ${rs.filter((r) => r.outcome !== 'died').length} / ${rs.length} · lowest HP ${Math.min(...rs.map((r) => (r.outcome === 'died' ? 0 : r.hp))).toFixed(0)} · flasks used max ${Math.max(...rs.map((r) => r.flasks))} · HP lost mean ${stat(rs.map((r) => r.dmg)).mean.toFixed(0)} · worst blow ${w.worst.toFixed(1)} (${w.worstBy}) · worst second ${w1.worst1.toFixed(1)} (${w1.worst1At}, seed ${w1.seed})`);
+  }
+}
 //
 const S = {
   level: scenarioLevel,
@@ -2149,8 +2419,11 @@ const S = {
   // --- integ
   integ: scenarioInteg,
 };
+// --- tune (opt-in: run only when named)
+const OPT_IN = { picks: scenarioPicks, probe: scenarioProbe, defend: scenarioDefend };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {
+  if (OPT_IN[k]) S[k] = OPT_IN[k];
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }
   await S[k]();
 }
