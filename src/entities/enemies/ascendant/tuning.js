@@ -1,4 +1,7 @@
 import { PLAYER_SCALE } from '../../player/model.js';
+import { SHOTS_TUNING } from './tuningShots.js';
+import { BEAM_TUNING } from './tuningBeam.js';
+import { TERRAIN_TUNING } from './tuningTerrain.js';
 
 // Tian Lei's numbers (MOVES.md: the approved moveset, 2026-11-21). Starting values: tune them in the
 // Lab. Per-form values are [form 1, 2, 3]. Times in seconds, distances in metres.
@@ -135,6 +138,11 @@ export const TUNING = {
 
   // ---- what flies (the second wave's ki moves read these; LordFx's pools need a `crescent` block)
   crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25 },
+
+  // ---- the second wave's numbers, each in its own file (tuningShots.js, tuningBeam.js, tuningTerrain.js)
+  shots: SHOTS_TUNING,
+  beam: BEAM_TUNING,
+  terrain: TERRAIN_TUNING,
 
   // ---- he stands waiting, arms folded, until the hero steps onto the ring
   wakeRadius: 9,

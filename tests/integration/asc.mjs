@@ -1002,6 +1002,22 @@ async function scenarioTraining() {
   assert(ok2 && ok3 && d2.phase === 3 && G2.counts['dragon:phase2'] === 1 && G2.counts['dragon:phase3'] === 1, 'the Lab\'s form buttons: Phase 2, then Phase 3, each its transformation');
 }
 
+// ================================================================== the second wave's scenarios
+// Each agent adds its scenario FUNCTIONS directly under its own heading line (and its registry
+// entries under the same heading inside `S`, below).
+// --- shots
+//
+//
+// --- beams
+//
+//
+// --- strings
+//
+//
+// --- terrain
+//
+//
+
 // ================================================================== run
 const S = {
   level: scenarioLevel,
@@ -1016,6 +1032,18 @@ const S = {
   flow: scenarioFlow,
   win: scenarioWin,
   training: scenarioTraining,
+  // --- shots
+  //
+  //
+  // --- beams
+  //
+  //
+  // --- strings
+  //
+  //
+  // --- terrain
+  //
+  //
 };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {

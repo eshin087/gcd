@@ -24,7 +24,7 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 export function ascLookNow() {
   const o = lookOf('ascLook', 'a', 'a');
   if (o === 'd') return { base: 'a', art: true, id: 'd' };
-  return { base: o === 'b' || o === 'c' ? o : 'a', art: false, id: o === 'b' || o === 'c' ? o : 'a' };
+  return { base: o === 'c' ? 'c' : 'a', art: false, id: o === 'c' ? 'c' : 'a' }; // (the bare-chested outfit b is not offered)
 }
 
 /** The dressing record on his rig (gear.js registers the switched pieces in it). */
