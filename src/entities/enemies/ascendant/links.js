@@ -20,6 +20,11 @@ const PURSUE = [
   far('stormWaltz', f3(0.55)),
   far('cometHeel', [0.3, 0.3, 0.3]),
   far('meteorStep', [0.5, 0.4, 0.35]),
+  // (or he answers the distance from where he stands: a beam down the line, the floor torn up at him)
+  far('risingTide', f1(0.25)),
+  far('tideSweep', [0, 0.15, 0.15]),
+  far('ringBreaker', [0, 0.2, 0.2]),
+  far('tileKick', [0.2, 0.15, 0]),
   far('sunbreaker', f2(0.25)),
   far('mirage', f3(0.45)),
   far('heavenfall', f3(0.25)),
@@ -48,7 +53,39 @@ const CLOSE = [
 ];
 const melee = (...first) => [...first, ...PURSUE, ...CLOSE];
 
+/**
+ * AFTER A RED THING OF HIS (the shots agent's rule): a disc, a cage, the volley, a beam, the floor torn
+ * up at the hero. The hero's answer was a roll: he follows with a red blow or keeps his distance,
+ * never a guard string inside its window (a white cue 0.4 s after a red one asks two answers at once).
+ * Only the entries listed: none of PURSUE / CLOSE.
+ */
+const AFTER_RED = [far('meteorStep', [0.45, 0.4, 0.35]), mid('piercingPalm', [0.4, 0.35, 0.3]), near('auraBurst', [0, 0.45, 0.4])];
+/** After his volleys at range (blue / white blasts, bolts): he closes, by a blink or the flying kick. */
+const AFTER_VOLLEY = [far('vanishStep', [0, 0.45, 0.35]), far('stormWaltz', f3(0.45)), mid('meteorStep', [0.4, 0.35, 0.3])];
+/** After a beam (the hero rolled out of its line, or is down at its end): the chase across the ring. */
+const AFTER_BEAM = [far('meteorStep', [0.5, 0.4, 0.3]), far('vanishStep', [0, 0.45, 0.35]), far('mirage', f3(0.4)), mid('piercingPalm', [0.35, 0.3, 0.3])];
+
 export const LINKS = {
+  // --- his ki (kiShots.js / kiBeam.js) and the floor (terrain.js)
+  sunWheel: AFTER_RED,
+  stormCage: AFTER_RED,
+  skyVolley: AFTER_RED,
+  ringBreaker: AFTER_RED,
+  stoneStorm: AFTER_RED,
+  goldenRain: AFTER_VOLLEY,
+  scatter: AFTER_VOLLEY,
+  spiritShot: AFTER_VOLLEY,
+  lance: AFTER_VOLLEY,
+  tileKick: AFTER_VOLLEY,
+  risingTide: AFTER_BEAM,
+  tideSweep: AFTER_BEAM,
+  twinTide: AFTER_BEAM,
+  // (the great beam ends in the clash, his reel or the hero thrown 12 m: no link; Thunder Gates and
+  // Blast Dance are strings in reach: as his melee)
+  thunderGates: melee(),
+  blastDance: melee(),
+  // --- his melee
+
   gates: melee(),
   hundred: melee(),
   tiger: melee(),

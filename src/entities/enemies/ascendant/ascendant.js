@@ -7,6 +7,7 @@ import { TUNE as HERO_TUNE } from '../../player/player.js';
 import { Duelist } from '../duelist/duelist.js';
 import { DuelBrain } from '../duelist/brain.js';
 import { GUARD_KINDS } from '../duelist/guard.js';
+import { answerOf, GUARD as GUARD_ANSWER } from '../duelist/director.js';
 import * as GEAR from './gear.js';
 import * as LOOK from './look.js';
 import { AscFx } from './fx.js';
@@ -515,7 +516,16 @@ export class Ascendant extends Duelist {
     return null;
   }
 
+  /** A beam of his is lit (any phase but its last fade): a move whose blows ask a GUARD may not start
+   *  (its cue would ask a guard while the hero is answering the beam). */
+  _beamBars(def) {
+    const B = this.ki?.beams;
+    if (!B?.busy || B.phase === 'fade') return false;
+    return (def?.beats ?? []).some((b) => (Array.isArray(b.pick) ? b.pick : [b]).some((x) => !x.feint && x.tell != null && answerOf(x.tell) === GUARD_ANSWER));
+  }
+
   weigh(name, def, w, dist) {
+    if (this._beamBars(def)) return 0;
     if (def.terrain) return this.terrain.weigh(def, w, dist);
     if (def.ki) return this.ki.weigh(def, w, dist);
     // (Aura Burst: favoured once the hero has stayed on him for a while)
@@ -524,6 +534,7 @@ export class Ascendant extends Duelist {
   }
 
   onActStart(A, opts) {
+    if (!A.def.transition && this._beamBars(A.def)) return false;
     if (A.def.terrain) return this.terrain.begin(A, opts) !== false;
     if (A.def.ki) return this.ki.begin(A, opts) !== false;
     return true;
@@ -585,6 +596,8 @@ export class Ascendant extends Duelist {
   hitPlayer(o) {
     const D = o.beat?.def;
     if (D?.blink) o = { ...o, extra: { ...(o.extra ?? null), around: true } };
+    // (a bolt off his fist strikes as lightning, as the Lord's: the hero's hurt and the sound read it)
+    if (D && (D.bolt || (D.ki ?? this.brain.act?.def?.ki) === 'bolt')) o = { ...o, kind: 'lightning' };
     const r = super.hitPlayer(o);
     if (o.beat) this._route(o.beat, this.brain.act)?.onHit(o, r);
     return r;

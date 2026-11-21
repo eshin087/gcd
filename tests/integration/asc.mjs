@@ -1941,6 +1941,177 @@ async function scenarioWear() {
 }
 
 // ================================================================== run
+// --- integ
+/**
+ * INTEG (the integration agent): the joins between the second wave's pieces. A beam's head is no
+ * trade; a bolt strikes as lightning; while a beam is lit no guard string starts and no Thunderfall is
+ * called; the links after a red thing of his; a reset in the middle of everything leaves nothing in the
+ * air, lit or lifted and the floor and the light restored; a deathblow on a lit beam; a transformation
+ * with the disc out; Heavenfall's quake under a Stone Storm.
+ */
+async function scenarioInteg() {
+  out('\n== scenario INTEG (the pieces together: trades, bolts, the beam\'s bar, links, resets in the middle of things) ==');
+  const { LINKS } = await imp('src/entities/enemies/ascendant/links.js');
+  const G = build(SEED, true);
+  duel(G, { dist: 6, form: 3 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  const prep = (form, dist) => {
+    settle(G, 6);
+    run(G, 4, null, () => quiet(d));
+    if (d.phase !== form) d.debug.setForm(form);
+    run(G, 0.3);
+    d.position.set(0, 0, -2);
+    d.yaw = 0;
+    place(G, dist);
+    run(G, 0.2);
+  };
+  // 1. a trade (_tradeNow) never takes a beam's head (selfHit / sustain); a blow of his body still trades
+  const stub = () => {
+    const keep = { canTrade: p.canTrade, onTrade: p.onTrade, front: d._fromFront };
+    p.canTrade = () => true;
+    p.onTrade = () => ({ heavy: false, crush: false });
+    d._fromFront = () => true;
+    return () => { p.canTrade = keep.canTrade; p.onTrade = keep.onTrade; d._fromFront = keep.front; };
+  };
+  const tradeAt = (name, pick) => {
+    d.debug.trigger(name);
+    let res = null, beat = null;
+    run(G, 6, () => {
+      const a = d.brain.act;
+      if (res !== null || !a || a.name !== name) return;
+      const b = a.beats.find((x) => !x.done && !x.feint && a.t < x.impact);
+      if (b && pick(b) && b.impact - a.t < 0.08) {
+        const un = stub();
+        res = d._tradeNow();
+        un();
+        beat = b;
+      }
+    }, () => res !== null);
+    return { res, done: !!beat?.done };
+  };
+  prep(3, 6);
+  const tb = tradeAt('heavenTide', (b) => !!b.def.selfHit);
+  prep(1, 2);
+  const tg = tradeAt('gates', () => true);
+  assert(tb.res === false && !tb.done && tg.res === true, `a trade never takes the great beam's head (${tb.res}, the beat ${tb.done ? 'spent' : 'kept'}); a blow of his body still trades (${tg.res})`);
+  // 2. a bolt strikes as lightning
+  prep(3, 8);
+  p.debug.god = true;
+  const h0 = G.hits.length;
+  d.debug.trigger('lance');
+  run(G, 5, null, () => d.mode === 'foot' && quiet(d));
+  const bolts = G.hits.slice(h0).filter((h) => h.attack === 'lance');
+  assert(bolts.length > 0 && bolts.every((h) => h.kind === 'lightning'), `Lightning Lance's bolts strike as lightning (${bolts.map((h) => h.kind).join(' ')})`);
+  // 3. while a beam is lit: no string asking a guard starts, no Thunderfall is called; a red move may
+  prep(1, 10);
+  d.debug.trigger('risingTide');
+  let barred = null, slot = null, redOk = null;
+  run(G, 4, () => {
+    const B = d.ki.beams;
+    if (barred === null && B.busy && B.phase === 'lit') {
+      barred = d.weigh('gates', MOVES.gates, 1, 3) === 0 && d.onActStart({ def: MOVES.gates, name: 'gates' }) === false;
+      redOk = d.weigh('piercingPalm', MOVES.piercingPalm, 1, 3) > 0;
+      slot = d.ki.shots._skySlot(0.9, 0.6);
+    }
+  }, () => barred !== null);
+  assert(barred === true && slot === -1 && redOk === true, `while the beam is lit a guard string is barred (${barred}), no Thunderfall slot (${slot}); a red closer is not (${redOk})`);
+  // 4. after a red thing of his: no guard string among the links (the AFTER_RED rule)
+  const guardy = (n) => (MOVES[n]?.beats ?? []).some((b) => (Array.isArray(b.pick) ? b.pick : [b]).some((x) => !x.feint && (x.tell === TELL.NORMAL || x.tell === TELL.BLUE)) && (MOVES[n].beats[0]?.tell === TELL.NORMAL || MOVES[n].beats[0]?.tell === TELL.BLUE));
+  const redMoves = ['sunWheel', 'stormCage', 'skyVolley', 'ringBreaker', 'stoneStorm', 'risingTide', 'tideSweep', 'twinTide'];
+  const badLinks = redMoves.flatMap((m) => (LINKS[m] ?? []).filter((e) => e.when === 'near' && guardy(e.to)).map((e) => `${m}→${e.to}`));
+  const missing = [...redMoves, 'goldenRain', 'scatter', 'spiritShot', 'lance', 'tileKick'].filter((m) => !LINKS[m]?.length);
+  const unknown = Object.values(LINKS).flat().map((e) => e.to).filter((n) => !MOVES[n]);
+  assert(!badLinks.length && !missing.length && !unknown.length, `links: after a red thing no guard string in reach (${badLinks.join(', ') || 'none'}), every ki / terrain move links (${missing.join(', ') || 'all'}), every target is a move (${unknown.join(', ') || 'all'})`);
+  // 5. resets in the middle of things: nothing left in the air, lit or lifted; the floor and the light back
+  const amb = game.world.forest.ambience;
+  const D = game.world.destructibles;
+  const resetCase = (label, form, dist, name, when) => {
+    prep(form, dist);
+    d.debug.trigger(name);
+    let hit = false;
+    run(G, 8, null, () => (hit = when()));
+    run(G, 0.05);
+    game.flow._resetWorld();
+    run(G, 0.6);
+    const st = amb.state;
+    const broken = (D?.floor ?? []).filter((b) => b.kind === 'tile' && b.state !== 0).length;
+    const left = { ki: !!d.ki.busy, terrain: !!d.terrain.busy, shots: d.fx.shotsAlive | 0, strikes: d.fx.strikesAlive | 0, y: +d.position.y.toFixed(2), dim: +(st.dim ?? 0).toFixed(2), broken, fire: game.fx.fire.count | 0 };
+    const ok = hit && !left.ki && !left.terrain && !left.shots && !left.strikes && left.y === 0 && left.dim < 0.05 && left.broken === 0;
+    out(`     ${label}: ${hit ? 'reached' : 'NOT reached'}, after the reset ${JSON.stringify(left)}`);
+    return ok;
+  };
+  const cases = [
+    ['the great beam lit', 3, 8, 'heavenTide', () => d.ki.beams.phase === 'lit'],
+    ['the great beam charging (the light dimmed)', 3, 8, 'heavenTide', () => (amb.state.dim ?? 0) > 0.3],
+    ['the disc out', 2, 8, 'sunWheel', () => (d.fx.shotsAlive | 0) > 0],
+    ['the volley in the air', 2, 8, 'skyVolley', () => d.position.y > 2],
+    ['the Stone Storm hanging', 2, 9, 'stoneStorm', () => d.terrain.storm?.hold?.some((h) => h.piece)],
+    ['Heavenfall\'s quake running', 3, 7, 'heavenfall', () => d.terrain.quakes?.some((q) => q.live)],
+    ['the Ring Breaker\'s line', 2, 8, 'ringBreaker', () => !!d.terrain.line?.live],
+  ];
+  const resets = cases.map(([l, f, m, n, w]) => [l, resetCase(l, f, m, n, w)]);
+  assert(resets.every(([, ok]) => ok), `a reset in the middle of each leaves nothing in the air, lit or lifted, the floor whole and the light back (${resets.filter(([, ok]) => !ok).map(([l]) => l).join(', ') || 'all'})`);
+  run(G, 0.5);
+  duel(G, { dist: 6, form: 3 });
+  p.debug.god = true;
+  // 6. a deathblow while the great beam is lit: the beam goes out, he transforms / dies cleanly
+  prep(2, 8);
+  d.debug.trigger('tideSweep');
+  run(G, 4, null, () => d.ki.beams.phase === 'lit');
+  const lit = d.ki.beams.phase === 'lit';
+  d.debug.postureBreak();
+  run(G, 0.3);
+  d.onExecute({ damage: 260 });
+  run(G, 5, null, () => d.mode === 'foot' && d.phase === 3);
+  assert(lit && !d.ki.beams.busy && d.phase === 3 && d.mode === 'foot', `a deathblow while a beam is lit: the beam out (${d.ki.beams.phase}), the transformation done (form ${d.phase}, ${d.mode})`);
+  // 7. a transformation with the disc in the air: the disc comes back or goes, nothing NaN, he is form 3... (from form 2)
+  duel(G, { dist: 8, form: 2 });
+  p.debug.god = true;
+  prep(2, 8);
+  d.debug.trigger('sunWheel');
+  run(G, 3, null, () => (d.fx.shotsAlive | 0) > 0);
+  const out1 = (d.fx.shotsAlive | 0) > 0;
+  d.debug.postureBreak();
+  run(G, 0.2);
+  d.onExecute({ damage: 260 });
+  run(G, 6, null, () => d.mode === 'foot' && d.phase === 3 && quiet(d));
+  assert(out1 && d.phase === 3 && quiet(d), `a transformation with the disc in the air: form ${d.phase}, nothing left flying (${d.fx.shotsAlive | 0})`);
+  // 8. Heavenfall's quake while a Stone Storm hangs: both run out, nothing stuck
+  prep(3, 9);
+  d.debug.trigger('stoneStorm');
+  run(G, 4, null, () => d.terrain.storm?.hold?.some((h) => h.piece));
+  const hang = !!d.terrain.storm?.hold?.some((h) => h.piece);
+  d.terrain.quake?.(d.position.x, d.position.z, { from: 3.4, to: 14, speed: 9, damage: 22 });
+  run(G, 8, null, () => d.mode === 'foot' && !d.terrain.busy);
+  assert(hang && !d.terrain.busy && d.mode === 'foot', `a quake under a hanging Stone Storm: both run out (${hang ? 'hung' : 'never hung'}, busy ${d.terrain.busy})`);
+  // 9. the fire field's budget with everything at once (form 3: the aura, the great beam lit, ten blasts
+  //    (Golden Rain's count) thrown across it, two called strikes and a quake)
+  prep(3, 8);
+  const fire = game.fx.fire;
+  let peak = 0, thrown = 0, lit9 = 0;
+  d.debug.trigger('heavenTide');
+  run(G, 8, () => {
+    peak = Math.max(peak, fire.count | 0);
+    if (d.ki.beams.phase !== 'lit') return;
+    lit9++;
+    if (lit9 === 1) {
+      d.fx.callStrike?.(p.position.x + 2, p.position.z, 2.1, 1.1, { damage: 0, attack: 'thunderfall', style: 'bolt' });
+      d.fx.callStrike?.(p.position.x - 2, p.position.z + 1, 2.1, 1.1, { damage: 0, attack: 'thunderfall', style: 'bolt' });
+      d.terrain.quake?.(d.position.x, d.position.z, { from: 3.4, to: 14, speed: 9, damage: 0 });
+    }
+    if (thrown < 10 && lit9 % 9 === 0) {
+      thrown++;
+      const a = -0.6 + thrown * 0.12;
+      d.fx.throwShot({ kind: 'blast', x: d.position.x, y: 1.1, z: d.position.z, dx: Math.sin(d.yaw + a), dz: Math.cos(d.yaw + a), speed: 13, damage: 0, tell: TELL.NORMAL, attack: 'goldenRain', form: 3 });
+    }
+  }, () => lit9 > 0 && !d.ki.beams.busy && d.mode === 'foot');
+  out(`     the fire field with everything at once (form 3: aura, great beam, ${thrown} blasts, 2 strikes, a quake): peak ${peak} blobs of ${fire.max ?? 6000}`);
+  assert(thrown === 10 && peak > 0 && peak < 3500, `the fire field's peak with everything at once: ${peak} < 3500 blobs`);
+  assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
+}
+//
 const S = {
   level: scenarioLevel,
   data: scenarioData,
@@ -1971,6 +2142,8 @@ const S = {
   terrain: scenarioTerrain,
   quake: scenarioQuake,
   wear: scenarioWear,
+  // --- integ
+  integ: scenarioInteg,
 };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {

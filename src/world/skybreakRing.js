@@ -877,6 +877,7 @@ function makeAmbience(braziers, { haze = false } = {}) {
           st.w[0] = 1;
           st.w[1] = st.w[2] = 0;
           st.flash = 0;
+          st.dim = st.dimWant = st.dimHold = 0; // (a reset in the great beam's charge: the light back at once)
         }
       }
       st.phase = want;

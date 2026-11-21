@@ -1571,6 +1571,28 @@ export class Player {
     if (t >= TUNE.bounceDur) this._toLoco(0.14);
   }
 
+  /**
+   * A held guard under a stream the attacker keeps on it (a beam's ticks: kiBeam.js): `cost` from the
+   * guard meter and no health, a slide of `push` m along (dx, dz) (unit, away from the source; it only
+   * tops the slide up), a short recoil. False (nothing changed) when the cost would empty the meter:
+   * the caller then lands the tick as a blow, which the player's own block answers (the guard opens).
+   */
+  streamBlock(cost, push, dx, dz) {
+    cost = Math.max(0, fin(cost));
+    if (!this.debug?.god && fin(this.guard) - cost <= 0) return false;
+    if (!this.debug?.god) {
+      this.guard = Math.max(0, fin(this.guard) - cost);
+      this.guardWait = Math.max(fin(this.guardWait), GUARD.regenDelay);
+    }
+    const kb = this.kb, v = Math.max(0, fin(push)) * TUNE.knockbackDecay, now = fin(kb.x) * fin(dx) + fin(kb.z) * fin(dz);
+    if (now < v) {
+      kb.x = fin(kb.x) + fin(dx) * (v - now);
+      kb.z = fin(kb.z) + fin(dz) * (v - now);
+    }
+    this.recoil = Math.max(fin(this.recoil), 0.45);
+    return true;
+  }
+
   _block(dmg, tell, attack, chip, nx, nz) {
     const g = this.game;
     // a blow costs guard and no HP (GUARD); a contact stream (the breath's ticks, a bullet) is no

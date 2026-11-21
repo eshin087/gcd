@@ -45,7 +45,6 @@ import { drawSight } from './fxBeam.js';
 
 const DEG = Math.PI / 180;
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
-const KB_DECAY = 6; // player.js TUNE.knockbackDecay: a slide of m metres starts at m x this m/s
 
 /** The clip he holds his beam in through the clash, compiled round each form's stance (built once). */
 let CLASH_CLIPS = null;
@@ -405,27 +404,16 @@ export class BeamMoves {
     this.stats.blocked++;
     B.guardAt = true;
     const cost = clamp(dmg * scale * GUARD.cost.normal, GUARD.costMin, GUARD.costMax);
-    if (!p.debug?.god && fin(p.guard) - cost <= 0) {
+    // (the guard pays, the hero slides along the beam away from him: player.js streamBlock; the tick
+    // that would empty the meter goes through the player's own block, which knocks the guard open)
+    const held = typeof p.streamBlock === 'function' ? p.streamBlock(cost, push, B.dx, B.dz) : false;
+    if (!held) {
       d.hitPlayer({
         damage: dmg, knockback: 0.6, knockdown: false, kind: 'beam', tell: TELL.RED, attack: B.attack,
         from: { x: B.ox, z: B.oz }, projectile: true, parryable: false, blockable: true, extra: { perfect: false },
       });
       return;
     }
-    if (!p.debug?.god) {
-      p.guard = Math.max(0, fin(p.guard) - cost);
-      p.guardWait = Math.max(fin(p.guardWait), GUARD.regenDelay);
-    }
-    // the slide along the beam (away from him)
-    const kb = p.kb;
-    if (kb) {
-      const v = push * KB_DECAY, now = fin(kb.x) * B.dx + fin(kb.z) * B.dz;
-      if (now < v) {
-        kb.x = fin(kb.x) + B.dx * (v - now);
-        kb.z = fin(kb.z) + B.dz * (v - now);
-      }
-    }
-    p.recoil = Math.max(fin(p.recoil), 0.45);
     const c = p.getChestPos?.(this._w, true);
     if (c) {
       const x = c.x - B.dx * 0.45, z = c.z - B.dz * 0.45;

@@ -147,6 +147,10 @@ export const TUNING = {
   beam: BEAM_TUNING,
   terrain: TERRAIN_TUNING,
 
+  // ---- what his blasts and the disc do to the world they meet (ADR-107; fx.js; the duelist's other
+  // fields fall back to duelist/worldTuning.js DUEL_WORLD)
+  world: { blast: 0.8, bigBlast: 1.4, disc: 0.6 },
+
   // ---- he stands waiting, arms folded, until the hero steps onto the ring
   wakeRadius: 9,
 };

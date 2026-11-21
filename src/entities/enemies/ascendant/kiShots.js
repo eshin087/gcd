@@ -440,6 +440,7 @@ export class ShotMoves {
   _skySlot(warn, slack) {
     const d = this.d, br = d.brain, a = br.act;
     if (d.state === 'staggered' || d.broken) return -1;
+    if (d.ki?.beams?.busy) return -1; // (never while a beam of his is lit: the hero is answering it)
     if (d.mode === 'react') return -1; // (his recoil, the reeling, a flinch: the hero's own time)
     const inAct = d.mode === 'act' && !!a;
     if (inAct && a.def.transition) return -1;
