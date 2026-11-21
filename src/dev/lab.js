@@ -1012,7 +1012,7 @@ export class Lab {
     });
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads for the owner's pick (?wyrmFace=; reloads the page)";
+    el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads (?wyrmFace=; reloads the page): drake as it ships, old = the head before, the rest shown and passed on";
     const wfg = el('div', 'lab-grid', null, wfr);
     wfg.style.flex = '1';
     for (const f of WYRM_FACES) {

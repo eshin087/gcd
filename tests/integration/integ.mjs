@@ -384,6 +384,11 @@ function build(opts = {}) {
     for (const k of ['uHurt', 'uFade', 'uDesat', 'uWarm']) if (!Number.isFinite(finalU[k].value)) throw new Error('grade NaN ' + k);
     if (![game.timeScale, game.time, game.debugTimeScale].every(Number.isFinite)) throw new Error('clock NaN');
   };
+  // the play stream: reseeded once everything is built, so the rolls the fight makes (the AI's picks,
+  // cooldowns, the bots) do not depend on how many objects the build made. three.js draws a uuid from
+  // Math.random for every Object3D, geometry and material, so one more mesh on the wyrm or the hero
+  // used to move every later roll and turn an unrelated seeded check red (2026-11-16, 2026-11-20)
+  Math.random = mulberry32((SEED ^ 0x2545f491) >>> 0);
   return G;
 }
 
@@ -4590,16 +4595,17 @@ function sheetHit(r, m, v) {
 
 // ================================================================== scenario: two hands, the guard, the cloak, idle life
 /**
- * The wyrm's heads (?wyrmFace=, entities/dragon/heads.js): today's ('old', the default) and three
- * sculpted ones. Each builds headless, keeps every gameplay joint where the old head had it (the
+ * The wyrm's heads (?wyrmFace=, entities/dragon/heads.js): today's ('old', the default), three
+ * sculpted ones and the four faces of 2026-11-20 (faces.js: drake, tyrant, viper, revenant; they draw
+ * their hollows, and the revenant its bone mask, with a material of their own). Each builds headless, keeps every gameplay joint where the old head had it (the
  * head, the mouth, the jaw hinge and its tip in the same pose, bit for bit; the drawn eyes and the
  * nostrils within NEAR_EYE of the old ones), costs a bounded number of bones / draws / triangles, has
  * no NaN in its geometry, keeps its lower teeth inside the skull with the jaw shut, and the loong's
  * whiskers trail and swing through a turn.
  */
 async function scenarioWyrmFace() {
-  out('\n== scenario WYRMFACE (three sculpted heads on the gameplay joints of the old one) ==');
-  const { setWyrmFace, wyrmFace, WYRM_FACES } = await imp('src/entities/dragon/heads.js');
+  out('\n== scenario WYRMFACE (the drake as it ships and the other heads, on the gameplay joints of the old one) ==');
+  const { setWyrmFace, wyrmFace, WYRM_FACES, WYRM_FACE_SHIPPED } = await imp('src/entities/dragon/heads.js');
   const prev = wyrmFace();
   const e0 = errors.length;
   // the drawn eyes and nostrils may move this far (world m) with a head's anatomy: the eye glints and
@@ -4626,6 +4632,8 @@ async function scenarioWyrmFace() {
       if (nrm) for (let i = 0; i < nrm.array.length; i++) if (!Number.isFinite(nrm.array[i])) { finite = false; break; }
     });
     const r = (res[face] = { tris: Math.round(tris), meshes, finite, bones: d.batch.bones, draws: d.batch.meshes.length });
+    // the phase-3 horn fire: the head's own measured horn tip (model.hornTip), read by ablaze.js
+    r.horn = { tip: m.hornTip, read: d.ablaze._hornTip === (m.hornTip ?? d.ablaze._hornTip) };
     r.rest = { head: pt.head.clone(), mouth: pt.mouth.clone(), jawTip: pt.jawTip.clone(), snout: pt.snout.clone(), eyes: pt.eyes.map((e) => e.clone()), nostrils: pt.nostrils.map((e) => e.clone()) };
     r.names = ['head', 'headVis', 'jaw', 'mouth', 'nostrilL', 'nostrilR'].every((n) => !!m.root.getObjectByName(n)) && m.eyes.length === 2 && m.nostrils.length === 2;
     r.face = m.face;
@@ -4637,7 +4645,9 @@ async function scenarioWyrmFace() {
     // jaw shut: the lower teeth stay inside the upper skull (their tips under its hide, none through
     // the top of the snout); jaw wide: nothing NaN
     if (face !== 'old') {
-      const hide = m.headVis.children.find((o) => o.isMesh && o.name === 'face-head');
+      // (the hide over the teeth: the head's, and a face's bone mask where it has one)
+      const hides = m.headVis.children.filter((o) => o.isMesh && (o.name === 'face-head' || o.name === 'face-mask'));
+      const hide = hides.length ? { geometry: { attributes: { position: (() => { const all = hides.map((h) => h.geometry.attributes.position); const n = all.reduce((a, p) => a + p.count, 0); const arr = new Float32Array(n * 3); let o = 0; for (const p of all) { arr.set(p.array.subarray(0, p.count * 3), o); o += p.count * 3; } return new THREE.BufferAttribute(arr, 3); })() } } } : null;
       const teeth = m.jaw.children.find((o) => o.isMesh && o.name === 'face-teeth');
       let worst = -Infinity;
       if (hide && teeth) {
@@ -4682,6 +4692,13 @@ async function scenarioWyrmFace() {
   }
   setWyrmFace(prev);
   const o = res.old;
+  assert(WYRM_FACE_SHIPPED === 'drake' && prev === (process.env.ABYSS_WYRMFACE || WYRM_FACE_SHIPPED) && WYRM_FACES[0] === 'drake',
+    `with nothing set the wyrm wears the drake (the owner's pick); in use: ${prev}`);
+  for (const face of ['old', 'drake', 'tyrant', 'viper', 'revenant']) {
+    const h = res[face]?.horn;
+    assert(!!h && Array.isArray(h.tip) && h.tip.length === 3 && h.tip.every(Number.isFinite) && h.read && Math.hypot(...h.tip) > 0.8,
+      `${face}: its main horn's tip is measured off the built horn (${h?.tip?.map((x) => x.toFixed(2)).join(', ')}) and the phase-3 fire stands on it`);
+  }
   for (const face of WYRM_FACES) {
     const r = res[face];
     out(`   ${face}: ${r.meshes} head meshes, ${r.tris} head triangles, ${r.bones} wyrm bones, ${r.draws} wyrm draws${r.through !== undefined ? `, lower teeth ${r.through > -Infinity ? (r.through * 1000).toFixed(0) + ' mm vs the hide over them' : 'n/a'}` : ''}`);
@@ -4695,8 +4712,10 @@ async function scenarioWyrmFace() {
     assert(dE < NEAR_EYE && dN < NEAR_EYE * 1.6, `${face}: the drawn eyes ${dE.toFixed(2)} m and the nostrils ${dN.toFixed(2)} m from the old head's (eyes < ${NEAR_EYE}, nostrils < ${(NEAR_EYE * 1.6).toFixed(1)})`);
     // the rigid batch: one bone per mesh; the sculpted heads draw no more materials than the wyrm has
     // (the loong's whiskers and mane use the spine material it already draws)
-    assert(r.draws === o.draws && r.bones <= o.bones + 12 && r.tris <= 9000, `${face}: ${r.draws} draws (old ${o.draws}), ${r.bones} bones (old ${o.bones}, at most +12), ${r.tris} head triangles (<= 9000)`);
-    assert(r.through < 0, `${face}: jaw shut, every lower tooth stays under the skull's hide over it (worst ${(r.through * 1000).toFixed(0)} mm)`);
+    // (the faces of 2026-11-20 add a material for their hollows, the revenant one more for its mask)
+    const extra = { drake: 1, tyrant: 1, viper: 1, revenant: 2 }[face] ?? 0;
+    assert(r.draws === o.draws + extra && r.bones <= o.bones + 12 && r.tris <= 9000, `${face}: ${r.draws} draws (old ${o.draws}${extra ? ` + ${extra}` : ''}), ${r.bones} bones (old ${o.bones}, at most +12), ${r.tris} head triangles (<= 9000)`);
+    assert(r.through < 0 && r.through > -Infinity, `${face}: jaw shut, every lower tooth stays under the skull's hide over it (worst ${(r.through * 1000).toFixed(0)} mm)`);
     if (face === 'loong') {
       const w = r.whiskers;
       assert(!!w && w.n === 2 && w.ok && w.moved && w.lagMax > 0.1 && w.far < 8, `loong: two whisker chains (${w?.segs} segments) swing through a 1.2 rad turn (tip ${w?.lagMax.toFixed(2)} m off its rest), stay finite and within ${w?.far.toFixed(1)} m of the head`);
@@ -4719,6 +4738,10 @@ async function scenarioWyrmLook() {
   out('\n== scenario WYRMLOOK (the lean builds on the skeleton of the wyrm before) ==');
   const { setWyrmLook, wyrmLookId, wyrmLook, WYRM_LOOKS, WYRM_LOOK_SHIPPED } = await imp('src/entities/dragon/looks.js');
   const prev = wyrmLookId();
+  // (on the old head: a build's `head` grows ITS horns, fangs and frills; the drake keeps its own)
+  const H = await imp('src/entities/dragon/heads.js');
+  const face0 = H.wyrmFace();
+  H.setWyrmFace('old');
   const e0 = errors.length;
   const NEAR = 0.12; // m: how far a bite's head may sit from '0' at its hit (the resting weight fades at 9 /s)
   const res = {};
@@ -4760,6 +4783,7 @@ async function scenarioWyrmLook() {
     r.horn = { read: d.ablaze._hornTip === m.hornTip };
   }
   setWyrmLook(prev);
+  H.setWyrmFace(face0);
   const o = res['0'];
   out(`   builds: ${WYRM_LOOKS.map((k) => `${k} ${res[k].build ?? '(before)'}: ${res[k].tris} triangles, ${res[k].draws} draws, ${res[k].bones} bones, head at rest ${res[k].rest.head.y.toFixed(2)} m`).join(' · ')}`);
   assert(WYRM_LOOK_SHIPPED === 'c' && prev === (process.env.ABYSS_WYRMLOOK || WYRM_LOOK_SHIPPED) && o.build === null && res.c.build === 'lean + ragged',
@@ -4782,12 +4806,12 @@ async function scenarioWyrmLook() {
     else assert(up > 1.5 && up < 3.2, `${k}: stands with its head ${up.toFixed(2)} m higher than '0' (1.5 .. 3.2)`);
   }
   // the horn fire's point follows the horns the head has (ablaze.js reads model.hornTip)
-  const HT = (await imp('src/entities/dragon/heads.js')).HORN_TIPS.old;
+  const HT = H.HORN_TIPS.old;
   const d0 = Math.hypot(o.hornTip[0] - HT[0], o.hornTip[1] - HT[1], o.hornTip[2] - HT[2]);
   const len = (t) => Math.hypot(t[0] - 0.2, t[1] - 0.3, t[2] + 0.02);
   assert(d0 < 0.01 && len(res.c.hornTip) > len(o.hornTip) * 1.2 && res.c.horn.read && o.horn.read,
     `the horn's tip is measured off the built horn: '0' ${d0.toFixed(3)} m from heads.js HORN_TIPS.old, c's horn ${(len(res.c.hornTip) / len(o.hornTip)).toFixed(2)} x as long, and the phase-3 fire reads it`);
-  assert(wyrmLookId() === prev, `the build in use is restored (${prev})`);
+  assert(wyrmLookId() === prev && H.wyrmFace() === face0, `the build and the head in use are restored (${prev}, ${face0})`);
   assert(errors.length === e0, `no errors through the builds (${errors.length - e0})`);
   return G;
 }
@@ -9876,10 +9900,18 @@ async function scenarioTerrain() {
     game.player.debug.god = true;
     G.defend = makeDefender(G);
     const picks = {};
-    let tells = 0, flashes = 0;
+    let tells = 0, flashes = 0, excused = 0, unexcused = 0;
+    // a tell whose move never reaches its flash must have been called off (the piece out of reach,
+    // gone or taken back: terrainAttacks.js abort) or cut short by the hero (a plunge, a stagger, a
+    // break) or a phase change; the count of such moves is the seed's, the reason is not
+    let open = null;
+    const CUT = new Set(['plunged', 'stagger', 'postureBreak', 'phase2', 'phase3', 'death']);
     G.watch = (n, dd) => {
       if (n === 'dragon:windup') picks[dd.name] = (picks[dd.name] || 0) + 1;
-      if ((n === 'combat:tell' || n === 'combat:flash') && ['hurl', 'tailBat', 'fireBrand'].includes(dd?.attack)) n === 'combat:tell' ? tells++ : flashes++;
+      if ((n === 'combat:tell' || n === 'combat:flash') && ['hurl', 'tailBat', 'fireBrand'].includes(dd?.attack)) {
+        if (n === 'combat:tell') { tells++; open = { act: d.brain.action, flash: false }; }
+        else { flashes++; if (open) open.flash = true; }
+      }
     };
     const e0 = errors.length;
     let restored = 0;
@@ -9890,6 +9922,10 @@ async function scenarioTerrain() {
       bot(G, { god: true, defend: true });
       if (process.env.ABYSS_TRACE2 && !d.brain.action && d.state === 'combat') { for (const n of ['hurl', 'tailBat', 'fireBrand']) { const w = attackWeight(ATTACKS[n], n, d, d.sense); dbg[n] = (dbg[n] || 0) + (w > 0 ? 1 : 0); dbg[n + 'cd'] = (dbg[n + 'cd'] || 0) + ((d.brain.cooldowns[n] ?? 0) > 0 ? 1 : 0); } dbg.idle = (dbg.idle || 0) + 1; dbg.dist = (dbg.dist || 0) + d.sense.dist; }
       G.tick(DT);
+      if (open && d.brain.action !== open.act) {
+        if (!open.flash) (open.act?.aborted || CUT.has(d.brain.action?.name) || d.state === 'staggered' ? excused++ : unexcused++);
+        open = null;
+      }
       // 50 s in each phase: the gates are reached by hand, and the wyrm is kept alive between them
       if (i === 3000) d.debug.setHp(0.6);
       if (i === 6000) d.debug.setHp(0.3);
@@ -9903,9 +9939,9 @@ async function scenarioTerrain() {
     if (process.env.ABYSS_TRACE2) out('   ' + JSON.stringify(dbg) + ' ' + JSON.stringify(picks));
     const total = Object.values(picks).reduce((a, b) => a + b, 0);
     const mine = (picks.hurl || 0) + (picks.tailBat || 0) + (picks.fireBrand || 0);
-    out(`   300 s with the AI on: ${total} attacks, terrain moves ${mine} (hurl ${picks.hurl || 0}, tail bat ${picks.tailBat || 0}, firebrand ${picks.fireBrand || 0}); phase ${d.phase}; tells ${tells}, flashes ${flashes}`);
+    out(`   300 s with the AI on: ${total} attacks, terrain moves ${mine} (hurl ${picks.hurl || 0}, tail bat ${picks.tailBat || 0}, firebrand ${picks.fireBrand || 0}); phase ${d.phase}; tells ${tells}, flashes ${flashes}; called off or cut short ${excused}, neither ${unexcused}`);
     assert(mine >= 2 && mine <= total * 0.3, `a fight: the terrain moves come up (${mine} of ${total} attacks) and stay under 30 % of them`);
-    assert(flashes <= tells && tells - flashes <= 2 && errors.length === e0, `a fight: their tells get their flashes (${flashes} of ${tells}; an interrupted one has none), no errors`);
+    assert(flashes <= tells && unexcused === 0 && tells - flashes <= excused && errors.length === e0, `a fight: their tells get their flashes (${flashes} of ${tells}); each one without was called off or cut short (${excused}; ${unexcused} not), no errors`);
     return G;
   }
 }

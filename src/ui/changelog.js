@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-20',
+        title: 'The Cinder Wyrm has a new face',
+        notes: [
+          'The Cinder Wyrm has a new head: a long hooked snout, a heavy brow over each eye, long horns swept back over its neck and fins off its cheeks.',
+          'Its eyes burn in dark sockets, and when it roars its mouth is a black cavern with a red tongue, long fangs and fire at the back of the throat.',
+          'The fight is unchanged: its bite, its breath and where you can hit its head are the same.',
+        ],
+      },
+      {
+        date: '2026-11-20',
         title: 'The Cinder Wyrm is leaner and carries its head high',
         notes: [
           'The Cinder Wyrm has a leaner build: a tucked waist, a shallower chest, thinner neck, legs and tail, and longer talons. Its letters, colours and wings are the ones it had.',
