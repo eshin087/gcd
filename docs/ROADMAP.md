@@ -179,7 +179,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.50 — The human bosses' attacks as motion (2026-11-21, `enemies/duelist-motion`, ADR-126)
+## M1.51 — The human bosses' attacks as motion (2026-11-21, `enemies/duelist-motion`, ADR-126)
 - [x] Every move of both bosses audited on the rig (hand speed, jumps, sliding feet, blade against the head) and filmed
 - [x] The follow-through's own clock; a cubic through the keys; `gather` / `settle`; a bait hold that holds
 - [x] A beat owns its channels (`completeBeat`); the blade-driven arm on the keyed angles, and with two hands

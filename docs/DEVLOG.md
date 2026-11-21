@@ -8,8 +8,8 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 ## 2026-11-21 — Session 66: the human bosses' attacks move like a swordsman's
 
 **Owner:** "the humanoid bosses have weird attack animations and unnatural poses. analyze it and fix
-it". Branch `enemies/duelist-motion` from `main` (91f17d4). ADR-126 / Session 66 / M1.50 (125 / 65
-left free for a session running beside this one).
+it". Branch `enemies/duelist-motion` from `main` (91f17d4). ADR-126 / Session 66 / M1.51 (125 / 65 /
+M1.50 are PR #70's, a session running beside this one).
 
 **Analysis first.** Every move of both bosses was run in the browser (headless Edge, the real GPU)
 with an audit that samples the rig each frame in his own frame: wrists, elbows, blade, head, pelvis,
