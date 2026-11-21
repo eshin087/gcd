@@ -1548,7 +1548,9 @@ const BITE = {
     biteRecover(d, h.st, k);
   },
   hit(d, a, h, stage) {
-    if (stage === 'active') biteHit(d, a, h.spec);
+    // a string's bite connects up to TUNING.biteLate s after its impact, never later (a late contact
+    // came after the flash had promised the blow)
+    if (stage === 'active' && a.t <= h.spec.impact + TUNING.biteLate) biteHit(d, a, h.spec);
   },
 };
 

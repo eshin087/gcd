@@ -3684,3 +3684,38 @@ ADR-092).
   the trunk's change is small; the head, the neck and the mane carry it.
 - **Not done:** longer bones; any change to the wings, the surface or the fire; a re-frame of the
   intro's shots and the Lab's model viewer for the higher head; a look on the iPhone.
+
+## ADR-124 — The Cinder Wyrm's face: the drake, on a kit of planes, dark sockets and a dark mouth (2026-11-20)
+- **Context:** right after the lean build (ADR-123) merged, the owner: "I really dont like how the
+  dragon face looks. It doesnt look realistic or scary. Give me 4 different variations to review". The
+  owner had passed on three sculpted heads before (ADR-120). Photographs of the shipped face showed it
+  could not be found at the game camera (dark, under the neck's pale quills, eyes one letter wide) and
+  read as a scaled tube up close (the body's big rimmed scales, a comb of teeth, a flat orange mouth).
+- **Decisions:**
+  1. **Fix the surface first, then vary the skull.** All four faces share one kit: fine scales under a
+     hard key light (planes, not a pine cone), eyes in black sockets, a black mouth with a red tongue
+     and the fire at the back of the throat, outlined teeth of varied size, a nape cleared of quills.
+     The skulls differ (drake, tyrant, viper, revenant). The ADR-120 heads had shown that a new skull
+     under the old surface reads as the old face.
+  2. **The owner picked the drake.** It ships (`heads.js` `WYRM_FACE_SHIPPED`); `?wyrmFace=old` is the
+     face before; tyrant, viper, revenant and the three of ADR-120 stay behind the switch, as the
+     turned-down looks of ADR-118 to ADR-123 do.
+  3. **Hollows are a material, not a shade.** Sockets, nostrils and the mouth's lining are triangles of
+     the loft repainted into a near-black `pit` material (`paint` rules in a face's data). Darkening
+     the hide there was tried and printed grey under the hard key light. It costs one draw call.
+  4. **A face may clear its nape** (`nape`: the crest's and mane's lengths over the last neck
+     segments), so the skull's outline stands free of the mane build C grew. Only for faces that ask.
+  5. **The fire knows the horns.** A face's extras return its main horn's tip; `model.hornTip` carries
+     it to the phase-3 horn fire as the old head's measured tip already did (ADR-123).
+- **Consequences:** the default wyrm draws 15 meshes (14), 183 bones (181) and 7170 head triangles
+  (4192); the gameplay joints, hit volumes, the breath's origin and every timing are unchanged
+  (`integ.mjs . wyrmface`). The extra objects shift the tests' seeded random stream (every suite still
+  passes). The four faces differ much more up close than at the game camera.
+  6. **The tests roll on a play stream seeded after the build.** `integ.mjs` reseeds `Math.random`
+     at the end of `build()`, so the AI's rolls no longer depend on how many three.js objects (each
+     draws a uuid from it) the build made. The alternative, loosening the two checks the drake's
+     extra objects turned red, would have hidden the next shift too. The new stream exposed a late
+     string bite (fixed: `TUNING.biteLate` 0.07 s, after which a string's bite misses) and a terrain
+     check that counted feints instead of checking why each had no flash (rewritten).
+- **Not done:** a look on the iPhone; the intro's close shots framed for the new head; the
+  tyrant / viper / revenant data kept but not tuned further.

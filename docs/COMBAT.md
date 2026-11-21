@@ -543,6 +543,8 @@ impact to the next (time to release and re-press RMB). The seventeen strings are
 own start path from every placement the AI picks it at (phases 1–3, the hero standing still), lands
 each contact within ±85 ms of its flash + lead (worst 67 ms on the merged build), and every pick
 lands its first hit. Later hits can whiff a hero who doesn't move (the TIMING table counts them).
+A string's bite connects at most `biteLate` (0.07 s) after its impact and otherwise misses (2026-11-20,
+ADR-124: Cataclysm's held bite caught a hero 3 m away 102 ms after its flash).
 
 **Deflect chain** (contract 1): parrying a hit that is not its string's last does not cancel the
 string: the posture damage applies (`POSTURE.parry`), the struck paw / head is knocked back for

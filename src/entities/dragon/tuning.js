@@ -243,6 +243,10 @@ export const TUNING = {
   unlockStagger: [1.5, 1.6, 1.5], // (v0.6: 2, 2.5, 2) the new moves arrive faster
   // the tell's timing cue: combat:flash + in-world flash this many seconds before impact (COMBAT.md)
   flashLead: 0.35,
+  // how late after its impact a string's bite may still connect (s; inside the 0.085 s timing
+  // tolerance): a hero standing inside the snout was caught by the lunge 0.1 s after the flash said
+  // it would land (cataclysm's held bite at 3 m); past this the bite misses instead (2026-11-20)
+  biteLate: 0.07,
   // strings (contract 1): a follow-up hit lands at least this long after the previous one (the
   // player releases and re-presses RMB: DEFENSE.parryRearm 0.25 s); checked by the STRINGS scenario
   minHitGap: 0.45,

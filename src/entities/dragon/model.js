@@ -5,7 +5,8 @@ import { limbGeometry, ellipsoidGeometry, hornGeometry, cylindricalGUV } from '.
 import { ANATOMY as A, SCALE } from './tuning.js';
 import { WingMembrane } from './membrane.js';
 import { WING_KEYS } from './rig/anim.js';
-import { wyrmFace, buildHead, FACE_ART } from './heads.js';
+import { wyrmFace, buildHead, FACE_ART, faceNape } from './heads.js';
+import './faces.js'; // registers the four faces of 2026-11-20 (drake, tyrant, viper, revenant)
 import { wyrmLook } from './looks.js';
 
 // Procedural four-legged drake ("Obsidian Drake", owner concept sheet; build spec docs/art/dragon.md):
@@ -383,6 +384,22 @@ export function createDragonMaterials(U) {
       seed: 3.3,
     }),
   };
+  // the hollows of a face (faces.js `pit` art: eye sockets, nostrils): near black, never lit up, so
+  // the eye burns in a dark hole instead of on a grey cheek
+  if (faceArt.pit) {
+    mats.pit = createSurfaceGlyphMaterial(U, {
+      levels: CLAW_LEVELS, cell: [0.09, 0.15], base: [0.01, 0.01, 0.01], lumScale: 1, ink: [0.06, 0.05, 0.05], gain: 1, rim: 0, outline: 0, inkGlow: 0, glowMask: 0, seed: 41.9,
+      wyrm: faceArt.pit,
+    });
+  }
+  // a face with a bare-bone mask (faces.js `mask` art; the revenant) draws it with a material of its
+  // own: the claws' ivory, its ASCII-art source the face's
+  if (faceArt.mask) {
+    mats.mask = createSurfaceGlyphMaterial(U, {
+      levels: CLAW_LEVELS, cell: [0.09, 0.15], base: [0.14, 0.12, 0.1], lumScale: 3.5, ink: [0.9, 0.84, 0.72], gain: 2.4, rim: 0.4, outline: 0, inkGlow: 0.12, glowMask: 0, seed: 37.1,
+      wyrm: faceArt.mask,
+    });
+  }
   // generic art-source brightness (only used if a part ever drops its WYRM_ART source)
   for (const m of Object.values(mats)) m.uniforms.uArtGain.value = ART_GAIN;
   return mats;
@@ -841,7 +858,10 @@ export function buildDrake(U) {
   neckBase.rotation.x = -1.25; // points up-forward (the chain's minimal rotations keep +Y dorsal)
   const neck = [];
   let parent = neckBase;
+  // (a face may clear its nape: the crest and the mane shorten toward the skull, heads.js faceNape)
+  const NAPE = faceNape();
   for (let i = 0; i < A.neckSegs; i++) {
+    const NP = NAPE[A.neckSegs - 1 - i] ?? 1;
     const j = joint(parent, 0, 0, i === 0 ? 0 : A.neckLen, `neck${i}`);
     const t = i / (A.neckSegs - 1);
     const r0 = THREE.MathUtils.lerp(0.62, 0.4, t) * NECK;
@@ -852,7 +872,7 @@ export function buildDrake(U) {
     // dorsal crest: two tall back-swept spines per segment (the reference's spiky mane) and a
     // splayed pair beside them, one batch per segment
     const crest = [];
-    for (let q = 0; q < 2; q++) crest.push(spike(THREE.MathUtils.lerp(0.8, 0.58, t) * (q ? 0.82 : 1) * Q, 0.14, 0, r0 * 0.86, A.neckLen * (0.22 + 0.5 * q), 0.72, 0, 0.2, 5, 0.38));
+    for (let q = 0; q < 2; q++) crest.push(spike(THREE.MathUtils.lerp(0.8, 0.58, t) * (q ? 0.82 : 1) * Q * NP, 0.14, 0, r0 * 0.86, A.neckLen * (0.22 + 0.5 * q), 0.72, 0, 0.2, 5, 0.38));
     for (const s of [1, -1]) crest.push(spike(THREE.MathUtils.lerp(0.5, 0.32, t), 0.08, s * r0 * 0.5, r0 * 0.72, A.neckLen * 0.45, 0.7, -s * 0.65, 0.14, 5, 0.45));
     batch(j, mats.spine, crest);
     // the head study's mane: 3 rows of long pointed blade scales per side (±40°, ±70°, ±100° around
@@ -863,7 +883,7 @@ export function buildDrake(U) {
       [0.7, 1.22, 1.75].forEach((ang, row) => {
         for (let q = 0; q < 2; q++) {
           const z = 0.12 + q * 0.23 + (row % 2) * 0.115;
-          sh.push(shingle((0.58 - row * 0.07) * (B?.mane ? 1.7 : 1), 0.14 - row * 0.015, r0 * 0.93, s * ang, z, B?.mane ? 0.6 : 0.4, 0.92, 0.3));
+          sh.push(shingle((0.58 - row * 0.07) * (B?.mane ? 1.7 : 1) * NP, 0.14 - row * 0.015, r0 * 0.93, s * ang, z, B?.mane ? 0.6 : 0.4, 0.92, 0.3));
         }
       });
     }
@@ -887,7 +907,7 @@ export function buildDrake(U) {
   const sculpted = face !== 'old' ? buildHead(face, headVis, mats) : null;
   let eyes, nostrils, jaw, whiskers, hornTip = null;
   if (sculpted) {
-    ({ eyes, nostrils, jaw } = sculpted);
+    ({ eyes, nostrils, jaw, hornTip } = sculpted);
     // whisker chains (the loong's): segment length in root model units for rig/anim.js
     whiskers = sculpted.whiskers.map((w) => ({ ...w, len: w.segLen * HV }));
   }

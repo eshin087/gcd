@@ -2,9 +2,11 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
 
-// The Cinder Wyrm's heads (?wyrmFace=old|skull|loong|demon; the owner picks from filmed sheets).
-// `old` is the head model.js has always built (a tapered tube with horns, teeth and eyes stuck on).
-// The other three are SCULPTED: each skull is a loft through cross-sections along the head (per ring:
+// The Cinder Wyrm's heads (?wyrmFace=; the owner picks from filmed sheets). `drake` is the head it
+// wears (the owner's pick, 2026-11-20, ADR-124; its data and the three turned down with it, tyrant,
+// viper and revenant, are in faces.js). `old` is the head model.js built before (a tapered tube with
+// horns, teeth and eyes stuck on). skull / loong / demon were shown and passed on (ADR-120).
+// Every head but `old` is SCULPTED: each skull is a loft through cross-sections along the head (per ring:
 // the skull table, the side, the cheek, the tooth line, the palate), then displaced by soft features
 // (eye sockets, brow ridges, the temple hollow, cheekbones, nostrils, snarl folds, jaw muscle), and
 // drawn with FLAT facets so the spread of facet tones prints as form (docs/STYLE.md, "The house
@@ -14,8 +16,11 @@ import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
 // Gameplay joints do not move: `jaw` hinges at (0, -0.15, 0.05) as before, `mouth` stays on `head`
 // (model.js). Only the drawn eyes and the nostrils (snort smoke) sit where each head draws them.
 
-export const WYRM_FACES = ['old', 'skull', 'loong', 'demon'];
-let FACE = 'old';
+// (drake / tyrant / viper / revenant: the four faces of 2026-11-20, their data in faces.js)
+export const WYRM_FACES = ['drake', 'old', 'skull', 'loong', 'demon', 'tyrant', 'viper', 'revenant'];
+/** The head the wyrm wears with nothing set (the owner's pick, ADR-124). */
+export const WYRM_FACE_SHIPPED = 'drake';
+let FACE = WYRM_FACE_SHIPPED;
 try {
   const q = new URLSearchParams(globalThis.location?.search ?? '');
   const v = String(q.get('wyrmFace') ?? q.get('wyrmface') ?? '').toLowerCase();
@@ -31,6 +36,7 @@ try {
  * pitch -0.24, yaw PI - 0.3, curve 0.34: the curve lifts the tip 0.58). 2026-11-16: ablaze guessed them
  * off the old head. 2026-11-20: the old head's horns grow with the wyrm's build (looks.js), so model.js
  * measures its tip off the built horn (`hornTip`) and ablaze reads that first; this entry is build '0'.
+ * The faces of faces.js return their main horn's tip from their extras (`hornTip`), read the same way.
  */
 export const HORN_TIPS = Object.freeze({
   old: Object.freeze([0.647, 1.266, -1.466]),
@@ -39,7 +45,7 @@ export const HORN_TIPS = Object.freeze({
   demon: Object.freeze([0.572, 1.257, -0.744]),
 });
 
-/** The head in use ('old' | 'skull' | 'loong' | 'demon'); read once from ?wyrmFace=. */
+/** The head in use (one of WYRM_FACES; 'drake' with nothing set); read once from ?wyrmFace=. */
 export const wyrmFace = () => FACE;
 /** Pick the head the NEXT built wyrm wears (tests, the Lab). Returns false for an unknown name. */
 export function setWyrmFace(k) {
@@ -63,11 +69,11 @@ export const FACE_ART = {
 export const JAW_PIVOT = [0, -0.15, 0.05];
 
 // ---------------------------------------------------------------- math helpers (build time only)
-const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+export const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const lerp = (a, b, t) => a + (b - a) * t;
 
 /** Cubic Hermite through keyed rows ({ z, ...numbers }) at z (Catmull-Rom tangents, clamped ends). */
-function interpRow(keys, z) {
+export function interpRow(keys, z) {
   const n = keys.length;
   if (z <= keys[0].z) return { ...keys[0], z };
   if (z >= keys[n - 1].z) return { ...keys[n - 1], z };
@@ -384,7 +390,7 @@ function mirrorX(geo) {
 }
 
 /** A tooth / fang / tusk: a slightly hooked cone from `root` along `dir` (flat facets). */
-function fang(root, dir, len, r, { hook = 0.25, hookAxis = [1, 0, 0], radial = 5, flat = 1, up = [0, 0, 1] } = {}) {
+export function fang(root, dir, len, r, { hook = 0.25, hookAxis = [1, 0, 0], radial = 5, flat = 1, up = [0, 0, 1] } = {}) {
   return sweepTube(bentPath(root, dir, len, { bend: hook, axis: hookAxis, n: 4, bendPow: 1.6 }), (t) => r * Math.pow(1 - t, 0.85), { radial, flat, up });
 }
 
@@ -415,9 +421,9 @@ function attach(parent, mats, parts) {
   return meshes;
 }
 
-const add = (parts, key, ...geos) => (parts[key] ??= []).push(...geos);
+export const add = (parts, key, ...geos) => (parts[key] ??= []).push(...geos);
 /** Both sides: the geometry and its mirror image. */
-const both = (g) => [g, mirrorX(g)];
+export const both = (g) => [g, mirrorX(g)];
 
 function joint(parent, x, y, z, name) {
   const j = new THREE.Object3D();
@@ -900,8 +906,18 @@ DEMON.extras = (S, up, jp) => {
 function buildSculpted(H, headVis, mats) {
   const up = sculptLoft({ keys: H.upper, profile: upperProfile, sub: UPPER_SUB, bands: UPPER_BANDS, feats: H.upperFeats, step: 0.05 });
   const lo = sculptLoft({ keys: H.lower, profile: lowerProfile, sub: LOWER_SUB, bands: LOWER_BANDS, feats: H.lowerFeats, step: 0.04 });
-  const parts = { head: [up.head], maw: [up.maw], teeth: teethRow(H.upper, H.teethUp, true) };
-  const jp = { head: [lo.head], maw: [lo.maw], teeth: teethRow(H.lower, H.teethLow, false) };
+  const parts = { head: [up.head], maw: [up.maw], teeth: teethRow(H.upper, H.teethUp, true, H.teethOpt) };
+  const jp = { head: [lo.head], maw: [lo.maw], teeth: teethRow(H.lower, H.teethLow, false, H.teethOpt) };
+  // a face may repaint regions of its hide in another material (H.paint: a bone mask, dark sockets)
+  for (const [P, list] of [[parts, H.paint], [jp, H.paintJaw]]) {
+    for (const rule of list ?? []) {
+      const from = rule.from ?? 'head';
+      const [keep, moved] = repaint(P[from][0], rule);
+      if (moved && keep === moved) P[from].shift();
+      else P[from][0] = keep;
+      if (moved) add(P, rule.key, moved);
+    }
+  }
   const out = H.extras?.(H, parts, jp, { headVis, mats }) ?? {};
   attach(headVis, mats, parts);
   const eyes = [eyeMesh(headVis, mats.eye, 1, H.eye), eyeMesh(headVis, mats.eye, -1, H.eye)];
@@ -909,11 +925,55 @@ function buildSculpted(H, headVis, mats) {
   const nostrils = [joint(headVis, n[0], n[1], n[2], 'nostrilL'), joint(headVis, -n[0], n[1], n[2], 'nostrilR')];
   const jaw = joint(headVis, ...JAW_PIVOT, 'jaw');
   attach(jaw, mats, jp);
-  return { eyes, nostrils, jaw, whiskers: out.whiskers ?? [] };
+  return { eyes, nostrils, jaw, whiskers: out.whiskers ?? [], hornTip: out.hornTip ?? null };
+}
+
+/**
+ * Split a flat-faceted geometry: the triangles a rule takes go to its material. A rule is
+ * { key, from? ('head'), z?: [from, to], c?, r? (an ellipsoid, x mirrored), y?: [from, to], except? }: every given test must
+ * hold for the triangle's centre. Returns [kept, moved | null].
+ */
+function repaint(geo, rule) {
+  const p = geo.attributes.position.array, g = geo.attributes.aGUV.array;
+  const A = { p: [], g: [] }, B = { p: [], g: [] };
+  for (let t = 0; t < p.length; t += 9) {
+    const x = Math.abs(p[t] + p[t + 3] + p[t + 6]) / 3, y = (p[t + 1] + p[t + 4] + p[t + 7]) / 3, z = (p[t + 2] + p[t + 5] + p[t + 8]) / 3;
+    let hit = true;
+    if (rule.z && (z < rule.z[0] || z > rule.z[1])) hit = false;
+    if (rule.y && (y < rule.y[0] || y > rule.y[1])) hit = false;
+    if (rule.c) {
+      const dx = (x - rule.c[0]) / rule.r[0], dy = (y - rule.c[1]) / rule.r[1], dz = (z - rule.c[2]) / rule.r[2];
+      if (dx * dx + dy * dy + dz * dz > 1) hit = false;
+    }
+    for (const e of rule.except ?? []) {
+      const dx = (x - e.c[0]) / e.r[0], dy = (y - e.c[1]) / e.r[1], dz = (z - e.c[2]) / e.r[2];
+      if (dx * dx + dy * dy + dz * dz <= 1) hit = false;
+    }
+    const T = hit ? B : A, j = (t / 9) * 6;
+    for (let k = 0; k < 9; k++) T.p.push(p[t + k]);
+    for (let k = 0; k < 6; k++) T.g.push(g[j + k]);
+  }
+  const mk = (T) => {
+    if (!T.p.length) return null;
+    const o = new THREE.BufferGeometry();
+    o.setAttribute('position', new THREE.Float32BufferAttribute(T.p, 3));
+    o.setAttribute('aGUV', new THREE.Float32BufferAttribute(T.g, 2));
+    o.computeVertexNormals();
+    return o;
+  };
+  // (everything taken: the same geometry on both sides tells the caller to drop the source)
+  if (!A.p.length) return [geo, geo];
+  return [mk(A), mk(B)];
 }
 
 // ================================================================ entry
-const HEADS = { skull: SKULL, loong: LOONG, demon: DEMON };
+/** Every sculpted head's data by name (faces.js adds the four faces of 2026-11-20). */
+export const HEADS = { skull: SKULL, loong: LOONG, demon: DEMON };
+/**
+ * How much of the neck's crest and mane the head in use keeps on the last neck segments, nearest the
+ * head first (model.js; a face may clear its nape so the skull's outline stands free): [] = all of it.
+ */
+export const faceNape = () => HEADS[FACE]?.nape ?? [];
 
 /**
  * Build the head `face` (not 'old': model.js keeps that one) on headVis. Returns { eyes, nostrils,
