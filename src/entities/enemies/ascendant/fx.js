@@ -65,6 +65,38 @@ export const hash = (n) => {
 /** Violet (the Lord's colour: blue the highest channel, green well under it)? */
 const violet = (c) => Array.isArray(c) && c[2] > c[0] * 1.05 && c[1] < c[2] * 0.62;
 
+/** The share of a scorch's glowing heat his energy leaves (see the constructor). */
+const SCORCH_HEAT = 0.12;
+/** The game as this effects object sees it: the same, but its world's scorch leaves less heat. */
+function scorchedGame(real) {
+  if (!real || typeof Proxy !== 'function') return real;
+  const bound = new Map();
+  const bind = (t, v) => {
+    let f = bound.get(v);
+    if (!f) bound.set(v, (f = v.bind(t)));
+    return f;
+  };
+  const scorch = {
+    burnCircle: (x, z, r, burn = 0.5, heat = 1) => real.world?.scorch?.burnCircle?.(x, z, r, burn, heat * SCORCH_HEAT),
+  };
+  const world = new Proxy({}, {
+    get(_, k) {
+      const w = real.world;
+      if (!w) return undefined;
+      if (k === 'scorch') return w.scorch ? scorch : w.scorch;
+      const v = w[k];
+      return typeof v === 'function' ? bind(w, v) : v;
+    },
+  });
+  return new Proxy(real, {
+    get(t, k) {
+      if (k === 'world') return t.world ? world : t.world;
+      const v = t[k];
+      return typeof v === 'function' ? bind(t, v) : v;
+    },
+  });
+}
+
 // every drawing method of this class runs on LordFx's drawing stream (its rnd() inside them), so the
 // inherited helpers they call (_shock, arc, lightning ...) never draw from the stream game code reads
 const ASC_DRAW = [
@@ -81,6 +113,11 @@ export class AscFx extends LordFx {
     this.strikes = Array.from({ length: 12 }, () => ({ alive: false }));
     // gold in the fire field: this level borrows the void slot
     this.game.fx?.fire?.setPalette?.('void', FIRE_PALETTES.gold);
+    // His energy chars the floor but leaves no embers: every scorch this object asks for (its own and
+    // the inherited shock fronts' and called strikes', which ask for a fire's glowing heat) keeps
+    // SCORCH_HEAT of its heat (the red-orange glow under them read as fire). Everything else on the
+    // game and the world is the real thing (functions bound to it).
+    this.game = scorchedGame(d.game);
     this._auraAcc = 0;
     this._gritAcc = 0;
     this._boltAcc = 0;
@@ -1205,13 +1242,13 @@ export class AscFx extends LordFx {
   /** The disc: a thin bright ring seen at the camera's slant, turning (two white-hot notches run
    *  round it), a sheath of gold on its rim, the wake its rim leaves. ~40 blobs a frame. */
   _drawDisc(s) {
-    const R = 0.62, sp = s.spin;
+    const R = 0.85, sp = s.spin;
     const life = this._frame();
     if (life > 0) {
       // the rim: a ring of gold, hotter on the side the notches turn past
       for (let i = 0; i < 18; i++) {
-        const a = (i / 18) * TAU, h = 0.55 + 0.35 * Math.max(0, Math.cos(2 * (a - sp)));
-        this._blob(s.x + Math.cos(a) * R, s.y + Math.sin(a) * 0.08, s.z + Math.sin(a) * R * 0.9, 0, 0, 0, life, 0.28, 0.28, h, h, K_VOID);
+        const a = (i / 18) * TAU, h = 0.7 + 0.45 * Math.max(0, Math.cos(2 * (a - sp)));
+        this._blob(s.x + Math.cos(a) * R, s.y + Math.sin(a) * 0.08, s.z + Math.sin(a) * R * 0.9, 0, 0, 0, life, 0.34, 0.34, h, h, K_VOID);
       }
       for (let e = 0; e < 2; e++) {
         const a = sp + e * Math.PI;

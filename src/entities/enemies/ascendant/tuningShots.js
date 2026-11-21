@@ -29,7 +29,7 @@ export const SHOTS_TUNING = {
   volley: { rise: 4, count: 6, gap: 0.42, warn: 0.95, radius: 2.2, damage: 22, knockback: 3, lead: 0.5, scatter: 2.2 },
   // Storm Cage: `count` orbs on a ring of `r` m round the hero, open over `open` rad on the side away
   // from him; each hangs, the first `first` s, then one every `gap` s flies in at `speed` m/s
-  cage: { count: 8, r: 5, open: 1.1, first: 0.7, gap: 0.4, speed: 12, radius: 1.3, damage: 20, knockback: 3, size: 1.1 },
+  cage: { count: 8, r: 5, open: 1.1, first: 0.7, gap: 0.4, speed: 12, radius: 1.3, damage: 20, knockback: 3, size: 1.5 },
   // Thunderfall (form `form` on): a strike called near where the hero is heading every `gap` s ([bar
   // full, bar empty]) in his moves' pauses, `maxLive` at most, `warn` s each (r `radius`); `start` s
   // into the form before the first; never in the hero's opening (the Lord's weather, spells.js)
