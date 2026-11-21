@@ -132,7 +132,7 @@ export class BeamMoves {
     const C = this.T[bm.kind], great = bm.kind === 'great', form = d.phase;
     if (u < 1) {
       // aim: at the hero (the second palm of the twin: where he is heading) until the line is fixed
-      const fix = great ? 2 : C.fix ?? 0.76;
+      const fix = C.fix ?? 0.76;
       if (!b._fixed && s) {
         let tx = s.p.x, tz = s.p.z;
         if (bm.kind === 'twin' && bm.side === 'L') {
@@ -158,9 +158,8 @@ export class BeamMoves {
           this.game.flow?.cinematic?.({ x: d.position.x, z: d.position.z, zoom: C.cine.zoom, weight: C.cine.weight, slowmo: 1, dur: C.cine.dur, kind: 'greatBeam' });
         }
       }
-      // the line he has fixed: a thread from the lead hand along it (the great beam: from the cue)
-      const cue = b.flash <= (d.brain.act?.t ?? 0);
-      if (b._fixed || (great && cue)) {
+      // the line he has fixed: a thread from the lead hand along it
+      if (b._fixed) {
         const h = d.tellPoint(bm.side === 'L' ? 'fistR' : 'fistL', this._w);
         const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), L = this._lineLen(d.position.x, d.position.z, fx, fz, C.len, C.w, great);
         d.fx._drawing++;
@@ -174,15 +173,14 @@ export class BeamMoves {
     }
     // the lit window: the sweep is dragged toward the hero's side; the great beam follows him
     if (!this.B.on || this.B.beat !== b || this.B.phase !== 'lit') return;
-    if (bm.kind === 'sweep') {
-      const B = this.B, step = C.turn * DEG * dt, left = C.arc * DEG - Math.abs(B.swept);
+    // (the sweep: up to `arc` deg; the great beam: on through its whole lit window, one way)
+    if (bm.kind === 'sweep' || great) {
+      const B = this.B, step = C.turn * DEG * dt, left = (C.arc ?? 360) * DEG - Math.abs(B.swept);
       if (left > 0) {
         const st = Math.min(step, left) * B.sign;
         B.swept += st;
         d.yaw = wrapAngle(d.yaw + st);
       }
-    } else if (great && s) {
-      d.yaw = turnToward(d.yaw, s.ang, C.turn * DEG * dt);
     }
   }
 
@@ -217,7 +215,7 @@ export class BeamMoves {
     this._to.src = D?.swing?.() ?? -1;
     this._stations.clear();
     // the sweep's side: toward the hero (on the line: the way he is moving, else a roll)
-    if (bm.kind === 'sweep') {
+    if (bm.kind === 'sweep' || bm.kind === 'great') {
       const off = s ? wrapAngle(s.ang - d.yaw) : 0;
       let sign = Math.abs(off) > 0.03 ? Math.sign(off) : 0;
       if (!sign && s) {
@@ -364,6 +362,9 @@ export class BeamMoves {
     const r = d.hitPlayer({
       damage: C.first.damage, knockback: C.first.knockback, knockdown: true, kind: 'beam', tell: B.tell, attack: B.attack,
       from: { x: B.ox, z: B.oz }, projectile: true, parryable: great, blockable: true, flare: great, parryPosture: 0,
+      // (the great beam's head rolled through is a plain dodge: a perfect one's slow-mo would leave the
+      // hero standing in its sweep; its moment is the parry)
+      extra: great ? { perfect: false } : null,
     });
     if (r === RESULT.PARRIED) {
       // the head of the great beam parried: perfectly → THE CLASH; else it is held as a block

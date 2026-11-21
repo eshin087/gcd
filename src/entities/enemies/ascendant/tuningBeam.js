@@ -37,7 +37,10 @@ export const BEAM_TUNING = {
   // Heaven-Splitting Tide (form 3, the great spell)
   great: {
     charge: 2.4, len: 26, w: 3.4, lit: 2.2,
-    turn: 30, // deg/s after the hero
+    // the line is fixed (the thread runs out) at this share of the charge: 0.48 s before it fires, so a
+    // hero who leaves the line clears its 3.4 m (the blue cue comes after, flashLead before the head)
+    fix: 0.8,
+    turn: 30, arc: 40, // deg/s, deg at most: once lit it is dragged toward the side the hero is on, one way (rolled through, it does not turn back)
     first: { damage: 26, knockback: 8 }, tick: 12, push: 0.54, // ~3 m/s on a held guard
     from: 14, every: 35, // s into form 3 at the earliest, s between two at least (weigh)
     reach: 45, // m: a butte on its line this close is where the drawn beam (and its strip) ends

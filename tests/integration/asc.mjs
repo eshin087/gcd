@@ -1129,6 +1129,104 @@ async function scenarioBeams() {
   out(`       roll through: ${thr.hits.map((h) => `${h.r} @${((h.t - thr.flashT) * 1000).toFixed(0)}ms`).join(' ')}`);
   assert(thr.hits.length > 0 && !thr.hits.some((h) => h.r === RESULT.HIT), `standing aside as it comes, a roll through it (${thr.hits.map((h) => h.r).join(' ') || 'untouched'})`);
   assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
+  // 6. Twin Tide (form 3): two cues, the second palm leads a running hero
+  const tw = beamPlay(G, 'twinTide', { dist: 9, form: 3, step: () => { input.axis = { x: 1, y: 0 }; } });
+  const twParts = tw.flashes.map((f) => f.tell);
+  assert(tw.flashes.length === 2 && twParts.every((t) => t === TELL.RED) && tw.flashes[1].t - tw.flashes[0].t > BT.twin.lit, `Twin Tide: two red cues ${((tw.flashes[1]?.t - tw.flashes[0]?.t) || 0).toFixed(2)} s apart, the second after the first is out`);
+  assert(d.ki.beams.stats.beams >= 9, `every beam lit (${d.ki.beams.stats.beams} so far)`);
+}
+
+/** The great beam from a set-up in form 3 (him at (0, -2) facing the hero `dist` m north... south). */
+function greatPlay(G, { dist = 6, parry = null, mash = 0, block = false, max = 12 } = {}) {
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  const info = { lock: false, won: null, meterMax: 0, sep: 0, zoom: 0, clashT: 0, dims: 0, hpLock: 0, reel: 0 };
+  const amb = game.world.forest.ambience, dim0 = amb.dim;
+  amb.dim = (k) => { info.dims++; info.dimMax = Math.max(info.dimMax ?? 0, k); return dim0?.call(amb, k); };
+  const r = beamPlay(G, 'heavenTide', { dist, form: 3, max, step: (I) => {
+    if (block) input.press(1);
+    if (d.mode === 'react' && d.brain.react?.kind === 'reeling') info.reel += DT;
+    if (parry && I.flashT !== null && !I.pp && game.time >= I.flashT + TUNING.flashLead - parry) { I.pp = true; input.up(1); input.click(1); I.g0 = p.guard; I.h0 = p.hp; }
+    if (I.pp && info.headHp === undefined && game.time >= I.flashT + TUNING.flashLead + 0.05) { info.headHp = I.h0 - p.hp; info.headGuard = I.g0 - p.guard; }
+    if (p.state === 'lock') {
+      if (!info.lock) { info.lock = true; info.sep = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z); info.hpLock = p.hp; }
+      info.zoom = Math.max(info.zoom, game.cameraRig.cine?.zoom ?? 0);
+      info.clashT += DT;
+      info.meterMax = Math.max(info.meterMax, p.bladeLock?.meter ?? 0);
+      if (mash && ((game.realTime * 60) | 0) % mash === 0) input.click(0);
+    }
+  } });
+  game.world.forest.ambience.dim = dim0;
+  return { ...r, ...info };
+}
+
+async function scenarioClash() {
+  out('\n== scenario CLASH (Heaven-Splitting Tide: the vanish, the charge, the head, THE CLASH won and lost, never mandatory) ==');
+  const { BEAM_TUNING: BT } = await imp('src/entities/enemies/ascendant/tuningBeam.js');
+  const G = build();
+  duel(G, { dist: 6, form: 3 });
+  const { game } = G;
+  const d = game.dragon, p = game.player, K = BT.clash, GB = BT.great, scale = TUNING.damageScale ?? 1;
+  const watch = [];
+  // 1. stood in: the vanish to the far edge, the charge (the light dimmed), one blue flare, the head lands
+  const st = greatPlay(G, { dist: 6 });
+  const from0 = Math.hypot(d.position.x, d.position.z);
+  const fh = st.flashes[0], hd = st.hits.find((h) => h.r !== RESULT.IGNORED);
+  assert(st.flashes.length === 1 && fh.tell === TELL.BLUE && st.dims > 60 && st.dimMax > GB.dim * 0.9, `the great beam: one blue cue; the charge held the light down ${st.dims} frames (to ${st.dimMax?.toFixed(2)})`);
+  assert(hd?.r === RESULT.HIT && Math.abs(hd.damage - GB.first.damage * scale) < 1e-6 && st.states.has('knockdown') && Math.abs(hd.t - st.flashT - TUNING.flashLead) < 0.09, `its head lands ${((hd?.t - st.flashT) * 1000).toFixed(0)} ms after the cue: ${hd?.damage?.toFixed(1)}, knockdown`);
+  void from0;
+  // the vanish: he was at the ring's edge farthest from the hero when it fired
+  let edge = 0, across = 0;
+  const ed = beamPlay(G, 'heavenTide', { dist: 4, form: 3, step: (I) => { if (I.flashT !== null && !edge) { edge = Math.hypot(d.position.x, d.position.z); across = d.position.x * p.position.x + d.position.z * p.position.z; } } });
+  assert(edge > 10 && across < 0 && ed.flashes.length === 1, `he vanished to the ring's far edge first (${edge.toFixed(1)} m from the middle, the hero on the other side)`);
+  // 2. a plain parry of the head: held as a block (guard paid, no health)
+  // (then held as a guard: the ticks pay guard too, until it gives)
+  const pl = greatPlay(G, { dist: 6, parry: 0.2, block: false });
+  const plHead = pl.hits.find((h) => h.r !== RESULT.IGNORED);
+  assert(plHead?.r === RESULT.PARRIED && !pl.lock && pl.headHp === 0 && pl.headGuard > 0, `a plain parry of the head (${plHead?.r}): no clash, the head cost ${pl.headGuard?.toFixed(0)} guard and ${pl.headHp} HP`);
+  // 3. THE CLASH won: a perfect parry, the hero mashes
+  const won = greatPlay(G, { dist: 6, parry: 0.04, mash: 4 });
+  const ws = d.ki.beams.stats;
+  assert(won.lock && won.sep > 12 && Math.abs(won.sep - Math.hypot(won.start.x - d.position.x, won.start.z - d.position.z)) < 30, `a perfect parry of the head: THE CLASH at range (${won.sep.toFixed(1)} m apart)`);
+  assert(won.zoom > 2, `the camera drawn back to frame both (cinematic zoom +${won.zoom.toFixed(1)} m)`);
+  assert(ws.won >= 1 && won.lost === 0, `mashing (a press every 4 frames) wins it (${ws.won} won; ${won.lost} HP lost)`);
+  const won7 = greatPlay(G, { dist: 6, parry: 0.04, mash: 9 });
+  assert(won7.lock && d.ki.beams.stats.won >= 2, `a person's pace (a press every 9 frames, 6.7 a second) wins it too (${won7.clashT.toFixed(2)} s, the meter to ${won7.meterMax.toFixed(2)})`);
+  // he reels: a long opening
+  void watch;
+  out(`     won: the meter peaked at ${won.meterMax.toFixed(2)} in ${won.clashT.toFixed(2)} s; he reeled ${won.reel.toFixed(2)} s`);
+  assert(won.reel > K.reel - 0.3, `... and he reels ${won.reel.toFixed(2)} s: a long opening (the hero has ${won.sep.toFixed(0)} m to cross at 7.2 m/s: ${(won.sep / 7.2).toFixed(1)} s)`);
+  // 4. THE CLASH lost: no mash
+  const lost = greatPlay(G, { dist: 6, parry: 0.04, mash: 0 });
+  const lh = lost.hits.filter((h) => h.r === RESULT.HIT);
+  const big = lh.find((h) => Math.abs(h.damage - K.lose.damage * scale) < 1e-6);
+  assert(lost.lock && d.ki.beams.stats.lost >= 1 && !!big && lost.states.has('knockdown') && lost.moved > K.lose.knockback * 0.6, `not answered, the clash is lost: ${big?.damage?.toFixed(1)} damage, knocked down, thrown ${lost.moved.toFixed(1)} m along the beam`);
+  // 5. the mash numbers against the duel's lock
+  const L = TUNING.lock, need = (o) => (1 - o.start + o.decay * o.dur) / o.push / o.dur;
+  out(`     the mash: the clash needs ${need(K).toFixed(1)} presses a second to win outright in ${K.dur} s (to hold ${K.hold}: ${((K.hold - K.start + K.decay * K.dur) / K.push / K.dur).toFixed(1)}); the duel's lock (form 3) ${need({ ...L, decay: L.decay[2] }).toFixed(1)} (${((L.hold - L.start + L.decay[2] * L.dur) / L.push / L.dur).toFixed(1)})`);
+  assert(need(K) <= need({ ...L, decay: L.decay[2] }) + 1e-6, 'the clash is no harder to win than the duel\'s lock');
+  // 6. never mandatory: off the line before it fires (a sprint round him once the thread shows), then a
+  // roll back through its edge as the sweep comes (sprinting on with it, the sweep runs him down)
+  const offPlay = (roll) => beamPlay(G, 'heavenTide', { dist: 9, form: 3, max: 12, step: (I) => {
+    const ox = p.position.x - d.position.x, oz = p.position.z - d.position.z, l = Math.hypot(ox, oz) || 1;
+    if (I.rolled) { G.input.release('ShiftLeft'); return; }
+    G.input.axis = { x: oz / l, y: ox / l };
+    G.input.hold('ShiftLeft');
+    // (the roll: 0.1 s before the head would land, toward the line and through it, against the sweep
+    // that will be dragged his way)
+    if (roll && I.flashT !== null && game.time >= I.flashT + TUNING.flashLead - 0.1) {
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), qx = p.position.x - d.position.x, qz = p.position.z - d.position.z;
+      const sd = Math.sign(-qx * fz + qz * fx) || 1, wx = -sd * -fz, wz = -sd * fx;
+      I.rolled = true;
+      G.input.axis = { x: wx, y: -wz };
+      G.input.tap('Space');
+    }
+  } });
+  const off = offPlay(true), offRun = offPlay(false);
+  const hp = (r) => r.hits.filter((h) => h.r === RESULT.HIT).reduce((a, h) => a + h.damage, 0);
+  out(`     off the line, then rolled back through its edge: ${hp(off).toFixed(0)} HP (${off.hits.map((h) => h.r).join(' ') || 'untouched'}); sprinting on with the sweep instead: ${hp(offRun).toFixed(0)} HP`);
+  assert(!off.hits.some((h) => h.r === RESULT.HIT) && !offRun.hits.some((h) => h.damage > GB.tick * scale), 'off the line the head never lands; rolled back through, the sweep never touches him');
+  assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
 }
 //
 // --- strings
@@ -1157,7 +1255,7 @@ const S = {
   //
   // --- beams
   beams: scenarioBeams,
-  //
+  clash: scenarioClash,
   // --- strings
   //
   //
