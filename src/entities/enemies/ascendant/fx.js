@@ -574,7 +574,7 @@ export class AscFx extends LordFx {
       const lf = life0 * (0.55 + 0.6 * h) + this.lrand(0.06, 0.16);
       const core = Math.abs(sx - ox * A.rx - oz * A.rz - sMid) < 0.42 * sHalf;
       const vx = dx * this.lrand(0.1, 0.5), vy = this.lrand(0.1, 0.5), vz = dz * this.lrand(0.1, 0.5);
-      const hh = (light ? 0.42 : 0.52) * (core ? 1.55 : 1) * hk * this.lrand(0.9, 1.15);
+      const hh = (light ? 0.3 : 0.36) * (core ? 1.45 : 1) * hk * this.lrand(0.9, 1.15);
       this._blob(px, py, pz, vx, vy, vz, lf, D * 1.3, D * 0.8, hh, 0, K_VOID, 1, 0.3);
       spent++;
       if (spent % 4 === 0) {
@@ -647,7 +647,7 @@ export class AscFx extends LordFx {
       for (let q = 1; q <= 3; q++) {
         const u = q / 3, w = (hash(seed + i * 7 + q) - 0.5) * 0.45 * r * 0.3;
         const nx = x + Math.cos(a) * L * u - Math.sin(a) * w, nz = z + Math.sin(a) * L * u + Math.cos(a) * w;
-        this._ink(lx, 0.45, lz, nx, 0.45, nz, this.lrand(0.35, 0.55), 0.85 - 0.18 * q, 0, 0.75 - 0.18 * q, q > 1 ? 1 : 0);
+        this._ink(lx, 0.45, lz, nx, 0.45, nz, this.lrand(0.35, 0.55), 0.8 - 0.16 * q, 0, 0.7 - 0.16 * q, 1);
         lx = nx;
         lz = nz;
       }
@@ -674,7 +674,7 @@ export class AscFx extends LordFx {
       this._gatherAcc -= 1;
       const a = this.lr() * TAU, r = this.lrand(2.2, 6.5), lf = this.lrand(0.35, 0.6);
       const sx = x + Math.cos(a) * r, sz = z + Math.sin(a) * r;
-      this._blob(sx, 0.78, sz, (x - sx) / lf, this.lrand(0, 0.6), (z - sz) / lf, lf, 0.42, 0.26, 0.32 + 0.3 * u, 0.55, K_VOID, 0);
+      this._blob(sx, 0.78, sz, (x - sx) / lf, this.lrand(0, 0.6), (z - sz) / lf, lf, 0.5, 0.3, 0.42 + 0.35 * u, 0.6, K_VOID, 0);
     }
     // stones and grit lifting
     this._stoneAcc += dt * (18 + 40 * u);
@@ -696,7 +696,7 @@ export class AscFx extends LordFx {
     while (this._pillarAcc >= 1) {
       this._pillarAcc -= 1;
       const s = this.lrand(-0.7, 0.7) * (1 - 0.4 * u);
-      this._blob(ox + A.rx * s, oy + this.lrand(0.1, 1.6), oz + A.rz * s, -A.rx * s * 0.6, this.lrand(2, 4) * (0.6 + u), -A.rz * s * 0.6, this.lrand(0.4, 0.8), 0.6, 0.26, 0.3 + 0.35 * u, 0.08, K_VOID, 0.4, 2);
+      this._blob(ox + A.rx * s, oy + this.lrand(0.1, 1.6), oz + A.rz * s, -A.rx * s * 0.6, this.lrand(2, 4) * (0.6 + u), -A.rz * s * 0.6, this.lrand(0.45, 0.85), 0.75, 0.3, 0.36 + 0.42 * u, 0.1, K_VOID, 0.4, 2);
     }
     // the floor: a wheel widening, cracks of light lengthening
     const life = this._frame();
@@ -746,7 +746,7 @@ export class AscFx extends LordFx {
     }
     if (f3) for (let i = 0; i < 4; i++) {
       const a = (i / 4) * TAU + this.lr() * 0.8, rr = r * this.lrand(0.45, 0.75);
-      this.lightning(x + Math.cos(a) * rr + this.lrand(-1, 1), 9, z + Math.sin(a) * rr, x + Math.cos(a) * rr, 0.1, z + Math.sin(a) * rr, 1.6, i === 0);
+      this.lightning(x + Math.cos(a) * rr + this.lrand(-1, 1), 9, z + Math.sin(a) * rr, x + Math.cos(a) * rr, 0.1, z + Math.sin(a) * rr, 1.25, i === 0);
     }
     for (let i = 0; i < 30; i++) {
       const a = this.lr() * TAU, sp = this.lrand(3, 10);
