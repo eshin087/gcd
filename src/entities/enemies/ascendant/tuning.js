@@ -118,12 +118,13 @@ export const TUNING = {
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
-    // what tests/integration/asc.mjs PACE asserts for now: 0 conflicts, each form >= 0.95 x the one
-    // before (the numbers it measures are written in the report; the tuning pass sets the rest)
-    // (the strings pass, melee alone, 120 s x seeds 4242 / 7 / 99: cues a minute F1 84.5 / 85.5 / 87.3,
-    // F2 94.5 / 91.5 / 91.6, F3 98.9 / 93.0 / 98.8; the mean 85.8 → 92.5 → 96.9; longest gap 2.42 /
-    // 2.23 / 3.10 s; dodge share 9 / 14 / 17 % (the ki and terrain moves add the reds); 0 conflicts)
-    meter: { ramp: [1, 0.97, 0.95], rampMean: [1, 1.02, 1.02], minRate: [72, 80, 88], maxGap: [4.0, 3.8, 3.6] },
+    // what tests/integration/asc.mjs PACE asserts (the tuning pass, set from the WORST of ten seeds
+    // 4242 7 99 1337 2024 11 23 555 808 31337 x 120 s a form, with a margin): cues a minute F1 79.7 /
+    // 83.3 / 86.8, F2 83.9 / 88.2 / 92.8, F3 88.3 / 101.4 / 108.8 (min / mean / max); form over form
+    // x1.059 / x1.151 in the mean, x0.975 / x1.017 on the worst seed; longest gap 2.70 / 3.13 / 2.95 s;
+    // dodge 13 / 23 / 39 %; 0 conflicts. (Before the pass: 85.5 / 91.7 / 106.7, dodge 10 / 17 / 26 %,
+    // F3's longest gap 3.94 s on seed 1337.)
+    meter: { ramp: [1, 0.96, 0.98], rampMean: [1, 1.03, 1.08], minRate: [76, 80, 85], maxGap: [4.0, 3.8, 3.6] },
   },
   punish: { weight: 4 },
 
