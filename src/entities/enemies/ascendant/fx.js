@@ -1084,15 +1084,15 @@ export class AscFx extends LordFx {
    *  Charging (`hang`): it swells, motes drawn in. ~25 - 45 blobs a frame. */
   _drawBlast(s, hang) {
     const life = this._frame(), k = s.size ?? 1, A = this._axes(), ret = s.returned;
-    const grow = hang ? Math.min(1, s.age / Math.max(0.15, s.delay)) : 1, R = 0.42 * k * (0.5 + 0.5 * grow);
+    const grow = hang ? Math.min(1, s.age / Math.max(0.15, s.delay)) : 1, R = 0.56 * k * (0.5 + 0.5 * grow);
     const P = this._toCamera(s.x, s.y, s.z), px = P.x, py = P.y, pz = P.z;
     if (life > 0) {
       const pulse = 1 + 0.12 * Math.sin((s.age + s.seed) * 38);
       for (let i = 0; i < 9; i++) {
         const rr = R * pulse * Math.sqrt((i + 0.5) / 9), a = i * 2.39996 + s.age * 9, ox = Math.cos(a) * rr, oy = Math.sin(a) * rr;
-        this._blob(px + A.rx * ox + A.ux * oy, py + A.ry * ox + A.uy * oy, pz + A.rz * ox + A.uz * oy, 0, 0, 0, life, R * 0.8, R * 0.8, 0.5, 0.5, K_VOID);
+        this._blob(px + A.rx * ox + A.ux * oy, py + A.ry * ox + A.uy * oy, pz + A.rz * ox + A.uz * oy, 0, 0, 0, life, R * 0.75, R * 0.75, 0.42, 0.42, K_VOID);
       }
-      this._blob(px, py, pz, 0, 0, 0, life, R * 0.75, R * 0.75, ret ? 1.6 : 1.3, ret ? 1.6 : 1.3, K_STEEL);
+      this._blob(px, py, pz, 0, 0, 0, life, R * 0.55, R * 0.55, ret ? 1.5 : 1.25, ret ? 1.5 : 1.25, K_STEEL);
     }
     if (hang) {
       if (this.lr() < 0.6) {
@@ -1108,7 +1108,7 @@ export class AscFx extends LordFx {
       return;
     }
     // the tail: a stroke back along the way it came (written on the grid), heat shed behind it
-    const tl = Math.min(1.4 * k, 0.12 * s.speed * (0.4 + Math.min(1, s.age * 4)));
+    const tl = Math.min(0.9 * k, 0.07 * s.speed * (0.4 + Math.min(1, s.age * 4))) + R;
     this._ink(s.x - s.dx * tl, s.y, s.z - s.dz * tl, s.x - s.dx * R * 0.9, s.y, s.z - s.dz * R * 0.9, 0, 0.2, 0, ret ? 0.75 : 0.55);
     for (let i = 0; i < 3; i++) this._blob(s.x - s.dx * (0.25 + 0.25 * i) * k, s.y + this.lrand(-0.06, 0.06), s.z - s.dz * (0.25 + 0.25 * i) * k, -s.dx * 1.5 + this.lrand(-0.3, 0.3), this.lrand(0, 0.4), -s.dz * 1.5 + this.lrand(-0.3, 0.3), this.lrand(0.14, 0.24), 0.48 * k, 0.18, 0.42, 0, K_VOID, 2);
     if (this.lr() < 0.35) {
@@ -1151,7 +1151,7 @@ export class AscFx extends LordFx {
     if (floor) {
       this._shock(x, 0.8, z, 1.6 * k, 18, 0.24, 0.45, 0.8, 0.45, K_VOID, 0.3, 3);
       for (let i = 0; i < 3; i++) this._blob(x + this.lrand(-0.3, 0.3), 0.8, z + this.lrand(-0.3, 0.3), this.lrand(-0.6, 0.6), this.lrand(0.4, 1), this.lrand(-0.6, 0.6), this.lrand(0.7, 1.1), 0.6, 1.4, 0.5, 0, K_SMOKE, 1.5, 0.4);
-      this.game.world?.scorch?.burnCircle?.(x, z, 0.8 * k, 0.22, 0.6);
+      this.game.world?.scorch?.burnCircle?.(x, z, 0.8 * k, 0.22, 0.15);
       const W = this.game.world;
       W?.impact?.(x, z, 1.1 * k, k > 1.2 ? this.d?.T?.world?.bigBlast ?? ASC_WORLD.bigBlast : this.d?.T?.world?.blast ?? ASC_WORLD.blast, BLAST_BLOW);
     }
@@ -1180,26 +1180,19 @@ export class AscFx extends LordFx {
   /** The disc: a thin bright ring seen at the camera's slant, turning (two white-hot notches run
    *  round it), a sheath of gold on its rim, the wake its rim leaves. ~40 blobs a frame. */
   _drawDisc(s) {
-    const R = 0.62, n = 14, sp = s.spin;
-    let lx = 0, ly = 0, lz = 0;
-    for (let i = 0; i <= n; i++) {
-      const a = (i / n) * TAU, x = s.x + Math.cos(a) * R, z = s.z + Math.sin(a) * R * 0.9, y = s.y + Math.sin(a) * 0.08;
-      if (i) this._ink(lx, ly, lz, x, y, z, 0, 0.95, 0, 0.95, 1);
-      lx = x;
-      ly = y;
-      lz = z;
-    }
+    const R = 0.62, sp = s.spin;
     const life = this._frame();
     if (life > 0) {
+      // the rim: a ring of gold, hotter on the side the notches turn past
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * TAU, h = 0.55 + 0.35 * Math.max(0, Math.cos(2 * (a - sp)));
+        this._blob(s.x + Math.cos(a) * R, s.y + Math.sin(a) * 0.08, s.z + Math.sin(a) * R * 0.9, 0, 0, 0, life, 0.28, 0.28, h, h, K_VOID);
+      }
       for (let e = 0; e < 2; e++) {
         const a = sp + e * Math.PI;
-        this._blob(s.x + Math.cos(a) * R, s.y, s.z + Math.sin(a) * R * 0.9, 0, 0, 0, life, 0.27, 0.27, 1.5, 1.5, K_STEEL);
+        this._blob(s.x + Math.cos(a) * R, s.y, s.z + Math.sin(a) * R * 0.9, 0, 0, 0, life, 0.27, 0.27, 1.22, 1.22, K_STEEL);
       }
-      for (let i = 0; i < 10; i++) {
-        const a = (i / 10) * TAU + sp * 0.3;
-        this._blob(s.x + Math.cos(a) * R * 1.05, s.y + 0.06, s.z + Math.sin(a) * R, 0, 0, 0, life, 0.36, 0.36, 0.34, 0.34, K_VOID);
-      }
-      this._blob(s.x, s.y, s.z, 0, 0, 0, life, 0.4, 0.4, 0.35, 0.35, K_VOID);
+      this._blob(s.x, s.y, s.z, 0, 0, 0, life, 0.4, 0.4, 0.3, 0.3, K_VOID);
     }
     // the wake: what the rim leaves where it passed
     for (let e = 0; e < 2; e++) {
