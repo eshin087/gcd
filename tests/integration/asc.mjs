@@ -863,9 +863,10 @@ async function scenarioPace() {
         prevAct = d.mode === 'act' ? a : null;
         prevMode = d.mode;
         frames++;
-        // (the great spell's 2.4 s charge (the ring's light pulled down, stones rising) is not an empty
-        // gap: the meter counts it as it counts a black blow's charge)
-        if (d.mode === 'act' && d.brain.act?.def?.ki === 'beamGreat' && d.brain.act.t < (d.brain.act.beats?.[0]?.impact ?? 0) && frames % 6 === 0) busyT.push(game.time);
+        // (the great spell's 2.4 s charge (the ring's light pulled down, stones rising) and any beam of
+        // his while it is lit (it sweeps after the hero; its ticks are not cues) are not empty gaps: the
+        // meter counts them as it counts a black blow's charge)
+        if (frames % 6 === 0 && ((d.mode === 'act' && d.brain.act?.def?.ki === 'beamGreat' && d.brain.act.t < (d.brain.act.beats?.[0]?.impact ?? 0)) || d.ki?.beams?.phase === 'lit')) busyT.push(game.time);
         if (d.fx.shotsAlive || d.fx.strikesAlive || d.ki?.busy || d.terrain?.busy) linger++;
         // (what a feint or a hold of the fairness guard gave way to: the live things of his then)
         for (const k of ['feints', 'holds']) {
