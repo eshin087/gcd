@@ -518,7 +518,7 @@ async function scenarioFlare() {
   out('\n== scenario FLARE (parry moments, exactly one charged blow per form, red blows) ==');
   const flat = (n) => MOVES[n].beats.flatMap((b) => (Array.isArray(b.pick) ? b.pick : [b]));
   const inForm = (n, f) => weightIn(MOVES[n], f) > 0 && MOVES[n].phase <= f;
-  const BLACK = { 1: 'splitFist', 2: 'sunbreaker', 3: 'sunbreaker' };
+  const BLACK = { 1: 'splitFist', 2: 'sunbreaker', 3: 'heavenfall' };
   for (const f of [1, 2, 3]) {
     const parry = MOVE_NAMES.filter((n) => inForm(n, f) && flat(n).some((b) => b.flare && b.tell === TELL.BLUE));
     const black = MOVE_NAMES.filter((n) => inForm(n, f) && flat(n).some((b) => b.tell === TELL.BLACK));
@@ -1123,6 +1123,88 @@ async function scenarioMotion() {
   return { rows, slide };
 }
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+/**
+ * STRINGS (the strings agent): the second wave's strings and the transformation's timing. Sky Hammer
+ * launches the hero and is waiting where he lands; Mirage feints three times out of blinks (no glint)
+ * before its one red blow; Heavenfall calls the terrain's shock ring (terrain.quake) at its landing; a
+ * transformation shows the new form (dressPhase: the hair, the light, the aura) at its nova, not before;
+ * the dash is faster than his sprint.
+ */
+async function scenarioStrings() {
+  out('\n== scenario STRINGS (Sky Hammer, Mirage, Heavenfall, the form shown at the nova, the dash) ==');
+  const G = build();
+  duel(G, { dist: 2.0, form: 2 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  const prep = (form, dist) => {
+    settle(G, 4);
+    if (d.phase !== form) d.debug.setForm(form);
+    run(G, 0.3);
+    d.position.set(0, 0, -3);
+    d.yaw = 0;
+    place(G, dist);
+    run(G, 0.2);
+  };
+  // Sky Hammer: the launch (thrown >= 8 m, knocked down), the blink to where he lands, the hammer on him
+  prep(2, 1.8);
+  const p0 = p.position.clone();
+  let far = 0, landGap = 9, flashes = [];
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'skyHammer') flashes.push(e.tell); };
+  d.debug.trigger('skyHammer');
+  run(G, 5, () => {
+    far = Math.max(far, Math.hypot(p.position.x - p0.x, p.position.z - p0.z));
+    const a = d.brain.act, b = a?.beats[2];
+    if (b?._blinked && landGap === 9) landGap = Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z);
+  }, () => d.mode === 'foot');
+  G.watch = null;
+  const hammer = G.hits.filter((h) => h.attack === 'skyHammer').map((h) => h.r);
+  assert(far >= 8 && landGap < 3.2 && flashes.length === 3 && flashes[2] === TELL.RED, `Sky Hammer: the launch throws the hero ${far.toFixed(1)} m, he blinks to ${landGap.toFixed(1)} m from him, the hammer is red (${hammer.join(' ')})`);
+  // Mirage: three feints (no glint), then the red blow
+  prep(3, 5);
+  const mf = [];
+  let blinks = 0;
+  const vanish = d.fx.vanish;
+  d.fx.vanish = (...a) => { blinks++; return vanish?.apply(d.fx, a); };
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'mirage') mf.push(e.tell); };
+  d.debug.trigger('mirage');
+  run(G, 5, null, () => d.mode === 'foot');
+  G.watch = null;
+  d.fx.vanish = vanish;
+  assert(blinks === 4 && mf.length === 1 && mf[0] === TELL.RED, `Mirage: ${blinks} vanishes (three feints and the blow), ${mf.length} glint (${mf.join(' ')})`);
+  // Heavenfall: the leap, the landing calls the terrain's shock ring with its numbers
+  prep(3, 6);
+  let quake = null, apex = 0;
+  const T = d.terrain, q0 = T.quake;
+  T.quake = (x, z, o) => { quake = { x, z, o }; return q0?.call(T, x, z, o); };
+  d.debug.trigger('heavenfall');
+  run(G, 5, () => { apex = Math.max(apex, d.position.y); }, () => d.mode === 'foot');
+  T.quake = q0;
+  assert(!!quake && quake.o.to === 14 && quake.o.speed === 9 && quake.o.damage === 22 && apex > 4 && Number.isFinite(quake.x + quake.z), `Heavenfall: apex ${apex.toFixed(1)} m, its landing calls terrain.quake (${JSON.stringify(quake?.o)})`);
+  // the form shown at the nova: a deathblow → the transformation: dressPhase stays 1 until the ring goes out
+  prep(1, 2);
+  d.debug.postureBreak();
+  run(G, 0.3);
+  d.onExecute({ damage: 260 });
+  let shownEarly = 0, shownAt = -1;
+  const t0 = game.time;
+  run(G, 5, () => {
+    const a = d.brain.act;
+    if (a?.def?.transition && a.t < a.beats[0].impact - 0.05 && d.dressPhase !== 1) shownEarly++;
+    if (shownAt < 0 && d.dressPhase === 2) shownAt = game.time - t0;
+  }, () => d.mode === 'foot' && d.phase === 2);
+  assert(shownEarly === 0 && d.phase === 2 && shownAt > TUNING.transform.windup + 1, `the new form is shown at the nova (${shownAt.toFixed(2)} s after the deathblow), not at the transformation's start (${shownEarly} frames early)`);
+  // the dash: faster than his sprint, from form 2, past `at` m
+  prep(2, 3);
+  d.debug.setAI(true);
+  d.brain.dashCool = 0;
+  d.position.set(0, 0, -6);
+  p.debug.teleport(0, 6);
+  let top = 0;
+  run(G, 1.2, () => { const v = d.pilot.groundVel; top = Math.max(top, Math.hypot(v.x, v.z)); });
+  d.debug.setAI(false);
+  assert(top > TUNING.move.sprint * 1.4, `the dash at ${top.toFixed(1)} m/s (his sprint ${TUNING.move.sprint})`);
+}
 //
 //
 // --- terrain
@@ -1151,6 +1233,7 @@ const S = {
   //
   // --- strings
   motion: scenarioMotion,
+  strings: scenarioStrings,
   //
   //
   // --- terrain

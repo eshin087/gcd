@@ -92,7 +92,7 @@ export const TUNING = {
   },
   // the dash (form 2 on): past `at` m in his footwork he crosses the gap at `speed` m/s to `stop` m
   // short of the hero, an afterimage left where he started (fx.dashGhost); not more often than `every` s
-  dash: { from: 2, at: 5.5, speed: 9, stop: 2.4, every: 2.2, max: 9 },
+  dash: { from: 2, at: 5.5, speed: 16, stop: 2.4, every: 2.2, max: 9 },
   // the closing blink (form 3): past `far` m he may vanish and stand `r` m from the hero (`chance` per
   // look, every `every` s at most)
   closeBlink: { form: 3, far: 9, r: 2.4, chance: 0.5, every: 4 },

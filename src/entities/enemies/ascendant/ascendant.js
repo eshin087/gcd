@@ -541,6 +541,7 @@ export class Ascendant extends Duelist {
       R.onImpact(b, s, a);
       return;
     }
+    if (D.quake) this.terrain?.quake?.(this.position.x, this.position.z, D.quake);
     if (D.burst) fx.auraBurst?.(this.position.x, this.position.z, D.zone?.r ?? 4.5, f);
     else if (D.zone?.kind === 'ring' && (D.knockdown || D.tell === TELL.RED)) {
       const c = this.zoneCentre(D.zone, this._q);
@@ -609,6 +610,7 @@ export class Ascendant extends Duelist {
    *   { behind: m }    behind the hero (his facing), else beside him where he may stand
    *   { land: true }   beside where the hero's knock-back will end (`side` m, default 1.8)
    *   { edge: true }   at the ring's edge farthest from the hero (`pad` m inside his bound, default 1.2)
+   *   { at: rad, r }   at a side of the hero: `at` rad round from his facing (0 before him, PI behind)
    * Then a routed beat's own motion.
    */
   beatMotion(b, u, s, dt) {
@@ -631,6 +633,15 @@ export class Ascendant extends Duelist {
         if (!this.standable(tx, tz)) {
           tx = e.x - Math.sin(a) * r;
           tz = e.z - Math.cos(a) * r;
+        }
+      } else if (Number.isFinite(K.at)) {
+        // at a side of the hero: `at` rad round from where he faces (0 before him, PI behind), `r` m off
+        const yaw = fin(pl?.yaw, wrapAngle(s.ang + Math.PI)) + K.at, r = fin(K.r, 2.2);
+        tx = s.p.x + Math.sin(yaw) * r;
+        tz = s.p.z + Math.cos(yaw) * r;
+        if (!this.standable(tx, tz)) {
+          tx = s.p.x - Math.sin(yaw) * r;
+          tz = s.p.z - Math.cos(yaw) * r;
         }
       } else {
         const yaw = fin(pl?.yaw, wrapAngle(s.ang + Math.PI)), r = fin(K.behind, 2);

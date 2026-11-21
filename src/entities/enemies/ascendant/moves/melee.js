@@ -131,11 +131,22 @@ export function meleeMoves(X) {
     /** Sunbreaker: the CHARGED blow of the golden form: the fist drawn back while the gold gathers, a
      *  held beat, then a rushing punch across 12 m. Black: dodge it. */
     sunbreaker: {
-      label: 'Sunbreaker', phase: 2, weight: [0, 1.1, 1.0], cooldown: 12, band: [3, 12], recovery: 0.8, gapCloser: true,
+      label: 'Sunbreaker', phase: 2, weight: [0, 1.1, 0], cooldown: 12, band: [3, 12], recovery: 0.8, gapCloser: true,
       beats: [{
         ...punch('cross', K, 1.5, 36, { cock: 0.86 }), fixed: true, hold: [0.1, 0.5], active: 0.14, knockback: 4, knockdown: true,
         zone: { kind: 'sector', r: 2.4, ang: 0.8 }, ...dash(12, 0.86, 1.2), track: 0.88, rush: true,
       }],
+    },
+
+    /** Sky Hammer: a blow, the rising uppercut that LAUNCHES you (thrown 11 m, knocked down), and he is
+     *  waiting where you land: both fists brought down on you (red), a crater. */
+    skyHammer: {
+      label: 'Sky Hammer', phase: 2, weight: [0, 1.8, 1.0], cooldown: 10, band: [0, 3.6], recovery: 0.75,
+      beats: [
+        punch('jab', N, 0.48, 12),
+        punch('uppercut', B, 0.58, 20, { knockback: 11, knockdown: true, launch: true }),
+        punch('hammer', R, 0.7, 26, { blink: { land: true, side: 1.6 }, zone: { kind: 'ring', r: 3.0 }, ring: 3.0, knockdown: true, knockback: 2.6, close: 0, track: 0.5 }),
+      ],
     },
 
     // ============================================================ form 3: Thunder Ascension
@@ -159,6 +170,39 @@ export function meleeMoves(X) {
         ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (i % 2 ? punch('jab', N, 0.34, 9, { step: 'L' }) : punch('cross', N, 0.34, 9))),
         punch('hammer', R, 0.6, 24, { zone: { kind: 'ring', r: 3.2 }, ring: 3.2, knockdown: true, knockback: 2.6 }),
       ],
+    },
+
+    /** Heaven and Earth: the uppercut that launches you, the hammer where you land (red), the shock of
+     *  his landing thrown out round him (red), and a palm on a dash as you rise (a parry moment). */
+    heavenEarth: {
+      label: 'Heaven and Earth', phase: 3, weight: [0, 0, 1.8], cooldown: 11, band: [0, 3.6], recovery: 0.7,
+      beats: [
+        punch('uppercut', B, 0.56, 20, { knockback: 11, knockdown: true, launch: true }),
+        punch('hammer', R, 0.66, 26, { blink: { land: true, side: 1.6 }, zone: { kind: 'ring', r: 3.0 }, ring: 3.0, knockdown: true, knockback: 2.6, close: 0, track: 0.5 }),
+        { tell: R, windup: 0.6, active: 0.14, damage: 20, knockback: 6, zone: { kind: 'ring', r: 4.4 }, ring: 4.4, part: 'feet', close: 0, track: 0.3, keys: burstKeys(0.7), burst: true },
+        { ...punch('palm', B, 0.5, 22, { flare: true }), zone: { kind: 'line', r: RE.line, w: RE.lineW }, ...dash(5, 0.55, 0.9) },
+      ],
+    },
+    /** Mirage: three FEINTS, each out of a blink to another side of you (a shape of him left at each:
+     *  no glint, no blow), then the real one from behind (red). */
+    mirage: {
+      label: 'Mirage', phase: 3, weight: [0, 0, 1.6], cooldown: 9, band: [2, 10], recovery: 0.65,
+      beats: [
+        { ...punch('cross', N, 0.5, 0, { blink: { at: -1.4, r: 2.3 }, close: 0 }), feint: true, damage: 0 },
+        { ...kick('round', N, 0.5, 0, { blink: { at: 1.4, r: 2.3 }, close: 0 }), feint: true, damage: 0 },
+        { ...punch('hook', N, 0.5, 0, { blink: { at: 0.2, r: 2.4 }, close: 0 }), feint: true, damage: 0 },
+        { ...punch('palm', R, 0.66, 26, { ...blink(2.0) }), zone: { kind: 'line', r: RE.line, w: RE.lineW }, knockdown: true, knockback: 2.4 },
+      ],
+    },
+    /** Heavenfall: the CHARGED blow of the thunder form: a leap 4.5 m up and down onto you (black: dodge;
+     *  a guard is emptied), and the shock of it runs out across the whole ring (terrain.js quake: roll
+     *  through it as it reaches you). */
+    heavenfall: {
+      label: 'Heavenfall', phase: 3, weight: [0, 0, 1.1], cooldown: 14, band: [3, 13], recovery: 0.85, cat: 'area',
+      beats: [{
+        ...kick('axe', K, 1.5, 36, { cock: 0.7 }), fixed: true, zone: { kind: 'ring', r: 3.4 }, ring: 3.4, knockdown: true, knockback: 3.5,
+        leap: { from: 0.2, lock: 0.8, apex: 4.5 }, close: 0, track: 0.85, quake: { from: 3.4, to: 14, speed: 9, damage: 22 },
+      }],
     },
 
     // ============================================================ counters (out of his guard)

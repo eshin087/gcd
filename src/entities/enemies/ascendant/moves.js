@@ -388,15 +388,24 @@ export function transform(form) {
     beats: [{
       tell: R, windup: T.windup, fixed: true, active: 0.15, damage: T.damage, knockback: T.knockback,
       zone: { kind: 'ring', r: T.ringRadius }, ring: T.ringRadius, part: 'feet', track: 0, close: 0,
+      // (an act in five beats over the 2.3 s: the foot planted, up with the fists clenched, the head
+      // thrown back and the chest opened as the light rises, a last gathering, and the burst; the
+      // hair and the light of the new form show at the burst: ascendant.js dressPhase)
+      cock: 0.9,
       keys: [
-        // on one knee (where the deathblow left him), the head bowed
-        [0.0, F({ bY: -0.55, pitch: 0.26, yaw: 0, hdX: 0.5, rH: [-0.1, -0.46, 0.26], lH: [0.02, -0.4, 0.3], rF: [-0.14, 0.3], lF: [0.17, -0.42], rK: [0, 0, 1], lK: [0.1, -0.85, 0.5], flat: 0.7 })],
-        // he rises into a wide horse stance, the fists clenched at the hips
-        [0.35, F({ bY: -0.42, pitch: 0.12, yaw: 0, hdX: 0.3, rH: [-0.04, -0.4, 0.0], rP: [-0.8, -0.4, -0.6], lH: [0.04, -0.4, 0.0], lP: [0.8, -0.4, -0.6], rF: [-0.34, 0.0], lF: [0.34, 0.0], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3 })],
-        // the power drawn up through him: the body tightens, the head lifts, the fists shake
-        [0.86, F({ bY: -0.36, pitch: 0.02, yaw: 0, hdX: -0.12, spX: -0.08, rH: [-0.06, -0.36, -0.02], lH: [0.06, -0.36, -0.02], rP: [-0.8, -0.4, -0.6], lP: [0.8, -0.4, -0.6], rF: [-0.36, 0.0], lF: [0.36, 0.0], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3 })],
+        // on one knee (where the deathblow left him), the head bowed, a fist on the floor
+        [0.0, F({ bY: -0.55, pitch: 0.28, yaw: 0, hdX: 0.55, rH: [0.06, -0.52, 0.32], lH: [0.02, -0.4, 0.3], rF: [-0.14, 0.3], lF: [0.17, -0.42], rK: [0, 0, 1], lK: [0.1, -0.85, 0.5], flat: 0.7 })],
+        // the fist pushes off the floor; he plants the back foot and lifts his head
+        [0.14, F({ bY: -0.5, pitch: 0.2, yaw: 0, hdX: 0.2, rH: [0.0, -0.4, 0.3], lH: [0.0, -0.36, 0.3], rF: [-0.16, 0.3], lF: [0.18, -0.3], rK: [0, 0, 1], lK: [0.2, -0.5, 0.7], flat: 0.8 })],
+        // up: a wide, low stance, both fists clenched at his sides, the arms tense
+        [0.34, F({ bY: -0.36, pitch: 0.06, yaw: 0, hdX: 0.05, rH: [-0.1, -0.44, 0.02], rP: [-0.9, -0.3, -0.6], lH: [0.1, -0.44, 0.02], lP: [0.9, -0.3, -0.6], rF: [-0.32, 0.02], lF: [0.32, -0.02], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3, sw: [0.0, -1.3] })],
+        // the light rises through him: the head goes back, the chest opens, the fists pushed down and out
+        [0.62, F({ bY: -0.3, pitch: -0.14, yaw: 0, hdX: -0.45, spX: -0.2, rH: [-0.2, -0.42, -0.04], rP: [-0.9, -0.2, -0.5], lH: [0.2, -0.42, -0.04], lP: [0.9, -0.2, -0.5], rF: [-0.34, 0.02], lF: [0.34, -0.02], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3, sw: [-0.5, -1.0] })],
+        [0.8, F({ bY: -0.26, pitch: -0.2, yaw: 0, hdX: -0.5, spX: -0.24, rH: [-0.26, -0.38, -0.06], lH: [0.26, -0.38, -0.06], rF: [-0.34, 0.02], lF: [0.34, -0.02], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3, sw: [-0.6, -0.9] })],
+        // the last gathering: he folds over it, the forearms crossed before the chest
+        [0.94, F({ bY: -0.42, pitch: 0.22, yaw: 0, hdX: 0.3, spX: 0.1, rH: [0.2, -0.04, 0.24], rP: [-0.8, -0.5, -0.3], lH: [-0.2, -0.02, 0.26], lP: [0.8, -0.5, -0.3], rF: [-0.34, 0.02], lF: [0.34, -0.02], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3, sw: [1.0, 0.2] })],
         // it breaks out of him: he straightens, the arms thrown wide, the head back
-        [1.0, { ...F({ bY: -0.1, pitch: -0.2, yaw: 0, hdX: -0.35, spX: -0.14, rH: [-0.42, 0.08, 0.14], rP: [-0.9, 0.2, -0.3], lH: [0.42, 0.08, 0.14], lP: [0.9, 0.2, -0.3], rF: [-0.3, 0.0], lF: [0.3, 0.0], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3, sw: [-1.2, 0.2] }), e: 'i' }],
+        [1.0, { ...F({ bY: -0.08, pitch: -0.22, yaw: 0, hdX: -0.35, spX: -0.16, rH: [-0.44, 0.1, 0.12], rP: [-0.9, 0.2, -0.3], lH: [0.44, 0.1, 0.12], lP: [0.9, 0.2, -0.3], rF: [-0.3, 0.0], lF: [0.3, 0.0], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3, sw: [-1.2, 0.2] }), e: 'o' }],
         [2.0, F({ bY: -0.1, pitch: -0.16, yaw: 0, hdX: -0.25, rH: [-0.4, 0.06, 0.14], lH: [0.4, 0.06, 0.14], rF: [-0.3, 0.0], lF: [0.3, 0.0], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3, sw: [-1.2, 0.2] })],
       ],
     }],
