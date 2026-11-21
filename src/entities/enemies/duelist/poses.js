@@ -31,6 +31,11 @@ import { clamp, lerp, smoothstep, TAU } from '../../../core/math.js';
 // A field missing from a key is interpolated between the keys that have it; before its first key it
 // comes from the stance (the clip starts from his guard) and, unless the clip says `hold: true`, it
 // returns to the stance at the clip's end.
+// Between keys a field runs on a cubic through them (tangents(), below): a key is a pose he passes
+// THROUGH, not a stop. An ease says how a segment arrives at its key ('i' at speed: a strike; 'o' and
+// 's' slowing), and what follows it decides whether he comes to rest there: only where a field turns
+// back (the cock of a cut, the end of a follow-through that the next cut reverses) does it stand
+// still. With every key a stop, a string read as a row of held poses with a snap between them.
 
 const ANK = DIM.ankle;
 const SCALAR = {
@@ -42,21 +47,16 @@ const VEC = { rH: P.rH, rP: P.rP, lH: P.lH, lP: P.lP, swF: P.swF, rK: P.rK, lK: 
 /** The blade-driven arms' channels (not pose channels: evalClip applies them; their guard values). */
 const ARM = { arm: 0, ext: 0.75, lead: 0, larm: 0, lext: 0.75, llead: 0 };
 const FEET = new Set(['rF', 'lF']);
+// what a beat owns (completeBeat): everything but the blades' directions, which carry from cut to cut
+const BEAT_FIELDS = [...Object.keys(SCALAR), ...Object.keys(VEC), 'arm', 'larm'];
 const LEGS = [P.rF, P.rF + 1, P.rF + 2, P.lF, P.lF + 1, P.lF + 2, P.rK, P.rK + 1, P.rK + 2, P.lK, P.lK + 1, P.lK + 2, P.footFlat, P.rFy, P.lFy, P.rFf, P.lFf,
   P.bodyX, P.bodyY, P.bodyZ, P.pitch, P.roll, P.pelvX, P.pelvY, P.pelvZ, P.spX, P.spZ];
-const EASE = {
-  s: (u) => u * u * (3 - 2 * u),
-  l: (u) => u,
-  i: (u) => u * u,
-  o: (u) => 1 - (1 - u) * (1 - u),
-  h: () => 0,
-};
 const ARM_R = [0.2, 0.46]; // the fist's radius round the shoulder: folded … full reach
 const SCR = new Float32Array(N);
 const SCR_W = new Float32Array(N);
 // the channels the raised guard (pilot.ward) takes over from his footwork: the arms, the blade, the chest
 const WARD_CH = [P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.lH, P.lH + 1, P.lH + 2, P.lP, P.lP + 1, P.lP + 2, P.swF, P.swF + 1, P.swF + 2, P.spX, P.spY, P.hdY, P.bodyY, P.pitch];
-const AX = { arm: 0, ext: 0.75, lead: 0, larm: 0, lext: 0.75, llead: 0, laz: 0, lel: 0 };
+const AX = { arm: 0, ext: 0.75, lead: 0, larm: 0, lext: 0.75, llead: 0, laz: 0, lel: 0, az: 0, el: 0, keyed: false };
 
 const _az = [0, 0];
 /** [az, el] of a direction (body axes). */
@@ -89,26 +89,42 @@ function jolt(p, A) {
   p[P.rH + 1] += 0.05 * k;
 }
 
-/** The sword hand (and elbow, chest, hips) from the blade (see the header): blended in by `w`. */
-function bladeArm(p, w, ext, lead) {
+/** How high a blade at elevation `el` carries its fist, and how far out: past the vertical (a blade
+ *  laid back over the head, el > π/2) the fist keeps rising a little and comes in over the shoulder. */
+const HALF_PI = Math.PI / 2;
+const armLift = (el) => (el <= HALF_PI ? el : HALF_PI + 0.35 * (el - HALF_PI));
+const armOut = (el) => 0.5 + 0.5 * Math.max(-0.6, Math.cos(el));
+
+/**
+ * The sword hand (and elbow, chest, hips) from the blade (see the header): blended in by `w`.
+ * `az` / `el` are the blade's as KEYED (evalClip), not read back from its direction: a blade keyed
+ * past the vertical (el > π/2) reads back with its azimuth turned half a circle, and the fist jumped
+ * from before him to behind him in one frame.
+ */
+function bladeArm(p, w, ext, lead, az, el) {
   if (!(w > 0.001)) return;
   w = Math.min(1, w);
-  const dx = p[P.swD], dy = p[P.swD + 1], dz = p[P.swD + 2];
-  const az = Math.atan2(dx, dz), el = Math.asin(clamp(dy, -1, 1));
   const e = clamp(ext, 0, 1);
   const ha = az + lead, hs = Math.sin(ha), hc = Math.cos(ha);
-  const r = lerp(ARM_R[0], ARM_R[1], e);
+  // both hands on the hilt: the fist's circle is smaller and sits toward his middle, where the other
+  // hand can follow it (at a one-handed reach the left arm was dragged out straight, 176° at the elbow)
+  const two = clamp(p[P.twoHand], 0, 1);
+  const r = lerp(ARM_R[0], ARM_R[1], e) * armOut(el) * (1 - 0.2 * two), g = armLift(el);
   // folded, the fist sits nearer shoulder height whatever the blade's pitch (a cocked arm)
-  const hy = lerp(-0.18 + el * 0.3, -0.32 + el * 0.55, e) + 0.12 * Math.max(0, hs) * e;
-  to3(p, P.rH, hs * r, hy, hc * r + 0.12 * e, w);
+  const hy = lerp(-0.18 + g * 0.3, -0.32 + g * 0.55, e) + 0.12 * Math.max(0, hs) * e;
+  // … and never far out at his sword side, past where the left hand reaches: the chest turns
+  // further with the blade instead (below)
+  let hx = hs * r + 0.1 * two;
+  if (hx < -0.1) hx = lerp(hx, -0.1 + (hx + 0.1) * 0.3, two);
+  to3(p, P.rH, hx, hy, hc * r + 0.12 * e, w);
   to3(p, P.rP, lerp(-0.85, -0.35, e), lerp(-0.4, -0.95, e), lerp(-0.3, -0.4, e), w);
   // the chest and hips turn with the blade, the eyes stay on the opponent
   const tw = clamp(az, -2.3, 2.2);
   p[P.pelvY] += tw * 0.12 * w;
-  p[P.spY] += tw * 0.2 * w;
-  p[P.hdY] -= tw * 0.24 * w;
+  p[P.spY] += tw * (0.2 + 0.12 * two) * w;
+  p[P.hdY] -= tw * (0.24 + 0.12 * two) * w;
   // a blade low across the body leans the chest over it; raised, the chest opens
-  p[P.spX] += (0.08 - 0.08 * Math.max(0, el)) * w * e;
+  p[P.spX] += (0.08 - 0.08 * Math.max(0, Math.min(el, HALF_PI))) * w * e;
 }
 
 /** The off hand from the off-hand blade (az, el), the mirror of bladeArm; the chest turns less. */
@@ -117,12 +133,50 @@ function offArm(p, w, ext, lead, az, el) {
   w = Math.min(1, w);
   const e = clamp(ext, 0, 1);
   const ha = az + lead, hs = Math.sin(ha), hc = Math.cos(ha);
-  const r = lerp(ARM_R[0], ARM_R[1], e);
-  const hy = lerp(-0.18 + el * 0.3, -0.32 + el * 0.55, e) + 0.12 * Math.max(0, -hs) * e;
+  const r = lerp(ARM_R[0], ARM_R[1], e) * armOut(el), g = armLift(el);
+  const hy = lerp(-0.18 + g * 0.3, -0.32 + g * 0.55, e) + 0.12 * Math.max(0, -hs) * e;
   to3(p, P.lH, hs * r, hy, hc * r + 0.12 * e, w);
   to3(p, P.lP, lerp(0.85, 0.35, e), lerp(-0.4, -0.95, e), lerp(-0.3, -0.4, e), w);
   const tw = clamp(az, -2.2, 2.3);
   p[P.spY] += tw * 0.1 * w;
+}
+
+const T_LIM = 2.2; // the steepest tangent (× the segment's own slope) a cubic takes without overshooting
+/**
+ * The tangents (per second) of one track at each key: MI[k] the slope it arrives at key k with, MO[k]
+ * the slope it leaves with (see the header: an ease names how the segment ENDING at a key runs).
+ * `dim` 0 = a scalar track, else the vector's size. Build time only.
+ */
+function tangents(T, V, E, dim) {
+  const n = T.length, MI = new Array(n), MO = new Array(n);
+  const nc = dim || 1;
+  for (let k = 0; k < n; k++) {
+    const mi = new Array(nc), mo = new Array(nc);
+    const a = k > 0 ? E[k] : null, b = k < n - 1 ? E[k + 1] : null;
+    for (let c = 0; c < nc; c++) {
+      const v = (j) => (dim ? V[j][c] : V[j]);
+      const dA = a ? (v(k) - v(k - 1)) / Math.max(1e-6, T[k] - T[k - 1]) : 0;
+      const dB = b ? (v(k + 1) - v(k)) / Math.max(1e-6, T[k + 1] - T[k]) : 0;
+      const same = dA * dB > 0;
+      const flow = same ? (2 * dA * dB) / (dA + dB) : 0; // (the harmonic mean: never past either slope)
+      const cap = (m, d) => Math.sign(d) * Math.min(Math.abs(m), T_LIM * Math.abs(d));
+      // arriving
+      let i_ = 0;
+      if (a === 'l') i_ = dA;
+      else if (a === 'i') i_ = 2 * dA;
+      else if (a === 's' || a === 'o') i_ = b === null || b === 'h' ? 0 : b === 'l' ? (same ? cap(dB, dA) : 0) : flow;
+      // leaving
+      let o_ = 0;
+      if (b === 'l') o_ = dB;
+      else if (b === 'o') o_ = (a === 'i' || a === 'l') && same ? cap(i_, dB) : 2 * dB;
+      else if (b === 's' || b === 'i') o_ = a === null || a === 'h' ? 0 : a === 'l' || a === 'i' ? (same ? cap(i_, dB) : 0) : flow;
+      mi[c] = i_;
+      mo[c] = o_;
+    }
+    MI[k] = dim ? mi : mi[0];
+    MO[k] = dim ? mo : mo[0];
+  }
+  return { MI, MO };
 }
 
 /**
@@ -279,9 +333,30 @@ export function createDuelPoses(GUARD, opt = {}) {
         V.push(guardValue(f));
         E.push('s');
       }
-      tracks.push({ f, T, V, E, vec: f in VEC, sw: f === 'sw', lsw: f === 'lsw', arm: f in ARM, ch: f in VEC ? VEC[f] : SCALAR[f] });
+      const dim = f in VEC ? 3 : f === 'sw' || f === 'lsw' ? 2 : 0;
+      const { MI, MO } = tangents(T, V, E, dim);
+      tracks.push({ f, T, V, E, MI, MO, vec: f in VEC, sw: f === 'sw', lsw: f === 'lsw', arm: f in ARM, ch: f in VEC ? VEC[f] : SCALAR[f] });
     }
     return { tracks, dur, kit: api };
+  }
+
+  /**
+   * One beat's keys made whole: a field NONE of them sets is written with its guard value on the
+   * beat's first and last key. Without it a field keyed by an earlier beat (a chop's bowed chest and
+   * two-handed grip, a kick's lifted foot, the blade-driven arm) ran on through every later beat that
+   * did not mention it, until the clip's end. `keys`: [{ t, ...pose }] of one beat, in time order.
+   */
+  function completeBeat(keys) {
+    if (!keys.length) return keys;
+    const has = new Set();
+    for (const k of keys) for (const f in k) has.add(f);
+    const first = keys[0], last = keys[keys.length - 1];
+    for (const f of BEAT_FIELDS) {
+      if (has.has(f)) continue;
+      first[f] = guardValue(f);
+      if (last !== first) last[f] = guardValue(f);
+    }
+    return keys;
   }
 
   /** Evaluate a compiled clip at time t into p (over the guard). */
@@ -295,6 +370,7 @@ export function createDuelPoses(GUARD, opt = {}) {
     AX.llead = ARM.llead;
     AX.laz = A?.off?.az ?? (OFF ? OFF[0] : 0);
     AX.lel = A?.off?.el ?? (OFF ? OFF[1] : 0);
+    AX.keyed = false;
     if (!clip?.tracks) {
       jolt(p, A);
       return;
@@ -303,27 +379,49 @@ export function createDuelPoses(GUARD, opt = {}) {
       const T = tr.T, n = T.length;
       let i = 1;
       while (i < n && t > T[i]) i++;
-      let a, b, u;
-      if (i >= n) {
-        a = b = tr.V[n - 1];
-        u = 0;
-      } else if (t <= T[0]) {
-        a = b = tr.V[0];
-        u = 0;
-      } else {
+      // the cubic of this segment: h00 a + h10 (h m0) + h01 b + h11 (h m1); a held key keeps a
+      let a, b, m0 = null, m1 = null, h00 = 1, h10 = 0, h01 = 0, h11 = 0;
+      if (i >= n) a = b = tr.V[n - 1];
+      else if (t <= T[0]) a = b = tr.V[0];
+      else {
         a = tr.V[i - 1];
         b = tr.V[i];
-        u = EASE[tr.E[i]]?.(clamp((t - T[i - 1]) / Math.max(1e-6, T[i] - T[i - 1]), 0, 1)) ?? 0;
+        if (tr.E[i] !== 'h') {
+          const h = Math.max(1e-6, T[i] - T[i - 1]), u = clamp((t - T[i - 1]) / h, 0, 1), u2 = u * u, u3 = u2 * u;
+          h00 = 2 * u3 - 3 * u2 + 1;
+          h10 = (u3 - 2 * u2 + u) * h;
+          h01 = -2 * u3 + 3 * u2;
+          h11 = (u3 - u2) * h;
+          m0 = tr.MO[i - 1];
+          m1 = tr.MI[i];
+        }
       }
-      if (tr.sw) setSw(p, a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u);
-      else if (tr.lsw) {
-        AX.laz = a[0] + (b[0] - a[0]) * u;
-        AX.lel = a[1] + (b[1] - a[1]) * u;
-      } else if (tr.vec) v3(p, tr.ch, a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u);
-      else if (tr.arm) AX[tr.f] = a + (b - a) * u;
-      else p[tr.ch] = a + (b - a) * u;
+      if (tr.sw || tr.lsw || tr.vec) {
+        const x = m0 ? h00 * a[0] + h10 * m0[0] + h01 * b[0] + h11 * m1[0] : a[0];
+        const y = m0 ? h00 * a[1] + h10 * m0[1] + h01 * b[1] + h11 * m1[1] : a[1];
+        if (tr.sw) {
+          AX.az = x;
+          AX.el = y;
+          AX.keyed = true;
+          setSw(p, x, y);
+        } else if (tr.lsw) {
+          AX.laz = x;
+          AX.lel = y;
+        } else v3(p, tr.ch, x, y, m0 ? h00 * a[2] + h10 * m0[2] + h01 * b[2] + h11 * m1[2] : a[2]);
+      } else {
+        const x = m0 !== null ? h00 * a + h10 * m0 + h01 * b + h11 * m1 : a;
+        if (tr.arm) AX[tr.f] = x;
+        else p[tr.ch] = x;
+      }
     }
-    bladeArm(p, AX.arm, AX.ext, AX.lead);
+    if (AX.arm > 0.001) {
+      // (a clip that never keys the blade: its direction is the stance's, read back once)
+      if (!AX.keyed) {
+        AX.az = Math.atan2(p[P.swD], p[P.swD + 2]);
+        AX.el = Math.asin(clamp(p[P.swD + 1], -1, 1));
+      }
+      bladeArm(p, AX.arm, AX.ext, AX.lead, AX.az, AX.el);
+    }
     if (OFF || AX.larm > 0.001) {
       setOff(A, AX.laz, AX.lel);
       offArm(p, AX.larm, AX.lext, AX.llead, AX.laz, AX.lel);
@@ -339,7 +437,7 @@ export function createDuelPoses(GUARD, opt = {}) {
     else evalClip(p, A.def, A.t, A);
   }
 
-  Object.assign(api, { GUARD, duelStance, duelLoco, compileClip, evalClip, duelClip, POSES: Object.freeze({ loco: duelLoco, duel: duelClip }) });
+  Object.assign(api, { GUARD, duelStance, duelLoco, compileClip, completeBeat, evalClip, duelClip, POSES: Object.freeze({ loco: duelLoco, duel: duelClip }) });
   return api;
 }
 

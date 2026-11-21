@@ -1,5 +1,6 @@
 import { TELL } from '../../../combat/rules.js';
-import { compileClip, GUARD } from './poses.js';
+import { DIM } from '../../player/model.js';
+import { compileClip, completeBeat, GUARD } from './poses.js';
 import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
 import { GUARD_CLIPS } from '../duelist/guard.js';
@@ -34,6 +35,7 @@ import { GUARD_CLIPS } from '../duelist/guard.js';
 
 const N = TELL.NORMAL, B = TELL.BLUE, R = TELL.RED, K = TELL.BLACK;
 const TAU = Math.PI * 2;
+const ANK = DIM.ankle;
 
 // ---------------------------------------------------------------- pose fragments
 // (body-space hand offsets / blade [az, el]; feet model space [x, z]; see poses.js)
@@ -45,11 +47,13 @@ const LUNGE_FEET = { rF: [-0.08, 0.9], lF: [0.22, -0.62], rK: [-0.1, 0, 1], lK: 
 const COIL = { bY: -0.22, bZ: -0.08, yaw: 0.85, hip: 0.14, spY: 0, spX: 0.06, rH: [-0.08, -0.22, 0.0], rP: [-0.6, -0.6, -0.5], sw: [-0.9, 0.04], swF: [1, 0.1, 0], lH: [0.02, 0.0, 0.42], lP: [0.6, -0.3, 0.5], hdY: -0.75, ...SET };
 const LUNGE = {
   bY: -0.3, bZ: 0.22, pitch: 0.1, yaw: 0.3, hip: -0.06, spX: 0.18, spY: -0.04, hdY: -0.26, hdX: 0.02,
-  rH: [0.04, -0.04, 0.56], rP: [-0.7, -0.3, -0.2], sw: [-0.3, 0.02], swF: [1, 0.1, 0], lH: [0.14, 0.08, -0.4], lP: [0.7, 0.2, -0.6],
+  rH: [0.04, -0.04, 0.56], rP: [-0.7, -0.3, -0.2], sw: [-0.3, 0.02], swF: [1, 0.1, 0], lH: [0.2, -0.04, -0.34], lP: [0.7, -0.3, -0.6],
   ...LUNGE_FEET,
 };
-const RAISED = { two: 1, rH: [0.12, 0.28, 0.1], rP: [-0.8, 0.4, -0.3], sw: [-0.2, 2.3], swF: [1, 0, 0], pitch: -0.14, bY: -0.04, spX: -0.06, hdX: -0.06, yaw: 0.2 };
-const CHOP = { two: 1, rH: [0.1, -0.3, 0.46], rP: [-0.8, -0.3, 0], sw: [-0.12, -0.62], swF: [1, 0, 0], pitch: 0.32, bY: -0.3, spX: 0.22, hdX: 0.28, yaw: 0.12, rF: [-0.1, 0.76], lF: [0.22, -0.5] };
+// (the hands above the brow and the blade steep behind them: laid back flatter it lay through his
+// hat; the chop ends with his eyes still on the opponent, not on the floor)
+const RAISED = { two: 1, rH: [0.1, 0.42, 0.08], rP: [-0.8, 0.4, -0.3], sw: [-0.2, 2.0], swF: [1, 0, 0], pitch: -0.12, bY: -0.04, spX: -0.06, hdX: 0.02, yaw: 0.2 };
+const CHOP = { two: 1, rH: [0.1, -0.3, 0.46], rP: [-0.8, -0.3, 0], sw: [-0.12, -0.62], swF: [1, 0, 0], pitch: 0.24, bY: -0.32, spX: 0.16, hdX: -0.16, yaw: 0.12, rF: [-0.1, 0.76], lF: [0.22, -0.5] };
 const STEP_BACK = { rF: [-0.12, 0.18], lF: [0.2, -0.38] };
 const CROUCH = { bY: -0.52, pitch: 0.16, rF: [-0.46, 0.22], lF: [0.2, -0.1], rK: [-0.6, 0.3, 0.7], lK: [0.4, 0.2, 0.9], rFy: -0.7, flat: 0.8 };
 const W2B = (wAz, yaw) => wAz - yaw; // a world-relative blade azimuth → body space at that yaw
@@ -57,13 +61,15 @@ const W2B = (wAz, yaw) => wAz - yaw; // a world-relative blade azimuth → body 
 /** Thrust beat keys: the blade drawn back along the body at the cock, driven home at the impact
  *  on a long lunge, held through the active frames, then a beat of follow-through. */
 const thrustKeys = (k = 1, cock = 0.74) => [
-  [cock * 0.5, { ...COIL, bY: -0.18 * k, rH: [-0.04, -0.18, 0.12] }],
+  [cock * 0.5, { gather: true, ...COIL, bY: -0.18 * k, rH: [-0.04, -0.18, 0.12] }],
   [cock, { ...COIL, rH: [-0.08 * k, -0.24, -0.02], bY: -0.24 * k }],
-  [1.0, { ...LUNGE, e: 'i' }],
-  [1.6, { ...LUNGE, e: 'o', bZ: 0.26, rH: [0.05, -0.03, 0.58] }],
-  [2.0, { ...LUNGE, bZ: 0.2 }],
+  [1.0, { ...LUNGE, e: 'i', bZ: 0.16, rH: [0.04, -0.05, 0.49] }],
+  [1.6, { ...LUNGE, e: 'o', bZ: 0.27, rH: [0.05, -0.03, 0.58] }],
+  [2.0, { settle: true, ...LUNGE, bZ: 0.2 }],
 ];
 
+// The free hand through a cut: before the chest at the cock (the elbow down), swept back low as a
+// counterweight in the strike. (It stood straight out at shoulder height: a scarecrow's arm.)
 /**
  * A cut, as the blade's path (poses.js `arm`: the hand follows the steel). World-relative blade
  * directions [az, el] (az 0 = at the opponent, + = his left): `from` where it is cocked (at `cock` of
@@ -77,14 +83,14 @@ function slashKeys({ from, through, to, yaw: [y0, y1, y2], cock = 0.7, sink = 0,
   const gy = (y0 + 0.62) / 2;
   return [
     // gathering: the blade begins its draw toward the cock, the weight settles back
-    [cock * 0.45, { arm: 0.7, ext: 0.6, lead: 0.05 * dir, yaw: gy, sw: sw([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.2 - sink * 0.5, bZ: -0.03, lH: [0.12, 0.02, 0.36], ...SET }],
+    [cock * 0.45, { gather: true, arm: 0.7, ext: 0.6, lead: 0.05 * dir, yaw: gy, sw: sw([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.2 - sink * 0.5, bZ: -0.03, lH: [0.04, -0.1, 0.32], lP: [0.6, -0.7, 0.1], ...SET }],
     // cocked: wound up on the back foot, the free hand reaching forward for balance
-    [cock, { arm: 1, ext: 0.5, lead: 0.22 * dir, yaw: y0, sw: sw(from, y0), bY: -0.24 - sink, bZ: -0.06, pitch: 0.08, hip: 0.1 * dir, lH: [0.16, -0.02, 0.38], lP: [0.7, -0.3, 0.3], ...SET, ...extra.cocked }],
+    [cock, { arm: 1, ext: 0.5, lead: 0.22 * dir, yaw: y0, sw: sw(from, y0), bY: -0.24 - sink, bZ: -0.06, pitch: 0.08, hip: 0.1 * dir, lH: [0.0, -0.13, 0.32], lP: [0.6, -0.8, 0.1], ...SET, ...extra.cocked }],
     // the strike: the fist arrives first, the steel snaps through the opponent on a step in
-    [1.0, { e: 'i', arm: 1, ext: 1, lead: 0, yaw: y1, sw: sw(through, y1), bY: -0.28 - sink, bZ: 0.1, pitch: 0.1, hip: -0.06 * dir, lH: [0.3, 0.06, -0.24], lP: [0.9, 0.1, -0.3], ...STEP_IN, ...extra.strike }],
+    [1.0, { e: 'i', arm: 1, ext: 1, lead: 0, yaw: y1, sw: sw(through, y1), bY: -0.28 - sink, bZ: 0.1, pitch: 0.1, hip: -0.06 * dir, lH: [0.26, -0.1, -0.16], lP: [0.8, -0.4, -0.5], ...STEP_IN, ...extra.strike }],
     // follow-through: the blade whips past the fist and on round
-    [1.6, { e: 'o', arm: 1, ext: 0.88, lead: -0.32 * dir, yaw: y2, sw: sw(to, y2), bY: -0.24 - sink, bZ: 0.08, pitch: 0.04, hip: -0.12 * dir, lH: [0.32, 0.1, -0.3], ...STEP_IN, ...extra.follow }],
-    [2.0, { arm: 1, ext: 0.84, lead: -0.26 * dir, yaw: y2, sw: sw([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.22 - sink, bZ: 0.06, lH: [0.3, 0.08, -0.26], ...STEP_IN }],
+    [1.6, { e: 'o', arm: 1, ext: 0.88, lead: -0.32 * dir, yaw: y2, sw: sw(to, y2), bY: -0.24 - sink, bZ: 0.08, pitch: 0.04, hip: -0.12 * dir, lH: [0.3, -0.04, -0.22], ...STEP_IN, ...extra.follow }],
+    [2.0, { settle: true, arm: 1, ext: 0.84, lead: -0.26 * dir, yaw: y2, sw: sw([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.22 - sink, bZ: 0.06, lH: [0.28, -0.06, -0.18], ...STEP_IN }],
   ];
 }
 
@@ -98,11 +104,11 @@ const CUTS = {
 };
 /** The overhead: raised two-handed, then a stepping chop (keyed hands: both on the grip). */
 const overKeys = (cock = 0.7) => [
-  [cock * 0.5, { ...RAISED, sw: [-0.2, 1.7], bY: -0.1, ...SET }],
-  [cock, { ...RAISED, sw: [-0.2, 2.35], rF: [-0.12, 0.42], lF: [0.2, -0.28] }],
+  [cock * 0.5, { gather: true, ...RAISED, rH: [0.1, 0.3, 0.14], sw: [-0.2, 1.5], bY: -0.1, ...SET }],
+  [cock, { ...RAISED, sw: [-0.2, 2.05], rF: [-0.12, 0.42], lF: [0.2, -0.28] }],
   [1.0, { ...CHOP, e: 'i' }],
-  [1.6, { ...CHOP, e: 'o', bY: -0.34, pitch: 0.38, sw: [-0.12, -0.78] }],
-  [2.0, { ...CHOP, bY: -0.32 }],
+  [1.6, { ...CHOP, e: 'o', bY: -0.4, pitch: 0.3, sw: [-0.12, -0.8], rH: [0.1, -0.36, 0.42] }],
+  [2.0, { settle: true, ...CHOP, bY: -0.34 }],
 ];
 
 /** One beat of a long string: `kind` a CUTS entry, 'over' or 'thrust'; `extra` overrides any field. */
@@ -126,15 +132,37 @@ function cut(kind, tell, windup, damage, extra = {}) {
   };
 }
 
+const rotXZ = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
+/** Both feet carried `ph` rad round with the body (a turn on the spot), `y` m off the floor. */
+const spinFeet = (ph, y = ANK) => {
+  const r = rotXZ(-0.12, 0.36, ph), l = rotXZ(0.2, -0.3, ph);
+  return { rF: [r[0], y, r[1]], lF: [l[0], y, l[1]], rFy: -0.25 + ph, lFy: 0.9 + ph };
+};
 /** A spin cut: wound up, then a full turn with the blade out level at his sword side (a ring). */
 const spinKeys = (cock = 0.66, low = false) => {
   const B = low ? { ...CROUCH } : { bY: -0.22 };
   const out = { arm: 1, ext: 1, lead: 0, sw: low ? [-1.45, -0.44] : [-1.45, -0.04], lH: [0.3, low ? -0.12 : 0.04, 0.08], lP: [0.9, 0.1, -0.2] };
+  const wound = { ...B, arm: 1, ext: 0.55, lead: -0.2, yaw: 1.2, sw: low ? [-2.1, -0.5] : [-2.15, -0.12], lH: [0.12, -0.08, 0.28], hdY: -1.0 };
+  if (low) {
+    // the low sweep: he drops and the blade goes round at the ankles; the feet stay under him
+    return [
+      [cock, { ...wound }],
+      [1.0, { ...B, ...out, e: 'i', yaw: 0.9, hdY: -0.6 }],
+      [2.0, { ...B, ...out, e: 'l', yaw: 0.9 - TAU, hdY: -0.6 }],
+      [2.001, { e: 'h', yaw: 0.9 }],
+    ];
+  }
+  // the whirl: wound up on bent legs, then a hop that carries the whole body round once (the feet
+  // go round with him: a full turn of the hips over planted feet wound the legs round each other)
+  const turn = (u, k, hop) => [u, { e: 'l', yaw: 0.9 - TAU * k, bY: -0.22 + 0.1 * hop, roll: -0.1 * hop, ...spinFeet(-TAU * k, ANK + 0.16 * hop), flat: 0.95 - 0.6 * hop }];
   return [
-    [cock, { ...B, arm: 1, ext: 0.55, lead: -0.2, yaw: 1.2, sw: low ? [-2.1, -0.5] : [-2.15, -0.12], lH: [0.2, 0.02, 0.26], hdY: -1.0, ...(low ? {} : SET) }],
-    [1.0, { ...B, ...out, e: 'i', yaw: 0.9, hdY: -0.6, ...(low ? {} : STEP_IN) }],
-    [2.0, { ...B, ...out, e: 'l', yaw: 0.9 - TAU, hdY: -0.6, ...(low ? {} : STEP_IN) }],
-    [2.001, { e: 'h', yaw: 0.9 }],
+    [cock, { ...wound, bY: -0.3, ...spinFeet(0.3) }],
+    [1.0, { ...B, ...out, e: 'i', yaw: 0.9, hdY: -0.6, roll: 0, ...spinFeet(0), flat: 0.95 }],
+    turn(1.25, 0.25, 1),
+    turn(1.5, 0.5, 1),
+    turn(1.75, 0.75, 0.7),
+    [2.0, { ...B, ...out, e: 'l', yaw: 0.9 - TAU, hdY: -0.6, roll: 0, ...spinFeet(-TAU), flat: 0.95 }],
+    [2.001, { e: 'h', yaw: 0.9, ...spinFeet(0) }],
   ];
 };
 
@@ -142,7 +170,7 @@ const spinKeys = (cock = 0.66, low = false) => {
  *  side, held a beat, then a long lunge. */
 const PERIL_COIL = { ...COIL, bY: -0.34, bZ: -0.14, yaw: 0.95, rH: [-0.12, -0.32, -0.08], sw: [-1.0, -0.08], lH: [0.28, 0.06, 0.1], lP: [0.9, 0.2, -0.2], hdY: -0.8, rF: [-0.12, 0.34], lF: [0.2, -0.38] };
 const PERIL_LUNGE = { ...LUNGE, bZ: 0.3, bY: -0.34, rF: [-0.08, 1.05], lF: [0.22, -0.68], lH: [0.2, 0.08, -0.44] };
-const perilKeys = () => [[0.4, { ...PERIL_COIL }], [0.84, { ...PERIL_COIL, bY: -0.36, rH: [-0.14, -0.33, -0.1] }], [1.0, { ...PERIL_LUNGE, e: 'i' }], [1.6, { ...PERIL_LUNGE, e: 'o', bZ: 0.34 }], [2.0, { ...PERIL_LUNGE }]];
+const perilKeys = () => [[0.4, { gather: true, ...PERIL_COIL }], [0.84, { ...PERIL_COIL, bY: -0.36, rH: [-0.14, -0.33, -0.1] }], [1.0, { ...PERIL_LUNGE, e: 'i' }], [1.6, { ...PERIL_LUNGE, e: 'o', bZ: 0.34 }], [2.0, { ...PERIL_LUNGE }]];
 
 // ---- the second pass's beats (strings that move: a kick, a glide, a leap, a spin that travels, the
 // qi as a string's last word). Composed from the fragments above; the kick's poses are the Flying
@@ -164,7 +192,7 @@ function kick(tell, windup, damage, extra = {}) {
   return {
     tell, windup, active: 0.1, damage, knockback: 2.4, zone: { kind: 'sector', r: 1.9, ang: 0.7 }, part: 'feet', noSweep: true, track: 0.7,
     keys: [
-      [0.5, { ...KICK_COIL, bY: -0.24, rF: [-0.1, 0.2, 0.06] }],
+      [0.5, { gather: true, ...KICK_COIL, bY: -0.24, rF: [-0.1, 0.2, 0.06] }],
       [0.8, { ...KICK_COIL }],
       [1.0, { ...KICK_OUT, e: 'i' }],
       [1.6, { ...KICK_OUT, e: 'o', bZ: -0.14, rF: [-0.04, 0.8, 0.98] }],
@@ -208,7 +236,7 @@ function feintHigh(windup = 0.42) {
   const k = slashKeys({ ...CUTS.diag, cock: 0.7 });
   return {
     feint: true, windup, active: 0.1, close: 0.8,
-    keys: [[0.5, k[0][1]], [0.85, k[1][1]], [1.0, { ...k[1][1], e: 'i', bY: -0.2, yaw: 0.35 }], [2.0, { ...k[0][1], yaw: 0.9 }]],
+    keys: [[0.5, { ...k[0][1], gather: false }], [0.85, k[1][1]], [1.0, { ...k[1][1], e: 'i', bY: -0.2, yaw: 0.35 }], [2.0, { ...k[0][1], gather: false, yaw: 0.9 }]],
   };
 }
 // burning ground (phase 2 on: moveFx.js, TUNING.burn): a beat's `burn` leaves a line of fire where it
@@ -561,7 +589,7 @@ export const MOVES = {
       tell: B, windup: 0.64, active: 0.1, damage: 22, knockback: 2.4, cast: { kind: 'lantern', selfCue: true }, noSweep: true,
       close: 0, track: 0, go: [0.05, 0.44],
       keys: [
-        [0.5, { ...KICK_COIL, bY: -0.24, rF: [-0.1, 0.2, 0.06] }],
+        [0.5, { gather: true, ...KICK_COIL, bY: -0.24, rF: [-0.1, 0.2, 0.06] }],
         [0.8, { ...KICK_COIL }],
         [1.0, { ...KICK_OUT, e: 'i' }],
         [1.6, { ...KICK_OUT, e: 'o', bZ: -0.14, rF: [-0.04, 0.8, 0.98] }],
@@ -1076,7 +1104,7 @@ for (const [k, c] of Object.entries(CLIP)) c.name = k;
  * holds, absolute times per beat ({ start, impact, end, flash, tellAt }) and the compiled clip. `rnd`
  * = a 0..1 source (the game's Math.random, so the seeded sims replay).
  */
-export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur) });
+export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat });
 
 /** The guard pose (for tools). */
 export { GUARD };

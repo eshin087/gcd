@@ -4,7 +4,22 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-three pieces of work since 0.4.0:
+Fifty-four pieces of work since 0.4.0:
+- **The Ash Disciple and the Starless Lord move like swordsmen** (2026-11-21, ADR-126). *Fixed:* the human bosses' attacks read as a
+  row of held poses with a snap between them (the owner: "weird attack animations and unnatural
+  poses"). Measured on both, every move: the sword hand crossed up to 0.6 m in ONE frame on a blow
+  (the whole follow-through had 0.05 s), their feet never left the floor while the body slid metres
+  through a string, an overhead left him bowed and two-handed for the rest of a string, and the
+  Lord's blade went through his own hood as each string ended. Now a cut swings: it speeds up into
+  the blow and slows through a follow-through of its own length, which runs straight into the next
+  cut's wind-up; a baited pause holds still and then strikes at full speed. Their feet hold their
+  ground and step as a string carries them forward. Shen Hui's spare arm guards his chest and sweeps
+  back in a cut (it stood out sideways at shoulder height), his overhead is raised clear of his hat
+  and ends with his eyes on you, his thrust drives through, and his whirl turns on a hop instead of
+  winding his legs. The Lord's end-of-string roll of the blade turns before him, clear of his hood,
+  and in his two-handed forms the hilt stays where both hands reach it. *Unchanged:* every tell,
+  windup, flash, impact time, reach and damage number; `npm test` is green without a changed
+  threshold. *Added:* the `motion` scenario of `tests/integration/duel.mjs`.
 - **The Cinder Wyrm has a new face** (2026-11-20, ADR-124). *Changed:* the wyrm wears the
   drake, the owner's pick of four faces rendered side by side ("It doesnt look realistic or scary"):
   a sculpted skull with a long hooked snout, a heavy brow over each eye, cheekbones and a stop before
