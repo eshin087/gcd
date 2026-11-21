@@ -118,7 +118,12 @@ const edgeBand = (px, py, pz, nx, ny) => (ny > 0.5 && ny < 0.95 ? 1 : 0);
 /** The floor must stay calm under the duel: sparse, dim glyphs (the courtyard's paving look). */
 // (2026-11-21, the stage pass: the tiles' strokes were as bright and busy as the fighters. Now fewer and
 // dimmer marks: no hatching on the tiles' sides, almost no crack lines, a fainter chamfer; the joints stay)
-const PAVING_LOOK = { gain: 0.74, lumScale: 1.5, edge: 0.18, inkFloor: 0.02, base: 0.05, crackAmount: 0.08, strokeLevels: [9, 9], topGlyphs: ['    ', '.   ', '. . ', '.:. ', ':.:.', ';:.:'] };
+/** THE FLOOR'S BRIGHTNESS BY FORM (the paving's glyph gain; the ambience eases it with the form's light):
+ *  [form 1 (the dusk), form 2 (golden), form 3 (the storm)]. The owner has been asked whether form 1's
+ *  floor stays this dark (the stage pass) or is brightened: the answer is FLOOR_GAIN[0] (0.74 now; the
+ *  paving before the stage pass printed at about 1.0). Only the floor: the figures' light is PALETTE's. */
+export const FLOOR_GAIN = Object.freeze([0.74, 0.74, 0.74]);
+const PAVING_LOOK = { gain: FLOOR_GAIN[0], lumScale: 1.5, edge: 0.18, inkFloor: 0.02, base: 0.05, crackAmount: 0.08, strokeLevels: [9, 9], topGlyphs: ['    ', '.   ', '. . ', '.:. ', ':.:.', ';:.:'] };
 const smooth = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -748,7 +753,7 @@ export function createSkybreakRing(U, colliders) {
     },
     floorCarry: mul(TILE, 1.4), // (a tile torn up, in his hands)
     sky: { ...PALETTE[0], moonDir: PALETTE[0].dir, moonColor: PALETTE[0].moon },
-    ambience: makeAmbience(braziers, { haze: OPT === 'c' }),
+    ambience: makeAmbience(braziers, { haze: OPT === 'c', floor: slabMat }),
   };
 }
 
@@ -802,7 +807,7 @@ const HAZE = [0.2, 0.13, 0.11];
  * the boss's form, lightning, wind-blown dust, golden motes, rain, the braziers' flames and lights.
  * Its own random stream (never Math.random: the seeded sims replay the AI from it).
  */
-function makeAmbience(braziers, { haze = false } = {}) {
+function makeAmbience(braziers, { haze = false, floor = null } = {}) {
   let seed = 0x2b7e1516;
   const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
   const st = {
@@ -834,6 +839,9 @@ function makeAmbience(braziers, { haze = false } = {}) {
     U.uMoonDir?.value?.set(cur.dir[0], cur.dir[1], cur.dir[2]).normalize();
     if (U.uFogNear) U.uFogNear.value = cur.fogNear;
     if (U.uFogFar) U.uFogFar.value = cur.fogFar;
+    // (the floor's brightness by form: FLOOR_GAIN)
+    const g = floor?.uniforms?.uGain;
+    if (g) g.value = FLOOR_GAIN[0] * st.w[0] + FLOOR_GAIN[1] * st.w[1] + FLOOR_GAIN[2] * st.w[2];
   };
   const spawn = (fx) => {
     fx?.spawn?.(part);
