@@ -1842,7 +1842,8 @@ export class Player {
     if (!this.alive || this.state === 'plunge' || this.state === 'dead' || this.state === 'lock' || this.state === 'flurry') return false;
     this.riposte.att = null;
     this._interrupt();
-    this.bladeLock = { att, meter: fin(L.start, 0.5), push: fin(L.push, 0.085), decay: fin(L.decay, 0.32), dur: fin(L.dur, 2.6), hold: fin(L.hold, 0.6), shown: -1 };
+    // (`dist`: the two close to it; a lock at range (a beam's head on the blade) gives its own)
+    this.bladeLock = { att, meter: fin(L.start, 0.5), push: fin(L.push, 0.085), decay: fin(L.decay, 0.32), dur: fin(L.dur, 2.6), hold: fin(L.hold, 0.6), dist: Math.max(0.5, fin(L.dist, TUNE.lockDist)), shown: -1 };
     const ap = att?.position, p = this.position;
     if (ap && Number.isFinite(ap.x + ap.z)) this.yaw = Math.atan2(ap.x - p.x, ap.z - p.z);
     this.object3d.rotation.y = this.yaw;
@@ -1919,7 +1920,7 @@ export class Player {
         const sl = (B.meter - B.slid) * TUNE.lockSlide;
         B.slid = B.meter;
         // (half the closing is the hero's: the attacker steps in the other half, brain.startLock)
-        const close = clamp((dist - TUNE.lockDist) * 0.5, -0.5, 0.5) * Math.min(1, dt * 9);
+        const close = clamp((dist - B.dist) * 0.5, -0.5, 0.5) * Math.min(1, dt * 9);
         p.x += fx * (sl + close);
         p.z += fz * (sl + close);
         this._collide();

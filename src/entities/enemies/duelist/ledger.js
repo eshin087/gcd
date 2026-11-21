@@ -256,7 +256,9 @@ export class CueLedger {
       const a = this.brain.act;
       if (a && this.d.mode === 'act') {
         for (const b of a.beats) {
-          if (b.feint || b.done || b.impact < a.t || (b.def.cast && !throwsAt(b))) continue;
+          // (a sustained beat counts until its lit window is over: one interval, impact → end)
+          const lit = b.S > 0;
+          if (b.feint || (b.done && !lit) || (lit ? b.end : b.impact) < a.t || (b.def.cast && !throwsAt(b))) continue;
           if (throwsAt(b)) {
             // what it throws: from its release to its estimated arrival (pad more room)
             if (answerOf(b.def.tell) === ans) continue;
@@ -265,7 +267,10 @@ export class CueLedger {
             continue;
           }
           if (!(b.flashed || b.def.fixed || a.def.transition)) continue;
-          if (answerOf(b.def.tell) !== ans && Math.abs(now + (b.impact - a.t) - at) < sep) return this._hit(a.name);
+          if (answerOf(b.def.tell) === ans) continue;
+          if (lit) {
+            if (at > now + (b.impact - a.t) - sep && at < now + (b.end - a.t) + sep) return this._hit(a.name);
+          } else if (Math.abs(now + (b.impact - a.t) - at) < sep) return this._hit(a.name);
         }
       }
     }
