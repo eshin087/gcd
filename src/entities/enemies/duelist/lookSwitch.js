@@ -36,6 +36,11 @@ export const PICKED = Object.freeze({
   lordLook: 'b', // his body: today's figure dressed by form (the owner's pick)
   // both arenas
   floor: 'a', // a broken floor slab: rubble on printed earth (the owner's pick)
+  // the Skybreak Ring and Tian Lei, the Last Ascendant
+  ring: 'a', // the arena: the ring on the flats (the owner's pick)
+  ascLook: 'a', // his body: the tunic and the topknot (the owner's pick)
+  ascAura: 'a', // his aura: a tall flame, hollow behind him (the owner's pick)
+  ascBeam: 'a', // his beam: the column (the owner's pick)
 });
 
 const fromUrl = new Map();
