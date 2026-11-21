@@ -330,7 +330,7 @@ export class Ascendant extends Duelist {
 
   /** His thrown disc is back in his hand (fx.js). */
   onShotBack(s) {
-    this.ki?.shots?.caught?.(s);
+    this.ki?.shots?.discBack?.(s);
   }
 
   _die() {
@@ -545,6 +545,7 @@ export class Ascendant extends Duelist {
       this._changing = false;
       this.dressPhase = f; // (the hair, the light and the aura change now, with the nova)
       fx.transformNova?.(this.position.x, this.position.z, TUNING.transform.ringRadius, f);
+      this.terrain?.nova?.(this.position.x, this.position.z, TUNING.transform.ringRadius); // the tiles round him crack
       // Thunder Ascension: four bolts strike the ring's corners as the ring goes out (kiShots.js)
       if (f === 3) this.ki?.shots?.corners?.();
       this.game.shake?.(0.45);
@@ -561,6 +562,7 @@ export class Ascendant extends Duelist {
     else if (D.zone?.kind === 'ring' && (D.knockdown || D.tell === TELL.RED)) {
       const c = this.zoneCentre(D.zone, this._q);
       fx.crater?.(c.x, c.z, D.zone.r * 0.6, D.knockdown ? 1 : 0.6);
+      this.terrain?.crater?.(c.x, c.z, D.zone.r * 0.6, D.knockdown ? 1 : 0.6); // rubble round the blow
       this.game.shake?.(0.3);
     }
   }
