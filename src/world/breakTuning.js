@@ -184,6 +184,20 @@ export const BREAK = Object.freeze({
     fire: Object.freeze({ perSec: 0.15, bank: 2, maxBurning: 6, spreadPerSec: 0.08, spreadBank: 2, chance: 0.45, width: 1.2 }),
   }),
   /**
+   * The edge of the open ground (world/edge.js, ADR-125; the owner's "the outer tree border ring should
+   * slowly crumble and allow the dragon and player to move outside"): the ring is cut into `lanes`; in
+   * each the hero's ground ends `margin` m short of the nearest tree still standing in it, and at
+   * `outer` m from the centre once none stands (the forest ends at 74 m, the grass and the scorch map
+   * at 80). A tree closes the lanes its crown covers: `crown` x its crown's radius, at least
+   * `minBlock` m either side of its trunk. The boss's share of the opened ground: `body` m narrower
+   * at either side of a gap than the hero's (its shoulders: a slot a few metres wide does not let its
+   * root in at all), and from there rising no faster than `slope` (m out per m along the ring), so it
+   * has to tear a wide gap to follow the hero deep. `every`: s between two readings of the trees.
+   * `seal`: a lane nothing has fallen in opens beside open ground only if that frees more than this
+   * many m of it (a natural gap in the wall; a lane with a tree at the line stays shut).
+   */
+  edge: Object.freeze({ lanes: 120, crown: 0.6, minBlock: 1.1, margin: 1.0, outer: 62, body: 3, slope: 2, every: 0.2, seal: 2 }),
+  /**
    * Wind and shock on wood (destructibles.wind, 2026-11-16): a front rolls out at `speed` m/s; a tree
    * it reaches takes power x (1 - d / reach)^fall as a blast's wear, nothing under `min`, never below
    * `floor` of its structure (wind alone takes a tree to its second stage, never to its lean or its

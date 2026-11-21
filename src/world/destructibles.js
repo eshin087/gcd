@@ -7,6 +7,7 @@ import { TELL } from '../combat/rules.js';
 import { BREAK, BLOW } from './breakTuning.js';
 import { CONFIG } from '../core/config.js';
 import { Wreckage } from './wreckage.js';
+import { Edge } from './edge.js';
 import { lumpy, carve, mul, slabGeometry, STONE } from './forest.js';
 
 // Breakable objects (ADR-107): the trees, stones, pillars and props of a set that blows can chip,
@@ -366,6 +367,7 @@ export class Destructibles {
     this._way = { dx: 0, dz: 1 };
     this._rShake = 0; // range pieces shuddering now (their vertices are rewritten: BREAK.wear.shakeMax)
     this._ev = { kind: '', mat: '', x: 0, y: 0, z: 0, power: 0, by: '', id: -1 };
+    this._edgeEv = { x: 0, z: 0, reach: 0, lanes: 0, first: false };
     this._tell = { source: 'world', attack: 'fallingDebris', tell: TELL.RED, impactIn: 0, x: 0, z: 0, hazard: true };
     this._flash = { source: 'world', attack: 'fallingDebris', tell: TELL.RED, x: 0, y: 0.6, z: 0, hazard: true };
     this._heroHit = {
@@ -400,6 +402,8 @@ export class Destructibles {
     this._carryHit = { x: 0, z: 0, piece: null };
     /** counts since the reset (the tests' wall report): wind fronts, trees they reached; carries, reached, lit */
     this.stat = { wind: 0, windTrees: 0, carry: 0, reached: 0, lit: 0 };
+    /** the edge of the open ground (edge.js, ADR-125): null on a set without one */
+    this.edge = null;
 
     const defs = Array.isArray(set?.breakables) ? set.breakables : [];
     if (!defs.length) return;
@@ -417,6 +421,8 @@ export class Destructibles {
       if (o.top) o.top.base = o;
     }
     this._buildGrid();
+    // where the hero and the boss may go follows what stands of the set's wall (a set with `edge`)
+    if (set.edge) this.edge = new Edge(this.list, set.edge);
     if (this.floor.length) this._buildCarry(set);
     // what the fight leaves lying (wreckage.js): its pools share the breakables' batch
     if (set.wreckage !== false) {
@@ -1245,7 +1251,10 @@ export class Destructibles {
       const pad = BREAK.topple.pad + b.r * 0.6 + 0.6, hb = CONFIG.world.playerBound ?? 31;
       // (fallOff: a colossus's upper half lands that much further out)
       const reach = b.fallOff + b.h + pad;
-      b.quiet = segDist(0, 0, b.x, b.z, b.x + dx * reach, b.z + dz * reach, this._seg) > hb + pad;
+      // (his ground: the level's circle, or what the wall's fallen trees have opened of it: edge.js)
+      b.quiet = this.edge
+        ? !this.edge.reaches(b.x, b.z, b.x + dx * reach, b.z + dz * reach, pad)
+        : segDist(0, 0, b.x, b.z, b.x + dx * reach, b.z + dz * reach, this._seg) > hb + pad;
       this._wake(b);
       this._burst(b, b.x, 0.4, b.z, dx, dz, 10, 0.4);
       this._emit('topple', b, b.x, 0.5, b.z, b.weight, by);
@@ -2084,6 +2093,20 @@ export class Destructibles {
     this._debris = Math.min(BREAK.debris.bank, this._debris + dt * BREAK.debris.perSec * this.q);
     this._windStep();
     this.wreck?.update(dt);
+    // the edge of the open ground: a tree of the wall is down, the ground behind it is the hero's (world:edge)
+    const E = this.edge;
+    if (E) {
+      const was = E.open;
+      if (E.update(dt) && E.grewLane >= 0) {
+        const e = this._edgeEv, a = E.laneAngle(E.grewLane), r = E.R[E.grewLane];
+        e.x = Math.cos(a) * r;
+        e.z = Math.sin(a) * r;
+        e.reach = r;
+        e.lanes = E.lanes;
+        e.first = !was;
+        this.game.events?.emit?.('world:edge', e);
+      }
+    }
     flushRanges();
   }
 
@@ -2141,6 +2164,7 @@ export class Destructibles {
     const st = this.stat;
     st.wind = st.windTrees = st.carry = st.reached = st.lit = 0;
     this.wreck?.reset();
+    this.edge?.refresh();
     flushRanges();
   }
 }

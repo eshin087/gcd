@@ -37,6 +37,15 @@ export const RELEASES = [
         ],
       },
       {
+        date: '2026-11-21',
+        title: 'The wall of trees comes down and the fight goes out through it',
+        notes: [
+          'In Cinderwood the ring of trees round the clearing no longer holds you once it starts to fall. Where a tree has burnt through or been felled, the ground behind it is open, out to the next tree still standing.',
+          'The wyrm follows you through any gap wide enough for its body, and its fire and meteors follow you everywhere. A tree that falls where you can now stand must be dodged.',
+          'The fight starts as it always did: nothing opens until the first tree of the wall is down. The wall stands again when you die or rest.',
+        ],
+      },
+      {
         date: '2026-11-20',
         title: 'The Cinder Wyrm has a new face',
         notes: [

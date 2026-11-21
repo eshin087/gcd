@@ -32,6 +32,8 @@ const MAX = 64;
 const MAX_GROUPS = 8;
 const ANNOUNCE_PAD = 3.0; // m: a self-announcing circle tells once the hero is this close to its ring
 export const ARENA_R = 27; // m: meteors / pillars land inside this radius (the clearing is 30)
+/** m inside a barrage wave's rim a hero outside the clearing is kept (the wave follows him out through a gap in the wall: ADR-125). */
+const WAVE_IN = 7;
 const PILLAR_BURN = 0.75; // s a lava pillar's column keeps erupting (visual; it hits for `active`)
 const CRATER = 1.3; // s a meteor crater smoulders (visual)
 const FADE = 0.35; // s a ring / wall's flames die out after its travel
@@ -218,7 +220,7 @@ function blank(i) {
     // meteor (the biggest impact); dark: no light of its own (a wave keeps ~10 in the air)
     fall: 0, ox: 0, oy: 0, oz: 0, fell: false, shell: false, size: 1, great: false, dark: false,
     // barrage (Armageddon): waves x perWave meteors, the wave in pts, which have spawned / were led
-    waves: 0, perWave: 0, waveGap: 0, glowAt: 0, crater: 0, wave: -1, ledLast: -9, skyDone: false,
+    waves: 0, perWave: 0, waveGap: 0, glowAt: 0, crater: 0, wave: -1, wx: 0, wz: 0, ledLast: -9, skyDone: false,
     fin: null, finDone: false, finAt: 0, pts: null, spawned: null, ledMask: 0, rng: null,
     fallY: 0, lead2: 0, ledGap: 0, safeR: 12, cover: 0.45,
     // the sky over it (skyFx.skyDeck): from deckAt s, spreading over the frame in deckGrow s from (dcx, dcz)
@@ -971,10 +973,11 @@ export class Hazards {
         x = bx + Math.cos(a) * rr;
         z = bz + Math.sin(a) * rr;
       }
-      const rl = Math.hypot(x, z);
-      if (rl > ARENA_R) {
-        x *= ARENA_R / rl;
-        z *= ARENA_R / rl;
+      // (inside the clearing, or the ground the wall's fallen trees have opened that way: dragon.arenaAt)
+      const rl = Math.hypot(x, z), Ra = d.arenaAt?.(x, z, ARENA_R) ?? ARENA_R;
+      if (rl > Ra) {
+        x *= Ra / rl;
+        z *= Ra / rl;
       }
       // it streaks in from the sky, up-screen (north) and to one side, so it reads at the game camera
       const side = hash(h.seed + 11.3, i) < 0.5 ? -1 : 1;
@@ -1010,7 +1013,15 @@ export class Hazards {
       if (h.wave < w) {
         // the wave's spots, placed when its first warning is due; which of them are led
         h.wave = w;
-        placeWave(n, h.r, h.rng, hx, hz, h.pts, h.safeR, h.cover - (h.cover > 0.2 ? 0.08 : 0));
+        // the wave is laid over the clearing; a hero who has left it through a gap in the wall takes
+        // the wave with him (its disc moves until he stands WAVE_IN m inside its rim: no shelter out there)
+        h.wx = h.wz = 0;
+        const hr = Math.hypot(hx, hz);
+        if (d.game.world?.edge?.open && hr > ARENA_R - WAVE_IN && hr < 1e5) {
+          h.wx = (hx / hr) * (hr - (ARENA_R - WAVE_IN));
+          h.wz = (hz / hr) * (hr - (ARENA_R - WAVE_IN));
+        }
+        placeWave(n, h.r, h.rng, hx - h.wx, hz - h.wz, h.pts, h.safeR, h.cover - (h.cover > 0.2 ? 0.08 : 0));
         h.ledMask = 0;
         for (let j = 0; j < n; j++) {
           const at = base + j * h.delay;
@@ -1028,15 +1039,15 @@ export class Hazards {
         const impact = base + j * h.delay;
         if (h.t < impact - (led ? h.warnLed : h.warn)) continue;
         h.spawned[i] = 1;
-        if (led) leadInto(h.pts, j, n, h.r, lx, lz, hx, hz, h.safeR, h.cover);
-        this._meteorAt(h, h.pts[2 * j], h.pts[2 * j + 1], impact, h.r, h.fall, h.size, h.group, (j & 1) === 1, h.damage, h.burn, h.knockback, h.crater);
+        if (led) leadInto(h.pts, j, n, h.r, lx - h.wx, lz - h.wz, hx - h.wx, hz - h.wz, h.safeR, h.cover);
+        this._meteorAt(h, h.pts[2 * j] + h.wx, h.pts[2 * j + 1] + h.wz, impact, h.r, h.fall, h.size, h.group, (j & 1) === 1, h.damage, h.burn, h.knockback, h.crater);
       }
     }
     if (h.fin && !h.finDone && h.t >= h.finAt - h.fin.warn) {
       // the last one: a great meteor on the hero's led position
       h.finDone = true;
       let x = lx, z = lz;
-      const rl = Math.hypot(x, z), Rm = ARENA_R - 0.35 * h.fin.r;
+      const rl = Math.hypot(x, z), Rm = (d.arenaAt?.(x, z, ARENA_R) ?? ARENA_R) - 0.35 * h.fin.r;
       if (rl > Rm) {
         x *= Rm / rl;
         z *= Rm / rl;
@@ -1067,10 +1078,10 @@ export class Hazards {
     const d = this.d, s = d.sense;
     if (!(px < 1e5)) return;
     let x = px + (s?.vel?.x ?? 0) * h.lead, z = pz + (s?.vel?.z ?? 0) * h.lead;
-    const rl = Math.hypot(x, z);
-    if (rl > ARENA_R) {
-      x *= ARENA_R / rl;
-      z *= ARENA_R / rl;
+    const rl = Math.hypot(x, z), Ra = d.arenaAt?.(x, z, ARENA_R) ?? ARENA_R;
+    if (rl > Ra) {
+      x *= Ra / rl;
+      z *= Ra / rl;
     }
     const first = h.done === 0;
     h.done++;
