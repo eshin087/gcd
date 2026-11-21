@@ -65,13 +65,13 @@ const CROWN_DROP = 40; // c: how far below the crown the badlands lie
 const LAYOUT = {
   a: {
     bonfireZ: 33, bound: 40, groundY: 0,
-    buttes: [[21, -8.5, 10.5, 3.8, 6.4], [26.5, -19.5, 9, 4, 5.4], [-21.2, -10.5, 11.5, 4.1, 7], [-27.5, 0.5, 8, 3.7, 4.8], [5.5, -27.5, 10, 5, 6], [-13.5, -26.5, 8.5, 3.9, 5.1]],
+    buttes: [[21, -8.5, 10, 3.8, 4.6], [26.5, -19.5, 9, 4, 5.4], [-21.2, -10.5, 10.5, 4.1, 4.9], [-27.5, 0.5, 8, 3.7, 4.8], [5.5, -27.5, 10, 5, 6], [-13.5, -26.5, 8.5, 3.9, 5.1]],
     hoodoos: [[23.6, 1.2, 4.6, 0.95], [-22.6, 5.4, 4.2, 0.9], [-17.4, -20.6, 5.6, 1.05], [16.2, -21.8, 4.8, 0.95]],
   },
   b: {
     bonfireZ: 33, bound: 40, groundY: 0,
     // (the quarry is cut into the feet of the buttes east and west: they stand on its terraces)
-    buttes: [[21.4, -6, 10.5, 3.9, 6.4], [-21.6, -7.5, 11, 4.1, 6.6], [-7, -27.5, 10, 4.6, 6], [12.5, -28, 11, 4.6, 6.6]],
+    buttes: [[21.4, -6, 10, 3.9, 4.6], [-21.6, -7.5, 10.5, 4.1, 4.9], [-7, -27.5, 10, 4.6, 6], [12.5, -28, 11, 4.6, 6.6]],
     hoodoos: [[27.5, 5.2, 5.0, 1.0], [-27.6, 4.6, 4.6, 0.95]],
   },
   c: {
@@ -106,7 +106,7 @@ const TILE = [0.2, 0.172, 0.138]; // the ring's sandstone tiles
 const KERB = [0.14, 0.115, 0.098]; // its kerb, darker
 const CENTRE = [0.18, 0.158, 0.135];
 const CLAY = [0.22, 0.18, 0.14]; // the dry lake bed's plates
-const CUT = [0.14, 0.12, 0.1]; // the quarry's cut stone
+const CUT = [0.115, 0.097, 0.08]; // the quarry's cut stone
 const WOOD = [0.11, 0.08, 0.058];
 const CLOTH = [0.25, 0.05, 0.036]; // the banners: a deep red
 const SKIN = [0.3, 0.265, 0.2]; // a drum's head
@@ -596,7 +596,7 @@ export function createSkybreakRing(U, colliders) {
     for (let tier = 0; tier < 3; tier++) {
       for (const b of course(tier)) {
         if (LY.buttes.some(([bx, bz, , br2]) => Math.hypot(b.x - bx, b.z - bz) < br2 + 0.6)) continue; // (the butte stands there)
-        const geo = stoneBox(rng, b.x, 0, b.z, b.w, b.top, b.d, { col: CUT, k: 0.95, lump: 0.05 });
+        const geo = stoneBox(rng, b.x, 0, b.z, b.w, b.top, b.d, { col: CUT, k: 0.75, lump: 0.05 });
         if (tier === 0) {
           // the lowest course breaks (the hero reaches it, his blows and the boss's beam do)
           const r = Math.min(b.w, b.d) * 0.5;
@@ -773,7 +773,7 @@ const PALETTE = [
 /** The weather's numbers: lightning, dust, motes, rain. */
 const WEATHER = Object.freeze({
   ease: 0.9, // 1/s toward a new form's light (a transformation takes ~2 s)
-  bolt: Object.freeze({ every: [2.4, 6.5], moon: [2.2, 2.3, 2.7], ambient: [0.3, 0.32, 0.4], decay: 14, double: 0.45 }),
+  bolt: Object.freeze({ every: [2.4, 6.5], moon: [1.5, 1.6, 1.95], ambient: [0.2, 0.21, 0.27], decay: 14, double: 0.45 }),
   flareGold: Object.freeze({ moon: [1.8, 1.3, 0.55], ambient: [0.2, 0.15, 0.06] }),
   dust: Object.freeze([9, 12, 26]), // a second, by form
   motes: 14, // golden motes round him a second (form 2)
