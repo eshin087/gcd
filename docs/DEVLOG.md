@@ -5,6 +5,64 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-20 — Session 64: the Cinder Wyrm's face (the drake)
+
+**Owner:** "I really dont like how the dragon face looks. It doesnt look realistic or scary. Give me 4
+different variations to review", right after build C merged (#68). Then: "Go with the drake". Branch
+`dragon/wyrm-face` from `main` (af00b12). ADR-124 / Session 64 / M1.49.
+
+**What was wrong, photographed first.** At the game camera the face could not be found: a dark mass
+under the neck's pale quills (build C lengthened them), the eyes one letter wide. Close up it was a
+tube under the body's big white-rimmed scales, a fence of identical teeth printed as `|` strokes (the
+teeth art has `strokeEdge: 0`), and a flat orange board for the inside of the mouth. The three
+sculpted heads of ADR-120, re-shot on build C, had the same surface problems.
+
+**Four faces, one kit** (`entities/dragon/faces.js`). The kit: fine face scales (`scale` [0.1, 0.075],
+rim 1.1) under a hard key light (`light` key 1.55), so brow, snout and jaw print as planes; eyes about
+0.11 long in sockets repainted with a near-black `pit` material (model.js, only when a face asks for
+it); the lofts' mouth lining repainted `pit` too, with a red tongue (the `maw` material) and the
+`throat` material at the back of the palate and on the jaw's floor, so the breath's charge lights the
+gullet; teeth with an outline (`strokeEdge` 0.3) and big and small in turn; the neck's crest and mane
+shortened over the last four segments (`nape`, read through `heads.js` `faceNape()`). The skulls:
+**drake** (the predator loft of ADR-120 with new horns, fins and teeth), **tyrant** (the demon's loft
+with an overbite and a crown), **viper** (a new flat, wide loft, sabre fangs outside the lip),
+**revenant** (the predator loft with its front repainted as bare bone, a `mask` material). Six rounds
+of renders; what moved the game-camera read most was the dark sockets and the cleared nape.
+
+**The pick.** The drake is the default (`WYRM_FACE_SHIPPED`), first in the Lab's head row; `?wyrmFace=old`
+is the face before. The other six stay behind the switch. Plumbing on the way: `heads.js` exports its
+helpers and the `HEADS` table (faces.js registers into it), a face can repaint regions of a loft into
+another material (`paint` / `paintJaw`: ellipsoids, z ranges, a `from` band, `except`), its extras can
+return `hornTip` (the phase-3 horn fire, ablaze.js, reads `model.hornTip` first), and `buildSculpted`
+passes a face's `teethOpt`.
+
+**Verification.** `integ.mjs . wyrmface`: every head builds, keeps the head, mouth, snout and jaw tip
+where the old head has them at rest and mid-roar (0.0 m), its eyes within 0.5 m, its lower teeth under
+the hide with the jaw shut (drake -88 mm), at most one draw more (the hollows; the revenant two); the
+drake is what ships; each face's measured horn tip reaches the fire. `wyrmlook` now compares the builds
+on the old head (a build grows the old head's horns). The drake: 7170 head triangles (old 4192),
+15 draws (14), 183 bones (181). Seen in the browser beside the old head: phase 2 and its roar, the
+ignition, phase 3 ablaze, a hover barrage, a breath, the death, the phone frame.
+
+**The tests' random stream (and what it turned up).** With the drake as default, two seeded checks
+went red that both pass on the old face: a Cataclysm bite 85 ms off its flash and a 5.64 s gap
+in a pressure seed. Nothing about the fight had changed: three.js draws a uuid from `Math.random`
+for every object, and the drake builds more of them, so every later AI roll moved (the same thing
+happened with the hero's shield, 2026-11-16). `integ.mjs` `build()` now reseeds `Math.random` once
+everything is built (the play stream), so a fight's rolls no longer depend on how many objects the
+build made: the old face and the drake now fail or pass together. The new stream turned up two
+things. (1) A real one: Cataclysm's held bite on a hero 3 m away connected 102 ms after its flash,
+the lunge carrying the head into him at the end of the active window; a string's bite now connects
+at most `TUNING.biteLate` 0.07 s after its impact and otherwise misses. (2) The terrain fight check
+allowed at most 2 tells without a flash in 300 s; the new stream had 3, each a move called off
+(the piece out of reach) or cut by a plunge. It now checks the reason for each instead of a count.
+`npm test` ALL 10 PASSED (178.9 s), `npm run build` OK.
+
+**Open.** At the game camera the gain is real but modest: a wedge with two burning eyes instead of a
+dark mass; the four faces differ far more up close than in play. The breath frame differs between the
+two runs (the extra objects shift the seeded random stream, so the wyrm turned another way); the
+mouth joint is the same. Not seen on the iPhone. The intro's close shots were not re-framed.
+
 ## 2026-11-20 — Session 63: the Cinder Wyrm on a leaner build
 
 **Owner:** "lets work on improving the dragons graphics, details, look more realistic, scarier,

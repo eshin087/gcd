@@ -179,6 +179,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.49 — The Cinder Wyrm's face: the drake (2026-11-20, `dragon/wyrm-face`, ADR-124)
+- [x] The shipped face photographed at the game camera and close up; what made it unreadable named
+- [x] Four faces on one kit (planes, dark sockets, a dark mouth, a cleared nape): drake, tyrant, viper, revenant
+- [x] The owner's pick, the drake, is the face; the gameplay joints unchanged (`integ.mjs . wyrmface`)
+- [ ] Follow-ups:
+  - [ ] On the iPhone: the face at the phone camera
+  - [ ] The intro's close shots framed for the new head
+  - [ ] Remove the heads that were turned down (`skull`, `loong`, `demon`, `tyrant`, `viper`, `revenant`) once the drake has been played
+
 ## M1.48 — The Cinder Wyrm on a leaner build (2026-11-20, `dragon/wyrm-look`, ADR-123)
 - [x] Three full redraws rendered and turned down by the owner; three builds of the shipped wyrm rendered instead
 - [x] Build c (the owner's pick) is the wyrm: lean trunk and limbs, a fierce head carried high, a mane of quills
@@ -219,7 +228,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] A human playtest: how fast the wall goes, the fire's strength in a real fight, the zoom on the owner's monitor
   - [ ] Frame cost: 16 - 22 % more render time than before at 1080p, mostly the trees' mesh; measure on the iPhone
   - [ ] The wall's damage in more, shorter stretches (it clumps into one to three); a dead tree's stages seen in the canopy
-  - [ ] A head for the wyrm, when the owner comes back to it: separate fangs, deeper sockets, calmer scales on the face
+  - [x] A head for the wyrm, when the owner comes back to it: separate fangs, deeper sockets, calmer scales on the face (M1.49, the drake)
   - [ ] The same destruction for the Ashfall Courtyard's and the Obsidian Throne's backgrounds
 
 ## M1.44 — The Cinder Wyrm's second pass: pressure, whole-body combos, flying combos, a clearing that breaks (2026-11-15, `dragon/wyrm-second-pass`, ADR-119)

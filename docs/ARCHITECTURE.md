@@ -1581,10 +1581,19 @@ null for a sculpted head; `ablaze.js` reads it before `HORN_TIPS`). The one thin
 outside the model is `rest` (`{ neck: { pitch0, pitchStep, pitchCurve }, headDip }`): `rig/anim.js`
 reads it where it read `REST_POSE.neck` / `REST_POSE.headDip`, weighted by the resting weight, so
 attacks keep their measured head.
-**Heads kept for later** (2026-11-16, ADR-120; `heads.js`): `?wyrmFace=old|skull|loong|demon` (read
-once; default `old`, today's head, `model.js` `buildOldHead(headVis, mats)`, unchanged). The owner
-passed on a new head for now; the three sculpted ones stay behind the switch, like the hero's looks
-(ADR-089). Exports: `WYRM_FACES`, `wyrmFace()`, `setWyrmFace(k)` (the NEXT built wyrm; tests, the
+**The face** (2026-11-20, ADR-124; `heads.js` + `faces.js`): `?wyrmFace=` (read once; default `drake`,
+`WYRM_FACE_SHIPPED`, the owner's pick; `old` = the head before, `model.js` `buildOldHead`; `skull`,
+`loong`, `demon` (ADR-120) and `tyrant`, `viper`, `revenant` were shown and passed on). `faces.js`
+holds the four faces of 2026-11-20 and registers them into `heads.js` `HEADS` / `FACE_ART` at import
+(`model.js` imports it). A sculpted head's data may carry `paint` / `paintJaw` (rules that move loft
+triangles to another material: `{ key, from?, z?, y?, c?, r?, except? }`), `teethOpt`, `nape` (the
+crest's and mane's lengths over the last neck segments, nearest the head first; `faceNape()`, read by
+`buildDrake`) and extras that return `hornTip`. `createDragonMaterials` adds `pit` (the hollows) and
+`mask` (bare bone) only when the face's `FACE_ART` has them. `buildHead` returns
+`{ eyes, nostrils, jaw, whiskers, hornTip }`.
+**Heads kept for later** (2026-11-16, ADR-120; `heads.js`): before ADR-124 `?wyrmFace=old|skull|loong|demon`
+defaulted to `old`. The owner passed on those three sculpted heads; they stay behind the switch, like
+the hero's looks (ADR-089). Exports: `WYRM_FACES`, `wyrmFace()`, `setWyrmFace(k)` (the NEXT built wyrm; tests, the
 Lab's "head" row, which reloads the page), `FACE_ART` (per head, art entries merged over `WYRM_ART`
 for its parts), `JAW_PIVOT` [0, -0.15, 0.05], `HORN_TIPS` (per head, the main horn's tip in
 headVis's frame: ablaze look c's horn fire), `sculptLoft`, `bentPath`, `sweepTube` and

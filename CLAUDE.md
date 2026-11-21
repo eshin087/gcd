@@ -34,8 +34,8 @@ npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne (default:
 Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
 (`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
-`?wyrmFace=skull|loong|demon` gives the wyrm one of three sculpted heads the owner passed on for now
-(ADR-120). The owner's picks with the options turned down behind them: `?wyrmLook=0|a|b` (c: the
+`?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
+and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's picks with the options turned down behind them: `?wyrmLook=0|a|b` (c: the
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire).
 The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no

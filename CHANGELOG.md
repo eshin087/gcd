@@ -4,7 +4,22 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-two pieces of work since 0.4.0:
+Fifty-three pieces of work since 0.4.0:
+- **The Cinder Wyrm has a new face** (2026-11-20, ADR-124). *Changed:* the wyrm wears the
+  drake, the owner's pick of four faces rendered side by side ("It doesnt look realistic or scary"):
+  a sculpted skull with a long hooked snout, a heavy brow over each eye, cheekbones and a stop before
+  the brow; two long horns swept back over the neck, a shorter pair under them, a horn over each eye
+  and three cheek fins. The face is drawn in finer scales under a harder light, so brow, snout, cheek
+  and jaw read as planes; the eyes are burning slits in black sockets; the mouth is a black cavern
+  with a red tongue, fangs of different sizes and the fire at the back of the throat (it still flares
+  as the breath charges); the neck's quills are shorter just behind the skull, so its outline stands
+  free. Nothing about the fight moved: the head, the mouth, the jaw's hinge and every hit volume are
+  where they were, and so are the breath's and the bite's origins. The face before is kept behind
+  `?wyrmFace=old`; the three turned down with the drake (`tyrant`, `viper`, `revenant`) and the
+  three of ADR-120 stay behind the same switch and the Lab's head row. *Fixed:* in a string, the
+  wyrm's bite no longer lands after its flash promised it: a hero standing right under the snout
+  (Cataclysm's held bite at 3 m) was caught by the lunge a tenth of a second late; the bite now
+  connects at most 0.07 s after its impact and otherwise misses (`TUNING.biteLate`).
 - **The Cinder Wyrm is leaner and carries its head high** (2026-11-20, ADR-123). *Changed:* the wyrm has a
   leaner build, picked by the owner from rendered sheets ("more menacing, a bit more slender"): a
   tucked waist and a shallower chest (the back's line stays, the belly rises), thinner neck, legs
