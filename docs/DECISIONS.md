@@ -3761,3 +3761,24 @@ ADR-092).
   frames" for a pose (it still does for `travel` and `lift`).
 - **Not measured or not right:** see DEVLOG Session 66 ("Not checked / open"): nobody has played
   it; the Lord's left elbow in the staff's spins; reaction clips not audited one by one.
+
+## ADR-127 — The drake's glare: a slanted almond eye turned to every side; the sims reseed at each model's build (2026-11-21)
+- **Context:** the owner turned down four anime faces ("the eyes look very weird") and asked for the
+  drake's standing-view eyes, "angled and angry", from every angle, realistic and scary. The drake's
+  eye was an ellipsoid in the side wall of the skull; its slant came from the head's pitch in one view.
+- **Decisions:**
+  1. **The eye is an almond, not an ellipsoid** (`eyeMesh` `leaf`): pointed corners, the outer one high,
+     and its face turned out, up and forward together, so the slant is drawn into the eye itself and
+     shows from the side, the front, three-quarter and below.
+  2. **The brow makes the anger.** It drops lower over the snout and rises steeper than the eye, so it
+     cuts the eye's upper edge from every side; an orbit rim and a dark hollow seat the eye.
+  3. **The anime faces are not kept.** They were turned down outright, unlike the heads behind the
+     switch that were set aside for later; their code is a patch outside the repo.
+  4. **The sims reseed when a model is built.** `Dragon` and `Player` call `game.onModelBuilt?.(who)`
+     right after building their model (nothing listens in the game), and `integ.mjs` reseeds its stream
+     there. The end-of-build reseed of ADR-124 missed the rolls each constructor makes right after its
+     model; a bisect showed eight extra draws and two extra geometries give the same fight.
+- **Consequences:** the shipped drake builds a few more triangles and the same draws and bones. One
+  statistical band moved with the new stream (`TUNING.world.meter.wall` lower bound 0.3 -> 0.25). Any
+  future change to a model's object count no longer moves the seeded fights.
+- **Not done:** the eyes from straight above stay small; not seen on the iPhone.

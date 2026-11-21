@@ -1581,6 +1581,11 @@ null for a sculpted head; `ablaze.js` reads it before `HORN_TIPS`). The one thin
 outside the model is `rest` (`{ neck: { pitch0, pitchStep, pitchCurve }, headDip }`): `rig/anim.js`
 reads it where it read `REST_POSE.neck` / `REST_POSE.headDip`, weighted by the resting weight, so
 attacks keep their measured head.
+**The glare** (2026-11-21, ADR-127): a head's `eye` may be `{ c, rot, leaf: { len, h, slant, peak,
+thick } }` (an almond swept along a slanted line, `heads.js` `eyeMesh`) in place of `r` (an
+ellipsoid); the drake's is. **Model built** (ADR-127): `Dragon` and `Player` call
+`game.onModelBuilt?.('dragon' | 'player')` right after building their model; nothing in the game sets
+it, the headless sims (`integ.mjs`) reseed their random stream there.
 **The face** (2026-11-20, ADR-124; `heads.js` + `faces.js`): `?wyrmFace=` (read once; default `drake`,
 `WYRM_FACE_SHIPPED`, the owner's pick; `old` = the head before, `model.js` `buildOldHead`; `skull`,
 `loong`, `demon` (ADR-120) and `tyrant`, `viper`, `revenant` were shown and passed on). `faces.js`
