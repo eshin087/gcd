@@ -203,6 +203,7 @@ export class BeamMoves {
     B.t = 0;
     B.lit = Math.max(0.1, b.A + b.S);
     B.first = false;
+    B.taken = 0; // (ticks dealt to a hero who was not blocking: capped, then he is thrown clear)
     B.nextTick = this.T.active + this.T.tick * 0.5;
     B.worldNext = 0;
     B.fadeT = 0;
@@ -283,7 +284,7 @@ export class BeamMoves {
         }
       } else if (B.t >= B.nextTick) {
         B.nextTick += this.T.tick;
-        if (inside && p.state !== 'knockdown') this._tick(p);
+        if (inside && p.state !== 'knockdown' && B.taken >= 0) this._tick(p);
       }
       if (inside && B.guardAt === false && p.blocking && this._facing(p)) B.guardAt = true;
     }
@@ -386,11 +387,23 @@ export class BeamMoves {
     }
     // (a stream: the player staggers on a no-knockback hit of 5 or more unless one came in the last
     // 0.6 s (player.js chipGuard): the tick is dealt in parts under that, the first opens the stream)
-    const scale = d.T.damageScale ?? 1, n = Math.max(1, Math.ceil((C.tick * scale) / 4.8));
+    // (the cap: after `maxTicks` ticks a hero who is not blocking is thrown clear of the strip, sideways,
+    // and this beam takes no more from him: the tuning pass; a sprint beside the great beam's sweep cost
+    // 119 HP of ticks before it)
+    const last = ++B.taken >= (this.T.maxTicks ?? Infinity);
+    const scale = d.T.damageScale ?? 1, n = last ? 1 : Math.max(1, Math.ceil((C.tick * scale) / 4.8));
+    let from = { x: B.ox, z: B.oz };
+    if (last) {
+      // (thrown from the nearest point of the beam's line: out of its side)
+      B.taken = -1;
+      const q = p.position, along = (q.x - B.ox) * B.dx + (q.z - B.oz) * B.dz;
+      from = { x: B.ox + B.dx * along, z: B.oz + B.dz * along };
+      if (Math.hypot(q.x - from.x, q.z - from.z) < 0.05) from = { x: from.x + B.dz * 0.3, z: from.z - B.dx * 0.3 };
+    }
     for (let i = 0; i < n; i++) {
       const r = d.hitPlayer({
-        damage: C.tick / n, knockback: 0, knockdown: false, kind: 'beam', tell: B.tell === TELL.BLUE ? TELL.RED : B.tell, attack: B.attack,
-        from: { x: B.ox, z: B.oz }, projectile: true, parryable: false, blockable: false, extra: { perfect: false },
+        damage: C.tick / n, knockback: last ? (this.T.thrown ?? 4) : 0, knockdown: last, kind: 'beam', tell: B.tell === TELL.BLUE ? TELL.RED : B.tell, attack: B.attack,
+        from, projectile: true, parryable: false, blockable: false, extra: { perfect: false },
       });
       if (r !== RESULT.HIT) break;
     }

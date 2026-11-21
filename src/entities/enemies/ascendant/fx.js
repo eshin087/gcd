@@ -887,6 +887,7 @@ export class AscFx extends LordFx {
     s.form = o.form ?? this.d?.phase ?? 1;
     s.seed = this.lr() * 100;
     s.hitKind = o.hitKind ?? 'thrown';
+    s.group = o.group ?? 0;
     s.lx = s.lz = NaN;
     if (s.returned) {
       s.phase = 'fly';
@@ -947,10 +948,14 @@ export class AscFx extends LordFx {
     const cued = s.flashed >= 0 ? s.age - s.flashed : 0;
     if (s.flashed < 0 || cued < 0.2) return 'fizzle'; // announced too late (fairness): it only fizzles
     const red = s.tell === TELL.RED;
-    return d.hitPlayer({
+    const r = d.hitPlayer({
       damage: s.damage, knockback: s.kb, knockdown: red, kind: s.hitKind, tell: s.tell, attack: s.attack, from: { x: s.x - s.dx, z: s.z - s.dz },
       projectile: true, light: !red, parryPosture: s.kind === 'disc' ? 14 : 8, extra: red ? { plunge: false } : null,
     });
+    // (the string-lock rule for a volley of red shots, Storm Cage's orbs: once one has thrown the hero
+    // down, the rest of its group pass over him, uncued and harmless)
+    if (red && s.group && r === RESULT.HIT) for (const o of this.shots) if (o !== s && o.alive && o.group === s.group) o.done = true;
+    return r;
   }
 
   _flyBlast(s, dt, d, p, pp, lead) {

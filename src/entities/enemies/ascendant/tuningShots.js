@@ -24,6 +24,9 @@ export const SHOTS_TUNING = {
   disc: { speed: 16, back: 18, range: 12, curve: 0.85, hang: 0.3, radius: 0.7, homeWait: 0.4 },
   // a bolt (a line zone from his pointing fingers): its reach and width; a perfect parry throws it back
   bolt: { range: 17, width: 1.7, returnDamage: 50, returnPosture: 34 },
+  // the cap on perfect returns (bolts and Spirit Shots alike): the first in full, each one within
+  // `window` s of the one before x `decay` (Lightning Lance's four: 50 + 25 + 13 + 6 = 94, was 200)
+  returns: { decay: 0.5, window: 3 },
   // Heaven's Volley: he rises `rise` m; `count` strikes called `gap` s apart, each `warn` s, r `radius`,
   // led `lead` s onto where the hero is heading and scattered `scatter` m; then the dive (MOVES.md)
   volley: { rise: 4, count: 6, gap: 0.42, warn: 0.95, radius: 2.2, damage: 22, knockback: 3, lead: 0.5, scatter: 2.2 },

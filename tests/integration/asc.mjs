@@ -1164,12 +1164,23 @@ async function scenarioShots() {
     const s1 = d.ki.shots.stats, h = hitBy(r, 'lance');
     assert(r.ok && h.length === 4 && !h.some((x) => x.r === RESULT.HIT) && s1.boltReturns - s0.boltReturns >= 1 && d.hp < hp0, `Lightning Lance: four bolts parried (${h.map((x) => x.r).join(', ')}); perfect parries send ${s1.boltReturns - s0.boltReturns} back (${(hp0 - d.hp).toFixed(0)} damage to him)`);
   }
+  {
+    // (the tuning pass's cap: four perfect returns of one Lance are worth 50 + 25 + 13 + 6, not 4 x 50)
+    const G = shotStage(3, 9);
+    const d = G.game.dragon, T = TUNING.shots, hp0 = d.hp;
+    const sh = d.ki.shots;
+    G.game.player.deflect.perfect = true;
+    for (let i = 0; i < 4; i++) sh.onHit({ beat: { def: { ki: 'bolt' } } }, RESULT.PARRIED);
+    G.game.player.deflect.perfect = false;
+    const want = [0, 1, 2, 3].reduce((a, i) => a + T.bolt.returnDamage * Math.pow(T.returns.decay, i), 0);
+    assert(Math.abs(hp0 - d.hp - want) < 1 || (d.broken && hp0 - d.hp <= want + 1), `four perfect returns close together: ${(hp0 - d.hp).toFixed(1)} damage to him (cap: ${want.toFixed(1)}; ${4 * T.bolt.returnDamage} uncapped)`);
+  }
   // ---- Storm Cage: eight orbs round the hero, open on the side away from him
   {
     const G = shotStage(3, 6);
     const r = shotCast(G, 'stormCage');
     const h = hitBy(r, 'stormCage');
-    assert(r.ok && h.some((x) => x.r === RESULT.HIT), `Storm Cage, standing still: it closes on him (${h.length} contacts)`);
+    assert(r.ok && h.filter((x) => x.r === RESULT.HIT).length === 1, `Storm Cage, standing still: it closes on him; the first orb knocks him down and the rest pass over him (${h.length} contacts, ${h.filter((x) => x.r === RESULT.HIT).length} hit)`);
     const G2 = shotStage(3, 6);
     G2.defend = makeDefender(G2, { style: 'dodge' });
     const r2 = shotCast(G2, 'stormCage', { step: () => G2.defend.act() });
@@ -1294,7 +1305,11 @@ async function scenarioBeams() {
   } });
   const parts = tk.hits.filter((h) => h.r === RESULT.HIT), dealt = parts.reduce((a, h) => a + h.damage, 0);
   const nTicks = dealt / (BT.rising.tick * scale);
-  assert(nTicks >= 2 && Math.abs(nTicks - Math.round(nTicks)) < 1e-6 && parts.every((h) => h.damage < 5) && !tk.states.has('stagger') && !tk.states.has('knockdown'), `stepping into it once lit: ${nTicks.toFixed(0)} ticks of ${BT.rising.tick} (each in parts under the stagger floor), no stagger (${[...tk.states].join(' ')})`);
+  // (the tuning pass's cap: after BT.maxTicks ticks the hero is thrown clear, knocked down; before it, a
+  // stream: each tick in parts under the stagger floor, no stagger)
+  const capped = Math.round(nTicks) >= (BT.maxTicks ?? 99);
+  const streamParts = capped ? parts.slice(0, -1) : parts;
+  assert(nTicks >= 2 && nTicks <= (BT.maxTicks ?? 99) && Math.abs(nTicks - Math.round(nTicks)) < 1e-6 && streamParts.every((h) => h.damage < 5) && !tk.states.has('stagger') && capped === tk.states.has('knockdown'), `stepping into it once lit: ${nTicks.toFixed(0)} ticks of ${BT.rising.tick} (each in parts under the stagger floor, no stagger${capped ? `; the ${BT.maxTicks}rd throws him clear, knocked down` : ''}) (${[...tk.states].join(' ')})`);
   // 3. the answers from the cue: off the line at each distance (run, sprint, a roll), against the strip
   out(`     leaving the line from the cue (strip ${BT.rising.w} m + the hero's ${(p.radius * 2).toFixed(1)} m; the line fixed at ${BT.rising.fix} of the ${BT.rising.windup} s windup, the cue at ${((BT.rising.windup - lead) / BT.rising.windup).toFixed(2)}):`);
   const table = {};
@@ -1445,6 +1460,9 @@ async function scenarioClash() {
   const hp = (r) => r.hits.filter((h) => h.r === RESULT.HIT).reduce((a, h) => a + h.damage, 0);
   out(`     off the line, then rolled back through its edge: ${hp(off).toFixed(0)} HP (${off.hits.map((h) => h.r).join(' ') || 'untouched'}); sprinting on with the sweep instead: ${hp(offRun).toFixed(0)} HP`);
   assert(!off.hits.some((h) => h.r === RESULT.HIT) && !offRun.hits.some((h) => h.damage > GB.tick * scale), 'off the line the head never lands; rolled back through, the sweep never touches him');
+  // (the tuning pass: one beam takes at most BT.maxTicks ticks from a hero who is not blocking; before
+  // the cap sprinting on with the sweep cost 119 HP)
+  assert(hp(offRun) <= (BT.maxTicks ?? 99) * GB.tick * scale + 1e-6, `sprinting on with the sweep costs at most ${BT.maxTicks} ticks: ${hp(offRun).toFixed(0)} HP (<= ${((BT.maxTicks ?? 99) * GB.tick * scale).toFixed(0)}), then he is thrown clear`);
   assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
 }
 

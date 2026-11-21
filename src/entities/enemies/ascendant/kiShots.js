@@ -49,6 +49,7 @@ export class ShotMoves {
     this.volley = { on: false, act: null, i: 0, n: 0, t: 0, h: [], attack: '', target: { x: 0, z: 0 } };
     this.sky = { t: 0, calls: 0, armed: false };
     this.corner = { left: 0, t: 0, i: 0 };
+    this.ret = { at: -99, n: 0 }; // (the returns' cap: returns close together are worth less each)
     this.stats = { blasts: 0, returned: 0, rainSkips: 0, rainHolds: 0, skyCalls: 0, skySkips: 0, volleyCalls: 0, volleySkips: 0, cage: 0, bolts: 0, boltReturns: 0, discs: 0 };
   }
 
@@ -83,6 +84,18 @@ export class ShotMoves {
     this.sky.t = this.T?.weather?.start ?? 3;
     this.sky.calls = 0;
     this.corner.left = 0;
+    this.ret.at = -99;
+    this.ret.n = 0;
+  }
+
+  /** What a perfect return is worth now (x of its damage and posture): the first in full, each one
+   *  within `T.returns.window` s of the one before worth `T.returns.decay` x less (Lightning Lance's four bolts
+   *  return 50 + 25 + 13 + 6, not 4 x 50: the tuning pass's cap). */
+  _returnScale() {
+    const R = this.T.returns ?? {}, now = this.game.time ?? 0;
+    this.ret.n = now - this.ret.at <= (R.window ?? 3) ? this.ret.n + 1 : 0;
+    this.ret.at = now;
+    return Math.pow(R.decay ?? 1, this.ret.n);
   }
 
   /** Something of his is still in the air or lit (the tests wait for it; the director may read it). */
@@ -142,8 +155,9 @@ export class ShotMoves {
     const d = this.d, P = this.T.spirit;
     if (!d || d.mode === 'dying' || d.mode === 'dead') return;
     const c = d._hs?.[1] ?? { x: d.position.x, y: 1.25, z: d.position.z };
-    d.emit('dragon:returned', { kind: 2, damage: P.returnDamage, x: c.x, y: c.y, z: c.z });
-    d.takeHit({ damage: P.returnDamage, exact: true, heavy: true, posture: P.returnPosture, part: 'body', point: { x: c.x, y: c.y, z: c.z } });
+    const k = this._returnScale();
+    d.emit('dragon:returned', { kind: 2, damage: P.returnDamage * k, x: c.x, y: c.y, z: c.z });
+    d.takeHit({ damage: P.returnDamage * k, exact: true, heavy: true, posture: P.returnPosture * k, part: 'body', point: { x: c.x, y: c.y, z: c.z } });
     this.stats.returned++;
   }
 
@@ -309,12 +323,13 @@ export class ShotMoves {
     // the gap: the side of the hero away from him
     const away = Math.atan2(p.x - d.position.x, p.z - d.position.z);
     const span = TAU - C.open, sense = this.rand() < 0.5 ? 1 : -1;
+    const group = 0xca9e + this.stats.cage; // (one knockdown and the rest of the cage passes: fx.js)
     for (let i = 0; i < C.count; i++) {
       // (round from one lip of the gap to the other; each flies in on its turn, in order round)
       const ang = away + C.open / 2 + span * ((i + 0.5) / C.count);
       const k = sense > 0 ? i : C.count - 1 - i;
       const x = p.x + Math.sin(ang) * C.r, z = p.z + Math.cos(ang) * C.r;
-      d.fx.throwShot?.({ kind: 'blast', x, y: 1.2, z, dx: -Math.sin(ang), dz: -Math.cos(ang), speed: C.speed, size: C.size, radius: C.radius, life: 2.5, range: C.r + 4, delay: C.first + k * C.gap, tell: TELL.RED, damage: b.def.damage, knockback: b.def.knockback, attack: a?.name ?? 'stormCage', form: d.phase });
+      d.fx.throwShot?.({ kind: 'blast', x, y: 1.2, z, dx: -Math.sin(ang), dz: -Math.cos(ang), speed: C.speed, size: C.size, radius: C.radius, life: 2.5, range: C.r + 4, delay: C.first + k * C.gap, tell: TELL.RED, damage: b.def.damage, knockback: b.def.knockback, attack: a?.name ?? 'stormCage', form: d.phase, group });
     }
     this.stats.cage++;
     this.game.shake?.(0.15);
@@ -385,8 +400,9 @@ export class ShotMoves {
       const v = pl.getChestPos(this._v, true);
       d.fx.lightning?.(v.x, v.y, v.z, c.x, c.y, c.z, 1.2, true, true);
     }
-    d.emit('dragon:returned', { kind: 1, damage: B.returnDamage, x: c.x, y: c.y, z: c.z });
-    d.takeHit({ damage: B.returnDamage, exact: true, heavy: true, posture: B.returnPosture, part: 'body', point: { x: c.x, y: c.y, z: c.z } });
+    const k = this._returnScale();
+    d.emit('dragon:returned', { kind: 1, damage: B.returnDamage * k, x: c.x, y: c.y, z: c.z });
+    d.takeHit({ damage: B.returnDamage * k, exact: true, heavy: true, posture: B.returnPosture * k, part: 'body', point: { x: c.x, y: c.y, z: c.z } });
     this.stats.boltReturns++;
   }
 

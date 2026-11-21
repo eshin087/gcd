@@ -13,6 +13,9 @@
 export const BEAM_TUNING = {
   tick: 0.18, // s between the ticks of a lit beam
   active: 0.1, // s: the first contact's window (the beat's active frames)
+  // the cap on what one beam takes from a hero who is not blocking (the tuning pass): `maxTicks` ticks,
+  // the last of them throws him `thrown` m clear of its side, knocked down; no more from that beam
+  maxTicks: 3, thrown: 4,
 
   // Rising Tide (form 1): one palm, a fixed line
   rising: {
