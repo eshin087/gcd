@@ -28,10 +28,10 @@ export const FIRE_PALETTES = {
   // GOLD (the Skybreak Ring: Tian Lei's energy). Not a kind of its own: a level swaps the void slot
   // for it (FireField.setPalette('void', FIRE_PALETTES.gold); the Lord's level never does). Energy,
   // not fire: an amber rim (no red in it), a gold body, a pale yellow-white heart; it boils fast and
-  // climbs less than flame.
+  // climbs far less than flame (a blast stays a ball, a beam a beam: what rises is made to rise).
   gold: {
     stops: [[0.62, 0.36, 0.035], [1.25, 0.82, 0.1], [1.95, 1.48, 0.3], [2.5, 2.2, 0.85], [3.1, 3.0, 2.3]],
-    hdr: 0.6, fill: 0.08, back: [0.45, 0.75], lick: 0.75, erode: 0.8, boil: 11, warp: 0.8, haze: [1.0, 0.78, 0.32],
+    hdr: 0.6, fill: 0.08, back: [0.45, 0.75], lick: 0.4, erode: 0.6, boil: 11, warp: 0.6, haze: [1.0, 0.78, 0.32],
   },
   steel: {
     stops: [[0.5, 0.5, 0.6], [1.2, 1.2, 1.32], [1.9, 1.88, 1.85], [2.7, 2.65, 2.55], [3.5, 3.4, 3.2]],
