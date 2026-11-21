@@ -1580,6 +1580,70 @@ async function scenarioMotion() {
     slide[name] = { slid, moved };
     out(`   ${name}: planted feet slid ${slid.toFixed(2)} m in all while the root travelled ${moved.toFixed(2)} m`);
   }
+  // the feet as duel.mjs MOTION measures them (ADR-126): where they are DRAWN (the animator's pose), the
+  // frames of a dash (> 9 m/s) or with him off the ground left out, a foot counted while it is within
+  // 0.02 m of its lowest
+  const feet = {};
+  {
+    const { P } = await imp('src/entities/player/anim.js');
+    const G3 = build();
+    duel(G3, { dist: 2.6 });
+    const d3 = G3.game.dragon;
+    G3.game.player.debug.god = true;
+    const FEET_SET = process.env.ABYSS_FEET ? ['gates', 'hundred', 'tiger', 'ironMountain', 'goldenGates', 'skyHammer', 'thousand', 'stormWaltz', 'heavenEarth'] : ['gates', 'hundred'];
+    for (const name of FEET_SET) {
+      const form = Math.max(1, (MOVES[name].weight ?? [1]).findIndex((w) => w > 0) + 1);
+      settle(G3, 4);
+      if (d3.phase !== form) d3.debug.setForm(form);
+      run(G3, 0.3);
+      d3.position.set(0, 0, -2);
+      d3.yaw = 0;
+      place(G3, 2.6);
+      run(G3, 0.3);
+      if (!d3.debug.trigger(name)) continue;
+      const an = [], lo = [9, 9];
+      for (let i = 0; i < 900 && d3.mode === 'act' && d3.brain.act?.name === name; i++) {
+        G3.tick(DT);
+        G3.game.player.debug.heal?.();
+        const c = d3.anim.cur, HS = d3.anim.drawScale, cy = Math.cos(d3.yaw), sy = Math.sin(d3.yaw);
+        const foot = (k) => ({ x: d3.position.x + HS * (c[k] * cy + c[k + 2] * sy), y: c[k + 1], z: d3.position.z + HS * (-c[k] * sy + c[k + 2] * cy) });
+        an.push([foot(P.rF), foot(P.lF), Math.hypot(d3.pilot.groundVel.x, d3.pilot.groundVel.z) > 9 || d3.position.y > 0.03]);
+      }
+      for (const f of an) for (let k = 0; k < 2; k++) lo[k] = Math.min(lo[k], f[k].y);
+      let s = 0;
+      for (let i = 1; i < an.length; i++) for (let k = 0; k < 2; k++) {
+        const a = an[i][k], b = an[i - 1][k];
+        if (!an[i][2] && !an[i - 1][2] && a.y < lo[k] + 0.02 && b.y < lo[k] + 0.02) s += Math.hypot(a.x - b.x, a.z - b.z);
+      }
+      feet[name] = s;
+      out(`   ${name} (form ${form}): drawn planted feet slide ${s.toFixed(2)} m (duel.mjs MOTION's measure)`);
+    }
+  }
+  // the follow-through's clock (realise.js, ADR-126): every beat's F at least its active frames, 0.3 s at
+  // most (or its active frames when those are longer: a cast held open) and over before the next impact; a
+  // sustained beat (a beam) spans its whole lit time; the clip
+  // asks for stepping feet
+  {
+    const bad = [];
+    let n = 0;
+    for (const name of MOVE_NAMES) {
+      for (let ph = 1; ph <= 3; ph++) {
+        for (const r of [0.001, 0.999]) {
+          const a = realise(name, ph, () => r);
+          if (!a) continue;
+          a.beats.forEach((b, i) => {
+            n++;
+            const nb = a.beats[i + 1];
+            if (b.S > 0 ? Math.abs(b.F - (b.A + b.S)) > 1e-9 : !(b.F >= b.A - 1e-9 && b.F <= Math.max(b.A, 0.3) + 1e-9)) bad.push(`${name}/${ph}#${i} F ${b.F.toFixed(3)} A ${b.A} S ${b.S} next ${nb ? (nb.impact - b.impact).toFixed(3) : "-"}`);
+            if (nb && !(b.impact + b.F <= nb.impact + 1e-9)) bad.push(`${name}/${ph}#${i} runs past the next impact`);
+          });
+          if (!a.clip.steps) bad.push(`${name}: no steps`);
+        }
+      }
+    }
+    assert(n > 200 && !bad.length, `the follow-through's clock on ${n} realised beats: within [active, 0.3 s], a beam's over its lit time, done before the next impact (${[...new Set(bad)].slice(0, 12).join(', ') || 'all'})`);
+  }
+  for (const k of ['gates', 'hundred']) assert(feet[k] < 1.0, `${k}: outside a dash or a leap his drawn feet on the ground slide under 1.0 m over the string, as the other two bosses' (${feet[k]?.toFixed(2)} m)`);
   // (a strike that reaches: its end within 0.45 m of the hero's body at its ideal distance; the lines
   // that close on a dash (palm, double, elbow, shoulder) and the areas (hammer, sweep, axe) aside)
   const AREA = new Set(['palm', 'double', 'elbow', 'shoulder', 'hammer', 'kick:sweep', 'kick:axe']);

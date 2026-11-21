@@ -570,7 +570,9 @@ export const CLIPS_BY_FORM = FORM_POSES.map((P) => {
 export const CLIP = CLIPS_BY_FORM[0];
 
 // ---------------------------------------------------------------- realising a move
-const REALISERS = FORM_POSES.map((P) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur) }));
+// (ADR-126, as the other two bosses: a beat's keys made whole (completeBeat); every strike key here
+// carries NEUTRAL, so it only writes `two` / `arm` / `larm` back to his guard's 0)
+const REALISERS = FORM_POSES.map((P) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
 /**
  * A move as it will play this time (duelist/realise.js), compiled round the stance of the form it is
  * used in; a transformation is compiled round the NEW form's stance, so it ends in that guard.

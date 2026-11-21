@@ -2555,6 +2555,11 @@ const POSES = {
 };
 // clips that lay him on the ground (the cloth obeys gravity there instead of wrapping the body)
 const LYING_KEYS = new Set(['knockdown', 'dead', 'deadDown']);
+// a posed clip's feet under root motion (HeroAnimator._feetClip): `at` m off its wanted spot a planted
+// foot steps, `drag` m it is pulled along; a step lasts dur[0] + dur[1] × the distance (dur[2] at
+// most) and rises lift[0] + lift[1] × its size; `cool` s between two steps; a foot wanted `air` m
+// above the ankle's height, or a body carried faster than `free` m/s, is left to the clip
+const CLIP_STEP = { at: 0.14, drag: 0.5, dur: [0.07, 0.14, 0.15], lift: [0.03, 0.09], cool: 0.02, air: 0.035, free: 9 };
 // clips whose feet the foot planner holds on the ground (and whose touchdowns are footsteps)
 const WALK_KEYS = new Set(['loco', 'heal', 'block', 'charge', 'parry']);
 
@@ -3358,7 +3363,9 @@ export class HeroAnimator {
     const pl = this.player, cur = this.cur;
     this.wantOK = false;
     if (!WALK_KEYS.has(this.key) || !pl.position) {
-      for (const F of this.feet) F.init = false;
+      // a clip that asks for it (a duelist's move: `steps`) keeps its feet on the ground too
+      if (pl.position && pl.atk?.def?.steps) this._feetClip(dt);
+      else for (const F of this.feet) F.init = false;
       return;
     }
     this.wantOK = true;
@@ -3461,6 +3468,96 @@ export class HeroAnimator {
           this.stepCool = 0.06;
         }
       }
+      F.ox = cur[i];
+      F.oy = cur[i + 1];
+      F.oz = cur[i + 2];
+      F.oyaw = cur[iy];
+    }
+  }
+
+  /**
+   * The feet of a clip that poses them itself but is carried by root motion (a duelist's move,
+   * `def.steps`: he closes in through a windup, a string walks him forward). The clip's foot targets
+   * are where each foot WANTS to be under the body; a foot on the ground stays on its spot in the
+   * world and, left behind by more than CLIP_STEP.at, takes a quick step there, one foot at a time
+   * (a foot left further than `drag` is pulled along: the leg has an end). A foot the clip lifts (a
+   * kick, a leap, a hop), a body off the ground or carried faster than `free` m/s (a dash) is the
+   * clip's alone, and is planted again where it comes down. Shares the walking planner's state, so
+   * a move starts from the feet he stood on and the walk resumes from where the move left them.
+   */
+  _feetClip(dt) {
+    const pl = this.player, cur = this.cur, S = CLIP_STEP;
+    const yaw = fin(pl.yaw), px = fin(pl.position.x), pz = fin(pl.position.z);
+    const c = Math.cos(yaw), s = Math.sin(yaw), HS = this.drawScale;
+    const sp = pl.groundVel ? Math.hypot(fin(pl.groundVel.x), fin(pl.groundVel.z)) : 0;
+    const off = fin(pl.position.y) > 0.03 || sp > S.free;
+    if (this.stepCool > 0) this.stepCool -= dt;
+    const W = FEET_WANT;
+    for (let fi = 0; fi < 2; fi++) {
+      const i = fi ? P.lF : P.rF, iy = fi ? P.lFy : P.rFy, o = fi * 4;
+      W[o] = cur[i];
+      W[o + 1] = cur[i + 1];
+      W[o + 2] = cur[i + 2];
+      W[o + 3] = cur[iy];
+    }
+    // how far each planted foot is from where the clip wants it (model space)
+    const drift = (F, o) => {
+      if (!F.lock) return 0;
+      const wx = (F.wx - px) / HS, wz = (F.wz - pz) / HS;
+      return Math.hypot(wx * c - wz * s - W[o], wx * s + wz * c - W[o + 2]) + 0.22 * Math.abs(wrapAngle(F.wyaw - yaw - W[o + 3]));
+    };
+    for (let fi = 0; fi < 2; fi++) {
+      const F = this.feet[fi], O = this.feet[1 - fi];
+      const i = fi ? P.lF : P.rF, iy = fi ? P.lFy : P.rFy, o = fi * 4;
+      const dx = W[o], dy = W[o + 1], dz = W[o + 2], dyaw = W[o + 3];
+      const air = off || dy > ANK + S.air;
+      if (!F.init) {
+        F.init = true;
+        F.hold = false;
+        F.lock = false;
+        F.mode = 2;
+      }
+      if (air) {
+        // the clip's own: a kick, a leap, a dash
+        F.lock = false;
+        F.mode = 2;
+      } else if (!F.lock && F.mode !== 1) {
+        this._plant(F, dx, dz, dyaw, px, pz, c, s, yaw); // it comes down: planted where it is
+      } else if (F.lock) {
+        let d = drift(F, o);
+        if (d > S.drag) {
+          // the leg has an end: the spot is pulled along behind the body
+          const wx = (F.wx - px) / HS, wz = (F.wz - pz) / HS;
+          const mx = wx * c - wz * s, mz = wx * s + wz * c, k = 1 - S.drag / d;
+          this._plant(F, mx + (dx - mx) * k, mz + (dz - mz) * k, wrapAngle(F.wyaw - yaw) + wrapAngle(dyaw - wrapAngle(F.wyaw - yaw)) * k, px, pz, c, s, yaw);
+          d = S.drag;
+        }
+        if (d > S.at && O.lock && this.stepCool <= 0 && d >= drift(O, (1 - fi) * 4)) {
+          const wx = (F.wx - px) / HS, wz = (F.wz - pz) / HS;
+          this._lift(F, 1, wx * c - wz * s, ANK, wx * s + wz * c, wrapAngle(F.wyaw - yaw), clamp(S.dur[0] + S.dur[1] * d, S.dur[0], S.dur[2]));
+          F.lift = clamp(d / S.drag, 0.2, 1);
+        }
+      }
+      // write the foot
+      if (F.lock) {
+        const wx = (F.wx - px) / HS, wz = (F.wz - pz) / HS;
+        cur[i] = wx * c - wz * s;
+        cur[i + 1] = ANK;
+        cur[i + 2] = wx * s + wz * c;
+        cur[iy] = wrapAngle(F.wyaw - yaw);
+      } else if (F.mode === 1) {
+        F.s = Math.min(1, F.s + dt / F.dur);
+        const e = smoothstep(0, 1, F.s);
+        cur[i] = lerp(F.lx, dx, e);
+        cur[i + 1] = lerp(F.ly, Math.max(ANK, dy), e) + Math.sin(Math.PI * F.s) * (S.lift[0] + S.lift[1] * F.lift);
+        cur[i + 2] = lerp(F.lz, dz, e);
+        cur[iy] = F.lyaw + wrapAngle(dyaw - F.lyaw) * e;
+        if (F.s >= 1) {
+          this._plant(F, cur[i], cur[i + 2], cur[iy], px, pz, c, s, yaw);
+          this.stepCool = S.cool;
+        }
+      }
+      F.prevU = 0;
       F.ox = cur[i];
       F.oy = cur[i + 1];
       F.oz = cur[i + 2];

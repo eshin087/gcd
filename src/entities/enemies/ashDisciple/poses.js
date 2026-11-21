@@ -23,7 +23,7 @@ const GUARD_BASE = Object.freeze({
 export const GUARD = GUARD_BASE;
 
 const K = createDuelPoses(GUARD);
-export const { duelStance, duelLoco, compileClip, evalClip, duelClip } = K;
+export const { duelStance, duelLoco, compileClip, completeBeat, evalClip, duelClip } = K;
 /** The pose table HeroAnimator takes for him. */
 export const DUEL_POSES = K.POSES;
 
