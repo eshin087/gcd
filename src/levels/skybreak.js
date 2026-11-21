@@ -13,7 +13,7 @@ export const SKYBREAK = Object.freeze({
   sub: 'where the last ascendant waits for a challenger',
   world: Object.freeze({
     arenaRadius: R.half,
-    playerBound: 40, // round the origin: the ring, the path and the bonfire landing
+    playerBound: R.bound, // round the origin: the ring, the path and the bonfire landing (?ring=c: the crown's rim colliders hold him)
     dragonBound: R.floor.r,
     bonfire: { x: R.bonfire.x, z: R.bonfire.z },
     playerSpawn: { x: R.bonfire.x + 0.6, z: R.bonfire.z - 1.7 },
