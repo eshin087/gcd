@@ -278,6 +278,8 @@ const KICK = {
   // the leg raised straight up over his head, the heel brought down like an axe
   axe: {
     part: 'footR',
+    // (the leg swung up from the side in a crescent first: which leg, and that it is going high)
+    pre: { yaw: 0.3, bY: -0.12, pitch: -0.1, roll: -0.12, rF: [-0.5, 0.75, 0.25], rK: [-0.6, 0.2, 0.6], lF: [0.14, 0.0], lFy: 0.4, rH: [0.06, 0.14, 0.22], lH: [0.06, 0.16, 0.3] },
     coil: { yaw: -0.1, bY: -0.06, pitch: -0.22, spX: -0.08, rF: [-0.08, 1.45, 0.45], rK: [0, 0, 1], lF: [0.14, 0.0], lFy: 0.2, rH: [0.08, 0.14, 0.24], lH: [0.04, 0.16, 0.3] },
     hit: { yaw: -0.05, bY: -0.32, pitch: 0.24, hdX: 0.2, rF: [-0.1, ANK + 0.02, 0.82], rK: [0, 0, 1], lF: [0.15, -0.22], rH: [0.1, 0.0, 0.2], lH: [0.0, 0.0, 0.24] },
     z: () => ({ kind: 'ring', r: 2.6, fwd: 0.6 }),
@@ -310,9 +312,14 @@ function sweepKeys(cock, left) {
     const r = rotXZ(-0.72, 0.18, a), l = rotXZ(0.16, -0.04, a);
     return { rF: [r[0], ANK, r[1]], lF: [l[0], ANK, l[1]], rK: [-0.6, 0.3, 0.6], lK: [0.6, 0.4, 0.6], rFy: -1.2 + a, lFy: 0.4 + a };
   };
+  // the coil reads as the sweep coming: he drops onto his hands with the sweeping leg drawn in under him
+  // (knee to the chest), wound round the other way, then it shoots out and goes round at the ankles
+  const tuck = { bY: -0.62, pitch: 0.3, hdX: 0.25, rH: [0.12, -0.5, 0.3], lH: [-0.08, -0.52, 0.34], flat: 0.8, yaw: 1.2, rF: [-0.1, ANK + 0.08, 0.04], lF: [0.18, -0.06], rK: [-0.3, 0.6, 1], lK: [0.6, 0.4, 0.6], rFy: -0.4, lFy: 0.6 };
   return [
-    [cock, F(m({ ...body, yaw: 0.9, ...legs(0.5) }))],
-    [1.0, { ...F(m({ ...body, yaw: 0.4, ...legs(0) })), e: 'i' }],
+    [cock * 0.5, F(m({ ...tuck, bY: -0.4, pitch: 0.16, rF: [-0.2, -0.1] }))],
+    [cock, F(m(tuck))],
+    [cock + (1 - cock) * 0.5, { ...F(m({ ...body, yaw: 0.8, ...legs(0.4) })), e: 'i' }],
+    [1.0, { ...F(m({ ...body, yaw: 0.4, ...legs(0) })), e: 'l' }],
     [1.33, { ...F(m({ ...body, yaw: 0.4 - TAU / 3, ...legs(-TAU / 3) })), e: 'l' }],
     [1.66, { ...F(m({ ...body, yaw: 0.4 - (2 * TAU) / 3, ...legs((-2 * TAU) / 3) })), e: 'l' }],
     [2.0, { ...F(m({ ...body, yaw: 0.4 - TAU, ...legs(-TAU) })), e: 'l' }],
@@ -338,7 +345,7 @@ export function kick(kind, tell, windup, damage, o = {}) {
   const cock = c0 ?? (kind === 'flying' ? 0.58 : 0.68);
   const beat = {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.0 : 2.0, zone: P.z(), part: left ? PART_MIRROR[P.part] : P.part,
-    track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, cock, left }),
+    track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, pre: P.pre ?? null, cock, left }),
   };
   if (kind === 'flying') Object.assign(beat, { air: true, lift: FLY_LIFT(cock), track: 0.55 });
   return { ...beat, ...extra, cock };
