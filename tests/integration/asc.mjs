@@ -2058,6 +2058,8 @@ async function scenarioInteg() {
   p.debug.god = true;
   // 6. a deathblow while the great beam is lit: the beam goes out, he transforms / dies cleanly
   prep(2, 8);
+  const banners = [], b0 = game.hud.banner;
+  game.hud.banner = (t, k) => { banners.push(t); return b0?.call(game.hud, t, k); };
   d.debug.trigger('tideSweep');
   run(G, 4, null, () => d.ki.beams.phase === 'lit');
   const lit = d.ki.beams.phase === 'lit';
@@ -2066,6 +2068,8 @@ async function scenarioInteg() {
   d.onExecute({ damage: 260 });
   run(G, 5, null, () => d.mode === 'foot' && d.phase === 3);
   assert(lit && !d.ki.beams.busy && d.phase === 3 && d.mode === 'foot', `a deathblow while a beam is lit: the beam out (${d.ki.beams.phase}), the transformation done (form ${d.phase}, ${d.mode})`);
+  game.hud.banner = b0;
+  assert(banners.includes('THUNDER ASCENSION') && d.lives.left === 1 && game.audio._bossPhase?.('boss2') === 3, `... the banner (${banners.join(' / ')}), one pip left (${d.lives.left}), the music on form 3's track (${game.audio._bossPhase?.('boss2')})`);
   // 7. a transformation with the disc in the air: the disc comes back or goes, nothing NaN, he is form 3... (from form 2)
   duel(G, { dist: 8, form: 2 });
   p.debug.god = true;

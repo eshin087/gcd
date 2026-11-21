@@ -204,6 +204,34 @@ add('TERRAIN', [
   { id: 'terr-spring', name: "Swallow's Return · parry the dive", boss: 'ash', pieces: true, answer: 'parry', desc: 'He leaps back onto the pillar behind him and dives off it at you: the glint comes as he leaves the stone.', go: (T) => stage(T, -10.5, 0.6, -7.4, 0, 'swallowReturn'), until: settled, expect: ['player:parry'] },
 ]);
 
+// Tian Lei's ki and floor (the Skybreak Ring): each from his beat's own clock (a beam's cue and a thrown
+// slab's are hazards: the runner's answers skip them), in the form the move belongs to
+const ascGo = (form, name) => (T) => {
+  if (T.d.phase !== form) T.d.debug.setForm?.(form);
+  T.d.debug.trigger(name);
+};
+/** Once, `lead` s before the impact of his next blow (the beat's own clock). */
+const ascHead = (T, lead, fn) => {
+  const a = T.d?.brain?.act, b = a?.beats?.find((x) => !x.feint && !x.done && a.t < x.impact);
+  if (b && b.impact - a.t <= lead) T.at(0, fn, 'ascHead');
+};
+const ascRoll = (T) => {
+  const p = T.p, d = T.d, dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+  T._axis(-dz / l, -dx / l);
+  T.tap('Space');
+  T.later(0.4, () => T._axis(0, 0));
+};
+add('PARRY & RIPOSTE', [
+  { id: 'ascClash', name: 'The beam clash', boss: 'asc', dist: 6, answer: 'none', mash: true, desc: 'His great beam (form 3): a perfect parry of its head starts THE CLASH at range. Mash attack to split the beam: he reels.', go: ascGo(3, 'heavenTide'), tick: (T) => ascHead(T, 0.04, () => T.tap('@block', 0.05)), until: (T) => T.t > 3 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 16, expect: ['player:lock'] },
+]);
+add('GETTING HIT', [
+  { id: 'ascTide', name: 'Rising Tide · roll out of the line', boss: 'asc', dist: 9, answer: 'none', desc: 'His beam: a red cue at the drawn-back palm, then the line is lit. Roll off it at the cue.', go: ascGo(1, 'risingTide'), tick: (T) => ascHead(T, 0.24, () => ascRoll(T)), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 9, expect: ['combat:flash'] },
+  { id: 'ascTideHit', name: 'Rising Tide · stand in it', boss: 'asc', dist: 9, answer: 'none', desc: 'The same, and you stay: the first contact throws you down along the line.', go: ascGo(1, 'risingTide'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 9, expect: ['player:hurt'] },
+]);
+add('TERRAIN', [
+  { id: 'ascTile', name: 'Tile Kick · under it', boss: 'asc', dist: 7, answer: 'none', desc: 'He stamps a floor slab up and punches it at you: it glints as it comes. You stay, and it hits you (a parry would cut it).', go: ascGo(1, 'tileKick'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.terrain?.busy, max: 9, expect: ['combat:flash'] },
+]);
+
 export const SITUATIONS = Object.freeze(S);
 export const CATEGORIES = Object.freeze([...new Set(S.map((s) => s.cat)), 'BOSS MOVES']);
 
