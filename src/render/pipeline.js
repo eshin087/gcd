@@ -309,6 +309,9 @@ export class Pipeline {
         // ... x = share of the cells that re-roll at full haze (each on the fire's own beat: the roll
         // in tFlame.b), y = brightness flicker, z = the warm lift on dark letters
         uHazeRoll: { value: new THREE.Vector3(0.7, 0.3, 0.035) },
+        // ... the colour the letters take beside the void slot's heat (violet; a level that swaps the
+        // slot's palette swaps it too: FireField.setPalette shares its vector here, registerFire)
+        uHazeVoid: { value: new THREE.Vector3(0.62, 0.34, 1.0) },
         uTime: U.uTime ?? { value: 0 },
         // LETTING GO (letGo.js): the dying wyrm's letters let go cell by cell and fall; shared with
         // its materials (uWyrmGrid: the art cell and the grid anchor; uWyrmLetGo.x: 0 = off)
@@ -412,6 +415,7 @@ export class Pipeline {
         uniform vec2 uFlameCells;
         uniform vec4 uHaze;
         uniform vec3 uHazeRoll;
+        uniform vec3 uHazeVoid;
         uniform float uTime;
         uniform vec4 uLetGoInk;
         ${LET_GO_GLSL}
@@ -537,7 +541,7 @@ export class Pipeline {
           if (hz > 0.0) {
             // the letters flicker and take the fire's colour: dark ones are lifted a little (lit by
             // it), bright ones tinted, none of them brighter than a lit rim
-            vec3 warm = gHaze.z > 0.5 ? vec3(0.62, 0.34, 1.0) : vec3(1.0, 0.46, 0.14);
+            vec3 warm = gHaze.z > 0.5 ? uHazeVoid : vec3(1.0, 0.46, 0.14);
             float fl = boil ? 1.0 + (gHaze.y - 0.5) * 2.0 * uHazeRoll.y : 1.0;
             ink = mix(ink, warm * (luma(ink) * 1.25 + uHazeRoll.z), hz * uHaze.z) * fl;
           }
@@ -1298,6 +1302,7 @@ export class Pipeline {
     field.init(this.rtType, this.sceneRT.depthTexture);
     this.fxScene.add(field.mesh);
     this.asciiMat.uniforms.tFlame.value = field.flameRT.texture;
+    if (field.hazeVoid) this.asciiMat.uniforms.uHazeVoid.value = field.hazeVoid;
     if (this.art) field.setSize(this.width, this.height, this.artCell, this.art, this._minCell ?? this.artCell);
   }
 
