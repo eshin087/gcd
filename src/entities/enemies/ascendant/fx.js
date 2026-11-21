@@ -65,6 +65,38 @@ export const hash = (n) => {
 /** Violet (the Lord's colour: blue the highest channel, green well under it)? */
 const violet = (c) => Array.isArray(c) && c[2] > c[0] * 1.05 && c[1] < c[2] * 0.62;
 
+/** The share of a scorch's glowing heat his energy leaves (see the constructor). */
+const SCORCH_HEAT = 0.12;
+/** The game as this effects object sees it: the same, but its world's scorch leaves less heat. */
+function scorchedGame(real) {
+  if (!real || typeof Proxy !== 'function') return real;
+  const bound = new Map();
+  const bind = (t, v) => {
+    let f = bound.get(v);
+    if (!f) bound.set(v, (f = v.bind(t)));
+    return f;
+  };
+  const scorch = {
+    burnCircle: (x, z, r, burn = 0.5, heat = 1) => real.world?.scorch?.burnCircle?.(x, z, r, burn, heat * SCORCH_HEAT),
+  };
+  const world = new Proxy({}, {
+    get(_, k) {
+      const w = real.world;
+      if (!w) return undefined;
+      if (k === 'scorch') return w.scorch ? scorch : w.scorch;
+      const v = w[k];
+      return typeof v === 'function' ? bind(w, v) : v;
+    },
+  });
+  return new Proxy(real, {
+    get(t, k) {
+      if (k === 'world') return t.world ? world : t.world;
+      const v = t[k];
+      return typeof v === 'function' ? bind(t, v) : v;
+    },
+  });
+}
+
 // every drawing method of this class runs on LordFx's drawing stream (its rnd() inside them), so the
 // inherited helpers they call (_shock, arc, lightning ...) never draw from the stream game code reads
 const ASC_DRAW = [
@@ -81,6 +113,11 @@ export class AscFx extends LordFx {
     this.strikes = Array.from({ length: 12 }, () => ({ alive: false }));
     // gold in the fire field: this level borrows the void slot
     this.game.fx?.fire?.setPalette?.('void', FIRE_PALETTES.gold);
+    // His energy chars the floor but leaves no embers: every scorch this object asks for (its own and
+    // the inherited shock fronts' and called strikes', which ask for a fire's glowing heat) keeps
+    // SCORCH_HEAT of its heat (the red-orange glow under them read as fire). Everything else on the
+    // game and the world is the real thing (functions bound to it).
+    this.game = scorchedGame(d.game);
     this._auraAcc = 0;
     this._gritAcc = 0;
     this._boltAcc = 0;
@@ -123,6 +160,21 @@ export class AscFx extends LordFx {
     this._pillar.alive = false;
     for (const v of this._lights.values()) v.L?.kill?.();
     this._lights.clear();
+  }
+
+  /** Called lightning (LordFx's). While he is up in the air (Heaven's Volley) a strike rolled through
+   *  perfectly is a roll, not the hero's counter: there is nobody on the ground to Ghostep to, and he
+   *  cannot be struck up there (the move's own rule). */
+  updateStrikes(dt, d) {
+    if (!(d?.position?.y > 0.6) || typeof d.hitPlayer !== 'function') return super.updateStrikes(dt, d);
+    const own = Object.prototype.hasOwnProperty.call(d, 'hitPlayer'), orig = d.hitPlayer;
+    d.hitPlayer = (this._airHit ??= (o) => orig.call(d, { ...o, extra: { ...(o.extra ?? null), perfect: false, plunge: false } }));
+    try {
+      return super.updateStrikes(dt, d);
+    } finally {
+      if (own) d.hitPlayer = orig;
+      else delete d.hitPlayer;
+    }
   }
 
   update(dt, d) {
@@ -402,10 +454,11 @@ export class AscFx extends LordFx {
       const rr = R * Math.sqrt((i + 0.5) / 12), a = i * 2.39996, ox = Math.cos(a) * rr, oy = Math.sin(a) * rr;
       this._blob(px + A.rx * ox + A.ux * oy, py + A.ry * ox + A.uy * oy, pz + A.rz * ox + A.uz * oy, ux * 2, 0, uz * 2, 0.12, R * 0.8, R * 1.4, 0.75, 0, K_VOID, 3);
     }
-    this._blob(px, py, pz, 0, 0, 0, 0.1, 0.34 * k, 0.5 * k, 1.9, 0, K_STEEL);
+    // (no white star: a white cross or star on the field is a CUE; the palm's flash stays gold)
+    this._blob(px, py, pz, 0, 0, 0, 0.1, 0.3 * k, 0.45 * k, 1.05, 0, K_VOID);
     for (let i = -3; i <= 3; i++) {
       const a = base + (i / 3) * 0.55 + this.lrand(-0.08, 0.08), len = this.lrand(0.6, 1.1) * k * (1 - 0.15 * Math.abs(i));
-      this._ink(x + Math.cos(a) * 0.2, y + this.lrand(-0.1, 0.1), z + Math.sin(a) * 0.2, x + Math.cos(a) * len, y + this.lrand(-0.2, 0.2), z + Math.sin(a) * len, this.lrand(0.08, 0.12), 0.95, 0, 0.5);
+      this._ink(x + Math.cos(a) * 0.2, y + this.lrand(-0.1, 0.1), z + Math.sin(a) * 0.2, x + Math.cos(a) * len, y + this.lrand(-0.2, 0.2), z + Math.sin(a) * len, this.lrand(0.08, 0.12), 0.5, 0, 0.3, 0, K_VOID);
     }
     for (let i = 0; i < 8; i++) {
       const a = base + this.lrand(-0.6, 0.6), sp = this.lrand(5, 10);
@@ -420,7 +473,7 @@ export class AscFx extends LordFx {
       o.drag = 3.5;
       this._spawn(this.add, o);
     }
-    super._light({ x, y, z, color: L_GOLD, intensity: 3.2 * k, radius: 6 * k, life: 0.16, fade: 0.14 });
+    super._light({ x, y, z, color: L_GOLD, intensity: 2 * k, radius: 5 * k, life: 0.14, fade: 0.12 });
   }
 
   // ---------------------------------------------------------------- the beam (fxBeam.js draws it)
@@ -871,6 +924,12 @@ export class AscFx extends LordFx {
     }
   }
 
+  /** The disc is home: the class's onShotBack, else his shots' own catch (kiShots.js discBack). */
+  _shotBack(d, s) {
+    if (typeof d.onShotBack === 'function') d.onShotBack(s);
+    else d.ki?.shots?.discBack?.(s);
+  }
+
   /** The cue (flashLead before contact) and the contact, shared by blasts and discs. Returns the
    *  hit's result, or null when nothing met the hero this frame. */
   _shotMeets(s, d, p, pp, lead, speed) {
@@ -915,7 +974,10 @@ export class AscFx extends LordFx {
       const c = this._chest(d), dx = c.x - s.x, dy = c.y - s.y, dz = c.z - s.z, l = Math.hypot(dx, dy, dz);
       if (l < 0.9 || d.mode === 'dead') {
         this._blastBurst(s, false, true);
-        if (d.mode !== 'dead') d.onShotReturned?.(s);
+        if (d.mode !== 'dead') {
+          if (typeof d.onShotReturned === 'function') d.onShotReturned(s);
+          else d.ki?.shots?.returned?.(s);
+        }
         return;
       }
       if (s.age > 3) {
@@ -994,7 +1056,7 @@ export class AscFx extends LordFx {
       const hx = gx - s.x, hz = gz - s.z, l = Math.hypot(hx, hz);
       if (s.leg === 1 && (Math.hypot(h.x - s.x, h.z - s.z) < 1.1 || d.mode === 'dying' || d.mode === 'dead')) {
         s.alive = false;
-        d.onShotBack?.(s);
+        this._shotBack(d, s);
         return;
       }
       if (l > 1e-3 && !(s.leg === 0 && l < 0.3)) {
@@ -1012,7 +1074,7 @@ export class AscFx extends LordFx {
     }
     if (s.age > s.life + 4) {
       s.alive = false;
-      d.onShotBack?.(s);
+      this._shotBack(d, s);
       return;
     }
     // it cuts what it crosses, out and home (one blow per pass per piece)
@@ -1064,7 +1126,7 @@ export class AscFx extends LordFx {
     const br = d.brain, hp = this.game.player?.position;
     if (!struck && br?.fairDelay && hp && s.tell) {
       const home = s.wait + Math.max(0, Math.hypot(hp.x - s.x, hp.z - s.z) - s.radius - (this.game.player?.radius ?? 0.45)) / Math.max(1, s.back);
-      const w = br.fairDelay(home, s.tell, d.T?.disc?.homeWait ?? 0.4, 'disc');
+      const w = br.fairDelay(home, s.tell, d.T?.shots?.disc?.homeWait ?? d.T?.disc?.homeWait ?? 0.4, 'disc');
       if (w > 0) {
         s.wait += w;
         if (br.stats) br.stats.delays++;
@@ -1180,13 +1242,13 @@ export class AscFx extends LordFx {
   /** The disc: a thin bright ring seen at the camera's slant, turning (two white-hot notches run
    *  round it), a sheath of gold on its rim, the wake its rim leaves. ~40 blobs a frame. */
   _drawDisc(s) {
-    const R = 0.62, sp = s.spin;
+    const R = 0.85, sp = s.spin;
     const life = this._frame();
     if (life > 0) {
       // the rim: a ring of gold, hotter on the side the notches turn past
       for (let i = 0; i < 18; i++) {
-        const a = (i / 18) * TAU, h = 0.55 + 0.35 * Math.max(0, Math.cos(2 * (a - sp)));
-        this._blob(s.x + Math.cos(a) * R, s.y + Math.sin(a) * 0.08, s.z + Math.sin(a) * R * 0.9, 0, 0, 0, life, 0.28, 0.28, h, h, K_VOID);
+        const a = (i / 18) * TAU, h = 0.7 + 0.45 * Math.max(0, Math.cos(2 * (a - sp)));
+        this._blob(s.x + Math.cos(a) * R, s.y + Math.sin(a) * 0.08, s.z + Math.sin(a) * R * 0.9, 0, 0, 0, life, 0.34, 0.34, h, h, K_VOID);
       }
       for (let e = 0; e < 2; e++) {
         const a = sp + e * Math.PI;

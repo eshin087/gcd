@@ -1014,7 +1014,208 @@ async function scenarioTraining() {
 // Each agent adds its scenario FUNCTIONS directly under its own heading line (and its registry
 // entries under the same heading inside `S`, below).
 // --- shots
-//
+/** A shots move from `dist` m in form `form`; `step` each frame. → { ok, hits (the hero's), secs }. */
+function shotCast(G, name, { secs = 8, step = null } = {}) {
+  const d = G.game.dragon, h0 = G.hits.length, t0 = G.game.time;
+  const ok = d.debug.trigger(name);
+  run(G, secs, step, () => G.game.time - t0 > 0.3 && quiet(d));
+  return { ok, hits: G.hits.slice(h0).filter((h) => h.attack === name || MOVES[name]), secs: G.game.time - t0 };
+}
+function shotStage(form, dist, ang = 0) {
+  const G = build();
+  duel(G, { dist, form, ang });
+  return G;
+}
+const hitBy = (r, name) => r.hits.filter((h) => h.attack === name);
+
+async function scenarioShots() {
+  out('\n== scenario SHOTS (what he throws and calls: each answer of its MOVES.md row) ==');
+  const S0 = (G) => ({ ...G.game.dragon.ki.shots.stats });
+  // ---- Spirit Shot: standing still is hit; a parry turns it; a PERFECT parry sends it back; a roll at the cue goes through it
+  {
+    const G = shotStage(1, 9);
+    Math.random = () => 0.9; // (the second palm's 50 %: not this time)
+    const hp0 = G.game.player.hp;
+    const r = shotCast(G, 'spiritShot');
+    const h = hitBy(r, 'spiritShot');
+    assert(r.ok && h.length === 1 && h[0].r === RESULT.HIT && G.game.player.hp < hp0, `Spirit Shot from 9 m, unanswered: it lands (${(hp0 - G.game.player.hp).toFixed(1)} damage)`);
+  }
+  {
+    const G = shotStage(1, 9);
+    Math.random = () => 0.9;
+    G.defend = makeDefender(G);
+    const d = G.game.dragon, hp0 = d.hp, php = G.game.player.hp;
+    const r = shotCast(G, 'spiritShot', { step: () => G.defend.act() });
+    const h = hitBy(r, 'spiritShot');
+    assert(h.some((x) => x.r === RESULT.PARRIED) && G.game.player.hp === php && d.hp === hp0, `a parry turns it: no damage either way (${h.map((x) => x.r).join(', ')})`);
+  }
+  {
+    const G = shotStage(1, 9);
+    Math.random = () => 0.9;
+    G.defend = makeDefender(G, { early: 0.05 });
+    const d = G.game.dragon, hp0 = d.hp, p0 = d.posture;
+    const ret0 = G.counts['dragon:returned'] ?? 0;
+    const r = shotCast(G, 'spiritShot', { step: () => G.defend.act() });
+    const T = TUNING.shots.spirit;
+    assert(hitBy(r, 'spiritShot').some((x) => x.r === RESULT.PARRIED) && Math.abs(hp0 - d.hp - T.returnDamage * TUNING.damageScale) < 3 + T.returnDamage && hp0 - d.hp >= T.returnDamage * 0.9 && (G.counts['dragon:returned'] ?? 0) === ret0 + 1, `a PERFECT parry sends it back into him: ${(hp0 - d.hp).toFixed(0)} damage, posture ${p0.toFixed(0)} → ${d.posture.toFixed(0)}, dragon:returned`);
+  }
+  {
+    const G = shotStage(1, 9);
+    Math.random = () => 0.9;
+    G.defend = makeDefender(G, { style: 'dodge' });
+    const r = shotCast(G, 'spiritShot', { step: () => G.defend.act() });
+    assert(!hitBy(r, 'spiritShot').some((x) => x.r === RESULT.HIT), `a roll at its cue goes through it (${hitBy(r, 'spiritShot').map((x) => x.r).join(', ') || 'no contact'})`);
+  }
+  // ---- Scatter: three in a fan
+  {
+    const G = shotStage(1, 8);
+    const s0 = S0(G);
+    const r = shotCast(G, 'scatter');
+    const s1 = G.game.dragon.ki.shots.stats;
+    assert(r.ok && s1.blasts - s0.blasts === 3 && hitBy(r, 'scatter').some((x) => x.r === RESULT.HIT), `Scatter throws three in a fan (${s1.blasts - s0.blasts}); standing still, one lands (${hitBy(r, 'scatter').map((x) => x.r).join(', ')})`);
+    const G2 = shotStage(1, 8);
+    G2.defend = makeDefender(G2);
+    const r2 = shotCast(G2, 'scatter', { step: () => G2.defend.act() });
+    assert(!hitBy(r2, 'scatter').some((x) => x.r === RESULT.HIT), `parried at its cue, none lands (${hitBy(r2, 'scatter').map((x) => x.r).join(', ')})`);
+  }
+  // ---- Blast Dance: the point-blank blast is a palm in reach; the hip shot a blast
+  {
+    const G = shotStage(2, 2.2);
+    G.game.player.debug.god = true;
+    Math.random = () => 0.5;
+    const r = shotCast(G, 'blastDance');
+    const h = hitBy(r, 'blastDance');
+    assert(r.ok && h.length >= 4, `Blast Dance from 2.2 m: ${h.length} of its six blows meet the hero (${h.map((x) => x.r).join(', ')})`);
+  }
+  // ---- Golden Rain: ten in 1.6 s, two sweeping fans; each cues itself
+  {
+    const G = shotStage(2, 10);
+    G.game.player.debug.god = true;
+    const s0 = S0(G);
+    let flashes = 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'goldenRain') flashes++; };
+    const r = shotCast(G, 'goldenRain');
+    G.watch = null;
+    const s1 = G.game.dragon.ki.shots.stats, thrown = s1.blasts - s0.blasts, skipped = s1.rainSkips - s0.rainSkips;
+    const h = hitBy(r, 'goldenRain');
+    assert(r.ok && thrown + skipped === TUNING.shots.rain.count && thrown >= 8, `Golden Rain: ${thrown} thrown, ${skipped} held back by the fairness guard (of ${TUNING.shots.rain.count})`);
+    assert(h.length >= 1 && h.length === flashes, `each blast that reaches him cued itself: ${h.length} contacts, ${flashes} cues`);
+    const G2 = shotStage(2, 10);
+    G2.defend = makeDefender(G2);
+    const p0 = G2.game.player.hp;
+    const r2 = shotCast(G2, 'goldenRain', { step: () => G2.defend.act() });
+    const h2 = hitBy(r2, 'goldenRain');
+    out(`     parried: ${h2.map((x) => x.r).join(', ')} (${(p0 - G2.game.player.hp).toFixed(0)} damage taken)`);
+    assert(h2.filter((x) => x.r === RESULT.HIT).length <= 1, `a parry at each cue answers the rain (${h2.filter((x) => x.r === RESULT.HIT).length} landed)`);
+  }
+  // ---- Sun Wheel: out on a curve, home through the hero (red: roll), back in his hand
+  {
+    const G = shotStage(2, 8);
+    const r = shotCast(G, 'sunWheel', { secs: 9 });
+    const h = hitBy(r, 'sunWheel');
+    assert(r.ok && h.some((x) => x.r === RESULT.HIT) && !G.game.dragon.fx.shots.some((s) => s.alive && s.kind === 'disc'), `Sun Wheel from 8 m, standing still: it cuts him on its way (${h.map((x) => x.r).join(', ')}) and comes home (${r.secs.toFixed(1)} s)`);
+    const G2 = shotStage(2, 8);
+    G2.defend = makeDefender(G2);
+    const r2 = shotCast(G2, 'sunWheel', { secs: 9, step: () => G2.defend.act() });
+    assert(!hitBy(r2, 'sunWheel').some((x) => x.r === RESULT.HIT), `a roll at its flare goes through it (${hitBy(r2, 'sunWheel').map((x) => x.r).join(', ') || 'no contact'})`);
+  }
+  // ---- Heaven's Volley: up 4 m, six marks called, the dive; under 4.5 s; rolled through, nothing lands
+  {
+    const G = shotStage(2, 7);
+    G.defend = makeDefender(G);
+    const d = G.game.dragon, s0 = S0(G);
+    let top = 0;
+    const r = shotCast(G, 'skyVolley', { secs: 9, step: () => { top = Math.max(top, d.position.y); G.defend.act(); } });
+    const s1 = d.ki.shots.stats, calls = s1.volleyCalls - s0.volleyCalls;
+    const A = realise('skyVolley', 2, () => 0.5);
+    assert(r.ok && top >= TUNING.shots.volley.rise - 0.2 && calls + (s1.volleySkips - s0.volleySkips) === TUNING.shots.volley.count && calls >= 4, `Heaven's Volley: he rises to ${top.toFixed(1)} m, ${calls} strikes called`);
+    assert(A.end <= 4.6, `the whole move is over in ${A.end.toFixed(2)} s (≤ 4.6)`);
+    const h = r.hits.filter((x) => x.attack === 'skyVolley');
+    assert(!h.some((x) => x.r === RESULT.HIT), `a hero who rolls at each flare comes through (${h.map((x) => x.r).join(', ') || 'no contact'})`);
+    const G2 = shotStage(2, 7);
+    const r2 = shotCast(G2, 'skyVolley', { secs: 9 });
+    assert(r2.hits.some((x) => x.attack === 'skyVolley' && x.r === RESULT.HIT), `standing still, the strikes or the dive land (${r2.hits.filter((x) => x.attack === 'skyVolley').length} contacts)`);
+  }
+  // ---- Thunder Gates and Lightning Lance: bolts; a perfect parry throws one back
+  {
+    const G = shotStage(3, 2.4);
+    G.game.player.debug.god = true;
+    G.defend = makeDefender(G);
+    const s0 = S0(G);
+    const r = shotCast(G, 'thunderGates', { step: () => G.defend.act() });
+    const s1 = G.game.dragon.ki.shots.stats;
+    assert(r.ok && s1.bolts - s0.bolts === 2 && hitBy(r, 'thunderGates').length >= 8, `Thunder Gates: ${hitBy(r, 'thunderGates').length} blows meet the parrying hero, ${s1.bolts - s0.bolts} bolts`);
+  }
+  {
+    const G = shotStage(3, 9);
+    G.defend = makeDefender(G, { early: 0.05 });
+    const d = G.game.dragon, hp0 = d.hp, s0 = S0(G);
+    const r = shotCast(G, 'lance', { step: () => G.defend.act() });
+    const s1 = d.ki.shots.stats, h = hitBy(r, 'lance');
+    assert(r.ok && h.length === 4 && !h.some((x) => x.r === RESULT.HIT) && s1.boltReturns - s0.boltReturns >= 1 && d.hp < hp0, `Lightning Lance: four bolts parried (${h.map((x) => x.r).join(', ')}); perfect parries send ${s1.boltReturns - s0.boltReturns} back (${(hp0 - d.hp).toFixed(0)} damage to him)`);
+  }
+  // ---- Storm Cage: eight orbs round the hero, open on the side away from him
+  {
+    const G = shotStage(3, 6);
+    const r = shotCast(G, 'stormCage');
+    const h = hitBy(r, 'stormCage');
+    assert(r.ok && h.some((x) => x.r === RESULT.HIT), `Storm Cage, standing still: it closes on him (${h.length} contacts)`);
+    const G2 = shotStage(3, 6);
+    G2.defend = makeDefender(G2, { style: 'dodge' });
+    const r2 = shotCast(G2, 'stormCage', { step: () => G2.defend.act() });
+    const h2 = hitBy(r2, 'stormCage');
+    out(`     rolled at each flare: ${h2.map((x) => x.r).join(', ') || 'no contact'}`);
+    assert(h2.filter((x) => x.r === RESULT.HIT).length <= 1, `rolled at each flare, at most one lands (${h2.filter((x) => x.r === RESULT.HIT).length})`);
+  }
+  // ---- ascend3's corners: harmless unless the hero stands on one
+  {
+    const G = shotStage(3, 4);
+    const sh = G.game.dragon.ki.shots, hp0 = G.game.player.hp;
+    sh.corners();
+    run(G, 2.5);
+    assert(G.game.player.hp === hp0 && !G.game.dragon.fx.strikes.some((s) => s.alive), 'the four corner bolts strike the corners only: the hero in the middle is untouched');
+    const c = RING.corners[0];
+    G.game.player.debug.teleport(c[0] * 0.92, c[1] * 0.92);
+    sh.corners();
+    run(G, 0.2);
+    assert(G.game.dragon.fx.strikes.some((s) => s.alive && s.attack === 'thunderCorners'), 'a hero on a corner: a strike is called there, with its ring and its cue');
+  }
+}
+
+async function scenarioWeather() {
+  out('\n== scenario WEATHER (Thunderfall: form 3, in his pauses, at most 2 live, never in the hero\'s opening) ==');
+  const G = build(4242, true);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 5, ai: true, form: 3 });
+  p.debug.god = true;
+  G.defend = makeDefender(G);
+  const sh = d.ki.shots, c0 = sh.stats.skyCalls;
+  let maxLive = 0, inOpening = 0;
+  const calls = [];
+  G.watch = (n, e) => { if (n === 'combat:tell' && e?.attack === 'thunderfall') { calls.push(game.time); if (d.mode === 'react' || d.broken) inOpening++; } };
+  run(G, 40, () => {
+    G.defend.act();
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    if (d.brain.pendingPhase > 3) d.brain.pendingPhase = 0;
+    let live = 0;
+    for (const s of d.fx.strikes) if (s.alive && s.attack === 'thunderfall') live++;
+    maxLive = Math.max(maxLive, live);
+  });
+  G.watch = null;
+  const n = sh.stats.skyCalls - c0;
+  out(`     ${n} strikes called in 40 s (${sh.stats.skySkips} slots skipped), at most ${maxLive} live`);
+  assert(n >= 8 && n <= 26, `Thunderfall calls a strike every ~1.8 - 3.2 s (${n} in 40 s)`);
+  assert(maxLive <= TUNING.shots.weather.maxLive, `at most ${TUNING.shots.weather.maxLive} live (${maxLive})`);
+  assert(inOpening === 0, `none cued while he is in a reaction or broken (${inOpening})`);
+  // form 2: no weather
+  const G2 = build(7, true);
+  duel(G2, { dist: 5, ai: true, form: 2 });
+  G2.game.player.debug.god = true;
+  const c2 = G2.game.dragon.ki.shots.stats.skyCalls;
+  run(G2, 15);
+  assert(G2.game.dragon.ki.shots.stats.skyCalls === c2, 'form 2: no Thunderfall');
+}
 //
 // --- beams
 //
@@ -1429,7 +1630,8 @@ const S = {
   win: scenarioWin,
   training: scenarioTraining,
   // --- shots
-  //
+  shots: scenarioShots,
+  weather: scenarioWeather,
   //
   // --- beams
   //
