@@ -3777,7 +3777,120 @@ async function scenarioStrategy() {
   return last;
 }
 
+// ================================================================== scenario: motion (ADR-126: how his moves MOVE)
+// A duelist's moves as motion, measured on the rig in his own frame: the sword hand never crosses the
+// frame in a step (a follow-through has its own clock, realise.js), a string's feet hold their ground
+// and step (anim.js _feetClip), a beat's channels do not run on into the next beat (completeBeat), and
+// the blade-driven arm stays whole as the blade goes over the vertical (bladeArm on the keyed angles).
+// The bounds are a third above what the moves measure (in the comments) and well under what `main`
+// did (hand 0.38 - 0.63 m a frame, 3.6 - 6.2 m of sliding in a string).
+async function scenarioMotion() {
+  out('\n== scenario MOTION (the sword hand has no teleport; the feet step and hold; a beat owns its channels; the arm over the vertical) ==');
+  const { P } = await imp('src/entities/player/anim.js');
+  const POSES = await imp('src/entities/enemies/ashDisciple/poses.js');
+  const { realise, MOVES, MOVE_NAMES } = await imp('src/entities/enemies/ashDisciple/moves.js');
+  const G = build();
+  duel(G, { dist: 2.6 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  d.phase = 3;
+  const inv = new THREE.Matrix4(), v = new THREE.Vector3();
+  const at = (o, x = 0, y = 0, z = 0) => v.set(x, y, z).applyMatrix4(o.matrixWorld).clone();
+  const measure = (name) => {
+    settle(G, 8);
+    place(G, 2.6);
+    run(G, 1.0, () => place(G, 2.6));
+    if (!d.debug.trigger(name)) return null;
+    let hand = 0, prev = null;
+    const slide = [0, 0], lo = [9, 9], hi = [0, 0], an = [];
+    for (let i = 0; i < 900; i++) {
+      G.tick(DT);
+      p.debug.heal();
+      const a = d.brain.act;
+      if (!a || a.name !== name) break;
+      const R = d.rig;
+      R.root.updateMatrixWorld(true);
+      inv.copy(R.root.matrixWorld).invert();
+      const w = at(R.arms.R.fore, 0, -0.26, 0).applyMatrix4(inv);
+      if (prev) hand = Math.max(hand, w.distanceTo(prev));
+      prev = w;
+      // the feet where they are DRAWN (the planner's own frame: the root's spot and facing, his drawn size)
+      const c = d.anim.cur, HS = d.anim.drawScale, cy = Math.cos(d.yaw), sy = Math.sin(d.yaw);
+      const foot = (i) => new THREE.Vector3(d.position.x + HS * (c[i] * cy + c[i + 2] * sy), c[i + 1], d.position.z + HS * (-c[i] * sy + c[i + 2] * cy));
+      // (a dash carries him faster than the feet are asked to hold, a leap has him off the ground: those
+      // frames are the clip's own)
+      an.push([foot(P.rF), foot(P.lF), Math.hypot(d.pilot.groundVel.x, d.pilot.groundVel.z) > 9 || d.position.y > 0.03]);
+    }
+    for (const f of an) for (let k = 0; k < 2; k++) { lo[k] = Math.min(lo[k], f[k].y); hi[k] = Math.max(hi[k], f[k].y); }
+    for (let i = 1; i < an.length; i++) for (let k = 0; k < 2; k++) {
+      const a = an[i][k], b = an[i - 1][k];
+      if (!an[i][2] && !an[i - 1][2] && a.y < lo[k] + 0.02 && b.y < lo[k] + 0.02) slide[k] += Math.hypot(a.x - b.x, a.z - b.z);
+    }
+    return { hand, slide: slide[0] + slide[1], lift: Math.max(hi[0] - lo[0], hi[1] - lo[1]), frames: an.length };
+  };
+  // 1. on the rig: three strings (two cuts and a thrust; seven blows with an overhead; two whirls and a leap)
+  for (const [name, maxHand, maxSlide] of [['swallow', 0.3, 1.0], ['ashRain', 0.42, 1.0], ['crane', 0.45, 1.0]]) {
+    const m = measure(name);
+    assert(!!m && m.frames > 40, `${name} ran (${m?.frames} frames)`);
+    if (!m) continue;
+    assert(m.hand <= maxHand, `${name}: the sword hand moves at most ${maxHand} m in a frame, in his own frame (${m.hand.toFixed(3)} m)`);
+    assert(m.slide <= maxSlide, `${name}: outside a dash or a leap, the feet on the ground slide ${maxSlide} m at most over the whole string (${m.slide.toFixed(2)} m)`);
+    assert(m.lift >= 0.05, `${name}: a foot leaves the ground to step (${m.lift.toFixed(3)} m)`);
+  }
+  // 2. the data: every move in every phase: a follow-through lasts at least the active frames, 0.3 s at
+  //    most, and is over before the next beat's first pose
+  {
+    let n = 0;
+    const bad = [];
+    for (const name of MOVE_NAMES) {
+      for (let ph = Math.max(1, MOVES[name].phase ?? 1); ph <= 3; ph++) {
+        for (const r of [0.001, 0.999]) {
+          const a = realise(name, ph, () => r);
+          if (!a) continue;
+          a.beats.forEach((b, i) => {
+            n++;
+            const nb = a.beats[i + 1];
+            if (!(b.F >= b.A - 1e-9 && b.F <= 0.3 + 1e-9)) bad.push(`${name}/${ph} beat ${i}: F ${b.F}`);
+            if (nb && !(b.impact + b.F <= nb.impact + 1e-9)) bad.push(`${name}/${ph} beat ${i}: its follow-through runs past the next impact`);
+          });
+          if (!a.clip.steps) bad.push(`${name}: the clip does not ask for stepping feet`);
+        }
+      }
+    }
+    assert(n > 200 && !bad.length, `every beat's follow-through: A <= F <= 0.3 s, over before the next impact; every move's clip steps (${n} beats; ${bad.slice(0, 4).join(' | ')})`);
+  }
+  // 3. a beat owns its channels: Rain of Ashes' fourth blow is a two-handed overhead; at the next
+  //    cut's impact the left hand is off the hilt again and the head no longer holds the chop's set
+  {
+    const a = realise('ashRain', 1, () => 0.5);
+    const pose = new Float32Array(64);
+    POSES.evalClip(pose, a.clip, a.beats[3].impact, null);
+    const twoAt = pose[P.twoHand], bowAt = pose[P.hdX];
+    POSES.evalClip(pose, a.clip, a.beats[4].impact, null);
+    assert(twoAt > 0.9 && pose[P.twoHand] < 0.05, `two hands on the hilt in the overhead, one in the cut after it (${twoAt.toFixed(2)} -> ${pose[P.twoHand].toFixed(2)})`);
+    assert(bowAt < -0.1 && pose[P.hdX] > -0.03, `the head's set in the chop (a channel no cut keys) is back at the guard's in the cut after it (${bowAt.toFixed(2)} -> ${pose[P.hdX].toFixed(2)})`);
+    // 4. the clip itself, stepped at 120 Hz: no channel of the sword hand's target jumps (the blade-driven
+    //    arm over the vertical, the hand-off between a keyed hand and a driven one)
+    let worst = 0, when = 0;
+    const last = [0, 0, 0];
+    for (let t = 0; t <= a.end; t += 1 / 120) {
+      POSES.evalClip(pose, a.clip, t, null);
+      if (t > 0) {
+        const dd = Math.hypot(pose[P.rH] - last[0], pose[P.rH + 1] - last[1], pose[P.rH + 2] - last[2]);
+        if (dd > worst) { worst = dd; when = t; }
+      }
+      last[0] = pose[P.rH];
+      last[1] = pose[P.rH + 1];
+      last[2] = pose[P.rH + 2];
+    }
+    assert(worst < 0.14, `Rain of Ashes: the sword hand's target moves less than 0.14 m in 1/120 s through the whole clip (${worst.toFixed(3)} m at ${when.toFixed(2)} s)`);
+  }
+  return G;
+}
+
 const SCENARIOS = {
+  motion: scenarioMotion,
   strategy: scenarioStrategy,
   terrain: scenarioTerrain,
   worldcue: scenarioWorldCue,

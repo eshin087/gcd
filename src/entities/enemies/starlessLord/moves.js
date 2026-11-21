@@ -38,11 +38,13 @@ const LUNGE_FEET = { rF: [-0.08, 0.9], lF: [0.22, -0.62], rK: [-0.1, 0, 1], lK: 
 const COIL = { bY: -0.22, bZ: -0.08, yaw: 0.85, hip: 0.14, spY: 0, spX: 0.06, rH: [-0.08, -0.22, 0.0], rP: [-0.6, -0.6, -0.5], sw: [-0.9, 0.04], swF: [1, 0.1, 0], lH: [0.02, 0.0, 0.42], lP: [0.6, -0.3, 0.5], hdY: -0.75, ...SET };
 const LUNGE = {
   bY: -0.3, bZ: 0.22, pitch: 0.1, yaw: 0.3, hip: -0.06, spX: 0.18, spY: -0.04, hdY: -0.26, hdX: 0.02,
-  rH: [0.04, -0.04, 0.56], rP: [-0.7, -0.3, -0.2], sw: [-0.3, 0.02], swF: [1, 0.1, 0], lH: [0.14, 0.08, -0.4], lP: [0.7, 0.2, -0.6],
+  rH: [0.04, -0.04, 0.56], rP: [-0.7, -0.3, -0.2], sw: [-0.3, 0.02], swF: [1, 0.1, 0], lH: [0.2, -0.04, -0.34], lP: [0.7, -0.3, -0.6],
   ...LUNGE_FEET,
 };
-const RAISED = { two: 1, rH: [0.12, 0.28, 0.1], rP: [-0.8, 0.4, -0.3], sw: [-0.2, 2.3], swF: [1, 0, 0], pitch: -0.14, bY: -0.04, spX: -0.06, hdX: -0.06, yaw: 0.2 };
-const CHOP = { two: 1, rH: [0.1, -0.3, 0.46], rP: [-0.8, -0.3, 0], sw: [-0.12, -0.62], swF: [1, 0, 0], pitch: 0.32, bY: -0.3, spX: 0.22, hdX: 0.28, yaw: 0.12, rF: [-0.1, 0.76], lF: [0.22, -0.5] };
+// (the hands above the brow and the blade steep behind them: laid back flatter it lay through his
+// hat; the chop ends with his eyes still on the opponent, not on the floor)
+const RAISED = { two: 1, rH: [0.1, 0.42, 0.08], rP: [-0.8, 0.4, -0.3], sw: [-0.2, 2.0], swF: [1, 0, 0], pitch: -0.12, bY: -0.04, spX: -0.06, hdX: 0.02, yaw: 0.2 };
+const CHOP = { two: 1, rH: [0.1, -0.3, 0.46], rP: [-0.8, -0.3, 0], sw: [-0.12, -0.62], swF: [1, 0, 0], pitch: 0.24, bY: -0.32, spX: 0.16, hdX: -0.16, yaw: 0.12, rF: [-0.1, 0.76], lF: [0.22, -0.5] };
 const STEP_BACK = { rF: [-0.12, 0.18], lF: [0.2, -0.38] };
 const CROUCH = { bY: -0.52, pitch: 0.16, rF: [-0.46, 0.22], lF: [0.2, -0.1], rK: [-0.6, 0.3, 0.7], lK: [0.4, 0.2, 0.9], rFy: -0.7, flat: 0.8 };
 /** A world-relative blade direction [az, el] in body space at that body yaw. */
@@ -52,11 +54,11 @@ const w2b = (w, y) => [w[0] - y, w[1]];
 const thrustKeys = (two = 0, cock = 0.74) => {
   const T = two ? { two: 1 } : {};
   return [
-    [cock * 0.5, { ...COIL, ...T, bY: -0.18, rH: [-0.04, -0.18, 0.12] }],
+    [cock * 0.5, { gather: true, ...COIL, ...T, bY: -0.18, rH: [-0.04, -0.18, 0.12] }],
     [cock, { ...COIL, ...T, rH: [-0.08, -0.24, -0.02], bY: -0.24 }],
-    [1.0, { ...LUNGE, ...T, e: 'i' }],
-    [1.6, { ...LUNGE, ...T, e: 'o', bZ: 0.26, rH: [0.05, -0.03, 0.58] }],
-    [2.0, { ...LUNGE, ...T, bZ: 0.2 }],
+    [1.0, { ...LUNGE, ...T, e: 'i', bZ: 0.16, rH: [0.04, -0.05, 0.49] }],
+    [1.6, { ...LUNGE, ...T, e: 'o', bZ: 0.27, rH: [0.05, -0.03, 0.58] }],
+    [2.0, { settle: true, ...LUNGE, ...T, bZ: 0.2 }],
   ];
 };
 
@@ -70,15 +72,16 @@ function slash({ from, through, to, yaw: [y0, y1, y2], cock = 0.7, sink = 0, two
   const dir = Math.sign(to[0] - from[0]) || 0;
   const gy = (y0 + 0.3) / 2;
   const T = two ? { two: 1 } : {};
-  const free = (v) => (two ? {} : { lH: v });
+  // the free hand: before the chest at the cock (the elbow down), swept back low in the strike
+  const free = (v, pole) => (two ? {} : pole ? { lH: v, lP: pole } : { lH: v });
   // `step`: which foot drives into the cut ('R' / 'L'): a string alternates them, so he walks through it
   const set = step === 'L' ? SET_L : SET, into = step === 'L' ? STEP_L : STEP_IN;
   return [
-    [cock * 0.45, { ...T, arm: 0.7, ext: 0.6, lead: 0.05 * dir, yaw: gy, sw: w2b([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.18 - sink * 0.5, bZ: -0.03, roll: 0.03 * dir, ...free([0.12, 0.02, 0.36]), ...set }],
-    [cock, { ...T, arm: 1, ext: 0.5, lead: 0.22 * dir, yaw: y0, sw: w2b(from, y0), bY: -0.23 - sink, bZ: -0.07, pitch: 0.06, roll: 0.08 * dir, hip: 0.1 * dir, ...free([0.16, -0.02, 0.38]), ...set, ...extra.cocked }],
-    [1.0, { ...T, e: 'i', arm: 1, ext: 1, lead: 0, yaw: y1, sw: w2b(through, y1), bY: -0.3 - sink, bZ: 0.12, pitch: 0.13, roll: -0.05 * dir, hip: -0.06 * dir, ...free([0.3, 0.06, -0.24]), ...into, ...extra.strike }],
-    [1.6, { ...T, e: 'o', arm: 1, ext: 0.88, lead: -0.32 * dir, yaw: y2, sw: w2b(to, y2), bY: -0.25 - sink, bZ: 0.1, pitch: 0.06, roll: -0.1 * dir, hip: -0.12 * dir, ...free([0.32, 0.1, -0.3]), ...into, ...extra.follow }],
-    [2.0, { ...T, arm: 1, ext: 0.84, lead: -0.26 * dir, yaw: y2, sw: w2b([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.23 - sink, bZ: 0.08, roll: -0.06 * dir, ...free([0.3, 0.08, -0.26]), ...into }],
+    [cock * 0.45, { gather: true, ...T, arm: 0.7, ext: 0.6, lead: 0.05 * dir, yaw: gy, sw: w2b([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.18 - sink * 0.5, bZ: -0.03, roll: 0.03 * dir, ...free([0.04, -0.1, 0.32]), ...set }],
+    [cock, { ...T, arm: 1, ext: 0.5, lead: 0.22 * dir, yaw: y0, sw: w2b(from, y0), bY: -0.23 - sink, bZ: -0.07, pitch: 0.06, roll: 0.08 * dir, hip: 0.1 * dir, ...free([0.0, -0.13, 0.32], [0.6, -0.8, 0.1]), ...set, ...extra.cocked }],
+    [1.0, { ...T, e: 'i', arm: 1, ext: 1, lead: 0, yaw: y1, sw: w2b(through, y1), bY: -0.3 - sink, bZ: 0.12, pitch: 0.13, roll: -0.05 * dir, hip: -0.06 * dir, ...free([0.26, -0.1, -0.16], [0.8, -0.4, -0.5]), ...into, ...extra.strike }],
+    [1.6, { ...T, e: 'o', arm: 1, ext: 0.88, lead: -0.32 * dir, yaw: y2, sw: w2b(to, y2), bY: -0.25 - sink, bZ: 0.1, pitch: 0.06, roll: -0.1 * dir, hip: -0.12 * dir, ...free([0.3, -0.04, -0.22]), ...into, ...extra.follow }],
+    [2.0, { settle: true, ...T, arm: 1, ext: 0.84, lead: -0.26 * dir, yaw: y2, sw: w2b([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.23 - sink, bZ: 0.08, roll: -0.06 * dir, ...free([0.28, -0.06, -0.18]), ...into }],
   ];
 }
 
@@ -87,11 +90,11 @@ function slashL({ from, through, to, yaw: [y0, y1, y2], cock = 0.7, sink = 0 }) 
   const dir = Math.sign(to[0] - from[0]) || 0;
   const gy = (y0 + 0.22) / 2;
   return [
-    [cock * 0.45, { larm: 0.7, lext: 0.6, llead: 0.05 * dir, yaw: gy, lsw: w2b([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.2 - sink * 0.5, bZ: -0.03 }],
+    [cock * 0.45, { gather: true, larm: 0.7, lext: 0.6, llead: 0.05 * dir, yaw: gy, lsw: w2b([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.2 - sink * 0.5, bZ: -0.03 }],
     [cock, { larm: 1, lext: 0.5, llead: 0.22 * dir, yaw: y0, lsw: w2b(from, y0), bY: -0.24 - sink, bZ: -0.06, pitch: 0.08, hip: 0.1 * dir }],
     [1.0, { e: 'i', larm: 1, lext: 1, llead: 0, yaw: y1, lsw: w2b(through, y1), bY: -0.28 - sink, bZ: 0.1, pitch: 0.1, hip: -0.06 * dir, ...STEP_L }],
     [1.6, { e: 'o', larm: 1, lext: 0.88, llead: -0.32 * dir, yaw: y2, lsw: w2b(to, y2), bY: -0.24 - sink, bZ: 0.08, pitch: 0.04, hip: -0.12 * dir, ...STEP_L }],
-    [2.0, { larm: 1, lext: 0.84, llead: -0.26 * dir, yaw: y2, lsw: w2b([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.22 - sink, bZ: 0.06, ...STEP_L }],
+    [2.0, { settle: true, larm: 1, lext: 0.84, llead: -0.26 * dir, yaw: y2, lsw: w2b([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.22 - sink, bZ: 0.06, ...STEP_L }],
   ];
 }
 
@@ -109,11 +112,11 @@ const PATHS_L = Object.fromEntries(Object.entries(PATHS).map(([k, P]) => [k, mir
 
 /** The overhead: raised two-handed, then a stepping chop. */
 const overKeys = (cock = 0.7) => [
-  [cock * 0.5, { ...RAISED, sw: [-0.2, 1.7], bY: -0.1, ...SET }],
-  [cock, { ...RAISED, sw: [-0.2, 2.35], rF: [-0.12, 0.42], lF: [0.2, -0.28] }],
+  [cock * 0.5, { gather: true, ...RAISED, rH: [0.1, 0.3, 0.14], sw: [-0.2, 1.5], bY: -0.1, ...SET }],
+  [cock, { ...RAISED, sw: [-0.2, 2.05], rF: [-0.12, 0.42], lF: [0.2, -0.28] }],
   [1.0, { ...CHOP, e: 'i' }],
-  [1.6, { ...CHOP, e: 'o', bY: -0.34, pitch: 0.38, sw: [-0.12, -0.78] }],
-  [2.0, { ...CHOP, bY: -0.32 }],
+  [1.6, { ...CHOP, e: 'o', bY: -0.4, pitch: 0.3, sw: [-0.12, -0.8], rH: [0.1, -0.36, 0.42] }],
+  [2.0, { settle: true, ...CHOP, bY: -0.34 }],
 ];
 
 /** A spin: wound up, then a full turn with the blade(s) out level (a ring). `twin`: both blades out;
@@ -231,7 +234,7 @@ const PERIL_COIL = { ...COIL, bY: -0.34, bZ: -0.14, yaw: 0.95, rH: [-0.12, -0.32
 const PERIL_LUNGE = { ...LUNGE, bZ: 0.3, bY: -0.34, rF: [-0.08, 1.05], lF: [0.22, -0.68], lH: [0.2, 0.08, -0.44] };
 const perilKeys = (two = 0) => {
   const T = two ? { two: 1 } : {};
-  return [[0.4, { ...PERIL_COIL, ...T }], [0.84, { ...PERIL_COIL, ...T, bY: -0.36, rH: [-0.14, -0.33, -0.1] }], [1.0, { ...PERIL_LUNGE, ...T, e: 'i' }], [1.6, { ...PERIL_LUNGE, ...T, e: 'o', bZ: 0.34 }], [2.0, { ...PERIL_LUNGE, ...T }]];
+  return [[0.4, { gather: true, ...PERIL_COIL, ...T }], [0.84, { ...PERIL_COIL, ...T, bY: -0.36, rH: [-0.14, -0.33, -0.1] }], [1.0, { ...PERIL_LUNGE, ...T, e: 'i' }], [1.6, { ...PERIL_LUNGE, ...T, e: 'o', bZ: 0.34 }], [2.0, { ...PERIL_LUNGE, ...T }]];
 };
 
 // ---------------------------------------------------------------- the casting hand
@@ -425,13 +428,16 @@ const walk = (m, at = 1.0) => [[0, 0], [at, m * 0.66], [2.0, m]];
 /** How each form's strings end: the steel brought back to its guard with a flourish (a move's
  *  `recoveryKeys`; times are fractions of its recovery). */
 const FLOURISH = [
-  // 1 — the blade rolled once round the wrist at his side
-  [[0.2, { arm: 0, two: 0, rH: [-0.04, -0.26, 0.26], sw: [-0.5, 0.5], yaw: 0.3 }], [0.68, { e: 'l', rH: [-0.05, -0.36, 0.14], sw: [-0.7, 0.5 - TAU] }], [0.681, { e: 'h', sw: [-0.7, 0.5] }]],
+  // 1 — the blade rolled once round the wrist at his side: a wheel in the plane ACROSS him (as the
+  // staff's), the fist held out before his hip. (Rolled in a fore-and-aft plane, at az -0.5 .. -0.7,
+  // the back of the circle went through his hood, and through the line of his own forearm, where
+  // the wrist cannot follow: the solver threw the blade from one side of it to the other.)
+  [[0.2, { arm: 0, two: 0, rH: [-0.14, -0.3, 0.28], sw: [-1.45, 0.5], yaw: 0.3 }], [0.68, { e: 'l', rH: [-0.14, -0.34, 0.24], sw: [-1.45, 0.5 - TAU] }], [0.681, { e: 'h', sw: [-1.45, 0.5] }]],
   // 2 — both blades rolled, mirrored
   [
-    [0.2, { arm: 0, larm: 0, rH: [-0.12, -0.28, 0.22], sw: [-0.7, 0.5], lH: [0.12, -0.28, 0.22], lsw: [0.7, 0.5], yaw: 0.08 }],
-    [0.68, { e: 'l', rH: [-0.1, -0.36, 0.14], sw: [-0.9, 0.5 - TAU], lH: [0.1, -0.36, 0.14], lsw: [0.9, 0.5 - TAU] }],
-    [0.681, { e: 'h', sw: [-0.9, 0.5], lsw: [0.9, 0.5] }],
+    [0.2, { arm: 0, larm: 0, rH: [-0.14, -0.3, 0.32], sw: [-1.45, 0.5], lH: [0.14, -0.3, 0.16], lsw: [1.45, 0.5], yaw: 0.08 }],
+    [0.68, { e: 'l', rH: [-0.14, -0.34, 0.3], sw: [-1.45, 0.5 - TAU], lH: [0.14, -0.34, 0.14], lsw: [1.45, 0.5 - TAU] }],
+    [0.681, { e: 'h', sw: [-1.45, 0.5], lsw: [1.45, 0.5] }],
   ],
   // 3 — the staff turned once like a mill wheel before him, and stopped level
   [[0.16, { arm: 0, two: 1, rH: [0.04, -0.26, 0.32], sw: [-1.4, 0.14], yaw: 0.14 }], [0.72, { e: 'l', rH: [0.04, -0.28, 0.32], sw: [-1.4, 0.14 + TAU] }], [0.721, { e: 'h', sw: [-1.4, 0.14] }]],
@@ -1217,7 +1223,7 @@ export const CLIPS_BY_FORM = FORM_POSES.map((K) => {
 export const CLIP = CLIPS_BY_FORM[0];
 
 // ---------------------------------------------------------------- realising a move
-const REALISERS = FORM_POSES.map((K) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => K.compileClip(keys, dur) }));
+const REALISERS = FORM_POSES.map((K) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => K.compileClip(keys, dur), completeBeat: K.completeBeat }));
 /**
  * A move as it will play this time (duelist/realise.js), compiled round the stance of the form it is
  * used in; a form's ignition is compiled round the NEW form's stance, so it ends in that guard.

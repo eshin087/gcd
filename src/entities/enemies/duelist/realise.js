@@ -18,8 +18,23 @@ export function perPhase(v, phase) {
  * so the seeded sims replay). `compileClip(keys, dur, phase)` → the clip (poses.js).
  * `opts.count` (a `streak` move: his flurry, DEFENSE.foeStreak): that many beats, the move's first
  * and then its others in turn.
+ *
+ * The POSE keys of a beat past its impact (u 1..2) do not run on the active frames' clock: a blade
+ * cannot follow through in the 0.08 s a hit is live for (the hand crossed half a metre in one frame).
+ * They run over the beat's FOLLOW (`F` s, b.follow or FOLLOW_MAX at most): FOLLOW_PART of the time
+ * the string leaves before the next beat's first pose, never shorter than the active frames. Gameplay (the
+ * zone, root motion, `uAt`) keeps the active frames' clock. A key marked `gather` (the first draw
+ * toward the cock, authored from the guard) is left out of a beat that follows another: there the
+ * follow-through of the last cut IS the draw. A key marked `settle` (the blade easing back after a
+ * follow-through) is left out of a beat that another follows: he goes from the follow-through
+ * straight into the next cock. A bait hold (`H`) repeats the cocked pose at its end, so the strike
+ * out of it is as fast as any other (one long ease from the cock had the blade creep forward through
+ * the pause). `completeBeat(keys)` (poses.js) makes each beat's keys whole.
  */
-export function makeRealise({ TUNING, MOVES, compileClip }) {
+const FOLLOW_MAX = 0.24; // s: the longest follow-through of a blow
+const FOLLOW_RING = 0.3; // … of a spin (a ring zone): its whole turn runs on this clock, 0.18 s was a blur
+const FOLLOW_PART = 0.72; // of the time to the next beat's first pose: the rest is his way into it
+export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null }) {
   return function realise(name, phase = 1, rnd = Math.random, opts = null) {
     const def = MOVES[name];
     if (!def) return null;
@@ -41,7 +56,6 @@ export function makeRealise({ TUNING, MOVES, compileClip }) {
       const cock = b.cock ?? 0.8;
       const start = t, impact = t + W + H, end = impact + A;
       const at = (u) => (u <= 1 ? (u <= cock ? start + u * W : start + cock * W + H + (u - cock) * W) : impact + (u - 1) * A);
-      for (const [u, pose] of b.keys ?? []) keys.push({ t: at(u), ...pose });
       const C = TUNING.close;
       const close = b.close ?? (b.dash || b.leap || b.release || !b.zone ? 0 : beats.length === 0 ? C.first : C.next);
       beats.push({
@@ -58,9 +72,36 @@ export function makeRealise({ TUNING, MOVES, compileClip }) {
     for (const b of beats) b.last = !b.feint && b.hit === hits - 1;
     const recovery = def.recovery * rs;
     const end = t + recovery;
+    // the pose keys, beat by beat (see the header: the follow-through's own clock)
+    const own = (b, chained, followed = false) => (b.def.keys ?? []).filter(([, pose]) => !(chained && pose.gather) && !(followed && pose.settle));
+    beats.forEach((b, i) => {
+      const nb = beats[i + 1];
+      const mine = own(b, i > 0, !!nb);
+      // when the next pose after this beat is due: the next beat's first key, else the recovery's
+      let next = end;
+      if (nb) {
+        const nk = own(nb, true);
+        next = nk.length ? nb.at(Math.min(...nk.map(([u]) => u))) : nb.impact;
+      } else if (def.recoveryKeys?.length) next = t + Math.min(...def.recoveryKeys.map(([r]) => r)) * recovery;
+      else next = t + recovery * 0.75;
+      b.F = Math.max(b.A, Math.min(b.def.follow ?? (b.def.zone?.kind === 'ring' ? FOLLOW_RING : FOLLOW_MAX), (next - b.impact) * FOLLOW_PART));
+      const list = mine.map(([u, { gather, settle, ...pose }]) => ({ t: u <= 1 ? b.at(u) : b.impact + (u - 1) * b.F, ...pose }));
+      if (b.H > 1e-3) {
+        // the bait hold: the cocked pose (the last key at or before the cock) again as the hold ends
+        const cock = b.def.cock ?? 0.8;
+        const held = mine.filter(([u]) => u <= cock + 1e-6).sort((x, y) => y[0] - x[0])[0];
+        if (held) {
+          const { gather, settle, e, ...pose } = held[1];
+          list.push({ t: b.at(held[0]) + b.H, ...pose });
+        }
+      }
+      list.sort((x, y) => x.t - y.t);
+      keys.push(...(completeBeat ? completeBeat(list) : list));
+    });
     for (const [r, pose] of def.recoveryKeys ?? []) keys.push({ t: t + r * recovery, ...pose });
     const clip = compileClip(keys, end, phase);
     clip.name = name;
+    clip.steps = true; // (anim.js _feetClip: the feet hold their ground and step under the root motion)
     return { name, def, beats, hits, recoveryStart: t, end, clip, phase };
   };
 }

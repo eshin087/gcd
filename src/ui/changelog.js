@@ -18,6 +18,16 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-21',
+        title: 'The Ash Disciple and the Starless Lord move like swordsmen',
+        notes: [
+          'Shen Hui and the Starless Lord swing their blades now: a cut speeds up into the blow, follows through and flows into the next one. Before, they jumped from one held pose to the next.',
+          'Their feet hold the ground and take steps as a string carries them toward you, instead of sliding.',
+          'Shen Hui raises his overhead clear of his hat and keeps his eyes on you through the chop; his whirl turns on a hop. The Lord rolls his blade in front of him, not through his hood.',
+          'Nothing about the timing changed: every flash, every windup and every reach is what it was.',
+        ],
+      },
+      {
         date: '2026-11-20',
         title: 'The Cinder Wyrm has a new face',
         notes: [
