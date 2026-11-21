@@ -965,6 +965,9 @@ export class AscFx extends LordFx {
       if (s.age >= s.delay) {
         s.phase = 'fly';
         s.age = 0;
+        // (an orb of a group, Storm Cage's, that leaves while the hero lies knocked down passes over him:
+        // the tuning pass's string-lock rule; the worst second was a palm, an orb and the aura on him)
+        if (s.group && p?.state === 'knockdown') s.done = true;
         if (pp) {
           const dx = pp.x - s.x, dz = pp.z - s.z, l = Math.hypot(dx, dz) || 1;
           s.dx = dx / l;

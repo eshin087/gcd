@@ -2314,7 +2314,10 @@ function mortalFencer(G, { attack = true, drinkAt = 60, execute = true } = {}) {
   }
   const busy = G.defend.act();
   const tick = (game.realTime * 60) | 0;
-  const opening = d.broken || d.mode === 'react';
+  // (ABYSS_PRDRINK=human: it also drinks in the second half of his move's recovery, as a person would;
+  // the Lord suite's bot drinks only in a reaction / break or out of reach, rare under his pressure)
+  const ra = d.brain.act;
+  const opening = d.broken || d.mode === 'react' || (process.env.ABYSS_PRDRINK === 'human' && d.mode === 'act' && !!ra && ra.t > ra.recoveryStart);
   if (p.hp < drinkAt && p.flasks > 0 && (opening || dist > 6) && !G.defend.dueWithin(0.7) && ['idle', 'run', 'block'].includes(p.state) && tick % 6 === 0) { input.up(1); input.tap('KeyF'); return; }
   if (dist > 2.6 && !busy) input.axis = { x: dx / dist, y: -dz / dist };
   if (!attack) {
