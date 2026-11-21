@@ -1228,6 +1228,49 @@ async function scenarioClash() {
   assert(!off.hits.some((h) => h.r === RESULT.HIT) && !offRun.hits.some((h) => h.damage > GB.tick * scale), 'off the line the head never lands; rolled back through, the sweep never touches him');
   assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
 }
+
+async function scenarioBeamWorld() {
+  out('\n== scenario BEAMWORLD (what a beam does to the real set: a butte top, the trench in the tiles, the great beam reach) ==');
+  const G = build(SEED, true);
+  duel(G, { dist: 6 });
+  const { game } = G;
+  const d = game.dragon, p = game.player, W = game.world.destructibles;
+  const tops = W.list.filter((o) => o.def?.kind === 'butteTop');
+  const gone = () => tops.filter((o) => o.state !== tops[0].def.__intact && o.state !== 0).length;
+  const intact0 = tops.map((o) => o.state);
+  const floorBad = () => W.list.filter((o) => o.floor && (o.cracked || o.state !== intact0[0])).length;
+  const tileWorn = () => W.list.filter((o) => o.floor && (o.cracked || o.hp < o.hpMax)).length;
+  void gone;
+  assert(tops.length >= 4, `the set's butte tops: ${tops.length}`);
+  // Rising Tide from 13 m west of the first butte, at it (the drawn beam ends on it)
+  const B0 = RING.buttes[0], top0 = tops.reduce((a, o) => (Math.hypot(o.x - B0.x, o.z - B0.z) < Math.hypot(a.x - B0.x, a.z - B0.z) ? o : a));
+  const s0 = top0.state, t0 = tileWorn();
+  const ux = 1, uz = 0;
+  const fire = (name, bx, bz, hx, hz, form) => {
+    settle(G);
+    if (d.phase !== form) { d.debug.setForm(form); run(G, 0.4); }
+    d.position.set(bx, 0, bz);
+    d.yaw = Math.atan2(hx - bx, hz - bz);
+    p.debug.teleport(hx, hz);
+    p.debug.god = true;
+    run(G, 0.2);
+    let len = 0, top = false;
+    d.debug.trigger(name);
+    run(G, 9, () => { const B = d.ki.beams.B; if (B.phase === 'lit') { len = Math.max(len, B.len); top ||= B.top; } }, () => quiet(d) && G.game.hitstopTimer <= 0);
+    return { len, top };
+  };
+  const r1 = fire('risingTide', B0.x - 13 * ux, B0.z - 13 * uz, B0.x - 7, B0.z, 1);
+  assert(r1.top && r1.len < 13 && top0.state !== s0, `Rising Tide at a butte 13 m off: the drawn beam ends on it (${r1.len.toFixed(1)} m) and its top comes off (state ${s0} → ${top0.state})`);
+  assert(tileWorn() > t0 + 3, `a trench: ${tileWorn() - t0} floor tiles cracked or worn under it`);
+  // the great beam from the ring's far edge: its line carries on to a butte past its 26 m
+  const B1 = RING.buttes.reduce((a, b) => (Math.hypot(b.x, b.z) > Math.hypot(a.x, a.z) ? b : a));
+  const top1 = tops.reduce((a, o) => (Math.hypot(o.x - B1.x, o.z - B1.z) < Math.hypot(a.x - B1.x, a.z - B1.z) ? o : a));
+  const l1 = Math.hypot(B1.x, B1.z), s1 = top1.state;
+  const r2 = fire('heavenTide', 0, 0, (B1.x / l1) * 6, (B1.z / l1) * 6, 3);
+  out(`     the great beam toward a butte ${l1.toFixed(1)} m from the middle: drawn ${r2.len.toFixed(1)} m (to it: ${r2.top}); its top ${s1} → ${top1.state}`);
+  assert(r2.top && r2.len > 26 && top1.state !== s1, 'the great beam reaches a butte past its 26 m and takes the top off');
+  void floorBad;
+}
 //
 // --- strings
 //
@@ -1256,6 +1299,7 @@ const S = {
   // --- beams
   beams: scenarioBeams,
   clash: scenarioClash,
+  beamworld: scenarioBeamWorld,
   // --- strings
   //
   //
