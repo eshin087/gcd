@@ -880,9 +880,17 @@ async function scenarioPace() {
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
   for (let ph = 1; ph <= FORMS; ph++) out(`   mean F${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min, ${(mean(ph, 'dodge') * 100).toFixed(0)} % to dodge, longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s, ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves`);
   if (process.env.ABYSS_PFORMS) return;
+  // (TUNING.pressure.meter: each form busier than the one before in the seeds' mean (rampMean), on
+  // every seed at least `ramp` x, `minRate` cues a minute, no gap over `maxGap` s)
+  const MT = TUNING.pressure.meter, pf = (v, ph) => v[Math.min(v.length, ph) - 1];
   for (let ph = 2; ph <= FORMS; ph++) {
     const a0 = mean(ph - 1, 'perMin'), a1 = mean(ph, 'perMin');
-    assert(a1 >= a0 * 0.95, `the seeds' mean: F${ph} at least x0.95 F${ph - 1}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)}, x${(a1 / a0).toFixed(3)})`);
+    assert(a1 >= a0 * pf(MT.rampMean, ph), `the seeds' mean: F${ph} at least x${pf(MT.rampMean, ph)} F${ph - 1}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)}, x${(a1 / a0).toFixed(3)})`);
+  }
+  for (const r of rows) {
+    const prev = rows.find((x) => x.seed === r.seed && x.ph === r.ph - 1);
+    if (prev) assert(r.perMin >= prev.perMin * pf(MT.ramp, r.ph), `seed ${r.seed}: F${r.ph} at least x${pf(MT.ramp, r.ph)} F${r.ph - 1} (${prev.perMin.toFixed(1)} → ${r.perMin.toFixed(1)})`);
+    assert(r.perMin >= pf(MT.minRate, r.ph) && r.gapMax <= pf(MT.maxGap, r.ph), `seed ${r.seed} F${r.ph}: ${r.perMin.toFixed(1)} cues a minute (>= ${pf(MT.minRate, r.ph)}), longest gap ${r.gapMax.toFixed(2)} s (<= ${pf(MT.maxGap, r.ph)})`);
   }
   for (const r of rows) assert(r.conflicts === 0, `seed ${r.seed} F${r.ph}: no two cues of different sources needing different answers within 0.3 s (${r.conflicts}: ${r.conflictAt.slice(0, 4).join(' · ')})`);
 }

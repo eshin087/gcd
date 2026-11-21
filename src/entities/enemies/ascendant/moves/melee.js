@@ -57,7 +57,7 @@ export function meleeMoves(X) {
     },
     /** Tiger Descends: a dashing elbow, a back-fist, and the axe kick that breaks the floor (red). */
     tiger: {
-      label: 'Tiger Descends', phase: 1, weight: [2.0, 1.0, 0], cooldown: 7, band: [1.6, 6], recovery: 0.7, gapCloser: true,
+      label: 'Tiger Descends', phase: 1, weight: [2.4, 1.0, 0], cooldown: 7, band: [1.6, 6], recovery: 0.7, gapCloser: true,
       beats: [
         { ...elbow(N, 0.5, 15), ...dash(4, 0.6, 0.7) },
         punch('backfist', N, 0.36, 12),

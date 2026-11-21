@@ -30,6 +30,7 @@ const PURSUE = [
   mid('piercingPalm', [0.35, 0.3, 0.3]),
   mid('meteorStep', [0.35, 0.3, 0.3]),
   mid('splitFist', f1(0.2)),
+  mid('cometHeel', f1(0.3)),
   mid('vanishStep', [0, 0.35, 0.35]),
   mid('mirage', f3(0.35)),
 ];
@@ -38,6 +39,7 @@ const CLOSE = [
   near('auraBurst', [0, 0.2, 0.25]),
   near('skyHammer', [0, 0.3, 0.15]),
   near('heavenEarth', f3(0.3)),
+  near('tiger', f1(0.3)),
   near('ironMountain', f1(0.3)),
   near('hundred', [0.3, 0.2, 0]),
   near('gates', f1(0.3)),

@@ -118,7 +118,10 @@ export const TUNING = {
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
     // what tests/integration/asc.mjs PACE asserts for now: 0 conflicts, each form >= 0.95 x the one
     // before (the numbers it measures are written in the report; the tuning pass sets the rest)
-    meter: { ramp: [1, 0.9, 0.9], rampMean: [1, 0.95, 0.95], minRate: [0, 0, 0], maxGap: [9, 9, 9] },
+    // (the strings pass, melee alone, 120 s x seeds 4242 / 7 / 99: cues a minute F1 84.5 / 85.5 / 87.3,
+    // F2 94.5 / 91.5 / 91.6, F3 98.9 / 93.0 / 98.8; the mean 85.8 → 92.5 → 96.9; longest gap 2.42 /
+    // 2.23 / 3.10 s; dodge share 9 / 14 / 17 % (the ki and terrain moves add the reds); 0 conflicts)
+    meter: { ramp: [1, 0.97, 0.95], rampMean: [1, 1.02, 1.02], minRate: [72, 80, 88], maxGap: [4.0, 3.8, 3.6] },
   },
   punish: { weight: 4 },
 
