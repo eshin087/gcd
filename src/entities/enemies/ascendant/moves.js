@@ -60,7 +60,7 @@ const OR = { lF: [0.2, 0.28], rF: [-0.2, -0.24], lFy: 0.25, rFy: -0.55 };
 const OR_IN = { lF: [0.2, 0.5], rF: [-0.2, -0.2], lFy: 0.2, rFy: -0.5, lK: [0.35, 0, 1] }; // the lead foot steps in
 const PIVOT = { lF: [0.2, 0.32], rF: [-0.17, -0.18], lFy: 0.2, rFy: 0.15, rK: [-0.1, 0, 1], lK: [0.3, -0.1, 0.9] }; // the rear foot turns over: the hips drive through
 const LOW = { lF: [0.28, 0.34], rF: [-0.28, -0.3], lFy: 0.3, rFy: -0.6, rK: [-0.6, 0, 0.8], lK: [0.6, 0, 0.8] };
-const LUNGE = { lF: [0.2, 0.74], rF: [-0.22, -0.48], lFy: 0.15, rFy: -0.15, lK: [0.3, 0, 1], rK: [-0.2, -0.3, 0.9] };
+const LUNGE = { lF: [0.2, 0.58], rF: [-0.22, -0.4], lFy: 0.15, rFy: -0.15, lK: [0.3, 0, 1], rK: [-0.2, -0.3, 0.9] };
 /** The southpaw twins (the right foot leads): a string's other step. */
 const SOUTH = (p) => mirrorFeet(p);
 /** Hands in his guard (the rear fist by the chin, the lead out front). */
@@ -159,49 +159,49 @@ const PUNCH = {
   jab: {
     part: 'fistL',
     coil: { yaw: -0.52, bY: -0.17, pitch: 0.06, rH: [0.12, 0.06, 0.2], lH: [0.02, 0.04, 0.24], lP: [0.8, -0.7, -0.2], ...OR },
-    hit: { yaw: -0.7, bY: -0.2, bZ: 0.1, pitch: 0.1, spY: -0.1, rH: [0.12, 0.06, 0.18], lH: [-0.04, 0.13, 0.55], lP: [0.8, -0.2, -0.4], ...OR_IN },
+    hit: { yaw: -0.7, bY: -0.2, bZ: 0.1, pitch: 0.1, spY: -0.1, rH: [0.12, 0.06, 0.18], lH: [-0.04, 0.02, 0.55], lP: [0.8, -0.3, -0.4], ...OR_IN },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.55 }),
   },
   // the rear (right) hand driven straight through, the hips and the rear foot turning over
   cross: {
     part: 'fistR',
     coil: { yaw: -0.62, bY: -0.19, pitch: 0.06, hip: -0.12, rH: [0.06, 0.02, 0.16], lH: [0.02, 0.1, 0.34], ...OR },
-    hit: { yaw: 0.36, bY: -0.22, bZ: 0.12, pitch: 0.1, hip: 0.18, spY: 0.1, rH: [0.12, 0.13, 0.55], rP: [-0.8, -0.2, -0.4], lH: [-0.04, 0.08, 0.18], ...PIVOT },
+    hit: { yaw: 0.36, bY: -0.22, bZ: 0.12, pitch: 0.1, hip: 0.18, spY: 0.1, rH: [0.12, 0.0, 0.55], rP: [-0.8, -0.3, -0.4], lH: [-0.04, 0.08, 0.18], ...PIVOT },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.55 }),
   },
   // the rear fist swung round level, the elbow up, the whole body turning behind it
   hook: {
     part: 'fistR',
     coil: { yaw: -0.74, bY: -0.21, hip: -0.16, rH: [-0.24, 0.06, 0.18], rP: [-0.9, 0.1, -0.3], lH: [0.02, 0.12, 0.3], ...OR },
-    hit: { yaw: 0.62, bY: -0.23, bZ: 0.06, roll: -0.06, hip: 0.22, spY: 0.12, rH: [0.3, 0.12, 0.36], rP: [-0.6, 0.6, 0.2], lH: [-0.04, 0.1, 0.18], ...PIVOT },
+    hit: { yaw: 0.62, bY: -0.23, bZ: 0.06, roll: -0.06, hip: 0.22, spY: 0.12, rH: [0.3, 0.02, 0.36], rP: [-0.6, 0.5, 0.2], lH: [-0.04, 0.1, 0.18], ...PIVOT },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.95 }),
   },
   // sunk low, the rear fist driven up under the guard as the legs straighten
   uppercut: {
     part: 'fistR',
     coil: { yaw: -0.42, bY: -0.38, pitch: 0.2, hip: -0.1, rH: [0.02, -0.3, 0.2], rP: [-0.8, -0.6, 0.0], lH: [0.0, 0.1, 0.3], ...LOW },
-    hit: { yaw: 0.3, bY: -0.04, pitch: -0.14, spX: -0.08, hip: 0.14, rH: [0.12, 0.42, 0.36], rP: [-0.8, -0.5, 0.3], lH: [-0.04, 0.0, 0.2], ...PIVOT, rF: [-0.18, -0.12] },
+    hit: { yaw: 0.3, bY: -0.04, pitch: -0.14, spX: -0.08, hip: 0.14, rH: [0.12, 0.2, 0.36], rP: [-0.8, -0.6, 0.3], lH: [-0.04, 0.0, 0.2], ...PIVOT, rF: [-0.18, -0.12] },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.6 }),
   },
   // the rear arm folded across the chest, whipped out back-handed to the side
   backfist: {
     part: 'fistR',
     coil: { yaw: 0.5, bY: -0.2, hip: 0.1, rH: [0.32, 0.06, 0.16], rP: [-0.6, 0.2, 0.5], lH: [0.0, 0.06, 0.3], ...OR },
-    hit: { yaw: -0.52, bY: -0.21, bZ: 0.06, hip: -0.12, rH: [-0.3, 0.15, 0.44], rP: [-0.9, 0.2, -0.2], lH: [0.02, 0.06, 0.26], ...OR_IN },
+    hit: { yaw: -0.52, bY: -0.21, bZ: 0.06, hip: -0.12, rH: [-0.3, 0.04, 0.44], rP: [-0.9, 0.2, -0.2], lH: [0.02, 0.06, 0.26], ...OR_IN },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.95 }),
   },
   // the right palm drawn back to the hip, thrown out on a long lunge
   palm: {
     part: 'palms',
     coil: { yaw: -0.62, bY: -0.27, pitch: 0.06, hip: -0.12, rH: [0.0, -0.14, 0.06], rP: [-0.8, -0.6, -0.4], lH: [0.0, 0.06, 0.36], ...LOW },
-    hit: { yaw: 0.3, bY: -0.3, bZ: 0.2, pitch: 0.12, hip: 0.16, spY: 0.06, rH: [0.1, 0.02, 0.55], rP: [-0.8, -0.5, -0.2], lH: [-0.06, -0.12, 0.1], ...LUNGE },
+    hit: { yaw: 0.3, bY: -0.3, bZ: 0.2, pitch: 0.12, hip: 0.16, spY: 0.06, rH: [0.1, -0.06, 0.55], rP: [-0.8, -0.5, -0.2], lH: [-0.06, -0.12, 0.1], ...LUNGE },
     z: () => ({ kind: 'line', r: RE.line, w: RE.lineW }),
   },
   // both palms drawn to the hips, thrust out together, the body square
   double: {
     part: 'palms',
     coil: { yaw: -0.12, bY: -0.32, pitch: 0.04, rH: [0.06, -0.16, 0.08], lH: [-0.06, -0.16, 0.08], rP: [-0.8, -0.7, -0.4], lP: [0.8, -0.7, -0.4], ...LOW },
-    hit: { yaw: 0.0, bY: -0.33, bZ: 0.22, pitch: 0.14, rH: [0.16, 0.0, 0.52], lH: [-0.16, 0.0, 0.52], rP: [-0.8, -0.4, -0.2], lP: [0.8, -0.4, -0.2], ...LUNGE },
+    hit: { yaw: 0.0, bY: -0.33, bZ: 0.22, pitch: 0.14, rH: [0.16, -0.06, 0.52], lH: [-0.16, -0.06, 0.52], rP: [-0.8, -0.4, -0.2], lP: [0.8, -0.4, -0.2], ...LUNGE },
     z: () => ({ kind: 'line', r: RE.line, w: 1.0 }),
   },
   // both fists raised over the head, brought down together onto the floor before him
