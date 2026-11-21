@@ -76,8 +76,9 @@ export class Ablaze {
   constructor(dragon) {
     this.d = dragon;
     this.game = dragon.game;
-    // the horns' tips of the head it wears (heads.js HORN_TIPS, in headVis's frame: look c's horn fire)
-    this._hornTip = HORN_TIPS[wyrmFace()] ?? HORN_TIPS.old;
+    // the horns' tips of the head it wears, in headVis's frame (look c's horn fire): the built head's own
+    // (model.js `hornTip`: the old head's horns grow with the build, looks.js) or heads.js HORN_TIPS
+    this._hornTip = dragon.model?.hornTip ?? HORN_TIPS[wyrmFace()] ?? HORN_TIPS.old;
     this._headVis = null;
     this._hornV = new THREE.Vector3();
     /** 'off' | 'igniting' | 'burning' | 'dousing' */

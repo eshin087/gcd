@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-20',
+        title: 'The Cinder Wyrm is leaner and carries its head high',
+        notes: [
+          'The Cinder Wyrm has a leaner build: a tucked waist, a shallower chest, thinner neck, legs and tail, and longer talons. Its letters, colours and wings are the ones it had.',
+          'Between attacks it holds its head high on a rising neck. The head is narrower, with longer fangs, horns and frills, and a mane of quills runs down its neck, back and tail.',
+          'The fight itself is unchanged: its reach, its timings and its attacks are the same.',
+        ],
+      },
+      {
         date: '2026-11-16',
         title: 'The Ash Disciple and the Starless Lord fight harder, in arenas that break',
         notes: [
