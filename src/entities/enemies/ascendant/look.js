@@ -68,6 +68,14 @@ const FORM = {
   },
 };
 
+/** The lift that keeps him readable on the ring's floor (tintAscendant): fill multipliers per part,
+ *  and the rim (the cool edge of light on the screen's left) times `rim` on his body's parts. */
+export const ASC_LIFT = {
+  fill: { coat: 1.4, pants: 1.5, skin: 1.2, leather: 1.8, shirt: 1.6, lining: 1.4 },
+  rimOn: ['coat', 'lining', 'pants', 'skin', 'leather', 'shirt', 'collar', 'hem'],
+  rim: 3.2,
+};
+
 /** His colours (the class's _tint): the outfit's form-1 fills on HIS material instances (the
  *  ink-line art's uArtFill; in the dragon look, option d, the art source's ink holds the colours and
  *  this finds no uArtFill: nothing to do). */
@@ -75,6 +83,15 @@ export function tintAscendant(M) {
   if (!M) return;
   const T = ASC_TINT[ascLookNow().base] ?? ASC_TINT.a;
   for (const k in T) M[k]?.uniforms?.uArtFill?.value.setRGB(T[k][0], T[k][1], T[k][2]);
+  // the figure on the ring's floor (dim at the game camera, form 1 above all): his fill a little
+  // lighter and an edge of light along his silhouette (this rig's per-instance rim, ASC_LIFT)
+  // (?ascLift=0: the figure as the body agent shipped it, for the owner's before / after)
+  const lift = lookOf('ascLift', 'a', 'a') !== '0';
+  if (lift) for (const k in ASC_LIFT.fill) M[k]?.uniforms?.uArtFill?.value.multiplyScalar(ASC_LIFT.fill[k]);
+  if (lift) for (const k of ASC_LIFT.rimOn) {
+    const u = M[k]?.uniforms?.uArtRim;
+    if (u) u.value *= ASC_LIFT.rim;
+  }
   // the light: gold letters with a hot core (the `flask` part's ink lines are amber for every rig)
   const fu = M.flask?.uniforms;
   if (fu) {

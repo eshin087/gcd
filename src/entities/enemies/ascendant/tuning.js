@@ -96,13 +96,13 @@ export const TUNING = {
   // the closing blink (form 3): past `far` m he may vanish and stand `r` m from the hero (`chance` per
   // look, every `every` s at most)
   closeBlink: { form: 3, far: 9, r: 2.4, chance: 0.5, every: 4 },
-  idleGap: [[0.1, 0.3], [0.07, 0.22], [0.05, 0.16]],
+  idleGap: [[0.1, 0.3], [0.05, 0.16], [0.04, 0.13]],
   openingGap: [[0.14, 0.4], [0.1, 0.32], [0.08, 0.26]],
   chain: [0.55, 0.62, 0.7],
   // the director (duelist/brain.js header, director.js), starting from the Lord's forms 1 - 3
   pressure: {
-    chainDepth: [4, 4, 7],
-    chainRest: [[0.45, 0.75], [0.4, 0.65], [0.25, 0.45]],
+    chainDepth: [4, 5, 7],
+    chainRest: [[0.45, 0.75], [0.3, 0.5], [0.25, 0.45]],
     linkCut: 0.5,
     chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
@@ -111,8 +111,8 @@ export const TUNING = {
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2],
-    bias: { string: [1.3, 1.3, 2], hazard: [1, 1, 0.8], terrain: [1, 1.2, 1.3] },
-    density: [1, 1.1, 2.8],
+    bias: { string: [1.3, 1.4, 1.6], closer: [1, 1, 1.2], area: [1, 1.1, 1.2], hazard: [1, 1, 0.8], terrain: [1, 1.2, 1.3] },
+    density: [1, 1.6, 2.2],
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },

@@ -80,12 +80,12 @@ export function meleeMoves(X) {
     },
     /** Comet Heel: a leap high over the gap and the heel brought down where you stand (red: roll). */
     cometHeel: {
-      label: 'Comet Heel', phase: 1, weight: [1.4, 1.0, 0.8], cooldown: 9, band: [4, 13], recovery: 0.7, cat: 'area',
+      label: 'Comet Heel', phase: 1, weight: [1.6, 1.0, 0.8], cooldown: 9, band: [4, 13], recovery: 0.7, cat: 'area',
       beats: [{ ...kick('axe', R, 1.1, 28, { cock: 0.7 }), zone: { kind: 'ring', r: 2.8 }, ring: 2.8, knockdown: true, knockback: 3, leap: { from: 0.25, lock: 0.78, apex: 3.8 }, close: 0, track: 0.8 }],
     },
     /** Piercing Palm: a deep coil, then a palm driven home on a lunge. Red, a perilous thrust: roll INTO it. */
     piercingPalm: {
-      label: 'Piercing Palm', phase: 1, weight: [1.5, 1.0, 1.0], cooldown: 8, band: [2, 6], recovery: 0.6, gapCloser: true,
+      label: 'Piercing Palm', phase: 1, weight: [1.8, 1.1, 1.0], cooldown: 8, band: [2, 6], recovery: 0.6, gapCloser: true,
       beats: [{ ...punch('palm', R, 0.64, 26, { cock: 0.8, mikiri: true, knockback: 2.5 }), zone: { kind: 'line', r: 2.4, w: 0.7 }, ...dash(2.8, 0.84, 0.8), track: 0.7 }],
     },
     /** Mountain-Splitting Fist: the CHARGED blow. The fist drawn back while the power gathers on it, a
