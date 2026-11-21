@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp, wrapAngle } from '../../../core/math.js';
 import { TELL } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
+import { P, to3 } from '../../player/anim.js';
 import { TUNE as HERO_TUNE } from '../../player/player.js';
 import { Duelist } from '../duelist/duelist.js';
 import { DuelBrain } from '../duelist/brain.js';
@@ -54,9 +55,45 @@ import { TerrainMoves } from './terrain.js';
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const POSES = Object.freeze({
-  loco: (p, A) => formPoses(A.player?.form ?? 1).duelLoco(p, A),
-  duel: (p, A) => formPoses(A.player?.form ?? 1).duelClip(p, A),
+  loco: (p, A) => {
+    formPoses(A.player?.form ?? 1).duelLoco(p, A);
+    // the dash (AscBrain): low and pitched into it, the arms swept back, the head down on the hero
+    const k = A.player?.dashK ?? 0;
+    if (k > 0.01) {
+      p[P.pitch] += 0.42 * k;
+      p[P.bodyY] -= 0.2 * k;
+      p[P.spX] += 0.12 * k;
+      p[P.hdX] -= 0.3 * k;
+      to3(p, P.rH, -0.14, -0.3, -0.34, k);
+      to3(p, P.lH, 0.14, -0.3, -0.34, k);
+      to3(p, P.rP, -0.6, 0.2, -0.8, k);
+      to3(p, P.lP, 0.6, 0.2, -0.8, k);
+    }
+  },
+  duel: (p, A) => {
+    formPoses(A.player?.form ?? 1).duelClip(p, A);
+    // (his feet stay planted while a move carries him: the planner's offsets, Ascendant._planFeet)
+    const o = A.player?.feetOff;
+    if (o) {
+      // (a foot the clip carries across the floor is lifted: a step; its speed from the last frame)
+      const t = A.time ?? 0, dt = t - (o.t ?? -1), live = dt > 1e-4 && dt < 0.1;
+      o.t = t;
+      for (const [ch, f] of [[P.rF, o.r], [P.lF, o.l]]) {
+        const x = p[ch], z = p[ch + 2], v = live ? Math.hypot(x - (f.cx ?? x), z - (f.cz ?? z)) / dt : 0;
+        f.cx = x;
+        f.cz = z;
+        if (live) f.lift += (Math.min(FEET.lift, v * 0.06) - f.lift) * Math.min(1, dt * 30);
+        if (p[ch + 1] > DIM.ankle + 0.08) continue; // (a foot in a kick: as the clip has it)
+        p[ch] += f.x;
+        p[ch + 1] += f.y + (f.lift > 0.02 ? f.lift : 0);
+        p[ch + 2] += f.z;
+      }
+    }
+  },
 });
+/** The feet's planner (Ascendant._planFeet): a planted foot is held where it stands while the root
+ *  moves under it; past `reach` m off its key it steps (`time` s, lifted `lift` m) back under him. */
+const FEET = { reach: 0.24, time: 0.14, lift: 0.11, decay: 14 };
 /** The beat a move is in at its time t (its windup or its active frames), or null. */
 const beatNow = (a) => (a ? a.beats.find((b) => a.t < b.end + 1e-6) ?? null : null);
 
@@ -101,6 +138,7 @@ class AscBrain extends DuelBrain {
   /** Footwork: the dash across the gap (form `dash.from` on) and the closing blink (form 3) first. */
   _foot(dt) {
     const d = this.d, s = this._sense();
+    d.pilot.dashK = Math.max(this.dashing ? 1 : 0, (d.pilot.dashK ?? 0) - dt * 6);
     if (this.dashCool > 0) this.dashCool -= dt;
     if (this.blinkCool > 0) this.blinkCool -= dt;
     if (this.dashing) {
@@ -170,6 +208,10 @@ export class Ascendant extends Duelist {
     this._ptsOk = false;
     this._hug = 0; // s the hero has stayed on him (Aura Burst is favoured past TUNING... 4 s)
     this._q = new THREE.Vector3();
+    this._hand = new THREE.Vector3(); // the right palm as drawn (a disc homes to it: fx.js)
+    // the form his body SHOWS (hair, light, aura): a transformation enters the new form at its start
+    // (brain.startAct → enterPhase), but he only shows it as the nova goes out (onImpact)
+    this.dressPhase = 1;
     this._r = new THREE.Vector3();
     const d = this;
     /** Lab: straight to form n (1..3), the bar full. */
@@ -179,6 +221,7 @@ export class Ascendant extends Duelist {
       d.brain.startFight();
       d.enterPhase(n);
       d._changing = false;
+      d.dressPhase = d.phase;
       d.brain._toFoot(0.3);
       if (n > 1) d.emit(`dragon:phase${n}`);
       return true;
@@ -198,6 +241,7 @@ export class Ascendant extends Duelist {
       this._ptsOk = false;
       this._hug = 0;
       this._partPrev = '';
+      this.dressPhase = 1;
     }
     super.reset();
     // (the base constructor resets before this class's own fields could exist: made here)
@@ -272,8 +316,21 @@ export class Ascendant extends Duelist {
 
   /** Form n begins (its transformation's start): a full bar, its posture meter, its stance. */
   enterPhase(n) {
+    const was = this.phase;
     super.enterPhase(n);
     this.hp = this.maxHp;
+    // (through a transformation he still SHOWS the old form until its nova: onImpact)
+    this.dressPhase = this.brain?.act?.def?.transition && this.mode === 'act' ? was : this.phase;
+  }
+
+  /** A returnable blast of his came back off the hero's perfect parry and struck him (fx.js). */
+  onShotReturned(s) {
+    this.ki?.shots?.returned?.(s);
+  }
+
+  /** His thrown disc is back in his hand (fx.js). */
+  onShotBack(s) {
+    this.ki?.shots?.caught?.(s);
   }
 
   _die() {
@@ -283,7 +340,63 @@ export class Ascendant extends Duelist {
 
   _animate(dt) {
     this.pilot.form = this.phase;
+    this._planFeet(dt);
     super._animate(dt);
+  }
+
+  /**
+   * His feet through a move: the clip keys them in the root's space, so a root that moves (a step-in,
+   * a dash, a slide back) would skate them. A foot on the floor is held where it stands in the world
+   * (an offset from its key, in model space); once it is FEET.reach m off its key it steps back under
+   * him, lifted, one foot at a time. Out of a move (footwork has the animator's own planner), a jump
+   * of the root (a blink, a flit) or a foot off the floor: the offsets go.
+   */
+  _planFeet(dt) {
+    const pl = this.pilot, pos = this.position;
+    const F = (this._feet ??= { px: pos.x, pz: pos.z, r: { x: 0, y: 0, z: 0, t: -1, x0: 0, z0: 0, lift: 0 }, l: { x: 0, y: 0, z: 0, t: -1, x0: 0, z0: 0, lift: 0 } });
+    pl.feetOff = F;
+    const dx = pos.x - F.px, dz = pos.z - F.pz;
+    F.px = pos.x;
+    F.pz = pos.z;
+    const jump = dx * dx + dz * dz > 0.6 * 0.6;
+    if (this.mode !== 'act' || jump || !(dt > 0) || pos.y > 0.3) {
+      const k = jump ? 1 : Math.min(1, dt * FEET.decay);
+      for (const f of [F.r, F.l]) {
+        f.x -= f.x * k;
+        f.z -= f.z * k;
+        f.y -= f.y * k;
+        f.t = -1;
+      }
+      return;
+    }
+    const s = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+    const mx = (dx * c - dz * sn) / s, mz = (dx * sn + dz * c) / s;
+    let stepping = false;
+    for (const f of [F.r, F.l]) {
+      if (f.t >= 0) {
+        // stepping: back to its key, lifted on the way
+        f.t += dt;
+        const k = Math.min(1, f.t / FEET.time), e = k * k * (3 - 2 * k);
+        f.x = f.x0 * (1 - e);
+        f.z = f.z0 * (1 - e);
+        f.y = FEET.lift * Math.sin(Math.PI * k);
+        if (k >= 1) f.t = -1;
+        else stepping = true;
+      } else {
+        f.x -= mx;
+        f.z -= mz;
+        f.y = 0;
+      }
+    }
+    if (!stepping) {
+      const r = Math.hypot(F.r.x, F.r.z), l = Math.hypot(F.l.x, F.l.z);
+      const f = r >= l ? F.r : F.l;
+      if (Math.max(r, l) > FEET.reach) {
+        f.t = 0;
+        f.x0 = f.x;
+        f.z0 = f.z;
+      }
+    }
   }
 
   // ---------------------------------------------------------------- his limbs
@@ -380,6 +493,7 @@ export class Ascendant extends Duelist {
       this._hiltPrev.copy(this._hilt);
     }
     this._partPrev = part;
+    this._limbSeg('fistR', _a, this._hand);
     this._tipOk = ok;
     this._ptsOk = ok;
   }
@@ -429,7 +543,10 @@ export class Ascendant extends Duelist {
     const D = b.def, fx = this.fx, f = this.phase;
     if (a?.def?.transition) {
       this._changing = false;
+      this.dressPhase = f; // (the hair, the light and the aura change now, with the nova)
       fx.transformNova?.(this.position.x, this.position.z, TUNING.transform.ringRadius, f);
+      // Thunder Ascension: four bolts strike the ring's corners as the ring goes out (kiShots.js)
+      if (f === 3) this.ki?.shots?.corners?.();
       this.game.shake?.(0.45);
       this.game.world?.forest?.ambience?.flare?.(1);
       return;
@@ -439,6 +556,7 @@ export class Ascendant extends Duelist {
       R.onImpact(b, s, a);
       return;
     }
+    if (D.quake) this.terrain?.quake?.(this.position.x, this.position.z, D.quake);
     if (D.burst) fx.auraBurst?.(this.position.x, this.position.z, D.zone?.r ?? 4.5, f);
     else if (D.zone?.kind === 'ring' && (D.knockdown || D.tell === TELL.RED)) {
       const c = this.zoneCentre(D.zone, this._q);
@@ -507,6 +625,7 @@ export class Ascendant extends Duelist {
    *   { behind: m }    behind the hero (his facing), else beside him where he may stand
    *   { land: true }   beside where the hero's knock-back will end (`side` m, default 1.8)
    *   { edge: true }   at the ring's edge farthest from the hero (`pad` m inside his bound, default 1.2)
+   *   { at: rad, r }   at a side of the hero: `at` rad round from his facing (0 before him, PI behind)
    * Then a routed beat's own motion.
    */
   beatMotion(b, u, s, dt) {
@@ -529,6 +648,15 @@ export class Ascendant extends Duelist {
         if (!this.standable(tx, tz)) {
           tx = e.x - Math.sin(a) * r;
           tz = e.z - Math.cos(a) * r;
+        }
+      } else if (Number.isFinite(K.at)) {
+        // at a side of the hero: `at` rad round from where he faces (0 before him, PI behind), `r` m off
+        const yaw = fin(pl?.yaw, wrapAngle(s.ang + Math.PI)) + K.at, r = fin(K.r, 2.2);
+        tx = s.p.x + Math.sin(yaw) * r;
+        tz = s.p.z + Math.cos(yaw) * r;
+        if (!this.standable(tx, tz)) {
+          tx = s.p.x - Math.sin(yaw) * r;
+          tz = s.p.z - Math.cos(yaw) * r;
         }
       } else {
         const yaw = fin(pl?.yaw, wrapAngle(s.ang + Math.PI)), r = fin(K.behind, 2);
@@ -558,7 +686,7 @@ export class Ascendant extends Duelist {
    *  gathering; the stars of a break. */
   afterPose(dt, a) {
     const fx = this.fx, f = this.phase;
-    if (this.mode !== 'dead' && this.mode !== 'sleep') fx.formAura?.(this, dt, f);
+    if (this.mode !== 'dead' && this.mode !== 'sleep') fx.formAura?.(this, dt, this.dressPhase ?? f);
     if (a && this._tipOk) {
       const cur = a.beats.find((b) => a.t < b.impact);
       if (a.def.transition) {

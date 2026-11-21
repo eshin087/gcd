@@ -5,13 +5,13 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 // above all), and his colours. The duelist calls dressAscendant(d, dt) once a frame (kit.dress) and
 // tintAscendant(M) once after his rig is built (the class's _tint).
 //
-//   form 1  the Challenger: his dark hair (option a a topknot and a tail, b a loose mane, c a braid).
+//   form 1  the Challenger: his dark hair (option a a topknot and a tail, c a braid).
 //   form 2  Golden Ascension: the hair risen and gold, lit from within (it breathes); the edges of his
 //           clothes catch the gold (a band of light along the tunic's collar and hems, the wraps
 //           pale gold, light at the wrists; c: the prayer beads' light).
 //   form 3  Thunder Ascension: the hair stiffer, sharper, longer, its light paler and hotter; the
-//           fists and the eyes burn; a: the tunic torn off his left shoulder; b: the half-robe torn
-//           to rags; c: the cross-wrap and the shoulder cloth gone, bare-chested.
+//           fists and the eyes burn; a: the tunic torn off his left shoulder; c: the cross-wrap
+//           and the shoulder cloth gone, bare-chested.
 // Each step is one big change of silhouette (the head above all) or one line of light.
 //
 // Every switched piece is built by gear.js, kept out of the static merge, hidden or shown here when
@@ -19,7 +19,7 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 // a flask on him) and his own `hair` / `hairTip` instances: no new material, so no new draw call
 // beyond the switched meshes themselves. Per frame otherwise: four uniforms (the glow breathing).
 
-/** The option chosen (`?ascLook=`, read when his rig is built): { base: 'a' | 'b' | 'c' (the outfit),
+/** The option chosen (`?ascLook=`, read when his rig is built): { base: 'a' | 'c' (the outfit),
  *  art: true for d (outfit a in the dragon look) }. */
 export function ascLookNow() {
   const o = lookOf('ascLook', 'a', 'a');
@@ -47,11 +47,6 @@ export const ASC_TINT = {
     coat: [0.7, 0.12, 0.08], lining: [0.18, 0.03, 0.03], leather: [0.05, 0.045, 0.05], pants: [0.44, 0.42, 0.46],
     hem: [0.7, 0.67, 0.6], collar: [0.06, 0.05, 0.05], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
   },
-  // the brawler: a teal half-robe, a red sash, dark grey trousers
-  b: {
-    coat: [0.09, 0.32, 0.38], lining: [0.03, 0.09, 0.11], leather: [0.66, 0.1, 0.06], pants: [0.3, 0.3, 0.34],
-    hem: [0.7, 0.67, 0.6], collar: [0.06, 0.05, 0.05], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.56, 0.39],
-  },
   // the monk: a slate-blue robe, a rust-red shoulder cloth, dark wood beads, a brown sash
   c: {
     coat: [0.34, 0.4, 0.56], lining: [0.08, 0.1, 0.14], facing: [0.62, 0.16, 0.08], leather: [0.2, 0.13, 0.08],
@@ -73,6 +68,14 @@ const FORM = {
   },
 };
 
+/** The lift that keeps him readable on the ring's floor (tintAscendant): fill multipliers per part,
+ *  and the rim (the cool edge of light on the screen's left) times `rim` on his body's parts. */
+export const ASC_LIFT = {
+  fill: { coat: 1.4, pants: 1.5, skin: 1.2, leather: 1.8, shirt: 1.6, lining: 1.4 },
+  rimOn: ['coat', 'lining', 'pants', 'skin', 'leather', 'shirt', 'collar', 'hem'],
+  rim: 3.2,
+};
+
 /** His colours (the class's _tint): the outfit's form-1 fills on HIS material instances (the
  *  ink-line art's uArtFill; in the dragon look, option d, the art source's ink holds the colours and
  *  this finds no uArtFill: nothing to do). */
@@ -80,6 +83,15 @@ export function tintAscendant(M) {
   if (!M) return;
   const T = ASC_TINT[ascLookNow().base] ?? ASC_TINT.a;
   for (const k in T) M[k]?.uniforms?.uArtFill?.value.setRGB(T[k][0], T[k][1], T[k][2]);
+  // the figure on the ring's floor (dim at the game camera, form 1 above all): his fill a little
+  // lighter and an edge of light along his silhouette (this rig's per-instance rim, ASC_LIFT)
+  // (?ascLift=0: the figure as the body agent shipped it, for the owner's before / after)
+  const lift = lookOf('ascLift', 'a', 'a') !== '0';
+  if (lift) for (const k in ASC_LIFT.fill) M[k]?.uniforms?.uArtFill?.value.multiplyScalar(ASC_LIFT.fill[k]);
+  if (lift) for (const k of ASC_LIFT.rimOn) {
+    const u = M[k]?.uniforms?.uArtRim;
+    if (u) u.value *= ASC_LIFT.rim;
+  }
   // the light: gold letters with a hot core (the `flask` part's ink lines are amber for every rig)
   const fu = M.flask?.uniforms;
   if (fu) {
@@ -108,7 +120,8 @@ export function dressAscendant(d, dt) {
     D.base = { hem: rgbOf(M.hem) }; // (form 1's wraps, to give back in the Lab)
     D.art = !!M.hair?.uniforms?.uWInk;
   }
-  const n = Math.min(3, Math.max(1, d.phase | 0));
+  // (dressPhase: the form he SHOWS, which changes at a transformation's nova, not at its start)
+  const n = Math.min(3, Math.max(1, (d.dressPhase ?? d.phase) | 0));
   if (n !== D.phase) {
     D.phase = n;
     for (const e of D.at) e.m.visible = n >= e.from && n <= e.to;

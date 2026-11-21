@@ -20,7 +20,9 @@ const PURSUE = [
   far('stormWaltz', f3(0.55)),
   far('cometHeel', [0.3, 0.3, 0.3]),
   far('meteorStep', [0.5, 0.4, 0.35]),
-  far('sunbreaker', [0, 0.25, 0.25]),
+  far('sunbreaker', f2(0.25)),
+  far('mirage', f3(0.45)),
+  far('heavenfall', f3(0.25)),
   away('meteorStep', [0.45, 0.4, 0.35]),
   away('tiger', [0.4, 0.35, 0]),
   away('vanishStep', [0, 0.4, 0.4]),
@@ -28,11 +30,16 @@ const PURSUE = [
   mid('piercingPalm', [0.35, 0.3, 0.3]),
   mid('meteorStep', [0.35, 0.3, 0.3]),
   mid('splitFist', f1(0.2)),
+  mid('cometHeel', f1(0.3)),
   mid('vanishStep', [0, 0.35, 0.35]),
+  mid('mirage', f3(0.35)),
 ];
 /** Close in: another string of the form, or the burst of his aura when the hero will not leave. */
 const CLOSE = [
   near('auraBurst', [0, 0.2, 0.25]),
+  near('skyHammer', [0, 0.3, 0.15]),
+  near('heavenEarth', f3(0.3)),
+  near('tiger', f1(0.3)),
   near('ironMountain', f1(0.3)),
   near('hundred', [0.3, 0.2, 0]),
   near('gates', f1(0.3)),
@@ -57,4 +64,9 @@ export const LINKS = {
   sunbreaker: melee(),
   stormWaltz: melee(),
   thousand: melee(),
+  // the launches: the hero thrown 9 - 11 m and knocked down: the chase
+  skyHammer: melee(far('vanishStep', [0, 0.6, 0.4]), far('meteorStep', 0.6), mid('meteorStep', 0.5)),
+  heavenEarth: melee(far('stormWaltz', f3(0.5)), far('mirage', f3(0.5)), mid('mirage', f3(0.4))),
+  mirage: melee(),
+  heavenfall: melee(near('thousand', f3(0.4)), near('heavenEarth', f3(0.35))),
 };

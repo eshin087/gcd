@@ -92,17 +92,17 @@ export const TUNING = {
   },
   // the dash (form 2 on): past `at` m in his footwork he crosses the gap at `speed` m/s to `stop` m
   // short of the hero, an afterimage left where he started (fx.dashGhost); not more often than `every` s
-  dash: { from: 2, at: 5.5, speed: 9, stop: 2.4, every: 2.2, max: 9 },
+  dash: { from: 2, at: 5.5, speed: 16, stop: 2.4, every: 2.2, max: 9 },
   // the closing blink (form 3): past `far` m he may vanish and stand `r` m from the hero (`chance` per
   // look, every `every` s at most)
   closeBlink: { form: 3, far: 9, r: 2.4, chance: 0.5, every: 4 },
-  idleGap: [[0.1, 0.3], [0.07, 0.22], [0.05, 0.16]],
+  idleGap: [[0.1, 0.3], [0.05, 0.16], [0.04, 0.13]],
   openingGap: [[0.14, 0.4], [0.1, 0.32], [0.08, 0.26]],
   chain: [0.55, 0.62, 0.7],
   // the director (duelist/brain.js header, director.js), starting from the Lord's forms 1 - 3
   pressure: {
-    chainDepth: [4, 4, 7],
-    chainRest: [[0.45, 0.75], [0.4, 0.65], [0.25, 0.45]],
+    chainDepth: [4, 5, 7],
+    chainRest: [[0.45, 0.75], [0.3, 0.5], [0.25, 0.45]],
     linkCut: 0.5,
     chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
@@ -111,14 +111,17 @@ export const TUNING = {
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2],
-    bias: { string: [1.3, 1.3, 2], hazard: [1, 1, 0.8], terrain: [1, 1.2, 1.3] },
-    density: [1, 1.1, 2.8],
+    bias: { string: [1.3, 1.4, 1.6], closer: [1, 1, 1.2], area: [1, 1.1, 1.2], hazard: [1, 1, 0.8], terrain: [1, 1.2, 1.3] },
+    density: [1, 1.6, 2.2],
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
     // what tests/integration/asc.mjs PACE asserts for now: 0 conflicts, each form >= 0.95 x the one
     // before (the numbers it measures are written in the report; the tuning pass sets the rest)
-    meter: { ramp: [1, 0.9, 0.9], rampMean: [1, 0.95, 0.95], minRate: [0, 0, 0], maxGap: [9, 9, 9] },
+    // (the strings pass, melee alone, 120 s x seeds 4242 / 7 / 99: cues a minute F1 84.5 / 85.5 / 87.3,
+    // F2 94.5 / 91.5 / 91.6, F3 98.9 / 93.0 / 98.8; the mean 85.8 → 92.5 → 96.9; longest gap 2.42 /
+    // 2.23 / 3.10 s; dodge share 9 / 14 / 17 % (the ki and terrain moves add the reds); 0 conflicts)
+    meter: { ramp: [1, 0.97, 0.95], rampMean: [1, 1.02, 1.02], minRate: [72, 80, 88], maxGap: [4.0, 3.8, 3.6] },
   },
   punish: { weight: 4 },
 

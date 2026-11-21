@@ -137,11 +137,32 @@ export function strikeKeys({ coil, hit, after = null, pre = null, cock = 0.7, le
   const fo = after ?? follow(hit);
   const keys = [];
   if (pre) keys.push([cock * 0.45, F(m(pre))]);
-  keys.push([cock, F(m(coil))]);
-  keys.push([1.0, { ...F(m(hit)), e: 'i' }]);
+  const c = F(m(coil)), h = F(m(hit));
+  keys.push([cock, c]);
+  // half way through the strike: a foot that moves from the coil to the strike is LIFTED (a step, not
+  // a slide); the rest of the body a quarter of the way (the strike eases in)
+  keys.push([cock + (1 - cock) * 0.5, { ...stepMid(c, h, 0.25), e: 'i' }]);
+  keys.push([1.0, { ...h, e: 'l' }]);
   keys.push([1.6, { ...F(m(fo)), e: 'o' }]);
   keys.push([2.0, F(m(fo))]);
   return keys;
+}
+
+const v3 = (p) => (p.length === 2 ? [p[0], ANK, p[1]] : p);
+/** A key between two key poses at k (every field), the feet that move between them lifted 0.12 m. */
+function stepMid(a, b, k) {
+  const o = {};
+  for (const f of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if (f === 'e') continue;
+    const x = a[f] ?? b[f], y = b[f] ?? a[f];
+    if (f === 'rF' || f === 'lF') {
+      const p = v3(x), q = v3(y), d = Math.hypot(q[0] - p[0], q[2] - p[2]);
+      o[f] = [p[0] + (q[0] - p[0]) * 0.5, (p[1] + q[1]) * 0.5 + (d > 0.12 ? 0.12 : 0), p[2] + (q[2] - p[2]) * 0.5];
+    } else if (Array.isArray(x)) o[f] = x.map((v, i) => v + ((y[i] ?? v) - v) * k);
+    else if (typeof x === 'number') o[f] = x + (y - x) * k;
+    else o[f] = y;
+  }
+  return o;
 }
 
 /** Feet for the driving foot: 'R' (the default authoring) or 'L' (the mirror steps: a string walks). */
@@ -157,14 +178,14 @@ const pickFeet = (p) => {
 const PUNCH = {
   // the lead (left) hand snapped straight out, the lead foot stepping in
   jab: {
-    part: 'fistL',
+    part: 'fistL', cock: 0.78,
     coil: { yaw: -0.52, bY: -0.17, pitch: 0.06, rH: [0.12, 0.06, 0.2], lH: [0.02, 0.04, 0.24], lP: [0.8, -0.7, -0.2], ...OR },
     hit: { yaw: -0.7, bY: -0.2, bZ: 0.1, pitch: 0.1, spY: -0.1, rH: [0.12, 0.06, 0.18], lH: [-0.04, 0.02, 0.55], lP: [0.8, -0.3, -0.4], ...OR_IN },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.55 }),
   },
   // the rear (right) hand driven straight through, the hips and the rear foot turning over
   cross: {
-    part: 'fistR',
+    part: 'fistR', cock: 0.76,
     coil: { yaw: -0.62, bY: -0.19, pitch: 0.06, hip: -0.12, rH: [0.06, 0.02, 0.16], lH: [0.02, 0.1, 0.34], ...OR },
     hit: { yaw: 0.36, bY: -0.22, bZ: 0.12, pitch: 0.1, hip: 0.18, spY: 0.1, rH: [0.12, 0.0, 0.55], rP: [-0.8, -0.3, -0.4], lH: [-0.04, 0.08, 0.18], ...PIVOT },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.55 }),
@@ -173,21 +194,21 @@ const PUNCH = {
   hook: {
     part: 'fistR',
     coil: { yaw: -0.74, bY: -0.21, hip: -0.16, rH: [-0.24, 0.06, 0.18], rP: [-0.9, 0.1, -0.3], lH: [0.02, 0.12, 0.3], ...OR },
-    hit: { yaw: 0.62, bY: -0.23, bZ: 0.06, roll: -0.06, hip: 0.22, spY: 0.12, rH: [0.3, 0.02, 0.36], rP: [-0.6, 0.5, 0.2], lH: [-0.04, 0.1, 0.18], ...PIVOT },
+    hit: { yaw: 0.62, bY: -0.23, bZ: 0.1, roll: -0.06, hip: 0.22, spY: 0.12, rH: [0.28, 0.02, 0.46], rP: [-0.6, 0.5, 0.2], lH: [-0.04, 0.1, 0.18], ...PIVOT },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.95 }),
   },
   // sunk low, the rear fist driven up under the guard as the legs straighten
   uppercut: {
     part: 'fistR',
     coil: { yaw: -0.42, bY: -0.38, pitch: 0.2, hip: -0.1, rH: [0.02, -0.3, 0.2], rP: [-0.8, -0.6, 0.0], lH: [0.0, 0.1, 0.3], ...LOW },
-    hit: { yaw: 0.3, bY: -0.04, pitch: -0.14, spX: -0.08, hip: 0.14, rH: [0.12, 0.2, 0.36], rP: [-0.8, -0.6, 0.3], lH: [-0.04, 0.0, 0.2], ...PIVOT, rF: [-0.18, -0.12] },
+    hit: { yaw: 0.3, bY: -0.04, pitch: -0.14, spX: -0.08, hip: 0.14, rH: [0.12, 0.2, 0.47], rP: [-0.8, -0.6, 0.3], lH: [-0.04, 0.0, 0.2], ...PIVOT, rF: [-0.18, -0.12] },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.6 }),
   },
   // the rear arm folded across the chest, whipped out back-handed to the side
   backfist: {
     part: 'fistR',
     coil: { yaw: 0.5, bY: -0.2, hip: 0.1, rH: [0.32, 0.06, 0.16], rP: [-0.6, 0.2, 0.5], lH: [0.0, 0.06, 0.3], ...OR },
-    hit: { yaw: -0.52, bY: -0.21, bZ: 0.06, hip: -0.12, rH: [-0.3, 0.04, 0.44], rP: [-0.9, 0.2, -0.2], lH: [0.02, 0.06, 0.26], ...OR_IN },
+    hit: { yaw: -0.52, bY: -0.21, bZ: 0.06, hip: -0.12, rH: [-0.26, 0.04, 0.5], rP: [-0.9, 0.2, -0.2], lH: [0.02, 0.06, 0.26], ...OR_IN },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.95 }),
   },
   // the right palm drawn back to the hip, thrown out on a long lunge
@@ -220,7 +241,7 @@ const PUNCH = {
 export function punch(kind, tell, windup, damage, o = {}) {
   const P = PUNCH[kind];
   if (!P) throw new Error(`ascendant: no punch "${kind}"`);
-  const { left = false, cock = 0.7, step = null, ...extra } = o;
+  const { left = false, cock = P.cock ?? 0.7, step = null, ...extra } = o;
   const coil = step ? stepFeet(P.coil, step) : P.coil, hit = step ? stepFeet(P.hit, step) : P.hit;
   const part = left ? PART_MIRROR[P.part] ?? P.part : P.part;
   return {
@@ -257,6 +278,8 @@ const KICK = {
   // the leg raised straight up over his head, the heel brought down like an axe
   axe: {
     part: 'footR',
+    // (the leg swung up from the side in a crescent first: which leg, and that it is going high)
+    pre: { yaw: 0.3, bY: -0.12, pitch: -0.1, roll: -0.12, rF: [-0.5, 0.75, 0.25], rK: [-0.6, 0.2, 0.6], lF: [0.14, 0.0], lFy: 0.4, rH: [0.06, 0.14, 0.22], lH: [0.06, 0.16, 0.3] },
     coil: { yaw: -0.1, bY: -0.06, pitch: -0.22, spX: -0.08, rF: [-0.08, 1.45, 0.45], rK: [0, 0, 1], lF: [0.14, 0.0], lFy: 0.2, rH: [0.08, 0.14, 0.24], lH: [0.04, 0.16, 0.3] },
     hit: { yaw: -0.05, bY: -0.32, pitch: 0.24, hdX: 0.2, rF: [-0.1, ANK + 0.02, 0.82], rK: [0, 0, 1], lF: [0.15, -0.22], rH: [0.1, 0.0, 0.2], lH: [0.0, 0.0, 0.24] },
     z: () => ({ kind: 'ring', r: 2.6, fwd: 0.6 }),
@@ -289,9 +312,14 @@ function sweepKeys(cock, left) {
     const r = rotXZ(-0.72, 0.18, a), l = rotXZ(0.16, -0.04, a);
     return { rF: [r[0], ANK, r[1]], lF: [l[0], ANK, l[1]], rK: [-0.6, 0.3, 0.6], lK: [0.6, 0.4, 0.6], rFy: -1.2 + a, lFy: 0.4 + a };
   };
+  // the coil reads as the sweep coming: he drops onto his hands with the sweeping leg drawn in under him
+  // (knee to the chest), wound round the other way, then it shoots out and goes round at the ankles
+  const tuck = { bY: -0.62, pitch: 0.3, hdX: 0.25, rH: [0.12, -0.5, 0.3], lH: [-0.08, -0.52, 0.34], flat: 0.8, yaw: 1.2, rF: [-0.1, ANK + 0.08, 0.04], lF: [0.18, -0.06], rK: [-0.3, 0.6, 1], lK: [0.6, 0.4, 0.6], rFy: -0.4, lFy: 0.6 };
   return [
-    [cock, F(m({ ...body, yaw: 0.9, ...legs(0.5) }))],
-    [1.0, { ...F(m({ ...body, yaw: 0.4, ...legs(0) })), e: 'i' }],
+    [cock * 0.5, F(m({ ...tuck, bY: -0.4, pitch: 0.16, rF: [-0.2, -0.1] }))],
+    [cock, F(m(tuck))],
+    [cock + (1 - cock) * 0.5, { ...F(m({ ...body, yaw: 0.8, ...legs(0.4) })), e: 'i' }],
+    [1.0, { ...F(m({ ...body, yaw: 0.4, ...legs(0) })), e: 'l' }],
     [1.33, { ...F(m({ ...body, yaw: 0.4 - TAU / 3, ...legs(-TAU / 3) })), e: 'l' }],
     [1.66, { ...F(m({ ...body, yaw: 0.4 - (2 * TAU) / 3, ...legs((-2 * TAU) / 3) })), e: 'l' }],
     [2.0, { ...F(m({ ...body, yaw: 0.4 - TAU, ...legs(-TAU) })), e: 'l' }],
@@ -308,16 +336,16 @@ export function kick(kind, tell, windup, damage, o = {}) {
   if (kind === 'sweep') {
     const cock = c0 ?? 0.62;
     return {
-      tell, windup, active: 0.22, damage, knockback: 2.4, zone: { kind: 'ring', r: 2.2 }, part: left ? 'footL' : 'footR',
+      tell, windup, active: 0.22, damage, knockback: 2.4, zone: { kind: 'ring', r: 2.2 }, part: left ? 'footL' : 'footR', sweep: true,
       track: 0.65, keys: sweepKeys(cock, left), ...extra, cock,
     };
   }
   const P = KICK[kind];
   if (!P) throw new Error(`ascendant: no kick "${kind}"`);
-  const cock = c0 ?? (kind === 'flying' ? 0.4 : 0.68);
+  const cock = c0 ?? (kind === 'flying' ? 0.58 : 0.68);
   const beat = {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.0 : 2.0, zone: P.z(), part: left ? PART_MIRROR[P.part] : P.part,
-    track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, cock, left }),
+    track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, pre: P.pre ?? null, cock, left }),
   };
   if (kind === 'flying') Object.assign(beat, { air: true, lift: FLY_LIFT(cock), track: 0.55 });
   return { ...beat, ...extra, cock };
@@ -360,15 +388,24 @@ export function transform(form) {
     beats: [{
       tell: R, windup: T.windup, fixed: true, active: 0.15, damage: T.damage, knockback: T.knockback,
       zone: { kind: 'ring', r: T.ringRadius }, ring: T.ringRadius, part: 'feet', track: 0, close: 0,
+      // (an act in five beats over the 2.3 s: the foot planted, up with the fists clenched, the head
+      // thrown back and the chest opened as the light rises, a last gathering, and the burst; the
+      // hair and the light of the new form show at the burst: ascendant.js dressPhase)
+      cock: 0.9,
       keys: [
-        // on one knee (where the deathblow left him), the head bowed
-        [0.0, F({ bY: -0.55, pitch: 0.26, yaw: 0, hdX: 0.5, rH: [-0.1, -0.46, 0.26], lH: [0.02, -0.4, 0.3], rF: [-0.14, 0.3], lF: [0.17, -0.42], rK: [0, 0, 1], lK: [0.1, -0.85, 0.5], flat: 0.7 })],
-        // he rises into a wide horse stance, the fists clenched at the hips
-        [0.35, F({ bY: -0.42, pitch: 0.12, yaw: 0, hdX: 0.3, rH: [-0.04, -0.4, 0.0], rP: [-0.8, -0.4, -0.6], lH: [0.04, -0.4, 0.0], lP: [0.8, -0.4, -0.6], rF: [-0.34, 0.0], lF: [0.34, 0.0], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3 })],
-        // the power drawn up through him: the body tightens, the head lifts, the fists shake
-        [0.86, F({ bY: -0.36, pitch: 0.02, yaw: 0, hdX: -0.12, spX: -0.08, rH: [-0.06, -0.36, -0.02], lH: [0.06, -0.36, -0.02], rP: [-0.8, -0.4, -0.6], lP: [0.8, -0.4, -0.6], rF: [-0.36, 0.0], lF: [0.36, 0.0], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3 })],
+        // on one knee (where the deathblow left him), the head bowed, a fist on the floor
+        [0.0, F({ bY: -0.55, pitch: 0.28, yaw: 0, hdX: 0.55, rH: [0.06, -0.52, 0.32], lH: [0.02, -0.4, 0.3], rF: [-0.14, 0.3], lF: [0.17, -0.42], rK: [0, 0, 1], lK: [0.1, -0.85, 0.5], flat: 0.7 })],
+        // the fist pushes off the floor; he plants the back foot and lifts his head
+        [0.14, F({ bY: -0.5, pitch: 0.2, yaw: 0, hdX: 0.2, rH: [0.0, -0.4, 0.3], lH: [0.0, -0.36, 0.3], rF: [-0.16, 0.3], lF: [0.18, -0.3], rK: [0, 0, 1], lK: [0.2, -0.5, 0.7], flat: 0.8 })],
+        // up: a wide, low stance, both fists clenched at his sides, the arms tense
+        [0.34, F({ bY: -0.36, pitch: 0.06, yaw: 0, hdX: 0.05, rH: [-0.1, -0.44, 0.02], rP: [-0.9, -0.3, -0.6], lH: [0.1, -0.44, 0.02], lP: [0.9, -0.3, -0.6], rF: [-0.32, 0.02], lF: [0.32, -0.02], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3, sw: [0.0, -1.3] })],
+        // the light rises through him: the head goes back, the chest opens, the fists pushed down and out
+        [0.62, F({ bY: -0.3, pitch: -0.14, yaw: 0, hdX: -0.45, spX: -0.2, rH: [-0.2, -0.42, -0.04], rP: [-0.9, -0.2, -0.5], lH: [0.2, -0.42, -0.04], lP: [0.9, -0.2, -0.5], rF: [-0.34, 0.02], lF: [0.34, -0.02], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3, sw: [-0.5, -1.0] })],
+        [0.8, F({ bY: -0.26, pitch: -0.2, yaw: 0, hdX: -0.5, spX: -0.24, rH: [-0.26, -0.38, -0.06], lH: [0.26, -0.38, -0.06], rF: [-0.34, 0.02], lF: [0.34, -0.02], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3, sw: [-0.6, -0.9] })],
+        // the last gathering: he folds over it, the forearms crossed before the chest
+        [0.94, F({ bY: -0.42, pitch: 0.22, yaw: 0, hdX: 0.3, spX: 0.1, rH: [0.2, -0.04, 0.24], rP: [-0.8, -0.5, -0.3], lH: [-0.2, -0.02, 0.26], lP: [0.8, -0.5, -0.3], rF: [-0.34, 0.02], lF: [0.34, -0.02], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3, sw: [1.0, 0.2] })],
         // it breaks out of him: he straightens, the arms thrown wide, the head back
-        [1.0, { ...F({ bY: -0.1, pitch: -0.2, yaw: 0, hdX: -0.35, spX: -0.14, rH: [-0.42, 0.08, 0.14], rP: [-0.9, 0.2, -0.3], lH: [0.42, 0.08, 0.14], lP: [0.9, 0.2, -0.3], rF: [-0.3, 0.0], lF: [0.3, 0.0], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3, sw: [-1.2, 0.2] }), e: 'i' }],
+        [1.0, { ...F({ bY: -0.08, pitch: -0.22, yaw: 0, hdX: -0.35, spX: -0.16, rH: [-0.44, 0.1, 0.12], rP: [-0.9, 0.2, -0.3], lH: [0.44, 0.1, 0.12], lP: [0.9, 0.2, -0.3], rF: [-0.3, 0.0], lF: [0.3, 0.0], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3, sw: [-1.2, 0.2] }), e: 'o' }],
         [2.0, F({ bY: -0.1, pitch: -0.16, yaw: 0, hdX: -0.25, rH: [-0.4, 0.06, 0.14], lH: [0.4, 0.06, 0.14], rF: [-0.3, 0.0], lF: [0.3, 0.0], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3, sw: [-1.2, 0.2] })],
       ],
     }],
@@ -397,16 +434,16 @@ export const COUNTERS = Object.freeze(['riposte', 'riposte2', 'riposte3']);
 // forearms raised before the face; `ward` the left forearm stood up across his left side, `wardR` the
 // right across his right, `wardHigh` both crossed over the head; `deflect` the lead palm beats the
 // blade aside and the body turns in behind it; `clash` (the lost lock's shove) as a ward.
-const WARD_L = { yaw: -0.3, bY: -0.21, bZ: -0.04, pitch: -0.02, spX: 0.02, hdY: 0.3, lH: [0.04, 0.24, 0.26], lP: [0.9, -0.6, 0.0], rH: [0.14, 0.1, 0.22], rP: [-0.8, -0.7, -0.1], sw: FIST_UP };
-const WARD_R = { yaw: 0.1, bY: -0.21, bZ: -0.04, pitch: -0.02, hdY: -0.06, rH: [-0.02, 0.24, 0.26], rP: [-0.9, -0.6, 0.0], lH: [-0.08, 0.06, 0.26], lP: [0.8, -0.7, -0.1], sw: FIST_UP };
+const WARD_L = { yaw: -0.36, bY: -0.24, bZ: -0.06, pitch: -0.04, spX: 0.04, hdY: 0.34, lH: [0.04, 0.36, 0.3], lP: [0.9, -0.5, 0.1], rH: [0.14, 0.22, 0.26], rP: [-0.8, -0.7, -0.1], sw: FIST_UP };
+const WARD_R = { yaw: 0.16, bY: -0.24, bZ: -0.06, pitch: -0.04, hdY: -0.1, rH: [-0.04, 0.36, 0.3], rP: [-0.9, -0.5, 0.1], lH: [-0.08, 0.22, 0.28], lP: [0.8, -0.7, -0.1], sw: FIST_UP };
 const WARD_HIGH = { yaw: -0.1, bY: -0.27, bZ: -0.03, pitch: -0.05, spX: -0.04, hdX: 0.08, hdY: 0.08, rH: [0.18, 0.44, 0.24], rP: [-0.9, 0.1, -0.3], lH: [-0.16, 0.46, 0.26], lP: [0.9, 0.1, -0.3], sw: [0.9, 0.3] };
-const HOLD = { yaw: -0.34, bY: -0.2, hdY: 0.3, rH: [0.12, 0.24, 0.24], rP: [-0.8, -0.6, 0.0], lH: [-0.04, 0.26, 0.3], lP: [0.8, -0.6, 0.0], sw: FIST_UP };
+const HOLD = { yaw: -0.34, bY: -0.24, hdY: 0.3, hdX: 0.12, rH: [0.12, 0.32, 0.28], rP: [-0.8, -0.6, 0.0], lH: [-0.04, 0.34, 0.32], lP: [0.8, -0.6, 0.0], sw: FIST_UP };
 const BEAT = { yaw: -0.78, bY: -0.24, bZ: 0.08, pitch: 0.07, hdY: 0.6, lH: [-0.32, 0.06, 0.42], lP: [0.9, -0.2, -0.2], rH: [0.14, 0.04, 0.3], rP: [-0.8, -0.6, -0.2], sw: FIST_UP };
 const met = (Wd, dur = 0.34) => ({
   dur, hold: true,
   keys: [
     [0, { ...Wd }],
-    [0.07, { e: 'o', ...Wd, bZ: Wd.bZ - 0.07, pitch: Wd.pitch - 0.05, spX: (Wd.spX ?? 0.02) - 0.05 }],
+    [0.07, { e: 'o', ...Wd, bZ: Wd.bZ - 0.12, bY: Wd.bY - 0.04, pitch: Wd.pitch - 0.08, spX: (Wd.spX ?? 0.02) - 0.08 }],
     [0.2, { ...Wd, bZ: Wd.bZ - 0.03 }],
   ],
 });

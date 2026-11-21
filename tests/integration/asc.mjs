@@ -518,7 +518,7 @@ async function scenarioFlare() {
   out('\n== scenario FLARE (parry moments, exactly one charged blow per form, red blows) ==');
   const flat = (n) => MOVES[n].beats.flatMap((b) => (Array.isArray(b.pick) ? b.pick : [b]));
   const inForm = (n, f) => weightIn(MOVES[n], f) > 0 && MOVES[n].phase <= f;
-  const BLACK = { 1: 'splitFist', 2: 'sunbreaker', 3: 'sunbreaker' };
+  const BLACK = { 1: 'splitFist', 2: 'sunbreaker', 3: 'heavenfall' };
   for (const f of [1, 2, 3]) {
     const parry = MOVE_NAMES.filter((n) => inForm(n, f) && flat(n).some((b) => b.flare && b.tell === TELL.BLUE));
     const black = MOVE_NAMES.filter((n) => inForm(n, f) && flat(n).some((b) => b.tell === TELL.BLACK));
@@ -880,9 +880,17 @@ async function scenarioPace() {
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
   for (let ph = 1; ph <= FORMS; ph++) out(`   mean F${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min, ${(mean(ph, 'dodge') * 100).toFixed(0)} % to dodge, longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s, ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves`);
   if (process.env.ABYSS_PFORMS) return;
+  // (TUNING.pressure.meter: each form busier than the one before in the seeds' mean (rampMean), on
+  // every seed at least `ramp` x, `minRate` cues a minute, no gap over `maxGap` s)
+  const MT = TUNING.pressure.meter, pf = (v, ph) => v[Math.min(v.length, ph) - 1];
   for (let ph = 2; ph <= FORMS; ph++) {
     const a0 = mean(ph - 1, 'perMin'), a1 = mean(ph, 'perMin');
-    assert(a1 >= a0 * 0.95, `the seeds' mean: F${ph} at least x0.95 F${ph - 1}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)}, x${(a1 / a0).toFixed(3)})`);
+    assert(a1 >= a0 * pf(MT.rampMean, ph), `the seeds' mean: F${ph} at least x${pf(MT.rampMean, ph)} F${ph - 1}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)}, x${(a1 / a0).toFixed(3)})`);
+  }
+  for (const r of rows) {
+    const prev = rows.find((x) => x.seed === r.seed && x.ph === r.ph - 1);
+    if (prev) assert(r.perMin >= prev.perMin * pf(MT.ramp, r.ph), `seed ${r.seed}: F${r.ph} at least x${pf(MT.ramp, r.ph)} F${r.ph - 1} (${prev.perMin.toFixed(1)} → ${r.perMin.toFixed(1)})`);
+    assert(r.perMin >= pf(MT.minRate, r.ph) && r.gapMax <= pf(MT.maxGap, r.ph), `seed ${r.seed} F${r.ph}: ${r.perMin.toFixed(1)} cues a minute (>= ${pf(MT.minRate, r.ph)}), longest gap ${r.gapMax.toFixed(2)} s (<= ${pf(MT.maxGap, r.ph)})`);
   }
   for (const r of rows) assert(r.conflicts === 0, `seed ${r.seed} F${r.ph}: no two cues of different sources needing different answers within 0.3 s (${r.conflicts}: ${r.conflictAt.slice(0, 4).join(' · ')})`);
 }
@@ -1012,6 +1020,199 @@ async function scenarioTraining() {
 //
 //
 // --- strings
+/**
+ * MOTION (the strings agent): every builder kind measured on his real body, in each form's stance:
+ * the coil (how far the striking limb's end is drawn back from where it strikes), its speed at the
+ * impact, how far it reaches toward the hero standing at the zone's ideal distance, the chest's turn
+ * from the coil to the impact, and in a string how far a planted foot slides on the floor.
+ */
+async function scenarioMotion() {
+  out('\n== scenario MOTION (each strike on his real body: the coil, the speed at impact, the reach, the chest\'s turn; feet in a string) ==');
+  const { X } = await imp('src/entities/enemies/ascendant/moves.js');
+  const N = X.TELL.N;
+  const KINDS = [
+    ...['jab', 'cross', 'hook', 'uppercut', 'backfist', 'palm', 'double', 'hammer'].map((k) => [k, () => X.punch(k, N, 0.5, 10)]),
+    ...['front', 'side', 'round', 'sweep', 'axe', 'flying', 'knee'].map((k) => [`kick:${k}`, () => X.kick(k, N, 0.55, 10)]),
+    ['elbow', () => X.elbow(N, 0.5, 10)], ['shoulder', () => X.shoulder(N, 0.5, 10)],
+  ];
+  const G = build();
+  duel(G, { dist: 3 });
+  const { game } = G;
+  const d = game.dragon, p = game.player, br = d.brain;
+  p.debug.god = true;
+  const yawOf = (o) => { const e = new THREE.Euler().setFromQuaternion(o.getWorldQuaternion(new THREE.Quaternion()), 'YXZ'); return e.y; };
+  const rows = [];
+  const v = new THREE.Vector3(), chest = new THREE.Vector3();
+  for (const f of [1, 2, 3]) {
+    for (const [name, mk] of KINDS) {
+      settle(G, 2);
+      if (d.phase !== f) d.debug.setForm(f);
+      run(G, 0.3);
+      const beat = { ...mk(), close: 0, dash: undefined, leap: undefined };
+      const ideal = br._ideal(beat.zone);
+      // (the hero EAST of him: the drawn figure leans toward the camera along z, so reach is measured along x)
+      d.position.set(0, 0, 0);
+      d.yaw = Math.PI / 2;
+      p.debug.teleport(Math.max(0.9, ideal), 0);
+      run(G, 0.2);
+      d.position.set(0, 0, 0);
+      d.yaw = Math.PI / 2;
+      MOVES.__m = { label: 'motion', phase: 1, weight: 0, manual: true, hidden: true, cooldown: 0, band: [0, 99], recovery: 0.5, beats: [beat] };
+      d.debug.trigger('__m');
+      const A = br.act, b = A.beats[0];
+      const cockT = b.start + (beat.cock ?? 0.7) * b.W;
+      let hp0 = null, coil = null, hit = null, prev = null, speed = 0, yaw0 = 0, yaw1 = 0;
+      for (let i = 0; i < 200 && br.act === A; i++) {
+        const t = A.t;
+        const tip = d._tip.clone();
+        if (coil === null && t >= cockT) { coil = tip; yaw0 = yawOf(d.rig.chest); }
+        if (prev && t > b.impact - 0.15 && t <= b.impact + 1e-6 && game.dt > 0.008) speed = Math.max(speed, tip.distanceTo(prev) / game.dt);
+        if (hit === null && t >= b.impact) {
+          hit = tip;
+          hp0 = p.position.clone();
+          yaw1 = yawOf(d.rig.chest);
+        }
+        prev = tip;
+        G.tick(DT);
+      }
+      // (how far short of the hero's body the limb's end stops: along the line to him, from his root, less his radius)
+      const drawn = coil && hit ? coil.distanceTo(hit) : 0;
+      const reach = hit ? hp0.x - hit.x - (p.radius ?? 0.45) : 9;
+      if (process.env.ABYSS_MDBG && f === 1) out(`      ${name} tip ${hit?.x.toFixed(2)},${hit?.y.toFixed(2)},${hit?.z.toFixed(2)} root ${d.position.x.toFixed(2)},${d.position.z.toFixed(2)} hero ${hp0?.x.toFixed(2)},${hp0?.z.toFixed(2)} yaw ${d.yaw.toFixed(2)}`);
+      rows.push({ f, name, drawn, speed, reach, turn: Math.abs(wrapA(yaw1 - yaw0)), ideal });
+    }
+  }
+  delete MOVES.__m;
+  out('   form kind            coil m  speed m/s  short of him m  chest turn rad');
+  for (const r of rows) out(`   ${r.f}    ${r.name.padEnd(15)} ${r.drawn.toFixed(2).padStart(6)} ${r.speed.toFixed(1).padStart(10)} ${r.reach.toFixed(2).padStart(12)} ${r.turn.toFixed(2).padStart(14)}`);
+  // feet in a string: a planted foot (on the floor, not moving with a step) slides with the root
+  const G2 = build();
+  duel(G2, { dist: 2.6 });
+  const d2 = G2.game.dragon;
+  G2.game.player.debug.god = true;
+  const slide = {};
+  for (const name of ['gates', 'hundred']) {
+    settle(G2, 3);
+    d2.position.set(0, 0, -2);
+    d2.yaw = 0;
+    place(G2, 2.6);
+    run(G2, 0.3);
+    d2.debug.trigger(name);
+    const ft = [d2.rig.legs.R.foot, d2.rig.legs.L.foot], last = [null, null];
+    let slid = 0, moved = 0, r0 = d2.position.clone();
+    while (d2.mode === 'act' && d2.brain.act?.name === name) {
+      G2.tick(DT);
+      for (let k = 0; k < 2; k++) {
+        ft[k].getWorldPosition(v);
+        // (the low sweep's leg skims the floor on purpose: not counted)
+        const sw = d2.brain.act?.beats.find((x) => d2.brain.act.t < x.end)?.def.sweep;
+        if (last[k] && v.y < 0.16 && last[k].y < 0.16 && !sw) {
+          const st = Math.hypot(v.x - last[k].x, v.z - last[k].z);
+          slid += st;
+          if (process.env.ABYSS_MDBG && st > 0.05) out(`      slide ${k} ${st.toFixed(3)} t ${d2.brain.act?.t.toFixed(3)} dt ${G2.game.dt.toFixed(4)} y ${v.y.toFixed(3)} root ${d2.position.x.toFixed(2)},${d2.position.z.toFixed(2)}`);
+        }
+        last[k] = v.clone();
+      }
+    }
+    moved = Math.hypot(d2.position.x - r0.x, d2.position.z - r0.z);
+    slide[name] = { slid, moved };
+    out(`   ${name}: planted feet slid ${slid.toFixed(2)} m in all while the root travelled ${moved.toFixed(2)} m`);
+  }
+  // (a strike that reaches: its end within 0.45 m of the hero's body at its ideal distance; the lines
+  // that close on a dash (palm, double, elbow, shoulder) and the areas (hammer, sweep, axe) aside)
+  const AREA = new Set(['palm', 'double', 'elbow', 'shoulder', 'hammer', 'kick:sweep', 'kick:axe']);
+  const short = rows.filter((r) => !AREA.has(r.name) && r.reach > 0.45);
+  assert(!short.length, `every punch and kick reaches the hero at its ideal distance (${short.map((r) => `${r.name} f${r.f} ${r.reach.toFixed(2)}`).join(', ') || 'all within 0.45 m'})`);
+  const slow = rows.filter((r) => !['shoulder', 'kick:sweep'].includes(r.name) && r.speed < 6);
+  assert(!slow.length, `every strike's end is moving >= 6 m/s into its impact (${slow.map((r) => `${r.name} f${r.f} ${r.speed.toFixed(1)}`).join(', ') || 'all'})`);
+  const coil = rows.filter((r) => r.name !== 'shoulder' && r.drawn < 0.4);
+  assert(!coil.length, `every coil draws the striking limb back >= 0.4 m from where it strikes (${coil.map((r) => `${r.name} f${r.f}`).join(', ') || 'all'})`);
+  for (const [k, v] of Object.entries(slide)) assert(v.slid < 0.5 * v.moved, `${k}: his planted feet slide ${v.slid.toFixed(2)} m while he travels ${v.moved.toFixed(2)} m (under half: the feet step)`);
+  return { rows, slide };
+}
+const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+/**
+ * STRINGS (the strings agent): the second wave's strings and the transformation's timing. Sky Hammer
+ * launches the hero and is waiting where he lands; Mirage feints three times out of blinks (no glint)
+ * before its one red blow; Heavenfall calls the terrain's shock ring (terrain.quake) at its landing; a
+ * transformation shows the new form (dressPhase: the hair, the light, the aura) at its nova, not before;
+ * the dash is faster than his sprint.
+ */
+async function scenarioStrings() {
+  out('\n== scenario STRINGS (Sky Hammer, Mirage, Heavenfall, the form shown at the nova, the dash) ==');
+  const G = build();
+  duel(G, { dist: 2.0, form: 2 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  const prep = (form, dist) => {
+    settle(G, 4);
+    if (d.phase !== form) d.debug.setForm(form);
+    run(G, 0.3);
+    d.position.set(0, 0, -3);
+    d.yaw = 0;
+    place(G, dist);
+    run(G, 0.2);
+  };
+  // Sky Hammer: the launch (thrown >= 8 m, knocked down), the blink to where he lands, the hammer on him
+  prep(2, 1.8);
+  const p0 = p.position.clone();
+  let far = 0, landGap = 9, flashes = [];
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'skyHammer') flashes.push(e.tell); };
+  d.debug.trigger('skyHammer');
+  run(G, 5, () => {
+    far = Math.max(far, Math.hypot(p.position.x - p0.x, p.position.z - p0.z));
+    const a = d.brain.act, b = a?.beats[2];
+    if (b?._blinked && landGap === 9) landGap = Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z);
+  }, () => d.mode === 'foot');
+  G.watch = null;
+  const hammer = G.hits.filter((h) => h.attack === 'skyHammer').map((h) => h.r);
+  assert(far >= 8 && landGap < 3.2 && flashes.length === 3 && flashes[2] === TELL.RED, `Sky Hammer: the launch throws the hero ${far.toFixed(1)} m, he blinks to ${landGap.toFixed(1)} m from him, the hammer is red (${hammer.join(' ')})`);
+  // Mirage: three feints (no glint), then the red blow
+  prep(3, 5);
+  const mf = [];
+  let blinks = 0;
+  const vanish = d.fx.vanish;
+  d.fx.vanish = (...a) => { blinks++; return vanish?.apply(d.fx, a); };
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'mirage') mf.push(e.tell); };
+  d.debug.trigger('mirage');
+  run(G, 5, null, () => d.mode === 'foot');
+  G.watch = null;
+  d.fx.vanish = vanish;
+  assert(blinks === 4 && mf.length === 1 && mf[0] === TELL.RED, `Mirage: ${blinks} vanishes (three feints and the blow), ${mf.length} glint (${mf.join(' ')})`);
+  // Heavenfall: the leap, the landing calls the terrain's shock ring with its numbers
+  prep(3, 6);
+  let quake = null, apex = 0;
+  const T = d.terrain, q0 = T.quake;
+  T.quake = (x, z, o) => { quake = { x, z, o }; return q0?.call(T, x, z, o); };
+  d.debug.trigger('heavenfall');
+  run(G, 5, () => { apex = Math.max(apex, d.position.y); }, () => d.mode === 'foot');
+  T.quake = q0;
+  assert(!!quake && quake.o.to === 14 && quake.o.speed === 9 && quake.o.damage === 22 && apex > 4 && Number.isFinite(quake.x + quake.z), `Heavenfall: apex ${apex.toFixed(1)} m, its landing calls terrain.quake (${JSON.stringify(quake?.o)})`);
+  // the form shown at the nova: a deathblow → the transformation: dressPhase stays 1 until the ring goes out
+  prep(1, 2);
+  d.debug.postureBreak();
+  run(G, 0.3);
+  d.onExecute({ damage: 260 });
+  let shownEarly = 0, shownAt = -1;
+  const t0 = game.time;
+  run(G, 5, () => {
+    const a = d.brain.act;
+    if (a?.def?.transition && a.t < a.beats[0].impact - 0.05 && d.dressPhase !== 1) shownEarly++;
+    if (shownAt < 0 && d.dressPhase === 2) shownAt = game.time - t0;
+  }, () => d.mode === 'foot' && d.phase === 2);
+  assert(shownEarly === 0 && d.phase === 2 && shownAt > TUNING.transform.windup + 1, `the new form is shown at the nova (${shownAt.toFixed(2)} s after the deathblow), not at the transformation's start (${shownEarly} frames early)`);
+  // the dash: faster than his sprint, from form 2, past `at` m
+  prep(2, 3);
+  d.debug.setAI(true);
+  d.brain.dashCool = 0;
+  d.position.set(0, 0, -6);
+  p.debug.teleport(0, 6);
+  let top = 0;
+  run(G, 1.2, () => { const v = d.pilot.groundVel; top = Math.max(top, Math.hypot(v.x, v.z)); });
+  d.debug.setAI(false);
+  assert(top > TUNING.move.sprint * 1.4, `the dash at ${top.toFixed(1)} m/s (his sprint ${TUNING.move.sprint})`);
+}
 //
 //
 // --- terrain
@@ -1039,6 +1240,8 @@ const S = {
   //
   //
   // --- strings
+  motion: scenarioMotion,
+  strings: scenarioStrings,
   //
   //
   // --- terrain
