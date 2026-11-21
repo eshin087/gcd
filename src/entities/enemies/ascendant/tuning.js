@@ -1,4 +1,4 @@
-import { HERO_SCALE } from '../../player/model.js';
+import { PLAYER_SCALE } from '../../player/model.js';
 
 // Tian Lei's numbers (MOVES.md: the approved moveset, 2026-11-21). Starting values: tune them in the
 // Lab. Per-form values are [form 1, 2, 3]. Times in seconds, distances in metres.
@@ -16,7 +16,7 @@ export const TUNING = {
   phaseAt: [1], // no gates inside a bar
   radius: 0.42,
   // his drawn size: 1.12 x the hero's (visual only: every reach below is in gameplay metres)
-  scale: HERO_SCALE * 1.12,
+  scale: PLAYER_SCALE * 1.12, // (the hero is drawn at PLAYER_SCALE, 1.08: he is ~1.21, between Shen Hui 1.2 and the Lord 1.32)
   // the circle he keeps to: the level's CONFIG.world.dragonBound (the ring's floor) caps it
   bound: 16,
 
