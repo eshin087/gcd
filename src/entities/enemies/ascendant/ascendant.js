@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp, wrapAngle } from '../../../core/math.js';
 import { TELL } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
+import { P } from '../../player/anim.js';
 import { TUNE as HERO_TUNE } from '../../player/player.js';
 import { Duelist } from '../duelist/duelist.js';
 import { DuelBrain } from '../duelist/brain.js';
@@ -55,8 +56,30 @@ import { TerrainMoves } from './terrain.js';
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const POSES = Object.freeze({
   loco: (p, A) => formPoses(A.player?.form ?? 1).duelLoco(p, A),
-  duel: (p, A) => formPoses(A.player?.form ?? 1).duelClip(p, A),
+  duel: (p, A) => {
+    formPoses(A.player?.form ?? 1).duelClip(p, A);
+    // (his feet stay planted while a move carries him: the planner's offsets, Ascendant._planFeet)
+    const o = A.player?.feetOff;
+    if (o) {
+      // (a foot the clip carries across the floor is lifted: a step; its speed from the last frame)
+      const t = A.time ?? 0, dt = t - (o.t ?? -1), live = dt > 1e-4 && dt < 0.1;
+      o.t = t;
+      for (const [ch, f] of [[P.rF, o.r], [P.lF, o.l]]) {
+        const x = p[ch], z = p[ch + 2], v = live ? Math.hypot(x - (f.cx ?? x), z - (f.cz ?? z)) / dt : 0;
+        f.cx = x;
+        f.cz = z;
+        if (live) f.lift += (Math.min(FEET.lift, v * 0.06) - f.lift) * Math.min(1, dt * 30);
+        if (p[ch + 1] > DIM.ankle + 0.08) continue; // (a foot in a kick: as the clip has it)
+        p[ch] += f.x;
+        p[ch + 1] += f.y + (f.lift > 0.02 ? f.lift : 0);
+        p[ch + 2] += f.z;
+      }
+    }
+  },
 });
+/** The feet's planner (Ascendant._planFeet): a planted foot is held where it stands while the root
+ *  moves under it; past `reach` m off its key it steps (`time` s, lifted `lift` m) back under him. */
+const FEET = { reach: 0.24, time: 0.14, lift: 0.11, decay: 14 };
 /** The beat a move is in at its time t (its windup or its active frames), or null. */
 const beatNow = (a) => (a ? a.beats.find((b) => a.t < b.end + 1e-6) ?? null : null);
 
@@ -302,7 +325,63 @@ export class Ascendant extends Duelist {
 
   _animate(dt) {
     this.pilot.form = this.phase;
+    this._planFeet(dt);
     super._animate(dt);
+  }
+
+  /**
+   * His feet through a move: the clip keys them in the root's space, so a root that moves (a step-in,
+   * a dash, a slide back) would skate them. A foot on the floor is held where it stands in the world
+   * (an offset from its key, in model space); once it is FEET.reach m off its key it steps back under
+   * him, lifted, one foot at a time. Out of a move (footwork has the animator's own planner), a jump
+   * of the root (a blink, a flit) or a foot off the floor: the offsets go.
+   */
+  _planFeet(dt) {
+    const pl = this.pilot, pos = this.position;
+    const F = (this._feet ??= { px: pos.x, pz: pos.z, r: { x: 0, y: 0, z: 0, t: -1, x0: 0, z0: 0, lift: 0 }, l: { x: 0, y: 0, z: 0, t: -1, x0: 0, z0: 0, lift: 0 } });
+    pl.feetOff = F;
+    const dx = pos.x - F.px, dz = pos.z - F.pz;
+    F.px = pos.x;
+    F.pz = pos.z;
+    const jump = dx * dx + dz * dz > 0.6 * 0.6;
+    if (this.mode !== 'act' || jump || !(dt > 0) || pos.y > 0.3) {
+      const k = jump ? 1 : Math.min(1, dt * FEET.decay);
+      for (const f of [F.r, F.l]) {
+        f.x -= f.x * k;
+        f.z -= f.z * k;
+        f.y -= f.y * k;
+        f.t = -1;
+      }
+      return;
+    }
+    const s = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+    const mx = (dx * c - dz * sn) / s, mz = (dx * sn + dz * c) / s;
+    let stepping = false;
+    for (const f of [F.r, F.l]) {
+      if (f.t >= 0) {
+        // stepping: back to its key, lifted on the way
+        f.t += dt;
+        const k = Math.min(1, f.t / FEET.time), e = k * k * (3 - 2 * k);
+        f.x = f.x0 * (1 - e);
+        f.z = f.z0 * (1 - e);
+        f.y = FEET.lift * Math.sin(Math.PI * k);
+        if (k >= 1) f.t = -1;
+        else stepping = true;
+      } else {
+        f.x -= mx;
+        f.z -= mz;
+        f.y = 0;
+      }
+    }
+    if (!stepping) {
+      const r = Math.hypot(F.r.x, F.r.z), l = Math.hypot(F.l.x, F.l.z);
+      const f = r >= l ? F.r : F.l;
+      if (Math.max(r, l) > FEET.reach) {
+        f.t = 0;
+        f.x0 = f.x;
+        f.z0 = f.z;
+      }
+    }
   }
 
   // ---------------------------------------------------------------- his limbs

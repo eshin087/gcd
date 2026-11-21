@@ -59,7 +59,7 @@ export function meleeMoves(X) {
     tiger: {
       label: 'Tiger Descends', phase: 1, weight: [2.0, 1.0, 0], cooldown: 7, band: [1.6, 6], recovery: 0.7, gapCloser: true,
       beats: [
-        { ...elbow(N, 0.5, 15), ...dash(4, 0.6, 1.0) },
+        { ...elbow(N, 0.5, 15), ...dash(4, 0.6, 0.7) },
         punch('backfist', N, 0.36, 12),
         kick('axe', R, 0.62, 24, { knockdown: true, knockback: 2.4, ring: 2.6 }),
       ],
@@ -69,7 +69,7 @@ export function meleeMoves(X) {
     ironMountain: {
       label: 'Iron Mountain', phase: 1, weight: [1.8, 0, 0], cooldown: 8, band: [0, 4], recovery: 0.7,
       beats: [
-        { ...shoulder(N, 0.5, 14), ...dash(3, 0.55, 0.9) },
+        { ...shoulder(N, 0.5, 14), ...dash(3, 0.55, 0.6) },
         punch('double', N, 0.4, 15, { knockback: 9 }),
       ],
     },

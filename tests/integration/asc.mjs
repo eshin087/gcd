@@ -1012,6 +1012,117 @@ async function scenarioTraining() {
 //
 //
 // --- strings
+/**
+ * MOTION (the strings agent): every builder kind measured on his real body, in each form's stance:
+ * the coil (how far the striking limb's end is drawn back from where it strikes), its speed at the
+ * impact, how far it reaches toward the hero standing at the zone's ideal distance, the chest's turn
+ * from the coil to the impact, and in a string how far a planted foot slides on the floor.
+ */
+async function scenarioMotion() {
+  out('\n== scenario MOTION (each strike on his real body: the coil, the speed at impact, the reach, the chest\'s turn; feet in a string) ==');
+  const { X } = await imp('src/entities/enemies/ascendant/moves.js');
+  const N = X.TELL.N;
+  const KINDS = [
+    ...['jab', 'cross', 'hook', 'uppercut', 'backfist', 'palm', 'double', 'hammer'].map((k) => [k, () => X.punch(k, N, 0.5, 10)]),
+    ...['front', 'side', 'round', 'sweep', 'axe', 'flying', 'knee'].map((k) => [`kick:${k}`, () => X.kick(k, N, 0.55, 10)]),
+    ['elbow', () => X.elbow(N, 0.5, 10)], ['shoulder', () => X.shoulder(N, 0.5, 10)],
+  ];
+  const G = build();
+  duel(G, { dist: 3 });
+  const { game } = G;
+  const d = game.dragon, p = game.player, br = d.brain;
+  p.debug.god = true;
+  const yawOf = (o) => { const e = new THREE.Euler().setFromQuaternion(o.getWorldQuaternion(new THREE.Quaternion()), 'YXZ'); return e.y; };
+  const rows = [];
+  const v = new THREE.Vector3(), chest = new THREE.Vector3();
+  for (const f of [1, 2, 3]) {
+    for (const [name, mk] of KINDS) {
+      settle(G, 2);
+      if (d.phase !== f) d.debug.setForm(f);
+      run(G, 0.3);
+      const beat = { ...mk(), close: 0, dash: undefined, leap: undefined };
+      const ideal = br._ideal(beat.zone);
+      // (the hero EAST of him: the drawn figure leans toward the camera along z, so reach is measured along x)
+      d.position.set(0, 0, 0);
+      d.yaw = Math.PI / 2;
+      p.debug.teleport(Math.max(0.9, ideal), 0);
+      run(G, 0.2);
+      d.position.set(0, 0, 0);
+      d.yaw = Math.PI / 2;
+      MOVES.__m = { label: 'motion', phase: 1, weight: 0, manual: true, hidden: true, cooldown: 0, band: [0, 99], recovery: 0.5, beats: [beat] };
+      d.debug.trigger('__m');
+      const A = br.act, b = A.beats[0];
+      const cockT = b.start + (beat.cock ?? 0.7) * b.W;
+      let hp0 = null, coil = null, hit = null, prev = null, speed = 0, yaw0 = 0, yaw1 = 0;
+      for (let i = 0; i < 200 && br.act === A; i++) {
+        const t = A.t;
+        const tip = d._tip.clone();
+        if (coil === null && t >= cockT) { coil = tip; yaw0 = yawOf(d.rig.chest); }
+        if (prev && t > b.impact - 0.15 && t <= b.impact + 1e-6 && game.dt > 0.008) speed = Math.max(speed, tip.distanceTo(prev) / game.dt);
+        if (hit === null && t >= b.impact) {
+          hit = tip;
+          hp0 = p.position.clone();
+          yaw1 = yawOf(d.rig.chest);
+        }
+        prev = tip;
+        G.tick(DT);
+      }
+      // (how far short of the hero's body the limb's end stops: along the line to him, from his root, less his radius)
+      const drawn = coil && hit ? coil.distanceTo(hit) : 0;
+      const reach = hit ? hp0.x - hit.x - (p.radius ?? 0.45) : 9;
+      if (process.env.ABYSS_MDBG && f === 1) out(`      ${name} tip ${hit?.x.toFixed(2)},${hit?.y.toFixed(2)},${hit?.z.toFixed(2)} root ${d.position.x.toFixed(2)},${d.position.z.toFixed(2)} hero ${hp0?.x.toFixed(2)},${hp0?.z.toFixed(2)} yaw ${d.yaw.toFixed(2)}`);
+      rows.push({ f, name, drawn, speed, reach, turn: Math.abs(wrapA(yaw1 - yaw0)), ideal });
+    }
+  }
+  delete MOVES.__m;
+  out('   form kind            coil m  speed m/s  short of him m  chest turn rad');
+  for (const r of rows) out(`   ${r.f}    ${r.name.padEnd(15)} ${r.drawn.toFixed(2).padStart(6)} ${r.speed.toFixed(1).padStart(10)} ${r.reach.toFixed(2).padStart(12)} ${r.turn.toFixed(2).padStart(14)}`);
+  // feet in a string: a planted foot (on the floor, not moving with a step) slides with the root
+  const G2 = build();
+  duel(G2, { dist: 2.6 });
+  const d2 = G2.game.dragon;
+  G2.game.player.debug.god = true;
+  const slide = {};
+  for (const name of ['gates', 'hundred']) {
+    settle(G2, 3);
+    d2.position.set(0, 0, -2);
+    d2.yaw = 0;
+    place(G2, 2.6);
+    run(G2, 0.3);
+    d2.debug.trigger(name);
+    const ft = [d2.rig.legs.R.foot, d2.rig.legs.L.foot], last = [null, null];
+    let slid = 0, moved = 0, r0 = d2.position.clone();
+    while (d2.mode === 'act' && d2.brain.act?.name === name) {
+      G2.tick(DT);
+      for (let k = 0; k < 2; k++) {
+        ft[k].getWorldPosition(v);
+        // (the low sweep's leg skims the floor on purpose: not counted)
+        const sw = d2.brain.act?.beats.find((x) => d2.brain.act.t < x.end)?.def.sweep;
+        if (last[k] && v.y < 0.16 && last[k].y < 0.16 && !sw) {
+          const st = Math.hypot(v.x - last[k].x, v.z - last[k].z);
+          slid += st;
+          if (process.env.ABYSS_MDBG && st > 0.05) out(`      slide ${k} ${st.toFixed(3)} t ${d2.brain.act?.t.toFixed(3)} dt ${G2.game.dt.toFixed(4)} y ${v.y.toFixed(3)} root ${d2.position.x.toFixed(2)},${d2.position.z.toFixed(2)}`);
+        }
+        last[k] = v.clone();
+      }
+    }
+    moved = Math.hypot(d2.position.x - r0.x, d2.position.z - r0.z);
+    slide[name] = { slid, moved };
+    out(`   ${name}: planted feet slid ${slid.toFixed(2)} m in all while the root travelled ${moved.toFixed(2)} m`);
+  }
+  // (a strike that reaches: its end within 0.45 m of the hero's body at its ideal distance; the lines
+  // that close on a dash (palm, double, elbow, shoulder) and the areas (hammer, sweep, axe) aside)
+  const AREA = new Set(['palm', 'double', 'elbow', 'shoulder', 'hammer', 'kick:sweep', 'kick:axe']);
+  const short = rows.filter((r) => !AREA.has(r.name) && r.reach > 0.45);
+  assert(!short.length, `every punch and kick reaches the hero at its ideal distance (${short.map((r) => `${r.name} f${r.f} ${r.reach.toFixed(2)}`).join(', ') || 'all within 0.45 m'})`);
+  const slow = rows.filter((r) => !['shoulder', 'kick:sweep'].includes(r.name) && r.speed < 6);
+  assert(!slow.length, `every strike's end is moving >= 6 m/s into its impact (${slow.map((r) => `${r.name} f${r.f} ${r.speed.toFixed(1)}`).join(', ') || 'all'})`);
+  const coil = rows.filter((r) => r.name !== 'shoulder' && r.drawn < 0.4);
+  assert(!coil.length, `every coil draws the striking limb back >= 0.4 m from where it strikes (${coil.map((r) => `${r.name} f${r.f}`).join(', ') || 'all'})`);
+  for (const [k, v] of Object.entries(slide)) assert(v.slid < 0.5 * v.moved, `${k}: his planted feet slide ${v.slid.toFixed(2)} m while he travels ${v.moved.toFixed(2)} m (under half: the feet step)`);
+  return { rows, slide };
+}
+const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 //
 //
 // --- terrain
@@ -1039,6 +1150,7 @@ const S = {
   //
   //
   // --- strings
+  motion: scenarioMotion,
   //
   //
   // --- terrain

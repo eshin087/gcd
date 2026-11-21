@@ -137,11 +137,32 @@ export function strikeKeys({ coil, hit, after = null, pre = null, cock = 0.7, le
   const fo = after ?? follow(hit);
   const keys = [];
   if (pre) keys.push([cock * 0.45, F(m(pre))]);
-  keys.push([cock, F(m(coil))]);
-  keys.push([1.0, { ...F(m(hit)), e: 'i' }]);
+  const c = F(m(coil)), h = F(m(hit));
+  keys.push([cock, c]);
+  // half way through the strike: a foot that moves from the coil to the strike is LIFTED (a step, not
+  // a slide); the rest of the body a quarter of the way (the strike eases in)
+  keys.push([cock + (1 - cock) * 0.5, { ...stepMid(c, h, 0.25), e: 'i' }]);
+  keys.push([1.0, { ...h, e: 'l' }]);
   keys.push([1.6, { ...F(m(fo)), e: 'o' }]);
   keys.push([2.0, F(m(fo))]);
   return keys;
+}
+
+const v3 = (p) => (p.length === 2 ? [p[0], ANK, p[1]] : p);
+/** A key between two key poses at k (every field), the feet that move between them lifted 0.12 m. */
+function stepMid(a, b, k) {
+  const o = {};
+  for (const f of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if (f === 'e') continue;
+    const x = a[f] ?? b[f], y = b[f] ?? a[f];
+    if (f === 'rF' || f === 'lF') {
+      const p = v3(x), q = v3(y), d = Math.hypot(q[0] - p[0], q[2] - p[2]);
+      o[f] = [p[0] + (q[0] - p[0]) * 0.5, (p[1] + q[1]) * 0.5 + (d > 0.12 ? 0.12 : 0), p[2] + (q[2] - p[2]) * 0.5];
+    } else if (Array.isArray(x)) o[f] = x.map((v, i) => v + ((y[i] ?? v) - v) * k);
+    else if (typeof x === 'number') o[f] = x + (y - x) * k;
+    else o[f] = y;
+  }
+  return o;
 }
 
 /** Feet for the driving foot: 'R' (the default authoring) or 'L' (the mirror steps: a string walks). */
@@ -157,14 +178,14 @@ const pickFeet = (p) => {
 const PUNCH = {
   // the lead (left) hand snapped straight out, the lead foot stepping in
   jab: {
-    part: 'fistL',
+    part: 'fistL', cock: 0.78,
     coil: { yaw: -0.52, bY: -0.17, pitch: 0.06, rH: [0.12, 0.06, 0.2], lH: [0.02, 0.04, 0.24], lP: [0.8, -0.7, -0.2], ...OR },
     hit: { yaw: -0.7, bY: -0.2, bZ: 0.1, pitch: 0.1, spY: -0.1, rH: [0.12, 0.06, 0.18], lH: [-0.04, 0.02, 0.55], lP: [0.8, -0.3, -0.4], ...OR_IN },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.55 }),
   },
   // the rear (right) hand driven straight through, the hips and the rear foot turning over
   cross: {
-    part: 'fistR',
+    part: 'fistR', cock: 0.76,
     coil: { yaw: -0.62, bY: -0.19, pitch: 0.06, hip: -0.12, rH: [0.06, 0.02, 0.16], lH: [0.02, 0.1, 0.34], ...OR },
     hit: { yaw: 0.36, bY: -0.22, bZ: 0.12, pitch: 0.1, hip: 0.18, spY: 0.1, rH: [0.12, 0.0, 0.55], rP: [-0.8, -0.3, -0.4], lH: [-0.04, 0.08, 0.18], ...PIVOT },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.55 }),
@@ -173,21 +194,21 @@ const PUNCH = {
   hook: {
     part: 'fistR',
     coil: { yaw: -0.74, bY: -0.21, hip: -0.16, rH: [-0.24, 0.06, 0.18], rP: [-0.9, 0.1, -0.3], lH: [0.02, 0.12, 0.3], ...OR },
-    hit: { yaw: 0.62, bY: -0.23, bZ: 0.06, roll: -0.06, hip: 0.22, spY: 0.12, rH: [0.3, 0.02, 0.36], rP: [-0.6, 0.5, 0.2], lH: [-0.04, 0.1, 0.18], ...PIVOT },
+    hit: { yaw: 0.62, bY: -0.23, bZ: 0.1, roll: -0.06, hip: 0.22, spY: 0.12, rH: [0.28, 0.02, 0.46], rP: [-0.6, 0.5, 0.2], lH: [-0.04, 0.1, 0.18], ...PIVOT },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.95 }),
   },
   // sunk low, the rear fist driven up under the guard as the legs straighten
   uppercut: {
     part: 'fistR',
     coil: { yaw: -0.42, bY: -0.38, pitch: 0.2, hip: -0.1, rH: [0.02, -0.3, 0.2], rP: [-0.8, -0.6, 0.0], lH: [0.0, 0.1, 0.3], ...LOW },
-    hit: { yaw: 0.3, bY: -0.04, pitch: -0.14, spX: -0.08, hip: 0.14, rH: [0.12, 0.2, 0.36], rP: [-0.8, -0.6, 0.3], lH: [-0.04, 0.0, 0.2], ...PIVOT, rF: [-0.18, -0.12] },
+    hit: { yaw: 0.3, bY: -0.04, pitch: -0.14, spX: -0.08, hip: 0.14, rH: [0.12, 0.2, 0.47], rP: [-0.8, -0.6, 0.3], lH: [-0.04, 0.0, 0.2], ...PIVOT, rF: [-0.18, -0.12] },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.6 }),
   },
   // the rear arm folded across the chest, whipped out back-handed to the side
   backfist: {
     part: 'fistR',
     coil: { yaw: 0.5, bY: -0.2, hip: 0.1, rH: [0.32, 0.06, 0.16], rP: [-0.6, 0.2, 0.5], lH: [0.0, 0.06, 0.3], ...OR },
-    hit: { yaw: -0.52, bY: -0.21, bZ: 0.06, hip: -0.12, rH: [-0.3, 0.04, 0.44], rP: [-0.9, 0.2, -0.2], lH: [0.02, 0.06, 0.26], ...OR_IN },
+    hit: { yaw: -0.52, bY: -0.21, bZ: 0.06, hip: -0.12, rH: [-0.26, 0.04, 0.5], rP: [-0.9, 0.2, -0.2], lH: [0.02, 0.06, 0.26], ...OR_IN },
     z: () => ({ kind: 'sector', r: RE.fist, ang: 0.95 }),
   },
   // the right palm drawn back to the hip, thrown out on a long lunge
@@ -220,7 +241,7 @@ const PUNCH = {
 export function punch(kind, tell, windup, damage, o = {}) {
   const P = PUNCH[kind];
   if (!P) throw new Error(`ascendant: no punch "${kind}"`);
-  const { left = false, cock = 0.7, step = null, ...extra } = o;
+  const { left = false, cock = P.cock ?? 0.7, step = null, ...extra } = o;
   const coil = step ? stepFeet(P.coil, step) : P.coil, hit = step ? stepFeet(P.hit, step) : P.hit;
   const part = left ? PART_MIRROR[P.part] ?? P.part : P.part;
   return {
@@ -308,13 +329,13 @@ export function kick(kind, tell, windup, damage, o = {}) {
   if (kind === 'sweep') {
     const cock = c0 ?? 0.62;
     return {
-      tell, windup, active: 0.22, damage, knockback: 2.4, zone: { kind: 'ring', r: 2.2 }, part: left ? 'footL' : 'footR',
+      tell, windup, active: 0.22, damage, knockback: 2.4, zone: { kind: 'ring', r: 2.2 }, part: left ? 'footL' : 'footR', sweep: true,
       track: 0.65, keys: sweepKeys(cock, left), ...extra, cock,
     };
   }
   const P = KICK[kind];
   if (!P) throw new Error(`ascendant: no kick "${kind}"`);
-  const cock = c0 ?? (kind === 'flying' ? 0.4 : 0.68);
+  const cock = c0 ?? (kind === 'flying' ? 0.58 : 0.68);
   const beat = {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.0 : 2.0, zone: P.z(), part: left ? PART_MIRROR[P.part] : P.part,
     track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, cock, left }),
