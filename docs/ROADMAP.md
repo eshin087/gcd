@@ -179,6 +179,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.48 — The Cinder Wyrm on a leaner build (2026-11-20, `dragon/wyrm-look`, ADR-123)
+- [x] Three full redraws rendered and turned down by the owner; three builds of the shipped wyrm rendered instead
+- [x] Build c (the owner's pick) is the wyrm: lean trunk and limbs, a fierce head carried high, a mane of quills
+- [x] Drawn only: skeleton, hit volumes, reach and timings as before (`integ.mjs . wyrmlook`); `?wyrmLook=0|a|b` kept
+- [ ] Follow-ups:
+  - [ ] On the iPhone: how the build reads at the phone camera
+  - [ ] Longer bones (neck, tail, legs) if the owner wants the picture's proportions: a retune of reach, volumes and timings
+  - [ ] The intro's close shots and the Lab's model viewer framed for the higher head
+  - [ ] The body's hurt spheres against the tucked belly
+
 ## M1.47 — The duelists' second pass: a director and a fairness guard, Shen Hui's third phase, the Lord's spells in his strings, two arenas that break (2026-11-16, `enemies/duelist-second-pass`, ADR-122)
 - [x] A director over a duelist's pick, combo links from half the recovery, chain depth and rest, the openings kept
 - [x] A cue ledger and a fairness guard: no two cues needing different answers within 0.3 s (132 before, 0 now); the `pace` meter

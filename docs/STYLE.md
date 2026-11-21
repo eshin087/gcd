@@ -364,6 +364,13 @@ Rules of thumb:
   they light the letters over them; orange-lit chest and throat scales with gold rims; crimson
   mottled sails with torn edges, holes, orange bone streaks and ember specks; spikes dark at the root,
   bright at the tip.
+- **The build** (2026-11-20, ADR-123): the owner turned down three full redraws of the wyrm in one
+  day (new palettes, plates, a halo, recoloured fire) and asked for the same wyrm "more menacing,
+  a bit more slender". The surface above stays as it is. The shape is build c (`dragon/looks.js`):
+  a tucked waist under an unchanged back line, thinner neck, limbs and tail, longer talons, a
+  narrower head with longer fangs, horns and frills held high on a rising neck, and a mane of thin
+  quills down the neck, back and tail. When the wyrm should look different again: change its
+  build, its pose or its silhouette before its letters or colours.
 - **Heads kept for later** (2026-11-16, ADR-120): three sculpted heads (`skull`, `loong` with two
   springy whiskers, `demon`; `dragon/heads.js`) were built and filmed: lofted skulls with sockets,
   brow ridges and cheekbones, drawn with flat facets and smaller scales (`FACE_ART`) so the form

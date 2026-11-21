@@ -28,10 +28,12 @@ try {
  * the phase-3 fire stands on the horns (ablaze.js, look c). The sculpted heads' are the ends of their
  * main horns' bent paths below (skull: the crown's sabre; loong: the antler's beam; demon: the crown's
  * bull horn); the old head's, of model.js buildOldHead's main horn (1.7 long from (0.2, 0.3, -0.02),
- * pitch -0.24, yaw PI - 0.3, curve 0.34). 2026-11-16: ablaze guessed them off the old head.
+ * pitch -0.24, yaw PI - 0.3, curve 0.34: the curve lifts the tip 0.58). 2026-11-16: ablaze guessed them
+ * off the old head. 2026-11-20: the old head's horns grow with the wyrm's build (looks.js), so model.js
+ * measures its tip off the built horn (`hornTip`) and ablaze reads that first; this entry is build '0'.
  */
 export const HORN_TIPS = Object.freeze({
-  old: Object.freeze([0.69, 0.76, -1.6]),
+  old: Object.freeze([0.647, 1.266, -1.466]),
   skull: Object.freeze([0.912, 0.502, -1.711]),
   loong: Object.freeze([0.814, 1.227, -1.116]),
   demon: Object.freeze([0.572, 1.257, -0.744]),

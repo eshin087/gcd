@@ -1568,6 +1568,19 @@ Visual-only geometry on gameplay joints: every head mesh hangs on `model.headVis
 charge spheres, the breath / fireball origin) are unscaled; `rig.pt.eyes`, `pt.nostrils` and
 `pt.jawTip` follow the drawn head. The drawn tail radius (`tailRV`) is thicker than
 `model.tailRadii`, which stays the chain's ground clearance (read by the rig and the tail sweep).
+**The build** (2026-11-20, ADR-123; `looks.js`): `?wyrmLook=0|a|b|c` (read once; default `c`, the
+owner's pick: lean, a fierce head carried high, a mane of quills; `0` = the wyrm before, `a` / `b`
+the steps between). Exports: `WYRM_LOOKS`, `WYRM_LOOK_SHIPPED`, `wyrmLookId()`, `wyrmLook()` (the
+build's numbers or null for `0`), `setWyrmLook(k)` (the NEXT built wyrm; tests, `ABYSS_WYRMLOOK`).
+A build changes what is drawn and nothing else: `buildDrake` bakes the trunk's and limbs' meshes
+into their joint's frame and scales them there (`slim`, `slimBone`), scales the neck's and tail's
+drawn radii, spine, quill and talon lengths, `headVis` (its size and width) and the old head's
+horns, fangs and frills (`buildOldHead(headVis, mats, build.head)`). No joint moves and no draw is
+added. `buildDrake` returns `build` and `hornTip` (the built main horn's tip in headVis's frame,
+null for a sculpted head; `ablaze.js` reads it before `HORN_TIPS`). The one thing a build has
+outside the model is `rest` (`{ neck: { pitch0, pitchStep, pitchCurve }, headDip }`): `rig/anim.js`
+reads it where it read `REST_POSE.neck` / `REST_POSE.headDip`, weighted by the resting weight, so
+attacks keep their measured head.
 **Heads kept for later** (2026-11-16, ADR-120; `heads.js`): `?wyrmFace=old|skull|loong|demon` (read
 once; default `old`, today's head, `model.js` `buildOldHead(headVis, mats)`, unchanged). The owner
 passed on a new head for now; the three sculpted ones stay behind the switch, like the hero's looks
@@ -2240,7 +2253,8 @@ the model viewer. The timing trainer also logs `combat:deflectChain`, `dragon:ph
 Since 2026-11-16 (ADR-120): FIGHT → **Ablaze** cycles the phase-3 fire off / a / b / c
 (`dragon.debug.ablaze`); WORLD → **Wear wall** (a tail's blow, power 1, on the nearest standing wall
 tree or landmark piece: watch its stages) and **Wreck wall** (blasts and fire in the wall straight
-out behind the hero); PLAYER → a **head** row (`?wyrmFace=`, reloads the page) and a **zoom art**
+out behind the hero); PLAYER → a **head** row (`?wyrmFace=`, reloads the page), since 2026-11-20 a
+**build** row (`?wyrmLook=`: before / a / b / c, reloads the page; ADR-123) and a **zoom art**
 row (`pipeline.setZoomArt('a' | 'b' | 'c')`, live).
 **LOOKS** (ADR-122; `dev/labLooks.js`, only in `ash` / `starless`, collapsed until opened): a row per look
 switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pick, build-time, levels,

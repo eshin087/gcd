@@ -777,7 +777,8 @@ export class Rig {
     // withers, arches over, head carried lower and forward), solved the same way toward its own end
     const vis = this.neck;
     if (s.rest > 1e-3) {
-      const R = REST_POSE.neck, rb = this._nbR;
+      // (a build that carries its head high has its own resting S: looks.js `rest`)
+      const R = this.m.build?.rest?.neck ?? REST_POSE.neck, rb = this._nbR;
       rb.pitch0 = R.pitch0;
       rb.pitchStep = R.pitchStep;
       rb.pitchCurve = R.pitchCurve;
@@ -848,7 +849,7 @@ export class Rig {
     if (h > 1e-4) {
       // a few degrees nose-down; at rest the combat stance glares down at its foe (REST_POSE)
       const ld = s.lookDown + Math.max(0, REST_POSE.lookDown - s.lookDown) * s.rest;
-      const dip = (0.05 + (REST_POSE.headDip - 0.05) * s.rest) * awakeW;
+      const dip = (0.05 + ((this.m.build?.rest?.headDip ?? REST_POSE.headDip) - 0.05) * s.rest) * awakeW;
       const pitch = clamp(Math.atan2(dir.y, h), -ld, 0.6) - dip;
       const cp = Math.cos(pitch) / h;
       dir.set(dir.x * cp, Math.sin(pitch), dir.z * cp);

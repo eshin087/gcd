@@ -5,6 +5,48 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-20 — Session 63: the Cinder Wyrm on a leaner build
+
+**Owner:** "lets work on improving the dragons graphics, details, look more realistic, scarier,
+epic, and mystical ... the best part of the current dragon is the wings ... give me 3 different
+variations". Four questions first (all parts weak; reshape freely; one of each kind of mystical;
+free colours). Branch `dragon/wyrm-look`. ADR-123 / Session 63 / M1.48.
+
+**Round 1, turned down.** Three full redraws (living fire, arcane, ancient horror: new palettes,
+plates, a halo, recoloured fire, the sculpted heads) rendered as sheets and clips. The owner: "i
+dont like any of the remakes. i want the dragon to look more menacing, a bit more slender", with
+a picture of a lean, long-necked dragon roaring with its head high. Read as: keep the shipped
+surface, change the build, the pose and the menace. The redraws are off the branch.
+
+**Round 2, picked.** Three builds of the same wyrm, each adding to the one before (`looks.js`): `a`
+lean; `b` lean + a fierce head carried high; `c` b + a mane of quills. Sheets from four cameras,
+the phone frame, four clips. The owner picked **C**. It is the default now; `?wyrmLook=0` is the
+wyrm before, `a` and `b` stay as the steps between (they are subsets of c's numbers).
+
+**How it is built.** A build is numbers, applied in `model.js` `buildDrake` to what is DRAWN: the
+trunk's meshes are baked into their joint's frame and scaled there (`slim`: the back's line stays,
+the belly rises), a limb's meshes about the bone, the neck's and tail's radii, spine and talon
+lengths, the head's drawn frame (`headVis`) and the old head's horns, fangs and frills. Breathing
+sets the trunk meshes' scale every frame, so the slimming had to go into the geometry. The one
+thing that is not only drawn is `rest`: the visible neck's resting shape, read by `rig/anim.js`
+where it read `REST_POSE.neck`; attacks solve the head on their measured path as before.
+
+**Verification.** New scenario `integ.mjs . wyrmlook`: for a, b and c the 82 joints sit at the
+offsets of '0' bit for bit, the 23 hurt volumes keep parts and radii, 14 draws and 181 bones as
+before, 127 704 triangles for c against 125 400 (+1.8 %), a bite's head and mouth at its snap
+0.000 m from '0', the head 2.50 m higher while it stands in b and c. Frame time at 1280 x 720 on
+the desktop GPU: 1.76 - 1.88 ms for c and for '0' alike (inside the noise). Seen in the browser,
+c beside '0': phase 2 and its roar, the ignition, phase 3 ablaze, a hover barrage, a breath, the
+death. At rest the head's and neck's hurt volumes were above a standing hero's reach before
+(lowest point 6.0 m) and still are (6.5 m). `npm test` ALL 10 PASSED (345.5 s) with c as the default build: the timing suites too, though the extra quills shift the seeded random stream; `npm run build` OK.
+
+**Open.** From the game's steep camera the leaner trunk reads only a little; the raised head and
+the mane carry the change. The neck is drawn thinner and held higher, not longer: longer bones
+(neck, tail, legs) would mean retuning reach, hit volumes and timings, and were offered and not
+asked for. The body's hurt spheres are the old barrel's, so a blow just under the tucked belly
+still counts (in the hero's favour). Not seen on the iPhone. The Lab's model viewer and the
+intro's close shots were not re-framed for the higher head.
+
 ## 2026-11-16 — Session 62: the duelists' second pass (planned by the lead, built by Opus agents)
 
 **Owner:** the request made for all boss fights ("more harder, more epic, more crazy combos and

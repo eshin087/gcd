@@ -6,6 +6,7 @@ import { ANATOMY as A, SCALE } from './tuning.js';
 import { WingMembrane } from './membrane.js';
 import { WING_KEYS } from './rig/anim.js';
 import { wyrmFace, buildHead, FACE_ART } from './heads.js';
+import { wyrmLook } from './looks.js';
 
 // Procedural four-legged drake ("Obsidian Drake", owner concept sheet; build spec docs/art/dragon.md):
 // a hierarchy of Object3D joints carrying rigid glyph-skinned meshes. Every bone joint points its
@@ -493,6 +494,42 @@ function eagleFoot(toes, { pad = [0.5, 0.17, 0.46], padZ = 0.08, r = 0.15 } = {}
   return { hide, claws };
 }
 
+/**
+ * The lean build (looks.js, ?wyrmLook=): rewrite a mesh's geometry in its JOINT's frame (its own
+ * transform is baked in first), scaled kx across and ky in height about the height `yPivot`. The joint,
+ * its children and the mesh's aGUV stay where they are: only the drawn girth changes.
+ */
+function slim(m, kx, ky, yPivot = 0) {
+  if (!m?.isMesh) return m;
+  m.updateMatrix();
+  m.geometry.applyMatrix4(m.matrix);
+  m.position.set(0, 0, 0);
+  m.quaternion.identity();
+  m.scale.set(1, 1, 1);
+  m.updateMatrix();
+  _m4.makeScale(kx, ky, 1).setPosition(0, yPivot * (1 - ky), 0);
+  m.geometry.applyMatrix4(_m4);
+  return m;
+}
+/** ... every mesh on a limb's bone joint, about the bone (its +Z). */
+function slimBone(j, k) {
+  for (const c of j.children) slim(c, k, k, 0);
+}
+
+/** The vertex of `geo` farthest from (x, y, z), as [x, y, z]: a horn's tip from its root. */
+function farthest(geo, x, y, z) {
+  const p = geo.attributes.position;
+  let best = -1, at = [x, y, z];
+  for (let i = 0; i < p.count; i++) {
+    const dx = p.getX(i) - x, dy = p.getY(i) - y, dz = p.getZ(i) - z, d = dx * dx + dy * dy + dz * dz;
+    if (d > best) {
+      best = d;
+      at = [p.getX(i), p.getY(i), p.getZ(i)];
+    }
+  }
+  return at;
+}
+
 /** Merge `geos` into one mesh under `parent` (one draw call). */
 function batch(parent, mat, geos) {
   if (!geos.length) return null;
@@ -602,26 +639,31 @@ function shingle(len, w, r, ang, z, lift = 0.26, sy = 1, flat = 0.35) {
  * Today's head (?wyrmFace=old, the default): a tapered tube skull and jaw with brow shelves, horns, a
  * crown, needle teeth, eyes and the glowing maw stuck on. Built on headVis (see buildDrake).
  */
-function buildOldHead(headVis, mats) {
+function buildOldHead(headVis, mats, F = null) {
+  // (the build's head, looks.js `head`: longer horns, fangs and frills on the same skull)
+  const HN = F?.horn ?? 1, FG = F?.fang ?? 1, FR = F?.frill ?? 1, JF = F?.jawFrill ?? 1, EY = F?.eye ?? 1;
   // long wedge skull: flat-topped snout, broad occiput
   mesh(headVis, limbGeometry({ length: SKULL.len, r0: SKULL.r0, r1: SKULL.r1, sx: 1.0, sy: SKULL.sy, bulge: SKULL.bulge, radial: 16, rings: 7 }), mats.head, 0, SKULL.y0, SKULL.z0);
   const skullTop = (z) => SKULL.y0 + skullR(z) * SKULL.sy;
   const skullBot = (z) => SKULL.y0 - skullR(z) * SKULL.sy;
   const browG = [], hornsG = [], teethG = [];
+  let hornTip = null; // the right main horn's tip (headVis frame): where the phase-3 fire stands
   for (const s of [1, -1]) {
     // heavy brow shelves overhanging the eyes
     browG.push(place(ellipsoidGeometry(0.16, 0.1, 0.42, { widthSegs: 8, heightSegs: 6 }), s * 0.25, 0.25, 0.45, 0, s * 0.2, 0, 'YXZ'));
     // main horns: sabres back along the skull line, tips curving up (~26° above it overall; a
     // steeper root made two vertical posts from the front)
-    hornsG.push(horn(1.7, 0.15, s * 0.2, 0.3, -0.02, -0.24, Math.PI - s * 0.3, 0.34, 7)); // a V from the front, not two posts
+    const mainHorn = horn(1.7 * HN, 0.15, s * 0.2, 0.3, -0.02, -0.24, Math.PI - s * 0.3, 0.34, 7); // a V from the front, not two posts
+    if (s > 0) hornTip = farthest(mainHorn, 0.2, 0.3, -0.02);
+    hornsG.push(mainHorn);
     // secondary horns
-    hornsG.push(horn(1.0, 0.1, s * 0.3, 0.12, 0.0, -0.12, Math.PI - s * 0.45, 0.18, 6));
+    hornsG.push(horn(1.0 * HN, 0.1, s * 0.3, 0.12, 0.0, -0.12, Math.PI - s * 0.45, 0.18, 6));
     // cheek (jugal) horns: straight back, behind and below the eye
-    hornsG.push(horn(0.75, 0.09, s * 0.38, -0.02, 0.3, 0.08, Math.PI - s * 0.5, 0, 6));
+    hornsG.push(horn(0.75 * HN, 0.09, s * 0.38, -0.02, 0.3, 0.08, Math.PI - s * 0.5, 0, 6));
     // nape frill: 6 blades per side fanning back from the occiput, top to cheek (the reference's
     // crest of back-swept spikes)
     for (let k = 0; k < 6; k++) {
-      hornsG.push(horn(0.78 - k * 0.07, 0.075, s * (0.18 + 0.055 * k), 0.12 - 0.075 * k, -0.08, -0.32 + 0.17 * k, Math.PI - s * (0.28 + 0.16 * k), 0.16, 5, 0.55));
+      hornsG.push(horn((0.78 - k * 0.07) * FR, 0.075, s * (0.18 + 0.055 * k), 0.12 - 0.075 * k, -0.08, -0.32 + 0.17 * k, Math.PI - s * (0.28 + 0.16 * k), 0.16, 5, 0.55));
     }
     // brow spikes over the eye and a cheek frill down to the jaw hinge, all swept back
     hornsG.push(horn(0.34, 0.05, s * 0.29, 0.3, 0.6, -0.45, Math.PI - s * 0.22, 0.12, 5, 0.6));
@@ -630,14 +672,14 @@ function buildOldHead(headVis, mats) {
       [0.5, 0.42, -0.1, 0.42],
       [0.42, 0.4, -0.2, 0.28],
       [0.34, 0.37, -0.28, 0.14],
-    ].forEach(([len, x, y, z]) => hornsG.push(horn(len, 0.06, s * x, y, z, 0.25, Math.PI - s * 0.62, 0.08, 5, 0.55)));
+    ].forEach(([len, x, y, z]) => hornsG.push(horn(len * FR, 0.06, s * x, y, z, 0.25, Math.PI - s * 0.62, 0.08, 5, 0.55)));
     // upper teeth: 9 per side, long separate needles, irregular, hooked slightly back (fang in front;
     // x1.4 the sheet's lengths so each fang reads against the lit maw)
     const UP = [0.22, 0.14, 0.11, 0.13, 0.1, 0.11, 0.085, 0.1, 0.085];
     UP.forEach((len, k) => {
       const z = 1.15 - k * 0.1;
       const r = skullR(z);
-      const L = len * (1 + 0.25 * jit(k * 2 + (s > 0 ? 0 : 1)));
+      const L = len * FG * (1 + 0.25 * jit(k * 2 + (s > 0 ? 0 : 1)));
       teethG.push(horn(L, k === 0 ? 0.05 : 0.035, s * r * 0.78, skullBot(z) + 0.03, z, Math.PI / 2 + 0.14, 0, 0, 4));
     });
   }
@@ -659,7 +701,7 @@ function buildOldHead(headVis, mats) {
   // eyes: small amber slits tucked under the brow shelf, outer corner tilted ~20° up
   const eyes = [];
   for (const s of [1, -1]) {
-    const e = mesh(headVis, ellipsoidGeometry(0.07, 0.045, 0.11, { widthSegs: 8, heightSegs: 6 }), mats.eye, s * 0.27, 0.12, 0.55);
+    const e = mesh(headVis, ellipsoidGeometry(0.07 * EY, 0.045 * EY, 0.11 * EY, { widthSegs: 8, heightSegs: 6 }), mats.eye, s * 0.27, 0.12, 0.55);
     e.rotation.set(0.35, s * 0.3, 0, 'YXZ');
     eyes.push(e);
   }
@@ -673,7 +715,7 @@ function buildOldHead(headVis, mats) {
     const LOW = [0.18, 0.13, 0.11, 0.1, 0.1, 0.085, 0.085, 0.07];
     LOW.forEach((len, k) => {
       const z = 1.02 - k * 0.095;
-      const L = len * (1 + 0.25 * jit(k * 3 + (s > 0 ? 7 : 11)));
+      const L = len * FG * (1 + 0.25 * jit(k * 3 + (s > 0 ? 7 : 11)));
       lowTeeth.push(horn(L, k === 0 ? 0.045 : 0.032, s * jawR(z) * JAW.sx * 0.78, JAW.y0 + jawR(z) * JAW.sy - 0.02, z, -(Math.PI / 2 + 0.1), 0, 0, 4));
     });
     // jaw-line spikes: down and back, growing toward the hinge (a spiky jaw frill)
@@ -683,17 +725,21 @@ function buildOldHead(headVis, mats) {
       [0.36, 0.38],
       [0.44, 0.2],
       [0.5, 0.02],
-    ].forEach(([len, z]) => jawSpikes.push(horn(len, 0.055, s * jawR(z) * JAW.sx * 0.9, JAW.y0 - jawR(z) * JAW.sy * 0.6, z, 0.85, Math.PI - s * 0.3, 0.06, 5, 0.6)));
+    ].forEach(([len, z]) => jawSpikes.push(horn(len * JF, 0.055, s * jawR(z) * JAW.sx * 0.9, JAW.y0 - jawR(z) * JAW.sy * 0.6, z, 0.85, Math.PI - s * 0.3, 0.06, 5, 0.6)));
   }
-  jawSpikes.push(horn(0.2, 0.05, 0, JAW.y0 - 0.08, 1.0, 1.3, 0, 0, 5));
+  jawSpikes.push(horn(0.2 * JF, 0.05, 0, JAW.y0 - 0.08, 1.0, 1.3, 0, 0, 5));
   batch(jaw, mats.teeth, lowTeeth);
   batch(jaw, mats.bone, jawSpikes);
   batch(jaw, mats.maw, [place(ellipsoidGeometry(0.19, 0.05, 0.52, { widthSegs: 10, heightSegs: 6 }), 0, 0.02, 0.55)]);
-  return { eyes, nostrils, jaw, whiskers: [] };
+  return { eyes, nostrils, jaw, whiskers: [], hornTip };
 }
 
 export function buildDrake(U) {
   const mats = createDragonMaterials(U);
+  // the build (looks.js, ?wyrmLook=; null = '0', the wyrm before the lean build): girths and spine lengths only
+  const B = wyrmLook();
+  const LIMB = B?.limb ?? 1, NECK = B?.neck ?? 1, TAILR = B?.tail ?? 1, TALON = B?.talon ?? 1, Q = B?.quill ?? 1;
+  const HV = B?.head?.size ?? HEAD_VIS;
   const root = new THREE.Group();
   root.name = 'dragon';
   root.scale.setScalar(SCALE); // model units -> world metres (see tuning.js SCALE)
@@ -731,6 +777,17 @@ export function buildDrake(U) {
     bodyGUV(capsule(chest, mats.scales, inChest(s * 0.88, 3.62, 1.08), inChest(s * 1.0, 2.72, 1.82), { r0: 0.4, r1: 0.47, bulge: 0.06, sx: 0.78 }), 0);
   }
 
+  if (B) {
+    // the trunk of a leaner build: the back's line stays, the belly rises, the waist tucks in
+    const hm = hips.children.filter((c) => c.isMesh), cm = chest.children.filter((c) => c.isMesh);
+    const { chest: bc, loins: bl, rump: br } = B.barrel;
+    slim(hm[0], bl[0], bl[1], 0.9); // loins
+    slim(hm[1], bl[0], bl[1], 0.9); // their belly strip
+    for (let i = 2; i < hm.length; i++) slim(hm[i], br[0], br[1], 0.55); // rump, haunches
+    for (const c of cm) slim(c, bc[0], bc[1], 1.2); // ribcage, sternum, its seam, shoulder masses
+  }
+  const KX = B?.barrel.chest[0] ?? 1;
+
   // dorsal blade row (orange spine line): tall back-swept blades from the withers to the rump, the
   // tallest over the shoulders, with a lower splayed pair every other blade (the reference's spiny
   // back reads in the silhouette from every side); chest-mounted ahead of z 0.3, hips behind
@@ -741,7 +798,9 @@ export function buildDrake(U) {
     const y = backY(z) - 0.08;
     const onChest = z > 0.3;
     const at = onChest ? inChest(0, y, z) : inHips(0, y, z);
-    (onChest ? spineChest : spineHips).push(spike(len, 0.2, at[0], at[1], at[2], 0.6, 0, 0.24, 5, 0.38));
+    (onChest ? spineChest : spineHips).push(spike(len * Q, 0.2, at[0], at[1], at[2], 0.6 + (Q - 1) * 0.5, 0, 0.24, 5, 0.38));
+    // (a ragged build: a splayed pair of thin quills beside every blade)
+    if (B?.mane) for (const s of [1, -1]) (onChest ? spineChest : spineHips).push(spike(len * 1.25, 0.07, at[0] + s * 0.12, at[1] - 0.04, at[2] - 0.12, 0.95, -s * 0.38, 0.2, 4, 0.5));
     if (i % 2 === 1) {
       for (const s of [1, -1]) {
         const zz = z - 0.16, yy = backY(zz) - 0.2;
@@ -755,7 +814,7 @@ export function buildDrake(U) {
     const onChest = z > 0.3;
     for (const s of [1, -1]) {
       const y = backY(z) - 0.3;
-      const at = onChest ? inChest(s * 0.62, y, z) : inHips(s * 0.58, y, z);
+      const at = onChest ? inChest(s * 0.62 * KX, y, z) : inHips(s * 0.58 * KX, y, z);
       (onChest ? flankChest : flankHips).push(spike(0.3, 0.08, at[0], at[1], at[2], 0.8, -s * 1.1, 0, 5, 0.45));
     }
   }
@@ -766,7 +825,7 @@ export function buildDrake(U) {
       [1.14, 3.38, 1.48, 0.32],
       [1.22, 3.1, 1.76, 0.28],
     ].forEach(([x, y, z, len]) => {
-      const at = inChest(s * x, y, z);
+      const at = inChest(s * x * KX, y, z);
       flankChest.push(spike(len, 0.09, at[0], at[1], at[2], 0.95, -s * 0.75, 0.08, 5, 0.5));
     });
   }
@@ -785,7 +844,7 @@ export function buildDrake(U) {
   for (let i = 0; i < A.neckSegs; i++) {
     const j = joint(parent, 0, 0, i === 0 ? 0 : A.neckLen, `neck${i}`);
     const t = i / (A.neckSegs - 1);
-    const r0 = THREE.MathUtils.lerp(0.62, 0.4, t);
+    const r0 = THREE.MathUtils.lerp(0.62, 0.4, t) * NECK;
     const r1 = r0 - 0.035;
     mesh(j, limbGeometry({ length: A.neckLen + 0.12, r0, r1, sy: 0.92, radial: 14, rings: 4 }), mats.neck, 0, 0, -0.06);
     // lava throat: under the neck only (narrower, set low; overlapping segments make it continuous)
@@ -793,7 +852,7 @@ export function buildDrake(U) {
     // dorsal crest: two tall back-swept spines per segment (the reference's spiky mane) and a
     // splayed pair beside them, one batch per segment
     const crest = [];
-    for (let q = 0; q < 2; q++) crest.push(spike(THREE.MathUtils.lerp(0.8, 0.58, t) * (q ? 0.82 : 1), 0.14, 0, r0 * 0.86, A.neckLen * (0.22 + 0.5 * q), 0.72, 0, 0.2, 5, 0.38));
+    for (let q = 0; q < 2; q++) crest.push(spike(THREE.MathUtils.lerp(0.8, 0.58, t) * (q ? 0.82 : 1) * Q, 0.14, 0, r0 * 0.86, A.neckLen * (0.22 + 0.5 * q), 0.72, 0, 0.2, 5, 0.38));
     for (const s of [1, -1]) crest.push(spike(THREE.MathUtils.lerp(0.5, 0.32, t), 0.08, s * r0 * 0.5, r0 * 0.72, A.neckLen * 0.45, 0.7, -s * 0.65, 0.14, 5, 0.45));
     batch(j, mats.spine, crest);
     // the head study's mane: 3 rows of long pointed blade scales per side (±40°, ±70°, ±100° around
@@ -804,7 +863,7 @@ export function buildDrake(U) {
       [0.7, 1.22, 1.75].forEach((ang, row) => {
         for (let q = 0; q < 2; q++) {
           const z = 0.12 + q * 0.23 + (row % 2) * 0.115;
-          sh.push(shingle(0.58 - row * 0.07, 0.14 - row * 0.015, r0 * 0.93, s * ang, z, 0.4, 0.92, 0.3));
+          sh.push(shingle((0.58 - row * 0.07) * (B?.mane ? 1.7 : 1), 0.14 - row * 0.015, r0 * 0.93, s * ang, z, B?.mane ? 0.6 : 0.4, 0.92, 0.3));
         }
       });
     }
@@ -820,19 +879,19 @@ export function buildDrake(U) {
   // open jaws stay on the mouth, the skull, crown and mane grow back over the top of the neck), with
   // the hit volumes and the fire's origin exactly where they were.
   const head = joint(parent, 0, 0, A.neckLen, 'head');
-  const headVis = joint(head, MOUTH[0] * (1 - HEAD_VIS), MOUTH[1] * (1 - HEAD_VIS), MOUTH[2] * (1 - HEAD_VIS), 'headVis');
-  headVis.scale.setScalar(HEAD_VIS);
+  const headVis = joint(head, MOUTH[0] * (1 - HV), MOUTH[1] * (1 - HV), MOUTH[2] * (1 - HV), 'headVis');
+  headVis.scale.set(HV * (B?.head?.narrow ?? 1), HV, HV); // (a fierce head is narrower: the mouth is on the midline)
   // the head the owner is choosing between (?wyrmFace=, heads.js): today's ('old', built here) or a
   // sculpted one (skull / loong / demon). The gameplay joints are the same for all of them
   const face = wyrmFace();
   const sculpted = face !== 'old' ? buildHead(face, headVis, mats) : null;
-  let eyes, nostrils, jaw, whiskers;
+  let eyes, nostrils, jaw, whiskers, hornTip = null;
   if (sculpted) {
     ({ eyes, nostrils, jaw } = sculpted);
     // whisker chains (the loong's): segment length in root model units for rig/anim.js
-    whiskers = sculpted.whiskers.map((w) => ({ ...w, len: w.segLen * HEAD_VIS }));
+    whiskers = sculpted.whiskers.map((w) => ({ ...w, len: w.segLen * HV }));
   }
-  else ({ eyes, nostrils, jaw, whiskers } = buildOldHead(headVis, mats));
+  else ({ eyes, nostrils, jaw, whiskers, hornTip } = buildOldHead(headVis, mats, B?.head));
   const mouth = joint(head, MOUTH[0], MOUTH[1], MOUTH[2], 'mouth');
 
   // ============================================================ tail (spec §2.7)
@@ -847,7 +906,7 @@ export function buildDrake(U) {
   // the root (the painting's heavy tail, ~the thigh's girth) and tapers faster (visual only: the sweep's
   // chain, and the hit spheres on it, keep their clearance)
   const tailR = (t) => 0.05 + 0.52 * Math.pow(Math.max(0, 1 - t), 1.15);
-  const tailRV = (t) => 0.06 + 0.7 * Math.pow(Math.max(0, 1 - t), 1.4);
+  const tailRV = (t) => 0.06 + 0.7 * TAILR * Math.pow(Math.max(0, 1 - t), 1.4);
   for (let i = 0; i < A.tailSegs; i++) {
     const j = joint(parent, 0, 0, i === 0 ? 0 : A.tailLen, `tail${i}`);
     const t = i / A.tailSegs;
@@ -857,8 +916,8 @@ export function buildDrake(U) {
     if (i < 11) mesh(j, limbGeometry({ length: A.tailLen + 0.04, r0: r0 * 0.94, r1: r1 * 0.94, sx: 0.8, sy: 0.74, radial: 10, rings: 2, flip: TAIL_FLIP }), mats.lava, 0, -r0 * 0.34, -0.02);
     // a saw of tall back-swept blades along the top (molten roots: the reference's orange-lit tail
     // spikes, big broad blades), splayed blades down both sides and, past the middle, under the tail
-    const saw = [spike(1.05 - t * 0.62, 0.25 - t * 0.14, 0, r0 * 0.84, A.tailLen * 0.5, -0.5, 0, -0.22, 5, 0.36)];
-    for (const s of [1, -1]) saw.push(spike(0.48 - t * 0.28, 0.08 - t * 0.035, s * r0 * 0.62, r0 * 0.6, A.tailLen * 0.2, -0.55, -s * 0.75, -0.14, 5, 0.42));
+    const saw = [spike((1.05 - t * 0.62) * Q, 0.25 - t * 0.14, 0, r0 * 0.84, A.tailLen * 0.5, -0.5, 0, -0.22, 5, 0.36)];
+    for (const s of [1, -1]) saw.push(spike((0.48 - t * 0.28) * Q, 0.08 - t * 0.035, s * r0 * 0.62, r0 * 0.6, A.tailLen * 0.2, -0.55, -s * 0.75, -0.14, 5, 0.42));
     if (t > 0.4) saw.push(spike(0.42 - t * 0.2, 0.08 - t * 0.03, 0, -r0 * 0.8, A.tailLen * 0.5, -0.85, Math.PI, -0.12, 5, 0.4));
     // and a flat pair straight out the sides (one batch per segment, all molten-rooted)
     if (i < 14) for (const s of [1, -1]) saw.push(spike(0.4 - t * 0.26, 0.07 - t * 0.03, s * r0 * 0.8, r0 * 0.22, A.tailLen * 0.45, -0.75, -s * 1.3, -0.08, 5, 0.45));
@@ -891,7 +950,7 @@ export function buildDrake(U) {
     for (let k = 0; k < 5; k++) {
       const z = 0.3 + k * 0.2;
       const r = 0.8 + (0.5 - 0.8) * ((z + 0.05) / (A.thigh + 0.1)) + 0.17 * Math.sin((Math.PI * (z + 0.05)) / (A.thigh + 0.1));
-      tb.push(spike(0.55 - k * 0.07, 0.12, s * r * 0.6, r * 0.72, z, 0.7, -s * 0.85, 0.1, 5, 0.4));
+      tb.push(spike((0.55 - k * 0.07) * Q, 0.12, s * r * 0.6, r * 0.72, z, 0.7, -s * 0.85, 0.1, 5, 0.4));
     }
     batch(thigh, mats.bone, tb);
     const shin = joint(thigh, 0, 0, A.thigh, 'shin');
@@ -910,12 +969,13 @@ export function buildDrake(U) {
     // the painting's eagle foot, ON the ground (the toe joint is at ground level, nose ~8° down): a
     // pad and three thick knuckled toes splayed wide, each ending in a long hooked talon (a pad with
     // claws stuck on read as a paw with a rake), plus the inner claw and a heel spur
-    const hf = eagleFoot([[-0.48, 0.5, 0.7], [0, 0.6, 0.78], [0.48, 0.5, 0.7]], { pad: [0.5, 0.17, 0.5], padZ: 0.1, r: 0.16 });
+    const hf = eagleFoot([[-0.48, 0.5, 0.7 * TALON], [0, 0.6, 0.78 * TALON], [0.48, 0.5, 0.7 * TALON]], { pad: [0.5, 0.17, 0.5], padZ: 0.1, r: 0.16 });
     batch(toe, mats.limbs, hf.hide);
     const claws = hf.claws;
     claws.push(horn(0.55, 0.11, -s * 0.4, 0.15, 0.05, -0.12, -s * 1.1, -0.4, 5)); // inner claw
     claws.push(horn(0.5, 0.09, 0, 0.16, -0.3, -0.3, Math.PI, -0.15, 5)); // heel spur
     batch(toe, mats.claw, claws);
+    if (B) for (const j of [thigh, shin, meta]) slimBone(j, LIMB);
     legs.push({ side: s, hip, thigh, shin, meta, toe });
   }
 
@@ -940,7 +1000,7 @@ export function buildDrake(U) {
       [0.55, 0.14, 2.1, s * 0.14],
       [0.4, 0.28, 1.95, -s * 0.12],
     ].forEach(([len, z, p, x]) => fs.push(horn(len * 1.2, 0.13, x, -0.36, z, p, 0, -0.1, 5, 0.42)));
-    for (let k = 0; k < 5; k++) fs.push(horn(0.32 - k * 0.04, 0.06, 0, -0.39 + k * 0.025, 0.4 + k * 0.2, 1.25, 0, 0.04, 5, 0.5));
+    for (let k = 0; k < 5; k++) fs.push(horn((0.32 - k * 0.04) * Q * Q, 0.06, 0, -0.39 + k * 0.025, 0.4 + k * 0.2, 1.25, 0, 0.04, 5, 0.5));
     // outer-side spikes down the forearm
     for (let k = 0; k < 3; k++) fs.push(horn(0.24 - k * 0.04, 0.05, s * 0.4, -0.05, 0.35 + k * 0.32, 1.0, s * 1.2, 0.04, 5, 0.5));
     batch(forearm, mats.bone, fs);
@@ -949,11 +1009,12 @@ export function buildDrake(U) {
     const paw = joint(hand, 0, 0, A.hand, 'paw');
     // the painting's big eagle foot, its pad on the ground (paw joint = ground level): four thick
     // knuckled toes splayed ±0.55 rad, each ending in a long talon hooking down into the ground
-    const ff = eagleFoot([[s * 0.55, 0.42, 0.62], [s * 0.18, 0.5, 0.7], [-s * 0.18, 0.5, 0.7], [-s * 0.55, 0.42, 0.62]], { pad: [0.5, 0.17, 0.46], padZ: 0.08, r: 0.15 });
+    const ff = eagleFoot([[s * 0.55, 0.42, 0.62 * TALON], [s * 0.18, 0.5, 0.7 * TALON], [-s * 0.18, 0.5, 0.7 * TALON], [-s * 0.55, 0.42, 0.62 * TALON]], { pad: [0.5, 0.17, 0.46], padZ: 0.08, r: 0.15 });
     batch(paw, mats.limbs, ff.hide);
     batch(paw, mats.claw, ff.claws);
     // inner dewclaw and a wrist spike back and out (one batch)
     batch(hand, mats.claw, [horn(0.28, 0.06, -s * 0.2, -0.12, 0.08, 2.4, -s * 0.35, 0, 5), horn(0.3, 0.06, s * 0.12, -0.24, 0.05, 1.9, s * 0.4, 0.05, 5, 0.5)]);
+    if (B) for (const j of [humerus, forearm, hand]) slimBone(j, LIMB);
     arms.push({ side: s, shoulder, humerus, forearm, hand, paw });
   }
 
@@ -970,12 +1031,12 @@ export function buildDrake(U) {
     const humerus = joint(wroot, 0, 0, 0, 'wingHumerus');
     mesh(humerus, limbGeometry({ length: A.wingHumerus + 0.08, r0: 0.3, r1: 0.27, bulge: 0.03, radial: 10, rings: 4 }), mats.limbs);
     const hs = [];
-    for (let k = 0; k < 5; k++) hs.push(horn(0.34 - k * 0.02, 0.07, 0, 0.24, 0.25 + k * 0.27, -1.25, 0, 0.06, 5, 0.5));
+    for (let k = 0; k < 5; k++) hs.push(horn((0.34 - k * 0.02) * Q * Q, 0.07, 0, 0.24, 0.25 + k * 0.27, -1.25, 0, 0.06, 5, 0.5));
     batch(humerus, mats.bone, hs);
     const forearm = joint(humerus, 0, 0, A.wingHumerus, 'wingForearm');
     mesh(forearm, limbGeometry({ length: A.wingForearm + 0.06, r0: 0.27, r1: 0.22, radial: 10, rings: 5 }), mats.limbs);
     const ser = [];
-    for (let k = 0; k < 5; k++) ser.push(horn(0.36 - k * 0.03, 0.07, 0, 0.22, 0.3 + k * 0.5, -1.25, 0, 0.06, 5, 0.5)); // trailing spikes
+    for (let k = 0; k < 5; k++) ser.push(horn((0.36 - k * 0.03) * Q * Q, 0.07, 0, 0.22, 0.3 + k * 0.5, -1.25, 0, 0.06, 5, 0.5)); // trailing spikes
     for (let k = 0; k < 6; k++) ser.push(horn(0.2, 0.045, 0, -0.2, 0.25 + k * 0.42, 1.3, 0, 0.04, 4)); // leading serrations
     batch(forearm, mats.bone, ser);
     const wrist = joint(forearm, 0, 0, A.wingForearm, 'wrist');
@@ -1010,7 +1071,7 @@ export function buildDrake(U) {
   }
 
   return {
-    root, mats, glow: GLOW, hips, torso, chest, chestMesh, neckBase, neck, head, headVis, jaw, eyes, nostrils, mouth, face, whiskers,
+    root, mats, glow: GLOW, hips, torso, chest, chestMesh, neckBase, neck, head, headVis, jaw, eyes, nostrils, mouth, face, whiskers, build: B, hornTip,
     tailBase, tail, tailRadii, tailTip, legs, arms, wings,
   };
 }

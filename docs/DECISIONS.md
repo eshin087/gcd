@@ -3645,3 +3645,42 @@ ADR-092).
   block of digits); the broken floor **"a: rubble on earth"**. The looks turned down stay behind
   their switches (`kindle`, `ashp3`, `qi`, `flit`, `burn`, `toll`, `ashLook`; `star`, `sky`,
   `ignite`, `void`, `presence`, `great`, `lordLook`; `floor`), as ADR-118's and ADR-119's did.
+
+## ADR-123 — The Cinder Wyrm's build: lean, a fierce head carried high, a mane of quills; drawn only (2026-11-20)
+- **Context:** the owner asked for a better-looking wyrm ("more realistic, scarier, epic, and
+  mystical"; the wings are its best part) and three variations to pick from. Three full redraws were
+  rendered and all turned down: "i dont like any of the remakes. i want the dragon to look more
+  menacing, a bit more slender", with a picture of a lean, long-necked dragon roaring with its head
+  raised. The shipped wyrm's surface is the house style's reference (ADR-093, ADR-100), and the
+  owner had passed on new heads once already (ADR-120).
+- **Decisions:**
+  1. **Keep the surface, change the build.** Letters, ramp, colours, scale lattice, glow and wings
+     are untouched. What changes is girth, lengths of spines, talons, horns and fangs, the head's
+     drawn width and size, and how the neck is held at rest. A redraw of the surface was the
+     alternative and is what the owner turned down three times in one day.
+  2. **A build is data** (`entities/dragon/looks.js`): `barrel`, `limb`, `neck`, `tail`, `talon`,
+     `head`, `rest`, `quill`, `mane`. Three were rendered, each adding to the one before (a lean, b
+     + fierce head carried high, c + quills). The owner picked **c**; it is what `buildDrake`
+     builds with nothing set. `?wyrmLook=0` builds the wyrm before; a and b stay because they are
+     subsets of c's numbers and cost no code.
+  3. **Drawn only: the skeleton does not move.** Slimming is baked into geometry in the joint's
+     frame (`model.js` `slim`), never a joint's scale or position: breathing owns the trunk meshes'
+     scale, and every reach, hit volume, foot plant and attack path hangs off the joints. A longer
+     neck, tail and legs (the picture's proportions) would change `ANATOMY` and with it every
+     measured attack; that was offered as a separate step and not taken.
+  4. **One exception, at rest only.** The head carried high is the visible neck's resting shape
+     (`rest.neck`, read in `rig/anim.js` in place of `REST_POSE.neck`). It fades out with the rig's
+     resting weight as any attack aims the head, so a blow's head is where it was measured (the
+     bite: 0.000 m from the old build at its snap). While it stands the head is 2.5 m higher; the
+     head's and neck's hurt volumes were out of a standing hero's reach before and still are.
+  5. **The horn's tip is measured, not written down.** The old head's horns grow with the build,
+     so `buildOldHead` returns the built main horn's farthest vertex (`model.hornTip`) and the
+     phase-3 horn fire reads that before `heads.js` `HORN_TIPS`. Measuring showed the written
+     `HORN_TIPS.old` had left out the horn's curve (0.52 m low); it is corrected.
+- **Consequences:** the default wyrm builds 2 304
+  more triangles (+1.8 %), the same 14 draws and 181 bones. Tests seed `Math.random` per build and
+  three.js draws ids from it, so the default build shifted the fight's random stream. The body's
+  hurt spheres are the old barrel's: generous under the tucked belly. From the steep game camera
+  the trunk's change is small; the head, the neck and the mane carry it.
+- **Not done:** longer bones; any change to the wings, the surface or the fire; a re-frame of the
+  intro's shots and the Lab's model viewer for the higher head; a look on the iPhone.

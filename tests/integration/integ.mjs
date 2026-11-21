@@ -4,11 +4,12 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | herolook | wyrmface | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
 //   ABYSS_WYRMFACE=old|skull|loong|demon builds every wyrm with that head (?wyrmFace=; e.g. a timing run per head)
+//   ABYSS_WYRMLOOK=0|a|b|c builds every wyrm on that build (?wyrmLook=; 0 = the wyrm before the lean build)
 //   ABYSS_SKIP=name,name... leaves those scenarios out of `all` (tests/run.mjs runs `timing` beside it, in parts)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -34,6 +35,8 @@ const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/com
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
 const { DIM: HERO_DIM, setHeroGlyphScale } = await imp('src/entities/player/model.js');
 const { Dragon } = await imp('src/entities/dragon/dragon.js');
+// ABYSS_WYRMLOOK: every wyrm built in this run has that build (?wyrmLook=, looks.js)
+if (process.env.ABYSS_WYRMLOOK && !(await imp('src/entities/dragon/looks.js')).setWyrmLook(process.env.ABYSS_WYRMLOOK)) { process.stdout.write(`ABYSS_WYRMLOOK: unknown build '${process.env.ABYSS_WYRMLOOK}'\n`); process.exit(2); }
 // ABYSS_WYRMFACE: every wyrm built in this run wears that head (?wyrmFace=, heads.js)
 if (process.env.ABYSS_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).setWyrmFace(process.env.ABYSS_WYRMFACE)) { process.stdout.write(`ABYSS_WYRMFACE: unknown head '${process.env.ABYSS_WYRMFACE}'\n`); process.exit(2); }
 const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
@@ -4701,6 +4704,91 @@ async function scenarioWyrmFace() {
   }
   assert(wyrmFace() === prev, `the head in use is restored (${prev})`);
   assert(errors.length === e0, `no errors through the heads (${errors.length - e0})`);
+  return G;
+}
+
+/**
+ * The wyrm's builds (?wyrmLook=, entities/dragon/looks.js): 'c' ships (lean + ragged), '0' is the wyrm
+ * before, 'a' / 'b' the steps between. A build is DRAWN: every joint of the skeleton sits where '0'
+ * has it (bit for bit), the hurt volumes keep their count and radii, the draw calls do not grow, the
+ * geometry has no NaN and a bounded number of triangles. One thing moves: b and c carry the head
+ * higher while the wyrm stands (the resting neck); a blow's head is back on the measured path by its
+ * hit (the bite: within NEAR of '0').
+ */
+async function scenarioWyrmLook() {
+  out('\n== scenario WYRMLOOK (the lean builds on the skeleton of the wyrm before) ==');
+  const { setWyrmLook, wyrmLookId, wyrmLook, WYRM_LOOKS, WYRM_LOOK_SHIPPED } = await imp('src/entities/dragon/looks.js');
+  const prev = wyrmLookId();
+  const e0 = errors.length;
+  const NEAR = 0.12; // m: how far a bite's head may sit from '0' at its hit (the resting weight fades at 9 /s)
+  const res = {};
+  let G = null;
+  for (const k of WYRM_LOOKS) {
+    setWyrmLook(k);
+    G = build();
+    const { game } = G;
+    fightSetup(G);
+    const d = game.dragon, m = d.model, pt = d.rig.pt;
+    // the skeleton as built: every joint's own offset; the meshes' triangles
+    const joints = new Map(), seen = new Map();
+    let tris = 0, meshes = 0, finite = true;
+    m.root.traverse((o) => {
+      if (o.isMesh) {
+        meshes++;
+        const pos = o.geometry.attributes.position;
+        tris += (o.geometry.index ? o.geometry.index.count : pos.count) / 3;
+        for (let i = 0; i < pos.array.length; i++) if (!Number.isFinite(pos.array[i])) { finite = false; break; }
+      } else if (o.name && o.name !== 'headVis') {
+        // (headVis is the head's DRAWN frame: its scale is the build's; nothing gameplay hangs off it)
+        const key = `${o.parent?.name ?? ''}/${o.name}`, n = seen.get(key) ?? 0;
+        seen.set(key, n + 1);
+        joints.set(`${key}#${n}`, o.position.clone());
+      }
+    });
+    const r = (res[k] = { tris: Math.round(tris), meshes, finite, joints, bones: d.batch.bones, draws: d.batch.meshes.length, build: m.build?.name ?? null, hornTip: m.hornTip });
+    // standing: the head's height, the hurt volumes
+    run(G, 2.5, { passive: true });
+    r.rest = { head: pt.head.clone(), mouth: pt.mouth.clone(), restW: d.rig.s.rest };
+    r.hurt = d.hurtSpheres.map((h) => ({ part: h.part, r: h.r }));
+    // a bite: at its snap the head is on the measured path
+    let hitAt = null;
+    const off = game.events.on('dragon:bite', () => { hitAt ??= { head: pt.head.clone(), mouth: pt.mouth.clone(), restW: d.rig.s.rest }; });
+    d.debug.trigger('bite');
+    run(G, 5, { passive: true }, () => !!hitAt);
+    if (typeof off === 'function') off();
+    r.bite = hitAt;
+    r.horn = { read: d.ablaze._hornTip === m.hornTip };
+  }
+  setWyrmLook(prev);
+  const o = res['0'];
+  out(`   builds: ${WYRM_LOOKS.map((k) => `${k} ${res[k].build ?? '(before)'}: ${res[k].tris} triangles, ${res[k].draws} draws, ${res[k].bones} bones, head at rest ${res[k].rest.head.y.toFixed(2)} m`).join(' · ')}`);
+  assert(WYRM_LOOK_SHIPPED === 'c' && prev === (process.env.ABYSS_WYRMLOOK || WYRM_LOOK_SHIPPED) && o.build === null && res.c.build === 'lean + ragged',
+    `with nothing set the wyrm is build c (lean + ragged); '0' is the wyrm before (in use ${prev}, c: ${res.c.build})`);
+  assert(setWyrmLook('z') === false && wyrmLookId() === prev && (prev === '0' ? wyrmLook() === null : !!wyrmLook()), 'an unknown build is refused and the one in use is kept');
+  for (const k of WYRM_LOOKS) {
+    const r = res[k];
+    assert(r.finite && r.rest.restW > 0.95 && !!r.bite, `${k}: builds, no NaN in its geometry, stands at rest (weight ${r.rest.restW.toFixed(2)}) and its bite snaps`);
+    if (k === '0' || !r.bite || !o.bite) continue;
+    // the skeleton: the same joints, each where '0' has it
+    let worst = 0, missing = 0;
+    for (const [name, q0] of o.joints) { const q = r.joints.get(name); if (!q) missing++; else worst = Math.max(worst, q0.distanceTo(q)); }
+    assert(r.joints.size === o.joints.size && !missing && worst === 0, `${k}: its ${r.joints.size} joints are the ${o.joints.size} of '0', each at the same offset (worst ${worst.toExponential(1)}, ${missing} missing)`);
+    assert(r.hurt.length === o.hurt.length && r.hurt.every((h, i) => h.part === o.hurt[i].part && h.r === o.hurt[i].r), `${k}: the ${r.hurt.length} hurt volumes keep their parts and radii`);
+    assert(r.draws === o.draws && r.bones === o.bones && r.tris <= o.tris * 1.12, `${k}: ${r.draws} draws and ${r.bones} bones as '0', ${r.tris} triangles (<= 1.12 x ${o.tris})`);
+    const dBite = r.bite.head.distanceTo(o.bite.head), dMouth = r.bite.mouth.distanceTo(o.bite.mouth);
+    assert(dBite < NEAR && dMouth < NEAR, `${k}: at the bite's snap the head is ${dBite.toFixed(3)} m and the mouth ${dMouth.toFixed(3)} m from '0' (< ${NEAR}; resting weight ${r.bite.restW.toFixed(3)})`);
+    const up = r.rest.head.y - o.rest.head.y;
+    if (k === 'a') assert(r.rest.head.distanceTo(o.rest.head) < 1e-6, `a: stands with its head where '0' has it (${up.toExponential(1)} m)`);
+    else assert(up > 1.5 && up < 3.2, `${k}: stands with its head ${up.toFixed(2)} m higher than '0' (1.5 .. 3.2)`);
+  }
+  // the horn fire's point follows the horns the head has (ablaze.js reads model.hornTip)
+  const HT = (await imp('src/entities/dragon/heads.js')).HORN_TIPS.old;
+  const d0 = Math.hypot(o.hornTip[0] - HT[0], o.hornTip[1] - HT[1], o.hornTip[2] - HT[2]);
+  const len = (t) => Math.hypot(t[0] - 0.2, t[1] - 0.3, t[2] + 0.02);
+  assert(d0 < 0.01 && len(res.c.hornTip) > len(o.hornTip) * 1.2 && res.c.horn.read && o.horn.read,
+    `the horn's tip is measured off the built horn: '0' ${d0.toFixed(3)} m from heads.js HORN_TIPS.old, c's horn ${(len(res.c.hornTip) / len(o.hornTip)).toFixed(2)} x as long, and the phase-3 fire reads it`);
+  assert(wyrmLookId() === prev, `the build in use is restored (${prev})`);
+  assert(errors.length === e0, `no errors through the builds (${errors.length - e0})`);
   return G;
 }
 
@@ -10115,6 +10203,7 @@ const SCENARIOS = {
   remap: scenarioRemap,
   herolook: scenarioHeroLook,
   wyrmface: scenarioWyrmFace,
+  wyrmlook: scenarioWyrmLook,
   herolife: scenarioHeroLife,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
