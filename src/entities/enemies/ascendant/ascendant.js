@@ -170,6 +170,10 @@ export class Ascendant extends Duelist {
     this._ptsOk = false;
     this._hug = 0; // s the hero has stayed on him (Aura Burst is favoured past TUNING... 4 s)
     this._q = new THREE.Vector3();
+    this._hand = new THREE.Vector3(); // the right palm as drawn (a disc homes to it: fx.js)
+    // the form his body SHOWS (hair, light, aura): a transformation enters the new form at its start
+    // (brain.startAct → enterPhase), but he only shows it as the nova goes out (onImpact)
+    this.dressPhase = 1;
     this._r = new THREE.Vector3();
     const d = this;
     /** Lab: straight to form n (1..3), the bar full. */
@@ -179,6 +183,7 @@ export class Ascendant extends Duelist {
       d.brain.startFight();
       d.enterPhase(n);
       d._changing = false;
+      d.dressPhase = d.phase;
       d.brain._toFoot(0.3);
       if (n > 1) d.emit(`dragon:phase${n}`);
       return true;
@@ -198,6 +203,7 @@ export class Ascendant extends Duelist {
       this._ptsOk = false;
       this._hug = 0;
       this._partPrev = '';
+      this.dressPhase = 1;
     }
     super.reset();
     // (the base constructor resets before this class's own fields could exist: made here)
@@ -272,8 +278,21 @@ export class Ascendant extends Duelist {
 
   /** Form n begins (its transformation's start): a full bar, its posture meter, its stance. */
   enterPhase(n) {
+    const was = this.phase;
     super.enterPhase(n);
     this.hp = this.maxHp;
+    // (through a transformation he still SHOWS the old form until its nova: onImpact)
+    this.dressPhase = this.brain?.act?.def?.transition && this.mode === 'act' ? was : this.phase;
+  }
+
+  /** A returnable blast of his came back off the hero's perfect parry and struck him (fx.js). */
+  onShotReturned(s) {
+    this.ki?.shots?.returned?.(s);
+  }
+
+  /** His thrown disc is back in his hand (fx.js). */
+  onShotBack(s) {
+    this.ki?.shots?.caught?.(s);
   }
 
   _die() {
@@ -380,6 +399,7 @@ export class Ascendant extends Duelist {
       this._hiltPrev.copy(this._hilt);
     }
     this._partPrev = part;
+    this._limbSeg('fistR', _a, this._hand);
     this._tipOk = ok;
     this._ptsOk = ok;
   }
@@ -429,7 +449,10 @@ export class Ascendant extends Duelist {
     const D = b.def, fx = this.fx, f = this.phase;
     if (a?.def?.transition) {
       this._changing = false;
+      this.dressPhase = f; // (the hair, the light and the aura change now, with the nova)
       fx.transformNova?.(this.position.x, this.position.z, TUNING.transform.ringRadius, f);
+      // Thunder Ascension: four bolts strike the ring's corners as the ring goes out (kiShots.js)
+      if (f === 3) this.ki?.shots?.corners?.();
       this.game.shake?.(0.45);
       this.game.world?.forest?.ambience?.flare?.(1);
       return;
@@ -558,7 +581,7 @@ export class Ascendant extends Duelist {
    *  gathering; the stars of a break. */
   afterPose(dt, a) {
     const fx = this.fx, f = this.phase;
-    if (this.mode !== 'dead' && this.mode !== 'sleep') fx.formAura?.(this, dt, f);
+    if (this.mode !== 'dead' && this.mode !== 'sleep') fx.formAura?.(this, dt, this.dressPhase ?? f);
     if (a && this._tipOk) {
       const cur = a.beats.find((b) => a.t < b.impact);
       if (a.def.transition) {

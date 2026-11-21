@@ -13,14 +13,11 @@ import { ascLookNow, dressOf, at } from './look.js';
 
 // Tian Lei's gear: a bare-handed fighter on the hero's skeleton (built by the same buildHero(U,
 // loadout), driven by the same animator), no weapon. Three outfits for the owner to pick from
-// (`?ascLook=a|b|c|d`, look.js ascLookNow; read when his rig is built), each with its hair by form:
+// (`?ascLook=a|c|d`; the bare-chested b was set aside, look.js ascLookNow; read when his rig is built), each with its hair by form:
 //   a  the Challenger's tunic: a sleeveless crossed-collar tunic with a short split skirt, a black
 //      sash whose tails fly, loose trousers gathered into shin wraps, soft boots, wrapped wrists.
 //      Hair: a topknot and a short tail (form 1); the knot's hair rises in a gold plume (2); the
 //      plume taller and sharper, spikes swept back from the temples and the nape (3).
-//   b  the brawler: bare-chested, a torn half-robe hanging from a red sash, wraps from the elbow to
-//      the knuckles, dark trousers, wrapped bare feet. Hair: a loose shaggy mane to the shoulders
-//      (1); blown up and back (2); fuller, stiffer, long strands down the back (3).
 //   c  the wandering monk: a cross-wrapped robe over the left shoulder (the right bare), a shoulder
 //      cloth that streams behind, big prayer beads, a knee-length robe skirt, wrapped shins and
 //      sandals. Hair: one long braid down the back (1); undone, a crest of risen gold blades (2);
@@ -148,42 +145,6 @@ function hairA(form) {
   return L;
 }
 
-// --- option b: the mane
-function hairB(form) {
-  const L = [];
-  const r = rng(form * 101 + 7);
-  if (form === 1) {
-    // a loose shaggy mane falling to the shoulders (two layers of broad locks), and a ragged fringe
-    // that leaves the eyes clear
-    for (const [n, el0, len, w] of [[16, 0.45, 0.24, 0.058], [12, 0.15, 0.2, 0.05]]) {
-      for (let i = 0; i < n; i++) {
-        const az = 0.85 + (i / (n - 1)) * (Math.PI * 2 - 1.7) + (r() - 0.5) * 0.12;
-        const el = el0 + 0.15 * r();
-        L.push(lockAt(az, el, (o) => mix3([o, 0.22], [DOWN, 1], [BACK, 0.12]), len + 0.06 * r(), w, { bend: [Math.sin(az), 0, Math.cos(az)], curl: 0.16, taper: 0.7 }));
-      }
-    }
-    for (const s of [-1, -0.4, 0.4, 1]) L.push(lockAt(s * 0.32, 0.55, mix3([outAt(s * 0.32, 0.55), 0.45], [DOWN, 1], [[s * 0.4, 0, 0], 0.3]), 0.09, 0.03, { bend: FWD, curl: 0.25 }));
-    return L;
-  }
-  const big = form === 3;
-  // the whole mane blown up and back: broad locks streaming behind him and rising
-  for (const [n, el0, up, back, len] of [[14, 0.62, big ? 0.6 : 0.5, 0.9, big ? 0.3 : 0.24], [12, 0.25, big ? 0.35 : 0.25, 1, big ? 0.32 : 0.24]]) {
-    for (let i = 0; i < n; i++) {
-      const az = lerp(-2.6, 2.6, i / (n - 1)) + (r() - 0.5) * 0.12;
-      const el = el0 + 0.12 * r();
-      L.push(lockAt(az, el, (o) => mix3([o, 0.45], [UP, up], [BACK, back]), len + (big ? 0.1 : 0.06) * r(), big ? 0.05 : 0.058, { bend: mix3([BACK, 1], [UP, 0.4]), curl: big ? 0.05 : 0.15, taper: big ? 1.35 : 0.8 }));
-    }
-  }
-  // the front hair risen and thrown back
-  for (const s of [-1, -0.3, 0.3, 1]) L.push(lockAt(s * 0.35, 0.5, mix3([UP, 1], [BACK, 0.6], [[s, 0, 0], 0.2]), big ? 0.17 : 0.13, 0.034, { bend: BACK, curl: 0.15, taper: big ? 1.3 : 0.8 }));
-  // form 3: long stiff strands down his back, to the shoulder blades
-  if (big) for (let i = 0; i < 7; i++) {
-    const az = Math.PI + (i / 6 - 0.5) * 1.6;
-    L.push(lockAt(az, 0.05, (o) => mix3([o, 0.25], [DOWN, 1.6], [BACK, 0.35]), 0.34 + 0.08 * r(), 0.04, { bend: BACK, curl: 0.08, taper: 1.2 }));
-  }
-  return L;
-}
-
 // --- option c: the braid, then the crest
 function hairC(form) {
   const L = [];
@@ -217,7 +178,7 @@ function hairC(form) {
   return L;
 }
 
-const HAIR = { a: hairA, b: hairB, c: hairC };
+const HAIR = { a: hairA, c: hairC };
 
 /** The head: no body hair (hidesHair); the hair of every form, the dark one on the `shirt` material
  *  (its own part, white ink lines), the gold ones on `hair` / `hairTip`. */
@@ -394,14 +355,6 @@ function chestA(ctx) {
   return { keep };
 }
 
-/** b: bare-chested. */
-function chestB(ctx) {
-  bareTorso(ctx);
-  return {};
-}
-
-/** c: the monk's cross-wrap over his left shoulder (the right shoulder and breast bare), the prayer
- *  beads round his neck. Form 3: the wrap falls away (bare-chested), the beads stay. */
 function chestC(ctx) {
   const { spine, chest, M, mesh } = ctx;
   const D = dressOf(ctx.root, 'c');
@@ -480,7 +433,7 @@ function wraps(y0, y1, n, r) {
 }
 
 /** WRAP[look]: where the wraps reach up the forearm (fore space, m below the elbow). */
-const WRAP_TOP = { a: -0.15, b: -0.02, c: -0.13 };
+const WRAP_TOP = { a: -0.15, c: -0.13 };
 
 /** Bare arms, wrapped forearms and fists (the right fist on the sword joint, FIST). */
 function buildArms(ctx) {
@@ -533,7 +486,7 @@ function buildArms(ctx) {
 }
 
 // ================================================================= the legs
-/** Loose trousers gathered into wraps at the shin; soft boots (a), wrapped bare feet (b), sandals (c). */
+/** Loose trousers gathered into wraps at the shin; soft boots (a), sandals (c). */
 function buildLegs(ctx) {
   const { pelvis, legs, M, DIM, BODY, mesh } = ctx;
   const look = ascLookNow().base;
@@ -554,10 +507,9 @@ function buildLegs(ctx) {
         sub(limb({ length: 0.07, r0: sh1 + 0.012, r1: sh1 + 0.008, radial: 10, rings: 2, capSegs: 1 }).translate(0, 0.05, 0), 1),
       ]), M.collar);
     } else {
-      // bare feet (b: wrapped across the instep; c: on a sandal's sole)
+      // bare feet on a sandal's sole (c)
       mesh(foot, ellipsoidGeometry(F.r[0] * 0.88, F.r[1] * 0.82, F.r[2] * 0.92, { widthSegs: 10, heightSegs: 6 }).translate(F.c[0], F.c[1], F.c[2]), M.skin);
-      if (look === 'b') mesh(foot, mergeGeometries([0, 1].map((k) => sub(bandGeometry(F.r[0] * 0.92, F.r[1] * 0.9, 0.03, 12).rotateX(Math.PI / 2 - 0.3).translate(F.c[0], F.c[1] + 0.004, F.c[2] - 0.02 + k * 0.04), k))), M.hem);
-      else mesh(foot, mergeGeometries([
+      mesh(foot, mergeGeometries([
         boxGeometry(F.r[0] * 2.05, 0.014, F.r[2] * 2.0, F.c[0], F.c[1] - F.r[1] * 0.8, F.c[2]),
         sub(bandGeometry(F.r[0] * 0.92, F.r[1] * 0.9, 0.016, 12).rotateX(Math.PI / 2).translate(F.c[0], F.c[1], F.c[2] + 0.03), 1),
       ]), M.leather);
@@ -592,14 +544,6 @@ const SKIRT_A = [
   { az: Math.PI, w: [0.22, 0.25, 0.28], len: [0.17, 0.18], strips: [], fork: [], out: 0.01, flare: 0.12 },
   { az: 1.5, w: [0.1, 0.11, 0.12], len: [0.14, 0.12], strips: [], fork: [], out: 0.002, flare: 0.2 },
   { az: -1.5, w: [0.1, 0.11, 0.12], len: [0.14, 0.12], strips: [], fork: [], out: 0.002, flare: 0.2 },
-];
-/** b: the half-robe: its sleeves and back hanging from the sash down to the calf, open in front, torn. */
-const SKIRT_B = [
-  { az: 2.9, w: [0.2, 0.26, 0.32], len: [0.26, 0.28], strips: [0.08, 0.12, 0.06], fork: [0, 1, 0], out: 0.01, flare: 0.16 },
-  { az: -2.9, w: [0.2, 0.26, 0.32], len: [0.26, 0.26], strips: [0.1, 0.06, 0.12], fork: [1, 0, 1], out: 0.01, flare: 0.16 },
-  { az: 1.7, w: [0.14, 0.18, 0.22], len: [0.24, 0.3], strips: [0.1, 0.07], fork: [1, 0], out: 0.006, flare: 0.22 },
-  { az: -1.7, w: [0.14, 0.18, 0.22], len: [0.24, 0.24], strips: [0.06, 0.12], fork: [0, 1], out: 0.006, flare: 0.22 },
-  { az: 0.75, w: [0.1, 0.12, 0.14], len: [0.2, 0.2], strips: [0.08], fork: [1], out: 0.004, flare: 0.14 },
 ];
 /** c: the monk's robe skirt, to the knee, its front panels overlapping. */
 const SKIRT_C = [
@@ -640,34 +584,6 @@ function buildWaist(ctx) {
     const keep = hemLight(ctx, coat, D, 2, 2);
     return { coat, streamers: sash(ctx), keep };
   }
-  if (look === 'b') {
-    // the half-robe; form 3: its lower sheets torn away into rags (as the Lord's cape, ADR-122)
-    const { made, cx } = capture(ctx);
-    const { coat } = panelSkirt(cx, SKIRT_B, { seed: 500 });
-    const keep = [];
-    const { M, mesh } = ctx;
-    coat.forEach((C, i) => {
-      const s1 = C.segs[1];
-      for (const m of made) if (m.parent === s1 || C.strips.some((S) => S.joint === m.parent)) {
-        at(D, m, 1, 2);
-        keep.push(m);
-      }
-      const P = C.def, R1 = C.r0 + 0.25 * P.len[0], w1 = P.w[1];
-      const r = rng(1201 + i * 17), n = 3, rags = [];
-      for (let k = 0; k < n; k++) {
-        const u = ((k + 0.5) / n - 0.5) * w1 * 0.92, a = u / R1;
-        const g = tatterStrip(P.len[1] * (0.25 + 0.3 * r()), (w1 / n) * 0.85, { fork: r() < 0.6, curl: 0.12, seed: 1300 + i * 7 + k });
-        rags.push(sub(g.rotateY(a).translate(Math.sin(a) * R1, 0.02, (Math.cos(a) - 1) * R1), k & 1));
-      }
-      const g = mergeGeometries(rags);
-      for (const mat of [M.coat, M.lining]) {
-        const x = mesh(s1, g, mat);
-        at(D, x, 3, 3);
-        keep.push(x);
-      }
-    });
-    return { coat, streamers: sash(ctx, { tails: [0.26, 0.3], w: 0.085 }), keep };
-  }
   // c: the robe skirt, the sash, and the shoulder cloth streaming behind (forms 1 - 2)
   const { coat } = panelSkirt(ctx, SKIRT_C, { seed: 700 });
   const streamers = sash(ctx, { tails: [0.16, 0.18], w: 0.06 });
@@ -689,7 +605,7 @@ function opted(build) {
     return build(ctx);
   };
 }
-const CHEST = { a: chestA, b: chestB, c: chestC };
+const CHEST = { a: chestA, c: chestC };
 
 /** The set (registered into the hero's gear registry on import: gear/index.js registerItem). */
 export const ASC_ITEMS = [
