@@ -110,10 +110,15 @@ const CUT = [0.115, 0.097, 0.08]; // the quarry's cut stone
 const WOOD = [0.11, 0.08, 0.058];
 const CLOTH = [0.25, 0.05, 0.036]; // the banners: a deep red
 const SKIN = [0.3, 0.265, 0.2]; // a drum's head
+/** The earth under a broken tile (world/floor.js prints it with the paving's ink): a warm pale dust, well
+ *  over the dimmed tiles, so a crater and a wrecked ring read at the game camera (the stage pass). */
+const EARTH = [0.42, 0.27, 0.15];
 const tileCol = (c, f = 1.6) => (px, py, pz) => mul(c, (0.62 + 0.42 * fbm2(px * f, pz * f, 2)) * (0.8 + 0.22 * fbm2(px * 0.12 + 7, pz * 0.12 - 3, 2)));
 const edgeBand = (px, py, pz, nx, ny) => (ny > 0.5 && ny < 0.95 ? 1 : 0);
 /** The floor must stay calm under the duel: sparse, dim glyphs (the courtyard's paving look). */
-const PAVING_LOOK = { gain: 1.55, lumScale: 2.0, edge: 0.32, inkFloor: 0.035, topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'] };
+// (2026-11-21, the stage pass: the tiles' strokes were as bright and busy as the fighters. Now fewer and
+// dimmer marks: no hatching on the tiles' sides, almost no crack lines, a fainter chamfer; the joints stay)
+const PAVING_LOOK = { gain: 0.74, lumScale: 1.5, edge: 0.18, inkFloor: 0.02, base: 0.05, crackAmount: 0.08, strokeLevels: [9, 9], topGlyphs: ['    ', '.   ', '. . ', '.:. ', ':.:.', ';:.:'] };
 const smooth = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -702,7 +707,7 @@ export function createSkybreakRing(U, colliders) {
 
   // ---- meshes
   const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
-  const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: 1.1 });
+  const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: 0.92 });
   const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, ...PAVING_LOOK, viewPitch: CONFIG.camera.pitch });
   const add = (geos, m, name) => {
     if (!geos.length) return null;
@@ -719,7 +724,7 @@ export function createSkybreakRing(U, colliders) {
   if (group.userData.soil) group.add(group.userData.soil);
   // the floor breaks (world/floor.js): every tile, kerb stone and plate a breakable 'range' piece of the
   // paving mesh; the cracked and broken looks in two more meshes, hidden until first used
-  breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group, earth: [0.15, 0.105, 0.075] }).defs);
+  breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group, earth: EARTH }).defs);
 
   return {
     group, treeSpots, bare, slabs, nest: { x: RING.wait.x, z: RING.wait.z }, bonfire: { x: BF.x, z: BF.z },
@@ -728,7 +733,7 @@ export function createSkybreakRing(U, colliders) {
     option: OPT,
     groundY: LY.groundY,
     tops, // (the buttes' tops: the tests and the beam's measures read them)
-    scarInk: [0.02, 0.012, 0.008], // dark cracks in the pale sandstone
+    scarInk: [0.3, 0.2, 0.12], // (the stage pass: cracks of pale dust: dark ones vanished in the dimmed paving)
     // dry ground: none on the ring, thin short dry tufts on the flats (none past the crown's rim)
     grass: {
       ash: 0.55,
@@ -766,9 +771,9 @@ export const BUTTE = Object.freeze({
  * dark, the moon high behind cloud). moon / ambient / fog colours (linear), the light's way, the fog.
  */
 const PALETTE = [
-  { moon: [0.86, 0.5, 0.28], dir: [-0.82, 0.46, 0.3], ambient: [0.07, 0.045, 0.048], fogColor: [0.026, 0.014, 0.013], fogNear: 32, fogFar: 64 },
-  { moon: [1.0, 0.74, 0.3], dir: [-0.62, 0.58, 0.3], ambient: [0.092, 0.066, 0.032], fogColor: [0.034, 0.022, 0.009], fogNear: 32, fogFar: 64 },
-  { moon: [0.26, 0.32, 0.48], dir: [-0.3, 0.88, 0.36], ambient: [0.02, 0.024, 0.036], fogColor: [0.006, 0.008, 0.012], fogNear: 26, fogFar: 56 },
+  { moon: [0.98, 0.6, 0.38], dir: [-0.82, 0.46, 0.3], ambient: [0.1, 0.072, 0.07], fogColor: [0.026, 0.014, 0.013], fogNear: 32, fogFar: 64 },
+  { moon: [1.1, 0.82, 0.38], dir: [-0.62, 0.58, 0.3], ambient: [0.12, 0.088, 0.046], fogColor: [0.034, 0.022, 0.009], fogNear: 32, fogFar: 64 },
+  { moon: [0.4, 0.48, 0.68], dir: [-0.3, 0.88, 0.36], ambient: [0.045, 0.052, 0.075], fogColor: [0.006, 0.008, 0.012], fogNear: 26, fogFar: 56 },
 ];
 /** The weather's numbers: lightning, dust, motes, rain. */
 const WEATHER = Object.freeze({
