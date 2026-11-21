@@ -417,10 +417,11 @@ export class AscFx extends LordFx {
       const rr = R * Math.sqrt((i + 0.5) / 12), a = i * 2.39996, ox = Math.cos(a) * rr, oy = Math.sin(a) * rr;
       this._blob(px + A.rx * ox + A.ux * oy, py + A.ry * ox + A.uy * oy, pz + A.rz * ox + A.uz * oy, ux * 2, 0, uz * 2, 0.12, R * 0.8, R * 1.4, 0.75, 0, K_VOID, 3);
     }
-    this._blob(px, py, pz, 0, 0, 0, 0.1, 0.34 * k, 0.5 * k, 1.9, 0, K_STEEL);
+    // (no white star: a white cross or star on the field is a CUE; the palm's flash stays gold)
+    this._blob(px, py, pz, 0, 0, 0, 0.1, 0.3 * k, 0.45 * k, 1.05, 0, K_VOID);
     for (let i = -3; i <= 3; i++) {
       const a = base + (i / 3) * 0.55 + this.lrand(-0.08, 0.08), len = this.lrand(0.6, 1.1) * k * (1 - 0.15 * Math.abs(i));
-      this._ink(x + Math.cos(a) * 0.2, y + this.lrand(-0.1, 0.1), z + Math.sin(a) * 0.2, x + Math.cos(a) * len, y + this.lrand(-0.2, 0.2), z + Math.sin(a) * len, this.lrand(0.08, 0.12), 0.95, 0, 0.5);
+      this._ink(x + Math.cos(a) * 0.2, y + this.lrand(-0.1, 0.1), z + Math.sin(a) * 0.2, x + Math.cos(a) * len, y + this.lrand(-0.2, 0.2), z + Math.sin(a) * len, this.lrand(0.08, 0.12), 0.5, 0, 0.3, 0, K_VOID);
     }
     for (let i = 0; i < 8; i++) {
       const a = base + this.lrand(-0.6, 0.6), sp = this.lrand(5, 10);
@@ -435,7 +436,7 @@ export class AscFx extends LordFx {
       o.drag = 3.5;
       this._spawn(this.add, o);
     }
-    super._light({ x, y, z, color: L_GOLD, intensity: 3.2 * k, radius: 6 * k, life: 0.16, fade: 0.14 });
+    super._light({ x, y, z, color: L_GOLD, intensity: 2 * k, radius: 5 * k, life: 0.14, fade: 0.12 });
   }
 
   // ---------------------------------------------------------------- the beam (fxBeam.js draws it)
