@@ -871,6 +871,12 @@ export class AscFx extends LordFx {
     }
   }
 
+  /** The disc is home: the class's onShotBack, else his shots' own catch (kiShots.js discBack). */
+  _shotBack(d, s) {
+    if (typeof d.onShotBack === 'function') d.onShotBack(s);
+    else d.ki?.shots?.discBack?.(s);
+  }
+
   /** The cue (flashLead before contact) and the contact, shared by blasts and discs. Returns the
    *  hit's result, or null when nothing met the hero this frame. */
   _shotMeets(s, d, p, pp, lead, speed) {
@@ -915,7 +921,10 @@ export class AscFx extends LordFx {
       const c = this._chest(d), dx = c.x - s.x, dy = c.y - s.y, dz = c.z - s.z, l = Math.hypot(dx, dy, dz);
       if (l < 0.9 || d.mode === 'dead') {
         this._blastBurst(s, false, true);
-        if (d.mode !== 'dead') d.onShotReturned?.(s);
+        if (d.mode !== 'dead') {
+          if (typeof d.onShotReturned === 'function') d.onShotReturned(s);
+          else d.ki?.shots?.returned?.(s);
+        }
         return;
       }
       if (s.age > 3) {
@@ -994,7 +1003,7 @@ export class AscFx extends LordFx {
       const hx = gx - s.x, hz = gz - s.z, l = Math.hypot(hx, hz);
       if (s.leg === 1 && (Math.hypot(h.x - s.x, h.z - s.z) < 1.1 || d.mode === 'dying' || d.mode === 'dead')) {
         s.alive = false;
-        d.onShotBack?.(s);
+        this._shotBack(d, s);
         return;
       }
       if (l > 1e-3 && !(s.leg === 0 && l < 0.3)) {
@@ -1012,7 +1021,7 @@ export class AscFx extends LordFx {
     }
     if (s.age > s.life + 4) {
       s.alive = false;
-      d.onShotBack?.(s);
+      this._shotBack(d, s);
       return;
     }
     // it cuts what it crosses, out and home (one blow per pass per piece)
@@ -1064,7 +1073,7 @@ export class AscFx extends LordFx {
     const br = d.brain, hp = this.game.player?.position;
     if (!struck && br?.fairDelay && hp && s.tell) {
       const home = s.wait + Math.max(0, Math.hypot(hp.x - s.x, hp.z - s.z) - s.radius - (this.game.player?.radius ?? 0.45)) / Math.max(1, s.back);
-      const w = br.fairDelay(home, s.tell, d.T?.disc?.homeWait ?? 0.4, 'disc');
+      const w = br.fairDelay(home, s.tell, d.T?.shots?.disc?.homeWait ?? d.T?.disc?.homeWait ?? 0.4, 'disc');
       if (w > 0) {
         s.wait += w;
         if (br.stats) br.stats.delays++;
