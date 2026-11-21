@@ -145,7 +145,27 @@ export function drawBeam(F, ax, ay, az, bx, by, bz, w, k, dt, form) {
 const BEAM_O = Object.freeze({ muzzle: true, light: 'beam', floor: true, flies: true });
 const SPLIT_O = Object.freeze({ muzzle: false, light: null, floor: true, flies: true });
 
-/** The windup (AscFx.beamCharge): at the cupped hands, u 0..1. */
+/**
+ * The line he has fixed (kiBeam.js, from the cue until the beam is lit): a thin thread of gold run out
+ * from his lead hand a → b, in dashes that crawl outward along it (the eye follows it to where it ends),
+ * brighter near the hand. `k` 0..1 its strength. No randomness (a steady pattern on the clock).
+ */
+export function drawSight(F, ax, ay, az, bx, by, bz, k, form) {
+  if (!F.fire || !Number.isFinite(ax + ay + az + bx + by + bz + k) || !(k > 0.01)) return;
+  const dx = bx - ax, dy = by - ay, dz = bz - az, L = Math.hypot(dx, dy, dz);
+  if (!(L > 0.5)) return;
+  const ux = dx / L, uy = dy / L, uz = dz / L, t = F._now();
+  const dash = 0.9, gap = 0.55, per = dash + gap, off = (t * 9) % per;
+  const kind = form >= 3 ? K_STEEL : K_VOID;
+  for (let s = -per + off; s < L; s += per) {
+    const s0 = Math.max(0.15, s), s1 = Math.min(L, s + dash);
+    if (s1 <= s0) continue;
+    const f0 = 1 - 0.75 * (s0 / L), f1 = 1 - 0.75 * (s1 / L);
+    F._ink(ax + ux * s0, ay + uy * s0, az + uz * s0, ax + ux * s1, ay + uy * s1, az + uz * s1, 0, 0.62 * k * f0, 0, 0.62 * k * f1, 0, kind);
+  }
+}
+
+/** The windup (AscFx.beamCharge): at the drawn-back palm, u 0..1. */
 export function drawBeamCharge(F, x, y, z, u, dt, form) {
   const A = F._axes(), t = F._now(), life = F._frame(), f3 = form >= 3;
   const P = F._toCamera(x, y, z), px = P.x, py = P.y, pz = P.z;

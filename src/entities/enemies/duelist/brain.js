@@ -60,6 +60,10 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //                          d.onSustain(beat, sense, act, k) is called every `tick` s (k 0..1 through
 //                          the lit window). The cue ledger counts the whole lit window as one interval
 //                          (ledger.js conflict): nothing asking the other answer is cued inside it.
+//   selfHit: true          (with a zone, usually with `sustain`) the ACTOR tests the zone and deals the
+//                          hits itself (Tian Lei's beams: a first contact, then ticks while lit; ki
+//                          BeamMoves): the brain cues, flashes, holds and ledgers the beat as any blow
+//                          and calls d.onImpact, but gives no zone result and no world blow of its own.
 //   T.airFall { g }        (TUNING) a reaction / break / death that starts in the air drops him to the
 //                          floor at `g` m/s² instead of snapping the root to y = 0.
 // startLock(o) takes overrides of TUNING.lock (`dist`: the lock at range, player.startBladeLock).
@@ -1093,7 +1097,12 @@ export class DuelBrain {
         // (the cover the hero stands behind, for a line of the Void: found first, the FX draw to it)
         b.cover = this._coverFor(b, s);
         d.onImpact?.(b, s, a);
-        if ((!b.def.release || b.cut) && !b.def.cast) this._worldBlow(b);
+        if ((!b.def.release || b.cut) && !b.def.cast && !b.def.selfHit) this._worldBlow(b);
+      }
+      // (a beat whose hits the actor deals itself: no zone result here; it is over at its end)
+      if (b.def.selfHit) {
+        if (t >= b.end - 1e-6) b.done = true;
+        continue;
       }
       if (b.def.release && !b.cut) {
         b.done = true;

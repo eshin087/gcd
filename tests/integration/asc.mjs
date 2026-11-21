@@ -1009,7 +1009,99 @@ async function scenarioTraining() {
 //
 //
 // --- beams
-//
+/** One beam move from a set-up: him at (0, -2) facing +z, the hero `dist` m ahead at angle `ang`;
+ *  `step(info)` runs every frame (info.flashT: the time of his cue, or null). Returns what happened. */
+function beamPlay(G, name, { dist = 10, ang = 0, form = 1, step = null, max = 9, god = false } = {}) {
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  settle(G);
+  if (d.phase !== form) { d.debug.setForm(form); run(G, 0.4); }
+  input.axis = { x: 0, y: 0 };
+  input.up(1);
+  input.release('ShiftLeft');
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  place(G, dist, ang);
+  run(G, 0.2);
+  p.guard = p.maxGuard;
+  p.debug.god = god;
+  p.hp = p.maxHp;
+  const info = { flashT: null, flashes: [], hits: [], hp0: p.hp, guard0: p.guard, start: { x: p.position.x, z: p.position.z }, minGuard: p.guard, states: new Set(), beamOn: 0 };
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') { info.flashes.push({ t: game.time, tell: e.tell, x: e.x, y: e.y, z: e.z, attack: e.attack }); if (info.flashT === null) info.flashT = game.time; } };
+  const h0 = G.hits.length;
+  info.started = d.debug.trigger(name);
+  run(G, max, () => {
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    step?.(info);
+    info.minGuard = Math.min(info.minGuard, p.guard);
+    info.states.add(p.state);
+    if (d.ki.beams.busy) info.beamOn++;
+  }, () => info.flashT !== null && quiet(d) && game.hitstopTimer <= 0 && !['roll', 'knockdown'].includes(p.state));
+  G.watch = null;
+  input.axis = { x: 0, y: 0 };
+  input.up(1);
+  input.release('ShiftLeft');
+  info.hits = G.hits.slice(h0).filter((h) => h.attack === name);
+  info.lost = info.hp0 - p.hp;
+  info.end = { x: p.position.x, z: p.position.z };
+  info.moved = Math.hypot(info.end.x - info.start.x, info.end.z - info.start.z);
+  p.debug.god = false;
+  return info;
+}
+
+async function scenarioBeams() {
+  out('\n== scenario BEAMS (Rising Tide, the sweep, Twin Tide, the great beam: the cue, the first contact, the ticks, every answer) ==');
+  const { BEAM_TUNING: BT } = await imp('src/entities/enemies/ascendant/tuningBeam.js');
+  const G = build();
+  duel(G, { dist: 10 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  const lead = TUNING.flashLead, scale = TUNING.damageScale ?? 1;
+  // 1. Rising Tide on a hero who stands: one red cue at the palm, the first contact flashLead later,
+  // knocked down and thrown along the line, no tick on him while he is down
+  const st = beamPlay(G, 'risingTide', { dist: 10 });
+  const f0 = st.flashes[0], c0 = st.hits.find((h) => h.r !== RESULT.IGNORED);
+  const palmH = f0 ? f0.y : 0;
+  assert(st.started && st.flashes.length === 1 && f0.tell === TELL.RED && palmH > 0.7 && palmH < 2, `Rising Tide: one red cue (${st.flashes.length}) at the palm (${palmH.toFixed(2)} m up)`);
+  assert(c0 && c0.r === RESULT.HIT && Math.abs(c0.t - st.flashT - lead) < 0.09 && Math.abs(c0.damage - BT.rising.first.damage * scale) < 1e-6, `the first contact lands ${c0 ? ((c0.t - st.flashT) * 1000).toFixed(0) : '-'} ms after the cue (flashLead ${lead * 1000}), ${c0?.damage} damage`);
+  assert(st.states.has('knockdown') && st.moved > BT.rising.first.knockback * 0.7 && st.hits.filter((h) => h.r === RESULT.HIT).length === 1, `knocked down and thrown ${st.moved.toFixed(1)} m along it; no tick on him while down (${st.hits.length} contacts)`);
+  assert(st.beamOn * DT > BT.rising.lit - 0.1 && st.beamOn * DT < BT.rising.lit + 0.6, `lit ${(st.beamOn * DT).toFixed(2)} s (${BT.rising.lit} s, then it fades)`);
+  // 2. stepping into the lit beam: ticks, a stream (no stagger)
+  let into = false;
+  const tk = beamPlay(G, 'risingTide', { dist: 10, step: (I) => {
+    const B = d.ki.beams.B;
+    if (I.flashT !== null && !I.aside) { I.aside = true; p.debug.teleport(p.position.x + 4, p.position.z); }
+    if (!into && B.phase === 'lit' && B.t > BT.active + 0.02) { into = true; p.debug.teleport(B.ox + B.dx * 7, B.oz + B.dz * 7); }
+  } });
+  const parts = tk.hits.filter((h) => h.r === RESULT.HIT), dealt = parts.reduce((a, h) => a + h.damage, 0);
+  const nTicks = dealt / (BT.rising.tick * scale);
+  assert(nTicks >= 2 && Math.abs(nTicks - Math.round(nTicks)) < 1e-6 && parts.every((h) => h.damage < 5) && !tk.states.has('stagger') && !tk.states.has('knockdown'), `stepping into it once lit: ${nTicks.toFixed(0)} ticks of ${BT.rising.tick} (each in parts under the stagger floor), no stagger (${[...tk.states].join(' ')})`);
+  // 3. the answers from the cue: off the line at each distance (run, sprint, a roll), against the strip
+  out(`     leaving the line from the cue (strip ${BT.rising.w} m + the hero's ${(p.radius * 2).toFixed(1)} m; the line fixed at ${BT.rising.fix} of the ${BT.rising.windup} s windup, the cue at ${((BT.rising.windup - lead) / BT.rising.windup).toFixed(2)}):`);
+  const table = {};
+  for (const dist of [6, 10, 14]) {
+    for (const how of ['stand', 'run', 'sprint', 'roll']) {
+      const r = beamPlay(G, 'risingTide', { dist, step: (I) => {
+        if (I.flashT === null || how === 'stand') return;
+        input.axis = { x: 1, y: 0 };
+        if (how === 'sprint') input.hold('ShiftLeft');
+        if (how === 'roll' && !I.rolled) { I.rolled = true; input.tap('Space'); }
+      } });
+      const fc = r.hits[0];
+      table[`${how}${dist}`] = fc ? fc.r : 'clear';
+    }
+    out(`       ${String(dist).padStart(2)} m: ${['stand', 'run', 'sprint', 'roll'].map((h) => `${h} ${table[`${h}${dist}`]}`).join(' · ')}`);
+  }
+  assert([6, 10, 14].every((m) => table[`stand${m}`] === RESULT.HIT && table[`sprint${m}`] === 'clear' && [RESULT.PERFECT, RESULT.DODGED, 'clear'].includes(table[`roll${m}`])), 'standing it lands at 6 / 10 / 14 m; a sprint off the line from the cue clears it, a roll at the cue goes through it');
+  // 4. a held guard: guard drains, no health, slid along the line; it cannot be parried
+  const bl = beamPlay(G, 'risingTide', { dist: 9, step: () => input.press(1) });
+  const blHits = bl.hits.filter((h) => h.r !== RESULT.IGNORED);
+  assert(blHits[0]?.r === RESULT.BLOCKED && bl.lost === 0 && bl.guard0 - bl.minGuard > BT.rising.first.damage && d.ki.beams.stats.blocked > 0, `a held guard: blocked (${blHits[0]?.r}), ${bl.lost} HP lost, guard ${bl.guard0} → ${Math.round(bl.minGuard)} (ticks drain it too)`);
+  assert(bl.moved > 0.9, `... and slid ${bl.moved.toFixed(2)} m along the beam`);
+  const pr = beamPlay(G, 'risingTide', { dist: 9, step: (I) => { if (I.flashT !== null && !I.pp && game.time >= I.flashT + lead - 0.1) { I.pp = true; input.click(1); } } });
+  assert(!pr.hits.some((h) => h.r === RESULT.PARRIED), `it cannot be parried (${pr.hits.map((h) => h.r).join(' ')})`);
+  assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
+}
 //
 // --- strings
 //
@@ -1036,7 +1128,7 @@ const S = {
   //
   //
   // --- beams
-  //
+  beams: scenarioBeams,
   //
   // --- strings
   //
