@@ -153,30 +153,33 @@ function hairB(form) {
   const L = [];
   const r = rng(form * 101 + 7);
   if (form === 1) {
-    // a loose shaggy mane falling to the shoulders, and a ragged fringe that leaves the eyes clear
-    for (let i = 0; i < 12; i++) {
-      const az = 0.95 + (i / 11) * (Math.PI * 2 - 1.9) + (r() - 0.5) * 0.15;
-      const el = 0.35 + 0.25 * r();
-      L.push(lockAt(az, el, (o) => mix3([o, 0.45], [DOWN, 1], [BACK, 0.15]), 0.17 + 0.07 * r(), 0.04, { bend: [Math.sin(az), 0, Math.cos(az)], curl: 0.22 }));
+    // a loose shaggy mane falling to the shoulders (two layers of broad locks), and a ragged fringe
+    // that leaves the eyes clear
+    for (const [n, el0, len, w] of [[16, 0.45, 0.24, 0.058], [12, 0.15, 0.2, 0.05]]) {
+      for (let i = 0; i < n; i++) {
+        const az = 0.85 + (i / (n - 1)) * (Math.PI * 2 - 1.7) + (r() - 0.5) * 0.12;
+        const el = el0 + 0.15 * r();
+        L.push(lockAt(az, el, (o) => mix3([o, 0.22], [DOWN, 1], [BACK, 0.12]), len + 0.06 * r(), w, { bend: [Math.sin(az), 0, Math.cos(az)], curl: 0.16, taper: 0.7 }));
+      }
     }
-    for (const s of [-1, 0, 1]) L.push(lockAt(s * 0.32, 0.55, mix3([outAt(s * 0.32, 0.55), 0.5], [DOWN, 1], [[s * 0.4, 0, 0], 0.3]), 0.085, 0.026, { bend: FWD, curl: 0.25 }));
+    for (const s of [-1, -0.4, 0.4, 1]) L.push(lockAt(s * 0.32, 0.55, mix3([outAt(s * 0.32, 0.55), 0.45], [DOWN, 1], [[s * 0.4, 0, 0], 0.3]), 0.09, 0.03, { bend: FWD, curl: 0.25 }));
     return L;
   }
   const big = form === 3;
-  // the whole mane blown up and back
-  const n = big ? 18 : 15;
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    const az = lerp(-2.4, 2.4, t) + (r() - 0.5) * 0.12;
-    const el = 0.35 + 0.45 * Math.cos(az * 0.5) * (0.7 + 0.3 * r());
-    L.push(lockAt(az, el, (o) => mix3([o, 0.55], [UP, big ? 0.75 : 0.65], [BACK, 0.75]), (big ? 0.29 : 0.22) + (big ? 0.1 : 0.07) * r(), big ? 0.04 : 0.046, { bend: mix3([BACK, 1], [UP, 0.3]), curl: big ? 0.06 : 0.16, taper: big ? 1.15 : 0.8 }));
+  // the whole mane blown up and back: broad locks streaming behind him and rising
+  for (const [n, el0, up, back, len] of [[14, 0.62, big ? 0.6 : 0.5, 0.9, big ? 0.3 : 0.24], [12, 0.25, big ? 0.35 : 0.25, 1, big ? 0.32 : 0.24]]) {
+    for (let i = 0; i < n; i++) {
+      const az = lerp(-2.6, 2.6, i / (n - 1)) + (r() - 0.5) * 0.12;
+      const el = el0 + 0.12 * r();
+      L.push(lockAt(az, el, (o) => mix3([o, 0.45], [UP, up], [BACK, back]), len + (big ? 0.1 : 0.06) * r(), big ? 0.05 : 0.058, { bend: mix3([BACK, 1], [UP, 0.4]), curl: big ? 0.05 : 0.15, taper: big ? 1.35 : 0.8 }));
+    }
   }
-  // risen front locks
-  for (const s of [-1, 1]) L.push(lockAt(s * 0.3, 0.5, mix3([UP, 1], [FWD, 0.2], [[s, 0, 0], 0.3]), big ? 0.14 : 0.11, 0.03, { bend: BACK, curl: 0.2 }));
-  // form 3: long stiff strands down his back
+  // the front hair risen and thrown back
+  for (const s of [-1, -0.3, 0.3, 1]) L.push(lockAt(s * 0.35, 0.5, mix3([UP, 1], [BACK, 0.6], [[s, 0, 0], 0.2]), big ? 0.17 : 0.13, 0.034, { bend: BACK, curl: 0.15, taper: big ? 1.3 : 0.8 }));
+  // form 3: long stiff strands down his back, to the shoulder blades
   if (big) for (let i = 0; i < 7; i++) {
     const az = Math.PI + (i / 6 - 0.5) * 1.6;
-    L.push(lockAt(az, 0.1, (o) => mix3([o, 0.35], [DOWN, 1], [BACK, 0.45]), 0.36 + 0.08 * r(), 0.036, { bend: BACK, curl: 0.1, taper: 1.1 }));
+    L.push(lockAt(az, 0.05, (o) => mix3([o, 0.25], [DOWN, 1.6], [BACK, 0.35]), 0.34 + 0.08 * r(), 0.04, { bend: BACK, curl: 0.08, taper: 1.2 }));
   }
   return L;
 }
@@ -190,22 +193,26 @@ function hairC(form) {
     return L;
   }
   const big = form === 3;
-  // the crest: blades along the top of the head from the brow to the crown, thin across, deep along
+  // the crest: three rows of blades along the top of the head from the brow to the crown (the middle
+  // row tallest, the side rows leaning out: a fan from the front, a ridge from the side)
   const n = big ? 9 : 8;
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    const el = lerp(0.62, Math.PI - 0.45, t); // over the top, front to back
-    const az = el > Math.PI / 2 ? Math.PI : 0;
-    const e2 = el > Math.PI / 2 ? Math.PI - el : el;
-    const hgt = Math.sin(Math.PI * (0.15 + 0.7 * t));
-    L.push({ at: scalp(az, e2), dir: mix3([UP, 1], [BACK, 0.35 + 0.4 * t], [FWD, 0.15 * (1 - t)]), L: (big ? 0.2 : 0.14) + (big ? 0.16 : 0.1) * hgt, w: 0.012, th: big ? 0.032 : 0.04, curl: big ? 0.04 : 0.1, taper: big ? 1.2 : 0.9, bend: BACK });
+  for (const [row, k, lean] of [[0, 1, 0], [-1, 0.72, 0.45], [1, 0.72, 0.45]]) {
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const el = lerp(0.62, Math.PI - 0.45, t); // over the top, front to back
+      const back = el > Math.PI / 2;
+      const e2 = back ? Math.PI - el : el;
+      const az = (back ? Math.PI - row * 0.32 : row * 0.32);
+      const hgt = Math.sin(Math.PI * (0.15 + 0.7 * t));
+      L.push({ at: scalp(az, e2 - Math.abs(row) * 0.08), dir: mix3([UP, 1], [BACK, 0.35 + 0.45 * t], [FWD, 0.15 * (1 - t)], [[row, 0, 0], lean]), L: k * ((big ? 0.2 : 0.14) + (big ? 0.17 : 0.1) * hgt), w: 0.02, th: big ? 0.034 : 0.04, curl: big ? 0.04 : 0.1, taper: big ? 1.3 : 0.9, bend: BACK });
+    }
   }
   // the sides swept back flat along the head
-  for (const s of [-1, 1]) for (const el of [0.2, 0.5]) L.push(lockAt(s * 1.2, el, mix3([BACK, 1], [UP, 0.25], [[s, 0, 0], 0.15]), big ? 0.17 : 0.12, 0.026, { bend: [s, 0.2, 0], curl: 0.1, taper: big ? 1.1 : 0.8 }));
+  for (const s of [-1, 1]) for (const el of [0.2, 0.5]) L.push(lockAt(s * 1.2, el, mix3([BACK, 1], [UP, 0.25], [[s, 0, 0], 0.15]), big ? 0.17 : 0.12, 0.03, { bend: [s, 0.2, 0], curl: 0.1, taper: big ? 1.2 : 0.8 }));
   // form 3: a mane of stiff spikes down his back
   if (big) for (let i = 0; i < 6; i++) {
     const az = Math.PI + (i / 5 - 0.5) * 1.3;
-    L.push(lockAt(az, 0.15, (o) => mix3([o, 0.3], [DOWN, 0.8], [BACK, 0.8]), 0.3 + 0.05 * Math.cos(i), 0.03, { bend: BACK, curl: 0.06, taper: 1.2 }));
+    L.push(lockAt(az, 0.1, (o) => mix3([o, 0.2], [DOWN, 2.2], [BACK, 0.35]), 0.3 + 0.05 * Math.cos(i), 0.036, { bend: BACK, curl: 0.06, taper: 1.3 }));
   }
   return L;
 }
@@ -300,6 +307,12 @@ const SHELL = [
   { y: 1.505, rx: 0.092, rz: 0.074 },
   { y: 1.525, rx: 0.056, rz: 0.054 },
 ];
+/** The shell's ring at world height y (interpolated; with the torso's own bulge, gap closed). */
+function shellAt(y) {
+  const i = Math.max(1, Math.min(SHELL.length - 1, SHELL.findIndex((q) => q.y > y)));
+  const A = SHELL[i - 1], B = SHELL[i], u = Math.max(0, Math.min(1, (y - A.y) / (B.y - A.y)));
+  return { rx: lerp(A.rx, B.rx, u), rz: lerp(A.rz, B.rz, u), cz: lerp(A.cz ?? 0, B.cz ?? 0, u) };
+}
 const grown = (d, f = null) => SHELL.map((r) => ({ ...r, rx: r.rx + d, rz: r.rz + d, gap: 0, ...(f ? f(r) : null), y: ySp(r.y) }));
 
 /** The bare torso in skin, a chest and a belly drawn in (sub-pieces: ink lines up close). */
@@ -420,20 +433,24 @@ function chestC(ctx) {
   const edge = mesh(spine, mergeGeometries(edgeParts), M.facing);
   at(D, wrap, 1, 2);
   at(D, edge, 1, 2);
-  // the prayer beads: a loop of big beads round his neck, hanging to the breastbone
+  // the prayer beads: a loop of big beads round his neck, over the shoulders and down to the
+  // breastbone, each sitting on the torso's surface (over the wrap)
   const beads = [];
-  const n = 22;
+  const n = 24;
+  let low = null;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
-    const front = Math.max(0, Math.cos(a));
-    const rx = 0.115 + 0.01 * front, rz = 0.095 + 0.035 * front;
-    const y = yCh(1.5) - 0.13 * front * front - 0.01;
+    const front = Math.max(0, Math.cos(a)), back = Math.max(0, -Math.cos(a));
+    const y = 1.505 - 0.15 * front * front - 0.05 * back * back - 0.01 * Math.abs(Math.sin(a));
+    const R = shellAt(y), k = 0.024;
     const big = i === 0;
-    beads.push(sub(ellipsoidGeometry(big ? 0.024 : 0.017, big ? 0.024 : 0.017, big ? 0.02 : 0.015, { widthSegs: 8, heightSegs: 5 }).translate(Math.sin(a) * rx, y, Math.cos(a) * rz + 0.012), i & 1));
+    const p = [Math.sin(a) * (R.rx + k), yCh(y), Math.cos(a) * (R.rz + k) + R.cz];
+    if (big) low = p;
+    beads.push(sub(ellipsoidGeometry(big ? 0.03 : 0.021, big ? 0.03 : 0.021, big ? 0.025 : 0.018, { widthSegs: 8, heightSegs: 5 }).translate(...p), i & 1));
   }
   mesh(chest, mergeGeometries(beads), M.trim);
-  // form 2: the beads' light (a bright bead in the loop's place, a glow over the big one)
-  const glow = mesh(chest, ellipsoidGeometry(0.028, 0.028, 0.024, { widthSegs: 8, heightSegs: 5 }).translate(0, yCh(1.5) - 0.14, 0.142), M.flask);
+  // form 2: the beads' light (a glow over the big bead)
+  const glow = mesh(chest, ellipsoidGeometry(0.034, 0.034, 0.028, { widthSegs: 8, heightSegs: 5 }).translate(low[0], low[1], low[2] + 0.006), M.flask);
   at(D, glow, 2, 3);
   return { keep: [wrap, edge, glow] };
 }
@@ -655,7 +672,7 @@ function buildWaist(ctx) {
   const { coat } = panelSkirt(ctx, SKIRT_C, { seed: 700 });
   const streamers = sash(ctx, { tails: [0.16, 0.18], w: 0.06 });
   const { made, cx } = capture(ctx);
-  const S = hangSheet(cx, ctx.chest, { at: [0.11, yCh(1.47), -0.06], ry: Math.PI - 0.35, w: [0.16, 0.2, 0.22], len: [0.24, 0.26], out: 0.1, wrap: 0.16, lag: 0.6, max: 1.5, seed: 77, inMax: [0.1, 0.25] }, { face: ctx.M.facing, back: null, hem: ctx.M.facing });
+  const S = hangSheet(cx, ctx.chest, { at: [0.1, yCh(1.46), -0.125], ry: Math.PI - 0.3, w: [0.16, 0.2, 0.22], len: [0.24, 0.26], out: 0.15, wrap: 0.16, lag: 0.6, max: 1.5, seed: 77, inMax: [0.1, 0.25] }, { face: ctx.M.facing, back: null, hem: ctx.M.facing });
   for (const m of made) {
     m.geometry = twoSided(m.geometry);
     at(D, m, 1, 2);

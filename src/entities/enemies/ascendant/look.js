@@ -104,15 +104,20 @@ export function dressAscendant(d, dt) {
   const D = d?.rig?.root?.userData?.dress;
   if (!D || D.kind !== 'asc') return;
   const M = d.rig.materials;
-  if (!D.base) D.base = { hem: rgbOf(M.hem) }; // (form 1's wraps, to give back in the Lab)
+  if (!D.base) {
+    D.base = { hem: rgbOf(M.hem) }; // (form 1's wraps, to give back in the Lab)
+    D.art = !!M.hair?.uniforms?.uWInk;
+  }
   const n = Math.min(3, Math.max(1, d.phase | 0));
   if (n !== D.phase) {
     D.phase = n;
     for (const e of D.at) e.m.visible = n >= e.from && n <= e.to;
     const F = FORM[n];
     if (F) {
-      setFill(M.hair, ...F.hair);
-      setFill(M.hairTip, ...F.hairTip);
+      // (the wyrm art path, option d, prints a bright ink as white: its gold is held lower)
+      const k = D.art ? 0.7 : 1;
+      setFill(M.hair, F.hair[0] * k, F.hair[1] * k, F.hair[2] * k);
+      setFill(M.hairTip, F.hairTip[0] * k, F.hairTip[1] * k, F.hairTip[2] * k);
       for (const m of [M.hair, M.hairTip]) {
         const u = m?.uniforms;
         u?.uInk?.value.setRGB(...F.ink);
@@ -135,11 +140,11 @@ export function dressAscendant(d, dt) {
   const b = n === 3 ? 0.82 + 0.18 * Math.sin(t * 11.3) * Math.sin(t * 4.1 + 0.7) : 0.85 + 0.15 * Math.sin(t * 2.6);
   for (const m of [M.hair, M.hairTip]) {
     const u = m?.uniforms;
-    if (u?.uInkGlow) u.uInkGlow.value = F.inkGlow * b;
+    if (u?.uInkGlow) u.uInkGlow.value = F.inkGlow * b * (D.art ? 0.4 : 1);
   }
   const fu = M.flask?.uniforms;
   if (fu) {
-    if (fu.uGlow) fu.uGlow.value = F.glow * b;
-    if (fu.uInkGlow) fu.uInkGlow.value = 0.8 * b;
+    if (fu.uGlow) fu.uGlow.value = F.glow * b * (D.art ? 0.5 : 1);
+    if (fu.uInkGlow) fu.uInkGlow.value = (D.art ? 0.4 : 0.8) * b;
   }
 }
