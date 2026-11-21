@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp, wrapAngle } from '../../../core/math.js';
 import { TELL } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
-import { P } from '../../player/anim.js';
+import { P, to3 } from '../../player/anim.js';
 import { TUNE as HERO_TUNE } from '../../player/player.js';
 import { Duelist } from '../duelist/duelist.js';
 import { DuelBrain } from '../duelist/brain.js';
@@ -55,7 +55,21 @@ import { TerrainMoves } from './terrain.js';
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const POSES = Object.freeze({
-  loco: (p, A) => formPoses(A.player?.form ?? 1).duelLoco(p, A),
+  loco: (p, A) => {
+    formPoses(A.player?.form ?? 1).duelLoco(p, A);
+    // the dash (AscBrain): low and pitched into it, the arms swept back, the head down on the hero
+    const k = A.player?.dashK ?? 0;
+    if (k > 0.01) {
+      p[P.pitch] += 0.42 * k;
+      p[P.bodyY] -= 0.2 * k;
+      p[P.spX] += 0.12 * k;
+      p[P.hdX] -= 0.3 * k;
+      to3(p, P.rH, -0.14, -0.3, -0.34, k);
+      to3(p, P.lH, 0.14, -0.3, -0.34, k);
+      to3(p, P.rP, -0.6, 0.2, -0.8, k);
+      to3(p, P.lP, 0.6, 0.2, -0.8, k);
+    }
+  },
   duel: (p, A) => {
     formPoses(A.player?.form ?? 1).duelClip(p, A);
     // (his feet stay planted while a move carries him: the planner's offsets, Ascendant._planFeet)
@@ -124,6 +138,7 @@ class AscBrain extends DuelBrain {
   /** Footwork: the dash across the gap (form `dash.from` on) and the closing blink (form 3) first. */
   _foot(dt) {
     const d = this.d, s = this._sense();
+    d.pilot.dashK = Math.max(this.dashing ? 1 : 0, (d.pilot.dashK ?? 0) - dt * 6);
     if (this.dashCool > 0) this.dashCool -= dt;
     if (this.blinkCool > 0) this.blinkCool -= dt;
     if (this.dashing) {

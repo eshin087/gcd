@@ -434,16 +434,16 @@ export const COUNTERS = Object.freeze(['riposte', 'riposte2', 'riposte3']);
 // forearms raised before the face; `ward` the left forearm stood up across his left side, `wardR` the
 // right across his right, `wardHigh` both crossed over the head; `deflect` the lead palm beats the
 // blade aside and the body turns in behind it; `clash` (the lost lock's shove) as a ward.
-const WARD_L = { yaw: -0.3, bY: -0.21, bZ: -0.04, pitch: -0.02, spX: 0.02, hdY: 0.3, lH: [0.04, 0.24, 0.26], lP: [0.9, -0.6, 0.0], rH: [0.14, 0.1, 0.22], rP: [-0.8, -0.7, -0.1], sw: FIST_UP };
-const WARD_R = { yaw: 0.1, bY: -0.21, bZ: -0.04, pitch: -0.02, hdY: -0.06, rH: [-0.02, 0.24, 0.26], rP: [-0.9, -0.6, 0.0], lH: [-0.08, 0.06, 0.26], lP: [0.8, -0.7, -0.1], sw: FIST_UP };
+const WARD_L = { yaw: -0.36, bY: -0.24, bZ: -0.06, pitch: -0.04, spX: 0.04, hdY: 0.34, lH: [0.04, 0.36, 0.3], lP: [0.9, -0.5, 0.1], rH: [0.14, 0.22, 0.26], rP: [-0.8, -0.7, -0.1], sw: FIST_UP };
+const WARD_R = { yaw: 0.16, bY: -0.24, bZ: -0.06, pitch: -0.04, hdY: -0.1, rH: [-0.04, 0.36, 0.3], rP: [-0.9, -0.5, 0.1], lH: [-0.08, 0.22, 0.28], lP: [0.8, -0.7, -0.1], sw: FIST_UP };
 const WARD_HIGH = { yaw: -0.1, bY: -0.27, bZ: -0.03, pitch: -0.05, spX: -0.04, hdX: 0.08, hdY: 0.08, rH: [0.18, 0.44, 0.24], rP: [-0.9, 0.1, -0.3], lH: [-0.16, 0.46, 0.26], lP: [0.9, 0.1, -0.3], sw: [0.9, 0.3] };
-const HOLD = { yaw: -0.34, bY: -0.2, hdY: 0.3, rH: [0.12, 0.24, 0.24], rP: [-0.8, -0.6, 0.0], lH: [-0.04, 0.26, 0.3], lP: [0.8, -0.6, 0.0], sw: FIST_UP };
+const HOLD = { yaw: -0.34, bY: -0.24, hdY: 0.3, hdX: 0.12, rH: [0.12, 0.32, 0.28], rP: [-0.8, -0.6, 0.0], lH: [-0.04, 0.34, 0.32], lP: [0.8, -0.6, 0.0], sw: FIST_UP };
 const BEAT = { yaw: -0.78, bY: -0.24, bZ: 0.08, pitch: 0.07, hdY: 0.6, lH: [-0.32, 0.06, 0.42], lP: [0.9, -0.2, -0.2], rH: [0.14, 0.04, 0.3], rP: [-0.8, -0.6, -0.2], sw: FIST_UP };
 const met = (Wd, dur = 0.34) => ({
   dur, hold: true,
   keys: [
     [0, { ...Wd }],
-    [0.07, { e: 'o', ...Wd, bZ: Wd.bZ - 0.07, pitch: Wd.pitch - 0.05, spX: (Wd.spX ?? 0.02) - 0.05 }],
+    [0.07, { e: 'o', ...Wd, bZ: Wd.bZ - 0.12, bY: Wd.bY - 0.04, pitch: Wd.pitch - 0.08, spX: (Wd.spX ?? 0.02) - 0.08 }],
     [0.2, { ...Wd, bZ: Wd.bZ - 0.03 }],
   ],
 });
