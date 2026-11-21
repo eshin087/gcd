@@ -286,60 +286,61 @@ export class AscFx extends LordFx {
 
   /** ?ascAura=a: a tall flame standing round him, its tongues drawn in to a point above his head. */
   _auraFlame(dt, f3, x, z, ox, oy, oz, H, A, t) {
-    const W = f3 ? 0.62 : 0.82, up = f3 ? 1.35 : 1, hk = f3 ? 1.22 : 1;
-    this._auraAcc += dt * (f3 ? 96 : 72);
+    const W = f3 ? 0.66 : 0.86, up = f3 ? 1.3 : 1, hk = f3 ? 1.2 : 1;
+    this._auraAcc += dt * (f3 ? 135 : 105);
     while (this._auraAcc >= 1) {
       this._auraAcc -= 1;
-      const s = this.lrand(-W, W), h = this.lrand(0.05, H * 0.92), edge = Math.abs(s) / W;
-      this._blob(ox + A.rx * s, oy + h, oz + A.rz * s, -A.rx * s * 0.55, this.lrand(1.5, 3.1) * up, -A.rz * s * 0.55, this.lrand(0.42, 0.8) * (f3 ? 1.15 : 1), f3 ? 0.6 : 0.72, f3 ? 0.26 : 0.32, (0.42 + 0.16 * edge) * hk, 0.1, K_VOID, 0.6, 1.2);
+      // (hollow behind him: the flame stands round his outline, so its tongues do not lick over his body)
+      const s = (this.lr() < 0.5 ? -1 : 1) * this.lrand(0.3, W), h = this.lrand(0.05, H * 0.92), edge = Math.abs(s) / W;
+      this._blob(ox + A.rx * s, oy + h, oz + A.rz * s, -A.rx * s * 0.22, this.lrand(2.2, 4.2) * up, -A.rz * s * 0.22, this.lrand(0.5, 0.9) * (f3 ? 1.1 : 1), f3 ? 0.7 : 0.82, f3 ? 0.3 : 0.36, (0.15 + 0.1 * edge) * hk, 0.07, K_VOID, 0.6, 1.4);
     }
     // the tip: tongues licking up off the top of the flame
-    this._trailAcc += dt * (f3 ? 14 : 9);
+    this._trailAcc += dt * (f3 ? 22 : 15);
     while (this._trailAcc >= 1) {
       this._trailAcc -= 1;
       const s = this.lrand(-0.3, 0.3);
-      this._blob(ox + A.rx * s, oy + H * this.lrand(0.85, 1.05), oz + A.rz * s, -A.rx * s, this.lrand(3.5, 6) * up, -A.rz * s, this.lrand(0.3, 0.5), 0.46, 0.2, 0.42 * hk, 0.05, K_VOID, 0.4, 1);
+      this._blob(ox + A.rx * s, oy + H * this.lrand(0.85, 1.05), oz + A.rz * s, -A.rx * s, this.lrand(3.5, 6) * up, -A.rz * s, this.lrand(0.3, 0.5), 0.46, 0.2, 0.34 * hk, 0.05, K_VOID, 0.4, 1);
     }
     // the wheel on the floor: a ring of gold, four hotter spokes of it turning
-    this._ring(x, GROUND_Y, z, f3 ? 1.2 : 1.4, f3 ? 26 : 30, 0.34, (f3 ? 0.38 : 0.32) * GROUND_GAIN, K_VOID, 4, t * (f3 ? 2.2 : 1.4));
+    this._ring(x, GROUND_Y, z, f3 ? 1.25 : 1.45, f3 ? 30 : 34, 0.42, (f3 ? 0.5 : 0.44) * GROUND_GAIN, K_VOID, 4, t * (f3 ? 2.2 : 1.4));
   }
 
   /** ?ascAura=b: a tight sheath along his outline and long streamers climbing off his shoulders. */
   _auraSheath(d, dt, f3, ox, oy, oz, H, A, B, t) {
     const n = this._bodyPts(d), P = this._gp, x = d.position.x, z = d.position.z, hk = f3 ? 1.25 : 1;
     if (n >= 12) {
-      this._auraAcc += dt * (f3 ? 120 : 95);
+      this._auraAcc += dt * (f3 ? 170 : 140);
       while (this._auraAcc >= 1) {
         this._auraAcc -= 1;
         const i = Math.floor(this.lr() * n) * 3;
         const px = P[i], py = P[i + 1], pz = P[i + 2];
         // pushed behind him and a little out from his middle on screen: a rim round the figure
-        const sx = (px - x) * A.rx + (pz - z) * A.rz, out = sx >= 0 ? 0.14 : -0.14;
-        this._blob(px - B.x * 0.45 + A.rx * out, py - B.y * 0.45 + 0.05, pz - B.z * 0.45 + A.rz * out, A.rx * out, this.lrand(0.8, 1.7) * (f3 ? 1.3 : 1), A.rz * out, this.lrand(0.22, 0.4), 0.34, 0.18, 0.4 * hk, 0, K_VOID, 0.5, 0.8);
+        const sx = (px - x) * A.rx + (pz - z) * A.rz, out = sx >= 0 ? 0.2 : -0.2;
+        this._blob(px - B.x * 0.4 + A.rx * out, py - B.y * 0.4 + 0.05, pz - B.z * 0.4 + A.rz * out, A.rx * out, this.lrand(0.8, 1.7) * (f3 ? 1.3 : 1), A.rz * out, this.lrand(0.25, 0.42), 0.42, 0.22, 0.6 * hk, 0.05, K_VOID, 0.5, 0.8);
       }
     }
     // the streamers: five, swaying, off his shoulders and head
-    this._trailAcc += dt * (f3 ? 85 : 62);
+    this._trailAcc += dt * (f3 ? 110 : 85);
     while (this._trailAcc >= 1) {
       this._trailAcc -= 1;
       const j = Math.floor(this.lr() * 5), s = (j - 2) * 0.24 + 0.08 * Math.sin(t * 3 + j * 1.7);
-      this._blob(ox + A.rx * s, oy + this.lrand(1.35, 1.85), oz + A.rz * s, A.rx * s * 0.3, this.lrand(6, 8) * (f3 ? 1.3 : 1), A.rz * s * 0.3, this.lrand(0.38, 0.55), 0.36, 0.16, 0.5 * hk, 0.08, K_VOID, 0, 1.5);
+      this._blob(ox + A.rx * s, oy + this.lrand(1.35, 1.85), oz + A.rz * s, A.rx * s * 0.3, this.lrand(6, 8) * (f3 ? 1.3 : 1), A.rz * s * 0.3, this.lrand(0.42, 0.6), 0.44, 0.2, 0.62 * hk, 0.12, K_VOID, 0, 1.5);
     }
-    this._ring(x, GROUND_Y, z, 0.85, 18, 0.3, 0.3 * GROUND_GAIN, K_VOID, 3, t * 1.8);
+    this._ring(x, GROUND_Y, z, 0.9, 20, 0.38, 0.42 * GROUND_GAIN, K_VOID, 3, t * 1.8);
   }
 
   /** ?ascAura=c: a broad low blaze flaring out to his sides over a wide wheel that spins. */
   _auraBlaze(dt, f3, x, z, ox, oy, oz, H, A, t) {
     const W = f3 ? 1.25 : 1.45, hk = f3 ? 1.2 : 1;
-    this._auraAcc += dt * (f3 ? 96 : 78);
+    this._auraAcc += dt * (f3 ? 125 : 100);
     while (this._auraAcc >= 1) {
       this._auraAcc -= 1;
       const s = this.lrand(-W, W), h = this.lrand(0.05, f3 ? 1.6 : 1.25);
       this._blob(ox + A.rx * s, oy + h, oz + A.rz * s, A.rx * s * 0.7, this.lrand(0.9, 2.0) * (f3 ? 1.3 : 1), A.rz * s * 0.7, this.lrand(0.4, 0.7), 0.8, 0.38, 0.4 * hk, 0.08, K_VOID, 0.8, 0.8);
     }
     const sp = t * (f3 ? 5.5 : 3.8);
-    this._ring(x, GROUND_Y, z, 1.95, 40, 0.34, 0.36 * GROUND_GAIN * hk, K_VOID, 6, sp);
-    this._ring(x, GROUND_Y, z, 1.1, 22, 0.3, 0.3 * GROUND_GAIN * hk, K_VOID, 3, -sp * 1.4);
+    this._ring(x, GROUND_Y, z, 1.95, 44, 0.42, 0.48 * GROUND_GAIN * hk, K_VOID, 6, sp);
+    this._ring(x, GROUND_Y, z, 1.1, 24, 0.38, 0.42 * GROUND_GAIN * hk, K_VOID, 3, -sp * 1.4);
     if (f3 && this.lr() < dt * 6) {
       const a = this.lr() * TAU;
       this.arc(x + Math.cos(a) * 1.95, GROUND_Y, z + Math.sin(a) * 1.95, x + Math.cos(a + 0.6) * 1.1, GROUND_Y, z + Math.sin(a + 0.6) * 1.1, 0.3, null, null, 3);
