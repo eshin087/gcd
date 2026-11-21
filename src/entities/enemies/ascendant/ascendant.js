@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { clamp, lerp, wrapAngle } from '../../../core/math.js';
-import { TELL } from '../../../combat/rules.js';
+import { TELL, RESULT } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
 import { P, to3 } from '../../player/anim.js';
 import { TUNE as HERO_TUNE } from '../../player/player.js';
@@ -520,8 +520,43 @@ export class Ascendant extends Duelist {
    *  (its cue would ask a guard while the hero is answering the beam). */
   _beamBars(def) {
     const B = this.ki?.beams;
-    if (!B?.busy || B.phase === 'fade') return false;
+    // (the tuning pass: Storm Cage's orbs still to fly, or Sun Wheel's disc still out, bar them too: a
+    // string started under them was feinted or held by the fairness guard)
+    if ((!B?.busy || B.phase === 'fade') && !this._cageLive()) return false;
     return (def?.beats ?? []).some((b) => (Array.isArray(b.pick) ? b.pick : [b]).some((x) => !x.feint && x.tell != null && answerOf(x.tell) === GUARD_ANSWER));
+  }
+
+  /**
+   * His flurry answered (duelist.onStreakBlow, his own reward): every blow of it parried or blocked
+   * fills `T.flurry.posture` of his meter (1 = the engine's rule: it breaks him outright). The tuning
+   * pass: an answered flurry broke a full form in 11 s whatever its bar or meter (the 95 % bot's
+   * fights ended in under a minute through it); at 0.6 it breaks him only past 40 % of his meter.
+   */
+  onStreakBlow(a, b, r, near = false) {
+    const share = this.T.flurry?.posture ?? 1;
+    const S = a?.streak;
+    if (share >= 1 || !S) return super.onStreakBlow(a, b, r, near);
+    if (r === RESULT.PARRIED || r === RESULT.BLOCKED || (r === null && near)) {
+      S.got += r === RESULT.PARRIED && this.game.player?.deflect?.perfect ? 2 : 1;
+      this._streakSet(this.streak - 1);
+      if (!S.failed && S.got >= S.need) {
+        this._streakSet(0);
+        this.emit('dragon:flurryEnd', { count: S.need, answered: true });
+        S.failed = true; // (once)
+        this.addPosture(this.maxPosture * share);
+      }
+      return;
+    }
+    if (!S.failed) this.emit('dragon:flurryEnd', { count: S.need, answered: false });
+    S.failed = true;
+  }
+
+  /** Orbs of a Storm Cage still to reach the hero (red shots of a group, not passed), or Sun Wheel's
+   *  disc still out (its red home leg: guard strings started under it met the fairness guard's feints
+   *  and, once in ten seeds, a conflict). */
+  _cageLive() {
+    for (const s of this.fx?.shots ?? []) if (s.alive && !s.done && ((s.group && s.kind === 'blast') || (s.kind === 'disc' && s.tell === TELL.RED))) return true;
+    return false;
   }
 
   weigh(name, def, w, dist) {

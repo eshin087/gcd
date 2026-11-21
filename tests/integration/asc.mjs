@@ -36,6 +36,12 @@ const { AudioEngine } = await imp('src/audio/audio.js');
 const { GameFlow } = await imp('src/game/flow.js');
 const { Lab } = await imp('src/dev/lab.js');
 
+// (the tuning pass: ABYSS_TUNE='{"hp":3000,"posture":{"max":[1,2,3]}}' deep-merges into TUNING before
+// anything is built: a setting tried without editing tuning.js; arrays are replaced whole)
+if (process.env.ABYSS_TUNE) {
+  const merge = (o, v) => { for (const [k, x] of Object.entries(v)) { if (x && typeof x === 'object' && !Array.isArray(x) && o[k] && typeof o[k] === 'object') merge(o[k], x); else o[k] = x; } };
+  merge(TUNING, JSON.parse(process.env.ABYSS_TUNE));
+}
 const LVL = getLevel('ring');
 const errors = [];
 console.error = (...a) => { errors.push(a.map((x) => (x?.stack ? x.stack.split('\n').slice(0, 3).join(' | ') : String(x))).join(' ')); };
@@ -827,6 +833,7 @@ async function scenarioPace() {
       Math.random = mulberry32(seed * 7 + ph);
       const flashes = [], acts = [], cats = {}, busyT = [], moves = {};
       let chained = 0, prevAct = null, prevMode = d.mode, linger = 0, frames = 0;
+      const fh = {}, lastFH = {};
       const s0 = { ...(d.brain.stats ?? {}) };
       G.watch = (n, e) => {
         if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashes.push([game.time, e.tell, e.attack]);
@@ -856,7 +863,20 @@ async function scenarioPace() {
         prevAct = d.mode === 'act' ? a : null;
         prevMode = d.mode;
         frames++;
+        // (the great spell's 2.4 s charge (the ring's light pulled down, stones rising) is not an empty
+        // gap: the meter counts it as it counts a black blow's charge)
+        if (d.mode === 'act' && d.brain.act?.def?.ki === 'beamGreat' && d.brain.act.t < (d.brain.act.beats?.[0]?.impact ?? 0) && frames % 6 === 0) busyT.push(game.time);
         if (d.fx.shotsAlive || d.fx.strikesAlive || d.ki?.busy || d.terrain?.busy) linger++;
+        // (what a feint or a hold of the fairness guard gave way to: the live things of his then)
+        for (const k of ['feints', 'holds']) {
+          const v = d.brain.stats?.[k] ?? 0;
+          if (v > (lastFH[k] ?? v)) {
+            const why = [...(d.fx.strikes ?? []).filter((x) => x.alive).map((x) => x.attack), ...(d.fx.shots ?? []).filter((x) => x.alive).map((x) => x.attack)];
+            const key = `${k.slice(0, 4)}:${a?.name ?? d.mode}<${[...new Set(why)].join('+') || 'blow'}`;
+            fh[key] = (fh[key] || 0) + v - lastFH[k];
+          }
+          lastFH[k] = v;
+        }
       }
       G.watch = null;
       G.defend = null;
@@ -864,8 +884,14 @@ async function scenarioPace() {
       const hurt = G.hits.filter((h) => h.t > t0 && h.r === RESULT.HIT).length;
       const sky = flashes.filter((f) => f[2] === 'thunderfall').length;
       const ts = [t0, ...flashes.map((f) => f[0]), ...busyT.filter((x) => x > t0 && x < t0 + T), t0 + T].sort((x, y) => x - y);
-      let gapMax = 0;
-      for (let i = 1; i < ts.length; i++) gapMax = Math.max(gapMax, ts[i] - ts[i - 1]);
+      let gapMax = 0, gapAt = '';
+      for (let i = 1; i < ts.length; i++) {
+        if (ts[i] - ts[i - 1] <= gapMax) continue;
+        gapMax = ts[i] - ts[i - 1];
+        // (where the longest gap went: the cue before it, the moves started inside it, the cue after)
+        const a0 = ts[i - 1], a1 = ts[i], fb = flashes.filter((f) => f[0] <= a0 + 1e-6).pop(), fa = flashes.find((f) => f[0] >= a1 - 1e-6);
+        gapAt = `@${(a0 - t0).toFixed(1)} ${fb?.[2] ?? '-'} → [${acts.filter((m) => m[0] > a0 - 0.05 && m[0] < a1).map((m) => m[1]).join(' ')}] → ${fa?.[2] ?? '-'}`;
+      }
       let conflicts = 0;
       const conflictAt = [];
       for (let i = 0; i < flashes.length; i++) {
@@ -878,14 +904,14 @@ async function scenarioPace() {
       const st = d.brain.stats ?? {};
       const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
       const dodge = flashes.filter((f) => answer(f[1]) === 'dodge').length / (flashes.length || 1);
-      rows.push({ seed, ph, perMin: (flashes.length * 60) / T, dodge, gapMax, picks: acts.length, chained, conflicts, conflictAt, holds: dlt('holds'), feints: dlt('feints'), links: dlt('links'), hurt, cats, moves, linger: linger / (frames || 1), sky: (sky * 60) / T, skySkips: d.ki?.shots?.stats?.skySkips ?? 0 });
+      rows.push({ seed, ph, fh, perMin: (flashes.length * 60) / T, dodge, gapMax, gapAt, picks: acts.length, chained, conflicts, conflictAt, holds: dlt('holds'), feints: dlt('feints'), links: dlt('links'), hurt, cats, moves, linger: linger / (frames || 1), sky: (sky * 60) / T, skySkips: d.ki?.shots?.stats?.skySkips ?? 0 });
     }
   }
   PACE_ROWS.push(...rows);
   const CATS = DIR.CATEGORIES;
   out(`   ${SECS} s per form, seeds ${SEEDS.join(', ')}`);
   out(`   seed ph cue/min dodge% gapMax moves chain links hold/f clash hurt  ${CATS.map((c) => c.slice(0, 7).padStart(8)).join('')}`);
-  for (const r of rows) out(`   ${String(r.seed).padStart(4)}  ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${(r.dodge * 100).toFixed(0).padStart(6)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.chained).padStart(5)} ${String(r.links).padStart(5)} ${`${r.holds}/${r.feints}`.padStart(6)} ${String(r.conflicts).padStart(5)} ${String(r.hurt).padStart(4)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / (r.picks || 1)).toFixed(0).padStart(8)).join('')}${r.conflicts ? `  CONFLICTS ${r.conflictAt.slice(0, 4).join(' · ')}` : ''}`);
+  for (const r of rows) out(`   ${String(r.seed).padStart(4)}  ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${(r.dodge * 100).toFixed(0).padStart(6)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.chained).padStart(5)} ${String(r.links).padStart(5)} ${`${r.holds}/${r.feints}`.padStart(6)} ${String(r.conflicts).padStart(5)} ${String(r.hurt).padStart(4)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / (r.picks || 1)).toFixed(0).padStart(8)).join('')}${r.conflicts ? `  CONFLICTS ${r.conflictAt.slice(0, 4).join(' · ')}` : ''}${r.gapMax > 3 ? `  gap ${r.gapAt}` : ''}`);
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
   for (let ph = 1; ph <= FORMS; ph++) out(`   mean F${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min, ${(mean(ph, 'dodge') * 100).toFixed(0)} % to dodge, longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s, ${mean(ph, 'chained').toFixed(1)} chained of ${mean(ph, 'picks').toFixed(1)} moves`);
   paceSummary(rows, CATS);
@@ -2175,6 +2201,12 @@ function paceSummary(rows, CATS) {
     out(`   F${ph}: cues/min ${f1s(c.min)} / ${f1s(c.mean)} / ${f1s(c.max)}${ramp} · longest gap max ${g.max.toFixed(2)} mean ${g.mean.toFixed(2)} s · dodge ${dg.min.toFixed(0)} / ${dg.mean.toFixed(0)} / ${dg.max.toFixed(0)} % · lingers ${lg.mean.toFixed(0)} % (${lg.min.toFixed(0)} - ${lg.max.toFixed(0)}) · conflicts ${sum('conflicts')} · holds ${sum('holds')} feints ${sum('feints')} · mix ${mix}${ph >= (TUNING.shots?.weather?.form ?? 3) ? ` · Thunderfall ${stat(rs.map((r) => r.sky)).mean.toFixed(1)}/min (every ${(60 / Math.max(0.01, stat(rs.map((r) => r.sky)).mean)).toFixed(1)} s; ${stat(rs.map((r) => r.sky)).min.toFixed(1)} - ${stat(rs.map((r) => r.sky)).max.toFixed(1)}), slot misses ${sum('skySkips')}` : ''}`);
   }
   if (!process.env.ABYSS_PMOVES) return;
+  for (let ph = 1; ph <= FORMS; ph++) {
+    const m = {};
+    for (const r of rows.filter((x) => x.ph === ph)) for (const [k, v] of Object.entries(r.fh ?? {})) m[k] = (m[k] || 0) + v;
+    const e = Object.entries(m).sort((x, y) => y[1] - x[1]);
+    if (e.length) out(`   F${ph} holds / feints (the move held or feinted < what was live): ${e.slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+  }
   out('   -- picks per 120 s (mean of the seeds) by form --');
   const names = MOVE_NAMES.filter((n) => !MOVES[n].transition && !MOVES[n].counter);
   for (const n of names) {
@@ -2321,7 +2353,17 @@ function mortalRun(seed, { skill, form = 1, secs = 600, attack = true, oneForm =
     if (ev === 'player:heal') n.heals++;
     if (ev === 'dragon:plunged') n.blows++;
     if (/^dragon:phase[23]$/.test(ev)) formAt.push(game.time);
+    // (ABYSS_PRPOSTURE: where his posture came from: every rise of 25 or more, with what came before)
+    if (process.env.ABYSS_PRPOSTURE) {
+      if (ev !== 'dragon:posture' && !ev.startsWith('fx') && ev !== 'combat:tell') { recent.push(ev.replace(/^(dragon|player|combat):/, '')); if (recent.length > 6) recent.shift(); }
+      if (ev === 'dragon:posture' && Number.isFinite(e?.posture)) {
+        if (e.posture - lastP >= 25) out(`        posture +${(e.posture - lastP).toFixed(0)} → ${e.posture.toFixed(0)}/${e.max} F${d.phase} bar ${(d.hp / d.maxHp * 100).toFixed(0)}% @${(game.time - formAt[0]).toFixed(1)} after ${recent.join(' ')}`);
+        lastP = e.posture;
+      }
+    }
   };
+  let lastP = 0;
+  const recent = [];
   const t0 = game.time;
   let outcome = 'time';
   run(G, secs, () => {

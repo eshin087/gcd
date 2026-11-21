@@ -43,7 +43,7 @@ export function meleeMoves(X) {
     /** Hundred Hands: a jab, six straight blows from alternating fists, and the palm thrust on a dash
      *  (a parry moment). */
     hundred: {
-      label: 'Hundred Hands', phase: 1, weight: [2.4, 1.2, 0], cooldown: 8, band: [0, 3.2], recovery: 0.75,
+      label: 'Hundred Hands', phase: 1, weight: [2.4, 1.0, 0], cooldown: 8, band: [0, 3.2], recovery: 0.75,
       beats: [
         punch('jab', N, 0.5, 9),
         punch('cross', N, 0.34, 9),
@@ -57,7 +57,7 @@ export function meleeMoves(X) {
     },
     /** Tiger Descends: a dashing elbow, a back-fist, and the axe kick that breaks the floor (red). */
     tiger: {
-      label: 'Tiger Descends', phase: 1, weight: [2.4, 1.0, 0], cooldown: 7, band: [1.6, 6], recovery: 0.7, gapCloser: true,
+      label: 'Tiger Descends', phase: 1, weight: [2.8, 1.0, 0], cooldown: 7, band: [1.6, 6], recovery: 0.7, gapCloser: true,
       beats: [
         { ...elbow(N, 0.5, 15), ...dash(4, 0.6, 0.7) },
         punch('backfist', N, 0.36, 12),
@@ -80,18 +80,18 @@ export function meleeMoves(X) {
     },
     /** Comet Heel: a leap high over the gap and the heel brought down where you stand (red: roll). */
     cometHeel: {
-      label: 'Comet Heel', phase: 1, weight: [1.6, 1.0, 0.8], cooldown: 9, band: [4, 13], recovery: 0.7, cat: 'area',
+      label: 'Comet Heel', phase: 1, weight: [2.2, 1.0, 0.8], cooldown: 9, band: [3.5, 13], recovery: 0.7, cat: 'area',
       beats: [{ ...kick('axe', R, 1.1, 28, { cock: 0.7 }), zone: { kind: 'ring', r: 2.8 }, ring: 2.8, knockdown: true, knockback: 3, leap: { from: 0.25, lock: 0.78, apex: 3.8 }, close: 0, track: 0.8 }],
     },
     /** Piercing Palm: a deep coil, then a palm driven home on a lunge. Red, a perilous thrust: roll INTO it. */
     piercingPalm: {
-      label: 'Piercing Palm', phase: 1, weight: [1.8, 1.1, 1.0], cooldown: 8, band: [2, 6], recovery: 0.6, gapCloser: true,
+      label: 'Piercing Palm', phase: 1, weight: [2.4, 1.5, 1.0], cooldown: 6, band: [1.6, 6], recovery: 0.6, gapCloser: true,
       beats: [{ ...punch('palm', R, 0.64, 26, { cock: 0.8, mikiri: true, knockback: 2.5 }), zone: { kind: 'line', r: 2.4, w: 0.7 }, ...dash(2.8, 0.84, 0.8), track: 0.7 }],
     },
     /** Mountain-Splitting Fist: the CHARGED blow. The fist drawn back while the power gathers on it, a
      *  held beat that is never the same, then one long dashing cross. Black: dodge it. */
     splitFist: {
-      label: 'Mountain-Splitting Fist', phase: 1, weight: [1.1, 0, 0], cooldown: 12, band: [2.4, 9], recovery: 0.8, gapCloser: true,
+      label: 'Mountain-Splitting Fist', phase: 1, weight: [1.5, 0, 0], cooldown: 10, band: [2.4, 9], recovery: 0.8, gapCloser: true,
       beats: [{
         ...punch('cross', K, 1.45, 36, { cock: 0.86 }), fixed: true, hold: [0.1, 0.5], active: 0.14, knockback: 4, knockdown: true,
         zone: { kind: 'sector', r: 2.4, ang: 0.8 }, ...dash(7.5, 0.88, 1.2), track: 0.88,
@@ -125,7 +125,7 @@ export function meleeMoves(X) {
     /** Aura Burst: his aura thrown out round him (red: roll out of it). His AI favours it once you
      *  have stayed on him for a while (ascendant.js weigh). */
     auraBurst: {
-      label: 'Aura Burst', phase: 2, weight: [0, 1.5, 1.2], cooldown: 9, band: [0, 3], recovery: 0.6, cat: 'area',
+      label: 'Aura Burst', phase: 2, weight: [0, 1.8, 0.9], cooldown: 9, band: [0, 3], recovery: 0.6, cat: 'area',
       beats: [{ tell: R, windup: 0.7, active: 0.14, damage: 20, knockback: 7, zone: { kind: 'ring', r: 4.5 }, ring: 4.5, part: 'feet', close: 0, track: 0.3, keys: burstKeys(0.7), burst: true }],
     },
     /** Sunbreaker: the CHARGED blow of the golden form: the fist drawn back while the gold gathers, a
@@ -141,7 +141,7 @@ export function meleeMoves(X) {
     /** Sky Hammer: a blow, the rising uppercut that LAUNCHES you (thrown 11 m, knocked down), and he is
      *  waiting where you land: both fists brought down on you (red), a crater. */
     skyHammer: {
-      label: 'Sky Hammer', phase: 2, weight: [0, 1.8, 1.0], cooldown: 10, band: [0, 3.6], recovery: 0.75,
+      label: 'Sky Hammer', phase: 2, weight: [0, 2.0, 1.0], cooldown: 10, band: [0, 3.6], recovery: 0.75,
       beats: [
         punch('jab', N, 0.48, 12),
         punch('uppercut', B, 0.58, 20, { knockback: 11, knockdown: true, launch: true }),
@@ -186,7 +186,7 @@ export function meleeMoves(X) {
     /** Mirage: three FEINTS, each out of a blink to another side of you (a shape of him left at each:
      *  no glint, no blow), then the real one from behind (red). */
     mirage: {
-      label: 'Mirage', phase: 3, weight: [0, 0, 1.6], cooldown: 9, band: [2, 10], recovery: 0.65,
+      label: 'Mirage', phase: 3, weight: [0, 0, 1.6], cooldown: 9, band: [2, 10], recovery: 0.65, cat: 'string', // (its three feints are not hits: the director would call it a single)
       beats: [
         { ...punch('cross', N, 0.5, 0, { blink: { at: -1.4, r: 2.3 }, close: 0 }), feint: true, damage: 0 },
         { ...kick('round', N, 0.5, 0, { blink: { at: 1.4, r: 2.3 }, close: 0 }), feint: true, damage: 0 },

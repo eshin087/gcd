@@ -83,12 +83,12 @@ export function beamMoves(X) {
   return {
     /** Rising Tide (form 1): the palm thrust, a beam 16 x 1.6 m on a line fixed at the cue. */
     risingTide: {
-      label: 'Rising Tide', phase: 1, weight: [1.3, 0, 0], cooldown: 11, band: [5, 15], recovery: 0.6, cat: 'hazard', ki: 'beam',
+      label: 'Rising Tide', phase: 1, weight: [1.6, 0, 0], cooldown: 11, band: [4, 15], recovery: 0.6, cat: 'hazard', ki: 'beam',
       beats: [beamBeat('rising')],
     },
     /** Rising Tide, sweeping (forms 2 - 3): 20 x 2 m, dragged up to 40 deg toward the side the hero is on. */
     tideSweep: {
-      label: 'Rising Tide, sweeping', phase: 2, weight: [0, 1.1, 0.7], cooldown: 13, band: [5, 16], recovery: 0.6, cat: 'hazard', ki: 'beamSweep',
+      label: 'Rising Tide, sweeping', phase: 2, weight: [0, 1.3, 0.7], cooldown: 13, band: [5, 16], recovery: 0.6, cat: 'hazard', ki: 'beamSweep',
       beats: [beamBeat('sweep')],
     },
     /** Twin Tide (form 3): a one-handed beam, then the other palm's aimed where the hero is heading. */

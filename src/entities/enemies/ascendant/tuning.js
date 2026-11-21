@@ -15,7 +15,9 @@ import { TERRAIN_TUNING } from './tuningTerrain.js';
 export const TUNING = {
   name: 'TIAN LEI, THE LAST ASCENDANT',
   forms: 3,
-  hp: 1500, // each form's bar
+  // each form's bar (the tuning pass: 1500 → 4200 with the meter below: the 95 % bot's fight went from
+  // 51 s to the 2.5 - 4 minute target; MOVES.md's 1500 was a starting value)
+  hp: 4000,
   phaseAt: [1], // no gates inside a bar
   radius: 0.42,
   // his drawn size: 1.12 x the hero's (visual only: every reach below is in gameplay metres)
@@ -38,7 +40,7 @@ export const TUNING = {
 
   // ---- posture (the Sekiro rule, as the Lord's)
   posture: {
-    max: [460, 520, 600],
+    max: [2400, 2700, 2900], // (was [460, 520, 600]: the tuning pass, with hp and flurry.posture)
     hit: { light: 5, heavy: 16 },
     guard: { light: 8, heavy: 20 },
     regenDelay: 2.2,
@@ -96,13 +98,13 @@ export const TUNING = {
   // the closing blink (form 3): past `far` m he may vanish and stand `r` m from the hero (`chance` per
   // look, every `every` s at most)
   closeBlink: { form: 3, far: 9, r: 2.4, chance: 0.5, every: 4 },
-  idleGap: [[0.1, 0.3], [0.05, 0.16], [0.04, 0.13]],
+  idleGap: [[0.1, 0.3], [0.04, 0.12], [0.04, 0.13]],
   openingGap: [[0.14, 0.4], [0.1, 0.32], [0.08, 0.26]],
-  chain: [0.55, 0.62, 0.7],
+  chain: [0.55, 0.68, 0.7],
   // the director (duelist/brain.js header, director.js), starting from the Lord's forms 1 - 3
   pressure: {
     chainDepth: [4, 5, 7],
-    chainRest: [[0.45, 0.75], [0.3, 0.5], [0.25, 0.45]],
+    chainRest: [[0.45, 0.75], [0.25, 0.45], [0.25, 0.45]],
     linkCut: 0.5,
     chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
@@ -111,8 +113,8 @@ export const TUNING = {
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2],
-    bias: { string: [1.3, 1.4, 1.6], closer: [1, 1, 1.2], area: [1, 1.1, 1.2], hazard: [1, 1, 0.8], terrain: [1, 1.2, 1.3] },
-    density: [1, 1.6, 2.2],
+    bias: { string: [1.2, 1.0, 1.2], closer: [1, 1, 1.1], area: [1.1, 1.6, 0.7], hazard: [1.2, 1.4, 0.7], terrain: [1.3, 1.6, 1.4], ranged: [1.1, 1.2, 1.3], spell: [1, 1, 1.3], single: [1, 1, 1.0] },
+    density: [0.6, 0.7, 0.8],
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
@@ -129,6 +131,9 @@ export const TUNING = {
   fullDeflect: { minHits: 5, posture: 70 },
   lock: { start: 0.5, push: 0.085, decay: [0.32, 0.35, 0.38], dur: 2.6, hold: 0.6, posture: 110, shove: { damage: 12, knockback: 2.6 }, camera: { zoom: -7, weight: 0.55 } },
   mikiri: { posture: 130 },
+  // his flurry answered in full fills this share of his posture meter (1: it breaks him outright, the
+  // engine's rule; the tuning pass: 0.6, see ascendant.js onStreakBlow)
+  flurry: { posture: 1 },
   cinematic: { zoom: -10, weight: 0.6, slowmo: 0.28, dur: 0.9 },
   damageScale: 1.1,
 

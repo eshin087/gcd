@@ -36,7 +36,10 @@ export const SHOTS_TUNING = {
   // Thunderfall (form `form` on): a strike called near where the hero is heading every `gap` s ([bar
   // full, bar empty]) in his moves' pauses, `maxLive` at most, `warn` s each (r `radius`); `start` s
   // into the form before the first; never in the hero's opening (the Lord's weather, spells.js)
-  weather: { form: 3, start: 3, gap: [3.2, 1.8], warn: 1.1, slack: 0.9, retry: 0.4, radius: 2.1, lead: 0.55, scatter: 1.4, maxLive: 2, damage: 22, knockback: 3, inString: 0.1 },
+  weather: { form: 3, start: 3, gap: [3.2, 1.8], warn: 1.1, slack: 0.9, retry: 0.4, radius: 2.1, lead: 0.55, scatter: 1.4, maxLive: 2, damage: 22, knockback: 3, inString: 0.1,
+    // (the tuning pass: a strike may land up to `past` s after the end of the move it is called in (the
+    // next move's blows hold for it); a mark not yet cued fades if he is thrown into a reaction)
+    past: 0.3, fadeInOpening: true },
   // ascend3: four bolts on the ring's corners `gap` s apart; a hero within `r` m of one is struck there
   // (a called strike with its ring and its cue, `warn` s)
   corners: { gap: 0.12, r: 2.4, warn: 1.1, damage: 22, knockback: 3 },

@@ -423,6 +423,12 @@ export class ShotMoves {
 
   _skyFrame(dt) {
     const W = this.T.weather, d = this.d, Sk = this.sky;
+    // (never in the hero's opening: a mark not yet cued fades when he is thrown into a reaction, broken
+    // or staggered (a strike may now land past the end of the move it was called in: `past`))
+    if (W.fadeInOpening && (d.mode === 'react' || d.broken || d.state === 'staggered')) {
+      const lead = d.T.flashLead ?? 0.26;
+      for (const s of d.fx.strikes ?? []) if (s.alive && s.attack === ATTACK.weather && !s.flashed && s.at - s.t > lead) s.alive = false;
+    }
     if (!this._skyOn()) return;
     Sk.t -= dt;
     if (Sk.t > 0) return;
@@ -460,7 +466,10 @@ export class ShotMoves {
     if (d.mode === 'react') return -1; // (his recoil, the reeling, a flinch: the hero's own time)
     const inAct = d.mode === 'act' && !!a;
     if (inAct && a.def.transition) return -1;
-    const last = inAct ? a.end - a.t - this.T.weather.inString : Infinity;
+    // (inside a move: landing before its end (`inString` s), or up to `past` s after it: the next move's
+    // blows know it from the ledger and hold or feint for it; a reaction fades it: _skyFrame)
+    const W = this.T.weather;
+    const last = inAct ? a.end - a.t - W.inString + (W.past ?? 0) : Infinity;
     for (let e = 0; e <= slack + 1e-6; e += 0.05) {
       const T = warn + e;
       if (T > last) break;

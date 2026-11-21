@@ -108,7 +108,7 @@ export function shotMoves(X) {
     /** Blast Dance (form 2): a punch, a kick, a blast point-blank (a palm if he is in reach), two more
      *  blows, and a Spirit Shot from the hip (returnable). */
     blastDance: {
-      label: 'Blast Dance', phase: 2, weight: [0, 1.4, 0], cooldown: 8, band: [0, 4], recovery: 0.7, cat: 'string',
+      label: 'Blast Dance', phase: 2, weight: [0, 1.3, 0], cooldown: 8, band: [0, 4], recovery: 0.7, cat: 'string',
       beats: [
         punch('cross', N, 0.48, 12),
         kick('round', N, 0.36, 12, { knockback: 1.0 }),
@@ -126,7 +126,7 @@ export function shotMoves(X) {
     /** Sun Wheel (forms 2 - 3): the disc out on a curve, a hang, home through the hero (red: roll);
      *  he holds his hand up to catch it. */
     sunWheel: {
-      label: 'Sun Wheel', phase: 2, weight: [0, 1.1, 0.8], cooldown: 10, band: [4, 13], recovery: 1.5, cat: 'ranged', ki: 'disc',
+      label: 'Sun Wheel', phase: 2, weight: [0, 1.3, 0.8], cooldown: 10, band: [4, 13], recovery: 1.5, cat: 'ranged', ki: 'disc',
       recoveryKeys: [[0.15, F(WHEEL.hit)], [0.5, F(CATCH)], [0.9, F(CATCH)], [1.0, F({ ...CATCH, rH: [-0.1, 0.2, 0.3] })]],
       beats: [{ tell: R, windup: 0.7, fixed: true, active: 0.1, damage: 18, knockback: 2.5, cast: { kind: 'disc', selfCue: true }, part: 'fistR', close: 0, track: 0.9, keys: strikeKeys({ coil: WHEEL.coil, hit: WHEEL.hit, cock: 0.7 }) }],
     },

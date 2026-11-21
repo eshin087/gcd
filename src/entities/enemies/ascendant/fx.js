@@ -477,7 +477,7 @@ export class AscFx extends LordFx {
   }
 
   // ---------------------------------------------------------------- the beam (fxBeam.js draws it)
-  /** Energy gathering between the cupped hands through a beam's windup (u 0..1): motes drawn in, a
+  /** Energy gathering in the drawn-back palm through a beam's windup (u 0..1): motes drawn in, a
    *  bulb growing, coils of light round it, the floor lit; arcs to the floor late. ~40 - 90 blobs. */
   beamCharge(x, y, z, u, dt, form = 1) {
     if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt >= 0)) return;
