@@ -769,7 +769,7 @@ export const BUTTE = Object.freeze({
  */
 const PALETTE = [
   { moon: [0.98, 0.6, 0.38], dir: [-0.82, 0.46, 0.3], ambient: [0.1, 0.072, 0.07], fogColor: [0.026, 0.014, 0.013], fogNear: 32, fogFar: 64 },
-  { moon: [1.1, 0.82, 0.38], dir: [-0.62, 0.58, 0.3], ambient: [0.11, 0.083, 0.046], fogColor: [0.034, 0.022, 0.009], fogNear: 32, fogFar: 64 },
+  { moon: [1.1, 0.82, 0.38], dir: [-0.62, 0.58, 0.3], ambient: [0.12, 0.088, 0.046], fogColor: [0.034, 0.022, 0.009], fogNear: 32, fogFar: 64 },
   { moon: [0.4, 0.48, 0.68], dir: [-0.3, 0.88, 0.36], ambient: [0.045, 0.052, 0.075], fogColor: [0.006, 0.008, 0.012], fogNear: 26, fogFar: 56 },
 ];
 /** The weather's numbers: lightning, dust, motes, rain. */
