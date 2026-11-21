@@ -110,6 +110,9 @@ const CUT = [0.115, 0.097, 0.08]; // the quarry's cut stone
 const WOOD = [0.11, 0.08, 0.058];
 const CLOTH = [0.25, 0.05, 0.036]; // the banners: a deep red
 const SKIN = [0.3, 0.265, 0.2]; // a drum's head
+/** The earth under a broken tile (world/floor.js prints it with the paving's ink): a warm pale dust, well
+ *  over the dimmed tiles, so a crater and a wrecked ring read at the game camera (the stage pass). */
+const EARTH = [0.42, 0.27, 0.15];
 const tileCol = (c, f = 1.6) => (px, py, pz) => mul(c, (0.62 + 0.42 * fbm2(px * f, pz * f, 2)) * (0.8 + 0.22 * fbm2(px * 0.12 + 7, pz * 0.12 - 3, 2)));
 const edgeBand = (px, py, pz, nx, ny) => (ny > 0.5 && ny < 0.95 ? 1 : 0);
 /** The floor must stay calm under the duel: sparse, dim glyphs (the courtyard's paving look). */
@@ -721,7 +724,7 @@ export function createSkybreakRing(U, colliders) {
   if (group.userData.soil) group.add(group.userData.soil);
   // the floor breaks (world/floor.js): every tile, kerb stone and plate a breakable 'range' piece of the
   // paving mesh; the cracked and broken looks in two more meshes, hidden until first used
-  breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group, earth: [0.15, 0.105, 0.075] }).defs);
+  breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group, earth: EARTH }).defs);
 
   return {
     group, treeSpots, bare, slabs, nest: { x: RING.wait.x, z: RING.wait.z }, bonfire: { x: BF.x, z: BF.z },
@@ -730,7 +733,7 @@ export function createSkybreakRing(U, colliders) {
     option: OPT,
     groundY: LY.groundY,
     tops, // (the buttes' tops: the tests and the beam's measures read them)
-    scarInk: [0.02, 0.012, 0.008], // dark cracks in the pale sandstone
+    scarInk: [0.3, 0.2, 0.12], // (the stage pass: cracks of pale dust: dark ones vanished in the dimmed paving)
     // dry ground: none on the ring, thin short dry tufts on the flats (none past the crown's rim)
     grass: {
       ash: 0.55,
