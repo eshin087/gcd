@@ -52,7 +52,7 @@ export function meleeMoves(X) {
         punch('jab', N, 0.34, 9, { step: 'L' }),
         punch('cross', N, 0.34, 9),
         punch('jab', N, 0.34, 9, { step: 'L' }),
-        { ...punch('palm', B, 0.44, 20, { flare: true }), ...dash(2.4) },
+        { ...punch('palm', B, 0.44, 20, { flare: true, lock: true }), ...dash(2.4) },
       ],
     },
     /** Tiger Descends: a dashing elbow, a back-fist, and the axe kick that breaks the floor (red). */

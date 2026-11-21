@@ -45,8 +45,8 @@ const ROLES = {
   cinderwood: { single: 'bite', string: 'clawCombo', long: 'stormFlurry', red: 'tail', area: 'stomp' },
   ash: { single: 'plumThrust', string: 'swallow', long: 'ashRain', red: 'lotus', lock: 'fallingStar', mikiri: 'piercingAsh' },
   starless: { single: 'lunge', string: 'litany', long: 'litany', red: 'reap', lock: 'skyfall' },
-  // Tian Lei (the Skybreak Ring): his lock is the third blow of Vanishing Step (form 2: the runner puts him in it)
-  ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'piercingPalm', lock: 'vanishStep', mikiri: 'piercingPalm' },
+  // Tian Lei (the Skybreak Ring): his form-1 lock is Hundred Hands' last blow (Vanishing Step's is form 2's)
+  ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
 };
 
 export function bossKinds(game) {
@@ -530,7 +530,7 @@ export class Training {
     const watch = (n) => ev.on(n, (e) => this._event(n, e));
     for (const n of ['player:parry', 'player:block', 'player:perfectDodge', 'player:flurry', 'player:flurryEnd', 'player:hurt', 'player:streak',
       'player:guardBreak', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
-      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
+      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
   }
 
   _event(n, e) {

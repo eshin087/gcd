@@ -976,7 +976,9 @@ async function scenarioTraining() {
   const { bossKinds } = await imp('src/dev/training.js');
   const kinds = bossKinds(game);
   assert(kinds.has('asc') && !kinds.has('lord') && !kinds.has('ash') && kinds.has('duel'), `his own boss kind (${[...kinds].join(', ')})`);
-  const L = T.list();
+  // (ABYSS_TONLY=id1,id2: those situations alone, in that order)
+  const only = process.env.ABYSS_TONLY?.split(',');
+  const L = only ? only.map((id) => T.find(id)).filter(Boolean) : T.list();
   const bad = [];
   for (const s of L) {
     T.run(s.id);
@@ -988,7 +990,7 @@ async function scenarioTraining() {
     if (!ok) bad.push(s.id);
   }
   T.stop();
-  assert(L.length >= 20 && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+  assert((only || L.length >= 20) && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
   // the Lab's form buttons: Phase 2 from form 1, then the next
   const G2 = build();
   duel(G2, { dist: 5 });
