@@ -46,12 +46,15 @@ function beamBody(F, ax, ay, az, bx, by, bz, w, k, dt, form, o) {
     // (the middle line white-hot steel; the lines beside it add gold to the body's, so it is pale
     // yellow there, then gold: a white core that shades into the body, not a white bar)
     for (let j = -half; j <= half; j++) {
-      const aj = Math.abs(j), h = (aj === 0 ? 1.22 : aj === 1 ? 0.6 : aj === 2 ? 0.45 : 0.3) * kc;
+      const aj = Math.abs(j), h = (aj === 0 ? (braid ? 1.12 : 1.22) : aj === 1 ? 0.6 : aj === 2 ? 0.45 : 0.3) * kc;
       const off = j * row * 0.98;
       F._ink(ax + ux * s0 + cx * off, ay + uy * s0 + cy * off, az + uz * s0 + cz * off, bx + cx * off, by + cy * off, bz + cz * off, 0, h, 0, h * 0.9, 0, aj === 0 ? K_STEEL : K_VOID);
     }
     // the body: stations along it, its width swelling in bulges that run out, its edge boiling
     const step = Math.max(0.28, L / 110), n = Math.ceil(L / step), roll = Math.floor(t * 14);
+    // (heat a blob, scaled by how many of them overlap along the beam: a wide beam's big blobs would
+    // otherwise sum to a white bar)
+    const ov = Math.min(1, (2.7 * step) / Math.max(0.2, hw * 0.95)), ovb = Math.min(1, (2.2 * step) / Math.max(0.2, 0.5 * hw + 0.18));
     for (let i = 0; i < n; i++) {
       const s = (i + 0.5) * step;
       if (s > L) break;
@@ -61,16 +64,16 @@ function beamBody(F, ax, ay, az, bx, by, bz, w, k, dt, form, o) {
       if (!braid) {
         for (let q = 0; q < 4; q++) {
           const b = BODY_A[q], jit = (hash(i * 3.7 + q * 11.1 + roll * 0.71) - 0.5) * 0.24 * hf;
-          const off = b * hf + jit, h = (0.2 + 0.05 * flow + 0.07 * (1 - Math.abs(b))) * k;
+          const off = b * hf + jit, h = (0.2 + 0.05 * flow + 0.07 * (1 - Math.abs(b))) * k * ov;
           F._blob(x0 + cx * off, y0 + cy * off, z0 + cz * off, 0, 0, 0, life, hf * 0.95, hf * 0.95, h, h, K_VOID);
         }
       } else {
         for (let st = 0; st < 2; st++) {
           const ph = s * 1.9 - t * 18 + st * Math.PI, sn = Math.sin(ph), front = Math.cos(ph);
-          const off = 0.72 * hf * sn, sz = 0.5 * hf + 0.18, h = (0.3 + 0.2 * Math.max(0, front)) * k;
+          const off = 0.72 * hf * sn, sz = 0.5 * hf + 0.18, h = (0.55 + 0.35 * Math.max(0, front)) * k * ovb;
           F._blob(x0 + cx * off, y0 + cy * off, z0 + cz * off, 0, 0, 0, life, sz, sz, h, h, K_VOID);
         }
-        const h0 = (0.2 + 0.05 * flow) * k;
+        const h0 = (0.2 + 0.05 * flow) * k * ov;
         F._blob(x0, y0, z0, 0, 0, 0, life, hf * 0.9, hf * 0.9, h0, h0, K_VOID);
       }
       // the floor under it, lit
@@ -82,7 +85,7 @@ function beamBody(F, ax, ay, az, bx, by, bz, w, k, dt, form, o) {
       const s = ((t * sp + j / P) % 1) * L;
       if (s < 0.6) continue;
       const hf = hw * Math.min(1, 0.5 + s / 1.6) * 1.12, x0 = ax + ux * s, y0 = ay + uy * s, z0 = az + uz * s;
-      F._ink(x0 - cx * hf, y0 - cy * hf, z0 - cz * hf, x0 + cx * hf, y0 + cy * hf, z0 + cz * hf, 0, 1.3 * k, 0, 1.3 * k, 0, K_VOID);
+      F._ink(x0 - cx * hf, y0 - cy * hf, z0 - cz * hf, x0 + cx * hf, y0 + cy * hf, z0 + cz * hf, 0, 0.9 * k, 0, 0.9 * k, 0, K_VOID);
     }
     // the bulb at the muzzle: a disc of light, a white heart, rays turning in it
     if (o.muzzle) {
@@ -208,7 +211,7 @@ export function drawBeamSplash(F, x, y, z, k, dt, form) {
       const rr = R * Math.sqrt((i + 0.5) / 12), a = i * 2.39996 - t * 8, ox = Math.cos(a) * rr, oy = Math.sin(a) * rr;
       F._blob(px + A.rx * ox + A.ux * oy, py + A.ry * ox + A.uy * oy, pz + A.rz * ox + A.uz * oy, 0, 0, 0, life, R * 0.65, R * 0.65, 0.5 * k, 0.5 * k, K_VOID);
     }
-    F._blob(px, py, pz, 0, 0, 0, life, R * 0.85, R * 0.85, 1.6 * k, 1.6 * k, K_STEEL);
+    F._blob(px, py, pz, 0, 0, 0, life, R * 0.7, R * 0.7, 1.3 * k, 1.3 * k, K_STEEL);
     for (let j = 0; j < 7; j++) {
       const a = F.lr() * TAU, ca = Math.cos(a), sa = Math.abs(Math.sin(a)) * 0.9 + 0.1 * Math.sin(a), len = F.lrand(0.8, 2.0) * Math.sqrt(k);
       const ex = A.rx * ca + A.ux * sa, ey = A.ry * ca + A.uy * sa, ez = A.rz * ca + A.uz * sa;
