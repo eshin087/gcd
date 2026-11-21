@@ -1015,8 +1015,149 @@ async function scenarioTraining() {
 //
 //
 // --- terrain
-//
-//
+/** One of his terrain moves on the REAL ring, the hero `dist` m in front of him (AI off): `step` runs
+ *  each frame (a defender, a sidestep); until his move and everything it threw are over. */
+function terrainPlay(name, { dist = 7, form = 1, step = null, ang = 0, max = 6, seed = SEED, defend = null } = {}) {
+  const G = build(seed, true);
+  const { game } = G;
+  duel(G, { dist, form, ang });
+  if (defend) {
+    G.defend = makeDefender(G, { style: defend });
+    step = () => G.defend.act();
+  }
+  const d = game.dragon, p = game.player;
+  p.debug.god = false;
+  const flashes = [], tells = [];
+  G.watch = (n, e) => {
+    if (n === 'combat:flash' && e?.source === 'dragon') flashes.push({ t: game.time, tell: e.tell, attack: e.attack, x: e.x, z: e.z });
+    if (n === 'combat:tell' && e?.source === 'dragon') tells.push({ t: game.time, attack: e.attack });
+  };
+  const t0 = game.time, hp0 = p.hp;
+  const ok = name ? d.debug.trigger(name) : true;
+  run(G, max, step, () => game.time - t0 > 0.4 && d.mode === 'foot' && !d.terrain.busy);
+  const hits = G.hits.filter((h) => h.t >= t0);
+  return { G, d, p, ok, flashes, tells, hits, lost: hp0 - p.hp, t0 };
+}
+
+async function scenarioTerrain() {
+  out('\n== scenario TERRAIN (Tile Kick, Ring Breaker, Stone Storm on the ring\'s tiles: every answer) ==');
+  const T = TUNING.terrain;
+  // ---- Tile Kick: a tile stamped up and punched at the hero
+  {
+    const A = terrainPlay('tileKick', { dist: 7 });
+    const W = A.G.game.world.destructibles;
+    const h = A.hits.find((x) => x.attack === 'tileKick'), f = A.flashes.filter((x) => x.attack === 'tileKick');
+    const taken = W.floor.filter((b) => b.state !== 0).length;
+    assert(A.ok && f.length === 1 && f[0].tell === TELL.NORMAL && h?.r === RESULT.HIT && h.damage >= 16 && Math.abs(h.t - f[0].t - TUNING.flashLead) < 0.06, `Tile Kick at 7 m, unanswered: one normal flare on the tile, then it lands on him ${h ? (h.t - f[0].t).toFixed(2) : '-'} s later (${h?.damage} damage)`);
+    assert(taken >= 1, `the tile's place is left broken (${taken} slab(s) of the floor no longer whole)`);
+    for (const dist of [4.5, 9, 13.5]) {
+      const B = terrainPlay('tileKick', { dist });
+      const hb = B.hits.find((x) => x.attack === 'tileKick');
+      assert(hb?.r === RESULT.HIT && B.flashes.length === 1, `at ${dist} m it reaches him, cued (${B.flashes.length} flare)`);
+    }
+    const G2 = build(SEED, true);
+    duel(G2, { dist: 8 });
+    G2.defend = makeDefender(G2, { style: 'parry' });
+    const t0 = G2.game.time;
+    G2.game.dragon.debug.trigger('tileKick');
+    run(G2, 5, () => G2.defend.act(), () => G2.game.time - t0 > 0.4 && G2.game.dragon.mode === 'foot' && !G2.game.dragon.terrain.busy);
+    const hp = G2.hits.find((x) => x.attack === 'tileKick');
+    assert(hp?.r === RESULT.PARRIED || hp?.r === RESULT.BLOCKED, `answered with a guard at the flare: ${hp?.r} (a parry cuts it in two)`);
+  }
+  // ---- Ring Breaker: a line of tiles bursting toward him
+  {
+    const A = terrainPlay('ringBreaker', { dist: 7, form: 2 });
+    const f = A.flashes.filter((x) => x.attack === 'ringBreaker'), h = A.hits.filter((x) => x.attack === 'ringBreaker');
+    assert(A.ok && f.length >= 1 && f.every((x) => x.tell === TELL.RED) && h.length === 1 && h[0].r === RESULT.HIT && A.tells.length >= 1, `Ring Breaker at 7 m, standing: ${f.length} red flare(s) on the tiles near him, one blow (${h[0]?.damage}, a knockdown)`);
+    const W = A.G.game.world.destructibles;
+    assert(W.floor.filter((b) => b.state !== 0).length >= 4, `the line left ${W.floor.filter((b) => b.state !== 0).length} slabs broken`);
+    const R = terrainPlay('ringBreaker', { dist: 7, form: 2, defend: 'mixed' });
+    assert(!R.hits.some((x) => x.attack === 'ringBreaker' && x.r === RESULT.HIT), `rolled at the flare: through it (${R.hits.filter((x) => x.attack === 'ringBreaker').map((x) => x.r).join(',') || 'no blow'})`);
+    // he sprints sideways the moment the line starts: off the line, it misses him
+    const S = terrainPlay('ringBreaker', { dist: 7, form: 2, step: (G) => { if (G.game.dragon.brain.act?.t > 0.75) G.input.axis = { x: 1, y: 0 }; } });
+    assert(!S.hits.some((x) => x.attack === 'ringBreaker'), `stepping off the line (a sprint sideways from the fist's fall): it misses (${S.hits.filter((x) => x.attack === 'ringBreaker').length} blows)`);
+  }
+  // ---- Stone Storm: three thrown, then the great one
+  {
+    const A = terrainPlay('stoneStorm', { dist: 8, form: 2 });
+    const f = A.flashes.filter((x) => x.attack === 'stoneStorm');
+    const n = f.filter((x) => x.tell === TELL.NORMAL).length, r = f.filter((x) => x.tell === TELL.RED).length;
+    const h = A.hits.filter((x) => x.attack === 'stoneStorm');
+    let gap = Infinity;
+    for (let i = 1; i < f.length; i++) gap = Math.min(gap, f[i].t - f[i - 1].t);
+    const nr = f.findIndex((x) => x.tell === TELL.RED);
+    const sepRed = nr > 0 ? f[nr].t - f[nr - 1].t : Infinity;
+    if (n !== T.stoneStorm.count) out(`     (debug: flashes ${JSON.stringify(f.map((x) => [+(x.t - A.t0).toFixed(2), x.tell]))} hits ${JSON.stringify(h.map((x) => [+(x.t - A.t0).toFixed(2), x.r]))} log ${JSON.stringify(A.d.brain.guardLog?.filter?.((e) => e && e.kind).slice(0, 6))})`);
+    assert(A.ok && n === T.stoneStorm.count && r === 1 && h.length >= 2, `Stone Storm at 8 m, unanswered: ${n} normal flares and ${r} red, ${h.length} blows land`);
+    assert(gap >= 0.34 && sepRed >= 0.4, `its cues are ${gap.toFixed(2)} s apart at least; the red one ${sepRed.toFixed(2)} s after the last normal one`);
+    const D = terrainPlay('stoneStorm', { dist: 8, form: 2, defend: 'mixed' });
+    assert(D.lost === 0, `answered (guards, a roll at the red): ${D.lost} HP lost`);
+    // a stagger in the windup drops them
+    const G = build(SEED, true);
+    duel(G, { dist: 8, form: 2 });
+    const d = G.game.dragon, W = G.game.world.destructibles;
+    const okS = d.debug.trigger('stoneStorm');
+    run(G, 0.5);
+    if (!d.terrain.storm.hold.some((x) => x.piece)) out(`     (debug: trigger ${okS}, act ${d.brain.act?.name}, mode ${d.mode}, near ${d.terrain._tilesRound(T.stoneStorm)})`);
+    const held = d.terrain.storm.hold.filter((x) => x.piece).length;
+    d.debug.stagger();
+    run(G, 3);
+    const flyN = G.hits.filter((x) => x.attack === 'stoneStorm').length;
+    assert(held >= 2 && !d.terrain.busy && flyN === 0 && W.floor.every((b) => b.state !== 3), `staggered in the windup with ${held} tiles held: they drop, nothing is thrown`);
+  }
+  // ---- no tiles, no move
+  {
+    const G = build(SEED, true);
+    duel(G, { dist: 7, form: 2 });
+    const d = G.game.dragon, W = G.game.world.destructibles;
+    for (const b of W.floor) if (Math.hypot(b.x - d.position.x, b.z - d.position.z) < 9) W.strike(b.x, b.z, 0.05, 5, { kind: 'blunt', by: 'world', src: W.swing() });
+    const wK = d.terrain.weigh(MOVES.tileKick, 1, 7), wS = d.terrain.weigh(MOVES.stoneStorm, 1, 7);
+    assert(wK === 0 && wS === 0 && d.debug.trigger('stoneStorm') === false, `the floor round him spent: Tile Kick and Stone Storm weigh 0 and do not start (Ring Breaker: ${d.terrain.weigh(MOVES.ringBreaker, 1, 7)})`);
+  }
+  const G = build(SEED, true);
+  duel(G, { dist: 3 });
+  const W = G.game.world.destructibles;
+  const near = W.floor.filter((b) => b.kind === 'tile' && Math.hypot(b.x, b.z) <= 6).length;
+  assert(near >= 40, `${near} tiles within 6 m of the centre`);
+}
+
+/** The quake (Heavenfall's landing): the tiles round it shatter, a front runs out and strikes the hero once, red. */
+async function scenarioQuake() {
+  out('\n== scenario QUAKE (d.terrain.quake: a front over the whole ring, cued as it reaches the hero) ==');
+  const T = TUNING.terrain.quake;
+  const play = (dist, step = null, o = {}) => {
+    const G = build(SEED, true);
+    const { game } = G;
+    duel(G, { dist, form: 3 });
+    const d = game.dragon, p = game.player, W = game.world.destructibles;
+    const flashes = [];
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') flashes.push({ t: game.time, tell: e.tell }); };
+    const t0 = game.time, hp0 = p.hp;
+    const ok = d.terrain.quake(d.position.x, d.position.z, o);
+    run(G, 4, step, () => !d.terrain.busy && game.time - t0 > 0.3);
+    return { G, d, p, W, ok, flashes, hits: G.hits.filter((h) => h.t >= t0), lost: hp0 - p.hp, t0 };
+  };
+  const A = play(9);
+  const x0 = A.d.position.x, z0 = A.d.position.z;
+  const inner = A.W.floor.filter((b) => Math.hypot(b.x - x0, b.z - z0) < T.shatter - 0.8);
+  const ring = A.W.floor.filter((b) => { const e = Math.hypot(b.x - x0, b.z - z0); return e > T.shatter + 0.5 && e < T.to - 0.5; });
+  const h = A.hits.filter((x) => x.tell === TELL.RED);
+  const expect = (9 - T.from) / T.speed;
+  assert(A.ok && A.flashes.length === 1 && A.flashes[0].tell === TELL.RED && h.length === 1 && h[0].r === RESULT.HIT && Math.abs(h[0].t - A.flashes[0].t - TUNING.flashLead) < 0.08, `the front reaches a hero at 9 m ${(h[0]?.t - A.t0).toFixed(2)} s after the landing (${expect.toFixed(2)} by its speed), one red flare ${(h[0]?.t - A.flashes[0]?.t).toFixed(2)} s before, one blow`);
+  assert(inner.length >= 30 && inner.every((b) => b.state !== 0), `every one of the ${inner.length} tiles within ${T.shatter - 0.8} m of the landing broke`);
+  assert(ring.filter((b) => b.cracked || b.state !== 0).length >= ring.length * 0.9, `the front heaved ${ring.filter((b) => b.cracked || b.state !== 0).length} of the ${ring.length} slabs it crossed (cracked)`);
+  const G = build(SEED, true);
+  duel(G, { dist: 9, form: 3 });
+  G.defend = makeDefender(G);
+  const d = G.game.dragon, p = G.game.player, hp0 = p.hp, t0 = G.game.time;
+  d.terrain.quake(d.position.x, d.position.z, {});
+  run(G, 4, () => G.defend.act(), () => !d.terrain.busy && G.game.time - t0 > 0.3);
+  assert(hp0 - p.hp === 0 && G.hits.some((x) => x.t >= t0 && (x.r === RESULT.DODGED || x.r === RESULT.PERFECT || x.r === RESULT.IGNORED)), `rolled through at the flare: ${hp0 - p.hp} HP lost (${G.hits.filter((x) => x.t >= t0).map((x) => x.r).join(',')})`);
+  const I = play(2.5);
+  assert(I.hits.length === 0 && I.flashes.length === 0, 'a hero inside `from` at the landing: the front is not his (the leap\'s own blow is)');
+  const F = play(17);
+  assert(F.hits.length === 0, `a hero past where it stops (${T.to} m): untouched`);
+}
 
 // ================================================================== run
 const S = {
@@ -1042,8 +1183,8 @@ const S = {
   //
   //
   // --- terrain
-  //
-  //
+  terrain: scenarioTerrain,
+  quake: scenarioQuake,
 };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {
