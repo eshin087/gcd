@@ -112,10 +112,10 @@ export function shotMoves(X) {
       beats: [
         punch('cross', N, 0.48, 12),
         kick('round', N, 0.36, 12, { knockback: 1.0 }),
-        { ...blast(N, 0.42, 12, { release: { speed: T.dance.speed, size: T.dance.size, from: 0.7 } }), zone: { kind: 'line', r: TUNING.reach.line, w: TUNING.reach.lineW }, knockback: 1.6 },
+        { ...blast(N, 0.42, 12, { release: { speed: T.dance.speed, size: T.dance.size, from: 0.7 } }), zone: { kind: 'line', r: TUNING.reach.line + 0.4, w: TUNING.reach.lineW }, knockback: 1.6 },
         punch('jab', N, 0.36, 12, { step: 'L' }),
         punch('hook', N, 0.34, 12),
-        { ...blast(B, 0.5, 20, { release: { speed: T.spirit.speed, size: T.spirit.size, radius: T.spirit.radius, returnable: true } }), part: 'palms', keys: strikeKeys({ coil: BOTH.coil, hit: BOTH.hit, cock: 0.66 }) },
+        { ...blast(B, 0.5, 20, { release: { speed: T.dance.hip, size: T.spirit.size, radius: T.spirit.radius, returnable: true } }), zone: { kind: 'line', r: TUNING.reach.line + 0.4, w: TUNING.reach.lineW }, knockback: 1.6, part: 'palms', keys: strikeKeys({ coil: BOTH.coil, hit: BOTH.hit, cock: 0.66 }) },
       ],
     },
     /** Golden Rain (forms 2 - 3): ten small blasts in 1.6 s, two sweeping fans; each cues itself. */
@@ -136,7 +136,7 @@ export function shotMoves(X) {
       label: "Heaven's Volley", phase: 2, weight: [0, 0.8, 0], cooldown: 16, band: [4, 16], recovery: 0.6, cat: 'hazard', ki: 'volley',
       beats: [
         {
-          tell: R, windup: 0.9, fixed: true, active: T.volley.count * T.volley.gap, damage: T.volley.damage, knockback: T.volley.knockback, knockdown: true,
+          tell: R, windup: 0.9, fixed: true, active: (T.volley.count - 1) * T.volley.gap + 0.05, damage: T.volley.damage, knockback: T.volley.knockback, knockdown: true,
           cast: { kind: 'volley', selfCue: true }, part: 'palms', close: 0, track: 0.5, air: true, hazard: true,
           lift: [[0, 0], [0.5, 1.2], [1.0, T.volley.rise], [2.0, T.volley.rise]],
           keys: [[0.3, F({ ...BOTH.coil })], [0.9, F(RISE)], [1.0, { ...F(RISE), e: 'i' }], [1.5, F({ ...RISE, rH: [-0.3, 0.5, 0.2], lH: [0.3, 0.5, 0.2] })], [2.0, F(RISE)]],

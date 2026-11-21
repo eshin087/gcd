@@ -125,6 +125,21 @@ export class AscFx extends LordFx {
     this._lights.clear();
   }
 
+  /** Called lightning (LordFx's). While he is up in the air (Heaven's Volley) a strike rolled through
+   *  perfectly is a roll, not the hero's counter: there is nobody on the ground to Ghostep to, and he
+   *  cannot be struck up there (the move's own rule). */
+  updateStrikes(dt, d) {
+    if (!(d?.position?.y > 0.6) || typeof d.hitPlayer !== 'function') return super.updateStrikes(dt, d);
+    const own = Object.prototype.hasOwnProperty.call(d, 'hitPlayer'), orig = d.hitPlayer;
+    d.hitPlayer = (this._airHit ??= (o) => orig.call(d, { ...o, extra: { ...(o.extra ?? null), perfect: false, plunge: false } }));
+    try {
+      return super.updateStrikes(dt, d);
+    } finally {
+      if (own) d.hitPlayer = orig;
+      else delete d.hitPlayer;
+    }
+  }
+
   update(dt, d) {
     super.update(dt, d);
     const fdt = this.game.fxDt ?? dt;

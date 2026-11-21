@@ -44,8 +44,7 @@ export class ShotMoves {
     this.d = d;
     this.game = d.game;
     this._r = stream(0x51a7e);
-    this._v = { x: 0, y: 0, z: 0 };
-    this._w = { x: 0, y: 0, z: 0 };
+    this._v = d.position?.clone?.() ?? { x: 0, y: 0, z: 0 }; // (a Vector3: player.getChestPos writes into it)
     this.rain = { on: false, act: null, i: 0, n: 0, t: 0, gap: 0.16, wait: 0, base: 0, h: [], attack: '', damage: 0, kb: 0, tell: TELL.NORMAL };
     this.volley = { on: false, act: null, i: 0, n: 0, t: 0, h: [], attack: '', target: { x: 0, z: 0 } };
     this.sky = { t: 0, calls: 0, armed: false };
@@ -287,7 +286,8 @@ export class ShotMoves {
       const j = Vo.i === 0 ? 0 : V.scatter, a = this.rand(0, TAU), r = Math.sqrt(this.rand()) * j;
       const m = { x: p.x + vx * V.lead + Math.cos(a) * r, z: p.z + vz * V.lead + Math.sin(a) * r };
       this._clamp(m, 0.6);
-      if ((d.brain?.fairDelay?.(V.warn, TELL.RED, 0, Vo.attack) ?? 0) === 0 && d.fx.callStrike?.(m.x, m.z, V.radius, V.warn, { damage: V.damage, knockback: V.knockback, attack: Vo.attack, style: 'bolt' })) this.stats.volleyCalls++;
+      const fd = d.brain?.fairDelay?.(V.warn, TELL.RED, 0, Vo.attack) ?? 0;
+      if (fd === 0 && d.fx.callStrike?.(m.x, m.z, V.radius, V.warn, { damage: V.damage, knockback: V.knockback, attack: Vo.attack, style: 'bolt' })) this.stats.volleyCalls++;
       else this.stats.volleySkips++;
       // (a stroke of light from his raised hands down to the mark)
       const h = d._hs?.[0];

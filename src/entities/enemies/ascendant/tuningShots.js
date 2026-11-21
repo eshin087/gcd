@@ -10,8 +10,10 @@ export const SHOTS_TUNING = {
   spirit: { speed: 24, size: 1.4, radius: 0.6, returnDamage: 50, returnPosture: 34 },
   // Scatter: three blasts in a fan of 28 degrees at 15 m/s
   scatter: { count: 3, spread: 0.49, speed: 15, size: 1 },
-  // Blast Dance: the point-blank blast (a palm in reach is a palm; out of reach a blast) and the hip shot
-  dance: { speed: 18, size: 1 },
+  // Blast Dance: the point-blank blast and the hip shot are palms when the hero is in reach (a line of
+  // reach + 0.4 m); out of it, blasts slow enough to be cued from 3 m (a blast that could only be cued
+  // under 0.2 s before contact fizzles: fx.js)
+  dance: { speed: 9, hip: 12, size: 1 },
   // Golden Rain: ten small blasts in `dur` s, two fans sweeping `sweep` rad each side of the hero (left
   // to right, then back), `speed` m/s; each one waits (`hold` s at most) or is skipped if it would land
   // in another cue's window needing the other answer
