@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-one pieces of work since 0.4.0:
+Fifty-two pieces of work since 0.4.0:
+- **The Cinder Wyrm is leaner and carries its head high** (2026-11-20, ADR-123). *Changed:* the wyrm has a
+  leaner build, picked by the owner from rendered sheets ("more menacing, a bit more slender"): a
+  tucked waist and a shallower chest (the back's line stays, the belly rises), thinner neck, legs
+  and tail, longer talons; a narrower head with longer fangs, horns and frills; a mane of quills
+  down the neck and longer thin spines down the back and tail. While it stands it carries its head
+  about 2.5 m higher, on a neck that rises in one curve instead of coiling back. Its letters,
+  colours, scales and wings are the ones it had. Nothing about the fight moved: the skeleton, the
+  hit volumes, the reach and the timing of every attack are the same, and an attack's head is on
+  its measured path as before. The wyrm before is kept behind `?wyrmLook=0` (`a` and `b`: the two
+  steps between; the Lab's build row). *Fixed:* the fire on the horns of the unshipped phase-3
+  look (`?ablaze=c`) stood half a metre under the horn's tip; it is measured off the built horn now.
 - **The Ash Disciple and the Starless Lord fight harder, in arenas that break** (2026-11-16, ADR-122). *Changed:* both human bosses give far fewer pauses and
   their moves flow into each other, at the same damage per hit: against a hero who only defends,
   Shen Hui gives about 78 / 92 / 99 tells a minute by phase (60 / 76 before, in two
