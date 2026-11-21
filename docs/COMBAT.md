@@ -1624,7 +1624,7 @@ busier than the one before it on every seed: within about 2 % of the tables abov
 **Not filmed:** a feint made by the guard, a strike fading, a stone shattering on a world warning, the
 blade hanging at its turn, the footwork's seek. **Not measured:** how a person reads a held blow.
 
-## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas: 2026-11-16, ADR-122)
+## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas: 2026-11-16, ADR-122; the wall opens: 2026-11-21, ADR-125)
 What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood **the whole
 clearing breaks** (the owner, ADR-119: "the terrain itself is barely destructible"), and since
 2026-11-16 **the whole forest round it** (ADR-120): 664 breakables (183 before): 502 trees and 37 dead
@@ -1681,7 +1681,8 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   third to a half of a rib), the Cinder Tree loses its five boughs first (while one stands its trunk
   takes a fifth of a blow, and the trunk turns the wyrm like stone) and then breaks to a charred
   stump, the nest loses its ribs and skull. A broken bone leaves a heap of shards (wreckage).
-- **The wall** (the trees beyond 32 m of the centre, outside the hero's ground): a little tougher
+- **The wall** (the trees beyond 32 m of the centre, outside the hero's ground until it opens: *The wall
+  opens*, below): a little tougher
   (x 1.15), it falls mostly away from the arena, and where it lands it strikes the trees behind
   harder (x 1.4 its weight), so a felled stretch tears into the wall. The wyrm reaches it although it
   fights inside the clearing: **wind** from its roars (a phase roar's front runs round the whole ring,
@@ -1693,6 +1694,27 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   hero** (no blow, no fire on his ground, no tell; every attack is unchanged). Measured (headless, five
   seeds, 80 s a phase): the wall's front rows (32 – 46 m) worn or down at the end 37 – 57 % (mean
   45 %), 8 – 18 % by phase 1's end; falling trees struck the hero on none of the five.
+- **The wall opens** (2026-11-21, ADR-125; the owner: "the outer tree border ring should slowly crumble
+  and allow the dragon and player to move outside"). The hero used to be held on a circle 31 m from
+  the centre and the wyrm's root on one of 24 m, whatever had happened to the trees. Now **the ground
+  ends at the trees that still stand**. Until a tree of the wall is down nothing moves: the fight
+  starts on the circle it always had. When one comes down (burnt through, felled, torn up), the
+  ground behind it is the hero's, out to 1 m short of the next tree standing behind it; a stretch
+  with nothing left standing ends 62 m from the centre. The wall is about seven trees deep in any
+  direction, so it opens tree by tree. **The wyrm follows**: its root may go as far past its 24 m as
+  the hero's ground goes past his 31, less 3 m at either side of a gap (a slot two trees wide lets the
+  hero in and not the wyrm; its breath, its shots and its tail still reach, and what its body brushes
+  at the gap's mouth comes down and widens it). **Nothing out there is shelter**: a meteor aimed at
+  the hero lands where he stands, and a barrage laid over the clearing moves with a hero who has left
+  it (he stands 7 m inside its rim). A wall tree that falls onto ground he can now stand on is a red
+  blow again (the strip, the flash). Stumps stand in his way out there as they do in the clearing;
+  trunks lie where they fell and he walks over them. The feed says once a fight that the wall is torn
+  open, and the minimap draws back to keep him on it. A death, a rest or the Lab's Restore stands
+  the wall up again and shuts the ground. Measured (headless, seeds 1337 / 7 / 99, 80 s a phase, a hero
+  who roams 7 m inside his ground's edge): of 120 directions round the ring 33 / 21 / 52 are open by
+  the end of phase 1 and 88 / 86 / 90 by the end, the furthest 51 / 54 / 51 m out; the hero's ground
+  grows by 1664 / 1828 / 1415 m2 on a circle of 3019. With a gap torn 25 m deep and the hero standing
+  in it the wyrm's root went 50.8 m out and it kept 78 % of its cues a minute (35 against 45).
 - **The floors break** (ADR-122; `BREAK.floor`, `world/floor.js`). Each slab of the courtyard's paving
   and each plate of the crater is a breakable piece with three states that read at the game camera:
   **whole**; **cracked** (its structure under 0.8 of itself: the slab drawn split into two to four

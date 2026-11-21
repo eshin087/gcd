@@ -201,6 +201,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The Lord's left arm in the staff's spins and the keyed two-handed poses
   - [ ] Reaction clips (hits, staggers, the guard, the deaths) audited the same way
   - [ ] The casting hand and the kicks posed anew
+## M1.50 — The tree wall opens: the fight leaves the clearing (2026-11-21, `world/crumbling-border`, ADR-125)
+- [x] The edge of the open ground follows what stands of the wall (120 lanes; sealed until a tree is down)
+- [x] The hero walks out where it has come down; the wyrm's root follows through a gap wide enough for it
+- [x] Meteors, pillars and the barrage follow him out; a tree falling onto opened ground tells red
+- [x] The minimap shows the opened ground; the feed says it once; the Lab's Open wall
+- [x] Tests: world `edge`, integ `breach`, the open ground in WRECKAGE's report
+- [ ] Follow-ups:
+  - [ ] The owner plays it: the rate the wall opens at, fighting among the stumps, the 62 m limit
+  - [ ] On the iPhone: the frame rate with the wall open
+  - [ ] The landmarks' pieces closing their own lanes (the ground behind the skeleton opens rib by rib)
+  - [ ] The same for a level with a wall of its own, if one is built
 
 ## M1.49 — The Cinder Wyrm's face: the drake (2026-11-20, `dragon/wyrm-face`, ADR-124)
 - [x] The shipped face photographed at the game camera and close up; what made it unreadable named

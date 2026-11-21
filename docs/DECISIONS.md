@@ -3720,6 +3720,62 @@ ADR-092).
 - **Not done:** a look on the iPhone; the intro's close shots framed for the new head; the
   tyrant / viper / revenant data kept but not tuned further.
 
+## ADR-125 — The edge of the open ground follows the tree wall: the hero and the wyrm leave the clearing where it has come down (2026-11-21)
+- **Context:** the owner, after ADR-120 made every tree of Cinderwood breakable: "the terrain still
+  isnt as destructible as i'd like. like the 1st dragon level, the outer tree border ring should
+  slowly crumble and allow the dragon and player to move outside as the dragon destroys the trees
+  with its attacks and fire". Measured first on `main` (seed 1337, 80 s a phase): 27 of the wall's 153
+  front-row trees were down at the end, all burnt through, and it made no difference to the fight:
+  the hero was held on a circle of 31 m and the wyrm's root on one of 24 m whatever stood.
+- **Decisions:**
+  1. **The ground ends at the trees that stand** (`world/edge.js`). The ring is cut into 120 lanes;
+     in each the hero's ground ends 1 m short of the nearest tree still standing in it. Chosen over
+     (a) treating every crown as a big collider and letting him thread the forest (its trees stand
+     5 m apart on average: it would have been open from the start and the wyrm's AI would need path
+     finding), and (b) a flood fill over a grid (the same leak, and the ground would no longer be
+     star-shaped). Lanes keep the ground star-shaped round the centre: a radial clamp is enough for
+     the wyrm, the hero can always walk straight back in, and the AI needs no path.
+  2. **Nothing moves until a tree is down.** Every lane is sealed at the old circle until its nearest
+     tree has come down, so the start of a fight, every tuned distance in it and every existing test
+     are as they were. The alternative, the honest tree line from the first frame, opened bays up to
+     15 m deep behind the landmarks and the whole path south before any tree had fallen.
+  3. **A sealed lane with no tree near the line gives way sideways.** Behind the Elder Wyrm's
+     skeleton and the Cinder Tree no tree stands within 5 - 15 m of the line; left sealed they were
+     invisible walls beside open ground. They open as far as their more open neighbour, never past
+     their own trees. A lane with a tree within 2 m of the line stays shut, or the first breach
+     would have moved the whole ring out by a metre at once.
+  4. **The hero gets side walls, the wyrm a slope.** The hero is kept by the lanes' ends and their
+     radial side walls (a step sideways out of a deep lane is put back in it). The wyrm's bound is a
+     radius per direction: its share is the hero's less 3 m at each side of a gap, then no steeper
+     than 2 m out per m along the ring, so a radial clamp cannot drag it hard sideways and a slot two
+     trees wide lets the hero in and not the wyrm. With a first slope of 1 it stood 21 m from a hero
+     at the back of a 28 m wide gap and fought at range; at 2 it stands 11.5 m from him.
+  5. **Only the wyrm's moves that put its root somewhere read the new bound** (`dragon.boundAt`:
+     its collision, the charge, the leap and hop targets, the flights, the terrain moves' stand).
+     No attack's hit, damage, timing or tell changed. A leap or a dive crosses a corner of the
+     standing wall in the air (up to 3.8 m over the line in the test) and lands on its ground.
+  6. **Out there is no shelter.** Meteors and pillars were clamped to 27 m of the centre and a
+     barrage's waves cover the clearing: a hero in a gap would have stood outside all of them. The
+     clamp moves out with his ground, and a wave's disc moves with a hero who has left the clearing.
+     A wall tree falling onto ground he can reach tells red again (ADR-120's quiet fall asked "can it
+     reach his circle"; it now asks "can it reach his ground").
+  7. **The wyrm's reach to the wall was not raised.** With the edge open its body goes to the wall
+     and fells it: on the same seed the front rows went from 27 down to 46, the whole forest from 501
+     standing to 482, with no number changed. Letting wind fell trees was the alternative and was
+     not needed.
+  8. **One line of feedback.** The feed says once a fight that the wall is torn open (`world:edge`),
+     and the minimap draws back so the hero stays on it. No new mark on the ground: the standing
+     trees are the wall.
+- **Consequences:** over a 4-minute headless fight (three seeds) 86 - 90 of the 120 lanes are open at
+  the end, the furthest 51 - 54 m out, the hero's ground 47 - 61 % larger than the circle. The
+  forest has 454 collider circles (every trunk out to 65 m; it was those within 42 m). A level
+  without `edge` is untouched. `world.resolve` has a fifth argument; `Destructibles` owns the edge
+  so the tests' mock worlds get it with the pieces.
+- **Not done:** nobody has played it. The hero bot of the fight meter stays near the wyrm and went
+  34 - 40 m out at most, so how often a real player ends up in a narrow gap out of the wyrm's melee
+  reach is not measured. The landmarks' pieces close no lane (the ground behind the skeleton opens
+  when a tree beside it falls, not when its ribs break). The ground cannot go past 62 m. The Ashfall
+  Courtyard and the crater have no wall that opens.
 ## ADR-126 — A duelist's move is motion, not a row of poses: the follow-through's own clock, a cubic through the keys, beats that own their channels, feet that step (2026-11-21)
 - **Context:** the owner: "the humanoid bosses have weird attack animations and unnatural poses.
   analyze it and fix it". An audit of every move of both bosses on the rig (DEVLOG Session 66 has

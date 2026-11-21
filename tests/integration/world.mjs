@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | floor | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | budget | placed | all
+//   scenario: sets | floor | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | placed | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -36,6 +36,8 @@ const { TELL, RESULT } = await imp('src/combat/rules.js');
 const { Dragon } = await imp('src/entities/dragon/dragon.js');
 const { TUNING: WYRM } = await imp('src/entities/dragon/tuning.js');
 const { QUALITY } = await imp('src/world/breakTuning.js');
+const { resolveOn } = await imp('src/world/edge.js');
+const { mulberry32 } = await imp('src/core/rng.js');
 const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
 v8.setFlagsFromString('--expose-gc');
 const gc = vm.runInNewContext('gc');
@@ -72,12 +74,13 @@ function build(makeSet = createForest, density = () => 1) {
   const set = makeSet(U, colliders);
   const world = {
     colliders, forest: set, gusts: 0, gust(x, z, s, r) { if (![x, z, s, r].every(Number.isFinite)) throw new Error('NaN gust'); this.gusts++; },
-    resolve: (pos, r, b, soft) => colliders.resolve(pos, r, b, soft), setPusher() {}, clearPushers() {},
+    resolve: (pos, r, b, soft, who) => resolveOn(colliders, world.edge ?? null, pos, r, b, soft, who), setPusher() {}, clearPushers() {},
   };
   world.scorch = new Scorch(U, game);
   world.fire = new GroundFire(game, world, density);
   world.scars = new Scars(game, set.scarInk);
   world.destructibles = new Destructibles(game, world, set);
+  world.edge = world.destructibles.edge ?? null; // (as world.js wires it: edge.js)
   game.world = world;
   // the fighters: where they stand, what lands on them
   const hits = [];
@@ -1112,6 +1115,117 @@ const S = {
     const grew = process.memoryUsage().heapUsed - h0 - base;
     assert(grew / 2000 < 2048, `2000 frames of the body sweeping, wood burning, logs smouldering: ${(grew / 2000).toFixed(0)} bytes a frame over the bare loop (< 2 KB: no object, array or closure a frame; the rest is V8 boxing call arguments)`);
   },
+  // ---------------------------------------------------------------- the edge of the open ground (edge.js, ADR-125)
+  // The hero's circle and the wyrm's bound follow what stands of the tree wall: nothing moves until a
+  // tree of it is down; where one is, the ground ends short of the next one standing behind it.
+  edge() {
+    const { D, world, log, step, colliders } = build();
+    const E = D.edge, X = BREAK.edge, base = CONFIG.world.playerBound, rad = 0.45;
+    const hero = (x, z) => { const p = { x, z }; world.resolve(p, rad, base, false, 'hero'); return p; };
+    const walk = (a, from = 20, to = 80) => {
+      const p = { x: Math.cos(a) * from, z: Math.sin(a) * from };
+      for (let r = from; r < to; r += 0.2) {
+        p.x += Math.cos(a) * 0.2;
+        p.z += Math.sin(a) * 0.2;
+        E.keep(p, rad);
+      }
+      return Math.hypot(p.x, p.z);
+    };
+    const off = (b, a) => { const da = Math.atan2(b.z, b.x) - a; return Math.abs(Math.atan2(Math.sin(da), Math.cos(da))); };
+    assert(E && E.base === base && E.n === X.lanes && E.count > 450 && !E.open && E.version === 0, `the forest has an edge: ${E?.n} lanes round the ${E?.base} m line, ${E?.count} trees close them, nothing open`);
+    let worst = 0, gain = 0;
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2;
+      worst = Math.max(worst, Math.abs(walk(a) - (base - rad)));
+      gain = Math.max(gain, E.bossGain(Math.cos(a) * 30, Math.sin(a) * 30));
+    }
+    const far = hero(0, 55);
+    assert(worst < 1e-6 && gain === 0 && near(Math.hypot(far.x, far.z), base - rad, 1e-6), `the wall standing: the hero is held on the ${base} m circle in every direction (off by ${worst.toExponential(1)} m), a boss gains nothing, world.resolve(.., hero) is the old circle`);
+
+    // one tree of the first row comes down: its lanes open to the tree behind, the rest of the ring stays shut
+    const lanesOf = (b) => E._lanes.map((l, i) => (l.length && l[0].b === b ? i : -1)).filter((i) => i >= 0);
+    const first = D.list.filter((b) => b.def.edge > 0 && Math.hypot(b.x, b.z) < 34 && lanesOf(b).length >= 2 && lanesOf(b).every((i) => E._lanes[i].length > 1 && E._F0[i] < base + X.seal))[0];
+    const mine = lanesOf(first), fr = Math.hypot(first.x, first.z);
+    D.strike(first.x, first.z, 0.5, 20, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    E.refresh();
+    assert(first.state === STATE.FALLING && !E.open, 'while a tree of the wall is falling its lanes stay shut (it opens the ground once it is down)');
+    step(2.5);
+    const opened = [];
+    for (let i = 0; i < E.n; i++) if (E.R[i] > base + 1e-3) opened.push(i);
+    const behind = mine.map((i) => E._lanes[i].find((p) => p.b.state === STATE.INTACT || p.b.state === STATE.FALLING)); // (a tree it fell on may be falling: it closes its lane until it is down)
+    assert(first.state === STATE.BROKEN && E.open && E.version >= 1 && mine.every((i) => opened.includes(i)) && mine.every((i, k) => near(E.R[i], Math.min(E.outer, behind[k] ? behind[k].at : E.outer), 1e-3)),
+      `a first-row tree (${fr.toFixed(1)} m) down: its ${mine.length} lanes end ${X.margin} m short of the next tree standing behind (${mine.map((i) => E.R[i].toFixed(1)).join(', ')} m), read within ${X.every} s`);
+    assert(opened.length <= mine.length + 6, `... and only there: ${opened.length} of ${E.n} lanes moved (a sealed lane with a tree at the line does not give way: the ring does not shift at the first breach)`);
+    const midLane = mine[Math.floor(mine.length / 2)], mid = E.laneAngle(midLane);
+    const out1 = walk(mid), shut = walk(mid + Math.PI);
+    assert(near(out1, E.R[midLane] - rad, 0.05) && near(shut, base - rad, 1e-6), `the hero walks out through it to ${out1.toFixed(2)} m and no further; on the far side of the ring he is still held at ${shut.toFixed(2)} m`);
+
+    // a wide gap torn 20 m deep: the hero has all of it, the wyrm's root a share that grows with its width
+    const a0 = Math.atan2(first.z, first.x);
+    const wedge = D.list.filter((b) => b.def.edge > 0 && b.state === STATE.INTACT && off(b, a0) < 0.3 && Math.hypot(b.x, b.z) < 52);
+    for (const b of wedge) D.topple(b, b.x / Math.hypot(b.x, b.z), b.z / Math.hypot(b.x, b.z), 'world');
+    step(3);
+    const c = E.lane(Math.cos(a0), Math.sin(a0));
+    const deep = walk(a0), g0 = E.bossGain(Math.cos(a0) * 40, Math.sin(a0) * 40), gSide = E.bossGain(Math.cos(a0 + 0.3) * 40, Math.sin(a0 + 0.3) * 40);
+    let steep = 0, over = 0;
+    for (let i = 0; i < E.n; i++) {
+      steep = Math.max(steep, Math.abs(E.G[i] - E.G[(i + 1) % E.n]));
+      over = Math.max(over, E.G[i] - (E.R[i] - base));
+    }
+    assert(wedge.length >= 15 && deep > base + 12 && deep <= E.R[c] - rad + 1e-6, `${wedge.length} trees felled in a wedge 0.6 rad wide: the hero walks out to ${deep.toFixed(1)} m (the lane ends at ${E.R[c].toFixed(1)})`);
+    assert(g0 > 4 && g0 <= E.R[c] - base + 1e-6 && gSide < g0 && over < 1e-6 && steep <= X.slope * E.step * base + 1e-6,
+      `the wyrm's root may follow ${g0.toFixed(1)} m into the middle of it, ${gSide.toFixed(1)} m at its side, never further than the hero's ground, its share never steeper than ${X.slope} m per m along the ring (${steep.toFixed(2)} m a lane)`);
+
+    // a hero thrown about inside it: never off his ground, never among the standing trees, no leap
+    const rng = mulberry32(77);
+    const p = { x: Math.cos(a0) * 36, z: Math.sin(a0) * 36 };
+    let offGround = 0, jump = 0, nan = 0, inTree = 0, farthest = 0;
+    const standing = D.list.filter((b) => b.def.edge > 0 && b.state === STATE.INTACT);
+    for (let i = 0; i < 20000; i++) {
+      const a = rng() * Math.PI * 2, l = 0.05 + rng() * 0.3;
+      const tx = p.x + Math.cos(a) * l, tz = p.z + Math.sin(a) * l;
+      p.x = tx;
+      p.z = tz;
+      world.resolve(p, rad, base, false, 'hero');
+      if (!Number.isFinite(p.x + p.z)) nan++;
+      const r = Math.hypot(p.x, p.z);
+      farthest = Math.max(farthest, r);
+      if (r > E.heroAt(p.x, p.z) - rad + 1e-4) offGround++;
+      jump = Math.max(jump, Math.hypot(p.x - tx, p.z - tz));
+      if (i % 50 === 0) for (const b of standing) if (Math.hypot(b.x - p.x, b.z - p.z) < 0.45 * 0.85 + rad - 1e-3) inTree++;
+    }
+    assert(!nan && !offGround && !inTree && jump < 1.2 && farthest > base + 4, `20000 random steps from inside the gap: never off his ground, never inside a standing trunk, pushed back ${jump.toFixed(2)} m at most in a step (reached ${farthest.toFixed(1)} m)`);
+    // a step sideways out of a deep lane puts him back in the lane, not at the old circle
+    let edgeLane = -1;
+    for (let k = 1; k < 20 && edgeLane < 0; k++) if (E.R[(c + k) % E.n] < E.R[(c + k - 1) % E.n] - 6) edgeLane = (c + k) % E.n;
+    const sa = E.laneAngle(edgeLane) - E.step * 0.3, sr = E.R[(edgeLane + E.n - 1) % E.n] - 3;
+    const sp = hero(Math.cos(sa) * sr, Math.sin(sa) * sr);
+    assert(edgeLane >= 0 && Math.hypot(sp.x, sp.z) > sr - 0.5 && E.lane(sp.x, sp.z) !== edgeLane, `a step into the standing wall at the gap's side (${sr.toFixed(1)} m out) is pushed back into the gap (${Math.hypot(sp.x, sp.z).toFixed(1)} m out), not dragged in to the old circle`);
+
+    // a tree at the gap's side falling into it is a red blow again (the hero can stand there now)
+    const side = standing.filter((b) => off(b, a0) > 0.31 && off(b, a0) < 0.5 && Math.hypot(b.x, b.z) > 36 && Math.hypot(b.x, b.z) < 44 && b.topples && b.h > 6 && !(b.leanTo > 0)).sort((p, q) => off(p, a0) - off(q, a0))[0]; // (not one already leaning: it goes the way it leans)
+    const gx = Math.cos(a0) * Math.hypot(side.x, side.z), gz = Math.sin(a0) * Math.hypot(side.x, side.z);
+    const tells0 = log.filter((e) => e.n === 'combat:tell').length;
+    D.topple(side, gx - side.x, gz - side.z, 'boss');
+    step(0.2);
+    const farTree = standing.filter((b) => off(b, a0 + Math.PI) < 0.4 && Math.hypot(b.x, b.z) > 42 && b.topples)[0];
+    D.topple(farTree, farTree.x, farTree.z, 'boss');
+    assert(side.state === STATE.FALLING && !side.quiet && log.filter((e) => e.n === 'combat:tell').length > tells0 && farTree.quiet, 'a tree beside the gap that falls across it tells red (it can land on him there); one falling outward on the far side of the ring still tells nothing');
+    step(3);
+
+    // the reset
+    const n1 = colliders.circles.length;
+    D.reset();
+    const back = hero(Math.cos(a0) * 50, Math.sin(a0) * 50);
+    assert(!E.open && E.R.every((v) => v === base) && E.G.every((v) => v === 0) && near(Math.hypot(back.x, back.z), base - rad, 1e-6) && colliders.circles.length >= n1, 'the reset: every lane is shut again at once, a hero out there is back on the circle, the trunks are back');
+
+    // a set without a wall that opens: no edge, the circle as before
+    const C = build(createCourtyard);
+    const q = { x: 60, z: 0 };
+    C.world.resolve(q, rad, 40, false, 'hero');
+    assert(C.D.edge === null && near(q.x, 40 - rad, 1e-6), 'the Ashfall Courtyard has no edge: the hero is held on its circle (world.resolve falls back to the bound)');
+  },
+
   // ---------------------------------------------------------------- a piece draws where it is (its matrices are placed, not auto-updated)
   // (last: it draws on the destructibles' cosmetic stream, which the scenarios after it would see)
   placed() {
