@@ -7,7 +7,7 @@ export const TERRAIN_TUNING = {
    *  `reach` of that point), hangs at `rise` m, and his punch sends it at the hero at `speed` m/s.
    *  The hero must stand `heroMin` .. `heroMax` m off for his AI to pick it. */
   tileKick: {
-    ahead: 1.5, reach: 1.6, heroMin: 3.5, heroMax: 15,
+    ahead: 1.5, reach: 1.6, heroMin: 3.2, heroMax: 15,
     stamp: 0.32, // u of the windup when his foot comes down and the tile jumps
     rise: 1.0, riseT: 0.2,
     speed: 16, minFlight: 0.42, // (a flight shorter than the cue's lead plus a breath is lengthened: the cue comes first)

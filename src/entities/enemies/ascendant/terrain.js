@@ -157,7 +157,7 @@ export class TerrainMoves {
       ux = Math.sin(d.yaw);
       uz = Math.cos(d.yaw);
     }
-    const n = W.floorNear(me.x + ux * K.ahead, me.z + uz * K.ahead, forced ? K.reach * 3 : K.reach, out, { kind: 'tile', whole: true, max: 1 });
+    const n = W.floorNear(me.x + ux * K.ahead, me.z + uz * K.ahead, forced ? K.reach * 3 : K.reach, out, { kind: 'tile', max: 1 }); // (a cracked tile can still be torn up: the worn centre keeps his moves)
     return n ? out[0] : null;
   }
 
@@ -166,7 +166,7 @@ export class TerrainMoves {
     const W = this.W, me = this.d.position;
     this._near.length = 0;
     if (!W?.floorNear) return 0;
-    return W.floorNear(me.x, me.z, K.near, this._near, { kind: 'tile', whole: true, max: K.count + 1 });
+    return W.floorNear(me.x, me.z, K.near, this._near, { kind: 'tile', max: K.count + 1 });
   }
 
   /** His AI weighs a terrain move: 0 while the floor has nothing for it, or one of its kind runs. */

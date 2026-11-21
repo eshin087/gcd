@@ -1159,6 +1159,60 @@ async function scenarioQuake() {
   assert(F.hits.length === 0, `a hero past where it stops (${T.to} m): untouched`);
 }
 
+/** The ring's wear by form: his AI against a god-mode defender who roams, `ABYSS_WSECS` s a form (75),
+ *  each transformation's nova on the tiles (the class's hook, called here as the class will); how much
+ *  of the ring is cracked / broken at each transformation and at the end. */
+async function scenarioWear() {
+  out('\n== scenario WEAR (the ring visibly worse each form: cracked / broken share of the tiles) ==');
+  const SECS = Number(process.env.ABYSS_WSECS ?? 75);
+  const rows = [];
+  for (const seed of (process.env.ABYSS_WSEEDS ?? '4242,7').split(',').map(Number)) {
+    const G = build(seed, true);
+    const { game } = G;
+    duel(G, { dist: 4, ai: true });
+    const d = game.dragon, p = game.player, W = game.world.destructibles;
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    G.defend = makeDefender(G, { world: true });
+    const roam = mulberry32(seed * 13), goal = { r: 3, a: 0, until: -1 };
+    const tiles = W.floor.filter((b) => b.kind === 'tile');
+    const share = () => ({ broken: tiles.filter((b) => b.state !== 0).length / tiles.length, cracked: tiles.filter((b) => b.state === 0 && b.cracked).length / tiles.length });
+    const row = [];
+    const B = (CONFIG.world.dragonBound ?? 12) - 1;
+    const moves = {};
+    G.watch = (n, e) => { if (n === 'dragon:windup' && MOVES[e?.name]?.terrain) moves[e.name] = (moves[e.name] || 0) + 1; };
+    for (let f = 1; f <= FORMS; f++) {
+      if (f > 1) {
+        d.debug.setForm(f);
+        d.terrain.nova?.(d.position.x, d.position.z, TUNING.transform?.ringRadius ?? 6.5);
+      }
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        const rolled = G.defend.act();
+        if (game.time > goal.until) {
+          goal.r = [2.5, 5, 8][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+          goal.until = game.time + 4;
+        }
+        if (!rolled && p.state !== 'roll') {
+          const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+          const k = Math.hypot(gx, gz) > B ? B / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 0.6 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        if (d.hp < d.maxHp * 0.3) d.hp = d.maxHp; // (no break: the form runs its full time)
+        G.tick(DT);
+      }
+      const s = share();
+      row.push(s);
+    }
+    rows.push(row);
+    out(`     seed ${seed}: ` + row.map((s, i) => `after form ${i + 1}: ${(100 * s.broken).toFixed(0)} % broken, ${(100 * s.cracked).toFixed(0)} % cracked`).join(' · ') + ` · terrain moves ${JSON.stringify(moves)}`);
+  }
+  const mean = (i, k) => rows.reduce((a, r) => a + r[i][k], 0) / rows.length;
+  const worn = [0, 1, 2].map((i) => mean(i, 'broken') + mean(i, 'cracked') * 0.5);
+  assert(worn[0] < worn[1] && worn[1] < worn[2] && mean(2, 'broken') >= 0.25, `the ring worse each form: broken ${[0, 1, 2].map((i) => (100 * mean(i, 'broken')).toFixed(0)).join(' → ')} % (cracked ${[0, 1, 2].map((i) => (100 * mean(i, 'cracked')).toFixed(0)).join(' → ')} %), ${SECS} s a form`);
+}
+
 // ================================================================== run
 const S = {
   level: scenarioLevel,
@@ -1185,6 +1239,7 @@ const S = {
   // --- terrain
   terrain: scenarioTerrain,
   quake: scenarioQuake,
+  wear: scenarioWear,
 };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {

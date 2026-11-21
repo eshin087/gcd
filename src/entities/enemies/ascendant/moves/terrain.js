@@ -15,19 +15,19 @@ export function terrainMoves(X) {
     /** Tile Kick: he stamps, a tile jumps up out of the ring before him, and his cross sends it at the
      *  hero (a parry cuts it, cover stops it; the tile's place is left broken). */
     tileKick: {
-      label: 'Tile Kick', phase: 1, weight: [1.4, 1.0, 0], cooldown: 9, band: [4, 14], recovery: 0.6, terrain: 'tileKick', cat: 'terrain',
+      label: 'Tile Kick', phase: 1, weight: [1.8, 1.2, 0], cooldown: 9, band: [3.5, 14], recovery: 0.6, terrain: 'tileKick', cat: 'terrain',
       beats: [cast(punch('cross', N, 0.8, 16, { cock: 0.72 }), 'tileKick', { knockback: 2.2 })],
     },
     /** Ring Breaker: both fists into the floor; tiles burst up in a line toward the hero, one after
      *  another (red: step off the line, or roll at the tile under you). */
     ringBreaker: {
       label: 'Ring Breaker', phase: 2, weight: [0, 1.3, 1.2], cooldown: 10, band: [3.5, 14], recovery: 0.55, terrain: 'ringBreaker', cat: 'terrain',
-      beats: [cast(punch('hammer', R, 0.9, 22), 'ringBreaker', { knockdown: true, knockback: 3.5, track: 0.9 })],
+      beats: [cast(punch('hammer', R, 0.9, 22), 'ringBreaker', { knockdown: true, knockback: 3.5, track: 0.9, ring: 1.2 })],
     },
     /** Stone Storm: his aura tears three tiles up round him; they leave one after another (normal,
      *  a guard), then the great one (red, a knockdown). */
     stoneStorm: {
-      label: 'Stone Storm', phase: 2, weight: [0, 1.1, 1.2], cooldown: 11, band: [5, 15], recovery: 0.6, terrain: 'stoneStorm', cat: 'terrain',
+      label: 'Stone Storm', phase: 2, weight: [0, 1.6, 1.6], cooldown: 11, band: [4, 15], recovery: 0.6, terrain: 'stoneStorm', cat: 'terrain',
       beats: [
         cast(punch('double', N, 0.95, 14), 'stormThrow', { knockback: 2.2, track: 0.8 }),
         cast(punch('palm', R, 1.5, 26), 'stormGreat', { knockdown: true, knockback: 4.5, track: 0.8 }),
