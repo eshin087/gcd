@@ -45,10 +45,13 @@ function beamBody(F, ax, ay, az, bx, by, bz, w, k, dt, form, o) {
     const kc = Math.min(1, k / 0.45), s0 = Math.min(L * 0.3, 0.3);
     // (the middle line white-hot steel; the lines beside it add gold to the body's, so it is pale
     // yellow there, then gold: a white core that shades into the body, not a white bar)
+    // (the white-hot middle only at the peak, k > 0.85: a beam held at its lower strength (kiBeam.js
+    // look.held) is gold through, the owner having called bright letters flashy)
+    const hot = k > 0.85;
     for (let j = -half; j <= half; j++) {
-      const aj = Math.abs(j), h = (aj === 0 ? (braid ? 1.12 : 1.22) : aj === 1 ? 0.6 : aj === 2 ? 0.45 : 0.3) * kc;
+      const aj = Math.abs(j), h = (aj === 0 ? (hot ? (braid ? 1.12 : 1.22) : 0.95) : aj === 1 ? 0.6 : aj === 2 ? 0.45 : 0.3) * kc;
       const off = j * row * 0.98;
-      F._ink(ax + ux * s0 + cx * off, ay + uy * s0 + cy * off, az + uz * s0 + cz * off, bx + cx * off, by + cy * off, bz + cz * off, 0, h, 0, h * 0.9, 0, aj === 0 ? K_STEEL : K_VOID);
+      F._ink(ax + ux * s0 + cx * off, ay + uy * s0 + cy * off, az + uz * s0 + cz * off, bx + cx * off, by + cy * off, bz + cz * off, 0, h, 0, h * 0.9, 0, aj === 0 && hot ? K_STEEL : K_VOID);
     }
     // the body: stations along it, its width swelling in bulges that run out, its edge boiling
     const step = Math.max(0.28, L / 110), n = Math.ceil(L / step), roll = Math.floor(t * 14);
@@ -92,7 +95,8 @@ function beamBody(F, ax, ay, az, bx, by, bz, w, k, dt, form, o) {
       const R = (0.3 + 0.2 * w) * Math.sqrt(k);
       F._disc(ax, ay, az, R, 14, R * 0.75, 0.5 * k, K_VOID);
       const M = F._toCamera(ax, ay, az), mx = M.x, my = M.y, mz = M.z;
-      F._blob(mx, my, mz, 0, 0, 0, life, R * 0.8, R * 0.8, 1.3 * k, 1.3 * k, K_STEEL);
+      const hh = (hot ? 1.3 : 0.75) * k;
+      F._blob(mx, my, mz, 0, 0, 0, life, R * 0.8, R * 0.8, hh, hh, hot ? K_STEEL : K_VOID);
       const rf = Math.floor(t * 10);
       for (let j = 0; j < 6; j++) {
         const a = t * 3 + (j / 6) * TAU + (hash(j + rf) - 0.5) * 0.4, len = R * (1.5 + 0.8 * hash(j * 3 + rf));
@@ -145,7 +149,27 @@ export function drawBeam(F, ax, ay, az, bx, by, bz, w, k, dt, form) {
 const BEAM_O = Object.freeze({ muzzle: true, light: 'beam', floor: true, flies: true });
 const SPLIT_O = Object.freeze({ muzzle: false, light: null, floor: true, flies: true });
 
-/** The windup (AscFx.beamCharge): at the cupped hands, u 0..1. */
+/**
+ * The line he has fixed (kiBeam.js, from the cue until the beam is lit): a thin thread of gold run out
+ * from his lead hand a → b, in dashes that crawl outward along it (the eye follows it to where it ends),
+ * brighter near the hand. `k` 0..1 its strength. No randomness (a steady pattern on the clock).
+ */
+export function drawSight(F, ax, ay, az, bx, by, bz, k, form) {
+  if (!F.fire || !Number.isFinite(ax + ay + az + bx + by + bz + k) || !(k > 0.01)) return;
+  const dx = bx - ax, dy = by - ay, dz = bz - az, L = Math.hypot(dx, dy, dz);
+  if (!(L > 0.5)) return;
+  const ux = dx / L, uy = dy / L, uz = dz / L, t = F._now();
+  const dash = 0.9, gap = 0.55, per = dash + gap, off = (t * 9) % per;
+  const kind = form >= 3 ? K_STEEL : K_VOID;
+  for (let s = -per + off; s < L; s += per) {
+    const s0 = Math.max(0.15, s), s1 = Math.min(L, s + dash);
+    if (s1 <= s0) continue;
+    const f0 = 1 - 0.75 * (s0 / L), f1 = 1 - 0.75 * (s1 / L);
+    F._ink(ax + ux * s0, ay + uy * s0, az + uz * s0, ax + ux * s1, ay + uy * s1, az + uz * s1, 0, 0.85 * k * f0, 0, 0.85 * k * f1, 0, kind);
+  }
+}
+
+/** The windup (AscFx.beamCharge): at the drawn-back palm, u 0..1. */
 export function drawBeamCharge(F, x, y, z, u, dt, form) {
   const A = F._axes(), t = F._now(), life = F._frame(), f3 = form >= 3;
   const P = F._toCamera(x, y, z), px = P.x, py = P.y, pz = P.z;
