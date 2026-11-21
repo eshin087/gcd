@@ -5,6 +5,93 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 66: the human bosses' attacks move like a swordsman's
+
+**Owner:** "the humanoid bosses have weird attack animations and unnatural poses. analyze it and fix
+it". Branch `enemies/duelist-motion` from `main` (91f17d4). ADR-126 / Session 66 / M1.50 (125 / 65
+left free for a session running beside this one).
+
+**Analysis first.** Every move of both bosses was run in the browser (headless Edge, the real GPU)
+with an audit that samples the rig each frame in his own frame: wrists, elbows, blade, head, pelvis,
+ankles. 43 moves of Shen Hui, 63 of the Lord (each in its own blade form). What it found, on `main`:
+
+| | Shen Hui | the Lord |
+|---|---|---|
+| sword hand's top speed, median over the moves with a blade blow | 19.4 m/s | 22.5 m/s |
+| ... worst move | 38.0 m/s (0.63 m in one frame) | 37.9 m/s |
+| moves over 20 m/s | 19 of 42 | 32 of 53 |
+| feet sliding on the ground through a string (median / worst) | 3.7 m / 12.9 m | 9.9 m / 19.5 m |
+| moves with the blade under 0.15 m from the head's centre | 3 | 20 |
+
+Film strips (solid look, from his side and front) showed the rest: a cut was a held cock, one or two
+frames of travel and a held follow-through; the spare arm stood straight out sideways with a fist
+through every wind-up; the overhead ended with his hat's crown pointed at the hero.
+
+**Causes, all in the shared engine** (`enemies/duelist/`):
+1. `realise.js` laid a beat's follow-through keys (u 1..2) on the ACTIVE frames: 0.08 s for the
+   whole follow-through, then nothing until the next beat's keys.
+2. `poses.js` eased every segment to a stop (smoothstep per segment), and a chained cut began with a
+   "gather" key authored for a cut from the guard: the blade went back toward the front and out again.
+3. A field a beat did not key was interpolated from the last beat that did: `two`, `spX`, `hdX`,
+   `arm` ran on. In a string an overhead's keyed hands were overridden by the blade-driven arm of the
+   cuts round it.
+4. `bladeArm` read the blade's azimuth back from its direction: a blade keyed past the vertical
+   (el > 90 deg) reads back turned half a circle, and the fist jumped across him.
+5. Clips pose the feet in model space and the brain moves the root (`close`, up to 2.4 m a blow):
+   the feet went with it.
+6. The Lord's flourish rolled his blade in a fore-and-aft plane through his hood and through the
+   line of his forearm, where the wrist limit throws the blade from one side to the other.
+
+**What changed** (ADR-126 has the decisions):
+- `poses.js`: a clip's fields run on a cubic through their keys (`tangents`): a key is passed
+  through unless the field turns back there; `i` still arrives at speed. `completeBeat` gives each
+  beat every field it does not key (the guard's value on its first and last key). `bladeArm` takes
+  the keyed [az, el]; past the vertical the fist rises a little and comes in over the shoulder; with
+  both hands on the hilt its circle is smaller, nearer his middle and never far out at his sword
+  side (the chest turns further instead).
+- `realise.js`: a beat's follow (`b.F`, 0.24 s at most, 0.3 s for a spin, 72 % of the time to the
+  next beat's first pose); `gather` keys left out of a chained beat and `settle` keys out of a beat
+  another follows; a bait hold repeats the cocked pose at its end; `clip.steps`.
+- `player/anim.js`: `_feetClip` (`CLIP_STEP`): for a clip with `steps` the feet stay on their world
+  spots and step, one at a time; a lifted foot, a body off the ground or a dash is the clip's own.
+  The hero's clips do not set `steps`: nothing of his changed.
+- Both `moves.js`: the spare hand through a cut; `RAISED` (hands higher, the blade steeper) and
+  `CHOP` (less bow, the head up); the thrust arrives a hand short and is driven through; Shen Hui's
+  whirl on a hop with the feet going round (the Lord's already did); the Lord's flourishes 1 and 2
+  as wheels across him.
+
+**After**, the same audit:
+
+| | Shen Hui | the Lord |
+|---|---|---|
+| sword hand's top speed, median | 14.6 m/s | 14.8 m/s |
+| ... worst move | 22.9 m/s | 27.4 m/s |
+| moves over 20 m/s | 4 of 41 | 11 of 52 |
+| feet sliding through a string (median / worst) | 0.09 m / 1.15 m | 0.82 m / 3.18 m |
+| blade under 0.15 m from the head's centre | 0 | 5 |
+
+(What still slides is a dash or a blink inside a string: those frames are left to the clip.)
+
+**Verification:** `node tests/run.mjs .` ALL 10 PASSED, no threshold changed; `npm run build`
+passes. New: `duel.mjs . motion` (the three strings on the rig: hand travel a frame, sliding, a step
+taken; every beat's follow in every phase; a beat owns its channels; the hand's target through Rain
+of Ashes at 120 Hz). Filmed before / after on both builds side by side, at the game camera and close,
+at half speed: three of Shen Hui's strings, four of the Lord's (one per form).
+
+**Not checked / open:**
+- Nobody has played it. The owner judges the clips and the preview.
+- The Lord's left elbow still locks straight (over 170 deg) in 15 moves, down from 23: the staff's
+  spins and the keyed two-handed poses. The five moves where his blade still passes near his head
+  are his flips, cartwheels and the two leaps with the blade raised.
+- Reaction clips (hits, staggers, the guard's clips, the intro, the deaths) run on the same cubic
+  now and were looked at only in the fights filmed; they keep their feet as they were.
+- The casting hand, the kicks and the courtyard's moves were audited by the numbers, not posed anew.
+- Frame cost was not measured (the stepper is a few dozen arithmetic operations a frame per boss).
+
+**Next:** the owner's look at the clips; then whatever still reads wrong, move by move.
+
+---
+
 ## 2026-11-20 — Session 64: the Cinder Wyrm's face (the drake)
 
 **Owner:** "I really dont like how the dragon face looks. It doesnt look realistic or scary. Give me 4

@@ -3719,3 +3719,45 @@ ADR-092).
      check that counted feints instead of checking why each had no flash (rewritten).
 - **Not done:** a look on the iPhone; the intro's close shots framed for the new head; the
   tyrant / viper / revenant data kept but not tuned further.
+
+## ADR-126 — A duelist's move is motion, not a row of poses: the follow-through's own clock, a cubic through the keys, beats that own their channels, feet that step (2026-11-21)
+- **Context:** the owner: "the humanoid bosses have weird attack animations and unnatural poses.
+  analyze it and fix it". An audit of every move of both bosses on the rig (DEVLOG Session 66 has
+  the tables) found the sword hand crossing up to 0.63 m in one frame, feet that slid 4 - 10 m
+  through a string without lifting, channels running on from one beat into the next, and the Lord's
+  blade through his own hood. All of it came from how the shared engine turns a move's data into a
+  clip, so that is where it was fixed: 106 moves, two files of pose data, one engine.
+- **Decisions:**
+  1. **Gameplay time is not touched.** Tells, windups, holds, flashes, impacts, active frames, zones,
+     root motion and `uAt` are what they were. Everything below is on the clip's side only; the test
+     suites pass without a changed threshold.
+  2. **A follow-through has its own clock.** A beat's keys past the impact (u 1..2) run over
+     `b.F`, not over the active frames: 72 % of the time until the next beat's first pose, 0.24 s at
+     most (0.3 s for a spin, whose whole turn is on that clock: 0.18 s for a full turn was a blur),
+     never under the active frames. Turned down: stretching the active frames (it would move the hit
+     window), and capping the hand's speed in the solver (it would detach the hand from the blade).
+  3. **In a string the follow-through is the next wind-up.** A key marked `gather` is left out of a
+     beat that follows another, a key marked `settle` out of a beat another follows. A bait hold
+     repeats the cocked pose at its end, so the strike out of a pause is as fast as any other.
+  4. **A key is passed through.** Fields run on a cubic through their keys with shared tangents (the
+     harmonic mean of the two slopes, zero where the field turns back); `i` still arrives at twice
+     its segment's slope, `l` and `h` are what they were. Monotone by construction (tangents capped
+     at 2.2 x the segment's slope): no overshoot. This holds for every compiled clip, reactions too.
+  5. **A beat owns its channels.** `completeBeat` writes the guard's value for every field a beat
+     never keys, on its first and last key. The blades' directions are the exception: they carry
+     from cut to cut on purpose.
+  6. **The blade-driven arm reads the keyed angles**, and knows about two hands: a smaller circle
+     nearer his middle, never far out at his sword side.
+  7. **A move's feet are planted in the world** (`anim.js _feetClip`, on the walking planner's own
+     state, so a move starts from the feet he stood on and the walk resumes from where it left
+     them). A lifted foot, a body off the ground or a dash over 9 m/s is the clip's own. Only clips
+     with `steps` (a realised move) get it: reactions, deaths and every clip of the hero do not.
+  8. **Poses changed only where the audit or the film named a fault:** the spare arm, the overhead
+     and its chop, the thrust's stop, Shen Hui's whirl, the Lord's flourish. The guards, the
+     silhouettes of the cuts and every blade path are the ones the owner picked or played.
+- **Consequences:** a new move gets all of this from the engine; its author marks the draw from the
+  guard `gather` and the easing-back after a follow-through `settle`. A beat that wants a channel to
+  carry from the beat before must key it. Authored u in 1..2 no longer means "during the active
+  frames" for a pose (it still does for `travel` and `lift`).
+- **Not measured or not right:** see DEVLOG Session 66 ("Not checked / open"): nobody has played
+  it; the Lord's left elbow in the staff's spins; reaction clips not audited one by one.

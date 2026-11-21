@@ -1203,7 +1203,7 @@ Animator ↔ player hooks (`anim.js` is private to the player module):
   the loco's lean spring): behind the hips on the push-off, over the planted foot on the brake.
 - Internal animator state worth knowing: `pathCh` (channels a windup path drives this frame, copied
   past the cross-fade), `updraft` 0..1 (the charge lifts the coat and hair), `dashStep` (bits: dash
-  touchdowns taken), `marks` (4 per-clip ground marks), `feet` (the world-space foot planner),
+  touchdowns taken), `marks` (4 per-clip ground marks), `feet` (the world-space foot planner; for a clip whose `def.steps` is set, a duelist's move, `_feetClip` holds the same feet on their spots and steps them under the root motion: `CLIP_STEP`, ADR-126),
   `visYaw` (the drawn heading: a critically damped spring, `TURN_K` 650, at most `TURN_LAG_MAX` 1.4 rad
   behind the gameplay yaw; visual only).
 - **Active frames stay bit-identical** (ADR-024): a pose path that reshapes an attack windup reaches
@@ -2808,14 +2808,23 @@ a subclass with a few hooks.
   (`sector` / `line` / `ring`; `hitPlayer` gets `beat`), a `release` or a `cast` (the actor's, at the
   impact; a string never stops for want of reach on one). `def.manual` / `def.counter` / a weight of
   0 keep a move out of the AI's pick; `def.gapCloser` is favoured against a hero who drinks.
-- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip })` → `realise(name, phase, rnd, opts)` (`opts.count`:
-  a `streak` move, his flurry, plays that many beats); `perPhase`.
+- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat })` → `realise(name, phase, rnd, opts)` (`opts.count`:
+  a `streak` move, his flurry, plays that many beats); `perPhase`. The POSE keys of a beat past its
+  impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's
+  first pose, 0.24 s at most, 0.3 s for a ring zone, `def.follow` to set it), not on the active
+  frames; gameplay (`uAt`, `travel`, `lift`, the zone) keeps the active frames' clock. A key marked
+  `gather: true` is left out of a beat that follows another, `settle: true` out of a beat another
+  follows; a bait hold repeats the cocked pose at its end. The clip of a realised move has
+  `steps: true` (the animator's `_feetClip`, below).
   Beat extras: `{ pick: [beat, ...] }` (one alternative drawn as the move starts), `fixed: true` (its
   windup is not scaled by the phase). `TUNING.flashLead` may be per phase.
-- `poses.js`: `createDuelPoses(GUARD, opt)` → `{ duelStance, duelLoco, compileClip, evalClip, duelClip,
-  POSES }` round one guard stance (a compiled clip remembers its set: `clip.kit`); `opt.run` (how the
+- `poses.js`: `createDuelPoses(GUARD, opt)` → `{ duelStance, duelLoco, compileClip, completeBeat, evalClip,
+  duelClip, POSES }` round one guard stance (a compiled clip remembers its set: `clip.kit`); `opt.run` (how the
   blade is carried at a run), `opt.breath { k, period }` (the idle breath's size and pace); `setSw(p,
-  az, el)` is exported for a boss's own pose functions. Besides the Ash
+  az, el)` is exported for a boss's own pose functions. A clip's fields run on a cubic through their
+  keys (a key is passed through unless the field turns back there; ADR-126); `completeBeat(keys)`
+  gives one beat's keys the guard's value for every field none of them sets (a beat owns its
+  channels; the blades' directions carry); the blade-driven arm takes the blade's angles as keyed. Besides the Ash
   Disciple's channels: `lsw` ([az, el] of an off-hand blade, left on the animator as `A.off` for the
   actor to pose a second blade) and `larm` / `lext` / `llead` (the left hand driven by it).
 - `guard.js` (ADR-080): the guard's reaction clips every duelist shares (`GUARD_CLIPS`, spread into a

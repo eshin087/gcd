@@ -179,6 +179,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.50 — The human bosses' attacks as motion (2026-11-21, `enemies/duelist-motion`, ADR-126)
+- [x] Every move of both bosses audited on the rig (hand speed, jumps, sliding feet, blade against the head) and filmed
+- [x] The follow-through's own clock; a cubic through the keys; `gather` / `settle`; a bait hold that holds
+- [x] A beat owns its channels (`completeBeat`); the blade-driven arm on the keyed angles, and with two hands
+- [x] Feet that hold their ground and step under root motion (`_feetClip`)
+- [x] The spare arm, the overhead, the thrust, Shen Hui's whirl, the Lord's flourish
+- [x] `duel.mjs . motion`; before / after films of seven strings
+- [ ] Follow-ups:
+  - [ ] The owner's look at the clips and the preview; what still reads wrong, move by move
+  - [ ] The Lord's left arm in the staff's spins and the keyed two-handed poses
+  - [ ] Reaction clips (hits, staggers, the guard, the deaths) audited the same way
+  - [ ] The casting hand and the kicks posed anew
+
 ## M1.49 — The Cinder Wyrm's face: the drake (2026-11-20, `dragon/wyrm-face`, ADR-124)
 - [x] The shipped face photographed at the game camera and close up; what made it unreadable named
 - [x] Four faces on one kit (planes, dark sockets, a dark mouth, a cleared nape): drake, tyrant, viper, revenant
