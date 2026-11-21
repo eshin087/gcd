@@ -1100,6 +1100,34 @@ async function scenarioBeams() {
   assert(bl.moved > 0.9, `... and slid ${bl.moved.toFixed(2)} m along the beam`);
   const pr = beamPlay(G, 'risingTide', { dist: 9, step: (I) => { if (I.flashT !== null && !I.pp && game.time >= I.flashT + lead - 0.1) { I.pp = true; input.click(1); } } });
   assert(!pr.hits.some((h) => h.r === RESULT.PARRIED), `it cannot be parried (${pr.hits.map((h) => h.r).join(' ')})`);
+  // 5. the sweep (form 2): dragged toward the hero's side; outrun at a sprint from 8 m, rolled through
+  const SW = BT.sweep, sprint = 7.2;
+  out(`     the sweep's edge at ${SW.turn} deg/s: ${[8, 12, 16].map((m) => `${m} m ${(SW.turn * Math.PI / 180 * m).toFixed(1)} m/s`).join(' · ')} (the hero sprints ${sprint})`);
+  let swept = 0;
+  const sw0 = beamPlay(G, 'tideSweep', { dist: 8, form: 2, step: () => { const B = d.ki.beams.B; if (B.phase === 'lit') swept = Math.max(swept, Math.abs(B.swept)); } });
+  assert(sw0.flashes.length === 1 && sw0.hits[0]?.r === RESULT.HIT && swept * 180 / Math.PI > SW.arc - 3 && swept * 180 / Math.PI <= SW.arc + 1e-6, `Rising Tide, sweeping: one cue; standing, the first contact; it turns ${(swept * 180 / Math.PI).toFixed(1)} deg (${SW.arc} at most)`);
+  // (a sprint from a standstill AT the cue does not clear its 2 m in flashLead: the cue's answer is the
+  // roll; a hero already sprinting round him as it starts is off the fixed line and outruns the sweep)
+  const cue8 = beamPlay(G, 'tideSweep', { dist: 8, form: 2, step: (I) => { if (I.flashT === null) return; input.axis = { x: 1, y: 0 }; input.hold('ShiftLeft'); } });
+  out(`       a sprint from a standstill at the cue, 8 m: ${cue8.hits.map((h) => `${h.r} @${((h.t - cue8.flashT) * 1000).toFixed(0)}ms`).join(' ') || 'untouched'}`);
+  const run8 = beamPlay(G, 'tideSweep', { dist: 8, form: 2, step: () => {
+    const ox = p.position.x - d.position.x, oz = p.position.z - d.position.z, l = Math.hypot(ox, oz) || 1;
+    input.axis = { x: oz / l, y: ox / l }; // (round him: the way (oz, -ox) on the floor)
+    input.hold('ShiftLeft');
+  } });
+  assert(!run8.hits.some((h) => h.r === RESULT.HIT), `from 8 m a hero sprinting round him outruns the sweep (${run8.hits.map((h) => `${h.r} ${h.damage.toFixed(1)} @${((h.t - run8.flashT) * 1000).toFixed(0)}ms`).join(' ') || 'untouched'}; moved ${run8.moved.toFixed(1)} m)`);
+  const thr = beamPlay(G, 'tideSweep', { dist: 8, form: 2, step: (I) => {
+    const B = d.ki.beams.B;
+    // (a positive sweep turns his facing toward r = (dz, -dx): the hero stands 3.2 m that way, 8 m out;
+    // as its edge comes within his reach he rolls back through it, against the sweep)
+    if (I.flashT !== null && !I.aside) { I.aside = true; const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw); p.debug.teleport(d.position.x + fx * 8 + fz * 3.2, d.position.z + fz * 8 - fx * 3.2); }
+    if (I.aside && !I.rolled && B.phase === 'lit') {
+      const ox = p.position.x - B.ox, oz = p.position.z - B.oz, across = Math.abs(-ox * B.dz + oz * B.dx);
+      if (across < SW.w / 2 + 1.3) { I.rolled = true; input.axis = { x: -B.dz * B.sign, y: -B.dx * B.sign }; input.tap('Space'); }
+    }
+  } });
+  out(`       roll through: ${thr.hits.map((h) => `${h.r} @${((h.t - thr.flashT) * 1000).toFixed(0)}ms`).join(' ')}`);
+  assert(thr.hits.length > 0 && !thr.hits.some((h) => h.r === RESULT.HIT), `standing aside as it comes, a roll through it (${thr.hits.map((h) => h.r).join(' ') || 'untouched'})`);
   assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
 }
 //

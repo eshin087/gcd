@@ -66,5 +66,5 @@ export const BEAM_TUNING = {
   },
 
   // the look (fxBeam.js draws it): a short white peak, then the held beam gold
-  look: { peak: 0.1, held: 0.72, fadeOut: 0.16, endY: 0.35, splash: 0.55, sight: 0.55 },
+  look: { peak: 0.1, held: 0.72, fadeOut: 0.16, endY: 0.35, splash: 0.55, sight: 1.0 },
 };
