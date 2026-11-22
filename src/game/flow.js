@@ -773,10 +773,11 @@ export class GameFlow {
     this._ovLambda = 1;
     this.cameraOverride = this._ov;
     this._log(this._text('fallen'), 'lore');
-    // the level's fixed reward (ADR-134; game/rewards.js): granted, and its line shown the first time
+    // the level's fixed reward (ADR-134; game/rewards.js): granted, and its line shown the first time;
+    // one marked `usable: false` (recorded, nothing uses it yet) is granted without its line
     const R = g.level?.reward;
     if (R?.id) this._try(() => {
-      if (grantReward(R.id) && R.line) this._log(R.line, 'lore');
+      if (grantReward(R.id) && R.line && R.usable !== false) this._log(R.line, 'lore');
     }, 'rewards.grant');
   }
 

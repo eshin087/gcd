@@ -1094,6 +1094,23 @@ async function scenarioReward() {
   assert(a.name === 'fallingHeaven', `with the reward, a heavy out of a sprint is Falling Heaven (${a.name})`);
   const b = sprintHeavy(false);
   assert(!!b.name && b.name !== 'fallingHeaven', `without it, the same press is the thrust as before (${b.name})`);
+  // a level's reward marked `usable: false` (recorded, nothing uses it yet): granted on victory, its line not shown
+  {
+    R.clearRewards();
+    const G = build(SEED, false);
+    const { game } = G;
+    run(G, 0.2);
+    game.flow.debug.toState('boss');
+    run(G, 0.2);
+    const line = 'A reward that does nothing yet.';
+    game.level = { ...LVL, reward: { id: 'unusableTest', name: 'Unusable', line, usable: false } };
+    const logs = [];
+    const log = game.hud.log.bind(game.hud);
+    game.hud.log = (t, c) => { logs.push(t); return log(t, c); };
+    game.flow._enterVictory();
+    assert(R.hasReward('unusableTest') && !logs.includes(line), 'a reward marked usable: false is granted on victory, its line not shown');
+    game.level = LVL;
+  }
   const { FALLING_HEAVEN, REACH } = await imp('src/entities/player/combat.js');
   assert(FALLING_HEAVEN.up >= 4.5 && FALLING_HEAVEN.up > REACH.up, `its blade reaches ${FALLING_HEAVEN.up} m over the hero (a foe 3.5 m up; a plain swing ${REACH.up})`);
   R.clearRewards();
