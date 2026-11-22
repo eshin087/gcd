@@ -1118,6 +1118,15 @@ grit, chips and sparks are one-cell glyph particles. Look code draws from its ow
 - **Cost** (headless; frame rates were not measured): the fire field's worst case, form 3's aura with
   the great beam, ten blasts and a strike, 2863 of 6000 blobs; his fights by the AI peak about 1525.
 
+**The sprite trial** (`?sprites=glyph|print|pixel`, 2026-11-21; no ADR yet, nothing is decided; the
+Lab: `sprites` row, live). The owner's look trial of 2D drawings for the hero and the Cinder Wyrm
+(only those two; in the other levels only the hero): each is a flat card facing the camera, anchored
+at its feet, depth-tested, one pose, mirrored to the side it faces; the 3D actor keeps running
+undrawn underneath (hits, FX, shadows). `glyph` = the artist's baked ASCII PNGs as they are, `print`
+= the dark engraving pixel art printed by the art pass in the hero's / the wyrm's own letters, `pixel`
+= the same pixel art as plain pixels. It breaks this file's "never a scaled sprite" rule on purpose
+and only behind the switch; the drawings are in `assets/sprites/` (fetched only with the switch on).
+
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved

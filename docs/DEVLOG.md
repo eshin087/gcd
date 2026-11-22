@@ -5,6 +5,46 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — The sprite trial: the hero and the wyrm as 2D drawings (`?sprites=`)
+
+**Owner**: exploring 2D sprites in place of the 3D ASCII hero and the Cinder Wyrm. Bright pixel art
+was "cartoony" ("needs to be serious dark epic"); the owner picked the artist's versions drawn in
+ASCII characters and asked for stills in the live fight first, behind a switch, judged on the phone
+through the Vercel preview. Branch `render/sprite-trial`. A trial: no ADR, no WHAT'S NEW entry.
+
+**What it does** (`src/render/spriteTrial.js`; nothing is built without the switch). `?sprites=glyph`
+puts the artist's baked ASCII PNGs on camera-facing cards; `print` puts the dark engraving pixel art
+(`*_dark1_*`) there and lets the ASCII pass print it: the hero's card writes his art window (part ids:
+coat, blade for the bright steel, leather for the warm pixels), so he gets his micro-font, his
+silhouette ink lines, his halo and his cyan seen-through print; the wyrm's writes its window (its
+digits, its stroke outline, a stroke code where the drawing has a hard light step, the brightest
+held under 1.8 so the lava blooms like its embers); `pixel` shows the engraving as plain pixels
+(an alpha flag 0.035 the pass copies through, read only while `uSprites` is 1). The Lab's `sprites`
+row flips it live. Cards: anchored at the feet, the hero's on the drawn body's lean offset; the
+hero's figure spans on screen what his drawn, leaned 3D body spans (`player.leanPoint`), the wyrm's
+at 37 px/m shortened like a standing 7.5 m body seen from the camera; the hero shows the S figure
+while he faces the camera's half, the N one otherwise, mirrored so the sword is on the side he turns
+to; the wyrm is mirrored to the side it faces; 0.15 hysteresis on both. The 3D actors are hidden by
+taking layer 0 off their meshes' masks (the rigid sources' unseen masks, so the bone sync leaves the
+batches off the world layer): shadows, bones, hit spheres, the sword sweep, FX anchors and the camera
+run on unchanged. The PNGs are in `assets/sprites/` (the build copies `assets/` next to the page;
+fetched only with the switch on): the bundle grew by 10.8 KB (2,798,401 -> 2,809,189 bytes).
+
+**What the captures showed** (`art-trial/review/ingame_*.png`, untracked). `glyph`: the hero's 320 px
+sheet shrinks ~9x to his 3D size and the letters turn to a dark speckle; the wyrm's 4 px dark letters
+nearly vanish on the night grass (its lava specks remain). `print`: the most readable; the hero reads
+as a dark lettered figure with a lavender rim and a white blade, the wyrm as a lettered silhouette
+with dark red wings and ember seams. `pixel`: clear dark figures, the most detail, but plain pixels
+next to a world of letters. At the brief's 37 px/m the wyrm's card is smaller on screen than the 3D
+wyrm with its wings spread. Desktop and phone (`?touch`) both checked; the built bundle too.
+
+**Open**: one pose each, no animation; FX still follow the 3D joints (the sword's glints, the
+wyrm's tail embers show where the hidden body is, not on the drawing); the wyrm card does not lean,
+dive or turn with the body; the S/N mirror rule (sword on the side he turns to) is a choice, not a
+physical match. The owner judges on the phone.
+
+---
+
 ## 2026-11-21 — Session 69: a fourth level, the Skybreak Ring and Tian Lei (planned by the lead, built by Opus agents)
 
 **Owner:** "lets build a saiyan level boss where phase 1 starts from normal saiyan, phase 2 is super
@@ -65,6 +105,8 @@ phone.
 
 **Next:** the owner plays the Vercel preview; then the bars, the flurry rule and the polish list from
 what they report; the score's audition page.
+
+---
 
 ## 2026-11-21 — Session 68: a felled tree lies as the blow left it
 
