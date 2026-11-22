@@ -121,6 +121,32 @@ export const BREAK = Object.freeze({
    */
   wreck: Object.freeze({ logs: 64, chars: 36, rubble: 30, bones: 48, blocks: 12, shards: 16, sink: 1.4, trunk: Object.freeze([0.5, 0.85]), thick: 0.85, flatten: 0.4, smoulder: 30, smoulderMax: 8, burn: 6 }),
   /**
+   * HOW A TREE LIES once felled (ADR-128, 2026-11-21: "make the cleared trees not look the same and have
+   * it broken in different angles based on how it was hit"). Per kind of blow:
+   *   h       its stump's height x the one it was built with [min, max] (a blade: x the height it bit at)
+   *   slant   the break's rise per m across the stump, along the blow (> 0: higher on the side it fell to:
+   *           the fibres it tore standing up; a blade's cut slants either way)
+   *   jag     splinters, x the stump's height
+   *   lean    rad the stump is pushed over toward the fall
+   *   spread  rad the fall may turn off the blow's line
+   *   yaw     rad the trunk turns as it lands (it bounces, rolls off its crown)
+   *   split   share of trunks that break in two where they land (`kink` rad between the halves, `gap` m)
+   *   snag    share of the trees that burn through and stay standing as a black snag (`snagH`: x its height,
+   *           `snagLean` rad); `char`: how dark its stump burns (x its colour)
+   * `spin`: rad a falling tree may roll about its own trunk on the way down; `pitch`: rad a log's far end
+   * may rest raised on its broken crown.
+   */
+  fell: Object.freeze({
+    cut: Object.freeze({ h: [0.85, 1.25], slant: [0.55, 1.1], jag: 0.1, lean: 0.03, spread: 0.08, yaw: 0.08, split: 0.08 }),
+    blunt: Object.freeze({ h: [0.6, 1.25], slant: [0.2, 0.8], jag: 0.5, lean: 0.14, spread: 0.2, yaw: 0.22, split: 0.35 }),
+    blast: Object.freeze({ h: [0.3, 0.75], slant: [-0.3, 0.3], jag: 0.7, lean: 0.08, spread: 0.4, yaw: 0.45, split: 0.6 }),
+    fire: Object.freeze({ h: [0.3, 0.7], slant: [-0.25, 0.25], jag: 0.18, lean: 0.03, spread: 0.6, yaw: 0.6, split: 0.3, snag: 0.4, snagH: [0.35, 0.7], snagLean: 0.25, char: 0.3 }),
+    spin: 0.7,
+    pitch: 0.1,
+    kink: Object.freeze([0.25, 0.7]),
+    gap: 0.3,
+  }),
+  /**
    * A FLOOR (2026-11-16: the Ashfall Courtyard's paving and the crater's plates break). Each slab is a
    * breakable 'range' piece (its body is its run of vertices in the set's one paving mesh: an intact
    * floor costs no draw call more than it did), marked `floor` by the set. Three states that read at

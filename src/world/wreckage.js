@@ -26,6 +26,7 @@ import { BREAK } from './breakTuning.js';
 
 const LOG_LOOKS = 3;
 const CHAR_LOOKS = 2;
+const ODD_LOOKS = 3; // (crooked trunks with a snapped bough: 3 more logs, 2 more black ones; ADR-128)
 const RUBBLE_LOOKS = 3;
 const BONE_LOOKS = 3;
 const BLOCK_LOOKS = 3;
@@ -41,18 +42,39 @@ let seed = 0x2b7e1516;
 const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
-/** A trunk lying along +x from 0 to 1, radius 1 (scaled per use): bark, a split top, a torn base. */
-function logGeometry(r, charred) {
-  const g = prep(new THREE.CylinderGeometry(0.78, 1, 1, 8, 5, false));
+/**
+ * A trunk lying along +x from 0 to 1, radius 1 (scaled per use): bark, a split top, a torn base.
+ * `odd` (ADR-128: no two felled trees alike): a crooked one, its ends torn longer, a snapped bough
+ * standing out of it (thin along the trunk: the log is scaled by its length along x).
+ */
+function logGeometry(r, charred, odd = false) {
+  let g = prep(new THREE.CylinderGeometry(odd ? 0.62 + r() * 0.25 : 0.78, 1, 1, 8, 5, false));
   g.rotateZ(-Math.PI / 2); // its axis along +x
   g.translate(0.5, 0, 0);
   const p = g.attributes.position;
   const s = r() * 50;
+  const top = odd ? 0.3 + r() * 0.35 : 0.16, base = odd ? 0.12 + r() * 0.2 : 0.06;
+  const by = odd ? (r() - 0.5) * 0.7 : 0, bz = odd ? (r() - 0.5) * 0.9 : 0;
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
     // the top end snapped off: splinters of uneven length; the base torn from its stump
-    if (x > 0.97) p.setX(i, x + hash2(y * 13 + s, z * 13) * 0.16 - 0.05);
-    else if (x < 0.03) p.setX(i, x - hash2(y * 11 - s, z * 11) * 0.06);
+    if (x > 0.97) p.setX(i, x + hash2(y * 13 + s, z * 13) * top - 0.05);
+    else if (x < 0.03) p.setX(i, x - hash2(y * 11 - s, z * 11) * base);
+    // (a crooked trunk: bowed along its length)
+    if (odd) {
+      const k = Math.sin(clamp(x, 0, 1) * Math.PI);
+      p.setY(i, p.getY(i) + by * k);
+      p.setZ(i, p.getZ(i) + bz * k);
+    }
+  }
+  if (odd) {
+    // a bough snapped off short, standing out of its upper side
+    const b = prep(new THREE.CylinderGeometry(0.18, 0.34, 1.3 + r() * 0.9, 5, 2));
+    b.scale(0.09, 1, 1);
+    b.translate(0, 0.9, 0);
+    b.rotateX((r() - 0.5) * 1.6);
+    b.translate(0.35 + r() * 0.35, by * 0.8, bz * 0.8);
+    g = mergeGeometries([g, b]) ?? g;
   }
   lumpy(g, 0.1, 3.2, s, new THREE.Vector3(0.5, 0, 0));
   carve(g, {
@@ -182,6 +204,11 @@ export class Wreckage {
     const blocks = [], shards = [];
     if (need.blocks) for (let i = 0; i < BLOCK_LOOKS; i++) blocks.push(blockGeometry(r));
     if (need.shards) for (let i = 0; i < SHARD_LOOKS; i++) shards.push(shardsGeometry(r));
+    // (ADR-128: crooked trunks with a snapped bough among the plain ones, from a stream of their own so
+    // every look above stays as it was; the pools hand them out in turn)
+    const r2 = mulberry32(0x0dd106);
+    for (let i = 0; i < ODD_LOOKS; i++) logs.push(logGeometry(r2, false, true));
+    for (let i = 0; i < ODD_LOOKS - 1; i++) chars.push(logGeometry(r2, true, true));
     const make = (kind, n, geos) => {
       for (let i = 0; i < n; i++) {
         const m = new THREE.Mesh(geos[i % geos.length], mat);
@@ -190,7 +217,7 @@ export class Wreckage {
         m.name = 'wreck';
         this.group.add(m);
         this.pools[kind].push({
-          kind, mesh: m, on: false, t: 0, x: 0, z: 0, dx: 1, dz: 0, len: 1, r: 0.3, y0: 0,
+          kind, mesh: m, on: false, t: 0, x: 0, z: 0, dx: 1, dz: 0, len: 1, size: 1, pitch: 0, roll: 0, yaw: 0, r: 0.3, y0: 0,
           burn: 0, burnLife: 0, flame: 0, heatT: 0, touchT: 0, smoulder: 0, sink: 0, light: null, spreadT: 0, gen: 0, M: null,
         });
       }
@@ -264,9 +291,11 @@ export class Wreckage {
       if (e.kind === KIND.SHARDS) m.scale.set(e.r, 1, e.r);
       else m.scale.set(e.r, e.r * 0.8, e.r);
     } else {
-      m.position.set(e.x, e.y0 - e.sink * (e.r * 2 + 0.25), e.z);
-      m.rotation.set(e.roll, Math.atan2(-e.dz, e.dx), 0, 'YXZ');
-      m.scale.set(e.len, e.r, e.r);
+      // (rolled about its own axis, then its far end raised by `pitch`, then turned its way; a snag
+      // standing on its stump sinks its whole height)
+      m.position.set(e.x, e.y0 - e.sink * (e.r * 2 + 0.25 + e.size * Math.sin(e.pitch)), e.z);
+      m.rotation.set(e.roll, Math.atan2(-e.dz, e.dx), e.pitch, 'YZX');
+      m.scale.set(e.size, e.r, e.r);
     }
     m.updateMatrix();
     m.updateMatrixWorld();
@@ -291,10 +320,12 @@ export class Wreckage {
 
   /**
    * A trunk lies from (x, z) along (dx, dz), `len` long, `r` thick (`burn` s still alight: it fell
-   * burning). `charred`: it burned through standing (a black log).
+   * burning). `charred`: it burned through standing (a black log). `pitch` rad its far end is raised
+   * (resting on its broken crown; near PI / 2 it stands: a snag on its stump). `e.len` is how far it
+   * reaches over the ground (its fire, its smoke, the grass it flattens), `e.size` its own length.
    */
-  log(x, z, dx, dz, len, r, burn = 0, charred = false) {
-    if (!Number.isFinite(x + z + dx + dz + len + r) || !(len > 0.2)) return null;
+  log(x, z, dx, dz, len, r, burn = 0, charred = false, pitch = 0) {
+    if (!Number.isFinite(x + z + dx + dz + len + r + pitch) || !(len > 0.2)) return null;
     const kind = charred ? KIND.CHAR : KIND.LOG;
     const e = this._take(kind);
     if (!e) return null;
@@ -302,9 +333,13 @@ export class Wreckage {
     this._start(e, x, z);
     e.dx = dx / l;
     e.dz = dz / l;
-    e.len = len;
+    e.pitch = clamp(pitch, 0, 1.55);
+    e.size = len;
+    e.len = Math.max(0.3, len * Math.cos(e.pitch));
+    len = e.len;
     e.r = clamp(r, 0.12, 0.7);
-    e.y0 = e.r * 0.72;
+    // (lying: on its side; standing: its foot a little in the ground, in its stump)
+    e.y0 = e.pitch > 0.8 ? -0.15 : e.r * 0.72;
     e.roll = rnd() * 6.283;
     e.M = BREAK.mats.wood;
     if (charred) e.smoulder = BREAK.wreck.smoulder * (0.8 + 0.4 * rnd());
@@ -437,9 +472,9 @@ export class Wreckage {
       this.burning--;
       e.burn = 0;
       e.light = null; // (it fades on its own)
-      const { x, z, dx, dz, len, r } = e;
+      const { x, z, dx, dz, len, size, r, pitch } = e;
       this._free(e);
-      this.log(x, z, dx, dz, len * 0.92, r * 0.9, 0, true);
+      this.log(x, z, dx, dz, size * 0.92, r * 0.9, 0, true, pitch);
       this.D?._emitAt('burnout', 'wood', x + dx * len * 0.5, 0.3, z + dz * len * 0.5, 0, 'world');
     }
   }

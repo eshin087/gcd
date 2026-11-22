@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-21',
+        title: 'Felled trees lie as the blow left them',
+        notes: [
+          'No two felled trees look alike now. A blade leaves a tall stump cut on a slant, a heavy blow tears it lower, a blast shatters it close to the ground, and fire leaves it low and black.',
+          'Trunks land at their own angle, often snapped in two, and some trees that burn down stay standing as black snags.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'The Cinder Wyrm glares from every side',
         notes: [
           'The wyrm\'s eyes are slanted slits of fire under a heavy brow, so it glares at you from the side, from the front and from below, not only from one angle.',

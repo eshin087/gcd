@@ -131,6 +131,28 @@ const SPARK = [1.5, 0.5, 0.08], SPARK_END = [0.35, 0.04, 0.01], SPARKS = ".'`";
 // cosmetic noise from this module's own stream (the seeded sims replay Math.random)
 let seed = 0x3d9e42b1;
 const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+// (how a felled tree lies, BREAK.fell: a stream of its own, so the fire's spread and the leans above
+// draw what they drew before ADR-128)
+let lookSeed = 0x6a09e667;
+const vr = () => (lookSeed = (Math.imul(lookSeed, 1664525) + 1013904223) >>> 0) / 4294967296;
+const vin = (r) => r[0] + (r[1] - r[0]) * vr();
+/** Restart this module's cosmetic streams (a test that hangs on a chance, the fire's spread, starts from a known point). */
+export function reseedBreaks(s = 0x3d9e42b1) {
+  seed = s >>> 0;
+  lookSeed = (s ^ 0x5be0cd19) >>> 0;
+}
+/** A turn of (dx, dz) by `a` rad into out {dx, dz}. */
+const turn = (dx, dz, a, out) => {
+  const c = Math.cos(a), s = Math.sin(a);
+  out.dx = dx * c - dz * s;
+  out.dz = dx * s + dz * c;
+  return out;
+};
+/** Cheap 2D hash 0..1 (a stump's splinters: the same for the vertices that share a corner). */
+const h2 = (x, z) => {
+  const v = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+};
 
 /** Distance from (px, pz) to the segment a → b; writes where along it (0..1) into `out.t`. */
 function segDist(px, pz, ax, az, bx, bz, out) {
@@ -257,6 +279,57 @@ class RangeBody {
     this.write();
   }
 
+  /**
+   * Give it another shape (a stump cut the way its tree was felled, ADR-128): `fn(home, nhome, col, orig)`
+   * rewrites its home copy in place from `orig` (the shape it was built with), its normals and, when its
+   * mesh has them, its colours (`aCol`, `col` starts as built). Never posed (a stump): its normals and
+   * colours are written straight to the mesh. Its spare copies are made on the first call only.
+   */
+  reshape(fn) {
+    if (!this.orig) {
+      this.orig = this.home.slice();
+      this.norig = this.nhome ? this.nhome.slice() : null;
+      const c = this.geometry.attributes.aCol;
+      if (c && c.itemSize === 3 && c.array.length >= (this.start + this.count) * 3) {
+        this.cAttr = c;
+        this.corig = c.array.slice(this.start * 3, (this.start + this.count) * 3);
+        this.cwork = this.corig.slice();
+        this._urC = { start: this.start * 3, count: this.count * 3 };
+      }
+    }
+    this.home.set(this.orig);
+    if (this.nhome) this.nhome.set(this.norig);
+    if (this.cwork) this.cwork.set(this.corig);
+    fn(this.home, this.nhome, this.cwork ?? null, this.orig);
+    this._side(this.cwork);
+    this.write();
+  }
+
+  /** Back to the shape it was built with (the fight's reset). */
+  unshape() {
+    if (!this.orig || !this.shaped) return;
+    this.home.set(this.orig);
+    if (this.nhome) this.nhome.set(this.norig);
+    this._side(this.corig);
+    this.shaped = false;
+    this.write();
+  }
+
+  /** Its normals (unposed) and colours `col` straight into the mesh, queued for upload. */
+  _side(col) {
+    this.shaped = true;
+    const s = this.start * 3;
+    if (this.nhome) {
+      const na = this.geometry.attributes.normal.array, NH = this.nhome;
+      for (let k = 0; k < NH.length; k++) na[s + k] = NH[k];
+      this._nDirty = true;
+    }
+    if (col && this.cAttr) {
+      this.cAttr.array.set(col, s);
+      this._cDirty = true;
+    }
+  }
+
   /** Rewrite its vertices: each shown part posed, the rest (or all of it, hidden) folded under the ground. */
   write() {
     const pos = this.geometry.attributes.position, a = pos.array, s = this.start * 3, H = this.home;
@@ -310,6 +383,10 @@ class RangeBody {
       this._nDirty = false;
       const nrm = this.geometry.attributes.normal;
       if (nrm) queueRange(nrm, this._urN);
+    }
+    if (this._cDirty) {
+      this._cDirty = false;
+      queueRange(this.cAttr, this._urC);
     }
   }
 }
@@ -1068,6 +1145,7 @@ export class Destructibles {
       if (!shove && this._loud(b)) this._emit('chip', b, px, py, pz, power, by);
       return true;
     }
+    b.hy = py; // (where the blow bit: a blade cuts its stump about there, BREAK.fell)
     this._break(b, dx, dz, by, kind);
     return true;
   }
@@ -1209,6 +1287,62 @@ export class Destructibles {
     } else if (b.stubCollider) this.world.colliders?.restore?.(b.stubCollider);
   }
 
+  /**
+   * Cut its stump the way it was broken (BREAK.fell, ADR-128): as high as the kind of blow leaves it (a
+   * blade: about where it bit), its top on a slanted plane along (dx, dz) with splinters standing out of
+   * it, pushed over a little toward the fall; burnt through, low and black.
+   */
+  _shapeStub(b, kind, dx, dz) {
+    const S = b.stub;
+    if (!S?.reshape) return;
+    const F = BREAK.fell, P = F[kind] ?? F.blunt;
+    let k = vin(P.h);
+    let slant = vin(P.slant);
+    let ux = dx, uz = dz;
+    if (kind === BLOW.CUT && vr() < 0.5) slant = -slant; // (a blade's cut slants either way across it)
+    if (kind === BLOW.BLAST || kind === BLOW.FIRE) {
+      const a = vr() * 6.283;
+      ux = Math.cos(a);
+      uz = Math.sin(a);
+    }
+    const jag = P.jag, lean = P.lean * (0.5 + vr()), sd = vr() * 97, char = P.char ?? 1;
+    const bx = b.x, bz = b.z, hy = b.hy;
+    S.reshape((H, N, C, O) => {
+      let top = 0.05;
+      for (let i = 1; i < O.length; i += 3) if (O[i] > top) top = O[i];
+      // (a blade: the height it bit at, within reason)
+      if (kind === BLOW.CUT && hy > 0) k = clamp((hy / top) * (0.85 + 0.3 * vr()), 0.8, 1.5);
+      const cut = top * k, nl = 1 / Math.hypot(slant, 1);
+      for (let v = 0; v < O.length; v += 3) {
+        const ox = O[v], oy = O[v + 1], oz = O[v + 2];
+        const t = oy / top;
+        // its top on the plane of the break, splintered (the vertices that share a corner share a splinter);
+        // the ring below it carried up or down with it, the ring on the ground left where it is
+        const d = (ox - bx) * ux + (oz - bz) * uz;
+        const plane = cut + slant * d;
+        const up = Math.min(1, t / 0.55);
+        const sp = t > 0.45 ? jag * top * (h2(ox * 13 + sd, oz * 13 - sd) - 0.3) * Math.min(1, (t - 0.45) / 0.15) : 0;
+        const y = Math.max(t > 0.45 ? 0.06 : 0, plane * up + sp);
+        H[v] = ox + dx * y * lean;
+        H[v + 1] = y;
+        H[v + 2] = oz + dz * y * lean;
+        if (N && N[v + 1] > 0.7) {
+          // (the cap faces the plane)
+          N[v] = -slant * ux * nl;
+          N[v + 1] = nl;
+          N[v + 2] = -slant * uz * nl;
+        }
+        if (C && char < 1) {
+          // burnt: black at the top, the bark's own dark lower down
+          const f = char + (1 - char) * 0.55 * (1 - Math.min(1, t));
+          C[v] *= f;
+          C[v + 1] *= f * 0.9;
+          C[v + 2] *= f * 0.85;
+        }
+      }
+    });
+  }
+
   _break(b, dx, dz, by, kind, force = false) {
     this._free(b);
     b.carry = b.burn > 0 ? b.burn : 0; // a tree felled burning goes on burning where it lies
@@ -1228,6 +1362,19 @@ export class Destructibles {
       dx /= l;
       dz /= l;
     }
+    // how it lies follows the blow (BREAK.fell, ADR-128): a tree goes over a little off the blow's line,
+    // more for a blast than a blade, and rolls about its trunk on the way down
+    // (the forest's trees: wood drawn in the forest's mesh that leaves a trunk lying; not the Cinder Tree)
+    const wood = b.mat === 'wood' && b.ranged && b.wrecks;
+    const FP = BREAK.fell[kind] ?? BREAK.fell.blunt;
+    b.fk = kind;
+    b.spin = 0;
+    if (wood) {
+      turn(dx, dz, (vr() - 0.5) * 2 * FP.spread, this._way);
+      dx = this._way.dx;
+      dz = this._way.dz;
+      b.spin = (vr() - 0.5) * 2 * BREAK.fell.spin;
+    }
     // a tree of the wall falls mostly away from the arena (BREAK.wall.out); one already leaning goes
     // the way it leans (that way was turned outward when it leaned)
     if (b.wall && b.lean > 0.02) {
@@ -1240,6 +1387,7 @@ export class Destructibles {
     }
     b.dx = dx;
     b.dz = dz;
+    if (wood) this._shapeStub(b, kind, dx, dz);
     if ((b.topples || force) && kind !== BLOW.FIRE) {
       b.state = FALLING;
       b.t = 0;
@@ -1281,6 +1429,30 @@ export class Destructibles {
       else this._burst(b, b.x, 0.08, b.z, dx, dz, BREAK.floor.grit, 0.3);
       if (loud) this._emit('break', b, b.x, b.h * 0.5, b.z, b.weight, by);
     }
+  }
+
+  /**
+   * A felled tree's trunk lying from its stump (BREAK.fell, ADR-128): turned off its fall as it lands, a
+   * little longer or shorter, its far end resting raised on its crown, or broken in two with a kink
+   * between the halves, as the blow that felled it (b.fk) makes likely. `charred`: it burned through.
+   */
+  _logs(b, dx, dz, len, r, burn, charred) {
+    const W = this.wreck;
+    if (!W) return;
+    const F = BREAK.fell, P = F[b.fk] ?? F.blunt, way = this._way;
+    turn(dx, dz, (vr() - 0.5) * 2 * P.yaw, way);
+    let lx = way.dx, lz = way.dz;
+    len *= 0.85 + 0.3 * vr();
+    const off = b.stub ? 0.45 : 0, x0 = b.x + lx * off, z0 = b.z + lz * off;
+    if (len > 2.2 && vr() < P.split) {
+      // broken in two: the half by the stump, then the rest turned off it, a gap between
+      const a = len * (0.4 + 0.25 * vr()), g = F.gap * (0.5 + vr());
+      W.log(x0, z0, lx, lz, a, r, burn, charred, vr() * F.pitch * 0.5);
+      const sx = x0 + lx * (a + g), sz = z0 + lz * (a + g);
+      turn(lx, lz, (vr() < 0.5 ? -1 : 1) * vin(F.kink), way);
+      // (the far half starts on its side of the break: half a width across, so the two read as one trunk snapped)
+      W.log(sx - way.dz * r * 0.5 * (vr() - 0.5), sz + way.dx * r * 0.5 * (vr() - 0.5), way.dx, way.dz, len - a - g, r * (0.8 + 0.1 * vr()), burn, charred, vr() * F.pitch);
+    } else W.log(x0, z0, lx, lz, len, r, burn, charred, vr() * F.pitch);
   }
 
   /** What a broken bone piece leaves lying (wreckage.js's bone heaps): one heap, or along its fall (dx, dz, len). */
@@ -1457,8 +1629,21 @@ export class Destructibles {
       b.state = BROKEN;
       b.hp = 0;
       if (b.wrecks && b.mat === 'wood' && b.h >= 1.5) {
-        const a = rnd() * 6.283, dx = Math.cos(a), dz = Math.sin(a), W = BREAK.wreck;
-        this.wreck?.log(b.x + dx * 0.4, b.z + dz * 0.4, dx, dz, b.h * W.trunk[b.leafy > 0 ? 0 : 1] * 0.8, b.r * W.thick, 0, true);
+        // (the way it goes: the last blow's, if one leaned it, else any; a stream of its own, BREAK.fell)
+        const a = rnd() * 6.283, W = BREAK.wreck, FF = BREAK.fell.fire;
+        let dx = Math.cos(a), dz = Math.sin(a);
+        if (b.lean > 0.02) {
+          dx = b.ldx;
+          dz = b.ldz;
+        }
+        b.fk = BLOW.FIRE;
+        if (b.ranged) this._shapeStub(b, BLOW.FIRE, dx, dz);
+        const r = b.r * W.thick;
+        if (b.ranged && vr() < FF.snag) {
+          // it stays standing: a black snag on its stump, leaning a little
+          const t = turn(dx, dz, (vr() - 0.5) * 1.2, this._way);
+          this.wreck?.log(b.x, b.z, t.dx, t.dz, b.h * vin(FF.snagH), r * 0.9, 0, true, Math.PI / 2 - vr() * FF.snagLean);
+        } else this._logs(b, dx, dz, b.h * W.trunk[b.leafy > 0 ? 0 : 1] * 0.8, r, 0, true);
       }
       this._emit('burnout', b, b.x, b.h * 0.4, b.z, b.weight, 'world');
     }
@@ -1688,6 +1873,8 @@ export class Destructibles {
     b.t += dt;
     const u = Math.min(1, b.t / b.T);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(b.dz, 0, -b.dx), (Math.PI / 2 - 0.06) * Math.pow(u, 2.4));
+    // (a tree rolls about its own trunk as it goes over, BREAK.fell.spin: no two crowns land alike)
+    if (b.spin) b.pivot.quaternion.multiply(this._q.setFromAxisAngle(this._axis.set(0, 1, 0), b.spin * u));
     const off = b.fallOff;
     // (a piece that stands on another, the upper half of a colossus: it comes off its cut, over and down)
     if (b.y0 > 0 || off > 0) b.pivot.position.set(b.dx * off * u, -b.y0 * u * u, b.dz * off * u);
@@ -1773,8 +1960,7 @@ export class Destructibles {
     b.state = BROKEN;
     const W = BREAK.wreck;
     if (wood) {
-      const r = b.r * W.thick, off = b.stub ? 0.45 : 0;
-      this.wreck.log(b.x + dx * off, b.z + dz * off, dx, dz, len * W.trunk[b.leafy > 0 ? 0 : 1], r, b.carry);
+      this._logs(b, dx, dz, len * W.trunk[b.leafy > 0 ? 0 : 1], b.r * W.thick, b.carry, false);
       b.carry = 0;
     } else if (b.wrecks && b.blocks > 0) {
       // a statue: big blocks along where it came down
@@ -2147,7 +2333,10 @@ export class Destructibles {
         else b.body.visible = true;
         b.touched = false;
       } else b.body.visible = true;
-      if (b.stub) b.stub.visible = false;
+      if (b.stub) {
+        b.stub.unshape?.(); // (cut as it was felled: back to the stump it was built as)
+        b.stub.visible = false;
+      }
       // (a lifted slab leaves the graph again; every other piece's matrices are put back)
       if (b.floor && b.node.parent) this.pieces.remove(b.node);
       else this._place(b);
