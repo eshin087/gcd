@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-22',
+        title: 'Round the Obsidian Throne, what the challengers left',
+        notes: [
+          'The fallen trees round the Obsidian Throne are gone. In their place lies what earlier challengers left behind: swords planted as graves, spears with a torn banner, cairns with a straw hat, wrecked carts, old steles and split boulders.',
+          'Every piece is different, and they lie the way the star\'s fall threw them, not in a neat ring.',
+          'Most of them break when the fight reaches them, and the wooden ones burn.',
+        ],
+      },
+      {
         date: '2026-11-21',
         title: 'On a phone: the health bars no longer overlap, and two new ways to hold the controls',
         notes: [

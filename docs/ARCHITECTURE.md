@@ -440,6 +440,11 @@ Render helpers for creature modules:
   lump })` (a tapering slab: the rim's plates, the crown), `starCleft(rng, x, z)` (inlay glyphs for
   the set's glow batch), `facetCol(col, k)` (a `carve()` colour: one tone a facet), `STAR_GLASS`,
   `STAR_COLLIDERS`. These are built with `carve()` attributes already and need no `carved()`.
+  `world/starfallProps.js` (ADR-133): what lies round the crater. `buildOutskirt(kind, rng, x, z, oy,
+  s)` -> `{ kind, geos, r, cr, mat, h, lift? }` (carved parts in world space; `oy` the yaw pointing out
+  of the crater) for 13 kinds (`lantern`, `stele`, `pillar`, `roof`, `jars`, `boulder`, `ejecta`,
+  `heave`, `splinters`, `swords`, `banner`, `cairn`, `cart`); `OUTSKIRTS` (option -> kind weights,
+  `?outskirts=`), `kindBag(rng, weights, n)` (a shuffled bag of kinds in their shares).
   `landmarkPoint(x, z, yaw, s, lx, lz)` maps a builder's local point to the world;
   `ELDER_COLLIDERS`, `GATE_COLLIDERS`, `COLOSSUS_COLLIDERS`, `CAULDRON_COLLIDERS` are `[lx, lz, r]`
   lists the set adds; `COLOSSUS_FALLEN_HEAD` and `GATE_FOOTPRINT` (the gate's own space: it stands
@@ -2637,8 +2642,13 @@ Wyrm's 36 bones: 18 ribs, 10 runs of the spine, the hip, the mast, the fingers, 
 skull, the jaw, 2 horns; the Cinder Tree's 5 boughs and trunk; it was 183 on 2026-11-15) and takes 228
 bones, 409 with the wyrm; the courtyard 456 (it was 78: flagstone 293, pillar 30, lintel 1, lantern 4,
 stele 1, bell 1, stump 32, deadTree 80, boulder 9, cauldron 1, colossus 4: two colossi of two pieces) in
-443 bones; the throne 222 (it was 36: plate 81, flagstone 24, shard 25, slab 27, rubble 20, vent 4, log
-35, hover 6) in 299 (ADR-120's bigger log and char pools are built in every set: +42 bones in each arena).
+443 bones; the throne 255 (it was 36, then 222 with 35 logs: plate 81, flagstone 24, shard 25, slab 27,
+rubble 20, vent 4, hover 6, and since 2026-11-22 (ADR-133) what lies round the crater within 43 m of the
+seal: cairn 21, swords 16, boulder 10, cart 9, banner 7, stele 5) in 365 (ADR-120's bigger log and char
+pools are built in every set: +42 bones in each arena). `throneHall.js` places them on a stream of its
+own (`CONFIG.seed + 14312`): 125 spots 3.8 m apart off the path and the dais, a bag of kinds by
+weight; beyond 43 m they merge into the set's stones. Stone (cairn, boulder, stele) leaves rubble;
+`swords` are `mat: 'metal'`, the banner and the cart wood (they burn); none topples (`topples: false`).
 **Every tree of Cinderwood breaks**, out to the forest's edge (74 m; it was those within 42 m), and the
 Elder Wyrm's skeleton, the Cinder Tree and the nest break in pieces (ADR-120 reverses ADR-119's "they
 stay whole"); the bonfire stays whole. In `forest.js` the trees and the Cinder Tree are runs of the
@@ -3112,6 +3122,10 @@ data and a subclass with a few hooks.
     CALLS lands at least `guard.sep + margin` from every known impact needing the other answer (the running
     move's beats included): 0 now is clear, -1 nothing up to `max` clears it (do not call it). Count a
     delay with `stats.delays++`.
+  - `worldClash(landsIn, tell)` → true when a blow of his already cued needs the other answer within
+    `guard.sep` of a falling piece's landing (`landsIn` s from now): `world/destructibles.js` asks it at
+    the felled piece's flash, and on true the piece lands uncued and harmless (`quiet`; a fizzle;
+    ADR-133: a blow told before the piece began to fall and that no hold could clear).
   - `stats` `{ picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors,
     seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled', what, with }`
     (what the guard stepped in for; `ABYSS_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
