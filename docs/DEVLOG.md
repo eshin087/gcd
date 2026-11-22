@@ -70,10 +70,14 @@ bricks). In the browser (headless Edge, the real GPU, 1280 x
 720), the same blows with bites off and on: a stone, a boulder, a dead tree, the lone pine, the Elder
 Wyrm's ribs, and the hero's own cuts at the game camera (3 cuts: 3 bricks off the stone; 6 cuts fell
 the pine, away from him). A piece before any blow looks the same built either way (the stone, the
-boulder, the dead tree side by side). `npm test` before the merge: every suite passed but `world`'s frame-time budget (destructibles.update
-p99.9 1.65 ms against 1.5, worst 37 ms), measured while three other sessions ran their own suites on
-this machine; alone, twice: avg 0.013 ms, p99.9 0.5, worst 1.46. After the merge: `world` alone, the
-static checks and the build here; the whole suite on the PR.
+boulder, the dead tree side by side). `npm test` here, on a machine other sessions were loading with their own suites (93 node processes at
+the end): the first whole run, before the finer bricks and the set-back, passed (all nine tasks). The
+run on the finished code: `integ` (all five tasks), `duel` and the static checks passed, `lord` never
+reported, and `world` passed 333 checks and failed one, its wall-clock budget for
+destructibles.update. That check is the machine, not this change: alone on a quieter machine it read
+avg 0.013 ms, p99.9 0.5, worst 1.46 (budget 0.5 / 1.5 / 8), and at the end an untouched `main` failed
+it with the branch's numbers (avg 0.29 - 0.33 ms, p99.9 28 - 30 against the branch's 0.23 - 0.25, 24 -
+30). `npm run build` passes. The whole suite on a clean runner is the PR's check.
 
 **Not checked / open.** Nobody has played it. The duel arenas are checked by the test (and the courtyard
 loaded and struck once in the browser), not studied on a sheet. Not on the phone,
