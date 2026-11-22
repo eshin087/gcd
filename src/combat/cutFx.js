@@ -1,5 +1,6 @@
 import { axes, screenAngle, clashRing } from './clashFx.js';
 import { takeStampReplace } from './impactStamp.js';
+import { calmLook, calmA, calmS } from './impactCalm.js';
 
 // A cut that lands on a body: lines, not light (STYLE.md "Steel on steel" rules), drawn once at the
 // DRAWN contact (player.js _contactPoint: where the drawn blade meets the drawn body, not the upright
@@ -98,6 +99,16 @@ export const CUT_LOOK = deepFreeze({
 });
 
 const D = [0, 0, 0]; // dir() scratch
+// calm at the contact (impactCalm.js): the colours scaled into these (never reallocated); at k = 1
+// the palette's own array is used, so today draws exactly today's values
+const CS = { slash: [0, 0, 0], hot: [0, 0, 0], ring: [0, 0, 0] };
+const tint = (c, k, out) => {
+  if (k === 1) return c;
+  out[0] = c[0] * k;
+  out[1] = c[1] * k;
+  out[2] = c[2] * k;
+  return out;
+};
 let A = null;
 /** World direction of screen angle `a` (from the camera's right toward its up) → D. */
 const dir = (a) => {
@@ -128,6 +139,12 @@ export function cutBurst(game, x, y, z, o) {
     // the impact stamp drawn INSTEAD of the slash line (impactStamp.js, ?stamp=instead): no line, no
     // cross; the sparks, the core, the motes stay. False unless the stamp just drew in that mode
     const stamped = takeStampReplace();
+    // calm at the contact (impactCalm.js), read now: every factor is exactly 1 at level 0 (today)
+    const CL = calmLook();
+    const slA = calmA(CL, 'slash'), slC = calmS(CL, 'slash'), spA = calmA(CL, 'sparks'), spS = calmS(CL, 'sparks');
+    const coA = calmA(CL, 'core'), coS = calmS(CL, 'core'), liI = calmA(CL, 'light'), liR = calmS(CL, 'light');
+    const riC = CL && Number.isFinite(CL.ring) ? Math.max(0, CL.ring) : 1;
+    const cSlash = tint(P.slash, slC, CS.slash), cHot = tint(P.hot, slC, CS.hot), cRing = tint(P.slash, riC, CS.ring);
     A = axes(game);
     const c = o.cut, e = o.edge;
     let ca = c ? screenAngle(A, c.x, c.y, c.z) : NaN, ea = e ? screenAngle(A, e.x, e.y, e.z) : NaN;
@@ -162,7 +179,7 @@ export function cutBurst(game, x, y, z, o) {
             vx: D[0] * v, vy: D[1] * v, vz: D[2] * v,
             life: RR(T.life) * (0.7 + 0.3 * w), size, sizeEnd: size * 0.5,
             glyph: '|', rot: ca - Math.PI / 2, stretch: clamp((1.5 * (ln / Math.max(1, n - 1))) / (0.7 * size) - 1, 0.6, 6),
-            color: w > 0.75 ? P.hot : P.slash, colorEnd: P.end, alpha: (0.35 + 0.65 * w) * aK, alphaEnd: 0, drag: 3,
+            color: w > 0.75 ? cHot : cSlash, colorEnd: P.end, alpha: (0.35 + 0.65 * w) * aK * slA, alphaEnd: 0, drag: 3,
           });
         }
       };
@@ -197,7 +214,7 @@ export function cutBurst(game, x, y, z, o) {
             x: x + D[0] * u * lt, y: y + D[1] * u * lt, z: z + D[2] * u * lt,
             life: R(0.1, 0.12), size, sizeEnd: size * 0.5,
             glyph: '|', rot: ta - Math.PI / 2, stretch: clamp((1.4 * (lt / (N - 1))) / (0.7 * size) - 1, 0.4, 6),
-            color: P.hot, colorEnd: P.end, alpha: 1 - 0.6 * au, alphaEnd: 0,
+            color: cHot, colorEnd: P.end, alpha: (1 - 0.6 * au) * slA, alphaEnd: 0,
           });
         }
       }
@@ -211,15 +228,15 @@ export function cutBurst(game, x, y, z, o) {
       const o0 = R(0.06, 0.2), sp = RR(T.sp);
       nSpark += spawn({
         x: x + D[0] * o0, y: y + D[1] * o0, z: z + D[2] * o0, vx: D[0] * sp, vy: D[1] * sp, vz: D[2] * sp,
-        life: RR(T.spLife), size: R(0.12, 0.2), sizeEnd: 0.03, glyph: '|', rot: a - Math.PI / 2, stretch: R(1.4, 2.8),
-        color: P.spark, colorEnd: P.sparkEnd, alpha: 1, alphaEnd: 0, drag: R(6, 9), gravity: -4,
+        life: RR(T.spLife), size: R(0.12, 0.2) * spS, sizeEnd: 0.03, glyph: '|', rot: a - Math.PI / 2, stretch: R(1.4, 2.8),
+        color: P.spark, colorEnd: P.sparkEnd, alpha: spA, alphaEnd: 0, drag: R(6, 9), gravity: -4,
       });
     }
 
     // ---- CORE: one small star, two frames
     nCore += spawn({
-      x, y, z, life: 0.045, size: Math.min(L.crit.coreMax, T.core + (crit ? L.crit.core : 0)), sizeEnd: 0.1,
-      glyph: '*', color: P.core, colorEnd: P.spark, alpha: 1, alphaEnd: 0, rot: R(0, 1.5),
+      x, y, z, life: 0.045, size: Math.min(L.crit.coreMax, T.core + (crit ? L.crit.core : 0)) * coS, sizeEnd: 0.1 * coS,
+      glyph: '*', color: P.core, colorEnd: P.spark, alpha: coA, alphaEnd: 0, rot: R(0, 1.5),
     });
 
     // ---- MOTES: slower specks that arc and fall
@@ -229,8 +246,8 @@ export function cutBurst(game, x, y, z, o) {
       dir(a);
       nMote += spawn({
         x, y, z, vx: D[0] * sp, vy: D[1] * sp + R(1, 3), vz: D[2] * sp,
-        life: R(0.3, 0.55), size: R(0.08, 0.14), sizeEnd: 0.03, glyph: MOTE_GLYPHS[Math.floor(rnd() * MOTE_GLYPHS.length) % MOTE_GLYPHS.length],
-        color: P.mote, colorEnd: P.moteEnd, alpha: 1, alphaEnd: 0, gravity: -12, drag: 1.2, flicker: 0.35,
+        life: R(0.3, 0.55), size: R(0.08, 0.14) * spS, sizeEnd: 0.03, glyph: MOTE_GLYPHS[Math.floor(rnd() * MOTE_GLYPHS.length) % MOTE_GLYPHS.length],
+        color: P.mote, colorEnd: P.moteEnd, alpha: spA, alphaEnd: 0, gravity: -12, drag: 1.2, flicker: 0.35,
       });
     }
 
@@ -240,24 +257,25 @@ export function cutBurst(game, x, y, z, o) {
       dir(a);
       nPuff += spawn({
         x: x + D[0] * 0.1, y: y + D[1] * 0.1, z: z + D[2] * 0.1, vx: D[0] * 2.5, vy: D[1] * 2.5, vz: D[2] * 2.5,
-        life: 0.12, size: 0.09, sizeEnd: 0.04, glyph: '·', color: P.slash, colorEnd: P.end, alpha: 1, alphaEnd: 0,
+        life: 0.12, size: 0.09 * spS, sizeEnd: 0.04, glyph: '·', color: P.slash, colorEnd: P.end, alpha: spA, alphaEnd: 0,
       });
     }
 
     // ---- RING
     if (T.ring >= 1) {
       const n1 = o.low ? 10 : 14;
-      clashRing(game, x, y, z, P.slash, 0.3, 1.1, 0.16, n1);
+      clashRing(game, x, y, z, cRing, 0.3, 1.1, 0.16, n1);
       nRing += n1;
       if (T.ring >= 2) {
         const n2 = o.low ? 12 : 16;
-        clashRing(game, x, y, z, P.slash, 0.26, 1.6, 0.22, n2);
+        clashRing(game, x, y, z, cRing, 0.26, 1.6, 0.22, n2);
         nRing += n2;
       }
     }
 
     // ---- one small light (never at the floor: a light near the paving blooms into a white disc)
-    game.lights?.add?.({ x, y: Math.max(0.8, y), z, color: P.light, intensity: T.light[0] * (crit ? L.crit.light : 1), radius: T.light[1], life: 0.12, fade: 0.1 });
+    // (calm: no light at all at intensity 0, rather than a pooled light of nothing)
+    if (liI > 0) game.lights?.add?.({ x, y: Math.max(0.8, y), z, color: P.light, intensity: T.light[0] * (crit ? L.crit.light : 1) * liI, radius: T.light[1] * liR, life: 0.12, fade: 0.1 });
 
     const C = CUT_LAST;
     C.slash = nSlash;
