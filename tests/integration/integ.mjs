@@ -11096,6 +11096,221 @@ async function scenarioRipple() {
   return G;
 }
 
+async function scenarioCalm() {
+  out('\n== scenario CALM (calm at the contact: level 0 is today; each level dims what it names; a whiff is the same at every level) ==');
+  const CALM = await imp('src/combat/impactCalm.js');
+  const { CUT_LOOK } = await imp('src/combat/cutFx.js');
+  const { EDGE_GLINT } = await imp('src/entities/player/fx.js');
+  const { HERO_INK } = await imp('src/entities/player/model.js');
+  const { TUNE } = await imp('src/entities/player/player.js');
+  const lv0 = CALM.calmLevel();
+  const NL = CALM.CALM_LOOK.levels.length;
+  // fresh module instances: each starts its own random stream at its seed, so two of them fed the same
+  // input at two levels must draw the same randoms (positions, velocities, lives, angles, glyphs)
+  let fid = 0;
+  const freshCut = () => import(`${pathToFileURL(`${ROOT}/src/combat/cutFx.js`).href}?calm${++fid}`);
+  const freshFx = () => import(`${pathToFileURL(`${ROOT}/src/entities/player/fx.js`).href}?calm${++fid}`);
+  // (not `stretch`: the arc's is its step over its size, and the size is what a level thins)
+  const RAND = ['x', 'y', 'z', 'vx', 'vy', 'vz', 'life', 'rot', 'glyph', 'drag', 'gravity', 'flicker'];
+  const sameDraws = (a, b) => a.length === b.length && a.every((o, i) => RAND.every((k) => Object.is(o[k], b[i][k])));
+  const sameAll = (a, b) => a.length === b.length && a.every((o, i) => JSON.stringify(o) === JSON.stringify(b[i]));
+  const heat = (o) => (o.alpha ?? 1) * (o.size ?? 0.4) * (o.color ? o.color[0] + o.color[1] + o.color[2] : 3);
+  const sum = (a, f = heat) => a.reduce((s, o) => s + f(o), 0);
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player;
+  const fxa = game.fx.add, spawn0 = fxa.spawn, lp = game.lights, ladd0 = lp.add;
+  let made = [], lights = [];
+  const snap = (o) => ({ ...o, color: o.color ? [...o.color] : o.color, colorEnd: o.colorEnd ? [...o.colorEnd] : o.colorEnd });
+  try {
+    fxa.spawn = (o) => { made.push(snap(o)); return -1; };
+    lp.add = (o) => { lights.push({ ...o }); return null; };
+    const F = { x: 0, y: 1.2, z: 0 };
+    const o = (tier, crit, k = 0) => ({ tier, cut: { x: 1, y: -0.3, z: 0 }, edge: { x: 0.2, y: 0.1, z: 1 }, hilt: null, crit, power: k, low: false, target: null });
+    const burst = (mod, lv, tier, crit, k) => {
+      CALM.setCalm(lv);
+      made = [];
+      lights = [];
+      mod.cutBurst(game, F.x, F.y, F.z, o(tier, crit, k));
+      return { made, lights, last: { ...mod.CUT_LAST } };
+    };
+    // ---- 1) the cut (cutFx): level 0 = today's values; every level the same draws; lower, level by level
+    const bad = [], rows = [];
+    for (const [tier, crit, k] of [['light', false, 0], ['sweep', false, 0], ['point', false, 0], ['slam', false, 0], ['cleave', false, 1], ['execute', true, 1], ['light', true, 0]]) {
+      const per = [];
+      for (let lv = 0; lv < NL; lv++) per.push(burst(await freshCut(), lv, tier, crit, k));
+      const T = CUT_LOOK.tier[tier], P = crit ? CUT_LOOK.pal.crit : CUT_LOOK.pal.cut, L0 = per[0], tag = `${tier}${crit ? ' crit' : ''}`;
+      const sl = (r, key) => { const c = r.last; const at = { slash: 0, tick: c.slash, sparks: c.slash + c.tick, core: c.slash + c.tick + c.sparks, motes: c.slash + c.tick + c.sparks + c.core, puff: c.slash + c.tick + c.sparks + c.core + c.motes, ring: c.slash + c.tick + c.sparks + c.core + c.motes + c.puff }[key]; return r.made.slice(at, at + c[key]); };
+      // today's values at level 0 (CUT_LOOK, untouched)
+      const core0 = sl(L0, 'core')[0];
+      const coreSize = Math.min(CUT_LOOK.crit.coreMax, T.core + (crit ? CUT_LOOK.crit.core : 0));
+      if (!(core0 && core0.alpha === 1 && core0.size === coreSize && core0.sizeEnd === 0.1)) bad.push(`${tag}: level 0's core is not today's (${core0?.alpha}, ${core0?.size})`);
+      if (!(L0.lights.length === 1 && L0.lights[0].intensity === T.light[0] * (crit ? CUT_LOOK.crit.light : 1) && L0.lights[0].radius === T.light[1])) bad.push(`${tag}: level 0's light is not today's`);
+      if (!sl(L0, 'sparks').every((s) => s.alpha === 1 && s.color.every((v, i) => v === P.spark[i]))) bad.push(`${tag}: level 0's sparks are not today's`);
+      if (!sl(L0, 'slash').every((s) => [P.slash, P.hot].some((c) => c.every((v, i) => v === s.color[i])))) bad.push(`${tag}: level 0's slash colours are not today's`);
+      for (let lv = 1; lv < NL; lv++) {
+        const A = per[lv - 1], B = per[lv];
+        const cnt = ['slash', 'tick', 'sparks', 'core', 'motes', 'puff', 'ring'].every((key) => A.last[key] === B.last[key]);
+        if (!cnt || !sameDraws(A.made, B.made)) bad.push(`${tag}: level ${lv} spawns or draws differently from level ${lv - 1}`);
+        for (const key of ['core', 'sparks', 'slash', 'ring']) {
+          const a = sum(sl(A, key)), b = sum(sl(B, key));
+          if (b > a + 1e-9) bad.push(`${tag}: ${key} brighter at level ${lv} (${b.toFixed(3)} > ${a.toFixed(3)})`);
+        }
+        const la = A.lights.reduce((s, l) => s + l.intensity * l.radius, 0), lb = B.lights.reduce((s, l) => s + l.intensity * l.radius, 0);
+        if (lb > la + 1e-9) bad.push(`${tag}: the light brighter at level ${lv}`);
+      }
+      const L3 = per[NL - 1];
+      const drop = (key) => 1 - sum(sl(L3, key)) / Math.max(1e-9, sum(sl(L0, key)));
+      if (!(drop('core') > 0.5 && drop('sparks') > 0.3 && L3.lights.length === 0)) bad.push(`${tag}: level ${NL - 1} keeps the core / the sparks / the light (core -${(drop('core') * 100).toFixed(0)} %, sparks -${(drop('sparks') * 100).toFixed(0)} %)`);
+      if (sl(L3, 'slash').length !== sl(L0, 'slash').length || drop('slash') > 0.8) bad.push(`${tag}: level ${NL - 1} loses the cut's line (it is the lines that carry the hit)`);
+      rows.push(`${tag} core -${(drop('core') * 100).toFixed(0)}% sparks -${(drop('sparks') * 100).toFixed(0)}% line -${(drop('slash') * 100).toFixed(0)}%`);
+    }
+    out(`   the cut at level ${NL - 1} against today: ${rows.join(' · ')}`);
+    assert(!bad.length, `the cut: level 0 draws today's values; every level the same spawns and the same random draws; each level dims the core, sparks, line, ring and light, never brightens (${bad.slice(0, 4).join('; ') || 'all'})`);
+
+    // ---- 2) the hero's own (fx.js): the steel's gain, the edge strokes, the cleave's fan, the arc
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    // a swing whose arc edge crosses the contact F this frame (pa, pb: last frame's blade; a, b: now)
+    const swing = { valid: true, pa: V(-0.6, 1.0, 0.3), pb: V(-3.6, 1.6, 3.2), a: V(0.2, 1.0, 0.4), b: V(2.6, 1.5, 3.4) };
+    const fxRun = async (lv, hit, after = 0) => {
+      const M = await freshFx();
+      const f = new M.PlayerFx(game, p.rig);
+      CALM.setCalm(lv);
+      made = [];
+      p.atk = null;
+      game.realTime = 100;
+      game.hitstopTimer = 0.06;
+      if (hit) f._calmAt(F, 'light');
+      const blade = [f.calmBlade(1), f.calmBlade(0.5), f.calmBlade(0), f.calmFlare(0.5), f.calmFlare(0.75)];
+      game.realTime = 100 + after;
+      const m0 = made.length;
+      f.trail(swing.pa, swing.pb, swing.a, swing.b, 'light', false, false, true);
+      const arc = made.slice(m0);
+      const m1 = made.length;
+      f.edgeFlash(p.sweep?.valid ? p.sweep : swing, 0.5, false, false, false, 0.1);
+      const edge = made.slice(m1);
+      const m2 = made.length;
+      f.cleaveImpact(F.x, F.y, F.z, 1, 0, 1, false, true);
+      const fan = made.slice(m2);
+      return { blade, arc, edge, fan };
+    };
+    const H = [], W = [], X = [];
+    for (let lv = 0; lv < NL; lv++) {
+      H.push(await fxRun(lv, true));
+      W.push(await fxRun(lv, false)); // a whiff: no contact
+      X.push(await fxRun(lv, true, 1.0)); // a contact a second ago: the zone has closed
+    }
+    const AX = (await imp('src/combat/clashFx.js')).axes(game);
+    const near = (s) => { const dx = s.x - F.x, dy = s.y - F.y, dz = s.z - F.z, sx = dx * AX.rx + dy * AX.ry + dz * AX.rz, sy = dx * AX.ux + dy * AX.uy + dz * AX.uz; return Math.hypot(sx, sy); };
+    const bad2 = [];
+    const FL = EDGE_GLINT.flash;
+    if (!(H[0].blade[0] === 1 && H[0].blade[1] === 1 && H[0].blade[3] === 0.5 && H[0].blade[4] === 0.75)) bad2.push(`level 0's steel is not today's (${H[0].blade.join(', ')})`);
+    if (!(H[0].edge.length > 0 && H[0].edge.every((s) => s.alpha === FL.alpha))) bad2.push("level 0's edge strokes are not today's");
+    if (!H[0].arc.some((s) => near(s) < 0.4)) bad2.push('the test swing does not cross the contact');
+    for (let lv = 1; lv < NL; lv++) {
+      const A = H[lv - 1], B = H[lv];
+      if (!(B.blade[0] < A.blade[0] && B.blade[1] <= A.blade[1] && B.blade[2] === 1 && B.blade[3] <= A.blade[3])) bad2.push(`level ${lv}: the steel's gain does not fall (${B.blade.map((v) => v.toFixed(2)).join(', ')})`);
+      if (!(B.edge.length === A.edge.length && sum(B.edge) < sum(A.edge))) bad2.push(`level ${lv}: the edge strokes do not dim`);
+      if (!(sameDraws(A.fan, B.fan) && sum(B.fan) < sum(A.fan))) bad2.push(`level ${lv}: the cleave's fan draws differently or does not dim`);
+      if (!sameDraws(A.arc, B.arc)) bad2.push(`level ${lv}: the arc draws differently`);
+      const nA = sum(A.arc.filter((s) => near(s) < 0.4)), nB = sum(B.arc.filter((s) => near(s) < 0.4));
+      if (!(nB < nA)) bad2.push(`level ${lv}: the arc is not dimmer where it crosses the contact (${nB.toFixed(3)} vs ${nA.toFixed(3)})`);
+      // past this level's outer radius the arc is today's (stroke for stroke against level 0)
+      const r1 = CALM.CALM_LOOK.levels[lv].arc.r[1] + 0.01, far = (r) => r.arc.filter((s) => near(s) > r1);
+      if ((lv === 1 && !far(H[0]).length) || !sameAll(far(H[0]), far(B))) bad2.push(`level ${lv}: the arc changed past ${r1.toFixed(2)} m from the contact (${far(H[0]).length} strokes there)`);
+      if (!sameAll(W[0].arc, W[lv].arc) || !sameAll(W[0].edge, W[lv].edge)) bad2.push(`level ${lv}: a whiff's arc is not today's`);
+      if (!sameAll(X[0].arc, X[lv].arc)) bad2.push(`level ${lv}: the arc still dimmed a second after the contact`);
+    }
+    out(`   the hero's: steel gain x${H.map((h) => h.blade[0].toFixed(2)).join(' / ')} (held), edge ${H.map((h) => sum(h.edge).toFixed(2)).join(' / ')}, the arc at the contact ${H.map((h) => sum(h.arc.filter((s) => near(s) < 0.4)).toFixed(2)).join(' / ')}, cleave fan ${H.map((h) => sum(h.fan).toFixed(1)).join(' / ')}`);
+    assert(!bad2.length, `the hero's: level 0 is today's; the steel, the edge strokes, the cleave's fan and the arc where it crosses the contact dim level by level with the same draws; far off the contact, a whiff and a closed zone are today's (${bad2.slice(0, 4).join('; ') || 'all'})`);
+  } finally {
+    fxa.spawn = spawn0;
+    lp.add = ladd0;
+    p.atk = null;
+  }
+
+  // ---- 3) a real fight, level 0 against level 2: the same hit (frame, damage, freeze, camera); the
+  // steel dimmer on the contact frame only; a whiff's steel the same, frame by frame
+  const fight = (lv) => {
+    CALM.setCalm(lv);
+    const G2 = build();
+    const { game: g2, input: in2 } = G2;
+    fightSetup(G2);
+    const d2 = g2.dragon, p2 = g2.player, PF = g2.U.uSelfPartFill.value[HERO_INK.bladeTip.part];
+    p2.debug.god = true;
+    settle(G2);
+    const fx0 = Math.sin(d2.yaw), fz0 = Math.cos(d2.yaw);
+    const c = d2.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d2.position.x) * fx0 + (h.z - d2.position.z) * fz0 > (a.x - d2.position.x) * fx0 + (a.z - d2.position.z) * fz0 ? h : a));
+    p2.debug.teleport(c.x + fx0 * (c.r + 1), c.z + fz0 * (c.r + 1));
+    p2.yaw = Math.atan2(c.x - p2.position.x, c.z - p2.position.z);
+    aimAt(G2);
+    run(G2, 0.3, { passive: true });
+    let ev = null, at = -1, threw = null;
+    const rec = [];
+    G2.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded && !ev) ev = e; };
+    p2.anim.forceVariant = 0;
+    in2.click(0);
+    try {
+      for (let i = 0; i < 90; i++) {
+        G2.tick(DT);
+        if (ev && at < 0) at = i;
+        rec.push([PF.x, g2.hitstopTimer, g2.camera.position.x, g2.camera.position.y, g2.camera.position.z, d2.hp, p2.state]);
+      }
+      // a whiff 30 m off
+      run(G2, 1.0, { passive: true });
+      p2.debug.teleport(d2.position.x + 30, d2.position.z + 30);
+      run(G2, 0.5, { passive: true });
+      in2.click(0);
+      for (let i = 0; i < 40; i++) { G2.tick(DT); rec.push(['w', PF.x, p2.state]); }
+    } catch (e) {
+      threw = e;
+    }
+    p2.anim.forceVariant = null;
+    G2.watch = null;
+    return { ev, at, rec, threw, errors: G2.errors?.length ?? 0 };
+  };
+  const R0 = fight(0), R2 = fight(2);
+  CALM.setCalm(lv0);
+  const gameplay = (r) => r.rec.map((row) => (row[0] === 'w' ? [row[2]] : row.slice(1)));
+  const steel = (r, i) => r.rec[i][0];
+  const whiff = (r) => r.rec.filter((row) => row[0] === 'w').map((row) => row[1]);
+  const lit0 = R0.at >= 0 ? steel(R0, R0.at) : NaN, lit2 = R2.at >= 0 ? steel(R2, R2.at) : NaN;
+  out(`   a landed light on the wyrm: frame ${R0.at} / ${R2.at}, damage ${R0.ev?.damage} / ${R2.ev?.damage}; the steel's fill on the contact frame ${lit0.toFixed?.(2)} (today) / ${lit2.toFixed?.(2)} (calm 2); a whiff's steel ${whiff(R0).every((v, i) => v === whiff(R2)[i]) ? 'the same' : 'DIFFERENT'} over ${whiff(R0).length} frames`);
+  assert(!R0.threw && !R2.threw, `nothing throws in a fight at level 0 or 2${R0.threw || R2.threw ? ': ' + (R0.threw || R2.threw).message : ''}`);
+  assert(!!R0.ev && !!R2.ev && R0.at === R2.at && R0.ev.damage === R2.ev.damage && JSON.stringify(gameplay(R0)) === JSON.stringify(gameplay(R2)), 'calm or not: the same hit on the same frame, the same damage, freeze, camera and states, frame by frame');
+  assert(lit2 < lit0 && R0.rec.slice(R0.at + 30, 90).every((row, i) => row[0] === R2.rec[R0.at + 30 + i][0]), `the steel is dimmer on the contact frame at level 2 (${lit2.toFixed?.(2)} < ${lit0.toFixed?.(2)}) and as today once the flare has cooled`);
+  assert(whiff(R0).length === 40 && whiff(R0).every((v, i) => v === whiff(R2)[i]), "a whiff's steel is today's, frame by frame, at level 2");
+
+  // ---- 4) the switch: bad input never throws, never leaves a level that is not one
+  let threw = null;
+  try {
+    CALM.setCalm('x');
+    const a = CALM.calmLevel();
+    CALM.setCalm(NaN);
+    const b = CALM.calmLevel();
+    CALM.setCalm(99);
+    const c = CALM.calmLevel();
+    CALM.setCalm({ arc: { a: NaN } });
+    const look = CALM.calmLook();
+    assert(a === CALM.CALM_DEFAULT && b === CALM.CALM_DEFAULT && c === CALM.CALM_DEFAULT && look?.arc && CALM.calmA(null, 'core') === 1 && CALM.calmS({ core: [NaN, NaN] }, 'core') === 1, 'setCalm: junk -> the default level; a custom level is taken; a missing or NaN factor reads as 1');
+    const M = await freshFx();
+    const f = new M.PlayerFx(game, p.rig);
+    f._calmAt({ x: NaN, y: 0, z: 0 }, 'light');
+    f._calmAt(null, 'light');
+    CALM.setCalm(3);
+    f._calmAt({ x: 0, y: 1.2, z: 0 }, 'slam');
+    const k = f._arcCalm(NaN, 0, 0), bb = f.calmBlade(NaN), ff = f.calmFlare(NaN);
+    assert([k.a, k.s, bb].every(Number.isFinite) && Number.isNaN(ff) === true, 'NaN in: the arc factors and the steel gain stay finite');
+  } catch (e) {
+    threw = e;
+  } finally {
+    CALM.setCalm(lv0);
+  }
+  assert(!threw, `the switch and its readers never throw${threw ? ': ' + threw.message : ''}`);
+  return G;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -11118,6 +11333,7 @@ const SCENARIOS = {
   riposte: scenarioRiposte,
   flare: scenarioFlare,
   stamp: scenarioStamp,
+  calm: scenarioCalm,
   training: scenarioTraining,
   deflect: scenarioDeflect,
   lab: scenarioLab,

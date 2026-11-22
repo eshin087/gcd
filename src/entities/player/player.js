@@ -3578,7 +3578,11 @@ export class Player {
       if (!Number.isFinite(hot)) hot = 0;
       this.bladeHot = hot >= this.bladeHot ? hot : dt > 0 ? damp(this.bladeHot, hot, F.cool, dt) : this.bladeHot;
       const heavyLit = st === 'charge' || flurrying || plunging || !!a?.def?.heavy;
-      const g = this.alive ? 1 + (heavyLit ? F.strike[1] : F.strike[0]) * this.bladeHot + this.bladeFlare : 1;
+      const g0 = this.alive ? 1 + (heavyLit ? F.strike[1] : F.strike[0]) * this.bladeHot + this.bladeFlare : 1;
+      // calm at the contact (combat/impactCalm.js, read at the hit: fx.calmBlade / calmFlare): the lit
+      // part of the gain dimmed while the hit's flare is held; exactly g0 today and on a missed swing
+      const cb = this.fx.calmBlade?.(this.bladeFlare / F.hit[0]) ?? 1, cf = this.fx.calmFlare?.(this.bladeFlare) ?? this.bladeFlare;
+      const g = !this.alive || (cb === 1 && cf === this.bladeFlare) ? g0 : 1 + ((heavyLit ? F.strike[1] : F.strike[0]) * this.bladeHot + cf) * cb;
       if (Number.isFinite(g)) {
         const U = this.game.U, BL = TUNE.bladeLook, lk = (1 + F.line * (g - 1)) * BL.line, rl = B.rimLine ?? B.line;
         const pf = U?.uSelfPartFill?.value?.[P], pi = U?.uSelfPartInk?.value?.[P], pr = U?.uSelfPartRim?.value?.[P];
