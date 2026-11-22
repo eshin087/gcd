@@ -221,12 +221,37 @@ const ascRoll = (T) => {
   T.tap('Space');
   T.later(0.4, () => T._axis(0, 0));
 };
+/** Once, when his counter stance is catching (a beat marked `stance`, duelist/brain.js): a cut into it. */
+const ascCut = (T) => {
+  if (T.d?.brain?.catching?.()) T.at(0, () => T.tap('@attack'), 'ascCut');
+};
+/** Once his stance has ended on nothing (he stands open, the guard down): the cut that punishes it. */
+const ascOpen = (T) => {
+  if ((T.d?.brain?.stats?.stanceMiss ?? 0) > fin(T._ascMiss)) T.at(0, () => T.tap('@attack'), 'ascOpen');
+};
 add('PARRY & RIPOSTE', [
+  { id: 'ascSign', name: 'The sign · turn and parry', boss: 'asc', dist: 4, answer: 'parry', desc: 'Two fingers to his brow (form 2, Sign Step): he is gone, and the hook comes from BEHIND you. Its glint shows where: turn and parry the three blows.', go: ascGo(2, 'signStep'), expect: ['player:parry'] },
+  { id: 'ascCatch', name: 'Counter stance · cut into it', boss: 'asc', dist: 1.9, answer: 'parry', desc: 'Still Water (form 1): he sinks, the palms open, light drawn into them. Cut into it and he CATCHES the blade (thrown back, no damage) and punishes at once: parry the cross and the palm.', go: ascGo(1, 'stillWater'), tick: ascCut, expect: ['player:attack', 'dragon:guard', 'player:parry'] },
+  { id: 'ascCatchWait', name: 'Counter stance · wait it out', boss: 'asc', dist: 1.9, answer: 'none', desc: 'The patient answer: do not cut into the open palms. The stance ends on nothing, his guard is down a moment: cut him then.', go: (T) => { T._ascMiss = T.d.brain?.stats?.stanceMiss ?? 0; ascGo(1, 'stillWater')(T); }, tick: ascOpen, until: (T) => T.t > 2.4 && !T.moving() && T.heroFree(), max: 6, expect: ['player:attack'] },
   { id: 'ascClash', name: 'The beam clash', boss: 'asc', dist: 6, answer: 'none', mash: true, desc: 'His great beam (form 3): a perfect parry of its head starts THE CLASH at range. Mash attack to split the beam: he reels.', go: ascGo(3, 'heavenTide'), tick: (T) => ascHead(T, 0.04, () => T.tap('@block', 0.05)), until: (T) => T.t > 3 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 16, expect: ['player:lock'] },
 ]);
 add('GETTING HIT', [
   { id: 'ascTide', name: 'Rising Tide · roll out of the line', boss: 'asc', dist: 9, answer: 'none', desc: 'His beam: a red cue at the drawn-back palm, then the line is lit. Roll off it at the cue.', go: ascGo(1, 'risingTide'), tick: (T) => ascHead(T, 0.24, () => ascRoll(T)), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 9, expect: ['combat:flash'] },
   { id: 'ascTideHit', name: 'Rising Tide · stand in it', boss: 'asc', dist: 9, answer: 'none', desc: 'The same, and you stay: the first contact throws you down along the line.', go: ascGo(1, 'risingTide'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 9, expect: ['player:hurt'] },
+]);
+// (the third wave, ki: the great orb's push, the barrage from the air)
+/** Once, `lead` s before Heaven's Lantern's orb would meet the hero (its own flight). */
+const ascOrb = (T, lead, fn) => {
+  const s = T.d?.ki?.shots?.lantern?.s, p = T.p;
+  if (!s?.alive || s.done || !p) return;
+  const along = (p.position.x - s.x) * s.dx + (p.position.z - s.z) * s.dz;
+  if ((along - s.radius - (p.radius ?? 0.45)) / Math.max(0.1, s.speed) <= lead) T.at(0, fn, 'ascOrb');
+};
+add('PARRY & RIPOSTE', [
+  { id: 'ascLantern', name: "Heaven's Lantern · push it back", boss: 'asc', dist: 9, answer: 'none', mash: true, desc: 'His great orb (forms 2 - 3): a perfect parry as it reaches you starts THE PUSH. Mash attack to throw it back into him: he reels.', go: ascGo(2, 'skyLantern'), tick: (T) => ascOrb(T, 0.04, () => T.tap('@block', 0.05)), until: (T) => T.t > 3 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 16, expect: ['player:lock'] },
+]);
+add('GETTING HIT', [
+  { id: 'ascSuns', name: 'Raining Suns · block the barrage', boss: 'asc', dist: 9, answer: 'block', desc: 'He leaps and pours sixteen small blasts down at you, then a bigger one: hold your guard through it (each glints as it comes).', go: ascGo(2, 'rainingSuns'), until: (T) => T.t > 2 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 12, expect: ['player:block'] },
 ]);
 add('TERRAIN', [
   { id: 'ascTile', name: 'Tile Kick · under it', boss: 'asc', dist: 7, answer: 'none', desc: 'He stamps a floor slab up and punches it at you: it glints as it comes. You stay, and it hits you (a parry would cut it).', go: ascGo(1, 'tileKick'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.terrain?.busy, max: 9, expect: ['combat:flash'] },
@@ -558,7 +583,7 @@ export class Training {
     const watch = (n) => ev.on(n, (e) => this._event(n, e));
     for (const n of ['player:parry', 'player:block', 'player:perfectDodge', 'player:flurry', 'player:flurryEnd', 'player:hurt', 'player:streak',
       'player:guardBreak', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
-      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
+      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'dragon:guard', 'combat:flash']) watch(n);
   }
 
   _event(n, e) {

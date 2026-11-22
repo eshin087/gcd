@@ -12,7 +12,7 @@ import * as GEAR from './gear.js';
 import * as LOOK from './look.js';
 import { AscFx } from './fx.js';
 import { formPoses } from './poses.js';
-import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, STREAKS, realise } from './moves.js';
+import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, COUNTER_LISTS, STREAKS, realise } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
 import { KiMoves } from './ki.js';
@@ -103,7 +103,12 @@ export const ASC_KIT = Object.freeze({
   id: 'ascendant',
   TUNING, MOVES, MOVE_NAMES, CLIP, realise,
   transitions: TRANSITIONS,
-  counterMove: (form) => COUNTERS[clamp(form, 1, COUNTERS.length) - 1],
+  // (his counter out of a deflect: one of the form's list, drawn on the AI's stream; the form's first
+  // when the list is empty)
+  counterMove: (form) => {
+    const f = clamp(form, 1, COUNTERS.length) - 1, L = COUNTER_LISTS[f];
+    return L?.length ? L[Math.min(L.length - 1, Math.floor(Math.random() * L.length))] : COUNTERS[f];
+  },
   streakMove: (form) => STREAKS[clamp(form, 1, STREAKS.length) - 1],
   maxPhase: TUNING.forms,
   loadout: GEAR.ASC_LOADOUT ?? {},
@@ -567,8 +572,9 @@ export class Ascendant extends Duelist {
 
   weigh(name, def, w, dist) {
     if (this._beamBars(def)) return 0;
-    // (while Storm Cage's orbs close in, the cage is his attack: nothing else starts on top of it)
-    if (!def.transition && this._orbsLive()) return 0;
+    // (while Storm Cage's orbs close in, or Heaven's Lantern's orb is out, that is his attack: nothing
+    // else starts on top of it)
+    if (!def.transition && (this._orbsLive() || this.ki?.shots?.lanternOut)) return 0;
     if (def.terrain) return this.terrain.weigh(def, w, dist);
     if (def.ki) return this.ki.weigh(def, w, dist);
     // (Aura Burst: favoured once the hero has stayed on him for a while)
@@ -577,7 +583,7 @@ export class Ascendant extends Duelist {
   }
 
   onActStart(A, opts) {
-    if (!A.def.transition && (this._beamBars(A.def) || (!A.def.counter && this._orbsLive()))) return false;
+    if (!A.def.transition && (this._beamBars(A.def) || (!A.def.counter && (this._orbsLive() || (this.ki?.shots?.lanternOut && A.def.ki !== 'lantern'))))) return false;
     if (A.def.terrain) return this.terrain.begin(A, opts) !== false;
     if (A.def.ki) return this.ki.begin(A, opts) !== false;
     return true;
@@ -684,12 +690,19 @@ export class Ascendant extends Duelist {
    *   { land: true }   beside where the hero's knock-back will end (`side` m, default 1.8)
    *   { edge: true }   at the ring's edge farthest from the hero (`pad` m inside his bound, default 1.2)
    *   { at: rad, r }   at a side of the hero: `at` rad round from his facing (0 before him, PI behind)
+   *   { sign: true }   THE SIGN (the third wave): the vanish waits until u 0.5 (`signAt`); the keys
+   *                    before it show two fingers raised to his brow (moves/melee.js signKeys), and a
+   *                    snap of light at the hand marks the moment he goes (fx.signSnap)
    * Then a routed beat's own motion.
    */
   beatMotion(b, u, s, dt) {
     const K = b.def.blink;
-    if (K && !b._blinked && u >= 0.1 && s) {
+    if (K && !b._blinked && u >= (K.sign ? fin(K.signAt, 0.5) : 0.1) && s) {
       b._blinked = true;
+      if (K.sign) {
+        const h = this.tellPoint('fistR', this._q);
+        this.fx.signSnap?.(h.x, h.y, h.z, this.phase);
+      }
       const pl = this.game.player;
       let tx, tz;
       if (K.edge) {
@@ -741,10 +754,11 @@ export class Ascendant extends Duelist {
 
   // ---------------------------------------------------------------- after the pose
   /** The aura of his form; the trail off the striking limb through a blow; the transformation's
-   *  gathering; the stars of a break. */
+   *  gathering; the light drawn into his palms in a counter stance; the stars of a break. */
   afterPose(dt, a) {
     const fx = this.fx, f = this.phase;
     if (this.mode !== 'dead' && this.mode !== 'sleep') fx.formAura?.(this, dt, this.dressPhase ?? f);
+    if (a && this.brain.catching?.()) fx.stanceGlow?.(this, dt, f);
     if (a && this._tipOk) {
       const cur = a.beats.find((b) => a.t < b.impact);
       if (a.def.transition) {

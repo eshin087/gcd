@@ -196,6 +196,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner plays it
 - [ ] Their own break / burn tuning (today the material defaults)
 
+## M1.56 — Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage (2026-11-22, `enemies/ascendant-moves`, ADR-135)
+- [x] The engine: a counter stance as a beat (`stance`), the sign before a vanish, several counters a form
+- [x] The sign: Sign Step, Three Signs; the first vanish of Vanishing Step, Storm Waltz, Mirage and the thunder Riposte
+- [x] Three counter stances (Still Water, Golden Mirror, Thunder Mirror) and three more ripostes
+- [x] Heaven's Lantern and THE PUSH; Raining Suns and its returnable finisher
+- [x] Training situations, Lab row, test scenarios; the move tables regenerated; PACE green over ten seeds, 0 conflicts
+- [ ] Follow-ups:
+  - [ ] The owner plays it: the stances' hold (0.2 - 0.4 s) and the open window, the orb's speed, the barrage's spread
+  - [ ] The owner picks the orb's look (`?ascOrb=a|b`)
+  - [ ] The sign's hand at the game camera (a few cells under the aura): a brighter hand, or the camera closer for the sign
+  - [ ] The orb drawn as large as its hit; the push's crater and camera tuned
+  - [ ] A real phone: the push's touch block, the barrage's cues
+
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters

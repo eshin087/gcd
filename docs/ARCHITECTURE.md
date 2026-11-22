@@ -2360,8 +2360,9 @@ switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pi
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
 `lordLook`, `floor`) reloads the page with its parameter. The Skybreak Ring's rows (ADR-129), each group
 under its own heading comment: `ring` a / b / c (the arena; a reload), `ascLook` a / c / d (his body; a
-reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c and `ascBeam`
-a / b (live); all picked 'a' (STYLE.md "The look switches"). "as shipped" clears every look parameter (the
+reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c, `ascBeam`
+a / b and `ascOrb` a / b (the great orb, the third wave; live); all picked 'a' (STYLE.md "The look
+switches"). "as shipped" clears every look parameter (the
 owner's picks), "before this pass" reloads with `?looks=old` ("all proposals" is gone: `?looks=new` now
 equals the default). A later phase's or form's move, and the
 phase / form buttons, play from any phase (the Lab skips there first, without playing the change).
@@ -3194,6 +3195,16 @@ data and a subclass with a few hooks.
     `player.startBladeLock` (the lock at range: the beam clash, which also passes `camera`).
   - `_tradeNow` (the trade clash from `takeHit`) ignores a beat marked `selfHit` or `sustain` (a beam's head,
     a stream held lit is no blow of his body to trade with).
+  - `stance: { from = 0.3, open = 0.6 }` (the third wave, 2026-11-22) on a FEINT beat with a bait `hold`:
+    THE COUNTER STANCE. From `from` of the windup to the impact `brain.catching()` returns the beat;
+    `duelist.takeHit` (before the guard, for any cut that is not `exact`) then CATCHES the cut:
+    `duelist._catch` deals no damage and no posture, draws the deflect's sparks on the crossing, emits
+    `dragon:guard { heavy, deflect: true, caught: true }` (HUD "CAUGHT"), bounces the hero
+    (`player.onGuarded({ deflect, caught })`) and calls `brain.onCaught(beat)`, which marks it and
+    `skipTo(beat.end)`: the beats after it (the punish) start at once. A stance nothing was cut into by
+    its impact ends the move there (`_stanceMiss`: `_toFoot(open)`, `raiseT` held at `open`, so his
+    guard stays down: the reward for waiting). `brain.stats.caught` / `stanceMiss`. The actor draws the
+    stance (Tian Lei: `fx.stanceGlow` from `afterPose` while catching).
   - `ledger.js` `discPath(s, p, reach, H, out)`: a thrown disc still going out (`s.kind 'disc'`, `phase
     'fly'`) flies on a curve (`curve` rad/s) to `range` m of path, hangs `hang` s, then comes home
     THROUGH where the hero stands at the turn (`through`, the default) or to the hand `H`; writes into
@@ -3422,8 +3433,9 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 A `Duelist` with `ASC_KIT`; COMBAT.md → "Tian Lei, the Last Ascendant" has the fight. Bare-handed: no
 weapon, three forms with a bar each (the Lord's `lives` structure), ki (blasts, a disc, bolts, called
 strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNING, MOVES, MOVE_NAMES,
-CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → riposte / riposte2 /
-riposte3, streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
+CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → one of the form's
+`COUNTER_LISTS` (moves.js; riposte / riposte2 / riposte3 and the third wave's, drawn on the AI's stream),
+streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
 scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's footwork plus the dash's lean
 by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
 ```
@@ -3503,7 +3515,17 @@ transformation's windup, the stars of a break. `brainFrame` also counts how long
 (within 2.6 m): past 4 s a `burst` move (Aura Burst) weighs × 3.
 
 **The moves are data** (`moves.js`: `MOVES = { ...meleeMoves(X), ...kiMoves(X), ...terrainMoves(X) }`,
-`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS`, `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). A move
+`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS` (each form's first counter) and `COUNTER_LISTS` (every
+counter of each form, the third wave: `[['riposte', 'riposteKnee'], ['riposte2', 'riposteVanish'],
+['riposte3', 'riposteBolt']]`), `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). **The third wave's data**
+(2026-11-22; `moves/melee.js`): `signKeys(X, { coil, hit, after, keys, cock = 0.76, left })` prepends the
+SIGN (the hand rising at u 0.18, two fingers at the brow at u 0.5) to a strike's keys, for a beat with
+`blink: { ..., sign: true }`; a sign beat carries `close: 0` and a short `dash` into reach after the
+arrival (`TUNING.sign`: behind 2 m, a side at 1.5 rad / 2.2 m, a step of 1.6 m from u 0.55, a riposte's
+hop back 1.5 m). A counter stance is a feint beat `{ tell N, windup 0.45 fixed, hold [0.2, 0.4], stance:
+{ from 0.3, open 0.6 }, part 'palms' }` (`TUNING.stance`) followed by its punish beats (Still Water,
+Golden Mirror, Thunder Mirror; `cat 'single'`). Thunder Mirror's and riposteBolt's bolt is a `ki: 'bolt'`
+line beat built in melee.js. A move
 file is a function `(X) => ({ name: move })` of the frozen builders object `X` (no import of moves.js: no
 cycle): `moves/melee.js`, `moves/ki.js` (joins `moves/kiShots.js` and `moves/kiBeam.js`),
 `moves/terrain.js`. `X = { TELL: { N, B, R, K }, TUNING, W, F, mirror, strikeKeys, follow, rotXZ, punch,
@@ -3531,7 +3553,10 @@ reads `sweep`). **The blink** (`beatMotion`, once at u 0.1 of the windup; then a
 `{ behind: m }` (behind the hero by his facing, else to one side, then the other), `{ land: true, side }`
 (beside where the hero's knock-back will end, on the side he came from: `_slideEnd`), `{ edge: true, pad }`
 (at the ring's edge farthest from the hero, `pad` 1.2 m inside his bound: the great beam), `{ at: rad, r }`
-(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage).
+(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage). **The sign**
+(the third wave): `sign: true` on any of them delays the vanish to u 0.5 of the windup (`signAt`); the
+beat's keys up to there show two fingers raised to his brow (`moves/melee.js` `signKeys`), and the moment
+he goes `fx.signSnap` flashes at the right hand (`tellPoint('fistR')`), then the usual `vanish`.
 
 **`ShotMoves`** (`kiShots.js`, `d.ki.shots`; numbers `TUNING.shots`, `tuningShots.js`): `begin` (false for
 a second disc, rain or volley while one runs), `weigh`, `onRelease` (the blasts leave the striking palm:
@@ -3544,7 +3569,22 @@ volley's strikes, the weather Thunderfall in form 3 (at most 2 live; never while
 reactions, a break or a transformation), the corner bolts), `busy`, `reset`, `stats`. Public:
 `returned(s)` (a returned blast reached him: 50 damage, 34 posture, `dragon:returned` kind 2), `discBack(s)`
 (the disc caught), `corners()` (ascend3's four bolts on `RING.corners`, 0.12 s apart: a called strike with
-its cue on a hero standing within 2.4 m of one, else a harmless bolt). Its game rolls come from its own
+its cue on a hero standing within 2.4 m of one, else a harmless bolt). **The third wave** (2026-11-22):
+`cast.kind` 'lantern' (Heaven's Lantern: `begin` tells the ledger the orb's arrival and retimes it through
+the gather, `motion` draws `fx.lanternGather` over his palms and dims the ring, `onCast` throws one
+'blast' record with `lantern: true` (size 4.5, radius 2, speed 10, `y` 3.6 falling to `yTo` 1.3 at the
+hero: `fx._flyBlast`'s linear fall), aimed `lead` s ahead of the hero, never homing; `lanternMet(s, r)`
+(fx.js calls it with the hero's RESULT): a block or a plain parry bursts it on the guard (`lanternBurst`
+'guard', a crater), a roll lets it pass to burst on the floor, a PERFECT parry starts THE PUSH
+(`_startPush`: `brain.startLock` at range with `T.lantern.push`, the orb held on the blade and drawn by
+`fx.lanternClash`); `lockEnd(won)`: won = `s.returned = true` (fx.js's return path flies it into his
+chest: `returned(s)` deals `returnDamage` 120 / `returnPosture` 220 and he reels `reel` 3 s), lost = 40,
+knockdown, thrown 10 m, a crater; `lanternOut` (the class weighs every other move 0 while it is out, and
+the weather stands down) and 'barrage' (Raining Suns: `_startRain` generalised with options `aim 'hero'`,
+`air`, `yTo`, `lead`, `scatter`, `direct`, `side`: sixteen blasts poured from the alternating palms 3 m
+up, falling onto the hero, every `direct`-th on him; then a `release` with `air` / `yTo`, the finisher).
+Blast records gained `yTo` / `y0` / `yLen` (a fall over the flight) and `lantern`; every old blast flies
+as before. Its game rolls come from its own
 seeded stream (`rand`, reseeded at each reset). What is planned but not yet thrown or called is told to
 the ledger (`brain.expect`), and each throw or call asks `brain.fairDelay` first.
 
@@ -3640,6 +3680,8 @@ beamSplash(x, y, z, k, dt, form = 1)        where the beam ends on something (th
 beamClash(x, y, z, dx, dz, k, dt, form = 3) the head grinding on the hero's blade; k the lock's meter
 beamSplit(x, y, z, dx, dz, len, form = 3)   the clash won: the beam split round the blade (once, or every frame)
 vanish(d, x0, z0, x1, z1, form = 1)         the blink: the shape he leaves, the streak, a puff at each end
+signSnap(x, y, z, form = 1)                 the sign's snap at the fingers on his brow as he goes (once)
+stanceGlow(d, dt, form = 1)                 a counter stance: light drawn into both open palms (every frame catching)
 dashGhost(d, form = 1)                      the afterimage a dash leaves
 auraBurst(x, z, r, form = 2)                a shock ring out of his body to r m (Aura Burst, a landing)
 crater(x, z, r, k = 1)                      a heavy blow on the floor: dust, chips, lit cracks (draws only)
@@ -3734,7 +3776,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:bite`, `dragon:hurt {damage, part, hp, crit}`, `dragon:parried {attack, tell, hit, last, bullet, perfect}` (hit = 0-based
   index in its string, last = the string's last hit or a single attack: only then a recoil; bullet: true = a
   deflected bullet, hit 0, last false: posture only, the wyrm is not interrupted and audio stays silent; perfect:
-  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z}` (a perfectly parried bullet's return
+  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z, lantern}` (a perfectly parried bullet's return; lantern true = Heaven's Lantern's orb pushed back into him
   lands on the head: kind 0 ember (1 was the wisp, removed in ADR-119), damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
   flow counts it in the run stats like a sword hit),
   `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
@@ -3743,9 +3785,10 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),
   `dragon:death`, `dragon:dead`,
-  `dragon:guard {heavy, deflect}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
+  `dragon:guard {heavy, deflect, caught}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
   "GUARDED", audio a dry clack; deflect = he beat it away and the hero bounces: HUD "DEFLECTED", a harsh falling
-  clang, a flicker of the frame), `dragon:deflected {count}` (every real hit of a long string parried:
+  clang, a flicker of the frame; caught = the cut was caught in a counter stance (a beat marked stance): no
+  posture either, HUD "CAUGHT", his punish follows at once), `dragon:deflected {count}` (every real hit of a long string parried:
   the full deflect; HUD "PERFECT DEFLECT"),
   `dragon:spell {name, x, z, part}` (a fire attack's signature moment: the strafe's pass, the dive, the barrage's
   rise, a spell's cast / the nova's charge start, a bullet pattern's cast (cinderSpit, emberRain, fireLanes among

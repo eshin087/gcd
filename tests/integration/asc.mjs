@@ -27,7 +27,7 @@ const { Destructibles } = await imp('src/world/destructibles.js');
 const { Scars } = await imp('src/world/scars.js');
 const { Player } = await imp('src/entities/player/player.js');
 const { Ascendant } = await imp('src/entities/enemies/ascendant/ascendant.js');
-const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, STREAKS, TRANSITIONS, realise } = await imp('src/entities/enemies/ascendant/moves.js');
+const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, COUNTER_LISTS, STREAKS, TRANSITIONS, realise } = await imp('src/entities/enemies/ascendant/moves.js');
 const { TUNING } = await imp('src/entities/enemies/ascendant/tuning.js');
 const { Hud } = await imp('src/ui/hud.js');
 const { Bindings, installActions } = await imp('src/core/bindings.js');
@@ -58,7 +58,7 @@ const weightIn = (def, f) => (Array.isArray(def.weight) ? def.weight[f - 1] ?? 0
 const formsOf = (name) => {
   const def = MOVES[name];
   if (def.transition) return [def.phase - 1];
-  if (def.counter) return [COUNTERS.indexOf(name) + 1, STREAKS.indexOf(name) + 1].filter((f) => f > 0);
+  if (def.counter) return [...COUNTER_LISTS.map((L, i) => (L.includes(name) ? i + 1 : 0)), STREAKS.indexOf(name) + 1].filter((f) => f > 0);
   return [1, 2, 3].filter((f) => weightIn(def, f) > 0);
 };
 
@@ -417,6 +417,7 @@ async function scenarioData() {
   }
   for (const [ph, mv] of Object.entries(TRANSITIONS)) assert(MOVES[mv]?.transition && MOVES[mv].phase === Number(ph) && Math.abs(realise(mv, Number(ph) - 1, () => 0.5).beats[0].impact - TUNING.transform.windup) < 1e-6, `form ${ph} begins with ${mv} (${TUNING.transform.windup} s, then the ring)`);
   assert(COUNTERS.length === FORMS && COUNTERS.every((n, i) => MOVES[n]?.counter && realise(n, i + 1, () => 0.5)) && STREAKS.every((n) => MOVES[n]?.streak), 'every form has its counter and its flurry');
+  assert(COUNTER_LISTS.length === FORMS && COUNTER_LISTS.every((L, i) => L.includes(COUNTERS[i]) && L.every((n) => MOVES[n]?.counter && !MOVES[n].streak && realise(n, i + 1, () => 0.5))), `every counter in a form's list is a counter move realisable in that form (${COUNTER_LISTS.map((L) => L.join('+')).join(' / ')})`);
   assert(TUNING.flashLead <= TUNING.minHitGap + 1e-9, `the glint (${TUNING.flashLead} s) fits inside the tightest gap (${TUNING.minHitGap} s)`);
   const gap = (f) => { const A = realise(f === 1 ? 'gates' : f === 2 ? 'goldenGates' : 'thousand', f, () => 0.2); const h = A.beats.filter((b) => !b.feint); return h[1].impact - h[0].impact; };
   const gaps = [1, 2, 3].map(gap);
@@ -452,7 +453,9 @@ async function scenarioTiming() {
       G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') { flashes.push(G.game.time); if (only) out(`       ${G.game.time.toFixed(3)} flash ${e.attack} ${e.tell}`); } };
       const h0 = G.hits.length;
       if (!d.debug.trigger(name)) { assert(false, `${name} form ${f}: starts`); continue; }
-      run(G, 9, null, () => quiet(d));
+      // (a counter stance only hits if the hero cuts into it: the bot cuts once it is catching)
+      const cut = def.beats[0]?.stance ? () => { const a = d.brain.act, b = a?.beats[0]; if (a?.name === name && b && !b.caught && a.t > b.start + 0.3 * (b.impact - b.start) + 0.1 && ((G.game.realTime * 60) | 0) % 6 === 0) G.input.click(0); } : null;
+      run(G, 9, cut, () => quiet(d));
       for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) { contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.kind} ${h.r}`); }
       let w = 0;
       for (const c of contacts) {
@@ -767,6 +770,48 @@ async function scenarioEngine() {
   delete MOVES.__air;
   delete MOVES.__beam;
   assert(p.state !== 'lock', 'and it ends');
+  // 5. the counter stance (`stance`, the third wave): a feint beat with a bait hold; a cut into it is
+  //    caught (no damage, the hero bounced, the punish beat at once); none: the move ends there, open
+  MOVES.__stance = {
+    label: 'test: stance', phase: 1, weight: 0, manual: true, hidden: true, cooldown: 0, band: [0, 9], recovery: 0.4,
+    beats: [
+      { tell: N, windup: 0.45, fixed: true, hold: [0.8, 0.8], active: 0.05, damage: 0, feint: true, stance: { from: 0.3, open: 0.6 }, part: 'palms', close: 0, track: 0.9, keys: [] },
+      { tell: R, windup: 0.5, active: 0.1, damage: 9, knockback: 1, knockdown: true, zone: { kind: 'ring', r: 3 }, ring: 3, part: 'palms', close: 0, keys: [] },
+    ],
+  };
+  p.debug.god = false;
+  const stance = (cut) => {
+    settle(G);
+    d.position.set(0, 0, -2);
+    d.yaw = 0;
+    place(G, 1.9);
+    run(G, 0.3);
+    p.debug.heal();
+    const hp0 = d.hp, ph0 = p.hp, h0 = G.hits.length, c0 = br.stats.caught, m0 = br.stats.stanceMiss, b0 = G.counts['player:bounced'] ?? 0;
+    const A = realise('__stance', 1, () => 0.5);
+    let caughtAt = null, punishTell = null, openT = 0, guardDownT = 0, glow = 0;
+    const sg = d.fx.stanceGlow;
+    d.fx.stanceGlow = (...a) => { glow++; return sg?.apply(d.fx, a); };
+    G.watch = (n, e) => { if (n === 'dragon:guard' && e?.caught && caughtAt === null) caughtAt = br.act?.t ?? -1; if (n === 'combat:tell' && e?.attack === '__stance' && punishTell === null) punishTell = game.time; };
+    d.debug.trigger('__stance');
+    const t0 = game.time;
+    run(G, 5, () => {
+      const a = br.act;
+      if (cut && a?.name === '__stance' && a.t > A.beats[0].start + 0.5 && a.t < A.beats[0].impact && ((game.realTime * 60) | 0) % 6 === 0) input.click(0);
+      if (d.mode === 'foot' && game.time - t0 < 3) { openT += DT; if (br.raiseT > 0 && !br.guardUp()) guardDownT += DT; }
+    }, () => game.time - t0 > 2.6 && d.mode === 'foot' && p.state !== 'bounce');
+    d.fx.stanceGlow = sg;
+    G.watch = null;
+    return { caughtAt, punishTell: punishTell === null ? null : punishTell - t0, dHp: hp0 - d.hp, pHp: ph0 - p.hp, hits: G.hits.slice(h0).filter((h) => h.attack === '__stance'), caught: br.stats.caught - c0, miss: br.stats.stanceMiss - m0, bounced: (G.counts['player:bounced'] ?? 0) - b0, openT, guardDownT, glow, A };
+  };
+  const c = stance(true);
+  // (the event is sent after the jump: the move's clock already stands at the stance beat's end)
+  assert(c.caught === 1 && c.miss === 0 && c.dHp === 0 && c.bounced >= 1 && c.caughtAt !== null && Math.abs(c.caughtAt - c.A.beats[0].end) < 1e-6, `a cut into the stance is CAUGHT (${c.caught}; the move jumped to the stance's end, ${c.caughtAt?.toFixed(2)} s), no damage to him (${c.dHp}), the hero's blade thrown back (${c.bounced})`);
+  assert(c.hits.length >= 1 && c.hits[0].tell === TELL.RED && c.glow > 5, `then the punish beat comes at once and reaches the hero (${c.hits.map((h) => h.r).join(' ')}); the light drawn into his palms was drawn (${c.glow} frames)`);
+  const m = stance(false);
+  assert(m.caught === 0 && m.miss === 1 && m.hits.length === 0 && m.guardDownT > 0.4 && m.guardDownT < 1.2, `a stance nobody cut into ends at its impact with no punish (${m.hits.length} hits) and he is open with his guard down (${m.guardDownT.toFixed(2)} s)`);
+  delete MOVES.__stance;
+  p.debug.god = true;
 }
 
 // ================================================================== scenario: pace (the director's meter)
@@ -863,10 +908,11 @@ async function scenarioPace() {
         prevAct = d.mode === 'act' ? a : null;
         prevMode = d.mode;
         frames++;
-        // (the great spell's 2.4 s charge (the ring's light pulled down, stones rising) and any beam of
-        // his while it is lit (it sweeps after the hero; its ticks are not cues) are not empty gaps: the
-        // meter counts them as it counts a black blow's charge)
-        if (frames % 6 === 0 && ((d.mode === 'act' && d.brain.act?.def?.ki === 'beamGreat' && d.brain.act.t < (d.brain.act.beats?.[0]?.impact ?? 0)) || d.ki?.beams?.phase === 'lit')) busyT.push(game.time);
+        // (the great spell's 2.4 s charge (the ring's light pulled down, stones rising), any beam of
+        // his while it is lit (it sweeps after the hero; its ticks are not cues), the great orb's gather
+        // and a counter stance while it is catching (a decision for the hero: cut into it or wait) are
+        // not empty gaps: the meter counts them as it counts a black blow's charge)
+        if (frames % 6 === 0 && ((d.mode === 'act' && (d.brain.act?.def?.ki === 'beamGreat' || d.brain.act?.def?.ki === 'lantern') && d.brain.act.t < (d.brain.act.beats?.[0]?.impact ?? 0)) || d.ki?.beams?.phase === 'lit' || d.brain.catching?.())) busyT.push(game.time);
         if (d.fx.shotsAlive || d.fx.strikesAlive || d.ki?.busy || d.terrain?.busy) linger++;
         // (what a feint or a hold of the fairness guard gave way to: the live things of his then)
         for (const k of ['feints', 'holds']) {
@@ -1263,6 +1309,169 @@ async function scenarioWeather() {
   const c2 = G2.game.dragon.ki.shots.stats.skyCalls;
   run(G2, 15);
   assert(G2.game.dragon.ki.shots.stats.skyCalls === c2, 'form 2: no Thunderfall');
+}
+
+// (the third wave, ki: Heaven's Lantern and THE PUSH, Raining Suns)
+/** Heaven's Lantern from a set-up (him at (0, -2) facing +z, the hero `dist` m ahead); `answer`: 'none'
+ *  | 'block' (held from the start) | 'parry' / 'perfect' (a press `early` s before the orb meets him) |
+ *  'roll' (sideways, 0.1 s before); `mash`: a press every `mash` frames in the lock. */
+function lanternPlay(G, { dist = 9, form = 2, answer = 'none', early = 0.04, mash = 0, max = 12, step = null } = {}) {
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, sh = d.ki.shots;
+  settle(G);
+  if (d.phase !== form) { d.debug.setForm(form); run(G, 0.4); }
+  input.axis = { x: 0, y: 0 };
+  input.up(1);
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  place(G, dist);
+  run(G, 0.2);
+  p.hp = p.maxHp;
+  p.guard = p.maxGuard;
+  const info = { flashes: [], states: new Set(), lock: false, reel: 0, top: 0, hp0: p.hp, dhp0: d.hp, start: { x: p.position.x, z: p.position.z }, held: true, flew: 0, dirs: [], heldAct: 0, barred: 0, skyOff: true, busyOut: true };
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') info.flashes.push({ t: game.time, tell: e.tell, attack: e.attack }); };
+  const h0 = G.hits.length, s0 = { ...sh.stats };
+  info.started = d.debug.trigger('skyLantern');
+  run(G, max, () => {
+    info.top = Math.max(info.top, d.position.y);
+    info.states.add(p.state);
+    const L = sh.lantern, s = L.s;
+    if (L.phase === 'fly' && s?.alive && !s.done) {
+      info.flew++;
+      info.dirs.push(s.dx * 1000 + s.dz);
+      // while it is out: his move held at its landing, nothing else of his may start, the weather down
+      if (d.mode === 'act' && d.brain.act?.name === 'skyLantern') info.heldAct++;
+      if (sh.begin({ def: { ki: 'blast' } }) !== false || sh.weigh({ ki: 'rain' }, 1) !== 0) info.barred++;
+      if (sh._skySlot(1.1, 0.5) !== -1) info.skyOff = false;
+      if (!sh.busy || !d.ki.busy) info.busyOut = false;
+      if (answer === 'block') input.press(1);
+      const along = (p.position.x - s.x) * s.dx + (p.position.z - s.z) * s.dz, tta = (along - s.radius - p.radius) / s.speed;
+      if (!info.answered && (answer === 'parry' || answer === 'perfect') && tta <= early) { info.answered = true; input.up(1); input.click(1); }
+      if (!info.answered && answer === 'roll' && tta <= 0.1) { info.answered = true; input.axis = { x: -s.dz, y: -s.dx }; input.tap('Space'); }
+    }
+    if (p.state === 'lock') {
+      info.lock = true;
+      if (mash && ((game.realTime * 60) | 0) % mash === 0) input.click(0);
+    }
+    if (d.mode === 'react' && d.brain.react?.kind === 'reeling') info.reel += DT;
+    step?.(info);
+  }, () => info.started && game.time > 0 && !sh.lantern.on && quiet(d) && game.hitstopTimer <= 0 && !['roll', 'knockdown', 'lock'].includes(p.state));
+  G.watch = null;
+  input.axis = { x: 0, y: 0 };
+  input.up(1);
+  info.hits = G.hits.slice(h0).filter((h) => h.attack === 'skyLantern');
+  info.lost = info.hp0 - p.hp;
+  info.dealt = info.dhp0 - d.hp;
+  info.moved = Math.hypot(p.position.x - info.start.x, p.position.z - info.start.z);
+  info.d = Object.fromEntries(Object.entries(sh.stats).map(([k, v]) => [k, v - (s0[k] ?? 0)]));
+  return info;
+}
+
+async function scenarioLantern() {
+  out('\n== scenario LANTERN (Heaven\'s Lantern: the gather, the throw, every answer; THE PUSH won and lost) ==');
+  const LA = TUNING.shots.lantern, scale = TUNING.damageScale ?? 1;
+  const G = build();
+  duel(G, { dist: 9, form: 2 });
+  const { game } = G;
+  const d = game.dragon, sh = d.ki.shots;
+  // 1. stood in: he rises, the orb gathers (the ledger told from the start), one blue cue on the orb, it lands
+  let told = 0;
+  const st = lanternPlay(G, { step: () => { if (sh.lantern.phase === 'gather' && d.brain.ledger?.exp?.some((e) => e.alive && e.src === 'skyLantern')) told++; } });
+  const c0 = st.hits.find((h) => h.r !== RESULT.IGNORED), f0 = st.flashes.filter((f) => f.attack === 'skyLantern');
+  assert(st.started && st.top >= LA.lift - 0.2, `Heaven's Lantern: he rises ${st.top.toFixed(2)} m (${LA.lift})`);
+  assert(told > 30 || !d.brain.ledger?.exp, `the orb's blow is known to the ledger through the gather (${told} frames)`);
+  assert(f0.length === 1 && f0[0].tell === TELL.BLUE && c0 && Math.abs(c0.t - f0[0].t - TUNING.flashLead) < 0.09, `one blue cue on the orb, ${c0 ? ((c0.t - f0[0]?.t) * 1000).toFixed(0) : '-'} ms before it meets him (flashLead ${TUNING.flashLead * 1000})`);
+  assert(c0?.r === RESULT.HIT && Math.abs(c0.damage - LA.damage * scale) < 1e-6 && st.states.has('knockdown') && st.d.lanternHits === 1, `unanswered it lands: ${c0?.damage?.toFixed(1)} damage, knockdown`);
+  assert(st.flew > 20 && new Set(st.dirs).size === 1, `it never homes: one heading through ${st.flew} frames of flight`);
+  assert(st.heldAct >= st.flew - 1 && st.barred === 0 && st.skyOff && st.busyOut, `while it is out his move waits at its landing (${st.heldAct}/${st.flew} frames), nothing of his may start, the weather stands down, busy`);
+  // 2. a block: safe (guard only), it bursts on the guard
+  const bl = lanternPlay(G, { answer: 'block' });
+  assert(bl.hits[0]?.r === RESULT.BLOCKED && bl.lost === 0 && bl.d.lanternBlocked === 1 && !bl.lock, `a held guard: ${bl.hits[0]?.r}, ${bl.lost} HP lost; it bursts on the guard`);
+  // 3. a plain parry: safe, no push
+  const pp = lanternPlay(G, { answer: 'parry', early: 0.13 });
+  assert(pp.hits[0]?.r === RESULT.PARRIED && pp.lost === 0 && !pp.lock && pp.d.pushes === 0, `a plain parry: ${pp.hits[0]?.r}, ${pp.lost} HP lost, no push`);
+  // 4. a roll: it passes and bursts on the floor beyond
+  const rl = lanternPlay(G, { answer: 'roll' });
+  assert(!rl.hits.some((h) => h.r === RESULT.HIT) && rl.d.lanternPassed === 1 && rl.lost === 0, `a roll at the cue: it passes (${rl.hits.map((h) => h.r).join(' ') || 'no contact'}) and bursts beyond`);
+  // 5. THE PUSH won: a perfect parry, the hero mashes
+  const won = lanternPlay(G, { answer: 'perfect', mash: 4 });
+  assert(won.lock && won.d.pushes === 1 && won.d.pushWon === 1 && won.lost === 0, `a perfect parry: THE PUSH (a lock at range); mashing wins it (${won.d.pushWon} won, ${won.lost} HP lost)`);
+  assert(won.d.lanternReturns === 1 && won.dealt >= LA.returnDamage - 1 && (G.counts['dragon:returned'] ?? 0) >= 1, `won: it flies back into him: ${won.dealt.toFixed(0)} damage (${LA.returnDamage}), dragon:returned`);
+  assert(won.reel > LA.reel - 0.3 || d.broken || won.states.size === 0, `... and he reels ${won.reel.toFixed(2)} s (${LA.reel})`);
+  const won7 = lanternPlay(G, { answer: 'perfect', mash: 9 });
+  assert(won7.d.pushWon === 1, `a person's pace (a press every 9 frames) wins it too (${won7.d.pushWon} won)`);
+  // 6. THE PUSH lost: no mash
+  const lost = lanternPlay(G, { answer: 'perfect', mash: 0 });
+  const big = lost.hits.find((h) => h.r === RESULT.HIT && Math.abs(h.damage - LA.lose.damage * scale) < 1e-6);
+  assert(lost.lock && lost.d.pushLost === 1 && !!big && lost.states.has('knockdown') && lost.moved > LA.lose.knockback * 0.6, `not pushed, the push is lost: ${big?.damage?.toFixed(1)} damage, knockdown, thrown ${lost.moved.toFixed(1)} m`);
+  const L = TUNING.lock, K = LA.push, need = (o) => (1 - o.start + o.decay * o.dur) / o.push / o.dur;
+  out(`     the mash: the push needs ${need(K).toFixed(1)} presses a second to win outright in ${K.dur} s; the duel's lock (form 3) ${need({ ...L, decay: L.decay[2] }).toFixed(1)}`);
+  assert(need(K) <= need({ ...L, decay: L.decay[2] }) + 1e-6, 'the push is no harder to win than the duel\'s lock');
+  // 7. resets in the middle: the gather, the flight, the push
+  for (const [what, at] of [['gather', (L2, D2) => L2.phase === 'gather' && D2.brain.act?.t > 0.9], ['flight', (L2) => L2.phase === 'fly'], ['push', (L2) => L2.phase === 'push']]) {
+    const G2 = build();
+    duel(G2, { dist: 9, form: 2 });
+    const d2 = G2.game.dragon, sh2 = d2.ki.shots;
+    let hit = false;
+    lanternPlay(G2, { answer: what === 'push' ? 'perfect' : 'none', max: 6, step: () => { if (!hit && at(sh2.lantern, d2)) { hit = true; d2.reset(); } } });
+    run(G2, 0.5);
+    assert(hit && !sh2.lantern.on && !sh2.busy && !d2.fx.shots.some((s) => s.alive && s.lantern) && G2.game.player.state !== 'lock', `a reset in the ${what}: nothing of the orb is left (${hit ? 'reset' : 'never reached'})`);
+  }
+  assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
+}
+
+async function scenarioSuns() {
+  out('\n== scenario SUNS (Raining Suns: sixteen from the air, falling, each cued; the finisher; blocked, nothing lands) ==');
+  const BA = TUNING.shots.barrage;
+  // 1. stood in (god): he leaps, pours them down; each that reaches him cued itself; they fall to him
+  const G = shotStage(2, 9);
+  const d = G.game.dragon, p = G.game.player, sh = d.ki.shots;
+  p.debug.god = true;
+  const s0 = { ...sh.stats };
+  let flashes = 0, top = 0, yHigh = 0;
+  const near = [];
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'rainingSuns') flashes++; };
+  const r = shotCast(G, 'rainingSuns', { secs: 9, step: () => {
+    top = Math.max(top, d.position.y);
+    for (const s of d.fx.shots) {
+      if (!s.alive || s.kind !== 'blast' || s.attack !== 'rainingSuns' || s.returned) continue;
+      yHigh = Math.max(yHigh, s.y);
+      if (Math.hypot(s.x - p.position.x, s.z - p.position.z) < 1.2) near.push(s.y);
+    }
+  } });
+  G.watch = null;
+  const thrown = sh.stats.suns - s0.suns, skipped = sh.stats.sunsSkips - s0.sunsSkips, h = hitBy(r, 'rainingSuns');
+  assert(r.ok && top >= BA.lift - 0.2 && thrown + skipped === BA.count && thrown >= BA.count - 3, `Raining Suns: he leaps to ${top.toFixed(1)} m; ${thrown} thrown, ${skipped} held back by the fairness guard (of ${BA.count})`);
+  const onHim = Math.ceil(BA.count / Math.max(1, BA.direct ?? 1)) + 1;
+  assert(h.length >= onHim - 2 && h.length === flashes, `each blast that reaches him (every ${BA.direct ?? 1}th, and the finisher) cued itself: ${h.length} contacts, ${flashes} cues`);
+  const yn = near.length ? near.reduce((a, v) => a + v, 0) / near.length : 0;
+  assert(yHigh > BA.lift && near.length > 0 && yn > 0.6 && yn < 1.7, `they fall from his palms (${yHigh.toFixed(1)} m up) to the hero (${yn.toFixed(2)} m at him)`);
+  assert(r.secs < 7 && Math.abs(d.position.y) < 1e-6, `over in ${r.secs.toFixed(1)} s, and he is back on the floor`);
+  // 2. blocked through: nothing lands
+  const G2 = shotStage(2, 9);
+  const p2 = G2.game.player, hp0 = p2.hp;
+  const r2 = shotCast(G2, 'rainingSuns', { secs: 9, step: () => G2.input.press(1) });
+  G2.input.up(1);
+  const h2 = hitBy(r2, 'rainingSuns');
+  assert(h2.length >= 5 && !h2.some((x) => x.r === RESULT.HIT) && p2.hp === hp0, `a held guard takes them all (${h2.filter((x) => x.r === RESULT.BLOCKED).length} blocked, ${p2.hp === hp0 ? 'no' : hp0 - p2.hp} HP lost)`);
+  // 3. parried at each cue, the finisher perfectly: it flies back into him
+  const G3 = shotStage(2, 9);
+  G3.game.player.debug.god = true;
+  G3.defend = makeDefender(G3, { early: 0.05 });
+  const d3 = G3.game.dragon, ret0 = G3.counts['dragon:returned'] ?? 0, dh0 = d3.hp;
+  const r3 = shotCast(G3, 'rainingSuns', { secs: 9, step: () => G3.defend.act() });
+  const h3 = hitBy(r3, 'rainingSuns');
+  assert(!h3.some((x) => x.r === RESULT.HIT) && (G3.counts['dragon:returned'] ?? 0) > ret0 && d3.hp < dh0, `parried at each cue: none lands (${h3.filter((x) => x.r === RESULT.PARRIED).length} parried); the finisher perfectly parried flies back into him (${(dh0 - d3.hp).toFixed(0)} damage)`);
+  // 4. a reset in the middle of the pour: nothing left in the air, he is on the floor
+  const G4 = shotStage(2, 9);
+  const d4 = G4.game.dragon;
+  d4.debug.trigger('rainingSuns');
+  run(G4, 1.6);
+  const was = d4.ki.shots.rain.on;
+  d4.reset();
+  run(G4, 0.3);
+  assert(was && !d4.ki.shots.rain.on && !d4.ki.shots.busy && d4.position.y === 0, 'a reset in the middle of the pour: nothing of it left, he is on the floor');
+  assert(!G.payload.size && !G3.payload.size, 'no non-finite payloads');
 }
 //
 // --- beams
@@ -1793,6 +2002,175 @@ async function scenarioStrings() {
   run(G, 1.2, () => { const v = d.pilot.groundVel; top = Math.max(top, Math.hypot(v.x, v.z)); });
   d.debug.setAI(false);
   assert(top > TUNING.move.sprint * 1.4, `the dash at ${top.toFixed(1)} m/s (his sprint ${TUNING.move.sprint})`);
+}
+/**
+ * SIGN (the third wave): THE SIGN before a vanish: the hand at his brow and he still stands where he
+ * stood at u 0.45, gone at 0.55, the snap drawn at the hand, the blow from behind (Sign Step, Three
+ * Signs' sides, the retrofits on Vanishing Step, Storm Waltz, Mirage and riposte3).
+ */
+async function scenarioSign() {
+  out('\n== scenario SIGN (two fingers to the brow, gone at u 0.5, the snap, the blow from behind / the sides) ==');
+  const G = build();
+  duel(G, { dist: 4, form: 2 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  const prep = (form, dist) => {
+    settle(G, 4);
+    if (d.phase !== form) d.debug.setForm(form);
+    run(G, 0.3);
+    d.position.set(0, 0, -3);
+    d.yaw = 0;
+    place(G, dist);
+    run(G, 0.2);
+  };
+  const v = new THREE.Vector3(), w = new THREE.Vector3();
+  /** One move: each sign beat's samples (where he stood, the hand's height against his head), the
+   *  snaps, and where each blow of it met the hero from (rad off the hero's facing: 0 before him). */
+  const play = (name, form, dist = 4) => {
+    prep(form, dist);
+    const snaps = [], sg = d.fx.signSnap;
+    d.fx.signSnap = (...a) => { snaps.push(game.time); return sg?.apply(d.fx, a); };
+    const S = new Map();
+    const from = [];
+    const h0 = G.hits.length;
+    d.debug.trigger(name);
+    run(G, 7, () => {
+      const a = d.brain.act;
+      if (!a || a.name !== name) return;
+      for (const b of a.beats) {
+        if (!b.def.blink?.sign || a.t < b.start || a.t > b.impact) continue;
+        const u = (a.t - b.start) / (b.impact - b.start), s = S.get(b) ?? { x0: d.position.x, z0: d.position.z, at45: null, at55: null, brow: 9 };
+        S.set(b, s);
+        if (u > 0.3 && u < 0.48) {
+          // (the brow as drawn: the head joint's world position, up a head's half-height, a little forward)
+          const h = d.tellPoint('fistR', v), hd = w.set(0, 0.16, 0.09).applyMatrix4(d.rig.head.matrixWorld);
+          s.brow = Math.min(s.brow, Math.hypot(h.x - hd.x, h.y - hd.y, h.z - hd.z));
+        }
+        if (s.at45 === null && u >= 0.45) s.at45 = Math.hypot(d.position.x - s.x0, d.position.z - s.z0);
+        if (s.at55 === null && u >= 0.56) s.at55 = Math.hypot(d.position.x - s.x0, d.position.z - s.z0);
+      }
+    }, () => d.mode === 'foot' && game.time > 0.5);
+    d.fx.signSnap = sg;
+    for (const h of G.hits.slice(h0)) if (h.attack === name) from.push(h);
+    return { S: [...S.values()], snaps, hits: from };
+  };
+  // (the side a blow came from: the boss's bearing off the hero's facing at the moment of contact)
+  const bear = [];
+  G.watch = (n, e) => {
+    if (n !== 'player:hurt' && n !== 'player:block' && n !== 'player:parry') return;
+    const ang = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z) - p.yaw;
+    bear.push(Math.atan2(Math.sin(ang), Math.cos(ang)));
+  };
+  const fmt = (r) => r.S.map((s) => `${s.at45?.toFixed(2)}→${s.at55?.toFixed(2)} m, hand ${s.brow.toFixed(2)} m off his brow`).join(' · ');
+  // Sign Step: one sign, the hook from behind, then the knee and the palm
+  bear.length = 0;
+  const ss = play('signStep', 2);
+  const okS = (r, n) => r.S.length === n && r.snaps.length === n && r.S.every((s) => s.at45 !== null && s.at45 < 0.15 && s.at55 > 2.5 && s.brow < 0.18);
+  assert(okS(ss, 1) && ss.hits.length === 3, `Sign Step: still where he stood at u 0.45, gone at 0.55, the hand at his brow (${fmt(ss)}); ${ss.snaps.length} snap; ${ss.hits.length} blows land`);
+  assert(Math.abs(bear[0]) > 2.2, `... and the hook comes from BEHIND the hero (${bear[0]?.toFixed(2)} rad off his facing)`);
+  // Three Signs: three signs; the blows from his left, his right, behind
+  bear.length = 0;
+  const ts = play('threeSigns', 3);
+  assert(okS(ts, 3) && ts.hits.length >= 3, `Three Signs: three signs, each still at 0.45 and gone at 0.55 (${fmt(ts)}); ${ts.snaps.length} snaps; ${ts.hits.length} blows`);
+  assert(bear.length >= 3 && bear[0] > 0.7 && bear[0] < 2.4 && bear[1] < -0.7 && bear[1] > -2.4 && Math.abs(bear[2]) > 2.2, `... from the hero's left, his right, then behind (${bear.slice(0, 3).map((b) => b.toFixed(2)).join(' / ')} rad)`);
+  // the retrofits: the first beat of each signs; the later blinks do not
+  for (const [name, form, dist] of [['vanishStep', 2, 5], ['stormWaltz', 3, 5], ['mirage', 3, 5], ['riposte3', 3, 2.2]]) {
+    const r = play(name, form, dist);
+    const signs = MOVES[name].beats.filter((b) => b.blink?.sign).length;
+    assert(signs === 1 && MOVES[name].beats[0].blink?.sign && okS(r, 1), `${name}: its first beat out of THE SIGN (${fmt(r)}), ${r.snaps.length} snap, ${r.hits.length} blows`);
+  }
+  G.watch = null;
+}
+
+/**
+ * CATCH (the third wave): the counter stances with their real punish. A cut into the stance is caught
+ * (no damage, the hero's blade thrown back) and the punish's first beat starts within 0.1 s; no cut:
+ * the move ends at the stance's impact with no blow and his guard is down `open` s.
+ */
+async function scenarioCatch() {
+  out('\n== scenario CATCH (Still Water, Golden Mirror, Thunder Mirror: caught, the punish at once; or waited out, open) ==');
+  const G = build();
+  duel(G, { dist: 2, form: 1 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, br = d.brain;
+  const ST = TUNING.stance;
+  const stance = (name, form, cut) => {
+    settle(G, 4);
+    if (d.phase !== form) d.debug.setForm(form);
+    run(G, 0.3);
+    d.position.set(0, 0, -2);
+    d.yaw = 0;
+    place(G, 1.9);
+    run(G, 0.3);
+    p.debug.heal();
+    p.debug.god = true;
+    const hp0 = d.hp, h0 = G.hits.length, c0 = br.stats.caught, m0 = br.stats.stanceMiss, b0 = G.counts['player:bounced'] ?? 0;
+    let caughtT = null, punishT = null, guardDown = 0, glow = 0;
+    const sg = d.fx.stanceGlow;
+    d.fx.stanceGlow = (...a) => { glow++; return sg?.apply(d.fx, a); };
+    G.watch = (n, e) => {
+      if (n === 'dragon:guard' && e?.caught && caughtT === null) caughtT = game.time;
+      if (n === 'combat:tell' && e?.attack === name && caughtT !== null && punishT === null) punishT = game.time;
+    };
+    d.debug.trigger(name);
+    const t0 = game.time;
+    let cutAt = -1;
+    run(G, 6, () => {
+      const a = br.act, b = a?.name === name ? a.beats[0] : null;
+      if (cut && b && cutAt < 0 && a.t > b.start + ST.windup * 0.55 && a.t < b.impact) { input.click(0); cutAt = game.time; }
+      if (d.mode === 'foot' && game.time - t0 < 3.5 && br.raiseT > 0 && !br.guardUp()) guardDown += DT;
+    }, () => game.time - t0 > 2.8 && d.mode === 'foot' && quiet(d) && p.state !== 'bounce');
+    d.fx.stanceGlow = sg;
+    G.watch = null;
+    const hits = G.hits.slice(h0).filter((h) => h.attack === name);
+    return { caught: br.stats.caught - c0, miss: br.stats.stanceMiss - m0, dHp: hp0 - d.hp, bounced: (G.counts['player:bounced'] ?? 0) - b0, caughtT, punishT, hits, guardDown, glow };
+  };
+  for (const [name, form] of [['stillWater', 1], ['goldenMirror', 2], ['thunderMirror', 3]]) {
+    const c = stance(name, form, true);
+    const lag = c.punishT !== null && c.caughtT !== null ? c.punishT - c.caughtT : 9;
+    assert(c.caught === 1 && c.miss === 0 && c.dHp === 0 && c.bounced >= 1 && c.glow > 5, `${name} (form ${form}): a cut into the stance is CAUGHT (${c.caught}), no damage to him (${c.dHp}), the hero's blade thrown back (${c.bounced}), light drawn into his palms (${c.glow} frames)`);
+    assert(lag <= 0.1 && c.hits.length >= 1, `... the punish starts ${(lag * 1000).toFixed(0)} ms after the catch and reaches the hero (${c.hits.map((h) => `${h.tell}:${h.r}`).join(' ')})`);
+    const m = stance(name, form, false);
+    assert(m.caught === 0 && m.miss === 1 && m.hits.length === 0 && m.guardDown > ST.open * 0.7 && m.guardDown < ST.open + 0.6, `... waited out: the move ends at the stance with no blow (${m.hits.length}) and he is open, his guard down ${m.guardDown.toFixed(2)} s`);
+  }
+}
+
+/**
+ * RIPOSTES (the third wave): every counter of each form's list is drawn out of his deflect (the kit's
+ * counterMove on the AI's stream), and each lands as a counter; riposteBolt hops back first.
+ */
+async function scenarioRipostes() {
+  out('\n== scenario RIPOSTES (each form\'s counters all drawn; riposteBolt hops back, then the bolt) ==');
+  const G = build();
+  duel(G, { dist: 2.2, form: 1 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  for (let f = 1; f <= FORMS; f++) {
+    const seen = new Map();
+    for (let i = 0; i < 200; i++) { const n = d.kit.counterMove(f); seen.set(n, (seen.get(n) ?? 0) + 1); }
+    const L = COUNTER_LISTS[f - 1];
+    assert(L.length >= 2 && L.every((n) => (seen.get(n) ?? 0) > 40) && [...seen.keys()].every((n) => L.includes(n)), `form ${f}: every counter of its list is drawn (${[...seen].map(([n, k]) => `${n} ${k}`).join(', ')} of 200)`);
+  }
+  // riposteBolt: back ~1.5 m through the windup, then the bolt down the line
+  settle(G, 4);
+  d.debug.setForm(3);
+  run(G, 0.3);
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  place(G, 2.2);
+  run(G, 0.2);
+  const x0 = d.position.x, z0 = d.position.z, h0 = G.hits.length;
+  let back = 0, boltAt = 0;
+  d.debug.trigger('riposteBolt');
+  run(G, 3, () => {
+    const a = d.brain.act;
+    if (a?.name === 'riposteBolt' && a.t < a.beats[0].impact) back = Math.hypot(d.position.x - x0, d.position.z - z0);
+    if (a?.name === 'riposteBolt' && !boltAt && a.beats[0].struck) boltAt = Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z);
+  }, () => d.mode === 'foot' && game.time > 0.5);
+  const hits = G.hits.slice(h0).filter((h) => h.attack === 'riposteBolt');
+  assert(back > TUNING.sign.hop * 0.8 && hits.length === 1 && hits[0].tell === TELL.BLUE, `riposteBolt: back ${back.toFixed(2)} m before the bolt, thrown from ${boltAt.toFixed(1)} m; it lands (${hits.map((h) => `${h.tell}:${h.r}`).join(' ')})`);
 }
 //
 //
@@ -2466,6 +2844,8 @@ const S = {
   // --- shots
   shots: scenarioShots,
   weather: scenarioWeather,
+  lantern: scenarioLantern,
+  suns: scenarioSuns,
   //
   // --- beams
   beams: scenarioBeams,
@@ -2474,6 +2854,9 @@ const S = {
   // --- strings
   motion: scenarioMotion,
   strings: scenarioStrings,
+  sign: scenarioSign,
+  catch: scenarioCatch,
+  ripostes: scenarioRipostes,
   //
   //
   // --- terrain
