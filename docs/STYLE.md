@@ -1001,6 +1001,9 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
+| `?peak=` | the Lone Peak Hermitage's light (ADR-138; read when the level is built) | - | a cold dawn mist: low light from the east, pale fog from 15 m | dusk: warm light from the west, dark fog | - | **a** (the author's; the owner has not picked) |
+| `?hermitLook=` | Gu Shan's body (read when his rig is built) | - | the Straw Recluse: a straw rain cape, a patched robe, white hair and beard, a gourd, in the wyrm's art path; `a0` = a in ink lines | the Woodcutter: a vest, firewood on his back, a headscarf | the Ascetic: a one-shouldered robe, beads, unbound hair, eyes shut | **a** (the author's; the owner has not picked) |
+| `?hermitBlow=` | his line blows (The One Blow, Idle Finger, a turned palm) | - | steel strokes down the lane and a dust wall, a small cool heart at the fist | the same with a core of fire down the lane | - | **a** (the author's; the owner has not picked) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1021,6 +1024,9 @@ in `PICKED` beside them. The losing options stay behind their switches; the bare
 removed. Note the name: the Skybreak Ring's `?ring=` and the wyrm's older `?ring=` (its shock ring) read
 the same URL parameter; each level is its own page and only one of the two is ever drawn, so a value
 set for one level does nothing visible on the other.
+**The Lone Peak Hermitage's three** (ADR-138, `peak`, `hermitLook`, `hermitBlow`) are new things: their
+defaults are the authors' picks in `PICKED`, sent to the owner as rendered sheets; `peak` and `hermitLook`
+reload the page (the Lab's LOOKS section shows them in that level).
 
 ### The Skybreak Ring (2026-11-21, ADR-129; `world/skybreakRing.js`, `?level=ring`)
 An open-air tournament ring on the badlands, wrecked by the fight; an original place. The camera looks
@@ -1138,6 +1144,35 @@ grit, chips and sparks are one-cell glyph particles. Look code draws from its ow
   him), stones and sparks thrown out. The pillar's peak blooms white: keep it short.
 - **Cost** (headless; frame rates were not measured): the fire field's worst case, form 3's aura with
   the great beam, ten blasts and a strike, 2863 of 6000 blobs; his fights by the AI peak about 1525.
+
+### The Lone Peak Hermitage (2026-11-21, ADR-138; `world/lonePeak.js`, `lonePeakProps.js`, `?level=peak`)
+A ledge high on a mountain where an old hermit has struck the same stones for forty years; an original
+place. The camera looks down from the south, so the landmarks stand west and east of the ring.
+- **The training ground:** the ledge's rock split along old joints (a Voronoi tiling clipped to R 15),
+  carved glyphs in the duel arenas' calm paving look; it breaks (floor.js).
+- **The striking stones** (prop art): squared granite monoliths, each with a fist-deep DENT on the face
+  the camera sees (a pale bruise of crushed stone round a dark pit, cracks running out); 8 inside the
+  ring, 11 on its rim, a gap where the path comes up. They are cover, they topple, and the fight brings
+  them down (Both Hands fells the inner ones outward).
+- **Round it:** wind-bent pines (screen grid; bowed downwind, flat pads of needles; they burn and fall),
+  boulders, crags beyond the bound; THE SPLIT ROCK to the west (a boulder cut clean in two, the cut faces
+  flat and paler; it stays whole); the HERMIT'S HUT to the east (planks, a thatch roof, a dark door; it
+  breaks and burns); a flagstone path from the bonfire's shelf.
+- **The light** (`?peak=`): a cold dawn mist (a) or a dusk (b). Ambience: the default mist and leaves.
+
+### Gu Shan's figure and effects (2026-11-21, ADR-138; `hermit/gear.js`, `look.js`, `bodyArt.js`, `fx.js`)
+His body on the hero's skeleton, 1.1 x the hero, bare-handed (the right hand an open palm on the sword
+joint), the left hand at the small of his back until phase 3. Three outfits behind `?hermitLook=`, drawn
+through the wyrm's art path (`toDragonLook`): a the Straw Recluse (a three-tier straw rain cape open in
+front, a patched hemp robe, rolled sleeves, white hair in a topknot with a wooden pin, a long white beard,
+a gourd, wooden beads, bare feet), b the Woodcutter, c the Ascetic; `a0` is a in the ink-line path the
+other human bosses use. His force is AIR, DUST AND BROKEN STONE in the fire field, never a glow of qi:
+level steel strokes for pressure (the lanes of his line blows, the palm's push), smoke for the dust wall
+that rises after, a short heart of many small cool fire blobs only where the air burns at the fist
+(`?hermitBlow=b`: a core of fire down the lane); the ragged dust front for his slams (`DuelFx.shock`
+kind 'dust'), chips of stone; The One Blow's charge is the engine's black charge plus the air going
+still (dust and leaves drawn toward his fist, glyph particles). One Step leaves a pale afterimage; a
+Last Breath's slide leaves a trail of dust; Split Earth's fissure is a ragged crack at the floor.
 
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a

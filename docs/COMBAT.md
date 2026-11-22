@@ -1880,6 +1880,87 @@ Storm's held tiles are hard to see against the aura. A blast stopped by cover is
 arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
 east.
 
+## Gu Shan, the One-Blow Hermit (2026-11-21, ADR-138 – ADR-140; `?level=peak`)
+An old recluse on a ledge of struck stones. One hand (the left behind his back until phase 3), slow,
+and EVERY BLOW OF HIS KILLS: the whole fight is reading. Code: `src/entities/enemies/hermit/`
+(hermit.js, moves.js, tuning.js, poses.js, links.js, fx.js, gear.js, look.js); the set
+`src/world/lonePeak.js`; the suite `tests/integration/hermit.mjs`.
+
+### Every blow kills (ADR-139)
+Every blow's damage is the bar (160) and carries `hit.lethal` (`TUNING.lethal`, defaults `LETHAL` in
+`combat/rules.js`; resolved in `player._takeHit` before any damage):
+
+| The hero's answer | What happens |
+|---|---|
+| Nothing, or a mistimed roll, health at or above `whole` (0.5 of max) | LAST BREATH: health 1, thrown 10 m, knocked down, through what stands behind him (it breaks, and falls across his slide). `player:lastBreath`, call-out LAST BREATH. |
+| The same, health below `whole` | Dead. The death screen names the move. |
+| A held guard (white, blue, black) with at least half the guard meter | SHATTERED: stopped, NO health lost, the whole meter gone, knocked open 0.8 s, pushed 5 m. Half the meter is back ~1.2 s later: one block per blow. |
+| A held guard with less than half the meter | As no answer. |
+| A parry (white, blue) | Full negate, posture as any parry; a blue flare: the hero's counter, his string ends. A parried palm's force is turned past the hero at an angle. |
+| A guard or a parry against a RED blow | As no answer. |
+| A roll through it (i-frames) | Safe. |
+| A perfect dodge of a red or black blow | The flurry, as on any duelist. |
+| Behind a standing stone (The One Blow, Idle Finger, Split Earth) | The stone takes it (`world.wind` 3.0) and falls across the lane; the hero is untouched. The stones run out as the fight goes on. |
+| A cut that meets a white or blue blow at the last instant | The trade clash / the flash counter, as on any duelist. |
+
+Flasks: five of 70. Two carry the hero from 1 back over the line (1 → 71 → 141): three unanswered blows
+are forgiven, the fourth kills. He does not punish a drink: he starts nothing while the hero drinks, and
+every windup (1 s and more) is longer than a drink (0.85 s). HUD: LAST BREATH, BREATH RESTORED when a
+drink carries the hero back over the line, a dim notch on the health meter at the line (this level only).
+
+### Greed
+He never guards in a windup or a recovery (`guard.windupOpen` 0, `recoverOpen` 1, `evade` 0): a cut in
+his windup bites at `skin.windup` 0.5 (sparks off the gathered qi), in his recovery in full, broken x 2.
+Nothing the hero does cancels a windup but a posture break (the GUARD scenario: a crushing heavy in a
+windup lands and the blow still comes). In his footwork his bare palm turns cuts (the engine's guard:
+an open-hand ward, a two-finger catch for the deflect); after `counterChance` [0, 0, 0.5, 1] guarded cuts
+in a row he answers with Reproach. No flurry of his, no blade lock, no mikiri.
+
+### The moves (windups before the phase scale [1, 0.9, 0.82]; the flare 0.4 s before every impact)
+| Move | From | Tell | Windup + bait hold | Zone | Notes |
+|---|---|---|---|---|---|
+| Mountain-Moving Palm | P1 | blue flare | 1.35 + 0.1 - 0.5 | line 3.0 x 1.1, steps in 3 m | the parry moment; its force carries 9 m on |
+| Peak Falls | P1 | red | 1.5 + 0.15 - 0.6 | ring 3.6, 1.2 m ahead | a hammer fist into the floor: a crater; his longest opening |
+| The One Blow | P1 | black | 1.9 fixed + 0.1 - 0.6 | line 14 x 1.6 | the air goes still; cover stops it; cooldown 14 s; weighs more against a hero far off or behind cover |
+| Idle Finger | P1 | white | 1.25 + 0 - 0.3 | line 12 x 0.5 | only past 7 m (kiting is answered); cover stops it |
+| Reproach | counter | white | 1.0 fixed | sector 2.4 | out of his palm's ward only |
+| Two Peaks | P2 | red, then blue flare | 1.3 + 0 - 0.3; 1.1 | a low backfist round (sector 3.0, 2.6 rad); the palm | roll, then parry |
+| One Step | P2 | white | 1.25 after the step | sector 2.4 | from 6 - 18 m: he is gone and stands 2.2 m off, then winds up |
+| Split Earth | P2 | red | 1.25 + 0.1 - 0.4 | a fissure (13 m/s, 0.9 m); P3 a fan of three | it tears the floor; cover stops it |
+| Heaven and Earth | P3 | blue flare, white, red | 1.25; 1.15; 1.1 | the left palm; a hook; both fists down (ring 3.6) | parry, guard or parry, roll |
+| Closing Mountains | P3 | red | the step, then 1.25 + 0.1 - 0.4 | sector 3.4, 0.9 rad | both palms clapped shut |
+| The Mountain Answers | 66 % | red | 2.0 fixed | ring 6.5 | a stamp: the floor heaves, the inner stones crack |
+| Both Hands | 33 % | red | 2.0 fixed | ring 7 | the left hand comes out; a clap fells the inner stones outward and cracks the rim |
+
+### Measured (tests/integration/hermit.mjs)
+- **His bar:** 9600, one bar, phases at 66 % and 33 %. Posture [260, 300, 340], regen after 5 s at 10/s,
+  broken 4 s, crits x 2; the execution 300.
+- **WIN** (the god-mode mixed reader: parries blue and white, rolls red and black on the flare, cuts in his
+  recoveries and greedily in a far-off windup, executes): won in 103 / 108 / 115 s (seeds 4242 / 7 / 99),
+  phases 30 - 44 s each, about 20 parries, 4 - 5 perfect dodges, 7 - 8 posture breaks and executions.
+  Most of what ends him is the hero's answers: flurries ~40 %, executions and broken crits ~30 %, cuts
+  the rest (a cut in his windup bites at half).
+- **BOTS** (mortal readers over ten seeds; a share of his cues answered, the rest let through; they drink
+  under the line as soon as no blow of his is coming): 95 % wins 10 of 10, 85 % 5 of 10, 70 % 0 of 10 (a
+  70 % reader dies in phase 1 or 2). The plan's targets: 8+, 3 - 7, rarely.
+- **PACE** (a god-mode defender who answers every cue, 120 s a phase, ten seeds): 13.7 / 17.4 / 21.1 cues a
+  minute (min 12.7 / 16.0 / 18.3), the longest gap 4.9 / 4.2 / 4.8 s, 61 / 72 / 62 % of cues to dodge,
+  0 conflicts within 0.8 s, lethal impacts never closer than 1.0 s (the rule: 0.9). Tian Lei: 80 - 90.
+- **STRATEGY** (god mode, 240 s): the mixed reader wins in ~117 s; rolling everything (white blows too)
+  had him at 40 % after 180 s; holding the guard to every white blow shattered it 26 times and had him at
+  22 %. Parrying is the fast answer; a guard is the safe one.
+- **WRECKAGE:** after a whole fight 14 of the 19 striking stones are down (all 8 inner ones: Both Hands
+  fells them), about half the floor's plates touched.
+
+### ONE BLOW, his reward (ADR-140)
+Beating him grants ONE BLOW (`game/rewards.js`; it works in every level on that browser; `?rewards=all|none`,
+the Lab's PLAYER toggle). With it, a heavy hold kept past `PUNCH.at` 1.9 s turns into the punch: the blade
+lowers, the free fist draws back, a low gong; release: a planted straight punch with the free hand, 220
+damage, poise 120 (crushes any guard and staggers), posture 80, reach 1.6 m, no dash, recovery 0.9 s,
+`world.impact` 1.6 and a 6 m carry behind the target. It does not trade with blades and is not lethal.
+Released before 1.9 s it is the charged cleave; held, it goes by itself at 2.6 s. `player/combat.js`
+`PUNCH` (`on: false` switches it off).
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's

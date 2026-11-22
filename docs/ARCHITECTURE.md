@@ -688,6 +688,13 @@ takeHit({ damage, from:{x,z}, knockback=0, knockdown=false, kind='hit', burn=0,
                                        // clash (short hit-stop, a quarter of the push; player:parry {light})
                                        // plunge: false = a perfect dodge of this hit never becomes the plunge
                                        // (fire hazards); while the plunge runs every hit returns 'ignored'
+                                       // lethal: true | { whole, leave, throw, guardNeed, guardPush } (ADR-139, combat/
+                                       // rules.js LETHAL): landed with hp >= whole x max = LAST BREATH (hp = leave, thrown
+                                       // `throw` m, knocked down, the knockdown whole i-frames; player:lastBreath); below
+                                       // it dead; a held guard (white / blue / black) with guard >= guardNeed x max is
+                                       // SHATTERED ('blocked', no damage, the meter gone, _guardOpen(.., black, guardPush));
+                                       // less guard, or a guard / parry against red: as no answer
+lethalLast: { kind: 'breath' | 'death' | 'shatter' | 'god', t, attack } | null   // the last lethal blow's outcome
 getChestPos(out: Vector3, visual = false): Vector3   // upright gameplay body; visual = the drawn one (FX)
 unlean(v: Vector3): Vector3            // drawn (leaned, drawScale) world point → upright gameplay body
 drawScale: number                      // his drawn size, PLAYER_SCALE (1.08; ADR-064)
@@ -2890,7 +2897,7 @@ are heat in the fire field.
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, the Lone Peak Hermitage `peak`: ADR-138), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
@@ -3173,6 +3180,9 @@ data and a subclass with a few hooks.
     itself (Tian Lei's beams: a first contact, then ticks while lit). The brain cues, flashes, holds and
     ledgers the beat as any blow and calls `d.onImpact`, but gives no zone result and no `_worldBlow`; the
     beat is done at its end.
+  - `wind: true` (the One-Blow Hermit's line blows, ADR-138): `_coverFor` treats it as a bolt's line: the
+    first cover between him and the hero (with the hero in its zone) takes `T.world.wind` and falls ACROSS
+    the line (never onto the hero behind it); the beat does not hit him, and `_worldBlow` skips it.
   - `TUNING.airFall { g }`: a reaction, a break or the death that starts in the air drops him to the floor
     at `g` m/s² (`brain._ground()` sets `falling`; `_fall(dt)` each frame; a beat that flies takes over)
     instead of snapping the root to y = 0.
@@ -3649,6 +3659,58 @@ then to `d._hand`, `d.onShotBack?.(s)`; it cuts what it crosses (`destructibles.
 parry on the way out turns it home at once; at its turn it asks `brain.fairDelay(home, tell,
 T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
+
+### Gu Shan, the One-Blow Hermit — `src/entities/enemies/hermit/hermit.js` exports `class Hermit` (ADR-138, ADR-139)
+A `Duelist` with `HERMIT_KIT`; COMBAT.md → "Gu Shan, the One-Blow Hermit" has the fight. Bare-handed as
+Tian Lei (his "blade" is the striking hand: `_strikePart`, `_limbSeg(part)` for `fistR` / `fistL` /
+`palms` / `feet`, `tellPoint`, `_drawnPoints`, `_poseAt`), ONE bar (`TUNING.hp`, `phaseAt [1, 0.66,
+0.33]`), the left hand behind his back in phases 1 - 2 (poses.js `BEHIND`; `POSES.loco` pins it at a
+run). The kit: `{ id: 'hermit', TUNING, MOVES, MOVE_NAMES, CLIP, realise, transitions: { 2:
+'mountainAnswers', 3: 'bothHands' }, counterMove() → 'reproach', maxPhase: 3, loadout: HERMIT_LOADOUT,
+poses, blade: HAND, scale: TUNING.scale, dress: dressHermit }` (no `streakMove`: no flurry of his). The
+boss slot's surface, plus:
+```
+name = 'GU SHAN, THE ONE-BLOW HERMIT';  phase 1..3;  T.lethal (the rule his blows carry, ADR-139)
+takeHit(o)                       // a cut in his windup (not `exact`) bites at T.skin.windup (fx.skin sparks); nothing
+                                 // the hero does in a windup cancels it (the engine's hit stun leaves a windup alone)
+hitPlayer(o)                     // every blow: extra.lethal = T.lethal; after it, the hero's slide (a Last Breath, a
+                                 // shattered guard: player.lethalLast) sweeps the world (T.world.thrown), what he goes
+                                 // through falling ACROSS his slide; a palm's force carried on by his answer (_palmCarry:
+                                 // straight / deflected 0.6 rad after a parry / across after a landed blow)
+beatMotion(b, u, s)              // a beat's `step: { r }`: at u 0.02, once, he is gone and stands r m off the hero
+                                 // (standable, else round him), facing him; fx.afterimage
+onImpact(b, s, a)                // a beat's `carry`: 'palm' (fx.palmBurst; the carry waits for the hero's answer when
+                                 // he is in reach), 'lane' (fx.lane; destructibles.sweep T.world.lane down the whole
+                                 // lane, scars, world.ignite; it ends at a cover that took it), 'crater' (world.impact
+                                 // T.world.crater), 'stamp' / 'clap' (world.impact with falloff; T.world.inner / rim:
+                                 // the striking stones cracked or felled outward wherever they stand)
+onRelease(b, s, a)               // Split Earth: fissures (fx.throwCrescent, style 'fissure'; a fan of release.fan[phase])
+brainFrame(dt)                   // each fissure tears the floor (sweep, `down`); a cover ahead of it takes T.world.crescent
+                                 // and falls across its path; the fissure ends there
+weigh(name, def, w, dist)        // 0 while the hero drinks; The One Blow x 2 past 7 m, x 2.5 with cover between them
+afterPose(dt, a)                 // fx.limbTrail through a blow; fx.stillAir through The One Blow's charge; stun stars
+debug.setPhase(n)                // the Lab, the tests: straight into phase n (no transition), the bar at its gate
+```
+**His brain** (`HermitBrain extends DuelBrain`): reaction clips per phase (`CLIPS_BY_PHASE`), a blow out of
+a `step` reaches wherever the hero is (`_reach` Infinity), and while the hero drinks he only turns to
+watch him (no move, no closing in; the engine's footwork would punish the drink).
+**His effects** (`fx.js` `HermitFx extends DuelFx`): air, dust and broken stone in the fire field, on the
+looks' own stream: `limbTrail`, `lane` (`?hermitBlow=a` steel strokes and a dust wall, `b` a burning core),
+`palmBurst`, `crater`, `stamp`, `stillAir`, `afterimage`, `slide`, `skin`, and the fissure (`_drawCrescent`
+for style 'fissure').
+**The level** (`levels/lonepeak.js` `LONEPEAK`, id `peak`): the set `world/lonePeak.js` `createLonePeak`,
+layout `PEAK` (`r`, `bound`, `bonfire`, `entryZ`, `inner` (the eight inner striking stones), `rimR`, `rimN`,
+`wait`, `splitRock`, `hut`); its breakables: 'post' (a striking stone: cover, it topples; `inner` on the
+eight), 'pine', 'boulder', 'hut', the floor's plates (floor.js).
+**Rewards** (`src/game/rewards.js`, ADR-140): `REWARDS` (data: `{ id: { kind, label, level } }`),
+`has(id)`, `grant(id)` → true when new, `revoke(id)`, `set(id, on)` (the Lab), `list()` → `[{ id, kind, label,
+level, on, kept }]`, `forLevel(levelId)`, `line(id)` ("TECHNIQUE LEARNED: ONE BLOW"); kept in localStorage
+`abyss.rewards.v1` (guarded; in memory without it); `?rewards=all|none` for a page load (`readRewardUrl`,
+`resetRewards` for the tests). GameFlow's victory grants the level's reward (`reward:granted`) and puts
+its line under the banner. ONE BLOW: `player/combat.js` `PUNCH` (`on`, `reward`, `at` 1.9 s, damage, poise,
+posture, reach, recovery, the world blow), the clip `oneBlow` (swings.js); player.js turns a heavy hold
+into it past `PUNCH.at` (`_punchReady` / `_turnPunch`, `player:oneBlowReady`) and lands it as a zone hit
+(`_punchImpact` / `_punchHit`, `player:oneBlow`, `player:attack` / `player:hitDragon` kind 'punch').
 
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:

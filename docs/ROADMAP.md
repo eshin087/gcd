@@ -184,6 +184,24 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.56 — A fifth level: the Lone Peak Hermitage and Gu Shan, the One-Blow Hermit (2026-11-21, `claude/level-one-blow-hermit-69ab9e`, ADR-138 - ADR-140)
+- [x] Planned by a Fable session, built by an Opus session with three helper agents (the set, the body, the reward)
+- [x] The level (`?level=peak`), the ledge with its ring of striking stones, the Split Rock, the hut, two lights
+- [x] Gu Shan on the duelist engine: one hand, three phases on one bar, eleven moves and two transitions, his palm's ward and Reproach
+- [x] Every blow kills (ADR-139): the Last Breath, the shattered guard, the HUD's call-outs and the line's notch
+- [x] The engine's `wind` beat field: a line blow the cover takes; the arena as the fight's clock
+- [x] His body in three outfits and an ink-line twin; his effects (air, dust and stone in the fire field)
+- [x] `tests/integration/hermit.mjs` (16 scenarios) in `npm test`; Training's THE HERMIT; the Lab's rows and toggles
+- [x] Bots: the god-mode reader 103 - 115 s; readers at 95 / 85 / 70 % win 10 / 5 / 0 of 10
+- [x] ONE BLOW, the first fixed reward (ADR-140)
+- [ ] Follow-ups:
+  - [ ] The owner's picks from the sheets: the body (`?hermitLook=`), the light (`?peak=`), the line blows (`?hermitBlow=`)
+  - [ ] The owner plays it (the length, whether the lethal rule feels fair) and on a real phone
+  - [ ] The One Blow's windup: the engine's black charge covers his whole figure at the game camera
+  - [ ] The hut reads weakly at 720p; the dents read best up close
+  - [ ] The level's own score (it borrows three tracks)
+  - [ ] A real fist for the hero's ONE BLOW; the punch checked on the phone and against the wyrm
+
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters
@@ -733,6 +751,9 @@ Spec: `docs/specs/ash-disciple.md`.
       Ash Disciple's technique first (the next PR)
 - [ ] Fixed rewards per boss (techniques, weapons, abilities, elements); weapons of other lengths
       (the animator, the hit segment and the blade FX read `DIM`)
+  - [x] Started (ADR-140): a rewards registry (`game/rewards.js`, kept per browser, `?rewards=`), the
+        grant on a victory, and the first reward: the Hermit's ONE BLOW (a heavy hold past 1.9 s)
+  - [ ] The slots, the meter and the equip screen around it
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)
 - [ ] More duelists from the roster (The Moth, The Bell-Warden, The Calligrapher, The Iron Abbot)
 - [ ] Regular mobs (2–3 types) on the approaches, using the shared combat system and tell rules

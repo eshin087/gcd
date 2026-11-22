@@ -5,6 +5,58 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 72: a fifth level, the Lone Peak Hermitage and Gu Shan, the One-Blow Hermit
+
+**Owner** (to the session that planned it): new level bosses on the power fantasy of famous characters,
+as ORIGINALS, each planned in its own chat by Fable and built by Opus ("plan out #1, #2 in separate
+chats with fable and instruct opus 5.5 high to build it out"; "lets do #3. #5, #7, #10 in 4 separate
+chats"). This is the one-punch fantasy: every blow of his kills, every blow with a huge, slow, obvious
+tell. Branch `claude/level-one-blow-hermit-69ab9e`. ADR-138 - ADR-140 / Session 72 / M1.56. Five
+sibling builds (the Fox, the Heaven-Fallen, the Marshal, the Colossus, the Sheathed) ran at the same time.
+
+**How it was built.** The lead wrote the level and boss stubs, the lethal rule and the suite, then
+handed three independent pieces to helper agents in worktrees of their own (the set, the body's three
+outfits, the reward), merged them and tuned the fight with bots.
+
+**What changed.**
+- `src/levels/lonepeak.js` (`?level=peak`), `world/lonePeak.js` + `lonePeakProps.js` (the ledge, 19
+  striking stones with fist dents, bent pines, the Split Rock, the hut; `?peak=a|b`).
+- `src/entities/enemies/hermit/`: Gu Shan on the duelist engine. One hand (the left behind his back until
+  phase 3), one bar of 9600, phases at 66 / 33 %, eleven moves and two transitions, greed (no guard in a
+  windup or a recovery; a windup cut bites at half), the step, the fissure, the force carried past each
+  blow, the transitions that crack and fell the stones. Body: `?hermitLook=a|b|c|a0` (the wyrm's art
+  path; a0 in ink lines). Effects: air, dust and stone in the fire field (`?hermitBlow=a|b`).
+- `combat/rules.js` `LETHAL`, `player.js` `hit.lethal` (ADR-139): Last Breath, death, the shattered
+  guard; a Last Breath's knockdown is whole i-frames. HUD: LAST BREATH, BREATH RESTORED, a dim notch.
+- `duelist/brain.js`: the optional `wind` beat field (the cover takes a line blow and falls ACROSS it).
+- `game/rewards.js`, `player/combat.js` `PUNCH`, the `oneBlow` clip, the flow's grant (ADR-140).
+- Lab (the level, LOOKS rows, Last Breath, the reward toggle), Training (THE HERMIT, six situations;
+  his kind has no flurry or lock), music borrowed (`trackList.js` `peak`).
+
+**Found on the way.**
+- A cover that took a line blow toppled ONTO the hero behind it (the world's falling stone is a red blow
+  of its own): the cover now falls across the lane; the same for what a Last Breath slides through.
+- Three 85 % bot fights ended a second after their first miss: a stone falling on the knocked-down hero
+  at one health. A Last Breath's knockdown is now whole i-frames.
+- Idle Finger's band ran to 30 m on a 12 m line: past it he flicked at the air instead of closing.
+- The bots' fencer read only the flare: it started cuts into a blow 0.5 s off and could not roll out.
+  It now reads the windup, as a player does, and drinks first under the line.
+
+**Measured** (`tests/integration/hermit.mjs`; COMBAT.md has the tables): the god-mode reader wins in 103 -
+115 s; readers at 95 / 85 / 70 % win 10 / 5 / 0 of ten seeds; PACE over ten seeds 13.7 / 17.4 / 21.1 cues
+a minute, longest gap under 5 s, 0 conflicts, lethal impacts at least 1.0 s apart; WRECKAGE 14 of 19
+stones down after a fight. In the browser (headless Edge, the real GPU): a fight through all three
+phases to his death and one to the hero's (SLAIN BY MOUNTAIN-MOVING PALM), 0 console errors, 0 NaN; the
+Last Breath, two drinks and BREATH RESTORED at 852 x 393.
+
+**Not checked / open.** Nobody has played it; not on a real phone. The owner has not picked the body,
+the light or the line blows' look (sheets sent). The One Blow's windup: the engine's black charge
+covers his figure at the game camera. The hut is weak at 720p. The level borrows music. ONE BLOW uses
+the open hand (no fist mesh). `world budget` (a wall-clock check) failed while a dozen suites of the
+sibling builds ran; it passes on a quiet machine.
+
+---
+
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
 **Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also

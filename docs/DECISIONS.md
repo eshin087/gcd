@@ -4071,3 +4071,106 @@ Two separate things:
 longer constants (`hud.fit` reports them). The touch layer has two more pieces of saved state
 (`layout`, `holdAttack`, in `abyss.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
 and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
+
+## ADR-138 — A fifth level: the Lone Peak Hermitage and Gu Shan, the One-Blow Hermit: the slowest duelist, a fight of reading, an arena that is the clock (2026-11-21)
+- **Context:** the owner asked for new level bosses built on the power fantasy of famous characters, as
+  ORIGINALS, each planned in its own chat and built by Opus ("plan out #1, #2 in separate chats with
+  fable and instruct opus 5.5 high to build it out"; "lets do #3. #5, #7, #10 in 4 separate chats").
+  This is the one-punch fantasy: a boss every blow of whom kills, every blow with a huge, slow, obvious
+  tell, so the whole fight is reading. Planned by a Fable session, built by an Opus session with three
+  helper agents (the set, the body, the reward); five sibling builds ran at the same time.
+- **An original figure, in that spirit:** GU SHAN, THE ONE-BLOW HERMIT, an old recluse who has struck
+  the same stones for forty years, on the LONE PEAK HERMITAGE (`?level=peak`; aliases hermit, hermitage,
+  lonepeak, oneblow). He fights with ONE hand, the left held behind his back until phase 3. None of the
+  famous hero's look (no bald head, yellow suit, white cape or red gloves), no ki blasts or aura (Tian
+  Lei has those): his force is air, dust and broken stone.
+- **Decision, the frame:** one bar (9600 health), three phases at 66 % and 33 % (the Ash Disciple's structure:
+  ADR-060). P1 asks one blow at a time (four reads: Mountain-Moving Palm, blue flare: parry; Peak Falls,
+  red: roll; The One Blow, black: roll or cover; Idle Finger, white, only past 7 m); P2 (THE MOUNTAIN
+  ANSWERS, a 2 s stamp) two blows that ask two answers (Two Peaks: roll then parry), the ground itself
+  (Split Earth: a fissure in the crescent pool) and One Step (he is gone and stands 2.2 m off, THEN winds
+  up); P3 (BOTH HANDS, a 2 s clap) three-blow strings (Heaven and Earth: parry, guard, roll) and Closing
+  Mountains. His counter out of his palm's ward is Reproach. No flurry of his, no blade lock, no mikiri.
+- **Decision, the tells carry the fight:** the flare 0.4 s before every impact (a roll or a parry made on
+  it is always in time), a first windup of 1 s and more in every phase, impacts at least 0.9 s apart, a
+  bait hold at the cock that is never the same; the fairness guard with a separation of 0.7 s (+ 0.1).
+  He never guards in a windup or a recovery (greed: `guard.windupOpen` 0, `recoverOpen` 1, `evade` 0); a
+  cut in his windup bites at `skin.windup` 0.5, in his recovery in full. Nothing the hero does cancels a
+  windup but a posture break (a flurry's cuts after a perfect dodge and the flash counter end his string
+  as on any duelist: those are answers, not greed). He does not punish a drink: he starts nothing while
+  the hero drinks (`HermitBrain._foot`, `weigh`), and every windup is longer than a drink.
+- **Decision, the engine grew by one optional beat field:** `wind: true` (brain._coverFor, beside `bolt`
+  / `pull` / `grip`): the first cover between him and the hero takes `T.world.wind` and the beat does not
+  hit; the stone falls ACROSS the lane, never onto the hero behind it (the world's falling stone is a red
+  blow of its own, and a hero behind cover must not be punished for taking it). `_worldBlow` skips a
+  `wind` beat that cover took. No other boss's beat carries it (the suite checks). His own fields:
+  `step` (the blink before a windup), `carry` (what the force does past the zone), `part`.
+- **Decision, the arena is the clock:** a ring of striking stones (8 inside at 6 - 9 m, 11 on the rim):
+  cover against the line blows. A blow's force carries on past its zone (the palm 9 m; The One Blow the
+  whole lane at 3.0 with a scar down it; Peak Falls a crater); The Mountain Answers cracks the inner
+  stones, Both Hands fells them outward and cracks the rim, so the cover is gone in phase 3 and the ledge
+  ends as rubble (WRECKAGE: at least 60 % of the stones down after a whole fight). A hero thrown by a
+  Last Breath slides THROUGH what stands behind him; what he goes through falls across his slide.
+- **Decision, the pace:** the slowest duelist by design. PACE over ten seeds: 13.7 / 17.4 / 21.1 cues a
+  minute by phase (Tian Lei 80 - 90), the longest gap under 5 s, 0 conflicts, lethal impacts never
+  closer than 1.0 s.
+- **The length, from bots (tune `hp` and `skin`, never the windups):** the god-mode reader wins in 103 -
+  115 s (each phase 30 s and more); mortal readers over ten seeds: 95 % of his cues answered wins 10 of 10,
+  85 % 5 of 10, 70 % none. Most of the damage that ends him is the hero's answers (flurries after
+  perfect dodges, executions after posture breaks), as the plan meant: skill shortens the fight.
+- **Not picked yet (renders sent to the owner):** the body (`?hermitLook=a|b|c|a0`), the ledge's light
+  (`?peak=a|b`), the line blows' look (`?hermitBlow=a|b`); the authors' picks are the defaults.
+- **Not measured or not right:** nobody has played it; not checked on a phone. The level borrows other
+  levels' music until its score is auditioned.
+
+## ADR-139 — Every blow of his kills: the lethal rule, one second chance bought back with flasks, and a guard that never costs health (2026-11-21)
+- **Context:** "kills" had to mean something a player can live with: one hit dead from full health would
+  make the fight a single mistake long; the owner's standing rules are that defensive play is never
+  punished and a block never costs health.
+- **Decision:** a blow may carry `hit.lethal` (an optional field of `player.takeHit`; `true` or an object
+  over `combat/rules.js LETHAL`). `_takeHit` resolves it before any damage:
+  - unanswered (or a mistimed roll) with health at or above `whole` (0.5 of max): LAST BREATH: health
+    down to `leave` (1), thrown `throw` (10) m, knocked down; `player:lastBreath`. Below it: dead (the
+    death screen names the move, ADR-108).
+  - a held guard (white, blue, black) with at least `guardNeed` (0.5) of the meter: SHATTERED: the blow
+    is stopped, no health lost, the whole meter gone, knocked open 0.8 s, pushed `guardPush` (5) m: the
+    black blow's rule (ADR-118) for every blow of his. `player:block`, then `player:guardOpen {black}`.
+    The meter is back at half ~1.2 s later: one block per blow, never two blows of one string.
+  - a guard with less of the meter, or a guard or a parry against a RED blow: as no answer.
+  - a parry (white, blue), a roll through it, a perfect dodge, the trade clash: as on any blow.
+  So every blow has a clean answer its flare names; a held guard always saves the hero once; only a blow
+  nobody answered costs the second chance. Five flasks of 70: two carry him from 1 back over the line
+  (1 → 71 → 141), so three unanswered blows are forgiven and the fourth kills.
+- **God mode and Training behave as before:** in god mode nothing is lost and no Last Breath is
+  announced (`lethalLast.kind` 'god'); the hero is still thrown.
+- **A Last Breath is one health left, honestly:** its knockdown is whole i-frames (`isInvulnerable`), so a
+  stone the blow sent falling or the next blow of a string never takes it (found by the bots: three 85 %
+  fights ended a second after their first miss); what he slides through falls across his slide. A blow without `lethal` (every other
+  boss) is exactly as before (the suite checks one).
+- **HUD (small, dim, temporary):** the LAST BREATH call-out, BREATH RESTORED when a drink carries him back
+  over the line, and a dim notch on the health meter at the line, only when the boss's blows are lethal.
+
+## ADR-140 — Fixed rewards begin: a small registry, and ONE BLOW, the Hermit's charged punch (2026-11-21)
+- **Context:** ADR-059 promises fixed rewards (techniques, weapons, abilities) and M2 plans slots, a
+  meter and an equip screen; none of that is built, and five other bosses were planned at the same time.
+  The Hermit's plan asked for the smallest thing that is real.
+- **Decision, the registry:** `src/game/rewards.js`: `has(id)`, `grant(id)` (true when new), `revoke(id)`,
+  `set(id, on)`, `list()`, `forLevel(levelId)`, `line(id)`; the data is `REWARDS` (`oneBlow: { kind:
+  'TECHNIQUE', label: 'ONE BLOW', level: 'peak' }`). Kept in localStorage `abyss.rewards.v1` (every access
+  guarded; without storage it lives in memory); `?rewards=all|none` overrides for a page load; the Lab's
+  PLAYER section toggles each one. The flow grants a level's reward on its victory (`reward:granted {id,
+  first}`) and puts "TECHNIQUE LEARNED: ONE BLOW" under the victory banner.
+- **Decision, ONE BLOW:** no new button. With the reward, a heavy hold kept past `PUNCH.at` (1.9 s; the
+  charge is full at 1.2 s and releases itself at 2.6 s) TURNS into the punch: the blade lowers, the free
+  fist draws back, a low gong (`player:oneBlowReady`); on release a planted straight punch with the free
+  hand: 220 damage, poise 120 (it crushes any guard and staggers), posture 80, reach 1.6 m, no dash,
+  recovery 0.9 s; `world.impact` 1.6 and a 6 m carry behind the target (`player:oneBlow`). A zone hit
+  like the slam's shards, not the blade's sweep; it does not trade with blades. Not lethal to anything:
+  the name is his, the bargain is the same (slow, obvious, devastating). Data in `player/combat.js`
+  `PUNCH` (`on` switches it off), the clip `oneBlow` in `swings.js`. Without the reward the hold is the
+  charged cleave exactly as before.
+- **Measured:** the free hand's worst move in one frame 24 cm (14.6 m/s) through the punch; 8.5 cm at
+  the turn; the peak 20.7 m/s in the world. Rendered from all four sides (charge, turn, held coil,
+  release).
+- **Not right yet:** the hero has no fist mesh (the open hand, knuckles first, reads as one at 720p); the
+  free hand is hard to see in the held coil from behind; not checked on the phone or on the wyrm.

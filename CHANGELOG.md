@@ -4,7 +4,29 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty pieces of work since 0.4.0:
+Sixty-one pieces of work since 0.4.0:
+- **A fifth level: the Lone Peak Hermitage and Gu Shan, the One-Blow Hermit** (2026-11-21, ADR-138 - ADR-140).
+  *Added:* a fifth level, `?level=peak` (the title screen lists it). **The Lone Peak Hermitage**: a ledge
+  high on a mountain, a ring of striking stones each with a fist-deep dent, wind-bent pines, the hermit's
+  hut and a rock split clean in two. **Gu Shan, the One-Blow Hermit**: an old recluse who fights with one
+  hand, the other behind his back, slowly, and EVERY BLOW OF HIS KILLS. Each has a huge, slow, obvious
+  tell, so the fight is reading: the blue flare of his palm asks a parry, the red of his hammer fist a roll,
+  the black of The One Blow (the air goes still round his fist) a roll or a stone between you. A blow you
+  do not answer with half your health or more leaves you one health (LAST BREATH) and throws you through
+  whatever stands behind you; two flasks carry you back over the line (BREATH RESTORED, a dim notch marks
+  it on the health meter); below it the blow kills. A held guard with half its meter stops any blow but a
+  red one with no health lost: it shatters, and is back about a second later. He is greedy: no guard while
+  his blow is coming (your cuts bite at half) or in his recovery (in full), and he never punishes a drink.
+  At 66 % THE MOUNTAIN ANSWERS (two blows that ask two answers, a fissure along the floor, a step to you
+  out of nowhere); at 33 % BOTH HANDS (three-blow strings). The stones you hide behind break, the last of
+  them fall at Both Hands, and the ledge ends as rubble. *Added (the first fixed reward):* beating him
+  teaches ONE BLOW on that browser, in every level: hold heavy past the charge (1.9 s) and the sword
+  lowers, the free fist draws back; release for a planted punch that crushes any guard. *Changed (the
+  engine, for him):* a boss's line blow can be stopped by the cover in its way; a blow can carry the lethal
+  rule. The other bosses are unchanged. The level borrows music from the others for now. Kept behind
+  switches for the owner's pick: three bodies and an ink-line twin (`?hermitLook=a|b|c|a0`), the ledge at
+  dusk (`?peak=b`), a burning core for his line blows (`?hermitBlow=b`). Nobody has played it yet: his
+  health and the fight's length come from bots.
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now
