@@ -5,6 +5,7 @@ import { DEFENSE } from '../combat/rules.js';
 import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
+import { REWARD_NAMES } from '../entities/player/rewards.js';
 
 // Game flow: owns game.state and every transition
 //   title → explore → bossIntro → boss → dead | victory   (+ paused from explore/bossIntro/boss)
@@ -764,6 +765,15 @@ export class GameFlow {
     g.hud?.banner?.(this._text('victory'), 'victory');
     g.audio?.setMusic?.('victory');
     this._try(() => this.moves.commit('victory'), 'moves.commit');
+    // the level's reward (ADR-137; player/rewards.js): granted as the boss dies, named on the stats screen
+    this.rewardLine = null;
+    this._try(() => {
+      const id = g.level?.reward;
+      if (id && g.rewards?.grant) {
+        g.rewards.grant(id);
+        this.rewardLine = REWARD_NAMES[id] ?? id;
+      }
+    }, 'rewards.grant');
     g.events?.emit('game:victory', this.stats.snapshot());
     if (this.bossBarHideT < 0) this.bossBarHideT = 1.2;
     this._dragonFocus(this._ov.focus);
@@ -780,7 +790,8 @@ export class GameFlow {
     if (!this.statsShown && this.victoryT >= TUNE.statsDelay) {
       this.statsShown = true;
       const w = this.moves.worst(1)[0];
-      g.hud?.showStats?.(w ? [...this.stats.rows(), ['Struck most by', `${this.moveLabel(w.id)} (${w.hit})`]] : this.stats.rows());
+      const rows = w ? [...this.stats.rows(), ['Struck most by', `${this.moveLabel(w.id)} (${w.hit})`]] : this.stats.rows();
+      g.hud?.showStats?.(this.rewardLine ? [...rows, ['Reward', this.rewardLine]] : rows);
       g.hud?.prompt?.('[@interact] Fight again');
     }
     if (this.victoryT > 1 && !this.respawning && this._act('interact')) this._beginRespawn(true);

@@ -10,6 +10,7 @@ import { aimWithoutCursor } from './aim.js';
 // reading the same actions and every edge (tap / hold / release) is the real device's:
 //   stick → move (analog; pushed to the rim = @sprint)   ATTACK → @attack (tap light, hold the charged cleave)
 //   BLOCK → @block (hold block, tap parry)   DODGE → @dodge   FLASK → @flask   LOCK → @lockOn   || → @pause
+//   FIRE → @technique (only while a technique is owned: the fire lance, ADR-137)
 // ATTACK, BLOCK and DODGE are one cluster of three tiles that all touch (the pad, CONFIG.touch.pad):
 // a touch on or near it goes to the nearest tile, and a thumb that slides from one tile onto another
 // releases the first and presses the second without lifting. The player moves and sizes the cluster
@@ -43,6 +44,8 @@ const BUTTONS = [
   { id: 'dodge', code: '@dodge', glyph: '»', label: 'DODGE', tile: true },
   { id: 'guard', code: '@block', glyph: '[#]', label: 'GUARD', sub: 'tap: parry' }, // (PAD LAYOUT split: the left hand)
   { id: 'flask', code: '@flask', glyph: '◆', label: 'FLASK' },
+  // a won technique (the fire lance, ADR-137): shown only while one is owned, left of the flask button
+  { id: 'tech', code: '@technique', glyph: '~*', label: 'FIRE' },
   { id: 'lock', code: '@lockOn', glyph: '◎', label: 'LOCK' },
   { id: 'pause', code: '@pause', glyph: '||', label: '' },
 ];
@@ -127,7 +130,7 @@ export class TouchControls {
     this._h = -1;
     this._qualitySet = false;
     this._v = game.THREE ? new game.THREE.Vector3() : { x: 0, y: 0, z: 0, copy() { return this; }, set() { return this; } };
-    this._keys = { charge: -1, flask: -1, lock: null, guard: -1, low: null };
+    this._keys = { charge: -1, flask: -1, lock: null, guard: -1, low: null, tech: null };
     // the pad: which tile each finger holds, where the cluster is, the player's placement
     this.padHeld = new Map(); // pointerId → button record
     this.padGeo = null; // { k, cx, cy, reach, stick, tiles: { id: [u0, v0, u1, v1] } } (px, client)
@@ -448,6 +451,14 @@ export class TouchControls {
       fs.bottom = px2(py + f.y * k);
       fs.width = px2(f.w * k);
       fs.height = px2(f.h * k);
+      // the technique button: the flask's size, beside it (it covers nothing the controls did not)
+      const ts = this.btn?.tech?.el.style;
+      if (ts) {
+        ts.right = px2(px + (f.x + f.w + 4) * k);
+        ts.bottom = fs.bottom;
+        ts.width = fs.width;
+        ts.height = fs.height;
+      }
     }
   }
 
@@ -755,6 +766,17 @@ export class TouchControls {
       a.el.classList.toggle('charge', charging);
       a.el.classList.toggle('full', cells === CHARGE_CELLS);
       if (a.t) a.t.textContent = charging ? `[${'#'.repeat(cells)}${'.'.repeat(CHARGE_CELLS - cells)}]` : 'HEAVY';
+    }
+    // TECHNIQUE (the fire lance): only while it is owned; its whole charges, dim when none
+    const L = p.fireLance, T = B.tech;
+    if (T) {
+      const own = !!L?.owned, ch = own ? Math.floor(fin(L.charges)) : -1;
+      if (ch !== K.tech) {
+        K.tech = ch;
+        T.el.style.display = own ? '' : 'none';
+        if (T.t) T.t.textContent = own ? `FIRE ${ch}` : 'FIRE';
+        T.el.classList.toggle('dim', ch < 1);
+      }
     }
     // FLASK: count, dim when empty
     const inf = !!p.debug?.infiniteFlasks;

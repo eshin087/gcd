@@ -390,3 +390,20 @@ export class SwordSweep {
     return false;
   }
 }
+
+/**
+ * The fire-lance shot (ADR-137; player/fireLance.js): the Clockwork Marshal's reward, a technique on its
+ * own action (`technique`) until roadmap M2's technique slots exist. A bolt of fire from the free hand's
+ * sword fingers along the lock-on target or the facing: `windup` s, then it flies at `speed` m/s for
+ * `range` m (`radius` its reach round its line); `damage` and `posture` on the boss as a heavy blow of
+ * `poise` (a duelist's guard may turn it; on the Marshal it meets a plate like any heavy blow). `charges`
+ * at most; +1 for a perfect parry or a perfect dodge, +`parry` for a parry; full after a rest. Cover stops
+ * it; it lights wood; where it ends: world.impact of `power` (by the player).
+ */
+export const FIRE_LANCE = Object.freeze({
+  windup: 0.18, recovery: 0.4, speed: 34, range: 16, radius: 0.5,
+  damage: 60, posture: 14, poise: 30,
+  charges: 2, perfect: 1, parry: 0.34,
+  power: 0.8, fire: 1,
+});
+

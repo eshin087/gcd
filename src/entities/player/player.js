@@ -13,6 +13,7 @@ import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
+import { FireLance } from './fireLance.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -191,6 +192,8 @@ export class Player {
     this.stateT = 0;
     this.lockOn = false;
     this.critTimer = 0;
+    // the fire-lance shot (ADR-137): the Clockwork Marshal's reward, live once it is owned (player/rewards.js)
+    this.fireLance = new FireLance(this);
 
     this.time = 0;
     this.control = false;
@@ -631,6 +634,7 @@ export class Player {
     this.object3d.rotation.y = this.yaw;
     this.hp = this.maxHp;
     this.flasks = this.maxFlasks;
+    this.fireLance?.refill();
     this.state = 'idle';
     this.stateT = 0;
     this.onceMask = 0;
@@ -779,6 +783,7 @@ export class Player {
     this.critTimer = 0;
     this._clearBurn();
     this._setLock(false);
+    this.fireLance?.refill();
   }
 
   update(dt) {
@@ -789,6 +794,7 @@ export class Player {
     // skip input on the first controllable frame (the click that dismissed a menu)
     this._readInput(control && this.control, dt);
     this.control = control;
+    this.fireLance?.update(dt, control);
     if (this.buf.action && this.time - this.buf.t > TUNE.buffer) this.buf.action = null;
     if (this.chipGuard > 0) this.chipGuard -= dt;
     if (this.critTimer > 0) this.critTimer = Math.max(0, this.critTimer - dt);

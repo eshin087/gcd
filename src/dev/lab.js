@@ -13,7 +13,7 @@ import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
-import { buildMarshalSection } from './labMarshal.js';
+import { buildMarshalSection, buildRewardSection } from './labMarshal.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -722,6 +722,7 @@ export class Lab {
       this._buildLooks(root);
       this._buildFight(root);
       this.ui.marshalSync = buildMarshalSection(this, root);
+      buildRewardSection(this, root);
       this._buildAbilities(root);
       this._buildPlayer(root);
       this._buildWorld(root);

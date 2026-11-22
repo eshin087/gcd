@@ -25,8 +25,9 @@ import { mergeGeometries as mergeBuffers } from 'three/addons/utils/BufferGeomet
 // bronze dial bracers, one arm bandaged, a straight sabre, a forearm-long bronze hand-lance.
 // The look options (`?marshalLook=a|b|c`, read when the rig is built; A the default) differ only in the
 // head, shoulders, back and chest items and the inks (bodyArt.js). Everything is drawn through the
-// wyrm's art path (toDragonLook from the first item's build); the lance and the sabre stay on today's
-// material (thinner than an art cell).
+// wyrm's art path (toDragonLook from the first item's build): the lance too (its shaft the frame's iron, its
+// blade the worn bronze: at 1.75 x it is thicker than an art cell); the sabre's thin blade stays on today's
+// material.
 
 /** The lance (weapon space: origin = the grip centre, +Z the point). */
 export const LANCE = Object.freeze({ back: 0.85, guard: 1.7, tip: 2.3, r: 0.034, muzzle: [0, -0.075, 1.98] });
@@ -328,9 +329,9 @@ function buildWeapon(ctx) {
   const S = group(ctx, sword, 'suit');
   S.name = 'marshal:lance';
   const W = LANCE;
-  mesh(S, limbGeometry({ length: W.guard + W.back, r0: W.r * 1.2, r1: W.r, radial: 8, rings: 6 }).translate(0, 0, -W.back), M.trim);
+  mesh(S, limbGeometry({ length: W.guard + W.back, r0: W.r * 1.2, r1: W.r, radial: 8, rings: 6 }).translate(0, 0, -W.back), M.spike);
   // the blade: long, leaf-shaped, flat across ±Y
-  mesh(S, limbGeometry({ length: W.tip - W.guard, r0: 0.07, r1: 0.006, radial: 8, rings: 5, sy: 0.3, bulge: 0.02 }).translate(0, 0, W.guard), M.trim);
+  mesh(S, limbGeometry({ length: W.tip - W.guard, r0: 0.07, r1: 0.006, radial: 8, rings: 5, sy: 0.3, bulge: 0.02 }).translate(0, 0, W.guard), M.bevel);
   // the socket and the flared fire tube under the blade
   mesh(S, limbGeometry({ length: 0.12, r0: 0.05, r1: 0.045, radial: 8, rings: 2 }).translate(0, 0, W.guard - 0.1), M.armor);
   mesh(S, limbGeometry({ length: 0.42, r0: 0.032, r1: 0.05, radial: 8, rings: 3 }).translate(0, W.muzzle[1], W.muzzle[2] - 0.43), M.armor);

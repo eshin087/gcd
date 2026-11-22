@@ -22,6 +22,7 @@ import { GamepadControls } from './ui/gamepad.js';
 import { AudioEngine } from './audio/audio.js';
 import { GameFlow } from './game/flow.js';
 import { Lab } from './dev/lab.js';
+import { REWARDS } from './entities/player/rewards.js';
 
 // Boot + main loop. Builds the shared `game` context every module receives (see ARCHITECTURE.md).
 
@@ -120,6 +121,7 @@ async function boot() {
   game.fx.shed = new ShedDigits(game); // a struck or dissolving body sheds its letters (shedDigits.js)
 
   game.world = new World(game);
+  game.rewards = REWARDS; // what the hero has won (player/rewards.js, ADR-137)
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
   pipeline.setSeenThrough(game.player.object3d); // he prints through what covers him (ADR-106)

@@ -29,3 +29,28 @@ export function buildMarshalSection(lab, root) {
     if (info.textContent !== txt) info.textContent = txt;
   };
 }
+
+/** The Lab's REWARD rows (every level): the fire lance owned or not, and a shot now (ADR-137). */
+export function buildRewardSection(lab, root) {
+  const R = lab.game.rewards;
+  if (!R?.has) return null;
+  const { body } = lab._section(root, 'reward', 'REWARD');
+  const grid = el('div', 'lab-grid c2', null, body);
+  const own = button(grid, 'fire lance', () => {
+    if (R.has('fireLance')) R.revoke('fireLance');
+    else R.grant('fireLance');
+    sync();
+  });
+  own.title = 'the hero owns the fire-lance shot (the Marshal\'s reward; kept in localStorage; ?reward=fireLance forces it)';
+  button(grid, 'fire', () => {
+    const L = lab.game.player?.fireLance;
+    if (L && !R.has('fireLance')) R.grant('fireLance');
+    if (L) L.charges = Math.max(L.charges, 1);
+    const ok = L?.fire?.();
+    lab._status(ok ? 'fire lance: loosed' : 'fire lance: the hero is busy', ok ? 'ok' : '');
+    sync();
+  }).title = 'loose a fire-lance shot now (a charge is given if none is left)';
+  const sync = () => own.classList?.toggle?.('on', !!R.has('fireLance'));
+  sync();
+  return sync;
+}

@@ -21,6 +21,7 @@ export const ACTIONS = [
   { id: 'dodge', label: 'dodge', kb: ['Space'], pad: [0] },
   { id: 'sprint', label: 'sprint', kb: ['ShiftLeft', 'ShiftRight'], pad: [1, 10] },
   { id: 'flask', label: 'drink flask', kb: ['KeyF'], pad: [2] },
+  { id: 'technique', label: 'technique', kb: ['KeyQ'], pad: [14] }, // (a won technique: the fire lance, ADR-137)
   { id: 'lockOn', label: 'lock-on', kb: ['Tab'], pad: [11] },
   { id: 'interact', label: 'rest · fight again', kb: ['KeyE', 'KeyR'], pad: [3] },
   { id: 'help', label: 'help', kb: ['KeyH'], pad: [8] },

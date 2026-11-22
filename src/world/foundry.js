@@ -35,7 +35,7 @@ export const FOUNDRY = Object.freeze({
   sentinels: Object.freeze({ x: 4.6, z: [18.8, 20.9, 23.0, 25.1] }),
 });
 
-const IRON = [0.085, 0.085, 0.095];
+const IRON = [0.06, 0.06, 0.068];
 const BRONZE = [0.2, 0.15, 0.08];
 const VERDI = [0.12, 0.155, 0.12];
 const WOOD = [0.15, 0.1, 0.065];
@@ -45,9 +45,10 @@ const SOOT = [0.05, 0.048, 0.05];
 /** The yard's flagstones: soot-dark stone crossed by iron bands near each slab's edges. */
 const pavingCol = (px, py, pz) => {
   const s = (0.5 + 0.38 * fbm2(px * 1.5, pz * 1.5, 2)) * (0.72 + 0.28 * fbm2(px * 0.12 + 7, pz * 0.12, 2));
-  return mul(STONE, s * 0.9);
+  return mul(STONE, s * 0.62);
 };
-const PAVING_LOOK = { gain: 1.45, lumScale: 2.0, edge: 0.32, inkFloor: 0.035, topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'] };
+// (calmer than the courtyard's: the duel's figures must stand off the yard, as the Skybreak Ring learned)
+const PAVING_LOOK = { gain: 1.0, lumScale: 1.6, edge: 0.24, inkFloor: 0.02, topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'] };
 
 /** One flagstone of the yard: four jittered corners, an iron band laid across it (a second slab, low). */
 function yardSlab(rng, x, z, w, d, yaw) {

@@ -892,6 +892,108 @@ async function scenarioPace() {
   }
 }
 
+// ================================================================== scenario: flow
+async function scenarioFlow() {
+  out('\n== scenario FLOW (banners, lives, the victory and the reward) ==');
+  const { RewardStore } = await imp('src/entities/player/rewards.js');
+  const G = build();
+  const { game } = G;
+  game.rewards = new RewardStore(null, '');
+  const d = game.dragon;
+  const banners = [];
+  const banner = game.hud.banner.bind(game.hud);
+  game.hud.banner = (t, k) => { banners.push(t); return banner(t, k); };
+  let rows = null;
+  const show = game.hud.showStats?.bind(game.hud);
+  game.hud.showStats = (r) => { if (r) rows = r; return show?.(r); };
+  duel(G, { dist: 6, ai: true });
+  assert(d.lives.left === 2 && !game.rewards.has('fireLance'), 'two lives at the start; no reward yet');
+  for (const ph of [2, 3]) {
+    d.takeHit({ damage: 99999, exact: true, plate: false });
+    run(G, 6, null, () => d.phase === ph && d.mode === 'foot');
+  }
+  d.takeHit({ damage: 99999, exact: true, plate: false });
+  run(G, TUNING.posture.breakTime + 5, null, () => d.phase === 4 && d.mode === 'foot');
+  assert(d.lives.left === 1, `the pilot: one life left (${d.lives.left})`);
+  const T = LVL.text;
+  assert([T.phase2, T.phase3, T.phase4].every((t) => banners.includes(t)), `the phase banners: ${banners.filter((b) => [T.phase2, T.phase3, T.phase4].includes(b)).join(' / ')}`);
+  d.debug.kill();
+  run(G, 9, null, () => game.state === 'victory' && rows);
+  assert(game.state === 'victory' && banners.includes(T.victory) && d.lives.left === 0, `victory: "${T.victory}"`);
+  assert(game.rewards.has('fireLance') && rows?.some((r) => r[0] === 'Reward' && /FIRE LANCE/.test(r[1])), `the fire lance is granted and named on the stats screen (${JSON.stringify(rows?.find((r) => r[0] === 'Reward'))})`);
+}
+
+// ================================================================== scenario: reward
+async function scenarioReward() {
+  out('\n== scenario REWARD (the store, the charges, the shot: its hit and its world calls) ==');
+  const { RewardStore, REWARDS_KEY } = await imp('src/entities/player/rewards.js');
+  const { FIRE_LANCE } = await imp('src/entities/player/combat.js');
+  const { ACTIONS } = await imp('src/core/bindings.js');
+  // the store: kept in its storage, forced by ?reward=
+  const mem = new Map();
+  const st = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)) };
+  const A = new RewardStore(st, '');
+  assert(!A.has('fireLance') && A.grant('fireLance') === true && A.grant('fireLance') === false && A.has('fireLance'), 'grant: new once, then owned');
+  const B2 = new RewardStore(st, '');
+  assert(B2.has('fireLance') && JSON.parse(mem.get(REWARDS_KEY)).includes('fireLance'), `kept in ${REWARDS_KEY}`);
+  const C = new RewardStore(null, '?reward=fireLance,other');
+  assert(C.has('fireLance') && C.has('other') && !new RewardStore(null, '').has('fireLance'), '?reward= forces ids for the session; no storage, nothing kept');
+  assert(ACTIONS.some((a) => a.id === 'technique' && a.kb.includes('KeyQ') && a.pad.includes(14)), 'the `technique` action: Q, pad button 14');
+  // the shot
+  const G = build(SEED, true);
+  const { game } = G;
+  game.rewards = new RewardStore(null, '');
+  duel(G, { dist: 6, form: 1 });
+  const p = game.player, d = game.dragon, L = p.fireLance;
+  p.debug.god = true;
+  const ev = [];
+  G.watch = (n, e) => { if (n === 'player:technique') ev.push(e); };
+  assert(L && !L.fire(), 'not owned: Q does nothing');
+  game.rewards.grant('fireLance');
+  const calls = { impact: [], ignite: [] };
+  const wi = game.world.impact, wg = game.world.ignite;
+  game.world.impact = (...a) => { calls.impact.push(a); return wi(...a); };
+  game.world.ignite = (...a) => { calls.ignite.push(a); return wg(...a); };
+  // aimed at him (locked on), the suit's breastplate takes it as a heavy blow
+  place(G, 6);
+  p._setLock?.(true);
+  run(G, 0.2);
+  const hp0 = d.hp, b0 = d.plates.s.breast.hp;
+  G.input.tap('KeyQ');
+  run(G, 1.0);
+  assert(ev.length === 1 && L.charges === FIRE_LANCE.charges - 1 && L.stats.hits === 1, `Q looses it: ${L.stats.hits} hit, ${L.charges} charge left`);
+  assert(b0 - d.plates.s.breast.hp === FIRE_LANCE.damage * TUNING.plates.heavyK && hp0 - d.hp > 0 && hp0 - d.hp <= FIRE_LANCE.damage * TUNING.plates.soak * 1.3 + 1, `on the Marshal it meets a plate as a heavy blow (the breastplate ${b0} → ${d.plates.s.breast.hp}, the bar ${(hp0 - d.hp).toFixed(0)})`);
+  assert(calls.impact.some((a) => a[4]?.by === 'player' && Math.abs(a[3] - FIRE_LANCE.power) < 1e-6) && calls.ignite.length >= 1, 'its end: world.impact by the player, and fire');
+  // the charges: none left after two; a perfect parry gives one back, a plain parry a third; a rest fills them
+  G.input.tap('KeyQ');
+  run(G, 1.0);
+  const none = L.charges < 1 && !L.fire();
+  game.events.emit('player:parry', { perfect: true });
+  const one = L.charges;
+  game.events.emit('player:parry', { perfect: false });
+  p.restAtBonfire();
+  assert(none && Math.abs(one - 1) < 1e-6 && L.charges === FIRE_LANCE.charges, `charges: none after two shots, one back for a perfect parry, full after a rest`);
+  // cover stops it
+  {
+    const W = game.world.destructibles;
+    const rack = W.list.find((b) => b.kind === 'rack' && b.state === STATE.INTACT);
+    const l = Math.hypot(rack.x, rack.z);
+    d.debug.setAI(false);
+    d.position.set(rack.x - (rack.x / l) * 5, 0, rack.z - (rack.z / l) * 5);
+    p.debug.teleport(rack.x + (rack.x / l) * 2, rack.z + (rack.z / l) * 2);
+    p._setLock?.(false);
+    d.debug.setAI(false);
+    const s0 = L.stats.stopped, h0 = L.stats.hits;
+    const aim = () => { d.position.set(rack.x - (rack.x / l) * 5, 0, rack.z - (rack.z / l) * 5); p.yaw = Math.atan2(rack.x - p.position.x, rack.z - p.position.z); game.mouseGround.set(rack.x, 0, rack.z); };
+    aim();
+    run(G, 0.1, aim);
+    G.input.tap('KeyQ');
+    run(G, 1.0, aim);
+    if (L.stats.stopped === s0) out(`       (fired ${L.stats.fired}, bolt ${JSON.stringify(L.bolt)}, rack ${rack.x.toFixed(1)},${rack.z.toFixed(1)} state ${rack.state}, hero ${p.position.x.toFixed(1)},${p.position.z.toFixed(1)} ${p.state})`);
+    assert(L.stats.stopped === s0 + 1 && L.stats.hits === h0, `a rack between: the shot stops on it (${L.stats.stopped - s0} stopped, no hit)`);
+  }
+}
+
 const S = {
   level: scenarioLevel,
   data: scenarioData,
@@ -902,8 +1004,11 @@ const S = {
   world: scenarioWorld,
   win: scenarioWin,
   pace: scenarioPace,
-  trace: scenarioTrace,
+  flow: scenarioFlow,
+  reward: scenarioReward,
 };
+const OPT_IN = { trace: scenarioTrace }; // run only when named
+if (OPT_IN[SCEN]) S[SCEN] = OPT_IN[SCEN];
 const list = SCEN === 'all' ? Object.keys(S) : [SCEN];
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }

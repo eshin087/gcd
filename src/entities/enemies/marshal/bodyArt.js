@@ -12,7 +12,7 @@ import { ART_CLOTH, ART_METAL, ART_SKIN, ART_LIGHT, ART_KEEP } from '../ashDisci
 //   undershirt, trousers, belts and boots, the bandage, her face, the grey topknot, the bronze dial bracers)
 // The yard is open-air and lit by the furnace: the light's gain a little over the courtyard's.
 
-const DAY = 1.2;
+const DAY = 1.45;
 const cloth = (ink, o = {}) => ({ ...ART_CLOTH, light: [DAY, 0.78, 0.36, 0.02], ink, ...o });
 const plate = (ink, o = {}) => ({ ...ART_METAL, light: [DAY, 0.95, 1.35, 0.02], ink, ...o });
 const glow = (ink, emit) => ({ ...ART_LIGHT, ink, emit });

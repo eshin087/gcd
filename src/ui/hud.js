@@ -212,6 +212,10 @@ export class Hud {
     this.pipFull = el('span', 'full', '', this.pipsEl);
     this.pipEmpty = el('span', 'empty', '', this.pipsEl);
     fillKeyText(el('span', 'ab-nontouch', null, fl), ' [@flask]'); // (a phone has the FLASK button)
+    // a won technique's charges (the fire lance, ADR-137): two small pips, only while it is owned
+    this.techEl = el('span', 'ab-pips ab-tech', '', foot);
+    this.techEl.style.display = 'none';
+    this._tech = null;
     this.lockEl = el('span', 'ab-lock', '◎ LOCKED ON', foot);
 
     this._hp = null;
@@ -483,6 +487,13 @@ export class Hud {
         this._fl = flKey;
         this.pipFull.textContent = '◆'.repeat(f);
         this.pipEmpty.textContent = '◇'.repeat(maxF - f);
+      }
+
+      const L = p.fireLance, own = !!L?.owned, ch = own ? Math.floor(num(L.charges, 0)) : -1;
+      if (ch !== this._tech) {
+        this._tech = ch;
+        this.techEl.style.display = own ? '' : 'none';
+        this.techEl.textContent = own ? ` ${'*'.repeat(ch)}${'.'.repeat(Math.max(0, 2 - ch))}` : '';
       }
 
       const lock = !!p.lockOn;

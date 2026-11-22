@@ -258,7 +258,9 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
 }
 .tc-guard.low::after { background: linear-gradient(90deg, #ff9a5a, #ff9a5a) left / calc(var(--tc-gd, 1) * 100%) 100% no-repeat, rgba(255, 138, 61, 0.2); }
 .tc-guard.low { border-color: rgba(255, 138, 61, 0.55); }
-.tc-flask { box-sizing: border-box; }
+.tc-flask, .tc-tech { box-sizing: border-box; }
+.tc-tech .g { font-size: 14px; color: #ff9a5a; }
+.tc-tech .t { font-size: 7px; letter-spacing: 0.12em; padding-left: 0.12em; }
 /* top right, left of the small minimap (phones, either way up) */
 .tc-lock { right: 98px; top: 6px; width: 38px; height: 38px; }
 .tc-pause { right: 54px; top: 6px; width: 38px; height: 38px; }
