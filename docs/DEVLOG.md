@@ -5,11 +5,11 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-22 — Session 71: Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage
+## 2026-11-22 — Session 72: Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage
 
 **Owner:** "implement more iconic dbfz moves like spirit bomb, teleport attacks with the dragon ball
 teleportation animation, flurry of projectiles like vegeta, etc. i want more counter moves as well".
-Branch `enemies/ascendant-moves` (from main 9333ce7, after #73 and #75). ADR-131 / Session 71 / M1.56.
+Branch `enemies/ascendant-moves` (from main 9333ce7, after #73 and #75). ADR-135 / Session 72 / M1.56.
 As with the level (ADR-129): the FEEL of each, built as originals; nothing of the franchise's names or
 look.
 

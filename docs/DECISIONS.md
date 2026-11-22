@@ -3957,7 +3957,7 @@ ADR-092).
   form 1 from one side. Not checked: a real phone (frame rate, the touch block in the clash). The dodge
   share is 13 / 23 / 40 % against a target of 15 / 25 / 35.
 
-## ADR-131 — Tian Lei's third wave: the counter stance as an engine beat, the sign before a vanish, the great orb pushed back (2026-11-22)
+## ADR-135 — Tian Lei's third wave: the counter stance as an engine beat, the sign before a vanish, the great orb pushed back (2026-11-22)
 
 - **Context:** the owner asked for the fighting game's iconic moves on Tian Lei: "spirit bomb,
   teleport attacks with the dragon ball teleportation animation, flurry of projectiles like vegeta ...
