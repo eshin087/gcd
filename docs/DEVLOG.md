@@ -27,7 +27,7 @@ die, with a draw-slash as his fixed reward. Built from the planning session's pl
   `tests/integration/sheath.mjs` (LEVEL, RULES, DRAW, HONOR, SHEATH, WORLD, TIMING, PHASES, LATE, PACE,
   TRAINING, REWARD, WIN; STRATEGY opt-in).
 
-**Measured.** PACE 53 / 72 / 78 cues a minute by phase (seeds 4242 / 7 / 99, 60 s each), 0 conflicts;
+**Measured.** PACE 56 / 71 / 77 cues a minute by phase (the mean of five seeds, 60 s each; one seed's phase 3 under its phase 2), 0 conflicts;
 STRATEGY (god mode) mixed 32 - 39 s, parry 41 - 43 s, dodge 66 - 76 s, block-only 49 - 57 s and never killed
 by a draw; TIMING 0 ms worst.
 

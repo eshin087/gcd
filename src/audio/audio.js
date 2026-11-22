@@ -703,6 +703,8 @@ export class AudioEngine {
       } else if (st === 'click') this.play('sheathClick', this._atDragon({ loud: 0.45 }));
       else this._stillDuck(false);
     });
+    // the hero's One Breath (ADR-146): the stance draws a breath, the cut clicks
+    on('player:draw', (d) => this.play(d?.phase === 'cut' ? 'sheathClick' : 'sheathBreath', { loud: 0.7 }));
     on('player:flurryArt', (d) => this.play('flurryCoil', { dur: num(d.dur, 0.2) }));
     on('player:flurryEnd', (d) => {
       this._slowOpen();

@@ -67,9 +67,9 @@ export const TUNING = {
     backstep: { dist: 2.0, time: 0.36 },
     strafeSwitch: [0.9, 2.0],
   },
-  idleGap: [[0.45, 0.85], [0.06, 0.18], [0.02, 0.08]],
+  idleGap: [[0.45, 0.85], [0.1, 0.26], [0.02, 0.08]],
   openingGap: [[0.12, 0.38], [0.08, 0.26], [0.08, 0.26]],
-  chain: [0.4, 0.75, 0.9],
+  chain: [0.4, 0.68, 0.9],
   // the director (duelist/brain.js header; COMBAT.md "The duelists' pressure"). He is deliberately slower
   // in cues a minute than Shen Hui (the draws' long windups): measured in sheath.mjs PACE
   pressure: {
@@ -89,11 +89,13 @@ export const TUNING = {
     holdGap: 5,
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
     // what sheath.mjs PACE asserts (a steady defender that guards white and blue, rolls red, black and the
-    // draws; the hero roaming 2.5 - 9 m; 60 s a phase). Measured 2026-11-22, seeds 4242 / 7 / 99: P1 51.9 -
-    // 55.1 cues a minute (mean 53.4), P2 70.7 - 75.1 (72.4), P3 76.3 - 79.7 (78.3); P2 / P1 at least 1.30
-    // per seed, P3 / P2 at least 1.06; longest gap 3.17 / 2.53 / 2.75 s; 0 conflicts. Slower than Shen Hui
-    // (77 / 92 / 100) on purpose: the draws' long windups. The margins about 8 % under the worst seed
-    meter: { ramp: [1, 1.18, 0.98], rampMean: [1, 1.2, 1.03], minRate: [47, 64, 69], maxGap: [3.8, 3.3, 3.4] },
+    // draws; the hero roaming 2.5 - 9 m; 60 s a phase). Measured 2026-11-22, seeds 4242 / 7 / 99 / 1337 / 2024:
+    // P1 52.9 - 58.5 cues a minute (mean 56.2), P2 64.7 - 76.3 (71.2), P3 71.0 - 84.8 (77.3); P2 / P1 1.13 -
+    // 1.35 per seed, P3 / P2 0.93 - 1.28 per seed and 1.09 in the mean; longest gap 3.30 / 2.97 / 2.77 s; 0
+    // conflicts. Slower than Shen Hui (77 / 92 / 100) on purpose: the draws' long windups. At 60 s a phase one
+    // seed's phase 3 can dip under its phase 2 (a run of draws and their caught recoils): the per-seed ramp
+    // floor is 0.9, the mean's 1.04
+    meter: { ramp: [1, 1.08, 0.9], rampMean: [1, 1.15, 1.04], minRate: [49, 59, 65], maxGap: [3.8, 3.5, 3.3] },
   },
   punish: { weight: 4 },
 

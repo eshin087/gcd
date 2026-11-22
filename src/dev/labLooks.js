@@ -9,7 +9,7 @@ import { el, button, setClass } from './labDom.js';
 // thing keeps its pick). The option each switch ships with is marked `*`.
 //
 // [name, options, the call site's default (`def`: '0' = a redraw), pick (what ?looks=new showed),
-//  build-time, levels, what it is]
+//  build-time, levels, what it is, 'awaiting' (no pick yet: the default draws; duel.mjs knows)]
 export const LOOK_SWITCHES = Object.freeze([
   ['kindle', ['a', 'b', 'c'], 'a', 'a', false, ['ash'], 'the Kindling (phase 2)'],
   ['ashp3', ['a', 'b', 'c'], 'a', 'a', false, ['ash'], 'the third phase\'s change'],
@@ -41,9 +41,9 @@ export const LOOK_SWITCHES = Object.freeze([
   //
   //
   // --- grove: the Windless Grove and the Sheathed (ADR-145; no pick yet: the recommended options draw)
-  ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
-  ['sheathLook', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve (a reload)'],
-  ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
+  ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)', 'awaiting'],
+  ['sheathLook', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve (a reload)', 'awaiting'],
+  ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage', 'awaiting'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);

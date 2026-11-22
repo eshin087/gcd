@@ -305,7 +305,7 @@ async function scenarioLevel() {
   const G = build();
   const d = G.game.dragon;
   assert(d instanceof Sheathed && d.kind === 'duelist' && d.name === TUNING.name && d.kit.id === 'sheathed', `the boss is his own duelist: ${d.name}`);
-  assert(d.mode === 'sleep' && d.brain.clip === d.brain.C.meditate && d.sheath === 'carry' && Math.abs(d.yaw - GROVE.wait.yaw) < 1e-6, 'he waits kneeling (meditate) facing the grave, the sword sheathed');
+  assert(d.mode === 'sleep' && d.brain.clip === d.brain.C.meditate && d.sheath === 'carry' && Math.cos(d.yaw - GROVE.wait.yaw) > 0.999, 'he waits kneeling (meditate) facing the grave, the sword sheathed');
   const B = SET.set.breakables, kinds = (k) => B.filter((b) => b.kind === k);
   assert(kinds('bamboo').length >= 200 && kinds('bamboo').length <= 400 && kinds('bamboo').every((b) => b.light && b.look === 'range'), `the bamboo: ${kinds('bamboo').length} light range pieces (<= 400)`);
   assert(kinds('graveSword').length >= 30 && kinds('graveSword').every((b) => b.light), `the Sword Grave: ${kinds('graveSword').length} light planted swords`);

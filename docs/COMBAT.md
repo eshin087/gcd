@@ -1950,8 +1950,9 @@ click, the sword passed back to the right hand). The grove falls on that click, 
 | The Held Breath | to 3 | R | 1.6 | 10 | ring 6.5, knockdown; on its click every stalk within 9 m falls |
 
 **Measured** (sheath.mjs, 2026-11-22). PACE (a steady defender that guards white and blue blows and rolls
-red, black and the draws; 60 s a phase, seeds 4242 / 7 / 99): 51.9 - 55.1 / 70.7 - 75.1 / 76.3 - 79.7 cues a
-minute (means 53.4 / 72.4 / 78.3), longest gap 3.17 / 2.53 / 2.75 s, 0 conflicting cues. Slower than Shen Hui
+red, black and the draws; 60 s a phase, seeds 4242 / 7 / 99 / 1337 / 2024): 52.9 - 58.5 / 64.7 - 76.3 / 71.0 -
+84.8 cues a minute (means 56.2 / 71.2 / 77.3), longest gap 3.30 / 2.97 / 2.77 s, 0 conflicting cues; one seed's
+phase 3 dipped under its phase 2 (0.93), the mean's ramp is 1.09. Slower than Shen Hui
 (77 / 92 / 100) on purpose. STRATEGY (god mode, seeds 4242 / 7): mixed 39 / 32 s, parry 41 / 43 s, dodge 76 /
 66 s, block-only 49 / 57 s; the block-only bot is never killed by a draw, mortal too. TIMING: every contact
 within 0 ms of its flash + 0.3 s. Not measured: a human on the phone; the draw's read at the phone's camera
