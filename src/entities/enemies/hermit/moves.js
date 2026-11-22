@@ -257,11 +257,11 @@ export const MOVES = {
     beats: [blow('peak', R, 1.5, { kind: 'ring', r: 3.6, fwd: 1.2 }, { hold: [0.15, 0.6], close: 2.4, carry: 'crater', track: 0.7, cock: 0.74 })],
   },
   oneBlow: {
-    label: 'The One Blow', phase: 1, weight: W(1.0, 1.0, 1.0), cooldown: 14, band: [0, 16], recovery: 1.5,
+    label: 'The One Blow', phase: 1, weight: W(1.0, 1.0, 1.0), cooldown: 14, band: [0, 14.2], recovery: 1.5,
     beats: [blow('one', K, 1.9, { kind: 'line', r: 14, w: 1.6 }, { fixed: true, hold: [0.1, 0.6], close: 0, cock: 0.88, track: 0.85, wind: true, carry: 'lane', active: 0.12 })],
   },
   idleFinger: {
-    label: 'Idle Finger', phase: 1, weight: W(1.2, 1.2, 1.0), cooldown: 3, band: [7, 30], recovery: 0.7,
+    label: 'Idle Finger', phase: 1, weight: W(1.2, 1.2, 1.0), cooldown: 3, band: [7, 12.2], recovery: 0.7,
     beats: [blow('finger', N, 1.25, { kind: 'line', r: 12, w: 0.5 }, { hold: [0, 0.3], close: 0, wind: true, track: 0.85, active: 0.06, cock: 0.7 })],
   },
   // his counter out of the palm's ward (counterChance guarded cuts): never picked on its own

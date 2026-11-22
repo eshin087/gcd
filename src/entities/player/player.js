@@ -533,7 +533,7 @@ export class Player {
     // thrown `throw` m, knocked down (LAST BREATH); below it the blow is the rest of his life
     if (lethal) {
       const breath = fin(this.hp) >= this.maxHp * lethal.whole;
-      dmg = breath ? Math.max(0, fin(this.hp) - lethal.leave) : fin(this.hp) + 1;
+      dmg = breath ? Math.max(0, fin(this.hp) - lethal.leave) : Math.max(dmg, fin(this.hp) + 1);
       kb = Math.max(kb, breath ? lethal.throw : kb);
       knockdown = true;
       this.lethalLast = { kind: this.debug.god ? 'god' : breath ? 'breath' : 'death', t: this.time, attack };
