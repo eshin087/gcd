@@ -645,11 +645,14 @@ export class AudioEngine {
     on('player:attack', (d) => {
       // releasing the charged cleave (or any swing) ends the charge hum; the slam, the cleave and the
       // execution's thrust swing heavy, the thrust as a long rising hiss
-      const heavy = d.kind === 'thrust' || d.kind === 'cleave' || d.kind === 'slam' || d.kind === 'heavy';
+      const heavy = d.kind === 'thrust' || d.kind === 'cleave' || d.kind === 'slam' || d.kind === 'heavy' || d.kind === 'punch';
       if (this.charge?.active) this.charge.stop(heavy ? 0.05 : 0.08);
       this.play('swing', { heavy, combo: d.combo, thrust: d.kind === 'thrust' });
     });
     on('player:slam', (d) => this.play('slam', { x: d.x, z: d.z }));
+    // ONE BLOW (ADR-140): the turn is one low sound; its impact lands as the slam
+    on('player:oneBlowReady', () => this.play('gong'));
+    on('player:oneBlow', (d) => this.play('slam', { x: d.x, z: d.z }));
     on('player:charge', (d) => this.charge?.start(d));
     on('player:hitDragon', (d) => {
       // the plunge's own impact plays on player:plungeHit; a guarded strike's clash plays on

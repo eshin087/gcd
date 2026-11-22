@@ -13,6 +13,7 @@ import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
+import * as rewards from '../game/rewards.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -960,6 +961,16 @@ export class Lab {
         if (p?.alive) p.hp = this.game.dragon.T.lethal.leave ?? 1;
         this._status('the hero at one health (a Last Breath)', 'ok');
       }).title = 'the hero at 1 health: the next unanswered blow kills';
+    }
+    // the fixed rewards (game/rewards.js, ADR-140): learned or not on this browser (ONE BLOW: a heavy held past 1.9 s)
+    for (const R of rewards.list()) {
+      const b = button(grid, R.label, () => {
+        rewards.set(R.id, !rewards.has(R.id));
+        b.classList?.toggle?.('on', rewards.has(R.id));
+        this._status(`${R.label}: ${rewards.has(R.id) ? 'learned' : 'not learned'}`, 'ok');
+      });
+      b.title = `${R.kind} ${R.label}: learned on this browser or not (?rewards=all|none)`;
+      b.classList?.toggle?.('on', rewards.has(R.id));
     }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'tp', row);

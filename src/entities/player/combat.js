@@ -245,6 +245,40 @@ export const CHARGE = {
 };
 
 /**
+ * ONE BLOW (ADR-140): the technique Gu Shan, the One-Blow Hermit, leaves the hero who beats him
+ * (game/rewards.js `oneBlow`, kept on this browser). No new button: with it learned, a HEAVY hold kept
+ * past `at` s (the charge is full at CHARGE.full and lets go by itself at CHARGE.maxHold) TURNS: the
+ * blade lowers to his right side, the free hand leaves the grip and draws back to the left hip
+ * (player.js _turnPunch: the swing below, waiting at its coil while the button is held; the windup IS
+ * the turn), and on release (or at CHARGE.maxHold) a planted straight punch with the FREE hand
+ * (swings.js `oneBlow`). Without the reward, or with `on` false, the hold is the cleave as before.
+ *
+ * The blow is a ZONE, like the slam's shards, not the blade's sweep: at `hitAt` of the active frames
+ * a capsule from the chest out to `reach` m ahead (`zone`: radius, the band `up` / `down` round `y`)
+ * meets the boss's hurt spheres once (player.js _punchImpact). On a duelist it goes through takeHit as
+ * a heavy blow with `poise` (over any guard's crushPoise: it crushes the guard and he staggers) and
+ * exactly `posture`; on the wyrm a heavy hit. Not lethal to anything (no `exact`, no kill rule).
+ * The world takes it whether it lands or not (ADR-107): `world.impact` of `world.power` over
+ * `world.radius` at the contact (or at the reach's end), and the force goes on `world.carry` m behind
+ * it along the line (destructibles.sweep, `carryRadius`, `carryPower`), with gusts and dust.
+ */
+export const PUNCH = {
+  on: true, // false: the turn never comes (the registry and the grant stay)
+  reward: 'oneBlow', // game/rewards.js id
+  at: 1.9, // s of the heavy hold at which the charge turns into the punch
+  name: 'oneBlow', label: 'One Blow', kind: 'punch', button: 'heavy', combo: 1, heavy: true,
+  damage: 220, poise: 120, posture: 80,
+  // windup = the turn (the cross-fade from the charge into the coil), then held there; active: the
+  // fist's drive from the hip; recovery: he holds the planted finish, then comes home
+  windup: 0.4, active: 0.18, recovery: 0.9, chain: 1, lunge: 0.3, reach: 1.6,
+  hitAt: 0.6, // fraction of the active frames at which the zone is tested (the fist at full drive)
+  zone: { reach: 1.6, from: 0.25, radius: 0.45, y: 1.25, up: 2.0, down: 1.0 },
+  world: { power: 1.6, radius: 1.4, carry: 6, carryRadius: 0.9, carryPower: 1.2 },
+  hitstop: 0.18, shake: 0.6, punch: 1.8, kick: 0.24, bite: 0, // (bite 0: the fist, not the blade, struck)
+  anim: { kind: 'clip', clip: 'oneBlow' },
+};
+
+/**
  * Reach against giant targets. The wyrm's chest hangs 2–4 m above the grass, above any sword
  * swung at a 1.75 m hero's chest height, so the blade hits through a vertical BAND: a hurt sphere
  * counts when it overlaps the blade's swept wall extended `up` m above its highest point and

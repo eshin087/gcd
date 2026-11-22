@@ -3643,7 +3643,11 @@ Player → hud/audio/fx/flow:
   short stagger; ADR-095; HUD "GUARD DOWN", audio the guard break's crack, the pad rumbles; a lethal blow on a held guard
   with enough of the meter shatters it the same way, black true, ADR-139),
   `player:lastBreath {attack, hp, max, line}` (a lethal blow landed with health at or above the line, ADR-139: health
-  is down to `hp`, he is thrown and knocked down; HUD "LAST BREATH"; `line` = the health he must drink back over),
+  is down to hp, he is thrown and knocked down, the knockdown whole i-frames; HUD "LAST BREATH"; line = the health he
+  must drink back over),
+  `player:oneBlowReady {x, z}` (ADR-140: a heavy hold with the reward kept past PUNCH.at turns into ONE BLOW: the blade
+  lowers, the free fist draws back; audio a low gong), `player:oneBlow {x, z, hit}` (its impact, landed or not; audio
+  the slam), `reward:granted {id, first}` (flow: a victory granted a reward, game/rewards.js; first = new on this browser),
   `player:dodge {kind}` (an attack passed through i-frames), `player:perfectDodge {attack, tell, streak}` (every perfect dodge:
   flurry, plunge, in place or Ghostep; not on an execution; streak = perfect dodges in a row, this one included),
   `player:ghostep {x, z}` (with every perfect dodge; for the plunge x/z = the hang point above the head, for a flurry where he dodged),
