@@ -802,6 +802,9 @@ export class AudioEngine {
     });
     // his guard: a dry clack when he holds the strike, a harsh falling clang when he beats it away
     on('dragon:guard', (d) => this.play(d?.deflect ? 'deflected' : 'guard', { heavy: !!d?.heavy }));
+    // the Clockwork Marshal's suit loses a plate: bronze on stone (ADR-135); the hero's fire-lance shot (ADR-137)
+    on('dragon:plate', () => this.play('guard', { heavy: true }));
+    on('player:technique', () => this.play('fireball', {}));
     on('dragon:step', (d) => this.play('dragonStep', d));
     on('dragon:wingFlap', (d) => this.play('wingFlap', this._atDragon({ strength: d.strength })));
     on('dragon:takeoff', () => beast() && this.play('takeoff', this._atDragon()));

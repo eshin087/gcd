@@ -8442,14 +8442,14 @@ async function scenarioRemap() {
   const b = new Bindings(storage);
   assert(b.isDefault() && b.codes('dodge').join() === 'Space' && b.buttons('attack').join() === '5' && b.buttons('heavy').join() === '7', 'defaults: Space dodges, RB light, RT heavy');
   assert(b.codes('attack').join() === 'Mouse0' && b.codes('heavy').join() === 'Mouse2' && b.codes('block').join() === 'Mouse1' && b.codes('lockOn').join() === 'Tab', 'defaults (ADR-115): LMB light, RMB heavy, MMB block, Tab lock-on');
-  assert(b.bindKey('dodge', 'KeyQ') && b.codes('dodge').join() === 'KeyQ' && !ACTIONS.some((a) => b.codes(a.id).includes('Space')), 'bind Q to dodge: Space is free');
-  assert(b.bindKey('dodge', 'KeyF') && b.codes('dodge').join() === 'KeyF' && b.codes('flask').join() === 'KeyQ', 'F (the flask key) to dodge → a swap: the flask gets Q');
+  assert(b.bindKey('dodge', 'KeyV') && b.codes('dodge').join() === 'KeyV' && !ACTIONS.some((a) => b.codes(a.id).includes('Space')), 'bind V to dodge: Space is free');
+  assert(b.bindKey('dodge', 'KeyF') && b.codes('dodge').join() === 'KeyF' && b.codes('flask').join() === 'KeyV', 'F (the flask key) to dodge → a swap: the flask gets V');
   assert(b.bindKey('up', 'ArrowDown') && b.codes('up').join() === 'ArrowDown' && b.codes('down').join() === 'KeyS', 'a taken alternate (↓) moves without a swap when its action keeps a key');
   assert(!b.bindKey('dodge', 'Escape') && !b.bindKey('dodge', 'F1') && !b.bindKey('pause', 'KeyP') && !b.bindPad('dodge', 9) && !b.bindKey('zoomIn', 'KeyZ'), 'refused: Esc, F1, the fixed pause, the pad\'s Menu, a pad-only action on the keyboard');
   assert(b.bindPad('attack', 0) && b.buttons('attack').join() === '0' && b.buttons('dodge').join() === '5', 'pad: A to attack → dodge takes RB');
   assert(b.moveText() === '↓ASD', `the move chip follows (${b.moveText()})`);
   const b2 = new Bindings(storage);
-  assert(b2.codes('dodge').join() === 'KeyF' && b2.codes('flask').join() === 'KeyQ' && b2.buttons('attack').join() === '0', 'saved: a new Bindings on the same storage loads them');
+  assert(b2.codes('dodge').join() === 'KeyF' && b2.codes('flask').join() === 'KeyV' && b2.buttons('attack').join() === '0', 'saved: a new Bindings on the same storage loads them');
   b2.reset(true, 'pad');
   assert(b2.buttons('attack').join() === '5' && b2.codes('dodge').join() === 'KeyF', 'reset the pad tab only: the keyboard keeps its remap');
   mem.set('abyss.bindings.v2', '{ not json');
@@ -8486,14 +8486,14 @@ async function scenarioRemap() {
   P.btnControls.click();
   assert(R.on && R.tab === 'kb' && P.root.classList.contains('remap') && R.rows.some((r) => r.id === 'dodge') && !R.rows.some((r) => r.id === 'pause' || r.id === 'zoomIn'),
     'CONTROLS opens on the keyboard tab: rows for the remappable actions (not pause, not pad-only zoom)');
-  // keyboard: pick DODGE, press Q; the game never sees the Q
+  // keyboard: pick DODGE, press V; the game never sees the V (V: a free key; Q is the technique's since ADR-137)
   row('dodge').btn.click();
   assert(R.waiting === 'dodge' && /press/.test(row('dodge').v.textContent), 'DODGE picked: "press a key or click…"');
-  const eaten = fireWin('keydown', { code: 'KeyQ', repeat: false });
-  assert(eaten && !input.pressed('KeyQ') && B.codes('dodge').join() === 'KeyQ' && row('dodge').v.textContent === 'Q' && !R.waiting, 'Q → dodge; the panel swallowed the key');
+  const eaten = fireWin('keydown', { code: 'KeyV', repeat: false });
+  assert(eaten && !input.pressed('KeyV') && B.codes('dodge').join() === 'KeyV' && row('dodge').v.textContent === 'V' && !R.waiting, 'V → dodge; the panel swallowed the key');
   input.endFrame();
-  fireWin('keyup', { code: 'KeyQ' });
-  assert(chip('dodge', 'kb')?.textContent === 'Q', `the controls grid relabelled (${chip('dodge', 'kb')?.textContent})`);
+  fireWin('keyup', { code: 'KeyV' });
+  assert(chip('dodge', 'kb')?.textContent === 'V', `the controls grid relabelled (${chip('dodge', 'kb')?.textContent})`);
   // mouse: pick LOCK-ON, click the middle button
   row('lockOn').btn.click();
   fireWin('mousedown', { button: 1, target: G.canvas });
@@ -8511,14 +8511,14 @@ async function scenarioRemap() {
   assert(!R.on && game.state === 'paused' && !P.root.classList.contains('remap'), `Esc again closes CONTROLS, still paused (${game.state})`);
   game.flow.resume();
   frames(0.3);
-  // the game obeys: Q rolls, Space does nothing; the prompt's chip follows a remap of interact
+  // the game obeys: V rolls, Space does nothing; the prompt's chip follows a remap of interact
   const r0 = c('player:roll');
   key('Space');
   frames(0.6);
   const r1 = c('player:roll');
-  key('KeyQ');
+  key('KeyV');
   frames(0.8);
-  assert(r1 === r0 && c('player:roll') === r0 + 1, `Space no longer rolls, Q does (${r0} → ${r1} → ${c('player:roll')})`);
+  assert(r1 === r0 && c('player:roll') === r0 + 1, `Space no longer rolls, V does (${r0} → ${r1} → ${c('player:roll')})`);
   assert(game.flow.debug.toState('explore') === true, 'toState(explore) at the bonfire');
   frames(0.3);
   assert(game.hud.promptEl.textContent.startsWith('E'), `prompt "${game.hud.promptEl.textContent}"`);
