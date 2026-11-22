@@ -10305,6 +10305,11 @@ async function scenarioHeroLetters() {
   const top = (HERO_ART.parts * 2 - 1) * HERO_ART.step;
   assert(wm && sHi <= hLo && HERO_ART.a0 > hLo && HERO_ART.a0 + top < hHi && HERO_ART.a0 - HERO_ART.self > sLo && HERO_ART.a0 - HERO_ART.self + top < sHi,
     `two windows: his (${sLo}, ${sHi}) and the bosses' (${hLo}, ${hHi}), every part id inside its own`);
+  // the unused v0.2 creature grid's codes (alpha 0.04 + span) stay below his window, and write and read agree
+  const { CREATURE_FLAG } = await imp('src/render/materials.js');
+  const cTop = CREATURE_FLAG.min + CREATURE_FLAG.span;
+  assert(cTop < sLo - 0.005 && src.includes(`(c.a - ${CREATURE_FLAG.min.toFixed(2)}) / ${CREATURE_FLAG.span.toFixed(2)} * ${CREATURE_FLAG.codes}.0`),
+    `the creature grid's codes end at ${cTop.toFixed(3)}, below his window (${sLo}), and the pass decodes with the same span`);
   assert(src.includes('bool heroArtCell(vec2 px)') && src.includes('gSelf = true; gCell = uSelfCell') && src.includes('gSelf = false; gCell = uHeroCell'), 'the hero branch runs for him on his cell, then for the bosses on theirs');
   const pm = game.player.rig.materials;
   const mine = Object.values(pm).filter((m) => m?.defines?.HERO_A0 != null);

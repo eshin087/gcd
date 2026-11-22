@@ -51,6 +51,11 @@ cloak's dotted rim / a lavender line).
 - From one side at rest the blade points at the camera and its lines pile into a small pale mark next
   to the gem's glow. Smaller than before; left.
 
+- Review (Codex, on the PR): his alpha window (0.42, 0.45) overlapped the top of the unused v0.2
+  creature grid's codes (`grid: true` wrote up to 0.44), so such a surface would have been drawn as
+  the player. The creature grid's span is now 0.37 (codes end at 0.41), written and read with the
+  same constant; a test pins it.
+
 **Verification.** In the browser (headless Edge, the RTX 4090): the hero on 720p / 1080p / 1440p / 4K
 / the phone's 852 x 393 at 20 m before and after; 18 poses at 1440p (six sides, run, roll, cuts,
 heavy, block, charge, heal); the camera at 36 / 24 / 14 / 7 m. Both human bosses rendered on this

@@ -520,7 +520,7 @@ export class Pipeline {
 
         // ---- creature: glyph oriented along the encoded surface flow
         vec3 creatureCell(vec4 c, vec2 cell, vec2 local) {
-          float code = clamp(floor((c.a - 0.04) / 0.4 * 96.0), 0.0, 95.0);
+          float code = clamp(floor((c.a - 0.04) / 0.37 * 96.0), 0.0, 95.0);
           float set = floor(code / 24.0);
           float ang = (code - set * 24.0) / 24.0 * 6.2831853;
           float l = 1.0 - exp(-luma(c.rgb) * uCreatureLum);

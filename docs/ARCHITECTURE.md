@@ -133,7 +133,7 @@ Render helpers for creature modules:
   inside a window of its own (0.42, 0.45) that `isSelf` tests (ADR-130). `isHero` is true in both
   windows, `isArt` too. The pass tells his pixels from a human boss's by it: his letter cell
   (`uSelfCell`) and his part tables (`uSelfPart*`) are his alone. Nothing else may write alpha in
-  (0.42, 0.45) (the unused v0.2 creature grid's codes ran up to 0.44).
+  (0.42, 0.45) (the unused v0.2 creature grid's codes, `CREATURE_FLAG` 0.04 + 0.37 = up to 0.41, were narrowed from 0.4 wide to stay below it).
 
   `HERO_ART = { a0: 0.4632, step: 0.0006, parts: 20, self: 0.04 }` is exported from `materials.js` (`HERO_PARTS`
   20 from `shaderLib.js`). The step is ≥ 2 half-float ulps there, so part ids need the half-float

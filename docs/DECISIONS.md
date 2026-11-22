@@ -3981,6 +3981,7 @@ ADR-092).
      boss's ids, written by `buildHero(..., { self: true })`. The hero branch of the art pass became
      one function run twice: for him on his cell (only inside the box round his screen point), then
      for the bosses on theirs.
+  (His window sits above the unused v0.2 creature grid, whose code span was narrowed from 0.4 to 0.37.)
   3. **His own part tables** (`uSelfPartInk / Fill / Rim`): `HERO_INK` with `HERO_SELF` on top. His
      plate takes the cloth's dim dotted rim.
   4. **A dark blade that lights when it cuts**: `TUNE.bladeLook` scales the steel's gains at rest

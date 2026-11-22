@@ -14,8 +14,9 @@ import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 
 // Alpha flag values written into the scene target (decoded by the ASCII pass in pipeline.js):
 //   0            NONE     pass-through (particles never reach the scene target)
-//   0.04..0.44   CREATURE screen-grid glyphs that follow the surface flow (opt-in `grid: true`,
-//                the v0.2 look); the value packs set x 24 screen-space flow angles
+//   0.04..0.41   CREATURE screen-grid glyphs that follow the surface flow (opt-in `grid: true`,
+//                the v0.2 look); the value packs set x 24 screen-space flow angles (span 0.37 since
+//                ADR-130: the player's own hero window sits at 0.42..0.45, above it)
 //   0.5          ART      hero / wyrm: their crisp render is the SOURCE IMAGE of a fine screen-space
 //                         ASCII-art grid (letters picked by brightness, coloured per cell);
 //   0.48         ART_HERO the same, with the hero's own pass settings (pipeline uArt* .x)
@@ -59,7 +60,7 @@ export const SURFACE_SETS = {
   plates: { glyphs: '.-=#', cell: [0.24, 0.18], rowShift: 0 },
   smooth: { glyphs: '.:o0', cell: [0.1, 0.1], rowShift: 0 },
 };
-export const CREATURE_FLAG = { min: 0.04, span: 0.4, codes: 96, angles: 24 };
+export const CREATURE_FLAG = { min: 0.04, span: 0.37, codes: 96, angles: 24 };
 /** Surface-glyph `levels` table size: up to 6 light levels × 8 per-cell variants. */
 export const SURFACE_LEVELS = { max: 6, variants: 8 };
 /** Defaults of the optional surface-glyph features (see createSurfaceGlyphMaterial). */
@@ -867,7 +868,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         float a = fract(ang / 6.2831853 + 1.0);
         float ai = mod(floor(a * 24.0 + 0.5), 24.0);
         float code = uAsciiSet * 24.0 + ai;
-        gl_FragColor = vec4(col, 0.04 + (code + 0.5) / 96.0 * 0.4);
+        gl_FragColor = vec4(col, 0.04 + (code + 0.5) / 96.0 * 0.37);
       }
 
       void main() {
