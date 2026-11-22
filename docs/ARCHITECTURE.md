@@ -3838,7 +3838,11 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   with hazard: true and flare; his called lightning (Thunderfall, the volley, the corner bolts) cues as
   the Lord's called strikes do.
 - The Tide Colossus, Drownwatch Cliff's boss (ADR-141), added NO event name and no payload field. New producers
-  of existing ones: its hand blows emit `dragon:land` and `dragon:attack` as they land, the breath`n  `dragon:breathStart` / `dragon:breathEnd`, the phases' roar `dragon:roar` with `dragon:phase2` /`n  `dragon:phase3` and `dragon:phase`, a grip break `dragon:stagger`; the surge cues itself with`n  `combat:tell` / `combat:flash` with hazard: true, its cue drawn where its front meets the hero; the breath's`n  cue is drawn where the beam will meet him; Tidebreath (the reward) emits `player:hitDragon` with kind technique.
+  of existing ones: its hand blows emit `dragon:land` and `dragon:attack` as they land, the breath
+  `dragon:breathStart` / `dragon:breathEnd`, the phases' roar `dragon:roar` with `dragon:phase2` /
+  `dragon:phase3` and `dragon:phase`, a grip break `dragon:stagger`; the surge cues itself with
+  `combat:tell` / `combat:flash` with hazard: true, its cue drawn where its front meets the hero; the breath's
+  cue is drawn where the beam will meet him; Tidebreath (the reward) emits `player:hitDragon` with kind technique.
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
   `game:cinematic {kind}` (flow.cinematic: slow motion and a close camera on a duel's big moment; kind
