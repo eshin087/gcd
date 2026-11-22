@@ -11293,7 +11293,7 @@ async function scenarioCalm() {
     const c = CALM.calmLevel();
     CALM.setCalm({ arc: { a: NaN } });
     const look = CALM.calmLook();
-    assert(a === 0 && b === 0 && c === 0 && look?.arc && CALM.calmA(null, 'core') === 1 && CALM.calmS({ core: [NaN, NaN] }, 'core') === 1, 'setCalm: junk -> level 0; a custom level is taken; a missing or NaN factor reads as 1');
+    assert(a === CALM.CALM_DEFAULT && b === CALM.CALM_DEFAULT && c === CALM.CALM_DEFAULT && look?.arc && CALM.calmA(null, 'core') === 1 && CALM.calmS({ core: [NaN, NaN] }, 'core') === 1, 'setCalm: junk -> the default level; a custom level is taken; a missing or NaN factor reads as 1');
     const M = await freshFx();
     const f = new M.PlayerFx(game, p.rig);
     f._calmAt({ x: NaN, y: 0, z: 0 }, 'light');

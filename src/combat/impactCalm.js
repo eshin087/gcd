@@ -14,7 +14,8 @@
 // and a swing that misses never reads this (the arc is only dimmed near a contact, in the frames
 // after it, and only for the swing that landed).
 //
-// ?calm=0|1|2|3 in the URL; setCalm(n) (the Lab / the films); setCalm(obj) takes a custom level
+// The game draws CALM_DEFAULT (the owner's pick, 2026-11-22: level 1); ?calm=0|1|2|3 in the URL
+// overrides it (?calm=0: today as it was); setCalm(n) (the Lab / the films); setCalm(obj) takes a custom level
 // (a CALM_LOOK.levels entry's shape: the measuring rig switches one effect off at a time with it).
 
 const deepFreeze = (o) => {
@@ -86,20 +87,24 @@ export const CALM_LOOK = deepFreeze({
   ],
 });
 
+/** The level the game draws when nothing asks for another (the owner's pick, 2026-11-22). */
+export const CALM_DEFAULT = 1;
+
 const fromUrl = () => {
   try {
     const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('calm') : null;
-    const n = q == null ? 0 : Math.round(Number(q));
-    return Number.isFinite(n) && n >= 0 && n < CALM_LOOK.levels.length ? n : 0;
+    const n = q == null || q === '' ? CALM_DEFAULT : Math.round(Number(q));
+    return Number.isFinite(n) && n >= 0 && n < CALM_LOOK.levels.length ? n : CALM_DEFAULT;
   } catch {
-    return 0;
+    return CALM_DEFAULT;
   }
 };
 
 let level = fromUrl();
 let custom = null;
 
-/** Set the level: 0 (today) … 3, or a custom level object (the rig; the CALM_LOOK.levels shape). */
+/** Set the level: 0 (as before the calm) … 3, or a custom level object (the rig; the CALM_LOOK.levels
+ *  shape). Junk falls back to CALM_DEFAULT. */
 export const setCalm = (n) => {
   if (n && typeof n === 'object') {
     custom = n;
@@ -108,7 +113,7 @@ export const setCalm = (n) => {
   }
   custom = null;
   const v = Math.round(Number(n));
-  level = Number.isFinite(v) && v >= 0 && v < CALM_LOOK.levels.length ? v : 0;
+  level = Number.isFinite(v) && v >= 0 && v < CALM_LOOK.levels.length ? v : CALM_DEFAULT;
   return level;
 };
 /** The level number (−1: a custom one). */
