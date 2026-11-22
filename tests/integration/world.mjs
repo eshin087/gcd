@@ -33,6 +33,10 @@ const ELDER_N = ELDER_COLLIDERS.length;
 const { createCourtyard } = await imp('src/world/courtyard.js');
 const { createThroneHall } = await imp('src/world/throneHall.js');
 const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js');
+// (every level the game can load, and the training room: the bite scenario walks them all, so a new
+// level is checked without being named here)
+const { LEVELS } = await imp('src/levels/index.js');
+const { createTrainingRoom } = await imp('src/world/trainingRoom.js');
 /** The Skybreak Ring's set as arena `o` (?ring=a|b|c: read when the set is built). */
 const ringSet = (o) => (U, c) => {
   setLook('ring', o);
@@ -171,12 +175,13 @@ function wyrm() {
 const S = {
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
-      // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates))
+      // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates); 255 on 2026-11-22, its felled trunks
+      // swapped for the challengers' graves, banners and carts round it)
       const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000] }[name];
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
@@ -1523,10 +1528,22 @@ const S = {
       for (let k = 0; k < saved.length; k++) if (idx[K.i0 + k] !== saved[k]) idiff++;
       for (let k = 0; k < K.psaved.length; k++) if (K.pos.array[K.v0 * 3 + k] !== K.psaved[k]) idiff++;
       assert(diff === 0 && idiff === 0 && B.nBit === 0 && K.n === 0 && D.bitten === 0 && o.body.nBit === 0, 'the reset: every brick is back (the tree vertex for vertex, the stone index for index and vertex for vertex)');
-      // ---- the three duel arenas: every piece that takes structure has bricks; a blow on each kind bites it, the reset undoes it
-      for (const [name, make] of [['courtyard', createCourtyard], ['crater', createThroneHall], ['Skybreak Ring', ringSet('a')]]) {
+      // ---- EVERY level (the level registry, so a new one is covered without being named here) and the
+      // training room: it lists breakables; every piece in it that takes structure has bricks; a blow
+      // on one of each kind bites it; the reset undoes it. (Cinderwood is the forest above, again here)
+      const sets = LEVELS.map((L) => [L.name, L.buildSet]);
+      // (the training room, ?stage=lab, ADR-099, is the one stage left whole on purpose: a measuring stage
+      // of tiles, low walls and corner pylons, outside the fight; nothing of it is listed to break)
+      const room = createTrainingRoom(createSharedUniforms(), new Colliders());
+      assert(!(room.breakables?.length > 0), 'the training room lists no breakables (a measuring stage, whole on purpose: ARCHITECTURE.md "Destruction")');
+      assert(sets.length >= 4 && sets.every(([, make]) => typeof make === 'function'), `the levels to check: ${sets.map(([n]) => n).join(', ')}`);
+      for (const [name, make] of sets) {
         const A = build(make), L = A.D.list;
         const able = L.filter((b) => !b.floor && b.hpMax < Infinity);
+        if (!able.length) {
+          assert(false, `${name}: no breakable piece that takes structure (a level lists its background objects in its set's \`breakables\`: ARCHITECTURE.md "Destruction")`);
+          continue;
+        }
         const none = able.filter((b) => !(b.ranged ? b.body.tris > 0 : b.bricks?.T > 0));
         const kinds = [...new Set(able.map((b) => b.kind))];
         let bitten = 0, set = 0, folded = 0, missed = [];
@@ -1543,7 +1560,7 @@ const S = {
         A.step(0.5);
         A.D.reset();
         const left = L.filter((b) => (b.bricks?.n ?? 0) > 0 || (b.ranged && b.body.nBit > 0)).length;
-        assert(none.length === 0 && missed.length === 0 && bitten > 0 && left === 0, `the ${name}: all ${able.length} pieces that take structure have bricks; a blow on one of each of its ${kinds.length} kinds took ${bitten} (${set} set back, ${folded} folded${missed.length ? '; none from ' + missed.join(', ') : ''}); the reset puts them back`);
+        assert(none.length === 0 && missed.length === 0 && bitten > 0 && left === 0, `${name}: all ${able.length} pieces that take structure have bricks; a blow on one of each of its ${kinds.length} kinds took ${bitten} (${set} set back, ${folded} folded${missed.length ? '; none from ' + missed.join(', ') : ''}); the reset puts them back`);
       }
       // ---- off (the default): nothing is bitten
       setLook('chip', '0');

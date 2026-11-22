@@ -1702,7 +1702,9 @@ export class Destructibles {
     let n = 0;
     if (this._hc) n = this._take(b, this._hx, this._hy, this._hz, Math.min(C.reach[2], this._hr + b.r + pad), share);
     if (n === 0) n = this._take(b, px, py, pz, clamp(this._hr + pad, C.reach[0], C.reach[1]), share);
-    if (n === 0) n = this._take(b, px, py, pz, C.reach[1], share);
+    // (none that near: a blow that took structure still shows, on the bricks nearest it however far, a
+    // share of the whole piece: a ground blow under a bough, a blow on a landmark's footprint)
+    if (n === 0) n = this._take(b, px, py, pz, Infinity, share);
     if (n > 0) {
       const ox = b.ranged ? 0 : b.x, oy = b.ranged ? 0 : b.y0, oz = b.ranged ? 0 : b.z;
       if (b.ranged) {
@@ -2547,10 +2549,15 @@ export class Destructibles {
       }
       if (!b.flashed && b.T - b.t <= FLASH_LEAD) {
         b.flashed = true;
-        const f = this._flash;
-        f.x = mx;
-        f.z = mz;
-        ev?.emit?.('combat:flash', f);
+        // (the boss's fairness guard: a blow of his already cued that needs the other answer near its
+        // landing: it lands uncued and harmless, never two answers at once)
+        if (this.game.boss?.brain?.worldClash?.(b.T - b.t, TELL.RED)) b.quiet = true;
+        else {
+          const f = this._flash;
+          f.x = mx;
+          f.z = mz;
+          ev?.emit?.('combat:flash', f);
+        }
       }
       const fx = this.game.fx?.add;
       b.mark -= dt;
