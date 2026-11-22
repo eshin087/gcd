@@ -3762,7 +3762,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:bite`, `dragon:hurt {damage, part, hp, crit}`, `dragon:parried {attack, tell, hit, last, bullet, perfect}` (hit = 0-based
   index in its string, last = the string's last hit or a single attack: only then a recoil; bullet: true = a
   deflected bullet, hit 0, last false: posture only, the wyrm is not interrupted and audio stays silent; perfect:
-  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z, lantern}` (a perfectly parried bullet's return; `lantern` true = Heaven's Lantern's orb pushed back into him
+  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z, lantern}` (a perfectly parried bullet's return; lantern true = Heaven's Lantern's orb pushed back into him
   lands on the head: kind 0 ember (1 was the wisp, removed in ADR-119), damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
   flow counts it in the run stats like a sword hit),
   `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
@@ -3773,7 +3773,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:death`, `dragon:dead`,
   `dragon:guard {heavy, deflect, caught}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
   "GUARDED", audio a dry clack; deflect = he beat it away and the hero bounces: HUD "DEFLECTED", a harsh falling
-  clang, a flicker of the frame; caught = the cut was caught in a counter stance, a beat marked `stance`: no
+  clang, a flicker of the frame; caught = the cut was caught in a counter stance (a beat marked stance): no
   posture either, HUD "CAUGHT", his punish follows at once), `dragon:deflected {count}` (every real hit of a long string parried:
   the full deflect; HUD "PERFECT DEFLECT"),
   `dragon:spell {name, x, z, part}` (a fire attack's signature moment: the strafe's pass, the dive, the barrage's
