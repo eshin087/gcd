@@ -13,7 +13,7 @@ import { FoxClones } from './clones.js';
 import { FoxPearl } from './pearl.js';
 import { FoxFx } from './fx.js';
 
-// Wen Yao, the Thousand-Body Fox: the boss of the Foxfire Terrace (`?level=fox`; ADR-131). A masked dao
+// Wen Yao, the Thousand-Body Fox: the boss of the Foxfire Terrace (`?level=fox`; ADR-147). A masked dao
 // swordsman on the shared duelist engine (duelist/duelist.js: the body, the contract, the guard, posture,
 // the duel's moments; brain.js: the mind and timeline). One health bar, three phases. What only he does:
 //   - THE PAPER SELVES (clones.js FoxClones): extra bodies of his own, a fixed pool built here, stepped

@@ -173,7 +173,7 @@ const duelChange = (T, n) => {
   return d.debug[`phase${n}`]?.();
 };
 
-// The Thousand-Body Fox (ADR-131): his paper selves and the Pearl
+// The Thousand-Body Fox (ADR-147): his paper selves and the Pearl
 /** Walk the hero at him while he is further than `near` m (the Pearl's backstep takes him out of reach). */
 const foxClose = (T, near = 2.2) => {
   const d = T.d, p = T.p;

@@ -827,7 +827,7 @@ export class Lab {
       });
       b.title = 'phase 3 sets the wyrm on fire: its strength (?ablaze=off|a|b|c)';
     }
-    // the Thousand-Body Fox (ADR-131): his paper selves, the Pearl, the mantle
+    // the Thousand-Body Fox (ADR-147): his paper selves, the Pearl, the mantle
     if (typeof this.game.dragon?.debug?.clones === 'function') {
       button(grid, 'Selves +2', () => this.game.dragon.debug.clones(2)).title = 'tear two paper selves off him (to the phase\'s cap)';
       button(grid, 'Pop all', () => this.game.dragon.debug.popAll()).title = 'pop every paper self';

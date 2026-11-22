@@ -2,7 +2,7 @@ import { clamp } from '../../../core/math.js';
 import { TELL } from '../../../combat/rules.js';
 import { perPhase } from '../duelist/realise.js';
 
-// The Pearl of the Hollow Moon (ADR-131; COMBAT.md → "The Thousand-Body Fox" → "The Pearl"): the
+// The Pearl of the Hollow Moon (ADR-147; COMBAT.md → "The Thousand-Body Fox" → "The Pearl"): the
 // gameplay of Wen Yao's orb. The drawing is FoxFx's (fx.js: pearlCharge, pearlThread, pearlFly,
 // pearlMark, pearlBurst, pearlFizzle).
 //

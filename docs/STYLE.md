@@ -1001,7 +1001,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
-| `?foxLook=` | Wen Yao's body (ADR-131; read when his rigs are built) | - | the Shrine Fox: a bone fox mask, a charcoal-indigo short robe, a pale fur mantle, a vermilion sash (the art path) | the Charm-Bearer: bare-headed, white hair, a half mask, a rope belt of paper strips | the Fox Captain: a light cuirass, a fox's head pauldron, the mask pushed up as a crest; `d` = a in the ink-line art the other human bosses ship in | not picked yet (a) |
+| `?foxLook=` | Wen Yao's body (ADR-147; read when his rigs are built) | - | the Shrine Fox: a bone fox mask, a charcoal-indigo short robe, a pale fur mantle, a vermilion sash (the art path) | the Charm-Bearer: bare-headed, white hair, a half mask, a rope belt of paper strips | the Fox Captain: a light cuirass, a fox's head pauldron, the mask pushed up as a crest; `d` = a in the ink-line art the other human bosses ship in | not picked yet (a) |
 | `?foxfire=` | the foxfire: the Pearl, the mantle (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | moon-white | not picked yet (a) |
 | `?clones=` | his paper selves (read when their rigs are built) | - | identical to him | a step paler | - | not picked yet (a) |
 
@@ -1142,7 +1142,7 @@ grit, chips and sparks are one-cell glyph particles. Look code draws from its ow
 - **Cost** (headless; frame rates were not measured): the fire field's worst case, form 3's aura with
   the great beam, ten blasts and a strike, 2863 of 6000 blobs; his fights by the AI peak about 1525.
 
-### The Foxfire Terrace (2026-11-21, ADR-131; `world/foxTerrace.js`, `?level=fox`)
+### The Foxfire Terrace (2026-11-21, ADR-147; `world/foxTerrace.js`, `?level=fox`)
 A moonlit hill shrine under the default night. The paving's slabs are cut to the circle and a kerb a
 tone lighter draws the rim (whole squares picked by their centre read as a ragged edge). An animal
 landmark reads at the game camera in PROFILE (the great fox, the small stone foxes facing each other
@@ -1150,7 +1150,7 @@ across the terrace): seen from the front and above, a fox prints as a lump; a fl
 gate) faces the camera. The gate's dull red is the strongest hue in the set, dulled once; the charm
 posts' paper strips are faint at 30 m.
 
-### Wen Yao's figure (2026-11-21, ADR-131; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
+### Wen Yao's figure (2026-11-21, ADR-147; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
 Built as flat facets with a few tones far apart, brightest first: the bone mask (drawn 1.2x, over the
 crown too: the camera sees the top of his head more than his face), the wraps, the fur, the vermilion
 sash, the robe darkest. The big dark cloth (robe, trousers, linings) has a low gain and a soft key
@@ -1163,7 +1163,7 @@ with a light floor (`look.js` `PALE`). The open free hand is turned palm up in t
 The art options still read as a small figure of digits at 720p (about 12 letter rows): d reads
 clearest beside Shen Hui. The owner picks.
 
-### The fox's effects (2026-11-21, ADR-131; `thousandFox/fx.js` `FoxFx`)
+### The fox's effects (2026-11-21, ADR-147; `thousandFox/fx.js` `FoxFx`)
 - **Foxfire is a palette** swapped into the fire field's void slot (`FIRE_PALETTES.foxfire`, jade: dark
   green strokes, jade digits, a mint heart, not white; `?foxfire=c` `moon`; `?foxfire=b` draws as the
   wyrm's `fire` kind with no swap). Both palettes lick 0.5 and erode 0.85, so the Pearl stays a ball

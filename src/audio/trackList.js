@@ -58,7 +58,7 @@ export const SCORE = {
         T('cinder-p3', { xfade: 3 }),
       ],
     },
-    // The Foxfire Terrace borrows too (ADR-131) until the owner auditions a score of its own.
+    // The Foxfire Terrace borrows too (ADR-147) until the owner auditions a score of its own.
     fox: {
       explore: T('cinder-explore', { xfade: 3 }),
       phases: [

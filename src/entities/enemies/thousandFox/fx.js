@@ -2,7 +2,7 @@ import { DuelFx, K_STEEL, K_VOID, K_SMOKE, K_FIRE } from '../duelist/fx.js';
 import { FIRE_PALETTES } from '../../../render/firePalettes.js';
 import { lookOf } from '../duelist/lookSwitch.js';
 
-// Wen Yao's effects (ADR-131; STYLE.md "The fox's effects"). All of it is heat in the fire field (small
+// Wen Yao's effects (ADR-147; STYLE.md "The fox's effects"). All of it is heat in the fire field (small
 // letters; many small cool blobs, at least 0.7 m up, never one big hot one) and glyph particles of one
 // letter cell (paper slips, sparks). Look code draws from its own seeded stream (kr(); the inherited
 // helpers it calls use DuelFx's look stream lr()), never Math.random and never the gameplay streams.

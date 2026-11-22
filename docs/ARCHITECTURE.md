@@ -2168,7 +2168,17 @@ centre: its name in spaced capitals, HP with a `|` at each phase gate, posture) 
 `mark(f)`): a run of fill characters, the piece just lost (held `hold` s, then drained) and the empty
 rest, between brackets, written to the DOM only when a run's length changes; anything above zero
 shows at least one cell and only a full meter shows them all. `GlyphPosture` grows from the middle.
-HP 24 cells of `#`, guard 24 of `=`, crit 16 of `>`, the boss 48, posture 32.
+HP 24 cells of `#`, guard 24 of `=`, crit 16 of `>`, the boss 48, posture 32: the lengths on a screen
+with room. **The top row is fitted** (ADR-131; `hud._fit()`, first of the HUD's steps, runs when the
+window, the touch layer or the boss's name changes; `FIT` in `ui/hud.js`; both meters have
+`resize(cells)`): on a touch screen with a short side ≤ 560 px or narrower than 900 px the hero's
+meters are 16 cells and the HP reads as one number (`.ab-compact`, `hud.compact`). The boss's meter
+takes what is left between the hero's rows and the corner (LOCK on touch, else the minimap; measured
+where there is a layout, estimated at 0.6 em a letter headless), never more than 48 cells nor fewer
+than 18: on the screen's middle while that leaves 36 cells, else in the middle of the free stretch
+(`bossEl.style.left`). Posture is two thirds of it. A name too long for the stretch gets `.tight`
+(closer letters). `hud.fit` = `{ compact, stacked, cells, left, right, mid }` (`stacked`: a phone held
+upright, where the boss's rows have a line of their own).
 The banners' big words are block letters (`ui/blockText.js`: `blockLines(text)` → six rows in the
 title logo's letterforms, `blockText(text, { maxCols })` stacks words to fit): `ui/banner.js` sizes
 them to the window's width (`BLOCK_MAX` px a character by kind) and lays them out again when the
@@ -2526,6 +2536,21 @@ controls show through the pause screen, inert, while they are stepped (`.tc-root
 taller than 560 px get everything × `pad.tall`. API: `padPos`, `padSize`, `cyclePad('pos' | 'size')`,
 `padPoint(id)` (the screen point at a tile's middle), `padGeo`.
 
+**Two more pad switches** (ADR-131; pause menu, kept in the same `localStorage` entry, both off by
+default; `?pad=split|classic` and `?hold=1|0` set them for one page load):
+- PAD LAYOUT (`layout`: `'classic'` | `'split'`, `cyclePad('layout')`). In `split` the guard is the
+  left hand's: the cluster keeps ATTACK, HEAVY and DODGE (`pad.split.tiles`; the flask stands where
+  BLOCK stood) and GUARD is a button of its own (`.tc-guard`, feeds `@block`, carries the guard
+  gauge) `pad.split.guard.gap` px right of the stick's ring on the cluster's bottom line; held upright
+  it stands above the ring (`pad.split.guardPortrait`). `.tc-root.split` shows it and hides the
+  BLOCK tile; `padPoint('guard')` / `guardGeo` give its place (null in `classic`). Changing the layout
+  releases every held control.
+- HOLD ATTACK (`holdAttack`, `cyclePad('hold')`; `CONFIG.touch.hold`). While a finger rests on ATTACK
+  the layer sends one press edge of the attack action (`input.pulse('@attack')`) `after` s into the
+  hold and then every `every` s: the player reads each as a tap. No repeat while BLOCK / GUARD is
+  held (the guard has the hero) nor for `quiet` s after DODGE, HEAVY or FLASK was pressed (the
+  repeat must not write over that press in the input buffer).
+
 **The page never zooms** (ADR-116): iOS Safari ignores `user-scalable=no`. While the layer is on it
 cancels `gesturestart` / `gesturechange`, `dblclick`, `touchmove` (outside the Lab, the pause panel and
 the WHAT'S NEW list, which scroll) and `touchend` on the canvas and inside `.tc-root` (non-passive): the
@@ -2863,7 +2888,7 @@ strip and the scars are glyph particles (a wearing crown's in the canopy's dim h
 dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
 are heat in the fire field.
 
-## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-131)
+## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-147)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
 `starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
@@ -2872,7 +2897,7 @@ before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `
 default), `applyLevel(level)` (merges `level.world` into `CONFIG.world`: main.js calls it once,
 before building any module), `levelUrl(id, href)`. One level per page load; switching reloads.
 A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text, reward? }`.
-`reward` (optional; ADR-135): the level's fixed reward as data, `{ id, name, line }` (the shape of the
+`reward` (optional; ADR-148): the level's fixed reward as data, `{ id, name, line }` (the shape of the
 shared rewards store being built beside this for another level), plus `usable: false` while it does
 nothing yet (the Foxfire Terrace's `paperDouble`).
 - `buildSet` returns createForest's shape (`group, treeSpots, bare, slabs, nest, bonfire, material,
@@ -2964,15 +2989,15 @@ nothing yet (the Foxfire Terrace's `paperDouble`).
     the band nearest `cut`; `below`: its foot from y = -below), `buildHoodoo(rng, x, z, { h, r, col,
     below, lean, yaw })`, `buildRingPost(rng, x, z, { h, w, yaw, col })` → `{ stone, bronze, fireY }`,
     and the colours `BADLAND`, `RING_BRONZE`.
-- **The Foxfire Terrace** (ADR-131; `src/levels/foxfire.js` `FOXFIRE`: id `fox`, aliases `foxfire`,
+- **The Foxfire Terrace** (ADR-147; `src/levels/foxfire.js` `FOXFIRE`: id `fox`, aliases `foxfire`,
   `terrace`, `shrine`, `thousand`, `wenyao`; boss `new ThousandFox(game)`, below; `reward` the Paper
-  Double, ADR-135). `world`: `arenaRadius` 14.5, `playerBound` 40, `dragonBound` 12.2, the bonfire at
+  Double, ADR-148). `world`: `arenaRadius` 14.5, `playerBound` 40, `dragonBound` 12.2, the bonfire at
   `TERRACE.bonfire` and the spawn 0.6 m east and 1.7 m north of it, `dragonSleep` (0, -2, yaw 0),
   `bossTriggerZ` 14.6, `wakeRadius` 9. `text` has `phase2` ONE BECOMES A THOUSAND and `phase3` THE FOX
   WEARS ITS FIRE. **Its set** (`world/foxTerrace.js`: `createFoxTerrace(U, colliders)`, `TERRACE`): see
   "The Foxfire Terrace's set" below. Music: borrowed tracks (`trackList.js` `fox`) until the owner
   auditions a score.
-  **Its set** (`world/foxTerrace.js`: `createFoxTerrace(U, colliders)`, `TERRACE`; ADR-131): the
+  **Its set** (`world/foxTerrace.js`: `createFoxTerrace(U, colliders)`, `TERRACE`; ADR-147): the
   courtyard's return shape without `ash` and without `sky` (the default night, the fireflies read as
   foxfire). A round paved terrace, r 14 m on the origin, the courtyard's slab bond with the slabs that
   cross the rim clipped to the circle (`slabCorners` / `outlineSlab`), a lighter kerb of curved stones
@@ -3656,7 +3681,7 @@ parry on the way out turns it home at once; at its turn it asks `brain.fairDelay
 T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
 
-### The Thousand-Body Fox — `src/entities/enemies/thousandFox/fox.js` exports `class ThousandFox` (ADR-131)
+### The Thousand-Body Fox — `src/entities/enemies/thousandFox/fox.js` exports `class ThousandFox` (ADR-147)
 Wen Yao, a masked dao swordsman on the duelist engine: one health bar, three phases (`phaseAt` [1, 0.66,
 0.33]); `FOX_KIT` (`id` 'thousandFox', `transitions` { 2: 'thousandBodies', 3: 'foxMantle' },
 `counterMove` 'riposte', `streakMove` 'streakFlurry'). No change to `duelist/*.js`: everything is a hook.
@@ -3690,7 +3715,7 @@ Wen Yao, a masked dao swordsman on the duelist engine: one health bar, three pha
   `seat(n)` / `tearSeated(t)` / `seated` (the intro), `handPoint(i, out)` (the Pearl's thread),
   `setCut(act)` (the realised `paperCut`), `frame(dt)`, `pose(dt)`. Its rigs are plain hero rigs
   (`buildHero(U, FOX_LOADOUT)`, their own `HeroAnimator`, `installLean`, `batchRigid`), not shadow
-  casters; a hero-side double can take one (ADR-135).
+  casters; a hero-side double can take one (ADR-148).
 - **`FoxPearl`** (`d.pearl`): `charging`, `flying`, `u` (the charge 0..1), `shots` (three), `begin(act)`,
   `charge(b, u, dt)`, `struck(heavy)` → burst in his hand?, `interrupt()`, `cancel()`, `bat(b, s, act)`,
   `frame(dt)`; counts `landed`, `interrupts` (tests).

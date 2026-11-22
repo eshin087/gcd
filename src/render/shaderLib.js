@@ -19,7 +19,7 @@ export const LAYER_CASTER_RIGID = 2;
 // RGBA32F texels, one world matrix per 4 texels (a texel = a matrix column), RIGID_TEX / 4 matrices
 // per row. Slot 0 is reserved: aRigid 0 (also what a geometry without the attribute reads) means "use
 // modelMatrix". A level with more bodies than that (the Foxfire Terrace: the fox and his five paper
-// selves, ADR-131) grows it to RIGID_ROWS_MAX rows the first time a batch would not fit; the shader
+// selves, ADR-147) grows it to RIGID_ROWS_MAX rows the first time a batch would not fit; the shader
 // only reads the width, so nothing else changes, and a level that fits never grows.
 export const RIGID_TEX = 64;
 export const RIGID_ROWS_MAX = 128;

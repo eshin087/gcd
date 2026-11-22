@@ -2,7 +2,7 @@ import { createFoxTerrace, TERRACE } from '../world/foxTerrace.js';
 import { ThousandFox } from '../entities/enemies/thousandFox/fox.js';
 
 // The Foxfire Terrace: a moonlit hill shrine, and Wen Yao, the Thousand-Body Fox, who sits on its round
-// terrace among his own paper selves (ADR-131; ARCHITECTURE.md → "The Thousand-Body Fox"). The terrace
+// terrace among his own paper selves (ADR-147; ARCHITECTURE.md → "The Thousand-Body Fox"). The terrace
 // is centred on the origin; the bonfire waits at the foot of the path to the south.
 const T = TERRACE;
 
@@ -23,7 +23,7 @@ export const FOXFIRE = Object.freeze({
   }),
   buildSet: createFoxTerrace,
   createBoss: (game) => new ThousandFox(game),
-  /** The fixed reward of this level (ADR-135): recorded, not usable yet (no technique slot exists). */
+  /** The fixed reward of this level (ADR-148): recorded, not usable yet (no technique slot exists). */
   // (the shape of the shared rewards store's `reward: { id, name, line }`, built beside this for another
   // level; `usable: false` until a technique slot and a decoy exist)
   reward: Object.freeze({ id: 'paperDouble', name: 'Paper Double', line: 'A paper self that takes the blow meant for you.', usable: false }),

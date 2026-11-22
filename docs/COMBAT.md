@@ -176,7 +176,7 @@ bosses.
   |---|---|---|---|
   | The Cinder Wyrm | Bite; Hesitant maw's held bite; Claw combo's lunging bite; Wing buffet's second wing; **Wing rend's lunging bite\***, **Sky hammer's wing slam\***, **Cinder rake's overhead\***, **Cataclysm's wing slam\***, **the Tail bat\*** (the boulder; ADR-119) | every red blow it had (tail, stomp, charge, pounce, leap, the fire flights); **the tail whips\*** (Pivot lash, Rear guard, Cinder rake, Cataclysm), **Rear guard's tail slam\***, **Furnace maw's wing slam\***, the flying combos' blows\*, the ground tongues\*, the ambient cinders\*, a thrown tree or boulder\* (ADR-119) | **Black maw**: the head rears and holds 1.5 s + 0.15 - 0.6 s, then the snap: 44, range 3.5 - 6.5 m off its chest, cooldown 14 s |
   | Shen Hui | Falling Ash; Falling Star; Swallow Flicks' thrust; Crane Spins' chop; Swallow's Return; **Severing Wind*** (one long step from 3.6 - 10 m and a level two-handed cut, 26) | Piercing Ash, Lotus Sweep, Ember Whirl's last, Heaven-Splitting Fall, Hundred Petals' last; **Twin Embers*** (a dashing cut, then the low sweep 0.92 s later: dodge, dodge; 22 and 24) | **Black Tide**: the jian drawn back low, 1.45 s + 0.1 - 0.5 s, then a dashing cleave up to 7.5 m: 38, knocked down, cooldown 12 s |
-  | Wen Yao (ADR-131) | Three Brushstrokes' thrust; Ladder to the Moon (a perfect parry locks); Hand to Hand's last; the Thousand-Body Round's own blow | Sweeping Brush; the Pearl's burst (cued on the pearl); Burning Brush's tail; Fox-Fire Pounce; both transitions | **Moon-Swallowing Pearl** (phase 3): the Pearl dark over his head, 1.5 s + 0.1 - 0.5 s, then a leap down on the hero: 44, ring 3.4 m, knocked down, cooldown 14 s |
+  | Wen Yao (ADR-147) | Three Brushstrokes' thrust; Ladder to the Moon (a perfect parry locks); Hand to Hand's last; the Thousand-Body Round's own blow | Sweeping Brush; the Pearl's burst (cued on the pearl); Burning Brush's tail; Fox-Fire Pounce; both transitions | **Moon-Swallowing Pearl** (phase 3): the Pearl dark over his head, 1.5 s + 0.1 - 0.5 s, then a leap down on the hero: 44, ring 3.4 m, knocked down, cooldown 14 s |
   | The Starless Lord | Falling Star; Scissor; Grasp and Sever's chop; **Severance*** (a long step and a two-handed chop, 26; every form) | his red blows and spells as before; **Red Meridian*** (a dashing level cut, then the blade round at the ankles; every form) | **Nightfall**: the same charge and cleave, 36; every form, cooldown 12 s |
 
 - Checked by `npm test`: duel FLARE (the rules; nothing shows before a red cue; a parried Falling Ash
@@ -1881,7 +1881,7 @@ Storm's held tiles are hard to see against the aura. A blast stopped by cover is
 arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
 east.
 
-## The Thousand-Body Fox (2026-11-21, ADR-131; `?level=fox`)
+## The Thousand-Body Fox (2026-11-21, ADR-147; `?level=fox`)
 
 Wen Yao, a masked dao swordsman (thousandFox/). One health bar, three phases (at 66 % and 33 %), each
 opened by a red ring blow (1.6 s, 10, r 6, knockback 6). Shen Hui's numbers (tells, posture, guard,
@@ -1953,11 +1953,10 @@ floor as the courtyard's; the great fox and the spirit gate only chip, and the g
 
 ### The numbers measured (`fox.mjs`)
 
-The pace (a steady defender in god mode, the hero roaming 2.5 - 9 m; his selves' cuts count): five seeds x
-120 s gave 65.8 / 84.2 / 83.5 cues a minute by phase (P1 63.7 - 68.3, P2 80.6 - 89.5, P3 80.1 - 84.9),
-0 conflicting cues, a dodge asked by 12 / 8 / 15 % of them, the longest gap 3.8 / 2.9 / 3.1 s; on the
-finished set the three default seeds 66.3 / 84.2 / 82.3. Phase 3 is not busier than phase 2: it asks a
-dodge twice as often (`TUNING.pressure.meter`). The fencing bot (god mode, parries every white and blue cue,
+The pace (a steady defender in god mode, the hero roaming 2.5 - 9 m; his selves' cuts count), five seeds x
+120 s on the finished level: 66.8 / 85.0 / 81.9 cues a minute by phase (P1 65.2 - 69.0, P2 82.0 - 86.0,
+P3 76.9 - 87.4), 0 conflicting cues, a dodge asked by 13 / 8 / 14 % of them, the longest gap 4.1 / 2.9 /
+3.4 s. Phase 3 is not busier than phase 2: it asks a dodge twice as often (`TUNING.pressure.meter`). The fencing bot (god mode, parries every white and blue cue,
 rolls every red one, cuts in his openings and at the selves in reach) wins through three phases in
 32 - 35 s on three seeds (Shen Hui's same bot: 36 s), cutting down 5 - 7 selves on the way.
 

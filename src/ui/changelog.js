@@ -30,6 +30,15 @@ export const RELEASES = [
       },
       {
         date: '2026-11-21',
+        title: 'On a phone: the health bars no longer overlap, and two new ways to hold the controls',
+        notes: [
+          'Your health and the boss\'s no longer run into each other on a phone. Your meters are shorter there and the boss\'s bar takes the room that is left.',
+          'New in the pause menu, PAD LAYOUT: "guard on left" moves the guard to a button beside the stick, so your right thumb can keep cutting while your left one parries.',
+          'New in the pause menu, HOLD ATTACK: rest your thumb on ATTACK and the wanderer keeps cutting, no tapping. Both are off until you turn them on.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'The hero looks the same on every screen',
         notes: [
           'The wanderer is drawn with the same bold letters on a phone, a laptop and a large monitor, and when the camera pulls in or out. On large screens he used to turn into a mesh of tiny ones.',

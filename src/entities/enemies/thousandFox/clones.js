@@ -5,7 +5,7 @@ import { HeroAnimator } from '../../player/anim.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { perPhase } from '../duelist/realise.js';
 
-// The paper selves (ADR-131): Wen Yao's own extra bodies, as the Starless Lord's spells are his own
+// The paper selves (ADR-147): Wen Yao's own extra bodies, as the Starless Lord's spells are his own
 // things (starlessLord/spells.js). The game still has ONE boss: this is a fixed pool owned by the fox
 // (`d.clones`), stepped from his brainFrame and posed from his afterPose. The roadmap's "boss slot as
 // an actor list" is not this.
@@ -27,7 +27,7 @@ import { perPhase } from '../duelist/realise.js';
 // burnAll() (phase 3's change), live (count), alive(i), nearest(x, z) → i | -1, swapWith(i) (the real
 // one and self i trade places), round(atImpact) (the Thousand-Body Round), handPoint(i, out) (the
 // Pearl's thread), rootOf(i) (drawnPoint), busy (a self winding up or striking).
-// Its rigs are plain hero rigs: a hero-side double (the Paper Double reward, ADR-135) can take one later.
+// Its rigs are plain hero rigs: a hero-side double (the Paper Double reward, ADR-148) can take one later.
 
 const IN = 'in', STALK = 'stalk', WIND = 'wind', STRIKE = 'strike', RECOVER = 'recover', DEAD = 'dead', SEATED = 'seated';
 const PARTS = ['clone0', 'clone1', 'clone2', 'clone3', 'clone4', 'clone5', 'clone6', 'clone7'];
@@ -624,7 +624,7 @@ export class FoxClones {
         pl.atk.def = null;
         c.anim.play('loco', 0.18);
       }
-      // the cost (ADR-131): the hero's animator is ~1 ms a rig, so a self that only walks is posed
+      // the cost (ADR-147): the hero's animator is ~1 ms a rig, so a self that only walks is posed
       // every other frame (half of them one frame, half the next); one that cuts, tears free or plays
       // the Round every frame. Between its poses its spheres move with its root.
       c.acc = (c.acc ?? 0) + dt;

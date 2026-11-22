@@ -49,6 +49,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [x] An ASCII HUD: text meters, block-letter banners, no panels in play, a 40 – 72 px minimap (ADR-098)
   - [ ] Owner's verdict on the phone: the pad's default place and size, the slide's stick (10 px), the guard meter's numbers,
         how faint the controls are, the upright camera against the wyrm
+  - [x] The hero's meters and the boss's never overlap: the top row is fitted to the screen (ADR-131)
+  - [x] Two pad switches to try: PAD LAYOUT "guard on left" (one thumb cuts, the other parries) and HOLD ATTACK (ADR-131)
+  - [ ] Owner's pick on the phone: which of the two becomes the default, where GUARD stands
+  - [ ] Phone ideas not built yet (ADR-131 lists them): the game drawn under the notch (viewport-fit=cover), a
+        drag-to-place layout editor, a left-handed mirror, an "add to home screen" hint for full screen on iOS
 - [x] Owner approval; released as v0.4.0
 
 ## M1.6 — Reference match (2026-11-08, PR #4, `look/reference-match`)
@@ -179,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.56 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (2026-11-21, `claude/thousand-body-fox-33750d`, ADR-131, ADR-135)
+## M1.56 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (2026-11-21, `claude/thousand-body-fox-33750d`, ADR-147, ADR-148)
 - [x] An original in the spirit of a ninja-clone hero: his own name, mask, outfit and move names, none of that series' look
 - [x] The level (`?level=fox`) and its set: a round paved terrace, lanterns, stone foxes, charm posts that burn, a great stone fox and a spirit gate
 - [x] Wen Yao on the duelist engine (no engine change): three phases, eighteen moves as data, links, the seated intro
@@ -193,7 +198,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The owner's picks: `?foxLook=`, `?foxfire=`, `?clones=` (from the sheets in `docs/looks/fox/`)
   - [ ] The owner plays the preview on the phone: the selves' readability at 852 x 393, the frame rate with five out
   - [ ] The level's own score (it borrows three tracks)
-  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (83.5 against 84.2 cues a minute)
+  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (81.9 against 85.0 cues a minute)
 
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
@@ -743,7 +748,7 @@ Spec: `docs/specs/ash-disciple.md`.
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
       Ash Disciple's technique first (the next PR)
 - [ ] Fixed rewards per boss (techniques, weapons, abilities, elements); weapons of other lengths
-  - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-135); needs the technique slot, a button on every input, a target indirection in every boss's AI
+  - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)
 - [ ] More duelists from the roster (The Moth, The Bell-Warden, The Calligrapher, The Iron Abbot)

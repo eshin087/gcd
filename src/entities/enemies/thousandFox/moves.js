@@ -5,7 +5,7 @@ import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
 import { GUARD_CLIPS } from '../duelist/guard.js';
 
-// Wen Yao's moves and reaction clips, as data (ADR-131; COMBAT.md → "The Thousand-Body Fox"). The format
+// Wen Yao's moves and reaction clips, as data (ADR-147; COMBAT.md → "The Thousand-Body Fox"). The format
 // is the Ash Disciple's (ashDisciple/moves.js header: a MOVE, a BEAT, the rules the DATA test checks);
 // the pose fragments below are copied from there (his cuts are a swordsman's cuts too). His own beat
 // fields, read by fox.js (the brain ignores them):

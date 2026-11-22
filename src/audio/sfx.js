@@ -1114,7 +1114,7 @@ export const SFX = {
    * dry crack, a low creak for the lean. A roar's front sets off hundreds: `gap` keeps it to a few.
    */
   /**
-   * dragon:clone (the Thousand-Body Fox's paper selves, ADR-131): a short, dry, quiet paper tear. A rip
+   * dragon:clone (the Thousand-Body Fox's paper selves, ADR-147): a short, dry, quiet paper tear. A rip
    * is a quick run of tiny grains through a band that climbs, over a soft breath of the sheet. `soft`
    * (a self tearing free, one burning into him): shorter, higher, half as loud. Quiet on purpose (the
    * owner finds loud SFX "too noisy"); `gap` keeps a burst of five pops to one or two tears. Its jitter

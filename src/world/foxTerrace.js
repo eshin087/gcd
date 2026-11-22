@@ -15,7 +15,7 @@ import {
 } from './landmarks.js';
 import { breakableFloor } from './floor.js';
 
-// The Foxfire Terrace (levels/foxfire.js; ADR-131): a moonlit hill shrine. South to north (the player
+// The Foxfire Terrace (levels/foxfire.js; ADR-147): a moonlit hill shrine. South to north (the player
 // walks north, -z): the bonfire on its landing, a path of flagstones up the slope between dead trees,
 // three rows of steps, then the terrace: a round paving 28 m across centred on the origin, a kerb of
 // curved stones round its rim, ten stone lanterns standing on the rim, six seated stone foxes on

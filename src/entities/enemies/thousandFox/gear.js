@@ -9,7 +9,7 @@ import { toDragonLook } from '../ashDisciple/bodyArt.js';
 import { FOX_ART } from './bodyArt.js';
 import { foxLookNow } from './look.js';
 
-// Wen Yao's outfit (ADR-131): gear items `fox.*` on the hero's skeleton, so he and each of his five
+// Wen Yao's outfit (ADR-147): gear items `fox.*` on the hero's skeleton, so he and each of his five
 // paper selves are built by the same buildHero(U, FOX_LOADOUT) and driven by the same animator. One
 // item per slot; each builds the outfit `?foxLook=` asks for (look.js foxLookNow, read when the rig is
 // built) and, for a / b / c, turns the rig to the wyrm's art path at the first item (toDragonLook with

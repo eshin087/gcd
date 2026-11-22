@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-21 — Session 71: a fifth level, the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (planned by Fable, built by Opus agents)
+## 2026-11-21 — Session 72: a fifth level, the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (planned by Fable, built by Opus agents)
 
 **Owner** (to the session that planned it): new level bosses built on the power fantasy of famous
 characters, as ORIGINALS; two picked to make now, "plan out #1, #2 in separate chats with fable and
@@ -13,8 +13,9 @@ instruct opus 5.5 high to build it out". This is #1: a duelist who fills the are
 in one hit while the real one charges a spiralling orb; a last phase in a fox-spirit cloak of fire; a
 fixed reward, a decoy clone. In the spirit of a famous ninja-clone hero, an original: his own name,
 mask, outfit and move names, none of that series' look. Branch `claude/thousand-body-fox-33750d` from
-`origin/main` 9333ce7. ADR-131, ADR-135 / Session 71 / M1.56 (ADR-132 – 134 are the parallel
-Heaven-Fallen build's).
+`origin/main` 9333ce7, `main` merged in once (#76, the phone's bars). ADR-147, ADR-148 / Session 72 /
+M1.56: the plan's ADR-131 and ADR-135 were taken meanwhile (#76 took 131 and Session 71; the parallel
+builds' plans claim 132 – 146), so this work took the next numbers no one had claimed.
 
 **How it was built.** The plan (Fable's, in the shared notes) was built as written; the lead wrote the
 core first (the level, the boss on the duelist engine, the paper selves, the Pearl, the mantle's
@@ -33,12 +34,12 @@ switches" and "The fox's effects"): `src/levels/foxfire.js` (`?level=fox`), `src
 **The fight.** One bar, three phases (66 % / 33 %): P1 The Fox Plays (2 selves at most), P2 A
 Thousand Bodies (4: the trade of places mid-string, the Round, three pearls, paper blades), P3 The
 Fox-Fire Mantle (5: the tail, the pounce, the black pearl). The selves are his own bodies, a pool of
-five hero rigs built with him (ADR-131): they tear free round the hero, walk in, cut one at a time
+five hero rigs built with him (ADR-147): they tear free round the hero, walk in, cut one at a time
 under the fairness guard (told to the ledger, cued as his blows, parryable), pop in one hit (the cleave
 pops the one beside it), have no body circle and no shadow; his posture break pops them all. The
 Pearl: fed by a thread from each self, starved by popping them, interrupted by two cuts on him while
 he charges, dodged by a roll. Asleep he sits among four selves that tear away as he rises. His reward,
-the Paper Double, is recorded on the level and not usable (ADR-135), in the shape of the shared
+the Paper Double, is recorded on the level and not usable (ADR-148), in the shape of the shared
 rewards store a parallel build adds (the planning session's change).
 
 **The agents' parts.**
@@ -97,10 +98,44 @@ jade wreath more than a fox's head at the game camera; the bat's red flare hides
 the black pearl reads mostly as the engine's dark dye; the charm posts' paper strips are faint at 30 m.
 The audio's paper tear was not heard. The seated intro is untested by eye beyond a still. The selves
 cut while his AI is off (the Lab, Training's "Pop the copies" uses it). Music is borrowed. The ADR,
-Session and M numbers were rechecked against origin/main before the PR (the parallel builds may take
-the same; the Clockwork Marshal's plan also names ADR-135).
+Session and M numbers were rechecked against origin/main (2768db0) before the PR; a parallel build that
+merges first may still take M1.56.
 
 ---
+
+## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
+
+**Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also
+having a much harder time playing it on mobile because of having to constantly use the same finger to
+hit different parry and block while attacking at the same time ... think of ways to improve the
+controls, ui, and design as well". Branch `ui/mobile-play`. ADR-131 / Session 71.
+
+**The overlap, reproduced.** Not at the 852 x 393 preset the phone work was checked at: Safari gives
+an iPhone 15 Pro about 734 x 343 in landscape (the notch sides and the address bar are not the
+page's). There the hero's HP row ended at x = 242 and the boss's bar began at x = 217, same line.
+Headless Edge at that size showed it in every level.
+
+**What changed.**
+- `ui/hud.js` `_fit()`: the top row is fitted to the screen (ADR-131). Narrow touch screens: the
+  hero's meters 16 cells, HP as one number; the boss's bar takes the room between the hero's rows and
+  LOCK, shorter when it must be. Checked at 734 x 343 (all four levels), 667 x 320, 568 x 320,
+  852 x 393, 393 x 700 upright, 744 x 1000 (a tablet upright): no overlap in any.
+- `ui/touch.js`: PAD LAYOUT (classic / split) and HOLD ATTACK, two pause-menu switches, off by
+  default, kept with the pad's place and size. Split: GUARD beside the stick (above it upright), the
+  right cluster keeps ATTACK / HEAVY / DODGE. Hold: `input.pulse('@attack')` 0.22 s into the hold and
+  every 0.1 s after, paused under the guard and for 0.32 s after DODGE / HEAVY / FLASK.
+- `tests/integration/integ.mjs` (touch scenario): two thumbs hold ATTACK and GUARD at once and the
+  guard cuts the swing short; a held ATTACK is 1 cut with the switch off and a string with it on,
+  none while GUARD is held, a dodge from a second finger still rolls; the top row is clear at 844 px
+  and at 560 px (the boss's bar cut to 37 cells).
+
+**Not verified.** Everything above is the emulator and the headless sims. Where GUARD stands (178 px
+in, level with the stick) is my guess from thumb reach on a 6.1 inch phone; how the two switches feel
+is the owner's to judge on the device.
+
+**Next.** The owner tries `?pad=split&hold=1` on the phone and picks the default (and GUARD's place).
+Then the ideas ADR-131 lists: the game under the notch, a drag-to-place layout editor, an "add to
+home screen" hint.
 
 ## 2026-11-21 — Session 70: the hero looks the same on every screen
 
