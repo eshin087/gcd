@@ -354,6 +354,10 @@ export class Pipeline {
         // letters (× his own art's brightness, capped at 1.3: the blade keeps a little glow), w =
         // how dark the gap round him is over the wyrm's letters (the two rings of uHeroHaloShape)
         uSeenTone: { value: new THREE.Vector4(1.15, 1.6, 1.2, 0.85) },
+        // the sprite trial (render/spriteTrial.js, ?sprites=glyph|pixel): 1 = pixels whose alpha is the
+        // trial's raw flag (0.031 .. 0.039) are copied through as they are. 0 (always, without the
+        // switch): the pass never looks
+        uSprites: { value: 0 },
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
@@ -423,6 +427,7 @@ export class Pipeline {
         uniform vec4 uSeen;
         uniform vec3 uSeenInk;
         uniform vec4 uSeenTone;
+        uniform float uSprites;
         varying vec2 vUv;
         // heat haze, set per cell by hazeCell before artLetters prints it: x = 0..1 how deep the cell
         // is in the heat, y = the fire's letter roll for it, z = 1 violet (void fire), w = shimmer px
@@ -689,8 +694,14 @@ export class Pipeline {
           return vec2(pc != pn ? 0.6 : near ? 0.4 : 0.0, 0.0);
         }
 
+        bool isSpriteRaw(float a) { return uSprites > 0.5 && a > 0.031 && a < 0.039; } // spriteTrial.js SPRITE_RAW_FLAG
         void cellMain() {
           vec2 px = gl_FragCoord.xy;
+          if (uSprites > 0.5) {
+            // the sprite trial's raw drawings: their own pixels, no letters
+            vec4 sS = texture2D(tScene, px / uRes);
+            if (isSpriteRaw(sS.a)) { gl_FragColor = vec4(sS.rgb, 1.0); return; }
+          }
           // the hero first: his own pixel-font grid, drawn as ink-line art
           vec2 hcell = floor(px / uHeroCell);
           vec2 hbase = hcell * uHeroCell;
@@ -979,8 +990,8 @@ export class Pipeline {
           vec2 local = (px - cell * uCell) / uCell;
           float a = c.a;
           vec3 col;
-          if (a < 0.03) {
-            col = texture2D(tScene, px / uRes).rgb; // untagged: pass through
+          if (a < 0.03 || isSpriteRaw(a)) {
+            col = texture2D(tScene, px / uRes).rgb; // untagged (or a raw sprite's edge): pass through
           } else if (a < 0.46) {
             col = creatureCell(c, cell, local);
           } else if (isArt(a) || isProp(a)) {

@@ -22,6 +22,7 @@ import { GamepadControls } from './ui/gamepad.js';
 import { AudioEngine } from './audio/audio.js';
 import { GameFlow } from './game/flow.js';
 import { Lab } from './dev/lab.js';
+import { SpriteTrial, SPRITE_MODES, spriteModeFromSearch } from './render/spriteTrial.js';
 
 // Boot + main loop. Builds the shared `game` context every module receives (see ARCHITECTURE.md).
 
@@ -130,6 +131,28 @@ async function boot() {
   game.gamepad = new GamepadControls(game); // inert until a pad is connected and used
   game.touch = new TouchControls(game); // inert on desktop; may pick the touch quality preset
   game.flow = new GameFlow(game);
+  // the sprite trial (render/spriteTrial.js, ?sprites=glyph|print|pixel; off by default): the hero
+  // and the wyrm as flat drawings on cards. Nothing is built unless the switch is on
+  game.sprites = null;
+  game.spriteModes = SPRITE_MODES;
+  game.setSprites = (mode) => {
+    const m = SPRITE_MODES.includes(mode) ? mode : null;
+    if (m && !game.sprites) game.sprites = new SpriteTrial(game, m);
+    else game.sprites?.setMode(m);
+    try {
+      const u = new URL(location.href);
+      if (m) u.searchParams.set('sprites', m);
+      else u.searchParams.delete('sprites');
+      history.replaceState(history.state, '', u.toString());
+    } catch {
+      /* no history */
+    }
+    return game.sprites?.mode ?? null;
+  };
+  {
+    const m = spriteModeFromSearch(location.search);
+    if (m) game.sprites = new SpriteTrial(game, m);
+  }
   game.lab = new Lab(game);
 
   const applyQuality = () => {
@@ -341,6 +364,7 @@ async function boot() {
     safe('audio', () => game.audio.update(realDt));
 
     pipeline.updateShadowCamera(viewAt ?? game.cameraRig.focus);
+    if (game.sprites) safe('sprites', () => game.sprites.update());
     pipeline.render();
     safe('lab', () => game.lab.postRender?.()); // the model viewer's sheet reads the frame back
     if (inspect.rect) inspect.draw();
