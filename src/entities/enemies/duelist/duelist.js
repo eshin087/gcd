@@ -11,6 +11,7 @@ import { DuelBrain } from './brain.js';
 import { DuelFx } from './fx.js';
 import { closestOnSegments } from '../../../combat/clashFx.js';
 import { impactK } from '../../../combat/impact.js';
+import { calmBossFlash } from '../../../combat/impactCalm.js';
 import { HitReact } from './react.js';
 
 // A duelist: a human boss on the hero's skeleton and animator (the Ash Disciple; the Starless Lord).
@@ -281,7 +282,7 @@ export class Duelist {
     const dmg = o.exact ? Math.max(1, Math.round(raw)) : Math.max(1, Math.round(raw * P[part] * (broken ? this.T.posture.breakCritMult : 1)));
     const crit = !!o.crit || broken;
     this._applyDamage(dmg);
-    this.flash = Math.max(this.flash, Math.min(heavy || crit ? 1 : 0.8, fin(o.flash, 1)));
+    this.flash = Math.max(this.flash, calmBossFlash(Math.min(heavy || crit ? 1 : 0.8, fin(o.flash, 1))));
     let dx = fin(o.dir?.x, NaN), dz = fin(o.dir?.z, NaN);
     if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
       const p = this.game.player?.position;

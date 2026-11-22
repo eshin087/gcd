@@ -1,3 +1,4 @@
+import { calmBossFlash } from '../../combat/impactCalm.js';
 import * as THREE from 'three';
 import { CONFIG } from '../../core/config.js';
 import { markCaster, LAYER_CASTER } from '../../render/pipeline.js';
@@ -243,7 +244,7 @@ export class Dragon {
     const gate = this.nextPhaseHp;
     if (gate > 0 && this.brain.aiEnabled && this.hp >= gate) hp = Math.max(gate, hp);
     this.hp = Math.max(0, hp);
-    this.flash = Math.max(this.flash, Math.min(o.heavy || crit ? 1 : 0.8, Number.isFinite(o.flash) ? o.flash : 1));
+    this.flash = Math.max(this.flash, calmBossFlash(Math.min(o.heavy || crit ? 1 : 0.8, Number.isFinite(o.flash) ? o.flash : 1)));
 
     // flinch along the blow (fallback: away from the player)
     let dx = Number(o.dir?.x), dz = Number(o.dir?.z);
