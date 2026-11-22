@@ -144,6 +144,14 @@ export const CONFIG = {
     // untagged pixels (alpha 0: the grass at his feet must never count). The pass only runs while a
     // probe finds something in front of his torso (`probe`: the slab it tests, [half-width, from,
     // to] in m above his feet) and for `hold` frames after it last did.
+    // The hero's letters follow his size (render/pipeline.js _updateHeroLetters): one letter cell of
+    // his is `size` metres at his depth, on every screen and at every camera distance (0 = the fixed
+    // 4 px cell he had before). 0.115 m is the hero of the owner's reference picture: a 720p frame at
+    // the 36 m camera, about 9 letters across the cloak and 13 rows of them. From `near` m in to
+    // `close` m (where the art pass fades from his far look to the close-up's line art, uHeroLod) the
+    // cell goes back to the fixed one: a close-up (the title, an intro, the Lab) is drawn as it
+    // always was. `hyst`: slack (log of the cell size) before the cell steps.
+    heroLetters: { size: 0.115, near: 20, close: 6, hyst: 0.06 },
     seenThrough: { on: !NO_SEEN, reach: 2.8, margin: 0.6, bareMargin: 1.5, probe: [0.4, 0.6, 1.9], hold: 20 },
     exposure: 1.55,
     bloomStrength: 0.85,

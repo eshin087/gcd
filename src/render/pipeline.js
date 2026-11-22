@@ -38,8 +38,17 @@ export const ZOOM_ART = (() => {
 })();
 /** World radius (m) round the hero's screen point inside which the art pass draws his dark halo. */
 const HERO_HALO_R = 2.1;
+/** World half-size (m) of the box round his screen point that holds the whole drawn hero: his reach, the cloak, a leap. */
+const HERO_BOX_R = 5;
 /** GLSL: alpha `a` is one of the hero's part ids (materials.js HERO_ART; FLAG.ART_HERO = 0.48, FLAG.ART = 0.5). */
-const IS_HERO_GLSL = 'bool isHero(float a) { return a > 0.46 && a < 0.49; }';
+const IS_HERO_GLSL =
+  'bool isSelf(float a) { return a > 0.42 && a < 0.45; } bool isHero(float a) { return (a > 0.46 && a < 0.49) || isSelf(a); }';
+/**
+ * The hero's letters follow his size (CONFIG.render.heroLetters): the cells (px) his own letter grid
+ * may take, small to large. Even sizes only: at a half step (6 px: 1.5 screen px a font pixel) a
+ * letter's strokes are 1 and 2 px wide; at a quarter step they smear.
+ */
+export const HERO_CELLS = [4, 6, 8, 10, 12, 16, 20, 24, 32];
 /**
  * Make an object (and children) cast moon shadows. Works before or after rigid batching
  * (rigidBatch.js): a batched source keeps its layer mask without being drawn, and its actor's
@@ -177,6 +186,11 @@ export class Pipeline {
     // reference's dot matrix, and ~28 rows of it down his figure at the game camera
     this.heroCell = new THREE.Vector2(4, 4);
     this.heroArt = null;
+    // ... and the player's own (it follows his size on screen: _updateHeroLetters)
+    this.selfCell = new THREE.Vector2(4, 4);
+    this._selfArt = new Map(); // cell px -> atlas
+    /** One letter cell of the hero in metres at his depth (CONFIG.render.heroLetters.size; the Lab / captures set it live). */
+    this.heroLetter = CONFIG.render.heroLetters?.size ?? 0;
     this.asciiMat = new THREE.ShaderMaterial({
       uniforms: {
         tScene: { value: this.sceneRT.texture },
@@ -199,6 +213,15 @@ export class Pipeline {
         uArtCell: { value: this.artCell },
         tHeroArt: { value: null },
         uHeroCell: { value: this.heroCell },
+        // the PLAYER's own letter grid (his pixels carry their own alpha window: materials.js
+        // HERO_ART.self): its atlas, its cell (px) and its font pixel (px: the ink lines' width, the
+        // halo's reach), all three set by _updateHeroLetters so he keeps about the same number of
+        // letters on every screen and at every camera distance; uSelfBox = the box round his
+        // screen point that holds him (xy centre px, z half-size px, w = 1 once it is known)
+        tSelfArt: { value: null },
+        uSelfCell: { value: this.selfCell },
+        uSelfPx: { value: 1 },
+        uSelfBox: { value: new THREE.Vector4(0, 0, 0, 0) },
         uHeroCount: { value: 29 }, // glyphs in the hero atlas (sparse → dense), set in setSize
         uHeroCols: { value: 29 }, // hero atlas columns
         // The hero as INK-LINE ART on a DOT MATRIX (the owner's reference): thin ink lines where his
@@ -257,6 +280,10 @@ export class Pipeline {
         // ... and each part's silhouette ink (where it borders the world): rgb tint × gain (a). The
         // reference's cloth has a dim blue-lavender dotted outline, its armour a white one
         uHeroPartRim: U.uHeroPartRim ?? { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+        // ... and the player's own three (shaderLib.js uSelfPart*)
+        uSelfPartInk: U.uSelfPartInk ?? { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+        uSelfPartFill: U.uSelfPartFill ?? { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 0, 0, 1)) },
+        uSelfPartRim: U.uSelfPartRim ?? { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
         // per creature kind: x = hero (FLAG.ART_HERO), y = wyrm / other (FLAG.ART)
         // hero: uArtLum.x / uArtBlack.x map his flat art fill (HERO_INK) to the light value v that picks
         // his fill letters and brightness (uHeroFill); uArtMin.x is unused since the ink-line pass
@@ -357,6 +384,12 @@ export class Pipeline {
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
+        // every texture this pass reads is a screen target or a letter atlas, without mip levels:
+        // level 0 by name, so no lookup needs screen derivatives (the hero branch runs twice, once
+        // for the player and once for the bosses, and a derivative lookup inside it made the HLSL
+        // compiler warn about gradients in a loop)
+        #undef texture2D
+        #define texture2D(s, uv) textureLod(s, uv, 0.0)
         uniform sampler2D tScene;
         uniform sampler2D tDepth;
         uniform sampler2D tGrid;
@@ -377,6 +410,10 @@ export class Pipeline {
         uniform vec2 uArtCell;
         uniform sampler2D tHeroArt;
         uniform vec2 uHeroCell;
+        uniform sampler2D tSelfArt;
+        uniform vec2 uSelfCell;
+        uniform float uSelfPx;
+        uniform vec4 uSelfBox;
         uniform float uHeroCount;
         uniform float uHeroCols;
         uniform vec4 uHeroInk;
@@ -392,6 +429,9 @@ export class Pipeline {
         uniform vec4 uHeroPartInk[${HERO_PARTS}];
         uniform vec4 uHeroPartFill[${HERO_PARTS}];
         uniform vec4 uHeroPartRim[${HERO_PARTS}];
+        uniform vec4 uSelfPartInk[${HERO_PARTS}];
+        uniform vec4 uSelfPartFill[${HERO_PARTS}];
+        uniform vec4 uSelfPartRim[${HERO_PARTS}];
         uniform vec2 uArtLum;
         uniform vec2 uArtBlack;
         uniform vec2 uArtMin;
@@ -496,8 +536,8 @@ export class Pipeline {
           return mix(c.rgb * uCreatureBg, c.rgb * uCreatureGain, m);
         }
 
-        bool isArt(float a) { return a > 0.46 && a < 0.55; }
         ${IS_HERO_GLSL}
+        bool isArt(float a) { return (a > 0.46 && a < 0.55) || isSelf(a); }
         bool isProp(float a) { return a > 0.555 && a < 0.585; } // FLAG.ART_PROP = 0.57
 
         // ---- the wyrm (FLAG.ART): fine pixel-font digits on black (wyrmGlyphs.js atlas in tArt; ADR-093).
@@ -587,13 +627,19 @@ export class Pipeline {
         // tint of the part) where the silhouette, a depth step (its nearer side) or a part edge (the
         // higher part, HERO_ART ids in alpha) runs; a GAP (the far side of a depth step: a dark fill);
         // or FILL (dim, dense letters from the density ramp, following the source's light).
+        // who the hero branch draws this time: the player on his own grid (gSelf), or a human boss
+        bool gSelf;
+        vec2 gCell; // the letter cell (px)
+        float gLine; // one font pixel (px)
+        bool isWho(float a) { return gSelf ? isSelf(a) : (a > 0.46 && a < 0.49); }
         float heroGlyph(float idx, vec2 local) {
-          return texture2D(tHeroArt, vec2((idx + local.x) / uHeroCols, local.y)).a;
+          vec2 uv = vec2((idx + local.x) / uHeroCols, local.y);
+          return gSelf ? texture2D(tSelfArt, uv).a : texture2D(tHeroArt, uv).a;
         }
         // a neighbouring cell centre: x = its alpha (0 = not the hero), y = its view depth, z = its luma
         vec3 heroAt(vec2 uv) {
           vec4 s = texture2D(tScene, uv);
-          return isHero(s.a) ? vec3(s.a, linDepth(uv), luma(s.rgb)) : vec3(0.0, -1.0, 0.0);
+          return isWho(s.a) ? vec3(s.a, linDepth(uv), luma(s.rgb)) : vec3(0.0, -1.0, 0.0);
         }
         // ... and when that centre is off the hero, whether the cell still draws the outline itself
         // (the midpoint of its two samples nearer this cell hits him, so ≥ 2 of its 4 do): x = -1, and
@@ -601,7 +647,7 @@ export class Pipeline {
         // into a wireframe at the game camera, where he is only ~12 letters wide)
         vec3 heroNb(vec2 uv, vec2 toC) {
           vec3 s = heroAt(uv);
-          if (s.x <= 0.0 && isHero(texture2D(tScene, uv + toC * 0.25).a)) s.x = -1.0;
+          if (s.x <= 0.0 && isWho(texture2D(tScene, uv + toC * 0.25).a)) s.x = -1.0;
           return s;
         }
         // the hero's dark halo over the world (uHeroHalo): 0 .. 1 how much it darkens this off-hero
@@ -610,7 +656,7 @@ export class Pipeline {
           if (uHeroHalo.w <= 0.0) return 0.0;
           vec2 d = px - uHeroHalo.xy * uRes;
           if (dot(d, d) > uHeroHalo.z * uHeroHalo.z) return 0.0;
-          float r1 = uHeroHaloShape.x * uHeroPx.x, r2 = uHeroHaloShape.y * uHeroPx.x;
+          float r1 = uHeroHaloShape.x * uSelfPx, r2 = uHeroHaloShape.y * uSelfPx;
           float n1 = 0.0, n2 = 0.0;
           for (int i = 0; i < 8; i++) {
             float a = float(i) * 0.7853982;
@@ -637,7 +683,7 @@ export class Pipeline {
         // halo over the world grid and the props finds them in the scene target by itself)
         float seenHalo(vec2 px) {
           if (!seenBox(px)) return 0.0;
-          float r1 = uHeroHaloShape.x * uHeroPx.x, r2 = uHeroHaloShape.y * uHeroPx.x;
+          float r1 = uHeroHaloShape.x * uSelfPx, r2 = uHeroHaloShape.y * uSelfPx;
           float n1 = 0.0, n2 = 0.0;
           for (int i = 0; i < 8; i++) {
             float a = float(i) * 0.7853982;
@@ -647,8 +693,10 @@ export class Pipeline {
           }
           return uSeenTone.w * max(step(0.5, n1), 0.55 * step(0.5, n2));
         }
-        float heroPartOf(float a) { return floor((a - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25); }
-        float heroIdOf(float a) { return floor((a - ${HERO_ART.a0.toFixed(4)}) / ${HERO_ART.step.toFixed(4)} + 0.5); }
+        // (the player's ids sit HERO_ART.self lower, in his own window)
+        float heroA(float a) { return a < 0.455 ? a + ${HERO_ART.self.toFixed(4)} : a; }
+        float heroPartOf(float a) { return floor((heroA(a) - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25); }
+        float heroIdOf(float a) { return floor((heroA(a) - ${HERO_ART.a0.toFixed(4)}) / ${HERO_ART.step.toFixed(4)} + 0.5); }
         // The ink LINES are found per PIXEL, so they follow every curve exactly (a line per cell, centred
         // in it, stair-stepped every diagonal and curve). Neighbour pixel n (alpha aN, view depth dN; dN
         // < 0: off the hero) seen from this hero pixel (aP, dP); dO = the opposite neighbour's depth
@@ -684,24 +732,24 @@ export class Pipeline {
           if (n.x >= aC - ${(HERO_ART.step * 0.5).toFixed(5)}) {
             return vec2(near && n.x < aC + ${(HERO_ART.step * 0.5).toFixed(5)} && lC > n.z * uHeroCrease.x + uHeroCrease.y ? 0.5 : 0.0, 0.0);
           }
-          float pc = floor((aC - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25);
-          float pn = floor((n.x - ${HERO_ART.a0.toFixed(4)}) / ${(HERO_ART.step * 2).toFixed(4)} + 0.25);
+          float pc = heroPartOf(aC), pn = heroPartOf(n.x);
           return vec2(pc != pn ? 0.6 : near ? 0.4 : 0.0, 0.0);
         }
 
-        void cellMain() {
-          vec2 px = gl_FragCoord.xy;
-          // the hero first: his own pixel-font grid, drawn as ink-line art
-          vec2 hcell = floor(px / uHeroCell);
-          vec2 hbase = hcell * uHeroCell;
+        // One fighter of the hero-art pass at this pixel: the player (gSelf) or a human boss, on
+        // the grid gCell. True when it drew the pixel.
+        bool heroArtCell(vec2 px) {
+          bool drew = false;
+          vec2 hcell = floor(px / gCell);
+          vec2 hbase = hcell * gCell;
           vec3 hsum = vec3(0.0);
           float hhits = 0.0, dN = 1e9, aN = 0.0;
           vec4 hin = vec4(0.0); // which of the 4 samples hit the hero (the in-cell silhouette direction)
           for (int i = 0; i < 4; i++) {
             vec2 o = vec2(i == 1 || i == 3 ? 0.75 : 0.25, i >= 2 ? 0.75 : 0.25);
-            vec2 suv = (hbase + o * uHeroCell) / uRes;
+            vec2 suv = (hbase + o * gCell) / uRes;
             vec4 sa = texture2D(tScene, suv);
-            if (isHero(sa.a)) {
+            if (isWho(sa.a)) {
               hsum += sa.rgb;
               hhits += 1.0;
               hin[i] = 1.0;
@@ -709,15 +757,17 @@ export class Pipeline {
               if (dz < dN) { dN = dz; aN = sa.a; }
             }
           }
-          vec2 cuvH = (hbase + 0.5 * uHeroCell) / uRes;
+          vec2 cuvH = (hbase + 0.5 * gCell) / uRes;
           vec4 cH = texture2D(tScene, cuvH);
-          bool cHero = isHero(cH.a);
-          vec2 uvP = px / uRes;
+          bool cHero = isWho(cH.a);
+          // (his ink lines are found per FONT pixel, gLine screen px: on a large screen they keep the
+          // letters' own blocky step instead of turning into a hairline round big letters)
+          vec2 uvP = gSelf ? (floor(px / gLine) + 0.5) * gLine / uRes : px / uRes;
           vec4 sP = texture2D(tScene, uvP);
-          bool pHero = isHero(sP.a); // this pixel itself shows the hero (its ink line is found here)
+          bool pHero = isWho(sP.a); // this pixel itself shows the hero (its ink line is found here)
           bool hCell = cHero || hhits >= 2.0; // the cell prints one of his fill letters
           if (hCell || pHero) {
-            vec2 local = (px - hbase) / uHeroCell;
+            vec2 local = (px - hbase) / gCell;
             float dP = pHero ? linDepth(uvP) : dN;
             // distance LOD (view depth): 0 up close, 1 at the game camera. Far away nearly every cell
             // of a 12-letter-wide figure sits on some edge, so the fine inner lines (piece edges) drop
@@ -735,7 +785,7 @@ export class Pipeline {
               float aC = cHero ? cH.a : aN;
               vec3 c = (hsum + (cHero ? cH.rgb : vec3(0.0))) / (hhits + (cHero ? 1.0 : 0.0));
               float th = max(uArtEdge.x, 1e-4) * dC;
-              vec2 dx = vec2(uHeroCell.x, 0.0) / uRes, dy = vec2(0.0, uHeroCell.y) / uRes;
+              vec2 dx = vec2(gCell.x, 0.0) / uRes, dy = vec2(0.0, gCell.y) / uRes;
               vec3 sL = heroNb(cuvH - dx, dx), sR = heroNb(cuvH + dx, -dx), sD = heroNb(cuvH - dy, dy), sU = heroNb(cuvH + dy, -dy);
               float lC = luma(c);
               vec2 eL = heroEdge(sL, dC, aC, lC, sR.y, th, fine), eR = heroEdge(sR, dC, aC, lC, sL.y, th, fine);
@@ -750,7 +800,7 @@ export class Pipeline {
               // the blade / gem keep their glow (capped far away: uHeroFar.w)
               float hdr = mix(1.0, clamp(mx, 1.0, mix(64.0, uHeroFar.w, far)), smoothstep(0.25, 0.6, sat));
               int pid = int(clamp(heroPartOf(aC), 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
-              vec4 pf = uHeroPartFill[pid];
+              vec4 pf = gSelf ? uSelfPartFill[pid] : uHeroPartFill[pid];
               if (uHeroDebug > 0.5 && uHeroDebug < 1.5) {
                 col = c; // look-dev: the raw art source
               } else if (uHeroDebug < 1.5) {
@@ -773,11 +823,11 @@ export class Pipeline {
             // stroke per letter cell (a gap where the stroke crosses the cell's letter spacing), so a
             // contour reads as a chain of stroke glyphs, not a vector line
             if (pHero && uHeroDebug < 0.5 || pHero && uHeroDebug > 1.5) {
-              vec2 o = uHeroPx.x / uRes;
+              vec2 o = gLine / uRes;
               vec2 uL = uvP - vec2(o.x, 0.0), uR = uvP + vec2(o.x, 0.0), uD = uvP - vec2(0.0, o.y), uU = uvP + vec2(0.0, o.y);
               float aL = texture2D(tScene, uL).a, aR = texture2D(tScene, uR).a, aD = texture2D(tScene, uD).a, aU = texture2D(tScene, uU).a;
-              float dL = isHero(aL) ? linDepth(uL) : -1.0, dR = isHero(aR) ? linDepth(uR) : -1.0;
-              float dD = isHero(aD) ? linDepth(uD) : -1.0, dU = isHero(aU) ? linDepth(uU) : -1.0;
+              float dL = isWho(aL) ? linDepth(uL) : -1.0, dR = isWho(aR) ? linDepth(uR) : -1.0;
+              float dD = isWho(aD) ? linDepth(uD) : -1.0, dU = isWho(aU) ? linDepth(uU) : -1.0;
               float thP = max(uHeroPx.y, 1e-5) * dP;
               float eL = heroPxEdge(aL, dL, sP.a, dP, dR, thP, fine), eR = heroPxEdge(aR, dR, sP.a, dP, dL, thP, fine);
               float eD = heroPxEdge(aD, dD, sP.a, dP, dU, thP, fine), eU = heroPxEdge(aU, dU, sP.a, dP, dD, thP, fine);
@@ -789,8 +839,8 @@ export class Pipeline {
                 vec2 o2 = o * 2.0;
                 vec2 vL = uvP - vec2(o2.x, 0.0), vR = uvP + vec2(o2.x, 0.0), vD = uvP - vec2(0.0, o2.y), vU = uvP + vec2(0.0, o2.y);
                 float bL = texture2D(tScene, vL).a, bR = texture2D(tScene, vR).a, bD = texture2D(tScene, vD).a, bU = texture2D(tScene, vU).a;
-                float gL = isHero(bL) ? linDepth(vL) : -1.0, gR = isHero(bR) ? linDepth(vR) : -1.0;
-                float gD = isHero(bD) ? linDepth(vD) : -1.0, gU = isHero(bU) ? linDepth(vU) : -1.0;
+                float gL = isWho(bL) ? linDepth(vL) : -1.0, gR = isWho(bR) ? linDepth(vR) : -1.0;
+                float gD = isWho(bD) ? linDepth(vD) : -1.0, gU = isWho(bU) ? linDepth(vU) : -1.0;
                 float th2 = thP * 2.0;
                 eL = heroPxEdge(bL, gL, sP.a, dP, gR, th2, fine); eR = heroPxEdge(bR, gR, sP.a, dP, gL, th2, fine);
                 eD = heroPxEdge(bD, gD, sP.a, dP, gU, th2, fine); eU = heroPxEdge(bU, gU, sP.a, dP, gD, th2, fine);
@@ -802,13 +852,13 @@ export class Pipeline {
                 vec2 pg = vec2(step(0.1, eR) - step(0.1, eL), step(0.1, eU) - step(0.1, eD));
                 bool vRun = abs(pg.x) > abs(pg.y), hRun = abs(pg.y) > abs(pg.x);
                 int pidP = int(clamp(heroPartOf(sP.a), 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
-                vec4 pInk = uHeroPartInk[pidP];
-                vec4 pfP = uHeroPartFill[pidP];
+                vec4 pInk = gSelf ? uSelfPartInk[pidP] : uHeroPartInk[pidP];
+                vec4 pfP = gSelf ? uSelfPartFill[pidP] : uHeroPartFill[pidP];
                 // stroke style (pfP.y): 0 one stroke per cell (a 1-px gap at the letter spacing),
                 // 1 dotted (a short dash per cell: the torn tails' and the hair's specks), 2 unbroken
                 // (far away the strokes join up: a crisp, unbroken silhouette at the game camera)
                 bool outer = pl > 0.9;
-                vec4 pRim = uHeroPartRim[pidP];
+                vec4 pRim = gSelf ? uSelfPartRim[pidP] : uHeroPartRim[pidP];
                 float on = 1.0, style = outer && pfP.y > 7.5 ? 1.0 : mod(pfP.y, 4.0);
                 if (style > 1.5) on = 1.0;
                 else if (style > 0.5) on = vRun ? step(abs(local.y - 0.5), 0.2) : hRun ? step(abs(local.x - 0.5), 0.2) : 1.0;
@@ -835,13 +885,25 @@ export class Pipeline {
             }
             // where something covers him (ADR-106) the same art prints through it in the blade's cyan:
             // a bright silhouette, his inner lines and fill letters at their own brightness
-            if (seenAt(px) || seenAt(hbase + 0.5 * uHeroCell)) {
+            if (seenAt(px) || seenAt(hbase + 0.5 * gCell)) {
               float l = max(col.r, max(col.g, col.b));
               col = uSeenInk * (inkP > 0.9 ? uSeenTone.x : min(l * (inkP > 0.1 ? uSeenTone.y : uSeenTone.z), 1.3));
             }
             gl_FragColor = vec4(col, 1.0);
-            return;
+            drew = true;
           }
+          return drew;
+        }
+
+        void cellMain() {
+          vec2 px = gl_FragCoord.xy;
+          // the hero first: his own pixel-font grid, drawn as ink-line art. The player on the grid
+          // that follows his size (only the box round him is searched), then the human bosses on theirs
+          vec2 dS = abs(px - uSelfBox.xy);
+          gSelf = true; gCell = uSelfCell; gLine = uSelfPx;
+          if ((uSelfBox.w < 0.5 || max(dS.x, dS.y) < uSelfBox.z) && heroArtCell(px)) return;
+          gSelf = false; gCell = uHeroCell; gLine = uHeroPx.x;
+          if (heroArtCell(px)) return;
           // the wyrm (other creatures): the art grid, anchored to the wyrm's screen position
           vec2 acell = floor((px - uWyrmAnchor) / uArtCell);
           vec2 abase = acell * uArtCell + uWyrmAnchor;
@@ -1247,6 +1309,56 @@ export class Pipeline {
     this.height = 1;
   }
 
+  /**
+   * The hero's letters follow his size (CONFIG.render.heroLetters; `ps` = U.uPlayerScreen): one
+   * letter cell is `heroLetter` metres at his depth, so he is drawn with about the same letters on
+   * a phone, at 720p and at 4K, and when the camera pulls in or out (a fixed 4 px cell gave a 1440p
+   * screen twice the letters across his cloak). From `near` m in to `close` m, where the pass
+   * fades from his far look to the close-up's line art (uHeroLod), the cell goes back to the fixed
+   * one (a blend in log size): the title, an intro and the Lab's close-ups are drawn as they always
+   * were (with the large cell their ink lines came out five pixels thick). The cell steps along
+   * HERO_CELLS with `hyst` of slack (the fight's breathing camera must not flicker it), never
+   * below the bosses' cell. Also the box that holds him (uSelfBox). No allocation once a
+   * cell's atlas exists.
+   */
+  _updateHeroLetters(ps) {
+    const u = this.asciiMat.uniforms, L = CONFIG.render.heroLetters ?? {};
+    const min = this.heroCell.x;
+    let cell = min;
+    const ok = ps && Number.isFinite(ps.x + ps.y + ps.z) && ps.z > 0.5;
+    if (ok && this.heroLetter > 0) {
+      const near = L.near ?? 20, close = Math.min(L.close ?? 6, near - 0.01);
+      const ppm = (0.5 * this.height * this.camera.projectionMatrix.elements[5]) / Math.max(ps.z, near);
+      let t = Math.min(1, Math.max(0, (ps.z - close) / (near - close)));
+      t = t * t * (3 - 2 * t);
+      const want = Math.log(min) + (Math.log(Math.max(min, ppm * this.heroLetter)) - Math.log(min)) * t;
+      // the step nearest in log size; the one drawn now is kept until the wanted size is `hyst`
+      // past the midpoint to the next
+      let best = min, bd = Infinity;
+      for (const c of HERO_CELLS) {
+        if (c < min) continue;
+        const d = Math.abs(Math.log(c) - want);
+        if (d < bd) { bd = d; best = c; }
+      }
+      const cur = this.selfCell.x;
+      const keep = cur >= min && HERO_CELLS.includes(cur) && Math.abs(Math.log(cur) - want) < bd + 2 * (L.hyst ?? 0.06);
+      cell = keep ? cur : best;
+    }
+    if (cell !== this.selfCell.x || !u.tSelfArt.value) {
+      let art = this._selfArt.get(cell);
+      if (!art) this._selfArt.set(cell, (art = createPixelArtAtlas(cell / 4)));
+      this.selfCell.set(cell, cell);
+      u.tSelfArt.value = art.texture;
+      // the ink lines are one font pixel wide, in whole screen pixels
+      u.uSelfPx.value = Math.max(1, Math.round(cell / 4 - (L.thin ?? 0.01)));
+    }
+    const b = u.uSelfBox.value;
+    if (ok) {
+      const rPx = (HERO_BOX_R * 0.5 * this.height * this.camera.projectionMatrix.elements[5]) / ps.z;
+      b.set(ps.x * this.width, ps.y * this.height, rPx + 2 * cell, 1);
+    } else b.w = 0;
+  }
+
   /** Camera-dependent uniforms of the ASCII pass (world reconstruction for stone outlines). */
   _updateAsciiCamera() {
     const u = this.asciiMat.uniforms;
@@ -1264,6 +1376,7 @@ export class Pipeline {
       const k = Math.min(1, Math.max(0, (ps.z - hs.w * 0.4) / (hs.w * 0.6)));
       h.set(ps.x, ps.y, rPx, k * k * (3 - 2 * k));
     } else h.w = 0;
+    this._updateHeroLetters(ps);
     // (the wyrm's grid anchor: _updateWyrmGrid, before the scene pass)
     // the props' grid anchor: where the world's ground origin would be on screen if the whole ground
     // moved like the ground at the focus (the screen position of the focus, minus the focus's world

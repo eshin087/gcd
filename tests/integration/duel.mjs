@@ -26,7 +26,7 @@ const { COURTYARD, createCourtyard } = await imp('src/world/courtyard.js');
 const { Scars } = await imp('src/world/scars.js');
 const { Destructibles, STATE } = await imp('src/world/destructibles.js');
 const { BREAK } = await imp('src/world/breakTuning.js');
-const { Player } = await imp('src/entities/player/player.js');
+const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
 const { AshDisciple } = await imp('src/entities/enemies/ashDisciple/disciple.js');
 const { MOVES, MOVE_NAMES, CLIP, realise } = await imp('src/entities/enemies/ashDisciple/moves.js');
 const { TUNING } = await imp('src/entities/enemies/ashDisciple/tuning.js');
@@ -2237,7 +2237,7 @@ async function scenarioCutFx() {
   d.brain.guardUp = () => false;
   d.brain.onStruck = () => {};
   const BUDGET = { light: 20, sweep: 24, point: 24, slam: 62, cleave: 72, execute: 66 };
-  const PF = game.U.uHeroPartFill.value[17], PR = game.U.uHeroPartRim.value[17];
+  const PF = game.U.uSelfPartFill.value[17], PR = game.U.uSelfPartRim.value[17];
   const v = new THREE.Vector3(), A = new THREE.Vector3(), B = new THREE.Vector3();
   // at the moment of the hit (inside takeHit, before his shove): the point against his drawn body and
   // the drawn blade; the gameplay point the hit test found (p._applyHit's h). After the tick (the
@@ -2319,7 +2319,10 @@ async function scenarioCutFx() {
   assert(rows.every((r) => r.blade <= 0.3 && r.spark <= 1e-6 && r.drawn), `… found on the drawn blade (worst ${Math.max(...rows.map((r) => r.blade)).toFixed(2)} m off it); his spray starts at the cut (worst ${Math.max(...rows.map((r) => r.spark)).toExponential(1)})`);
   assert(rows.every((r) => r.stop >= r.want - 1e-6), `each freezes the frame for its weight (${rows.map((r) => r.stop.toFixed(3)).join(', ')})`);
   assert(rows.every((r) => r.kick >= 0.8 * r.kickWant && r.kickWant > 0 && r.punch > 0), `each throws the camera along the cut (${rows.map((r) => r.kick.toFixed(3)).join(', ')} m) and punches it in`);
-  assert(rows.every((r) => r.fill >= 1.5 && r.rim >= 1.25 * 1.7), `each flares the blade (fill ${Math.min(...rows.map((r) => r.fill)).toFixed(2)}+, rim ${Math.min(...rows.map((r) => r.rim)).toFixed(2)}+)`);
+  // (his dark blade, ADR-130: the base x TUNE.bladeLook, lit by the strike and the contact's flare)
+  const BL = TUNE_P.bladeLook, BF = TUNE_P.bladeFlare;
+  const fillMin = BL.fill * (1 + BF.strike[0] + BF.hit[0]) - 0.05, rimMin = 1.7 * BL.line * (1 + BF.line * (BF.strike[0] + BF.hit[0])) - 0.02;
+  assert(rows.every((r) => r.fill >= fillMin && r.rim >= rimMin), `each flares the blade (fill ${Math.min(...rows.map((r) => r.fill)).toFixed(2)}+ ≥ ${fillMin.toFixed(2)}, rim ${Math.min(...rows.map((r) => r.rim)).toFixed(2)}+ ≥ ${rimMin.toFixed(2)})`);
   assert(rows.every((r) => r.cuts === 1 && r.hits === 1), `each sounds once as a cut on cloth (${rows.map((r) => `${r.hits}/${r.cuts}`).join(' ')})`);
   assert(rows.every((r) => r.spawns <= r.budget), `each stays within its spawn budget (${rows.map((r) => `${r.spawns}/${r.budget}`).join(' ')})`);
   assert(rows.every((r) => r.shud === true && r.still === true), `he shudders through each freeze, side to side, and is still after it (${rows.map((r) => `${r.shud ? 'y' : 'n'}${r.still ? '' : '!'}`).join(' ')})`);
@@ -2396,7 +2399,7 @@ async function scenarioCutFx() {
       if (gev) gs = { cut: sounds.filter(([nm]) => nm === 'cut').length, hit: sounds.filter(([nm]) => nm === 'hit').length, k0, k1: Math.hypot(rig.kickX, rig.kickY), fill: PF.x, n: CUT_LAST.n - n0 };
     }
     out(`   a guarded strike: ${gs ? `cut ${gs.cut}, hit ${gs.hit}, kick ${gs.k0.toFixed(4)} → ${gs.k1.toFixed(4)}, fill ${gs.fill.toFixed(2)}, cuts drawn ${gs.n}` : 'none'}`);
-    assert(!!gs && gs.cut === 0 && gs.hit === 0 && gs.n === 0 && gs.k1 <= gs.k0 + 1e-6 && gs.fill <= 1.25, 'a guarded strike draws no cut, plays no hit or cut, throws no kick, and flares the blade only by the strike\'s gain');
+    assert(!!gs && gs.cut === 0 && gs.hit === 0 && gs.n === 0 && gs.k1 <= gs.k0 + 1e-6 && gs.fill <= BL.fill * (1 + BF.strike[1]) + 1e-6, 'a guarded strike draws no cut, plays no hit or cut, throws no kick, and flares the blade only by the strike\'s gain');
   }
   G.watch = null;
   d.takeHit = takeHit0;

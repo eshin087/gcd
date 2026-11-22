@@ -209,18 +209,23 @@ const PIXEL_3X3 = [
   [7, 7, 7], // #
 ];
 
-/** Fill cell of the hero's micro-font atlas at integer scale s: a 3x3 glyph + 1 px spacing. */
-export const pixelArtCell = (s) => [4 * s, 4 * s];
+/** Fill cell of the hero's micro-font atlas at scale s: a 3x3 glyph + 1 px spacing, in whole pixels. */
+export const pixelArtCell = (s) => {
+  const c = Math.max(4, Math.round(4 * s));
+  return [c, c];
+};
 
 /**
  * The hero's fill glyphs (PIXEL_3X3) as a one-row atlas: each glyph scaled by `s`, top-left in its
- * (4s x 4s) cell, so the marks keep the reference's one-pixel gaps: a regular dot matrix. Sorted
- * sparse → dense by lit pixels. Returns { texture, count (glyphs), cols (atlas columns) }.
+ * cell (pixelArtCell: 4s px, rounded), so the marks keep the reference's one-pixel gaps: a regular
+ * dot matrix. Sorted sparse → dense by lit pixels. Returns { texture, count (glyphs), cols (atlas
+ * columns) }. A whole `s` is pixel exact; between two (6 px cells, s 1.5) a font pixel covers a
+ * fraction of a screen pixel at its edge and the canvas shades it by that share.
  * (The hero's ink lines are drawn per pixel by the art pass, not from glyphs.)
  */
 export function createPixelArtAtlas(s = 1) {
-  s = Math.max(1, Math.round(s) || 1);
-  const [cw, ch] = pixelArtCell(s);
+  const [cw, ch] = pixelArtCell(Math.max(1, Number(s) || 1));
+  const f = cw / 4; // screen px per font pixel
   const lit = (rows) => rows.reduce((n, r) => n + (r & 1) + ((r >> 1) & 1) + ((r >> 2) & 1), 0);
   const sorted = PIXEL_3X3.map((rows, i) => ({ rows, i })).sort((a, b) => lit(a.rows) - lit(b.rows) || a.i - b.i);
   const cols = sorted.length;
@@ -231,7 +236,7 @@ export function createPixelArtAtlas(s = 1) {
   ctx.fillStyle = '#fff';
   sorted.forEach(({ rows }, col) => {
     rows.forEach((bits, y) => {
-      for (let x = 0; x < 3; x++) if (bits & (4 >> x)) ctx.fillRect(col * cw + x * s, y * s, s, s);
+      for (let x = 0; x < 3; x++) if (bits & (4 >> x)) ctx.fillRect(col * cw + x * f, y * f, f, f);
     });
   });
   const tex = new THREE.CanvasTexture(canvas);

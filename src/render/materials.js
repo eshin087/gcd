@@ -42,8 +42,11 @@ export const FLAG = { NONE: 0.0, ART_HERO: 0.48, ART: 0.5, ART_PROP: 0.57, LEAF:
  * hero window (0.46, 0.49). The art pass draws a bright ink line wherever two neighbouring cells
  * show different parts (the higher id draws it) or a depth step (the nearer side draws it). Step 0.0006
  * is ≥ 2 half-float ulps there; parts 0..19 (each part's line tint: U.uHeroPartInk).
+ * `heroSelf` (the PLAYER's rig only; the human bosses share everything else) writes the same ids
+ * `self` lower, in a window of their own (0.42, 0.45): the art pass tells his pixels from a boss's
+ * by it and prints him on his own letter cell (pipeline.js "the hero's letters follow his size").
  */
-export const HERO_ART = { a0: 0.4632, step: 0.0006, parts: HERO_PARTS };
+export const HERO_ART = { a0: 0.4632, step: 0.0006, parts: HERO_PARTS, self: 0.04 };
 export const ASCII_SETS = { scales: 0, strands: 1, plates: 2, smooth: 3 };
 /**
  * Surface-glyph defaults per `ascii` set: 4-glyph ramp (dark → bright) and cell size in aGUV
@@ -173,7 +176,7 @@ function surfaceFeatures(o, cell) {
     const part = Math.round(h.part ?? 0);
     if (!(part >= 0 && part < HERO_ART.parts)) throw new Error(`surface glyph heroArt.part: 0..${HERO_ART.parts - 1}, got ${h.part}`);
     defines.SG_HERO_ART = '';
-    defines.HERO_A0 = HERO_ART.a0.toFixed(4);
+    defines.HERO_A0 = (HERO_ART.a0 - (o.heroSelf ? HERO_ART.self : 0)).toFixed(4);
     defines.HERO_AS = HERO_ART.step.toFixed(4);
     uniforms.uArtFill = { value: new THREE.Color(...(h.fill ?? [0.1, 0.1, 0.11])) };
     uniforms.uArtSpec = { value: new THREE.Vector2(h.spec ?? 0, h.specPow ?? 20) };
