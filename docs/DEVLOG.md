@@ -5,6 +5,65 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 72: Drownwatch Cliff and the Tide Colossus (built from a plan)
+
+**Owner** (through the planning session): new level bosses built on the power fantasy of famous
+characters, as originals. This one, as the owner picked it: a sea creature too big for the arena; the
+hero fights its hands and its head from a cliff edge while it breathes down the shore; its fixed reward
+a breath-style beam technique. Built by an Opus agent from the planning session's build plan, beside
+five sibling builds. Branch `level/tide-colossus`. ADR-141 – ADR-143 / Session 72 / M1.56.
+
+**What is new.**
+- `?level=tide`: **Drownwatch Cliff** (`levels/tide.js`, `world/tideShelf.js`): a shelf of salt grass
+  on a basalt cliff, the sea standing at its foot (a faceted swell moved on the CPU), a scarp to the
+  south with the path up from the bonfire. The hero's north limit is five big static colliders tagged
+  `sea` (no new bound rule). About 90 breakables: menhirs (the cover), the Drownwatch tower and two
+  sea stacks in two stages, a wrecked hull (keel and ten ribs), racks, boats, anchors, chains, cairns,
+  boulders, a causeway of flagstones. The ground plane ends at the rim (`groundGeometry`, world.js).
+- **NAERATH, THE TIDE COLOSSUS** (`entities/colossus/`): its own class on the boss slot (it does not
+  walk). Two webbed hands and a broad low head with split mandibles, comb teeth, six pale eyes, a coral
+  crown, on the wyrm's art path; a procedural rig of springs and two-bone IK. Ten moves as data with
+  their tells, three phases, the grip and the lurch, the posture break and the execution on the head,
+  the plunge onto the head from any perfect dodge of a red or black blow, the intro and the death.
+- **Brine** in the fire field (`FIRE_PALETTES.brine`, the void slot re-skinned with the Skybreak
+  Ring's `setPalette`): the beam, the surge's wall of water, phase 3's lingering lines.
+- **The camera:** `frameSpheres` on the boss slot (`flow._bossFrame`), `cameraRig.keep` through a
+  windup, the phone rule as data (a striking hand never more than 3.5 m up).
+- **Tidebreath** (`player/techniques/tideBreath.js`): the reward technique, working, from the Lab only.
+- The Lab's FIGHT section takes a boss's own buttons (`debug.labButtons()`); ui/feed.js reads a level's
+  `wake` / `fury` / `breath` lines; the level borrows the wyrm's three phase tracks.
+- `tests/integration/tide.mjs` (14 scenarios) in `npm test`; the set in `world.mjs sets`; `tide` in the
+  music check and the glyph check's list.
+
+**Where it departs from the plan (and why).** The arms are 14 + 16 m (13 + 15 left the shelf's south
+third out of reach). The set's builders live in `tideShelf.js`, not `landmarks.js` (five sibling
+builds touch that file). The breath's cue is drawn where the beam will meet the hero, not at the maw
+(the maw is off a phone's screen: `frame` failed there first). A beam that reaches a hero behind cover
+ends that pass for him (it landed 167 ms after its cue once the beam's root had moved past the cover).
+One move runs at a time, so the plan's ledger of upcoming impacts is the director's single queue. The
+lingering lines share one tick clock. No `tideLook` row in the Lab's LOOKS (duel.mjs checks every row
+against the owner's picks; the row waits for the pick): the colossus's own Lab buttons reload with
+`?tideLook=`. `player.debug` does not cast Tidebreath (a line in player.js; the colossus's debug does).
+Not built: the sea's options b and c; the breath in other colours as live options (rendered only).
+
+**Verification.** `npm test` and `npm run build`: see the PR. Headless numbers (tide.mjs): every
+move's tell at its windup's start and its contact on its flash + 0.35 s (0 – 33 ms off); every answer
+(parry and the counter in range, block, a red slam on a guard, the perfect dodge ending on the shelf,
+Black Fathom on a guard, the breaker's deflect chain); cover, the surge's pocket, the grip; the gates
+at 66 / 33 %; 120 s of the AI against a wandering hero (no hand off the shelf, no conflicting cues,
+13 / 17 / 17 cues a minute by phase); the striking part on screen at every cue at 1280 x 720, 852 x 393
+and 393 x 852 from five spots; the budget (about 18 k triangles, 72 bones, 12 draws + 1 shadow; the sea
+728 triangles; the breakables' own bones about 110; the fire field's peak in phase 3 about 400 blobs);
+a god-mode bot that answers every cue wins on two seeds in 172 / 190 s. In headless Edge on the RTX
+4090: the level and the fight at the game camera at 1280 x 720 and on the phone sizes, the look sheets.
+
+**Not checked / open.** Nobody has played it. Nothing was measured on a phone. The pace is slow (13 –
+17 cues a minute against the duelists' 80 – 100): a giant, but the owner should feel it. The fight's
+length is a first number. The look is the default b, not a pick: the sheets wait for the owner. The
+music is borrowed; there is no surf sound. The hero has no casting motion for Tidebreath.
+
+---
+
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
 **Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also
@@ -38,6 +97,8 @@ is the owner's to judge on the device.
 **Next.** The owner tries `?pad=split&hold=1` on the phone and picks the default (and GUARD's place).
 Then the ideas ADR-131 lists: the game under the notch, a drag-to-place layout editor, an "add to
 home screen" hint.
+
+---
 
 ## 2026-11-21 — Session 70: the hero looks the same on every screen
 

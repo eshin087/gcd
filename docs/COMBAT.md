@@ -1880,6 +1880,63 @@ Storm's held tiles are hard to see against the aura. A blast stopped by cover is
 arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
 east.
 
+## The Tide Colossus (2026-11-21, ADR-141 – ADR-143; `?level=tide`)
+NAERATH, THE TIDE COLOSSUS stands in the sea north of Drownwatch Cliff and never comes ashore. The
+hero fights on the shelf (14 m deep, 56 m wide) what is in play: two hands and a head. Numbers:
+`entities/colossus/tuning.js` (`ATTACKS`, `TUNING`, `POSE`); tests: `tests/integration/tide.mjs`.
+
+**What can be hit, and when** (`TUNING.partMult`):
+| Target | When | Multiplier |
+|---|---|---|
+| Fingers on the rim | while a hand rests (grip) | 0.6 |
+| A hand on the shelf | through the recovery of its own blow (1.3 – 2.0 s) | hand 1.0, wrist 0.85 |
+| The head | spent after a breath (2.4 s; 1.8 s in phase 3); the lurch (a hand that takes `grip.hp` 240 inside 6 s lets go for 5 s, the head drops for 2.6 s, +80 posture); broken posture (3.2 s, the execution); the plunge | 1.6 |
+
+So: cut the hands or parry them to bring the head down, or dodge a red or black blow perfectly and
+land on the head (it always offers the plunge: `plungePoint` is the top of the head, within the
+plunge's 30 m from anywhere on the shelf). A hero who stands at a resting hand and hacks is answered
+by that hand (the flick, after 2.5 s within 3.5 m of its fingers). The riposte and the counter
+measure to the head (11 m): where a parried blow lands further from it, the parry is a plain recoil.
+
+**Three phases** at 100 / 66 / 33 % of 3600 (the wyrm's phase gate: no phase is skipped while the AI
+runs), posture 320 / 380 / 440, windups and recoveries x 1 / 0.86 / 0.75. Each phase begins with the
+bellow (a roar, wind, a 3 m push south, no damage; it clears the hazards): phase 2's is followed by the
+first surge, phase 3's by a breath.
+
+**The attacks** (every hit declares its tell; `combat:tell` at each windup's start, `combat:flash`
+0.35 s before each impact, drawn at the striking part by the duelists' cues at 1.8x):
+| id | Label | From | Tell | Windup | Blow | Damage | Opening |
+|---|---|---|---|---|---|---|---|
+| `slam` | Palm slam | P1 | red | 1.0 s; the hand hovers over him (3.5 m up at most) and follows until 0.45 s before | a disc r 3.6 | 30, knockdown | 1.6 s, the hand on the shelf |
+| `hammer` | Knuckle hammer | P1 | blue, a parry moment | 0.9 s | a fist, r 2.4 | 26, kb 4 | 1.3 s |
+| `sweep` | Rim sweep | P1 | blue | 1.1 s, the arm out to one end and laid along the rim | the forearm scraped along the rim at 20 m/s over 22 m, the 9 m nearest the rim; its cue when the front is 0.35 s from him | 24, kb 6 | 1.4 s, the arm lying |
+| `flick` | Finger flick | P1 | white | 0.7 s | only at a hero who stood within 3.5 m of a resting hand for 2.5 s; r 3 at the fingertips | 14, kb 7 | 0.9 s |
+| `breath` | Tide breath | P1 | red; not parryable, not blockable; the plunge allowed | 1.8 s: the head rears, the mandibles open, the drowned light climbs the throat | a beam 1.6 m wide from the maw across the shelf, swept along the shore end to end in 2.4 s; one blow a pass; its cue is drawn where the beam will meet him | 34, knockdown | spent: the head on the rim 2.4 s |
+| `breath` P2 | | | | | there and back: two passes of 2.0 s, 0.5 s apart, a cue each | | |
+| `breath` P3 | | | | | each pass leaves its line glowing 5 s: contact ticks of 6 every 0.4 s (a blockable chip; never while rolling) | | spent 1.8 s |
+| `breaker` | Breaker (3 hits) | P2 | white, white, blue moment | 0.9 / 0.6 / 0.75 s | hammer west, hammer east, both palms clapped down (r 3.2) | 16 / 16 / 26 | 1.8 s, both hands down |
+| `crossSweep` | Cross sweep (2 hits) | P2 | blue, red | 1.1 s, the return 0.9 s after the first front | a sweep, then the other arm back the other way, low (7 m band) and fast (26 m/s) | 22 / 26 | 1.6 s |
+| `surge` | Tide surge | P2 | red, a hazard (no plunge) | 1.4 s: an arm drawn back through the sea, the swell humps, the stone at the rim wets | a wall of water 2.6 m deep crossing the shelf at 11 m/s; its cue when the front is 0.35 s from him | 22, kb 6 south | none: the hands stay free |
+| `blackFathom` | Black Fathom | P2 | black | 1.5 s + 0.15 – 0.6 s held, darkness drawn into the palm | a slap, r 4.5 | 44, knockdown; on a guard: the guard emptied, no damage | 2.0 s |
+| `grasp` | Drowning grasp | P3 | red | 1.1 s, follows until 0.4 s before | a cupped hand r 3, then it rakes 8 m south | 28, knockdown | 2.0 s |
+
+**Cover.** A standing piece of cover between the beam's root on the rim and the hero (a menhir, a
+boulder, a cairn, an upturned boat, the tower's foot) takes the breath (`world.breath.cover` 0.5 through
+`destructibles.stop`) and the hero behind it is not struck; a standing piece just north of him splits
+the surge (a safe pocket 3.6 m deep). Every pass costs the cover: by phase 3 the breath is mostly
+dodged. **No safe spot:** a hero deeper than 14 m from the rim for 4 s draws the breath and the surge
+(x 3 in the pick).
+
+**Fairness** (rule 10): one move runs at a time (the surge's front is its move); every first windup
+is at least 0.7 s in phase 1; a string's impacts at least 0.45 s apart (phase 3's scale included);
+`tide.mjs bounds` measures no two cues that need different answers within 0.3 s.
+
+**The world breaks** (`TUNING.world`, POWER): slam 1.3 (r 4.2), hammer 1.0, the clap 1.2, the sweep 0.9
+along the forearm, Black Fathom 1.6 (r 5), the grasp 1.0 and its furrow 0.6, the breath 0.5 on its first
+cover and 0.35 along its ground line, the surge 0.35 across its front (racks and boats go, menhirs
+chip), the bellow's wind, the intro's slams 1.2, the death's rake 0.8. Brine does not set alight
+(`world.ignite.breath` 0).
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's

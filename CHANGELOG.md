@@ -4,7 +4,22 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty pieces of work since 0.4.0:
+Sixty-one pieces of work since 0.4.0:
+- **A fifth level: Drownwatch Cliff and the Tide Colossus** (2026-11-22, ADR-141 – ADR-143). *Added:* a fifth level,
+  `?level=tide` (the title screen lists it). **Drownwatch Cliff**: a shelf of salt grass on top of a
+  basalt cliff, a broken watchtower, a wrecked hull, standing stones, and the sea at its foot.
+  **Naerath, the Tide Colossus**: a sea creature too big for the arena. It stands in the water and
+  never comes ashore; you fight its two hands and its head from the cliff's edge. Its hands rest on
+  the rim and come down on the shelf: a palm slam (dodge it), a knuckle hammer (parry it), a sweep
+  along the rim, a flick at anyone who stands at a resting hand too long; later a three-blow breaker,
+  a cross sweep, a wall of water that crosses the whole shelf, a charged black blow and a grasp that
+  rakes the ground. Its head breathes a beam of jade brine along the shore: hide behind a standing
+  stone, or roll through it; afterwards the head lies spent on the rim, open to your blade. Cut a hand
+  hard enough and it lets go and the head drops; dodge a red blow perfectly and you land on its head.
+  The stones that shelter you wear down as the fight goes on. Three phases. *Added (the reward, not in
+  play yet):* Tidebreath, a beam the hero breathes, works from the Lab until rewards can be equipped.
+  The creature's look comes in three steps (`?tideLook=a|b|c`) for the owner to pick; the level
+  borrows the wyrm's music for now. Nobody has played it yet: its numbers are first guesses from bots.
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now

@@ -184,6 +184,22 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.56 — Drownwatch Cliff and the Tide Colossus (2026-11-22, `level/tide-colossus`, ADR-141 – ADR-143)
+- [x] The level (`?level=tide`): the shelf, the cliff, the sea, the sea's colliders as the hero's limit, about 90 breakables
+- [x] NAERATH, THE TIDE COLOSSUS on the boss slot, its own class: two hands and a head on the wyrm's art path, a procedural rig
+- [x] Ten moves as data with their tells; three phases; the grip and the lurch; the break, the execution and the plunge on the head
+- [x] Brine in the fire field (the void slot re-skinned): the beam, the surge, phase 3's lines; cover that stops them and wears down
+- [x] The camera: `frameSpheres`, `keep` through a windup, the phone rule as data; held by `tide.mjs frame` at three sizes
+- [x] Tidebreath, the reward technique, working from the Lab (no slot, binding or meter yet)
+- [x] `tests/integration/tide.mjs` (14 scenarios) in `npm test`; the three looks rendered (`.claude/preview/tide-colossus/`)
+- [ ] Follow-ups:
+  - [ ] The owner's pick of the look (a / b / c), of the sea, of the breath's colour (sheets rendered; b, the faceted sea and jade are the defaults)
+  - [ ] A human playtest: the pace (13 – 17 cues a minute), the fight's length (bots: 172 / 190 s), the sweep and the flick read on a phone
+  - [ ] A real iPhone: the frame rate (nothing measured on a phone), the hands' size in an upright frame
+  - [ ] The level's music by ear (it borrows the wyrm's tracks); a surf sound; the creature's own voice
+  - [ ] The technique system (M2) adopts Tidebreath; the hero's casting motion
+  - [ ] Training: a fuller catalogue of the colossus's situations (only the roles today)
+  - [ ] The sea's options b and c, if the owner wants them built
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters

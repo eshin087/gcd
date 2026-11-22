@@ -4071,3 +4071,130 @@ Two separate things:
 longer constants (`hud.fit` reports them). The touch layer has two more pieces of saved state
 (`layout`, `holdAttack`, in `abyss.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
 and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
+
+## ADR-141 — Drownwatch Cliff and the Tide Colossus: a boss fought as its parts from a cliff; its own class on the boss slot (2026-11-22)
+
+- **Context:** the owner asked for level bosses built on the power fantasy of famous characters, as
+  originals, each planned in its own chat and then built. This one, as the owner picked it: a sea
+  creature too big for the arena; the hero fights its hands and its head from a cliff edge while it
+  breathes down the shore; its fixed reward a breath-style beam technique. In the spirit of a famous
+  giant movie monster, but an original: its own name, anatomy and silhouette, none of that monster's
+  signature look. A planning session wrote the build plan (the level, the creature, every attack as
+  data, the camera rules, the budget, brine, the world calls, the reward, three looks, the tests).
+- **Decision:**
+  1. **A fifth level, `?level=tide`** (`levels/tide.js` `TIDE`, aliases colossus / cliff / shore / sea /
+     drownwatch): Drownwatch Cliff. The set (`world/tideShelf.js` `createTideShelf`, layout `SHELF`): a
+     shelf of salt grass on a basalt cliff, 56 m wide and 14 m deep, from the rim (`rimZ(x)`, about
+     z = -8) to a low scarp at z = +6 with a gap for the path from the bonfire. **The hero's north limit
+     is five static colliders tagged `sea`** (r 120, their union's south edge is the rim; 0.4 m of
+     scallop): no new bound rule, and a plunge's landing over the water is resolved back onto the shelf
+     by the rule every landing already follows. The ground plane takes the set's `groundGeometry` (it
+     ends at the rim); the cliff is drawn (prop-art basalt columns down to the sea at y -9), not
+     simulated: the hero's y stays 0. The sea is one faceted swell moved on the CPU (728 triangles).
+     About 90 breakables: twelve menhirs (the fight's cover), the Drownwatch tower and two sea stacks
+     in two stages, a wrecked hull's keel and ten ribs, racks, boats, anchors, chains, cairns,
+     boulders and a causeway of flagstones.
+  2. **NAERATH, THE TIDE COLOSSUS** (`entities/colossus/`): it stands in the sea north of the rim and
+     never comes ashore; what is in play is two webbed four-fingered hands and a low, broad head with a
+     lower jaw split into two mandibles, comb teeth, six small pale eyes under one heavy brow and a
+     crown of broken coral; the shoulders and the humped back stand 20 to 40 m out and fade into the
+     fog. No upright body, no plates down the back, no glowing spine; the breath is jade.
+  3. **Its own class on the boss slot, not a subclass of the Dragon.** The wyrm's brain, rig, gait,
+     attack kinds and hazards are built round a walking, flying quadruped (about 25 k lines); the
+     colossus does not walk. Reused as they are: the wyrm's art path (`createSurfaceGlyphMaterial`
+     with an art source, `WYRM_ART`'s numbers as the starting point), `glyphGeometry`, `batchRigid`,
+     the two-bone IK, the duelists' timing cues (`DuelFx`), every combat rule, `letGo` and the shed
+     digits. Copied in shape: the wyrm's `takeHit` (the phase gate), `hitPlayer`, the cues,
+     `onParried` (the deflect chain), `onPlunge`. A procedural rig: each hand and the head chase a pose
+     target on a critically damped spring (stiffness per phase); no clips.
+  4. **What can be hit, and when:** fingers on the rim (x 0.6) while a hand rests; a hand on the shelf
+     (x 1.0, the wrist x 0.85) through its blow's recovery; the head (x 1.6) only while it lies on the
+     rim: spent after a breath, after the lurch (a hand that takes 240 inside 6 s lets go for 5 s and
+     the head drops for 2.6 s), broken posture (the execution), and on the plunge (it has a head, so
+     a perfect dodge of a red or black blow lands on it from anywhere within 30 m).
+  5. **Ten moves as data** (`tuning.js` `ATTACKS`; COMBAT.md "The Tide Colossus"): the palm slam (red),
+     the knuckle hammer (a blue parry moment), the rim sweep (blue), the finger flick (white, only
+     against a hero who stands at a resting hand), the tide breath (red, a beam swept along the shore;
+     two passes from phase 2, lingering lines in phase 3), the breaker (a three-blow string), the cross
+     sweep (blue then red), the tide surge (a red hazard: a wall of water across the shelf), Black
+     Fathom (the black blow) and the drowning grasp (red). The phases roar (the bellow) and clear the
+     hazards. A director picks by phase, by where the hero stands (his x picks the hand, his depth the
+     sweep or the breath; a hero who hides deep draws the breath and the surge), with links and gaps.
+  6. **Departures from the plan:** the arms are 14 + 16 m, not 13 + 15 (from shoulders 13 m behind the
+     rim the shelf's south third was out of reach; with the root's lean toward the rim the scarp is
+     reached); the set's builders stay in `tideShelf.js`, not `landmarks.js` (a file five sibling
+     builds touch); the breath's cue is drawn where the beam will meet the hero, not at the maw (the
+     breath lands away from the body and marks its ground, ADR-052; the maw is off a phone's screen);
+     one move runs at a time (the surge's front is its move), so the fairness ledger of the plan is the
+     director's single queue (tide.mjs `bounds` measures no two cues of different answers within 0.3 s).
+- **Consequences:** a creature boss that does not walk can sit on the boss slot with a fixed
+  `position` (the rim's centre: the minimap, audio and the art grid's anchor read it) while its body is
+  elsewhere. The riposte measures to the head: where a parried hammer lands out of 11 m of the head,
+  the parry is a plain recoil. `tests/integration/tide.mjs` (14 scenarios) is in `npm test`. Nobody has
+  played it; every number is a first number from bots.
+
+## ADR-142 — The Tide Colossus's readability and cost: `frameSpheres`, the phone rule, the budget, brine as a re-skinned channel (2026-11-22)
+
+- **Context:** a body this size frames itself out of a phone's view: `flow._bossFrame` boxed the hero
+  with every hurt sphere, and two hands 18 m apart would hold the camera at full pull-back. At the
+  fixed 58 degree pitch a thing 5 m up reads 6 m further north; a landscape phone shows about 12 m of
+  ground depth, an upright one about 14 m of width. The owner plays on an iPhone.
+- **Decision:**
+  1. **`frameSpheres`**, a new optional field on the boss slot, read in one line by `flow._bossFrame`
+     (`frameSpheres ?? hurtSpheres`): what the camera should frame. The colossus lists the part that
+     acts (from its windup to the end of its recovery), the head while it lies on the rim, otherwise
+     the hand nearer the hero. Through a windup it also asks `cameraRig.keep` for the striking part and
+     for the hero (a must: never cropped).
+  2. **The phone rule as data** (`POSE.lift` 3.5 m, `POSE.near` 6 m): a striking hand's windup never
+     lifts it higher than 3.5 m above the shelf, straight over where it will land; the threat reads
+     from the hand over him like a ceiling, the spread fingers and its shadow (hands and head cast).
+     The hero's ground is 14 m deep so the blows happen where he is; the body stands 9 m below the
+     shelf's level, so it fills the top band of the frame. Held by tide.mjs `frame`: at every cue of
+     the body the striking part projects inside the frame at 1280 x 720, 852 x 393 and 393 x 852 from
+     five hero spots.
+  3. **The budget**, measured headless: about 18 k triangles in look b (110 k allowed), 72 meshes
+     (bones of the rigid batch; 160 allowed), 12 materials (draws) + 1 shadow, the sea 728 triangles,
+     the breakables' own bones about 110 (the wreckage pools every set builds come on top), the fire
+     field's peak in phase 3 about 400 blobs of 6000. Nothing was measured on a phone.
+  4. **Brine is the void slot re-skinned** (`FIRE_PALETTES.brine`, `FireField.setPalette('void', ...)`,
+     the call the Skybreak Ring added first; the heat haze beside it follows the palette's `haze`).
+     The heat buffer has four channels and no free one; one level loads per page and only the Starless
+     Lord uses void. Jade: green always over blue (cyan is the hero's alone, ADR-106), never violet,
+     red, blue or orange. Blobs at least 0.7 m up; a line redrawn every frame goes through the
+     duelists' one-copy frame clock.
+- **Consequences:** another level that needs its own colour re-skins a slot the same way. A boss whose
+  parts are far apart can say what to frame without changing what can be hit.
+
+## ADR-143 — Tidebreath ships as a technique module without the technique system; the colossus's looks wait for the owner's pick (2026-11-22)
+
+- **Context:** the colossus's fixed reward is a breath-style beam technique. Fixed rewards (ROADMAP M2:
+  slots, a meter, an equip screen, bindings on keyboard, pad and touch) are not built, and six bosses
+  were being built at once: each binding its own button into `player.js`, `core/bindings.js` and
+  `ui/touch.js` would collide and leave six ad hoc systems. The owner picks looks from renders, never
+  from text, and turned down three full redraws of the wyrm before picking from graded steps.
+- **Decision:**
+  1. **The technique itself ships, working, from the Lab only:** `entities/player/techniques/tideBreath.js`
+     (`TIDE_BREATH`: windup 0.45 s, a beam 0.9 s, 18 m, 6 ticks of 24, posture 6; and `TideBreathCast`:
+     `start()`, `update(dt)`). Each tick hits the first hurt sphere of the boss along the beam, sweeps
+     the world once and lands a blow at its end; it is drawn as a steel line with the hero's cyan in
+     glyph sparks. The Lab's FIGHT section gets a boss's own buttons (`debug.labButtons()`; the
+     colossus's: expose the head, a grip break each side, Tidebreath, the three looks); the cast is
+     ticked by the colossus's frame until the technique system owns it.
+  2. **Stubbed, and said so:** no slot, no meter, no binding, no equip screen, nothing granted on
+     victory, no line on the victory screen; no new hero state (he casts from where he stands: his
+     motion is a follow-up); the module builds no three.js object at import or when cast (one more
+     object on the default hero rig has turned the wyrm's seeded tests red before). `player.debug`
+     does not call it (the plan asked for that; it would have been a line in `player.js`, which
+     every sibling build touches).
+  3. **Three looks, steps of one idea, all in the wyrm's surface**, behind `?tideLook=a|b|c` (read
+     when the colossus is built; the Lab's buttons reload with it): a "drowned hide" (the wyrm's hide,
+     jade seams on the throat, palms and gills, a small bare crown, two eyes), b "reef-grown"
+     (barnacles on the knuckles, brow and shoulders, kelp from the wrists and the crown, the comb
+     teeth, six eyes; the fight was built with it and it is the default), c "wreck-crowned" (b and
+     spars in the crown, an anchor chain over a shoulder, a hull plate on a forearm). Sheets in
+     `.claude/preview/tide-colossus/`. None is the owner's pick until they pick it; the Lab's LOOKS
+     section lists picked switches only (duel.mjs checks every row against the picks), so the row
+     waits for the pick.
+- **Consequences:** when the technique system is built it adopts the module's shape (data + a cast);
+  each boss's reward can follow it (`techniques/<id>.js`). Until then a player cannot use Tidebreath in
+  play.

@@ -2888,9 +2888,9 @@ strip and the scars are glyph particles (a wearing crown's in the canopy's dim h
 dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
 are heat in the fire field.
 
-## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129)
+## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; Drownwatch Cliff: 2026-11-21, ADR-141)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, Drownwatch Cliff `tide`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
@@ -2986,6 +2986,28 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
     the band nearest `cut`; `below`: its foot from y = -below), `buildHoodoo(rng, x, z, { h, r, col,
     below, lean, yaw })`, `buildRingPost(rng, x, z, { h, w, yaw, col })` → `{ stone, bronze, fireY }`,
     and the colours `BADLAND`, `RING_BRONZE`.
+- **Drownwatch Cliff** (ADR-141; `src/levels/tide.js` `TIDE`: id `tide`, aliases `colossus`, `cliff`,
+  `shore`, `sea`, `drownwatch`; boss `new TideColossus(game)`, below). `world`: `arenaRadius` 20,
+  `playerBound` 34 (round the origin), `dragonBound` 20, the bonfire at (0, 22) and the spawn 0.6 m east
+  and 1.7 m north of it, `dragonSleep` the rim's centre (0, `SHELF.edgeZ`), `bossTriggerZ` `SHELF.scarpZ`
+  - 0.8 (up through the scarp's gap), `wakeRadius` 6. `text` also carries `wake`, `fury` and `breath`:
+  the feed's lines for a creature boss (ui/feed.js reads them when present; Cinderwood's stay the wyrm's).
+  **Its set** (`world/tideShelf.js`: `createTideShelf(U, colliders)`, `SHELF`, `rimZ(x)`): a shelf from
+  the rim (`rimZ(x)`, about z = -8) south to a low scarp at `SHELF.scarpZ` 6 with a gap `SHELF.gap` 3 m
+  either side of x = 0; the sea at `SHELF.seaY` -9. `SHELF = { edgeZ, depth, half, seaY, gap, scarpZ,
+  bonfire, tower, hull, stacks, sea: { r, xs, z }, rimZ }`. **The hero's north limit is five static
+  colliders tagged `sea`** (r 120, centres `SHELF.sea.xs` at z `SHELF.sea.z`); their union's south edge
+  is the rim and `rimZ(x)` is that curve (the minimap and `meadowDensity` treat the tag as a plain
+  circle: no stone mark, no grass inside). The set returns createForest's shape plus `breakables`,
+  `groundGeometry` (below), `seaMesh`, `scarInk`, `grass`, `floorCarry`, `sky` and `ambience`
+  (`{ sea, swell(x, z, h, r, life), setup, setVisible, reset, update }`: the swell's humps, spray, foam;
+  the colossus raises humps and resets it). Its breakables by kind (`world.mjs sets`): about 90
+  (flagstone 32, menhir 12, hullRib 10, rack 8, cairn 6, boulder 6, boat 3, anchor 2, chain 2, stack 2,
+  stackTop 2, tower, towerTop, keel); the tower and the stacks are two-stage pieces (`holds`); the stacks'
+  tops shatter where they stand (`wreck: false`); the anchors and chains only chip.
+- `groundGeometry` (ADR-141): a set may give the shared ground plane another shape (a BufferGeometry
+  with position, normal, uv); world.js swaps it in right after the set is built. Drownwatch's ends at
+  the rim: the sea is not ground.
 - `text`: `arrive[]`, `stir`, `phase2`, `phase3`, `phase4` (null / absent: no banner), `victory`,
   `fallen`, `restReset`, `again`, `rise` (GameFlow `_text(key)`; Cinderwood's lines when the game has
   no level).
@@ -3650,6 +3672,58 @@ parry on the way out turns it home at once; at its turn it asks `brain.fairDelay
 T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
 
+### Tide Colossus — `src/entities/colossus/colossus.js` exports `class TideColossus` (ADR-141 – ADR-143)
+NAERATH, THE TIDE COLOSSUS, Drownwatch Cliff's boss: a creature on the boss slot that does not walk.
+Its own class (not a Dragon, not a duelist): `kind: 'colossus'` (audio gives it the creature's voice).
+- **The slot:** `object3d` is the body's anchor in the sea (`BODY.root`, (0, -9, edgeZ - 24)); `position`
+  is a FIXED point, the rim's centre (the minimap, audio, name tags and the art grid's anchor
+  `U.uBossScreen` read it). `state` `sleeping | waking | combat | staggered | dying | dead`.
+  `lockPoint(out)`: the live target nearest the hero (the head while it lies on the rim, else a hand's
+  palm or fingers), switching only for one 3 m nearer. `plungePoint(out)`: the top of the head (always:
+  the plunge from anywhere within `DEFENSE.plunge.range`). `hurtSpheres` (parts `finger | hand | wrist |
+  head`, each with `side`): the fingers while a hand rests on the rim, the palm, wrist and two fingers of
+  a hand on the shelf, the head only while it lies on the rim. `bodyCircles`: the fingers on the rim
+  (r 1.2), a palm on the shelf (2.2), the chin (2.4). **`frameSpheres`** (optional on the slot;
+  `flow._bossFrame` reads `frameSpheres ?? hurtSpheres`; ADR-142): the acting part from its windup to
+  the end of its recovery (an action's `frame(c, frame)`, else its hand), the head while it is down,
+  else the hand nearer the hero. Through a windup it also calls `cameraRig.keep` for them and for the
+  hero (must). `shed` (the letters a cut knocks loose), `debug`.
+- **Files:** `tuning.js` (`SIZE`, `BODY`, `POSE` with the phone rule `lift` / `near`, `ATTACKS` the moves
+  as data, `TUNING` the fight, the grip, the world's powers; `perPhase`), `model.js` (`buildColossus(U,
+  look)`, `createTideMaterials`, `TIDE_ART`, `GLOW`, `SHED`), `looks.js` (`?tideLook=a|b|c`:
+  `tideLookId()`, `tideLook()`, `setTideLook(k)` for the next build), `rig.js` (`ColossusRig`: springs per
+  hand and for the head, two-bone IK from the shoulders, the neck on a curve; `pt` = palms, wrists,
+  elbows, shoulders, fingertips, thumbs, maw, head, chin, neck points; pose helpers `poseGrip`,
+  `poseHover`, `posePlanted`, `poseLaid`, `poseReel`, `poseHead(H, 'loom' | 'rear' | 'down', hx)`,
+  `clampShelf`), `attacks.js` (`MOVES`: a script per move, `start(c, a)` / `update(c, a, dt)` /
+  `end(c, a)` / `frame(c, frame)`; `SPECIAL`: intro, bellow, lurch, recoil, plunged, broken, stagger,
+  death), `director.js` (`Director`: `pick()`, `tick(dt)`, `onEnd(a)`, `opening()`), `fx.js` (`TideFx`:
+  brine in the fire field over a `DuelFx` for the cues), `hazards.js` (`TideHazards`: the surge's front,
+  phase 3's lingering lines).
+- **Actions:** `start(name, opts)` replaces the running one; `beat(a, o)` lays a hit (`at`, `impact`,
+  `tell`, `flare`, `part`, `side`; `dynamic` beats cue themselves: the sweep's front, the breath's line,
+  the surge); `announceTell` / `flashTell` / `hitPlayer(a, b, o)` as the wyrm's (`from` = the striking
+  part). One action at a time; the director starts the next after the move's gap.
+- **Hits on it:** `takeHit(o)` (the wyrm's shape: part multipliers, the phase gate, posture; damage on a
+  hand inside `TUNING.grip.window` past `grip.hp` lets that hand go: `gripBreak(i)`, the lurch),
+  `onParried(info)` (the deflect chain; a last or blue-flare blow recoils the hand), `onPlunge(o)`.
+- **Its world calls** (each guarded): `world.impact` at every hand blow, `destructibles.sweepRec` along a
+  sweeping forearm and under a fast hand or the chin (its body), `destructibles.coverAt` / `stop` /
+  `sweep` for the breath, `destructibles.sweep` across the surge's front, `destructibles.wind` from the
+  roars; it never calls `world.ignite` (brine). It re-skins the fire field's void slot with
+  `FIRE_PALETTES.brine` in its constructor (`FireField.setPalette`).
+- **`debug`** (the generic shape: `abilities`, `trigger`, `setAI`, `aiEnabled`, `currentAction`, `wake`,
+  `startFight`, `phase2`, `phase3`, `stagger`, `postureBreak`, `kill`, `reset`, `setHp`, `hitboxes`) plus
+  `look(k)`, `exposeHead(sec)`, `gripBreak(side)`, `tidebreath()` (the reward's cast), `lookReload(k)`
+  and **`labButtons()`** → `[{ label, method, args, title }]`: the Lab's FIGHT section adds a button for
+  each (any boss may offer them).
+- **The reward** (ADR-143): `src/entities/player/techniques/tideBreath.js` exports `TIDE_BREATH` (the
+  data) and `class TideBreathCast` (`start()` along the hero's facing, `update(dt)`, `active`, `dealt`,
+  `hits`): a beam that hits the boss's first hurt sphere along it each tick (`boss.takeHit`, heavy),
+  sweeps the world (`BLOW.BLAST`, by player) and lands a `world.impact` at its end; it emits
+  `player:hitDragon` with kind 'technique'. No slot, binding or meter yet: the colossus's debug starts it
+  and its frame ticks it. It builds no three.js object.
+
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
@@ -3763,6 +3837,8 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   (drawn on the tile); the quake's front and Ring Breaker's tiles send `combat:tell` and `combat:flash`
   with hazard: true and flare; his called lightning (Thunderfall, the volley, the corner bolts) cues as
   the Lord's called strikes do.
+- The Tide Colossus, Drownwatch Cliff's boss (ADR-141), added NO event name and no payload field. New producers
+  of existing ones: its hand blows emit `dragon:land` and `dragon:attack` as they land, the breath`n  `dragon:breathStart` / `dragon:breathEnd`, the phases' roar `dragon:roar` with `dragon:phase2` /`n  `dragon:phase3` and `dragon:phase`, a grip break `dragon:stagger`; the surge cues itself with`n  `combat:tell` / `combat:flash` with hazard: true, its cue drawn where its front meets the hero; the breath's`n  cue is drawn where the beam will meet him; Tidebreath (the reward) emits `player:hitDragon` with kind technique.
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
   `game:cinematic {kind}` (flow.cinematic: slow motion and a close camera on a duel's big moment; kind

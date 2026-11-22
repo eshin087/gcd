@@ -1139,6 +1139,42 @@ grit, chips and sparks are one-cell glyph particles. Look code draws from its ow
 - **Cost** (headless; frame rates were not measured): the fire field's worst case, form 3's aura with
   the great beam, ten blasts and a strike, 2863 of 6000 blobs; his fights by the AI peak about 1525.
 
+### Drownwatch Cliff and the Tide Colossus (2026-11-21, ADR-141 – ADR-143; `?level=tide`)
+- **The set** (`world/tideShelf.js`): everything solid is prop art (`createPropArtMaterial`, gain 0.9):
+  the cliff's basalt columns along the rim and down into the water, the scarp, the menhirs, the
+  Drownwatch tower, the sea stacks, the wrecked hull's keel and ribs (wood in prop art: a prop), the
+  racks, the boats, the anchors and chains; the causeway's flagstones are carved (the floor stays
+  calm). A cold overcast moon (pale grey-teal) and a blue-black fog (32 – 70 m): the creature's
+  shoulders and back, 30 to 50 m away, fade into it. That fade is how "too big for the arena" is drawn.
+  Thin salt grass, none past the rim. Spray off the sea and foam at the cliff's foot are glyph
+  particles. Cracks in the shelf: a pale salt grey.
+- **The sea**: one faceted swell at y -9 (26 x 14 quads, 728 triangles), its vertices moved on the CPU
+  by three travelling sines and the humps the colossus raises (every second frame on LOW), drawn in
+  prop art in a very dark blue-grey (gain 0.45): the facets print as bands of dim digits. The plan's
+  options b (a flat dark plane with stroke crests) and c (black water, foam lines only) were not built.
+- **The creature on the wyrm's path** (`entities/colossus/model.js`): `createSurfaceGlyphMaterial` with
+  an art source per material (`TIDE_ART`), the wyrm's numbers as the start: charcoal shingle scales
+  whose free edges catch the key light, the ink a little colder (0.30, 0.33, 0.34). Where the wyrm has
+  molten cracks, the colossus has **the drowned light**: jade seams on the throat, the palms, the gills
+  and the inner arms (the `seam` material; its glow climbs the throat through the breath's windup, the
+  wyrm's `uWyrmHeat` front). Webbing and kelp: dark teal-black with jade specks. Coral, barnacles and
+  the crown's spars: pale bone, stroked at the very edge. Six small pale eyes in dark sockets under one
+  heavy brow. Its letters let go on death (`letGo`) and a cut sheds its digits (charcoal, pale rim, jade).
+- **Its three looks** (`?tideLook=a|b|c`; looks.js; the Lab's FIGHT buttons reload with them; none is
+  the owner's pick yet): a drowned hide, b reef-grown (the default; the fight was built with it), c
+  wreck-crowned. Sheets: `.claude/preview/tide-colossus/`.
+- **Brine** (`FIRE_PALETTES.brine`, the void slot re-skinned for this level: `FireField.setPalette`):
+  dark sea green through jade to a foam-white heart; the heat haze beside it is jade too. Green always
+  over blue (cyan is the hero's), never violet, red, blue or orange. The beam is a dense line of small
+  cool blobs from the maw (a hot heart by overlap, never one big hot blob) and a thinning scour along
+  the ground beyond where it lands; spray where it meets the ground. The surge: low brine (0.36 – 0.52:
+  strokes and dim digits, a wall of water) under a thin `steel` crest (it prints `-` strokes: the foam
+  line). Phase 3's lingering lines: a thin strip of brine. Every brine blob at least 0.7 m up. Ground
+  warnings (the stone wets and gleams ahead of the beam and the surge, and along the rim through the
+  surge's windup) are glyph specks, never heat.
+- **Tidebreath** (the reward, Lab only): a crisp steel line in the fire field, the hero's own cyan in
+  its sparks.
+
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved
