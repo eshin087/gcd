@@ -228,6 +228,20 @@ add('GETTING HIT', [
   { id: 'ascTide', name: 'Rising Tide · roll out of the line', boss: 'asc', dist: 9, answer: 'none', desc: 'His beam: a red cue at the drawn-back palm, then the line is lit. Roll off it at the cue.', go: ascGo(1, 'risingTide'), tick: (T) => ascHead(T, 0.24, () => ascRoll(T)), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 9, expect: ['combat:flash'] },
   { id: 'ascTideHit', name: 'Rising Tide · stand in it', boss: 'asc', dist: 9, answer: 'none', desc: 'The same, and you stay: the first contact throws you down along the line.', go: ascGo(1, 'risingTide'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 9, expect: ['player:hurt'] },
 ]);
+// (the third wave, ki: the great orb's push, the barrage from the air)
+/** Once, `lead` s before Heaven's Lantern's orb would meet the hero (its own flight). */
+const ascOrb = (T, lead, fn) => {
+  const s = T.d?.ki?.shots?.lantern?.s, p = T.p;
+  if (!s?.alive || s.done || !p) return;
+  const along = (p.position.x - s.x) * s.dx + (p.position.z - s.z) * s.dz;
+  if ((along - s.radius - (p.radius ?? 0.45)) / Math.max(0.1, s.speed) <= lead) T.at(0, fn, 'ascOrb');
+};
+add('PARRY & RIPOSTE', [
+  { id: 'ascLantern', name: "Heaven's Lantern · push it back", boss: 'asc', dist: 9, answer: 'none', mash: true, desc: 'His great orb (forms 2 - 3): a perfect parry as it reaches you starts THE PUSH. Mash attack to throw it back into him: he reels.', go: ascGo(2, 'skyLantern'), tick: (T) => ascOrb(T, 0.04, () => T.tap('@block', 0.05)), until: (T) => T.t > 3 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 16, expect: ['player:lock'] },
+]);
+add('GETTING HIT', [
+  { id: 'ascSuns', name: 'Raining Suns · block the barrage', boss: 'asc', dist: 9, answer: 'block', desc: 'He leaps and pours sixteen small blasts down at you, then a bigger one: hold your guard through it (each glints as it comes).', go: ascGo(2, 'rainingSuns'), until: (T) => T.t > 2 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 12, expect: ['player:block'] },
+]);
 add('TERRAIN', [
   { id: 'ascTile', name: 'Tile Kick · under it', boss: 'asc', dist: 7, answer: 'none', desc: 'He stamps a floor slab up and punches it at you: it glints as it comes. You stay, and it hits you (a parry would cut it).', go: ascGo(1, 'tileKick'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.terrain?.busy, max: 9, expect: ['combat:flash'] },
 ]);
