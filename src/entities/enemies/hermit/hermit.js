@@ -358,7 +358,6 @@ export class Hermit extends Duelist {
     this.object3d.rotation.y = this.yaw;
     this.anim.teleported?.();
     this.fx.afterimage?.(this, x0, z0, this.position.x, this.position.z);
-    this.emit('dragon:step', { x: this.position.x, z: this.position.z });
   }
 
   // ---------------------------------------------------------------- impacts

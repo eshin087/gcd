@@ -380,7 +380,13 @@ export class Player {
       const R = this.rollBack ? TUNE.backstep : TUNE.roll;
       return this.stateT >= R.iframes[0] && this.stateT <= R.iframes[1];
     }
-    if (this.state === 'knockdown') return this.stateT >= TUNE.knockdownDur - TUNE.getUpIframes;
+    if (this.state === 'knockdown') {
+      // (a LAST BREATH, ADR-139: the knockdown it throws him into is whole i-frames, so a stone it sent
+      // falling or the next blow of the string never takes the one health it left)
+      const L = this.lethalLast;
+      if (L?.kind === 'breath' && this.time - L.t <= TUNE.knockdownDur + 0.1) return true;
+      return this.stateT >= TUNE.knockdownDur - TUNE.getUpIframes;
+    }
     return false;
   }
 
@@ -514,8 +520,7 @@ export class Player {
       } else if (blockable) {
         this._block(dmg, tell, attack, chip, nx, nz);
         return RESULT.BLOCKED;
-      }
-      else {
+      } else {
         this._streakEnd();
         this._guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc);
         return RESULT.HIT;

@@ -690,6 +690,17 @@ async function scenarioFlow() {
   assert(game.state === 'dead', 'one blow of his kills a hero at one health');
   run(G, 12, () => { if (((game.realTime * 60) | 0) % 30 === 0) input.tap('Enter'); }, () => game.state === 'explore');
   assert(game.state === 'explore' && d.mode === 'sleep' && d.phase === 1, `after the death he waits at his stone again (${game.state}, ${d.mode})`);
+  // a reset in the middle of a move (the Lab, a rest at the bonfire): he is back at his stone, nothing left in flight
+  for (const mv of ['oneBlow', 'splitEarth']) {
+    const G3 = build();
+    duel(G3, { dist: 6, phase: mv === 'splitEarth' ? 2 : 1 });
+    const d3 = G3.game.dragon;
+    d3.debug.trigger(mv);
+    run(G3, mv === 'oneBlow' ? 1.2 : 1.6);
+    d3.debug.reset();
+    run(G3, 1);
+    assert(d3.mode === 'sleep' && !d3.fx.crescentsAlive && d3.warn === 0 && Math.hypot(d3.position.x - PEAK.wait.x, d3.position.z - PEAK.wait.z) < 0.5, `a reset in the middle of ${mv}: he is back at his stone, nothing in flight (${d3.mode})`);
+  }
   // the victory
   const G2 = build();
   duel(G2, { dist: 4 });
@@ -813,6 +824,7 @@ function fight(seed, { skill = 1, god = false, style = 'mixed', greedy = true, s
   p.takeHit = (h) => {
     const st0 = `${p.state}${p.atk?.def?.name ? ':' + p.atk.def.name : ''}`;
     const r = th(h);
+    if (r === RESULT.HIT && !h?.lethal && process.env.ABYSS_TRACE) lands.push(`(${h?.attack} ${h?.damage?.toFixed?.(0)} at ${st0} hp ${p.hp.toFixed(0)} @${(game.time - t0).toFixed(1)})`);
     if (r === RESULT.HIT && h?.lethal) {
       const t = game.time, atk = h.attack;
       const why = G.defend?.stats.skipped.some((x) => x[0] > t - 1.5 && x[1] === atk) ? 'missed' : flashT.some((x) => x[0] > t - 1.5 && x[1] === atk) ? `ANSWERED(${st0})` : 'uncued';
