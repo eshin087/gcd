@@ -1054,8 +1054,33 @@ async function scenarioPace() {
   }
 }
 
-const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, win: scenarioWin, strategy: scenarioStrategy };
-const OPT_IN = {};
+// ================================================================== scenario: training
+async function scenarioTraining() {
+  out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out) ==');
+  const G = build(SEED, true);
+  const { game } = G;
+  duel(G, { dist: 4 });
+  const T = game.lab.training;
+  const { bossKinds } = await imp('src/dev/training.js');
+  const kinds = bossKinds(game);
+  assert(kinds.has('sheathed') && !kinds.has('ash') && !kinds.has('lord') && kinds.has('duel'), `his own boss kind (${[...kinds].join(', ')})`);
+  const L = T.list();
+  const bad = [];
+  for (const s of L) {
+    T.run(s.id);
+    let frames = 0;
+    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
+    const r = T.lastResult;
+    const ok = T.ph === 'done' && r?.id === s.id && r.ok;
+    if (!ok) out(`   BAD ${s.cat} · ${s.name}: ${T.ph} · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} · boss ${game.dragon.state}`);
+    if (!ok) bad.push(s.id);
+  }
+  T.stop();
+  assert(L.length >= 20 && !bad.length && ['drawParry', 'drawGuard', 'drawRoll'].every((id) => L.some((s) => s.id === id)), `every situation plays out (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''}), the three draw situations among them`);
+}
+
+const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, win: scenarioWin };
+const OPT_IN = { strategy: scenarioStrategy };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {
   if (OPT_IN[k]) S[k] = OPT_IN[k];

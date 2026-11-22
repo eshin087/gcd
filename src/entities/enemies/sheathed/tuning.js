@@ -3,7 +3,9 @@
 // from Shen Hui's (ashDisciple/tuning.js); what is his own is commented.
 export const TUNING = {
   name: 'LU WUSHENG, THE SHEATHED',
-  hp: 3000,
+  // (the bots, 2026-11-22: at 3000 and posture 300 / 340 the fencing bot won in 32 - 43 s: a parried draw is a
+  // moment (the hero's counter) and 1.5 s caught with the blade out. 3800 and 360 / 400 bring it near Shen Hui's minute)
+  hp: 3800,
   // the Sheath / A Thumb's Width / the Held Breath
   phaseAt: [1, 0.66, 0.36],
   radius: 0.42,
@@ -19,7 +21,7 @@ export const TUNING = {
   close: { first: 3.0, next: 1.4, speed: 12 },
 
   posture: {
-    max: [300, 340, 340],
+    max: [360, 400, 400],
     hit: { light: 5, heavy: 16 },
     guard: { light: 8, heavy: 20 },
     regenDelay: 2.5,

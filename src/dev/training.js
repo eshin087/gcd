@@ -47,6 +47,8 @@ const ROLES = {
   starless: { single: 'lunge', string: 'litany', long: 'litany', red: 'reap', lock: 'skyfall' },
   // Tian Lei (the Skybreak Ring): his form-1 lock is Hundred Hands' last blow (Vanishing Step's is form 2's)
   ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
+  // the Sheathed (the Windless Grove): no blade lock (a scabbard does not lock)
+  grove: { single: 'knock', string: 'refusals', long: 'fordSteps', red: 'reedCutter', mikiri: 'tapStone' },
 };
 
 export function bossKinds(game) {
@@ -56,7 +58,7 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.lives ? 'lord' : 'ash');
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -102,6 +104,11 @@ add('PARRY & RIPOSTE', [
   { id: 'lock', name: 'Blade lock', boss: 'duel', role: 'lock', answer: 'perfect', mash: true, desc: 'A perfect parry of his heavy blow locks the blades: mash attack to win the push.', expect: ['player:lock'] },
   { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
   { id: 'mikiri', name: 'Mikiri', boss: 'ash', role: 'mikiri', answer: 'mikiri', dist: 3.2, desc: 'A roll INTO his perilous thrust: you step on his blade.', expect: ['player:mikiri'] },
+  { id: 'mikiriSheath', name: 'Mikiri', boss: 'sheathed', role: 'mikiri', answer: 'mikiri', dist: 4.0, desc: 'A roll INTO Tapping Stone: you step on the scabbard.', expect: ['player:mikiri'] },
+  // the Sheathed's draw (ADR-144): parry it, or a held guard is knocked open, or roll through it
+  { id: 'drawParry', name: 'One Breath · parry the draw', boss: 'sheathed', move: 'oneBreath', answer: 'parry', dist: 4.5, desc: 'The settle, the stillness, the click (the blue flare at the scabbard), the cut: parry on the click. He is caught with the blade out.', expect: ['player:parry'] },
+  { id: 'drawGuard', name: 'One Breath · hold the guard', boss: 'sheathed', move: 'oneBreath', answer: 'block', dist: 4.5, desc: 'A held guard keeps you alive: no health lost, but the whole guard meter is gone and the guard is knocked open.', expect: ['player:guardOpen'] },
+  { id: 'drawRoll', name: 'One Breath · roll through it', boss: 'sheathed', move: 'oneBreath', answer: 'dodge', dist: 4.5, desc: 'A roll on the click: clean, and his re-sheathe is the opening.', expect: ['player:perfectDodge'] },
   { id: 'mikiriAsc', name: 'Mikiri', boss: 'asc', role: 'mikiri', answer: 'mikiri', dist: 3.6, desc: 'A roll INTO his Piercing Palm: you step on his arm.', expect: ['player:mikiri'] },
 ]);
 
@@ -557,7 +564,7 @@ export class Training {
     const ev = this.game.events;
     const watch = (n) => ev.on(n, (e) => this._event(n, e));
     for (const n of ['player:parry', 'player:block', 'player:perfectDodge', 'player:flurry', 'player:flurryEnd', 'player:hurt', 'player:streak',
-      'player:guardBreak', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
+      'player:guardBreak', 'player:guardOpen', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
       'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
   }
 

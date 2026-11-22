@@ -789,7 +789,7 @@ export class Lab {
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
     const id = this.game.level?.id;
-    if (id !== 'ash' && id !== 'starless' && id !== 'ring') return;
+    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'grove') return;
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
@@ -826,6 +826,15 @@ export class Lab {
         b.textContent = `Ablaze ${d.ablaze(L[(L.indexOf(d.ablaze()) + 1) % L.length])}`;
       });
       b.title = 'phase 3 sets the wyrm on fire: its strength (?ablaze=off|a|b|c)';
+    }
+    // the Sheathed (ADR-144): his draw lethal or not; his sheath's state
+    if (typeof this.game.dragon?.debug?.lethal === 'function') {
+      const d = this.game.dragon.debug;
+      const b = button(grid, `Lethal draw ${d.lethal() ? 'on' : 'off'}`, () => {
+        b.textContent = `Lethal draw ${d.lethal(!d.lethal()) ? 'on' : 'off'}`;
+      });
+      b.title = 'an unanswered draw kills (on) or deals TUNING.draw.damage (off)';
+      button(grid, 'Sheath?', () => this._status(`sheath: ${d.sheath?.()}`, 'ok')).title = 'his sheath now: carry / settled / drawn';
     }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);
