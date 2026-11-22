@@ -8,6 +8,8 @@
 //            a ring running out through the body (render/impactRipple.js + the ASCII pass)
 //   react    the body answers by where it was hit (the wyrm: dragon/; the duelists: enemies/duelist/)
 //   thump    the low end of a heavy hit and a short dip of the music (audio/)
+// Beside them, not a piece: calm at the contact (combat/impactCalm.js, ?calm=0..3, default 1) dims
+// today's light where a cut lands so the pieces show.
 //
 // `IMPACT.on.<piece>` is read at the moment of the hit; `IMPACT.k.<piece>` scales that piece's
 // strength (1 = as tuned; the option sheets film 0.5 / 1 / 1.5). Each piece keeps its own numbers in
