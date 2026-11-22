@@ -618,7 +618,7 @@ export class AscFx extends LordFx {
     super._light({ x, y, z, color: storm ? L_STORM : gold ? L_GOLD : L_PALE, intensity: 3.6, radius: 5, life: 0.16, fade: 0.14 });
   }
 
-  /** The counter stance (a beat marked `catch`, every frame he is catching): light drawn INTO his
+  /** The counter stance (a beat marked `stance`, every frame he is catching): light drawn INTO his
    *  open palms, the reverse of a muzzle: motes converging on each hand out of the air round it and a
    *  soft heat on the palm; pale in form 1, gold later. ~10 blobs a frame. */
   stanceGlow(d, dt, form = 1) {

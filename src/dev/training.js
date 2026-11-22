@@ -221,7 +221,7 @@ const ascRoll = (T) => {
   T.tap('Space');
   T.later(0.4, () => T._axis(0, 0));
 };
-/** Once, when his counter stance is catching (a beat marked `catch`, duelist/brain.js): a cut into it. */
+/** Once, when his counter stance is catching (a beat marked `stance`, duelist/brain.js): a cut into it. */
 const ascCut = (T) => {
   if (T.d?.brain?.catching?.()) T.at(0, () => T.tap('@attack'), 'ascCut');
 };

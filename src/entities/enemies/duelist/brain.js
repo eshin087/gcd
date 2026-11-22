@@ -66,7 +66,7 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //                          and calls d.onImpact, but gives no zone result and no world blow of its own.
 //   T.airFall { g }        (TUNING) a reaction / break / death that starts in the air drops him to the
 //                          floor at `g` m/s² instead of snapping the root to y = 0.
-//   catch: { from, open }  (Tian Lei's third wave, 2026-11-22) on a FEINT beat with a bait `hold`: THE
+//   stance: { from, open } (Tian Lei's third wave, 2026-11-22) on a FEINT beat with a bait `hold`: THE
 //                          COUNTER STANCE. From `from` (0.3) of the windup to the impact he is catching
 //                          (brain.catching() → the beat): a sword cut that reaches him is CAUGHT
 //                          (duelist.takeHit: no damage, the hero's blade thrown back as by a deflect,
@@ -672,13 +672,13 @@ export class DuelBrain {
     a.t = t;
   }
 
-  /** The counter stance he is in now (a beat marked `catch`, inside its catching window), else null. */
+  /** The counter stance he is in now (a beat marked `stance`, inside its catching window), else null. */
   catching() {
     const a = this.act;
     if (this.d.mode !== 'act' || !a) return null;
     const t = a.t;
     for (const b of a.beats) {
-      const C = b.def.catch;
+      const C = b.def.stance;
       if (!C || b.caught || b.catchOver) continue;
       if (t >= b.impact) return null;
       const from = b.start + clamp(fin(C.from, 0.3), 0, 1) * (b.impact - b.start);
@@ -698,7 +698,7 @@ export class DuelBrain {
 
   /** The stance caught nothing by its impact: the move ends here, and he is open `open` s. */
   _stanceMiss(a, b) {
-    const open = Math.max(0, fin(b.def.catch?.open, 0.6));
+    const open = Math.max(0, fin(b.def.stance?.open, 0.6));
     this.stats.stanceMiss++;
     this._toFoot(open);
     this.raiseT = Math.max(this.raiseT, open);
@@ -1134,7 +1134,7 @@ export class DuelBrain {
     for (const b of a.beats) {
       // a counter stance that caught nothing by its impact: the move ends there (the beats after it
       // were its punish), and he is open
-      if (b.def.catch && !b.caught && !b.catchOver && t >= b.impact) {
+      if (b.def.stance && !b.caught && !b.catchOver && t >= b.impact) {
         b.catchOver = true;
         this._stanceMiss(a, b);
         return;

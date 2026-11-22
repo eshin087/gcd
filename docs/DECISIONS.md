@@ -3963,7 +3963,7 @@ ADR-092).
   teleport attacks with the dragon ball teleportation animation, flurry of projectiles like vegeta ...
   more counter moves". ADR-129's rule stands: originals in that spirit, no franchise names or look.
 - **Decision:**
-  1. **The counter stance is an engine beat field, `catch`** (duelist/brain.js, duelist.js), not a
+  1. **The counter stance is an engine beat field, `stance`** (duelist/brain.js, duelist.js), not a
      move-file trick: a feint beat with a bait hold; from `from` of its windup a sword cut that reaches
      him is caught (no damage, no posture, the hero bounced as by a deflect, `dragon:guard { caught }`)
      and the move jumps to the beat's end so the beats after it, the punish, start at once; nothing
@@ -3988,7 +3988,7 @@ ADR-092).
   through (the owner's rule: a block is always an answer), so every third is on him and the rest pock
   the floor round him. **Why not** a homing orb: the roll must work.
 - **Options kept:** `?ascOrb=a|b` (a sun / a lantern) until the owner picks.
-- **Consequences:** the other duelists are unchanged (no beat of theirs carries `catch` or `sign`).
+- **Consequences:** the other duelists are unchanged (no beat of theirs carries `stance` or `sign`; the Starless Lord's own `catch` flag, the beat his thrown blade comes home on, is untouched: the first build named the field `catch` and ended his Wheeling Blade at that beat).
   Form 1 gains a stance (Still Water) and a riposte; forms 2 and 3 gain the sign moves, a stance, a
   riposte, the orb and the barrage. The stance's hold is short (0.2 - 0.4 s): with the brief's 0.7 -
   1.0 s the pace meter's longest gaps broke their caps. COMBAT.md's move tables are regenerated from

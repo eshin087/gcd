@@ -3181,7 +3181,7 @@ data and a subclass with a few hooks.
     `player.startBladeLock` (the lock at range: the beam clash, which also passes `camera`).
   - `_tradeNow` (the trade clash from `takeHit`) ignores a beat marked `selfHit` or `sustain` (a beam's head,
     a stream held lit is no blow of his body to trade with).
-  - `catch: { from = 0.3, open = 0.6 }` (the third wave, 2026-11-22) on a FEINT beat with a bait `hold`:
+  - `stance: { from = 0.3, open = 0.6 }` (the third wave, 2026-11-22) on a FEINT beat with a bait `hold`:
     THE COUNTER STANCE. From `from` of the windup to the impact `brain.catching()` returns the beat;
     `duelist.takeHit` (before the guard, for any cut that is not `exact`) then CATCHES the cut:
     `duelist._catch` deals no damage and no posture, draws the deflect's sparks on the crossing, emits
@@ -3508,7 +3508,7 @@ counter of each form, the third wave: `[['riposte', 'riposteKnee'], ['riposte2',
 SIGN (the hand rising at u 0.18, two fingers at the brow at u 0.5) to a strike's keys, for a beat with
 `blink: { ..., sign: true }`; a sign beat carries `close: 0` and a short `dash` into reach after the
 arrival (`TUNING.sign`: behind 2 m, a side at 1.5 rad / 2.2 m, a step of 1.6 m from u 0.55, a riposte's
-hop back 1.5 m). A counter stance is a feint beat `{ tell N, windup 0.45 fixed, hold [0.2, 0.4], catch:
+hop back 1.5 m). A counter stance is a feint beat `{ tell N, windup 0.45 fixed, hold [0.2, 0.4], stance:
 { from 0.3, open 0.6 }, part 'palms' }` (`TUNING.stance`) followed by its punish beats (Still Water,
 Golden Mirror, Thunder Mirror; `cat 'single'`). Thunder Mirror's and riposteBolt's bolt is a `ki: 'bolt'`
 line beat built in melee.js. A move
@@ -3773,7 +3773,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:death`, `dragon:dead`,
   `dragon:guard {heavy, deflect, caught}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
   "GUARDED", audio a dry clack; deflect = he beat it away and the hero bounces: HUD "DEFLECTED", a harsh falling
-  clang, a flicker of the frame; caught = the cut was caught in a counter stance, a beat marked `catch`: no
+  clang, a flicker of the frame; caught = the cut was caught in a counter stance, a beat marked `stance`: no
   posture either, HUD "CAUGHT", his punish follows at once), `dragon:deflected {count}` (every real hit of a long string parried:
   the full deflect; HUD "PERFECT DEFLECT"),
   `dragon:spell {name, x, z, part}` (a fire attack's signature moment: the strafe's pass, the dive, the barrage's

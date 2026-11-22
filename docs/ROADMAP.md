@@ -185,7 +185,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The reference's density of small bright detail
 
 ## M1.56 — Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage (2026-11-22, `enemies/ascendant-moves`, ADR-135)
-- [x] The engine: a counter stance as a beat (`catch`), the sign before a vanish, several counters a form
+- [x] The engine: a counter stance as a beat (`stance`), the sign before a vanish, several counters a form
 - [x] The sign: Sign Step, Three Signs; the first vanish of Vanishing Step, Storm Waltz, Mirage and the thunder Riposte
 - [x] Three counter stances (Still Water, Golden Mirror, Thunder Mirror) and three more ripostes
 - [x] Heaven's Lantern and THE PUSH; Raining Suns and its returnable finisher

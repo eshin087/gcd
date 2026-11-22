@@ -58,7 +58,7 @@ export function meleeMoves(X) {
   };
 
   // ---------------------------------------------------------------- the counter stances (the third wave)
-  // A stance is a FEINT beat with a bait hold and `catch` (duelist/brain.js): a sword cut into it from
+  // A stance is a FEINT beat with a bait hold and `stance` (duelist/brain.js): a sword cut into it from
   // `from` of its windup is caught (the hero's blade thrown back) and the punish after it starts at once;
   // a stance nobody cut into ends the move at its impact and leaves him open. Each reads as a catch, not a
   // guard: the palms OPEN and forward (not fists by the chin), the weight settled; light is drawn into
@@ -79,7 +79,7 @@ export function meleeMoves(X) {
   ];
   /** The stance beat: a feint (no blow), held, catching from ST.from of its windup. */
   const stance = (P) => ({
-    tell: N, windup: ST.windup, fixed: true, hold: ST.hold, active: 0.05, damage: 0, feint: true, catch: { from: ST.from, open: ST.open },
+    tell: N, windup: ST.windup, fixed: true, hold: ST.hold, active: 0.05, damage: 0, feint: true, stance: { from: ST.from, open: ST.open },
     part: 'palms', close: 0, track: 0.9, keys: stanceKeys(P),
   });
 

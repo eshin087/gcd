@@ -260,7 +260,7 @@ export class Duelist {
     if (this.mode === 'sleep') this.startIntro();
     const G = this.T.guard;
     const heavy = !!o.heavy;
-    // a counter stance (a beat marked `catch`, brain.catching): a sword cut that reaches him in it is
+    // a counter stance (a beat marked `stance`, brain.catching): a sword cut that reaches him in it is
     // CAUGHT, whatever side it came from
     if (!o.exact && !this.broken) {
       const cb = this.brain.catching?.();
@@ -871,7 +871,7 @@ export class Duelist {
   }
 
   /**
-   * The hero's cut is CAUGHT in his counter stance (a beat marked `catch`; brain.js): no damage, no
+   * The hero's cut is CAUGHT in his counter stance (a beat marked `stance`; brain.js): no damage, no
    * posture, the hero's blade thrown back (the bounce, as a deflect's), and the move jumps to its
    * punish (brain.onCaught). Drawn as a deflect on the crossing, called "CAUGHT" (dragon:guard).
    */

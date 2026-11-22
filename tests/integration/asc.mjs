@@ -454,7 +454,7 @@ async function scenarioTiming() {
       const h0 = G.hits.length;
       if (!d.debug.trigger(name)) { assert(false, `${name} form ${f}: starts`); continue; }
       // (a counter stance only hits if the hero cuts into it: the bot cuts once it is catching)
-      const cut = def.beats[0]?.catch ? () => { const a = d.brain.act, b = a?.beats[0]; if (a?.name === name && b && !b.caught && a.t > b.start + 0.3 * (b.impact - b.start) + 0.1 && ((G.game.realTime * 60) | 0) % 6 === 0) G.input.click(0); } : null;
+      const cut = def.beats[0]?.stance ? () => { const a = d.brain.act, b = a?.beats[0]; if (a?.name === name && b && !b.caught && a.t > b.start + 0.3 * (b.impact - b.start) + 0.1 && ((G.game.realTime * 60) | 0) % 6 === 0) G.input.click(0); } : null;
       run(G, 9, cut, () => quiet(d));
       for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) { contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.kind} ${h.r}`); }
       let w = 0;
@@ -770,12 +770,12 @@ async function scenarioEngine() {
   delete MOVES.__air;
   delete MOVES.__beam;
   assert(p.state !== 'lock', 'and it ends');
-  // 5. the counter stance (`catch`, the third wave): a feint beat with a bait hold; a cut into it is
+  // 5. the counter stance (`stance`, the third wave): a feint beat with a bait hold; a cut into it is
   //    caught (no damage, the hero bounced, the punish beat at once); none: the move ends there, open
   MOVES.__stance = {
     label: 'test: stance', phase: 1, weight: 0, manual: true, hidden: true, cooldown: 0, band: [0, 9], recovery: 0.4,
     beats: [
-      { tell: N, windup: 0.45, fixed: true, hold: [0.8, 0.8], active: 0.05, damage: 0, feint: true, catch: { from: 0.3, open: 0.6 }, part: 'palms', close: 0, track: 0.9, keys: [] },
+      { tell: N, windup: 0.45, fixed: true, hold: [0.8, 0.8], active: 0.05, damage: 0, feint: true, stance: { from: 0.3, open: 0.6 }, part: 'palms', close: 0, track: 0.9, keys: [] },
       { tell: R, windup: 0.5, active: 0.1, damage: 9, knockback: 1, knockdown: true, zone: { kind: 'ring', r: 3 }, ring: 3, part: 'palms', close: 0, keys: [] },
     ],
   };
