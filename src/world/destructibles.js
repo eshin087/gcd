@@ -112,6 +112,7 @@ const { INTACT, FALLING, BROKEN, HELD, FLYING, GONE } = STATE;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const NONE = Object.freeze({});
+const NO_PIECES = Object.freeze([]);
 const LEAVES = 'o0O8@&';
 const DIGITS = '0123456789';
 const FLASH_LEAD = 0.3;
@@ -912,9 +913,11 @@ export class Destructibles {
     this.batch = batchRigid(U, this.pieces);
     // (the batch's draw meshes into the scene; the pieces' tree stays out of it)
     for (const m of [...this.pieces.children]) if (m.isMesh && (m.name === 'rigidBatch' || m.name === 'rigidShadow')) this.root.add(m);
-    // the bricks of the pieces drawn through the batch (BREAK.chip): their triangles in its index, which
-    // a bite rewrites (a floor slab has stages of its own; a piece that only chips keeps its shape)
-    for (const b of this.list) {
+    // the bricks of the pieces drawn through the batch (BREAK.chip): their triangles in its index and
+    // positions, which a bite rewrites (a floor slab has stages of its own; a piece that only chips
+    // keeps its shape). Only in a level built with bites on: without them the batch's buffers stay
+    // static and nothing is made
+    for (const b of chipLook() !== '0' ? this.list : NO_PIECES) {
       const run = b.ranged ? null : b.body.userData?.batchRun;
       if (!run?.mesh?.geometry?.index || b.floor || !(b.hpMax < Infinity)) continue;
       run.mesh.geometry.index.setUsage(THREE.DynamicDrawUsage);
