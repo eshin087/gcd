@@ -2345,8 +2345,9 @@ switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pi
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
 `lordLook`, `floor`) reloads the page with its parameter. The Skybreak Ring's rows (ADR-129), each group
 under its own heading comment: `ring` a / b / c (the arena; a reload), `ascLook` a / c / d (his body; a
-reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c and `ascBeam`
-a / b (live); all picked 'a' (STYLE.md "The look switches"). "as shipped" clears every look parameter (the
+reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c, `ascBeam`
+a / b and `ascOrb` a / b (the great orb, the third wave; live); all picked 'a' (STYLE.md "The look
+switches"). "as shipped" clears every look parameter (the
 owner's picks), "before this pass" reloads with `?looks=old` ("all proposals" is gone: `?looks=new` now
 equals the default). A later phase's or form's move, and the
 phase / form buttons, play from any phase (the Lab skips there first, without playing the change).
@@ -3155,6 +3156,16 @@ data and a subclass with a few hooks.
     `player.startBladeLock` (the lock at range: the beam clash, which also passes `camera`).
   - `_tradeNow` (the trade clash from `takeHit`) ignores a beat marked `selfHit` or `sustain` (a beam's head,
     a stream held lit is no blow of his body to trade with).
+  - `catch: { from = 0.3, open = 0.6 }` (the third wave, 2026-11-22) on a FEINT beat with a bait `hold`:
+    THE COUNTER STANCE. From `from` of the windup to the impact `brain.catching()` returns the beat;
+    `duelist.takeHit` (before the guard, for any cut that is not `exact`) then CATCHES the cut:
+    `duelist._catch` deals no damage and no posture, draws the deflect's sparks on the crossing, emits
+    `dragon:guard { heavy, deflect: true, caught: true }` (HUD "CAUGHT"), bounces the hero
+    (`player.onGuarded({ deflect, caught })`) and calls `brain.onCaught(beat)`, which marks it and
+    `skipTo(beat.end)`: the beats after it (the punish) start at once. A stance nothing was cut into by
+    its impact ends the move there (`_stanceMiss`: `_toFoot(open)`, `raiseT` held at `open`, so his
+    guard stays down: the reward for waiting). `brain.stats.caught` / `stanceMiss`. The actor draws the
+    stance (Tian Lei: `fx.stanceGlow` from `afterPose` while catching).
   - `ledger.js` `discPath(s, p, reach, H, out)`: a thrown disc still going out (`s.kind 'disc'`, `phase
     'fly'`) flies on a curve (`curve` rad/s) to `range` m of path, hangs `hang` s, then comes home
     THROUGH where the hero stands at the turn (`through`, the default) or to the hand `H`; writes into
@@ -3383,8 +3394,9 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 A `Duelist` with `ASC_KIT`; COMBAT.md → "Tian Lei, the Last Ascendant" has the fight. Bare-handed: no
 weapon, three forms with a bar each (the Lord's `lives` structure), ki (blasts, a disc, bolts, called
 strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNING, MOVES, MOVE_NAMES,
-CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → riposte / riposte2 /
-riposte3, streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
+CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → one of the form's
+`COUNTER_LISTS` (moves.js; riposte / riposte2 / riposte3 and the third wave's, drawn on the AI's stream),
+streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
 scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's footwork plus the dash's lean
 by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
 ```
@@ -3492,7 +3504,10 @@ reads `sweep`). **The blink** (`beatMotion`, once at u 0.1 of the windup; then a
 `{ behind: m }` (behind the hero by his facing, else to one side, then the other), `{ land: true, side }`
 (beside where the hero's knock-back will end, on the side he came from: `_slideEnd`), `{ edge: true, pad }`
 (at the ring's edge farthest from the hero, `pad` 1.2 m inside his bound: the great beam), `{ at: rad, r }`
-(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage).
+(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage). **The sign**
+(the third wave): `sign: true` on any of them delays the vanish to u 0.5 of the windup (`signAt`); the
+beat's keys up to there show two fingers raised to his brow (`moves/melee.js` `signKeys`), and the moment
+he goes `fx.signSnap` flashes at the right hand (`tellPoint('fistR')`), then the usual `vanish`.
 
 **`ShotMoves`** (`kiShots.js`, `d.ki.shots`; numbers `TUNING.shots`, `tuningShots.js`): `begin` (false for
 a second disc, rain or volley while one runs), `weigh`, `onRelease` (the blasts leave the striking palm:
@@ -3601,6 +3616,8 @@ beamSplash(x, y, z, k, dt, form = 1)        where the beam ends on something (th
 beamClash(x, y, z, dx, dz, k, dt, form = 3) the head grinding on the hero's blade; k the lock's meter
 beamSplit(x, y, z, dx, dz, len, form = 3)   the clash won: the beam split round the blade (once, or every frame)
 vanish(d, x0, z0, x1, z1, form = 1)         the blink: the shape he leaves, the streak, a puff at each end
+signSnap(x, y, z, form = 1)                 the sign's snap at the fingers on his brow as he goes (once)
+stanceGlow(d, dt, form = 1)                 a counter stance: light drawn into both open palms (every frame catching)
 dashGhost(d, form = 1)                      the afterimage a dash leaves
 auraBurst(x, z, r, form = 2)                a shock ring out of his body to r m (Aura Burst, a landing)
 crater(x, z, r, k = 1)                      a heavy blow on the floor: dust, chips, lit cracks (draws only)
@@ -3704,9 +3721,10 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),
   `dragon:death`, `dragon:dead`,
-  `dragon:guard {heavy, deflect}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
+  `dragon:guard {heavy, deflect, caught}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
   "GUARDED", audio a dry clack; deflect = he beat it away and the hero bounces: HUD "DEFLECTED", a harsh falling
-  clang, a flicker of the frame), `dragon:deflected {count}` (every real hit of a long string parried:
+  clang, a flicker of the frame; caught = the cut was caught in a counter stance, a beat marked `catch`: no
+  posture either, HUD "CAUGHT", his punish follows at once), `dragon:deflected {count}` (every real hit of a long string parried:
   the full deflect; HUD "PERFECT DEFLECT"),
   `dragon:spell {name, x, z, part}` (a fire attack's signature moment: the strafe's pass, the dive, the barrage's
   rise, a spell's cast / the nova's charge start, a bullet pattern's cast (cinderSpit, emberRain, fireLanes among
