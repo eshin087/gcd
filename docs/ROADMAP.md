@@ -49,6 +49,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [x] An ASCII HUD: text meters, block-letter banners, no panels in play, a 40 – 72 px minimap (ADR-098)
   - [ ] Owner's verdict on the phone: the pad's default place and size, the slide's stick (10 px), the guard meter's numbers,
         how faint the controls are, the upright camera against the wyrm
+  - [x] The hero's meters and the boss's never overlap: the top row is fitted to the screen (ADR-131)
+  - [x] Two pad switches to try: PAD LAYOUT "guard on left" (one thumb cuts, the other parries) and HOLD ATTACK (ADR-131)
+  - [ ] Owner's pick on the phone: which of the two becomes the default, where GUARD stands
+  - [ ] Phone ideas not built yet (ADR-131 lists them): the game drawn under the notch (viewport-fit=cover), a
+        drag-to-place layout editor, a left-handed mirror, an "add to home screen" hint for full screen on iOS
 - [x] Owner approval; released as v0.4.0
 
 ## M1.6 — Reference match (2026-11-08, PR #4, `look/reference-match`)
