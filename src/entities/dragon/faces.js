@@ -106,7 +106,7 @@ const DRAKE = {
   // asked for it from every side): an almond with pointed corners, the outer one high, its face
   // turned OUT, UP and FORWARD at once, so it is a slanted slit from the side, one of a pair from
   // the front and from above (the old lozenge faced sideways: a blob from the front, a dot from above)
-  eye: { c: [0.39, 0.268, 0.525], rot: [0, -0.68, 0.6], leaf: { len: 0.28, h: 0.044, slant: 0.12, peak: 0.55 } },
+  eye: { c: [0.39, 0.268, 0.525], rot: [0, -0.68, 0.6], leaf: { len: 0.21, h: 0.033, slant: 0.09, peak: 0.55 } },
   paintJaw: [LINING],
   // the socket's dark: two patches, the rear one higher (a slanted hollow)
   paint: [LINING, { key: 'pit', c: [0.38, 0.22, 0.6], r: [0.12, 0.095, 0.13] }, { key: 'pit', c: [0.42, 0.29, 0.42], r: [0.12, 0.095, 0.14] }, { key: 'pit', c: [0.12, 0.29, 1.19], r: [0.04, 0.035, 0.045] }],

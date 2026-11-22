@@ -22,6 +22,7 @@ export const RELEASES = [
         title: 'The Cinder Wyrm glares from every side',
         notes: [
           'The wyrm\'s eyes are slanted slits of fire under a heavy brow, so it glares at you from the side, from the front and from below, not only from one angle.',
+          'Its neck no longer looks broken while it stands: the neck arches over into the head, and the head stays level as it watches you.',
           'The fight is unchanged.',
         ],
       },
