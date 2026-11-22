@@ -198,6 +198,8 @@ export class CombatFeed {
     on('dragon:introDone', () => log(`${this._name()}, ${this._title()}, bars your path.`, 'warn', 'intro', 5));
     on('dragon:breathStart', () => log(`${this._name()} breathes fire!`, 'combat', 'breath', 4));
     on('dragon:takeoff', () => log(duel() ? `${this._name()} leaps!` : `${this._name()} takes to the sky!`, 'combat', 'takeoff', 4));
+    // (the forest's wall coming down opens the ground behind it: world/edge.js, ADR-125; said once a fight)
+    on('world:edge', (d) => d?.first && log('The wall of trees is torn open: the way out of the clearing lies clear.', 'warn', 'edge', 30));
     on('dragon:stagger', () => log(`${this._name()} staggers!`, 'warn', 'stagger', 1));
     on('dragon:postureBreak', () => log(`${this._name()}'s posture breaks! Critical hits land now.`, 'warn', 'postureBreak', 2));
     // a boss with several bars (dragon.lives): each new form logs the level's own line for it

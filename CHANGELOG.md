@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-six pieces of work since 0.4.0:
+Fifty-eight pieces of work since 0.4.0:
 - **A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant** (2026-11-21, ADR-129). *Added:* a fourth level, `?level=ring`
   (the title screen lists it). **The Skybreak Ring**: a tournament ring of stone tiles on the badlands,
   buttes standing round it, braziers at its corners. **Tian Lei, the Last Ascendant**: a bare-handed
@@ -26,6 +26,15 @@ Fifty-six pieces of work since 0.4.0:
   two more outfits (`?ascLook=c|d`), two more auras (`?ascAura=b|c`), a second beam (`?ascBeam=b`). The
   level borrows music from the other levels for now. Nobody has played it yet: his health (2000 a bar)
   and the fight's length are first guesses from bots.
+- **Felled trees lie as the blow left them** (2026-11-21, ADR-128). *Changed:* a felled tree no longer
+  leaves the same stump and the same straight log as every other ("make the cleared trees not look
+  the same and have it broken in different angles based on how it was hit"). A blade cuts the stump
+  high and on a clean slant, a blow knocking a tree over tears it lower and higher on the side it
+  fell to, a blast shatters it low; a tree burnt through leaves a low black stump. The fall turns off
+  the blow's line and rolls; the trunk turns as it lands, rests with its far end raised, and often
+  breaks in two with a kink (more often for a blast than a blade). *Added:* crooked trunks with a
+  snapped bough; some trees that burn through stay standing as black snags. No hit, tell or timing
+  changed.
 - **The Cinder Wyrm glares from every side** (2026-11-21, ADR-127). *Changed:* the drake's eyes
   are slanted almonds with a point at each corner, the outer corner high, turned out, up and
   forward, under a brow that drops low over the snout and rises steeper than the eye: an angry
@@ -52,6 +61,21 @@ Fifty-six pieces of work since 0.4.0:
   and in his two-handed forms the hilt stays where both hands reach it. *Unchanged:* every tell,
   windup, flash, impact time, reach and damage number; `npm test` is green without a changed
   threshold. *Added:* the `motion` scenario of `tests/integration/duel.mjs`.
+- **The wall of trees comes down and the fight goes out through it** (2026-11-21, ADR-125). *Changed:* in Cinderwood the
+  hero is no longer held on a fixed circle once the forest's wall starts to fall ("the outer tree
+  border ring should slowly crumble and allow the dragon and player to move outside"). Where a tree
+  of the wall has burnt through or been felled, the ground behind it is open, out to the next tree
+  still standing; the wall is about seven trees deep, so it opens tree by tree, up to 62 m from the
+  centre. The wyrm follows through any gap wide enough for its body (a narrow one lets only the hero
+  in; its fire, its shots and its tail still reach, and what its body brushes at the mouth comes
+  down). Meteors, pillars and the barrage follow the hero out there, and a tree falling onto ground
+  he can now stand on is a red blow again. A death, a rest or the Lab's Restore stands the wall up
+  again. Nothing moves until the first tree is down: a fight starts as it always did, and no attack
+  changed. *Added:* the feed says once a fight that the wall is torn open; the minimap shows the
+  opened ground and draws back to keep the hero on it; stumps stand in the way out to the forest's
+  depth; the Lab's WORLD section has **Open wall**. Measured over a 4-minute headless fight (three
+  seeds): 86 - 90 of 120 directions open at the end, the furthest 51 - 54 m out, the hero's ground
+  about half as large again.
 - **The Cinder Wyrm has a new face** (2026-11-20, ADR-124). *Changed:* the wyrm wears the
   drake, the owner's pick of four faces rendered side by side ("It doesnt look realistic or scary"):
   a sculpted skull with a long hooked snout, a heavy brow over each eye, cheekbones and a stop before

@@ -200,6 +200,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Thunderfall at its intended rate (every 4.0 s today against 3.2 → 1.8 s): a second strike in a pair
   - [ ] Decide what stays behind the switches (arenas b / c, outfits c / d, auras b / c, the braid beam)
 
+## M1.53 — A felled tree lies as the blow left it (2026-11-21, `world/crumbling-border`, ADR-128)
+- [x] The stump cut by the blow: height, a slanted top, splinters, a push toward the fall; burnt: low and black
+- [x] The fall turns off the blow's line and rolls about its trunk
+- [x] The trunk turns as it lands, rests raised, breaks in two with a kink; crooked log shapes
+- [x] Some trees that burn through stand as black snags
+- [x] Tests: world `lie`; `spread` starts from a known stream
+- [ ] Follow-ups:
+  - [ ] The owner plays it and picks how far to take it (more splits, taller snags, fewer)
+  - [ ] A trunk split down its length (two halves on the stump)
+
 ## M1.52 — The drake's glare from every side (2026-11-21, `dragon/drake-eyes`, ADR-127)
 - [x] Four anime faces rendered and turned down by the owner; not kept
 - [x] The drake's eye a slanted almond turned out, up and forward; a steeper brow, an orbit rim, a dark hollow
@@ -222,6 +232,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The Lord's left arm in the staff's spins and the keyed two-handed poses
   - [ ] Reaction clips (hits, staggers, the guard, the deaths) audited the same way
   - [ ] The casting hand and the kicks posed anew
+## M1.50 — The tree wall opens: the fight leaves the clearing (2026-11-21, `world/crumbling-border`, ADR-125)
+- [x] The edge of the open ground follows what stands of the wall (120 lanes; sealed until a tree is down)
+- [x] The hero walks out where it has come down; the wyrm's root follows through a gap wide enough for it
+- [x] Meteors, pillars and the barrage follow him out; a tree falling onto opened ground tells red
+- [x] The minimap shows the opened ground; the feed says it once; the Lab's Open wall
+- [x] Tests: world `edge`, integ `breach`, the open ground in WRECKAGE's report
+- [ ] Follow-ups:
+  - [ ] The owner plays it: the rate the wall opens at, fighting among the stumps, the 62 m limit
+  - [ ] On the iPhone: the frame rate with the wall open
+  - [ ] The landmarks' pieces closing their own lanes (the ground behind the skeleton opens rib by rib)
+  - [ ] The same for a level with a wall of its own, if one is built
 
 ## M1.49 — The Cinder Wyrm's face: the drake (2026-11-20, `dragon/wyrm-face`, ADR-124)
 - [x] The shipped face photographed at the game camera and close up; what made it unreadable named

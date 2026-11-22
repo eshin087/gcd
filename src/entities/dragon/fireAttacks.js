@@ -56,6 +56,20 @@ function inBound(v, B) {
   }
   return v;
 }
+/** `v` kept where the wyrm's root may be: its bound in v's direction (dragon.boundAt: the clearing, plus what the wall's fallen trees opened), less `inset` m. */
+function inReach(d, v, inset = 0) {
+  return inBound(v, d.boundAt(v.x, v.z) - inset);
+}
+/** maxRun on the wyrm's ground: the circle while the wall stands; once ground is open, the ray is walked out to where the root may no longer be. */
+function runIn(d, x, z, dx, dz) {
+  if (!d.game.world?.edge?.open) return maxRun(x, z, dx, dz, d.bound);
+  let t = 0;
+  for (; t < 80; t += 1) {
+    const px = x + dx * (t + 1), pz = z + dz * (t + 1);
+    if (Math.hypot(px, pz) > d.boundAt(px, pz)) break;
+  }
+  return t;
+}
 
 // ------------------------------------------------------------------ shared flight helpers
 /** Lift-off: airborne state (no body circles, staggers wait), dust and a gust, 'dragon:takeoff'. */
@@ -156,7 +170,7 @@ const skyStrafe = {
     a.dz = dz;
     a.yaw = Math.atan2(dx, dz);
     a.p0 = V().copy(d.position);
-    const D = Math.min(clamp(dist + 14, SK.reach[0], SK.reach[1]), maxRun(d.position.x, d.position.z, dx, dz, d.bound));
+    const D = Math.min(clamp(dist + 14, SK.reach[0], SK.reach[1]), runIn(d, d.position.x, d.position.z, dx, dz));
     a.D = Math.max(14, D);
     const s0 = SK.strip.start, s1 = Math.max(s0 + 4, a.D - 3);
     a.vf = (s1 - s0) / Math.max(0.5, SK.pass * 0.92); // the front covers the strip within the pass
@@ -199,7 +213,7 @@ const skyStrafe = {
   place(d, a, s) {
     d.position.x = a.p0.x + a.dx * s;
     d.position.z = a.p0.z + a.dz * s;
-    inBound(d.position, d.bound);
+    inReach(d, d.position);
   },
   update(d, a, dt) {
     const pose = d.pose, pt = d.rig.pt, k = a.k, f = d.fwd;
@@ -340,8 +354,8 @@ const diveBomb = {
     a.target.x += (_a.x - a.target.x) * k;
     a.target.z += (_a.z - a.target.z) * k;
     const R = TUNING.radius;
-    g.world?.resolve?.(a.target, R, d.bound + R);
-    inBound(a.target, d.bound);
+    g.world?.resolve?.(a.target, R, d.boundAt(a.target.x, a.target.z) + R);
+    inReach(d, a.target);
     a.target.y = 0;
   },
   /**
@@ -353,10 +367,10 @@ const diveBomb = {
    */
   hoverPoint(d, a, out) {
     out.set(a.target.x + a.side * DB.hoverBack, 0, a.target.z - 1);
-    inBound(out, d.bound);
+    inReach(d, out);
     // pinned against the bound on its side: hover on the other side instead
     if (Math.abs(out.x - a.target.x) < DB.hoverBack * 0.5) out.set(a.target.x - a.side * DB.hoverBack, 0, a.target.z - 1);
-    return inBound(out, d.bound);
+    return inReach(d, out);
   },
   enter(d, a, phase) {
     if (phase === 'climb') takeOff(d);
@@ -516,10 +530,10 @@ const hoverBarrage = {
   hoverPoint(d, a, out) {
     const s = d.sense;
     out.set(s.pos.x + a.side * HB.standoff, 0, s.pos.z + 1.5);
-    inBound(out, d.bound);
+    inReach(d, out);
     // pinned against the bound on its side: hover on the other side instead
     if (Math.abs(out.x - s.pos.x) < HB.standoff * 0.5) out.set(s.pos.x - a.side * HB.standoff, 0, s.pos.z + 1.5);
-    return inBound(out, d.bound);
+    return inReach(d, out);
   },
   enter(d, a, phase) {
     if (phase === 'rise') {
@@ -540,8 +554,8 @@ const hoverBarrage = {
       _a.x += (-dz / l) * 2.6 * side;
       _a.z += (dx / l) * 2.6 * side;
     }
-    inBound(_a, 27);
-    g.world?.resolve?.(_a, 0.5, 30);
+    inBound(_a, d.arenaAt(_a.x, _a.z, 27));
+    g.world?.resolve?.(_a, 0.5, d.arenaAt(_a.x, _a.z, 30));
     const b = a.beats[i];
     const ref = d.hazards.circle({
       kind: 'shell', attack: 'hoverBarrage', announce: false, x: _a.x, z: _a.z, r: HB.radius, delay: HB.aim + 0.75,
@@ -634,7 +648,7 @@ const hoverBarrage = {
     const kk = 1 - Math.exp(-2 * dt);
     d.position.x += (a.hov.x - d.position.x) * kk;
     d.position.z += (a.hov.z - d.position.z) * kk;
-    inBound(d.position, d.bound);
+    inReach(d, d.position);
     while (a.aimed < a.n && a.t >= a.aimed * HB.interval) this.aim(d, a, a.aimed++);
     while (a.shot < a.n && a.shot < a.aimed && a.t >= a.shot * HB.interval + HB.aim) this.launch(d, a, a.shot++);
     fly(pose, HB.alt + 0.4 * Math.sin(a.t * 3.3), 0.85, 2.0);
@@ -800,7 +814,7 @@ function makeFlightCombo(key) {
       a.yaw = Math.atan2(dx, dz);
       a.p0.copy(d.position);
       a.p0.y = 0;
-      a.D = Math.max(14, Math.min(clamp(dist + 14, FP.reach[0], FP.reach[1]), maxRun(d.position.x, d.position.z, dx, dz, d.bound)));
+      a.D = Math.max(14, Math.min(clamp(dist + 14, FP.reach[0], FP.reach[1]), runIn(d, d.position.x, d.position.z, dx, dz)));
       const s0 = FP.start, s1 = Math.max(s0 + 4, a.D - 3);
       a.vf = (s1 - s0) / Math.max(0.5, FP.time * 0.92);
       a.sEnd = 2;
@@ -816,7 +830,7 @@ function makeFlightCombo(key) {
     place(d, a, s) {
       d.position.x = a.p0.x + a.dx * s;
       d.position.z = a.p0.z + a.dz * s;
-      inBound(d.position, d.bound);
+      inReach(d, d.position);
     },
     stopBreath(d, a) {
       if (!a.breathing) return;
@@ -829,14 +843,14 @@ function makeFlightCombo(key) {
       const s = d.sense;
       if (kind === 'dive') {
         out.set(a.target.x + a.side * FD.hoverBack, 0, a.target.z - 1);
-        inBound(out, d.bound);
+        inReach(d, out);
         if (Math.abs(out.x - a.target.x) < FD.hoverBack * 0.5) out.set(a.target.x - a.side * FD.hoverBack, 0, a.target.z - 1);
       } else {
         out.set(s.pos.x + a.side * FB.standoff, 0, s.pos.z + 1.5);
-        inBound(out, d.bound);
+        inReach(d, out);
         if (Math.abs(out.x - s.pos.x) < FB.standoff * 0.5) out.set(s.pos.x - a.side * FB.standoff, 0, s.pos.z + 1.5);
       }
-      return inBound(out, d.bound);
+      return inReach(d, out);
     },
     /** The dive target follows the (led) hero with a lag until the dive, clear of stones, in the bound. */
     track(d, a, dt) {
@@ -846,8 +860,8 @@ function makeFlightCombo(key) {
       a.target.x += (_a.x - a.target.x) * k;
       a.target.z += (_a.z - a.target.z) * k;
       const R = TUNING.radius;
-      d.game.world?.resolve?.(a.target, R, d.bound + R);
-      inBound(a.target, d.bound);
+      d.game.world?.resolve?.(a.target, R, d.boundAt(a.target.x, a.target.z) + R);
+      inReach(d, a.target);
       a.target.y = 0;
     },
     enter(d, a, phase) {
@@ -884,7 +898,7 @@ function makeFlightCombo(key) {
         this.hoverGoal(d, a, a.goal, seg?.kind);
         const L = clamp(0.6 * Math.hypot(a.goal.x - a.from.x, a.goal.z - a.from.z), 5, 14);
         a.ctrl.copy(a.from).addScaledVector(_b, phase === 'wheel' ? L : 0.5);
-        inBound(a.ctrl, d.bound - 1);
+        inReach(d, a.ctrl, 1);
       } else if (phase === 'barrage') {
         seg.aimed = seg.shot = 0;
         d.emit('dragon:spell', { name: key, part: 'barrage', x: d.position.x, z: d.position.z });
@@ -923,8 +937,8 @@ function makeFlightCombo(key) {
         _a.x += (-dz / l) * 2.6 * side;
         _a.z += (dx / l) * 2.6 * side;
       }
-      inBound(_a, 27);
-      g.world?.resolve?.(_a, 0.5, 30);
+      inBound(_a, d.arenaAt(_a.x, _a.z, 27));
+      g.world?.resolve?.(_a, 0.5, d.arenaAt(_a.x, _a.z, 30));
       const b = seg.beats[i];
       seg.rings[i] = d.hazards.circle({
         kind: 'shell', attack: key, announce: false, x: _a.x, z: _a.z, r: FB.radius, delay: FB.aim + 0.75,
@@ -1032,7 +1046,7 @@ function makeFlightCombo(key) {
         _c.set(a.p0.x + a.dx * a.sEnd, 0, a.p0.z + a.dz * a.sEnd);
         d.position.x = lerp(a.from.x, _c.x, e);
         d.position.z = lerp(a.from.z, _c.z, e);
-        inBound(d.position, d.bound);
+        inReach(d, d.position);
         d.turnToward(a.yaw, 7, dt);
         this.bank(d, a, dt, 0.25);
         fly(pose, lerp(a.alt0, FP.alt, e) + 0.6 * Math.sin(Math.PI * k), 0.55, 2.0);
@@ -1084,7 +1098,7 @@ function makeFlightCombo(key) {
         bez2(_c, _e, a.from, a.ctrl, a.goal, e);
         d.position.x = _c.x;
         d.position.z = _c.z;
-        inBound(d.position, d.bound);
+        inReach(d, d.position);
         const altGoal = kind === 'dive' ? FD.alt : FB.alt;
         const alt = a.phase === 'rise' ? altGoal * easeOutCubic(k) : lerp(a.alt0, altGoal, smoothstep(0, 1, k)) + 1.4 * Math.sin(Math.PI * k);
         fly(pose, Math.min(15.5, alt), 0.95, 2.2);
@@ -1110,7 +1124,7 @@ function makeFlightCombo(key) {
         const kk = 1 - Math.exp(-2 * dt);
         d.position.x += (a.goal.x - d.position.x) * kk;
         d.position.z += (a.goal.z - d.position.z) * kk;
-        inBound(d.position, d.bound);
+        inReach(d, d.position);
         while (seg.aimed < a.n && a.t >= seg.aimed * a.every) this.aim(d, a, seg, seg.aimed++);
         while (seg.shot < a.n && seg.shot < seg.aimed && a.t >= seg.shot * a.every + FB.aim) this.launch(d, a, seg, seg.shot++);
         fly(pose, FB.alt + 0.4 * Math.sin(a.t * 3.3), 0.85, 2.0);
@@ -1140,7 +1154,7 @@ function makeFlightCombo(key) {
         const kk = 1 - Math.exp(-3 * dt);
         d.position.x += (a.goal.x - d.position.x) * kk;
         d.position.z += (a.goal.z - d.position.z) * kk;
-        inBound(d.position, d.bound);
+        inReach(d, d.position);
         fly(pose, FD.alt + 0.5 * Math.sin(a.t * 3.1), 0.95, 2.0);
         pose.hover = 1;
         pose.glide = 0.45;

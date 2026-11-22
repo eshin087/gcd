@@ -98,7 +98,7 @@ ADR-120).
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker})` → light (mutable `x,y,z`, `.set()`, `.kill()`) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
-| `world` | `resolve(pos, radius, bound, soft = false)` circle collision (`soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
+| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
@@ -711,7 +711,8 @@ vertical reach band (`REACH` in `player/combat.js`: a sphere overlapping the bla
 extended `up` m above / `down` m below it counts, so the giant wyrm's chest is in reach from the
 front); swings step in toward a hurt surface ahead (`REACH.assist`); the slam's ground shards hit
 if the blade missed. Pushes itself out of
-`game.dragon.bodyCircles` and resolves vs `game.world.resolve(pos, radius, CONFIG.world.playerBound)`.
+`game.dragon.bodyCircles` and resolves vs `game.world.resolve(pos, radius, CONFIG.world.playerBound, false, 'hero')` (the circle, or on
+Cinderwood the ground the tree wall leaves open: ADR-125).
 **Perfect dodge** (`takeHit` returns `RESULT.PERFECT`; `_perfectDodge(attacker, attack, tell,
 hit.plunge !== false)`). The **streak** counts one more (`player.streak`, `player:streak`; it ends
 when a blow hurts him, `_streakEnd`), and by attacker:
@@ -1266,6 +1267,14 @@ object3d, position (Vector3, root on ground), yaw
 batch                                   // its rigid batches (render/rigidBatch.js batchRigid; empty with ?nobatch)
 bound: number                           // radius around the arena centre the root stays inside:
                                         // min(CONFIG.world.dragonBound, TUNING.bound = 24) (move, charge, leap target)
+boundAt(x, z): number                   // ... in that direction: bound + world.edge.bossGain(x, z) (ADR-125: the root
+                                        // follows the hero out through a gap in the tree wall; = bound until one opens).
+                                        // What moves the root reads this: _collide, the charge, the leap / hop targets,
+                                        // the flights (fireAttacks.js inReach, runIn), the terrain moves' stand
+arenaAt(x, z, base): number             // a radius sized for the clearing (where a meteor may land: hazards.js ARENA_R 27)
+                                        // carried out with the hero's ground that way: base + (edge.heroAt - edge.base).
+                                        // A barrage wave laid over the clearing moves with a hero who has left it
+                                        // (he stands 7 m inside its rim)
 name = 'VAELGRIM, THE CINDER WYRM';  hp, maxHp;  phase: 1|2|3
 phaseAt: number[]                       // HP fractions where each phase starts (TUNING.phaseAt [1, 0.66, 0.33]);
                                         // the HUD draws its boss-bar ticks from it
@@ -2289,7 +2298,9 @@ the model viewer. The timing trainer also logs `combat:deflectChain`, `dragon:ph
 Since 2026-11-16 (ADR-120): FIGHT → **Ablaze** cycles the phase-3 fire off / a / b / c
 (`dragon.debug.ablaze`); WORLD → **Wear wall** (a tail's blow, power 1, on the nearest standing wall
 tree or landmark piece: watch its stages) and **Wreck wall** (blasts and fire in the wall straight
-out behind the hero); PLAYER → a **head** row (`?wyrmFace=`, reloads the page), since 2026-11-20 a
+out behind the hero) and, since 2026-11-21 (ADR-125), **Open wall** (every tree of the wall in a wedge
+straight out from the hero falls, out to 52 m: the ground opens there, the minimap redraws, the wyrm
+can follow); PLAYER → a **head** row (`?wyrmFace=`, reloads the page), since 2026-11-20 a
 **build** row (`?wyrmLook=`: before / a / b / c, reloads the page; ADR-123) and a **zoom art**
 row (`pipeline.setZoomArt('a' | 'b' | 'c')`, live).
 **LOOKS** (ADR-122; `dev/labLooks.js`, only in `ash` / `starless` / `ring`, collapsed until opened): a row per look
@@ -2538,6 +2549,7 @@ flagstone, lower than `brushFlat` 0.3 m) takes nothing from it.
 | `hpK` | multiplies the default structure (a tree of the wall: `BREAK.wall.hp` 1.15) |
 | `wear` | `{ order, cut }`: it wears down in stages (a 'range' piece with parts; see "Wearing down"): `order` the parts it drops (never 0, the trunk), `cut[k]` how many of them are gone by stage k + 1. `forest.js` `wearOf(type, n)`: a pine [2, 3] (its top two tiers, then all but its skirt), a dead tree a third and two thirds of its boughs, an oak 0.4 and 0.8 of its crown |
 | `wall` | true: a tree of the wall round the clearing (beyond `BREAK.wall.from` 32 m; below) |
+| `edge` | m (> 0): while it stands it closes the ground behind it, this far either side of its base ("The edge of the open ground" below; the forest's wall trees: 0.6 x the crown's radius, 1.1 m at least) |
 | `guard` | the definitions of the pieces that must go first: while one of them stands it takes `BREAK.guarded` 0.2 of a blow (the Cinder Tree's boughs guard its trunk) |
 | `digits` | true: its debris and marks print in prop art's digits (a landmark's bones and boughs; default for look 'prop') |
 | `topples` | it falls over when it breaks (default: h >= `BREAK.topple.minH` 2.2 m); otherwise it shatters where it stands |
@@ -2679,12 +2691,65 @@ structure of a tree its size, falls with at least `out` 0.55 of its way pointing
 leaning one the way it leans, which was turned outward when it leaned), and where it lands strikes the
 trees behind at `domino` 1.4 × its weight (0.7 elsewhere).
 
+**The edge of the open ground** (`world/edge.js` `class Edge`, numbers `BREAK.edge`; 2026-11-21, ADR-125).
+Where the hero and the boss may go follows what still stands of a set's wall. A set asks for it by
+returning `edge: { base, outer? }` (base: the circle the level always had, the forest's is
+`CONFIG.world.playerBound` 31 m) and marking the pieces that close its ground with `edge` (m) in their
+breakables entry; `Destructibles` builds it (`destructibles.edge`, `world.edge`; null on a set without
+one: the courtyard, the crater, the training room).
+- The ring round the centre is cut into `lanes` 120 (3 degrees each). A piece closes every lane its
+  `edge` radius overlaps. In a lane the hero's ground ends `margin` 1 m short of the nearest piece
+  still standing in it, at `outer` 62 m once none stands (the forest ends at 74 m, the grass and the
+  scorch map at 80).
+- A lane is SEALED at `base` until its nearest piece has come down, so a fight starts on the circle it
+  always started on. A sealed lane with no tree near the line (a natural gap, the path south, the
+  ground behind a landmark) gives way sideways beside open ground: as far as the more open of its
+  neighbours, never past its own trees, and only if that frees more than `seal` 2 m of it (the whole
+  ring does not shift at the first breach).
+- Standing: INTACT, FALLING (a tree opens the ground once it is down) and HELD. The pieces are read
+  every `every` 0.2 s and at once on `reset()`; in a fight the ground only grows.
+- `heroAt(x, z)` → m from the centre his ground goes in that direction. `keep(pos, radius)` → pushes a
+  circle back onto it: the lane's end, and the side walls of the lanes that end sooner (a step
+  sideways out of a deep lane is put back in the lane, not dragged in to the old circle).
+  `reaches(ax, az, bx, bz, pad)` → does a segment touch his ground (a falling tree's strip: the wall's
+  quiet-fall rule reads it, so a tree that falls into an opened gap tells red again).
+- `bossGain(x, z)` → m a boss may stand past its own bound in that direction: the hero's gain, less
+  `body` 3 m at either side of a gap (a slot a few metres wide does not let its root in), and from
+  there no steeper than `slope` 2 m out per m along the ring (a radial clamp never drags it hard
+  sideways). It is 0 until something is open.
+- `open`, `version` (counts every change: the minimap re-bakes on it and draws back so the hero stays
+  on it), `lanes`, `R` (the hero's ground per lane), `n`, `base`, `outer`, `laneAngle(i)`.
+- `resolveOn(colliders, edge, pos, radius, bound, soft, who)` (exported) is `world.resolve`'s rule; the
+  tests' mock worlds call it too.
+The ground is star-shaped round the centre: whoever stands on it can walk straight back in. When
+ground opens, `Destructibles.update` emits the edge event of the catalogue (the HUD feed says it once a
+fight). Who reads it: the hero (`player.js` `_collide` and the plunge's landing, `flurry.js`), the
+wyrm (`dragon.boundAt` / `arenaAt`, below), the wall's quiet-fall rule, the minimap, the Lab's Open wall.
+Every trunk out to `outer` + 3 m has a collider now (it was 42 m), so the stumps of the opened ground
+stand in the hero's way as the clearing's do.
+
 **Range pieces** (`RangeBody`, internal): its `visible` folds or restores its whole run; `show(i, on)`
 drops or restores part i; `pose(q, px, py, pz)` turns it by a quaternion about its base and moves it,
 rewriting positions (and normals) from a home copy, so a tree shudders, leans, falls, is carried and
 flies without a bone of the rigid batch. Writes are queued and uploaded once a frame, one update range
 per body: `flushRanges()` (exported; `Destructibles.update` and `reset` call it). `reset()` rewrites only
-the pieces that were touched. No allocation after the build.
+the pieces that were touched. No allocation after the build. `reshape(fn)` (ADR-128) gives an unposed
+run another shape once: `fn(home, nhome, col, orig)` rewrites its home copy, normals and colours
+(`aCol`) from the shape it was built with (its spare copies are made on the first call); `unshape()`
+puts that back, and `shaped` says whether it is reshaped.
+
+**How a felled tree lies** (ADR-128, `BREAK.fell` per kind of blow, on a stream of its own: the fire's
+spread and the leans draw what they drew before). For a forest tree (wood, a range, `wreck` not false):
+its fall turns up to `spread` off the blow's line (the wall's outward rule still applies after it) and
+it rolls up to `spin` about its own trunk on the way down; its stump is reshaped (`_shapeStub`): as high
+as the blow leaves it (`h`; a blade: about the height it bit at, `b.hy`, the `y` of its blow), its top on
+a plane slanted along the blow (`slant`; a blow knocking it over: higher on the side it fell to),
+splintered (`jag`), pushed over toward the fall (`lean`); burnt through, low and black (`char`). Its
+trunk (`_logs`) is turned up to `yaw` as it lands, 0.85 - 1.15 of its length, its far end raised up to
+`pitch`, and broken in two with a `kink` and a `gap` for a `split` share. A tree that burns through
+leaves its black trunk the same way, or for a `snag` share stands as a black snag on its stump. The
+reset puts every stump back as built. `reseedBreaks(s)` (exported, for tests) restarts the module's
+streams.
 
 **`world.destructibles.wreck`** (`class Wreckage`, `wreckage.js`, 2026-11-15; it reverses ADR-107's "a
 felled trunk comes apart where it lands"): what the fight leaves lying until it resets. A felled tree's
@@ -2702,7 +2767,11 @@ hero beside it like a burning tree; a burnt-through log emits `world:impact` 'bu
 Two more kinds since ADR-122 (`KIND` LOG, CHAR, RUBBLE, BONES, BLOCK, SHARDS; the bones, blocks and shards pools
 are only built for a set that needs them: bone pieces, a statue, a floor that can be thrown): `blocks` 12, big carved blocks (a colossus's stages, where its upper half lands and its legs),
 and `shards` 16, flat shards (a floor slab torn out, where it is thrown).
-API (internal to destructibles): `log(x, z, dx, dz, len, r, burn, charred)`, `rubble(x, z, r, M)`,
+The logs come in 6 shapes and the black ones in 4 (ADR-128: 3 / 2 crooked ones with a snapped bough
+among the plain ones, from a stream of their own). A log's `pitch` raises its far end (near PI / 2 it
+stands: a snag); `e.len` is how far it reaches over the ground (its fire, smoke, the grass it flattens),
+`e.size` its own length.
+API (internal to destructibles): `log(x, z, dx, dz, len, r, burn, charred, pitch)`, `rubble(x, z, r, M)`,
 `block(x, z, r, M)`, `shards(x, z, r, M)`, `ignite(x, z, r, k)`, `count`, `burning`, `live`, `update(dt)`,
 `reset()`.
 
@@ -2728,8 +2797,9 @@ oldest `SCAR.evict` 0.15 of the marks go in one step (one rebuild of the batch, 
 and a charred disc of radius min(r, 1.2 + power × 1.1) m) + `ignite` when `o.fire` is set.
 **`world.ignite(x, z, r, k, grass = true)`** = `fire.ignite` (unless grass is false: sweeping fire and
 the ground tongues light wood only) + `destructibles.ignite`. **`world.resolve(pos, radius, bound,
-soft = false)`** → `Colliders.resolve(pos, radius, bound, soft)`: `soft` passes through the circles
-marked `soft` (the wyrm's body). **`world.setQuality(k)`** (0.3 .. 1; `setGrassQuality` sets it from the
+soft = false, who = null)`** → `Colliders.resolve(pos, radius, bound, soft)`: `soft` passes through the circles
+marked `soft` (the wyrm's body); with `who` 'hero' on a set with an edge, the colliders and then
+`edge.keep` instead of the circle (`resolveOn`). **`world.heroBound(x, z)`** → `edge.heroAt` or the level's circle. **`world.setQuality(k)`** (0.3 .. 1; `setGrassQuality` sets it from the
 quality preset: `QUALITY` LOW 0.5, MEDIUM 0.75, HIGH 1) scales the debris glyphs a break throws, the
 flames of burning wood, the wreckage lying at once, the fires and smouldering logs and the marks that
 stay (`destructibles.setQuality`, `scars.setQuality`). `Colliders` has `remove(c)`, `restore(c)` and a
@@ -2768,7 +2838,7 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
 - `buildSet` returns createForest's shape (`group, treeSpots, bare, slabs, nest, bonfire, material,
   stoneMaterial, slabMaterial`) plus, optionally, `breakables` (what can be chipped, felled, burned and
   thrown: see Destruction above; a set lists those pieces there INSTEAD of merging them into its static
-  meshes), `scarInk [r, g, b]` (the colour of cracks in its floor), `ash: true` (atmosphere: falling ash flakes and a
+  meshes), `edge: { base, outer? }` (the hero's ground follows what stands of the pieces marked `edge`: Destruction → "The edge of the open ground"; the forest's set), `scarInk [r, g, b]` (the colour of cracks in its floor), `ash: true` (atmosphere: falling ash flakes and a
   few embers instead of fireflies, mist and leaves) and `grass: { density(x, z) → 0..1 factor,
   height (×), ash 0..1 }` (world.js thins / shortens / greys the meadow; grass.js `uAsh`), and
   `groundY` (m; ADR-129): world.js puts its ground plane there, right after the set is built, when it is
@@ -3645,6 +3715,10 @@ World → audio (destruction, ADR-107; see "Destruction" above):
   the ground, 'wear' = it reached a stage of wearing down (power = the stage, 1 – 3; ADR-120). mat: 'wood' / 'stone' / 'metal' / 'bone'. power: on the POWER scale. by: 'player' / 'boss' / 'world'.
   id: its index in the breakables' list.
   One reused payload: a subscriber must not keep it), `world:fire {x, z, radius, cells}` (grass catches)
+- `world:edge {x, z, reach, lanes, first}` (ADR-125, the edge of the open ground: a tree of the forest's wall is
+  down and ground behind it has opened. x, z: the end of the lane that opened furthest; reach: how far from the
+  centre the hero's ground goes there, m; lanes: lanes open in all; first: nothing was open before. One reused
+  payload. The HUD feed says it once a fight, on first)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
   and hazard: true (be out from under it; audio plays the hazard cue)
 

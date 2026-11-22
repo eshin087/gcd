@@ -477,8 +477,8 @@ export class Flurry {
       const R = G.reach, bound = CONFIG.world.playerBound, sd = (this.i % 2 ? -1 : 1) * G.side;
       A.set(T.x + dx * R + dz * sd, 0, T.z + dz * R - dx * sd);
       B.set(T.x - dx * R + dz * sd, 0, T.z - dz * R - dx * sd);
-      g.world?.resolve?.(A, P.radius, bound);
-      g.world?.resolve?.(B, P.radius, bound);
+      g.world?.resolve?.(A, P.radius, bound, false, 'hero');
+      g.world?.resolve?.(B, P.radius, bound, false, 'hero');
       if (!Number.isFinite(A.x + A.z + B.x + B.z)) {
         this._bail();
         return;
@@ -630,8 +630,8 @@ export class Flurry {
       const ia = D.kind === 'iai' ? sd : 0;
       A.set(ap.x + fx * D.back + fz * ia, 0, ap.z + fz * D.back - fx * ia);
       B.set(ap.x - fx * behind + fz * sd, 0, ap.z - fz * behind - fx * sd);
-      g.world?.resolve?.(A, P.radius, bound);
-      g.world?.resolve?.(B, P.radius, bound);
+      g.world?.resolve?.(A, P.radius, bound, false, 'hero');
+      g.world?.resolve?.(B, P.radius, bound, false, 'hero');
       if (!Number.isFinite(A.x + A.z + B.x + B.z)) {
         this._bail();
         return;
@@ -845,7 +845,7 @@ export class Flurry {
     const P = this.p, p = P.position, g = P.game;
     if (this.pending) this.burst(0, this.T);
     p.set(fin(this.ox, p.x), 0, fin(this.oz, p.z));
-    g.world?.resolve?.(p, P.radius, CONFIG.world.playerBound);
+    g.world?.resolve?.(p, P.radius, CONFIG.world.playerBound, false, 'hero');
     this.fx.pull = 0;
     this.fx.appear(p.x, CHEST, p.z, 0, 0, 0, 1, true);
     P.anim.teleported();

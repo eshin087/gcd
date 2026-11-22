@@ -30,6 +30,7 @@ const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Destructibles, STATE: PIECE } = await imp('src/world/destructibles.js');
 const { BREAK } = await imp('src/world/breakTuning.js');
+const { resolveOn } = await imp('src/world/edge.js');
 const { buildDeadTree, buildBoulder, buildStump, geosHeight, createForest } = await imp('src/world/forest.js');
 const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/combat/rules.js');
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
@@ -81,6 +82,7 @@ const CATALOGUE = (() => {
 const PAYLOAD = {
   'combat:tell': { source: 's', attack: 's', tell: 't', impactIn: 'n', x: 'n', z: 'n' },
   'combat:flash': { source: 's', attack: 's', tell: 't', x: 'n', y: 'n', z: 'n' },
+  'world:edge': { x: 'n', z: 'n', reach: 'n', lanes: 'n', first: 'b' },
   'player:attack': { kind: 's', combo: 'n', charge: 'n' },
   'player:charge': { t: 'n' },
   'player:hitDragon': { damage: 'n', part: 's', point: 'p', heavy: 'b', crit: 'b', kind: 's' },
@@ -155,6 +157,9 @@ function addTerrain(game, world, kind) {
     world.impact = (x, z, r, power, o) => { const n = D.strike(x, z, r, power, o ?? blow); if (o?.fire > 0) D.ignite(x, z, r, o.fire); return n; };
     world.ignite = (x, z, r, k = 1) => D.ignite(x, z, r, k);
     world.restore = () => D.reset();
+    // (the edge of the open ground, as world.js wires it: the hero's ground and the wyrm's bound follow the wall)
+    world.edge = D.edge ?? null;
+    world.heroBound = (x, z) => (world.edge ? world.edge.heroAt(x, z) : CONFIG.world.playerBound);
     return;
   }
   if (kind === 'lab') {
@@ -229,7 +234,7 @@ function build(opts = {}) {
     bonfire: { ...CONFIG.world.bonfire }, nest: { x: -3, z: -15.5 },
     forest: { treeSpots: [], bonfire: { ...CONFIG.world.bonfire } },
     setGrassQuality() {},
-    resolve: (pos, r, b) => colliders.resolve(pos, r, b),
+    resolve: (pos, r, b, soft, who) => resolveOn(colliders, world.edge ?? null, pos, r, b, soft, who),
     setPusher(slot, x, y, z, r) { if (![x, y, z, r].every(Number.isFinite)) throw new Error(`NaN pusher ${slot}`); pushers.set(slot, [x, y, z, r]); },
     clearPushers(a = 0, b = 10) { for (let i = a; i < b; i++) pushers.delete(i); },
     gust(x, z, s, r) { if (![x, z, s, r].every(Number.isFinite)) throw new Error('NaN gust'); },
@@ -1070,12 +1075,27 @@ async function scenarioWreckage() {
     const c0 = count(), at = [c0];
     const walls = [wallNow()];
     const roam = mulberry32(seed * 31 + 5), goal = { r: 6, a: 0, until: -1 };
+    // the edge of the open ground (world/edge.js, ADR-125): how much of it the fight opened, by phase,
+    // and how far out the hero and the wyrm's root went
+    const E = game.world.edge, far = { hero: 0, wyrm: 0 };
+    const edgeNow = () => {
+      if (!E) return { lanes: 0, max: BOUND, area: 0 };
+      let lanes = 0, max = E.base, area = 0;
+      for (let i = 0; i < E.n; i++) {
+        if (E.R[i] > E.base + 0.01) lanes++;
+        if (E.R[i] > max) max = E.R[i];
+        area += ((E.R[i] * E.R[i] - E.base * E.base) * E.step) / 2;
+      }
+      return { lanes, max, area };
+    };
+    const edges = [edgeNow()];
     for (let ph = 1; ph <= 3; ph++) {
       if (ph > 1) {
         d.debug.setHp(TUNING.phaseAt[ph - 1] - 0.01);
         run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === ph && d.brain.action?.name !== `phase${ph}`);
         at.push(count());
         walls.push(wallNow());
+        edges.push(edgeNow());
       }
       const pin = Math.round(d.maxHp * [0.83, 0.5, 0.17][ph - 1]);
       for (let i = 0; i < Math.round(SECS / DT); i++) {
@@ -1089,25 +1109,31 @@ async function scenarioWreckage() {
         if (!G.input.pressedKeys.has('Space') && game.player.state !== 'roll') {
           const p = game.player.position, b = goal.a;
           const gx = d.position.x + Math.sin(b) * goal.r, gz = d.position.z + Math.cos(b) * goal.r;
-          const k = Math.hypot(gx, gz) > 24 ? 24 / Math.hypot(gx, gz) : 1;
+          // (he roams 7 m inside his ground's edge: 24 m while the wall stands, further where it has come down)
+          const lim = (game.world.heroBound?.(gx, gz) ?? BOUND) - 7;
+          const k = Math.hypot(gx, gz) > lim ? lim / Math.hypot(gx, gz) : 1;
           const dx = gx * k - p.x, dz = gz * k - p.z, l = Math.hypot(dx, dz);
           G.input.axis = l > 1 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
         }
         G.tick(DT);
+        far.hero = Math.max(far.hero, Math.hypot(game.player.position.x, game.player.position.z));
+        far.wyrm = Math.max(far.wyrm, Math.hypot(d.position.x, d.position.z));
         if (d.hp < pin) d.hp = pin;
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
       }
       if (ph === 1) {
         at.push(count()); // (P1's end, before the roar)
         walls.push(wallNow());
+        edges.push(edgeNow());
       }
     }
     G.watch = null;
     at.push(count());
     walls.push(wallNow());
+    edges.push(edgeNow());
     const falls = G.hits.filter((h) => h.attack === 'fallingDebris').slice(heroFall0);
     const heroFall = `${falls.length}${falls.length ? ` (at ${falls.map((h) => Math.hypot(h.fx, h.fz).toFixed(1)).join(', ')} m from the centre)` : ''}`;
-    rows.push({ seed, total: inside.length, at, cause, lit, wood0, walls, front: front.length, wallBy, heroFall, stat: { ...(D.stat ?? {}) } });
+    rows.push({ seed, total: inside.length, at, cause, lit, wood0, walls, front: front.length, wallBy, heroFall, stat: { ...(D.stat ?? {}) }, edges, far, edgeR: E ? Array.from(E.R) : [] });
   }
   const fmt = (c) => `${String(c.n).padStart(4)} (lift ${String(c.lift).padStart(2)}, burnt ${String(c.burnt).padStart(2)})`;
   out(`   ${SECS} s per phase · pieces standing inside the hero's ${BOUND} m bound: start · end of P1 · P2 start · P3 start · end`);
@@ -1123,6 +1149,8 @@ async function scenarioWreckage() {
     const end = r.walls[r.walls.length - 1], st = wallStretches(end.sec);
     out(`         by sector (${WALL_SECTORS} x ${360 / WALL_SECTORS} deg, % damaged): ${end.sec.map((v) => String(Math.round(v * 100)).padStart(3)).join('')}`);
     out(`         reach: ${JSON.stringify(r.stat)}`);
+    out(`         the open ground (lanes open of ${r.edgeR.length}, furthest m, m2 gained): ${r.edges.map((e) => `${e.lanes} / ${e.max.toFixed(0)} / ${e.area.toFixed(0)}`).join(' · ')}`);
+    out(`         per lane at the end (m past the ${BOUND} m line): ${r.edgeR.map((v) => (v - BOUND < 0.5 ? '.' : Math.min(35, Math.round(v - BOUND)).toString(36))).join('')} · furthest from the centre: the hero ${r.far.hero.toFixed(1)} m, the wyrm's root ${r.far.wyrm.toFixed(1)} m`);
     out(`         stretches: ${st.hurt} torn (>= ${WALL_HURT * 100} %), ${st.whole} standing (<= ${WALL_WHOLE * 100} %) · falling trees on the hero: ${r.heroFall}`);
     out(`         the wall worn / felled / lit by: ${Object.entries(r.wallBy).sort((a, b) => b[1] - a[1]).slice(0, 24).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   }
@@ -1139,6 +1167,116 @@ async function scenarioWreckage() {
     }
   }
   return lastG;
+}
+
+// ================================================================== scenario: breach (the wall torn open: the fight goes out through it)
+// The REAL clearing under the AI (ADR-125, world/edge.js). A god-mode hero that answers like the
+// pressure meter's stands 5 m inside the line for BREACH_SECS s (the wall standing: the old circles
+// hold), then a gap is torn in the wall (every tree of it in a wedge BREACH_HALF rad either side of
+// one direction, out to BREACH_DEEP m) and he walks out into it and stays there. Measured: how far the
+// wyrm's root follows, whether it goes on fighting him out there (cues a minute, blows that reach
+// him), that neither ever stands off its ground, and that the reset shuts the wall again.
+const BREACH_SECS = 40, BREACH_HALF = 0.42, BREACH_DEEP = 56, BREACH_AIR = new Set(['leap', 'diveBomb']);
+async function scenarioBreach() {
+  out('\n== scenario BREACH (a gap torn in the tree wall: the hero goes out through it, the wyrm follows) ==');
+  const G = build({ terrain: 'forest' });
+  const { game } = G;
+  const D = game.world.destructibles, E = game.world.edge, d = game.dragon, p = game.player;
+  G.defend = steadyDefender(G);
+  fightSetup(G, { ai: true });
+  Math.random = mulberry32(4242);
+  d.debug.setHp(TUNING.phaseAt[1] - 0.01);
+  run(G, 12, { god: true, defend: true, attack: false }, () => d.phase === 2 && d.brain.action?.name !== 'phase2');
+  // a stretch of ordinary wall (trees at the line, no landmark, not the path south)
+  let lane = -1;
+  for (let i = 0; i < E.n && lane < 0; i++) {
+    let ok = true;
+    for (let k = -8; k <= 8; k++) if (!(E._F0[(i + k + E.n) % E.n] < E.base + 3.5)) ok = false;
+    if (ok) lane = i;
+  }
+  assert(lane >= 0, `a stretch of ordinary wall to tear open (lane ${lane} of ${E.n}: 17 lanes with a tree within 3.5 m of the line)`);
+  const a0 = E.laneAngle(lane), ax = Math.cos(a0), az = Math.sin(a0);
+  const pin = Math.round(d.maxHp * 0.5);
+  let cues = 0;
+  G.watch = (n, e) => {
+    if (n === 'combat:tell' && e?.source !== 'world') cues++;
+  };
+  const stat = () => ({ cues: 0, blows: 0, heroOff: 0, wyrmOff: 0, airOver: 0, heroFar: 0, wyrmFar: 0, gap: 0, n: 0, nan: 0 });
+  const phase = (secs, goalR, s) => {
+    const cues0 = cues, hits0 = G.hits.length;
+    for (let i = 0; i < Math.round(secs / DT); i++) {
+      bot(G, { god: true, defend: true, attack: false });
+      if (!G.input.pressedKeys.has('Space') && p.state !== 'roll') {
+        // (he holds a spot on the gap's line, as far out as his ground lets him, 3 m inside its end)
+        const r = Math.min(goalR, (game.world.heroBound?.(ax, az) ?? 31) - 3);
+        const dx = ax * r - p.position.x, dz = az * r - p.position.z, l = Math.hypot(dx, dz);
+        G.input.axis = l > 1 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+      }
+      G.tick(DT);
+      if (d.hp < pin) d.hp = pin;
+      if (d.brain.pendingPhase > 2) d.brain.pendingPhase = 0;
+      const hr = Math.hypot(p.position.x, p.position.z), wr = Math.hypot(d.position.x, d.position.z);
+      if (!Number.isFinite(hr + wr)) s.nan++;
+      s.heroFar = Math.max(s.heroFar, hr);
+      s.wyrmFar = Math.max(s.wyrmFar, wr);
+      // (a flurry or a plunge carries him through the air to a spot that is resolved as he lands)
+      if (p.state !== 'flurry' && p.state !== 'plunge' && hr > game.world.heroBound(p.position.x, p.position.z) - p.radius + 0.05) s.heroOff++;
+      // (a leap or a dive carries its root through the air from one spot on its ground to another, over
+      // a corner of the standing wall: counted apart)
+      const over = wr - d.boundAt(d.position.x, d.position.z);
+      if (over > 0.05) {
+        if (d.state === 'airborne' || BREACH_AIR.has(d.brain.action?.name)) s.airOver = Math.max(s.airOver, over);
+        else s.wyrmOff++;
+      }
+      s.gap += Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+      s.n++;
+    }
+    s.cues = cues - cues0;
+    for (let i = hits0; i < G.hits.length; i++) if (G.hits[i].attack !== 'fallingDebris') s.blows++;
+    s.perMin = (s.cues / secs) * 60;
+    s.gap /= Math.max(1, s.n);
+    return s;
+  };
+  // 1. the wall standing: he waits at the line, the old circles hold
+  const before = phase(BREACH_SECS, 26, stat());
+  const down0 = D.list.filter((b) => b.def.edge > 0 && b.state !== PIECE.INTACT).length;
+  // (the fight's own fire may have felled a tree or two of the wall by now: what that opened is theirs too)
+  let slack = 0;
+  for (let i = 0; i < E.n; i++) slack = Math.max(slack, E.R[i] - E.base);
+  // 2. the gap
+  let felled = 0;
+  for (const b of D.list) {
+    if (!(b.def.edge > 0) || b.state !== PIECE.INTACT) continue;
+    const r = Math.hypot(b.x, b.z);
+    let da = Math.atan2(b.z, b.x) - a0;
+    da = Math.atan2(Math.sin(da), Math.cos(da));
+    if (r > BREACH_DEEP || Math.abs(da) > BREACH_HALF) continue;
+    D.topple(b, b.x / r, b.z / r, 'world');
+    felled++;
+  }
+  phase(3, 26, stat());
+  const open = E.heroAt(ax, az), gain = E.bossGain(ax * 40, az * 40);
+  // 3. he walks out and stays; the wyrm comes after him
+  const after = phase(BREACH_SECS, 60, stat());
+  const down1 = D.list.filter((b) => b.def.edge > 0 && b.state !== PIECE.INTACT).length;
+  const f = (s) => `${s.perMin.toFixed(0)} cues a minute, ${s.blows} blows on him, he reached ${s.heroFar.toFixed(1)} m, its root ${s.wyrmFar.toFixed(1)} m, ${s.gap.toFixed(1)} m apart on average`;
+  out(`   before the gap (${BREACH_SECS} s): ${f(before)}`);
+  out(`   ${felled} trees felled in a wedge ${(2 * BREACH_HALF).toFixed(2)} rad wide out to ${BREACH_DEEP} m: his ground ends at ${open.toFixed(1)} m there, the root may go ${gain.toFixed(1)} m past its ${d.bound} m`);
+  out(`   out in the gap (${BREACH_SECS} s): ${f(after)} · trees of the wall down ${down0} > ${down0 + felled} > ${down1}`);
+  assert(before.heroFar <= 31 + slack - p.radius + 0.05 && before.wyrmFar <= d.bound + slack + 0.05 && !before.heroOff && !before.wyrmOff && before.airOver < 6,
+    `before the gap: the hero within his ground (${before.heroFar.toFixed(2)} m; the circle is ${31 - p.radius}), the wyrm's root within its own (${before.wyrmFar.toFixed(2)} m; its circle is ${d.bound}); the fight's own fire had opened ${slack.toFixed(1)} m at most by then`);
+  assert(felled >= 20 && open > 31 + 12 && gain > 6, `the gap: ${felled} trees down, his ground out to ${open.toFixed(1)} m, the root's share ${gain.toFixed(1)} m`);
+  assert(after.heroFar > 31 + 8 && !after.heroOff && !after.nan, `he walks out through it (${after.heroFar.toFixed(1)} m from the centre) and is never off his ground (${after.heroOff} frames)`);
+  assert(after.wyrmFar > d.bound + 4 && !after.wyrmOff && after.airOver < 6, `the wyrm follows: its root ${after.wyrmFar.toFixed(1)} m out (its bound in the clearing is ${d.bound}), on the ground never past its share of the gap (${after.wyrmOff} frames; in mid-leap ${after.airOver.toFixed(1)} m over a corner of the wall at most)`);
+  assert(after.perMin >= before.perMin * 0.6 && after.blows > 0 && after.gap < before.gap + 6, `... and goes on fighting him out there: ${after.perMin.toFixed(0)} cues a minute (${before.perMin.toFixed(0)} with the wall standing; >= 60 % of it), ${after.blows} blows reach him, ${after.gap.toFixed(1)} m apart on average (${before.gap.toFixed(1)} in the clearing)`);
+  G.watch = null;
+  // 4. the reset shuts the wall: both are back inside the circles on the next step
+  game.world.restore();
+  // (the hero is put back by his next step; the wyrm by its next step on the ground: a flight ends first)
+  run(G, 12, { god: true, defend: true, attack: false }, () => Math.hypot(d.position.x, d.position.z) <= d.bound + 0.05 && Math.hypot(p.position.x, p.position.z) <= 31 - p.radius + 0.05);
+  const hr = Math.hypot(p.position.x, p.position.z), wr = Math.hypot(d.position.x, d.position.z);
+  assert(!E.open && hr <= 31 - p.radius + 0.05 && wr <= d.bound + 0.05, `world.restore(): the wall stands, the hero is back within ${31 - p.radius} m (${hr.toFixed(2)}), the wyrm within ${d.bound} m (${wr.toFixed(2)})`);
+  return G;
 }
 
 // ================================================================== scenario: budget (one fight, one budget)
@@ -10259,6 +10397,7 @@ const SCENARIOS = {
   melee: scenarioMelee,
   budget: scenarioBudget,
   wreckage: scenarioWreckage,
+  breach: scenarioBreach,
   probe: scenarioProbe,
 };
 const runs = [];

@@ -1078,7 +1078,7 @@ const charge = {
       const moved = d.moveForward(a.v, dt);
       if (k > 0.2 && want > 0.05 && moved < want * 0.4) {
         // slammed into a stone or the arena edge: stop; only a stone staggers
-        a.bonk = Math.hypot(d.position.x, d.position.z) < d.bound - 0.5;
+        a.bonk = Math.hypot(d.position.x, d.position.z) < d.boundAt(d.position.x, d.position.z) - 0.5;
         a.stopped = true;
         a.t = a.dur;
       }
@@ -1148,7 +1148,7 @@ const leap = {
     a.target.x += (_a.x - a.target.x) * k;
     a.target.z += (_a.z - a.target.z) * k;
     const R = TUNING.radius;
-    g.world?.resolve?.(a.target, R, d.bound + R);
+    g.world?.resolve?.(a.target, R, d.boundAt(a.target.x, a.target.z) + R);
     a.target.y = 0;
   },
   enter(d, a, phase) {
@@ -1845,7 +1845,7 @@ function hopTrack(d, h, k) {
   const reach = Math.min(l - HOP_Z * S, (h.spec.maxHop ?? 10) * S);
   _h2.set(d.position.x + (dx / l) * Math.max(0, reach), 0, d.position.z + (dz / l) * Math.max(0, reach));
   const R2 = TUNING.radius;
-  g.world?.resolve?.(_h2, R2, d.bound + R2);
+  g.world?.resolve?.(_h2, R2, d.boundAt(_h2.x, _h2.z) + R2);
   _h2.y = 0;
   if (k >= 1) h.root.copy(_h2);
   else {

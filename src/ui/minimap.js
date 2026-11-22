@@ -48,7 +48,9 @@ export class Minimap {
     if (this.drawAcc >= 1 / DRAW_HZ && this.ctx) {
       this.drawAcc = 0;
       // what stands has changed (a tree felled, a pillar down, the fight's reset: ADR-107): bake again
-      const ver = this.game.world?.colliders?.version;
+      // (... or the edge of the open ground has moved: world/edge.js, ADR-125)
+      const cv = this.game.world?.colliders?.version, ev = this.game.world?.edge?.version;
+      const ver = cv === undefined ? undefined : cv + (ev > 0 ? ev * 1e6 : 0);
       if (ver !== undefined && ver !== this._ver) {
         if (this._ver !== undefined) {
           try {
@@ -99,8 +101,15 @@ export class Minimap {
     cv.width = cv.height = this.canvas.width;
     const c = cv.getContext('2d');
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    const C = SIZE / 2, R = C - 1.5, s = this.scale;
+    const C = SIZE / 2, R = C - 1.5;
     const arena = CONFIG.world.arenaRadius;
+    // the edge of the open ground (the forest's wall coming down: world/edge.js): the map draws back
+    // as the ground opens, so the hero stays on it
+    const E = g.world?.edge?.open ? g.world.edge : null;
+    let far = 0;
+    if (E) for (let i = 0; i < E.n; i++) far = Math.max(far, num(E.R[i], 0));
+    const range = (this.range = Math.max(RANGE, far + 4));
+    const s = (this.scale = (SIZE / 2 - 5) / range);
 
     c.save();
     c.beginPath();
@@ -122,7 +131,7 @@ export class Minimap {
     // faint 10 m grid
     c.strokeStyle = 'rgba(207, 214, 230, 0.045)';
     c.lineWidth = 1;
-    for (let m = -RANGE; m <= RANGE; m += 10) {
+    for (let m = -Math.ceil(range / 10) * 10; m <= range; m += 10) {
       const v = Math.round(C + m * s) + 0.5;
       c.beginPath();
       c.moveTo(v, 0);
@@ -137,9 +146,23 @@ export class Minimap {
     if (Array.isArray(spots) && spots.length) {
       c.fillStyle = 'rgba(46, 78, 64, 0.42)';
       for (const t of spots) {
-        if (Math.hypot(t.x, t.z) > RANGE + 6) continue;
+        if (Math.hypot(t.x, t.z) > range + 6) continue;
         c.beginPath();
         c.arc(C + t.x * s, C + t.z * s, Math.max(2, num(t.r, 2.5) * s * 0.8), 0, TAU);
+        c.fill();
+      }
+    }
+    // ground the fallen wall has opened: each open lane cleared out to where it ends
+    const inset = E ? Math.max(0, E.base - arena) : 0;
+    if (E) {
+      c.fillStyle = 'rgba(22, 35, 33, 0.97)';
+      for (let i = 0; i < E.n; i++) {
+        if (!(E.R[i] > E.base + 0.05)) continue;
+        const a0 = E.laneAngle(i) - E.step / 2 - 0.002, a1 = a0 + E.step + 0.004;
+        c.beginPath();
+        c.arc(C, C, (E.R[i] - inset + 0.8) * s, a0, a1);
+        c.arc(C, C, arena * s, a1, a0, true);
+        c.closePath();
         c.fill();
       }
     }
@@ -147,7 +170,13 @@ export class Minimap {
     c.setLineDash([2, 3]);
     c.strokeStyle = 'rgba(207, 214, 230, 0.22)';
     c.beginPath();
-    c.arc(C, C, arena * s, 0, TAU);
+    if (E) {
+      for (let i = 0; i < E.n; i++) {
+        const a0 = E.laneAngle(i) - E.step / 2;
+        c.arc(C, C, Math.max(arena, E.R[i] - inset) * s, a0, a0 + E.step);
+      }
+      c.closePath();
+    } else c.arc(C, C, arena * s, 0, TAU);
     c.stroke();
     c.setLineDash([]);
     // trunks, stones, boulders
@@ -198,7 +227,7 @@ export class Minimap {
 
   _draw() {
     const g = this.game, c = this.ctx, s = this.scale, C = SIZE / 2;
-    const maxR = RANGE - 1.5;
+    const maxR = (this.range ?? RANGE) - 1.5;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, SIZE, SIZE);
     if (this.layer) c.drawImage(this.layer, 0, 0, SIZE, SIZE);

@@ -10,9 +10,13 @@ import { GroundFire } from './fire.js';
 import { Scars } from './scars.js';
 import { Destructibles } from './destructibles.js';
 import { BLOW, SCAR, QUALITY } from './breakTuning.js';
+import { resolveOn } from './edge.js';
 
 // Owns the static environment and the shared environment-interaction APIs:
-//   world.resolve(pos, radius, bound)       circle collision vs stones/trunks + arena bound
+//   world.resolve(pos, radius, bound, soft, who)  circle collision vs stones/trunks + arena bound; who 'hero':
+//                                           on a set with an edge the hero's ground replaces the circle
+//   world.edge                              the edge of the open ground (edge.js, ADR-125) or null
+//   world.heroBound(x, z)                   how far out the hero may stand in that direction (m)
 //   world.setPusher(slot, x, y, z, radius)  grass trample (slot 0 = player, 1..9 = dragon)
 //   world.gust(x, z, strength, radius)      radial wind impulse (wing beats, landings)
 //   world.scorch.burnCircle(x, z, r, burn, heat)
@@ -74,6 +78,7 @@ export class World {
     this.fire = new GroundFire(game, this, density);
     this.scars = new Scars(game, this.forest.scarInk);
     this.destructibles = new Destructibles(game, this, this.forest);
+    this.edge = this.destructibles.edge ?? null;
     this._impact = { kind: BLOW.BLUNT, by: 'world', dx: NaN, dz: NaN, y: undefined, src: -1 };
     this.atmosphere = new Atmosphere(game, this.forest);
     this.bonfire = this.forest.bonfire;
@@ -154,9 +159,18 @@ export class World {
     this.destructibles.reset();
   }
 
-  /** `soft`: pass through breakable wood (the wyrm's body: it fells what it walks into). */
-  resolve(pos, radius, bound = Infinity, soft = false) {
-    return this.colliders.resolve(pos, radius, bound, soft);
+  /**
+   * `soft`: pass through breakable wood (the wyrm's body: it fells what it walks into). `who` 'hero':
+   * where the set has an edge (the forest's tree wall) the hero is kept on the ground it leaves open,
+   * and `bound` is only the fallback for a set without one.
+   */
+  resolve(pos, radius, bound = Infinity, soft = false, who = null) {
+    return resolveOn(this.colliders, this.edge, pos, radius, bound, soft, who);
+  }
+
+  /** How far from the centre the hero may stand in the direction of (x, z): m. */
+  heroBound(x, z) {
+    return this.edge ? this.edge.heroAt(x, z) : (CONFIG.world.playerBound ?? Infinity);
   }
 
   setPusher(slot, x, y, z, radius) {

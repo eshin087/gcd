@@ -58,7 +58,7 @@ const liftable = (b) => b && b.state === INTACT && b.lift > 0 && b.lift <= 1 && 
 export function jawsPiece(d, wood = false, out = null, any = false) {
   const W = pieces(d);
   if (!W) return null;
-  const px = d.position.x, pz = d.position.z, B = d.bound;
+  const px = d.position.x, pz = d.position.z;
   const hp = d.sense.pos;
   const maxT = any ? J.fetchTime * 1.6 : J.fetchTime, maxD = any ? J.fetch * 1.5 : J.fetch;
   let best = null, bs = Infinity, bt = 0, bl = 0;
@@ -73,7 +73,7 @@ export function jawsPiece(d, wood = false, out = null, any = false) {
     if (Math.hypot(b.x - hp.x, b.z - hp.z) < J.clear + b.r) continue;
     // where it would stand to bite: `stand` short of the piece on the line to it, inside its bound
     let sx = b.x - (dx / dist) * J.stand, sz = b.z - (dz / dist) * J.stand;
-    const sr = Math.hypot(sx, sz);
+    const sr = Math.hypot(sx, sz), B = d.boundAt(sx, sz);
     if (sr > B) {
       sx *= B / sr;
       sz *= B / sr;

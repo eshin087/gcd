@@ -130,8 +130,11 @@ export const TUNING = {
     // seeds: steps of the mean 1.056 / 1.116 / 1.066, per seed at least 1.038 / 1.09 / 1.051. A seed
     // moves 5 - 15 % between builds, the mean of ten far less. Margins: ramp ~6 % under the worst seed,
     // rampMean 3.5 / 5.8 / 5.3 % under the ten-seed mean (2.5 % on the default seeds' F4 / F3), minRate
-    // ~10 % under the slowest seed, maxGap 0.8 - 0.95 s over the longest
-    meter: { ramp: [1, 0.93, 0.93, 0.95], rampMean: [1, 1.03, 1.05, 1.04], minRate: [72, 76, 82, 93], maxGap: [4.0, 4.0, 3.8, 3.6] },
+    // ~10 % under the slowest seed, maxGap 0.8 - 0.95 s over the longest. (2026-11-22, ADR-128: felled
+    // wood in the crater falls off the blow's line now, and the default seeds' F3 step fell to x1.043
+    // while nine seeds (4242, 7, 99, 1, 2, 3, 5, 11, 13) gave x1.082 against main's x1.089: rampMean F3
+    // 1.05 -> 1.035, the default seeds' luck, not a slower form)
+    meter: { ramp: [1, 0.93, 0.93, 0.95], rampMean: [1, 1.03, 1.035, 1.04], minRate: [72, 76, 82, 93], maxGap: [4.0, 4.0, 3.8, 3.6] },
   },
   punish: { weight: 4 }, // a hero drinking a flask: the moves that close distance × this
 

@@ -921,8 +921,25 @@ export class Lab {
       let n = 0;
       for (let k = 0; k < 4; k++) n += D.strike(ox * (34 + k * 4), oz * (34 + k * 4), 5, 2.5, { kind: 'blast', by: 'boss', dx: ox, dz: oz, src: D.swing() });
       w()?.ignite?.(ox * 40, oz * 40, 4, 1, false);
-      this._status(`the wall behind the hero: ${n} blows, and fire`, 'ok');
-    }).title = 'blasts and fire in the wall straight out behind the hero (a stretch torn open)';
+      this._status(`the wall behind the hero: ${n} blows, and fire (the ground opens there as the trees come down: walk out)`, 'ok');
+    }).title = 'blasts and fire in the wall straight out behind the hero (a stretch torn open: the hero and the wyrm may go out through it)';
+    // (ADR-125: the edge of the open ground follows what stands of the wall)
+    button(grid, 'Open wall', () => {
+      const D = w()?.destructibles, E = w()?.edge, at = p();
+      if (!D || !E || !at) return this._status('this level has no wall that opens', '');
+      const a0 = Math.atan2(at.z, at.x);
+      let n = 0;
+      for (const b of D.list) {
+        if (b.state !== 0 || !(b.def?.edge > 0)) continue;
+        const r = Math.hypot(b.x, b.z);
+        let da = Math.atan2(b.z, b.x) - a0;
+        da = Math.atan2(Math.sin(da), Math.cos(da));
+        if (r > 52 || Math.abs(da) > 0.3) continue;
+        D.topple(b, b.x / r, b.z / r, 'world');
+        n++;
+      }
+      this._status(n ? `${n} trees of the wall fall outward behind the hero: a gap ~${Math.round(0.6 * 34)} m wide, 20 m deep` : 'nothing stands there any more', n ? 'ok' : '');
+    }).title = 'fells every tree of the wall in a wedge straight out from the hero, out to 52 m: the ground opens, the minimap redraws, the wyrm can follow';
     button(grid, 'Restore', () => {
       w()?.scorch?.reset?.();
       w()?.restore?.();
