@@ -4157,7 +4157,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   new clip), 78 damage, carried 3.4 m, its blade reaching 4.5 m over the hero (a flyer in the air);
   without the reward the press is the thrust as before. The Lab's SUN section grants or takes it away.
 - **Looks awaiting the owner's pick** (rendered sheets; the fight is built with the recommended option of
-  each; nothing in `lookSwitch.js PICKED` yet): his body `?fallenLook=a|b|c` (the Haloed Exile, the
+  each; `lookSwitch.js PICKED` holds those recommended options, marked as not the owner's picks: the Lab's switch table requires an entry for every switch): his body `?fallenLook=a|b|c` (the Haloed Exile, the
   Chained Judge, the Gilt Guardian), each drawn through the wyrm's art path and its ink-line twin
   `?fallenArt=ink` (the owner picked the ink line for all three other human bosses: the likeliest flip);
   `?radiant=a|b`; `?gaze=a|b|c`; `?pool=a|b`.

@@ -3839,11 +3839,11 @@ World → audio (destruction, ADR-107; see "Destruction" above):
   payload. The HUD feed says it once a fight, on first)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
   and hazard: true (be out from under it; audio plays the hazard cue)
-- `world:sun {id, open, temp}` (ADR-132, the Skywell Vault's sunlight, world/sun.js: a pool changed. id: its
-  index in `world.sun.pools`; open: true as it opens (a lid back on a reset, a well bored), false as it starts
+- `world:sun {id, open, temp, x, z}` (ADR-132, the Skywell Vault's sunlight, world/sun.js: a pool changed. id: its
+  index in `world.sun.pools`; x, z: its centre; open: true as it opens (a lid back on a reset, a well bored), false as it starts
   to shut (its windlass broke, a bored well's life ran out); temp: a bored well. One reused payload. Qian Yao
   listens: a lid shut on the pool he stands in or flies to starves him; the HUD feed's "A lid falls shut." /
-  "THE SKY IS SHUT" are his)
+  "THE SKY IS SHUT" are his; audio plays a heavy metal crash as a fixed lid falls)
 
 ## Ownership (parallel work)
 Foundation (read-only for module authors unless their brief says otherwise): `src/core/**`,
