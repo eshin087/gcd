@@ -440,6 +440,11 @@ Render helpers for creature modules:
   lump })` (a tapering slab: the rim's plates, the crown), `starCleft(rng, x, z)` (inlay glyphs for
   the set's glow batch), `facetCol(col, k)` (a `carve()` colour: one tone a facet), `STAR_GLASS`,
   `STAR_COLLIDERS`. These are built with `carve()` attributes already and need no `carved()`.
+  `world/starfallProps.js` (ADR-133): what lies round the crater. `buildOutskirt(kind, rng, x, z, oy,
+  s)` -> `{ kind, geos, r, cr, mat, h, lift? }` (carved parts in world space; `oy` the yaw pointing out
+  of the crater) for 13 kinds (`lantern`, `stele`, `pillar`, `roof`, `jars`, `boulder`, `ejecta`,
+  `heave`, `splinters`, `swords`, `banner`, `cairn`, `cart`); `OUTSKIRTS` (option -> kind weights,
+  `?outskirts=`), `kindBag(rng, weights, n)` (a shuffled bag of kinds in their shares).
   `landmarkPoint(x, z, yaw, s, lx, lz)` maps a builder's local point to the world;
   `ELDER_COLLIDERS`, `GATE_COLLIDERS`, `COLOSSUS_COLLIDERS`, `CAULDRON_COLLIDERS` are `[lx, lz, r]`
   lists the set adds; `COLOSSUS_FALLEN_HEAD` and `GATE_FOOTPRINT` (the gate's own space: it stands
@@ -2357,8 +2362,9 @@ switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pi
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
 `lordLook`, `floor`) reloads the page with its parameter. The Skybreak Ring's rows (ADR-129), each group
 under its own heading comment: `ring` a / b / c (the arena; a reload), `ascLook` a / c / d (his body; a
-reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c and `ascBeam`
-a / b (live); all picked 'a' (STYLE.md "The look switches"). "as shipped" clears every look parameter (the
+reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c, `ascBeam`
+a / b and `ascOrb` a / b (the great orb, the third wave; live); all picked 'a' (STYLE.md "The look
+switches"). "as shipped" clears every look parameter (the
 owner's picks), "before this pass" reloads with `?looks=old` ("all proposals" is gone: `?looks=new` now
 equals the default). A later phase's or form's move, and the
 phase / form buttons, play from any phase (the Lab skips there first, without playing the change).
@@ -2597,6 +2603,46 @@ piece's structure, but at least `brushMin` 0.4 of itself (a body that keeps push
 in a couple of seconds; a turn only shakes it), once per `brushRehit` 0.3 s, and a flat stone (a
 flagstone, lower than `brushFlat` 0.3 m) takes nothing from it.
 
+**Making a new object destructible** (the rule for every level, ADR-107 / ADR-132; CLAUDE.md "The
+world breaks"). Every background object in a level breaks, and since ADR-132 a hit takes its letters
+off where it lands. For a new object, a new set or a new level:
+1. **List it.** Push a definition into the set's `breakables` (the table below) instead of merging it
+   into the static meshes. Give it `kind` (free; AI and tests read it), `mat` ('wood' | 'stone' |
+   'metal' | 'bone': what bites it, its debris, its sound), its base `x, z`, a footprint `r` that
+   matches what is drawn (the hero's blade stops at that circle, `BREAK.chip.stop.touch`), `h`
+   (`geosHeight(geos)`) and colliders if it blocks. Leave `hp` to the default (material x size) or give
+   a finite number; `hp: Infinity` means it only chips and is never bitten (the bronze bell).
+2. **Draw it on one of the two breakable paths.** `look: 'range'`: its body is a run of a set's merged
+   mesh (`forest.js` `Runs.add(geos, leaf?, fine?)`; the trees, the landmarks), cheapest for many
+   pieces. `look: 'prop'` (prop art, the house style) or `'grid'`: its `geos` go through the
+   breakables' rigid batch (stones, pillars, statues, arena props). Either way it is NON-INDEXED
+   triangle geometry (`prep()`), in world space, with the material's attributes (`carve()` / `paint()`).
+   Its bricks are made from those triangles: no cube grids, no hand-made fragments. With bites on, the
+   level is cut to brick size when it is built (`refine`, `BREAK.chip.brick` 0.8 m), parts that are
+   already thin are left alone, and every piece's bricks are made at load (a piece of 4000 triangles
+   costs ~10 ms there, nothing in play).
+3. **Say which parts are foliage.** For a range piece, `Runs.add(geos, leaf)` marks foliage parts:
+   foliage is holed brick by brick; a solid part (trunk, stone, bone) keeps a skin, set back where it
+   was struck. A closed solid needs nothing more; an open sheet (a wing membrane, a cloth) is holed.
+4. **Give it a stump or rubble if it falls.** `broken` (what is left standing), `topples`, `wreck`, as
+   the table below. A tall piece the hero fells lands on whoever is under it (red tell from a boss).
+5. **Hit the world from anything new that hits**, with the blow's real height (`o.y`; a blade's
+   segment: `o.ya` / `o.yb`), its way (`dx, dz`), its kind (`BLOW.CUT / BLUNT / BLAST / FIRE`) and one
+   `src` per swing. `strike` (a disc: it eats the side that faces the blast), `sweep` (a segment: it
+   bites where the segment met the piece), `stop` (a projectile). `destructibles.struck` says what the
+   last call met.
+6. **Test it.** The world test `bite` walks the level registry (`src/levels/index.js` `LEVELS`): a new
+   level is checked with no change (it lists breakables, every piece that takes structure has bricks,
+   a blow on one of each kind bites it, the reset puts them back). Run `node
+   tests/integration/world.mjs . bite`; look at it in the browser (`?level=<id>`; `?chip=0` is the
+   game without bites, for a before / after).
+7. **Leaving something whole is a decision**, the owner's, written in DECISIONS.md: the bonfires (a
+   checkpoint), the sect gate, the bell (it only rings: `hp: Infinity`), the throne and its dais, the
+   fallen star and the seal, and the training room (`?stage=lab`, ADR-099: a measuring stage, its tiles,
+   walls and pylons stand outside the fight; the test checks it lists nothing). Floor slabs break as
+   slabs (`floor: true`: whole, cracked, broken; never bitten), the ground itself does not break yet
+   (ADR-132 "Not done").
+
 **A set's `breakables`** (built in the set builder; `forest.js` and `courtyard.js` are the examples). One entry:
 | field | what |
 |---|---|
@@ -2639,8 +2685,13 @@ Wyrm's 36 bones: 18 ribs, 10 runs of the spine, the hip, the mast, the fingers, 
 skull, the jaw, 2 horns; the Cinder Tree's 5 boughs and trunk; it was 183 on 2026-11-15) and takes 228
 bones, 409 with the wyrm; the courtyard 456 (it was 78: flagstone 293, pillar 30, lintel 1, lantern 4,
 stele 1, bell 1, stump 32, deadTree 80, boulder 9, cauldron 1, colossus 4: two colossi of two pieces) in
-443 bones; the throne 222 (it was 36: plate 81, flagstone 24, shard 25, slab 27, rubble 20, vent 4, log
-35, hover 6) in 299 (ADR-120's bigger log and char pools are built in every set: +42 bones in each arena).
+443 bones; the throne 255 (it was 36, then 222 with 35 logs: plate 81, flagstone 24, shard 25, slab 27,
+rubble 20, vent 4, hover 6, and since 2026-11-22 (ADR-133) what lies round the crater within 43 m of the
+seal: cairn 21, swords 16, boulder 10, cart 9, banner 7, stele 5) in 365 (ADR-120's bigger log and char
+pools are built in every set: +42 bones in each arena). `throneHall.js` places them on a stream of its
+own (`CONFIG.seed + 14312`): 125 spots 3.8 m apart off the path and the dais, a bag of kinds by
+weight; beyond 43 m they merge into the set's stones. Stone (cairn, boulder, stele) leaves rubble;
+`swords` are `mat: 'metal'`, the banner and the cart wood (they burn); none topples (`topples: false`).
 **Every tree of Cinderwood breaks**, out to the forest's edge (74 m; it was those within 42 m), and the
 Elder Wyrm's skeleton, the Cinder Tree and the nest break in pieces (ADR-120 reverses ADR-119's "they
 stay whole"); the bonfire stays whole. In `forest.js` the trees and the Cinder Tree are runs of the
@@ -2803,7 +2854,8 @@ section is used up as the piece's structure runs out.
   `litter` 3rd leaves a mark lying under it (`scars.rubble`) until the reset; the splinter spray of
   `_chips` is cut to 0.3 and the nick (`scars.object`) is left out (the bite is the mark).
 - Not bitten: floor slabs (their own cracked and broken looks), pieces that only chip (`hp`
-  Infinity), wreckage. `destructibles.bitten`: bricks taken since the reset. World test `bite`.
+  Infinity), wreckage. A blow that took structure but has no brick within reach (a ground blow under a
+  bough, a blow on a landmark's footprint) takes the share from the bricks nearest it, however far. `destructibles.bitten`: bricks taken since the reset. World test `bite`.
 - The bricks a bite takes are knocked OUT of their face (`_drop`: away from the piece's axis and back
   against the blow, harder for a blow that took more), then fall.
 - **The blade stops** (`BREAK.chip.stop`; player.js `_cutWorld` / `_bladeStops`; only with bites on).
@@ -3181,6 +3233,10 @@ data and a subclass with a few hooks.
     CALLS lands at least `guard.sep + margin` from every known impact needing the other answer (the running
     move's beats included): 0 now is clear, -1 nothing up to `max` clears it (do not call it). Count a
     delay with `stats.delays++`.
+  - `worldClash(landsIn, tell)` → true when a blow of his already cued needs the other answer within
+    `guard.sep` of a falling piece's landing (`landsIn` s from now): `world/destructibles.js` asks it at
+    the felled piece's flash, and on true the piece lands uncued and harmless (`quiet`; a fizzle;
+    ADR-133: a blow told before the piece began to fall and that no hold could clear).
   - `stats` `{ picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors,
     seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled', what, with }`
     (what the guard stepped in for; `ABYSS_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
@@ -3249,6 +3305,16 @@ data and a subclass with a few hooks.
     `player.startBladeLock` (the lock at range: the beam clash, which also passes `camera`).
   - `_tradeNow` (the trade clash from `takeHit`) ignores a beat marked `selfHit` or `sustain` (a beam's head,
     a stream held lit is no blow of his body to trade with).
+  - `stance: { from = 0.3, open = 0.6 }` (the third wave, 2026-11-22) on a FEINT beat with a bait `hold`:
+    THE COUNTER STANCE. From `from` of the windup to the impact `brain.catching()` returns the beat;
+    `duelist.takeHit` (before the guard, for any cut that is not `exact`) then CATCHES the cut:
+    `duelist._catch` deals no damage and no posture, draws the deflect's sparks on the crossing, emits
+    `dragon:guard { heavy, deflect: true, caught: true }` (HUD "CAUGHT"), bounces the hero
+    (`player.onGuarded({ deflect, caught })`) and calls `brain.onCaught(beat)`, which marks it and
+    `skipTo(beat.end)`: the beats after it (the punish) start at once. A stance nothing was cut into by
+    its impact ends the move there (`_stanceMiss`: `_toFoot(open)`, `raiseT` held at `open`, so his
+    guard stays down: the reward for waiting). `brain.stats.caught` / `stanceMiss`. The actor draws the
+    stance (Tian Lei: `fx.stanceGlow` from `afterPose` while catching).
   - `ledger.js` `discPath(s, p, reach, H, out)`: a thrown disc still going out (`s.kind 'disc'`, `phase
     'fly'`) flies on a curve (`curve` rad/s) to `range` m of path, hangs `hang` s, then comes home
     THROUGH where the hero stands at the turn (`through`, the default) or to the hand `H`; writes into
@@ -3477,8 +3543,9 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 A `Duelist` with `ASC_KIT`; COMBAT.md → "Tian Lei, the Last Ascendant" has the fight. Bare-handed: no
 weapon, three forms with a bar each (the Lord's `lives` structure), ki (blasts, a disc, bolts, called
 strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNING, MOVES, MOVE_NAMES,
-CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → riposte / riposte2 /
-riposte3, streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
+CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → one of the form's
+`COUNTER_LISTS` (moves.js; riposte / riposte2 / riposte3 and the third wave's, drawn on the AI's stream),
+streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
 scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's footwork plus the dash's lean
 by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
 ```
@@ -3558,7 +3625,17 @@ transformation's windup, the stars of a break. `brainFrame` also counts how long
 (within 2.6 m): past 4 s a `burst` move (Aura Burst) weighs × 3.
 
 **The moves are data** (`moves.js`: `MOVES = { ...meleeMoves(X), ...kiMoves(X), ...terrainMoves(X) }`,
-`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS`, `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). A move
+`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS` (each form's first counter) and `COUNTER_LISTS` (every
+counter of each form, the third wave: `[['riposte', 'riposteKnee'], ['riposte2', 'riposteVanish'],
+['riposte3', 'riposteBolt']]`), `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). **The third wave's data**
+(2026-11-22; `moves/melee.js`): `signKeys(X, { coil, hit, after, keys, cock = 0.76, left })` prepends the
+SIGN (the hand rising at u 0.18, two fingers at the brow at u 0.5) to a strike's keys, for a beat with
+`blink: { ..., sign: true }`; a sign beat carries `close: 0` and a short `dash` into reach after the
+arrival (`TUNING.sign`: behind 2 m, a side at 1.5 rad / 2.2 m, a step of 1.6 m from u 0.55, a riposte's
+hop back 1.5 m). A counter stance is a feint beat `{ tell N, windup 0.45 fixed, hold [0.2, 0.4], stance:
+{ from 0.3, open 0.6 }, part 'palms' }` (`TUNING.stance`) followed by its punish beats (Still Water,
+Golden Mirror, Thunder Mirror; `cat 'single'`). Thunder Mirror's and riposteBolt's bolt is a `ki: 'bolt'`
+line beat built in melee.js. A move
 file is a function `(X) => ({ name: move })` of the frozen builders object `X` (no import of moves.js: no
 cycle): `moves/melee.js`, `moves/ki.js` (joins `moves/kiShots.js` and `moves/kiBeam.js`),
 `moves/terrain.js`. `X = { TELL: { N, B, R, K }, TUNING, W, F, mirror, strikeKeys, follow, rotXZ, punch,
@@ -3586,7 +3663,10 @@ reads `sweep`). **The blink** (`beatMotion`, once at u 0.1 of the windup; then a
 `{ behind: m }` (behind the hero by his facing, else to one side, then the other), `{ land: true, side }`
 (beside where the hero's knock-back will end, on the side he came from: `_slideEnd`), `{ edge: true, pad }`
 (at the ring's edge farthest from the hero, `pad` 1.2 m inside his bound: the great beam), `{ at: rad, r }`
-(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage).
+(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage). **The sign**
+(the third wave): `sign: true` on any of them delays the vanish to u 0.5 of the windup (`signAt`); the
+beat's keys up to there show two fingers raised to his brow (`moves/melee.js` `signKeys`), and the moment
+he goes `fx.signSnap` flashes at the right hand (`tellPoint('fistR')`), then the usual `vanish`.
 
 **`ShotMoves`** (`kiShots.js`, `d.ki.shots`; numbers `TUNING.shots`, `tuningShots.js`): `begin` (false for
 a second disc, rain or volley while one runs), `weigh`, `onRelease` (the blasts leave the striking palm:
@@ -3599,7 +3679,22 @@ volley's strikes, the weather Thunderfall in form 3 (at most 2 live; never while
 reactions, a break or a transformation), the corner bolts), `busy`, `reset`, `stats`. Public:
 `returned(s)` (a returned blast reached him: 50 damage, 34 posture, `dragon:returned` kind 2), `discBack(s)`
 (the disc caught), `corners()` (ascend3's four bolts on `RING.corners`, 0.12 s apart: a called strike with
-its cue on a hero standing within 2.4 m of one, else a harmless bolt). Its game rolls come from its own
+its cue on a hero standing within 2.4 m of one, else a harmless bolt). **The third wave** (2026-11-22):
+`cast.kind` 'lantern' (Heaven's Lantern: `begin` tells the ledger the orb's arrival and retimes it through
+the gather, `motion` draws `fx.lanternGather` over his palms and dims the ring, `onCast` throws one
+'blast' record with `lantern: true` (size 4.5, radius 2, speed 10, `y` 3.6 falling to `yTo` 1.3 at the
+hero: `fx._flyBlast`'s linear fall), aimed `lead` s ahead of the hero, never homing; `lanternMet(s, r)`
+(fx.js calls it with the hero's RESULT): a block or a plain parry bursts it on the guard (`lanternBurst`
+'guard', a crater), a roll lets it pass to burst on the floor, a PERFECT parry starts THE PUSH
+(`_startPush`: `brain.startLock` at range with `T.lantern.push`, the orb held on the blade and drawn by
+`fx.lanternClash`); `lockEnd(won)`: won = `s.returned = true` (fx.js's return path flies it into his
+chest: `returned(s)` deals `returnDamage` 120 / `returnPosture` 220 and he reels `reel` 3 s), lost = 40,
+knockdown, thrown 10 m, a crater; `lanternOut` (the class weighs every other move 0 while it is out, and
+the weather stands down) and 'barrage' (Raining Suns: `_startRain` generalised with options `aim 'hero'`,
+`air`, `yTo`, `lead`, `scatter`, `direct`, `side`: sixteen blasts poured from the alternating palms 3 m
+up, falling onto the hero, every `direct`-th on him; then a `release` with `air` / `yTo`, the finisher).
+Blast records gained `yTo` / `y0` / `yLen` (a fall over the flight) and `lantern`; every old blast flies
+as before. Its game rolls come from its own
 seeded stream (`rand`, reseeded at each reset). What is planned but not yet thrown or called is told to
 the ledger (`brain.expect`), and each throw or call asks `brain.fairDelay` first.
 
@@ -3695,6 +3790,8 @@ beamSplash(x, y, z, k, dt, form = 1)        where the beam ends on something (th
 beamClash(x, y, z, dx, dz, k, dt, form = 3) the head grinding on the hero's blade; k the lock's meter
 beamSplit(x, y, z, dx, dz, len, form = 3)   the clash won: the beam split round the blade (once, or every frame)
 vanish(d, x0, z0, x1, z1, form = 1)         the blink: the shape he leaves, the streak, a puff at each end
+signSnap(x, y, z, form = 1)                 the sign's snap at the fingers on his brow as he goes (once)
+stanceGlow(d, dt, form = 1)                 a counter stance: light drawn into both open palms (every frame catching)
 dashGhost(d, form = 1)                      the afterimage a dash leaves
 auraBurst(x, z, r, form = 2)                a shock ring out of his body to r m (Aura Burst, a landing)
 crater(x, z, r, k = 1)                      a heavy blow on the floor: dust, chips, lit cracks (draws only)
@@ -3789,7 +3886,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:bite`, `dragon:hurt {damage, part, hp, crit}`, `dragon:parried {attack, tell, hit, last, bullet, perfect}` (hit = 0-based
   index in its string, last = the string's last hit or a single attack: only then a recoil; bullet: true = a
   deflected bullet, hit 0, last false: posture only, the wyrm is not interrupted and audio stays silent; perfect:
-  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z}` (a perfectly parried bullet's return
+  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z, lantern}` (a perfectly parried bullet's return; lantern true = Heaven's Lantern's orb pushed back into him
   lands on the head: kind 0 ember (1 was the wisp, removed in ADR-119), damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
   flow counts it in the run stats like a sword hit),
   `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
@@ -3798,9 +3895,10 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),
   `dragon:death`, `dragon:dead`,
-  `dragon:guard {heavy, deflect}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
+  `dragon:guard {heavy, deflect, caught}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
   "GUARDED", audio a dry clack; deflect = he beat it away and the hero bounces: HUD "DEFLECTED", a harsh falling
-  clang, a flicker of the frame), `dragon:deflected {count}` (every real hit of a long string parried:
+  clang, a flicker of the frame; caught = the cut was caught in a counter stance (a beat marked stance): no
+  posture either, HUD "CAUGHT", his punish follows at once), `dragon:deflected {count}` (every real hit of a long string parried:
   the full deflect; HUD "PERFECT DEFLECT"),
   `dragon:spell {name, x, z, part}` (a fire attack's signature moment: the strafe's pass, the dive, the barrage's
   rise, a spell's cast / the nova's charge start, a bullet pattern's cast (cinderSpit, emberRain, fireLanes among

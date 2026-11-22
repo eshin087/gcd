@@ -73,11 +73,27 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in
   `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, the fire field, glyph particles). No plain shaded
   meshes. Only glyphs in the world atlas may be passed to `gi()` / materials / particles — `npm test` checks.
-- **The world breaks (ADR-107).** Anything new that stands in a level and could be hit is listed in
-  its set's `breakables` (not merged into the static meshes), and anything new that hits (a blow, a
-  projectile, fire) calls the world: `world.impact`, `world.ignite`, `world.destructibles.strike /
-  sweep / stop`, guarded with `?.`. Its power goes in the fighter's tuning. See
-  `docs/ARCHITECTURE.md` → "Destruction" and `docs/COMBAT.md` → "The world breaks".
+- **The world breaks, letter by letter (ADR-107, ADR-132).** Every background object in every level
+  is destructible, and a hit knocks its letters off exactly where it lands ("bites"); the hero's blade
+  stops on what it does not cut through. Follow the checklist in `docs/ARCHITECTURE.md` → "Destruction"
+  → "Making a new object destructible". In short:
+  - Anything new that stands in a level and could be hit is listed in its set's `breakables` (not
+    merged into the static meshes), with a finite `hp`, a `mat` and a footprint `r` that matches what
+    is drawn (the blade stops at that circle).
+  - Build it from non-indexed triangle geometry through one of the two drawing paths (`look: 'range'`
+    in a set's merged mesh, or `'prop'` / `'grid'` through the breakables' rigid batch). Bites are made
+    from its triangles; do not pre-split it into cubes, and do not hand-shrink its triangles (the
+    level is cut to brick size at build time).
+  - Anything new that hits (a blow, a projectile, fire) calls the world: `world.impact`,
+    `world.ignite`, `world.destructibles.strike / sweep / stop`, guarded with `?.`. Pass the blow's
+    real height (`y`, or a blade's `ya` / `yb`) so the bite lands where it struck. Its power goes in the
+    fighter's tuning.
+  - A new level is covered by the world test `bite` with no change (it walks the level registry): it
+    fails if a level lists no breakables, or a piece gets no bricks. Only an object the owner decided
+    stays whole is left out of `breakables`, and the decision is written down (today: the bonfires,
+    the sect gate, the bell (it only rings), the throne and its dais, the fallen star, the seal, and
+    the whole training room).
+  See also `docs/COMBAT.md` → "The world breaks".
 - **Combat must be readable.** Every enemy attack declares a tell type (`normal` / `blue` parry /
   `red` perfect-dodge) and a windup long enough to react to. See `docs/COMBAT.md`.
 - **Never freeze the frame.** Per-frame code must not throw; `main.js` isolates module errors, but
