@@ -42,6 +42,10 @@ export const PICKED = Object.freeze({
   ascAura: 'a', // his aura: a tall flame, hollow behind him (the owner's pick)
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'a', // his figure lifted off the floor: a lighter fill, a stronger edge of light (the owner's pick)
+  // the Windless Grove and Lu Wusheng, the Sheathed (the owner, 2026-11-22: "keep the recommended")
+  grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
+  sheathLook: 'a', // his body: mourning white (the owner's pick)
+  drawCut: 'a', // the draw's cut: one white line (the owner's pick)
 });
 
 const fromUrl = new Map();

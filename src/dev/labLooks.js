@@ -40,10 +40,10 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
   //
   //
-  // --- grove: the Windless Grove and the Sheathed (ADR-145; no pick yet: the recommended options draw)
-  ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)', 'awaiting'],
-  ['sheathLook', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve (a reload)', 'awaiting'],
-  ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage', 'awaiting'],
+  // --- grove: the Windless Grove and the Sheathed (ADR-145; the owner's picks, 2026-11-22: a / a / a)
+  ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
+  ['sheathLook', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve (a reload)'],
+  ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);
