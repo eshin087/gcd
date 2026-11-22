@@ -176,6 +176,7 @@ bosses.
   |---|---|---|---|
   | The Cinder Wyrm | Bite; Hesitant maw's held bite; Claw combo's lunging bite; Wing buffet's second wing; **Wing rend's lunging bite\***, **Sky hammer's wing slam\***, **Cinder rake's overhead\***, **Cataclysm's wing slam\***, **the Tail bat\*** (the boulder; ADR-119) | every red blow it had (tail, stomp, charge, pounce, leap, the fire flights); **the tail whips\*** (Pivot lash, Rear guard, Cinder rake, Cataclysm), **Rear guard's tail slam\***, **Furnace maw's wing slam\***, the flying combos' blows\*, the ground tongues\*, the ambient cinders\*, a thrown tree or boulder\* (ADR-119) | **Black maw**: the head rears and holds 1.5 s + 0.15 - 0.6 s, then the snap: 44, range 3.5 - 6.5 m off its chest, cooldown 14 s |
   | Shen Hui | Falling Ash; Falling Star; Swallow Flicks' thrust; Crane Spins' chop; Swallow's Return; **Severing Wind*** (one long step from 3.6 - 10 m and a level two-handed cut, 26) | Piercing Ash, Lotus Sweep, Ember Whirl's last, Heaven-Splitting Fall, Hundred Petals' last; **Twin Embers*** (a dashing cut, then the low sweep 0.92 s later: dodge, dodge; 22 and 24) | **Black Tide**: the jian drawn back low, 1.45 s + 0.1 - 0.5 s, then a dashing cleave up to 7.5 m: 38, knocked down, cooldown 12 s |
+  | Wen Yao (ADR-131) | Three Brushstrokes' thrust; Ladder to the Moon (a perfect parry locks); Hand to Hand's last; the Thousand-Body Round's own blow | Sweeping Brush; the Pearl's burst (cued on the pearl); Burning Brush's tail; Fox-Fire Pounce; both transitions | **Moon-Swallowing Pearl** (phase 3): the Pearl dark over his head, 1.5 s + 0.1 - 0.5 s, then a leap down on the hero: 44, ring 3.4 m, knocked down, cooldown 14 s |
   | The Starless Lord | Falling Star; Scissor; Grasp and Sever's chop; **Severance*** (a long step and a two-handed chop, 26; every form) | his red blows and spells as before; **Red Meridian*** (a dashing level cut, then the blade round at the ankles; every form) | **Nightfall**: the same charge and cleave, 36; every form, cooldown 12 s |
 
 - Checked by `npm test`: duel FLARE (the rules; nothing shows before a red cue; a parried Falling Ash
@@ -1879,6 +1880,86 @@ lost clash's surge is faint, the quake's landing is a noisy pale cloud with a fa
 Storm's held tiles are hard to see against the aura. A blast stopped by cover is untested. The three
 arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
 east.
+
+## The Thousand-Body Fox (2026-11-21, ADR-131; `?level=fox`)
+
+Wen Yao, a masked dao swordsman (thousandFox/). One health bar, three phases (at 66 % and 33 %), each
+opened by a red ring blow (1.6 s, 10, r 6, knockback 6). Shen Hui's numbers (tells, posture, guard,
+trade, hit stun, the execution, the moments) except: hp 3000, bound 12.2, no burning ground, no
+terrain. PBZ-fast as Shen Hui: `flashLead` 0.3, first windups at least 0.42 s, hits 0.32 s apart at
+least, `windupScale` [1, 0.92, 0.92]. Phase 3 is no faster than phase 2: it asks more.
+
+### His moves (N white, B blue, R red, K black; windups at phase 1)
+
+| Move | From | Beats | Band (m) · cooldown · weight |
+|---|---|---|---|
+| Fox Bite | 1 | N 0.50, 18, a level cut after a glide of up to 4.5 m | 2.4 – 6.5 · 2.5 · [1.4, 0.9, 0.4] |
+| Three Brushstrokes | 1 | N 0.46, 13 · N 0.34, 13 · B+flare 0.42, 20 (a thrust) | 0 – 3.8 · 3.5 · [2.6, 2.0, 1.4] |
+| Ladder to the Moon | 1 | B+flare 0.56, 24, a leaping chop; a perfect parry locks the blades | 0 – 4.4 · 3 · [1.4, 1.0, 0.5] |
+| Sweeping Brush | 1 | R 0.62, 22, ring 3.0 at the ankles, knockdown | 0 – 3.4 · 6 · [1.0, 0.8, 0.4] |
+| Changing Places | 1 | N 0.60, 18: as the windup starts he trades places with the self nearest the hero (none: a flit to the hero's side) | 3 – 12 · 5 · [1.6, 2.2, 2.0] |
+| Scattered Leaves | 1 | no blow: 2 / 3 / 3 paper selves tear off him (to the cap) | 0 – 14 · 9 · [1.5, 1.8, 1.6] |
+| Pearl of the Hollow Moon | 1 | a backstep, the charge (1.6 / 1.47 / 1.47 s), the bat: R, cued on the pearl, 26 + 3 per live self, a burst of 2.0 + 0.35 per self (3.4 at most); 1 / 3 / 3 pearls | 0 – 10 · 11 · [1.2, 1.3, 0.9] |
+| The Fox's Answer | counter | B 0.46, 18, a thrust | |
+| Paper Rain | counter | his flurry, as Shen Hui's Scattering Ash | |
+| Hand to Hand | 2 | N 0.46, 12 · N 0.36, 12 (a swap first) · N 0.36, 12 · B+flare 0.44, 20 (a swap first) | 0 – 4.2 · 6 · [0, 2.6, 2.4] |
+| The Thousand-Body Round | 2 | every live self cuts in turn 0.42 s apart (N, 8; a guard meets them from any side), then his own B+flare, 22, 0.42 s after the last; needs 2 selves | 0 – 6 · 12 · [0, 1.6, 1.8] |
+| Paper Blades | 2 | two fans of three crescents: N 0.50, 12 · N 0.44, 12 | 6 – 15 · 8 · [0, 1.0, 0.9] |
+| Burning Brush | 3 | N 0.46, 14 · R 0.60, 24, ring 3.6 (the mantle's tail), knockdown | 0 – 4 · 7 · [0, 0, 2.2] |
+| Fox-Fire Pounce | 3 | R 0.66, 28, a line 2.4 x 1.0 after a leap of up to 9 m; the wood and grass there catch | 4 – 10 · 8 · [0, 0, 1.6] |
+| Moon-Swallowing Pearl | 3 | K 1.5 s + 0.1 – 0.5 s, 44, ring 3.4 where he leaps down, knockdown | 2.4 – 9 · 14 · [0, 0, 0.9] |
+| Paper Cut (hidden) | | N 0.62, 8, sector 2.1: a paper self's blow, never picked by him | |
+
+### The paper selves
+
+- **They look like him** and walk at the hero; up to 2 / 4 / 5 by phase. They tear free on a ring
+  3.5 – 5.5 m round the hero (0.45 s tearing: they can be popped at once, they cannot strike yet).
+- **One hit pops one**, and every other self within 1.4 m of the hit point (2.6 m for a heavy cut);
+  each popped self adds 6 to the real one's posture. His own Pearl bursts and the black pearl tear
+  them too; his posture break pops them all at once (the payoff); a phase change takes them back.
+- **They cut in turn, one at a time:** a self takes the token only within 3.2 m of the hero, while he
+  is in footwork or in a move that lets them fight (the Pearl's charge, the scatter, the black pearl),
+  never with a pearl in the air, and 2.6 / 1.9 / 1.2 s after the last self's blow at the soonest.
+  Its blow is white (8), cued as his own (a tell, then the glint 0.3 s before), and it goes through
+  the fairness guard: never within 0.3 s of a cue that asks the other answer (`brain.fairDelay`: its
+  windup waits, or another self takes the token later). Block it, parry it (it pops; he is not
+  recoiled), or roll. In the Round a guard meets their cuts from any side.
+- **The real one is always findable:** the lock-on, the boss bar, the name tag and the minimap follow
+  only him; only he holds the Pearl (the threads end in his hand); only he casts a shadow; only his
+  blade has the steel's trail and lit edge; in phase 3 only he wears the mantle. The selves have no
+  body: the hero walks through paper.
+
+### The Pearl
+
+Drawn out over the blade's tip after a backstep; through the charge his guard is down (cuts land)
+and a thread runs to it from every live self. **Starve it**: each self popped makes the burst
+smaller and weaker. **Interrupt it**: two cuts on him while he charges (one heavy) burst it in his
+hand: he reels (+90 posture). **Dodge it**: it is batted at where the hero is going (0.2 s led),
+lands 0.5 – 0.8 s later (the fairness guard may add 0.4 s, or it comes apart in the air, harmless),
+the ground there heats from the bat, and it flashes red on the pearl 0.3 s before it lands: roll out
+of the ring. A guard does not hold it. From phase 2 three pearls land together in a row across his
+line of sight, 3.4 m apart.
+
+### The Fox-Fire Mantle (phase 3)
+
+His selves burn up into him, the mantle lights (a fox's head of fire as a hood, one brush tail), five
+selves tear free. Where he stands the grass catches (the paving has little to burn); Burning Brush's
+tail throws its flame 1 m past its 3.6 m ring and the pounce lights the end of its line, so when the
+fight comes to the rim the charm posts outside it catch and burn through (fire never spreads: what
+his fire does not reach stays whole).
+The terrace's pieces (COMBAT "The world breaks"): the charm posts are wood and burn through in about
+7 s from one ignite to a snapped foot; the stone foxes break to their plinths; the lanterns and the
+floor as the courtyard's; the great fox and the spirit gate only chip, and the gate stops nothing.
+
+### The numbers measured (`fox.mjs`)
+
+The pace (a steady defender in god mode, the hero roaming 2.5 - 9 m; his selves' cuts count): five seeds x
+120 s gave 65.8 / 84.2 / 83.5 cues a minute by phase (P1 63.7 - 68.3, P2 80.6 - 89.5, P3 80.1 - 84.9),
+0 conflicting cues, a dodge asked by 12 / 8 / 15 % of them, the longest gap 3.8 / 2.9 / 3.1 s; on the
+finished set the three default seeds 66.3 / 84.2 / 82.3. Phase 3 is not busier than phase 2: it asks a
+dodge twice as often (`TUNING.pressure.meter`). The fencing bot (god mode, parries every white and blue cue,
+rolls every red one, cuts in his openings and at the selves in reach) wins through three phases in
+32 - 35 s on three seeds (Shen Hui's same bot: 36 s), cutting down 5 - 7 selves on the way.
 
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;

@@ -4,7 +4,28 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-nine pieces of work since 0.4.0:
+Sixty pieces of work since 0.4.0:
+- **A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox** (2026-11-21, ADR-131, ADR-135).
+  *Added:* a fifth level, `?level=fox` (the title screen lists it). **The Foxfire Terrace**: a round
+  terrace on a moonlit hill shrine, stone lanterns and seated stone foxes on its rim, wooden charm posts
+  hung with paper round it, a great stone fox and a spirit gate. **Wen Yao, the Thousand-Body Fox**: a
+  masked swordsman who tears paper copies of himself off his body. They walk at you and cut one at a
+  time, with the same white cue as his own blows, and a single cut pops one (a heavy cut pops the one
+  beside it too; a parry pops it). The real one is always the one you are locked on to, the only one
+  with a shadow, a steel blade and, later, the fire. While his copies keep you busy he draws out the
+  Pearl of the Hollow Moon over his blade, fed by a thread from every copy alive, and bats it at you: red,
+  a burst that is bigger and harder for every copy still standing. Pop copies to starve it, cut him twice
+  while he charges to burst it in his hand, or roll out of where it lands. Phase 2 (four copies): he
+  trades places with a copy mid-string, every copy cuts in turn round you before his own blow, three
+  pearls at once. Phase 3: the copies burn up into him and he wears a fox's head and tail of fire that
+  sets the charm posts and the hill's grass alight; a tail sweep, a long pounce, and a black pearl he
+  leaps down with. Asleep he sits among four copies that tear into paper as he rises. His own test suite;
+  the Lab and Training know him. *Changed:* the bone texture of the batched bodies grows when a level
+  has more bodies than it holds (the fox and his five copies); the other levels are drawn as before.
+  Kept behind switches for the owner's pick: three more outfits (`?foxLook=b|c|d`), the foxfire's colour
+  (`?foxfire=b|c`), paler copies (`?clones=b`). Recorded, not yet usable: his reward, the Paper Double
+  (there is no technique slot yet). The level borrows music for now. Nobody has played it yet: his
+  numbers are first guesses from bots.
 - **The hero looks the same on every screen** (2026-11-21, ADR-130). *Changed:* the hero is drawn with
   the same letters on every screen and at every camera distance: about 9 across his cloak, the look
   of the owner's reference picture ("the exact type of feel and look i want ... make the character

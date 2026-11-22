@@ -2863,15 +2863,18 @@ strip and the scars are glyph particles (a wearing crown's in the canopy's dim h
 dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
 are heat in the fire field.
 
-## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129)
+## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-131)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
 default), `applyLevel(level)` (merges `level.world` into `CONFIG.world`: main.js calls it once,
 before building any module), `levelUrl(id, href)`. One level per page load; switching reloads.
-A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text }`.
+A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text, reward? }`.
+`reward` (optional; ADR-135): the level's fixed reward as data, `{ id, name, line }` (the shape of the
+shared rewards store being built beside this for another level), plus `usable: false` while it does
+nothing yet (the Foxfire Terrace's `paperDouble`).
 - `buildSet` returns createForest's shape (`group, treeSpots, bare, slabs, nest, bonfire, material,
   stoneMaterial, slabMaterial`) plus, optionally, `breakables` (what can be chipped, felled, burned and
   thrown: see Destruction above; a set lists those pieces there INSTEAD of merging them into its static
@@ -2961,6 +2964,34 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
     the band nearest `cut`; `below`: its foot from y = -below), `buildHoodoo(rng, x, z, { h, r, col,
     below, lean, yaw })`, `buildRingPost(rng, x, z, { h, w, yaw, col })` → `{ stone, bronze, fireY }`,
     and the colours `BADLAND`, `RING_BRONZE`.
+- **The Foxfire Terrace** (ADR-131; `src/levels/foxfire.js` `FOXFIRE`: id `fox`, aliases `foxfire`,
+  `terrace`, `shrine`, `thousand`, `wenyao`; boss `new ThousandFox(game)`, below; `reward` the Paper
+  Double, ADR-135). `world`: `arenaRadius` 14.5, `playerBound` 40, `dragonBound` 12.2, the bonfire at
+  `TERRACE.bonfire` and the spawn 0.6 m east and 1.7 m north of it, `dragonSleep` (0, -2, yaw 0),
+  `bossTriggerZ` 14.6, `wakeRadius` 9. `text` has `phase2` ONE BECOMES A THOUSAND and `phase3` THE FOX
+  WEARS ITS FIRE. **Its set** (`world/foxTerrace.js`: `createFoxTerrace(U, colliders)`, `TERRACE`): see
+  "The Foxfire Terrace's set" below. Music: borrowed tracks (`trackList.js` `fox`) until the owner
+  auditions a score.
+  **Its set** (`world/foxTerrace.js`: `createFoxTerrace(U, colliders)`, `TERRACE`; ADR-131): the
+  courtyard's return shape without `ash` and without `sky` (the default night, the fireflies read as
+  foxfire). A round paved terrace, r 14 m on the origin, the courtyard's slab bond with the slabs that
+  cross the rim clipped to the circle (`slabCorners` / `outlineSlab`), a lighter kerb of curved stones
+  (r 14.03 – 14.55), three rows of steps (z 14.98 / 15.82 / 16.66) and a flagstone path to z 32 (the
+  bonfire at (0, 34)): every one a floor piece (`breakableFloor`). Ten stone lanterns at r 14.8 (kind
+  'lantern', the courtyard's `buildLantern`, `topples: false`), six seated stone foxes on plinths at r
+  13.2 turned to show their profile to the camera ('foxStatue', `topples: false`, `lift: 0`; broken: the
+  plinth and rubble, the plinth keeps a collider), eight wooden charm posts at r 16.5, none east or west
+  ('charmPost', `mat: 'wood'`, `look: 'prop'`, `cover: false`: they burn through in about 7 s from one
+  ignite to a snapped foot; whether a piece burns is its material's, not its look's), two landmarks
+  (`landmarks.js` `buildGreatFox` (-18.0, -1.6), ~8.4 m, in profile, and `buildSpiritGate` (17.3, -1.4,
+  yaw -0.62), ~6.3 m: kinds 'greatFox' / 'spiritGate', `hp: Infinity`, they chip; the gate does not stop
+  projectiles), dead trees and boulders round the hill (the courtyard's `open()`; clear inside r 19.5,
+  on the path, round the bonfire and the landmarks). 445 breakables, 192 colliders, 380 bones (the
+  courtyard's 443). Streams: layout seed + 131, rubble + 5131, spare + 6131, landmarks + 1931, floor +
+  7131; and the set is built on a QUIET `Math.random` of its own (three.js draws a uuid per object: a set
+  that grows would reshuffle the seeded fights). `TERRACE`: `r, cell, kerb, lanternR, lanterns,
+  lanternAt, statueR, statues, statueAt, postR, posts, postAt, steps, stepHalf, pathFrom, pathTo,
+  bonfire, greatFox, spiritGate`.
 - `text`: `arrive[]`, `stir`, `phase2`, `phase3`, `phase4` (null / absent: no banner), `victory`,
   `fallen`, `restReset`, `again`, `rise` (GameFlow `_text(key)`; Cinderwood's lines when the game has
   no level).
@@ -3624,6 +3655,61 @@ then to `d._hand`, `d.onShotBack?.(s)`; it cuts what it crosses (`destructibles.
 parry on the way out turns it home at once; at its turn it asks `brain.fairDelay(home, tell,
 T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
+
+### The Thousand-Body Fox — `src/entities/enemies/thousandFox/fox.js` exports `class ThousandFox` (ADR-131)
+Wen Yao, a masked dao swordsman on the duelist engine: one health bar, three phases (`phaseAt` [1, 0.66,
+0.33]); `FOX_KIT` (`id` 'thousandFox', `transitions` { 2: 'thousandBodies', 3: 'foxMantle' },
+`counterMove` 'riposte', `streakMove` 'streakFlurry'). No change to `duelist/*.js`: everything is a hook.
+- **Files:** `fox.js` (the class, `FoxBrain`), `moves.js` (the moves as data in the Ash format; his own beat
+  fields `swap`, `scatter`, `round`, `pearl: 'charge' | 'great'`, `mantle: 'tail' | 'pounce'` and move
+  fields `clonesFight`, `needs`, `densityAs`, `hidden`: its header), `tuning.js` (Shen Hui's blocks plus
+  `clones`, `pearl`, `mantle`, `world`, `crescent`), `poses.js` (`GUARD`, `FOX_POSES`), `links.js`,
+  `clones.js` (`FoxClones`), `pearl.js` (`FoxPearl`), `fx.js` (`FoxFx extends DuelFx`), `gear.js`
+  (`FOX_LOADOUT`, `FOX_BLADE`), `look.js` (`FOX_LOOKS`, `foxLook(name)`, `tintFox(M, { pale })`, `dressFox`).
+- **The class:** `d.clones` (FoxClones), `d.pearl` (FoxPearl), `d.mantleK` (0..1, the mantle grown in),
+  `debug.clones(n)` (tear n selves off now, to the cap), `debug.popAll()`, `debug.pearl()` (the Pearl
+  now), `debug.mantle(on)` (on / off / null = by phase), `debug.liveClones()`. Hooks used: `_setup` (the
+  pool and the Lab's API, inside the base constructor), `_tint` / `_tintSelf`, `_makeFx`, `_makeBrain`,
+  `reset` (he sits among four seated selves), `guarding` (down through the Pearl's charge), `weigh` (the
+  Round needs two selves, no scatter at the cap, `densityAs`), `onActStart` (the Round tears its selves
+  if too few; a transition pops them, phase 3's burns them into him; the Pearl begins), `beatMotion`
+  (the trade of places, the scatter, the Round's call), `onImpact` (the transitions tear selves to the
+  cap; the tail, the pounce and the black pearl on the world), `onCast` (the bat), `onRelease` (Paper
+  Blades, Shen Hui's crescents), `brainFrame` (the intro's tearing, the selves, the pearls, the mantle's
+  `world.ignite`), `afterPose` (the Pearl over the blade, the black pearl, the mantle, the selves'
+  poses and spheres), `takeHit` (a 'cloneN' part pops; a cut while he charges counts toward the
+  interrupt), `_break` (every self pops), `drawnPoint` (about the nearest body's root).
+- **`FoxBrain extends DuelBrain`:** `_reach(b)` is Infinity for a `swap` beat (he arrives through a
+  self); `startAct('foxRing')` passes `opts.selves` (the live count) to the kit's `realise`, which
+  realises the Round for that count (`roundBeats(n)`: the call, then his blow `0.42 n + 0.68` s later).
+- **`FoxClones`** (`d.clones`): `list` (the pool: `{ i, rig, root, pilot, anim, lean, hs: [2 spheres],
+  alive, state 'in' | 'stalk' | 'wind' | 'strike' | 'recover' | 'seated' | 'dead', x, z, yaw, handle,
+  round }`), `live`, `alive(i)`, `busy`, `cap()`, `spawn(n, why)` (a ring 3.5 – 5.5 m round the hero,
+  `apart` 2.2 m, `d.standable`; its own seeded stream), `popAt(i, x, y, z, heavy, by)`, `popWithin(x,
+  z, r, by)`, `popAll(by)`, `burnAll()`, `nearest(x, z)`, `swapWith(i)`, `round(hisImpactIn)`,
+  `seat(n)` / `tearSeated(t)` / `seated` (the intro), `handPoint(i, out)` (the Pearl's thread),
+  `setCut(act)` (the realised `paperCut`), `frame(dt)`, `pose(dt)`. Its rigs are plain hero rigs
+  (`buildHero(U, FOX_LOADOUT)`, their own `HeroAnimator`, `installLean`, `batchRigid`), not shadow
+  casters; a hero-side double can take one (ADR-135).
+- **`FoxPearl`** (`d.pearl`): `charging`, `flying`, `u` (the charge 0..1), `shots` (three), `begin(act)`,
+  `charge(b, u, dt)`, `struck(heavy)` → burst in his hand?, `interrupt()`, `cancel()`, `bat(b, s, act)`,
+  `frame(dt)`; counts `landed`, `interrupts` (tests).
+- **`FoxFx`** (`d.fx`): the surface in its header (`pearlCharge`, `pearlThread`, `pearlFly`,
+  `pearlMark`, `pearlBurst`, `pearlFizzle`, `greatPearl`, `greatBurst`, `cloneSpawn`, `clonePop`,
+  `cloneBurn`, `mantle`, `tailSweep`, `pounceLand`), and `phaseBurst(3, x, z)` (the mantle's change: a
+  front of foxfire and a column; not the Ash Disciple's ash wind); `look` (`?foxfire=`), `FOX` (the kind
+  foxfire is drawn as: K_VOID swapped, or K_FIRE for look b), `L` (the look's non-heat colours). Its
+  constructor swaps the void slot's palette (`FIRE_PALETTES.foxfire` / `.moon`). Audio: `audio.js` plays
+  `sfx.js` `paperTear` on `dragon:clone` (softer for a spawn or `by: 'mantle'`).
+- **Look switches waiting for the owner:** `duelist/lookSwitch.js` `PENDING` (`foxLook`, `foxfire`,
+  `clones`): Lab LOOKS rows, deliberately not in `PICKED` (each draws its call site's default, `a`);
+  duel.mjs FXLOOKS leaves them out of the picks' checks. A pick moves a switch from `PENDING` to `PICKED`.
+- **The world** (`TUNING.world`, POWER): the blade's blows through the engine's `_worldBlow`; a pearl's
+  burst 1.4, the black pearl 2.0, the pounce 1.0 (+ `world.ignite` 0.8), the tail 0.9; the mantle
+  `world.ignite(x, z, 1.5, 0.5)` every 0.6 s; the tail's sweep `world.ignite` out to its ring + 1 m (0.8),
+  the pounce at its landing and at the far end of its line. Fire never spreads (fire.js): the charm posts
+  at 16.5 m only catch from the tail or the pounce when he fights at his bound (12.2). Every call
+  guarded with `?.`.
 
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
