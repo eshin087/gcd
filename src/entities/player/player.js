@@ -3209,7 +3209,8 @@ export class Player {
     const n = D.sweep(sw.a.x, sw.a.z, sw.b.x, sw.b.z, REACH.radius, fin(a.damage, 30) / 110, o);
     if (n > 0 && !a.exec && D.struck && chipLook() !== '0') {
       const S = D.struck, ST = BREAK.chip.stop;
-      if (S.held && S.held.h >= ST.minH) {
+      // (only on contact: the steel within `touch` m of the piece's footprint, the blade's thickness)
+      if (S.held && S.held.h >= ST.minH && this._bladeTouches(sw, S.held, ST.touch)) {
         this._bladeStops(a, S, prevT);
         return;
       }
@@ -3231,6 +3232,13 @@ export class Player {
    * freezes, the camera shakes, steel on stone throws sparks; _tickAttack holds the pose while it
    * sticks (wood) and then throws the blade back (the bounce), away from the piece.
    */
+  /** Does the blade's segment (sw.a -> sw.b, ground plane) come within `pad` m of piece b's footprint? */
+  _bladeTouches(sw, b, pad) {
+    const ax = sw.a.x, az = sw.a.z, ex = sw.b.x - ax, ez = sw.b.z - az, l2 = ex * ex + ez * ez;
+    const t = l2 > 1e-9 ? clamp(((b.x - ax) * ex + (b.z - az) * ez) / l2, 0, 1) : 0;
+    return Math.hypot(ax + ex * t - b.x, az + ez * t - b.z) <= b.r + pad;
+  }
+
   _bladeStops(a, S, prevT) {
     const ST = BREAK.chip.stop, b = S.held, hard = b.mat !== 'wood';
     if (Number.isFinite(prevT) && prevT < a.t) a.t = prevT + (a.t - prevT) * 0.5;

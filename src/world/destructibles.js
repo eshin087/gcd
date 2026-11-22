@@ -166,11 +166,11 @@ function segDist(px, pz, ax, az, bx, bz, out) {
 }
 
 // ---------- bites (BREAK.chip): a piece is the bricks it is drawn with, its triangles ----------
-/** The bite look now (`?chip=`; lookSwitch.js): '0' off (pieces only wear down and break whole), 'a' the
- *  bricks under a blow are knocked out. Read at each blow; a level built with it on has finer bricks
- *  (forest.js `brickEdge`), so the Lab switches it with a reload. (Its pick under `?looks=new` is '0':
- *  that URL stays the game as it ships.) */
-export const chipLook = () => lookOf('chip', '0', '0');
+/** The bite look now (`?chip=`; lookSwitch.js): 'a' the bricks under a blow are knocked out (the owner's
+ *  pick, 2026-11-21: on by default, and under `?looks=old`, as a new thing keeps its pick), '0' off
+ *  (pieces only wear down and break whole). Read at each blow; a level built with it on has finer
+ *  bricks (forest.js `brickEdge`), so the Lab switches it with a reload. */
+export const chipLook = () => lookOf('chip', 'a', 'a');
 const PICK_MAX = 128;
 const PICK_D = new Float32Array(PICK_MAX), PICK_I = new Int32Array(PICK_MAX);
 let pickK = 0;
@@ -219,7 +219,7 @@ const BRICK_NEAR = 40;
  * { n, tri (2 per brick, the second -1 for a lone triangle), cen (3 per brick), nor (its unit normal, 3 per brick) }.
  */
 function makeBricks(P, T, pair) {
-  const tri = new Int32Array(T * 2), cen = new Float32Array(T * 3), nor = new Float32Array(T * 3), used = new Uint8Array(T);
+  const tri = new Int32Array(T * 2), cen = new Float32Array(T * 3), nor = new Float32Array(T * 3), area = new Float32Array(T), used = new Uint8Array(T);
   // each triangle's longest edge: its two corners (offsets 0, 3, 6 into its 9 numbers) and its length squared
   const ea = new Uint8Array(T), eb = new Uint8Array(T), el = new Float32Array(T);
   const d2 = (k, a, b) => (P[k + a] - P[k + b]) ** 2 + (P[k + a + 1] - P[k + b + 1]) ** 2 + (P[k + a + 2] - P[k + b + 2]) ** 2;
@@ -269,10 +269,13 @@ function makeBricks(P, T, pair) {
     nor[n * 3] = na[0] / nl;
     nor[n * 3 + 1] = na[1] / nl;
     nor[n * 3 + 2] = na[2] / nl;
+    area[n] = nl * 0.5;
     let m = 3;
     if (mate >= 0) {
       used[mate] = 1;
       const q = mate * 9;
+      normal(q, nb);
+      area[n] += Math.hypot(nb[0], nb[1], nb[2]) * 0.5;
       for (let a = 0; a < 9; a += 3) {
         x += P[q + a];
         y += P[q + a + 1];
@@ -287,44 +290,103 @@ function makeBricks(P, T, pair) {
     tri[n * 2 + 1] = mate;
     n++;
   }
-  return { n, tri, cen, nor };
+  return { n, tri, cen, nor, area };
 }
 
+/** Brick-depth search (brickSink): the grid's cell (m) and the share of a part's area-weighted normals
+ *  left over under which it counts as closed (a trunk, a stone: they cancel; a sheet, an open cone: not). */
+const SINK_CELL = 0.5, SINK_OPEN = 0.25, SINK_CONE = 0.75;
 /**
  * How far each brick is knocked BACK into its piece when a blow takes it (BREAK.chip.sink), and which
  * way: a solid part (a trunk, a stone, a bone) keeps a skin there, set back, instead of a hole onto its
  * empty inside (a boulder opened onto black; a cut trunk looked as if it floated). Per brick: the wall
  * facing it across the part (the nearest brick of its group whose face looks back at it, along the
  * brick's own normal or against it) is its thickness there; it is set back `k` of that, at most `max`
- * m. 0 = no wall behind it (foliage, a sheet, an open cone): the brick is folded away and leaves a
- * hole. `solid(i)`: brick i may be set back; `group(i)`: bricks of one part. Writes the unit way in
- * into `B.nor` and returns the depths.
+ * m; under `min` (a thin part: no dent would show) it is folded away. Only walls within the depth that
+ * can matter are looked for (max / k: thicker than that, it is set back `max` anyway), through a grid
+ * of the bricks' centres; a brick with none that near is set back `max` if its part is CLOSED (its
+ * area-weighted normals cancel out: a thick trunk, a big stone) and folded away if it is open (a
+ * sheet, an open cone). `solid(i)`: brick i may be set back; `group(i)`: bricks of one part. Writes
+ * the unit way in into `B.nor` and returns the depths. Build time only (a piece's first bite or the
+ * warm-up): ~O(n), the Cinder Tree's trunk (3000 bricks) in a few ms.
  */
 function brickSink(B, solid, group, k, max, min = 0) {
   // (the way in is written to a copy: every brick is judged against the faces as they were built)
-  const n = B.n, C = B.cen, N = B.nor, dep = new Float32Array(n), inn = new Float32Array(N);
+  const n = B.n, C = B.cen, N = B.nor, A = B.area, dep = new Float32Array(n), inn = new Float32Array(N);
+  const G = new Int32Array(n);
+  let gMax = 0;
+  for (let i = 0; i < n; i++) gMax = Math.max(gMax, (G[i] = group(i)));
+  // is each part closed: its area-weighted normals sum to (nearly) nothing
+  const sx = new Float64Array(gMax + 1), sy = new Float64Array(gMax + 1), sz = new Float64Array(gMax + 1), sa = new Float64Array(gMax + 1);
+  for (let i = 0; i < n; i++) {
+    const g = G[i], a = A ? A[i] : 1;
+    sx[g] += N[i * 3] * a;
+    sy[g] += N[i * 3 + 1] * a;
+    sz[g] += N[i * 3 + 2] * a;
+    sa[g] += a;
+  }
+  const closed = new Uint8Array(gMax + 1);
+  for (let g = 0; g <= gMax; g++) closed[g] = sa[g] > 0 && Math.hypot(sx[g], sy[g], sz[g]) < SINK_OPEN * sa[g] ? 1 : 0;
+  // the bricks' centres in a dense grid over their bounds (counting sort: `start[c]` .. `start[c + 1]` in
+  // `items`); a cell's bricks of every group, the group checked per brick
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = C[i * 3], y = C[i * 3 + 1], z = C[i * 3 + 2];
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+    if (z < z0) z0 = z;
+    if (z > z1) z1 = z;
+  }
+  const nx_ = Math.max(1, Math.floor((x1 - x0) / SINK_CELL) + 1), ny_ = Math.max(1, Math.floor((y1 - y0) / SINK_CELL) + 1), nz_ = Math.max(1, Math.floor((z1 - z0) / SINK_CELL) + 1);
+  const cellOf = new Int32Array(n), start = new Int32Array(nx_ * ny_ * nz_ + 1), items = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    const cx = Math.min(nx_ - 1, Math.floor((C[i * 3] - x0) / SINK_CELL)), cy = Math.min(ny_ - 1, Math.floor((C[i * 3 + 1] - y0) / SINK_CELL)), cz = Math.min(nz_ - 1, Math.floor((C[i * 3 + 2] - z0) / SINK_CELL));
+    start[(cellOf[i] = (cx * ny_ + cy) * nz_ + cz) + 1]++;
+  }
+  for (let c = 0; c < start.length - 1; c++) start[c + 1] += start[c];
+  {
+    const fill = start.slice(0, start.length - 1);
+    for (let i = 0; i < n; i++) items[fill[cellOf[i]]++] = i;
+  }
+  // (a wall at `along` must lie within along / SINK_CONE of the brick: the cone the test below keeps)
+  const reach = max / Math.max(1e-3, k), R = reach / SINK_CONE, ring = Math.ceil(R / SINK_CELL);
   for (let i = 0; i < n; i++) {
     if (!solid(i)) continue;
-    const gi = group(i);
+    const gi = G[i];
     const cx = C[i * 3], cy = C[i * 3 + 1], cz = C[i * 3 + 2], nx = N[i * 3], ny = N[i * 3 + 1], nz = N[i * 3 + 2];
+    const c0 = cellOf[i], ix = Math.floor(c0 / (ny_ * nz_)), iy = Math.floor(c0 / nz_) % ny_, iz = c0 % nz_;
     // the nearest wall behind it (against its normal) and before it (a face wound the other way round)
     let back = Infinity, fore = Infinity;
-    for (let j = 0; j < n; j++) {
-      if (j === i || group(j) !== gi) continue;
-      const vx = C[j * 3] - cx, vy = C[j * 3 + 1] - cy, vz = C[j * 3 + 2] - cz;
-      const along = vx * nx + vy * ny + vz * nz, d = Math.hypot(vx, vy, vz);
-      if (d < 1e-4 || Math.abs(along) < 0.6 * d) continue; // (not across from it)
-      const facing = N[j * 3] * nx + N[j * 3 + 1] * ny + N[j * 3 + 2] * nz;
-      if (along < 0 && facing < -0.3 && -along < back) back = -along;
-      else if (along > 0 && facing < -0.3 && along < fore) fore = along;
+    const ax0 = Math.max(0, ix - ring), ax1 = Math.min(nx_ - 1, ix + ring), ay0 = Math.max(0, iy - ring), ay1 = Math.min(ny_ - 1, iy + ring), az0 = Math.max(0, iz - ring), az1 = Math.min(nz_ - 1, iz + ring);
+    for (let ax = ax0; ax <= ax1; ax++) {
+      for (let ay = ay0; ay <= ay1; ay++) {
+        const row = (ax * ny_ + ay) * nz_;
+        for (let q = start[row + az0], e = start[row + az1 + 1]; q < e; q++) {
+          const j = items[q];
+          if (j === i || G[j] !== gi) continue;
+          const vx = C[j * 3] - cx, vy = C[j * 3 + 1] - cy, vz = C[j * 3 + 2] - cz;
+          const along = vx * nx + vy * ny + vz * nz, d = Math.hypot(vx, vy, vz);
+          if (d < 1e-4 || d > R || Math.abs(along) < SINK_CONE * d) continue; // (not across from it)
+          const facing = N[j * 3] * nx + N[j * 3 + 1] * ny + N[j * 3 + 2] * nz;
+          if (along < 0 && facing < -0.3 && -along < back) back = -along;
+          else if (along > 0 && facing < -0.3 && along < fore) fore = along;
+        }
+      }
     }
     let t = back, sign = -1;
     if (!(back < Infinity) && fore < Infinity) {
       t = fore;
       sign = 1;
     }
-    // (no wall behind it, or a part too thin for a dent to show: the brick goes)
-    if (!(t < Infinity) || t * k < min) continue;
+    // no wall within reach: a closed part is thicker than that (set back the most), an open one is a sheet
+    if (!(t < Infinity)) {
+      if (!closed[gi]) continue;
+      t = reach;
+    }
+    // (a part too thin for a dent to show: the brick goes)
+    if (t * k < min) continue;
     dep[i] = Math.min(max, t * k);
     inn[i * 3] = nx * sign;
     inn[i * 3 + 1] = ny * sign;
@@ -877,7 +939,6 @@ export class Destructibles {
     this._hy = 1;
     this._hz = 0;
     this._lit = 0;
-    this._warm = 0; // the next piece whose bricks are made ahead of its first bite (update)
     this.bitten = 0;
     /**
      * What the last strike / sweep / stop met (the hero's blade reads it: a blade stops on what it
@@ -931,6 +992,10 @@ export class Destructibles {
       run.mesh.geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
       b.bricks = new MeshBricks(b.body, run, b.body.geometry.userData?.parts);
     }
+    // every range piece's bricks now, while the level loads (Cinderwood's ~620: ~0.2 s): made in play
+    // they cost a frame a piece (a roar's front reaches the whole wall in half a second), and the frame
+    // budget has no room for that. A piece's first bite makes them if they are not there yet
+    if (chipLook() !== '0') for (const b of this.list) if (b.ranged && !b.floor && b.body.tris > 0) b.body._bricks();
     // every piece's world matrices from its static node, once (the sets stand at the world's origin:
     // nothing above the root moves); after that only a piece that moves is placed again (_place)
     this.pieces.updateMatrixWorld(true);
@@ -2863,17 +2928,6 @@ export class Destructibles {
     this._wallLit = Math.min(F.bank, this._wallLit + dt * F.perSec * this.q);
     this._debris = Math.min(BREAK.debris.bank, this._debris + dt * BREAK.debris.perSec * this.q);
     this._windStep();
-    // bites (BREAK.chip): the range pieces' bricks are made a few a frame once bites are on (a roar's
-    // front reaches the whole wall in half a second: not five hundred builds inside those frames)
-    if (this._warm < this.list.length && chipLook() !== '0') {
-      for (let k = 0; k < 4 && this._warm < this.list.length; ) {
-        const b = this.list[this._warm++];
-        if (b.ranged && !b.floor && b.body.tris > 0 && !b.body.bit) {
-          b.body._bricks();
-          k++;
-        }
-      }
-    }
     this.wreck?.update(dt);
     // the edge of the open ground: a tree of the wall is down, the ground behind it is the hero's (world:edge)
     const E = this.edge;

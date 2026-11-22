@@ -21,12 +21,15 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 //   flurry's art), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
 //   move is over and the hero is free), tail (s held after), max (s at most), expect [events]
-//   (what must have happened: the sims check), pieces (it needs the level's breakables) }
+//   (what must have happened: the sims check), pieces (it needs the level's breakables), clear (it is
+//   built on the hero's own strikes: he stands where no piece is in his sword's reach, ADR-132) }
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const DOWN = new Set(['dying', 'dead']);
 const HERO_FREE = new Set(['idle', 'run', 'sprint']);
+/** Where a `clear` situation brings the boss when no spot round him is free of the level's pieces. */
+const CLEAR_SPOTS = Object.freeze([[0, 0], [0, 6], [0, -6], [6, 0], [-6, 0]]);
 
 /** Answer modes: when to act before the impact (s), and what (Training._answer). */
 export const ANSWERS = Object.freeze({
@@ -106,7 +109,7 @@ add('PARRY & RIPOSTE', [
 ]);
 
 add('BOSS STREAK', [
-  { id: 'foeBuild', name: 'Build his streak, he answers', boss: 'duel', foe: 4, dist: 2.0, answer: 'parry', ai: true, desc: 'Strike into his guard: his streak climbs and his guard answers with his flurry. Parry every blow.', go: (T) => T.tap('@attack'), until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 14, expect: ['dragon:flurry'] },
+  { id: 'foeBuild', name: 'Build his streak, he answers', boss: 'duel', foe: 4, dist: 2.0, answer: 'parry', ai: true, clear: true, desc: 'Strike into his guard: his streak climbs and his guard answers with his flurry. Parry every blow.', go: (T) => T.tap('@attack'), until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 14, expect: ['dragon:flurry'] },
   ...[3, 5, 7].map((n) => ({ id: `foe${n}`, name: `His flurry ${N(n)} · parry all`, boss: 'duel', foe: n, dist: 2.6, answer: 'parry', desc: `${n} blows, each from another side. Parry every one and his posture breaks.`, go: (T) => T.d.debug.flurry(n), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] })),
   { id: 'foePerfect', name: `His flurry ${N(5)} · perfect parries`, boss: 'duel', foe: 5, dist: 2.6, answer: 'perfect', desc: 'Every blow perfect-parried (each counts two toward the total).', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd'] },
   { id: 'foeBlock', name: `His flurry ${N(5)} · block all`, boss: 'duel', foe: 5, dist: 2.6, answer: 'block', desc: 'A held guard meets them from any side: he breaks too.', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] },
@@ -462,12 +465,38 @@ export class Training {
 
   _place() {
     const s = this.cur, d = this.d, p = this.p;
-    const dist = this._dist(), a = fin(d.yaw) + fin(s.ang, 0);
-    let x = d.position.x + Math.sin(a) * dist, z = d.position.z + Math.cos(a) * dist;
-    const lim = fin(CONFIG.world.arenaRadius, 30) - 1.5, r = Math.hypot(x, z);
-    if (r > lim) {
-      x *= lim / r;
-      z *= lim / r;
+    const dist = this._dist(), a0 = fin(d.yaw) + fin(s.ang, 0);
+    const lim = fin(CONFIG.world.arenaRadius, 30) - 1.5;
+    const spot = (a) => {
+      let x = d.position.x + Math.sin(a) * dist, z = d.position.z + Math.cos(a) * dist;
+      const r = Math.hypot(x, z);
+      if (r > lim) {
+        x *= lim / r;
+        z *= lim / r;
+      }
+      return [x, z];
+    };
+    // `clear`: a situation built on the hero's own strikes stands where his blade swings free (a piece
+    // within his sword's reach would stop his cuts: bites, ADR-132): the spot turns round the boss until
+    // none is (the first clear one, else as asked). Others keep the spot as asked
+    let [x, z] = spot(a0);
+    const around = () => {
+      for (let k = 1; k <= 12; k++) {
+        const c = spot(a0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 6));
+        if (!this._crowded(c[0], c[1])) return c;
+      }
+      return null;
+    };
+    if (s.clear && this._crowded(x, z)) {
+      let c = around();
+      // (nowhere round him: he is brought in toward the middle of the arena first)
+      for (const [bx, bz] of CLEAR_SPOTS) {
+        if (c) break;
+        d.position.x = bx;
+        d.position.z = bz;
+        c = this._crowded(...spot(a0)) ? around() : spot(a0);
+      }
+      if (c) [x, z] = c;
     }
     p.debug.teleport(x, z);
     p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
@@ -486,6 +515,17 @@ export class Training {
       d.brain.raiseT = 0;
     }
     this._phase('place');
+  }
+
+  /** Does a piece of the world stand within the hero's sword's reach of (x, z) (BREAK.chip.stop's height and up)? */
+  _crowded(x, z) {
+    const L = this.game.world?.destructibles?.list;
+    if (!L) return false;
+    for (const b of L) {
+      if (b.state !== 0 || b.floor || !(b.h >= 0.6)) continue;
+      if (Math.hypot(b.x - x, b.z - z) - b.r < 2.6) return true;
+    }
+    return false;
   }
 
   /** Hold the hero still and facing him (before go). */

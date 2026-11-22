@@ -251,20 +251,23 @@ export const BREAK = Object.freeze({
    * bone) lose the brick outright. A crown part with `shed` of its bricks gone drops whole. Each
    * brick falls as a letter of what it was drawn in, from where it sat (`out` m/s along the blow, `up`
    * m/s), and every `litter`-th leaves a letter lying under it until the reset. `windY`: a front's
-   * bite on a tree of the wall is taken from its windward crown, at this share of its height.
+   * bite on a tree of the wall is taken from its windward crown, at this share of its height. A
+   * piece's bricks are made once, when the level is built (destructibles.js `brickSink`).
    * `stop` (the hero's blade, with bites on; player.js `_cutWorld`): a cut that meets a piece it does
    * not cut through STOPS on it instead of passing through: the frame freezes `freeze` s (wood / the
    * rest: stone, metal, bone), the camera shakes `shake`, the blade is held in the cut `stick` s (it
    * bit into wood; it rings off stone at once), then it is thrown back (the hero's bounce, `push` m
    * away). Steel on stone or metal throws sparks. A piece the cut breaks or fells lets it through, with
-   * a `through` freeze. Not the execution, the plunge, the slam's shards or a piece lower than `minH`
-   * m (a helm, a bone on the ground: the blade passes over or breaks it).
+   * a `through` freeze. Only on contact: the steel within `touch` m of the piece's footprint (the
+   * blade's own thickness, as its hit on a boss: combat.js REACH.radius 0.24). Not the execution, the plunge, the slam's
+   * shards or a piece lower than `minH` m (a helm, a bone on the ground: the blade passes over or
+   * breaks it).
    */
   chip: Object.freeze({ brick: 0.8, thin: 0.12, near: 48, far: 2.5, reach: Object.freeze([0.55, 3.2, 14]), pad: 0.25, k: 1, max: 96, sink: Object.freeze({ k: 0.42, max: 0.3, min: 0.07 }),
     stop: Object.freeze({
       freeze: Object.freeze({ wood: 0.075, hard: 0.095 }), shake: Object.freeze({ wood: 0.14, hard: 0.2 }),
       stick: Object.freeze({ wood: 0.11, hard: 0 }), push: Object.freeze({ wood: 0.25, hard: 0.45 }),
-      through: 0.05, minH: 0.6,
+      through: 0.05, minH: 0.6, touch: 0.25,
     }), out: 1.6, up: 1.4, litter: 3, shed: 0.72, windY: 0.7 }),
   /** debris glyphs (a stage's burst, the wind's leaves) a second over the level, banking `bank` (x quality) */
   debris: Object.freeze({ perSec: 1500, bank: 900 }),

@@ -1549,7 +1549,7 @@ const S = {
       setLook('chip', '0');
       const t2 = D.list.find((b) => b.kind === 'tree' && b.state === STATE.INTACT && b.body.parts > 1);
       D.strike(t2.x, t2.z + 0.3, 0.6, 0.3 * t2.hpMax, { kind: BLOW.CUT, by: 'player', y: 1, src: D.swing() });
-      assert(D.bitten === 0 && !(t2.body.nBit > 0) && t2.hp < t2.hpMax, 'with bites off (?chip=0, the default) a blow takes structure and no bricks');
+      assert(D.bitten === 0 && !(t2.body.nBit > 0) && t2.hp < t2.hpMax, 'with bites off (?chip=0) a blow takes structure and no bricks');
     } finally {
       setLook('chip', null);
       reseedBreaks();
@@ -1701,15 +1701,21 @@ function near0(a, b, eps = 1e-6) {
 // `budget` on its own, after the parallel suites: its frame times are wall-clock)
 const skip = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
 for (const n of skip) if (!S[n]) { out(`unknown scenario in ABYSS_SKIP: ${n}`); process.exit(2); }
+const BITES_OFF = new Set(['wear', 'placed']);
 const names = SCEN === 'all' ? Object.keys(S).filter((n) => !skip.has(n)) : SCEN.split(',');
 for (const n of names) {
   if (!S[n]) { out(`unknown scenario ${n}`); process.exit(2); }
   out(`\n== WORLD ${n.toUpperCase()}`);
+  // (bites are on by default, ADR-132: a tree then loses what the blows took, not its crown parts in
+  // stages. These scenarios check the stages, which is what ?chip=0 plays; `bite` checks the bites)
+  if (BITES_OFF.has(n)) setLook('chip', '0');
   try {
     S[n]();
   } catch (err) {
     fails++;
     out('FAIL', `${n} threw: ${err?.stack ?? err}`);
+  } finally {
+    if (BITES_OFF.has(n)) setLook('chip', null);
   }
 }
 if (errors.length) { fails++; out('FAIL console errors:\n  ' + errors.slice(0, 8).join('\n  ')); }

@@ -894,10 +894,10 @@ export class Lab {
       const n = a ? w()?.impact?.(a.x, a.z, 3, 3, { kind: 'blast', by: 'boss' }) : 0;
       this._status(`a blast 4 m ahead struck ${n ?? 0} piece(s)`, 'ok');
     }).title = 'a hard blast 4 m in front of the hero: what stands there breaks, the floor cracks';
-    // bites (BREAK.chip, ?chip=a): a blow takes the bricks of a piece where it struck. A level built
+    // bites (BREAK.chip, on; ?chip=0 off): a blow takes the bricks of a piece where it struck. A level built
     // with it on has finer bricks, so the switch reloads the page with the parameter
     {
-      const on = lookOf('chip', '0', '0') !== '0';
+      const on = lookOf('chip', 'a', 'a') !== '0';
       button(grid, `Bites ${on ? 'on' : 'off'}`, () => {
         try {
           const u = new URL(globalThis.location.href);
@@ -908,7 +908,7 @@ export class Lab {
         } catch (err) {
           console.error('[lab] bites reload failed', err);
         }
-      }).title = 'a blow takes the bricks (the letters) of a piece where it struck (?chip=a; reloads: the level is built with finer bricks)';
+      }).title = 'a blow takes the bricks (the letters) of a piece where it struck (on by default; ?chip=0 off; reloads: the level is built with finer bricks)';
     }
     // (2026-11-16: the tree wall wears down in stages; the landmarks break in pieces)
     const nearestWall = (at) => {
