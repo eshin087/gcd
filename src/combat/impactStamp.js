@@ -14,7 +14,7 @@ import { FIRE_KIND } from '../render/firePalettes.js';
 //     centre keeps ~13 % of its heat); snapped, a one-row line always prints.
 //   - The anchor is the contact pulled `pull` m toward the camera (along the view ray: it does not
 //     move on screen), past the field's 0.9 m soft depth fade, which would otherwise dim heat that
-//     sits on the struck body's surface to nothing.
+//     sits on (or inside) the struck body to nothing.
 //   - It is re-drawn every frame (so it stays snapped through the camera's shake and punch), with
 //     one copy alive per frame (a one-copy frame clock, as DuelFx._frame: held heat never stacks in
 //     the hit-stop's slow fx time).
@@ -58,7 +58,9 @@ export const STAMP_LAST = { blobs: 0, peak: 0, frames: 0, n: 0, lowY: Infinity, 
  * whatever the frame's resolution), turned into whole letter cells; heat is the fire field's (about
  * 0.35 a dim speck / digit, 0.6 a dim stroke, 1.1 a bright stroke, 1.5+ a white digit).
  *   hold     s of fx time each animation frame is held (stepped, not faded)
- *   pull     m the anchor is pulled toward the camera (past the field's soft depth fade)
+ *   pull     m the anchor is pulled toward the camera (past the field's soft depth fade). Measured:
+ *            1 m (the duelists' cues) is enough on a human, but the wyrm's drawn contact sits inside
+ *            the bulk of its body, and at 1 m the whole stamp faded to nothing behind its surface
  *   minY     no blob is written below this height (m): heat near the floor fades into it
  *   px       a blob's size, frame px at a 5 x 8 px cell (one cell; scaled with the cell)
  *   minLen   a line is never shorter than this many cells from its heart (else it is not a line)
@@ -71,7 +73,7 @@ export const STAMP_LAST = { blobs: 0, peak: 0, frames: 0, n: 0, lowY: Infinity, 
  */
 export const STAMP_LOOK = deepFreeze({
   hold: 0.04,
-  pull: 1.0,
+  pull: 2.5,
   minY: 0.7,
   px: 12,
   minLen: 1,
@@ -95,7 +97,7 @@ export const STAMP_LOOK = deepFreeze({
   // the hero is spared: no cell of the stamp inside an ellipse round his figure on screen, from his
   // feet (`foot` m up) to his crown (`head`), `rx` m to each side, `pad` m beyond his ends. He stands
   // in front of the wound
-  spare: { rx: 0.34, foot: 0.05, head: 1.75, pad: 0.12 },
+  spare: { rx: 0.24, foot: 0.05, head: 1.7, pad: 0.04 },
   ink: { dark: 1, rgb: [1.62, 1.62, 1.7], crit: [1.05, 1.5, 2.4], pad: 1.45, id: 800001 },
   // the frames of each shape (how many; the last is the specks' frame, dropped on LOW)
   frames: { slit: 4, pierce: 4, star: 4, puncture: 5 },
