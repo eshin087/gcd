@@ -5,6 +5,67 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 72: a fifth level, the Brazen Foundry and the Clockwork Marshal
+
+**Owner** (through the lead session): new level bosses built on the power fantasy of famous characters,
+as originals, each planned in its own chat and built by Opus. The concept picked for this one: a bronze
+war-suit with a fire lance that the player strips plate by plate until the pilot climbs out and fights
+on; the reward a fire-lance shot for the hero. In the spirit of an armoured-suit comic hero but an
+original wuxia figure (Gongshu Yan, an old artificer-marshal): no red-and-gold, no chest light, no palm
+blasts, no faceplate of that shape. Branch `claude/clockwork-marshal-c97f39`. ADR-135 – ADR-137 /
+Session 72 / M1.56.
+
+**What exists** (ARCHITECTURE "Clockwork Marshal" and "Rewards", COMBAT "The Clockwork Marshal", STYLE
+"The Brazen Foundry and the Clockwork Marshal"):
+- `levels/foundry.js` (`?level=foundry`, `reward: 'fireLance'`), `world/foundry.js` (an iron-banded drill
+  yard 15 m round, the Great Furnace, a half-buried cogwheel, gate posts with a chain, 45 breakables in
+  prop art: racks, drill posts, banners, kegs, crucibles, ingots, anvils, eight sentinels; 234 floor
+  slabs). Music borrowed (`trackList.js` `foundry`).
+- `entities/enemies/marshal/`: one duelist, one rig, two bodies. The suit (1.75 x, bar 3000, gates 66 /
+  33 %), the pilot (bar 1300). Five plates met by facing, stripped three ways, each loss changing the
+  fight. Eleven suit moves, nine of the pilot's. The hand-over: the husk, the eject. Fire as heat in the
+  fire field (the lance's windup, the bolt with a steel core, the fan, the vents, the mortars, the
+  furnace's mouth). The world: powers in `TUNING.world`.
+- The reward: `player/rewards.js`, `player/fireLance.js`, `FIRE_LANCE`, the `technique` action (Q, pad
+  14), a touch tile and HUD pips while owned, the grant and the line on the victory screen.
+- `player/model.js`: `installLean` reads `lean.scale` live (the same for everyone else).
+- Lab: MARSHAL (a button per plate, eject, the state), REWARD (own / fire), LOOKS `marshalLook`;
+  Training role row `foundry`.
+- `tests/integration/marshal.mjs`: level, data, timing, plates, handover, lance, world, win, pace, flow,
+  reward (+ `trace`, opt-in). `world.mjs` sets the yard.
+
+**Found on the way.**
+- The first bot fights ended in 40 s: the hero's flash cuts and his flurry are `exact` blows and went past
+  the plates. Every blow of the hero's now meets a plate (`plate: false` skips it for the Lab and the
+  tests); the bars went to 3000 / 1300. Now 45 - 54 s for a bot that answers every cue.
+- The first pace runs read 5 cues a minute: the bot's input axis was never cleared after a roll, so the
+  hero ran off the map. Then 20 a minute: a bot that parries and perfect-dodges earns a riposte or a
+  Ghostep from every exchange and the boss spends the fight staggered. The pace is now measured as the
+  Lord's suite does (a blocking, early-rolling bot) and the bot walks back in when blocked bolts knock it
+  out of range.
+- A bolt at a hero behind a rack: the rack took it and fell on him (`fallingDebris`). The world's own
+  rule; the test checks the bolt itself.
+- At the game camera the lance on the hero's kept material was the brightest thing on screen: its shaft
+  and blade now print on the art path. The paving was as busy as the boss; it was calmed (the Skybreak
+  Ring's lesson).
+
+**Verification.** `tests/integration/marshal.mjs` all 13 scenarios green (timing: 34 move x phase runs, every
+contact within 13 ms of its glint; win: 45 / 45 / 54 s on seeds 4242 / 7 / 99; pace above; reward, flow,
+lance, world, plates, handover). `npm test` (2843 s on a loaded machine): every task green after three
+fixes (a `PICKED` entry for `marshalLook`, the remap scenario's free key Q → V, an audio consumer for
+`dragon:plate` and `player:technique`) except world `budget`, a wall-clock check that failed the same way
+on an extract of `main` that hour (p99.9 2.9 ms against 1.5; other sessions loading the machine).
+`npm run build` green. In the browser (headless Edge on the GPU, `film.localhost`): the level loads with
+no console error; the suit, the Fire Lance strip (windup heat, the blue glint at the fire tube, the bolt,
+the burst), plates off, the pilot and the husk at the game camera on 720p and the phone preset (renders
+sent: `renders/marshal/`, not committed); the FIRE tile and the pips on the phone, both orientations.
+
+**Not checked / open.** Nobody has played it. The bars are bot-tuned. Not measured on a phone (frame rate,
+the FIRE tile's place). Powder kegs only burn (the burst is not built). The three looks wait for the
+owner's pick. A sibling build plans its own rewards store: the two must become one.
+
+---
+
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
 **Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also
