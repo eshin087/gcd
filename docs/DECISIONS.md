@@ -3846,3 +3846,41 @@ ADR-092).
   statistical band moved with the new stream (`TUNING.world.meter.wall` lower bound 0.3 -> 0.25). Any
   future change to a model's object count no longer moves the seeded fights.
 - **Not done:** the eyes from straight above stay small; not seen on the iPhone.
+
+## ADR-128 — A felled tree lies as the blow left it: its stump, its fall and its trunk follow the kind of blow (2026-11-21)
+
+- **Context:** the owner, after seeing the tree wall come down (ADR-125): "make the cleared trees not
+  look the same and have it broken in different angles based on how it was hit". Every felled tree
+  left the same squat stump (one per tree, built at load), fell straight along the blow and left one
+  straight log from its stump in one of 3 shapes; a tree that burned through dropped a black log at a
+  random angle. A cleared stretch read as rows of identical logs pointing out.
+- **Decision:** what a felled forest tree leaves depends on the kind of blow (`BREAK.fell`, per
+  `cut` / `blunt` / `blast` / `fire`), on a cosmetic stream of its own.
+  1. **The stump is cut by the blow.** The stump's run is reshaped once when it shows
+     (`RangeBody.reshape`, put back by the reset): its height (a blade: about where it bit, the blow's
+     `y`; a blow knocking it over lower; a blast lowest), its top on a plane slanted along the blow (a
+     blade: a clean slant either way; knocked over: torn higher on the side it fell to), splinters
+     out of that plane (few for a blade, many for a blast), pushed over a little toward the fall.
+     Burnt through: low, rounded, black at the top.
+  2. **The fall turns and rolls.** It goes over up to `spread` off the blow's line (a blade 0.08 rad,
+     a blast 0.4; the wall's outward rule still applies) and rolls about its own trunk on the way
+     down. The red tell and its strip are worked out after the turn, so they show where it lands.
+  3. **The trunk lands its own way.** Turned up to `yaw` as it lands, 0.85 - 1.15 of its length, its
+     far end resting raised on its crown, and for a share of falls (8 % for a blade, 35 % for a blow,
+     60 % for a blast) broken in two with a kink between the halves. Three crooked log shapes with a
+     snapped bough (two black ones) join the plain ones.
+  4. **Some burnt trees stay standing.** 40 % of the trees that burn through leave a black snag on
+     their stump (a black log stood on end, 35 - 70 % of the tree's height, leaning up to 0.25 rad);
+     the rest leave a black trunk, sometimes in two.
+- **Why this way:** the stump and the log are what is left in view for the rest of the fight, so the
+  variety goes there; the falling tree is on screen for a second. Reshaping the stump's own vertices
+  once costs nothing a frame and needs no new mesh; a snag is a pooled black log stood up, so it needs
+  no geometry either. A separate stream keeps the chances that decide play (the fire's spread, the
+  leans) drawing what they drew before.
+- **Consequences:** no collider, hit, tell or timing changed; the wreckage pools are the same size (a
+  split trunk takes two logs: the oldest sink sooner). `Wreckage.log` takes a `pitch`; a log has
+  `size` (its length) besides `len` (its reach over the ground). The world test `spread` now starts
+  the module's stream from a known point (`reseedBreaks`): it hung on a 9 % chance that moved with
+  every change upstream.
+- **Not done:** a stump is still one cut plane, not two halves of a split trunk; the falling crown is
+  not broken by the blow; the Cinder Tree and the landmarks keep their own remains.

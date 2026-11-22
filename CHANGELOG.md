@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-six pieces of work since 0.4.0:
+Fifty-seven pieces of work since 0.4.0:
+- **Felled trees lie as the blow left them** (2026-11-21, ADR-128). *Changed:* a felled tree no longer
+  leaves the same stump and the same straight log as every other ("make the cleared trees not look
+  the same and have it broken in different angles based on how it was hit"). A blade cuts the stump
+  high and on a clean slant, a blow knocking a tree over tears it lower and higher on the side it
+  fell to, a blast shatters it low; a tree burnt through leaves a low black stump. The fall turns off
+  the blow's line and rolls; the trunk turns as it lands, rests with its far end raised, and often
+  breaks in two with a kink (more often for a blast than a blade). *Added:* crooked trunks with a
+  snapped bough; some trees that burn through stay standing as black snags. No hit, tell or timing
+  changed.
 - **The Cinder Wyrm glares from every side** (2026-11-21, ADR-127). *Changed:* the drake's eyes
   are slanted almonds with a point at each corner, the outer corner high, turned out, up and
   forward, under a brow that drops low over the snout and rises steeper than the eye: an angry

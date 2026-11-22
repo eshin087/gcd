@@ -25,7 +25,7 @@ const { Colliders } = await imp('src/world/colliders.js');
 const { Scorch } = await imp('src/world/scorch.js');
 const { GroundFire } = await imp('src/world/fire.js');
 const { Scars } = await imp('src/world/scars.js');
-const { Destructibles, STATE } = await imp('src/world/destructibles.js');
+const { Destructibles, STATE, reseedBreaks } = await imp('src/world/destructibles.js');
 const { BREAK, BLOW, FIRE, SCAR } = await imp('src/world/breakTuning.js');
 const { createForest } = await imp('src/world/forest.js');
 const { ELDER_COLLIDERS } = await imp('src/world/landmarks.js');
@@ -742,8 +742,92 @@ const S = {
     assert(bt.burnt && D.wreck.live.some((w) => w.kind === 1 && w.smoulder > 0 && Math.hypot(w.x - bt.x, w.z - bt.z) < 1.5), 'a tree that burned through leaves a black log by its stump, smouldering');
   },
 
+  // ---------------------------------------------------------------- a felled tree lies as the blow left it (ADR-128)
+  lie() {
+    reseedBreaks(0x51ed); // (the shares below are chances: from a known point, not where the scenarios before left the stream)
+    const { D, game, step } = build();
+    game.player.position.set(0, 0, 0);
+    game.boss.position.set(0, 0, 80);
+    // (the clearing's trees first, then the wall's nearest: the clearing has only a dozen tall ones)
+    const trees = D.list.filter((b) => b.mat === 'wood' && b.ranged && b.wrecks && b.topples && b.stub?.reshape && b.h > 3).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
+    const topOf = (H) => {
+      let m = 0;
+      for (let i = 1; i < H.length; i += 3) m = Math.max(m, H[i]);
+      return m;
+    };
+    const kinds = [BLOW.CUT, BLOW.BLUNT, BLOW.BLAST];
+    const ratio = { cut: [], blunt: [], blast: [] };
+    let hinge = 0, blunt = 0;
+    const felled = [];
+    for (let i = 0; i < 36 && i < trees.length; i++) {
+      const t = trees[i], k = kinds[i % 3];
+      const a = i * 2.4, dx = Math.cos(a), dz = Math.sin(a);
+      const built = topOf(t.stub.home);
+      D.strike(t.x - dx * 0.3, t.z - dz * 0.3, 0.5, 80, { kind: k, by: 'player', dx, dz, y: 1, src: D.swing() });
+      if (t.state === STATE.INTACT) continue;
+      felled.push(t);
+      const H = t.stub.home, top = topOf(H);
+      ratio[k].push(top / built);
+      if (k === BLOW.BLUNT) {
+        // torn over: higher on the side it went over to (the fibres it tore stand up there)
+        let hi = 0, nh = 0, lo = 0, nl = 0;
+        for (let v = 0; v < H.length; v += 3) {
+          if (H[v + 1] < top * 0.5) continue;
+          const d = (H[v] - t.x) * t.dx + (H[v + 2] - t.z) * t.dz;
+          if (d > 0.03) (hi += H[v + 1]), nh++;
+          else if (d < -0.03) (lo += H[v + 1]), nl++;
+        }
+        blunt++;
+        if (nh && nl && hi / nh > lo / nl) hinge++;
+      }
+    }
+    const mean = (A) => A.reduce((s, v) => s + v, 0) / Math.max(1, A.length);
+    const all = [...ratio.cut, ...ratio.blunt, ...ratio.blast];
+    const distinct = new Set(all.map((v) => v.toFixed(3))).size;
+    assert(felled.length >= 24 && distinct >= all.length - 2, `${felled.length} trees felled by a blade, a blow, a blast: ${distinct} different stump heights of ${all.length}`);
+    assert(mean(ratio.blast) < mean(ratio.blunt) && mean(ratio.blunt) < mean(ratio.cut), `a blade leaves the tallest stumps (x${mean(ratio.cut).toFixed(2)} of the built one, cut where it bit), a blow lower (x${mean(ratio.blunt).toFixed(2)}), a blast the lowest (x${mean(ratio.blast).toFixed(2)})`);
+    assert(hinge >= blunt * 0.7, `a tree knocked over leaves its stump torn higher on the side it fell to (${hinge} of ${blunt})`);
+    step(3);
+    // its trunk: turned off the line it fell along, some broken in two, some resting raised on their crowns
+    const logs = D.wreck.live.filter((w) => w.kind === 0);
+    let turned = 0, raised = 0;
+    for (const t of felled) {
+      const mine = logs.filter((w) => Math.hypot(w.x - t.x, w.z - t.z) < 1.2);
+      for (const w of mine) {
+        if (Math.acos(Math.min(1, w.dx * t.dx + w.dz * t.dz)) > 0.05) turned++;
+        if (w.pitch > 0.03) raised++;
+      }
+    }
+    const looks = new Set(logs.map((w) => w.mesh.geometry.uuid)).size;
+    assert(logs.length > felled.length && turned >= felled.length * 0.4 && raised >= felled.length * 0.3 && looks >= 5, `${logs.length} trunks for ${felled.length} trees (some broke in two), ${turned} turned off their fall, ${raised} with an end raised, ${looks} different shapes`);
+    // burnt through: a black stump, and some stay standing as a snag
+    const left = trees.filter((b) => b.state === STATE.INTACT).slice(0, 16);
+    for (let i = 0; i < left.length; i += 4) {
+      for (const b of left.slice(i, i + 4)) D.ignite(b.x, b.z, 0.3, 1);
+      step(BREAK.burn.time * 1.3);
+    }
+    const burnt = left.filter((b) => b.burnt);
+    const chars = D.wreck.live.filter((w) => w.kind === 1);
+    const snags = chars.filter((w) => w.pitch > 1).length;
+    const dark = burnt.filter((b) => {
+      const C = b.stub.cAttr?.array, O = b.stub.corig;
+      if (!C || !O) return false;
+      let a = 0, o = 0;
+      for (let k = 0; k < O.length; k++) (a += C[b.stub.start * 3 + k]), (o += O[k]);
+      return a < o * 0.8;
+    }).length;
+    assert(burnt.length >= 5 && snags >= 1 && chars.length - snags >= 1 && dark === burnt.length, `${burnt.length} trees burned through: ${snags} left standing as black snags, ${chars.length - snags} black trunks lying, ${dark} stumps burnt dark`);
+    // the reset: every stump back to the one it was built as
+    D.reset();
+    const back = [...felled, ...burnt].every((b) => !b.stub.visible && !b.stub.shaped && b.stub.home.every((v, k) => v === b.stub.orig[k]) && (!b.stub.cAttr || b.stub.corig.every((v, k) => v === b.stub.cAttr.array[b.stub.start * 3 + k])));
+    assert(back, 'the reset: every stump hidden and back to its built shape and colour');
+  },
+
   // ---------------------------------------------------------------- fire spreads from tree to tree, and stops at its cap
   spread() {
+    // (each try to pass the fire on is a chance (BREAK.spread.chance): start the module's stream from a
+    // known point, not wherever the scenarios before left it; a tree has ~4 tries before it burns out)
+    reseedBreaks();
     const { D, world, game, log, step } = build();
     game.player.position.set(0, 0, 0);
     // the tree with the most neighbours in reach

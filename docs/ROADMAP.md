@@ -179,6 +179,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.53 — A felled tree lies as the blow left it (2026-11-21, `world/crumbling-border`, ADR-128)
+- [x] The stump cut by the blow: height, a slanted top, splinters, a push toward the fall; burnt: low and black
+- [x] The fall turns off the blow's line and rolls about its trunk
+- [x] The trunk turns as it lands, rests raised, breaks in two with a kink; crooked log shapes
+- [x] Some trees that burn through stand as black snags
+- [x] Tests: world `lie`; `spread` starts from a known stream
+- [ ] Follow-ups:
+  - [ ] The owner plays it and picks how far to take it (more splits, taller snags, fewer)
+  - [ ] A trunk split down its length (two halves on the stump)
+
 ## M1.52 — The drake's glare from every side (2026-11-21, `dragon/drake-eyes`, ADR-127)
 - [x] Four anime faces rendered and turned down by the owner; not kept
 - [x] The drake's eye a slanted almond turned out, up and forward; a steeper brow, an orbit rim, a dark hollow

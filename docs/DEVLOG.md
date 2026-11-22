@@ -5,6 +5,44 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 68: a felled tree lies as the blow left it
+
+**Owner** (after the picture of the wall opening): "make the cleared trees not look the same and have
+it broken in different angles based on how it was hit". Same branch, `world/crumbling-border`
+(PR #70). ADR-128 / Session 68 / M1.53.
+
+**What was there.** One squat stump per tree, built at load; a fall straight along the blow; one
+straight log from the stump in one of 3 shapes; a burnt tree's black log at a random angle. From
+above a cleared stretch was rows of the same log pointing out.
+
+**What changed** (`BREAK.fell`, per kind of blow; a stream of its own in `destructibles.js`):
+- the stump's run is reshaped when it shows (`RangeBody.reshape` / `unshape`): its height by the blow
+  (a blade where it bit), its top on a plane slanted along the blow, splinters, a push toward the fall;
+  burnt through, low and black (its `aCol` darkened);
+- the fall turns off the blow's line (`spread`) and rolls about its trunk (`spin`);
+- the trunk (`_logs`) turns as it lands, varies in length, rests with its far end raised, and for a
+  share of falls breaks in two with a kink; `wreckage.js` has 3 crooked log shapes with a snapped
+  bough (2 black ones), and `log()` takes a `pitch` (a log has `size` and `len`, its reach over the
+  ground);
+- 40 % of the trees that burn through stand as a black snag on their stump.
+
+**Found on the way.** The world `spread` check failed in the full suite and passed alone: it hangs on
+a ~9 % chance (a burning tree's four tries to pass the fire on) drawn from a module stream that every
+scenario before it moves. It now starts that stream from a known point (`reseedBreaks`).
+
+**Verification.** New world `lie` (36 trees by a blade, a blow, a blast: 35 different stump heights;
+a blade's stumps x1.55 of the built height, a blow's x1.33, a blast's x0.90; 12 of 12 knocked-over
+stumps torn higher on the fall side; 64 trunks for 36 trees, 24 turned, 20 raised, 6 shapes; 8 burnt
+through: 4 snags, every burnt stump dark; the reset puts every stump back). In the browser (headless
+Edge, the real GPU, 1280 x 720), the same stretch felled the same way on the code before and after:
+before, straight logs and alike stumps; after, kinked and broken trunks, a standing snag, stumps of
+different heights and slants. `npm test` / `npm run build`: see the PR.
+
+**Not checked / open.** Nobody has played it; not looked at on the phone (it adds no per-frame work).
+The stump is one cut plane, not a split trunk; the Cinder Tree and the landmarks keep their remains.
+
+---
+
 ## 2026-11-21 — Session 67: the drake's glare from every side
 
 **Owner:** first "i'm not liking the dragons face at all. can you make it look very anime evil and

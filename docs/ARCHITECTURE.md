@@ -2700,7 +2700,23 @@ drops or restores part i; `pose(q, px, py, pz)` turns it by a quaternion about i
 rewriting positions (and normals) from a home copy, so a tree shudders, leans, falls, is carried and
 flies without a bone of the rigid batch. Writes are queued and uploaded once a frame, one update range
 per body: `flushRanges()` (exported; `Destructibles.update` and `reset` call it). `reset()` rewrites only
-the pieces that were touched. No allocation after the build.
+the pieces that were touched. No allocation after the build. `reshape(fn)` (ADR-128) gives an unposed
+run another shape once: `fn(home, nhome, col, orig)` rewrites its home copy, normals and colours
+(`aCol`) from the shape it was built with (its spare copies are made on the first call); `unshape()`
+puts that back, and `shaped` says whether it is reshaped.
+
+**How a felled tree lies** (ADR-128, `BREAK.fell` per kind of blow, on a stream of its own: the fire's
+spread and the leans draw what they drew before). For a forest tree (wood, a range, `wreck` not false):
+its fall turns up to `spread` off the blow's line (the wall's outward rule still applies after it) and
+it rolls up to `spin` about its own trunk on the way down; its stump is reshaped (`_shapeStub`): as high
+as the blow leaves it (`h`; a blade: about the height it bit at, `b.hy`, the `y` of its blow), its top on
+a plane slanted along the blow (`slant`; a blow knocking it over: higher on the side it fell to),
+splintered (`jag`), pushed over toward the fall (`lean`); burnt through, low and black (`char`). Its
+trunk (`_logs`) is turned up to `yaw` as it lands, 0.85 - 1.15 of its length, its far end raised up to
+`pitch`, and broken in two with a `kink` and a `gap` for a `split` share. A tree that burns through
+leaves its black trunk the same way, or for a `snag` share stands as a black snag on its stump. The
+reset puts every stump back as built. `reseedBreaks(s)` (exported, for tests) restarts the module's
+streams.
 
 **`world.destructibles.wreck`** (`class Wreckage`, `wreckage.js`, 2026-11-15; it reverses ADR-107's "a
 felled trunk comes apart where it lands"): what the fight leaves lying until it resets. A felled tree's
@@ -2718,7 +2734,11 @@ hero beside it like a burning tree; a burnt-through log emits `world:impact` 'bu
 Two more kinds since ADR-122 (`KIND` LOG, CHAR, RUBBLE, BONES, BLOCK, SHARDS; the bones, blocks and shards pools
 are only built for a set that needs them: bone pieces, a statue, a floor that can be thrown): `blocks` 12, big carved blocks (a colossus's stages, where its upper half lands and its legs),
 and `shards` 16, flat shards (a floor slab torn out, where it is thrown).
-API (internal to destructibles): `log(x, z, dx, dz, len, r, burn, charred)`, `rubble(x, z, r, M)`,
+The logs come in 6 shapes and the black ones in 4 (ADR-128: 3 / 2 crooked ones with a snapped bough
+among the plain ones, from a stream of their own). A log's `pitch` raises its far end (near PI / 2 it
+stands: a snag); `e.len` is how far it reaches over the ground (its fire, smoke, the grass it flattens),
+`e.size` its own length.
+API (internal to destructibles): `log(x, z, dx, dz, len, r, burn, charred, pitch)`, `rubble(x, z, r, M)`,
 `block(x, z, r, M)`, `shards(x, z, r, M)`, `ignite(x, z, r, k)`, `count`, `burning`, `live`, `update(dt)`,
 `reset()`.
 
