@@ -25,6 +25,7 @@ import { drawBeam, drawBeamCharge, drawBeamSplash, drawBeamClash, drawSplit } fr
 //   beam(ax, ay, az, bx, by, bz, w, k, dt, form)    beamSplash(x, y, z, k, dt, form)
 //   beamClash(x, y, z, dx, dz, k, dt, form)         beamSplit(x, y, z, dx, dz, len, form)   (once or every frame)
 //   vanish(d, x0, z0, x1, z1, form)                 dashGhost(d, form)
+//   signSnap(x, y, z, form)                         stanceGlow(d, dt, form)
 //   auraBurst(x, z, r, form)                        crater(x, z, r, k)
 //   transformGather(x, z, u, dt, form)              transformNova(x, z, r, form)
 // Thrown things are LordFx's pool, grown to 24: throwShot({ kind: 'blast' | 'disc', ... }) (see
@@ -101,7 +102,7 @@ function scorchedGame(real) {
 // inherited helpers they call (_shock, arc, lightning ...) never draw from the stream game code reads
 const ASC_DRAW = [
   'formAura', 'limbTrail', 'muzzle', 'beamCharge', 'beam', 'beamSplash', 'beamClash', 'beamSplit', 'vanish', 'dashGhost', 'auraBurst',
-  'transformGather', 'transformNova', 'crater', 'updateShots',
+  'transformGather', 'transformNova', 'crater', 'updateShots', 'signSnap', 'stanceGlow',
 ];
 
 export class AscFx extends LordFx {
@@ -585,6 +586,65 @@ export class AscFx extends LordFx {
     }
     this.dust(x0, z0, form >= 2 ? 0.9 : 0.7);
     this.dust(x1, z1, form >= 2 ? 1.1 : 0.9);
+  }
+
+  /** THE SIGN's snap (the third wave): the moment he goes, at the two fingers on his brow: a crisp
+   *  flash the size of a hand, strokes thrown out of it, a small ring of air, a short light; pale in
+   *  form 1, gold from form 2, storm-white in form 3. ~20 blobs, once (the vanish's streak follows). */
+  signSnap(x, y, z, form = 1) {
+    if (!Number.isFinite(x + y + z)) return;
+    const gold = form >= 2, storm = form >= 3;
+    const col = storm ? STORM : gold ? GOLD : PALE, end = storm ? STORM_END : gold ? GOLD_END : DUST_END, kind = gold ? K_VOID : K_STEEL;
+    const P = this._toCamera(x, y, z);
+    this._blob(P.x, P.y, P.z, 0, 0, 0, 0.1, 0.2, 0.5, 1.5, 0, K_STEEL);
+    this._blob(P.x, P.y, P.z, 0, 0, 0, 0.18, 0.3, 0.7, gold ? 0.6 : 0.35, 0, kind);
+    for (let i = 0; i < 7; i++) {
+      const a = this.lr() * TAU, sp = this.lrand(1.5, 3.5);
+      const o = this._rec(x, y, z, this.lrand(0.14, 0.26), 0.12, 0.03, "*'", i & 1 ? WHITE : col, end);
+      o.vx = Math.cos(a) * sp;
+      o.vy = this.lrand(-0.5, 1.6);
+      o.vz = Math.sin(a) * sp;
+      o.drag = 4;
+      this._spawn(this.add, o);
+    }
+    this._shock(x, y, z, 0.7, 10, 0.16, 0.3, 0.5, gold ? 0.5 : 0.3, kind, 0.2, 4);
+    super._light({ x, y, z, color: storm ? L_STORM : gold ? L_GOLD : L_PALE, intensity: 2.4, radius: 4, life: 0.14, fade: 0.12 });
+  }
+
+  /** The counter stance (a beat marked `catch`, every frame he is catching): light drawn INTO his
+   *  open palms, the reverse of a muzzle: motes converging on each hand out of the air round it and a
+   *  soft heat on the palm; pale in form 1, gold later. ~10 blobs a frame. */
+  stanceGlow(d, dt, form = 1) {
+    if (!d?.tellPoint || !(dt > 0)) return;
+    const gold = form >= 2, kind = gold ? K_VOID : K_STEEL, col = form >= 3 ? STORM : gold ? GOLD : PALE, end = gold ? GOLD_END : DUST_END;
+    const life = this._frame(), v = d._v2 ?? d._q;
+    if (!v?.set) return;
+    const R = d.tellPoint('fistR', v);
+    const rx = R.x, ry = R.y, rz = R.z;
+    const L = d.tellPoint('fistL', v);
+    const lx = L.x, ly = L.y, lz = L.z;
+    if (!Number.isFinite(rx + ry + rz + lx + ly + lz)) return;
+    if (life > 0) {
+      for (const [x, y, z] of [[rx, ry, rz], [lx, ly, lz]]) {
+        const P = this._toCamera(x, y, z);
+        this._blob(P.x, P.y, P.z, 0, 0, 0, life, 0.24, 0.24, gold ? 0.55 : 0.4, gold ? 0.55 : 0.4, kind);
+        this._blob(P.x, P.y, P.z, 0, 0, 0, life, 0.12, 0.12, 1.0, 1.0, K_STEEL);
+      }
+    }
+    this._stanceAcc = (this._stanceAcc ?? 0) + dt * 34;
+    while (this._stanceAcc >= 1) {
+      this._stanceAcc -= 1;
+      const right = this.lr() < 0.5, x = right ? rx : lx, y = right ? ry : ly, z = right ? rz : lz;
+      const a = this.lr() * TAU, r = this.lrand(0.5, 1.0), h = this.lrand(-0.5, 0.5), lf = this.lrand(0.16, 0.26);
+      const mx = x + Math.cos(a) * r, my = y + h, mz = z + Math.sin(a) * r;
+      const o = this._rec(mx, my, mz, lf, 0.12, 0.04, ".'", col, end);
+      o.vx = (x - mx) / lf;
+      o.vy = (y - my) / lf;
+      o.vz = (z - mz) / lf;
+      o.alpha = 0.3;
+      o.alphaEnd = 1;
+      this._spawn(this.add, o);
+    }
   }
 
   /** The shape he leaves behind as a dash starts: a light afterimage (pale in form 1, gold later)

@@ -27,7 +27,7 @@ const { Destructibles } = await imp('src/world/destructibles.js');
 const { Scars } = await imp('src/world/scars.js');
 const { Player } = await imp('src/entities/player/player.js');
 const { Ascendant } = await imp('src/entities/enemies/ascendant/ascendant.js');
-const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, STREAKS, TRANSITIONS, realise } = await imp('src/entities/enemies/ascendant/moves.js');
+const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, COUNTER_LISTS, STREAKS, TRANSITIONS, realise } = await imp('src/entities/enemies/ascendant/moves.js');
 const { TUNING } = await imp('src/entities/enemies/ascendant/tuning.js');
 const { Hud } = await imp('src/ui/hud.js');
 const { Bindings, installActions } = await imp('src/core/bindings.js');
@@ -58,7 +58,7 @@ const weightIn = (def, f) => (Array.isArray(def.weight) ? def.weight[f - 1] ?? 0
 const formsOf = (name) => {
   const def = MOVES[name];
   if (def.transition) return [def.phase - 1];
-  if (def.counter) return [COUNTERS.indexOf(name) + 1, STREAKS.indexOf(name) + 1].filter((f) => f > 0);
+  if (def.counter) return [...COUNTER_LISTS.map((L, i) => (L.includes(name) ? i + 1 : 0)), STREAKS.indexOf(name) + 1].filter((f) => f > 0);
   return [1, 2, 3].filter((f) => weightIn(def, f) > 0);
 };
 
@@ -417,6 +417,7 @@ async function scenarioData() {
   }
   for (const [ph, mv] of Object.entries(TRANSITIONS)) assert(MOVES[mv]?.transition && MOVES[mv].phase === Number(ph) && Math.abs(realise(mv, Number(ph) - 1, () => 0.5).beats[0].impact - TUNING.transform.windup) < 1e-6, `form ${ph} begins with ${mv} (${TUNING.transform.windup} s, then the ring)`);
   assert(COUNTERS.length === FORMS && COUNTERS.every((n, i) => MOVES[n]?.counter && realise(n, i + 1, () => 0.5)) && STREAKS.every((n) => MOVES[n]?.streak), 'every form has its counter and its flurry');
+  assert(COUNTER_LISTS.length === FORMS && COUNTER_LISTS.every((L, i) => L.includes(COUNTERS[i]) && L.every((n) => MOVES[n]?.counter && !MOVES[n].streak && realise(n, i + 1, () => 0.5))), `every counter in a form's list is a counter move realisable in that form (${COUNTER_LISTS.map((L) => L.join('+')).join(' / ')})`);
   assert(TUNING.flashLead <= TUNING.minHitGap + 1e-9, `the glint (${TUNING.flashLead} s) fits inside the tightest gap (${TUNING.minHitGap} s)`);
   const gap = (f) => { const A = realise(f === 1 ? 'gates' : f === 2 ? 'goldenGates' : 'thousand', f, () => 0.2); const h = A.beats.filter((b) => !b.feint); return h[1].impact - h[0].impact; };
   const gaps = [1, 2, 3].map(gap);
@@ -767,6 +768,48 @@ async function scenarioEngine() {
   delete MOVES.__air;
   delete MOVES.__beam;
   assert(p.state !== 'lock', 'and it ends');
+  // 5. the counter stance (`catch`, the third wave): a feint beat with a bait hold; a cut into it is
+  //    caught (no damage, the hero bounced, the punish beat at once); none: the move ends there, open
+  MOVES.__stance = {
+    label: 'test: stance', phase: 1, weight: 0, manual: true, hidden: true, cooldown: 0, band: [0, 9], recovery: 0.4,
+    beats: [
+      { tell: N, windup: 0.45, fixed: true, hold: [0.8, 0.8], active: 0.05, damage: 0, feint: true, catch: { from: 0.3, open: 0.6 }, part: 'palms', close: 0, track: 0.9, keys: [] },
+      { tell: R, windup: 0.5, active: 0.1, damage: 9, knockback: 1, knockdown: true, zone: { kind: 'ring', r: 3 }, ring: 3, part: 'palms', close: 0, keys: [] },
+    ],
+  };
+  p.debug.god = false;
+  const stance = (cut) => {
+    settle(G);
+    d.position.set(0, 0, -2);
+    d.yaw = 0;
+    place(G, 1.9);
+    run(G, 0.3);
+    p.debug.heal();
+    const hp0 = d.hp, ph0 = p.hp, h0 = G.hits.length, c0 = br.stats.caught, m0 = br.stats.stanceMiss, b0 = G.counts['player:bounced'] ?? 0;
+    const A = realise('__stance', 1, () => 0.5);
+    let caughtAt = null, punishTell = null, openT = 0, guardDownT = 0, glow = 0;
+    const sg = d.fx.stanceGlow;
+    d.fx.stanceGlow = (...a) => { glow++; return sg?.apply(d.fx, a); };
+    G.watch = (n, e) => { if (n === 'dragon:guard' && e?.caught && caughtAt === null) caughtAt = br.act?.t ?? -1; if (n === 'combat:tell' && e?.attack === '__stance' && punishTell === null) punishTell = game.time; };
+    d.debug.trigger('__stance');
+    const t0 = game.time;
+    run(G, 5, () => {
+      const a = br.act;
+      if (cut && a?.name === '__stance' && a.t > A.beats[0].start + 0.5 && a.t < A.beats[0].impact && ((game.realTime * 60) | 0) % 6 === 0) input.click(0);
+      if (d.mode === 'foot' && game.time - t0 < 3) { openT += DT; if (br.raiseT > 0 && !br.guardUp()) guardDownT += DT; }
+    }, () => game.time - t0 > 2.6 && d.mode === 'foot' && p.state !== 'bounce');
+    d.fx.stanceGlow = sg;
+    G.watch = null;
+    return { caughtAt, punishTell: punishTell === null ? null : punishTell - t0, dHp: hp0 - d.hp, pHp: ph0 - p.hp, hits: G.hits.slice(h0).filter((h) => h.attack === '__stance'), caught: br.stats.caught - c0, miss: br.stats.stanceMiss - m0, bounced: (G.counts['player:bounced'] ?? 0) - b0, openT, guardDownT, glow, A };
+  };
+  const c = stance(true);
+  // (the event is sent after the jump: the move's clock already stands at the stance beat's end)
+  assert(c.caught === 1 && c.miss === 0 && c.dHp === 0 && c.bounced >= 1 && c.caughtAt !== null && Math.abs(c.caughtAt - c.A.beats[0].end) < 1e-6, `a cut into the stance is CAUGHT (${c.caught}; the move jumped to the stance's end, ${c.caughtAt?.toFixed(2)} s), no damage to him (${c.dHp}), the hero's blade thrown back (${c.bounced})`);
+  assert(c.hits.length >= 1 && c.hits[0].tell === TELL.RED && c.glow > 5, `then the punish beat comes at once and reaches the hero (${c.hits.map((h) => h.r).join(' ')}); the light drawn into his palms was drawn (${c.glow} frames)`);
+  const m = stance(false);
+  assert(m.caught === 0 && m.miss === 1 && m.hits.length === 0 && m.guardDownT > 0.4 && m.guardDownT < 1.2, `a stance nobody cut into ends at its impact with no punish (${m.hits.length} hits) and he is open with his guard down (${m.guardDownT.toFixed(2)} s)`);
+  delete MOVES.__stance;
+  p.debug.god = true;
 }
 
 // ================================================================== scenario: pace (the director's meter)

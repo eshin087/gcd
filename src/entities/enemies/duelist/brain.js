@@ -66,6 +66,14 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //                          and calls d.onImpact, but gives no zone result and no world blow of its own.
 //   T.airFall { g }        (TUNING) a reaction / break / death that starts in the air drops him to the
 //                          floor at `g` m/s² instead of snapping the root to y = 0.
+//   catch: { from, open }  (Tian Lei's third wave, 2026-11-22) on a FEINT beat with a bait `hold`: THE
+//                          COUNTER STANCE. From `from` (0.3) of the windup to the impact he is catching
+//                          (brain.catching() → the beat): a sword cut that reaches him is CAUGHT
+//                          (duelist.takeHit: no damage, the hero's blade thrown back as by a deflect,
+//                          `dragon:guard { deflect, caught }`) and the move jumps to the beat's end
+//                          (onCaught), so the beats after it, the punish, start at once. Nothing caught
+//                          by the impact: the move ENDS there (its later beats never play) and he stands
+//                          open `open` s (0.6) with his guard down. brain.stats.caught / stanceMiss.
 // startLock(o) takes overrides of TUNING.lock (`dist`: the lock at range, player.startBladeLock).
 // ---------------------------------------------------------------------------------------------------
 
@@ -174,7 +182,7 @@ export class DuelBrain {
     this.seek = null;
     this.seekNext = 0;
     this._phaseSeen = 0;
-    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, toldFeints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0 };
+    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, toldFeints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0, caught: 0, stanceMiss: 0 };
     this.guardLog = Array.from({ length: 64 }, () => ({ t: -1, kind: '', what: '', with: '' }));
     this._gi = 0;
     this.ledger?.reset();
@@ -664,6 +672,39 @@ export class DuelBrain {
     a.t = t;
   }
 
+  /** The counter stance he is in now (a beat marked `catch`, inside its catching window), else null. */
+  catching() {
+    const a = this.act;
+    if (this.d.mode !== 'act' || !a) return null;
+    const t = a.t;
+    for (const b of a.beats) {
+      const C = b.def.catch;
+      if (!C || b.caught || b.catchOver) continue;
+      if (t >= b.impact) return null;
+      const from = b.start + clamp(fin(C.from, 0.3), 0, 1) * (b.impact - b.start);
+      return t >= from ? b : null;
+    }
+    return null;
+  }
+
+  /** A cut was caught in stance beat `b` (duelist.takeHit): the move jumps to the beat's end, so the
+   *  punish after it starts now. */
+  onCaught(b) {
+    if (!b || b.caught) return;
+    b.caught = true;
+    this.stats.caught++;
+    this.skipTo(b.end);
+  }
+
+  /** The stance caught nothing by its impact: the move ends here, and he is open `open` s. */
+  _stanceMiss(a, b) {
+    const open = Math.max(0, fin(b.def.catch?.open, 0.6));
+    this.stats.stanceMiss++;
+    this._toFoot(open);
+    this.raiseT = Math.max(this.raiseT, open);
+    this.wardK = 0;
+  }
+
   /** The hero is parrying this blow (duelist.parryContact): the pose shown is held `off` s back on
    *  the strike, where the blade meets his guard; `rebound`: the blow is only deflected (the move
    *  goes on), so the blade is thrown back off the guard before the clip takes over again. */
@@ -1091,6 +1132,13 @@ export class DuelBrain {
     if (!cur && this.aiEnabled && !a.def.transition && this.guardUp() && this._evade(s)) return;
     // the hits: the zone through the active frames, one result per beat
     for (const b of a.beats) {
+      // a counter stance that caught nothing by its impact: the move ends there (the beats after it
+      // were its punish), and he is open
+      if (b.def.catch && !b.caught && !b.catchOver && t >= b.impact) {
+        b.catchOver = true;
+        this._stanceMiss(a, b);
+        return;
+      }
       if (b.feint || b.done || t < b.impact) continue;
       if (!b.struck) {
         b.struck = true; // the impact's first frame: the actor's own FX (a bolt, a shock ring)

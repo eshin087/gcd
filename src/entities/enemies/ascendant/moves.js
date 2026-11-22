@@ -428,6 +428,12 @@ export const MOVE_NAMES = Object.keys(MOVES);
 export const STREAKS = Object.freeze(['streakFlurry', 'streakFlurry2', 'streakFlurry3']);
 export const TRANSITIONS = Object.freeze({ 2: 'ascend2', 3: 'ascend3' });
 export const COUNTERS = Object.freeze(['riposte', 'riposte2', 'riposte3']);
+/** Every counter of each form (the kit draws one at random out of his deflect; the first is COUNTERS'). */
+export const COUNTER_LISTS = Object.freeze([
+  Object.freeze(['riposte']),
+  Object.freeze(['riposte2']),
+  Object.freeze(['riposte3']),
+]);
 
 // ---------------------------------------------------------------- reaction clips (no hits)
 // His guard is his FOREARMS (the engine's guard keys, duelist/guard.js semantics): `wardHold` both

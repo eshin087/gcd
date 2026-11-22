@@ -32,6 +32,8 @@ const KINDS = {
   guard: { text: 'GUARDED', life: 0.7, rise: 16, pop: 1.15 },
   // ... or beat it away: the hero's blade is thrown back and his counter is coming (red: a warning)
   deflected: { text: 'DEFLECTED', life: 0.9, rise: 20, pop: 1.5, cls: 'danger' },
+  // ... or caught it in his counter stance (dragon:guard with `caught`; Tian Lei): his punish is coming
+  caught: { text: 'CAUGHT', life: 0.9, rise: 20, pop: 1.5, cls: 'danger' },
   // two cuts met (combat:clash): neither landed
   trade: { text: 'CLASH', life: 1.0, rise: 24, pop: 1.6, cls: 'deflect' },
   // ... and the flash counter (player:counter): the cut went through his blow and through him
@@ -105,7 +107,7 @@ export class Callouts {
     game.events?.on?.('player:plungeHit', (d) => {
       if (d?.execution) this.call(game.dragon?.lives ? 'deathblow' : 'exec');
     });
-    game.events?.on?.('dragon:guard', (d) => this.call(d?.deflect ? 'deflected' : 'guard'));
+    game.events?.on?.('dragon:guard', (d) => this.call(d?.caught ? 'caught' : d?.deflect ? 'deflected' : 'guard'));
     game.events?.on?.('combat:clash', (d) => {
       if (!d?.counter) this.call('trade');
     });
