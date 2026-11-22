@@ -482,9 +482,11 @@ export class FoxClones {
         pz += (dz / dd) * (SEP - dd);
       }
       if (px || pz) {
-        const k = Math.min(1, dt * 3);
-        a.x += px * k;
-        a.z += pz * k;
+        // (through _step: pushed apart, a self still keeps to his ground and out of the stones)
+        const k = Math.min(1, dt * 3), vx = a.pilot.groundVel.x, vz = a.pilot.groundVel.z;
+        this._step(a, px * k, pz * k, dt);
+        a.pilot.groundVel.x = vx;
+        a.pilot.groundVel.z = vz;
       }
     }
   }
