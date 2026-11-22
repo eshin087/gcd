@@ -15,9 +15,11 @@ import { TERRAIN_TUNING } from './tuningTerrain.js';
 export const TUNING = {
   name: 'TIAN LEI, THE LAST ASCENDANT',
   forms: 3,
-  // each form's bar (the tuning pass: 1500 → 4200 with the meter below: the 95 % bot's fight went from
-  // 51 s to the 2.5 - 4 minute target; MOVES.md's 1500 was a starting value)
-  hp: 4000,
+  // each form's bar. Measured over ten seeds with the mortal bots (COMBAT.md "Tian Lei" → Measured): at
+  // 1500 the 95 % bot's fight is 48 s; at 2000 (with the meter below) 66 s and the 85 % bot wins 4 of 10;
+  // at 4000 108 s, and the weaker bots die in form 1. The fight's length is the owner's to set after
+  // playing it: these two numbers and `flurry.posture` are the levers.
+  hp: 2000,
   phaseAt: [1], // no gates inside a bar
   radius: 0.42,
   // his drawn size: 1.12 x the hero's (visual only: every reach below is in gameplay metres)
@@ -40,7 +42,7 @@ export const TUNING = {
 
   // ---- posture (the Sekiro rule, as the Lord's)
   posture: {
-    max: [2400, 2700, 2900], // (was [460, 520, 600]: the tuning pass, with hp and flurry.posture)
+    max: [900, 1000, 1100], // (the first wave's [460, 520, 600] made a form 16 s for a parrying bot; [2400, 2700, 2900] with hp 4000 lost the weaker bots form 1: the lead's middle, 2026-11-21)
     hit: { light: 5, heavy: 16 },
     guard: { light: 8, heavy: 20 },
     regenDelay: 2.2,
