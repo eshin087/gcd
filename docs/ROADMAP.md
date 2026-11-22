@@ -195,7 +195,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `?chip=a`, the Lab's WORLD -> Bites; world test `bite`
 - [x] The blade stops on what it cannot cut through: freeze, shake, sparks, sticks in wood, thrown back; integ `bladestop` (the owner: "Keep it")
 - [x] Chips knocked out of the struck face toward the striker
-- [ ] The owner picks: off or on (then it becomes the default)
+- [x] The owner picks: on (2026-11-21); `?chip=0` turns it off
 - [ ] Follow-ups:
   - [ ] Frame cost of the extra vertices on the phone (Cinderwood 0.92 M -> 1.07 M)
   - [ ] The ground breaks: pits and torn earth where a hard blow lands

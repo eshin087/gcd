@@ -2757,8 +2757,8 @@ structure of a tree its size, falls with at least `out` 0.55 of its way pointing
 leaning one the way it leans, which was turned outward when it leaned), and where it lands strikes the
 trees behind at `domino` 1.4 × its weight (0.7 elsewhere).
 
-**Bites** (2026-11-21, ADR-132; `BREAK.chip`; behind the look switch `?chip=a`, `chipLook()`, off
-by default until the owner picks). A piece is the BRICKS it is drawn with: its triangles, two that
+**Bites** (2026-11-21, ADR-132; `BREAK.chip`; the look switch `?chip=`, `chipLook()`: on (`a`) by
+default since the owner's pick the same day, `?chip=0` turns them off). A piece is the BRICKS it is drawn with: its triangles, two that
 share their longest edge and lie flat together (cosine >= 0.9: the halves of a face of a trunk, a
 pillar, a stone) being one brick; foliage stays single triangles. A blow that takes structure from a
 piece (`_hit` -> `_bite`) takes bricks from it where it struck: of the bricks within the blow's reach
@@ -2781,8 +2781,12 @@ section is used up as the piece's structure runs out.
   m on average; the forest's trees beyond `near` 48 m are cut `far` 2.5 x as coarse. Cinderwood: 0.92
   M vertices drawn -> 1.07 M (the trees' mesh 524 k -> 648 k). So the switch is read when the level is
   built (the Lab's Bites button reloads the page), and at each blow.
+- Every piece's bricks are made when the level is built (Cinderwood's ~620 range pieces: ~0.2 s in
+  Node; the depth search walks a dense grid of the bricks' centres, `brickSink`, ~O(n): the Cinder
+  Tree's trunk, 3000 bricks, in ~9 ms). Made in play they cost a frame a piece, and a roar's front
+  reaches the whole wall in half a second.
 - A 'range' piece: `RangeBody.bite(x, y, z, reach, share, cap, out)` (world, at home; its bricks are
-  made at its first bite, or four pieces a frame once bites are on: `nb`, `btri`, `cen`, `tpart`,
+  made at the build, or at its first bite: `nb`, `btri`, `cen`, `tpart`,
   `bit`, `pBit`, `pN`, `nBit`, `bnor` the way in, `bdep` how far), then `write()` sets back or folds
   each taken brick after the parts are written (so it stays so while the piece shudders, leans,
   falls, is carried); `home0()` clears them. `partGone(i)` -> share. With bites on a tree no longer
@@ -2808,11 +2812,15 @@ section is used up as the piece's structure runs out.
   (not the execution) that meets a piece it does not cut through, `minH` 0.6 m or taller, stops there:
   the attack clock goes back to the middle of that frame's travel, the frame freezes (`freeze` wood
   0.075 s, stone / metal / bone 0.095), the camera shakes (`shake` 0.14 / 0.2, x 1.3 for a heavy),
-  steel on stone or metal throws sparks (`fx.sparks`); `_tickAttack` holds the pose through the freeze
+  steel on stone or metal throws sparks (`fx.sparks`); only on contact (`_bladeTouches`: the steel
+  within `touch` 0.25 m of the piece's footprint, the blade's own hit radius); `_tickAttack` holds the pose through the freeze
   and `stick` (wood 0.11 s, the blade in the cut; stone 0) and then throws the blade back (`_bounce`,
   `push` 0.25 / 0.45 m away from the piece; an attack again after `TUNE.bounceAttack`). No
   `player:bounced` (that is a duelist's deflection: the feed and the pad read it). A cut that breaks or
   fells what it meets goes through, with a `through` 0.05 s freeze. Integration scenario `bladestop`.
+  Training: a situation marked `clear` (built on the hero's own strikes: `foeBuild`) puts him where no
+  standing piece is within his sword's reach (`_crowded`: 2.6 m), turning round the boss, else
+  bringing the boss in toward the arena's middle (`CLEAR_SPOTS`).
 
 **The edge of the open ground** (`world/edge.js` `class Edge`, numbers `BREAK.edge`; 2026-11-21, ADR-125).
 Where the hero and the boss may go follows what still stands of a set's wall. A set asks for it by

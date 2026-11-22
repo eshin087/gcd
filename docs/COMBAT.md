@@ -2014,8 +2014,8 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   blows and bite it in full. A duelist cuts a pillar down in about ten blows, three of his heavy ones.
   Every blow leaves a mark as big as it was hard; a hard one cracks the floor, and one of power 1.2 or
   more leaves a **crater** (a rim of thrown-up earth and a charred floor until the reset).
-- **Bites: a piece loses its letters where it was struck** (2026-11-21, ADR-132; behind `?chip=a`,
-  the Lab's WORLD -> Bites; off until the owner picks). Every tree, stone, boulder, pillar, statue,
+- **Bites: a piece loses its letters where it was struck** (2026-11-21, ADR-132; on: the owner's
+  pick; `?chip=0` or the Lab's WORLD -> Bites turns them off). Every tree, stone, boulder, pillar, statue,
   bone and landmark piece is made of bricks, the blocks of letters it is drawn with (about one letter
   cell each at the game camera). A blow takes the bricks nearest where it landed, as many as the
   share of the piece's structure it took: a quick cut on a standing stone a brick or two, a heavy

@@ -4140,6 +4140,18 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   know. Consequence: a swing that meets cover before the boss stops there (behind the switch until
   the owner picks). The owner, shown the frame-by-frame sheet: "Keep it" (2026-11-21): the stop's
   numbers stay as they are (`BREAK.chip.stop`).
+- **On by default (the owner: "Yes, turn it on", 2026-11-21).** The call sites' default is `a`
+  (`lookOf('chip', 'a', 'a')`), so bites are on with no parameter and under `?looks=old` too (a new
+  thing keeps its pick); `?chip=0` is the way back. Not in lookSwitch's PICKED table: that table is the
+  duelists' second pass and its tests check it against the Lab's LOOKS rows, which are per duel level.
+  The frame cost on a phone of the finer bricks (Cinderwood 0.92 M -> 1.07 M vertices drawn) is still
+  not measured. Turning it on found three things, each fixed: (1) working out each brick's depth
+  compared every brick with every other (74 ms for the Cinder Tree's trunk, a frame-time failure in
+  the world budget): now a dense grid, ~9 ms for that trunk, and every piece's bricks are made while
+  the level loads (~0.2 s for Cinderwood), never in play; (2) the Starless Lord's Training situation
+  "Build his streak" stood the hero beside the crater's rim slabs, and his strikes stopped on them:
+  such situations are marked `clear` and stand him on open ground; (3) the world tests of the crown's
+  stages run with `?chip=0`, the path that still has them.
 - **Not done (asked, and worth doing next):** the GROUND itself (the soil and grass of Cinderwood are
   one plane with a glyph shader: a crater is glyph marks and a charred disc; real pits need a dug
   channel in the scorch map or a deformable ground mesh, and a rule for feet); floor slabs (they

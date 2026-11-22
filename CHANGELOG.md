@@ -5,8 +5,8 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Sixty-one pieces of work since 0.4.0:
-- **The letters come off where the blow lands** (2026-11-21, ADR-132; behind `?chip=a` until the
-  owner picks). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
+- **The letters come off where the blow lands** (2026-11-21, ADR-132; on by default, the owner's
+  pick; `?chip=0` turns it off). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
   made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
   struck (the owner: "have the ascii pieces fall of exactly where the player or enemy boss is
   hitting ... like minecraft/lego"): a blade cuts a notch into a trunk at the height it bit; a heavy
@@ -17,7 +17,8 @@ Sixty-one pieces of work since 0.4.0:
   on, the blade STOPS on what it does not cut through (the owner: "the sword should stop when it hits
   it instead of going straight through it"): a freeze, a shake, sparks off stone, a moment stuck in
   wood, then it is thrown back; a cut that fells the thing goes through. The chips fly out of the
-  struck face. Off by default: `?chip=a` (or the Lab's WORLD -> Bites) turns it on.
+  struck face. On by default (the owner tried it behind `?chip=a` first); `?chip=0` or the Lab's
+  WORLD -> Bites turns it off.
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now

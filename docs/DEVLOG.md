@@ -70,6 +70,23 @@ scenario `bladestop`: on, a light cut into a boulder and a dead tree chips each,
 cut at 0.142 / 0.158 s of its 0.230 and bounces; a felling cut goes through; off, the same cuts run
 through to 0.467 s as before. The owner, on the sheet: "Keep it": the stop stays as tuned.
 
+**On by default** (the owner: "Yes, turn it on"). The call sites' default is now `a`; `?chip=0` turns
+bites off. Every test now runs with bites on; the first whole run found three things:
+- `world budget`: destructibles.update worst 73 ms. `brickSink` compared every brick with every other
+  (the Cinder Tree's trunk: 74 ms). Now a dense grid of the centres, the search capped at the depth
+  that matters (max / k), a part with no wall that near set back the most if it is closed (its
+  area-weighted normals cancel) and holed if open: the trunk 9 ms, all of Cinderwood 221 ms. A warm-up
+  a few pieces a frame still broke p99.9 (1.9 ms against 1.5: a tree costs 1 - 2 ms), so every piece's
+  bricks are made at the level's build. Then: avg 0.02 ms, p99.9 0.86, worst 1.2 - 2.1.
+- `lord` TRAINING, "Build his streak, he answers": done in 2.2 s with no flurry. Traced: the hero's
+  cuts stopped on the crater's rim slabs and a shard (2 m away, real contact within the blade's 0.24 m).
+  Moving every situation's hero clear of pieces broke four flurry situations, so it is opt-in:
+  `clear: true` on that one situation (Training `_crowded`, `CLEAR_SPOTS`).
+- `world` WEAR / PLACED: the crown parts no longer drop in stages with bites on (by design); those two
+  scenarios run with `?chip=0`, the path that still has them.
+A contact check (`touch`) first set to 0.15 m made the blade pass a dead tree it had chipped; it is
+0.25 m, the blade's own hit radius.
+
 **Merged with `main`** (the same evening: PR #73 - #75 had landed, the Skybreak Ring and the hero's
 look; they took ADR-129 / 130, Sessions 69 / 70, M1.54 / 55; then PR #76, the phone, took ADR-131 / Session
 71, so this is ADR-132 / Session 72 / M1.56).
