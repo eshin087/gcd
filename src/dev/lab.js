@@ -836,6 +836,14 @@ export class Lab {
       b.title = 'an unanswered draw kills (on) or deals TUNING.draw.damage (off)';
       button(grid, 'Sheath?', () => this._status(`sheath: ${d.sheath?.()}`, 'ok')).title = 'his sheath now: carry / settled / drawn';
     }
+    // the hero's One Breath (ADR-146; game/unlocks.js): learned or not
+    const U = this.game.unlocks;
+    if (U) {
+      const ob = button(grid, `One Breath ${U.has('oneBreath') ? 'on' : 'off'}`, () => {
+        ob.textContent = `One Breath ${U.toggle('oneBreath', !U.has('oneBreath')) ? 'on' : 'off'}`;
+      });
+      ob.title = 'the draw-slash: guard, then hold heavy (the Sheathed\'s reward; ?tech=draw)';
+    }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);
     this.ui.hp = slider(row, { min: 0, max: 100, step: 1, value: 100 }, (v) => {

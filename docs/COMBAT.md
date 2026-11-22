@@ -119,6 +119,10 @@ The riskier the answer, the more it pays. From safest to riskiest:
 | Perfect dodge | red, black | the flurry (the plunge on the wyrm): as many blows as the streak counts, the crit window |
 | Perfect parry (≤ 0.08 s) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
 | Flash counter (attack ≤ ~0.14 s before his blow) | a blade's white or heavy blow | 70 damage and 60 posture at once, he reels, the crit window; too late and his blow lands |
+| Held guard (ADR-144) | the Sheathed's draw | no health; the whole guard meter, the guard knocked open 0.8 s, thrown back; he re-sheathes unpunished |
+| Parry (ADR-144) | the Sheathed's draw | as any blue flare blow (the counter), and he is caught with the blade out for 1.5 s |
+| Nothing (ADR-144) | the Sheathed's draw | death (`TUNING.draw.lethal`; off: 110) |
+| One Breath's draw counter (ADR-146, once learned: released ≤ ~0.12 s before) | a blade's white or heavy blow | 46 damage and 40 posture, he reels; no crit window |
 
 So the streak is **built** on white blows (parries, perfect dodges, clashes) and **cashed** on a red
 blow (the flurry) or a parried last blow (the riposte).
@@ -313,6 +317,11 @@ the sword wrist before a backhand and splits from it as the cut goes out, and en
 line through the body against the blade, out of its path (swings.js `FH`); he walks through them:
 the lead foot changes with every hit. The slam and the charged cleave are two-handed, the free fist
 shown on the grip only once the hand is there (`OFF_SNAP`).
+**One Breath** (ADR-146; `ONE_BREATH`, learned by beating the Sheathed, `?tech=draw`): guard, then hold HEAVY
+(on touch: slide from BLOCK onto HEAVY and hold): the draw stance (the iai's coil at the right hip; no moving
+or guarding, a roll leaves it); release: a 5 m blink step along his aim, 46 damage, 0.55 s recovery. A white or
+heavy blade blow met by the cut is beaten aside (the draw counter: 46 damage, 40 posture, he reels, no crit
+window). A red or black blow lands on him in the stance. Not learned, the same input is the cleave's charge.
 
 | Move | Input | Timing (windup / active / recovery) | Damage | Posture | Notes |
 |---|---|---|---|---|---|
@@ -1880,6 +1889,73 @@ Storm's held tiles are hard to see against the aura. A blast stopped by cover is
 arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
 east.
 
+## The Sheathed (2026-11-22, ADR-144 – ADR-146; `?level=grove`)
+Lu Wusheng, a wandering swordsman, kneels before a mound of swords in the Windless Grove. His blade
+stays in the scabbard until one blink-fast draw the hero must parry or die. Everything else he does is
+blunt: the scabbard, the pommel, a shoulder, a foot. Three phases (`TUNING.phaseAt` [1, 0.66, 0.36]);
+harder means more pressure and more kinds of draw, never more damage (the draws are `fixed`; `damageScale` 1).
+
+**The draw's rule (ADR-144), one for the whole fight.**
+
+| Answer | What happens |
+|---|---|
+| Parry (pressed at most 0.22 s before it lands) | the counter of a blue flare blow; his string ends; he is caught with the blade out for 1.5 s (`TUNING.draw.caught`) |
+| Perfect dodge | clean; a streak pip and slow-mo where the hero stands; his re-sheathe is the opening |
+| Dodge (i-frames, or out of the line) | clean; nothing paid |
+| Held guard | no health lost; the whole guard meter gone, the guard knocked open 0.8 s, thrown back 2.4 m (`GUARD.black`); he re-sheathes unpunished |
+| Nothing, a late press, a swing that does not meet it | death (`TUNING.draw.lethal`: maxHp x 1.5; off: `draw.damage` 110 of 160) |
+| The hero's own cut meeting it | the trade clash or the flash counter, as for any blade blow |
+
+He never draws on a hero who cannot answer: as a draw's cue comes due, a hero knocked down, staggered,
+guard-open or dead holds it at the cock (up to `draw.wait` 0.6 s), then it is a feint and he gives ground.
+A chain of draws goes on only past a dodge (a draw parried, blocked or landed ends the move); no draw is cued
+within `draw.afterBlock` 1.1 s of a blocked one. A draw's tell (`combat:tell`) goes out with its click. No red
+or black blow is lethal. While the blade is out he has no guard at all (a draw's recovery is open to its
+end): he cannot be opened while sheathed, his draw is the danger, and the draw answered is the opening.
+
+**How it reads** (the blade's travel is never seen; the windup at least 0.95 s, a chain's later draws 0.78):
+the SETTLE (the first third: he stops, turns side-on and sinks, the sword passes to his left hip, the right
+hand comes onto the hilt; only `falseSettle` does the same and it never clicks); the STILLNESS (the cock, held
+0.15 - 0.75 s, never the same: nothing moves, the music ducks under a low breath that cuts to silence, a
+pinpoint of pale light at the scabbard's mouth grows into a short thread); the CLICK (0.3 s before the cut,
+the engine's cue: a dry tick and a short high ring, the blue flare through the scabbard's mouth); the CUT
+(one frame at the cock, the next at the end of the cut up to 4.5 m on; one white line in the fire field);
+the RE-SHEATHE (1.15 s: the follow-through held, a flick, the blade laid on the left hand, slid home, the
+click, the sword passed back to the right hand). The grove falls on that click, not on the cut.
+
+**His moves** (windups at phase 1's scale; N white, B heavy, B* blue flare, R red, K black):
+
+| Move | Phase | Tell | Windup s | Damage | Notes |
+|---|---|---|---|---|---|
+| Knocking at the Gate | 1 | N | 0.46 | 12 | pommel check |
+| The Lintel Falls | 1 | B | 0.6 | 22 | two-handed scabbard overhead |
+| Three Refusals | 1 (2: +B) | N N N (B) | 0.46 / 0.34 / 0.34 (0.42) | 11 / 11 / 12 (20) | the deflect chain |
+| Cutting Reeds | 1 | R | 0.64 | 22 | the scabbard at the ankles; knockdown |
+| Shutting the Door | 1 | B | 0.52 | 18 | shoulder check, knockback 3.4: it makes a draw's range |
+| Crossing the Ford | 1 | N N N | 0.5 / 0.36 / 0.36 | 12 / 10 / 14 | glide, kick, the butt |
+| Tapping Stone | 1 | R, mikiri | 0.68 | 26 | the scabbard's butt like a spear |
+| Answering Knock | counter | N, B | 0.46 / 0.4 | 14 / 20 | out of a deflect |
+| **One Breath** | 1 | **B* draw** | 1.1 + 0.15 - 0.75 | lethal | a blink of up to 4.5 m, a 5.2 m line; cooldown 11 / 8 / 6 s |
+| Lightless Draw | 1 | K | 1.45 + 0.1 - 0.5 | 38 | the charged blow; the bare blade; never lethal |
+| Ten Thousand Leaves | flurry | N each | | 9 | his answer to a streak of guards |
+| Moon Leaves the Water | 2 | B* draw | 0.95 + 0.1 - 0.55 | lethal | a rising draw from a crouch, close |
+| A Thousand Li | 2 | B* draw | 1.2 + 0.15 - 0.6 | lethal | he crosses up to 13 m and ends 3 m past the hero, back turned; the hit covers the path |
+| No Fourth Refusal | 2 | N N N B* | 0.46 / 0.34 / 0.34 / 0.9 | 11 / 11 / 12 / lethal | |
+| The Hand That Does Not Draw | 2 | feint, N | 0.75, 0.46 | 14 | the stance, no click, no flare |
+| The Blade Goes Home | 2 | B*, B | as One Breath, + 0.62 | lethal / 18 | the second cut only past a dodge |
+| A Thumb's Width | to 2 | R | 1.7 | 10 | ring 6, knockback 6 |
+| Answering Draw | counter, 3 | N, B* | 0.46 / 0.9 | 14 / lethal | |
+| Three Autumns | 3 | B* B* B* | 1.0 / 0.78 / 0.78 | lethal each | from three sides; re-sheathed in motion |
+| The Sound Arrives Late | 3 | R x3 (x4) | a hazard | 24 each | lines across the ground cut one by one, each cued, told to the ledger, placed by the fairness guard |
+| The Held Breath | to 3 | R | 1.6 | 10 | ring 6.5, knockdown; on its click every stalk within 9 m falls |
+
+**Measured** (sheath.mjs, 2026-11-22). PACE (a steady defender that guards white and blue blows and rolls
+red, black and the draws; 60 s a phase, seeds 4242 / 7 / 99): 51.9 - 55.1 / 70.7 - 75.1 / 76.3 - 79.7 cues a
+minute (means 53.4 / 72.4 / 78.3), longest gap 3.17 / 2.53 / 2.75 s, 0 conflicting cues. Slower than Shen Hui
+(77 / 92 / 100) on purpose. STRATEGY (god mode, seeds 4242 / 7): mixed 39 / 32 s, parry 41 / 43 s, dodge 76 /
+66 s, block-only 49 / 57 s; the block-only bot is never killed by a draw, mortal too. TIMING: every contact
+within 0 ms of its flash + 0.3 s. Not measured: a human on the phone; the draw's read at the phone's camera
+was judged from stills only.
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's

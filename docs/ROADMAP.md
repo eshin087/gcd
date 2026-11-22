@@ -184,6 +184,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.56 — A fifth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
+- [x] `?level=grove`: the bamboo grove (light pieces), the Sword Grave, the paving; `?grove=a|b|c`
+- [x] Lu Wusheng, the Sheathed: three phases, the sheath on the rig, the draw's rule (parry or die, a held
+      guard never hurt, the honor gate), the grove falling on the click, the hanging cuts
+- [x] One Breath, the first fixed reward (`game/unlocks.js`): guard + hold heavy, the draw counter
+- [x] Lab, Training, `tests/integration/sheath.mjs`
+- [ ] The owner's picks from the sheets: his body, the cut, the grove's light
+- [ ] His own score (borrowed tracks until an audition page)
+- [ ] A human playtest of the draw on the phone; One Breath's balance bot on Shen Hui
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters
@@ -730,8 +739,8 @@ Spec: `docs/specs/ash-disciple.md`.
 
 ## M2 — The boss rush's foundations (revised 2026-11-12, ADR-059)
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
-      Ash Disciple's technique first (the next PR)
-- [ ] Fixed rewards per boss (techniques, weapons, abilities, elements); weapons of other lengths
+      Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
+- [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), ships; the rest (techniques, weapons, abilities, elements); weapons of other lengths
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)
 - [ ] More duelists from the roster (The Moth, The Bell-Warden, The Calligrapher, The Iron Abbot)

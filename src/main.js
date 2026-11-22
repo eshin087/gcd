@@ -22,6 +22,7 @@ import { GamepadControls } from './ui/gamepad.js';
 import { AudioEngine } from './audio/audio.js';
 import { GameFlow } from './game/flow.js';
 import { Lab } from './dev/lab.js';
+import { Unlocks } from './game/unlocks.js';
 
 // Boot + main loop. Builds the shared `game` context every module receives (see ARCHITECTURE.md).
 
@@ -120,6 +121,8 @@ async function boot() {
   game.fx.shed = new ShedDigits(game); // a struck or dissolving body sheds its letters (shedDigits.js)
 
   game.world = new World(game);
+  // what the hero has learned (ADR-146: One Breath, the Sheathed's reward; ?tech=draw|none)
+  game.unlocks = new Unlocks();
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
   pipeline.setSeenThrough(game.player.object3d); // he prints through what covers him (ADR-106)

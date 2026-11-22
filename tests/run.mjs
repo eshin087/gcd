@@ -34,6 +34,7 @@ const TASKS = [
   ...Array.from({ length: TIMING_PARTS }, (_, i) => [`integ timing ${i + 1}/${TIMING_PARTS}`, [INTEG, '.', 'timing'], { ABYSS_TM_SHARD: `${i + 1}/${TIMING_PARTS}` }]),
   ['lord', ['tests/integration/lord.mjs', '.', 'all'], {}],
   ['asc', ['tests/integration/asc.mjs', '.', 'all'], {}],
+  ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}],
   ['duel', ['tests/integration/duel.mjs', '.', 'all'], {}],
   ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}],

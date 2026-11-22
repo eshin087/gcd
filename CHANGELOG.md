@@ -4,7 +4,23 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty pieces of work since 0.4.0:
+Sixty-one pieces of work since 0.4.0:
+- **A fifth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
+  level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
+  round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the
+  Sheathed**: a wandering swordsman whose blade stays in its scabbard. Everything he does with it sheathed
+  is blunt (the scabbard, the pommel, a shoulder, a foot); his draw is one blink-fast cut. He settles, goes
+  still, a click and the blue flare at the scabbard's mouth: parry it, or roll through it; a held guard
+  keeps you alive but is knocked open; nothing else lives. He never draws on a hero who is down or whose
+  guard is broken, and a chain of draws goes on only past a dodge. Three phases: the Sheath (one draw),
+  A Thumb's Width (draws from three stances, a draw that crosses the whole ground), the Held Breath (three
+  draws in a row from three sides, cuts that hang in the air and land on the click). The bamboo falls on the
+  click of the sword going home, never on anyone. **The first fixed reward: One Breath.** Beat him and the
+  hero learns a draw-slash: guard, then hold heavy (on touch: slide from block onto heavy); release to cut
+  five metres in a blink; released just before a foe's white or heavy blow lands, it beats the blow aside.
+  The engine gains optional beat fields (`draw`, `stopOn`, a move's `recoverOpen`) and takeHit's
+  `breaksGuard`; the world's `light` pieces. Three bodies, two cuts and three lights wait for the owner's
+  pick behind `?sheathLook=`, `?drawCut=`, `?grove=`. `tests/integration/sheath.mjs`.
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now

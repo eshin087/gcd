@@ -4071,3 +4071,78 @@ Two separate things:
 longer constants (`hud.fit` reports them). The touch layer has two more pieces of saved state
 (`layout`, `holdAttack`, in `abyss.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
 and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
+## ADR-144 — The draw's rule: parry or die, a held guard never hurt, no draw on a hero who cannot answer (2026-11-22)
+
+- **Context:** the owner asked for level bosses built on the power fantasy of famous characters, as
+  originals. This one, the Sheathed, is a swordsman whose blade stays in the scabbard until one
+  blink-fast draw the hero must "parry or die", and his fixed reward is a draw-slash. The owner has also
+  said twice that a block must never cost health and that defensive play must not be punished. A blow
+  that kills from full health is new in this game; it has to be readable and fair or it is only cruel.
+- **Decision:** one rule for every draw (`draw: true` beats: blue, the flare, `fixed`, wound up at least
+  0.9 s; a draw that follows another in the same move, Three Autumns', at least 0.78 s). Parried: the
+  counter of a blue flare blow as it exists, and he is caught with the blade out for 1.5 s
+  (`TUNING.draw.caught`, the 'caught' reaction). Perfect dodge or dodge: clean. A held guard: no health,
+  the whole guard meter, the guard knocked open, thrown back (takeHit's new optional `breaksGuard`, the
+  black blow's `_guardOpen`). Nothing, a late press, a swing that does not meet it: death
+  (`TUNING.draw.lethal`: maxHp x 1.5; off: `draw.damage` 110). The hero's own cut meeting it: the trade
+  clash or the flash counter, as for any blade blow. Three guards keep it fair: the HONOR GATE (as the
+  cue comes due the actor's `mayCue(beat)` false, a hero knocked down, staggered, guard-open or dead,
+  holds the beat at the cock up to `draw.wait` 0.6 s, then it becomes a feint and he gives ground), a
+  chain of draws goes on only past a dodge (`stopOn: ['blocked', 'hit']`), and no draw is cued within
+  `draw.afterBlock` 1.1 s of a blocked one. A draw's combat:tell goes out with its click (the honor gate
+  may still make it a feint). No red or black beat is ever lethal. While the blade is out he has no
+  guard at all (a move's `recoverOpen: 1`): the draw answered is the opening.
+- **Consequences:** five optional engine fields (`draw`, `stopOn`, a move's `recoverOpen`, a per-phase
+  `cooldown`, the actor hooks `mayCue` / `onHonorFeint` / `onStopOn`), one takeHit field; a kit without
+  them is unchanged (the other bosses' suites pass as before). A block-only bot never dies to a draw
+  (sheath.mjs STRATEGY). The engine's fairness guard never holds a `fixed` beat: a draw that would land
+  too near another answer's impact is feinted, not delayed (measured: 0 - 5 feints a minute in phase 3).
+
+## ADR-145 — The Windless Grove and the Sheathed: the sheath on the rig, light pieces, a grove that falls on the click (2026-11-22)
+
+- **Context:** the fifth level: a bamboo grove at night, a round clearing, a kneeling swordsman before a
+  mound of planted swords (an original wuxia figure: Lu Wusheng; none of the signature look of any
+  existing character). The draw must read though the blade's travel is never seen; the grove must
+  answer the cut without ever cueing a blow or holding up one of his.
+- **Decision:** the level `?level=grove` (`levels/grove.js` WINDLESS, `world/windlessGrove.js`): packed
+  earth 14 m round, a worn round of paving (108 slabs through `breakableFloor`), 366 bamboo stalks as
+  `range` pieces of one mesh (no bone of the rigid batch; their stumps a run of a stump mesh, cut where
+  the blow bit, ADR-128), the Sword Grave (40 planted swords and the great sword), a stele, two lanterns,
+  boulders, a ruined pavilion; `?grove=a|b|c` (moonlit mist, grey dawn, first snow). A new destructibles
+  def field `light: true` (the record's `lightPiece`; `light` there is a burn's point light): its fall is
+  quiet whoever fells it (no tell, no flash, no blow on the hero, no ground mark, no domino sweep, no
+  shake, a soft crash): the bamboo, the grave's swords, the pavilion's posts. The existing `quiet` flag
+  was not enough: it is decided by where a fall lands and still sweeps, marks and shakes. The boss on the
+  duelist engine (`enemies/sheathed/`): THE SHEATH on the rig, `carry` (the sheathed sword in his right
+  hand: the engine's weapon, kit.blade spans the scabbard), `settled` (a left-wrist piece posed along the
+  clip's `lsw`, the scabbard with the hilt in it, the right hand on the hilt), `drawn` (the bare blade;
+  the empty scabbard at the hip), driven by the beat (TUNING.draw grip / home / handOff); after a
+  reaction leaves the blade out he re-sheathes first (the manual move `resheathe`). The cut is one key
+  marked 'h' in the clip: the cubic holds the cock and the next frame is the follow-through. The cut is
+  one white line in the fire field and a pale wake beyond it; nothing breaks at the impact; at the
+  re-sheathe's CLICK (or the moment a parry, stagger or break interrupts it) the sweep runs along the
+  blade's part (power 1.2) and the wake (0.55), and The Held Breath fells every stalk within 9 m.
+  `dragon:sheath {state}` drives the sound (a breath that cuts to silence, the music ducked, the click).
+- **Consequences:** a felled stalk never cues, never hurts and never holds up a blow (sheath.mjs WORLD,
+  PACE: 0 conflicts). His body is drawn through the wyrm's art path (toDragonLook with his own spec),
+  three bodies behind `?sheathLook=a|b|c`, the cut behind `?drawCut=a|b`; none is in `PICKED` until the
+  owner picks from the sheets.
+
+## ADR-146 — One Breath: the first fixed reward, on the smallest store the technique system can read (2026-11-22)
+
+- **Context:** ADR-059 promises a fixed reward per boss; the technique system (slots, a meter, an equip
+  screen, ROADMAP M2) is not built. The Sheathed's reward is a draw-slash, and it should ship working.
+- **Decision:** `game/unlocks.js` `Unlocks` (`has`, `grant`, `all`, `clear`, `toggle`; localStorage
+  `abyss.unlocks.v1`; `?tech=draw|none`), `game.unlocks` (main.js). His death grants `oneBreath`; the
+  victory logs YOU LEARNED ONE BREATH; the help lists it once learned; the Lab toggles it. The input
+  needs no new button: a HEAVY press begun with the guard up (or within 0.2 s of lowering it) and held
+  past CHARGE.hold takes the draw stance instead of the cleave's charge (`_startCharge` redirects only
+  while it is learned: locked, every path is as before). The stance is the iai's coil the hero already
+  has (anim.js flurryPose 'coil', the right hip; no new mesh on his rig: one more object would shift the
+  seeded fights); releasing HEAVY cuts (`ONE_BREATH`, combat.js: a 5 m blink through `_startHeavy`, 46
+  damage, 0.55 s recovery). A white or blue blade blow met by the cut is beaten aside as the flash counter
+  does (`drawCounter`: 46 damage, 40 posture, no crit window; `Duelist.onCounter` takes the two
+  overrides). A red or black blow lands on him in the stance.
+- **Consequences:** the first reward is playable now; the technique system can read `game.unlocks` and
+  take One Breath into a slot later. Not measured yet: a bot that only uses One Breath on Shen Hui
+  (duel.mjs `strategy`) against the mixed bot's time.

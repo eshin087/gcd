@@ -259,12 +259,12 @@ export function createWindlessGrove(U, colliders) {
 
   // ---- the round of paving in the middle: rings of sector slabs, worn (some missing)
   const pavingCol = (px, py, pz) => mul(STONE, (0.55 + 0.4 * fbm2(px * 1.6, pz * 1.6, 2)) * 0.85);
-  const rings = [[0, 1.3, 4], [1.3, 2.5, 9], [2.5, 3.7, 14], [3.7, 4.9, 19], [4.9, 6.0, 24]];
+  const rings = [[0, 1.0, 4], [1.0, 2.0, 10], [2.0, 3.0, 16], [3.0, 4.0, 22], [4.0, 5.0, 28], [5.0, 6.0, 34]];
   for (const [r0, r1, n] of rings) {
     const off = rng() * TAU;
     for (let i = 0; i < n; i++) {
       const a0 = off + (i / n) * TAU + 0.012, a1 = off + ((i + 1) / n) * TAU - 0.012;
-      if (r0 > 2 && rng() < 0.1) {
+      if (r0 > 2 && rng() < 0.07) {
         bare.push({ x: Math.sin((a0 + a1) / 2) * (r0 + r1) / 2, z: Math.cos((a0 + a1) / 2) * (r0 + r1) / 2, r: 0.6 });
         continue;
       }

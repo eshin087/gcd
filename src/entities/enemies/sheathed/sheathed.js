@@ -115,8 +115,21 @@ export class Sheathed extends Duelist {
     this._ring = this._ring ?? { live: false, x: 0, z: 0 };
     this._ring.live = false;
     this.lastBlockedDraw = -9;
+    this._learned = false;
     super.reset();
     if (this.sheathParts) this._setSheath('carry', true);
+  }
+
+  /** He falls: the hero learns One Breath (ADR-146; game.unlocks, absent in the tests' worlds). */
+  _die() {
+    const fresh = this.mode !== 'dying' && this.mode !== 'dead';
+    super._die();
+    if (fresh) this._learned = !!this.game.unlocks?.grant?.('oneBreath');
+  }
+
+  /** The victory's one line (flow.js): only the fight that taught it. */
+  victoryNote() {
+    return this._learned ? 'YOU LEARNED ONE BREATH' : null;
   }
 
   /** His combo links (links.js). */

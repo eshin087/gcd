@@ -822,6 +822,18 @@ parried in state `ghostep` without the crit window; it emits no `player:perfectD
 `game.hitstopScale` every frame (`DEFENSE.flurry.world`, or `reelWorld` for `cut.reel` s after a
 cut, `flurry.reelT`); a cut passes `reel: 1` to `takeHit`, the last blow `reel: 2`.
 `takeHit({ around: true })`: the parry and block arcs are not checked (a foe's flurry).
+`takeHit({ breaksGuard: true })` (ADR-144, the Sheathed's draw): a blockable blow met on a HELD guard runs
+`_guardOpen(attack, nx, nz, true)` (no health, the whole guard meter, the guard knocked open, thrown back, as a black
+blow does to a guard) and returns BLOCKED; a parry press still parries; god mode is untouched.
+**One Breath** (ADR-146; combat.js `ONE_BREATH`): `game.unlocks` (`game/unlocks.js` `Unlocks`: `has(id)`,
+`grant(id)` → true when new, `toggle(id, on)`, `all()`, `clear()`; localStorage `abyss.unlocks.v1`; `?tech=draw|none`;
+absent in the tests' worlds = nothing learned). A HEAVY press begun with the guard up or within 0.2 s of lowering it
+(`hb.guard`) and held past CHARGE.hold: `_startCharge` takes the draw stance instead (state `iai`, the animator's
+`flurry` clip with `flurryAnim.pose = 'coil'`) while `oneBreath` is learned, else the charge as before. In the stance he
+cannot move or guard; a roll leaves it; releasing HEAVY is `_startHeavy(ONE_BREATH)` (a 5 m dash, 46 damage). In `_trade`
+a blade blow met by that cut (`def.drawCounter`, on either path, the late one or the attacker's `onTrade`) is the
+counter with `attacker.onCounter({ ..., damage, posture })` (`Duelist.onCounter` takes the two overrides) and no crit
+window. Emits `player:draw {phase}`.
 **A duelist's streak and flurry** (`enemies/duelist/`, `DEFENSE.foeStreak`; ADR-094): `d.streak`
 counts up in `_guardClash` and is zeroed by a `takeHit` that deals damage (`_streakSet`). In
 `brain.onGuarded`, from `foeStreak.min` a roll (`launch`) makes the guard a deflect for certain and
@@ -2890,7 +2902,7 @@ are heat in the fire field.
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, the Windless Grove `grove`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
@@ -3192,6 +3204,13 @@ data and a subclass with a few hooks.
     line (`CLIP_STEP.air` 0.035 m), so the engine leaves that foot alone. Together the drawn-foot slide is 0.00 – 0.78 m a string
     (the engine's alone 0.06 – 3.72 m, his alone 0.23 – 4.14 m: the integration agent's measures). One
     planner would need a per-kit `CLIP_STEP` hook in `player/anim.js`.
+- **The Sheathed's engine additions (ADR-144; documented again at the top of `brain.js`).** All optional. A beat's
+  `draw: true` (its combat:tell is held to its cue; at the cue `d.mayCue(beat, act)` false holds it at the cock a frame
+  at a time, `T.draw.wait` s at most (`brain._honor`, the shift `brain._delay` the fairness guard's hold also uses),
+  then it is a feint and `d.onHonorFeint` is called; no `_worldBlow` at its impact); a beat's `stopOn: ['blocked', 'hit']`
+  (`brain._stopOn`: `d.onStopOn(act, beat, r)`, the later beats spent, the timeline to the recovery, `act.stopped`); a
+  move's `recoverOpen` (`guardUp`: its recovery's open fraction instead of `T.guard.recoverOpen`); a move's
+  `cooldown` per phase.
 - `director.js`: the pure helpers the brain, the PACE meter and the Lab share (above).
 - `ledger.js` `class CueLedger(brain)`: the impacts he knows are coming and what each asks. Fed from (a) the
   running move's beats (exact), (b) `combat:flash` from any source and `combat:tell` from 'world' or a
@@ -3650,6 +3669,63 @@ parry on the way out turns it home at once; at its turn it asks `brain.fairDelay
 T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
 
+### Lu Wusheng, the Sheathed — `src/entities/enemies/sheathed/sheathed.js` exports `class Sheathed` (ADR-144, ADR-145)
+A `Duelist` with `SHEATHED_KIT`; COMBAT.md → "The Sheathed" has the fight. The kit: `{ id: 'sheathed', TUNING,
+MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'thumbWidth', 3: 'heldBreath' }, counterMove (phase < 3
+'answer', else 'answerDraw'), streakMove () => 'leaves', loadout SHEATH_LOADOUT, poses SHEATH_POSES, blade
+(MUTABLE: the live span by sheath state, gear.js BLADE_SPAN), OPEN ['caught'], REACT { caught } }`. Files:
+tuning.js, moves.js, poses.js (his stance: the sheathed sword hanging low in his right hand; `lsw` the
+scabbard at his left hip), gear.js (`sheath.*` items, `SHEATH_ART` per body, `buildOffSheath`, `SWORD_DIMS`),
+links.js, fx.js (`SheathFx extends DuelFx`), lateCuts.js (`LateCuts`).
+```
+name = 'LU WUSHENG, THE SHEATHED';  kind = 'duelist'
+sheath: 'carry' | 'settled' | 'drawn'   // the sheath on the rig (below); 'dragon:sheath {state}' on a change
+sheathParts { carry, drawn, blade, off, offHilt }   // the meshes it shows / hides (gear.js names them)
+lethal                         // TUNING.draw.lethal at build; debug.lethal(on)
+lastBlockedDraw                // his time of the last draw met on a held guard (the honor gate)
+stats { draws, honorFeints, blocked, parried, landed, clicks, wakes }
+late                           // LateCuts: cast(), frame(dt), busy, lines[], reset()
+mayCue(beat) → bool            // the honor gate (brain.js `_honor`): a `draw` beat waits for a hero who can answer
+onHonorFeint(act, beat)        // the gate gave up: the hand leaves the hilt (footwork)
+onStopOn(act, beat, r)         // a draw blocked (lastBlockedDraw) or landed ended the move
+hitPlayer(o)                   // a `draw` beat: damage maxHp x 1.5 (lethal) or draw.damage, unscaled, + breaksGuard
+onParried(info)                // a parried draw: react 'caught' (draw.caught s) instead of 'recoil'
+tellPoint('hilt')              // the scabbard's mouth (the draw's flare)
+victoryNote()                  // 'YOU LEARNED ONE BREATH' after the fight that granted it (flow.js logs it)
+debug.lethal(on), debug.sheath()
+```
+**The sheath.** `carry`: the sword item's `sheathCarry` meshes (the scabbard in the hand, the hilt behind
+it); kit.blade = BLADE_SPAN.carry, so wards, sweeps, `bladeSegment` and the blunt blows work as for any
+weapon. `settled`: a piece built by `buildOffSheath` hangs on `rig.body`, posed every frame at the left wrist
+along the animator's `off` (the clip's `lsw`; eased); it shows the scabbard with its hilt; the right hand is
+keyed onto the hilt (`arm` 0). `drawn`: `sheathDrawn` + `sheathBlade` show in the right hand, kit.blade =
+BLADE_SPAN.drawn; the off piece shows the empty scabbard. `brainFrame` drives it from the beat
+(`_sheathWant`: a `draw` / `bare` beat settled from `draw.grip` of its windup, drawn from its impact, a
+chain's next draw re-sheathed a fifth into its windup; the recovery of a move that drew: drawn until
+`draw.home`, settled until `draw.handOff`, then carry; a `settle` beat settled, never drawn; broken: drawn);
+in footwork with the blade out it starts the manual move `resheathe` (a feint beat, the re-sheathe as its
+recovery). The draw's cut: one key marked 'h' at u 1 (the cubic holds the cock, the next frame is the
+follow-through), a dash from u 0.99 (the blink). His AFTERPOSE: a scabbard blow's trail is `woodSweep`
+(dull wood), a bare blow's the steel sweep, the cock's `mouthGlint`, the wake's `hairline` until the click.
+**The cut and the grove.** `onImpact` of a draw lays `_wake { ax..cz }` (the blade's part from his position
+along the zone, the wake `T.world.wakeLen` beyond; A Thousand Li's from where his dash began, `pathHit`) and
+draws `fx.drawLine`; The Held Breath lays `_ring`. `_onClick` (the sheath going drawn → settled, or the act
+interrupted) sweeps `world.destructibles` along the blade's part (`T.world.draw`) and the wake (`wake`),
+`kind 'cut'`, at `cutY`, leaves floor marks (`world.scars.ground`), and strikes every stalk within `ringR`
+for the ring; all guarded with `?.`. A Thousand Li is `selfHit` + `pathHit`: `_pathHit` tests the hero
+against the segment he crossed and calls `brain._stopOn` itself.
+**The hanging cuts** (lateCuts.js): `cast()` marks 3 (4 under 18 % HP) lines `T.late.len` m across the hero
+at spread angles, each placed by `brain.fairDelay` (or dropped) and told with `brain.expect` and a
+`combat:tell` (hazard); `frame(dt)` draws them, flashes each `T.late.lead` before it cuts (`combat:flash`
+hazard, red, at the point nearest the hero), cuts (`hitPlayer({ projectile: true })`, a world sweep).
+Its gameplay stream is its own. **The set** (world/windlessGrove.js, ADR-145): `createWindlessGrove`,
+`GROVE` (layout), `GROVE_LOOKS`, `groveOption()` (`?grove=a|b|c`, a reload); breakables: bamboo (range
+pieces of the `bamboo` mesh, stumps in `bambooStumps`, all `light`), graveSword (light, prop), paving and
+flagstone (world/floor.js), stele, lantern, boulder, post (light). Returns createForest's shape + `sky`,
+`grass`, `scarInk`, `option`.
+**Destruction's `light` def field** (ADR-145; destructibles.js): the record's `lightPiece`; its topple is
+`quiet` whoever felled it and its landing does only the crumble and a soft `crash` (weight x 0.25): no ground
+marks, gust, shake, domino sweep or blow on anyone. (The record's own `light` is a burning piece's point light.)
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
@@ -3682,8 +3758,9 @@ Player → hud/audio/fx/flow:
   two bounding steps), `player:lockOn {on}`,
   `player:lock {phase}` (the blade lock with a duelist: phase start / push / won / lost),
   `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade),
-  `player:counter {attack, damage}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
-  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER"),
+  `player:counter {attack, damage, draw}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
+  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER"; draw = One Breath's draw counter, ADR-146),
+  `player:draw {phase}` (One Breath, ADR-146: phase stance = the draw stance taken, cut = released),
   `player:flareCounter {attack, damage, strikes}` (the counter, ADR-118: a blue flare blow was parried and the hero
   answered by himself; fired as its last cut, the counter blow, lands: damage = that blow's, strikes = the
   cuts in all; HUD "COUNTER"),

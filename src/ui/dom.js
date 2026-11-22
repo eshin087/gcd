@@ -1,4 +1,5 @@
 // Tiny DOM helpers shared by the HUD widgets (no framework, no innerHTML with dynamic text).
+import { Unlocks } from '../game/unlocks.js';
 
 export function el(tag, className = '', text = null, parent = null) {
   const e = document.createElement(tag);
@@ -129,6 +130,15 @@ export function button(parent, className, onClick) {
   return b;
 }
 
+/** Has the hero learned id (game/unlocks.js; read when a grid is built)? */
+function learned(id) {
+  try {
+    return new Unlocks().has(id);
+  } catch {
+    return false;
+  }
+}
+
 // Shared controls reference (title, pause menu, help panel): one row per action ('@id': its bound
 // keys, relabelled on a remap) or a fixed key; `only` = shown in that device's grid alone.
 export const CONTROLS = [
@@ -138,6 +148,8 @@ export const CONTROLS = [
   ['@attack', 'light attack · a combo of five'],
   ['@heavy', 'heavy · branches off the combo · hold: charged cleave'],
   ['@block', 'hold block · tap to parry'],
+  // (a fixed reward: shown once learned; game/unlocks.js, ADR-146)
+  ['@heavy', 'guard, then hold heavy: One Breath, the draw · release to cut', null, 'oneBreath'],
   ['@dodge', 'dodge · perfect dodge = Ghostep'],
   ['@sprint', 'sprint (a stick click: until you let go)', 'pad'],
   ['@sprint', 'sprint', 'kb'],
@@ -156,8 +168,9 @@ export const CONTROLS = [
 /** The controls grid for one device ('kb' | 'pad'): keys follow the bindings. */
 export function controlsGrid(parent, dev = 'kb') {
   const grid = el('div', 'ab-ctrls', null, parent);
-  for (const [k, a, only] of CONTROLS) {
+  for (const [k, a, only, unlock] of CONTROLS) {
     if (only && only !== dev) continue;
+    if (unlock && !learned(unlock)) continue;
     const kc = el('span', 'k', null, grid);
     if (k[0] === '@') actionChip(kc, k.slice(1), dev, true);
     else el('span', 'ab-key', k, kc);
@@ -172,6 +185,7 @@ export const TOUCH_CONTROLS = [
   ['ATTACK', 'light: a combo of five'],
   ['HEAVY', 'heavy, branching off the combo · hold: charged cleave'],
   ['BLOCK', 'hold: block · tap: parry'],
+  ['BLOCK→HEAVY', 'slide from block onto heavy, hold: One Breath', 'oneBreath'],
   ['DODGE', 'roll · perfect dodge = Ghostep'],
   ['SLIDE', 'between the four tiles without lifting'],
   ['FLASK', 'drink flask'],
@@ -183,7 +197,8 @@ export const TOUCH_CONTROLS = [
 
 export function touchGrid(parent) {
   const grid = el('div', 'ab-ctrls', null, parent);
-  for (const [k, a] of TOUCH_CONTROLS) {
+  for (const [k, a, unlock] of TOUCH_CONTROLS) {
+    if (unlock && !learned(unlock)) continue;
     el('span', 'ab-key', k, el('span', 'k', null, grid));
     el('span', 'a', a, grid);
   }

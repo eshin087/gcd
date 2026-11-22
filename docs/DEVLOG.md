@@ -5,6 +5,42 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 72: a fifth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
+
+**What changed.** The owner asked for new level bosses on the power fantasy of famous characters, as
+originals; this one is a swordsman whose blade stays in its scabbard until one draw the hero must parry or
+die, with a draw-slash as his fixed reward. Built from the planning session's plan (ADR-144 – ADR-146):
+- `?level=grove`, the Windless Grove (`levels/grove.js`, `world/windlessGrove.js`): 366 bamboo stalks as
+  light range pieces, 108 paving slabs, the Sword Grave (40 light planted swords, the great sword), a
+  stele, lanterns, boulders, a ruined pavilion; `?grove=a|b|c`.
+- Lu Wusheng, the Sheathed (`enemies/sheathed/`): three phases of moves as data, the sheath on the rig
+  (carry / settled / drawn, a left-wrist piece posed by `lsw`), the draw's rule (lethal unanswered, a held
+  guard knocked open and never hurt, the honor gate, `stopOn`, no draw within 1.1 s of a blocked one), the
+  cut as one white line and a wake, the grove falling on the re-sheathe's click, phase 3's hanging cuts
+  (`lateCuts.js`), links, the scabbard's dull trail, the sheath's sounds (a breath, the click; synthesised).
+- Engine (optional fields, other kits unchanged): brain.js `draw` / `stopOn` / a move's `recoverOpen` / a
+  per-phase `cooldown`, `_honor` and `_delay`; player.js takeHit's `breaksGuard`; destructibles.js `light`;
+  duelist.js `onCounter` overrides.
+- One Breath (`game/unlocks.js`, `ONE_BREATH`): guard + hold HEAVY takes the iai's coil stance once learned;
+  release a 5 m blink cut; the draw counter (46 / 40, no crit). The help, the victory line, the Lab toggle.
+- Lab (lethal draw, the sheath, One Breath, LOOKS rows), Training (his own kind, three draw situations),
+  `tests/integration/sheath.mjs` (LEVEL, RULES, DRAW, HONOR, SHEATH, WORLD, TIMING, PHASES, LATE, PACE,
+  TRAINING, REWARD, WIN; STRATEGY opt-in).
+
+**Measured.** PACE 53 / 72 / 78 cues a minute by phase (seeds 4242 / 7 / 99, 60 s each), 0 conflicts;
+STRATEGY (god mode) mixed 32 - 39 s, parry 41 - 43 s, dodge 66 - 76 s, block-only 49 - 57 s and never killed
+by a draw; TIMING 0 ms worst.
+
+**What changed from the plan, and why.** Three Autumns' later draws wind up 0.78 s as the move table says,
+so the rule "every draw >= 0.9 s" became ">= 0.9 s, or 0.78 s for a draw that follows another in the same
+move". The record's `light` field was taken (a burning piece's point light): the def field is `light`, the
+record's `lightPiece`. Shutting the Door 16 → 18 and The Blade Goes Home's second cut blue (18) to sit in
+his damage bands. No `look.js` (nothing is dressed by phase). The PACE defender rolls the draws (parrying
+them made every phase as slow as the caught recoils). One Breath reuses the hero's iai coil (the right
+hip), as the planning session's addendum asked.
+
+**Next / open.** The owner's picks from the sheets (`?sheathLook=`, `?drawCut=`, `?grove=`); the score
+(borrowed tracks); a human on the phone through the draw; One Breath's balance bot on Shen Hui (not run).
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
 **Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also

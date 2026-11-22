@@ -1054,6 +1054,91 @@ async function scenarioPace() {
   }
 }
 
+// ================================================================== scenario: reward (One Breath, ADR-146)
+async function scenarioReward() {
+  out('\n== scenario REWARD (One Breath: locked by default, the store, the stance, the cut, the draw counter) ==');
+  const { Unlocks, UNLOCK_KEY } = await imp('src/game/unlocks.js');
+  const { ONE_BREATH } = await imp('src/entities/player/combat.js');
+  // the store
+  const mem = new Map(), store = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)) };
+  const U = new Unlocks(store, '');
+  assert(!U.has('oneBreath') && U.grant('oneBreath') && !U.grant('oneBreath') && U.has('oneBreath') && JSON.parse(mem.get(UNLOCK_KEY)).includes('oneBreath'), 'the store: granted once, kept in storage');
+  assert(new Unlocks(store, '').has('oneBreath') && !new Unlocks(store, '?tech=none').has('oneBreath') && new Unlocks(null, '?tech=draw').has('oneBreath') && !new Unlocks(null, '').has('oneBreath'), '?tech=none / ?tech=draw, a fresh store');
+  U.clear();
+  assert(!U.has('oneBreath') && U.all().length === 0, 'cleared');
+  // guard (the middle click), then hold HEAVY (the right click)
+  const stance = (G, learned) => {
+    const { game, input } = G;
+    const p = game.player;
+    if (learned) game.unlocks = new Unlocks(null, '?tech=draw');
+    else delete game.unlocks;
+    duel(G, { dist: 6 });
+    p.debug.god = true;
+    input.press(1);
+    run(G, 0.25);
+    input.press(2);
+    run(G, 0.5);
+    return p.state;
+  };
+  {
+    const G = build();
+    const st = stance(G, false);
+    assert(st === 'charge', `locked (no store, the tests' worlds): guard + held heavy is the cleave's charge, as before (${st})`);
+  }
+  {
+    const G = build();
+    const { game, input } = G;
+    const p = game.player, d = game.dragon;
+    const st = stance(G, true);
+    assert(st === 'iai' && p.flurryAnim.pose === 'coil', `learned: the draw stance (${st}, the iai's coil)`);
+    const x0 = p.position.x, z0 = p.position.z;
+    input.up(2);
+    let def = null;
+    const hp0 = d.hp;
+    run(G, 0.6, () => { if (p.atk?.def) def = p.atk.def; });
+    const moved = Math.hypot(p.position.x - x0, p.position.z - z0);
+    assert(def === ONE_BREATH && moved > 3, `released: the cut, a blink step of ${moved.toFixed(2)} m (travel ${ONE_BREATH.travel})`);
+    out(`     the cut dealt ${(hp0 - d.hp).toFixed(0)} (his guard may turn it)`);
+  }
+  // a roll takes him out of the stance
+  {
+    const G = build();
+    const p = G.game.player;
+    stance(G, true);
+    G.input.axis = { x: 1, y: 0 };
+    G.input.tap('Space');
+    run(G, 0.1);
+    assert(p.state === 'roll', `a roll out of the stance (${p.state})`);
+  }
+  // the draw counter: released just before his white blow lands
+  {
+    const G = build();
+    const { game, input } = G;
+    const p = game.player, d = game.dragon;
+    game.unlocks = new Unlocks(null, '?tech=draw');
+    duel(G, { dist: 2.2 });
+    p.debug.god = true;
+    let counter = null;
+    G.watch = (n, e) => { if (n === 'player:counter') counter = e; };
+    d.debug.trigger('knock');
+    const A = d.brain.act, b = A.beats[0];
+    let started = false, released = false;
+    run(G, 3, () => {
+      if (!started && A.t >= b.impact - 0.75) {
+        started = true;
+        input.press(1);
+      }
+      if (started && p.state === 'block' && !input.buttons[2]) input.press(2);
+      if (started && !released && A.t >= b.impact - 0.08) {
+        released = true;
+        input.up(2);
+        input.up(1);
+      }
+    }, () => counter !== null || d.mode === 'react');
+    assert(counter?.draw === true && Math.abs(counter.damage - ONE_BREATH.damage) < 1e-6 && d.brain.react?.kind === 'reeling' && p.critTimer <= 0, `the draw counter: released ${(0.08).toFixed(2)} s before his blow lands, it beats it aside (${counter?.damage} damage, he reels, no crit window)`);
+  }
+}
+
 // ================================================================== scenario: training
 async function scenarioTraining() {
   out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out) ==');
@@ -1079,7 +1164,7 @@ async function scenarioTraining() {
   assert(L.length >= 20 && !bad.length && ['drawParry', 'drawGuard', 'drawRoll'].every((id) => L.some((s) => s.id === id)), `every situation plays out (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''}), the three draw situations among them`);
 }
 
-const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, win: scenarioWin };
+const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin };
 const OPT_IN = { strategy: scenarioStrategy };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {
