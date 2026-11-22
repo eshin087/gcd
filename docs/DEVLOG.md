@@ -90,7 +90,7 @@ x1.5 on the human bosses, x1 on the wyrm; the thump at x1. Next, a before / afte
 contact flare and swing arc toned down (accepted; not in this PR).
 
 **Verification.** New scenarios: integ `stamp`, `ripple`, `wyrmreact`, `thump`; duel `react`. The
-stamp's and the duelists' react scenarios pin their piece at strength 1. `npm test`: all 12 suites passed on the merge of the five pieces (836 s), before `origin/main` (#76) was merged in and before the picks commit; the lead runs it again on the final branch before the PR. The `world budget` timing check failed in every agent's run while six suites ran at once, and fails the same way on the base commit under that load. The pieces
+stamp's and the duelists' react scenarios pin their piece at strength 1. `npm test`: all 12 suites passed on the final branch (with `origin/main` #76 merged in and the picks applied; 312 s), and `npm run build` built. The `world budget` timing check failed in every agent's run while six suites ran at once, and fails the same way on the base commit under that load. The pieces
 were filmed in the browser side by side at the game camera (the agents' and the filming agent's
 captures).
 
