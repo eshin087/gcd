@@ -18,6 +18,17 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-22',
+        title: 'A fifth level: Drownwatch Cliff and the Tide Colossus',
+        notes: [
+          'A new level, Drownwatch Cliff: a shelf of salt grass on a sea cliff. Pick it on the title screen.',
+          'Its boss is Naerath, the Tide Colossus, a sea creature too big for the arena. You fight its two hands and its head from the cliff edge.',
+          'Its hands slam, hammer and sweep the shelf, and flick anyone who loiters at a resting hand. Later a wall of water crosses the whole shelf.',
+          'Its head breathes a beam of brine along the shore. Hide behind a standing stone or roll through it, then strike the head while it lies spent on the rim.',
+          'Cut a hand hard enough and it lets go, dropping the head within reach. Dodge a red blow perfectly to land on its head.',
+          'The stones that shelter you wear down as the fight goes on.',
+        ],
+      },      {
         date: '2026-11-21',
         title: 'On a phone: the health bars no longer overlap, and two new ways to hold the controls',
         notes: [

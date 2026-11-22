@@ -60,17 +60,17 @@ export const ATTACKS = Object.freeze({
   hammer: { label: 'Knuckle hammer', phase: 1, tell: B, flare: true, windup: 0.9, track: 0.4, r: 2.4, damage: 26, knockback: 4, rec: 1.3, cd: 2.5, w: [3, 2.2, 1.6], links: [{ to: 'slam', chance: 0.2 }] },
   sweep: { label: 'Rim sweep', phase: 1, tell: B, windup: 1.1, speed: 20, len: 22, band: 9, r: 1.6, damage: 24, knockback: 6, rec: 1.4, cd: 6, w: [1.6, 1.3, 1.1] },
   flick: { label: 'Finger flick', phase: 1, tell: N, windup: 0.7, r: 3.0, damage: 14, knockback: 7, rec: 0.9, cd: 4, near: 3.5, after: 2.5, w: [0, 0, 0] },
-  breath: { label: 'Tide breath', phase: 1, tell: R, parryable: false, blockable: false, windup: 1.8, width: 1.6, pass: [2.4, 2.0, 2.0], gap: 0.5, passes: [1, 2, 2], reach: 23, damage: 34, knockdown: true, spent: [2.4, 2.4, 1.8], cd: 14, open: 8, w: [1.4, 1.5, 1.8], linger: 5, tick: 0.4, tickDamage: 6 },
-  breaker: { label: 'Breaker (3 hits)', phase: 2, string: true, hits: [{ tell: N, windup: 0.9, side: -1 }, { tell: N, windup: 0.6, side: 1 }, { tell: B, flare: true, windup: 0.75, side: 0 }], r: 2.4, clapR: 3.2, damage: [16, 16, 26], knockback: 3, track: 0.4, rec: 1.8, cd: 8, w: [0, 2.0, 2.0] },
+  breath: { label: 'Tide breath', phase: 1, tell: R, parryable: false, blockable: false, windup: 1.8, width: 1.6, pass: [2.4, 2.0, 2.0], gap: 0.5, passes: [1, 2, 2], reach: 23, damage: 34, knockdown: true, spent: [2.4, 2.4, 1.8], cd: 14, open: 8, w: [1.4, 1.5, 1.2], linger: 5, tick: 0.4, tickDamage: 6 },
+  breaker: { label: 'Breaker (3 hits)', phase: 2, string: true, hits: [{ tell: N, windup: 0.9, side: -1 }, { tell: N, windup: 0.6, side: 1 }, { tell: B, flare: true, windup: 0.75, side: 0 }], r: 2.4, clapR: 3.2, damage: [16, 16, 26], knockback: 3, track: 0.4, rec: 1.8, cd: 8, w: [0, 2.0, 2.6] },
   crossSweep: { label: 'Cross sweep (2 hits)', phase: 2, string: true, hits: [{ tell: B }, { tell: R }], windup: 1.1, ret: 0.9, speed: 20, len: 22, band: 9, retSpeed: 26, retBand: 7, r: 1.6, damage: [22, 26], knockback: 6, rec: 1.6, cd: 10, w: [0, 1.2, 1.3] },
   surge: { label: 'Tide surge', phase: 2, tell: R, hazard: true, plunge: false, windup: 1.4, depth: 2.6, speed: 11, damage: 22, knockback: 6, cd: 12, w: [0, 1.2, 1.4] },
   blackFathom: { label: 'Black Fathom', phase: 2, tell: K, windup: 1.5, hold: [0.15, 0.6], track: 0.5, r: 4.5, damage: 44, knockdown: true, rec: 2.0, cd: 14, w: [0, 0.9, 1.0] },
-  grasp: { label: 'Drowning grasp', phase: 3, tell: R, windup: 1.1, track: 0.4, r: 3.0, rake: 8, rakeT: 0.5, damage: 28, knockdown: true, rec: 2.0, cd: 9, w: [0, 0, 1.8] },
+  grasp: { label: 'Drowning grasp', phase: 3, tell: R, windup: 1.1, track: 0.4, r: 3.0, rake: 8, rakeT: 0.5, damage: 28, knockdown: true, rec: 2.0, cd: 9, w: [0, 0, 2.2] },
   bellow: { label: 'Bellow', phase: 1, tell: N, windup: 1.2, push: 3, w: [0, 0, 0] },
 });
 
 export const TUNING = Object.freeze({
-  maxHp: 3600,
+  maxHp: 4800, // (3600 in the plan: a bot that answers every cue won in 75 / 86 s once the resting fingers lay on the shelf)
   phaseAt: Object.freeze([1, 0.66, 0.33]),
   damageScale: 1,
   partMult: Object.freeze({ head: 1.6, hand: 1.0, wrist: 0.85, finger: 0.6, body: 0.6 }),
@@ -88,7 +88,7 @@ export const TUNING = Object.freeze({
   director: Object.freeze({ deep: 14, deepT: 4, deepK: 3, repeat: 0.35, nearHand: 3.5 }),
   // the grip: a hand that takes `hp` damage inside `window` s lets go for `letGo` s; the head drops for
   // `headDown` s and takes `posture`
-  grip: Object.freeze({ hp: 240, window: 6, letGo: 5, headDown: 2.6, posture: 80 }),
+  grip: Object.freeze({ hp: 300, window: 6, letGo: 5, headDown: 2.6, posture: 80 }),
   broken: 3.2, // posture break: the chin on the rim (POSTURE.breakTime)
   plunged: Object.freeze({ down: 1.6, flash: 0.45 }),
   stagger: 1.4,

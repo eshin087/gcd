@@ -233,7 +233,7 @@ export function poseHover(h, x, z, lift, s, spread = 1, fist = false) {
   h.tgt.set(x - s * 0.2, Math.min(POSE.lift, lift) + 0.6, z - P.len * 0.55);
   h.fwdT.set(0, -0.08, 1);
   h.upT.set(0, 1, 0);
-  h.curlT = fist ? 1.25 : 0.05;
+  h.curlT = fist ? 1.7 : 0.05;
   h.spreadT = fist ? 0 : spread;
 }
 
@@ -243,7 +243,7 @@ export function posePlanted(h, x, z, s, fist = false) {
   h.tgt.set(x - s * 0.2, fist ? 0.9 : 0.55, z - P.len * 0.55);
   h.fwdT.set(0, -0.05, 1);
   h.upT.set(0, 1, 0);
-  h.curlT = fist ? 1.25 : 0.2;
+  h.curlT = fist ? 1.7 : 0.2;
   h.spreadT = fist ? 0 : 0.7;
 }
 
