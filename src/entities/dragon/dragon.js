@@ -1,3 +1,4 @@
+import { calmBossFlash } from '../../combat/impactCalm.js';
 import * as THREE from 'three';
 import { CONFIG } from '../../core/config.js';
 import { markCaster, LAYER_CASTER } from '../../render/pipeline.js';
@@ -16,6 +17,7 @@ import { Bullets } from './bullets.js';
 import { Terrain } from './terrain.js';
 import { Ablaze, ablazeLook, setAblazeLook } from './ablaze.js';
 import { wallWind } from './wallReach.js';
+import { WyrmReact } from './react.js';
 
 // VAELGRIM, THE CINDER WYRM — the boss. Public contract: see docs/ARCHITECTURE.md (Dragon).
 // Wiring: Brain (ai.js) writes pose targets + root motion and runs the attack tell beats, Rig
@@ -141,6 +143,8 @@ export class Dragon {
 
     this.pose = createPose();
     this.rig = new Rig(this.model, this);
+    // the impact pass's `react`: the drawn body answers where it was hit (react.js; drawn only)
+    this.react = new WyrmReact(this);
     this.fx = new DragonFx(this);
     this.hazards = new Hazards(this); // fire hazards (hazards.js): cleared by fx.reset(), death, phase changes
     this.bullets = new Bullets(this); // the bullet field + fire wheel (bullets.js): cleared like the hazards
@@ -240,7 +244,7 @@ export class Dragon {
     const gate = this.nextPhaseHp;
     if (gate > 0 && this.brain.aiEnabled && this.hp >= gate) hp = Math.max(gate, hp);
     this.hp = Math.max(0, hp);
-    this.flash = Math.max(this.flash, Math.min(o.heavy || crit ? 1 : 0.8, Number.isFinite(o.flash) ? o.flash : 1));
+    this.flash = Math.max(this.flash, calmBossFlash(Math.min(o.heavy || crit ? 1 : 0.8, Number.isFinite(o.flash) ? o.flash : 1)));
 
     // flinch along the blow (fallback: away from the player)
     let dx = Number(o.dir?.x), dz = Number(o.dir?.z);
@@ -267,6 +271,12 @@ export class Dragon {
       sz /= sl;
     }
     if (pt && Number.isFinite(pt.x + pt.y + pt.z)) this.fx.hitSpark(pt.x, pt.y, pt.z, sx, sz, !!o.heavy || crit);
+    // the struck part answers (drawn only; nothing at impactK('react') 0)
+    try {
+      this.react.hit(o, part);
+    } catch (err) {
+      console.error('[dragon] react.hit failed', err);
+    }
 
     this.emit('dragon:hurt', { damage: dmg, part, hp: this.hp, crit });
 
@@ -472,6 +482,7 @@ export class Dragon {
     this.dissolve = 0;
     this.flinch = 0;
     this.flinchHead = false;
+    this.react.clear();
     const s = CONFIG.world.dragonSleep;
     this.position.set(s.x, 0, s.z);
     this.yaw = s.yaw ?? 0;
@@ -858,6 +869,8 @@ export class Dragon {
   }
 
   _step(dt) {
+    // (last step's drawn reaction off the joints first: the step runs on its own joints)
+    this.react.restore();
     this.time += dt;
     this.flash = Math.max(0, this.flash - dt * TUNING.flashDecay);
     this.flinch = Math.max(0, this.flinch - dt * 4);
@@ -896,12 +909,22 @@ export class Dragon {
     this.terrain.update(dt); // (guarded inside: never throws)
     this.ablaze.update(dt); // (phase 3's fire on its wings, claws and tail; goes out while it dies)
     if (this.state !== 'dying') {
-      this.fx.eyeGlints(dt, this.rig.pt.eyes, this.rig.s.eyes);
+      this.fx.eyeGlints(dt, this.react.eyes(this.rig.pt.eyes), this.rig.s.eyes);
       // phase 2 smoulders, phase 3 burns (TUNING.phaseEmbers)
       const embers = perPhase(TUNING.phaseEmbers, this.phase);
       if (embers > 0) this.fx.bodyEmbers(dt, this.hurtSpheres, embers, this.phase >= 3);
     }
     this._applyMaterials(dt);
+    // the drawn reaction to a hit goes on last (react.js: taken off again at the next step's start)
+    this.react.apply(dt);
+  }
+
+  /**
+   * Where a hurt sphere (one of hurtSpheres, by its exact point) is drawn: `v` in place (the hero's
+   * drawn contact, player._contactPoint). The identity unless a hit's drawn reaction is on (react.js).
+   */
+  drawnPoint(v) {
+    return this.react.drawnPoint(v);
   }
 
   _refreshHurt() {

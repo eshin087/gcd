@@ -4,7 +4,30 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-two pieces of work since 0.4.0:
+Sixty-three pieces of work since 0.4.0:
+- **Cuts land with weight: the hit printed where it lands, the boss's body answers** (2026-11-22, ADR-149).
+  *Added:* four new pieces on every cut that lands, each behind its own switch ("i want the hits to
+  look realistic where it lands and show some kind of ascii animation to show the impact"). On a
+  human boss the hit is printed into his letters where the blade meets him: a short stepped
+  animation (about a sixth of a second) shaped by the attack, a slit that opens and splits for a cut,
+  rings round a thrust, a star for the slam, on black so it reads over him, never over the hero. A
+  pressure wave runs out through the struck boss's letters from the contact: a thin bright front with
+  a darker trough behind it, the letters pushed outward as it passes; small for a light cut, across
+  the wyrm or a man head to feet for a slam, a cleave or the execution. The struck body answers where
+  it was hit: a duelist's head snaps along the blade, his torso twists with the cut (a thrust folds
+  him), a struck leg buckles; the wyrm's snout snaps away and the neck carries it, a body cut shoves
+  the trunk and lashes the tail, a wing jerks and folds. A heavy blow (the slam, the cleave, the
+  execution, a heavy branch's cut, the flurry's last blow, a crit) adds a low sub under the hit, and
+  the music (never the tells) dips for a moment. *Changed:* nothing else: the reactions are drawn
+  only (no hurt sphere, hit stun, shove, guard or timing moved), and with every piece off the game
+  draws, sounds and plays as before. The owner's picks: the stamp on the human bosses only, a human
+  boss's reaction drawn at x1.5, the wyrm's at x1. `?impact=off` (or a list: `?impact=stamp,react`)
+  and the Lab's 'impact' row switch the pieces; `?stamp=instead` draws the stamp in place of the
+  slash line (an option). *Changed:* the light at the moment a cut lands is a little calmer (the
+  owner's pick of three levels): the struck boss's white flash, the blade's lit steel, the sparks and
+  the swing arc where it crosses the contact are dimmed, so the new pieces show; `?calm=0` draws it
+  as before, `?calm=2` / `3` calmer.
+- **Round the Obsidian Throne, what the challengers left** (2026-11-22, ADR-133). *Changed:* the
 - **Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage** (2026-11-22,
   ADR-135). *Added:* in the Skybreak Ring, **the sign**: from his second form, Tian Lei raises two
   fingers to his brow, a snap of light, and he is gone and behind you (or at your left, your right and

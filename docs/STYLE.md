@@ -607,6 +607,19 @@ one art cell, pixel-snapped, from the wyrm's own atlas: never a scaled sprite.**
   they fall, lie on the grass and fade. A detail, not a spectacle.
 - **The breath's charge rises:** during the windup the glow fills from the belly up the throat to
   the maw (it used to light all at once).
+- **The impact ripple** (2026-11-22, ADR-149; `render/impactRipple.js`, the ASCII pass): a landed cut's
+  pressure wave runs out through the struck boss's own letters. At its front the cells are pushed
+  outward (3.6 - 5.5 px on the wyrm's cell, a finer grid in proportion) and back at rest behind it,
+  a share of them re-roll, and on the wyrm up to 70 % of the front's strongest cells print a stroke
+  lying along it (the outline's strokes). The rules it was found by:
+  - **Nothing in the first cells round the contact** (2.5 cells, a 2-cell ramp): the cut's flare and
+    core speak there.
+  - **Contrast, not lift.** A thin bright front with a trough up to 60 % darker right behind it: the
+    contrast travels and the body's average brightness does not rise. Round 1 (re-roll and lift, a
+    shove along the cut) was calm and read only when two frames were diffed.
+  - **Boss cells only:** the wyrm's art grid and the human bosses' ink-line grid; never the hero,
+    props, floor, grass or HUD. Cells far nearer or farther than the contact (a 6 m window) take
+    none. Whole pixels only.
 
 ### Fire, hazards and the plunge (2026-11-09)
 (Since ADR-113 the bodies of fire below are heat in the fire field, above; what this section says
@@ -1217,3 +1230,31 @@ the body.
   only (`lean.ox / oz`); the Lab's 'shudder' toggle turns it off. A sword cut's only (`takeHit`'s
   `swing`: not the Lord's own returned bolt); his blade's sweep trail pauses while it runs (the
   flicker would draw zig-zag strokes).
+- **The stamp** (2026-11-22, ADR-149; `combat/impactStamp.js`): the hit printed IN the letter grid at
+  the drawn contact, in the fire field's `steel`, so it is made of the same small letters as the
+  bodies. A slit that grows, opens at its heart and splits into two thin lines a cell apart, then a
+  few specks (light, sweep, cleave; the cleave longer, growing with the charge, with a cross); an
+  entry mark and two rings for a thrust; a plus, an eight-point star and a ring that breaks up for
+  the slam; a puncture and two rings for the execution. A crit x1.2 with the cross, cold blue. Human
+  bosses only (the owner's pick: on the wyrm it does not read). The rules it was found by:
+  - **Snap to cells.** One 12 px blob of steel per letter cell, centred on the cell, every offset a
+    whole number of cells, re-snapped every frame through the shake. A blob 4 px off a cell centre
+    keeps about 13 % of its heat: a soft line between two rows of cells all but vanishes.
+  - **Rings are hexagons.** A run of `-` along the top and bottom, the sides one cell a step on the
+    diagonal. A small soft circle on a 5 x 8 grid prints as a jumble of strokes.
+  - **Stepped, not faded.** Each frame is held 0.04 s of fx time (it plays through the freeze),
+    then the next replaces it. Calm: thin lines, one to three hot cells a frame.
+  - **Ink on black.** Its cells print on black (a fire-field tint zone, `dark` 1), so it reads over a
+    lit figure. **Never over the hero:** no cell inside an ellipse round his figure on screen; he
+    stands in front of the wound. No cell below 0.7 m (heat by the floor fades into it).
+  - The anchor is the contact pulled 2.5 m toward the camera (the field's soft depth fade dimmed heat
+    on or inside the body to nothing; 1 m was enough on a man, not on the wyrm).
+  - `?stamp=instead` draws it in place of the slash line and its cross (the sparks stay); the
+    default draws both.
+- **Calm at the contact** (2026-11-22, ADR-149; `combat/impactCalm.js`): the light at the contact is
+  dimmed at the hit, level 1 by default (the owner's pick; `?calm=0` = as before, 2 and 3 calmer):
+  the struck boss's white hurt flash and the hero's lit steel are what bleached the contact, not
+  the cut's core. The arc is dimmed only near a fresh contact and only for the swing that landed.
+- **The body answers** (ADR-149): the reaction's first pose shows in the frame the freeze holds, small
+  enough that the struck surface stays 0.01 - 0.07 m from the drawn cut (`snapM` 0.06 on a duelist),
+  so the cut, the stamp and the spray stay on the body; the swing to the peak comes after the freeze.
