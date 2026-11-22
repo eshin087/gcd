@@ -3,7 +3,7 @@
 // src/main.js (construction order, frame order, debugTimeScale in dt). World is a light mock built on
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
-//   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
+//   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | wyrmreact | terrain |
 //             timing | fire | music | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
@@ -10495,6 +10495,158 @@ async function scenarioZoomArt() {
   return G;
 }
 
+// ================================================================== scenario: the wyrm answers where it is hit
+// (the impact pass's `react`, dragon/react.js: drawn only). Per part, a hit with the piece on moves that
+// part's drawn sphere along the cut in the hit's own tick and returns it within a bounded time; with the
+// piece off nothing is drawn; on or off, the simulation (hurt spheres, the attack's clock and spheres,
+// the joints the step runs on) is the same, bit for bit; finite in phase 3, in the air, staggered.
+async function scenarioWyrmReact() {
+  out('\n== scenario WYRMREACT (the wyrm answers where it is hit: part, contact, cut, weight; drawn only) ==');
+  const { IMPACT } = await imp('src/combat/impact.js');
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  const on0 = IMPACT.on.react, k0 = IMPACT.k.react;
+  const setK = (k) => { IMPACT.on.react = true; IMPACT.k.react = k; };
+  const finiteAll = (d) => { for (const o of d.react.J) { const e = o.matrixWorld.elements; for (let i = 12; i < 15; i++) if (!Number.isFinite(e[i])) return false; } for (const v of d.react.sphOff) if (!Number.isFinite(v)) return false; return true; };
+  const off = (d, i) => { const O = d.react.sphOff; return d.react.applied ? [O[i * 3], O[i * 3 + 1], O[i * 3 + 2]] : [0, 0, 0]; };
+  const len = (v) => Math.hypot(v[0], v[1], v[2]);
+  // a blow on sphere i: the contact on its surface on the side the blade comes from, the blade across the body
+  const blow = (d, i, heavy, cutSide = 1) => {
+    const h = d._hurtPool[i];
+    const cx = Math.cos(d.yaw) * cutSide, cz = -Math.sin(d.yaw) * cutSide; // the wyrm's own side axis
+    return { damage: 4, part: h.part, point: { x: h.x - cx * h.r * 0.9, y: h.y, z: h.z - cz * h.r * 0.9 }, cut: { x: cx, z: cz }, dir: { x: cx, z: cz }, heavy, crit: false };
+  };
+  try {
+    // ---- 0) on or off, the same fight: two builds, the same script (a bite's windup struck on the head,
+    // then a light cut on the chest); every tick the hurt spheres, the bite's clock and its spheres and
+    // the joints the step runs on are compared, number for number
+    const script = (k) => {
+      setK(k);
+      const G0 = build();
+      fightSetup(G0);
+      const d0 = G0.game.dragon;
+      G0.game.player.debug.god = true;
+      settle(G0);
+      place(G0, 6);
+      d0.brain.startAction(ATTACKS.bite);
+      run(G0, 0.3, { passive: true });
+      const rec = [];
+      let applied = 0;
+      for (let f = 0; f < 90; f++) {
+        if (f === 0) d0.takeHit(blow(d0, 0, true));
+        if (f === 15) d0.takeHit(blow(d0, 4, false));
+        G0.tick(DT);
+        if (d0.react.applied) applied++;
+        const R0 = d0.react, row = [d0.brain.action?.name ?? '-', d0.brain.action?.t ?? -1, d0._atkN];
+        for (const h of d0._hurtPool) row.push(h.x, h.y, h.z);
+        for (let i = 0; i < d0._atkN; i++) { const b = d0._atkBoxes[i]; row.push(b.x, b.y, b.z, b.r); }
+        R0.J.forEach((o, j) => { const q = R0.applied ? R0.saved.subarray(j * 4, j * 4 + 4) : [o.quaternion.x, o.quaternion.y, o.quaternion.z, o.quaternion.w]; row.push(...q); });
+        const hp = R0.applied ? R0.savedHips : d0.model.hips.position;
+        row.push(hp.x, hp.y, hp.z);
+        rec.push(row);
+      }
+      return { rec, applied, hits: G0.hits.length };
+    };
+    const A0 = script(0), A1 = script(1);
+    let diff = -1;
+    for (let f = 0; f < A0.rec.length && diff < 0; f++) {
+      const a = A0.rec[f], b = A1.rec[f];
+      if (a.length !== b.length || a.some((v, i) => !Object.is(v, b[i]))) diff = f;
+    }
+    out(`   on / off: ${A0.rec.length} ticks compared · drawn reaction on ${A1.applied} ticks (off: ${A0.applied}) · bite clock ${A0.rec[20][1].toFixed?.(3)} / ${A1.rec[20][1].toFixed?.(3)} · first difference ${diff < 0 ? 'none' : `tick ${diff}`}`);
+    assert(A0.applied === 0, 'with the piece off nothing is ever put on the joints');
+    assert(A1.applied > 20, `with it on the reaction is drawn (${A1.applied} ticks)`);
+    assert(diff < 0 && A0.hits === A1.hits, 'on or off: the same hurt spheres, the same bite (its clock, its spheres), the same joints under the step, every tick');
+
+    // ---- 1) per part: the struck part moves along the cut in the hit's own tick, and comes back
+    setK(1);
+    const G = build();
+    const { game } = G;
+    fightSetup(G);
+    const d = game.dragon, p = game.player;
+    p.debug.god = true;
+    settle(G);
+    const CASES = [['head', 0], ['neck', 2], ['chest', 4], ['hips', 6], ['tail', 8], ['wing', 11], ['foreleg', 15], ['hindleg', 17]];
+    const res = {};
+    for (const [name, i] of CASES) {
+      for (const heavy of [false, true]) {
+        settle(G);
+        d.hp = d.maxHp;
+        const o = blow(d, i, heavy);
+        d.takeHit(o);
+        G.tick(DT);
+        const v0 = off(d, i);
+        let peak = len(v0), peakAt = 0, back = -1, maxOther = 0, fin = finiteAll(d);
+        for (let j = 0; j < d._hurtPool.length; j++) if (d._hurtPool[j].part !== d._hurtPool[i].part) maxOther = Math.max(maxOther, len(off(d, j)));
+        const series = [peak];
+        for (let f = 1; f < 150; f++) {
+          G.tick(DT);
+          const m = len(off(d, i));
+          series.push(m);
+          if (!finiteAll(d)) fin = false;
+          if (m > peak) { peak = m; peakAt = f; }
+        }
+        for (let f = series.length - 1; f >= 0; f--) if (series[f] > 0.05 * peak) { back = f + 1; break; }
+        const along = (v0[0] * o.cut.x + v0[2] * o.cut.z) / (len(v0) || 1);
+        const r = (res[`${name}${heavy ? 'H' : 'L'}`] = { m0: len(v0), along, peak, peakAt, back, maxOther, fin, kind: d.react.last.kind, live: d.react.live, v0 });
+        out(`   ${name.padEnd(8)} ${heavy ? 'heavy' : 'light'}: ${r.kind} · first tick ${r.m0.toFixed(3)} m (along the cut ${along.toFixed(2)}, down ${(-v0[1]).toFixed(3)}) · peak ${peak.toFixed(3)} m @ f${peakAt} · back within 5 % by f${back} (${(back * DT).toFixed(2)} s) · other parts ≤ ${maxOther.toFixed(3)} m · finite ${fin}`);
+      }
+    }
+    for (const [name] of CASES) {
+      const L = res[`${name}L`], H = res[`${name}H`];
+      assert(L.fin && H.fin, `${name}: every drawn joint and sphere finite`);
+      assert(L.m0 > 0.03 && H.m0 > L.m0 * 1.5, `${name}: moves in the hit's own tick, a heavy blow more (${L.m0.toFixed(3)} → ${H.m0.toFixed(3)} m)`);
+      assert(L.along > 0.3 && H.along > 0.3, `${name}: along the blade's travel (${L.along.toFixed(2)}, ${H.along.toFixed(2)})`);
+      // (the head's own answer is back in ~0.35 s; what lasts is the old flinch's look being taken off
+      // the drawn head while the simulated one eases back: R.cancelOld)
+      const lim = name === 'head' ? 1.0 : 0.6;
+      assert(L.back > 0 && L.back * DT < lim && H.back * DT < 1.0, `${name}: back within 5 % in ${(L.back * DT).toFixed(2)} / ${(H.back * DT).toFixed(2)} s`);
+    }
+    // a light cut on the head moves the head, not the trunk; a light cut on a leg not the head
+    assert(res.headL.maxOther < res.headL.m0 && res.hindlegL.v0 && res.tailL.maxOther < res.tailL.m0, `the struck part moves most (head hit: others ≤ ${res.headL.maxOther.toFixed(3)} m; tail hit: others ≤ ${res.tailL.maxOther.toFixed(3)} m)`);
+    // three light cuts in a second on the chest stay small gives (no build-up)
+    settle(G);
+    let peak3 = 0;
+    for (let n = 0; n < 3; n++) {
+      d.takeHit(blow(d, 4, false));
+      for (let f = 0; f < 20; f++) { G.tick(DT); peak3 = Math.max(peak3, len(off(d, 4))); }
+    }
+    assert(peak3 < res.chestL.peak * 1.25, `three light cuts in 1 s: the chest moves at most ${peak3.toFixed(3)} m (one light cut ${res.chestL.peak.toFixed(3)} m)`);
+    run(G, 2.5, { passive: true });
+    assert(!d.react.live && !d.react.applied, 'every reaction over and off the joints 2.5 s later');
+
+    // ---- 2) states: phase 3 (ablaze), in the air, staggered: sane and finite; asleep: no reaction
+    const stateHit = (label, i) => {
+      d.hp = d.maxHp;
+      d.takeHit(blow(d, i, true));
+      G.tick(DT);
+      const m = len(off(d, i));
+      let fin = finiteAll(d);
+      for (let f = 0; f < 40; f++) { G.tick(DT); if (!finiteAll(d)) fin = false; }
+      out(`   ${label}: ${d.state}, ${d.react.last.kind} · moved ${m.toFixed(3)} m, finite ${fin}`);
+      return { m, fin };
+    };
+    settle(G);
+    d.enterPhase(3);
+    settle(G);
+    const r3 = stateHit('phase 3', 0);
+    assert(r3.m > 0.05 && r3.fin && d.phase === 3, `phase 3 (ablaze): the head answers, finite (${r3.m.toFixed(3)} m)`);
+    place(G, 10);
+    d.brain.startAction(ATTACKS.leap);
+    run(G, 3, { passive: true }, () => d.state === 'airborne' && d.rig.s.alt > 4);
+    const ra = stateHit('airborne', 11);
+    assert(ra.fin, `in the air: finite (${ra.m.toFixed(3)} m)`);
+    settle(G);
+    assert(d.debug.postureBreak() === true, 'posture break');
+    run(G, 0.6, { passive: true });
+    const rs = stateHit('staggered', 4);
+    assert(rs.m > 0.05 && rs.fin, `staggered: the chest answers, finite (${rs.m.toFixed(3)} m)`);
+    return G;
+  } finally {
+    IMPACT.on.react = on0;
+    IMPACT.k.react = k0;
+  }
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -10521,6 +10673,7 @@ const SCENARIOS = {
   bullets: scenarioBullets,
   strings: scenarioStrings,
   plungeReact: scenarioPlungeReact,
+  wyrmreact: scenarioWyrmReact,
   timing: scenarioTiming,
   fire: scenarioFire,
   ablaze: scenarioAblaze,
