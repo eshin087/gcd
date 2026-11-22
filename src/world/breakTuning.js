@@ -231,6 +231,29 @@ export const BREAK = Object.freeze({
    * waiting for a front (a roar's reaches the whole ring: ~560)
    */
   wind: Object.freeze({ speed: 30, fall: 1.3, min: 0.04, floor: 0.3, rehit: 0.35, vary: 0.45, leaves: 5, queue: 1400 }),
+  /**
+   * BITES (`?chip=a`; the owner's "have the ascii pieces fall off exactly where the player or enemy
+   * boss is hitting ... destructible like minecraft/lego"): every piece is the bricks it is drawn with,
+   * its triangles (two that share their longest edge and lie flat together are one brick: a block).
+   * With bites on, a level is built with no face of a breakable longer than `brick` m (forest.js
+   * `refine`: the same shapes cut finer, about one letter cell at the game camera; a part whose
+   * triangles are already narrower than `thin` m on average is left alone, and the forest's trees
+   * beyond `near` m of the centre are cut `far` x as coarse). A blow takes the
+   * bricks nearest the point it struck: of those within `reach` of it (the blow's own radius + `pad`,
+   * between `reach[0]` and `reach[1]` m) the share of the piece's structure the blow took (x `k`),
+   * nearest first, at most `max` a blow and at least one. So a notch grows where a blade keeps biting
+   * and is cut through as the piece's structure runs out. A blow over a disc (a blast, a slam, a
+   * landing) counts from its own centre, as far as it reaches into the piece (at most `reach[2]` m),
+   * so it eats the side that faced it. A brick of a SOLID part (a trunk, a stone, a bone) is not taken
+   * out: it is set back into the piece, `sink.k` of the piece's thickness there and at most `sink.max`
+   * m, so the piece keeps a skin and never opens onto its empty inside; foliage, a face with no wall
+   * behind it and a part too thin to show a dent (set back less than `sink.min` m: a bough, a small
+   * bone) lose the brick outright. A crown part with `shed` of its bricks gone drops whole. Each
+   * brick falls as a letter of what it was drawn in, from where it sat (`out` m/s along the blow, `up`
+   * m/s), and every `litter`-th leaves a letter lying under it until the reset. `windY`: a front's
+   * bite on a tree of the wall is taken from its windward crown, at this share of its height.
+   */
+  chip: Object.freeze({ brick: 0.8, thin: 0.12, near: 48, far: 2.5, reach: Object.freeze([0.55, 3.2, 14]), pad: 0.25, k: 1, max: 96, sink: Object.freeze({ k: 0.42, max: 0.3, min: 0.07 }), out: 1.6, up: 1.4, litter: 3, shed: 0.72, windY: 0.7 }),
   /** debris glyphs (a stage's burst, the wind's leaves) a second over the level, banking `bank` (x quality) */
   debris: Object.freeze({ perSec: 1500, bank: 900 }),
   /** a piece some of whose `guards` stand (the Cinder Tree's trunk under its boughs) takes this share of a blow */

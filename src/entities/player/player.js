@@ -3133,7 +3133,7 @@ export class Player {
     const D = this.game.world?.destructibles;
     if (!D?.swing) return null;
     if (a.wsrc === undefined) a.wsrc = D.swing();
-    const o = (this._worldBlow ??= { kind: 'cut', by: 'player', dx: 0, dz: 0, y: 0, src: -1, scar: true });
+    const o = (this._worldBlow ??= { kind: 'cut', by: 'player', dx: 0, dz: 0, y: 0, ya: 0, yb: 0, src: -1, scar: true });
     o.kind = a.def.heavy ? 'blunt' : 'cut'; // a heavy cut bites stone; a quick one barely marks it
     o.src = a.wsrc;
     o.scar = ground;
@@ -3152,6 +3152,9 @@ export class Player {
     o.dx = (sw.a.x + sw.b.x) * 0.5 - p.x;
     o.dz = (sw.a.z + sw.b.z) * 0.5 - p.z;
     o.y = Math.min(sw.a.y, sw.b.y) - 0.3;
+    // (the blade's own height at its two ends: a piece is bitten where the steel met it, BREAK.chip)
+    o.ya = sw.a.y;
+    o.yb = sw.b.y;
     const n = this.game.world.destructibles.sweep(sw.a.x, sw.a.z, sw.b.x, sw.b.z, REACH.radius, fin(a.damage, 30) / 110, o);
     if (n > 0 && !a.wfelt) {
       a.wfelt = true; // the hand feels it: one small jolt per swing

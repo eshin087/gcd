@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-21',
+        title: 'The letters come off where the blow lands',
+        notes: [
+          'A trial, off by default: add ?chip=a to the address. Trees, stones, pillars, statues and bones lose their letters exactly where a blow lands, yours or the boss\'s.',
+          'A blade cuts a notch into a trunk, a heavy blow knocks the face of a stone in, a blast eats the side that faced it. The pieces fall from where they sat.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'Felled trees lie as the blow left them',
         notes: [
           'No two felled trees look alike now. A blade leaves a tall stump cut on a slant, a heavy blow tears it lower, a blast shatters it close to the ground, and fire leaves it low and black.',
