@@ -166,6 +166,26 @@ export class Dragon {
     const B = Number(this.game.CONFIG?.world?.dragonBound ?? CONFIG.world.dragonBound);
     return Math.min(Number.isFinite(B) ? B : 26, TUNING.bound ?? Infinity);
   }
+  /**
+   * ... in the direction of (x, z): `bound`, plus what the wall's fallen trees have opened that way
+   * (world/edge.js `bossGain`, ADR-125: the root may follow the hero out through a gap it has torn).
+   * Equal to `bound` on a level without an edge, and everywhere until a tree of the wall is down.
+   */
+  boundAt(x, z) {
+    const g = this.game.world?.edge?.bossGain?.(x, z);
+    return this.bound + (g > 0 ? g : 0);
+  }
+  /**
+   * A radius round the arena's centre that was sized for the clearing (`base` m: where a meteor may
+   * land, a mark be put), carried out with the hero's ground in the direction of (x, z): base + what
+   * the edge has opened there. Equal to `base` until a tree of the wall is down.
+   */
+  arenaAt(x, z, base) {
+    const e = this.game.world?.edge;
+    if (!e?.open) return base;
+    const g = e.heroAt(x, z) - e.base;
+    return base + (g > 0 ? g : 0);
+  }
   /** Later phases' speed-up of windups + recoveries (TUNING.phaseTimeScale). */
   get tScale() {
     const k = perPhase(TUNING.phaseTimeScale, this.phase);
@@ -586,7 +606,7 @@ export class Dragon {
   }
 
   _collide() {
-    const R = TUNING.radius, B = this.bound;
+    const R = TUNING.radius, B = this.boundAt(this.position.x, this.position.z);
     if (this.state === 'airborne') {
       const d = Math.hypot(this.position.x, this.position.z);
       if (d > B) this.position.multiplyScalar(B / d);

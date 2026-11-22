@@ -770,6 +770,8 @@ export function createForest(U, colliders) {
       leafy: t.type === 'dead' ? 0 : 0.6, lift: 1, wear: wearOf(t.type, g.length),
       // (the wall: tougher, and it falls away from the arena; BREAK.wall)
       wall: rad > WALL.from, hpK: rad > WALL.from ? WALL.hp : 1,
+      // ... and while it stands it closes the ground behind it (edge.js, BREAK.edge): m either side of its trunk
+      edge: rad > WALL.from ? Math.max(BREAK.edge.minBlock, BREAK.edge.crown * (t.type === 'pine' ? 2.2 : t.type === 'dead' ? 1.6 : 3.0) * t.s) : 0,
     };
   };
   for (const t of trees) {
@@ -777,7 +779,8 @@ export function createForest(U, colliders) {
     if (inLandmark(t.x, t.z)) continue;
     treeSpots.push({ x: t.x, z: t.z, r: t.type === 'pine' ? 2.2 * t.s : 3.0 * t.s });
     const rad = Math.hypot(t.x, t.z);
-    const c = rad < 42 ? colliders.add(t.x, t.z, 0.45 * t.s, 'trunk') : null;
+    // (a trunk out to where the opened ground can reach: BREAK.edge.outer; it was 42 m, what a hero held at 31 m could touch)
+    const c = rad < Math.max(42, BREAK.edge.outer + 3) ? colliders.add(t.x, t.z, 0.45 * t.s, 'trunk') : null;
     breakables.push(treeBreakable(t, g, c, rad < 36.5 ? br : rad < BREAK_R ? brOut : brFar));
   }
 
@@ -1012,5 +1015,7 @@ export function createForest(U, colliders) {
     group, treeSpots, bare, slabs, nest, bonfire: { x: bf.x, z: bf.z },
     material: mat, stoneMaterial: stoneMat, slabMaterial: slabMat,
     breakables,
+    // the clearing's edge follows what stands of the tree wall (edge.js, ADR-125): the hero's circle to start with
+    edge: { base: W.playerBound ?? 31 },
   };
 }

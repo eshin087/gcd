@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-21',
+        title: 'Felled trees lie as the blow left them',
+        notes: [
+          'No two felled trees look alike now. A blade leaves a tall stump cut on a slant, a heavy blow tears it lower, a blast shatters it close to the ground, and fire leaves it low and black.',
+          'Trunks land at their own angle, often snapped in two, and some trees that burn down stay standing as black snags.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'The Cinder Wyrm glares from every side',
         notes: [
           'The wyrm\'s eyes are slanted slits of fire under a heavy brow, so it glares at you from the side, from the front and from below, not only from one angle.',
@@ -34,6 +42,15 @@ export const RELEASES = [
           'Their feet hold the ground and take steps as a string carries them toward you, instead of sliding.',
           'Shen Hui raises his overhead clear of his hat and keeps his eyes on you through the chop; his whirl turns on a hop. The Lord rolls his blade in front of him, not through his hood.',
           'Nothing about the timing changed: every flash, every windup and every reach is what it was.',
+        ],
+      },
+      {
+        date: '2026-11-21',
+        title: 'The wall of trees comes down and the fight goes out through it',
+        notes: [
+          'In Cinderwood the ring of trees round the clearing no longer holds you once it starts to fall. Where a tree has burnt through or been felled, the ground behind it is open, out to the next tree still standing.',
+          'The wyrm follows you through any gap wide enough for its body, and its fire and meteors follow you everywhere. A tree that falls where you can now stand must be dodged.',
+          'The fight starts as it always did: nothing opens until the first tree of the wall is down. The wall stands again when you die or rest.',
         ],
       },
       {

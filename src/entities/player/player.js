@@ -2370,10 +2370,10 @@ export class Player {
       const a = base + da, sx = Math.sin(a), sz = Math.cos(a);
       for (let r = clamp(fin(rMin, P.landMin), P.landMin, P.landMax); r <= P.landMax + 1e-6; r += 0.75) {
         const x = pt.x + sx * r, z = pt.z + sz * r;
-        if (Math.hypot(x, z) > B - 1) break; // farther only leaves the arena
+        if (Math.hypot(x, z) > (g.world?.heroBound?.(x, z) ?? B) - 1) break; // farther only leaves the arena (or the ground the wall has opened: world.heroBound)
         if (this._inBody(circles, x, z, this.radius + P.landClear)) continue;
         out.set(x, 0, z);
-        g.world?.resolve?.(out, this.radius, B);
+        g.world?.resolve?.(out, this.radius, B, false, 'hero');
         if (!Number.isFinite(out.x + out.z)) continue;
         if (Math.hypot(out.x - x, out.z - z) > 1.5 || this._inBody(circles, out.x, out.z, this.radius + 0.2)) continue;
         pl.dx = sx;
@@ -2383,7 +2383,7 @@ export class Player {
     }
     // cornered: come down where he is (resolve pushes him clear of stones and the arena edge)
     out.set(fin(pl.from.x, pl.ox), 0, fin(pl.from.z, pl.oz));
-    g.world?.resolve?.(out, this.radius, B);
+    g.world?.resolve?.(out, this.radius, B, false, 'hero');
     if (!Number.isFinite(out.x + out.z)) out.set(pl.ox, 0, pl.oz);
     return out;
   }
@@ -2950,7 +2950,7 @@ export class Player {
         }
       }
     }
-    this.game.world?.resolve?.(p, r, CONFIG.world.playerBound);
+    this.game.world?.resolve?.(p, r, CONFIG.world.playerBound, false, 'hero');
   }
 
   // ------------------------------------------------------------------ burn status
