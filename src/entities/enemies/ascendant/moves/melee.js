@@ -13,7 +13,7 @@ const SIGN_FEET = { lF: [0.17, 0.16], rF: [-0.17, -0.12], lFy: 0.2, rFy: -0.3, r
 /** The hand on its way up (u 0.18). */
 const SIGN_RISE = { yaw: -0.16, bY: -0.1, pitch: 0.0, spX: -0.02, hdX: 0.02, rH: [0.1, 0.12, 0.24], rP: [-0.9, -0.1, -0.2], lH: [0.04, -0.3, 0.08], lP: [0.8, -0.6, -0.3], sw: [0.3, 1.3], ...SIGN_FEET };
 /** The sign held (u 0.5): two fingers at the brow. */
-const SIGN_HELD = { yaw: -0.12, bY: -0.08, pitch: -0.04, spX: -0.04, hdX: 0.06, rH: [0.14, 0.27, 0.15], rP: [-0.9, 0.2, -0.2], lH: [0.06, -0.36, 0.06], lP: [0.8, -0.6, -0.3], sw: [0.4, 1.45], ...SIGN_FEET };
+const SIGN_HELD = { yaw: -0.12, bY: -0.08, pitch: -0.04, spX: -0.04, hdX: 0.06, rH: [0.14, 0.27, 0.15], rP: [-0.9, 0.45, -0.1], lH: [0.06, -0.36, 0.06], lP: [0.8, -0.6, -0.3], sw: [0.4, 1.45], ...SIGN_FEET };
 
 /**
  * The keys of a SIGN beat: the hand rising (u 0.18), the sign held (0.5: the vanish), then the strike

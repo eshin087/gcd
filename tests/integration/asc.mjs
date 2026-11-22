@@ -1952,7 +1952,7 @@ async function scenarioCatch() {
     let cutAt = -1;
     run(G, 6, () => {
       const a = br.act, b = a?.name === name ? a.beats[0] : null;
-      if (cut && b && cutAt < 0 && a.t > b.start + ST.windup * 0.6 + 0.15 && a.t < b.impact) { input.click(0); cutAt = game.time; }
+      if (cut && b && cutAt < 0 && a.t > b.start + ST.windup * 0.55 && a.t < b.impact) { input.click(0); cutAt = game.time; }
       if (d.mode === 'foot' && game.time - t0 < 3.5 && br.raiseT > 0 && !br.guardUp()) guardDown += DT;
     }, () => game.time - t0 > 2.8 && d.mode === 'foot' && quiet(d) && p.state !== 'bounce');
     d.fx.stanceGlow = sg;
