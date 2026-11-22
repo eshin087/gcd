@@ -2,12 +2,14 @@
 // (the owner turned down full redraws of the wyrm and picks from graded builds; wyrm look lessons). None
 // is the owner's pick until they pick it from the rendered sheets (.claude/preview/tide-colossus/).
 //
-//   a  DROWNED HIDE   the wyrm's hide as it is; the seams jade, on the throat, the palms and the gills; a
-//                     small bare coral crown. The nearest to the wyrm.
-//   b  REEF-GROWN     a, and barnacle crust on the knuckles, the brow and the shoulders, kelp ribbons from
-//                     the wrists and the crown, the comb teeth, the six eyes. The fight is built with it.
-//   c  WRECK-CROWNED  b, and wreckage grown into it: spars in the crown, an anchor chain over one shoulder,
-//                     a hull plate on a forearm. The most silhouette.
+//   a  DROWNED HIDE   the face, the wyrm's hide as it is; the seams jade, on the throat, the palms and the
+//                     gills; a low crown of a few broken stubs. The nearest to the wyrm.
+//   b  REEF-GROWN     a, and a tall coral crown (antlers 4 to 6 m), barnacle plates 0.6 to 1 m across in
+//                     clusters on the brow, the knuckles, the hands' backs and the upper arms, kelp curtains
+//                     4 to 6 m long from the wrists and the crown. The fight is built with it.
+//   c  WRECK-CROWNED  b, and wreckage grown into it: two masts of 8 to 10 m with their yards in the crown,
+//                     an anchor chain of 1 m links over a shoulder and down the left arm, a hull plate on the
+//                     right forearm. The most silhouette.
 //
 // Everything here is drawn only (model.js): joints, hit volumes and timings are the same in all three.
 
@@ -23,7 +25,7 @@ try {
 }
 
 const BUILDS = {
-  a: { name: 'drowned hide', barnacles: false, kelp: false, comb: false, eyes: 2, crown: 'bare', wreck: false },
+  a: { name: 'drowned hide', barnacles: false, kelp: false, comb: false, eyes: 6, crown: 'stubs', wreck: false },
   b: { name: 'reef-grown', barnacles: true, kelp: true, comb: true, eyes: 6, crown: 'reef', wreck: false },
   c: { name: 'wreck-crowned', barnacles: true, kelp: true, comb: true, eyes: 6, crown: 'reef', wreck: true },
 };

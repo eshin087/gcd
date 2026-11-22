@@ -51,7 +51,8 @@ export const TIDE_ART = {
   hide: HIDE_ART,
   limb: { ...HIDE_ART, scale: [0.5, 0.38] },
   body: { ...HIDE_ART, scale: [1.1, 0.8], scaleDir: 'down' },
-  head: { ...HIDE_ART, scale: [0.36, 0.27], crack: [12, 0.06, -0.3, 0.7] },
+  // the face: finer scales than the arms, so its planes print as planes (STYLE.md "The face")
+  head: { ...HIDE_ART, scale: [0.26, 0.2], crack: [12, 0.06, -0.3, 0.7] },
   seam: SEAM_ART,
   // webbing and kelp: dark teal-black, a few jade specks
   web: { ...LIT, ink: [0.05, 0.1, 0.085], light: [1.0, 0.3, 0.15, 0.02], glow: [0, 0.03], emit: JADE, under: UNDER },
@@ -207,21 +208,29 @@ function buildArm(root, M, s, L, rnd) {
   const P = BODY.palm, F = BODY.finger;
   const upper = joint(root, `arm${s}Upper`);
   batch(upper, M.limb, [seg([0, 0, 0], [0, 0, BODY.upper], { r0: 2.1, r1: 1.6, radial: 12, rings: 5, bulge: 0.25 })], 'upper');
-  if (L.barnacles) batch(upper, M.bone, barnacles(rnd, 14, 0, 1.8, 2.5, 1.2, 2.2, 0.32), 'upperCrust');
+  // b, c: barnacle plates in a cluster on the upper arm's top, by the shoulder; c: the anchor chain runs down it
+  const crust = [];
+  if (L.barnacles) crust.push(...plates(rnd, 6, 0, 1.95, 3.2, 1.3, 0.6));
+  if (L.wreck && s < 0) crust.push(...chainLinks(0, 2.05, 0.8, BODY.upper - 0.5));
+  if (crust.length) batch(upper, M.bone, crust, 'upperCrust');
   const fore = joint(root, `arm${s}Fore`);
   batch(fore, M.limb, [seg([0, 0, 0], [0, 0, BODY.fore], { r0: 1.7, r1: 1.15, radial: 12, rings: 5, bulge: 0.2 }), ell(1.6, 1.4, 1.8, 0, 0, 0)], 'fore');
   // the drowned light on the inner arm (its underside)
   batch(fore, M.seam, [seg([0, -0.75, 1.5], [0, -0.55, BODY.fore - 1.2], { r0: 1.05, r1: 0.7, sx: 1.1, sy: 0.6, radial: 8, rings: 4 })], 'foreSeam');
   const kelpG = [];
-  if (L.kelp) for (let i = 0; i < 5; i++) kelpG.push(kelp(rnd, (rnd() - 0.5) * 1.6, -0.9, BODY.fore - 1.5 - rnd() * 2.5, 2.2 + rnd() * 1.8, 0.35 + rnd() * 0.2));
+  // b, c: kelp curtains 4 to 6 m long hanging from the wrist
+  if (L.kelp) for (let i = 0; i < 4; i++) kelpG.push(kelp(rnd, (i - 1.5) * 0.55, -0.9, BODY.fore - 1.2 - i * 0.7, 4 + rnd() * 2, 0.8));
   if (L.kelp) batch(fore, M.web, kelpG, 'kelp');
   // the hull plate grown onto one forearm (look c)
-  if (L.wreck && s > 0) batch(fore, M.bone, [place(new THREE.BoxGeometry(2.6, 0.25, 5.2, 2, 1, 4).toNonIndexed(), 0, 1.5, BODY.fore * 0.5, 0.1, 0.05, 0.25)].map(guvBox), 'hullPlate');
+  // c: a hull plate grown onto the right forearm (planks and two ribs), the chain down the left one
+  if (L.wreck && s > 0) batch(fore, M.bone, [slab(3.6, 0.45, 7.2, 0, 1.55, BODY.fore * 0.5, { rz: 0.15 }), slab(0.5, 1.1, 0.5, -1.4, 2.1, BODY.fore * 0.5 - 2.2), slab(0.5, 1.1, 0.5, 1.2, 2.2, BODY.fore * 0.5 + 2.0)], 'hullPlate');
+  if (L.wreck && s < 0) batch(fore, M.bone, chainLinks(0, 1.75, 0.8, BODY.fore - 2), 'foreChain');
   const hand = joint(root, `arm${s}Hand`);
   // +Z = toward the fingers, +Y = the back of the hand; the palm faces -Y
   batch(hand, M.hide, [ell(P.wide * 0.5, P.thick * 0.5, P.len * 0.5, 0, 0, P.len * 0.5, 0, 0, 0, [14, 8]), ell(1.3, 0.9, 1.4, 0, 0.1, 0.2)], 'palm');
   batch(hand, M.seam, [ell(P.wide * 0.42, 0.18, P.len * 0.42, 0, -P.thick * 0.42, P.len * 0.52, 0, 0, 0, [12, 6])], 'palmSeam');
-  if (L.barnacles) batch(hand, M.bone, barnacles(rnd, 22, 0, P.thick * 0.42, P.len * 0.82, P.wide * 0.42, 0.45, 0.18), 'knuckles');
+  // b, c: barnacle plates on the knuckles and the back of the hand
+  if (L.barnacles) batch(hand, M.bone, plates(rnd, 7, 0, P.thick * 0.5, P.len * 0.7, 1.5, 0.5), 'knuckles');
   const fingers = [];
   const xs = [-1.5, -0.5, 0.5, 1.5].map((v) => (v * P.wide) / 4.4);
   for (let i = 0; i < 4; i++) {
@@ -246,6 +255,20 @@ function buildArm(root, M, s, L, rnd) {
   return { upper, fore, hand, fingers, thumb: { k: tb, t: tt } };
 }
 
+/** Chain links about 1 m long along z from z0 to z1 at height y (the joint's frame). */
+function chainLinks(x, y, z0, z1) {
+  const out = [];
+  for (let z = z0, i = 0; z <= z1; z += 0.85, i++) {
+    const g = new THREE.TorusGeometry(0.42, 0.13, 4, 8).toNonIndexed();
+    g.scale(1, 1.3, 1); // (an oval link, long along its ring's y before it is turned onto z)
+    g.rotateX(Math.PI / 2); // its ring in the x-z plane, long along z
+    if (i % 2) g.rotateZ(Math.PI / 2); // every second one stood up: the links interlock
+    g.translate(x, y, z);
+    out.push(guvBox(g));
+  }
+  return out;
+}
+
 /** A box's aGUV (it gets none of its own): planar over its x / z. */
 function guvBox(g) {
   const p = g.attributes.position, n = p.count, uv = new Float32Array(n * 2);
@@ -259,78 +282,133 @@ function guvBox(g) {
   return g;
 }
 
-/** The head: a broad flat wedge, a heavy brow, a short upper jaw, two mandibles, the crown. */
+/**
+ * A box w x h x d centred at (x, y, z), its front (+z) narrowed to `tx` of its width and `ty` of its
+ * height, turned (rx, ry, rz; YXZ). Flat facets: each face prints as one plane under the key light.
+ */
+function slab(w, h, d, x, y, z, { tx = 1, ty = 1, ty0 = 0, rx = 0, ry = 0, rz = 0 } = {}) {
+  const g = new THREE.BoxGeometry(w, h, d).toNonIndexed();
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const f = (p.getZ(i) + d / 2) / d; // 0 at the back .. 1 at the front
+    p.setX(i, p.getX(i) * (1 + (tx - 1) * f));
+    // (ty0: where the narrowed front's middle sits, a share of h: a wedge that slopes down to its edge)
+    p.setY(i, p.getY(i) * (1 + (ty - 1) * f) + ty0 * h * f);
+  }
+  place(g, x, y, z, rx, ry, rz);
+  return guvBox(g);
+}
+
+/**
+ * The head (ADR-141; the drake's lesson, STYLE.md "The face": a face reads when it has PLANES and HOLES).
+ * Head frame: the skull's back at the neck (z 0), +z toward the snout, +y up. A cranium wedge, one flat
+ * brow with a hard front edge over the eyes, a snout wedge, two cheek planes, six slanted almond eyes in
+ * near-black sockets, a black mouth between two separate mandibles with the drowned light only at its
+ * back, comb teeth long and thick enough to print as pale strokes, and the crown of the look. Every
+ * feature is sized to be at least four art cells at the game camera (720p): about 1 m.
+ */
 function buildHead(root, M, L, rnd) {
-  const H = BODY.head, w = H.wide / 2;
   const head = joint(root, 'head');
-  // the skull: wide and low, its back at the neck (z 0), the snout at z = len
+  // the planes of the face (finer scales than the arms: the `head` material)
   batch(head, M.head, [
-    ell(w * 0.92, H.tall * 0.3, H.len * 0.42, 0, 0.3, H.len * 0.45, 0, 0, 0, [16, 10]),
-    ell(w * 0.62, H.tall * 0.22, H.len * 0.3, 0, 0.0, H.len * 0.78, 0.08, 0, 0, [14, 8]), // the upper jaw
-    ell(w * 0.85, H.tall * 0.16, H.len * 0.16, 0, H.tall * 0.3, H.len * 0.58, -0.15, 0, 0, [14, 6]), // the brow, one heavy ridge
-    ell(w * 0.7, H.tall * 0.32, H.len * 0.22, 0, 0.2, H.len * 0.12, 0, 0, 0, [12, 8]), // the back of the skull
+    slab(8.0, 2.8, 6.2, 0, 0.5, 3.2, { tx: 0.92, ty: 0.9 }), // the cranium (its front plane carries the eyes)
+    slab(9.0, 0.75, 2.0, 0, 1.95, 6.0, { tx: 0.92, rx: 0.12 }), // the brow: one slab, a hard front edge
+    slab(4.6, 1.4, 3.2, 0, 0.25, 7.7, { tx: 0.62, ty: 0.55, ty0: -0.1 }), // the snout wedge
+    slab(1.6, 2.6, 4.0, -4.35, -0.3, 3.6, { tx: 0.7, ry: -0.32, rz: -0.18 }), // the cheek planes, behind the eye rows
+    slab(1.6, 2.6, 4.0, 4.35, -0.3, 3.6, { tx: 0.7, ry: 0.32, rz: 0.18 }),
+    slab(5.4, 1.2, 2.4, 0, 2.2, 1.6, { tx: 0.8 }), // the crown's root over the back of the skull
   ], 'skull');
-  // the gills: three slits a side behind the jaw (the drowned light)
+  // the gills: three jade slits a side on the cheeks
   const gills = [];
-  for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) gills.push(ell(0.12, 0.65, 0.22, sx * w * 0.86, -0.35, H.len * (0.18 + i * 0.09), 0, 0, sx * 0.25, [6, 6]));
+  for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) gills.push(slab(0.3, 1.4, 0.5, sx * 5.12, -0.4, 2.5 + i * 0.8, { ry: sx * 0.32, rz: sx * 0.2 }));
   batch(head, M.seam, gills, 'gills');
-  // the eyes: in a slanted row under the brow, each in a dark socket (the slant lives in the eye and the brow)
-  const eyes = [], pits = [];
-  const n = L.eyes >= 6 ? 3 : 1;
+  // the eyes: three a side in a slanted row under the brow, each a bright almond in a near-black socket
+  // a cell wider all round (the slant lives in the eye and the brow)
+  const eyes = [], pits = [], eyeAt = [];
   for (const sx of [-1, 1]) {
-    for (let i = 0; i < n; i++) {
-      const t = n === 1 ? 0.3 : i / (n - 1), ex = sx * w * (0.48 + 0.3 * t), ey = H.tall * (0.2 - 0.06 * t), ez = H.len * (0.66 - 0.12 * t);
-      pits.push(ell(0.42, 0.22, 0.34, ex, ey, ez, 0, sx * 0.55, sx * 0.35, [8, 5]));
-      eyes.push(ell(0.3, 0.1, 0.2, ex + sx * 0.06, ey + 0.04, ez + 0.05, 0, sx * 0.55, sx * 0.4, [8, 4]));
+    for (let i = 0; i < 3; i++) {
+      const ex = sx * (1.35 + 0.95 * i), ey = 1.25 - 0.27 * i, ez = 6.45 - 0.12 * i;
+      const slant = sx * (0.32 + 0.06 * i), turn = sx * (0.25 + 0.15 * i);
+      pits.push(place(ellipsoidGeometry(0.68, 0.36, 0.45, { widthSegs: 10, heightSegs: 6 }), ex, ey, ez - 0.05, -0.35, turn, slant));
+      eyes.push(place(ellipsoidGeometry(0.46, 0.17, 0.26, { widthSegs: 10, heightSegs: 5 }), ex, ey + 0.02, ez + 0.2, -0.35, turn, slant));
+      eyeAt.push(new THREE.Vector3(ex, ey, ez + 0.2));
     }
   }
   batch(head, M.pit, pits, 'sockets');
   batch(head, M.eye, eyes, 'eyes');
-  // the throat's light, seen when the mandibles open
-  const maw = batch(head, M.maw, [ell(w * 0.48, H.tall * 0.14, H.len * 0.3, 0, -H.tall * 0.12, H.len * 0.62, 0, 0, 0, [12, 6])], 'maw');
-  // the mandibles: the lower jaw split in two; each opens outward and down from its hinge
+  head.userData.eyes = eyeAt;
+  // the mouth: black inside, the drowned light only at its back
+  batch(head, M.pit, [slab(4.6, 1.0, 4.4, 0, -0.75, 5.6, { tx: 0.8 })], 'mouth');
+  const maw = batch(head, M.maw, [ell(1.5, 0.55, 0.6, 0, -0.65, 3.7, 0, 0, 0, [10, 6])], 'maw');
+  // the mandibles: the lower jaw split in two, separate masses with a dark gap between them; each opens
+  // outward and down from its hinge; a comb of teeth along its inner edge
   const mand = [];
+  const nt = L.comb ? 6 : 4;
   for (const sx of [-1, 1]) {
-    const j = joint(head, `mand${sx}`, sx * w * 0.45, -H.tall * 0.2, H.len * 0.28);
-    const len = H.len * 0.68;
-    batch(j, M.head, [seg([0, 0, 0], [0, 0, len], { r0: 0.95, r1: 0.42, sx: 1.25, sy: 0.7, radial: 10, rings: 4 })], 'mandible');
+    const j = joint(head, `mand${sx}`, sx * 2.35, -1.0, 3.0);
+    batch(j, M.head, [slab(1.6, 1.3, 5.8, 0, 0, 2.9, { tx: 0.55, ty: 0.6 })], 'mandible');
     const teeth = [];
-    const nt = L.comb ? 14 : 5;
     for (let i = 0; i < nt; i++) {
-      const t = 0.18 + (0.78 * i) / (nt - 1);
-      teeth.push(horn(L.comb ? 0.8 : 1.0, L.comb ? 0.07 : 0.16, -sx * 0.45, 0.35, len * t, -1.35, -sx * 0.3, 0, 4));
+      const z = 1.0 + (4.2 * i) / (nt - 1), len = 1.25 + 0.3 * Math.sin(i * 1.7);
+      teeth.push(horn(len, 0.18, -sx * 0.45, 0.4, z, -1.45, -sx * 0.25, 0, 5));
     }
     batch(j, M.teeth, teeth, 'teeth');
     mand.push(j);
   }
-  // the upper teeth: a comb under the upper jaw
+  // the upper teeth: a comb hanging from the snout's front edge
   const up = [];
-  const nu = L.comb ? 16 : 6;
+  const nu = L.comb ? 7 : 5;
   for (let i = 0; i < nu; i++) {
-    const t = i / (nu - 1), a = (t - 0.5) * 2.2;
-    up.push(horn(L.comb ? 0.7 : 0.9, L.comb ? 0.06 : 0.14, Math.sin(a) * w * 0.55, -H.tall * 0.12, H.len * 0.78 + Math.cos(a) * H.len * 0.18, 1.35, 0, 0, 4));
+    const t = i / (nu - 1);
+    up.push(horn(1.35 + 0.25 * (1 - Math.abs(t - 0.5) * 2), 0.2, (t - 0.5) * 3.6, -0.35, 8.6 - Math.abs(t - 0.5) * 1.6, 1.4, 0, 0, 5));
   }
   batch(head, M.teeth, up, 'upperTeeth');
-  // the crown: broken coral antlers on the back of the skull
+  // the crown: it grows from the brow's sides OUT and up, so it frames the face at the game camera (a
+  // crown on the back of the skull stood above the top of the frame)
   const crown = [];
-  const big = L.crown === 'reef';
-  const cn = big ? 7 : 4;
-  for (let i = 0; i < cn; i++) {
-    const t = cn === 1 ? 0.5 : i / (cn - 1), x = (t - 0.5) * w * 1.3;
-    crown.push(...coral(rnd, x, H.tall * 0.35, H.len * (0.2 + 0.08 * Math.abs(t - 0.5)), (big ? 2.6 : 1.6) * (0.75 + 0.5 * rnd()), big ? 0.32 : 0.22, -1.0 - 0.3 * rnd(), (t - 0.5) * 1.4 + Math.PI, big ? 3 : 2));
+  if (L.crown === 'stubs') {
+    // a: a low crown of a few broken stubs
+    for (const sx of [-1, 1]) for (let i = 0; i < 2; i++) crown.push(horn(1.2 + 0.4 * rnd(), 0.42, sx * (2.6 + 1.3 * i), 2.2, 5.4 - 0.6 * i, -0.7, sx * (1.0 + 0.3 * i), 0.1, 5));
+  } else {
+    // b and c: a tall crown of coral antlers, 4 to 6 m, branching, swept out from the brow
+    for (const sx of [-1, 1]) {
+      for (let i = 0; i < 3; i++) crown.push(...coral(rnd, sx * (2.2 + 1.1 * i), 2.3, 5.6 - 0.7 * i, 4 + 2 * rnd(), 0.45, -0.55 - 0.2 * i, sx * (0.9 + 0.25 * i), 3));
+    }
+    // barnacle plates in clusters on the brow (0.6 to 1 m across)
+    crown.push(...plates(rnd, 5, -2.6, 2.4, 6.1, 1.1, 0.6));
+    crown.push(...plates(rnd, 4, 2.9, 2.4, 5.9, 1.0, 0.6));
   }
-  if (L.barnacles) crown.push(...barnacles(rnd, 26, 0, H.tall * 0.42, H.len * 0.55, w * 0.7, H.len * 0.12, 0.2));
   if (L.wreck) {
-    // spars grown into the crown: two broken masts
-    for (const sx of [-1, 1]) crown.push(guvBox(place(new THREE.BoxGeometry(0.3, 0.3, 6.5, 1, 1, 4).toNonIndexed(), sx * w * 0.35, H.tall * 0.9, H.len * 0.05, -0.9, Math.PI + sx * 0.35, sx * 0.2)));
-  }
-  batch(head, M.bone, crown, 'crown');
+    // c: two masts grown through the crown, 8 to 10 m, out and up to either side, each with its yard
+    for (const sx of [-1, 1]) {
+      // (laid out across the head, over the hands: a long straight beam to either side reads at the game camera)
+      const len = 8.5 + rnd() * 1.5, pitch = 0.04, yaw = sx * 1.42;
+      const dx = Math.sin(yaw) * Math.cos(pitch), dy = -Math.sin(pitch), dz = Math.cos(yaw) * Math.cos(pitch);
+      const bx = sx * 2.4, by = 2.3, bz = 5.0; // (thrust through the brow's sides)
+      crown.push(slab(0.6, 0.6, len, bx + (dx * len) / 2, by + (dy * len) / 2, bz + (dz * len) / 2, { tx: 0.6, ty: 0.6, rx: pitch, ry: yaw }));
+      crown.push(slab(0.4, 4.6, 0.4, bx + dx * len * 0.8, by + dy * len * 0.8, bz + dz * len * 0.8, { rx: 0.3, ry: yaw }));
+    }
+  }  batch(head, M.bone, crown, 'crown');
   if (L.kelp) {
+    // kelp curtains from the crown, 4 to 6 m, hanging behind the head
     const k = [];
-    for (let i = 0; i < 7; i++) k.push(kelp(rnd, (rnd() - 0.5) * w * 1.4, H.tall * 0.3, H.len * (0.1 + 0.25 * rnd()), 2.4 + rnd() * 2.4, 0.4));
+    // (they hang from the crown's roots at the brow's sides, outside the eye rows)
+    for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) k.push(kelp(rnd, sx * (4.0 + 0.55 * i), 2.2, 5.2 - 0.6 * i, 4 + rnd() * 2, 0.75));
     batch(head, M.web, k, 'crownKelp');
   }
   return { head, mand, maw };
+}
+
+/** A cluster of `n` barnacle plates round (x, y, z): flat six-sided discs 0.6 to 1 m across, each with a cone. */
+function plates(rnd, n, x, y, z, R, h = 0.5) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * R, d = 0.3 + 0.2 * rnd();
+    const g = new THREE.CylinderGeometry(d * 0.75, d, h * (0.5 + 0.5 * rnd()), 6, 1).toNonIndexed();
+    place(g, x + Math.cos(a) * r, y, z + Math.sin(a) * r, (rnd() - 0.5) * 0.5, rnd() * 3, (rnd() - 0.5) * 0.5);
+    out.push(guvBox(g));
+  }
+  return out;
 }
 
 /**

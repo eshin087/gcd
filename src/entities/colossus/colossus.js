@@ -893,6 +893,8 @@ export class TideColossus {
     if (!F.length) {
       const s = this.sense, i = s.x < 0 ? 0 : 1;
       frame(this.hands[i].mode === 'grip' ? P.tips[i][1] : P.palm[i], 2.2, 'hand');
+      // at rest the face too (its eye rows and the maw, turned to the camera over the rim)
+      if (this.state === 'combat') frame(P.head, 2.6, 'face');
     }
     // the striking part kept on screen through its windup, the hero never cropped for it (cameraRig.keep)
     const rig = this.game.cameraRig, hp = this.game.player?.position;

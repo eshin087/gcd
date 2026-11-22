@@ -35,7 +35,8 @@ export const POSE = Object.freeze({
   near: 6,
   grip: Object.freeze({ x: 9, y: 2.1, back: 2.8, tips: 3.5 }), // wrist ±x, y, m north of the rim; fingertips m over it
   reel: Object.freeze({ x: 15, y: 4.5, back: 9 }),
-  loom: Object.freeze({ y: 3.5, back: 4, follow: 10 }), // maw (hx, y, rim - back), hx follows the hero within ±follow
+  // maw (hx, y, rim - back), hx follows the hero within ±follow; lift = the face's pitch up toward the camera
+  loom: Object.freeze({ y: 3.0, back: 1.0, follow: 4, lift: 0.5 }), // (follow 4: the head over the rim stays clear of the resting hands)
   rear: Object.freeze({ y: 5, back: 6 }),
   down: Object.freeze({ y: 1.2, fwd: 0.5 }), // chin on the rim
   // critically damped springs: stiffness (1/s) per phase for the hands and the head

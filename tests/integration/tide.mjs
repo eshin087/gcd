@@ -687,7 +687,9 @@ async function scenarioBounds() {
   const cues = { 1: 0, 2: 0, 3: 0 }, secs = { 1: 0, 2: 0, 3: 0 };
   // (each phase's steady pace: its first 8 s, the bellow and the move it opens with, are not counted)
   let since = 0;
-  G.watch = (n, e) => { if (n === 'combat:flash' && e.source === 'dragon' && since > 8) cues[d.phase]++; if (/^dragon:phase[23]$/.test(n)) since = 0; };
+  const flog = [];
+  G.watch = (n, e) => {
+    if (n === 'combat:flash') flog.push(`(${d.time.toFixed(2)} ${e.attack} ${e.tell})`); if (n === 'combat:flash' && e.source === 'dragon' && since > 8) cues[d.phase]++; if (/^dragon:phase[23]$/.test(n)) since = 0; };
   const t0 = game.time;
   run(G, 120, () => {
     const t = game.time - t0;
@@ -716,7 +718,9 @@ async function scenarioBounds() {
   // two cues that need different answers never within TUNING.fair.apart
   const T = d.stats.cueTimes;
   let clash = 0;
-  for (let i = 2; i < T.length; i += 2) if (T[i] - T[i - 2] < TUNING.fair.apart && T[i + 1] !== T[i - 1]) clash++;
+  const seen = [];
+  for (let i = 2; i < T.length; i += 2) if (T[i] - T[i - 2] < TUNING.fair.apart && T[i + 1] !== T[i - 1]) { clash++; seen.push(`t ${T[i].toFixed(2)}: ${(T[i] - T[i - 2]).toFixed(2)} s`); }
+  if (seen.length) out(`     conflicts: ${seen.join(', ')}; flashes near them: ${flog.filter((s) => seen.some((q) => Math.abs(parseFloat(s.slice(1)) - parseFloat(q.slice(2))) < 1)).join(' ')}`);
   assert(clash === 0, `no two cues that need different answers within ${TUNING.fair.apart} s (${clash})`);
   const pm = [1, 2, 3].map((k) => (cues[k] / Math.max(1, secs[k])) * 60);
   out(`     cues a minute by phase: ${pm.map((v) => v.toFixed(0)).join(' / ')}`);
@@ -752,6 +756,23 @@ async function scenarioFrame() {
   const SIZES = [[1280, 720], [852, 393], [393, 852]];
   const SPOTS = [[0, -3], [-12, -4], [12, 0], [-6, 3], [8, 4]];
   const MOVES = ['slam', 'hammer', 'sweep', 'breath', 'blackFathom', 'grasp', 'breaker'];
+  // at rest the face is turned to the camera and in the frame: from the centre spot at 1280 x 720 both
+  // eye rows and the maw project inside it (the phones show what they can: reported)
+  for (const [w, h] of SIZES) {
+    const G = build();
+    camSetup(G, w, h);
+    const { game } = G;
+    fight(G, { x: 0, z: -1 });
+    const d = game.dragon, p = game.player, v = new THREE.Vector3();
+    game.flow.cameraOverride = game.flow._ov;
+    run(G, 4, (g) => { g.tickCam(DT); p.position.x = 0; p.position.z = -1; p.hp = p.maxHp; });
+    const pts = [...d.rig.pt.eyes, d.rig.pt.maw];
+    const ndc = pts.map((q) => v.copy(q).project(game.camera).toArray().slice(0, 2));
+    const inside = ndc.filter(([x, y]) => Math.abs(x) <= 1 && Math.abs(y) <= 1).length;
+    const msg = `${w}x${h} at rest, the hero mid-shelf: ${inside} of ${pts.length} face points (six eyes, the maw) inside the frame (highest y ${Math.max(...ndc.map((n) => n[1])).toFixed(2)})`;
+    if (w === 1280) assert(d.rig.pt.eyes.length === 6 && inside === pts.length, msg);
+    else out(`     ${msg}`);
+  }
   for (const [w, h] of SIZES) {
     let bad = 0, n = 0;
     const misses = [];

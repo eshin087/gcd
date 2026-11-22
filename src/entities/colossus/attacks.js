@@ -204,6 +204,8 @@ function sweepUpdate(c, a, r, dt) {
   c.fx.scrape(x, rimZ(x) + r.band * 0.5, r.band, r.dir, dt);
   if (!p) return;
   const ahead = (p.x - x) * r.dir, reachR = D.r + (c.game.player?.radius ?? 0.45);
+  // (when its blow is settled, answered or passed by: the cross sweep's return waits on it)
+  if (r.passedAt === undefined && (b.done || ahead < -reachR)) r.passedAt = a.T;
   // its cue: when the front is flashLead from him (or now, if it starts nearer)
   if (!b.flashed && b.told && ahead <= r.speed * lead + reachR) c.flashTell(a, b);
   if (!b.done && Math.abs(p.x - x) <= reachR && inBand(c, r.band)) {
@@ -295,7 +297,15 @@ export const MOVES = {
     update(c, a, dt) {
       const S = a.s.sw;
       if (!S) return;
-      a.phase = a.T < S[0].t0 ? 'windup' : a.T < Math.max(S[0].t1, S[1].t1) ? 'active' : 'recover';
+      // fairness: the return's front does not set out until the first blow is settled and the string's
+      // gap has passed (its cue could otherwise come 0.25 s after the first one's: a parry, then a dodge)
+      const r0 = S[0], r1 = S[1], gap = TUNING.fair.stringGap;
+      if (a.T >= r1.t0 && (r0.passedAt === undefined ? a.T < r0.t1 : a.T < r0.passedAt + gap)) {
+        r1.t0 += dt;
+        r1.t1 += dt;
+        a.dur = Math.max(a.dur, r1.t1 + a.def.rec * c.tScale);
+      }
+      a.phase = a.T < r0.t0 ? 'windup' : a.T < Math.max(r0.t1, r1.t1) ? 'active' : 'recover';
       for (const r of S) sweepUpdate(c, a, r, dt);
     },
     frame(c, frame) {

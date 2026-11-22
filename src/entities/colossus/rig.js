@@ -71,6 +71,7 @@ export class ColossusRig {
       palm: [v3(), v3()], wrist: [v3(), v3()], elbow: [v3(), v3()], shoulder: [v3(), v3()],
       tips: [[v3(), v3(), v3(), v3()], [v3(), v3(), v3(), v3()]], thumb: [v3(), v3()],
       maw: v3(), head: v3(), chin: v3(), throat: v3(), neck: [v3(), v3(), v3(), v3()], root: v3(),
+      eyes: (model.head.userData.eyes ?? []).map(() => v3()), // the six eyes (the frame test projects them)
     };
     this._mawLocal = v3(0, -0.4, BODY.head.len * 0.74);
   }
@@ -209,6 +210,8 @@ export class ColossusRig {
     P.head.set(0, 0.2, BODY.head.len * 0.45).applyMatrix4(M.head.matrixWorld);
     P.chin.set(0, -BODY.head.tall * 0.3, BODY.head.len * 0.62).applyMatrix4(M.head.matrixWorld);
     P.throat.copy(P.neck[2]);
+    const E = M.head.userData.eyes;
+    if (E) for (let k = 0; k < E.length; k++) P.eyes[k].copy(E[k]).applyMatrix4(M.head.matrixWorld);
   }
 }
 
@@ -279,8 +282,10 @@ export function poseHead(H, kind, hx) {
     H.fwdT.set(0, 0.05, 1);
     H.jawT = 0.85;
   } else {
+    // (drawn only: the face turned up toward the 58 degree camera and brought over the rim, so the brow,
+    // the eye rows and the maw face it; a level head showed only the top of its skull)
     H.tgt.set(hx, POSE.loom.y, z0 - POSE.loom.back);
-    H.fwdT.set(0, -0.32, 1);
+    H.fwdT.set(0, POSE.loom.lift, 1);
     H.jawT = 0.12;
   }
 }
