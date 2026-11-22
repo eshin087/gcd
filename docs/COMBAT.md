@@ -1150,6 +1150,22 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   is instant, so the cut and his spray move with him: they sit on the body the freeze holds. A slam
   that lands only through its ground shards draws no cut: no flare, no `cut` layer (the body's hit
   only). A strike his guard turns gets none of it: the guard draws its own clash.
+- **The impact pass** (2026-11-22, ADR-149; `combat/impact.js`): four more pieces on a cut that lands,
+  presentation only (no damage, posture, hit stun, shove, guard or timing moved; each piece off =
+  as before). *The stamp*: the hit printed in the letter grid at the drawn contact, about 0.16 s
+  (the execution 0.2 s), a shape per contact tier (STYLE.md "A cut that lands"). *The ripple*: a
+  pressure wave through the struck boss's letters, reach 9 - 12 cells for a light, sweep or point,
+  17 - 19 on a man and 36 - 45 on the wyrm for a slam, cleave or execution (crit x1.15, a full charge
+  +25 %; STYLE.md "Text effects"). *The reaction*, drawn only, by where the drawn contact lies: a
+  duelist's head tips along the blade, his torso twists (a thrust, the point or the execution,
+  folds him), a struck leg buckles and he drops 6.5 cm (heavy x1.55, crit x1.12, a flurry's cut x0.7,
+  the Starless Lord x0.82; a guarded strike, a trade clash and his own returned bolt get none); the
+  wyrm's struck part answers (head, neck, body, leg, wing, tail; light x0.4, heavy x1, crit x1.25),
+  in combat, staggered and airborne, not asleep or dying. *The thump*: a sub under the slam (1), the
+  cleave (1.1), the execution (1.2), a heavy branch's sweep or point (0.7), the flurry's last blow
+  and any crit (at least 0.55), and on a heavy blow a 4.5 dB dip of the music only (the tells keep
+  their level). **The owner's picks** (`IMPACT.by`): the stamp on the human bosses only; a human
+  boss's reaction x1.5, the wyrm's x1; the ripple and the thump x1.
 
 **Moves** (`moves.js`, ADR-122; generated from the data by the tuning pass's `gen-moves.mjs` on
 2026-11-16; `node tests/integration/duel.mjs . moves` checks every new one). Tells N normal, B blue

@@ -5,6 +5,112 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 74: a landed cut has weight (the impact pass)
+
+**Owner:** "how can we make the games combat more impactful and feel weight? i want the hits to look
+realistic where it lands and show some kind of ascii animation to show the impact. think of ideas to
+suggest using fable and once we approve, use opus to implement it". Branch `combat/impact-weight`.
+ADR-149 / Session 74 / M1.58.
+
+**Proposed and picked.** Nine ideas: A the hit stamped in the letters, B a ripple through the struck
+body, C wounds that stay, D the body reacts by where it is hit, E a spray along the blade, F the
+ground answers heavy blows, G the same care when the hero is hit, H the sound's weight, I an impact
+frame. The owner: "Build first batch" (A, B, D, H). After the side-by-side clips and the lead's
+recommendation: "Your recommendation".
+
+**How it was built.** The lead (Fable) wrote the plan and a core of switches and stubs; five Opus
+agents built the pieces in parallel worktrees on it (the stamp, the ripple, the duelists' reaction,
+the wyrm's reaction, the thump). The ripple was sent back for a second round: round one read only
+when two frames were diffed. A sixth Opus agent filmed same-take before / after clips and sheets for
+the owner (12). The merge had one conflict class: two scenarios inserted at the same spot of
+`integ.mjs`.
+
+**What changed.**
+- The core, `combat/impact.js`: `IMPACT` (`pieces`, `on`, `k`, and `by`, the owner's scale per kind
+  of struck body), `impactOn(piece)`, `impactK(piece, who)`. `?impact=off | all | stamp,ripple,...`;
+  the Lab's 'impact' row (four toggles). `PlayerFx.contact` hands the stamp and the ripple one
+  record at the drawn contact (tier, cut, edge, hilt, crit, power, low, target); the reactions read
+  `takeHit`'s own record, the thump `player:hitDragon`. With every piece off the game draws, sounds
+  and plays as before (each piece's scenario checks it).
+- **The stamp** (`combat/impactStamp.js`, a branch in `cutFx.js`): the hit as a stepped animation
+  written into the letter grid in the fire field's `steel`. One 12 px blob per letter cell, snapped
+  to cell centres; each frame held 0.04 s of fx time (it runs through the freeze); 4 frames, about
+  0.16 s (the execution 5, 0.2 s). Shapes by tier: a slit that opens and splits (light, sweep,
+  cleave; the cleave adds a cross and grows with the charge), a pierce with rings (point), a star
+  (slam), a puncture with two rings (execute). Rings are flat hexagons cell by cell. The anchor is
+  the contact pulled 2.5 m toward the camera (at 1 m the wyrm's contact sat inside its body and
+  nothing printed). Its cells print on black (one fire-field tint zone); no cell over the hero.
+  `?stamp=instead` draws it in place of today's slash line (an option).
+- **The ripple** (`render/impactRipple.js`, the ASCII pass): a pressure wave from the contact through
+  the struck boss's letters, up to 4 at once, riding with the boss, projected each frame with the
+  final camera. Round 2 (`wave`): nothing in the first 2.5 cells; a thin bright front, a trough up
+  to 60 % darker behind it; letters pushed outward 3.6 - 5.5 px and back; strokes along the front on
+  the wyrm. Reach 9 - 12 cells for a light cut, 36 - 45 on the wyrm and 17 - 19 on a man for a slam,
+  a cleave or the execution. Boss cells only.
+- **The reaction, the human bosses** (`duelist/react.js`, `reactTuning.js`): a drawn layer over the
+  pose, like the shudder. The head tips along the blade (back for a thrust), the torso twists (a
+  thrust folds him), a struck leg buckles and he drops 6.5 cm with the feet planted. Heavy x1.55,
+  crit x1.12, a flurry's cuts x0.7, the Starless Lord x0.82; a heavy blow that shoves him kicks up a
+  little dust at his feet. Hurt spheres, hit stun, shove, guard, AI and the move's clock never see
+  it (the test: on and off identical).
+- **The reaction, the Cinder Wyrm** (`dragon/react.js`, `tuningReact.js`): the head snaps away and the
+  neck carries it, a neck cut whips, a body cut shoves the trunk and lashes the tail, a leg buckles,
+  a wing jerks and folds, a tail lashes to the tip. Light x0.4, heavy x1, crit x1.25. Put on after
+  `_step` and taken off before the next one: AI, rig, hurt spheres and attacks run on the plain joints
+  (the test: identical over 90 ticks). `dragon.drawnPoint(v)` puts the cut's effects on the drawn,
+  reacting body. The old flinch stays under it.
+- **The thump** (`audio/thump.js`): a sub voice (a sine and its octave gliding 70 -> 38 Hz, a soft
+  clip, a 420 Hz low-pass) under the slam, the cleave, the execution, a heavy sweep or point, the
+  flurry's last blow and any crit; a light cut gets none. A heavy blow dips the music only
+  (`thumpDip`, never the cue bus) by 4.5 dB for about a fifth of a second; one dip per 0.5 s, a blow
+  inside a holding dip extends it, so a chain cannot pump.
+
+**What the work found.**
+- *Today's effects hide the new pieces.* The white blade flare covers frames 0 to +4 of every hit (a
+  charged cleave about 6 frames of the whole crop); the swing arc sweeps through the contact at about
+  +6 to +11, when the stamp shows its split lines and ring; the slash streaks stack on its first
+  frames; the jolt, the camera punch and the wyrm's flinch move the picture more than the reactions
+  do at the game camera.
+- *The stamp does not read on the wyrm.* A light cut shows 2 - 3 cells; slam and cleave are nearly
+  invisible under its bright digits and the hero standing in front of the contact.
+- *The reactions are small at the game camera.* A duelist at x1: 3 - 4 px for a light body cut, about
+  9 px for a heavy head cut, 2 - 5 px for a leg, on a figure about 40 px tall ("barely reads", the
+  filming agent). The wyrm at x1: 4 px for a light chest cut, about 13 px heavy, about 11 px for a
+  side cut to the head.
+- *The thump adds little.* Heavy blows already carry almost all their energy below 100 Hz, and the
+  master compressor (threshold -14 dB, ratio 4) pulls the whole mix down 8 - 12 dB on each, the cue
+  bus too. On offline renders at x1 the sub adds +0.2 dB below 100 Hz on the slam, about 0 on the
+  cleave, +0.7 on the execution; what changes is +2 dB (cleave) / +4.5 dB (crit) between 160 and
+  400 Hz, which a phone plays. Nobody has listened to it in the game yet; an audition page went to
+  the owner.
+
+**The owner's picks** (the lead's recommendation, taken): the stamp at medium, over today's slash
+line, on the human bosses only (`IMPACT.by.stamp.wyrm` 0); the ripple at its default; the reactions
+x1.5 on the human bosses, x1 on the wyrm; the thump at x1. Next, a before / after with today's
+contact flare and swing arc toned down (accepted; not in this PR).
+
+**Verification.** New scenarios: integ `stamp`, `ripple`, `wyrmreact`, `thump`; duel `react`. The
+stamp's and the duelists' react scenarios pin their piece at strength 1. `npm test`: all 12 suites passed on the merge of the five pieces (836 s), before `origin/main` (#76) was merged in and before the picks commit; the lead runs it again on the final branch before the PR. The `world budget` timing check failed in every agent's run while six suites ran at once, and fails the same way on the base commit under that load. The pieces
+were filmed in the browser side by side at the game camera (the agents' and the filming agent's
+captures).
+
+**Not checked / open.**
+- Nobody has played it. Not looked at on a phone: the ripple's first version compiled and drew on the
+  LOW / touch path, the second was not checked there.
+- Not filmed: the execution and crits for the stamp and the ripple, a flurry and Tian Lei for the
+  reactions.
+- At x1.5 a heavy thrust's reaction moves a point 0.085 m between two frames once (the duel test's
+  0.06 m bound is for x1).
+- While the wyrm's reaction is drawn its hurt spheres stay where the simulation has them, up to about
+  1 m off the drawn body for 0.2 - 0.5 s; phase 3's fire comes off the simulated points.
+- For the owner: the game's existing low end is pure sine (silent on small speakers), and the
+  compressor flattens every heavy hit, tells included.
+- Rig lesson for captures: with the AI off a duelist keeps his guard up and turns every cut (a guarded
+  hit returns before `PlayerFx.contact`); on a fresh duelist level the flow sat in 'title'. Enter the
+  fight and drop his guard first.
+
+**Next.** The flare / arc before / after. Then the second batch if the owner wants it: C, E, F, G, I.
+
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
 **Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also

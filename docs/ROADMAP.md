@@ -184,6 +184,32 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.58 — A landed cut has weight: the impact pass (2026-11-22, `combat/impact-weight`, ADR-149)
+- [x] Nine ideas proposed; the owner built the first batch (the stamp, the ripple, the reaction by
+      where it lands, the sound's weight)
+- [x] The core: `combat/impact.js` switches (`?impact=`, the Lab's 'impact' row), one hit record at
+      the drawn contact; every piece off = the game as before
+- [x] The stamp: the hit printed in the letter grid, stepped, a shape per tier, ink on black, never
+      over the hero
+- [x] The ripple: a pressure wave through the struck boss's letters (round 2; round 1 did not read)
+- [x] The reaction, drawn only: the human bosses (head, body, leg; a thrust folds) and the wyrm
+      (head, neck, body, leg, wing, tail)
+- [x] The thump: a sub under heavy blows, a short dip of the music (never the cue bus)
+- [x] Same-take clips for the owner; the picks: the stamp on the human bosses only, a human boss's
+      reaction x1.5, the wyrm's x1, the ripple and the thump x1
+- [x] Tests: integ `stamp`, `ripple`, `wyrmreact`, `thump`; duel `react`
+- [ ] Follow-ups:
+  - [ ] A before / after with today's contact flare and swing arc toned down (they hide the pieces'
+        first frames; the owner accepted it with the picks)
+  - [ ] C: wounds that stay
+  - [ ] E: a spray along the blade
+  - [ ] F: the ground answers heavy blows
+  - [ ] G: the same care when the hero is hit
+  - [ ] I: an impact frame
+  - [ ] A real phone: the ripple's second version on the LOW / touch path, the frame rate
+  - [ ] A human plays it; the thump heard on speakers and on a phone
+  - [ ] Not filmed yet: the execution and crits (stamp, ripple), a flurry and Tian Lei (reactions)
+
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters
