@@ -3226,7 +3226,7 @@ export class Player {
   }
 
   /**
-   * The cut met a piece it could not cut through (BREAK.chip.stop): the blade stops there. The attack
+   * The cut met a piece it could not cut through (BREAK.chip.stop, ADR-132): the blade stops there. The attack
    * clock goes back to the middle of this frame's travel (about where the edge met it), the frame
    * freezes, the camera shakes, steel on stone throws sparks; _tickAttack holds the pose while it
    * sticks (wood) and then throws the blade back (the bounce), away from the piece.
