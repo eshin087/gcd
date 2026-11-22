@@ -156,7 +156,7 @@ export const TUNING = {
     // what the transitions do to the ring's eight inner stones wherever they stand: The Mountain Answers
     // cracks them, Both Hands fells them outward
     inner: { stamp: 1.1, clap: 4.0 },
-    rim: { clap: 1.1 },
+    rim: { clap: 1.3 },
     fissure: 1.2,
     wind: 3.0,
     crescent: 3.0,
