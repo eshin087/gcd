@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-two pieces of work since 0.4.0:
+Sixty-three pieces of work since 0.4.0:
 - **Cuts land with weight: the hit printed where it lands, the boss's body answers** (2026-11-22, ADR-149).
   *Added:* four new pieces on every cut that lands, each behind its own switch ("i want the hits to
   look realistic where it lands and show some kind of ascii animation to show the impact"). On a
@@ -25,6 +25,21 @@ Sixty-two pieces of work since 0.4.0:
   and the Lab's 'impact' row switch the pieces; `?stamp=instead` draws the stamp in place of the
   slash line (an option). Nobody has played it yet.
 - **Round the Obsidian Throne, what the challengers left** (2026-11-22, ADR-133). *Changed:* the
+- **Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage** (2026-11-22,
+  ADR-135). *Added:* in the Skybreak Ring, **the sign**: from his second form, Tian Lei raises two
+  fingers to his brow, a snap of light, and he is gone and behind you (or at your left, your right and
+  then behind you in Thunder Ascension's Three Signs), the blow still to come: when the hand goes up,
+  turn. **Counter stances**, one a form: he stands with his palms open and light drawn into them. Cut
+  into it and he CATCHES your blade, throws it back and punishes at once; wait, and the stance ends on
+  nothing with his guard down. **Heaven's Lantern** (forms 2 and 3): he rises and gathers a great orb
+  of gold over his hands, the ring's light draining to it, and throws it at where you will be. A parry
+  or a block is safe and a roll passes it; a PERFECT parry stops it on your blade and starts THE PUSH:
+  mash attack to throw it back into him for a huge blow that leaves him reeling, or lose and be thrown.
+  **Raining Suns** (forms 2 and 3): he leaps and pours sixteen small blasts down round you, then a
+  bigger one a perfect parry returns. Three more ripostes out of his guard. *Changed (the engine, for
+  him):* a boss's beat can be a counter stance and a vanish can wait for its sign; the other bosses are
+  unchanged. Kept behind a switch for the owner's pick: the orb's look (`?ascOrb=a` a sun, `b` a
+  lantern). Nobody has played it yet.
   felled forest round the Obsidian Throne's crater (the same straight log again and again, laid in a
   starburst) is gone. In its place lies what those who came for the Starless Lord left behind: graves
   of swords stuck in the earth, spears with a torn red banner, wanderers' cairns with a straw hat and

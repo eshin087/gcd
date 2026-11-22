@@ -266,6 +266,15 @@ export class Duelist {
     if (this.mode === 'sleep') this.startIntro();
     const G = this.T.guard;
     const heavy = !!o.heavy;
+    // a counter stance (a beat marked `stance`, brain.catching): a sword cut that reaches him in it is
+    // CAUGHT, whatever side it came from
+    if (!o.exact && !this.broken) {
+      const cb = this.brain.catching?.();
+      if (cb) {
+        this._catch(cb, heavy, o.point);
+        return 0;
+      }
+    }
     let crushed = false;
     if (!o.exact && this.guarding && !this.broken && this._fromFront()) {
       if (heavy && fin(o.poise) >= G.crushPoise) crushed = true;
@@ -897,6 +906,34 @@ export class Duelist {
     this.jolt = Math.max(this.jolt, what === 'armor' ? (heavy ? 0.5 : 0.3) : heavy ? 0.4 : 0.2);
     try {
       p?.onGuarded?.({ deflect, heavy, attacker: this });
+    } catch (err) {
+      console.error('[duelist] player.onGuarded failed', err);
+    }
+  }
+
+  /**
+   * The hero's cut is CAUGHT in his counter stance (a beat marked `stance`; brain.js): no damage, no
+   * posture, the hero's blade thrown back (the bounce, as a deflect's), and the move jumps to its
+   * punish (brain.onCaught). Drawn as a deflect on the crossing, called "CAUGHT" (dragon:guard).
+   */
+  _catch(b, heavy, point) {
+    const G = this.T.guard, p = this.game.player;
+    this.brain.onCaught(b);
+    const h = this._hilt, t = this._tip;
+    let x = (h.x + t.x) * 0.5, y = (h.y + t.y) * 0.5, z = (h.z + t.z) * 0.5;
+    if ((!Number.isFinite(x + y + z) || !this._tipOk) && point) {
+      x = point.x;
+      y = point.y;
+      z = point.z;
+    }
+    if (Number.isFinite(x + y + z)) this.fx.guard(x, y, z, { heavy, deflect: true });
+    this.emit('dragon:guard', { heavy, deflect: true, caught: true });
+    this.hitstop(G.deflectStop ?? 0.1, 0.03);
+    this.game.shake?.(0.34);
+    this.game.punch?.(2.4);
+    this.jolt = Math.max(this.jolt, 0.2);
+    try {
+      p?.onGuarded?.({ deflect: true, heavy, attacker: this, caught: true });
     } catch (err) {
       console.error('[duelist] player.onGuarded failed', err);
     }
