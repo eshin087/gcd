@@ -620,7 +620,7 @@ async function scenarioSurge() {
 
 // ================================================================== scenario: grip
 async function scenarioGrip() {
-  out('\n== scenario GRIP (a hand that takes 240 lets go; the head drops) ==');
+  out('\n== scenario GRIP (a hand that takes TUNING.grip.hp inside its window lets go; the head drops) ==');
   const G = build();
   fight(G, { x: 9, z: -5 });
   const d = G.game.dragon;
