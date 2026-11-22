@@ -168,8 +168,9 @@ function segDist(px, pz, ax, az, bx, bz, out) {
 // ---------- bites (BREAK.chip): a piece is the bricks it is drawn with, its triangles ----------
 /** The bite look now (`?chip=`; lookSwitch.js): '0' off (pieces only wear down and break whole), 'a' the
  *  bricks under a blow are knocked out. Read at each blow; a level built with it on has finer bricks
- *  (forest.js `brickEdge`), so the Lab switches it with a reload. */
-export const chipLook = () => lookOf('chip', '0');
+ *  (forest.js `brickEdge`), so the Lab switches it with a reload. (Its pick under `?looks=new` is '0':
+ *  that URL stays the game as it ships.) */
+export const chipLook = () => lookOf('chip', '0', '0');
 const PICK_MAX = 128;
 const PICK_D = new Float32Array(PICK_MAX), PICK_I = new Int32Array(PICK_MAX);
 let pickK = 0;

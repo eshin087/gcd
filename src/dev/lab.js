@@ -897,7 +897,7 @@ export class Lab {
     // bites (BREAK.chip, ?chip=a): a blow takes the bricks of a piece where it struck. A level built
     // with it on has finer bricks, so the switch reloads the page with the parameter
     {
-      const on = lookOf('chip', '0') !== '0';
+      const on = lookOf('chip', '0', '0') !== '0';
       button(grid, `Bites ${on ? 'on' : 'off'}`, () => {
         try {
           const u = new URL(globalThis.location.href);

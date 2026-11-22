@@ -120,7 +120,7 @@ export function refine(geo, L, passes = 10) {
 }
 
 /** The longest edge a brick may have when the level is built with bites on (`?chip=a`; else 0: the meshes as they were). */
-export const brickEdge = () => (lookOf('chip', '0') !== '0' ? BREAK.chip.brick : 0);
+export const brickEdge = () => (lookOf('chip', '0', '0') !== '0' ? BREAK.chip.brick : 0);
 
 /** Displace vertices along their direction from `center` by 3D noise (watertight: position-keyed). */
 export function lumpy(geo, amp, freq, seed = 0, center = new THREE.Vector3()) {
