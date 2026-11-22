@@ -5,6 +5,76 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 70: the hero looks the same on every screen
+
+**Owner**, with a picture of the hero at the game camera: "this picture of the character is the exact
+type of feel and look i want. its not too detailed but has enough ascii features and style. make the
+character have this feel on every angle, movement, attack etc. ask me any questions to help you
+out". Branch `player/hero-look-everywhere`. ADR-130 / Session 70 / M1.55.
+
+**What the picture was.** The live game: the hero from behind at the 36 m camera on a 720p frame,
+enlarged three times. Rendered again on other screens (the same moment, scaled to the same size), the
+cause showed at once: his letter cell was a fixed 4 px, so he was 9 letters across the cloak at 720p
+and on the phone, 13 at 1080p, 18 at 1440p. On a large screen he was a different figure.
+
+**Questions, two rounds, each with rendered sheets.** Where does he not look like the picture: "on my
+screen in general", "from the front or side", "in attacks and dodges" (not "when the camera is
+close"). Bosses: "hero only for now". Then the picks from three sheets (1440p, one option per row):
+letter size **B, the picture** (of finer 12 across / the picture 9 / bolder 7); the sword **B's blade,
+today's arc** (dark until it cuts; of today's glowing blade / cold steel / dark until it cuts, the
+arc dimmed or kept); the front view **A, legs like the cloak** (of today's white outlines / the
+cloak's dotted rim / a lavender line).
+
+**What changed.**
+- `render/pipeline.js`: `_updateHeroLetters` sets his cell each frame from his view depth: 0.115 m a
+  cell (`CONFIG.render.heroLetters`), snapped to `HERO_CELLS` with hysteresis, never below the bosses'
+  cell; from 20 m in to 6 m back to the fixed cell. 4 / 6 / 8 / 12 px at 720p / 1080p / 1440p / 4K,
+  4 px on the phone.
+  The hero branch of the art pass is one function, run for him on his cell (inside the box round his
+  screen point) and then for the bosses on theirs. His ink lines are found per font pixel.
+- `render/materials.js`, `player/model.js`: the player's rig (`buildHero(.., { self: true })`) writes
+  its part ids in an alpha window of its own (0.42, 0.45), so the pass tells him from a boss per
+  pixel. His own part tables `uSelfPart*` = `HERO_INK` + `HERO_SELF` (the plate's dim dotted rim).
+- `render/glyphs.js`: the micro-font atlas at any cell size.
+- `player/player.js`: `TUNE.bladeLook` (dark steel at rest, no dot halo), `TUNE.bladeFlare.strike`
+  4.2 / 4.6 scaled by `bladeHot` (a strike's window, the charge, the flurry, the plunge, a crit
+  window; up at once, gone in ~0.1 s). The flare is written to HIS part 17.
+
+**Found on the way.**
+- With the hero branch called twice the HLSL compiler warned ("gradient instruction used in a loop")
+  on a FRESH compile only: the browser caches compiled programs, so a reload showed nothing. Changing
+  one comment in the shader forces a recompile and shows the log. The pass now reads every texture at
+  level 0 by name. One warning is left and was there before (`stoneCell`, a possibly uninitialised
+  variable).
+- A white block at the sword's point at rest is not the blade: the point rests in the grass and the
+  "seen through cover" pass (ADR-106) prints it. It was hidden by the white blade before. Left as is.
+- From one side at rest the blade points at the camera and its lines pile into a small pale mark next
+  to the gem's glow. Smaller than before; left.
+
+**Verification.** In the browser (headless Edge, the RTX 4090): the hero on 720p / 1080p / 1440p / 4K
+/ the phone's 852 x 393 at 20 m before and after; 18 poses at 1440p (six sides, run, roll, cuts,
+heavy, block, charge, heal); the camera at 36 / 24 / 14 / 7 m. Both human bosses rendered on this
+branch and on the code before it, side by side at 1440p: the same letters. Frame cost at 1440p and at
+852 x 393, 31 x 12 frames a reading, alternating the two builds: 0.82 - 0.87 ms against 0.89 - 0.94 ms
+before, the same within the noise. New test scenario `heroletters` (his cell per screen and distance,
+the hysteresis, the box, the two windows, his part tables against a boss's, the dark blade at rest);
+the blade flare checks in `hero` and `cutfx` now read his own part 17 and expect dark steel at rest.
+`npm test` / `npm run build`: see the PR.
+
+- The first build held the large cell in close-ups too. At 8 m on a 1440p frame the close-up's ink
+  lines (one font pixel wide) came out five pixels thick and white: a different close-up, which the
+  owner had not ticked. Now the cell goes back to the fixed one as the pass fades to its close-up
+  look (20 m .. 6 m), so the title, an intro and the Lab are pixel for pixel what they were.
+
+**Not checked / open.** Nobody has played it. Not measured on a phone (the phone draws the same 4 px
+cell as before through its whole camera range, 11 .. 34 m). Closer than 20 m the old close-up look
+(bright ink lines) still fades in: the owner did not ask for that to change. The
+swing's arc and his other effects are full-resolution glyph sprites next to 8 - 12 px letters on a
+large screen: the fire field would print them in letters. The human bosses keep the fixed cell: the
+owner decides after seeing the hero live.
+
+---
+
 ## 2026-11-21 — Session 69: a fourth level, the Skybreak Ring and Tian Lei (planned by the lead, built by Opus agents)
 
 **Owner:** "lets build a saiyan level boss where phase 1 starts from normal saiyan, phase 2 is super
@@ -65,6 +135,8 @@ phone.
 
 **Next:** the owner plays the Vercel preview; then the bars, the flurry rule and the polish list from
 what they report; the score's audition page.
+
+---
 
 ## 2026-11-21 — Session 68: a felled tree lies as the blow left it
 

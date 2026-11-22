@@ -3956,3 +3956,53 @@ ADR-092).
   (a noisy pale cloud), the lost clash's surge; strikes re-filmed after the merge of ADR-126 only for
   form 1 from one side. Not checked: a real phone (frame rate, the touch block in the clash). The dodge
   share is 13 / 23 / 40 % against a target of 15 / 25 / 35.
+
+## ADR-130 — The hero's letters follow his size on screen; his own pixel tag, part tables and a dark blade (2026-11-21)
+
+- **Context:** the owner sent a picture of the hero ("the exact type of feel and look i want. its not
+  too detailed but has enough ascii features and style. make the character have this feel on every
+  angle, movement, attack"). The picture was the live game: the hero at the 36 m camera on a 720p
+  frame, enlarged three times. Rendered beside it on other screens, the same moment showed why it
+  did not hold: his letter cell was a fixed 4 px (x2 only from 2160 px tall), so he was 9 letters
+  across at 720p and on the phone, 13 at 1080p, 18 at 1440p. Asked where he does not look like the
+  picture, the owner ticked "on my screen in general", "from the front or side" and "in attacks and
+  dodges" (not "when the camera is close"), then picked from three rendered sheets: letter size B
+  (the picture's, of finer / the picture / bolder), the sword "B's blade, today's arc" (dark until
+  it cuts; the glowing crescent kept), the front view "A, legs like the cloak". The human bosses:
+  "hero only for now".
+- **Decision:**
+  1. **One letter cell of the hero is 0.115 m at his depth** (`CONFIG.render.heroLetters.size`;
+     `Pipeline._updateHeroLetters`), snapped to `HERO_CELLS` (even sizes: 4 6 8 10 12 16 ...) with
+     hysteresis, never below the bosses' cell. From 20 m in to 6 m (the pass's fade from the far
+     look to the close-up's line art) the cell goes back to the fixed one. The
+     atlas is built at any cell size; his ink lines are found per font pixel so they step with the
+     letters.
+  2. **The player's pixels carry their own alpha window** (0.42, 0.45): `HERO_ART.self` lower than a
+     boss's ids, written by `buildHero(..., { self: true })`. The hero branch of the art pass became
+     one function run twice: for him on his cell (only inside the box round his screen point), then
+     for the bosses on theirs.
+  3. **His own part tables** (`uSelfPartInk / Fill / Rim`): `HERO_INK` with `HERO_SELF` on top. His
+     plate takes the cloth's dim dotted rim.
+  4. **A dark blade that lights when it cuts**: `TUNE.bladeLook` scales the steel's gains at rest
+     (line 0.32, fill 0.6, far 0.5, no dot halo); `TUNE.bladeFlare.strike` rose from 0.12 / 0.2 to
+     4.2 / 4.6 and is scaled by `player.bladeHot` (a strike's window, the charge, the flurry, the
+     plunge, a crit window; up at once, gone in ~0.1 s), so in a cut the steel is as bright as the
+     old blade always was.
+- **Why not** render the whole frame at a fixed low resolution (what a phone on LOW already does):
+  it would enlarge the wyrm's digits, the props and the grass too, which the owner settled
+  separately (ADR-093, ADR-120). **Why not** tell him from a boss by a screen box or by depth: in a
+  duel the two overlap, and the boss's arm inside the box would be drawn on his grid. **Why not**
+  change `HERO_INK` for the legs and the blade: every boss rig is built from it.
+- **Options kept out:** the finer (0.086 m) and bolder (0.144 m) sizes, the "cold steel" blade and
+  the lavender-line legs were rendered and not picked; none is kept behind a switch.
+  `pipeline.heroLetter` can be set live (0 = the fixed cell).
+- **Consequences:** a close-up (6 m and nearer) is drawn exactly as before; the first build kept the
+  large cell there, and at 8 m on a 1440p frame the close-up's ink lines came out five pixels thick
+  and white, a different close-up than the owner has, which they did not ask to change. Between 20
+  and 6 m the cell shrinks while he grows: only a cinematic camera passes through there (the desktop
+  camera stays 24 m and further; the phone's 11 .. 34 m all draw the 4 px cell). The art pass samples at most 6 more
+  texels per pixel, only inside the box round him; measured on the RTX 4090 at 1440p and at
+  852 x 393, the frame cost is the same as before within the noise (0.82 - 0.87 ms against 0.89 -
+  0.94 ms; not measured on a phone). The pass reads its textures with `textureLod(.., 0)`: with the
+  branch called twice the HLSL compiler warned about gradients in a loop. Tests: scenario
+  `heroletters`; the blade flare checks read his own part 17.

@@ -179,6 +179,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
+- [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
+      (the owner's reference picture: 9 letters across the cloak); the lines step with the letters
+- [x] His own pixel tag and part tables: the human bosses are drawn exactly as before
+- [x] From the front and the side one dark figure: the plate takes the cloak's dim dotted rim
+- [x] A dark blade that lights when it cuts (the owner's pick of three); the arc kept
+- [ ] The owner plays it on the phone and on the large screen
+- [ ] The human bosses on the same letters, if the owner wants it after seeing the hero live
+- [ ] The swing's arc and the hero's other effects are still full-resolution glyph sprites beside
+      his larger letters on a large screen (the fire field would print them in letters)
+
 ## M1.54 — A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant (2026-11-21, `enemies/ascendant-boss`, ADR-129)
 - [x] The moveset agreed with the owner before the build; an original fighter and arena
 - [x] The level (`?level=ring`), the set in three arenas, breakable tiles, buttes whose tops come off, the light by form

@@ -4,7 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-eight pieces of work since 0.4.0:
+Fifty-nine pieces of work since 0.4.0:
+- **The hero looks the same on every screen** (2026-11-21, ADR-130). *Changed:* the hero is drawn with
+  the same letters on every screen and at every camera distance: about 9 across his cloak, the look
+  of the owner's reference picture ("the exact type of feel and look i want ... make the character
+  have this feel on every angle, movement, attack"). His letters were a fixed 4 pixels, so only a
+  720p frame and the phone showed that figure; at 1440p he had twice the letters at half the size.
+  His outline steps with the letters. From the front and the side he is one dark figure: the plate
+  on his legs, arms and boots takes the cloak's dim dotted rim (white outlines drew two hollow
+  legs). The blade is dark steel at rest and lights white only while it cuts, charges, or in the
+  flurry and the plunge; its halo of dots at rest is gone; the swing's arc is unchanged. The human
+  bosses are drawn exactly as before. No hit, tell or timing changed.
 - **A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant** (2026-11-21, ADR-129). *Added:* a fourth level, `?level=ring`
   (the title screen lists it). **The Skybreak Ring**: a tournament ring of stone tiles on the badlands,
   buttes standing round it, braziers at its corners. **Tian Lei, the Last Ascendant**: a bare-handed
