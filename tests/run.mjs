@@ -33,10 +33,19 @@ const TASKS = [
   ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}],
   ...Array.from({ length: TIMING_PARTS }, (_, i) => [`integ timing ${i + 1}/${TIMING_PARTS}`, [INTEG, '.', 'timing'], { ABYSS_TM_SHARD: `${i + 1}/${TIMING_PARTS}` }]),
   ['lord', ['tests/integration/lord.mjs', '.', 'all'], {}],
+  ['asc', ['tests/integration/asc.mjs', '.', 'all'], {}],
   ['duel', ['tests/integration/duel.mjs', '.', 'all'], {}],
-  ['world', ['tests/integration/world.mjs', '.', 'all'], {}],
+  ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}],
+];
+// Run on their own once the tasks above are done, one at a time: checks that read wall-clock time.
+// world's `budget` times 3600 frames of the forest's destruction and reads the 99.9th percentile (the
+// 4th slowest frame). Beside three other suites on a 4-core CI runner, the OS's scheduling decided it,
+// not the code: the same tree read p99.9 0.3 - 0.6 ms alone and 1.65 / 2.53 ms on two CI runs (the
+// budget is 1.5), with `destructibles.js` unchanged.
+const ALONE = [
+  ['world budget', ['tests/integration/world.mjs', '.', 'budget'], {}],
 ];
 // what a task must not inherit from the caller's shell: these narrow what a suite runs
 const NARROWING = ['ABYSS_SKIP', 'ABYSS_TM', 'ABYSS_TM_SHARD'];
@@ -70,11 +79,12 @@ const results = [];
 await Promise.all(Array.from({ length: jobs }, async () => {
   while (queue.length) results.push(await run(queue.shift()));
 }));
+for (const task of ALONE) results.push(await run(task));
 
 const wall = (Date.now() - t0) / 1000;
 const failed = results.filter((r) => r.code !== 0);
-process.stdout.write(`\n===== summary: ${jobs} at a time, ${wall.toFixed(1)} s =====\n`);
-for (const [name] of TASKS) {
+process.stdout.write(`\n===== summary: ${jobs} at a time, then ${ALONE.length} alone, ${wall.toFixed(1)} s =====\n`);
+for (const [name] of [...TASKS, ...ALONE]) {
   const r = results.find((x) => x.name === name);
   process.stdout.write(`  ${r.code === 0 ? 'ok  ' : 'FAIL'}  ${name.padEnd(18)} ${r.secs.toFixed(1).padStart(6)} s\n`);
 }

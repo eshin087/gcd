@@ -64,6 +64,8 @@ export class FireField {
     this._tintD = Array.from({ length: TINTS }, () => new THREE.Vector4(0, 0, 0, 0));
     this._tintT = new Float32Array(TINTS);
     this._tintId = new Int32Array(TINTS).fill(-1);
+    // the heat haze's colour beside the void slot (the pipeline's uHazeVoid shares this vector)
+    this.hazeVoid = new THREE.Vector3(...(FIRE_PALETTES.void.haze ?? [0.62, 0.34, 1.0]));
 
     // --- blobs
     const base = new THREE.PlaneGeometry(1, 1);
@@ -317,6 +319,27 @@ export class FireField {
     this.mesh.visible = false;
     this.heatRT = null;
     this.flameRT = null;
+  }
+
+  /**
+   * Swap the look of a kind's slot for another palette (a block of firePalettes.js): 'fire' | 'void'
+   * | 'steel'. A level that needs a colour the field has no kind for borrows a slot it does not use
+   * (the Skybreak Ring: 'void' -> FIRE_PALETTES.gold); a level is its own page load, so nothing
+   * swaps it back. The heat haze beside the void slot follows its `haze`. Returns false for a kind
+   * without a slot or a palette that is not one.
+   */
+  setPalette(kind, pal) {
+    const i = PALS.indexOf(kind);
+    if (i < 0 || !pal || !Array.isArray(pal.stops) || pal.stops.length !== 5) return false;
+    const hdr = pal.hdr ?? 0.6, S = this.printMat.uniforms.uStops.value;
+    for (let j = 0; j < 5; j++) {
+      const s = pal.stops[j];
+      S[i * 5 + j].set(s[0] * hdr, s[1] * hdr, s[2] * hdr);
+    }
+    this.printMat.uniforms.uPal.value[i].set(pal.fill ?? 0.07, pal.back?.[0] ?? 0.5, pal.back?.[1] ?? 0.8, 0);
+    this.flameMat.uniforms.uTurb.value[i].set(pal.lick ?? 0, pal.erode ?? 0, pal.boil ?? 9, pal.warp ?? 0);
+    if (kind === 'void' && Array.isArray(pal.haze)) this.hazeVoid.set(pal.haze[0], pal.haze[1], pal.haze[2]);
+    return true;
   }
 
   /** Pipeline: the targets (type = the frame targets' type) and the scene depth the blobs test against. */

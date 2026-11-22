@@ -47,6 +47,26 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //   pressure.chainDepth moves in a row at most, then pressure.chainRest of footwork.
 //
 // A kit without TUNING.pressure picks, links and paces exactly as before (the ledger only listens).
+//
+// FOUR OPTIONAL BEAT FIELDS (Tian Lei's, 2026-11-21; a beat without them behaves exactly as before):
+//   zone.fwd / zone.side   the zone's centre is `fwd` m ahead of him and `side` m to his LEFT (his
+//                          body +x), not his root: a blow whose reach is round a limb (a side kick's
+//                          heel, a dash elbow). _inZone, zoneDebug, _worldBlow, _ideal, _reach read it.
+//   air: true              the beat is tested whatever his height (a flying kick, a dive); a move holds
+//                          him up between beats with each beat's `lift` (its last value stays).
+//   sustain: { dur, tick } the beat stays LIT `dur` s after its impact (realise.js: its end, and the
+//                          string after it, wait for it; u runs 1..2 over active + dur): the zone gives
+//                          its one result in the active frames as any beat, then the actor's
+//                          d.onSustain(beat, sense, act, k) is called every `tick` s (k 0..1 through
+//                          the lit window). The cue ledger counts the whole lit window as one interval
+//                          (ledger.js conflict): nothing asking the other answer is cued inside it.
+//   selfHit: true          (with a zone, usually with `sustain`) the ACTOR tests the zone and deals the
+//                          hits itself (Tian Lei's beams: a first contact, then ticks while lit; ki
+//                          BeamMoves): the brain cues, flashes, holds and ledgers the beat as any blow
+//                          and calls d.onImpact, but gives no zone result and no world blow of its own.
+//   T.airFall { g }        (TUNING) a reaction / break / death that starts in the air drops him to the
+//                          floor at `g` m/s² instead of snapping the root to y = 0.
+// startLock(o) takes overrides of TUNING.lock (`dist`: the lock at range, player.startBladeLock).
 // ---------------------------------------------------------------------------------------------------
 
 const FLOOR = !!TELL_STYLE.red.floor; // a red area rings the floor through its windup (rules.js: no)
@@ -81,7 +101,7 @@ function uAt(b, t) {
     impact -= b.hl;
   }
   const s = t - b.start;
-  if (t >= impact) return 1 + clamp((t - impact) / Math.max(1e-4, b.A), 0, 1);
+  if (t >= impact) return 1 + clamp((t - impact) / Math.max(1e-4, b.A + (b.S || 0)), 0, 1);
   if (s <= cock * W) return clamp(s / Math.max(1e-4, W), 0, 1);
   if (s <= cock * W + H) return cock;
   return clamp(cock + (s - cock * W - H) / Math.max(1e-4, W), 0, 1);
@@ -184,6 +204,8 @@ export class DuelBrain {
     this.wardT = 0;
     this.leap = null;
     this.zone = null;
+    this.falling = false; // (T.airFall) dropping to the floor out of the air
+    this.fallV = 0;
     const d = this.d;
     d.mode = 'sleep';
     d.state = 'sleeping';
@@ -302,7 +324,33 @@ export class DuelBrain {
       default:
         break;
     }
+    if (this.falling) this._fall(dt);
     d.brainFrame?.(dt);
+  }
+
+  /** Off the floor as a reaction, a break or the death starts: with T.airFall he drops (`falling`),
+   *  without it the root is put on the floor at once (as before). */
+  _ground() {
+    const d = this.d, F = this.T.airFall;
+    if (F?.g > 0 && d.position.y > 0.05) {
+      if (!this.falling) this.fallV = 0;
+      this.falling = true;
+      return;
+    }
+    this.falling = false;
+    d.position.y = 0;
+  }
+
+  /** The drop (T.airFall): gravity until the floor; a beat that flies (`lift`, `leap`) takes over. */
+  _fall(dt) {
+    const d = this.d, a = this.act;
+    if (d.mode === 'act' && a && (this.leap || a.beats.some((b) => a.t < b.end && a.t >= b.start && b.def.lift))) {
+      this.falling = false;
+      return;
+    }
+    this.fallV += (this.T.airFall?.g ?? 30) * dt;
+    d.position.y = Math.max(0, d.position.y - this.fallV * dt);
+    if (d.position.y <= 0) this.falling = false;
   }
 
   /** A random value in [lo, hi] of a per-phase [[lo, hi], ...] (a breather's length). */
@@ -658,7 +706,7 @@ export class DuelBrain {
     this.act = null;
     this.react = null;
     this.leap = null;
-    d.position.y = 0;
+    this._ground();
     this.modeT = 0;
     this.chainN = 0;
     this.raiseT = this.T.guard.raiseDelay;
@@ -723,7 +771,7 @@ export class DuelBrain {
     this.act = null;
     this.chainN = 0;
     this.leap = null;
-    d.position.y = 0;
+    this._ground();
     d.mode = 'react';
     d.state = this.open.has(kind) ? 'staggered' : 'combat';
     d.warn = 0;
@@ -737,11 +785,12 @@ export class DuelBrain {
 
   /** The blade lock (a perfect parry of a `lock` blow): blades crossed until the hero's push is
    *  decided (player.startBladeLock → disciple.onLockEnd). False if the hero can't lock. */
-  startLock() {
-    const d = this.d, p = d.game.player, L = this.T.lock;
+  startLock(o = null) {
+    const d = this.d, p = d.game.player, L = o ? { ...this.T.lock, ...o } : this.T.lock;
     if (typeof p?.startBladeLock !== 'function') return false;
     if (!this.startReact('lock')) return false;
-    const ok = p.startBladeLock(d, { start: L.start, push: L.push, decay: perPhase(L.decay, d.phase), dur: L.dur, hold: L.hold });
+    // (`dist`: the lock at range, e.g. a beam's head on the hero's blade; absent: the hero's lockDist)
+    const ok = p.startBladeLock(d, { start: L.start, push: L.push, decay: perPhase(L.decay, d.phase), dur: L.dur, hold: L.hold, dist: L.dist });
     if (!ok) {
       this.startReact('recoil');
       return false;
@@ -761,7 +810,7 @@ export class DuelBrain {
     this.act = null;
     this.react = null;
     this.leap = null;
-    d.position.y = 0;
+    this._ground();
     d.mode = 'broken';
     d.state = 'staggered';
     this.modeT = 0;
@@ -774,7 +823,7 @@ export class DuelBrain {
     this.act = null;
     this.react = null;
     this.leap = null;
-    d.position.y = 0;
+    this._ground();
     d.mode = 'dying';
     d.state = 'dying';
     this.modeT = 0;
@@ -1048,7 +1097,12 @@ export class DuelBrain {
         // (the cover the hero stands behind, for a line of the Void: found first, the FX draw to it)
         b.cover = this._coverFor(b, s);
         d.onImpact?.(b, s, a);
-        if ((!b.def.release || b.cut) && !b.def.cast) this._worldBlow(b);
+        if ((!b.def.release || b.cut) && !b.def.cast && !b.def.selfHit) this._worldBlow(b);
+      }
+      // (a beat whose hits the actor deals itself: no zone result here; it is over at its end)
+      if (b.def.selfHit) {
+        if (t >= b.end - 1e-6) b.done = true;
+        continue;
       }
       if (b.def.release && !b.cut) {
         b.done = true;
@@ -1061,7 +1115,8 @@ export class DuelBrain {
         if (this.act !== a) return;
         continue;
       }
-      if (t > b.end + dt * 0.5) {
+      // (a sustained beat's one result comes in its active frames: its lit window is the ticks')
+      if (t > b.end - (b.S || 0) + dt * 0.5) {
         b.done = true; // a whiff
         // (a blow of his flurry that reached nobody: the hero stood his ground and it fell short, or
         // he left: duelist.onStreakBlow settles which, so the flurry always ends one way or the other)
@@ -1069,7 +1124,7 @@ export class DuelBrain {
         continue;
       }
       this.zone = b.def.zone;
-      if (s && this._inZone(b.def.zone, s)) {
+      if (s && this._inZone(b.def.zone, s, !!b.def.air)) {
         if (b.cover) {
           b.done = true; // the cover took it: the hero behind it is untouched
           continue;
@@ -1086,6 +1141,19 @@ export class DuelBrain {
           if (b.def.ring) d.game.shake?.(0.25);
         }
         if (this.act !== a) return; // a parry recoiled him
+      }
+    }
+    // a sustained beat's lit window: the actor's tick every `sustain.tick` s (whatever the one result was)
+    for (const b of a.beats) {
+      const S = b.def.sustain;
+      if (!S || b.feint || t < b.impact || b.sOver) continue;
+      const tick = Math.max(0.02, S.tick ?? 0.2);
+      if (b.sNext === undefined) b.sNext = b.impact + tick;
+      if (t >= b.end) b.sOver = true;
+      else if (t >= b.sNext) {
+        b.sNext += tick;
+        d.onSustain?.(b, s, a, clamp((t - b.impact) / Math.max(1e-4, b.S || S.dur || 1), 0, 1));
+        if (this.act !== a) return;
       }
     }
     if (this.P && this.act === a && !a.def.transition) {
@@ -1224,15 +1292,16 @@ export class DuelBrain {
   /** How far off a zone wants the hero at the impact (its centre of reach). */
   _ideal(z) {
     if (!z) return 1.5;
-    if (z.kind === 'ring') return z.r * 0.55;
-    return z.r * (z.kind === 'line' ? 0.72 : 0.66);
+    const f = z.fwd || 0; // (a zone ahead of him: its centre of reach is that much further)
+    if (z.kind === 'ring') return z.r * 0.55 + f;
+    return z.r * (z.kind === 'line' ? 0.72 : 0.66) + f;
   }
 
   /** The furthest the hero can be at beat b's windup start and still be hit (zone + step-in + dash). */
   _reach(b) {
     if ((b.def.release && !b.cut) || b.def.cast) return Infinity; // a thrown thing reaches him wherever he is
     const z = b.def.zone, pr = this.d.game.player?.radius ?? 0.45;
-    return (z?.r ?? 2) + pr + (b.close ?? 0) + (b.def.dash?.max ?? 0);
+    return (z?.r ?? 2) + Math.max(0, z?.fwd || 0) + pr + (b.close ?? 0) + (b.def.dash?.max ?? 0);
   }
 
   /** Heaven-Splitting Fall: the ring follows the hero until `lock`, he comes down on it at u = 1. */
@@ -1307,7 +1376,7 @@ export class DuelBrain {
   _worldBlow(b) {
     const d = this.d, w = d.game.world, z = b.def.zone;
     const W = w?.destructibles;
-    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || d.position.y > 0.6) return;
+    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || (d.position.y > 0.6 && !b.def.air)) return;
     const WT = this.T.world ?? DUEL_WORLD;
     const heavy = z.kind === 'ring' || !!b.def.ring || !!b.def.knockdown;
     const power = ((b.def.damage ?? 12) / (WT.per ?? DUEL_WORLD.per)) * (b.def.tell === TELL.RED ? WT.red ?? DUEL_WORLD.red : 1);
@@ -1315,7 +1384,9 @@ export class DuelBrain {
     o.kind = heavy ? 'blunt' : 'cut';
     o.src = W.swing();
     o.scar = heavy;
-    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), x = d.position.x, zz = d.position.z;
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), zf = z.fwd || 0, zs = z.side || 0;
+    // (a zone ahead of him / to his side: it bites the world round its own centre)
+    const x = d.position.x + fx * zf + fz * zs, zz = d.position.z + fz * zf - fx * zs;
     if (z.kind === 'ring') {
       o.dx = o.dz = NaN; // (outward from him)
       w.impact?.(x, zz, z.r, power, o);
@@ -1333,29 +1404,39 @@ export class DuelBrain {
     }
   }
 
-  /** Is the hero inside the zone (his position and facing, the hero's radius)? */
-  _inZone(z, s) {
+  /** Is the hero inside the zone (his position and facing, the hero's radius)? `air`: the beat is
+   *  tested whatever his height (else nothing hits while he is above 0.6 m). A zone may sit `fwd` m
+   *  ahead of him and `side` m to his left (its centre: a limb's reach, not his root's). */
+  _inZone(z, s, air = false) {
     if (!z) return false;
     const d = this.d, pr = d.game.player?.radius ?? 0.45;
-    if (d.position.y > 0.6) return false; // still in the air
-    if (z.kind === 'ring') return s.dist <= z.r + pr;
+    if (d.position.y > 0.6 && !air) return false; // still in the air
     const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
-    const along = s.dx * fx + s.dz * fz, across = -s.dx * fz + s.dz * fx;
+    let dx = s.dx, dz = s.dz, dist = s.dist, ang = s.ang;
+    if (z.fwd || z.side) {
+      const f = z.fwd || 0, sd = z.side || 0;
+      dx -= fx * f + fz * sd;
+      dz -= fz * f - fx * sd;
+      dist = Math.hypot(dx, dz);
+      ang = Math.atan2(dx, dz);
+    }
+    if (z.kind === 'ring') return dist <= z.r + pr;
+    const along = dx * fx + dz * fz, across = -dx * fz + dz * fx;
     if (z.kind === 'line') return along >= -pr && along <= z.r + pr && Math.abs(across) <= z.w / 2 + pr;
     // sector
-    if (s.dist > z.r + pr) return false;
-    if (s.dist < pr + 0.3) return true;
-    return Math.abs(wrapAngle(s.ang - d.yaw)) <= z.ang + Math.asin(Math.min(1, pr / Math.max(s.dist, 1e-3)));
+    if (dist > z.r + pr) return false;
+    if (dist < pr + 0.3) return true;
+    return Math.abs(wrapAngle(ang - d.yaw)) <= z.ang + Math.asin(Math.min(1, pr / Math.max(dist, 1e-3)));
   }
 
   /** The Lab's hitbox overlay: the zone being tested this frame as a sphere. */
   zoneDebug() {
     const z = this.zone, d = this.d;
     if (!z) return null;
-    const r = z.r ?? 1;
-    if (z.kind === 'ring') return { x: d.position.x, y: 0.6, z: d.position.z, r };
-    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
-    return { x: d.position.x + fx * r * 0.55, y: 1.0, z: d.position.z + fz * r * 0.55, r: r * 0.5 };
+    const r = z.r ?? 1, fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), f = z.fwd || 0, sd = z.side || 0;
+    const cx = d.position.x + fx * f + fz * sd, cz = d.position.z + fz * f - fx * sd;
+    if (z.kind === 'ring') return { x: cx, y: 0.6, z: cz, r };
+    return { x: cx + fx * r * 0.55, y: 1.0, z: cz + fz * r * 0.55, r: r * 0.5 };
   }
 
   // ---------------------------------------------------------------- reactions

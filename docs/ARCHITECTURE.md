@@ -438,7 +438,16 @@ Render helpers for creature modules:
     1 while something burns) and `uFlameCells` (`cells`): the heat haze reads them, clamped to the
     cells drawn.
   - Looks are data: `render/firePalettes.js` exports `FIRE_PALETTES` (`fire`, `void`, `steel`: five
-    colour stops, `hdr`, `fill`, `back`, `lick`, `erode`, `boil`, `warp`), `FIRE_SMOKE`, `FIRE_KIND`.
+    colour stops, `hdr`, `fill`, `back`, `lick`, `erode`, `boil`, `warp`, and optionally `haze`: the
+    colour the world's letters take beside that heat, read for the void slot only), `FIRE_SMOKE`,
+    `FIRE_KIND`. Since 2026-11-21 (ADR-129) also `FIRE_PALETTES.gold`: NOT a kind of its own (the field
+    keeps its four kinds); a level that needs a colour the field has no kind for borrows a slot.
+    `setPalette(kind, palette)` (kind `'fire'` | `'void'` | `'steel'`; a palette block with five stops)
+    rewrites that slot's stops, fill / back and turbulence uniforms, and for the void slot its `haze`
+    into `fireField.hazeVoid` (a `Vector3`); false for a kind without a slot or a palette that is not
+    one. The Skybreak Ring's `AscFx` constructor calls `setPalette('void', FIRE_PALETTES.gold)`: on that
+    level `K_VOID` / `'void'` prints GOLD for every spawner (the Lord's inherited draws too). A level
+    is its own page load: nothing swaps it back.
   - Who spawns: `DragonFx` (`_blob`, `_wave`, `_fireBlast`), `BulletFx`, `DuelFx` / `LordFx` (`_blob`,
     `_dot` and `_frame`: heat re-drawn every frame shows exactly one copy; `_line`; `_ink`: a line
     written on the letter grid, one steel blob per cell it crosses), `Atmosphere` (the bonfire),
@@ -458,7 +467,10 @@ Render helpers for creature modules:
     forward to a `DuelFx` it owns (`this.tells`, k 1.5) and age its glints and flares in `update`.
 - **Text effects** (ADR-113):
   - *Heat haze*: ASCII pass uniforms `uHaze`, `uHazeRoll`, `uTime`; `hazeCell()` runs for wyrm and
-    prop cells only while `uFlame.z > 0.5` (six nearest reads of the flame texture, then).
+    prop cells only while `uFlame.z > 0.5` (six nearest reads of the flame texture, then). The colour
+    letters take beside void heat is the uniform `uHazeVoid` (violet by default; ADR-129):
+    `Pipeline.registerFire(field)` shares the field's `hazeVoid` vector into it, so a level that swaps
+    the void slot's palette (`setPalette`) swaps the haze's colour with it.
   - *Letting go* (`render/letGo.js`: `LET_GO`, `LET_GO_GLSL` with `letGoAt(cell)`, `letGoRow`,
     `letGoUniforms(U)`): the dying wyrm's cells let go top row down, one rule in the wyrm's
     materials (the dissolve discard) and in the pass (`letGoFall()`: the letter falling, `uLetGoInk`).
@@ -608,7 +620,7 @@ onGuarded({ deflect, heavy, attacker })
                                        // 0.28 s), 'player:bounced'.
 // cancels (ADR-080): a guard press or a dodge cancels a swing at ANY point (windup, the cut, the
 // recovery; not the execution's thrust). A flask still waits for 35 % of the recovery.
-startBladeLock(att, { start, push, decay, dur, hold }): boolean
+startBladeLock(att, { start, push, decay, dur, hold, dist }): boolean
                                        // a duelist's perfectly parried `lock` blow (ADR-062): state 'lock', every press
                                        // of attack / guard pushes the meter +push, it falls decay / s; 1 wins, 0 loses,
                                        // at dur s it wins if >= hold. HUD prompt + ASCII meter; 'player:lock' start /
@@ -617,6 +629,16 @@ startBladeLock(att, { start, push, decay, dur, hold }): boolean
                                        // 1.3 m (half each), the blades cross between them (the grip follows
                                        // att.bladeSegment(): _lockCross), sparks grind at the crossing, and the pair
                                        // slides TUNE.lockSlide 0.9 m with the meter (ADR-081).
+                                       // `dist` (ADR-129; optional, at least 0.5): the distance the pair closes to
+                                       // instead of TUNE.lockDist, kept on `bladeLock.dist`: a lock at range (Tian
+                                       // Lei's beam clash passes the distance they stand at; brain.startLock(o))
+streamBlock(cost, push, dx, dz): boolean
+                                       // (ADR-129) a held guard under a stream the attacker keeps on it (a beam's
+                                       // ticks: ascendant/kiBeam.js): `cost` off the guard meter, no health, the
+                                       // guard's regen delay restarted, the knock-back topped up to a slide of `push`
+                                       // m along the unit (dx, dz), a short recoil. False and nothing changed when
+                                       // the cost would empty the meter (the caller then lands the tick as a blow,
+                                       // which the player's own block answers: the guard opens). God mode pays nothing.
 isSwinging(): boolean                  // a light / heavy swing's active frames (the dragon's bullets are cut on it)
 takeHit({ damage, from:{x,z}, knockback=0, knockdown=false, kind='hit', burn=0,
           tell='normal', parryable, blockable, attack, attacker, plunge, perfect, light, flare }): RESULT   // see COMBAT.md
@@ -2281,10 +2303,13 @@ straight out from the hero falls, out to 52 m: the ground opens there, the minim
 can follow); PLAYER → a **head** row (`?wyrmFace=`, reloads the page), since 2026-11-20 a
 **build** row (`?wyrmLook=`: before / a / b / c, reloads the page; ADR-123) and a **zoom art**
 row (`pipeline.setZoomArt('a' | 'b' | 'c')`, live).
-**LOOKS** (ADR-122; `dev/labLooks.js`, only in `ash` / `starless`, collapsed until opened): a row per look
+**LOOKS** (ADR-122; `dev/labLooks.js`, only in `ash` / `starless` / `ring`, collapsed until opened): a row per look
 switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pick, build-time, levels,
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
-`lordLook`, `floor`) reloads the page with its parameter. "as shipped" clears every look parameter (the
+`lordLook`, `floor`) reloads the page with its parameter. The Skybreak Ring's rows (ADR-129), each group
+under its own heading comment: `ring` a / b / c (the arena; a reload), `ascLook` a / c / d (his body; a
+reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c and `ascBeam`
+a / b (live); all picked 'a' (STYLE.md "The look switches"). "as shipped" clears every look parameter (the
 owner's picks), "before this pass" reloads with `?looks=old` ("all proposals" is gone: `?looks=new` now
 equals the default). A later phase's or form's move, and the
 phase / form buttons, play from any phase (the Lab skips there first, without playing the change).
@@ -2333,7 +2358,8 @@ player inputs / methods — and stepped with `__tick(dt, frames)`.
 
 **Training** (`dev/training.js` `class Training`, `lab.training`; panel `dev/trainingPanel.js`,
 `lab.trainingPanel`; ADR-099). `SITUATIONS` is data: `{ id, cat, name, desc, boss (kinds: 'wyrm' |
-'duel' | 'ash' | 'lord' | 'any'), role (a boss move by role: single / string / long / red / lock /
+'duel' | 'ash' | 'lord' | 'asc' | 'any'; `bossKinds` gives Tian Lei 'duel' + 'asc', from `kit.id ===
+'ascendant'`, not 'lord', whose situations need the crater), role (a boss move by role: single / string / long / red / lock /
 mikiri, per level in `ROLES`), dist / wyrmDist / ang, streak, foe, art, hp, god, ai, answer (an
 `ANSWERS` key, or (i, T) → key per glint), go(T), tick(T, dt), after(T), until(T), tail, max, expect
 [events] }`. `list()` filters them for the boss loaded (`bossKinds(game)`) and appends one BOSS
@@ -2344,6 +2370,13 @@ boss schedules its answer `lead` s before the impact; `until`) → tail → done
 ok, missing, secs }). It drives the hero only through `game.input.setVirtual` /
 `setVirtualAxis` (the sims' mock: press / up / hold / release / axis) and aims with
 `game.mouseGround`. `lab.update` calls `training.update(realDt)` every frame; it uses game time.
+Tian Lei's (ADR-129; `ROLES.ring`: single `meteorStep`, string `gates`, long and lock `hundred`, red
+`cometHeel`, mikiri `piercingPalm`): `mikiriAsc` (a roll into Piercing Palm), `form2a` / `form3a` (the
+two transformations), `ascClash` (the great beam's head parried perfectly: the clash, mashed), `ascTide`
+(Rising Tide rolled out of at its cue), `ascTideHit` (Rising Tide stood in), `ascTile` (Tile Kick taken);
+the ki / terrain ones start their move in its own form (`debug.setForm`, then `debug.trigger`) and act on
+the beat's own clock, not on the flash (a beam's and a thrown slab's cues are hazards: the runner's
+answers skip them). The runner's watch list gained `dragon:phase2`.
 
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```
@@ -2780,7 +2813,7 @@ ahead, Fell on me, Blast ahead, Restore) too.
 |---|---|---|
 | the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
 | the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop / the slams (`GROUND_BLOW`, with falloff); `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall igniting; `skyFx.js` the meteors' impacts; `bullets.js` (cover; a landing ember; the tongues lighting wood); `terrain.js` (a flying piece's `sweep` on its path, its blast where it lands, `throwTo` for the skid; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_wreck` (its body's spheres, the wings' blasts, the landing); `wallReach.js` (`wallWind` → `destructibles.wind` from the roars, the shock ring, `groundShock`, the wing buffet and sweep, the take-off, the landing, low downbeats; `carryFire` → `destructibles.carryFire` from the breath, the strip, flame rings and walls, missed shots; ADR-120); `ablaze.js` (phase 3: `world.ignite(..., false)` from a burning part, the scorch map under its feet) | `TUNING.world` (`melee`, `stomp`, `leap`, `hop`, `dive`, `nova`, `falloff`, `explosion`, `meteor`, `pillar`, `body`, `takeoff`, `landing`, `downbeat`, `ignite`, `bullet`, `wind`, `carry`; `meter`: the WRECKAGE scenario's bounds, with `wall` [0.3, 0.75] and `wallP1` 0.03: the share of the wall's front rows, 32 – 46 m, worn or down at the end and by phase 1's end); `tuningAblaze.js` `ABLAZE.wood` |
-| a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush; `starlessLord/spells.js` the wheeling blade, the weather's strikes, Starless Night's waves; `ashDisciple/moveFx.js` burning ground (`world.ignite`); both `terrain.js` (`take` / `carry` / `throwTo` / `topple`, `floorNear` for the floor moves) | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
+| a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush; `starlessLord/spells.js` the wheeling blade, the weather's strikes, Starless Night's waves; `ashDisciple/moveFx.js` burning ground (`world.ignite`); Tian Lei's (ADR-129): `ascendant/fx.js` blasts (`stop`: cover takes them; a burst's `world.impact`) and the disc (`sweep`, out and home), `kiBeam.js` the beams (`sweep` along the strip and carried on to 45 m, a trench of `world.impact` stations, `world.ignite` off the ring), `kiShots.js` the volley's dive and the corner bolts (`world.impact`), `ascendant/terrain.js` (`take` / `carry` / `throwTo` / `strike` on the tiles, `floorNear`, `wreck.rubble`); the other two bosses' `terrain.js` (`take` / `carry` / `throwTo` / `topple`, `floorNear` for the floor moves) | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
 
 **Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with
 `rigidMatrix()`; built with `rigid: true` they are tagged for `batchRigid` (a set's static materials are
@@ -2793,9 +2826,9 @@ strip and the scars are glyph particles (a wearing crown's in the canopy's dim h
 dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
 are heat in the fire field.
 
-## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070)
+## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
@@ -2807,14 +2840,18 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   thrown: see Destruction above; a set lists those pieces there INSTEAD of merging them into its static
   meshes), `edge: { base, outer? }` (the hero's ground follows what stands of the pieces marked `edge`: Destruction → "The edge of the open ground"; the forest's set), `scarInk [r, g, b]` (the colour of cracks in its floor), `ash: true` (atmosphere: falling ash flakes and a
   few embers instead of fireflies, mist and leaves) and `grass: { density(x, z) → 0..1 factor,
-  height (×), ash 0..1 }` (world.js thins / shortens / greys the meadow; grass.js `uAsh`).
+  height (×), ash 0..1 }` (world.js thins / shortens / greys the meadow; grass.js `uAsh`), and
+  `groundY` (m; ADR-129): world.js puts its ground plane there, right after the set is built, when it is
+  a finite number other than 0 (the Skybreak Ring's `?ring=c`, the butte's crown, lowers the badlands
+  40 m and draws its own walkable top; everything that stands on the play surface is still at y = 0).
   A set may also bring its own night and weather (ADR-070; the Obsidian Throne's set does):
   - `sky: { moonColor, moonDir, ambient, fogColor, fogNear, fogFar }` (all optional): world.js writes
     it into the shared uniforms once, right after the set is built.
   - `ambience: { setup(game), update(dt, game), ... }`: atmosphere.js calls `setup` once (lights,
     its own particle batch: `game.pipeline.registerParticles`) and `update` every frame INSTEAD of
     the fireflies / mist / leaves / ash (the bonfire's flames stay). The Obsidian Throne's also has
-    `flare(k)`: its floor seal brightens and settles (the boss calls it; optional for callers).
+    `flare(k)`: its floor seal brightens and settles (the boss calls it; optional for callers). The
+    Skybreak Ring's has `flare(k)`, `dim(k)` and `state` (below).
 - **The Obsidian Throne's set** (`world/throneHall.js`: `createThroneHall`, layout `THRONE`; ADR-112;
   the names are from the hall it replaced). An open crater: a disc of plates `THRONE.R` 15 m round the
   seal (the origin), the dais from `daisZ`, the seat at `throne`, the fallen star at `star`, the south
@@ -2830,6 +2867,63 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   ground: ADR-109).
   Three rng streams: the layout (the picked render's sequence: add nothing to it), the rubble broken
   pieces leave, and anything added later.
+- **The Skybreak Ring** (ADR-129; `src/levels/skybreak.js` `SKYBREAK`: id `ring`, aliases `skybreak`,
+  `ascendant`, `tianlei`; boss `new Ascendant(game)`, below). `world`: `arenaRadius` `RING.half` 15,
+  `playerBound` `RING.bound` 40 (round the origin: the ring, the path and the bonfire's landing),
+  `dragonBound` `RING.floor.r` 13.8 (no `bossFloor`), the bonfire and the hero's spawn 0.6 m east and
+  1.7 m north of it, `dragonSleep` `RING.wait`, `bossTriggerZ` `RING.entryZ - 0.6` (onto the platform),
+  `wakeRadius` 9. `text` has `phase2` GOLDEN ASCENSION and `phase3` THUNDER ASCENSION (no `phase4`).
+  **Its set** (`world/skybreakRing.js`: `createSkybreakRing(U, colliders)`, `RING`, `ringOption()`,
+  `RING_LOOKS`, `BUTTE`): a square platform of stone tiles 30 m across centred on the origin, a kerb of
+  long dark stones round it, an octagon of wedge plates at its middle, a bronze brazier on a stone post
+  at each corner (the south two low), a path of flagstones south to the bonfire, wind-carved buttes in
+  banded red strata east, west and just past the north edge. `RING` (the fields of the arena this page
+  built) `= { option, half: 15, cell: 1.5, entryZ: 15.4, bonfire: { x: 0, z: 33 (c: 29.5) }, floor:
+  { r: 13.8 } (the circle the boss keeps to, inside the kerb), wait: { x: 0, z: -3, yaw: 0 }, bound: 40,
+  groundY: 0 (c: -40), corners: [[±15, ±15]] (four, frozen: ascend3's bolts), buttes: [{ x, z, r, h,
+  cut }] }` (the beam's line ends at one, kiBeam.js). The set returns createForest's shape plus
+  `option`, `groundY`, `tops` (the buttes' top pieces; the tests and the beam's measures read them),
+  `scarInk`, a dry `grass`, `floorCarry` (a torn-up tile's colour), `sky` (the dusk palette) and
+  `ambience`. Four rng streams (the ring and floor layout, the props, the badlands, the floor's
+  remains); the ambience has its own.
+  - **Three arenas behind a build-time switch**, `?ring=a|b|c` (`lookOf('ring', 'a')`; a reload; the
+    owner's pick a, 2026-11-21): a the flats (a dry lake bed of cracked clay plates, banners east and
+    west, a war drum, a gong, a judges' dais to the north, boulders, buttes and hoodoos), b the quarry
+    (three terraces of cut stone east, west and north, drawn as props with colliders: the play surface
+    stays y = 0; cut-block stacks, a derrick), c the crown (the ring on a butte's top, the ground plane
+    lowered 40 m through `groundY`, the crown's soil a copy of the ground on its outline, cliffs, rim
+    colliders, rock spires, a rock neck carrying the path south).
+  - **Its breakables by kind** (counted by `world.mjs` `sets`): a 579 (tile 361, mud 162, flagstone 14,
+    boulder 12, butteTop 6, butte 6, post 4, hoodoo 4, banner 4, deadTree 3, drum 1, gong 1, dais 1;
+    46 colliders), b 602 (tile 361, flagstone 168, terrace 50, post 4, butteTop 4, butte 4, blocks 4,
+    banner 4, hoodoo 2, derrick 1), c 409 (tile 361, spire 17, flagstone 11, post 4, butteTop 4, butte
+    4, cairn 4, banner 4). Every tile, kerb stone and octagon plate is a floor slab of kind 'tile'
+    (`world/floor.js` `breakableFloor`, ADR-122; the earth under a broken one a warm pale dust, `EARTH`);
+    the lake bed's clay plates are 'mud' slabs within 24 m (scenery past it); the gong is `hp: Infinity`.
+    Worth in POWER units (`BUTTE`): a butte's top 4.2, a hoodoo 2.6, a banner 0.7, the drum 1.2, the
+    dais 5, a terrace 2.4.
+  - **The buttes are two-stage pieces** (BREAK.colossus's precedent): a 'butteTop' (no collider, hp
+    `BUTTE.top`, weight 2.2, `fallOff` r × 0.4, `fallT` 1.6, `blocks` 4; it topples outward from its cut,
+    or bursts where it stands on c, whose buttes rise out of the depths) stands on a 'butte' foot (hp
+    Infinity: it only chips; `holds` the top, `cover: true`, a collider r × 0.88). Blows on either wear
+    the top; a beam's sweep at power 1.5 takes it in 3 ticks (0.6 s).
+  - **Its `ambience`** (atmosphere.js runs it instead of the fireflies): the light BY THE BOSS'S FORM
+    (`update` reads `game.dragon.phase` / `state`; three palettes, eased at 0.9 / s): a clear dusk, then
+    golden (warmer, brighter, a light round him that follows him, golden motes), then a thunderstorm
+    (cold and dark, wind-blown dust, rain as glyph particles, lightning every 2.4 – 6.5 s that lights the
+    whole ring for a frame or two, sometimes twice). It writes the shared light uniforms (moon, ambient,
+    fog) itself every frame: nobody else should. `flare(k)` (k 0..1.5; a transformation, a great blow, a
+    won clash): a flash of the form's light, gold before the storm, cold white in it (only raises a
+    running flash). `dim(k)` (k 0..1; call it every frame it should hold: the great beam's charge): the
+    light pulled down by up to 75 % at k 1, the braziers' lights too; it lets go 0.2 s after the last
+    call. `state` → `{ w: [dusk, gold, storm], flash, dim, phase }` (a copy: the Lab, the tests). A
+    reset (his form back to 1) snaps the light to the dusk and clears the dim; his death eases it ("the
+    storm breaks"). The braziers burn in the fire field while their post stands.
+  - `landmarks.js` gained the badlands' builders (prop art, carved): `buildButte(rng, x, z, { h, r,
+    cut, col, below, sides, k })` → `{ lower: [geo], upper: [geo], cut, r }` (banded strata, split at
+    the band nearest `cut`; `below`: its foot from y = -below), `buildHoodoo(rng, x, z, { h, r, col,
+    below, lean, yaw })`, `buildRingPost(rng, x, z, { h, w, yaw, col })` → `{ stone, bronze, fireY }`,
+    and the colours `BADLAND`, `RING_BRONZE`.
 - `text`: `arrive[]`, `stir`, `phase2`, `phase3`, `phase4` (null / absent: no banner), `victory`,
   `fallen`, `restReset`, `again`, `rise` (GameFlow `_text(key)`; Cinderwood's lines when the game has
   no level).
@@ -2850,8 +2944,8 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   CURRENT bar, the HUD draws one pip per bar, and the execution's call-out reads DEATHBLOW.
 
 ### Duelists — `src/entities/enemies/duelist/` (ADR-068; the second pass: ADR-122)
-The engine every human boss runs on (the Ash Disciple, the Starless Lord); a boss is a KIT of data and
-a subclass with a few hooks.
+The engine every human boss runs on (the Ash Disciple, the Starless Lord, Tian Lei); a boss is a KIT of
+data and a subclass with a few hooks.
 - `duelist.js` `class Duelist(game, kit)`: the boss slot's surface, the guard, posture, the break and
   the execution, the deflect chain, the blade lock, the mikiri, the full deflect, hit stun, `hitPlayer`.
   `kit = { id, TUNING, MOVES, MOVE_NAMES, CLIP, realise, transitions {phase: move}, counterMove(phase),
@@ -2892,7 +2986,11 @@ a subclass with a few hooks.
   follows; a bait hold repeats the cocked pose at its end. The clip of a realised move has
   `steps: true` (the animator's `_feetClip`, below).
   Beat extras: `{ pick: [beat, ...] }` (one alternative drawn as the move starts), `fixed: true` (its
-  windup is not scaled by the phase). `TUNING.flashLead` may be per phase.
+  windup is not scaled by the phase), `chance` (the beat is played on that roll only), `sustain: { dur,
+  tick }` (ADR-129: the beat stays lit `dur` s past its active frames; the realised beat carries `S`, its
+  `end` is `impact + A + S` and everything after it waits; its keys past the impact span the whole lit
+  time, `b.F = A + S`, instead of the follow clock: a held beam's pose lasts while it is lit).
+  `TUNING.flashLead` may be per phase.
 - `poses.js`: `createDuelPoses(GUARD, opt)` → `{ duelStance, duelLoco, compileClip, completeBeat, evalClip,
   duelClip, POSES }` round one guard stance (a compiled clip remembers its set: `clip.kit`); `opt.run` (how the
   blade is carried at a run), `opt.breath { k, period }` (the idle breath's size and pace); `setSw(p,
@@ -2995,6 +3093,43 @@ a subclass with a few hooks.
     timed and answered as a blade blow of its tell, its zone struck, nothing thrown), else a release as
     any other (`ledger.js` `throwsAt(b)`: a release, or the thrown blade, that is not a cut). Each boss's
     own: below.
+- **Tian Lei's engine additions (ADR-129; documented again at the top of `brain.js`).** All optional: a
+  beat or a kit without them behaves exactly as before.
+  - `zone.fwd` / `zone.side` (m): the zone's centre is `fwd` m ahead of him and `side` m to his LEFT (his
+    body +x), not his root: a blow whose reach is round a limb (a side kick's heel, a knee). Read by
+    `_inZone`, `zoneDebug`, `_worldBlow` (it bites the world round that centre), `_ideal` (+ `fwd`) and
+    `_reach` (+ `max(0, fwd)`).
+  - `air: true`: the beat is tested whatever his height (a flying kick, a dive; without it nothing hits
+    while he is above 0.6 m, and `_worldBlow` skips it). A move holds him up between beats with each
+    beat's `lift` (its last value stays).
+  - `sustain: { dur, tick }` (realise.js above): the zone gives its ONE result in the active frames as
+    any beat's; then the actor's `d.onSustain(beat, sense, act, k)` is called every `tick` s (0.2 by
+    default, at least 0.02) until the beat's end, k 0..1 through the lit window. `uAt` runs u 1..2 over
+    `A + S`. The cue ledger counts the whole window, impact → end, as one interval (`conflict`): nothing
+    asking the other answer is cued inside it.
+  - `selfHit: true` (with a zone, usually with `sustain`): the ACTOR tests the zone and deals the hits
+    itself (Tian Lei's beams: a first contact, then ticks while lit). The brain cues, flashes, holds and
+    ledgers the beat as any blow and calls `d.onImpact`, but gives no zone result and no `_worldBlow`; the
+    beat is done at its end.
+  - `TUNING.airFall { g }`: a reaction, a break or the death that starts in the air drops him to the floor
+    at `g` m/s² (`brain._ground()` sets `falling`; `_fall(dt)` each frame; a beat that flies takes over)
+    instead of snapping the root to y = 0.
+  - `brain.startLock(o = null)`: `o` overrides `TUNING.lock` for this lock, and its `dist` is passed on to
+    `player.startBladeLock` (the lock at range: the beam clash, which also passes `camera`).
+  - `_tradeNow` (the trade clash from `takeHit`) ignores a beat marked `selfHit` or `sustain` (a beam's head,
+    a stream held lit is no blow of his body to trade with).
+  - `ledger.js` `discPath(s, p, reach, H, out)`: a thrown disc still going out (`s.kind 'disc'`, `phase
+    'fly'`) flies on a curve (`curve` rad/s) to `range` m of path, hangs `hang` s, then comes home
+    THROUGH where the hero stands at the turn (`through`, the default) or to the hand `H`; writes into
+    `out.out` / `out.home` the seconds from now at which its way out / home crosses the hero (-1: it does
+    not). The predictor reads it for every live disc (home toward `d._hand`, else `d._hilt`).
+  - **His feet.** Two planners live together. The engine's (the animator's `_feetClip` for a clip with
+    `steps: true`, ADR-126) pins the feet a clip leaves on the floor; his kit's own (`Ascendant._planFeet`
+    + its `POSES.duel` wrapper, `pilot.feetOff`) holds a planted foot where it stands while his root
+    moves, steps it back under him past 0.24 m, and LIFTS a moving foot above the engine's "in the air"
+    line (`CLIP_STEP.air` 0.035 m), so the engine leaves that foot alone. Together the drawn-foot slide is 0.00 – 0.78 m a string
+    (the engine's alone 0.06 – 3.72 m, his alone 0.23 – 4.14 m: the integration agent's measures). One
+    planner would need a per-kit `CLIP_STEP` hook in `player/anim.js`.
 - `director.js`: the pure helpers the brain, the PACE meter and the Lab share (above).
 - `ledger.js` `class CueLedger(brain)`: the impacts he knows are coming and what each asks. Fed from (a) the
   running move's beats (exact), (b) `combat:flash` from any source and `combat:tell` from 'world' or a
@@ -3003,7 +3138,8 @@ a subclass with a few hooks.
   ...)`, `clearShift(at, ans, sep, max, ...)`, `pending(ans, horizon)`, `liveHazards()`, `travel(b)`. Fixed
   pools; nothing allocated per frame.
 - `lookSwitch.js` (ADR-122): the look options behind URL switches (STYLE.md "The look switches").
-  `PICKED` (the owner's picks, 2026-11-16: name → option). `lookOf(name, def = '0', pick = 'a')` → the
+  `PICKED` (the owner's picks, 2026-11-16: name → option; the Skybreak Ring's of 2026-11-21: `ring`,
+  `ascLook`, `ascAura`, `ascBeam`, `ascLift`, all 'a'). `lookOf(name, def = '0', pick = 'a')` → the
   option to draw, in this order: a look forced by `setLook(name, v)` (the Lab, the tests, the film rig;
   null gives it back); the URL's own parameter; `'0'` under `?looks=old` when the call site's `def` is
   `'0'` (a REDRAW: the look before this pass; a thing new in this pass keeps its pick, even one with a
@@ -3011,7 +3147,7 @@ a subclass with a few hooks.
   has picked (none today); else `def`. Also `pickedOf(name)` (the pick or null), `allOld()`,
   `allProposals()`, `readLookUrl(search)` (read once at load; the tests call it to play a URL, `''` to
   go back), `looksNow(names)`. Read at draw time (a Map lookup); a switch read when the rig or the
-  level is built (`ashLook`, `lordLook`, `floor`) needs a reload. The Lab's LOOKS section
+  level is built (`ashLook`, `lordLook`, `floor`, `ring`, `ascLook`, `ascLift`) needs a reload. The Lab's LOOKS section
   (`dev/labLooks.js` `LOOK_SWITCHES`) lists them.
 
 ### Ash Disciple — `src/entities/enemies/ashDisciple/disciple.js` exports `class AshDisciple`
@@ -3206,6 +3342,252 @@ blink, the ignition. The intro: seated at
 `CONFIG.world.dragonSleep` with the root raised to the seat (`TUNING.intro`), he rises, the blade
 ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 
+### Tian Lei, the Last Ascendant — `src/entities/enemies/ascendant/ascendant.js` exports `class Ascendant` (ADR-129)
+A `Duelist` with `ASC_KIT`; COMBAT.md → "Tian Lei, the Last Ascendant" has the fight. Bare-handed: no
+weapon, three forms with a bar each (the Lord's `lives` structure), ki (blasts, a disc, bolts, called
+strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNING, MOVES, MOVE_NAMES,
+CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → riposte / riposte2 /
+riposte3, streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
+scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's footwork plus the dash's lean
+by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
+```
+kind = 'duelist';  name = 'TIAN LEI, THE LAST ASCENDANT';  phase 1..3 = his FORM;  execRange = 3.4
+lives: { total: 3, left }        // the forms still to beat (this one included); hp / maxHp = this form's bar (2000)
+dressPhase: 1..3                 // the form his body SHOWS (hair, light, aura): the old form through a
+                                 // transformation's windup, the new one from its nova (onImpact); dressAscendant
+                                 // and fx.formAura read it
+_changing                        // from a deathblow until the transformation's ring goes out: takeHit returns 0
+_onHpZero()                      // an empty bar BREAKS him (no death)
+onExecute({ damage })            // the DEATHBLOW: 'dragon:plunged {execution, deathblow, form}', fx.deathblowBurst;
+                                 // forms 1-2: react 'executed', then pendingPhase: kit.transitions[form + 1]
+                                 // (enterPhase: a full bar); form 3: he dies
+endBreak()                       // a break nobody answered: posture.spared of the bar back (if empty), half the meter
+addPosture(n)                    // × lerp(posture.gainByHp) by the bar's missing fraction; regen × posture.regenByHp
+_strikePart()                    // the limb his "blade" is now: the running beat's `part` (fistR when it has
+                                 // none; not in a transformation), the blocking forearm of a guard (fistL; fistR
+                                 // for wardR; fistL in footwork with the ward raised past 0.5), else fistR
+_limbSeg(part, a, b)             // limb `part` as drawn now, root a → end b (world): fistR / palms (forearm →
+                                 // knuckles), fistL, footR / footL (shin → foot), kneeR / kneeL (thigh → knee),
+                                 // elbowR / elbowL (upper arm → elbow), shoulder (chest → left upper arm), feet
+tellPoint(part, out)             // where a beat's glint pops: that limb's end (palms: between both fists)
+_drawnPoints() / _poseAt(t)      // the engine's hilt → tip ARE the striking limb (what the parry, the trade, the
+                                 // lock and the trails read); a new limb starts its trail fresh
+_hand                            // the right palm as drawn, every frame (a disc homes to it; the ledger reads it)
+blinkTo(x, z, face)              // gone from where he stands, at (x, z) facing the point `face`: fx.vanish,
+                                 // anim.teleported()
+onShotReturned(s)                // a returnable blast came back off a perfect parry and reached him (fx.js) →
+                                 // ki.shots.returned(s)
+onShotBack(s)                    // his disc is home in his hand (fx.js) → ki.shots.discBack(s)
+_beamBars(def)                   // a beam of his is lit (busy, phase not 'fade') and the move has a blow that asks
+                                 // a GUARD: weigh → 0 and onActStart → false (a transformation is exempt)
+zoneCentre(z, out)               // the centre of a zone (its fwd / side)
+ki                               // KiMoves (ki.js): shots (ShotMoves), beams (BeamMoves); made at the first reset
+terrain                          // TerrainMoves (terrain.js); made at the first reset
+debug.setForm(n)                 // the Lab: straight to form n (a full bar, nothing changing, 'dragon:phase<n>' for
+                                 // n > 1); debug.form (getter). The rest: the Dragon shape, as the Lord's
+```
+**His brain** (`AscBrain extends DuelBrain`, in ascendant.js): reaction clips per form (`C` reads
+`CLIPS_BY_FORM[phase - 1]`), a blow out of a `blink` reaches wherever the hero is (`_reach` Infinity),
+and two kinds of footwork before the engine's: **the dash** (`TUNING.dash { from: 2, at: 5.5, speed: 16,
+stop: 2.4, every: 2.2, max: 9 }`: from form 2, past `at` m, straight at the hero at `speed` until `stop` m
+short, `fx.dashGhost` where he started, `pilot.dashK` for the pose) and **the closing blink**
+(`TUNING.closeBlink { form: 3, far: 9, r: 2.4, chance: 0.5, every: 4 }`: `blinkTo` `r` m from the hero; the
+roll is the AI's `Math.random`). Neither while a phase change waits, a counter is pending or the hero drinks.
+His feet: `_planFeet(dt)` (Duelists above, "His feet").
+
+**THE ROUTING CONTRACT** (the comment at the top of ascendant.js). A beat is ROUTED to `d.ki` when it, or
+its move, is marked `ki: '<kind>'`, and to `d.terrain` when it or its move is marked `terrain: '<kind>'`
+(the beat's own mark first, then the move's; `terrain` before `ki` at the same level: `_route(b, a)`).
+Every engine hook of a routed beat goes to that object:
+```
+onActStart(act, opts)    → X.begin(act, opts)       false: the move does not start (nothing changed)
+weigh(name, def, w, d)   → X.weigh(def, w, dist)    (a move marked at the MOVE level only)
+onImpact(b, s, act)      → X.onImpact(b, s, act)    the impact's first frame, before the zone test
+onRelease(b, s, act)     → X.onRelease(b, s, act)   (an unmarked `release` beat goes to d.ki)
+onCast(b, s, act)        → X.onCast(b, s, act)      (an unmarked `cast` beat goes to d.ki)
+beatMotion(b, u, s, dt)  → X.motion(b, u, s, dt)    every frame of the beat, after his own blink
+onSustain(b, s, act, k)  → X.onSustain(...)         a `sustain` beat's ticks (an unmarked one → d.ki)
+hitPlayer(o) → r         → X.onHit(o, r)            after the hero answered a routed beat's blow
+```
+and, for both objects whatever the beat: `reset()` at each of his resets, `frame(dt)` every frame after
+the brain (`brainFrame`), `busy` (something still in the air or lit), `lockEnd(won)` → true when it
+handled a lock it started (else the duelist's own `onLockEnd` runs). **`ki.js` `KiMoves`** hands each hook
+on by the KIND's name: a kind that starts with `'beam'` (`beam`, `beamSweep`, `beamTwin`, `beamGreat`) →
+`kiBeam.js` `BeamMoves` (`ki.beams`); every other kind (`blast`, `rain`, `disc`, `bolt`, `volley`,
+`cage`) → `kiShots.js` `ShotMoves` (`ki.shots`); an unmarked `release` / `cast` beat → the shots, an
+unmarked `sustain` beat → the beams; `reset`, `frame`, `busy` and `lockEnd` reach both. A `terrain:`
+kind (`tileKick`, `ringBreaker`, `stoneStorm`) → `terrain.js` `TerrainMoves`. His melee beats are not
+routed: their hooks are handled in the class (the blink; a red or knockdown ring beat → `fx.crater` +
+`terrain.crater`; a `burst` beat → `fx.auraBurst`; a beat's `quake` → `terrain.quake(x, z, quake)`; a
+transformation's impact → `fx.transformNova`, `terrain.nova`, form 3 `ki.shots.corners()`, shake,
+`ambience.flare(1)`). `hitPlayer` also gives a blow out of a blink `extra.around` (a guard meets it from
+any side) and a bolt (`ki: 'bolt'` or `bolt`) `kind: 'lightning'`. `afterPose`: `fx.formAura` (from
+`dressPhase`), `fx.limbTrail` off the striking limb through an unrouted blow, `fx.transformGather` through a
+transformation's windup, the stars of a break. `brainFrame` also counts how long the hero has hugged him
+(within 2.6 m): past 4 s a `burst` move (Aura Burst) weighs × 3.
+
+**The moves are data** (`moves.js`: `MOVES = { ...meleeMoves(X), ...kiMoves(X), ...terrainMoves(X) }`,
+`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS`, `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). A move
+file is a function `(X) => ({ name: move })` of the frozen builders object `X` (no import of moves.js: no
+cycle): `moves/melee.js`, `moves/ki.js` (joins `moves/kiShots.js` and `moves/kiBeam.js`),
+`moves/terrain.js`. `X = { TELL: { N, B, R, K }, TUNING, W, F, mirror, strikeKeys, follow, rotXZ, punch,
+kick, elbow, shoulder, transform, feet: { OR, OR_IN, PIVOT, LOW, LUNGE, SOUTH }, HANDS, FIST_UP, FIST_FLAT,
+ANK, TAU }`. The builders (each returns one beat, its keys a coil, the strike and a follow-through:
+`strikeKeys({ coil, hit, after, pre, cock, left })`):
+- `punch(kind, tell, windup, damage, o)`: `jab` (fistL) · `cross` · `hook` · `uppercut` · `backfist` ·
+  `palm` · `double` · `hammer` (active 0.12; the others 0.08); a fist sector 1.7 m; knock-back 0.7 m a
+  white blow, else 1.5.
+- `kick(kind, tell, windup, damage, o)`: `front` · `side` (a sector round the heel: `fwd` 0.95) · `round` ·
+  `sweep` (a ring 2.2 m, active 0.22, `sweep: true`) · `axe` (a ring 2.6 m, `fwd` 0.6) · `flying` (a line
+  2.2 m, `air: true`, `lift` up through the windup) · `knee` (kneeR, `fwd` 0.4); a kick 2.1 m.
+- `elbow(tell, windup, damage, o)` (the dash elbow: a line 2.2 × 0.8 m), `shoulder(tell, windup, damage,
+  o)` (a line 2.2 × 1.0 m), `transform(form)` (ascend2 / ascend3: a `transition`, R 2.3 s `fixed`, a ring
+  6.5 m, 12, knockback 7, `part: 'feet'`; compiled round the NEW form's stance).
+- `o`: `left` (the mirror image: the other limb and its `part`), `cock`, `step: 'L'` (the strike drives off
+  the left foot: a string walks), and any beat field (overrides).
+`realise(name, phase, rnd, opts)` compiles a move round the stance of the form it is used in (one
+realiser per form, `FORM_POSES`; ADR-126's `completeBeat`). His beat fields besides the engine's:
+`part` (fistR, fistL, footR, footL, kneeR, kneeL, elbowR, elbowL, palms, shoulder, feet), `blink` (below),
+`ki`, `terrain`, `burst` (his aura's ring: `fx.auraBurst`), `quake` (`{ from, to, speed, damage }` →
+`terrain.quake` at the impact), `beam: { kind, side }` (kiBeam.js), `bolt`-kind beats (`ki: 'bolt'`),
+`dive` (the volley's landing, kiShots.js); `sweep`, `launch` and `rush` are labels no code reads (a test
+reads `sweep`). **The blink** (`beatMotion`, once at u 0.1 of the windup; then a routed beat's motion):
+`{ behind: m }` (behind the hero by his facing, else to one side, then the other), `{ land: true, side }`
+(beside where the hero's knock-back will end, on the side he came from: `_slideEnd`), `{ edge: true, pad }`
+(at the ring's edge farthest from the hero, `pad` 1.2 m inside his bound: the great beam), `{ at: rad, r }`
+(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage).
+
+**`ShotMoves`** (`kiShots.js`, `d.ki.shots`; numbers `TUNING.shots`, `tuningShots.js`): `begin` (false for
+a second disc, rain or volley while one runs), `weigh`, `onRelease` (the blasts leave the striking palm:
+`release { count, spread, speed, size, radius, returnable, from }` → `fx.throwShot({ kind: 'blast', ... })`),
+`onCast` (`cast.kind` 'rain' Golden Rain, 'disc' Sun Wheel, 'volley' Heaven's Volley, 'cage' Storm Cage),
+`onImpact` (a bolt's lightning, `dragon:explosion`; the volley's dive: crater, burst, `world.impact`,
+`ambience.flare(0.6)`, `dragon:land`), `motion` (the dive steered to the hero, fixed at u 0.7), `onHit`
+(a bolt perfectly parried: 50 damage, 34 posture to him, `dragon:returned` kind 1), `frame` (the rain, the
+volley's strikes, the weather Thunderfall in form 3 (at most 2 live; never while a beam is lit, in his
+reactions, a break or a transformation), the corner bolts), `busy`, `reset`, `stats`. Public:
+`returned(s)` (a returned blast reached him: 50 damage, 34 posture, `dragon:returned` kind 2), `discBack(s)`
+(the disc caught), `corners()` (ascend3's four bolts on `RING.corners`, 0.12 s apart: a called strike with
+its cue on a hero standing within 2.4 m of one, else a harmless bolt). Its game rolls come from its own
+seeded stream (`rand`, reseeded at each reset). What is planned but not yet thrown or called is told to
+the ledger (`brain.expect`), and each throw or call asks `brain.fairDelay` first.
+
+**`BeamMoves`** (`kiBeam.js`, `d.ki.beams`; numbers `TUNING.beam`, `tuningBeam.js`; the moves
+`moves/kiBeam.js`). A beam beat: a `line` zone the beam's size, `sustain { dur: lit - active, tick }`,
+`selfHit`, `fixed`, `track: 0`, `close: 0`, `hazard`, `cock` 0.9, `beam: { kind: 'rising' | 'sweep' |
+'twin' | 'great', side: 'R' | 'L' | 'both' }`. `motion` through the windup: he aims (the twin's second palm
+leads the hero by `twin.lead` s) until `fix` of it, then the line is FIXED and `fxBeam.js` `drawSight`
+runs a thread from the lead hand along it; `fx.beamCharge` in the drawn-back palm; the great beam also
+`fx.transformGather`, `ambience.dim(k)`, `cameraRig.keep` and `flow.cinematic({ kind: 'greatBeam' })`.
+`onImpact` lights the beam: its state `B` lives on its own (it survives the move ending into the clash),
+`dragon:spell`, `fx.muzzle`, the great one `ambience.flare(1)`. `frame` (lit): the strip from the palm
+along his facing (the drawn line ends at a butte on it within `reach`, or at the hero's raised guard:
+`fx.beamSplash`); the FIRST CONTACT in the 0.1 s active window (`d.hitPlayer({ projectile: true, kind:
+'beam', knockdown, parryable: great, flare: great })`), then a TICK every `tick` 0.18 s on a hero still in
+it and not knocked down (dealt in parts under the player's stagger floor); a held guard facing him pays
+guard only (`player.streamBlock`; `player:block` at most every 0.4 s); the sweep / great beam turns his
+facing toward the hero's side (`turn` deg/s up to `arc`, one way); the world every 0.2 s
+(`destructibles.sweep` power 1.5 along it and carried on to `world.carry` 45 m, `world.impact` trench
+stations every 1.4 m, `world.ignite` off the ring). Then the fade. **THE CLASH**: a perfect parry of the
+great beam's head → `brain.startLock({ start, push, decay, dur, hold, dist (where they stand), camera:
+{ zoom (framing both), weight: 1 } })` and the held two-palm clip (`MOVES.heavenTide.clashPose`, compiled
+per form); each frame `fx.beam` to the hero's blade and `fx.beamClash` with the lock's meter. `lockEnd(won)`:
+won → `fx.beamSplit`, `addPosture(TUNING.lock.posture × clash.posture)`, hitstop, the 'bladeLock'
+cinematic, `ambience.flare(1)`, `dragon:stagger`, react 'reeling' held `clash.reel` s; lost → 40 damage,
+knockdown, thrown 12 m along it (unblockable). A plain parry of the head is held as a block. Surface:
+`busy` (lit, held in the clash or fading), `phase` ('off' | 'lit' | 'clash' | 'split' | 'surge' | 'fade'),
+`stats`, `B`. `weigh`: the great beam gets 0 before `great.from` 14 s into form 3 and within `great.every`
+35 s of the last, then × 2. `begin` refuses while a beam is lit or clashing. The sweep's side: toward the
+hero; on the line, the way he is moving across it; standing still on it, the AI's `Math.random`.
+
+**`TerrainMoves`** (`terrain.js`, `d.terrain`; numbers `TUNING.terrain`, `tuningTerrain.js`; the moves
+`moves/terrain.js`: every beat a `cast` with `selfCue`). `weigh` / `begin` find the tiles
+(`destructibles.floorNear(.., { kind: 'tile' })`: 0 / false with none), `motion` (the stamp, the aura
+lifting tiles), `onImpact` (Ring Breaker's fists into the floor), `onCast` (`tileKick`, `ringBreaker`,
+`stormThrow`, `stormGreat`: `take` / `carry` / `throwTo` with his own blow on landing), `frame`, `busy`,
+`reset`. Three hooks the class calls: `quake(x, z, { from, to, speed, damage, knockback, attack })` → true
+when a front left (Heavenfall's landing: the tiles within `quake.shatter` 6 m break, a crater, a front runs
+out from `from` to `to` m at `speed`, cracking each tile it crosses and striking the hero ONCE as it
+reaches him, red, its cue `flashLead` before; a hero inside `from` at the landing is the leap's own blow),
+`nova(x, z, r)` → tiles hit (a transformation's ring: tiles within r crack, within `nova.breakR` 2.2 m
+break), `crater(x, z, r, k = 1)` → rubble piles (a heavy blow's crater: `world.wreck.rubble` round it, by
+weight; none under `crater.minK` 0.8). Its cues: `combat:tell` / `combat:flash` with hazard (the quake,
+Ring Breaker's tiles) and a thrown tile's flash on the tile (`flare: true`). Two streams of its own (`_g`
+gameplay, `_l` looks); its record names keep clear of the cue ledger's courtyard / crater readers.
+
+**The tuning files.** `tuning.js` `TUNING` (forms 3, hp 2000 a form, `phaseAt` [1], radius 0.42, `scale`
+PLAYER_SCALE × 1.12, bound 16, `flashLead` 0.26, `windupScale` [1, 0.93, 0.86], `recoveryScale` [0.9,
+0.82, 0.74], `reach { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 }`, `posture`, `guard`, `lock`,
+`mikiri`, `move`, `dash`, `closeBlink`, `idleGap`, `openingGap`, `chain`, `pressure`, `airFall { g: 30 }`,
+`transform { windup: 2.3, ringRadius: 6.5, damage: 12, knockback: 7 }`, `crescent` (LordFx's pools need
+one), `world { blast: 0.8, bigBlast: 1.4, disc: 0.6 }` (what his blasts and disc do to the world: fx.js
+reads them first, `ASC_WORLD` the fallback), `damageScale` 1.1, `execution`, `wakeRadius` 9) spreads in
+`shots` (`tuningShots.js` `SHOTS_TUNING`: `blast`, `spirit`, `scatter`, `dance`, `rain`, `disc`, `bolt`,
+`volley`, `cage`, `weather`, `corners`, `world`), `beam` (`tuningBeam.js` `BEAM_TUNING`: `tick`, `active`,
+`rising`, `sweep`, `twin`, `great`, `clash`, `world`, `look`) and `terrain` (`tuningTerrain.js`
+`TERRAIN_TUNING`: `tileKick`, `ringBreaker`, `stoneStorm`, `quake`, `nova`, `crater`). `links.js` `LINKS`
+(read through the `LINKS` getter; shared lists `PURSUE`, `CLOSE`, `AFTER_RED` after a red thing of his,
+`AFTER_VOLLEY` after his volleys at range, `AFTER_BEAM` after a beam; COMBAT.md).
+
+**His gear and look.** `gear.js` registers `asc.head` (`hidesHair`; the hair of every form), `asc.chest`,
+`asc.arms`, `asc.legs`, `asc.waist` into the hero's gear registry (`ASC_ITEMS`); `ASC_LOADOUT` (no
+`weapon`: the right fist hangs on the sword joint), `FIST = { guard: -0.06, tip: 0.075 }` (the kit's blade
+before his limbs take over). Built by `buildHero(U, ASC_LOADOUT)`, the hero's skeleton, the hero's ink-line
+art. Every piece that changes with his form is kept out of the static merge and registered with the forms
+it shows in (`look.js` `at(D, m, from, to)` on the rig's `userData.dress`). `look.js`: `ascLookNow()` →
+`{ base: 'a' | 'c', art, id }` (`?ascLook=`, read when the rig is built; d = outfit a through the wyrm's art
+path, `bodyArt.js` `ASC_ART`), `ASC_TINT` (per outfit, his material instances' fills), `ASC_LIFT` (`fill`
+multipliers per part and `rim` × 3.2 on `rimOn`: his figure lifted off the floor; `?ascLift=0` = as the
+body shipped), `tintAscendant(M)` (the class's `_tint`: the fills, the lift, the light's ink),
+`dressAscendant(d, dt)` (the kit's `dress`: on a change of `d.dressPhase` it flips the pieces' `visible`
+flags and writes the gold hair's, the wraps' and the light's colours; then the gold breathes, a few
+uniforms a frame; no allocation). His materials: `coat` / `lining` the tunic, `leather` the sash, `hem` the
+wraps, `pants`, `collar` the boots, `skin`, `shirt` his DARK hair (form 1), `hair` / `hairTip` his GOLD hair
+(forms 2 – 3), `flask` the light at his edges, fists and eyes. Three stances (`poses.js` `GUARDS`,
+`FORM_POSES`, `formPoses(form)`, `FIST_UP`, `FIST_FLAT`; the animator's pilot carries `form`).
+
+**His effects** (`fx.js` `class AscFx extends LordFx`; STYLE.md "Tian Lei's effects"). The constructor
+swaps the fire field's void slot for `FIRE_PALETTES.gold` (here `K_VOID` IS GOLD), grows the pools
+(`shots` 24, `strikes` 12), and hands its draws a game whose `world.scorch.burnCircle` keeps 12 % of the
+heat (his energy chars, it leaves no glow). Every drawing method runs on LordFx's private drawing stream
+(`ASC_DRAW`); the inherited draws' violet lights and glyphs are turned gold (storm white while lightning
+draws). Exports `ASC_LOOKS` (`ascAura`, `ascBeam`), `ASC_WORLD`, `hash`. Positions are world metres,
+`form` 1..3; a method with `dt` is called every frame while its thing lasts, the others once:
+```
+formAura(d, dt, form)                       forms 2-3: gold heat standing round him, spawned BEHIND him as the
+                                            camera sees him (?ascAura=a|b|c); form 3 lightning crawling over him
+limbTrail(ax, ay, az, bx, by, bz, form, heavy)   a blow's trail off the limb's point (form 1 a pale smear)
+muzzle(x, y, z, dx, dz, k = 1, form = 1)    a palm's flash as a blast leaves it (a disc of light, strokes, sparks)
+beamCharge(x, y, z, u, dt, form = 1)        light gathering in the drawn-back palm through a beam's windup
+beam(ax, ay, az, bx, by, bz, w, k, dt, form = 1)  the lit beam a → b, `w` m wide, k 0..1 (?ascBeam=a|b)
+beamSplash(x, y, z, k, dt, form = 1)        where the beam ends on something (the floor, a butte, a guard)
+beamClash(x, y, z, dx, dz, k, dt, form = 3) the head grinding on the hero's blade; k the lock's meter
+beamSplit(x, y, z, dx, dz, len, form = 3)   the clash won: the beam split round the blade (once, or every frame)
+vanish(d, x0, z0, x1, z1, form = 1)         the blink: the shape he leaves, the streak, a puff at each end
+dashGhost(d, form = 1)                      the afterimage a dash leaves
+auraBurst(x, z, r, form = 2)                a shock ring out of his body to r m (Aura Burst, a landing)
+crater(x, z, r, k = 1)                      a heavy blow on the floor: dust, chips, lit cracks (draws only)
+transformGather(x, z, u, dt, form = 2)      a transformation's windup (u 0..1): energy drawn in, stones lifting
+transformNova(x, z, r, form = 2)            the new form: a pillar of light 9 m (form 3: 12 m) ~0.9 s, a shock ring
+throwShot(o)                                LordFx's pool; his kinds 'blast' and 'disc' (below)
+callStrike(x, z, r, warn, { style: 'bolt', damage, knockback, attack })   called lightning (LordFx's)
+lightning(ax, ay, az, bx, by, bz, k, lit, gold)   LordFx's, its light and sparks storm white
+```
+`fxBeam.js` draws the beam (`drawBeam`, `drawBeamCharge`, `drawBeamSplash`, `drawBeamClash`, `drawSplit`,
+`drawSight`). **His thrown kinds** (the record's ledger fields keep their meaning: `alive, done, flashed,
+phase, x, z, dx, dz, speed, back, wait, radius, delay, age, tell, attack`; dx / dz are the way it flies
+NOW): `'blast'` `{ x, y = 1.1, z, dx, dz, speed, radius = 0.5, life = 2.5, range = 22 (then it drops and
+bursts), size (1; the Spirit Shot 1.4, Golden Rain 0.8), tell, damage, knockback, attack, delay (s it hangs
+charging, then flies at the hero), returnable, returned, hitKind }`: it cues itself `flashLead` before
+contact (`combat:flash` hazard + bullet) or fizzles under 0.2 s; cover stops it (`destructibles.stop`); a
+parry bursts it; a PERFECT parry of a `returnable` one flies it back at his chest and calls
+`d.onShotReturned?.(s)`. `'disc'` `{ speed, back, range = 12, curve (rad/s, + left), hang = 0.3, through =
+true, radius = 0.7, life = 6, ... }`: out on its curve, a hang at the turn, home THROUGH where the hero was,
+then to `d._hand`, `d.onShotBack?.(s)`; it cuts what it crosses (`destructibles.sweep`, `T.world.disc`); a
+parry on the way out turns it home at once; at its turn it asks `brain.fairDelay(home, tell,
+T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
+returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
+
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
@@ -3307,12 +3689,25 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   the Starless Sky's strikes (attack starlessSky) and Starless Night's waves (starlessNight) with hazard: true,
   the wheeling blade (wheelingBlade) with bullet: true; Shen Hui's burning ground has no cue (ground to step
   off, not a blow). No event and no payload field was added by the duelists' second pass.
+- Tian Lei, the Skybreak Ring's boss (ADR-129), added NO event name and no payload field; new producers
+  and payload values of existing ones: his transformations emit `dragon:phase2` / `dragon:phase3` (also
+  the Lab's setForm); his deathblow `dragon:plunged` with execution, deathblow and form (as the Lord's);
+  `dragon:returned` kind 1 = a bolt of his struck back by a perfect parry, kind 2 = a returned blast
+  reached him (damage 50); a bolt's lightning emits `dragon:explosion` (radius 2, at his hand); the
+  volley's dive lands with `dragon:land`; a beam emits `dragon:spell` (name = the move) as it lights; a
+  won beam clash emits `dragon:stagger`; a held guard under a lit beam emits `player:block` (damage 0,
+  at most every 0.4 s; the beam emits it, not the player). His blasts and the disc cue themselves with
+  `combat:flash` (source dragon, hazard: true, bullet: true); a thrown floor tile's flash carries flare
+  (drawn on the tile); the quake's front and Ring Breaker's tiles send `combat:tell` and `combat:flash`
+  with hazard: true and flare; his called lightning (Thunderfall, the volley, the corner bolts) cues as
+  the Lord's called strikes do.
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
   `game:cinematic {kind}` (flow.cinematic: slow motion and a close camera on a duel's big moment; kind
   fullDeflect / bladeLock / mikiri / execution / perfectParry (the hero's perfect parry of a blade: a short
   slow motion, no gong), or lock = the blade lock's camera push-in: no slow motion,
-  audio plays no gong)
+  audio plays no gong; greatBeam = Tian Lei's great beam begins to charge: a short close look at him,
+  no slow motion, audio plays the gong, ADR-129)
 World → audio (destruction, ADR-107; see "Destruction" above):
 - `world:impact {kind, mat, x, y, z, power, by, id}` (a blow on a breakable. kind: 'chip' = it held, 'break' = it
   shattered where it stood, 'topple' = it starts to fall, 'crash' = it lands (or a thrown piece does), 'burn' = wood

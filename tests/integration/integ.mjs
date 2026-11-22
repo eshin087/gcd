@@ -10099,7 +10099,7 @@ async function scenarioMusic() {
   const onDisk = fs.existsSync(`${ROOT}/assets/audio/music`) ? fs.readdirSync(`${ROOT}/assets/audio/music`).map((f) => `music/${f}`) : [];
   const unused = onDisk.filter((f) => !files.includes(f));
   assert(!unused.length, `no track ships that the game never plays ${JSON.stringify(unused)}`);
-  assert(['cinderwood', 'ash', 'starless'].every((id) => SCORE.levels[id] && Array.isArray(SCORE.levels[id].phases)), 'a score entry for each level');
+  assert(['cinderwood', 'ash', 'starless', 'ring'].every((id) => SCORE.levels[id] && Array.isArray(SCORE.levels[id].phases)), 'a score entry for each level');
 
   const G = build();
   const { game, input } = G;

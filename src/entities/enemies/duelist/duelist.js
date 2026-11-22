@@ -441,7 +441,8 @@ export class Duelist {
     const br = this.brain, a = br.act, p = this.game.player;
     if (this.mode !== 'act' || !a || a.def.transition || typeof p?.onTrade !== 'function' || !p.canTrade?.() || !this._fromFront()) return false;
     const b = a.beats.find((x) => !x.done && !x.feint && a.t < x.impact);
-    if (!b || !b.def.zone || b.def.release || b.def.cast || dodgeOnly(b.def.tell)) return false;
+    // (a beat that is not a blow of his body (a beam's head: `selfHit`, a stream held lit: `sustain`) is no trade)
+    if (!b || !b.def.zone || b.def.release || b.def.cast || b.def.selfHit || b.def.sustain || dodgeOnly(b.def.tell)) return false;
     if (b.impact - a.t > DEFENSE.trade.window) return false;
     br.skipTo(b.impact);
     b.done = true;

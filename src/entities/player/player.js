@@ -1572,6 +1572,28 @@ export class Player {
     if (t >= TUNE.bounceDur) this._toLoco(0.14);
   }
 
+  /**
+   * A held guard under a stream the attacker keeps on it (a beam's ticks: kiBeam.js): `cost` from the
+   * guard meter and no health, a slide of `push` m along (dx, dz) (unit, away from the source; it only
+   * tops the slide up), a short recoil. False (nothing changed) when the cost would empty the meter:
+   * the caller then lands the tick as a blow, which the player's own block answers (the guard opens).
+   */
+  streamBlock(cost, push, dx, dz) {
+    cost = Math.max(0, fin(cost));
+    if (!this.debug?.god && fin(this.guard) - cost <= 0) return false;
+    if (!this.debug?.god) {
+      this.guard = Math.max(0, fin(this.guard) - cost);
+      this.guardWait = Math.max(fin(this.guardWait), GUARD.regenDelay);
+    }
+    const kb = this.kb, v = Math.max(0, fin(push)) * TUNE.knockbackDecay, now = fin(kb.x) * fin(dx) + fin(kb.z) * fin(dz);
+    if (now < v) {
+      kb.x = fin(kb.x) + fin(dx) * (v - now);
+      kb.z = fin(kb.z) + fin(dz) * (v - now);
+    }
+    this.recoil = Math.max(fin(this.recoil), 0.45);
+    return true;
+  }
+
   _block(dmg, tell, attack, chip, nx, nz) {
     const g = this.game;
     // a blow costs guard and no HP (GUARD); a contact stream (the breath's ticks, a bullet) is no
@@ -1843,7 +1865,8 @@ export class Player {
     if (!this.alive || this.state === 'plunge' || this.state === 'dead' || this.state === 'lock' || this.state === 'flurry') return false;
     this.riposte.att = null;
     this._interrupt();
-    this.bladeLock = { att, meter: fin(L.start, 0.5), push: fin(L.push, 0.085), decay: fin(L.decay, 0.32), dur: fin(L.dur, 2.6), hold: fin(L.hold, 0.6), shown: -1 };
+    // (`dist`: the two close to it; a lock at range (a beam's head on the blade) gives its own)
+    this.bladeLock = { att, meter: fin(L.start, 0.5), push: fin(L.push, 0.085), decay: fin(L.decay, 0.32), dur: fin(L.dur, 2.6), hold: fin(L.hold, 0.6), dist: Math.max(0.5, fin(L.dist, TUNE.lockDist)), shown: -1 };
     const ap = att?.position, p = this.position;
     if (ap && Number.isFinite(ap.x + ap.z)) this.yaw = Math.atan2(ap.x - p.x, ap.z - p.z);
     this.object3d.rotation.y = this.yaw;
@@ -1920,7 +1943,7 @@ export class Player {
         const sl = (B.meter - B.slid) * TUNE.lockSlide;
         B.slid = B.meter;
         // (half the closing is the hero's: the attacker steps in the other half, brain.startLock)
-        const close = clamp((dist - TUNE.lockDist) * 0.5, -0.5, 0.5) * Math.min(1, dt * 9);
+        const close = clamp((dist - B.dist) * 0.5, -0.5, 0.5) * Math.min(1, dt * 9);
         p.x += fx * (sl + close);
         p.z += fz * (sl + close);
         this._collide();

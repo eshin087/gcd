@@ -975,6 +975,11 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?floor=` | a broken floor slab (both arenas; read when the level is built) | - | rubble on printed earth | heaved into a low mound of brighter shards | - | **a** |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
+| `?ring=` | the Skybreak Ring's arena (ADR-129; read when the level is built) | - | the flats: a dry lake bed, banners, a drum, a gong, a judges' dais | the quarry: terraces of cut stone round the ring | the crown: the ring on a butte's top, the badlands 40 m below | **a** |
+| `?ascLook=` | Tian Lei's body (read when his rig is built) | - | the tunic and the topknot | set aside, not offered (a bare-chested look too close to a franchise's) | the wandering monk and the braid; `d` = a through the wyrm's art path | **a** |
+| `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
+| `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
+| `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -983,11 +988,135 @@ before this pass); the things that are new in this pass (`kindle`, `ashp3`, `bur
 `floor`) keep their pick, although `presence`, for one, was simply absent before (its `0` is "off",
 reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else the author's default. **`?looks=new`** (every
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
-**The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard and the Obsidian Throne) has a row of
-buttons per switch: a switch read at draw time flips live, one read at build time (`ashLook`,
-`lordLook`, `floor`) reloads the page with its parameter; "as shipped" clears every look parameter (the
-picks), "before this pass" reloads with `?looks=old`; there is no "all proposals" button any more. Older switches of the same kind: `?flare=`
-(ADR-118), the wyrm's `?ring=` and `?breath=` (ADR-119).
+**The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne and the Skybreak
+Ring) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
+(`ashLook`, `lordLook`, `floor`, `ring`, `ascLook`, `ascLift`) reloads the page with its parameter; "as
+shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
+no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
+`?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
+`?looks=old` leaves them at their picks. The owner picked arena a, body a, aura a and beam a on
+2026-11-21 ("Your picks"); `ascLift` a (the figure lifted, against the body as it shipped) is recorded
+in `PICKED` beside them. The losing options stay behind their switches; the bare-chested outfit was
+removed. Note the name: the Skybreak Ring's `?ring=` and the wyrm's older `?ring=` (its shock ring) read
+the same URL parameter; each level is its own page and only one of the two is ever drawn, so a value
+set for one level does nothing visible on the other.
+
+### The Skybreak Ring (2026-11-21, ADR-129; `world/skybreakRing.js`, `?level=ring`)
+An open-air tournament ring on the badlands, wrecked by the fight; an original place. The camera looks
+down at 58 degrees: the sky and the horizon are never on screen, so "the sky changes" means the LIGHT
+changes, and what is seen is what it falls on.
+- **The ring** is a square of sandstone tiles 30 m across (carved glyphs, the duel arenas' paving look),
+  a kerb of long darker stones round it, an octagon of wedge plates at its middle; a bronze brazier on a
+  stone post at each corner (the south two low: nothing tall stands south of the fight), flames in the
+  fire field. **The paving is calmed on purpose** (the stage pass of 2026-11-21): on the first build the
+  tiles' strokes were as bright and as busy as the fighters, who read small and dim on it (form 1, with
+  no aura, worst). Now: no hatching on the tiles' sides, almost no crack lines, a fainter chamfer,
+  sparser and dimmer top glyphs, a darker slab body; the joints stay. A figure's brightness against the
+  floor round it (measured on crops) went from 1.98 / 1.23 / 1.66 to 3.27 / 1.73 / 2.54 by form at
+  1280 × 720 (the phone's 852 × 393: 2.66 / 1.44 / 2.60 to 3.70 / 2.51 / 2.97). Cracks print in pale
+  dust (`scarInk`), the earth under a broken tile is a warm pale dust (`EARTH`) well over the dimmed
+  tiles, so craters and a wrecked ring read at the game camera.
+- **The buttes** (`landmarks.js` `buildButte`, prop art): mesas of banded red-ochre strata
+  (`BADLAND`) on an irregular footprint, steep stepped flanks where each band is a ledge that catches
+  the light a shade apart from the next, a flat caprock that overhangs a little; 20 – 35 m from the
+  ring, east, west and just past its north edge. A top that comes off leaves its foot. Slender hoodoos
+  (a banded column narrowing to a neck under a cap stone) stand between them. The landmarks' gain is
+  0.92 (it was 1.1: they read fairly bright orange).
+- **The arenas** (`?ring=`, the owner's pick a): a the flats (a dry lake bed of cracked clay plates,
+  deep red banners east and west, a war drum, a gong, a judges' dais, boulders, a few dead trees on the
+  screen grid), b the quarry (three terraces of dark cut stone stepping up round the ring, stacks of
+  blocks, a timber derrick), c the crown (the ring on the flat top of a butte, cliffs falling into the
+  haze, rock spires rising past the rim, the badlands 40 m below; strokes of haze drift in the depths).
+  At the fight camera, which shows about 23 m of ring floor, the three look nearly the same.
+- **The light by his form** (the set's `ambience`): a clear **dusk** (warm, low from the west, long
+  shadows), then **golden** (warmer, higher, brighter, a gold light round him that follows him, gold
+  motes), then a **thunderstorm** (cold and dark, the moon high behind cloud, the fog closer, wind-blown
+  dust, rain as glyph particles). A transformation eases the light over about two seconds. **Lightning
+  is drawn by what it lights**: no bolt is drawn in a sky nobody sees; every 2.4 – 6.5 s the storm's
+  flash raises the moon and the ambient light for a frame or two (now and then a second flicker), so
+  the ring, the buttes and the fighters flare and fall back. `flare(k)` is the same flash for his great
+  moments (a transformation, the great beam, a won clash), gold before the storm and cold white in it;
+  `dim(k)` pulls the whole ring's light down through the great beam's charge.
+
+### Gold in the fire field (2026-11-21, ADR-129)
+Tian Lei's energy is GOLD, and the fire field has four kinds and no gold (`fire`, `void`, `steel`,
+`smoke`). The Skybreak Ring **swaps the void slot's palette** for `FIRE_PALETTES.gold`
+(`FireField.setPalette('void', ...)`, as his effects are built): on this level every void blob prints
+gold, the Lord's inherited draws included, and the heat haze beside it turns gold (`uHazeVoid`). Not a
+tint: the field's `tint` dyes only steel, inside two screen ellipses, for a moment (ADR-118), so it
+cannot make a body of heat gold; and not a fifth kind: the heat buffer's four channels are taken (fire,
+smoke, void, steel). The Lord never fights on this level, so his violet is untouched. The palette is
+energy, not fire: an amber rim with no red in it, a gold body, a pale yellow-white heart; it boils faster
+and climbs far less than flame (a blast stays a ball, a beam a beam; what rises is made to rise). The
+inherited draws' violet lights and glyph colours are turned gold (storm white while lightning draws),
+and every scorch his effects leave keeps 12 % of its glowing heat: his energy chars the floor, it leaves
+no red-orange glow (that read as fire).
+
+### Tian Lei's figure (2026-11-21, ADR-129; `ascendant/gear.js`, `look.js`)
+- **Drawn in the hero's ink-line art**, as Shen Hui and Varr Nihil are (`buildHero` on the hero's
+  skeleton, the hero's animator), 1.12 × the hero's size. The owner's pick, outfit a: a sleeveless
+  crimson tunic with a crossed collar and a short split skirt, a black sash whose tails fly, pale grey
+  trousers gathered into off-white shin wraps, soft boots, wrapped wrists. No weapon: the right fist
+  hangs on the sword joint. Option c (a slate-blue monk's robe, prayer beads) and d (outfit a through
+  the wyrm's art path) stay behind `?ascLook=`.
+- **Hair by form**: a topknot and a short tail (form 1, dark); the knot's hair risen into a gold plume
+  lit from within (form 2); the plume taller and sharper, spikes swept back from the temples and the nape
+  (form 3). Form 2 also lays a line of gold along the tunic's collar and hems, the wraps go pale gold,
+  light at the wrists; form 3 the fists and the eyes burn and the tunic is torn off his left shoulder.
+  One big change of silhouette (the head above all) or one line of light a step; the gold breathes,
+  slowly in form 2, a faster, harder flicker in form 3. The change shows with the transformation's
+  nova, not at its start (`dressPhase`).
+- **How dark hair avoids the gold ink line**: the `hair` part's ink lines are gold on every rig, so his
+  dark form-1 hair is built on the `shirt` material (white ink lines) and only the gold hair of forms 2
+  and 3 is on `hair` / `hairTip`. The light at his edges, fists and eyes is the rig's `flask` instance
+  (never drawn as a flask on him): no new material, no new draw call beyond the switched meshes.
+- **The lift** (`ASC_LIFT`; `?ascLift=0` = as the body shipped): on the ring's floor he read dim at the
+  game camera, form 1 above all, so his instances' fills are lighter (the tunic × 1.4, the trousers
+  × 1.5, the skin × 1.2, the sash × 1.8, the dark hair × 1.6) and the cool edge of light along his
+  silhouette is × 3.2. It helps a little: the fighters are still small in the frame.
+
+### Tian Lei's effects (2026-11-21, ADR-129; `ascendant/fx.js` `AscFx`, `fxBeam.js`)
+Everything that strikes, glows or bursts is gold heat in the fire field, in the small letters; dust,
+grit, chips and sparks are one-cell glyph particles. Look code draws from its own streams.
+- **The aura** (forms 2 and 3; `?ascAura=a`, the owner's pick): a tall flame standing round him,
+  tapering above his head, over a wheel of light on the floor. It is spawned BEHIND him as the camera
+  sees him (0.7 m back toward the far side), so the field's depth fade hides the heat his body covers:
+  it licks round his outline and never covers his limbs; it is hollow where he stands. Grit and small
+  stones lift round his feet. Form 3: tighter, taller, brighter, with blue-white lightning crawling over
+  him and snapping to the floor. About 60 – 160 blobs alive.
+- **The beam** (`?ascBeam=a`, a column): a CORE written on the letter grid (lines one letter row apart:
+  the middle ones digits, the outer ones bright strokes), a gold body of soft heat round it whose width
+  swells in bulges that run out along it and whose edge boils, licks and sparks torn off it, the floor
+  under it lit and charred, a bulb of light at the palm. **The core is white-hot only at its peak** (the
+  first 0.1 s, strength above 0.85); held, the beam is drawn at 0.72 strength and its core shades yellow
+  into gold (the owner called bright letters flashy before); it keeps its width as it dims. Everything
+  held is re-drawn every frame on the one-copy clock, so 2.2 s of beam through slow motion never stacks.
+  Before it fires, a dashed thread of gold on the letter grid runs from his lead hand along the line he
+  has fixed (`drawSight`), and the light gathers in his drawn-back palm (`beamCharge`: motes drawn in, a
+  growing bulb, coils of light, arcs to the floor late). Where it ends on a butte or a guard, a splash.
+  In the clash the head grinds on the hero's blade and the light parts round it as the hero wins; a won
+  clash splits the beam past him and it burns out (about 0.9 s). About 250 – 700 blobs a frame.
+- **A blast**: a white-hot heart in a ball of gold, a short comet tail of strokes and heat, sparks; a
+  charging one swells with motes drawn in. It bursts in a flash with a small ragged shock and a scorch;
+  one that could only be cued too late goes out in a puff. The palm's flash as it leaves is gold (a white
+  star there read as a cue). A blast is about five letter cells at the game camera.
+- **The disc**: a thin bright ring seen at the camera's slant, turning, two white-hot notches running
+  round it, a sheath of gold on its rim, the wake its rim leaves.
+- **The vanish and the dash**: the shape he leaves is printed from his own body's points (the duelists'
+  afterimage recipe, in gold: a hotter core down his middle, coming apart from the feet up, gold wisps
+  rising off it), a streak to where he reappears, a puff at each end; form 1 pale dust, forms 2 – 3
+  gold, form 3 a crack of lightning along the streak. A dash leaves a lighter afterimage.
+- **A blow's trail** off the striking limb: form 1 a faint pale smear and dust, forms 2 – 3 a gold
+  streak (a white edge in form 3). A heavy blow on the floor: dust, chips, the cracks lit a moment, a
+  ground shock; his aura's burst: a flash off his body, a front of gold heat, a crisp ripple at his
+  waist, strokes thrown out.
+- **The transformation**: through the 2.3 s windup energy is drawn in along the floor, stones and grit
+  lift all round, a column of light builds behind him, cracks of light run out round his feet (form 3:
+  lightning snapping round him); then the new form stands in a pillar of light 9 m tall (form 3: 12 m)
+  that burns about 0.9 s, a shock ring, lightning along the floor (form 3: bolts out of the sky round
+  him), stones and sparks thrown out. The pillar's peak blooms white: keep it short.
+- **Cost** (headless; frame rates were not measured): the fire field's worst case, form 3's aura with
+  the great beam, ten blasts and a strike, 2863 of 6000 blobs; his fights by the AI peak about 1525.
 
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a

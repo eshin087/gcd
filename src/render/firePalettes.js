@@ -12,6 +12,8 @@
 //   erode  how hard noise tears the cool rim into separate tongues (0 = a smooth edge)
 //   boil   letter re-rolls per second (each cell on its own beat)
 //   warp   how far (in cells) noise pushes the body about
+//   haze   (optional) the colour the letters of the world take beside this heat (render/pipeline.js
+//          heat haze; read for the void slot only)
 // `steel` is the crisp kind (sparks, glints, cuts): no turbulence, and a thin line of it prints as
 // the stroke character that runs along it.
 export const FIRE_PALETTES = {
@@ -21,7 +23,15 @@ export const FIRE_PALETTES = {
   },
   void: {
     stops: [[0.34, 0.05, 0.8], [0.62, 0.1, 1.45], [1.05, 0.32, 2.05], [1.7, 1.15, 2.7], [2.8, 2.6, 3.2]],
-    hdr: 0.6, fill: 0.07, back: [0.5, 0.8], lick: 0.6, erode: 1.0, boil: 9, warp: 1.0,
+    hdr: 0.6, fill: 0.07, back: [0.5, 0.8], lick: 0.6, erode: 1.0, boil: 9, warp: 1.0, haze: [0.62, 0.34, 1.0],
+  },
+  // GOLD (the Skybreak Ring: Tian Lei's energy). Not a kind of its own: a level swaps the void slot
+  // for it (FireField.setPalette('void', FIRE_PALETTES.gold); the Lord's level never does). Energy,
+  // not fire: an amber rim (no red in it), a gold body, a pale yellow-white heart; it boils fast and
+  // climbs far less than flame (a blast stays a ball, a beam a beam: what rises is made to rise).
+  gold: {
+    stops: [[0.62, 0.36, 0.035], [1.25, 0.82, 0.1], [1.95, 1.48, 0.3], [2.5, 2.2, 0.85], [3.1, 3.0, 2.3]],
+    hdr: 0.6, fill: 0.08, back: [0.45, 0.75], lick: 0.4, erode: 0.6, boil: 11, warp: 0.6, haze: [1.0, 0.78, 0.32],
   },
   steel: {
     stops: [[0.5, 0.5, 0.6], [1.2, 1.2, 1.32], [1.9, 1.88, 1.85], [2.7, 2.65, 2.55], [3.5, 3.4, 3.2]],

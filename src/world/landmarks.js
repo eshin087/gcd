@@ -926,3 +926,175 @@ export function starCleft(rng, x, z) {
   }
   return out;
 }
+
+// ---------------------------------------------------------------- the Skybreak Ring (world/skybreakRing.js)
+// The badlands round the tournament ring: wind-carved buttes in banded strata, slender hoodoos, the
+// ring's corner posts with their bronze braziers. Built for prop art directly (carve() attributes, flat
+// facets): a set pushes them into its `stones` mesh or its breakables as they are.
+/** Badlands rock: a dull red ochre (its bands lighter and darker), and the ring's bronze. */
+export const BADLAND = [0.165, 0.098, 0.064];
+export const RING_BRONZE = [0.2, 0.135, 0.06];
+
+/**
+ * A stack of faceted rings round (x, z) on the footprint `poly` ([angle, radius] pairs, irregular):
+ * `rings` [[y, radius factor], ...] bottom to top. Two rings at the same y make a flat ledge (an upward
+ * annulus: it catches the light, a band of the strata). `cap`: the last ring closed by a flat top fan;
+ * `bottom`: the first by a downward one. Non-indexed, flat facets, unpainted, world space.
+ */
+function strataMass(poly, rings, x, z, { cap = true, bottom = false } = {}) {
+  const pos = [];
+  const n = poly.length;
+  const P = (k, i) => {
+    const [a, r] = poly[i % n];
+    const [y, f] = rings[k];
+    return [x + Math.cos(a) * r * f, y, z + Math.sin(a) * r * f];
+  };
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+  // a triangle wound so its normal points along the hint (out from the axis, or up / down)
+  const tri = (A, B, C, hx, hy, hz) => {
+    e1.set(B[0] - A[0], B[1] - A[1], B[2] - A[2]);
+    e2.set(C[0] - A[0], C[1] - A[1], C[2] - A[2]);
+    e1.cross(e2);
+    if (e1.x * hx + e1.y * hy + e1.z * hz < 0) pos.push(...A, ...C, ...B);
+    else pos.push(...A, ...B, ...C);
+  };
+  for (let k = 0; k + 1 < rings.length; k++) {
+    const flat = Math.abs(rings[k + 1][0] - rings[k][0]) < 1e-4;
+    const wider = rings[k + 1][1] > rings[k][1];
+    for (let i = 0; i < n; i++) {
+      const A = P(k, i), B = P(k, i + 1), C = P(k + 1, i + 1), D = P(k + 1, i);
+      const ox = (A[0] + B[0]) / 2 - x, oz = (A[2] + B[2]) / 2 - z;
+      // (a flat ring faces up where the band above is narrower, down under an overhang)
+      const hy = flat ? (wider ? -1 : 1) : 0.25;
+      tri(A, B, C, flat ? 0 : ox, hy, flat ? 0 : oz);
+      tri(A, C, D, flat ? 0 : ox, hy, flat ? 0 : oz);
+    }
+  }
+  const top = rings.length - 1;
+  if (cap) for (let i = 0; i < n; i++) tri([x, rings[top][0], z], P(top, i), P(top, i + 1), 0, 1, 0);
+  if (bottom) for (let i = 0; i < n; i++) tri([x, rings[0][0], z], P(0, i), P(0, i + 1), 0, -1, 0);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  return g;
+}
+
+/** An irregular footprint: `sides` corners round a circle of radius r, each pushed 1 +- jit. */
+function footprint(rng, sides, r, jit = 0.18, a0 = rng() * TAU) {
+  const out = [];
+  for (let i = 0; i < sides; i++) out.push([a0 + ((i + range(rng, -0.3, 0.3)) / sides) * TAU, r * (1 + range(rng, -jit, jit))]);
+  return out;
+}
+
+/** A carve() colour for banded rock: `c` x the band its height falls in x the facet's tone. */
+const banded = (c, k, seed) => (px, py, pz, nx, ny, nz) => {
+  const band = 0.62 + 0.62 * hash2(Math.floor(py / 1.15) * 3.7 + seed, 5.3);
+  return mul(c, k * band * facetTone(nx, ny, nz));
+};
+
+/**
+ * A wind-carved butte: a mesa of banded strata on an irregular footprint of radius r, flanks steep and
+ * stepped (each band a ledge that catches the light, a shade apart from the next), a flat caprock that
+ * overhangs a little, h m tall. Split at the band nearest `cut` m: `lower` (its foot, from y = -below
+ * for a set whose ground lies far down) and `upper` (the bands above and the caprock: the piece a great
+ * blow takes off). (x, z) its centre. Returns { lower: [geo], upper: [geo], cut, r }. Carved.
+ */
+export function buildButte(rng, x, z, { h, r, cut = h * 0.62, col = BADLAND, below = 0, sides = 11, k = 0.82 }) {
+  const poly = footprint(rng, sides, r, 0.26);
+  const bands = [];
+  let y = 0;
+  const nb = Math.max(4, Math.round(h / 1.6));
+  for (let i = 0; i < nb; i++) {
+    const t = i / nb;
+    bands.push({ y0: y, y1: y + range(rng, 0.7, 1.3), f0: (1 - 0.24 * t) * range(rng, 0.96, 1.08), f1: (1 - 0.24 * (t + 1 / nb)) * range(rng, 0.84, 0.95) });
+    y = bands[bands.length - 1].y1;
+  }
+  const scale = (h - 0.9) / y;
+  for (const b of bands) {
+    b.y0 *= scale;
+    b.y1 *= scale;
+  }
+  // where it splits: the band boundary nearest `cut`
+  let ci = 1;
+  for (let i = 1; i < bands.length; i++) if (Math.abs(bands[i].y0 - cut) < Math.abs(bands[ci].y0 - cut)) ci = i;
+  const ringsOf = (from, to) => {
+    const R = [];
+    for (let i = from; i < to; i++) {
+      const b = bands[i];
+      // (the foot: a skirt of scree flaring out to 1.35 x; one far below flares further)
+      if (i === 0) R.push([-below, below > 0 ? 1.45 : 1.35], [Math.min(b.y1 * 0.45, 0.9), 1.06]);
+      else R.push([b.y0, b.f0]);
+      R.push([b.y1, b.f1]);
+      if (i + 1 < to) R.push([b.y1, bands[i + 1].f0]); // the ledge (flat): the next band's foot
+    }
+    return R;
+  };
+  const upRings = ringsOf(ci, bands.length);
+  // the caprock: a thin slab overhanging the last band
+  const last = bands[bands.length - 1];
+  upRings.push([last.y1, last.f1 * 1.14], [h, last.f1 * 1.1]);
+  const lower = strataMass(poly, ringsOf(0, ci), x, z, { cap: true });
+  const upper = strataMass(poly, upRings, x, z, { cap: true, bottom: true });
+  const seed = x * 0.37 + z;
+  for (const g of [lower, upper]) {
+    lumpy(g, r * 0.1, 0.45 / Math.max(1, r * 0.25), seed, V(x, h * 0.5, z));
+    carve(g, { col: banded(col, k, seed), ao: caught(0.42, 1.25) });
+  }
+  return { lower: [lower], upper: [upper], cut: bands[ci].y0, r };
+}
+
+/**
+ * A slender rock spire (a hoodoo): a banded column narrowing to a neck under a wider flat cap stone,
+ * h m tall, its foot at (x, -below, z), leaning `lean` rad toward (sin yaw, cos yaw). Carved.
+ */
+export function buildHoodoo(rng, x, z, { h, r, col = BADLAND, below = 0, lean = 0, yaw = 0 }) {
+  const poly = footprint(rng, 7, r, 0.16);
+  const rings = [[-below, 1.15], [h * 0.3, 0.92], [h * 0.3, 0.84], [h * 0.62, 0.7], [h * 0.62, 0.62], [h * 0.84, 0.42], [h * 0.86, 1.05], [h, 0.95]];
+  const g = strataMass(poly, rings, 0, 0, { cap: true });
+  lumpy(g, r * 0.08, 1.1 / r, x + z, V(0, h * 0.5, 0));
+  if (lean) g.rotateX(lean);
+  g.rotateY(yaw);
+  g.translate(x, 0, z);
+  carve(g, { col: banded(col, 0.95, x + z * 0.71), ao: caught(0.42, 1.25) });
+  return g;
+}
+
+/**
+ * A corner post of the ring: a square stone shaft on a stepped plinth, a band near its top, a capital,
+ * and a bronze brazier bowl. h m to the bowl's rim. Returns { stone: [geo], bronze: [geo], fireY } (carved,
+ * world space; fireY: where its flame sits).
+ */
+export function buildRingPost(rng, x, z, { h = 4, w = 0.62, yaw = 0, col = [0.16, 0.14, 0.12] }) {
+  const stone = [], bronze = [];
+  const box = (bw, bh, bd, y, taper = 1) => {
+    const g = prep(new THREE.BoxGeometry(bw, bh, bd));
+    g.translate(0, y + bh / 2, 0);
+    if (taper !== 1) {
+      const p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        if (p.getY(i) > y + bh / 2) {
+          p.setX(i, p.getX(i) * taper);
+          p.setZ(i, p.getZ(i) * taper);
+        }
+      }
+    }
+    stone.push(g);
+  };
+  const shaftH = h - 1.05;
+  box(w * 2.1, 0.22, w * 2.1, 0);
+  box(w * 1.6, 0.26, w * 1.6, 0.22);
+  box(w, shaftH, w, 0.48, 0.86);
+  box(w * 1.06, 0.16, w * 1.06, 0.48 + shaftH * 0.78);
+  box(w * 1.3, 0.22, w * 1.3, 0.48 + shaftH);
+  // the brazier: a shallow bowl on a short neck
+  const prof = [[0.05, 0], [0.16, 0.02], [0.18, 0.14], [0.42, 0.22], [0.5, 0.42], [0.44, 0.44], [0.36, 0.3], [0.05, 0.28]].map(([a, b]) => new THREE.Vector2(a, b));
+  const bowl = prep(new THREE.LatheGeometry(prof, 8));
+  bowl.translate(0, 0.7 + shaftH, 0);
+  bronze.push(bowl);
+  for (const g of [...stone, ...bronze]) {
+    g.rotateY(yaw);
+    g.translate(x, 0, z);
+  }
+  for (const g of stone) carve(g, { col: facetCol(col, 1.25), ao: (px, py) => 0.55 + 0.45 * Math.min(1, py / 1.6) });
+  for (const g of bronze) carve(g, { col: facetCol(RING_BRONZE, 1.3), ao: 1 });
+  return { stone, bronze, fireY: 0.7 + shaftH + 0.4 };
+}

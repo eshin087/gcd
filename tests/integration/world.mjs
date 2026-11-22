@@ -32,6 +32,16 @@ const { ELDER_COLLIDERS } = await imp('src/world/landmarks.js');
 const ELDER_N = ELDER_COLLIDERS.length;
 const { createCourtyard } = await imp('src/world/courtyard.js');
 const { createThroneHall } = await imp('src/world/throneHall.js');
+const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js');
+/** The Skybreak Ring's set as arena `o` (?ring=a|b|c: read when the set is built). */
+const ringSet = (o) => (U, c) => {
+  setLook('ring', o);
+  try {
+    return createSkybreakRing(U, c);
+  } finally {
+    setLook('ring', null);
+  }
+};
 const { TELL, RESULT } = await imp('src/combat/rules.js');
 const { Dragon } = await imp('src/entities/dragon/dragon.js');
 const { TUNING: WYRM } = await imp('src/entities/dragon/tuning.js');
@@ -161,13 +171,13 @@ function wyrm() {
 const S = {
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
       // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates))
-      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280] }[name];
+      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000] }[name];
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
@@ -269,6 +279,104 @@ const S = {
     // Cinderwood's flagstone shards: hidden until one is smashed (a draw call less, nothing else changes)
     const Fo = build();
     assert(!Fo.set.group.getObjectByName('flagstoneShards').visible, "Cinderwood's flagstone shards are hidden until one is smashed");
+  },
+
+  // ---------------------------------------------------------------- the Skybreak Ring: its floor, its buttes, its light (world/skybreakRing.js)
+  ring() {
+    const H = RING.half;
+    for (const o of ['a', 'b', 'c']) {
+      const W = build(ringSet(o));
+      const { D, set, colliders, game, step, U } = W;
+      const F = D.floor, tiles = F.filter((b) => b.kind === 'tile');
+      let area = 0;
+      for (const s of set.slabs) {
+        if (Math.abs(s.x) > H || Math.abs(s.z) > H) continue;
+        let a = 0;
+        for (let k = 0; k < s.outline.length; k++) {
+          const p = s.outline[k], q = s.outline[(k + 1) % s.outline.length];
+          a += (p[0] * q[1] - q[0] * p[1]) / 2;
+        }
+        area += Math.abs(a);
+      }
+      assert(set.option === o && tiles.length >= 350 && tiles.every((b) => Math.abs(b.x) <= H && Math.abs(b.z) <= H && b.def.look === 'range' && b.lift === BREAK.floor.lift && !b.colliders.length) && area > 0.8 * (2 * H) ** 2, `${o}: the ring is ${tiles.length} breakable floor slabs ('tile'), ${((100 * area) / (2 * H) ** 2).toFixed(0)} % of its ${2 * H} m square paved`);
+      const near = [];
+      const nn = D.floorNear(0, 0, 6, near, { kind: 'tile', max: 40 });
+      assert(nn >= 30, `${o}: ${nn} tiles within 6 m of the centre for his terrain moves (floorNear, kind 'tile')`);
+      // nothing tall on the near side (ADR-112's rule): no breakable south of z 6 over 3.2 m
+      const tall = D.list.filter((b) => !b.floor && b.z > 6 && b.y0 + b.h > 3.2 && Math.abs(b.x) < 24 && b.z < 40);
+      assert(tall.length === 0, `${o}: nothing over 3.2 m stands south of z 6 near the fight (${tall.map((b) => `${b.kind} ${b.x.toFixed(0)},${b.z.toFixed(0)}`).join(' ')})`);
+      // the buttes: tops standing on their feet (two-stage), a beam takes one
+      const tops = D.list.filter((b) => b.kind === 'butteTop');
+      assert(tops.length >= 4 && tops.every((t) => t.base?.top === t && t.y0 > 2 && t.hpMax === BUTTE.top && t.base.hpMax === Infinity && t.base.cover && t.base.colliders.length === 1), `${o}: ${tops.length} buttes, each a top (structure ${BUTTE.top}, standing ${Math.min(...tops.map((t) => t.y0)).toFixed(1)} - ${Math.max(...tops.map((t) => t.y0)).toFixed(1)} m up) on a foot that only chips`);
+      const t = tops.reduce((a, b) => (Math.hypot(b.x, b.z) < Math.hypot(a.x, a.z) ? b : a));
+      const L = Math.hypot(t.x, t.z), ux = t.x / L, uz = t.z / L;
+      let ticks = 0;
+      // a beam from the centre through it: 1.5 a tick (BLAST), a tick every 0.2 s, at chest height
+      while (t.state === STATE.INTACT && ticks < 30) {
+        D.sweep(ux * 2, uz * 2, ux * 40, uz * 40, 1.7, 1.5, { kind: BLOW.BLAST, by: 'boss', y: 1.2, dx: ux, dz: uz, src: D.swing() });
+        step(0.2);
+        ticks++;
+      }
+      assert(t.state !== STATE.INTACT && ticks <= 3, `${o}: a beam swept through a butte's foot (1.5 a tick, blast) takes its top in ${ticks} ticks (${(ticks * 0.2).toFixed(1)} s)`);
+      if (o === 'c') assert(t.state === STATE.BROKEN && !t.topples, 'c: a butte rising out of the depths bursts where it stands (nothing falls to a ground that is not there)');
+      else assert(t.state === STATE.FALLING && t.dx * t.x + t.dz * t.z > 0, `${o}: the top topples away from the ring (outward; red to a hero standing under it)`);
+      step(2);
+      assert(t.base.state === STATE.INTACT && t.base.node.parent, `${o}: its foot still stands`);
+      // the hero's blows: a heavy cut (0.5) a time
+      const t2 = tops.find((x) => x !== t);
+      let cuts = 0;
+      while (t2.state === STATE.INTACT && cuts < 100) {
+        D.strike(t2.x - t2.r, t2.z, 0.6, 0.5, { kind: BLOW.CUT, by: 'player', src: D.swing() });
+        step(0.2);
+        cuts++;
+      }
+      assert(cuts >= 10, `${o}: the hero's heavy cuts (0.5) take ${cuts} to bring a top down`);
+      // the light by form
+      const A = set.ambience;
+      A.setup(game);
+      const run = (sec) => {
+        for (let s2 = 0; s2 < sec; s2 += 1 / 30) A.update(1 / 30, game);
+      };
+      game.dragon.phase = 1;
+      run(1);
+      const dusk = [U.uMoonColor.value.r, U.uMoonColor.value.g, U.uMoonColor.value.b, U.uAmbient.value.r + U.uAmbient.value.g + U.uAmbient.value.b];
+      game.dragon.phase = 2;
+      run(6);
+      const goldAmb = U.uAmbient.value.r + U.uAmbient.value.g + U.uAmbient.value.b;
+      game.dragon.phase = 3;
+      run(6);
+      const st = A.state, stormMoon = U.uMoonColor.value.clone(), stormAmb = U.uAmbient.value.r + U.uAmbient.value.g + U.uAmbient.value.b;
+      A.flare(1);
+      A.update(1 / 60, game);
+      const flash = U.uMoonColor.value.b;
+      game.dragon.phase = 1;
+      A.update(1 / 60, game);
+      const back = A.state;
+      assert(goldAmb > dusk[3] && stormAmb < dusk[3] && stormMoon.b > stormMoon.r && dusk[0] > dusk[2] && st.w[2] > 0.95 && flash > stormMoon.b * 3 && back.w[0] === 1 && back.flash === 0, `${o}: the light by form: dusk (warm moon), golden (ambient ${dusk[3].toFixed(3)} → ${goldAmb.toFixed(3)}), storm (cold, ${stormAmb.toFixed(3)}); a flare lights the ring (moon blue ${stormMoon.b.toFixed(2)} → ${flash.toFixed(2)}); a reset snaps back to the dusk`);
+      if (o === 'c') {
+        assert(set.groundY < -20, `c: the badlands lie ${-set.groundY} m below the crown (groundY)`);
+        // walking out to the rim: the colliders hold him on the crown
+        let worst = 0;
+        for (let a = 0; a < 16; a++) {
+          const dx = Math.cos((a / 16) * 2 * Math.PI), dz = Math.sin((a / 16) * 2 * Math.PI);
+          const p = new THREE.Vector3(0, 0, 0);
+          for (let i = 0; i < 160; i++) {
+            p.x += dx * 0.3;
+            p.z += dz * 0.3;
+            colliders.resolve(p, 0.45, 40);
+          }
+          worst = Math.max(worst, Math.hypot(p.x, p.z) > 36 ? 99 : 0);
+          if (!set.group.userData.rim) worst = 99;
+          else {
+            const rim = set.group.userData.rim;
+            let c = false;
+            for (let i = 0, j = rim.length - 1; i < rim.length; j = i++) if (rim[i][1] > p.z !== rim[j][1] > p.z && p.x < ((rim[j][0] - rim[i][0]) * (p.z - rim[i][1])) / (rim[j][1] - rim[i][1]) + rim[i][0]) c = !c;
+            if (!c) worst = Math.max(worst, 1);
+          }
+        }
+        assert(worst === 0, 'c: a hero walking out in 16 ways is held on the crown by its rim');
+      }
+    }
   },
 
   // ---------------------------------------------------------------- a colossus comes down in two stages
@@ -1453,7 +1561,11 @@ function near0(a, b, eps = 1e-6) {
   return near(a, b, eps);
 }
 
-const names = SCEN === 'all' ? Object.keys(S) : [SCEN];
+// `all`, or a comma list; ABYSS_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs
+// `budget` on its own, after the parallel suites: its frame times are wall-clock)
+const skip = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+for (const n of skip) if (!S[n]) { out(`unknown scenario in ABYSS_SKIP: ${n}`); process.exit(2); }
+const names = SCEN === 'all' ? Object.keys(S).filter((n) => !skip.has(n)) : SCEN.split(',');
 for (const n of names) {
   if (!S[n]) { out(`unknown scenario ${n}`); process.exit(2); }
   out(`\n== WORLD ${n.toUpperCase()}`);

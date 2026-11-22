@@ -44,6 +44,41 @@ export function glaiveHome(s, p, reach, H) {
   return rem / s.speed + GLAIVE_WAIT + (al - reach) / Math.max(1, s.back || s.speed);
 }
 
+/**
+ * A thrown disc still going out (Tian Lei's Sun Wheel, ascendant/fx.js 'disc'; `s.phase` 'fly'): it
+ * flies on a CURVE (`curve` rad/s) until `range` m of path, hangs `hang` s, then comes home: THROUGH
+ * where the hero stands at the turn (`through`), or straight to his hand (`H`). Writes into `out` the
+ * seconds from now at which its way OUT crosses the hero (`out.out`, -1 if it does not) and at which
+ * its way HOME does (`out.home`, -1). The hero is taken where he stands now. `reach`: the disc's
+ * radius + the hero's.
+ */
+export function discPath(s, p, reach, H, out) {
+  out.out = -1;
+  out.home = -1;
+  if (!(s.speed > 0)) return out;
+  const rem = Math.max(0, (s.range ?? 12) - (s.path ?? 0)), n = Math.max(1, Math.min(24, Math.ceil(rem / 0.5))), step = rem / n;
+  let x = s.x, z = s.z, dx = s.dx, dz = s.dz;
+  const turn = (s.curve ?? 0) * (step / s.speed), c = Math.cos(turn), sn = Math.sin(turn);
+  for (let i = 1; i <= n; i++) {
+    const ndx = dx * c - dz * sn, ndz = dx * sn + dz * c;
+    dx = ndx;
+    dz = ndz;
+    x += dx * step;
+    z += dz * step;
+    if (out.out < 0 && Math.hypot(p.x - x, p.z - z) <= reach) out.out = (i * step) / s.speed;
+  }
+  const back = Math.max(1, s.back || s.speed), wait = rem / s.speed + (s.hang ?? 0.3);
+  if (s.through !== false) {
+    out.home = wait + Math.max(0, Math.hypot(p.x - x, p.z - z) - reach) / back;
+    return out;
+  }
+  if (!H) return out;
+  const hl = Math.hypot(H.x - x, H.z - z) || 1, ux = (H.x - x) / hl, uz = (H.z - z) / hl;
+  const qx = p.x - x, qz = p.z - z, al = qx * ux + qz * uz, ac = Math.abs(-qx * uz + qz * ux);
+  if (ac < reach + 0.5 && al > reach && al < hl) out.home = wait + (al - reach) / back;
+  return out;
+}
+
 /** One known impact. `fixed`: it cannot be moved (a cue already given, a thing in flight); a
  *  movable one (a called strike before its cue) yields instead. */
 const entry = () => ({ t: -99, ans: 0, attack: '', fixed: true, ref: null });
@@ -190,6 +225,13 @@ export class CueLedger {
           continue;
         }
         const speed = s.phase === 'back' ? s.back : s.speed;
+        if (s.kind === 'disc' && s.phase === 'fly') {
+          // (the disc curves: its way out and its way home, along the curve)
+          const q = discPath(s, p, reach, d._hand ?? d._hilt ?? d.position, (this._disc ??= { out: -1, home: -1 }));
+          if (q.out >= 0) this._pred(now + q.out, s.tell, s.attack, true);
+          if (q.home >= 0) this._pred(now + q.home, s.tell, s.attack, true);
+          continue;
+        }
         const rx = p.x - s.x, rz = p.z - s.z, along = rx * s.dx + rz * s.dz, across = Math.abs(-rx * s.dz + rz * s.dx);
         if (across < reach + 0.5 && along > reach && speed > 0) this._pred(now + Math.max(0, s.wait ?? 0) + (along - reach) / speed, s.tell, s.attack, true);
         // the thrown blade still going out: its way home, from where it will turn to his hand, may pass
@@ -256,7 +298,9 @@ export class CueLedger {
       const a = this.brain.act;
       if (a && this.d.mode === 'act') {
         for (const b of a.beats) {
-          if (b.feint || b.done || b.impact < a.t || (b.def.cast && !throwsAt(b))) continue;
+          // (a sustained beat counts until its lit window is over: one interval, impact → end)
+          const lit = b.S > 0;
+          if (b.feint || (b.done && !lit) || (lit ? b.end : b.impact) < a.t || (b.def.cast && !throwsAt(b))) continue;
           if (throwsAt(b)) {
             // what it throws: from its release to its estimated arrival (pad more room)
             if (answerOf(b.def.tell) === ans) continue;
@@ -265,7 +309,10 @@ export class CueLedger {
             continue;
           }
           if (!(b.flashed || b.def.fixed || a.def.transition)) continue;
-          if (answerOf(b.def.tell) !== ans && Math.abs(now + (b.impact - a.t) - at) < sep) return this._hit(a.name);
+          if (answerOf(b.def.tell) === ans) continue;
+          if (lit) {
+            if (at > now + (b.impact - a.t) - sep && at < now + (b.end - a.t) + sep) return this._hit(a.name);
+          } else if (Math.abs(now + (b.impact - a.t) - at) < sep) return this._hit(a.name);
         }
       }
     }
