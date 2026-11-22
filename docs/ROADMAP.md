@@ -193,7 +193,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Range pieces (the forest, the landmarks) and rigid-batch pieces (stones, pillars, statues)
 - [x] The hero's blade strikes at its own height (`ya` / `yb`)
 - [x] `?chip=a`, the Lab's WORLD -> Bites; world test `bite`
-- [x] The blade stops on what it cannot cut through: freeze, shake, sparks, sticks in wood, thrown back; integ `bladestop`
+- [x] The blade stops on what it cannot cut through: freeze, shake, sparks, sticks in wood, thrown back; integ `bladestop` (the owner: "Keep it")
 - [x] Chips knocked out of the struck face toward the striker
 - [ ] The owner picks: off or on (then it becomes the default)
 - [ ] Follow-ups:

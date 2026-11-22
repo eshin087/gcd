@@ -4138,7 +4138,8 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   out of the struck face toward the striker. The bounce was reused rather than a new recoil clip:
   it is tested, it already reads as "my blade was thrown back", and its cancels are the ones players
   know. Consequence: a swing that meets cover before the boss stops there (behind the switch until
-  the owner picks).
+  the owner picks). The owner, shown the frame-by-frame sheet: "Keep it" (2026-11-21): the stop's
+  numbers stay as they are (`BREAK.chip.stop`).
 - **Not done (asked, and worth doing next):** the GROUND itself (the soil and grass of Cinderwood are
   one plane with a glyph shader: a crater is glyph marks and a charred disc; real pits need a dug
   channel in the scorch map or a deformable ground mesh, and a rule for feet); floor slabs (they

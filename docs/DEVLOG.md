@@ -68,7 +68,7 @@ off, the blade sweeps through a standing stone and a dead tree to the ground; on
 face (a flash and sparks off the stone, splinters off the tree) and is flung back. Integration
 scenario `bladestop`: on, a light cut into a boulder and a dead tree chips each, freezes, stops the
 cut at 0.142 / 0.158 s of its 0.230 and bounces; a felling cut goes through; off, the same cuts run
-through to 0.467 s as before.
+through to 0.467 s as before. The owner, on the sheet: "Keep it": the stop stays as tuned.
 
 **Merged with `main`** (the same evening: PR #73 - #75 had landed, the Skybreak Ring and the hero's
 look; they took ADR-129 / 130, Sessions 69 / 70, M1.54 / 55; then PR #76, the phone, took ADR-131 / Session
