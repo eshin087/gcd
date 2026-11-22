@@ -11,6 +11,7 @@ import { Scars } from './scars.js';
 import { Destructibles } from './destructibles.js';
 import { BLOW, SCAR, QUALITY } from './breakTuning.js';
 import { resolveOn } from './edge.js';
+import { SunWells } from './sun.js';
 
 // Owns the static environment and the shared environment-interaction APIs:
 //   world.resolve(pos, radius, bound, soft, who)  circle collision vs stones/trunks + arena bound; who 'hero':
@@ -27,6 +28,7 @@ import { resolveOn } from './edge.js';
 //   world.ignite(x, z, r, k, grass = true)  fire lands: grass (unless grass = false) and wood catch
 //   world.destructibles / .fire / .scars    the systems behind them (destructibles.js, fire.js, scars.js)
 //   world.restore()                         everything stands and is unburnt again (the fight's reset)
+//   world.sun                               the Skywell Vault's sunlight (sun.js) or null on every other set
 //   world.setQuality(k)                     the phone budget, 0.3 .. 1 (setGrassQuality sets it from the preset)
 export const PUSHER_SLOTS = MAX_PUSH;
 
@@ -79,6 +81,8 @@ export class World {
     this.scars = new Scars(game, this.forest.scarInk);
     this.destructibles = new Destructibles(game, this, this.forest);
     this.edge = this.destructibles.edge ?? null;
+    // the sunlight (world/sun.js, ADR-132): only a set that carries `sun` (the Skywell Vault) has one
+    this.sun = this.forest.sun ? new SunWells(game, this, this.forest.sun) : null;
     this._impact = { kind: BLOW.BLUNT, by: 'world', dx: NaN, dz: NaN, y: undefined, src: -1 };
     this.atmosphere = new Atmosphere(game, this.forest);
     this.bonfire = this.forest.bonfire;
@@ -107,6 +111,7 @@ export class World {
       this._hidden = parts.map((o) => [o, o.visible]);
       for (const o of parts) o.visible = false;
       this.forest?.ambience?.setVisible?.(false); // (a set's own glyph batch, e.g. the throne hall's inlay)
+      this.sun?.setVisible(false);
       this.scars?.setVisible(false);
       this.game.fx?.alpha?.clear?.();
       this.game.fx?.add?.clear?.();
@@ -116,6 +121,7 @@ export class World {
       for (const [o, v] of this._hidden) o.visible = v;
       this._hidden = null;
       this.forest?.ambience?.setVisible?.(true);
+      this.sun?.setVisible(true);
       this.scars?.setVisible(true);
     }
     return this._hidden === null;
@@ -157,6 +163,7 @@ export class World {
     this.fire.reset();
     this.scars.reset();
     this.destructibles.reset();
+    this.sun?.reset();
   }
 
   /**
@@ -208,6 +215,7 @@ export class World {
     if (g.strength < 0.01) g.strength = 0;
     this.game.U.uGust.value.set(g.x, g.z, g.strength, g.radius);
     this.destructibles.update(dt);
+    this.sun?.update(dt);
     this.fire.update(dt);
     this.scars.update(this.game.fxDt ?? dt, this.game.time);
     this.scorch.update(dt);
