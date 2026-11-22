@@ -55,6 +55,21 @@ picks):
 - A patch script of mine cut three accessors out of `RangeBody` (`parts`, `visible`); the next test
   run failed on the first line that read them, and they were put back.
 
+**The blade stops** (the owner, after the sheet: "this looks good but theres no impact or animation
+hitting the background object. it looks like im just hitting through it. it should chip at it
+realistically and the sword should stop when it hits it instead of going straight through it").
+With bites on, a cut that meets a piece it does not cut through stops on it (`player.js`
+`_bladeStops`, `BREAK.chip.stop`, `destructibles.struck`): the attack clock goes back to about where
+the edge met it, the frame freezes (wood 0.075 s, stone 0.095), the camera shakes, steel on stone
+sparks, the blade sticks in wood 0.11 s, then the duelists' bounce throws it back (0.25 / 0.45 m). A
+cut that fells or breaks the thing goes through with a 0.05 s freeze. The bitten chips are knocked
+out of the struck face toward him. Filmed (12 frames, 50 ms apart, the real swing, bites off and on):
+off, the blade sweeps through a standing stone and a dead tree to the ground; on, it stops at the
+face (a flash and sparks off the stone, splinters off the tree) and is flung back. Integration
+scenario `bladestop`: on, a light cut into a boulder and a dead tree chips each, freezes, stops the
+cut at 0.142 / 0.158 s of its 0.230 and bounces; a felling cut goes through; off, the same cuts run
+through to 0.467 s as before.
+
 **Merged with `main`** (the same evening: PR #73 - #76 had landed, the Skybreak Ring and the hero's
 look; they took ADR-129 / 130, Sessions 69 / 70, M1.54 / 55, so this is ADR-131 / Session 71 / M1.56).
 The new level's pieces go through the same batch path: the test covers it.

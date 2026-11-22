@@ -2775,6 +2775,19 @@ section is used up as the piece's structure runs out.
   `_chips` is cut to 0.3 and the nick (`scars.object`) is left out (the bite is the mark).
 - Not bitten: floor slabs (their own cracked and broken looks), pieces that only chip (`hp`
   Infinity), wreckage. `destructibles.bitten`: bricks taken since the reset. World test `bite`.
+- The bricks a bite takes are knocked OUT of their face (`_drop`: away from the piece's axis and back
+  against the blow, harder for a blow that took more), then fall.
+- **The blade stops** (`BREAK.chip.stop`; player.js `_cutWorld` / `_bladeStops`; only with bites on).
+  `destructibles.struck` `{ held, x, y, z, broke }`: what the last `strike` / `sweep` / `stop` met (the
+  first piece that held the blow and where, how many it broke; reset at each call). A cut of the hero's
+  (not the execution) that meets a piece it does not cut through, `minH` 0.6 m or taller, stops there:
+  the attack clock goes back to the middle of that frame's travel, the frame freezes (`freeze` wood
+  0.075 s, stone / metal / bone 0.095), the camera shakes (`shake` 0.14 / 0.2, x 1.3 for a heavy),
+  steel on stone or metal throws sparks (`fx.sparks`); `_tickAttack` holds the pose through the freeze
+  and `stick` (wood 0.11 s, the blade in the cut; stone 0) and then throws the blade back (`_bounce`,
+  `push` 0.25 / 0.45 m away from the piece; an attack again after `TUNE.bounceAttack`). No
+  `player:bounced` (that is a duelist's deflection: the feed and the pad read it). A cut that breaks or
+  fells what it meets goes through, with a `through` 0.05 s freeze. Integration scenario `bladestop`.
 
 **The edge of the open ground** (`world/edge.js` `class Edge`, numbers `BREAK.edge`; 2026-11-21, ADR-125).
 Where the hero and the boss may go follows what still stands of a set's wall. A set asks for it by

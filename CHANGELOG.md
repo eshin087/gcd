@@ -13,8 +13,11 @@ Sixty pieces of work since 0.4.0:
   blow knocks the face of a standing stone back; a blast eats the side of a tree that faced it, where
   before it took the tree's top. Each brick falls as its own letter from where it sat and some stay
   lying. How much a piece takes, when it falls and what it deals are unchanged. *Changed:* the
-  hero's blade marks a piece at the blade's own height (about 0.3 m higher than before). Off by
-  default: `?chip=a` (or the Lab's WORLD -> Bites) turns it on.
+  hero's blade marks a piece at the blade's own height (about 0.3 m higher than before). With bites
+  on, the blade STOPS on what it does not cut through (the owner: "the sword should stop when it hits
+  it instead of going straight through it"): a freeze, a shake, sparks off stone, a moment stuck in
+  wood, then it is thrown back; a cut that fells the thing goes through. The chips fly out of the
+  struck face. Off by default: `?chip=a` (or the Lab's WORLD -> Bites) turns it on.
 - **The hero looks the same on every screen** (2026-11-21, ADR-130). *Changed:* the hero is drawn with
   the same letters on every screen and at every camera distance: about 9 across his cloak, the look
   of the owner's reference picture ("the exact type of feel and look i want ... make the character

@@ -2025,6 +2025,12 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   grows where a blade keeps biting, and the tree falls as its structure there runs out. Nothing
   about how much a piece takes, when it falls or what it deals has changed: it is the same
   structure, shown where the blows went. Floor slabs keep their cracked and broken looks.
+  **The blade stops on what it does not cut through** (the owner: "the sword should stop when it
+  hits it instead of going straight through it"): the frame freezes a beat, the camera shakes, steel
+  on stone throws sparks, a blade in wood sticks for a tenth of a second; then it is thrown back and
+  he gives a step (stone a bigger one), and can swing again after about 0.3 s, as after a duelist's
+  deflection. A cut that fells or breaks the thing goes through it. So a swing that meets a pillar or
+  a tree before it reaches the boss stops there: stand clear of cover to cut.
 - **The wyrm's body meets the world** (ADR-119; it replaced ADR-107's trample round its root, which
   never reached a trunk). Every frame its head, neck, body, tail, wings and legs sweep what they pass
   through, harder the faster they move and the heavier the part. A walk or a turn is a **brush**: it

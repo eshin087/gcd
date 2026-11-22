@@ -4064,6 +4064,17 @@ ADR-092).
   2.5 x as coarse to keep it there). Nothing a frame: a bite scans the struck piece's bricks once and
   rewrites its run of vertices, as a shudder already does every frame; the bricks are made four
   pieces a frame after the load, not inside a roar's front.
+- **The blade stops (the owner, after trying it: "theres no impact or animation hitting the
+  background object. it looks like im just hitting through it. it should chip at it realistically and
+  the sword should stop when it hits it instead of going straight through it").** With bites on, a
+  cut of the hero's that meets a piece it does not cut through stops on it: the frame freezes, the
+  camera shakes, steel on stone sparks, the blade sticks in wood a moment, then it is thrown back
+  (the bounce a duelist's deflection already used: its pose, its timings, a guard or a dodge cancels
+  it). A cut that fells or breaks the piece goes through with a short freeze. The chips are knocked
+  out of the struck face toward the striker. The bounce was reused rather than a new recoil clip:
+  it is tested, it already reads as "my blade was thrown back", and its cancels are the ones players
+  know. Consequence: a swing that meets cover before the boss stops there (behind the switch until
+  the owner picks).
 - **Not done (asked, and worth doing next):** the GROUND itself (the soil and grass of Cinderwood are
   one plane with a glyph shader: a crater is glyph marks and a charred disc; real pits need a dug
   channel in the scorch map or a deformable ground mesh, and a rule for feet); floor slabs (they
