@@ -1890,7 +1890,7 @@ hero fights on the shelf (14 m deep, 56 m wide) what is in play: two hands and a
 |---|---|---|
 | Fingers on the rim | while a hand rests (grip) | 0.6 |
 | A hand on the shelf | through the recovery of its own blow (1.3 – 2.0 s) | hand 1.0, wrist 0.85 |
-| The head | spent after a breath (2.4 s; 1.8 s in phase 3); the lurch (a hand that takes `grip.hp` 240 inside 6 s lets go for 5 s, the head drops for 2.6 s, +80 posture); broken posture (3.2 s, the execution); the plunge | 1.6 |
+| The head | spent after a breath (2.4 s; 1.8 s in phase 3); the lurch (a hand that takes `grip.hp` 300 inside 6 s lets go for 5 s, the head drops for 2.6 s, +80 posture); broken posture (3.2 s, the execution); the plunge | 1.6 |
 
 So: cut the hands or parry them to bring the head down, or dodge a red or black blow perfectly and
 land on the head (it always offers the plunge: `plungePoint` is the top of the head, within the
@@ -1898,7 +1898,7 @@ plunge's 30 m from anywhere on the shelf). A hero who stands at a resting hand a
 by that hand (the flick, after 2.5 s within 3.5 m of its fingers). The riposte and the counter
 measure to the head (11 m): where a parried blow lands further from it, the parry is a plain recoil.
 
-**Three phases** at 100 / 66 / 33 % of 3600 (the wyrm's phase gate: no phase is skipped while the AI
+**Three phases** at 100 / 66 / 33 % of 4800 (the plan's 3600: a bot that answered every cue won in 75 / 86 s) (the wyrm's phase gate: no phase is skipped while the AI
 runs), posture 320 / 380 / 440, windups and recoveries x 1 / 0.86 / 0.75. Each phase begins with the
 bellow (a roar, wind, a 3 m push south, no damage; it clears the hazards): phase 2's is followed by the
 first surge, phase 3's by a breath.

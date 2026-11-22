@@ -51,13 +51,13 @@ move's tell at its windup's start and its contact on its flash + 0.35 s (0 – 3
 (parry and the counter in range, block, a red slam on a guard, the perfect dodge ending on the shelf,
 Black Fathom on a guard, the breaker's deflect chain); cover, the surge's pocket, the grip; the gates
 at 66 / 33 %; 120 s of the AI against a wandering hero (no hand off the shelf, no conflicting cues,
-13 / 17 / 17 cues a minute by phase); the striking part on screen at every cue at 1280 x 720, 852 x 393
+12 / 14 / 17 cues a minute by phase); the striking part on screen at every cue at 1280 x 720, 852 x 393
 and 393 x 852 from five spots; the budget (about 18 k triangles, 72 bones, 12 draws + 1 shadow; the sea
 728 triangles; the breakables' own bones about 110; the fire field's peak in phase 3 about 400 blobs);
-a god-mode bot that answers every cue wins on two seeds in 172 / 190 s. In headless Edge on the RTX
+a god-mode bot that answers every cue wins on two seeds in 113 / 124 s. In headless Edge on the RTX
 4090: the level and the fight at the game camera at 1280 x 720 and on the phone sizes, the look sheets.
 
-**Not checked / open.** Nobody has played it. Nothing was measured on a phone. The pace is slow (13 –
+**Not checked / open.** Nobody has played it. Nothing was measured on a phone. The pace is slow (12 –
 17 cues a minute against the duelists' 80 – 100): a giant, but the owner should feel it. The fight's
 length is a first number. The look is the default b, not a pick: the sheets wait for the owner. The
 music is borrowed; there is no surf sound. The hero has no casting motion for Tidebreath.

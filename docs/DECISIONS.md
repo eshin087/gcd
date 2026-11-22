@@ -4109,7 +4109,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
      target on a critically damped spring (stiffness per phase); no clips.
   4. **What can be hit, and when:** fingers on the rim (x 0.6) while a hand rests; a hand on the shelf
      (x 1.0, the wrist x 0.85) through its blow's recovery; the head (x 1.6) only while it lies on the
-     rim: spent after a breath, after the lurch (a hand that takes 240 inside 6 s lets go for 5 s and
+     rim: spent after a breath, after the lurch (a hand that takes 300 inside 6 s lets go for 5 s and
      the head drops for 2.6 s), broken posture (the execution), and on the plunge (it has a head, so
      a perfect dodge of a red or black blow lands on it from anywhere within 30 m).
   5. **Ten moves as data** (`tuning.js` `ATTACKS`; COMBAT.md "The Tide Colossus"): the palm slam (red),
