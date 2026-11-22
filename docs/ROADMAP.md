@@ -183,6 +183,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Four anime faces rendered and turned down by the owner; not kept
 - [x] The drake's eye a slanted almond turned out, up and forward; a steeper brow, an orbit rim, a dark hollow
 - [x] The sims reseed at each model's build (`game.onModelBuilt`): a model's object count no longer moves a seeded fight
+- [x] The eyes a quarter smaller (owner)
+- [x] The resting neck no longer looks broken: it arches into the head, the head held level at rest (owner)
 - [ ] Follow-ups:
   - [ ] On the iPhone: the glare at the phone camera
   - [ ] The eyes from straight above (the game camera's high angle): still small points

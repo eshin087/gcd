@@ -40,8 +40,20 @@ effect.
 eyes through phase 2 and its roar, the ignition, phase 3 ablaze, a hover barrage, a breath and the
 death. `npm test` ALL 10 PASSED on `main` with #71, `npm run build` OK.
 
-**Open.** From straight above and at the game camera the eyes are brighter points but still small;
-the scowl reads in close and mid shots. Not seen on the iPhone. PR #70 changes the wall too; whichever
+**Second round, same PR.** The owner: "make the eyes a bit smaller, also the dragon does a weird
+twist angle that looks like his neck is broken. fix that". Eyes: `leaf` len 0.28 -> 0.21 (h, slant
+scaled with it). The neck, measured (scratch probe: the head's roll about its snout and the angle
+between the neck's last segment and the head): at rest the hinge was 42-63° from every side, since
+ADR-123's `HIGH` neck rose near vertical and still pointed ~16° up at the skull while the resting head
+looked ~37° down; with the hero far to the front-left of a wyrm that hadn't turned, the head also
+rolled 40°. In a 90 s fight the roll stayed under 6° and the hinge peaked at rest, so the fix is rest
+only: `HIGH` arches over at the top (head ~1 m lower, still carried high; shape "e" of four tried),
+the resting head may sit at most ~34° off the neck's end (`1.1 - 0.5 * s.rest`), and is levelled about
+its snout by `s.rest`. After: roll 0 from every side, hinge 10-34°. Sheets in
+`.claude/preview/drake-eyes/` (`eyes-smaller`, `neck-arch-*`).
+
+**Open.** From straight above and at the game camera the eyes are small points; the scowl reads in
+close and mid shots. Not seen on the iPhone. PR #70 changes the wall too; whichever
 merges second reconciles `meter.wall`.
 
 ## 2026-11-21 — Session 66: the human bosses' attacks move like a swordsman's

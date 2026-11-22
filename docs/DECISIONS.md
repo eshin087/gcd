@@ -3778,6 +3778,14 @@ ADR-092).
      right after building their model (nothing listens in the game), and `integ.mjs` reseeds its stream
      there. The end-of-build reseed of ADR-124 missed the rolls each constructor makes right after its
      model; a bisect showed eight extra draws and two extra geometries give the same fight.
+  5. **The resting neck arches into the head** (the owner: "the dragon does a weird twist angle that
+     looks like his neck is broken"; same PR). ADR-123's high neck (`looks.js` `HIGH`) rose almost
+     straight up and still pointed ~16° up at the skull while the resting head looked ~37° down: a
+     ~56° hinge (the 63° limit, often). `HIGH` now arches over at the top (`pitch0` 1.6, `pitchStep`
+     -0.06, `pitchCurve` -0.045; the head ~1 m lower, still high), the resting head stays within ~34°
+     of the neck's end (`1.1 - 0.5 * rest`) and is held level about its snout at rest (the minimal
+     rotation down a neck curved toward a foe far to one side rolled it ~40°). Rest only: every
+     attack's measured neck and head are untouched. The eyes went a quarter smaller (`leaf` len 0.21).
 - **Consequences:** the shipped drake builds a few more triangles and the same draws and bones. One
   statistical band moved with the new stream (`TUNING.world.meter.wall` lower bound 0.3 -> 0.25). Any
   future change to a model's object count no longer moves the seeded fights.
