@@ -11,6 +11,14 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 it broken in different angles based on how it was hit". Same branch, `world/crumbling-border`
 (PR #70). ADR-128 / Session 68 / M1.53.
 
+**Rebased onto #71 and #72** (2026-11-22, the owner: merge the open PRs). This part was ADR-126 /
+Session 66 / M1.51 before #71 took those numbers. `TUNING.world.meter.wall` stays at #72's 0.25. On
+the new `main` the Lord's pressure check failed on the default three seeds: the F3 step of the seeds'
+mean x1.043 < 1.05 (93.7 -> 97.7 cues a minute; `main` x1.084). Cause, bisected: this part's felling
+(`destructibles.js` / `wreckage.js` / `breakTuning.js`; the crater's wood falls off the blow's line
+now). Over nine seeds (4242, 7, 99, 1, 2, 3, 5, 11, 13) the step is x1.082, `main` x1.089: the default
+seeds' luck, not a slower form. The Lord's `meter.rampMean` F3 1.05 -> 1.035.
+
 **What was there.** One squat stump per tree, built at load; a fall straight along the blow; one
 straight log from the stump in one of 3 shapes; a burnt tree's black log at a random angle. From
 above a cleared stretch was rows of the same log pointing out.
