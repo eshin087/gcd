@@ -33,6 +33,16 @@ const ELDER_N = ELDER_COLLIDERS.length;
 const { createCourtyard } = await imp('src/world/courtyard.js');
 const { createThroneHall } = await imp('src/world/throneHall.js');
 const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js');
+const { createLonePeak } = await imp('src/world/lonePeak.js');
+/** The Lone Peak Hermitage's set in light `o` (?peak=a|b: read when the set is built). */
+const peakSet = (o) => (U, c) => {
+  setLook('peak', o);
+  try {
+    return createLonePeak(U, c);
+  } finally {
+    setLook('peak', null);
+  }
+};
 /** The Skybreak Ring's set as arena `o` (?ring=a|b|c: read when the set is built). */
 const ringSet = (o) => (U, c) => {
   setLook('ring', o);
@@ -171,13 +181,13 @@ function wyrm() {
 const S = {
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['peak a', peakSet('a'), ['post', 'pine', 'boulder', 'hut']], ['peak b', peakSet('b'), ['post', 'pine', 'hut']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
       // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates))
-      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000] }[name];
+      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], 'peak a': [300, 450], 'peak b': [300, 450] }[name];
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
