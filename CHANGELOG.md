@@ -5,6 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Sixty-two pieces of work since 0.4.0:
+- **Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage** (2026-11-22,
   ADR-135). *Added:* in the Skybreak Ring, **the sign**: from his second form, Tian Lei raises two
   fingers to his brow, a snap of light, and he is gone and behind you (or at your left, your right and
   then behind you in Thunder Ascension's Three Signs), the blow still to come: when the hand goes up,
