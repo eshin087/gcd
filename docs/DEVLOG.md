@@ -45,6 +45,12 @@ a storm with lightning and rain; arenas b and c behind `?ring=`); `src/entities/
 - The tuning pass found why bot fights are short at any bar: an answered flurry breaks him outright.
 - `main` moved under the work (ADR-126 reworked how a duelist's move becomes a clip): one conflict
   (`realise.js`), no clip of his needed a change, and the feet question was settled by measuring.
+- CI failed twice on the PR in world's `budget` (the forest's `destructibles.update` read at the 99.9th
+  percentile of 3600 frames: 1.65 and 2.53 ms against 1.5), with `destructibles.js` unchanged and every
+  suite of that run 1.5 - 1.8x slower than `main`'s. Measured here: the same 0.3 - 0.6 ms on `main` and on
+  this branch, alone, beside four suites, and with the whole run pinned to 4 cores. His suite made the
+  4-core runner's pool heavier, so `tests/run.mjs` now runs that one wall-clock scenario ALONE after the
+  parallel tasks (`ALONE`; world.mjs takes `ABYSS_SKIP` and a comma list). The budget itself is unchanged.
 
 **Verification:** `npm test` (11 suites: integ x5, lord, asc, duel, world, glyph check, changelog check)
 and `npm run build`: see the PR. Browser (headless Edge on the real GPU, 1280 x 720 and 852 x 393): every

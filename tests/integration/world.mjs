@@ -1561,7 +1561,11 @@ function near0(a, b, eps = 1e-6) {
   return near(a, b, eps);
 }
 
-const names = SCEN === 'all' ? Object.keys(S) : [SCEN];
+// `all`, or a comma list; ABYSS_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs
+// `budget` on its own, after the parallel suites: its frame times are wall-clock)
+const skip = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+for (const n of skip) if (!S[n]) { out(`unknown scenario in ABYSS_SKIP: ${n}`); process.exit(2); }
+const names = SCEN === 'all' ? Object.keys(S).filter((n) => !skip.has(n)) : SCEN.split(',');
 for (const n of names) {
   if (!S[n]) { out(`unknown scenario ${n}`); process.exit(2); }
   out(`\n== WORLD ${n.toUpperCase()}`);
