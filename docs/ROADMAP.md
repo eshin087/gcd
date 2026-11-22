@@ -194,7 +194,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `tests/integration/tide.mjs` (14 scenarios) in `npm test`; the three looks rendered (`.claude/preview/tide-colossus/`)
 - [ ] Follow-ups:
   - [ ] The owner's pick of the look (a / b / c), of the sea, of the breath's colour (sheets rendered; b, the faceted sea and jade are the defaults)
-  - [ ] A human playtest: the pace (12 – 17 cues a minute), the fight's length (bots: 113 / 124 s), the sweep and the flick read on a phone
+  - [ ] A human playtest: the pace (12 – 25 cues a minute), the fight's length (bots: 113 / 119 s), the sweep and the flick read on a phone
   - [ ] A real iPhone: the frame rate (nothing measured on a phone), the hands' size in an upright frame
   - [ ] The level's music by ear (it borrows the wyrm's tracks); a surf sound; the creature's own voice
   - [ ] The technique system (M2) adopts Tidebreath; the hero's casting motion
