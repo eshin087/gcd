@@ -3667,10 +3667,12 @@ returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKi
   open exactly while its windlass is intact in `world.destructibles.list` (bound once by kind and place);
   a broken windlass drops its lid over `SUN.shut` 0.7 s; `world.restore()` reopens them (world.js calls
   `sun.reset()`). Emits `world:sun`.
-- **A level's `reward`** (optional; ADR-134): `{ id, name, line }`. `game/rewards.js`: `hasReward(id)`,
+- **A level's `reward`** (optional; ADR-134): `{ id, name, line, usable }` (`usable` default true; `false`:
+  the reward is recorded on victory but nothing uses it yet, so its line is not shown and no input asks
+  for it). `game/rewards.js`: `hasReward(id)`,
   `grantReward(id)` → true when new, `listRewards()`, `clearRewards()`, `takeReward(id)`; kept in
   `localStorage` `abyss.rewards`; `?reward=<id>[,<id>]` grants for the page's session. `GameFlow
-  ._enterVictory` grants the level's reward and logs its `line` the first time. The first: `fallingHeaven`
+  ._enterVictory` grants the level's reward and logs its `line` the first time (not for `usable: false`). The first: `fallingHeaven`
   (`player/combat.js` `FALLING_HEAVEN`: HEAVY out of a sprint while it is held; `player.js` asks
   `hasReward` where the sprint heavy starts).
 - **The boss slot's optional `sun`** (`{ k, lit, eclipsed }`, Qian Yao): the HUD draws a third thin boss
