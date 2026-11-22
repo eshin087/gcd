@@ -13,8 +13,10 @@ import { LETHAL } from '../../../combat/rules.js';
 // that ask two answers and the ground itself, P3 both hands (three-blow strings), the cover gone.
 export const TUNING = {
   name: 'GU SHAN, THE ONE-BLOW HERMIT',
-  // one bar (the god-mode mixed bot's fight 100 - 150 s, each phase 25 s at least; tests WIN / BOTS)
-  hp: 9600,
+  // one bar (the god-mode mixed bot's fight 100 - 150 s, each phase 25 s at least; tests WIN / BOTS). Ten
+  // seeds at 9300 with skin 0.7: the god-mode reader 100 - 102 s; readers at 95 / 85 / 70 % of his cues
+  // win 10 / 2 / 0 of 10 (9600 with skin 0.5: 103 - 115 s and 10 / 1 / 0)
+  hp: 9300,
   phaseAt: [1, 0.66, 0.33],
   radius: 0.42,
   // his drawn size: 1.1 x the hero's (visual only)
@@ -32,7 +34,7 @@ export const TUNING = {
   // his skin: a cut that lands while his blow is coming (a windup) bites at `windup` (sparks off the
   // gathered qi); in his recovery in full, broken x posture.breakCritMult. Counters, flurries and
   // executions are final damage and ignore it
-  skin: { windup: 0.5 },
+  skin: { windup: 0.7 },
 
   // ---- tells (COMBAT.md "The One-Blow Hermit"; checked by tests/integration/hermit.mjs DATA). The
   // flare comes 0.4 s before the impact: a roll or a parry made on it is always in time (parry 0.22 s,
