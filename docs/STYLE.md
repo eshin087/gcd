@@ -1158,11 +1158,28 @@ grit, chips and sparks are one-cell glyph particles. Look code draws from its ow
   molten cracks, the colossus has **the drowned light**: jade seams on the throat, the palms, the gills
   and the inner arms (the `seam` material; its glow climbs the throat through the breath's windup, the
   wyrm's `uWyrmHeat` front). Webbing and kelp: dark teal-black with jade specks. Coral, barnacles and
-  the crown's spars: pale bone, stroked at the very edge. Six small pale eyes in dark sockets under one
-  heavy brow. Its letters let go on death (`letGo`) and a cut sheds its digits (charcoal, pale rim, jade).
+  the crown's spars: pale bone, stroked at the very edge. Its letters let go on death (`letGo`) and a
+  cut sheds its digits (charcoal, pale rim, jade).
+- **The face** (the drake's rule: PLANES and HOLES, flat-faceted slabs, finer scales than the arms):
+  a cranium wedge, one flat brow slab with a hard front edge, a snout wedge, two cheek planes; six
+  slanted almond eyes (0.9 m) in sockets of the near-black `pit` material (1.4 m), three a side in a
+  slanted row under the brow; a black mouth between two separate mandibles (a gap of about 3 m), the
+  drowned light only at its back; comb teeth 1.25 – 1.6 m long, r 0.18 – 0.2 m. Every feature was
+  sized in art cells at 1280 x 720 at the game camera, by projection: an eye 6.7 cells long, a socket
+  10, the mouth's gap about 25, a tooth about 6. At rest the face is turned up toward the 58 degree
+  camera and brought over the rim (`POSE.loom`: drawn only), and the boss frames it with the nearer
+  hand (`frameSpheres`): from mid-shelf at 1280 x 720 the eye rows and the maw are in the frame (tide.mjs
+  `frame`); an upright phone shows them too, a landscape phone only once the hero stands near the rim.
 - **Its three looks** (`?tideLook=a|b|c`; looks.js; the Lab's FIGHT buttons reload with them; none is
-  the owner's pick yet): a drowned hide, b reef-grown (the default; the fight was built with it), c
-  wreck-crowned. Sheets: `.claude/preview/tide-colossus/`.
+  the owner's pick yet), told apart by silhouette at the game camera (nothing under about 0.5 m): a
+  drowned hide (the face, the jade seams, a low crown of broken stubs), b reef-grown (the default; a
+  coral crown of antlers 4 – 6 m swept OUT from the brow's sides so it frames the face, barnacle plates
+  0.6 – 1 m across in clusters on the brow, the knuckles, the hands' backs and the upper arms, kelp
+  curtains 4 – 6 m long from the wrists and the crown's roots), c wreck-crowned (b, and two masts of
+  8 – 10 m with their yards thrust through the brow's sides and laid out over the hands, a chain of
+  1 m links down the left arm, a hull plate on the right forearm). Sheets:
+  `.claude/preview/tide-colossus/` (`compare_looks.jpg` puts the three at rest at full 1280 x 720
+  beside the Cinder Wyrm at the same camera).
 - **Brine** (`FIRE_PALETTES.brine`, the void slot re-skinned for this level: `FireField.setPalette`):
   dark sea green through jade to a foam-white heart; the heat haze beside it is jade too. Green always
   over blue (cyan is the hero's), never violet, red, blue or orange. The beam is a dense line of small

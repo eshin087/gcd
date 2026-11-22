@@ -57,6 +57,22 @@ and 393 x 852 from five spots; the budget (about 18 k triangles, 72 bones, 12 dr
 a god-mode bot that answers every cue wins on two seeds in 113 / 119 s. In headless Edge on the RTX
 4090: the level and the fight at the game camera at 1280 x 720 and on the phone sizes, the look sheets.
 
+**Second pass on the PR (the planning session's review of the sheets).** The head did not read as a head:
+a dome of even scales, its features far below letter size (an eye 0.3 m on a head 9 m wide), and the
+three looks were one picture at the game camera. Now: a face of planes and holes (a cranium wedge, a flat
+brow slab with a hard edge, a snout wedge, cheek planes; six slanted almond eyes of 0.9 m in near-black
+sockets; a black mouth between two separate mandibles; comb teeth 1.25 - 1.6 m), every feature measured
+in art cells at 1280 x 720 by projection (an eye 6.7 cells, a socket 10, the mouth's gap 25, a tooth 6);
+the resting head turned up to the camera and over the rim (drawn only), framed at rest with the nearer
+hand; the looks told apart by silhouette (a low stubs, b a coral crown swept out from the brow with plates
+and kelp curtains, c masts of 8 - 10 m through the brow, a chain down an arm, a hull plate). Look b: 13.6 k
+triangles, 73 parts, 12 + 1 draws. tide.mjs `frame` now checks the six eyes and the maw at rest from
+mid-shelf at 1280 x 720 (7 of 7 inside; upright phone 7 of 7; the landscape phone 0 of 7 from mid-shelf:
+its 12 m of depth cannot hold the hero and the face, the face comes in as he nears the rim). Found on the way:
+the cross sweep's return could cue 0.25 s after the first front (a parry, then a dodge): it now waits for
+the first blow to settle plus the string's gap. Sheets re-rendered with the resting view at full size and the
+Cinder Wyrm beside them.
+
 **Not checked / open.** Nobody has played it. Nothing was measured on a phone. The pace is slow (12 –
 17 cues a minute against the duelists' 80 – 100): a giant, but the owner should feel it. The fight's
 length is a first number. The look is the default b, not a pick: the sheets wait for the owner. The

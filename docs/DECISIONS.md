@@ -4096,8 +4096,9 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
      boulders and a causeway of flagstones.
   2. **NAERATH, THE TIDE COLOSSUS** (`entities/colossus/`): it stands in the sea north of the rim and
      never comes ashore; what is in play is two webbed four-fingered hands and a low, broad head with a
-     lower jaw split into two mandibles, comb teeth, six small pale eyes under one heavy brow and a
-     crown of broken coral; the shoulders and the humped back stand 20 to 40 m out and fade into the
+     lower jaw split into two mandibles, comb teeth, six slanted eyes in dark sockets under one flat brow
+     (a face of planes and holes, every feature sized to print at the game camera: a second pass on the
+     PR, after the first sheets showed a dome of scales) and a crown of coral; the shoulders and the humped back stand 20 to 40 m out and fade into the
      fog. No upright body, no plates down the back, no glowing spine; the breath is jade.
   3. **Its own class on the boss slot, not a subclass of the Dragon.** The wyrm's brain, rig, gait,
      attack kinds and hazards are built round a walking, flying quadruped (about 25 k lines); the
@@ -4187,11 +4188,12 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
      does not call it (the plan asked for that; it would have been a line in `player.js`, which
      every sibling build touches).
   3. **Three looks, steps of one idea, all in the wyrm's surface**, behind `?tideLook=a|b|c` (read
-     when the colossus is built; the Lab's buttons reload with it): a "drowned hide" (the wyrm's hide,
-     jade seams on the throat, palms and gills, a small bare crown, two eyes), b "reef-grown"
-     (barnacles on the knuckles, brow and shoulders, kelp from the wrists and the crown, the comb
-     teeth, six eyes; the fight was built with it and it is the default), c "wreck-crowned" (b and
-     spars in the crown, an anchor chain over a shoulder, a hull plate on a forearm). Sheets in
+     when the colossus is built; the Lab's buttons reload with it), told apart by silhouette at the game
+     camera (nothing under about 0.5 m counts): a "drowned hide" (the face, jade seams on the throat,
+     palms and gills, a low crown of stubs), b "reef-grown" (a coral crown of antlers 4 – 6 m swept out
+     from the brow, barnacle plates 0.6 – 1 m on the brow, knuckles and arms, kelp curtains 4 – 6 m; the
+     fight was built with it and it is the default), c "wreck-crowned" (b and two masts of 8 – 10 m
+     through the brow, a chain of 1 m links down the left arm, a hull plate on the right forearm). Sheets in
      `.claude/preview/tide-colossus/`. None is the owner's pick until they pick it; the Lab's LOOKS
      section lists picked switches only (duel.mjs checks every row against the picks), so the row
      waits for the pick.
