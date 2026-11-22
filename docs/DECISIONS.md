@@ -3761,3 +3761,75 @@ ADR-092).
   frames" for a pose (it still does for `travel` and `lift`).
 - **Not measured or not right:** see DEVLOG Session 66 ("Not checked / open"): nobody has played
   it; the Lord's left elbow in the staff's spins; reaction clips not audited one by one.
+
+## ADR-128 — A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant: a bare-handed duelist in three forms, his ki, a ring that is wrecked (2026-11-21)
+- **Context:** the owner: "lets build a saiyan level boss where phase 1 starts from normal saiyan, phase 2
+  is super saiyan, phase 3 is super saiyan 2. make the background the cell tournament arena and make it
+  feel like an anime epic battle. help me come up with the moves, combos, specials from the boss and use
+  opus to build this out". Planned by the lead (Fable), built by Opus agents in two waves, an
+  integration pass and a tuning pass (DEVLOG Session 68).
+- **An original character and place, in that spirit.** The lead would not put an existing series'
+  characters, names or arena into the game (ADR-116: a game of its own), and said so before anything was
+  built. So: TIAN LEI, THE LAST ASCENDANT, a bare-handed fighter who is beaten three times, each time in
+  a greater form (the Challenger; Golden Ascension; Thunder Ascension), on the SKYBREAK RING, a
+  tournament ring of stone tiles on the badlands (`?level=ring`). Two things were steered away from a
+  likeness on the way: a bare-chested outfit with a swept-up gold mane (built, not offered, removed) and
+  a beam charged with cupped hands at the hip (his technique is a palm drawn back at the ribs, the lead
+  hand sighting, a palm thrust).
+- **The moveset was agreed before the build** (the owner: "Build it"), with four changes the code's facts
+  forced and the owner accepted: the sky is never on screen (the camera looks down at 58 degrees), so
+  "the sky changes with his form" is the LIGHT changing; buttes stand 20 - 35 m off instead of mesas on
+  a horizon; the hero has no air state, so a "launch" is an 11 m knock-back with a knockdown and a blink
+  to where he lands; the play surface is flat, so there is no ring-out.
+- **Decision, the frame:** three forms, a bar each, the Starless Lord's structure (ADR-069): an empty
+  bar or a broken posture leaves him on one knee, the deathblow ends the form, and he TRANSFORMS (2.3 s,
+  then a shock ring; nothing lands on him until it goes out; his hair, his light and his aura change AT
+  the nova: `d.dressPhase`). Harder forms are more pressure, never more damage (ADR-119, ADR-122).
+- **Decision, bare hands on the duelist engine:** no weapon. The engine's "blade" (what the hero's parry,
+  the trade, the lock and the trails read) is the STRIKING LIMB of the moment: the forearm of a punch,
+  the shin of a kick, the blocking forearm in a guard. His strikes are built by `punch / kick / elbow /
+  shoulder` builders; his guard clips are forearm blocks under the engine's keys.
+- **Decision, the engine grew by optional beat fields** (a beat or a kit without them is as before; the
+  other two bosses' files are byte-identical to `main`): `zone.fwd / side` (a zone placed off his root),
+  `air` (a blow tested whatever his height) and `T.airFall`, `sustain { dur, tick }` (a beat that stays
+  lit: the ledger holds its whole window; with ADR-126's follow clock, `F = A + S`), `selfHit` (a beat
+  whose owner does its own hit test), `brain.startLock(o)` and the blade lock AT RANGE
+  (`player.bladeLock.dist`), `Player.streamBlock` (a blocked stream costs guard, never health),
+  `_tradeNow` ignoring those beats.
+- **Decision, his moves plug in by a routing contract, not by editing his class:** a move or a beat
+  marked `ki: '<kind>'` goes to `kiBeam.js` (kinds starting with `beam`) or `kiShots.js`, `terrain:` to
+  `terrain.js`; move files are functions of the builders object. This is what let four agents build
+  forty moves in parallel with no shared file.
+- **Decision, gold is a palette, not a fifth kind of heat:** the fire field's four channels are full, and
+  its tint zones belong to the tells. This level swaps the VOID slot's palette for gold
+  (`FireField.setPalette`; a level is its own page load, and void is only the Lord's).
+- **Decision, the beam and THE CLASH:** a beam is a fixed line (a sighting thread shows it from the moment
+  it is fixed, at its cue), a first contact that throws the hero along it, then ticks (capped at three,
+  the third throws him clear); a held guard pays guard only. Every beam trenches the tiles and its
+  damage to the world carries on to 45 m, so it can take a butte's top. The great beam's head is a blue
+  parry moment: a PERFECT parry starts the blade lock at range (the camera frames both); won, the beam
+  is split and he reels 4.6 s; lost, 40 damage and a 12 m throw. Stepping off the line stays the safe
+  answer.
+- **Decision, fairness with things that linger:** while a beam is lit, the disc is out or the cage
+  closes, he starts nothing that asks a guard; Thunderfall (form 3's weather) stands down for a beam and
+  fades in the hero's openings; after a red thing of his he follows with a red blow or keeps his
+  distance (`AFTER_RED`). PACE: 0 conflicts over ten seeds in every form.
+- **Decision, two foot planners together:** `main` gained ADR-126's `_feetClip` while his own planner
+  was being written. Measured, the two together slide least (0.00 - 0.78 m a string; the engine's alone
+  up to 3.72 m, his alone up to 4.14 m), so both stay: his lifts a stepping foot above the engine's
+  "in the air" line, the engine pins what he leaves on the floor.
+- **The owner's picks** (rendered options, 2026-11-21): arena a (the ring on the flats) of three; body a
+  (a crimson tunic and a topknot that rises into a gold plume) of three; aura a (a tall flame, hollow
+  behind him) of three; beam a (the column) of two; then the calmer, darker floor and his lighter figure
+  ("Keep both"). The others stay behind `?ring=`, `?ascLook=`, `?ascAura=`, `?ascBeam=`, `?ascLift=`.
+- **The lead's call, to be confirmed by play:** 2000 health a form and a posture meter of [900, 1000,
+  1100], the middle of four measured settings (COMBAT.md has the table). The tuning pass had set 4000 /
+  [2400, 2700, 2900]: the 95 % bot's fights did not get longer at the short end (an answered flurry
+  breaks him outright at any bar), and the weaker bots died in form 1.
+- **Not measured or not right:** nobody has played it. The 3 - 5 minute fight is not met (the lever,
+  `flurry.posture`, is built and off). The level borrows three tracks of other levels until its score is
+  picked on an audition page. Not polished: the beam technique's pose at the game camera, the
+  transformation's body under the gather, Stone Storm's tiles against the aura, Heavenfall's landing
+  (a noisy pale cloud), the lost clash's surge; strikes re-filmed after the merge of ADR-126 only for
+  form 1 from one side. Not checked: a real phone (frame rate, the touch block in the clash). The dodge
+  share is 13 / 23 / 40 % against a target of 15 / 25 / 35.

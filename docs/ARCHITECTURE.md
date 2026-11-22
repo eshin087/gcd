@@ -3277,7 +3277,7 @@ scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's foot
 by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
 ```
 kind = 'duelist';  name = 'TIAN LEI, THE LAST ASCENDANT';  phase 1..3 = his FORM;  execRange = 3.4
-lives: { total: 3, left }        // the forms still to beat (this one included); hp / maxHp = this form's bar (1500)
+lives: { total: 3, left }        // the forms still to beat (this one included); hp / maxHp = this form's bar (2000)
 dressPhase: 1..3                 // the form his body SHOWS (hair, light, aura): the old form through a
                                  // transformation's windup, the new one from its nova (onImpact); dressAscendant
                                  // and fx.formAura read it
@@ -3440,7 +3440,7 @@ weight; none under `crater.minK` 0.8). Its cues: `combat:tell` / `combat:flash` 
 Ring Breaker's tiles) and a thrown tile's flash on the tile (`flare: true`). Two streams of its own (`_g`
 gameplay, `_l` looks); its record names keep clear of the cue ledger's courtyard / crater readers.
 
-**The tuning files.** `tuning.js` `TUNING` (forms 3, hp 1500 a form, `phaseAt` [1], radius 0.42, `scale`
+**The tuning files.** `tuning.js` `TUNING` (forms 3, hp 2000 a form, `phaseAt` [1], radius 0.42, `scale`
 PLAYER_SCALE × 1.12, bound 16, `flashLead` 0.26, `windupScale` [1, 0.93, 0.86], `recoveryScale` [0.9,
 0.82, 0.74], `reach { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 }`, `posture`, `guard`, `lock`,
 `mikiri`, `move`, `dash`, `closeBlink`, `idleGap`, `openingGap`, `chain`, `pressure`, `airFall { g: 30 }`,

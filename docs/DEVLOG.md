@@ -5,6 +5,63 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 68: a fourth level, the Skybreak Ring and Tian Lei (planned by the lead, built by Opus agents)
+
+**Owner:** "lets build a saiyan level boss where phase 1 starts from normal saiyan, phase 2 is super
+saiyan, phase 3 is super saiyan 2. make the background the cell tournament arena and make it feel like
+an anime epic battle. help me come up with the moves, combos, specials from the boss and use opus to
+build this out". The lead said first that it would be an original fighter and arena in that spirit, not
+that series' characters, names or place; proposed the moveset; the owner: "Build it". Branch
+`enemies/ascendant-boss` from `main` (91f17d4), `main` merged in once (66ff1fa, ADR-126). ADR-128 /
+Session 68 / M1.53.
+
+**How it was built.** Three read-only mapping agents (the duelist engine, the level and world code, the
+effects and the body) → the moveset and four facts of the engine that changed it (ADR) → stubs for the
+level, the boss, his gear and his effects with the effect surface fixed, so the level loaded on day one
+→ **wave 1**, four agents in parallel, a worktree each: core (his class, three forms, bare hands, his
+melee, the engine's new beat fields, his suite), world (the set in three arenas), body (three outfits
+with hair by form, and the dragon-look twin), effects (gold, the aura, blasts, the disc, the beam, the
+vanish, the transformation) → the owner's picks from the sheets → **wave 2** on the merged core: shots,
+beams, strings, terrain (the ki was split in two owners by the kind's name so no two agents shared a
+file) → an integration agent (the merge of `main`'s ADR-126, the asks between agents, the checks that
+need everything together) → a tuning agent and a docs agent in parallel. Twelve agent runs; the lead
+wrote the briefs, looked at every sheet, merged, and wrote this history.
+
+**What exists** (ARCHITECTURE "Tian Lei, the Last Ascendant", COMBAT "Tian Lei", STYLE "The Skybreak
+Ring"): `src/levels/skybreak.js` (`?level=ring`); `src/world/skybreakRing.js` (a 30 m ring of 361
+breakable tiles, corner posts with braziers, buttes whose tops come off, the light by form: dusk, gold,
+a storm with lightning and rain; arenas b and c behind `?ring=`); `src/entities/enemies/ascendant/`
+(`ascendant.js`, `moves.js` + `moves/melee.js, kiShots.js, kiBeam.js, terrain.js`, `ki.js` → `kiShots.js`,
+`kiBeam.js`, `terrain.js`, `poses.js`, `links.js`, `tuning*.js`, `gear.js`, `look.js`, `bodyArt.js`,
+`fx.js`, `fxBeam.js`); about forty moves; `tests/integration/asc.mjs` (26 scenarios; `npm test` runs it).
+
+**Found on the way.**
+- The first merged build was not readable: the tiles' gold strokes were as bright and busy as the
+  fighters. The paving was calmed and the dusk lifted (figures against floor 2.0x → 3.3x in form 1); the
+  owner kept it.
+- A sword cut landing in the last 0.1 s before the great beam fired spent its blue head (`_tradeNow`).
+- The beam agent could not get a clash on the phone: its capture rig's one-frame virtual press never
+  registers as a parry. The game was fine; the clash runs at 852 x 393.
+- The tuning pass found why bot fights are short at any bar: an answered flurry breaks him outright.
+- `main` moved under the work (ADR-126 reworked how a duelist's move becomes a clip): one conflict
+  (`realise.js`), no clip of his needed a change, and the feet question was settled by measuring.
+
+**Verification:** `npm test` (11 suites: integ x5, lord, asc, duel, world, glyph check, changelog check)
+and `npm run build`: see the PR. Browser (headless Edge on the real GPU, 1280 x 720 and 852 x 393): every
+option sheet the owner picked from, each move filmed in the real level, a whole fight through three
+deathblows with every system on (0 errors, 0 NaN), resets in the middle of seven moves, the clash on
+the phone preset.
+
+**Not checked / open:** nobody has played it. Fight length (COMBAT "Measured": the table of four bar
+settings; shipped 2000 a form) and whether an answered flurry should break a whole bar are the owner's
+to judge on the preview. The visual polish list in the ADR's last point. The level's own music. A real
+phone.
+
+**Next:** the owner plays the Vercel preview; then the bars, the flurry rule and the polish list from
+what they report; the score's audition page.
+
+---
+
 ## 2026-11-21 — Session 66: the human bosses' attacks move like a swordsman's
 
 **Owner:** "the humanoid bosses have weird attack animations and unnatural poses. analyze it and fix

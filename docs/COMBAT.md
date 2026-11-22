@@ -1571,7 +1571,8 @@ duelists' pressure and the fairness guard*, below), with these differences. Code
 | 2 | *Golden Ascension*: a gold flame aura, hair risen and gold; blinks, volleys, the ring starts to break | upright, the lead hand open, the rear fist at the hip | 0.93 | 0.82 | + the dash |
 | 3 | *Thunder Ascension*: lightning in the aura, the hair stiffer; a storm; the longest strings, the great beam | arms at his sides, the hands open | 0.86 | 0.74 | + the closing blink |
 
-- Each form has its own bar of 1500 HP (the boss bar shows three pips). **An empty bar breaks him**, as
+- Each form has its own bar of 2000 HP (the boss bar shows three pips; the lead's middle of four
+  measured settings, below: the owner's to set after playing). **An empty bar breaks him**, as
   a full posture meter does: on one knee for 4.5 s; an attack within 3.4 m is the **deathblow** (the
   execution, DEATHBLOW). Forms 1 and 2 end in a **transformation** (Golden Ascension `ascend2`, Thunder
   Ascension `ascend3`): 2.3 s rising from his knee as the light is drawn up through him and stones lift
@@ -1582,7 +1583,7 @@ duelists' pressure and the fairness guard*, below), with these differences. Code
   (a strike with its cue only on a hero standing within 2.4 m of one). The third deathblow kills him.
 - A break nobody answers: he rises with 20 % of the bar back (if it was empty) and half the meter.
 - **Posture, the Sekiro rule** (as the Lord's): gains × 0.45 on a full bar rising to × 1.25 on an empty
-  one, recovery × 1.5 down to × 0.5 (22 / s after 2.2 s). Meter [460, 520, 600] by form.
+  one, recovery × 1.5 down to × 0.5 (22 / s after 2.2 s). Meter [900, 1000, 1100] by form.
 - **Speed:** harder forms mean MORE PRESSURE, NOT MORE DAMAGE (the owner's standing answer): windups ×
   [1, 0.93, 0.86] (not `fixed` beats), so a string's follow-up blows come 0.34 s apart in form 1 and
   ~0.29 s in form 3; the glint 0.26 s before every impact (`flashLead`); breathers (`idleGap`) [0.1 –
@@ -1681,16 +1682,16 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 | Move | Forms (weight per form) · band m · cooldown s · cat | Hits (tell windup (damage) [extras]; `one of { a / b }`) |
 |---|---|---|
 | **Eight Gates** `gates` | 1 (2.6 / - / -) · 0–3.6 · 6 · string | N 0.48 (12) · N 0.34 (12) · N 0.36 (13) [sector 1.25 m, 0.4 m ahead] · one of { B 0.44 (20) [lock, hold 0.1-0.3] / N 0.34 (12) } · N 0.38 (13) [ring 2.2 m] · B 0.56 (22) [FLARE] |
-| **Hundred Hands** `hundred` | 1, 2 (2.4 / 1.2 / -) · 0–3.2 · 8 · string | N 0.5 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · B 0.44 (20) [line 2.2 x 0.8 m, lock, FLARE, dash <=2.4 m] |
-| **Tiger Descends** `tiger` | 1, 2 (2.4 / 1 / -) · 1.6–6 · 7 · string | N 0.5 (15) [line 2.2 x 0.8 m, dash <=4 m] · N 0.36 (12) · R 0.62 (24) [ring 2.6 m, knockdown] |
+| **Hundred Hands** `hundred` | 1, 2 (2.4 / 1 / -) · 0–3.2 · 8 · string | N 0.5 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · B 0.44 (20) [line 2.2 x 0.8 m, lock, FLARE, dash <=2.4 m] |
+| **Tiger Descends** `tiger` | 1, 2 (2.8 / 1 / -) · 1.6–6 · 7 · string | N 0.5 (15) [line 2.2 x 0.8 m, dash <=4 m] · N 0.36 (12) · R 0.62 (24) [ring 2.6 m, knockdown] |
 | **Iron Mountain** `ironMountain` | 1 (1.8 / - / -) · 0–4 · 8 · closer | N 0.5 (14) [line 2.2 x 1 m, dash <=3 m] · N 0.4 (15) [line 2.2 x 1 m, thrown 9 m] |
 | **Meteor Step** `meteorStep` | 1, 2, 3 (2 / 1.2 / 1) · 2.6–7 · 3 · closer | N 0.5 (17) [line 2.2 x 0.8 m, dash <=5.5 m, in the air] |
-| **Comet Heel** `cometHeel` | 1, 2, 3 (1.6 / 1 / 0.8) · 4–13 · 9 · area | R 1.1 (28) [ring 2.8 m, knockdown, leap apex 3.8 m] |
-| **Piercing Palm** `piercingPalm` | 1, 2, 3 (1.8 / 1.1 / 1) · 2–6 · 8 · closer | R 0.64 (26) [line 2.4 x 0.7 m, MIKIRI, dash <=2.8 m] |
-| **Mountain-Splitting Fist** `splitFist` | 1 (1.1 / - / -) · 2.4–9 · 12 · closer | K 1.45 (36) [knockdown, fixed, hold 0.1-0.5, dash <=7.5 m] |
+| **Comet Heel** `cometHeel` | 1, 2, 3 (2.2 / 1 / 0.8) · 3.5–13 · 9 · area | R 1.1 (28) [ring 2.8 m, knockdown, leap apex 3.8 m] |
+| **Piercing Palm** `piercingPalm` | 1, 2, 3 (2.4 / 1.5 / 1) · 1.6–6 · 6 · closer | R 0.64 (26) [line 2.4 x 0.7 m, MIKIRI, dash <=2.8 m] |
+| **Mountain-Splitting Fist** `splitFist` | 1 (1.5 / - / -) · 2.4–9 · 10 · closer | K 1.45 (36) [knockdown, fixed, hold 0.1-0.5, dash <=7.5 m] |
 | **Spirit Shot** `spiritShot` | 1, 2 (1.5 / 0.9 / -) · 5–16 · 5 · ranged (ki `blast`) | B 0.74 (22) [release blast (returnable)] · B 0.5 (20) [release blast (returnable), 50 %] |
 | **Scatter** `scatter` | 1, 2 (1.2 / 0.8 / -) · 4–13 · 7 · ranged (ki `blast`) | N 0.6 (12) [release blast x3] |
-| **Rising Tide** `risingTide` | 1 (1.3 / - / -) · 5–15 · 11 · hazard (ki `beam`) | R 1.1 (22) [beam rising, line 16 x 1.6 m, knockdown, thrown 5 m, lit 0.7 s, ticks 8 every 0.18 s] |
+| **Rising Tide** `risingTide` | 1 (1.6 / - / -) · 4–15 · 11 · hazard (ki `beam`) | R 1.1 (22) [beam rising, line 16 x 1.6 m, knockdown, thrown 5 m, lit 0.7 s, ticks 8 every 0.18 s] |
 | **Tile Kick** `tileKick` | 1, 2 (1.8 / 1.2 / -) · 3.5–14 · 9 · terrain (terrain `tileKick`) | N 0.8 (16) [cast tileKick] |
 
 *Form 2, Golden Ascension*
@@ -1699,14 +1700,14 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 |---|---|---|
 | **Golden Gates** `goldenGates` | 2, 3 (- / 2.6 / 1.4) · 0–3.8 · 6 · string | N 0.48 (12) · N 0.34 (12) · N 0.36 (13) · B 0.5 (20) [line 2.2 x 0.8 m, lock, blink behind 2 m] · N 0.36 (12) · N 0.34 (12) · one of { R 0.62 (24) [ring 2.8 m, knockdown] / B 0.56 (22) [FLARE] } |
 | **Vanishing Step** `vanishStep` | 2, 3 (- / 2 / 1.2) · 0–12 · 8 · string | N 0.72 (14) [blink behind 2 m] · N 0.58 (14) [blink behind 2 m] · B 0.66 (24) [line 2.2 x 0.8 m, lock, blink behind 2.1 m] |
-| **Aura Burst** `auraBurst` | 2, 3 (- / 1.5 / 1.2) · 0–3 · 9 · area | R 0.7 (20) [ring 4.5 m, thrown 7 m, aura burst] |
+| **Aura Burst** `auraBurst` | 2, 3 (- / 1.8 / 0.9) · 0–3 · 9 · area | R 0.7 (20) [ring 4.5 m, thrown 7 m, aura burst] |
 | **Sunbreaker** `sunbreaker` | 2 (- / 1.1 / -) · 3–12 · 12 · closer | K 1.5 (36) [knockdown, fixed, hold 0.1-0.5, dash <=12 m] |
-| **Sky Hammer** `skyHammer` | 2, 3 (- / 1.8 / 1) · 0–3.6 · 10 · string | N 0.48 (12) · B 0.58 (20) [knockdown, thrown 11 m] · R 0.7 (26) [ring 3 m, knockdown, blink to where you land] |
-| **Blast Dance** `blastDance` | 2 (- / 1.4 / -) · 0–4 · 8 · string | N 0.48 (12) · N 0.36 (12) · N 0.42 (12) [release blast, line 2.6 x 0.8 m (a palm in reach)] · N 0.36 (12) · N 0.34 (12) · B 0.5 (20) [release blast (returnable), line 2.6 x 0.8 m (a palm in reach)] |
+| **Sky Hammer** `skyHammer` | 2, 3 (- / 2 / 1) · 0–3.6 · 10 · string | N 0.48 (12) · B 0.58 (20) [knockdown, thrown 11 m] · R 0.7 (26) [ring 3 m, knockdown, blink to where you land] |
+| **Blast Dance** `blastDance` | 2 (- / 1.3 / -) · 0–4 · 8 · string | N 0.48 (12) · N 0.36 (12) · N 0.42 (12) [release blast, line 2.6 x 0.8 m (a palm in reach)] · N 0.36 (12) · N 0.34 (12) · B 0.5 (20) [release blast (returnable), line 2.6 x 0.8 m (a palm in reach)] |
 | **Golden Rain** `goldenRain` | 2, 3 (- / 1.1 / 0.8) · 6–16 · 12 · ranged (ki `rain`) | N 0.7 (9 each) [cast rain x10] |
-| **Sun Wheel** `sunWheel` | 2, 3 (- / 1.1 / 0.8) · 4–13 · 10 · ranged (ki `disc`) | R 0.7 (18) [cast disc] |
+| **Sun Wheel** `sunWheel` | 2, 3 (- / 1.3 / 0.8) · 4–13 · 10 · ranged (ki `disc`) | R 0.7 (18) [cast disc] |
 | **Heaven's Volley** `skyVolley` | 2 (- / 0.8 / -) · 4–16 · 16 · hazard (ki `volley`) | R 0.9 (22) [cast volley x6, knockdown, in the air] · R 0.8 (26) [ring 2.8 m, knockdown, fixed, in the air, the dive] |
-| **Rising Tide, sweeping** `tideSweep` | 2, 3 (- / 1.1 / 0.7) · 5–16 · 13 · hazard (ki `beamSweep`) | R 1.2 (24) [beam sweep, line 20 x 2 m, knockdown, thrown 5 m, lit 1.1 s, ticks 8 every 0.18 s] |
+| **Rising Tide, sweeping** `tideSweep` | 2, 3 (- / 1.3 / 0.7) · 5–16 · 13 · hazard (ki `beamSweep`) | R 1.2 (24) [beam sweep, line 20 x 2 m, knockdown, thrown 5 m, lit 1.1 s, ticks 8 every 0.18 s] |
 | **Ring Breaker** `ringBreaker` | 2, 3 (- / 1.3 / 1.2) · 3.5–14 · 10 · terrain (terrain `ringBreaker`) | R 0.9 (22) [cast ringBreaker, knockdown] |
 | **Stone Storm** `stoneStorm` | 2, 3 (- / 1.6 / 1.6) · 4–15 · 11 · terrain (terrain `stoneStorm`) | N 0.95 (14) [cast stormThrow x3] · R 1.5 (26) [cast stormGreat, knockdown] |
 
@@ -1717,7 +1718,7 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 | **Storm Waltz** `stormWaltz` | 3 (- / - / 2.4) · 0–12 · 8 · string | N 0.6 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · B 0.6 (24) [line 2.2 x 0.8 m, lock, blink behind 2.1 m] |
 | **Thousand Hands** `thousand` | 3 (- / - / 2.6) · 0–3.2 · 9 · string | N 0.5 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · R 0.6 (24) [ring 3.2 m, knockdown] |
 | **Heaven and Earth** `heavenEarth` | 3 (- / - / 1.8) · 0–3.6 · 11 · string | B 0.56 (20) [knockdown, thrown 11 m] · R 0.66 (26) [ring 3 m, knockdown, blink to where you land] · R 0.6 (20) [ring 4.4 m, thrown 6 m, aura burst] · B 0.5 (22) [line 2.2 x 0.8 m, FLARE, dash <=5 m] |
-| **Mirage** `mirage` | 3 (- / - / 1.6) · 2–10 · 9 · single | FEINT 0.5 [blink to your side (-1.4 rad)] · FEINT 0.5 [blink to your side (1.4 rad)] · FEINT 0.5 [blink to your side (0.2 rad)] · R 0.66 (26) [line 2.2 x 0.8 m, knockdown, blink behind 2 m] |
+| **Mirage** `mirage` | 3 (- / - / 1.6) · 2–10 · 9 · string | FEINT 0.5 [blink to your side (-1.4 rad)] · FEINT 0.5 [blink to your side (1.4 rad)] · FEINT 0.5 [blink to your side (0.2 rad)] · R 0.66 (26) [line 2.2 x 0.8 m, knockdown, blink behind 2 m] |
 | **Heavenfall** `heavenfall` | 3 (- / - / 1.1) · 3–13 · 14 · area | K 1.5 (36) [ring 3.4 m, knockdown, fixed, leap apex 4.5 m, quake 3.4-14 m at 9 m/s (22)] |
 | **Thunder Gates** `thunderGates` | 3 (- / - / 2) · 0–4 · 6 · string | N 0.48 (12) · N 0.34 (12) · B 0.44 (18) [bolt, line 17 x 1.7 m] · N 0.36 (12) · N 0.34 (12) · B 0.44 (18) [bolt, line 17 x 1.7 m] · N 0.36 (13) · N 0.34 (13) [sector 1.25 m, 0.4 m ahead] · B 0.56 (22) [lock, FLARE] |
 | **Lightning Lance** `lance` | 3 (- / - / 1.3) · 4–16 · 8 · spell (ki `bolt`) | B 0.78 (20) [bolt, line 17 x 1.7 m] · B 0.46 (20) [bolt, line 17 x 1.7 m] · B 0.46 (20) [bolt, line 17 x 1.7 m] · B 0.46 (24) [bolt, line 17 x 1.7 m] |
@@ -1738,7 +1739,7 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 | **Golden Ascension** `ascend2` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
 | **Thunder Ascension** `ascend3` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
 
-The form's pool (weights summed, share by category; generated): form 1 12 moves, 34 % string, 31 % closer, 13 % ranged, 8 % terrain, 7 % area, 6 % hazard; form 2 20 moves, 39 % string, 16 % terrain, 15 % ranged, 13 % closer, 10 % area, 7 % hazard; form 3 22 moves, 43 % string, 15 % hazard, 11 % area, 10 % terrain, 7 % closer, 5 % single, 5 % ranged, 4 % spell.
+The form's pool (weights summed, share by category; generated): form 1 12 moves, 33 % string, 32 % closer, 11 % ranged, 9 % area, 8 % terrain, 7 % hazard; form 2 20 moves, 37 % string, 15 % ranged, 15 % terrain, 14 % closer, 10 % area, 8 % hazard; form 3 22 moves, 49 % string, 15 % hazard, 10 % area, 10 % terrain, 7 % closer, 6 % ranged, 5 % spell.
 (Generated by `docs-gen-moves.mjs` from `ascendant/moves.js` MOVES; damage before `damageScale` 1.1; windups × 1 / 0.93 / 0.86 by form for beats that are not `fixed`.)
 <!-- asc:moves:end -->
 
@@ -1780,24 +1781,87 @@ Checked by `npm test` → `tests/integration/asc.mjs`:
   resets in the middle of seven moves, a deathblow while a beam is lit, the banner, pips and music at a
   transformation; and at its end every event this level emits is in ARCHITECTURE.md's catalogue.
 
+**What the tuning pass added to his rules** (2026-11-21; numbers in `tuning.js`, `tuningShots.js`,
+`tuningBeam.js`):
+- **A perfect return is worth less when it follows another:** each return (a bolt or a Spirit Shot sent
+  back) within 3 s of the last deals half of it (`shots.returns { decay, window }`): Lightning Lance's
+  four are 50 + 25 + 13 + 6.
+- **A beam takes at most three ticks** from a hero who is not blocking (`beam.maxTicks`); the third
+  throws him 4 m clear of its side, knocked down (`beam.thrown`).
+- **Storm Cage:** once one orb has knocked the hero down, the rest of that cage pass over him, and so
+  does an orb that leaves while he lies down; while the orbs close in he starts no other move.
+- **While the disc is out** (Sun Wheel) he starts nothing that asks a guard, as while a beam is lit.
+- **Thunderfall:** a strike may land up to 0.3 s after the end of the move it was called in
+  (`shots.weather.past`: the next move's blows know it from the ledger and hold for it), and a mark not
+  yet cued fades when he is thrown into a reaction, a break or a stagger (`fadeInOpening`): never in the
+  hero's opening.
+- **His flurry answered in full** breaks him outright, as every duelist's does (`flurry.posture` 1). The
+  number is the share of his meter it fills: below 1 an answered flurry no longer ends a form by itself
+  (measured at 0.6, below). Built, and off: it changes a rule Training teaches.
+- **The director by form** (`pressure.density` [0.6, 0.7, 0.8], `bias` per category): the busier-move
+  bonus is small for him, or his one-cue ki and terrain moves are weighed out (at 2.2 strings were 87 %
+  of form 3's pool by weight).
+- The ring's floor in form 1's dusk is one number: `FLOOR_GAIN[0]` (0.74) in `world/skybreakRing.js`.
+
 <!-- asc:measured:begin -->
-**Measured (the integrated build, 2026-11-21; `tests/integration/asc.mjs`).** Bots, not people: **no
-human has played it.** (These are the integration agent's numbers before the tuning pass: they will be
-replaced.)
-- **Pace** (PACE, all moves in, the mean of three seeds 4242 / 7 / 99, 120 s a form): **87.1 / 93.5 /
-  102.5 cues a minute** by form; a dodge for 9 / 15 / 23 % of the cues; the longest gap between cues up
-  to 2.38 / 2.50 / 3.34 s (the meter's caps 4.0 / 3.8 / 3.6); **0 conflicts**. The PACE defender keeps
-  close: his ranged moves are 2 – 5 % of the picks, and Rising Tide was never picked in form 1 (its band
-  is 5 – 15 m).
-- **WIN** (the fencing bot in god mode): the whole fight in 49 s (the forms start at 0 / 15 / 31 s).
-- **The beams** (the beam agent): Rising Tide: standing or running (4.6 m/s) is hit, a sprint or a roll
-  at the cue clears it; a held guard goes 100 → 49 and loses no health. The sweep's edge moves 5.0 /
-  7.5 / 10.1 m/s at 8 / 12 / 16 m. The great beam's head lands 267 ms after its cue (28.6 damage);
-  sprinting with its sweep at ~19 m costs 119 HP of ticks. The clash: 5.5 presses a second win it
-  outright in 3 s, 3.7 a second hold it (the duel's form-3 lock: 6.7 / 4.9); won, he reels 4.6 s.
-- **The fire field**: the worst case (form 3's aura, the great beam, ten blasts and a strike) 2863 of
-  6000 blobs; AI fights peak at about 1525.
-- `npm test` all 11 suites passed; Training 94 of 94; the build 2902 KB.
+**Measured (the tuned build, 2026-11-21; `tests/integration/asc.mjs`).** Bots, not people: **no human
+has played it.**
+- **Pace** (PACE: a god-mode defender that guards and rolls and never attacks; ten seeds (4242, 7, 99,
+  1337, 2024, 11, 23, 555, 808, 31337) x 120 s a form): cues a minute (min / mean / max) **form 1 79.7 /
+  83.3 / 86.8, form 2 83.9 / 88.2 / 92.8, form 3 88.3 / 99.7 / 107.4** (before the tuning pass 85.5 /
+  91.7 / 106.7 in the mean). Form over form x 1.059 / 1.131 in the mean, x 0.975 / 1.001 on the worst
+  seed. The longest gap between cues 2.70 / 3.13 / 2.95 s (it was 3.94 s in form 3, over the 3.6 s cap).
+  A dodge for **13 / 23 / 40 %** of the cues (the target 15 / 25 / 35; before 10 / 17 / 26); strings 51 /
+  55 / 47 % of the picks; something of his lingers on the floor 2 / 7 / 51 % of the time. Form 3: 34
+  holds and 1 feint by the fairness guard per run (23 / 16 before). **Conflicts 0.** Thunderfall comes
+  every 4.0 s (6.0 s before; the gap setting allows 3.2 s at a full bar: his strings leave few 0.4 s
+  windows). The meter asserts each form >= [1, 0.96, 0.98] x the one before on every seed and [1, 1.02,
+  1.05] x in the seeds' mean, at least 76 / 80 / 85 cues a minute, no gap over 4.0 / 3.8 / 3.6 s (a lit
+  beam and the great beam's charge count as busy, as a black blow's charge does).
+- **The mix depends on where the hero stands** (`asc.mjs . picks`, opt-in): in form 3 a dodge is asked
+  for 36 % of the cues with the hero at 2.5 m, 56 % at 5 m, 62 % at 14 m. Rising Tide in form 1: 0 / 6.9
+  / 10.1 / 10.9 picks per 120 s at 2.5 / 5 / 9 / 14 m; the terrain moves 3 - 7 per 75 s from 5 m out and
+  none at 2.5 m. No move is at zero picks over the ten seeds; Heavenfall (0.7 per 120 s) and Golden Rain
+  (0.1 - 0.2) are rare against a hero who stays close.
+- **Mortal bots, whole fights** (`asc.mjs . probe`, opt-in; ten seeds; they drink below 60 HP in his
+  openings, and rarely find one under his pressure: they often die with flasks left). By bar setting
+  (health a form / the posture meter by form; `flurry.posture` 1):
+
+  | Setting | 95 % bot | 85 % bot | 70 % bot |
+  |---|---|---|---|
+  | 1500 / [460, 520, 600] (the first wave's) | 10 of 10, 35 / 48 / 58 s | 8 of 10, 56 / 64 / 79 s | 1 of 10 |
+  | **2000 / [900, 1000, 1100] (shipped)** | **10 of 10, 35 / 66 / 94 s** | **4 of 10, 80 / 93 / 107 s** | **0 of 10** |
+  | 2600 / [1500, 1650, 1800] | 10 of 10, 35 / 76 / 105 s | 3 of 10, 93 / 109 / 135 s | 2 of 10 |
+  | 4000 / [2400, 2700, 2900] | 10 of 10, 35 / 108 / 166 s | 5 of 10, 93 / 118 / 159 s | 0 of 10 |
+
+  At the shipped setting the forms last 24 / 21 / 21 s for the 95 % bot, 29 of 30 end by a POSTURE BREAK,
+  and it loses 16 / 23 / 5 HP a form. **The 3 - 5 minute target is not met, at any setting:** an answered
+  flurry breaks him outright whatever his bar (the engine's rule, which Training teaches), so every
+  setting's shortest fight is 35 s. With `flurry.posture` 0.6 (an answered flurry fills 60 % of his
+  meter) the 95 % bot's fights are 68 / 79 / 94 s at the shipped bars and no form is under ~26 s: that
+  lever is built and left at 1 (it changes a rule Training promises: the owner's call).
+- **A pure defender** (95 %, never swings; `asc.mjs . defend`, opt-in; ~90 s of play a form, measured at
+  4000 a form): alive at the end of 10 / 10 / 8 of ten runs by form.
+- **The worst blow** 39.6 (Mountain-Splitting Fist, the black blow of form 1); no white blow above 28.6.
+  **The worst second** 52.8 HP (Storm Waltz, a Thunderfall strike, Storm Waltz), 50.6 for the pure
+  defender (79.2 before the pass: the great beam's ticks, now capped at three).
+- **Caps** (the tuning pass): a perfect return within 3 s of the last is worth half (Lightning Lance's
+  four: 200 → 94 damage to him); a beam takes at most 3 ticks from a hero who is not blocking, the third
+  throws him 4 m clear (sprinting with the great beam's sweep: 119 → 40 HP); once a Storm Cage orb has
+  knocked the hero down the rest pass over him.
+- **The beams** (BEAMS, CLASH): Rising Tide: standing or running (4.6 m/s) is hit, a sprint or a roll at
+  the cue clears it; a held guard goes 100 → 49 and loses no health. The sweep's edge moves 5.0 / 7.5 /
+  10.1 m/s at 8 / 12 / 16 m (the hero sprints at 7.2): at range the answer is the roll. The great beam's
+  head lands 267 ms after its cue (28.6). The clash: 5.5 presses a second win it outright in 3 s, 3.7 a
+  second hold it (the duel's form-3 lock: 6.7 / 4.9); won, he reels 4.6 s and the hero needs 2.3 s to
+  cross 17 m.
+- **The ring's wear** (WEAR): 10 / 33 / 45 % of the tiles broken at the end of each form, about 30 %
+  cracked.
+- **Feet** (MOTION, the drawn feet): 0.00 - 0.78 m of slide a string with his planner and the engine's
+  together (the engine's alone 0.06 - 3.72 m, his alone 0.23 - 4.14 m).
+- **The fire field**: the worst case staged (form 3's aura, the great beam, ten blasts, two strikes, a
+  quake) 2863 of 6000 blobs; AI fights peak at about 1525.
+- `npm test`: all 11 suites; Training 94 of 94 situations; `npm run build`: 2.9 MB.
 <!-- asc:measured:end -->
 
 **Not measured / not fixed:** a human's fight; a real phone (its frame rate, touch: the clash worked at
