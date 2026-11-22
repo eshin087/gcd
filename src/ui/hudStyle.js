@@ -83,6 +83,7 @@ const CSS = `
 .ab-gbar:not(.post)::before { content: '['; color: #8f99ad; font-weight: 400; }
 .ab-gbar:not(.post)::after { content: ']'; color: #8f99ad; font-weight: 400; }
 .ab-gbar .tick { position: absolute; top: 0; font-style: normal; transform: translateX(-50%); color: #fff2e0; }
+.ab-gbar .tick.line { color: #c8bca8; opacity: 0.38; }
 .ab-gbar.hp .f { color: #e8584a; text-shadow: 0 0 7px rgba(232, 88, 74, 0.45), ${SHADOW}; }
 .ab-gbar.hp .c { color: #ffe1cf; }
 .ab-gbar.hp.low .f { animation: ab-pulse 0.9s ease-in-out infinite; }

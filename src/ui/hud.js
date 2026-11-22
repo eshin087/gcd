@@ -104,6 +104,11 @@ export class Hud {
       this.calls.call('gopen');
       flashClass(this.guardBar.root, 'open');
     });
+    // a lethal blow (ADR-139): LAST BREATH, then BREATH RESTORED once a drink carries him back over the line
+    on('player:lastBreath', (d) => {
+      this.calls.call('lastBreath');
+      this._breathLine = Math.max(0.01, num(d.line, 0) / Math.max(1, num(d.max, 1)));
+    });
     on('player:perfectDodge', (d) => this._ghostep(d.streak));
     on('player:ghostep', () => this._ghostep(this.game.player?.streak));
     // the flurry: a count over the target for every cut that lands, and its name once the last has
@@ -367,6 +372,16 @@ export class Hud {
         this._hp = hpKey;
         this.hpVal.textContent = `${Math.ceil(hp)} / ${Math.round(maxHp)}`;
       }
+      // a level whose blows are lethal (the boss's T.lethal, ADR-139): a dim notch on the meter at the line
+      const LT = this.game.dragon?.T?.lethal;
+      if (LT && !this._notch) {
+        this._notch = this.hpBar.mark(num(LT.whole, 0.5), '|');
+        this._notch.classList.add('line');
+      }
+      if (this._breathLine > 0 && p.alive !== false && hp / maxHp >= this._breathLine - 1e-6) {
+        this._breathLine = 0;
+        this.calls.call('breath');
+      } else if (p.alive === false) this._breathLine = 0;
       const low = hp > 0 && hp / maxHp < 0.25;
       if (low !== this._low) {
         this._low = low;

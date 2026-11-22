@@ -3640,7 +3640,10 @@ Player → hud/audio/fx/flow:
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
   `player:guardOpen {attack, black}` (black = a black, charged, blow met on the guard or a parry: the whole meter at once, ADR-118; else the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a
-  short stagger; ADR-095; HUD "GUARD DOWN", audio the guard break's crack, the pad rumbles),
+  short stagger; ADR-095; HUD "GUARD DOWN", audio the guard break's crack, the pad rumbles; a lethal blow on a held guard
+  with enough of the meter shatters it the same way, black true, ADR-139),
+  `player:lastBreath {attack, hp, max, line}` (a lethal blow landed with health at or above the line, ADR-139: health
+  is down to `hp`, he is thrown and knocked down; HUD "LAST BREATH"; `line` = the health he must drink back over),
   `player:dodge {kind}` (an attack passed through i-frames), `player:perfectDodge {attack, tell, streak}` (every perfect dodge:
   flurry, plunge, in place or Ghostep; not on an execution; streak = perfect dodges in a row, this one included),
   `player:ghostep {x, z}` (with every perfect dodge; for the plunge x/z = the hang point above the head, for a flurry where he dodged),

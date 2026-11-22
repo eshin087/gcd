@@ -3,7 +3,7 @@ import { CONFIG } from '../../core/config.js';
 import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from '../../core/math.js';
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
-import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
+import { TELL, RESULT, DEFENSE, GUARD, LETHAL, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
@@ -227,6 +227,8 @@ export class Player {
     // the guard meter (combat/rules.js GUARD, ADR-095): a blocked blow costs guard, not HP; it
     // refills by itself once guardWait (s) has run out. staggerLen: how long this stagger lasts
     this.maxGuard = GUARD.max;
+    /** the last lethal blow's outcome (ADR-139): { kind: 'breath' | 'death' | 'shatter' | 'god', t, attack } */
+    this.lethalLast = null;
     this.guard = GUARD.max;
     this.guardWait = 0;
     this.staggerLen = TUNE.staggerDur;
@@ -418,6 +420,9 @@ export class Player {
     const blockable = typeof hit.blockable === 'boolean' ? hit.blockable : def.blockable;
     const attack = hit.attack ?? null;
     const attacker = hit.attacker && typeof hit.attacker === 'object' ? hit.attacker : null;
+    // a LETHAL blow (ADR-139, `hit.lethal`: true or an object over LETHAL): what lands takes everything
+    // (the Last Breath below), a held guard with enough of the meter is shattered, else it is no answer
+    const lethal = hit.lethal ? (typeof hit.lethal === 'object' ? { ...LETHAL, ...hit.lethal } : LETHAL) : null;
 
     // (a) mikiri: a perilous thrust (hit.mikiri) met by a roll INTO the attacker, started at most
     // TUNE.mikiriWindow before the impact: the hero steps on the blade (attacker.onMikiri)
@@ -444,10 +449,10 @@ export class Player {
       return RESULT.DODGED;
     }
 
-    const dmg = Math.max(0, fin(hit.damage, 0));
-    const kb = clamp(fin(hit.knockback, 0), 0, 14);
+    let dmg = Math.max(0, fin(hit.damage, 0));
+    let kb = clamp(fin(hit.knockback, 0), 0, 14);
     const burn = clamp(fin(hit.burn, 0), 0, 15);
-    const knockdown = !!hit.knockdown;
+    let knockdown = !!hit.knockdown || !!lethal;
     const chip = kb <= 0 && !knockdown; // contact damage streams (breath)
 
     // push direction: away from the source (fallback: backwards)
@@ -474,8 +479,12 @@ export class Player {
       const arc = (a) => hit.around || this._inArc(a, hasFrom, fx, fz, hasAtk ? ap : null);
       const pressed = this._canGuard() && this.time - this.rmb.parryT <= DEFENSE.parryWindow && arc(DEFENSE.parryArc);
       if (pressed || (this.blocking && arc(DEFENSE.blockArc))) {
-        this._guardOpen(attack, nx, nz, true);
-        return RESULT.BLOCKED;
+        if (!lethal) {
+          this._guardOpen(attack, nx, nz, true);
+          return RESULT.BLOCKED;
+        }
+        // (a lethal black blow: the guard shatters if it holds enough of the meter, else no answer)
+        if (this._lethalGuard(lethal)) return this._shatter(lethal, attack, nx, nz, tell);
       }
     }
     // (d) parry: RMB pressed shortly before impact, attacker in the front arc; pressed within
@@ -498,13 +507,30 @@ export class Player {
     // (e) block / (f) guard break
     // (`hit.around`: a foe's flurry comes from every side in turn: a raised guard meets it from any)
     if (this.blocking && (hit.around || this._inArc(DEFENSE.blockArc, hasFrom, fx, fz, hasAtk ? ap : null))) {
-      if (blockable) {
+      // a lethal blow on a held guard: shattered with enough of the meter (never any health lost);
+      // with less, or a red blow, it is as no answer (the plain hit below)
+      if (lethal) {
+        if (blockable && this._lethalGuard(lethal)) return this._shatter(lethal, attack, nx, nz, tell);
+      } else if (blockable) {
         this._block(dmg, tell, attack, chip, nx, nz);
         return RESULT.BLOCKED;
       }
-      this._streakEnd();
-      this._guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc);
-      return RESULT.HIT;
+      else {
+        this._streakEnd();
+        this._guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc);
+        return RESULT.HIT;
+      }
+    }
+
+    // (f2) a lethal blow landed (ADR-139): with at least `whole` of his health he is left `leave` and
+    // thrown `throw` m, knocked down (LAST BREATH); below it the blow is the rest of his life
+    if (lethal) {
+      const breath = fin(this.hp) >= this.maxHp * lethal.whole;
+      dmg = breath ? Math.max(0, fin(this.hp) - lethal.leave) : fin(this.hp) + 1;
+      kb = Math.max(kb, breath ? lethal.throw : kb);
+      knockdown = true;
+      this.lethalLast = { kind: this.debug.god ? 'god' : breath ? 'breath' : 'death', t: this.time, attack };
+      if (breath && !this.debug.god) this._emit('player:lastBreath', { attack, hp: lethal.leave, max: this.maxHp, line: this.maxHp * lethal.whole });
     }
 
     // (g) plain hit
@@ -1320,7 +1346,7 @@ export class Player {
    * starts to refill as he recovers. `black`: a charged blow met on the guard or a parry (ADR-118):
    * the whole meter at once, a longer stagger, thrown back (GUARD.black).
    */
-  _guardOpen(attack, nx, nz, black = false) {
+  _guardOpen(attack, nx, nz, black = false, push = GUARD.black.push) {
     const g = this.game;
     if (!(black && this.debug.god)) this.guard = 0;
     this.guardWait = GUARD.openDelay;
@@ -1335,12 +1361,27 @@ export class Player {
     if (black) {
       this.atk = null;
       this.chargeK = 0;
-      this._setKb(nx, nz, GUARD.black.push);
+      this._setKb(nx, nz, fin(push, GUARD.black.push));
       if (Number.isFinite(nx + nz) && nx * nx + nz * nz > 1e-4) this.yaw = Math.atan2(-nx, -nz);
     }
     this._enter('stagger', 'guardBreak', 0.07);
     this.staggerLen = black ? GUARD.black.openDur : GUARD.openDur;
     this.anim.kickCoat?.(black ? 0.9 : 0.5);
+  }
+
+  /** A held guard against a lethal blow (ADR-139): enough of the meter to be shattered rather than broken through? */
+  _lethalGuard(L) {
+    return !!this.debug.god || fin(this.guard) >= this.maxGuard * fin(L.guardNeed, LETHAL.guardNeed);
+  }
+
+  /** A lethal blow on a held guard (ADR-139): stopped, NO health lost (a block never costs health),
+   *  the whole meter gone, knocked open GUARD.black.openDur s, pushed `guardPush` m (the black rule). */
+  _shatter(L, attack, nx, nz, tell = TELL.NORMAL) {
+    this._streakEnd();
+    this.lethalLast = { kind: 'shatter', t: this.time, attack };
+    this._emit('player:block', { damage: 0, tell });
+    this._guardOpen(attack, nx, nz, true, fin(L.guardPush, LETHAL.guardPush));
+    return RESULT.BLOCKED;
   }
 
   /**

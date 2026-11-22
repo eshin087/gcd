@@ -58,6 +58,15 @@ export const SCORE = {
         T('cinder-p3', { xfade: 3 }),
       ],
     },
+    // The Lone Peak Hermitage borrows these too until the owner auditions its score (one per phase).
+    peak: {
+      explore: T('ash-explore', { xfade: 3 }),
+      phases: [
+        T('cinder-p1', { xfade: 1.5 }),
+        T('ash-p2', { loopFrom: 14.8 }),
+        T('starless-p3', { xfade: 0.5 }),
+      ],
+    },
   },
   victory: T('victory', { loop: false }), // Victory Fanfare Short, cynicmusic
   death: T('death', { loop: false }), // Death of a Ninja (Game Over), Joth

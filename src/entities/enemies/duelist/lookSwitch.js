@@ -42,6 +42,10 @@ export const PICKED = Object.freeze({
   ascAura: 'a', // his aura: a tall flame, hollow behind him (the owner's pick)
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'a', // his figure lifted off the floor: a lighter fill, a stronger edge of light (the owner's pick)
+  // the Lone Peak Hermitage and Gu Shan (ADR-138): the author's picks, waiting for the owner's
+  peak: 'a', // the ledge: a dawn mist
+  hermitLook: 'a', // his body: the straw recluse
+  hermitBlow: 'a', // his line blows: steel strokes and dust
 });
 
 const fromUrl = new Map();

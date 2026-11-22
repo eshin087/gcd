@@ -21,6 +21,9 @@ const KINDS = {
   gbreak: { text: 'GUARD BROKEN', life: 1.3, rise: 22, pop: 1.3 },
   // the guard meter ran out on a blocked blow (player:guardOpen): styled as the guard break
   gopen: { text: 'GUARD DOWN', life: 1.0, rise: 20, pop: 1.25, cls: 'gbreak' },
+  // a lethal blow landed (player:lastBreath, ADR-139): one health left; and when he drinks back over the line
+  lastBreath: { text: 'LAST BREATH', life: 1.6, rise: 18, pop: 1.3, cls: 'gbreak' },
+  breath: { text: 'BREATH RESTORED', life: 1.1, rise: 16, pop: 1.1, cls: 'block' },
   block: { text: 'BLOCK', life: 0.6, rise: 16, pop: 1.15 },
   // a deflect chain: the parry call-out of that blow turns into "DEFLECT ×N" (styled as deflect)
   chain: { text: 'DEFLECT', life: 1.15, rise: 34, pop: 1.5, cls: 'deflect' },

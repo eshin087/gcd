@@ -789,7 +789,7 @@ export class Lab {
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
     const id = this.game.level?.id;
-    if (id !== 'ash' && id !== 'starless' && id !== 'ring') return;
+    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'peak') return;
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
@@ -953,6 +953,14 @@ export class Lab {
     this.ui.godBtn = button(grid, 'God mode', () => this._togglePlayerFlag('god', 'god mode'));
     this.ui.flaskBtn = button(grid, 'Inf. flasks', () => this._togglePlayerFlag('infiniteFlasks', 'infinite flasks'));
     button(grid, 'Full heal', () => this._call(this.game.player, 'player', 'heal'));
+    // a boss whose blows kill (ADR-139): the hero at one health, as a Last Breath leaves him
+    if (this.game.dragon?.T?.lethal) {
+      button(grid, 'Last breath', () => {
+        const p = this.game.player;
+        if (p?.alive) p.hp = this.game.dragon.T.lethal.leave ?? 1;
+        this._status('the hero at one health (a Last Breath)', 'ok');
+      }).title = 'the hero at 1 health: the next unanswered blow kills';
+    }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'tp', row);
     const tp = el('div', 'lab-grid', null, row);

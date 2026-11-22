@@ -38,6 +38,10 @@ export const LOOK_SWITCHES = Object.freeze([
   // --- ring: Tian Lei's effects (the aura, the beam, the blasts, the transformation)
   ['ascAura', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Tian Lei\'s aura (forms 2 and 3)'],
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
+  // --- peak: the Lone Peak Hermitage and Gu Shan, the One-Blow Hermit (ADR-138)
+  ['peak', ['a', 'b'], 'a', 'a', true, ['peak'], 'the ledge: a dawn mist, b dusk (a reload)'],
+  ['hermitLook', ['a', 'b', 'c', 'a0'], 'a', 'a', true, ['peak'], 'Gu Shan\'s body: a recluse, b woodcutter, c ascetic, a0 = a in ink lines (a reload)'],
+  ['hermitBlow', ['a', 'b'], 'a', 'a', false, ['peak'], 'his line blows: a steel and dust, b a burning core'],
   //
   //
 ]);

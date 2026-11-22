@@ -47,6 +47,8 @@ const ROLES = {
   starless: { single: 'lunge', string: 'litany', long: 'litany', red: 'reap', lock: 'skyfall' },
   // Tian Lei (the Skybreak Ring): his form-1 lock is Hundred Hands' last blow (Vanishing Step's is form 2's)
   ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
+  // Gu Shan (the Lone Peak Hermitage): one blow at a time in phase 1 (his strings are phase 2 - 3 moves)
+  peak: { single: 'mountainPalm', red: 'fallingPeak', black: 'oneBlow' },
 };
 
 export function bossKinds(game) {
@@ -56,7 +58,11 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.lives ? 'lord' : 'ash');
+    // (the One-Blow Hermit is his own kind and no 'duel': he has no flurry and no lock)
+    if (d?.kit?.id === 'hermit') {
+      k.delete('duel');
+      k.add('hermit');
+    } else k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -137,7 +143,7 @@ add('OFFENCE', [
 add('GETTING HIT', [
   { id: 'hit', name: 'Hit (stagger)', boss: 'any', role: 'single', answer: 'none', desc: 'A blow taken: the flinch, the freeze, the red edge.', expect: ['player:hurt'] },
   { id: 'knockdown', name: 'Knocked down (red blow)', boss: 'any', role: 'red', answer: 'none', desc: 'A red blow taken: down, and back up.', until: (T) => T.t > 1 && T.heroFree() && !T.moving(), expect: ['player:hurt'] },
-  { id: 'guardBreak', name: 'Guard broken (blocking red)', boss: 'any', role: 'red', answer: 'block', desc: 'A red blow cannot be blocked: the guard shatters.', until: (T) => T.t > 1 && T.heroFree() && !T.moving(), expect: ['player:guardBreak'] },
+  { id: 'guardBreak', name: 'Guard broken (blocking red)', boss: 'any', not: 'hermit', role: 'red', answer: 'block', desc: 'A red blow cannot be blocked: the guard shatters.', until: (T) => T.t > 1 && T.heroFree() && !T.moving(), expect: ['player:guardBreak'] },
   { id: 'death', name: 'Death', boss: 'any', role: 'red', answer: 'none', god: false, hp: 1, desc: 'The killing blow and the fall (the next situation brings you back).', until: (T) => T.t > 3.5, expect: ['player:died'] },
 ]);
 
@@ -182,6 +188,30 @@ add('BOSS STATES', [
   { id: 'form3a', name: 'Thunder Ascension', boss: 'asc', desc: 'His third form: the transformation.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
   { id: 'phase4', name: 'Form 4', boss: 'lord', desc: 'His fourth form: the Void answers him.', go: (T) => duelChange(T, 4), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase4'] },
   { id: 'bossDeath', name: 'His death', boss: 'any', desc: 'The killing blow (the next situation wakes him again).', go: (T) => T.d.debug.kill(), until: (T) => T.t > 4, expect: [] },
+]);
+
+// Gu Shan, the One-Blow Hermit (ADR-138, ADR-139): every blow kills, so each answer of the table has
+// its own situation. The cover: the hero is put behind the nearest standing inner stone, he in front
+// of it, and The One Blow comes down the lane (the stone takes it).
+const hermitCover = (T) => {
+  const W = T.game.world?.destructibles, d = T.d, p = T.p;
+  T.game.world?.restore?.();
+  const post = (W?.list ?? []).find((b) => b.kind === 'post' && b.def?.inner && b.state === 0) ?? null;
+  if (!post) return;
+  const l = Math.hypot(post.x, post.z) || 1, ux = post.x / l, uz = post.z / l;
+  d.position.set(post.x - ux * 6, 0, post.z - uz * 6);
+  d.yaw = Math.atan2(ux, uz);
+  p.debug.teleport(post.x + ux * 1.4, post.z + uz * 1.4);
+  p.yaw = Math.atan2(-ux, -uz);
+  d.debug.trigger('oneBlow');
+};
+add('THE HERMIT', [
+  { id: 'hParry', name: 'Parry the palm', boss: 'hermit', move: 'mountainPalm', answer: 'parry', dist: 3, desc: 'Mountain-Moving Palm flares blue: parry it and nothing is lost; your counter answers and his string ends. The turned force wrecks what stands behind you.', expect: ['player:parry'] },
+  { id: 'hShatter', name: 'Block the palm (the guard shatters)', boss: 'hermit', move: 'mountainPalm', answer: 'block', dist: 3, desc: 'A held guard with half the meter or more stops a blow that would kill: no health lost, the whole meter gone, knocked open. One block per blow.', until: (T) => T.t > 1.6 && T.heroFree() && !T.moving(), expect: ['player:guardOpen'] },
+  { id: 'hBreath', name: 'Take the palm (Last Breath)', boss: 'hermit', move: 'mountainPalm', answer: 'none', god: false, dist: 3, desc: 'Unanswered with half your health or more: one health left and you are thrown through what stands behind you. Two flasks carry you back over the line.', until: (T) => T.t > 2.6 && T.heroFree(), expect: ['player:lastBreath'] },
+  { id: 'hPeak', name: 'Dodge Peak Falls', boss: 'hermit', move: 'fallingPeak', answer: 'roll', dist: 3, desc: 'A red flare: only a roll answers it. His longest opening follows: cut him in his recovery.', expect: ['combat:flash'] },
+  { id: 'hCover', name: 'The One Blow from behind a stone', boss: 'hermit', pieces: true, answer: 'none', desc: 'Stand behind a striking stone in his lane: the stone takes the blow and is destroyed; you are untouched. Cover runs out as the fight goes on.', go: hermitCover, until: (T) => T.t > 3.6 && !T.moving(), max: 8, expect: ['world:impact'] },
+  { id: 'hOnePerfect', name: 'Perfect-dodge The One Blow', boss: 'hermit', move: 'oneBlow', answer: 'dodge', dist: 4, desc: 'The black blow: the air goes still, the black flare. A roll on the flare is the perfect dodge and the flurry answers it.', expect: ['player:perfectDodge'] },
 ]);
 
 // The Ash Disciple's moves on the courtyard's pieces (ADR-111): each staged where it works (the hero
@@ -272,7 +302,8 @@ export class Training {
     const kinds = bossKinds(this.game);
     // (`pieces`: a situation that needs the level's breakables: not on a stage without any)
     const pieces = (this.game.world?.destructibles?.list?.length ?? 0) > 0;
-    const out = SITUATIONS.filter((s) => kinds.has(s.boss) && this._roleOk(s) && (!s.pieces || pieces));
+    // (`not`: a boss kind the situation does not apply to: a red blow on the guard is no guard break against the Hermit)
+    const out = SITUATIONS.filter((s) => kinds.has(s.boss) && !(s.not && kinds.has(s.not)) && this._roleOk(s) && (!s.pieces || pieces));
     let ab = [];
     try {
       ab = this.d?.debug?.abilities?.() ?? [];
@@ -298,7 +329,7 @@ export class Training {
     const id = this.game.level?.id;
     if (ROLES[id]) return ROLES[id];
     const k = bossKinds(this.game);
-    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
+    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('hermit') ? ROLES.peak : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
   }
 
   find(id) {
@@ -558,7 +589,8 @@ export class Training {
     const watch = (n) => ev.on(n, (e) => this._event(n, e));
     for (const n of ['player:parry', 'player:block', 'player:perfectDodge', 'player:flurry', 'player:flurryEnd', 'player:hurt', 'player:streak',
       'player:guardBreak', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
-      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
+      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'combat:flash',
+      'player:guardOpen', 'player:lastBreath', 'player:dodge', 'world:impact']) watch(n);
   }
 
   _event(n, e) {

@@ -1346,11 +1346,12 @@ export class DuelBrain {
   /**
    * The cover between him and the hero for a line of the Void (a bolt, the pull, the grip; ADR-107),
    * or null. The cover answers for the hero: a bolt blasts it, the pull drags it down toward him, the
-   * grip crushes it.
+   * grip crushes it. A beat marked `wind` (ADR-138, the One-Blow Hermit's line blows: a fifth optional
+   * field; other bosses' beats do not carry it) is stopped the same way: the cover takes T.world.wind.
    */
   _coverFor(b, s) {
     const D = b.def, d = this.d;
-    if (!(D.bolt || D.pull || D.grip) || !s || !this._inZone(D.zone, s)) return null;
+    if (!(D.bolt || D.pull || D.grip || D.wind) || !s || !this._inZone(D.zone, s)) return null;
     const W = d.game.world?.destructibles, p = d.game.player?.position;
     if (!W?.coverAt || !p) return null;
     const c = W.coverAt(d.position.x, d.position.z, p.x, p.z, 0.2);
@@ -1363,7 +1364,7 @@ export class DuelBrain {
       o.dx = c.x - d.position.x;
       o.dz = c.z - d.position.z;
       o.src = W.swing();
-      W.strike(c.x, c.z, 0.2, D.grip ? WT.grip ?? DUEL_WORLD.grip : WT.bolt ?? DUEL_WORLD.bolt, o);
+      W.strike(c.x, c.z, 0.2, D.grip ? WT.grip ?? DUEL_WORLD.grip : D.wind ? WT.wind ?? DUEL_WORLD.bolt : WT.bolt ?? DUEL_WORLD.bolt, o);
     }
     return c;
   }
@@ -1376,7 +1377,7 @@ export class DuelBrain {
   _worldBlow(b) {
     const d = this.d, w = d.game.world, z = b.def.zone;
     const W = w?.destructibles;
-    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || (d.position.y > 0.6 && !b.def.air)) return;
+    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || (b.def.wind && b.cover) || (d.position.y > 0.6 && !b.def.air)) return;
     const WT = this.T.world ?? DUEL_WORLD;
     const heavy = z.kind === 'ring' || !!b.def.ring || !!b.def.knockdown;
     const power = ((b.def.damage ?? 12) / (WT.per ?? DUEL_WORLD.per)) * (b.def.tell === TELL.RED ? WT.red ?? DUEL_WORLD.red : 1);

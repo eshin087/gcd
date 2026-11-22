@@ -233,6 +233,17 @@ export const GUARD = Object.freeze({
   black: { openDur: 0.8, push: 2.4 },
 });
 
+/**
+ * A LETHAL blow (ADR-139; `hit.lethal` on player.takeHit, the One-Blow Hermit's): what lands takes
+ * everything, with one second chance the hero buys back with flasks. Unanswered with health at or
+ * above `whole` of max: LAST BREATH (health down to `leave`, thrown `throw` m, knocked down); below it:
+ * dead. A held guard (white, blue, black) with at least `guardNeed` of the meter is SHATTERED: no
+ * health lost, the whole meter gone, knocked open GUARD.black.openDur s, pushed `guardPush` m; with
+ * less guard, or a guard or parry against a red blow, it is as no answer. A parry, a roll, a perfect
+ * dodge answer it as any blow. `hit.lethal: true` takes these numbers; an object overrides fields.
+ */
+export const LETHAL = Object.freeze({ whole: 0.5, leave: 1, throw: 10, guardNeed: 0.5, guardPush: 5 });
+
 /** Attacker posture (enemy "break" meter, shown under the boss HP bar). */
 export const POSTURE = Object.freeze({
   parry: { normal: 26, blue: 48 }, // posture damage dealt to the attacker by a parry
