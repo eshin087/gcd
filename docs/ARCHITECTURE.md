@@ -2696,8 +2696,9 @@ section is used up as the piece's structure runs out.
 - A piece of the rigid batch: `MeshBricks` (`piece.bricks`, built with the pieces from the source's
   `userData.batchRun` and the vertex counts of the geometries it was merged from, its parts): a
   set-back brick's corners are moved in the batch's positions, a folded one's three indices set to
-  the first (both buffers `DynamicDrawUsage`, uploaded by range); `reset()` copies its runs back. Not
-  built with `?nobatch` (those pieces then only chip as before). The shadow mesh keeps the whole shape.
+  the first (both buffers `DynamicDrawUsage`, uploaded by range); `reset()` copies its runs back. Only
+  made in a level built with bites on (without them the batch's buffers stay static, as before), and
+  not with `?nobatch` (those pieces then only chip). The shadow mesh keeps the whole shape.
 - Each brick falls as one letter of what it was drawn in (`_drop`: a leaf, a splinter, a digit for
   prop art; the leaves' and wood's dim hues) from its own centre, from the debris budget; every
   `litter` 3rd leaves a mark lying under it (`scars.rubble`) until the reset; the splinter spray of
