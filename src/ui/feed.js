@@ -1,3 +1,4 @@
+import { line as rewardLine } from '../game/rewards.js';
 import { num } from './dom.js';
 import { bossNames } from './bossName.js';
 
@@ -188,6 +189,11 @@ export class CombatFeed {
     });
     on('player:noFlask', () => log('Your flask is empty.', 'warn', 'noFlask', 1.5));
     on('player:died', () => log('You died.', 'warn'));
+    // a fixed reward learned on a victory (ADR-140; game/rewards.js)
+    on('reward:granted', (d) => {
+      const t = rewardLine(d.id);
+      if (d.first && t) log(t, 'combat');
+    });
 
     // dragon
     on('dragon:hurt', (d) => this.hurts.push({ damage: d.damage, part: d.part, crit: !!d.crit, heavy: false }));
