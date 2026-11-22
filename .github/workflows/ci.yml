@@ -1,19 +1,25 @@
 name: CI
 
+# Pull requests only. `main` is protected (this check required, the branch up to date, squash or
+# rebase merges, admins included), so a merge puts on `main` exactly the tree this run tested: a
+# second run on the push to `main` re-checked a known result and doubled the minutes of every merge.
 on:
-  push:
-    branches: [main]
   pull_request:
 
 # A new push to a PR cancels that PR's run still in progress (only the last commit's result counts).
-# Runs on main are keyed by commit, so they never cancel each other.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.sha }}
+  group: ci-${{ github.event.pull_request.number }}
   cancel-in-progress: true
+
+# The job only reads the code: its token gets no write access to the repo.
+permissions:
+  contents: read
 
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    # A normal run takes about 12 minutes; a hung test stops here, not at GitHub's 6 hour default.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
