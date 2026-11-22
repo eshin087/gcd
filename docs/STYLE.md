@@ -1001,9 +1001,9 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
-| `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | none yet (a draws) |
-| `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair | none yet (a draws) |
-| `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | none yet (a draws) |
+| `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
+| `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair | **a** |
+| `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every

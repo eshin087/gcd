@@ -4125,8 +4125,9 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   `dragon:sheath {state}` drives the sound (a breath that cuts to silence, the music ducked, the click).
 - **Consequences:** a felled stalk never cues, never hurts and never holds up a blow (sheath.mjs WORLD,
   PACE: 0 conflicts). His body is drawn through the wyrm's art path (toDragonLook with his own spec),
-  three bodies behind `?sheathLook=a|b|c`, the cut behind `?drawCut=a|b`; none is in `PICKED` until the
-  owner picks from the sheets.
+  three bodies behind `?sheathLook=a|b|c`, the cut behind `?drawCut=a|b`. The owner's picks (2026-11-22,
+  from the sheets: "keep the recommended"): `a` for the body, the cut and the grove's light; the others
+  stay behind their switches.
 
 ## ADR-146 — One Breath: the first fixed reward, on the smallest store the technique system can read (2026-11-22)
 

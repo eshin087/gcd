@@ -19,8 +19,8 @@ Sixty-one pieces of work since 0.4.0:
   hero learns a draw-slash: guard, then hold heavy (on touch: slide from block onto heavy); release to cut
   five metres in a blink; released just before a foe's white or heavy blow lands, it beats the blow aside.
   The engine gains optional beat fields (`draw`, `stopOn`, a move's `recoverOpen`) and takeHit's
-  `breaksGuard`; the world's `light` pieces. Three bodies, two cuts and three lights wait for the owner's
-  pick behind `?sheathLook=`, `?drawCut=`, `?grove=`. `tests/integration/sheath.mjs`.
+  `breaksGuard`; the world's `light` pieces. The owner picked the recommended body, cut and light;
+  the other options stay behind `?sheathLook=`, `?drawCut=`, `?grove=`. `tests/integration/sheath.mjs`.
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now

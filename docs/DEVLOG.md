@@ -39,7 +39,10 @@ his damage bands. No `look.js` (nothing is dressed by phase). The PACE defender 
 them made every phase as slow as the caught recoils). One Breath reuses the hero's iai coil (the right
 hip), as the planning session's addendum asked.
 
-**Next / open.** The owner's picks from the sheets (`?sheathLook=`, `?drawCut=`, `?grove=`); the score
+**The owner's picks (2026-11-22, from the sheets):** the recommended option of each: `?sheathLook=a`,
+`?drawCut=a`, `?grove=a`; the others stay behind their switches.
+
+**Next / open.** The bamboo crowds the frame at the game camera (the owner's eye); the score
 (borrowed tracks); a human on the phone through the draw; One Breath's balance bot on Shen Hui (not run).
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
