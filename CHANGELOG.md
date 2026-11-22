@@ -4,8 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-one pieces of work since 0.4.0:
-- **Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage** (2026-11-22,
+Sixty-two pieces of work since 0.4.0:
   ADR-135). *Added:* in the Skybreak Ring, **the sign**: from his second form, Tian Lei raises two
   fingers to his brow, a snap of light, and he is gone and behind you (or at your left, your right and
   then behind you in Thunder Ascension's Three Signs), the blow still to come: when the hand goes up,
@@ -20,6 +19,14 @@ Sixty-one pieces of work since 0.4.0:
   him):* a boss's beat can be a counter stance and a vanish can wait for its sign; the other bosses are
   unchanged. Kept behind a switch for the owner's pick: the orb's look (`?ascOrb=a` a sun, `b` a
   lantern). Nobody has played it yet.
+  felled forest round the Obsidian Throne's crater (the same straight log again and again, laid in a
+  starburst) is gone. In its place lies what those who came for the Starless Lord left behind: graves
+  of swords stuck in the earth, spears with a torn red banner, wanderers' cairns with a straw hat and
+  a sword, wrecked carts on their sides, a few steles on stone turtles and split boulders, each one
+  built differently, all in the dragon look. Faces turn toward the camera, what fell lies the way the
+  blast threw it, and nothing tall stands between the camera and the duel. About 70 of them within
+  reach break where they stand and the wooden ones burn (stone leaves rubble). The owner's pick of three rendered options
+  (`?outskirts=a` a shrine, `b` the star's debris, `m` all of them, `0` the felled forest).
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now
