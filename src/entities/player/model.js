@@ -149,6 +149,8 @@ export function installLean(root, scale = HERO_SCALE) {
     this.matrix.compose(this.position, this.quaternion, this.scale);
     if (lean.on) {
       const e = this.matrix.elements;
+      // (lean.scale is read live: a boss whose drawn size changes mid-fight sets it, the Clockwork Marshal)
+      const scale = lean.scale;
       for (let c = 0; c < 12; c += 4) {
         e[c] *= scale;
         e[c + 1] *= scale;
