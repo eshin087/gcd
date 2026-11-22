@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { DIM } from './model.js';
 import { CLASH, clashBurst } from '../../combat/clashFx.js';
 import { cutBurst } from '../../combat/cutFx.js';
+import { impactK } from '../../combat/impact.js';
+import { stampHit } from '../../combat/impactStamp.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
 // cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
@@ -556,7 +558,7 @@ export class PlayerFx {
    */
   contact(p, tier, C, crit = false, k = 0) {
     if (!p || !this.add) return 0;
-    const o = this._co ?? (this._co = { tier, cut: { x: 0, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 0 }, hilt: null, crit, power: 0, low: false });
+    const o = this._co ?? (this._co = { tier, cut: { x: 0, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 0 }, hilt: null, crit, power: 0, low: false, target: null });
     o.tier = tier;
     o.crit = !!crit;
     o.power = k;
@@ -570,6 +572,16 @@ export class PlayerFx {
     }
     const sw = this.rig?.sword;
     o.hilt = sw?.matrixWorld ? (this._hiltV ?? (this._hiltV = new THREE.Vector3())).set(0, 0, DIM.guard).applyMatrix4(sw.matrixWorld) : null;
+    // the weight of the hit beyond the cut's line (combat/impact.js): the stamp printed in the letter
+    // grid, the struck body's letters taking the blow. Each behind its own switch; neither may throw
+    o.target = this.game.dragon ?? null;
+    try {
+      const ks = impactK('stamp'), kr = impactK('ripple');
+      if (ks > 0) stampHit(this.game, p.x, p.y, p.z, o, ks);
+      if (kr > 0) this.game.fx?.ripple?.hit?.(p.x, p.y, p.z, o, kr);
+    } catch (err) {
+      console.error('[impact] the contact failed', err);
+    }
     return cutBurst(this.game, p.x, p.y, p.z, o);
   }
 

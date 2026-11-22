@@ -11,6 +11,7 @@ import { WYRM_FACES, wyrmFace } from '../entities/dragon/heads.js';
 import { WYRM_LOOKS, wyrmLookId } from '../entities/dragon/looks.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
+import { IMPACT } from '../combat/impact.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 
@@ -1005,6 +1006,25 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.shudBtn.title = 'a struck duelist flickers along the cut through the freeze (on / off)';
+    // the weight of a landed cut, piece by piece (combat/impact.js; ?impact=): on / off each
+    const imp = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'impact', imp).title = 'the weight of a landed cut, piece by piece (combat/impact.js)';
+    const impGrid = el('div', 'lab-grid', null, imp);
+    impGrid.style.flex = '1';
+    const IMPACT_TIPS = {
+      stamp: 'the hit as a short ASCII animation printed at the contact',
+      ripple: 'the letters of the struck body take the blow',
+      react: 'the body answers by where it was hit',
+      thump: 'the low end of a heavy hit, a short dip of the music',
+    };
+    this.ui.impactBtns = IMPACT.pieces.map((s) => {
+      const b = button(impGrid, s, () => {
+        IMPACT.on[s] = !IMPACT.on[s];
+        this._syncCutBtns();
+      });
+      b.title = IMPACT_TIPS[s] ?? s;
+      return { s, el: b };
+    });
     // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
     // cost, Lab only)
     const swr = el('div', 'lab-row', null, body);
@@ -1103,6 +1123,7 @@ export class Lab {
     for (const { s, el: b } of this.ui.cutBtns ?? []) setClass(b, 'on', cutStyle() === s);
     const d = this.game.dragon;
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
+    for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
   }
