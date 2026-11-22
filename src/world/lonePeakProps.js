@@ -17,14 +17,14 @@ export const GRANITE = [0.08, 0.084, 0.098];
 /** The ledge's worn plates: a shade warmer and flatter than the standing stone (the ground stays calm). */
 export const LEDGE = [0.165, 0.163, 0.168];
 /** Where forty years of blows have polished and crushed the stone: a pale bruise round each dent. */
-const BRUISE = [0.3, 0.295, 0.28];
+const BRUISE = [0.42, 0.41, 0.385];
 const WOOD = [0.075, 0.055, 0.042];
 const OLD_WOOD = [0.065, 0.052, 0.044];
 const GABLE = [0.13, 0.118, 0.105];
 const THATCH = [0.07, 0.057, 0.042];
 const CLAY = [0.11, 0.065, 0.045];
 const CHAR = [0.05, 0.045, 0.042];
-const BARK = [0.12, 0.092, 0.075];
+const BARK = [0.095, 0.078, 0.07];
 /** Pine needles: dark, a little blue (the dawn light tints them). */
 const NEEDLES = [
   [0.055, 0.115, 0.075],
@@ -194,7 +194,7 @@ export function buildStrikingStone(rng, x, z, { h, w = 1.05, d = 0.82, face = 0,
     const pts = [[u, v]];
     for (let s = 0; s < steps; s++) {
       a += range(rng, -0.55, 0.55);
-      const l = range(rng, 0.17, 0.32) * (deep > 1.2 ? 1.25 : 1);
+      const l = range(rng, 0.2, 0.36) * (deep > 1.2 ? 1.25 : 1);
       u += Math.cos(a) * l;
       v += Math.sin(a) * l;
       pts.push([u, v]);
@@ -217,13 +217,13 @@ export function buildStrikingStone(rng, x, z, { h, w = 1.05, d = 0.82, face = 0,
       dz -= depth * k;
       dentK[i] = k;
     }
-    rimK[i] = Math.max(0, 1 - Math.abs(r - R * 1.05) / (R * 0.8));
+    rimK[i] = Math.max(0, 1 - Math.abs(r - R * 1.1) / (R * 0.9));
     if (r > R && r < R * 1.3) dz += 0.012; // a lip of crushed stone
     let dc = 1e9;
     for (const c of cracks) for (let s = 1; s < c.length; s++) dc = Math.min(dc, segDist(u, v, c[s - 1], c[s]));
-    const ck = Math.max(0, 1 - dc / 0.095);
+    const ck = Math.max(0, 1 - dc / 0.13);
     if (ck > 0 && r > R * 0.7) {
-      dz -= 0.035 * ck;
+      dz -= 0.045 * ck;
       crackK[i] = ck;
     }
     p.setZ(i, p.getZ(i) + dz);
@@ -241,8 +241,8 @@ export function buildStrikingStone(rng, x, z, { h, w = 1.05, d = 0.82, face = 0,
     r += (BRUISE[0] - r) * rk;
     gg += (BRUISE[1] - gg) * rk;
     b += (BRUISE[2] - b) * rk;
-    const dk = 1 - 0.65 * dentK[i]; // the pit: dark at its heart
-    const ck = 1 - 0.85 * crackK[i]; // the cracks: dark lines
+    const dk = 1 - 0.8 * dentK[i]; // the pit: dark at its heart
+    const ck = 1 - 0.9 * Math.min(1, crackK[i] * 1.4); // the cracks: dark lines
     col.setXYZ(i, r * dk * ck, gg * dk * ck, b * dk * ck);
     ao.setX(i, ao.getX(i) * (1 - 0.3 * dentK[i]));
     ed.setX(i, 0.5 * rk);
@@ -308,8 +308,10 @@ export function buildBentPine(rng, x, z, s, wind) {
     const c = new THREE.Vector3(base.x + Math.cos(a) * reach, base.y + range(rng, 0.0, 0.35) * s, base.z + Math.sin(a) * reach);
     if (!top) boughs.push(limb(base, c, 0.09 * s, 0.05 * s, 4));
     const rr = (top ? range(rng, 1.05, 1.45) : range(rng, 0.7, 1.15)) * s * (top ? 1 : 1.15 - 0.35 * t);
-    const pad = prep(new THREE.IcosahedronGeometry(1, 1));
-    lumpy(pad, 0.42, 1.7, seed + k * 3.1);
+    // (an icosahedron of 20 faces: the screen grid prints a pad as a few letters' worth of tone; finer
+    // pads cost the frame four times the vertices for nothing)
+    const pad = prep(new THREE.IcosahedronGeometry(1, 0));
+    lumpy(pad, 0.3, 1.7, seed + k * 3.1);
     pad.scale(rr * 1.35, rr * range(rng, 0.2, 0.27), rr * 0.95);
     pad.rotateY(-a);
     pad.translate(c.x + Math.cos(a) * rr * 0.3, c.y + rr * 0.12, c.z + Math.sin(a) * rr * 0.3);
