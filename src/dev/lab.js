@@ -1080,6 +1080,23 @@ export class Lab {
         return b;
       });
     }
+    // the sprite trial (render/spriteTrial.js, ?sprites=): the hero and the wyrm as flat drawings, live
+    if (typeof this.game.setSprites === 'function') {
+      const sr = el('div', 'lab-row', null, body);
+      el('span', 'lab-lbl', 'sprites', sr).title = 'the sprite trial (?sprites=): the hero and the wyrm as 2D drawings on cards (3d = today)';
+      const sg = el('div', 'lab-grid', null, sr);
+      sg.style.flex = '1';
+      const sb = [null, ...(this.game.spriteModes ?? [])].map((m) => {
+        const b = button(sg, m ?? '3d', () => {
+          const now = this.game.setSprites(m);
+          for (const o of sb) o.el.classList?.toggle('on', o.m === now);
+          this._status(`sprites: ${now ?? 'off'}`, 'ok');
+        });
+        b.title = m ? `?sprites=${m}` : 'the 3D hero and wyrm (no sprites)';
+        if ((this.game.sprites?.mode ?? null) === m) b.classList?.add('on');
+        return { m, el: b };
+      });
+    }
     // the flurry (player/flurry.js): a perfect dodge's answer at a streak of N, started on the boss
     // from where the hero stands; `art` pins the last blow's look (flurry.js ARTS) for the next ones
     const fr = el('div', 'lab-row', null, body);
