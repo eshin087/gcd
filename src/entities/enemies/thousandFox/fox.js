@@ -102,6 +102,11 @@ export class ThousandFox extends Duelist {
       return d._mantleForced;
     };
     dbg.liveClones = () => d.clones.live;
+    // (Training, between situations: no self and no pearl left in the field)
+    dbg.tidy = () => {
+      d.clones.popAll('debug');
+      if (!d.pearl?.charging) d.pearl?.reset();
+    };
   }
 
   reset() {

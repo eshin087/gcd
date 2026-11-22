@@ -1147,7 +1147,41 @@ async function scenarioLooks() {
   LS.setLook('foxfire', null);
 }
 
+// ================================================================== scenario: cost (opt-in: the selves' CPU)
+async function scenarioCost() {
+  out('\n== scenario COST (opt-in: what five paper selves cost the frame on the CPU) ==');
+  const G = build();
+  const d = G.game.dragon;
+  duel(G, { dist: 4, form: 3 });
+  G.game.player.debug.god = true;
+  const time = (n) => { const t0 = performance.now(); for (let i = 0; i < n; i++) G.tick(DT); return (performance.now() - t0) / n; };
+  time(60);
+  const none = time(300);
+  d.clones.spawn(5, 'test');
+  time(60);
+  let poseT = 0;
+  const pose = d.clones.pose.bind(d.clones);
+  d.clones.pose = (dt) => { const t0 = performance.now(); pose(dt); poseT += performance.now() - t0; };
+  const C0 = d.clones.list[0];
+  const T = { anim: 0, mw: 0, gs: 0 };
+  for (const c of d.clones.list) {
+    const au = c.anim.update.bind(c.anim);
+    c.anim.update = (dt) => { const t0 = performance.now(); au(dt); T.anim += performance.now() - t0; };
+    const um = c.root.updateMatrixWorld.bind(c.root);
+    c.root.updateMatrixWorld = (f) => { const t0 = performance.now(); um(f); T.mw += performance.now() - t0; };
+  }
+  const five = time(300);
+  out(`     anim.update ${(T.anim / 300).toFixed(2)} ms, updateMatrixWorld ${(T.mw / 300).toFixed(2)} ms a frame (5 selves)`);
+  const au = d.anim.update.bind(d.anim);
+  let ba = 0;
+  d.anim.update = (dt) => { const t0 = performance.now(); au(dt); ba += performance.now() - t0; };
+  time(120);
+  out(`     his own anim.update ${(ba / 120).toFixed(2)} ms a frame`);
+  out(`     a frame: ${none.toFixed(2)} ms with no self, ${five.toFixed(2)} ms with ${d.clones.live}; their poses ${(poseT / 300).toFixed(2)} ms a frame`);
+}
+
 const S = {
+  cost: scenarioCost,
   levels: scenarioLevels,
   data: scenarioData,
   timing: scenarioTiming,
@@ -1163,7 +1197,7 @@ const S = {
   smoke: scenarioSmoke,
 };
 // (smoke is opt-in: a minute per phase of a fight, for a quick look)
-const OPT_IN = new Set(['smoke']);
+const OPT_IN = new Set(['smoke', 'cost']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }
@@ -1171,7 +1205,7 @@ for (const k of list) {
 }
 const notCat = [...EMITTED].filter((n) => !CATALOGUE.has(n) && n !== 'state');
 assert(!notCat.length, `every event this level emits is in the catalogue ${JSON.stringify(notCat)}`);
-out(`\nconsole errors/warnings: ${errors.length}${errors.length ? '\n  ' + [...new Set(errors)].slice(0, 12).join('\n  ') : ''}`);
+out(`\n\nconsole errors/warnings: ${errors.length}${errors.length ? '\n  ' + [...new Set(errors)].slice(0, 12).join('\n  ') : ''}`);
 if (errors.length) fails++;
 out(fails ? `\nFOX: ${fails} FAILED` : '\nFOX: ALL PASSED');
 process.exit(fails ? 1 : 0);

@@ -19,6 +19,17 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-21',
+        title: 'A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox',
+        notes: [
+          'A new level, the Foxfire Terrace: a round terrace on a moonlit hill shrine, ringed by stone lanterns, stone foxes and paper charms. Pick it on the title screen.',
+          'Its boss is Wen Yao, the Thousand-Body Fox, a masked swordsman who tears paper copies of himself off his body. They cut one at a time with the same white cue as his blows, and one cut pops a copy.',
+          'The real one is always the one you are locked on to: the only one with a shadow, a steel blade and, later, the fire.',
+          'He charges a pearl over his blade, fed by every copy still standing, and bats it at you. Pop copies to make it smaller, cut him twice while he charges to burst it in his hand, or roll out of where it lands.',
+          'In his second phase he trades places with his copies and they all cut in turn around you. In the last he wears a fox of fire that sets the charm posts and the grass alight.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'The hero looks the same on every screen',
         notes: [
           'The wanderer is drawn with the same bold letters on a phone, a laptop and a large monitor, and when the camera pulls in or out. On large screens he used to turn into a mesh of tiny ones.',

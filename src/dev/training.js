@@ -423,6 +423,8 @@ export class Training {
     } catch (err) {
       console.error('[training] world.restore failed', err);
     }
+    // (a boss's own things left in the field by the last situation: the fox's paper selves, his pearls)
+    d?.debug?.tidy?.();
     d?.debug?.setAI?.(!!s.ai);
     if (p?.debug) {
       p.debug.god = s.god !== false;

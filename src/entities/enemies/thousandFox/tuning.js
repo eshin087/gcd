@@ -125,10 +125,16 @@ export const TUNING = {
     // the fairness guard: two cues needing different answers never within `sep` s (+ `margin`): a
     // blade's blow waits at the cock (maxHold s at most a blow), a called strike waits (maxDelay)
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
-    // what tests/integration/fox.mjs PACE asserts (the duel.mjs harness: a steady defender, the hero
-    // roaming 2.5 - 9 m; the paper selves' cuts count as his cues). Set from his own measurements:
-    // see the note under `meter` below.
-    meter: { ramp: [1, 1.0, 0.95], rampMean: [1, 1.05, 1.0], minRate: [50, 60, 66], maxGap: [4.5, 4.2, 4.2] },
+    // what tests/integration/fox.mjs PACE asserts (duel.mjs's PACE: a steady defender in god mode, the
+    // hero roaming 2.5 - 9 m, on the real terrace; the paper selves' cuts count as his cues). Measured
+    // 2026-11-21 on five seeds x 120 s (4242, 7, 99, 1337, 2024): P1 63.7 - 68.3 cues a minute (mean
+    // 65.8), P2 80.6 - 89.5 (84.2), P3 80.1 - 84.9 (83.5); P2 / P1 at least 1.18 per seed, 1.28 in the
+    // mean; P3 / P2 0.95 - 1.02 per seed, 0.99 in the mean; longest gap 3.79 / 2.87 / 3.12 s; 0
+    // conflicts. Phase 3 is not busier than phase 2 (the 0.42 s floor, the long casts: the Round, the
+    // black pearl, the Pearl): it asks more instead, 15 % of its cues a dodge against phase 2's 8 %. The
+    // margins as Shen Hui's: about 8 % under the worst seed's ramp, 4 % under the mean's, 8 % under the
+    // slowest seed's rate, half a second over the longest gap.
+    meter: { ramp: [1, 1.08, 0.87], rampMean: [1, 1.22, 0.95], minRate: [58, 74, 73], maxGap: [4.3, 3.4, 3.6] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },

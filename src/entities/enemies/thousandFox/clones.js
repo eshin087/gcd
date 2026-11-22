@@ -54,6 +54,7 @@ export class FoxClones {
     this._from = { x: 0, z: 0 };
     this._extra = { around: true };
     this._v = d._v.clone();
+    this._frameN = 0;
     this._clip = null; // the paperCut clip (realised once: its windup is fixed)
     this._cut = null; // that realised move (its beat's impact / end)
     this.reset();
@@ -209,6 +210,8 @@ export class FoxClones {
     c.round = false;
     c.handle = null;
     c.fade = 1;
+    c.acc = 0;
+    c.sx = undefined;
     c.root.position.set(x, 0, z);
     c.root.visible = true;
     c.pilot.yaw = yaw;
@@ -585,6 +588,7 @@ export class FoxClones {
    */
   pose(dt) {
     const d = this.d, H = d.hurtSpheres, L = d.lean, cam = this.game.camera?.position;
+    this._frameN = (this._frameN + 1) | 0;
     for (const c of this.list) {
       if (c.state === SEATED) {
         this._poseSeated(c, dt, L, cam);
@@ -596,6 +600,7 @@ export class FoxClones {
       c.yaw = wrapAngle(fin(c.yaw));
       pl.yaw = c.yaw;
       root.rotation.y = c.yaw;
+      let cutting = false;
       if (c.state === WIND || c.state === STRIKE) {
         // its cut's clip, on its own clock: a windup the fairness guard lengthened (or a Round cut's
         // shorter one) holds at the cock (or skips into it), as his own held blows do
@@ -607,46 +612,64 @@ export class FoxClones {
         else if (h > 0 && elapsed < cockT + h) ct = cockT;
         pl.atk.def = this._clip;
         pl.stateT = pl.animT = Math.max(0, ct);
+        cutting = true;
       } else if (c.state === RECOVER && c.t < (this._cut ? this._cut.end - this._cut.beats[0].impact : 0.6)) {
         const B = this._cut?.beats?.[0];
         pl.atk.def = this._clip;
         pl.stateT = pl.animT = (B ? B.impact : 0.62) + 0.08 + c.t;
-      } else {
-        if (pl.atk.def) {
-          pl.atk.def = null;
-          c.anim.play('loco', 0.18);
-        }
+        cutting = true;
+      } else if (pl.atk.def) {
+        pl.atk.def = null;
+        c.anim.play('loco', 0.18);
       }
-      // the lean: his own (the camera's)
-      c.lean.k = L.k;
-      c.lean.dx = L.dx;
-      c.lean.dz = L.dz;
-      c.lean.on = false;
-      c.anim.update(dt);
-      // two hurt spheres from the upright body
-      const r = c.rig, v = this._v;
-      r.chest.getWorldPosition(v);
+      // the cost (ADR-131): the hero's animator is ~1 ms a rig, so a self that only walks is posed
+      // every other frame (half of them one frame, half the next); one that cuts, tears free or plays
+      // the Round every frame. Between its poses its spheres move with its root.
+      c.acc = (c.acc ?? 0) + dt;
+      const full = cutting || c.round || c.fade > 0 || c.state === IN || ((c.i + this._frameN) & 1) === 0 || !(c.sx !== undefined);
       const a = c.hs[0], b = c.hs[1];
-      a.x = v.x;
-      a.y = v.y + 0.05;
-      a.z = v.z;
-      r.pelvis.getWorldPosition(v);
-      b.x = v.x;
-      b.y = v.y;
-      b.z = v.z;
-      c.lean.on = true;
-      root.updateMatrixWorld(true);
+      if (full) {
+        c.lean.k = L.k;
+        c.lean.dx = L.dx;
+        c.lean.dz = L.dz;
+        c.lean.on = false;
+        c.anim.update(c.acc);
+        c.acc = 0;
+        // two hurt spheres from the upright body (the animator left its world matrices upright)
+        const r = c.rig, v = this._v;
+        r.chest.getWorldPosition(v);
+        a.x = v.x;
+        a.y = v.y + 0.05;
+        a.z = v.z;
+        r.pelvis.getWorldPosition(v);
+        b.x = v.x;
+        b.y = v.y;
+        b.z = v.z;
+        c.lean.on = true;
+        // (the drawn matrices: the renderer's own scene update leans them before the frame is drawn)
+        root.updateMatrix();
+        c.sx = c.x;
+        c.sz = c.z;
+        // its materials: the glyph scale at its distance, tearing in (dissolve), no warn glow
+        if (cam) setHeroGlyphScale(c.mats, Math.hypot(cam.x - c.x, cam.y - 1.1, cam.z - c.z));
+        for (const m of c.mats) {
+          const u = m.uniforms;
+          if (!u) continue;
+          if (u.uDissolve) u.uDissolve.value = c.fade * 0.85;
+          if (u.uFlash) u.uFlash.value = 0;
+          if (u.uWarn) u.uWarn.value.w = 0;
+        }
+      } else {
+        const mx = c.x - c.sx, mz = c.z - c.sz;
+        a.x += mx;
+        a.z += mz;
+        b.x += mx;
+        b.z += mz;
+        c.sx = c.x;
+        c.sz = c.z;
+      }
       if (Number.isFinite(a.x + a.y + a.z)) H.push(a);
       if (Number.isFinite(b.x + b.y + b.z)) H.push(b);
-      // its materials: the glyph scale at its distance, tearing in (dissolve), no warn glow
-      if (cam) setHeroGlyphScale(c.mats, Math.hypot(cam.x - c.x, cam.y - 1.1, cam.z - c.z));
-      for (const m of c.mats) {
-        const u = m.uniforms;
-        if (!u) continue;
-        if (u.uDissolve) u.uDissolve.value = c.fade * 0.85;
-        if (u.uFlash) u.uFlash.value = 0;
-        if (u.uWarn) u.uWarn.value.w = 0;
-      }
     }
   }
 
