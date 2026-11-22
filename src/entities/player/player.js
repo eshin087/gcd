@@ -131,7 +131,16 @@ export const TUNE = {
   // strike's window ([light, heavy]), + hit ([light, heavy or crit]) on a landed cut, held through the
   // freeze and cooling in `fall` s of game time; `line` = how much of the gain the ink and rim lines
   // take; `halo` = how much the flare lifts the dot halo
-  bladeFlare: { strike: [0.12, 0.2], hit: [0.5, 0.75], fall: 0.12, line: 0.5, halo: 0.6 },
+  // (2026-11-21, ADR-130: `strike` 0.12 / 0.2 -> 4.2 / 4.6 with the dark blade below: the steel is
+  // plain at rest and white through the cut, as bright there as the old blade always was. `cool` =
+  // 1/s the light leaves the steel once nothing lights it)
+  bladeFlare: { strike: [4.2, 4.6], hit: [0.5, 0.75], fall: 0.12, line: 0.5, halo: 0.6, cool: 30 },
+  // how bright the steel is at rest, against HERO_INK.blade (model.js): `line` its ink and rim lines,
+  // `fill` its letters, `far` their gain at the game camera, `halo` the dot halo and the streak at the
+  // point (0: none). The flare above multiplies these, so a dim blade still lights when it cuts.
+  // The owner's pick of three (ADR-130): dark steel, drawn like his armour, until it cuts. All 1 was
+  // the white blade with a glow that he carried everywhere
+  bladeLook: { line: 0.32, fill: 0.6, far: 0.5, halo: 0 },
 };
 
 const CONTROL = new Set(['explore', 'bossIntro', 'boss']);
@@ -166,7 +175,7 @@ export class Player {
     // outfit's weapon
     this.look = getLook(game.heroLook)?.id ?? DEFAULT_LOOK;
     const sword = swordFromUrl(), lo = HERO_LOOKS[this.look].loadout;
-    this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo);
+    this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo, { self: true });
     game.onModelBuilt?.('player'); // (see Dragon: the headless sims reseed their random stream here)
     tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
     this.object3d = this.rig.root;
@@ -262,6 +271,7 @@ export class Player {
     this.viewDist = 36; // camera → hero distance (m), sampled each frame
     this.bladeFar = 1; // 0 close-up … 1 game camera: how much the blade self-lights
     this.bladeFlare = 0; // 0..0.75: a landed cut's flare of the steel (TUNE.bladeFlare; any area may raise it)
+    this.bladeHot = 0; // 0..1: how lit the steel is by what he is doing (a strike, the charge, the flurry, the plunge)
     this._ghostSegs = new Float32Array(16 * 6);
     // the afterimage's figure: points on his body as it was last drawn (world; _sampleBody)
     this._ghostPts = new Float32Array(GHOST_PTS * 3);
@@ -674,6 +684,7 @@ export class Player {
     this.guardHold = 0;
     this.flash = 0;
     this.bladeFlare = 0;
+    this.bladeHot = 0;
     this.burnGlow = 0;
     this.chipGuard = 0;
     this.dodgeN = -1;
@@ -715,7 +726,7 @@ export class Player {
     const U = this.game.U, saved = PART_UNIFORMS.map((k) => U[k]?.value?.map((v) => v.clone()) ?? null);
     let rig;
     try {
-      rig = buildHero(U, loadout);
+      rig = buildHero(U, loadout, { self: true });
     } finally {
       saved.forEach((a, i) => a && U[PART_UNIFORMS[i]].value.forEach((v, j) => a[j] && v.copy(a[j])));
     }
@@ -1572,6 +1583,28 @@ export class Player {
     if (t >= TUNE.bounceDur) this._toLoco(0.14);
   }
 
+  /**
+   * A held guard under a stream the attacker keeps on it (a beam's ticks: kiBeam.js): `cost` from the
+   * guard meter and no health, a slide of `push` m along (dx, dz) (unit, away from the source; it only
+   * tops the slide up), a short recoil. False (nothing changed) when the cost would empty the meter:
+   * the caller then lands the tick as a blow, which the player's own block answers (the guard opens).
+   */
+  streamBlock(cost, push, dx, dz) {
+    cost = Math.max(0, fin(cost));
+    if (!this.debug?.god && fin(this.guard) - cost <= 0) return false;
+    if (!this.debug?.god) {
+      this.guard = Math.max(0, fin(this.guard) - cost);
+      this.guardWait = Math.max(fin(this.guardWait), GUARD.regenDelay);
+    }
+    const kb = this.kb, v = Math.max(0, fin(push)) * TUNE.knockbackDecay, now = fin(kb.x) * fin(dx) + fin(kb.z) * fin(dz);
+    if (now < v) {
+      kb.x = fin(kb.x) + fin(dx) * (v - now);
+      kb.z = fin(kb.z) + fin(dz) * (v - now);
+    }
+    this.recoil = Math.max(fin(this.recoil), 0.45);
+    return true;
+  }
+
   _block(dmg, tell, attack, chip, nx, nz) {
     const g = this.game;
     // a blow costs guard and no HP (GUARD); a contact stream (the breath's ticks, a bullet) is no
@@ -1843,7 +1876,8 @@ export class Player {
     if (!this.alive || this.state === 'plunge' || this.state === 'dead' || this.state === 'lock' || this.state === 'flurry') return false;
     this.riposte.att = null;
     this._interrupt();
-    this.bladeLock = { att, meter: fin(L.start, 0.5), push: fin(L.push, 0.085), decay: fin(L.decay, 0.32), dur: fin(L.dur, 2.6), hold: fin(L.hold, 0.6), shown: -1 };
+    // (`dist`: the two close to it; a lock at range (a beam's head on the blade) gives its own)
+    this.bladeLock = { att, meter: fin(L.start, 0.5), push: fin(L.push, 0.085), decay: fin(L.decay, 0.32), dur: fin(L.dur, 2.6), hold: fin(L.hold, 0.6), dist: Math.max(0.5, fin(L.dist, TUNE.lockDist)), shown: -1 };
     const ap = att?.position, p = this.position;
     if (ap && Number.isFinite(ap.x + ap.z)) this.yaw = Math.atan2(ap.x - p.x, ap.z - p.z);
     this.object3d.rotation.y = this.yaw;
@@ -1920,7 +1954,7 @@ export class Player {
         const sl = (B.meter - B.slid) * TUNE.lockSlide;
         B.slid = B.meter;
         // (half the closing is the hero's: the attacker steps in the other half, brain.startLock)
-        const close = clamp((dist - TUNE.lockDist) * 0.5, -0.5, 0.5) * Math.min(1, dt * 9);
+        const close = clamp((dist - B.dist) * 0.5, -0.5, 0.5) * Math.min(1, dt * 9);
         p.x += fx * (sl + close);
         p.z += fz * (sl + close);
         this._collide();
@@ -3399,7 +3433,8 @@ export class Player {
       // the blade's dot halo: dim at idle, brighter while it glows (strikes, charge, crit)
       if (this.alive && this.object3d.visible !== false && !hidden && armed) {
         const bu = this.rig.materials.blade.uniforms;
-        this.fx.bladeHalo(dt, clamp((bu.uInkGlow.value - 0.16) * 0.8 + TUNE.bladeFlare.halo * this.bladeFlare, 0.25, 2), this.bladeFar);
+        const hk = TUNE.bladeLook.halo;
+        if (hk > 0) this.fx.bladeHalo(dt * Math.min(1, hk), clamp((bu.uInkGlow.value - 0.16) * 0.8 + TUNE.bladeFlare.halo * this.bladeFlare, 0.25, 2) * hk, this.bladeFar);
       }
     }
     // the violet gem: an always-on glow point, idle glints, a fast flicker while charging. Every
@@ -3529,13 +3564,31 @@ export class Player {
       // Part 17 is only the hero's sword (gear/wanderer.js M.blade / M.bladeTip; HERO_INK.bladeTip
       // writes it last). ABSOLUTE values every frame: another buildHero (the boss's, setLoadout) resets
       // the shared arrays; at g = 1 this writes exactly the HERO_INK base
+      // The steel is dark at rest (TUNE.bladeLook) and lit by what he does with it: a strike's window
+      // in full, the charge as it winds up, the flurry and the plunge's dive, a crit's window; the
+      // light is there at once and leaves in a few frames (bladeHot). It goes to his OWN part tables
+      // (uSelfPart*): no boss's rig reads them.
       const F = TUNE.bladeFlare, B = HERO_INK.bladeTip, P = B.part;
       const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.06 && a.t <= a.def.windup + a.def.active + 0.12;
-      const g = this.alive ? 1 + (inStrike ? (a.def.heavy ? F.strike[1] : F.strike[0]) : 0) + this.bladeFlare : 1;
+      let hot = inStrike ? 1 : 0;
+      if (st === 'charge') hot = Math.max(hot, clamp(this.chargeK, 0, 1));
+      else if (flurrying) hot = 1;
+      else if (plunging) hot = Math.max(hot, this.pl.phase >= PL.HANG && this.pl.phase <= PL.RIDE ? 1 : this.pl.phase === PL.FLIP ? 0.5 : 0);
+      if (a && a.def?.dash && (st === 'attack' || st === 'heavy') && !a.pending) {
+        hot = Math.max(hot, clamp(this.releaseK, 0, 1) * (1 - smoothstep(a.def.windup + a.def.active, a.def.windup + a.def.active + 0.3, a.t)));
+      }
+      if (this.critTimer > 0) hot = Math.max(hot, 0.5);
+      if (!Number.isFinite(hot)) hot = 0;
+      this.bladeHot = hot >= this.bladeHot ? hot : dt > 0 ? damp(this.bladeHot, hot, F.cool, dt) : this.bladeHot;
+      const heavyLit = st === 'charge' || flurrying || plunging || !!a?.def?.heavy;
+      const g = this.alive ? 1 + (heavyLit ? F.strike[1] : F.strike[0]) * this.bladeHot + this.bladeFlare : 1;
       if (Number.isFinite(g)) {
-        const U = this.game.U, lk = 1 + F.line * (g - 1), rl = B.rimLine ?? B.line;
-        const pf = U?.uHeroPartFill?.value?.[P], pi = U?.uHeroPartInk?.value?.[P], pr = U?.uHeroPartRim?.value?.[P];
-        if (pf) pf.x = (B.fillGain ?? 1) * g;
+        const U = this.game.U, BL = TUNE.bladeLook, lk = (1 + F.line * (g - 1)) * BL.line, rl = B.rimLine ?? B.line;
+        const pf = U?.uSelfPartFill?.value?.[P], pi = U?.uSelfPartInk?.value?.[P], pr = U?.uSelfPartRim?.value?.[P];
+        if (pf) {
+          pf.x = (B.fillGain ?? 1) * g * BL.fill;
+          pf.w = (B.farFill ?? 1) * BL.far;
+        }
         if (pi) pi.w = B.line[3] * lk;
         if (pr) pr.w = rl[3] * lk;
       }

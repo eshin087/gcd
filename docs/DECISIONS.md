@@ -3885,7 +3885,130 @@ ADR-092).
 - **Not done:** a stump is still one cut plane, not two halves of a split trunk; the falling crown is
   not broken by the blow; the Cinder Tree and the landmarks keep their own remains.
 
-## ADR-129 — Bites: a piece is the bricks it is drawn with, and a blow takes them where it struck (2026-11-21)
+## ADR-129 — A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant: a bare-handed duelist in three forms, his ki, a ring that is wrecked (2026-11-21)
+- **Context:** the owner: "lets build a saiyan level boss where phase 1 starts from normal saiyan, phase 2
+  is super saiyan, phase 3 is super saiyan 2. make the background the cell tournament arena and make it
+  feel like an anime epic battle. help me come up with the moves, combos, specials from the boss and use
+  opus to build this out". Planned by the lead (Fable), built by Opus agents in two waves, an
+  integration pass and a tuning pass (DEVLOG Session 69).
+- **An original character and place, in that spirit.** The lead would not put an existing series'
+  characters, names or arena into the game (ADR-116: a game of its own), and said so before anything was
+  built. So: TIAN LEI, THE LAST ASCENDANT, a bare-handed fighter who is beaten three times, each time in
+  a greater form (the Challenger; Golden Ascension; Thunder Ascension), on the SKYBREAK RING, a
+  tournament ring of stone tiles on the badlands (`?level=ring`). Two things were steered away from a
+  likeness on the way: a bare-chested outfit with a swept-up gold mane (built, not offered, removed) and
+  a beam charged with cupped hands at the hip (his technique is a palm drawn back at the ribs, the lead
+  hand sighting, a palm thrust).
+- **The moveset was agreed before the build** (the owner: "Build it"), with four changes the code's facts
+  forced and the owner accepted: the sky is never on screen (the camera looks down at 58 degrees), so
+  "the sky changes with his form" is the LIGHT changing; buttes stand 20 - 35 m off instead of mesas on
+  a horizon; the hero has no air state, so a "launch" is an 11 m knock-back with a knockdown and a blink
+  to where he lands; the play surface is flat, so there is no ring-out.
+- **Decision, the frame:** three forms, a bar each, the Starless Lord's structure (ADR-069): an empty
+  bar or a broken posture leaves him on one knee, the deathblow ends the form, and he TRANSFORMS (2.3 s,
+  then a shock ring; nothing lands on him until it goes out; his hair, his light and his aura change AT
+  the nova: `d.dressPhase`). Harder forms are more pressure, never more damage (ADR-119, ADR-122).
+- **Decision, bare hands on the duelist engine:** no weapon. The engine's "blade" (what the hero's parry,
+  the trade, the lock and the trails read) is the STRIKING LIMB of the moment: the forearm of a punch,
+  the shin of a kick, the blocking forearm in a guard. His strikes are built by `punch / kick / elbow /
+  shoulder` builders; his guard clips are forearm blocks under the engine's keys.
+- **Decision, the engine grew by optional beat fields** (a beat or a kit without them is as before; the
+  other two bosses' files are byte-identical to `main`): `zone.fwd / side` (a zone placed off his root),
+  `air` (a blow tested whatever his height) and `T.airFall`, `sustain { dur, tick }` (a beat that stays
+  lit: the ledger holds its whole window; with ADR-126's follow clock, `F = A + S`), `selfHit` (a beat
+  whose owner does its own hit test), `brain.startLock(o)` and the blade lock AT RANGE
+  (`player.bladeLock.dist`), `Player.streamBlock` (a blocked stream costs guard, never health),
+  `_tradeNow` ignoring those beats.
+- **Decision, his moves plug in by a routing contract, not by editing his class:** a move or a beat
+  marked `ki: '<kind>'` goes to `kiBeam.js` (kinds starting with `beam`) or `kiShots.js`, `terrain:` to
+  `terrain.js`; move files are functions of the builders object. This is what let four agents build
+  forty moves in parallel with no shared file.
+- **Decision, gold is a palette, not a fifth kind of heat:** the fire field's four channels are full, and
+  its tint zones belong to the tells. This level swaps the VOID slot's palette for gold
+  (`FireField.setPalette`; a level is its own page load, and void is only the Lord's).
+- **Decision, the beam and THE CLASH:** a beam is a fixed line (a sighting thread shows it from the moment
+  it is fixed, at its cue), a first contact that throws the hero along it, then ticks (capped at three,
+  the third throws him clear); a held guard pays guard only. Every beam trenches the tiles and its
+  damage to the world carries on to 45 m, so it can take a butte's top. The great beam's head is a blue
+  parry moment: a PERFECT parry starts the blade lock at range (the camera frames both); won, the beam
+  is split and he reels 4.6 s; lost, 40 damage and a 12 m throw. Stepping off the line stays the safe
+  answer.
+- **Decision, fairness with things that linger:** while a beam is lit, the disc is out or the cage
+  closes, he starts nothing that asks a guard; Thunderfall (form 3's weather) stands down for a beam and
+  fades in the hero's openings; after a red thing of his he follows with a red blow or keeps his
+  distance (`AFTER_RED`). PACE: 0 conflicts over ten seeds in every form.
+- **Decision, two foot planners together:** `main` gained ADR-126's `_feetClip` while his own planner
+  was being written. Measured, the two together slide least (0.00 - 0.78 m a string; the engine's alone
+  up to 3.72 m, his alone up to 4.14 m), so both stay: his lifts a stepping foot above the engine's
+  "in the air" line, the engine pins what he leaves on the floor.
+- **The owner's picks** (rendered options, 2026-11-21): arena a (the ring on the flats) of three; body a
+  (a crimson tunic and a topknot that rises into a gold plume) of three; aura a (a tall flame, hollow
+  behind him) of three; beam a (the column) of two; then the calmer, darker floor and his lighter figure
+  ("Keep both"). The others stay behind `?ring=`, `?ascLook=`, `?ascAura=`, `?ascBeam=`, `?ascLift=`.
+- **The lead's call, to be confirmed by play:** 2000 health a form and a posture meter of [900, 1000,
+  1100], the middle of four measured settings (COMBAT.md has the table). The tuning pass had set 4000 /
+  [2400, 2700, 2900]: the 95 % bot's fights did not get longer at the short end (an answered flurry
+  breaks him outright at any bar), and the weaker bots died in form 1.
+- **Not measured or not right:** nobody has played it. The 3 - 5 minute fight is not met (the lever,
+  `flurry.posture`, is built and off). The level borrows three tracks of other levels until its score is
+  picked on an audition page. Not polished: the beam technique's pose at the game camera, the
+  transformation's body under the gather, Stone Storm's tiles against the aura, Heavenfall's landing
+  (a noisy pale cloud), the lost clash's surge; strikes re-filmed after the merge of ADR-126 only for
+  form 1 from one side. Not checked: a real phone (frame rate, the touch block in the clash). The dodge
+  share is 13 / 23 / 40 % against a target of 15 / 25 / 35.
+
+## ADR-130 — The hero's letters follow his size on screen; his own pixel tag, part tables and a dark blade (2026-11-21)
+
+- **Context:** the owner sent a picture of the hero ("the exact type of feel and look i want. its not
+  too detailed but has enough ascii features and style. make the character have this feel on every
+  angle, movement, attack"). The picture was the live game: the hero at the 36 m camera on a 720p
+  frame, enlarged three times. Rendered beside it on other screens, the same moment showed why it
+  did not hold: his letter cell was a fixed 4 px (x2 only from 2160 px tall), so he was 9 letters
+  across at 720p and on the phone, 13 at 1080p, 18 at 1440p. Asked where he does not look like the
+  picture, the owner ticked "on my screen in general", "from the front or side" and "in attacks and
+  dodges" (not "when the camera is close"), then picked from three rendered sheets: letter size B
+  (the picture's, of finer / the picture / bolder), the sword "B's blade, today's arc" (dark until
+  it cuts; the glowing crescent kept), the front view "A, legs like the cloak". The human bosses:
+  "hero only for now".
+- **Decision:**
+  1. **One letter cell of the hero is 0.115 m at his depth** (`CONFIG.render.heroLetters.size`;
+     `Pipeline._updateHeroLetters`), snapped to `HERO_CELLS` (even sizes: 4 6 8 10 12 16 ...) with
+     hysteresis, never below the bosses' cell. From 20 m in to 6 m (the pass's fade from the far
+     look to the close-up's line art) the cell goes back to the fixed one. The
+     atlas is built at any cell size; his ink lines are found per font pixel so they step with the
+     letters.
+  2. **The player's pixels carry their own alpha window** (0.42, 0.45): `HERO_ART.self` lower than a
+     boss's ids, written by `buildHero(..., { self: true })`. The hero branch of the art pass became
+     one function run twice: for him on his cell (only inside the box round his screen point), then
+     for the bosses on theirs.
+  (His window sits above the unused v0.2 creature grid, whose code span was narrowed from 0.4 to 0.37.)
+  3. **His own part tables** (`uSelfPartInk / Fill / Rim`): `HERO_INK` with `HERO_SELF` on top. His
+     plate takes the cloth's dim dotted rim.
+  4. **A dark blade that lights when it cuts**: `TUNE.bladeLook` scales the steel's gains at rest
+     (line 0.32, fill 0.6, far 0.5, no dot halo); `TUNE.bladeFlare.strike` rose from 0.12 / 0.2 to
+     4.2 / 4.6 and is scaled by `player.bladeHot` (a strike's window, the charge, the flurry, the
+     plunge, a crit window; up at once, gone in ~0.1 s), so in a cut the steel is as bright as the
+     old blade always was.
+- **Why not** render the whole frame at a fixed low resolution (what a phone on LOW already does):
+  it would enlarge the wyrm's digits, the props and the grass too, which the owner settled
+  separately (ADR-093, ADR-120). **Why not** tell him from a boss by a screen box or by depth: in a
+  duel the two overlap, and the boss's arm inside the box would be drawn on his grid. **Why not**
+  change `HERO_INK` for the legs and the blade: every boss rig is built from it.
+- **Options kept out:** the finer (0.086 m) and bolder (0.144 m) sizes, the "cold steel" blade and
+  the lavender-line legs were rendered and not picked; none is kept behind a switch.
+  `pipeline.heroLetter` can be set live (0 = the fixed cell).
+- **Consequences:** a close-up (6 m and nearer) is drawn exactly as before; the first build kept the
+  large cell there, and at 8 m on a 1440p frame the close-up's ink lines came out five pixels thick
+  and white, a different close-up than the owner has, which they did not ask to change. Between 20
+  and 6 m the cell shrinks while he grows: only a cinematic camera passes through there (the desktop
+  camera stays 24 m and further; the phone's 11 .. 34 m all draw the 4 px cell). The art pass samples at most 6 more
+  texels per pixel, only inside the box round him; measured on the RTX 4090 at 1440p and at
+  852 x 393, the frame cost is the same as before within the noise (0.82 - 0.87 ms against 0.89 -
+  0.94 ms; not measured on a phone). The pass reads its textures with `textureLod(.., 0)`: with the
+  branch called twice the HLSL compiler warned about gradients in a loop. Tests: scenario
+  `heroletters`; the blade flare checks read his own part 17.
+
+## ADR-131 — Bites: a piece is the bricks it is drawn with, and a blow takes them where it struck (2026-11-21)
 
 - **Context:** the owner: "i want the player to be able to destory the terrain and have the ascii
   pieces fall of exactly where the player or enemy boss is hitting. can we do this to make every

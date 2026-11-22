@@ -5,11 +5,11 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-21 — Session 69: bites, the letters come off where the blow lands
+## 2026-11-21 — Session 71: bites, the letters come off where the blow lands
 
 **Owner:** "i want the player to be able to destory the terrain and have the ascii pieces fall of
 exactly where the player or enemy boss is hitting. can we do this to make every background object
-destrutcible like minecraft/lego?" Branch `world/chip-where-hit`. ADR-129 / Session 69 / M1.54.
+destrutcible like minecraft/lego?" Branch `world/chip-where-hit`. ADR-131 / Session 71 / M1.56.
 
 **What was there.** Nearly everything that stands breaks already (ADR-107, ADR-120, ADR-122), but as
 whole pieces: a blow takes structure, a tree drops its crown parts in a fixed order at three stages
@@ -55,23 +55,166 @@ picks):
 - A patch script of mine cut three accessors out of `RangeBody` (`parts`, `visible`); the next test
   run failed on the first line that read them, and they were put back.
 
-**Verification.** World test `bite` (14 checks: a quarter-cut takes a quarter of a tree's structure
+**Merged with `main`** (the same evening: PR #73 - #76 had landed, the Skybreak Ring and the hero's
+look; they took ADR-129 / 130, Sessions 69 / 70, M1.54 / 55, so this is ADR-131 / Session 71 / M1.56).
+The new level's pieces go through the same batch path: the test covers it.
+
+**Verification.** World test `bite` (15 checks: a quarter-cut takes a quarter of a tree's structure
 and 11 of the 42 bricks within 0.8 m of the blade, all of the trunk, set back toward its axis; every
 other brick where it was; 5 such cuts fell it with none of that section left; a blow on a stone's
 south face takes 32 of its 210 bricks, all on that side, set back in the batch's positions; a blast
 east of a tree: 80 bricks east, 16 west; a rib loses bricks; a floor slab does not; the reset puts
-every vertex and index back; the courtyard's 162 and the crater's 111 pieces that take structure all
-have bricks, a blow on one of each kind bites it and the reset undoes it; off: no bricks). In the browser (headless Edge, the real GPU, 1280 x
+every vertex and index back; the courtyard's 162, the crater's 111 and the Skybreak Ring's 35 pieces that
+take structure all have bricks, a blow on one of each kind bites it and the reset undoes it; off: no
+bricks). In the browser (headless Edge, the real GPU, 1280 x
 720), the same blows with bites off and on: a stone, a boulder, a dead tree, the lone pine, the Elder
 Wyrm's ribs, and the hero's own cuts at the game camera (3 cuts: 3 bricks off the stone; 6 cuts fell
 the pine, away from him). A piece before any blow looks the same built either way (the stone, the
-boulder, the dead tree side by side). `npm test` / `npm run build`: see the PR.
+boulder, the dead tree side by side). `npm test` before the merge: every suite passed but `world`'s frame-time budget (destructibles.update
+p99.9 1.65 ms against 1.5, worst 37 ms), measured while three other sessions ran their own suites on
+this machine; alone, twice: avg 0.013 ms, p99.9 0.5, worst 1.46. After the merge: `world` alone, the
+static checks and the build here; the whole suite on the PR.
 
-**Not checked / open.** Nobody has played it. The two duel arenas are checked by the test only, not
-looked at (their pieces go through the same batch path as the forest's stones). Not on the phone,
-and the frame cost of the extra vertices is not measured. The ground itself does not break (ADR-129
+**Not checked / open.** Nobody has played it. The duel arenas are checked by the test (and the courtyard
+loaded and struck once in the browser), not studied on a sheet. Not on the phone,
+and the frame cost of the extra vertices is not measured. The ground itself does not break (ADR-131
 "Not done"), nor the landmarks that were decided to stay whole. A set-back brick cannot be struck
 again (one layer), and nothing falls for want of support.
+## 2026-11-21 — Session 70: the hero looks the same on every screen
+
+**Owner**, with a picture of the hero at the game camera: "this picture of the character is the exact
+type of feel and look i want. its not too detailed but has enough ascii features and style. make the
+character have this feel on every angle, movement, attack etc. ask me any questions to help you
+out". Branch `player/hero-look-everywhere`. ADR-130 / Session 70 / M1.55.
+
+**What the picture was.** The live game: the hero from behind at the 36 m camera on a 720p frame,
+enlarged three times. Rendered again on other screens (the same moment, scaled to the same size), the
+cause showed at once: his letter cell was a fixed 4 px, so he was 9 letters across the cloak at 720p
+and on the phone, 13 at 1080p, 18 at 1440p. On a large screen he was a different figure.
+
+**Questions, two rounds, each with rendered sheets.** Where does he not look like the picture: "on my
+screen in general", "from the front or side", "in attacks and dodges" (not "when the camera is
+close"). Bosses: "hero only for now". Then the picks from three sheets (1440p, one option per row):
+letter size **B, the picture** (of finer 12 across / the picture 9 / bolder 7); the sword **B's blade,
+today's arc** (dark until it cuts; of today's glowing blade / cold steel / dark until it cuts, the
+arc dimmed or kept); the front view **A, legs like the cloak** (of today's white outlines / the
+cloak's dotted rim / a lavender line).
+
+**What changed.**
+- `render/pipeline.js`: `_updateHeroLetters` sets his cell each frame from his view depth: 0.115 m a
+  cell (`CONFIG.render.heroLetters`), snapped to `HERO_CELLS` with hysteresis, never below the bosses'
+  cell; from 20 m in to 6 m back to the fixed cell. 4 / 6 / 8 / 12 px at 720p / 1080p / 1440p / 4K,
+  4 px on the phone.
+  The hero branch of the art pass is one function, run for him on his cell (inside the box round his
+  screen point) and then for the bosses on theirs. His ink lines are found per font pixel.
+- `render/materials.js`, `player/model.js`: the player's rig (`buildHero(.., { self: true })`) writes
+  its part ids in an alpha window of its own (0.42, 0.45), so the pass tells him from a boss per
+  pixel. His own part tables `uSelfPart*` = `HERO_INK` + `HERO_SELF` (the plate's dim dotted rim).
+- `render/glyphs.js`: the micro-font atlas at any cell size.
+- `player/player.js`: `TUNE.bladeLook` (dark steel at rest, no dot halo), `TUNE.bladeFlare.strike`
+  4.2 / 4.6 scaled by `bladeHot` (a strike's window, the charge, the flurry, the plunge, a crit
+  window; up at once, gone in ~0.1 s). The flare is written to HIS part 17.
+
+**Found on the way.**
+- With the hero branch called twice the HLSL compiler warned ("gradient instruction used in a loop")
+  on a FRESH compile only: the browser caches compiled programs, so a reload showed nothing. Changing
+  one comment in the shader forces a recompile and shows the log. The pass now reads every texture at
+  level 0 by name. One warning is left and was there before (`stoneCell`, a possibly uninitialised
+  variable).
+- A white block at the sword's point at rest is not the blade: the point rests in the grass and the
+  "seen through cover" pass (ADR-106) prints it. It was hidden by the white blade before. Left as is.
+- From one side at rest the blade points at the camera and its lines pile into a small pale mark next
+  to the gem's glow. Smaller than before; left.
+
+- Review (Codex, on the PR): his alpha window (0.42, 0.45) overlapped the top of the unused v0.2
+  creature grid's codes (`grid: true` wrote up to 0.44), so such a surface would have been drawn as
+  the player. The creature grid's span is now 0.37 (codes end at 0.41), written and read with the
+  same constant; a test pins it.
+
+**Verification.** In the browser (headless Edge, the RTX 4090): the hero on 720p / 1080p / 1440p / 4K
+/ the phone's 852 x 393 at 20 m before and after; 18 poses at 1440p (six sides, run, roll, cuts,
+heavy, block, charge, heal); the camera at 36 / 24 / 14 / 7 m. Both human bosses rendered on this
+branch and on the code before it, side by side at 1440p: the same letters. Frame cost at 1440p and at
+852 x 393, 31 x 12 frames a reading, alternating the two builds: 0.82 - 0.87 ms against 0.89 - 0.94 ms
+before, the same within the noise. New test scenario `heroletters` (his cell per screen and distance,
+the hysteresis, the box, the two windows, his part tables against a boss's, the dark blade at rest);
+the blade flare checks in `hero` and `cutfx` now read his own part 17 and expect dark steel at rest.
+`npm test` / `npm run build`: see the PR.
+
+- The first build held the large cell in close-ups too. At 8 m on a 1440p frame the close-up's ink
+  lines (one font pixel wide) came out five pixels thick and white: a different close-up, which the
+  owner had not ticked. Now the cell goes back to the fixed one as the pass fades to its close-up
+  look (20 m .. 6 m), so the title, an intro and the Lab are pixel for pixel what they were.
+
+**Not checked / open.** Nobody has played it. Not measured on a phone (the phone draws the same 4 px
+cell as before through its whole camera range, 11 .. 34 m). Closer than 20 m the old close-up look
+(bright ink lines) still fades in: the owner did not ask for that to change. The
+swing's arc and his other effects are full-resolution glyph sprites next to 8 - 12 px letters on a
+large screen: the fire field would print them in letters. The human bosses keep the fixed cell: the
+owner decides after seeing the hero live.
+
+---
+
+## 2026-11-21 — Session 69: a fourth level, the Skybreak Ring and Tian Lei (planned by the lead, built by Opus agents)
+
+**Owner:** "lets build a saiyan level boss where phase 1 starts from normal saiyan, phase 2 is super
+saiyan, phase 3 is super saiyan 2. make the background the cell tournament arena and make it feel like
+an anime epic battle. help me come up with the moves, combos, specials from the boss and use opus to
+build this out". The lead said first that it would be an original fighter and arena in that spirit, not
+that series' characters, names or place; proposed the moveset; the owner: "Build it". Branch
+`enemies/ascendant-boss` from `main` (91f17d4), `main` merged in once (66ff1fa, ADR-126). ADR-129 /
+Session 69 / M1.54.
+
+**How it was built.** Three read-only mapping agents (the duelist engine, the level and world code, the
+effects and the body) → the moveset and four facts of the engine that changed it (ADR) → stubs for the
+level, the boss, his gear and his effects with the effect surface fixed, so the level loaded on day one
+→ **wave 1**, four agents in parallel, a worktree each: core (his class, three forms, bare hands, his
+melee, the engine's new beat fields, his suite), world (the set in three arenas), body (three outfits
+with hair by form, and the dragon-look twin), effects (gold, the aura, blasts, the disc, the beam, the
+vanish, the transformation) → the owner's picks from the sheets → **wave 2** on the merged core: shots,
+beams, strings, terrain (the ki was split in two owners by the kind's name so no two agents shared a
+file) → an integration agent (the merge of `main`'s ADR-126, the asks between agents, the checks that
+need everything together) → a tuning agent and a docs agent in parallel. Twelve agent runs; the lead
+wrote the briefs, looked at every sheet, merged, and wrote this history.
+
+**What exists** (ARCHITECTURE "Tian Lei, the Last Ascendant", COMBAT "Tian Lei", STYLE "The Skybreak
+Ring"): `src/levels/skybreak.js` (`?level=ring`); `src/world/skybreakRing.js` (a 30 m ring of 361
+breakable tiles, corner posts with braziers, buttes whose tops come off, the light by form: dusk, gold,
+a storm with lightning and rain; arenas b and c behind `?ring=`); `src/entities/enemies/ascendant/`
+(`ascendant.js`, `moves.js` + `moves/melee.js, kiShots.js, kiBeam.js, terrain.js`, `ki.js` → `kiShots.js`,
+`kiBeam.js`, `terrain.js`, `poses.js`, `links.js`, `tuning*.js`, `gear.js`, `look.js`, `bodyArt.js`,
+`fx.js`, `fxBeam.js`); about forty moves; `tests/integration/asc.mjs` (26 scenarios; `npm test` runs it).
+
+**Found on the way.**
+- The first merged build was not readable: the tiles' gold strokes were as bright and busy as the
+  fighters. The paving was calmed and the dusk lifted (figures against floor 2.0x → 3.3x in form 1); the
+  owner kept it.
+- A sword cut landing in the last 0.1 s before the great beam fired spent its blue head (`_tradeNow`).
+- The beam agent could not get a clash on the phone: its capture rig's one-frame virtual press never
+  registers as a parry. The game was fine; the clash runs at 852 x 393.
+- The tuning pass found why bot fights are short at any bar: an answered flurry breaks him outright.
+- `main` moved under the work (ADR-126 reworked how a duelist's move becomes a clip): one conflict
+  (`realise.js`), no clip of his needed a change, and the feet question was settled by measuring.
+- CI failed twice on the PR in world's `budget` (the forest's `destructibles.update` read at the 99.9th
+  percentile of 3600 frames: 1.65 and 2.53 ms against 1.5), with `destructibles.js` unchanged and every
+  suite of that run 1.5 - 1.8x slower than `main`'s. Measured here: the same 0.3 - 0.6 ms on `main` and on
+  this branch, alone, beside four suites, and with the whole run pinned to 4 cores. His suite made the
+  4-core runner's pool heavier, so `tests/run.mjs` now runs that one wall-clock scenario ALONE after the
+  parallel tasks (`ALONE`; world.mjs takes `ABYSS_SKIP` and a comma list). The budget itself is unchanged.
+
+**Verification:** `npm test` (11 suites: integ x5, lord, asc, duel, world, glyph check, changelog check)
+and `npm run build`: see the PR. Browser (headless Edge on the real GPU, 1280 x 720 and 852 x 393): every
+option sheet the owner picked from, each move filmed in the real level, a whole fight through three
+deathblows with every system on (0 errors, 0 NaN), resets in the middle of seven moves, the clash on
+the phone preset.
+
+**Not checked / open:** nobody has played it. Fight length (COMBAT "Measured": the table of four bar
+settings; shipped 2000 a form) and whether an answered flurry should break a whole bar are the owner's
+to judge on the preview. The visual polish list in the ADR's last point. The level's own music. A real
+phone.
+
+**Next:** the owner plays the Vercel preview; then the bars, the flurry rule and the polish list from
+what they report; the score's audition page.
 
 ---
 

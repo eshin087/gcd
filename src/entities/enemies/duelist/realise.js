@@ -5,6 +5,8 @@
 // keys. Two additions for longer, more varied strings:
 //   { pick: [beat, beat, ...] }   in place of a beat: one alternative is drawn as the move starts
 //   fixed: true                   on a beat: its windup is not scaled by the phase (a cast, a transition)
+//   sustain: { dur, tick }        on a beat: it stays lit `dur` s past its active frames (its end and
+//                                 everything after it wait; `S` on the realised beat: brain.js)
 
 /** Value for the phase (1-based) from a per-phase array, or the value itself. */
 export function perPhase(v, phase) {
@@ -53,13 +55,14 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null })
       const W = b.windup * (b.fixed ? 1 : ws);
       const H = Array.isArray(b.hold) ? b.hold[0] + (b.hold[1] - b.hold[0]) * rnd() : 0;
       const A = b.active;
+      const S = Math.max(0, Number(b.sustain?.dur) || 0);
       const cock = b.cock ?? 0.8;
-      const start = t, impact = t + W + H, end = impact + A;
-      const at = (u) => (u <= 1 ? (u <= cock ? start + u * W : start + cock * W + H + (u - cock) * W) : impact + (u - 1) * A);
+      const start = t, impact = t + W + H, end = impact + A + S;
+      const at = (u) => (u <= 1 ? (u <= cock ? start + u * W : start + cock * W + H + (u - cock) * W) : impact + (u - 1) * (A + S));
       const C = TUNING.close;
       const close = b.close ?? (b.dash || b.leap || b.release || !b.zone ? 0 : beats.length === 0 ? C.first : C.next);
       beats.push({
-        def: b, index: i, hit: beats.length, start, impact, end, W, H, A, at, close,
+        def: b, index: i, hit: beats.length, start, impact, end, W, H, A, S, at, close,
         tellAt: start, flash: impact - lead, feint: !!b.feint,
         announced: false, flashed: false, done: false, landed: false,
       });
@@ -84,7 +87,9 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null })
         next = nk.length ? nb.at(Math.min(...nk.map(([u]) => u))) : nb.impact;
       } else if (def.recoveryKeys?.length) next = t + Math.min(...def.recoveryKeys.map(([r]) => r)) * recovery;
       else next = t + recovery * 0.75;
-      b.F = Math.max(b.A, Math.min(b.def.follow ?? (b.def.zone?.kind === 'ring' ? FOLLOW_RING : FOLLOW_MAX), (next - b.impact) * FOLLOW_PART));
+      // a sustained beat (a beam held lit): its keys past the impact span the whole lit time
+      b.F = b.S > 0 ? b.A + b.S
+        : Math.max(b.A, Math.min(b.def.follow ?? (b.def.zone?.kind === 'ring' ? FOLLOW_RING : FOLLOW_MAX), (next - b.impact) * FOLLOW_PART));
       const list = mine.map(([u, { gather, settle, ...pose }]) => ({ t: u <= 1 ? b.at(u) : b.impact + (u - 1) * b.F, ...pose }));
       if (b.H > 1e-3) {
         // the bait hold: the cocked pose (the last key at or before the cock) again as the hold ends

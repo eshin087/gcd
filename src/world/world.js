@@ -58,6 +58,9 @@ export class World {
     const buildSet = typeof game.level?.buildSet === 'function' ? game.level.buildSet : createForest;
     this.forest = buildSet(U, this.colliders);
     game.scene.add(this.forest.group);
+    // a set may lower the ground plane (`groundY`: the Skybreak Ring's butte crown stands far above
+    // the badlands; the set draws its own walkable top)
+    if (Number.isFinite(this.forest.groundY) && this.forest.groundY !== 0) this.ground.position.y = this.forest.groundY;
     applySky(U, this.forest.sky);
     this.scorch = new Scorch(U, game);
     const extent = 150;

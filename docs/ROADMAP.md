@@ -179,7 +179,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.54 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-129)
+## M1.56 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-131)
 - [x] Every breakable as bricks (its triangles; the halves of a flat face pair up), taken where a blow struck
 - [x] The share of structure a blow took = the share of the bricks under it; a blast eats the facing side
 - [x] A solid piece keeps a skin, set back; foliage, boughs and thin bones are holed
@@ -195,6 +195,37 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The landmarks that stay whole (bonfires, gate, bell, throne, fallen star): the owner's call, one by one
   - [ ] A second layer and a support rule: what hangs over nothing falls
   - [ ] Wreckage that can be cut up (logs, rubble)
+## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
+- [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
+      (the owner's reference picture: 9 letters across the cloak); the lines step with the letters
+- [x] His own pixel tag and part tables: the human bosses are drawn exactly as before
+- [x] From the front and the side one dark figure: the plate takes the cloak's dim dotted rim
+- [x] A dark blade that lights when it cuts (the owner's pick of three); the arc kept
+- [ ] The owner plays it on the phone and on the large screen
+- [ ] The human bosses on the same letters, if the owner wants it after seeing the hero live
+- [ ] The swing's arc and the hero's other effects are still full-resolution glyph sprites beside
+      his larger letters on a large screen (the fire field would print them in letters)
+
+## M1.54 — A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant (2026-11-21, `enemies/ascendant-boss`, ADR-129)
+- [x] The moveset agreed with the owner before the build; an original fighter and arena
+- [x] The level (`?level=ring`), the set in three arenas, breakable tiles, buttes whose tops come off, the light by form
+- [x] Tian Lei on the duelist engine: bare hands (the striking limb is the blade), three forms, a deathblow and a transformation each
+- [x] The engine's new beat fields: a zone off the root, hits from the air, a sustained beat, the blade lock at range
+- [x] His body (hair by form) and his effects (gold in the fire field, the aura, blasts, the disc, the beam, the vanish, the transformation)
+- [x] About forty moves: melee strings, shots, the beams and THE CLASH, the terrain moves; links; the weather
+- [x] Integration with ADR-126; a tuning pass over ten seeds (0 conflicts; the dodge share 13 / 23 / 40 %)
+- [x] `tests/integration/asc.mjs` (26 scenarios) in `npm test`; Training (94 situations) and the Lab's LOOKS rows
+- [x] The owner's picks: arena a, body a, aura a, beam a, the calmer floor and the lighter figure
+- [ ] Follow-ups:
+  - [ ] The owner plays the preview: the fight's length (2000 a bar is the lead's middle of four measured settings), the difficulty for a player who misses answers
+  - [ ] Should an answered flurry break a whole bar? (`TUNING.flurry.posture`, built, off; it changes a rule Training teaches)
+  - [ ] The level's own score: an audition page, a track per form (it borrows three tracks today)
+  - [ ] Polish that needs eyes: the beam technique's pose at the game camera, the transformation's body under the gather, Stone Storm's tiles against the aura, Heavenfall's landing, the lost clash's surge, the disc and the cage's orbs (small)
+  - [ ] His strikes re-filmed on the merged engine in forms 2 and 3 and from every side
+  - [ ] A real phone: frame rate, the touch block in the clash, the figures' size
+  - [ ] One foot planner for the three human bosses (a per-kit step setting in `player/anim.js`)
+  - [ ] Thunderfall at its intended rate (every 4.0 s today against 3.2 → 1.8 s): a second strike in a pair
+  - [ ] Decide what stays behind the switches (arenas b / c, outfits c / d, auras b / c, the braid beam)
 
 ## M1.53 — A felled tree lies as the blow left it (2026-11-21, `world/crumbling-border`, ADR-128)
 - [x] The stump cut by the blow: height, a slanted top, splinters, a push toward the fall; burnt: low and black

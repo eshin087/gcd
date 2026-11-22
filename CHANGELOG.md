@@ -4,8 +4,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-eight pieces of work since 0.4.0:
-- **The letters come off where the blow lands** (2026-11-21, ADR-129; behind `?chip=a` until the
+Sixty pieces of work since 0.4.0:
+- **The letters come off where the blow lands** (2026-11-21, ADR-131; behind `?chip=a` until the
   owner picks). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
   made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
   struck (the owner: "have the ascii pieces fall of exactly where the player or enemy boss is
@@ -15,6 +15,37 @@ Fifty-eight pieces of work since 0.4.0:
   lying. How much a piece takes, when it falls and what it deals are unchanged. *Changed:* the
   hero's blade marks a piece at the blade's own height (about 0.3 m higher than before). Off by
   default: `?chip=a` (or the Lab's WORLD -> Bites) turns it on.
+- **The hero looks the same on every screen** (2026-11-21, ADR-130). *Changed:* the hero is drawn with
+  the same letters on every screen and at every camera distance: about 9 across his cloak, the look
+  of the owner's reference picture ("the exact type of feel and look i want ... make the character
+  have this feel on every angle, movement, attack"). His letters were a fixed 4 pixels, so only a
+  720p frame and the phone showed that figure; at 1440p he had twice the letters at half the size.
+  His outline steps with the letters. From the front and the side he is one dark figure: the plate
+  on his legs, arms and boots takes the cloak's dim dotted rim (white outlines drew two hollow
+  legs). The blade is dark steel at rest and lights white only while it cuts, charges, or in the
+  flurry and the plunge; its halo of dots at rest is gone; the swing's arc is unchanged. The human
+  bosses are drawn exactly as before. No hit, tell or timing changed.
+- **A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant** (2026-11-21, ADR-129). *Added:* a fourth level, `?level=ring`
+  (the title screen lists it). **The Skybreak Ring**: a tournament ring of stone tiles on the badlands,
+  buttes standing round it, braziers at its corners. **Tian Lei, the Last Ascendant**: a bare-handed
+  fighter with three health bars. Empty a bar and strike the deathblow, and he does not die: he
+  transforms. *The Challenger* fights with fists, feet, elbows and knees, a kicked floor tile, a thrown
+  blast (a perfect parry sends it back) and one beam. *Golden Ascension*: a golden flame stands round
+  him and his hair rises; he vanishes and strikes from behind, launches you and is waiting where you
+  land, pours out volleys, throws a disc that comes back, drags a beam across the ring, rises into the
+  air and rains strikes, and breaks the floor under you. *Thunder Ascension*: lightning in the flame, a
+  storm over the ring that drops bolts all form long, strings where every blow comes out of a vanish,
+  a cage of orbs, and his great beam: stand your ground and parry its head at the blue flash and you
+  enter a struggle (mash attack) to cut the beam in two and leave him reeling. Every beam can be
+  stepped off, rolled through or held on a guard (a guard pays guard, never health). The ring is wrecked
+  as you fight: tiles crack and break under heavy blows, beams cut trenches and take the tops off the
+  buttes, and by the end about half the floor is rubble. The light changes with his form: dusk, gold,
+  storm. About forty moves; his own test suite. *Changed (the engine, for him):* a boss's blow can be
+  placed on a limb, can hit from the air, can stay lit (a beam), and the blade lock can be fought at
+  range. The other bosses are unchanged. Kept behind switches for later: two more arenas (`?ring=b|c`),
+  two more outfits (`?ascLook=c|d`), two more auras (`?ascAura=b|c`), a second beam (`?ascBeam=b`). The
+  level borrows music from the other levels for now. Nobody has played it yet: his health (2000 a bar)
+  and the fight's length are first guesses from bots.
 - **Felled trees lie as the blow left them** (2026-11-21, ADR-128). *Changed:* a felled tree no longer
   leaves the same stump and the same straight log as every other ("make the cleared trees not look
   the same and have it broken in different angles based on how it was hit"). A blade cuts the stump

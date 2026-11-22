@@ -48,6 +48,16 @@ export const SCORE = {
         T('starless-p4'), // Fall of Nightmares, nene
       ],
     },
+    // The Skybreak Ring has no tracks of its own yet: it borrows these until the owner picks its
+    // score on an audition page (one track per form).
+    ring: {
+      explore: T('ash-explore', { xfade: 3 }),
+      phases: [
+        T('starless-p2', { xfade: 1.5 }),
+        T('starless-p3', { xfade: 0.5 }),
+        T('cinder-p3', { xfade: 3 }),
+      ],
+    },
   },
   victory: T('victory', { loop: false }), // Victory Fanfare Short, cynicmusic
   death: T('death', { loop: false }), // Death of a Ninja (Game Over), Joth

@@ -27,6 +27,28 @@ export const RELEASES = [
       },
       {
         date: '2026-11-21',
+        title: 'The hero looks the same on every screen',
+        notes: [
+          'The wanderer is drawn with the same bold letters on a phone, a laptop and a large monitor, and when the camera pulls in or out. On large screens he used to turn into a mesh of tiny ones.',
+          'From the front and the side he is one dark figure now, and his sword is plain dark steel that lights up white only while it cuts.',
+          'The bosses and the fight are unchanged.',
+        ],
+      },
+      {
+        date: '2026-11-21',
+        title: 'A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant',
+        notes: [
+          'A new level, the Skybreak Ring: a tournament ring of stone tiles out on the badlands. Pick it on the title screen.',
+          'Its boss is Tian Lei, the Last Ascendant, who fights bare-handed and has three health bars. Empty a bar and land the deathblow, and he transforms instead of dying.',
+          'First he is a martial artist: punches, kicks, a kicked floor tile, a blast you can parry back at him, and one beam.',
+          'Then a golden flame stands round him. He vanishes and strikes from behind, throws volleys and a disc that returns, and drags a beam across the ring.',
+          'Last comes the storm: lightning falls all through the form, and he fires his great beam. Parry its head at the blue flash to start a struggle, and mash attack to cut the beam in two.',
+          'Any beam can be stepped off, rolled through or held on your guard. A guard loses guard, never health.',
+          'The ring breaks as you fight: tiles shatter, beams cut trenches and knock the tops off the rocks around you.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'Felled trees lie as the blow left them',
         notes: [
           'No two felled trees look alike now. A blade leaves a tall stump cut on a slant, a heavy blow tears it lower, a blast shatters it close to the ground, and fire leaves it low and black.',

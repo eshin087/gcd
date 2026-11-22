@@ -16,7 +16,7 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 // every situation through `run(id)` (tests: integ / duel / lord TRAINING).
 //
 // A situation: { id, cat, name, desc, boss (kinds it applies to: 'wyrm' | 'duel' | 'ash' | 'lord' |
-//   'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
+//   'asc' (Tian Lei) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
 //   hero beside him, for the camera), streak (the hero's, set before), foe (his streak), art (pin the
 //   flurry's art), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
@@ -45,6 +45,8 @@ const ROLES = {
   cinderwood: { single: 'bite', string: 'clawCombo', long: 'stormFlurry', red: 'tail', area: 'stomp' },
   ash: { single: 'plumThrust', string: 'swallow', long: 'ashRain', red: 'lotus', lock: 'fallingStar', mikiri: 'piercingAsh' },
   starless: { single: 'lunge', string: 'litany', long: 'litany', red: 'reap', lock: 'skyfall' },
+  // Tian Lei (the Skybreak Ring): his form-1 lock is Hundred Hands' last blow (Vanishing Step's is form 2's)
+  ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
 };
 
 export function bossKinds(game) {
@@ -53,7 +55,8 @@ export function bossKinds(game) {
   if (typeof d?.onPlunge === 'function') k.add('wyrm');
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
-    k.add(d?.lives ? 'lord' : 'ash');
+    // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -99,6 +102,7 @@ add('PARRY & RIPOSTE', [
   { id: 'lock', name: 'Blade lock', boss: 'duel', role: 'lock', answer: 'perfect', mash: true, desc: 'A perfect parry of his heavy blow locks the blades: mash attack to win the push.', expect: ['player:lock'] },
   { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
   { id: 'mikiri', name: 'Mikiri', boss: 'ash', role: 'mikiri', answer: 'mikiri', dist: 3.2, desc: 'A roll INTO his perilous thrust: you step on his blade.', expect: ['player:mikiri'] },
+  { id: 'mikiriAsc', name: 'Mikiri', boss: 'asc', role: 'mikiri', answer: 'mikiri', dist: 3.6, desc: 'A roll INTO his Piercing Palm: you step on his arm.', expect: ['player:mikiri'] },
 ]);
 
 add('BOSS STREAK', [
@@ -174,6 +178,8 @@ add('BOSS STATES', [
   { id: 'phase3', name: 'Phase 3', boss: 'wyrm', desc: 'The third phase: the wyrm burns white-hot.', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase3a', name: 'Phase 3', boss: 'ash', desc: 'His third phase: ash on the wind (its change).', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
   { id: 'phase3l', name: 'Form 3', boss: 'lord', desc: 'His third blade form ignites.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
+  { id: 'form2a', name: 'Golden Ascension', boss: 'asc', desc: 'His second form: the transformation.', go: (T) => duelChange(T, 2), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase2'] },
+  { id: 'form3a', name: 'Thunder Ascension', boss: 'asc', desc: 'His third form: the transformation.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
   { id: 'phase4', name: 'Form 4', boss: 'lord', desc: 'His fourth form: the Void answers him.', go: (T) => duelChange(T, 4), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase4'] },
   { id: 'bossDeath', name: 'His death', boss: 'any', desc: 'The killing blow (the next situation wakes him again).', go: (T) => T.d.debug.kill(), until: (T) => T.t > 4, expect: [] },
 ]);
@@ -196,6 +202,34 @@ add('TERRAIN', [
   { id: 'terr-toll', name: 'Three Tolls · parry the rings', boss: 'ash', pieces: true, answer: 'parry', desc: 'Three blows on the fallen bell, three rings of sound: parry each as it reaches you (the last is the heavy one).', go: (T) => stage(T, -4, -5, 1.5, -1, 'bellToll'), until: settled, max: 14, expect: ['player:parry'] },
   { id: 'terr-toll-roll', name: 'Three Tolls · roll through', boss: 'ash', pieces: true, answer: 'dodge', desc: 'The same, rolled: each ring is passed through as it arrives.', go: (T) => stage(T, -4, -5, 1.5, -1, 'bellToll'), until: settled, max: 14, expect: ['player:perfectDodge'] },
   { id: 'terr-spring', name: "Swallow's Return · parry the dive", boss: 'ash', pieces: true, answer: 'parry', desc: 'He leaps back onto the pillar behind him and dives off it at you: the glint comes as he leaves the stone.', go: (T) => stage(T, -10.5, 0.6, -7.4, 0, 'swallowReturn'), until: settled, expect: ['player:parry'] },
+]);
+
+// Tian Lei's ki and floor (the Skybreak Ring): each from his beat's own clock (a beam's cue and a thrown
+// slab's are hazards: the runner's answers skip them), in the form the move belongs to
+const ascGo = (form, name) => (T) => {
+  if (T.d.phase !== form) T.d.debug.setForm?.(form);
+  T.d.debug.trigger(name);
+};
+/** Once, `lead` s before the impact of his next blow (the beat's own clock). */
+const ascHead = (T, lead, fn) => {
+  const a = T.d?.brain?.act, b = a?.beats?.find((x) => !x.feint && !x.done && a.t < x.impact);
+  if (b && b.impact - a.t <= lead) T.at(0, fn, 'ascHead');
+};
+const ascRoll = (T) => {
+  const p = T.p, d = T.d, dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+  T._axis(-dz / l, -dx / l);
+  T.tap('Space');
+  T.later(0.4, () => T._axis(0, 0));
+};
+add('PARRY & RIPOSTE', [
+  { id: 'ascClash', name: 'The beam clash', boss: 'asc', dist: 6, answer: 'none', mash: true, desc: 'His great beam (form 3): a perfect parry of its head starts THE CLASH at range. Mash attack to split the beam: he reels.', go: ascGo(3, 'heavenTide'), tick: (T) => ascHead(T, 0.04, () => T.tap('@block', 0.05)), until: (T) => T.t > 3 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 16, expect: ['player:lock'] },
+]);
+add('GETTING HIT', [
+  { id: 'ascTide', name: 'Rising Tide · roll out of the line', boss: 'asc', dist: 9, answer: 'none', desc: 'His beam: a red cue at the drawn-back palm, then the line is lit. Roll off it at the cue.', go: ascGo(1, 'risingTide'), tick: (T) => ascHead(T, 0.24, () => ascRoll(T)), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 9, expect: ['combat:flash'] },
+  { id: 'ascTideHit', name: 'Rising Tide · stand in it', boss: 'asc', dist: 9, answer: 'none', desc: 'The same, and you stay: the first contact throws you down along the line.', go: ascGo(1, 'risingTide'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 9, expect: ['player:hurt'] },
+]);
+add('TERRAIN', [
+  { id: 'ascTile', name: 'Tile Kick · under it', boss: 'asc', dist: 7, answer: 'none', desc: 'He stamps a floor slab up and punches it at you: it glints as it comes. You stay, and it hits you (a parry would cut it).', go: ascGo(1, 'tileKick'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.terrain?.busy, max: 9, expect: ['combat:flash'] },
 ]);
 
 export const SITUATIONS = Object.freeze(S);
@@ -264,7 +298,7 @@ export class Training {
     const id = this.game.level?.id;
     if (ROLES[id]) return ROLES[id];
     const k = bossKinds(this.game);
-    return (k.has('wyrm') ? ROLES.cinderwood : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
+    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
   }
 
   find(id) {
@@ -524,7 +558,7 @@ export class Training {
     const watch = (n) => ev.on(n, (e) => this._event(n, e));
     for (const n of ['player:parry', 'player:block', 'player:perfectDodge', 'player:flurry', 'player:flurryEnd', 'player:hurt', 'player:streak',
       'player:guardBreak', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
-      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
+      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
   }
 
   _event(n, e) {

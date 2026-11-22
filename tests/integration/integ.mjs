@@ -5335,11 +5335,13 @@ async function scenarioHeroLife() {
     assert(draws === 0, `a landed cut never touches the AI's random stream (${draws} Math.random draws)`);
   }
 
-  // (1e2) the blade flares where the game camera sees it (TUNE.bladeFlare: part 17's pass gains, the
-  // fill and both lines): exactly the base at rest, a landed cut's flare held through the freeze and
-  // gone 0.4 s later, the slam's stronger, a whiff only the strike's; the far strike ink above rest
+  // (1e2) the blade flares where the game camera sees it (TUNE.bladeFlare: HIS part 17's pass gains,
+  // the fill and both lines): dark steel at rest (the base x TUNE.bladeLook, ADR-130), lit through
+  // the strike, a landed cut's flare on top held through the freeze, gone 0.4 s later, the slam's
+  // stronger, a whiff only the strike's; the far strike ink above rest
   {
-    const PF = game.U.uHeroPartFill.value[17], PR = game.U.uHeroPartRim.value[17], bu = r.materials.blade.uniforms;
+    const BL = TUNE_P.bladeLook, BF = TUNE_P.bladeFlare;
+    const PF = game.U.uSelfPartFill.value[17], PR = game.U.uSelfPartRim.value[17], bu = r.materials.blade.uniforms;
     const fx0 = Math.sin(d.yaw), fz0 = Math.cos(d.yaw);
     const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx0 + (h.z - d.position.z) * fz0 > (a.x - d.position.x) * fx0 + (a.z - d.position.z) * fz0 ? h : a));
     const front = () => { const c = chest(); p.debug.teleport(c.x + fx0 * (c.r + 1), c.z + fz0 * (c.r + 1)); p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z); aimAt(G); };
@@ -5377,9 +5379,13 @@ async function scenarioHeroLife() {
     A.forceVariant = null;
     G.watch = null;
     out(`   blade flare: rest ${idle[0]} / ${idle[1]}, a landed light ${lit?.toFixed(2)} → ${held?.toFixed(2)} three frames on → ${cooled.toFixed(2)} 0.4 s later; the slam ${slamPeak.toFixed(2)}; a whiff ${whiff.toFixed(2)}; far strike ink ${farInk.toFixed(2)} at ${p.viewDist.toFixed(0)} m`);
-    assert(idle[0] === 1 && idle[1] === 1.7, `at rest the blade's part is exactly its HERO_INK base (fill ${idle[0]}, rim ${idle[1]})`);
-    assert(lit >= 1.5 && held >= 1.35 && cooled <= 1.02, `a landed cut flares the blade (fill ${lit?.toFixed(2)} ≥ 1.5), held through the freeze (${held?.toFixed(2)} ≥ 1.35), gone 0.4 s later (${cooled.toFixed(2)} ≤ 1.02)`);
-    assert(slamPeak >= 1.8 && whiff <= 1.15, `the slam flares further (${slamPeak.toFixed(2)} ≥ 1.8); a whiff only takes the strike's gain (${whiff.toFixed(2)} ≤ 1.15)`);
+    assert(Math.abs(idle[0] - BL.fill) < 1e-6 && Math.abs(idle[1] - 1.7 * BL.line) < 1e-6 && BL.fill < 1 && BL.line < 0.6,
+      `at rest the blade's part is its HERO_INK base x TUNE.bladeLook: dark steel (fill ${idle[0].toFixed(2)}, rim ${idle[1].toFixed(2)})`);
+    const litMin = BL.fill * (1 + BF.strike[0] + BF.hit[0]) - 0.05, heldMin = BL.fill * 1.35, restMax = BL.fill * 1.05;
+    assert(lit >= litMin && held >= heldMin && cooled <= restMax, `a landed cut flares the blade (fill ${lit?.toFixed(2)} ≥ ${litMin.toFixed(2)}), held through the freeze (${held?.toFixed(2)} ≥ ${heldMin.toFixed(2)}), dark again 0.4 s later (${cooled.toFixed(2)} ≤ ${restMax.toFixed(2)})`);
+    const slamMin = BL.fill * (1 + BF.strike[1] + BF.hit[1]) - 0.1, whiffAt = BL.fill * (1 + BF.strike[0]);
+    assert(slamPeak >= slamMin && Math.abs(whiff - whiffAt) <= 0.02 && whiffAt > 2.5 * BL.fill,
+      `the slam flares further (${slamPeak.toFixed(2)} ≥ ${slamMin.toFixed(2)}); a whiff lights the steel by the strike's gain only (${whiff.toFixed(2)} = ${whiffAt.toFixed(2)}: no contact flare)`);
     assert(p.viewDist >= 30 && farInk >= 1.85, `at the game camera (${p.viewDist.toFixed(0)} m) a light strike's ink rises above the rest ink (${farInk.toFixed(2)} ≥ 1.85; it was a flat 1.6)`);
     // dead: the base again
     p.debug.kill();
@@ -5393,7 +5399,7 @@ async function scenarioHeroLife() {
     d.hp = d.maxHp;
     d.posture = 0;
     go(1.0);
-    assert(dead === 1, `a dead hero's blade is the base (${dead})`);
+    assert(Math.abs(dead - BL.fill) < 1e-6, `a dead hero's blade is the dark base (${dead})`);
   }
 
   // (1e3) the edge glint runs up the LEADING edge as a cut comes in (fx.edgeGlint, EDGE_GLINT): on the
@@ -9320,11 +9326,13 @@ async function scenarioSeen() {
   assert(pipe.seenRoot === game.player.object3d && run() === true, 'a loadout rebuild keeps the same root: he is still printed through');
 
   // the contract of the three shaders: one hero window, wide enough for every part id; the quads' depth rules
-  const win = /bool isHero\(float a\) \{ return a > ([\d.]+) && a < ([\d.]+); \}/;
+  // (two windows since ADR-130: the player's own, HERO_ART.self lower, and the bosses'; scenario HEROLETTERS)
+  const win = /bool isSelf\(float a\) \{ return a > ([\d.]+) && a < ([\d.]+); \} bool isHero\(float a\) \{ return \(a > ([\d.]+) && a < ([\d.]+)\) \|\| isSelf\(a\); \}/;
   const wins = [pipe.asciiMat, pipe.seenMaskMat, pipe.seenPatchMat].map((m) => win.exec(m.fragmentShader));
-  const lo = Number(wins[0]?.[1]), hi = Number(wins[0]?.[2]);
-  assert(wins.every((w) => w && w[0] === wins[0][0]) && HERO_ART.a0 > lo && HERO_ART.a0 + (HERO_ART.parts * 2 - 1) * HERO_ART.step < hi,
-    `the ASCII pass and both quads test the same hero window (${lo}, ${hi}), and every part id is inside it`);
+  const sLo = Number(wins[0]?.[1]), sHi = Number(wins[0]?.[2]), lo = Number(wins[0]?.[3]), hi = Number(wins[0]?.[4]);
+  const topId = (HERO_ART.parts * 2 - 1) * HERO_ART.step;
+  assert(wins.every((w) => w && w[0] === wins[0][0]) && HERO_ART.a0 > lo && HERO_ART.a0 + topId < hi && HERO_ART.a0 - HERO_ART.self > sLo && HERO_ART.a0 - HERO_ART.self + topId < sHi,
+    `the ASCII pass and both quads test the same hero windows (his ${sLo}, ${sHi}; the bosses' ${lo}, ${hi}), and every part id is inside its own`);
   assert(pipe.seenMaskMat.depthTest && pipe.seenMaskMat.depthFunc === THREE.GreaterEqualDepth && pipe.seenMaskMat.depthWrite === false && pipe.seenMaskMat.blending === THREE.NoBlending,
     'the erasing quad: passes where the scene (plus the margin) is not in front of him, writes no depth, no blending');
   assert(pipe.seenPatchMat.depthTest && pipe.seenPatchMat.depthFunc === THREE.AlwaysDepth && pipe.seenPatchMat.depthWrite === true && pipe.seenPatchMat.blending === THREE.NoBlending,
@@ -10099,7 +10107,7 @@ async function scenarioMusic() {
   const onDisk = fs.existsSync(`${ROOT}/assets/audio/music`) ? fs.readdirSync(`${ROOT}/assets/audio/music`).map((f) => `music/${f}`) : [];
   const unused = onDisk.filter((f) => !files.includes(f));
   assert(!unused.length, `no track ships that the game never plays ${JSON.stringify(unused)}`);
-  assert(['cinderwood', 'ash', 'starless'].every((id) => SCORE.levels[id] && Array.isArray(SCORE.levels[id].phases)), 'a score entry for each level');
+  assert(['cinderwood', 'ash', 'starless', 'ring'].every((id) => SCORE.levels[id] && Array.isArray(SCORE.levels[id].phases)), 'a score entry for each level');
 
   const G = build();
   const { game, input } = G;
@@ -10194,6 +10202,147 @@ async function scenarioMusic() {
   assert(A.music?.kind === 'ambient', 'with the tracks off the synth score plays');
   assert(errors.length === e0, `no errors through the music checks (${errors.length - e0})`);
   assert(A.music instanceof TrackLoop === false, 'the synth layer is not a track');
+  return G;
+}
+
+async function scenarioHeroLetters() {
+  out("\n== scenario HEROLETTERS (the hero's letters follow his size: his cell per frame height and camera distance; his own part tables; the bosses keep theirs) ==");
+  const { Pipeline, HERO_CELLS } = await imp('src/render/pipeline.js');
+  const { HERO_ART } = await imp('src/render/materials.js');
+  const { HERO_INK, HERO_SELF, heroPartValues, createHeroMaterials } = await imp('src/entities/player/model.js');
+  const { TUNE } = await imp('src/entities/player/player.js');
+  const G = build();
+  const { game } = G;
+  const U = game.U, cam = game.camera, L = CONFIG.render.heroLetters;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true, _dpr: 1,
+    setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+    setPixelRatio(d) { this._dpr = d; }, getPixelRatio() { return this._dpr; }, setSize() {},
+  };
+  const pipe = new Pipeline(renderer, game.scene, game.fxScene, cam, U);
+  cam.fov = CONFIG.camera.fov;
+  cam.updateProjectionMatrix();
+  const u = pipe.asciiMat.uniforms, ps = new THREE.Vector4();
+  const ppm = (H, D) => (0.5 * H * cam.projectionMatrix.elements[5]) / D; // px per metre at his depth
+  const frame = (H) => pipe.setSize(Math.round((H * 16) / 9), H, 1);
+  // his cell after the camera settles at view depth D (the decision is taken every frame)
+  const at = (D, n = 3) => { ps.set(0.5, 0.5, D, 0); for (let i = 0; i < n; i++) pipe._updateHeroLetters(ps); return pipe.selfCell.x; };
+  const fresh = (H, D) => { frame(H); pipe.selfCell.set(0, 0); return at(D); };
+
+  const LOD = u.uHeroLod.value;
+  assert(L && L.size > 0.08 && L.size < 0.16 && L.near === LOD.y && L.close === LOD.x && L.near <= CONFIG.camera.mobileDistance && L.hyst > 0 && L.hyst < 0.15 && pipe.heroLetter === L.size,
+    `CONFIG.render.heroLetters: one letter cell is ${L?.size} m at his depth; from ${L?.near} m in to ${L?.close} m (the pass's far look .. close-up) back to the fixed cell; slack ${L?.hyst} (log)`);
+  assert(HERO_CELLS.every((c, i) => c % 2 === 0 && (i === 0 ? c === 4 : c > HERO_CELLS[i - 1])), `his cells: even sizes from 4 px up (${HERO_CELLS.join(' ')})`);
+
+  // the reference picture: a 720p frame at the 36 m camera, a 4 px cell
+  const ref = ppm(720, 36) * L.size;
+  assert(Math.abs(ref - 4) < 0.15, `the owner's picture (720p, 36 m): the cell his size asks for is ${ref.toFixed(2)} px, the 4 px cell he was drawn on there`);
+
+  // every screen at the game camera, the phone at its own: the same letters across his cloak
+  const screens = [['phone 393', 393, 20], ['720p', 720, 36], ['1080p', 1080, 36], ['1440p', 1440, 36], ['4K', 2160, 36]];
+  const rows = [];
+  for (const [name, H, D] of screens) {
+    const cell = fresh(H, D), boss = pipe.heroCell.x, m = cell / ppm(H, D);
+    rows.push(`${name} ${cell} px (${(1.05 / m).toFixed(1)} across a 1.05 m cloak; a boss ${boss} px)`);
+    assert(Math.abs(Math.log(m / L.size)) < 0.19, `${name} at ${D} m: his cell is ${cell} px = ${m.toFixed(3)} m, within a ladder step of ${L.size} m`);
+    assert(boss === (H >= 2160 ? 8 : 4) && cell >= boss, `${name}: a boss keeps the fixed cell (${boss} px), his is never smaller (${cell})`);
+    assert(u.uSelfCell.value === pipe.selfCell && u.tSelfArt.value && u.uSelfPx.value === Math.max(1, Math.round(cell / 4 - 0.01)),
+      `${name}: the pass has his cell, its atlas and a font pixel of ${u.uSelfPx.value} px`);
+  }
+  out('   his cell: ' + rows.join('; '));
+  assert(fresh(720, 36) === 4 && fresh(1080, 36) === 6 && fresh(1440, 36) === 8 && fresh(2160, 36) === 12 && fresh(393, 20) === 4, 'cells 4 / 6 / 8 / 12 px at 720p / 1080p / 1440p / 4K, 4 px on the phone');
+
+  // the camera pulls in and out: the cell follows, never grows as he gets smaller, stops nearer than `near`
+  frame(1440);
+  pipe.selfCell.set(0, 0);
+  const Ds = [3, 6, 10, 14, 20, 24, 30, 36, 45, 54];
+  const byD = Ds.map((D) => { pipe.selfCell.set(0, 0); return at(D); });
+  out(`   1440p, his cell at ${Ds.join(' / ')} m: ${byD.join(' ')} px`);
+  const iN = Ds.indexOf(L.near), iC = Ds.indexOf(L.close);
+  assert(byD.slice(iN).every((c, i, a) => i === 0 || c <= a[i - 1]), `from ${L.near} m out the cell never grows as the camera pulls back (${byD.slice(iN).join(' ')})`);
+  assert(byD.slice(0, iC + 1).every((c) => c === pipe.heroCell.x), `at ${L.close} m and nearer the fixed cell: a close-up is drawn as it always was (${byD.slice(0, iC + 1).join(' ')})`);
+  assert(byD.slice(iC, iN + 1).every((c, i, a) => i === 0 || c >= a[i - 1]) && byD[iN] > byD[iC], `between them the cell grows out to his size at ${L.near} m (${byD.slice(iC, iN + 1).join(' ')})`);
+  assert(byD[Ds.indexOf(24)] > byD[Ds.indexOf(36)] && byD[Ds.indexOf(54)] < byD[Ds.indexOf(36)], `zoomed in (24 m) a larger cell, zoomed out (54 m) a smaller one (${byD[Ds.indexOf(24)]} / ${byD[Ds.indexOf(36)]} / ${byD[Ds.indexOf(54)]})`);
+  // the phone's own range (its camera 14 .. 34 m, up to 3 m nearer in a fight): one font pixel stays one screen pixel
+  frame(393);
+  const phone = [11, 14, 17, 20, 27, 34].map((D) => { pipe.selfCell.set(0, 0); at(D); return [pipe.selfCell.x, u.uSelfPx.value]; });
+  assert(phone.every(([c, px]) => c === 4 && px === 1), `the phone (393 px tall) at 11 .. 34 m: the 4 px cell, 1 px lines (${phone.map(([c]) => c).join(' ')})`);
+  frame(1440);
+
+  // hysteresis: where the cell steps down going out, and back up coming in
+  frame(1080);
+  pipe.selfCell.set(0, 0);
+  at(36);
+  const c0 = pipe.selfCell.x;
+  let Dout = 0, Din = 0;
+  for (let D = 36; D < 70 && !Dout; D += 0.05) if (at(D, 1) < c0) Dout = D;
+  for (let D = Dout; D > 30 && !Din; D -= 0.05) if (at(D, 1) === c0) Din = D;
+  assert(Dout > 37 && Din > 30 && Dout - Din > 2, `1080p: the cell steps down at ${Dout.toFixed(1)} m going out and back at ${Din.toFixed(1)} m coming in`);
+  let flips = 0, last = at(Dout, 3);
+  for (let i = 0; i < 200; i++) { const c = at((Dout + Din) / 2 + Math.sin(i * 0.7) * (Dout - Din) * 0.4, 1); if (c !== last) flips++; last = c; }
+  assert(flips === 0, `a camera breathing between the two never flips the cell (${flips})`);
+  assert(pipe._selfArt.size <= HERO_CELLS.length, `one atlas per cell size, kept (${pipe._selfArt.size})`);
+
+  // off: the fixed cell he had
+  pipe.heroLetter = 0;
+  assert(fresh(1440, 36) === pipe.heroCell.x && fresh(2160, 36) === pipe.heroCell.x && u.uSelfPx.value === 2, 'heroLetter 0: the fixed cell, like a boss');
+  pipe.heroLetter = L.size;
+
+  // the box round him the pass searches for his pixels
+  frame(1440);
+  at(36);
+  ps.set(0.3, 0.6, 36, 0);
+  pipe._updateHeroLetters(ps);
+  const b = u.uSelfBox.value;
+  assert(b.w === 1 && Math.abs(b.x - 0.3 * pipe.width) < 1 && Math.abs(b.y - 0.6 * pipe.height) < 1 && b.z >= 4 * ppm(1440, 36), `the box: round his screen point, ${b.z.toFixed(0)} px half-size (≥ 4 m of reach)`);
+  pipe._updateHeroLetters(null);
+  assert(u.uSelfBox.value.w === 0, 'without a screen point the pass searches the whole frame');
+
+  // the shader contract: his own alpha window beside the bosses', every part id inside each
+  const src = pipe.asciiMat.fragmentShader;
+  const wm = /bool isSelf\(float a\) \{ return a > ([\d.]+) && a < ([\d.]+); \} bool isHero\(float a\) \{ return \(a > ([\d.]+) && a < ([\d.]+)\) \|\| isSelf\(a\); \}/.exec(src);
+  const [sLo, sHi, hLo, hHi] = (wm ?? []).slice(1).map(Number);
+  const top = (HERO_ART.parts * 2 - 1) * HERO_ART.step;
+  assert(wm && sHi <= hLo && HERO_ART.a0 > hLo && HERO_ART.a0 + top < hHi && HERO_ART.a0 - HERO_ART.self > sLo && HERO_ART.a0 - HERO_ART.self + top < sHi,
+    `two windows: his (${sLo}, ${sHi}) and the bosses' (${hLo}, ${hHi}), every part id inside its own`);
+  // the unused v0.2 creature grid's codes (alpha 0.04 + span) stay below his window, and write and read agree
+  const { CREATURE_FLAG } = await imp('src/render/materials.js');
+  const cTop = CREATURE_FLAG.min + CREATURE_FLAG.span;
+  assert(cTop < sLo - 0.005 && src.includes(`(c.a - ${CREATURE_FLAG.min.toFixed(2)}) / ${CREATURE_FLAG.span.toFixed(2)} * ${CREATURE_FLAG.codes}.0`),
+    `the creature grid's codes end at ${cTop.toFixed(3)}, below his window (${sLo}), and the pass decodes with the same span`);
+  assert(src.includes('bool heroArtCell(vec2 px)') && src.includes('gSelf = true; gCell = uSelfCell') && src.includes('gSelf = false; gCell = uHeroCell'), 'the hero branch runs for him on his cell, then for the bosses on theirs');
+  const pm = game.player.rig.materials;
+  const mine = Object.values(pm).filter((m) => m?.defines?.HERO_A0 != null);
+  assert(mine.length >= 10 && mine.every((m) => m.defines.HERO_A0 === (HERO_ART.a0 - HERO_ART.self).toFixed(4)), `every one of his ${mine.length} art materials writes his own window`);
+
+  // his own part tables: HERO_INK with HERO_SELF on top; the shared ones (a boss's) are HERO_INK
+  const eq = (v, a) => v.toArray().every((x, i) => Math.abs(x - a[i]) < 1e-6);
+  let own = 0;
+  for (const [name, h] of Object.entries(HERO_INK)) {
+    if (h.part === HERO_INK.bladeTip.part) continue; // (the blade: written every frame, below)
+    const [l, f, r] = heroPartValues(HERO_SELF[name] ? { ...h, ...HERO_SELF[name] } : h);
+    const last = Object.entries(HERO_INK).filter(([, x]) => x.part === h.part).pop()[0] === name; // (two materials of one part: the last writes)
+    if (!last) continue;
+    assert(eq(U.uSelfPartInk.value[h.part], l) && eq(U.uSelfPartFill.value[h.part], f) && eq(U.uSelfPartRim.value[h.part], r), `his part ${h.part} (${name}) is HERO_INK${HERO_SELF[name] ? ' + HERO_SELF' : ''}`);
+    if (HERO_SELF[name]) own++;
+  }
+  const A = HERO_INK.armor.part;
+  assert(own >= 4 && U.uSelfPartFill.value[A].y >= 8 && U.uSelfPartRim.value[A].w < 0.9 && U.uSelfPartFill.value[A].z <= 0.25, `his plate takes the cloak's rim: dotted, dim (${own} parts)`);
+  const boss = createHeroMaterials(U);
+  const [, bf, br] = heroPartValues(HERO_INK.armor);
+  assert(eq(U.uHeroPartFill.value[A], bf) && eq(U.uHeroPartRim.value[A], br) && U.uHeroPartFill.value[A].y < 8 && U.uSelfPartFill.value[A].y >= 8,
+    "a boss's rig build writes the shared tables (white plate rim) and leaves his alone");
+  assert(Object.values(boss).filter((m) => m?.defines?.HERO_A0 != null).every((m) => m.defines.HERO_A0 === HERO_ART.a0.toFixed(4)), "a boss's materials write the bosses' window");
+
+  // the dark blade: at rest his part 17 is the base times TUNE.bladeLook; the shared part 17 is never written
+  const P = HERO_INK.bladeTip.part, BL = TUNE.bladeLook;
+  const [, shF] = heroPartValues(HERO_INK.bladeTip);
+  for (let i = 0; i < 90; i++) G.tick(DT);
+  assert(BL.line < 0.6 && BL.fill < 1 && BL.halo === 0, `TUNE.bladeLook: a dark blade (line ${BL.line}, fill ${BL.fill}, far ${BL.far}, no halo)`);
+  assert(Math.abs(U.uSelfPartFill.value[P].x - (HERO_INK.bladeTip.fillGain ?? 1) * BL.fill) < 1e-6 && Math.abs(U.uSelfPartFill.value[P].w - HERO_INK.bladeTip.farFill * BL.far) < 1e-6
+    && Math.abs(U.uSelfPartInk.value[P].w - HERO_INK.bladeTip.line[3] * BL.line) < 1e-6 && game.player.bladeHot < 1e-3,
+    `at rest his steel is the base x bladeLook (fill ${U.uSelfPartFill.value[P].x.toFixed(2)}, line ${U.uSelfPartInk.value[P].w.toFixed(2)})`);
+  assert(eq(U.uHeroPartFill.value[P], shF), 'the shared part 17 stays the HERO_INK base');
   return G;
 }
 
@@ -10354,6 +10503,7 @@ const SCENARIOS = {
   batch: scenarioBatch,
   seen: scenarioSeen,
   zoomart: scenarioZoomArt,
+  heroletters: scenarioHeroLetters,
   breath: scenarioBreath,
   parry: scenarioParry,
   block: scenarioBlock,
