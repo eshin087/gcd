@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-one pieces of work since 0.4.0:
+Sixty-two pieces of work since 0.4.0:
 - **Cuts land with weight: the hit printed where it lands, the boss's body answers** (2026-11-22, ADR-149).
   *Added:* four new pieces on every cut that lands, each behind its own switch ("i want the hits to
   look realistic where it lands and show some kind of ascii animation to show the impact"). On a
@@ -24,6 +24,15 @@ Sixty-one pieces of work since 0.4.0:
   boss's reaction drawn at x1.5, the wyrm's at x1. `?impact=off` (or a list: `?impact=stamp,react`)
   and the Lab's 'impact' row switch the pieces; `?stamp=instead` draws the stamp in place of the
   slash line (an option). Nobody has played it yet.
+- **Round the Obsidian Throne, what the challengers left** (2026-11-22, ADR-133). *Changed:* the
+  felled forest round the Obsidian Throne's crater (the same straight log again and again, laid in a
+  starburst) is gone. In its place lies what those who came for the Starless Lord left behind: graves
+  of swords stuck in the earth, spears with a torn red banner, wanderers' cairns with a straw hat and
+  a sword, wrecked carts on their sides, a few steles on stone turtles and split boulders, each one
+  built differently, all in the dragon look. Faces turn toward the camera, what fell lies the way the
+  blast threw it, and nothing tall stands between the camera and the duel. About 70 of them within
+  reach break where they stand and the wooden ones burn (stone leaves rubble). The owner's pick of three rendered options
+  (`?outskirts=a` a shrine, `b` the star's debris, `m` all of them, `0` the felled forest).
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now
