@@ -4961,6 +4961,11 @@ async function scenarioWyrmLook() {
 
 async function scenarioHeroLife() {
   out('\n== scenario HEROLIFE (one hand through the chain, two on the heavy blows, the cross ward, the cloak vs the charged blade, idle actions) ==');
+  // the blade's flare as it was before the calm (combat/impactCalm.js level 0): these bounds measure
+  // the flare itself; the `calm` scenario measures what each level dims
+  const CALMX = await imp('src/combat/impactCalm.js');
+  const calm0 = CALMX.calmLevel();
+  CALMX.setCalm(0);
   const { DIM: HD } = await imp('src/entities/player/model.js');
   const G = build();
   const { game, input } = G;
@@ -5940,6 +5945,7 @@ async function scenarioHeroLife() {
     assert(sunk < 0.02, `no knee or elbow sinks into the grass through the reactions and both deaths (deepest ${(sunk * 100).toFixed(1)} cm: ${sunkAt || 'none'})`);
     p.lean.on = true;
   }
+  CALMX.setCalm(calm0);
   return G;
 }
 

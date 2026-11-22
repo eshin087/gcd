@@ -2227,6 +2227,11 @@ async function scenarioMoments() {
  *  flare, the sound, the budget, his shudder (drawn only); a guarded strike gets none of it. */
 async function scenarioCutFx() {
   out('\n== scenario CUTFX (a landed cut: the drawn contact, the freeze, the kick, the flare, the sound, the shudder) ==');
+  // the blade's flare as it was before the calm (combat/impactCalm.js level 0): these bounds measure
+  // the flare itself; the `calm` scenario measures what each level dims
+  const CALMX = await imp('src/combat/impactCalm.js');
+  const calm0 = CALMX.calmLevel();
+  CALMX.setCalm(0);
   const { CUT_LOOK, CUT_LAST } = await imp('src/combat/cutFx.js');
   const { feel, HIT_FEEL } = await imp('src/entities/player/combat.js');
   const G = build();
@@ -2407,6 +2412,7 @@ async function scenarioCutFx() {
   d.fx.hitSpark = spark0;
   game.audio.play = play0;
   fxa.spawn = spawn0;
+  CALMX.setCalm(calm0);
   return G;
 }
 
