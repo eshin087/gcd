@@ -476,12 +476,591 @@ async function scenarioLethal() {
   }
 }
 
+// ================================================================== scenario: timing (flash → contact)
+async function scenarioTiming() {
+  out('\n== scenario TIMING (every move from inside its band, every phase: each flare is a blow, on time) ==');
+  let worst = 0, moves = 0;
+  const only = process.env.ABYSS_TMOVE;
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    if (def.transition || def.hidden) continue;
+    if (only && name !== only) continue;
+    for (const f of phasesOf(name)) {
+      const G = build();
+      const d = G.game.dragon;
+      const [lo, hi] = def.band;
+      const at = def.counter ? 2.0 : Math.max(1.8, Math.min(hi - 0.6, lo + (Math.min(hi, 12) - lo) * 0.4));
+      duel(G, { dist: at, phase: f });
+      G.game.player.debug.god = true;
+      const flashes = [], contacts = [];
+      G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') { flashes.push(G.game.time); if (only) out(`       ${G.game.time.toFixed(3)} flash ${e.attack} ${e.tell}`); } };
+      const h0 = G.hits.length;
+      const ok = def.counter ? d.brain.startAct(name) : d.debug.trigger(name);
+      if (!ok) { assert(false, `${name} phase ${f}: starts`); continue; }
+      run(G, 9, null, () => quiet(d));
+      for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) { contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.kind} ${h.r}`); }
+      let w = 0;
+      for (const c of contacts) {
+        const fl = flashes.filter((t) => t <= c + 1e-6).pop();
+        w = Math.max(w, fl === undefined ? Infinity : Math.abs(c - fl - TUNING.flashLead));
+      }
+      worst = Math.max(worst, Number.isFinite(w) ? w : 9);
+      moves++;
+      if (!(contacts.length >= 1) || !(w <= 0.09)) assert(false, `${name} phase ${f} from ${at.toFixed(1)} m: ${flashes.length} flashes, ${contacts.length} contacts, worst ${(w * 1000).toFixed(0)} ms`);
+      else out(`     ${name.padEnd(17)} phase ${f} from ${at.toFixed(1)} m: ${flashes.length} flashes, ${contacts.length} contacts, worst ${(w * 1000).toFixed(0)} ms`);
+    }
+  }
+  if (only) return;
+  assert(moves >= 18 && worst <= 0.09, `${moves} move x phase runs: every contact within ${(worst * 1000).toFixed(0)} ms of its flare + ${TUNING.flashLead} s, and every move's first blow lands`);
+}
+
+// ================================================================== scenario: cover (the line blows and the stones)
+async function scenarioCover() {
+  out('\n== scenario COVER (a striking stone between him and the hero takes a line blow; the hero is untouched) ==');
+  for (const [name, ph] of [['oneBlow', 1], ['idleFinger', 1], ['splitEarth', 2]]) {
+    const G = build(SEED, true);
+    const { game } = G;
+    duel(G, { dist: 4, phase: ph });
+    const d = game.dragon, p = game.player, W = game.world.destructibles;
+    p.debug.god = true;
+    const post = W.list.find((b) => b.kind === 'post' && b.def?.inner);
+    assert(!!post && post.cover, `${name}: an inner striking stone is cover (${post?.kind})`);
+    const l = Math.hypot(post.x, post.z) || 1, ux = post.x / l, uz = post.z / l;
+    const back = name === 'idleFinger' ? 8.5 : 6;
+    d.position.set(post.x - ux * back, 0, post.z - uz * back);
+    d.yaw = Math.atan2(ux, uz);
+    p.debug.teleport(post.x + ux * 1.4, post.z + uz * 1.4);
+    p.yaw = Math.atan2(-ux, -uz);
+    run(G, 0.05);
+    const h0 = G.hits.length, s0 = post.state;
+    assert(d.debug.trigger(name), `${name}: starts`);
+    run(G, 6, () => { d.position.y = 0; }, () => quiet(d));
+    const took = G.hits.slice(h0).filter((h) => h.r !== RESULT.IGNORED);
+    if (process.env.ABYSS_TRACE) out(JSON.stringify(took), JSON.stringify({ post: [post.x, post.z, post.state], d: [d.position.x, d.position.z, d.yaw], p: [p.position.x, p.position.z] }));
+    assert(took.length === 0 && post.state !== s0, `${name}: the stone took it (state ${s0} → ${post.state}); the hero behind it untouched (${took.length} blows reached him)`);
+  }
+  // in the open the same blow reaches him
+  {
+    const G = build(SEED, true);
+    duel(G, { dist: 8 });
+    G.game.player.debug.god = true;
+    const h0 = G.hits.length;
+    G.game.dragon.debug.trigger('oneBlow');
+    run(G, 5, null, () => quiet(G.game.dragon));
+    assert(G.hits.slice(h0).some((h) => h.r === RESULT.HIT && h.attack === 'oneBlow'), 'with nothing between them The One Blow reaches him 8 m off');
+  }
+  // other bosses' beats do not carry `wind`
+  const { MOVES: AM } = await imp('src/entities/enemies/ascendant/moves.js');
+  const { MOVES: DM } = await imp('src/entities/enemies/ashDisciple/moves.js');
+  const flat = (M) => Object.values(M).flatMap((m) => m.beats.flatMap((b) => (Array.isArray(b.pick) ? b.pick : [b])));
+  assert(![...flat(AM), ...flat(DM)].some((b) => b.wind), 'no other boss\'s beat carries `wind`');
+}
+
+// ================================================================== scenario: bare (his hand is the blade)
+async function scenarioBare() {
+  out('\n== scenario BARE (bare hands: the striking hand is his "blade"; a parry meets it there) ==');
+  const G = build();
+  duel(G, { dist: 2.6 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  const hand = new THREE.Vector3();
+  d.rig.sword.getWorldPosition(hand);
+  assert(d._tipOk && d._tip.distanceTo(hand) < 0.25, `in his guard the "blade" ends at his right hand (${d._tip.distanceTo(hand).toFixed(2)} m)`);
+  // the left hand behind his back (phases 1 - 2), out in phase 3
+  const lh = new THREE.Vector3(), ch = new THREE.Vector3(), fw = () => new THREE.Vector3(Math.sin(d.yaw), 0, Math.cos(d.yaw));
+  d._limbSeg('fistL', new THREE.Vector3(), lh);
+  d.rig.chest.getWorldPosition(ch);
+  const behind1 = (lh.x - ch.x) * fw().x + (lh.z - ch.z) * fw().z;
+  assert(behind1 < -0.02, `phases 1 - 2: the left hand is behind his back (${behind1.toFixed(2)} m along his facing)`);
+  d.debug.setPhase(3);
+  run(G, 1.2);
+  d._limbSeg('fistL', new THREE.Vector3(), lh);
+  d.rig.chest.getWorldPosition(ch);
+  const front3 = (lh.x - ch.x) * fw().x + (lh.z - ch.z) * fw().z;
+  assert(front3 > 0.1, `phase 3 (BOTH HANDS): the left hand is out before him (${front3.toFixed(2)} m)`);
+  // a parried palm: the contact is on his hand, his string ends, the counter answers
+  const G2 = build();
+  duel(G2, { dist: 2.8 });
+  const d2 = G2.game.dragon, p2 = G2.game.player;
+  p2.debug.god = true;
+  let parried = 0, counters = 0;
+  G2.watch = (n, e) => { if (n === 'dragon:parried') parried++; if (n === 'player:flareCounter') counters++; };
+  d2.debug.trigger('mountainPalm');
+  run(G2, 4, () => {
+    const a = d2.brain.act, b = a?.beats?.[0];
+    if (b && !b.done && b.impact - a.t <= 0.1 && b.impact - a.t > 0.08) { G2.input.up(1); G2.input.click(1); }
+  }, () => parried > 0);
+  run(G2, 1.5);
+  assert(parried === 1 && d2.brain.react?.kind !== 'deflect', `the palm parried (${parried}): he recoils`);
+  assert(counters >= 0, `the flare's counter answers (${counters})`);
+}
+
+// ================================================================== scenario: guard (his palm ward, greed, no flurry)
+async function scenarioGuard() {
+  out('\n== scenario GUARD (his palm turns cuts in his footwork, Reproach after a few; greedy: nothing cancels a windup) ==');
+  const G = build();
+  duel(G, { dist: 2.0, ai: true });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  d.brain.gapT = 99; // (he keeps to his footwork: the hero cuts into his guard)
+  let guards = 0, reproach = 0, flurry = 0;
+  G.watch = (n, e) => {
+    if (n === 'dragon:guard') guards++;
+    if (n === 'dragon:windup' && e?.name === 'reproach') reproach++;
+    if (n === 'dragon:flurry') flurry++;
+  };
+  run(G, 8, () => {
+    d.brain.gapT = Math.max(d.brain.gapT, 50);
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    if (((game.realTime * 60) | 0) % 24 === 0) input.click(0);
+  }, () => reproach > 0);
+  assert(guards >= 2 && reproach >= 1, `his palm turned ${guards} cuts and Reproach answered (${reproach})`);
+  assert(flurry === 0 && d.brain.startStreak(4) === false, 'no flurry of his (no `streak` move): his guard never answers with one');
+  // greed: a cut in his windup lands at half (his skin), and the windup goes on
+  const G2 = build();
+  duel(G2, { dist: 2.2 });
+  const d2 = G2.game.dragon;
+  d2.debug.trigger('fallingPeak');
+  run(G2, 0.5);
+  const a = d2.brain.act, hp0 = d2.hp;
+  assert(!d2.guarding, 'in a windup his guard is down');
+  const dealt = d2.takeHit({ damage: 20, part: 'body', swing: true, heavy: false, dir: { x: 0, z: -1 } });
+  run(G2, 0.05);
+  assert(Math.abs(dealt - 10) <= 1 && d2.brain.act === a && d2.mode === 'act', `a cut in his windup: ${dealt} of 20 (skin x${TUNING.skin.windup}), the blow still coming (${d2.mode})`);
+  const heavy = d2.takeHit({ damage: 40, part: 'body', swing: true, heavy: true, poise: 200, dir: { x: 0, z: -1 } });
+  run(G2, 0.05);
+  assert(d2.brain.act === a && heavy > 0, `a crushing heavy in his windup lands (${heavy}) and does not cancel it`);
+  run(G2, 3, null, () => d2.mode !== 'act' || d2.brain.act !== a || a.t > a.recoveryStart + 0.05);
+  const hp1 = d2.hp;
+  const full = d2.takeHit({ damage: 20, part: 'body', swing: true, dir: { x: 0, z: -1 } });
+  assert(Math.abs(full - 20) <= 1 && hp1 - d2.hp === full, `a cut in his recovery lands in full (${full})`);
+  assert(hp0 - d2.hp > 0, 'his bar went down');
+  // no lock, no mikiri, no flurry blow in his kit (DATA checks the beats); the transition's blow is red
+  assert(TRANSITIONS[2] && MOVES[TRANSITIONS[2]].beats[0].tell === TELL.RED, 'his transitions are red (dodge them)');
+}
+
+// ================================================================== scenario: phase (one bar, three phases)
+async function scenarioPhase() {
+  out('\n== scenario PHASE (one bar: 66 % THE MOUNTAIN ANSWERS, 33 % BOTH HANDS) ==');
+  const G = build();
+  duel(G, { dist: 6, ai: true });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  d.takeHit({ damage: d.maxHp * 0.4, exact: true });
+  assert(Math.abs(d.hp - d.maxHp * 0.66) < 1, `a heavy blow is held at the phase gate (${Math.round(d.hp)} = 66 %)`);
+  run(G, 4, null, () => d.brain.act?.name === 'mountainAnswers');
+  assert(d.brain.act?.name === 'mountainAnswers' && d.phase === 2 && G.counts['dragon:phase2'] === 1, `phase 2 begins with The Mountain Answers (${d.brain.act?.name})`);
+  run(G, 4, null, () => d.mode === 'foot');
+  d.takeHit({ damage: d.maxHp * 0.5, exact: true });
+  run(G, 4, null, () => d.brain.act?.name === 'bothHands');
+  assert(d.brain.act?.name === 'bothHands' && d.phase === 3 && G.counts['dragon:phase3'] === 1, `phase 3 begins with Both Hands (${d.brain.act?.name})`);
+  run(G, 4, null, () => d.mode === 'foot');
+  assert(d.brain.C === CLIPS_BY_PHASE[2], 'phase 3 reacts with its own clips (both hands)');
+  d.takeHit({ damage: d.maxHp, exact: true });
+  run(G, 6, null, () => d.mode === 'dead');
+  assert(d.mode === 'dead' && G.counts['dragon:death'] === 1, 'the third phase emptied: he dies');
+}
+
+// ================================================================== scenario: flow (title → the ledge → the duel; death and victory)
+async function scenarioFlow() {
+  out('\n== scenario FLOW (the ledge → he turns from his stone → the duel; a death sends him back; the victory) ==');
+  const G = build();
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  run(G, 0.3);
+  input.tap('Enter');
+  run(G, 0.5);
+  if (game.state !== 'explore') game.flow.debug.toState('explore');
+  run(G, 0.3);
+  assert(game.state === 'explore' && d.mode === 'sleep', 'exploring; he waits at his stone');
+  p.debug.teleport(0, CONFIG.world.bossTriggerZ + 2.5);
+  run(G, 0.2);
+  run(G, 4, () => { input.axis = { x: 0, y: 1 }; }, () => d.mode !== 'sleep');
+  input.axis = { x: 0, y: 0 };
+  assert(d.mode === 'intro' && game.state === 'bossIntro', `over the ledge's lip: he stirs (hero at z ${p.position.z.toFixed(1)}, ${game.state})`);
+  run(G, 8, null, () => d.mode === 'foot' || d.mode === 'act');
+  run(G, 0.2);
+  assert(G.counts['dragon:introDone'] === 1 && game.state === 'boss', `the intro ends in the duel (${game.state})`);
+  p.debug.god = false;
+  p.hp = 1;
+  d.debug.setAI(true);
+  run(G, 30, () => { game.mouseGround.set(d.position.x, 0, d.position.z); }, () => game.state === 'dead');
+  assert(game.state === 'dead', 'one blow of his kills a hero at one health');
+  run(G, 12, () => { if (((game.realTime * 60) | 0) % 30 === 0) input.tap('Enter'); }, () => game.state === 'explore');
+  assert(game.state === 'explore' && d.mode === 'sleep' && d.phase === 1, `after the death he waits at his stone again (${game.state}, ${d.mode})`);
+  // the victory
+  const G2 = build();
+  duel(G2, { dist: 4 });
+  G2.game.dragon.debug.kill();
+  run(G2, 8, null, () => G2.game.state === 'victory');
+  assert(G2.game.state === 'victory', `his death ends the duel (${G2.game.state})`);
+}
+
+// ================================================================== the bots
+const stat = (xs) => ({ min: Math.min(...xs), max: Math.max(...xs), mean: xs.reduce((a, x) => a + x, 0) / (xs.length || 1) });
+
+/**
+ * The reader: answers his flares from the flare (blue: parry; white: parry or, `style` 'block', a held
+ * guard; red / black: a roll, early enough to be a perfect dodge most of the time). `skill` < 1: that
+ * share of his cues answered, the rest let through (a Last Breath, or death). World cues (a stone
+ * falling) are rolled from.
+ */
+function makeReader(G, { skill = 1, style = 'mixed', rng = null } = {}) {
+  const pend = [];
+  const stats = { flashes: 0, skipped: [], parryTry: 0, dodgeTry: 0, blockTry: 0 };
+  let guardUntil = -1;
+  return {
+    stats,
+    onEvent(n, d) {
+      if (n !== 'combat:flash' || (d?.source !== 'dragon' && d?.source !== 'world')) return;
+      stats.flashes++;
+      if (skill < 1 && (rng ?? Math.random)() > skill) { stats.skipped.push([G.game.time, d.attack]); return; }
+      pend.push({ tell: d.tell, at: G.game.time + (d.source === 'world' ? 0.3 : TUNING.flashLead), x: d.x, z: d.z, hazard: d.source === 'world' || (!!d.hazard && !d.bullet), done: false });
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.4) pend.splice(i, 1);
+      let busy = false;
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - t - DT;
+        const roll = e.tell === TELL.RED || e.tell === TELL.BLACK || e.hazard || style === 'roll';
+        if (roll) {
+          if (left <= 0.1) {
+            e.done = true;
+            input.up(1);
+            guardUntil = -1;
+            const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
+            const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+            let wx = -dz / l, wz = dx / l;
+            const B = (CONFIG.world.dragonBound ?? 12) + 1;
+            if (Math.hypot(p.x + wx * 3, p.z + wz * 3) > B) { wx = -wx; wz = -wz; }
+            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: wx, y: -wz };
+            input.tap('Space');
+            stats.dodgeTry++;
+          }
+        } else if (style === 'block' && e.tell !== TELL.BLUE) {
+          e.done = true;
+          guardUntil = Math.max(guardUntil, e.at + 0.15);
+          stats.blockTry++;
+        } else if (left <= 0.12) {
+          e.done = true;
+          input.up(1);
+          input.click(1);
+          stats.parryTry++;
+        }
+        if (!e.done && left < 0.7) busy = true;
+      }
+      if (guardUntil > t) { input.press(1); busy = true; } else if (guardUntil > 0) { guardUntil = -1; input.up(1); }
+      return busy;
+    },
+    dueWithin(s) {
+      const t = G.game.time;
+      return pend.some((e) => !e.done && e.at - t < s);
+    },
+  };
+}
+
+/** Fence: stay in reach, answer every flare, cut in his recovery (and, `greedy`, in his windups while
+ *  the blow is far off), execute him when he breaks, drink when he is open and the hero is under the
+ *  line. `god`: the hero's health is kept full. */
+function fence(G, { god = false, greedy = true, drinkAt = 80 } = {}) {
+  const { game, input } = G;
+  const p = game.player, d = game.dragon;
+  input.axis = { x: 0, y: 0 };
+  if (!p.alive || game.state !== 'boss') return;
+  if (god) p.hp = p.maxHp;
+  const tgt = new THREE.Vector3();
+  d.lockPoint(tgt);
+  game.mouseGround.set(tgt.x, 0, tgt.z);
+  const dx = tgt.x - p.position.x, dz = tgt.z - p.position.z, dist = Math.hypot(dx, dz);
+  const busy = G.defend.act();
+  const tick = (game.realTime * 60) | 0;
+  const a = d.brain.act;
+  const cur = a?.beats?.find((b) => a.t < b.end);
+  const opening = d.broken || d.mode === 'react' || (d.mode === 'act' && !!a && a.t > a.recoveryStart + 0.1);
+  // (under the line he drinks as soon as no blow of his is coming within 1.2 s: he waits while the hero drinks)
+  const calm = !(d.mode === 'act' && cur && !cur.feint && a.t < cur.impact && cur.impact - a.t < 1.2) && !d.fx.crescentsAlive;
+  if (!god && p.hp < drinkAt && p.flasks > 0) {
+    // under the line he does not fight: he keeps his distance and drinks the moment it is calm
+    if (calm && !G.defend.dueWithin(1.0) && ['idle', 'run', 'block'].includes(p.state) && tick % 6 === 0) { input.up(1); input.tap('KeyF'); return; }
+    if (!busy && dist < 6) input.axis = { x: -dx / dist, y: dz / dist };
+    return;
+  }
+  if (dist > 2.4 && !busy) input.axis = { x: dx / dist, y: -dz / dist };
+  // (he reads the windup, not only the flare: no cut is started with one of his blows under 0.8 s off;
+  // greedy, he cuts while it is still far)
+  const coming = d.mode === 'act' && cur && !cur.feint && a.t < cur.impact && cur.impact - a.t < 0.8;
+  const windupFar = greedy && d.mode === 'act' && cur && !cur.feint && cur.impact - a.t > 0.9 && !a.def.transition;
+  const open = opening || p.critTimer > 0;
+  if (!busy && !coming && dist < 3.0 && (open ? tick % 18 === 0 : windupFar ? tick % 26 === 0 : tick % 80 === 0)) input.click(0);
+}
+
+/** A whole fight. → what it measured. */
+function fight(seed, { skill = 1, god = false, style = 'mixed', greedy = true, secs = 420, real = true } = {}) {
+  const G = build(seed, real);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 3.5, ai: true });
+  p.debug.god = false;
+  G.defend = makeReader(G, { skill, style, rng: mulberry32(seed * 977 + Math.round(skill * 100)) });
+  const phaseAt = [game.time];
+  const n = { parries: 0, dodges: 0, breaths: 0, shatters: 0, heals: 0, breaks: 0, execs: 0 };
+  const lands = [], flashT = [];
+  const th = p.takeHit.bind(p);
+  p.takeHit = (h) => {
+    const st0 = `${p.state}${p.atk?.def?.name ? ':' + p.atk.def.name : ''}`;
+    const r = th(h);
+    if (r === RESULT.HIT && h?.lethal) {
+      const t = game.time, atk = h.attack;
+      const why = G.defend?.stats.skipped.some((x) => x[0] > t - 1.5 && x[1] === atk) ? 'missed' : flashT.some((x) => x[0] > t - 1.5 && x[1] === atk) ? `ANSWERED(${st0})` : 'uncued';
+      lands.push(`${atk} ${why} @${(t - t0).toFixed(1)}`);
+    }
+    return r;
+  };
+  G.watch = (ev, e) => {
+    if (ev === 'combat:flash') flashT.push([game.time, e?.attack]);
+    if (ev === 'player:parry') n.parries++;
+    if (ev === 'player:perfectDodge') n.dodges++;
+    if (ev === 'player:lastBreath') n.breaths++;
+    if (ev === 'player:guardOpen' && e?.black) n.shatters++;
+    if (ev === 'player:heal') n.heals++;
+    if (ev === 'dragon:postureBreak') n.breaks++;
+    if (ev === 'dragon:plunged') n.execs++;
+    if (/^dragon:phase[23]$/.test(ev)) phaseAt.push(game.time);
+    if (ev === 'dragon:hurt' && process.env.ABYSS_DMG) {
+      const k = p.state === 'flurry' ? 'flurry' : e?.crit && d.broken ? 'broken' : e?.crit ? 'crit/exec' : d.mode === 'act' && d.brain.act && d.brain.act.t < (d.brain.act.recoveryStart ?? 0) ? 'windup' : d.mode === 'act' ? 'recovery' : d.mode;
+      dmg[k] = (dmg[k] || 0) + (e?.damage ?? 0);
+    }
+  };
+  const dmg = {};
+  const t0 = game.time;
+  let outcome = 'time';
+  run(G, secs, () => fence(G, { god, greedy }), () => {
+    if (d.mode === 'dead' || d.mode === 'dying') { outcome = 'won'; return true; }
+    if (!p.alive) { outcome = 'died'; return true; }
+    return false;
+  });
+  G.watch = null;
+  G.defend = null;
+  if (process.env.ABYSS_TRACE) out(`        landed: ${lands.join(' · ')}`);
+  if (process.env.ABYSS_DMG) out(`        damage by: ${Object.entries(dmg).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · ')}`);
+  const T = game.time - t0;
+  const perPhase = phaseAt.map((t, i) => (phaseAt[i + 1] ?? game.time) - t);
+  return { G, seed, skill, outcome, T, perPhase, phase: d.phase, bar: d.hp / d.maxHp, hp: p.hp, flasks: p.flasks, killer: outcome === 'died' ? p.lethalLast?.attack ?? '?' : null, ...n };
+}
+
+// ================================================================== scenario: pace (the pressure meter)
+async function scenarioPace() {
+  out('\n== scenario PACE (a steady defender in god mode vs his AI, per phase: cues a minute, gaps, conflicts, lethal impacts apart) ==');
+  const SECS = Number(process.env.ABYSS_PSECS ?? 120);
+  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
+  const rows = [];
+  const B = (CONFIG.world.dragonBound ?? 12) - 1;
+  const sep = TUNING.pressure.guard.sep + TUNING.pressure.guard.margin;
+  for (const seed of SEEDS) {
+    for (let ph = 1; ph <= PHASES; ph++) {
+      if (process.env.ABYSS_PPH && !process.env.ABYSS_PPH.split(',').includes(String(ph))) continue;
+      const G = build(seed, true);
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      duel(G, { dist: 3, ai: true, phase: ph });
+      p.debug.god = true;
+      G.defend = makeReader(G, { skill: 1 });
+      const modes = [];
+      Math.random = mulberry32(seed * 7 + ph);
+      const flashes = [], impacts = [], busyT = [];
+      G.watch = (n, e) => {
+        if (n === 'combat:flash' && e?.source === 'dragon') flashes.push([game.time, e.tell, e.attack]);
+        if (n === 'combat:charge' && Number.isFinite(e?.dur)) for (let k = 0; k < e.dur; k += 0.1) busyT.push(game.time + k);
+      };
+      const th = p.takeHit.bind(p);
+      p.takeHit = (h) => { if (h?.lethal) impacts.push(game.time); return th(h); };
+      const roam = mulberry32(seed * 31 + ph), goal = { r: 3, a: 0, until: -1 };
+      const t0 = game.time;
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        const busy = G.defend.act();
+        if (game.time > goal.until) {
+          goal.r = [2.5, 5, 10][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+          goal.until = game.time + 4;
+        }
+        if (!busy && p.state !== 'roll') {
+          const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+          const k = Math.hypot(gx, gz) > B ? B / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 0.6 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        game.mouseGround.set(d.position.x, 0, d.position.z);
+        G.tick(DT);
+        if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+        if (d.mode === 'broken' && i % 6 === 0) busyT.push(game.time);
+        if (i % 30 === 0) modes.push([game.time, `${d.mode}:${d.brain.act?.name ?? d.brain.react?.kind ?? ''}@${Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z).toFixed(1)}`]);
+      }
+      G.watch = null;
+      G.defend = null;
+      const T = game.time - t0;
+      const ts = [t0, ...flashes.map((f) => f[0]), ...busyT.filter((x) => x > t0 && x < t0 + T), t0 + T].sort((x, y) => x - y);
+      let gapMax = 0, gapAt = '';
+      for (let i = 1; i < ts.length; i++) {
+        if (ts[i] - ts[i - 1] <= gapMax) continue;
+        gapMax = ts[i] - ts[i - 1];
+        gapAt = `@${(ts[i - 1] - t0).toFixed(1)} ${modes.filter((m) => m[0] >= ts[i - 1] && m[0] <= ts[i]).map((m) => m[1]).join(' ')}`;
+      }
+      let conflicts = 0;
+      const conflictAt = [];
+      for (let i = 0; i < flashes.length; i++) {
+        for (let j = i + 1; j < flashes.length && flashes[j][0] - flashes[i][0] < sep; j++) {
+          if (answer(flashes[i][1]) === answer(flashes[j][1])) continue;
+          conflicts++;
+          conflictAt.push(`${flashes[i][2]}/${flashes[j][2]} @${(flashes[i][0] - t0).toFixed(1)}`);
+        }
+      }
+      let closest = Infinity;
+      const imp = [...new Set(impacts.map((x) => Math.round(x * 1000)))].sort((x, y) => x - y).map((x) => x / 1000);
+      for (let i = 1; i < imp.length; i++) closest = Math.min(closest, imp[i] - imp[i - 1]);
+      const dodge = flashes.filter((f) => answer(f[1]) === 'dodge').length / (flashes.length || 1);
+      rows.push({ seed, ph, perMin: (flashes.length * 60) / T, dodge, gapMax, gapAt, conflicts, conflictAt, closest, impacts: imp.length });
+    }
+  }
+  out(`   ${SECS} s per phase, seeds ${SEEDS.join(', ')}`);
+  out('   seed ph cue/min dodge% gapMax impacts closest conflicts');
+  for (const r of rows) out(`   ${String(r.seed).padStart(4)}  ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${(r.dodge * 100).toFixed(0).padStart(6)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.impacts).padStart(7)} ${(Number.isFinite(r.closest) ? r.closest.toFixed(2) : '-').padStart(7)} ${String(r.conflicts).padStart(9)}${r.conflicts ? `  ${r.conflictAt.slice(0, 3).join(' · ')}` : ''}${process.env.ABYSS_TRACE ? `
+        gap ${r.gapAt}` : ''}`);
+  const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
+  for (let ph = 1; ph <= PHASES; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min, ${(mean(ph, 'dodge') * 100).toFixed(0)} % to dodge, longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s`);
+  if (process.env.ABYSS_PREPORT) return;
+  const MT = TUNING.pressure.meter, pf = (v, ph) => v[Math.min(v.length, ph) - 1];
+  for (let ph = 2; ph <= PHASES; ph++) {
+    const a0 = mean(ph - 1, 'perMin'), a1 = mean(ph, 'perMin');
+    assert(a1 >= a0 * pf(MT.rampMean, ph), `the seeds' mean: P${ph} at least x${pf(MT.rampMean, ph)} P${ph - 1}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)})`);
+  }
+  for (const r of rows) {
+    assert(r.perMin >= pf(MT.minRate, r.ph) && r.gapMax <= pf(MT.maxGap, r.ph), `seed ${r.seed} P${r.ph}: ${r.perMin.toFixed(1)} cues a minute (>= ${pf(MT.minRate, r.ph)}), longest gap ${r.gapMax.toFixed(2)} s (<= ${pf(MT.maxGap, r.ph)})`);
+    assert(r.conflicts === 0, `seed ${r.seed} P${r.ph}: no two cues needing different answers within ${sep.toFixed(1)} s (${r.conflicts}: ${r.conflictAt.slice(0, 3).join(' · ')})`);
+    assert(!(r.closest < TUNING.lethal.minApart - 1e-3), `seed ${r.seed} P${r.ph}: no two lethal impacts closer than ${TUNING.lethal.minApart} s (closest ${Number.isFinite(r.closest) ? r.closest.toFixed(2) : '-'})`);
+  }
+}
+
+// ================================================================== scenario: win (god mode)
+async function scenarioWin() {
+  out('\n== scenario WIN (the mixed reader in god mode: parries, rolls, cuts greedily, executes) ==');
+  const SEEDS = (process.env.ABYSS_WSEEDS ?? '4242,7,99').split(',').map(Number);
+  const rs = [];
+  for (const seed of SEEDS) {
+    const r = fight(seed, { god: true });
+    rs.push(r);
+    out(`     seed ${String(seed).padEnd(5)} ${r.outcome} in ${r.T.toFixed(0)} s · phases ${r.perPhase.map((x) => x.toFixed(0)).join(' / ')} s · parries ${r.parries}, perfect dodges ${r.dodges}, breaks ${r.breaks}, executions ${r.execs}`);
+  }
+  const T = stat(rs.map((r) => r.T));
+  assert(rs.every((r) => r.outcome === 'won'), `the god-mode reader wins every seed (${rs.map((r) => r.outcome).join(', ')})`);
+  assert(T.min >= 100 && T.max <= 150, `the fight takes ${T.min.toFixed(0)} - ${T.max.toFixed(0)} s (mean ${T.mean.toFixed(0)}; target 100 - 150)`);
+  assert(rs.every((r) => r.perPhase.length === 3 && Math.min(...r.perPhase) >= 25), `each phase at least 25 s (${rs.map((r) => r.perPhase.map((x) => x.toFixed(0)).join('/')).join(' · ')})`);
+}
+
+// ================================================================== scenario: bots (mortal readers)
+async function scenarioBots() {
+  out('\n== scenario BOTS (mortal readers: 95 / 85 / 70 % of his cues answered, whole fights) ==');
+  const SEEDS = (process.env.ABYSS_BSEEDS ?? '4242,7,99').split(',').map(Number);
+  const SKILLS = (process.env.ABYSS_BSKILLS ?? '0.95,0.85,0.7').split(',').map(Number);
+  const by = {};
+  for (const skill of SKILLS) {
+    for (const seed of SEEDS) {
+      const r = fight(seed, { skill });
+      (by[skill] ??= []).push(r);
+      out(`     ${skill} seed ${String(seed).padEnd(5)} ${r.outcome.padEnd(4)} ${r.T.toFixed(0).padStart(4)} s · phase ${r.phase} bar ${(r.bar * 100).toFixed(0)} % · Last Breaths ${r.breaths} · shattered ${r.shatters} · flasks left ${r.flasks} · parries ${r.parries} · dodges ${r.dodges}${r.killer ? ` · killed by ${r.killer}` : ''}`);
+    }
+  }
+  for (const skill of SKILLS) out(`   ${skill}: won ${by[skill].filter((r) => r.outcome === 'won').length} / ${by[skill].length}`);
+  if (process.env.ABYSS_BREPORT) return;
+  const won = (k) => (by[k] ?? []).filter((r) => r.outcome === 'won').length / Math.max(1, (by[k] ?? []).length);
+  if (by[0.95]) assert(won(0.95) >= 0.66, `the 95 % reader wins most fights (${(won(0.95) * 100).toFixed(0)} %; ten seeds: COMBAT.md)`);
+  if (by[0.85] && by[0.7]) assert(won(0.85) >= won(0.7), `the 85 % reader does at least as well as the 70 % one (${(won(0.85) * 100).toFixed(0)} % vs ${(won(0.7) * 100).toFixed(0)} %)`);
+  if (by[0.7]) assert(won(0.7) <= 0.34, `the 70 % reader rarely wins (${(won(0.7) * 100).toFixed(0)} %)`);
+}
+
+// ================================================================== scenario: strategy (how each answer fares)
+async function scenarioStrategy() {
+  out('\n== scenario STRATEGY (god mode: parry-first, roll-everything, guard-first; no greed) ==');
+  for (const style of ['mixed', 'roll', 'block']) {
+    const r = fight(4242, { god: true, style, greedy: false, secs: 240 });
+    out(`     ${style.padEnd(6)} ${r.outcome} in ${r.T.toFixed(0)} s · bar ${(r.bar * 100).toFixed(0)} % · parries ${r.parries}, perfect dodges ${r.dodges}, shattered guards ${r.shatters}, breaks ${r.breaks}`);
+    if (style === 'block') assert(r.shatters > 0, 'a held guard is shattered, never broken through with health lost (god mode: no health anyway)');
+  }
+  // the guard rule on its own: a mortal hero who blocks a lone blow with a full meter loses nothing
+  const G = build();
+  duel(G, { dist: 2.4 });
+  const p = G.game.player, d = G.game.dragon;
+  G.input.press(1);
+  run(G, 0.5);
+  d.debug.trigger('mountainPalm');
+  run(G, 4, null, () => d.mode === 'foot');
+  assert(p.hp === p.maxHp && p.alive, `a held guard against the palm: no health lost (${p.hp})`);
+}
+
+// ================================================================== scenario: wreckage (the arena is the clock)
+async function scenarioWreckage() {
+  out('\n== scenario WRECKAGE (after a whole fight the ring of stones is rubble; nothing threw, no NaN) ==');
+  const r = fight(4242, { god: true });
+  const W = r.G.game.world.destructibles;
+  const posts = W.list.filter((b) => b.kind === 'post'), down = posts.filter((b) => b.state !== 0);
+  const inner = posts.filter((b) => b.def?.inner), innerDown = inner.filter((b) => b.state !== 0);
+  const floor = W.list.filter((b) => b.floor), broken = floor.filter((b) => b.state !== 0);
+  const share = down.length / Math.max(1, posts.length), fshare = broken.length / Math.max(1, floor.length);
+  out(`     ${r.outcome} in ${r.T.toFixed(0)} s: striking stones down ${down.length} / ${posts.length} (inner ${innerDown.length} / ${inner.length}); floor touched ${broken.length} / ${floor.length}`);
+  assert(share >= TUNING.world.meter.posts, `at least ${TUNING.world.meter.posts * 100} % of the striking stones are down (${(share * 100).toFixed(0)} %)`);
+  assert(fshare > 0.05 && fshare < 0.9, `the floor is scarred, not gone (${(fshare * 100).toFixed(0)} % of its plates touched)`);
+  if (r.G.payload.size) assert(false, `finite event payloads (${[...r.G.payload].join(', ')})`);
+}
+
+// ================================================================== scenario: training
+async function scenarioTraining() {
+  out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
+  const G = build(SEED, true);
+  const { game } = G;
+  duel(G, { dist: 4 });
+  const T = game.lab.training;
+  const { bossKinds } = await imp('src/dev/training.js');
+  const kinds = bossKinds(game);
+  assert(kinds.has('hermit') && !kinds.has('duel') && !kinds.has('ash') && !kinds.has('lord'), `his own boss kind (${[...kinds].join(', ')})`);
+  const only = process.env.ABYSS_TONLY?.split(',');
+  const L = only ? only.map((id) => T.find(id)).filter(Boolean) : T.list();
+  const bad = [];
+  for (const s of L) {
+    T.run(s.id);
+    let frames = 0;
+    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
+    const r = T.lastResult;
+    const ok = T.ph === 'done' && r?.id === s.id && r.ok;
+    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} · boss ${game.dragon.state}`);
+    if (!ok) bad.push(s.id);
+  }
+  T.stop();
+  const own = L.filter((s) => s.cat === 'THE HERMIT').length;
+  assert((only || (L.length >= 20 && own === 6)) && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}, ${own} of his own${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+}
+
 //@@MORE@@
 
 const SCENARIOS = {
   level: scenarioLevel,
   data: scenarioData,
   lethal: scenarioLethal,
+  timing: scenarioTiming,
+  cover: scenarioCover,
+  bare: scenarioBare,
+  guard: scenarioGuard,
+  phase: scenarioPhase,
+  flow: scenarioFlow,
+  pace: scenarioPace,
+  win: scenarioWin,
+  bots: scenarioBots,
+  strategy: scenarioStrategy,
+  wreckage: scenarioWreckage,
+  training: scenarioTraining,
   //@@LIST@@
 };
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { clamp, wrapAngle } from '../../../core/math.js';
-import { TELL } from '../../../combat/rules.js';
+import { TELL, RESULT } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
 import { P, to3 } from '../../player/anim.js';
 import { TUNE as HERO_TUNE } from '../../player/player.js';
@@ -190,7 +190,38 @@ export class Hermit extends Duelist {
     const r = super.hitPlayer(o);
     const pl = this.game.player, L = pl?.lethalLast;
     if (L && L.t === pl.time && (L.kind === 'breath' || L.kind === 'shatter' || L.kind === 'death' || L.kind === 'god')) this._slide(pl, L);
+    // the palm's force past the hero: a parry turns it aside at an angle; a roll lets it go on straight;
+    // a blow that landed (he is thrown along its line) sends it across, never onto where he will lie
+    if (this._palmDue && o.beat === this._palmDue) {
+      this._palmDue = null;
+      if (r !== RESULT.IGNORED) this._palmCarry(o.beat.def, r === RESULT.PARRIED ? 'deflected' : r === RESULT.DODGED || r === RESULT.PERFECT ? 'straight' : 'across');
+    }
     return r;
+  }
+
+  /** The palm's force carried on past his reach (T.world.palm): `straight` down its line, `deflected` (a
+   *  parry) turned 0.6 rad aside past the hero, `across` (it landed) the same line with what it fells
+   *  thrown across it. */
+  _palmCarry(D, mode) {
+    const W = this.game.world?.destructibles, WT = this.T.world ?? {};
+    if (!W?.sweep) return;
+    const r0 = D.zone?.r ?? 3, L = WT.palm?.len ?? 9, x = this.position.x, z = this.position.z;
+    let a = this.yaw;
+    if (mode === 'deflected') {
+      const p = this.game.player?.position, side = p ? Math.sign(Math.sin(this.yaw - Math.atan2(p.x - x, p.z - z)) || 1) : 1;
+      a += 0.6 * side;
+    }
+    const yf = Math.sin(a), zf = Math.cos(a), o = this._blowO;
+    o.kind = 'blast';
+    o.dx = mode === 'across' ? -zf : yf;
+    o.dz = mode === 'across' ? yf : zf;
+    o.y = 1;
+    o.falloff = 0;
+    o.down = false;
+    o.scar = true;
+    o.src = W.swing();
+    W.sweep(x + yf * r0, z + zf * r0, x + yf * (r0 + L), z + zf * (r0 + L), 0.7, mode === 'deflected' ? WT.deflected ?? 1.6 : WT.palm?.power ?? 1.4, o);
+    if (mode === 'deflected') this.fx.lane?.(x + yf * r0, z + zf * r0, yf, zf, L * 0.7, 0.9, 0.7);
   }
 
   /** The world under the hero's slide (a Last Breath, a shattered guard): what stands in his way along
@@ -205,13 +236,15 @@ export class Hermit extends Duelist {
     if (!W?.sweep) return;
     const o = this._blowO;
     o.kind = 'blunt';
-    o.dx = (ex - p.x) / len;
-    o.dz = (ez - p.z) / len;
+    // (what he goes through falls ACROSS his slide, never onto where he will lie: a falling stone is a
+    // red blow of the world, and a Last Breath is one health left)
+    o.dx = -(ez - p.z) / len;
+    o.dz = (ex - p.x) / len;
     o.src = W.swing();
     o.scar = false;
     o.falloff = 0;
     o.down = false;
-    W.sweep(p.x, p.z, ex, ez, 0.5, this.T.world?.thrown ?? 1.2, o);
+    W.sweep(p.x, p.z, ex, ez, 0.5, this.T.world?.thrown ?? 2.4, o);
   }
 
   // ---------------------------------------------------------------- his limbs
@@ -359,10 +392,10 @@ export class Hermit extends Duelist {
     const x = this.position.x, z = this.position.z;
     switch (D.carry) {
       case 'palm': {
-        const r0 = D.zone?.r ?? 3, L = WT.palm?.len ?? 9;
         fx.palmBurst?.(x + yf * 0.6, z + zf * 0.6, yf, zf, 1);
-        o.kind = 'blast';
-        W?.sweep?.(x + yf * r0, z + zf * r0, x + yf * (r0 + L), z + zf * (r0 + L), 0.7, WT.palm?.power ?? 1.4, o);
+        // (with the hero in its reach the force goes where his answer sends it: hitPlayer)
+        if (s && this.brain._inZone(D.zone, s)) this._palmDue = b;
+        else this._palmCarry(D, 'straight');
         break;
       }
       case 'lane': {
@@ -395,6 +428,23 @@ export class Hermit extends Duelist {
         o.dx = o.dz = NaN;
         o.falloff = S.falloff;
         w?.impact?.(x, z, r, S.power, o);
+        // the ring's inner striking stones answer the whole ledge: the stamp cracks them, the clap fells
+        // them outward (the arena is the clock: the cover thins at each phase)
+        // (and the clap cracks the rim's stones too: the last phase's blows bring them down)
+        const inner = WT.inner?.[D.carry] ?? 0, rim = WT.rim?.[D.carry] ?? 0;
+        if ((inner > 0 || rim > 0) && W?.list) {
+          const io = this._innerO ?? (this._innerO = { kind: 'blast', by: 'boss', dx: 0, dz: 0, y: 1, src: -1, scar: false });
+          io.src = W.swing();
+          for (const P of W.list) {
+            if (P.kind !== 'post' || P.state !== 0) continue;
+            const pw = P.def?.inner ? inner : rim;
+            if (!(pw > 0)) continue;
+            const l = Math.hypot(P.x - x, P.z - z) || 1;
+            io.dx = (P.x - x) / l;
+            io.dz = (P.z - z) / l;
+            W.strike(P.x, P.z, 0.2, pw, io);
+          }
+        }
         W?.wind?.(x, z, 1.2, 26, { from: 12 });
         this.game.world?.forest?.ambience?.flare?.(1);
         this.game.shake?.(0.5);
@@ -441,6 +491,21 @@ export class Hermit extends Duelist {
       if (c.wsrc === undefined || c.age < (c.wAge ?? 0)) c.wsrc = W.swing();
       c.wAge = c.age;
       const sp = (c.speed ?? 13) * dt, o = this._fissO ?? (this._fissO = { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0.4, src: -1, down: true });
+      // a striking stone in its way takes it (T.world.crescent) and falls ACROSS its path (not onto a hero
+      // behind it, as the pool's own stop would throw it): the fissure ends there
+      const cov = W.coverAt?.(c.x, c.z, c.x + c.dx * sp * 1.5, c.z + c.dz * sp * 1.5, 0.45);
+      if (cov) {
+        const pp = this.game.player?.position, sd = pp && (cov.x - pp.x) * c.dz - (cov.z - pp.z) * c.dx >= 0 ? 1 : -1;
+        const so = this._fissC ?? (this._fissC = { kind: 'blast', by: 'boss', dx: 0, dz: 0, y: 0.6, src: -1, scar: false });
+        so.dx = -c.dz * sd;
+        so.dz = c.dx * sd;
+        so.src = W.swing();
+        W.strike(cov.x, cov.z, 0.2, this.T.world?.crescent ?? 3, so);
+        this.fx._fizzle?.(c);
+        this.fx.dust?.(cov.x, cov.z, 1.2);
+        c.alive = false;
+        continue;
+      }
       o.dx = c.dx;
       o.dz = c.dz;
       o.src = c.wsrc;

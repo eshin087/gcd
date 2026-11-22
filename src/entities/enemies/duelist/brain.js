@@ -1363,6 +1363,12 @@ export class DuelBrain {
       o.kind = 'blast';
       o.dx = c.x - d.position.x;
       o.dz = c.z - d.position.z;
+      // (a `wind` blow is turned aside by the cover: it falls across the lane, not onto the hero behind it)
+      if (D.wind) {
+        const t = o.dx, sd = (c.x - p.x) * o.dz - (c.z - p.z) * t >= 0 ? 1 : -1;
+        o.dx = -o.dz * sd;
+        o.dz = t * sd;
+      }
       o.src = W.swing();
       W.strike(c.x, c.z, 0.2, D.grip ? WT.grip ?? DUEL_WORLD.grip : D.wind ? WT.wind ?? DUEL_WORLD.bolt : WT.bolt ?? DUEL_WORLD.bolt, o);
     }

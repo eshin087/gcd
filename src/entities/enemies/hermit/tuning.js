@@ -14,7 +14,7 @@ import { LETHAL } from '../../../combat/rules.js';
 export const TUNING = {
   name: 'GU SHAN, THE ONE-BLOW HERMIT',
   // one bar (the god-mode mixed bot's fight 100 - 150 s, each phase 25 s at least; tests WIN / BOTS)
-  hp: 3600,
+  hp: 9600,
   phaseAt: [1, 0.66, 0.33],
   radius: 0.42,
   // his drawn size: 1.1 x the hero's (visual only)
@@ -153,11 +153,15 @@ export const TUNING = {
     lane: 3.0,
     crater: { r: 4.5, power: 2.4 },
     stamp: { power: 2.5, falloff: 0.5 },
+    // what the transitions do to the ring's eight inner stones wherever they stand: The Mountain Answers
+    // cracks them, Both Hands fells them outward
+    inner: { stamp: 1.1, clap: 4.0 },
+    rim: { clap: 1.1 },
     fissure: 1.2,
     wind: 3.0,
     crescent: 3.0,
     deflected: 1.6,
-    thrown: 1.2,
+    thrown: 2.4,
     burn: 0.6,
     // (the WRECKAGE scenario: after a full bot fight at least this share of the striking stones is down)
     meter: { posts: 0.6 },
