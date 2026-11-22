@@ -10495,6 +10495,102 @@ async function scenarioZoomArt() {
   return G;
 }
 
+async function scenarioRipple() {
+  out('\n== scenario RIPPLE (impact: a landed cut\'s ring through the struck body\'s letters; slots, uniforms, the switch) ==');
+  const { Pipeline } = await imp('src/render/pipeline.js');
+  const { ImpactRipple, RIPPLE } = await imp('src/render/impactRipple.js');
+  const { IMPACT, impactK } = await imp('src/combat/impact.js');
+  const G = build();
+  const { game } = G;
+  const U = game.U, cam = game.camera;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true, _dpr: 1,
+    setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+    setPixelRatio(d) { this._dpr = d; }, getPixelRatio() { return this._dpr; }, setSize() {},
+  };
+  const pipe = new Pipeline(renderer, game.scene, game.fxScene, cam, U);
+  pipe.setSize(1280, 720, 1);
+  const P58 = CONFIG.camera.pitch;
+  cam.position.set(0, Math.sin(P58) * 36, Math.cos(P58) * 36);
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  const pipe0 = game.pipeline, rip0 = game.fx.ripple, on0 = IMPACT.on.ripple, k0 = IMPACT.k.ripple;
+  game.pipeline = pipe;
+  const A = pipe.asciiMat.uniforms;
+  try {
+    const R = new ImpactRipple(game);
+    assert(pipe.ripple === R && A.uRipN.value === 0 && A.uRipA.value.length === RIPPLE.slots && A.uRipB.value.length === RIPPLE.slots,
+      `the ripple hands itself to the pipeline; ${RIPPLE.slots} slots of uniforms, none live`);
+    assert(/rippleCell/.test(pipe.asciiMat.fragmentShader) && /uniform vec4 uRipA\[/.test(pipe.asciiMat.fragmentShader), 'the ASCII pass declares the ripple (rippleCell, uRipA[])');
+    const boss = { position: new THREE.Vector3(0, 0, 0) };
+    const o = { tier: 'light', cut: { x: 1, y: 0, z: 0 }, crit: false, power: 0, target: boss };
+    // the switch: on (as tuned) in the headless sims (no URL)
+    assert(impactK('ripple') === 1, `impactK('ripple') = ${impactK('ripple')} with no URL`);
+    R.hit(0, 1, 0, o, 1);
+    const a = A.uRipA.value[0], b = A.uRipB.value[0];
+    const fin4 = (v) => v.toArray().every(Number.isFinite);
+    assert(R.live === 1 && A.uRipN.value === 1 && fin4(a) && fin4(b), `a hit fills a slot and its uniforms (A ${a.toArray().map((v) => v.toFixed(2))}, B ${b.toArray().map((v) => v.toFixed(2))})`);
+    assert(a.x > 0 && a.x < 1280 && a.y > 0 && a.y < 720 && Math.abs(a.x - 640) < 2, `... the contact projected on screen (${a.x.toFixed(1)}, ${a.y.toFixed(1)} px)`);
+    assert(b.x > 0.5 && Math.abs(b.y) < 1e-6 && b.w > 30 && b.w < 40 && a.w > 0 && a.z === 0, `... the shove along the cut on screen (${b.x.toFixed(2)} px right), the contact's view depth ${b.w.toFixed(1)} m, the front at the contact`);
+    // it ages on fx time: the front runs out, its weight falls; it rides with the boss
+    R.update(RIPPLE.tiers.light.dur * 0.5);
+    const r1 = a.z, w1 = a.w, x1 = a.x;
+    assert(r1 > 1 && r1 < RIPPLE.tiers.light.reach && w1 < RIPPLE.tiers.light.gain, `half-way: the front ${r1.toFixed(2)} cells out (reach ${RIPPLE.tiers.light.reach}), weight ${w1.toFixed(2)}`);
+    boss.position.x = 2;
+    R.update(0);
+    assert(a.x > x1 + 10, `the boss shoved 2 m: the contact rides with him (${x1.toFixed(1)} -> ${a.x.toFixed(1)} px)`);
+    boss.position.x = 0;
+    pipe.render(); // the pass projects again right before it draws (mocked GL: must not throw)
+    assert(A.uRipN.value === 1, 'pipeline.render projects the live hit again');
+    R.update(RIPPLE.tiers.light.dur);
+    assert(R.live === 0 && A.uRipN.value === 0, 'its life over: the slot frees, uRipN 0 (the pass reads nothing)');
+    // a heavier tier reaches farther and lives longer
+    const heavy = { ...o, tier: 'cleave', power: 1, crit: true };
+    R.hit(0, 1, 0, heavy, 1);
+    const sc = R.slots.find((s) => s.on);
+    assert(sc.reach > RIPPLE.tiers.light.reach * 1.8 && sc.dur > RIPPLE.tiers.light.dur && sc.shove > RIPPLE.tiers.light.shove, `a charged, critical cleave: reach ${sc.reach.toFixed(1)} cells, ${sc.dur.toFixed(2)} s, shove ${sc.shove.toFixed(1)} px`);
+    // more hits than slots: the oldest is replaced, nothing throws
+    let threw = null;
+    try { for (let i = 0; i < RIPPLE.slots * 2 + 1; i++) { R.hit(i * 0.1, 1, 0, o, 1); R.update(0.001); } } catch (e) { threw = e; }
+    const seqs = R.slots.map((s) => s.seq).sort((x, y) => x - y);
+    assert(!threw && R.live === RIPPLE.slots && A.uRipN.value === RIPPLE.slots && seqs[0] === R._seq - RIPPLE.slots + 1, `${RIPPLE.slots * 2 + 1} hits in a row: ${R.live} live, the newest kept (${seqs.join(',')})`);
+    // bad input: no throw, no NaN
+    try {
+      R.hit(NaN, 1, 0, o, 1);
+      R.hit(0, 1, 0, { tier: 'nope', cut: { x: NaN, y: 0, z: 0 }, target: null }, 1);
+      R.hit(0, 1, 0, null, 1);
+      R.update(NaN);
+      R.update(-1);
+    } catch (e) { threw = e; }
+    assert(!threw && A.uRipA.value.every(fin4) && A.uRipB.value.every(fin4), 'NaN contact / unknown tier / no cut / no record / NaN dt: no throw, every uniform finite');
+    R.clear();
+    assert(R.live === 0 && A.uRipN.value === 0, 'clear: nothing live');
+    // through the real contact (PlayerFx.contact) with the switch on and off
+    game.fx.ripple = R;
+    const n0 = R.n;
+    const pt = new THREE.Vector3(0, 1, 0);
+    game.player.fx.contact(pt, 'light', null, false, 0);
+    const nOn = R.n - n0;
+    R.clear();
+    IMPACT.on.ripple = false;
+    game.player.fx.contact(pt, 'light', null, false, 0);
+    const nOff = R.n - n0 - nOn;
+    IMPACT.on.ripple = true;
+    IMPACT.k.ripple = 0;
+    game.player.fx.contact(pt, 'light', null, false, 0);
+    const nK0 = R.n - n0 - nOn - nOff;
+    R.hit(0, 1, 0, o, 0);
+    assert(nOn === 1 && nOff === 0 && nK0 === 0 && R.live === 0 && A.uRipN.value === 0,
+      `a landed cut draws one ripple when on (${nOn}); off: ${nOff}, k 0: ${nK0}, hit(k 0): nothing live, uRipN ${A.uRipN.value}`);
+  } finally {
+    IMPACT.on.ripple = on0;
+    IMPACT.k.ripple = k0;
+    game.pipeline = pipe0;
+    if (rip0) game.fx.ripple = rip0; else delete game.fx.ripple;
+  }
+  return G;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -10502,6 +10598,7 @@ const SCENARIOS = {
   hero: scenarioHero,
   batch: scenarioBatch,
   seen: scenarioSeen,
+  ripple: scenarioRipple,
   zoomart: scenarioZoomArt,
   heroletters: scenarioHeroLetters,
   breath: scenarioBreath,
