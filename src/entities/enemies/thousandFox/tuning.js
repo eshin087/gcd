@@ -1,6 +1,6 @@
 import { DUEL_WORLD } from '../duelist/worldTuning.js';
 
-// Wen Yao, the Thousand-Body Fox's numbers (ADR-131; COMBAT.md → "The Thousand-Body Fox"). Copied block
+// Wen Yao, the Thousand-Body Fox's numbers (ADR-147; COMBAT.md → "The Thousand-Body Fox"). Copied block
 // for block from Shen Hui's (ashDisciple/tuning.js: the comments there say why each number is what it
 // is) and changed only where he is someone else: his health and phases, his bound, no burning ground,
 // no terrain, and his own blocks at the end (the paper selves, the Pearl, the mantle, the world).
@@ -134,7 +134,11 @@ export const TUNING = {
     // black pearl, the Pearl): it asks more instead, 15 % of its cues a dodge against phase 2's 8 %. The
     // margins as Shen Hui's: about 8 % under the worst seed's ramp, 4 % under the mean's, 8 % under the
     // slowest seed's rate, half a second over the longest gap.
-    meter: { ramp: [1, 1.08, 0.87], rampMean: [1, 1.22, 0.95], minRate: [58, 74, 73], maxGap: [4.3, 3.4, 3.6] },
+    // (the finished level, the same five seeds: P1 65.2 - 69.0 (66.8), P2 82.0 - 86.0 (85.0), P3 76.9 -
+    // 87.4 (81.9); P3 / P2 0.90 - 1.07 per seed, 0.96 in the mean, 0.935 on one three-seed run; longest
+    // gap 4.10 / 2.86 / 3.44 s; 0 conflicts. Phase 3's floors widened to that: its ramp is in what it
+    // asks, not its rate)
+    meter: { ramp: [1, 1.08, 0.84], rampMean: [1, 1.22, 0.9], minRate: [58, 74, 70], maxGap: [4.3, 3.4, 3.8] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
@@ -166,7 +170,7 @@ export const TUNING = {
   // ---- Paper Blades' sword qi (Shen Hui's crescents: DuelFx.throwCrescent)
   crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25, minLead: 0.27 },
 
-  // ---- the paper selves (clones.js FoxClones; ADR-131): his own bodies, a fixed pool built with him
+  // ---- the paper selves (clones.js FoxClones; ADR-147): his own bodies, a fixed pool built with him
   clones: {
     pool: 5, // rigs built in his constructor (never mid-fight: the seeded fights would shift)
     max: [2, 4, 5], // live at once per phase (the scatter's cap)
