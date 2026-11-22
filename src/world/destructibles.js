@@ -879,6 +879,12 @@ export class Destructibles {
     this._lit = 0;
     this._warm = 0; // the next piece whose bricks are made ahead of its first bite (update)
     this.bitten = 0;
+    /**
+     * What the last strike / sweep / stop met (the hero's blade reads it: a blade stops on what it
+     * could not cut through, BREAK.chip.stop): `held` the first piece that held (null: none), where it
+     * was struck (x, y, z), `broke` how many it broke. Reset at the start of each call.
+     */
+    this.struck = { held: null, x: 0, y: 0, z: 0, broke: 0 };
     this._carryHit = { x: 0, z: 0, piece: null };
     /** counts since the reset (the tests' wall report): wind fronts, trees they reached; carries, reached, lit */
     this.stat = { wind: 0, windTrees: 0, carry: 0, reached: 0, lit: 0 };
@@ -1241,6 +1247,8 @@ export class Destructibles {
     if (!this._cells(x - r, z - r, x + r, z + r)) return 0;
     let n = 0;
     this._quiet = 0;
+    this.struck.held = null;
+    this.struck.broke = 0;
     // (bites, BREAK.chip: a blow over a disc eats outward from its own centre)
     this._hr = r;
     this._hc = true;
@@ -1297,6 +1305,8 @@ export class Destructibles {
     if (!this._cells(Math.min(ax, bx) - r, Math.min(az, bz) - r, Math.max(ax, bx) + r, Math.max(az, bz) + r)) return 0;
     let n = 0;
     this._quiet = 0;
+    this.struck.held = null;
+    this.struck.broke = 0;
     this._hr = r;
     this._hc = false;
     // (o.ya, o.yb: the segment's heights at its two ends, a blade's hilt and point: where on it a piece
@@ -1334,6 +1344,8 @@ export class Destructibles {
     if (!b) return null;
     const t = this.coverT;
     this._quiet = 0;
+    this.struck.held = null;
+    this.struck.broke = 0;
     this._hr = Math.max(r, 0.3);
     this._hc = false;
     this._hit(b, power, o, ax + (bx - ax) * t, clamp(o.y ?? 1, 0.2, b.h), az + (bz - az) * t, bx - ax, bz - az);
@@ -1589,8 +1601,17 @@ export class Destructibles {
       if (!shove) this._wearTo(b, dx, dz, by);
       this._wake(b);
       if (!shove && this._loud(b)) this._emit('chip', b, px, py, pz, power, by);
+      // (the first piece that held this blow: a blade stops on it)
+      const S = this.struck;
+      if (!S.held && !shove && !b.floor) {
+        S.held = b;
+        S.x = px;
+        S.y = py;
+        S.z = pz;
+      }
       return true;
     }
+    this.struck.broke++;
     b.hy = py; // (where the blow bit: a blade cuts its stump about there, BREAK.fell)
     this._break(b, dx, dz, by, kind);
     return true;
@@ -1630,7 +1651,7 @@ export class Destructibles {
         B.write();
       }
       this.bitten += n;
-      this._drop(b, out, n, ox, oy, oz, dx, dz);
+      this._drop(b, out, n, ox, oy, oz, dx, dz, lost / b.hpMax);
     }
     return n;
   }
@@ -1641,8 +1662,12 @@ export class Destructibles {
     return b.bricks ? b.bricks.bite(x - b.x, y - b.y0, z - b.z, reach, share, BREAK.chip.max, this._bits) : 0;
   }
 
-  /** The bricks a bite took fall as letters from where they sat (`out`: x, y, z, part each, + the piece's base o). */
-  _drop(b, out, n, ox, oy, oz, dx, dz) {
+  /**
+   * The bricks a bite took fall as letters from where they sat (`out`: x, y, z, part each, + the
+   * piece's base o): knocked OUT of the face they were in (away from the piece's axis, back toward the
+   * blow) as hard as the blow took (`k`: the share of its structure), then falling.
+   */
+  _drop(b, out, n, ox, oy, oz, dx, dz, k = 0.2) {
     const solid = this.game.fx?.alpha, glow = this.game.fx?.add;
     if (!solid) return;
     const C = BREAK.chip, M = b.M, p = this._p, q = this.q;
@@ -1663,9 +1688,21 @@ export class Destructibles {
       p.x = x;
       p.y = y;
       p.z = z;
-      p.vx = dx * C.out * (0.2 + rnd()) + (rnd() - 0.5) * 0.9;
-      p.vy = C.up * rnd();
-      p.vz = dz * C.out * (0.2 + rnd()) + (rnd() - 0.5) * 0.9;
+      // out of its face: away from the piece's axis, and back against the blow (a chip flies off the
+      // cut toward the one who struck it), harder for a harder blow; leaves drift
+      let nx = x - b.x, nz = z - b.z;
+      const nl = Math.hypot(nx, nz);
+      if (nl > 1e-3) {
+        nx /= nl;
+        nz /= nl;
+      } else {
+        nx = -dx;
+        nz = -dz;
+      }
+      const kick = C.out * (0.6 + 1.6 * Math.min(1, k * 3)) * (leaf ? 0.45 : 1) * (0.5 + rnd());
+      p.vx = (nx * 0.7 - dx * 0.5) * kick + (rnd() - 0.5) * 0.9;
+      p.vy = C.up * (0.4 + rnd()) * (leaf ? 0.6 : 1);
+      p.vz = (nz * 0.7 - dz * 0.5) * kick + (rnd() - 0.5) * 0.9;
       p.life = clamp(fall + p.vy / g + 0.15 + rnd() * 0.25, 0.4, 2.2);
       p.size = (leaf ? 0.38 : 0.36) + rnd() * 0.14;
       p.sizeEnd = 0.24;

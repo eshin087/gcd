@@ -13,6 +13,8 @@ import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
+import { BREAK } from '../../world/breakTuning.js';
+import { chipLook } from '../../world/destructibles.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -2708,6 +2710,18 @@ export class Player {
       this.buf.action = null;
       if (this._startRoll()) return;
     }
+    // the blade stopped on a piece it could not cut through (_bladeStops, BREAK.chip.stop): it is held
+    // where it met it while the frame is frozen and for the time it sticks in the cut, then thrown back
+    if (a.wstop) {
+      this.want.x = this.want.z = 0;
+      a.stuck -= dt;
+      if (a.stuck > 0 || fin(this.game.hitstopTimer) > 0) return;
+      const at = (this._stopAt ??= { position: { x: 0, z: 0 } });
+      at.position.x = a.wstop.x;
+      at.position.z = a.wstop.z;
+      this._bounce(at, a.wpush);
+      return;
+    }
     a.t = a.pending ? Math.min(W, a.t + dt) : a.t + dt; // a held light waits at the coil
     const t = a.t;
     if (t < W && !d.keepYaw) this.yaw = turnToward(this.yaw, this._aimYaw(this.yaw), TUNE.windupSteer * dt);
@@ -3053,7 +3067,7 @@ export class Player {
         // the hit first: a cut that lands this frame draws its contact, not the arc's glint
         if (!a.hit && prevT <= end) this._tryHit(a);
         // the blade meets the world too (ADR-107): what it sweeps through is chipped, cut down, felled
-        if (prevT <= end) this._cutWorld(a, sw);
+        if (prevT <= end) this._cutWorld(a, sw, prevT);
         // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
         this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
@@ -3177,9 +3191,11 @@ export class Player {
   /**
    * The swing against the world's breakables (ADR-107): each piece the blade sweeps through takes one
    * blow per swing, as hard as the cut (POWER = its damage / 110: a full cleave fells a tree). What
-   * falls, falls away from him: stand so the thing is between you and the foe.
+   * falls, falls away from him: stand so the thing is between you and the foe. With bites on
+   * (`?chip=a`, ADR-131) the blade STOPS on a piece it does not cut through (_bladeStops); `prevT`: the
+   * attack clock last frame.
    */
-  _cutWorld(a, sw) {
+  _cutWorld(a, sw, prevT = NaN) {
     const o = this._worldBlowOf(a);
     if (!o) return;
     const p = this.position;
@@ -3189,10 +3205,45 @@ export class Player {
     // (the blade's own height at its two ends: a piece is bitten where the steel met it, BREAK.chip)
     o.ya = sw.a.y;
     o.yb = sw.b.y;
-    const n = this.game.world.destructibles.sweep(sw.a.x, sw.a.z, sw.b.x, sw.b.z, REACH.radius, fin(a.damage, 30) / 110, o);
+    const D = this.game.world.destructibles;
+    const n = D.sweep(sw.a.x, sw.a.z, sw.b.x, sw.b.z, REACH.radius, fin(a.damage, 30) / 110, o);
+    if (n > 0 && !a.exec && D.struck && chipLook() !== '0') {
+      const S = D.struck, ST = BREAK.chip.stop;
+      if (S.held && S.held.h >= ST.minH) {
+        this._bladeStops(a, S, prevT);
+        return;
+      }
+      // it cut the thing through: a beat of weight as the blade goes on
+      if (S.broke > 0 && !a.wthrough) {
+        a.wthrough = true;
+        this._hitstop(ST.through, 0.05);
+      }
+    }
     if (n > 0 && !a.wfelt) {
       a.wfelt = true; // the hand feels it: one small jolt per swing
       this.game.shake?.(a.def.heavy ? 0.12 : 0.05);
+    }
+  }
+
+  /**
+   * The cut met a piece it could not cut through (BREAK.chip.stop): the blade stops there. The attack
+   * clock goes back to the middle of this frame's travel (about where the edge met it), the frame
+   * freezes, the camera shakes, steel on stone throws sparks; _tickAttack holds the pose while it
+   * sticks (wood) and then throws the blade back (the bounce), away from the piece.
+   */
+  _bladeStops(a, S, prevT) {
+    const ST = BREAK.chip.stop, b = S.held, hard = b.mat !== 'wood';
+    if (Number.isFinite(prevT) && prevT < a.t) a.t = prevT + (a.t - prevT) * 0.5;
+    a.wstop = b;
+    a.stuck = hard ? ST.stick.hard : ST.stick.wood;
+    a.wpush = hard ? ST.push.hard : ST.push.wood;
+    a.wfelt = true;
+    this._hitstop(hard ? ST.freeze.hard : ST.freeze.wood, 0.03);
+    this.game.shake?.((hard ? ST.shake.hard : ST.shake.wood) * (a.def.heavy ? 1.3 : 1));
+    if (b.mat === 'stone' || b.mat === 'metal') {
+      // sparks fly back off the face toward him
+      const p = this.position, dx = p.x - b.x, dz = p.z - b.z, l = Math.hypot(dx, dz) || 1;
+      this.fx.sparks(S.x, S.y, S.z, dx / l, dz / l, !!a.def.heavy);
     }
   }
 

@@ -10495,6 +10495,79 @@ async function scenarioZoomArt() {
   return G;
 }
 
+// ================================================================ BLADESTOP (bites on, ?chip=a; ADR-131)
+// The hero's real swing into a piece of the world: with bites on the blade STOPS on what it does not cut
+// through (the frame freezes, it is held, then thrown back: the bounce), and passes through what it
+// breaks; with bites off it passes through everything, as before.
+async function scenarioBladeStop() {
+  out('\n== scenario BLADESTOP (bites on: the blade stops on a piece it cannot cut through; off: it passes through) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const ST = BREAK.chip.stop;
+  /** One light swing at `kind` (the hand-built field's dead tree or boulder) from 1 m east of it. */
+  const swing = (G, kind, low = false) => {
+    const { game } = G;
+    const p = game.player, D = game.world.destructibles;
+    game.world.restore();
+    const b = D.list.find((x) => x.kind === kind && x.state === PIECE.INTACT && Math.hypot(x.x, x.z) < 20);
+    if (low) b.hp = 0.02; // (one cut fells it)
+    game.dragon.position.set(-b.x * 0.2, 0, 26);
+    run(G, 0.3, { passive: true });
+    p.debug.teleport(b.x + b.r + 1.0, b.z);
+    p.yaw = -Math.PI / 2;
+    const aim = () => game.mouseGround.set(b.x, 0, b.z);
+    aim();
+    G.tick(DT);
+    const hp0 = b.hp;
+    const rec = { states: new Set(), maxT: 0, froze: false, end: 0, bounceAt: -1, sparks: 0 };
+    const add0 = game.fx?.add?.count ?? 0;
+    p._buffer('light');
+    for (let i = 0; i < 90; i++) {
+      aim();
+      G.tick(DT);
+      rec.states.add(p.state);
+      if (p.atk && (p.state === 'attack' || p.state === 'heavy')) {
+        rec.maxT = Math.max(rec.maxT, p.atk.t);
+        rec.end = p.atk.def.windup + p.atk.def.active;
+      }
+      if (game.hitstopTimer > 0) rec.froze = true;
+      if (p.state === 'bounce' && rec.bounceAt < 0) rec.bounceAt = i;
+    }
+    rec.took = hp0 - b.hp;
+    rec.piece = b;
+    rec.state = b.state;
+    rec.dist = Math.hypot(p.position.x - b.x, p.position.z - b.z);
+    return rec;
+  };
+  let last = null;
+  for (const look of ['a', '0']) {
+    setLook('chip', look);
+    try {
+      const G = (last = build({ terrain: 'field' }));
+      fightSetup(G);
+      const on = look === 'a';
+      for (const kind of ['boulder', 'deadTree']) {
+        const r = swing(G, kind);
+        const name = kind === 'boulder' ? 'a boulder' : 'a dead tree';
+        if (on) {
+          assert(r.took > 0 && r.state === PIECE.INTACT && r.states.has('bounce') && r.froze && r.maxT < r.end - 1e-3,
+            `bites on: a light cut into ${name} chips it (${r.took.toFixed(3)} taken), freezes the frame, the blade stops at ${r.maxT.toFixed(3)} s of the cut's ${r.end.toFixed(3)} and is thrown back (bounce); he ends ${r.dist.toFixed(2)} m from it`);
+        } else {
+          assert(r.took > 0 && !r.states.has('bounce') && r.maxT >= r.end, `bites off: the same cut into ${name} takes ${r.took.toFixed(3)} and the blade carries through (the cut runs to ${r.maxT.toFixed(3)} s, past ${r.end.toFixed(3)}), as before`);
+        }
+      }
+      if (on) {
+        const r = swing(G, 'deadTree', true);
+        assert(r.state !== PIECE.INTACT && !r.states.has('bounce') && r.maxT >= r.end, `bites on: a cut that fells the tree goes through it (no bounce; the cut runs to ${r.maxT.toFixed(3)} s)`);
+        const s0 = ST.freeze.wood;
+        assert(s0 > 0 && ST.freeze.hard >= s0 && ST.push.hard >= ST.push.wood, 'stone rings harder than wood (BREAK.chip.stop: a longer freeze, a bigger push)');
+      }
+    } finally {
+      setLook('chip', null);
+    }
+  }
+  return last;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -10525,6 +10598,7 @@ const SCENARIOS = {
   fire: scenarioFire,
   ablaze: scenarioAblaze,
   terrain: scenarioTerrain,
+  bladestop: scenarioBladeStop,
   win: scenarioWin,
   die: scenarioDie,
   touch: scenarioTouch,
