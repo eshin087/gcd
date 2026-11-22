@@ -14,8 +14,9 @@ import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 
 // Alpha flag values written into the scene target (decoded by the ASCII pass in pipeline.js):
 //   0            NONE     pass-through (particles never reach the scene target)
-//   0.04..0.44   CREATURE screen-grid glyphs that follow the surface flow (opt-in `grid: true`,
-//                the v0.2 look); the value packs set x 24 screen-space flow angles
+//   0.04..0.41   CREATURE screen-grid glyphs that follow the surface flow (opt-in `grid: true`,
+//                the v0.2 look); the value packs set x 24 screen-space flow angles (span 0.37 since
+//                ADR-130: the player's own hero window sits at 0.42..0.45, above it)
 //   0.5          ART      hero / wyrm: their crisp render is the SOURCE IMAGE of a fine screen-space
 //                         ASCII-art grid (letters picked by brightness, coloured per cell);
 //   0.48         ART_HERO the same, with the hero's own pass settings (pipeline uArt* .x)
@@ -42,8 +43,11 @@ export const FLAG = { NONE: 0.0, ART_HERO: 0.48, ART: 0.5, ART_PROP: 0.57, LEAF:
  * hero window (0.46, 0.49). The art pass draws a bright ink line wherever two neighbouring cells
  * show different parts (the higher id draws it) or a depth step (the nearer side draws it). Step 0.0006
  * is ≥ 2 half-float ulps there; parts 0..19 (each part's line tint: U.uHeroPartInk).
+ * `heroSelf` (the PLAYER's rig only; the human bosses share everything else) writes the same ids
+ * `self` lower, in a window of their own (0.42, 0.45): the art pass tells his pixels from a boss's
+ * by it and prints him on his own letter cell (pipeline.js "the hero's letters follow his size").
  */
-export const HERO_ART = { a0: 0.4632, step: 0.0006, parts: HERO_PARTS };
+export const HERO_ART = { a0: 0.4632, step: 0.0006, parts: HERO_PARTS, self: 0.04 };
 export const ASCII_SETS = { scales: 0, strands: 1, plates: 2, smooth: 3 };
 /**
  * Surface-glyph defaults per `ascii` set: 4-glyph ramp (dark → bright) and cell size in aGUV
@@ -56,7 +60,7 @@ export const SURFACE_SETS = {
   plates: { glyphs: '.-=#', cell: [0.24, 0.18], rowShift: 0 },
   smooth: { glyphs: '.:o0', cell: [0.1, 0.1], rowShift: 0 },
 };
-export const CREATURE_FLAG = { min: 0.04, span: 0.4, codes: 96, angles: 24 };
+export const CREATURE_FLAG = { min: 0.04, span: 0.37, codes: 96, angles: 24 };
 /** Surface-glyph `levels` table size: up to 6 light levels × 8 per-cell variants. */
 export const SURFACE_LEVELS = { max: 6, variants: 8 };
 /** Defaults of the optional surface-glyph features (see createSurfaceGlyphMaterial). */
@@ -173,7 +177,7 @@ function surfaceFeatures(o, cell) {
     const part = Math.round(h.part ?? 0);
     if (!(part >= 0 && part < HERO_ART.parts)) throw new Error(`surface glyph heroArt.part: 0..${HERO_ART.parts - 1}, got ${h.part}`);
     defines.SG_HERO_ART = '';
-    defines.HERO_A0 = HERO_ART.a0.toFixed(4);
+    defines.HERO_A0 = (HERO_ART.a0 - (o.heroSelf ? HERO_ART.self : 0)).toFixed(4);
     defines.HERO_AS = HERO_ART.step.toFixed(4);
     uniforms.uArtFill = { value: new THREE.Color(...(h.fill ?? [0.1, 0.1, 0.11])) };
     uniforms.uArtSpec = { value: new THREE.Vector2(h.spec ?? 0, h.specPow ?? 20) };
@@ -864,7 +868,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         float a = fract(ang / 6.2831853 + 1.0);
         float ai = mod(floor(a * 24.0 + 0.5), 24.0);
         float code = uAsciiSet * 24.0 + ai;
-        gl_FragColor = vec4(col, 0.04 + (code + 0.5) / 96.0 * 0.4);
+        gl_FragColor = vec4(col, 0.04 + (code + 0.5) / 96.0 * 0.37);
       }
 
       void main() {

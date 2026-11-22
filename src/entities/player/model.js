@@ -235,12 +235,34 @@ export const HERO_INK = {
   flask: { part: 19, fill: [0.6, 0.45, 0.15], glow: 1, rim: 0, line: [1.2, 0.9, 0.4, 1.5], solid: true, farLine: 1 },
 };
 
-export function createHeroMaterials(U) {
+/**
+ * What is the PLAYER's alone, on top of HERO_INK (the art pass reads it for his own pixels only:
+ * shaderLib.js uSelfPart*; a boss's rig keeps HERO_INK). The owner's picks of 2026-11-21 (ADR-130):
+ * - the legs like the cloak: the plate on his legs, arms and boots takes the cloth's dim dotted
+ *   lavender rim. From the front, where the open cloak shows the whole leg, white outlines drew two
+ *   hollow tubes; now he is one dark figure of letters from every side.
+ * - a dark blade that lights when it cuts: plain steel at rest (player.js TUNE.bladeLook scales the
+ *   blade's gains every frame, TUNE.bladeFlare lifts them through a strike).
+ */
+export const HERO_SELF = {
+  armor: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
+  spike: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
+  bevel: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
+  welt: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
+  trim: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
+};
+/** A part's pass values: [ink line rgba, fill (gain, style, far line, far fill), rim line rgba] (see HERO_INK). */
+export function heroPartValues(h) {
+  const l = h.line ?? [1, 1, 1, 1];
+  return [l, [h.fillGain ?? 1, (h.dotted ? 1 : h.solid ? 2 : 0) + (h.open ? 4 : 0) + (h.rimDotted ? 8 : 0), h.farLine ?? 0, h.farFill ?? 1], h.rimLine ?? l];
+}
+
+export function createHeroMaterials(U, { self = false } = {}) {
   const S = (o, opts = {}) => ({ o, opts });
   const make = (name, o, { max = null, lockX = false, fixed = false, zoomNear = null } = {}) => {
     const heroArt = HERO_INK[name];
     if (!heroArt) throw new Error(`hero material "${name}" has no HERO_INK entry`);
-    const m = createSurfaceGlyphMaterial(U, { glyphZoom: 0.62, artGain: ART_GAIN, flag: FLAG.ART_HERO, heroArt, ...o });
+    const m = createSurfaceGlyphMaterial(U, { glyphZoom: 0.62, artGain: ART_GAIN, flag: FLAG.ART_HERO, heroArt, heroSelf: self, ...o });
     if (!fixed && o.cell) {
       m.userData.cell = o.cell.slice();
       if (max) m.userData.cellMax = max;
@@ -383,12 +405,19 @@ export function createHeroMaterials(U) {
   };
   // each part's ink-line tint, letter-fill brightness and dotted-edge flag for the art pass
   const partInk = U.uHeroPartInk?.value, partFill = U.uHeroPartFill?.value, partRim = U.uHeroPartRim?.value;
-  for (const h of Object.values(HERO_INK)) {
-    const l = h.line ?? [1, 1, 1, 1];
+  // ... and, for the player's own rig, his own three (HERO_SELF on top)
+  const selfInk = self ? U.uSelfPartInk?.value : null, selfFill = self ? U.uSelfPartFill?.value : null, selfRim = self ? U.uSelfPartRim?.value : null;
+  for (const [name, h] of Object.entries(HERO_INK)) {
+    const [l, f, rl] = heroPartValues(h);
     partInk?.[h.part]?.set(l[0], l[1], l[2], l[3]);
-      partFill?.[h.part]?.set(h.fillGain ?? 1, (h.dotted ? 1 : h.solid ? 2 : 0) + (h.open ? 4 : 0) + (h.rimDotted ? 8 : 0), h.farLine ?? 0, h.farFill ?? 1);
-      const rl = h.rimLine ?? l;
-      partRim?.[h.part]?.set(rl[0], rl[1], rl[2], rl[3]);
+    partFill?.[h.part]?.set(f[0], f[1], f[2], f[3]);
+    partRim?.[h.part]?.set(rl[0], rl[1], rl[2], rl[3]);
+    if (self) {
+      const [sl, sf, sr] = heroPartValues(HERO_SELF[name] ? { ...h, ...HERO_SELF[name] } : h);
+      selfInk?.[h.part]?.set(sl[0], sl[1], sl[2], sl[3]);
+      selfFill?.[h.part]?.set(sf[0], sf[1], sf[2], sf[3]);
+      selfRim?.[h.part]?.set(sr[0], sr[1], sr[2], sr[3]);
+    }
   }
   return Object.fromEntries(Object.entries(specs).map(([name, s]) => [name, make(name, s.o, s.opts)]));
 }
@@ -463,8 +492,9 @@ function mergeStatic(root, keep) {
  *   slots    slot → the Object3Ds that slot hung on the skeleton (each with its whole subtree, all
  *            tagged userData.slot), so a slot can be emptied and rebuilt without touching the rest
  */
-export function buildHero(U, loadout = DEFAULT_LOADOUT) {
-  const M = createHeroMaterials(U);
+export function buildHero(U, loadout = DEFAULT_LOADOUT, { self = false } = {}) {
+  // `self`: the player's own rig (the art pass prints it on its own letter cell; materials.js HERO_ART)
+  const M = createHeroMaterials(U, { self });
 
   // joint / mesh helpers for one owner: a gear slot, or null for the skeleton and the body
   const helpers = (slot) => ({

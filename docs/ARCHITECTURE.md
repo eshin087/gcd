@@ -128,7 +128,14 @@ Render helpers for creature modules:
   | `0.5 + 0.01 × code` (0.50 … 0.54) | the wyrm (materials with `wyrm`) | `FLAG.ART` plus a **stroke code** from `wyrmMain`: 0 none, 1 `-`, 2 `/`, 3 `\|`, 4 `\` (the screen direction of a thin part's outline or a scale rim at that pixel). The pass decodes `floor((a − 0.5) × 100 + 0.5)` |
   | `HERO_ART.a0 + (part × 2 + aPart) × HERO_ART.step` (0.4632 … 0.4866) | the hero (materials with `heroArt`) | a **part id** inside the hero window (0.46, 0.49) that `isHero` tests (`FLAG.ART_HERO` 0.48 marks the window): `part` 0..19 from the material, `aPart` 0 / 1 the geometry's sub-id |
 
-  `HERO_ART = { a0: 0.4632, step: 0.0006, parts: 20 }` is exported from `materials.js` (`HERO_PARTS`
+  The PLAYER's own rig (`buildHero(U, loadout, { self: true })` → `createHeroMaterials(U, { self })` →
+  the material option `heroSelf`) writes the same ids `HERO_ART.self` (0.04) lower: 0.4232 … 0.4466,
+  inside a window of its own (0.42, 0.45) that `isSelf` tests (ADR-130). `isHero` is true in both
+  windows, `isArt` too. The pass tells his pixels from a human boss's by it: his letter cell
+  (`uSelfCell`) and his part tables (`uSelfPart*`) are his alone. Nothing else may write alpha in
+  (0.42, 0.45) (the unused v0.2 creature grid's codes, `CREATURE_FLAG` 0.04 + 0.37 = up to 0.41, were narrowed from 0.4 wide to stay below it).
+
+  `HERO_ART = { a0: 0.4632, step: 0.0006, parts: 20, self: 0.04 }` is exported from `materials.js` (`HERO_PARTS`
   20 from `shaderLib.js`). The step is ≥ 2 half-float ulps there, so part ids need the half-float
   scene target; on the 8-bit fallback they collapse to ~7 levels (silhouette and depth lines still
   draw, part tints and fill gains come out wrong). Every hero material must pass `heroArt`
@@ -241,10 +248,36 @@ Render helpers for creature modules:
   frame (`TUNE.bladeFlare`: the strike and contact flare; absolute values, the `HERO_INK` base at
   rest). Nothing else may use part 17 (a boss blade on `M.blade` would flare with the hero's: give it
   a new part).
+  *Since ADR-130* the player has his own three tables, `U.uSelfPartInk / uSelfPartFill /
+  uSelfPartRim[20]`, which the pass reads for HIS pixels (`gSelf`): `HERO_INK` with `HERO_SELF`
+  (model.js) on top, written by a `self` build only (`heroPartValues(h)` gives a part's three
+  rows). `HERO_SELF` today: the plate parts (armor, spike, bevel, welt, trim) take the cloth's dim
+  dotted lavender rim. The blade's per-frame write goes to HIS part 17: base × `TUNE.bladeLook`
+  (`line` 0.32, `fill` 0.6, `far` 0.5, `halo` 0: dark steel at rest) × the flare, where the flare is
+  1 + `TUNE.bladeFlare.strike` ([light 4.2, heavy 4.6]) × `player.bladeHot` + `player.bladeFlare`.
+  The shared part 17 is no longer written per frame.
 - **The hero's letters and lines** (pass, hero branch):
   - Grid (ADR-036): `createPixelArtAtlas(hs)` (`glyphs.js`; hs = max(1, floor(H / 1080))) →
     `{ texture, count, cols }`: one row, the 3x3 micro-font `PIXEL_3X3` (29 marks) sorted sparse →
-    dense (`uHeroCount`, `uHeroCols`). Cells `uHeroCell` = `pixelArtCell(hs)` (4hs x 4hs, square).
+    dense (`uHeroCount`, `uHeroCols`). Cells `uHeroCell` = `pixelArtCell(hs)` (4hs x 4hs, square):
+    the human bosses' grid.
+  - **The player's grid follows his size** (ADR-130; `Pipeline._updateHeroLetters`, each frame from
+    `U.uPlayerScreen`): one letter cell is `pipeline.heroLetter` metres at his view depth
+    (`CONFIG.render.heroLetters = { size: 0.115, near: 20, close: 6, hyst: 0.06 }`; 0 = the fixed
+    cell), so cell px = px-per-metre at max(depth, `near`) × size, blended in log size back to
+    `uHeroCell` between `near` and `close` m (= `uHeroLod`'s far look .. close-up: a close-up is
+    drawn as it always was), snapped to `HERO_CELLS` (4 6 8 10 12 16 20 24 32, exported) with
+    `hyst` of slack in log size, never below `uHeroCell`: 4 px at 720p and on
+    the phone at its 20 m camera, 6 at 1080p, 8 at 1440p, 12 at 4K, about 9 letters across the
+    cloak on each. `createPixelArtAtlas(s)` takes any scale (cell = round(4s) px; between whole
+    scales a font pixel is shaded by the share of the screen pixel it covers). Uniforms: `tSelfArt`,
+    `uSelfCell` (px; `pipeline.selfCell`), `uSelfPx` (one font pixel in whole screen px: the ink
+    lines' width, found per FONT pixel for him, and the halo's tap scale), `uSelfBox` (xy his
+    screen point px, z half-size px of the box that holds him (`HERO_BOX_R` 5 m), w 1 when known:
+    only inside it does the pass look for his pixels). The hero branch is one GLSL function,
+    `heroArtCell(px)`, run for him (`gSelf`, `gCell` = `uSelfCell`, `gLine` = `uSelfPx`), then for
+    the bosses (`uHeroCell`, `uHeroPx.x`); `isWho` is the window of the one being drawn. The whole
+    pass reads its textures at level 0 by name (`textureLod`; none has mip levels).
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -582,6 +615,9 @@ hitPush: { x, z }                      // the way the last blow drove him, in hi
 kdProne: boolean                       // the knockdown fell him on his FRONT (the blow came from behind; ADR-083)
 deadDown: boolean; downFrom: number    // killed in the knockdown, `downFrom` s into it: he dies where he lies (clip 'deadDown')
 critTimer: number                      // > 0 while the crit window is open (after a perfect dodge / the plunge's landing)
+bladeHot: number                       // 0..1: how lit the dark steel is by what he does (ADR-130): 1 through a strike's window,
+                                       // the flurry and the plunge's hang .. ride, the charge's chargeK, 0.5 in a crit window;
+                                       // up at once, down by TUNE.bladeFlare.cool (30) per s. Scales TUNE.bladeFlare.strike
 bladeFlare: number                     // 0..0.75: the steel's flare at a landed cut (TUNE.bladeFlare.hit: 0.5, heavy / crit 0.75;
                                        // not a slam's shards-only hit). Any area may raise it (Math.max), never lower it; it
                                        // decays by 1 / TUNE.bladeFlare.fall per s of GAME time (held through the freeze) and
@@ -916,7 +952,8 @@ item); `WANDERER_LOADOUT` is the outfit before it. A head item may keep only par
 only the cap and builds its own gold strands, `HOOD_HAIR` in `gear/shroud.js`: a spiky fringe, cheek
 locks and a strand a side onto the collarbone), `hidesHair: true` builds none; the five hair joints
 stay either way. `shadowsFace: true` on a head item (the hood, ADR-056) builds the face, ears and neck
-in the shirt's near-black and leaves the eyes out. The hair is gold (ADR-049). `buildHero(U, loadout = DEFAULT_LOADOUT)`
+in the shirt's near-black and leaves the eyes out. The hair is gold (ADR-049). `buildHero(U, loadout = DEFAULT_LOADOUT, { self = false } = {})`
+(`self`: the player's own rig, see "Scene alpha" and ADR-130; a boss never passes it)
 builds each slot's item (an empty chest / arms /
 legs slot gets the `base.*` undersuit), merges static meshes per joint + material + slot, and
 returns the usual rig plus `rig.loadout` (slot → id or null) and `rig.slots` (slot → the objects it

@@ -98,6 +98,12 @@ export function createSharedUniforms() {
     // ... and each part's SILHOUETTE ink, where it borders the world: rgb tint × a gain (the
     // reference: a dim blue-lavender dotted outline round the cloth and hair, white round the armour)
     uHeroPartRim: { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+    // ... and the same three for the PLAYER's own rig (buildHero's `self`; the art pass reads these
+    // for his pixels, materials.js HERO_ART.self): HERO_INK with HERO_SELF on top (player/model.js),
+    // so what is his alone (the dark blade, the legs' cloak rim) never reaches a boss's rig
+    uSelfPartInk: { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
+    uSelfPartFill: { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 0, 0, 1)) },
+    uSelfPartRim: { value: Array.from({ length: HERO_PARTS }, () => new THREE.Vector4(1, 1, 1, 1)) },
     // the hero's cel shading (materials with `heroArt`): the key light steps from shadow to lit
     // between x and y (the reference's two-tone anime shading), z = how much of the step replaces
     // the smooth falloff

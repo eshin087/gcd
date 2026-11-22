@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-21',
+        title: 'The hero looks the same on every screen',
+        notes: [
+          'The wanderer is drawn with the same bold letters on a phone, a laptop and a large monitor, and when the camera pulls in or out. On large screens he used to turn into a mesh of tiny ones.',
+          'From the front and the side he is one dark figure now, and his sword is plain dark steel that lights up white only while it cuts.',
+          'The bosses and the fight are unchanged.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant',
         notes: [
           'A new level, the Skybreak Ring: a tournament ring of stone tiles out on the badlands. Pick it on the title screen.',

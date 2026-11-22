@@ -329,6 +329,27 @@ Rules of thumb:
 - *Superseded:* the single density-sorted `ART_CHARS` ramp for both creatures (`createArtAtlas`,
   `artCell`), the hero's edge darkening (`uArtHeroEdge`) and black depth gaps, `uArtBlack.x` 0.04.
 
+**The hero's letters follow his size (2026-11-21, ADR-130).** The owner's reference for the hero is a
+picture of him at the game camera on a 720p frame: about 9 letters across the cloak and 13 rows of
+them, "not too detailed but has enough ascii features and style". That count is the look, not the
+4 px cell that happened to give it there:
+- **One letter cell of his is 0.115 m at his depth**, on every screen and at every camera distance
+  (`CONFIG.render.heroLetters`). A fixed 4 px cell drew 9 letters across at 720p and on the phone,
+  13 at 1080p, 18 at 1440p: on a large screen he was a grey mesh of dust, a different figure.
+- **His ink lines step with his letters** (one FONT pixel wide, found per font pixel): a hairline
+  round 12 px letters reads as vector art, not as the picture.
+- **A close-up is drawn as it always was.** From 20 m in to 6 m, where the pass fades from his far
+  look to the close-up's line art, his cell goes back to the fixed 4 px one (the title, an intro,
+  the Lab). With the large cell the close-up's ink lines came out five pixels thick and white.
+- **From every side one dark figure of letters.** His plate (greaves, boots, bracers) takes the
+  cloak's dim dotted lavender rim. White plate outlines drew his legs as two hollow tubes from the
+  front, where the open cloak shows them.
+- **The steel is dark until it cuts.** At rest and on the run the blade is drawn like his armour;
+  it lights white through a strike, with the charge, in the flurry and the plunge. No halo of dots
+  at rest. The swing's arc is the crescent as it was (the owner kept it).
+- **The human bosses are not part of this** (the owner: "hero only for now"): they keep the fixed
+  cell and `HERO_INK` as it is. What is the hero's alone lives in `HERO_SELF` and `TUNE.bladeLook`.
+
 **The wyrm (the red-black dragon reference; fine digits, ADR-093).**
 - **Letters:** fine pixel-font digits, each glyph one pixel wide with a soft 0.24 halo and a black gap
   round it, in cells about 1/90 of the screen height: a 4x6 font in 5x8 px cells at 720p (the owner's
