@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Fifty-six pieces of work since 0.4.0:
-- **A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant** (2026-11-21, ADR-128). *Added:* a fourth level, `?level=ring`
+- **A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant** (2026-11-21, ADR-129). *Added:* a fourth level, `?level=ring`
   (the title screen lists it). **The Skybreak Ring**: a tournament ring of stone tiles on the badlands,
   buttes standing round it, braziers at its corners. **Tian Lei, the Last Ascendant**: a bare-handed
   fighter with three health bars. Empty a bar and strike the deathblow, and he does not die: he

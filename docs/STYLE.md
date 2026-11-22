@@ -975,7 +975,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?floor=` | a broken floor slab (both arenas; read when the level is built) | - | rubble on printed earth | heaved into a low mound of brighter shards | - | **a** |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
-| `?ring=` | the Skybreak Ring's arena (ADR-128; read when the level is built) | - | the flats: a dry lake bed, banners, a drum, a gong, a judges' dais | the quarry: terraces of cut stone round the ring | the crown: the ring on a butte's top, the badlands 40 m below | **a** |
+| `?ring=` | the Skybreak Ring's arena (ADR-129; read when the level is built) | - | the flats: a dry lake bed, banners, a drum, a gong, a judges' dais | the quarry: terraces of cut stone round the ring | the crown: the ring on a butte's top, the badlands 40 m below | **a** |
 | `?ascLook=` | Tian Lei's body (read when his rig is built) | - | the tunic and the topknot | set aside, not offered (a bare-chested look too close to a franchise's) | the wandering monk and the braid; `d` = a through the wyrm's art path | **a** |
 | `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
@@ -993,7 +993,7 @@ Ring) has a row of buttons per switch: a switch read at draw time flips live, on
 (`ashLook`, `lordLook`, `floor`, `ring`, `ascLook`, `ascLift`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
-`?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-128) are things new to the game, so
+`?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
 `?looks=old` leaves them at their picks. The owner picked arena a, body a, aura a and beam a on
 2026-11-21 ("Your picks"); `ascLift` a (the figure lifted, against the body as it shipped) is recorded
 in `PICKED` beside them. The losing options stay behind their switches; the bare-chested outfit was
@@ -1001,7 +1001,7 @@ removed. Note the name: the Skybreak Ring's `?ring=` and the wyrm's older `?ring
 the same URL parameter; each level is its own page and only one of the two is ever drawn, so a value
 set for one level does nothing visible on the other.
 
-### The Skybreak Ring (2026-11-21, ADR-128; `world/skybreakRing.js`, `?level=ring`)
+### The Skybreak Ring (2026-11-21, ADR-129; `world/skybreakRing.js`, `?level=ring`)
 An open-air tournament ring on the badlands, wrecked by the fight; an original place. The camera looks
 down at 58 degrees: the sky and the horizon are never on screen, so "the sky changes" means the LIGHT
 changes, and what is seen is what it falls on.
@@ -1038,7 +1038,7 @@ changes, and what is seen is what it falls on.
   moments (a transformation, the great beam, a won clash), gold before the storm and cold white in it;
   `dim(k)` pulls the whole ring's light down through the great beam's charge.
 
-### Gold in the fire field (2026-11-21, ADR-128)
+### Gold in the fire field (2026-11-21, ADR-129)
 Tian Lei's energy is GOLD, and the fire field has four kinds and no gold (`fire`, `void`, `steel`,
 `smoke`). The Skybreak Ring **swaps the void slot's palette** for `FIRE_PALETTES.gold`
 (`FireField.setPalette('void', ...)`, as his effects are built): on this level every void blob prints
@@ -1052,7 +1052,7 @@ inherited draws' violet lights and glyph colours are turned gold (storm white wh
 and every scorch his effects leave keeps 12 % of its glowing heat: his energy chars the floor, it leaves
 no red-orange glow (that read as fire).
 
-### Tian Lei's figure (2026-11-21, ADR-128; `ascendant/gear.js`, `look.js`)
+### Tian Lei's figure (2026-11-21, ADR-129; `ascendant/gear.js`, `look.js`)
 - **Drawn in the hero's ink-line art**, as Shen Hui and Varr Nihil are (`buildHero` on the hero's
   skeleton, the hero's animator), 1.12 × the hero's size. The owner's pick, outfit a: a sleeveless
   crimson tunic with a crossed collar and a short split skirt, a black sash whose tails fly, pale grey
@@ -1075,7 +1075,7 @@ no red-orange glow (that read as fire).
   × 1.5, the skin × 1.2, the sash × 1.8, the dark hair × 1.6) and the cool edge of light along his
   silhouette is × 3.2. It helps a little: the fighters are still small in the frame.
 
-### Tian Lei's effects (2026-11-21, ADR-128; `ascendant/fx.js` `AscFx`, `fxBeam.js`)
+### Tian Lei's effects (2026-11-21, ADR-129; `ascendant/fx.js` `AscFx`, `fxBeam.js`)
 Everything that strikes, glows or bursts is gold heat in the fire field, in the small letters; dust,
 grit, chips and sparks are one-cell glyph particles. Look code draws from its own streams.
 - **The aura** (forms 2 and 3; `?ascAura=a`, the owner's pick): a tall flame standing round him,

@@ -179,7 +179,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.53 — A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant (2026-11-21, `enemies/ascendant-boss`, ADR-128)
+## M1.54 — A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant (2026-11-21, `enemies/ascendant-boss`, ADR-129)
 - [x] The moveset agreed with the owner before the build; an original fighter and arena
 - [x] The level (`?level=ring`), the set in three arenas, breakable tiles, buttes whose tops come off, the light by form
 - [x] Tian Lei on the duelist engine: bare hands (the striking limb is the blade), three forms, a deathblow and a transformation each

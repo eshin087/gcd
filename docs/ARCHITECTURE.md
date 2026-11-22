@@ -440,7 +440,7 @@ Render helpers for creature modules:
   - Looks are data: `render/firePalettes.js` exports `FIRE_PALETTES` (`fire`, `void`, `steel`: five
     colour stops, `hdr`, `fill`, `back`, `lick`, `erode`, `boil`, `warp`, and optionally `haze`: the
     colour the world's letters take beside that heat, read for the void slot only), `FIRE_SMOKE`,
-    `FIRE_KIND`. Since 2026-11-21 (ADR-128) also `FIRE_PALETTES.gold`: NOT a kind of its own (the field
+    `FIRE_KIND`. Since 2026-11-21 (ADR-129) also `FIRE_PALETTES.gold`: NOT a kind of its own (the field
     keeps its four kinds); a level that needs a colour the field has no kind for borrows a slot.
     `setPalette(kind, palette)` (kind `'fire'` | `'void'` | `'steel'`; a palette block with five stops)
     rewrites that slot's stops, fill / back and turbulence uniforms, and for the void slot its `haze`
@@ -468,7 +468,7 @@ Render helpers for creature modules:
 - **Text effects** (ADR-113):
   - *Heat haze*: ASCII pass uniforms `uHaze`, `uHazeRoll`, `uTime`; `hazeCell()` runs for wyrm and
     prop cells only while `uFlame.z > 0.5` (six nearest reads of the flame texture, then). The colour
-    letters take beside void heat is the uniform `uHazeVoid` (violet by default; ADR-128):
+    letters take beside void heat is the uniform `uHazeVoid` (violet by default; ADR-129):
     `Pipeline.registerFire(field)` shares the field's `hazeVoid` vector into it, so a level that swaps
     the void slot's palette (`setPalette`) swaps the haze's colour with it.
   - *Letting go* (`render/letGo.js`: `LET_GO`, `LET_GO_GLSL` with `letGoAt(cell)`, `letGoRow`,
@@ -629,11 +629,11 @@ startBladeLock(att, { start, push, decay, dur, hold, dist }): boolean
                                        // 1.3 m (half each), the blades cross between them (the grip follows
                                        // att.bladeSegment(): _lockCross), sparks grind at the crossing, and the pair
                                        // slides TUNE.lockSlide 0.9 m with the meter (ADR-081).
-                                       // `dist` (ADR-128; optional, at least 0.5): the distance the pair closes to
+                                       // `dist` (ADR-129; optional, at least 0.5): the distance the pair closes to
                                        // instead of TUNE.lockDist, kept on `bladeLock.dist`: a lock at range (Tian
                                        // Lei's beam clash passes the distance they stand at; brain.startLock(o))
 streamBlock(cost, push, dx, dz): boolean
-                                       // (ADR-128) a held guard under a stream the attacker keeps on it (a beam's
+                                       // (ADR-129) a held guard under a stream the attacker keeps on it (a beam's
                                        // ticks: ascendant/kiBeam.js): `cost` off the guard meter, no health, the
                                        // guard's regen delay restarted, the knock-back topped up to a slide of `push`
                                        // m along the unit (dx, dz), a short recoil. False and nothing changed when
@@ -2295,7 +2295,7 @@ row (`pipeline.setZoomArt('a' | 'b' | 'c')`, live).
 **LOOKS** (ADR-122; `dev/labLooks.js`, only in `ash` / `starless` / `ring`, collapsed until opened): a row per look
 switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pick, build-time, levels,
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
-`lordLook`, `floor`) reloads the page with its parameter. The Skybreak Ring's rows (ADR-128), each group
+`lordLook`, `floor`) reloads the page with its parameter. The Skybreak Ring's rows (ADR-129), each group
 under its own heading comment: `ring` a / b / c (the arena; a reload), `ascLook` a / c / d (his body; a
 reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c and `ascBeam`
 a / b (live); all picked 'a' (STYLE.md "The look switches"). "as shipped" clears every look parameter (the
@@ -2359,7 +2359,7 @@ boss schedules its answer `lead` s before the impact; `until`) → tail → done
 ok, missing, secs }). It drives the hero only through `game.input.setVirtual` /
 `setVirtualAxis` (the sims' mock: press / up / hold / release / axis) and aims with
 `game.mouseGround`. `lab.update` calls `training.update(realDt)` every frame; it uses game time.
-Tian Lei's (ADR-128; `ROLES.ring`: single `meteorStep`, string `gates`, long and lock `hundred`, red
+Tian Lei's (ADR-129; `ROLES.ring`: single `meteorStep`, string `gates`, long and lock `hundred`, red
 `cometHeel`, mikiri `piercingPalm`): `mikiriAsc` (a roll into Piercing Palm), `form2a` / `form3a` (the
 two transformations), `ascClash` (the great beam's head parried perfectly: the clash, mashed), `ascTide`
 (Rising Tide rolled out of at its cue), `ascTideHit` (Rising Tide stood in), `ascTile` (Tile Kick taken);
@@ -2743,7 +2743,7 @@ ahead, Fell on me, Blast ahead, Restore) too.
 |---|---|---|
 | the hero | `player.js` `_cutWorld` (the blade's segment, every active frame), `_slamImpact` | power = the attack's damage / 110; a heavy cut is a BLUNT blow; a felled piece falls away from him |
 | the wyrm | `attacks.js` `sweepHit` (every striking part), stomp / leap / hop / the slams (`GROUND_BLOW`, with falloff); `fireAttacks.js` dive and nova; `fx.js` `_landed` (fireball, meteor, lava pillar) and the breath / strip / ring / wall igniting; `skyFx.js` the meteors' impacts; `bullets.js` (cover; a landing ember; the tongues lighting wood); `terrain.js` (a flying piece's `sweep` on its path, its blast where it lands, `throwTo` for the skid; a batted one: `stop` on the cover in its way; a firebrand: `world.ignite`); `dragon.js` `_wreck` (its body's spheres, the wings' blasts, the landing); `wallReach.js` (`wallWind` → `destructibles.wind` from the roars, the shock ring, `groundShock`, the wing buffet and sweep, the take-off, the landing, low downbeats; `carryFire` → `destructibles.carryFire` from the breath, the strip, flame rings and walls, missed shots; ADR-120); `ablaze.js` (phase 3: `world.ignite(..., false)` from a burning part, the scorch map under its feet) | `TUNING.world` (`melee`, `stomp`, `leap`, `hop`, `dive`, `nova`, `falloff`, `explosion`, `meteor`, `pillar`, `body`, `takeoff`, `landing`, `downbeat`, `ignite`, `bullet`, `wind`, `carry`; `meter`: the WRECKAGE scenario's bounds, with `wall` [0.3, 0.75] and `wallP1` 0.03: the share of the wall's front rows, 32 – 46 m, worn or down at the end and by phase 1's end); `tuningAblaze.js` `ABLAZE.wood` |
-| a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush; `starlessLord/spells.js` the wheeling blade, the weather's strikes, Starless Night's waves; `ashDisciple/moveFx.js` burning ground (`world.ignite`); Tian Lei's (ADR-128): `ascendant/fx.js` blasts (`stop`: cover takes them; a burst's `world.impact`) and the disc (`sweep`, out and home), `kiBeam.js` the beams (`sweep` along the strip and carried on to 45 m, a trench of `world.impact` stations, `world.ignite` off the ring), `kiShots.js` the volley's dive and the corner bolts (`world.impact`), `ascendant/terrain.js` (`take` / `carry` / `throwTo` / `strike` on the tiles, `floorNear`, `wreck.rubble`); the other two bosses' `terrain.js` (`take` / `carry` / `throwTo` / `topple`, `floorNear` for the floor moves) | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
+| a duelist | `brain.js` `_worldBlow` (a beat's zone at its impact) and `_coverFor` (a bolt, the pull, the grip meet the cover the hero stands behind: `beat.cover`); `duelist/fx.js` crescents and the push; `starlessLord/fx.js` thrown stones, the blade, strikes, the crush; `starlessLord/spells.js` the wheeling blade, the weather's strikes, Starless Night's waves; `ashDisciple/moveFx.js` burning ground (`world.ignite`); Tian Lei's (ADR-129): `ascendant/fx.js` blasts (`stop`: cover takes them; a burst's `world.impact`) and the disc (`sweep`, out and home), `kiBeam.js` the beams (`sweep` along the strip and carried on to 45 m, a trench of `world.impact` stations, `world.ignite` off the ring), `kiShots.js` the volley's dive and the corner bolts (`world.impact`), `ascendant/terrain.js` (`take` / `carry` / `throwTo` / `strike` on the tiles, `floorNear`, `wreck.rubble`); the other two bosses' `terrain.js` (`take` / `carry` / `throwTo` / `topple`, `floorNear` for the floor moves) | `duelist/worldTuning.js` `DUEL_WORLD` (an actor's `T.world` overrides fields) |
 
 **Drawing.** `createAsciiObjectMaterial` and `createPropArtMaterial` place each vertex with
 `rigidMatrix()`; built with `rigid: true` they are tagged for `batchRigid` (a set's static materials are
@@ -2756,7 +2756,7 @@ strip and the scars are glyph particles (a wearing crown's in the canopy's dim h
 dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
 are heat in the fire field.
 
-## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-128)
+## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
 `starless`, the Skybreak Ring `ring`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
@@ -2771,7 +2771,7 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   meshes), `scarInk [r, g, b]` (the colour of cracks in its floor), `ash: true` (atmosphere: falling ash flakes and a
   few embers instead of fireflies, mist and leaves) and `grass: { density(x, z) → 0..1 factor,
   height (×), ash 0..1 }` (world.js thins / shortens / greys the meadow; grass.js `uAsh`), and
-  `groundY` (m; ADR-128): world.js puts its ground plane there, right after the set is built, when it is
+  `groundY` (m; ADR-129): world.js puts its ground plane there, right after the set is built, when it is
   a finite number other than 0 (the Skybreak Ring's `?ring=c`, the butte's crown, lowers the badlands
   40 m and draws its own walkable top; everything that stands on the play surface is still at y = 0).
   A set may also bring its own night and weather (ADR-070; the Obsidian Throne's set does):
@@ -2797,7 +2797,7 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   ground: ADR-109).
   Three rng streams: the layout (the picked render's sequence: add nothing to it), the rubble broken
   pieces leave, and anything added later.
-- **The Skybreak Ring** (ADR-128; `src/levels/skybreak.js` `SKYBREAK`: id `ring`, aliases `skybreak`,
+- **The Skybreak Ring** (ADR-129; `src/levels/skybreak.js` `SKYBREAK`: id `ring`, aliases `skybreak`,
   `ascendant`, `tianlei`; boss `new Ascendant(game)`, below). `world`: `arenaRadius` `RING.half` 15,
   `playerBound` `RING.bound` 40 (round the origin: the ring, the path and the bonfire's landing),
   `dragonBound` `RING.floor.r` 13.8 (no `bossFloor`), the bonfire and the hero's spawn 0.6 m east and
@@ -2917,7 +2917,7 @@ data and a subclass with a few hooks.
   `steps: true` (the animator's `_feetClip`, below).
   Beat extras: `{ pick: [beat, ...] }` (one alternative drawn as the move starts), `fixed: true` (its
   windup is not scaled by the phase), `chance` (the beat is played on that roll only), `sustain: { dur,
-  tick }` (ADR-128: the beat stays lit `dur` s past its active frames; the realised beat carries `S`, its
+  tick }` (ADR-129: the beat stays lit `dur` s past its active frames; the realised beat carries `S`, its
   `end` is `impact + A + S` and everything after it waits; its keys past the impact span the whole lit
   time, `b.F = A + S`, instead of the follow clock: a held beam's pose lasts while it is lit).
   `TUNING.flashLead` may be per phase.
@@ -3023,7 +3023,7 @@ data and a subclass with a few hooks.
     timed and answered as a blade blow of its tell, its zone struck, nothing thrown), else a release as
     any other (`ledger.js` `throwsAt(b)`: a release, or the thrown blade, that is not a cut). Each boss's
     own: below.
-- **Tian Lei's engine additions (ADR-128; documented again at the top of `brain.js`).** All optional: a
+- **Tian Lei's engine additions (ADR-129; documented again at the top of `brain.js`).** All optional: a
   beat or a kit without them behaves exactly as before.
   - `zone.fwd` / `zone.side` (m): the zone's centre is `fwd` m ahead of him and `side` m to his LEFT (his
     body +x), not his root: a blow whose reach is round a limb (a side kick's heel, a knee). Read by
@@ -3272,7 +3272,7 @@ blink, the ignition. The intro: seated at
 `CONFIG.world.dragonSleep` with the root raised to the seat (`TUNING.intro`), he rises, the blade
 ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 
-### Tian Lei, the Last Ascendant — `src/entities/enemies/ascendant/ascendant.js` exports `class Ascendant` (ADR-128)
+### Tian Lei, the Last Ascendant — `src/entities/enemies/ascendant/ascendant.js` exports `class Ascendant` (ADR-129)
 A `Duelist` with `ASC_KIT`; COMBAT.md → "Tian Lei, the Last Ascendant" has the fight. Bare-handed: no
 weapon, three forms with a bar each (the Lord's `lives` structure), ki (blasts, a disc, bolts, called
 strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNING, MOVES, MOVE_NAMES,
@@ -3619,7 +3619,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   the Starless Sky's strikes (attack starlessSky) and Starless Night's waves (starlessNight) with hazard: true,
   the wheeling blade (wheelingBlade) with bullet: true; Shen Hui's burning ground has no cue (ground to step
   off, not a blow). No event and no payload field was added by the duelists' second pass.
-- Tian Lei, the Skybreak Ring's boss (ADR-128), added NO event name and no payload field; new producers
+- Tian Lei, the Skybreak Ring's boss (ADR-129), added NO event name and no payload field; new producers
   and payload values of existing ones: his transformations emit `dragon:phase2` / `dragon:phase3` (also
   the Lab's setForm); his deathblow `dragon:plunged` with execution, deathblow and form (as the Lord's);
   `dragon:returned` kind 1 = a bolt of his struck back by a perfect parry, kind 2 = a returned blast
@@ -3637,7 +3637,7 @@ Flow → hud/audio:
   fullDeflect / bladeLock / mikiri / execution / perfectParry (the hero's perfect parry of a blade: a short
   slow motion, no gong), or lock = the blade lock's camera push-in: no slow motion,
   audio plays no gong; greatBeam = Tian Lei's great beam begins to charge: a short close look at him,
-  no slow motion, audio plays the gong, ADR-128)
+  no slow motion, audio plays the gong, ADR-129)
 World → audio (destruction, ADR-107; see "Destruction" above):
 - `world:impact {kind, mat, x, y, z, power, by, id}` (a blow on a breakable. kind: 'chip' = it held, 'break' = it
   shattered where it stood, 'topple' = it starts to fall, 'crash' = it lands (or a thrown piece does), 'burn' = wood

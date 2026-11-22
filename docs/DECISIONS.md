@@ -3791,12 +3791,12 @@ ADR-092).
   future change to a model's object count no longer moves the seeded fights.
 - **Not done:** the eyes from straight above stay small; not seen on the iPhone.
 
-## ADR-128 — A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant: a bare-handed duelist in three forms, his ki, a ring that is wrecked (2026-11-21)
+## ADR-129 — A fourth level: the Skybreak Ring and Tian Lei, the Last Ascendant: a bare-handed duelist in three forms, his ki, a ring that is wrecked (2026-11-21)
 - **Context:** the owner: "lets build a saiyan level boss where phase 1 starts from normal saiyan, phase 2
   is super saiyan, phase 3 is super saiyan 2. make the background the cell tournament arena and make it
   feel like an anime epic battle. help me come up with the moves, combos, specials from the boss and use
   opus to build this out". Planned by the lead (Fable), built by Opus agents in two waves, an
-  integration pass and a tuning pass (DEVLOG Session 68).
+  integration pass and a tuning pass (DEVLOG Session 69).
 - **An original character and place, in that spirit.** The lead would not put an existing series'
   characters, names or arena into the game (ADR-116: a game of its own), and said so before anything was
   built. So: TIAN LEI, THE LAST ASCENDANT, a bare-handed fighter who is beaten three times, each time in

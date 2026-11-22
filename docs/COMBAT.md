@@ -1550,7 +1550,7 @@ has played the second pass yet.**
 - **Not measured / not fixed:** a human's fight; a phone's frame rate; the string-lock (above); the
   hiding place behind the throne. The bots never use the blade lock or the mikiri.
 
-## Tian Lei, the Last Ascendant (2026-11-21, ADR-128; `?level=ring`)
+## Tian Lei, the Last Ascendant (2026-11-21, ADR-129; `?level=ring`)
 A bare-handed martial artist who waits, arms folded, on the Skybreak Ring, a tournament ring of stone
 tiles on the open badlands: punches, kicks, elbows, knees and palm strikes, blasts of gold ki, a disc,
 lightning, beams. An original character (no franchise's names, likeness, costume or moves; the lead
@@ -1661,7 +1661,7 @@ dive leave craters with rubble, his beams trench their lines, his terrain moves 
 is visibly worse each form (headless: 10 → 33 → 45 % of the tiles broken by the end of forms 1 / 2 / 3,
 about 30 % cracked). His terrain moves stop coming when the ring round him is spent.
 
-**Moves** (`ascendant/moves.js` and `moves/*.js`, ADR-128). **Generated from the data** by
+**Moves** (`ascendant/moves.js` and `moves/*.js`, ADR-129). **Generated from the data** by
 `docs-gen-moves.mjs` (the lead's scratchpad: `node docs-gen-moves.mjs <worktree> [--write]` rewrites the
 block between the two markers below; re-run it after any change of his moves). Tells N normal, B blue,
 R red, K black; a hit: `tell windup (damage) [extras]`, **windups at form 1's pace** (forms 2 – 3 ×
@@ -1942,7 +1942,7 @@ each boss's section above).
 - **Every cue is honest.** Each blow keeps its tell and its timing (`flashLead` before the impact; a
   move's first windup and a string's spacing at their floors); only WHEN it comes moves.
 
-**What the third duelist added (Tian Lei, 2026-11-21, ADR-128).** The same rules, three more:
+**What the third duelist added (Tian Lei, 2026-11-21, ADR-129).** The same rules, three more:
 - **A lit beam is one long cue.** A beam beat (`sustain`) counts in the cue ledger from its impact to
   the end of its lit window as ONE interval: nothing that asks the other answer is cued inside it, and
   **while one of his beams is lit he starts no move with a blow that asks a guard** (a white or blue
@@ -1975,7 +1975,7 @@ busier than the one before it on every seed: within about 2 % of the tables abov
 **Not filmed:** a feint made by the guard, a strike fading, a stone shattering on a world warning, the
 blade hanging at its turn, the footwork's seek. **Not measured:** how a person reads a held blow.
 
-## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas: 2026-11-16, ADR-122; the Skybreak Ring: 2026-11-21, ADR-128)
+## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas: 2026-11-16, ADR-122; the Skybreak Ring: 2026-11-21, ADR-129)
 What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood **the whole
 clearing breaks** (the owner, ADR-119: "the terrain itself is barely destructible"), and since
 2026-11-16 **the whole forest round it** (ADR-120): 664 breakables (183 before): 502 trees and 37 dead
@@ -1994,7 +1994,7 @@ bonfire stay whole. The **Obsidian Throne's crater** lists 222 (36 before): 105 
 rubble stones, the stonework of the 4 vents, 35 trunks thrown down near the crater, and six stones
 hanging in the air (these only chip, stop nothing and block nobody: they are there for the Void to
 throw); the throne and its dais, the fallen star, the seal's glow and the bonfire stay whole. The
-**Skybreak Ring** (ADR-128; the arena the owner picked, `?ring=a`, the flats) lists 579: 361 tiles of
+**Skybreak Ring** (ADR-129; the arena the owner picked, `?ring=a`, the flats) lists 579: 361 tiles of
 the ring (every tile, kerb stone and plate of the octagon), 162 clay plates of the lake bed within
 24 m, 14 flagstones of the path, 12 boulders, the 4 corner posts with their braziers (a brazier goes
 out with its post), 6 buttes in two pieces each (a top that comes off, a foot that only chips), 4
