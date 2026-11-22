@@ -5,7 +5,7 @@
 // distances in gameplay metres (what is drawn is scaled; every reach here is what hits).
 export const TUNING = {
   name: 'GONGSHU YAN, THE CLOCKWORK MARSHAL',
-  hp: 2400, // (the suit's bar: the base constructor reads it; marshal.js sets each body's own)
+  hp: 3000, // (the suit's bar: the base constructor reads it; marshal.js sets each body's own)
   phaseAt: [1, 0.66, 0.33], // the suit's bar: phases 2 and 3 at 66 % and 33 % (the pilot's bar has no gates)
   radius: 0.9, // (the suit's body circle; each body's own below, marshal.js keeps the live one)
   scale: 1.75,
@@ -13,8 +13,8 @@ export const TUNING = {
 
   // ---- the two bodies (ADR-135). `scale`: drawn size; `game`: the factor his hurt spheres are scaled
   // by from the root (what is drawn is what is hit); `radius`: the body circle; `hp`: the bar
-  suit: { hp: 2400, scale: 1.75, game: 1.75, radius: 0.9 },
-  pilot: { hp: 1000, scale: 1.0, game: 1.0, radius: 0.4 },
+  suit: { hp: 3000, scale: 1.75, game: 1.75, radius: 0.9 },
+  pilot: { hp: 1300, scale: 1.0, game: 1.0, radius: 0.4 },
 
   // ---- tells (rules: COMBAT.md; checked by tests/integration/marshal.mjs). The suit is slow and heavy:
   // its first real windup >= 0.7 s and its blows >= 0.5 s apart; the pilot is the Lord's pace
@@ -99,8 +99,12 @@ export const TUNING = {
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
-    // what tests/integration/marshal.mjs PACE asserts per phase: cues a minute at least, the longest gap
-    meter: { minRate: [30, 32, 36, 70], maxGap: [6.5, 6.0, 6.0, 4.5] },
+    // what tests/integration/marshal.mjs PACE asserts per phase: cues a minute at least, the longest gap.
+    // Measured on the first build (2026-11-21), seeds 4242 / 7 x 90 s against a blocking, early-rolling bot
+    // that walks back in: 33 / 32, 41 / 44, 57 / 55, 76 / 69 cues a minute; longest gaps 2.3 - 3.7 s. The
+    // suit is slow and heavy and speeds up as its works run wild; the pilot runs near the Lord's pace.
+    // Floors ~10 % under the slowest seed, gaps ~1 s over the longest
+    meter: { minRate: [28, 36, 48, 60], maxGap: [4.5, 4.5, 5.0, 4.0] },
   },
   punish: { weight: 3 },
 
@@ -142,8 +146,9 @@ export const TUNING = {
   // burning ground (ashDisciple/moveFx.js reads `burn`): Sweeping Fire leaves its arc alight
   burn: { from: 1, cap: [4, 6, 8, 0], width: 0.9, life: 5, len: 5, ring: 0.62, grace: 0.45, armAfter: 0.35, tick: 0.55, damage: 5, guard: 34, flames: 26, ignite: 0.8, fade: 0.6 },
 
-  // ---- what his blows do to the world (ADR-107; over duelist/worldTuning.js DUEL_WORLD)
-  world: { per: 40, red: 1.25, crescent: 0.35, bolt: 1.5, lance: 1.2, lanceFire: 1, sweepFire: 0.8, hammer: 1.0, stomp: 0.8, charge: 1.0, body: 0.6, mortar: 1.0, plate: 0.5, vent: 0.6 },
+  // ---- what his blows do to the world (ADR-107; over duelist/worldTuning.js DUEL_WORLD). `bolt` is what the
+  // cover the hero stands behind takes from a Fire Lance bolt (duelist/brain.js _coverFor): the lance's power
+  world: { per: 40, red: 1.25, crescent: 0.35, bolt: 1.2, lance: 1.2, lanceFire: 1, sweepFire: 0.8, hammer: 1.0, stomp: 0.8, charge: 1.0, body: 0.6, mortar: 1.0, plate: 0.5, vent: 0.6 },
 
   // ---- the intro: he rises from his kneel before the furnace
   wakeRadius: 10,

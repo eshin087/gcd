@@ -177,6 +177,7 @@ function build(seed = SEED, real = false) {
     world.scars = new Scars(game, set.scarInk);
     world.destructibles = new Destructibles(game, world, set);
     world.impact = (x, z, r, power, o) => world.destructibles.strike(x, z, r, power, { kind: 'blunt', by: 'world', ...(o ?? {}) });
+    world.ignite = (x, z, r, k = 1) => world.destructibles.ignite(x, z, r, k);
     world.restore = () => { world.destructibles.reset(); world.scars.reset(); };
     world.update = (dt) => { world.destructibles.update(dt); world.scars.update?.(dt); set.ambience?.update?.(dt, game); };
     set.ambience?.setup?.(game);
@@ -347,7 +348,7 @@ function deathblow(G, how = 'posture') {
   const { game, input } = G;
   const d = game.dragon;
   if (how === 'posture') d.debug.postureBreak();
-  else d.takeHit({ damage: 99999, exact: true });
+  else d.takeHit({ damage: 99999, exact: true, plate: false });
   run(G, 0.3);
   place(G, 2.0);
   const was = d.phase;
@@ -573,10 +574,10 @@ async function scenarioPlates() {
     const d4 = G4.game.dragon;
     d4.debug.setAI(true);
     d4.plates.s.back.hp = 10;
-    d4.takeHit({ damage: 99999, exact: true });
+    d4.takeHit({ damage: 99999, exact: true, plate: false });
     run(G4, 6, null, () => d4.phase === 2 && d4.mode === 'foot');
     const gone2 = d4.plates.gone, back2 = d4.plates.off('back');
-    d4.takeHit({ damage: 99999, exact: true });
+    d4.takeHit({ damage: 99999, exact: true, plate: false });
     run(G4, 6, null, () => d4.phase === 3 && d4.mode === 'foot');
     assert(gone2 >= P.minOff[1] && back2 && d4.plates.gone >= P.minOff[2] && d4.plates.on('helm'), `the transitions shed the least-sound plates: ${gone2} gone at phase 2 (the back first), ${d4.plates.gone} at phase 3, the helm kept`);
   }
@@ -590,7 +591,7 @@ async function scenarioHandover() {
   const d = G.game.dragon;
   const ev = [];
   G.watch = (n, e) => { if (n === 'dragon:plate' || n === 'dragon:phase4' || n === 'dragon:plunged') ev.push(n); };
-  d.takeHit({ damage: 99999, exact: true });
+  d.takeHit({ damage: 99999, exact: true, plate: false });
   run(G, 0.2);
   assert(d.broken && d.hp === 0 && d.phase === 3, `the suit's bar empty: it breaks (${d.mode})`);
   run(G, 1.2);
@@ -610,7 +611,7 @@ async function scenarioHandover() {
   assert(hy < 2.0, `her highest hurt sphere at ${hy.toFixed(2)} m`);
   // the pilot at zero breaks; the deathblow kills her
   d.debug.setAI(false);
-  d.takeHit({ damage: 99999, exact: true });
+  d.takeHit({ damage: 99999, exact: true, plate: false });
   run(G, 0.3);
   assert(d.broken && d.mode !== 'dying', 'her bar empty: she breaks');
   place(G, 2.0);
@@ -621,7 +622,7 @@ async function scenarioHandover() {
     const G2 = build();
     duel(G2, { dist: 6, form: 2 });
     const d2 = G2.game.dragon;
-    d2.takeHit({ damage: 99999, exact: true });
+    d2.takeHit({ damage: 99999, exact: true, plate: false });
     run(G2, TUNING.posture.breakTime + 4, null, () => d2.phase === 4 && d2.mode === 'foot');
     assert(d2.phase === 4 && d2.body === 'pilot' && d2.mode === 'foot', `a break nobody answered: she climbs out all the same (${d2.mode})`);
     // reset restores the suit
@@ -638,12 +639,260 @@ async function scenarioHandover() {
   }
 }
 
+// ================================================================== scenario: lance
+async function scenarioLance() {
+  out('\n== scenario LANCE (the bolt in the open, behind cover, a perfect parry) ==');
+  {
+    const G = build();
+    duel(G, { dist: 8, form: 1 });
+    const d = G.game.dragon, hp0 = G.game.player.hp;
+    const h0 = G.hits.length;
+    let boom = 0;
+    G.watch = (n) => { if (n === 'dragon:explosion') boom++; };
+    d.debug.trigger('fireLance');
+    run(G, 4, null, () => d.mode === 'foot');
+    const hits = G.hits.slice(h0);
+    assert(hits.length === 1 && hits[0].r === RESULT.HIT && hits[0].kind === 'fire' && hits[0].attack === 'fireLance' && G.game.player.hp < hp0 && boom >= 1, `unanswered, the bolt lands from 8 m (${(hp0 - G.game.player.hp).toFixed(1)} damage, kind ${hits[0]?.kind})`);
+  }
+  {
+    // the hero behind a weapon rack: the bolt ends on the rack, which takes the blow and catches fire
+    const G = build(SEED, true);
+    duel(G, { dist: 8, form: 1 });
+    const d = G.game.dragon, p = G.game.player, W = G.game.world.destructibles;
+    const rack = W.list.find((b) => b.kind === 'rack' && b.state === STATE.INTACT);
+    const dx = rack.x, dz = rack.z, l = Math.hypot(dx, dz);
+    d.position.set(dx - (dx / l) * 6, 0, dz - (dz / l) * 6);
+    d.yaw = Math.atan2(dx, dz);
+    p.debug.teleport(dx + (dx / l) * 1.2, dz + (dz / l) * 1.2);
+    p.debug.heal();
+    const rhp = rack.hp;
+    const h0 = G.hits.length;
+    let ignites = 0;
+    { const f = G.game.world.ignite; G.game.world.ignite = (...a) => { ignites++; return f(...a); }; }
+    d.debug.trigger('fireLance');
+    run(G, 4, () => { p.debug.teleport(dx + (dx / l) * 1.2, dz + (dz / l) * 1.2); }, () => d.mode === 'foot');
+    const hit = G.hits.slice(h0).some((h) => h.r === RESULT.HIT && h.attack === 'fireLance');
+    const fell = G.hits.slice(h0).filter((h) => h.attack !== 'fireLance').map((h) => h.attack);
+    assert(!hit && (rack.hp < rhp || rack.state !== STATE.INTACT) && ignites > 0, `behind a rack the bolt never reaches the hero; the rack took it (${rhp.toFixed(2)} → ${rack.hp.toFixed(2)}, state ${rack.state}) and was set alight (${ignites} ignite)${fell.length ? `; the rack fell on him: ${fell.join(', ')}` : ''}`);
+  }
+}
+
+// ================================================================== scenario: world
+async function scenarioWorld() {
+  out('\n== scenario WORLD (his powers reach world.impact / ignite / destructibles) ==');
+  const G = build(SEED, true);
+  duel(G, { dist: 2, form: 3 });
+  const d = G.game.dragon, w = G.game.world, W = w.destructibles;
+  const calls = { impact: [], ignite: [], sweepRec: [], stop: [] };
+  const wrap = (obj, k, list) => { const f = obj[k].bind(obj); obj[k] = (...a) => { list.push(a); return f(...a); }; };
+  wrap(w, 'impact', calls.impact);
+  wrap(w, 'ignite', calls.ignite);
+  { const f = W.sweepRec.bind(W); W.sweepRec = (R, o) => { calls.sweepRec.push([{ ...R }, { ...o }]); return f(R, o); }; }
+  wrap(W, 'stop', calls.stop);
+  const WT = TUNING.world;
+  const play = (name, dist) => {
+    place(G, dist);
+    for (const k in calls) calls[k].length = 0;
+    d.debug.trigger(name);
+    run(G, 6, null, () => d.mode === 'foot' && d._mortar.left === 0 && !d.fx.strikesAlive);
+    return { impact: calls.impact.slice(), ignite: calls.ignite.slice(), sweepRec: calls.sweepRec.slice(), stop: calls.stop.slice() };
+  };
+  const has = (L, power) => L.some((a) => Math.abs(a[3] - power) < 1e-6);
+  let r = play('worksHammer', 2);
+  assert(has(r.impact, WT.hammer), `Hammer of the Works: world.impact power ${WT.hammer}`);
+  r = play('treadStomp', 2);
+  assert(has(r.impact, WT.stomp), `Treading Mountain: world.impact power ${WT.stomp}`);
+  r = play('fireSweep', 2.5);
+  assert(r.ignite.length >= 3 && has(r.impact, WT.sweepFire), `Sweeping Fire: ${r.ignite.length} ignites along its arc, impact ${WT.sweepFire}`);
+  r = play('ventBurst', 2);
+  assert(r.ignite.length >= 1 && has(r.impact, WT.vent), 'Bellows Vent lights the world round him');
+  r = play('mortarRain', 6);
+  assert(has(r.impact, WT.mortar) && r.ignite.length >= 1, `the mortars land with world.impact power ${WT.mortar} and fire`);
+  // the lance with nobody in its line: its far end, or the first cover it meets
+  {
+    place(G, 8, Math.PI / 2);
+    d.yaw = 0;
+    for (const k in calls) calls[k].length = 0;
+    d.debug.setAI(false);
+    G.game.player.debug.teleport(d.position.x + 8, d.position.z);
+    // (he cannot see the hero this time: no tracking, the bolt goes out along his facing)
+    const sense = d.brain._sense;
+    d.brain._sense = () => null;
+    d.brain.startAct('fireLance');
+    run(G, 4, null, () => d.mode === 'foot');
+    d.brain._sense = sense;
+    assert(calls.stop.length >= 1 && (has(calls.impact, WT.lance) || calls.ignite.length >= 1), `a bolt out along his facing: destructibles.stop (${calls.stop.length}), then the far end or the cover it met`);
+  }
+  // Iron Charge ploughs through the yard along its dash; the suit shoulders pieces as it walks
+  {
+    for (const k in calls) calls[k].length = 0;
+    place(G, 9);
+    const okC = d.debug.trigger('ironCharge');
+    run(G, 4, null, () => d.mode === 'foot');
+    if (!calls.sweepRec.length) out(`       (ironCharge started ${okC}, mode ${d.mode}, ${d.debug.currentAction()})`);
+    assert(calls.sweepRec.some((a) => Math.abs(a[0].power - WT.charge) < 1e-6), `Iron Charge: destructibles.sweepRec power ${WT.charge}`);
+    for (const k in calls) calls[k].length = 0;
+    d.debug.setAI(true);
+    place(G, 9);
+    run(G, 3);
+    assert(calls.sweepRec.some((a) => Math.abs(a[0].power - WT.body) < 1e-6 && a[1].brush === true), `walking, the suit brushes the world (sweepRec power ${WT.body}, brush)`);
+    d.debug.setAI(false);
+  }
+  // a shed plate lands with a blow on the world
+  {
+    for (const k in calls) calls[k].length = 0;
+    d.debug.setForm(1);
+    d.debug.shedPlate('breast');
+    run(G, 1.2);
+    assert(has(calls.impact, WT.plate), `a shed plate lands: world.impact power ${WT.plate}`);
+  }
+}
+
+// ================================================================== scenario: win
+async function scenarioWin() {
+  out('\n== scenario WIN (a fencing bot in god mode: parries, rolls, cuts in his openings, gives the deathblows; three seeds) ==');
+  const seeds = (process.env.ABYSS_WSEEDS ?? '4242,7,99').split(',').map(Number);
+  for (const seed of seeds) {
+    const G = build(seed);
+    const { game } = G;
+    const d = game.dragon;
+    duel(G, { dist: 3, ai: true });
+    G.defend = makeDefender(G, { skill: 1 });
+    let blows = 0, plates = 0;
+    const at = [0];
+    G.watch = (n) => {
+      if (n === 'dragon:plunged') blows++;
+      if (n === 'dragon:plate') plates++;
+      if (/^dragon:phase[234]$/.test(n)) at.push(game.time);
+    };
+    const t0 = game.time;
+    const won = run(G, 600, () => fencer(G), () => d.mode === 'dead' || d.mode === 'dying');
+    const T = game.time - t0;
+    const parries = G.hits.filter((h) => h.r === RESULT.PARRIED).length;
+    out(`     seed ${seed}: ${won ? 'won' : 'NOT won'} in ${T.toFixed(0)} s: ${blows} deathblows, ${plates} plates off, ${parries} parries; phases at ${at.map((t) => (t - t0 > 0 ? (t - t0).toFixed(0) : '0')).join(' / ')} s; phase ${d.phase}, bar ${Math.round(d.hp)}`);
+    assert(won && T > 40 && T < 600, `seed ${seed}: the bot beats the suit and the pilot (${T.toFixed(0)} s)`);
+  }
+}
+
+// ================================================================== scenario: pace
+/** (lord.mjs's pace defender: it blocks white / blue cues and rolls early from red ones, so it earns no riposte or
+ *  Ghostep: the pace is his own) */
+function paceDefender(G) {
+  const pend = [];
+  const stats = { flashes: 0, rolls: 0, guards: 0 };
+  let guardUntil = -1;
+  const leadOfSrc = (src) => (src === 'world' ? 0.3 : leadOf(G.game.dragon.phase));
+  return {
+    stats,
+    onEvent(n, e) {
+      if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
+      stats.flashes++;
+      pend.push({ tell: e.tell, at: G.game.time + leadOfSrc(e.source), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false });
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.5) pend.splice(i, 1);
+      let rolled = false;
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - t - DT;
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK) {
+          if (left <= 0.28) {
+            e.done = true;
+            input.up(1);
+            guardUntil = -1;
+            const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
+            const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+            // (a roll keeps him in the crater, as a player keeps to the arena: a roll that would end
+            // past the boss's floor (12 m round the seal, or north of the dais's edge) goes the other
+            // way across. The tuning pass, 2026-11-16: the hero used to roll out behind the throne,
+            // where nothing of his reaches (up to a fifth of form 4 spent there))
+            let wx = e.hazard ? dx / l : -dz / l, wz = e.hazard ? dz / l : dx / l;
+            const out = (ax, az) => Math.hypot(p.x + ax * 3, p.z + az * 3) > 12;
+            if (out(wx, wz)) {
+              const k = (-p.x * -wz + -p.z * wx) >= 0 ? 1 : -1;
+              const sx = -wz * k, sz = wx * k;
+              if (!out(sx, sz)) { wx = sx; wz = sz; } else if (!out(-wx, -wz)) { wx = -wx; wz = -wz; }
+            }
+            input.axis = { x: wx, y: -wz };
+            input.tap('Space');
+            rolled = true;
+            stats.rolls++;
+          }
+        } else {
+          e.done = true;
+          guardUntil = Math.max(guardUntil, e.at + 0.2);
+          stats.guards++;
+        }
+      }
+      if (guardUntil > t) input.press(1);
+      else if (guardUntil > 0) { guardUntil = -1; input.up(1); }
+      return rolled;
+    },
+  };
+}
+
+/** The pace bot's step: answer the cues; with none due and the boss more than 4.5 m off, walk back in
+ *  (as a player keeps to the fight; blocked blows knock him back). */
+function closeIn(G) {
+  const { game, input } = G, d = game.dragon, p = game.player;
+  input.axis = { x: 0, y: 0 };
+  const rolled = G.defend.act();
+  const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz);
+  if (!rolled && l > 4.5 && ['idle', 'run', 'walk'].includes(p.state)) input.axis = { x: dx / l, y: -dz / l };
+}
+
+async function scenarioTrace() {
+  const G = build(Number(process.env.S ?? 4242));
+  duel(G, { dist: 4, ai: true, form: Number(process.env.F ?? 1) });
+  const d = G.game.dragon, p = G.game.player;
+  p.debug.god = true;
+  G.defend = paceDefender(G);
+  for (let i = 0; i < Number(process.env.N ?? 80); i++) {
+    run(G, 0.5, () => closeIn(G));
+    out(`t ${G.game.time.toFixed(1)} dist ${Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z).toFixed(1)} ${d.mode} ${d.debug.currentAction()} phase ${d.phase} pos ${d.position.x.toFixed(1)},${d.position.z.toFixed(1)} hero ${p.position.x.toFixed(1)},${p.position.z.toFixed(1)} ${p.state} gap ${d.brain.gapT.toFixed(2)} cd ${JSON.stringify(Object.fromEntries(Object.entries(d.brain.cooldowns).filter(([k, v]) => v > 0).map(([k, v]) => [k, +v.toFixed(1)])))}`);
+  }
+}
+
+async function scenarioPace() {
+  out('\n== scenario PACE (a steady defender in god mode vs his AI, per phase: cues a minute, the longest gap, no unanswerable pair) ==');
+  const SECS = Number(process.env.ABYSS_PSECS ?? 90);
+  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7').split(',').map(Number);
+  const M = TUNING.pressure.meter;
+  for (let f = 1; f <= 4; f++) {
+    for (const seed of SEEDS) {
+      const G = build(seed);
+      duel(G, { dist: 4, ai: true, form: f });
+      const d = G.game.dragon;
+      G.game.player.debug.god = true;
+      G.defend = paceDefender(G);
+      const cues = [];
+      G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') cues.push({ t: G.game.time + leadOf(d.phase), dodge: e.tell === TELL.RED || e.tell === TELL.BLACK }); };
+      const t0 = G.game.time;
+      run(G, SECS, () => { closeIn(G); const p = G.game.player; if (p.hp < p.maxHp) p.hp = p.maxHp; if (d.phase !== f) d.debug.setForm(f); });
+      const rate = (cues.length / SECS) * 60;
+      let gap = 0, last = t0;
+      for (const c of cues) { gap = Math.max(gap, c.t - last); last = c.t; }
+      gap = Math.max(gap, G.game.time - last);
+      let pairs = 0;
+      for (let i = 0; i < cues.length; i++) for (let j = i + 1; j < cues.length && cues[j].t - cues[i].t < 0.3; j++) if (cues[i].dodge !== cues[j].dodge) pairs++;
+      const ok = rate >= M.minRate[f - 1] && gap <= M.maxGap[f - 1] && pairs === 0;
+      assert(ok, `phase ${f} seed ${seed}: ${rate.toFixed(1)} cues a minute (>= ${M.minRate[f - 1]}), longest gap ${gap.toFixed(2)} s (<= ${M.maxGap[f - 1]}), ${pairs} pairs of cues asking two answers within 0.3 s`);
+    }
+  }
+}
+
 const S = {
   level: scenarioLevel,
   data: scenarioData,
   timing: scenarioTiming,
   plates: scenarioPlates,
   handover: scenarioHandover,
+  lance: scenarioLance,
+  world: scenarioWorld,
+  win: scenarioWin,
+  pace: scenarioPace,
+  trace: scenarioTrace,
 };
 const list = SCEN === 'all' ? Object.keys(S) : [SCEN];
 for (const k of list) {

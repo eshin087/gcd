@@ -143,21 +143,23 @@ export class ClockworkMarshal extends Duelist {
       n = clamp(Math.round(fin(Number(n), 1)), 1, 4);
       if (d.mode === 'dying' || d.mode === 'dead') return false;
       d.brain.startFight();
-      if (n <= 3 && d.phase >= 4) {
+      if (n <= 3) {
         d.plates.reset();
         if (d.husk) d.husk.visible = false;
-        d._setBody('suit');
+        if (d.phase >= 4) d._setBody('suit');
       }
       d.enterPhase(n);
       if (n <= 3) {
         d.maxHp = TUNING.suit.hp;
         d.hp = d.maxHp * (n === 1 ? 1 : TUNING.phaseAt[n - 1]);
         d.plates.shedTo(TUNING.plates.minOff[n - 1]);
+        d._applyMove();
+        d._showBody();
       }
       d._changing = false;
       d.position.y = 0;
       d.brain._toFoot(0.3);
-      d.emit(`dragon:phase${n}`);
+      if (n >= 2) d.emit(`dragon:phase${n}`);
       return true;
     };
     this.debug.phase4 = () => {
@@ -258,7 +260,9 @@ export class ClockworkMarshal extends Duelist {
   /** A blow on him. In the suit (phases 1 - 3) the plate on the side it came from takes it (plates.js). */
   takeHit(o = {}) {
     if (this._changing) return 0;
-    if (!o || this.phase > 3 || this.mode === 'dying' || this.mode === 'dead' || o.exact || !(Number(o.damage) > 0) || !this.plates) return super.takeHit(o);
+    // (every blow of the hero's meets a plate, his flash cuts and his flurry's too (`exact`: past a sword
+    // guard, and the suit has none); `plate: false` skips it: the Lab, the tests)
+    if (!o || this.phase > 3 || this.mode === 'dying' || this.mode === 'dead' || o.plate === false || !(Number(o.damage) > 0) || !this.plates) return super.takeHit(o);
     const p = this.game.player?.position;
     const side = p ? this.plates.sideOf(p.x, p.z) : 'breast';
     const P = TUNING.plates;
@@ -655,7 +659,7 @@ export class ClockworkMarshal extends Duelist {
     }
     const moved = Math.hypot(x - b._cx, z - b._cz);
     if (moved < 0.05) return;
-    const R = this._sweepRec, o = this._chargeBlow;
+    const R = this._chargeRec ?? (this._chargeRec = { ax: 0, az: 0, bx: 0, bz: 0, r: 0.8, power: 1 }), o = this._chargeBlow;
     R.ax = b._cx;
     R.az = b._cz;
     R.bx = x;
