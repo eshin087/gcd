@@ -498,6 +498,12 @@ export class Player {
     // (e) block / (f) guard break
     // (`hit.around`: a foe's flurry comes from every side in turn: a raised guard meets it from any)
     if (this.blocking && (hit.around || this._inArc(DEFENSE.blockArc, hasFrom, fx, fz, hasAtk ? ap : null))) {
+      // (`breaksGuard`, ADR-144: the Sheathed's draw met on a HELD guard: no health lost, the whole
+      // meter gone and the guard knocked open, as a black blow does to a guard)
+      if (hit.breaksGuard && blockable) {
+        this._guardOpen(attack, nx, nz, true);
+        return RESULT.BLOCKED;
+      }
       if (blockable) {
         this._block(dmg, tell, attack, chip, nx, nz);
         return RESULT.BLOCKED;

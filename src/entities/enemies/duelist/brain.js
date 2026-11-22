@@ -67,6 +67,19 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //   T.airFall { g }        (TUNING) a reaction / break / death that starts in the air drops him to the
 //                          floor at `g` m/s² instead of snapping the root to y = 0.
 // startLock(o) takes overrides of TUNING.lock (`dist`: the lock at range, player.startBladeLock).
+//
+// THE SHEATHED'S FIELDS (ADR-144; a beat or a move without them behaves exactly as before):
+//   draw: true             a draw (always blue with the flare, `fixed`): its combat:tell waits for its cue
+//                          (it is announced with the click); as its cue comes due the actor's
+//                          d.mayCue(beat, act) is asked: false (the hero cannot answer: knocked down,
+//                          guard-open) holds it at the cock, up to T.draw.wait s, then it becomes a feint
+//                          (no tell, no flare, no hit) and d.onHonorFeint(act, beat) is called. No world
+//                          blow at its impact (the actor's cut fells what it fells, on the click).
+//   stopOn: ['blocked', 'hit']   the move ends when this beat is answered so (d.onStopOn(act, beat, r),
+//                          then the later beats are spent and the timeline goes to the recovery)
+//   def.recoverOpen        (on a move) the fraction of its recovery that is open, instead of
+//                          T.guard.recoverOpen (1: no guard all the way: the blade is out)
+//   def.cooldown           may be per phase
 // ---------------------------------------------------------------------------------------------------
 
 const FLOOR = !!TELL_STYLE.red.floor; // a red area rings the floor through its windup (rules.js: no)
@@ -225,7 +238,7 @@ export class DuelBrain {
     if (d.mode === 'act') {
       const a = this.act;
       if (!a || a.def.transition) return false;
-      if (a.t >= a.recoveryStart) return a.t - a.recoveryStart >= (G.recoverOpen ?? 1) * Math.max(0.05, a.end - a.recoveryStart);
+      if (a.t >= a.recoveryStart) return a.t - a.recoveryStart >= (a.def.recoverOpen ?? G.recoverOpen ?? 1) * Math.max(0.05, a.end - a.recoveryStart);
       const b = a.beats.find((x) => a.t < x.end + 1e-6);
       return !!b && a.t < b.impact && uAt(b, a.t) < G.windupOpen;
     }
@@ -578,6 +591,38 @@ export class DuelBrain {
       if (b.announced) this.stats.toldFeints++;
       return true;
     }
+    this._delay(a, b, t, sh);
+    this.stats.holds++;
+    this.stats.holdTime += sh;
+    return true;
+  }
+
+  /**
+   * The honor gate (ADR-144; a `draw` beat only): as its cue comes due, the actor's mayCue(b, a) false
+   * (the hero cannot answer it) holds it at the cock, a frame at a time, T.draw.wait s at most; past
+   * that it becomes a feint (no tell, no flare, no hit) and the actor's onHonorFeint(a, b) is called.
+   * True: no cue this frame.
+   */
+  _honor(a, b, t, dt) {
+    const d = this.d;
+    if (typeof d.mayCue !== 'function' || d.mayCue(b, a) !== false) return false;
+    const wait = this.T.draw?.wait ?? 0.6;
+    if ((b.honorT ?? 0) < wait) {
+      const sh = Math.max(1e-4, t - b.flash + dt);
+      b.honorT = (b.honorT ?? 0) + sh;
+      this._delay(a, b, t, sh);
+      return true;
+    }
+    b.feint = true;
+    this._note('feint', a.name);
+    this.stats.feints++;
+    d.onHonorFeint?.(a, b);
+    return true;
+  }
+
+  /** Move beat b (its cue, impact and end) and everything after it in move a later by `sh` s, the pose
+   *  standing at the cock meanwhile (the fairness guard's hold, the honor gate's wait). */
+  _delay(a, b, t, sh) {
     if (b.hl > 0) b.hl += sh;
     else {
       b.hf = Math.max(t, b.start + (b.def.cock ?? 0.8) * b.W + b.H);
@@ -603,9 +648,6 @@ export class DuelBrain {
     a.recoveryStart += sh;
     a.end += sh;
     if (a.next) a.next.at += sh;
-    this.stats.holds++;
-    this.stats.holdTime += sh;
-    return true;
   }
 
   /** A beat's announcement (combat:tell: the HUD, the audio's sting, the timing trainer). */
@@ -749,7 +791,7 @@ export class DuelBrain {
     this.modeT = 0;
     this._play(A.clip, 0.1);
     const def = A.def;
-    this.cooldowns[name] = def.cooldown ?? 0;
+    this.cooldowns[name] = perPhase(def.cooldown, d.phase) ?? 0;
     this.last[1] = this.last[0];
     this.last[0] = name;
     if (def.transition) {
@@ -1033,10 +1075,16 @@ export class DuelBrain {
         // (a blow the fairness guard could already not clear is not announced yet: it is announced
         // when the guard clears it at its cue, or never if it becomes a feint: a feint the guard
         // makes then says nothing, as an authored feint says nothing)
-        if (this.P && this._tellRisk(a, b, t)) b.tellHeld = true;
+        // (a draw is announced with its click: the honor gate may still make it a feint)
+        if (b.def.draw || (this.P && this._tellRisk(a, b, t))) b.tellHeld = true;
         else this._announce(a, b, t);
       }
       if (!b.flashed && t >= b.flash && (!b.def.release || b.cut) && !b.def.cast?.selfCue) {
+        // (the honor gate, ADR-144: a draw waits at the cock for a hero who cannot answer it, then feints)
+        if (b.def.draw && this._honor(a, b, t, dt)) {
+          if (this.act !== a) return;
+          continue;
+        }
         // (the fairness guard: a blow that would land within 0.3 s of one needing the other answer waits)
         if (this.P && this._holdBeat(a, b, t)) continue;
         if (b.tellHeld && !b.announced) this._announce(a, b, t);
@@ -1097,7 +1145,7 @@ export class DuelBrain {
         // (the cover the hero stands behind, for a line of the Void: found first, the FX draw to it)
         b.cover = this._coverFor(b, s);
         d.onImpact?.(b, s, a);
-        if ((!b.def.release || b.cut) && !b.def.cast && !b.def.selfHit) this._worldBlow(b);
+        if ((!b.def.release || b.cut) && !b.def.cast && !b.def.selfHit && !b.def.draw) this._worldBlow(b);
       }
       // (a beat whose hits the actor deals itself: no zone result here; it is over at its end)
       if (b.def.selfHit) {
@@ -1139,6 +1187,8 @@ export class DuelBrain {
           b.landed = r === RESULT.HIT;
           if (r === RESULT.HIT || r === RESULT.BLOCKED) a.chain = 0;
           if (b.def.ring) d.game.shake?.(0.25);
+          // (`stopOn`, ADR-144: a draw blocked or landed ends the move)
+          if (b.def.stopOn && this.act === a && this._stopOn(a, b, r)) return;
         }
         if (this.act !== a) return; // a parry recoiled him
       }
@@ -1187,6 +1237,26 @@ export class DuelBrain {
       }
       this._toFoot();
     }
+  }
+
+  /**
+   * A beat's `stopOn` (ADR-144): answered as it names ('blocked' / 'hit'), the move ends there: the
+   * actor hears it (d.onStopOn(a, b, r)), the later beats are spent and the timeline goes to the
+   * recovery. True if it stopped (the caller returns: this frame's hits are over).
+   */
+  _stopOn(a, b, r) {
+    const why = r === RESULT.BLOCKED ? 'blocked' : r === RESULT.HIT ? 'hit' : null;
+    if (!why || !b.def.stopOn.includes(why)) return false;
+    this.d.onStopOn?.(a, b, r);
+    if (this.act !== a) return true;
+    a.stopped = why;
+    for (const x of a.beats) {
+      if (x.index <= b.index) continue;
+      x.feint = true;
+      x.done = true;
+    }
+    if (a.t < a.recoveryStart) this.skipTo(a.recoveryStart);
+    return true;
   }
 
   /** Links and the flow are his own: not with the AI off, a phase change waiting, a test or the Lab
