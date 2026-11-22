@@ -71,7 +71,7 @@ const pavingCol = (px, py, pz) => mul(STONE, (0.55 + 0.4 * fbm2(px * 1.6, pz * 1
 const flagCol = (px, py, pz) => mul(STONE, 0.6 + 0.4 * fbm2(px * 2, pz * 2, 2));
 
 /** A square-ish paving slab: four jittered corners, chamfered, laid on a slight tilt. */
-function pavingSlab(rng, x, z, w, d, yaw) {
+export function pavingSlab(rng, x, z, w, d, yaw) {
   const j = 0.05;
   const pts = [
     [-w / 2 + range(rng, -j, j), -d / 2 + range(rng, -j, j)],
@@ -105,7 +105,7 @@ function pavingSlab(rng, x, z, w, d, yaw) {
 }
 
 /** A temple pillar: an octagonal shaft on a square base, its top broken off at `h`. */
-function buildPillar(rng, x, z, h, { r = 0.42, fallen = false, yaw = 0 } = {}) {
+export function buildPillar(rng, x, z, h, { r = 0.42, fallen = false, yaw = 0 } = {}) {
   const parts = [];
   const base = prep(new THREE.BoxGeometry(r * 2.6, 0.32, r * 2.6, 2, 1, 2));
   base.translate(0, 0.16, 0);
@@ -142,7 +142,7 @@ function buildPillar(rng, x, z, h, { r = 0.42, fallen = false, yaw = 0 } = {}) {
 }
 
 /** A stone lantern: base, post, the lamp box with its window, a pointed cap. */
-function buildLantern(rng, x, z, yaw) {
+export function buildLantern(rng, x, z, yaw) {
   const parts = [];
   const box = (w, h, d, y) => {
     const b = prep(new THREE.BoxGeometry(w, h, d));

@@ -61,13 +61,13 @@ function facets(g, k) {
  * the art pass has three sets of letters, and a form reads when its tops land in the bright set
  * and its flanks in the dim one.
  */
-const caught = (lo, hi) => (px, py, pz, nx, ny) => {
+export const caught = (lo, hi) => (px, py, pz, nx, ny) => {
   const t = Math.min(1, Math.max(0, (ny - 0.08) / 0.55));
   return lo + (hi - lo) * t * t * (3 - 2 * t);
 };
 
 /** A tapered limb from a to b (radius r0 at a, r1 at b), unpainted. */
-function limb(a, b, r0, r1, sides = 6, segs = 1) {
+export function limb(a, b, r0, r1, sides = 6, segs = 1) {
   const d = b.clone().sub(a);
   const len = d.length();
   const g = prep(new THREE.CylinderGeometry(r1, r0, len, sides, segs));
@@ -82,7 +82,7 @@ function limb(a, b, r0, r1, sides = 6, segs = 1) {
  * toward +z. Few sides on purpose: each flat side takes one tone from the light, and the steps
  * between them are what prints as a form (STYLE.md "The house style").
  */
-function frustum(y0, h, ax, az, bx, bz, sides = 8, turn = 0) {
+export function frustum(y0, h, ax, az, bx, bz, sides = 8, turn = 0) {
   const g = prep(new THREE.CylinderGeometry(1, 1, h, sides, 1));
   if (turn) g.rotateY(turn);
   g.translate(0, h / 2, 0);
@@ -1098,3 +1098,137 @@ export function buildRingPost(rng, x, z, { h = 4, w = 0.62, yaw = 0, col = [0.16
   for (const g of bronze) carve(g, { col: facetCol(RING_BRONZE, 1.3), ao: 1 });
   return { stone, bronze, fireY: 0.7 + shaftH + 0.4 };
 }
+
+// ---------------------------------------------------------------- the Foxfire Terrace
+const FOX_STONE = [0.105, 0.1, 0.098]; // old stone, a touch warmer than the colossi's grey
+const SHRINE_RED = [0.2, 0.052, 0.038]; // dull red lacquer, darker than the sect gate's vermilion
+const GATE_CAP = [0.045, 0.042, 0.046];
+
+/** Lean a part forward: z grows with height above y0 (k m per m). */
+function shearZ(g, y0, k) {
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setZ(i, p.getZ(i) + (p.getY(i) - y0) * k);
+  return g;
+}
+
+/**
+ * The great stone fox of the Foxfire Terrace: seated on a stepped plinth, forelegs straight, head up,
+ * two tall ears and a long snout (the silhouette that says fox at the game camera), a brush tail rising
+ * behind it like a flame, a stone pearl before its forepaws, a dull red cloth at its throat
+ * (its one hue, as the colossi's bronze sword is theirs). Few flat-sided masses lit by `caught`: the
+ * ears, the head, the shoulders and the tail's crest take the moon, the flanks stay dark.
+ * Faces +z. ~8.4 m tall at s = 1.
+ */
+export function buildGreatFox(rng, x, z, yaw = 0, s = 1, { col = FOX_STONE, tall = 1.15 } = {}) {
+  const parts = [];
+  const ao = caught(0.2, 1.4);
+  const add = (g, k = 1, o = {}) => parts.push(part(g, mul(col, k), { ao, vary: 0.15, freq: 0.9, ...o }));
+  // ---- the plinth: two octagonal steps, longer front to back (a seated beast)
+  add(frustum(0, 0.6, 2.7, 3.1, 2.62, 3.0, 8, Math.PI / 8), 0.5);
+  add(frustum(0.6, 0.5, 2.25, 2.65, 2.18, 2.56, 8, Math.PI / 8), 0.62);
+  const Y0 = 1.1, FZ = -0.2; // the fox sits a little back on its plinth: the pearl before its paws
+  const fox = [];
+  const body = (g, k = 1, o = {}) => fox.push([g, k, o]);
+  // ---- the haunches: a broad low mass at the back
+  body(frustum(Y0, 1.7, 1.75, 1.6, 1.15, 1.0, 6).translate(0, 0, -0.55), 0.8);
+  // ---- the chest, rising from the haunches to the shoulders and leaning forward
+  body(shearZ(frustum(Y0 + 0.9, 2.7, 1.2, 0.95, 0.78, 0.7, 6), Y0 + 0.9, 0.32).translate(0, 0, -0.1), 0.92);
+  // ---- the forelegs, straight, and the paws
+  for (const sx of [-1, 1]) {
+    body(limb(V(sx * 0.62, Y0 + 0.1, 1.45), V(sx * 0.56, Y0 + 2.55, 0.72), 0.3, 0.34, 5), 1.0);
+    const paw = prep(new THREE.IcosahedronGeometry(0.38, 0));
+    paw.scale(1, 0.6, 1.3);
+    paw.translate(sx * 0.62, Y0 + 0.16, 1.62);
+    body(paw, 1.15);
+  }
+  // ---- the pearl before the paws, a little to its left (the terrace's side): the fox's jewel
+  {
+    const pearl = prep(new THREE.IcosahedronGeometry(0.5, 1));
+    pearl.translate(0.25, Y0 + 0.48, 2.25);
+    body(pearl, 1.5, { ao: caught(0.6, 1.6), vary: 0.1 });
+  }
+  // ---- the neck, the red cloth at the throat
+  body(shearZ(frustum(Y0 + 3.3, 1.05, 0.55, 0.5, 0.45, 0.42, 6), Y0 + 3.3, 0.28).translate(0, 0, 0.72), 0.85);
+  fox.push([shearZ(frustum(Y0 + 3.2, 0.72, 0.98, 0.9, 0.6, 0.56, 6), Y0 + 3.2, 0.32).translate(0, 0, 0.66), 1, { red: true }]);
+  // ---- the head: a wedge of a skull, the long snout dipping a little, two tall ears
+  {
+    const HY = Y0 + 4.62, HZ = 1.06;
+    const skull = prep(new THREE.IcosahedronGeometry(0.72, 0));
+    skull.scale(0.95, 0.85, 1.05);
+    skull.translate(0, HY, HZ);
+    body(skull, 1.0);
+    const snout = prep(new THREE.ConeGeometry(0.4, 1.3, 5));
+    snout.rotateX(Math.PI / 2 + 0.14);
+    snout.translate(0, HY - 0.2, HZ + 0.95);
+    body(snout, 1.1);
+    for (const sx of [-1, 1]) {
+      const ear = prep(new THREE.ConeGeometry(0.3, 1.25, 4));
+      ear.rotateZ(-sx * 0.24);
+      ear.rotateX(-0.12);
+      ear.translate(sx * 0.42, HY + 0.95, HZ - 0.22);
+      body(ear, 1.2);
+    }
+  }
+  // ---- the brush tail, rising from behind the haunches like a flame and curling over, its crest
+  // pale (in profile: ears, snout, chest and the tail's arc make the fox)
+  {
+    const P = [V(-0.3, Y0 + 0.4, -1.45), V(-0.45, Y0 + 1.5, -2.0), V(-0.5, Y0 + 2.85, -2.15), V(-0.35, Y0 + 3.95, -1.85), V(-0.1, Y0 + 4.6, -1.3)];
+    const R = [0.42, 0.62, 0.62, 0.48, 0.16];
+    for (let i = 0; i < P.length - 1; i++) body(limb(P[i], P[i + 1], R[i], R[i + 1], 6), 0.85 + i * 0.12);
+    for (let i = 1; i < P.length - 2; i++) {
+      const j = prep(new THREE.IcosahedronGeometry(R[i] * 1.02, 0));
+      j.translate(P[i].x, P[i].y, P[i].z);
+      body(j, 0.9 + i * 0.12);
+    }
+  }
+  for (const [g, k, o] of fox) {
+    g.translate(0, 0, FZ);
+    if (o.red) parts.push(part(g, SHRINE_RED, { ao: caught(0.55, 1.45), vary: 0.25, freq: 2 }));
+    else add(g, k, o);
+  }
+  // drawn taller than built: the camera looks down at 58 degrees and squashes anything upright
+  for (const g of parts) g.scale(1, tall, 1);
+  return place(parts, x, z, yaw, s);
+}
+/** The great fox's plinth in local space ([lx, lz, r]): for the set's colliders. */
+export const GREAT_FOX_COLLIDERS = [[0, 0, 2.85]];
+
+/**
+ * A spirit gate: two dull red columns on black feet, a tie beam through them with a dark name plaque
+ * over it, and the double lintel: a red beam under a dark cap whose ends sweep up. Thin forms, one hue
+ * (STYLE.md "Landmarks": posts and beams read at once). ~4.8 m between the columns, ~6.3 m tall at
+ * s = 1. Faces +z (its plaque toward the camera).
+ */
+export function buildSpiritGate(rng, x, z, yaw = 0, s = 1, { tall = 1.1 } = {}) {
+  const parts = [];
+  const red = (g, k = 1, o = {}) => parts.push(part(g, mul(SHRINE_RED, k), { vary: 0.3, freq: 1.1, ao: (px, py) => 0.6 + 0.4 * Math.min(1, py / 3), ...o }));
+  const dark = (g, k = 1, o = {}) => parts.push(part(g, mul(GATE_CAP, k), { vary: 0.2, ao: caught(0.5, 1.6), ...o }));
+  const X = 2.4, H = 5.0;
+  for (const sx of [-1, 1]) {
+    const c = prep(new THREE.CylinderGeometry(0.27, 0.32, H, 8, 3));
+    c.translate(sx * X, 0.42 + H / 2, 0);
+    red(c, 0.95);
+    dark(frustum(0, 0.45, 0.5, 0.5, 0.42, 0.42, 8, Math.PI / 8).translate(sx * X, 0, 0), 1.5);
+  }
+  /** A beam along x whose ends sweep up by `lift` (its underside with it). */
+  const beam = (w, h, d, y, lift) => {
+    const g = prep(new THREE.BoxGeometry(w, h, d, 10, 1, 1));
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + lift * Math.pow(Math.abs(p.getX(i)) / (w / 2), 2.2));
+    g.translate(0, y, 0);
+    return g;
+  };
+  // the tie beam, its ends out past the columns
+  red(beam(2 * X + 1.0, 0.3, 0.26, 4.25, 0), 1.0, { ao: caught(0.7, 1.5) });
+  // the name plaque between the beams
+  const plaque = prep(new THREE.BoxGeometry(0.62, 0.74, 0.12));
+  plaque.translate(0, 4.82, 0.14);
+  dark(plaque, 1.3);
+  // the double lintel
+  red(beam(2 * X + 1.6, 0.3, 0.4, 5.36, 0.2), 1.1, { ao: caught(0.7, 1.5) });
+  dark(beam(2 * X + 2.5, 0.36, 0.54, 5.7, 0.42), 1.7);
+  for (const g of parts) g.scale(1, tall, 1);
+  return place(parts, x, z, yaw, s);
+}
+/** The spirit gate's columns in local space ([lx, lz, r]). */
+export const SPIRIT_GATE_COLLIDERS = [[-2.4, 0, 0.42], [2.4, 0, 0.42]];
