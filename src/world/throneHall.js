@@ -375,10 +375,12 @@ export function createThroneHall(U, colliders) {
       // nothing tall on the near side, between the camera and the duel: a banner there is a grave instead
       if (p.z > 6 && geosHeight(b.geos) > OUT_NEAR_H) b = buildOutskirt('cairn', or, p.x, p.z, Math.atan2(p.x, p.z), range(or, 0.85, 1.1));
       if (p.r < OUT_REACH) {
-        // within the hero's reach it breaks: stone leaves its rubble, wood and steel nothing standing
+        // within the hero's reach it breaks where it stands: stone leaves its rubble, wood and steel
+        // nothing standing. It never topples (a grave of swords or a cart is no trunk to fell; and the
+        // Lord's fight keeps the pieces it was tuned with to bring down on the hero: the rim's shards)
         const stone = b.mat === 'stone';
         breakables.push({
-          kind: b.kind, mat: b.mat, look: 'prop', x: p.x, z: p.z, r: b.r, h: geosHeight(b.geos), geos: b.geos,
+          kind: b.kind, mat: b.mat, look: 'prop', x: p.x, z: p.z, r: b.r, h: geosHeight(b.geos), geos: b.geos, topples: false,
           colliders: b.cr > 0 ? [colliders.add(p.x, p.z, b.cr, 'stone')] : [], lift: b.lift ?? 0,
           ...(stone ? { broken: { geos: buildRubble(br, p.x, p.z, Math.min(1, b.r * 0.6), { col: mul(STONE, 0.9), h: range(br, 0.25, 0.5) }), look: 'prop', r: 0 } } : {}),
         });

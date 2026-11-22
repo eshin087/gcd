@@ -26,6 +26,10 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //       (>= pressure.guard.sep + margin s) of every known impact needing the other answer, the
 //       running move's beats included: 0 = now is clear, -1 = no wait up to `max` clears it (call it
 //       later or not at all). Count a delay you made with brain.stats.delays++.
+//   brain.worldClash(landsIn, tell) → bool
+//       A felled piece of the world asks at its flash (world/destructibles.js): true = a blow of his
+//       already cued needs the other answer within pressure.guard.sep of its landing; it then lands
+//       uncued and harmless (counted in stats.fizzles).
 //   brain.stats  { picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors, seeks }
 //       picks: AI picks · links: moves started from a LINKS entry · chains: moves started by the old
 //       flow roll (`chain`) · cuts: of those, started before the recovery's end (`cut`) · rests:
@@ -471,6 +475,21 @@ export class DuelBrain {
       s.done = true;
       this.stats.fizzles++;
     }
+  }
+
+  /**
+   * A falling piece of the world asks at its flash (world/destructibles.js, `landsIn` s before it
+   * lands): does a blow of his already cued need the other answer within `sep` of its landing? Then it
+   * lands uncued and harmless (true), as a thrown piece the guard could not clear does. (A blow told
+   * before the piece began to fall is held at its own cue if a hold clears it; when none does, both
+   * cues went out within 0.3 s: lord.mjs pace, seed 4242 form 2, a void push and a felled shard.)
+   */
+  worldClash(landsIn, tell) {
+    const G = this.P?.guard;
+    if (!G || !Number.isFinite(landsIn)) return false;
+    if (!this.ledger.conflict(this.ledger.now + landsIn, answerOf(tell), G.sep ?? 0.3, true)) return false;
+    this.stats.fizzles++;
+    return true;
   }
 
   /**

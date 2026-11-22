@@ -23,7 +23,7 @@ export const RELEASES = [
         notes: [
           'The fallen trees round the Obsidian Throne are gone. In their place lies what earlier challengers left behind: swords planted as graves, spears with a torn banner, cairns with a straw hat, wrecked carts, old steles and split boulders.',
           'Every piece is different, and they lie the way the star\'s fall threw them, not in a neat ring.',
-          'Most of them break, fall over or burn when the fight reaches them.',
+          'Most of them break when the fight reaches them, and the wooden ones burn.',
         ],
       },
       {
