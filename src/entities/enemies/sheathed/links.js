@@ -14,10 +14,10 @@ const guarding = (to, chance, o) => ({ to, when: 'guarding', chance, ...o });
 
 /** After a blow that threw the hero back to a draw's distance: the draw. */
 const THROWN = [
-  far('thousandLi', [0, 0.45, 0.45]),
-  mid('oneBreath', [0.75, 0.55, 0.45]),
-  mid('returning', [0, 0.3, 0.3]),
-  far('oneBreath', [0.6, 0.3, 0.3]),
+  far('thousandLi', [0, 0.45, 0.25]),
+  mid('oneBreath', [0.75, 0.55, 0.25]),
+  mid('returning', [0, 0.3, 0.12]),
+  far('oneBreath', [0.6, 0.3, 0.15]),
   far('fordSteps', [0.35, 0.35, 0.35]),
 ];
 /** After a single blow the hero guarded: a string. */
@@ -29,9 +29,9 @@ const STRINGS = [
 ];
 /** After a string, from phase 2: a draw at the range the hero is at. */
 const AFTER_STRING = [
-  far('thousandLi', [0, 0.4, 0.45]),
-  near('moonRise', [0, 0.35, 0.35]),
-  mid('oneBreath', [0.3, 0.3, 0.3]),
+  far('thousandLi', [0, 0.4, 0.25]),
+  near('moonRise', [0, 0.35, 0.18]),
+  mid('oneBreath', [0.3, 0.3, 0.12]),
   far('tapStone', [0.35, 0.3, 0.3]),
   away('tapStone', [0.4, 0.35, 0.3]),
 ];

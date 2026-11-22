@@ -194,7 +194,7 @@ export const MOVES = {
   // ======================================================== phase 1: the Sheath
   /** Knocking at the Gate: a short check with the pommel. */
   knock: {
-    label: 'Knocking at the Gate', phase: 1, weight: [2.0, 1.4, 0.8], cooldown: 2.5, band: [0, 2.6], recovery: 0.42,
+    label: 'Knocking at the Gate', phase: 1, weight: [2.0, 1.8, 2.0], cooldown: 2.5, band: [0, 2.6], recovery: 0.42,
     beats: [blow('thrust', N, 0.46, 12, { zone: { kind: 'line', r: 1.7, w: 0.7 }, dash: { from: 0.7, to: 1.0, stop: 1.0, max: 1.6 }, close: 0 })],
   },
   /** The Lintel Falls: the sheathed sword raised two-handed and brought down like a beam. */
@@ -210,7 +210,7 @@ export const MOVES = {
   },
   /** Three Refusals from phase 2: a heavy fourth word. */
   refusals2: {
-    label: 'Three Refusals', phase: 2, weight: [0, 2.0, 1.2], cooldown: 4, band: [0, 3.4], recovery: 0.6, cat: 'string',
+    label: 'Three Refusals', phase: 2, weight: [0, 2.6, 3.0], cooldown: 4, band: [0, 3.4], recovery: 0.6, cat: 'string',
     beats: [blow('up', N, 0.46, 11), blow('back', N, 0.34, 11), blow('thrust', N, 0.34, 12), blow('over', B, 0.42, 20)],
   },
   /** Cutting Reeds: the scabbard swept round at the ankles. Red: roll through it. */
@@ -230,7 +230,7 @@ export const MOVES = {
   },
   /** Crossing the Ford: a glide in, a kick, the scabbard's butt: a string that moves. */
   fordSteps: {
-    label: 'Crossing the Ford', phase: 1, weight: [1.8, 1.4, 1.0], cooldown: 6, band: [2.5, 7.5], recovery: 0.6, cat: 'string',
+    label: 'Crossing the Ford', phase: 1, weight: [1.8, 2.0, 2.6], cooldown: 6, band: [2.5, 7.5], recovery: 0.6, cat: 'string',
     beats: [glide(N, 0.5, 12, 5), kick(N, 0.36, 10, { knockback: 1.2 }), blow('thrust', N, 0.36, 14, { dash: { from: 0.6, to: 1.0, stop: 1.0, max: 2.4 }, close: 0 })],
   },
   /** Tapping Stone: the scabbard's butt driven like a spear from range. Red; a roll into it steps on it. */
@@ -249,7 +249,7 @@ export const MOVES = {
    *  scabbard's mouth), and the cut: one frame at the cock, the next at the end of a cut up to 4.5 m on.
    *  Parry it or dodge it; a held guard is knocked open; nothing else lives. */
   oneBreath: {
-    label: 'One Breath', phase: 1, weight: [1.5, 1.1, 0.9], cooldown: [11, 8, 6], band: [2.2, 8], recovery: 1.15, recoverOpen: 1, cat: 'single',
+    label: 'One Breath', phase: 1, weight: [4.0, 1.2, 0.5], cooldown: [11, 8, 6], band: [2.2, 8], recovery: 1.15, recoverOpen: 1, cat: 'single',
     beats: [draw({ windup: 1.1, zone: { kind: 'line', r: 5.2, w: 1.3 }, dash: { from: 0.99, to: 1.0, stop: 1.4, max: 4.5 } })],
     recoveryKeys: resheatheKeys(CUT_END2),
   },
@@ -286,20 +286,20 @@ export const MOVES = {
   // ======================================================== phase 2: A Thumb's Width
   /** Moon Leaves the Water: a rising draw from a low crouch at close range. */
   moonRise: {
-    label: 'Moon Leaves the Water', phase: 2, weight: [0, 1.4, 1.0], cooldown: [9, 7, 6], band: [0, 3.6], recovery: 1.15, recoverOpen: 1, cat: 'single',
+    label: 'Moon Leaves the Water', phase: 2, weight: [0, 1.0, 0.5], cooldown: [9, 7, 6], band: [0, 3.6], recovery: 1.15, recoverOpen: 1, cat: 'single',
     beats: [draw({ windup: 0.95, hold: [0.1, 0.55], settle: LOW_SETTLE, zone: { kind: 'sector', r: 3.0, ang: 1.15 }, dash: { from: 0.99, to: 1.0, stop: 1.2, max: 2.0 }, end: RISE_END })],
     recoveryKeys: resheatheKeys(RISE_END),
   },
   /** A Thousand Li: he crosses the whole ground in one draw and ends three metres past the hero, his
    *  back turned: the longest opening. The cut covers the path he crossed (sheathed.js `pathHit`). */
   thousandLi: {
-    label: 'A Thousand Li', phase: 2, weight: [0, 1.1, 0.9], cooldown: [12, 9, 8], band: [5, 14], recovery: 1.4, recoverOpen: 1, cat: 'closer', gapCloser: true,
+    label: 'A Thousand Li', phase: 2, weight: [0, 0.8, 0.6], cooldown: [12, 9, 8], band: [5, 14], recovery: 1.4, recoverOpen: 1, cat: 'closer', gapCloser: true,
     beats: [draw({ windup: 1.2, hold: [0.15, 0.6], zone: { kind: 'line', r: 13, w: 1.3 }, dash: { from: 0.99, to: 1.0, stop: -3, max: 13 }, end: PASS_END, extra: { selfHit: true, pathHit: true } })],
     recoveryKeys: resheatheKeys(PASS_END),
   },
   /** No Fourth Refusal: Three Refusals whose last word is a rising draw. */
   refusalDraw: {
-    label: 'No Fourth Refusal', phase: 2, weight: [0, 1.5, 1.2], cooldown: [0, 9, 8], band: [0, 3.2], recovery: 1.15, recoverOpen: 1, cat: 'string',
+    label: 'No Fourth Refusal', phase: 2, weight: [0, 1.3, 0.9], cooldown: [0, 9, 8], band: [0, 3.2], recovery: 1.15, recoverOpen: 1, cat: 'string',
     beats: [
       blow('up', N, 0.46, 11), blow('back', N, 0.34, 11), blow('thrust', N, 0.34, 12),
       draw({ windup: 0.9, hold: [0.08, 0.3], settle: LOW_SETTLE, zone: { kind: 'sector', r: 3.0, ang: 1.15 }, end: RISE_END }),
@@ -316,7 +316,7 @@ export const MOVES = {
   },
   /** The Blade Goes Home: One Breath, and past a dodge a second cut on the way back to the scabbard. */
   returning: {
-    label: 'The Blade Goes Home', phase: 2, weight: [0, 1.0, 0.9], cooldown: [0, 10, 8], band: [2.2, 7], recovery: 1.15, recoverOpen: 1, cat: 'string',
+    label: 'The Blade Goes Home', phase: 2, weight: [0, 0.7, 0.4], cooldown: [0, 10, 8], band: [2.2, 7], recovery: 1.15, recoverOpen: 1, cat: 'string',
     beats: [
       draw({ windup: 1.1, zone: { kind: 'line', r: 5.2, w: 1.3 }, dash: { from: 0.99, to: 1.0, stop: 1.4, max: 4.5 } }),
       { tell: B, bare: true, windup: 0.62, active: 0.08, damage: 18, knockback: 1.2, zone: { kind: 'sector', r: 2.6, ang: 0.9 }, part: 'tip', close: 1.2, track: 0.7,
@@ -345,7 +345,7 @@ export const MOVES = {
   /** Three Autumns: three passing draws from three sides, re-sheathed in motion between. Each a parry
    *  moment; the chain goes on only past a dodge. */
   threeAutumns: {
-    label: 'Three Autumns', phase: 3, weight: [0, 0, 1.6], cooldown: 9, band: [2, 8], recovery: 1.15, recoverOpen: 1, cat: 'string',
+    label: 'Three Autumns', phase: 3, weight: [0, 0, 1.3], cooldown: 9, band: [2, 8], recovery: 1.15, recoverOpen: 1, cat: 'string',
     beats: [
       draw({ windup: 1.0, hold: [0.1, 0.35], zone: { kind: 'line', r: 4.6, w: 1.3 }, dash: { from: 0.99, to: 1.0, stop: 1.4, max: 4 } }),
       draw({ windup: 0.78, hold: [0, 0.1], cock: 0.9, zone: { kind: 'line', r: 4.6, w: 1.3 }, dash: { from: 0.99, to: 1.0, stop: 1.4, max: 4 }, extra: { flit: { r: 4.0 } } }),
@@ -356,7 +356,7 @@ export const MOVES = {
   /** The Sound Arrives Late: three flicks of the bare blade at the air; lines of heat hang across the
    *  ground and cut one by one, each with its red cue (lateCuts.js). Be out of each line as it cuts. */
   lateRain: {
-    label: 'The Sound Arrives Late', phase: 3, weight: [0, 0, 1.1], cooldown: 12, band: [2.5, 12], recovery: 1.0, recoverOpen: 1, cat: 'hazard',
+    label: 'The Sound Arrives Late', phase: 3, weight: [0, 0, 1.2], cooldown: 12, band: [2.5, 12], recovery: 1.0, recoverOpen: 1, cat: 'hazard',
     beats: [{
       tell: R, bare: true, windup: 0.75, active: 0.1, damage: TUNING.late.damage, knockback: TUNING.late.knockback, cast: { kind: 'late', selfCue: true }, hazard: true,
       part: 'tip', close: 0, track: 0.8,

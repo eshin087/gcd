@@ -65,13 +65,13 @@ export const TUNING = {
     backstep: { dist: 2.0, time: 0.36 },
     strafeSwitch: [0.9, 2.0],
   },
-  idleGap: [[0.12, 0.34], [0.08, 0.24], [0.04, 0.16]],
+  idleGap: [[0.45, 0.85], [0.06, 0.18], [0.02, 0.08]],
   openingGap: [[0.12, 0.38], [0.08, 0.26], [0.08, 0.26]],
-  chain: [0.55, 0.68, 0.8],
+  chain: [0.4, 0.75, 0.9],
   // the director (duelist/brain.js header; COMBAT.md "The duelists' pressure"). He is deliberately slower
   // in cues a minute than Shen Hui (the draws' long windups): measured in sheath.mjs PACE
   pressure: {
-    chainDepth: [4, 5, 6],
+    chainDepth: [4, 5, 7],
     chainRest: [[0.45, 0.75], [0.3, 0.5], [0.2, 0.4]],
     linkCut: 0.5,
     chainCut: 0.5,
@@ -86,8 +86,12 @@ export const TUNING = {
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
-    // what sheath.mjs PACE asserts (measured: see the comment in COMBAT.md → "The Sheathed")
-    meter: { ramp: [1, 1.0, 0.98], rampMean: [1, 1.08, 1.04], minRate: [44, 54, 62], maxGap: [4.6, 4.2, 4.2] },
+    // what sheath.mjs PACE asserts (a steady defender that guards white and blue, rolls red, black and the
+    // draws; the hero roaming 2.5 - 9 m; 60 s a phase). Measured 2026-11-22, seeds 4242 / 7 / 99: P1 51.9 -
+    // 55.1 cues a minute (mean 53.4), P2 70.7 - 75.1 (72.4), P3 76.3 - 79.7 (78.3); P2 / P1 at least 1.30
+    // per seed, P3 / P2 at least 1.06; longest gap 3.17 / 2.53 / 2.75 s; 0 conflicts. Slower than Shen Hui
+    // (77 / 92 / 100) on purpose: the draws' long windups. The margins about 8 % under the worst seed
+    meter: { ramp: [1, 1.18, 0.98], rampMean: [1, 1.2, 1.03], minRate: [47, 64, 69], maxGap: [3.8, 3.3, 3.4] },
   },
   punish: { weight: 4 },
 
