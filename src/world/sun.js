@@ -16,7 +16,7 @@ import { mulberry32 } from '../core/rng.js';
 //     over SUN.open s, live `life` s, then the wound in the rock closes over SUN.close s.
 // API: lit(x, z) -> 0..1, poolAt(x, z), nearestOpen(x, z), openCount (fixed lids open), bore(x, z, r,
 // life) -> pool | null, shut(i) / openAll() (Lab, tests), update(dt), reset().
-// Events: 'world:sun' { id, open, temp } on each change of a pool's state (open: true as it opens,
+// Events: 'world:sun' { id, open, temp, x, z } on each change of a pool's state (open: true as it opens,
 // false as it starts to shut).
 // Drawn (the look `?pool=a|b`): the lit disc is a glyph batch of its own lying on the floor (gold
 // digits, additive: the technique of the throne's seal inlay), slow gold motes falling in each shaft
@@ -52,7 +52,7 @@ export class SunWells {
     for (let i = 0; i < SUN.temp; i++) this.pools.push({ id: (data.wells?.length ?? 0) + i, x: 0, z: 0, r: 0, open: 0, state: 'shut', temp: true, life: 0, piece: null, live: false });
     this._dirty = true;
     this._rng = mulberry32(0x5a11 + (data.wells?.length ?? 0)); // (the look's own stream: never Math.random)
-    this._evt = { id: 0, open: false, temp: false };
+    this._evt = { id: 0, open: false, temp: false, x: 0, z: 0 };
     this._acc = 0;
     this.lights = [];
     this.forced = null; // (Lab) a lid held shut by hand: { [id]: true }
@@ -194,6 +194,8 @@ export class SunWells {
     e.id = p.id;
     e.open = open;
     e.temp = !!p.temp;
+    e.x = p.x;
+    e.z = p.z;
     this.game.events?.emit?.('world:sun', e);
   }
 

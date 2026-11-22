@@ -820,6 +820,10 @@ export class AudioEngine {
       else this.play('crash', o);
     });
     on('world:fire', (d) => this.play('sizzle', { x: d.x, z: d.z }));
+    // a well's bronze lid falls shut (the Skywell Vault, world/sun.js): a heavy crash of metal
+    on('world:sun', (d) => {
+      if (!d.open && !d.temp) this.play('crash', { x: d.x, z: d.z, mat: 'metal', power: 2 });
+    });
     on('dragon:bite', () => this.play('bite', this._atDragon()));
     on('dragon:hurt', (d) => {
       if (!beast()) return;

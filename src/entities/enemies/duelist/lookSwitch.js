@@ -42,6 +42,13 @@ export const PICKED = Object.freeze({
   ascAura: 'a', // his aura: a tall flame, hollow behind him (the owner's pick)
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'a', // his figure lifted off the floor: a lighter fill, a stronger edge of light (the owner's pick)
+  // the Skywell Vault and Qian Yao, the Heaven-Fallen: NOT the owner's picks yet (ADR-134): what ships
+  // until the owner picks from the sheets is the author's recommended option of each
+  fallenLook: 'a', // his body: the Haloed Exile (recommended)
+  fallenArt: 'art', // drawn through the wyrm's art path (the ink-line twin: 'ink'; the likeliest flip)
+  radiant: 'a', // the sun on him: the whole body blazes (recommended)
+  gaze: 'a', // his eyes' beam: a white core in a gold sheath (recommended)
+  pool: 'a', // a pool of sunlight: a full disc of gold digits (recommended)
 });
 
 const fromUrl = new Map();
