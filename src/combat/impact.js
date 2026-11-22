@@ -13,7 +13,8 @@
 // strength (1 = as tuned; the option sheets film 0.5 / 1 / 1.5). Each piece keeps its own numbers in
 // its own file; this file holds only the switches.
 //
-// The hit itself (PlayerFx.contact → every piece gets the same record):
+// The hit itself (PlayerFx.contact hands the stamp and the ripple this record; the reactions read
+// takeHit's own `o`, below, and the thump reads the player:hitDragon payload):
 //   x, y, z   the DRAWN contact (player._contactPoint), world
 //   o.tier    the attack's `contact` (combat.js): light | sweep | point | slam | cleave | execute
 //   o.cut     {x, y, z} the blade's travel at the contact, world, unit (NaN: unknown)
