@@ -192,7 +192,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The engine's `wind` beat field: a line blow the cover takes; the arena as the fight's clock
 - [x] His body in three outfits and an ink-line twin; his effects (air, dust and stone in the fire field)
 - [x] `tests/integration/hermit.mjs` (16 scenarios) in `npm test`; Training's THE HERMIT; the Lab's rows and toggles
-- [x] Bots: the god-mode reader 103 - 115 s; readers at 95 / 85 / 70 % win 10 / 5 / 0 of 10
+- [x] Bots: the god-mode reader 100 - 102 s; readers at 95 / 85 / 70 % win 10 / 2 / 0 of 10 (the 85 % reader under the plan's 3 - 7)
 - [x] ONE BLOW, the first fixed reward (ADR-140)
 - [ ] Follow-ups:
   - [ ] The owner's picks from the sheets: the body (`?hermitLook=`), the light (`?peak=`), the line blows (`?hermitBlow=`)

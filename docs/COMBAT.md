@@ -1910,7 +1910,7 @@ drink carries the hero back over the line, a dim notch on the health meter at th
 
 ### Greed
 He never guards in a windup or a recovery (`guard.windupOpen` 0, `recoverOpen` 1, `evade` 0): a cut in
-his windup bites at `skin.windup` 0.5 (sparks off the gathered qi), in his recovery in full, broken x 2.
+his windup bites at `skin.windup` 0.7 (sparks off the gathered qi), in his recovery in full, broken x 2.
 Nothing the hero does cancels a windup but a posture break (the GUARD scenario: a crushing heavy in a
 windup lands and the blow still comes). In his footwork his bare palm turns cuts (the engine's guard:
 an open-hand ward, a two-finger catch for the deflect); after `counterChance` [0, 0, 0.5, 1] guarded cuts
@@ -1933,23 +1933,24 @@ in a row he answers with Reproach. No flurry of his, no blade lock, no mikiri.
 | Both Hands | 33 % | red | 2.0 fixed | ring 7 | the left hand comes out; a clap fells the inner stones outward and cracks the rim |
 
 ### Measured (tests/integration/hermit.mjs)
-- **His bar:** 9600, one bar, phases at 66 % and 33 %. Posture [260, 300, 340], regen after 5 s at 10/s,
+- **His bar:** 9300, one bar, phases at 66 % and 33 %. Posture [260, 300, 340], regen after 5 s at 10/s,
   broken 4 s, crits x 2; the execution 300.
 - **WIN** (the god-mode mixed reader: parries blue and white, rolls red and black on the flare, cuts in his
-  recoveries and greedily in a far-off windup, executes): won in 103 / 108 / 115 s (seeds 4242 / 7 / 99),
-  phases 30 - 44 s each, about 20 parries, 4 - 5 perfect dodges, 7 - 8 posture breaks and executions.
+  recoveries and greedily in a far-off windup, executes): won in 102 / 101 / 100 s (seeds 4242 / 7 / 99),
+  phases 28 - 40 s each, about 20 parries, 4 - 5 perfect dodges, 7 - 8 posture breaks and executions.
   Most of what ends him is the hero's answers: flurries ~40 %, executions and broken crits ~30 %, cuts
-  the rest (a cut in his windup bites at half).
+  the rest (a cut in his windup bites at 0.7).
 - **BOTS** (mortal readers over ten seeds; a share of his cues answered, the rest let through; they drink
-  under the line as soon as no blow of his is coming): 95 % wins 10 of 10, 85 % 5 of 10, 70 % 0 of 10 (a
-  70 % reader dies in phase 1 or 2). The plan's targets: 8+, 3 - 7, rarely.
+  under the line as soon as no blow of his is coming): 95 % wins 10 of 10, 85 % 2 of 10 (3 of 10 at 9200),
+  70 % 0 of 10 (a 70 % reader dies in phase 1 or 2). The plan's targets: 8+, 3 - 7, rarely; the length
+  and the 85 % reader pull against each other (9600 / skin 0.5: 103 - 115 s, 1 of 10).
 - **PACE** (a god-mode defender who answers every cue, 120 s a phase, ten seeds): 13.7 / 17.4 / 21.1 cues a
   minute (min 12.7 / 16.0 / 18.3), the longest gap 4.9 / 4.2 / 4.8 s, 61 / 72 / 62 % of cues to dodge,
   0 conflicts within 0.8 s, lethal impacts never closer than 1.0 s (the rule: 0.9). Tian Lei: 80 - 90.
 - **STRATEGY** (god mode, 240 s): the mixed reader wins in ~117 s; rolling everything (white blows too)
   had him at 40 % after 180 s; holding the guard to every white blow shattered it 26 times and had him at
   22 %. Parrying is the fast answer; a guard is the safe one.
-- **WRECKAGE:** after a whole fight 14 of the 19 striking stones are down (all 8 inner ones: Both Hands
+- **WRECKAGE:** after a whole fight 14 - 19 of the 19 striking stones are down (all 8 inner ones: Both Hands
   fells them), about half the floor's plates touched.
 
 ### ONE BLOW, his reward (ADR-140)

@@ -22,8 +22,8 @@ outfits, the reward), merged them and tuned the fight with bots.
 - `src/levels/lonepeak.js` (`?level=peak`), `world/lonePeak.js` + `lonePeakProps.js` (the ledge, 19
   striking stones with fist dents, bent pines, the Split Rock, the hut; `?peak=a|b`).
 - `src/entities/enemies/hermit/`: Gu Shan on the duelist engine. One hand (the left behind his back until
-  phase 3), one bar of 9600, phases at 66 / 33 %, eleven moves and two transitions, greed (no guard in a
-  windup or a recovery; a windup cut bites at half), the step, the fissure, the force carried past each
+  phase 3), one bar of 9300, phases at 66 / 33 %, eleven moves and two transitions, greed (no guard in a
+  windup or a recovery; a windup cut bites at 0.7), the step, the fissure, the force carried past each
   blow, the transitions that crack and fell the stones. Body: `?hermitLook=a|b|c|a0` (the wyrm's art
   path; a0 in ink lines). Effects: air, dust and stone in the fire field (`?hermitBlow=a|b`).
 - `combat/rules.js` `LETHAL`, `player.js` `hit.lethal` (ADR-139): Last Breath, death, the shattered
@@ -42,9 +42,10 @@ outfits, the reward), merged them and tuned the fight with bots.
 - The bots' fencer read only the flare: it started cuts into a blow 0.5 s off and could not roll out.
   It now reads the windup, as a player does, and drinks first under the line.
 
-**Measured** (`tests/integration/hermit.mjs`; COMBAT.md has the tables): the god-mode reader wins in 103 -
-115 s; readers at 95 / 85 / 70 % win 10 / 5 / 0 of ten seeds; PACE over ten seeds 13.7 / 17.4 / 21.1 cues
-a minute, longest gap under 5 s, 0 conflicts, lethal impacts at least 1.0 s apart; WRECKAGE 14 of 19
+**Measured** (`tests/integration/hermit.mjs`; COMBAT.md has the tables): the god-mode reader wins in 100 -
+102 s; readers at 95 / 85 / 70 % win 10 / 2 / 0 of ten seeds (the 85 % reader 1 - 3 of 10 across three
+settings: the plan's 100 - 150 s and its 3 - 7 wins pull against each other at his cue rate); PACE over ten seeds 13.7 / 17.4 / 21.1 cues
+a minute, longest gap under 5 s, 0 conflicts, lethal impacts at least 1.0 s apart; WRECKAGE 14 - 19 of 19
 stones down after a fight. In the browser (headless Edge, the real GPU): a fight through all three
 phases to his death and one to the hero's (SLAIN BY MOUNTAIN-MOVING PALM), 0 console errors, 0 NaN; the
 Last Breath, two drinks and BREATH RESTORED at 852 x 393.

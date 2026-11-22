@@ -16,7 +16,7 @@ Sixty-one pieces of work since 0.4.0:
   whatever stands behind you; two flasks carry you back over the line (BREATH RESTORED, a dim notch marks
   it on the health meter); below it the blow kills. A held guard with half its meter stops any blow but a
   red one with no health lost: it shatters, and is back about a second later. He is greedy: no guard while
-  his blow is coming (your cuts bite at half) or in his recovery (in full), and he never punishes a drink.
+  his blow is coming (your cuts bite less) or in his recovery (in full), and he never punishes a drink.
   At 66 % THE MOUNTAIN ANSWERS (two blows that ask two answers, a fissure along the floor, a step to you
   out of nowhere); at 33 % BOTH HANDS (three-blow strings). The stones you hide behind break, the last of
   them fall at Both Hands, and the ledge ends as rubble. *Added (the first fixed reward):* beating him

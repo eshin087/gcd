@@ -4084,7 +4084,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   lonepeak, oneblow). He fights with ONE hand, the left held behind his back until phase 3. None of the
   famous hero's look (no bald head, yellow suit, white cape or red gloves), no ki blasts or aura (Tian
   Lei has those): his force is air, dust and broken stone.
-- **Decision, the frame:** one bar (9600 health), three phases at 66 % and 33 % (the Ash Disciple's structure:
+- **Decision, the frame:** one bar (9300 health), three phases at 66 % and 33 % (the Ash Disciple's structure:
   ADR-060). P1 asks one blow at a time (four reads: Mountain-Moving Palm, blue flare: parry; Peak Falls,
   red: roll; The One Blow, black: roll or cover; Idle Finger, white, only past 7 m); P2 (THE MOUNTAIN
   ANSWERS, a 2 s stamp) two blows that ask two answers (Two Peaks: roll then parry), the ground itself
@@ -4095,7 +4095,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   it is always in time), a first windup of 1 s and more in every phase, impacts at least 0.9 s apart, a
   bait hold at the cock that is never the same; the fairness guard with a separation of 0.7 s (+ 0.1).
   He never guards in a windup or a recovery (greed: `guard.windupOpen` 0, `recoverOpen` 1, `evade` 0); a
-  cut in his windup bites at `skin.windup` 0.5, in his recovery in full. Nothing the hero does cancels a
+  cut in his windup bites at `skin.windup` 0.7, in his recovery in full. Nothing the hero does cancels a
   windup but a posture break (a flurry's cuts after a perfect dodge and the flash counter end his string
   as on any duelist: those are answers, not greed). He does not punish a drink: he starts nothing while
   the hero drinks (`HermitBrain._foot`, `weigh`), and every windup is longer than a drink.
@@ -4114,9 +4114,11 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Decision, the pace:** the slowest duelist by design. PACE over ten seeds: 13.7 / 17.4 / 21.1 cues a
   minute by phase (Tian Lei 80 - 90), the longest gap under 5 s, 0 conflicts, lethal impacts never
   closer than 1.0 s.
-- **The length, from bots (tune `hp` and `skin`, never the windups):** the god-mode reader wins in 103 -
-  115 s (each phase 30 s and more); mortal readers over ten seeds: 95 % of his cues answered wins 10 of 10,
-  85 % 5 of 10, 70 % none. Most of the damage that ends him is the hero's answers (flurries after
+- **The length, from bots (tune `hp` and `skin`, never the windups):** the god-mode reader wins in 100 -
+  102 s (each phase 28 s and more); mortal readers over ten seeds: 95 % of his cues answered wins 10 of 10,
+  85 % 2 of 10 (3 at 9200 health), 70 % none. The plan's two targets (100 - 150 s, and the 85 % reader
+  winning 3 - 7) pull against each other at his cue rate: 9600 with the windup bite at 0.5 gave 103 -
+  115 s and 1 of 10; this setting sits on the edge of both. Most of the damage that ends him is the hero's answers (flurries after
   perfect dodges, executions after posture breaks), as the plan meant: skill shortens the fight.
 - **Not picked yet (renders sent to the owner):** the body (`?hermitLook=a|b|c|a0`), the ledge's light
   (`?peak=a|b`), the line blows' look (`?hermitBlow=a|b`); the authors' picks are the defaults.
