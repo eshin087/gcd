@@ -5,6 +5,40 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
+
+**Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also
+having a much harder time playing it on mobile because of having to constantly use the same finger to
+hit different parry and block while attacking at the same time ... think of ways to improve the
+controls, ui, and design as well". Branch `ui/mobile-play`. ADR-131 / Session 71.
+
+**The overlap, reproduced.** Not at the 852 x 393 preset the phone work was checked at: Safari gives
+an iPhone 15 Pro about 734 x 343 in landscape (the notch sides and the address bar are not the
+page's). There the hero's HP row ended at x = 242 and the boss's bar began at x = 217, same line.
+Headless Edge at that size showed it in every level.
+
+**What changed.**
+- `ui/hud.js` `_fit()`: the top row is fitted to the screen (ADR-131). Narrow touch screens: the
+  hero's meters 16 cells, HP as one number; the boss's bar takes the room between the hero's rows and
+  LOCK, shorter when it must be. Checked at 734 x 343 (all four levels), 667 x 320, 568 x 320,
+  852 x 393, 393 x 700 upright, 744 x 1000 (a tablet upright): no overlap in any.
+- `ui/touch.js`: PAD LAYOUT (classic / split) and HOLD ATTACK, two pause-menu switches, off by
+  default, kept with the pad's place and size. Split: GUARD beside the stick (above it upright), the
+  right cluster keeps ATTACK / HEAVY / DODGE. Hold: `input.pulse('@attack')` 0.22 s into the hold and
+  every 0.1 s after, paused under the guard and for 0.32 s after DODGE / HEAVY / FLASK.
+- `tests/integration/integ.mjs` (touch scenario): two thumbs hold ATTACK and GUARD at once and the
+  guard cuts the swing short; a held ATTACK is 1 cut with the switch off and a string with it on,
+  none while GUARD is held, a dodge from a second finger still rolls; the top row is clear at 844 px
+  and at 560 px (the boss's bar cut to 37 cells).
+
+**Not verified.** Everything above is the emulator and the headless sims. Where GUARD stands (178 px
+in, level with the stick) is my guess from thumb reach on a 6.1 inch phone; how the two switches feel
+is the owner's to judge on the device.
+
+**Next.** The owner tries `?pad=split&hold=1` on the phone and picks the default (and GUARD's place).
+Then the ideas ADR-131 lists: the game under the notch, a drag-to-place layout editor, an "add to
+home screen" hint.
+
 ## 2026-11-21 — Session 70: the hero looks the same on every screen
 
 **Owner**, with a picture of the hero at the game camera: "this picture of the character is the exact

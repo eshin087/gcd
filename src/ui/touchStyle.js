@@ -241,6 +241,23 @@ html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-block.low::after { background: linear-gradient(90deg, #ff9a5a, #ff9a5a) left / calc(var(--tc-gd, 1) * 100%) 100% no-repeat, rgba(255, 138, 61, 0.2); }
 .tc-block.low { border-color: rgba(255, 138, 61, 0.55); }
 .tc-block { padding-bottom: 5px; }
+/* PAD LAYOUT split (ADR-131): the guard is the left hand's, a button of its own beside the stick */
+.tc-guard { display: none; box-sizing: border-box; padding-bottom: 5px; }
+.tc-root.split .tc-guard { display: flex; }
+.tc-root.split .tc-block { display: none; }
+.tc-guard .g { font-size: calc(26px * var(--tc-k, 1)); }
+.tc-guard .t { font-size: calc(9px * var(--tc-k, 1)); line-height: 1.3; }
+.tc-guard::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 4px;
+  height: 2px;
+  background: linear-gradient(90deg, #dfe7f5, #dfe7f5) left / calc(var(--tc-gd, 1) * 100%) 100% no-repeat, rgba(207, 214, 230, 0.16);
+}
+.tc-guard.low::after { background: linear-gradient(90deg, #ff9a5a, #ff9a5a) left / calc(var(--tc-gd, 1) * 100%) 100% no-repeat, rgba(255, 138, 61, 0.2); }
+.tc-guard.low { border-color: rgba(255, 138, 61, 0.55); }
 .tc-flask { box-sizing: border-box; }
 /* top right, left of the small minimap (phones, either way up) */
 .tc-lock { right: 98px; top: 6px; width: 38px; height: 38px; }

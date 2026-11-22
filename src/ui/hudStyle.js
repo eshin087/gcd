@@ -119,6 +119,8 @@ const CSS = `
 .ab-row { display: flex; align-items: center; gap: 1ch; line-height: 1.3; }
 .ab-row .lbl { width: 2ch; font-weight: 700; color: #aab3c6; }
 .ab-row .val { width: 9ch; white-space: nowrap; color: var(--ab-ink); font-variant-numeric: tabular-nums; }
+/* a narrow touch screen (ui/hud.js _fit): shorter meters, the HP number alone */
+.ab-compact .ab-row .val { width: 4ch; }
 .ab-pf-foot { display: flex; align-items: center; gap: 3ch; margin-top: 2px; }
 .ab-pips { display: inline-block; letter-spacing: 0.14em; font-size: 0.85em; }
 .ab-pips .full { color: var(--ab-gold); text-shadow: 0 0 6px rgba(216, 184, 106, 0.45); }
@@ -318,6 +320,10 @@ const CSS = `
 }
 .ab-boss-dmg.on { opacity: 1; transition: opacity 0.06s; }
 .ab-boss.p2 .ab-boss-name { color: #ffd2a4; }
+/* a long name on a short line (ui/hud.js _fit) */
+.ab-boss.tight .ab-boss-name { letter-spacing: 0.08em; }
+.ab-boss.tight .ab-boss-head { gap: 1ch; }
+.ab-boss.tight .ab-boss-lives { gap: 5px; margin-left: 6px; }
 /* posture: a run of '=' under the HP meter that grows from its middle toward a break */
 .ab-boss-post { position: relative; display: flex; justify-content: center; margin-top: 1px; }
 .ab-broken {
