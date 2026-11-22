@@ -40,6 +40,8 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
   //
   //
+  // --- foundry: the Clockwork Marshal's body (a: bell-helm lamellar, b: boiler shell, c: tomb general)
+  ['marshalLook', ['a', 'b', 'c'], 'a', 'a', true, ['foundry'], 'the Marshal\'s suit and pilot: a bell helm, b boiler, c tomb general (a reload)'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);

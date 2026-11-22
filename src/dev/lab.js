@@ -13,6 +13,7 @@ import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
+import { buildMarshalSection } from './labMarshal.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -317,6 +318,7 @@ export class Lab {
       if (this._refreshT <= 0) {
         this._refreshT = REFRESH;
         this._refresh();
+        this.ui.marshalSync?.();
       }
       this._abPollT -= rdt;
       if (this._abPollT <= 0) {
@@ -719,6 +721,7 @@ export class Lab {
       this._buildOutfit(root);
       this._buildLooks(root);
       this._buildFight(root);
+      this.ui.marshalSync = buildMarshalSection(this, root);
       this._buildAbilities(root);
       this._buildPlayer(root);
       this._buildWorld(root);
@@ -789,7 +792,7 @@ export class Lab {
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
     const id = this.game.level?.id;
-    if (id !== 'ash' && id !== 'starless' && id !== 'ring') return;
+    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'foundry') return;
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));

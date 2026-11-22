@@ -389,6 +389,16 @@ async function scenarioLevel() {
   assert(d instanceof ClockworkMarshal && d instanceof Duelist && d.name.startsWith('GONGSHU YAN'), `the boss is the Clockwork Marshal (${d.name})`);
   assert(d.mode === 'sleep' && Math.abs(d.position.z + 6) < 0.01 && d.body === 'suit' && Math.abs(d.lean.scale - TUNING.suit.scale) < 1e-9, 'kneeling at z -6 in the suit, drawn at 1.75');
   assert(d.lives.total === 2 && d.lives.left === 2, 'two lives: the suit and the pilot');
+  // the rigid batch's bones (render/rigidBatch.js, 1023 slots): his rig carries both bodies
+  {
+    const { rigidBones } = await imp('src/render/rigidBatch.js');
+    const { Destructibles: D2 } = await imp('src/world/destructibles.js');
+    const G2 = build(SEED, true);
+    const bones = rigidBones(G2.game.U).count, mine = G2.game.dragon.batch.bones;
+    out(`     bones: ${mine} his (both bodies), ${G2.game.player.batch?.bones ?? '-'} the hero's, ${bones} in all with the yard`);
+    assert(bones <= 1023 - 60 && mine <= 320, `his rig and the yard fit the rigid batch: ${bones} of 1023 bones (his ${mine})`);
+    void D2;
+  }
 }
 
 // ================================================================== scenario: data

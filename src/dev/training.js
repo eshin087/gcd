@@ -47,6 +47,8 @@ const ROLES = {
   starless: { single: 'lunge', string: 'litany', long: 'litany', red: 'reap', lock: 'skyfall' },
   // Tian Lei (the Skybreak Ring): his form-1 lock is Hundred Hands' last blow (Vanishing Step's is form 2's)
   ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
+  // the Clockwork Marshal (the Brazen Foundry): the suit's moves (phase 1); her lock and mikiri are the pilot's
+  foundry: { single: 'ramThrust', string: 'yardSweep', long: 'yardSweep', red: 'worksHammer' },
 };
 
 export function bossKinds(game) {
@@ -56,7 +58,7 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.lives ? 'lord' : 'ash');
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'marshal' ? 'marshal' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
