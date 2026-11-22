@@ -10713,6 +10713,9 @@ async function scenarioStamp() {
   fightSetup(G);
   const p = game.player, F = game.fx.fire, L = S.STAMP_LOOK;
   const on0 = { ...IMPACT.on }, k0 = { ...IMPACT.k }, q0 = game.settings.quality;
+  // the piece itself is tested at strength 1 on this body (the owner's pick prints no stamp on the wyrm)
+  const byWyrm0 = IMPACT.by.stamp.wyrm;
+  IMPACT.by.stamp.wyrm = 1;
   const spawn0 = F.spawn;
   let steel = [];
   F.spawn = (o) => {
@@ -10827,6 +10830,7 @@ async function scenarioStamp() {
     F.spawn = spawn0;
     Object.assign(IMPACT.on, on0);
     Object.assign(IMPACT.k, k0);
+    IMPACT.by.stamp.wyrm = byWyrm0;
     game.settings.quality = q0;
     S.setStampMode('over');
     S.stampClear(game);

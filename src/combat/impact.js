@@ -45,9 +45,19 @@ export const IMPACT = {
   pieces: PIECES,
   on: fromUrl(),
   k: { stamp: 1, ripple: 1, react: 1, thump: 1 },
+  // the owner's picks per kind of struck body (2026-11-22), on top of `k`: the stamp prints on the
+  // human bosses only (on the wyrm the cut's own flare and its bright digits hide it), and a human
+  // boss's reaction is drawn at x1.5 (at x1 it moves him 3 - 9 px at the game camera)
+  by: { stamp: { duelist: 1, wyrm: 0 }, react: { duelist: 1.5, wyrm: 1 } },
 };
 
 /** Is a piece on (and its strength above zero)? */
 export const impactOn = (piece) => IMPACT.on[piece] === true && IMPACT.k[piece] > 0;
 /** A piece's strength (0 when it is off). */
-export const impactK = (piece) => (IMPACT.on[piece] === true ? Math.max(0, Number(IMPACT.k[piece]) || 0) : 0);
+/** `who`: 'duelist' | 'wyrm' (the struck body's kind: IMPACT.by scales the piece for it); omit for none. */
+export const impactK = (piece, who) => {
+  if (IMPACT.on[piece] !== true) return 0;
+  const k = Math.max(0, Number(IMPACT.k[piece]) || 0);
+  const by = who ? IMPACT.by[piece]?.[who] : 1;
+  return k * (Number.isFinite(by) ? Math.max(0, by) : 1);
+};

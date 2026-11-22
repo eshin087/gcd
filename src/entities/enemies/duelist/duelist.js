@@ -335,7 +335,7 @@ export class Duelist {
     // the body answers where it was hit (react.js; a sword's cut only, never his own returned bolt).
     // Drawn only, from the hit's own tick: impactK('react') 0 leaves him as he always moved
     if (o.swing || reel > 0) {
-      const kR = impactK('react');
+      const kR = impactK('react', 'duelist');
       if (kR > 0) {
         const mx = fin(this.position.x - px0, 0), mz = fin(this.position.z - pz0, 0);
         const R = this._reactHit ?? (this._reactHit = { k: 0, part: 'body', point: null, cut: { x: 0, z: 0 }, dir: { x: 0, z: 0 }, thrust: NaN, heavy: false, crit: false, reel: 0, skid: 0, moved: { x: 0, z: 0 } });
@@ -416,7 +416,7 @@ export class Duelist {
     }
     this.brain.startReact('executed');
     // the execution's thrust folds him round the point (react.js): run in along the hero's facing
-    const kR = impactK('react'), p = this.game.player;
+    const kR = impactK('react', 'duelist'), p = this.game.player;
     if (kR > 0 && p?.position) {
       const ex = this.position.x - p.position.x, ez = this.position.z - p.position.z, el = Math.hypot(ex, ez);
       if (el > 1e-4) this.hitReact.hit({ k: kR, part: 'body', point: null, cut: { x: ex / el, z: ez / el }, dir: { x: ex / el, z: ez / el }, thrust: 1, heavy: true, crit: true, reel: 0, skid: 0 });

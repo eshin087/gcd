@@ -3897,6 +3897,9 @@ async function scenarioReact() {
   const { IMPACT } = await imp('src/combat/impact.js');
   const { REACT } = await imp('src/entities/enemies/duelist/reactTuning.js');
   const on0 = IMPACT.on.react, k0 = IMPACT.k.react;
+  // the piece's bounds are for strength 1 (the owner's pick draws a human boss's at x1.5)
+  const byDuel0 = IMPACT.by.react.duelist;
+  IMPACT.by.react.duelist = 1;
   // name, part, the contact in his root frame (x his left, y up, z the way he faces; upright m), the
   // blade's travel (root frame), heavy, a thrust (the hero's attack: a point)
   const CASES = [
@@ -4024,6 +4027,7 @@ async function scenarioReact() {
     assert(!guarded || (r === 0 && !d.hitReact.active), `a strike his guard turns gets no reaction (${guarded ? `guarded, ${r} damage` : 'his guard was down: not checked'})`);
     IMPACT.on.react = on0;
   }
+  IMPACT.by.react.duelist = byDuel0;
   return { counts: {}, payload: new Set() };
 }
 

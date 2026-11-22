@@ -193,7 +193,7 @@ export class WyrmReact {
   hit(o, part) {
     const d = this.d;
     if (d.state === 'sleeping' || d.state === 'dying' || d.state === 'dead') return;
-    const k = impactK('react');
+    const k = impactK('react', 'wyrm');
     if (!(k > 0)) return;
     const pt = d.rig.pt, P = d._hurtPool;
     // the contact: the drawn point, else the struck part's sphere

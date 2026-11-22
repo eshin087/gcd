@@ -576,7 +576,7 @@ export class PlayerFx {
     // grid, the struck body's letters taking the blow. Each behind its own switch; neither may throw
     o.target = this.game.dragon ?? null;
     try {
-      const ks = impactK('stamp'), kr = impactK('ripple');
+      const ks = impactK('stamp', o.target?.kind === 'duelist' ? 'duelist' : 'wyrm'), kr = impactK('ripple');
       if (ks > 0) stampHit(this.game, p.x, p.y, p.z, o, ks);
       if (kr > 0) this.game.fx?.ripple?.hit?.(p.x, p.y, p.z, o, kr);
     } catch (err) {
