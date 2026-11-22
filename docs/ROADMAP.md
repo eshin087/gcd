@@ -179,6 +179,23 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.54 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-129)
+- [x] Every breakable as bricks (its triangles; the halves of a flat face pair up), taken where a blow struck
+- [x] The share of structure a blow took = the share of the bricks under it; a blast eats the facing side
+- [x] A solid piece keeps a skin, set back; foliage, boughs and thin bones are holed
+- [x] Faces cut to brick size when the level is built with bites on (`refine`); the same picture
+- [x] Each brick falls as its own letter; some stay lying
+- [x] Range pieces (the forest, the landmarks) and rigid-batch pieces (stones, pillars, statues)
+- [x] The hero's blade strikes at its own height (`ya` / `yb`)
+- [x] `?chip=a`, the Lab's WORLD -> Bites; world test `bite`
+- [ ] The owner picks: off or on (then it becomes the default)
+- [ ] Follow-ups:
+  - [ ] Frame cost of the extra vertices on the phone (Cinderwood 0.92 M -> 1.07 M)
+  - [ ] The ground breaks: pits and torn earth where a hard blow lands
+  - [ ] The landmarks that stay whole (bonfires, gate, bell, throne, fallen star): the owner's call, one by one
+  - [ ] A second layer and a support rule: what hangs over nothing falls
+  - [ ] Wreckage that can be cut up (logs, rubble)
+
 ## M1.53 — A felled tree lies as the blow left it (2026-11-21, `world/crumbling-border`, ADR-128)
 - [x] The stump cut by the blow: height, a slanted top, splinters, a push toward the fall; burnt: low and black
 - [x] The fall turns off the blow's line and rolls about its trunk

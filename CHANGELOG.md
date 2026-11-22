@@ -4,7 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-seven pieces of work since 0.4.0:
+Fifty-eight pieces of work since 0.4.0:
+- **The letters come off where the blow lands** (2026-11-21, ADR-129; behind `?chip=a` until the
+  owner picks). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
+  made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
+  struck (the owner: "have the ascii pieces fall of exactly where the player or enemy boss is
+  hitting ... like minecraft/lego"): a blade cuts a notch into a trunk at the height it bit; a heavy
+  blow knocks the face of a standing stone back; a blast eats the side of a tree that faced it, where
+  before it took the tree's top. Each brick falls as its own letter from where it sat and some stay
+  lying. How much a piece takes, when it falls and what it deals are unchanged. *Changed:* the
+  hero's blade marks a piece at the blade's own height (about 0.3 m higher than before). Off by
+  default: `?chip=a` (or the Lab's WORLD -> Bites) turns it on.
 - **Felled trees lie as the blow left them** (2026-11-21, ADR-128). *Changed:* a felled tree no longer
   leaves the same stump and the same straight log as every other ("make the cleared trees not look
   the same and have it broken in different angles based on how it was hit"). A blade cuts the stump

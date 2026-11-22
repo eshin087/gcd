@@ -5,6 +5,76 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 69: bites, the letters come off where the blow lands
+
+**Owner:** "i want the player to be able to destory the terrain and have the ascii pieces fall of
+exactly where the player or enemy boss is hitting. can we do this to make every background object
+destrutcible like minecraft/lego?" Branch `world/chip-where-hit`. ADR-129 / Session 69 / M1.54.
+
+**What was there.** Nearly everything that stands breaks already (ADR-107, ADR-120, ADR-122), but as
+whole pieces: a blow takes structure, a tree drops its crown parts in a fixed order at three stages
+(a blast at a pine's foot took its top two tiers), a stone takes a nick, and the chips fly from one
+point. Nothing came off where the blow landed.
+
+**What changed** (`BREAK.chip`; behind `?chip=a`, the Lab's WORLD -> Bites; off ships until the owner
+picks):
+- every breakable is the BRICKS it is drawn with: its triangles, the two halves of a flat face being
+  one brick (foliage stays single). With bites on the level is built with the bitten pieces' faces
+  cut to 0.8 m (`forest.js` `refine`: the same shape and picture);
+- a blow takes the bricks nearest where it struck, as many as the share of the piece's structure it
+  took (`_hit` -> `_bite`): a blade from where its segment met the piece at the blade's own height
+  (`o.ya` / `o.yb`, new; the hero passes his blade's two ends), a blast from its own centre, so it
+  eats the side that faced it. The structure arithmetic is untouched;
+- a brick of a solid part is set back into the piece (0.42 of its thickness there, at most 0.3 m); a
+  leaf, a bough, a thin bone is folded away;
+- each brick falls as its own letter from where it sat; every third leaves a letter lying until the
+  reset; where a bite shows, the nick mark is left out and the splinter spray cut to 0.3;
+- 'range' pieces (the forest's trees, the landmarks) rewrite the triangle when their run is written
+  (`RangeBody.bite` / `_writeBits`); rigid-batch pieces (stones, boulders, pillars, statues) move it
+  in the batch's positions or fold it in its index (`MeshBricks`; `rigidBatch.js` records each
+  source's `userData.batchRun`);
+- with bites on a tree does not drop its crown parts in order; a crown part 72 % eaten drops whole; a
+  wind front's wear bites the windward crown. The range pieces' bricks are made four a frame after
+  the load (not five hundred inside a roar's half second).
+
+**Found on the way** (each from a rendered sheet or a failing check, not from reading the code):
+- The first bites were triangle-shaped (diagonals across a stone's face): the halves of a flat face
+  are one brick now.
+- A blast beside a tree ate it evenly (23 bricks on the near side, 22 on the far): the bricks were
+  counted from the point of the footprint the disc touched. Counted from the blast's own centre:
+  80 against 16, the 16 being the trunk's own.
+- Trunks and boulders were far coarser than "a letter cell": a pine's trunk is two rings of 1.3 - 2.6
+  m faces, a boulder 20 triangles, so a cut took a 1.4 m slab. Hence `refine`. Its first form
+  (every long edge cut, 0.6 m) took Cinderwood from 0.92 M drawn vertices to 1.52 M; longest-edge
+  bisection at 0.8 m, stumps and thin parts left alone, the deep forest 2.5 x coarser: 1.07 M.
+- Plain holes were wrong for solid things: the meshes are hollow, so a holed boulder opened onto
+  black ground and a trunk cut half through looked as if the tree floated; a second option that took
+  a wider patch left a standing stone's top hanging over a gap (dropped). Hence the set-back.
+- My first set-back wrote each brick's way in over its normal while the loop was still reading the
+  normals: half a stone's bricks found no wall behind them (111 of 210). The test's count showed it.
+- A patch script of mine cut three accessors out of `RangeBody` (`parts`, `visible`); the next test
+  run failed on the first line that read them, and they were put back.
+
+**Verification.** World test `bite` (14 checks: a quarter-cut takes a quarter of a tree's structure
+and 11 of the 42 bricks within 0.8 m of the blade, all of the trunk, set back toward its axis; every
+other brick where it was; 5 such cuts fell it with none of that section left; a blow on a stone's
+south face takes 32 of its 210 bricks, all on that side, set back in the batch's positions; a blast
+east of a tree: 80 bricks east, 16 west; a rib loses bricks; a floor slab does not; the reset puts
+every vertex and index back; the courtyard's 162 and the crater's 111 pieces that take structure all
+have bricks, a blow on one of each kind bites it and the reset undoes it; off: no bricks). In the browser (headless Edge, the real GPU, 1280 x
+720), the same blows with bites off and on: a stone, a boulder, a dead tree, the lone pine, the Elder
+Wyrm's ribs, and the hero's own cuts at the game camera (3 cuts: 3 bricks off the stone; 6 cuts fell
+the pine, away from him). A piece before any blow looks the same built either way (the stone, the
+boulder, the dead tree side by side). `npm test` / `npm run build`: see the PR.
+
+**Not checked / open.** Nobody has played it. The two duel arenas are checked by the test only, not
+looked at (their pieces go through the same batch path as the forest's stones). Not on the phone,
+and the frame cost of the extra vertices is not measured. The ground itself does not break (ADR-129
+"Not done"), nor the landmarks that were decided to stay whole. A set-back brick cannot be struck
+again (one layer), and nothing falls for want of support.
+
+---
+
 ## 2026-11-21 — Session 68: a felled tree lies as the blow left it
 
 **Owner** (after the picture of the wall opening): "make the cleared trees not look the same and have

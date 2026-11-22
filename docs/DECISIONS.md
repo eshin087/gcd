@@ -3884,3 +3884,69 @@ ADR-092).
   every change upstream.
 - **Not done:** a stump is still one cut plane, not two halves of a split trunk; the falling crown is
   not broken by the blow; the Cinder Tree and the landmarks keep their own remains.
+
+## ADR-129 — Bites: a piece is the bricks it is drawn with, and a blow takes them where it struck (2026-11-21)
+
+- **Context:** the owner: "i want the player to be able to destory the terrain and have the ascii
+  pieces fall of exactly where the player or enemy boss is hitting. can we do this to make every
+  background object destrutcible like minecraft/lego?" Since ADR-107 / ADR-120 / ADR-122 nearly
+  everything that stands in a level breaks, but as WHOLE pieces: a blow takes structure from the
+  piece, a tree drops its crown parts in a fixed order at three stages (a blast at a pine's foot took
+  its top), a stone only takes a nick, and the chips fly from one point. Nothing came off where the
+  blow landed.
+- **Decision:** every breakable is treated as the BRICKS it is already drawn with, and a blow takes
+  them where it struck (`BREAK.chip`, `destructibles.js` `_bite`). Behind the look switch `?chip=a`
+  (the Lab: WORLD -> Bites), **off until the owner picks from the rendered sheet**, as every look
+  change is.
+  1. **A brick is a triangle, or two that make a flat face.** No object was rebuilt out of cubes. With
+     bites on, a level is built with the bitten pieces' faces cut until no edge is over 0.8 m
+     (`forest.js` `refine`: the same shape, the same picture, more triangles), about one letter cell
+     at the game camera (1 m is ~19 px at 720p). Two triangles that share their longest edge and lie
+     flat together are one brick, so a bite on a trunk, a pillar or a stone is block-shaped; foliage
+     stays single triangles.
+  2. **A blow takes the bricks nearest where it landed, as many as the structure it took.** Of the
+     bricks within the blow's reach of the point, the share of the piece's structure this blow took,
+     nearest first, at least one. A blade's point is where its segment met the piece, at the blade's
+     own height (`o.ya` / `o.yb`, new: the hero passes his blade's two ends); a blast counts from its
+     own centre, so it eats the side that faced it. The structure rules are not touched, so a notch
+     is used up exactly as the piece's structure runs out and it falls.
+  3. **A solid piece keeps a skin; foliage is holed.** A brick of a trunk, a stone or a thick bone is
+     not removed: it is set back into the piece along its own normal (0.42 of the thickness there, at
+     most 0.3 m). Leaves, boughs and thin bones (a dent under 0.07 m would not show) lose the brick
+     outright.
+  4. **Each brick falls as its own letter** from where it sat (a leaf, a splinter, a digit), in the
+     dim hues the debris already uses; every third leaves a letter lying until the reset. The nick
+     mark and most of the splinter spray are left out where a bite shows.
+  5. **Two places a brick lives.** A 'range' piece (every tree of Cinderwood, the landmarks) rewrites
+     the triangle when its run is written; a piece of the rigid batch (stones, boulders, pillars,
+     statues, arena props) moves it in the batch's positions or folds it in the batch's index. Both go
+     back at the reset.
+- **Why this way:** the alternative that "like minecraft" suggests, rebuilding every object as a grid
+  of cubes, would redraw every tree, stone and landmark (each the owner's call, and tuned over
+  several sessions) and still print the same letters: a cube smaller than a letter cell is invisible
+  in this renderer. Cutting the existing faces finer gives bricks of that size with no change to the
+  picture. Tying the bite to the structure taken (not to a fixed radius) keeps every balance number,
+  test and boss move as it is, and makes the notch and the fall agree. Setting a brick back, not
+  taking it out, came from the first sheets: the meshes are hollow shells, so a holed boulder opened
+  onto black ground, a trunk cut half through looked as if the tree floated, and a second option
+  that took a wider patch left a standing stone's top hanging over a gap (that option was dropped).
+  Thin parts are the exception because a dent a few centimetres deep does not print.
+- **Consequences:** `rigidBatch.js` records where each source sits in its batch (`userData.batchRun`:
+  its run of the index and of the vertices); the breakables' batch index and positions are dynamic.
+  `sweep` takes `ya` / `yb`, and the hero's blade now strikes a piece at the blade's own height in
+  every mode (its nick, its chips and a felled tree's stump height sat about 0.3 m lower). With
+  bites on: a tree's crown no longer thins in order (it loses what the blows took; a crown part 72 %
+  eaten drops whole), the wall's trees show the wind on their windward side, and Cinderwood draws
+  1.07 M vertices instead of 0.92 M (the trees' mesh 524 k -> 648 k; the trees beyond 48 m are cut
+  2.5 x as coarse to keep it there). Nothing a frame: a bite scans the struck piece's bricks once and
+  rewrites its run of vertices, as a shudder already does every frame; the bricks are made four
+  pieces a frame after the load, not inside a roar's front.
+- **Not done (asked, and worth doing next):** the GROUND itself (the soil and grass of Cinderwood are
+  one plane with a glyph shader: a crater is glyph marks and a charred disc; real pits need a dug
+  channel in the scorch map or a deformable ground mesh, and a rule for feet); floor slabs (they
+  keep ADR-122's whole / cracked / broken looks); the pieces that deliberately stay whole (the
+  bonfires, the sect gate, the bell, the throne and its dais, the fallen star: each was decided as a
+  landmark or a checkpoint); wreckage (logs, rubble, blocks: scenery with no structure); the shadow
+  of a batch piece (it keeps the whole shape). A second layer (a set-back brick struck again) and a
+  support rule (what hangs over nothing falls) are not there. The frame cost of the extra vertices
+  was not measured on a phone.
