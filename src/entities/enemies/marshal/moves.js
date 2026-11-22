@@ -235,7 +235,6 @@ const shockRing = (S) => ({
 
 // ---------------------------------------------------------------- the moves
 const W = (p, w) => [1, 2, 3, 4].map((k) => (k === p ? w : 0));
-const SUIT_RECOVER = [[0.5, { two: 1, bY: -0.2 }]];
 
 export const MOVES = {
   // ============================================================== the SUIT (phases 1 - 3)
@@ -478,4 +477,3 @@ export function realise(name, phase = 1, rnd = Math.random, opts = null) {
   const ph = Math.max(1, Math.min(4, def.transition ? def.phase : phase));
   return realiserFor(ph, !!opts?.breastLost)(name, phase, rnd, opts);
 }
-export { SUIT_RECOVER };

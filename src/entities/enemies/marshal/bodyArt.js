@@ -7,7 +7,8 @@ import { ART_CLOTH, ART_METAL, ART_SKIN, ART_LIGHT, ART_KEEP } from '../ashDisci
 //   armor   the suit's plates          bevel  their worn, brighter edges     spike  the iron frame
 //   welt    the gears and belts (glow hotter by phase: marshal.js drives uGlow)
 //   flask   the furnace's grate and the fire tube's mouth (self-lit embers)
-//   trim    the lance and the sabre (thinner than an art cell: today's material)
+//   trim    the sabre's blade, the hilt fittings (thinner than an art cell: today's material; the lance's
+//           shaft prints on `spike`, its blade on `bevel`)
 //   coat / shirt / pants / leather / hem / skin / hair / facing   the pilot (her arming coat, the
 //   undershirt, trousers, belts and boots, the bandage, her face, the grey topknot, the bronze dial bracers)
 // The yard is open-air and lit by the furnace: the light's gain a little over the courtyard's.
