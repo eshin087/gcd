@@ -87,7 +87,22 @@ the owner (12). The merge had one conflict class: two scenarios inserted at the 
 **The owner's picks** (the lead's recommendation, taken): the stamp at medium, over today's slash
 line, on the human bosses only (`IMPACT.by.stamp.wyrm` 0); the ripple at its default; the reactions
 x1.5 on the human bosses, x1 on the wyrm; the thump at x1. Next, a before / after with today's
-contact flare and swing arc toned down (accepted; not in this PR).
+contact flare and swing arc toned down (accepted, and done in the same PR: below).
+
+**Calm at the contact** (the follow-up, in this PR). An Opus agent measured what hides the new
+pieces by switching today's effects off one at a time on a frozen take: the struck boss's white
+hurt flash (the wyrm's whole struck body goes white) and the hero's steel lit by the strike are
+the big ones; the hit's own blade flare (+0.5 / +0.75) and the cut's core are negligible, so
+COMBAT.md's "x1.62 / x1.95" was not what you see. `combat/impactCalm.js` dims those together in
+levels 0 - 3 (0 = as before), read at the hit, the same random draws at every level, the slash
+line kept, a missed swing and steel on steel untouched; one line each in `dragon.js` and
+`duelist.js` takes the hurt flash through `calmBossFlash`. Clips: today / 1 / 2 / 3 on the Ash
+Disciple and the wyrm with every piece on, and today vs 2 at the play framing. The lead
+recommended 2; the owner, given the clips and the two preview links: "lets go with calmer 1". Level 1 is the
+default (`CALM_DEFAULT`; `?calm=0` draws the contact as before; the Lab's 'impact' row has a
+`calm N` button that cycles it). Level 1 is the gentlest: the halo round the contact shrinks, the
+stamp's first frames show a little more, nothing is lost. The stamp still does not read on the
+wyrm at 2 or 3, so it stays off there.
 
 **Verification.** New scenarios: integ `stamp`, `ripple`, `wyrmreact`, `thump`; duel `react`. The
 stamp's and the duelists' react scenarios pin their piece at strength 1. `npm test`: all 12 suites passed on the final branch (with `origin/main` #76 merged in and the picks applied; 312 s), and `npm run build` built. The `world budget` timing check failed in every agent's run while six suites ran at once, and fails the same way on the base commit under that load. The pieces
@@ -109,7 +124,8 @@ captures).
   hit returns before `PlayerFx.contact`); on a fresh duelist level the flow sat in 'title'. Enter the
   fight and drop his guard first.
 
-**Next.** The flare / arc before / after. Then the second batch if the owner wants it: C, E, F, G, I.
+**Next.** The second batch if the owner wants it: C, E, F, G, I. Calm at the contact on the phone and
+on crits, the execution, the Lord and Tian Lei.
 
 ## 2026-11-22 — Session 73: round the Obsidian Throne, what the challengers left
 

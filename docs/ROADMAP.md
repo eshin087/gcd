@@ -199,8 +199,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       reaction x1.5, the wyrm's x1, the ripple and the thump x1
 - [x] Tests: integ `stamp`, `ripple`, `wyrmreact`, `thump`; duel `react`
 - [ ] Follow-ups:
-  - [ ] A before / after with today's contact flare and swing arc toned down (they hide the pieces'
-        first frames; the owner accepted it with the picks)
+  - [x] Calm at the contact: today's flare toned down in graded levels (`?calm=0..3`); the owner
+        picked level 1, now the default (`combat/impactCalm.js`; integ `calm`)
+  - [ ] Calm at the contact on the phone, on crits, the execution, the Lord and Tian Lei
   - [ ] C: wounds that stay
   - [ ] E: a spray along the blade
   - [ ] F: the ground answers heavy blows

@@ -534,6 +534,12 @@ Render helpers for creature modules:
     / `stampMode()` (`?stamp=instead`), `setStampInk(bool)` (`?stampInk=0`); `takeStampReplace()`
     (cutFx asks once per cut whether to drop its slash line). 4 stamps pooled, one copy of the blobs
     alive per frame; its ink is the fire-field tint zone id 800001 (`FireField.tint`, `dark` 1).
+  - *Calm at the contact* (`combat/impactCalm.js` exports `CALM_LOOK`, `CALM_DEFAULT` 1, `setCalm`,
+    `calmLevel`, `calmLook`, `calmA`, `calmS`, `calmBossFlash`; ADR-149): `PlayerFx.contact`
+    snapshots the level (`_calmAt`) and opens the arc's calm zone; `player._updateMaterials` reads
+    `fx.calmBlade(w)` / `fx.calmFlare(v)` for the steel's gain; cutFx, `fx.edgeFlash`,
+    `fx.cleaveImpact` and `fx.trail` read `calmA` / `calmS`; `dragon.takeHit` and `duelist.takeHit`
+    take their hurt flash through `calmBossFlash`. Level 0 draws exactly what it did before.
   - *The impact ripple* (`render/impactRipple.js` exports `RIPPLE`, `class ImpactRipple`; `game.fx.ripple`;
     ADR-149): `RIPPLE.slots` 4 live hits kept in world space (an offset from `o.target.position`),
     presets `wave` (drawn) and `subtle`. `Pipeline.setRipple(r)` (the constructor calls it; null

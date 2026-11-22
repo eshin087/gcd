@@ -1150,6 +1150,12 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   is instant, so the cut and his spray move with him: they sit on the body the freeze holds. A slam
   that lands only through its ground shards draws no cut: no flare, no `cut` layer (the body's hit
   only). A strike his guard turns gets none of it: the guard draws its own clash.
+- **Calm at the contact** (2026-11-22, ADR-149; `combat/impactCalm.js`, `?calm=0..3`, default 1, the
+  owner's pick): today's light at a landed cut, dimmed at the moment of the hit so the stamp and the
+  ripple show: blade steel x0.7 (the hit's own flare x0.6), the boss's white hurt flash x0.75, sparks / motes alpha x0.65, the cut's pooled light x0.5, its core alpha x0.6, the slash line alpha x0.9, the cleave's fan alpha x0.6, the swing arc alpha x0.5 only within 0.6 - 1.6 m of a fresh contact for the freeze + 0.12 s. Level 0 = as before; 2 and 3 dim further. The
+  steel is lit x(1 + 4.2) by a light strike and x(1 + 4.6) by a heavy one, held through the freeze;
+  the hit's own flare adds only +0.5 / +0.75 (the "x1.62 / x1.95" above). No timing, damage,
+  hit-stop, camera or hit test moves; a missed swing and steel on steel are untouched.
 - **The impact pass** (2026-11-22, ADR-149; `combat/impact.js`): four more pieces on a cut that lands,
   presentation only (no damage, posture, hit stun, shove, guard or timing moved; each piece off =
   as before). *The stamp*: the hit printed in the letter grid at the drawn contact, about 0.16 s

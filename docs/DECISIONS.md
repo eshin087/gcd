@@ -4201,6 +4201,16 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
     about +6 to +11, the slash streaks stack on the stamp's first frames, and the jolt, the camera
     punch and the wyrm's flinch move the picture more than the reactions do. The owner accepted a
     before / after with the flare and the arc toned down as the next step.
+  - *Calm at the contact* (the same PR, after that before / after): measured one effect off at a
+    time, the largest hiders are the struck boss's own white hurt flash (on the wyrm the whole
+    struck body goes white through the freeze) and the hero's steel lit by the strike (x(1 + 4.2)
+    on a light, x(1 + 4.6) heavy, held through the freeze); the hit's own flare and the cut's core
+    are negligible. `combat/impactCalm.js` scales those existing effects together in levels 0 - 3
+    (0 = as before), read at the hit; it draws the same random numbers at every level, never removes
+    the slash line, and leaves a missed swing, steel on steel and bloom alone. Three levels were
+    filmed same-take on the Ash Disciple and the wyrm; the lead recommended 2, the owner picked 1
+    (`CALM_DEFAULT`: blade steel x0.7 (the hit's own flare x0.6), the boss's white hurt flash x0.75, sparks / motes alpha x0.65, the cut's pooled light x0.5, its core alpha x0.6, the slash line alpha x0.9, the cleave's fan alpha x0.6, the swing arc alpha x0.5 only within 0.6 - 1.6 m of a fresh contact for the freeze + 0.12 s). The stamp still does not read on the wyrm at any level, so
+    `IMPACT.by.stamp.wyrm` stays 0.
   - *The thump adds little on heavy blows*: they already carry almost all their energy below 100 Hz,
     and the master compressor (threshold -14 dB, ratio 4) pulls the whole mix down 8 - 12 dB on each,
     tells included. Measured on offline renders: +0.2 dB below 100 Hz on the slam, about 0 on the

@@ -23,7 +23,10 @@ Sixty-three pieces of work since 0.4.0:
   draws, sounds and plays as before. The owner's picks: the stamp on the human bosses only, a human
   boss's reaction drawn at x1.5, the wyrm's at x1. `?impact=off` (or a list: `?impact=stamp,react`)
   and the Lab's 'impact' row switch the pieces; `?stamp=instead` draws the stamp in place of the
-  slash line (an option). Nobody has played it yet.
+  slash line (an option). *Changed:* the light at the moment a cut lands is a little calmer (the
+  owner's pick of three levels): the struck boss's white flash, the blade's lit steel, the sparks and
+  the swing arc where it crosses the contact are dimmed, so the new pieces show; `?calm=0` draws it
+  as before, `?calm=2` / `3` calmer.
 - **Round the Obsidian Throne, what the challengers left** (2026-11-22, ADR-133). *Changed:* the
 - **Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage** (2026-11-22,
   ADR-135). *Added:* in the Skybreak Ring, **the sign**: from his second form, Tian Lei raises two

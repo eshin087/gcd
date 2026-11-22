@@ -1251,6 +1251,10 @@ the body.
     on or inside the body to nothing; 1 m was enough on a man, not on the wyrm).
   - `?stamp=instead` draws it in place of the slash line and its cross (the sparks stay); the
     default draws both.
+- **Calm at the contact** (2026-11-22, ADR-149; `combat/impactCalm.js`): the light at the contact is
+  dimmed at the hit, level 1 by default (the owner's pick; `?calm=0` = as before, 2 and 3 calmer):
+  the struck boss's white hurt flash and the hero's lit steel are what bleached the contact, not
+  the cut's core. The arc is dimmed only near a fresh contact and only for the swing that landed.
 - **The body answers** (ADR-149): the reaction's first pose shows in the frame the freeze holds, small
   enough that the struck surface stays 0.01 - 0.07 m from the drawn cut (`snapM` 0.06 on a duelist),
   so the cut, the stamp and the spray stay on the body; the swing to the peak comes after the freeze.
