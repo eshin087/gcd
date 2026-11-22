@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | thump | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
@@ -10495,6 +10495,116 @@ async function scenarioZoomArt() {
   return G;
 }
 
+async function scenarioThump() {
+  out('\n== scenario THUMP (the impact pass: a sub under a heavy blow, one short music dip; audio/thump.js) ==');
+  const { IMPACT } = await imp('src/combat/impact.js');
+  const { Thump } = await imp('src/audio/thump.js');
+  const G = build();
+  const { game, input } = G;
+  input.tap('Space');
+  G.tick(DT);
+  const A = game.audio, ctx = AUDIO.ctx, Th = A.thump;
+  assert(ctx && A.thumpDip && Th && A.musicBus.outs.has(A.thumpDip) && A.thumpDip.outs.has(A.musicDip), 'the dip is its own gain on the music path (musicBus -> thumpDip -> musicDip), built with the graph');
+  assert(A.thumpDip.gain.value === 1 && !A.cueBus.outs.has(A.thumpDip), 'idle at 1; the cue bus does not run through it');
+  const e0 = errors.length;
+  const on0 = IMPACT.on.thump, k0 = IMPACT.k.thump;
+  IMPACT.on.thump = true;
+  IMPACT.k.thump = 1;
+  // spies: what the engine plays, what is scheduled on the dip, how many nodes a hit builds
+  const played = [];
+  const play0 = A.play;
+  A.play = function (n, o) { played.push(n); return play0.call(this, n, o); };
+  let sched = 0, nodes = 0;
+  const gp = A.thumpDip.gain;
+  const PM = ['setTargetAtTime', 'setValueAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime', 'cancelScheduledValues'];
+  for (const m of PM) { const f = gp[m]; gp[m] = function (...a) { sched++; return f.apply(this, a); }; }
+  const CM = ['createGain', 'createOscillator', 'createBiquadFilter', 'createWaveShaper', 'createBufferSource', 'createStereoPanner'];
+  for (const m of CM) { const f = ctx[m]; ctx[m] = function (...a) { nodes++; return f.apply(this, a); }; }
+  const wait = (s) => { ctx.currentTime += s; A.update(Math.min(s, 0.1)); };
+  const hit = (o) => {
+    played.length = 0; sched = 0; nodes = 0;
+    game.events.emit('player:hitDragon', { damage: 50, part: 'body', point: { x: 0, y: 1, z: 0 }, combo: 1, crit: false, heavy: false, weight: 'light', kind: o.heavy ? 'slam' : 'light', ...o });
+    return { subs: played.filter((n) => n === 'sub').length, sched, nodes };
+  };
+  wait(1);
+  let d0 = Th.dips;
+  const slam = hit({ heavy: true, weight: 'slam' });
+  assert(slam.subs === 1 && Th.dips === d0 + 1 && slam.sched > 0, `a heavy slam: the sub plays and one music dip is scheduled (subs ${slam.subs}, dips +${Th.dips - d0}, ${slam.sched} gain events)`);
+  wait(1);
+  for (const [w, label] of [['cleave', 'the cleave'], ['execute', 'the execution']]) {
+    d0 = Th.dips;
+    const r = hit({ heavy: true, crit: w === 'execute', weight: w });
+    assert(r.subs === 1 && Th.dips === d0 + 1, `${label}: the sub and a dip (${r.subs}, +${Th.dips - d0})`);
+    wait(1);
+  }
+  const light = hit({});
+  assert(light.subs === 0 && light.sched === 0, `a light cut: no sub, no dip (${light.subs}, ${light.sched})`);
+  wait(1);
+  const crit = hit({ crit: true });
+  assert(crit.subs === 1 && crit.sched === 0, `a crit light cut: the sub (smaller), no dip (${crit.subs}, ${crit.sched})`);
+  wait(1);
+  for (const [o, label] of [
+    [{ heavy: true, weight: 'slam', guarded: true, damage: 0 }, 'a guarded strike'],
+    [{ heavy: true, weight: null, shards: true }, "the slam's ground shards"],
+    [{ heavy: true, crit: true, kind: 'plunge' }, 'the plunge'],
+    [{ crit: true, kind: 'flurry' }, "a flurry's flash cut"],
+  ]) {
+    const r = hit(o);
+    assert(r.subs === 0 && r.sched === 0, `${label}: keeps its own sound, no sub, no dip (${r.subs}, ${r.sched})`);
+    wait(1);
+  }
+  // a flurry's last blow lands heavy: it thumps
+  d0 = Th.dips;
+  const last = hit({ heavy: true, crit: true, kind: 'flurry', weight: undefined });
+  assert(last.subs === 1 && Th.dips === d0 + 1, `a flurry's last blow: the sub and a dip (${last.subs}, +${Th.dips - d0})`);
+  wait(1);
+  // never pumps: ten heavy blows in a second begin at most one dip per gap; the rest only extend it
+  d0 = Th.dips;
+  const x0 = Th.extends;
+  let subs10 = 0;
+  for (let i = 0; i < 10; i++) { subs10 += hit({ heavy: true, weight: 'cleave' }).subs; wait(0.1); }
+  const dips10 = Th.dips - d0;
+  assert(dips10 >= 1 && dips10 <= 2 && subs10 === 10, `ten heavy blows in a second: ${dips10} dips (at most 2), ${Th.extends - x0} extended, ${subs10} subs`);
+  wait(1);
+  // off: no new node, nothing scheduled, the hit sounds exactly as before
+  const keep = A.thump;
+  A.thump = null;
+  const base = hit({ heavy: true, weight: 'slam' });
+  A.thump = keep;
+  wait(1);
+  IMPACT.on.thump = false;
+  const off = hit({ heavy: true, weight: 'slam' });
+  wait(1);
+  IMPACT.on.thump = true;
+  IMPACT.k.thump = 0;
+  const zero = hit({ heavy: true, weight: 'slam' });
+  wait(1);
+  IMPACT.k.thump = 1;
+  const on = hit({ heavy: true, weight: 'slam' });
+  wait(1);
+  assert(off.subs === 0 && off.sched === 0 && off.nodes === base.nodes && zero.subs === 0 && zero.sched === 0 && zero.nodes === base.nodes, `the piece off (or at 0): no sub, no gain scheduled, the same ${base.nodes} nodes as the hit without the piece (off ${off.nodes}, k=0 ${zero.nodes})`);
+  assert(on.nodes > base.nodes, `on: the sub's own nodes on top (${on.nodes} vs ${base.nodes})`);
+  // no AudioContext: nothing throws, nothing plays
+  const c = A.ctx;
+  A.ctx = null;
+  const none = hit({ heavy: true, weight: 'slam' });
+  A.ctx = c;
+  let threw = false;
+  try {
+    const T2 = new Thump({ ctx: null, play: () => true });
+    T2.onHit({ heavy: true, weight: 'slam' });
+    T2.dip(1);
+  } catch { threw = true; }
+  assert(!threw && none.subs === 0, 'without an AudioContext nothing throws and nothing plays');
+  for (const m of PM) delete gp[m];
+  for (const m of CM) delete ctx[m];
+  A.play = play0;
+  IMPACT.on.thump = on0;
+  IMPACT.k.thump = k0;
+  assert(errors.length === e0, `no errors through the thump checks (${errors.length - e0})`);
+  return G;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -10540,6 +10650,7 @@ const SCENARIOS = {
   herostance: scenarioHeroStance,
   looks: scenarioLooks,
   music: scenarioMusic,
+  thump: scenarioThump,
   flight: scenarioFlight,
   tongues: scenarioTongues,
   fxlooks: scenarioFxLooks,
