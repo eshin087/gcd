@@ -33,6 +33,18 @@ export const FIRE_PALETTES = {
     stops: [[0.62, 0.36, 0.035], [1.25, 0.82, 0.1], [1.95, 1.48, 0.3], [2.5, 2.2, 0.85], [3.1, 3.0, 2.3]],
     hdr: 0.6, fill: 0.08, back: [0.45, 0.75], lick: 0.4, erode: 0.6, boil: 11, warp: 0.6, haze: [1.0, 0.78, 0.32],
   },
+  // FOXFIRE (the Foxfire Terrace: Wen Yao's Pearl and mantle; ADR-131). Like gold, a swap of the void
+  // slot (FoxFx). `foxfire` (?foxfire=a): jade, dark green strokes, jade digits, a pale mint heart (not
+  // a cue's red, blue or black, not the wyrm's orange, not the Void's violet). `moon` (?foxfire=c): a
+  // cold moon-white.
+  foxfire: {
+    stops: [[0.03, 0.3, 0.12], [0.1, 0.78, 0.36], [0.3, 1.45, 0.72], [0.95, 2.2, 1.35], [2.3, 3.1, 2.55]],
+    hdr: 0.6, fill: 0.07, back: [0.5, 0.8], lick: 0.8, erode: 1.0, boil: 9, warp: 0.9, haze: [0.36, 0.95, 0.62],
+  },
+  moon: {
+    stops: [[0.22, 0.26, 0.4], [0.6, 0.68, 0.92], [1.2, 1.3, 1.6], [2.0, 2.1, 2.4], [3.0, 3.05, 3.2]],
+    hdr: 0.55, fill: 0.06, back: [0.5, 0.8], lick: 0.7, erode: 0.9, boil: 9, warp: 0.8, haze: [0.7, 0.78, 1.0],
+  },
   steel: {
     stops: [[0.5, 0.5, 0.6], [1.2, 1.2, 1.32], [1.9, 1.88, 1.85], [2.7, 2.65, 2.55], [3.5, 3.4, 3.2]],
     hdr: 0.6, fill: 0.06, back: [0.3, 0.55], lick: 0, erode: 0, boil: 12, warp: 0,
