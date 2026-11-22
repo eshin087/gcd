@@ -7,7 +7,8 @@ import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tel
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
-import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, FALLING_HEAVEN, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { hasReward } from '../../game/rewards.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
@@ -1134,6 +1135,8 @@ export class Player {
     if (a === 'heavy' && allowAttack) {
       this.buf.action = null;
       if (this._tryExecution()) return true;
+      // out of a sprint, with the Skywell Vault's reward held: Falling Heaven (ADR-134)
+      if (this.state === 'sprint' && Math.hypot(fin(this.groundVel.x), fin(this.groundVel.z)) > TUNE.runSpeed * 1.05 && hasReward(FALLING_HEAVEN.name)) return this._startAttack(FALLING_HEAVEN);
       return this._startAttack(HEAVY[0]);
     }
     if (a === 'heal' && allowHeal) {

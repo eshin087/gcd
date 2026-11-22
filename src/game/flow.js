@@ -5,6 +5,7 @@ import { DEFENSE } from '../combat/rules.js';
 import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
+import { grantReward } from './rewards.js';
 
 // Game flow: owns game.state and every transition
 //   title → explore → bossIntro → boss → dead | victory   (+ paused from explore/bossIntro/boss)
@@ -772,6 +773,11 @@ export class GameFlow {
     this._ovLambda = 1;
     this.cameraOverride = this._ov;
     this._log(this._text('fallen'), 'lore');
+    // the level's fixed reward (ADR-134; game/rewards.js): granted, and its line shown the first time
+    const R = g.level?.reward;
+    if (R?.id) this._try(() => {
+      if (grantReward(R.id) && R.line) this._log(R.line, 'lore');
+    }, 'rewards.grant');
   }
 
   _victory(rdt) {

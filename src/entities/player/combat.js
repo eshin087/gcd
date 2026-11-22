@@ -188,6 +188,19 @@ export function heavyAfter(def) {
   return HEAVY[n >= 1 && n <= 4 ? n : 0];
 }
 
+/** FALLING HEAVEN (ADR-134): the Skywell Vault's fixed reward (game/rewards.js; levels/fallen.js). A
+ *  heavy pressed out of a sprint, only while the reward is held (without it that press is the thrust,
+ *  HEAVY[0], as before): the slam's clip with a far higher leap (no new clip), carried `travel` m along
+ *  the run, its blade reaching `up` m over the hero's head (a foe in the air), a ring of shards. */
+export const FALLING_HEAVEN = {
+  name: 'fallingHeaven', label: 'Falling Heaven', kind: 'slam', button: 'heavy', combo: 0, damage: 78, poise: 50, heavy: true,
+  windup: 0.36, active: 0.13, recovery: 0.52, chain: 0.35, lunge: 0, travel: 3.4, keepYaw: true, reach: 2.2,
+  hitstop: 0.14, shake: 0.5, bite: 1.4, contact: 'slam', punch: 1.9, kick: 0.24,
+  up: 4.5,
+  shards: { radius: 2.4, height: 5 },
+  anim: { kind: 'clip', clip: 'slam', hop: 1.25, tuck: 1.4 },
+};
+
 /** LMB while sprinting: a bounding rising slash, low right → high left, that carries the run's
  *  momentum `travel` m along the run direction (`keepYaw`: it does not snap to the aim). Counts as
  *  hit 1 of the combo. */
