@@ -169,7 +169,7 @@ export const TUNING = {
     in: 0.45, // s of tearing free: it can be popped at once, it cannot strike yet
     walk: 2.4, slot: 2.6, // m/s to its own slot this far from the hero
     reach: 3.2, // a self takes the token only this close to the hero
-    every: [2.6, 1.9, 1.4], // s at least between one self's blow and the next self's windup
+    every: [2.6, 1.9, 1.2], // s at least between one self's blow and the next self's windup
     windup: 0.62, recover: 0.55, // its blow's windup (paperCut) and its recovery after
     damage: 8, knockback: 0.5, parryPosture: 10,
     cleave: 1.4, cleaveHeavy: 2.6, // a cut that pops one pops every other self this near the hit point

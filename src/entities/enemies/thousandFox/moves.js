@@ -342,7 +342,7 @@ export const MOVES = {
 
   /** Scattered Leaves: paper selves tear off him (no blow). */
   scatter: {
-    label: 'Scattered Leaves', phase: 1, weight: [1.5, 1.8, 1.6], cooldown: 9, band: [0, 14], recovery: 0.35, cat: 'spell', densityAs: 1.1,
+    label: 'Scattered Leaves', phase: 1, weight: [1.5, 1.8, 1.6], cooldown: 9, band: [0, 14], recovery: 0.35, cat: 'spell', densityAs: 1.1, clonesFight: true,
     beats: [{ feint: true, scatter: true, windup: 0.5, active: 0.1, close: 0, track: 1, keys: scatterKeys() }],
   },
 
@@ -435,7 +435,7 @@ export const MOVES = {
 
   /** Moon-Swallowing Pearl: the Pearl gone dark over his head, a leap down on you (black: dodge it). */
   greatPearl: {
-    label: 'Moon-Swallowing Pearl', phase: 3, weight: [0, 0, 0.9], cooldown: 14, band: [2.4, 9], recovery: 0.8,
+    label: 'Moon-Swallowing Pearl', phase: 3, weight: [0, 0, 0.9], cooldown: 14, band: [2.4, 9], recovery: 0.8, clonesFight: true,
     beats: [{
       tell: K, windup: 1.5, fixed: true, hold: [0.1, 0.5], cock: 0.85, active: 0.14, damage: 44, knockback: 3, knockdown: true,
       zone: { kind: 'ring', r: 3.4 }, ring: 3.4, part: 'tip', close: 0, track: 0.9, leap: { from: 0.55, lock: 0.85, apex: 3.2 }, pearl: 'great',

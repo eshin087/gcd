@@ -115,7 +115,6 @@ export class FoxPearl {
     d.game.shake?.(0.22);
     d.addPosture(I.posture);
     if (!d.broken && d.mode === 'act') d.brain.startReact(I.react);
-    void P;
   }
 
   /** The move ended without the bat (a parry, a break, a phase): the Pearl comes apart quietly. */

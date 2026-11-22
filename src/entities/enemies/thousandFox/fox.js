@@ -111,6 +111,8 @@ export class ThousandFox extends Duelist {
     this._igniteT = 0;
     this._mantleForced = null;
     super.reset();
+    // asleep he sits among four of his selves (the intro tears them away)
+    this.clones?.seat(4);
   }
 
   /** His combo links (links.js; brain.js reads `d.LINKS`). */
@@ -235,6 +237,8 @@ export class ThousandFox extends Duelist {
     const P = this.pearl;
     // the charge ended without the bat (a parry, a break, a reaction, the death): it comes apart
     if (P.charging && (this.mode !== 'act' || this.brain.act !== P.act)) P.cancel();
+    // the intro: the seated selves tear into paper one by one as he rises (all at once if it was skipped)
+    if (this.clones.seated && this.mode !== 'sleep') this.clones.tearSeated(this.mode === 'intro' ? this.brain.modeT : Infinity);
     this.clones.frame(dt);
     P.frame(dt);
     // the mantle (phase 3): grows in over T.mantle.grow s after the change; where he stands, catches

@@ -29,7 +29,7 @@ import { perPhase } from '../duelist/realise.js';
 // Pearl's thread), rootOf(i) (drawnPoint), busy (a self winding up or striking).
 // Its rigs are plain hero rigs: a hero-side double (the Paper Double reward, ADR-135) can take one later.
 
-const IN = 'in', STALK = 'stalk', WIND = 'wind', STRIKE = 'strike', RECOVER = 'recover', DEAD = 'dead';
+const IN = 'in', STALK = 'stalk', WIND = 'wind', STRIKE = 'strike', RECOVER = 'recover', DEAD = 'dead', SEATED = 'seated';
 const PARTS = ['clone0', 'clone1', 'clone2', 'clone3', 'clone4', 'clone5', 'clone6', 'clone7'];
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const SEP = 1.7; // m the selves keep apart as they stalk
@@ -102,6 +102,40 @@ export class FoxClones {
     this._gs = 0x1f83d9ab;
   }
 
+  // ---------------------------------------------------------------- the seated intro
+  /**
+   * Asleep he sits among `n` of his selves, seated round him `r` m off (not alive: no spheres, no blow;
+   * only a look). As he wakes they tear into paper one by one (tearSeated, from his brainFrame); a
+   * fight started without the intro (the Lab) tears the rest at once.
+   */
+  seat(n = 4, r = 1.7) {
+    const d = this.d;
+    for (let k = 0; k < Math.min(n, this.list.length); k++) {
+      const c = this.list[k];
+      const a = d.yaw + Math.PI * (0.25 + (k / Math.max(1, n - 1)) * 1.5);
+      const x = d.position.x + Math.sin(a) * r, z = d.position.z + Math.cos(a) * r;
+      this._wake(c, x, z, Math.atan2(d.position.x - x, d.position.z - z) + Math.PI);
+      c.alive = false;
+      c.state = SEATED;
+      c.fade = 0;
+      c.tearAt = 0.35 + k * 0.42;
+    }
+  }
+
+  /** Tear the seated selves whose time has come (`t` s into his intro; Infinity: all now). */
+  tearSeated(t) {
+    for (const c of this.list) {
+      if (c.state !== SEATED || t < c.tearAt) continue;
+      this.d.fx.clonePop?.(c.x, 0.7, c.z, 'intro');
+      this._emit('pop', c.x, c.z, 'intro');
+      this._hide(c);
+    }
+  }
+
+  get seated() {
+    return this.list.some((c) => c.state === SEATED);
+  }
+
   _hide(c) {
     c.alive = false;
     c.state = DEAD;
@@ -140,7 +174,7 @@ export class FoxClones {
    */
   spawn(n, why = 'scatter') {
     const d = this.d, p = this.game.player?.position, T = this.T;
-    if (!p || !Number.isFinite(p.x + p.z)) return 0;
+    if (!p || !Number.isFinite(p.x + p.z) || d.mode === 'dying' || d.mode === 'dead' || d.mode === 'sleep') return 0;
     let made = 0;
     const want = Math.min(Math.max(0, n | 0), this.cap() - this.live);
     for (let k = 0; k < want; k++) {
@@ -307,6 +341,8 @@ export class FoxClones {
       c.state = STALK;
       c.t = 0;
     }
+    // (no self takes the token while the Round runs: its cuts are the Round's)
+    this.tokenAt = Math.max(this.tokenAt, this.clock + hisImpactIn + 0.4);
     return n;
   }
 
@@ -366,6 +402,9 @@ export class FoxClones {
           if (this.clock >= c.end) {
             c.state = RECOVER;
             c.t = 0;
+            // (a Round's cut is its one cut: then it stalks as any self, the token resting a while)
+            if (c.round) this.tokenAt = Math.max(this.tokenAt, this.clock + perPhase(T.every, d.phase));
+            c.round = false;
           }
           break;
         case RECOVER:
@@ -547,6 +586,10 @@ export class FoxClones {
   pose(dt) {
     const d = this.d, H = d.hurtSpheres, L = d.lean, cam = this.game.camera?.position;
     for (const c of this.list) {
+      if (c.state === SEATED) {
+        this._poseSeated(c, dt, L, cam);
+        continue;
+      }
       if (!c.alive) continue;
       const pl = c.pilot, root = c.root;
       root.position.set(c.x, 0, c.z);
@@ -605,6 +648,25 @@ export class FoxClones {
         if (u.uWarn) u.uWarn.value.w = 0;
       }
     }
+  }
+
+  /** A seated self of the intro: his meditation clip, no spheres. */
+  _poseSeated(c, dt, L, cam) {
+    const pl = c.pilot, root = c.root, M = this.d.kit.CLIP?.meditate;
+    root.position.set(c.x, 0, c.z);
+    pl.yaw = c.yaw;
+    root.rotation.y = c.yaw;
+    if (pl.atk.def !== M) {
+      pl.atk.def = M;
+      c.anim.play('duel', 0.01, true);
+    }
+    pl.stateT = pl.animT = 0;
+    c.lean.k = L.k;
+    c.lean.dx = L.dx;
+    c.lean.dz = L.dz;
+    c.anim.update(dt);
+    root.updateMatrixWorld(true);
+    if (cam) setHeroGlyphScale(c.mats, Math.hypot(cam.x - c.x, cam.y - 1.1, cam.z - c.z));
   }
 
   /** The selves' cut, realised once (its windup is fixed: the clip is the same every time). */
