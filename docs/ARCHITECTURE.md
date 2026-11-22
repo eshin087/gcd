@@ -2170,7 +2170,17 @@ centre: its name in spaced capitals, HP with a `|` at each phase gate, posture) 
 `mark(f)`): a run of fill characters, the piece just lost (held `hold` s, then drained) and the empty
 rest, between brackets, written to the DOM only when a run's length changes; anything above zero
 shows at least one cell and only a full meter shows them all. `GlyphPosture` grows from the middle.
-HP 24 cells of `#`, guard 24 of `=`, crit 16 of `>`, the boss 48, posture 32.
+HP 24 cells of `#`, guard 24 of `=`, crit 16 of `>`, the boss 48, posture 32: the lengths on a screen
+with room. **The top row is fitted** (ADR-131; `hud._fit()`, first of the HUD's steps, runs when the
+window, the touch layer or the boss's name changes; `FIT` in `ui/hud.js`; both meters have
+`resize(cells)`): on a touch screen with a short side ≤ 560 px or narrower than 900 px the hero's
+meters are 16 cells and the HP reads as one number (`.ab-compact`, `hud.compact`). The boss's meter
+takes what is left between the hero's rows and the corner (LOCK on touch, else the minimap; measured
+where there is a layout, estimated at 0.6 em a letter headless), never more than 48 cells nor fewer
+than 18: on the screen's middle while that leaves 36 cells, else in the middle of the free stretch
+(`bossEl.style.left`). Posture is two thirds of it. A name too long for the stretch gets `.tight`
+(closer letters). `hud.fit` = `{ compact, stacked, cells, left, right, mid }` (`stacked`: a phone held
+upright, where the boss's rows have a line of their own).
 The banners' big words are block letters (`ui/blockText.js`: `blockLines(text)` → six rows in the
 title logo's letterforms, `blockText(text, { maxCols })` stacks words to fit): `ui/banner.js` sizes
 them to the window's width (`BLOCK_MAX` px a character by kind) and lays them out again when the
@@ -2528,6 +2538,21 @@ controls show through the pause screen, inert, while they are stepped (`.tc-root
 taller than 560 px get everything × `pad.tall`. API: `padPos`, `padSize`, `cyclePad('pos' | 'size')`,
 `padPoint(id)` (the screen point at a tile's middle), `padGeo`.
 
+**Two more pad switches** (ADR-131; pause menu, kept in the same `localStorage` entry, both off by
+default; `?pad=split|classic` and `?hold=1|0` set them for one page load):
+- PAD LAYOUT (`layout`: `'classic'` | `'split'`, `cyclePad('layout')`). In `split` the guard is the
+  left hand's: the cluster keeps ATTACK, HEAVY and DODGE (`pad.split.tiles`; the flask stands where
+  BLOCK stood) and GUARD is a button of its own (`.tc-guard`, feeds `@block`, carries the guard
+  gauge) `pad.split.guard.gap` px right of the stick's ring on the cluster's bottom line; held upright
+  it stands above the ring (`pad.split.guardPortrait`). `.tc-root.split` shows it and hides the
+  BLOCK tile; `padPoint('guard')` / `guardGeo` give its place (null in `classic`). Changing the layout
+  releases every held control.
+- HOLD ATTACK (`holdAttack`, `cyclePad('hold')`; `CONFIG.touch.hold`). While a finger rests on ATTACK
+  the layer sends one press edge of the attack action (`input.pulse('@attack')`) `after` s into the
+  hold and then every `every` s: the player reads each as a tap. No repeat while BLOCK / GUARD is
+  held (the guard has the hero) nor for `quiet` s after DODGE, HEAVY or FLASK was pressed (the
+  repeat must not write over that press in the input buffer).
+
 **The page never zooms** (ADR-116): iOS Safari ignores `user-scalable=no`. While the layer is on it
 cancels `gesturestart` / `gesturechange`, `dblclick`, `touchmove` (outside the Lab, the pause panel and
 the WHAT'S NEW list, which scroll) and `touchend` on the canvas and inside `.tc-root` (non-passive): the
@@ -2732,7 +2757,7 @@ structure of a tree its size, falls with at least `out` 0.55 of its way pointing
 leaning one the way it leans, which was turned outward when it leaned), and where it lands strikes the
 trees behind at `domino` 1.4 × its weight (0.7 elsewhere).
 
-**Bites** (2026-11-21, ADR-131; `BREAK.chip`; behind the look switch `?chip=a`, `chipLook()`, off
+**Bites** (2026-11-21, ADR-132; `BREAK.chip`; behind the look switch `?chip=a`, `chipLook()`, off
 by default until the owner picks). A piece is the BRICKS it is drawn with: its triangles, two that
 share their longest edge and lie flat together (cosine >= 0.9: the halves of a face of a trunk, a
 pillar, a stone) being one brick; foliage stays single triangles. A blow that takes structure from a

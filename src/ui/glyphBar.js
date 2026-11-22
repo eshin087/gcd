@@ -28,6 +28,15 @@ export class GlyphBar {
     this._write();
   }
 
+  /** Another length in cells (the HUD fits a meter to the screen it is on); the values stay. */
+  resize(cells) {
+    const n = Math.max(1, Math.round(num(cells, this.cells)));
+    if (n === this.cells) return;
+    this.cells = n;
+    this._nf = this._nc = -1;
+    this._write();
+  }
+
   /** A mark over the bar at fraction f of its length (a phase gate). */
   mark(f, glyph = '|') {
     const m = el('i', 'tick', glyph, this.root);
@@ -106,6 +115,15 @@ export class GlyphPosture {
     this._n = -1;
     this._hot = null;
     this._hit = null;
+    this._write();
+  }
+
+  /** Another length in cells (an even count: it grows from its middle). */
+  resize(cells) {
+    const h = Math.max(1, Math.round(num(cells, this.half * 2) / 2));
+    if (h === this.half) return;
+    this.half = h;
+    this._n = -1;
     this._write();
   }
 

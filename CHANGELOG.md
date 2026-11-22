@@ -4,8 +4,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty pieces of work since 0.4.0:
-- **The letters come off where the blow lands** (2026-11-21, ADR-131; behind `?chip=a` until the
+Sixty-one pieces of work since 0.4.0:
+- **The letters come off where the blow lands** (2026-11-21, ADR-132; behind `?chip=a` until the
   owner picks). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
   made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
   struck (the owner: "have the ascii pieces fall of exactly where the player or enemy boss is
@@ -18,6 +18,16 @@ Sixty pieces of work since 0.4.0:
   it instead of going straight through it"): a freeze, a shake, sparks off stone, a moment stuck in
   wood, then it is thrown back; a cut that fells the thing goes through. The chips fly out of the
   struck face. Off by default: `?chip=a` (or the Lab's WORLD -> Bites) turns it on.
+- **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
+  *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
+  about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now
+  fitted to the screen: on a narrow touch screen the hero's meters are 16 cells and the HP reads as
+  one number, and the boss's bar takes the room between them and the corner buttons, shorter when it
+  must be (it also no longer runs into the hero's rows in a narrow desktop window). *Added:* two
+  switches in the pause menu, both off by default. PAD LAYOUT "guard on left": GUARD is a button
+  beside the stick, so the right thumb cuts while the left one parries; the right pad keeps ATTACK,
+  HEAVY and DODGE. HOLD ATTACK: a thumb that rests on ATTACK keeps cutting (it stops while the guard
+  is up). `?pad=split` and `?hold=1` open the game with them on.
 - **The hero looks the same on every screen** (2026-11-21, ADR-130). *Changed:* the hero is drawn with
   the same letters on every screen and at every camera distance: about 9 across his cloak, the look
   of the owner's reference picture ("the exact type of feel and look i want ... make the character

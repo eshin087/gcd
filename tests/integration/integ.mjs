@@ -8046,6 +8046,103 @@ async function scenarioTouch() {
     assert(held('@dodge'), 'the hit test follows the placement');
     P('pointerup', 44, 0, 0);
     frames(0.9);
+    // ---- PAD LAYOUT split (ADR-131): the guard is the left hand's, so one thumb cuts while the other parries
+    {
+      const guard = B('guard'), root = cls('tc-root');
+      assert(!!guard && !guard.classList.contains('tc-tile') && t.layout === 'classic' && t.holdAttack === false && t.padPoint('guard') === null, 'the default: one thumb (no GUARD on the left), no held attack');
+      const lay = t.cyclePad('layout'), Gd = t.padPoint('guard'), A2 = t.padPoint('attack'), D2 = t.padPoint('dodge');
+      assert(lay === 'split' && root.classList.contains('split') && !t.padGeo.tiles.block && !!D2 && t.padPoint('block') === null, 'PAD LAYOUT → split: the cluster keeps ATTACK / HEAVY / DODGE, no BLOCK tile');
+      assert(Gd && Gd.x < innerWidth * 0.4 && Gd.x - t.guardGeo.w / 2 > t.stick.ox + 62 && near(A2.x, A.x, 1e-6), `GUARD stands right of the stick's ring (its middle ${Gd?.x.toFixed(0)} px in), ATTACK where it was`);
+      P('pointerdown', 50, Bk.x, Bk.y);
+      assert(!held('@block') && (held('@heavy') || held('@dodge')), 'a touch where BLOCK stood goes to the nearest tile left, never to a guard');
+      P('pointerup', 50, Bk.x, Bk.y);
+      frames(1.4);
+      // the right thumb is on ATTACK, the left one taps GUARD: both held, and the guard has the hero
+      settle(G); place(G, 6);
+      const s0 = c('player:attack');
+      P('pointerdown', 51, A2.x, A2.y);
+      frames(0.12);
+      touch('pointerdown', guard, 52, Gd.x, Gd.y);
+      assert(held('@attack') && held('@block') && guard.classList.contains('on'), 'ATTACK and GUARD held by two thumbs at once');
+      frames(0.3);
+      const up = p.state === 'block' || p.state === 'parry';
+      touch('pointerup', guard, 52, Gd.x, Gd.y);
+      assert(!held('@block') && held('@attack') && !guard.classList.contains('on'), 'GUARD lifted: the guard is released, ATTACK is still held');
+      P('pointerup', 51, A2.x, A2.y);
+      frames(0.7);
+      assert(c('player:attack') === s0 + 1 && up, `the left thumb's guard cuts the right thumb's swing short (${p.state})`);
+      p.guard = p.maxGuard * 0.2;
+      p.guardWait = 5;
+      G.tick(DT);
+      assert(guard.classList.contains('low'), 'GUARD carries the guard meter too');
+      p.guard = p.maxGuard;
+      p.guardWait = 0;
+      // ---- HOLD ATTACK: off, a held ATTACK is one cut; on, the thumb rests there and he keeps cutting
+      settle(G); place(G, 6);
+      let n0 = c('player:attack');
+      P('pointerdown', 53, A2.x, A2.y);
+      frames(1.5);
+      P('pointerup', 53, A2.x, A2.y);
+      const single = c('player:attack') - n0;
+      frames(1.0);
+      assert(t.cyclePad('hold') === true && t.holdAttack, 'HOLD ATTACK → on');
+      settle(G); place(G, 6);
+      n0 = c('player:attack');
+      P('pointerdown', 54, A2.x, A2.y);
+      frames(1.5);
+      const many = c('player:attack') - n0;
+      assert(single === 1 && many >= 3, `a held ATTACK: one cut with the switch off, a string with it on (${single} / ${many} in 1.5 s)`);
+      // the guard has the hero while it is held; lifted, the cuts come back on their own
+      touch('pointerdown', guard, 55, Gd.x, Gd.y);
+      frames(0.3);
+      const n1 = c('player:attack');
+      frames(0.8);
+      const quiet = c('player:attack') - n1, guarding = p.state === 'block';
+      touch('pointerup', guard, 55, Gd.x, Gd.y);
+      frames(0.8);
+      assert(quiet === 0 && guarding && c('player:attack') > n1, `no cut while GUARD is held (${quiet}), the string resumes when it lifts`);
+      // a dodge from a second finger is not written over by the next repeat
+      const r0 = c('player:roll');
+      P('pointerdown', 56, D2.x, D2.y);
+      frames(0.1);
+      P('pointerup', 56, D2.x, D2.y);
+      frames(0.5);
+      assert(c('player:roll') === r0 + 1, 'DODGE pressed while ATTACK rests: he rolls');
+      // in a hit-stop the player's buffer ages slower than the touch layer's clock: the repeat still
+      // waits for a buffered dodge instead of writing over it (the quiet timer alone would run out first)
+      frames(0.9);
+      p.buf.action = 'roll';
+      p.buf.t = p.time;
+      t._hold.quiet = 0;
+      t._hold.next = t._hold.t; // a repeat is due this very frame
+      frames(0.05);
+      assert(p.buf.action === 'roll' || c('player:roll') > r0 + 1, 'HOLD ATTACK waits while a dodge is buffered: the repeat does not overwrite it');
+      P('pointerup', 54, A2.x, A2.y);
+      frames(1.2);
+      n0 = c('player:attack');
+      frames(0.6);
+      assert(c('player:attack') === n0 && !held('@attack'), 'ATTACK lifted: the string ends');
+      t.cyclePad('hold');
+      assert(t.cyclePad('layout') === 'classic' && !root.classList.contains('split') && !!t.padGeo.tiles.block && t.padPoint('guard') === null && !t.holdAttack, 'cycled back: one thumb, no held attack');
+    }
+  }
+  // ---- the top row on a phone (ADR-131): the hero's meters and the boss's never share a stretch
+  {
+    const hud = game.hud, clear = () => {
+      const f = hud.fit, half = ((f.cells + 2) * 10 * 0.6) / 2, mid = f.mid ?? innerWidth / 2;
+      return { f, l: mid - half - f.left, r: f.right - (mid + half) };
+    };
+    G.tick(DT);
+    const a = clear();
+    assert(hud.compact && hud.hpBar.cells === 16 && hud.guardBar.cells === 16 && !/\//.test(hud.hpVal.textContent), `phone: the hero's meters are 16 cells and the HP reads as one number ("${hud.hpVal.textContent}")`);
+    assert(a.f.cells === 48 && hud.bossBar.cells === 48 && a.f.mid === null && a.l >= 11 && a.r >= 11, `844 px wide: the boss's whole meter on the middle, clear of both sides (${a.l.toFixed(0)} / ${a.r.toFixed(0)} px)`);
+    globalThis.innerWidth = 560; // a small phone
+    G.tick(DT);
+    const b = clear();
+    assert(b.f.cells < 48 && b.f.cells >= 24 && hud.bossBar.cells === b.f.cells && b.l >= 11 && b.r >= 11, `560 px wide: the boss's meter is cut to ${b.f.cells} cells and still clear (${b.l.toFixed(0)} / ${b.r.toFixed(0)} px)`);
+    globalThis.innerWidth = 844;
+    G.tick(DT);
+    assert(hud.bossBar.cells === 48, 'back at 844 px: the whole meter again');
   }
   // stick: up = north, the rim = sprint; release stops
   settle(G); place(G, 14);
@@ -10495,7 +10592,7 @@ async function scenarioZoomArt() {
   return G;
 }
 
-// ================================================================ BLADESTOP (bites on, ?chip=a; ADR-131)
+// ================================================================ BLADESTOP (bites on, ?chip=a; ADR-132)
 // The hero's real swing into a piece of the world: with bites on the blade STOPS on what it does not cut
 // through (the frame freezes, it is held, then thrown back: the bounce), and passes through what it
 // breaks; with bites off it passes through everything, as before.

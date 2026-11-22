@@ -49,6 +49,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [x] An ASCII HUD: text meters, block-letter banners, no panels in play, a 40 – 72 px minimap (ADR-098)
   - [ ] Owner's verdict on the phone: the pad's default place and size, the slide's stick (10 px), the guard meter's numbers,
         how faint the controls are, the upright camera against the wyrm
+  - [x] The hero's meters and the boss's never overlap: the top row is fitted to the screen (ADR-131)
+  - [x] Two pad switches to try: PAD LAYOUT "guard on left" (one thumb cuts, the other parries) and HOLD ATTACK (ADR-131)
+  - [ ] Owner's pick on the phone: which of the two becomes the default, where GUARD stands
+  - [ ] Phone ideas not built yet (ADR-131 lists them): the game drawn under the notch (viewport-fit=cover), a
+        drag-to-place layout editor, a left-handed mirror, an "add to home screen" hint for full screen on iOS
 - [x] Owner approval; released as v0.4.0
 
 ## M1.6 — Reference match (2026-11-08, PR #4, `look/reference-match`)
@@ -179,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.56 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-131)
+## M1.56 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-132)
 - [x] Every breakable as bricks (its triangles; the halves of a flat face pair up), taken where a blow struck
 - [x] The share of structure a blow took = the share of the bricks under it; a blast eats the facing side
 - [x] A solid piece keeps a skin, set back; foliage, boughs and thin bones are holed

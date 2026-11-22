@@ -3192,7 +3192,7 @@ export class Player {
    * The swing against the world's breakables (ADR-107): each piece the blade sweeps through takes one
    * blow per swing, as hard as the cut (POWER = its damage / 110: a full cleave fells a tree). What
    * falls, falls away from him: stand so the thing is between you and the foe. With bites on
-   * (`?chip=a`, ADR-131) the blade STOPS on a piece it does not cut through (_bladeStops); `prevT`: the
+   * (`?chip=a`, ADR-132) the blade STOPS on a piece it does not cut through (_bladeStops); `prevT`: the
    * attack clock last frame.
    */
   _cutWorld(a, sw, prevT = NaN) {

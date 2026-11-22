@@ -27,6 +27,19 @@ import { TellEdges } from './tells.js';
 // driven by GameFlow (src/game/grade.js).
 
 const DMG_FADE = 1.6; // seconds after the last hit before the boss damage counter fades
+// The top row shares one line: the hero's meters on the left, the boss's in the middle, the corner
+// buttons and the minimap on the right. _fit() gives each what the screen has (ADR-131).
+const FIT = {
+  hp: 24, // cells of the hero's HP / guard meters ...
+  hpCompact: 16, // ... and on a touch screen too narrow for that (a phone, a tablet held upright)
+  compactBelow: 900, // px of width
+  boss: 48, // the boss's HP meter at its full length ...
+  bossMin: 18, // ... and the shortest it is ever cut to
+  centred: 36, // with this many cells or more the boss's rows stay on the screen's middle
+  post: 2 / 3, // the posture run against the HP meter
+  gap: 12, // px kept clear on each side of the boss's rows
+  glyph: 0.6, // a letter's advance against its font size (the widest of the HUD's font stack)
+};
 const GHOST_DEDUPE = 0.4; // s: 'player:perfectDodge' + 'player:ghostep' for the same blink
 // a flurry's name by its blows (player:flurryEnd; one blow has none: it is just its art)
 const FLURRY_NAMES = ['', '', 'TWIN FLASH', 'TRIPLE FLASH', 'FOURFOLD FLASH', 'FIVEFOLD FLASH', 'SIXFOLD FLASH', 'SEVENFOLD FLASH'];
@@ -145,6 +158,7 @@ export class Hud {
     on('player:hitDragon', (d) => this.calls.number(d.damage, d.point, { crit: !!d.crit, heavy: !!d.heavy }));
 
     this._steps = [
+      () => this._fit(),
       (dt) => this._updatePlayer(dt),
       (dt) => this._updateBoss(dt),
       (dt) => this.tags.update(dt),
@@ -163,6 +177,9 @@ export class Hud {
     // The player's rows (ADR-098): no panel, no name plate; every meter is a row of characters
     // (ui/glyphBar.js) drawn straight on the game.
     const pf = el('div', 'ab-pf ab-play', null, this.root);
+    this.pfEl = pf;
+    this.compact = false;
+    this._fitKey = '';
     const hpRow = el('div', 'ab-row', null, pf);
     el('span', 'lbl', 'HP', hpRow);
     this.hpBar = new GlyphBar(hpRow, 'hp', { cells: 24, hold: 0.6, drain: 2.4, rise: 6 });
@@ -348,6 +365,81 @@ export class Hud {
     }
   }
 
+  /**
+   * Fit the top row to the screen (ADR-131). On a narrow touch screen the hero's meters are cut to
+   * FIT.hpCompact cells and show the HP number alone; the boss's meter takes what is left between
+   * the hero's rows and the corner buttons (never past FIT.boss cells), on the screen's middle while
+   * that leaves it FIT.centred cells, in the middle of the free stretch otherwise. Runs when the
+   * window, the touch layer or the boss's name changes; reads the layout where there is one.
+   */
+  _fit() {
+    const w = num(globalThis.innerWidth, 0), h = num(globalThis.innerHeight, 0);
+    const touch = !!this.game.touch?.active;
+    const name = this.bossName.textContent ?? '';
+    const key = `${w}x${h}${touch ? 't' : ''}${name.length}${this.lifeEls.length}`;
+    if (key === this._fitKey) return;
+    this._fitKey = key;
+    if (!(w > 0 && h > 0)) return;
+    const short = Math.min(w, h) <= 560; // (the stylesheet's phone rules: max-height / max-width 560px)
+    const compact = touch && (short || w < FIT.compactBelow);
+    if (compact !== this.compact) {
+      this.compact = compact;
+      this.root.classList.toggle('ab-compact', compact);
+      this.hpBar.resize(compact ? FIT.hpCompact : FIT.hp);
+      this.guardBar.resize(compact ? FIT.hpCompact : FIT.hp);
+      this._hp = null; // (the number is written again, short or whole)
+    }
+    const rect = (e) => {
+      try {
+        const r = e?.getBoundingClientRect?.();
+        return r && r.width > 0 && Number.isFinite(r.left + r.right) ? r : null;
+      } catch {
+        return null;
+      }
+    };
+    const px = (e, d) => {
+      try {
+        const v = parseFloat(globalThis.getComputedStyle?.(e)?.fontSize);
+        return v > 0 ? v : d;
+      } catch {
+        return d;
+      }
+    };
+    // held upright, a phone has the boss's rows on a line of their own, under the hero's
+    const stacked = touch && w <= 560 && h > w;
+    const pfFont = px(this.pfEl, touch && short ? 10 : 13), bossFont = px(this.bossEl, touch && short ? 10 : Math.min(15, Math.max(10, w * 0.0115)));
+    let left = 8, right = w - 8;
+    if (!stacked) {
+      // the hero's rows: label, meter in its brackets, number
+      const pr = rect(this.pfEl), cells = this.hpBar.cells;
+      const pfLeft = pr ? pr.left : touch && short ? 8 : 14;
+      left = Math.max(pr ? pr.right : 0, pfLeft + (2 + 1 + cells + 2 + 1 + (compact ? 4 : 9)) * pfFont * FIT.glyph);
+      // the corner: LOCK (the leftmost of the touch buttons), else the minimap
+      const cr = rect(touch ? this.game.touch?.btn?.lock?.el : null) ?? rect(this.map?.root);
+      right = cr ? cr.left : w - (touch ? (short ? 136 : 180) : 84);
+    }
+    const ch = bossFont * FIT.glyph;
+    const fits = (width) => Math.floor(width / ch) - 2;
+    const side = Math.max(left, w - right) + FIT.gap;
+    let cells = fits(w - side * 2), mid = null;
+    if (cells < FIT.centred) {
+      const free = fits(right - left - FIT.gap * 2);
+      if (free > cells) {
+        cells = free;
+        mid = (left + right) / 2;
+      }
+    }
+    cells = Math.max(FIT.bossMin, Math.min(FIT.boss, cells));
+    const room = mid === null ? w - side * 2 : right - left - FIT.gap * 2;
+    this.bossBar.resize(cells);
+    this.postBar.resize(Math.max(8, Math.round((cells * FIT.post) / 2) * 2));
+    if (this.bossEl.style) this.bossEl.style.left = mid === null ? '' : `${mid.toFixed(1)}px`;
+    // a long name with its pips: closer letters before it runs under a neighbour
+    const lead = 0.86 * bossFont * (FIT.glyph + 0.3);
+    this.bossEl.classList.toggle('tight', name.length * lead + this.lifeEls.length * 14 + 40 > room);
+    this.fit = { compact, stacked, cells, left, right, mid };
+  }
+
   _ghostep(streak) {
     const now = num(this.game.realTime);
     if (now - this._ghostAt < GHOST_DEDUPE) return;
@@ -365,7 +457,8 @@ export class Hud {
       const hpKey = Math.ceil(hp) * 100000 + Math.round(maxHp);
       if (hpKey !== this._hp) {
         this._hp = hpKey;
-        this.hpVal.textContent = `${Math.ceil(hp)} / ${Math.round(maxHp)}`;
+        // (the short row has room for the number alone)
+        this.hpVal.textContent = this.compact ? `${Math.ceil(hp)}` : `${Math.ceil(hp)} / ${Math.round(maxHp)}`;
       }
       const low = hp > 0 && hp / maxHp < 0.25;
       if (low !== this._low) {
