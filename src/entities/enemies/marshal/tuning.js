@@ -136,8 +136,9 @@ export const TUNING = {
   eject: { ringRadius: 5, damage: 10, knockback: 6, hatchY: 2.1, travel: 3.5 },
   // Sky-Splitting Mortars: `count` shells, one every `gap` s, each a red ring `radius` m warned `warn` s
   mortar: { count: 5, gap: 0.5, warn: 1.1, radius: 2.2, damage: 22, knockback: 3, lead: 0.4, scatter: 1.6 },
-  // the pilot's thrown fire bolts (`release`)
+  // the pilot's thrown fire bolts (`release`; they fly in the duelist's crescent pool, `crescent` its defaults)
   shot: { speed: 13, radius: 0.6, life: 1.6 },
+  crescent: { speed: 13, radius: 0.6, life: 1.6, chip: 0.25 },
   // burning ground (ashDisciple/moveFx.js reads `burn`): Sweeping Fire leaves its arc alight
   burn: { from: 1, cap: [4, 6, 8, 0], width: 0.9, life: 5, len: 5, ring: 0.62, grace: 0.45, armAfter: 0.35, tick: 0.55, damage: 5, guard: 34, flames: 26, ignite: 0.8, fade: 0.6 },
 

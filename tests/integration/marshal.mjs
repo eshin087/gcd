@@ -390,8 +390,260 @@ async function scenarioLevel() {
   assert(d.lives.total === 2 && d.lives.left === 2, 'two lives: the suit and the pilot');
 }
 
+// ================================================================== scenario: data
+async function scenarioData() {
+  out('\n== scenario DATA (move data rules per body, every phase a move is used in, both ends of every roll) ==');
+  let checked = 0;
+  const count = [0, 0, 0, 0, 0];
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    const forms = formsOf(name);
+    if (!forms.length) assert(false, `${name}: used in at least one phase`);
+    if (!def.transition && !def.counter && !(Array.isArray(def.weight) && def.weight.length === FORMS)) assert(false, `${name}: a weight per phase`);
+    for (const f of forms) {
+      if (!def.transition && !def.counter) count[f]++;
+      const TT = timingOf(def.transition ? def.phase : f);
+      for (const breastLost of f <= 3 ? [false, true] : [false]) {
+        for (const r of [0, 0.35, 0.7, 0.999]) {
+          const A = realise(name, def.transition ? def.phase - 1 : f, () => r, { breastLost });
+          const real = A.beats.filter((b) => !b.feint);
+          const tag = `${name} phase ${f}${breastLost ? ' (breast off)' : ''} r${r}`;
+          if (!real.length) assert(false, `${tag}: a real hit`);
+          if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
+          const first = real[0];
+          if (!def.transition && !(first && first.impact - first.tellAt >= TT.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${first ? (first.impact - first.tellAt).toFixed(3) : '-'} >= ${TT.minFirstWindup}`);
+          for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TT.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(3)} s apart >= ${TT.minHitGap}`);
+          for (let i = 1; i < real.length; i++) if (!(real[i].flash >= real[i - 1].impact - 1e-6)) assert(false, `${tag}: hit ${i}'s flash comes after hit ${i - 1} lands`);
+          for (const b of real) if (!(b.def.zone || b.def.release || b.def.cast)) assert(false, `${tag}: hit ${b.hit} has a zone, a release or a cast`);
+          for (const b of real) if (b.def.tell === TELL.RED && b.def.zone?.kind === 'ring' && !b.def.ring) assert(false, `${tag}: a red ring marks the ground`);
+          if (!(A.end > A.recoveryStart && Math.abs(A.clip.dur - A.end) < 1e-9)) assert(false, `${tag}: clip spans the move`);
+          const body = (def.transition ? def.phase : f) >= 4 ? 1 : 0;
+          if (!(A.clip.kit === CLIPS_BY_BODY[body].clash.kit)) assert(false, `${tag}: compiled round its body's stance`);
+          checked++;
+        }
+      }
+    }
+  }
+  assert(checked > 150, `${checked} realisations obey the rules (a tell per hit, the suit's first windup >= ${TUNING.suitTiming.minFirstWindup} s and hits >= ${TUNING.suitTiming.minHitGap} s apart, the pilot's ${TUNING.pilotTiming.minFirstWindup} / ${TUNING.pilotTiming.minHitGap}, each flash after the hit before it)`);
+  for (let f = 1; f <= FORMS; f++) assert(count[f] >= 6, `phase ${f}: ${count[f]} moves`);
+  for (const [ph, mv] of Object.entries(TRANSITIONS)) assert(MOVES[mv]?.transition && MOVES[mv].phase === Number(ph), `phase ${ph} begins with ${mv}`);
+  assert(MOVES[COUNTER]?.counter && MOVES[STREAK]?.streak && realise(COUNTER, 4, () => 0.5) && realise(STREAK, 4, () => 0.5, { count: 5 })?.hits === 5, 'the pilot has her counter and her flurry');
+  for (let f = 1; f <= 4; f++) {
+    const T = timingOf(f);
+    assert(leadOf(f) <= T.minHitGap + 1e-9, `phase ${f}: the glint (${leadOf(f)} s) fits inside the tightest gap (${T.minHitGap} s)`);
+  }
+  const bolts = (f, breastLost) => realise('fireLance', f, () => 0.5, { breastLost }).hits;
+  assert(bolts(1, false) === 1 && bolts(2, false) === 2 && bolts(3, false) === 3 && bolts(1, true) === 2 && bolts(3, true) === 4, `the Fire Lance: ${[1, 2, 3].map((f) => bolts(f, false)).join(' / ')} bolts by phase, one more with the breastplate gone`);
+  assert(realise('yardSweep', 1, () => 0.5).hits === 2 && realise('yardSweep', 2, () => 0.5).hits === 3, 'Drill-Yard Sweep gains its butt slam from phase 2');
+  const flare = (f) => realise('ramThrust', f, () => 0.5).beats.find((b) => !b.feint).def.flare;
+  assert(!flare(1) && flare(2) && flare(3), "Ram's Horn is a parry moment from phase 2");
+  assert(MOVES.marshalLunge.beats[0].mikiri && MOVES.lastCharge.beats[0].lock && MOVES.lastCharge.beats[0].flare, 'the pilot: a mikiri lunge, a locking parry moment');
+}
+
+// ================================================================== scenario: timing (flash → contact)
+async function scenarioTiming() {
+  out('\n== scenario TIMING (every move from inside its band in each phase it is used: each glint is a blow, on time) ==');
+  let worst = 0, moves = 0;
+  const only = process.env.ABYSS_TMOVE;
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    if (def.transition) continue;
+    if (only && name !== only) continue;
+    for (const f of formsOf(name)) {
+      const G = build();
+      const d = G.game.dragon;
+      const [lo, hi] = def.band;
+      const at = def.counter ? 2.2 : Math.max(1.6, Math.min(hi - 0.4, lo + (Math.min(hi, 12) - lo) * 0.4));
+      duel(G, { dist: at, form: f });
+      G.game.player.debug.god = true;
+      const flashes = [], contacts = [];
+      G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') { flashes.push(G.game.time); if (only) out(`       ${G.game.time.toFixed(3)} flash ${e.attack} ${e.tell}`); } };
+      const h0 = G.hits.length;
+      const ok = name === STREAK ? d.debug.flurry(4) : d.debug.trigger(name);
+      if (!ok) { assert(false, `${name} phase ${f}: starts`); continue; }
+      run(G, 9, null, () => d.mode === 'foot' && !d.fx.crescentsAlive && !d.fx.strikesAlive && d._mortar.left === 0);
+      for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) { contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.kind} ${h.r}`); }
+      const lead = leadOf(f);
+      let w = 0;
+      for (const c of contacts) {
+        const fl = flashes.filter((t) => t <= c + 1e-6).pop();
+        w = Math.max(w, fl === undefined ? Infinity : Math.abs(c - fl - lead));
+      }
+      worst = Math.max(worst, Number.isFinite(w) ? w : 9);
+      moves++;
+      if (!contacts.length || !(w <= 0.09)) assert(false, `${name} phase ${f} from ${at.toFixed(1)} m: ${flashes.length} flashes, ${contacts.length} contacts, worst ${(w * 1000).toFixed(0)} ms`);
+      else out(`     ${name.padEnd(14)} phase ${f} from ${at.toFixed(1)} m: ${flashes.length} flashes, ${contacts.length} contacts, worst ${(w * 1000).toFixed(0)} ms`);
+    }
+  }
+  if (only) return;
+  assert(moves >= 30 && worst <= 0.09, `${moves} move × phase runs: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + flashLead, every move's first hit lands`);
+}
+
+// ================================================================== scenario: plates
+async function scenarioPlates() {
+  out('\n== scenario PLATES (the facing rule, the soak, three ways to strip one, what each loss changes, minOff, dragon:plate) ==');
+  const P = TUNING.plates;
+  const G = build();
+  duel(G, { dist: 3, form: 1 });
+  const d = G.game.dragon, p = G.game.player;
+  d.yaw = 0;
+  const at = (ang, r = 2.5) => { p.debug.teleport(d.position.x + Math.sin(ang) * r, d.position.z + Math.cos(ang) * r); };
+  const sides = [[0, 'breast'], [Math.PI, 'back'], [Math.PI / 2, 'left'], [-Math.PI / 2, 'right'], [0.5, 'breast'], [2.6, 'back']].map(([a, want]) => {
+    at(a);
+    return [want, d.plates.sideOf(p.position.x, p.position.z)];
+  });
+  assert(sides.every(([w, g]) => w === g), `a blow meets the plate on its side: ${sides.map(([w, g]) => `${w}=${g}`).join(' ')}`);
+  assert(d.guarding === false, 'the suit raises no sword guard (its plates are its guard)');
+  // the soak: from the front, 100 raw → 30 to the bar, 100 to the breastplate
+  at(0);
+  let hp0 = d.hp, s0 = d.plates.s.breast.hp;
+  d.takeHit({ damage: 100, part: 'body' });
+  const bar = hp0 - d.hp, plate = s0 - d.plates.s.breast.hp;
+  assert(Math.abs(bar - 100 * P.soak) <= 1 && Math.abs(plate - 100) < 1e-6, `plated: the bar took ${bar.toFixed(0)} (soak ${P.soak}), the breastplate ${plate}`);
+  s0 = d.plates.s.breast.hp;
+  d.takeHit({ damage: 40, part: 'body', heavy: true });
+  assert(Math.abs(s0 - d.plates.s.breast.hp - 40 * P.heavyK) < 1e-6, `a heavy blow bites the plate x${P.heavyK}`);
+  // (a) cuts on one side strip it, and the event goes out
+  const ev = [];
+  G.watch = (n, e) => { if (n === 'dragon:plate') ev.push(e); };
+  at(Math.PI / 2);
+  let n = 0;
+  while (d.plates.on('left') && n++ < 40) { d.takeHit({ damage: 30, part: 'body' }); run(G, 0.05); }
+  assert(d.plates.off('left') && ev.some((e) => e.plate === 'left' && e.left === 4), `cuts on his left take the left plate off (${n} cuts; dragon:plate ${JSON.stringify(ev[0])})`);
+  const M = d.T.move;
+  assert(Math.abs(M.run - TUNING.moveSuit.run * P.left.lost.run) < 1e-6 && Math.abs(M.turn[0] - TUNING.moveSuit.turn[0] * P.left.lost.turn) < 1e-6, `a flank lost: run ${M.run.toFixed(2)} and turns x${P.left.lost.turn}`);
+  // a bare back takes x1.4
+  d.plates.shed('back', 'lab');
+  at(Math.PI);
+  hp0 = d.hp;
+  d.takeHit({ damage: 20, part: 'body' });
+  assert(Math.abs(hp0 - d.hp - 20 * P.backBare) <= 1, `the bare back: ${(hp0 - d.hp).toFixed(0)} from 20 (x${P.backBare})`);
+  d.plates.reset();
+  d._applyMove();
+  // (b) a deathblow on a posture break with the bar still up: the helm first, then the weakest plate
+  {
+    const G2 = build();
+    duel(G2, { dist: 3, form: 1 });
+    const d2 = G2.game.dragon;
+    d2.plates.s.right.hp = 50;
+    hp0 = d2.hp;
+    deathblow(G2, 'posture');
+    run(G2, 2);
+    const helmOff = d2.plates.off('helm');
+    const p0 = d2.posture;
+    d2.addPosture(10);
+    const k = (d2.posture - p0) / 10;
+    deathblow(G2, 'posture');
+    assert(helmOff && d2.plates.off('right') && d2.hp < hp0 && Math.abs(k - P.helm.lost.posture) < 0.05, `deathblows tear the helm off first, then the weakest plate (right); the helm off: posture x${k.toFixed(2)}`);
+  }
+  // (c) a PERFECT parry of a Fire Lance bolt returns it onto the plate facing the hero
+  {
+    const G3 = build();
+    duel(G3, { dist: 8, form: 1 });
+    const d3 = G3.game.dragon;
+    G3.defend = makeDefender(G3, { early: 0.05 });
+    const b0 = d3.plates.s.breast.hp, q0 = d3.posture;
+    Math.random = () => 0.9;
+    d3.debug.trigger('fireLance');
+    run(G3, 5, () => G3.defend.act(), () => d3.mode === 'foot');
+    const lost = b0 - d3.plates.s.breast.hp;
+    assert(G3.hits.some((h) => h.r === RESULT.PARRIED) && lost === TUNING.lance.returnPlate && d3.posture > q0, `a perfect parry returns the bolt: the breastplate loses ${lost}, his posture ${q0.toFixed(0)} → ${d3.posture.toFixed(0)}`);
+    d3.plates.s.breast.hp = 100;
+    run(G3, 0.5);
+    d3.debug.trigger('fireLance');
+    run(G3, 5, () => G3.defend.act(), () => d3.mode === 'foot');
+    assert(d3.plates.off('breast'), 'a returned bolt on a weak breastplate takes it off');
+    // the breast off: one more bolt; Sweeping Fire may be picked in phase 1
+    const A = d3.kit.realise('fireLance', 1, () => 0.5, null);
+    assert(A.hits === 2 && d3.weigh('fireSweep', MOVES.fireSweep, 1) > 0, 'the breastplate off: the Fire Lance fires one more bolt, Sweeping Fire is open in phase 1');
+  }
+  // what the other losses change: the back (the vent behind him), both flanks (no Iron Charge)
+  {
+    d.plates.shed('back', 'lab');
+    at(Math.PI, 3);
+    const w = d.weigh('ventBurst', MOVES.ventBurst, 1);
+    d.plates.shed('left', 'lab');
+    d.plates.shed('right', 'lab');
+    assert(w === P.back.lost.ventBehind && d.weigh('ironCharge', MOVES.ironCharge, 1) === 0, `the back off: Bellows Vent x${w} with the hero behind; both flanks off: no Iron Charge`);
+  }
+  // minOff at each transition: the least-sound plates blow off at the impact (never the helm)
+  {
+    const G4 = build();
+    duel(G4, { dist: 6, form: 1 });
+    const d4 = G4.game.dragon;
+    d4.debug.setAI(true);
+    d4.plates.s.back.hp = 10;
+    d4.takeHit({ damage: 99999, exact: true });
+    run(G4, 6, null, () => d4.phase === 2 && d4.mode === 'foot');
+    const gone2 = d4.plates.gone, back2 = d4.plates.off('back');
+    d4.takeHit({ damage: 99999, exact: true });
+    run(G4, 6, null, () => d4.phase === 3 && d4.mode === 'foot');
+    assert(gone2 >= P.minOff[1] && back2 && d4.plates.gone >= P.minOff[2] && d4.plates.on('helm'), `the transitions shed the least-sound plates: ${gone2} gone at phase 2 (the back first), ${d4.plates.gone} at phase 3, the helm kept`);
+  }
+}
+
+// ================================================================== scenario: handover
+async function scenarioHandover() {
+  out('\n== scenario HANDOVER (bar empty → break → deathblow → the husk and the pilot; an unanswered break; reset) ==');
+  const G = build();
+  duel(G, { dist: 3, form: 3 });
+  const d = G.game.dragon;
+  const ev = [];
+  G.watch = (n, e) => { if (n === 'dragon:plate' || n === 'dragon:phase4' || n === 'dragon:plunged') ev.push(n); };
+  d.takeHit({ damage: 99999, exact: true });
+  run(G, 0.2);
+  assert(d.broken && d.hp === 0 && d.phase === 3, `the suit's bar empty: it breaks (${d.mode})`);
+  run(G, 1.2);
+  assert(d.plates.left === 0, `every plate left blows off (${ev.filter((n) => n === 'dragon:plate').length} events)`);
+  place(G, 2.0);
+  run(G, 3, () => { if (((G.game.realTime * 60) | 0) % 12 === 0 && d.broken) G.input.click(0); }, () => d.phase === 4);
+  run(G, 4, null, () => d.mode === 'foot');
+  assert(ev.includes('dragon:plunged') && ev.includes('dragon:phase4') && d.phase === 4 && d.body === 'pilot', 'the deathblow ejects the pilot (dragon:phase4)');
+  assert(d.husk?.visible && d.maxHp === TUNING.pilot.hp && d.hp === d.maxHp && Math.abs(d.lean.scale - TUNING.pilot.scale) < 1e-9 && d.radius === TUNING.pilot.radius && d.kit.blade.tip < 1.2, `the husk kneels; the pilot: bar ${d.maxHp}, drawn at ${d.lean.scale}, body circle ${d.radius}, the sabre's reach`);
+  assert(d.lives.left === 1 && d.phaseAt.length === 1, 'one life left; her bar has no gates');
+  // her guard: a strike from the front is turned
+  d.debug.setAI(true);
+  run(G, 1.5, null, () => d.guarding);
+  assert(d.guarding, 'the pilot raises a sword guard');
+  // the hurt spheres sit on her drawn body (the scale) and the suit's are scaled out
+  const hy = Math.max(...d.hurtSpheres.map((s) => s.y));
+  assert(hy < 2.0, `her highest hurt sphere at ${hy.toFixed(2)} m`);
+  // the pilot at zero breaks; the deathblow kills her
+  d.debug.setAI(false);
+  d.takeHit({ damage: 99999, exact: true });
+  run(G, 0.3);
+  assert(d.broken && d.mode !== 'dying', 'her bar empty: she breaks');
+  place(G, 2.0);
+  run(G, 4, () => { if (((G.game.realTime * 60) | 0) % 12 === 0 && d.broken) G.input.click(0); }, () => d.mode === 'dying' || d.mode === 'dead');
+  assert(d.mode === 'dying' || d.mode === 'dead', 'the deathblow kills her');
+  // an unanswered break still ejects
+  {
+    const G2 = build();
+    duel(G2, { dist: 6, form: 2 });
+    const d2 = G2.game.dragon;
+    d2.takeHit({ damage: 99999, exact: true });
+    run(G2, TUNING.posture.breakTime + 4, null, () => d2.phase === 4 && d2.mode === 'foot');
+    assert(d2.phase === 4 && d2.body === 'pilot' && d2.mode === 'foot', `a break nobody answered: she climbs out all the same (${d2.mode})`);
+    // reset restores the suit
+    d2.reset();
+    assert(d2.phase === 1 && d2.body === 'suit' && d2.plates.left === 5 && !d2.husk.visible && d2.maxHp === TUNING.suit.hp && Math.abs(d2.lean.scale - TUNING.suit.scale) < 1e-9 && d2.mode === 'sleep', 'reset(): the suit again, every plate on, the husk gone, kneeling');
+  }
+  // the suit's hurt spheres are scaled out from the root (what is drawn is what is hit)
+  {
+    const G3 = build();
+    duel(G3, { dist: 4, form: 1 });
+    const d3 = G3.game.dragon;
+    const head = d3.hurtSpheres[0];
+    assert(head.y > 2.6 && Math.abs(head.r - 0.2 * TUNING.suit.game) < 1e-6, `the suit's head sphere at ${head.y.toFixed(2)} m, r ${head.r.toFixed(2)}`);
+  }
+}
+
 const S = {
   level: scenarioLevel,
+  data: scenarioData,
+  timing: scenarioTiming,
+  plates: scenarioPlates,
+  handover: scenarioHandover,
 };
 const list = SCEN === 'all' ? Object.keys(S) : [SCEN];
 for (const k of list) {

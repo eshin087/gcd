@@ -87,6 +87,14 @@ export class ClockworkMarshal extends Duelist {
     holder.d = this;
   }
 
+  /** The lance and the sabre stay on today's material (thinner than an art cell): dark bronze and iron. */
+  _tint(M) {
+    const fill = (m, r, g, b) => m?.uniforms?.uArtFill?.value.setRGB(r, g, b);
+    fill(M.trim, 0.11, 0.095, 0.07);
+    fill(M.blade, 0.2, 0.19, 0.17);
+    fill(M.bladeTip, 0.24, 0.22, 0.2);
+  }
+
   _makeFx() {
     return new MarshalFx(this);
   }
