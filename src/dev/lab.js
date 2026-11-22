@@ -819,6 +819,13 @@ export class Lab {
     button(grid, 'Stagger', () => this._fightAction('stagger'));
     button(grid, 'Posture break', () => this._fightAction('postureBreak'));
     button(grid, 'Kill', () => this._fightAction('kill'), 'danger');
+    // a boss's own buttons (debug.labButtons(): the Tide Colossus's grip, its head, its reward)
+    for (const x of D?.debug?.labButtons?.() ?? []) {
+      button(grid, x.label, () => {
+        this._prepareFlow();
+        this._dragon(x.method, ...(x.args ?? []));
+      }).title = x.title ?? '';
+    }
     // the wyrm's phase-3 fire (dragon/ablaze.js): cycle its strength off / a / b / c
     if (typeof this.game.dragon?.debug?.ablaze === 'function') {
       const b = button(grid, `Ablaze ${this.game.dragon.debug.ablaze()}`, () => {

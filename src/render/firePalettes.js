@@ -33,6 +33,14 @@ export const FIRE_PALETTES = {
     stops: [[0.62, 0.36, 0.035], [1.25, 0.82, 0.1], [1.95, 1.48, 0.3], [2.5, 2.2, 0.85], [3.1, 3.0, 2.3]],
     hdr: 0.6, fill: 0.08, back: [0.45, 0.75], lick: 0.4, erode: 0.6, boil: 11, warp: 0.6, haze: [1.0, 0.78, 0.32],
   },
+  // BRINE (Drownwatch Cliff: the Tide Colossus's breath, its surge, the water it throws; ADR-142). Not a
+  // kind of its own either: the level swaps the void slot for it, as the Skybreak Ring does for gold.
+  // Dark sea green through jade to a foam-white heart (green always over blue: cyan is the hero's alone,
+  // ADR-106); it tears less than flame and barely climbs (water falls, it does not rise).
+  brine: {
+    stops: [[0.02, 0.2, 0.12], [0.05, 0.56, 0.3], [0.2, 1.15, 0.6], [0.9, 2.0, 1.25], [2.6, 3.1, 2.7]],
+    hdr: 0.6, fill: 0.07, back: [0.5, 0.8], lick: 0.25, erode: 0.8, boil: 10, warp: 0.6, haze: [0.35, 1.0, 0.62],
+  },
   steel: {
     stops: [[0.5, 0.5, 0.6], [1.2, 1.2, 1.32], [1.9, 1.88, 1.85], [2.7, 2.65, 2.55], [3.5, 3.4, 3.2]],
     hdr: 0.6, fill: 0.06, back: [0.3, 0.55], lick: 0, erode: 0, boil: 12, warp: 0,

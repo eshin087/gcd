@@ -47,6 +47,8 @@ const ROLES = {
   starless: { single: 'lunge', string: 'litany', long: 'litany', red: 'reap', lock: 'skyfall' },
   // Tian Lei (the Skybreak Ring): his form-1 lock is Hundred Hands' last blow (Vanishing Step's is form 2's)
   ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
+  // the Tide Colossus (Drownwatch Cliff): its hands' blows (a fuller catalogue is a follow-up)
+  tide: { single: 'hammer', string: 'breaker', long: 'breaker', red: 'slam', area: 'surge' },
 };
 
 export function bossKinds(game) {

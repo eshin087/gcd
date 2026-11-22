@@ -193,10 +193,12 @@ export class CombatFeed {
     on('dragon:hurt', (d) => this.hurts.push({ damage: d.damage, part: d.part, crit: !!d.crit, heavy: false }));
     // (the boss slot: the wyrm or a duelist; names from its full name, ui/bossName.js)
     const duel = () => this.game.dragon?.kind === 'duelist';
-    on('dragon:wake', () => log(duel() ? `${this._name()} rises…` : 'The wyrm stirs…', 'warn', 'wake', 5));
+    // (a creature boss's lines: the level's own `wake` / `fury` when it has them, Drownwatch Cliff's; else the wyrm's)
+    const lvl = (k, d) => (typeof this.game.level?.text?.[k] === 'string' ? this.game.level.text[k] : d);
+    on('dragon:wake', () => log(duel() ? `${this._name()} rises…` : lvl('wake', 'The wyrm stirs…'), 'warn', 'wake', 5));
     on('dragon:roar', () => log(`${this._name()} roars!`, 'combat', 'roar', 6));
     on('dragon:introDone', () => log(`${this._name()}, ${this._title()}, bars your path.`, 'warn', 'intro', 5));
-    on('dragon:breathStart', () => log(`${this._name()} breathes fire!`, 'combat', 'breath', 4));
+    on('dragon:breathStart', () => log(`${this._name()} breathes ${lvl('breath', 'fire')}!`, 'combat', 'breath', 4));
     on('dragon:takeoff', () => log(duel() ? `${this._name()} leaps!` : `${this._name()} takes to the sky!`, 'combat', 'takeoff', 4));
     // (the forest's wall coming down opens the ground behind it: world/edge.js, ADR-125; said once a fight)
     on('world:edge', (d) => d?.first && log('The wall of trees is torn open: the way out of the clearing lies clear.', 'warn', 'edge', 30));
@@ -207,7 +209,7 @@ export class CombatFeed {
       const t = this.game.dragon?.lives ? this.game.level?.text?.[`phase${n}`] : null;
       return typeof t === 'string' && t ? `${t.charAt(0)}${t.slice(1).toLowerCase()}.` : null;
     };
-    on('dragon:phase2', () => log(formLine(2) ?? (duel() ? `${this._name()}'s blade kindles!` : "The Cinder Wyrm's fury ignites!"), 'warn'));
+    on('dragon:phase2', () => log(formLine(2) ?? (duel() ? `${this._name()}'s blade kindles!` : lvl('fury', "The Cinder Wyrm's fury ignites!")), 'warn'));
     for (const n of [3, 4]) {
       on(`dragon:phase${n}`, () => {
         const line = formLine(n);

@@ -655,9 +655,10 @@ export class GameFlow {
     } else this.deadPollT = 0;
   }
 
-  /** Boss framing (TUNE.bossCam): hero + the wyrm's hurt spheres in view at the default camera. */
+  /** Boss framing (TUNE.bossCam): hero + the wyrm's hurt spheres in view at the default camera (or the
+   *  boss's `frameSpheres` when it has them: what is in play, not the whole body; the Tide Colossus). */
   _bossFrame(rdt) {
-    const g = this.game, H = g.dragon?.hurtSpheres, p = g.player?.position;
+    const g = this.game, H = g.dragon?.frameSpheres ?? g.dragon?.hurtSpheres, p = g.player?.position;
     const rig = g.cameraRig;
     const T = rig?.mobile ? BOSS_CAM_MOBILE : TUNE.bossCam;
     this._ovLambda = 1.5;

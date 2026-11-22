@@ -58,6 +58,12 @@ export const SCORE = {
         T('cinder-p3', { xfade: 3 }),
       ],
     },
+    // Drownwatch Cliff borrows too until its score is picked by ear: the wyrm's three phase tracks for
+    // the game's other three-phase creature, the Ashfall exploring track so it does not open as Cinderwood.
+    tide: {
+      explore: T('ash-explore', { xfade: 3 }),
+      phases: [T('cinder-p1'), T('cinder-p2', { xfade: 0.1 }), T('cinder-p3', { xfade: 3 })],
+    },
   },
   victory: T('victory', { loop: false }), // Victory Fanfare Short, cynicmusic
   death: T('death', { loop: false }), // Death of a Ninja (Game Over), Joth

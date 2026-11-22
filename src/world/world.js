@@ -61,6 +61,11 @@ export class World {
     // a set may lower the ground plane (`groundY`: the Skybreak Ring's butte crown stands far above
     // the badlands; the set draws its own walkable top)
     if (Number.isFinite(this.forest.groundY) && this.forest.groundY !== 0) this.ground.position.y = this.forest.groundY;
+    // ... or give it another shape (`groundGeometry`: Drownwatch Cliff's ends at the rim, the sea is no ground)
+    if (this.forest.groundGeometry?.isBufferGeometry) {
+      this.ground.geometry.dispose();
+      this.ground.geometry = this.forest.groundGeometry;
+    }
     applySky(U, this.forest.sky);
     this.scorch = new Scorch(U, game);
     const extent = 150;
