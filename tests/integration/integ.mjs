@@ -10605,6 +10605,138 @@ async function scenarioThump() {
   return G;
 }
 
+async function scenarioStamp() {
+  out('\n== scenario STAMP (the hit printed in the letter grid: on, off, instead, LOW, a light chain) ==');
+  const S = await imp('src/combat/impactStamp.js');
+  const { IMPACT } = await imp('src/combat/impact.js');
+  const { CUT_LAST } = await imp('src/combat/cutFx.js');
+  const { FIRE_KIND } = await imp('src/render/firePalettes.js');
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const p = game.player, F = game.fx.fire, L = S.STAMP_LOOK;
+  const on0 = { ...IMPACT.on }, k0 = { ...IMPACT.k }, q0 = game.settings.quality;
+  const spawn0 = F.spawn;
+  let steel = [];
+  F.spawn = (o) => {
+    if (o.kind === FIRE_KIND.steel || o.kind === 'steel') steel.push({ x: o.x, y: o.y, z: o.z, size: o.size, heat: o.heat, life: o.life });
+    return spawn0(o);
+  };
+  const pt = { x: 0, y: 1.2, z: 0 };
+  const C = { x: 0, y: 1.2, z: 0, f: 0.3, cx: 1, cy: -0.3, cz: 0, gx: 1, gz: 0, ex: 0.2, ey: 0.1, ez: 1 };
+  const only = (piece) => { for (const k of IMPACT.pieces) { IMPACT.on[k] = k === piece; IMPACT.k[k] = 1; } };
+  // one landed cut and the stamp's whole life after it (fx time at 60 Hz, then 0.6 x through a freeze)
+  const hit = (tier, crit = false, k = 0) => {
+    S.stampClear(game);
+    steel = [];
+    const n0 = S.STAMP_LAST.n;
+    game.fxDt = 1 / 60;
+    p.fx.contact(pt, tier, C, crit, k);
+    const cut = { ...CUT_LAST };
+    const perFrame = [steel.length];
+    for (let i = 0; i < 40; i++) {
+      const b = steel.length;
+      game.fxDt = i < 6 ? 0.01 : 1 / 60;
+      F.update(game.fxDt);
+      S.stampUpdate(game, game.fxDt);
+      perFrame.push(steel.length - b);
+    }
+    return { drawn: S.STAMP_LAST.n - n0, last: { ...S.STAMP_LAST }, blobs: steel.slice(), perFrame, cut };
+  };
+  const BUDGET = { light: 12, sweep: 14, point: 16, slam: 24, cleave: 30, execute: 34 }; // most cells in one drawn frame
+  const rows = [], bad = [];
+  try {
+    game.settings.quality = 2;
+    only('stamp');
+    S.setStampMode('over');
+    for (const [tier, k] of [['light', 0], ['sweep', 0], ['point', 0], ['slam', 0], ['cleave', 0], ['cleave', 1], ['execute', 0]]) {
+      for (const crit of [false, true]) {
+        const r = hit(tier, crit, k), tag = `${tier}${k ? ' k1' : ''}${crit ? ' crit' : ''}`;
+        const fr = L.frames[L.tier[tier].shape];
+        if (r.drawn !== 1 || !(r.last.blobs > 0) || r.last.frames !== fr) bad.push(`${tag}: drawn ${r.drawn}, ${r.last.blobs} blobs, ${r.last.frames}/${fr} frames`);
+        if (!r.blobs.every((b) => [b.x, b.y, b.z, b.size, b.heat, b.life].every(Number.isFinite))) bad.push(`${tag}: a blob not finite`);
+        if (r.blobs.some((b) => b.y < L.minY)) bad.push(`${tag}: a blob below ${L.minY} m (${Math.min(...r.blobs.map((b) => b.y)).toFixed(2)})`);
+        if (r.blobs.some((b) => b.heat > 1.3)) bad.push(`${tag}: a cell hotter than 1.3 (a white blot)`);
+        if (r.last.peak > BUDGET[tier] * (crit ? 1.5 : 1)) bad.push(`${tag}: ${r.last.peak} cells in a frame > ${BUDGET[tier]}`);
+        if (r.perFrame.slice(-8).some((n) => n > 0)) bad.push(`${tag}: still writing 0.5 s on`);
+        if (!(r.cut.slash > 0)) bad.push(`${tag}: the cut's line is gone with the stamp 'over' it`);
+        if (!crit) rows.push(`${tag} ${r.last.blobs}/${r.last.peak}`);
+      }
+    }
+    out(`   stamp: blobs written / most in one frame per tier: ${rows.join(' · ')}`);
+    assert(bad.length === 0, `on: every tier writes steel in its own stepped frames, finite, never below ${L.minY} m, no cell past 1.3, within its budget, and ends${bad.length ? ': ' + bad.slice(0, 4).join('; ') : ''}`);
+    // a crit is larger
+    const lc = hit('light', true), ln = hit('light', false);
+    assert(lc.last.blobs > ln.last.blobs, `a crit's stamp is larger (${lc.last.blobs} blobs vs ${ln.last.blobs})`);
+    // LOW: fewer blobs, one frame fewer
+    game.settings.quality = 0;
+    const sl = hit('slam'), xl = hit('execute');
+    game.settings.quality = 2;
+    const sh = hit('slam'), xh = hit('execute');
+    assert(sl.last.blobs < sh.last.blobs && xl.last.blobs < xh.last.blobs && sl.last.frames === sh.last.frames - 1, `LOW writes less: slam ${sl.last.blobs} < ${sh.last.blobs}, execute ${xl.last.blobs} < ${xh.last.blobs}, ${sl.last.frames} frames`);
+    // a light chain: three cuts in a second never stack into a blot
+    S.stampClear(game);
+    steel = [];
+    let worst = 0;
+    for (let c = 0; c < 3; c++) {
+      game.fxDt = 1 / 60;
+      p.fx.contact(pt, 'light', C, false, 0);
+      for (let i = 0; i < 20; i++) {
+        const b = steel.length;
+        game.fxDt = 1 / 60;
+        F.update(game.fxDt);
+        S.stampUpdate(game, game.fxDt);
+        worst = Math.max(worst, steel.length - b);
+      }
+    }
+    assert(worst <= BUDGET.light, `a light chain (3 cuts in a second): at most ${worst} cells written in a frame (one stamp's worth, <= ${BUDGET.light})`);
+    // 'instead': the cut's line and cross go, the sparks, the core, the motes stay
+    only(null);
+    const off = hit('slam');
+    only('stamp');
+    S.setStampMode('instead');
+    const ins = hit('slam');
+    S.setStampMode('over');
+    const c0 = off.cut, c1 = ins.cut;
+    assert(c1.slash === 0 && c1.tick === 0 && c0.slash > 0 && c1.sparks === c0.sparks && c1.core === c0.core && c1.motes === c0.motes && c1.ring === c0.ring && ins.last.blobs > 0, `'instead': no slash line (${c1.slash}) or cross (${c1.tick}); sparks ${c1.sparks}/${c0.sparks}, core ${c1.core}, motes ${c1.motes}/${c0.motes}, ring ${c1.ring}/${c0.ring} as without the stamp`);
+    // OFF: the switch, then k = 0: nothing written, the cut as without the piece
+    only(null);
+    const n0 = S.STAMP_LAST.n;
+    const a = hit('slam'), b = hit('light');
+    IMPACT.on.stamp = true;
+    IMPACT.k.stamp = 0;
+    const z = hit('cleave', false, 1);
+    const kz = S.stampHit(game, 0, 1.2, 0, { tier: 'light', cut: { x: 1, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 1 } }, 0);
+    assert(S.STAMP_LAST.n === n0 && a.blobs.length + b.blobs.length + z.blobs.length === 0 && kz === 0 && a.cut.slash > 0 && a.cut.tick > 0 && b.cut.slash > 0, `off (the switch, or k 0): no stamp drawn (${S.STAMP_LAST.n - n0}), no steel written (${a.blobs.length + b.blobs.length + z.blobs.length}); the cut's line and cross as they were (slam ${a.cut.slash} + ${a.cut.tick})`);
+    // never throws: no fire field, no game, NaN in
+    let threw = null;
+    try {
+      S.stampUpdate({}, 1 / 60);
+      S.stampUpdate(null, 1 / 60);
+      S.stampUpdate({ fx: {} }, NaN);
+      S.stampClear({});
+      S.stampClear(null);
+      S.stampHit({}, 0, 1, 0, { tier: 'light' }, 1);
+      S.stampHit(game, NaN, 1, 0, { tier: 'light' }, 1);
+      S.stampHit(game, 0, 1, 0, null, 1);
+      S.stampHit(game, 0, 1, 0, { tier: 'nonsense', cut: { x: NaN, y: NaN, z: NaN }, edge: null }, 1);
+      for (let i = 0; i < 12; i++) S.stampUpdate(game, 1 / 60);
+    } catch (e) {
+      threw = e;
+    }
+    assert(!threw && steel.every((s) => [s.x, s.y, s.z].every(Number.isFinite)), `no fire field, no game, NaN or an unknown tier: nothing throws, nothing NaN is written${threw ? ' (' + threw.message + ')' : ''}`);
+    assert(Array.isArray(S.STAMP_GLYPHS) && S.STAMP_GLYPHS.length === 0, 'the stamp spawns no glyph particles (it is written in the fire field only)');
+  } finally {
+    F.spawn = spawn0;
+    Object.assign(IMPACT.on, on0);
+    Object.assign(IMPACT.k, k0);
+    game.settings.quality = q0;
+    S.setStampMode('over');
+    S.stampClear(game);
+  }
+  return G;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -10625,6 +10757,7 @@ const SCENARIOS = {
   flurry: scenarioFlurry,
   riposte: scenarioRiposte,
   flare: scenarioFlare,
+  stamp: scenarioStamp,
   training: scenarioTraining,
   deflect: scenarioDeflect,
   lab: scenarioLab,
