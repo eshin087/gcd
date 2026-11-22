@@ -25,6 +25,7 @@ export const RELEASES = [
           'A wave runs out through the boss\'s letters from where the blade struck. A light cut sends a small one; a slam, a charged cleave or the execution sends one across the whole body.',
           'The boss\'s body answers where you hit it: a head cut snaps the head aside, a body cut twists him, a leg cut buckles the knee. The Cinder Wyrm\'s head, neck, body, wings and tail each answer their own way.',
           'Heavy blows land with a deeper thump, and the music ducks for a moment under them.',
+          'The white glare where your blade meets the boss is a little softer, so you can see all of this happen.',
           'None of it changes the fight: hits, timing and the bosses\' moves are as they were.',
         ],
       },
