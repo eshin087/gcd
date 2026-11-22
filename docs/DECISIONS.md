@@ -4027,13 +4027,24 @@ ADR-092).
      layout's `rng` is not read (the trees were its last user, so nothing else moves). Within 43 m of
      the seal a piece is a breakable (`look: 'prop'`; stone leaves rubble, `swords` are metal, the
      banner and the cart wood); beyond, it merges into the set's stones. On the near side of the
-     path (z > 6) nothing is taller than 3 m: a banner drawn there is rebuilt as a cairn.
+     path (z > 6) nothing is taller than 3 m: a banner drawn there is rebuilt as a cairn. **None of
+     them topples** (`topples: false`): a grave of swords or a cart is no trunk to fell, and with
+     tall pieces that topple the Lord's crescents felled banners onto the hero in the middle of his
+     moves (seed 4242: a void push and a falling banner 0.3 s apart, two answers); the fight keeps
+     the rim's shards and slabs to bring down, as it was tuned.
   3. **A look switch, the owner's pick**: `?outskirts=0` the felled forest, `a` the shrine the star
      fell on, `b` the star's own debris, `c` those who came for him, `m` all. Rendered in game as four
      sheets plus a close-up of each piece; **the owner picked `c`** (`PICKED.outskirts`). The others
      stay behind the switch (ADR-122's convention); `?looks=old` draws the forest.
+  4. **The fairness guard covers a felled piece it could not see coming** (`brain.worldClash`, asked
+     by `destructibles.js` at the piece's flash): if a blow of the boss's already cued needs the other
+     answer within `guard.sep` of its landing, the piece lands uncued and harmless (`quiet`). The new
+     objects shifted the seeded sims (three.js draws its uuids from the seeded `Math.random`), and
+     `lord.mjs` pace seed 4242 form 2 met a case main also has: a void push told at 109.68 s, a rim
+     shard felled at 110.07 s by his crescent, their flashes 0.25 s apart; the push's hold at its cue
+     (0.5 s at most) could not clear it.
 - **Consequences:** the throne lists 255 breakables (222) in 365 bones of 1023. The Starless Lord's
-  terrain moves can take the new pieces: any that topples within his reach can be felled onto the
-  hero (banners, sword graves); none of option c's pieces is his to lift (only the jars, `lift` 1). The jars', lanterns' and
+  terrain moves leave the new pieces alone: none topples, and none of option c's is his to lift
+  (only the jars, `lift` 1). The jars', lanterns' and
   roof's break and burn use their materials' defaults. Option `c` uses 6 of the 13 builders; the
   others are kept for `a`, `b` and `m`.

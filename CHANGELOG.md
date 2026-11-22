@@ -12,7 +12,7 @@ Sixty pieces of work since 0.4.0:
   a sword, wrecked carts on their sides, a few steles on stone turtles and split boulders, each one
   built differently, all in the dragon look. Faces turn toward the camera, what fell lies the way the
   blast threw it, and nothing tall stands between the camera and the duel. About 70 of them within
-  reach break, fall and burn (stone leaves rubble). The owner's pick of three rendered options
+  reach break where they stand and the wooden ones burn (stone leaves rubble). The owner's pick of three rendered options
   (`?outskirts=a` a shrine, `b` the star's debris, `m` all of them, `0` the felled forest).
 - **The hero looks the same on every screen** (2026-11-21, ADR-130). *Changed:* the hero is drawn with
   the same letters on every screen and at every camera distance: about 9 across his cloak, the look

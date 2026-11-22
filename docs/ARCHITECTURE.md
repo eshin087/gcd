@@ -2623,7 +2623,7 @@ seal: cairn 21, swords 16, boulder 10, cart 9, banner 7, stele 5) in 365 (ADR-12
 pools are built in every set: +42 bones in each arena). `throneHall.js` places them on a stream of its
 own (`CONFIG.seed + 14312`): 125 spots 3.8 m apart off the path and the dais, a bag of kinds by
 weight; beyond 43 m they merge into the set's stones. Stone (cairn, boulder, stele) leaves rubble;
-`swords` are `mat: 'metal'`, the banner and the cart wood (they burn).
+`swords` are `mat: 'metal'`, the banner and the cart wood (they burn); none topples (`topples: false`).
 **Every tree of Cinderwood breaks**, out to the forest's edge (74 m; it was those within 42 m), and the
 Elder Wyrm's skeleton, the Cinder Tree and the nest break in pieces (ADR-120 reverses ADR-119's "they
 stay whole"); the bonfire stays whole. In `forest.js` the trees and the Cinder Tree are runs of the
@@ -3097,6 +3097,10 @@ data and a subclass with a few hooks.
     CALLS lands at least `guard.sep + margin` from every known impact needing the other answer (the running
     move's beats included): 0 now is clear, -1 nothing up to `max` clears it (do not call it). Count a
     delay with `stats.delays++`.
+  - `worldClash(landsIn, tell)` → true when a blow of his already cued needs the other answer within
+    `guard.sep` of a falling piece's landing (`landsIn` s from now): `world/destructibles.js` asks it at
+    the felled piece's flash, and on true the piece lands uncued and harmless (`quiet`; a fizzle;
+    ADR-133: a blow told before the piece began to fall and that no hold could clear).
   - `stats` `{ picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors,
     seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled', what, with }`
     (what the guard stepped in for; `ABYSS_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).

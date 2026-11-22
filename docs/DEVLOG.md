@@ -26,11 +26,17 @@ own plates and shards are drawn in). From the game camera it read as a ring of m
 - `world/throneHall.js`: the felled-forest loop is behind `?outskirts=0`; otherwise 125 spots on a
   stream of their own (the layout's `rng` is untouched: the trees were its last user), a bag of kinds
   by the option's weights. Within 43 m of the seal each piece is a breakable (stone leaves rubble),
-  beyond it merges into the static stones. Nothing over 3 m on the near side of the path (a banner
+  beyond it merges into the static stones; none topples. Nothing over 3 m on the near side of the path (a banner
   there becomes a cairn): the duel stays in view. The `add()` helper skips an empty mesh.
 - `lookSwitch.js` `PICKED.outskirts = 'c'`, a Lab LOOKS row (build time: a reload).
 - Tests: `world.mjs` sets (the throne lists swords, banner, cairn, cart), `lord.mjs` level (`metal`
   is a material of the crater's pieces; the counts).
+- **The fairness guard, a gap it had on main** (`brain.worldClash`, asked by `destructibles.js` at a
+  felled piece's flash): the new objects shifted the seeded sims (three.js uuids come from the seeded
+  `Math.random`) and `lord.mjs` pace seed 4242 form 2 met a void push told at 109.68 s and a rim shard
+  his crescent felled at 110.07 s, their flashes 0.25 s apart (main passes the seed on its own
+  sequence). The push's hold could not clear it, so now the piece lands uncued and harmless when a
+  blow of his already cued needs the other answer near its landing. `ABYSS_PDBG=1` showed the order.
 
 **Options, rendered for the owner** (in-game sheets, kept locally and not committed: on the
 path, both sides of the crater and pulled back, and a close-up of each piece): A the shrine the star
@@ -42,8 +48,9 @@ behind the switch.
 before), 365 bones of 1023.
 
 **Open / next.**
-- The owner plays it: the Starless Lord can now topple a banner or a sword grave onto the hero (any
-  piece that topples within his reach can be his). None of option c's pieces is his to lift.
+- The owner plays it. The pieces never topple (`topples: false`): with them toppling, the Lord's
+  crescents felled banners onto the hero mid-move (`lord.mjs` pace, seed 4242: a void push and a
+  falling banner within 0.3 s). His terrain moves use the rim's pieces as before.
 - The jars, lanterns and roof (options a / m) were not tuned for burning or lifting beyond defaults.
 
 ## 2026-11-21 — Session 70: the hero looks the same on every screen

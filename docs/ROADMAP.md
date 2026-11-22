@@ -184,8 +184,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       path, each built afresh, faced to the camera, lying along the blast's way out
 - [x] Four options rendered in game for the owner (a shrine / the star's debris / the challengers /
       all); the owner picked the challengers (`?outskirts=c`), the rest behind the switch
-- [x] Within 43 m they break (stone leaves rubble; banners and carts burn); nothing tall on the near side
-- [ ] The owner plays it: the Lord may topple a banner or a sword grave onto the hero
+- [x] Within 43 m they break where they stand (stone leaves rubble; banners and carts burn; none
+      topples, so the Lord's fight is as tuned); nothing tall on the near side
+- [x] The fairness guard: a felled piece that would land near a blow of his already cued, needing
+      the other answer, lands uncued and harmless (`brain.worldClash`; a gap main had too)
+- [ ] The owner plays it
 - [ ] Their own break / burn tuning (today the material defaults)
 
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
