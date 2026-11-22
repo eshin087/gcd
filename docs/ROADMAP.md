@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.56 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-132)
+## M1.58 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-132)
 - [x] Every breakable as bricks (its triangles; the halves of a flat face pair up), taken where a blow struck
 - [x] The share of structure a blow took = the share of the bricks under it; a blast eats the facing side
 - [x] A solid piece keeps a skin, set back; foliage, boughs and thin bones are holed
@@ -202,6 +202,31 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The landmarks that stay whole (bonfires, gate, bell, throne, fallen star): the owner's call, one by one
   - [ ] A second layer and a support rule: what hangs over nothing falls
   - [ ] Wreckage that can be cut up (logs, rubble)
+## M1.57 — Round the Obsidian Throne, what the challengers left (2026-11-22, `level/throne-props`, ADR-133)
+- [x] The felled forest's identical logs in a starburst replaced: 13 kinds of piece in the prop art
+      path, each built afresh, faced to the camera, lying along the blast's way out
+- [x] Four options rendered in game for the owner (a shrine / the star's debris / the challengers /
+      all); the owner picked the challengers (`?outskirts=c`), the rest behind the switch
+- [x] Within 43 m they break where they stand (stone leaves rubble; banners and carts burn; none
+      topples, so the Lord's fight is as tuned); nothing tall on the near side
+- [x] The fairness guard: a felled piece that would land near a blow of his already cued, needing
+      the other answer, lands uncued and harmless (`brain.worldClash`; a gap main had too)
+- [ ] The owner plays it
+- [ ] Their own break / burn tuning (today the material defaults)
+
+## M1.56 — Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage (2026-11-22, `enemies/ascendant-moves`, ADR-135)
+- [x] The engine: a counter stance as a beat (`stance`), the sign before a vanish, several counters a form
+- [x] The sign: Sign Step, Three Signs; the first vanish of Vanishing Step, Storm Waltz, Mirage and the thunder Riposte
+- [x] Three counter stances (Still Water, Golden Mirror, Thunder Mirror) and three more ripostes
+- [x] Heaven's Lantern and THE PUSH; Raining Suns and its returnable finisher
+- [x] Training situations, Lab row, test scenarios; the move tables regenerated; PACE green over ten seeds, 0 conflicts
+- [ ] Follow-ups:
+  - [ ] The owner plays it: the stances' hold (0.2 - 0.4 s) and the open window, the orb's speed, the barrage's spread
+  - [ ] The owner picks the orb's look (`?ascOrb=a|b`)
+  - [ ] The sign's hand at the game camera (a few cells under the aura): a brighter hand, or the camera closer for the sign
+  - [ ] The orb drawn as large as its hit; the push's crater and camera tuned
+  - [ ] A real phone: the push's touch block, the barrage's cues
+
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters

@@ -5,11 +5,11 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-21 — Session 72: bites, the letters come off where the blow lands
+## 2026-11-21 / 22 — Session 74: bites, the letters come off where the blow lands
 
 **Owner:** "i want the player to be able to destory the terrain and have the ascii pieces fall of
 exactly where the player or enemy boss is hitting. can we do this to make every background object
-destrutcible like minecraft/lego?" Branch `world/chip-where-hit`. ADR-132 / Session 72 / M1.56.
+destrutcible like minecraft/lego?" Branch `world/chip-where-hit`. ADR-132 / Session 74 / M1.58.
 
 **What was there.** Nearly everything that stands breaks already (ADR-107, ADR-120, ADR-122), but as
 whole pieces: a blow takes structure, a tree drops its crown parts in a fixed order at three stages
@@ -87,9 +87,24 @@ bites off. Every test now runs with bites on; the first whole run found three th
 A contact check (`touch`) first set to 0.15 m made the blade pass a dead tree it had chipped; it is
 0.25 m, the blade's own hit radius.
 
+**Every level, and the rule written down** (the owner, 2026-11-22: "is the destructible terrain
+applied to all stages as well? make sure instructions are documented for future agents to make all
+background objects destructible and follow the same rules"). Merged `main` again (#83 the throne's
+props, Tian Lei's third wave: they took Sessions 72 / 73 and M1.56 / 57, so this is Session 74 /
+M1.58; ADR-132 stays). The world test `bite` now walks the level registry instead of a list of
+arenas, so a new level is checked with no change. It found two things: in Cinderwood a blow on the
+Cinder Tree's high boughs and the Elder Wyrm's fingers took structure and showed no bite (no brick
+within reach): such a blow now takes the bricks nearest it however far; and the training room
+(`?stage=lab`) lists nothing that breaks, which is kept on purpose (a measuring stage; the test
+checks it). Results: Cinderwood 664 pieces, the courtyard 162, the crater 144 (with #83's props),
+the Skybreak Ring 35, every piece with bricks and a blow on each kind biting it. The rule for future
+agents: CLAUDE.md "The world breaks, letter by letter" and ARCHITECTURE.md "Making a new object
+destructible" (a 7-step checklist).
+
 **Merged with `main`** (the same evening: PR #73 - #75 had landed, the Skybreak Ring and the hero's
 look; they took ADR-129 / 130, Sessions 69 / 70, M1.54 / 55; then PR #76, the phone, took ADR-131 / Session
-71, so this is ADR-132 / Session 72 / M1.56).
+71; on 2026-11-22 Tian Lei's third wave and the throne's props took Sessions 72 / 73 and M1.56 /
+57, so this is ADR-132 / Session 74 / M1.58).
 The new level's pieces go through the same batch path: the test covers it.
 
 **Verification.** World test `bite` (15 checks: a quarter-cut takes a quarter of a tree's structure
@@ -117,6 +132,125 @@ loaded and struck once in the browser), not studied on a sheet. Not on the phone
 and the frame cost of the extra vertices is not measured. The ground itself does not break (ADR-132
 "Not done"), nor the landmarks that were decided to stay whole. A set-back brick cannot be struck
 again (one layer), and nothing falls for want of support.
+## 2026-11-22 — Session 73: round the Obsidian Throne, what the challengers left
+
+**Owner:** "the trees and background stuff on the obsidian throne is all incorrect and not realistic.
+replace the trees with more unique random breakable stuff and make sure it looks good and in the
+right angles". Branch `level/throne-props`. ADR-133 / Session 73 / M1.57 (#76 and the open #77
+both took ADR-131 and Session 71; this skips past them).
+
+**What was wrong.** Round the crater the forest lay felled: every trunk the same straight log, laid
+exactly radial in a starburst, in the screen grid's tree letters (not the dragon look the crater's
+own plates and shards are drawn in). From the game camera it read as a ring of matching sticks.
+
+**What changed.**
+- `world/starfallProps.js` (new): 13 builders in the prop art path (`carve()`, a tone per facet),
+  each piece built afresh from the rng (size, lean, state, parts): stone lanterns (standing, leaning,
+  thrown), steles on turtles (some snapped), broken pillars with their drums, a thrown shrine roof,
+  wine jars, split boulders, the star's rock in its furrows, heaved earth, glass splinters, graves of
+  swords, spears with a torn banner, wanderers' cairns, wrecked carts. Faces turn to the camera;
+  what fell lies along the blast's way out, turned off it; everything rests on a face.
+- `world/throneHall.js`: the felled-forest loop is behind `?outskirts=0`; otherwise 125 spots on a
+  stream of their own (the layout's `rng` is untouched: the trees were its last user), a bag of kinds
+  by the option's weights. Within 43 m of the seal each piece is a breakable (stone leaves rubble),
+  beyond it merges into the static stones; none topples. Nothing over 3 m on the near side of the path (a banner
+  there becomes a cairn): the duel stays in view. The `add()` helper skips an empty mesh.
+- `lookSwitch.js` `PICKED.outskirts = 'c'`, a Lab LOOKS row (build time: a reload).
+- Tests: `world.mjs` sets (the throne lists swords, banner, cairn, cart), `lord.mjs` level (`metal`
+  is a material of the crater's pieces; the counts).
+- **The fairness guard, a gap it had on main** (`brain.worldClash`, asked by `destructibles.js` at a
+  felled piece's flash): the new objects shifted the seeded sims (three.js uuids come from the seeded
+  `Math.random`) and `lord.mjs` pace seed 4242 form 2 met a void push told at 109.68 s and a rim shard
+  his crescent felled at 110.07 s, their flashes 0.25 s apart (main passes the seed on its own
+  sequence). The push's hold could not clear it, so now the piece lands uncued and harmless when a
+  blow of his already cued needs the other answer near its landing. `ABYSS_PDBG=1` showed the order.
+
+**Options, rendered for the owner** (in-game sheets, kept locally and not committed: on the
+path, both sides of the crater and pulled back, and a close-up of each piece): A the shrine the star
+fell on, B the star's own debris, C those who came for him, MIX. **The owner picked C.** The others stay
+behind the switch.
+
+**Verification.** `npm test` (all suites), `npm run build`. Headless Edge captures of the default
+(no parameter) at the game camera: C drawn, the near side low. The throne: 255 breakables (222
+before), 365 bones of 1023.
+
+**Open / next.**
+- The owner plays it. The pieces never topple (`topples: false`): with them toppling, the Lord's
+  crescents felled banners onto the hero mid-move (`lord.mjs` pace, seed 4242: a void push and a
+  falling banner within 0.3 s). His terrain moves use the rim's pieces as before.
+- The jars, lanterns and roof (options a / m) were not tuned for burning or lifting beyond defaults.
+
+---
+
+## 2026-11-22 — Session 72: Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage
+
+**Owner:** "implement more iconic dbfz moves like spirit bomb, teleport attacks with the dragon ball
+teleportation animation, flurry of projectiles like vegeta, etc. i want more counter moves as well".
+Branch `enemies/ascendant-moves` (from main 9333ce7, after #73 and #75). ADR-135 / Session 72 / M1.56.
+As with the level (ADR-129): the FEEL of each, built as originals; nothing of the franchise's names or
+look.
+
+**How.** The lead read the merged kit, wrote `BRIEF3.md` (the scratchpad), added the engine contracts
+first (one commit: the counter stance, the sign, several counters a form), then ran two Opus agents in
+their own worktrees from that commit: **ki** (`kiShots.js`, `moves/kiShots.js`, `tuningShots.js`, fx:
+the orb and the barrage) and **sign** (`moves/melee.js`, `links.js`, `tuning.js`: the sign and its
+moves, the three counter stances, the ripostes). Each filmed its moves in the real level and ran the
+suite; the lead merged both, applied their "needs" lists, tuned the pace meter, regenerated the move
+tables and wrote the history.
+
+**What changed.**
+- **The engine** (`duelist/brain.js`, `duelist.js`; optional, the other bosses unchanged): a beat
+  marked `stance` on a feint with a bait hold is a **counter stance**: from 30 % of its windup a sword
+  cut that reaches him is CAUGHT (no damage, no posture, the hero's blade thrown back as by a deflect,
+  `dragon:guard { caught }`, the HUD's "CAUGHT") and the move jumps to the beat's end, so the punish
+  after it starts at once; a stance nobody cut into ends the move at its impact and leaves him open
+  0.6 s with his guard down. `brain.catching()`, `onCaught`, `_stanceMiss`, stats `caught` /
+  `stanceMiss`. A blink marked `sign` vanishes at u 0.5 of the windup, not 0.1, and a close-in waits
+  for the vanish. The kit's `counterMove(form)` draws from `COUNTER_LISTS`.
+- **Tian Lei's moves** (`moves/melee.js`, `moves/kiShots.js`; the tables in COMBAT.md are generated):
+  - **THE SIGN**: two fingers to the brow, the snap of light at the hand (`fx.signSnap`), the vanish,
+    the blow from behind. **Sign Step** (form 2: a hook from behind, a knee, a palm that locks) and
+    **Three Signs** (form 3: a cross from the left, a round kick from the right, the red axe kick from
+    behind, each out of its own sign); the sign retrofitted onto the first vanish of Vanishing Step,
+    Storm Waltz, Mirage and the thunder Riposte (their first windups raised to 0.72 s).
+  - **Three counter stances**, one a form, light drawn into the open palms (`fx.stanceGlow`): **Still
+    Water** (a cross, then a palm on a dash that locks), **Golden Mirror** (a vanish behind, the
+    launching uppercut, the hammer where the hero lands), **Thunder Mirror** (a bolt point-blank, a
+    signed vanish and the axe kick).
+  - **Three more ripostes** out of a deflect (a knee and a round kick; a vanish behind, a hook and a
+    palm; a hop back and a bolt a perfect parry returns), drawn with the old three.
+  - **Heaven's Lantern** (forms 2 - 3): he rises 2.5 m and gathers the great orb for 1.8 s (the ring's
+    light dims to it), then throws it, 10 m/s, 2 m round, falling onto where the hero will be (no
+    homing); blue: a parry or a block is safe, a roll passes it, and a PERFECT parry starts **THE PUSH**
+    (the lock at range: won, it flies back into him for 120 and 220 posture and he reels 3 s; lost, 40,
+    knockdown, thrown 10 m). Two looks for the owner: `?ascOrb=a` a sun (the default), `b` a lantern.
+  - **Raining Suns** (forms 2 - 3): he leaps 3 m and pours sixteen small blasts down in 2.2 s (every
+    third one on the hero, the rest to his sides, pocking the floor; a held guard is not worn through),
+    then a returnable finisher from the air.
+- Links, weights and cooldowns for all of it; Training 'ascSign', 'ascCatch', 'ascCatchWait',
+  'ascLantern', 'ascSuns' (105 situations); the Lab's LOOKS row `ascOrb`; scenarios `sign`, `catch`,
+  `ripostes`, `lantern`, `suns` and the engine scenario's catch (a synthetic stance) in `asc.mjs`; the
+  timing scenario cuts into a stance; the pace meter counts a stance while it is catching and the
+  orb's gather as busy (as a black blow's charge).
+
+**Decisions on the way.** The sign agent shortened the stance's hold from the brief's 0.7 - 1.0 s to
+0.2 - 0.4 s and lowered the stances' weights for the pace meter's gaps; the lead then made the meter
+count the catching window as busy (it is a decision for the hero, as a charge is) rather than push
+the weights further down. The ki agent put only every third blast of the barrage on the hero: all
+sixteen on a held guard wore it through (GUARD.costMin 8 x 16 and the finisher), and the owner's rule
+is that a block is always an answer.
+
+**Verification.** `asc.mjs . all` green on the merged branch (DATA 292 realisations, forms 13 / 25 /
+28 moves); PACE over ten seeds: see the figures in COMBAT.md's Tian Lei section and the PR; 0
+conflicts throughout. `glyphcheck`, `changelogcheck`, `duel.mjs` (the engine changed). Filmed in the
+real level at 1280 x 720 (the agents' sheets: `ki3-lantern.jpg`, `ki3-suns.jpg`, `sign3-sign.jpg`,
+`sign3-catch.jpg` in the scratchpad's rig), the push on the phone preset.
+
+**Not checked / open.** Nobody has played it. The owner has not picked the orb's look. At the game
+camera the hand at the brow is a few cells under the aura: the snap and the streak carry the sign. The
+orb is drawn smaller (about 3.2 m) than its hit (2 m round, 2.5 m reach across). The push's crater and
+camera are not tuned. Not filmed on a real phone.
+
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
 **Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also

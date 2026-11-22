@@ -3957,6 +3957,43 @@ ADR-092).
   form 1 from one side. Not checked: a real phone (frame rate, the touch block in the clash). The dodge
   share is 13 / 23 / 40 % against a target of 15 / 25 / 35.
 
+## ADR-135 — Tian Lei's third wave: the counter stance as an engine beat, the sign before a vanish, the great orb pushed back (2026-11-22)
+
+- **Context:** the owner asked for the fighting game's iconic moves on Tian Lei: "spirit bomb,
+  teleport attacks with the dragon ball teleportation animation, flurry of projectiles like vegeta ...
+  more counter moves". ADR-129's rule stands: originals in that spirit, no franchise names or look.
+- **Decision:**
+  1. **The counter stance is an engine beat field, `stance`** (duelist/brain.js, duelist.js), not a
+     move-file trick: a feint beat with a bait hold; from `from` of its windup a sword cut that reaches
+     him is caught (no damage, no posture, the hero bounced as by a deflect, `dragon:guard { caught }`)
+     and the move jumps to the beat's end so the beats after it, the punish, start at once; nothing
+     caught by the impact ends the move there and leaves him open `open` s with his guard down. The
+     read is the pose and light drawn INTO his open palms, with no glint: cut into open palms and you
+     are caught; wait, and he is yours. Any duelist can carry one.
+  2. **The sign**: `blink: { sign: true }` moves the vanish to u 0.5 of the windup; the keys before it
+     are the two fingers at the brow, a snap of light marks the moment he goes, and a close-in waits
+     for the vanish. Only the FIRST vanish of a string carries it: the later ones stay quick (the
+     chain of afterimages), so a string's rhythm is kept and the sign is the string's one big read.
+  3. **Heaven's Lantern is answered by THE PUSH**, the beam clash's lock at range reused: a perfect
+     parry wins the big reward (it flies back into him; he reels), a plain parry or a block is safe,
+     a roll passes it. It never homes, so the roll is honest. Nothing else of his starts while it is
+     out, and the weather stands down.
+  4. **Several counters a form**: `COUNTER_LISTS`, drawn on the AI's stream; `COUNTERS` stays the
+     first of each list for the tests and the docs.
+  5. **The pace meter counts a stance while it is catching and the orb's gather as busy time**, as it
+     counts a black blow's charge: both are decisions the hero is making, not empty seconds.
+- **Why not** make the stance a reaction (a ward kind): a ward answers a strike that already arrived;
+  the stance must stand BEFORE the cut and read as an invitation, and its punish must be a string of
+  his own with tells. **Why not** count all sixteen barrage blasts on the hero: a held guard was worn
+  through (the owner's rule: a block is always an answer), so every third is on him and the rest pock
+  the floor round him. **Why not** a homing orb: the roll must work.
+- **Options kept:** `?ascOrb=a|b` (a sun / a lantern) until the owner picks.
+- **Consequences:** the other duelists are unchanged (no beat of theirs carries `stance` or `sign`; the Starless Lord's own `catch` flag, the beat his thrown blade comes home on, is untouched: the first build named the field `catch` and ended his Wheeling Blade at that beat).
+  Form 1 gains a stance (Still Water) and a riposte; forms 2 and 3 gain the sign moves, a stance, a
+  riposte, the orb and the barrage. The stance's hold is short (0.2 - 0.4 s): with the brief's 0.7 -
+  1.0 s the pace meter's longest gaps broke their caps. COMBAT.md's move tables are regenerated from
+  the data (`docs-gen-moves.mjs`).
+
 ## ADR-130 — The hero's letters follow his size on screen; his own pixel tag, part tables and a dark blade (2026-11-21)
 
 - **Context:** the owner sent a picture of the hero ("the exact type of feel and look i want. its not
@@ -4071,6 +4108,47 @@ Two separate things:
 longer constants (`hud.fit` reports them). The touch layer has two more pieces of saved state
 (`layout`, `holdAttack`, in `abyss.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
 and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
+
+## ADR-133 — Round the Obsidian Throne: varied breakable props in place of the felled forest (2026-11-22)
+
+- **Context:** the owner: the trees and background round the Obsidian Throne were "incorrect and not
+  realistic"; replace them "with more unique random breakable stuff" that "looks good and in the
+  right angles". Round the crater lay ~125 felled trunks, every one the same straight log laid
+  exactly radial (a starburst from the camera), in the screen grid's tree letters rather than the
+  dragon look (CLAUDE.md: every new background object is prop art). (ADR-131 is #76's; ADR-132 is
+  left to the open PR #77, which also claimed 131.)
+- **Decision:**
+  1. **A module of builders**, `world/starfallProps.js`: 13 kinds, each a set of carved parts in
+     world space built afresh per piece (size, lean, state, number of parts), in the prop art path.
+     Faces (an inscription, a lantern's window, a banner) turn to the camera within ~35 degrees; what
+     the blast threw lies along its way out, turned off that line; every piece rests on a face, sunk a
+     little. The camera's 1.15x stretch of upright things is built in.
+  2. **Placement on a stream of its own** (`CONFIG.seed + 14312`): 125 spots 3.8 m apart off the path
+     and the dais, then a shuffled bag of kinds by weight (each kind gets its share, not luck's). The
+     layout's `rng` is not read (the trees were its last user, so nothing else moves). Within 43 m of
+     the seal a piece is a breakable (`look: 'prop'`; stone leaves rubble, `swords` are metal, the
+     banner and the cart wood); beyond, it merges into the set's stones. On the near side of the
+     path (z > 6) nothing is taller than 3 m: a banner drawn there is rebuilt as a cairn. **None of
+     them topples** (`topples: false`): a grave of swords or a cart is no trunk to fell, and with
+     tall pieces that topple the Lord's crescents felled banners onto the hero in the middle of his
+     moves (seed 4242: a void push and a falling banner 0.3 s apart, two answers); the fight keeps
+     the rim's shards and slabs to bring down, as it was tuned.
+  3. **A look switch, the owner's pick**: `?outskirts=0` the felled forest, `a` the shrine the star
+     fell on, `b` the star's own debris, `c` those who came for him, `m` all. Rendered in game as four
+     sheets plus a close-up of each piece; **the owner picked `c`** (`PICKED.outskirts`). The others
+     stay behind the switch (ADR-122's convention); `?looks=old` draws the forest.
+  4. **The fairness guard covers a felled piece it could not see coming** (`brain.worldClash`, asked
+     by `destructibles.js` at the piece's flash): if a blow of the boss's already cued needs the other
+     answer within `guard.sep` of its landing, the piece lands uncued and harmless (`quiet`). The new
+     objects shifted the seeded sims (three.js draws its uuids from the seeded `Math.random`), and
+     `lord.mjs` pace seed 4242 form 2 met a case main also has: a void push told at 109.68 s, a rim
+     shard felled at 110.07 s by his crescent, their flashes 0.25 s apart; the push's hold at its cue
+     (0.5 s at most) could not clear it.
+- **Consequences:** the throne lists 255 breakables (222) in 365 bones of 1023. The Starless Lord's
+  terrain moves leave the new pieces alone: none topples, and none of option c's is his to lift
+  (only the jars, `lift` 1). The jars', lanterns' and
+  roof's break and burn use their materials' defaults. Option `c` uses 6 of the 13 builders; the
+  others are kept for `a`, `b` and `m`.
 
 ## ADR-132 — Bites: a piece is the bricks it is drawn with, and a blow takes them where it struck (2026-11-21)
 

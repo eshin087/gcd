@@ -874,8 +874,18 @@ signal the field has no kind for); sparks, peeling embers and motes are glyph pa
   from his casting hand. Nothing is drawn where it will land (ADR-122; until then a red ring, drawn
   strong from the moment it left him): the cue is the flare on the flying piece. A floor plate in his
   hands is a chunk about 0.85 m across (a crater plate's 1.2 x), never the whole plate.
-- **Outside** the forest lies flat, every trunk pointing away from the crater (the dead trees' own
-  screen-grid look, laid down); far out a few still stand.
+- **Outside** (2026-11-22, ADR-133; `world/starfallProps.js`): what those who came for him left round
+  the crater, in the prop art path (the dragon look): graves of swords stuck in the earth (a red
+  tassel on one), spears with a torn red banner, wanderers' cairns (flat stones, a plank marker, a
+  straw hat, a sword), wrecked carts on their sides, a few steles on stone turtles, split boulders.
+  Every copy is built afresh (its size, lean, how broken, how many parts). Faces (an inscription, a
+  banner's cloth) turn to the camera within ~35 degrees; what fell lies along the blast's way out,
+  turned off it, so the ring is not a starburst; every piece rests on a face, a little sunk in. On the
+  near side of the path (z > 6) nothing is taller than 3 m. Until then the forest lay flat there,
+  every trunk pointing away from the crater (the dead trees' own screen-grid look); the owner called
+  it "incorrect and not realistic". `?outskirts=0` draws it again; `a` the shrine the star fell on
+  (stone lanterns, steles, broken pillars, a thrown roof, jars), `b` the star's own debris (its rock
+  in furrows, heaved ground, glass splinters, split boulders), `m` all of them.
 - **A blade of light** is three things: a thin mesh in the hero-art pass (red fill, red-white ink
   lines), a row of additive strokes re-drawn along it every frame (red, with a hotter core stroke on
   every second one), and one red point light that follows it and lights the floor round him. The
@@ -997,11 +1007,13 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?chip=` | bites: a blow takes the bricks of a piece where it struck (every level; read when the level is built and at each blow; ADR-132; Lab: WORLD -> Bites) | pieces wear down in stages and break whole | the bricks under the blow fall as their letters; a solid piece keeps a skin there, set back | - | - | **a** |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
+| `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
 | `?ring=` | the Skybreak Ring's arena (ADR-129; read when the level is built) | - | the flats: a dry lake bed, banners, a drum, a gong, a judges' dais | the quarry: terraces of cut stone round the ring | the crown: the ring on a butte's top, the badlands 40 m below | **a** |
 | `?ascLook=` | Tian Lei's body (read when his rig is built) | - | the tunic and the topknot | set aside, not offered (a bare-chested look too close to a franchise's) | the wandering monk and the braid; `d` = a through the wyrm's art path | **a** |
 | `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
+| `?ascOrb=` | Heaven's Lantern, Tian Lei's great orb (the third wave, 2026-11-22) | - | a sun: a round ball of gold heat, a pale heart, letters orbiting it | a lantern: a bright rim round a dim heart that pulses, trailing motes | - | a (the author's; not yet picked) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1012,7 +1024,7 @@ reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else th
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
 **The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne and the Skybreak
 Ring) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
-(`ashLook`, `lordLook`, `floor`, `ring`, `ascLook`, `ascLift`) reloads the page with its parameter; "as
+(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
 `?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
