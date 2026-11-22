@@ -340,14 +340,19 @@ export class Pipeline {
         // ... the colour the letters take beside the void slot's heat (violet; a level that swaps the
         // slot's palette swaps it too: FireField.setPalette shares its vector here, registerFire)
         uHazeVoid: { value: new THREE.Vector3(0.62, 0.34, 1.0) },
-        // THE IMPACT RIPPLE (impactRipple.js): a landed cut's ring through the struck boss's letters.
-        // uRipN = live hits (0: the pass reads nothing); per hit uRipA = contact px (x, y), the ring
-        // front's radius (cells), its weight; uRipB = the shove px (x, y: along the cut), the front's
-        // half-width (cells), the contact's view depth (m); uRip = RIPPLE.pass (roll, bright, depth, lift)
+        // THE IMPACT RIPPLE (impactRipple.js): a landed cut's pressure wave through the struck boss's
+        // letters. uRipN = live hits (0: the pass reads nothing); per hit uRipA = contact px (x, y),
+        // the front's radius (cells), its weight; uRipB = the shove px along the cut (x, y), the
+        // front's half-width (cells), the contact's view depth (m); uRipC = the outward push px, the
+        // quiet hole round the contact and its ramp (cells); uRip = the preset's roll, bright, depth
+        // window (m), lift; uRip2 = its trough, the trough's lag (half-widths), the stroke share
+        // (all set by ImpactRipple.write)
         uRipN: { value: 0 },
         uRipA: { value: Array.from({ length: RIPPLE.slots }, () => new THREE.Vector4()) },
         uRipB: { value: Array.from({ length: RIPPLE.slots }, () => new THREE.Vector4(0, 0, 1, 1)) },
-        uRip: { value: new THREE.Vector4(RIPPLE.pass.roll, RIPPLE.pass.bright, RIPPLE.pass.depth, RIPPLE.pass.lift) },
+        uRipC: { value: Array.from({ length: RIPPLE.slots }, () => new THREE.Vector4()) },
+        uRip: { value: new THREE.Vector4(0, 0, 6, 0) },
+        uRip2: { value: new THREE.Vector4() },
         uTime: U.uTime ?? { value: 0 },
         // LETTING GO (letGo.js): the dying wyrm's letters let go cell by cell and fall; shared with
         // its materials (uWyrmGrid: the art cell and the grid anchor; uWyrmLetGo.x: 0 = off)
@@ -468,7 +473,9 @@ export class Pipeline {
         uniform float uRipN;
         uniform vec4 uRipA[${RIPPLE.slots}];
         uniform vec4 uRipB[${RIPPLE.slots}];
+        uniform vec4 uRipC[${RIPPLE.slots}];
         uniform vec4 uRip;
+        uniform vec4 uRip2;
         uniform float uTime;
         uniform vec4 uLetGoInk;
         ${LET_GO_GLSL}
@@ -481,8 +488,10 @@ export class Pipeline {
         // is in the heat, y = the fire's letter roll for it, z = 1 violet (void fire), w = shimmer px
         vec4 gHaze = vec4(0.0);
         // the impact ripple, set per BOSS cell by rippleCell (uRipN > 0 only): xy = the whole px the
-        // letter is shoved, z = 0..1 the ring front's weight at the cell
-        vec3 gRip = vec3(0.0);
+        // cell is moved, z = the front's weight at the cell, w = the trough's; gRipS = the stroke
+        // (0 '-', 1 '/', 2 '|', 3 '\\') the cell prints along the front, -1 none
+        vec4 gRip = vec4(0.0);
+        float gRipS = -1.0;
 
         float hash12(vec2 p) {
           vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -580,9 +589,9 @@ export class Pipeline {
           bool boil = hz > 0.0 && hash12(acell * 0.53 + 7.9) < hz * uHazeRoll.x;
           if (boil) h = fract(h + gHaze.y);
           if (hz > 0.0) local.x = clamp(local.x + gHaze.w / uArtCell.x, 0.0, 0.999);
-          // the impact ripple (wyrm cells only: gRip is zero elsewhere; the shove itself moved the
+          // the impact ripple (wyrm cells only: gRip is zero elsewhere; the wave itself moved the
           // cell, cellMain): where the front is strong a share of the cells re-rolls its letter
-          float rw = gRip.z;
+          float rw = gRip.z, rt = gRip.w;
           if (rw > 0.004 && hash12(acell * 0.29 + 4.1) < rw * uRip.x) h = fract(h + 0.37 + floor(rw * 4.0) * 0.21);
           float d = (hash12(acell * 0.71 + 3.7) - 0.5) * glyph.z;
           float s0 = v < glyph.x + d ? 1.0 : v < glyph.y + d ? uWyrmAtlas.x : uWyrmAtlas.y;
@@ -605,7 +614,8 @@ export class Pipeline {
             float fl = boil ? 1.0 + (gHaze.y - 0.5) * 2.0 * uHazeRoll.y : 1.0;
             ink = mix(ink, warm * (luma(ink) * 1.25 + uHazeRoll.z), hz * uHaze.z) * fl;
           }
-          if (rw > 0.004) ink = ink * (1.0 + rw * uRip.y) + vec3(uRip.w * rw);
+          // the front lights its letters, the trough behind it darkens them (contrast travels)
+          if (rw > 0.004 || rt > 0.004) ink = ink * max(0.0, 1.0 + rw * uRip.y - min(rt, 1.0) * uRip2.x) + vec3(uRip.w * rw);
           return ink * (m * uArtInk);
         }
         // heat haze (uFlame.z > 0 only): the fire field's flame texture has one texel per art cell
@@ -635,20 +645,40 @@ export class Pipeline {
         // on a grid of cells cw px wide: each live hit's ring front (a band round the contact, in
         // cells) weighs the cell; cells far nearer or farther than the contact are another thing
         // behind it on screen and take none. Sets gRip (whole px of shove, the strongest weight)
+        // A pressure wave: the cell is pushed outward from the contact (and a little along the cut)
+        // by the front's Gaussian, so cells bunch ahead of the front and spread behind it and are
+        // back at rest past it; a trough (uRip2.x deep, uRip2.y half-widths behind) darkens after
+        // the bright front; the first cells round the contact (uRipC.yz) are left alone.
         void rippleCell(vec2 cpx, float dz, float cw) {
-          vec2 sh = vec2(0.0);
-          float wm = 0.0;
+          vec2 sh = vec2(0.0), rd0 = vec2(0.0);
+          float wm = 0.0, wt = 0.0;
           for (int i = 0; i < ${RIPPLE.slots}; i++) {
             if (float(i) >= uRipN) break;
             vec4 A = uRipA[i];
             vec4 B = uRipB[i];
-            float x = (length(cpx - A.xy) / cw - A.z) / B.z;
-            float g = exp(-x * x) * (1.0 - smoothstep(uRip.z, uRip.z * 2.0, abs(dz - B.w)));
-            sh += B.xy * g;
-            wm = max(wm, g * A.w);
+            vec4 C = uRipC[i];
+            vec2 d = cpx - A.xy;
+            float rl = length(d);
+            float rc = rl / cw;
+            float x = (rc - A.z) / B.z;
+            float gate = (1.0 - smoothstep(uRip.z, uRip.z * 2.0, abs(dz - B.w)))
+              * (C.y > 0.0 ? smoothstep(C.y, C.y + max(C.z, 0.01), rc) : 1.0);
+            float g = exp(-x * x) * gate;
+            float xt = x + uRip2.y;
+            vec2 rd = rl > 0.5 ? d / rl : vec2(0.0);
+            sh += (B.xy + rd * C.x) * g;
+            float gw = g * A.w;
+            if (gw > wm) { wm = gw; rd0 = rd; }
+            wt = max(wt, exp(-xt * xt) * gate * A.w * step(0.0, -x));
           }
-          // (the shove is tuned in px of the wyrm's art cell: a finer grid moves less)
-          gRip = vec3(floor(sh * (cw / uArtCell.x) + 0.5), min(wm, 1.5));
+          // (px are tuned on the wyrm's art cell: a finer grid moves in proportion)
+          gRip = vec4(floor(sh * (cw / uArtCell.x) + 0.5), min(wm, 1.5), wt);
+          // the front's strongest cells print a stroke lying along it (tangent to the wave)
+          gRipS = -1.0;
+          if (uRip2.z > 0.0 && wm > 0.45 && hash12(floor(cpx / cw) * 0.61 + 9.3) < uRip2.z * min(wm, 1.0)) {
+            vec2 tg = vec2(-rd0.y, rd0.x);
+            gRipS = mod(floor(mod(atan(tg.y, tg.x), 3.14159265) / 0.7853982 + 0.5), 4.0);
+          }
         }
         vec3 wyrmCell(vec3 c, vec3 cp, vec2 acell, vec2 local, float stroke) {
           return artLetters(c, cp, acell, local, stroke, uWyrmTone, uWyrmGlyph, vec3(uArtBlack.y, uArtLum.y, uArtMin.y));
@@ -851,6 +881,8 @@ export class Pipeline {
                 // the front crosses re-rolls to a neighbour on his density ramp
                 if (!gSelf && gRip.z > 0.004 && hash12(hcell * 0.29 + 4.1) < gRip.z * uRip.x)
                   idx = clamp(idx + (hash12(hcell + floor(gRip.z * 4.0)) < 0.5 ? -2.0 : 2.0), 1.0, uHeroCount - 1.0);
+                // ... and the wave's front prints denser marks, its trough sparser ones
+                if (!gSelf && uRip2.x > 0.0) idx = clamp(idx + floor(4.0 * min(gRip.z, 1.0) - 4.0 * min(gRip.w, 1.0) + 0.5), 1.0, uHeroCount - 1.0);
                 // up close a cell an edge runs through prints a dim letter, so the ink line sits in a
                 // dark channel (the reference's line art); far away it keeps its letter. An 'open'
                 // part (pf.y >= 4: the face) keeps its letters lit up to its edges
@@ -934,7 +966,8 @@ export class Pipeline {
               col = uSeenInk * (inkP > 0.9 ? uSeenTone.x : min(l * (inkP > 0.1 ? uSeenTone.y : uSeenTone.z), 1.3));
             }
             // the ripple's front lifts a boss's lit pixels a little (none where his cell is blank)
-            if (!gSelf && gRip.z > 0.004) col = col * (1.0 + gRip.z * uRip.y) + vec3(uRip.w * gRip.z) * step(1e-4, max(col.r, max(col.g, col.b)));
+            if (!gSelf && (gRip.z > 0.004 || gRip.w > 0.004))
+              col = col * max(0.0, 1.0 + gRip.z * uRip.y - min(gRip.w, 1.0) * uRip2.x) + vec3(uRip.w * gRip.z) * step(1e-4, max(col.r, max(col.g, col.b)));
             gl_FragColor = vec4(col, 1.0);
             drew = true;
           }
@@ -958,7 +991,7 @@ export class Pipeline {
             pxB = px - gRip.xy;
           }
           if (heroArtCell(pxB)) return;
-          gRip = vec3(0.0); // (the wyrm's cells weigh their own)
+          gRip = vec4(0.0); gRipS = -1.0; // (the wyrm's cells weigh their own)
           // the impact ripple on the wyrm: the same, on its art grid (whole letters slide a pixel or
           // two along the cut; pa is where this pixel reads the wyrm's grid from)
           vec2 pa = px;
@@ -1039,13 +1072,16 @@ export class Pipeline {
             }
             if (stroke >= 0.0) { ca = arim; cp = arim; } // an outline glyph is drawn whole in the rim's colour
             if (edgeS >= 0.0) { stroke = edgeS; ca = max(asum / ahits, arim); cp = ca; }
+            // the ripple's front: a share of its cells print a stroke lying along it (the house
+            // style's outline strokes), for the frame or two the front is on them
+            if (gRipS >= 0.0 && stroke < 0.0) stroke = gRipS;
             if (uFlame.z > 0.5) hazeCell(abase + 0.5 * uArtCell, acell);
             // (a thin dark gap round the hero where this cell covers him: his cyan figure stays apart
             // from the wyrm's letters, also over its glow)
             gl_FragColor = vec4(wyrmCell(ca, cp, acell, (pa - abase) / uArtCell, stroke) * (1.0 - seenHalo(px)), 1.0);
             return;
           }
-          gRip = vec3(0.0); // (the props never take it)
+          gRip = vec4(0.0); // (the props never take it)
           if (isArt(texture2D(tScene, px / uRes).a)) {
             gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // creature edge sliver: black, like the images
             return;
