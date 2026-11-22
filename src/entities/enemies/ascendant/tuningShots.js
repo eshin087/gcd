@@ -46,4 +46,35 @@ export const SHOTS_TUNING = {
   // what his energy does to the world (fx.js reads T.world.blast / bigBlast / disc first; these are
   // the shots' own: the volley's dive, a corner bolt)
   world: { dive: 1.6, corner: 1.2 },
+
+  // ---- the third wave (BRIEF3 "ki")
+  // Heaven's Lantern (forms 2 - 3): he rises `lift` m and gathers the great orb over his hands through
+  // the `windup` (fixed); at the impact it is thrown at where the hero will be `lead` s on (no homing),
+  // `speed` m/s, flying from `y` m down to `yTo` at the hero (on down to the floor past him), `radius`
+  // m (its hit), drawn `size`; it flies `range` m at most. It hits for the beat's damage (blue: a parry
+  // or a block is safe; a roll passes it). `dim` the ring's light at the gather's height. `rise` /
+  // `drop` the fractions of the windup he rises through, `recovery` s he drops to the floor in.
+  // THE PUSH (a PERFECT parry): a lock at range (start / push / decay / dur / hold as the beam's
+  // clash); won = it flies back into him (`returnSpeed`) for `returnDamage` / `returnPosture` and he
+  // reels `reel` s; lost = `lose` on the hero (knockdown, thrown). `margin` m the camera keeps round
+  // the pair. World: `world` power, craters of `crater` m (on the guard / the hero: `guardCrater`).
+  lantern: {
+    windup: 1.8, lift: 2.5, recovery: 0.8, damage: 26, knockback: 6,
+    speed: 10, size: 4.5, radius: 2.0, y: 3.6, yTo: 1.3, range: 30, lead: 0.3, dim: 0.35,
+    push: { start: 0.5, push: 0.085, decay: 0.3, dur: 2.6, hold: 0.55 },
+    returnSpeed: 14, returnDamage: 120, returnPosture: 220, reel: 3.0, lose: { damage: 40, knockback: 10 }, margin: 3.5,
+    world: 2.2, crater: 4, guardCrater: 3,
+  },
+  // Raining Suns (forms 2 - 3): he leaps `lift` m and hangs; `count` small blasts poured down in `dur`
+  // s from his palms (alternating), each aimed at where the hero is at its throw + `lead` s of his
+  // way, scattered `scatter` m, `speed` m/s, falling to `yTo` m at the hero (on to the floor past
+  // him); each waits `hold` s at most for a clear landing (the fairness guard) or is skipped. Only every
+  // `direct`-th is on him: the others land `side` m off to his sides (across the line), pocking the
+  // floor round him (a guard held through the whole pour and the finisher is not worn through:
+  // GUARD.costMin 8 a block, 100 in all). Then the finisher: a returnable blast (`fin`) thrown down
+  // from the air.
+  barrage: {
+    count: 16, dur: 2.2, lift: 3, speed: 17, size: 0.7, damage: 8, lead: 0.15, scatter: 0.4, yTo: 1.1, hold: 0.12, direct: 3, side: [1.7, 2.6],
+    fin: { speed: 20, size: 1.6, radius: 0.6, damage: 22 },
+  },
 };

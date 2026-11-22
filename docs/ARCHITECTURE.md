@@ -3520,7 +3520,22 @@ volley's strikes, the weather Thunderfall in form 3 (at most 2 live; never while
 reactions, a break or a transformation), the corner bolts), `busy`, `reset`, `stats`. Public:
 `returned(s)` (a returned blast reached him: 50 damage, 34 posture, `dragon:returned` kind 2), `discBack(s)`
 (the disc caught), `corners()` (ascend3's four bolts on `RING.corners`, 0.12 s apart: a called strike with
-its cue on a hero standing within 2.4 m of one, else a harmless bolt). Its game rolls come from its own
+its cue on a hero standing within 2.4 m of one, else a harmless bolt). **The third wave** (2026-11-22):
+`cast.kind` 'lantern' (Heaven's Lantern: `begin` tells the ledger the orb's arrival and retimes it through
+the gather, `motion` draws `fx.lanternGather` over his palms and dims the ring, `onCast` throws one
+'blast' record with `lantern: true` (size 4.5, radius 2, speed 10, `y` 3.6 falling to `yTo` 1.3 at the
+hero: `fx._flyBlast`'s linear fall), aimed `lead` s ahead of the hero, never homing; `lanternMet(s, r)`
+(fx.js calls it with the hero's RESULT): a block or a plain parry bursts it on the guard (`lanternBurst`
+'guard', a crater), a roll lets it pass to burst on the floor, a PERFECT parry starts THE PUSH
+(`_startPush`: `brain.startLock` at range with `T.lantern.push`, the orb held on the blade and drawn by
+`fx.lanternClash`); `lockEnd(won)`: won = `s.returned = true` (fx.js's return path flies it into his
+chest: `returned(s)` deals `returnDamage` 120 / `returnPosture` 220 and he reels `reel` 3 s), lost = 40,
+knockdown, thrown 10 m, a crater; `lanternOut` (the class weighs every other move 0 while it is out, and
+the weather stands down) and 'barrage' (Raining Suns: `_startRain` generalised with options `aim 'hero'`,
+`air`, `yTo`, `lead`, `scatter`, `direct`, `side`: sixteen blasts poured from the alternating palms 3 m
+up, falling onto the hero, every `direct`-th on him; then a `release` with `air` / `yTo`, the finisher).
+Blast records gained `yTo` / `y0` / `yLen` (a fall over the flight) and `lantern`; every old blast flies
+as before. Its game rolls come from its own
 seeded stream (`rand`, reseeded at each reset). What is planned but not yet thrown or called is told to
 the ledger (`brain.expect`), and each throw or call asks `brain.fairDelay` first.
 
@@ -3712,7 +3727,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:bite`, `dragon:hurt {damage, part, hp, crit}`, `dragon:parried {attack, tell, hit, last, bullet, perfect}` (hit = 0-based
   index in its string, last = the string's last hit or a single attack: only then a recoil; bullet: true = a
   deflected bullet, hit 0, last false: posture only, the wyrm is not interrupted and audio stays silent; perfect:
-  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z}` (a perfectly parried bullet's return
+  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z, lantern}` (a perfectly parried bullet's return; `lantern` true = Heaven's Lantern's orb pushed back into him
   lands on the head: kind 0 ember (1 was the wisp, removed in ADR-119), damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
   flow counts it in the run stats like a sword hit),
   `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`

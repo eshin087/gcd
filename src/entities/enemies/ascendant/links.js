@@ -70,6 +70,9 @@ export const LINKS = {
   // --- his ki (kiShots.js / kiBeam.js) and the floor (terrain.js)
   sunWheel: AFTER_RED,
   stormCage: AFTER_RED,
+  // (the third wave: the great orb and the barrage from the air end at range, the hero rolled or held)
+  skyLantern: AFTER_RED,
+  rainingSuns: AFTER_RED,
   skyVolley: AFTER_RED,
   ringBreaker: AFTER_RED,
   stoneStorm: AFTER_RED,

@@ -28,6 +28,8 @@ import { drawBeam, drawBeamCharge, drawBeamSplash, drawBeamClash, drawSplit } fr
 //   signSnap(x, y, z, form)                         stanceGlow(d, dt, form)
 //   auraBurst(x, z, r, form)                        crater(x, z, r, k)
 //   transformGather(x, z, u, dt, form)              transformNova(x, z, r, form)
+//   lanternGather(x, y, z, u, dt, form)             lanternClash(x, y, z, dx, dz, k, dt, form)
+//   lanternBurst(s, how, x, z)                      (Heaven's Lantern: the gather, THE PUSH, the burst)
 // Thrown things are LordFx's pool, grown to 24: throwShot({ kind: 'blast' | 'disc', ... }) (see
 // throwShot below for the fields), and callStrike(.., { style: 'bolt' }) for called lightning.
 //
@@ -39,7 +41,10 @@ import { drawBeam, drawBeamCharge, drawBeamSplash, drawBeamClash, drawSplit } fr
 //   ?ascBeam=a|b     the beam's body. a: a column (a white core on the grid, a gold body that swells
 //                    and boils along it); b: a braid (two strands of gold winding round a thinner
 //                    core, rings of light running down it).
-export const ASC_LOOKS = Object.freeze({ ascAura: 'a', ascBeam: 'a' });
+//   ?ascOrb=a|b      Heaven's Lantern's great orb (the gather, the flight, the push). a: a SUN, a round
+//                    ball of gold heat with a white heart and a few hot letters orbiting it; b: a
+//                    LANTERN, a ball with a bright rim and a darker heart that pulses, trailing motes.
+export const ASC_LOOKS = Object.freeze({ ascAura: 'a', ascBeam: 'a', ascOrb: 'a' });
 const look = (name) => lookOf(name, ASC_LOOKS[name] ?? 'a');
 
 /** What his thrown energy does to the world (ADR-107; POWER: 1 fells a tree). His tuning's
@@ -102,7 +107,7 @@ function scorchedGame(real) {
 // inherited helpers they call (_shock, arc, lightning ...) never draw from the stream game code reads
 const ASC_DRAW = [
   'formAura', 'limbTrail', 'muzzle', 'beamCharge', 'beam', 'beamSplash', 'beamClash', 'beamSplit', 'vanish', 'dashGhost', 'auraBurst',
-  'transformGather', 'transformNova', 'crater', 'updateShots', 'signSnap', 'stanceGlow',
+  'transformGather', 'transformNova', 'crater', 'updateShots', 'signSnap', 'stanceGlow', 'lanternGather', 'lanternClash', 'lanternBurst',
 ];
 
 export class AscFx extends LordFx {
@@ -925,8 +930,11 @@ export class AscFx extends LordFx {
    *                 it hangs at the turn: 0.3), through (true: home THROUGH where the hero was at the
    *                 turn, then to his hand), radius (0.7), tell, damage, knockback, attack }. Home:
    *                 `d.onShotBack?.(s)` when it reaches his hand. It cuts what it crosses.
+   *                 Thrown down from the air: { yTo, yLen } (it falls from `y` to `yTo` over `yLen` m
+   *                 of its way, and on to the floor). Heaven's Lantern's orb: { lantern: true } (drawn,
+   *                 met and burst by the lantern* methods; its shots class decides what follows).
    * Fields added to the record: size, returnable, returned, curve, hang, through, tx, tz, leg, path,
-   * form, seed, hitKind. The cue ledger's fields (alive, done, flashed, phase, x, z, dx, dz, speed,
+   * form, seed, hitKind, yTo, y0, yLen, lantern, lid. The cue ledger's fields (alive, done, flashed, phase, x, z, dx, dz, speed,
    * back, wait, radius, delay, age, tell, attack) keep their meaning; dx / dz are the way it flies
    * NOW (a disc turns as it flies).
    */
@@ -949,6 +957,14 @@ export class AscFx extends LordFx {
     s.hitKind = o.hitKind ?? 'thrown';
     s.group = o.group ?? 0;
     s.lx = s.lz = NaN;
+    // (a blast thrown down from the air falls from `y` to `yTo` over `yLen` m of its way, and on to the
+    // floor past it; Heaven's Lantern's orb is a blast with `lantern`: drawn, met and burst by the
+    // lantern* methods below)
+    s.yTo = Number.isFinite(o.yTo) ? o.yTo : NaN;
+    s.y0 = s.y;
+    s.yLen = Math.max(0.5, fin(o.yLen, s.range));
+    s.lantern = !!o.lantern;
+    s.lid = 0;
     if (s.returned) {
       s.phase = 'fly';
       s.done = true; // (it is not the hero's to meet)
@@ -1020,6 +1036,7 @@ export class AscFx extends LordFx {
 
   _flyBlast(s, dt, d, p, pp, lead) {
     s.age += dt;
+    if (s.phase === 'push') return; // (the great orb held on the hero's blade: his shots draw it)
     if (s.phase === 'hang') {
       this._drawBlast(s, true);
       if (s.age >= s.delay) {
@@ -1065,10 +1082,13 @@ export class AscFx extends LordFx {
     s.x += s.dx * step;
     s.z += s.dz * step;
     s.path += step;
-    // near the end of its range it drops toward the floor; there it bursts
-    const drop = clamp01((s.path - s.range * 0.72) / (s.range * 0.28));
-    if (drop > 0) s.y += (0.3 - s.y) * Math.min(1, dt * 7 * drop);
-    if (s.path >= s.range || s.y < 0.42 || s.age > s.life + 2 || Math.hypot(s.x, s.z) > (d.bound ?? 30) + 25) {
+    if (Number.isFinite(s.yTo)) s.y = s.y0 + (s.yTo - s.y0) * (s.path / s.yLen); // (thrown down: it falls along its way)
+    else {
+      // near the end of its range it drops toward the floor; there it bursts
+      const drop = clamp01((s.path - s.range * 0.72) / (s.range * 0.28));
+      if (drop > 0) s.y += (0.3 - s.y) * Math.min(1, dt * 7 * drop);
+    }
+    if (s.path >= s.range || s.y < (s.lantern ? 0.9 : 0.42) || s.age > s.life + 2 || Math.hypot(s.x, s.z) > (d.bound ?? 30) + 25) {
       this._blastBurst(s, true, false);
       return;
     }
@@ -1082,6 +1102,16 @@ export class AscFx extends LordFx {
       }
     }
     this._drawBlast(s, false);
+    if (s.lantern) {
+      // the great orb: its own meeting (a heavy blue blow); his shots decide what follows (the push, a
+      // burst on the guard or the hero, or it flies on past a roll)
+      const r = this.lanternMeet(s, d, p, pp, lead);
+      if (r === null) return;
+      const sh = d.ki?.shots;
+      if (typeof sh?.lanternMet === 'function') sh.lanternMet(s, r);
+      else if (r !== RESULT.DODGED && r !== RESULT.PERFECT && r !== RESULT.IGNORED) this.lanternBurst(s, r === 'fizzle' ? 'fizzle' : 'guard');
+      return;
+    }
     const r = this._shotMeets(s, d, p, pp, lead, s.speed);
     if (r === null) return;
     if (r === 'fizzle') return this._blastFizzle(s);
@@ -1213,6 +1243,7 @@ export class AscFx extends LordFx {
   /** A blast: a white-hot heart in a ball of gold, a short comet tail of strokes and heat, sparks.
    *  Charging (`hang`): it swells, motes drawn in. ~25 - 45 blobs a frame. */
   _drawBlast(s, hang) {
+    if (s.lantern) return this.lanternDraw(s);
     const life = this._frame(), k = s.size ?? 1, A = this._axes(), ret = s.returned;
     const grow = hang ? Math.min(1, s.age / Math.max(0.15, s.delay)) : 1, R = 0.56 * k * (0.5 + 0.5 * grow);
     const P = this._toCamera(s.x, s.y, s.z), px = P.x, py = P.y, pz = P.z;
@@ -1239,8 +1270,10 @@ export class AscFx extends LordFx {
     }
     // the tail: a stroke back along the way it came (written on the grid), heat shed behind it
     const tl = Math.min(0.9 * k, 0.07 * s.speed * (0.4 + Math.min(1, s.age * 4))) + R;
-    this._ink(s.x - s.dx * tl, s.y, s.z - s.dz * tl, s.x - s.dx * R * 0.9, s.y, s.z - s.dz * R * 0.9, 0, 0.2, 0, ret ? 0.75 : 0.55);
-    for (let i = 0; i < 3; i++) this._blob(s.x - s.dx * (0.25 + 0.25 * i) * k, s.y + this.lrand(-0.06, 0.06), s.z - s.dz * (0.25 + 0.25 * i) * k, -s.dx * 1.5 + this.lrand(-0.3, 0.3), this.lrand(0, 0.4), -s.dz * 1.5 + this.lrand(-0.3, 0.3), this.lrand(0.14, 0.24), 0.48 * k, 0.18, 0.42, 0, K_VOID, 2);
+    // (one thrown down from the air: its tail runs back UP the way it fell; sl = its fall a metre)
+    const sl = !ret && Number.isFinite(s.yTo) ? (s.yTo - s.y0) / s.yLen : 0;
+    this._ink(s.x - s.dx * tl, s.y - sl * tl, s.z - s.dz * tl, s.x - s.dx * R * 0.9, s.y - sl * R * 0.9, s.z - s.dz * R * 0.9, 0, 0.2, 0, ret ? 0.75 : 0.55);
+    for (let i = 0; i < 3; i++) this._blob(s.x - s.dx * (0.25 + 0.25 * i) * k, s.y - sl * (0.25 + 0.25 * i) * k + this.lrand(-0.06, 0.06), s.z - s.dz * (0.25 + 0.25 * i) * k, -s.dx * 1.5 + this.lrand(-0.3, 0.3), this.lrand(0, 0.4), -s.dz * 1.5 + this.lrand(-0.3, 0.3), this.lrand(0.14, 0.24), 0.48 * k, 0.18, 0.42, 0, K_VOID, 2);
     if (this.lr() < 0.35) {
       const o = this._rec(s.x, s.y, s.z, this.lrand(0.15, 0.3), 0.13, 0.03, ".'", ret ? WHITE : GOLD, GOLD_END);
       o.vx = -s.dx * 3 + this.lrand(-1.5, 1.5);
@@ -1254,6 +1287,7 @@ export class AscFx extends LordFx {
   /** A blast bursts (on the floor, on cover, on a guard, or on him when returned): a flash, heat
    *  thrown out, strokes, sparks; on the floor a small ragged shock and a scorch. ~70 blobs. */
   _blastBurst(s, floor, onHim) {
+    if (s.lantern) return this.lanternBurst(s, onHim ? 'him' : floor ? 'floor' : 'cover');
     s.alive = false;
     const k = s.size ?? 1, x = s.x, y = Math.max(0.35, s.y), z = s.z, A = this._axes();
     const P = this._toCamera(x, y, z);
@@ -1337,6 +1371,206 @@ export class AscFx extends LordFx {
       o.drag = 3;
       this._spawn(this.add, o);
     }
+  }
+
+  // ---------------------------------------------------------------- Heaven's Lantern (the third wave)
+  /** The great orb at (x, y, z), `R` m round, `k` its strength (1 full), `t` its clock (?ascOrb): a SUN
+   *  (a: a round ball of gold heat, a white heart, a few hot letters orbiting it) or a LANTERN (b: a
+   *  bright rim round a darker heart that pulses). This frame only, facing the camera. ~25 - 55 blobs. */
+  lanternOrb(x, y, z, R, k, t, seed = 0) {
+    const life = this._frame();
+    if (!(life > 0) || !Number.isFinite(x + y + z + R + k + t + seed) || !(R > 0.02)) return;
+    const A = this._axes(), P = this._toCamera(x, y, z), px = P.x, py = P.y, pz = P.z;
+    // (a smaller orb has fewer blobs over less of itself: its body's heat is raised to read the same)
+    const kb = k * Math.min(2.2, Math.max(1, 1.5 / Math.max(0.3, R)));
+    const at = (ox, oy, sz, h, kind) => this._blob(px + A.rx * ox + A.ux * oy, py + A.ry * ox + A.uy * oy, pz + A.rz * ox + A.uz * oy, 0, 0, 0, life, sz, sz, h, h, kind);
+    if (look('ascOrb') === 'b') {
+      // the rim: a bright ring, hot stretches running round it
+      const pulse = 0.5 + 0.5 * Math.sin(t * 5.5 + seed), n = Math.min(36, Math.max(12, Math.round(R * 16)));
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * TAU + t * 0.7, rr = R * (0.9 + 0.08 * hash(seed + i));
+        const hot = Math.max(0, Math.cos(3 * (a - t * 2.4)));
+        at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.42, (0.42 + 0.3 * hot) * kb, K_VOID);
+      }
+      // the heart: dim gold breathing in and out, a small core that brightens at the top of the pulse
+      const m = Math.min(16, Math.max(6, Math.round(R * 8)));
+      for (let i = 0; i < m; i++) {
+        const rr = R * 0.6 * Math.sqrt((i + 0.5) / m), a = i * 2.39996 - t * 0.9;
+        at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.75, (0.13 + 0.12 * pulse) * kb, K_VOID);
+      }
+      at(0, 0, R * 0.3, (0.35 + 0.55 * pulse) * k, K_STEEL);
+      return;
+    }
+    // the ball: gold heat, hotter toward the middle; a crisp round edge
+    const n = Math.min(44, Math.max(10, Math.round(R * 22)));
+    for (let i = 0; i < n; i++) {
+      const u = Math.sqrt((i + 0.5) / n), rr = R * 0.8 * u, a = i * 2.39996 + t * 1.4;
+      at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.8, (0.16 + 0.14 * (1 - u)) * kb, K_VOID);
+    }
+    const m = Math.min(30, Math.max(8, Math.round(R * 14)));
+    for (let i = 0; i < m; i++) {
+      const a = (i / m) * TAU - t * 0.6, rr = R * (0.92 + 0.06 * hash(seed + i * 3.1));
+      at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.36, 0.3 * kb, K_VOID);
+    }
+    // the white heart
+    at(0, 0, R * 0.55, 0.45 * kb, K_VOID);
+    at(0, 0, R * 0.36, 1.3 * k, K_STEEL);
+    // the letters orbiting it: four hot points on a ring tilted round it
+    for (let e = 0; e < 4; e++) {
+      const a = t * 2.4 + (e / 4) * TAU;
+      at(Math.cos(a) * R * 1.25, Math.sin(a) * R * 0.42, 0.2, 1.12 * k, K_STEEL);
+    }
+  }
+
+  /** Through Heaven's Lantern's gather (u 0..1, every frame): the orb at (x, y, z) over his palms
+   *  growing from a spark to ~2 m across, motes drawn up into it off the whole ring, heat streaming in
+   *  from near, the floor under him lit gold. ~60 - 140 blobs. */
+  lanternGather(x, y, z, u, dt, form = 2) {
+    if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt >= 0)) return;
+    u = clamp01(u);
+    const t = this.d?.time ?? this._now(), e = u * u * (3 - 2 * u), R = 0.15 + 1.35 * e;
+    this.lanternOrb(x, y, z, R, 0.6 + 0.45 * u, t, 7.7);
+    this._lgAcc = (this._lgAcc ?? 0) + dt * (28 + 72 * u);
+    while (this._lgAcc >= 1) {
+      this._lgAcc -= 1;
+      // a mote drawn up off the ring into it
+      const a = this.lr() * TAU, r = this.lrand(3, 13), sx = x + Math.cos(a) * r, sz = z + Math.sin(a) * r, lf = this.lrand(0.6, 1.1);
+      const o = this._rec(sx, 0.25, sz, lf, 0.14, 0.1, ".'", form >= 3 && this.lr() < 0.3 ? STORM : GOLD, GOLD_END);
+      o.vx = (x - sx) / lf;
+      o.vy = (y - 0.25) / lf;
+      o.vz = (z - sz) / lf;
+      o.alpha = 0.35;
+      o.alphaEnd = 1;
+      this._spawn(this.add, o);
+      if (this.lr() < 0.4) {
+        // heat streaming in from near
+        const a2 = this.lr() * TAU, r2 = this.lrand(1.4, 3.2), l2 = this.lrand(0.3, 0.5), hx = x + Math.cos(a2) * r2, hy = y + this.lrand(-1.2, 0.6), hz = z + Math.sin(a2) * r2;
+        this._blob(hx, hy, hz, (x - hx) / l2, (y - hy) / l2, (z - hz) / l2, l2, 0.42, 0.2, 0.26 + 0.3 * u, 0.1, K_VOID);
+      }
+    }
+    // the floor under him lit gold, a wheel widening
+    const gx = fin(this.d?.position?.x, x), gz = fin(this.d?.position?.z, z);
+    if (this._frame() > 0) this._ring(gx, GROUND_Y, gz, 0.9 + 1.8 * u, Math.round(16 + 22 * u), 0.34, (0.16 + 0.3 * u) * GROUND_GAIN, K_VOID, 4, t * (1 + 3 * u));
+    this._keep('lantern', x, y, z, L_GOLD, 1.2 + 3.4 * u, 6 + 7 * u, 0.15);
+    this._keep('lanternFloor', gx, 0.6, gz, L_GOLD, 0.6 + 1.8 * u, 5 + 4 * u, 0);
+  }
+
+  /** The orb in flight (a blast record with `lantern`; drawn by _drawBlast): the orb, heat and motes
+   *  shed behind it, the floor lit under it. ~45 - 70 blobs a frame. */
+  lanternDraw(s) {
+    const R = (s.radius ?? 2) * 0.8, t = s.age + s.seed;
+    this.lanternOrb(s.x, s.y, s.z, R, 1, t, s.seed);
+    const b = look('ascOrb') === 'b';
+    for (let i = 0; i < 3; i++) {
+      const back = R * 0.5 + this.lrand(0, R), oy = this.lrand(-0.5, 0.5) * R;
+      this._blob(s.x - s.dx * back, s.y + oy, s.z - s.dz * back, -s.dx * 2 + this.lrand(-0.4, 0.4), this.lrand(0, 0.6), -s.dz * 2 + this.lrand(-0.4, 0.4), this.lrand(0.25, 0.4), R * 0.4, R * 0.15, 0.3, 0, K_VOID, 2);
+    }
+    if (this.lr() < (b ? 0.9 : 0.4)) {
+      const a = this.lr() * TAU, o = this._rec(s.x + Math.cos(a) * R * 0.8 - s.dx * R * 0.5, s.y + Math.sin(a) * R * 0.6, s.z + Math.sin(a) * R * 0.8 - s.dz * R * 0.5, this.lrand(0.4, 0.7), 0.14, 0.06, ".'", GOLD, GOLD_END);
+      o.vx = -s.dx * 3 + this.lrand(-0.8, 0.8);
+      o.vy = this.lrand(-0.3, 0.8);
+      o.vz = -s.dz * 3 + this.lrand(-0.8, 0.8);
+      o.drag = 2;
+      this._spawn(this.add, o);
+    }
+    this._dot(s.x, GROUND_Y, s.z, R * 0.9, 0.12 * GROUND_GAIN, K_VOID);
+    this._keep('lanternFly', s.x, s.y, s.z, L_GOLD, 2.6, 7, 0.12);
+  }
+
+  /** THE PUSH, every frame: the orb at (x, y, z) held on the hero's blade, pressing along (dx, dz)
+   *  toward him; `k` the lock's meter (1: the hero is winning). It grinds: sparks thrown off the
+   *  contact, the orb shuddering. ~60 - 80 blobs. */
+  lanternClash(x, y, z, dx, dz, k, dt, form = 2) {
+    if (!this.fire || !Number.isFinite(x + y + z + dx + dz + k) || !(dt >= 0)) return;
+    const t = this.d?.time ?? this._now(), R = 1.5 * (1 + 0.06 * Math.sin(t * 31)), l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
+    this.lanternOrb(x, y, z, R, 1.25, t, 3.3);
+    const cx = x + ux * R * 0.85, cy = y - 0.1, cz = z + uz * R * 0.85;
+    this._dot(cx, cy, cz, 0.55, 0.85 + 0.3 * Math.sin(t * 40), K_STEEL);
+    this._lcAcc = (this._lcAcc ?? 0) + dt * (40 + 30 * Math.abs(k - 0.5));
+    while (this._lcAcc >= 1) {
+      this._lcAcc -= 1;
+      // sparks thrown off the contact, out to the sides
+      const side = this.lr() < 0.5 ? -1 : 1, sp = this.lrand(3, 8);
+      const o = this._rec(cx, cy, cz, this.lrand(0.2, 0.36), this.lrand(0.12, 0.18), 0.04, "+*'", this.lr() < 0.4 ? WHITE : form >= 3 ? STORM : GOLD, GOLD_END);
+      o.vx = -uz * side * sp - ux * this.lrand(0, 2);
+      o.vy = this.lrand(0, 3.5);
+      o.vz = ux * side * sp - uz * this.lrand(0, 2);
+      o.drag = 2.5;
+      o.gravity = -6;
+      this._spawn(this.add, o);
+      if (this.lr() < 0.3) this._blob(cx, cy, cz, -uz * side * sp * 0.6, this.lrand(0, 1), ux * side * sp * 0.6, this.lrand(0.15, 0.25), 0.4, 0.15, 0.5, 0, K_VOID, 3);
+    }
+    if (this.lr() < dt * 6) this.dust(x, z, 0.5);
+    this._keep('lanternClash', x, y, z, L_GOLD, 5, 11, 0.3);
+  }
+
+  /** The orb bursts (`how`: 'floor' / 'cover' at the end of its way, 'guard' on a parry or a block,
+   *  'hero' on the hero, 'lost' a lost push, 'him' flown back into him, 'fizzle'); the crater and the
+   *  shock ring at (x, z) (default where it is). The ring is LOOK ONLY. Calls the world (a crater of
+   *  T.lantern.crater m at the floor, guardCrater on the guard / the hero). ~250 - 350 blobs, once. */
+  lanternBurst(s, how = 'floor', x, z) {
+    if (!s) return;
+    s.alive = false;
+    if (how === 'fizzle') return this._blastFizzle(s);
+    const LA = this.d?.T?.shots?.lantern ?? {}, bx = fin(s.x), by = Math.max(0.6, fin(s.y, 1.2)), bz = fin(s.z);
+    const gx = Number.isFinite(x) ? x : bx, gz = Number.isFinite(z) ? z : bz;
+    const ground = how !== 'him', far = how === 'floor' || how === 'cover', r = far ? LA.crater ?? 4 : LA.guardCrater ?? 3;
+    const A = this._axes(), P = this._toCamera(bx, by, bz);
+    // the flash (short; a ring of heat round a small hot heart, never one big white disc), the orb
+    // coming apart
+    this._blob(P.x, P.y, P.z, 0, 0, 0, 0.1, 0.5, 0.9, 1.15, 0, K_STEEL);
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU, ox = Math.cos(a) * 1.0, oy = Math.sin(a) * 1.0;
+      this._blob(P.x + A.rx * ox + A.ux * oy, P.y + A.ry * ox + A.uy * oy, P.z + A.rz * ox + A.uz * oy, 0, 0, 0, 0.14, 0.8, 1.3, 0.42, 0, K_VOID);
+    }
+    for (let i = 0; i < 34; i++) {
+      const a = this.lr() * TAU, ca = Math.cos(a), sa = Math.sin(a), sp = this.lrand(4, 9);
+      const ux = A.rx * ca + A.ux * sa, uy = A.ry * ca + A.uy * sa, uz = A.rz * ca + A.uz * sa;
+      this._blob(P.x + ux * 0.5, P.y + uy * 0.5, P.z + uz * 0.5, ux * sp, uy * sp + 0.5, uz * sp, this.lrand(0.3, 0.5), 0.9, 0.35, 0.55, 0, K_VOID, 3);
+    }
+    for (let i = 0; i < 22; i++) {
+      const a = this.lr() * TAU, sp = this.lrand(3, 10);
+      const o = this._rec(bx, by, bz, this.lrand(0.3, 0.6), this.lrand(0.13, 0.2), 0.04, "+*'.", i & 1 ? WHITE : GOLD, GOLD_END);
+      o.vx = Math.cos(a) * sp;
+      o.vy = this.lrand(0.5, 5);
+      o.vz = Math.sin(a) * sp;
+      o.drag = 2;
+      o.gravity = -6;
+      this._spawn(this.add, o);
+    }
+    if (ground) {
+      // the ring of gold thrown out over the floor (look only), the crater
+      this._shock(gx, 0.7, gz, r * 1.4, 44, 0.42, 0.6, 1.1, 0.7, K_VOID, 0.6, 2.2);
+      this.crater(gx, gz, r * 0.75, far ? 1.8 : 1.3);
+      this.game.world?.impact?.(gx, gz, r, LA.world ?? 2, BLAST_BLOW);
+    }
+    super._light({ x: bx, y: by + 0.4, z: bz, color: L_GOLD, intensity: 9, radius: 15, life: 0.45, fade: 0.4 });
+    this.game.shake?.(how === 'him' ? 0.4 : 0.5);
+    this.game.world?.forest?.ambience?.flare?.(0.7);
+  }
+
+  /** The orb's meeting with the hero (_shotMeets for a heavy blow): its cue flashLead before contact
+   *  on the orb itself, then one result; a knockdown. Returns the RESULT, 'fizzle', or null. */
+  lanternMeet(s, d, p, pp, lead) {
+    if (!pp || s.done || p.alive === false) return null;
+    const rx = pp.x - s.x, rz = pp.z - s.z;
+    const along = rx * s.dx + rz * s.dz, across = Math.abs(-rx * s.dz + rz * s.dx);
+    const reach = s.radius + (p.radius ?? 0.45), half = s.radius + 0.5;
+    if (across < half && along > 0 && s.flashed < 0 && (along - reach) / Math.max(0.1, s.speed) <= lead) {
+      s.flashed = s.age;
+      // (the cue on the orb's leading edge, toward the hero: inside its heart it would be lost)
+      const e = s.radius * 0.7, fx = s.x + s.dx * e, fz = s.z + s.dz * e;
+      d.emit?.('combat:flash', { source: 'dragon', attack: s.attack, tell: s.tell, x: fx, y: s.y, z: fz, hazard: true, bullet: true });
+      this.hazardFlash(s.tell, fx, s.y, fz);
+    }
+    if (!(across < half && Math.abs(along) <= reach)) return null;
+    s.done = true;
+    const cued = s.flashed >= 0 ? s.age - s.flashed : 0;
+    if (s.flashed < 0 || cued < 0.2) return 'fizzle';
+    return d.hitPlayer({
+      damage: s.damage, knockback: s.kb, knockdown: true, kind: 'blast', tell: s.tell, attack: s.attack, from: { x: s.x - s.dx, z: s.z - s.dz },
+      projectile: true, light: false, parryPosture: 0,
+    });
   }
 }
 

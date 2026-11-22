@@ -1,6 +1,9 @@
 import { TELL, RESULT } from '../../../combat/rules.js';
+import { CONFIG } from '../../../core/config.js';
 import { answerOf } from '../duelist/director.js';
 import { RING } from '../../../world/skybreakRing.js';
+import { FORM_POSES } from './poses.js';
+import { MOVES } from './moves.js';
 
 // Tian Lei's ki, the things he throws and calls: blasts, the disc, bolts, called strikes, the volley
 // from the air, the weather. THE SHOTS AGENT'S FILE (moves: moves/kiShots.js; numbers: tuningShots.js,
@@ -20,6 +23,23 @@ import { RING } from '../../../world/skybreakRing.js';
 //                 class has no onShotReturned): 50 damage, 34 posture, `dragon:returned`
 //   discBack(s)   the disc is home in his hand (fx.js calls it when the class has no onShotBack)
 //   corners()     ascend3's four bolts on the ring's corners (the class calls it as the ring goes out)
+//   lanternMet(s, r)  the great orb met the hero (fx.js, with his RESULT): the push, a burst or a pass
+//   lantern       { on, phase: 'off' | 'gather' | 'fly' | 'push' | 'back', s (the orb's fx.shots record) }
+//
+// THE THIRD WAVE (BRIEF3 "ki"):
+//   Heaven's Lantern ('lantern'): the gather (motion: fx.lanternGather over his raised palms, the ring's
+//     light dimmed, the ledger told at the move's start and retimed), the throw (onCast: one 'blast'
+//     record with `lantern: true`, descending `yTo`, aimed where the hero will be, no homing), and what
+//     meets the hero (lanternMet): a PERFECT parry starts THE PUSH (brain.startLock at range, as the
+//     beam's clash: fx.lanternClash each frame; lockEnd(won): won = the orb flies back into him through
+//     fx.js's return path (returned(s): T.lantern.returnDamage / returnPosture, he reels T.lantern.reel
+//     s), lost = it bursts on the hero); a plain parry or a block bursts it on the guard; a roll passes
+//     it (it bursts on the floor beyond). While it is out nothing else of his starts (begin / weigh for
+//     his ki moves; his move is held at its landing until the orb has met the hero) and the weather
+//     stands down.
+//   Raining Suns ('barrage'): Golden Rain's pour generalised (_startRain with options: count, dur,
+//     aim 'fan' | 'hero', speed, size, hold, from the hands' height and falling to `yTo`), then a
+//     returnable blast thrown down from the air (a `release` with `air` / `yTo`).
 
 const TAU = Math.PI * 2;
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -38,6 +58,22 @@ const stream = (seed) => {
   return f;
 };
 const ATTACK = Object.freeze({ weather: 'thunderfall', corners: 'thunderCorners' });
+const ease = (u) => u * u * (3 - 2 * u);
+
+/** The clip he holds THE PUSH in (both palms thrust against the orb), compiled round each form's
+ *  stance once (kiBeam.js clashClip's recipe). */
+let PUSH_CLIPS = null;
+function pushClip(form) {
+  if (!PUSH_CLIPS) {
+    const pose = MOVES.skyLantern?.pushPose;
+    PUSH_CLIPS = pose ? FORM_POSES.map((P) => {
+      const c = P.compileClip([{ t: 0, ...pose }, { t: 4, ...pose }], 4, { hold: true });
+      c.name = 'lanternPush';
+      return c;
+    }) : [];
+  }
+  return PUSH_CLIPS[clamp(form | 0, 1, Math.max(1, PUSH_CLIPS.length)) - 1] ?? null;
+}
 
 export class ShotMoves {
   constructor(d) {
@@ -50,7 +86,14 @@ export class ShotMoves {
     this.sky = { t: 0, calls: 0, armed: false };
     this.corner = { left: 0, t: 0, i: 0 };
     this.ret = { at: -99, n: 0 }; // (the returns' cap: returns close together are worth less each)
-    this.stats = { blasts: 0, returned: 0, rainSkips: 0, rainHolds: 0, skyCalls: 0, skySkips: 0, volleyCalls: 0, volleySkips: 0, cage: 0, bolts: 0, boltReturns: 0, discs: 0 };
+    this.stats = { blasts: 0, returned: 0, rainSkips: 0, rainHolds: 0, skyCalls: 0, skySkips: 0, volleyCalls: 0, volleySkips: 0, cage: 0, bolts: 0, boltReturns: 0, discs: 0,
+      lanterns: 0, lanternHits: 0, lanternBlocked: 0, lanternPassed: 0, pushes: 0, pushWon: 0, pushLost: 0, lanternReturns: 0, suns: 0, sunsSkips: 0, sunsHolds: 0 };
+    // Heaven's Lantern: the orb from its gather to its end (s: its fx.shots record, lid: its stamp)
+    this.lantern = { on: false, phase: 'off', act: null, s: null, lid: 0, h: null, t: 0, x: 0, y: 0, z: 0 };
+    this._lid = 0;
+    this._reel = 0; // s he is still held reeling after a won push
+    this._sunsR = null; // (Raining Suns' pour: T.barrage as _startRain's options, built once)
+    this._sunsOf = null;
   }
 
   get T() {
@@ -86,6 +129,8 @@ export class ShotMoves {
     this.corner.left = 0;
     this.ret.at = -99;
     this.ret.n = 0;
+    this._lanternOff();
+    this._reel = 0;
   }
 
   /** What a perfect return is worth now (x of its damage and posture): the first in full, each one
@@ -100,9 +145,14 @@ export class ShotMoves {
 
   /** Something of his is still in the air or lit (the tests wait for it; the director may read it). */
   get busy() {
-    if (this.rain.on || this.volley.on || this.corner.left > 0) return true;
+    if (this.rain.on || this.volley.on || this.corner.left > 0 || this.lantern.on) return true;
     for (const s of this.d.fx?.shots ?? []) if (s.alive && (s.kind === 'blast' || s.kind === 'disc')) return true;
     return false;
+  }
+
+  /** The great orb is gathering, out, held in the push or flying back (nothing else of his starts). */
+  get lanternOut() {
+    return this.lantern.on;
   }
 
   _discOut() {
@@ -113,17 +163,20 @@ export class ShotMoves {
   /** A move of this kind starts (brain.startAct → d.onActStart): false = it cannot start now. */
   begin(act) {
     const k = act?.def?.ki;
+    if (this.lantern.on) return false; // (the great orb is his attack while it is out)
     if (k === 'disc' && this._discOut()) return false;
-    if (k === 'rain' && this.rain.on) return false;
+    if ((k === 'rain' || k === 'barrage') && this.rain.on) return false;
     if (k === 'volley' && this.volley.on) return false;
+    if (k === 'lantern') this._lanternBegin(act);
     return true;
   }
 
   /** His AI weighs a move of this kind (brain._choose → d.weigh): the weight it gets now (0 = not now). */
   weigh(def, w) {
     const k = def?.ki;
+    if (this.lantern.on) return 0;
     if (k === 'disc' && this._discOut()) return 0;
-    if ((k === 'rain' && this.rain.on) || (k === 'volley' && this.volley.on)) return 0;
+    if (((k === 'rain' || k === 'barrage') && this.rain.on) || (k === 'volley' && this.volley.on)) return 0;
     return w;
   }
 
@@ -137,16 +190,21 @@ export class ShotMoves {
     // (out of the palm, but never further from his root than `from` m: a palm thrust inside a body)
     const ox = Number.isFinite(p.x) ? p.x : d.position.x + Math.sin(ang) * (R.from ?? 0.9);
     const oz = Number.isFinite(p.z) ? p.z : d.position.z + Math.cos(ang) * (R.from ?? 0.9);
+    // (thrown down from the air (`air`): it leaves the palm where it is and falls to `yTo` m at the hero)
+    const air = !!R.air && Number.isFinite(R.yTo), hp = this._hero()?.position;
+    const oy = air ? clamp(fin(p.y, B.y), B.y, 8) : B.y;
+    const yLen = air && hp ? Math.max(1, Math.hypot(hp.x - ox, hp.z - oz)) : undefined;
     for (let i = 0; i < n; i++) {
       const a2 = ang + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0);
       const dx = Math.sin(a2), dz = Math.cos(a2);
       fx.throwShot({
-        kind: 'blast', x: ox, y: B.y, z: oz, dx, dz, speed: R.speed ?? 15, size: R.size ?? B.size, radius: R.radius ?? B.radius, life: B.life, range: B.range,
+        kind: 'blast', x: ox, y: oy, z: oz, dx, dz, speed: R.speed ?? 15, size: R.size ?? B.size, radius: R.radius ?? B.radius, life: B.life, range: B.range,
         tell: D.tell, damage: D.damage, knockback: D.knockback, attack: a?.name ?? 'blast', returnable: !!R.returnable, form: d.phase,
+        ...(air ? { yTo: R.yTo, yLen: yLen ?? 10 } : null),
       });
       this.stats.blasts++;
     }
-    fx.muzzle?.(ox, B.y, oz, Math.sin(ang), Math.cos(ang), R.size ?? 1, d.phase);
+    fx.muzzle?.(ox, oy, oz, Math.sin(ang), Math.cos(ang), R.size ?? 1, d.phase);
     this.game.shake?.(0.08);
   }
 
@@ -154,6 +212,7 @@ export class ShotMoves {
   returned(s) {
     const d = this.d, P = this.T.spirit;
     if (!d || d.mode === 'dying' || d.mode === 'dead') return;
+    if (s?.lantern) return this._lanternReturned(s);
     const c = d._hs?.[1] ?? { x: d.position.x, y: 1.25, z: d.position.z };
     const k = this._returnScale();
     d.emit('dragon:returned', { kind: 2, damage: P.returnDamage * k, x: c.x, y: c.y, z: c.z });
@@ -173,16 +232,33 @@ export class ShotMoves {
   onCast(b, s, a) {
     const k = b.def.cast?.kind;
     if (k === 'rain') this._startRain(b, s, a);
+    else if (k === 'barrage') this._startRain(b, s, a, this._suns(), 'suns');
+    else if (k === 'lantern') this._throwLantern(b, s, a);
     else if (k === 'disc') this._throwDisc(b, s, a);
     else if (k === 'volley') this._startVolley(b, s, a);
     else if (k === 'cage') this._cage(b, s, a);
   }
 
-  // ---- Golden Rain
-  _startRain(b, s, a) {
-    const R = this.T.rain, d = this.d, Rn = this.rain;
+  /** Raining Suns' pour as _startRain's options (T.barrage, aimed at the hero, from the air). */
+  _suns() {
+    const BA = this.T.barrage;
+    if (this._sunsOf !== BA) {
+      this._sunsOf = BA;
+      this._sunsR = { ...BA, aim: 'hero', air: true, sweep: 0 };
+    }
+    return this._sunsR;
+  }
+
+  // ---- Golden Rain (and Raining Suns: the same pour with other options)
+  /** Pour R.count blasts out through the beat's active frames (R: T.rain, Golden Rain's fans, or
+   *  Raining Suns' options: aim 'hero' (each at where the hero is, led `lead` s, scattered `scatter`
+   *  m), `air` (from the palms where they are, falling to `yTo` m at the hero)). `key`: its stats. */
+  _startRain(b, s, a, R = this.T.rain, key = 'rain') {
+    const d = this.d, Rn = this.rain;
     this._stopRain();
     Rn.on = true;
+    Rn.R = R;
+    Rn.key = key;
     Rn.act = a;
     Rn.i = 0;
     Rn.n = R.count;
@@ -190,7 +266,7 @@ export class ShotMoves {
     Rn.t = 0;
     Rn.wait = 0;
     Rn.base = s ? s.ang : d.yaw;
-    Rn.attack = a?.name ?? 'goldenRain';
+    Rn.attack = a?.name ?? (key === 'suns' ? 'rainingSuns' : 'goldenRain');
     Rn.damage = b.def.damage;
     Rn.kb = b.def.knockback;
     Rn.tell = b.def.tell;
@@ -216,7 +292,7 @@ export class ShotMoves {
   }
 
   _rainFrame(dt) {
-    const Rn = this.rain, d = this.d, R = this.T.rain;
+    const Rn = this.rain, d = this.d, R = Rn.R ?? this.T.rain, suns = Rn.key === 'suns';
     if (!Rn.on) return;
     // (stopped by anything that ends the move: a stagger, a break, a parry's recoil, his death)
     if (d.mode !== 'act' || d.brain?.act !== Rn.act) return this._stopRain();
@@ -226,7 +302,7 @@ export class ShotMoves {
     const half = Rn.n / 2, k = i < half ? i / Math.max(1, half - 1) : 1 - (i - half) / Math.max(1, half - 1);
     // the fans sweep across the hero as he stands NOW: left to right, then back
     const base = pl ? Math.atan2(pl.position.x - d.position.x, pl.position.z - d.position.z) : Rn.base;
-    const ang = base + (k - 0.5) * 2 * R.sweep;
+    let ang = base + (k - 0.5) * 2 * (R.sweep ?? 0);
     const fly = this._flight(R.speed);
     // the fairness guard: a blast that would land near a cue asking the other answer waits (a little)
     // or is not thrown
@@ -234,7 +310,8 @@ export class ShotMoves {
     if (w > 0) {
       Rn.wait += w;
       Rn.t = w;
-      this.stats.rainHolds++;
+      if (suns) this.stats.sunsHolds++;
+      else this.stats.rainHolds++;
       return;
     }
     Rn.h[i]?.cancel?.();
@@ -243,10 +320,32 @@ export class ShotMoves {
       const right = i % 2 === 0, side = right ? 'fistR' : 'fistL';
       const p = d.tellPoint(side, d._v2);
       const B = this.T.blast, x = fin(p?.x, d.position.x), z = fin(p?.z, d.position.z);
-      d.fx.throwShot?.({ kind: 'blast', x, y: B.y, z, dx: Math.sin(ang), dz: Math.cos(ang), speed: R.speed, size: R.size, radius: B.radius, life: B.life, range: B.range, tell: Rn.tell, damage: Rn.damage, knockback: Rn.kb, attack: Rn.attack, form: d.phase });
-      d.fx.muzzle?.(x, B.y, z, Math.sin(ang), Math.cos(ang), 0.6, d.phase);
+      // (from the air: out of the palm where it is, falling to `yTo` m where it is aimed)
+      const air = !!R.air && Number.isFinite(R.yTo), y = air ? clamp(fin(p?.y, B.y), B.y, 8) : B.y;
+      let yLen;
+      if (R.aim === 'hero' && pl) {
+        // at where the hero IS (led `lead` s along his way), a little scatter; all but every
+        // `direct`-th land beside him (off to his sides, `side` m: the floor round him pocked, the guard
+        // that holds through them all not worn through)
+        const q = pl.position, a = this.rand(0, TAU), r = Math.sqrt(this.rand()) * (R.scatter ?? 0);
+        let tx = q.x + fin(pl.vel?.x) * (R.lead ?? 0) + Math.cos(a) * r, tz = q.z + fin(pl.vel?.z) * (R.lead ?? 0) + Math.sin(a) * r;
+        const S = R.side, direct = Math.max(1, R.direct ?? 1);
+        if (S && i % direct !== 0) {
+          const c = this._dir(x, z, tx, tz), sd = this.rand() < 0.5 ? -1 : 1, off = this.rand(S[0], S[1]), tw = this.rand(-0.5, 0.5);
+          const ox = -c.z * sd, oz = c.x * sd; // (across the line: never on the hero's way)
+          tx += (ox * Math.cos(tw) + c.x * Math.sin(tw)) * off;
+          tz += (oz * Math.cos(tw) + c.z * Math.sin(tw)) * off;
+        }
+        if (Math.hypot(tx - x, tz - z) > 0.3) ang = Math.atan2(tx - x, tz - z);
+        yLen = Math.max(1, Math.hypot(tx - x, tz - z));
+      } else if (air) yLen = pl ? Math.max(1, Math.hypot(pl.position.x - x, pl.position.z - z)) : 10;
+      d.fx.throwShot?.({ kind: 'blast', x, y, z, dx: Math.sin(ang), dz: Math.cos(ang), speed: R.speed, size: R.size, radius: B.radius, life: B.life, range: B.range, tell: Rn.tell, damage: Rn.damage, knockback: Rn.kb, attack: Rn.attack, form: d.phase,
+        ...(air ? { yTo: R.yTo, yLen } : null) });
+      d.fx.muzzle?.(x, y, z, Math.sin(ang), Math.cos(ang), 0.6, d.phase);
       this.stats.blasts++;
-    } else this.stats.rainSkips++;
+      if (suns) this.stats.suns++;
+    } else if (suns) this.stats.sunsSkips++;
+    else this.stats.rainSkips++;
     Rn.i++;
     Rn.wait = 0;
     Rn.t += Rn.gap;
@@ -365,8 +464,9 @@ export class ShotMoves {
 
   /** Every frame of a routed beat (d.beatMotion; u 0..1 the windup, 1..2 the active frames): the dive
    *  carries him across to where the hero is (the spot fixed at u 0.7: the roll that answers it). */
-  motion(b, u, s) {
+  motion(b, u, s, dt) {
     const D = b.def, d = this.d;
+    if (D.cast?.kind === 'lantern') return this._lanternMotion(b, u, s, dt);
     if (!D.dive) return;
     const V = this.volley;
     if (!b._dive) b._dive = { x: d.position.x, z: d.position.z, tx: d.position.x, tz: d.position.z };
@@ -406,9 +506,300 @@ export class ShotMoves {
     this.stats.boltReturns++;
   }
 
-  /** The blade lock ended while a move of this kind started it: none of the shots' moves locks. */
-  lockEnd() {
-    return false;
+  /** The blade lock ended (d.onLockEnd): THE PUSH is the shots' only lock (Heaven's Lantern). True =
+   *  handled here. Won: the orb flies back into him (fx.js's return path → returned(s)) and he reels;
+   *  lost: it bursts on the hero (T.lantern.lose: knockdown, thrown). */
+  lockEnd(won) {
+    const L = this.lantern, d = this.d, s = L.s, LA = this.T.lantern;
+    if (!L.on || L.phase !== 'push') return false;
+    const live = this._mine(s);
+    if (d.mode === 'dying' || d.mode === 'dead' || !live) {
+      if (live) d.fx.lanternBurst?.(s, 'guard');
+      this._lanternOff();
+      return true;
+    }
+    if (won) {
+      this.stats.pushWon++;
+      L.phase = 'back';
+      s.phase = 'fly';
+      s.returned = true;
+      s.done = true;
+      s.age = 0;
+      s.speed = LA.returnSpeed;
+      const c = this._dir(s.x, s.z, d.position.x, d.position.z);
+      d.fx.muzzle?.(s.x, s.y, s.z, c.x, c.z, 1.4, Math.max(2, d.phase));
+      d.hitstop?.(0.1, 0.05);
+      d._cinematic?.('bladeLock');
+      this.game.world?.forest?.ambience?.flare?.(1);
+      this.game.shake?.(0.5);
+      // (thrown back off the push: he reels while it comes; the orb's blow holds the reel on: returned)
+      if (!d.broken && d.mode !== 'broken') {
+        d.emit?.('dragon:stagger');
+        if (d.brain.startReact?.('reeling')) this._reel = LA.reel + 1;
+      }
+      return true;
+    }
+    // lost: it breaks through the blade and bursts on the hero
+    this.stats.pushLost++;
+    const pl = this._hero(), px = pl ? pl.position.x : s.x, pz = pl ? pl.position.z : s.z;
+    d.hitPlayer({
+      damage: LA.lose.damage, knockback: LA.lose.knockback, knockdown: true, kind: 'blast', tell: TELL.RED, attack: L.attack || 'skyLantern',
+      from: { x: d.position.x, z: d.position.z }, projectile: true, parryable: false, blockable: false, extra: { perfect: false },
+    });
+    d.fx.lanternBurst?.(s, 'lost', px, pz);
+    this.game.shake?.(0.55);
+    this._lanternOff();
+    d.brain._toFoot?.(0.5);
+    return true;
+  }
+
+  // ---------------------------------------------------------------- Heaven's Lantern
+  /** The move starts (begin): the orb's blow told to the ledger from now (retimed through the gather). */
+  _lanternBegin(act) {
+    const L = this.lantern, d = this.d, b = act?.beats?.[0];
+    this._lanternOff();
+    L.on = true;
+    L.phase = 'gather';
+    L.act = act;
+    L.attack = act?.name ?? 'skyLantern';
+    L.t = 0;
+    const T0 = fin(b?.impact, this.T.lantern.windup) + this._lanternFlight();
+    L.h = d.brain?.expect?.(T0, b?.def?.tell ?? TELL.BLUE, L.attack) ?? null;
+    this.stats.lanterns++;
+  }
+
+  /** s for the orb to reach the hero once thrown (its speed, its radius). */
+  _lanternFlight() {
+    const p = this._hero()?.position, d = this.d, LA = this.T.lantern;
+    if (!p) return 1;
+    return Math.max(0, Math.hypot(p.x - d.position.x, p.z - d.position.z) - LA.radius - 0.45) / Math.max(1, LA.speed);
+  }
+
+  /** Where the orb gathers: over his raised palms (writes L.x / y / z). */
+  _lanternAt() {
+    const d = this.d, L = this.lantern, LA = this.T.lantern;
+    const p = d.tellPoint?.('palms', d._v2 ?? this._v);
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    L.x = fin(p?.x, d.position.x) + fx * 0.2;
+    L.z = fin(p?.z, d.position.z) + fz * 0.2;
+    L.y = Math.max(fin(p?.y, LA.y) + 0.9, 1.6);
+    return L;
+  }
+
+  /** Every frame of the gather (u 0..1; the active frames: nothing): the orb over his palms, the ring's
+   *  light pulled down, the ledger's handle retimed. */
+  _lanternMotion(b, u, s, dt) {
+    const L = this.lantern, d = this.d, LA = this.T.lantern;
+    if (!(u < 1) || L.phase !== 'gather') return;
+    this._lanternAt();
+    d.fx.lanternGather?.(L.x, L.y, L.z, u, fin(dt, 0), d.phase);
+    this.game.world?.forest?.ambience?.dim?.(ease(clamp(u * 1.2, 0, 1)) * LA.dim);
+    const a = d.brain?.act;
+    if (L.h && a) L.h.retime?.(Math.max(0, b.impact - a.t) + this._lanternFlight());
+  }
+
+  /** The impact (onCast): the orb is thrown at where the hero will be `lead` s on; no homing. */
+  _throwLantern(b, s, a) {
+    const L = this.lantern, d = this.d, LA = this.T.lantern, fx = d.fx;
+    if (!L.on || L.phase !== 'gather') this._lanternBegin(a); // (a Lab start mid-move)
+    L.h?.cancel?.();
+    L.h = null;
+    this._lanternAt();
+    const pl = this._hero();
+    let tx = d.position.x + Math.sin(d.yaw) * 8, tz = d.position.z + Math.cos(d.yaw) * 8;
+    if (pl) {
+      tx = pl.position.x + fin(pl.vel?.x) * LA.lead;
+      tz = pl.position.z + fin(pl.vel?.z) * LA.lead;
+    }
+    const c = this._dir(L.x, L.z, tx, tz), dist = Math.max(1, Math.hypot(tx - L.x, tz - L.z));
+    const y = Math.max(L.y, LA.y);
+    const shot = fx?.throwShot?.({
+      kind: 'blast', lantern: true, x: L.x, y, z: L.z, dx: c.x, dz: c.z, speed: LA.speed, size: LA.size, radius: LA.radius,
+      life: LA.range / Math.max(1, LA.speed) + 1, range: LA.range, yTo: LA.yTo, yLen: dist,
+      tell: b.def.tell, damage: b.def.damage, knockback: b.def.knockback, attack: L.attack, returnable: false, form: d.phase,
+    });
+    if (!shot) {
+      this._lanternOff();
+      return;
+    }
+    shot.lid = ++this._lid;
+    L.lid = shot.lid;
+    L.s = shot;
+    L.phase = 'fly';
+    L.t = 0;
+    fx.muzzle?.(L.x, y, L.z, c.x, c.z, 2.4, d.phase);
+    this.game.shake?.(0.3);
+    this.stats.blasts++;
+  }
+
+  /** The orb met the hero (fx.js, the RESULT of his answer; 'fizzle' if it was cued too late). */
+  lanternMet(s, r) {
+    const L = this.lantern, d = this.d, pl = this._hero();
+    if (!this._mine(s)) {
+      if (r !== RESULT.DODGED && r !== RESULT.PERFECT && r !== RESULT.IGNORED) d.fx.lanternBurst?.(s, 'guard');
+      return;
+    }
+    if (r === RESULT.PARRIED && pl?.deflect?.perfect && this._startPush(s)) return;
+    if (r === RESULT.DODGED || r === RESULT.PERFECT || r === RESULT.IGNORED) {
+      // rolled through: it flies on and bursts on the floor beyond (fx.js)
+      this.stats.lanternPassed++;
+      return;
+    }
+    const px = pl ? pl.position.x : s.x, pz = pl ? pl.position.z : s.z;
+    if (r === RESULT.PARRIED || r === RESULT.BLOCKED) {
+      // a plain parry or a block: it bursts on the guard, a crater at his feet; no second hit
+      this.stats.lanternBlocked++;
+      d.fx.lanternBurst?.(s, 'guard', px, pz);
+    } else if (r === 'fizzle') d.fx.lanternBurst?.(s, 'fizzle');
+    else {
+      this.stats.lanternHits++;
+      d.fx.lanternBurst?.(s, 'hero', px, pz);
+    }
+    this._lanternOff();
+  }
+
+  /** A PERFECT parry: THE PUSH, the blade lock at range. False if it cannot start. */
+  _startPush(s) {
+    const L = this.lantern, d = this.d, p = this.game.player, K = this.T.lantern.push;
+    if (!p || d.broken || d.mode === 'broken' || d.mode === 'dying' || d.mode === 'dead' || !d.brain?.startLock) return false;
+    const dist = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+    const ok = d.brain.startLock({ start: K.start, push: K.push, decay: K.decay, dur: K.dur, hold: K.hold, dist, camera: { zoom: this._pairZoom(this.T.lantern.margin), weight: 1 } });
+    if (!ok) return false;
+    this.stats.pushes++;
+    s.phase = 'push';
+    s.done = true;
+    L.phase = 'push';
+    L.t = 0;
+    const clip = pushClip(d.phase);
+    if (clip) d.brain._play?.(clip, 0.06);
+    this.game.world?.forest?.ambience?.flare?.(0.8);
+    this.game.shake?.(0.45);
+    return true;
+  }
+
+  /** Each frame of THE PUSH: he stands square on, the orb held between them on the hero's blade
+   *  (nearer him as the hero wins), grinding (fx.lanternClash), both kept in frame. */
+  _pushFrame(dt) {
+    const L = this.lantern, d = this.d, s = L.s, p = this.game.player, Lk = p?.bladeLock;
+    if (!this._mine(s)) return this._lanternOff();
+    L.t += dt;
+    if (!p || !Lk || p.state !== 'lock' || L.t > this.T.lantern.push.dur + 2) {
+      // (it ended without a word: a death, the Lab): it bursts where it is
+      d.fx.lanternBurst?.(s, 'guard');
+      this._lanternOff();
+      return;
+    }
+    const c = this._dir(p.position.x, p.position.z, d.position.x, d.position.z); // hero → him
+    d.yaw = Math.atan2(-c.x, -c.z);
+    const k = clamp(fin(Lk.meter, 0.5), 0, 1), sep = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+    const off = clamp(1.7 + (k - 0.5) * 2.4, 1.1, Math.max(1.2, sep - 1.2));
+    s.x = p.position.x + c.x * off;
+    s.z = p.position.z + c.z * off;
+    s.y = 1.9;
+    d.fx.lanternClash?.(s.x, s.y, s.z, -c.x, -c.z, k, dt, d.phase);
+    const rig = this.game.cameraRig;
+    if (rig?.keep) {
+      rig.keep(d.position.x, 1.2, d.position.z, 1.6, true);
+      rig.keep(p.position.x, 1.0, p.position.z, 1.6, true);
+    }
+  }
+
+  /** The orb flown back by a won push reached him (fx.js → returned): the big reward. */
+  _lanternReturned(s) {
+    const d = this.d, LA = this.T.lantern, c = d._hs?.[1] ?? { x: d.position.x, y: 1.25, z: d.position.z };
+    d.emit('dragon:returned', { kind: 2, lantern: true, damage: LA.returnDamage, x: c.x, y: c.y, z: c.z });
+    d.takeHit({ damage: LA.returnDamage, exact: true, heavy: true, posture: LA.returnPosture, part: 'body', point: { x: c.x, y: c.y, z: c.z } });
+    this.stats.lanternReturns++;
+    this.stats.returned++;
+    this.game.world?.forest?.ambience?.flare?.(1);
+    if (d.mode === 'react' && d.brain?.react?.kind === 'reeling') this._reel = Math.max(this._reel, LA.reel);
+    if (this._mine(s)) this._lanternOff();
+  }
+
+  /** A won push: he reels `reel` s (the reeling clip held on its staggered pose: kiBeam _holdReel). */
+  _holdReel(dt) {
+    if (!(this._reel > 0)) return;
+    const br = this.d.brain, R = br?.react;
+    if (this.d.mode !== 'react' || R?.kind !== 'reeling') {
+      this._reel = 0;
+      return;
+    }
+    this._reel -= dt;
+    if (this._reel > 0.5) {
+      const hold = Math.min(0.9, R.clip.dur - 0.1);
+      if (R.t > hold) R.t = hold;
+      if (br.clipT > hold) br.clipT = hold;
+    }
+  }
+
+  /** Every frame while the orb lives: the gather's end, the move held at its landing until the orb has
+   *  met the hero, the push, the orb's end. */
+  _lanternFrame(dt) {
+    const L = this.lantern, d = this.d;
+    if (!L.on) return;
+    if (L.phase === 'gather') {
+      // (the move ended before the throw: a break, a stagger, the Lab)
+      if (d.mode !== 'act' || d.brain?.act !== L.act) this._lanternOff();
+      return;
+    }
+    if (L.phase === 'push') return this._pushFrame(dt);
+    const s = L.s;
+    if (!this._mine(s)) return this._lanternOff();
+    L.t += dt;
+    const a = d.brain?.act;
+    if (L.phase === 'fly' && !s.done && d.mode === 'act' && a && a === L.act) {
+      // (nothing of his starts while it is out: his move waits at its landing until the orb meets the
+      // hero; the recovery (and what links after it) runs from then)
+      // (his clip stands on the landing (the clip's own recovery start) meanwhile)
+      if (!(L.rec0 >= 0)) L.rec0 = a.recoveryStart;
+      const want = a.t + 0.05;
+      if (a.recoveryStart < want) {
+        const sh = want - a.recoveryStart;
+        a.recoveryStart += sh;
+        a.end += sh;
+      }
+      if (a.recoveryStart > L.rec0 + 1e-6 && d.brain.clipT > L.rec0) d.brain.clipT = L.rec0;
+    }
+  }
+
+  _mine(s) {
+    const L = this.lantern;
+    return !!s && s.alive && s.lantern && s.lid === L.lid && L.lid > 0;
+  }
+
+  _lanternOff() {
+    const L = this.lantern;
+    L.h?.cancel?.();
+    L.h = null;
+    L.on = false;
+    L.phase = 'off';
+    L.act = null;
+    L.s = null;
+    L.lid = 0;
+    L.rec0 = -1;
+  }
+
+  /** The unit way from (ax, az) to (bx, bz) on the floor (this._dv; +z if they meet). */
+  _dir(ax, az, bx, bz) {
+    const o = (this._dv ??= { x: 0, z: 1 }), dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz);
+    o.x = l > 1e-4 ? dx / l : 0;
+    o.z = l > 1e-4 ? dz / l : 1;
+    return o;
+  }
+
+  /** The cinematic zoom (desktop metres) that frames him and the hero with `m` m round them (kiBeam's
+   *  _pairZoom). */
+  _pairZoom(m) {
+    const rig = this.game.cameraRig, cam = this.game.camera, d = this.d, p = this.game.player?.position;
+    if (!rig || !p) return 0;
+    const tanV = Math.tan(((Number.isFinite(cam?.fov) ? cam.fov : CONFIG.camera.fov) * Math.PI) / 360);
+    const asp = Number.isFinite(cam?.aspect) && cam.aspect > 0.2 ? cam.aspect : 16 / 9;
+    const pitch = fin(rig.pitch, CONFIG.camera.pitch);
+    const hx = Math.abs(p.x - d.position.x) / 2 + m, hz = Math.abs(p.z - d.position.z) / 2 + m;
+    const need = Math.max(hx / (tanV * asp * 0.88), (hz * Math.sin(pitch) + 1.2) / (tanV * 0.78));
+    const base = fin(rig.targetDistance, CONFIG.camera.distance);
+    const extra = Math.max(0, need - base);
+    return fin(extra * (CONFIG.camera.distance / Math.max(1, fin(rig.defaultDistance, CONFIG.camera.distance))), 0);
   }
 
   // ---------------------------------------------------------------- the weather (Thunderfall)
@@ -463,6 +854,7 @@ export class ShotMoves {
     const d = this.d, br = d.brain, a = br.act;
     if (d.state === 'staggered' || d.broken) return -1;
     if (d.ki?.beams?.busy) return -1; // (never while a beam of his is lit: the hero is answering it)
+    if (this.lantern.on) return -1; // (nor while the great orb gathers, flies or is pushed: the weather stands down)
     if (d.mode === 'react') return -1; // (his recoil, the reeling, a flinch: the hero's own time)
     const inAct = d.mode === 'act' && !!a;
     if (inAct && a.def.transition) return -1;
@@ -533,6 +925,8 @@ export class ShotMoves {
   frame(dt) {
     if (!(dt > 0)) return;
     try {
+      this._holdReel(dt);
+      this._lanternFrame(dt);
       this._rainFrame(dt);
       this._volleyFrame(dt);
       this._skyFrame(dt);
@@ -541,6 +935,7 @@ export class ShotMoves {
       // never freeze the frame
       this._stopRain();
       this._stopVolley();
+      this._lanternOff();
       if (!this._warned) {
         this._warned = true;
         console.warn('ascendant shots:', e);

@@ -572,8 +572,9 @@ export class Ascendant extends Duelist {
 
   weigh(name, def, w, dist) {
     if (this._beamBars(def)) return 0;
-    // (while Storm Cage's orbs close in, the cage is his attack: nothing else starts on top of it)
-    if (!def.transition && this._orbsLive()) return 0;
+    // (while Storm Cage's orbs close in, or Heaven's Lantern's orb is out, that is his attack: nothing
+    // else starts on top of it)
+    if (!def.transition && (this._orbsLive() || this.ki?.shots?.lanternOut)) return 0;
     if (def.terrain) return this.terrain.weigh(def, w, dist);
     if (def.ki) return this.ki.weigh(def, w, dist);
     // (Aura Burst: favoured once the hero has stayed on him for a while)
@@ -582,7 +583,7 @@ export class Ascendant extends Duelist {
   }
 
   onActStart(A, opts) {
-    if (!A.def.transition && (this._beamBars(A.def) || (!A.def.counter && this._orbsLive()))) return false;
+    if (!A.def.transition && (this._beamBars(A.def) || (!A.def.counter && (this._orbsLive() || (this.ki?.shots?.lanternOut && A.def.ki !== 'lantern'))))) return false;
     if (A.def.terrain) return this.terrain.begin(A, opts) !== false;
     if (A.def.ki) return this.ki.begin(A, opts) !== false;
     return true;
