@@ -476,12 +476,197 @@ async function scenarioLethal() {
   }
 }
 
+// ================================================================== scenario: reward (ADR-140)
+async function scenarioReward() {
+  out('\n== scenario REWARD (ONE BLOW: the registry, the grant on his victory, the turn at PUNCH.at, the punch, off without it) ==');
+  const R = await imp('src/game/rewards.js');
+  const { PUNCH, CHARGE } = await imp('src/entities/player/combat.js');
+  // 1. the registry
+  R.resetRewards();
+  assert(typeof globalThis.localStorage === 'undefined' && !R.has('oneBlow') && R.list().length === 1 && R.list()[0].on === false, 'headless (no localStorage): nothing learned, the registry in memory');
+  assert(R.grant('oneBlow') === true && R.has('oneBlow') && R.grant('oneBlow') === false, 'grant: learned, once (a second grant is not new)');
+  assert(R.revoke('oneBlow') === true && !R.has('oneBlow') && R.revoke('oneBlow') === false, 'revoke: forgotten');
+  assert(R.grant('nope') === false && !R.has('nope'), 'an unknown id is never learned');
+  const mem = new Map();
+  const store = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)) };
+  R.resetRewards({ storage: store });
+  R.grant('oneBlow');
+  R.resetRewards({ storage: store }); // the next page load
+  assert(R.has('oneBlow') && JSON.parse(mem.get(R.REWARD_KEY)).includes('oneBlow'), `kept in localStorage ${R.REWARD_KEY} across page loads`);
+  const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('quota'); } };
+  R.resetRewards({ storage: blocked });
+  assert(!R.has('oneBlow') && R.grant('oneBlow') && R.has('oneBlow'), 'a storage that throws: nothing read, the grant holds for the page load');
+  R.resetRewards({ storage: store, search: '?level=peak&rewards=none' });
+  assert(!R.has('oneBlow') && R.list()[0].kept, '?rewards=none: off for the page load (though kept)');
+  R.resetRewards({ search: '?rewards=ALL' });
+  assert(R.has('oneBlow') && !R.list()[0].kept, '?rewards=all: on for the page load (nothing kept)');
+  R.set('oneBlow', false);
+  assert(!R.has('oneBlow'), 'the Lab toggle (set) wins over the URL');
+  assert(R.readRewardUrl('?rewards=maybe') === null && R.forLevel('peak') === 'oneBlow' && R.forLevel('ash') === null && R.line('oneBlow') === 'TECHNIQUE LEARNED: ONE BLOW', 'forLevel(peak) = oneBlow, no other level; the banner line');
+
+  // 2. the grant: his victory (the flow) teaches it; another level's does not
+  R.resetRewards();
+  {
+    const G = build();
+    duel(G, { dist: 4 });
+    const evs = [];
+    G.watch = (n, e) => { if (n === 'reward:granted') evs.push(e); };
+    G.game.flow.debug.toState('victory');
+    run(G, 13, null, () => G.game.state === 'victory');
+    run(G, 0.2);
+    const sub = G.game.hud.bannerUi?.sub?.textContent;
+    assert(G.game.state === 'victory' && R.has('oneBlow') && evs.length === 1 && evs[0].id === 'oneBlow' && evs[0].first === true, `beating him grants ONE BLOW (reward:granted ${JSON.stringify(evs[0] ?? null)})`);
+    assert(sub === 'TECHNIQUE LEARNED: ONE BLOW', `the victory banner says it under his line: "${sub}"`);
+  }
+  R.resetRewards();
+  {
+    const G = build();
+    G.game.level = { ...LVL, id: 'ash' };
+    duel(G, { dist: 4 });
+    G.game.flow.debug.toState('victory');
+    run(G, 13, null, () => G.game.state === 'victory');
+    assert(G.game.state === 'victory' && !R.has('oneBlow') && !G.counts['reward:granted'] && !G.game.hud.bannerUi?.sub?.textContent, 'another level\'s victory grants nothing, says nothing');
+  }
+
+  // 3. the hold: a frame log of (hold time, state, the attack) until `until` s of hold, then a release
+  const hold = (G, until, relAt = Infinity, step = null) => {
+    const p = G.game.player, log = [];
+    G.input.press(2);
+    let released = false;
+    run(G, until + 1.6, (g) => {
+      step?.(g);
+      if (!released && p.hb.t >= relAt) { G.input.up(2); released = true; }
+      log.push({ t: G.game.time, h: p.hb.t, held: p.hb.held, st: p.state, kind: p.atk?.def?.kind ?? null, pend: !!p.atk?.pending });
+    });
+    if (!released) G.input.up(2);
+    return log;
+  };
+  const firstOf = (log, f) => log.find(f) ?? null;
+  // 3a. learned: the turn comes at PUNCH.at, not before; released, the punch lands on him
+  R.resetRewards({ search: '?rewards=all' });
+  const T = TUNING;
+  {
+    const G = build();
+    duel(G, { dist: 2.0 });
+    const p = G.game.player, d = G.game.dragon;
+    p.debug.god = true;
+    let at = null;
+    const evs = [];
+    G.watch = (n, e) => {
+      evs.push(n);
+      if (n === 'player:hitDragon' && e.kind === 'punch') at = { ...e, posture: d.posture, guarding: d.guarding };
+    };
+    const hp0 = d.hp, post0 = d.posture;
+    const log = hold(G, 2.3, 2.3);
+    const turn = firstOf(log, (r) => r.kind === 'punch');
+    const before = log.filter((r) => r.h >= 0.5 && r.h < PUNCH.at - 1e-6);
+    assert(PUNCH.on && PUNCH.at === 1.9 && CHARGE.full < PUNCH.at && PUNCH.at < CHARGE.maxHold, `PUNCH.at ${PUNCH.at} s: past the full charge (${CHARGE.full}), before the auto-release (${CHARGE.maxHold})`);
+    assert(before.length > 60 && before.every((r) => r.st === 'charge'), `below ${PUNCH.at} s of hold: the charge, as ever (${before.length} frames)`);
+    assert(turn && turn.h >= PUNCH.at - 1e-6 && turn.h < PUNCH.at + 2 * DT && turn.st === 'attack' && turn.pend, `the turn at ${turn?.h.toFixed(3)} s of hold: the punch's coil, waiting while held`);
+    assert(evs.includes('player:oneBlowReady') && evs.filter((n) => n === 'player:oneBlowReady').length === 1, 'the turn is announced once (player:oneBlowReady: its sound)');
+    const fired = firstOf(log, (r) => r.kind === 'punch' && !r.pend);
+    assert(fired && fired.h >= 2.3 - 1e-6 && fired.h < 2.3 + 2 * DT, `released at ${fired?.h.toFixed(2)} s: the punch goes`);
+    const want = Math.round(PUNCH.damage * (T.parts[at?.part] ?? 1));
+    assert(at && at.damage === want && hp0 - d.hp === want && !at.guarded, `ONE BLOW lands: ${at?.damage} damage on his ${at?.part} (${PUNCH.damage} x ${T.parts[at?.part]}), hp ${hp0} -> ${d.hp}`);
+    assert(at && Math.abs(at.posture - post0 - PUNCH.posture) < 1e-6, `posture + ${PUNCH.posture} exactly (${post0.toFixed(1)} -> ${at?.posture.toFixed(1)})`);
+    assert(d.hp > 0 && d.mode !== 'dying' && p.alive, 'not lethal: he stands');
+    assert(!evs.includes('combat:clash') && !evs.includes('dragon:guard'), 'no blade in it: no trade, no clash');
+  }
+  // 3b. into his raised guard: crushed, he staggers
+  {
+    const G = build();
+    duel(G, { dist: 2.0 });
+    const p = G.game.player, d = G.game.dragon;
+    p.debug.god = true;
+    let at = null;
+    const evs = [];
+    G.watch = (n, e) => {
+      evs.push(n);
+      if (n === 'player:hitDragon' && e.kind === 'punch') at = e;
+    };
+    const hp0 = d.hp;
+    let guardUp = false;
+    hold(G, 2.2, 2.2, () => {
+      if (!at) d.brain.raiseT = 0;
+      if (p.atk?.def?.kind === 'punch' && !p.atk.pending && !at) guardUp = guardUp || d.guarding;
+    });
+    assert(guardUp && PUNCH.poise >= T.guard.crushPoise, `his guard was up as the fist came (poise ${PUNCH.poise} vs crushPoise ${T.guard.crushPoise})`);
+    assert(at && at.damage > 0 && d.hp < hp0 && evs.includes('dragon:stagger') && !evs.includes('dragon:guard'), `the guard is crushed: ${at?.damage} damage, he staggers (${evs.filter((n) => n.startsWith('dragon:')).join(', ')})`);
+  }
+  // 3c. held on: it goes by itself at CHARGE.maxHold; the world behind him takes the force (the real set)
+  {
+    const G = build(SEED, true);
+    duel(G, { dist: 2.0 });
+    const p = G.game.player, d = G.game.dragon, W = G.game.world, D = W.destructibles;
+    p.debug.god = true;
+    // a striking stone 3.4 m behind him along the line, the hero 2 m before him
+    const post = D.list.find((b) => b.kind === 'post' && b.state === 0);
+    const ux = -post.x / Math.hypot(post.x, post.z), uz = -post.z / Math.hypot(post.x, post.z);
+    d.position.set(post.x + ux * 3.4, 0, post.z + uz * 3.4);
+    d.yaw = Math.atan2(ux, uz);
+    run(G, 0.1);
+    place(G, 2.0);
+    run(G, 0.1);
+    const calls = [];
+    const imp0 = W.impact, sw0 = D.sweep.bind(D);
+    W.impact = (x, z, r, power, o) => { calls.push({ f: 'impact', x, z, r, power }); return imp0(x, z, r, power, o); };
+    D.sweep = (ax, az, bx, bz, r, power, o) => { if (p.atk?.def?.kind === 'punch') calls.push({ f: 'sweep', ax, az, bx, bz, r, power }); return sw0(ax, az, bx, bz, r, power, o); };
+    const hp0 = post.hp;
+    const log = hold(G, 3.0);
+    const fired = firstOf(log, (r) => r.kind === 'punch' && !r.pend);
+    assert(fired && Math.abs(fired.h - CHARGE.maxHold) < 2 * DT, `held on, it goes by itself at ${fired?.h.toFixed(2)} s (CHARGE.maxHold ${CHARGE.maxHold})`);
+    const ic = calls.find((c) => c.f === 'impact'), sc = calls.find((c) => c.f === 'sweep');
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+    const carry = sc ? Math.hypot(sc.bx - sc.ax, sc.bz - sc.az) : 0, along = sc ? ((sc.bx - sc.ax) * fx + (sc.bz - sc.az) * fz) / (carry || 1) : 0;
+    assert(ic && ic.power === PUNCH.world.power && ic.r === PUNCH.world.radius, `world.impact ${ic?.power} over ${ic?.r} m at the contact`);
+    assert(sc && Math.abs(carry - PUNCH.world.carry) < 1e-6 && along > 0.99 && Math.abs(sc.ax - ic.x) < 1e-6, `the force goes on ${carry.toFixed(1)} m behind him along the line (destructibles.sweep, ${sc?.power})`);
+    assert(post.hp < hp0 || post.state !== 0, `the striking stone 3.4 m behind him takes it (structure ${hp0.toFixed(2)} -> ${post.hp.toFixed(2)}, state ${post.state})`);
+  }
+  // 3d. released before the turn: the cleave as ever; PUNCH.on false: the cleave
+  {
+    const G = build();
+    duel(G, { dist: 6 });
+    const log = hold(G, 1.5, 1.5);
+    assert(!log.some((r) => r.kind === 'punch') && firstOf(log, (r) => r.kind === 'cleave'), 'learned, released at 1.5 s: the cleave');
+  }
+  {
+    PUNCH.on = false;
+    try {
+      const G = build();
+      duel(G, { dist: 6 });
+      const log = hold(G, 2.2);
+      assert(!log.some((r) => r.kind === 'punch') && firstOf(log, (r) => r.kind === 'cleave'), 'PUNCH.on false: the hold is the cleave');
+    } finally {
+      PUNCH.on = true;
+    }
+  }
+  // 4. OFF without the reward: the hold is today's: the charge to CHARGE.maxHold, then the cleave
+  R.resetRewards();
+  {
+    const G = build();
+    duel(G, { dist: 6 });
+    const p = G.game.player;
+    let late = null;
+    const log = hold(G, 3.0, Infinity, () => { if (p.hb.t >= 2.2 && p.hb.t < 2.3 && !late) late = p.state; });
+    const cl = firstOf(log, (r) => r.kind === 'cleave');
+    assert(!log.some((r) => r.kind === 'punch') && !G.counts['player:oneBlowReady'] && late === 'charge', `not learned: still the charge at 2.2 s of hold (${late}), never the punch`);
+    assert(cl && Math.abs(cl.h - CHARGE.maxHold) < 2 * DT, `... and the cleave lets go by itself at ${cl?.h.toFixed(2)} s, as today`);
+  }
+  // (the events this scenario adds: the lead puts them in ARCHITECTURE's catalogue; until then they
+  // are noted, not failed)
+  for (const n of ['reward:granted', 'player:oneBlowReady', 'player:oneBlow']) {
+    if (!CATALOGUE.has(n) && EMITTED.delete(n)) out(`note: ${n} is not in the event catalogue yet`);
+  }
+  R.resetRewards();
+}
+
 //@@MORE@@
 
 const SCENARIOS = {
   level: scenarioLevel,
   data: scenarioData,
   lethal: scenarioLethal,
+  reward: scenarioReward,
   //@@LIST@@
 };
 

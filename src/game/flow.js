@@ -5,6 +5,7 @@ import { DEFENSE } from '../combat/rules.js';
 import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
+import * as rewards from './rewards.js';
 
 // Game flow: owns game.state and every transition
 //   title → explore → bossIntro → boss → dead | victory   (+ paused from explore/bossIntro/boss)
@@ -105,6 +106,7 @@ export class GameFlow {
     this.introT = 0;
     this.deathT = 0;
     this.victoryT = 0;
+    this.reward = null; // the reward the last victory granted (game/rewards.js id), for its banner line
     this.deathBanner = false;
     this.canRetry = false;
     this.statsShown = false;
@@ -761,7 +763,9 @@ export class GameFlow {
     this.victoryT = 0;
     this.statsShown = false;
     g.hud?.prompt?.(null);
-    g.hud?.banner?.(this._text('victory'), 'victory');
+    // the level's fixed reward (game/rewards.js, ADR-140): learned now, kept on this browser
+    this.reward = this._try(() => this._grantReward(), 'rewards.grant') ?? null;
+    this._victoryBanner();
     g.audio?.setMusic?.('victory');
     this._try(() => this.moves.commit('victory'), 'moves.commit');
     g.events?.emit('game:victory', this.stats.snapshot());
@@ -772,6 +776,22 @@ export class GameFlow {
     this._ovLambda = 1;
     this.cameraOverride = this._ov;
     this._log(this._text('fallen'), 'lore');
+  }
+
+  /** Grant the level's fixed reward (rewards.forLevel; none: null) and announce it: `reward:granted`
+   *  { id, first } (first: not learned on this browser before). Returns the id. */
+  _grantReward() {
+    const id = rewards.forLevel(this.game.level?.id ?? null);
+    if (!id) return null;
+    const first = rewards.grant(id);
+    this.game.events?.emit('reward:granted', { id, first });
+    return id;
+  }
+
+  /** The victory banner: the level's line, and under it the reward learned (this.reward). */
+  _victoryBanner() {
+    const sub = this.reward ? rewards.line(this.reward) : '';
+    this.game.hud?.banner?.(this._text('victory'), 'victory', sub ? { sub } : {});
   }
 
   _victory(rdt) {
@@ -1008,7 +1028,7 @@ export class GameFlow {
     if (g.state === 'victory') {
       // replay the victory beat (the prelude cleared the banner and the record)
       this.victoryT = 0;
-      g.hud?.banner?.(this._text('victory'), 'victory');
+      this._victoryBanner();
       return;
     }
     if (!d || d.state === 'dead' || typeof d.debug?.kill !== 'function') {

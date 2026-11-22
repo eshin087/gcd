@@ -354,6 +354,54 @@ export const SWINGS = {
     ],
   },
 
+  // ---- ONE BLOW (combat.js PUNCH; ADR-140) -----------------------------------------------------
+  /** The charged punch, the Hermit's technique. The windup is the TURN out of the charge (held at the
+   *  coil, u = 1, while the button is held): the free hand lets go of the grip, the blade sinks to
+   *  his right side and trails low behind the hip (the run's carry), the chest opens to his left and
+   *  the free fist draws back to the left hip, the weight back. The blow: the front foot steps, the
+   *  hips whip round ahead of the chest and the fist drives straight from the hip at the foe's chest,
+   *  the sword hand pulling back the other way; he holds the planted finish, the arm out, and comes
+   *  home. (No `fist` hand exists: the open hand, its fingers along the forearm, drives knuckles
+   *  first; a true fist is gear/hands.js's.) */
+  oneBlow: {
+    line: 'fist', // (not 'point': no blade drives along the line; the thrusts' rules are not his)
+    home: 0.5,
+    // (no lead: the hips are keyed ahead of the fist; a lead that runs in as the held coil lets go
+    // threw the head 9 cm in the release frame)
+    lead: [0, 0],
+    step: [1.05, 1.55],
+    drag: 0.14,
+    lF: [0.15, 0.6], rF: [-0.18, -0.5], fy: [0.1, -0.8],
+    flat: [-0.3, 1, -0.4],
+    fold: 0,
+    keys: [
+      // the turn: the blade first eases off the charge's upright (from rest: a blade that left it at
+      // speed jumped 17 cm at the point in the turn's first frame), the grip let go
+      { u: 0.15, h: [-0.11, -0.12, 0.3], a: [-86, 66] },
+      // (the free hand stays near the grip as it lets go, then comes across to the hip: let go at once,
+      // it jumped 9 cm in the turn's first frame)
+      { u: 0.12, two: 0.9, hs: 0, lk: 0, l: [-0.28, -0.14, 0.3], lp: [0.8, -0.45, 0.35] },
+      { u: 0.45, two: 0, l: [0.0, -0.24, 0.12], lp: [0.45, -0.75, -0.4], ld: [-20, -10], lw: 0.4, pn: [-1, 0, 0] },
+      { u: 0.5, h: [-0.16, -0.27, 0.1], a: [-120, 10] },
+      // (anticipation: the chest a little past the coil's opening, the weight back)
+      { u: 0.68, by: -0.22, bz: -0.06, bx: -0.05, hip: 0.2, sy: 0.25, sx: 0.12 },
+      // the COIL (held while the button is): the blade low and trailing at the right hip (out to his right-back, its point ~0.45 m off the grass: straight back at -34 degrees it touched the grass, and from behind it was drawn as one long bar down the screen to his feet), the fist
+      // drawn back to the left hip. Keyed twice (u 0.92 and 1.0) so it is still there: the release
+      // starts from rest instead of a jump
+      { u: 0.92, h: [-0.13, -0.42, -0.06], a: [-128, -16], by: -0.25, bz: -0.05, bx: -0.04, hip: 0.15, sy: 0.19, sx: 0.14, l: [0.04, -0.34, -0.1], lp: [0.3, -0.35, -0.9] },
+      { u: 1.0, h: [-0.13, -0.42, -0.06], a: [-128, -16], two: 0, by: -0.25, bz: -0.05, bx: -0.04, hip: 0.14, sy: 0.18, sx: 0.14, sz: 0, l: [0.04, -0.34, -0.1], lp: [0.3, -0.35, -0.9], ld: [0, -4], lw: 0.3, pn: [-1, 0, 0], hs: 0 },
+      // the drive: the hips go first, the fist leaves the hip, passes the ribs
+      { u: 1.15, l: [0.04, -0.31, -0.01], hip: 0.02, sy: 0.12, by: -0.27, bz: -0.01 },
+      { u: 1.35, l: [0.0, -0.17, 0.24], lp: [0.4, -0.7, -0.6], hip: -0.2, sy: -0.04 },
+      // the contact: the arm out at the foe's middle, the hips and chest turned in behind it
+      { u: 1.6, h: [-0.12, -0.42, -0.14], a: [-136, -20], l: [-0.05, 0.03, 0.51], lp: [0.45, -0.85, -0.1], ld: [-6, 0], lw: 0.3, pn: [-0.7, -0.7, 0], by: -0.32, bz: 0.12, bx: 0.02, hip: -0.32, sy: -0.24, sx: 0.26 },
+      // the planted finish, held
+      { u: 2.0, l: [-0.05, 0.02, 0.5], by: -0.33, bz: 0.13, hip: -0.36, sy: -0.28, sx: 0.28 },
+      { u: 2.12, by: -0.35, bz: 0.14, bx: 0.03, hip: -0.42, sy: -0.33, sx: 0.3 },
+      { u: 2.5, h: [-0.12, -0.42, -0.12], a: [-134, -18], l: [-0.04, -0.01, 0.47], lp: [0.45, -0.85, -0.15], by: -0.32, bz: 0.12, bx: 0.02, hip: -0.38, sy: -0.3, sx: 0.26 },
+    ],
+  },
+
   // ---- the heavy branches (combat.js HEAVY; ADR-115) -------------------------------------------
   // Two-handed, slower to gather, and each holds its finish (`home` 0.385, like the slam and the
   // cleave): the commitment a heavy is, readable from the camera behind him. Each starts on the side

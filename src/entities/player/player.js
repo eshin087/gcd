@@ -7,12 +7,13 @@ import { TELL, RESULT, DEFENSE, GUARD, LETHAL, tellDefaults, facingDelta, dodgeO
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
-import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, PUNCH, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
+import * as rewards from '../../game/rewards.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -20,7 +21,8 @@ import { Flurry } from './flurry.js';
 // Moveset (combat.js, ADR-041): LMB chain falling cut → rising backhand → whirl → stab → two-handed
 // slam (finisher, ground shards); LMB out of a sprint = the sprint slash, out of a forward roll = the
 // roll cut; HEAVY (RMB / R2) = the chain's heavy branch (combat.js HEAVY, ADR-115); hold HEAVY =
-// crouched charge, release = the dashing cleave. Swings hit giant targets through
+// crouched charge, release = the dashing cleave (with ONE BLOW learned, a hold past PUNCH.at turns into
+// the charged punch: ADR-140). Swings hit giant targets through
 // a vertical reach band and step in toward a hurt surface ahead (REACH).
 // A perfect dodge is answered by the flurry (flurry.js, ADR-091): as many blows as the streak of
 // perfect dodges counts, flash cuts and then an art; the plunge below is the wyrm's first art.
@@ -1520,6 +1522,7 @@ export class Player {
   canTrade() {
     const a = this.atk;
     if (!this.alive || !a || a.exec || !a.def || (this.state !== 'attack' && this.state !== 'heavy')) return false;
+    if (a.def.kind === 'punch') return false; // (ONE BLOW: no blade to meet his)
     return this.time - this.tradeT >= DEFENSE.trade.rearm;
   }
 
@@ -2625,6 +2628,7 @@ export class Player {
   _swingStarted(def, charge) {
     this._emit('player:attack', { kind: def.kind, combo: def.combo, charge, name: def.name ?? null });
     if (def.kind !== 'light') this.anim.kickCoat(def.dash ? 0.5 + 0.5 * charge : 0.45);
+    if (def.kind === 'punch') return; // (ONE BLOW: the fist strikes, the sword's gem keeps still)
     this.rig.gem.getWorldPosition(this._gem);
     const gv = this.gemVel;
     this.fx.gemGlint(this._gem.x, this._gem.y, this._gem.z, def.kind === 'light' ? 0.6 : 1, gv.x, gv.z, gv.y);
@@ -2653,6 +2657,12 @@ export class Player {
       this._bladePoint(0.95, this._v);
       this.fx.chargeReady(this._v.x, this._v.y, this._v.z, this.position.x, this.position.z);
     }
+    // ONE BLOW learned (game/rewards.js; combat.js PUNCH): held past PUNCH.at, the charge turns into
+    // the punch's coil (ADR-140). Released before it, the cleave as ever
+    if (L.held && L.t >= PUNCH.at && this._punchReady()) {
+      this._turnPunch();
+      return;
+    }
     if (!L.held) {
       this._releaseCharge(L.t);
       return;
@@ -2673,6 +2683,24 @@ export class Player {
   /** Release the charge: the dashing cleave, whose travel, damage and posture grow with the charge. */
   _releaseCharge(holdT) {
     this._startHeavy(CLEAVE, chargeStats(holdT, CLEAVE));
+  }
+
+  /** ONE BLOW is learned (game/rewards.js) and switched on (combat.js PUNCH.on). */
+  _punchReady() {
+    return !!PUNCH.on && rewards.has(PUNCH.reward);
+  }
+
+  /** The turn (ADR-140): the charge becomes the punch, its swing waiting at the coil while the heavy
+   *  button is held (the windup is the turn: the blade lowers to his side, the free hand lets go of
+   *  the grip and draws back to the hip); released, or at CHARGE.maxHold, it goes (_tickAttack). The
+   *  cue: the charge's light and hum go out of the blade, a puff of dust as he plants, one low sound
+   *  (`player:oneBlowReady`). */
+  _turnPunch() {
+    if (!this._startAttack(PUNCH)) return false;
+    const p = this.position;
+    this.fx.dust(p.x, p.z, 6, 0.6);
+    this._emit('player:oneBlowReady', { x: p.x, z: p.z });
+    return true;
   }
 
   /** Start a dashing heavy (`def.dash`: the cleave, the execution's thrust) with `st` = chargeStats. */
@@ -2739,6 +2767,10 @@ export class Player {
         a.pending = false; // tap: the swing goes ahead
         a.relT = a.t; // its step starts here (the root's step in; a late release compresses it)
         this._swingStarted(d, 0);
+      } else if (d.kind === 'punch') {
+        // the punch's coil, held (ADR-140): it never goes back to the charge; he keeps turning to the
+        // aim, as in the charge
+        this.yaw = dampAngle(this.yaw, this._aimYaw(this.yaw), TUNE.turnRate, dt / sp);
       } else if (this.hb.t >= CHARGE.hold) {
         this._startCharge();
         return;
@@ -2768,7 +2800,8 @@ export class Player {
       shaped = true;
       const LS = TUNE.lungeShape, l0 = Math.max(W - LS.pre, fin(a.relT, 0)), l1 = Math.max(W + A * LS.end, l0 + LS.min);
       if (!a.pending && t > l0 && t - dt < l1 && dt > 1e-6) {
-        if (a.lunge === null) a.lunge = this._lungeFor(d);
+        // (the punch: one planted step of its own, no step-in assist)
+        if (a.lunge === null) a.lunge = d.kind === 'punch' ? Math.max(0, fin(d.lunge, 0)) : this._lungeFor(d);
         lv = (a.lunge * (smoothstep(l0, l1, t) - smoothstep(l0, l1, t - dt))) / dt;
       }
     }
@@ -3089,6 +3122,16 @@ export class Player {
       a.prevT = t;
       const crit = this.critTimer > 0 || !!a.crit;
       const armed = !!this.rig.loadout?.weapon;
+      if (d.kind === 'punch') {
+        // ONE BLOW (ADR-140): no blade in it (no trail, no cut, no glint, no sweep through the world):
+        // the fist's zone, once, at the drive's height (_punchImpact)
+        if (!a.impact && t >= W + d.active * fin(d.hitAt, 0.6)) {
+          a.impact = true;
+          this._punchImpact(a, crit);
+        }
+        sw.commit();
+        return;
+      }
       // any overlap of this frame with the active window counts (robust to long frames)
       if (t >= W && prevT <= end + 0.04) {
         // the hit first: a cut that lands this frame draws its contact, not the arc's glint
@@ -3201,6 +3244,86 @@ export class Player {
     if (!Array.isArray(spheres) || !spheres.length) return;
     // (viaShards: the blade is in the ground, the shards are the contact: no drawn cut)
     if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit, true);
+  }
+
+  /**
+   * ONE BLOW meets what is before him (combat.js PUNCH, ADR-140): the zone from the chest out to the
+   * reach's end (`zone`: a capsule through a vertical band) against the boss's hurt spheres, once;
+   * then the world, landed or not: an impact at the contact (or at the reach's end) and the force
+   * carried on `world.carry` m behind it along the line (ADR-107), gusts and dust along it.
+   */
+  _punchImpact(a, crit) {
+    const d = a.def, g = this.game, Z = d.zone ?? PUNCH.zone, WB = d.world ?? PUNCH.world;
+    const p = this.position, fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
+    const r0 = fin(Z.from, 0.25), r1 = fin(Z.reach, 1.6), y = fin(Z.y, 1.25);
+    const ax = p.x + fx * r0, az = p.z + fz * r0, bx = p.x + fx * r1, bz = p.z + fz * r1;
+    if (!Number.isFinite(ax + az + bx + bz)) return;
+    let hit = false, cx = bx, cy = y, cz = bz;
+    const dr = g.dragon, spheres = dr?.hurtSpheres;
+    if (dr && typeof dr.takeHit === 'function' && dr.state !== 'dead' && dr.state !== 'dying' && Array.isArray(spheres) && spheres.length) {
+      const h = this._hit;
+      if (bandHit(spheres, ax, y, az, bx, y, bz, fin(Z.radius, 0.45), fin(Z.up, 2), fin(Z.down, 1), h) > 0 && Number.isFinite(h.x + h.y + h.z)) {
+        hit = true;
+        cx = h.x;
+        cy = h.y;
+        cz = h.z;
+        this._punchHit(a, h, crit);
+      }
+    }
+    // the force goes on: what stands where the fist met, and in a line behind it, takes it (one blow
+    // per swing: a piece struck by the impact is not struck again by the carry)
+    const L = Math.max(0, fin(WB.carry, 6));
+    const wb = this._worldBlowOf(a, false);
+    if (wb) {
+      wb.dx = fx;
+      wb.dz = fz;
+      wb.y = 1.0; // (a chest-high blow: a flagstone under the carry is passed over; the impact's disc reaches it)
+      g.world?.impact?.(cx, cz, fin(WB.radius, 1.4), fin(WB.power, 1.6), wb);
+      if (L > 0) g.world?.destructibles?.sweep?.(cx, cz, cx + fx * L, cz + fz * L, fin(WB.carryRadius, 0.9), fin(WB.carryPower, 1.2), wb);
+    }
+    // air and dust thrown along the line, a ring of air where the fist met, dust at his planted feet
+    for (let i = 0; i <= 3; i++) {
+      const s = (i / 3) * L, x = cx + fx * s, z = cz + fz * s;
+      g.world?.gust?.(x, z, 1.3 - 0.25 * i, 3.5);
+      this.fx.dust(x, z, 7 - i, 1.4 - 0.25 * i);
+    }
+    this.fx.release(p.x, p.z, 1);
+    this.fx.shockwave(cx, Math.max(0.9, cy), cz, true);
+    this.anim.kickCoat(0.6, this.anim.noise);
+    if (!hit) g.shake?.(fin(d.shake, 0.5) * 0.5);
+    this._emit('player:oneBlow', { x: cx, z: cz, hit });
+  }
+
+  /** ONE BLOW lands on the boss at h { sphere, x, y, z }: a heavy blow (a duelist: the punch's poise,
+   *  over any guard's crushPoise, and exactly its posture; the wyrm: a heavy hit, its own posture
+   *  gain). No blade: no cut drawn, no blade sound (`shards`: the blade is not in it). Not lethal. */
+  _punchHit(a, h, crit) {
+    const dr = this.game.dragon, d = a.def;
+    a.hit = true;
+    const part = typeof h.sphere?.part === 'string' ? h.sphere.part : 'body';
+    const damage = a.damage * (crit ? DEFENSE.ghostep.critMult : 1);
+    const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) };
+    const point = { x: h.x, y: h.y, z: h.z };
+    const duelist = dr.kind === 'duelist';
+    let dealt = damage;
+    try {
+      const r = dr.takeHit({ damage, part, point, dir, cut: dir, poise: a.poise, heavy: true, crit, ...(duelist ? { posture: fin(d.posture, 80) } : null) });
+      if (Number.isFinite(r)) dealt = r;
+    } catch (err) {
+      console.error('[player] dragon.takeHit failed', err);
+    }
+    a.dealt = dealt;
+    this._emit('player:hitDragon', { damage: dealt, part, point, heavy: true, crit, kind: d.kind, guarded: dealt === 0, combo: 1, weight: null, shards: true });
+    if (!(dealt > 0)) return;
+    this._guardGain(GUARD.hit.heavy);
+    a.hitAt = a.t;
+    const HF = HIT_FEEL.crit;
+    this._hitstop(fin(d.hitstop, 0.15) * (crit ? HF.stop : 1));
+    this.game.shake?.(fin(d.shake, 0.5) * (crit ? HF.shake : 1));
+    const pm = feel(d.punch) + (crit ? HF.punch : 0);
+    if (pm > 0) this.game.punch?.(pm);
+    const km = feel(d.kick) * (crit ? HF.kick : 1);
+    if (km > 0) this.game.kick?.(dir.x, 0, dir.z, km);
   }
 
   /** This swing as a blow on the world (world.destructibles: one id per swing, so a piece takes it once). */
@@ -3547,7 +3670,7 @@ export class Player {
       const k = this.chargeK;
       ink = 1.0 + 1.6 * k + (this.chargeFull ? 0.3 * Math.sin(this.time * 18) : 0);
       glow = 1.0 + 0.8 * k;
-    } else if (a && (st === 'attack' || st === 'heavy') && !a.pending) {
+    } else if (a && (st === 'attack' || st === 'heavy') && !a.pending && a.def.kind !== 'punch') {
       const d = a.def, t = a.t;
       if (t >= d.windup - 0.06 && t <= d.windup + d.active + 0.12) {
         // relative to rest: at the game camera the rest ink is already 1.6 and the rest glow 1.45 (a
@@ -3607,7 +3730,7 @@ export class Player {
       // light is there at once and leaves in a few frames (bladeHot). It goes to his OWN part tables
       // (uSelfPart*): no boss's rig reads them.
       const F = TUNE.bladeFlare, B = HERO_INK.bladeTip, P = B.part;
-      const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.06 && a.t <= a.def.windup + a.def.active + 0.12;
+      const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.def.kind !== 'punch' && a.t >= a.def.windup - 0.06 && a.t <= a.def.windup + a.def.active + 0.12;
       let hot = inStrike ? 1 : 0;
       if (st === 'charge') hot = Math.max(hot, clamp(this.chargeK, 0, 1));
       else if (flurrying) hot = 1;
