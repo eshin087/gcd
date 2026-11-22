@@ -1139,6 +1139,46 @@ grit, chips and sparks are one-cell glyph particles. Look code draws from its ow
 - **Cost** (headless; frame rates were not measured): the fire field's worst case, form 3's aura with
   the great beam, ten blasts and a strike, 2863 of 6000 blobs; his fights by the AI peak about 1525.
 
+### The Skywell Vault and Qian Yao (2026-11-22, ADR-132, ADR-133; `world/skywellVault.js`, `world/sun.js`, `enemies/heavenFallen/`)
+- **The hall** is dark (a cool, low ambient, fog from 26 m): the four wells of sunlight are its light.
+  The floor is carved flagstones (`world/floor.js`, as the other arenas); every stone, timber and bronze
+  piece is prop art (the windlasses, the pillars, the steles, the scaffolds, the gate, the armillary,
+  the fallen judge, the crags of the cavern's wall). The roof is never drawn: the chains rise out of
+  frame. The cuts his eyes leave glow molten orange (`scarInk`).
+- **A pool of sunlight** (`world/sun.js`; `?pool=`): a glyph batch of its own lying on the floor (the
+  throne's seal-inlay technique): `a` a full disc of gold digits on a staggered grid, its rim in strokes
+  (recommended); `b` the rim and a band inside it only (calmer under the fight). Slow gold motes fall in
+  each open shaft (one-cell glyph particles), one warm point light per pool (the disc reads without it:
+  the pool of lights holds 8). A lid closing eats the disc from one side as a straight edge, dust falls.
+  Not fire-field heat: sunlight is not fire.
+- **His figure** (`gear.js`, `look.js`, `bodyArt.js`; `?fallenLook=a|b|c`, `?fallenArt=ink`): drawn 1.4 x,
+  bone white, bronze and ash grey, through the wyrm's art path by default and as the ink-line twin under
+  `?fallenArt=ink`. `a` the Haloed Exile: a long robe over wide trousers, a bronze belt, a topknot through
+  a broken crown ring, two sash ends rising behind his shoulders, a broken bronze halo wheel behind his
+  head (its inner ring lit with his light); `b` the Chained Judge: a court robe, stiff shoulder boards,
+  the official's hat with two level wings, broken shackles on both wrists; `c` the Gilt Guardian:
+  lamellar, one great pauldron, long loose hair, a flame-shaped bronze aureole behind his back. No cape,
+  no chest emblem, no red and blue, no forelock curl, no bare chest.
+- **The sun on him** (`?radiant=`): `a` the whole body blazes white-gold (its letters warmed and
+  self-lit; gold motes rise off him; recommended); `b` only the wheel (the aureole), the eyes and a rim.
+  Dim, he is a dull bronze-grey figure with a dark wheel; an eclipse snaps him dark with a ring of steel
+  sparks. Gold is his and is no tell.
+- **His eyes** (`fxGaze.js`; `?gaze=`): heat in the fire field from two points at his eyes, gold in the
+  void slot (`FireField.setPalette('void', FIRE_PALETTES.gold)`, as the Skybreak Ring): `a` a white-hot
+  core in a narrow gold sheath (Tian Lei's beam body, narrower), a boiling knot with embers where it meets
+  the floor (recommended); `b` a braided lance (two strands round a thin core); `c` a thin steel line,
+  whose show is the molten seam it leaves (twice as wide). Through a windup two points of light grow at
+  his eyes (the tell is on him). Never red. Gaze from on High's line is marked in red strokes (glyph
+  specks: a warning is not heat). The molten seam is heat in the FIRE slot, low, with embers.
+
+| switch | what | `0` | `a` | `b` | `c` | ships |
+|---|---|---|---|---|---|---|
+| `?fallenLook=` | Qian Yao's body (read when his rig is built) | - | the Haloed Exile | the Chained Judge | the Gilt Guardian | not picked (a) |
+| `?fallenArt=` | how his body is drawn (read when his rig is built) | - | `art`: the wyrm's art path | `ink`: the ink-line twin | - | not picked (art) |
+| `?radiant=` | the sun on him | - | the whole body blazes | the wheel, the eyes, a rim | - | not picked (a) |
+| `?gaze=` | his eyes' beam | - | core and gold sheath | a braided lance | a thin line, a wide seam | not picked (a) |
+| `?pool=` | a pool of sunlight | - | a full disc of digits | the rim | - | not picked (a) |
+
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved

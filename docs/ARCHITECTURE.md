@@ -2890,13 +2890,13 @@ are heat in the fire field.
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, the Skywell Vault `fallen`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
 default), `applyLevel(level)` (merges `level.world` into `CONFIG.world`: main.js calls it once,
 before building any module), `levelUrl(id, href)`. One level per page load; switching reloads.
-A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text }`.
+A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(game), text, reward? }`.
 - `buildSet` returns createForest's shape (`group, treeSpots, bare, slabs, nest, bonfire, material,
   stoneMaterial, slabMaterial`) plus, optionally, `breakables` (what can be chipped, felled, burned and
   thrown: see Destruction above; a set lists those pieces there INSTEAD of merging them into its static
@@ -3650,6 +3650,60 @@ parry on the way out turns it home at once; at its turn it asks `brain.fairDelay
 T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
 
+- **The Skywell Vault** (`levels/fallen.js` `FALLEN`, `?level=fallen`, aliases heaven / heavenfallen /
+  skywell / vault / qianyao; `world/skywellVault.js` `createSkywellVault`, layout `VAULT`; ADR-132). A dark
+  octagon of breakable flagstones round the origin (`VAULT.R` 15; his bound `floor.r` 13.2), his seat at
+  `seat` (0, -4.5), the gate at `entryZ` 15.2, the bonfire at (0, 30). Four wells `VAULT.wells` (NE, NW,
+  SE, SW: `{ x, z, r 3.2, wx, wz }`, the windlass 12.4 m out on each ray), the great well `great`
+  (centre, 4.2), a bored well's `bore.r` 2.8. Breakables: 'windlass' (wood, `hp` 1.1, `topples: false`,
+  `burns: false`, `cover: true`), 'pillar', 'stele', 'scaffold' (wood: what his beams set alight),
+  'gatepost', 'rubble', the floor's slabs. Landmarks (prop art, whole): the armillary, the fallen judge.
+  The set returns `sun: { wells, great, bore }` (data only) besides the usual shape.
+- **`world.sun`** (`world/sun.js` `SunWells`; null on every other set and on `?stage=lab`): `pools` (the
+  four fixed wells, then three temporary slots: `{ id, x, z, r, open 0..1, state 'open' | 'opening' |
+  'shutting' | 'shut', temp, life, live }`), `lit(x, z)` → 0 | 1, `poolAt(x, z)`, `nearestOpen(x, z, {
+  fixed })`, `openCount` (fixed lids open), `boredCount`, `bore(x, z, r, life)` → pool | null, `shut(i)` /
+  `openAll()` (Lab, tests), `update(dt)`, `reset()`, `setVisible(on)`, numbers in `SUN`. A fixed pool is
+  open exactly while its windlass is intact in `world.destructibles.list` (bound once by kind and place);
+  a broken windlass drops its lid over `SUN.shut` 0.7 s; `world.restore()` reopens them (world.js calls
+  `sun.reset()`). Emits `world:sun`.
+- **A level's `reward`** (optional; ADR-134): `{ id, name, line }`. `game/rewards.js`: `hasReward(id)`,
+  `grantReward(id)` → true when new, `listRewards()`, `clearRewards()`, `takeReward(id)`; kept in
+  `localStorage` `abyss.rewards`; `?reward=<id>[,<id>]` grants for the page's session. `GameFlow
+  ._enterVictory` grants the level's reward and logs its `line` the first time. The first: `fallingHeaven`
+  (`player/combat.js` `FALLING_HEAVEN`: HEAVY out of a sprint while it is held; `player.js` asks
+  `hasReward` where the sprint heavy starts).
+- **The boss slot's optional `sun`** (`{ k, lit, eclipsed }`, Qian Yao): the HUD draws a third thin boss
+  row (`ab-boss-sun`) only when the boss has it.
+
+### Qian Yao, the Heaven-Fallen (2026-11-22, ADR-133; `enemies/heavenFallen/`)
+`HeavenFallen extends Duelist` (`fallen.js`, kit `FALLEN_KIT`, id 'heavenFallen'; its `loadout` is a getter:
+`?fallenLook=` is read when his rig is built). `FallenBrain` floors the brain at his hover height
+(`_ground`, `_fall`; `d.hoverY` 0.35, 0 when he is down). Surface beyond the duelist's: `sun`, `radiant`,
+`hoverY`, `eclipse(kind, secs)`, `sunParried()`, `stats` (eclipses, starves, glances, drinks, aloft),
+`gaze` (`GazeMoves`: `B` the live beam, `busy`, `stats`), `seams` (`Seams`: `lay(x, z, dx, dz)`, `list`,
+`stats`), `debug.sunForce(k | null)` (hold his light as if he stood in a pool of it; an eclipse still puts
+it out), `debug.setSun(k)`, `debug.eclipse(secs)`, `debug.sun` (a copy), `debug.postureBreak()` (breaks him
+whatever his light). Overrides: `takeHit` (the glance), `addPosture` / `_updatePosture` / `_break` (the
+meter holds while radiant), `onParried` / `onMikiri` / `onLockEnd` / `onCounter` (a perfect answer
+eclipses first), `weigh` (the drink, the bore, `sun.defend`), `beatMotion` (his eyes, the drink, the third
+awakening, the passage's sweep of the world), `onImpact`, `hitPlayer` (no Ghostep from the air),
+`afterPose`. He listens to `player:perfectDodge` (an eclipse), `world:sun` (the starving, the feed's lid
+lines) and `world:impact` (the hero chipping a windlass: his closers weigh more for `sun.defend.time`).
+Beat fields of his (`moves.js`): `gaze: { kind: 'focus' | 'sweep' | 'high' | 'bore', side }` (routed to
+`gaze.js`), `fly: { kind: 'drink' | 'awaken3' }`, `pass`, `crack`, `dive`. A move that is only motion (the
+drink, the bore) is a feint beat to the brain (a feint gets no `onImpact`: it does its work in
+`beatMotion`). `FallenFx extends AscFx` (`fx.js`: gold in the void slot; `gaze`, `eyesCharge`,
+`gazeFlash`, `lineMark`, `boreBeam`, `glance`, `eclipse`, `radiance`, `drinkWake`, stones as called
+strikes of style 'stone', `eyePoints()`). Look switches: `?fallenLook=`, `?fallenArt=`, `?radiant=`,
+`?gaze=`, `?pool=` (STYLE.md). **Who hits the world** (`TUNING.world`): a lit beam every 0.1 s: the line
+ends at the first cover the strip touches (`coverAt`, the strip's half width), the cover takes `gaze` 0.7
+once a beam (one `src`), the foot sweeps the floor (`down`), scars it every 1.3 m, scorches it,
+`world.ignite(x, z, 0.8, 0.8, false)`; Noonfall's landing `world.impact(r 2.8, dive 1.6, blunt)`; Exile's
+Passage `destructibles.sweep(0.9, passage 1.0)` along its flight; a stone of the bore a called strike
+(`strike` 1.0); his bar's blows the engine's `_worldBlow` (`per` 40, `red` 1.25); `crack` blows
+`world.impact` ahead of him.
+
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
@@ -3783,6 +3837,11 @@ World → audio (destruction, ADR-107; see "Destruction" above):
   payload. The HUD feed says it once a fight, on first)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
   and hazard: true (be out from under it; audio plays the hazard cue)
+- `world:sun {id, open, temp}` (ADR-132, the Skywell Vault's sunlight, world/sun.js: a pool changed. id: its
+  index in `world.sun.pools`; open: true as it opens (a lid back on a reset, a well bored), false as it starts
+  to shut (its windlass broke, a bored well's life ran out); temp: a bored well. One reused payload. Qian Yao
+  listens: a lid shut on the pool he stands in or flies to starves him; the HUD feed's "A lid falls shut." /
+  "THE SKY IS SHUT" are his)
 
 ## Ownership (parallel work)
 Foundation (read-only for module authors unless their brief says otherwise): `src/core/**`,

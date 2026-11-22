@@ -5,6 +5,64 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 72: a fifth level, the Skywell Vault and Qian Yao, the Heaven-Fallen
+
+**Owner** (through the session that planned it): new level bosses built on the power fantasy of famous
+characters, as originals. This one is in the spirit of a flying, invulnerable comic-book hero: an
+immortal who flies, cuts the floor with beams from his eyes and cannot be staggered while the sun is in
+him; the hero changes the arena to put him in shade. Planned by one session (the plan in the shared
+notes, against `9333ce7`), built by this one (Opus 5.5). Branch `claude/level-heaven-fallen-896bb6`.
+ADR-132 – ADR-134 / Session 72 / M1.56.
+
+**What exists** (ARCHITECTURE "The Skywell Vault", "Qian Yao"; COMBAT "Qian Yao, the Heaven-Fallen";
+STYLE "The Skywell Vault and Qian Yao"):
+- `levels/fallen.js` (`?level=fallen`), `world/skywellVault.js` (`VAULT`: a dark octagon of flagstones,
+  four wells on windlasses, six rim pillars, four steles, scaffolds, the gate, the armillary, the fallen
+  judge), `world/sun.js` (`world.sun`: pools bound to their windlasses, bored wells, `world:sun`, drawn as
+  a glyph batch of gold digits with motes and one light a pool).
+- `enemies/heavenFallen/`: the sunlight rule (glance, the meter that holds, the eclipse on a perfect
+  answer, the starving), flight as beat data (a 0.35 m hover, aloft only inside a move), his eyes
+  (`gaze.js`: Heaven's Gaze, the Sweeping Gaze, Gaze from on High, Crossed Gaze, the bore), molten seams,
+  18 moves and two transitions, three bodies with their art-path and ink-line twins, `FallenFx`.
+- The HUD's sun row, the Lab's SUN section (`dev/labSun.js`), Training's `fallen` kind (nine situations;
+  Training now holds a sunlit boss dim unless a situation asks for light), `game/rewards.js` and Falling
+  Heaven (a sprint heavy while the reward is held), the level's borrowed music.
+- `tests/integration/fallen.mjs` (13 scenarios) in `npm test`; the set in `world.mjs` `sets`.
+
+**Found on the way.**
+- The beam's origin was first the DRAWN head: the drawn figure leans toward the camera and its head sat
+  0.9 m behind him on the floor, so the sweep hit a hero inside its blind ring. The gameplay origin is now
+  the upright body; the drawn eyes are only where it is drawn from.
+- A move that is only motion (the drink, the bore) is a feint beat to the brain, and a feint never gets
+  `onImpact`: the bore never breached the rock until it moved to `beatMotion`.
+- The engine's answered flurry breaks a duelist through `_break()` directly, past `addPosture`: his
+  `_break` now holds while he is radiant (the Lab's posture break still breaks him).
+- Against a steady defender he is radiant ~95 % of the time (he drinks when low); against the mortal
+  bots, whose perfect dodges eclipse him, 23 - 56 %. The bot's damage comes in those eclipse windows, so
+  the light's numbers (linger, when he drinks) moved nothing in its fight length.
+- A stele between him and a windlass took the beam in the first staging of the "second pass breaks a
+  windlass" check: the line ends at the first cover the strip touches.
+
+**Measured** (bots; nobody has played it):
+- PACE (three seeds x 90 s): 47 / 55 / 65 cues a minute by phase (the plan's 55 / 65 / 78 not reached),
+  0 conflicting cues, longest gap 4.4 s, out of sword reach 1 - 7 % of a phase (longest 2.6 s).
+- DEFEND: a mortal 95 % defender that never touches a windlass wins in 87 / 92 s (seeds 4242 / 7) at
+  7000 health (2600: 43 s; 5000: 63 - 81 s; 6000: 77 s). A bot that shuts the four lids first wins in
+  114 / 64 s (x1.31 / x0.70): the walk to the four windlasses costs ~20 s, and what shutting the sky
+  surely does is take his light away (radiant 25 / 12 % of the fight against 56 / 23 %). The plan's
+  "shutting wins in 0.8 x the time" is NOT met by these bots; the test asserts the light instead.
+- WIN: a god-mode fencer wins in 92 s through all three phases; the reward is granted and its line shown.
+
+**Not checked / open.** Nobody has played it; the fight's length and the sunlight's numbers are the
+owner's to set. The looks wait for the owner's pick (sheets in the PR: body a / b / c x art path / ink
+line, `?radiant=`, `?gaze=`, `?pool=`, the arena, the phone); the art-path body reads as a column of
+digits at the game camera, as it did for the other human bosses. Falling Heaven's motion has not been
+filmed from four sides. The bodies borrow the Ash Disciple's robe, the moon robe and the warden's
+lamellar beside his own crown, halo, hat, boards, shackles, mane, aureole and bar; his strikes are the
+Ash Disciple's authored blade paths, not poses of his own. A real phone is unchecked.
+
+---
+
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
 **Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also
@@ -38,6 +96,8 @@ is the owner's to judge on the device.
 **Next.** The owner tries `?pad=split&hold=1` on the phone and picks the default (and GUARD's place).
 Then the ideas ADR-131 lists: the game under the notch, a drag-to-place layout editor, an "add to
 home screen" hint.
+
+---
 
 ## 2026-11-21 — Session 70: the hero looks the same on every screen
 

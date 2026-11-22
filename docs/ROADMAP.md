@@ -184,6 +184,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.56 — A fifth level: the Skywell Vault and Qian Yao, the Heaven-Fallen (2026-11-22, `claude/level-heaven-fallen-896bb6`, ADR-132 – ADR-134)
+- [x] The Skywell Vault (`?level=fallen`): a dark hall, four wells of sunlight on windlasses, steles, pillars, scaffolds, the armillary and the fallen judge
+- [x] `world.sun` (world/sun.js): pools bound to their windlasses, bored wells, `world:sun`
+- [x] Qian Yao on the duelist engine: the sunlight rule (glance, held posture, eclipse, starving), flight, his eyes (four beams, the bore), molten seams; 18 moves and two transitions
+- [x] Defence never punished, tested: a mortal pure defender wins (`fallen.mjs` DEFEND)
+- [x] The first fixed reward: `game/rewards.js`, Falling Heaven (a sprint heavy, the slam's clip higher)
+- [x] The HUD's sun row; the Lab's SUN section; Training's `fallen` kind (nine situations)
+- [ ] The owner picks his body (a / b / c, art path or ink line), `?radiant=`, `?gaze=`, `?pool=` from the sheets
+- [ ] The owner plays it (fight length: a 95 % bot ~90 s at 7000 health; the numbers are bots')
+- [ ] Shutting the sky makes the fight faster for a player (the bots: it takes his light away, but not their time)
+- [ ] Falling Heaven's motion filmed from all four sides and reviewed
+- [ ] Its own score (it borrows three tracks)
+
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters
@@ -733,6 +746,8 @@ Spec: `docs/specs/ash-disciple.md`.
       Ash Disciple's technique first (the next PR)
 - [ ] Fixed rewards per boss (techniques, weapons, abilities, elements); weapons of other lengths
       (the animator, the hit segment and the blade FX read `DIM`)
+  - [x] The smallest real store (`game/rewards.js`, a level's `reward`, granted on victory) and the first
+        reward, Falling Heaven (M1.56, ADR-134); slots, an equip screen and a save are still to come
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)
 - [ ] More duelists from the roster (The Moth, The Bell-Warden, The Calligrapher, The Iron Abbot)
 - [ ] Regular mobs (2–3 types) on the approaches, using the shared combat system and tell rules

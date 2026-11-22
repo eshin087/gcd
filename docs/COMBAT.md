@@ -1880,6 +1880,86 @@ Storm's held tiles are hard to see against the aura. A blast stopped by cover is
 arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
 east.
 
+## Qian Yao, the Heaven-Fallen (2026-11-22, ADR-132, ADR-133; `?level=fallen`)
+An immortal cast out of heaven, sealed under a mountain, who cut four wells through the rock with his
+eyes to reach the sun. A duelist (`enemies/heavenFallen/`: `fallen.js`, `moves.js`, `tuning.js`,
+`links.js`, `gaze.js`, `seams.js`, `fx.js` + `fxGaze.js`, `gear.js`, `look.js`, `bodyArt.js`) on the
+shared engine; one bar (7000), three phases with gates at 66 % and 33 %, the execution on a break as
+Shen Hui's. Drawn 1.4 x. Heavy and deliberate: `flashLead` 0.3, first windups >= 0.55 s in every phase,
+blows >= 0.42 s apart, `windupScale` [1, 0.92, 0.86], `recoveryScale` [1, 0.9, 0.82]; more pressure by
+phase, not more damage. His weapon, HEAVEN'S RULE, a four-edged bronze bar (2.5 m of reach); the free
+hand strikes with the palm.
+
+### The sunlight rule
+`d.sun = { k 0..1, lit, eclipsed }` (the HUD's third boss row); `radiant` = k > 0 and not eclipsed.
+`TUNING.sun`: he fills `fill` 1.25 a second inside an open pool of `world.sun` (at any height) and drains
+over `linger` 8 s out of the light.
+- **Radiant**: a cut glances (x `glance` 0.3, a short hit-stop, no shove, no flinch, no posture, his guard
+  not used; `dragon:hurt` has `glance: true`; the feed says once "The sun is on him: your blade glances.").
+  His posture neither regenerates nor breaks: every way he would break (a full meter, an answered
+  flurry) holds at the maximum, and he breaks the frame his light is out. A parried last blow does
+  recoil him (the punish window is the hero's).
+- **Dim**: the duelist engine unchanged.
+- **A perfect answer eclipses him first** (a perfect parry, a perfect dodge, a won blade lock, the mikiri,
+  a full deflect, the flash counter, a returned Gaze): k 0 and no refill for `eclipse` 3.2 s, so its
+  reward lands on a dim body.
+- **Every parry** is worth full posture (kept while he is radiant) and takes `parry` 0.2 of his light.
+- **Starved**: a lid shut on the pool he stands in or flies to: he reels, eclipsed `starve.eclipse` 4.5 s,
+  + `starve.posture` 90 ("The lid falls on him: the light is torn out of him.").
+- **The lids**: each well's lid hangs on a chain from a timber windlass at the floor (1.1 structure).
+  Break the windlass and the lid drops in 0.7 s ("A lid falls shut." / "THE SKY IS SHUT"); it stays shut
+  for the whole fight (a reset reopens it). His own beams and dives break windlasses too.
+- **His light**: below `drinkBelow` 0.25 he flies to the nearest open pool (He Drinks the Sun) and stands
+  in it; a drink ends in the Gaze or Noonfall (a forced link). From phase 2, when the sky is shut on him
+  (light under 0.35 and no open lid within 9 m, or fewer than two lids open), he bores a well of his own
+  (He Opens the Sky; cooldown 18 s; at most 1 alive in phase 2, 2 in phase 3; 12 / 16 s). Each phase
+  starts in light whatever the hero shut: his eyes opening bores a well over him for 14 s; tearing the
+  sky opens the great well over the centre (4.2 m, 18 s; again every 30 s in phase 3).
+- **Defence is never punished** (tested, `fallen.mjs` `sun` and `defend`): a mortal bot that parries,
+  dodges and cuts only in his openings, never touching a windlass, wins (about 90 s at 95 %).
+
+### Flight
+He hovers 0.35 m over the floor in his footwork (every hurt sphere in sword reach). He is aloft (4.6 m)
+only inside a move, and every aloft move ends on the floor in a recovery of at least 0.9 s. Struck out of
+the air he drops (`airFall`). Measured (PACE, three seeds): out of sword reach 1 - 7 % of a phase, at most
+2.6 s at a stretch. A red blow from above 1.2 m is never a Ghostep: a perfect roll is a roll.
+
+### His moves (windups at phase 1; N white, B blue, R red, K black)
+| id | name | from | beats |
+|---|---|---|---|
+| `decree` | First Decree | 1 | N 0.64 (16) sector 2.5 · B 0.52 (24) line 2.8 x 1.2 |
+| `threeJudgments` | Three Judgments | 1 | N 0.64 (14) · N 0.46 (14) · B flare 0.56 (22) line 3.0 x 1.0, lock |
+| `pillarOfLaw` | Pillar of Law | 1 | B 0.85, hold 0 - 0.35 (26) line 2.8 x 1.3, the floor cracks |
+| `rulePierces` | The Rule Pierces | 1 | R 0.72 (26) line 3.6 x 1.0, a dash, mikiri |
+| `palmOfNoon` | Palm of Noon | 1 | N 0.64 (12) sector 2.0, thrown back 6 m; links to the Gaze |
+| `heavenGaze` | Heaven's Gaze | 1 | B 0.95 (22) a beam 16 x 1.1 m, fixed at 85 % of the windup, lit 0.35 s |
+| `noonfall` | Noonfall | 1 | R 1.2 (30, knockdown) ring 2.8, leap 4.6 m (the ring follows, locks at 0.68); recovery 0.95 |
+| `sunDrink` | He Drinks the Sun | 1 | no blow: low and fast (13 m/s) to the nearest open pool |
+| `riposte`, `streakFlurry` | Rebuke, A Hundred Verdicts | 1 | his counter and his flurry |
+| `sweepingGaze` | The Sweeping Gaze | 2 | R 1.0 (24, knockdown) the beam swept 110 degrees in 0.9 s, 12 m, blind inside 2.2 m |
+| `gazeOnHigh` | Gaze from on High | 2 | he rises; R (22, knockdown, r 1.1) the foot runs 14 m at 10 m/s through where the hero stood |
+| `turningDay` | Turning Day | 2 | N 0.64 · N 0.44 · N 0.44 (12 each) · R 0.60 (24, knockdown) ring 3.0 |
+| `exilesPassage` | Exile's Passage | 2 | R 0.9 (26, knockdown) a flying charge 13 x 1.6 m at 1 m |
+| `lightGoesOut` | The Light Goes Out | 2 | K 1.5 (40) sector 3.0, the floor cracks |
+| `openSky` | He Opens the Sky | 2 | 1.3 s looking up: a well over him, three stones (R 20, knockdown, r 1.5) at 0.9 / 1.25 / 1.6 s |
+| `crossedGaze` | Crossed Gaze | 3 | R · R: two sweeps from opposite sides |
+| `passageReturn` | Exile's Return | 3 | R · R: the passage there and back |
+| `awaken2`, `awaken3` | His Eyes Open, He Tears the Sky | | the transitions (a red shock ring 6 m; a red ring 4 m where he comes down) |
+
+**His eyes** (`gaze.js`): Heaven's Gaze is his parry move: a parry turns it, a PERFECT parry sends it back
+(50 damage, 34 posture, an eclipse, `dragon:returned`), a block costs guard. The Sweeping Gaze's cue IS the
+line lighting, `flashLead` before it crosses where the hero stands (from its angular speed); answers: roll
+through it, stand behind an intact pillar or stele (the line ends at the first cover the strip touches),
+or be inside its blind 2.2 m. Gaze from on High marks its line on the floor in red strokes 0.55 s before
+the foot moves; step off it or roll at the cue. Every beam, stone and bored well is told to the cue
+ledger; the stones are called strikes held by the fairness guard. From phase 2 the beam's cut lingers as
+a molten seam (`seams.js`: a blockable tick of 6 every 0.5 s after 0.3 s, never while rolling; a held
+guard pays 30 guard and no health).
+
+**Pace** (`TUNING.pressure`; PACE, three seeds x 90 s): 47 / 55 / 65 cues a minute by phase (the plan's
+55 / 65 / 78 was not reached: he is the heavy one), 0 conflicting cues, longest gap 4.4 s, 12 / 39 / 36 %
+of the cues a dodge. The fairness guard's `sep` is 0.4.
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's

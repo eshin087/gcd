@@ -4,7 +4,31 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty pieces of work since 0.4.0:
+Sixty-one pieces of work since 0.4.0:
+- **A fifth level: the Skywell Vault and Qian Yao, the Heaven-Fallen** (2026-11-22, ADR-132, ADR-133,
+  ADR-134). *Added:* a fifth level, `?level=fallen` (the title screen lists it). **The Skywell Vault**: a
+  dark hall under a mountain, lit only by four shafts of sunlight that stand on its floor; each well's
+  bronze lid is chained open to a timber windlass at the floor. **Qian Yao, the Heaven-Fallen**: one
+  health bar, three phases, a bronze bar in his hand; he hovers over the floor and flies inside his
+  moves. **The sunlight rule:** while the sun is in him he is radiant: your cuts glance (a third of the
+  damage), nothing staggers him, and his posture holds at its maximum instead of breaking; out of the
+  light it drains in seconds and he is an ordinary swordsman. A perfect answer (a perfect parry, a
+  perfect dodge, a won blade lock, the mikiri, a returned beam) puts his light out for three seconds
+  before its reward lands. Cut a windlass and its lid drops: shut the sky and he has less light to
+  drink; shut it on him while he stands in a well and the light is torn out of him. Every parry still
+  counts in full toward his break, so a player who only defends wins. **His eyes:** Heaven's Gaze (a
+  blue beam: parry it off your blade, or perfect-parry it back into his eyes), the Sweeping Gaze (red:
+  roll through it, stand behind a stele, or stay close inside it), Gaze from on High (its line is marked
+  on the floor first), Crossed Gaze. The beams cut the stone (from phase 2 the cut stays molten for a
+  few seconds), set the timber alight, and can cut his own windlasses and cover. **His flight:** Noonfall
+  (up out of reach; the ring follows you and locks), Exile's Passage, He Drinks the Sun (he flies to a
+  well), He Opens the Sky (he bores a new well over him and stones fall). *Added (the first fixed
+  reward):* beating him gives **Falling Heaven**: sprint, then heavy, and you leap and come down on your
+  foe (it reaches a flyer in the air). It is kept between visits; without it that press is the thrust,
+  as before. The HUD shows his light as a third thin row under his posture. Looks kept behind switches
+  for the owner to pick: three bodies (`?fallenLook=a|b|c`) each also in the ink line (`?fallenArt=ink`),
+  how the sun shows on him (`?radiant=`), the beam (`?gaze=`), the pools (`?pool=`). The level borrows
+  music. Nobody has played it yet: the numbers are first guesses from bots.
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now

@@ -4071,3 +4071,96 @@ Two separate things:
 longer constants (`hud.fit` reports them). The touch layer has two more pieces of saved state
 (`layout`, `holdAttack`, in `abyss.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
 and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
+
+## ADR-132 — The Skywell Vault and the sunlight rule: lids held open by windlasses, light as the exception in a dark hall (2026-11-22)
+
+- **Context:** the owner asked for new level bosses built on the power fantasy of famous characters, as
+  originals. This one is in the spirit of a flying, invulnerable comic-book hero; the plan (written by a
+  planning session against `9333ce7`) made it an original wuxia figure, Qian Yao, the Heaven-Fallen, an
+  immortal cast out of heaven who cut wells through the rock with his eyes to reach the sun. His
+  invulnerability needed a rule a sword can answer, and an arena that carries it.
+- **Decision:** a fifth level, `?level=fallen` (`levels/fallen.js`, `world/skywellVault.js` `VAULT`): a
+  dark octagonal hall of breakable flagstones, four wells of sunlight (NE, NW, SE, SW, 3.2 m) whose bronze
+  lids hang on chains run down to four timber WINDLASSES at the floor, 12.4 m out on each well's ray.
+  `world/sun.js` `SunWells` is `world.sun` (null on every other set and on `?stage=lab`): a fixed pool is
+  open exactly while its windlass is intact in `world.destructibles.list` (bound once by place, as the
+  throne's vents bind their rims), so the hero's cuts, the boss's own beams and dives and
+  `world.restore()` need no code path of their own; temporary pools are bored (`bore(x, z, r, life)`).
+  `world:sun {id, open, temp}` on each change. The light is drawn as a glyph batch of gold digits on the
+  floor (the seal-inlay technique), slow motes, one warm point light per pool; not fire-field heat.
+  Breakables (ADR-107): the windlasses (wood, 1.1, no topple, no burning, cover), six rim pillars, four
+  steles near the fight (cover from his eyes), timber scaffolds outside the floor (what his beams set
+  alight), the gate's posts, rubble, the floor's slabs. Landmarks in prop art: a broken bronze
+  armillary behind his seat, a fallen judge's head and open hand to the east.
+- **Why windlasses and not roof pillars:** the first pitch had the hero break the roof's pillars, which
+  would let MORE sun in. What the hero breaks here is what holds the sky open: one cut idea, readable on
+  the floor (a lit disc, a chain, a drum), and it reuses the destruction system whole.
+- **Why light as the exception:** a dark hall makes every lit disc a place, so "where is he standing"
+  is the question of the fight; the shafts read from the game camera without a roof being drawn.
+- **Consequences:** a set may carry `sun` (data only); world.js builds `SunWells` after the
+  destructibles, updates and restores it (a few lines). The HUD's boss rows gained an optional third
+  row for a boss with `sun`. The vault is dark: the owner judges from the sheets whether it reads.
+
+## ADR-133 — Qian Yao on the duelist engine: radiance, flight as beat data, eyes that burn the world, defence never punished (2026-11-22)
+
+- **Decision:**
+  1. **Radiance** (`heavenFallen/fallen.js`; `d.sun = { k, lit, eclipsed }`, the boss slot's optional
+     `sun`; `radiant` = k > 0 and not eclipsed). He fills 1.25 a second inside an open pool (any
+     height) and drains over 8 s outside. Radiant, `takeHit` glances: x 0.3, a short hit-stop, no shove,
+     no flinch, no `brain.onStruck`, no posture from the hit, his guard not used (`dragon:hurt` carries
+     `glance: true`); his posture neither regenerates nor breaks: every way he breaks (a full meter, an
+     answered flurry) holds at the maximum and the break comes the frame he dims. Dim: the engine
+     unchanged.
+  2. **A perfect answer eclipses him before its reward plays** (a perfect parry, a perfect dodge
+     (`player:perfectDodge`), a won blade lock, the mikiri, a full deflect, the flash counter, a returned
+     Gaze): k 0, no refill for 3.2 s even in a pool. **Starved**: a lid shut on the pool he stands in
+     or flies to: reeling, eclipsed 4.5 s, + 90 posture.
+  3. **Defence is never punished, and tested** (`fallen.mjs` `sun`, `defend`): every parry is worth full
+     posture and takes 0.2 of his light; the posture a radiant body holds is kept, not regenerated, and
+     paid out as he dims; a perfect answer lands its reward on a dim body. A mortal bot that only parries,
+     dodges and cuts in his openings, never touching a windlass, wins.
+  4. **Flight as beat data**: he hovers 0.35 m in his footwork (every hurt sphere in sword reach; the
+     brain's floor is his hover height); he is aloft (4.6 m) only inside a move (`lift`, `leap`, `air`,
+     his own `fly`: the drink, the third awakening), and every aloft move ends on the floor in a recovery
+     of at least 0.9 s. Measured: out of sword reach 1 - 7 % of a phase, never more than 2.6 s at a
+     stretch. A red blow struck from above 1.2 m is never a Ghostep (nobody to step behind up there).
+  5. **His eyes** (`gaze.js`, `fxGaze.js`): `selfHit` + `sustain` beats routed by a beat's `gaze` (the
+     model is Tian Lei's BeamMoves). Heaven's Gaze (blue; a perfect parry returns it), the Sweeping Gaze
+     (red; its flash IS the line lighting, `lead` s before it crosses the hero; blind inside 2.2 m), Gaze
+     from on High (its line marked in red strokes 0.55 s before the foot runs), the bore. Drawn as heat
+     in the fire field (gold in the void slot, a white `steel` core, a boiling knot at the foot); never
+     red. The line ends at the first cover (the strip's own width), which takes 0.7 a beam; the foot
+     sweeps the floor, scars it every 1.3 m, sets wood alight; from phase 2 the cut lingers as a molten
+     seam (`seams.js`: a blockable tick of 6 every 0.5 s, never while rolling; a held guard pays guard).
+  6. **The beam's gameplay origin is the upright body** (just ahead of his root), the drawn eyes only
+     where it is drawn from: the drawn figure leans toward the camera, and its head sat 0.9 m behind
+     him on the floor, which first let the sweep hit a hero inside its blind ring.
+- **Fixed from the plan:** windups were raised to 0.64 s where the plan said 0.58 - 0.62 (x 0.86 in phase 3
+  is the 0.55 s floor); a move that is only motion (the drink, the bore) is a feint beat to the brain and
+  does its work in `beatMotion` (a feint never gets `onImpact`); his poses are the Ash Disciple's authored
+  strikes (`moves.js` `beat(base, o)`: his bar is held as a jian is) with his own tells, windups, zones
+  and reach, and his reaction clips are Shen Hui's with his own waiting and rising poses. The engine's
+  answered flurry breaks a duelist through `_break()` directly: his `_break` holds while he is radiant
+  (the Lab's posture break still breaks him).
+- **Consequences:** `npm test` runs `tests/integration/fallen.mjs` (13 scenarios). Training has a
+  `fallen` boss kind and nine situations of his. The Lab has a SUN section (`dev/labSun.js`).
+
+## ADR-134 — The first fixed reward: a store, Falling Heaven, and the looks that wait for the owner (2026-11-22)
+
+- **Context:** ROADMAP M2's reward system (slots, a meter, an equip screen, a hub, a save) does not exist;
+  each new boss is meant to give a fixed reward.
+- **Decision:** the smallest real version. `src/game/rewards.js`: `hasReward`, `grantReward` (true when
+  new), `listRewards`, `clearRewards`, `takeReward`; kept in `localStorage` under `abyss.rewards`;
+  `?reward=<id>[,<id>]` grants for the session. A level may carry `reward: { id, name, line }`; on victory
+  `flow.js` grants it and shows its line once. **Falling Heaven** (`player/combat.js` `FALLING_HEAVEN`):
+  HEAVY pressed out of a sprint while it is held: the slam's clip with a far higher leap (`hop` 1.25, no
+  new clip), 78 damage, carried 3.4 m, its blade reaching 4.5 m over the hero (a flyer in the air);
+  without the reward the press is the thrust as before. The Lab's SUN section grants or takes it away.
+- **Looks awaiting the owner's pick** (rendered sheets; the fight is built with the recommended option of
+  each; nothing in `lookSwitch.js PICKED` yet): his body `?fallenLook=a|b|c` (the Haloed Exile, the
+  Chained Judge, the Gilt Guardian), each drawn through the wyrm's art path and its ink-line twin
+  `?fallenArt=ink` (the owner picked the ink line for all three other human bosses: the likeliest flip);
+  `?radiant=a|b`; `?gaze=a|b|c`; `?pool=a|b`.
+- **Left for M2:** slots, an equip screen, more than one reward per level, a save beyond the list of ids.
+  Falling Heaven's motion has not been reviewed from all four sides (the owner's most sensitive area):
+  it ships behind the reward, reachable only after a win, through `?reward=fallingHeaven` or the Lab.
