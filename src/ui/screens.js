@@ -192,6 +192,13 @@ export class PauseMenu {
     this.btnPadSize = button(panel, 'tp-only', () => game.touch?.cyclePad?.('size'));
     el('span', '', 'PAD SIZE', this.btnPadSize);
     this.padSizeVal = el('span', 'v', '', this.btnPadSize);
+    // ... which hand guards, and whether a held ATTACK keeps cutting (ADR-131)
+    this.btnPadLayout = button(panel, 'tp-only', () => game.touch?.cyclePad?.('layout'));
+    el('span', '', 'PAD LAYOUT', this.btnPadLayout);
+    this.padLayoutVal = el('span', 'v', '', this.btnPadLayout);
+    this.btnPadHold = button(panel, 'tp-only', () => game.touch?.cyclePad?.('hold'));
+    el('span', '', 'HOLD ATTACK', this.btnPadHold);
+    this.padHoldVal = el('span', 'v', '', this.btnPadHold);
     // WHAT'S NEW (ui/changelogPanel.js): every version and what changed; the value counts the unread
     this.btnNews = null;
     if (news) {
@@ -212,7 +219,7 @@ export class PauseMenu {
     this.quitVal = el('span', 'v', '›', this.btnQuit);
     this.quitArmed = 0;
     // the buttons in order, for the gamepad's menu focus (ui/gamepad.js)
-    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnNews, this.btnQuit].filter(Boolean);
+    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnPadLayout, this.btnPadHold, this.btnNews, this.btnQuit].filter(Boolean);
     el('div', 'ab-sep', null, panel);
     controlsGrid(panel, 'kb').classList.add('kb-only');
     touchGrid(panel).classList.add('tp-only');
@@ -271,6 +278,15 @@ export class PauseMenu {
     if (ps !== this._ps) {
       this._ps = ps;
       this.padSizeVal.textContent = { s: 'SMALL', m: 'MEDIUM', l: 'LARGE' }[ps] ?? '';
+    }
+    const pl = tc?.layout, ph = tc?.holdAttack;
+    if (pl !== this._pl) {
+      this._pl = pl;
+      this.padLayoutVal.textContent = { classic: 'ONE THUMB', split: 'GUARD ON LEFT' }[pl] ?? '';
+    }
+    if (ph !== this._ph) {
+      this._ph = ph;
+      this.padHoldVal.textContent = ph ? 'ON' : 'OFF';
     }
     if (this.fullVal) {
       const f = !!globalThis.document?.fullscreenElement;
