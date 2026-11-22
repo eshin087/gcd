@@ -96,11 +96,11 @@ export class HermitFx extends DuelFx {
       this._spawn(this.alpha, o);
     }
     // where the air burns at the fist: a short heart of many small, cool blobs (option b: down the lane)
-    const hn = burn ? Math.min(90, Math.round(len * 5)) : 14;
+    const hn = burn ? Math.min(140, Math.round(len * 9)) : 14;
     const hl = burn ? len : 1.2;
     for (let i = 0; i < hn; i++) {
       const u = burn ? this.lr() : this.lr() * this.lr(), sx = x + ux * hl * u + px * this.lrand(-0.12, 0.12), sz = z + uz * hl * u + pz * this.lrand(-0.12, 0.12);
-      this._blob(sx, this.lrand(0.95, 1.25), sz, ux * this.lrand(1, 5), this.lrand(0, 0.6), uz * this.lrand(1, 5), this.lrand(0.12, 0.24), 0.2, 0.08, burn ? 0.55 * (1 - 0.5 * u) : 0.45, 0, K_FIRE, 3);
+      this._blob(sx, this.lrand(0.95, 1.25), sz, ux * this.lrand(1, 5), this.lrand(0, 0.6), uz * this.lrand(1, 5), burn ? this.lrand(0.25, 0.45) : this.lrand(0.12, 0.24), burn ? 0.34 : 0.2, 0.08, burn ? 1.0 * (1 - 0.4 * u) : 0.45, 0, K_FIRE, burn ? 1.5 : 3);
     }
     this.game.shake?.(0.35 * k);
     this._light({ x: x + ux * 1.5, y: 1.2, z: z + uz * 1.5, color: L_DUST, intensity: 3 * k, radius: 8, life: 0.25, fade: 0.2 });
