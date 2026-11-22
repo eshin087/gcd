@@ -4044,3 +4044,67 @@ ADR-092).
   0.94 ms; not measured on a phone). The pass reads its textures with `textureLod(.., 0)`: with the
   branch called twice the HLSL compiler warned about gradients in a loop. Tests: scenario
   `heroletters`; the blade flare checks read his own part 17.
+
+## ADR-131 — The phone's top row is fitted to the screen; the guard may go to the left hand; a held attack may repeat (2026-11-21)
+
+**Context.** The owner, playing on an iPhone: "the boss hp and main character hp ui is overlapping.
+i'm also having a much harder time playing it on mobile because of having to constantly use the same
+finger to hit different parry and block while attacking at the same time ... mobile is priority."
+
+Two separate things:
+
+1. *The overlap.* Safari gives an iPhone 15 Pro in landscape about 734 x 343 px (the notch and the
+   home bar are kept clear, the address bar takes the rest), not the 852 x 393 the phone preset was
+   checked at. The hero's HP row (24 cells and "160 / 160" at 10 px) ended at x = 242; the boss's
+   48-cell bar, centred, began at x = 217, on the same line. Every length in the top row was a
+   constant, so any screen narrower than about 790 px overlapped (a narrow desktop window too).
+2. *One thumb for everything.* ATTACK, HEAVY, BLOCK and DODGE are all the right thumb's (ADR-096,
+   ADR-115). The rules already let a guard cut a swing short at any point (ADR-080), so what costs
+   the player is the thumb's travel from ATTACK to BLOCK, and that nothing can be held while another
+   thing is pressed.
+
+**Decision.**
+
+- **The top row is fitted, not fixed** (`hud._fit()`). On a touch screen with a short side of 560 px
+  or less, or narrower than 900 px, the hero's meters are 16 cells and the HP reads as one number.
+  The boss's bar takes what is left between the hero's rows and the corner buttons: 48 cells when
+  there is room, fewer when there is not (never under 18), on the screen's middle while that leaves
+  it 36 cells and in the middle of the free stretch otherwise. Posture follows at two thirds. Shipped
+  as the default: it is a fix.
+- **PAD LAYOUT "guard on left"** (`layout: 'split'`), a pause-menu switch, off by default. The guard
+  leaves the right-thumb cluster and becomes a GUARD button beside the stick's ring. The right thumb
+  keeps ATTACK, HEAVY and DODGE; the left thumb moves or guards. The hero stops moving while the left
+  thumb guards: planting the feet to parry is how a duel is fought anyway, and DODGE stays on the
+  right because a dodge wants the stick's direction.
+- **HOLD ATTACK**, a pause-menu switch, off by default. A thumb that rests on ATTACK keeps cutting.
+  It is done in the touch layer with `input.pulse('@attack')` (one press edge per repeat), so the
+  player's code is untouched and reads each repeat as a tap. It pauses while the guard is held and
+  for a moment after DODGE / HEAVY / FLASK, so it never fights the guard or writes over a buffered
+  dodge. With both switches on, the right thumb holds the offence and the left taps the parry.
+- Both switches are options because how a control scheme feels cannot be judged from a picture: the
+  owner tries them on the phone (`?pad=split&hold=1` opens the game with both on) and picks the
+  default.
+
+**Turned down.**
+- Moving the boss's rows to a second line under the hero's on a phone in landscape: the screen is
+  343 px tall, a third line of HUD costs more than shorter meters do.
+- Doing the repeat in the player (`_readInput`): it would put a touch option into the fighter and
+  change what a held mouse button does. The touch layer already owns every other touch rule.
+- A context button (one button that parries when a blow is coming and cuts otherwise) and an
+  automatic guard while standing still: both take the read out of a game that is about the read.
+  Kept as ideas for an "assist" setting only if the owner asks.
+- A flick on the stick to dodge: the owner chose "slide between buttons" over a flick on 2026-11-14.
+
+**Not built yet (ideas for the phone, in the order I would take them).**
+1. Draw the game under the notch (`viewport-fit=cover` with safe-area insets for the HUD and the
+   controls): about 16 % more width on an iPhone; costs as many more pixels to draw, so it needs a
+   frame-rate check on the device.
+2. A drag-to-place layout editor (every button moved and sized by the player, per orientation), the
+   feature the large mobile action games all have; a left-handed mirror falls out of it.
+3. An "add to home screen" hint on iOS: Safari on an iPhone has no fullscreen call, the address bar
+   takes 50 px of a 393 px screen, and the home-screen app has none.
+
+**Consequences.** `GlyphBar` / `GlyphPosture` have `resize(cells)`; lengths in the top row are no
+longer constants (`hud.fit` reports them). The touch layer has two more pieces of saved state
+(`layout`, `holdAttack`, in `abyss.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
+and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.

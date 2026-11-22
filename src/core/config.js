@@ -106,7 +106,27 @@ export const CONFIG = {
       posPortrait: { low: [12, 44], mid: [14, 104], high: [14, 170] },
       size: { s: 0.88, m: 1, l: 1.14 },
       tall: 1.14,
+      // PAD LAYOUT 'split' (ADR-131): the guard goes to the LEFT hand, so one thumb never has to
+      // both cut and parry. The right cluster keeps ATTACK, HEAVY and DODGE (the flask where BLOCK
+      // stood); GUARD is a button of its own beside the stick's ring.
+      //   guard          `gap` px right of the ring, `y` up from the cluster's bottom line
+      //   guardPortrait  held upright (no room beside the stick): `lift` px above the ring
+      split: {
+        tiles: {
+          attack: { x: 0, y: 0, w: 92, h: 84 },
+          heavy: { x: 0, y: 84, w: 92, h: 66 },
+          dodge: { x: 92, y: 0, w: 80, h: 84 },
+        },
+        flask: { x: 103, y: 96, w: 58, h: 42 },
+        guard: { gap: 14, y: 0, w: 84, h: 100 },
+        guardPortrait: { lift: 14, w: 100, h: 70 },
+      },
     },
+    // HOLD ATTACK (a pause-menu switch, off by default; ADR-131): a thumb resting on ATTACK keeps
+    // cutting, as if it tapped: the first repeat `after` s into the hold, then one every `every` s.
+    // Not while the guard is held (the guard has the hero), and not for `quiet` s after DODGE,
+    // HEAVY or FLASK was pressed (the repeat must not write over that press in the input buffer).
+    hold: { after: 0.22, every: 0.1, quiet: 0.32 },
   },
 
   // Gamepad (src/ui/gamepad.js; the Gamepad API "standard" layout). Stick values are 0..1 deflection.
