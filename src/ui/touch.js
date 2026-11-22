@@ -282,6 +282,11 @@ export class TouchControls {
       K.quiet -= dt;
       return;
     }
+    // ... and for as long as the player still holds a buffered dodge / heavy / flask: its buffer
+    // ages on the game's clock (slower than this one in a hit-stop or the Lab's slow motion), so the
+    // timer above can run out first, and the next repeat would overwrite the press
+    const queued = this.game.player?.buf?.action;
+    if (queued && queued !== 'light') return;
     if (K.t < K.next) return;
     K.next = K.t + fin(H.every, 0.1);
     this.game.input?.pulse?.('@attack');

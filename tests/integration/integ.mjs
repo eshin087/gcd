@@ -8108,6 +8108,15 @@ async function scenarioTouch() {
       P('pointerup', 56, D2.x, D2.y);
       frames(0.5);
       assert(c('player:roll') === r0 + 1, 'DODGE pressed while ATTACK rests: he rolls');
+      // in a hit-stop the player's buffer ages slower than the touch layer's clock: the repeat still
+      // waits for a buffered dodge instead of writing over it (the quiet timer alone would run out first)
+      frames(0.9);
+      p.buf.action = 'roll';
+      p.buf.t = p.time;
+      t._hold.quiet = 0;
+      t._hold.next = t._hold.t; // a repeat is due this very frame
+      frames(0.05);
+      assert(p.buf.action === 'roll' || c('player:roll') > r0 + 1, 'HOLD ATTACK waits while a dodge is buffered: the repeat does not overwrite it');
       P('pointerup', 54, A2.x, A2.y);
       frames(1.2);
       n0 = c('player:attack');
