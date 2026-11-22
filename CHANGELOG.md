@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-four pieces of work since 0.4.0:
+Fifty-five pieces of work since 0.4.0:
+- **The Cinder Wyrm glares from every side** (2026-11-21, ADR-127). *Changed:* the drake's eyes
+  are slanted almonds with a point at each corner, the outer corner high, turned out, up and
+  forward, under a brow that drops low over the snout and rises steeper than the eye: an angry
+  glare from the side, the front, three-quarter and below (the owner liked it in the standing view
+  only, where the old sideways oval happened to tilt). A bony rim behind each eye and a slanted
+  dark hollow around it seat the eye in a socket; the owner then had the eyes made a quarter
+  smaller. *Fixed:* the resting neck looked broken: the lean build's neck rose almost straight up
+  and the head hung ~56° nose-down off its top. The neck now arches over into the head (a hinge of
+  ~10-35°), and the resting head is held level about its snout (it rolled up to ~40° watching a foe
+  far to one side). Nothing about the fight moved. Four anime faces were shown first and turned
+  down; they are not kept.
 - **The Ash Disciple and the Starless Lord move like swordsmen** (2026-11-21, ADR-126). *Fixed:* the human bosses' attacks read as a
   row of held poses with a snap between them (the owner: "weird attack animations and unnatural
   poses"). Measured on both, every move: the sword hand crossed up to 0.6 m in ONE frame on a blow

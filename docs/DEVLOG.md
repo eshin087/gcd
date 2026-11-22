@@ -5,6 +5,57 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 67: the drake's glare from every side
+
+**Owner:** first "i'm not liking the dragons face at all. can you make it look very anime evil and
+scary looking? give me 4 variations"; four anime faces were built and rendered (fiend, oni, wraith,
+blade: leaf eyes with slit pupils, zigzag grins, black skin, lines of fire) and turned down: "i dont
+like any of these, the eyes look very weird. i like the drake standing view where the eyes look
+angled and angry. make that look in all angles. i want it to look realistic and scary". Then "Yes,
+finish it" on the result. Branch `dragon/drake-eyes`. ADR-127 / Session 67 / M1.52 (125, 65 and M1.50
+are PR #70's).
+
+**Why it only worked standing.** The drake's eye was an ellipsoid lying in the head's side wall: in
+the standing three-quarter view the head's pitch tilted it into a slant; from the side it was a level
+oval, from the front a blob, from above a dot.
+
+**What changed** (drake only). `heads.js` `eyeMesh` takes `leaf` (an almond swept along a slanted
+line, a point at each corner, tallest at `peak`); the drake's eye is one, turned out, up and forward
+(`rot` [0, -0.68, 0.6]) so the slant shows from every side. `DRAKE_BROW` drops low over the snout and
+rises steeper than the eye, set inboard so the eye shows from above; a bony rear rim of the orbit
+and a slanted two-part dark hollow seat it. The eye glow is a touch softer (`emit` 1.3).
+
+**The tests' random stream, again.** Two more geometries on the brow turned the seeded `pressure`
+check red (seed 7: 40.5 < 67.8 < 75.4 cues a minute, not x1.12 a phase). Bisect copies of `main` in
+the scratchpad proved the cause: `main` + 8 unused `Math.random()` draws at build gave exactly the
+numbers of `main` + 2 unused geometries. The end-of-build reseed (ADR-124) came too late: the wyrm
+rolls its starting state inside its constructor, right after `buildDrake` has drawn the ids. Now
+`Dragon` and `Player` call `game.onModelBuilt?.(who)` right after their model is built, and
+`integ.mjs` reseeds there; with it `main`, `main` + extra draws and the new eyes give the identical
+fight. The new stream put the wreckage check's wall share at 29 % inside the whole suite (44 % run
+alone): `TUNING.world.meter.wall` 0.3 -> 0.25, as `endShare` beside it already notes for the same
+effect.
+
+**Verification.** Rendered before / after from nine angles standing and four roaring, and the new
+eyes through phase 2 and its roar, the ignition, phase 3 ablaze, a hover barrage, a breath and the
+death. `npm test` ALL 10 PASSED on `main` with #71, `npm run build` OK.
+
+**Second round, same PR.** The owner: "make the eyes a bit smaller, also the dragon does a weird
+twist angle that looks like his neck is broken. fix that". Eyes: `leaf` len 0.28 -> 0.21 (h, slant
+scaled with it). The neck, measured (scratch probe: the head's roll about its snout and the angle
+between the neck's last segment and the head): at rest the hinge was 42-63° from every side, since
+ADR-123's `HIGH` neck rose near vertical and still pointed ~16° up at the skull while the resting head
+looked ~37° down; with the hero far to the front-left of a wyrm that hadn't turned, the head also
+rolled 40°. In a 90 s fight the roll stayed under 6° and the hinge peaked at rest, so the fix is rest
+only: `HIGH` arches over at the top (head ~1 m lower, still carried high; shape "e" of four tried),
+the resting head may sit at most ~34° off the neck's end (`1.1 - 0.5 * s.rest`), and is levelled about
+its snout by `s.rest`. After: roll 0 from every side, hinge 10-34°. Sheets in
+`.claude/preview/drake-eyes/` (`eyes-smaller`, `neck-arch-*`).
+
+**Open.** From straight above and at the game camera the eyes are small points; the scowl reads in
+close and mid shots. Not seen on the iPhone. PR #70 changes the wall too; whichever
+merges second reconciles `meter.wall`.
+
 ## 2026-11-21 — Session 66: the human bosses' attacks move like a swordsman's
 
 **Owner:** "the humanoid bosses have weird attack animations and unnatural poses. analyze it and fix

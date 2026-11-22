@@ -179,6 +179,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.52 — The drake's glare from every side (2026-11-21, `dragon/drake-eyes`, ADR-127)
+- [x] Four anime faces rendered and turned down by the owner; not kept
+- [x] The drake's eye a slanted almond turned out, up and forward; a steeper brow, an orbit rim, a dark hollow
+- [x] The sims reseed at each model's build (`game.onModelBuilt`): a model's object count no longer moves a seeded fight
+- [x] The eyes a quarter smaller (owner)
+- [x] The resting neck no longer looks broken: it arches into the head, the head held level at rest (owner)
+- [ ] Follow-ups:
+  - [ ] On the iPhone: the glare at the phone camera
+  - [ ] The eyes from straight above (the game camera's high angle): still small points
+
 ## M1.51 — The human bosses' attacks as motion (2026-11-21, `enemies/duelist-motion`, ADR-126)
 - [x] Every move of both bosses audited on the rig (hand speed, jumps, sliding feet, blade against the head) and filmed
 - [x] The follow-through's own clock; a cubic through the keys; `gather` / `settle`; a bait hold that holds

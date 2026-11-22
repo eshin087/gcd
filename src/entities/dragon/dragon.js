@@ -60,6 +60,9 @@ export class Dragon {
     this.game = game;
     this.name = 'VAELGRIM, THE CINDER WYRM';
     this.model = buildDrake(game.U);
+    // (the headless sims reseed their random stream here: three.js draws an id from Math.random for
+    // every object a model builds, so without it a new horn would move every roll the fight makes)
+    game.onModelBuilt?.('dragon');
     this.object3d = this.model.root;
     this.position = this.object3d.position;
     this.yaw = 0;
