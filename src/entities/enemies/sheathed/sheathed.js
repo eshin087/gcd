@@ -320,6 +320,7 @@ export class Sheathed extends Duelist {
   // ---------------------------------------------------------------- the beats' own work
   onImpact(b, s, a) {
     const D = b.def;
+    if ((D.draw || D.bare) && a) a._drew = true; // (the blade is out from here: the recovery is its re-sheathe)
     this.fx.onBlow?.(b, s, a);
     if (D.draw || (D.bare && D.zone && a?.def?.transition)) this._cut(b, s, a);
     if (D.selfHit && D.pathHit) this._pathHit(b, s, a);

@@ -58,6 +58,15 @@ export const SCORE = {
         T('cinder-p3', { xfade: 3 }),
       ],
     },
+    // The Windless Grove borrows too, until the owner picks its score (one track per phase).
+    grove: {
+      explore: T('cinder-explore', { xfade: 3 }),
+      phases: [
+        T('starless-p1', { xfade: 3 }),
+        T('ash-p2', { loopFrom: 14.8 }),
+        T('starless-p3', { xfade: 0.5 }),
+      ],
+    },
   },
   victory: T('victory', { loop: false }), // Victory Fanfare Short, cynicmusic
   death: T('death', { loop: false }), // Death of a Ninja (Game Over), Joth

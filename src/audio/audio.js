@@ -327,6 +327,12 @@ export class AudioEngine {
     this.musicBus.gain.setTargetAtTime(BUS.music * (on ? 0.6 : 1), now, 0.1);
   }
 
+  /** The stillness before a draw (the Sheathed): the music drops low while his hand is on the hilt. */
+  _stillDuck(on) {
+    if (!this.ctx || !this.musicBus || this._ducked) return;
+    this.musicBus.gain.setTargetAtTime(BUS.music * (on ? 0.3 : 1), this.ctx.currentTime, on ? 0.12 : 0.3);
+  }
+
   /** Ghostep: low-pass + duck the world mix for `hold` real seconds, then release. */
   _slowDuck(hold) {
     if (!this.ctx || !this.slowLp || !this.slowGain) return;
@@ -684,6 +690,19 @@ export class AudioEngine {
     });
     // a duelist answers a streak of guards with his own flurry: a low gong under its first tell
     on('dragon:flurry', () => this.play('gong'));
+    // the Sheathed's sheath (ADR-145): the settle draws a low breath that cuts out to silence and the
+    // music ducks under it; the click is a dry tick with a short high ring; the blade going home a soft one
+    on('dragon:sheath', (d) => {
+      const st = d?.state;
+      if (st === 'settle') {
+        this.play('sheathBreath', this._atDragon());
+        this._stillDuck(true);
+      } else if (st === 'draw') {
+        this.play('sheathClick', this._atDragon({ loud: 1 }));
+        this._stillDuck(false);
+      } else if (st === 'click') this.play('sheathClick', this._atDragon({ loud: 0.45 }));
+      else this._stillDuck(false);
+    });
     on('player:flurryArt', (d) => this.play('flurryCoil', { dur: num(d.dur, 0.2) }));
     on('player:flurryEnd', (d) => {
       this._slowOpen();

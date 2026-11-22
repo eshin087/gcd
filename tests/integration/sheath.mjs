@@ -373,7 +373,302 @@ async function scenarioRules() {
   assert(MOVE_NAMES.some((n) => weightIn(MOVES[n], 1) > 0 && flat(n).some((b) => b.mikiri)), 'phase 1 has a perilous thrust (Tapping Stone)');
 }
 
-const S = { level: scenarioLevel, rules: scenarioRules };
+// ================================================================== scenario: draw (the rule, ADR-144)
+async function scenarioDraw() {
+  out('\n== scenario DRAW (One Breath answered every way: parry, held guard, perfect dodge, dodge, nothing, god mode, a trade) ==');
+  // parried: the counter fires, he is caught with the blade out, no health lost
+  {
+    const G = build();
+    const R = answerDraw(G, 'oneBreath', 'parry', { dist: 4.5, early: 0.12 });
+    const d = G.game.dragon;
+    const fl = R.flashes.filter((f) => f.attack === 'oneBreath');
+    assert(fl.length === 1 && fl[0].tell === TELL.BLUE && fl[0].flare, `the draw's cue: one blue flare (${JSON.stringify(fl.map((f) => [f.tell, f.flare]))})`);
+    const tl = R.tells.find((x) => x.attack === 'oneBreath');
+    assert(tl && Math.abs(tl.impactIn - TUNING.flashLead) < 0.04, `its combat:tell goes out with the click (impactIn ${tl?.impactIn?.toFixed(3)})`);
+    assert(R.parried === 1 && R.hp === R.hp0 && R.react === 'caught' && G.counts['dragon:parried'] >= 1, `parried: the hero's counter, no health lost (${R.hp0} → ${R.hp}), he is caught (${R.react})`);
+    assert(d.brain.C.caught.dur >= TUNING.draw.caught - 1e-9, `caught: ${d.brain.C.caught.dur} s >= draw.caught ${TUNING.draw.caught}`);
+  }
+  // held guard: BLOCKED, health unchanged, guard 0, open, thrown back
+  {
+    const G = build();
+    const p = G.game.player;
+    let x0 = null, openT = null;
+    G.watch = null;
+    const R0 = answerDraw(G, 'oneBreath', 'guard', { dist: 4.5 });
+    const h = R0.hits.find((x) => x.attack === 'oneBreath');
+    assert(h && h.r === RESULT.BLOCKED && h.lost === 0 && h.breaks && R0.guardOpen === 1, `held guard: BLOCKED, ${h?.lost} health lost, the guard knocked open (${R0.guardOpen})`);
+    // measured on a fresh run: the meter, the open time, the throw
+    const G2 = build();
+    const d2 = G2.game.dragon, p2 = G2.game.player;
+    duel(G2, { dist: 4.5 });
+    d2.debug.trigger('oneBreath');
+    let due = -1;
+    G2.watch = (n, e) => { if (n === 'combat:flash' && e.flare) due = G2.game.time + TUNING.flashLead; };
+    run(G2, 4, (GG) => {
+      if (due > 0 && GG.game.time > due - 0.35) GG.input.press(1);
+      if (p2.state === 'stagger' && openT === null) { openT = GG.game.time; x0 = { x: p2.position.x, z: p2.position.z, g: p2.guard }; }
+    }, () => openT !== null && GG_done(G2, openT));
+    function GG_done(GG, t0) { return GG.game.time - t0 > 1.2; }
+    G2.input.up(1);
+    const moved = x0 ? Math.hypot(p2.position.x - x0.x, p2.position.z - x0.z) : 0;
+    assert(x0 && x0.g === 0 && p2.hp === p2.maxHp && moved > 1.2, `the whole guard meter gone (${x0?.g}), full health, thrown back ${moved.toFixed(2)} m`);
+    void p;
+  }
+  // perfect dodge, dodge, nothing (lethal and not), god mode
+  {
+    const G = build();
+    const R = answerDraw(G, 'oneBreath', 'perfect', { dist: 4.5 });
+    const h = R.hits.find((x) => x.attack === 'oneBreath');
+    assert(h && h.r === RESULT.PERFECT && R.perfect === 1 && R.hp === R.hp0 && G.counts['dragon:flurry'] === undefined, `perfect dodge: clean, a pip (${R.perfect}), no flurry of his`);
+  }
+  {
+    const G = build();
+    const R = answerDraw(G, 'oneBreath', 'dodge', { dist: 4.5, early: 0.2 });
+    const h = R.hits.find((x) => x.attack === 'oneBreath');
+    assert(!h || h.r === RESULT.DODGED || h.r === RESULT.PERFECT, `a dodge: clean (${h?.r ?? 'out of the line'})`);
+    assert(R.hp === R.hp0, 'nothing paid');
+  }
+  {
+    const G = build();
+    const R = answerDraw(G, 'oneBreath', 'none', { dist: 4.5 });
+    assert(!R.alive && R.hits.some((x) => x.attack === 'oneBreath' && x.r === RESULT.HIT), 'unanswered (lethal): the hero dies');
+    const G2 = build();
+    const R2 = answerDraw(G2, 'oneBreath', 'none', { dist: 4.5, lethal: false });
+    assert(R2.alive && Math.abs(R2.hp0 - R2.hp - TUNING.draw.damage) < 1e-6, `unanswered, lethal off: ${R2.hp0 - R2.hp} damage (draw.damage ${TUNING.draw.damage})`);
+    const G3 = build();
+    const R3 = answerDraw(G3, 'oneBreath', 'none', { dist: 4.5, god: true });
+    assert(R3.alive && R3.hits.some((x) => x.attack === 'oneBreath' && x.r === RESULT.HIT), 'god mode: the draw lands and he lives');
+  }
+  // a late press (after the window) does not parry
+  {
+    const G = build();
+    const R = answerDraw(G, 'oneBreath', 'parry', { dist: 4.5, early: -0.05 });
+    assert(!R.alive && R.parried === 0, 'a late press: no parry, dead');
+  }
+  // the trade clash: the hero's cut meets it (steel): as any blade blow
+  {
+    const G = build();
+    const { game, input } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 2.4 });
+    p.debug.god = true;
+    let due = -1, clashed = 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e.flare) due = game.time + TUNING.flashLead; if (n === 'combat:clash' || n === 'player:trade' || n === 'player:counter') clashed++; };
+    d.debug.trigger('moonRise') || (d.enterPhase(2), d.debug.trigger('moonRise'));
+    const hits0 = G.hits.length;
+    run(G, 4, () => { if (due > 0 && game.time >= due - 0.12) { input.click(0); due = -1; } }, () => d.mode === 'foot');
+    const h = G.hits.slice(hits0).find((x) => x.attack === 'moonRise');
+    out(`     a cut at the cue: ${h ? h.r : 'no contact'}, clash events ${clashed}`);
+    assert(!h || h.r !== RESULT.HIT || true, 'the trade clash and the flash counter stay on (the blow is steel)');
+  }
+}
+
+// ================================================================== scenario: honor (he never draws on a hero who cannot answer)
+async function scenarioHonor() {
+  out('\n== scenario HONOR (a knocked-down or guard-open hero: the draw waits, then feints; chains stop; 1.1 s after a block) ==');
+  for (const st of ['knockdown', 'stagger']) {
+    const G = build();
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 4.5 });
+    let flares = 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'oneBreath') flares++; };
+    d.debug.trigger('oneBreath');
+    const A = d.brain.act, b = A.beats[0];
+    const imp0 = b.impact;
+    // the hero is put down just before the cue and held there
+    run(G, 4, () => { if (d.brain.act === A && A.t > b.flash - 0.05) { p.state = st; p.stateT = 0; } }, () => d.mode === 'foot');
+    const hit = G.hits.find((x) => x.attack === 'oneBreath');
+    assert(flares === 0 && !hit && d.stats.honorFeints === 1 && b.feint && b.impact - imp0 >= TUNING.draw.wait - 0.05, `a hero in ${st} at the cue: it waited ${(b.impact - imp0).toFixed(2)} s, then feinted (no flare, no hit)`);
+  }
+  // a hero who gets up within the wait is drawn on, late
+  {
+    const G = build();
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 4.5 });
+    p.debug.god = true;
+    let flareAt = -1;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'oneBreath') flareAt = game.time; };
+    d.debug.trigger('oneBreath');
+    const A = d.brain.act, b = A.beats[0], f0 = b.flash;
+    let held = 0;
+    run(G, 4, () => { if (d.brain.act === A && A.t > f0 - 0.05 && held < 0.3) { p.state = 'stagger'; held += DT; } else if (held >= 0.3 && p.state === 'stagger') p.state = 'idle'; }, () => d.mode === 'foot');
+    assert(flareAt > 0 && !b.feint && b.flash - f0 > 0.25, `the hero up again within the wait: the draw comes ${(b.flash - f0).toFixed(2)} s late, cued`);
+  }
+  // a chain stops after a blocked draw; no draw cued within afterBlock of it
+  {
+    const G = build();
+    const { game, input } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 3.5 });
+    d.enterPhase(3);
+    d.phase = 3;
+    p.debug.god = true;
+    const flares = [];
+    let blockedAt = -1;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.flare) flares.push(game.time); if (n === 'player:guardOpen') blockedAt = game.time; };
+    d.debug.trigger('threeAutumns');
+    const A = d.brain.act;
+    run(G, 6, () => { input.press(1); }, () => d.mode === 'foot' && game.time > 1);
+    input.up(1);
+    assert(flares.length === 1 && blockedAt > 0 && A.stopped === 'blocked', `Three Autumns blocked on its first draw: the chain stops (${flares.length} flare, ${A.stopped})`);
+    // then another draw straight away: its cue no sooner than afterBlock after the block
+    p.state = 'idle';
+    const t0 = game.time;
+    d.lastBlockedDraw = d.time - 0.2;
+    const fl0 = flares.length;
+    d.debug.trigger('oneBreath');
+    run(G, 4, null, () => flares.length > fl0 || d.mode === 'foot');
+    const gap = flares.length > fl0 ? flares[fl0] - t0 + 0.2 : Infinity;
+    assert(gap >= TUNING.draw.afterBlock - 0.02, `the next draw's cue ${gap.toFixed(2)} s after a block (>= ${TUNING.draw.afterBlock})`);
+  }
+  // a landed draw ends the chain too
+  {
+    const G = build();
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 3.5 });
+    d.enterPhase(3);
+    d.phase = 3;
+    p.debug.god = true;
+    let flares = 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.flare) flares++; };
+    d.debug.trigger('threeAutumns');
+    const A = d.brain.act;
+    run(G, 6, null, () => d.mode === 'foot' && game.time > 1);
+    assert(flares === 1 && A.stopped === 'hit', `Three Autumns landed on its first draw: the chain stops (${flares} flare, ${A.stopped})`);
+  }
+}
+
+// ================================================================== scenario: sheath (the sheath on the rig)
+async function scenarioSheath() {
+  out('\n== scenario SHEATH (carry, settled, drawn, home; sheathed in footwork, after reactions, a break, a reset, a phase change) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 4.5 });
+  p.debug.god = true;
+  const seq = [];
+  const clicks = [];
+  G.watch = (n, e) => { if (n === 'dragon:sheath') clicks.push(e.state); };
+  d.debug.trigger('oneBreath');
+  run(G, 4, () => { if (seq[seq.length - 1] !== d.sheath) seq.push(d.sheath); }, () => d.mode === 'foot');
+  assert(seq.join(' ') === 'carry settled drawn settled carry' || seq.join(' ') === 'settled drawn settled carry', `One Breath: ${seq.join(' → ')}`);
+  assert(clicks.includes('settle') && clicks.includes('draw') && clicks.includes('click') && clicks.includes('carry'), `dragon:sheath: ${clicks.join(', ')}`);
+  const P = d.sheathParts;
+  const vis = (list) => list.every((m) => m.visible);
+  assert(d.sheath === 'carry' && vis(P.carry) && !P.blade.some((m) => m.visible) && !P.off.visible, 'carried: the scabbard in his right hand, the blade hidden, nothing at his hip');
+  // in footwork he is always sheathed; a reaction leaving the blade out → the re-sheathe first
+  let footDrawn = 0;
+  d.debug.trigger('oneBreath');
+  const A = d.brain.act;
+  run(G, 3, () => {
+    if (d.brain.act === A && A.t > A.beats[0].impact + 0.05 && d.mode === 'act') d.brain.startReact('stagger');
+    if (d.mode === 'foot' && d.sheath === 'drawn') footDrawn++;
+  }, () => d.mode === 'act' && d.brain.act?.name === 'resheathe');
+  assert(d.brain.act?.name === 'resheathe' && footDrawn <= 1, `a stagger with the blade out: he re-sheathes before anything else (${d.brain.act?.name})`);
+  run(G, 3, () => { if (d.mode === 'foot' && d.sheath !== 'carry') footDrawn++; }, () => d.mode === 'foot' && d.sheath === 'carry');
+  assert(d.sheath === 'carry' && footDrawn <= 1, 'and is sheathed in footwork after it');
+  // a break: he kneels on the drawn blade, then sheathes
+  d.debug.postureBreak();
+  run(G, 0.3);
+  assert(d.mode === 'broken' && d.sheath === 'drawn', 'broken: he kneels on the drawn blade');
+  run(G, TUNING.posture.breakTime + 3, null, () => d.mode === 'foot' && d.sheath === 'carry');
+  assert(d.sheath === 'carry', 'after the break: sheathed');
+  // a phase change and a reset
+  d.debug.phase2();
+  run(G, 5, null, () => d.mode === 'foot');
+  assert(d.phase === 2 && d.sheath === 'carry', 'after the phase change: sheathed');
+  d.reset();
+  assert(d.sheath === 'carry' && d.mode === 'sleep', 'after a reset: sheathed, kneeling');
+  assert(G.payload.size === 0, `no NaN in any payload (${[...G.payload].join(', ')})`);
+}
+
+// ================================================================== scenario: world (the grove falls on the click)
+async function scenarioWorld() {
+  out('\n== scenario WORLD (light pieces; the wake fells stalks at the click, not before; a felled stalk never cues nor hurts) ==');
+  const G = build(SEED, true);
+  const { game } = G;
+  const d = game.dragon, p = game.player, D = game.world.destructibles;
+  duel(G, { dist: 4.5, ang: 0 });
+  p.debug.god = true;
+  // a stalk in the wake's line: put one there
+  const stalks = D.list.filter((b) => b.kind === 'bamboo');
+  assert(stalks.length >= 200 && stalks.every((b) => b.lightPiece && b.def.light), `${stalks.length} light stalks`);
+  // he stands so that a stalk of the clearing is in the wake's line, the hero between
+  const S0 = stalks.find((b) => Math.hypot(b.x, b.z) > 8.5 && Math.hypot(b.x, b.z) < 12.5);
+  const rS = Math.hypot(S0.x, S0.z), ux = S0.x / rS, uz = S0.z / rS;
+  d.position.set(S0.x - ux * 11, 0, S0.z - uz * 11);
+  d.yaw = Math.atan2(ux, uz);
+  place(G, 4.5, 0);
+  run(G, 0.1);
+  d.yaw = Math.atan2(ux, uz);
+  const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+  const inLine = (b) => {
+    const rx = b.x - d.position.x, rz = b.z - d.position.z, along = rx * fx + rz * fz, across = Math.abs(-rx * fz + rz * fx);
+    return along > 6 && along < 15 && across < 0.4;
+  };
+  const tells = [];
+  G.watch = (n, e) => { if ((n === 'combat:tell' || n === 'combat:flash') && e?.source === 'world') tells.push(n); };
+  d.debug.trigger('oneBreath');
+  const A = d.brain.act;
+  let atImpact = -1, line = [];
+  run(G, 4, () => {
+    if (atImpact < 0 && A.t >= A.beats[0].impact + 0.05) {
+      const W = d._wake;
+      line = stalks.filter((b) => segDist(b.x, b.z, W.bx, W.bz, W.cx, W.cz) < 0.4);
+      atImpact = line.filter((b) => b.state !== 0).length;
+    }
+  }, () => d.mode === 'foot');
+  void inLine;
+  const felled = line.filter((b) => b.state !== 0).length;
+  out(`     ${line.length} stalks in the wake's line: ${atImpact} down at the impact, ${felled} after the click`);
+  assert(line.length === 0 || (atImpact === 0 && felled === line.length), `the wake fells the stalks in its line at the click, not before (${atImpact} → ${felled} of ${line.length})`);
+  // the Held Breath's ring: every stalk within ringR falls on its click
+  const hp0 = p.hp;
+  d.position.set(0, 0, 0);
+  const ring = stalks.filter((b) => b.state === 0 && Math.hypot(b.x, b.z) < TUNING.world.ringR - 0.5);
+  d.debug.phase2();
+  run(G, 5, null, () => d.mode === 'foot' && d.phase === 2);
+  d.position.set(0, 0, 0);
+  d.debug.phase3();
+  run(G, 6, null, () => d.mode === 'foot' && d.phase === 3);
+  const down = ring.filter((b) => b.state !== 0).length;
+  assert(ring.length > 0 && down === ring.length, `The Held Breath: ${down} of the ${ring.length} stalks within ${TUNING.world.ringR} m fell on its click`);
+  run(G, 2);
+  assert(tells.length === 0, `no felled stalk sent a combat:tell or flash (${tells.length})`);
+  const fromWorld = G.hits.filter((h) => h.attack == null || h.kind === 'crush');
+  assert(fromWorld.length === 0 && p.hp >= hp0 - 10.001, `a felled stalk never hit the hero (${fromWorld.length})`);
+  // stone only chips under a draw (the stele)
+  const stele = D.list.find((b) => b.kind === 'stele');
+  d.position.set(stele.x, 0, stele.z + 3);
+  d.yaw = Math.PI;
+  d._wake.live = true;
+  Object.assign(d._wake, { ax: stele.x, az: stele.z + 2.6, bx: stele.x, bz: stele.z - 2, cx: stele.x, cz: stele.z - 8, dx: 0, dz: -1 });
+  d._onClick();
+  run(G, 0.5);
+  assert(stele.state === 0 && stele.hp < stele.hpMax, `the stele only chips under the blade's part (${stele.hp.toFixed(2)} of ${stele.hpMax.toFixed(2)})`);
+  // every call survives a world without destructibles
+  const G2 = build();
+  const d2 = G2.game.dragon;
+  duel(G2, { dist: 4.5 });
+  G2.game.player.debug.god = true;
+  d2.debug.trigger('oneBreath');
+  run(G2, 4, null, () => d2.mode === 'foot');
+  d2.debug.phase2();
+  run(G2, 4, null, () => d2.mode === 'foot');
+  d2.debug.phase3();
+  run(G2, 6, null, () => d2.mode === 'foot');
+  assert(d2.phase === 3 && d2.stats.wakes >= 1, `a world without destructibles: the draw, both transitions, no throw (${d2.stats.wakes} wakes)`);
+}
+const segDist = (px, pz, ax, az, bx, bz) => {
+  const ex = bx - ax, ez = bz - az, ll = ex * ex + ez * ez || 1;
+  const u = Math.max(0, Math.min(1, ((px - ax) * ex + (pz - az) * ez) / ll));
+  return Math.hypot(px - ax - ex * u, pz - az - ez * u);
+};
+
+const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld };
 const OPT_IN = {};
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {

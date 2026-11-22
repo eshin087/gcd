@@ -354,7 +354,8 @@ export function createWindlessGrove(U, colliders) {
     for (const [lx, lz, h] of [[-1.3, -1.1, 2.5], [1.3, -1.1, 2.1], [-1.3, 1.1, 1.6], [1.3, 1.1, 2.4]]) {
       const x = P.x + lx * c + lz * s, z = P.z - lx * s + lz * c;
       const geos = pavilionPost(rng, x, z, h);
-      breakables.push({ kind: 'post', mat: 'wood', look: 'prop', x, z, r: 0.2, h, geos, colliders: [colliders.add(x, z, 0.18, 'trunk')], lift: 1 });
+      // (light too: a felled post must never cue nor hold up one of his blows)
+      breakables.push({ kind: 'post', mat: 'wood', look: 'prop', light: true, x, z, r: 0.2, h, geos, colliders: [colliders.add(x, z, 0.18, 'trunk')], lift: 1, cover: false });
     }
     // the fallen roof: a sagging thatch slab leaning on the ground (static, screen grid)
     const roof = prep(new THREE.BoxGeometry(3.4, 0.22, 2.6, 4, 1, 3));

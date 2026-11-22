@@ -3725,6 +3725,8 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   flow counts it in the run stats like a sword hit),
   `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
   (his flurry starts: that many blows), `dragon:flurryEnd {count, answered}` (decided: every blow parried or blocked, or one missed),
+  `dragon:sheath {state}` (the Sheathed's sheath changed, ADR-145: settle = the hand on the hilt, draw = the blade out,
+  click = it went home (the grove falls), carry; audio: the breath, the click),
   `dragon:posture {posture, max}`, `dragon:postureBreak`, `dragon:stagger` (ordinary stagger only), `dragon:phase2`,
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),
