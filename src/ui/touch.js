@@ -13,7 +13,11 @@ import { aimWithoutCursor } from './aim.js';
 // ATTACK, BLOCK and DODGE are one cluster of three tiles that all touch (the pad, CONFIG.touch.pad):
 // a touch on or near it goes to the nearest tile, and a thumb that slides from one tile onto another
 // releases the first and presses the second without lifting. The player moves and sizes the cluster
-// in the pause menu (PAD POSITION / PAD SIZE, kept in localStorage).
+// in the pause menu (PAD POSITION / PAD SIZE, kept in localStorage). Two more switches there
+// (ADR-131, both off by default): PAD LAYOUT 'split' moves the guard to the left hand (a GUARD button
+// beside the stick; the right cluster keeps ATTACK, HEAVY and DODGE), and HOLD ATTACK makes a thumb
+// that rests on ATTACK keep cutting (input.pulse, CONFIG.touch.hold). ?pad=split|classic and
+// ?hold=1|0 in the URL set them for one page load.
 // Aim: in a fight with the dragon targetable (and within CONFIG.touch.autoAimRange) game.mouseGround
 // is put on its lock point (auto-aim); otherwise it sits CONFIG.touch.aimDistance m ahead of the hero
 // along the last stick direction. Taps on the bare screen dismiss "press any key" screens (title,
@@ -37,6 +41,7 @@ const BUTTONS = [
   { id: 'heavy', code: '@heavy', glyph: '‡', label: 'HEAVY', sub: 'hold: charge', tile: true },
   { id: 'block', code: '@block', glyph: '[#]', label: 'BLOCK', sub: 'tap: parry', tile: true },
   { id: 'dodge', code: '@dodge', glyph: '»', label: 'DODGE', tile: true },
+  { id: 'guard', code: '@block', glyph: '[#]', label: 'GUARD', sub: 'tap: parry' }, // (PAD LAYOUT split: the left hand)
   { id: 'flask', code: '@flask', glyph: '◆', label: 'FLASK' },
   { id: 'lock', code: '@lockOn', glyph: '◎', label: 'LOCK' },
   { id: 'pause', code: '@pause', glyph: '||', label: '' },
@@ -61,6 +66,22 @@ function urlTouch() {
   }
 }
 
+/** ?pad=split|classic and ?hold=1|0: the pad switches for this page load (a link to try one). */
+function urlPad() {
+  const o = { layout: null, hold: null };
+  try {
+    const s = globalThis.location?.search;
+    if (typeof s !== 'string') return o;
+    const q = new URLSearchParams(s);
+    const l = (q.get('pad') || '').toLowerCase();
+    if (PAD_LAYOUT.includes(l)) o.layout = l;
+    if (q.has('hold')) o.hold = !['0', 'false', 'off'].includes((q.get('hold') || '').toLowerCase());
+  } catch {
+    /* no URL: nothing asked */
+  }
+  return o;
+}
+
 function media(query) {
   try {
     return !!globalThis.matchMedia?.(query)?.matches;
@@ -81,6 +102,7 @@ const setVar = (node, name, v) => {
 
 export const PAD_POS = ['low', 'mid', 'high'];
 export const PAD_SIZE = ['s', 'm', 'l'];
+export const PAD_LAYOUT = ['classic', 'split'];
 const PAD_KEY = 'abyss.touchPad';
 const GUARD_STEPS = 25; // the BLOCK tile's guard gauge is written in this many steps
 
@@ -111,8 +133,15 @@ export class TouchControls {
     this.padGeo = null; // { k, cx, cy, reach, stick, tiles: { id: [u0, v0, u1, v1] } } (px, client)
     this.padPos = 'mid';
     this.padSize = 'm';
+    this.layout = 'classic'; // PAD_LAYOUT: 'split' = the guard on the left hand
+    this.holdAttack = false; // a held ATTACK keeps cutting
+    this.guardGeo = null; // split: the GUARD button { x, y, w, h } (its middle, client px)
+    this._hold = { t: 0, next: 0, quiet: 0 };
     this._peek = false;
     this._loadPad();
+    const asked = urlPad();
+    if (asked.layout) this.layout = asked.layout;
+    if (asked.hold !== null) this.holdAttack = asked.hold;
     this._errors = 0;
 
     const on = (target, name, fn, opts) => target?.addEventListener?.(name, (e) => this._guard(name, fn, e), opts);
@@ -228,7 +257,34 @@ export class TouchControls {
     }
     if (play) this._aimUpdate();
     else this.autoAim = false;
-    if (live) this._syncButtons();
+    if (live) {
+      this._holdRepeat(realDt);
+      this._syncButtons();
+    }
+  }
+
+  /**
+   * HOLD ATTACK: while a thumb rests on ATTACK the hero keeps cutting. Each repeat is one press edge
+   * of the attack action (input.pulse), so the chain, the sprint cut and the execution read it as a
+   * tap. The guard has the hero while it is held; DODGE / HEAVY / FLASK keep the buffer for a moment.
+   */
+  _holdRepeat(dt) {
+    const H = CONFIG.touch.hold, B = this.btn, K = this._hold;
+    if (!this.holdAttack || !H || !B?.attack?.ids.size) {
+      K.t = K.next = K.quiet = 0;
+      return;
+    }
+    dt = Math.min(0.1, Math.max(0, fin(dt)));
+    if (K.t === 0) K.next = fin(H.after, 0.22);
+    K.t += dt;
+    if (B.block?.ids.size || B.guard?.ids.size) K.quiet = Math.max(K.quiet, fin(H.every, 0.1));
+    if (K.quiet > 0) {
+      K.quiet -= dt;
+      return;
+    }
+    if (K.t < K.next) return;
+    K.next = K.t + fin(H.every, 0.1);
+    this.game.input?.pulse?.('@attack');
   }
 
   /** The page was zoomed (visualViewport.scale > 1): rewrite the viewport meta, Safari lays it out
@@ -260,22 +316,28 @@ export class TouchControls {
     this._dbgEl.textContent = `page x${fin(vv?.scale, 1).toFixed(2)} (fixed ${this.unzooms ?? 0}) · cam ${fin(D).toFixed(1)} m (base ${fin(r?.targetDistance).toFixed(0)}) · canvas ${c?.clientWidth}x${c?.clientHeight} / win ${globalThis.innerWidth}x${globalThis.innerHeight}`;
   }
 
-  /** Step the cluster's placement ('pos': low / mid / high) or its size ('size': s / m / l); kept. */
+  /** Step the cluster's placement ('pos': low / mid / high), its size ('size': s / m / l), its
+   *  layout ('layout': classic / split) or the held attack ('hold': off / on); kept. */
   cyclePad(what) {
     if (what === 'size') this.padSize = PAD_SIZE[(PAD_SIZE.indexOf(this.padSize) + 1) % PAD_SIZE.length];
+    else if (what === 'layout') {
+      this._releaseControls(); // every button is somewhere else now: nothing stays held
+      this.layout = PAD_LAYOUT[(PAD_LAYOUT.indexOf(this.layout) + 1) % PAD_LAYOUT.length];
+    } else if (what === 'hold') this.holdAttack = !this.holdAttack;
     else this.padPos = PAD_POS[(PAD_POS.indexOf(this.padPos) + 1) % PAD_POS.length];
     try {
-      globalThis.localStorage?.setItem?.(PAD_KEY, JSON.stringify({ pos: this.padPos, size: this.padSize }));
+      globalThis.localStorage?.setItem?.(PAD_KEY, JSON.stringify({ pos: this.padPos, size: this.padSize, layout: this.layout, hold: this.holdAttack }));
     } catch {
       /* private mode: the choice lasts for this page */
     }
     this._padLayout();
     if (this.stick.id === null) this._restStick();
-    return what === 'size' ? this.padSize : this.padPos;
+    return what === 'size' ? this.padSize : what === 'layout' ? this.layout : what === 'hold' ? this.holdAttack : this.padPos;
   }
 
   /** The screen point (client px) at the middle of a pad tile ('attack' / 'block' / 'dodge'), or null. */
   padPoint(id) {
+    if (id === 'guard') return this.guardGeo ? { x: this.guardGeo.x, y: this.guardGeo.y } : null;
     const G = this.padGeo, r = G?.tiles?.[id];
     return r ? { x: G.cx - (r[0] + r[2]) / 2, y: G.cy - (r[1] + r[3]) / 2 } : null;
   }
@@ -285,6 +347,8 @@ export class TouchControls {
       const o = JSON.parse(globalThis.localStorage?.getItem?.(PAD_KEY) ?? 'null');
       if (PAD_POS.includes(o?.pos)) this.padPos = o.pos;
       if (PAD_SIZE.includes(o?.size)) this.padSize = o.size;
+      if (PAD_LAYOUT.includes(o?.layout)) this.layout = o.layout;
+      if (typeof o?.hold === 'boolean') this.holdAttack = o.hold;
     } catch {
       /* no storage / a broken entry: the defaults */
     }
@@ -328,15 +392,27 @@ export class TouchControls {
     const places = (h > w && P.posPortrait) || P.pos;
     const pos = places[this.padPos] ?? places.mid;
     const px = pos[0] * tall, py = pos[1] * tall, reach = P.reach * k;
+    const split = this.layout === 'split' && !!P.split;
+    const from = split ? P.split.tiles : P.tiles;
     const tiles = {};
     let W = 0, H = 0;
-    for (const id in P.tiles) {
-      const t = P.tiles[id];
+    for (const id in from) {
+      const t = from[id];
       tiles[id] = [t.x * k, t.y * k, (t.x + t.w) * k, (t.y + t.h) * k];
       W = Math.max(W, tiles[id][2]);
       H = Math.max(H, tiles[id][3]);
     }
     this.padGeo = { k, cx: w - px, cy: h - py, reach, stick: P.stick * k, tiles };
+    // split: GUARD beside the stick's ring (held upright: above it), on the cluster's bottom line
+    let guard = null;
+    if (split) {
+      const rest = this._stickRest(), up = h > w, g = (up && P.split.guardPortrait) || P.split.guard;
+      const gw = g.w * k, gh = g.h * k;
+      const left = up ? Math.max(8, rest.x - gw / 2) : rest.x + RING_R + fin(g.gap, 14);
+      const bottom = up ? h - rest.y + RING_R + fin(g.lift, 14) : py + fin(g.y) * k;
+      guard = { left, bottom, w: gw, h: gh };
+      this.guardGeo = { x: left + gw / 2, y: h - bottom - gh / 2, w: gw, h: gh };
+    } else this.guardGeo = null;
     if (!u?.pad) return;
     const px2 = (v) => `${v.toFixed(1)}px`;
     const S = u.pad.style;
@@ -345,6 +421,14 @@ export class TouchControls {
     S.width = px2(W + reach * 2);
     S.height = px2(H + reach * 2);
     setVar(u.root, '--tc-k', k.toFixed(3));
+    u.root.classList.toggle('split', split);
+    const gs = this.btn?.guard?.el.style;
+    if (guard && gs) {
+      gs.left = px2(guard.left);
+      gs.bottom = px2(guard.bottom);
+      gs.width = px2(guard.w);
+      gs.height = px2(guard.h);
+    }
     for (const id in tiles) {
       const r = tiles[id], s = this.btn?.[id]?.el.style;
       if (!s) continue;
@@ -353,13 +437,21 @@ export class TouchControls {
       s.width = px2(r[2] - r[0]);
       s.height = px2(r[3] - r[1]);
     }
-    const f = P.flask, fs = this.btn?.flask?.el.style;
+    const f = (split && P.split.flask) || P.flask, fs = this.btn?.flask?.el.style;
     if (f && fs) {
       fs.right = px2(px + f.x * k);
       fs.bottom = px2(py + f.y * k);
       fs.width = px2(f.w * k);
       fs.height = px2(f.h * k);
     }
+  }
+
+  /** Where the stick's ring rests (client px): the bottom left corner; held upright, level with the
+   *  pad (the thumbs come up from below). */
+  _stickRest() {
+    const R = RING_R + 22, G = this.padGeo, w = fin(globalThis.innerWidth, 800), h = fin(globalThis.innerHeight, 400), up = h > w;
+    const lift = up && G ? h - G.cy + 24 * G.k : 14;
+    return { x: R + (up ? 8 : 18), y: Math.max(R, h - R - lift) };
   }
 
   /** The cluster's corner on screen from the laid-out element (safe areas, a host that is not the
@@ -482,6 +574,8 @@ export class TouchControls {
     if (rec.ids.size !== 1) return;
     rec.el.classList.add('on');
     this.game.input?.setVirtual?.(rec.def.code, true);
+    const b = rec.def.id;
+    if (b === 'dodge' || b === 'heavy' || b === 'flask') this._hold.quiet = fin(CONFIG.touch.hold?.quiet, 0.3);
   }
 
   /** A finger leaves a button: its action goes up with the last finger off it. */
@@ -613,11 +707,9 @@ export class TouchControls {
   _restStick() {
     const u = this.ui, S = this.stick;
     if (!u) return;
-    // at rest: the bottom left corner; held upright, level with the pad (the thumbs come up from below)
-    const R = RING_R + 22, G = this.padGeo;
-    const lift = this.portrait && G ? fin(globalThis.innerHeight, 400) - G.cy + 24 * G.k : 14;
-    S.ox = R + (this.portrait ? 8 : 18);
-    S.oy = Math.max(R, fin(globalThis.innerHeight, 400) - R - lift);
+    const rest = this._stickRest();
+    S.ox = rest.x;
+    S.oy = rest.y;
     u.stick.style.transform = `translate3d(${S.ox}px, ${S.oy}px, 0)`;
     u.knob.style.transform = 'translate3d(0px, 0px, 0)';
     this._stickClass(false, false);
@@ -673,11 +765,12 @@ export class TouchControls {
     const gd = Math.max(0, Math.min(GUARD_STEPS, Math.round((fin(p.guard, gMax) / gMax) * GUARD_STEPS)));
     if (gd !== K.guard) {
       K.guard = gd;
-      setVar(B.block.el, '--tc-gd', (gd / GUARD_STEPS).toFixed(2));
-      const low = gd / GUARD_STEPS < 0.3;
-      if (low !== K.low) {
-        K.low = low;
-        B.block.el.classList.toggle('low', low);
+      const low = gd / GUARD_STEPS < 0.3, turned = low !== K.low;
+      K.low = low;
+      for (const b of [B.block, B.guard]) {
+        if (!b) continue;
+        setVar(b.el, '--tc-gd', (gd / GUARD_STEPS).toFixed(2));
+        if (turned) b.el.classList.toggle('low', low);
       }
     }
     // LOCK: lit while locked on
