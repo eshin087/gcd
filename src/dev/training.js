@@ -221,7 +221,18 @@ const ascRoll = (T) => {
   T.tap('Space');
   T.later(0.4, () => T._axis(0, 0));
 };
+/** Once, when his counter stance is catching (a beat marked `catch`, duelist/brain.js): a cut into it. */
+const ascCut = (T) => {
+  if (T.d?.brain?.catching?.()) T.at(0, () => T.tap('@attack'), 'ascCut');
+};
+/** Once his stance has ended on nothing (he stands open, the guard down): the cut that punishes it. */
+const ascOpen = (T) => {
+  if ((T.d?.brain?.stats?.stanceMiss ?? 0) > fin(T._ascMiss)) T.at(0, () => T.tap('@attack'), 'ascOpen');
+};
 add('PARRY & RIPOSTE', [
+  { id: 'ascSign', name: 'The sign · turn and parry', boss: 'asc', dist: 4, answer: 'parry', desc: 'Two fingers to his brow (form 2, Sign Step): he is gone, and the hook comes from BEHIND you. Its glint shows where: turn and parry the three blows.', go: ascGo(2, 'signStep'), expect: ['player:parry'] },
+  { id: 'ascCatch', name: 'Counter stance · cut into it', boss: 'asc', dist: 1.9, answer: 'parry', desc: 'Still Water (form 1): he sinks, the palms open, light drawn into them. Cut into it and he CATCHES the blade (thrown back, no damage) and punishes at once: parry the cross and the palm.', go: ascGo(1, 'stillWater'), tick: ascCut, expect: ['player:attack', 'player:parry'] },
+  { id: 'ascCatchWait', name: 'Counter stance · wait it out', boss: 'asc', dist: 1.9, answer: 'none', desc: 'The patient answer: do not cut into the open palms. The stance ends on nothing, his guard is down a moment: cut him then.', go: (T) => { T._ascMiss = T.d.brain?.stats?.stanceMiss ?? 0; ascGo(1, 'stillWater')(T); }, tick: ascOpen, until: (T) => T.t > 2.4 && !T.moving() && T.heroFree(), max: 6, expect: ['player:attack'] },
   { id: 'ascClash', name: 'The beam clash', boss: 'asc', dist: 6, answer: 'none', mash: true, desc: 'His great beam (form 3): a perfect parry of its head starts THE CLASH at range. Mash attack to split the beam: he reels.', go: ascGo(3, 'heavenTide'), tick: (T) => ascHead(T, 0.04, () => T.tap('@block', 0.05)), until: (T) => T.t > 3 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 16, expect: ['player:lock'] },
 ]);
 add('GETTING HIT', [

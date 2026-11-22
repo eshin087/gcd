@@ -148,6 +148,14 @@ export const TUNING = {
   // the ring goes out)
   transform: { windup: 2.3, ringRadius: 6.5, damage: 12, knockback: 7 },
 
+  // ---- the third wave (moves/melee.js). THE SIGN before a vanish (ascendant.js beatMotion: he goes at
+  // u 0.5): `behind` m behind the hero, or `side` rad round from his facing at `sideR` m (Three Signs);
+  // after the arrival a short step of at most `step` m from u `stepFrom` into reach; a riposte's hop
+  // back `hop` m. THE COUNTER STANCE (duelist/brain.js `catch`): its windup, bait hold, catching from
+  // `from` of the windup, open `open` s when nothing was caught.
+  sign: { behind: 2.0, side: 1.5, sideR: 2.2, step: 1.6, stepFrom: 0.55, hop: 1.5 },
+  stance: { windup: 0.45, hold: [0.2, 0.4], from: 0.3, open: 0.6 },
+
   // ---- what flies (the second wave's ki moves read these; LordFx's pools need a `crescent` block)
   crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25 },
 

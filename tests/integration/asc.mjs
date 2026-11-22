@@ -2000,6 +2000,175 @@ async function scenarioStrings() {
   d.debug.setAI(false);
   assert(top > TUNING.move.sprint * 1.4, `the dash at ${top.toFixed(1)} m/s (his sprint ${TUNING.move.sprint})`);
 }
+/**
+ * SIGN (the third wave): THE SIGN before a vanish: the hand at his brow and he still stands where he
+ * stood at u 0.45, gone at 0.55, the snap drawn at the hand, the blow from behind (Sign Step, Three
+ * Signs' sides, the retrofits on Vanishing Step, Storm Waltz, Mirage and riposte3).
+ */
+async function scenarioSign() {
+  out('\n== scenario SIGN (two fingers to the brow, gone at u 0.5, the snap, the blow from behind / the sides) ==');
+  const G = build();
+  duel(G, { dist: 4, form: 2 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  const prep = (form, dist) => {
+    settle(G, 4);
+    if (d.phase !== form) d.debug.setForm(form);
+    run(G, 0.3);
+    d.position.set(0, 0, -3);
+    d.yaw = 0;
+    place(G, dist);
+    run(G, 0.2);
+  };
+  const v = new THREE.Vector3(), w = new THREE.Vector3();
+  /** One move: each sign beat's samples (where he stood, the hand's height against his head), the
+   *  snaps, and where each blow of it met the hero from (rad off the hero's facing: 0 before him). */
+  const play = (name, form, dist = 4) => {
+    prep(form, dist);
+    const snaps = [], sg = d.fx.signSnap;
+    d.fx.signSnap = (...a) => { snaps.push(game.time); return sg?.apply(d.fx, a); };
+    const S = new Map();
+    const from = [];
+    const h0 = G.hits.length;
+    d.debug.trigger(name);
+    run(G, 7, () => {
+      const a = d.brain.act;
+      if (!a || a.name !== name) return;
+      for (const b of a.beats) {
+        if (!b.def.blink?.sign || a.t < b.start || a.t > b.impact) continue;
+        const u = (a.t - b.start) / (b.impact - b.start), s = S.get(b) ?? { x0: d.position.x, z0: d.position.z, at45: null, at55: null, brow: 9 };
+        S.set(b, s);
+        if (u > 0.3 && u < 0.48) {
+          // (the brow as drawn: the head joint's world position, up a head's half-height, a little forward)
+          const h = d.tellPoint('fistR', v), hd = w.set(0, 0.16, 0.09).applyMatrix4(d.rig.head.matrixWorld);
+          s.brow = Math.min(s.brow, Math.hypot(h.x - hd.x, h.y - hd.y, h.z - hd.z));
+        }
+        if (s.at45 === null && u >= 0.45) s.at45 = Math.hypot(d.position.x - s.x0, d.position.z - s.z0);
+        if (s.at55 === null && u >= 0.56) s.at55 = Math.hypot(d.position.x - s.x0, d.position.z - s.z0);
+      }
+    }, () => d.mode === 'foot' && game.time > 0.5);
+    d.fx.signSnap = sg;
+    for (const h of G.hits.slice(h0)) if (h.attack === name) from.push(h);
+    return { S: [...S.values()], snaps, hits: from };
+  };
+  // (the side a blow came from: the boss's bearing off the hero's facing at the moment of contact)
+  const bear = [];
+  G.watch = (n, e) => {
+    if (n !== 'player:hurt' && n !== 'player:block' && n !== 'player:parry') return;
+    const ang = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z) - p.yaw;
+    bear.push(Math.atan2(Math.sin(ang), Math.cos(ang)));
+  };
+  const fmt = (r) => r.S.map((s) => `${s.at45?.toFixed(2)}→${s.at55?.toFixed(2)} m, hand ${s.brow.toFixed(2)} m off his brow`).join(' · ');
+  // Sign Step: one sign, the hook from behind, then the knee and the palm
+  bear.length = 0;
+  const ss = play('signStep', 2);
+  const okS = (r, n) => r.S.length === n && r.snaps.length === n && r.S.every((s) => s.at45 !== null && s.at45 < 0.15 && s.at55 > 2.5 && s.brow < 0.18);
+  assert(okS(ss, 1) && ss.hits.length === 3, `Sign Step: still where he stood at u 0.45, gone at 0.55, the hand at his brow (${fmt(ss)}); ${ss.snaps.length} snap; ${ss.hits.length} blows land`);
+  assert(Math.abs(bear[0]) > 2.2, `... and the hook comes from BEHIND the hero (${bear[0]?.toFixed(2)} rad off his facing)`);
+  // Three Signs: three signs; the blows from his left, his right, behind
+  bear.length = 0;
+  const ts = play('threeSigns', 3);
+  assert(okS(ts, 3) && ts.hits.length >= 3, `Three Signs: three signs, each still at 0.45 and gone at 0.55 (${fmt(ts)}); ${ts.snaps.length} snaps; ${ts.hits.length} blows`);
+  assert(bear.length >= 3 && bear[0] > 0.7 && bear[0] < 2.4 && bear[1] < -0.7 && bear[1] > -2.4 && Math.abs(bear[2]) > 2.2, `... from the hero's left, his right, then behind (${bear.slice(0, 3).map((b) => b.toFixed(2)).join(' / ')} rad)`);
+  // the retrofits: the first beat of each signs; the later blinks do not
+  for (const [name, form, dist] of [['vanishStep', 2, 5], ['stormWaltz', 3, 5], ['mirage', 3, 5], ['riposte3', 3, 2.2]]) {
+    const r = play(name, form, dist);
+    const signs = MOVES[name].beats.filter((b) => b.blink?.sign).length;
+    assert(signs === 1 && MOVES[name].beats[0].blink?.sign && okS(r, 1), `${name}: its first beat out of THE SIGN (${fmt(r)}), ${r.snaps.length} snap, ${r.hits.length} blows`);
+  }
+  G.watch = null;
+}
+
+/**
+ * CATCH (the third wave): the counter stances with their real punish. A cut into the stance is caught
+ * (no damage, the hero's blade thrown back) and the punish's first beat starts within 0.1 s; no cut:
+ * the move ends at the stance's impact with no blow and his guard is down `open` s.
+ */
+async function scenarioCatch() {
+  out('\n== scenario CATCH (Still Water, Golden Mirror, Thunder Mirror: caught, the punish at once; or waited out, open) ==');
+  const G = build();
+  duel(G, { dist: 2, form: 1 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, br = d.brain;
+  const ST = TUNING.stance;
+  const stance = (name, form, cut) => {
+    settle(G, 4);
+    if (d.phase !== form) d.debug.setForm(form);
+    run(G, 0.3);
+    d.position.set(0, 0, -2);
+    d.yaw = 0;
+    place(G, 1.9);
+    run(G, 0.3);
+    p.debug.heal();
+    p.debug.god = true;
+    const hp0 = d.hp, h0 = G.hits.length, c0 = br.stats.caught, m0 = br.stats.stanceMiss, b0 = G.counts['player:bounced'] ?? 0;
+    let caughtT = null, punishT = null, guardDown = 0, glow = 0;
+    const sg = d.fx.stanceGlow;
+    d.fx.stanceGlow = (...a) => { glow++; return sg?.apply(d.fx, a); };
+    G.watch = (n, e) => {
+      if (n === 'dragon:guard' && e?.caught && caughtT === null) caughtT = game.time;
+      if (n === 'combat:tell' && e?.attack === name && caughtT !== null && punishT === null) punishT = game.time;
+    };
+    d.debug.trigger(name);
+    const t0 = game.time;
+    let cutAt = -1;
+    run(G, 6, () => {
+      const a = br.act, b = a?.name === name ? a.beats[0] : null;
+      if (cut && b && cutAt < 0 && a.t > b.start + ST.windup * 0.55 && a.t < b.impact) { input.click(0); cutAt = game.time; }
+      if (d.mode === 'foot' && game.time - t0 < 3.5 && br.raiseT > 0 && !br.guardUp()) guardDown += DT;
+    }, () => game.time - t0 > 2.8 && d.mode === 'foot' && quiet(d) && p.state !== 'bounce');
+    d.fx.stanceGlow = sg;
+    G.watch = null;
+    const hits = G.hits.slice(h0).filter((h) => h.attack === name);
+    return { caught: br.stats.caught - c0, miss: br.stats.stanceMiss - m0, dHp: hp0 - d.hp, bounced: (G.counts['player:bounced'] ?? 0) - b0, caughtT, punishT, hits, guardDown, glow };
+  };
+  for (const [name, form] of [['stillWater', 1], ['goldenMirror', 2], ['thunderMirror', 3]]) {
+    const c = stance(name, form, true);
+    const lag = c.punishT !== null && c.caughtT !== null ? c.punishT - c.caughtT : 9;
+    assert(c.caught === 1 && c.miss === 0 && c.dHp === 0 && c.bounced >= 1 && c.glow > 5, `${name} (form ${form}): a cut into the stance is CAUGHT (${c.caught}), no damage to him (${c.dHp}), the hero's blade thrown back (${c.bounced}), light drawn into his palms (${c.glow} frames)`);
+    assert(lag <= 0.1 && c.hits.length >= 1, `... the punish starts ${(lag * 1000).toFixed(0)} ms after the catch and reaches the hero (${c.hits.map((h) => `${h.tell}:${h.r}`).join(' ')})`);
+    const m = stance(name, form, false);
+    assert(m.caught === 0 && m.miss === 1 && m.hits.length === 0 && m.guardDown > ST.open * 0.7 && m.guardDown < ST.open + 0.6, `... waited out: the move ends at the stance with no blow (${m.hits.length}) and he is open, his guard down ${m.guardDown.toFixed(2)} s`);
+  }
+}
+
+/**
+ * RIPOSTES (the third wave): every counter of each form's list is drawn out of his deflect (the kit's
+ * counterMove on the AI's stream), and each lands as a counter; riposteBolt hops back first.
+ */
+async function scenarioRipostes() {
+  out('\n== scenario RIPOSTES (each form\'s counters all drawn; riposteBolt hops back, then the bolt) ==');
+  const G = build();
+  duel(G, { dist: 2.2, form: 1 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  for (let f = 1; f <= FORMS; f++) {
+    const seen = new Map();
+    for (let i = 0; i < 200; i++) { const n = d.kit.counterMove(f); seen.set(n, (seen.get(n) ?? 0) + 1); }
+    const L = COUNTER_LISTS[f - 1];
+    assert(L.length >= 2 && L.every((n) => (seen.get(n) ?? 0) > 40) && [...seen.keys()].every((n) => L.includes(n)), `form ${f}: every counter of its list is drawn (${[...seen].map(([n, k]) => `${n} ${k}`).join(', ')} of 200)`);
+  }
+  // riposteBolt: back ~1.5 m through the windup, then the bolt down the line
+  settle(G, 4);
+  d.debug.setForm(3);
+  run(G, 0.3);
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  place(G, 2.2);
+  run(G, 0.2);
+  const x0 = d.position.x, z0 = d.position.z, h0 = G.hits.length;
+  let back = 0, boltAt = 0;
+  d.debug.trigger('riposteBolt');
+  run(G, 3, () => {
+    const a = d.brain.act;
+    if (a?.name === 'riposteBolt' && a.t < a.beats[0].impact) back = Math.hypot(d.position.x - x0, d.position.z - z0);
+    if (a?.name === 'riposteBolt' && !boltAt && a.beats[0].struck) boltAt = Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z);
+  }, () => d.mode === 'foot' && game.time > 0.5);
+  const hits = G.hits.slice(h0).filter((h) => h.attack === 'riposteBolt');
+  assert(back > TUNING.sign.hop * 0.8 && hits.length === 1 && hits[0].tell === TELL.BLUE, `riposteBolt: back ${back.toFixed(2)} m before the bolt, thrown from ${boltAt.toFixed(1)} m; it lands (${hits.map((h) => `${h.tell}:${h.r}`).join(' ')})`);
+}
 //
 //
 // --- terrain
@@ -2682,6 +2851,9 @@ const S = {
   // --- strings
   motion: scenarioMotion,
   strings: scenarioStrings,
+  sign: scenarioSign,
+  catch: scenarioCatch,
+  ripostes: scenarioRipostes,
   //
   //
   // --- terrain
