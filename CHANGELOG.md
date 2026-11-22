@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-nine pieces of work since 0.4.0:
+Sixty pieces of work since 0.4.0:
+- **Round the Obsidian Throne, what the challengers left** (2026-11-22, ADR-133). *Changed:* the
+  felled forest round the Obsidian Throne's crater (the same straight log again and again, laid in a
+  starburst) is gone. In its place lies what those who came for the Starless Lord left behind: graves
+  of swords stuck in the earth, spears with a torn red banner, wanderers' cairns with a straw hat and
+  a sword, wrecked carts on their sides, a few steles on stone turtles and split boulders, each one
+  built differently, all in the dragon look. Faces turn toward the camera, what fell lies the way the
+  blast threw it, and nothing tall stands between the camera and the duel. About 70 of them within
+  reach break, fall and burn (stone leaves rubble). The owner's pick of three rendered options
+  (`?outskirts=a` a shrine, `b` the star's debris, `m` all of them, `0` the felled forest).
 - **The hero looks the same on every screen** (2026-11-21, ADR-130). *Changed:* the hero is drawn with
   the same letters on every screen and at every camera distance: about 9 across his cloak, the look
   of the owner's reference picture ("the exact type of feel and look i want ... make the character

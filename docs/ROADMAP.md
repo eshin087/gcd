@@ -179,6 +179,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.57 — Round the Obsidian Throne, what the challengers left (2026-11-22, `level/throne-props`, ADR-133)
+- [x] The felled forest's identical logs in a starburst replaced: 13 kinds of piece in the prop art
+      path, each built afresh, faced to the camera, lying along the blast's way out
+- [x] Four options rendered in game for the owner (a shrine / the star's debris / the challengers /
+      all); the owner picked the challengers (`?outskirts=c`), the rest behind the switch
+- [x] Within 43 m they break (stone leaves rubble; banners and carts burn); nothing tall on the near side
+- [ ] The owner plays it: the Lord may topple a banner or a sword grave onto the hero
+- [ ] Their own break / burn tuning (today the material defaults)
+
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters

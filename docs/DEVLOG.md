@@ -5,6 +5,47 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 73: round the Obsidian Throne, what the challengers left
+
+**Owner:** "the trees and background stuff on the obsidian throne is all incorrect and not realistic.
+replace the trees with more unique random breakable stuff and make sure it looks good and in the
+right angles". Branch `level/throne-props`. ADR-133 / Session 73 / M1.57 (the open PRs #76 and #77
+both hold ADR-131 and Session 71; this skips past them).
+
+**What was wrong.** Round the crater the forest lay felled: every trunk the same straight log, laid
+exactly radial in a starburst, in the screen grid's tree letters (not the dragon look the crater's
+own plates and shards are drawn in). From the game camera it read as a ring of matching sticks.
+
+**What changed.**
+- `world/starfallProps.js` (new): 13 builders in the prop art path (`carve()`, a tone per facet),
+  each piece built afresh from the rng (size, lean, state, parts): stone lanterns (standing, leaning,
+  thrown), steles on turtles (some snapped), broken pillars with their drums, a thrown shrine roof,
+  wine jars, split boulders, the star's rock in its furrows, heaved earth, glass splinters, graves of
+  swords, spears with a torn banner, wanderers' cairns, wrecked carts. Faces turn to the camera;
+  what fell lies along the blast's way out, turned off it; everything rests on a face.
+- `world/throneHall.js`: the felled-forest loop is behind `?outskirts=0`; otherwise 125 spots on a
+  stream of their own (the layout's `rng` is untouched: the trees were its last user), a bag of kinds
+  by the option's weights. Within 43 m of the seal each piece is a breakable (stone leaves rubble),
+  beyond it merges into the static stones. Nothing over 3 m on the near side of the path (a banner
+  there becomes a cairn): the duel stays in view. The `add()` helper skips an empty mesh.
+- `lookSwitch.js` `PICKED.outskirts = 'c'`, a Lab LOOKS row (build time: a reload).
+- Tests: `world.mjs` sets (the throne lists swords, banner, cairn, cart), `lord.mjs` level (`metal`
+  is a material of the crater's pieces; the counts).
+
+**Options, rendered for the owner** (in-game sheets, kept locally and not committed: on the
+path, both sides of the crater and pulled back, and a close-up of each piece): A the shrine the star
+fell on, B the star's own debris, C those who came for him, MIX. **The owner picked C.** The others stay
+behind the switch.
+
+**Verification.** `npm test` (all suites), `npm run build`. Headless Edge captures of the default
+(no parameter) at the game camera: C drawn, the near side low. The throne: 255 breakables (222
+before), 365 bones of 1023.
+
+**Open / next.**
+- The owner plays it: the Starless Lord can now topple a banner or a sword grave onto the hero (any
+  piece that topples within his reach can be his). None of option c's pieces is his to lift.
+- The jars, lanterns and roof (options a / m) were not tuned for burning or lifting beyond defaults.
+
 ## 2026-11-21 — Session 70: the hero looks the same on every screen
 
 **Owner**, with a picture of the hero at the game camera: "this picture of the character is the exact
