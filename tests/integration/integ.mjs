@@ -10596,8 +10596,7 @@ async function scenarioWyrmReact() {
       assert(L.fin && H.fin, `${name}: every drawn joint and sphere finite`);
       assert(L.m0 > 0.03 && H.m0 > L.m0 * 1.5, `${name}: moves in the hit's own tick, a heavy blow more (${L.m0.toFixed(3)} → ${H.m0.toFixed(3)} m)`);
       assert(L.along > 0.3 && H.along > 0.3, `${name}: along the blade's travel (${L.along.toFixed(2)}, ${H.along.toFixed(2)})`);
-      // (the head's own answer is back in ~0.35 s; what lasts is the old flinch's look being taken off
-      // the drawn head while the simulated one eases back: R.cancelOld)
+      // (a heavy blow's neck follow-through runs a little longer than a part's own snap)
       const lim = name === 'head' ? 1.0 : 0.6;
       assert(L.back > 0 && L.back * DT < lim && H.back * DT < 1.0, `${name}: back within 5 % in ${(L.back * DT).toFixed(2)} / ${(H.back * DT).toFixed(2)} s`);
     }

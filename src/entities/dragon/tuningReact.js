@@ -28,7 +28,7 @@ export const REACT = {
 
   // the head: the snout snaps away along the cut (back and up for a thrust into the face), the neck
   // carries it on a beat later and lets it come back
-  head: { amp: 1.4, up: 0.55, top: 0.3, follow: 0.6, delay: 0.04, travel: 0.012 },
+  head: { amp: 1.1, up: 0.9, top: 0.6, follow: 0.35, delay: 0.04, travel: 0.012 },
   // the neck: bent at once below the contact to carry it `amp` m; above it `carry` of that at once and
   // the rest as a whip running up to the head (`travel` s per segment), `whip` more at the head
   neck: { amp: 0.8, up: 0.15, carry: 0.5, travel: 0.028, whip: 0.4 },
@@ -40,14 +40,10 @@ export const REACT = {
   body: { shove: 0.3, swing: 0.45, give: 0.25, neckHold: 0.7, tailHold: 0.85, tailLash: 0.35, travel: 0.03, lever: 2.5 },
   // a leg: the knee / elbow is driven along the cut and down (the foot stays), the body dips to that
   // side (`dip` m at the leg's root)
-  leg: { amp: 0.55, down: 0.4, dip: 0.15, lever: 2 },
+  leg: { amp: 0.7, down: 0.4, dip: 0.15, lever: 2 },
   // a wing: the wrist jerks along the cut and down, the hand folds in toward the body a little
   wing: { amp: 1.1, down: 0.4, fold: 0.5 },
   // the tail: as the neck, a lash running from the contact to the tip, `grow` more at the tip
   tail: { amp: 0.9, carry: 0.4, travel: 0.022, grow: 0.8 },
 
-  // the flinch the wyrm had before this piece (dragon.js / ai.js: the head pushed along the blow) stays
-  // in the simulation (its hurt spheres and attacks are measured on it); with the piece on its LOOK is
-  // taken back off the drawn head, by this share of the strength (1: all of it at strength >= 1)
-  cancelOld: 1,
 };

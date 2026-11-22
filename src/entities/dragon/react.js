@@ -25,8 +25,10 @@ import { REACT as R } from './tuningReact.js';
 //
 // The first pose is there in the hit's own tick (the curves start at their peak) and holds through the
 // hit-stop (game time); it recovers on game time after it. With impactK('react') at 0 nothing here
-// touches the model: the wyrm moves exactly as before (its old flinch, dragon.flinch, is untouched; with
-// the piece on, its look is taken back off the drawn head: R.cancelOld).
+// touches the model: the wyrm moves exactly as before. Its old flinch (dragon.flinch: the head goal
+// eased along the blow, ~0.6 m on a head cut, a few cm on any other) stays under it, on or off: it is
+// part of the simulation the attacks were measured on, and it arrives after the freeze, where the
+// head's snap hands over to it.
 //
 // No objects are built (no Object3D: three.js draws ids from Math.random), no random numbers are drawn,
 // nothing is allocated per frame.
@@ -123,12 +125,6 @@ export class WyrmReact {
       on: false, kind: 0, born: 0, life: 0, wk: 0, w: 26, z: 0.5,
       dx: 0, dy: 0, dz: 0, c: 0, u: 0, side: 0, front: false, ox: 0, oy: 0, oz: 0, ai: 0,
     }));
-    // the old flinch's look on the drawn head (filtered as the rig filters its head goal) and how much
-    // of it is taken off (set at each hit from the piece's strength)
-    this.estSim = V();
-    this.estRest = V();
-    this.est = V();
-    this.cancelK = 0;
     this.applied = false;
     this.headShift = V();
     this.tw = V(); // the trunk's shove this step (world m)
@@ -149,7 +145,6 @@ export class WyrmReact {
 
   /** Anything to draw? */
   get live() {
-    if (this.cancelK > 0 && this.est.lengthSq() > 1e-6) return true;
     for (const p of this.pool) if (p.on) return true;
     return false;
   }
@@ -158,10 +153,6 @@ export class WyrmReact {
   clear() {
     this.restore();
     for (const p of this.pool) p.on = false;
-    this.estSim.set(0, 0, 0);
-    this.estRest.set(0, 0, 0);
-    this.est.set(0, 0, 0);
-    this.cancelK = 0;
   }
 
   /** Take the drawn reaction off the joints (the start of dragon._step: the step runs on its own joints). */
@@ -203,7 +194,6 @@ export class WyrmReact {
     const d = this.d;
     if (d.state === 'sleeping' || d.state === 'dying' || d.state === 'dead') return;
     const k = impactK('react');
-    this.cancelK = Math.min(1, k) * R.cancelOld;
     if (!(k > 0)) return;
     const pt = d.rig.pt, P = d._hurtPool;
     // the contact: the drawn point, else the struck part's sphere
@@ -329,7 +319,6 @@ export class WyrmReact {
   /** The drawn reaction for this step (the end of dragon._step; restore() took last step's off). */
   apply(dt) {
     const d = this.d;
-    this._trackOld(dt);
     const st = d.state;
     if (st === 'sleeping' || st === 'dying' || st === 'dead' || d.object3d.visible === false) {
       for (const p of this.pool) p.on = false;
@@ -340,8 +329,7 @@ export class WyrmReact {
       if (p.on && d.time - p.born > p.life) p.on = false;
       if (p.on) any = true;
     }
-    const cancel = this.cancelK > 0 && this.est.lengthSq() > 1e-6;
-    if (!any && !cancel) return;
+    if (!any) return;
 
     const J = this.J, W = this.wp, rv = this.rv, A = this.anchors;
     for (let i = 0; i < A.length; i++) this.before[i].copy(A[i].matrixWorld);
@@ -387,12 +375,6 @@ export class WyrmReact {
         neckHold = Math.max(neckHold, R.body.neckHold);
         tailHold = Math.max(tailHold, R.body.tailHold);
       } else if (p.kind === WING) this._wing(p, t);
-    }
-    if (cancel) {
-      // the old flinch's look off the drawn head: the neck bends it back by what it moved the head
-      const g = this.gN, n = this.nN, c = this.cancelK, e = this.est;
-      for (let k = 0; k <= n; k++) g[k] = k / n;
-      this._chain(this.iNeckPts, this.pN, g, n, -e.x * c, -e.y * c, -e.z * c);
     }
     // the trunk turned: the limbs stay standing (their roots turn back), the neck and the tail base
     // hold most of their ground, every foot stays where it was planted
@@ -462,36 +444,6 @@ export class WyrmReact {
     this._membranes();
   }
 
-  // the old flinch (ai.js: the head goal pushed along flinchDir) as the rig shows it: filtered at the
-  // measured solve's head rate and the resting chain's 6 / s, blended by how much it rests
-  _trackOld(dt) {
-    const d = this.d;
-    let fx = 0, fy = 0, fz = 0;
-    if (d.flinch > 0.001 && d.state !== 'sleeping' && d.state !== 'dying' && d.state !== 'dead') {
-      const f = Math.min(1, d.flinch), S = d.model.root.scale.x;
-      fx = d.flinchDir.x * f * 0.8 * S;
-      fy = f * 0.45 * S;
-      fz = d.flinchDir.z * f * 0.8 * S;
-    }
-    if (!(dt > 0)) return;
-    const a = 1 - Math.exp(-(Number(d.pose?.headRate) || 6) * dt), b = 1 - Math.exp(-6 * dt);
-    const s = this.estSim, r = this.estRest;
-    s.x += (fx - s.x) * a;
-    s.y += (fy - s.y) * a;
-    s.z += (fz - s.z) * a;
-    r.x += (fx - r.x) * b;
-    r.y += (fy - r.y) * b;
-    r.z += (fz - r.z) * b;
-    const w = Math.min(1, Math.max(0, Number(d.rig?.s?.rest) || 0));
-    this.est.copy(s).lerp(r, w);
-    if (!Number.isFinite(this.est.x + this.est.y + this.est.z)) {
-      s.set(0, 0, 0);
-      r.set(0, 0, 0);
-      this.est.set(0, 0, 0);
-    }
-    if (this.est.lengthSq() < 1e-8 && fx === 0 && fy === 0 && fz === 0) this.est.set(0, 0, 0);
-  }
-
   _addRv(j, x, y, z) {
     const rv = this.rv, i = j * 3;
     rv[i] += x;
@@ -549,7 +501,7 @@ export class WyrmReact {
     g[0] = 0;
     for (let k = 1; k <= n; k++) {
       const f = k / n;
-      g[k] = H.top * s * f * f * f + H.follow * wave(t, H.delay + (n - k) * H.travel, p.w, p.z) * Math.pow(f, 1.5);
+      g[k] = (H.top * s + H.follow * wave(t, H.delay + (n - k) * H.travel, p.w, p.z)) * Math.pow(f, 1.5);
     }
     this._chain(this.iNeckPts, this.pN, g, n, p.dx * a, p.dy * a, p.dz * a);
   }
