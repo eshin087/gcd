@@ -1,4 +1,5 @@
 import { axes, screenAngle, clashRing } from './clashFx.js';
+import { takeStampReplace } from './impactStamp.js';
 
 // A cut that lands on a body: lines, not light (STYLE.md "Steel on steel" rules), drawn once at the
 // DRAWN contact (player.js _contactPoint: where the drawn blade meets the drawn body, not the upright
@@ -124,6 +125,9 @@ export function cutBurst(game, x, y, z, o) {
     if (!add || !fin(x + y + z) || !o) return 0;
     const L = CUT_LOOK, T = L.tier[o.tier] ?? L.tier.light, crit = !!o.crit, P = crit ? L.pal.crit : L.pal.cut;
     const k = clamp(fin(o.power) ? o.power : 0, 0, 1), q = o.low ? L.lowQ : 1, fan = style === 'fan';
+    // the impact stamp drawn INSTEAD of the slash line (impactStamp.js, ?stamp=instead): no line, no
+    // cross; the sparks, the core, the motes stay. False unless the stamp just drew in that mode
+    const stamped = takeStampReplace();
     A = axes(game);
     const c = o.cut, e = o.edge;
     let ca = c ? screenAngle(A, c.x, c.y, c.z) : NaN, ea = e ? screenAngle(A, e.x, e.y, e.z) : NaN;
@@ -138,7 +142,7 @@ export function cutBurst(game, x, y, z, o) {
     let nSlash = 0, nTick = 0, nSpark = 0, nCore = 0, nMote = 0, nPuff = 0, nRing = 0;
 
     // ---- SLASH: the line across the body along the cut
-    if (!fan) {
+    if (!fan && !stamped) {
       const ux = Math.cos(ca), uy = Math.sin(ca);
       const line = (n, ln, ox, oy, oz, aK, sK, dry) => {
         let skipped = 0;
