@@ -16,7 +16,7 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 // every situation through `run(id)` (tests: integ / duel / lord TRAINING).
 //
 // A situation: { id, cat, name, desc, boss (kinds it applies to: 'wyrm' | 'duel' | 'ash' | 'lord' |
-//   'asc' (Tian Lei) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
+//   'asc' (Tian Lei) | 'fallen' (Qian Yao) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
 //   hero beside him, for the camera), streak (the hero's, set before), foe (his streak), art (pin the
 //   flurry's art), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
@@ -47,6 +47,8 @@ const ROLES = {
   starless: { single: 'lunge', string: 'litany', long: 'litany', red: 'reap', lock: 'skyfall' },
   // Tian Lei (the Skybreak Ring): his form-1 lock is Hundred Hands' last blow (Vanishing Step's is form 2's)
   ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
+  // Qian Yao (the Skywell Vault): his phase-1 strings (Turning Day, his longest, is phase 2's)
+  fallen: { single: 'pillarOfLaw', string: 'threeJudgments', long: 'threeJudgments', red: 'rulePierces', lock: 'threeJudgments', mikiri: 'rulePierces' },
 };
 
 export function bossKinds(game) {
@@ -56,7 +58,7 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.lives ? 'lord' : 'ash');
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'heavenFallen' ? 'fallen' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -232,6 +234,41 @@ add('TERRAIN', [
   { id: 'ascTile', name: 'Tile Kick · under it', boss: 'asc', dist: 7, answer: 'none', desc: 'He stamps a floor slab up and punches it at you: it glints as it comes. You stay, and it hits you (a parry would cut it).', go: ascGo(1, 'tileKick'), until: (T) => T.t > 1.5 && !T.moving() && T.heroFree() && !T.d.terrain?.busy, max: 9, expect: ['combat:flash'] },
 ]);
 
+// Qian Yao's eyes, his flight and the sunlight (the Skywell Vault): each from its own phase (put into it
+// at once, without its transition), the boss placed facing the hero
+const fallenGo = (phase, name, setup = null) => (T) => {
+  const d = T.d;
+  if ((d.phase ?? 1) < phase) d.enterPhase?.(phase);
+  setup?.(T);
+  d.debug.trigger(name);
+};
+/** Stand him at (x, z) facing the hero at (hx, hz). */
+const fallenStage = (T, x, z, hx, hz) => {
+  const d = T.d;
+  d.position.set(x, d.position.y, z);
+  d.yaw = Math.atan2(hx - x, hz - z);
+  d.object3d.rotation.y = d.yaw;
+  T.p.debug.teleport(hx, hz);
+  T.p.yaw = Math.atan2(x - hx, z - hz);
+};
+const fallenQuiet = (T) => T.t > 1.2 && !T.moving() && T.heroFree() && !T.d.gaze?.busy && !T.d.fx?.strikesAlive;
+add('PARRY & RIPOSTE', [
+  { id: 'fGazeParry', name: "Heaven's Gaze · parry", boss: 'fallen', dist: 8, answer: 'parry', desc: 'A beam from his eyes, blue: a parry turns it off your blade.', go: fallenGo(1, 'heavenGaze'), until: fallenQuiet, max: 8, expect: ['combat:flash'] },
+  { id: 'fGazeReturn', name: "Heaven's Gaze · send it back", boss: 'fallen', dist: 8, answer: 'perfect', desc: 'A PERFECT parry sends the beam back into his eyes: his light goes out, and it hurts him.', go: fallenGo(1, 'heavenGaze'), until: fallenQuiet, max: 8, expect: ['combat:flash'] },
+  { id: 'fMikiri', name: 'Mikiri', boss: 'fallen', role: 'mikiri', answer: 'mikiri', dist: 3.6, desc: 'A roll INTO the Rule Pierces: you step on his bar (a perfect answer: his light goes out first).', expect: ['player:mikiri'] },
+]);
+add('GETTING HIT', [
+  { id: 'fSweepRoll', name: 'The Sweeping Gaze · roll through', boss: 'fallen', dist: 6, answer: 'roll', desc: 'The beam sweeps across in front of him (red): it lights at its cue. Roll through the line.', go: fallenGo(2, 'sweepingGaze'), until: fallenQuiet, max: 8, expect: ['combat:flash'] },
+  { id: 'fSweepBlind', name: 'The Sweeping Gaze · inside it', boss: 'fallen', dist: 1.6, answer: 'none', desc: 'Close in under his eyes the beam cannot find you: it is blind inside 2.2 m.', go: fallenGo(2, 'sweepingGaze'), until: fallenQuiet, max: 8, expect: ['combat:flash'] },
+  { id: 'fHigh', name: 'Gaze from on High · off the line', boss: 'fallen', dist: 9, answer: 'roll', desc: 'He rises; the line through where you stand is marked in red, then the beam runs along it. Roll at the cue (or step off the line).', go: fallenGo(2, 'gazeOnHigh'), until: fallenQuiet, max: 9, expect: ['combat:flash'] },
+  { id: 'fNoonfall', name: 'Noonfall · roll the dive', boss: 'fallen', dist: 8, answer: 'dodge', desc: 'Up out of reach; the ring follows you and locks. A perfect roll as he lands puts his light out and carries you to him.', go: fallenGo(1, 'noonfall'), until: fallenQuiet, max: 8, expect: ['combat:flash'] },
+]);
+add('TERRAIN', [
+  { id: 'fCover', name: 'The Sweeping Gaze · behind a stele', boss: 'fallen', pieces: true, answer: 'none', desc: 'Stand behind a stele: the beam ends on the stone (and the stone takes it).', go: fallenGo(2, 'sweepingGaze', (T) => fallenStage(T, 3.4, 0.4, 9.8, 0.4)), until: fallenQuiet, max: 8, expect: ['combat:flash'] },
+  { id: 'fGlance', name: 'Cut a radiant body', boss: 'fallen', dist: 2.2, answer: 'none', desc: 'While the sun is in him your cuts glance: a fraction of the damage, no flinch.', go: (T) => { T.d.debug.sunForce?.(1); T.d.brain.raiseT = 9; }, tick: (T) => T.every(0.45, 3, () => T.tap('@attack'), 'glance'), until: (T) => T.t > 2.2, expect: ['player:attack'] },
+  { id: 'fStarve', name: 'Shut the lid while he drinks', boss: 'fallen', pieces: true, dist: 6, answer: 'none', desc: 'Low on light he flies to a pool: break its windlass while he stands in it and the lid falls on him.', go: (T) => { T.d.debug.setSun?.(0); T.d.debug.trigger('sunDrink'); }, tick: (T) => { const D = T.d.brain.act?.beats?.[0]?._pool; if (D && T.d.sun?.lit && !T._shut) { T._shut = true; T.game.world?.sun?.shut?.(D.id); } }, until: (T) => T.t > 3 && !T.moving(), max: 8, expect: [] },
+]);
+
 export const SITUATIONS = Object.freeze(S);
 export const CATEGORIES = Object.freeze([...new Set(S.map((s) => s.cat)), 'BOSS MOVES']);
 
@@ -298,7 +335,7 @@ export class Training {
     const id = this.game.level?.id;
     if (ROLES[id]) return ROLES[id];
     const k = bossKinds(this.game);
-    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
+    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('fallen') ? ROLES.fallen : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
   }
 
   find(id) {
@@ -504,6 +541,9 @@ export class Training {
     this.afterT = -1;
     this.t0 = this.game.time;
     this._phase('run');
+    // (a boss with the sunlight, Qian Yao: held dim, so a situation shows the duel's own rule, unless it
+    // asks for his light (`sun`); a fight's reset gives his light back to the wells)
+    d.debug?.sunForce?.(s.sun ?? 0);
     if (typeof s.go === 'function') s.go(this);
     else {
       const name = s.move ?? this._roles()[s.role];

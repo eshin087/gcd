@@ -40,6 +40,13 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
   //
   //
+  // --- fallen: Qian Yao, the Heaven-Fallen (his body, his light, his eyes, the wells); not picked yet
+  ['fallenLook', ['a', 'b', 'c'], 'a', 'a', true, ['fallen'], 'Qian Yao\'s body: a haloed exile, b chained judge, c gilt guardian (a reload)'],
+  ['fallenArt', ['art', 'ink'], 'art', 'art', true, ['fallen'], 'his body drawn: art = the wyrm\'s art path, ink = the ink-line twin (a reload)'],
+  ['radiant', ['a', 'b'], 'a', 'a', false, ['fallen'], 'the sun on him: a the whole body, b the wheel, the eyes, a rim'],
+  ['gaze', ['a', 'b', 'c'], 'a', 'a', false, ['fallen'], 'his eyes\' beam: a core and sheath, b a braided lance, c a thin line and a wide seam'],
+  ['pool', ['a', 'b'], 'a', 'a', false, ['fallen'], 'a pool of sunlight: a a full disc, b the rim'],
+  //
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);

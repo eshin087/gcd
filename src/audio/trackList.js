@@ -58,6 +58,16 @@ export const SCORE = {
         T('cinder-p3', { xfade: 3 }),
       ],
     },
+    // The Skywell Vault borrows these too until the owner picks its score (one track per phase):
+    // the choir, the koto, the fall
+    fallen: {
+      explore: T('starless-explore', { xfade: 3 }),
+      phases: [
+        T('starless-p1', { xfade: 3 }),
+        T('ash-p2', { loopFrom: 14.8 }),
+        T('starless-p4'),
+      ],
+    },
   },
   victory: T('victory', { loop: false }), // Victory Fanfare Short, cynicmusic
   death: T('death', { loop: false }), // Death of a Ninja (Game Over), Joth

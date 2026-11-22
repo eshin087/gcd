@@ -40,6 +40,8 @@ const FIT = {
   gap: 12, // px kept clear on each side of the boss's rows
   glyph: 0.6, // a letter's advance against its font size (the widest of the HUD's font stack)
 };
+const SUN_CELLS = 20; // the sun row's characters (a boss with `sun`)
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const GHOST_DEDUPE = 0.4; // s: 'player:perfectDodge' + 'player:ghostep' for the same blink
 // a flurry's name by its blows (player:flurryEnd; one blow has none: it is just its art)
 const FLURRY_NAMES = ['', '', 'TWIN FLASH', 'TRIPLE FLASH', 'FOURFOLD FLASH', 'FIVEFOLD FLASH', 'SIXFOLD FLASH', 'SEVENFOLD FLASH'];
@@ -247,6 +249,16 @@ export class Hud {
     const post = el('div', 'ab-boss-post', null, this.bossEl);
     this.postBar = new GlyphPosture(post, { cells: 32 });
     this.brokenEl = el('span', 'ab-broken', 'BROKEN', post);
+    // a boss with the sunlight (dragon.sun = { k, eclipsed }: Qian Yao, ADR-133): a third thin row, a
+    // meter of characters, gold while he is radiant, hollow when dim, blinking out on an eclipse
+    this.sunEl = null;
+    this._sunN = -1;
+    this._sunOut = null;
+    if (this.game?.dragon?.sun) {
+      this.sunEl = el('div', 'ab-boss-sun', null, this.bossEl);
+      this.sunFill = el('span', 'f', '', this.sunEl);
+      this.sunRest = el('span', 'e', '', this.sunEl);
+    }
     this.bossOn = false;
     this.bossHpLast = 0;
     this.dmgAcc = 0;
@@ -255,6 +267,23 @@ export class Hud {
     this._broken = false;
     this._dmgShown = false;
     this._p2 = false;
+  }
+
+  /** The sun row (a boss with `sun`): SUN_CELLS characters, the lit share of them gold. */
+  _sunRow(S) {
+    // (never longer than the posture run: on a narrow phone the boss's rows are cut, ADR-131)
+    const cells = Math.max(8, Math.min(SUN_CELLS, num(this.postBar?.half, SUN_CELLS / 2) * 2));
+    const n = S?.eclipsed ? 0 : Math.round(clamp01(num(S?.k, 0)) * cells), out = !!S?.eclipsed;
+    if (n !== this._sunN || cells !== this._sunC) {
+      this._sunN = n;
+      this._sunC = cells;
+      this.sunFill.textContent = '*'.repeat(n);
+      this.sunRest.textContent = '.'.repeat(cells - n);
+    }
+    if (out !== this._sunOut) {
+      this._sunOut = out;
+      this.sunEl.classList.toggle('out', out);
+    }
   }
 
   // ---------------------------------------------------------------- contract API
@@ -555,6 +584,7 @@ export class Hud {
       // posture is polled too (authoritative); 'dragon:posture' only makes rises instant
       const pmax = num(d.maxPosture, 0);
       if (pmax > 0 && Number.isFinite(d.posture)) this.postBar.set(d.posture / pmax);
+      if (this.sunEl) this._sunRow(d.sun);
       const p2 = d.phase >= 2, p3 = d.phase >= 3;
       if (p2 !== this._p2) {
         this._p2 = p2;

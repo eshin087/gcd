@@ -18,6 +18,18 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-22',
+        title: 'A fifth level: the Skywell Vault and Qian Yao, the Heaven-Fallen',
+        notes: [
+          'A new level, the Skywell Vault: a dark hall under a mountain, lit only by four shafts of sunlight. Pick it on the title screen.',
+          'Its boss is Qian Yao, the Heaven-Fallen. While the sun is in him your cuts glance off and nothing staggers him. Out of the light he is a man again.',
+          'Each shaft is held open by a chain on a timber windlass. Cut one and its lid falls shut. Shut it while he stands in that light and the light is torn out of him.',
+          'A perfect parry or a perfect dodge puts his light out for a moment. Every parry still counts toward breaking him, so patient defence always wins.',
+          'He fires beams from his eyes: parry Heaven\'s Gaze, or perfect-parry it straight back into him. Roll through the Sweeping Gaze, or hide behind a stele.',
+          'Beat him and you keep Falling Heaven: sprint, then heavy, and you come down out of the sky on your foe.',
+        ],
+      },
+      {
         date: '2026-11-21',
         title: 'On a phone: the health bars no longer overlap, and two new ways to hold the controls',
         notes: [

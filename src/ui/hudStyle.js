@@ -325,6 +325,12 @@ const CSS = `
 .ab-boss.tight .ab-boss-lives { gap: 5px; margin-left: 6px; }
 /* posture: a run of '=' under the HP meter that grows from its middle toward a break */
 .ab-boss-post { position: relative; display: flex; justify-content: center; margin-top: 1px; }
+/* the sun row (a boss with the sunlight: Qian Yao): gold while radiant, hollow when dim, it blinks out on an eclipse */
+.ab-boss-sun { display: flex; justify-content: center; font-size: 0.7em; line-height: 1; margin-top: 1px; letter-spacing: 0.08em; }
+.ab-boss-sun .f { color: #ffe39a; text-shadow: 0 0 6px rgba(255, 214, 120, 0.7), ${SHADOW}; }
+.ab-boss-sun .e { color: rgba(200, 186, 150, 0.32); }
+.ab-boss-sun.out { animation: ab-sun-out 0.5s steps(2) 3; }
+@keyframes ab-sun-out { 50% { opacity: 0.15; } }
 .ab-broken {
   position: absolute;
   left: 50%;

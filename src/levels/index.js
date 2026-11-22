@@ -3,6 +3,7 @@ import { CINDERWOOD } from './cinderwood.js';
 import { ASHFALL } from './ashfall.js';
 import { STARLESS } from './starless.js';
 import { SKYBREAK } from './skybreak.js';
+import { FALLEN } from './fallen.js';
 import { createTrainingRoom, ROOM_WORLD } from '../world/trainingRoom.js';
 
 // Levels (docs/specs/ash-disciple.md §1, ARCHITECTURE.md → Levels). One level is built per page
@@ -15,8 +16,9 @@ import { createTrainingRoom, ROOM_WORLD } from '../world/trainingRoom.js';
 //   createBoss(game)   the boss that fills the boss slot (game.dragon === game.boss)
 //   text               the flow's lines: arrive[], stir, phase2, phase3, victory, fallen, restReset,
 //                      phase4, again, rise (GameFlow falls back to Cinderwood's)
+//   reward             (optional) { id, name, line }: the fixed reward its boss gives (game/rewards.js, ADR-134)
 
-export const LEVELS = Object.freeze([CINDERWOOD, ASHFALL, STARLESS, SKYBREAK]);
+export const LEVELS = Object.freeze([CINDERWOOD, ASHFALL, STARLESS, SKYBREAK, FALLEN]);
 export const DEFAULT_LEVEL = CINDERWOOD;
 
 /** The level with this id or alias (case-insensitive), or null. */
