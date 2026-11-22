@@ -1550,8 +1550,274 @@ has played the second pass yet.**
 - **Not measured / not fixed:** a human's fight; a phone's frame rate; the string-lock (above); the
   hiding place behind the throne. The bots never use the blade lock or the mikiri.
 
+## Tian Lei, the Last Ascendant (2026-11-21, ADR-128; `?level=ring`)
+A bare-handed martial artist who waits, arms folded, on the Skybreak Ring, a tournament ring of stone
+tiles on the open badlands: punches, kicks, elbows, knees and palm strikes, blasts of gold ki, a disc,
+lightning, beams. An original character (no franchise's names, likeness, costume or moves; the lead
+set aside a bare-chested look and the cupped-hands beam for that reason). The owner's brief: "phase 1
+... phase 2 ... phase 3 ...", a challenger who transforms twice, and "make it feel like an anime epic
+battle": speed (afterimages on every blink and dash), long knock-backs he chases down,
+transformations with a pillar of light and a shock ring, a ring that is wrecked by the end, a beam
+that takes the top off a butte, the light of the whole place changing with each form. He runs on the
+duelist engine (the guard, the deflect chain, the blade lock, the mikiri, the full deflect, the
+Ghostep, his flurry, hit stun, the director and the fairness guard are as written above and in *The
+duelists' pressure and the fairness guard*, below), with these differences. Code: ARCHITECTURE.md
+"Tian Lei, the Last Ascendant"; the moveset the owner approved: the lead's `MOVES.md`.
+
+**Three forms, three bars, a deathblow each** (the Lord's structure):
+| Form | Who he is | Guard | Windup × | Recovery × | Footwork |
+|---|---|---|---|---|---|
+| 1 | *The Challenger*: dark hair, no aura; pure martial arts and a few shots | low and wide, both fists up | 1 | 0.9 | walks in range, runs, sprints past 5.5 m |
+| 2 | *Golden Ascension*: a gold flame aura, hair risen and gold; blinks, volleys, the ring starts to break | upright, the lead hand open, the rear fist at the hip | 0.93 | 0.82 | + the dash |
+| 3 | *Thunder Ascension*: lightning in the aura, the hair stiffer; a storm; the longest strings, the great beam | arms at his sides, the hands open | 0.86 | 0.74 | + the closing blink |
+
+- Each form has its own bar of 1500 HP (the boss bar shows three pips). **An empty bar breaks him**, as
+  a full posture meter does: on one knee for 4.5 s; an attack within 3.4 m is the **deathblow** (the
+  execution, DEATHBLOW). Forms 1 and 2 end in a **transformation** (Golden Ascension `ascend2`, Thunder
+  Ascension `ascend3`): 2.3 s rising from his knee as the light is drawn up through him and stones lift
+  round him, then a pillar of light and a red **shock ring** (r 6.5 m, 12 damage, knockback 7: roll
+  through it or stand clear) that cracks the tiles round him (and breaks those within 2.2 m); nothing
+  lands on him from the deathblow until that ring goes out, and his hair, light and aura change WITH
+  the ring, not before it. Thunder Ascension's ring is followed by four bolts on the ring's corners
+  (a strike with its cue only on a hero standing within 2.4 m of one). The third deathblow kills him.
+- A break nobody answers: he rises with 20 % of the bar back (if it was empty) and half the meter.
+- **Posture, the Sekiro rule** (as the Lord's): gains × 0.45 on a full bar rising to × 1.25 on an empty
+  one, recovery × 1.5 down to × 0.5 (22 / s after 2.2 s). Meter [460, 520, 600] by form.
+- **Speed:** harder forms mean MORE PRESSURE, NOT MORE DAMAGE (the owner's standing answer): windups ×
+  [1, 0.93, 0.86] (not `fixed` beats), so a string's follow-up blows come 0.34 s apart in form 1 and
+  ~0.29 s in form 3; the glint 0.26 s before every impact (`flashLead`); breathers (`idleGap`) [0.1 –
+  0.3, 0.05 – 0.16, 0.04 – 0.13] s, after an opening of the hero's [0.14 – 0.4, 0.1 – 0.32, 0.08 –
+  0.26] s; at most [4, 5, 7] moves in a row; a red and a white cue at least 0.4 s apart (the Lord's
+  rule). No white or blue blow is above 26 before `damageScale` 1.1 (the red Comet Heel 28, his one
+  black move a form 36, a lost clash 40).
+- **His footwork:** he walks inside striking range (2.6 m/s), runs beyond it (6.2), sprints past 5.5 m
+  (9). **The dash** (from form 2): past 5.5 m he crosses the gap at 16 m/s to 2.4 m short of the hero,
+  low and pitched into it, an afterimage left where he started (not more often than every 2.2 s, 9 m
+  at most). **The closing blink** (form 3): past 9 m he may (one look in two, every 4 s at most)
+  vanish and stand 2.4 m from the hero. He keeps to a circle of 13.8 m round the ring's centre (the
+  tiles end at 15 m; the kerb is left free); there is no ring-out.
+- **His moments of speed:** a blow out of a **blink** (*His ki*, below) shows a shape of him where he
+  was and a streak to where he is; **a "launch"** (the hero has no air state) is a knock-back of 11 m
+  with a knockdown, and his next blow blinks to where the hero's slide ends (Sky Hammer, Heaven and
+  Earth).
+
+**Bare hands.** His "blade" (what the hero's parry, the trade, the blade lock and the trails meet) is
+the STRIKING LIMB of the moment: the forearm of a punch, the shin of a kick, the thigh of a knee, the
+upper arm of an elbow; in a guard the blocking forearm. Each beat names its limb (`part`), and the
+glint and the trail are drawn on it. **His guard is his forearms** (a front arc of ±1.31 rad; the
+duelist's guard rules: raised in footwork and early in a windup, a heavy blow with a full cleave's
+poise crushes it). Every form has **a blade lock** (a perfect parry of a beat marked lock: Hundred
+Hands' palm and Eight Gates' roundhouse in form 1, Golden Gates' and Vanishing Step's palms in form 2,
+Storm Waltz's palm and Thunder Gates' uppercut in form 3; the lock is the duel's), **a perilous
+thrust** (Piercing Palm, red, MIKIRI: roll INTO it and step on his arm; in all three forms) and
+**one black move** (Mountain-Splitting Fist, Sunbreaker, Heavenfall). **A blow out of a blink meets
+a guard from any side** (as the Lord's).
+
+**His ki** (gold in the fire field; each is read and answered like a blow):
+| Thing | Tell | What it is | Answers |
+|---|---|---|---|
+| **A blast** (Spirit Shot, Scatter, Blast Dance) | blue / normal | a ball of gold ki from his palm (the palm drawn back at the ribs, the lead hand sighting, then the thrust): Spirit Shot 24 m/s (22; a second from the other palm half the time), Scatter three at 15 m/s in a 28° fan (12 each), Blast Dance's point-blank shot 9 m/s and its hip shot 12 m/s; each cues itself 0.26 s before it reaches you, or fizzles if it could cue only later than 0.2 s; cover stops it; it flies 22 m, then drops and bursts | parry or block; a **perfect parry of a returnable one (Spirit Shot, the hip shot) flies it back into him: 50 damage, 34 posture**; roll. Inside Blast Dance a blast beat is a palm strike when you are within its reach |
+| **Golden Rain** (forms 2, 3) | normal | ten small blasts in 1.6 s, two fans sweeping across you left to right and back, 13 m/s, 9 each; each cues itself; one may wait 0.12 s or not be thrown (the fairness guard) | parry each, or run across the fan |
+| **Sun Wheel** (forms 2, 3) | red | a spinning disc thrown out to a side: it curves out 12 m at 16 m/s, hangs 0.3 s at its turn, comes home THROUGH where you stood at 18 m/s, then to his raised hand (18 each way); it cuts cover; it may hang up to 0.4 s longer, or come home uncued and harmless (the fairness guard) | roll each pass at its cue; a parry on the way out sends it home at once |
+| **A bolt** (Thunder Gates, Lightning Lance; form 3) | blue | the hand raised by the ear, then the arm flung out, two fingers down a 17 × 1.7 m line of lightning | parry; a **perfect parry throws it back: 50 damage, 34 posture**; block; roll |
+| **Heaven's Volley** (form 2) | red, red | he rises 4 m, arms spread; six strikes called 0.42 s apart round where you are heading (each a red ring r 2.2 m for 0.95 s, then the bolt: 22, knockdown), then the dive onto you (a ring 2.8 m, 26, knockdown, a crater); about 4.5 s in all. Nothing lands on him up there, and a strike rolled through perfectly is a plain dodge (no counter) | leave each ring or roll as it lands; roll the dive |
+| **Storm Cage** (form 3) | red | eight orbs in a ring of 5 m round you, open on the side away from him; after 0.7 s they fly in one at a time 0.4 s apart at 12 m/s (20, knockdown, r 1.3 m), each cueing itself as it comes | roll out through the gap, or roll each at its cue |
+| **Thunderfall** (form 3, weather) | red | in his moves' pauses a strike is called near where you are heading every 3.2 s with his bar full, down to 1.8 s with it empty, at most 2 live: a red ring r 2.1 m for 1.1 s, then the bolt (22, knockdown). Never in your opening, never while a beam of his is lit | leave the ring or roll as it lands |
+| **Rising Tide** (form 1) | red | a palm thrust and a beam 16 × 1.6 m lit 0.7 s. He aims through the 1.1 s windup; at 76 % of it (at its cue) the line is FIXED and a thin thread of light runs along it from his lead hand. First contact 22, knockdown, thrown 5 m along it; then 8 every 0.18 s on a hero still in it | **be off the line at the cue**: a sprint or a roll clears it, standing or running (4.6 m/s) does not; a held guard facing him pays guard only and is pushed along it |
+| **Rising Tide, sweeping** (forms 2, 3) | red | 20 × 2 m lit 1.1 s; once lit it is dragged up to 40° toward the side you are on at 36°/s (first contact 24, ticks 8) | at range the answer is the ROLL through it (its edge moves 5 – 10 m/s at 8 – 16 m: faster than the hero's sprint, 7.2) |
+| **Twin Tide** (form 3) | red, red | a one-palm beam 16 × 1.4 m lit 0.5 s, then the other palm's, aimed where you are heading (20 each, ticks 8) | off the first line, then do not run straight on |
+| **Heaven-Splitting Tide** (form 3, the great spell) | blue (FLARE) | 14 s into form 3 at the earliest, then at most every 35 s: he vanishes to the ring's edge farthest from you; a 2.4 s charge (the light of the whole ring dims, stones rise, a short close look at him); at 80 % of it the line is fixed (its thread runs out); then both palms: a beam 26 × 3.4 m lit 2.2 s that follows you one way at 30°/s up to 40°. Its head: 26, knockdown, thrown 8 m; ticks 12 | **perfect-parry the head: THE CLASH** (below); a plain parry or a block holds it as a block; leave its line before the head (its head is not perfect-dodgeable: a roll through it is a plain dodge); a held guard pays guard only and slides ~3 m/s along it |
+
+**The beams' rules** (`kiBeam.js`). The line is fixed at the cue, never after: from the flare the hero
+has the whole 0.26 s to leave it. The drawn beam ends at a butte on its line (and its strip with it) or
+at a raised guard. The FIRST CONTACT comes in the 0.1 s active window only; after it a TICK every 0.18 s
+on a hero still in the strip and not knocked down: a stream (dealt in parts under the stagger floor, no
+perfect dodge). A held guard facing him (his palm or him in the guard's arc) pays the tick's guard cost,
+never health, and slides along the beam; the tick that would empty the guard lands as a blow and the
+guard opens. While a beam is lit he starts nothing that asks a guard, and the weather stands down.
+
+**THE CLASH.** A PERFECT parry of the great beam's head locks the beam on the hero's blade where they
+stand (the blade lock at range: mash attack / guard to push the meter; start 0.5, +0.085 a press, -0.3 /
+s, 3 s, won at the end if at least 0.55); the camera draws back to frame both, his two palms held out,
+the beam grinding on the blade. **Won:** the beam splits past the hero and dies, his posture takes 2 × a
+won lock's (2 × 110 before the Sekiro factor), the blade lock's cinematic, he REELS for 4 s (the hero
+needs ~2.3 s to cross 17 m to him). **Lost:** the beam breaks through: 40 damage, knockdown, thrown 12 m
+along it. The clash is never mandatory: leaving the line is always an answer.
+
+**He uses the ring** (`terrain.js`, numbers `TUNING.terrain`; ADR-107's rules, the Lord's recipe).
+Moves on the ring's tiles, chosen only while the floor has tiles for them (his AI weighs them 0 when
+it has not, and a move with no tile does not start). Each thrown tile or bursting line cues itself on
+the tile (the flare, 0.26 s before it reaches you); nothing is drawn where it lands.
+| Move | Tell | What happens | Answer |
+|---|---|---|---|
+| **Tile Kick** (forms 1, 2) | normal | 0.8 s: he stamps, the whole tile before him jumps up and hangs at his lead hand, and his cross sends it at you at 16 m/s (16); its place is left broken | parry (it cuts the tile in two: 24 posture to him), block, roll; cover in its way stops it |
+| **Ring Breaker** (forms 2, 3) | red | 0.9 s: both fists into the floor; tiles burst up in a line toward you, from 1.8 m out, one every 1.5 m (up to 9, 0.2 s apart; 0.17 in form 3) to 2.5 m past you, each with its flare on the tile for a hero near it (22, knockdown, r 1.25 m); one blow at most for the whole line | step off the line, or roll at the tile under you |
+| **Stone Storm** (forms 2, 3) | normal, red | 0.95 s: his aura tears up three tiles within 5.5 m and holds them turning round him; they leave 0.42 s apart, each at you (14); then the great one (red, 26, knockdown). A stagger before a throw drops what he holds | parry / block the three, roll the great one |
+| **The quake** (Heavenfall's landing, form 3) | red | his black leap comes down (36, ring 3.4 m); every tile within 6 m shatters, and a shock front runs out over the whole ring from 3.4 m to 14 m at 9 m/s, cracking each tile it crosses; it strikes you ONCE as it reaches you (22, knockdown), cued as it comes | roll through it as it reaches you (or be behind it already); a hero inside 3.4 m at the landing is the leap's own blow |
+
+**The wear by form.** His transformations crack the tiles round him, his heavy red blows and the
+dive leave craters with rubble, his beams trench their lines, his terrain moves tear tiles out: the ring
+is visibly worse each form (headless: 10 → 33 → 45 % of the tiles broken by the end of forms 1 / 2 / 3,
+about 30 % cracked). His terrain moves stop coming when the ring round him is spent.
+
+**Moves** (`ascendant/moves.js` and `moves/*.js`, ADR-128). **Generated from the data** by
+`docs-gen-moves.mjs` (the lead's scratchpad: `node docs-gen-moves.mjs <worktree> [--write]` rewrites the
+block between the two markers below; re-run it after any change of his moves). Tells N normal, B blue,
+R red, K black; a hit: `tell windup (damage) [extras]`, **windups at form 1's pace** (forms 2 – 3 ×
+0.93 / 0.86, not `fixed` beats; a beam, a cast and a transformation are fixed); `one of { a / b }` = one
+is drawn as the move starts; `hold` a bait hold at the cock (s); `FLARE` a blue parry moment; `LOCK` /
+`MIKIRI` as Shen Hui's; `blink`: behind you, to where you land, to your side, to the far edge; `release
+blast` blasts from his palm; `cast` a thing sent out (rain, disc, volley, cage; terrain: tileKick,
+ringBreaker, stormThrow, stormGreat); `beam` its kind; `lit` how long a beam burns, its ticks; `thrown`
+a knock-back of 5 m or more. A sector blow is the limb's reach (a fist 1.7 m, a kick 2.1 m) unless
+written. Damage before `damageScale` 1.1. A move is listed under the form it first appears in;
+weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's category (a move's own
+`cat` or the derived one). His links: `ascendant/links.js` (`PURSUE` and `CLOSE` shared by his melee,
+`AFTER_RED`, `AFTER_VOLLEY`, `AFTER_BEAM`; *The duelists' pressure*, below).
+
+<!-- asc:moves:begin -->
+*Form 1, the Challenger*
+
+| Move | Forms (weight per form) · band m · cooldown s · cat | Hits (tell windup (damage) [extras]; `one of { a / b }`) |
+|---|---|---|
+| **Eight Gates** `gates` | 1 (2.6 / - / -) · 0–3.6 · 6 · string | N 0.48 (12) · N 0.34 (12) · N 0.36 (13) [sector 1.25 m, 0.4 m ahead] · one of { B 0.44 (20) [lock, hold 0.1-0.3] / N 0.34 (12) } · N 0.38 (13) [ring 2.2 m] · B 0.56 (22) [FLARE] |
+| **Hundred Hands** `hundred` | 1, 2 (2.4 / 1.2 / -) · 0–3.2 · 8 · string | N 0.5 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · B 0.44 (20) [line 2.2 x 0.8 m, lock, FLARE, dash <=2.4 m] |
+| **Tiger Descends** `tiger` | 1, 2 (2.4 / 1 / -) · 1.6–6 · 7 · string | N 0.5 (15) [line 2.2 x 0.8 m, dash <=4 m] · N 0.36 (12) · R 0.62 (24) [ring 2.6 m, knockdown] |
+| **Iron Mountain** `ironMountain` | 1 (1.8 / - / -) · 0–4 · 8 · closer | N 0.5 (14) [line 2.2 x 1 m, dash <=3 m] · N 0.4 (15) [line 2.2 x 1 m, thrown 9 m] |
+| **Meteor Step** `meteorStep` | 1, 2, 3 (2 / 1.2 / 1) · 2.6–7 · 3 · closer | N 0.5 (17) [line 2.2 x 0.8 m, dash <=5.5 m, in the air] |
+| **Comet Heel** `cometHeel` | 1, 2, 3 (1.6 / 1 / 0.8) · 4–13 · 9 · area | R 1.1 (28) [ring 2.8 m, knockdown, leap apex 3.8 m] |
+| **Piercing Palm** `piercingPalm` | 1, 2, 3 (1.8 / 1.1 / 1) · 2–6 · 8 · closer | R 0.64 (26) [line 2.4 x 0.7 m, MIKIRI, dash <=2.8 m] |
+| **Mountain-Splitting Fist** `splitFist` | 1 (1.1 / - / -) · 2.4–9 · 12 · closer | K 1.45 (36) [knockdown, fixed, hold 0.1-0.5, dash <=7.5 m] |
+| **Spirit Shot** `spiritShot` | 1, 2 (1.5 / 0.9 / -) · 5–16 · 5 · ranged (ki `blast`) | B 0.74 (22) [release blast (returnable)] · B 0.5 (20) [release blast (returnable), 50 %] |
+| **Scatter** `scatter` | 1, 2 (1.2 / 0.8 / -) · 4–13 · 7 · ranged (ki `blast`) | N 0.6 (12) [release blast x3] |
+| **Rising Tide** `risingTide` | 1 (1.3 / - / -) · 5–15 · 11 · hazard (ki `beam`) | R 1.1 (22) [beam rising, line 16 x 1.6 m, knockdown, thrown 5 m, lit 0.7 s, ticks 8 every 0.18 s] |
+| **Tile Kick** `tileKick` | 1, 2 (1.8 / 1.2 / -) · 3.5–14 · 9 · terrain (terrain `tileKick`) | N 0.8 (16) [cast tileKick] |
+
+*Form 2, Golden Ascension*
+
+| Move | Forms (weight per form) · band m · cooldown s · cat | Hits (tell windup (damage) [extras]; `one of { a / b }`) |
+|---|---|---|
+| **Golden Gates** `goldenGates` | 2, 3 (- / 2.6 / 1.4) · 0–3.8 · 6 · string | N 0.48 (12) · N 0.34 (12) · N 0.36 (13) · B 0.5 (20) [line 2.2 x 0.8 m, lock, blink behind 2 m] · N 0.36 (12) · N 0.34 (12) · one of { R 0.62 (24) [ring 2.8 m, knockdown] / B 0.56 (22) [FLARE] } |
+| **Vanishing Step** `vanishStep` | 2, 3 (- / 2 / 1.2) · 0–12 · 8 · string | N 0.72 (14) [blink behind 2 m] · N 0.58 (14) [blink behind 2 m] · B 0.66 (24) [line 2.2 x 0.8 m, lock, blink behind 2.1 m] |
+| **Aura Burst** `auraBurst` | 2, 3 (- / 1.5 / 1.2) · 0–3 · 9 · area | R 0.7 (20) [ring 4.5 m, thrown 7 m, aura burst] |
+| **Sunbreaker** `sunbreaker` | 2 (- / 1.1 / -) · 3–12 · 12 · closer | K 1.5 (36) [knockdown, fixed, hold 0.1-0.5, dash <=12 m] |
+| **Sky Hammer** `skyHammer` | 2, 3 (- / 1.8 / 1) · 0–3.6 · 10 · string | N 0.48 (12) · B 0.58 (20) [knockdown, thrown 11 m] · R 0.7 (26) [ring 3 m, knockdown, blink to where you land] |
+| **Blast Dance** `blastDance` | 2 (- / 1.4 / -) · 0–4 · 8 · string | N 0.48 (12) · N 0.36 (12) · N 0.42 (12) [release blast, line 2.6 x 0.8 m (a palm in reach)] · N 0.36 (12) · N 0.34 (12) · B 0.5 (20) [release blast (returnable), line 2.6 x 0.8 m (a palm in reach)] |
+| **Golden Rain** `goldenRain` | 2, 3 (- / 1.1 / 0.8) · 6–16 · 12 · ranged (ki `rain`) | N 0.7 (9 each) [cast rain x10] |
+| **Sun Wheel** `sunWheel` | 2, 3 (- / 1.1 / 0.8) · 4–13 · 10 · ranged (ki `disc`) | R 0.7 (18) [cast disc] |
+| **Heaven's Volley** `skyVolley` | 2 (- / 0.8 / -) · 4–16 · 16 · hazard (ki `volley`) | R 0.9 (22) [cast volley x6, knockdown, in the air] · R 0.8 (26) [ring 2.8 m, knockdown, fixed, in the air, the dive] |
+| **Rising Tide, sweeping** `tideSweep` | 2, 3 (- / 1.1 / 0.7) · 5–16 · 13 · hazard (ki `beamSweep`) | R 1.2 (24) [beam sweep, line 20 x 2 m, knockdown, thrown 5 m, lit 1.1 s, ticks 8 every 0.18 s] |
+| **Ring Breaker** `ringBreaker` | 2, 3 (- / 1.3 / 1.2) · 3.5–14 · 10 · terrain (terrain `ringBreaker`) | R 0.9 (22) [cast ringBreaker, knockdown] |
+| **Stone Storm** `stoneStorm` | 2, 3 (- / 1.6 / 1.6) · 4–15 · 11 · terrain (terrain `stoneStorm`) | N 0.95 (14) [cast stormThrow x3] · R 1.5 (26) [cast stormGreat, knockdown] |
+
+*Form 3, Thunder Ascension*
+
+| Move | Forms (weight per form) · band m · cooldown s · cat | Hits (tell windup (damage) [extras]; `one of { a / b }`) |
+|---|---|---|
+| **Storm Waltz** `stormWaltz` | 3 (- / - / 2.4) · 0–12 · 8 · string | N 0.6 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · B 0.6 (24) [line 2.2 x 0.8 m, lock, blink behind 2.1 m] |
+| **Thousand Hands** `thousand` | 3 (- / - / 2.6) · 0–3.2 · 9 · string | N 0.5 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · R 0.6 (24) [ring 3.2 m, knockdown] |
+| **Heaven and Earth** `heavenEarth` | 3 (- / - / 1.8) · 0–3.6 · 11 · string | B 0.56 (20) [knockdown, thrown 11 m] · R 0.66 (26) [ring 3 m, knockdown, blink to where you land] · R 0.6 (20) [ring 4.4 m, thrown 6 m, aura burst] · B 0.5 (22) [line 2.2 x 0.8 m, FLARE, dash <=5 m] |
+| **Mirage** `mirage` | 3 (- / - / 1.6) · 2–10 · 9 · single | FEINT 0.5 [blink to your side (-1.4 rad)] · FEINT 0.5 [blink to your side (1.4 rad)] · FEINT 0.5 [blink to your side (0.2 rad)] · R 0.66 (26) [line 2.2 x 0.8 m, knockdown, blink behind 2 m] |
+| **Heavenfall** `heavenfall` | 3 (- / - / 1.1) · 3–13 · 14 · area | K 1.5 (36) [ring 3.4 m, knockdown, fixed, leap apex 4.5 m, quake 3.4-14 m at 9 m/s (22)] |
+| **Thunder Gates** `thunderGates` | 3 (- / - / 2) · 0–4 · 6 · string | N 0.48 (12) · N 0.34 (12) · B 0.44 (18) [bolt, line 17 x 1.7 m] · N 0.36 (12) · N 0.34 (12) · B 0.44 (18) [bolt, line 17 x 1.7 m] · N 0.36 (13) · N 0.34 (13) [sector 1.25 m, 0.4 m ahead] · B 0.56 (22) [lock, FLARE] |
+| **Lightning Lance** `lance` | 3 (- / - / 1.3) · 4–16 · 8 · spell (ki `bolt`) | B 0.78 (20) [bolt, line 17 x 1.7 m] · B 0.46 (20) [bolt, line 17 x 1.7 m] · B 0.46 (20) [bolt, line 17 x 1.7 m] · B 0.46 (24) [bolt, line 17 x 1.7 m] |
+| **Storm Cage** `stormCage` | 3 (- / - / 1) · 0–16 · 14 · hazard (ki `cage`) | R 1 (20) [cast cage x8, knockdown] |
+| **Twin Tide** `twinTide` | 3 (- / - / 1) · 5–15 · 12 · hazard (ki `beamTwin`) | R 0.9 (20) [beam twin, line 16 x 1.4 m, knockdown, lit 0.5 s, ticks 8 every 0.18 s] · R 0.7 (20) [beam twin (left palm), line 16 x 1.4 m, knockdown, lit 0.5 s, ticks 8 every 0.18 s] |
+| **Heaven-Splitting Tide** `heavenTide` | 3 (- / - / 1.6) · 0–16 · 35 · hazard (ki `beamGreat`) | B 2.4 (26) [beam great (both palms), line 26 x 3.4 m, lock, FLARE, knockdown, thrown 8 m, blink to the far edge, lit 2.2 s, ticks 12 every 0.18 s] |
+
+*Counters, flurries, transformations* (a Riposte only out of his guard or after he wins a blade lock; Thousand Shadows is his flurry; a transformation starts each form after a deathblow)
+
+| Move | Hits |
+|---|---|
+| **Riposte** `riposte` | N 0.46 (14) · B 0.36 (20) [line 2.2 x 0.8 m, dash <=2.4 m] |
+| **Riposte (golden)** `riposte2` | N 0.46 (13) · N 0.34 (13) · B 0.36 (20) [line 2.2 x 0.8 m, dash <=2.4 m] |
+| **Riposte (thunder)** `riposte3` | N 0.48 (14) [blink behind 2 m] · B 0.36 (22) [line 2.2 x 0.8 m] |
+| **Thousand Shadows** `streakFlurry` | N 0.62 (12) · N 0.48 (12) [flit] · N 0.48 (12) [flit] · N 0.48 (12) [flit] |
+| **Thousand Shadows (2)** `streakFlurry2` | N 0.62 (12) · N 0.48 (12) [sector 1.25 m, 0.95 m ahead, flit] · N 0.48 (12) [flit] · N 0.48 (12) [flit] |
+| **Thousand Shadows (3)** `streakFlurry3` | N 0.62 (12) · N 0.48 (12) [flit] · N 0.48 (12) [flit] · N 0.48 (12) [flit] |
+| **Golden Ascension** `ascend2` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
+| **Thunder Ascension** `ascend3` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
+
+The form's pool (weights summed, share by category; generated): form 1 12 moves, 34 % string, 31 % closer, 13 % ranged, 8 % terrain, 7 % area, 6 % hazard; form 2 20 moves, 39 % string, 16 % terrain, 15 % ranged, 13 % closer, 10 % area, 7 % hazard; form 3 22 moves, 43 % string, 15 % hazard, 11 % area, 10 % terrain, 7 % closer, 5 % single, 5 % ranged, 4 % spell.
+(Generated by `docs-gen-moves.mjs` from `ascendant/moves.js` MOVES; damage before `damageScale` 1.1; windups × 1 / 0.93 / 0.86 by form for beats that are not `fixed`.)
+<!-- asc:moves:end -->
+
+Checked by `npm test` → `tests/integration/asc.mjs`:
+- LEVEL: the registry (`?level=ring` and its aliases), the set, the boss slot, bare-handed, he waits
+  with his arms folded and wakes as the hero comes.
+- DATA: every move in every form it is used in, both ends of every random roll: a tell and a limb
+  (`part`) per hit, first windup ≥ 0.4 s, blows ≥ 0.34 s apart, each flash after the blow before it,
+  damage caps (white / blue ≤ 26, red ≤ 30, black ≤ 36), compiled round its form's stance, a six-hit
+  string that varies and a perilous thrust and a lock in every form, faster form by form.
+- TIMING: every move from inside its band: each glint is a blow, on time.
+- FORMS: three bars; a bar emptied or the posture broken → the deathblow → the transformation; the
+  third deathblow kills him.
+- FLARE: his parry moments, one charged blow a form, the red blows.
+- BARE: bare hands: his limbs as the blade, the parry, the guard clash, the trade, the lock, the mikiri,
+  the full deflect.
+- ENGINE: the engine's patches (a zone off his root, hits from the air, a sustained beat, the lock at
+  range).
+- PACE: a god-mode defender against his AI per form: cues a minute, gaps, the mix, chains, 0 conflicts
+  (the meter: `pressure.meter`).
+- BOUNDS: he keeps to the ring; a hero at its edge is still in his reach.
+- FLOW: the title → the ring → he opens his eyes → the duel; a death sends him back.
+- WIN: a fencing bot in god mode beats all three forms.
+- TRAINING: every Training situation for him plays out and shows what it promises.
+- SHOTS: each answer of every thrown or called move's row (the returns, the disc, the volley, the cage,
+  the corner bolts).
+- WEATHER: Thunderfall: form 3, in his pauses, at most 2 live, never in the hero's opening.
+- BEAMS: Rising Tide, the sweep, Twin Tide, the great beam: the cue, the first contact, the ticks,
+  every answer.
+- CLASH: the great beam: the vanish, the charge, the head, the clash won and lost, never mandatory.
+- BEAMWORLD: a beam takes a butte's top, trenches the tiles; the great beam reaches past its 26 m.
+- MOTION: each strike on his real body (the coil, the speed at impact, the reach, the chest's turn), the
+  feet through a string, the follow clock on every beat.
+- STRINGS: Sky Hammer, Mirage, Heavenfall, the form shown at the nova, the dash.
+- TERRAIN: Tile Kick, Ring Breaker, Stone Storm on the ring's tiles: every answer; no tiles, no move.
+- QUAKE: the front over the whole ring, cued as it reaches the hero.
+- WEAR: the ring visibly worse each form.
+- INTEG: the pieces together: trades, bolts as lightning, the beam's bar on guard moves, the links,
+  resets in the middle of seven moves, a deathblow while a beam is lit, the banner, pips and music at a
+  transformation; and at its end every event this level emits is in ARCHITECTURE.md's catalogue.
+
+<!-- asc:measured:begin -->
+**Measured (the integrated build, 2026-11-21; `tests/integration/asc.mjs`).** Bots, not people: **no
+human has played it.** (These are the integration agent's numbers before the tuning pass: they will be
+replaced.)
+- **Pace** (PACE, all moves in, the mean of three seeds 4242 / 7 / 99, 120 s a form): **87.1 / 93.5 /
+  102.5 cues a minute** by form; a dodge for 9 / 15 / 23 % of the cues; the longest gap between cues up
+  to 2.38 / 2.50 / 3.34 s (the meter's caps 4.0 / 3.8 / 3.6); **0 conflicts**. The PACE defender keeps
+  close: his ranged moves are 2 – 5 % of the picks, and Rising Tide was never picked in form 1 (its band
+  is 5 – 15 m).
+- **WIN** (the fencing bot in god mode): the whole fight in 49 s (the forms start at 0 / 15 / 31 s).
+- **The beams** (the beam agent): Rising Tide: standing or running (4.6 m/s) is hit, a sprint or a roll
+  at the cue clears it; a held guard goes 100 → 49 and loses no health. The sweep's edge moves 5.0 /
+  7.5 / 10.1 m/s at 8 / 12 / 16 m. The great beam's head lands 267 ms after its cue (28.6 damage);
+  sprinting with its sweep at ~19 m costs 119 HP of ticks. The clash: 5.5 presses a second win it
+  outright in 3 s, 3.7 a second hold it (the duel's form-3 lock: 6.7 / 4.9); won, he reels 4.6 s.
+- **The fire field**: the worst case (form 3's aura, the great beam, ten blasts and a strike) 2863 of
+  6000 blobs; AI fights peak at about 1525.
+- `npm test` all 11 suites passed; Training 94 of 94; the build 2902 KB.
+<!-- asc:measured:end -->
+
+**Not measured / not fixed:** a human's fight; a real phone (its frame rate, touch: the clash worked at
+852 × 393 in the capture rig only). The dodge share is under its target (9 / 15 / 23 % against 15 / 25
+/ 35 %); form 3's longest gap 3.34 s sits near its 3.6 s cap; form 1's pool is about 56 – 58 % strings
+by picks; a form's bar empties quickly (the bot's fight is 49 s). Thunderfall comes about every 4 s,
+not 3.2 → 1.8 s (his strings leave few clear slots). Four perfect parries of Lightning Lance deal him
+200; a hero standing in Storm Cage takes 5 × 20 and a knockdown; the great beam at long range is harsh
+for a sprinter. A riposte and a link can start with the AI off. His poses are not polished (the
+transformation reads as a crouch until its last frame and its body is half hidden under the gather;
+the beam technique barely reads at the game camera: the glow, the thread and the flare carry it; the
+skirt and sash in flight unchecked; blink landings checked by eye). At the game camera the fighters
+are small on the ring's floor (the lift helps a little), the disc and the cage's orbs are small, the
+lost clash's surge is faint, the quake's landing is a noisy pale cloud with a faint front, Stone
+Storm's held tiles are hard to see against the aura. A blast stopped by cover is untested. The three
+arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
+east.
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
-Both human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
+The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's
 answer, as for the wyrm (ADR-119): **harder means more pressure, not more damage**. Their numbers are
 per boss, per phase or form (`tuning.js` `idleGap`, `chain`, `openingGap`, `pressure`; the tables of
@@ -1612,6 +1878,27 @@ each boss's section above).
 - **Every cue is honest.** Each blow keeps its tell and its timing (`flashLead` before the impact; a
   move's first windup and a string's spacing at their floors); only WHEN it comes moves.
 
+**What the third duelist added (Tian Lei, 2026-11-21, ADR-128).** The same rules, three more:
+- **A lit beam is one long cue.** A beam beat (`sustain`) counts in the cue ledger from its impact to
+  the end of its lit window as ONE interval: nothing that asks the other answer is cued inside it, and
+  **while one of his beams is lit he starts no move with a blow that asks a guard** (a white or blue
+  blow; `_beamBars`: weighed 0 and refused; a transformation still goes). A beam's head, a stream held
+  lit, is no blow to trade with (the trade clash ignores it).
+- **The weather stands down for a beam.** Thunderfall (his form-3 weather, as the Lord's Starless Sky:
+  in his pauses, never in the hero's opening) calls no strike while a beam of his is lit, held in the
+  clash or fading, nor during his reactions, a break or a transformation.
+- **After a red thing of his, a red blow** (`links.js` `AFTER_RED`, the Lord's rule): after Sun Wheel,
+  Storm Cage, Heaven's Volley, Ring Breaker and Stone Storm he follows with Meteor Step (far), Piercing
+  Palm (mid) or Aura Burst (near), never a guard string inside the window of the roll that answered
+  it. After his volleys at range (Golden Rain, Scatter, Spirit Shot, Lightning Lance, Tile Kick:
+  `AFTER_VOLLEY`) he closes by a blink or the flying kick; after a small beam (`AFTER_BEAM`) he chases
+  the hero across the ring. His `pressure.guard.sep` is the Lord's 0.4 s (a red and a white cue 0.4 s
+  apart). Everything he throws, calls or stamps up is told to the ledger before its cue
+  (`brain.expect`) and asks `brain.fairDelay` before it goes: a blast of Golden Rain waits up to
+  0.12 s or is not thrown, a disc may hang 0.4 s longer at its turn or come home uncued and harmless,
+  a tile may fly up to 0.45 s longer, Ring Breaker's line may wait up to 0.6 s, the quake's front up
+  to 0.5 s; what nothing clears lands uncued and harms nobody.
+
 **Measured** (the PACE scenario of both suites; ten seeds, 120 s a phase or form, the final build): 0
 conflicts for both bosses in every phase and form (before the pass the Lord had 8 / 5 / 32 / 86 over five seeds,
 mostly the Starless Sky and the Dark Star against his strings and falling pieces against his cuts).
@@ -1624,7 +1911,7 @@ busier than the one before it on every seed: within about 2 % of the tables abov
 **Not filmed:** a feint made by the guard, a strike fading, a stone shattering on a world warning, the
 blade hanging at its turn, the footwork's seek. **Not measured:** how a person reads a held blow.
 
-## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas: 2026-11-16, ADR-122)
+## The world breaks (2026-11-15, ADR-107; the clearing breaks: 2026-11-15, ADR-119; the whole forest wears down: 2026-11-16, ADR-120; the duel arenas: 2026-11-16, ADR-122; the Skybreak Ring: 2026-11-21, ADR-128)
 What stands in a level can be chipped, broken, felled, burned and thrown. In Cinderwood **the whole
 clearing breaks** (the owner, ADR-119: "the terrain itself is barely destructible"), and since
 2026-11-16 **the whole forest round it** (ADR-120): 664 breakables (183 before): 502 trees and 37 dead
@@ -1642,7 +1929,14 @@ bonfire stay whole. The **Obsidian Throne's crater** lists 222 (36 before): 105 
 'plate', 24 'flagstone'), 25 shards of the star's glass (cover, 1.9 – 4.2 m), 27 slabs of the rim, 20
 rubble stones, the stonework of the 4 vents, 35 trunks thrown down near the crater, and six stones
 hanging in the air (these only chip, stop nothing and block nobody: they are there for the Void to
-throw); the throne and its dais, the fallen star, the seal's glow and the bonfire stay whole. It all
+throw); the throne and its dais, the fallen star, the seal's glow and the bonfire stay whole. The
+**Skybreak Ring** (ADR-128; the arena the owner picked, `?ring=a`, the flats) lists 579: 361 tiles of
+the ring (every tile, kerb stone and plate of the octagon), 162 clay plates of the lake bed within
+24 m, 14 flagstones of the path, 12 boulders, the 4 corner posts with their braziers (a brazier goes
+out with its post), 6 buttes in two pieces each (a top that comes off, a foot that only chips), 4
+hoodoos, 4 banners, 3 dead trees, the war drum, the judges' dais and the gong (it never breaks); the
+bonfire stays whole. The other two arenas behind the switch list 602 (b, the quarry: the lowest
+course of its terraces breaks, 50 blocks) and 409 (c, the crown: 17 rock spires, 4 cairns). It all
 stands again when the fight resets (a death, a rest at the bonfire, the Lab's Reset).
 
 - **Blows chip and break.** Every blow has a power. The hero: its damage / 110 (a quick cut 0.27, the
@@ -1758,11 +2052,22 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   cross the courtyard) and springs off pillars: *The Ash Disciple* → *He uses the courtyard* (ADR-111,
   ADR-122). The wyrm tears up trees and boulders and hurls them: *The wyrm uses the ground*, below
   (ADR-110, ADR-119). The Starless Lord lifts the crater's pieces with the Void, tears its floor open
-  and drops a ring of its plates on you (ADR-109, ADR-122). A thrown piece of any boss shows its
+  and drops a ring of its plates on you (ADR-109, ADR-122). Tian Lei stamps a tile up and punches it
+  at you, bursts a line of tiles toward you, lifts three with his aura and throws them, and his
+  Heavenfall's shock cracks every tile it crosses (*Tian Lei* → *He uses the ring*); his heavy blows
+  leave craters and rubble, his transformations crack the tiles round him, his blasts burst on cover
+  and the disc cuts what it crosses. **A beam carries on**: every 0.2 s it lit it blasts what stands
+  in its strip (power 1.5, at 1.2 m: a low piece under it is spared) and on past its drawn end to 45 m
+  (a butte's top on the line comes off in about 3 ticks, 0.6 s; the great beam reaches the buttes
+  from the ring's far edge), cuts a trench of craters along it (a station every 1.4 m, power 0.7, the
+  great beam 1.05) and lights the ground outside the ring. A butte on the line also ENDS the drawn
+  beam and its hit strip there (up to 44 m for the great beam). A thrown piece of any boss shows its
   flare only, nothing where it lands; a toppled piece keeps the world's marked strip. The world's API
   for it: ARCHITECTURE.md "Destruction".
 - **How much breaks in a duel** (measured, the world agent, 2026-11-16): against the fencing bot the
-  courtyard ends 33 – 48 % broken over four minutes, the crater 29 – 40 % in about a minute.
+  courtyard ends 33 – 48 % broken over four minutes, the crater 29 – 40 % in about a minute. The
+  ring (the terrain agent, 2026-11-21, headless, `asc.mjs . wear`): 10 → 33 → 45 % of its tiles broken
+  by the end of forms 1 / 2 / 3, about 30 % cracked.
 - **A phone budget** (`world.setQuality`, from the LOW / MEDIUM / HIGH preset: 0.5 / 0.75 / 1): fewer
   debris letters, flames, wreckage, fires and floor marks at once. The rules do not change with it.
 
