@@ -600,20 +600,22 @@ export class AscFx extends LordFx {
     if (!Number.isFinite(x + y + z)) return;
     const gold = form >= 2, storm = form >= 3;
     const col = storm ? STORM : gold ? GOLD : PALE, end = storm ? STORM_END : gold ? GOLD_END : DUST_END, kind = gold ? K_VOID : K_STEEL;
+    // (at the game camera the hand is a few cells, under the aura: the snap is what reads, so it is a
+    // head's size and crisp, with a short white heart)
     const P = this._toCamera(x, y, z);
-    this._blob(P.x, P.y, P.z, 0, 0, 0, 0.1, 0.2, 0.5, 1.5, 0, K_STEEL);
-    this._blob(P.x, P.y, P.z, 0, 0, 0, 0.18, 0.3, 0.7, gold ? 0.6 : 0.35, 0, kind);
-    for (let i = 0; i < 7; i++) {
-      const a = this.lr() * TAU, sp = this.lrand(1.5, 3.5);
-      const o = this._rec(x, y, z, this.lrand(0.14, 0.26), 0.12, 0.03, "*'", i & 1 ? WHITE : col, end);
+    this._blob(P.x, P.y, P.z, 0, 0, 0, 0.12, 0.3, 0.8, 1.6, 0, K_STEEL);
+    this._blob(P.x, P.y, P.z, 0, 0, 0, 0.24, 0.45, 1.1, gold ? 0.75 : 0.45, 0, kind);
+    for (let i = 0; i < 10; i++) {
+      const a = this.lr() * TAU, sp = this.lrand(2, 4.5);
+      const o = this._rec(x, y, z, this.lrand(0.16, 0.3), 0.13, 0.04, "*'", i & 1 ? WHITE : col, end);
       o.vx = Math.cos(a) * sp;
-      o.vy = this.lrand(-0.5, 1.6);
+      o.vy = this.lrand(-0.5, 2);
       o.vz = Math.sin(a) * sp;
       o.drag = 4;
       this._spawn(this.add, o);
     }
-    this._shock(x, y, z, 0.7, 10, 0.16, 0.3, 0.5, gold ? 0.5 : 0.3, kind, 0.2, 4);
-    super._light({ x, y, z, color: storm ? L_STORM : gold ? L_GOLD : L_PALE, intensity: 2.4, radius: 4, life: 0.14, fade: 0.12 });
+    this._shock(x, y, z, 1.0, 14, 0.2, 0.32, 0.55, gold ? 0.6 : 0.4, kind, 0.25, 4);
+    super._light({ x, y, z, color: storm ? L_STORM : gold ? L_GOLD : L_PALE, intensity: 3.6, radius: 5, life: 0.16, fade: 0.14 });
   }
 
   /** The counter stance (a beat marked `catch`, every frame he is catching): light drawn INTO his
@@ -629,14 +631,17 @@ export class AscFx extends LordFx {
     const L = d.tellPoint('fistL', v);
     const lx = L.x, ly = L.y, lz = L.z;
     if (!Number.isFinite(rx + ry + rz + lx + ly + lz)) return;
+    // (form 1 has no aura to carry it: its pale glow is larger and hotter, steel-white, or it is lost at
+    // the game camera)
+    const hh = gold ? 0.55 : 0.9, sz = gold ? 0.24 : 0.3;
     if (life > 0) {
       for (const [x, y, z] of [[rx, ry, rz], [lx, ly, lz]]) {
         const P = this._toCamera(x, y, z);
-        this._blob(P.x, P.y, P.z, 0, 0, 0, life, 0.24, 0.24, gold ? 0.55 : 0.4, gold ? 0.55 : 0.4, kind);
-        this._blob(P.x, P.y, P.z, 0, 0, 0, life, 0.12, 0.12, 1.0, 1.0, K_STEEL);
+        this._blob(P.x, P.y, P.z, 0, 0, 0, life, sz, sz, hh, hh, kind);
+        this._blob(P.x, P.y, P.z, 0, 0, 0, life, 0.14, 0.14, gold ? 1.0 : 1.3, gold ? 1.0 : 1.3, K_STEEL);
       }
     }
-    this._stanceAcc = (this._stanceAcc ?? 0) + dt * 34;
+    this._stanceAcc = (this._stanceAcc ?? 0) + dt * (gold ? 34 : 46);
     while (this._stanceAcc >= 1) {
       this._stanceAcc -= 1;
       const right = this.lr() < 0.5, x = right ? rx : lx, y = right ? ry : ly, z = right ? rz : lz;

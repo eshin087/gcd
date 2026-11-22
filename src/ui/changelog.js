@@ -18,6 +18,17 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-22',
+        title: "Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage",
+        notes: [
+          'In the Skybreak Ring, Tian Lei now raises two fingers to his brow before he vanishes: a snap of light, and he is behind you with the blow still coming. When the hand goes up, turn.',
+          'He has a counter stance in every form: open palms with light drawn into them. Cut into it and he catches your blade and punishes at once. Wait it out and he is left open.',
+          "Heaven's Lantern: he rises and gathers a great golden orb, then throws it at where you will be. Parry or block it and you are safe, roll and it passes. Parry it perfectly and it stops on your blade: mash attack to push it back into him.",
+          'Raining Suns: he leaps and pours sixteen small blasts down around you, then a bigger one you can parry back.',
+          'Three more counters out of his guard, so his answers vary.',
+        ],
+      },
+      {
         date: '2026-11-21',
         title: 'The hero looks the same on every screen',
         notes: [

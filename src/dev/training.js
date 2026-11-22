@@ -231,7 +231,7 @@ const ascOpen = (T) => {
 };
 add('PARRY & RIPOSTE', [
   { id: 'ascSign', name: 'The sign · turn and parry', boss: 'asc', dist: 4, answer: 'parry', desc: 'Two fingers to his brow (form 2, Sign Step): he is gone, and the hook comes from BEHIND you. Its glint shows where: turn and parry the three blows.', go: ascGo(2, 'signStep'), expect: ['player:parry'] },
-  { id: 'ascCatch', name: 'Counter stance · cut into it', boss: 'asc', dist: 1.9, answer: 'parry', desc: 'Still Water (form 1): he sinks, the palms open, light drawn into them. Cut into it and he CATCHES the blade (thrown back, no damage) and punishes at once: parry the cross and the palm.', go: ascGo(1, 'stillWater'), tick: ascCut, expect: ['player:attack', 'player:parry'] },
+  { id: 'ascCatch', name: 'Counter stance · cut into it', boss: 'asc', dist: 1.9, answer: 'parry', desc: 'Still Water (form 1): he sinks, the palms open, light drawn into them. Cut into it and he CATCHES the blade (thrown back, no damage) and punishes at once: parry the cross and the palm.', go: ascGo(1, 'stillWater'), tick: ascCut, expect: ['player:attack', 'dragon:guard', 'player:parry'] },
   { id: 'ascCatchWait', name: 'Counter stance · wait it out', boss: 'asc', dist: 1.9, answer: 'none', desc: 'The patient answer: do not cut into the open palms. The stance ends on nothing, his guard is down a moment: cut him then.', go: (T) => { T._ascMiss = T.d.brain?.stats?.stanceMiss ?? 0; ascGo(1, 'stillWater')(T); }, tick: ascOpen, until: (T) => T.t > 2.4 && !T.moving() && T.heroFree(), max: 6, expect: ['player:attack'] },
   { id: 'ascClash', name: 'The beam clash', boss: 'asc', dist: 6, answer: 'none', mash: true, desc: 'His great beam (form 3): a perfect parry of its head starts THE CLASH at range. Mash attack to split the beam: he reels.', go: ascGo(3, 'heavenTide'), tick: (T) => ascHead(T, 0.04, () => T.tap('@block', 0.05)), until: (T) => T.t > 3 && !T.moving() && T.heroFree() && !T.d.ki?.busy, max: 16, expect: ['player:lock'] },
 ]);
@@ -583,7 +583,7 @@ export class Training {
     const watch = (n) => ev.on(n, (e) => this._event(n, e));
     for (const n of ['player:parry', 'player:block', 'player:perfectDodge', 'player:flurry', 'player:flurryEnd', 'player:hurt', 'player:streak',
       'player:guardBreak', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
-      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'combat:flash']) watch(n);
+      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'dragon:guard', 'combat:flash']) watch(n);
   }
 
   _event(n, e) {

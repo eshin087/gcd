@@ -1300,7 +1300,8 @@ export class DuelBrain {
     const x0 = d.position.x, z0 = d.position.z;
     // close-in: through the windup he steps in toward the hero (at most b.close m), arriving at the
     // impact where the zone reaches him: a cut is never thrown at air, and the lunge reads as the tell
-    if (b.close > 0 && L && u >= 0.15 && t < b.impact && !this.leap) {
+    // (not before a SIGN's vanish: he stands for the sign, and closes from where he arrives)
+    if (b.close > 0 && L && u >= 0.15 && t < b.impact && !this.leap && !(D.blink?.sign && !b._blinked)) {
       const gap = L.dist - this._ideal(D.zone);
       const budget = b.close - (b.closed ?? 0);
       if (gap > 0.02 && budget > 0) {

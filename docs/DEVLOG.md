@@ -5,6 +5,77 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 71: Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage
+
+**Owner:** "implement more iconic dbfz moves like spirit bomb, teleport attacks with the dragon ball
+teleportation animation, flurry of projectiles like vegeta, etc. i want more counter moves as well".
+Branch `enemies/ascendant-moves` (from main 9333ce7, after #73 and #75). ADR-131 / Session 71 / M1.56.
+As with the level (ADR-129): the FEEL of each, built as originals; nothing of the franchise's names or
+look.
+
+**How.** The lead read the merged kit, wrote `BRIEF3.md` (the scratchpad), added the engine contracts
+first (one commit: the counter stance, the sign, several counters a form), then ran two Opus agents in
+their own worktrees from that commit: **ki** (`kiShots.js`, `moves/kiShots.js`, `tuningShots.js`, fx:
+the orb and the barrage) and **sign** (`moves/melee.js`, `links.js`, `tuning.js`: the sign and its
+moves, the three counter stances, the ripostes). Each filmed its moves in the real level and ran the
+suite; the lead merged both, applied their "needs" lists, tuned the pace meter, regenerated the move
+tables and wrote the history.
+
+**What changed.**
+- **The engine** (`duelist/brain.js`, `duelist.js`; optional, the other bosses unchanged): a beat
+  marked `catch` on a feint with a bait hold is a **counter stance**: from 30 % of its windup a sword
+  cut that reaches him is CAUGHT (no damage, no posture, the hero's blade thrown back as by a deflect,
+  `dragon:guard { caught }`, the HUD's "CAUGHT") and the move jumps to the beat's end, so the punish
+  after it starts at once; a stance nobody cut into ends the move at its impact and leaves him open
+  0.6 s with his guard down. `brain.catching()`, `onCaught`, `_stanceMiss`, stats `caught` /
+  `stanceMiss`. A blink marked `sign` vanishes at u 0.5 of the windup, not 0.1, and a close-in waits
+  for the vanish. The kit's `counterMove(form)` draws from `COUNTER_LISTS`.
+- **Tian Lei's moves** (`moves/melee.js`, `moves/kiShots.js`; the tables in COMBAT.md are generated):
+  - **THE SIGN**: two fingers to the brow, the snap of light at the hand (`fx.signSnap`), the vanish,
+    the blow from behind. **Sign Step** (form 2: a hook from behind, a knee, a palm that locks) and
+    **Three Signs** (form 3: a cross from the left, a round kick from the right, the red axe kick from
+    behind, each out of its own sign); the sign retrofitted onto the first vanish of Vanishing Step,
+    Storm Waltz, Mirage and the thunder Riposte (their first windups raised to 0.72 s).
+  - **Three counter stances**, one a form, light drawn into the open palms (`fx.stanceGlow`): **Still
+    Water** (a cross, then a palm on a dash that locks), **Golden Mirror** (a vanish behind, the
+    launching uppercut, the hammer where the hero lands), **Thunder Mirror** (a bolt point-blank, a
+    signed vanish and the axe kick).
+  - **Three more ripostes** out of a deflect (a knee and a round kick; a vanish behind, a hook and a
+    palm; a hop back and a bolt a perfect parry returns), drawn with the old three.
+  - **Heaven's Lantern** (forms 2 - 3): he rises 2.5 m and gathers the great orb for 1.8 s (the ring's
+    light dims to it), then throws it, 10 m/s, 2 m round, falling onto where the hero will be (no
+    homing); blue: a parry or a block is safe, a roll passes it, and a PERFECT parry starts **THE PUSH**
+    (the lock at range: won, it flies back into him for 120 and 220 posture and he reels 3 s; lost, 40,
+    knockdown, thrown 10 m). Two looks for the owner: `?ascOrb=a` a sun (the default), `b` a lantern.
+  - **Raining Suns** (forms 2 - 3): he leaps 3 m and pours sixteen small blasts down in 2.2 s (every
+    third one on the hero, the rest to his sides, pocking the floor; a held guard is not worn through),
+    then a returnable finisher from the air.
+- Links, weights and cooldowns for all of it; Training 'ascSign', 'ascCatch', 'ascCatchWait',
+  'ascLantern', 'ascSuns' (105 situations); the Lab's LOOKS row `ascOrb`; scenarios `sign`, `catch`,
+  `ripostes`, `lantern`, `suns` and the engine scenario's catch (a synthetic stance) in `asc.mjs`; the
+  timing scenario cuts into a stance; the pace meter counts a stance while it is catching and the
+  orb's gather as busy (as a black blow's charge).
+
+**Decisions on the way.** The sign agent shortened the stance's hold from the brief's 0.7 - 1.0 s to
+0.2 - 0.4 s and lowered the stances' weights for the pace meter's gaps; the lead then made the meter
+count the catching window as busy (it is a decision for the hero, as a charge is) rather than push
+the weights further down. The ki agent put only every third blast of the barrage on the hero: all
+sixteen on a held guard wore it through (GUARD.costMin 8 x 16 and the finisher), and the owner's rule
+is that a block is always an answer.
+
+**Verification.** `asc.mjs . all` green on the merged branch (DATA 292 realisations, forms 13 / 25 /
+28 moves); PACE over ten seeds: see the figures in COMBAT.md's Tian Lei section and the PR; 0
+conflicts throughout. `glyphcheck`, `changelogcheck`, `duel.mjs` (the engine changed). Filmed in the
+real level at 1280 x 720 (the agents' sheets: `ki3-lantern.jpg`, `ki3-suns.jpg`, `sign3-sign.jpg`,
+`sign3-catch.jpg` in the scratchpad's rig), the push on the phone preset.
+
+**Not checked / open.** Nobody has played it. The owner has not picked the orb's look. At the game
+camera the hand at the brow is a few cells under the aura: the snap and the streak carry the sign. The
+orb is drawn smaller (about 3.2 m) than its hit (2 m round, 2.5 m reach across). The push's crater and
+camera are not tuned. Not filmed on a real phone.
+
+---
+
 ## 2026-11-21 — Session 70: the hero looks the same on every screen
 
 **Owner**, with a picture of the hero at the game camera: "this picture of the character is the exact

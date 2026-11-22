@@ -3476,7 +3476,17 @@ transformation's windup, the stars of a break. `brainFrame` also counts how long
 (within 2.6 m): past 4 s a `burst` move (Aura Burst) weighs × 3.
 
 **The moves are data** (`moves.js`: `MOVES = { ...meleeMoves(X), ...kiMoves(X), ...terrainMoves(X) }`,
-`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS`, `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). A move
+`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS` (each form's first counter) and `COUNTER_LISTS` (every
+counter of each form, the third wave: `[['riposte', 'riposteKnee'], ['riposte2', 'riposteVanish'],
+['riposte3', 'riposteBolt']]`), `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). **The third wave's data**
+(2026-11-22; `moves/melee.js`): `signKeys(X, { coil, hit, after, keys, cock = 0.76, left })` prepends the
+SIGN (the hand rising at u 0.18, two fingers at the brow at u 0.5) to a strike's keys, for a beat with
+`blink: { ..., sign: true }`; a sign beat carries `close: 0` and a short `dash` into reach after the
+arrival (`TUNING.sign`: behind 2 m, a side at 1.5 rad / 2.2 m, a step of 1.6 m from u 0.55, a riposte's
+hop back 1.5 m). A counter stance is a feint beat `{ tell N, windup 0.45 fixed, hold [0.2, 0.4], catch:
+{ from 0.3, open 0.6 }, part 'palms' }` (`TUNING.stance`) followed by its punish beats (Still Water,
+Golden Mirror, Thunder Mirror; `cat 'single'`). Thunder Mirror's and riposteBolt's bolt is a `ki: 'bolt'`
+line beat built in melee.js. A move
 file is a function `(X) => ({ name: move })` of the frozen builders object `X` (no import of moves.js: no
 cycle): `moves/melee.js`, `moves/ki.js` (joins `moves/kiShots.js` and `moves/kiBeam.js`),
 `moves/terrain.js`. `X = { TELL: { N, B, R, K }, TUNING, W, F, mirror, strikeKeys, follow, rotXZ, punch,

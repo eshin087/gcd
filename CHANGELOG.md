@@ -4,7 +4,22 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Fifty-nine pieces of work since 0.4.0:
+Sixty pieces of work since 0.4.0:
+- **Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage** (2026-11-22,
+  ADR-131). *Added:* in the Skybreak Ring, **the sign**: from his second form, Tian Lei raises two
+  fingers to his brow, a snap of light, and he is gone and behind you (or at your left, your right and
+  then behind you in Thunder Ascension's Three Signs), the blow still to come: when the hand goes up,
+  turn. **Counter stances**, one a form: he stands with his palms open and light drawn into them. Cut
+  into it and he CATCHES your blade, throws it back and punishes at once; wait, and the stance ends on
+  nothing with his guard down. **Heaven's Lantern** (forms 2 and 3): he rises and gathers a great orb
+  of gold over his hands, the ring's light draining to it, and throws it at where you will be. A parry
+  or a block is safe and a roll passes it; a PERFECT parry stops it on your blade and starts THE PUSH:
+  mash attack to throw it back into him for a huge blow that leaves him reeling, or lose and be thrown.
+  **Raining Suns** (forms 2 and 3): he leaps and pours sixteen small blasts down round you, then a
+  bigger one a perfect parry returns. Three more ripostes out of his guard. *Changed (the engine, for
+  him):* a boss's beat can be a counter stance and a vanish can wait for its sign; the other bosses are
+  unchanged. Kept behind a switch for the owner's pick: the orb's look (`?ascOrb=a` a sun, `b` a
+  lantern). Nobody has played it yet.
 - **The hero looks the same on every screen** (2026-11-21, ADR-130). *Changed:* the hero is drawn with
   the same letters on every screen and at every camera distance: about 9 across his cloak, the look
   of the owner's reference picture ("the exact type of feel and look i want ... make the character

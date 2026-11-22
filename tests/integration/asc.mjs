@@ -453,7 +453,9 @@ async function scenarioTiming() {
       G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') { flashes.push(G.game.time); if (only) out(`       ${G.game.time.toFixed(3)} flash ${e.attack} ${e.tell}`); } };
       const h0 = G.hits.length;
       if (!d.debug.trigger(name)) { assert(false, `${name} form ${f}: starts`); continue; }
-      run(G, 9, null, () => quiet(d));
+      // (a counter stance only hits if the hero cuts into it: the bot cuts once it is catching)
+      const cut = def.beats[0]?.catch ? () => { const a = d.brain.act, b = a?.beats[0]; if (a?.name === name && b && !b.caught && a.t > b.start + 0.3 * (b.impact - b.start) + 0.1 && ((G.game.realTime * 60) | 0) % 6 === 0) G.input.click(0); } : null;
+      run(G, 9, cut, () => quiet(d));
       for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) { contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.kind} ${h.r}`); }
       let w = 0;
       for (const c of contacts) {
@@ -906,10 +908,11 @@ async function scenarioPace() {
         prevAct = d.mode === 'act' ? a : null;
         prevMode = d.mode;
         frames++;
-        // (the great spell's 2.4 s charge (the ring's light pulled down, stones rising) and any beam of
-        // his while it is lit (it sweeps after the hero; its ticks are not cues) are not empty gaps: the
-        // meter counts them as it counts a black blow's charge)
-        if (frames % 6 === 0 && ((d.mode === 'act' && d.brain.act?.def?.ki === 'beamGreat' && d.brain.act.t < (d.brain.act.beats?.[0]?.impact ?? 0)) || d.ki?.beams?.phase === 'lit')) busyT.push(game.time);
+        // (the great spell's 2.4 s charge (the ring's light pulled down, stones rising), any beam of
+        // his while it is lit (it sweeps after the hero; its ticks are not cues), the great orb's gather
+        // and a counter stance while it is catching (a decision for the hero: cut into it or wait) are
+        // not empty gaps: the meter counts them as it counts a black blow's charge)
+        if (frames % 6 === 0 && ((d.mode === 'act' && (d.brain.act?.def?.ki === 'beamGreat' || d.brain.act?.def?.ki === 'lantern') && d.brain.act.t < (d.brain.act.beats?.[0]?.impact ?? 0)) || d.ki?.beams?.phase === 'lit' || d.brain.catching?.())) busyT.push(game.time);
         if (d.fx.shotsAlive || d.fx.strikesAlive || d.ki?.busy || d.terrain?.busy) linger++;
         // (what a feint or a hold of the fairness guard gave way to: the live things of his then)
         for (const k of ['feints', 'holds']) {

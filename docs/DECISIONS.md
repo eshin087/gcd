@@ -3957,6 +3957,43 @@ ADR-092).
   form 1 from one side. Not checked: a real phone (frame rate, the touch block in the clash). The dodge
   share is 13 / 23 / 40 % against a target of 15 / 25 / 35.
 
+## ADR-131 — Tian Lei's third wave: the counter stance as an engine beat, the sign before a vanish, the great orb pushed back (2026-11-22)
+
+- **Context:** the owner asked for the fighting game's iconic moves on Tian Lei: "spirit bomb,
+  teleport attacks with the dragon ball teleportation animation, flurry of projectiles like vegeta ...
+  more counter moves". ADR-129's rule stands: originals in that spirit, no franchise names or look.
+- **Decision:**
+  1. **The counter stance is an engine beat field, `catch`** (duelist/brain.js, duelist.js), not a
+     move-file trick: a feint beat with a bait hold; from `from` of its windup a sword cut that reaches
+     him is caught (no damage, no posture, the hero bounced as by a deflect, `dragon:guard { caught }`)
+     and the move jumps to the beat's end so the beats after it, the punish, start at once; nothing
+     caught by the impact ends the move there and leaves him open `open` s with his guard down. The
+     read is the pose and light drawn INTO his open palms, with no glint: cut into open palms and you
+     are caught; wait, and he is yours. Any duelist can carry one.
+  2. **The sign**: `blink: { sign: true }` moves the vanish to u 0.5 of the windup; the keys before it
+     are the two fingers at the brow, a snap of light marks the moment he goes, and a close-in waits
+     for the vanish. Only the FIRST vanish of a string carries it: the later ones stay quick (the
+     chain of afterimages), so a string's rhythm is kept and the sign is the string's one big read.
+  3. **Heaven's Lantern is answered by THE PUSH**, the beam clash's lock at range reused: a perfect
+     parry wins the big reward (it flies back into him; he reels), a plain parry or a block is safe,
+     a roll passes it. It never homes, so the roll is honest. Nothing else of his starts while it is
+     out, and the weather stands down.
+  4. **Several counters a form**: `COUNTER_LISTS`, drawn on the AI's stream; `COUNTERS` stays the
+     first of each list for the tests and the docs.
+  5. **The pace meter counts a stance while it is catching and the orb's gather as busy time**, as it
+     counts a black blow's charge: both are decisions the hero is making, not empty seconds.
+- **Why not** make the stance a reaction (a ward kind): a ward answers a strike that already arrived;
+  the stance must stand BEFORE the cut and read as an invitation, and its punish must be a string of
+  his own with tells. **Why not** count all sixteen barrage blasts on the hero: a held guard was worn
+  through (the owner's rule: a block is always an answer), so every third is on him and the rest pock
+  the floor round him. **Why not** a homing orb: the roll must work.
+- **Options kept:** `?ascOrb=a|b` (a sun / a lantern) until the owner picks.
+- **Consequences:** the other duelists are unchanged (no beat of theirs carries `catch` or `sign`).
+  Form 1 gains a stance (Still Water) and a riposte; forms 2 and 3 gain the sign moves, a stance, a
+  riposte, the orb and the barrage. The stance's hold is short (0.2 - 0.4 s): with the brief's 0.7 -
+  1.0 s the pace meter's longest gaps broke their caps. COMBAT.md's move tables are regenerated from
+  the data (`docs-gen-moves.mjs`).
+
 ## ADR-130 — The hero's letters follow his size on screen; his own pixel tag, part tables and a dark blade (2026-11-21)
 
 - **Context:** the owner sent a picture of the hero ("the exact type of feel and look i want. its not
