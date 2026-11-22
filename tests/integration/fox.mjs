@@ -377,7 +377,7 @@ async function scenarioLevels() {
   for (const k of ['arrive', 'stir', 'phase2', 'phase3', 'victory', 'fallen', 'restReset', 'again', 'rise']) assert(!!LVL.text[k], `the level has its ${k} line`);
   assert(LVL.name === 'The Foxfire Terrace' && LVL.text.victory === 'THE FOX IS UNMASKED', `${LVL.name}: ${LVL.sub}`);
   const R = LVL.reward;
-  assert(R && R.id === 'paperDouble' && R.kind === 'ability' && R.usable === false && typeof R.name === 'string', 'its fixed reward is recorded and not usable yet (ADR-135)');
+  assert(R && R.id === 'paperDouble' && R.name === 'Paper Double' && typeof R.line === 'string' && R.usable === false, 'its fixed reward is recorded and not usable yet (ADR-135)');
   assert(CONFIG.world.dragonBound === 12.2 && CONFIG.world.arenaRadius === 14.5 && CONFIG.world.bossTriggerZ === 14.6, 'applyLevel merged the terrace\'s layout into CONFIG.world');
   const G = build();
   const d = G.game.dragon;

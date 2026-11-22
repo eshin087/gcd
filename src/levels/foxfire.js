@@ -24,7 +24,9 @@ export const FOXFIRE = Object.freeze({
   buildSet: createFoxTerrace,
   createBoss: (game) => new ThousandFox(game),
   /** The fixed reward of this level (ADR-135): recorded, not usable yet (no technique slot exists). */
-  reward: Object.freeze({ id: 'paperDouble', kind: 'ability', name: 'Paper Double', usable: false, line: 'A paper self that takes a blow meant for you.' }),
+  // (the shape of the shared rewards store's `reward: { id, name, line }`, built beside this for another
+  // level; `usable: false` until a technique slot and a decoy exist)
+  reward: Object.freeze({ id: 'paperDouble', name: 'Paper Double', line: 'A paper self that takes the blow meant for you.', usable: false }),
   text: Object.freeze({
     arrive: ['Paper charms hang from every bough. On the terrace above, someone sits among his own shadows.', 'Rest at the bonfire to restore your flasks.'],
     stir: 'The seated figures turn their masks toward you…',
