@@ -66,6 +66,9 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //                          and calls d.onImpact, but gives no zone result and no world blow of its own.
 //   T.airFall { g }        (TUNING) a reaction / break / death that starts in the air drops him to the
 //                          floor at `g` m/s² instead of snapping the root to y = 0.
+//   wind: true             (the One-Blow Hermit's line blows, ADR-138) the first cover between him and the
+//                          hero takes T.world.wind and falls across the line (_coverFor); the beat does
+//                          not hit, and its world blow is skipped.
 // startLock(o) takes overrides of TUNING.lock (`dist`: the lock at range, player.startBladeLock).
 // ---------------------------------------------------------------------------------------------------
 

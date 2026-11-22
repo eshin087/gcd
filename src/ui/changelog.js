@@ -19,6 +19,18 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-21',
+        title: 'A fifth level: the Lone Peak Hermitage and Gu Shan, the One-Blow Hermit',
+        notes: [
+          'A new level, the Lone Peak Hermitage: a ledge high on a mountain, ringed by stones an old hermit has struck for forty years. Pick it on the title screen.',
+          'Gu Shan fights with one hand, slowly, and every blow of his kills. Each one has a long, clear tell: parry the blue flash, roll from the red and the black.',
+          'A blow you miss with half your health or more leaves you one health (LAST BREATH) and throws you. Two flasks carry you back over the line. Below it, the blow kills.',
+          'A held guard with half its meter stops any blow but a red one without costing health. It shatters, and is back about a second later.',
+          'Hide behind a stone from his line blows, and the stone takes it. The stones run out as the fight goes on.',
+          'Beat him and you learn ONE BLOW: hold heavy past the charge and release a punch that crushes any guard.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'On a phone: the health bars no longer overlap, and two new ways to hold the controls',
         notes: [
           'Your health and the boss\'s no longer run into each other on a phone. Your meters are shorter there and the boss\'s bar takes the room that is left.',

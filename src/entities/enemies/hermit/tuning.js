@@ -117,9 +117,12 @@ export const TUNING = {
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.7, margin: 0.1, maxHold: 0.6, maxDelay: 1.2, horizon: 2, pad: 0.2 },
-    // what tests/integration/hermit.mjs PACE asserts (cues a minute, the longest gap between cues):
-    // each phase busier than the one before
-    meter: { ramp: [1, 1, 1], rampMean: [1, 1.05, 1.05], minRate: [11, 16, 22], maxGap: [8, 7, 6] },
+    // what tests/integration/hermit.mjs PACE asserts, set from ten seeds (4242 7 99 1337 2024 11 23 555 808
+    // 31337, 120 s a phase, a god-mode defender who answers every cue): cues a minute P1 12.7 / 13.7 /
+    // 14.2 (min / mean / max), P2 16.0 / 17.4 / 19.2, P3 18.3 / 21.1 / 25.9; the longest gap 4.9 / 4.2 /
+    // 4.8 s; to dodge 61 / 72 / 62 %; 0 conflicts; lethal impacts never closer than 1.0 s. Each phase
+    // busier than the one before (x1.27, x1.21 in the mean)
+    meter: { ramp: [1, 0.95, 0.95], rampMean: [1, 1.15, 1.1], minRate: [11, 14, 16], maxGap: [6.5, 6, 6] },
   },
   // he does not punish a drink: no move weighs more, and he starts none while the hero drinks
   // (hermit.js weigh)

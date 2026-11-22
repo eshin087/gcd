@@ -909,6 +909,8 @@ async function scenarioPace() {
         game.mouseGround.set(d.position.x, 0, d.position.z);
         G.tick(DT);
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+        // (the meter measures his pressure in one phase: the defender's flurries never end it)
+        d.hp = Math.max(d.hp, d.maxHp * ((TUNING.phaseAt[ph] ?? 0) + 0.05));
         if (d.mode === 'broken' && i % 6 === 0) busyT.push(game.time);
         if (i % 30 === 0) modes.push([game.time, `${d.mode}:${d.brain.act?.name ?? d.brain.react?.kind ?? ''}@${Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z).toFixed(1)}`]);
       }
