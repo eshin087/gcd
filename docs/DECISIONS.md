@@ -4071,3 +4071,84 @@ Two separate things:
 longer constants (`hud.fit` reports them). The touch layer has two more pieces of saved state
 (`layout`, `holdAttack`, in `abyss.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
 and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
+
+## ADR-135 — The Clockwork Marshal: one duelist, one rig, two bodies; the suit's plates are its guard, met by facing (2026-11-21)
+
+**Context.** The owner asked for new level bosses built on the power fantasy of famous characters, as
+originals. The concept picked for this one: a bronze war-suit with a fire lance that the player strips
+plate by plate until the pilot climbs out and fights on. In the spirit of a famous armoured-suit hero,
+but its own wuxia figure: Gongshu Yan, an old artificer-marshal, in a lamellar war-suit under a bell
+helm with no face, a furnace like a cauldron on its back, a lance with a fire tube; none of that
+character's signature look (no red-and-gold, no chest light, no palm blasts, no faceplate of that shape).
+
+**Decision.**
+- **One duelist, one rig, two bodies.** The boss slot holds one `ClockworkMarshal extends Duelist`. Every
+  gear item builds the SUIT's and the PILOT's parts for its slot in groups of their own
+  (`userData.mBody`); the body shown follows the phase (1 - 3 the suit, 4 the pilot). The stance, the
+  reaction clips (`MarshalBrain.C`, as the Lord's per form), the drawn size (`lean.scale`, now read live
+  by `installLean`), the hurt spheres' scale (`hurtK`: scaled out from the root, so what is drawn is
+  what is hit), the body circle and the blade's ends change with it. *Rejected:* a second actor swapped
+  into the boss slot (the player, camera, HUD and audio hold `game.dragon`'s position, object3d and
+  batch). The cost: one rig carries both bodies (84 rigid bones in all, measured).
+- **Two bars.** The suit's (3000, gates at 66 % / 33 %, transitions `openFurnace`, `runWild`) and the
+  pilot's (1300). The suit's bar empty breaks it; the deathblow, or a break left unanswered, starts the
+  hand-over (`eject`): the husk (a prop-art shell) kneels where it broke, the pilot somersaults out of
+  its hatch into a red shock ring. `lives` = 2.
+- **The suit has no sword guard; its plates are its guard.** Five plates (breast, back, two flanks, the
+  helm); a blow meets the one on the side it comes from, by the director's own front / behind angles.
+  Plated: the bar takes 30 %, the plate the raw blow (heavy x1.5). Three ways to strip one, so defence is
+  rewarded as much as aggression: cuts on that side, a deathblow (the helm first, then the weakest), a
+  perfect parry of a Fire Lance bolt (220 to the plate facing the hero). Each loss changes the fight
+  (data: `TUNING.plates.<name>.lost`). The hero's flash cuts and flurry (`exact` blows) meet the plates
+  too: the first bot fights skipped them and ended in 40 s.
+- **Per-instance kit.** The Marshal's kit (and its `TUNING`, `Object.create` of the module's) is made per
+  instance, so the live footwork (`T.move`) and body circle (`T.radius`) can change with the plates and
+  the body, and `realise` can be told the breastplate is gone (one more bolt).
+- **The suit is slow; the pilot is the Lord's pace.** Two timing pairs (suit: first windup >= 0.7 s,
+  hits >= 0.5 s apart; pilot: 0.4 / 0.34), checked per body by the suite.
+
+**Consequences.** The duelist engine is unchanged but for `installLean` reading `lean.scale` live (the
+same for everyone else). Two cues needing different answers never land within 0.3 s (the fairness
+guard, checked by the pace bot). Open: the owner's look pick (`?marshalLook=a|b|c`), the fight's length
+on a real player (bars 3000 / 1300 are bot-tuned), and whether the suit's walk should also brush
+the furnace's landmarks.
+
+## ADR-136 — The Brazen Foundry: an open drill yard with a furnace, a cogwheel and breakable props (2026-11-21)
+
+**Context.** The Marshal needs an arena that frames a 3 m war-suit and gives its fire and plates something
+to break, built like the other duel arenas (ADR-107, ADR-122) and in the house style (ADR-093, ADR-100).
+
+**Decision.** `?level=foundry` (`levels/foundry.js`, `world/foundry.js`): a disc of iron-banded flagstones
+15 m in radius (a breakable floor, `breakableFloor`, calmer than the courtyard's so the figures stand
+off it), soot and embers falling (`ash`), grey grass outside. Landmarks, whole, with colliders: the Great
+Furnace north of the yard (its mouth's fire is heat drawn every frame by the boss's fx: a set
+`ambience` would replace the falling ash), a half-buried cogwheel east, bronze-shod gate posts with a
+chain south, the bonfire. Forty-five breakables in prop art round the rim and on the approach: weapon
+racks (cover), drill posts, banners, powder kegs, crucibles (metal), ingot stacks, anvils (they only
+chip), eight bronze sentinels; the floor's 234 slabs. The landmark builders live in `foundry.js` itself
+(not `landmarks.js`, which parallel builds edit). Music borrowed from the other levels.
+
+**Consequences.** 221 bones for the yard's pieces; 432 with the boss and the hero (of 1023). Powder kegs
+are plain wood that burns (the keg's fuse and burst, a stretch goal, is not built).
+
+## ADR-137 — The fire-lance shot: the Marshal's reward ahead of M2's technique slots (2026-11-21)
+
+**Context.** ADR-059 promises a fixed reward per boss; roadmap M2 (technique slots, a meter, an equip
+screen) is not built. The owner's brief for this boss: beating her gives the hero a fire-lance shot.
+
+**Decision.** Ship the reward as a working technique on its own action, without M2:
+- `player/rewards.js`: a small store (`localStorage` `abyss.rewards.v1`, a list of ids; `?reward=` forces
+  ids for the session; no storage in the tests). A level may carry `reward: '<id>'`; `GameFlow` grants it
+  when the boss dies and names it on the victory screen ("FIRE LANCE · press TECHNIQUE").
+- One new input action, `technique` (Q, pad button 14, in the remap list), a touch tile and two HUD pips
+  that exist only while a reward is owned.
+- `player/fireLance.js` (numbers `FIRE_LANCE` in `combat.js`): 0.18 s, a bolt of fire from the free
+  hand's sword fingers along the lock-on target or the facing (34 m/s, 16 m), 60 damage and 14 posture as
+  a heavy blow (a guard may turn it; on the Marshal it meets a plate); two charges, back by perfect
+  parries and perfect dodges (a parry a third), full after a rest. Cover stops it, it lights wood, its
+  end is a blow on the world by the player. Heat in the fire field with a steel core. The hero keeps his
+  pose (the guard's sword fingers already point ahead): no new animation.
+
+**Consequences.** When M2 lands, the shot moves into a technique slot and the meter replaces the charges;
+the store and the grant stay. A sibling build (the Heaven-Fallen) plans a store of its own
+(`game/rewards.js`); the two must become one at merge time.

@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-21',
+        title: 'A fifth level: the Brazen Foundry and the Clockwork Marshal',
+        notes: [
+          'A new level: a war-foundry\'s drill yard, where a bronze war-suit with a fire lance kneels before the great furnace.',
+          'The suit shrugs off blows on its plates. Cut one side until its plate falls, break its posture for the deathblow, or perfectly parry a Fire Lance bolt to send it back into the plate. Every plate lost changes how it fights.',
+          'Empty the suit and the marshal herself climbs out to fight on. Beat her to win the fire-lance shot: press Q (a FIRE button on a phone).',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'On a phone: the health bars no longer overlap, and two new ways to hold the controls',
         notes: [
           'Your health and the boss\'s no longer run into each other on a phone. Your meters are shorter there and the boss\'s bar takes the room that is left.',

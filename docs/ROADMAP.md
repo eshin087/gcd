@@ -184,6 +184,21 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.56 — The Brazen Foundry and the Clockwork Marshal (2026-11-21, `claude/clockwork-marshal-c97f39`, ADR-135 – ADR-137)
+- [x] `?level=foundry`: an iron-banded drill yard, the furnace, the cogwheel, the gate, 45 breakables in prop art and a breakable floor
+- [x] The Clockwork Marshal: one rig, two bodies (the suit at 1.75 x, the pilot), two bars, the hand-over
+- [x] The suit's plates (breast, back, two flanks, helm): met by facing, stripped by cuts, deathblows and returned bolts, each loss changing the fight
+- [x] Eleven suit moves (the Fire Lance, Iron Charge, Sweeping Fire, the mortars ...), nine of the pilot's; fire as heat in the fire field; his blows on the world
+- [x] The reward: the fire-lance shot (`technique`: Q, pad 14, a touch tile while owned), a rewards store, the grant on victory
+- [x] `tests/integration/marshal.mjs` (13 scenarios) in `npm test`; the yard in `world.mjs`; Lab: MARSHAL, REWARD, LOOKS `marshalLook`
+- [ ] Follow-ups:
+  - [ ] The owner's pick of the three looks (`?marshalLook=a|b|c`; renders sent)
+  - [ ] The owner plays the preview: the bars (3000 / 1300 are bot-tuned), the suit's size at the game camera
+  - [ ] Powder kegs that burst (the stretch goal: a lit keg's fuse, a red ring, a blast that cracks his nearest plate)
+  - [ ] One rewards store with the Heaven-Fallen build's (`game/rewards.js` there)
+  - [ ] The level's own score (it borrows four tracks)
+  - [ ] A real phone: the technique tile's place, the suit's frame rate
+
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters
@@ -733,6 +748,8 @@ Spec: `docs/specs/ash-disciple.md`.
       Ash Disciple's technique first (the next PR)
 - [ ] Fixed rewards per boss (techniques, weapons, abilities, elements); weapons of other lengths
       (the animator, the hit segment and the blade FX read `DIM`)
+      (2026-11-21, ADR-137: the first exists without the slots: the Clockwork Marshal's fire-lance shot on
+      its own `technique` action, a rewards store `player/rewards.js`, the grant on victory)
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)
 - [ ] More duelists from the roster (The Moth, The Bell-Warden, The Calligrapher, The Iron Abbot)
 - [ ] Regular mobs (2–3 types) on the approaches, using the shared combat system and tell rules

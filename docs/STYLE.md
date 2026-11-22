@@ -1001,6 +1001,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
+| `?marshalLook=` | the Clockwork Marshal's suit and pilot (read when the rig is built) | - | bell-helm lamellar: verdigris scales, a bell helm with a curtain of scales | boiler shell: riveted red-brown plate, a flywheel, a slotted dome | tomb general: laced tiles, a crested helm over an iron mask | **a** (the owner's pick waits) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1138,6 +1139,32 @@ grit, chips and sparks are one-cell glyph particles. Look code draws from its ow
   him), stones and sparks thrown out. The pillar's peak blooms white: keep it short.
 - **Cost** (headless; frame rates were not measured): the fire field's worst case, form 3's aura with
   the great beam, ten blasts and a strike, 2863 of 6000 blobs; his fights by the AI peak about 1525.
+
+### The Brazen Foundry and the Clockwork Marshal (2026-11-21, ADR-135, ADR-136; `world/foundry.js`, `marshal/`)
+- **The yard.** Iron-banded flagstones (a band of iron across each slab) on a disc 15 m across, printed
+  calmer than the courtyard's paving (gain 1.0, the stone x0.62) so the figures stand off it. Soot and
+  embers fall (`ash`). The furnace, the cogwheel, the gate posts and every prop print through prop art;
+  the furnace's mouth is fire-field heat redrawn each frame (`MarshalFx.furnaceMouth`), smoke off its
+  chimneys, embers off its lip.
+- **The suit** (look A, the default): the dragon look through `toDragonLook(ctx, MARSHAL_ART.a)`:
+  verdigris bronze scales (dark green-brown ink, the worn edges brighter on `bevel`), a dark iron frame
+  under them (`spike`), the gears and belts on `welt` glowing hotter by phase, the furnace's grate and the
+  fire tube's mouth self-lit (`flask`). A brimmed bell helm with a curtain of scales and no face; drum
+  gears in the shoulders; a bronze cauldron with two stub chimneys on the back; the lance's shaft on the
+  frame's iron and its blade on the worn bronze. No red-and-gold, no chest light, no faceplate.
+- **The pilot:** gaunt, a grey topknot, a soot-dark quilted arming coat, bronze dial bracers, one arm
+  bandaged, a straight sabre (its thin blade on today's material), a bronze hand-lance in her off hand.
+- **Plates off the body** are prop-art meshes (background objects); the husk is one prop-art shell with a
+  small standing fire in its open furnace.
+- **Fire:** the lance's windup is small cool blobs gathering at the fire tube (above 0.7 m); the bolt a
+  line of fire blobs round a crisp steel core, a burst where it ends; Sweeping Fire a fan of fire; the
+  vents a ring of fire; the mortars a red ground ring and a shell of fire falling into it; the pilot's
+  fire bolts short streaks with a steel tip. Embers and sparks are glyph particles.
+- **Looks B and C** (`?marshalLook=`; only the head, shoulders, back and chest items and the inks differ):
+  B a boiler shell (smooth riveted red-brown plate, a squat round cuirass, a flywheel on the back, a low
+  domed helm with a ring of slots; the pilot younger, braided, a cloth mask); C a tomb general (square
+  tiles laced with cord in blackened bronze with bright edges, a tall crested helm over an iron mask with
+  a scowl; the pilot masked).
 
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a

@@ -1880,6 +1880,74 @@ Storm's held tiles are hard to see against the aura. A blast stopped by cover is
 arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
 east.
 
+## The Clockwork Marshal (2026-11-21, ADR-135 – ADR-137; `?level=foundry`)
+
+Gongshu Yan, an old artificer-marshal, in a bronze war-suit with a fire lance (`entities/enemies/marshal/`).
+One duelist on two bars: the SUIT (phases 1 - 3, drawn at 1.75 x, one bar of 3000 with gates at 66 % and
+33 %) and the PILOT (phase 4, her own bar of 1300). Numbers: `marshal/tuning.js`; moves: `marshal/moves.js`.
+
+### The plates (the suit's guard)
+The suit raises no sword guard: no ward, deflect, counter or flurry before the pilot. Its five plates are
+its guard: `breast` (front), `back` (the furnace door), `left` and `right` (each flank: the pauldron, the
+tasset and the greave of that side), `helm`. A blow meets the plate on the side it comes from (the hero's
+bearing off his facing: under `pressure.front` 0.9 rad the breast, over `pressure.behind` 2.2 the back,
+else that flank); a cut never meets the helm.
+- **Plated:** the bar takes 30 % (`plates.soak`), the plate the raw damage (a heavy or charged blow x1.5).
+  Structure: breast 420, back 300, flanks 260. **Bare:** full damage; a bare back x1.4.
+- **Three ways to strip one:** (a) cuts on that side; (b) a deathblow on a posture break with the bar
+  still up: the helm comes off first, then the most damaged plate, and 260 damage; (c) a PERFECT parry of
+  a Fire Lance bolt returns it: 220 to the plate facing the hero, 40 posture.
+- **What each loss changes:** breast → the Fire Lance fires one more bolt, Sweeping Fire in any phase;
+  back → Bellows Vent weighs double while the hero is behind him, fire breathes out of the grate; each
+  flank → turns and runs x0.88, both gone → no Iron Charge; helm → posture gain x1.3, the pilot's head
+  shows in the open collar.
+- **Phases and plates in step:** a transition's impact sheds the least-sound plates (never the helm) until
+  2 / 4 are gone (`plates.minOff`); the bar empty blows off every plate left, 0.15 s apart.
+
+### The suit's moves (phases 1 - 3; first windup >= 0.7 s, hits >= 0.5 s apart, glint 0.32 / 0.3 s)
+| move | phases | beats |
+|---|---|---|
+| Drill-Yard Sweep | 1 - 3 | white 0.80 s sweep (r 4.0), white back across; from phase 2 a blue butt slam (r 3.4) |
+| Ram's Horn | 1 - 3 | blue 0.85 s thrust down a 5.2 m line after a dash; a parry moment from phase 2 |
+| Hammer of the Works | 1 - 3 | red 0.95 s ring r 3.2, knockdown |
+| Treading Mountain | 1 - 3 | red 0.80 s ring r 2.8, knockdown (linked when the hero is behind) |
+| Fire Lance | 1 - 3 | blue 0.90 s bolt down an 18 m line; 1 / 2 / 3 bolts by phase (+1, breast off); a perfect parry returns it |
+| Iron Charge | 1 - 3 | red 0.90 s, a charge of up to 9 m, knockdown; it ploughs through the yard |
+| Sweeping Fire | 2 - 3 (any, breast off) | red 0.90 s fan r 5.5; the arc burns 5 s |
+| Bellows Vent | 2 - 3 | red 0.80 s ring r 3.6, knockback 5; lights the world round him |
+| Grinding Wheel | 3 | three white whirls (r 3.6), then a red hammer (r 3.2) |
+| Sky-Splitting Mortars | 3 | five shells, one each 0.5 s, each a red ring r 2.2 warned 1.1 s, placed clear of guard cues |
+| The Furnace Opens / The Works Run Wild | transitions 2, 3 | a red shock ring r 6, plates blow off |
+
+### The hand-over
+The suit's bar empty: it breaks (on one knee, 4.5 s). The deathblow, or the break running out, starts the
+`eject`: nothing lands on him through it; the husk stays kneeling where the suit broke, the pilot climbs
+out of its hatch, somersaults 3.5 m forward and lands in a red shock ring (r 5, 10 damage, knockback 6).
+
+### The pilot's moves (phase 4; the Lord's pace: first windup >= 0.4 s, hits >= 0.34 s apart, glint 0.26 s)
+| move | beats |
+|---|---|
+| Fuse-Light Cuts | five cuts (the fourth a blue thrust), one beat a drawn alternative |
+| Spark and Steel | two cuts, then the hand-lance at point-blank (blue; a perfect parry returns it for posture) |
+| Marshal's Lunge | red 0.62 s perilous thrust after a dash (a mikiri answers it) |
+| Last Charge | blue 0.66 s overhead after a dash of up to 7 m, a parry moment (perfect: the blades lock) |
+| Parting Shot | a backflip away, two white fire bolts as she lands |
+| Scatter of Sparks | a white fan of three fire bolts |
+| Sweeping the Yard | red 0.62 s low ring r 2.6, knockdown |
+| Riposte / Fuse Flurry | her counter out of a guard; her flurry on a streak of guards |
+She has the duelist's guard. At zero she breaks like the Lord's last form; the deathblow kills her.
+
+### Measured (the first build, bots in god mode)
+A bot that parries, rolls and cuts in his openings wins in 45 - 54 s on three seeds (the suit 30 - 40 s,
+the pilot 12 - 15 s). Pace against a blocking, early-rolling bot that walks back in (seeds 4242 / 7,
+90 s): 33 / 32, 41 / 44, 57 / 55, 76 / 69 cues a minute in phases 1 - 4, the longest gap 2.3 - 3.7 s, no
+pair of cues asking two answers within 0.3 s.
+
+### The reward (ADR-137)
+The fire-lance shot (`technique`: Q, pad 14, the touch tile while owned): 0.18 s, a bolt at the lock-on
+target or along the facing, 60 damage + 14 posture as a heavy blow; two charges, +1 for a perfect parry or
+a perfect dodge, +1/3 for a parry, full after a rest; cover stops it, it lights wood.
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's

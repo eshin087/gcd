@@ -4,7 +4,24 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty pieces of work since 0.4.0:
+Sixty-one pieces of work since 0.4.0:
+- **A fifth level: the Brazen Foundry and the Clockwork Marshal** (2026-11-21, ADR-135 – ADR-137). *Added:*
+  `?level=foundry` (the title screen lists it). **The Brazen Foundry**: the drill yard of a war-foundry
+  whose forges never went cold, a great furnace burning at its north end, a half-buried cogwheel, weapon
+  racks, drill posts, powder kegs, crucibles and bronze sentinels that break and burn. **Gongshu Yan, the
+  Clockwork Marshal**: a bronze war-suit with a fire lance, then the old marshal herself. The suit has no
+  sword guard: its plates are its guard. A blow meets the plate on the side it comes from and barely
+  dents the bar until the plate is gone; strip one by cutting that side, by the deathblow of a posture
+  break (the helm first), or by a perfect parry of a Fire Lance bolt, which sends it back into the plate.
+  Each lost plate changes the fight (the lance fires one more bolt, the furnace vents behind him, he turns
+  slower, his posture breaks sooner). Its phases open the furnace and set the works running wild (plates
+  blow off), and the third rains mortar shells. Empty the suit's bar and strike the deathblow: she climbs
+  out of the kneeling husk and fights on with a sabre and a hand-lance. Beating her gives the hero the
+  **fire-lance shot**: press Q (pad: d-pad left; a FIRE button on a phone, once you own it), two charges,
+  refilled by perfect parries and perfect dodges and at the bonfire. Three looks for the suit are built
+  (`?marshalLook=a|b|c`, A by default) and wait for the owner's pick. *Changed:* the hero's drawn size is
+  read live (a boss can change its size mid-fight); one new input action, `technique`. Powder kegs only
+  burn for now. Nobody has played it yet: the bars (3000 / 1300) are tuned on bots.
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now

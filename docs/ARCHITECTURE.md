@@ -2888,7 +2888,8 @@ strip and the scars are glyph particles (a wearing crown's in the canopy's dim h
 dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
 are heat in the fire field.
 
-## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129)
+## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Brazen Foundry: 2026-11-21, ADR-135 – ADR-137)
+- `?level=foundry` (`levels/foundry.js`, aliases marshal / clockwork / brazen / suit): the Brazen Foundry (`world/foundry.js`) and the Clockwork Marshal (below). A level may carry `reward: '<id>'` (ADR-137): GameFlow grants it when the boss dies (`player/rewards.js`).
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
 `starless`, the Skybreak Ring `ring`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
@@ -3649,6 +3650,51 @@ then to `d._hand`, `d.onShotBack?.(s)`; it cuts what it crosses (`destructibles.
 parry on the way out turns it home at once; at its turn it asks `brain.fairDelay(home, tell,
 T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
+
+
+### Clockwork Marshal — `src/entities/enemies/marshal/marshal.js` exports `class ClockworkMarshal` (ADR-135)
+The Brazen Foundry's boss (`?level=foundry`, `levels/foundry.js`): a duelist with two bodies on ONE rig.
+- **Files.** `marshal.js` (the class, its kit made per instance by `makeKit`, `MarshalBrain`), `tuning.js`,
+  `moves.js` (the suit's and the pilot's moves, the reaction clips per body `CLIPS_BY_BODY`, `realise`:
+  a beat's `fromPhase` / `untilPhase` / `ifBreastLost` decide whether it is in the move), `links.js`,
+  `poses.js` (`BODY_POSES`: the suit's stance and the pilot's; `bodyPoses(form)`), `gear.js` (every item
+  builds both bodies; `buildHusk`), `bodyArt.js` (`MARSHAL_ART[a|b|c]`), `plates.js` (`Plates`), `fx.js`
+  (`MarshalFx extends DuelFx`).
+- **Bodies.** Gear groups carry `userData.mBody` ('suit' | 'pilot') and the suit's plates
+  `userData.mPlate`. `_setBody(b)` shows one body (and the body's own face from `buildHero`, hidden in the
+  suit), sets `lean.scale` / `pilot.drawScale` (the drawn size), `hurtK` (the hurt spheres are scaled out
+  from the root by it in `_gameplayPoints`, so `drawScale` = scale / hurtK for the hero's drawn cut),
+  `T.radius` / `radius` / the body circle, `kit.blade` and the live footwork `T.move`. `pilot.form` = 1
+  suit, 2 pilot (the pose functions and `MarshalBrain.C` pick by it).
+- **Phases.** `kit.maxPhase` 4; `TRANSITIONS` { 2: openFurnace, 3: runWild, 4: eject }; `phaseAt` the
+  suit's gates, `[1]` for the pilot; `lives` { total 2, left 2 | 1 | 0 }. `_onHpZero` breaks (the suit's
+  plates blow off); `onExecute` in the suit tears a plate off (the helm first) and with the bar empty sets
+  `brain.pendingPhase = 4` and `_changing` (nothing lands on him until the eject is over:
+  `onTransitionEnd`); `endBreak` with the suit's bar empty does the same; `enterPhase(4)` shows the husk,
+  swaps the body, sets the pilot's bar. `guarding` is false in phases 1 - 3 (`MarshalBrain.guardUp`).
+- **Plates** (`plates.js`): `sideOf(x, z)`, `strike(name, raw)`, `shed(name, how)` (emits `dragon:plate`),
+  `shedTo(n)`, `blowAll()`, `weakest()`, `state()`; `takeHit` routes every blow of the hero's (the flash
+  cuts too; `plate: false` skips it) through the plate on its side. A shed plate flies as one of five
+  pooled prop-art meshes and lands with `world.impact`.
+- **World** (ADR-107; powers `TUNING.world` over `DUEL_WORLD`): a beat's `power` (hammer, stomp, vent,
+  sweepFire) is his `world.impact` (`MarshalBrain._worldBlow` leaves those beats to him); the bolt:
+  `brain._coverFor` (power `world.bolt` = the lance's) or `destructibles.stop` along its line, then
+  `world.ignite` / `world.impact`; Iron Charge `destructibles.sweepRec` along its dash; the suit's body
+  `sweepRec` (brush) as it walks; the mortars `world.impact` + `ignite`; Sweeping Fire burning ground
+  through `ashDisciple/moveFx.js` (`TUNING.burn`).
+- **Debug.** `debug.setForm(n)` (1 - 4: the suit's phases with their plates gone, the pilot), `phase4()`
+  (the suit's bar emptied), `shedPlate(name)`, `eject()`, `plates` (state), `body`. Lab: the MARSHAL
+  section (`dev/labMarshal.js`), LOOKS `marshalLook`.
+
+### Rewards — `src/entities/player/rewards.js`, `fireLance.js` (ADR-137)
+- `REWARDS` (`RewardStore`): `has(id)`, `grant(id)` → true when new, `revoke(id)`, `list()`; `localStorage`
+  `abyss.rewards.v1`; `?reward=<id>[,<id>]` forces ids for the session. `game.rewards` (main.js).
+- A level's optional `reward: '<id>'`: `GameFlow._enterVictory` grants it and the stats screen names it
+  (`REWARD_NAMES`).
+- Input action `technique` (`core/bindings.js`: Q, pad 14). The touch tile `tech` (`@technique`) and the
+  HUD's pips exist only while it is owned.
+- `player.fireLance` (`FireLance`): `owned`, `charges`, `fire()`, `gain(k)`, `refill()` (rest, respawn),
+  `update(dt, control)`; emits `player:technique`. Numbers: `FIRE_LANCE` in `player/combat.js`.
 
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
