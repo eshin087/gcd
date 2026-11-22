@@ -195,7 +195,11 @@ export const TUNING = {
     knockback: 2.4,
   },
   // ---- the Fox-Fire Mantle (phase 3): what it sets alight where he stands
-  mantle: { grow: 1.0, ignite: { every: 0.6, r: 1.5, k: 0.5 } },
+  // (fire never spreads in this game: what his fire does not touch does not burn. He keeps within his
+  // bound, 12.2 m, and the terrace's charm posts stand at 16.5 m: the tail's sweep throws its flame
+  // `tail.reach` m past the cut and the pounce lights the far end of its line, so the posts catch when
+  // the fight comes to the rim)
+  mantle: { grow: 1.0, ignite: { every: 0.6, r: 1.5, k: 0.5 }, tail: { reach: 1.0, k: 0.8 } },
   // ---- what his blows do to the world (POWER: 1 fells a tree; DUEL_WORLD's fields for the blade)
   world: { ...DUEL_WORLD, pearl: 1.4, greatPearl: 2.0, pounce: 1.0, tail: 0.9, pounceFire: 0.8 },
 

@@ -199,13 +199,18 @@ export class ThousandFox extends Duelist {
     const o = (this._wbo ??= { kind: 'blast', by: 'boss', dx: NaN, dz: NaN, y: 1, src: -1, scar: true });
     o.src = W?.destructibles?.swing?.() ?? -1;
     if (D.mantle === 'tail') {
-      const r = D.zone?.r ?? 3.6;
+      const r = D.zone?.r ?? 3.6, TL = this.T.mantle.tail;
       W?.impact?.(this.position.x, this.position.z, r, WT.tail, o);
+      // the tail's flame reaches past the cut: what it sweeps catches (the terrace's charm posts)
+      W?.ignite?.(this.position.x, this.position.z, r + TL.reach, TL.k * Math.max(0.3, this.mantleK));
       this.fx.tailSweep?.(this.position.x, this.position.z, r);
     } else if (D.mantle === 'pounce') {
       const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), x = this.position.x + fx * 1.2, z = this.position.z + fz * 1.2;
+      const L = D.zone?.r ?? 2.4;
       W?.impact?.(x, z, 1.6, WT.pounce, o);
+      // (where he lands, and the far end of the line he drives the cut along)
       W?.ignite?.(x, z, 1.8, WT.pounceFire);
+      W?.ignite?.(this.position.x + fx * L, this.position.z + fz * L, 1.8, WT.pounceFire);
       this.fx.pounceLand?.(x, z, 1.8);
     } else if (D.pearl === 'great') {
       const r = D.zone?.r ?? 3.4;

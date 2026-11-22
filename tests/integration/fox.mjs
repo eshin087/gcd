@@ -175,6 +175,8 @@ function build(seed = SEED, real = false) {
     world.scars = new Scars(game, set.scarInk);
     world.destructibles = new Destructibles(game, world, set);
     world.impact = (x, z, r, power, o) => world.destructibles.strike(x, z, r, power, { kind: 'blunt', by: 'world', ...(o ?? {}) });
+    // (world.js's: fire lands; the grass of this mock does not burn, the wood does)
+    world.ignite = (x, z, r, k = 1) => world.destructibles.ignite(x, z, r, k);
     world.restore = () => { world.destructibles.reset(); world.scars.reset(); };
     world.update = (dt) => { world.destructibles.update(dt); world.scars.update?.(dt); set.ambience?.update?.(dt, game); };
     set.ambience?.setup?.(game);
@@ -571,8 +573,28 @@ async function scenarioClones() {
   const sep = TUNING.pressure.guard.sep;
   let bad = 0;
   for (const a of fl) if (a[2] === 'paperCut') for (const b of fl) if (b !== a && (b[1] === TELL.RED || b[1] === TELL.BLACK) && Math.abs(b[0] - a[0]) < sep) bad++;
-  assert(cuts >= 5 && maxWind <= 1, `selves cut in turn: ${cuts} cuts in 60 s, at most ${maxWind} winding up at once`);
+  assert(cuts >= 1 && maxWind <= 1, `in his fight: ${cuts} selves' cuts in 60 s, at most ${maxWind} winding up at once`);
   assert(bad === 0, `no self's cue within ${sep} s of a cue asking a dodge (${bad})`);
+  // with him in footwork (his AI off) the selves keep cutting, one at a time, the token's rest apart
+  {
+    const G4 = build();
+    const d4 = G4.game.dragon;
+    duel(G4, { dist: 3, form: 3 });
+    G4.game.player.debug.god = true;
+    d4.clones.spawn(5, 'test');
+    const t4 = [];
+    let w4 = 0;
+    G4.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'paperCut') t4.push(G4.game.time); };
+    run(G4, 30, () => {
+      G4.game.mouseGround.set(d4.position.x, 0, d4.position.z);
+      if (d4.clones.live < 3) d4.clones.spawn(3, 'test');
+      w4 = Math.max(w4, d4.clones.list.filter((x) => x.alive && x.state === 'wind').length);
+    });
+    G4.watch = null;
+    let gapMin = Infinity;
+    for (let i = 1; i < t4.length; i++) gapMin = Math.min(gapMin, t4[i] - t4[i - 1]);
+    assert(t4.length >= 8 && w4 <= 1 && gapMin >= C.every[2] - 0.05, `his footwork: ${t4.length} cuts in 30 s, one winding up at a time (${w4}), at least ${gapMin.toFixed(2)} s apart (token ${C.every[2]} s)`);
+  }
   // his posture break pops them all; reset clears
   G2.defend = null;
   const G3 = build();
@@ -733,16 +755,26 @@ async function scenarioMantle() {
   run(G, 5, null, () => d.phase === 3 && d.mode === 'foot');
   run(G, 2);
   assert(d.mantleK > 0.9 && ign >= 2, `phase 3: the mantle is on (${d.mantleK.toFixed(2)}), world.ignite where he stands (${ign})`);
-  // a charm post catches (the set's wood): stand him beside one
+  // a charm post catches (the set's wood, 16.5 m out: past his bound, 12.2): he fights at the rim and
+  // the tail's sweep throws its flame past the cut
   const D = game.world.destructibles;
   const post = D?.list.find((b) => b.kind === 'charmPost');
+  assert(!!post, 'the set has charm posts');
   if (post) {
     d.debug.setAI(false);
-    d.position.set(post.x * 0.92, 0, post.z * 0.92);
-    run(G, 3);
-    const lit = (game.world.fire?.burning?.(post) ?? false) || post.burn > 0 || post.state !== 0 || (game.world.fire?.count ?? 0) > 0;
-    assert(lit, `a charm post beside him catches (${post.kind} burn ${post.burn ?? '-'}, state ${post.state})`);
-  } else out('     (no charm post in this set yet: the set is a stub)');
+    run(G, 4, null, () => d.mode === 'foot');
+    const a = Math.atan2(post.x, post.z), B = d.bound;
+    d.position.set(Math.sin(a) * B, 0, Math.cos(a) * B);
+    game.player.debug.teleport(Math.sin(a + 0.13) * B, Math.cos(a + 0.13) * B); // (beside him along the rim: his step-in keeps him at it)
+    run(G, 0.3);
+    const ig1 = game.world.ignite, calls = [];
+    game.world.ignite = (x, z, r, k, gr) => { calls.push(`r${Math.hypot(x, z).toFixed(1)}+${r.toFixed(1)} k${k.toFixed(2)} d${Math.hypot(x - post.x, z - post.z).toFixed(2)}`); return ig1(x, z, r, k, gr); };
+    d.debug.trigger('burningBrush');
+    run(G, 4, null, () => post.burn > 0 || post.burnt);
+    game.world.ignite = ig1;
+    out(`     ignites: ${calls.join(' · ')}; post at ${post.x.toFixed(1)}, ${post.z.toFixed(1)} r ${post.r}; burns ${post.burns}`);
+    assert(post.burn > 0 || post.burnt, `Burning Brush at the rim: a charm post ${Math.hypot(post.x, post.z).toFixed(1)} m out catches (burn ${post.burn?.toFixed?.(1)})`);
+  }
   d.debug.kill();
   run(G, 4);
   assert(d.mantleK < 0.5, 'dying, the mantle goes out');
@@ -1133,6 +1165,17 @@ async function scenarioLooks() {
     assert(ok && meshes > 20, `?foxLook=${v} builds (${meshes} meshes)`);
   }
   LS.setLook('foxLook', null);
+  // the default rig (a) is drawn through the wyrm's art path; d is the ink-line art
+  const { isDragonLook } = await imp('src/entities/enemies/ashDisciple/bodyArt.js');
+  {
+    const G = build();
+    const d = G.game.dragon;
+    assert(isDragonLook(d.rig.materials) && d.clones.list.every((c) => isDragonLook(c.rig.materials)), 'the default figure (a) and its selves are on the art path (FLAG.ART)');
+    LS.setLook('foxLook', 'd');
+    const G2 = build();
+    assert(!isDragonLook(G2.game.dragon.rig.materials), '?foxLook=d is the ink-line art');
+    LS.setLook('foxLook', null);
+  }
   for (const v of ['a', 'b']) {
     LS.setLook('clones', v);
     const G = build();
