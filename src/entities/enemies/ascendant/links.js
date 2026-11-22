@@ -18,6 +18,9 @@ const f1 = (c) => [c, 0, 0], f2 = (c) => [0, c, 0], f3 = (c) => [0, 0, c];
 const PURSUE = [
   far('vanishStep', [0, 0.5, 0.35]),
   far('stormWaltz', f3(0.55)),
+  // (the third wave: the sign, he is gone, and the blow from behind)
+  far('signStep', [0, 0.4, 0.3]),
+  far('threeSigns', f3(0.4)),
   far('cometHeel', [0.3, 0.3, 0.3]),
   far('meteorStep', [0.5, 0.4, 0.35]),
   // (or he answers the distance from where he stands: a beam down the line, the floor torn up at him)
@@ -31,6 +34,8 @@ const PURSUE = [
   away('meteorStep', [0.45, 0.4, 0.35]),
   away('tiger', [0.4, 0.35, 0]),
   away('vanishStep', [0, 0.4, 0.4]),
+  away('signStep', [0, 0.4, 0.3]),
+  away('threeSigns', f3(0.4)),
   mid('tiger', [0.4, 0.35, 0]),
   mid('piercingPalm', [0.5, 0.35, 0.3]),
   mid('meteorStep', [0.35, 0.3, 0.3]),
@@ -51,6 +56,10 @@ const CLOSE = [
   near('gates', f1(0.3)),
   near('goldenGates', [0, 0.3, 0.25]),
   near('thousand', f3(0.35)),
+  // (the third wave: a counter stance out of a string is a trap: rarely, and only when nothing else ran)
+  near('stillWater', [0.12, 0.06, 0]),
+  near('goldenMirror', f2(0.12)),
+  near('thunderMirror', f3(0.12)),
 ];
 const melee = (...first) => [...first, ...PURSUE, ...CLOSE];
 
@@ -107,4 +116,11 @@ export const LINKS = {
   heavenEarth: melee(far('stormWaltz', f3(0.5)), far('mirage', f3(0.5)), mid('mirage', f3(0.4))),
   mirage: melee(),
   heavenfall: melee(near('thousand', f3(0.4)), near('heavenEarth', f3(0.35))),
+  // --- the third wave: the sign and the counter stances
+  signStep: melee(),
+  threeSigns: melee(),
+  stillWater: melee(),
+  // (Golden Mirror's uppercut throws the hero 11 m and the hammer meets him there: as Sky Hammer)
+  goldenMirror: melee(far('vanishStep', [0, 0.5, 0.4]), far('signStep', [0, 0.4, 0.3]), mid('meteorStep', 0.5)),
+  thunderMirror: melee(),
 };
