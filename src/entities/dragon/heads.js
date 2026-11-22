@@ -435,7 +435,20 @@ function joint(parent, x, y, z, name) {
 
 /** An eye: a glowing almond set into its socket, turned out and forward. */
 function eyeMesh(parent, mat, s, e) {
-  const m = new THREE.Mesh(ellipsoidGeometry(e.r[0], e.r[1], e.r[2], { widthSegs: 10, heightSegs: 8 }), mat);
+  // (e.leaf: an almond with a point at each corner, flat, lying in the orbit: from its inner corner,
+  // forward and low, to its outer corner, back and high: { len, h, slant, peak (0..1: where it is
+  // tallest), thick }. The mesh's rotation turns its face out, up and forward)
+  let geo;
+  if (e.leaf) {
+    const L = e.leaf, pk = L.peak ?? 0.55, n = 10, pts = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      pts.push(V(0, lerp(-L.slant / 2, L.slant / 2, t), lerp(L.len / 2, -L.len / 2, t)));
+    }
+    const prof = (t) => L.h * Math.pow(Math.max(0, t < pk ? t / pk : (1 - t) / (1 - pk)), 0.7) + 0.004;
+    geo = sweepTube(pts, prof, { radial: 6, flat: L.thick ?? 0.3, up: [1, 0, 0] });
+  } else geo = ellipsoidGeometry(e.r[0], e.r[1], e.r[2], { widthSegs: 10, heightSegs: 8 });
+  const m = new THREE.Mesh(geo, mat);
   m.position.set(s * e.c[0], e.c[1], e.c[2]);
   m.rotation.set(e.rot[0], s * e.rot[1], s * e.rot[2], 'YXZ');
   m.name = s > 0 ? 'eyeL' : 'eyeR';

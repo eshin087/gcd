@@ -49,8 +49,10 @@ const LEAN = {
   mane: false,
 };
 const FIERCE = { size: 1.45, narrow: 0.8, horn: 1.28, fang: 1.7, frill: 1.5, jawFrill: 1.8, eye: 1.5 };
-// the head carried high: the neck rises up and forward in one long curve (today: up, back and over)
-const HIGH = { neck: { pitch0: 1.42, pitchStep: -0.13, pitchCurve: -0.01 }, headDip: 0.2 };
+// the head carried high: the neck rises steeply and arches over at the top, so its last segment points
+// down toward the nose-down head (today: up, back and over). (ADR-127: the first high neck still pointed
+// ~16° up at the top while the head hung ~37° nose-down: a ~56° hinge at the skull, a broken neck.)
+const HIGH = { neck: { pitch0: 1.6, pitchStep: -0.06, pitchCurve: -0.045 }, headDip: 0.2 };
 const BUILDS = {
   a: LEAN,
   b: { ...LEAN, name: 'lean + fierce', head: FIERCE, rest: HIGH },

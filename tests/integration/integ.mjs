@@ -295,6 +295,11 @@ function build(opts = {}) {
     G.defend?.onEvent(n, d);
     emit(n, d);
   };
+  // a model is built (three.js has drawn an id from Math.random for each of its objects): what its
+  // owner rolls next (its first timers, its idle phases) comes from a stream of its own, so the number
+  // of objects in a model cannot move the fight (2026-11-21: two more geometries on the drake's brow
+  // changed every seeded fight; the reseed at the end of build() came too late for those rolls)
+  game.onModelBuilt = (who) => { Math.random = mulberry32((SEED ^ (who === 'dragon' ? 0x9e3779b9 : 0x7f4a7c15)) >>> 0); };
   // construction order = main.js: world, audio, player, dragon, hud, gamepad, touch, flow, lab
   game.world = world;
   if (opts.terrain) addTerrain(game, world, opts.terrain); // pieces to lift and throw (scenarios TERRAIN, LAB)

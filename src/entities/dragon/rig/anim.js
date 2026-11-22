@@ -329,6 +329,7 @@ const ROUSE_TIME = 1.4;
 const ROUSE_GAPS = [9.5, 7.8, 11.2, 8.6];
 /** Fastest the head's aim may turn (rad/s) when no hit sphere rides on it (see _updateNeck). */
 const HEAD_AIM_RATE = 11;
+const UP = new THREE.Vector3(0, 1, 0);
 /** Share of the way the driven visible neck is drawn to the measured shape each frame (_updateNeck). */
 const NECK_FOLLOW = 0.45;
 /** Below this resting blend the driven visible neck swings (s.rest; see _updateNeck). */
@@ -861,7 +862,9 @@ export class Rig {
       flat.normalize();
       dir.lerp(flat, limp).normalize();
     }
-    constrainDir(dir, last, 1.1);
+    // at most ~63° off the neck's last segment; resting, ~34°: past that the head reads as hinged off
+    // the neck's end (a broken neck), so the resting head looks down less instead
+    constrainDir(dir, last, 1.1 - 0.5 * s.rest);
     // the head's aim turns at most HEAD_AIM_RATE: a look target passing under or behind the head (the
     // leap's dive onto its mark, the death fall, a target swapped mid-move) flipped it 30-90° in one
     // frame. Attacks whose hit spheres ride on the snout or the mouth set pose.headExact for their
@@ -870,6 +873,22 @@ export class Rig {
     if (!snap && !pose.headExact && hd.lengthSq() > 0.5) constrainDir(dir, hd, HEAD_AIM_RATE * dt);
     hd.copy(dir);
     aimJoint(m.head, dir, qEnd, this._qHead);
+    // resting, the head is held level about its own snout: the minimal rotation down a neck curved
+    // toward a foe far off to one side rolled it up to ~40° (a tilted, broken-looking head)
+    const lv0 = s.rest * awakeW * (1 - limp);
+    if (lv0 > 1e-3) {
+      const ax = this._v[3].set(1, 0, 0).applyQuaternion(this._qHead);
+      const lvl = this._v[4].crossVectors(UP, dir);
+      if (lvl.lengthSq() > 1e-4) {
+        lvl.normalize();
+        // signed angle from the head's side axis to the level one, about the snout
+        const ang = Math.atan2(this._v[5].crossVectors(ax, lvl).dot(dir), ax.dot(lvl));
+        if (Number.isFinite(ang)) {
+          this._qHead.premultiply(this._q[8].setFromAxisAngle(dir, ang * lv0));
+          m.head.quaternion.copy(this._q[9].copy(qEnd).invert()).multiply(this._qHead);
+        }
+      }
+    }
     if (pin) {
       // re-express the measured head under the shown neck: same world rotation, joint placed on the
       // measured end (local offset from the shown last segment, in model units)

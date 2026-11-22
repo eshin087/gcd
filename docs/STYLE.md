@@ -371,6 +371,9 @@ Rules of thumb:
   narrower head with longer fangs, horns and frills held high on a rising neck, and a mane of thin
   quills down the neck, back and tail. When the wyrm should look different again: change its
   build, its pose or its silhouette before its letters or colours.
+- **The glare** (2026-11-21, ADR-127): an angry eye is drawn, not tilted. The slant lives in the eye
+  (an almond, the outer corner high) and in a brow steeper than it; the eye faces out, up and forward
+  so the slant shows from every side, and it sits in a dark socket.
 - **The face** (2026-11-20, ADR-124): the drake. A face reads when it has PLANES and HOLES: fine scales
   under a hard key light print brow, snout, cheek and jaw as planes; the eyes burn in sockets of a
   near-black material; the mouth is black inside with a red tongue, white fangs of different sizes and

@@ -102,22 +102,32 @@ const DRAKE = {
     [0.56, 0.17, 0.04],
     [0.44, 0.09, 0.028],
   ],
-  eye: { c: [0.395, 0.255, 0.51], r: [0.036, 0.03, 0.11], rot: [0.32, 0.5, 0.35] },
+  // the glare (2026-11-21; the owner liked the standing view, 'the eyes look angled and angry', and
+  // asked for it from every side): an almond with pointed corners, the outer one high, its face
+  // turned OUT, UP and FORWARD at once, so it is a slanted slit from the side, one of a pair from
+  // the front and from above (the old lozenge faced sideways: a blob from the front, a dot from above)
+  eye: { c: [0.39, 0.268, 0.525], rot: [0, -0.68, 0.6], leaf: { len: 0.21, h: 0.033, slant: 0.09, peak: 0.55 } },
   paintJaw: [LINING],
-  paint: [LINING, { key: 'pit', c: [0.4, 0.25, 0.5], r: [0.125, 0.105, 0.16] }, { key: 'pit', c: [0.12, 0.29, 1.19], r: [0.04, 0.035, 0.045] }],
+  // the socket's dark: two patches, the rear one higher (a slanted hollow)
+  paint: [LINING, { key: 'pit', c: [0.38, 0.22, 0.6], r: [0.12, 0.095, 0.13] }, { key: 'pit', c: [0.42, 0.29, 0.42], r: [0.12, 0.095, 0.14] }, { key: 'pit', c: [0.12, 0.29, 1.19], r: [0.04, 0.035, 0.045] }],
   nostril: SK.nostril,
   nape: [0.3, 0.45, 0.65, 0.85],
 };
+/** The drake's brow: low over the nose, rising steeply out and back over the eye (steeper than the eye's own slant: a scowl), set inboard of the eye so the eye shows from above. */
+const DRAKE_BROW = [[0.07, 0.235, 0.86], [0.15, 0.3, 0.72], [0.225, 0.365, 0.58], [0.295, 0.425, 0.43], [0.38, 0.455, 0.27], [0.46, 0.42, 0.1]];
 DRAKE.extras = (S, up, jp) => {
   // the brow: a bony shelf low over the snout, high and out behind the eye (a frown); the cheekbone
-  add(up, 'bone', ...both(tube(SK.brow, (t) => 0.095 * (0.45 + 0.55 * Math.sin(Math.PI * Math.min(1, t * 1.1))), { radial: 5, flat: 0.6 })));
+  add(up, 'bone', ...both(tube(DRAKE_BROW, (t) => 0.078 * (0.5 + 0.5 * Math.sin(Math.PI * Math.min(1, 0.08 + t * 1.0))), { radial: 5, flat: 0.66 })));
+  // the orbit's rear rim: bone from the brow down to the cheekbone behind the eye, standing proud, so
+  // the eye (turned forward) lies IN a socket from every side
+  add(up, 'head', ...both(tube([[0.4, 0.45, 0.3], [0.49, 0.36, 0.33], [0.53, 0.22, 0.35], [0.53, 0.08, 0.34]], (t) => 0.06 * (0.6 + 0.4 * Math.sin(Math.PI * t)), { radial: 5, flat: 0.7 })));
   add(up, 'head', ...both(tube(SK.cheek, (t) => 0.065 * (0.5 + 0.5 * Math.sin(Math.PI * Math.min(1, t * 1.15))), { radial: 5, flat: 0.55 })));
   // two long horns swept back over the neck, their tips rising; a shorter pair under them
   const main = horn([0.21, 0.38, 0.02], [0.42, 0.12, -1], 2.3, 0.135, { bend: -0.95, n: 10, bendPow: 1.15, radial: 7, ridge: [7, 0.07], taper: 0.8 });
   const L = [main.geo];
   L.push(horn([0.34, 0.2, -0.02], [0.66, -0.06, -1], 1.3, 0.095, { bend: -0.6, n: 7, bendPow: 1.1, taper: 0.8 }).geo);
   // a horn over each eye
-  L.push(horn([0.36, 0.45, 0.5], [0.4, 0.6, -1], 0.5, 0.06, { bend: -0.35, n: 4, flat: 0.7, radial: 5 }).geo);
+  L.push(horn([0.3, 0.44, 0.42], [0.4, 0.6, -1], 0.5, 0.06, { bend: -0.35, n: 4, flat: 0.7, radial: 5 }).geo);
   // cheek fins: three long flat blades off the jaw's hinge, fanned back and out
   [[0.07, [0.8, 0.28, -1], 1.05], [-0.03, [0.92, -0.04, -1], 0.88], [-0.11, [0.85, -0.34, -1], 0.66]].forEach(([y, d, len], k) =>
     L.push(horn([0.5, y, 0.2 - 0.07 * k], d, len, 0.085, { bend: 0.3, axis: [0, 1, 0], n: 5, flat: 0.3, radial: 5 }).geo));
@@ -346,7 +356,7 @@ REVENANT.extras = (S, up, jp) => {
 // ---------------------------------------------------------------- registration
 Object.assign(HEADS, { drake: DRAKE, tyrant: TYRANT, viper: VIPER, revenant: REVENANT });
 Object.assign(FACE_ART, {
-  drake: KIT_ART,
+  drake: { ...KIT_ART, eye: { emit: [1.3, 0.38, 0.045] } },
   tyrant: KIT_ART,
   viper: KIT_ART,
   revenant: {
