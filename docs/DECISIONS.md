@@ -3957,6 +3957,24 @@ ADR-092).
   form 1 from one side. Not checked: a real phone (frame rate, the touch block in the clash). The dodge
   share is 13 / 23 / 40 % against a target of 15 / 25 / 35.
 
+## ADR-150 — Tian Lei as a recognizable homage: the orange gi by default, the instant beam, the signature options behind switches (2026-11-22)
+
+- **Context:** ADR-129 and ADR-135 kept Tian Lei an original in the spirit of the owner's source. The
+  owner reversed that: recognizable ASCII homages of the iconic characters under new names. The lead
+  said once that a new name covers the name, not the design, and that the game is public; the owner
+  decided.
+- **Decision:** three homage bodies behind `?ascLook=` (`h` an orange gi, `g` a purple gi, `v` a blue
+  bodysuit and white armour), built on his own rig and art path and dressed by form; the owner picked
+  `h`, now the default (`a`, the tunic, stays behind the switch). A new form 3 move, Instant Wave (the
+  sign, a vanish to the hero's side, a cupped-hands beam point-blank with a fair red cue). Two
+  options not yet picked: `?ascBeamPose=cup` (every beam out of cupped hands) and `?ascOrb=c` (the
+  pale gathered sphere). New names only in everything that ships; the source's names appear nowhere.
+- **Why not** recolour the aura so the gold hair stands apart in forms 2 - 3: the aura is shared by every
+  body and the owner picked it (ADR-129); offered as its own option later.
+- **Consequences:** the default body changes for everyone; `?ascLook=a` gives the old one. Form 3 has one
+  more red beam (its dodge share 37 → 40 % over ten seeds). Every homage look must be judged at 40 px:
+  colour carries it, detail (a lock of hair, the eyes) does not.
+
 ## ADR-135 — Tian Lei's third wave: the counter stance as an engine beat, the sign before a vanish, the great orb pushed back (2026-11-22)
 
 - **Context:** the owner asked for the fighting game's iconic moves on Tian Lei: "spirit bomb,
@@ -4395,7 +4413,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   time a batch would not fit (`RIGID_ROWS_MAX`; the shader reads only the width): six human rigs, the
   hero and the set did not fit in 1024. A level that fits never grows and is drawn as before.
 - **Consequences:** a sixth through eleventh hero rig in the scene (each ~one draw call per material
-  after batching: measured in DEVLOG Session 76); the selves' animators run every frame (the first
+  after batching: measured in DEVLOG Session 77); the selves' animators run every frame (the first
   fallback, if a phone needs it, is every other frame, then `clones.max` [2, 3, 4]). Music is borrowed
   until the owner auditions a score. Tests: `tests/integration/fox.mjs` (in `npm test`).
 

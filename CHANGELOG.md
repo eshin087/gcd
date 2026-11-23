@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-five pieces of work since 0.4.0:
+Sixty-six pieces of work since 0.4.0:
 - **A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox** (2026-11-21, ADR-147, ADR-148).
   *Added:* a fifth level, `?level=fox` (the title screen lists it). **The Foxfire Terrace**: a round
   terrace on a moonlit hill shrine, stone lanterns and seated stone foxes on its rim, wooden charm posts
@@ -25,6 +25,13 @@ Sixty-five pieces of work since 0.4.0:
   before. Kept behind switches for the owner's pick: his looks (`?foxLook=`), the foxfire's colour
   (`?foxfire=`), paler copies (`?clones=b`). Recorded, not yet usable: his reward, the Paper Double. The
   level borrows music for now. Nobody has played it yet: his numbers are first guesses from bots.
+- **Tian Lei in the orange gi, and the instant beam** (2026-11-22, ADR-150). *Changed:* Tian Lei, the
+  Last Ascendant, now fights in an orange gi over blue with black spiky hair that stands up gold when
+  he transforms: a homage to a famous fighter, under his own name. *Added:* **Instant Wave** in his
+  third form: two fingers to his brow, he appears right beside you, hands cupped at his hip, and fires
+  a beam point-blank (a red cue; roll or run off the line). Kept behind switches: his old tunic and two
+  more homage outfits (`?ascLook=a|g|v`), every beam out of cupped hands (`?ascBeamPose=cup`), the
+  great orb as a pale gathered sphere (`?ascOrb=c`).
 - **The letters come off where the blow lands** (2026-11-21, ADR-132; on by default, the owner's
   pick; `?chip=0` turns it off). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
   made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
@@ -39,8 +46,6 @@ Sixty-five pieces of work since 0.4.0:
   wood, then it is thrown back; a cut that fells the thing goes through. The chips fly out of the
   struck face. On by default (the owner tried it behind `?chip=a` first); `?chip=0` or the Lab's
   WORLD -> Bites turns it off.
-Sixty-two pieces of work since 0.4.0:
-Sixty-three pieces of work since 0.4.0:
 - **Cuts land with weight: the hit printed where it lands, the boss's body answers** (2026-11-22, ADR-149).
   *Added:* four new pieces on every cut that lands, each behind its own switch ("i want the hits to
   look realistic where it lands and show some kind of ascii animation to show the impact"). On a

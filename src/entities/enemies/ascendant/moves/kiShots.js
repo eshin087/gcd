@@ -1,3 +1,5 @@
+import { lookOf } from '../../duelist/lookSwitch.js';
+
 // Tian Lei's ki moves, the thrown and the called (MOVES.md: Spirit Shot, Scatter, Blast Dance, Golden Rain, Sun Wheel, Heaven's Volley, Thunder Gates, Lightning Lance, Storm Cage). THE SHOTS AGENT'S FILE.
 //
 // A move file is a function of the builders object `X` (ascendant/moves.js header: punch, kick, elbow,
@@ -21,6 +23,12 @@
 // His technique (the lead's call): a blast is a palm drawn back at the ribs, the lead hand held out
 // sighting, then the palm thrust; a bolt is the hand raised by the ear, then the arm flung out, two
 // fingers pointing down the line.
+//
+// (the fourth wave, the moves agent: under `?ascOrb=c`, the great gathered sphere, Heaven's Lantern is
+// gathered with BOTH ARMS STRAIGHT UP, the palms open to the sky: RAISE_UP below; read once as the
+// moves are built. The orb's look itself is fx.js's, read live.)
+const ORB_UP = lookOf('ascOrb', 'a') === 'c';
+
 export function shotMoves(X) {
   const { TELL: { N, B, R }, punch, kick, strikeKeys, F, TUNING } = X;
   const T = TUNING.shots;
@@ -94,6 +102,10 @@ export function shotMoves(X) {
   const TUCK = { rF: [-0.12, 0.08, -0.05], lF: [0.12, 0.12, 0.05], rK: [-0.2, 0.4, 1], lK: [0.2, 0.4, 1], flat: 0.2 };
   const RAISE = { yaw: 0, bY: -0.04, pitch: -0.14, spX: -0.1, hdX: -0.4, rH: [-0.14, 0.62, 0.12], lH: [0.14, 0.62, 0.12], rP: [-0.6, 0.6, -0.2], lP: [0.6, 0.6, -0.2], ...TUCK };
   const RAISE2 = { ...RAISE, pitch: -0.2, hdX: -0.5, rH: [-0.2, 0.66, 0.06], lH: [0.2, 0.66, 0.06] };
+  // (?ascOrb=c) both arms straight up over his head, a little apart, the palms to the sky, the chest
+  // opened back, the face up to the sphere
+  const RAISE_UP = { ...RAISE, pitch: -0.18, spX: -0.14, hdX: -0.55, rH: [0.04, 0.56, 0.02], lH: [-0.04, 0.56, 0.02], rP: [-0.9, 0.2, 0.1], lP: [0.9, 0.2, 0.1] };
+  const RAISE_UP2 = { ...RAISE_UP, pitch: -0.22, hdX: -0.62, rH: [0.03, 0.58, 0.0], lH: [-0.03, 0.58, 0.0] };
   const THROW = { yaw: 0, bY: -0.3, pitch: 0.36, spX: 0.18, hdX: 0.12, rH: [0.12, -0.12, 0.5], lH: [-0.12, -0.12, 0.5], rP: [-0.7, -0.2, -0.3], lP: [0.7, -0.2, -0.3], ...TUCK };
   const LAND = { yaw: 0, bY: -0.42, pitch: 0.3, spX: 0.12, hdX: 0.2, rH: [0.16, -0.18, 0.34], lH: [-0.16, -0.18, 0.34], rP: [-0.8, -0.5, -0.3], lP: [0.8, -0.5, -0.3], ...LOW };
   /** THE PUSH: both palms thrust out and held against the orb (his clip through the lock at range). */
@@ -215,7 +227,7 @@ export function shotMoves(X) {
         cast: { kind: 'lantern', selfCue: true }, part: 'palms', close: 0, track: 0.6, air: true, hazard: true,
         // (up through the first third of the gather, held there; down to the floor through the active frames)
         lift: [[0, 0], [0.32, LA.lift], [1.0, LA.lift], [1.1, LA.lift], [2.0, 0]],
-        keys: [[0.18, F({ ...BOTH.coil })], [0.5, F(RAISE)], [0.9, F(RAISE2)], [1.0, { ...F(THROW), e: 'i' }], [1.6, F(THROW)], [2.0, F(LAND)]],
+        keys: [[0.18, F({ ...BOTH.coil })], [0.5, F(ORB_UP ? RAISE_UP : RAISE)], [0.9, F(ORB_UP ? RAISE_UP2 : RAISE2)], [1.0, { ...F(THROW), e: 'i' }], [1.6, F(THROW)], [2.0, F(LAND)]],
       }],
     },
     /** Raining Suns (forms 2 - 3): he leaps 3 m and hangs, pouring sixteen small blasts down at the hero

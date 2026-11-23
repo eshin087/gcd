@@ -3759,7 +3759,7 @@ ANK, TAU }`. The builders (each returns one beat, its keys a coil, the strike an
 realiser per form, `FORM_POSES`; ADR-126's `completeBeat`). His beat fields besides the engine's:
 `part` (fistR, fistL, footR, footL, kneeR, kneeL, elbowR, elbowL, palms, shoulder, feet), `blink` (below),
 `ki`, `terrain`, `burst` (his aura's ring: `fx.auraBurst`), `quake` (`{ from, to, speed, damage }` →
-`terrain.quake` at the impact), `beam: { kind, side }` (kiBeam.js), `bolt`-kind beats (`ki: 'bolt'`),
+`terrain.quake` at the impact), `beam: { kind, side, cup }` (kiBeam.js; `cup` (ADR-150): the charge, the sighting thread and the beam's origin at `palms`, the light between them `fx.cupCharge(x, y, z, u, dt, form)`; every beam under `?ascBeamPose=cup`, read once in `moves/kiBeam.js` as `BEAM_POSE`, and always Instant Wave's: kind `instant`, a beam beat out of a signed blink to the hero's side, `blink: { at, r, sign, signAt }`, the charge from the arrival), `bolt`-kind beats (`ki: 'bolt'`),
 `dive` (the volley's landing, kiShots.js); `sweep`, `launch` and `rush` are labels no code reads (a test
 reads `sweep`). **The blink** (`beatMotion`, once at u 0.1 of the windup; then a routed beat's motion):
 `{ behind: m }` (behind the hero by his facing, else to one side, then the other), `{ land: true, side }`

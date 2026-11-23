@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-22',
+        title: 'Tian Lei in the orange gi, and the instant beam',
+        notes: [
+          'Tian Lei now fights in an orange gi with spiky black hair that turns gold when he transforms.',
+          'In his third form he can touch two fingers to his brow, appear right beside you and fire a beam point-blank. Watch for the red flash and roll out of the line.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: 'Cuts land with weight: the hit printed where it lands, the boss\'s body answers',
         notes: [
           'When your cut lands on a human boss, the hit prints itself into his letters for a moment: a slit that opens for a cut, rings round a thrust, a star for the slam.',
