@@ -86,7 +86,7 @@ export const CITY = Object.freeze({
   tower: Object.freeze({ base: 14, top: 4.5, r: 4.5, fallT: 1.6, blocks: 5 }),
   front: Object.freeze({ hp: 6 }),
   // the light: neon blobs a frame (x quality; LOW = QUALITY.LOW 0.5 gets at most `cap`), the rain
-  neon: Object.freeze({ cap: 48, max: 150, size: 0.42, heat: 0.5, screenHeat: 0.62, step: 0.62 }),
+  neon: Object.freeze({ cap: 64, max: 300, size: 0.42, heat: 0.5, screenHeat: 0.62, step: 0.62 }),
   rain: Object.freeze({ rate: 110, life: 0.55 }),
   phase2: Object.freeze({ static: 0.7 }), // s of static on the screens before they stand crimson
   lights: Object.freeze({ intensity: 1.1, radius: 9 }),
@@ -103,21 +103,21 @@ export const cityOption = () => {
 const LOOKS = {
   a: { // Neon Rain: night, rain, wet dark asphalt, pale neon
     sky: { moonColor: [0.32, 0.36, 0.52], moonDir: [-0.3, 0.85, 0.42], ambient: [0.055, 0.06, 0.085], fogColor: [0.008, 0.01, 0.018], fogNear: 30, fogFar: 72 },
-    asphalt: [0.055, 0.058, 0.068], walk: [0.1, 0.105, 0.115], paint: [0.36, 0.34, 0.27], white: [0.42, 0.42, 0.44], wet: 0.25,
+    asphalt: [0.04, 0.042, 0.05], walk: [0.08, 0.084, 0.094], paint: [0.36, 0.34, 0.27], white: [0.42, 0.42, 0.44], wet: 0.25,
     concrete: [0.09, 0.095, 0.11], glass: [0.035, 0.045, 0.07], lit: [[0.32, 0.36, 0.42], [0.42, 0.34, 0.2]], litShare: 0.28,
-    rain: true, beams: false, neonK: 1, phaseDark: [1, 0.85, 0.45],
+    rain: true, beams: false, neonK: 1, phaseDark: [1, 0.85, 0.45], floorLook: { gain: 1.15, lumScale: 1.6, edge: 0.18, inkFloor: 0.02, topGlyphs: ['.   ', '. . ', '.:. ', ':.:.', ':;:.', ';=;:'] },
   },
   b: { // Golden Hour: his perfect city at dusk, warm and clean (before he ruins it)
     sky: { moonColor: [1.05, 0.68, 0.38], moonDir: [-0.85, 0.42, 0.3], ambient: [0.13, 0.09, 0.07], fogColor: [0.05, 0.03, 0.025], fogNear: 34, fogFar: 80 },
     asphalt: [0.085, 0.08, 0.08], walk: [0.17, 0.155, 0.14], paint: [0.48, 0.42, 0.24], white: [0.5, 0.48, 0.44],
     wet: 0, concrete: [0.17, 0.15, 0.13], glass: [0.09, 0.08, 0.08], lit: [[0.5, 0.36, 0.2], [0.4, 0.3, 0.22]], litShare: 0.12,
-    rain: false, beams: false, neonK: 0.55, phaseDark: [1, 0.8, 0.5],
+    rain: false, beams: false, neonK: 0.55, phaseDark: [1, 0.8, 0.5], floorLook: { gain: 1.4, lumScale: 1.9, edge: 0.22, inkFloor: 0.03, topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'] },
   },
   c: { // Lockdown: red emergency light, search beams
     sky: { moonColor: [0.42, 0.13, 0.1], moonDir: [0.2, 0.8, 0.5], ambient: [0.06, 0.025, 0.025], fogColor: [0.016, 0.004, 0.004], fogNear: 28, fogFar: 64 },
     asphalt: [0.05, 0.045, 0.05], walk: [0.09, 0.08, 0.085], paint: [0.34, 0.2, 0.12], white: [0.36, 0.32, 0.32],
     wet: 0.12, concrete: [0.085, 0.075, 0.08], glass: [0.04, 0.025, 0.03], lit: [[0.38, 0.1, 0.06], [0.3, 0.2, 0.18]], litShare: 0.18,
-    rain: false, beams: true, neonK: 0.7, phaseDark: [1, 0.85, 0.5],
+    rain: false, beams: true, neonK: 0.7, phaseDark: [1, 0.85, 0.5], floorLook: { gain: 1.15, lumScale: 1.6, edge: 0.18, inkFloor: 0.02, topGlyphs: ['.   ', '. . ', '.:. ', ':.:.', ':;:.', ';=;:'] },
   },
 };
 
@@ -553,7 +553,7 @@ function buildPlaza(U, colliders) {
   }
 
   // ---- the screen pylons, his face on each (the ambience draws the face)
-  for (const [x, z] of [[-11, -14], [11, -14], [-17.5, 7.5], [17.5, 7.5]]) {
+  for (const [x, z] of [[-8.2, -12.4], [8.2, -12.4], [-17.5, 7.5], [17.5, 7.5]]) {
     const ry = Math.atan2(-x, -z) + Math.PI; // its face (+z) toward the plaza
     const face = Math.atan2(-x, -z);
     const g = buildScreen(rng, x, z, face);
@@ -652,7 +652,8 @@ function buildPlaza(U, colliders) {
   add(staticGeos, stoneMat, 'skyline');
   add(propGeos, stoneMat, 'props');
   meshes.push(fronts.finish(stoneMat, 'blockFronts'));
-  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, gain: 1.7, lumScale: 2.1, edge: 0.25, inkFloor: 0.03, viewPitch: CONFIG.camera.pitch });
+  // (wet dark tarmac must stay calm under the fight: sparse dim strokes, the paint the brightest of it)
+  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, ...L.floorLook, viewPitch: CONFIG.camera.pitch });
   const slabMesh = add(slabGeos, slabMat, 'paving');
   group.add(...meshes);
   markCaster(group);
@@ -755,7 +756,7 @@ function makeCity({ L, opt, neon, screens, cars }) {
 
   /** A screen's face this frame: the fill (his figure left dark), `kind` steel / void, a budget of blobs. */
   const face = (F, e, kind, heat, n, noise) => {
-    const cols = 4, rows = Math.max(4, Math.min(10, Math.round(n / cols)));
+    const cols = n >= 40 ? 5 : 4, rows = Math.max(4, Math.min(11, Math.round(n / cols)));
     let spent = 0;
     for (let j = 0; j < rows && spent < n; j++) {
       for (let i = 0; i < cols && spent < n; i++) {
