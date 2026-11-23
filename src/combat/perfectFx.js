@@ -57,8 +57,9 @@ export const PERFECT_GLYPHS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
  *             crossing; ease [in, out] shares of dur the camera eases over, back the share the slow
  *             motion eases back over); today { slowmo 0.35, dur 0.36, zoom -2.5, weight 0.25 }
  *   flash     the white frame flash (today 0.55); dim / dimHold: the world dims (exposure) instead
- *   clash     the glyph clash (PlayerFx.parry -> clashBurst): power x, its rings, its cross of glyph
- *             strokes (false: the mark draws the cross)
+ *   clash     the glyph clash (PlayerFx.parry -> clashBurst): power x (0.4 is its least), its rings,
+ *             its cross of glyph strokes (false: the mark draws the cross), its pooled light, its
+ *             falling embers (the mark carries the moment: lines, not light)
  *   mark      the fire-field mark: hold (real s a frame), size (x the lengths), the lengths (m at the
  *             crossing), echo (rings that follow the first), cross (frames the cross stays)
  * cinema only:
@@ -74,8 +75,10 @@ export const PERFECT_GLYPHS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
  *             `beat` (flow.cinematic, the camera in) instead: a long hitstop min-merges with the
  *             freeze of the next landed cut into a long freeze
  *   pulse     s the cool grade holds (today the slow motion's 0.6)
- *   ghost     the afterimage: stand (real s it stands still, sharp), tear (real s over which it tears,
- *             from the side he left toward the other), speed / life of the torn letters
+ *   ghost     the afterimage: stand (real s it stands still), tear (real s over which it tears, from
+ *             the side he left toward the other), speed / life of the torn letters, alpha the
+ *             standing figure's (a still figure re-drawn every frame reads brighter than today's
+ *             fading one)
  *   line      the clean line from where he was to where he is (fire field): hold, frames, min (m:
  *             when he did not move, the line runs this far the way he left)
  *   arrive    the arrival mark round him where he is (cinema): hold, rings (m), lift (m: the ring's
@@ -94,14 +97,14 @@ export const PERFECT_FEEL = deepFreeze({
       flash: 0.14,
       dim: 0,
       dimHold: 0,
-      clash: { power: 0.75, ring: 0, cross: false },
+      clash: { power: 0.4, ring: 0, cross: false, light: false, embers: false },
       mark: { hold: 0.04, size: 1, len0: 0.2, len1: 0.42, r: [0.3, 0.42, 0.52], echo: 0, cross: 2 },
     },
     dodge: {
       slow: { scale: 0.35, time: 0.36 },
       beat: null,
       pulse: 0.36,
-      ghost: { stand: 0.1, tear: 0.07, speed: [4, 10], life: [0.07, 0.16], dim: 0.8 },
+      ghost: { stand: 0.1, tear: 0.07, speed: [4, 10], life: [0.07, 0.16], alpha: 0.55 },
       line: { hold: 0.035, frames: 4, min: 0.9 },
       arrive: null,
       blink: false,
@@ -113,7 +116,7 @@ export const PERFECT_FEEL = deepFreeze({
       short: { stop: 0.1, shake: 0.32, punch: 2.6, beat: { slowmo: 0.55, dur: 0.16, zoom: -2.0, weight: 0.2 }, dim: 0.16, dimHold: 0.08 },
       gap: 0.9,
       flash: 0,
-      clash: { power: 1, ring: 0, cross: false },
+      clash: { power: 0.6, ring: 0, cross: false, light: false, embers: true },
       mark: { hold: 0.065, size: 1.4, len0: 0.24, len1: 0.6, r: [0.34, 0.5, 0.66, 0.8], echo: 1, cross: 4 },
       markShort: { hold: 0.045, size: 1.15, len0: 0.22, len1: 0.5, r: [0.32, 0.46, 0.58], echo: 0, cross: 2 },
       echoTier: 3,
@@ -122,7 +125,7 @@ export const PERFECT_FEEL = deepFreeze({
       slow: null,
       beat: { slowmo: 0.25, dur: 0.85, zoom: -3.4, weight: 0.3, ease: [0.3, 0.35], back: 0.3 },
       pulse: 0.8,
-      ghost: { stand: 0.3, tear: 0.12, speed: [2.5, 7], life: [0.12, 0.26], dim: 0.9 },
+      ghost: { stand: 0.3, tear: 0.12, speed: [2.5, 7], life: [0.12, 0.26], alpha: 0.6 },
       line: { hold: 0.07, frames: 5, min: 0.9 },
       arrive: { hold: 0.07, rings: [0.5, 0.68, 0.84], lift: 0.35 },
       blink: false,
@@ -598,6 +601,7 @@ export function perfectGhost(game, pos, n, dx, dy, dz, G, col, hi, colEnd, size)
     ghost.colEnd = colEnd;
     ghost.size = fin(size) ? size : 0.16;
     ghost.alive = true;
+    ghostDeadline = -1;
     PERFECT_LAST.ghost = m;
     PERFECT_LAST.tear = 0;
     ghostTick(game, fxStep(game, 1 / 60));
@@ -607,6 +611,7 @@ export function perfectGhost(game, pos, n, dx, dy, dz, G, col, hi, colEnd, size)
   }
 }
 
+let ghostDeadline = -1;
 const GP = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.02, size: 0.16, sizeEnd: 0.16, glyph: '0', color: null, colorEnd: null, alpha: 0.9, alphaEnd: 0.9, drag: 0, stretch: 1 };
 function ghostTick(game, d) {
   const add = game.fx?.add;
@@ -615,7 +620,11 @@ function ghostTick(game, d) {
     return;
   }
   const g = ghost, G = g.G, u = (g.t - g.stand) / g.tear;
-  const sp = G.speed, lf = G.life, life = Math.max(0.012, d * 1.5);
+  const sp = G.speed, lf = G.life;
+  // (one standing copy alive at a time: a particle lives at least 0.01 s, longer than a step of the
+  // cinema beat's slow fx time, so a copy is only drawn once the last one is gone)
+  const fresh = fxNow >= ghostDeadline, life = Math.max(0.01, d * 1.5);
+  if (fresh) ghostDeadline = fxNow - d + life;
   let left = 0;
   for (let i = 0; i < g.n; i++) {
     if (g.done[i]) continue;
@@ -645,12 +654,13 @@ function ghostTick(game, d) {
       continue;
     }
     left++;
+    if (!fresh) continue;
     // standing: one still copy for this frame
     GP.vx = GP.vy = GP.vz = 0;
     GP.life = life;
     GP.sizeEnd = g.size;
     GP.color = GP.colorEnd = i % 11 === 0 ? g.hi : g.col;
-    GP.alpha = GP.alphaEnd = G.dim ?? 0.85;
+    GP.alpha = GP.alphaEnd = G.alpha ?? 0.6;
     GP.drag = 0;
     GP.stretch = 1;
     add.spawn(GP);
@@ -668,11 +678,11 @@ export function perfectUpdate(game, dt, realDt) {
     const d = fxStep(game, fin(dt) ? dt : 0);
     const r = fin(realDt) ? realDt : d;
     if (!(r > 0) || !(d > 0)) return; // (a pause: nothing ages)
+    fxNow += d;
     if (ghost.alive) {
       ghost.t += r;
       ghostTick(game, d);
     }
-    fxNow += d;
     let any = false;
     for (const S of marks) {
       if (!S.alive) continue;

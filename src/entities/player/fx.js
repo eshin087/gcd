@@ -182,6 +182,7 @@ const RING = { white: [1.5, 1.55, 1.75], warm: [1.6, 1.3, 0.8], gold: [2.0, 1.45
 
 // (the characters an afterimage is made of: fine digits, as the wyrm is printed)
 const GHOST_DIGITS = '0123456789';
+const GHOST_STAND = [0.3, 0.5, 0.95]; // the sharp / cinema afterimage standing still: dimmer than COL.ghostDim
 const GHOST_CELL = 0.13; // m: an afterimage's character cell (about the cell his coat is printed in)
 
 export class PlayerFx {
@@ -713,7 +714,7 @@ export class PlayerFx {
     // no rings or cross of glyphs, and the mark printed in the letter grid at the crossing
     const PF = o?.perfect && !o?.light ? o?.feel?.F : null;
     if (PF) {
-      clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power, spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross });
+      clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power, spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
       perfectParryMark(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, mode: o.feel.mode, beat: o.feel.beat, streak: o.feel.streak });
       return;
     }
@@ -1041,7 +1042,7 @@ export class PlayerFx {
         color: i % 11 === 0 ? COL.ghost : COL.ghostDim, colorEnd: COL.ghostEnd, alpha: 0.9, alphaEnd: 0, drag: 1.2, flicker: 0.3,
       });
     }
-    if (GP && nG) perfectGhost(this.game, GP, nG, dx, 0, dz, feel.ghost, COL.ghostDim, COL.ghost, COL.ghostEnd, GHOST_CELL * 1.25);
+    if (GP && nG) perfectGhost(this.game, GP, nG, dx, 0, dz, feel.ghost, GHOST_STAND, COL.ghostDim, COL.ghostEnd, GHOST_CELL * 1.25);
   }
 
   /**
