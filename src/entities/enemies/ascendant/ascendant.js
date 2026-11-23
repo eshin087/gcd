@@ -117,6 +117,11 @@ export const ASC_KIT = Object.freeze({
   blade: Object.freeze({ guard: GEAR.FIST?.guard ?? -0.05, tip: GEAR.FIST?.tip ?? 0.1 }),
   scale: TUNING.scale,
   dress: (d, dt) => LOOK.dressAscendant?.(d, dt),
+  // his ink-line letters follow his size on screen as the hero's do (ARCHITECTURE "The bosses'
+  // letters"; `?ascLetters=0` the fixed cell he shipped with: read live, ADR-155)
+  get letters() {
+    return LOOK.ascLettersOn?.() ?? false;
+  },
 });
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();

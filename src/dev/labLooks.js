@@ -33,8 +33,10 @@ export const LOOK_SWITCHES = Object.freeze([
   //
   //
   // --- ring: Tian Lei's body (his outfit, his hair by form)
-  ['ascLook', ['a', 'c', 'd', 'h', 'g', 'v'], 'a', 'h', true, ['ring'], 'Tian Lei\'s body: a tunic, c monk, d = a in the dragon look; homages h orange gi, g purple gi, v blue suit (a reload)'],
-  ['ascLift', ['0', 'a'], 'a', 'a', true, ['ring'], 'Tian Lei\'s figure lifted off the floor: 0 as the body shipped (a reload)'],
+  ['ascLook', ['a', 'c', 'd', 'h', 'g', 'v', 'e', 'r', 'w'], 'a', 'e', true, ['ring'], 'Tian Lei\'s body: a tunic, c monk, d = a in the dragon look; homages h orange gi, g purple gi, v blue suit; the gi with wraps e ember, r crimson, w bone (a reload)'],
+  ['ascLetters', ['0', 'a'], '0', 'a', false, ['ring'], 'Tian Lei\'s letters: 0 the bosses\' fine cell, a they follow his size as the hero\'s do'],
+  ['ascHair', ['0', 'a', 'b'], '0', 'b', true, ['ring'], 'Tian Lei\'s gold hair (forms 2 - 3): 0 the tall crown, a a short crown, b his own hair risen (a reload)'],
+  ['ascLift', ['0', 'a', 'b'], 'a', 'b', true, ['ring'], 'Tian Lei\'s print: 0 as the body shipped, a lifted off the floor, b the hero\'s quieter print (a reload)'],
   //
   // --- ring: Tian Lei's effects (the aura, the beam, the blasts, the transformation)
   ['ascAura', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Tian Lei\'s aura (forms 2 and 3)'],

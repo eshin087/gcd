@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-23',
+        title: 'Tian Lei drawn like the hero, with shorter gold hair and a new gi',
+        notes: [
+          'Tian Lei is drawn in the same size of letters as you are, and in darker, quieter letters: on a large screen he no longer looks like a detailed 3D model beside you.',
+          'His gold hair in his second and third forms is his own spiky hair standing up, not a tall crown.',
+          'He wears a burnt-red gi with black, and cloth wraps on his arms and legs.',
+        ],
+      },
+      {
         date: '2026-11-22',
         title: "The grove's bamboo falls to every stroke",
         notes: [
