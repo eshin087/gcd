@@ -1,0 +1,50 @@
+{
+  "cue-blue": [
+    "cand/cue-blue/01-metal-ding-4.wav",
+    "cand/cue-blue/02-bing.wav"
+  ],
+  "cue-red": [
+    "cand/cue-red/01-log-drum-boom.wav",
+    "cand/cue-red/02-bong-low.wav"
+  ],
+  "time-blue": [
+    "cand/time-blue/01-clink-3.wav",
+    "cand/time-blue/02-clink-2.wav"
+  ],
+  "time-red": [
+    "cand/time-red/01-log-drum-short.wav",
+    "cand/time-red/02-punch-heavy-2.wav"
+  ],
+  "sword-light": [
+    "cand/sword-light/01-katana-swing-a.wav",
+    "cand/sword-light/02-katana-swing-b.wav"
+  ],
+  "sword-heavy": [
+    "cand/sword-heavy/01-axe-swing-b.wav",
+    "cand/sword-heavy/02-axe-swing-a.wav"
+  ],
+  "sword-thrust": [
+    "cand/sword-thrust/01-bamboo-12.wav",
+    "cand/sword-thrust/02-tube-whoosh-1.wav"
+  ],
+  "sword-draw": [
+    "cand/sword-draw/01-katana-draw-b.wav",
+    "cand/sword-draw/02-katana-draw-a.wav"
+  ],
+  "fist-light": [
+    "cand/fist-light/01-rpg-swing.wav",
+    "cand/fist-light/02-swish-4.wav"
+  ],
+  "fist-heavy": [
+    "cand/fist-heavy/01-bamboo-36.wav",
+    "cand/fist-heavy/02-bamboo-35b.wav"
+  ],
+  "beast-claw": [
+    "cand/beast-claw/01-animal-melee.wav",
+    "cand/beast-claw/02-bamboo-36-low.wav"
+  ],
+  "beast-tail": [
+    "cand/beast-tail/01-megaswosh2-slow.wav",
+    "cand/beast-tail/02-dragon-flap.wav"
+  ]
+}
