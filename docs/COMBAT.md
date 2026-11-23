@@ -2317,14 +2317,15 @@ A car broken burns 0.9 s (told and cued as a falling piece), then explodes: the 
 crash the hero caused, a parried throw's halves). Two bangs per 0.5 s at most.
 
 ### The numbers measured (`city.mjs`, 2026-11-23)
-PACE (the steady defender, three seeds x 120 s): P1 44 - 51 cues a minute (mean 48.1), P2 59 - 62 (61.2),
-P3 63.5 - 64.2 (63.9: x1.04 of P2 in the mean, x1.03 - 1.07 per seed); longest gap 4.05 / 3.73 / 3.35 s;
-0 conflicts; a dodge in 18 / 36 / 43 % of the cues. Phase 3 was slower than phase 2 at first (P3 / P2
+PACE (the steady defender, three seeds x 120 s; after the PR review's fixes and phase 1's rest between
+chains at 0.4 - 0.7 s): P1 46.5 - 50.5 cues a minute (mean 49.1), P2 57.3 - 61.1 (59.6), P3 62.1 - 65.1
+(63.1: x1.06 of P2 in the mean); longest gap 3.78 / 3.37 / 2.92 s; 0 conflicts; a dodge in 21 / 40 / 41 %
+of the cues. Phase 3 was slower than phase 2 at first (P3 / P2
 x0.90 in the mean, under the meter's floor): its long eye-beam moves outweighed its strings. Phase 3 now
 leans on Blink of an Eye and Meet and Greet (weights 1.8, 1.6), The Stare and Red Glare are rarer there
 (0.45, 0.5), Crossed Glare 0.8; recoveries x0.78; the director's density 1.9; chains of up to 7 with
 rests of 0.12 - 0.28 s; idle gaps 0.03 - 0.1 s.
-WIN (the fencing bot in god mode): 156 - 183 s on three seeds (the plan asked 150 - 210). The bar was sized
+WIN (the fencing bot in god mode): 157 - 164 s on three seeds (the plan asked 150 - 210; 156 - 183 s before the review fixes). The bar was sized
 for it: 3400 hp gave 40 - 46 s (a crash is a long opening), 7000 / 700 posture 81 s.
 
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)

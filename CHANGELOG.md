@@ -22,7 +22,9 @@ Seventy-five pieces of work since 0.4.0:
   was first built. *Changed (ADR-166):* he is printed like the hero: his letters follow his size on screen
   as yours do (fewer, bigger letters from 1080p up), a quieter print, and a smaller cape (two thirds of its
   length, past his knees); `?halLetters=0`, `?halPrint=0|b`, `?halCapeSize=0|a|c` the other options. *Fixed:* a blow at
-  a raised piece's own height reaches it (a tower's top, a sign hung on a wall).
+  a raised piece's own height reaches it (a tower's top, a sign hung on a wall), and a blow down on the street no
+  longer bites one metres above it; a rest or a retry while a broken car burns no longer leaves it to blow up
+  after, or unable to blow up again; See the World's slam lands (it was dodged by the get-up's grace).
 - **Attack sounds: cues only for blue and red, every blow sounds like its weapon** (2026-11-22, ADR-165). *Changed:* a normal (white) attack makes no cue sound any more:
   no tick as its windup starts and no ping before it lands (the white glint stays). A **blue** attack
   rings a sword left ringing as its windup starts; a **red** (or black) one opens on a log drum and its

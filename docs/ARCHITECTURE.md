@@ -2850,7 +2850,7 @@ stones is a breakable 'vent' and the vent flares as it breaks.
   `o = { kind, by, dx, dz, y, ya, yb, src, only, falloff, brush, spare, incidental, down }`: kind = `BLOW.CUT / BLUNT /
   BLAST / FIRE`; by = 'player', 'boss' or 'world'; dx, dz = the blow's way (a piece falls along it;
   default: out from the disc's centre, or along the segment); y = its height (a blow above a low piece
-  passes over); ya, yb = a `sweep`'s heights at its two ends (a blade's hilt and point: a piece is
+  passes over, and one below a raised piece, `y + r < y0`, passes under it); ya, yb = a `sweep`'s heights at its two ends (a blade's hilt and point: a piece is
   struck at the blade's own height there: its bite, its chips, its nick, a felled tree's stump; without
   them, at `y`); src = one id per swing from `swing()` (a piece takes a blow once per id; without it,
   once per `BREAK.rehit` 0.18 s); only = just that material ('wood': the wings' wind); falloff 0..1 =
@@ -2861,8 +2861,9 @@ stones is a breakable 'vent' and the vent flares as it breaks.
   spells and falling pieces reach it.
 - `reserve(piece, sec = 1)`: incidental blows leave it alone for `sec` s (a terrain move's chosen piece).
 - `stop(ax, az, bx, bz, r, power, o)` → the piece or null: a projectile's step; the first cover on it takes
-  `power` and is returned (the caller ends its projectile). `coverAt(ax, az, bx, bz, r)` → the first cover
-  on a segment, no damage (`coverT` 0..1: where).
+  `power` and is returned (the caller ends its projectile). `coverAt(ax, az, bx, bz, r, y?)` → the first cover
+  on a segment, no damage (`coverT` 0..1: where; `y` the shot's height: a raised piece above `y + r` is not
+  in its way; `stop` passes `o.y`).
 - `ignite(x, z, r, k)` → wood in the disc catches (and logs lying there), within the cap on fire that
   lands (`BREAK.light`: at most `perSec` 0.12 new fires a second banking `bank` 3, and only while fewer
   than `maxBurning` 6 × the quality factor burn; past it the grass still burns and the wood is only
@@ -3132,8 +3133,11 @@ are heat in the fire field.
 - **A raised piece is struck at its real height.** `destructibles.js` skipped a piece when a blow passed
   over it with `o.y - r > h`: a piece standing on another (`y0` > 0: a tower's top, a shop sign hung on a
   front, the Skybreak Ring's butte tops) was missed by a blow at its own height. The bound is now
-  `y0 + h` (no lower bound: a blow on a base still reaches its top through `holds`), and the hit point is
-  clamped into `y0 .. y0 + h`. The world test `bite` strikes a raised piece inside its own height.
+  `y0 + h`, and the hit point is clamped into `y0 .. y0 + h`. The world test `bite` strikes a raised piece
+  inside its own height. A blow below it (`y + r < y0`) passes under it, in `strike`, `sweep` and `stop`
+  (the PR's review: the first build had no lower bound, and a blow down on the street bit a shop sign or the
+  statue's arm metres above it); a blow on a base still reaches its top through `holds` (`_hit`), and a
+  broken base still brings its top down (world test `city`).
 - **Explosions are the set's, polled.** The destruction system has no on-break callback and nothing in it
   explodes. `world/halcyonPlaza.js` (its `ambience`, which atmosphere.js runs every frame) watches each car:
   broken, it burns for `CITY.car.fuse` s (told and cued as a falling piece is, `combat:tell` /

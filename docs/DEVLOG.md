@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 79d: the PR review's three findings fixed (Halcyon Plaza)
+
+**What changed.** The Codex review of PR 97 (at 22b049b) found three real bugs; each got a failing test first:
+1. `halcyonPlaza.js` setPhase(1) returned early when the phase was already 1, so a reset in phase 1 (a rest, a
+   retry) kept a burning car's fuse: it blew up after the reset, and the fuse left `done` never lit again. The
+   fuses are now forgotten on every setPhase(1). Test: `city.mjs car` (a reset mid-fuse: no bang, the car whole,
+   its fuse idle; broken again, it goes up again).
+2. `halcyon/flight.js` See the World set the hero's get-up time before the slam, inside the get-up's i-frames:
+   the 30-damage slam came back DODGED. The slam lands first now; the 1.6 s control cap is kept. Test: `city.mjs
+   grab` (a mortal hero loses the slam's damage; control back within the cap).
+3. `destructibles.js` had no lower bound for a raised piece: a blow on the street bit a shop sign, the statue's
+   arm or a tower's top metres above it (its hit point clamped up). `strike`, `sweep` and `stop` (`coverAt`'s
+   new `y`) now skip a raised piece the blow passes under; a blow on a base still reaches its top through
+   `holds`, and a broken base still drops its top. Test: `world.mjs city`.
+
+**Why the fights moved.** The seeded fights moved with the fixes (the win 166 / 165 / 157 s -> 164 / 160 / 157;
+pace seed 7's phase 1 had a 4.65 s gap against the 4.6 s bound), so his phase-1 rest between chains came down a
+little (`chainRest` P1 0.45 - 0.75 -> 0.4 - 0.7 s): PACE 49.1 / 59.6 / 63.1, longest gaps 3.78 / 3.37 / 2.92 s.
+
+---
+
 ## 2026-11-23 — Session 79c: Halcyon printed like the hero, a smaller cape (ADR-166)
 
 **What changed.** The owner picked his look (halLook a, halCape 3, glare a, city a), then: "make his cape smaller,
