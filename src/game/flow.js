@@ -5,6 +5,7 @@ import { DEFENSE } from '../combat/rules.js';
 import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
+import { Arrival } from './arrival.js';
 
 // Game flow: owns game.state and every transition
 //   title → explore → bossIntro → boss → dead | victory   (+ paused from explore/bossIntro/boss)
@@ -87,6 +88,8 @@ export class GameFlow {
     this._ovZ = 0;
     this._ovLambda = 2;
     this._tmp = new THREE.Vector3();
+    /** the camera's opening shot as the player enters from the title (game/arrival.js; ?life=arrival) */
+    this.arrival = new Arrival(game, this);
 
     this.grade = new ScreenGrade(game);
     this.stats = new RunStats();
@@ -387,6 +390,7 @@ export class GameFlow {
     }
     if (this.restCooldown > 0) this.restCooldown -= rdt;
     this._updateCinematic(rdt);
+    this._try(() => this.arrival.update(rdt), 'arrival.update');
     if (this.slowmoHold > 0) this.slowmoHold -= rdt;
     else if (this.slowmo < 1) {
       this.slowmo = damp(this.slowmo, 1, 1.8, rdt);
@@ -508,6 +512,7 @@ export class GameFlow {
     this._ovW = 0;
     this._ovZ = 0;
     this._ovLambda = 1.3;
+    this.arrival.begin(); // (?life=arrival: the level shows itself first)
     // the key/click that dismissed the title must not also swing the sword this frame
     if (g.input) {
       g.input.enabled = false;
@@ -579,6 +584,7 @@ export class GameFlow {
 
   _enterBossIntro(callStart) {
     const g = this.game;
+    this.arrival.cancel();
     this._setState('bossIntro');
     this.introT = 0;
     g.hud?.prompt?.(null);
@@ -853,6 +859,7 @@ export class GameFlow {
   /** Player at the bonfire spawn, dragon asleep in its nest, scorch/FX cleared, HUD + flow reset. */
   _resetWorld() {
     const g = this.game;
+    this.arrival.cancel();
     const p = g.player;
     this._respawnPlayer();
     this._try(() => g.dragon?.reset?.(), 'dragon.reset');
@@ -926,6 +933,7 @@ export class GameFlow {
   /** Leave whatever screen we are on (title / pause / death / victory / a respawn fade) cleanly. */
   _debugPrelude() {
     const g = this.game;
+    this.arrival.cancel();
     if (g.state === 'paused') {
       this.pausedFrom = null;
       g.hud?.showPause?.(false);
