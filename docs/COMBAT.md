@@ -286,6 +286,20 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
 - After-the-fact feedback (PARRY / DEFLECT / DEFLECT ×N / GHOSTEP / EXECUTION / GUARD BROKEN
   call-outs, white/gold parry sparks, the clang that climbs with a deflect chain) is not a tell and
   stays.
+- **The living world steps back for the fight** (2026-11-23, ADR-163; `?life=`, off by default;
+  ARCHITECTURE.md "The living world"). While the boss is up (bossIntro, boss) `life.calm` eases from 1 to
+  `LIFE_TUNE.fightCalm` 0.4 (time constant 1.2 s; back up over 4 s after it), and every ambient rate is multiplied by it: fewer gust
+  fronts and streaks, the front's light band on the grass at calm × its brightness, less falling, the
+  creatures thinned to calm^1.5 (no bird returns to its perch in the fight, the Ring's hawk leaves), the
+  steps' dust at 0.5 + 0.5 × calm, the air's bed thinner; the weather starts no new spell and clears back
+  to the level's calm spell within 10 s; the Ring's dust devils and far lightning go as the boss wakes.
+  With the answer piece on, a red or black tell (not a bullet's) and a charge make the world **hold its
+  breath** until the blow lands (`life.hushFor`, 0.3 - 2.5 s, at most once per 2.5 s): the wind drops, no
+  new front is born, the creatures dim, the night's voices stop; normal and blue tells do nothing.
+  Ambient life never draws over the hero (what lies fades out under his feet, mist and streaks keep off
+  him) and keeps to each level's own dim hues; the reds it has are small and dim (the crater's cinders,
+  the obsidian's step glint) or clear once the fight starts (the Throne's breath goes with the weather's
+  spell, within its 10 s).
 
 ## Contract (summary — full signatures in ARCHITECTURE.md)
 - Attacker → defender: `defender.takeHit({ damage, from, knockback, knockdown, kind, burn, tell,

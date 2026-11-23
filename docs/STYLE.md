@@ -1035,6 +1035,8 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
 | `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair; `d` the Wanderer (added 2026-11-22 at the owner's ask, an option): a slighter man (drawn 7 % smaller) in a faded indigo robe over wide charcoal trousers, a long sand scarf with trailing tails, dark hair in a high tail | **d** |
 | `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
+| `?life=` | the living world (ADR-163; every level; read at load, the Lab's `life` row flips a piece live): `off`, `all`, or a comma list of `wind, litter, steps, weather, creatures, air, arrival, answer` | `off`: today's world, untouched | - | - | - | **off** for now (the owner picks from the films) |
+| `?lifeK=` | the living world's strength, 0.25 - 2 (rates and amplitudes; Lab: `life x` quiet 0.6, natural 1, strong 1.5) | 1 (as tuned) | - | - | - | 1 |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1244,7 +1246,11 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   (`landmarks.js` `buildGreatSword`, dulled) in the middle. A worn round of paving in the middle of packed
   earth (sector slabs in six rings), a stele, two stone lanterns, mossy boulders, a ruined pavilion (posts
   and a fallen thatch roof). Night: a cold low moon, pale green-grey fog; the default fireflies, mist and
-  leaves. `?grove=b` grey dawn fog, `c` first snow.
+  leaves (with the living world on, its layers draw them instead: fireflies that hang almost still, mist
+  that pools low and does not drift, single bamboo leaves straight down; "The living world" below).
+  `?grove=b` grey dawn fog, `c` first snow. The canes sway as the trees always have; while the living
+  world's wind piece is on they stand dead still (the grove has no wind of its own: only the air of a
+  blow, a roar's front or a burst, moves them).
 - **His figure** goes through the wyrm's art path (`toDragonLook` with `SHEATH_ART[look]`); his sword stays on
   today's material. Mourning White (a) is the recommended body: the black lacquer scabbard (`trim`) the
   darkest thing on him, its throat and butt cap pale (`facing`), the bare blade pale steel (`armor`, `bevel`).
@@ -1255,6 +1261,99 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   click, when the grove falls. A scabbard blow's trail is dull wood (`woodSweep`), never steel. The hanging
   cuts of phase 3 are lines of low heat on the ground, brightening toward their cut, then one white-hot line
   at waist height.
+
+### The living world (2026-11-23, ADR-163; `world/life/`, `world/hang.js`, `?life=`)
+One wind per level, and what lives in it: the grass and the trees lean and are swept by gust fronts,
+leaves (ash, paper, grit) fall and lie, footsteps answer the ground, slow weather, small creatures,
+banners and paper that hang in the wind. Behind `?life=` (off by default, the owner picks from films);
+ARCHITECTURE.md "The living world" has the contract and every number. One mood per level, slow changes:
+Cinderwood a night breeze in slow breaths and fronts you see cross the meadow; Ashfall dry and fitful;
+the Obsidian Throne nothing but a slow draw toward the star, which breathes; the Skybreak Ring a steady
+plateau wind, dust devils and far dry lightning before the fight; the Foxfire Terrace a breeze in sighs
+with real pauses; the Windless Grove holds its breath (no wind at all).
+
+**The rules this pass learned** (each from a film that did not read):
+- **At the game camera a thin stroke under about 0.3 m is one pixel of ink.** An ambient letter that must
+  be SEEN has body (`c e s v o ( ) < > = ~`) at 0.3 - 0.5 m, or it moves. A lying leaf is `c e ( ) v s`
+  0.36 - 0.44 m, never `, ' \``; a firefly is a 0.55 m `·` (0.2 m was one pixel); a moth 0.36 m.
+- **Wind is drawn by what it moves**, not by letters of its own: a gust front is a travelling BAND of
+  grass laid over (up to 0.9 of the blade) and drawn a shade lighter just behind its edge (the light on
+  the bent blades), with short runs of `~ = -` strokes riding its edge, turned to the wind's way on
+  screen. A front that does not read gets a stronger band, never more streaks. In the fight the band
+  steps back (its lift × calm): a light sweep across the floor must not compete with a tell.
+- **Dark on dark is invisible, pale on dark is a stray bright letter**: a creature on the night floor or
+  against the crowns is a dull mid tone (birds in the air moon-grey, the hawk a dusky brown a little
+  lighter than the floor), and its shape says what it is (a wingspan, a flap), not its colour.
+- **Nothing ambient covers the hero**: lying letters fade out under his feet (0.32 - 0.7 m), mist banks
+  clear round him (0.5 - 1.7 m), streaks, rain and dust devils keep off him, fireflies part from him.
+
+**The wind.** The grass (and anything with sway: the trees' crowns, the old bamboo) leans along the
+prevailing air in patches that travel downwind; a front lays the meadow over and lightens it as it
+passes, the crowns bend and stir crosswise as it reaches the tree wall. The streaks are the wind's only
+letters: runs of 2 - 4 strokes `~~=-` 0.8 - 1.0 m tall, dim and in the level's own hue (the ash's grey,
+the Ring's dust), most on the front's edge. The bonfire's smoke, its embers, the default mist, leaves and
+ash ride the same air; flames lean a little. Where there is little grass (Ashfall, the Ring) a front
+shows mostly in what it carries.
+
+**What falls and lies** (its own batch, one draw call): Cinderwood dark green and brown leaves `()ce`
+0.38 - 0.48 m off the canopy, thicker toward the clearing's rim, lying on the blades' tips in the meadow
+(the soft depth test half hides them among the blades) and on the flagstones; Ashfall's ashfall as
+before (`.,'\`` flakes) that lies as **flat strokes** `~ - = _` 0.34 - 0.44 m, turned along the screen's
+horizontal, drifting in the lee of stones with clear floor between (a field of round dots everywhere read
+as snow, or noise); the Throne a few ember-edged cinders `o c *` of the star; the Ring grit and seed
+(`o : c`, `v ( ~`) that tumbles in along the ground from upwind and piles against the kerb; the Terrace
+dry leaves and pale paper slips `= [ ]` round the charm posts; the Grove single bamboo leaves `/ \ ( )` that
+come straight down, turning, and lie as `( ) < >`. A front lifts what lies under it; a running hero kicks
+what is at his feet; a blow throws it.
+
+**Prints and the trodden grass.** A step on earth or ash leaves a print: a dim stretched `0` lying on the
+floor (earth 0.2 m, gone in 5 s; ash 0.3 m, darker than the ash, filling in over 14 s), turned to the way
+he walked. The obsidian answers with a dim red glint (`'`, `*` or a backtick, 0.26 m, 0.75 s), never dust. Grass is TRODDEN (the
+scorch map's blue): a run leaves a trail about 1.3 m wide where the blades lie flatter and darker (up to
+0.7 darker), standing up over 10 s; a narrower trail was lost among the blades. Puffs: earth small and
+low, sand a pale puff the wind carries off, ash a soft grey puff that hangs and sinks, stone a grit puff on
+a sprint only; a wet step a tiny splash.
+
+**The weather.** Mist banks: loose clusters of 36 - 46 letters `~ - =` 0.5 - 0.75 m, drifting as one with
+the air, in and out over seconds, over today's faint veil (thicker in the tree line than the clearing;
+the Terrace's round its foot; the Grove's pooled low and still). The drizzle: dim `|` streaks at the
+wind's slant. The ash's squall: a loose stream of 0.6 m HDR embers carried across the yard; the grey-out:
+more fine ash hanging, the fog pulled in and greyed. The Terrace's cloud: the moon dims to 0.75 and
+returns. The Grove's snow (`?grove=c` only): `* · .` 0.42 m straight down. **The Throne's breath**: every
+half minute or so the seal swells, a pulse of light runs out along the inlay and the cracks, a slow
+column of red motes rises over the seal and over the crater round the camera, and the crater's dark
+warms; then a long stillness (the first breath comes a few seconds after arriving). **The Ring before the
+fight**: dust devils, twisting 6 - 8 m funnels of 64 pale dust letters leaning downwind, crossing the
+badlands and never the ring; far dry lightning drawn by what it lights (no bolt: the far side of the sky,
+the ambient and the moon brighten for about 0.4 s, now and then twice), gone once the boss is up.
+
+**Creatures** (one letter each, re-drawn every frame). Fireflies, the one bright thing as before (a 0.55 m
+`·` that blinks; the Terrace's foxfire paler and bluer and keeping 7 m off; the Grove's hanging almost
+still). Small birds: a dark `,` perched on the crowns of the tree wall, drawn 3 m toward the camera so the
+crown does not swallow it; in the air `v` / `^` 0.62 m, moon-grey, beating slowly, up and out of the arena
+(never across the fight's ground). Ashfall's crows: `v` on the pillars, a dull grey sheen in the air. Moths
+`v` / `^` 0.36 m, pale and lit warm by the fire they circle. The Ring's hawk: `-v-` (a body and two wing
+letters, banked into its turn; `\` and `/` when it beats), circling high in frame until the fight, when it
+climbs away.
+
+**Cloth, paper and rope** (prop art with the `hang` option). A banner leans downwind about the bar it
+hangs from, more the stronger the air (it barely stirs in a breath, a gust takes it), and a ripple runs
+across it downwind; the ripple's slope turns the facets, so its letters change with the light and the
+ripple reads face on. Paper is lighter: it lifts in a sigh and falls still in the pause. A rope and its
+block swing as one. A felled, carried or thrown piece hangs still. The Ring's banners stream steadily, the
+Terrace's charm strips flutter, the crater's banners barely stir in its draw; nothing hangs in Ashfall,
+Cinderwood or the Grove.
+
+**Tried and cut.** The hawk's shadow on the floor (a dark letter on the dark floor never read; dropped).
+Dark grit on the obsidian (invisible: the star's cinders instead). Sparks orbiting the Throne's vents
+(they said nothing the vents' own motes and embers did not; `perVent` 0). Black birds and a pale hawk (lost,
+or a stray bright letter). The first pass at the subtle end: the front read as a slow lighter wash, a
+lying leaf as a speck, the Throne's "all" as today; the visibility pass made the band and its lift
+stronger, the streaks runs of strokes along the edge, the lying letters bodied, the leaves bigger, the
+mist banks letters of their own. Still faint after it (open): the obsidian glint, the Ring's far
+flicker, the moths, the ash's drifts against the paving's own strokes, the roar's answer at the game
+camera on Ashfall and in the Grove.
+
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved

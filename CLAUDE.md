@@ -46,7 +46,9 @@ follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact 
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
 turns them off (ADR-132). The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
-0 = the grove before; ADR-151).
+0 = the grove before; ADR-151). The living world (ADR-163): `?life=off|all|<pieces>` (a comma list of
+`wind, litter, steps, weather, creatures, air, arrival, answer`) and `?lifeK=0.25..2` its strength; default
+off for now (the owner picks from films; Lab: WORLD → the 'life' rows and the layers' buttons).
 The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no
 parameter draws the owner's picks, `?looks=old` the looks before that pass, one switch its option
 (Lab: LOOKS); the table is STYLE.md → "The look switches". In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
@@ -100,6 +102,16 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
     the sect gate, the bell (it only rings), the throne and its dais, the fallen star, the seal, and
     the whole training room).
   See also `docs/COMBAT.md` → "The world breaks".
+- **The world is alive, by one wind (ADR-163).** Anything new that drifts, falls, hangs, smokes or
+  sounds like air reads `game.world?.life?.wind` (`at(x, z, out)`, `dirX / dirZ / speed / level`; the
+  shaders `uWind` / `uWindFronts` through `WIND_GLSL`; cloth through `hangFrom`) instead of inventing its
+  own drift. A new layer follows THE CONTRACT in `src/world/life/life.js` (`docs/ARCHITECTURE.md` →
+  "The living world"): GPU objects only through `life.build`, on its first update with the piece on;
+  never `Math.random` (`life.rand`); nothing on screen and no uniform written with its piece off; no new
+  event. A new level gets a block in each `<layer>Tuning.js`; without one it gets a quiet default:
+  a 0.8 m/s breeze with no fronts, no weather, litter or creatures, the steps' fallback ground, the
+  answer's and the air's defaults, and an arrival shot that looks at the origin (give it a block). The
+  `life` suite walks the level registry.
 - **Combat must be readable.** Every enemy attack declares a tell type (`normal` / `blue` parry /
   `red` perfect-dodge) and a windup long enough to react to. See `docs/COMBAT.md`.
 - **Never freeze the frame.** Per-frame code must not throw; `main.js` isolates module errors, but
@@ -138,7 +150,9 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 src/core       config, input, camera rig, math, rng, events
 src/render     glyph atlases, shared shader lib, materials, particles, lights, frame pipeline
 src/world      ground, grass, forest/stones/bones/bonfire, landmarks (the big set pieces), scorch map,
-               atmosphere, colliders, destruction (destructibles, fire, scars, breakTuning)
+               atmosphere, colliders, destruction (destructibles, fire, scars, breakTuning),
+               life/ (the living world: life.js + a layer and its tuning each) and hang.js; with
+               audio/air.js (the air's sound) and game/arrival.js (the arrival shot)
 src/combat     shared combat rules: hit resolution, guard/parry/dodge, attack tells
 src/entities   player/ (gear/ = equipment slot items)  dragon/  enemies/duelist/ (the engine human
                bosses share)  enemies/ashDisciple/  enemies/starlessLord/  enemies/ascendant/  enemies/thousandFox/  (future: npcs/)
