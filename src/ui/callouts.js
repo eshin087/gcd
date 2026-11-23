@@ -12,9 +12,9 @@ import { streakK } from '../combat/streak.js';
 // GHOSTEP call-out counts ("GHOSTEP ×4", bigger with every one), and a flurry's cuts count up in
 // one place over its target ("×3").
 // With the streak counter on (the streak pass's 'counter', ui/streakCounter.js) the streak's number
-// lives beside the hero, so the words over his head keep their word and drop their count: GHOSTEP,
-// RIPOSTE and DEFLECT pop without "×N" (one number near the hero, not two). The flurry's cut counter
-// then ticks without popping again while its cuts come faster than its pop (the accelerating storm).
+// lives beside the hero, so GHOSTEP and RIPOSTE keep their word and drop their count (one streak
+// number near the hero, not two). DEFLECT ×N keeps its count: it counts the boss's string, not the streak.
+// The flurry's cut counter then ticks without popping again while its cuts come faster than its pop (the accelerating storm).
 
 const HEAD_UP = 3.0; // m above the player's feet (just over the name tag)
 const KINDS = {
@@ -185,7 +185,7 @@ export class Callouts {
     it.pop = Math.min(2, k.pop + 0.1 * (n - 2));
     it.jx = 0;
     it.head = true;
-    it.span.textContent = streakK('counter') > 0 ? k.text : `${k.text} ×${n}`;
+    it.span.textContent = `${k.text} ×${n}`;
     it.node.className = `ab-call on k-${k.cls}`;
     it.streak.style.display = 'none';
     this._start(it);

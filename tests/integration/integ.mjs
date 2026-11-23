@@ -1860,7 +1860,7 @@ async function scenarioStreakHud() {
     C.ghostep(4);
     C.riposte(5);
     C.chain(3);
-    assert(callText('ghostep') === 'GHOSTEP' && callText('riposte') === 'RIPOSTE' && callText('chain') === 'DEFLECT', `counter on: the words keep their word, the number is the counter's (${callText('ghostep')} / ${callText('riposte')} / ${callText('chain')})`);
+    assert(callText('ghostep') === 'GHOSTEP' && callText('riposte') === 'RIPOSTE' && callText('chain') === 'DEFLECT ×3', `counter on: GHOSTEP / RIPOSTE keep their word, the streak's number is the counter's; DEFLECT keeps its string's count (${callText('ghostep')} / ${callText('riposte')} / ${callText('chain')})`);
     // a flurry: the counter lets go of the hero and fades; its cut count ticks without a new pop
     p.debug.streak(4);
     frames(DT * 2);
