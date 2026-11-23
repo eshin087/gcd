@@ -145,9 +145,13 @@ export class BeamMoves {
           b._yaw = d.yaw;
         }
       } else if (b._fixed) d.yaw = b._yaw;
-      // the light gathering in the drawn-back palm
-      const p = d.tellPoint(bm.side === 'L' ? 'fistL' : 'fistR', this._v);
-      d.fx.beamCharge?.(p.x, p.y, p.z, clamp(u / 0.92, 0, 1), dt, form);
+      // (a beam out of THE SIGN (Instant Wave): nothing gathers, and no thread runs, before he has
+      // vanished and arrived: the charge's u runs from the arrival)
+      const K = b.def.blink, u0 = K?.sign ? fin(K.signAt, 0.5) + 0.02 : 0;
+      if (K?.sign && !b._blinked) return;
+      // the light gathering in the drawn-back palm (the cupped hands: between the palms)
+      const p = d.tellPoint(bm.cup ? 'palms' : bm.side === 'L' ? 'fistL' : 'fistR', this._v);
+      d.fx.beamCharge?.(p.x, p.y, p.z, clamp((u - u0) / (0.92 - u0), 0, 1), dt, form);
       if (great) {
         d.fx.transformGather?.(d.position.x, d.position.z, clamp(u, 0, 1), dt, form);
         this.game.world?.forest?.ambience?.dim?.(clamp(u * 1.15, 0, 1) * C.dim);
@@ -159,7 +163,7 @@ export class BeamMoves {
       }
       // the line he has fixed: a thread from the lead hand along it
       if (b._fixed) {
-        const h = d.tellPoint(bm.side === 'L' ? 'fistR' : 'fistL', this._w);
+        const h = d.tellPoint(bm.cup ? 'palms' : bm.side === 'L' ? 'fistR' : 'fistL', this._w);
         const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), L = this._lineLen(d.position.x, d.position.z, fx, fz, C.len, C.w, great);
         d.fx._drawing++;
         try {
@@ -194,6 +198,7 @@ export class BeamMoves {
     B.phase = 'lit';
     B.kind = bm.kind;
     B.side = bm.side;
+    B.cup = !!bm.cup;
     B.C = C;
     B.form = d.phase;
     B.act = a;
@@ -308,7 +313,7 @@ export class BeamMoves {
   /** The palm the beam leaves from, and its way (his facing), this frame. */
   _origin() {
     const d = this.d, B = this.B;
-    const p = d.tellPoint(B.side === 'L' ? 'fistL' : B.side === 'both' ? 'palms' : 'fistR', this._v);
+    const p = d.tellPoint(B.cup || B.side === 'both' ? 'palms' : B.side === 'L' ? 'fistL' : 'fistR', this._v);
     const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
     // (the palm a hand's breadth out along the line, never behind his root)
     const along = (p.x - d.position.x) * fx + (p.z - d.position.z) * fz;

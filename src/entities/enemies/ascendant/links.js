@@ -93,6 +93,8 @@ export const LINKS = {
   risingTide: AFTER_BEAM,
   tideSweep: AFTER_BEAM,
   twinTide: AFTER_BEAM,
+  // (the fourth wave: Instant Wave ends point blank beside where the hero was: the chase as a beam's)
+  instantWave: AFTER_BEAM,
   // (the great beam ends in the clash, his reel or the hero thrown 12 m: no link; Thunder Gates and
   // Blast Dance are strings in reach: as his melee)
   thunderGates: melee(),

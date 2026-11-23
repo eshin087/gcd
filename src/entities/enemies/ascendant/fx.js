@@ -41,9 +41,13 @@ import { drawBeam, drawBeamCharge, drawBeamSplash, drawBeamClash, drawSplit } fr
 //   ?ascBeam=a|b     the beam's body. a: a column (a white core on the grid, a gold body that swells
 //                    and boils along it); b: a braid (two strands of gold winding round a thinner
 //                    core, rings of light running down it).
-//   ?ascOrb=a|b      Heaven's Lantern's great orb (the gather, the flight, the push). a: a SUN, a round
+//   ?ascOrb=a|b|c    Heaven's Lantern's great orb (the gather, the flight, the push). a: a SUN, a round
 //                    ball of gold heat with a white heart and a few hot letters orbiting it; b: a
-//                    LANTERN, a ball with a bright rim and a darker heart that pulses, trailing motes.
+//                    LANTERN, a ball with a bright rim and a darker heart that pulses, trailing motes;
+//                    c (the fourth wave): the GREAT GATHERED SPHERE, pale blue-white (the field's steel
+//                    kind, motes of storm blue), drawn as large as its hit (T.lantern.radius), gathered
+//                    over both arms raised straight up with motes streaming up into it off the whole
+//                    ring (moves/kiShots.js: the arms' keys, read once at load). Same timings, answers.
 export const ASC_LOOKS = Object.freeze({ ascAura: 'a', ascBeam: 'a', ascOrb: 'a' });
 const look = (name) => lookOf(name, ASC_LOOKS[name] ?? 'a');
 
@@ -59,6 +63,8 @@ const STORM = [2.6, 3.1, 4.2], STORM_END = [0.3, 0.4, 0.8]; // the third form's 
 const PALE = [1.3, 1.3, 1.4], DUSTC = [0.32, 0.3, 0.27], DUST_END = [0.12, 0.11, 0.1], STONE = [0.42, 0.4, 0.38];
 // lights
 const L_GOLD = [1.0, 0.78, 0.36], L_STORM = [0.72, 0.84, 1.0], L_PALE = [0.9, 0.88, 0.8];
+// the great gathered sphere (?ascOrb=c): pale blue-white motes, a cool light
+const ORB_C = [2.4, 2.9, 4.0], ORB_C_END = [0.35, 0.5, 0.95], L_ORB_C = [0.66, 0.8, 1.0];
 // the inherited draws' violet, turned (glyph colours: a mote, an end, a spark)
 const GLYPH_GOLD = [3.4, 2.5, 0.8], GLYPH_GOLD_END = [0.5, 0.25, 0.03];
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -1389,6 +1395,26 @@ export class AscFx extends LordFx {
     // (a smaller orb has fewer blobs over less of itself: its body's heat is raised to read the same)
     const kb = k * Math.min(2.2, Math.max(1, 1.5 / Math.max(0.3, R)));
     const at = (ox, oy, sz, h, kind) => this._blob(px + A.rx * ox + A.ux * oy, py + A.ry * ox + A.uy * oy, pz + A.rz * ox + A.uz * oy, 0, 0, 0, life, sz, sz, h, h, kind);
+    if (look('ascOrb') === 'c') {
+      // the great gathered sphere: pale steel heat, a dim cool body filled to its edge (no blank cell
+      // inside it), a crisper rim where the light catches, a small brighter heart; never one white disc
+      const kc = k * Math.min(1.6, Math.max(1, 1.2 / Math.max(0.3, R)));
+      const n = Math.min(60, Math.max(12, Math.round(R * 26)));
+      for (let i = 0; i < n; i++) {
+        const u = Math.sqrt((i + 0.5) / n), rr = R * 0.84 * u, a = i * 2.39996 + t * 0.8;
+        at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.62, (0.15 + 0.1 * (1 - u)) * kc, K_STEEL);
+      }
+      const m = Math.min(40, Math.max(10, Math.round(R * 18)));
+      for (let i = 0; i < m; i++) {
+        const a = (i / m) * TAU + t * 0.35, rr = R * (0.95 + 0.04 * hash(seed + i * 1.7)), lit = 0.6 + 0.4 * Math.max(0, Math.cos(a - 2.2));
+        at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.26, 0.34 * lit * kc, K_STEEL);
+      }
+      // the heart: brighter toward the middle, breathing a little
+      const br = 1 + 0.08 * Math.sin(t * 4.2 + seed);
+      at(0, 0, R * 0.5, 0.32 * kc, K_STEEL);
+      at(0, 0, R * 0.24 * br, 0.82 * k, K_STEEL);
+      return;
+    }
     if (look('ascOrb') === 'b') {
       // the rim: a bright ring, hot stretches running round it
       const pulse = 0.5 + 0.5 * Math.sin(t * 5.5 + seed), n = Math.min(36, Math.max(12, Math.round(R * 16)));
@@ -1433,6 +1459,7 @@ export class AscFx extends LordFx {
   lanternGather(x, y, z, u, dt, form = 2) {
     if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt >= 0)) return;
     u = clamp01(u);
+    if (look('ascOrb') === 'c') return this._sphereGather(x, y, z, u, dt, form);
     const t = this.d?.time ?? this._now(), e = u * u * (3 - 2 * u), R = 0.15 + 1.35 * e;
     this.lanternOrb(x, y, z, R, 0.6 + 0.45 * u, t, 7.7);
     this._lgAcc = (this._lgAcc ?? 0) + dt * (28 + 72 * u);
@@ -1460,9 +1487,71 @@ export class AscFx extends LordFx {
     this._keep('lanternFloor', gx, 0.6, gz, L_GOLD, 0.6 + 1.8 * u, 5 + 4 * u, 0);
   }
 
+  /** The orb c's lift over the palms: the gather's point (kiShots.js `_lanternAt`: 0.9 m over the
+   *  palms) raised so the bigger sphere's bottom rests a hand over them. */
+  _sphereLift(R) {
+    return Math.max(0, R + 0.15 - 0.9);
+  }
+
+  /** The gather of the great gathered sphere (?ascOrb=c; u 0..1 every frame): it grows from a spark to
+   *  as large as its hit over his raised arms; motes stream up into it from the WHOLE ring, threads of
+   *  pale heat drawn in from near, the floor under him lit a cool white; the light a cool blue. */
+  _sphereGather(x, y, z, u, dt, form) {
+    const t = this.d?.time ?? this._now(), e = u * u * (3 - 2 * u);
+    const RT = this.d?.T?.shots?.lantern?.radius ?? 2, R = 0.15 + (RT - 0.15) * e, cy = y + this._sphereLift(R);
+    this.lanternOrb(x, cy, z, R, 0.55 + 0.45 * u, t, 7.7);
+    this._lgAcc = (this._lgAcc ?? 0) + dt * (40 + 110 * u);
+    while (this._lgAcc >= 1) {
+      this._lgAcc -= 1;
+      // a mote streaming up off the ring into it (from anywhere on the ring: 3 to 16 m out)
+      const a = this.lr() * TAU, r = this.lrand(3, 16), sx = x + Math.cos(a) * r, sz = z + Math.sin(a) * r, lf = this.lrand(0.7, 1.3);
+      const o = this._rec(sx, 0.2, sz, lf, 0.14, 0.09, ".'`", this.lr() < 0.3 ? WHITE : ORB_C, ORB_C_END);
+      o.vx = (x - sx) / lf;
+      o.vy = (cy - 0.2) / lf;
+      o.vz = (z - sz) / lf;
+      o.alpha = 0.3;
+      o.alphaEnd = 1;
+      this._spawn(this.add, o);
+      if (this.lr() < 0.35) {
+        // a thread of pale heat drawn in from near
+        const a2 = this.lr() * TAU, r2 = R + this.lrand(0.8, 2.2), l2 = this.lrand(0.3, 0.5), hx = x + Math.cos(a2) * r2, hy = cy + this.lrand(-1.4, 0.8), hz = z + Math.sin(a2) * r2;
+        this._blob(hx, hy, hz, (x - hx) / l2, (cy - hy) / l2, (z - hz) / l2, l2, 0.36, 0.16, 0.2 + 0.22 * u, 0.08, K_STEEL);
+      }
+    }
+    // the floor under him lit a cool white, a wheel widening
+    const gx = fin(this.d?.position?.x, x), gz = fin(this.d?.position?.z, z);
+    if (this._frame() > 0) this._ring(gx, GROUND_Y, gz, 1.0 + 2.0 * u, Math.round(16 + 24 * u), 0.32, (0.12 + 0.22 * u) * GROUND_GAIN, K_STEEL, 4, t * (1 + 2 * u));
+    this._keep('lantern', x, cy, z, L_ORB_C, 1.2 + 3.2 * u, 6 + 8 * u, 0.12);
+    this._keep('lanternFloor', gx, 0.6, gz, L_ORB_C, 0.5 + 1.6 * u, 5 + 4 * u, 0);
+  }
+
+  /** The great gathered sphere in flight (?ascOrb=c): as large as its hit (`s.radius`), drawn from where
+   *  it hung over his arms down onto its line (its first 0.3 s), never sunk into the floor; pale heat and
+   *  blue motes shed behind it, the floor lit under it. Draw only: the shot's own y and radius hit. */
+  _sphereDraw(s) {
+    const R = s.radius ?? 2, t = s.age + s.seed;
+    const k0 = Math.max(0, 1 - s.age / 0.3), y = Math.max(R * 0.85, s.y + this._sphereLift(R) * k0 * k0);
+    this.lanternOrb(s.x, y, s.z, R, 1, t, s.seed);
+    for (let i = 0; i < 3; i++) {
+      const back = R * 0.6 + this.lrand(0, R), oy = this.lrand(-0.5, 0.5) * R;
+      this._blob(s.x - s.dx * back, y + oy, s.z - s.dz * back, -s.dx * 2 + this.lrand(-0.4, 0.4), this.lrand(0, 0.6), -s.dz * 2 + this.lrand(-0.4, 0.4), this.lrand(0.25, 0.4), R * 0.32, R * 0.12, 0.22, 0, K_STEEL, 2);
+    }
+    if (this.lr() < 0.8) {
+      const a = this.lr() * TAU, o = this._rec(s.x + Math.cos(a) * R * 0.85 - s.dx * R * 0.4, y + Math.sin(a) * R * 0.7, s.z + Math.sin(a) * R * 0.85 - s.dz * R * 0.4, this.lrand(0.4, 0.7), 0.14, 0.06, ".'", ORB_C, ORB_C_END);
+      o.vx = -s.dx * 3 + this.lrand(-0.8, 0.8);
+      o.vy = this.lrand(-0.3, 0.8);
+      o.vz = -s.dz * 3 + this.lrand(-0.8, 0.8);
+      o.drag = 2;
+      this._spawn(this.add, o);
+    }
+    this._dot(s.x, GROUND_Y, s.z, R * 0.9, 0.1 * GROUND_GAIN, K_STEEL);
+    this._keep('lanternFly', s.x, y, s.z, L_ORB_C, 2.6, 8, 0.1);
+  }
+
   /** The orb in flight (a blast record with `lantern`; drawn by _drawBlast): the orb, heat and motes
    *  shed behind it, the floor lit under it. ~45 - 70 blobs a frame. */
   lanternDraw(s) {
+    if (look('ascOrb') === 'c') return this._sphereDraw(s);
     const R = (s.radius ?? 2) * 0.8, t = s.age + s.seed;
     this.lanternOrb(s.x, s.y, s.z, R, 1, t, s.seed);
     const b = look('ascOrb') === 'b';
@@ -1487,8 +1576,15 @@ export class AscFx extends LordFx {
    *  contact, the orb shuddering. ~60 - 80 blobs. */
   lanternClash(x, y, z, dx, dz, k, dt, form = 2) {
     if (!this.fire || !Number.isFinite(x + y + z + dx + dz + k) || !(dt >= 0)) return;
-    const t = this.d?.time ?? this._now(), R = 1.5 * (1 + 0.06 * Math.sin(t * 31)), l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
-    this.lanternOrb(x, y, z, R, 1.25, t, 3.3);
+    const C = look('ascOrb') === 'c';
+    const t = this.d?.time ?? this._now(), R = (C ? 1.8 : 1.5) * (1 + 0.06 * Math.sin(t * 31)), l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
+    // (the bigger sphere sits back from the blade by what it is bigger: its rim on the contact)
+    if (C) {
+      x -= ux * 0.3;
+      z -= uz * 0.3;
+      y += 0.25;
+    }
+    this.lanternOrb(x, y, z, R, C ? 1.1 : 1.25, t, 3.3);
     const cx = x + ux * R * 0.85, cy = y - 0.1, cz = z + uz * R * 0.85;
     this._dot(cx, cy, cz, 0.55, 0.85 + 0.3 * Math.sin(t * 40), K_STEEL);
     this._lcAcc = (this._lcAcc ?? 0) + dt * (40 + 30 * Math.abs(k - 0.5));
@@ -1496,17 +1592,17 @@ export class AscFx extends LordFx {
       this._lcAcc -= 1;
       // sparks thrown off the contact, out to the sides
       const side = this.lr() < 0.5 ? -1 : 1, sp = this.lrand(3, 8);
-      const o = this._rec(cx, cy, cz, this.lrand(0.2, 0.36), this.lrand(0.12, 0.18), 0.04, "+*'", this.lr() < 0.4 ? WHITE : form >= 3 ? STORM : GOLD, GOLD_END);
+      const o = this._rec(cx, cy, cz, this.lrand(0.2, 0.36), this.lrand(0.12, 0.18), 0.04, "+*'", this.lr() < 0.4 ? WHITE : C || form >= 3 ? STORM : GOLD, C ? ORB_C_END : GOLD_END);
       o.vx = -uz * side * sp - ux * this.lrand(0, 2);
       o.vy = this.lrand(0, 3.5);
       o.vz = ux * side * sp - uz * this.lrand(0, 2);
       o.drag = 2.5;
       o.gravity = -6;
       this._spawn(this.add, o);
-      if (this.lr() < 0.3) this._blob(cx, cy, cz, -uz * side * sp * 0.6, this.lrand(0, 1), ux * side * sp * 0.6, this.lrand(0.15, 0.25), 0.4, 0.15, 0.5, 0, K_VOID, 3);
+      if (this.lr() < 0.3) this._blob(cx, cy, cz, -uz * side * sp * 0.6, this.lrand(0, 1), ux * side * sp * 0.6, this.lrand(0.15, 0.25), 0.4, 0.15, 0.5, 0, C ? K_STEEL : K_VOID, 3);
     }
     if (this.lr() < dt * 6) this.dust(x, z, 0.5);
-    this._keep('lanternClash', x, y, z, L_GOLD, 5, 11, 0.3);
+    this._keep('lanternClash', x, y, z, C ? L_ORB_C : L_GOLD, 5, 11, 0.3);
   }
 
   /** The orb bursts (`how`: 'floor' / 'cover' at the end of its way, 'guard' on a parry or a block,
@@ -1521,21 +1617,23 @@ export class AscFx extends LordFx {
     const gx = Number.isFinite(x) ? x : bx, gz = Number.isFinite(z) ? z : bz;
     const ground = how !== 'him', far = how === 'floor' || how === 'cover', r = far ? LA.crater ?? 4 : LA.guardCrater ?? 3;
     const A = this._axes(), P = this._toCamera(bx, by, bz);
+    // (the great gathered sphere bursts pale: its heat the steel kind, its motes storm blue)
+    const C = look('ascOrb') === 'c', KB = C ? K_STEEL : K_VOID, HB = C ? 0.7 : 1, MOTE = C ? ORB_C : GOLD, MOTE_END = C ? ORB_C_END : GOLD_END;
     // the flash (short; a ring of heat round a small hot heart, never one big white disc), the orb
     // coming apart
     this._blob(P.x, P.y, P.z, 0, 0, 0, 0.1, 0.5, 0.9, 1.15, 0, K_STEEL);
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * TAU, ox = Math.cos(a) * 1.0, oy = Math.sin(a) * 1.0;
-      this._blob(P.x + A.rx * ox + A.ux * oy, P.y + A.ry * ox + A.uy * oy, P.z + A.rz * ox + A.uz * oy, 0, 0, 0, 0.14, 0.8, 1.3, 0.42, 0, K_VOID);
+      this._blob(P.x + A.rx * ox + A.ux * oy, P.y + A.ry * ox + A.uy * oy, P.z + A.rz * ox + A.uz * oy, 0, 0, 0, 0.14, 0.8, 1.3, 0.42 * HB, 0, KB);
     }
     for (let i = 0; i < 34; i++) {
       const a = this.lr() * TAU, ca = Math.cos(a), sa = Math.sin(a), sp = this.lrand(4, 9);
       const ux = A.rx * ca + A.ux * sa, uy = A.ry * ca + A.uy * sa, uz = A.rz * ca + A.uz * sa;
-      this._blob(P.x + ux * 0.5, P.y + uy * 0.5, P.z + uz * 0.5, ux * sp, uy * sp + 0.5, uz * sp, this.lrand(0.3, 0.5), 0.9, 0.35, 0.55, 0, K_VOID, 3);
+      this._blob(P.x + ux * 0.5, P.y + uy * 0.5, P.z + uz * 0.5, ux * sp, uy * sp + 0.5, uz * sp, this.lrand(0.3, 0.5), 0.9, 0.35, 0.55 * HB, 0, KB, 3);
     }
     for (let i = 0; i < 22; i++) {
       const a = this.lr() * TAU, sp = this.lrand(3, 10);
-      const o = this._rec(bx, by, bz, this.lrand(0.3, 0.6), this.lrand(0.13, 0.2), 0.04, "+*'.", i & 1 ? WHITE : GOLD, GOLD_END);
+      const o = this._rec(bx, by, bz, this.lrand(0.3, 0.6), this.lrand(0.13, 0.2), 0.04, "+*'.", i & 1 ? WHITE : MOTE, MOTE_END);
       o.vx = Math.cos(a) * sp;
       o.vy = this.lrand(0.5, 5);
       o.vz = Math.sin(a) * sp;
@@ -1545,11 +1643,11 @@ export class AscFx extends LordFx {
     }
     if (ground) {
       // the ring of gold thrown out over the floor (look only), the crater
-      this._shock(gx, 0.7, gz, r * 1.4, 44, 0.42, 0.6, 1.1, 0.7, K_VOID, 0.6, 2.2);
+      this._shock(gx, 0.7, gz, r * 1.4, 44, 0.42, 0.6, 1.1, 0.7 * HB, KB, 0.6, 2.2);
       this.crater(gx, gz, r * 0.75, far ? 1.8 : 1.3);
       this.game.world?.impact?.(gx, gz, r, LA.world ?? 2, BLAST_BLOW);
     }
-    super._light({ x: bx, y: by + 0.4, z: bz, color: L_GOLD, intensity: 9, radius: 15, life: 0.45, fade: 0.4 });
+    super._light({ x: bx, y: by + 0.4, z: bz, color: C ? L_ORB_C : L_GOLD, intensity: 9, radius: 15, life: 0.45, fade: 0.4 });
     this.game.shake?.(how === 'him' ? 0.4 : 0.5);
     this.game.world?.forest?.ambience?.flare?.(0.7);
   }
