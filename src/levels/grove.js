@@ -11,7 +11,7 @@ export const WINDLESS = Object.freeze({
   id: 'grove',
   aliases: ['sheathed', 'windless', 'bamboo', 'wusheng'],
   name: 'The Windless Grove',
-  sub: 'where a man waits with his sword asleep',
+  sub: 'where a man who swore off the sword still carries one',
   world: Object.freeze({
     arenaRadius: 15,
     playerBound: G.bound,
@@ -24,15 +24,16 @@ export const WINDLESS = Object.freeze({
   }),
   buildSet: createWindlessGrove,
   createBoss: (game) => new Sheathed(game),
+  // (ADR-151: the lines play up a wanderer who has sworn not to draw; original wording)
   text: Object.freeze({
-    arrive: ['No wind moves the bamboo. In the clearing ahead a man kneels before a mound of swords, his own across his knees.', 'Rest at the bonfire to restore your flasks.'],
-    stir: 'The kneeling man lays a hand on his scabbard…',
+    arrive: ['No wind moves the bamboo. In the clearing ahead a man kneels before a mound of swords that are not his. His own lies across his knees, still in its scabbard.', 'Rest at the bonfire to restore your flasks.'],
+    stir: 'The kneeling man stands, the scabbard loose in his hand. "I put this down years ago. Walk on, and it stays down."',
     phase2: "A THUMB'S WIDTH OF STEEL",
     phase3: 'THE GROVE HOLDS ITS BREATH',
     victory: 'THE SHEATHED FALLS',
-    fallen: 'One click of a sword going home. The grove is still.',
+    fallen: 'One click of a sword going home. He kneels again, as if he had never stood.',
     restReset: 'The swordsman kneels again before the graves.',
-    again: 'He lays the sword across his knees once more. The grove waits.',
+    again: 'He lays the sword across his knees once more. Somewhere a promise is still being kept.',
     rise: 'You rise again at the bonfire.',
   }),
 });
