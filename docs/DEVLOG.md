@@ -28,11 +28,11 @@ looks (each step builds five sheets, the same 90 meshes) green; the whole `npm t
 (see the PR). Headless Edge at 1280 x 720 and the phone preset (852 x 393, touch): `docs/looks/halcyon/halCape.png`,
 the `halLook_*` sheets re-rendered with step 3 (the old ones kept as `halLook_*_before`).
 
-**The owner's picks (2026-11-23).** The cape, step 3, "billowing", and the body, `halLook` a (the deep blue
-suit and red cape): `halCape: '3'` and `halLook: 'a'` are in `lookSwitch` PICKED and out of PENDING (the
+**The owner's picks (2026-11-23).** The cape, step 3, "billowing"; the body, `halLook` a (the deep blue
+suit and red cape); the city, `city` a, Neon Rain: `halCape: '3'`, `halLook: 'a'` and `city: 'a'` are in `lookSwitch` PICKED and out of PENDING (the
 defaults they already drew; nothing visible changes).
 
-**Open / next.** The owner still picks `glare` and `city`. The lining's ink lines still
+**Open / next.** The owner still picks `glare`. The lining's ink lines still
 tint pink at a grazing angle (the per-part ink is shared by every rig). The beam was not touched.
 
 ---
