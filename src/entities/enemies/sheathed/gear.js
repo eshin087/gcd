@@ -9,7 +9,7 @@ import { lookOf } from '../duelist/lookSwitch.js';
 // Lu Wusheng's outfit and his sword (ADR-145): gear items on the hero's skeleton (built by the same
 // buildHero, driven by the same animator), drawn through the WYRM's art path (FLAG.ART; ashDisciple/
 // bodyArt.js toDragonLook with his own spec, below); the sword stays on today's material (a blade is
-// thinner than an art cell). Three bodies for the owner to pick from (`?sheathLook=a|b|c`, read when
+// thinner than an art cell). Four bodies behind `?sheathLook=a|b|c|d` (the owner picked d; read when
 // his rig is built; a reload):
 //   a  Mourning White: undyed mourning hemp, the sleeves bound at the wrist, a white band round the
 //      brow with two long tails that trail, black hair bound up in a knot; the black scabbard the

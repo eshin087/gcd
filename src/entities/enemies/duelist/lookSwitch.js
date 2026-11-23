@@ -46,7 +46,7 @@ export const PICKED = Object.freeze({
   ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (the author's pick; the owner has not chosen yet, 2026-11-22)
   // the Windless Grove and Lu Wusheng, the Sheathed (the owner, 2026-11-22: "keep the recommended")
   grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
-  sheathLook: 'a', // his body: mourning white (the owner's pick)
+  sheathLook: 'd', // his body: the Wanderer (the owner's pick, 2026-11-22, over a, mourning white)
   drawCut: 'a', // the draw's cut: one white line (the owner's pick)
 });
 
