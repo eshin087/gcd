@@ -2033,10 +2033,13 @@ with him.
 
 ### The Howl (phase 3, `foxVerdict`; beam.js, tuningBeam.js)
 
-Heaven-Devouring Howl. He flits to the rim point farthest from the hero (11.5 m out); both palms on the
-paving, a ring of script burns out round him and the Nine-Tailed Fox rises out of a pool of fire behind
-him (a creature body, side-on to the camera); the terrace's light drops and the camera pulls back so the
-hero and the fox's head stay in frame. ONE red beat whose windup is the summoning and the charge (2.4 +
+Heaven-Devouring Howl. He flits 10 m from the hero, away from him through the middle (11.5 m from the
+middle at most; not the far rim: the hero and the fox's head then share one frame near the fight's own
+camera distance); both palms on the paving, a ring of script burns out round him and the Nine-Tailed Fox
+rises out of a pool of fire behind him (a creature body, side-on to the camera, its head the subject);
+the terrace's light drops (to 0.72 through the charge) and the camera leans toward the fox so the hero
+and the fox's head and ears stay in frame (on a phone it pulls back 4 m at most and only the hero is
+sure to stay in frame). ONE red beat whose windup is the summoning and the charge (2.4 +
 1.4 s, fixed; the darkness of a charged blow, his body darkens): a dark sun gathers at the jaws; the line
 (26 x 3.6 m from him across the terrace) is FIXED at the red cue, its ground heating; the red flare at the
 jaws 0.3 s before it fires. Lit 2.4 s (`sustain`, `selfHit`: the cue ledger holds the whole lit window as

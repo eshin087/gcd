@@ -1243,19 +1243,27 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   thrown out of it, a crisp ring of ink opening on the screen's plane, a wisp of the orb's fire (~22 blobs:
   five come at once in a Round).
 - **The Nine-Tailed Fox** (Heaven-Devouring Howl; `spirit.js`, `fxBeam.js`): a creature, so a body in the
-  wyrm's art path (`?foxSpirit=a`): low-poly, flat facets, a charcoal-rust hide lit from below by its fire,
-  pale fox marks (the muzzle, the cheeks, the tail tips), white-hot eye slits, a white-hot maw, pale fangs,
-  burning tail veins. It stands SIDE-ON to the camera (facing east or west, whichever the line runs
-  toward) and leans back toward it (a fox seen from the front and above prints as a lump: the terrace's
-  lesson), drawn 1.15x tall with its head at 2x (at the game camera the head is the fox); only the head
-  turns (30° at most). Its tails fan low and back so the head stands against the grass. Wreathed in
-  phase 3's fire at its edges and tail tips; it goes up in embers from the tail tips to the body.
-  `?foxSpirit=b`: the same skeleton drawn only as heat and ink lines. The summoning's ring of script:
-  two circles inked on the floor, one-cell glyphs of script between them. The dark sun: a black-dyed
-  steel disc with a hot rim, pulled toward the camera. The strip's mark: hazard specks heating. The beam:
-  a three-line white core and a body of heat whose edge boils, a fountain where it meets the floor, the
-  floor charred under it. COST: the fire field's peak through the Howl 1300 - 1500 of 6000 blobs; 75 → 84
-  draw calls with the fox risen and the beam lit.
+  wyrm's art path (`?foxSpirit=a`): low-poly, flat facets. THE HEAD IS THE SUBJECT (the second pass, the
+  reviewer: "a fan of feathers, not a fox"): drawn 2.3x, a clean wedge in profile (skull, the brow's long
+  slope, a long muzzle), broad pointed ears pale inside, a lower jaw that opens wide over a white-hot maw,
+  long white-hot eye slits, pale fangs; the head and body charcoal (little of its fire's light on them)
+  with a PALE throat and breast, so the head separates from the tails. Nine separate S-curved plumes
+  fanned low and back behind it, a gap between each, burning (glowing veins), each tipped pale and with a
+  bright blob of fire: the tails are the fire, the body is not. It stands SIDE-ON to the camera (facing
+  east or west, whichever the line runs toward) and leans back toward it (a fox seen from the front and
+  above prints as a lump: the terrace's lesson), drawn 1.1x tall; only the head turns (30° at most). He
+  summons it 10 m from the hero (not at the far rim) and the camera leans toward it and keeps the ears'
+  tips: at 1280x720 the head is ~250 px long and whole in the frame from every side. It goes up in
+  embers from the tail tips to the body. `?foxSpirit=b`: the same head as an outline of steel ink, the
+  tails as lines and heat, the body as heat only. The summoning's ring of script: two circles inked on the
+  floor, one-cell glyphs of script between them. The dark sun (~2.3 m across): a black-dyed steel disc
+  with a thick ragged rim of fire, pulled toward the camera, motes streaming in from the whole arena;
+  the light drops to 0.72. The strip's mark: hazard specks heating. The beam: a bulb of light at the
+  jaws, a five-line core (white-hot middle) on the letter grid, a body of heat five rows across its whole
+  3.6 m whose edge boils, a white flash its first 0.15 s, a fountain where it meets the floor, the floor
+  lit and charred and a scar of low heat that lingers a moment. COST: the fire field's peak through the
+  Howl ~1600 blobs in the browser (2350 headless, the hero standing in it) of 6000; 72 → 81 draw calls
+  with the fox risen and the beam lit (six materials, batched, no shadow).
 - **The nine-tailed fox** (phase 3, `mantle(d, dt, k)`): a fox's head over his (tall ears, cheek ruffs, a
   muzzle over his face), a mane, and `d.tails` tails, each a lagging chain with a pale tip, fanned over
   a half-wheel laid in the CAMERA's plane (as the ears are spread: a fan laid in the scene merged into
