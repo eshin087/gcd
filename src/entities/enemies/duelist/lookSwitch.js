@@ -59,12 +59,15 @@ export const PICKED = Object.freeze({
   glare: 'a', // his eyes' heat: crimson with a white-hot core (the owner's pick, 2026-11-23, of three; ADR-161)
   city: 'a', // the city: Neon Rain, night, rain, wet dark asphalt, pale neon (the owner's pick, 2026-11-23, of three; ADR-159)
   halCape: '3', // his cape and colours: the wide red cape that billows (the owner's pick, 2026-11-23, of four steps; ADR-164)
+  halLetters: 'a', // his letters follow his size, the hero's cell (the owner's pick, 2026-11-23, of two; ADR-166)
+  halPrint: 'a', // the hero's quieter print (the owner's pick, 2026-11-23, of three; ADR-166)
+  halCapeSize: 'b', // the cape at about 65 %, past his knees (the owner's pick, 2026-11-23, of four; ADR-166)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', 'halLetters', 'halPrint', 'halCapeSize']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon printed like the hero (ADR-166; his body, cape step, beam and city picked: ADR-161, ADR-164)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
 
 const fromUrl = new Map();
 const forced = new Map();

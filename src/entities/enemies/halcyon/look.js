@@ -28,7 +28,8 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 //                  picked it: 3 (2026-11-23; lookSwitch PICKED).
 //   The owner, after picking step 3 (2026-11-23): "make his cape smaller, make him look more ascii like to
 //   look like the main character ascii look more ascii made up". Tian Lei's answer to the same words
-//   (ADR-155) is the model; three switches, in PENDING, the owner picks from the sheets (ADR-166):
+//   (ADR-155) is the model; three switches, the owner picked the recommended a / a / b (2026-11-23;
+//   lookSwitch PICKED; ADR-166):
 //   ?halLetters=0|a   a: his letters follow his size on screen by the hero's rule (his kit's `letters`,
 //                  ARCHITECTURE "The bosses' letters"; read live); 0 the bosses' fixed fine cell.
 //   ?halPrint=0|a|b   0: the step-3 print (a lit figure, a strong edge); a: the hero's quieter print

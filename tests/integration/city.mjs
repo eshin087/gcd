@@ -1202,7 +1202,8 @@ async function scenarioHeroLike() {
   const LOOK = await imp('src/entities/enemies/halcyon/look.js');
   const { capeShape } = await imp('src/entities/enemies/halcyon/gear.js');
   const { Pipeline } = await imp('src/render/pipeline.js');
-  for (const k of ['halLetters', 'halPrint', 'halCapeSize']) assert(LS.PENDING.includes(k) && !(k in (LS.PICKED ?? {})), `?${k}= waits for the owner (PENDING, not PICKED)`);
+  const picks = { halLetters: 'a', halPrint: 'a', halCapeSize: 'b' };
+  for (const [k, v] of Object.entries(picks)) assert(LS.PICKED?.[k] === v && !LS.PENDING.includes(k), `?${k}= is the owner's pick, ${v} (PICKED, not PENDING; 2026-11-23)`);
   const G = build();
   const d = G.game.dragon, kit = d.kit, on = {};
   for (const o of ['0', 'a']) { LS.setLook('halLetters', o); on[o] = !!kit.letters; }
