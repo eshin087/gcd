@@ -50,10 +50,11 @@ const TASKS = [
   ['lord', [LORD, '.', 'all'], { ABYSS_SKIP: LORD_OWN.join(',') }, 120],
   ['asc', ['tests/integration/asc.mjs', '.', 'all'], {}, 110],
   ['fox', ['tests/integration/fox.mjs', '.', 'all'], {}, 105],
-  // (Halcyon Plaza, ADR-160: its long scenarios each a process of their own, as lord's)
-  ['city', [CITY, '.', 'all'], { ABYSS_SKIP: CITY_OWN.join(',') }, 150],
-  ['city pace', [CITY, '.', 'pace'], {}, 150],
-  ['city win', [CITY, '.', 'win'], {}, 120],
+  // (Halcyon Plaza, ADR-160: its long scenarios each a process of their own, as lord's; est scaled from a
+  // local npm test run against fox's: 229 / 196 / 145 s here where fox took 294)
+  ['city', [CITY, '.', 'all'], { ABYSS_SKIP: CITY_OWN.join(',') }, 82],
+  ['city pace', [CITY, '.', 'pace'], {}, 70],
+  ['city win', [CITY, '.', 'win'], {}, 52],
   ['lord pace', [LORD, '.', 'pace'], {}, 105],
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 90],
   ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }, 80],

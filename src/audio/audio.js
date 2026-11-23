@@ -845,6 +845,12 @@ export class AudioEngine {
     on('world:blast', (d) => this.play('explosion', d));
     on('dragon:crash', (d) => this.play('crash', { x: d?.x, z: d?.z, mat: 'stone', power: 2 }));
     on('dragon:clap', (d) => this.play('explosion', d));
+    // (the grab, the pass's crack, the tower burst through, a thrown car cut in two, his statue broken)
+    on('dragon:grab', (d) => this.play('land', d));
+    on('dragon:dash', () => this.play('takeoff', this._atDragon()));
+    on('dragon:tower', (d) => this.play('crash', { x: d?.x, z: d?.z, mat: 'stone', power: 3 }));
+    on('dragon:split', (d) => this.play('crash', { x: d?.x, z: d?.z, mat: 'metal', power: 1.5 }));
+    on('dragon:statue', () => this.play('crash', { ...this._atDragon(), mat: 'stone', power: 1 }));
     // the world breaks (ADR-107): a blow on wood / stone / metal, something coming down, fire catching
     on('world:impact', (d) => {
       const o = { x: d.x, z: d.z, mat: d.mat, power: num(d.power, 0.5) };
