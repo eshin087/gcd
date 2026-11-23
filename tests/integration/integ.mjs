@@ -2670,6 +2670,116 @@ async function scenarioFlurry() {
   return G;
 }
 
+// ================================================================== scenario: the storm (the streak pass, streakK('storm') / ('tiers'))
+// A long flurry accelerates: its first cuts are shown as before, each later one faster, the last a
+// few frames apart; every cut still lands in order in a frame of its own, the hero drawn on it; the
+// whole run of flash cuts fits in about 1.2 - 1.5 s. Off: timed exactly as before. The tiers: past
+// the full seven blows the hanging cuts echo (looks only; the blows and the damage are the same).
+async function scenarioStorm() {
+  out('\n== scenario STORM (a long flurry accelerates into a storm of cuts; off = the old pace; the tiers echo the cuts) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const G = build();
+  fightSetup(G);
+  const { game } = G;
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry, S = F.storm;
+  const on0 = { ...STREAK_FX.on }, k0 = { ...STREAK_FX.k };
+  /** One flurry of `n` blows (Severing Line): the frame of every blow, where the hero was, the lines. */
+  const take = (n, storm, tiers = true, streak = n) => {
+    STREAK_FX.on.storm = storm;
+    STREAK_FX.on.tiers = tiers;
+    run(G, 2.5, { passive: true });
+    settle(G);
+    d.hp = d.maxHp;
+    place(G, 6);
+    const hp0 = d.hp;
+    const tr = { hits: [], artF: -1, frames: 0, end: null, finite: true, drawn: true, near: 0, ev: null };
+    const w0 = G.watch;
+    G.watch = (nm, e) => {
+      if (nm === 'player:flurryHit') {
+        const fl = p.flurry, T = fl.T, L = fl.lines;
+        // the newest line against every other cut hanging: the smallest |sin| of the angle between them
+        let sep = 1;
+        const lj = fl.nLines - 1, aj = Math.atan2(L[lj].ax - L[lj].bx, L[lj].az - L[lj].bz);
+        for (let a = 0; a < lj; a++) if (!L[a].last) sep = Math.min(sep, Math.abs(Math.sin(aj - Math.atan2(L[a].ax - L[a].bx, L[a].az - L[a].bz))));
+        tr.hits.push({ f: tr.frames, n: e.n, last: e.last, damage: e.damage, gap: e.gap, storm: e.storm, hidden: fl.hidden, d: Math.hypot(p.position.x - T.x, p.position.z - T.z), freeze: fl.freeze, sep });
+      }
+      if (nm === 'player:flurryArt' && tr.artF < 0) tr.artF = tr.frames;
+      if (nm === 'player:flurryEnd') tr.end = { ...e };
+      if (nm === 'player:flurry') tr.ev = { ...e };
+    };
+    const ok = p.debug.flurry(streak, 'severing');
+    tr.echo = p.flurry.fx.echo;
+    tr.tier = p.flurry.tier;
+    for (let i = 0; i < Math.round(9 / DT) && (p.state === 'flurry' || p.state === 'plunge'); i++) {
+      aimAt(G);
+      tr.frames++;
+      G.tick(DT);
+      if (![p.position.x, p.position.y, p.position.z].every(Number.isFinite)) tr.finite = false;
+      if (p.flurry.nLines > 1 && p.state === 'flurry') {
+        // the hanging cuts' lines: the smallest |sin| of the angle between two of them
+        let gap = 1;
+        const L = p.flurry.lines;
+        for (let a = 0; a < p.flurry.nLines; a++) for (let b = a + 1; b < p.flurry.nLines; b++) {
+          const la = Math.atan2(L[a].ax - L[a].bx, L[a].az - L[a].bz), lb = Math.atan2(L[b].ax - L[b].bx, L[b].az - L[b].bz);
+          gap = Math.min(gap, Math.abs(Math.sin(la - lb)));
+        }
+        tr.star = gap;
+      }
+    }
+    G.watch = w0;
+    tr.ok = ok;
+    tr.dmg = hp0 - d.hp;
+    tr.cutsT = (tr.artF >= 0 ? tr.artF : tr.frames) * DT;
+    return tr;
+  };
+  // the table: the flash cuts' real time (from the dodge to the art), before / after, N = 2..7
+  const rows = [];
+  for (let n = 2; n <= F.max; n++) {
+    const a = take(n, false), b = take(n, true);
+    rows.push({ n, a, b });
+    const fr = (t) => t.hits.filter((h) => !h.last).map((h, i, A) => h.f - (i ? A[i - 1].f : 0)).join(',');
+    out(`   N=${n}: flash cuts ${a.cutsT.toFixed(2)} s → ${b.cutsT.toFixed(2)} s · frames between blows ${fr(a) || '-'} → ${fr(b) || '-'} · damage ${a.dmg} / ${b.dmg} · star |sin| ${(a.star ?? 1).toFixed(2)} / ${(b.star ?? 1).toFixed(2)}`);
+  }
+  const R7 = rows.find((r) => r.n === F.max);
+  // off: the old pace (a long flurry's last cuts at `rush`, nothing collapses into a storm)
+  assert(rows.every((r) => r.a.ok && r.b.ok && r.a.finite && r.b.finite), 'every flurry starts and stays finite, storm on or off');
+  assert(R7.a.cutsT > 1.5 && R7.a.hits.every((h) => !h.storm), `off, seven blows take their old time (${R7.a.cutsT.toFixed(2)} s of flash cuts) and no cut is a storm cut`);
+  // short flurries are as before: the storm only begins past the shown cuts
+  for (const r of rows.filter((q) => q.n - 1 <= S.shown.air)) assert(r.a.artF === r.b.artF && r.a.hits.map((h) => h.f).join() === r.b.hits.map((h) => h.f).join(), `N=${r.n}: the storm leaves a flurry of ${r.n} as it was (blows on frames ${r.b.hits.map((h) => h.f).join(',')})`);
+  // on: every flurry's flash cuts fit in about 1.5 s; the long ones much faster than before
+  assert(rows.every((r) => r.b.cutsT <= 1.5), `on, the flash cuts of every flurry fit in 1.5 s (${rows.map((r) => r.b.cutsT.toFixed(2)).join(' ')})`);
+  assert(R7.b.cutsT < R7.a.cutsT - 0.25, `seven blows: ${R7.a.cutsT.toFixed(2)} → ${R7.b.cutsT.toFixed(2)} s`);
+  // the same blows, in order, each in a frame of its own, the same damage
+  for (const r of rows) {
+    const h = r.b.hits;
+    assert(h.length === r.n && h.every((x, i) => x.n === i + 1) && h[r.n - 1].last && r.b.dmg === r.a.dmg && r.b.end?.damage === r.a.end?.damage, `N=${r.n}: ${h.length} blows in order, ${r.b.dmg} damage as before (${r.a.dmg})`);
+    assert(h.every((x, i) => i === 0 || x.f > h[i - 1].f), `N=${r.n}: every blow lands in a frame of its own`);
+  }
+  // the storm accelerates: after the shown cuts each gap is shorter than (or as short as) the one before, the last a few frames
+  const g7 = R7.b.hits.filter((h) => !h.last).map((h, i, A) => (i ? h.f - A[i - 1].f : null)).slice(1);
+  assert(g7.every((x, i) => i === 0 || x <= g7[i - 1]) && g7[g7.length - 1] <= 4, `the storm speeds up cut by cut: ${g7.join(', ')} frames between blows (the last <= 4)`);
+  const st7 = R7.b.hits.filter((h) => h.storm > 0);
+  assert(st7.length === F.max - 1 - S.shown.air && R7.b.ev?.storm === true && R7.b.ev?.at?.length === F.max - 1, `${st7.length} storm cuts after ${S.shown.air} shown; player:flurry says so (storm ${R7.b.ev?.storm}, ${R7.b.ev?.at?.length} planned contacts)`);
+  // drawn where it lands: on every storm blow he is not hidden and is at the contact, beside the head
+  assert(st7.every((h) => !h.hidden && h.d < 1.2), `on each storm blow the hero is drawn at the contact (${st7.map((h) => h.d.toFixed(2)).join(' ')} m off the head's middle)`);
+  // the weight: the last shown cut keeps its freeze; a storm cut's is shorter but at least stopMin
+  const lastShown = R7.b.hits[S.shown.air - 1], lastShownOff = R7.a.hits[S.shown.air - 1];
+  assert(Math.abs(lastShown.freeze - lastShownOff.freeze) < 1e-9 && st7.every((h) => h.freeze >= S.stopMin - 1e-9 && h.freeze < lastShown.freeze), `the last shown cut keeps its freeze (${lastShown.freeze.toFixed(3)} s); a storm cut's is ${st7.map((h) => h.freeze.toFixed(3)).join(' ')} s`);
+  // the lines still cross like a star
+  // (each storm cut's line is laid where it best fills the star: at least ~17 degrees from every cut hanging, the neck kept clear)
+  const deg = (v) => (Math.asin(Math.min(1, v)) * 57.3).toFixed(0);
+  assert(st7.every((h) => h.sep > 0.3), `the lines still cross like a star: each storm cut ${st7.map((h) => deg(h.sep)).join(', ')}° from the nearest cut hanging (shown cuts: ${R7.b.hits.filter((h) => !h.storm && !h.last).map((h) => deg(h.sep)).join(', ')}°)`);
+  // the storm's clones are printed on the contact (one a storm cut; the browser draws them)
+  // the tiers: past seven the cuts echo; the blows are the same
+  const t15 = take(F.max, true, true, 15), t15off = take(F.max, true, false, 15), t7 = take(F.max, true, true, 7);
+  out(`   tiers: streak 7 tier ${t7.tier} echo ${t7.echo} · streak 15 tier ${t15.tier} echo ${t15.echo} (tiers off: ${t15off.echo}) · damage ${t7.dmg} / ${t15.dmg} / ${t15off.dmg}`);
+  assert(t7.echo === 0 && t15.tier === 5 && t15.echo === 2 && t15off.echo === 0, `the cuts echo from tier 4 (streak 15: ${t15.echo} echoes a cut; 7: ${t7.echo}; tiers off: ${t15off.echo})`);
+  assert(t15.hits.length === F.max && t15.dmg === t7.dmg && t15off.dmg === t7.dmg && t15.cutsT === t7.cutsT, `a streak of 15 strikes the same ${t15.hits.length} blows for the same ${t15.dmg} damage in the same time`);
+  Object.assign(STREAK_FX.on, on0);
+  Object.assign(STREAK_FX.k, k0);
+  return G;
+}
+
 // ================================================================== scenario: the riposte (ADR-094, on the wyrm)
 async function scenarioRiposte() {
   out('\n== scenario RIPOSTE (parries count in the streak; a parried bite is answered by flash cuts round the head) ==');
@@ -11409,6 +11519,7 @@ const SCENARIOS = {
   red: scenarioRed,
   plunge: scenarioPlunge,
   flurry: scenarioFlurry,
+  storm: scenarioStorm,
   riposte: scenarioRiposte,
   flare: scenarioFlare,
   stamp: scenarioStamp,

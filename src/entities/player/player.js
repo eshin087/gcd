@@ -2509,7 +2509,8 @@ export class Player {
     if (!this.alive || this.state === 'plunge' || this.state === 'flurry' || this.state === 'lock') return false;
     const kind = this.flurry.reach(d, true);
     if (!kind) return false;
-    const n = clamp(Math.round(fin(Number(strikes), 3)), 1, DEFENSE.flurry.max);
+    // (a streak past the cap of blows: the flurry strikes DEFENSE.flurry.max, the tiers read the rest)
+    const n = clamp(Math.round(fin(Number(strikes), 3)), 1, 99);
     this._debugStreak(n);
     const pin = this.debug.flurryArt;
     if (typeof art === 'string') this.debug.flurryArt = art;
