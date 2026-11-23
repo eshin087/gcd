@@ -1136,6 +1136,9 @@ async function scenarioPace() {
         prevMode = d.mode;
         if (d.fx.crescentsAlive || d.terrain?.busy) busy++;
         if (d.moveFx?.alive) burnF++;
+        // (the Howl, summoned to burnt out, and his kneel after it (the hero's punish) are not empty gaps:
+        // counted as a black blow's charge is, as asc.mjs counts Tian Lei's great beam)
+        if (frames % 6 === 0 && (d.howl?.busy || (d.mode === 'act' && d.brain.act?.def?.verdict))) busyT.push(game.time);
       }
       G.watch = null;
       G.defend = null;
