@@ -436,12 +436,14 @@ export class StreakSound {
     const sc = this.scale();
     const off = Math.max(0, streakTier(this.count) - 2);
     const deg = Math.min(S.cutTop, n - 1 + off);
-    const f = nearest(this.currentKey().tonic, S.cutHi) * Math.pow(2, degreeSemis(sc, deg) / 12);
+    const base = nearest(this.currentKey().tonic, S.cutHi);
+    const f = base * Math.pow(2, degreeSemis(sc, deg) / 12);
     const fast = n > 1 && now - this.cutAt < S.fastCut;
     if (fast) this._sweepTo(f, this.cutF, now);
     this.cutAt = now;
     this.cutF = f;
-    return { n, f, fast };
+    // (base: the scale's first cut, degree 0: the recorded flurry-cut rises by f / base)
+    return { n, f, fast, base };
   }
 
   /** The merged sweep: one voice whose pitch glides up to each new cut. */

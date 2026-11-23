@@ -1,6 +1,7 @@
 import { SFX_ROOT, SLOTS, slotFiles } from './sampleList.js';
 
-// Runtime for the recorded one-shots (the attack sounds and the blue / red cues; sampleList.js): fetch +
+// Runtime for the recorded / designed one-shots (the attack sounds, the blue / red cues and the combat
+// core; sampleList.js): fetch +
 // decode the files after the AudioContext exists, pick a slot's file per play (never the same one
 // twice in a row), start it inside an engine Voice. Everything degrades to the synth: a slot with no
 // file, one not loaded yet or failed, no fetch (file://, the headless tests) or `?sfx=old` gives
@@ -28,6 +29,25 @@ export function setSfxMode(m) {
   mode = m === 'old' ? 'old' : 'new';
   return mode;
 }
+
+// ---- the deflect chain's build on the recorded parry (parryChain.js PARRY_CHAIN): `?chain=a|b|c` (or
+// setChainMode: the Lab's chain row); default 'a'. (`?sfx=old` / the synth fallback keep the synth chain.)
+const CHAIN_MODES = ['a', 'b', 'c'];
+let chain = 'a';
+try {
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('chain') : null;
+  if (CHAIN_MODES.includes(q)) chain = q;
+} catch {
+  /* no location */
+}
+/** 'a' | 'b' | 'c': the deflect chain's variant on the recorded parry. */
+export const chainMode = () => chain;
+/** Switch live (the Lab); returns the mode now. */
+export function setChainMode(m) {
+  chain = CHAIN_MODES.includes(m) ? m : 'a';
+  return chain;
+}
+export { CHAIN_MODES };
 
 /** First audible sample (s): MP3 decoders differ in how much encoder delay they leave at the head. */
 function headOffset(buf) {
@@ -130,18 +150,38 @@ export class SampleBank {
     return null;
   }
 
-  /** Start file `r` in voice `v` at ctx time t (gain linear, rate playback rate). */
-  start(v, t, r, gain, rate) {
+  /**
+   * Start file `r` in voice `v` at ctx time t (gain linear, rate playback rate). Returns its gain node.
+   *   o (optional, may be reused by the caller): from (s into the clip past its head, file time),
+   *   fadeIn (s, when `from` > 0), cut (s after t at which it fades out over fadeOut s and stops; 0: whole),
+   *   dest (a node of `v` to feed instead of v.out)
+   */
+  start(v, t, r, gain, rate, o = null) {
     const src = v.ctx.createBufferSource();
     src.buffer = r.buf;
+    const rt = Math.max(0.1, rate);
     src.playbackRate.value = rate;
     const g = v.gain(gain);
-    src.connect(g).connect(v.out);
-    src.start(t, r.off);
-    const end = t + (r.buf.duration - r.off) / Math.max(0.1, rate) + 0.05;
+    src.connect(g).connect(o?.dest || v.out);
+    const from = Math.min(r.buf.duration, r.off + Math.max(0, o?.from > 0 ? o.from : 0));
+    let end = t + (r.buf.duration - from) / rt + 0.05;
+    const fi = from > r.off && o?.fadeIn > 0 ? o.fadeIn : 0;
+    if (fi > 0) {
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(gain, t + fi);
+    }
+    if (o?.cut > 0 && t + o.cut < end) {
+      const fo = Math.max(0.002, o.fadeOut > 0 ? o.fadeOut : 0.01);
+      const c = Math.max(t + fi, t + o.cut);
+      g.gain.setValueAtTime(gain, c);
+      g.gain.linearRampToValueAtTime(0, c + fo);
+      end = c + fo + 0.01;
+    }
+    src.start(t, from);
     src.stop(end);
     v.until(end);
     v.sources.push(src);
     v.nodes.push(src);
+    return g;
   }
 }

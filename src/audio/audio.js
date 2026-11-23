@@ -2,9 +2,10 @@ import { clamp } from '../core/math.js';
 import { DEFENSE } from '../combat/rules.js';
 import { createNoiseBuffers, createImpulse, limiterCurve, holdAt, num, arand } from './dsp.js';
 import { Voice } from './voice.js';
-import { SFX, bladeWhooshPeak } from './sfx.js';
-import { SampleBank, sfxMode } from './samples.js';
-import { SLOT, HEAVY, BLOWS, HERO, BEAST, blowSlot } from './sampleList.js';
+import { SFX, bladeWhooshPeak, CUT_SND, cutPitch, RX_FIRE } from './sfx.js';
+import { SampleBank, sfxMode, chainMode } from './samples.js';
+import { SLOT, HEAVY, BLOWS, HERO, BEAST, blowSlot, HERO_SLOT, HURT, HIT_HEAVY, CUT_SLOT, CUT_REF, FLURRY, EXEC, GUARD_HEAVY, CLASH_HEAVY } from './sampleList.js';
+import { PARRY_CHAIN, chainRate, chainGain, chainLayers } from './parryChain.js';
 import { ForestAmbience, BreathLoop } from './ambience.js';
 import { Air } from './air.js';
 import { ChargeHum } from './charge.js';
@@ -14,9 +15,10 @@ import { TrackBank, TrackLoop } from './tracks.js';
 import { THUMP_SFX, Thump } from './thump.js';
 import { StreakSound, perfectSound } from './streakSound.js';
 
-// WebAudio engine: the sound effects are synthesised at runtime, except the attack sounds and the blue /
-// red cues, which are recorded one-shots over the synth (samples.js, sampleList.js; `?sfx=old`: all synth,
-// as before); the music is recorded tracks per level and boss phase (tracks.js; ADR-117) over a
+// WebAudio engine: the sound effects are synthesised at runtime, except the attack sounds, the red cues
+// and the combat core (parries, hurt, the hero's landed cuts, slam, flurry, plunge, clash, the boss's
+// guard), which are recorded / designed one-shots over the synth (samples.js, sampleList.js; `?sfx=old`:
+// all synth, as before); the music is recorded tracks per level and boss phase (tracks.js; ADR-117) over a
 // synthesised fallback score (music.js).
 // The AudioContext is created lazily by unlock() (flow calls it on title dismiss; the engine
 // also unlocks itself on the first pointer/key gesture). Every method is a no-op before that.
@@ -30,11 +32,16 @@ import { StreakSound, perfectSound } from './streakSound.js';
 //
 // play(name, opts) one-shots — opts.x/opts.z spatialise against the player (pan by Δx,
 // full level within 8 m, ≈ −12 dB at 35 m), opts.gain, opts.pan, opts.delay (s):
-//   player   swing{heavy,combo,thrust} (recorded sword-* when loaded) slam hit{heavy,crit,part} hurt{damage,kind} sizzle roll
-//            footstep{sprint} heal noFlask lockOn{on} dodge gong
-//   combat   tellBlue tellRed tellTick flash{tell} parry{tell,chain} block{tell} guardBreak
-//            (recorded cue-blue / cue-red / time-blue / time-red over tellBlue / tellRed / flash; normal
-//            tells and flashes silent unless ?sfx=old)
+//   player   swing{heavy,combo,thrust} (the light cut recorded sword-light when loaded) slam hit{heavy,crit,part}
+//            cut{weight,combo,alt} hurt{damage,kind} sizzle roll footstep{sprint} heal noFlask lockOn{on}
+//            dodge gong flurryCut flurryCoil plungeDive plungeHit (recorded over the synth when loaded:
+//            slam, hit-scale (+ hitCrit), cut-light / cut-heavy, hurt (+ hurtFire), flurry-cut,
+//            flurry-coil, plunge-dive, plunge-hit; sampleList.js)
+//   combat   tellBlue tellRed tellTick flash{tell} parry{tell,chain} block{tell} guardBreak trade guard
+//            (recorded cue-red / time-red over tellRed / flash, cue-blue / time-blue the synth (no file);
+//            a blade's parry recorded parry / parry-blue (+ parryPerfect, the chain's build:
+//            parryChain.js), trade → clash, guard → boss-guard; normal tells and flashes silent unless
+//            ?sfx=old)
 //   duelist  bladeWhoosh{weapon,weight,shape} (the recorded sword-* / fist-* when loaded; dragon:attack)
 //            ghostep{slow}   (+ the sustained charge hum: player:charge → release/interrupt)
 //            plungeDive{exec} plungeHit{exec}
@@ -105,6 +112,8 @@ export class AudioEngine {
     this.samples = null; // the recorded attack sounds and blue / red cues (built with the graph; samples.js)
     this._blowAt = -10; // ctx time the last boss blow's sound starts (BLOWS.gap)
     this._smp = { x: undefined, z: undefined, impactIn: 0 }; // reused opts for a blow's sample
+    this._smpAt = { x: undefined, z: undefined, impactIn: 0 }; // reused opts for the hero's own samples
+    this._smpStart = { from: 0, fadeIn: 0, cut: 0, fadeOut: 0, dest: null }; // reused SampleBank.start opts
     this._musicPhase = 0; // the boss phase whose track is playing (0: not a boss mode)
     this._phaseHint = 1; // the latest phase a dragon:phase* event announced (the wyrm sets its own number later)
     this._fading = []; // layers crossfading out
@@ -251,21 +260,30 @@ export class AudioEngine {
    *   gainMul, rateMul   on top of the slot's own
    *   who      'hero' (the hero's own swing: HERO's prio / rev / gap) | 'blow' (a boss's blow: BLOWS.gap
    *            across every blow slot) | undefined
+   *   layer    (v, t, r, rate) => void: more in the same voice, after the clip starts at t (the deflect
+   *            chain's build)
+   * An `align` slot with `skip` whose peak would land late starts into the file instead; one with `cut`
+   * fades out that long after its peak (the flurry's coil: its top on the strike).
    */
-  _sample(slot, o, gainMul = 1, rateMul = 1, who) {
+  _sample(slot, o, gainMul = 1, rateMul = 1, who, layer) {
     const ctx = this.ctx, bank = this.samples, C = SLOT[slot];
     if (!ctx || ctx.state === 'closed' || !bank || !C || sfxMode() === 'old') return false;
     const r = bank.pick(slot);
     if (!r) return false;
     const now = ctx.currentTime;
     const hero = who === 'hero';
-    const key = hero ? 'smp:hero' : slot;
+    // (prefixed: the gap keys never meet a play() recipe of the same name, 'parry', 'slam', 'hurt')
+    const key = hero ? 'smp:hero' : `smp:${slot}`;
     const gap = hero ? HERO.gap : C.gap;
     const last = this._last.get(key);
     if (last !== undefined && now >= last && now - last < gap) return true;
     const rate = Math.max(0.25, C.rate * rateMul * (1 + (bank.rand() * 2 - 1) * C.jitter));
-    let delay = 0;
-    if (C.align && o) delay = Math.max(0, num(o.impactIn, 0) / this._timeScale() - r.peak / rate - C.lead);
+    let delay = 0, from = 0;
+    if (C.align && o) {
+      const d = num(o.impactIn, 0) / this._timeScale() - r.peak / rate - C.lead;
+      if (d >= 0) delay = d;
+      else if (C.skip) from = Math.min(r.peak, -d * rate); // s of the file skipped (file time)
+    }
     const at = now + delay;
     // (a boss's blows together: a flurry's next one inside BLOWS.gap of the last is left out)
     if (who === 'blow') {
@@ -284,7 +302,17 @@ export class AudioEngine {
     if (!v) return true;
     this._last.set(key, now);
     try {
-      this.samples.start(v, at + 0.006, r, 1, rate);
+      let so = null;
+      const cut = C.align && C.cut >= 0 ? C.cut : -1;
+      if (from > 0 || cut >= 0) {
+        so = this._smpStart;
+        so.from = from;
+        so.fadeIn = from > 0 ? num(C.fadeIn, 0) : 0;
+        so.cut = cut >= 0 ? Math.max(0.005, (r.peak - from) / rate + cut) : 0;
+        so.fadeOut = num(C.fadeOut, 0.01);
+      }
+      this.samples.start(v, at + 0.006, r, 1, rate, so);
+      if (layer) layer(v, at + 0.006, r, rate);
     } catch (err) {
       v.kill(now);
       this._warn(`sample:${slot}`, err);
@@ -314,6 +342,71 @@ export class AudioEngine {
     const delay = Math.max(0, o.impactIn / this._timeScale() - bladeWhooshPeak(d));
     if (Math.abs(now + delay - this._blowAt) < BLOWS.gap) return;
     if (this.play('bladeWhoosh', { weapon: d.weapon, weight: d.weight, shape: d.shape, x: o.x, z: o.z, delay })) this._blowAt = now + delay;
+  }
+
+  /** The hero's own samples' opts (reused): at x / z (or none), impactIn s. */
+  _at(x, z, impactIn = 0) {
+    const o = this._smpAt;
+    o.x = Number.isFinite(x) && Number.isFinite(z) ? x : undefined;
+    o.z = o.x === undefined ? undefined : z;
+    o.impactIn = impactIn;
+    return o;
+  }
+
+  /**
+   * A parry of a blade, recorded: 'parry-blue' for a blue blow or a perfect parry (+ the perfect layer,
+   * 'parryPerfect': its crack and high bell, ring per perfectMode()), else 'parry'; a deflect chain (chain >=
+   * 2) builds per chainMode() (parryChain.js). False: nothing recorded (the caller plays the synth 'parry').
+   * `o`: the synth parry's opts.
+   */
+  _parry(o) {
+    const slot = o.tell === 'blue' || o.perfectMelee ? 'parry-blue' : 'parry';
+    const ch = clamp(Math.round(num(o.chain, 1)), 1, 8);
+    const V = ch >= 2 ? PARRY_CHAIN[chainMode()] : null;
+    const layer = V ? (v, t, r, rate) => chainLayers(this, V, ch, v, t, r, rate, this.samples, o.tune) : null;
+    if (!this._sample(slot, null, V ? chainGain(V, ch) : 1, V ? chainRate(V, ch) : 1, undefined, layer)) return false;
+    // (its pitch as a single parry: the perfect bell does not climb with the chain)
+    if (o.perfectMelee) this.play('parryPerfect', { tell: o.tell, chain: 1, tune: o.tune, ring: o.ring });
+    return true;
+  }
+
+  /** A blow on the hero (end of frame): recorded, louder with the damage (HURT), a burn's hiss over it. */
+  _hurt(o) {
+    const k = clamp(num(o.damage, 20) / HURT.div, HURT.min, HURT.max) / HURT.min;
+    if (this._sample('hurt', null, Math.pow(k, HURT.exp))) {
+      if (RX_FIRE.test(String(o.kind || ''))) this.play('hurtFire');
+      return true;
+    }
+    return this.play('hurt', o);
+  }
+
+  /** A landed cut's body sound: the wyrm's scales recorded (not a wing), a duelist's cloth the synth. */
+  _hit(d, x, z, beast) {
+    if (beast && d.part !== 'wing') {
+      const heavy = !!d.heavy;
+      if (this._sample('hit-scale', this._at(x, z), heavy ? HIT_HEAVY.gain : 1, heavy ? HIT_HEAVY.rate : 1)) {
+        if (d.crit) this.play('hitCrit', { x, z });
+        return;
+      }
+    }
+    this.play('hit', { heavy: d.heavy, crit: d.crit, part: d.part, damage: d.damage, body: beast ? 'scale' : 'cloth', x, z });
+  }
+
+  /** A landed cut's blade layer: recorded per weight (CUT_SLOT), at the synth's pitch up the chain. */
+  _cut(o) {
+    const slot = CUT_SLOT[o.weight];
+    const W = CUT_SND[o.weight], R = CUT_SND[CUT_REF[slot]];
+    if (slot && W && R && this._sample(slot, this._at(o.x, o.z), W.a / R.a, cutPitch(o))) return;
+    this.play('cut', o);
+  }
+
+  /** A flash cut of the flurry: recorded, a step higher each cut (the synth's whole tone, or the streak's
+   *  scale: f / base), lighter in the storm's merged run. */
+  _flurryCut(o) {
+    const n = clamp(num(o.n, 1), 1, 8);
+    const up = o.f > 0 && o.base > 0 ? o.f / o.base : Math.pow(2, (2 * (n - 1)) / 12);
+    if (this._sample('flurry-cut', null, o.fast ? FLURRY.fastGain : 1, Math.min(FLURRY.maxRate, up))) return;
+    this.play('flurryCut', o);
   }
 
   /** 'none' | 'ambient' | 'boss' | 'boss2' | 'victory' | 'death' (1.5 s crossfade). */
@@ -507,7 +600,7 @@ export class AudioEngine {
     // a blocked blow's chip damage gets the block thud, not a hurt grunt
     if (this._hurtPending) {
       this._hurtPending = false;
-      if (this._blockFrame !== this._frame && this.play('hurt', this._hurtOpts)) this._hurtAt = now;
+      if (this._blockFrame !== this._frame && this._hurt(this._hurtOpts)) this._hurtAt = now;
     }
     // a perfect dodge has its own (Ghostep) sound, and the rest of that attack passing through the
     // Ghostep i-frames must not whoosh over the slow-mo
@@ -763,11 +856,12 @@ export class AudioEngine {
       const heavy = d.kind === 'thrust' || d.kind === 'cleave' || d.kind === 'slam' || d.kind === 'heavy';
       if (this.charge?.active) this.charge.stop(heavy ? 0.05 : 0.08);
       // the recorded blade when it is there (pitched above the bosses', rising up the combo), else the synth
-      const slot = d.kind === 'thrust' ? 'sword-thrust' : heavy ? 'sword-heavy' : 'sword-light';
+      // (HERO_SLOT: the heavy cut and the thrust are the synth's own)
+      const slot = HERO_SLOT[d.kind === 'thrust' ? 'thrust' : heavy ? 'heavy' : 'light'];
       const step = (num(d.combo, 0) | 0) % 3;
-      if (!this._sample(slot, null, 1, HERO.rate * (1 + step * HERO.combo), 'hero')) this.play('swing', { heavy, combo: d.combo, thrust: d.kind === 'thrust' });
+      if (!slot || !this._sample(slot, null, 1, HERO.rate * (1 + step * HERO.combo), 'hero')) this.play('swing', { heavy, combo: d.combo, thrust: d.kind === 'thrust' });
     });
-    on('player:slam', (d) => this.play('slam', { x: d.x, z: d.z }));
+    on('player:slam', (d) => this._sample('slam', this._at(d.x, d.z)) || this.play('slam', { x: d.x, z: d.z }));
     on('player:charge', (d) => this.charge?.start(d));
     on('player:hitDragon', (d) => {
       // the plunge's own impact plays on player:plungeHit; a guarded strike's clash plays on
@@ -779,20 +873,25 @@ export class AudioEngine {
         this._slowOpen();
       }
       const x = d.point?.x, z = d.point?.z, beast = this.game.dragon?.kind !== 'duelist';
-      this.play('hit', { heavy: d.heavy, crit: d.crit, part: d.part, damage: d.damage, body: beast ? 'scale' : 'cloth', x, z });
+      this._hit(d, x, z, beast);
       // the blade's own layer on top: a slice and a ring, per weight, rising a semitone up the chain
       // (not the slam's ground shards: the blade is in the ground, the shards hit)
       if (d.shards) return;
       this._cutN = (this._cutN + 1) | 0;
-      this.play('cut', { weight: d.weight ?? (d.heavy ? 'slam' : 'light'), combo: d.combo, crit: d.crit, alt: this._cutN & 1, x, z });
+      this._cut({ weight: d.weight ?? (d.heavy ? 'slam' : 'light'), combo: d.combo, crit: d.crit, alt: this._cutN & 1, x, z });
       // the impact pass: the sub under a heavy blow and the music's dip (thump.js; off: nothing at all)
       this.thump?.onHit(d);
     });
     // the plunge: the dive's rush, then the blade into the skull
-    on('player:plunge', (d) => this.play('plungeDive', { exec: !!d.execution }));
+    // (recorded: the dive's loudest moment lined up with the blade's landing, DEFENSE.plunge.dive s on)
+    on('player:plunge', (d) => {
+      const exec = !!d.execution;
+      if (!this._sample('plunge-dive', this._at(NaN, NaN, num(DEFENSE.plunge?.dive, 0.14)), exec ? EXEC.dive : 1)) this.play('plungeDive', { exec });
+    });
     on('player:plungeHit', (d) => {
       this._slowOpen(); // (a flurry's world-hold may still be muffling: the blow lands in the open)
-      this.play('plungeHit', { exec: !!d.execution });
+      const exec = !!d.execution;
+      if (!this._sample('plunge-hit', null, exec ? EXEC.hit : 1)) this.play('plungeHit', { exec });
     });
     // the flurry (player/flurry.js): the world is held and muffled for as long as he cuts; every
     // flash cut rings a tone higher, the last blow's coil rises, the hanging cuts open in a run of rings
@@ -801,7 +900,7 @@ export class AudioEngine {
     });
     on('player:flurryHit', (d) => {
       // (the streak's sound: the ring on the scale, a fast run merged into one sweep; off: null)
-      if (!d.last) this.play('flurryCut', this.streakSound?.flurryCut(d) ?? { n: num(d.n, 1) });
+      if (!d.last) this._flurryCut(this.streakSound?.flurryCut(d) ?? { n: num(d.n, 1) });
     });
     // a duelist answers a streak of guards with his own flurry: a low gong under its first tell
     on('dragon:flurry', () => this.play('gong'));
@@ -820,7 +919,11 @@ export class AudioEngine {
     });
     // the hero's One Breath (ADR-146): the stance draws a breath, the cut clicks
     on('player:draw', (d) => this.play(d?.phase === 'cut' ? 'sheathClick' : 'sheathBreath', { loud: 0.7 }));
-    on('player:flurryArt', (d) => this.play('flurryCoil', { dur: num(d.dur, 0.2) }));
+    // (recorded: its top on the strike, `dur` s on, cut off there)
+    on('player:flurryArt', (d) => {
+      const dur = num(d.dur, 0.2);
+      if (!this._sample('flurry-coil', this._at(NaN, NaN, clamp(dur, 0.1, 0.6)))) this.play('flurryCoil', { dur });
+    });
     on('player:flurryEnd', (d) => {
       this._slowOpen();
       if (num(d.strikes, 1) >= 2) this.play('flurryBurst', this.streakSound?.burst(d) ?? { n: num(d.strikes, 2) - 1 });
@@ -865,8 +968,10 @@ export class AudioEngine {
       this.charge?.stop(0.05);
       // a deflect chain (parries in rhythm) rings higher with every blow met
       // (the streak's sound on: the chain climbs the track's scale; a perfect one's ring per perfectMode())
+      // (a blade's parry recorded: _parry; a bullet's, light, keeps the synth)
       const pm = !d.light && d.perfect ? perfectSound() : null;
-      this.play('parry', { tell: d.tell, chain: d.chain, perfect: !!(d.light && d.perfect), melee: !d.light, perfectMelee: !d.light && !!d.perfect, tune: d.light ? null : this.streakSound?.parryTune() ?? null, ring: pm ? pm.ring : 1 });
+      const o = { tell: d.tell, chain: d.chain, perfect: !!(d.light && d.perfect), melee: !d.light, perfectMelee: !d.light && !!d.perfect, tune: d.light ? null : this.streakSound?.parryTune() ?? null, ring: pm ? pm.ring : 1 };
+      if (d.light || !this._parry(o)) this.play('parry', o);
       if (!d.light) this.streakSound?.onDefence('parry');
     });
     // the streak (player:streak { count, lost }): the climb waits for the defence that raised it (same
@@ -972,11 +1077,17 @@ export class AudioEngine {
     // two cuts meet (the trade clash)
     on('combat:clash', (d) => {
       this.charge?.stop(0.05);
-      this.play('trade', { heavy: !!d?.heavy });
+      const heavy = !!d?.heavy;
+      if (!this._sample('clash', null, heavy ? CLASH_HEAVY : 1)) this.play('trade', { heavy });
       this.streakSound?.onDefence('clash');
     });
-    // his guard: a dry clack when he holds the strike, a harsh falling clang when he beats it away
-    on('dragon:guard', (d) => this.play(d?.deflect ? 'deflected' : 'guard', { heavy: !!d?.heavy }));
+    // his guard: a dry clack when he holds the strike (recorded: boss-guard), a harsh falling clang when he
+    // beats it away (the synth's own)
+    on('dragon:guard', (d) => {
+      const heavy = !!d?.heavy;
+      if (d?.deflect) this.play('deflected', { heavy });
+      else if (!this._sample('boss-guard', null, heavy ? GUARD_HEAVY.gain : 1, heavy ? GUARD_HEAVY.rate : 1)) this.play('guard', { heavy });
+    });
     on('dragon:step', (d) => this.play('dragonStep', d));
     on('dragon:wingFlap', (d) => this.play('wingFlap', this._atDragon({ strength: d.strength })));
     on('dragon:takeoff', () => beast() && this.play('takeoff', this._atDragon()));
