@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { DIM } from './model.js';
-import { CLASH, clashBurst } from '../../combat/clashFx.js';
+import { CLASH, clashBurst, axes } from '../../combat/clashFx.js';
 import { cutBurst } from '../../combat/cutFx.js';
+import { impactK } from '../../combat/impact.js';
+import { stampHit } from '../../combat/impactStamp.js';
+import { calmLook, calmA, calmS } from '../../combat/impactCalm.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
 // cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
@@ -147,6 +150,8 @@ function arcPoint(t, f, o) {
   o[2] = ARC.az + ARC.dz * t + z * len;
 }
 const TRAIL_NONE = [];
+// calm at the contact: the arc's factors at one stroke (PlayerFx._arcCalm; reused)
+const CALM_ARC = { a: 1, s: 1, k: 0 };
 // the halftone dot fields sit on a world lattice so their dots line up like the panel's grid
 const LATTICE = 0.12;
 // screen axes of the fixed camera (pitch 58°): right = +X, up ≈ (0, cos 58°, −sin 58°)
@@ -278,12 +283,15 @@ export class PlayerFx {
       let dx = ARC_P[0] - ARC_Q[0], dy = ARC_P[1] - ARC_Q[1], dz = ARC_P[2] - ARC_Q[2];
       let step = Math.hypot(dx, dy, dz);
       if (step > 0.01) {
-        const size = S.edge * (heavy ? 1.25 : 1) * (0.6 + 0.4 * turn) * (bite ? 1.15 : 1);
+        const mx = (ARC_P[0] + ARC_Q[0]) / 2, my = (ARC_P[1] + ARC_Q[1]) / 2, mz = (ARC_P[2] + ARC_Q[2]) / 2;
+        // calm at the contact: dimmer and thinner where it crosses a fresh contact (1 elsewhere, today)
+        const K = this._arcCalm(mx, my, mz), hot = bite && !(K.k > 0 && this._calmZ.L.arc.bite === false);
+        const size = S.edge * (heavy ? 1.25 : 1) * (0.6 + 0.4 * turn) * (bite ? 1.15 : 1) * K.s;
         fx.spawn({
-          x: (ARC_P[0] + ARC_Q[0]) / 2, y: (ARC_P[1] + ARC_Q[1]) / 2, z: (ARC_P[2] + ARC_Q[2]) / 2,
+          x: mx, y: my, z: mz,
           life: R(S.life[0], S.life[1]) * linger, size, sizeEnd: size * 0.15,
           glyph: '|', rot: alongRot(dx, dy, dz), stretch: Math.min(30, (step / size) * 1.7),
-          color: bite ? COL.arcGlint : core, colorEnd: end, alpha: bite ? 1 : 0.45 + 0.55 * turn, alphaEnd: 0, drag: 2,
+          color: hot ? COL.arcGlint : core, colorEnd: end, alpha: (bite ? 1 : 0.45 + 0.55 * turn) * K.a, alphaEnd: 0, drag: 2,
         });
       }
       // the veil
@@ -296,12 +304,14 @@ export class PlayerFx {
         dz = ARC_P[2] - ARC_Q[2];
         step = Math.hypot(dx, dy, dz);
         if (!(step > 0.02)) continue;
-        const size = heavy ? 0.12 : 0.1;
+        const vx = (ARC_P[0] + ARC_Q[0]) / 2, vy = (ARC_P[1] + ARC_Q[1]) / 2, vz = (ARC_P[2] + ARC_Q[2]) / 2;
+        const K = this._arcCalm(vx, vy, vz);
+        const size = (heavy ? 0.12 : 0.1) * K.s;
         fx.spawn({
-          x: (ARC_P[0] + ARC_Q[0]) / 2, y: (ARC_P[1] + ARC_Q[1]) / 2, z: (ARC_P[2] + ARC_Q[2]) / 2,
+          x: vx, y: vy, z: vz,
           life: R(0.08, 0.13) * linger, size, sizeEnd: size * 0.4,
           glyph: '|', rot: alongRot(dx, dy, dz), stretch: Math.min(24, (step / size) * 1.5),
-          color: veil, colorEnd: end, alpha: rows[k][1] * turn, alphaEnd: 0, drag: 2.5,
+          color: veil, colorEnd: end, alpha: rows[k][1] * turn * K.a, alphaEnd: 0, drag: 2.5,
         });
       }
     }
@@ -384,15 +394,17 @@ export class PlayerFx {
     if (!fx || !s || !sw?.valid || !Number.isFinite(zc)) return;
     const G = EDGE_GLINT, F = G.flash, e = s.matrixWorld.elements, side = ridge ? 0 : leadSide(sw, e);
     const zl = Math.hypot(e[8], e[9], e[10]) || 1, rot = alongRot(e[8] / zl, e[9] / zl, e[10] / zl);
-    const size = F.size * (heavy || crit ? F.heavy : 1);
+    // calm at the contact (the level contact() just read; exactly 1 today)
+    const CL = this._calmZ?.L ?? null, eA = calmA(CL, 'edge');
+    const size = F.size * (heavy || crit ? F.heavy : 1) * calmS(CL, 'edge');
     const held = Number.isFinite(hold) && hold > 0, life = held ? Math.min(F.life, Math.max(F.lifeMin, hold)) : F.life;
-    const aEnd = held ? F.alpha * F.holdEnd : 0;
+    const aEnd = held ? F.alpha * F.holdEnd * eA : 0;
     const zTop = DIM.drawnTip - 0.02, z0 = Math.max(DIM.forte, Math.min(zc, zTop - (F.n - 1) * F.step));
     for (let i = 0; i < F.n; i++) {
       const z = Math.min(zTop, z0 + i * F.step), xx = side * G.inset * hwAt(z);
       const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], wz = e[2] * xx + e[10] * z + e[14];
       if (!Number.isFinite(x + y + wz)) continue;
-      fx.spawn({ x, y, z: wz, life, size, sizeEnd: size * 0.5, glyph: '|', rot, stretch: F.stretch, color: COL.arcGlint, colorEnd: COL.arcEnd, alpha: F.alpha, alphaEnd: aEnd });
+      fx.spawn({ x, y, z: wz, life, size, sizeEnd: size * 0.5, glyph: '|', rot, stretch: F.stretch, color: COL.arcGlint, colorEnd: COL.arcEnd, alpha: F.alpha * eA, alphaEnd: aEnd });
     }
   }
 
@@ -556,7 +568,7 @@ export class PlayerFx {
    */
   contact(p, tier, C, crit = false, k = 0) {
     if (!p || !this.add) return 0;
-    const o = this._co ?? (this._co = { tier, cut: { x: 0, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 0 }, hilt: null, crit, power: 0, low: false });
+    const o = this._co ?? (this._co = { tier, cut: { x: 0, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 0 }, hilt: null, crit, power: 0, low: false, target: null });
     o.tier = tier;
     o.crit = !!crit;
     o.power = k;
@@ -570,7 +582,82 @@ export class PlayerFx {
     }
     const sw = this.rig?.sword;
     o.hilt = sw?.matrixWorld ? (this._hiltV ?? (this._hiltV = new THREE.Vector3())).set(0, 0, DIM.guard).applyMatrix4(sw.matrixWorld) : null;
+    // the weight of the hit beyond the cut's line (combat/impact.js): the stamp printed in the letter
+    // grid, the struck body's letters taking the blow. Each behind its own switch; neither may throw
+    o.target = this.game.dragon ?? null;
+    this._calmAt(p, tier);
+    try {
+      const ks = impactK('stamp', o.target?.kind === 'duelist' ? 'duelist' : 'wyrm'), kr = impactK('ripple');
+      if (ks > 0) stampHit(this.game, p.x, p.y, p.z, o, ks);
+      if (kr > 0) this.game.fx?.ripple?.hit?.(p.x, p.y, p.z, o, kr);
+    } catch (err) {
+      console.error('[impact] the contact failed', err);
+    }
     return cutBurst(this.game, p.x, p.y, p.z, o);
+  }
+
+  /**
+   * Calm at the contact (combat/impactCalm.js), read at the moment of the hit: snapshots the level
+   * for this hit's own effects (edgeFlash, cleaveImpact, the steel's gain: calmBlade) and opens the
+   * zone round the contact where the swing arc is dimmed in the frames after it (trail). Today
+   * (level 0): no zone, every factor 1.
+   */
+  _calmAt(p, tier) {
+    const L = calmLook(), Z = (this._calmZ ??= { L: null, on: false, x: 0, y: 0, z: 0, t0: 0, until: 0, r0: 0, r1: 1, atk: null });
+    Z.L = L;
+    Z.on = false;
+    const A = L?.arc;
+    if (!A || !p || !Number.isFinite(p.x + p.y + p.z)) return;
+    const g = this.game, heavy = tier === 'slam' || tier === 'cleave' || tier === 'execute';
+    const rk = heavy && Number.isFinite(A.rHeavy) ? A.rHeavy : 1;
+    Z.on = true;
+    Z.x = p.x; Z.y = p.y; Z.z = p.z;
+    Z.r0 = (A.r?.[0] ?? 0.5) * rk;
+    Z.r1 = Math.max(Z.r0 + 0.05, (A.r?.[1] ?? 1) * rk);
+    const now = Number.isFinite(g.realTime) ? g.realTime : 0;
+    // the zone lasts the freeze (set just before the contact draws) and then `win` real s
+    Z.t0 = now;
+    Z.until = now + Math.max(0, Number.isFinite(g.hitstopTimer) ? g.hitstopTimer : 0) + (Number.isFinite(A.win) ? A.win : 0.12);
+    Z.atk = g.player?.atk ?? null; // only the swing that landed
+  }
+
+  /** The steel's lit gain x this (player.js), `w` = how much of the hit's flare is still held (1 at
+   *  the contact ... 0 cooled). Exactly 1 today. */
+  calmBlade(w) {
+    const L = this._calmZ?.L;
+    if (!L || !Number.isFinite(L.blade)) return 1;
+    const ww = Number.isFinite(w) ? Math.max(0, Math.min(1, w)) : 0;
+    return 1 - (1 - Math.max(0, L.blade)) * ww;
+  }
+
+  /** The hit's own flare value (player.js sets the steel's flare): x the level's `flare` (today: v). */
+  calmFlare(v) {
+    const L = this._calmZ?.L;
+    return L && Number.isFinite(L.flare) ? v * Math.max(0, L.flare) : v;
+  }
+
+  /** The arc's dimming at (x, y, z) this frame: 1 outside the zone (and always today), else the
+   *  level's `a` near the contact easing to 1 at r1 (screen-plane distance). -> CALM_ARC { a, s, k }. */
+  _arcCalm(x, y, z) {
+    const Z = this._calmZ, R = CALM_ARC;
+    R.a = R.s = 1;
+    R.k = 0;
+    if (!Z?.on) return R;
+    const g = this.game, now = Number.isFinite(g.realTime) ? g.realTime : 0;
+    if (now > Z.until || now < Z.t0 || (g.player?.atk ?? null) !== Z.atk) {
+      Z.on = false;
+      return R;
+    }
+    const A = axes(g), dx = x - Z.x, dy = y - Z.y, dz = z - Z.z;
+    const sx = dx * A.rx + dy * A.ry + dz * A.rz, sy = dx * A.ux + dy * A.uy + dz * A.uz;
+    const d = Math.sqrt(sx * sx + sy * sy);
+    if (!Number.isFinite(d) || d >= Z.r1) return R;
+    const u = d <= Z.r0 ? 0 : (d - Z.r0) / (Z.r1 - Z.r0), f = u * u * (3 - 2 * u); // 0 at the contact ... 1 at r1
+    const C = Z.L.arc;
+    R.k = 1 - f;
+    R.a = (C.a ?? 1) + (1 - (C.a ?? 1)) * f;
+    R.s = (C.size ?? 1) + (1 - (C.size ?? 1)) * f;
+    return R;
   }
 
   /**
@@ -584,13 +671,15 @@ export class PlayerFx {
     if (!bare) this.shockwave(x, y, z, k > 0.5);
     const c0 = crit ? COL.crit : COL.trailCore, c1 = crit ? COL.critEnd : COL.trailEnd;
     const base = Math.atan2(dz, dx), n = 10 + Math.round(8 * k);
+    // calm at the contact (a landed cleave: the level contact() just read; exactly 1 today)
+    const CL = bare ? this._calmZ?.L ?? null : null, cA = calmA(CL, 'cleave'), cS = calmS(CL, 'cleave');
     for (let i = 0; i < n; i++) {
       const a = base + R(-1.1, 1.1), sp = R(7, 14) * (1 + 0.3 * k);
       const vx = Math.cos(a) * sp, vz = Math.sin(a) * sp, vy = R(-1, 5);
       fx.spawn({
         x, y, z, vx, vy, vz,
-        life: R(0.16, 0.3), size: R(0.2, 0.3), sizeEnd: 0.05, glyph: '-=', rot: alongRot(vx, vy, vz) + Math.PI / 2, stretch: 2.2,
-        color: c0, colorEnd: c1, alpha: 1, alphaEnd: 0, drag: 3.5,
+        life: R(0.16, 0.3), size: R(0.2, 0.3) * cS, sizeEnd: 0.05, glyph: '-=', rot: alongRot(vx, vy, vz) + Math.PI / 2, stretch: 2.2,
+        color: c0, colorEnd: c1, alpha: cA, alphaEnd: 0, drag: 3.5,
       });
     }
     if (!bare) this._light({ x, y, z, color: crit ? [0.6, 0.8, 1.3] : [0.55, 0.85, 1.25], intensity: 4 + 2 * k, radius: 7, life: 0.2, fade: 0.18 });

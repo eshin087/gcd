@@ -2227,6 +2227,11 @@ async function scenarioMoments() {
  *  flare, the sound, the budget, his shudder (drawn only); a guarded strike gets none of it. */
 async function scenarioCutFx() {
   out('\n== scenario CUTFX (a landed cut: the drawn contact, the freeze, the kick, the flare, the sound, the shudder) ==');
+  // the blade's flare as it was before the calm (combat/impactCalm.js level 0): these bounds measure
+  // the flare itself; the `calm` scenario measures what each level dims
+  const CALMX = await imp('src/combat/impactCalm.js');
+  const calm0 = CALMX.calmLevel();
+  CALMX.setCalm(0);
   const { CUT_LOOK, CUT_LAST } = await imp('src/combat/cutFx.js');
   const { feel, HIT_FEEL } = await imp('src/entities/player/combat.js');
   const G = build();
@@ -2407,6 +2412,7 @@ async function scenarioCutFx() {
   d.fx.hitSpark = spark0;
   game.audio.play = play0;
   fxa.spawn = spawn0;
+  CALMX.setCalm(calm0);
   return G;
 }
 
@@ -3892,8 +3898,148 @@ async function scenarioMotion() {
   return G;
 }
 
+async function scenarioReact() {
+  out('\n== scenario REACT (the body answers where it was hit: drawn only, from the hit\'s own tick, back at rest) ==');
+  const { IMPACT } = await imp('src/combat/impact.js');
+  const { REACT } = await imp('src/entities/enemies/duelist/reactTuning.js');
+  const on0 = IMPACT.on.react, k0 = IMPACT.k.react;
+  // the piece's bounds are for strength 1 (the owner's pick draws a human boss's at x1.5)
+  const byDuel0 = IMPACT.by.react.duelist;
+  IMPACT.by.react.duelist = 1;
+  // name, part, the contact in his root frame (x his left, y up, z the way he faces; upright m), the
+  // blade's travel (root frame), heavy, a thrust (the hero's attack: a point)
+  const CASES = [
+    { name: 'head, a cut toward his left', part: 'head', at: [0.05, 1.56, 0.12], cut: [1, -0.25], heavy: false },
+    { name: 'body, his right side', part: 'body', at: [-0.19, 1.2, 0.14], cut: [1, -0.35], heavy: false },
+    { name: 'body, his left side, heavy', part: 'body', at: [0.19, 1.2, 0.14], cut: [-1, -0.35], heavy: true },
+    { name: 'leg, his left', part: 'leg', at: [0.12, 0.34, 0.1], cut: [-1, -0.3], heavy: false },
+    { name: 'a thrust at the belly, heavy', part: 'body', at: [0.02, 1.0, 0.2], cut: [0, -1], heavy: true, thrust: true },
+  ];
+  const v = new THREE.Vector3();
+  const sequence = (react) => {
+    IMPACT.on.react = react;
+    IMPACT.k.react = 1;
+    const G = build();
+    duel(G, { dist: 2.4 });
+    const { game } = G;
+    const d = game.dragon, p = game.player, r = d.rig;
+    p.debug.god = true;
+    const res = [];
+    // his root frame <-> the world
+    const toW = (x, z) => [x * Math.cos(d.yaw) + z * Math.sin(d.yaw), -x * Math.sin(d.yaw) + z * Math.cos(d.yaw)];
+    const toL = (x, z) => [x * Math.cos(d.yaw) - z * Math.sin(d.yaw), x * Math.sin(d.yaw) + z * Math.cos(d.yaw)];
+    // the points read: the top of his head, his shoulders, his hips, his thighs (the hip joints), his feet
+    const PTS = [[r.head, 0, 0.25, 0], [r.arms.R.upper, 0, 0, 0], [r.arms.L.upper, 0, 0, 0], [r.pelvis, 0, 0, 0], [r.legs.R.thigh, 0, 0, 0], [r.legs.L.thigh, 0, 0, 0], [r.legs.R.foot, 0, 0, 0], [r.legs.L.foot, 0, 0, 0]];
+    const read = () => PTS.map(([j, x, y, z]) => { j.updateWorldMatrix(true, false); return v.set(x, y, z).applyMatrix4(j.matrixWorld).clone(); });
+    // the layer's offsets now (root frame, drawn m): as drawn, then the plain pose (the layer taken off)
+    const offsets = () => {
+      const a = read();
+      d.hitReact.restore();
+      d.object3d.updateMatrixWorld(true);
+      const b = read();
+      return a.map((q, i) => { const [lx, lz] = toL(q.x - b[i].x, q.z - b[i].z); return [lx, q.y - b[i].y, lz]; });
+    };
+    for (const C of CASES) {
+      home(G);
+      place(G, 2.2);
+      settle(G);
+      d.debug.trigger('fallingAsh');
+      const A = d.brain.act;
+      run(G, A.beats[0].impact - 0.25);
+      game.hitstopTimer = 0;
+      const [wx, wz] = toW(C.at[0], C.at[2]), [cx, cz] = toW(C.cut[0], C.cut[1]), [fx, fz] = toW(0, -1);
+      const pt = v.set(d.position.x + wx, C.at[1], d.position.z + wz);
+      d.drawnPoint(pt);
+      // (the hero's attack that landed it: a point for the thrust)
+      const atk = p.atk ?? (p.atk = {});
+      const def0 = atk.def;
+      atk.def = C.thrust ? { contact: 'point', kind: 'light' } : { contact: 'light', kind: 'light' };
+      const x0 = d.position.x, z0 = d.position.z, t0 = A.t;
+      const dealt = d.takeHit({ damage: 20, part: C.part, point: { x: pt.x, y: pt.y, z: pt.z }, dir: { x: fx, z: fz }, cut: { x: cx, z: cz }, heavy: C.heavy, poise: C.heavy ? 30 : 10, swing: true, exact: true, posture: 1 });
+      atk.def = def0;
+      const rec = { name: C.name, dealt, stop: game.hitstopTimer, shove: Math.hypot(d.position.x - x0, d.position.z - z0), jolt: d.jolt, act: d.brain.act === A, last: d.hitReact.last };
+      // the hit's own tick (the frame the freeze holds)
+      G.tick(DT);
+      rec.turned = d.hitReact.turned;
+      rec.first = react ? offsets() : null;
+      // then frame by frame until he is back at rest: the largest jump of an offset between two frames
+      let jump = 0, prev = rec.first, frames = 0, finite = true;
+      const trace = [];
+      for (let i = 0; i < 90; i++) {
+        G.tick(DT);
+        trace.push([d.brain.act?.t ?? -1, d.mode, d.position.x, d.position.z, d.jolt, d.posture, ...d.hurtSpheres.flatMap((h) => [h.x, h.y, h.z])].map((q) => (typeof q === 'number' ? +q.toFixed(9) : q)).join(','));
+        if (react && d.hitReact.active) {
+          const o = offsets();
+          frames = i + 1;
+          for (let k = 0; k < o.length; k++) {
+            if (!o[k].every(Number.isFinite)) finite = false;
+            jump = Math.max(jump, Math.hypot(o[k][0] - prev[k][0], o[k][1] - prev[k][1], o[k][2] - prev[k][2]));
+          }
+          prev = o;
+        }
+      }
+      rec.jump = jump;
+      rec.frames = frames;
+      rec.finite = finite;
+      rec.rest = !d.hitReact.active && !d.hitReact.turned;
+      rec.clock = A.t - t0; // his move's clock over the hit and the 90 frames (or the next move's)
+      rec.trace = trace.join('|');
+      res.push(rec);
+      settle(G);
+    }
+    return { res, hits: G.hits.map((h) => `${h.t.toFixed(6)}:${h.r}:${h.attack}`).join(' ') };
+  };
+  const ON = sequence(true), OFF = sequence(false);
+  IMPACT.on.react = on0;
+  IMPACT.k.react = k0;
+  const dir = (o, i, axis) => o[i][axis];
+  for (let n = 0; n < CASES.length; n++) {
+    const a = ON.res[n], b = OFF.res[n], C = CASES[n], o = a.first;
+    out(`  ${C.name}: ${a.last?.part} side ${a.last?.side} K ${a.last?.K?.toFixed(2)}; head ${o[0].map((q) => q.toFixed(3))} shoulders R ${o[1].map((q) => q.toFixed(3))} L ${o[2].map((q) => q.toFixed(3))} hips ${o[3].map((q) => q.toFixed(3))}; jump ${a.jump.toFixed(3)} m, ${a.frames} frames`);
+    assert(a.dealt > 0 && a.turned && a.last?.part === C.part, `${C.name}: the layer turns his joints in the hit's own tick (read as '${a.last?.part}')`);
+    if (C.part === 'head') assert(dir(o, 0, 0) > 0.015 && Math.abs(dir(o, 0, 0)) > Math.abs(dir(o, 3, 0)) * 2, `${C.name}: the head snaps along the blade (to his left ${dir(o, 0, 0).toFixed(3)} m), the hips barely move`);
+    if (C.part === 'body' && !C.thrust) {
+      const s = Math.sign(C.at[0]), struck = s > 0 ? 2 : 1, other = s > 0 ? 1 : 2;
+      assert(dir(o, struck, 2) < -0.005 && dir(o, other, 2) > 0.005, `${C.name}: the struck shoulder goes back (${dir(o, struck, 2).toFixed(3)} m), the other comes round (${dir(o, other, 2).toFixed(3)} m)`);
+    }
+    if (C.part === 'leg') {
+      const feet = Math.max(Math.hypot(...o[6]), Math.hypot(...o[7]));
+      assert(dir(o, 3, 1) < -0.01 && dir(o, 5, 1) < dir(o, 4, 1) - 0.004 && feet < 0.01, `${C.name}: he drops (${dir(o, 3, 1).toFixed(3)} m) on the struck side (hip L ${dir(o, 5, 1).toFixed(3)} vs R ${dir(o, 4, 1).toFixed(3)}), his feet stay put (${feet.toFixed(4)} m)`);
+    }
+    if (C.thrust) assert(dir(o, 3, 2) < -0.01 && dir(o, 0, 2) - dir(o, 3, 2) > 0.01, `${C.name}: he folds round the point: hips back (${dir(o, 3, 2).toFixed(3)} m), the head over them (${(dir(o, 0, 2) - dir(o, 3, 2)).toFixed(3)} m)`);
+    // (the freeze holds the snap: the struck part stays on the drawn cut)
+    const snap = Math.max(...o.slice(0, 6).map((q) => Math.hypot(...q)));
+    assert(snap < REACT.snapM * 1.6 + 0.02, `${C.name}: in the freeze frame no point moved more than ${(REACT.snapM * 1.6 + 0.02).toFixed(2)} m (${snap.toFixed(3)} m)`);
+    const lim = REACT.rise + REACT.heavyBack + REACT.hipLag + 0.15;
+    assert(a.rest && a.frames * DT < lim + 0.25 && a.finite, `${C.name}: back at rest in ${(a.frames * DT).toFixed(2)} s (< ${(lim + 0.25).toFixed(2)} s; the freeze holds game time), finite throughout`);
+    assert(a.jump < 0.06, `${C.name}: after the snap no point of him jumps more than 0.06 m between two frames (${a.jump.toFixed(3)} m)`);
+    // drawn only: the hit stun, the shove, the jolt, his move and its clock, his hurt spheres frame by frame
+    assert(a.stop === b.stop && a.shove === b.shove && a.jolt === b.jolt && a.act === b.act && a.clock === b.clock && a.trace === b.trace,
+      `${C.name}: off and on alike in play: freeze ${a.stop.toFixed(3)} s, shove ${a.shove.toFixed(3)} m, his move's clock and every hurt sphere for 1.5 s`);
+    assert(!b.turned && b.rest && b.last === null && b.first === null, `${C.name}: off: nothing turned (today's jolt only)`);
+  }
+  assert(ON.hits === OFF.hits, `his blows on the hero land alike with the layer on and off (${ON.hits.split(' ').filter(Boolean).length} results)`);
+  // a guarded strike gets none of it
+  {
+    IMPACT.on.react = true;
+    const G = build();
+    duel(G, { dist: 2.4 });
+    const d = G.game.dragon;
+    G.game.player.debug.god = true;
+    settle(G);
+    const guarded = d.guarding;
+    const r = guarded ? d.takeHit({ damage: 20, part: 'body', point: { x: d.position.x, y: 1.4, z: d.position.z }, swing: true, cut: { x: 1, z: 0 } }) : -1;
+    G.tick(DT);
+    assert(!guarded || (r === 0 && !d.hitReact.active), `a strike his guard turns gets no reaction (${guarded ? `guarded, ${r} damage` : 'his guard was down: not checked'})`);
+    IMPACT.on.react = on0;
+  }
+  IMPACT.by.react.duelist = byDuel0;
+  return { counts: {}, payload: new Set() };
+}
+
 const SCENARIOS = {
   motion: scenarioMotion,
+  react: scenarioReact,
   strategy: scenarioStrategy,
   terrain: scenarioTerrain,
   worldcue: scenarioWorldCue,
