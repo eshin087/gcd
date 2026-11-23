@@ -135,7 +135,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           // a gust stirs the meadow in loose local patches (G.w: how far), never as a band across the
           // view: an uneven pattern that rides the field's travel, so a patch comes and goes as it passes
           float pt = (0.5 + 0.5 * sin(ps * 0.83 + 2.1 * sin(pc * 0.37 + ps * 0.11))) * (0.5 + 0.5 * sin(pc * 0.61 - ps * 0.29 + 1.3 * sin(ps * 0.17)));
-          fk *= mix(1.0, smoothstep(0.18, 0.7, pt), G.w);
+          fk *= mix(1.0, smoothstep(0.25, 0.75, pt), G.w);
           vec2 bend = wd * (spN * (G.x + G.y * (g - 0.5) * 2.0)) + fd * (fk * G.z);
           // inside a stirred patch the blades flutter, neighbours together (short waves running downwind)
           float flutter = sin(uTime * 6.0 - ps * 1.3 + 0.6 * sin(pc * 0.9)) * 0.06 * fk;

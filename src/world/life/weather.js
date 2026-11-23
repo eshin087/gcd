@@ -486,7 +486,7 @@ export class Weather {
     const max = nb * this._bankPer + (D ? D.max * D.letters : 0) + fall;
     if (!(max > 0) || !this.life.game?.U) return null;
     try {
-      this._bp = this.life.build(() => new LetterBatch(this.life.game, max, [...chars].join(''), { spawned: fall }));
+      this._bp = this.life.build(() => new LetterBatch(this.life.game, max, [...chars].join(''), { spawned: fall, rand: () => this._fr() }));
       this._bp.mesh.visible = this._visible !== false;
       this.life.game.pipeline?.registerParticles?.(this._bp);
       this._mg = K ? [...K.glyph].map((c) => this._bp.col(c)) : [];
@@ -507,7 +507,7 @@ export class Weather {
     const max = Math.ceil(E.rate * E.life[1] * q * 1.15);
     if (!(max > 0) || !this.life.game?.U) return null;
     try {
-      this._eb = this.life.build(() => new LetterBatch(this.life.game, max, E.glyph, { additive: true, spawned: max }));
+      this._eb = this.life.build(() => new LetterBatch(this.life.game, max, E.glyph, { additive: true, spawned: max, rand: () => this._fr() }));
       this._eb.mesh.visible = this._visible !== false;
       this.life.game.pipeline?.registerParticles?.(this._eb);
       this._eg = [...E.glyph].map((c) => this._eb.col(c));

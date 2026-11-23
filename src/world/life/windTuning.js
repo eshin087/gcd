@@ -43,12 +43,12 @@ const BASE = {
   sink: null,
   // wisps of tiny faint letters riding the air: a few in the breeze, more where a front passes
   wisps: {
-    max: 10, per: [64, 96], calmPer: 0.65, rate: 0.5, gust: 2.2, life: [5, 8], len: [1.8, 3], gustLen: 1.35,
+    max: 10, per: [64, 96], calmPer: 0.65, rate: 0.6, gust: 3.2, life: [5, 8], len: [1.8, 3], gustLen: 1.35,
     width: [0.16, 0.34], stretch: 0.9, spread: 0.8, flow: 0.28, curl: 0.3, wave: 0.9, y: [0.45, 1.3], rise: 0.12,
     carry: 1, ease: 0.9, view: [19, -13, 9], size: 0.34, alpha: 0.4, color: [0.62, 0.7, 0.68],
     glyph: "-~.,'`-.~-,:", heroClear: [0.6, 1.8],
   },
-  grass: { lean: 0.16, wave: 0.2, front: 0.32, patch: 1 },
+  grass: { lean: 0.16, wave: 0.2, front: 0.24, patch: 1 },
   trees: { lean: 0.3, rock: 0.25, front: 0.28, stir: 0.08 },
   loud: 4,
   fire: { smoke: 0.5, flame: 0.55 },
@@ -77,8 +77,8 @@ export const WIND_TUNE = Object.freeze({
     dir: -8, wander: 14, speed: 1.6,
     breath: { floor: 0.35, periods: [7, 17], fit: 0.45 },
     fronts: { every: [6, 11], strength: [0.8, 1.25], speed: [8, 9.5], tail: [3.5, 5.5], lead: 0.8, spread: 16 },
-    wisps: { color: [0.52, 0.5, 0.47], rate: 0.6, gust: 2.6 },
-    grass: { lean: 0.12, wave: 0.24, front: 0.3 },
+    wisps: { color: [0.52, 0.5, 0.47], rate: 0.7, gust: 3.4 },
+    grass: { lean: 0.12, wave: 0.24, front: 0.22 },
   }),
   /** the crater of the fallen star: no weather wind, a slow draw of the air toward the star, breathing */
   starless: level({
@@ -96,8 +96,8 @@ export const WIND_TUNE = Object.freeze({
     dir: 0, wander: 5, speed: 3.2,
     breath: { floor: 0.78, periods: [14, 37] },
     fronts: { every: [5, 9], strength: [0.8, 1.1], speed: [9, 10.5], tail: [5, 8], lead: 1.0, air: 2.6, spread: 6 },
-    wisps: { color: [0.58, 0.5, 0.39], rate: 0.8, gust: 2.4 },
-    grass: { lean: 0.2, wave: 0.16, front: 0.3 },
+    wisps: { color: [0.58, 0.5, 0.39], rate: 0.8, gust: 3.2 },
+    grass: { lean: 0.2, wave: 0.16, front: 0.22 },
     loud: 6,
   }),
   /** the hill shrine: a soft breeze that comes in sighs, with real pauses between */
@@ -105,7 +105,7 @@ export const WIND_TUNE = Object.freeze({
     dir: -25, wander: 10, speed: 1.3,
     breath: { floor: 0.05, periods: [10, 23], pause: 0.38 },
     fronts: { every: [11, 18], strength: [0.8, 1.05], speed: [6.5, 7.5], tail: [5, 7] },
-    wisps: { color: [0.46, 0.5, 0.56], rate: 0.4 },
+    wisps: { color: [0.54, 0.58, 0.66], rate: 0.45 },
   }),
   /** the Windless Grove: none. The grove holds its breath (wind.still) */
   grove: level({ speed: 0, wander: 0, fronts: null, still: true, wisps: null }),

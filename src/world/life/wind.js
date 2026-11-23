@@ -62,8 +62,8 @@ export class Wind {
     }));
     this.bursts = Array.from({ length: 4 }, () => ({ on: false, x: 0, z: 0, s: 0, r: 1, age: 0 }));
     // the wisps (wind.js _wisps): clumps of tiny faint letters riding the air, drawn in an own batch
-    // made on the first update with the piece on; their own random stream (seeded once from life.rand:
-    // how many letters a clump has never moves what the other layers draw)
+    // made on the first update with the piece on; their own random stream (seeded from the level: how
+    // many there are never moves what the other layers draw)
     this._wc = [];
     this._wl = null;
     this._wb = undefined;
@@ -369,7 +369,10 @@ export class Wind {
     this._wb = null;
     const W = this.T.wisps, L = this.life;
     if (!W || !(W.max > 0) || !L.game?.U) return null;
-    this._ws = (Math.floor(L.rand() * 4294967296) ^ 0x51ed270b) >>> 0;
+    // (seeded from the level, not from life.rand: the wisps must not move what the other layers draw)
+    let h = 0x51ed270b;
+    for (const ch of String(L.levelId)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    this._ws = h;
     const q = Math.max(0.3, Math.min(1, L.quality));
     const nc = Math.max(1, Math.round(W.max * q)), per = W.per[1] | 0;
     for (let i = 0; i < nc; i++) {
@@ -380,7 +383,15 @@ export class Wind {
     // the letters: the tuning's, and the four strokes a '-' turns into along the wisp on screen
     const chars = [...new Set([...W.glyph, ...STROKES])].join('');
     try {
-      this._wb = L.build(() => new LetterBatch(L.game, nc * per, chars, { snap: W.snap ?? 0 }));
+      // (built on the wisps' own stream, not through life.build: three.js's uuids must not move life.rand,
+      //  which the other layers draw from)
+      const rand = () => this._wr(), mr = Math.random;
+      Math.random = rand;
+      try {
+        this._wb = new LetterBatch(L.game, nc * per, chars, { snap: W.snap ?? 0, rand });
+      } finally {
+        Math.random = mr;
+      }
       this._wg = [...W.glyph].map((c) => (c === '-' ? -1 : this._wb.col(c)));
       this._wst = [...STROKES].map((c) => this._wb.col(c));
       this._wb.mesh.visible = !this._hidden;

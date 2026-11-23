@@ -146,14 +146,14 @@ export const LITTER = deepFreeze({
       kinds: [
         {
           share: 0.7, glyphs: "o:co", color: [0.54, 0.45, 0.32], color2: [0.44, 0.36, 0.25],
-          size: [0.26, 0.34], fall: [2.2, 3.2], slip: 0.1, flutter: [2, 4], spin: 5, tau: 0.18,
-          lift: [0.8, 2.6], carry: 0.6, hop: 1.1, lie: 0.75, alpha: 0.8, from: [0.05, 0.15],
+          size: [0.2, 0.26], fall: [2.2, 3.2], slip: 0.1, flutter: [2, 4], spin: 5, tau: 0.18,
+          lift: [0.8, 2.6], carry: 0.6, hop: 1.1, lie: 0.75, alpha: 0.62, from: [0.05, 0.15],
           where: { at: 'kerb', base: 0.25, pile: 3, depth: 1.4, half: 15 }, source: 'edge',
         },
         {
           share: 0.3, glyphs: "v(~", color: [0.58, 0.52, 0.34], color2: [0.48, 0.42, 0.27],
-          size: [0.26, 0.32], fall: [1.1, 1.6], slip: 0.2, flutter: [2, 3.5], spin: 4, tau: 0.25,
-          lift: [1.0, 2.8], carry: 0.7, hop: 1.3, lie: 0.7, alpha: 0.8, from: [0.05, 0.2],
+          size: [0.24, 0.3], fall: [1.1, 1.6], slip: 0.2, flutter: [2, 3.5], spin: 4, tau: 0.25,
+          lift: [1.0, 2.8], carry: 0.7, hop: 1.3, lie: 0.7, alpha: 0.62, from: [0.05, 0.2],
           where: { at: 'kerb', base: 0.25, pile: 3, depth: 1.4, half: 15 }, source: 'edge',
         },
       ],

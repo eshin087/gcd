@@ -9,7 +9,8 @@ import { createWyrmLetterAtlas } from '../../render/wyrmGlyphs.js';
 // pixel (or, `snap` 1, to the art grid itself). Soft depth test against the scene like the glyph
 // particles, drawn in the FX pass.
 //
-//   const b = new LetterBatch(game, max, ".,'-~", { additive })   (through life.build)
+//   const b = new LetterBatch(game, max, ".,'-~", { additive, spawned, snap, rand })   (made with a
+//   seeded stream standing in for Math.random: three.js draws uuids; `rand` serves the atlas's later)
 //   game.pipeline.registerParticles(b)
 //   b.col(ch)                          the atlas column of a letter of `chars` (0: blank)
 //   each frame: b.begin(); b.flow(dt, t) (the spawned ones age); b.put(...) (the written ones); b.end()
@@ -24,9 +25,11 @@ const PF = 20;
 //          17 drag 18 gravity 19 flicker
 
 export class LetterBatch {
-  constructor(game, max, chars, { additive = false, spawned = 0, snap = 0 } = {}) {
+  constructor(game, max, chars, { additive = false, spawned = 0, snap = 0, rand = null } = {}) {
     const U = game.U;
     this.game = game;
+    // (the stream three.js's uuid of a rebuilt atlas draws from: never Math.random)
+    this._rand = rand;
     this.max = max;
     this.chars = chars;
     this.count = 0;
@@ -137,6 +140,8 @@ export class LetterBatch {
     if (!key || key === this._font || typeof document === 'undefined') return;
     const cut = key.lastIndexOf('x');
     const font = key.slice(0, cut), s = Number(key.slice(cut + 1)) || 1;
+    const mr = Math.random;
+    if (this._rand) Math.random = this._rand;
     try {
       const A = createWyrmLetterAtlas(font, s, this.chars);
       this.uniforms.tArt.value?.dispose?.();
@@ -145,6 +150,8 @@ export class LetterBatch {
       this._font = key;
     } catch {
       this._font = key; // (no canvas: leave it blank rather than try every frame)
+    } finally {
+      Math.random = mr;
     }
   }
 

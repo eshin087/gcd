@@ -235,10 +235,12 @@ export default {
         for (let s = 0; s < 40; s++) {
           w.step(1);
           if (s === 20) w.walk(-2.5, 1);
-          peak[q] = Math.max(peak[q], w.counts().own);
+          // (the litter's own pool: the wind's wisps have one of their own beside it)
+          peak[q] = Math.max(peak[q], w.counts().litter);
         }
         const c = w.counts();
-        T.assert(c.pools === 1, `${id} q ${q}: one pool of its own (${c.pools})`);
+        const pools = c.pools - (w.life.wind._wb ? 1 : 0);
+        T.assert(pools === 1, `${id} q ${q}: one pool of its own (${pools}, besides the wind's)`);
         T.assert(c.alpha === w.counts().alpha && c.random === 0, `${id} q ${q}: no Math.random`);
       }
       T.assert(peak[1] <= 500 && peak[1] > 0, `${id}: at most 500 letters at quality 1 (peak ${peak[1]})`);
@@ -282,7 +284,9 @@ export default {
       const w = T.build(id, 'wind,steps');
       w.step(5);
       const c = w.counts();
-      T.assert(c.pools === 0 && w.life.litter.count === 0, `${id}: litter off makes no pool and holds nothing (${c.pools} pools, ${w.life.litter.count})`);
+      // (the wind's wisps have a pool of their own: not the litter's)
+      const pools = c.pools - (w.life.wind._wb ? 1 : 0);
+      T.assert(pools === 0 && w.life.litter.count === 0 && !w.life.litter.pool, `${id}: litter off makes no pool and holds nothing (${pools} pools, ${w.life.litter.count})`);
       T.assert(w.life.takes('leaves') === false && w.life.takes('ash') === false, `${id}: litter off takes nothing from the atmosphere`);
     }
     const w = T.build('cinderwood', 'litter');

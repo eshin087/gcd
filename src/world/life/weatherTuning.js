@@ -36,7 +36,7 @@
  *  bright), `grow` how much longer it gets along the air by its end, `rise` m its heart stands
  *  higher. rate: banks born a second in view at full mist */
 const BANK = Object.freeze({
-  max: 6, rate: 0.9, per: [160, 220], spread: [4.6, 1.8], scale: [0.75, 1.15], thin: 0.3, grow: 0.35, rise: 0.5,
+  max: 6, rate: 1.2, per: [160, 220], spread: [4.6, 1.8], scale: [0.75, 1.15], thin: 0.3, grow: 0.35, rise: 0.5,
   size: [0.28, 0.34], alpha: 0.5, cycle: [4, 9], stream: 0.7, lift: 0.12,
   life: [18, 28], fadeIn: 5, fadeOut: 6, color: [0.56, 0.62, 0.72], glyph: ".,'-.`-:.-.'~", wobble: 0.12,
   heroClear: [0.5, 1.7],
@@ -74,7 +74,7 @@ export const WEATHER_TUNE = Object.freeze({
     mist: {
       bank: BANK,
       // (`veil` 0: the banks come in from the first breath of mist; the calm spell's 0.3 is a few thin ones)
-      bands: [{ key: 'mist', r: [12, 46], inner: [16, 30], innerK: 0.25, y: [0.5, 1.1], veil: 0 }],
+      bands: [{ key: 'mist', r: [12, 46], inner: [16, 30], innerK: 0.25, y: [0.75, 1.3], veil: 0 }],
       /** m/s: the drift when there is no wind to carry it (today's), and how much of the wind it takes */
       drift: [0.45, 0], carry: 0.4, view: [20, 12, -4],
     },
