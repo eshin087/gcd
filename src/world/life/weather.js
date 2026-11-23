@@ -642,7 +642,8 @@ export class Weather {
   /** Waiting time to the next event at `perMin` a minute (an exponential gap, from the director's stream). */
   _wait(perMin) {
     if (!(perMin > 0.01)) return 30;
-    return Math.min(120, -Math.log(1 - this._dr() * 0.999) * 60 / perMin);
+    // (an even spread round the mean: an exponential's long tail left minutes with nothing)
+    return (60 / perMin) * (0.4 + 1.2 * this._dr());
   }
 
   /** Dust devils crossing the badlands with the wind, never onto the ring. */
@@ -660,7 +661,7 @@ export class Weather {
       if (d) {
         const life = this._range(D.life, this._dr), K = D.keepOut;
         for (let tries = 0; tries < 6; tries++) {
-          const up = this._range(D.upwind, this._dr), side = (this._dr() - 0.5) * 2 * D.across;
+          const up = this._range(D.upwind, this._dr), side = (D.south ?? 0) + (this._dr() - 0.5) * 2 * D.across;
           const x0 = f.x - dx * up - dz * side, z0 = f.z - dz * up + dx * side;
           // its whole path must stay off the ring (and its kerb)
           let ok = true;
@@ -739,18 +740,21 @@ export class Weather {
     if (b.next <= 0) {
       b.next = this._wait(perMin);
       if (perMin > 0.05 && this._preNow) {
-        this.flash = Math.max(this.flash, this._range(B.peak, this._dr) * this.life.k);
+        b.want = Math.max(b.want ?? 0, this._range(B.peak, this._dr) * this.life.k);
         b.again = this._dr() < B.double ? this._range(B.gap, this._dr) : -1;
       }
     }
     if (b.again > 0) {
       b.again -= dt;
-      if (b.again <= 0) this.flash = Math.max(this.flash, this._range(B.peak, this._dr) * 0.7 * this.life.k);
+      if (b.again <= 0) b.want = Math.max(b.want ?? 0, this._range(B.peak, this._dr) * 0.7 * this.life.k);
     }
-    this.flash = this.flash > 0.002 ? this.flash * Math.exp(-dt * B.decay) : 0;
+    // a soft rise (B.rise /s) toward what the bolt wants, and a slower fall
+    b.want = (b.want ?? 0) > 0.002 ? b.want * Math.exp(-dt * B.decay) : 0;
+    this.flash += (b.want - this.flash) * (1 - Math.exp(-dt * (B.rise ?? 30)));
+    if (this.flash < 0.002 && b.want === 0) this.flash = 0;
     // (the fight's own storm takes over the sky: not a flicker of ours in it)
     if (!this._preNow) {
-      this.flash = 0;
+      this.flash = b.want = 0;
       b.again = -1;
     }
   }

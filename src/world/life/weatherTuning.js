@@ -124,15 +124,15 @@ export const WEATHER_TUNE = Object.freeze({
     },
     // a loose rising column of the level's dust, crossing the badlands with the wind, never onto the ring
     devils: {
-      max: 2, first: [3, 6], keepOut: 18, upwind: [14, 24], across: 16, life: [10, 15], speed: 1.5, carry: 0.9,
+      max: 2, first: [3, 6], keepOut: 18, upwind: [14, 22], across: 9, south: 4, life: [10, 15], speed: 1.5, carry: 0.9,
       // the column: `letters` pale dust letters turning round it (rad/s), rising (m/s) and wrapping, a
       // funnel `radius` wide at the top, leaning downwind; soft as it gathers and falls apart
-      letters: 44, height: [4, 6], radius: [1.3, 1.9], swirl: 2.2, rise: 0.9, lean: 0.12, fadeIn: 2, fadeOut: 3,
-      size: [0.34, 0.5], color: [0.62, 0.52, 0.4], alpha: 0.6, glyph: "~-=,'`~",
+      letters: 64, height: [6, 8], radius: [1.6, 2.4], swirl: 2.2, rise: 1.1, lean: 0.14, fadeIn: 2, fadeOut: 3,
+      size: [0.4, 0.6], color: [0.66, 0.56, 0.43], alpha: 0.7, glyph: "~-=,'`~",
     },
     // dry lightning far off: weather.flash (0..1), a soft brightening of the far side of the sky (the fog:
     // the horizon side of the frame) and a breath of the ambient; skybreakRing.js adds it
-    bolts: { first: [2, 5], peak: [0.6, 1], decay: 9, double: 0.4, gap: [0.1, 0.2], fog: [0.06, 0.062, 0.08], ambient: [0.025, 0.026, 0.034] },
+    bolts: { first: [2, 5], peak: [0.6, 1], rise: 20, decay: 2.6, double: 0.4, gap: [0.12, 0.22], fog: [0.17, 0.17, 0.21], ambient: [0.1, 0.105, 0.14], moon: [0.22, 0.24, 0.32] },
   },
 
   fox: {

@@ -846,6 +846,8 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
       const a = U.uAmbient.value, c = U.uFogColor?.value;
       a.setRGB(a.r + F.ambient[0] * far, a.g + F.ambient[1] * far, a.b + F.ambient[2] * far);
       c?.setRGB(c.r + F.fog[0] * far, c.g + F.fog[1] * far, c.b + F.fog[2] * far);
+      const m = U.uMoonColor.value, M = F.moon;
+      if (M) m.setRGB(m.r + M[0] * far, m.g + M[1] * far, m.b + M[2] * far);
     }
     U.uMoonDir?.value?.set(cur.dir[0], cur.dir[1], cur.dir[2]).normalize();
     if (U.uFogNear) U.uFogNear.value = cur.fogNear;
