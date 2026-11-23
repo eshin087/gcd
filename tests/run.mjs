@@ -37,6 +37,7 @@ const TASKS = [
   ['fox', ['tests/integration/fox.mjs', '.', 'all'], {}],
   ['duel', ['tests/integration/duel.mjs', '.', 'all'], {}],
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}],
+  ['woke', ['tests/integration/woke.mjs', '.', 'all'], {}],
   ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}],

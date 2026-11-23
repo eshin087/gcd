@@ -210,8 +210,10 @@ export class SourceMoves {
       const b = near[i].b;
       // a bite out of the pillar where the brick was torn
       Wd.strike?.(b.x, b.z, b.r + 0.2, this.T.world.brick * 0.5, { kind: 'blunt', by: 'boss', y: 2.2, src: Wd.swing?.() ?? -1 });
+      // (held clear of its own pillar on the hero's side: cover stops a torn stone, and its own pillar must not)
+      const hp = this.game.player?.position ?? d.position, hx = hp.x - b.x, hz = hp.z - b.z, hl = Math.hypot(hx, hz) || 1, off = b.r + 0.9;
       d.fx.throwShot?.({
-        kind: 'stone', x: b.x, y: 2.2, z: b.z, dx: 0, dz: 1, speed: U.speed, radius: 0.55, tell: TELL.RED, damage: D.damage ?? U.damage, knockback: 2.4,
+        kind: 'stone', x: b.x + (hx / hl) * off, y: 2.2, z: b.z + (hz / hl) * off, dx: 0, dz: 1, speed: U.speed, radius: 0.55, tell: TELL.RED, damage: D.damage ?? U.damage, knockback: 2.4,
         attack: a?.name ?? 'unwriting', delay: U.first + i * U.gap, rise: 3.0, range: 26, big: false,
       });
     }

@@ -4146,6 +4146,12 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   what did it: scatter / phase / round / debug, or cut / parry / pearl / break / phase / mantle / death; audio a paper tear),
   `dragon:sheath {state}` (the Sheathed's sheath changed, ADR-145: settle = the hand on the hilt, draw = the blade out,
   click = it went home (the grove falls), carry; audio: the breath, the click),
+  Xin Yi, the One Who Woke (ADR-156; audio plays each, the HUD feed none): `dragon:shot {attack, heavy}` (a gun fires),
+  `dragon:reload` (both guns thrown away), `dragon:bend {why}` (THE BEND: why 'shot' or 'cut'), `dragon:stop {held}` (a
+  returned bolt hangs before his palm; held = how many now), `dragon:sent {count, result}` (Return to Sender answered),
+  `dragon:unwrite {count}` (bricks torn out of the code pillars), `dragon:dejavu {name}` (the hall stutters: the string
+  replays), `dragon:fall {x, z, lie}` (THE FALL: bar 1 empty and the deathblow; he lies lie s), `dragon:stillHand {dur}`
+  (the rising's ring went out: the Still Hand held dur s),
   `dragon:posture {posture, max}`, `dragon:postureBreak`, `dragon:stagger` (ordinary stagger only), `dragon:phase2`,
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),
@@ -4203,6 +4209,8 @@ World → audio (destruction, ADR-107; see "Destruction" above):
   down and ground behind it has opened. x, z: the end of the lane that opened furthest; reach: how far from the
   centre the hero's ground goes there, m; lanes: lanes open in all; first: nothing was open before. One reused
   payload. The HUD feed says it once a fight, on first)
+- `world:scene {id, x, z}` (ADR-157, the Hall of Falling Script: the set's scenes.to began a morph to scene id
+  from x, z; audio a falling run of ticks)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
   and hazard: true (be out from under it; audio plays the hazard cue)
 
