@@ -506,6 +506,8 @@ function buildTerrace(U, colliders) {
     group, treeSpots, bare, slabs, nest: { x: S.x, z: S.z }, bonfire: { x: bf.x, z: bf.z },
     material: mat, stoneMaterial: stoneMat, slabMaterial: slabMat,
     breakables,
+    // the terrace's light, pulled down while the Nine-Tailed Fox stands (thousandFox/beam.js; makeLight)
+    light: makeLight(),
     scarInk: [0.012, 0.012, 0.016], // dark cracks in the grey paving
     // the hill's grass as the meadow's; a few tufts in the joints of the paving, a little on the path
     grass: {
@@ -514,6 +516,56 @@ function buildTerrace(U, colliders) {
         if (z > T.r && z < T.pathTo + 3 && Math.abs(x - pathX(z)) < 2.2) return 0.3;
         return 1;
       },
+    },
+  };
+}
+
+/**
+ * The terrace's light while something calls it down (the Howl: thousandFox/beam.js). Not an `ambience`
+ * (that would take the fireflies' place): its caller steps it. `dim(k)` each frame it should hold (k
+ * 0..1; it lets go 0.2 s after the last call), `update(dt, game)` every frame (it eases ~0.25 s and
+ * writes the moon, the ambient and the fog colours as they were x (1 - 0.75 dim); back to 0 they are
+ * restored exactly), `reset(game)` the light back at once, `state` { dim }.
+ */
+function makeLight() {
+  const st = { dim: 0, want: 0, hold: 0, base: null };
+  const KEYS = ['uMoonColor', 'uAmbient', 'uFogColor'];
+  const restore = (U) => {
+    if (st.base && U) for (const k of KEYS) if (st.base[k] && U[k]?.value) U[k].value.copy(st.base[k]);
+    st.base = null;
+  };
+  return {
+    get state() {
+      return { dim: st.dim };
+    },
+    dim(k = 1) {
+      const v = Number(k);
+      st.want = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
+      st.hold = 0.2;
+    },
+    reset(game) {
+      restore(game?.U);
+      st.dim = st.want = st.hold = 0;
+    },
+    update(dt, game) {
+      if (!(dt > 0)) return;
+      if (st.hold > 0) st.hold -= dt;
+      else st.want = 0;
+      if (st.dim <= 0 && st.want <= 0) return;
+      const U = game?.U;
+      st.dim += (st.want - st.dim) * (1 - Math.exp(-dt * 4));
+      if (st.want <= 0 && st.dim < 0.004) {
+        st.dim = 0;
+        restore(U);
+        return;
+      }
+      if (!U) return;
+      if (!st.base) {
+        st.base = {};
+        for (const k of KEYS) if (U[k]?.value?.clone) st.base[k] = U[k].value.clone();
+      }
+      const f = 1 - 0.75 * st.dim;
+      for (const k of KEYS) if (st.base[k] && U[k]?.value) U[k].value.copy(st.base[k]).multiplyScalar(f);
     },
   };
 }

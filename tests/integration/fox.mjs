@@ -1452,6 +1452,230 @@ async function scenarioCost() {
   out(`     a frame: ${none.toFixed(2)} ms with no self, ${five.toFixed(2)} ms with a pack of five cycling; their poses ${(poseT / 300).toFixed(2)} ms a frame`);
 }
 
+// ================================================================== scenario: beam (the Howl)
+/** The Howl from a set-up: phase 3, him at (0, -2), the hero `dist` m from him at `ang` (AI off). Plays
+ *  it to the end (busy off and him on his feet) and returns what happened. `step(I)` runs before every
+ *  tick (the hero's input). */
+function howlPlay(G, { dist = 6, ang = 0, god = false, step = null, max = 14, until = null } = {}) {
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, H = d.howl;
+  d.debug.setAI(false);
+  settle(G, 4);
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  place(G, dist, ang);
+  p.debug.god = god;
+  run(G, 0.2);
+  input.axis = { x: 0, y: 0 };
+  const I = {
+    flashT: null, fixedAt: null, fixedYaw: null, litYaw: null, hits: [], hp0: p.hp, guard0: p.guard, minGuard: p.guard,
+    start: { x: p.position.x, z: p.position.z }, hidden0: !H.spirit.visible && H.spirit.root.visible === false,
+    seen: 0, peakFire: 0, phases: new Set(), states: new Set(), dimMax: 0, heldMax: 0, flashes: 0, tells: [],
+  };
+  const h0 = G.hits.length;
+  G.watch = (n, e) => {
+    if (n === 'combat:flash' && e?.source === 'dragon') {
+      I.flashes++;
+      if (e.attack === 'foxVerdict' && I.flashT === null) { I.flashT = game.time; I.flashTell = e.tell; I.flashY = e.y; }
+    }
+    if (n === 'combat:tell' && e?.source === 'dragon') I.tells.push(e.tell);
+    if (n === 'combat:charge' && e?.attack === 'foxVerdict') I.charge = true;
+  };
+  if (!d.debug.howl()) return null;
+  for (let i = 0, n = Math.round(max / DT); i < n; i++) {
+    step?.(I);
+    G.tick(DT);
+    const B = H.B;
+    I.phases.add(H.phase);
+    I.states.add(p.state);
+    if (B.fixed && I.fixedAt === null) { I.fixedAt = B.fixedAt; I.fixedYaw = B.yaw; }
+    if (B.on && I.litYaw === null) I.litYaw = B.yaw;
+    if (H.spirit.visible) I.seen++;
+    I.peakFire = Math.max(I.peakFire, game.fx.fire.count);
+    I.dimMax = Math.max(I.dimMax, game.world.forest?.light?.state?.dim ?? 0);
+    I.heldMax = Math.max(I.heldMax, game.cameraRig.held ?? 0);
+    I.minGuard = Math.min(I.minGuard, p.guard);
+    if (until?.(I)) break;
+    if (i > 30 && !H.busy && d.mode === 'foot') break;
+  }
+  G.watch = null;
+  input.axis = { x: 0, y: 0 };
+  input.up(1);
+  I.hits = G.hits.slice(h0).filter((h) => h.attack === 'foxVerdict');
+  I.lost = I.hp0 - p.hp;
+  I.moved = Math.hypot(p.position.x - I.start.x, p.position.z - I.start.z);
+  I.hiddenAfter = !H.spirit.visible && H.spirit.root.visible === false && !H.busy;
+  // (a tick touched the hero: its parts land at one instant; the first contact is the first of them)
+  const times = [...new Set(I.hits.filter((h) => h.r === RESULT.HIT || h.r === RESULT.BLOCKED).map((h) => h.t.toFixed(4)))];
+  I.touches = times.length;
+  return I;
+}
+
+async function scenarioBeam() {
+  out('\n== scenario BEAM (Heaven-Devouring Howl: the line fixed at the cue, a roll through it, three ticks, the guard, the world, the fox, resets, when) ==');
+  const VT = TUNING.verdict;
+  const G = build(SEED, true);
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, H = d.howl;
+  duel(G, { dist: 6, form: 3 });
+  // ---- the data: one red beat (the summoning + the charge), sustained, dealt by beam.js; the kneel
+  const A = realise('foxVerdict', 3, () => 0.5);
+  const real = A.beats.filter((b) => !b.feint), bb = real[0];
+  assert(real.length === 1 && bb.def.tell === TELL.RED && bb.def.selfHit && bb.def.sustain && Math.abs(bb.impact - bb.start - (VT.summon + VT.charge)) < 1e-6 && Math.abs(bb.end - bb.impact - VT.lit) < 1e-6,
+    `the Howl: a flit, then ONE red beat (${(bb.impact - bb.start).toFixed(2)} s windup: the summoning + the charge), lit ${(bb.end - bb.impact).toFixed(2)} s (sustain, selfHit)`);
+  assert(MOVES.foxVerdict.recoverOpen === 1 && Math.abs(A.end - A.recoveryStart - VT.kneel) < 1e-6, `then he kneels ${(A.end - A.recoveryStart).toFixed(2)} s, his guard down all of it`);
+  // ---- 1. standing in it (god): the line fixed at the cue, the first contact, at most three ticks
+  // (once it has lit and he is up again, the hero is put back in its strip every frame: the ticks)
+  const st = howlPlay(G, { dist: 6, god: true, step: () => {
+    const B = H.B;
+    if (!B.on || B.t < 0.3 || B.taken < 0 || p.state === 'knockdown') return;
+    p.debug.teleport(B.ox + B.dx * 10, B.oz + B.dz * 10);
+  } });
+  assert(!!st && st.hidden0, 'the fox is hidden before the Howl');
+  assert(st.charge && st.tells.includes(TELL.RED) && st.flashTell === TELL.RED && st.flashY > 4, `the summoning: the darkness of a charge (combat:charge), the cue red, its flare at the jaws (${st.flashY?.toFixed(1)} m up)`);
+  assert(st.flashT !== null && st.fixedAt !== null && st.fixedAt <= st.flashT + DT * 1.5 && st.fixedAt >= st.flashT - 0.05 && Math.abs(wrapA(st.litYaw - st.fixedYaw)) < 1e-6,
+    `the line is FIXED at the cue (fixed ${((st.fixedAt - st.flashT) * 1000).toFixed(0)} ms from the flare) and fires as fixed`);
+  const first = st.hits.find((h) => h.r === RESULT.HIT);
+  const dmgScale = TUNING.damageScale ?? 1;
+  assert(!!first && Math.abs(first.damage - VT.first.damage * dmgScale) < 1e-6 && st.states.has('knockdown') && st.touches === 1 + VT.maxTicks && H.stats.thrown >= 1, `standing in it: the first contact (${first?.damage?.toFixed(1)}, knocked down), then ticks: ${st.touches - 1} (at most ${VT.maxTicks}, the last throws him clear)`);
+  assert(st.seen > 100 && st.hiddenAfter && st.phases.has('summon') && st.phases.has('charge') && st.phases.has('lit') && st.phases.has('end'), `the fox stands ${(st.seen * DT).toFixed(1)} s (summon → charge → lit → end), hidden after`);
+  assert(st.dimMax > VT.dim * 0.8 && st.heldMax > 2, `the terrace's light dropped (to ${st.dimMax.toFixed(2)}), the camera pulled back (${st.heldMax.toFixed(1)} m)`);
+  out(`     the fire field's peak through the Howl: ${st.peakFire} blobs alive (holds 6000)`);
+  assert(st.peakFire < 3000, `the fire field stays under 3000 blobs through it (${st.peakFire})`);
+  assert((game.world.forest.light?.state?.dim ?? 0) < 0.05, 'the light comes back');
+  // ---- 2. rolled through: at the cue out of the line, then back through the sweep as it comes
+  settle(G, 4);
+  let rolls = 0;
+  const rl = howlPlay(G, { dist: 7, step: (I) => {
+    const B = H.B;
+    if (p.state === 'roll' || !B.fixed) return;
+    const q = p.position, ox = q.x - B.ox, oz = q.z - B.oz, across = -ox * B.dz + oz * B.dx, along = ox * B.dx + oz * B.dz;
+    const sx = -B.dz, sz = B.dx; // the line's +across side
+    // at the cue: out of the line to its side
+    if (I.flashT !== null && !I.r0 && game.time >= I.flashT + TUNING.flashLead - 0.12) {
+      I.r0 = true;
+      const sd = across >= 0 ? 1 : -1;
+      input.axis = { x: sx * sd, y: -sz * sd };
+      input.tap('Space');
+      rolls++;
+      return;
+    }
+    // the sweep coming: roll back through it toward its other side when its near edge is close
+    if (B.on && B.sign && I.r0 && !I.r1 && along > 0) {
+      const toward = B.sign > 0 ? -1 : 1; // (the side the line turns to: across < 0 for +sign)
+      const sd = across >= 0 ? 1 : -1;
+      const gap = Math.abs(across) - B.w / 2 - 0.45;
+      if (sd === toward && gap < 0.9) {
+        I.r1 = true;
+        input.axis = { x: -sx * sd, y: sz * sd };
+        input.tap('Space');
+        rolls++;
+      }
+    }
+  } });
+  assert(!!rl && rl.lost === 0 && rolls >= 1, `rolled out at the cue and back through the sweep (${rolls} rolls): ${rl?.lost?.toFixed?.(1)} HP lost, hits ${rl?.hits.map((h) => h.r).join(',')}`);
+  // ---- 3. a held guard facing it: guard per tick, never health, and a slide along it
+  settle(G, 4);
+  p.guard = 100;
+  const gd = howlPlay(G, { dist: 7, step: () => { input.press(1); game.mouseGround.set(d.position.x, 0, d.position.z); } });
+  const gh = gd?.hits ?? [];
+  assert(!!gd && gd.lost === 0 && gh.some((h) => h.r === RESULT.BLOCKED) && gd.guard0 - gd.minGuard > VT.guard.cost && H.stats.blocked > 0, `a held guard: ${gd?.lost?.toFixed?.(1)} HP lost, guard ${Math.round(gd?.guard0)} → ${Math.round(gd?.minGuard)}`);
+  assert(gd.moved > 1.5, `... and slid ${gd.moved.toFixed(2)} m along it (then out of its side)`);
+  // ---- 4. the world breaks along it (the real set): a sweep, a trench of impacts, fire past the kerb
+  {
+    const G2 = build(SEED, true);
+    const g2 = G2.game, d2 = g2.dragon, W = g2.world;
+    const calls = { sweep: 0, impact: 0, ignite: 0 };
+    const sw = W.destructibles.sweep.bind(W.destructibles), im = W.impact, ig = W.ignite;
+    W.destructibles.sweep = (...a) => { calls.sweep++; return sw(...a); };
+    W.impact = (...a) => { calls.impact++; return im(...a); };
+    W.ignite = (...a) => { calls.ignite++; return ig(...a); };
+    duel(G2, { dist: 6, form: 3 });
+    const before = W.destructibles.list.filter((b) => !b.floor && b.state === 0).length;
+    const wr = howlPlay(G2, { dist: 9, ang: 0.4, god: true });
+    const after = W.destructibles.list.filter((b) => !b.floor && b.state === 0).length;
+    assert(!!wr && calls.sweep >= 8 && calls.impact >= 10 && calls.ignite >= 1, `the world: ${calls.sweep} sweeps, ${calls.impact} impacts (the trench), ${calls.ignite} fires past the kerb; standing pieces ${before} → ${after}`);
+  }
+  // ---- 5. a reset mid-charge and mid-beam leaves nothing
+  for (const at of ['charge', 'lit']) {
+    const G3 = build(SEED, true);
+    const g3 = G3.game, d3 = g3.dragon, H3 = d3.howl, U = g3.U;
+    duel(G3, { dist: 6, form: 3 });
+    g3.player.debug.god = true;
+    run(G3, 1);
+    const moon0 = U.uMoonColor.value.clone(), amb0 = U.uAmbient.value.clone();
+    d3.debug.setAI(false);
+    d3.debug.howl();
+    run(G3, 8, null, () => H3.phase === at && (at !== 'lit' || H3.B.t > 0.6));
+    const was = H3.phase;
+    d3.debug.reset();
+    run(G3, 0.05);
+    const clean = !H3.busy && !H3.spirit.visible && H3.spirit.root.visible === false && !H3.B.on && (g3.world.forest.light?.state?.dim ?? 0) === 0 && U.uMoonColor.value.equals(moon0) && U.uAmbient.value.equals(amb0);
+    run(G3, 2.5);
+    const fire = g3.fx.fire.count, held = g3.cameraRig.held;
+    assert(was === at && clean && fire === 0 && held < 0.2, `a reset mid-${at}: nothing lit, the fox hidden, the light back at once, no heat after (${fire} blobs), the camera back (${held.toFixed(3)} m)`);
+  }
+  // ---- 6. when: not before T.start s into phase 3; forced once under T.forceAt
+  {
+    const G4 = build(SEED, true);
+    const g4 = G4.game, d4 = g4.dragon, H4 = d4.howl;
+    duel(G4, { dist: 6, form: 3 });
+    g4.player.debug.god = true;
+    let early = 0;
+    for (let i = 0; i < 300; i++) {
+      d4.brain.cooldowns = {};
+      d4.brain.last = [null, null];
+      for (const dist of [2, 6, 10]) if (d4.brain._choose(dist) === 'foxVerdict') early++;
+    }
+    const w0 = d4.weigh('foxVerdict', MOVES.foxVerdict, 1);
+    run(G4, VT.start + 0.5, () => { d4.debug.setAI(false); });
+    const w1 = d4.weigh('foxVerdict', MOVES.foxVerdict, 1);
+    let late = 0;
+    for (let i = 0; i < 300; i++) {
+      d4.brain.cooldowns = {};
+      d4.brain.last = [null, null];
+      for (const dist of [2, 6, 10]) if (d4.brain._choose(dist) === 'foxVerdict') late++;
+    }
+    assert(early === 0 && w0 === 0 && w1 > 0 && late > 0, `not picked before ${VT.start} s into phase 3 (${early} of 900 picks; weight ${w0}), picked after (${late} of 900; weight ${w1})`);
+    // forced: the first time his bar is under T.forceAt (before T.start: the weigh would say no)
+    const G5 = build(SEED, true);
+    const g5 = G5.game, d5 = g5.dragon, H5 = d5.howl;
+    duel(G5, { dist: 6, form: 3 });
+    g5.player.debug.god = true;
+    d5.debug.setAI(true);
+    d5.hp = d5.maxHp * (VT.forceAt - 0.02);
+    run(G5, 6, null, () => d5.brain.act?.name === 'foxVerdict');
+    const forcedNow = d5.brain.act?.name === 'foxVerdict';
+    run(G5, 14, null, () => !H5.busy && d5.mode === 'foot');
+    assert(forcedNow && H5.used && H5.forced() === null, `under ${VT.forceAt * 100} % in phase 3 it is forced at once (${forcedNow}), once (then forced() → ${H5.forced()})`);
+  }
+  // ---- 7. the paper selves in its strip pop (a self set on the line before it fires)
+  {
+    const G6 = build(SEED, true);
+    const g6 = G6.game, d6 = g6.dragon, H6 = d6.howl;
+    duel(G6, { dist: 6, form: 3 });
+    g6.player.debug.god = true;
+    d6.debug.setAI(false);
+    d6.debug.howl();
+    run(G6, 8, null, () => H6.B.on);
+    let popped = 0;
+    G6.watch = (n, e) => { if (n === 'dragon:clone' && e?.by === 'beam') popped++; };
+    // (a self torn free and set on the line by hand: whatever moves the selves, one in its strip pops)
+    const C6 = d6.clones;
+    if (typeof C6.spawn === 'function') C6.spawn(1, 'test');
+    const c = C6.list.find((o) => o.alive);
+    if (c) {
+      c.x = H6.B.ox + H6.B.dx * 8;
+      c.z = H6.B.oz + H6.B.dz * 8;
+    }
+    run(G6, 0.3);
+    G6.watch = null;
+    assert(H6.stats.popped >= 1 || popped >= 1, `a paper self in its strip pops (${H6.stats.popped})`);
+  }
+}
+const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+
+
 const S = {
   cost: scenarioCost,
   levels: scenarioLevels,
@@ -1467,6 +1691,7 @@ const S = {
   training: scenarioTraining,
   looks: scenarioLooks,
   smoke: scenarioSmoke,
+  beam: scenarioBeam,
 };
 // (smoke is opt-in: a minute per phase of a fight, for a quick look)
 const OPT_IN = new Set(['smoke', 'cost']);

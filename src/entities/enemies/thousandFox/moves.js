@@ -111,6 +111,41 @@ export function roundBeats(n) {
   ];
 }
 
+// ---------------------------------------------------------------- the Howl's poses (foxVerdict, below)
+const VT = TUNING.verdict;
+/** The summoning: down low, both palms slammed flat on the paving before him. */
+const HOWL_SLAM = F({
+  bY: -0.6, pitch: 0.34, yaw: 0, hdX: 0.2, rH: [0.14, -0.6, 0.36], lH: [-0.14, -0.6, 0.36], rP: [-0.6, -0.9, -0.2], lP: [0.6, -0.9, -0.2],
+  rF: [-0.26, 0.04], lF: [0.26, -0.04], rK: [-0.6, 0, 0.8], lK: [0.6, 0, 0.8], rFy: -0.3, lFy: 0.3,
+});
+/** The charge: risen, both palms thrown up and forward at the fox's jaws above him. */
+const HOWL_RAISE = F({
+  bY: -0.16, pitch: -0.12, yaw: 0, hdX: -0.3, rH: [0.24, 0.36, 0.3], lH: [-0.24, 0.36, 0.3], rP: [-0.9, 0.3, -0.2], lP: [0.9, 0.3, -0.2],
+  rF: [-0.3, 0.02], lF: [0.3, -0.02], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3,
+});
+/** Lit: both palms driven forward along the line, the weight sunk behind them. */
+const HOWL_DRIVE = F({
+  bY: -0.3, bZ: 0.12, pitch: 0.1, yaw: 0, hdX: -0.05, rH: [0.14, 0.04, 0.55], lH: [-0.14, 0.04, 0.55], rP: [-0.8, -0.3, -0.3], lP: [0.8, -0.3, -0.3],
+  rF: [-0.3, 0.1], lF: [0.3, -0.24], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3,
+});
+/** Spent: down on one knee, the hands on the thigh, the head hung (his guard down). */
+const HOWL_KNEEL = F({
+  bY: -0.55, pitch: 0.28, yaw: 0, hdX: 0.55, rH: [0.12, -0.42, 0.22], lH: [-0.04, -0.4, 0.28], rP: [-0.5, -0.6, -0.5], lP: [0.5, -0.6, -0.5],
+  rF: [-0.14, 0.3], lF: [0.17, -0.42], rK: [0, 0, 1], lK: [0.1, -0.85, 0.5], flat: 0.7,
+});
+// (the kneel is the move's recovery, which the realiser scales by phase 3's recoveryScale: undone below)
+const HOWL_SU = VT.summon / (VT.summon + VT.charge); // where the summoning ends in the beam beat's windup
+const HOWL_FLIT_KEYS = [[0.3, F({ bY: -0.3, pitch: 0.1, ...FT.LOW })], [1.0, F({ bY: -0.36, pitch: 0.16, yaw: 0, rH: [0.14, -0.4, 0.3], lH: [-0.14, -0.4, 0.3] })]];
+const HOWL_BEAM_KEYS = [
+  [0.07, HOWL_SLAM],
+  [HOWL_SU * 0.94, { ...HOWL_SLAM, bY: -0.56 }],
+  [HOWL_SU + 0.08, HOWL_RAISE],
+  [0.95, { ...HOWL_RAISE, bY: -0.2 }],
+  [1.0, { ...HOWL_DRIVE, e: 'i' }],
+  [1.96, { ...HOWL_DRIVE, bZ: 0.1 }],
+];
+const HOWL_KNEEL_KEYS = [[0.18, HOWL_KNEEL], [0.85, { ...HOWL_KNEEL, hdX: 0.62 }], [1.0, F({ bY: -0.3, ...FT.OR })]];
+
 // ---------------------------------------------------------------- the moves
 // PBZ-fast as Shen Hui (TUNING.flashLead 0.3, the 0.42 s / 0.32 s floors). Phase 3 is no faster than
 // phase 2: it asks more (the fox spirit's tail, the pounce, the black pearl, five selves).
@@ -311,13 +346,24 @@ export const MOVES = {
     }],
   },
 
-  /** Heaven-Devouring Howl (phase 3; beam.js, tuningBeam.js): he leaves for the rim, summons the
-   *  Nine-Tailed Fox, and its beam rakes the terrace (black on the summoning, red on the beam: roll
-   *  through it); then he kneels open. Every beat is the Howl's (`verdict`: beam.js routes it).
-   *  PLACEHOLDER (contracts commit): the spirit agent writes its beats and weight. */
+  /** Heaven-Devouring Howl (phase 3; beam.js, tuningBeam.js): he leaves for the rim (a feint), then ONE
+   *  red beat whose windup is the summoning (both palms on the paving, the Nine-Tailed Fox rising behind
+   *  him, the darkness of a charged blow) and the dark sun gathering at its jaws; the line is fixed at the
+   *  cue (the red flare at the jaws), the beam lit `lit` s and sweeping one way toward the hero's side
+   *  (roll through it); then he kneels open (the recovery, his guard down all of it). Every beat is the
+   *  Howl's (`verdict`: beam.js routes it; `selfHit`: beam.js tests the strip and deals the hits). */
   foxVerdict: {
-    label: 'Heaven-Devouring Howl', phase: 3, weight: [0, 0, 1.0], verdict: true, cooldown: 0, band: [0, 99], recovery: 0.6, cat: 'ranged',
-    beats: [{ feint: true, verdict: 'flit', windup: 0.5, active: 0.05, close: 0, track: 0, keys: callKeys() }],
+    label: 'Heaven-Devouring Howl', phase: 3, weight: [0, 0, 1.4], verdict: true, cooldown: VT.every, band: [0, 99],
+    recovery: VT.kneel / (TUNING.recoveryScale?.[2] ?? 1), recoverOpen: 1, cat: 'hazard', recoveryKeys: HOWL_KNEEL_KEYS,
+    beats: [
+      { feint: true, verdict: 'flit', windup: VT.flit, fixed: true, active: 0.05, close: 0, track: 0, keys: HOWL_FLIT_KEYS },
+      {
+        verdict: 'beam', tell: R, windup: VT.summon + VT.charge, fixed: true, cock: 0.97, active: VT.active,
+        damage: VT.first.damage, knockback: VT.first.knockback, knockdown: true,
+        zone: { kind: 'line', r: VT.len, w: VT.w }, part: 'palms', close: 0, track: 0, selfHit: true, hazard: true,
+        sustain: { dur: Math.max(0.05, VT.lit - VT.active), tick: VT.tick }, keys: HOWL_BEAM_KEYS,
+      },
+    ],
   },
 
   /** The Nine-Tailed Fox: the phase-3 transition. His selves burn up into him and the fox spirit wakes

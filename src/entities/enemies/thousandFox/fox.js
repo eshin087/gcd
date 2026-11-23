@@ -494,6 +494,8 @@ export class ThousandFox extends Duelist {
 
   /** Where a beat's glint pops: the end of the limb that strikes (both hands' middle for `palms`). */
   tellPoint(part, out) {
+    // (the Howl's beam: its cue is drawn at the fox's jaws, beam.js cuePoint)
+    if (this.howl?.on && this.howl.cuePoint(out)) return out;
     if (!this._ptsOk) return super.tellPoint(part === 'feet' ? 'feet' : 'tip', out);
     if (part === 'palms') {
       this._limbSeg('fistR', _a, out);
