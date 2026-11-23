@@ -45,7 +45,7 @@ export const PICKED = Object.freeze({
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
- *  rows, deliberately NOT in PICKED; each draws its call site's default (its `a`) until picked. When the
+ *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
 export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones']); // Wen Yao (ADR-147)
 
