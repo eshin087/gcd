@@ -867,6 +867,10 @@ Sixty-eight pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **CI runs the tests as four parallel jobs** (2026-11-23, ADR-153, PR #92): `tests/run.mjs --shard I/N`
+  deals the tasks to N shares; the Starless Lord suite runs in three parts; a PR's check takes ~4
+  minutes (was 12-15). A PR that only changes docs/, *.md or .claude/ skips the tests and the build.
+  lord.mjs, duel.mjs and asc.mjs take a comma list of scenarios and `ABYSS_SKIP`.
 - **`npm test` runs its suites side by side** (2026-11-15): `tests/run.mjs` starts the four
   integration suites and the two static checks as separate processes, with `integ` in five parts
   (its TIMING scenario in three), and prints each task's output whole and a summary of times. The
