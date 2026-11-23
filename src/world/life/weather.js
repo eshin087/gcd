@@ -675,7 +675,7 @@ export class Weather {
             const t = (s / 10) * life, x = x0 + dx * sp * t, z = z0 + dz * sp * t;
             if (Math.abs(x) < K && Math.abs(z) < K) ok = false;
             // (and it never crosses the hero: it would hide him)
-            else if (Math.hypot(x - f.x, z - f.z) < (D.heroGap ?? 0)) ok = false;
+            else if (Math.hypot(x - L.hero.x, z - L.hero.z) < (D.heroGap ?? 0)) ok = false;
           }
           if (!ok) continue;
           d.on = true; d.x = x0; d.z = z0; d.vx = dx * sp; d.vz = dz * sp; d.age = 0; d.life = life; d.acc = 0;
