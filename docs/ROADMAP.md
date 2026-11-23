@@ -493,6 +493,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] More moments in the long strings (a marked blow mid-string ends it: tune which)
   - [ ] Training catalogue entries and Lab chips for the new moves
 
+## M1.69 — Attack sounds: cues only for blue / red, blows that sound like their weapon (2026-11-22, `audio/attack-sounds`, ADR-165)
+- [x] No cue on a white blow; a recorded warning and timing sound for blue and red
+- [x] A blow sound per weapon (sword cut / heavy / thrust / draw, fist light / heavy), timed to the impact
+- [x] The wyrm's claws and tail, the hero's sword on the same takes
+- [x] An audition page; the owner's picks ship; `?sfx=old` and a Lab row
+- [ ] Follow-ups:
+  - [ ] The owner's pick of the blue timing sound (second round on the page)
+  - [ ] The owner's listen in a fight and on the phone: the mix against the music
+  - [ ] A real punch / kick and creature swipe if a CC0 recording turns up
+
 ## M1.42 — Dark music per level and per boss phase (2026-11-15, `audio/dark-score`, ADR-117)
 - [x] Recorded CC0 sound effects tried and dropped (too noisy: PR #55 closed); the effects stay synthesised
 - [x] An audition page: three dark candidates for each of 14 slots; the owner's picks ship
