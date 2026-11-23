@@ -35,7 +35,7 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 // FUSES: the destruction system has no on-break callback, so this polls the cars (as the Skybreak Ring
 // polls its braziers' posts): a car that breaks burns for a fuse, then explodes (CITY.car).
 //
-// `?city=a|b|c` (read when the set is built; the owner picks from the sheets): a Neon Rain (night, rain,
+// `?city=a|b|c` (read when the set is built; the owner picked a, 2026-11-23: lookSwitch PICKED): a Neon Rain (night, rain,
 // wet dark asphalt, pale neon; the fight is built with it), b Golden Hour (his perfect city at dusk), c
 // Lockdown (red emergency light, search beams sweeping the plaza).
 
