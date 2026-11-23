@@ -32,7 +32,7 @@ export const ANSWER_TUNING = Object.freeze({
   DEFAULT: level(),
   cinderwood: level(),
   // a dry, fitful wind: the roar drags the ash low and far
-  ash: level({ roar: { ...DEFAULT.roar, front: { strength: 1.7, speed: 16, width: 8 }, scatterR: 11 } }),
+  ash: level({ roar: { ...DEFAULT.roar, front: { strength: 2.2, speed: 16, width: 8 }, scatterR: 11 } }),
   // the crater: almost nothing moves, so what does is a draw, slow and wide
   starless: level({
     roar: { ...DEFAULT.roar, front: { strength: 1.2, speed: 10, width: 14 } },
