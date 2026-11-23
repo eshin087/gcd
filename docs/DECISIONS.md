@@ -4615,7 +4615,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   their worlds appear nowhere in the game (tests DATA checks his data and the level's lines); no letter,
   shield or symbol on him; what carries it is what nobody owns: a caped strongman who flies, red heat from
   his eyes, a clap that breaks glass, a car thrown one-handed, a smile for the cameras.
-- **Consequences:** the bar is 14000 (the fencing bot wins in 154 - 166 s; at 3400 it won in 40 - 46 s:
+- **Consequences:** the bar is 14000 (the fencing bot wins in 156 - 183 s; at 3400 it won in 40 - 46 s:
   every crash is a long opening, as designed). Cut: Last Word (a held two-eyed beam and its clash), the
   hydrants' water spouts, his own SFX (the existing synth sounds play his events). His red role for
   Training is Meteor (a beam is no fixed contact for a perfect dodge); Meteor has no weight in phase 1.
