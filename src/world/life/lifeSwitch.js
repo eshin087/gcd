@@ -13,14 +13,19 @@
 //   arrival    the camera opens wide over the level as the player enters (game/arrival.js)
 //   answer     the world answers the fight (a roar's gust front, the hush before a great blow)
 //
-// DEFAULT: off, until the owner has picked from the filmed options. Headless (no `location`): off, so
-// the seeded suites are untouched; tests/integration/life.mjs turns pieces on with setLife().
+// DEFAULT: everything on (the owner, 2026-11-23, after the preview: "Looks right" / "Turn it on");
+// `?life=off` turns it all off. Headless (no `location`): OFF, so the seeded suites are untouched;
+// tests/integration/life.mjs turns pieces on with setLife().
 
 export const LIFE_PIECES = Object.freeze(['wind', 'litter', 'steps', 'weather', 'creatures', 'air', 'arrival', 'answer']);
-const DEFAULT = 'off';
+/** what a page with no `?life=` gets */
+const DEFAULT = 'all';
+/** what the headless sims get (no `location`), and what an empty `setLife()` means */
+const HEADLESS = 'off';
 
 const parse = (spec) => {
   const on = {};
+  // (`?life=` with no value: the default)
   const q = spec == null || spec === '' ? DEFAULT : String(spec).trim().toLowerCase();
   const want = q === 'all' ? null : new Set(q.split(',').map((s) => s.trim()));
   for (const p of LIFE_PIECES) on[p] = want === null ? true : want.has(p); // 'off' (or an unknown word): nothing
@@ -32,13 +37,18 @@ const clampK = (v) => {
   return Number.isFinite(k) ? Math.min(2, Math.max(0.25, k)) : 1;
 };
 
+/** The switch a page's query string asks for (`?life=`, `?lifeK=`); no `?life=` gives the default. */
+export function lifeFromSearch(search) {
+  const q = new URLSearchParams(search ?? '');
+  return { on: parse(q.has('life') ? q.get('life') : DEFAULT), k: q.has('lifeK') ? clampK(q.get('lifeK')) : 1 };
+}
+
 const fromUrl = () => {
   try {
-    if (typeof location === 'undefined') return { on: parse(DEFAULT), k: 1 };
-    const q = new URLSearchParams(location.search);
-    return { on: parse(q.get('life')), k: q.has('lifeK') ? clampK(q.get('lifeK')) : 1 };
+    if (typeof location === 'undefined') return { on: parse(HEADLESS), k: 1 };
+    return lifeFromSearch(location.search);
   } catch {
-    return { on: parse(DEFAULT), k: 1 };
+    return { on: parse(HEADLESS), k: 1 };
   }
 };
 
@@ -59,7 +69,7 @@ export const lifeAny = () => LIFE_PIECES.some((p) => LIFE.on[p] === true);
 
 /** Set the pieces from a spec ('all' | 'off' | 'wind,litter'): the Lab and the tests. */
 export function setLife(spec) {
-  const on = parse(spec ?? DEFAULT);
+  const on = parse(spec ?? HEADLESS);
   for (const p of LIFE_PIECES) LIFE.on[p] = on[p];
   return LIFE;
 }

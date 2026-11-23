@@ -995,6 +995,16 @@ each is drawn: *The look switches*, below.
   phone; without the great spell, with the picks on, 518 / 1642 / 1033 / 698 per form; Shen Hui's
   phase 3 about 700 – 1400.
 
+### The city's light (Halcyon Plaza, 2026-11-22, ADR-159)
+Four kinds of heat, each on purpose, and no other light: `steel` the city's neon tubes and screen faces
+(a screen is a pale rectangle of heat with his head and shoulders left dark: his face on every screen);
+`void`, re-paletted to his crimson (`?glare=`), his eyes, his beams and, from his phase 2, every screen;
+`fire` the burning cars and the wreckage; `smoke` what is left. The neon goes out with the piece it hangs
+on. His phase 3 puts the screens and the neon out: only the fires light the street. The asphalt is a calm
+floor of sparse dim strokes with the lane paint and the crosswalks carved into it (the slabs that carry
+paint are cut finer so the stripes read); the towers' fronts carry rows of windows in their carved colour.
+Rain is one-cell glyph particles. Two point lights of its own, at most.
+
 ### The look switches (2026-11-16, ADR-122)
 Every new look and every redraw of this pass was shown to the owner as two or three options on one
 rendered sheet, behind a URL switch (`duelist/lookSwitch.js` `lookOf`; COMBAT.md / ARCHITECTURE.md
@@ -1040,7 +1050,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
 | `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair; `d` the Wanderer (added 2026-11-22 at the owner's ask, an option): a slighter man (drawn 7 % smaller) in a faded indigo robe over wide charcoal trousers, a long sand scarf with trailing tails, dark hair in a high tail | **d** |
 | `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
-| `?life=` | the living world (ADR-163; every level; read at load, the Lab's `life` row flips a piece live): `off`, `all`, or a comma list of `wind, litter, steps, weather, creatures, air, arrival, answer` | `off`: today's world, untouched | - | - | - | **off** for now (the owner picks from the films) |
+| `?life=` | the living world (ADR-163; every level; read at load, the Lab's `life` row flips a piece live): `off`, `all`, or a comma list of `wind, litter, steps, weather, creatures, air, arrival, answer` | `off`: today's world, untouched | - | - | - | **all** (the owner's pick, 2026-11-23) |
 | `?lifeK=` | the living world's strength, 0.25 - 2 (rates and amplitudes; Lab: `life x` quiet 0.6, natural 1, strong 1.5) | 1 (as tuned) | - | - | - | 1 |
 | `?oneLook=` | Xin Yi's body (ADR-156; read when his rig is built) | - | the Long Coat: black, closed in phase 1, open from phase 2 (the tails fly) | the Cassock: buttoned to the neck, narrow, floor-length, bright buttons | the Grey Coat: a's cut in dark blue-grey with a white-jade edge | not picked yet (a drawn) |
 | `?hall=` | the Hall of Falling Script (ADR-157; read when the set is built) | - | pale marble, green-black inlay | dark basalt, jade-lit edges | - | not picked yet (a drawn) |
@@ -1048,6 +1058,13 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?sheathArt=` | Lu Wusheng's print, five graded steps (ADR-152; read when his rig is built; `1` - `a` wear his reworked body) | the wyrm's digits and his body as he shipped | `2` the digits in his palette, lit and outlined harder; `1` the same, dimmer | `3` the ink-line art flattened: no fold or crease lines, no glints, half the rim; `a` the hero's ink-line art, lifted | - | **2** (the owner's pick, 2026-11-23, of five; `a`, the pick before, read as a 3D model at fight distance) |
 | `?sheathTone=` | the Wanderer's palette in the ink-line art (ADR-152) | - | indigo and sand: a faded indigo robe, charcoal trousers, a sand scarf | pale and cold: a bone-white robe, slate trousers, a blue-grey scarf | moss and rust: a moss-green robe, dark brown trousers, a rust scarf | **a** |
 | `?sheathMark=` | a mark of his own (ADR-152; the Wanderer only) | none | a long torn strip of unbleached cloth tied below the scabbard's mouth: it trails when he moves, snaps on the draw | a white streak from the left temple through the high tail | - | not picked yet (a drawn) |
+| `?halLook=` | Halcyon's body (ADR-161; read when his rig is built; ink-line art) | - | a deep blue armoured suit, a long red cape, a gold belt and cuffs, red boots, dark slick hair, eyes two red points, pale neon seams, a plain gold clasp at each shoulder (the owner's answer) | the idol: a navy suit, gold shoulder pieces of his own shape, white gloves, a cape with a bright lining, blond hair | tomorrow's tyrant: black and chrome, a crimson cape, white hair | **a**, the owner's pick (2026-11-23) |
+| `?halCape=` | Halcyon's cape and colours at game size (ADR-164; read when his rig is built; graded steps) | `0`: as first built | `1`: a clean red cape inside and out, a brighter blue suit, a bigger gold that prints gold | `2`: + the cape wider, spread off the shoulders so it frames him from the front, longer | `3`: + a gentle billow while he hovers, a longer trail in a pass (the default, recommended) | **3**, the owner's pick (2026-11-23) |
+| `?halLetters=` | Halcyon's letters (ADR-166; live) | the bosses' fixed fine cell | his letters follow his size by the hero's rule (the hero's cell) | - | - | **a** (the owner's pick, 2026-11-23) |
+| `?halPrint=` | Halcyon's print (ADR-166; read when his rig is built) | the step-3 print: a lit figure, a strong edge (rim x 3) | the hero's quieter print: the suit x 0.85, the skin x 0.62, rim x 1.5; the cape's red and the gold kept | halfway | - | **a** (the owner's pick, 2026-11-23) |
+| `?halCapeSize=` | Halcyon's cape's size (ADR-166; read when his rig is built) | as picked (1.54 m) | ~80 % | ~65 % (1.00 m, past his knees) | ~50 %, to the back of his knees | **b** (the owner's pick, 2026-11-23) |
+| `?glare=` | his eyes' heat: the beams, the eyes, the crimson screens (a palette swapped into the void slot) | - | crimson with a white-hot steel core | crimson alone | the engine's orange fire with a steel core | **a**, the owner's pick (2026-11-23) |
+| `?city=` | Halcyon Plaza's light (ADR-159; read when the level is built) | - | Neon Rain: night, rain, wet dark asphalt, pale neon | Golden Hour: his perfect city at dusk, warm, no rain | Lockdown: red emergency light, two search beams sweeping the plaza | **a**, the owner's pick (2026-11-23) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1359,7 +1376,7 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
 ### The living world (2026-11-23, ADR-163; `world/life/`, `world/hang.js`, `?life=`)
 One wind per level, and what lives in it: the grass and the trees lean and are swept by gust fronts,
 leaves (ash, paper, grit) fall and lie, footsteps answer the ground, slow weather, small creatures,
-banners and paper that hang in the wind. Behind `?life=` (off by default, the owner picks from films);
+banners and paper that hang in the wind. On by default (the owner's pick, 2026-11-23; `?life=off` turns it off);
 ARCHITECTURE.md "The living world" has the contract and every number. One mood per level, slow changes:
 Cinderwood a night breeze in slow breaths and gust fronts that stir the meadow; Ashfall dry and fitful;
 the Obsidian Throne nothing but a slow draw toward the star, which breathes; the Skybreak Ring a steady

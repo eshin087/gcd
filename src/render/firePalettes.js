@@ -61,6 +61,18 @@ export const FIRE_PALETTES = {
     stops: [[0.08, 0.2, 0.62], [0.24, 0.55, 1.5], [0.6, 1.1, 2.3], [1.3, 1.9, 2.9], [2.6, 2.9, 3.3]],
     hdr: 0.55, fill: 0.06, back: [0.5, 0.8], lick: 0.45, erode: 0.8, boil: 10, warp: 0.8, haze: [0.5, 0.72, 1.0],
   },
+  // GLARE (Halcyon Plaza: Halcyon's eyes, his beams, and from his phase 2 every screen; ADR-159). A swap
+  // of the void slot, as gold and foxfire (HalFx). `glare` (?glare=a): a deep crimson rim, a crimson
+  // body, a white-hot heart (the beam's steel core prints over it); `glareDeep` (?glare=b): crimson all
+  // through, its heart a hot pink, never white. Both climb little (a beam stays a beam) and boil fast.
+  glare: {
+    stops: [[0.42, 0.01, 0.02], [1.25, 0.05, 0.05], [2.1, 0.24, 0.16], [2.8, 1.1, 0.8], [3.2, 2.9, 2.6]],
+    hdr: 0.6, fill: 0.08, back: [0.5, 0.8], lick: 0.35, erode: 0.6, boil: 12, warp: 0.5, haze: [1.0, 0.3, 0.26],
+  },
+  glareDeep: {
+    stops: [[0.38, 0.008, 0.015], [1.1, 0.03, 0.04], [1.8, 0.12, 0.1], [2.5, 0.42, 0.34], [3.0, 0.9, 0.8]],
+    hdr: 0.6, fill: 0.08, back: [0.5, 0.8], lick: 0.35, erode: 0.6, boil: 12, warp: 0.5, haze: [0.9, 0.2, 0.2],
+  },
   steel: {
     stops: [[0.5, 0.5, 0.6], [1.2, 1.2, 1.32], [1.9, 1.88, 1.85], [2.7, 2.65, 2.55], [3.5, 3.4, 3.2]],
     hdr: 0.6, fill: 0.06, back: [0.3, 0.55], lick: 0, erode: 0, boil: 12, warp: 0,

@@ -13,6 +13,11 @@ characters clumped up. same with the other weather effect. make it very subtle a
 natural realistic." And: "sound looks good" (the air's sound stays). Rebuilt by an agent on `life/wisp`
 (d09ae0f, e2c1735), merged into `world/living-world` (eab68e1).
 
+**Then:** on the round-2 preview the owner said "Looks right", then "Turn it on": every piece is now on
+by default (`?life=off` turns it off; headless stays off). The Hall of Falling Script and Halcyon Plaza
+(merged from `main` meanwhile) have no tuning blocks: the arrival and the air stand down there, the wind
+and the steps run on defaults (`core.newLevels`, `air.newBed`).
+
 **What changed.**
 - **The house letter for the air.** New `world/life/letterBatch.js` (`LetterBatch`): each letter a world
   point projected to the screen and printed as one cell of the wyrm's pixel font (5 x 8 px at 720p,
@@ -122,6 +127,117 @@ update adds ~0.2 - 0.35 ms with everything on. With the wind off the frame match
 
 **Next.** The owner's picks from the films and the preview → the default; a second look at mist and
 devils; the sound by ear.
+## 2026-11-23 — Session 79d: the PR review's three findings fixed (Halcyon Plaza)
+
+**What changed.** The Codex review of PR 97 (at 22b049b) found three real bugs; each got a failing test first:
+1. `halcyonPlaza.js` setPhase(1) returned early when the phase was already 1, so a reset in phase 1 (a rest, a
+   retry) kept a burning car's fuse: it blew up after the reset, and the fuse left `done` never lit again. The
+   fuses are now forgotten on every setPhase(1). Test: `city.mjs car` (a reset mid-fuse: no bang, the car whole,
+   its fuse idle; broken again, it goes up again).
+2. `halcyon/flight.js` See the World set the hero's get-up time before the slam, inside the get-up's i-frames:
+   the 30-damage slam came back DODGED. The slam lands first now; the 1.6 s control cap is kept. Test: `city.mjs
+   grab` (a mortal hero loses the slam's damage; control back within the cap).
+3. `destructibles.js` had no lower bound for a raised piece: a blow on the street bit a shop sign, the statue's
+   arm or a tower's top metres above it (its hit point clamped up). `strike`, `sweep` and `stop` (`coverAt`'s
+   new `y`) now skip a raised piece the blow passes under; a blow on a base still reaches its top through
+   `holds`, and a broken base still drops its top. Test: `world.mjs city`.
+
+**The owner's picks.** "Yes, keep it" to the recommended look: `halLetters` a, `halPrint` a, `halCapeSize` b
+move from `PENDING` into `PICKED` (ADR-166); nothing visible changes (they were the defaults). None of Halcyon's
+switches waits now.
+
+**Why the fights moved.** The seeded fights moved with the fixes (the win 166 / 165 / 157 s -> 164 / 160 / 157;
+pace seed 7's phase 1 had a 4.65 s gap against the 4.6 s bound), so his phase-1 rest between chains came down a
+little (`chainRest` P1 0.45 - 0.75 -> 0.4 - 0.7 s): PACE 49.1 / 59.6 / 63.1, longest gaps 3.78 / 3.37 / 2.92 s.
+
+---
+
+## 2026-11-23 — Session 79c: Halcyon printed like the hero, a smaller cape (ADR-166)
+
+**What changed.** The owner picked his look (halLook a, halCape 3, glare a, city a), then: "make his cape smaller,
+make him look more ascii like to look like the main character ascii look more ascii made up". Tian Lei's answer
+(ADR-155) as the model, three switches in PENDING: `?halLetters=a` (his kit's `letters`: the hero's cell, so from
+1080p up his letters are as big as the hero's: 9.2 letters down him at 1080p and 1440p where he had 13.8 / 18.4,
+the hero 8.6), `?halPrint=a` (Tian Lei's quieter print numbers; the cape's red and the gold keep their light;
+b halfway), `?halCapeSize=b` (the cape x 0.65: 1.00 m long, the hem 0.52 m wide; a x 0.8, c x 0.5).
+
+**Why.** The bosses' fixed 4 px cell drew him in twice the hero's letters on a large screen (a shaded 3D model),
+and the step-3 cape was the biggest shape on screen from the front. The flare's angle is kept: its spread from the
+front shrinks with the cape's length.
+
+**Verified.** `city.mjs` pace and win give the same numbers as before (no object added), `looks` and the new
+`herolike`; the whole `npm test` and `npm run build` (see the PR). Headless Edge at 1280 x 720, 1920 x 1080,
+2560 x 1440 and the phone preset: `docs/looks/halcyon/halAscii.png`, `halCapeSize.png`, `halRecommend.png`.
+Red / blue / gold facing the camera at 1280 x 720 (letters a, cape b): print 0 123 / 471 / 30, a 112 / 474 / 35.
+
+**Open / next.** The owner picks the three. On the phone and at 720p the cell does not change (both 4 px).
+
+---
+
+## 2026-11-23 — Session 79b: Halcyon's cape and colours read at game size (`?halCape=`, ADR-164)
+
+**What changed.** The owner looked at the sheets and said "Yes, fix the look": at true size (~40 px tall at
+1280 x 720) Halcyon did not read as a blue suit, a big red cape and a gold belt. Measured first (pixels
+round him that print red / blue / gold, look a, facing the camera): 24 / 494 / 0. Causes: from the front the
+cape hung hidden behind him, its outer sheets edge-on, and what showed was its inside, the `lining` part,
+which prints near black at a 0.24 fill; the moonlit rim (x3) and the cloth parts' lavender ink turned the
+red pink; the gold's white ink lines printed a 5 cm belt cream. Now `?halCape=0|1|2|3`, graded steps of one
+idea: 1 the colours (the lining lit past 1, no rim on the red, a brighter blue, the gold drawn in the `hair`
+part with its gold lines, and bigger), 2 the cape wider and spread off the shoulders' tops so it frames him
+from the front, 3 a billow while he hovers (a new optional streamer field, `breeze`, in `player/anim.js`)
+and a longer trail in a pass. Default 3. b: navy and gold with the cape's gold lining lit; c: black and
+chrome, a crimson cape.
+
+**Why.** It is the only step where the cape reads from every side at true size, the phone included; the
+same five sheets and meshes, so no seeded fight moved.
+
+**Verified.** After (step 3, a): camera 237 / 463 / 23, side 339 / 415 / 37, behind 1262 / 163 / 0, pass
+368 / 993 / 12 (before: 24 / 494 / 0, 115 / 432 / 2, 199 / 164 / 0, 332 / 603 / 2). `city.mjs` pace, win and
+looks (each step builds five sheets, the same 90 meshes) green; the whole `npm test` and `npm run build`
+(see the PR). Headless Edge at 1280 x 720 and the phone preset (852 x 393, touch): `docs/looks/halcyon/halCape.png`,
+the `halLook_*` sheets re-rendered with step 3 (the old ones kept as `halLook_*_before`).
+
+**The owner's picks (2026-11-23).** The cape, step 3, "billowing"; the body, `halLook` a (the deep blue
+suit and red cape); the city, `city` a, Neon Rain; his eyes' heat, `glare` a: `halCape: '3'`, `halLook: 'a'`, `city: 'a'` and `glare: 'a'` are in `lookSwitch` PICKED and out of PENDING (the
+defaults they already drew; nothing visible changes).
+
+**Open / next.** Every look is picked. The lining's ink lines still
+tint pink at a grazing angle (the per-part ink is shared by every rig). The beam was not touched.
+
+---
+
+## 2026-11-22 — Session 79: an eighth level, Halcyon Plaza and Halcyon, the Last Saviour (planned in its own chat, built by one Opus agent)
+
+**What changed.** The owner asked for an evil caped strongman from the future, two well-known characters named as the reference
+("laser eyes, flying around a lot with super speed and power" in an ASCII city his moves tear down. Built from
+the planning session's plan (ADR-159 – ADR-161): `?level=city`, a crossroads read from its streets (every
+piece breakable, two-stage towers, cars that burn and explode, screens with his face, his own statue), and
+Halcyon, a bare-handed duelist who hovers in sword reach between moves and leaves it only inside a move.
+His answers' reward: a parried flying blow (or a perfectly dodged red one) throws him off his line into the
+first cover on it (the crash); his Stare perfectly parried goes back into his eyes; a thrown car parried is
+cut in two and goes up behind the hero. Three phases on one bar (the smile drops: the screens turn crimson;
+no one is watching: the city goes dark), the moments (the entrance, the statue's head, the two changes, the
+kill). `destructibles.js`: a raised piece is struck at its real height (`y0 + h`).
+
+**Why.** The owner's four answers: recognizable (a blue suit, a red cape, gold, red eyes, no emblem); all
+four set pieces (through the tower, carried into the sky, his own statue, the falling sky); everything PR #78
+got wrong avoided (the look, the gimmick rule, the dark vault, the slowness); no reward yet.
+
+**Verified.** `city.mjs` all (levels, data, timing, flight, glare, pass, car, tower, statue, grab, phase, flow,
+pace, win, training, looks) passes; `world.mjs` (the city scenario, `sets`, `bite` with a raised piece) and
+`asc.mjs` (the butte tops after the y0 fix) pass; `npm test` and `npm run build` (see the PR). Stills at the
+game camera in headless Edge (the sheets in `docs/looks/halcyon/`). The phone preset (852 x 393, touch): 76
+draw calls against the Skybreak Ring's 73.
+
+**Open / next.** The owner picks `halLook`, `glare`, `city` from the sheets. Cut for time: Last Word, the
+hydrants' spouts, his own SFX (the existing synth sounds play his events), a score of his own (the Obsidian
+Throne's is borrowed). The screens' "face" reads as a pale rectangle at the game camera, not yet as a head
+and shoulders. Not checked: the frame rate on the owner's iPhone, a human playtest of the flight rule and
+the crash's timing, the carry's look up close. The bar (14000) was sized for the fencing bot; a human may
+find it long.
+
+---
+
 ## 2026-11-23 — Session 86: the streak pass: a flurry that accelerates, the streak on the hero, in the HUD and in the sound, a sharper perfect parry (planned by Fable, built by Opus agents)
 
 **Owner:** "i want to enhance the perfect parry / dodge effects and especially the streak combo hits. right now when the streak is really long, the animation to show the full streak is a bit long and doesn't look epic and cool. the longer the streak, the faster the attacks and way cooler animation and effects. think of cool subtle and epic stunning effects for players to love having a streak and seeing the longer and longer combos. use fable to plan it out and have opus do the work. ask me any questions". Branch `combat/streak-epic`. ADR-167 / Session 86 / M1.70.

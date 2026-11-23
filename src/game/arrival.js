@@ -1,4 +1,4 @@
-import { arrivalTuning } from './arrivalTuning.js';
+import { arrivalTuning, ARRIVAL_TUNING } from './arrivalTuning.js';
 
 // THE ARRIVAL (piece 'arrival'): as the player enters a level from the title, the camera opens wide
 // over the arena for a few seconds while the level shows itself (a gust crosses it), then settles
@@ -49,7 +49,9 @@ export class Arrival {
   }
 
   get on() {
-    return !!this.game?.world?.life?.on?.('arrival');
+    // (only on a level whose shot was chosen: a level added later has no block and no arrival, rather
+    //  than the DEFAULT shot, which does not know where its spawn and its landmarks are)
+    return !!this.game?.world?.life?.on?.('arrival') && !!ARRIVAL_TUNING[this.game?.level?.id];
   }
 
   /** The title was dismissed: open the shot. Once per page load; nothing with the piece off. */

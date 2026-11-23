@@ -122,7 +122,9 @@ export default {
   /** With the piece on: a gust lifts and brightens the wind, rain is heard, the hush silences the voices;
    *  every gain finite and inside [0, 1]; nothing drawn from Math.random; on every level. */
   async on(T) {
-    for (const id of T.LEVEL_IDS) {
+    const { AIR_TUNE } = await T.imp('src/audio/airTuning.js');
+    // (a level with no recipe keeps today's bed even with the piece on: checked in `newBed`)
+    for (const id of T.LEVEL_IDS.filter((x) => !!AIR_TUNE.levels[x])) {
       const a = await withAudio(T, id, 'all', { seed: 0x5eed });
       script(a, { gustAt: 4, gustLen: 2.5, rainAt: 4.5 });
       const air = a.E.air;
@@ -232,4 +234,22 @@ export default {
     a.frames(60);
     T.assert(a.E.air.built, 'on again: rebuilt');
   },
+
+  /** A level with no recipe of its own (added after the air was tuned) keeps the bed it has today with
+   *  the piece on: the air makes no node and the old bed's wind and voices stay at 1. */
+  async newBed(T) {
+    const { AIR_TUNE } = await T.imp('src/audio/airTuning.js');
+    const ids = T.LEVEL_IDS.filter((x) => !AIR_TUNE.levels[x]);
+    if (!ids.length) {
+      T.out('ok   every level has its own recipe');
+      return;
+    }
+    for (const id of ids) {
+      const a = await withAudio(T, id, 'all', { seed: 0x5eed });
+      a.frames(600);
+      const amb = a.E.ambience;
+      T.assert(a.E.air && !a.E.air.built && amb.windDuck.gain.value === 1 && amb.voiceDuck.gain.value === 1, `${id}: no recipe → the air stands down, today's bed plays`);
+    }
+  },
 };
+

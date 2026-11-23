@@ -63,7 +63,8 @@ export class Air {
 
   update(now, dt, game) {
     const life = game?.world?.life;
-    const on = !!life && typeof life.on === 'function' && life.on('air') === true;
+    // (a level with no recipe keeps the bed it has today: the quiet recipe would silence its voices)
+    const on = !!life && typeof life.on === 'function' && life.on('air') === true && !!AIR_TUNE.levels[life.levelId];
     if (!on) {
       if (this.bag) this._fadeOut(now, dt);
       return;

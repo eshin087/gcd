@@ -18,14 +18,25 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-22',
+        title: 'An eighth level: Halcyon Plaza and Halcyon, the Last Saviour',
+        notes: [
+          'A new level, Halcyon Plaza: a city of rain and neon that has not been built yet. Pick it on the title screen.',
+          'Its boss is Halcyon, the Last Saviour: a flying strongman in a caped suit, with red light for eyes. He hovers within reach of your sword.',
+          'Parry his pass and he crashes through the nearest storefront or car. Perfectly parry his stare and it goes back into his eyes. Parry a thrown car and you cut it in two.',
+          'Everything in the city breaks, and the cars explode: one you broke hurts him too.',
+          'At two thirds the smile drops and every screen turns red. At one third he puts the city out and starts dropping buildings.',
+        ],
+      },
+      {
         date: '2026-11-23',
         title: 'The living world',
         notes: [
-          'The levels can now be alive before the fight: faint wisps of tiny letters drift across on the wind, leaves and ash fall and lie, banners and paper charms stream, mist and drizzle pass, birds lift off as you run near.',
+          'The levels are now alive before the fight: faint wisps of tiny letters drift across on the wind, leaves and ash fall and lie, banners and paper charms stream, mist and drizzle pass, birds lift off as you run near.',
           'Your footsteps answer the ground: prints in the ash, trodden grass, a different sound on stone, earth and grass.',
           'Each level has its own weather and its own air. The Windless Grove is dead still. The Obsidian Throne only breathes.',
           'It all steps back once the boss is up, and a roar sends a gust across the whole arena.',
-          'It is switched off for now while its strength is being chosen. To try it, add ?life=all to the address.',
+          'To see the levels as they were, add ?life=off to the address.',
         ],
       },
       {

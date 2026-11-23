@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.71 — The living world (2026-11-23, `world/living-world`, ADR-163)
+## M1.72 — The living world (2026-11-23, `world/living-world`, ADR-163)
 - [x] One shared wind per level (`world/life/wind.js`): fronts through the grass, the canopy, smoke, flames
 - [x] Litter that falls, lies and lifts; footsteps by surface, prints, trodden grass
 - [x] Weather in slow spells per level; small creatures that mind the hero
@@ -192,12 +192,26 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `?life=` / `?lifeK=`, the Lab's rows, `tests/integration/life.mjs`
 - [x] Round 2, the owner's verdict: the air as clumps of many tiny faint letters (`LetterBatch`, the house letter); the grass band and the streaks gone, wisps instead
 - [x] Mist banks and dust devils a second look (soft heaps of 160 - 220 tiny letters that roll; columns of 150 grains); the weather's letters in its own batches
-- [ ] The owner sees round 2 on the preview
-- [ ] The owner picks the strength → the default goes on (today: off)
+- [x] The owner sees round 2 on the preview ("Looks right")
+- [x] The default goes on: every piece at strength 1 (the owner: "Turn it on"); `?life=off` turns it off
 - [ ] The drizzle may be too faint; the Ring's devils seldom in view; the Foxfire Terrace's calm shows little
 - [ ] Ash drifts, the obsidian glint, moths do not read yet
 - [ ] A banner's moon shadow leans with it; the far Throne banners
-- [ ] Tuning blocks for levels added after this (they get the quiet default)
+- [ ] Tuning blocks for the Hall of Falling Script and Halcyon Plaza (today: no arrival, no weather, no litter, no creatures, their own sound bed; the wind's quiet default)
+## M1.71 — An eighth level: Halcyon Plaza and Halcyon, the Last Saviour (2026-11-22, `claude/level-future-tyrant-afdefc`, ADR-159 – ADR-161)
+- [x] `?level=city`: a crossroads read from its streets, every piece breakable, two-stage towers, cars that
+      explode (the set polls them), the city's light as heat (`setPhase`), `?city=a|b|c`; the `y0` fix
+- [x] Halcyon: flight in reach, the crash, his eyes (The Stare, Red Glare, Scorched Avenue, Crossed Glare),
+      Fly-By, Curbside, Through the Tower, Blink of an Eye, Applause, See the World, Meteor, The Falling
+      Sky, Monument, the moments; `?halLook=a|b|c`, `?glare=a|b|c`
+- [x] Lab, Training, `tests/integration/city.mjs`; the look sheets in `docs/looks/halcyon/`
+- [x] His cape and colours read at game size: `?halCape=0|1|2|3` (ADR-164; default 3), `halCape.png`
+- [x] The owner's picks of his body, cape and city: `halLook` a, the blue suit and red cape; `halCape` 3, billowing; `city` a, Neon Rain (2026-11-23)
+- [x] The owner's pick of his eyes' heat: `glare` a, crimson with a white-hot core (2026-11-23)
+- [x] Printed like the hero, a smaller cape: `?halLetters`, `?halPrint`, `?halCapeSize` (ADR-166; defaults a / a / b), `halAscii.png`, `halCapeSize.png`, `halRecommend.png`
+- [x] The owner's picks of his letters, print and cape size: `halLetters` a, `halPrint` a, `halCapeSize` b (2026-11-23, "Yes, keep it")
+- [ ] Cut, for later: Last Word (and its beam clash), the hydrants' spouts, his own SFX, his own score
+- [ ] A human playtest on the phone (the frame rate on the device is not measured)
 
 ## M1.70 — The streak pass: an accelerating flurry, the streak on the hero, in the HUD and in the sound, a sharper perfect parry (2026-11-23, `combat/streak-epic`, ADR-167)
 - [x] The core: `combat/streak.js` switches (`?streakfx=`, the Lab's 'streak' row), the tiers 3 / 5 / 7 / 10 / 15
@@ -925,6 +939,7 @@ Spec: `docs/specs/ash-disciple.md`.
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
 - [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), and the second, the Long Second (Xin Yi's lean, ADR-158), ship; the rest (techniques, weapons, abilities, elements); weapons of other lengths
+  - [ ] Halcyon's reward: the owner has not chosen one yet (ADR-161)
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)

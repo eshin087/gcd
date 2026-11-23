@@ -132,4 +132,47 @@ export default {
     T.assert(Math.abs(c.alpha - b.alpha) <= 60 && Math.abs(c.add - b.add) <= 60, `every piece off: the shared pools are back to the atmosphere's own (${c.alpha} / ${c.add} against ${b.alpha} / ${b.add})`);
     for (const p of T.LIFE_PIECES) T.assert(w.life.on(p) === false, `${p} is off`);
   },
+
+  /** The switch: a page with no `?life=` gets everything on (the owner's pick, 2026-11-23); `?life=off`
+   *  nothing; a list its pieces; headless (no `location`) it is off, so the seeded suites are untouched. */
+  async defaults(T) {
+    const { lifeFromSearch, LIFE_PIECES } = await T.imp('src/world/life/lifeSwitch.js');
+    const all = (o) => LIFE_PIECES.every((p) => o.on[p] === true), none = (o) => LIFE_PIECES.every((p) => o.on[p] === false);
+    T.assert(all(lifeFromSearch('')) && all(lifeFromSearch('?level=ash')) && all(lifeFromSearch('?lab')), 'no ?life=: every piece on');
+    T.assert(none(lifeFromSearch('?life=off')), '?life=off: every piece off');
+    const two = lifeFromSearch('?life=wind,litter');
+    T.assert(two.on.wind && two.on.litter && !two.on.weather && !two.on.air, '?life=wind,litter: those two only');
+    T.assert(all(lifeFromSearch('?life=all')) && all(lifeFromSearch('?life=')), '?life=all and an empty ?life=: every piece on');
+    T.assert(lifeFromSearch('?lifeK=1.5').k === 1.5 && lifeFromSearch('?lifeK=9').k === 2 && lifeFromSearch('').k === 1, '?lifeK= read and clamped');
+    // headless: the module was loaded with no `location`, and setLife() with no spec is off
+    T.setLife();
+    T.assert(LIFE_PIECES.every((p) => T.LIFE.on[p] === false), 'headless / setLife(): off');
+  },
+
+  /** A level that has no tuning of its own (added after the layers were tuned) still runs every piece
+   *  without a throw, and gets no arrival shot and keeps its own sound bed (the quiet defaults would
+   *  frame the wrong place and silence its voices). */
+  async newLevels(T) {
+    const { ARRIVAL_TUNING } = await T.imp('src/game/arrivalTuning.js');
+    const { AIR_TUNE } = await T.imp('src/audio/airTuning.js');
+    const { Arrival } = await T.imp('src/game/arrival.js');
+    const ids = T.LEVEL_IDS.filter((id) => !ARRIVAL_TUNING[id] || !AIR_TUNE.levels[id]);
+    if (!ids.length) {
+      T.out('ok   every level has its own arrival and air');
+      return;
+    }
+    for (const id of ids) {
+      const w = T.build(id, 'all');
+      w.walk(2, -2);
+      w.step(15);
+      w.world.gust(w.game.player.position.x, w.game.player.position.z, 1.6, 20);
+      w.step(5);
+      const errs = Object.entries(w.life._errs).filter(([, n]) => n > 0).map(([k, n]) => `${k} x${n}`);
+      T.assert(errs.length === 0, `${id}: every piece runs with no throw${errs.length ? ` (${errs.join(', ')})` : ''}`);
+      const flow = { _ov: { focus: new T.THREE.Vector3(), weight: 0, zoom: 0 }, _ovW: 0, _ovZ: 0, _ovLambda: 1 };
+      const a = new Arrival(w.game, flow);
+      T.assert(!ARRIVAL_TUNING[id] ? a.begin() === false && !a.active : true, `${id}: no arrival shot of its own → no arrival`);
+    }
+  },
 };
+

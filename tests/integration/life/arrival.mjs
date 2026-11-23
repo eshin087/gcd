@@ -154,7 +154,9 @@ export default {
   /** A gust front crosses the level as the shot opens, through the REAL wind (the creatures are left
    *  alone: it is a quiet front, the birds on the tree line stay); none in the Windless Grove. */
   async front(T) {
-    for (const id of T.LEVEL_IDS) {
+    const { ARRIVAL_TUNING } = await T.imp('src/game/arrivalTuning.js');
+    // (a level with no shot of its own has no arrival: core.newLevels)
+    for (const id of T.LEVEL_IDS.filter((x) => !!ARRIVAL_TUNING[x])) {
       const { w, flow, A, tick } = await rig(T, id, 'arrival,wind,creatures');
       const W = w.life.wind;
       // (only the arrival's front: the level's own schedule is held back for this test)
