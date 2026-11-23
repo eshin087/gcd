@@ -613,7 +613,9 @@ Render helpers for creature modules:
     `onAfterRender`, `userData.noBatch = true`, and meshes added to an actor after its
     `batchRigid` call. A source's geometry and material must not be swapped or edited after the
     build (rebuild the set instead); mirroring (a negative scale above a source) is baked into the
-    batch's winding at build time.
+    batch's winding at build time. Each batched source gets `userData.batchRun` `{ mesh, i0, ic, v0, n }`:
+    its run of its batch's index and of its vertices (the breakables move and fold single triangles
+    there: "Bites", below; nothing else may write there).
   - `CONFIG.render.batch` (default `true`; `false` when the page URL has `?nobatch`, read once in
     `core/config.js`): with it off `batchRigid` returns an empty set and every mesh is drawn as
     before — an A/B switch for frame rate and image checks.
@@ -2665,6 +2667,46 @@ piece's structure, but at least `brushMin` 0.4 of itself (a body that keeps push
 in a couple of seconds; a turn only shakes it), once per `brushRehit` 0.3 s, and a flat stone (a
 flagstone, lower than `brushFlat` 0.3 m) takes nothing from it.
 
+**Making a new object destructible** (the rule for every level, ADR-107 / ADR-132; CLAUDE.md "The
+world breaks"). Every background object in a level breaks, and since ADR-132 a hit takes its letters
+off where it lands. For a new object, a new set or a new level:
+1. **List it.** Push a definition into the set's `breakables` (the table below) instead of merging it
+   into the static meshes. Give it `kind` (free; AI and tests read it), `mat` ('wood' | 'stone' |
+   'metal' | 'bone': what bites it, its debris, its sound), its base `x, z`, a footprint `r` that
+   matches what is drawn (the hero's blade stops at that circle, `BREAK.chip.stop.touch`), `h`
+   (`geosHeight(geos)`) and colliders if it blocks. Leave `hp` to the default (material x size) or give
+   a finite number; `hp: Infinity` means it only chips and is never bitten (the bronze bell).
+2. **Draw it on one of the two breakable paths.** `look: 'range'`: its body is a run of a set's merged
+   mesh (`forest.js` `Runs.add(geos, leaf?, fine?)`; the trees, the landmarks), cheapest for many
+   pieces. `look: 'prop'` (prop art, the house style) or `'grid'`: its `geos` go through the
+   breakables' rigid batch (stones, pillars, statues, arena props). Either way it is NON-INDEXED
+   triangle geometry (`prep()`), in world space, with the material's attributes (`carve()` / `paint()`).
+   Its bricks are made from those triangles: no cube grids, no hand-made fragments. With bites on, the
+   level is cut to brick size when it is built (`refine`, `BREAK.chip.brick` 0.8 m), parts that are
+   already thin are left alone, and every piece's bricks are made at load (a piece of 4000 triangles
+   costs ~10 ms there, nothing in play).
+3. **Say which parts are foliage.** For a range piece, `Runs.add(geos, leaf)` marks foliage parts:
+   foliage is holed brick by brick; a solid part (trunk, stone, bone) keeps a skin, set back where it
+   was struck. A closed solid needs nothing more; an open sheet (a wing membrane, a cloth) is holed.
+4. **Give it a stump or rubble if it falls.** `broken` (what is left standing), `topples`, `wreck`, as
+   the table below. A tall piece the hero fells lands on whoever is under it (red tell from a boss).
+5. **Hit the world from anything new that hits**, with the blow's real height (`o.y`; a blade's
+   segment: `o.ya` / `o.yb`), its way (`dx, dz`), its kind (`BLOW.CUT / BLUNT / BLAST / FIRE`) and one
+   `src` per swing. `strike` (a disc: it eats the side that faces the blast), `sweep` (a segment: it
+   bites where the segment met the piece), `stop` (a projectile). `destructibles.struck` says what the
+   last call met.
+6. **Test it.** The world test `bite` walks the level registry (`src/levels/index.js` `LEVELS`): a new
+   level is checked with no change (it lists breakables, every piece that takes structure has bricks,
+   a blow on one of each kind bites it, the reset puts them back). Run `node
+   tests/integration/world.mjs . bite`; look at it in the browser (`?level=<id>`; `?chip=0` is the
+   game without bites, for a before / after).
+7. **Leaving something whole is a decision**, the owner's, written in DECISIONS.md: the bonfires (a
+   checkpoint), the sect gate, the bell (it only rings: `hp: Infinity`), the throne and its dais, the
+   fallen star and the seal, and the training room (`?stage=lab`, ADR-099: a measuring stage, its tiles,
+   walls and pylons stand outside the fight; the test checks it lists nothing). Floor slabs break as
+   slabs (`floor: true`: whole, cracked, broken; never bitten), the ground itself does not break yet
+   (ADR-132 "Not done").
+
 **A set's `breakables`** (built in the set builder; `forest.js` and `courtyard.js` are the examples). One entry:
 | field | what |
 |---|---|
@@ -2750,10 +2792,12 @@ stones is a breakable 'vent' and the vent flares as it breaks.
   `sweep(ax, az, bx, bz, r, power, o)`: along a segment (a blade's edge, a dash, a body part's step).
   `sweepRec(w, o)`: the same with the segment in a reused record `{ ax, az, bx, bz, r, power }` (no
   numbers boxed per call: the wyrm's body sweeps a dozen spheres a frame).
-  `o = { kind, by, dx, dz, y, src, only, falloff, brush, spare, incidental, down }`: kind = `BLOW.CUT / BLUNT /
+  `o = { kind, by, dx, dz, y, ya, yb, src, only, falloff, brush, spare, incidental, down }`: kind = `BLOW.CUT / BLUNT /
   BLAST / FIRE`; by = 'player', 'boss' or 'world'; dx, dz = the blow's way (a piece falls along it;
   default: out from the disc's centre, or along the segment); y = its height (a blow above a low piece
-  passes over); src = one id per swing from `swing()` (a piece takes a blow once per id; without it,
+  passes over); ya, yb = a `sweep`'s heights at its two ends (a blade's hilt and point: a piece is
+  struck at the blade's own height there: its bite, its chips, its nick, a felled tree's stump; without
+  them, at `y`); src = one id per swing from `swing()` (a piece takes a blow once per id; without it,
   once per `BREAK.rehit` 0.18 s); only = just that material ('wood': the wings' wind); falloff 0..1 =
   `strike` is weaker toward its rim (× 1 − falloff there; `TUNING.world.falloff` 0.6 for the wyrm's
   ground blows); brush = a body walking (above); spare = one piece to leave alone; incidental = skip
@@ -2827,6 +2871,72 @@ frame); the rest only chip. **The wall** (`BREAK.wall`): a tree beyond `from` 32
 structure of a tree its size, falls with at least `out` 0.55 of its way pointing out of the arena (a
 leaning one the way it leans, which was turned outward when it leaned), and where it lands strikes the
 trees behind at `domino` 1.4 × its weight (0.7 elsewhere).
+
+**Bites** (2026-11-21, ADR-132; `BREAK.chip`; the look switch `?chip=`, `chipLook()`: on (`a`) by
+default since the owner's pick the same day, `?chip=0` turns them off). A piece is the BRICKS it is drawn with: its triangles, two that
+share their longest edge and lie flat together (cosine >= 0.9: the halves of a face of a trunk, a
+pillar, a stone) being one brick; foliage stays single triangles. A blow that takes structure from a
+piece (`_hit` -> `_bite`) takes bricks from it where it struck: of the bricks within the blow's reach
+of the point (a `sweep` / `stop`: where the segment met the piece, reach = the blow's radius + `pad`
+0.25, between 0.55 and 3.2 m; a `strike`: the disc's own centre at `o.y`, reach = its radius + the
+piece's + `pad`, so a blast eats the side that faced it) the share of the piece's structure the blow
+took, nearest first, at least one, at most `max` 96. The blows' arithmetic is untouched: structure,
+stages (`wear` events), the lean, the fall. So a notch grows where a blade keeps biting and its
+section is used up as the piece's structure runs out.
+- **Set back, or holed** (`brickSink`, `BREAK.chip.sink`). A brick of a solid part is not removed: it
+  is moved INTO the piece along its own normal, 0.42 of the part's thickness there (the nearest brick
+  of the same part whose face looks back at it), at most 0.3 m, so the piece keeps a skin and never
+  opens onto its hollow inside. Foliage, a face with no wall behind it and a part too thin for a dent
+  to show (set back under 0.07 m: a bough, a thin bone) lose the brick outright (its triangles
+  folded to a point).
+- **Finer bricks, built in** (`forest.js` `refine(geo, L)`, `brickEdge()`): a level built with bites
+  on cuts every bitten piece's faces until no edge is over `brick` 0.8 m (longest-edge bisection, in
+  place, every attribute carried to the new corners: the same shape and the same picture, more
+  triangles). Not cut: foliage, stumps, a part whose triangles are already narrower than `thin` 0.12
+  m on average; the forest's trees beyond `near` 48 m are cut `far` 2.5 x as coarse. Cinderwood: 0.92
+  M vertices drawn -> 1.07 M (the trees' mesh 524 k -> 648 k). So the switch is read when the level is
+  built (the Lab's Bites button reloads the page), and at each blow.
+- Every piece's bricks are made when the level is built (Cinderwood's ~620 range pieces: ~0.2 s in
+  Node; the depth search walks a dense grid of the bricks' centres, `brickSink`, ~O(n): the Cinder
+  Tree's trunk, 3000 bricks, in ~9 ms). Made in play they cost a frame a piece, and a roar's front
+  reaches the whole wall in half a second.
+- A 'range' piece: `RangeBody.bite(x, y, z, reach, share, cap, out)` (world, at home; its bricks are
+  made at the build, or at its first bite: `nb`, `btri`, `cen`, `tpart`,
+  `bit`, `pBit`, `pN`, `nBit`, `bnor` the way in, `bdep` how far), then `write()` sets back or folds
+  each taken brick after the parts are written (so it stays so while the piece shudders, leans,
+  falls, is carried); `home0()` clears them. `partGone(i)` -> share. With bites on a tree no longer
+  drops its crown parts in order; a crown part that has lost `shed` 0.72 of its bricks drops whole
+  (`_shed`). A wind front's wear (`_windHit`) bites the windward crown at `windY` 0.7 of the height.
+- A piece of the rigid batch: `MeshBricks` (`piece.bricks`, built with the pieces from the source's
+  `userData.batchRun` and the vertex counts of the geometries it was merged from, its parts): a
+  set-back brick's corners are moved in the batch's positions, a folded one's three indices set to
+  the first (both buffers `DynamicDrawUsage`, uploaded by range); `reset()` copies its runs back. Only
+  made in a level built with bites on (without them the batch's buffers stay static, as before), and
+  not with `?nobatch` (those pieces then only chip). The shadow mesh keeps the whole shape.
+- Each brick falls as one letter of what it was drawn in (`_drop`: a leaf, a splinter, a digit for
+  prop art; the leaves' and wood's dim hues) from its own centre, from the debris budget; every
+  `litter` 3rd leaves a mark lying under it (`scars.rubble`) until the reset; the splinter spray of
+  `_chips` is cut to 0.3 and the nick (`scars.object`) is left out (the bite is the mark).
+- Not bitten: floor slabs (their own cracked and broken looks), pieces that only chip (`hp`
+  Infinity), wreckage. A blow that took structure but has no brick within reach (a ground blow under a
+  bough, a blow on a landmark's footprint) takes the share from the bricks nearest it, however far. `destructibles.bitten`: bricks taken since the reset. World test `bite`.
+- The bricks a bite takes are knocked OUT of their face (`_drop`: away from the piece's axis and back
+  against the blow, harder for a blow that took more), then fall.
+- **The blade stops** (`BREAK.chip.stop`; player.js `_cutWorld` / `_bladeStops`; only with bites on).
+  `destructibles.struck` `{ held, x, y, z, broke }`: what the last `strike` / `sweep` / `stop` met (the
+  first piece that held the blow and where, how many it broke; reset at each call). A cut of the hero's
+  (not the execution) that meets a piece it does not cut through, `minH` 0.6 m or taller, stops there:
+  the attack clock goes back to the middle of that frame's travel, the frame freezes (`freeze` wood
+  0.075 s, stone / metal / bone 0.095), the camera shakes (`shake` 0.14 / 0.2, x 1.3 for a heavy),
+  steel on stone or metal throws sparks (`fx.sparks`); only on contact (`_bladeTouches`: the steel
+  within `touch` 0.25 m of the piece's footprint, the blade's own hit radius); `_tickAttack` holds the pose through the freeze
+  and `stick` (wood 0.11 s, the blade in the cut; stone 0) and then throws the blade back (`_bounce`,
+  `push` 0.25 / 0.45 m away from the piece; an attack again after `TUNE.bounceAttack`). No
+  `player:bounced` (that is a duelist's deflection: the feed and the pad read it). A cut that breaks or
+  fells what it meets goes through, with a `through` 0.05 s freeze. Integration scenario `bladestop`.
+  Training: a situation marked `clear` (built on the hero's own strikes: `foeBuild`) puts him where no
+  standing piece is within his sword's reach (`_crowded`: 2.6 m), turning round the boss, else
+  bringing the boss in toward the arena's middle (`CLEAR_SPOTS`).
 
 **The edge of the open ground** (`world/edge.js` `class Edge`, numbers `BREAK.edge`; 2026-11-21, ADR-125).
 Where the hero and the boss may go follows what still stands of a set's wall. A set asks for it by

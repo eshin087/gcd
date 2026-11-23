@@ -184,6 +184,24 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.59 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-132)
+- [x] Every breakable as bricks (its triangles; the halves of a flat face pair up), taken where a blow struck
+- [x] The share of structure a blow took = the share of the bricks under it; a blast eats the facing side
+- [x] A solid piece keeps a skin, set back; foliage, boughs and thin bones are holed
+- [x] Faces cut to brick size when the level is built with bites on (`refine`); the same picture
+- [x] Each brick falls as its own letter; some stay lying
+- [x] Range pieces (the forest, the landmarks) and rigid-batch pieces (stones, pillars, statues)
+- [x] The hero's blade strikes at its own height (`ya` / `yb`)
+- [x] `?chip=a`, the Lab's WORLD -> Bites; world test `bite`
+- [x] The blade stops on what it cannot cut through: freeze, shake, sparks, sticks in wood, thrown back; integ `bladestop` (the owner: "Keep it")
+- [x] Chips knocked out of the struck face toward the striker
+- [x] The owner picks: on (2026-11-21); `?chip=0` turns it off
+- [ ] Follow-ups:
+  - [ ] Frame cost of the extra vertices on the phone (Cinderwood 0.92 M -> 1.07 M)
+  - [ ] The ground breaks: pits and torn earth where a hard blow lands
+  - [ ] The landmarks that stay whole (bonfires, gate, bell, throne, fallen star): the owner's call, one by one
+  - [ ] A second layer and a support rule: what hangs over nothing falls
+  - [ ] Wreckage that can be cut up (logs, rubble)
 ## M1.58 — A landed cut has weight: the impact pass (2026-11-22, `combat/impact-weight`, ADR-149)
 - [x] Nine ideas proposed; the owner built the first batch (the stamp, the ripple, the reaction by
       where it lands, the sound's weight)

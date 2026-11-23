@@ -1017,6 +1017,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?presence=` | forms 2 and 3: a quiet presence | off | the off blade's light and embers; the staff's ends trailing | - | - | **a** |
 | `?great=` | Starless Night's waves | - | the dark tide (a violet wall, a red seam on its front) | the sky's edge (standing white strokes, lightning off it) | the floor answers (dust and chips along a red seam; the costliest: fire field peak 4942 of 6000) | **a** |
 | `?floor=` | a broken floor slab (both arenas; read when the level is built) | - | rubble on printed earth | heaved into a low mound of brighter shards | - | **a** |
+| `?chip=` | bites: a blow takes the bricks of a piece where it struck (every level; read when the level is built and at each blow; ADR-132; Lab: WORLD -> Bites) | pieces wear down in stages and break whole | the bricks under the blow fall as their letters; a solid piece keeps a skin there, set back | - | - | **a** |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |

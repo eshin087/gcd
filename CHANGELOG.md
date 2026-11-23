@@ -4,6 +4,22 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
+Sixty-four pieces of work since 0.4.0:
+- **The letters come off where the blow lands** (2026-11-21, ADR-132; on by default, the owner's
+  pick; `?chip=0` turns it off). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
+  made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
+  struck (the owner: "have the ascii pieces fall of exactly where the player or enemy boss is
+  hitting ... like minecraft/lego"): a blade cuts a notch into a trunk at the height it bit; a heavy
+  blow knocks the face of a standing stone back; a blast eats the side of a tree that faced it, where
+  before it took the tree's top. Each brick falls as its own letter from where it sat and some stay
+  lying. How much a piece takes, when it falls and what it deals are unchanged. *Changed:* the
+  hero's blade marks a piece at the blade's own height (about 0.3 m higher than before). With bites
+  on, the blade STOPS on what it does not cut through (the owner: "the sword should stop when it hits
+  it instead of going straight through it"): a freeze, a shake, sparks off stone, a moment stuck in
+  wood, then it is thrown back; a cut that fells the thing goes through. The chips fly out of the
+  struck face. On by default (the owner tried it behind `?chip=a` first); `?chip=0` or the Lab's
+  WORLD -> Bites turns it off.
+Sixty-two pieces of work since 0.4.0:
 Sixty-three pieces of work since 0.4.0:
 - **Cuts land with weight: the hit printed where it lands, the boss's body answers** (2026-11-22, ADR-149).
   *Added:* four new pieces on every cut that lands, each behind its own switch ("i want the hits to
