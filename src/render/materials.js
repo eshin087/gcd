@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COMMON_GLSL, HERO_PARTS, RIGID_VERT_GLSL } from './shaderLib.js';
+import { COMMON_GLSL, HERO_PARTS, RIGID_VERT_GLSL, WIND_GLSL, WIND_FRONTS_LEN } from './shaderLib.js';
 import { gi } from './glyphs.js';
 import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 
@@ -298,10 +298,14 @@ export function createAsciiObjectMaterial(U, { fadeNearPlayer = false, side = TH
       uResolution: U.uResolution,
       uFadeOn: { value: fadeNearPlayer ? 1 : 0 },
       uBoneTex: U.uBoneTex ?? { value: null }, // rigid batches' bone matrices (RIGID_VERT_GLSL)
+      // the living world's wind (WIND_GLSL; an older uniforms object without it: the wind is off)
+      uWind: U.uWind ?? { value: new THREE.Vector4(0, 0, 0, 0) },
+      uWindFronts: U.uWindFronts ?? { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4()) },
     },
     vertexShader: /* glsl */ `
       ${COMMON_GLSL}
       ${RIGID_VERT_GLSL}
+      ${WIND_GLSL}
       attribute vec3 aCol;
       attribute float aFlag;
       attribute float aSway;
@@ -315,8 +319,24 @@ export function createAsciiObjectMaterial(U, { fadeNearPlayer = false, side = TH
         mat4 mm = rigidMatrix();
         vec4 wp = mm * vec4(position, 1.0);
         float s = aSway;
-        wp.x += (sin(uTime * 0.9 + wp.z * 0.15 + wp.x * 0.05) * 0.6 + sin(uTime * 2.1 + wp.x * 0.4) * 0.25) * 0.14 * s;
-        wp.z += cos(uTime * 0.7 + wp.x * 0.13) * 0.08 * s;
+        if (!windOn()) {
+          // (the living world's wind off: exactly the old sway)
+          wp.x += (sin(uTime * 0.9 + wp.z * 0.15 + wp.x * 0.05) * 0.6 + sin(uTime * 2.1 + wp.x * 0.4) * 0.25) * 0.14 * s;
+          wp.z += cos(uTime * 0.7 + wp.x * 0.13) * 0.08 * s;
+        } else if (s > 0.0) {
+          // the shared wind: lean and rock along it by its strength here; a front passing this point
+          // bends the bough further and stirs it crosswise (the upwind side of a canopy goes first)
+          vec4 Tr = uWindFronts[WIND_SLOTS * 2 + 3]; // lean, rock, front, stir
+          vec2 wd = windDirAt(wp.xz);
+          float spN = uWind.z / (uWind.z + 2.5);
+          vec2 fd;
+          float edge;
+          float fk = windFronts(wp.xz, fd, edge);
+          float rock = sin(uTime * 0.9 + wp.z * 0.15 + wp.x * 0.05) * 0.6 + sin(uTime * 2.1 + wp.x * 0.4) * 0.25;
+          float stir = sin(uTime * 3.4 + wp.y * 1.7 + wp.x * 0.9) + 0.5 * sin(uTime * 5.3 + wp.z * 1.3);
+          vec2 d = wd * (spN * (Tr.x + Tr.y * rock)) + fd * (fk * Tr.z) + vec2(-fd.y, fd.x) * (stir * fk * Tr.w);
+          wp.xz += d * s;
+        }
         vW = wp.xyz;
         vN = normalize(mat3(mm) * normal);
         vCol = aCol;

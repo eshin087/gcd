@@ -42,6 +42,10 @@ export class Atmosphere {
     this.leafAcc = 0;
     this.ashAcc = 0;
     this.t = 0;
+    // the living world's wind at the bonfire and at the focus this frame (world/life/wind.js; zero and
+    // unused while its piece is off: every emitter then drifts exactly as before)
+    this._wB = { x: 0, z: 0, k: 0 };
+    this._wF = { x: 0, z: 0, k: 0 };
     this.light = game.lights.add({
       x: this.bonfire.x, y: 1.1, z: this.bonfire.z,
       color: [1.0, 0.46, 0.14], intensity: 2.4, radius: 9.5, flicker: 0.55,
@@ -92,6 +96,17 @@ export class Atmosphere {
     const fxA = this.game.fx.add;
     const fxB = this.game.fx.alpha;
     const bf = this.bonfire;
+    // the shared wind (null while its piece is off)
+    const lifeW = this.game.world?.life;
+    const wind = lifeW?.on?.('wind') ? lifeW.wind : null;
+    const wB = this._wB, wF = this._wF;
+    if (wind) {
+      const fo = this.game.U.uFocus.value;
+      wind.at(bf.x, bf.z, wB);
+      wind.at(fo.x, fo.z, wF);
+    } else {
+      wB.x = wB.z = wF.x = wF.z = 0;
+    }
 
     if (this.bonfireLit) {
       // the flames: heat in the fire field (render/fireField.js). Small cool blobs born over the
@@ -116,6 +131,8 @@ export class Atmosphere {
         const s = this._smoke;
         s.x = bf.x + (Math.random() - 0.5) * 0.3; s.z = bf.z + (Math.random() - 0.5) * 0.3;
         s.vx = 0.25 + Math.random() * 0.25; s.vz = (Math.random() - 0.5) * 0.3;
+        // (the wind: its fixed drift to +x becomes the air's; the fire field carries it on from here)
+        if (wind) { s.vx += wB.x * 0.3 - 0.375; s.vz += wB.z * 0.3; }
         s.life = 1.6 + Math.random() * 1.2;
         fire?.spawn(s);
       }
@@ -124,7 +141,7 @@ export class Atmosphere {
         this.emberAcc -= 1;
         fxA.spawn({
           x: bf.x + (Math.random() - 0.5) * 0.4, y: 0.6, z: bf.z + (Math.random() - 0.5) * 0.4,
-          vx: (Math.random() - 0.5) * 0.9, vy: 1.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 0.9,
+          vx: (Math.random() - 0.5) * 0.9 + wB.x * 0.45, vy: 1.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 0.9 + wB.z * 0.45,
           life: 1.4 + Math.random() * 1.6, size: 0.14, sizeEnd: 0.05,
           glyph: ".·'", color: [2.8, 0.9, 0.2], colorEnd: [0.6, 0.08, 0.01],
           alpha: 1, alphaEnd: 0, drag: 0.4, flicker: 0.6,
@@ -137,7 +154,7 @@ export class Atmosphere {
       return;
     }
     if (this.ash) {
-      this._ashFall(dt, fxA, fxB);
+      this._ashFall(dt, fxA, fxB, wind ? wF : null);
       return;
     }
 
@@ -169,7 +186,7 @@ export class Atmosphere {
       // low alpha so overlapping strokes build soft banks
       fxB.spawn({
         x, y: range(Math.random, 0.3, 1.2), z,
-        vx: 0.35 + Math.random() * 0.25, vy: 0, vz: (Math.random() - 0.5) * 0.15,
+        vx: wind ? wF.x * 0.3 + (Math.random() - 0.5) * 0.25 : 0.35 + Math.random() * 0.25, vy: 0, vz: (Math.random() - 0.5) * 0.15 + wF.z * 0.3,
         life: 9 + Math.random() * 5, size: range(Math.random, 2.2, 4.2), sizeEnd: 4.8,
         glyph: '~-', color: [0.2, 0.24, 0.3], alpha: 0.07, alphaEnd: 0,
         rot: (Math.random() - 0.5) * 0.15,
@@ -185,7 +202,7 @@ export class Atmosphere {
       if (Math.hypot(x, z) < 27) continue;
       fxB.spawn({
         x, y: range(Math.random, 5, 8), z,
-        vx: 0.6 + Math.random() * 0.6, vy: -0.7, vz: (Math.random() - 0.5) * 0.4,
+        vx: wind ? wF.x * 0.7 + (Math.random() - 0.5) * 0.6 : 0.6 + Math.random() * 0.6, vy: -0.7, vz: (Math.random() - 0.5) * 0.4 + wF.z * 0.7,
         life: 7, size: 0.28, glyph: ",`'~",
         color: [0.16, 0.26, 0.14], colorEnd: [0.1, 0.14, 0.08],
         alpha: 0.9, alphaEnd: 0.0, spin: (Math.random() - 0.5) * 4, drag: 0.2,
@@ -195,7 +212,8 @@ export class Atmosphere {
 
   /** Ash falling round the camera focus: slow grey flakes that sway as they sink, and now and then a
    *  dim ember drifting with them (the sect still smoulders). */
-  _ashFall(dt, fxA, fxB) {
+  _ashFall(dt, fxA, fxB, w = null) {
+    const wx = w ? w.x : 0, wz = w ? w.z : 0;
     const focus = this.game.U.uFocus.value;
     this.ashAcc = this.game.world?.life?.takes('ash') ? 0 : this.ashAcc + dt * 26;
     while (this.ashAcc >= 1) {
@@ -204,7 +222,7 @@ export class Atmosphere {
       const pale = Math.random();
       fxB.spawn({
         x, y: range(Math.random, 4, 9), z,
-        vx: 0.25 + Math.random() * 0.35, vy: -0.55 - Math.random() * 0.35, vz: (Math.random() - 0.5) * 0.3,
+        vx: w ? wx * 0.45 + (Math.random() - 0.5) * 0.35 : 0.25 + Math.random() * 0.35, vy: -0.55 - Math.random() * 0.35, vz: (Math.random() - 0.5) * 0.3 + wz * 0.45,
         life: 9 + Math.random() * 4, size: 0.12 + pale * 0.1, glyph: ".,'`",
         color: [0.3 + pale * 0.12, 0.29 + pale * 0.11, 0.28 + pale * 0.1], colorEnd: [0.16, 0.15, 0.15],
         alpha: 0.85, alphaEnd: 0, spin: (Math.random() - 0.5) * 3, drag: 0.15,
@@ -216,7 +234,7 @@ export class Atmosphere {
       const x = focus.x + (Math.random() - 0.5) * 40, z = focus.z + (Math.random() - 0.5) * 30 - 4;
       fxA.spawn({
         x, y: range(Math.random, 0.5, 4), z,
-        vx: 0.3 + Math.random() * 0.3, vy: 0.15 + Math.random() * 0.25, vz: (Math.random() - 0.5) * 0.3,
+        vx: w ? wx * 0.4 + (Math.random() - 0.5) * 0.3 : 0.3 + Math.random() * 0.3, vy: 0.15 + Math.random() * 0.25, vz: (Math.random() - 0.5) * 0.3 + wz * 0.4,
         life: 3 + Math.random() * 3, size: 0.1, sizeEnd: 0.04, glyph: ".'",
         color: [1.6, 0.5, 0.1], colorEnd: [0.4, 0.06, 0.01], alpha: 1, alphaEnd: 0, drag: 0.3, flicker: 0.5,
       });
