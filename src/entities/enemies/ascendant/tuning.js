@@ -24,6 +24,11 @@ export const TUNING = {
   radius: 0.42,
   // his drawn size: 1.12 x the hero's (visual only: every reach below is in gameplay metres)
   scale: PLAYER_SCALE * 1.12, // (the hero is drawn at PLAYER_SCALE, 1.08: he is ~1.21, between Shen Hui 1.2 and the Lord 1.32)
+  // his arms' soft reach (anim.js `armSoft`, ADR-162): the hero's [0.93, 0.99] (the bosses' [0.78, 0.955]
+  // left every punch's elbow at ~130°: a full stretch now opens it to ~150 - 160°, never locked)
+  armSoft: [0.93, 0.99],
+  // ... and his legs' (anim.js `legSoft`): a kick at full stretch keeps ~15° at the knee
+  legSoft: [0.9, 0.985],
   // the circle he keeps to: the level's CONFIG.world.dragonBound (the ring's floor) caps it
   bound: 16,
 

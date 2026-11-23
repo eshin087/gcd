@@ -2505,6 +2505,287 @@ async function scenarioHeroLike() {
   }
   setLook('ascLook', null);
 }
+// --- audit
+/**
+ * AUDIT (opt-in, ADR-162): every move of his run once (AI off, the hero still in front of him at the
+ * middle of its band, then circling him at 3.5 m/s), his joints tracked frame by frame in his own frame
+ * and in the world round his root: the largest one-frame jolts (second difference, mm) and where they
+ * fall (windup / strike / follow / recovery / the blend out), the fastest turn of his facing, how far his
+ * planted feet slide, the joints' range, and how far each blow's limb stops from the hero at its impact.
+ * ABYSS_AUDIT=name,name runs only those; ABYSS_AUDIT_TOP=n lists the n worst frames of each move.
+ */
+/** The audit of moves `names` (each run once a hero still in front of him, once circling him when
+ *  `orbits` holds true): one row a run (AUDIT prints them; MOTIONFIX asserts on them). */
+function auditMoves(names, orbits = [false, true], TOP = 0) {
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const inv = new THREE.Matrix4(), v = new THREE.Vector3();
+  const DEG = 180 / Math.PI;
+  const ang3 = (a, b, c) => {
+    const u = new THREE.Vector3().subVectors(a, b).normalize(), w = new THREE.Vector3().subVectors(c, b).normalize();
+    return Math.acos(clamp(u.dot(w), -1, 1)) * DEG;
+  };
+  const PTS = ['fistR', 'fistL', 'elbowR', 'elbowL', 'kneeR', 'kneeL', 'footR', 'footL', 'head', 'chest', 'pelvis'];
+  const sample = (d) => {
+    const R = d.rig;
+    R.root.updateMatrixWorld(true);
+    inv.copy(R.root.matrixWorld).invert();
+    const at = (o, x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z).applyMatrix4(o.matrixWorld);
+    const W = {
+      fistR: at(R.sword), fistL: at(R.arms.L.wrist ?? R.arms.L.fore), elbowR: at(R.arms.R.fore), elbowL: at(R.arms.L.fore),
+      shR: at(R.arms.R.upper), shL: at(R.arms.L.upper), hipR: at(R.legs.R.thigh), hipL: at(R.legs.L.thigh),
+      kneeR: at(R.legs.R.shin), kneeL: at(R.legs.L.shin), footR: at(R.legs.R.foot), footL: at(R.legs.L.foot),
+      head: at(R.head, 0, 0.1, 0), chest: at(R.chest, 0, 0.12, 0), pelvis: at(R.pelvis),
+    };
+    const B = {}, Wr = {};
+    const root = new THREE.Vector3().setFromMatrixPosition(R.root.matrixWorld);
+    for (const k in W) {
+      B[k] = W[k].clone().applyMatrix4(inv);
+      Wr[k] = W[k].clone().sub(root);
+    }
+    return { W, B, Wr, yaw: d.yaw, x: d.position.x, z: d.position.z, y: d.position.y };
+  };
+  const phaseOf = (a, t) => {
+    for (const b of a.beats) {
+      if (t < b.start) continue;
+      if (t < b.impact - 0.12) return `b${b.index ?? a.beats.indexOf(b)} windup`;
+      if (t <= b.impact + 0.06) return `b${b.index ?? a.beats.indexOf(b)} strike`;
+      if (t <= b.end + 1e-6) return `b${b.index ?? a.beats.indexOf(b)} active`;
+    }
+    return t < (a.recoveryStart ?? a.end) ? 'follow' : 'recovery';
+  };
+  const rows = [], worst = [];
+  for (const orbit of orbits) {
+    for (const name of names) {
+      const def = MOVES[name];
+      const f = formsOf(name)[0] ?? def.phase ?? 1;
+      const G = build();
+      const band = def.band ?? [0, 4];
+      const dist = clamp((band[0] + Math.min(band[1], 8)) / 2, 1.6, 7);
+      duel(G, { dist, form: Math.max(1, f) });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      settle(G, 2);
+      // (the hero EAST of him, as MOTION does: the drawn figure leans toward the camera along z)
+      d.position.set(0, 0, 0);
+      d.yaw = Math.PI / 2;
+      p.debug.teleport(dist, 0);
+      // (footwork's own planner holds his feet in the world: let them step to the new place first)
+      run(G, 0.7);
+      if (!d.debug.trigger(name)) { rows.push({ name, orbit, fail: 'trigger' }); continue; }
+      const A = d.brain.act;
+      const F = [];
+      let after = -1, th = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z), contact = [], px = d.position.x, pz = d.position.z;
+      for (let i = 0; i < 1200; i++) {
+        if (orbit) {
+          th += (3.5 / Math.max(1.5, dist)) * DT;
+          p.debug.teleport(d.position.x + Math.sin(th) * dist, d.position.z + Math.cos(th) * dist);
+        }
+        p.hp = p.maxHp;
+        const inAct = d.brain.act === A;
+        if (!inAct && after < 0) after = 0;
+        if (after >= 0 && after++ > 14) break;
+        const s = sample(d);
+        s.t = inAct ? A.t : A.end + after * DT;
+        s.ph = inAct ? phaseOf(A, A.t) : 'blend out';
+        // (a frame the root jumps in, a blink or a flit, is no one's motion: left out)
+        s.jump = Math.hypot(d.position.x - px, d.position.z - pz) > 0.4;
+        px = d.position.x;
+        pz = d.position.z;
+        s.air = s.jump || d.position.y > 0.05 || !!d.brain.leap || !!A.beats.find((b) => b.def.dash && A.t >= b.start && A.t <= b.end + 0.1) || !!A.beats.find((b) => b.def.blink && A.t >= b.start - 0.05 && A.t <= b.impact + 0.05);
+        F.push(s);
+        // the blow against the hero, at each real beat's impact frame
+        if (inAct) for (const b of A.beats) {
+          if (b.feint || b._aud || A.t < b.impact || !b.def.zone || (b.def.release && !b.cut) || b.def.cast) continue;
+          b._aud = true;
+          const tp = d._tip, pp = p.position, pr = p.radius ?? 0.45;
+          const flat = orbit ? Math.hypot(tp.x - pp.x, tp.z - pp.z) - pr : Math.abs(pp.x - tp.x) - pr, up = tp.y < 0 ? -tp.y : tp.y > 1.85 ? tp.y - 1.85 : 0;
+          const sm = sample(d), arm = b.def.part === 'fistL' ? ['shL', 'elbowL', 'fistL'] : ['shR', 'elbowR', 'fistR'];
+          contact.push({ i: b.index ?? A.beats.indexOf(b), gap: Math.max(flat, up), flat, y: tp.y, zone: b.def.zone.kind, part: b.def.part,
+            sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2), elbow: Math.round(ang3(sm.B[arm[0]], sm.B[arm[1]], sm.B[arm[2]])) });
+        }
+        if (process.env.ABYSS_SLIDE === name && !orbit && F.length > 1) {
+          const q = F[F.length - 2], fo = d.pilot?.feetOff;
+          for (const k of ['footR', 'footL']) {
+            const a1 = s.W[k], b1 = q.W[k], mv = Math.hypot(a1.x - b1.x, a1.z - b1.z);
+            const f = k === 'footR' ? fo?.r : fo?.l;
+            if (!s.air && !q.air && a1.y < 0.14 && b1.y < 0.14 && mv > 0.004) out(`      slide ${s.t.toFixed(3)} ${s.ph.padEnd(10)} ${k} ${(mv * 1000).toFixed(0)}mm y${a1.y.toFixed(3)} mode ${d.mode} clip ${d.brain.clip ?? ''} t${f?.t?.toFixed(2)} w${f?.w?.toFixed(2)} root ${(Math.hypot(s.x - q.x, s.z - q.z) * 1000).toFixed(0)}mm yaw ${((s.yaw - q.yaw) * 57.3).toFixed(1)}`);
+          }
+        }
+        if (process.env.ABYSS_TRACE === name && !orbit) {
+          const fo = d.pilot?.feetOff, k = process.env.ABYSS_TRACE_PT ?? 'footL';
+          out(`      ${s.t.toFixed(3)} ${s.ph.padEnd(10)} ${k} w[${s.W[k].x.toFixed(3)},${s.W[k].y.toFixed(3)},${s.W[k].z.toFixed(3)}] root[${s.x.toFixed(3)},${s.z.toFixed(3)}] offL[${fo?.l.x.toFixed(3)},${fo?.l.y.toFixed(3)},${fo?.l.z.toFixed(3)} t${fo?.l.t.toFixed(2)} w${fo?.l.w?.toFixed(2)} lift${fo?.l.lift?.toFixed(3)}] yaw${d.yaw.toFixed(3)} offR[${fo?.r.x.toFixed(3)},${fo?.r.z.toFixed(3)} t${fo?.r.t.toFixed(2)}]`);
+        }
+        G.tick(DT);
+      }
+      // jolts: the largest second difference of each point (mm a frame²), in his frame and in the world round his root
+      let pb = { v: 0 }, pw = { v: 0 }, out1 = { v: 0 };
+      const jolts = [];
+      for (let i = 2; i < F.length; i++) {
+        if (F[i].air || F[i - 1].air || F[i - 2].air) continue;
+        for (const k of PTS) {
+          const jb = v.copy(F[i].B[k]).addScaledVector(F[i - 1].B[k], -2).add(F[i - 2].B[k]).length() * 1000;
+          const jw = v.copy(F[i].Wr[k]).addScaledVector(F[i - 1].Wr[k], -2).add(F[i - 2].Wr[k]).length() * 1000;
+          const j = Math.max(jb, jw);
+          jolts.push({ j, k, t: F[i].t, ph: F[i].ph, w: jw > jb });
+          if (jb > pb.v) pb = { v: jb, k, t: F[i].t, ph: F[i].ph };
+          if (jw > pw.v) pw = { v: jw, k, t: F[i].t, ph: F[i].ph };
+          if (F[i].ph === 'blend out' && j > out1.v) out1 = { v: j, k };
+        }
+      }
+      jolts.sort((a, b) => b.j - a.j);
+      // a statue: the longest run of frames where nothing of him moves 3 mm (his own frame) and his root stands
+      let still = 0, stillBest = 0, stillAt = '';
+      for (let i = 1; i < F.length; i++) {
+        const q = F[i - 1], c = F[i];
+        const moved = PTS.some((k) => c.B[k].distanceTo(q.B[k]) > 0.003) || Math.hypot(c.x - q.x, c.z - q.z) > 0.003 || Math.abs(wrapA(c.yaw - q.yaw)) > 0.003;
+        still = moved ? 0 : still + 1;
+        if (still > stillBest) { stillBest = still; stillAt = c.ph; }
+      }
+      // his facing: the fastest turn (deg/s, one frame)
+      let yawR = 0, yawAt = '';
+      for (let i = 1; i < F.length; i++) {
+        const r = Math.abs(wrapA(F[i].yaw - F[i - 1].yaw)) / DT * DEG;
+        if (r > yawR) { yawR = r; yawAt = F[i].ph; }
+      }
+      // planted feet: travel on the floor while the foot is down (world), outside dashes, blinks and leaps
+      let slide = 0;
+      for (let i = 1; i < F.length; i++) {
+        if (F[i].air || F[i - 1].air) continue;
+        for (const k of ['footR', 'footL']) {
+          const a = F[i].W[k], b = F[i - 1].W[k];
+          if (a.y < 0.14 && b.y < 0.14) slide += Math.hypot(a.x - b.x, a.z - b.z);
+        }
+      }
+      // joints: the elbows' and knees' tightest fold, the lowest knee / foot
+      let elbow = 180, knee = 180, low = 9;
+      for (const s of F) {
+        elbow = Math.min(elbow, ang3(s.B.shR, s.B.elbowR, s.B.fistR), ang3(s.B.shL, s.B.elbowL, s.B.fistL));
+        knee = Math.min(knee, ang3(s.B.hipR, s.B.kneeR, s.B.footR), ang3(s.B.hipL, s.B.kneeL, s.B.footL));
+        low = Math.min(low, s.W.kneeR.y, s.W.kneeL.y, s.W.footR.y, s.W.footL.y);
+      }
+      const row = { name, orbit, f, dist: +dist.toFixed(1), frames: F.length, still: +(stillBest * DT).toFixed(2), stillAt, pb, pw, out: out1, yawR: Math.round(yawR), yawAt, slide: +slide.toFixed(2), elbow: Math.round(elbow), knee: Math.round(knee), low: +low.toFixed(2), contact };
+      rows.push(row);
+      if (TOP) worst.push(`   ${name}${orbit ? ' (orbit)' : ''}: ` + jolts.filter((x, i, L) => L.findIndex((y) => y.k === x.k && Math.abs(y.t - x.t) < 0.05) === i).slice(0, TOP).map((x) => `${x.k} ${Math.round(x.j)}${x.w ? 'w' : ''} @${x.t.toFixed(2)} ${x.ph}`).join(' · '));
+    }
+  }
+  return { rows, worst };
+}
+
+async function scenarioAudit() {
+  out('\n== scenario AUDIT (every move: jolts, turns, sliding feet, joints, the blow against the hero) ==');
+  const only = (process.env.ABYSS_AUDIT ?? '').split(',').filter(Boolean);
+  const TOP = Number(process.env.ABYSS_AUDIT_TOP ?? 0);
+  const { rows, worst } = auditMoves(MOVE_NAMES.filter((n) => !only.length || only.includes(n)), [false, true], TOP);
+  const fmt = (o) => (o.v ? `${Math.round(o.v)} ${o.k} ${o.ph ?? ''}`.trim() : '-');
+  out('   move               f  orbit  jolt(own frame, mm/f²)              jolt(world)                         blend-out     turn°/s (when)          slide  elbow knee  low   blow vs hero (gap m per beat; - = inside him)');
+  for (const r of rows) {
+    if (r.fail) { out(`   ${r.name} FAIL ${r.fail}`); continue; }
+    const c = r.contact.map((x) => `${x.part}:${x.gap.toFixed(2)}`).join(' ');
+    out(`   ${r.name.padEnd(18)} ${r.f}  ${r.orbit ? 'yes' : '   '}  ${fmt(r.pb).padEnd(36)} ${fmt(r.pw).padEnd(36)} ${fmt(r.out).padEnd(13)} ${String(r.yawR).padStart(5)} (${r.yawAt})`.padEnd(170) + ` ${r.slide.toFixed(2).padStart(5)} ${String(r.elbow).padStart(5)} ${String(r.knee).padStart(4)} ${r.low.toFixed(2).padStart(5)}  ${c}`);
+  }
+  if (TOP) for (const w of worst) out(w);
+  const S = process.env.ABYSS_AUDIT_JSON;
+  if (S) fs.writeFileSync(S, JSON.stringify(rows.map((r) => ({ ...r })), null, 1));
+}
+/**
+ * MOTIONFIX (ADR-162): what the motion audit found and fixed stays fixed, on the moves that showed it:
+ * a planted foot no longer jumps when the keys lift it (the strings' feet jolted 900 - 1300 mm a frame²),
+ * a punch lands with the arm open (every elbow was ~130° at contact), a palm thrust on a dash stops at
+ * the hero's body instead of passing through it, the roundhouse's knee does not flip side to side.
+ */
+async function scenarioMotionFix() {
+  out('\n== scenario MOTIONFIX (feet that do not jump, punches with an open arm, palms that stop at him, a steady roundhouse knee) ==');
+  const { rows } = auditMoves(['hundred', 'thousand', 'piercingPalm', 'riposteKnee', 'skyHammer'], [false]);
+  const by = Object.fromEntries(rows.map((r) => [r.name, r]));
+  const jolt = (r, pts) => Math.max(...[r.pb, r.pw].filter((x) => pts.includes(x.k)).map((x) => x.v), 0);
+  const feet = ['hundred', 'thousand', 'skyHammer'].map((n) => [n, Math.round(Math.max(jolt(by[n], ['footR', 'footL']), jolt(by[n], ['kneeR', 'kneeL'])))]);
+  assert(feet.every(([, j]) => j < 450), `the strings' feet and knees: the worst jolt under 450 mm/f² (was 900 - 1150): ${feet.map(([n, j]) => `${n} ${j}`).join(', ')}`);
+  const punches = ['hundred', 'thousand'].flatMap((n) => by[n].contact.filter((c) => c.part === 'fistR' || c.part === 'fistL'));
+  const elbows = punches.map((c) => c.elbow);
+  assert(punches.length >= 10 && Math.min(...elbows) >= 145, `${punches.length} punches land with the arm open: elbows ${Math.min(...elbows)} - ${Math.max(...elbows)}° (was ~130°)`);
+  assert(punches.every((c) => c.flat > -0.26), `a punch stops at the hero's body, not through it (deepest ${Math.min(...punches.map((c) => c.flat)).toFixed(2)} m into his 0.45 m circle)`);
+  const palms = ['hundred', 'piercingPalm'].flatMap((n) => by[n].contact.filter((c) => c.part === 'palms'));
+  assert(palms.length >= 2 && palms.every((c) => c.flat > -0.15 && c.gap < 0.2), `a palm thrust on a dash stops at the hero's body: ${palms.map((c) => c.flat.toFixed(2)).join(', ')} m (was 0.37 - 0.44 m through him)`);
+  const knee = Math.round(jolt(by.riposteKnee, ['kneeR', 'kneeL']));
+  assert(knee < 500, `the roundhouse's knee does not flip from frame to frame: worst jolt ${knee} mm/f² (was 731)`);
+}
+/**
+ * AUDITFIGHT (opt-in, ADR-162): his AI against a defending bot, `ABYSS_FIGHT_SECS` s a form (30): the
+ * same joints as AUDIT, every frame, and the largest jolts listed with what he was doing (the move
+ * and its phase, footwork, a reaction) and what he did the frame before (a seam between two things).
+ */
+async function scenarioAuditFight() {
+  out('\n== scenario AUDITFIGHT (his AI against a defender: the worst jolts and the seams they fall on) ==');
+  const secs = Number(process.env.ABYSS_FIGHT_SECS ?? 30);
+  const inv = new THREE.Matrix4(), v = new THREE.Vector3();
+  const PTS = ['fistR', 'fistL', 'elbowR', 'elbowL', 'kneeR', 'kneeL', 'footR', 'footL', 'head', 'chest', 'pelvis'];
+  const all = [];
+  let total = 0, frames = 0;
+  for (const form of [1, 2, 3]) {
+    const G = build(SEED + form);
+    duel(G, { dist: 3, form, ai: true });
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    p.debug.god = true;
+    G.defend = makeDefender(G, { style: 'mixed' });
+    const H = [];
+    const what = () => {
+      const a = d.brain.act;
+      if (d.mode === 'act' && a) {
+        const b = a.beats.find((x) => a.t < x.end + 1e-6);
+        return `${a.name}:${b ? (a.t < b.impact - 0.12 ? 'windup' : 'strike') + (b.index ?? a.beats.indexOf(b)) : 'recovery'}`;
+      }
+      return d.mode === 'react' ? `react:${d.brain.react?.kind ?? ''}` : d.mode;
+    };
+    let px = d.position.x, pz = d.position.z, lastHs = -99;
+    for (let i = 0, n = Math.round(secs / DT); i < n; i++) {
+      G.defend.act();
+      p.hp = p.maxHp;
+      G.tick(DT);
+      // (a hit-stop is a freeze-frame meant to stop the motion: no jolt is counted from 2 frames
+      // before it to 3 frames after it; its frames still enter the window, so nothing spans it)
+      const hs = game.hitstopTimer > 0 || (game.flow?.cineScale ?? 1) < 0.9;
+      if (hs) lastHs = i;
+      const R = d.rig;
+      R.root.updateMatrixWorld(true);
+      inv.copy(R.root.matrixWorld).invert();
+      const at = (o) => new THREE.Vector3().applyMatrix4(o.matrixWorld);
+      const W = { fistR: at(R.sword), fistL: at(R.arms.L.wrist ?? R.arms.L.fore), elbowR: at(R.arms.R.fore), elbowL: at(R.arms.L.fore), kneeR: at(R.legs.R.shin), kneeL: at(R.legs.L.shin), footR: at(R.legs.R.foot), footL: at(R.legs.L.foot), head: at(R.head), chest: at(R.chest), pelvis: at(R.pelvis) };
+      const root = new THREE.Vector3().setFromMatrixPosition(R.root.matrixWorld);
+      const B = {}, Wr = {};
+      for (const k in W) { B[k] = W[k].clone().applyMatrix4(inv); Wr[k] = W[k].clone().sub(root); }
+      const jump = Math.hypot(d.position.x - px, d.position.z - pz) > 0.4 || d.position.y > 0.05;
+      px = d.position.x;
+      pz = d.position.z;
+      H.push({ B, Wr, w: what(), jump: jump || hs, t: game.time });
+      if (H.length > 3) H.shift();
+      if (H.length < 3 || H.some((h) => h.jump) || i - lastHs < 4) continue;
+      frames++;
+      let best = 0, bk = '';
+      for (const k of PTS) {
+        const jb = v.copy(H[2].B[k]).addScaledVector(H[1].B[k], -2).add(H[0].B[k]).length() * 1000;
+        const jw = v.copy(H[2].Wr[k]).addScaledVector(H[1].Wr[k], -2).add(H[0].Wr[k]).length() * 1000;
+        const j = Math.max(jb, jw);
+        if (j > best) { best = j; bk = k; }
+      }
+      total += best;
+      all.push({ form, j: Math.round(best), k: bk, t: +H[2].t.toFixed(2), now: H[2].w, before: H[0].w });
+    }
+    G.defend = null;
+  }
+  all.sort((a, b) => b.j - a.j);
+  const seams = all.filter((x) => x.now !== x.before).length;
+  out(`   ${frames} frames, mean worst jolt ${(total / Math.max(1, frames)).toFixed(1)} mm/f²; over 300: ${all.filter((x) => x.j > 300).length}, over 150: ${all.filter((x) => x.j > 150).length}; on a seam (the frame before was something else): ${seams}`);
+  const seen = new Set();
+  for (const x of all) {
+    const key = `${x.k} ${x.now} ${x.before}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out(`   F${x.form} ${String(x.j).padStart(5)} ${x.k.padEnd(7)} t${x.t}  ${x.before === x.now ? x.now : `${x.before} -> ${x.now}`}`);
+    if (seen.size >= Number(process.env.ABYSS_FIGHT_TOP ?? 25)) break;
+  }
+}
 //
 //
 // --- terrain
@@ -3195,6 +3476,7 @@ const S = {
   // --- body
   body: scenarioBody,
   herolike: scenarioHeroLike,
+  motionfix: scenarioMotionFix,
   //
   //
   // --- terrain
@@ -3205,7 +3487,7 @@ const S = {
   integ: scenarioInteg,
 };
 // --- tune (opt-in: run only when named)
-const OPT_IN = { picks: scenarioPicks, probe: scenarioProbe, defend: scenarioDefend };
+const OPT_IN = { picks: scenarioPicks, probe: scenarioProbe, defend: scenarioDefend, audit: scenarioAudit, auditfight: scenarioAuditFight };
 // ABYSS_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs the long ones as
 // processes of their own, so a new scenario lands in `all`)
 const SKIP = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
