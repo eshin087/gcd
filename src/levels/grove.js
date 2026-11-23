@@ -24,7 +24,7 @@ export const WINDLESS = Object.freeze({
   }),
   buildSet: createWindlessGrove,
   createBoss: (game) => new Sheathed(game),
-  // (ADR-151: the lines play up a wanderer who has sworn not to draw; original wording)
+  // (ADR-152: the lines play up a wanderer who has sworn not to draw; original wording)
   text: Object.freeze({
     arrive: ['No wind moves the bamboo. In the clearing ahead a man kneels before a mound of swords that are not his. His own lies across his knees, still in its scabbard.', 'Rest at the bonfire to restore your flasks.'],
     stir: 'The kneeling man stands, the scabbard loose in his hand. "I put this down years ago. Walk on, and it stays down."',

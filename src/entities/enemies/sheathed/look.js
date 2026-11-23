@@ -1,6 +1,6 @@
 import { lookOf } from '../duelist/lookSwitch.js';
 
-// Lu Wusheng's look switches and his colours in the hero's ink-line art (ADR-151; STYLE.md "The
+// Lu Wusheng's look switches and his colours in the hero's ink-line art (ADR-152; STYLE.md "The
 // Sheathed"). Every one is read when his rig is built (a reload):
 //   ?sheathArt=a|0     how his body is printed: a the hero's ink-line art (the owner's pick, 2026-11-22:
 //                      the main character's and Shen Hui's), 0 the wyrm's digits (bodyArt.js

@@ -94,7 +94,7 @@ function draw({ windup, hold = [0.15, 0.75], zone, dash = null, end = CUT_END, e
     zone, part: 'hilt', close: 0, track, noSweep: true, follow: 0.24,
     ...(dash ? { dash } : {}),
     stopOn: ['blocked', 'hit'],
-    // the settle turns sharp (ADR-151): the head comes round to the hero first, then the body drops
+    // the settle turns sharp (ADR-152): the head comes round to the hero first, then the body drops
     // into the stance at speed (ease-in) out of the quiet carry; the timings are the beat's own
     keys: [
       [DRAW.grip * 0.4, { e: 'i', hdY: settle.hdY, hdX: settle.hdX }],

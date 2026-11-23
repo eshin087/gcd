@@ -137,7 +137,7 @@ function buildHead(ctx) {
     }
   } else if (look === 'd') {
     // the high tail: the hair bound high at the back of the crown by a pale tie, falling past the
-    // shoulder blades on a spring (ADR-151: long and thick enough to read as a shape of its own in the
+    // shoulder blades on a spring (ADR-152: long and thick enough to read as a shape of its own in the
     // ink-line art, where the outline is what reads). In the ink-line art the hair is printed on the
     // `shirt` part: the `hair` part's lines are the hero's gold, and a gold line round dark hair read
     // as light hair at the game camera
@@ -211,7 +211,7 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh, joint }) {
   mesh(spine, bandGeometry(W.rx + 0.022, W.rz + 0.022, look === 'b' ? 0.09 : 0.04, 32), M.shirt, 0, ySp(1.19), W.cz ?? 0);
   if (look !== 'd') return null;
   // d: the long scarf: two loose turns round the neck, two tails down the back on springs (they trail)
-  // (ADR-151: the turns deeper and the ends wider than they shipped: at the game camera a 6 cm strip
+  // (ADR-152: the turns deeper and the ends wider than they shipped: at the game camera a 6 cm strip
   // was one letter wide and the scarf did not read as a shape)
   mesh(chest, mergeGeometries([
     sub(bandGeometry(0.122, 0.114, 0.085, 24).translate(0, yCh(1.51), 0.004), 1),
@@ -220,8 +220,8 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh, joint }) {
   // one end thrown forward over his left shoulder, lying on the chest
   mesh(chest, foldLines(tatterStrip(0.32, 0.085, { fork: true, curl: 0.08, seed: 867 }), ribbonCrease(0.085, 0.8)), M.leather, 0.07, yCh(1.47), 0.13);
   const streamers = [];
-  // (ADR-151: the tails hang close down his back when he is still, `out` small, and may not swing in
-  // through him, `inMax`; a run and the draw still stream them out behind)
+  // (ADR-152: the tails hang close down his back when he is still, `out` small (it was 0.14: they stood
+  // off his back like a pole); a run and the draw still stream them out behind)
   for (const [sx, L0, L1, seed] of [[0.02, 0.34, 0.36, 871], [0.085, 0.3, 0.3, 883]]) {
     const base = joint(chest, sx, yCh(1.5), -0.15);
     const s0 = joint(base);
@@ -233,7 +233,7 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh, joint }) {
     const g1 = foldLines(tatterStrip(L1, 0.072, { fork: true, curl: 0.16, seed: seed + 5 }), ribbonCrease(0.072, 1.1));
     mesh(s1, g1, M.leather);
     mesh(s1, mirrored(g1), M.leather);
-    streamers.push({ segs: [s0, s1], len: [L0, L1], out: 0.03, lag: 1.1, max: 2.2, inMax: [-0.08, 0.1] });
+    streamers.push({ segs: [s0, s1], len: [L0, L1], out: 0.03, lag: 1.1, max: 2.2 });
   }
   return { streamers };
 }
@@ -359,7 +359,7 @@ function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
   return { coat };
 }
 
-/** d: the travelling robe falls loose past the hips over the trousers (ADR-151): four panels, front
+/** d: the travelling robe falls loose past the hips over the trousers (ADR-152): four panels, front
  *  and back, to mid-thigh, open at both sides (the slits show the trousers' pleats as he walks), a
  *  little outside the trousers' panels. A robe worn loose and long, never a short top tucked into the
  *  trousers. */
@@ -433,7 +433,7 @@ function bladeGeo() {
   return mergeGeometries([sub(g, 0), sub(tip, 1)]);
 }
 
-/** Mark a (ADR-151, `?sheathMark=a`): a long torn strip of unbleached cloth tied round the scabbard
+/** Mark a (ADR-152, `?sheathMark=a`): a long torn strip of unbleached cloth tied round the scabbard
  *  just below its mouth, its two ends on a spring (anim.js _streamers): a knot, a short end and a long
  *  one. `at` the joint it hangs on, `z` along the scabbard. Returns the streamers (two). */
 export const STRIP = Object.freeze({ len: [0.26, 0.38], short: [0.12, 0.16], w: 0.055, out: 0.32 });

@@ -6,7 +6,7 @@ import { createDuelPoses } from '../duelist/poses.js';
 // Lu Wusheng's stance and the pose functions built round it (duelist/poses.js). His guard is no
 // guard: he stands nearly upright, the sheathed sword hanging in his right hand by the scabbard,
 // low, its point toward the ground before him, like something he does not mean to use; the left
-// thumb hooked in his sash, the head a little bowed (ADR-151: the carry of a man who does not mean to
+// thumb hooked in his sash, the head a little bowed (ADR-152: the carry of a man who does not mean to
 // draw). `lsw` is the scabbard's direction when it is at his LEFT hip (the settle, the draw, the
 // re-sheathe: sheathed.js poses the left-wrist piece along it): back and down from the hip.
 
@@ -26,7 +26,7 @@ const GUARD_BASE = Object.freeze({
 });
 export const GUARD = GUARD_BASE;
 
-/** The run (ADR-151): low, the body pitched into it, the sheathed sword held back at the hip, nearly
+/** The run (ADR-152): low, the body pitched into it, the sheathed sword held back at the hip, nearly
  *  level (createDuelPoses opt.run), the empty left hand back at its own hip; the quiet breath. */
 export const SHEATH_RUN = Object.freeze({ hand: [-0.09, -0.3, -0.16], pole: [-0.7, -0.2, -0.6], blade: [-2.95, -0.2], flat: [0, 1, 0], sink: 0.08, lean: 0.16 });
 export const SHEATH_BREATH = Object.freeze({ k: 0.65, period: 4.6 });

@@ -49,7 +49,7 @@ export const PICKED = Object.freeze({
   grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
   sheathLook: 'd', // his body: the Wanderer (the owner's pick, 2026-11-22, over a, mourning white)
   drawCut: 'a', // the draw's cut: one white line (the owner's pick)
-  sheathArt: 'a', // his print: the hero's ink-line art (the owner's pick, 2026-11-22, over 0, the wyrm's digits; ADR-151)
+  sheathArt: 'a', // his print: the hero's ink-line art (the owner's pick, 2026-11-22, over 0, the wyrm's digits; ADR-152)
   // (sheathTone, sheathMark: rendered for the owner, not picked yet: their Lab rows are 'awaiting')
 });
 
