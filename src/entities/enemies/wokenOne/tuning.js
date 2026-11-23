@@ -139,7 +139,7 @@ export const TUNING = {
   // Iron Rain: he strafes round the hero at `strafe` m, running up across pillars on his way, firing
   // from alternating hands: `count` shots of `damage` over `dur` s, then the last big one (returnable).
   // A held guard pays `guardCost` a shot (the hero's GUARD.costMin is 8: 55 at most for a whole volley)
-  ironRain: { dur: 1.5, count: 11, damage: 5, last: 14, strafe: [7, 10], speed: 6.5, guardCost: 4.2, lastCost: 9 },
+  ironRain: { dur: 1.5, count: 11, damage: 5, last: 14, strafe: [7, 10], speed: 6.5, guardCost: 4, lastCost: 9 },
   // the reload: after `after` ranged moves he throws both guns away and takes two more from the coat
   reload: { after: 3, dur: 0.6 },
   // THE BEND (phase 2): a returned shot or the engine's heavy-blow evade. Time slows for everyone; he

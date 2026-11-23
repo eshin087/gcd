@@ -114,7 +114,7 @@ const stanceKeys = (P) => [
   [0.8, F(P)], [1.0, F({ ...P, bY: P.bY - 0.02 })], [2.0, F(P)],
 ];
 /** THE FALL: on his back on the floor, the arms out, the face to the ceiling. */
-export const FALLEN = { bY: -0.82, pitch: -1.42, hdX: -0.2, yaw: 0, rH: [-0.36, -0.3, 0.1], rP: [-0.9, 0.2, 0.0], lH: [0.36, -0.3, 0.1], lP: [0.9, 0.2, 0.0], rF: [-0.16, 0.12, 0.7], lF: [0.18, 0.12, 0.62], rK: [0, 1, 0.2], lK: [0, 1, 0.2], flat: 0.1 };
+export const FALLEN = { bY: -0.84, pitch: -1.45, hdX: -0.2, yaw: 0, rH: [-0.36, -0.3, 0.1], rP: [-0.9, 0.2, 0.0], lH: [0.36, -0.3, 0.1], lP: [0.9, 0.2, 0.0], rF: [-0.16, 0.06, 0.88], lF: [0.18, 0.06, 0.82], rK: [0, 0.4, 1], lK: [0, 0.4, 1], flat: 0.1 };
 
 // ---------------------------------------------------------------- beats
 const T = TUNING;

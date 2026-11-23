@@ -542,7 +542,7 @@ async function scenarioCover() {
     run(G2, 5, () => { G2.input.buttons[1] = true; G2.game.mouseGround.set(d2.position.x, 0, d2.position.z); minGuard = Math.min(minGuard, p2.guard); }, () => quiet(d2) && G2.game.time > 3);
     const shots = G2.hits.filter((h) => h.attack === 'ironRain');
     assert(shots.length >= 10 && shots.every((h) => h.r === RESULT.BLOCKED), `the volley met a held guard: ${shots.length} shots, all blocked`);
-    assert(p2.hp === hp && 100 - minGuard <= 55.5, `it cost guard only: ${(100 - minGuard).toFixed(1)} (<= 55), health ${hp} → ${p2.hp}`);
+    assert(p2.hp === hp && 100 - minGuard <= 55, `it cost guard only: ${(100 - minGuard).toFixed(1)} (<= 55), health ${hp} → ${p2.hp}`);
   }
 }
 

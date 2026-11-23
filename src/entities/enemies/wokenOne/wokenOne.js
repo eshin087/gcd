@@ -583,7 +583,14 @@ export class WokenOne extends Duelist {
       this._beckoned = true;
       this._scene('dojo', false);
     }
-    if (this._fall) this._fall.t += dt;
+    if (this._fall) {
+      this._fall.t += dt;
+      // (he rises straight off the floor as the fall's clip ends: no footwork between, no standing pop)
+      if (this._fall.t >= 0.5 + this.T.fall.lie && this.mode === 'react' && this.brain.react?.kind === 'executed') {
+        this.brain.pendingPhase = 0;
+        this.brain.startAct('rising', 3);
+      }
+    }
     this.iron.frame(dt);
     this.source.frame(dt, rdt);
   }
