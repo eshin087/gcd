@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-23',
+        title: "Tian Lei's attacks move naturally, and he stops punching the air",
+        notes: [
+          "Tian Lei's feet stay planted while he strikes: they no longer jump or slide.",
+          'His punches land with the arm extended, and his palm thrusts stop at your body instead of going through it.',
+          "Step or run out of his reach while he winds up and he stops the blow before it flashes and comes after you, instead of punching the air.",
+        ],
+      },
+      {
+        date: '2026-11-23',
         title: 'Tian Lei drawn like the hero, with shorter gold hair and a new gi',
         notes: [
           'Tian Lei is drawn in the same size of letters as you are, and in darker, quieter letters: on a large screen he no longer looks like a detailed 3D model beside you.',
