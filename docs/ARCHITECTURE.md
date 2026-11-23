@@ -281,6 +281,10 @@ Render helpers for creature modules:
     `heroArtCell(px)`, run for him (`gSelf`, `gCell` = `uSelfCell`, `gLine` = `uSelfPx`), then for
     the bosses (`uHeroCell`, `uHeroPx.x`); `isWho` is the window of the one being drawn. The whole
     pass reads its textures at level 0 by name (`textureLod`; none has mip levels).
+  - **A boss's arms and legs** (ADR-162): `HeroAnimator.armSoft` / `legSoft` (`[where the reach starts
+    to give, the most it opens]` as fractions of the limb's length; null = as always: `ARM_SOFT`, an elbow of
+    ~130° at a full stretch, and a leg that reaches straight). Tian Lei sets both in `_setup` from
+    `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`.
   - **The bosses' letters** (ADR-155): a boss whose kit sets `letters` (today Tian Lei's `ASC_KIT`, a
     getter: `?ascLetters=a`, the owner's pick; `0` the fixed cell) has the bosses' cell `uHeroCell`, its
     atlas `tHeroArt` and its line width `uHeroPx.x` set each frame from HIS depth by the hero's rule:
@@ -3286,6 +3290,18 @@ data and a subclass with a few hooks.
   (`sector` / `line` / `ring`; `hitPlayer` gets `beat`), a `release` or a `cast` (the actor's, at the
   impact; a string never stops for want of reach on one). `def.manual` / `def.counter` / a weight of
   0 keep a move out of the AI's pick; `def.gapCloser` is favoured against a hero who drinks.
+  **The pursuit** (ADR-162; opt-in, `TUNING.pressure.pursue`, today Tian Lei's; a kit without it
+  behaves exactly as before; the full field list is brain.js's header): through each real melee beat's
+  windup, from `after` s up to its glint, the hero is led to the impact (`_lead`) and set against what
+  the beat can still reach (`_reachLeft`: the zone, the step-in left, the dash not yet spent); beyond it
+  by `margin` m (`_outOfReach`) the move breaks off with no glint and no hit (a glint is always a blow;
+  its `combat:tell` may already have been announced, as a fairness-guard feint's) and he chases: a
+  `far` / `away` link, else footwork after `gap` s. `brain.stats.stops` counts them, `brain.runner` (the
+  hero's habit of running) weighs the moves that reach anywhere; `forecast(s)` = the hero's speed away.
+  While the hero backs away (> `away` m/s) a beat's step-in is x `closeK` and a dash's cap x `dashK`
+  (per phase); a leap lands `leapLead` s and an actor's blink `blinkLead` s ahead of where the hero is
+  going (`blinkKeep`: never in front of him); director.js weighs a move whose first blow cannot reach
+  where the hero will be x `miss`. Not a counter, a flurry, a stance, a draw or a transformation.
 - `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat })` → `realise(name, phase, rnd, opts)` (`opts.count`:
   a `streak` move, his flurry, plays that many beats); `perPhase`. The POSE keys of a beat past its
   impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's

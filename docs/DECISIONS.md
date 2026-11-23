@@ -4603,3 +4603,36 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   print, the hair and the gi carry the change there. Every other boss is drawn as before (`bossLetters`
   false). Tests: `asc.mjs` `herolike` (the cells beside the hero's on five screens, the fixed cell when
   off, the quieter print, the hair's height, the three gis without blue), `body` (the default is e).
+
+## ADR-162 — Tian Lei's blows audited and fixed: feet that stay planted, arms that open, palms that stop at the hero; he breaks off a blow the hero has left (2026-11-23)
+
+- **Context:** the owner: "ok looks good but i noticed a lot of the attack animations and attacks look unnatural. audit it and fix it to improve it. make the boss also stop attacking empty air if the player moves out of the distance". Asked vaguely, so measured first: an opt-in audit (`asc.mjs audit`: every
+  move run with the hero still in front of him and circling him, his joints tracked frame by frame in his
+  own frame and in the world round his root; `auditfight`: 30 s a form of his AI against a defending bot,
+  the worst jolts with what he was doing) and film of the worst moves.
+- **Found and fixed (motion):**
+  1. **Feet that jumped.** `Ascendant._planFeet` holds a planted foot in the world while the close-in step
+     moves his root; the pose hook dropped that offset the moment the keys lifted the foot above ankle
+     + 8 cm, and the keyed height flickered across that line: a foot jumped up to 0.7 m in a frame at the
+     strikes of every punching string (jolts 900 - 1966 mm a frame²). The offset now goes smoothly (a
+     weight eased at 14/s, the offset fading in the air), the planner answers his TURNS as well as his
+     travel (a planted foot no longer swivels with him), and both feet may step when one lags past 1.6x
+     the reach.
+  2. **Arms that never opened.** The shared arm solver's soft reach (`ARM_SOFT`) left every punch landing
+     with the elbow at ~130°, a crooked arm at every contact (the hero had the same complaint in Session 30
+     and has `HERO_SOFT`). The animator takes an opt-in `armSoft`; Tian Lei uses the hero's numbers (149 -
+     155° at contact). `legSoft` likewise for the legs (his kicks keep a little bend).
+  3. **Palms through the hero.** A palm thrust on a dash stopped 0.8 - 1.0 m from the hero while the palm's
+     lunge reaches ~1.35 m: it ended 0.37 - 0.44 m inside him. Those dashes stop at `PALM` (1.35 m).
+  4. **The roundhouse's knee flipped side to side**: its knee was keyed toward the target, and the leg
+     crossed that direction as it swung round. The knee points up and over now (the chamber's).
+- **Found and fixed (the empty air):** the engine stopped a string for want of reach only once, at the start of each LATER blow's windup; the first blow was never checked, and a hero who stepped or ran away during a windup still had a blow thrown at the air (a whiff meter, opt-in `asc.mjs whiff`: a fleeing hero drew 18 swings at air a minute in form 1, 60 % of his melee swings). The pursuit (`pressure.pursue`, opt-in in the duelist engine; ported by a helper agent from the stale epic pass's uncommitted `asc5/ai` work and finished): through each real melee beat's windup up to its glint the hero is led to the impact and set against what the blow can still reach; past it by 0.5 m he breaks off (no glint, no hit: a glint is always followed by a blow) and chases (a far / away link, else footwork). A hero backing away is chased with a longer step-in and dash in forms 2 - 3 (form 1 as before: with it, form 1 came out as busy as form 2); a blink arrives where the hero is going but never in front of him (`blinkKeep`); a move that cannot reach where he will be is not picked; a hero who keeps running is read (moves that reach anywhere weigh more). Swings at air: 0 a minute for every bot and form (roam, retreat, flee, kite). A blow at air was a cue, so PACE's floors were re-pinned from the same ten seeds (minRate 74 / 77 / 80, ramp 0.95 / 0.91; the means still climb form over form, x1.067 / x1.10; 0 conflicts)
+- **Why not** slow his tracking turn (up to ~900°/s when the hero circles him in a windup): it is a
+  difficulty lever (a sidestep would answer more blows), not a pose; the owner decides. **Why not** a
+  tremble through the long held windups (the beams' charges stand still up to 1.1 s): at the game camera
+  a few centimetres do not show and a shimmer of letters would; left as it is.
+- **Consequences:** frames of a real fight with a visible pop (a jolt over 300 mm a frame²) 87 -> 23 (the
+  worst 1966 -> 715, the sweep kick shooting out); the per-move total 47 316 -> 23 677. `armSoft` /
+  `legSoft` are opt-in: the other rigs are drawn as before. Tests: `asc.mjs` `motionfix` (fails on the old
+  code: the strings' feet 910 - 1146, elbows 128 - 131°, palms 0.35 - 0.40 m in, the knee 731) and
+  `pursuit` (a hero who rolls out of a windup gets no glint and no hit and is chased; a hero who stays is hit as before; a sprinter is caught by the dash; Sign Step still lands behind a runner) and the opt-in whiff meter (0 swings at air a minute for every bot).

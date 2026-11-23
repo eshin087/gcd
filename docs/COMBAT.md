@@ -1596,6 +1596,13 @@ Ghostep, his flurry, hit stun, the director and the fairness guard are as writte
 duelists' pressure and the fairness guard*, below), with these differences. Code: ARCHITECTURE.md
 "Tian Lei, the Last Ascendant"; the moveset the owner approved: the lead's `MOVES.md`.
 
+**He never strikes the air** (2026-11-23, ADR-162; the owner: "make the boss also stop attacking empty
+air if the player moves out of the distance"). Step or run out of what a blow can still reach while he
+winds it up and he breaks it off before its flash (no flash, no hit: a flash is always a blow) and comes
+after you: a far / away link, his dash, his blink. A hero backing away is chased with a longer step-in
+and dash from form 2. Staying in reach changes nothing: the blow lands as before, and every answer
+(parry, block, roll) is as it was.
+
 **Three forms, three bars, a deathblow each** (the Lord's structure):
 | Form | Who he is | Guard | Windup × | Recovery × | Footwork |
 |---|---|---|---|---|---|

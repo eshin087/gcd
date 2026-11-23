@@ -184,6 +184,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.68 — Tian Lei's blows audited; he stops attacking the air (2026-11-23, `enemies/ascendant-ascii`, ADR-162)
+- [x] A motion audit of every move and of a real fight (opt-in `asc.mjs audit` / `auditfight`)
+- [x] Feet that stay planted, arms that open, palms that stop at the hero, a steady roundhouse knee
+- [x] He breaks off a blow you ran out of and chases you (`pressure.pursue`): 0 swings at air
+- [ ] His tracking turn and the still charges (the owner to say)
+- [ ] Played, and on the phone
+
 ## M1.65 — Tian Lei printed like the hero (2026-11-23, `enemies/ascendant-ascii`, ADR-155)
 - [x] His letters follow his size on screen as the hero's do (`?ascLetters=a`)
 - [x] The hero's quieter print (`?ascLift=b`)

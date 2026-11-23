@@ -5,6 +5,35 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 84: Tian Lei's blows audited; he stops attacking the air
+
+**Owner:** "ok looks good but i noticed a lot of the attack animations and attacks look unnatural. audit it and fix it to improve it. make the boss also stop attacking empty air if the player moves out of the distance". Branch `enemies/ascendant-ascii` (on PR #96's look pass). ADR-162 / Session 84 / M1.68.
+
+**How.** Measured before touching anything: `asc.mjs audit` (opt-in; every move, the hero still and
+circling, joints frame by frame: jolts, the facing's turn, sliding feet, joints, the blow against the
+hero) and `auditfight` (opt-in; his AI against a defending bot, 30 s a form). Filmed the worst moves
+(close side view, solid and ASCII) against the committed build. The whiff fix went to a helper agent in
+its own worktree (`enemies/ascendant-reach`), porting the unfinished pursuit from the stale epic pass
+(`asc5/ai`, never committed), merged here.
+
+**What changed.** Feet that stay planted (`_planFeet` + the pose hook), arms that open (anim.js `armSoft`,
+the hero's numbers), legs that keep a bend (`legSoft`), palm dashes that stop at the palm's reach (`PALM`),
+a roundhouse knee that points up. The pursuit (`pressure.pursue`, duelist brain.js / director.js, opt-in; Tian Lei's tuning): a blow the hero has run out of is broken off before its glint and he chases; form 1 chases no harder than before; PACE's floors re-pinned (a swing at air was a cue).
+
+**Measured.** A real fight against a defender: frames with a visible pop 87 -> 23, the worst 1966 -> 715.
+Every move: total jolt 47 316 -> 23 677. Punches land at 149 - 155° (was ~130°). Swings at air a minute (whiff meter, 3 seeds x 90 s, forms 1 / 2 / 3): flee 18.2 / 18.1 / 9.5 -> 0 / 0 / 0, retreat 1.9 / 4.3 / 2.7 -> 0, kite 1.9 / 0 / 0.5 -> 0, roam 0 / 0.2 / 0.2 -> 0. PACE on ten seeds: F1 75.3 / 79.3 / 85.0, F2 78.5 / 84.6 / 91.3, F3 81.4 / 93.2 / 101.2 (min / mean / max; form 3's mean was ~96).
+
+**Found on the way.** Two audit artifacts that looked like defects: the drawn figure leans toward the
+camera along z (measure reach with the hero EAST of him, as MOTION does), and hit-stops are freeze-frames
+(a window that spans one reports the whole freeze as one frame's jolt: "strike -> stagger" was not real).
+
+**Not checked / open.** Nobody has played it; not on the phone. His tracking turn (up to ~900°/s at a
+circling hero) and the still charges of the beams were left (see ADR-162). The stale epic pass on
+`enemies/ascendant-epic` / `asc5/*` (new moves, blue beams, the champion's ring, its own letter grid) is
+still unmerged and now conflicts with PR #96 and this work.
+
+---
+
 ## 2026-11-23 — Session 81: Tian Lei printed like the hero; the hair risen, not tall; a gi in ember
 
 **Owner:** "the skybreak ring, the character is too detailed and is showing its flaws in 3d. make it more
