@@ -1224,6 +1224,58 @@ async function scenarioSmoke() {
   }
 }
 
+// ================================================================== scenario: looks
+async function scenarioLooks() {
+  out('\n== scenario LOOKS (each ?oneLook= builds; his body dressed by phase: the coat, the guns, the edge) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const PICK = LS.PICKED ?? {};
+  assert(!('oneLook' in PICK) && (LS.PENDING ?? []).includes('oneLook'), 'his look is not in PICKED (the owner has not picked) and waits in PENDING');
+  const { ASC_LOADOUT } = await imp('src/entities/enemies/ascendant/gear.js');
+  const { buildHero } = await imp('src/entities/player/model.js');
+  const { ONE_LOADOUT } = await imp('src/entities/enemies/wokenOne/gear.js');
+  const countMeshes = (root) => { let n = 0; root.traverse((o) => { if (o.isMesh) n++; }); return n; };
+  LS.setLook('ascLook', 'h');
+  const asc = countMeshes(buildHero(createSharedUniforms(), ASC_LOADOUT).root);
+  LS.setLook('ascLook', null);
+  for (const v of ['a', 'b', 'c']) {
+    LS.setLook('oneLook', v);
+    let ok = true, meshes = 0, rigMeshes = 0, D = null, row = '';
+    try {
+      const G = build();
+      const { game } = G;
+      const d = game.dragon;
+      meshes = countMeshes(d.rig.root); // (with what the class hangs on him)
+      rigMeshes = countMeshes(buildHero(createSharedUniforms(), ONE_LOADOUT).root); // (the body alone, as Tian Lei's is counted)
+      D = d.rig.root.userData.dress;
+      ok = !!D && D.kind === 'one' && D.look === v && D.guns.length === 4 && d.rig.coat.length === 6 && d.rig.loadout.waist === 'one.coat';
+      const U = game.U.uHeroPartRim.value;
+      const seen = {};
+      for (const ph of [1, 2, 3]) {
+        d.debug.setPhase(ph);
+        run(G, 0.25);
+        const front = D.fronts[0];
+        seen[ph] = {
+          guns: D.guns.every((m) => m.visible === (ph === 2)),
+          az: front.C.def.az,
+          rim: U[6].y,
+          jade: U[6].y > U[6].x && U[6].y > 0.5,
+          finite: [d.position.x, d.position.z, d._tip.x].every(Number.isFinite),
+        };
+      }
+      row = JSON.stringify(seen);
+      assert(seen[1].guns && seen[2].guns && seen[3].guns, `?oneLook=${v}: the guns hidden in phases 1 and 3, shown in phase 2`);
+      const opens = v !== 'b';
+      const F = D.fronts[0];
+      assert(Math.abs(seen[1].az - F.closed) < 1e-6 && Math.abs(seen[2].az - (opens ? F.open : F.closed)) < 1e-6 && Math.abs(seen[3].az - (opens ? F.open : F.closed)) < 1e-6,
+        `?oneLook=${v}: the coat's front ${opens ? 'closed in phase 1, open from phase 2' : 'closed in every phase (the Cassock)'} (az ${seen[1].az.toFixed(2)} / ${seen[2].az.toFixed(2)} / ${seen[3].az.toFixed(2)})`);
+      assert([1, 2, 3].every((p) => seen[p].jade && seen[p].finite) && seen[3].rim > seen[2].rim, `?oneLook=${v}: his edge is jade, brighter in phase 3 (${seen[2].rim.toFixed(2)} → ${seen[3].rim.toFixed(2)})`);
+    } catch (e) { ok = false; out(`     ${v}: ${e.message}`); }
+    assert(ok && rigMeshes > 20 && rigMeshes <= asc + 10, `?oneLook=${v} builds (his body ${rigMeshes} meshes, ${meshes} in the fight; Tian Lei's body in the orange gi ${asc})`);
+    if (row) out(`     ${v}: ${row}`);
+  }
+  LS.setLook('oneLook', null);
+}
+
 const S = {
   pace: scenarioPace,
   win: scenarioWin,
@@ -1242,6 +1294,7 @@ const S = {
   data: scenarioData,
   timing: scenarioTiming,
   smoke: scenarioSmoke,
+  looks: scenarioLooks,
 };
 const OPT_IN = new Set(['smoke', 'cost', 'strategy']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
