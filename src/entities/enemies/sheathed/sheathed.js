@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { DIM } from '../../player/model.js';
 import { Duelist, HERO_SCALE } from '../duelist/duelist.js';
 import { RESULT } from '../../../combat/rules.js';
-import { SHEATH_LOADOUT, BLADE_SPAN, buildOffSheath, sheathLookNow } from './gear.js';
+import { SHEATH_LOADOUT, BLADE_SPAN, buildOffSheath, sheathLookNow, sheathArtNow, SHEATH_ART } from './gear.js';
 import { SHEATH_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, realise, counterMove } from './moves.js';
 import { TUNING } from './tuning.js';
@@ -70,6 +70,11 @@ export class Sheathed extends Duelist {
   /** His sword's colours (the materials left on today's path: the blade, the scabbard, its fittings). */
   _tint(M) {
     const fill = (m, r, g, b) => m?.uniforms?.uArtFill?.value.setRGB(r, g, b);
+    // (`?sheathArt=a|b`: the body in the hero's ink-line art: its colours are the body's inks, as fills)
+    if (sheathArtNow() !== '0') {
+      const A = SHEATH_ART[sheathLookNow()];
+      for (const k of ['coat', 'lining', 'hem', 'shirt', 'pants', 'leather', 'hair', 'collar']) if (A[k]?.ink) fill(M[k], ...A[k].ink);
+    }
     fill(M.trim, 0.025, 0.022, 0.024); // the black lacquer scabbard and the hilt's fittings
     fill(M.facing, 0.55, 0.52, 0.46); // its pale throat and butt cap
     fill(M.armor, 0.52, 0.54, 0.58); // the bare blade

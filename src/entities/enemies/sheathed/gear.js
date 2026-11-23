@@ -106,8 +106,14 @@ const mirrored = (g) => {
 };
 
 /** Each item's build turns the rig to the dragon look first (once per rig: toDragonLook). */
+/** How his body is printed (`?sheathArt=`): '0' the wyrm's digits (toDragonLook), 'a' the hero's
+ *  ink-line art (as Shen Hui and the hero are drawn). */
+export function sheathArtNow() {
+  const o = lookOf('sheathArt', '0');
+  return o === 'a' ? o : '0';
+}
 const opted = (build) => (ctx) => {
-  toDragonLook(ctx, SHEATH_ART[sheathLookNow()]);
+  if (sheathArtNow() === '0') toDragonLook(ctx, SHEATH_ART[sheathLookNow()]);
   return build(ctx);
 };
 
