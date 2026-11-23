@@ -1662,11 +1662,12 @@ async function scenarioBeam() {
     G6.watch = (n, e) => { if (n === 'dragon:clone' && e?.by === 'beam') popped++; };
     // (a self torn free and set on the line by hand: whatever moves the selves, one in its strip pops)
     const C6 = d6.clones;
-    if (typeof C6.spawn === 'function') C6.spawn(1, 'test');
-    const c = C6.list.find((o) => o.alive);
+    // (a self that stands where it is put: the one he leaves behind when he trades places, held 5 s)
+    const c = C6.list.find((o) => o.state === 'dead');
     if (c) {
-      c.x = H6.B.ox + H6.B.dx * 8;
-      c.z = H6.B.oz + H6.B.dz * 8;
+      C6._show(c, H6.B.ox + H6.B.dx * 8, 0, H6.B.oz + H6.B.dz * 8, 0);
+      c.state = 'swapped';
+      c.until = C6.clock + 5;
     }
     run(G6, 0.3);
     G6.watch = null;
