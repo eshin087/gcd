@@ -69,6 +69,8 @@ export class Litter {
     this._mvz = 0;
     this._bounds = this._win;
     this._visible = true;
+    // (a level with no litter block has no litter: no buttons for it in the Lab)
+    if (!this.T) return;
     life.action?.('leaf shower', () => this.shower(), 'a burst of falling leaves round the camera');
     life.action?.('scatter at hero', () => {
       const h = this.life.hero;
