@@ -68,6 +68,17 @@ export const RELEASES = [
       },
       {
         date: '2026-11-21',
+        title: 'A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox',
+        notes: [
+          'A new level, the Foxfire Terrace: a round terrace on a moonlit hill shrine, ringed by stone lanterns, stone foxes and paper charms. Pick it on the title screen.',
+          'Its boss is Wen Yao, the Thousand-Body Fox, a masked bare-handed fighter who tears paper copies of himself off his body. They strike as a pack with the same white cue as his blows, and one cut pops a copy.',
+          'The real one is always the one you are locked on to: the only one with a shadow, a steel blade and, later, the fire.',
+          'He shapes a spinning pearl in his open palm, a copy holding it with him and every other copy feeding it, then dashes in and drives it into you. Pop copies to make it weaker, hit him twice while he shapes it to burst it in his hand, or roll.',
+          'In his second phase he trades places with his copies, springs off their hands at you, and they all strike in turn around you. In the last a nine-tailed fox of fire wakes around him, one more tail as his health runs out.',
+        ],
+      },
+      {
+        date: '2026-11-21',
         title: 'On a phone: the health bars no longer overlap, and two new ways to hold the controls',
         notes: [
           'Your health and the boss\'s no longer run into each other on a phone. Your meters are shorter there and the boss\'s bar takes the room that is left.',

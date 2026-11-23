@@ -3191,7 +3191,7 @@ async function scenarioPerfect() {
 async function scenarioFxLooks() {
   out('\n== scenario FXLOOKS (the shock, the Kindling, ash on the wind, the qi, the flit: every option; the picks as the defaults) ==');
   const { setLook, lookOf, PICKED, pickedOf, allOld, readLookUrl } = await imp('src/entities/enemies/duelist/lookSwitch.js');
-  const { LOOK_SWITCHES } = await imp('src/dev/labLooks.js');
+  const { LOOK_SWITCHES: LOOK_SWITCHES_ALL } = await imp('src/dev/labLooks.js');
   const { DuelFx } = await imp('src/entities/enemies/duelist/fx.js');
   const SW = { kindle: ['a', 'b', 'c'], ashp3: ['a', 'b', 'c'], qi: ['0', 'a', 'b', 'c'], flit: ['0', 'a'] };
   // the look as it was before this pass (what `main` drew), every switch of the courtyard
@@ -3202,6 +3202,10 @@ async function scenarioFxLooks() {
   //    ?looks=old (a redraw: '0'; a new thing keeps its pick) and ?looks=new (= the default)
   {
     clear();
+    // (switches still waiting for the owner's pick, lookSwitch.js PENDING, are left out of the picks' checks)
+    const { PENDING = [] } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+    const LOOK_SWITCHES = LOOK_SWITCHES_ALL.filter((s) => !PENDING.includes(s[0]));
+    assert(PENDING.every((n) => LOOK_SWITCHES_ALL.some((s) => s[0] === n) && pickedOf(n) == null), `pending switches (${PENDING.join(', ') || 'none'}) are Lab rows and not in PICKED`);
     const row = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s]));
     const bad = Object.entries(PICKED).filter(([k, v]) => !row[k] || !row[k][1].includes(v));
     const missing = LOOK_SWITCHES.filter((s) => pickedOf(s[0]) == null).map((s) => s[0]);

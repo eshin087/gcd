@@ -2,10 +2,11 @@
 
 ABYSS is a long-term browser game: a **wuxia skill boss rush** in the vein of Phantom Blade Zero,
 with some exploring and RPG elements and fixed rewards (techniques, weapons, abilities; ADR-059),
-rendered in its own ASCII look. Today: four levels, each its own
+rendered in its own ASCII look. Today: five levels, each its own
 page load (`?level=`): Cinderwood Hollow (the Cinder Wyrm), the Ashfall Courtyard (the Ash Disciple,
 a three-phase human duelist), the Obsidian Throne (the Starless Lord, a four-form duelist with Void spells)
-and the Skybreak Ring (Tian Lei, the Last Ascendant: a bare-handed three-form duelist with ki blasts and beams).
+the Skybreak Ring (Tian Lei, the Last Ascendant: a bare-handed three-form duelist with ki blasts and beams)
+and the Foxfire Terrace (Wen Yao, the Thousand-Body Fox: a bare-handed fighter who fights beside paper copies of himself).
 Read this file first, every session.
 
 - Repo: https://github.com/eshin087/gcdAbyss · Live: https://gcdabyss.vercel.app (auto-deploys `main`)
@@ -27,12 +28,12 @@ Read this file first, every session.
 npm run dev      # http://localhost:5173 (zero-dependency static server, no build step)
 npm test         # headless integration sims (real game modules, mocked DOM/WebGL) + glyph check,
                  # side by side (tests/run.mjs; --serial or --jobs N after `npm test --`)
-                 # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs;
+                 # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs / asc.mjs / fox.mjs;
                  #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, ABYSS_PSEEDS / ABYSS_PSECS)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
 ```
-Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne, `?level=ring` the Skybreak Ring (default:
+Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne, `?level=ring` the Skybreak Ring, `?level=fox` the Foxfire Terrace (default:
 Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
 (`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
 `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
@@ -135,7 +136,7 @@ src/world      ground, grass, forest/stones/bones/bonfire, landmarks (the big se
                atmosphere, colliders, destruction (destructibles, fire, scars, breakTuning)
 src/combat     shared combat rules: hit resolution, guard/parry/dodge, attack tells
 src/entities   player/ (gear/ = equipment slot items)  dragon/  enemies/duelist/ (the engine human
-               bosses share)  enemies/ashDisciple/  enemies/starlessLord/  enemies/ascendant/  (future: npcs/)
+               bosses share)  enemies/ashDisciple/  enemies/starlessLord/  enemies/ascendant/  enemies/thousandFox/  (future: npcs/)
 src/levels     level registry (?level=): the set, the boss, the flow's lines per level
 src/ui         HUD, menus, WHAT'S NEW (changelog.js)   src/game   flow (title, boss intro, death, victory)
 src/audio      procedural WebAudio  src/dev    Lab / debug tools

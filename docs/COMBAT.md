@@ -176,6 +176,7 @@ bosses.
   |---|---|---|---|
   | The Cinder Wyrm | Bite; Hesitant maw's held bite; Claw combo's lunging bite; Wing buffet's second wing; **Wing rend's lunging bite\***, **Sky hammer's wing slam\***, **Cinder rake's overhead\***, **Cataclysm's wing slam\***, **the Tail bat\*** (the boulder; ADR-119) | every red blow it had (tail, stomp, charge, pounce, leap, the fire flights); **the tail whips\*** (Pivot lash, Rear guard, Cinder rake, Cataclysm), **Rear guard's tail slam\***, **Furnace maw's wing slam\***, the flying combos' blows\*, the ground tongues\*, the ambient cinders\*, a thrown tree or boulder\* (ADR-119) | **Black maw**: the head rears and holds 1.5 s + 0.15 - 0.6 s, then the snap: 44, range 3.5 - 6.5 m off its chest, cooldown 14 s |
   | Shen Hui | Falling Ash; Falling Star; Swallow Flicks' thrust; Crane Spins' chop; Swallow's Return; **Severing Wind*** (one long step from 3.6 - 10 m and a level two-handed cut, 26) | Piercing Ash, Lotus Sweep, Ember Whirl's last, Heaven-Splitting Fall, Hundred Petals' last; **Twin Embers*** (a dashing cut, then the low sweep 0.92 s later: dodge, dodge; 22 and 24) | **Black Tide**: the jian drawn back low, 1.45 s + 0.1 - 0.5 s, then a dashing cleave up to 7.5 m: 38, knocked down, cooldown 12 s |
+  | Wen Yao (ADR-147) | Three Paws' palm; Ladder to the Moon (a perfect parry locks); Hand to Hand's uppercut; the Thousand-Body Round's own palm | Sweeping Tail; the Pearl driven home; Pearl Rain; Fox Descending; Burning Tail; Fox-Fire Pounce; both transitions | **Moon-Swallowing Pearl** (phase 3): the Pearl grown dark over his head, 1.5 s + 0.1 - 0.5 s, then a leap down on the hero: 44, ring 3.4 m, knocked down, cooldown 14 s |
   | The Starless Lord | Falling Star; Scissor; Grasp and Sever's chop; **Severance*** (a long step and a two-handed chop, 26; every form) | his red blows and spells as before; **Red Meridian*** (a dashing level cut, then the blade round at the ankles; every form) | **Nightfall**: the same charge and cleave, 36; every form, cooldown 12 s |
 
 - Checked by `npm test`: duel FLARE (the rules; nothing shows before a red cue; a parried Falling Ash
@@ -1941,6 +1942,86 @@ lost clash's surge is faint, the quake's landing is a noisy pale cloud with a fa
 Storm's held tiles are hard to see against the aura. A blast stopped by cover is untested. The three
 arenas look nearly the same at the fight camera. Filmed strips were re-shot only for form 1 from the
 east.
+
+## The Thousand-Body Fox (2026-11-21, ADR-147; `?level=fox`)
+
+Wen Yao, a masked BARE-HANDED fist fighter (thousandFox/; the owner, 2026-11-22: "a fist fighter, no
+sword"). One health bar, three phases (at 66 % and 33 %), each opened by a red ring blow (1.6 s, 10, r 6,
+knockback 6). Shen Hui's numbers (tells, posture, guard, trade, hit stun, the execution, the moments)
+except: hp 3000, bound 12.2, no burning ground, no terrain. PBZ-fast as Shen Hui: `flashLead` 0.3,
+first windups at least 0.42 s, hits 0.32 s apart at least, `windupScale` [1, 0.92, 0.92]. Phase 3 is no
+faster than phase 2: it asks more. His blows are Tian Lei's strike builders (punch, kick, elbow); the
+limb that strikes is what the hero's parry meets (as Tian Lei's).
+
+### His moves (N white, B blue, R red, K black; windups at phase 1)
+
+| Move | From | Beats | Band (m) · cooldown · weight |
+|---|---|---|---|
+| Fox Bite | 1 | N 0.50, 18, a cross after a dash of up to 4.5 m | 2.4 – 6.5 · 2.5 · [1.4, 0.9, 0.4] |
+| Three Paws | 1 | N 0.46 jab, 13 · N 0.34 cross, 13 · B+flare 0.42 palm, 20 | 0 – 3.6 · 3.5 · [2.6, 2.0, 1.4] |
+| Ladder to the Moon | 1 | B+flare 0.56, 24: a leap and both fists brought down; a perfect parry locks | 0 – 4.4 · 3 · [1.4, 1.0, 0.5] |
+| Sweeping Tail | 1 | R 0.62, 22, a leg swept round at the ankles (ring 2.2), knockdown | 0 – 3.0 · 6 · [1.0, 0.8, 0.4] |
+| Changing Places | 1 | N 0.60, 18: as the windup starts he trades places with the self nearest the hero (none: a flit to the hero's side), a roundhouse | 3 – 12 · 5 · [1.6, 2.2, 2.0] |
+| Scattered Leaves | 1 | no blow: paper charms flung from his sleeves, 2 / 3 / 3 selves tear free (to the cap) | 0 – 14 · 9 · [1.5, 1.8, 1.6] |
+| Pearl of the Hollow Moon | 1 | a step back; the Pearl shaped in his open palm (1.6 / 1.47 / 1.47 s; a self at his side holding it with him, a thread from every other); a dash of up to 5 m and the Pearl DRIVEN into the hero: R, a line 2.5 x 1.3, 26 + 3 per live self, knockdown; its burst r 2.0 + 0.35 per self (3.4 at most) | 0 – 9 · 10 · [1.3, 1.1, 0.9] |
+| The Fox's Answer | counter | B 0.46, 18, a palm | |
+| Paper Rain | counter | his flurry: a cross, then a roundhouse, a hook, an uppercut, each from another side | |
+| Hand to Hand | 2 | N 0.46 jab, 12 · N 0.36 hook, 12 (a swap first) · N 0.36 knee, 12 · B+flare 0.44 uppercut, 20 (a swap first) | 0 – 4.0 · 6 · [0, 2.6, 2.4] |
+| Fox Descending | 2 | he runs at the self nearest him, springs off its cupped hands (it tears) and comes down on the hero with both fists: R 0.95, 26, ring 2.6, knockdown; needs a self | 3 – 11 · 9 · [0, 1.6, 1.6] |
+| The Thousand-Body Round | 2 | every live self strikes in turn 0.42 s apart (N, 8; a guard meets them from any side), then his own B+flare palm, 22, 0.42 s after the last; needs 2 selves | 0 – 6 · 12 · [0, 1.6, 1.8] |
+| Pearl Rain | 2 | a step back, three pearls shaped and flung across the hero's line (R, cued on the pearl, the burst as the Pearl's) | 3 – 12 · 11 · [0, 1.0, 0.9] |
+| Burning Tail | 3 | N 0.46 cross, 14 · R 0.60, 24, the fox spirit's tails swept round (ring 3.6), knockdown | 0 – 4 · 7 · [0, 0, 2.2] |
+| Fox-Fire Pounce | 3 | R 0.66, 28, both claws driven down along a line 2.4 x 1.2 after a leap of up to 9 m; the ground there catches | 4 – 10 · 8 · [0, 0, 1.6] |
+| Moon-Swallowing Pearl | 3 | K 1.5 s + 0.1 – 0.5 s, 44, ring 3.4 where he leaps down with the Pearl grown huge and dark over his head, knockdown | 2.4 – 9 · 14 · [0, 0, 0.9] |
+| Paper Punch (hidden) | | N 0.62, 8, a cross: a paper self's blow, never picked by him | |
+
+### The paper selves
+
+- **They look like him** and walk at the hero; up to 2 / 4 / 5 by phase. They tear free on a ring
+  3.5 – 5.5 m round the hero (0.45 s tearing: they can be popped at once, they cannot strike yet).
+- **One hit pops one**, and every other self within 1.4 m of the hit point (2.6 m for a heavy cut);
+  each popped self adds 6 to the real one's posture. His own Pearl's bursts and the black pearl tear
+  them too; his posture break pops them all at once (the payoff); a phase change takes them back.
+- **They fight as a pack:** one strikes at a time (a token: only within 3.2 m of the hero, while he is in
+  footwork or in a move that lets them fight, never with a pearl in the air, 2.6 / 1.9 / 1.2 s after
+  the last self's blow at the soonest), white (8), cued as his own blows and under the fairness guard
+  (never within 0.3 s of a cue that asks the other answer). Block it, parry it (it pops; he is not
+  recoiled), or roll. In the Round they all strike in turn round the hero; in the drive one holds the
+  Pearl with him; in Fox Descending one throws him.
+- **The real one is always findable:** the lock-on, the boss bar, the name tag and the minimap follow
+  only him; only he casts a shadow; only he holds the Pearl (the threads end in his palm); in phase 3
+  only he wears the fox spirit. The selves have no body: the hero walks through paper.
+
+### The Pearl
+
+Shaped in his open palm after a step back; through the charge his guard is down (blows land), a self
+at his side holds it with him and a thread runs to it from every other self. **Starve it**: each self
+popped makes the drive's blow and burst smaller and weaker. **Interrupt it**: two blows on him while he
+shapes it (one heavy) burst it in his hand: he reels (+90 posture). **Dodge it**: at the end of the
+charge he dashes in (up to 5 m) and drives it home: red, the flare on his palms 0.3 s before: roll
+through or out of the line. A guard does not hold it. **Pearl Rain** (phase 2) throws three instead, in
+a row across the hero's line, 3.4 m apart; they land together 0.5 – 0.8 s later (the fairness guard may
+add 0.4 s, or they come apart in the air, harmless), cued red on the middle pearl.
+
+### The Nine-Tailed Fox (phase 3)
+
+His selves burn up into him and the fox spirit wakes round him: a fox's head over his, its ears, and
+its tails, one as it wakes and all nine as his bar runs out (`d.tails`). Where he stands the grass
+catches (the paving has little to burn); Burning Tail throws its flame 1 m past its 3.6 m ring and the
+pounce lights the end of its line, so when the fight comes to the rim the charm posts outside it catch
+and burn through (fire never spreads: what his fire does not reach stays whole).
+The terrace's pieces (COMBAT "The world breaks"): the charm posts are wood and burn through in about
+7 s from one ignite to a snapped foot; the stone foxes break to their plinths; the lanterns and the
+floor as the courtyard's; the great fox and the spirit gate only chip, and the gate stops nothing.
+
+### The numbers measured (`fox.mjs`)
+
+The pace (a steady defender in god mode, the hero roaming 2.5 - 9 m; his selves' blows count), five seeds
+x 120 s, bare-handed: 68.3 / 80.2 / 79.3 cues a minute by phase (P1 65.3 - 71.6, P2 76.7 - 83.4, P3 75.9 -
+82.0), 0 conflicting cues, a dodge asked by 11 / 12 / 17 % of them, the longest gap 3.4 / 3.3 / 3.5 s.
+Phase 3 is not busier than phase 2: it asks more dodges (`TUNING.pressure.meter`). The fencing bot (god mode, parries every white and blue cue,
+rolls every red one, cuts in his openings and at the selves in reach) wins through three phases in
+34 - 45 s on three seeds (Shen Hui's same bot: 36 s), cutting down 2 - 8 selves on the way.
 
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;

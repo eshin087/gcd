@@ -1028,6 +1028,9 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
 | `?ascOrb=` | Heaven's Lantern, Tian Lei's great orb (the third wave, 2026-11-22) | - | a sun: a round ball of gold heat, a pale heart, letters orbiting it | a lantern: a bright rim round a dim heart that pulses, trailing motes | `c` the pale gathered sphere: steel-kind heat (near white), drawn as large as its hit, both arms straight up in the gather (a reload for the pose) | a (the author's; not yet picked) |
 | `?ascBeamPose=` | Tian Lei's beams (2026-11-22, ADR-150; read when the moves are built) | the palm thrust | - | - | `cup`: both hands cupped at the hip, a ball of light between the palms (`fx.cupCharge`), both palms thrust together; the clash held with both cupped hands | 0 (not yet picked) |
+| `?foxLook=` | Wen Yao's body, bare-handed (ADR-147; read when his rigs are built) | - | the Shrine Fox: the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox: an amber sleeveless jacket, a streaming vermilion scarf, a wild crest of dark red-brown hair, a kitsune half-mask at the temple | the Pelt Brawler: a quilted jerkin, a fox's head on one shoulder; `d` = a in the ink-line art | not picked yet (b drawn) |
+| `?foxfire=` | the foxfire: the Pearl, the mantle (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | moon-white | not picked yet (a) |
+| `?clones=` | his paper selves (read when their rigs are built) | - | identical to him | a step paler | - | not picked yet (a) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1036,9 +1039,9 @@ before this pass); the things that are new in this pass (`kindle`, `ashp3`, `bur
 `floor`) keep their pick, although `presence`, for one, was simply absent before (its `0` is "off",
 reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else the author's default. **`?looks=new`** (every
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
-**The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne and the Skybreak
-Ring) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
-(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`) reloads the page with its parameter; "as
+**The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne, the Skybreak
+Ring and the Foxfire Terrace) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
+(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
 `?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
@@ -1165,6 +1168,69 @@ grit, chips and sparks are one-cell glyph particles. Look code draws from its ow
   him), stones and sparks thrown out. The pillar's peak blooms white: keep it short.
 - **Cost** (headless; frame rates were not measured): the fire field's worst case, form 3's aura with
   the great beam, ten blasts and a strike, 2863 of 6000 blobs; his fights by the AI peak about 1525.
+
+### The Foxfire Terrace (2026-11-21, ADR-147; `world/foxTerrace.js`, `?level=fox`)
+A moonlit hill shrine under the default night. The paving's slabs are cut to the circle and a kerb a
+tone lighter draws the rim (whole squares picked by their centre read as a ragged edge). An animal
+landmark reads at the game camera in PROFILE (the great fox, the small stone foxes facing each other
+across the terrace): seen from the front and above, a fox prints as a lump; a flat thing (the spirit
+gate) faces the camera. The gate's dull red is the strongest hue in the set, dulled once; the charm
+posts' paper strips are faint at 30 m.
+
+### Wen Yao's figure (2026-11-21, bare-handed 2026-11-22, ADR-147; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
+A bare-handed fist fighter: the right fist on the sword joint with its knuckles wrapped (Tian Lei's),
+the forearms bare and wrapped, the left hand open, palm up (`PALM_TURN`). Flat facets with a few tones
+far apart; the big dark cloth on a low gain and a soft key (`dark()`), the bright colours on `loud()`.
+`?foxLook=`: **b, the Wild Fox (the default the fight draws; the owner's pick still open)**: a short
+sleeveless burnt-amber jacket with a stand collar over a dark undershirt, near-black trousers, wrapped
+shins, an untamed crest of dark red-brown hair swept up and back, a kitsune half-mask pushed to the
+side of the head, a long vermilion scarf streaming behind (the `fox.back` item), a fox-tail charm at
+the hip: the loud figure the homage asks for, and none of the character's protected signature (no
+black shoulders, no forehead plate, no whisker marks, no emblem, the hair not blond; amber prints near
+orange at the game camera: a vermilion jacket and an amber scarf is a one-line swap in `bodyArt.js`).
+a, the Shrine Fox: the bone mask over face and crown, a shorter robe, the sleeves tied back by a
+vermilion cord across the back, the fur stole, the sash. c, the Pelt Brawler: a quilted russet jerkin
+laced in vermilion, a fox's head on the left shoulder with its pelt cape, the mask on the brow. d: a in
+the ink-line art. 37 / 49 / 50 / 49 meshes a rig (b a c d; Shen Hui's 82): his rig is built six times.
+`?clones=b` mixes every part of a self 30 % toward paper with a light floor (`look.js` `PALE`). In the
+art path at 720p he is still about 12 letter rows; b survives it by its colour, d reads clearest.
+
+### The fox's effects (2026-11-21, bare-handed 2026-11-22, ADR-147; `thousandFox/fx.js` `FoxFx`)
+- **Foxfire is a palette** swapped into the fire field's void slot (`FIRE_PALETTES.foxfire`, jade: dark
+  green strokes, jade digits, a mint heart, not white; `?foxfire=c` `moon`; `?foxfire=b` draws as the
+  wyrm's `fire` kind with no swap). Both palettes lick 0.5 and erode 0.85, so the Pearl stays a ball
+  and the fox spirit's ears and tails keep their shape. The inherited draws' Void violet (a light, a
+  spark) is turned to the look's colour (`_light`, `_spawn`), as AscFx does for gold: the black cue's
+  sparks are jade on this level (the black dye itself is the engine's).
+- **The Pearl in his palm:** a dense SPINNING sphere at `d.palmPoint()` (its surface points turning round
+  a tilted axis about a jade core), three crisp arcs of wind turning round it and closing in as it
+  fills, motes curling in; the selves' steel threads (the assisting self's too) stop 0.42 m short of it
+  (five ends in one cell printed a white knot), beads of foxfire running in. **The drive:** a short blast
+  along his facing (heat thrown out, three crisp streaks, sparks), the ring 0.07 s later, no heart (heat
+  piled on one spot printed a white disc). **Pearl Rain** keeps the flight, ADR-052's ground specks in
+  foxfire colours, the rim of `·` once it has cued, and the burst. At the game camera the orb is a few
+  letters with a ring of wind strokes: it reads at 3x.
+- **The nine-tailed fox** (phase 3, `mantle(d, dt, k)`): a fox's head over his (tall ears, cheek ruffs, a
+  muzzle over his face), a mane, and `d.tails` tails, each a lagging chain with a pale tip, fanned over
+  a half-wheel laid in the CAMERA's plane (as the ears are spread: a fan laid in the scene merged into
+  one blob seen edge on). The tails share one budget (thinner and cooler as they multiply, their roots
+  left out from four up) and swing round with Burning Tail's sweep. Through a black blow the spirit
+  stops shedding licks (the engine's charge is the cue). The change (`phaseBurst(3)`): a roar of
+  foxfire, three ragged fronts, a gout out of the fox's head along his facing, a column, a gust through
+  the grass. It reads as a fan of jade flame more than nine separate tails.
+- **His blows' trail** (`sweep()` overridden): a short crisp streak along the fist's or the foot's path, a
+  faint pale wash, foxfire licks when the spirit is lit, dust off a low kick; no blade arc.
+- **The selves:** a pop is 24 one-cell paper slips (16 when many go at once; half in the additive pool so
+  they read on the paving at 30 m), torn-edge steel strokes, smoke, a wisp of foxfire; a spawn a tear of
+  paper; the springboard's self tears UPWARD (30 slips) as he springs off it; phase 3's change burns
+  them into him.
+- **No steel echo ring** on a duelist's shock front: at his size it printed as an even white polygon.
+  The foxfire front's scorch keeps 10 % of its heat (no orange glow under jade).
+- **Cost:** the field's worst case in a staged phase 3 (nine tails, five selves, every move in turn)
+  1596 of 6000 blobs, on the Moon-Swallowing Pearl, where the engine's black charge and flare alone take
+  about 1500; the volley 1020, the drive 676.
+- **Sound:** a short dry quiet paper tear on `dragon:clone` (softer for a spawn), synth, its jitter on
+  sfx.js's own stream (never `Math.random`: a pop must not shift the seeded suite).
 
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a

@@ -5,6 +5,129 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-21 — Session 77: a fifth level, the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (planned by Fable, built by Opus agents)
+
+**Owner** (to the session that planned it): new level bosses built on the power fantasy of famous
+characters, as ORIGINALS; two picked to make now, "plan out #1, #2 in separate chats with fable and
+instruct opus 5.5 high to build it out". This is #1: a duelist who fills the arena with clones that pop
+in one hit while the real one charges a spiralling orb; a last phase in a fox-spirit cloak of fire; a
+fixed reward, a decoy clone. In the spirit of a famous ninja-clone hero, an original: his own name,
+mask, outfit and move names, none of that series' look. Branch `claude/thousand-body-fox-33750d` from
+`origin/main` 9333ce7, `main` merged in three times (#76; #77, #81, #83, #86, #87; #88). ADR-147, ADR-148 /
+Session 77 / M1.61: the plan's ADR-131 and ADR-135 were taken meanwhile (by #76 and #81; the parallel
+builds' plans claim 132 – 146), so this work took the next numbers no one had claimed.
+
+**How it was built.** The plan (Fable's, in the shared notes) was built as written; the lead wrote the
+core first (the level, the boss on the duelist engine, the paper selves, the Pearl, the mantle's
+gameplay, a first suite) with stubs for the set, the body and the effects whose surfaces were fixed,
+then three Opus agents in their own worktrees at once: the set (`world/foxTerrace.js`, two landmarks),
+the body and its look options (`thousandFox/gear.js`, `look.js`, `poses.js`), the effects
+(`thousandFox/fx.js`, the foxfire palettes, the paper tear). Meanwhile the lead did the Lab, Training,
+the suite's scenarios, the pace and the cost; then merged, measured and wrote this.
+
+**What exists** (ARCHITECTURE "The Thousand-Body Fox", COMBAT "The Thousand-Body Fox", STYLE "The look
+switches" and "The fox's effects"): `src/levels/foxfire.js` (`?level=fox`), `src/world/foxTerrace.js`,
+`src/entities/enemies/thousandFox/` (`fox.js`, `moves.js`, `tuning.js`, `poses.js`, `links.js`,
+`clones.js`, `pearl.js`, `fx.js`, `gear.js`, `look.js`, `bodyArt.js`), nineteen moves, `tests/integration/fox.mjs`
+(12 scenarios in `npm test`, two opt-in: `smoke`, `cost`).
+
+**The owner's turn (2026-11-22), after the PR was opened:** "make the boss look as recognizable [as] the
+referenced character and use its signature moves ... with different names", then "as similar without
+causing copyright issue ... a fist fighter". The lead said once that a recognisable copy of a
+character's design is a copy whatever it is called (ADR-116, and the plan's own rule), and pushed the
+homage through what nobody owns. The change, built the same day (the lead the moves and the class, the
+body and the effects agents again):
+- He fights BARE-HANDED: Tian Lei's exported strike builders (`ascendant/moves.js` X: punch, kick,
+  elbow; authored round the same left-lead stance), Tian Lei's bare-handed reaction clips compiled round
+  his own guard, the striking limb as the engine's blade (Tian Lei's way, copied into fox.js). The dao
+  is gone; the right fist is wrapped on the sword joint.
+- The selves fight as a PACK: the Round, a self holding the Pearl with him, a self throwing him (Fox
+  Descending: he springs off its cupped hands into a leap).
+- The orb is shaped in his OPEN PALM and DRIVEN into the hero on a dash (the thrown volley kept as Pearl
+  Rain, phase 2).
+- Phase 3 is the NINE-TAILED FOX of the old tales: one tail as it wakes, nine as his bar runs out.
+- The look: b, the Wild Fox (an amber sleeveless jacket, a streaming vermilion scarf, a wild crest of
+  dark red-brown hair, a kitsune half-mask at the temple), now the default the fight draws; the pick is
+  still the owner's. None of the character's protected signature: no orange jumpsuit with black
+  shoulders, no forehead plate, no whisker marks, no emblem, no blond spikes, no hand seals, no names.
+
+**The fight.** One bar, three phases (66 % / 33 %): P1 The Fox Plays (2 selves at most), P2 A
+Thousand Bodies (4: the trade of places mid-string, Fox Descending, the Round, Pearl Rain), P3 The
+Nine-Tailed Fox (5: the tail, the pounce, the black pearl). The selves are his own bodies, a pool of
+five hero rigs built with him (ADR-147): they tear free round the hero, walk in, cut one at a time
+under the fairness guard (told to the ledger, cued as his blows, parryable), pop in one hit (the cleave
+pops the one beside it), have no body circle and no shadow; his posture break pops them all. The
+Pearl: fed by a thread from each self, starved by popping them, interrupted by two cuts on him while
+he charges, dodged by a roll. Asleep he sits among four selves that tear away as he rises. His reward,
+the Paper Double, is recorded on the level and not usable (ADR-148), in the shape of the shared
+rewards store a parallel build adds (the planning session's change).
+
+**The agents' parts.**
+- The set (world agent): the round terrace with clipped rim slabs and a lighter kerb, lanterns, stone
+  foxes in profile, charm posts of wood, the great fox (west) and the spirit gate (east) in
+  `landmarks.js`, 445 breakables, 380 bones (the courtyard's 443), 11 draw calls alone, built on a quiet
+  `Math.random`; a `terrace` scenario in `world.mjs` (run last: it draws from the destructibles' stream).
+- The body (body agent, twice): one `fox.*` item per slot; bare-handed, four outfits (`?foxLook=a|b|c|d`:
+  49 / 37 / 50 / 49 meshes, Shen Hui 82): a the Shrine Fox, b the Wild Fox, c the Pelt Brawler, d = a in
+  ink-line; low-gain dark cloth, `loud()` for the bright colours; `?clones=b` 30 % toward paper. The art
+  path still reads as a small figure of digits at 720p; b survives it by its colour, d reads clearest.
+- The effects (effects agent, twice): foxfire in jade (the void slot), the spinning palm orb and the
+  drive's blast, the threads, the volley's mark and bursts, the pops (paper slips; the springboard's
+  thrown up), the nine-tailed fox spirit (tails fanned in the camera's plane, one budget), the roar,
+  a bare-handed blow's trail, the paper tear; the field's phase-3 worst case 1596 of 6000, mostly the
+  engine's black cue.
+
+**Decisions where the plan was open.**
+- The scatter is a feint beat (no tell, no glint: a cast with no blow must not announce one) that the
+  fox's `beatMotion` acts on at its impact; so is the Round's call. The director weighs moves by their
+  cues a second, which puts a cast with no blow near zero: `densityAs` makes it weigh as a move of
+  about one cue a second.
+- The Round is realised for the selves alive as it starts (`FoxBrain.startAct` passes the count; four
+  realisers, n = 2 .. 5): his blow's windup is `0.42 n + 0.68` s, the slots filled from the last back.
+- A Round self's cut is its one cut; the token rests through the Round.
+- The selves may fight on through the scatter and the black pearl too (`clonesFight`), not only the
+  Pearl's charge, and phase 3's token rests 1.2 s (the plan's 1.4): phase 3 was otherwise quieter
+  than phase 2.
+- Training: `debug.tidy()` (a generic optional hook: `training.js` `_prep` calls it) puts his selves and
+  pearls away between situations; it listens to `dragon:stagger` and `dragon:clone` too. ROLES.fox
+  `long` is his flurry (Hand to Hand is phase 2: a phase-1 situation could not start it). Two
+  situations of his own: Pop the copies, The Pearl burst in his hand.
+- A self that only walks is posed every other frame (the hero's animator is about 1 ms a rig): the
+  plan's first fallback, taken at once.
+
+**Found on the way.**
+- The rigid batcher's 1024 bone slots: the hero, the fox, five selves and the set did not fit (Shen
+  Hui's rig is 82 meshes, each a bone). The bone texture now grows to 128 rows (2048) the first time a
+  batch would not fit; the shader only reads its width; a level that fits never grows.
+- A Round self kept `round` after its cut and cut again at once; the scatter could tear selves off a
+  dead boss in a long test. Both fixed.
+- Subagents share the lead's scratchpad: two of them filmed from the same `rig/` folder. Give each its
+  own subfolder in the brief next time.
+
+**Verification.** `npm test` (13 tasks with fox) green on the merged branch; `npm run build`. The fox suite: 12
+scenarios (levels, data, timing, clones, pearl, mantle, phase, flow, pace, win, training, looks; 2 m 23 s
+alone): every move's contact within 0 ms of its flash + 0.3 s; a reset mid-charge and with pearls in
+the air and with five selves out leaves nothing; 65 Training situations (two of his own). In headless
+Edge on the RTX 4090: the level from the Lab and from `?level=fox`, five selves in phase 3 at 1280 x
+720 and 852 x 393 (`?touch`); with five selves out the draw calls go 79 -> 149, the render pass 1.1 ->
+1.6 ms (720p) / 1.1 -> 1.5 ms (852 x 393), a whole frame step 2.3 -> 3.6 ms. The selves' animators
+headless: 1.3 ms a rig, halved by posing a walking self every other frame (measured with the dao
+gear; the bare-handed rigs are lighter: 37 - 50 meshes against 82). Pace, bare-handed, five seeds x
+120 s: 68.3 / 80.2 / 79.3 cues a minute, 0 conflicts; the fencing bot wins in 34 - 45 s. The sheets:
+`docs/looks/fox/` (body, clones, foxfire, mantle, pearl, springboard, pop, arena).
+
+**Not checked / open.** Nobody has played it. Not measured on a phone (frame rate with five selves out: six hero rigs,
+149 draw calls). The art-path outfits read as small figures of digits at 720p; the mantle reads as a
+jade wreath more than a fox's head at the game camera; the bat's red flare hides the Pearl in flight;
+the black pearl reads mostly as the engine's dark dye; the charm posts' paper strips are faint at 30 m.
+The audio's paper tear was not heard. The seated intro is untested by eye beyond a still. The selves
+strike while his AI is off (the Lab, Training's "Pop the copies" uses it). Music is borrowed. The palm
+orb is a few letters at the game camera; the nine tails read as a fan of jade flame more than nine
+separate tails; amber prints near orange (a vermilion jacket is a one-line swap). `pop.png` still
+shows the dao-armed selves. The numbers were rechecked against origin/main (167f429).
+
+---
+
 ## 2026-11-22 — Session 76: Tian Lei as a recognizable homage (the orange gi, the instant beam)
 
 **Owner:** "make the boss look as recognizable its the referenced character and use its signature moves

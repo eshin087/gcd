@@ -43,6 +43,10 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascBeamPose', ['0', 'cup'], '0', '0', true, ['ring'], 'Tian Lei\'s beams: 0 the palm thrust, cup both hands cupped at the hip (a reload)'],
   //
   //
+  // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
+  ['foxLook', ['a', 'b', 'c', 'd'], 'b', 'b', true, ['fox'], 'Wen Yao\'s body: a shrine fox, b wild fox (the default), c pelt brawler, d = a in ink-line (a reload)'],
+  ['foxfire', ['a', 'b', 'c'], 'a', 'a', true, ['fox'], 'the foxfire: a jade, b the wyrm\'s orange, c moon-white (a reload)'],
+  ['clones', ['a', 'b'], 'a', 'a', true, ['fox'], 'the paper selves: a as him, b a step paler (a reload)'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);
