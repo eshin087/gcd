@@ -39,7 +39,7 @@ export const PICKED = Object.freeze({
   floor: 'a', // a broken floor slab: rubble on printed earth (the owner's pick)
   // the Skybreak Ring and Tian Lei, the Last Ascendant
   ring: 'a', // the arena: the ring on the flats (the owner's pick)
-  ascLook: 'a', // his body: the tunic and the topknot (the owner's pick)
+  ascLook: 'h', // his body: the orange gi (the owner's pick, 2026-11-22; was a, the tunic and the topknot)
   ascAura: 'a', // his aura: a tall flame, hollow behind him (the owner's pick)
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'a', // his figure lifted off the floor: a lighter fill, a stronger edge of light (the owner's pick)

@@ -2360,7 +2360,11 @@ async function scenarioBody() {
   };
   setLook('ascLook', null);
   const base = shape(build());
-  assert(ascLookNow().id === 'a' && base.look === 'a', `no switch: the owner's pick, outfit a (${base.meshes} meshes, ${base.switched} switched by form)`);
+  assert(ascLookNow().id === 'h' && base.look === 'h', `no switch: the owner's pick, outfit h, the orange gi (${base.meshes} meshes, ${base.switched} switched by form)`);
+  setLook('ascLook', 'a');
+  const old = shape(build());
+  assert(old.look === 'a' && old.meshes > 0, `?ascLook=a: the tunic as it shipped before (${old.meshes} meshes, ${old.switched} switched by form)`);
+  setLook('ascLook', null);
   assert(same(HOMAGE_LOOKS, ['h', 'g', 'v']), 'the homage options are h, g, v');
   for (const o of HOMAGE_LOOKS) {
     setLook('ascLook', o);
@@ -2393,7 +2397,7 @@ async function scenarioBody() {
   }
   setLook('ascLook', null);
   const after = shape(build());
-  assert(after.look === 'a' && after.meshes === base.meshes && after.switched === base.switched, `switched back: outfit a as before (${after.meshes} meshes)`);
+  assert(after.look === 'h' && after.meshes === base.meshes && after.switched === base.switched, `switched back: the pick, outfit h, as before (${after.meshes} meshes)`);
 }
 //
 //
