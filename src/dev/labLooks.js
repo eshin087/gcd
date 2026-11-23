@@ -33,7 +33,7 @@ export const LOOK_SWITCHES = Object.freeze([
   //
   //
   // --- ring: Tian Lei's body (his outfit, his hair by form)
-  ['ascLook', ['a', 'c', 'd'], 'a', 'a', true, ['ring'], 'Tian Lei\'s body: a tunic, c monk, d = a in the dragon look (a reload)'],
+  ['ascLook', ['a', 'c', 'd', 'h', 'g', 'v'], 'a', 'a', true, ['ring'], 'Tian Lei\'s body: a tunic, c monk, d = a in the dragon look; homages h orange gi, g purple gi, v blue suit (a reload)'],
   ['ascLift', ['0', 'a'], 'a', 'a', true, ['ring'], 'Tian Lei\'s figure lifted off the floor: 0 as the body shipped (a reload)'],
   //
   // --- ring: Tian Lei's effects (the aura, the beam, the blasts, the transformation)
