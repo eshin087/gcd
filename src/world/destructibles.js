@@ -1333,7 +1333,7 @@ export class Destructibles {
         for (let k = g.start[c]; k < g.start[c + 1]; k++) {
           const b = L[g.items[k]];
           if (b.state !== INTACT || !b.cover) continue;
-          if (y !== undefined && y + r < b.y0) continue; // (a raised piece over the shot's height)
+          if (b.y0 > 0 && y !== undefined && y + r < b.y0) continue; // (a raised piece over the shot's height)
           if (segDist(b.x, b.z, ax, az, bx, bz, s) > b.r + r) continue;
           if (s.t < bt) {
             bt = s.t;
@@ -1374,7 +1374,7 @@ export class Destructibles {
           if (o.y !== undefined && o.y - r > b.y0 + b.h) continue; // it passed over (a raised piece: its top is y0 + h)
           // ... or under a raised piece (a shop sign, a tower's top, the statue's arm): a blow down on the
           // street does not reach it (blows on a base still reach its top through `holds`, _hit)
-          if (o.y !== undefined && o.y + r < b.y0) continue;
+          if (b.y0 > 0 && o.y !== undefined && o.y + r < b.y0) continue;
           // the blow's way: as given, else out from its centre
           let dx = o.dx, dz = o.dz;
           if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
@@ -1432,9 +1432,10 @@ export class Destructibles {
           if (b.h < BREAK.brushFlat && o.brush === true && b.mat === 'stone') continue;
           if (segDist(b.x, b.z, ax, az, bx, bz, s) > r + b.r) continue;
           if (o.y !== undefined && o.y - r > b.y0 + b.h) continue;
-          // (a raised piece: the edge passing under it, where it is nearest the piece, does not reach it)
+          // (a raised piece: the edge passing under it, where it is nearest the piece, does not reach it;
+          // a piece on the ground keeps taking an edge drawn below its foot, a blade's point in the earth)
           const py = tilted ? ya + (yb - ya) * s.t : (o.y ?? 1);
-          if ((tilted || o.y !== undefined) && py + r < b.y0) continue;
+          if (b.y0 > 0 && (tilted || o.y !== undefined) && py + r < b.y0) continue;
           let dx = o.dx, dz = o.dz;
           if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
             dx = bx - ax;
