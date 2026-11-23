@@ -23,7 +23,8 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 //                     frames him from the front, longer, flaring out (CAPE_SHAPE[2], gear.js);
 //                  3  + it never hangs still: a gentle billow while he hovers, a longer trail in a pass
 //                     (the streamers' `breeze`, player/anim.js; CAPE_SHAPE[3]).
-//                  The default is the step recommended to the owner (HAL_CAPE_STEP).
+//                  The default is the step recommended to the owner (HAL_CAPE_STEP), and the owner
+//                  picked it: 3 (2026-11-23; lookSwitch PICKED).
 // (?city=a|b|c is the set's: world/halcyonPlaza.js.)
 // Read when his rig is built (a reload).
 export const HAL_CAPE_STEP = '3';

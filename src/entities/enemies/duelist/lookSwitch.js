@@ -54,12 +54,14 @@ export const PICKED = Object.freeze({
   sheathArt: '2', // his print: the digits in his colours, lit and outlined (the owner's pick, 2026-11-23, of five steps; a, the ink-line art, read as a 3D model; ADR-152)
   sheathTone: 'a', // his palette: indigo and sand (the owner's pick, 2026-11-23, of three)
   // (sheathMark: rendered for the owner, not picked yet: its Lab row is 'awaiting')
+  // Halcyon Plaza and Halcyon, the Last Saviour
+  halCape: '3', // his cape and colours: the wide red cape that billows (the owner's pick, 2026-11-23, of four steps; ADR-164)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', 'halLook', 'glare', 'city', 'halCape']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city (ADR-161; halCape: ADR-164)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', 'halLook', 'glare', 'city']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city (ADR-161; halCape picked: ADR-164)
 
 const fromUrl = new Map();
 const forced = new Map();
