@@ -1,4 +1,5 @@
 import { DEFENSE, GUARD, POSTURE } from '../combat/rules.js';
+import { streakK, streakTier } from '../combat/streak.js';
 import { GlyphBar, GlyphPosture } from './glyphBar.js';
 import { Banner } from './banner.js';
 import { Callouts } from './callouts.js';
@@ -13,6 +14,7 @@ import { ChangelogPanel } from './changelogPanel.js';
 import { RemapPanel } from './remap.js';
 import { HelpPanel, PauseMenu, StatsPanel, TitleScreen } from './screens.js';
 import { TellEdges } from './tells.js';
+import { StreakCounter } from './streakCounter.js';
 
 // HUD (ADR-098): an ASCII overlay drawn straight on the game, with no panels in play: the player's
 // rows (HP, guard, crit, streak, flasks) and the boss's name and bars are text meters
@@ -43,6 +45,9 @@ const FIT = {
 const GHOST_DEDUPE = 0.4; // s: 'player:perfectDodge' + 'player:ghostep' for the same blink
 // a flurry's name by its blows (player:flurryEnd; one blow has none: it is just its art)
 const FLURRY_NAMES = ['', '', 'TWIN FLASH', 'TRIPLE FLASH', 'FOURFOLD FLASH', 'FIVEFOLD FLASH', 'SIXFOLD FLASH', 'SEVENFOLD FLASH'];
+// the streak pass's 'tiers': a full flurry struck from a longer streak is named by the streak's tier
+// (combat/streak.js streakTier; tier 3 is SEVENFOLD itself), and its banner takes a rule more
+export const FLURRY_TIER_NAMES = Object.freeze({ 4: 'HUNDREDFOLD FLASH', 5: 'THOUSANDFOLD FLASH' });
 
 export class Hud {
   constructor(game) {
@@ -66,6 +71,9 @@ export class Hud {
     this._prompt = null;
     this.tags = new NameTags(game, this.root);
     this.calls = new Callouts(game, this.root, this.proj);
+    // the streak counter beside the hero (the streak pass's 'counter'): in the call-outs' layer
+    this.streakUi = new StreakCounter(game, this.calls.layer, this.proj);
+    this._flurryStreak = 0;
     // the flurry's screen cuts: a line of light across the whole frame on every cut, two crossing
     // on the last blow
     this.slashes = [el('div', 'ab-slash', null, this.root), el('div', 'ab-slash', null, this.root)];
@@ -88,9 +96,15 @@ export class Hud {
     const on = (name, fn) => ev?.on(name, (d) => fn(d && typeof d === 'object' ? d : {}));
     on('state', (e) => {
       this.root.dataset.state = e.to ?? game.state ?? '';
-      if (e.to === 'title' || e.to === 'dead' || (e.to === 'explore' && e.from !== 'paused')) this.calls.clear();
+      if (e.to === 'title' || e.to === 'dead' || (e.to === 'explore' && e.from !== 'paused')) {
+        this.calls.clear();
+        this.streakUi.clear();
+      }
     });
-    on('game:retry', () => this.calls.clear());
+    on('game:retry', () => {
+      this.calls.clear();
+      this.streakUi.clear();
+    });
     on('dragon:phase2', () => {
       if (this.bossOn) this.bossEl.classList.add('p2');
     });
@@ -121,6 +135,7 @@ export class Hud {
     on('player:ghostep', () => this._ghostep(this.game.player?.streak));
     // the flurry: a count over the target for every cut that lands, and its name once the last has
     on('player:flurry', (d) => {
+      this._flurryStreak = Math.round(num(this.game.player?.streak, 0));
       if (d.art === 'riposte') this.calls.riposte(d.strikes);
     });
     // a foe's streak of guards (a duelist): pips beside his name; lit when his flurry may come
@@ -150,7 +165,11 @@ export class Hud {
     });
     on('player:flurryEnd', (d) => {
       const n = Math.round(num(d.strikes));
-      if (n >= 2) this.calls.banner(FLURRY_NAMES[n] ?? `${n}-FOLD FLASH`, `${d.label ? `${d.label} · ` : ''}${Math.round(num(d.damage))} damage`);
+      if (n < 2) return;
+      // a full flurry from a long streak: the tier's name and a rule more (the streak pass's 'tiers')
+      const tier = n >= DEFENSE.flurry.max && streakK('tiers') > 0 ? streakTier(this._flurryStreak) : 0;
+      const name = FLURRY_TIER_NAMES[tier] ?? FLURRY_NAMES[n] ?? `${n}-FOLD FLASH`;
+      this.calls.banner(name, `${d.label ? `${d.label} · ` : ''}${Math.round(num(d.damage))} damage`, tier >= 4 ? tier : 0);
     });
     on('player:streak', (d) => {
       if (num(d.lost) >= 2) flashClass(this.streakRow, 'lost');
@@ -164,6 +183,7 @@ export class Hud {
       (dt) => this.tags.update(dt),
       (dt) => this.tells.update(dt),
       (dt) => this.calls.update(dt),
+      (dt) => this.streakUi.update(dt),
       (dt) => this.map.update(dt),
       (dt) => this.bannerUi.update(dt),
       (dt) => this.titleUi.update(dt),

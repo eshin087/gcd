@@ -1767,6 +1767,145 @@ async function scenarioParry() {
   return G;
 }
 
+// ================================================================== scenario: the streak counter
+// The streak pass's 'counter' and the HUD half of 'tiers' (ui/streakCounter.js, ui/hud.js, ui/callouts.js):
+// a number beside the hero on every count that went up from 2, styled by tier, gone after its life;
+// a lost streak shows once; one tier word per tier per streak; the words over the head drop their
+// count while the counter is on; a flurry's cut count ticks without a new pop; a long streak names
+// its flurry. Off: no new element and the call-outs as they were.
+async function scenarioStreakHud() {
+  out('\n== scenario STREAKHUD (the streak counter beside the hero, the tier words, the merge with the call-outs, the tier names) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const { COUNTER, TIER_WORDS } = await imp('src/ui/streakCounter.js');
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const p = game.player, hud = game.hud, sc = hud.streakUi, C = hud.calls;
+  const on0 = { ...STREAK_FX.on };
+  const frames = (s) => { for (let i = 0; i < Math.round(s / DT); i++) hud.update(DT); };
+  const callText = (kind) => C.calls.find((c) => c.active && c.kind === kind)?.span.textContent ?? null;
+  const counters = () => ui.findAll((e) => e.classList?.contains('ab-sc')).length;
+  const pt = { x: p.position.x, y: 1, z: p.position.z - 3 };
+  try {
+    // ---- off: today's HUD exactly
+    STREAK_FX.on.counter = false;
+    STREAK_FX.on.tiers = false;
+    for (let n = 1; n <= 5; n++) { p.debug.streak(n); frames(0.05); }
+    assert(sc.node === null && counters() === 0 && !sc.active, 'counter off: no element is added');
+    C.ghostep(4);
+    C.riposte(5);
+    C.chain(3);
+    assert(callText('ghostep') === 'GHOSTEP ×4' && callText('riposte') === 'RIPOSTE ×5' && callText('chain') === 'DEFLECT ×3', `counter off: the call-outs keep their counts (${callText('ghostep')} / ${callText('riposte')} / ${callText('chain')})`);
+    C.count(1, pt);
+    frames(DT);
+    const it0 = C.nums.find((c) => c.active && c.kind === 'count');
+    C.count(2, pt);
+    assert(it0.popT === 0 && it0.span.textContent === '×2', 'counter off: every flurry cut pops its count again');
+    p.debug.streak(12);
+    hud.game.events.emit('player:flurry', { strikes: 7, art: 'x', air: false, dur: 1 });
+    hud.game.events.emit('player:flurryEnd', { strikes: 7, damage: 196, art: 'x', label: '' });
+    assert(C.mini.txt.textContent === 'SEVENFOLD FLASH' && C.mini.root.className === 'ab-mini on', `tiers off: a long streak's flurry keeps today's name and look ("${C.mini.txt.textContent}", "${C.mini.root.className}")`);
+    p.debug.streak(0);
+    frames(0.1);
+    assert(sc.node === null && counters() === 0, 'counter off: a lost streak adds nothing either');
+    C.clear();
+
+    // ---- on: up from 2, styled by tier, one word per tier
+    STREAK_FX.on.counter = true;
+    STREAK_FX.on.tiers = true;
+    const seen = [];
+    let side = null, sideKept = true;
+    for (let n = 1; n <= 16; n++) {
+      p.debug.streak(n);
+      frames(DT * 3);
+      if (n === 1) { assert(!sc.active, 'a streak of one shows no number'); continue; }
+      const s = sc.shown;
+      if (side === null) side = sc.side;
+      else if (sc.side !== side) sideKept = false;
+      seen.push(s.word ? `${n}:${s.word}` : '');
+      const tierOk = sc.node.classList.contains(`t${s.tier}`) && sc.digL.textContent + sc.digR.textContent === String(n);
+      if (!(sc.active && sc.node.classList.contains('on') && s.n === n && tierOk && !s.lost)) assert(false, `count ${n} shows "${n}" with class t${s.tier} (${sc.node.className})`);
+    }
+    assert(sc.node.classList.contains('t5') && sc.shown.tier === 5, `the number at 16 has the top tier's style (${sc.node.className})`);
+    const words = seen.filter(Boolean);
+    assert(words.join(' ') === `3:${TIER_WORDS[1]} 5:${TIER_WORDS[2]} 7:${TIER_WORDS[3]} 10:${TIER_WORDS[4]} 15:${TIER_WORDS[5]}`, `a word the first time each tier is reached, once (${words.join(' ')})`);
+    assert(counters() === 1 && sideKept, 'one number, replaced in place on its side (it ticks up, it does not stack)');
+    // its life: under about a second at the top tier
+    frames(COUNTER.pop + COUNTER.hold + COUNTER.holdTier * 5 + COUNTER.fade + 0.05);
+    assert(!sc.active && !sc.node.classList.contains('on'), 'it is gone after its life');
+    // a tier is marked once per streak: down without a loss and up again carries no word
+    p.debug.streak(9);
+    p.debug.streak(10);
+    assert(sc.shown.n === 10 && sc.shown.word === '', `10 again in the same streak: no second word (${sc.shown.word || 'none'})`);
+    // ---- the loss
+    p.debug.streak(0);
+    frames(DT);
+    assert(sc.active && sc.shown.lost && sc.shown.n === 10 && sc.node.classList.contains('lost') && sc.digL.textContent + sc.digR.textContent === '10', `a lost streak shows its number once more, struck (${sc.node.className})`);
+    const y0 = sc.y;
+    frames(COUNTER.lostLife * 0.7);
+    const yNow = Number(/translate3d\([^,]+,\s*([-\d.]+)px/.exec(sc.node.style.transform)?.[1]);
+    assert(sc.active && yNow > y0 + 5 && Number(sc.node.style.opacity) < 1, `it falls and fades (${y0.toFixed(1)} → ${yNow.toFixed(1)} px, opacity ${sc.node.style.opacity})`);
+    frames(COUNTER.lostLife);
+    assert(!sc.active, 'and is gone');
+    p.debug.streak(1);
+    p.debug.streak(0);
+    frames(DT);
+    assert(!sc.active, 'a streak of one lost shows nothing');
+    // after a loss, the tiers are marked again
+    for (let n = 1; n <= 3; n++) p.debug.streak(n);
+    assert(sc.shown.n === 3 && sc.shown.word === TIER_WORDS[1], `a new streak marks its tiers again (${sc.shown.word})`);
+
+    // ---- the merge with the call-outs
+    C.clear();
+    C.ghostep(4);
+    C.riposte(5);
+    C.chain(3);
+    assert(callText('ghostep') === 'GHOSTEP' && callText('riposte') === 'RIPOSTE' && callText('chain') === 'DEFLECT ×3', `counter on: GHOSTEP / RIPOSTE keep their word, the streak's number is the counter's; DEFLECT keeps its string's count (${callText('ghostep')} / ${callText('riposte')} / ${callText('chain')})`);
+    // a flurry: the counter lets go of the hero and fades; its cut count ticks without a new pop
+    p.debug.streak(4);
+    frames(DT * 2);
+    assert(sc.active && !sc.detached, 'the counter is up');
+    hud.game.events.emit('player:flurry', { strikes: 4, art: 'x', air: false, dur: 1 });
+    assert(sc.detached, 'a flurry begins: the counter lets go');
+    frames(COUNTER.handoff + 0.02);
+    assert(!sc.active, `and is gone within ${COUNTER.handoff} s`);
+    C.count(1, pt);
+    frames(DT * 3);
+    const it1 = C.nums.find((c) => c.active && c.kind === 'count');
+    C.count(2, pt);
+    assert(it1.popT > 0 && it1.span.textContent === '×2', `a cut landing inside the last pop ticks the count in place (pop ${it1.popT.toFixed(3)} s on)`);
+    frames(0.3);
+    C.count(3, pt);
+    assert(it1.popT === 0 && it1.span.textContent === '×3', 'a cut after the pop pops again');
+
+    // ---- the tier names on the banner
+    const flurry = (streak) => {
+      p.debug.streak(streak);
+      hud.game.events.emit('player:flurry', { strikes: 7, art: 'x', air: false, dur: 1 });
+      hud.game.events.emit('player:flurryEnd', { strikes: 7, damage: 196, art: 'x', label: '' });
+      return [C.mini.txt.textContent, C.mini.root.className];
+    };
+    p.debug.streak(0);
+    const [a7, c7] = flurry(8), [a10, c10] = flurry(12), [a15, c15] = flurry(16);
+    assert(a7 === 'SEVENFOLD FLASH' && c7 === 'ab-mini on', `streak 8: SEVENFOLD FLASH as today (${c7})`);
+    assert(a10 === 'HUNDREDFOLD FLASH' && /\bt4\b/.test(c10), `streak 12: HUNDREDFOLD FLASH, a rule more (${c10})`);
+    assert(a15 === 'THOUSANDFOLD FLASH' && /\bt5\b/.test(c15) && C.mini.over?.classList, `streak 16: THOUSANDFOLD FLASH, its rules (${c15})`);
+    hud.game.events.emit('player:flurryEnd', { strikes: 5, damage: 100, art: 'x', label: '' });
+    assert(C.mini.txt.textContent === 'FIVEFOLD FLASH' && C.mini.root.className === 'ab-mini on', 'a shorter flurry keeps its own name');
+    // nothing throws with the hero gone
+    const P = game.player;
+    game.player = null;
+    sc.onStreak({ count: 5, lost: 0 });
+    sc.onStreak({ count: 0, lost: 5 });
+    frames(0.1);
+    game.player = P;
+    assert(true, 'no hero: the counter does not throw');
+  } finally {
+    Object.assign(STREAK_FX.on, on0);
+  }
+  return G;
+}
+
 // ================================================================== scenario: the ASCII HUD
 // ADR-098: meters made of characters (ui/glyphBar.js), banners in block letters (ui/blockText.js),
 // no name plate, no panel round the minimap.
@@ -11709,6 +11848,7 @@ const SCENARIOS = {
   block: scenarioBlock,
   guard: scenarioGuard,
   asciihud: scenarioAsciiHud,
+  streakhud: scenarioStreakHud,
   reach: scenarioReach,
   red: scenarioRed,
   plunge: scenarioPlunge,

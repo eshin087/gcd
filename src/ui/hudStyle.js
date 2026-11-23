@@ -447,6 +447,47 @@ const CSS = `
   text-shadow: 0 0 12px ${rgba(CYAN, 1)}, 0 0 26px ${rgba(CYAN, 0.6)}, 0 0 2px #000, 0 1px 3px #000;
 }
 
+/* ---------- the streak counter beside the hero (ui/streakCounter.js; the streak pass's 'counter') ----------
+   a small number that pops, holds and fades; its style steps up with the streak's tier (t0 .. t5):
+   plain and dim, then a thin underline, then thin strokes either side. Lines, not light. */
+.ab-sc { position: absolute; left: 0; top: 0; visibility: hidden; transform-origin: 0 0; will-change: transform, opacity; }
+.ab-sc.on { visibility: visible; }
+.ab-sc > .b { position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-100%, -50%); }
+.ab-sc.sr > .b { transform: translate(0, -50%); }
+.ab-sc .row { display: flex; align-items: center; gap: 5px; }
+.ab-sc .n {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: #aab4c6;
+  font-variant-numeric: tabular-nums;
+  text-shadow: ${SHADOW};
+}
+.ab-sc .g { display: inline-block; }
+.ab-sc .d { color: #9aa6ba; font-size: 11px; font-weight: 700; line-height: 1; text-shadow: ${SHADOW}; }
+.ab-sc .k { position: absolute; left: -15%; right: -15%; top: 50%; height: 1px; margin-top: -1px; transform: scaleX(0); display: none; }
+.ab-sc .u { display: none; }
+.ab-sc .w { display: none; margin-top: 3px; font-size: 8.5px; font-weight: 700; letter-spacing: 0.3em; padding-left: 0.3em; color: #d7c08a; white-space: nowrap; text-shadow: ${SHADOW}; }
+.ab-sc.word .w { display: block; }
+.ab-sc.t2 .n, .ab-sc.t3 .n { font-size: 15px; color: #e2eaf6; }
+.ab-sc.t4 .n { font-size: 16px; color: #f4f8ff; text-shadow: 0 0 5px ${rgba(CYAN, 0.3)}, ${SHADOW}; }
+.ab-sc.t5 .n { font-size: 17px; color: #ffe9b8; text-shadow: 0 0 5px rgba(255, 196, 90, 0.3), ${SHADOW}; }
+/* look 'lines' (drawn): an underline from tier 2, two strokes either side from tier 4 */
+.ab-sc-lines.t2 .u, .ab-sc-lines.t3 .u { display: block; width: 2.4em; height: 1px; margin-top: 3px; background: linear-gradient(90deg, ${rgba(CYAN, 0)}, ${rgba(CYAN, 0.75)} 50%, ${rgba(CYAN, 0)}); font-size: 15px; }
+.ab-sc-lines.t4 .d, .ab-sc-lines.t5 .d { display: block; width: 12px; height: 1px; background: linear-gradient(90deg, ${rgba(CYAN, 0)}, ${rgba(CYAN, 0.85)}); }
+.ab-sc-lines.t4 .d.r, .ab-sc-lines.t5 .d.r { background: linear-gradient(270deg, ${rgba(CYAN, 0)}, ${rgba(CYAN, 0.85)}); }
+.ab-sc-lines.t5 .d { width: 18px; background: linear-gradient(90deg, rgba(255, 224, 154, 0), rgba(255, 224, 154, 0.9)); }
+.ab-sc-lines.t5 .d.r { background: linear-gradient(270deg, rgba(255, 224, 154, 0), rgba(255, 224, 154, 0.9)); }
+/* look 'ticks': a dot under the number for every tier reached */
+.ab-sc-ticks .u { display: block; margin-top: 1px; font-size: 10px; line-height: 0.8; letter-spacing: 0.18em; padding-left: 0.18em; color: ${CYAN}; text-shadow: ${SHADOW}; }
+.ab-sc-ticks.t5 .u { color: #ffe09a; }
+/* a lost streak: grey, struck through, the digits parting as it falls */
+.ab-sc.lost .n { color: #8b93a3; text-shadow: ${SHADOW}; }
+.ab-sc.lost .k { display: block; background: #c4594a; box-shadow: 0 1px 1px #000; transform-origin: 0 50%; }
+.ab-sc.lost.t4 .n, .ab-sc.lost.t5 .n { color: #a2a9b6; }
+
 /* ---------- small mid-screen banner (POSTURE BROKEN) ---------- */
 .ab-mini {
   position: absolute;
@@ -478,6 +519,19 @@ const CSS = `
 .ab-mini .txt::after { content: ''; width: 70px; height: 1px; background: linear-gradient(90deg, rgba(255, 224, 154, 0), rgba(255, 224, 154, 0.85)); }
 .ab-mini .txt::after { background: linear-gradient(270deg, rgba(255, 224, 154, 0), rgba(255, 224, 154, 0.85)); }
 .ab-mini .sub { margin-top: 4px; font-size: 10px; letter-spacing: 0.3em; color: #d7c08a; text-shadow: 0 1px 2px #000; }
+/* a long streak's flurry (the streak pass's 'tiers'): never bigger, only a rule more. Tier 4: a thin
+   rule under the line beneath; tier 5: longer side rules and a thin rule over the name as well */
+.ab-mini.t4 .sub::after, .ab-mini.t5 .sub::after {
+  content: '';
+  display: block;
+  width: 60%;
+  height: 1px;
+  margin: 5px auto 0;
+  background: linear-gradient(90deg, rgba(255, 224, 154, 0), rgba(255, 224, 154, 0.7) 50%, rgba(255, 224, 154, 0));
+}
+.ab-mini.t5 .txt::before, .ab-mini.t5 .txt::after { width: 110px; }
+.ab-mini .over { display: none; width: 70%; height: 1px; margin-bottom: 5px; background: linear-gradient(90deg, rgba(255, 224, 154, 0), rgba(255, 224, 154, 0.55) 50%, rgba(255, 224, 154, 0)); }
+.ab-mini.t5 .over { display: block; }
 .ab-reticle > span {
   display: flex;
   align-items: center;
@@ -893,6 +947,9 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
   .ab-touch .ab-stats { top: calc(18% + 44px); padding: 6px 12px 7px; max-width: 92vw; }
   .ab-touch .ab-stats .row { line-height: 15px; font-size: 10px; }
   .ab-touch .ab-mini { top: 24%; }
+  /* a long flurry name (HUNDREDFOLD / THOUSANDFOLD FLASH) keeps to the width: shorter side rules */
+  .ab-touch .ab-mini.long .txt { gap: 8px; }
+  .ab-touch .ab-mini.long .txt::before, .ab-touch .ab-mini.long .txt::after { width: 22px; }
   .ab-touch .ab-logo { font-size: clamp(5px, 2.5vw, 12px); }
   .ab-touch .ab-title-sub { font-size: 10px; }
   .ab-touch .ab-title-ctrl { font-size: 9.5px; line-height: 17px; max-width: 94vw; }
