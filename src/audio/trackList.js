@@ -76,6 +76,16 @@ export const SCORE = {
         T('starless-p3', { xfade: 0.5 }),
       ],
     },
+    // The Hall of Falling Script borrows too, until the owner picks its score (one track per phase: the
+    // Sparring Hall, the Pillared Hall's guns, the Source).
+    code: {
+      explore: T('starless-explore', { xfade: 3 }),
+      phases: [
+        T('ash-p1', { xfade: 0.1 }),
+        T('starless-p2', { xfade: 1.5 }),
+        T('starless-p4'),
+      ],
+    },
   },
   victory: T('victory', { loop: false }), // Victory Fanfare Short, cynicmusic
   death: T('death', { loop: false }), // Death of a Ninja (Game Over), Joth

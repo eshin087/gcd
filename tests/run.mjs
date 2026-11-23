@@ -49,6 +49,7 @@ const TASKS = [
   ['fox', ['tests/integration/fox.mjs', '.', 'all'], {}, 105],
   ['lord pace', [LORD, '.', 'pace'], {}, 105],
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 90],
+  ['woke', ['tests/integration/woke.mjs', '.', 'all'], {}, 100],
   ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }, 80],
   ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}, 70],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],

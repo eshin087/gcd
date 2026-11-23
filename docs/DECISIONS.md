@@ -4513,6 +4513,75 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   take One Breath into a slot later. Not measured yet: a bot that only uses One Breath on Shen Hui
   (duel.mjs `strategy`) against the mixed bot's time.
 
+## ADR-156 — Xin Yi, the One Who Woke: a recognizable homage on the duelist engine; two bars, the Lean, the Bend and the stop as openings, deja vu (2026-11-22)
+
+- **Context:** the owner asked for a boss in the spirit of the hero of the source film (a famous action
+  film of the late nineties: written here as "the source film", never its name), planned by a Fable session
+  that asked four questions (2026-11-22): the look RECOGNIZABLE (a long black high-collared coat whose tails
+  flare, small dark glasses, short dark hair, pale face and hands, two handguns in phase 2); the set a
+  pillared hall that morphs into two or three scenes; four moments not to be cut (the fall and the rising;
+  shots and pillars; flight and the falling fist; deja vu and skipped frames); the suited men watchers only.
+  The homage line of the merged homages (ADR-150): a new name for the man and every move, none of the
+  source's names, title, lines or logo anywhere in the game or its code, every look behind a switch.
+- **Decision:** `WokenOne extends Duelist` (wokenOne/), bare-handed with Tian Lei's exported strike builders,
+  his limb-as-blade code copied, `WokenFx extends AscFx` (the plan said LordFx: AscFx IS LordFx's pool of
+  thrown things plus the blasts that cover stops and the perfect parry returns, which the guns and the bolts
+  need; its gold is swapped for the CODE palette). TWO BARS, THREE PHASES: bar 1 (3400) holds phase 1 and
+  phase 2 behind the engine's gate at half; bar 1 empty breaks him (Tian Lei's `_onHpZero`) and the
+  deathblow is THE FALL (flat on his back, slow time, the script still, `_changing`), then the transition
+  `rising` with bar 2 (2600) full, ending in the Still Hand held 1.5 s. PHASE 1 keeps the left hand behind
+  his back in every key (a realiser of its own over a one-handed copy of the moves). THE LEAN is only the
+  look of his guard (slip clips, one afterimage): no new way to waste a cut. THE BEND (phase 2) and THE
+  STOP (phase 3) are openings, never walls: a returned shot or the engine's heavy-blow evade bends him at a
+  posture cost, open 1 s with a crit; a second one inside that second lands; the melee Bend once in 6 s;
+  a returned bolt hangs before his palm (rooted, posture), three are sent back as ONE blow of the brain's
+  (one blue flare, one result). DEJA VU is a link back to the same string (`force`), realised with the
+  first pass's draws (`REPLAY`) and, in phase 3, mirrored (a `manual` copy); the set stutters at the link.
+  Optional engine fields, other kits unchanged: a beat's `noWorld`, a hit's `guardCost` (Iron Rain: a held
+  guard pays guard, never health, 55 at most a volley), a boss's `cameraPull` (flight keeps both in frame).
+  Every thrown thing asks the fairness guard (`fairThrow`: it hangs a moment, or goes uncued and harmless).
+- **Consequences:** a fifth duelist kit with no change to what the others do. The plan's aliases lost
+  'hall' (the Obsidian Throne's). The phase banners do not decode (the plan's first cut). Phase 2 counts
+  every one of Iron Rain's eleven shots as a cue, so the pace meter reads phase 2 as busy as phase 3
+  (COMBAT.md "The One Who Woke" → measured).
+
+## ADR-157 — The Hall of Falling Script: one arena whose scenes morph, the script wave in the prop and floor letters, watchers (2026-11-22)
+
+- **Context:** the owner: "pillared hall but since this is the matrix, have everything more extra ascii and
+  have the stage morph 2-3 variations seamlessly to different scenes". A level is never torn down (one per
+  page load), and the owner turned down a terminal post-process and one character grid over the frame
+  (STYLE.md "Tried and turned down").
+- **Decision:** one set built once with three scenes on the same ten slots (`hall` the Pillared Hall, `dojo`
+  the Sparring Hall, `source` the Source); every breakable of a scene carries `scene: '<id>'` and only one
+  scene's pieces stand at a time. The smallest scene-aware surface in destructibles.js: `present(b, on)` (out
+  of the world: hidden, colliders out, state GONE so every query skips it; back: whole), `sceneHome` /
+  `sceneNow`, a reset that puts the other scenes out again; `world.restore` calls the set's `scenes.reset()`.
+  A morph (`scenes.to`) runs a front out from him: each piece it crosses lets go as digits and the new
+  scene's prints in; it runs only inside his transitions (the beckon, A Hundred Iron Seeds, the rising, his
+  death). "More extra ASCII" is four layers inside the existing letter systems: the code palette in the fire
+  field, the falling script (one glyph batch of the set's ambience), THE SCRIPT WAVE (uniforms `uScript` /
+  `uScriptF` read by the prop-art and the floor's materials: digits brightening in waves down each column
+  inside a prop's own letters; at strength 0 the frame is exactly today's, and no other level sets it), and
+  things coming apart as letters. The watchers are static prop-art figures that never act and burst into
+  digits when struck. The bonfire is the only piece left whole.
+- **Consequences:** a set without `scenes` behaves exactly as before (the world suite's `bite` walks each
+  scene of a set that has them). The script wave is the one shared-render change; its cost is measured on
+  the phone preset (COMBAT / DEVLOG). The look of the hall (`?hall=`), of the wave (`?script=`) and of him
+  (`?oneLook=`) wait for the owner's pick (lookSwitch.js PENDING).
+
+## ADR-158 — The Long Second: the second learned technique, a lean in place from a held guard (2026-11-22)
+
+- **Context:** ADR-059's fixed rewards; ADR-146 shipped the first (One Breath) on the smallest store
+  (`game/unlocks.js`). The plan gives Xin Yi's: the hero leans back under the blow instead of stepping away.
+- **Decision:** `longSecond` in the store (`?tech=lean`), granted on his death (`victoryNote` 'YOU LEARNED THE
+  LONG SECOND'). The gesture needs no new button: from a held guard, DODGE with no direction (today a
+  backstep) is the lean once learned; with a direction held the roll is the roll, and One Breath keeps
+  "guard, then hold heavy". `TUNE.lean` beside the backstep's: no travel (he stays in reach), i-frames 0.03 -
+  0.34 s (the backstep's 0.22), free to cut after 0.24 s; a perfect one slows time 0.9 s (the Ghostep's 0.6)
+  and leaves three afterimages; everything else is a dodge by ADR-102 (white and heavy: a streak pip and no
+  crit window; red and black: the flurry). Its own pose (anim.js `leanPose`).
+- **Consequences:** the strategy bots, with a bot that answers every cue with the lean, are the check that
+  leaning is not the fastest way through (woke.mjs STRATEGY); if it becomes so, its i-frames shorten first.
 ## ADR-151 — The grove's bamboo is sliced in one stroke, its top off at the cut; five kinds of cane in clumps, and the back filled (2026-11-22)
 
 - **Context:** the owner: "make the bamboo in windless grove all sliceable in 1 swoop and make sure it falls the moment the sword is going through. have the bamboos more varied, beautiful and some clumped up. i want the bamboo falling to be a cool spectable as the fight happens. have way more in the back empty area as well". A stalk (ADR-145) had 0.5 of structure: a light cut (0.27)
@@ -4623,6 +4692,63 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   `sheathArt: '2'` in `PICKED`, the Lab row no longer `awaiting`. 0, 1, 3 and a stay behind the switch. Known
   limits of 2 at fight distance: his digits are larger than the hero's letters, only his lit side prints (he
   reads narrower than the hero), the face does not read. The mark (`?sheathMark=`) is still not picked.
+## ADR-154 — Wen Yao reworked: drawn like the hero, his selves only in packs out of the air, a big Pearl, the Nine-Tailed Fox's beam (2026-11-22)
+
+- **Context:** the owner played the Thousand-Body Fox (ADR-147) and asked, word for word: "its hard to see
+  the new boss character. make it look detailed like the main character so we can distinctly tell [whose homage
+  he is]. also make the moves more [like that hero's], like [his palm orb] and other signature moves. the
+  clones just randomly appearing as sponges is boring. i want them to like appear from the air and all
+  attack at the same time or in a fast sequence forcing the player to dodge or parry. make it also summon
+  the fox demon to do a ultimate beam that is scary and epic." Planned by Fable, built by Opus (a lead and
+  two agents: the body; the fox and its beam).
+- **Decision (the homage line does not move):** he stays an ORIGINAL in the spirit of a famous ninja-clone
+  hero (ADR-147). The homage goes through what nobody owns: a spiky-haired young fighter in a short bright
+  jacket with a long scarf, an orb driven in by the palm with a copy of himself shaping it, copies that drop
+  in and gang up, a nine-tailed fox of fire (folklore) firing a beam from its jaws. Kept out, in every look
+  option and every string: the orange jumpsuit with black or blue shoulders, a forehead plate, whisker
+  marks, any emblem, blond spiky hair (his crest is russet; its gold outline was moved off the hair parts
+  because it read as blond), hand seals, and every name from that series. The owner was told this once.
+- **Decision (he is hard to see):** he and his selves are drawn in the hero's INK-LINE art, not the wyrm's
+  art path: `?foxLook=h1` (a big russet crest with pale tips, a short open amber jacket, a long vermilion
+  scarf) the default, h2 and h3 rendered beside it, the art-path outfits kept behind the switch. His letters
+  follow his size on screen as the hero's do (`kit.letters`, `?foxLetters=b`): a small additive change to
+  the pipeline (`_letterCell`, `_updateBossLetters`) that leaves every boss without the flag drawn exactly
+  as before.
+- **Decision (the selves):** the ambient mode is gone (Scattered Leaves, the cutting token, stalking). A self
+  exists only inside a PACK, data on a move's beat (`pack: { n, mode, gap, form, blow, tell, from, ... }`):
+  `FoxClones.pack` books every body as it is called (its mark, the time it appears = its blow's impact minus
+  its windup, its impact) and tells every cue to the cue ledger up front, so the director and the fairness
+  guard see the whole pack before its first cue; the fairness guard may shift the pack as a whole, or refuse
+  it. A body appears in the air in a puff already attacking, strikes, and bursts. `together` is ONE cue and
+  ONE result (one parry bursts them all; a held guard pays one blow: defensive play is never punished);
+  `sequence` is n cues from n sides. Pack moves: Two Leaves Fall (phase 1: one pack move keeps the first
+  phase learnable), the Thousand-Body Round, A Thousand at Once, the Burial (replaces the springboard), the
+  Kite String, a harrying pack through the Pearl's charge whose strikers feed it. The pool grows 5 → 6.
+- **Decision (signature moves):** the palm Pearl is big (about 0.9 m) and unmistakable: pale blue-white
+  (`FIRE_PALETTES.pearl`), spiral arms, a drilling drive, a spiral burst, a quiet synth whirr; the Twin
+  Pearls (one red cue, two lines); the Moon-Swallowing Pearl giant and lifted by two selves; "It was a
+  copy" (his counter from phase 2, half the time: the struck body bursts as paper and he drops in behind
+  the hero, the same cue). Phase 3's fire is its own kind (`?foxFire3`, the wyrm's orange-red), apart from
+  the orb's colour. The Moon Wheel was cut (first in the plan's cut order).
+- **Decision (the ultimate):** Heaven-Devouring Howl. The Nine-Tailed Fox is a creature, so a BODY in the
+  wyrm's art path (CLAUDE.md), built in his constructor on a quiet Math.random (the seeded fights do not
+  shift), hidden until summoned, standing side-on to the camera with its head drawn large (a fox seen from
+  the front and above prints as a lump). The move is a flit and ONE red beat (`selfHit`, `sustain`: the
+  ledger holds the lit window as one interval): the line fixed at the cue; lit 2.4 s; a sweep toward the
+  hero's side, one way, so rolling back through it is safe; three ticks at most; a held guard pays guard,
+  never health, and slides; the world breaks along it; then he kneels open 2.2 s. (Second pass, the owner's
+  "yes, fix the fox": he summons it 10 m from the hero through the middle, not at the far rim, so the camera
+  frames the hero and the fox's head at 36 - 41 m instead of ~60; its head is drawn 2.3x in profile with a
+  pale throat, its nine tails are separate plumes, the beam fills its 3.6 m strip.) From 12 s into phase 3,
+  32 s apart, forced once under 18 %. The camera holds the hero and the fox's head (`cameraRig.hold`: an
+  additive, inert-unless-called pull-back, since the cinematic is capped at 3 s and the phone's extra zoom
+  at 3 m).
+- **Consequences:** phase 3 asks fewer cues a minute than phase 2 (68 against 80; 28 % of them dodges): the
+  pressure meter is re-measured and says so. A full pack costs 9 draw calls a rig (73 → 118 with five out)
+  and about 1 ms of poses a frame in node; the Howl 9 draw calls and at most ~1500 of the fire field's 6000
+  blobs. Every look is behind a switch in `PENDING` for the owner's pick (`foxLook`, `foxLetters`,
+  `foxfire`, `foxFire3`, `foxSpirit`, `clones`). Not settled: the fox at the game camera reads only when you
+  look for it, and on the phone the Howl pulls the camera far back.
 
 ## ADR-155 — Tian Lei printed like the hero: his letters follow his size, the hero's quieter print, his own hair risen, a gi in ember with wraps (2026-11-23)
 

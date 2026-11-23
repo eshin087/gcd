@@ -37,6 +37,30 @@ export const RELEASES = [
       },
       {
         date: '2026-11-22',
+        title: 'A seventh level: the Hall of Falling Script and the One Who Woke',
+        notes: [
+          'A new level, the Hall of Falling Script: a pillared hall written in falling green letters. Pick it on the title screen.',
+          'Its boss is Xin Yi, the One Who Woke, a man in a long black coat and small dark glasses. He fights with one hand behind his back, then with two guns, then with nothing at all.',
+          'He beckons, and the hall rewrites itself around him: a wooden sparring hall, the pillared hall again, and in the end a black void of falling code. Every pillar, post and screen breaks.',
+          'In the pillared hall, stand behind a pillar: it takes his shots and loses its letters where they hit. A held guard against his stream of shots costs guard, never health.',
+          'Parry a big shot perfectly and it flies back: he bends under it, time slows, and for a second he is open. He cannot do it twice in a row.',
+          'Empty his first bar and he falls. He rises in the void with a second bar, stops what you send back in the air, tears bricks out of the code and drops on you from above: roll through the shockwave.',
+          'Sometimes the hall stutters, as if a moment repeated: he is about to throw the same string again, exactly as before.',
+          'Beat him and you learn the Long Second: hold guard and dodge with no direction to lean back under a blow and stay in reach.',
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'Wen Yao reworked: copies out of the air, the big Pearl, the Nine-Tailed Fox',
+        notes: [
+          'Wen Yao, the Thousand-Body Fox, is now drawn as brightly as you are: a russet crest, an amber jacket and a long red scarf.',
+          'His copies no longer stand about. They appear in the air already striking, all at once or one after another from every side. When they come together it is one cue: one parry bursts them all.',
+          'The Pearl in his palm is big now, a spinning blue-white orb. Pop the copies that harry you while he shapes it, or they feed it.',
+          'In his last phase he summons the Nine-Tailed Fox. When the red flash shows at its jaws, roll; the beam sweeps toward you one way only, so roll back through it. Then he kneels, open.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: "The grove's bamboo falls to every stroke",
         notes: [
           'In the Windless Grove one swing cuts a bamboo stalk clean through where your blade passes, and the top slides off and crashes down in a burst of leaves. Swing through a clump and the whole clump comes down.',
