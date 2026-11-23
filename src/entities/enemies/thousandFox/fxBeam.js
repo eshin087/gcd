@@ -1,6 +1,6 @@
 import { K_STEEL, K_SMOKE, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 
-// Heaven-Devouring Howl's drawing (ADR-151; STYLE.md "The fox's effects"): pure draw helpers that take
+// Heaven-Devouring Howl's drawing (ADR-154; STYLE.md "The fox's effects"): pure draw helpers that take
 // the FX (`d.fx`, a FoxFx: DuelFx's _blob / _dot / _ink / _frame / _toCamera / _axes / _screen, FoxFx's
 // kr() look stream, _keep lights, FIRE3 = phase 3's fire kind per ?foxFire3) as their first argument.
 // Everything that burns or glows is heat in the fire field (small letters; many small cool blobs, never

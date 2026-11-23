@@ -5,9 +5,9 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-22 — Session 79: Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (planned by Fable, built by Opus: a lead and two agents)
+## 2026-11-23 — Session 80: Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (planned by Fable, built by Opus: a lead and two agents)
 
-**What changed.** The owner played the Thousand-Body Fox and asked for four things (ADR-151 quotes them):
+**What changed.** The owner played the Thousand-Body Fox and asked for four things (ADR-154 quotes them):
 he is hard to see; the clones are boring sponges that stand about; the moves should be signature moves
 (the palm orb); and he should summon a fox for an ultimate beam. Built from the planning session's plan,
 the lead landing the contracts first (af30eab) and two agents in their own worktrees:
@@ -26,7 +26,7 @@ the lead landing the contracts first (af30eab) and two agents in their own workt
 - Training: "A Thousand at Once · one parry", "The Round · parry the chain", "Heaven-Devouring Howl · roll
   through it" (Pop the copies is gone); the Lab: pack buttons, Twin Pearls, Howl, LOOKS rows.
 
-**Decisions.** ADR-151. Where the plan was open: the Pearl's harrying pack is 1 / 2 / 2 (three do not fit
+**Decisions.** ADR-154. Where the plan was open: the Pearl's harrying pack is 1 / 2 / 2 (three do not fit
 before the drive with the red cue 0.36 s clear); a pack riding on a blow of his is named `<move>Pack`; the
 Howl is one red beat whose windup is the summoning (the "black" of the summoning is a charge's darkness,
 not a second blow); the fox's head is drawn at 2x and the body always side-on to the camera; the h

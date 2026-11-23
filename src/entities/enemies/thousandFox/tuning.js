@@ -139,7 +139,7 @@ export const TUNING = {
     // five seeds x 120 s: P1 65.3 - 71.6 (68.3), P2 76.7 - 83.4 (80.2), P3 75.9 - 82.0 (79.3); P2 / P1 at
     // least 1.10 per seed, 1.175 in the mean; P3 / P2 0.93 - 1.06 per seed, 0.99 in the mean; the longest
     // gap 3.42 / 3.34 / 3.45 s; 0 conflicts; a dodge in 11 / 12 / 17 % of the cues. The margins as before)
-    // (2026-11-22, ADR-151, the selves in packs only and Heaven-Devouring Howl; the same five seeds x 120 s,
+    // (2026-11-22, ADR-154, the selves in packs only and Heaven-Devouring Howl; the same five seeds x 120 s,
     // the Howl summoned to burnt out and his kneel counted as activity: P1 69.8 - 72.7 (70.9), P2 78.4 -
     // 81.1 (79.5), P3 66.6 - 71.5 (68.3); P2 / P1 at least 1.09 per seed, 1.12 in the mean; P3 / P2 0.82 -
     // 0.91 per seed, 0.86 in the mean; the longest gap 2.88 / 3.62 / 3.62 s; 0 conflicts; a dodge in 11 /
@@ -177,7 +177,7 @@ export const TUNING = {
   // ---- Paper Blades' sword qi (Shen Hui's crescents: DuelFx.throwCrescent)
   crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25, minLead: 0.27 },
 
-  // ---- the paper selves (clones.js FoxClones; ADR-147, ADR-151): his own bodies, a fixed pool built with
+  // ---- the paper selves (clones.js FoxClones; ADR-147, ADR-154): his own bodies, a fixed pool built with
   // him. A self exists only inside a PACK (moves.js header `pack`): it appears in the air already
   // attacking, strikes and bursts
   clones: {

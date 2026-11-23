@@ -8,7 +8,7 @@ import { FoxSpirit } from './spirit.js';
 import { VERDICT } from './tuningBeam.js';
 import { summonRing, darkSun, beamMark, beamBody, spiritFire, spiritEnd } from './fxBeam.js';
 
-// Heaven-Devouring Howl (`foxVerdict`, phase 3; ADR-151; COMBAT.md → "The Thousand-Body Fox" → "The
+// Heaven-Devouring Howl (`foxVerdict`, phase 3; ADR-154; COMBAT.md → "The Thousand-Body Fox" → "The
 // Howl"): he flits to the rim, summons the Nine-Tailed Fox (spirit.js), a dark sun gathers at its jaws,
 // the line is fixed at the red cue, and a beam rakes the terrace (lit `sustain`, `selfHit`: this file
 // tests the strip and deals the hits), sweeping one way toward the hero's side; the world breaks along it;

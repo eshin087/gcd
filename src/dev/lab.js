@@ -847,7 +847,7 @@ export class Lab {
       });
       ob.title = 'the draw-slash: guard, then hold heavy (the Sheathed\'s reward; ?tech=draw)';
     }
-    // the Thousand-Body Fox (ADR-147, ADR-151): his packs of paper selves, the Pearl, the mantle, the Howl
+    // the Thousand-Body Fox (ADR-147, ADR-154): his packs of paper selves, the Pearl, the mantle, the Howl
     if (typeof this.game.dragon?.debug?.pack === 'function') {
       const fd = this.game.dragon;
       button(grid, 'Pack: Two Leaves', () => fd.debug.pack('twinFall')).title = 'two selves drop and dive-kick in turn (a pack, out of any move)';

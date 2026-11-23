@@ -4,7 +4,7 @@ import { limbGeometry, ellipsoidGeometry, hornGeometry } from '../../../render/g
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { foxLook } from './look.js';
 
-// The Nine-Tailed Fox (Heaven-Devouring Howl, ADR-151): a creature, so a BODY in the wyrm's art path
+// The Nine-Tailed Fox (Heaven-Devouring Howl, ADR-154): a creature, so a BODY in the wyrm's art path
 // (FLAG.ART; CLAUDE.md "Every NEW creature"). Built once in his constructor (fox.js _setup → beam.js
 // FoxHowl), hidden until summoned; no colliders, no hurt spheres, not in `breakables`; it casts no
 // shadow (a spirit). Its motion is procedural (rise, rear, the jaws open, the head turning with the

@@ -4568,7 +4568,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
   the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
 
-## ADR-151 — Wen Yao reworked: drawn like the hero, his selves only in packs out of the air, a big Pearl, the Nine-Tailed Fox's beam (2026-11-22)
+## ADR-154 — Wen Yao reworked: drawn like the hero, his selves only in packs out of the air, a big Pearl, the Nine-Tailed Fox's beam (2026-11-22)
 
 - **Context:** the owner played the Thousand-Body Fox (ADR-147) and asked, word for word: "its hard to see
   the new boss character. make it look detailed like the main character so we can distinctly tell [whose homage

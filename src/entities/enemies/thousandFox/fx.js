@@ -253,7 +253,7 @@ export class FoxFx extends DuelFx {
   // ---------------------------------------------------------------- the Pearl
   /**
    * Every frame of the charge: the Pearl shaped in his open lead palm (fox.js palmPoint; pulled toward
-   * the camera, so the hand it sits in does not dim it). BIG and unmistakable (ADR-151: the owner could
+   * the camera, so the hand it sits in does not dim it). BIG and unmistakable (ADR-154: the owner could
    * not see the old one): about 0.9 m across at the end of the charge. A ball of pale blue-white heat
    * (`?foxfire=c`, the default) with a white core; three bright SPIRAL ARMS of ink turning on the letter
    * grid round it (they wind in from its rim to its heart, faster as it fills); points on its surface
@@ -529,7 +529,7 @@ export class FoxFx extends DuelFx {
     if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt > 0)) return;
     u = Math.max(0, Math.min(1, u));
     const P = this._toCamera(x, y, z), px = P.x, py = P.y, pz = P.z, A = this._axes(), F = this.FOX;
-    // (giant: about 2.2 m across at the end, ADR-151; two selves lift it with him)
+    // (giant: about 2.2 m across at the end, ADR-154; two selves lift it with him)
     const kn = 0.6 + 1.7 * u, t = this.game.time ?? 0;
     const life = this._frame();
     if (life > 0) {

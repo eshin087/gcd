@@ -14,7 +14,7 @@ import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
 //   swap: true      as the beat's windup starts a paper self drops in beside the hero and he trades
 //                   places with it (no room: a flit to the hero's side); the string's reach check counts it
 //   pack: { n, mode, gap, form, blow, tell, from, at, flare, r, linger, feed, damage }
-//                   A PACK of paper selves (clones.js FoxClones.pack; ADR-151), called at `at` of the beat
+//                   A PACK of paper selves (clones.js FoxClones.pack; ADR-154), called at `at` of the beat
 //                   (u, default 1: its impact; the call is usually a feint beat, his gesture). n bodies
 //                   (per phase), `mode` 'together' (ONE cue, ONE result: a parry bursts all) or 'sequence'
 //                   (n cues `gap` s apart, each its own), arriving round the hero by `form` ('ring' | 'fan'

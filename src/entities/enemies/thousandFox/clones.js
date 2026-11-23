@@ -5,7 +5,7 @@ import { HeroAnimator } from '../../player/anim.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { perPhase } from '../duelist/realise.js';
 
-// The paper selves (ADR-147, reworked by ADR-151): Wen Yao's own extra bodies, as the Starless Lord's
+// The paper selves (ADR-147, reworked by ADR-154): Wen Yao's own extra bodies, as the Starless Lord's
 // spells are his own things (starlessLord/spells.js). The game still has ONE boss: this is a fixed pool
 // owned by the fox (`d.clones`), stepped from his brainFrame and posed from his afterPose.
 //

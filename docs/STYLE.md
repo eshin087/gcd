@@ -1028,11 +1028,11 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
 | `?ascOrb=` | Heaven's Lantern, Tian Lei's great orb (the third wave, 2026-11-22) | - | a sun: a round ball of gold heat, a pale heart, letters orbiting it | a lantern: a bright rim round a dim heart that pulses, trailing motes | `c` the pale gathered sphere: steel-kind heat (near white), drawn as large as its hit, both arms straight up in the gather (a reload for the pose) | a (the author's; not yet picked) |
 | `?ascBeamPose=` | Tian Lei's beams (2026-11-22, ADR-150; read when the moves are built) | the palm thrust | - | - | `cup`: both hands cupped at the hip, a ball of light between the palms (`fx.cupCharge`), both palms thrust together; the clash held with both cupped hands | 0 (not yet picked) |
-| `?foxLook=` | Wen Yao's body, bare-handed (ADR-147, ADR-151; read when his rigs are built) | - | the Shrine Fox (art path): the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox (art path): an amber sleeveless jacket, a vermilion scarf, a dark red-brown crest, a half-mask at the temple | the Pelt Brawler (art path); `d` = a in the ink-line art; **`h1`** (the default) the Wild Fox in the hero's INK-LINE art, bright: a big russet crest with pale tips, a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; `h2` a vermilion jacket, a black scarf; `h3` a long pale coat lined in vermilion | not picked yet (h1 drawn) |
-| `?foxLetters=` | his ink-line letters (ADR-151; live) | - | a fixed cell, as every boss's | b (the default): they follow his size on screen as the hero's do (`kit.letters`) | - | not picked yet (b) |
-| `?foxfire=` | the Pearl's colour: the orb, its threads, Pearl Rain (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | **pale blue-white** (`FIRE_PALETTES.pearl`, the default since ADR-151) | not picked yet (c) |
-| `?foxFire3=` | phase 3's fire: the mantle, the tail, the pounce, the selves burning up, the Nine-Tailed Fox and its beam (ADR-151) | - | **the wyrm's orange-red** (`K_FIRE`, the default) | jade (the void slot turned to foxfire; an orb on that slot moves to the steel kind) | - | not picked yet (a) |
-| `?foxSpirit=` | the Nine-Tailed Fox (ADR-151; read when it is built) | - | **a body in the wyrm's art path** wreathed in fire (the default) | fire-field heat and ink lines only, no mesh | - | not picked yet (a) |
+| `?foxLook=` | Wen Yao's body, bare-handed (ADR-147, ADR-154; read when his rigs are built) | - | the Shrine Fox (art path): the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox (art path): an amber sleeveless jacket, a vermilion scarf, a dark red-brown crest, a half-mask at the temple | the Pelt Brawler (art path); `d` = a in the ink-line art; **`h1`** (the default) the Wild Fox in the hero's INK-LINE art, bright: a big russet crest with pale tips, a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; `h2` a vermilion jacket, a black scarf; `h3` a long pale coat lined in vermilion | not picked yet (h1 drawn) |
+| `?foxLetters=` | his ink-line letters (ADR-154; live) | - | a fixed cell, as every boss's | b (the default): they follow his size on screen as the hero's do (`kit.letters`) | - | not picked yet (b) |
+| `?foxfire=` | the Pearl's colour: the orb, its threads, Pearl Rain (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | **pale blue-white** (`FIRE_PALETTES.pearl`, the default since ADR-154) | not picked yet (c) |
+| `?foxFire3=` | phase 3's fire: the mantle, the tail, the pounce, the selves burning up, the Nine-Tailed Fox and its beam (ADR-154) | - | **the wyrm's orange-red** (`K_FIRE`, the default) | jade (the void slot turned to foxfire; an orb on that slot moves to the steel kind) | - | not picked yet (a) |
+| `?foxSpirit=` | the Nine-Tailed Fox (ADR-154; read when it is built) | - | **a body in the wyrm's art path** wreathed in fire (the default) | fire-field heat and ink lines only, no mesh | - | not picked yet (a) |
 | `?clones=` | his paper selves (read when their rigs are built) | - | identical to him | a step paler | - | not picked yet (a) |
 | `?bamboo=` | the Windless Grove's bamboo (ADR-151; read when the level is built) | one kind of cane, scattered | five kinds of cane mixed in fanning clumps, shoots, fuller crowns, the back filled, the wall to 50 m | the same, one kind of cane per clump | - | **a** (the owner's pick, 2026-11-22) |
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
@@ -1184,8 +1184,8 @@ across the terrace): seen from the front and above, a fox prints as a lump; a fl
 gate) faces the camera. The gate's dull red is the strongest hue in the set, dulled once; the charm
 posts' paper strips are faint at 30 m.
 
-### Wen Yao's figure (2026-11-21, bare-handed 2026-11-22, ADR-147; redrawn ADR-151; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
-**Since ADR-151 he is drawn in the hero's INK-LINE art, not the wyrm's** (the owner: "its hard to see the new
+### Wen Yao's figure (2026-11-21, bare-handed 2026-11-22, ADR-147; redrawn ADR-154; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
+**Since ADR-154 he is drawn in the hero's INK-LINE art, not the wyrm's** (the owner: "its hard to see the new
 boss character. make it look detailed like the main character"): in the art path he printed as a thin
 dark figure with a few orange digits beside a hero who is a dense body of letters. `?foxLook=h1` (the
 default): the Wild Fox, bright: a big upswept crest of russet hair with pale tips (a third of the head's
@@ -1224,7 +1224,7 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   and the fox spirit's ears and tails keep their shape. The inherited draws' Void violet (a light, a
   spark) is turned to the look's colour (`_light`, `_spawn`), as AscFx does for gold: the black cue's
   sparks are jade on this level (the black dye itself is the engine's).
-- **The Pearl in his palm** (redrawn ADR-151: "The palm orb is small at the game camera"): about 0.9 m
+- **The Pearl in his palm** (redrawn ADR-154: "The palm orb is small at the game camera"): about 0.9 m
   across at the end of the charge, a ball of pale blue-white heat (`FIRE_PALETTES.pearl`, moon a step
   bluer: a white light bloomed it into a glare, so its light is soft) with a small white heart, its
   surface points turning round a tilted axis, three crisp SPIRAL ARMS of ink winding from past its rim in
@@ -1236,7 +1236,7 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   flight, ADR-052's ground specks, the rim of `·` once it has cued, and the burst. **The Moon-Swallowing
   Pearl** is giant (about 2.2 m) and rises over his head as two selves lift it with him. Sound: a quiet
   rising synth whirr (`sfx.js` `pearlWhirr`) as he shapes it.
-- **Phase 3's fire** (`?foxFire3`, ADR-151): the mantle, Burning Tail's sweep, the pounce, the change's roar
+- **Phase 3's fire** (`?foxFire3`, ADR-154): the mantle, Burning Tail's sweep, the pounce, the change's roar
   and the selves burning up into him are drawn in `FIRE3` (the wyrm's orange-red by default), the same
   fire as the Nine-Tailed Fox and its beam; the Pearl keeps the orb's colour.
 - **A pack body appearing** (`packPuff`): a puff of smoke round it in the air, ten one-cell paper slips
@@ -1266,7 +1266,7 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   the grass. It reads as a fan of jade flame more than nine separate tails.
 - **His blows' trail** (`sweep()` overridden): a short crisp streak along the fist's or the foot's path, a
   faint pale wash, foxfire licks when the spirit is lit, dust off a low kick; no blade arc.
-- **The selves** (packs since ADR-151; a spawn is `packPuff`, in the air): a pop is 24 one-cell paper slips (16 when many go at once; half in the additive pool so
+- **The selves** (packs since ADR-154; a spawn is `packPuff`, in the air): a pop is 24 one-cell paper slips (16 when many go at once; half in the additive pool so
   they read on the paving at 30 m), torn-edge steel strokes, smoke, a wisp of foxfire; a spawn a tear of
   paper; the springboard's self tears UPWARD (30 slips) as he springs off it; phase 3's change burns
   them into him.

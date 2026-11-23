@@ -180,7 +180,7 @@ bosses.
   |---|---|---|---|
   | The Cinder Wyrm | Bite; Hesitant maw's held bite; Claw combo's lunging bite; Wing buffet's second wing; **Wing rend's lunging bite\***, **Sky hammer's wing slam\***, **Cinder rake's overhead\***, **Cataclysm's wing slam\***, **the Tail bat\*** (the boulder; ADR-119) | every red blow it had (tail, stomp, charge, pounce, leap, the fire flights); **the tail whips\*** (Pivot lash, Rear guard, Cinder rake, Cataclysm), **Rear guard's tail slam\***, **Furnace maw's wing slam\***, the flying combos' blows\*, the ground tongues\*, the ambient cinders\*, a thrown tree or boulder\* (ADR-119) | **Black maw**: the head rears and holds 1.5 s + 0.15 - 0.6 s, then the snap: 44, range 3.5 - 6.5 m off its chest, cooldown 14 s |
   | Shen Hui | Falling Ash; Falling Star; Swallow Flicks' thrust; Crane Spins' chop; Swallow's Return; **Severing Wind*** (one long step from 3.6 - 10 m and a level two-handed cut, 26) | Piercing Ash, Lotus Sweep, Ember Whirl's last, Heaven-Splitting Fall, Hundred Petals' last; **Twin Embers*** (a dashing cut, then the low sweep 0.92 s later: dodge, dodge; 22 and 24) | **Black Tide**: the jian drawn back low, 1.45 s + 0.1 - 0.5 s, then a dashing cleave up to 7.5 m: 38, knocked down, cooldown 12 s |
-  | Wen Yao (ADR-147, ADR-151) | Three Paws' palm; Ladder to the Moon (a perfect parry locks); Hand to Hand's uppercut; the Thousand-Body Round's own palm; A Thousand at Once (one cue for every self) | Sweeping Tail; the Pearl driven home; the Twin Pearls; Pearl Rain; the Burial (the pile and his fists); the Kite String's heel; Burning Tail; Fox-Fire Pounce; Heaven-Devouring Howl's beam; both transitions | **Moon-Swallowing Pearl** (phase 3): the Pearl grown dark over his head, 1.5 s + 0.1 - 0.5 s, then a leap down on the hero: 44, ring 3.4 m, knocked down, cooldown 14 s |
+  | Wen Yao (ADR-147, ADR-154) | Three Paws' palm; Ladder to the Moon (a perfect parry locks); Hand to Hand's uppercut; the Thousand-Body Round's own palm; A Thousand at Once (one cue for every self) | Sweeping Tail; the Pearl driven home; the Twin Pearls; Pearl Rain; the Burial (the pile and his fists); the Kite String's heel; Burning Tail; Fox-Fire Pounce; Heaven-Devouring Howl's beam; both transitions | **Moon-Swallowing Pearl** (phase 3): the Pearl grown dark over his head, 1.5 s + 0.1 - 0.5 s, then a leap down on the hero: 44, ring 3.4 m, knocked down, cooldown 14 s |
   | The Starless Lord | Falling Star; Scissor; Grasp and Sever's chop; **Severance*** (a long step and a two-handed chop, 26; every form) | his red blows and spells as before; **Red Meridian*** (a dashing level cut, then the blade round at the ankles; every form) | **Nightfall**: the same charge and cleave, 36; every form, cooldown 12 s |
 
 - Checked by `npm test`: duel FLARE (the rules; nothing shows before a red cue; a parried Falling Ash
@@ -1964,7 +1964,7 @@ limb that strikes is what the hero's parry meets (as Tian Lei's).
 
 ### His moves (N white, B blue, R red, K black; windups at phase 1)
 
-Reworked 2026-11-22 (ADR-151): his selves fight only in PACKS, the Pearl is big, and phase 3 has the Howl.
+Reworked 2026-11-22 (ADR-154): his selves fight only in PACKS, the Pearl is big, and phase 3 has the Howl.
 
 | Move | From | Beats | Band (m) · cooldown · weight |
 |---|---|---|---|
@@ -1990,7 +1990,7 @@ Reworked 2026-11-22 (ADR-151): his selves fight only in PACKS, the Pearl is big,
 | **Heaven-Devouring Howl** | 3 | see "The Howl" below: the Nine-Tailed Fox's beam, R, 30 + 3 ticks of 12 at most, then he kneels open 2.2 s | from 12 s into phase 3, 32 s apart; forced once under 18 % |
 | Paper Dive / Cross / Kite / Slam (hidden) | | the selves' blows (a dive kick from 4.2 m up 0.62 s, a leaping cross 0.56, a low slide and an upward kick 0.56, both fists down 0.6), never picked by him | |
 
-Gone (ADR-151): Scattered Leaves (selves torn off to stand about), the cutting token, Fox Descending's
+Gone (ADR-154): Scattered Leaves (selves torn off to stand about), the cutting token, Fox Descending's
 springboard off a standing self (the Burial is its pack), Paper Punch.
 
 ### The paper selves: packs
@@ -2065,12 +2065,12 @@ floor as the courtyard's; the great fox and the spirit gate only chip, and the g
 ### The numbers measured (`fox.mjs`)
 
 The pace (a steady defender in god mode, the hero roaming 2.5 - 9 m; the packs' blows count; the Howl,
-summoned to burnt out, and his kneel count as activity), five seeds x 120 s (2026-11-22, ADR-151): 70.9 /
+summoned to burnt out, and his kneel count as activity), five seeds x 120 s (2026-11-22, ADR-154): 70.9 /
 79.5 / 68.3 cues a minute by phase (P1 69.8 - 72.7, P2 78.4 - 81.1, P3 66.6 - 71.5), 0 conflicting cues, a
 dodge asked by 11 / 14 / 28 % of them, the longest gap 2.9 / 3.6 / 3.6 s. Phase 3 asks fewer cues and more
 dodges: the Howl is one red cue over about 9 s and a 2.2 s kneel (`TUNING.pressure.meter`). The fencing bot
 (god mode, parries every white and blue cue, rolls every red one, cuts in his openings) wins through three
-phases on three seeds (`fox.mjs win`). The cost of a full pack (five selves out, 1280x720, RTX 4090): 73 →
+phases on three seeds in 44 - 48 s (`fox.mjs win`). The cost of a full pack (five selves out, 1280x720, RTX 4090): 73 →
 118 draw calls (9 a rig); in node his frame 1.6 → 3.6 ms with a pack of five cycling (their poses ~1 ms).
 The Howl: 75 → 84 draw calls with the fox risen and the beam lit, the fire field's peak 1300 - 1500 blobs.
 

@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.63 — Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (2026-11-22, `claude/fox-rework-ca0b58`, ADR-151)
+## M1.64 — Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (2026-11-22, `claude/fox-rework-ca0b58`, ADR-154)
 - [x] He is drawn in the hero's ink-line art: `?foxLook=h1` the default (russet crest, amber jacket, vermilion scarf), h2 / h3 rendered; his letters follow his size (`?foxLetters`, `kit.letters`)
 - [x] The selves only fight in packs: no ambient mode (no scatter, no token); `pack` on a beat, `FoxClones.pack`, booked with the cue ledger; `together` (one cue, one result) and `sequence`
 - [x] Pack moves: Two Leaves Fall, the Thousand-Body Round reworked, A Thousand at Once, the Burial, the Kite String, the Pearl's harrying pack (strikers feed it); Changing Places drops its self in

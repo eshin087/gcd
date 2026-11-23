@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Sixty-nine pieces of work since 0.4.0:
-- **Wen Yao reworked: copies out of the air, the big Pearl, the Nine-Tailed Fox** (2026-11-22, ADR-151). *Changed:* Wen Yao,
+- **Wen Yao reworked: copies out of the air, the big Pearl, the Nine-Tailed Fox** (2026-11-22, ADR-154). *Changed:* Wen Yao,
   the Thousand-Body Fox, is drawn as the hero is, in dense bright letters: a big russet crest with pale tips,
   a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; his letters follow his size
   on screen as the hero's do. His paper copies no longer stand about waiting their turn: a copy only exists

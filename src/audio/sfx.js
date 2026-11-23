@@ -1171,7 +1171,7 @@ export const SFX = {
   },
 
   /**
-   * The fox's Pearl (ADR-151): a quiet whirr that rises as he shapes it in his palm (~1.9 s: the
+   * The fox's Pearl (ADR-154): a quiet whirr that rises as he shapes it in his palm (~1.9 s: the
    * backstep and the charge). Two detuned triangles climbing from a low hum to a high spin, their level
    * fluttered faster and faster (the spin), through a lowpass that opens; it cuts off at the drive.
    * Quiet on purpose (the owner finds loud SFX "too noisy"); no noise, no random: nothing the seeded
