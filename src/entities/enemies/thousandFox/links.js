@@ -13,7 +13,7 @@ const guarding = (to, chance, o) => ({ to, when: 'guarding', chance, ...o });
 /** A hero who left: he comes after him (a glide, a swap through a self, phase 3's pounce). */
 const PURSUE = [
   far('foxPounce', [0, 0, 0.5]),
-  far('springboard', [0, 0.4, 0.4]),
+  far('buryingLeaves', [0, 0.4, 0.4]),
   far('changingPlaces', [0.4, 0.5, 0.45]),
   far('foxBite', [0.4, 0.35, 0.25]),
   away('foxBite', [0.4, 0.35, 0.3]),
@@ -29,8 +29,11 @@ const melee = (...close) => [...PURSUE, ...close];
 const single = (...close) => [...PURSUE, ...STRINGS, ...close];
 
 export const LINKS = {
-  // ---- the selves torn off: the Pearl when the hero is far, else he comes in behind them
-  scatter: [far('springboard', [0, 0.5, 0.45]), far('foxPearl', [0.4, 0.35, 0.3]), far('pearlRain', [0, 0.35, 0.3]), mid('foxBite', [0.4, 0.4, 0.3]), near('brushstrokes', [0.4, 0.35, 0.3])],
+  // ---- a pack called: he comes in behind it (the pack's blows are in the ledger: his own wait for them)
+  twinFall: [far('foxPearl', [0.4, 0.35, 0.3]), mid('foxBite', [0.45, 0.4, 0.3]), near('brushstrokes', [0.4, 0.35, 0.3])],
+  allAtOnce: [far('changingPlaces', [0, 0.45, 0.45]), mid('foxBite', [0, 0.4, 0.35]), near('relay', [0, 0.35, 0.35])],
+  kiteString: melee(near('brushstrokes', [0, 0.3, 0.3])),
+  twinPearl: [far('changingPlaces', [0, 0.5, 0.45]), mid('foxBite', [0, 0.4, 0.35])],
   // ---- through a self: the string where he lands
   changingPlaces: single(near('brushstrokes', [0.5, 0.45, 0.35]), near('relay', [0, 0.45, 0.4]), near('burningBrush', [0, 0, 0.45])),
   // ---- the ankles swept: a bite at a hero who rolled away
@@ -43,9 +46,9 @@ export const LINKS = {
   foxRing: melee(near('sweepingBrush', [0.3, 0.3, 0.3])),
   // ---- from range: he comes in behind it
   foxPearl: [far('changingPlaces', [0.45, 0.5, 0.45]), mid('foxBite', [0.4, 0.4, 0.35]), near('brushstrokes', [0.35, 0.35, 0.3])],
-  pearlRain: [far('springboard', [0, 0.5, 0.45]), far('changingPlaces', [0, 0.45, 0.45]), mid('foxBite', [0, 0.4, 0.35])],
-  // ---- a self threw him at you: what waits where he lands
-  springboard: single(near('relay', [0, 0.45, 0.4]), near('burningBrush', [0, 0, 0.45])),
+  pearlRain: [far('buryingLeaves', [0, 0.5, 0.45]), far('changingPlaces', [0, 0.45, 0.45]), mid('foxBite', [0, 0.4, 0.35])],
+  // ---- the pile threw him at you: what waits where he lands
+  buryingLeaves: single(near('relay', [0, 0.45, 0.4]), near('burningBrush', [0, 0, 0.45])),
   // ---- phase 3: the tail, then the pounce at a hero it threw clear
   burningBrush: [far('foxPounce', [0, 0, 0.6]), away('foxPounce', [0, 0, 0.5]), ...melee(near('brushstrokes', [0, 0, 0.3]))],
   foxPounce: single(near('burningBrush', [0, 0, 0.45])),

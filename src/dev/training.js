@@ -186,7 +186,7 @@ const duelChange = (T, n) => {
   return d.debug[`phase${n}`]?.();
 };
 
-// The Thousand-Body Fox (ADR-147): his paper selves and the Pearl
+// The Thousand-Body Fox (ADR-147, ADR-154): his packs of paper selves, the Pearl
 /** Walk the hero at him while he is further than `near` m (the Pearl's backstep takes him out of reach). */
 const foxClose = (T, near = 2.2) => {
   const d = T.d, p = T.p;
@@ -196,8 +196,10 @@ const foxClose = (T, near = 2.2) => {
   else T._axis(0, 0);
 };
 add('THE THOUSAND-BODY FOX', [
-  { id: 'foxPop', name: 'Pop the copies · parry them', boss: 'fox', dist: 4, answer: 'parry', desc: 'Two paper selves tear free round you and cut in turn. Parry each cut: a parried self pops (his posture takes it).', go: (T) => T.d.debug.clones(2), until: (T) => T.t > 1 && !(T.d.clones?.live > 0) && T.heroFree(), max: 16, expect: ['dragon:clone', 'player:parry'] },
-  { id: 'foxPearlBurst', name: 'The Pearl · burst it in his hand', boss: 'fox', dist: 2.6, answer: 'none', desc: 'He steps back and shapes the Pearl in his palm: his guard is down. Close in and cut him twice while it charges: it bursts in his hand and he reels.', go: (T) => T.d.debug.trigger('foxPearl'), tick: (T) => { if (T.d.pearl?.charging) { foxClose(T); T.at(0.9, () => T.tap('@attack')); T.at(1.3, () => T.tap('@attack')); T.at(1.7, () => T.tap('@attack')); } else T._axis(0, 0); }, until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 10, expect: ['dragon:stagger'] },
+  { id: 'foxAll', name: 'A Thousand at Once · one parry', boss: 'fox', dist: 4, answer: 'parry', desc: 'Selves appear in the air on every side and dive at the same instant: one blue cue. One parry bursts them all (his posture takes it).', go: (T) => T.d.debug.pack({ n: 4, mode: 'together', form: 'ring', blow: 'dive', tell: 'blue', flare: true, from: 1.0 }, { attack: 'allAtOnce' }), until: (T) => T.t > 1 && !T.d.clones?.packLive && T.heroFree(), max: 10, expect: ['dragon:clone', 'player:parry'] },
+  { id: 'foxRound', name: 'The Round · parry the chain', boss: 'fox', dist: 3, answer: 'parry', desc: 'Selves drop into a ring round you and strike in turn, then his own palm from above. Parry every blow: the whole Round parried is the full deflect, he reels.', go: (T) => { if (T.d.phase < 2) T.d.enterPhase?.(2); T.d.debug.trigger('foxRing'); }, until: (T) => T.t > 1.5 && !T.d.clones?.packLive && !T.moving() && T.heroFree(), max: 12, expect: ['dragon:clone', 'player:parry'] },
+  { id: 'foxHowl', name: 'Heaven-Devouring Howl · roll through it', boss: 'fox', dist: 6, answer: 'dodge', god: true, desc: 'He leaves for the rim and summons the Nine-Tailed Fox; a dark sun gathers at its jaws and the red cue flashes there: roll through the beam as it fires (it sweeps toward your side, one way only). Then he kneels open.', go: (T) => T.d.debug.howl?.(), until: (T) => T.t > 2 && !T.d.howl?.busy && !T.moving() && T.heroFree(), max: 16, expect: ['combat:flash'] },
+  { id: 'foxPearlBurst', name: 'The Pearl · burst it in his hand', boss: 'fox', dist: 2.6, answer: 'none', desc: 'He steps back and shapes the Pearl in his palm: his guard is down (the selves that drop in to harry you are popped here). Close in and cut him twice while it charges: it bursts in his hand and he reels.', go: (T) => T.d.debug.trigger('foxPearl'), tick: (T) => { for (const c of T.d.clones?.list ?? []) if (c.alive && c.state === 'pack') T.d.clones.popAt(c.i, NaN, 0, NaN, false, 'cut'); if (T.d.pearl?.charging) { foxClose(T); if (T.d.pearl.u > 0.15 && T.d.pearl.u < 0.92) T.every(0.3, 99, () => T.tap('@attack'), 'foxCut'); } else T._axis(0, 0); }, until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 10, expect: ['dragon:stagger'] },
 ]);
 
 // Xin Yi, the One Who Woke (ADR-156): his five lessons. His shots and the front cue themselves (bullet /

@@ -1028,8 +1028,11 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
 | `?ascOrb=` | Heaven's Lantern, Tian Lei's great orb (the third wave, 2026-11-22) | - | a sun: a round ball of gold heat, a pale heart, letters orbiting it | a lantern: a bright rim round a dim heart that pulses, trailing motes | `c` the pale gathered sphere: steel-kind heat (near white), drawn as large as its hit, both arms straight up in the gather (a reload for the pose) | a (the author's; not yet picked) |
 | `?ascBeamPose=` | Tian Lei's beams (2026-11-22, ADR-150; read when the moves are built) | the palm thrust | - | - | `cup`: both hands cupped at the hip, a ball of light between the palms (`fx.cupCharge`), both palms thrust together; the clash held with both cupped hands | 0 (not yet picked) |
-| `?foxLook=` | Wen Yao's body, bare-handed (ADR-147; read when his rigs are built) | - | the Shrine Fox: the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox: an amber sleeveless jacket, a streaming vermilion scarf, a wild crest of dark red-brown hair, a kitsune half-mask at the temple | the Pelt Brawler: a quilted jerkin, a fox's head on one shoulder; `d` = a in the ink-line art | not picked yet (b drawn) |
-| `?foxfire=` | the foxfire: the Pearl, the mantle (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | moon-white | not picked yet (a) |
+| `?foxLook=` | Wen Yao's body, bare-handed (ADR-147, ADR-154; read when his rigs are built) | - | the Shrine Fox (art path): the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox (art path): an amber sleeveless jacket, a vermilion scarf, a dark red-brown crest, a half-mask at the temple | the Pelt Brawler (art path); `d` = a in the ink-line art; **`h1`** (the default) the Wild Fox in the hero's INK-LINE art, bright: a big russet crest with pale tips, a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; `h2` a vermilion jacket, a black scarf; `h3` a long pale coat lined in vermilion | not picked yet (h1 drawn) |
+| `?foxLetters=` | his ink-line letters (ADR-154; live) | - | a fixed cell, as every boss's | b (the default): they follow his size on screen as the hero's do (`kit.letters`) | - | not picked yet (b) |
+| `?foxfire=` | the Pearl's colour: the orb, its threads, Pearl Rain (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | **pale blue-white** (`FIRE_PALETTES.pearl`, the default since ADR-154) | not picked yet (c) |
+| `?foxFire3=` | phase 3's fire: the mantle, the tail, the pounce, the selves burning up, the Nine-Tailed Fox and its beam (ADR-154) | - | **the wyrm's orange-red** (`K_FIRE`, the default) | jade (the void slot turned to foxfire; an orb on that slot moves to the steel kind) | - | not picked yet (a) |
+| `?foxSpirit=` | the Nine-Tailed Fox (ADR-154; read when it is built) | - | **a body in the wyrm's art path** wreathed in fire (the default) | fire-field heat and ink lines only, no mesh | - | not picked yet (a) |
 | `?clones=` | his paper selves (read when their rigs are built) | - | identical to him | a step paler | - | not picked yet (a) |
 | `?bamboo=` | the Windless Grove's bamboo (ADR-151; read when the level is built) | one kind of cane, scattered | five kinds of cane mixed in fanning clumps, shoots, fuller crowns, the back filled, the wall to 50 m | the same, one kind of cane per clump | - | **a** (the owner's pick, 2026-11-22) |
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
@@ -1052,6 +1055,8 @@ proposal at once, the way the owner played them on the preview) now draws the sa
 **The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne, the Skybreak
 Ring, the Foxfire Terrace, the Windless Grove and the Hall of Falling Script) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
 (`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`, `oneLook`, `hall`, `script`) reloads the page with its parameter; "as
+Ring, the Foxfire Terrace and the Windless Grove) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
+(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`, `foxFire3`, `foxSpirit`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
 `?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
@@ -1187,7 +1192,22 @@ across the terrace): seen from the front and above, a fox prints as a lump; a fl
 gate) faces the camera. The gate's dull red is the strongest hue in the set, dulled once; the charm
 posts' paper strips are faint at 30 m.
 
-### Wen Yao's figure (2026-11-21, bare-handed 2026-11-22, ADR-147; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
+### Wen Yao's figure (2026-11-21, bare-handed 2026-11-22, ADR-147; redrawn ADR-154; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
+**Since ADR-154 he is drawn in the hero's INK-LINE art, not the wyrm's** (the owner: "its hard to see the new
+boss character. make it look detailed like the main character"): in the art path he printed as a thin
+dark figure with a few orange digits beside a hero who is a dense body of letters. `?foxLook=h1` (the
+default): the Wild Fox, bright: a big upswept crest of russet hair with pale tips (a third of the head's
+height over the skull, so it reads at 34 px), a short open amber jacket with short sleeves over a dark
+shirt, dark trousers, pale wraps on the forearms and shins, a long vermilion scarf (a bulky red collar
+from the front, its tails streaming level behind him when he moves), the fox-tail charm; no mask. `h2`:
+a vermilion jacket, a black scarf. `h3`: a long sleeveless cream coat lined in vermilion (its skirt rides
+the coat springs). Ink-line lessons: only saturated fills past 1 print bright (the jacket is
+`[1.22, 0.52, 0.045]`, the scarf `[1.3, 0.08, 0.03]`); a pale grey fill prints mid-grey (h3's coat is a
+warm cream); the hair parts draw GOLD ink lines for every boss (`HERO_INK`), and a gold outline round a
+russet crest read as blond spikes, so his crest is the `welt` part and its tips `hem`. Nine materials a
+rig (the art path's b: twelve): 76 → 73 draw calls on the level. His letters follow his size on screen
+(`?foxLetters=b`; ARCHITECTURE "The bosses' letters"). The art-path outfits a - c and d stay behind the
+switch; what follows describes them.
 A bare-handed fist fighter: the right fist on the sword joint with its knuckles wrapped (Tian Lei's),
 the forearms bare and wrapped, the left hand open, palm up (`PALM_TURN`). Flat facets with a few tones
 far apart; the big dark cloth on a low gain and a soft key (`dark()`), the bright colours on `loud()`.
@@ -1212,14 +1232,46 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   and the fox spirit's ears and tails keep their shape. The inherited draws' Void violet (a light, a
   spark) is turned to the look's colour (`_light`, `_spawn`), as AscFx does for gold: the black cue's
   sparks are jade on this level (the black dye itself is the engine's).
-- **The Pearl in his palm:** a dense SPINNING sphere at `d.palmPoint()` (its surface points turning round
-  a tilted axis about a jade core), three crisp arcs of wind turning round it and closing in as it
-  fills, motes curling in; the selves' steel threads (the assisting self's too) stop 0.42 m short of it
-  (five ends in one cell printed a white knot), beads of foxfire running in. **The drive:** a short blast
-  along his facing (heat thrown out, three crisp streaks, sparks), the ring 0.07 s later, no heart (heat
-  piled on one spot printed a white disc). **Pearl Rain** keeps the flight, ADR-052's ground specks in
-  foxfire colours, the rim of `·` once it has cued, and the burst. At the game camera the orb is a few
-  letters with a ring of wind strokes: it reads at 3x.
+- **The Pearl in his palm** (redrawn ADR-154: "The palm orb is small at the game camera"): about 0.9 m
+  across at the end of the charge, a ball of pale blue-white heat (`FIRE_PALETTES.pearl`, moon a step
+  bluer: a white light bloomed it into a glare, so its light is soft) with a small white heart, its
+  surface points turning round a tilted axis, three crisp SPIRAL ARMS of ink winding from past its rim in
+  to its heart, two wide arcs of wind turning the other way, threads of light pulled in from the air,
+  curling as they come; the self at his side shaping it with him, the threads from the selves (not the
+  twin's: it shapes its own) stopping short of it. **The drive:** a short blast along his facing and a
+  DRILL, two ink strokes winding round his line (a helix); the burst is a SPIRAL (every blob thrown out
+  turning the same way round, three arms of ink winding out over the floor). **Pearl Rain** keeps the
+  flight, ADR-052's ground specks, the rim of `·` once it has cued, and the burst. **The Moon-Swallowing
+  Pearl** is giant (about 2.2 m) and rises over his head as two selves lift it with him. Sound: a quiet
+  rising synth whirr (`sfx.js` `pearlWhirr`) as he shapes it.
+- **Phase 3's fire** (`?foxFire3`, ADR-154): the mantle, Burning Tail's sweep, the pounce, the change's roar
+  and the selves burning up into him are drawn in `FIRE3` (the wyrm's orange-red by default), the same
+  fire as the Nine-Tailed Fox and its beam; the Pearl keeps the orb's colour.
+- **A pack body appearing** (`packPuff`): a puff of smoke round it in the air, ten one-cell paper slips
+  thrown out of it, a crisp ring of ink opening on the screen's plane, a wisp of the orb's fire (~22 blobs:
+  five come at once in a Round).
+- **The Nine-Tailed Fox** (Heaven-Devouring Howl; `spirit.js`, `fxBeam.js`): a creature, so a body in the
+  wyrm's art path (`?foxSpirit=a`): low-poly, flat facets. THE HEAD IS THE SUBJECT (the second pass, the
+  reviewer: "a fan of feathers, not a fox"): drawn 2.3x, a clean wedge in profile (skull, the brow's long
+  slope, a long muzzle), broad pointed ears pale inside, a lower jaw that opens wide over a white-hot maw,
+  long white-hot eye slits, pale fangs; the head and body charcoal (little of its fire's light on them)
+  with a PALE throat and breast, so the head separates from the tails. Nine separate S-curved plumes
+  fanned low and back behind it, a gap between each, burning (glowing veins), each tipped pale and with a
+  bright blob of fire: the tails are the fire, the body is not. It stands SIDE-ON to the camera (facing
+  east or west, whichever the line runs toward) and leans back toward it (a fox seen from the front and
+  above prints as a lump: the terrace's lesson), drawn 1.1x tall; only the head turns (30° at most). He
+  summons it 10 m from the hero (not at the far rim) and the camera leans toward it and keeps the ears'
+  tips: at 1280x720 the head is ~250 px long and whole in the frame from every side. It goes up in
+  embers from the tail tips to the body. `?foxSpirit=b`: the same head as an outline of steel ink, the
+  tails as lines and heat, the body as heat only. The summoning's ring of script: two circles inked on the
+  floor, one-cell glyphs of script between them. The dark sun (~2.3 m across): a black-dyed steel disc
+  with a thick ragged rim of fire, pulled toward the camera, motes streaming in from the whole arena;
+  the light drops to 0.72. The strip's mark: hazard specks heating. The beam: a bulb of light at the
+  jaws, a five-line core (white-hot middle) on the letter grid, a body of heat five rows across its whole
+  3.6 m whose edge boils, a white flash its first 0.15 s, a fountain where it meets the floor, the floor
+  lit and charred and a scar of low heat that lingers a moment. COST: the fire field's peak through the
+  Howl ~1600 blobs in the browser (2350 headless, the hero standing in it) of 6000; 72 → 81 draw calls
+  with the fox risen and the beam lit (six materials, batched, no shadow).
 - **The nine-tailed fox** (phase 3, `mantle(d, dt, k)`): a fox's head over his (tall ears, cheek ruffs, a
   muzzle over his face), a mane, and `d.tails` tails, each a lagging chain with a pale tip, fanned over
   a half-wheel laid in the CAMERA's plane (as the ears are spread: a fan laid in the scene merged into
@@ -1230,7 +1282,7 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   the grass. It reads as a fan of jade flame more than nine separate tails.
 - **His blows' trail** (`sweep()` overridden): a short crisp streak along the fist's or the foot's path, a
   faint pale wash, foxfire licks when the spirit is lit, dust off a low kick; no blade arc.
-- **The selves:** a pop is 24 one-cell paper slips (16 when many go at once; half in the additive pool so
+- **The selves** (packs since ADR-154; a spawn is `packPuff`, in the air): a pop is 24 one-cell paper slips (16 when many go at once; half in the additive pool so
   they read on the paving at 30 m), torn-edge steel strokes, smoke, a wisp of foxfire; a spawn a tear of
   paper; the springboard's self tears UPWARD (30 slips) as he springs off it; phase 3's change burns
   them into him.

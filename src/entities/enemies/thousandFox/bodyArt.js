@@ -75,18 +75,74 @@ export const FOX_ART = {
   },
 };
 
-/** Option d (outfit a in the hero's ink-line art, ADR-122's look path for the human bosses): the
- *  fills of his material instances (uArtFill, linear), the same parts as FOX_ART.a. */
+// ---------------------------------------------------------------- the ink-line outfits
+// d, h1, h2, h3 are drawn in the hero's INK-LINE art (the look the other human bosses ship in): each
+// material instance's fill (uArtFill, linear rgb; tintFox writes it once after the rig is built).
+// The pass prints the fill's hue at a brightness that follows its light value, so these numbers are
+// authored for that pass, not for the art path's (FOX_ART's albedo would print a dark figure).
+//
+// The h outfits are meant to read at the game camera, where he is ~34 px tall (720p): four parts told
+// apart by colour (the hair, the jacket, the trousers, the scarf) and the figure as dense and bright
+// as the hero beside him. Their parts (gear.js "the h outfits"):
+//   welt the crest and the tail charm (russet) · hem the pale wraps (forearms, fists, shins), the
+//   crest's tips, the charm's tip · coat the jacket / coat · lining its inside · shirt the dark shirt,
+//   belt and shoes · pants the trousers · facing the scarf · skin · eye.
+
+/** The ink-line outfits' fills: d (outfit a, the Shrine Fox), and the h outfits. */
 export const FOX_INK = {
-  welt: [0.78, 0.76, 0.7],
-  hem: [0.5, 0.48, 0.45],
-  coat: [0.11, 0.11, 0.2],
-  lining: [0.05, 0.05, 0.08],
-  pants: [0.15, 0.15, 0.17],
-  piping: [0.42, 0.4, 0.36],
-  facing: [0.55, 0.12, 0.07],
-  hair: [0.05, 0.05, 0.06],
-  shirt: [0.05, 0.05, 0.06],
-  eye: [0.04, 0.03, 0.03],
-  skin: [0.85, 0.6, 0.45],
+  d: {
+    welt: [0.78, 0.76, 0.7],
+    hem: [0.5, 0.48, 0.45],
+    coat: [0.11, 0.11, 0.2],
+    lining: [0.05, 0.05, 0.08],
+    pants: [0.15, 0.15, 0.17],
+    piping: [0.42, 0.4, 0.36],
+    facing: [0.55, 0.12, 0.07],
+    hair: [0.05, 0.05, 0.06],
+    shirt: [0.05, 0.05, 0.06],
+    eye: [0.04, 0.03, 0.03],
+    skin: [0.85, 0.6, 0.45],
+  },
+  // h1, the Wild Fox (bright): a russet crest with pale tips, a strong amber jacket over a dark shirt,
+  // dark slate trousers, pale wraps, a vermilion scarf
+  h1: {
+    welt: [0.85, 0.13, 0.03],
+    coat: [1.22, 0.52, 0.045],
+    lining: [0.34, 0.13, 0.02],
+    shirt: [0.06, 0.055, 0.07],
+    pants: [0.13, 0.14, 0.24],
+    hem: [0.86, 0.83, 0.74],
+    facing: [1.3, 0.08, 0.03],
+    skin: [0.95, 0.64, 0.45],
+    eye: [0.08, 0.05, 0.04],
+  },
+  // h2: the same figure, a vermilion jacket and a black scarf
+  h2: {
+    welt: [0.85, 0.13, 0.03],
+    coat: [1.1, 0.11, 0.035],
+    lining: [0.3, 0.03, 0.015],
+    shirt: [0.06, 0.055, 0.07],
+    pants: [0.13, 0.14, 0.24],
+    hem: [0.86, 0.83, 0.74],
+    facing: [0.045, 0.04, 0.05],
+    skin: [0.95, 0.64, 0.45],
+    eye: [0.08, 0.05, 0.04],
+  },
+  // h3: a long sleeveless pale coat lined in vermilion over dark clothes, the same hair and scarf
+  h3: {
+    welt: [0.85, 0.13, 0.03],
+    coat: [1.6, 1.25, 0.75], // (a pale warm cream: a grey-white fill prints dim, only a coloured one lifts)
+    lining: [1.0, 0.1, 0.035],
+    shirt: [0.06, 0.055, 0.07],
+    pants: [0.11, 0.115, 0.17],
+    hem: [0.7, 0.68, 0.62],
+    facing: [1.3, 0.08, 0.03],
+    skin: [0.95, 0.64, 0.45],
+    eye: [0.08, 0.05, 0.04],
+  },
 };
+
+/** The h outfits' edge of light (as Tian Lei's lift, ascendant/look.js ASC_LIFT): the cool
+ *  screen-left rim of these parts' fill (uArtRim, per instance) times `k`, so his silhouette stands
+ *  off the terrace's dark paving at the game camera. */
+export const FOX_INK_RIM = { k: 1.5, on: ['coat', 'lining', 'pants', 'shirt', 'hem', 'facing', 'welt', 'skin'] };

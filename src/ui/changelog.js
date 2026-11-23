@@ -32,6 +32,16 @@ export const RELEASES = [
         ],
       },
       {
+        date: '2026-11-23',
+        title: 'Wen Yao reworked: copies out of the air, the big Pearl, the Nine-Tailed Fox',
+        notes: [
+          'Wen Yao, the Thousand-Body Fox, is now drawn as brightly as you are: a russet crest, an amber jacket and a long red scarf.',
+          'His copies no longer stand about. They appear in the air already striking, all at once or one after another from every side. When they come together it is one cue: one parry bursts them all.',
+          'The Pearl in his palm is big now, a spinning blue-white orb. Pop the copies that harry you while he shapes it, or they feed it.',
+          'In his last phase he summons the Nine-Tailed Fox. When the red flash shows at its jaws, roll; the beam sweeps toward you one way only, so roll back through it. Then he kneels, open.',
+        ],
+      },
+      {
         date: '2026-11-22',
         title: "The grove's bamboo falls to every stroke",
         notes: [
