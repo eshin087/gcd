@@ -62,7 +62,7 @@ export const TIER_LOOK = Object.freeze({
     hold: 0.045,
     off: Object.freeze([2, 3, 4, 5]),
     heat: Object.freeze([1.1, 0.85, 0.55, 0.36]),
-    ring: Object.freeze([0, 0.55, 0.9, 1.25]),
+    ring: Object.freeze([0, 1.0, 1.6, 2.3]),
     keep: Object.freeze([0, 1, 0.7, 0.35]),
   }),
 });
